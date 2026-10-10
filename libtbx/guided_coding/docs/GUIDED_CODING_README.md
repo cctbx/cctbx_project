@@ -64,11 +64,13 @@ Those checks do not establish that a test checks the right thing, that a log is 
 
 Many steps remain instructions Claude must follow. In particular, the setup save is not one indivisible operation. If a write or readback fails, the project can be partly updated. Claude must stop the affected work, describe the state and preserve the recovery copies.
 
-The kit does not automatically reserve shared installations or coordinate parallel jobs. Separate Git worktrees give tasks separate working files; they do not by themselves ensure that tests use separate installations or that shared resources are safe to use at the same time. Updating an installation also requires its own authorized plan; permission to publish is not permission to update it.
+The kit does not automatically reserve shared installations or coordinate parallel jobs. Auto mode runs one job at a time and takes a lock on its own test-only installation; it does not coordinate with other sessions that ignore that lock. Separate Git worktrees give tasks separate working files; they do not by themselves ensure that tests use separate installations or that shared resources are safe to use at the same time. Updating an installation also requires its own authorized plan; permission to publish is not permission to update it.
 
 ## Current status and limits
 
-This version is a limited trial (a pilot) of the procedure, used only when you explicitly ask for it. Its release file carries the label `r10 rev17 candidate`. That is a version label used by the startup check, not proof of approval or publication.
+This version is a limited trial (a pilot) of the procedure, used only when you explicitly ask for it. Its release file carries the label `r10 rev18 candidate`. That is a version label used by the startup check, not proof of approval or publication.
+
+This revision adds auto mode: Claude works through several jobs one at a time while you are away and saves each for your approval. It merges and publishes nothing. Recovery after a usage limit is manual, and the app's behaviour at a real usage limit has not been tested.
 
 Recorded observations cover particular Mac Terminal and Claude app sessions. They include help loading and four non-interactive Terminal sessions that checked status, listed task history and included two setup trials that stopped on damaged or missing recovery records. The app observations have narrower scope, including help loading, session titles and the app-aware version check. They do not establish all setup and recovery behavior across clients or platforms.
 
@@ -92,4 +94,4 @@ Guided Coding has not established a failure rate, better fixes than unstructured
 
 ## Version notes
 
-This is the rev17 candidate with the October 6 app-aware version check. Its changes and history are in [Verification and limits](GUIDED_CODING_VERIFICATION.md#historical-record).
+This is the rev18 candidate: the rev17 revision with the October 6 app-aware version check, plus auto mode. Its changes and history are in [Verification and limits](GUIDED_CODING_VERIFICATION.md#historical-record).

@@ -137,6 +137,8 @@ These commands can help:
 | `/guided_coding history` | Lists the project’s recorded tasks without starting work. |
 | `/guided_coding setup` | Reads saved settings and proposes any setup changes you need. |
 | `/guided_coding uninstall` | Removes the link that makes this kit available to Claude Code. |
+| `/guided_coding auto` and a job list | Works through several jobs one at a time while you are away and saves each for your approval. |
+| `/guided_coding auto status` | Shows the report on those jobs and how to approve them. |
 
 For ordinary Claude Code work, open a new conversation without `/guided_coding`. The project’s instructions and Claude’s saved memory may still be loaded.
 
@@ -149,6 +151,22 @@ Stop this task and restore the project to its state before this task started. Pr
 ```
 
 Read Claude’s report to see what it restored and what remains unfinished. Do not assume that sending the request was enough to undo the work.
+
+## Running several jobs unattended (auto mode)
+
+Auto mode works through a list of jobs one at a time while you are away, for example overnight. Type `/gc auto` yourself, choosing it from the command menu, and then paste the list of jobs after it. A pasted message that only begins with the command does not start it.
+
+Claude shows one start notice and then works without asking questions. Each job is prepared in its own branch and tested in a separate test-only installation. It is then saved as **Ready for approval**, or as **Blocked** with one reason. Nothing is merged into your main branch, your working installation is not changed and nothing is published. Tests that would contact outside services are left out unless the job allows it.
+
+Starting auto mode lets Claude choose each job's test criterion and skip the plan approval and the outside review before the job is saved. Each ticket says that Claude chose the criterion. You can still ask for an outside review before you approve.
+
+In the morning, send `/gc auto status`. The report has one row per job. For each ready job it gives a short summary: the bug, the fix, the test, the criterion, the limits and what approving means. Approving a job accepts that exact tested change; it merges nothing. You can approve several jobs in one message. Merging and publishing approved jobs is ordinary guided work that needs your later instruction and your PUBLISH decision.
+
+To stop, send `/gc stop`, or run the stop command shown in the start notice in any Terminal window. It works in any shell. Claude reports **Stopped** only when nothing the queue started is still running; otherwise it says what remains.
+
+If you reach a usage limit, the queue stops and does not continue by itself. After the limit resets, send `/gc auto resume`. Keep the computer awake and the lid open: a closed lid still sleeps.
+
+The [registration and command reference](GUIDED_CODING_COMMAND_REFERENCE.md) gives the details and limits.
 
 ## Updates and removal
 

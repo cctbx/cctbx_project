@@ -26,7 +26,7 @@ cd /absolute/path/to/libtbx/guided_coding &&
 shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev17 candidate' payload/RELEASE
+grep -Fq 'r10 rev18 candidate' payload/RELEASE
 ```
 After changing directory, the listed-hash check must succeed before any
 checker code runs; the checker then checks the **complete source inventory** and rejects unlisted files,
@@ -35,7 +35,7 @@ unlisted module in `payload/tools/` from loading during verification.
 A directory, checksum, inventory or release failure returns nonzero and
 stops all dependent work. Only after this block succeeds, read
 `payload/DEVELOPER_GUIDE_CONTRACT.md`.
-This candidate requires the release label to say `r10 rev17`; if it does not,
+This candidate requires the release label to say `r10 rev18`; if it does not,
 stop and report the different version before starting a guided change.
 
 Once the source check has passed, give the session a useful name. If the
@@ -111,6 +111,19 @@ path. Never remove the source, project authorities, methods or records.
 Explain that already loaded instructions persist in this conversation,
 and use a fresh conversation for ordinary work. No project adoption is
 needed to uninstall the personal link.
+
+**Auto mode.** `auto <goal or job list>`, `auto status`, `auto resume` and
+`stop` are auto-mode requests (this release has no `auto integrate`; say so
+if asked, and use ordinary guided work for integration). After the
+source and version checks and the same project adoption gate as an
+ordinary task, read `payload/ROLES.md`, `payload/GUIDE.md`,
+`payload/WORKER.md` and then `payload/AUTO.md`, and follow `AUTO.md`. The
+queue helper is `auto_queue.py` in the procedure root; run it as
+`TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)" python3 -I -B <procedure root>/auto_queue.py`.
+`stop` works without
+adoption and without the coding conversation: it only asks the helper to
+stop the active queue. `/gc auto` grants only what `AUTO.md` lists; it never
+authorizes integration, publication or server access.
 
 After handling a control request, stop; do not fall through into the
 guided-task activation or start work on an unrelated task.

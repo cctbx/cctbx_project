@@ -23,6 +23,7 @@ The checks have specific limits:
 | Review bundle | Required files were packaged with checksums in the permitted layout. | Privacy, completeness of the evidence and permission to send or publish it. |
 | Publication checks | The outgoing record passes the repository checks performed; the submitted push command has the permitted form. | Your decision to publish, a later change at the remote and commands run outside the validator. |
 | Task history | Saved summaries were listed without activating a task. | Truth of those summaries and any permission or resource reservation. |
+| Auto-mode queue | Jobs change state only in the permitted order; one worker is registered at a time; runs have time limits and, by default, no outside network; a ready packet carries a well-formed `SCREENING.txt` and still matches its frozen manifest at approval; the start notice and morning report have the required form. | Whether the chosen tests and screening are adequate, whether the approval summaries are true, and what the app does at a usage limit. |
 
 Setup's record, verify and apply sequence is an instruction Claude must follow. It is not a save operation enforced by the client. Verification must succeed before the apply call; a failure after a write can still leave the project partly updated.
 
@@ -48,6 +49,8 @@ We have not established that Guided Coding produces better fixes than ordinary A
 
 **Clients and platforms.** A Terminal version check says nothing about the app engine. The app branch uses markers observed on October 6, 2026; their future stability is not established. Earlier interactive Terminal observations had continuation and permission-mode qualifications. Native Windows use, a real csh session and complete setup/recovery behavior across clients have not been established. A Windows skip in a test wrapper is not evidence of Windows support.
 
+**Auto mode.** Recovery after a usage limit is manual. Whether the app retries an interrupted turn, and what happens to a running worker then, is untested. The stop command cannot see a system program that a test starts in its own session from a parent that exits within about a second. The network block does not cover a request that a test hands to another system service. The screening record and the approval summaries are checked for form only.
+
 **Changes outside the project.** Observations about unchanged files and recorded tool calls apply only to what was examined. They do not establish that every file, operation or login state on the computer stayed the same.
 
 **Independence.** Separate test authorship is recorded, but is not by itself proof of independence. A repeatable test can still check the wrong claim. Records must say who chose the success criteria, wrote the test and ran it.
@@ -63,7 +66,7 @@ cd /absolute/path/to/libtbx/guided_coding &&
 shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev17 candidate' payload/RELEASE
+grep -Fq 'r10 rev18 candidate' payload/RELEASE
 ```
 
 Each `&&` makes the next command depend on the previous command succeeding. A failed directory change or checksum must stop the block before the kit's checker runs. A failed inventory check must stop the remaining commands. Do not append unguarded preparation or registration commands.
@@ -88,15 +91,17 @@ Finally, to establish that those tests ran for a particular revision, examine th
 
 ### Running the package tests
 
-Once the source guard succeeds, the four shipped test files can be run on a trusted clean copy containing only the manifest-listed source. Use a resolved temporary directory without symbolic links. On macOS the default temporary directory is under `/var`, which is a symbolic link, so resolve it in the same command:
+Once the source guard succeeds, the five shipped test files can be run on a trusted clean copy containing only the manifest-listed source. Use a resolved temporary directory without symbolic links. On macOS the default temporary directory is under `/var`, which is a symbolic link, so resolve it in the same command:
 
 ```bash
 TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)" python3 -I -B -m unittest discover -s tests -p 'tst_*.py' -v
 ```
 
-Run this from the top folder of that clean copy. It is a separate authorized checking step, not a command to continue after a failed source guard. Report every skipped case.
+This is Bash syntax and also works in zsh. In csh or tcsh the prefix fails with “Illegal variable name.”, so start `bash` first. Run this from the top folder of that clean copy. It is a separate authorized checking step, not a command to continue after a failed source guard. Report every skipped case.
 
-The four files contain 118 test methods: 63 for the checker, 13 for the review bundle, 27 for publication checks and 15 for task history. Some methods contain additional cases. The number of methods is not a count of independent claims.
+The five files contain 257 test methods: 100 for the checker, 102 for the auto-mode queue helper, 13 for the review bundle, 27 for publication checks and 15 for task history. Some methods contain additional cases. The number of methods is not a count of independent claims.
+
+The default run contacts no outside host: tests of the auto-mode network block use the documentation address 192.0.2.1, where no host exists. Three auto-mode tests would contact a real outside host or name if allowed, so they run only when the environment variable `GC_TEST_NETWORK` is set to `1`, and are otherwise reported as skipped with the reason. When enabled they contact `https://www.rcsb.org` (a DNS lookup and HTTPS), `1.1.1.1` (port 443) and the DNS resolver for `example.com`. A default run on a Mac therefore reports three skipped auto-mode cases. One control makes a single 5-second connection attempt to 192.0.2.1 outside the block, to show that the refusal inside comes from the block; if the surrounding environment already refuses it, the three block tests are skipped as well, with that reason. Other platforms can skip further cases, each with its reason.
 
 The setup shell recipe and native Claude scenarios are not covered by those unit methods. Their controls and observations are in the task and review records.
 
@@ -178,6 +183,10 @@ One real non-interactive Terminal run used a scrubbed environment and a one-off 
 
 These checks cover one Mac, one app session and one non-interactive Terminal run. Nothing was uninstalled and no settings were changed.
 
+### Auto mode: October 8–9, 2026
+
+The rev18 candidate adds auto mode: `auto_queue.py`, `payload/AUTO.md`, the `auto_start` and `auto_report` screens and their `screen_check.py` rules, with tests, and routes the auto commands in the skill entry. Standard mode, the contract, roles and setup are unchanged. Revision 9 added the screening record required before a job is ready, the approval summaries in the morning report, manual recovery after a usage limit, a stop command for any shell, and stricter checks of job identifiers. The release-family check now expects `r10 rev18 candidate`. The checks, the hands-off runs and their limits are in the task record `phenix/.claude/records/2026-10-08-gc-auto-release-plan/`. The auto-mode tests were written from the written specification by separate test-writer subagents, which did not read the implementation; the Guide wrote the implementation and ran the checks; reviewer subagents of the same model family re-read each revision. That is separate authorship, not proof of independence.
+
 ## Technical reference
 
 ### Source and test map
@@ -193,6 +202,8 @@ These checks cover one Mac, one app session and one non-interactive Terminal run
 | Review-bundle layout | `make_bundle` in `review_bundle.py`; `ReviewBundleChecks`. |
 | Publication repository and command checks | `publication_precheck.py`; `tst_publication_precheck_v20.py`. |
 | Read-only history listing | `records_history.py`; `tst_records_history_v20.py`. |
+| Auto-mode queue, grant, worker registration, runs, stop and cleanup | `auto_queue.py`; `tst_auto_queue_v20.py`. |
+| Auto-mode start notice and morning report | The `auto_start` and `auto_report` rules in `screen_check.py`; `tst_screen_check_v20.py`. |
 | Required setup-save ordering | `SKILL.md` and `SETUP.md` section 5, including its shell example. |
 
 The checker requires exactly one `Scope:` line before checking its value. An outgoing repository block may not repeat a key. When the suite is marked `NOT RUN`, its quoted waiver is checked for form, not interpreted as genuine permission.

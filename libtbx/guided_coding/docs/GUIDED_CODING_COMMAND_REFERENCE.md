@@ -49,7 +49,7 @@ cd /path/to/empty-gc-review/libtbx/guided_coding &&
 shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev17 candidate' payload/RELEASE
+grep -Fq 'r10 rev18 candidate' payload/RELEASE
 ```
 
 Any failed command skips the rest of the block. In particular, a failed
@@ -83,7 +83,7 @@ cd /path/to/cctbx_project/libtbx/guided_coding &&
 shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev17 candidate' payload/RELEASE &&
+grep -Fq 'r10 rev18 candidate' payload/RELEASE &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py check-claude-version &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py register-skill .
 ```
@@ -257,6 +257,10 @@ that would alter its governing procedure.
 | `/guided_coding setup` | Recover settings and prepare authorized method/adoption changes |
 | `/guided_coding <task>` | Start bounded guided work after source, adoption and readiness checks |
 | `/guided_coding uninstall` | Remove only the personal symlink resolving to this verified source |
+| `/guided_coding auto <goal or job list>` | Prepare, test locally and park several jobs one after another, unattended |
+| `/guided_coding auto status` | Morning report: one row per job, approval summaries and how to approve |
+| `/guided_coding auto resume` | Continue a queue after an interruption, while its grant lasts |
+| `/guided_coding stop` | Stop the active auto queue safely |
 
 The same arguments work with `/gc`. These requests load instructions for
 Claude; they are not all Python subcommands. Invoke the skill at the start
@@ -284,8 +288,84 @@ created.
 Use the project's adopted testing and publication rules. Preparing a test,
 running it, integration and a push are different actions. The pilot's
 one-time server-suite waiver is not permission to skip a later required
-suite. There is no parallel-job coordination in rev17; follow the
-current project restrictions and sharing rules.
+suite. Auto mode runs one job at a time; there is no parallel-job
+coordination. Follow the current project restrictions and sharing rules.
+
+### Auto mode
+
+Type `/gc auto` yourself (pick it from the command menu) and then paste
+the job text after it. A pasted message that merely begins with the
+command does not start the skill. Claude turns the request into a job
+list, shows one checked start notice and then works without questions.
+The start notice gives the absolute path of the queue helper in use, the
+stop command and the run boundary.
+
+**What the invocation grants.** It is your advance grant for the listed
+jobs only, filed as `GRANT.md` in the queue's record before any job
+starts. It covers isolated worktrees and branches from the recorded
+baseline, edits within each job's scope, local checks in the test-only
+installation, reviewer and checker subagent readings, frozen evidence,
+tickets and parking. It waives the per-job plan approval and the
+outside reading before parking; both remain available when you review.
+It does not cover integration, publication, installation updates, new
+server access, accepting an unchosen risk or choices outside a job's
+text. It ends when every job is parked or blocked, at a stop, or at the
+run boundary (by default 08:00 local time the next morning).
+
+**Each job.** One worker at a time prepares the job in its own worktree,
+records the test criterion before any test and runs every build and test
+through the queue helper. Each run has a time limit; a run that exceeds
+it is ended with its identified processes and recorded as timed out,
+which is a failure. Unless the job's grant allows outside contact, the
+helper blocks outbound connections and name lookups for its runs. Tests
+that would contact outside services are screened out first. The frozen
+packet must contain `SCREENING.txt`, one line per test considered:
+`test: NAME | outside: WHAT | included` or `excluded`, where WHAT is
+exactly `none` or a description of the outside access found. The helper
+refuses **Ready for approval** when that file is missing or malformed,
+when no test is included, or when an included test has outside access
+without the job's network grant. It checks the form, not whether the
+screening is complete. A reviewer subagent reads the candidate before
+the freeze and a checker subagent reads the frozen packet. The job is
+then parked as **Ready for approval** or **Blocked** with one reason and,
+where needed, the decision you must make. Master and the working
+installations are not changed. The ticket states that the Guide chose
+the criterion.
+
+**Morning report.** `/gc auto status` shows one row per job and, under
+APPROVAL SUMMARIES, a seven-line block for each ready job: its title,
+then the bug, the fix, the test, the criterion, the limits, and a line
+saying that approval accepts this exact packet and merges nothing. When
+no job is ready, that section says so. The checker checks the form of
+the report, not the truth of the summaries. Anything done outside a
+job's agreed discretion is asked as its own question before that job can
+be approved. You can approve several jobs in one message. Each approval
+is recorded with your words and bound to the packet's frozen manifest;
+the helper refuses it if the packet has changed.
+
+**Stop.** Send `/gc stop`, or run the helper's stop command shown in the
+start notice from any Terminal; it works in any shell, csh included. It
+reports **Stopped** only when the registered worker has ended and no
+build or test started through the helper, or any descendant it can
+identify, is still alive; otherwise it reports **Stopping** and what
+remains. Known gaps: a system program that a test starts in its own
+session, from a parent that exits within about a second, is not seen;
+and a request that a test hands to another system service is not
+blocked by the network block.
+
+**Usage limits and `/gc auto resume`.** Recovery after a usage limit is
+manual in this release. A limit stops the queue where it is; after the
+reset, send `/gc auto resume`. Whether the Claude app retries an
+interrupted turn by itself, and what happens to a running worker then,
+is untested. The start notice says so. `/gc auto resume` reconciles the
+queue, rechecks the test installation and continues the remaining jobs
+only while the grant has not ended. It never registers a second worker.
+In a new conversation it keeps the queue stopping until you confirm that
+the earlier session has ended.
+
+**Not in this release.** There is no `auto integrate`. Integration and
+publication of approved jobs are ordinary guided work on your later
+instruction, with your PUBLISH decision for the combined packet.
 
 ## Ordinary conversations and session titles
 

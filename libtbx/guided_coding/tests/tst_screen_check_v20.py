@@ -4,8 +4,10 @@ import compileall
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import py_compile
+import re
 import shutil
 import subprocess
 import sys
@@ -1247,6 +1249,1078 @@ class VersionGateScopeChecks(unittest.TestCase):
         shown = self.run_tool("present", "plan", str(self.plan()))
         self.assertEqual(shown.returncode, 0, shown.stderr)
         self.assertIn("PLAN | comment-1 | light", shown.stdout)
+
+
+AUTO_QUEUE = Path(__file__).resolve().parent.parent / "auto_queue.py"
+# Revision 2 (S5): the one STOP command the checker accepts names the
+# auto_queue.py in the same procedure root as the screen_check.py being run.
+CHECKER_AUTO_QUEUE = (Path(checker.__file__).parent.parent.parent / "auto_queue.py").resolve()
+AUTO_START_HEADINGS = ("JOBS", "CHECKS", "INSTALLATION", "RESULTS", "STOP", "NOT AUTHORIZED")
+AUTO_REPORT_HEADINGS = ("JOBS", "IN SIMPLE WORDS", "APPROVAL SUMMARIES", "NEXT")
+AUTO_START_ACTION = "ACTION: NONE NEEDED (reply stop to stop the queue)"
+AUTO_REPORT_ACTION = "ACTION: APPROVE / INSPECT / REVISE / DISCARD"
+# AUTO_SCREENS Revision 9: a row is ready when its step begins with one of these.
+READY_STEPS = ("approve for integration", "decide P")
+SUMMARY_LABELS = ("Bug: ", "Fix: ", "Test: ", "Criterion: ", "Limits: ", "Approval: ")
+APPROVAL_LINE = "Approval: accepts this exact packet and merges nothing."
+
+
+def word_count(text):
+    return len(text.split())
+
+
+class AutoScreenChecks(unittest.TestCase):
+    """AUTO_SCREENS_SPEC: the auto_start and auto_report kinds, checked only
+    through the screen_check.py command line. auto_report screens are compared
+    with the report of a real queue built with auto_queue.py in a temporary
+    directory (temporary --home, GC_AUTO_HOME and --lock-dir)."""
+
+    QUEUE_ID = "night-1"
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.home = self.root / "home"
+        self.home.mkdir()
+        self.environment = dict(os.environ, GC_AUTO_HOME=str(self.home),
+                                GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+        self.screen = self.root / "screen.md"
+
+    # ---- helpers ------------------------------------------------------------
+
+    def tool(self, *arguments):
+        return subprocess.run(
+            [sys.executable, "-I", "-B", str(Path(checker.__file__)), *arguments],
+            cwd=self.root, env=self.environment, text=True, capture_output=True)
+
+    def queue_tool(self, *arguments, queue=None, expect=0):
+        command = [sys.executable, "-I", "-B", str(AUTO_QUEUE), "--home", str(self.home)]
+        if queue is not None:
+            command += ["--queue", str(queue)]
+        result = subprocess.run(command + list(arguments), cwd=self.root,
+                                env=self.environment, text=True, capture_output=True)
+        if expect is not None:
+            self.assertEqual(result.returncode, expect,
+                             f"auto_queue {arguments}: {result.stdout}{result.stderr}")
+        return result
+
+    def git(self, repo, *arguments):
+        result = subprocess.run(
+            ["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+             "-c", "commit.gpgsign=false", *arguments],
+            env=self.environment, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.strip()
+
+    def put(self, text):
+        self.screen.write_text(text)
+        return self.screen
+
+    def put_bytes(self, data):
+        self.screen.write_bytes(data)
+        return self.screen
+
+    def check(self, kind, screen, *options):
+        return self.tool("check", kind, str(screen), *options)
+
+    def assert_accepted(self, result):
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def assert_refused(self, result):
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertTrue(result.stderr.startswith("ERROR: "), result.stderr)
+
+    # ---- auto_start ---------------------------------------------------------
+
+    def start_text(self, queue_id=None, extra_results=(), stop_line=None,
+                   not_authorized="Nothing is merged to master and nothing is published."):
+        stop_line = stop_line or f"python3 {CHECKER_AUTO_QUEUE} stop"
+        lines = [f"AUTO START | {queue_id or self.QUEUE_ID}",
+                 "JOBS",
+                 "Job A: clarify one comment, needs the unit check.",
+                 "Job B: fix one test, needs the unit check.",
+                 "CHECKS",
+                 "Each job runs its unit check in an isolated copy.",
+                 "INSTALLATION",
+                 "The shared test installation is used under one lock.",
+                 "RESULTS",
+                 "A report table is shown when the queue finishes.",
+                 "A usage limit stops the queue; resume is manual with /gc auto resume.",
+                 *extra_results,
+                 "STOP",
+                 "Reply stop, or run this command:",
+                 stop_line,
+                 "NOT AUTHORIZED",
+                 not_authorized,
+                 AUTO_START_ACTION]
+        return "\n".join(lines) + "\n"
+
+    def start_refused(self, text, *options):
+        self.assert_refused(self.check("auto_start", self.put(text), *options))
+
+    def test_auto_start_valid_screen_accepted(self):
+        """Positive control for every auto_start refusal below."""
+        self.assert_accepted(self.check("auto_start", self.put(self.start_text())))
+        # NOT AUTHORIZED: case-insensitive, and `published` counts as publish.
+        self.assert_accepted(self.check("auto_start", self.put(self.start_text(
+            not_authorized="Nothing goes to MASTER; nothing is Published."))))
+        self.assert_accepted(self.check("auto_start", self.put(self.start_text(
+            not_authorized="No push to master and no publish step."))))
+
+    def test_auto_start_queue_id_pattern(self):
+        """Line 1 `AUTO START | <queue-id>`, id `[a-z0-9][a-z0-9-]{0,39}`."""
+        for queue_id in ("q", "0", "a" * 40, "a-" + "b" * 38, "night-queue-2026-10-08"):
+            with self.subTest(accepted=queue_id):
+                self.assert_accepted(self.check("auto_start",
+                                                self.put(self.start_text(queue_id))))
+        for queue_id in ("a" * 41, "-night", "Night-1", "night_1", "night.1", "night 1",
+                         "nïght"):
+            with self.subTest(refused=queue_id):
+                self.start_refused(self.start_text(queue_id))
+        good = self.start_text()
+        for label, first in (("report title", f"AUTO REPORT | {self.QUEUE_ID}"),
+                             ("no separator", f"AUTO START {self.QUEUE_ID}"),
+                             ("empty id", "AUTO START | "),
+                             ("lower case title", f"auto start | {self.QUEUE_ID}"),
+                             ("trailing text", f"AUTO START | {self.QUEUE_ID} | extra")):
+            with self.subTest(line1=label):
+                self.start_refused(first + "\n" + good.split("\n", 1)[1])
+
+    def test_auto_start_headings_once_in_order_first_on_line_2(self):
+        good = self.start_text()
+        for heading in AUTO_START_HEADINGS:
+            with self.subTest(missing=heading):
+                lines = good.splitlines(keepends=True)
+                self.start_refused("".join(l for l in lines if l != heading + "\n"))
+            with self.subTest(repeated=heading):
+                self.start_refused(good.replace(heading + "\n", heading + "\n" + "Note.\n"
+                                                + heading + "\n", 1))
+        with self.subTest(order="CHECKS before JOBS"):
+            swapped = good.replace(
+                "JOBS\nJob A: clarify one comment, needs the unit check.\n"
+                "Job B: fix one test, needs the unit check.\n"
+                "CHECKS\nEach job runs its unit check in an isolated copy.\n",
+                "CHECKS\nEach job runs its unit check in an isolated copy.\n"
+                "JOBS\nJob A: clarify one comment, needs the unit check.\n"
+                "Job B: fix one test, needs the unit check.\n")
+            self.assertNotEqual(swapped, good)
+            self.start_refused(swapped)
+        with self.subTest(first_heading="on line 3"):
+            self.start_refused(good.replace("JOBS\n", "Prepared tonight.\nJOBS\n", 1))
+        with self.subTest(heading="lower case"):
+            self.start_refused(good.replace("CHECKS\n", "Checks\n", 1))
+
+    def test_auto_start_blank_line_inside_section_refused(self):
+        good = self.start_text()
+        for label, altered in (
+                ("empty", good.replace("Job B:", "\nJob B:", 1)),
+                ("blank with spaces", good.replace("Job B:", "   \nJob B:", 1)),
+                ("before a heading", good.replace("STOP\n", "\nSTOP\n", 1))):
+            with self.subTest(form=label):
+                self.assertNotEqual(altered, good)
+                self.start_refused(altered)
+
+    def test_auto_start_action_line(self):
+        good = self.start_text()
+        for label, altered in (
+                ("other action", good.replace(AUTO_START_ACTION, "ACTION: APPROVE / STOP")),
+                ("decision action",
+                 good.replace(AUTO_START_ACTION, AUTO_REPORT_ACTION)),
+                ("trailing text", good.replace(AUTO_START_ACTION, AUTO_START_ACTION + " now")),
+                ("line after action", good + "postscript\n"),
+                ("second ACTION line",
+                 good.replace("A report table", "ACTION: STOP\nA report table", 1)),
+                ("action missing", good.replace(AUTO_START_ACTION + "\n", ""))):
+            with self.subTest(form=label):
+                self.start_refused(altered)
+
+    def test_auto_start_encoding_newlines_and_placeholders(self):
+        good = self.start_text()
+        for label, data in (
+                ("CRLF", good.replace("\n", "\r\n").encode()),
+                ("no final newline", good.rstrip("\n").encode()),
+                ("not UTF-8", good.replace("Job A", "Job \xff").encode("latin-1")),
+                ("angle placeholder", good.replace("one comment", "<comment>").encode()),
+                ("brace placeholder", good.replace("one comment", "{{comment}}").encode())):
+            with self.subTest(form=label):
+                self.assert_refused(self.check("auto_start", self.put_bytes(data)))
+
+    def test_auto_start_budget_28_lines_and_220_words(self):
+        base = self.start_text()
+        room = 28 - len(base.splitlines())
+        self.assertGreater(room, 0)
+        fill = [f"Filler line {n}." for n in range(room)]
+        at_limit = self.start_text(extra_results=fill)
+        self.assertEqual(len(at_limit.splitlines()), 28)
+        self.assert_accepted(self.check("auto_start", self.put(at_limit)))
+        over = self.start_text(extra_results=fill + ["One more."])
+        self.assertEqual(len(over.splitlines()), 29)
+        self.start_refused(over)
+        # Words, counted over the whole screen split on whitespace.
+        missing = 220 - word_count(base)
+        self.assertGreater(missing, 0)
+        words = self.start_text(extra_results=[" ".join(["word"] * missing)])
+        self.assertEqual(word_count(words), 220)
+        self.assertLessEqual(len(words.splitlines()), 28)
+        self.assert_accepted(self.check("auto_start", self.put(words)))
+        words = self.start_text(extra_results=[" ".join(["word"] * (missing + 1))])
+        self.assertEqual(word_count(words), 221)
+        self.start_refused(words)
+
+    def test_auto_start_stop_section_needs_absolute_stop_command(self):
+        """Revision 2 (S5): STOP contains exactly `python3 <AQ> stop`, <AQ> the
+        resolved auto_queue.py beside this screen_check.py; any other path,
+        absolute or not, is refused."""
+        self.assertTrue(CHECKER_AUTO_QUEUE.is_file())
+        self.assert_accepted(self.check("auto_start", self.put(self.start_text(
+            stop_line=f"python3 {CHECKER_AUTO_QUEUE} stop"))))
+        unresolved = Path(checker.__file__).parent / ".." / ".." / "auto_queue.py"
+        for label, line in (
+                ("other absolute path", "python3 /opt/guided_coding/auto_queue.py stop"),
+                ("nonexistent absolute path", "python3 /nonexistent/auto_queue.py stop"),
+                ("same file, unresolved path", f"python3 {unresolved} stop"),
+                ("trailing text", f"python3 {CHECKER_AUTO_QUEUE} stop now"),
+                ("leading text", f"Run: python3 {CHECKER_AUTO_QUEUE} stop"),
+                ("python instead of python3", f"python {CHECKER_AUTO_QUEUE} stop"),
+                ("relative path", "python3 auto_queue.py stop"),
+                ("dot relative path", "python3 ./payload/auto_queue.py stop"),
+                ("home tilde path", "python3 ~/GuidedCoding/auto_queue.py stop"),
+                ("no stop subcommand", f"python3 {CHECKER_AUTO_QUEUE} status"),
+                ("other tool",
+                 f"python3 {CHECKER_AUTO_QUEUE.with_name('screen_check.py')} stop"),
+                ("no command", "Ask the Guide to stop the queue.")):
+            with self.subTest(form=label):
+                self.start_refused(self.start_text(stop_line=line))
+        with self.subTest(form="command only in RESULTS, not in STOP"):
+            self.start_refused(self.start_text(
+                extra_results=[f"python3 {CHECKER_AUTO_QUEUE} stop"],
+                stop_line="Ask the Guide to stop the queue."))
+
+    def test_auto_start_not_authorized_mentions_master_and_publish(self):
+        for label, text in (("no master", "Nothing is published and nothing is merged."),
+                            ("no publish", "Nothing is merged to master."),
+                            ("neither", "Nothing leaves this machine.")):
+            with self.subTest(form=label):
+                self.start_refused(self.start_text(not_authorized=text))
+        with self.subTest(form="mentioned only outside NOT AUTHORIZED"):
+            self.start_refused(self.start_text(
+                extra_results=["Nothing is merged to master and nothing is published."],
+                not_authorized="Nothing leaves this machine."))
+
+    def test_auto_start_refuses_queue_evidence_reading_and_disposition(self):
+        queue = self.root / "some-queue"
+        queue.mkdir()
+        other = self.root / "other.txt"
+        other.write_text("x\n")
+        screen = self.put(self.start_text())
+        self.assert_accepted(self.check("auto_start", screen))
+        for option, value in (("--queue", queue), ("--evidence", self.root),
+                              ("--reading", other), ("--disposition", other)):
+            with self.subTest(option=option):
+                self.assert_refused(self.check("auto_start", screen, option, str(value)))
+
+    def test_auto_start_present_shows_no_action_attention_line(self):
+        screen = self.put(self.start_text())
+        saved = screen.read_bytes()
+        shown = self.tool("present", "auto_start", str(screen))
+        self.assert_accepted(shown)
+        display = shown.stdout
+        self.assertTrue(display.startswith("**PLEASE READ — NO ACTION NEEDED**\n\n```\n"),
+                        display)
+        self.assertTrue(display.endswith("\n```\n"), display)
+        self.assertIn(f"AUTO START | {self.QUEUE_ID}\n", display)
+        for heading in AUTO_START_HEADINGS:
+            self.assertIn("\n\n" + heading + "\n", display)
+        self.assertIn(AUTO_START_ACTION, display)
+        self.assertEqual(screen.read_bytes(), saved)
+        refused = self.tool("present", "auto_start",
+                            str(self.put(self.start_text(stop_line="python3 auto_queue.py stop"))))
+        self.assert_refused(refused)
+        self.assertNotIn("PLEASE READ", refused.stdout)
+
+    # ---- auto_report --------------------------------------------------------
+
+    def build_queue(self, queue_id=None, extra_ready=(), provisional=()):
+        """A real queue: job a Ready for approval (one passing current run),
+        job b Blocked; then each job in `extra_ready` Ready the same way, and a
+        pending provisional choice recorded for each job in `provisional`.
+        Returns the queue directory."""
+        queue_id = queue_id or self.QUEUE_ID
+        base = self.root / f"build-{queue_id}"
+        repo = base / "repo"
+        repo.mkdir(parents=True)
+        self.git(repo, "init", "-q")
+        (repo / "sample.py").write_text("# sample\n")
+        self.git(repo, "add", "sample.py")
+        self.git(repo, "commit", "-q", "-m", "sample")
+        tree = self.git(repo, "rev-parse", "HEAD^{tree}")
+        (base / "GRANT.md").write_text("Grant for the test queue.\n")
+        jobs = [{"id": "a", "title": "Clarify comment", "requires": ["unit"], "depends_on": []},
+                {"id": "b", "title": "Fix test", "requires": ["unit"], "depends_on": []}]
+        jobs += [{"id": job, "title": f"Extra job {job}", "requires": ["unit"], "depends_on": []}
+                 for job in extra_ready]
+        (base / "JOBS.json").write_text(json.dumps(jobs) + "\n")
+        (base / "criterion-1.txt").write_text("Criterion one.\n")
+        created = self.queue_tool(
+            "init", "--records", str(base / "records"), "--queue-id", queue_id,
+            "--grant", str(base / "GRANT.md"), "--jobs", str(base / "JOBS.json"),
+            "--lock-dir", str(base / "RUN.lock"), "--min-free-gib", "0",
+            "--allowed-root", str(repo))
+        queue = Path(created.stdout.strip().splitlines()[-1])
+        self.assertTrue((queue / "QUEUE.json").is_file(), created.stdout)
+        self.queue_tool("lock", "take", queue=queue)
+        for job in ("a", *extra_ready):
+            packet = self.make_ready(queue, base, repo, tree, job)
+            if job == "a":
+                self.packet_manifest = checker.digest((packet / "MANIFEST.sha256").read_bytes())
+                self.queue_tool("set", "b", "Blocked", "--note", "needs a design decision",
+                                queue=queue)
+        for job in provisional:
+            self.queue_tool("provisional", job, "--note", "used a smaller test map", queue=queue)
+        self.queue_tool("lock", "release", queue=queue)
+        self.queue_base = base
+        return queue
+
+    def make_ready(self, queue, base, repo, tree, job):
+        """Criterion, candidate, one passing current run and a frozen packet; then
+        Ready for approval. Returns the packet directory."""
+        packet = base / f"packet-{job}" if job != "a" else base / "packet"
+        packet.mkdir()
+        self.queue_tool("criterion", job, "--file", str(base / "criterion-1.txt"), queue=queue)
+        self.queue_tool("candidate", job, "--repo", str(repo), "--commit", "HEAD", queue=queue)
+        # Revision 2: run needs the job Preparing/Testing, a registered worker
+        # for it, and probe paths that exist; readiness needs the worker ended.
+        self.queue_tool("set", job, "Preparing", queue=queue)
+        self.queue_tool("worker", "start", job, "--id", f"worker-{job}", queue=queue)
+        self.queue_tool("set", job, "Testing", queue=queue)
+        self.assertTrue((repo / "sample.py").is_file())
+        self.queue_tool("run", job, "unit", "--log", str(base / f"unit-{job}.log"),
+                        "--probe", f"echo {repo / 'sample.py'}", "--", "true", queue=queue)
+        self.queue_tool("worker", "end", job, "--id", f"worker-{job}", "--outcome", "finished",
+                        queue=queue)
+        # Revision 4: the packet is really frozen with this procedure's
+        # screen_check.py; Approved would need --manifest <its SHA-256>.
+        # AUTO_QUEUE Revision 11: the recorded candidate id and every candidate tree.
+        status = json.loads(self.queue_tool("status", queue=queue).stdout)
+        jobs = status["jobs"]
+        entry = (jobs[job] if isinstance(jobs, dict)
+                 else [item for item in jobs if item.get("id") == job][0])
+        (packet / "CODE_IDENTITY.txt").write_text(
+            f"candidate_id: {entry['candidate_id']}\n"
+            + "".join(f"tested_tree: {item['tree']}\n" for item in entry["candidate"]))
+        self.assertIn(f"tested_tree: {tree}\n", (packet / "CODE_IDENTITY.txt").read_text())
+        # AUTO_QUEUE Revision 9 (Q1): a ready packet carries a valid screening record.
+        (packet / "SCREENING.txt").write_text("test: unit | outside: none | included\n")
+        frozen = self.tool("freeze", str(packet))
+        self.assertEqual(frozen.returncode, 0, frozen.stdout + frozen.stderr)
+        self.assertTrue((packet / "MANIFEST.sha256").is_file())
+        self.queue_tool("set", job, "Ready for approval", "--packet", str(packet), queue=queue)
+        return packet
+
+    def report_lines(self, queue):
+        report = self.queue_tool("report", queue=queue).stdout
+        return [line for line in report.splitlines() if line.strip()]
+
+    def ready_jobs(self, jobs_lines):
+        """Revision 9: the ids of the rows whose step begins `approve for
+        integration` or `decide P`, in report order (id = first word of cell 1)."""
+        ready = []
+        for line in jobs_lines:
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if line.startswith("|") and len(cells) == 3 and cells[2].startswith(READY_STEPS):
+                ready.append(cells[0].split()[0])
+        return ready
+
+    def summary_block(self, job, title="", **changes):
+        """A valid seven-line approval summary for `job`; `changes` maps a label
+        (bug, fix, test, criterion, limits, approval) to its replacement line."""
+        lines = [f"Job {job}:" + (f" {title}" if title else ""),
+                 changes.get("bug", "Bug: the comment describes the wrong unit."),
+                 changes.get("fix", "Fix: the comment now names the unit used."),
+                 changes.get("test", "Test: fails before the fix, works after it."),
+                 changes.get("criterion", "Criterion: the comment matches the code."),
+                 changes.get("limits", "Limits: no behaviour change."),
+                 changes.get("approval", APPROVAL_LINE)]
+        return lines
+
+    def summaries_for(self, jobs_lines):
+        ready = self.ready_jobs(jobs_lines)
+        if not ready:
+            return ["None ready."]
+        return [line for job in ready for line in self.summary_block(job, f"title of {job}")]
+
+    def report_text(self, jobs_lines, queue_id=None, simple=("Job a passed its local checks.",
+                                                             "Job b needs a design decision."),
+                    action=AUTO_REPORT_ACTION, summaries=None):
+        """Revision 9: APPROVAL SUMMARIES holds one block per ready job of
+        `jobs_lines` (or `None ready.`) unless `summaries` gives its lines."""
+        if summaries is None:
+            summaries = self.summaries_for(jobs_lines)
+        lines = [f"AUTO REPORT | {queue_id or self.QUEUE_ID}",
+                 "JOBS", *jobs_lines,
+                 "IN SIMPLE WORDS", *simple,
+                 "APPROVAL SUMMARIES", *summaries,
+                 "NEXT",
+                 "Approve job a for integration, or inspect, revise or discard it.",
+                 action]
+        return "\n".join(lines) + "\n"
+
+    def report_check(self, text, queue, *options):
+        return self.check("auto_report", self.put(text), "--queue", str(queue), *options)
+
+    def test_auto_report_exact_copy_accepted_and_altered_jobs_refused(self):
+        queue = self.build_queue()
+        rows = self.report_lines(queue)
+        passed = [row for row in rows if "local checks passed" in row]
+        blocked = [row for row in rows if "blocked" in row]
+        self.assertEqual(len(passed), 1, rows)
+        self.assertEqual(len(blocked), 1, rows)
+        self.assert_accepted(self.report_check(self.report_text(rows), queue))
+        with self.subTest(change="Result cell of the blocked job claims passed"):
+            cells = blocked[0].split("|")
+            cells[2] = " local checks passed; candidate and ticket saved "
+            changed = [("|".join(cells) if row == blocked[0] else row) for row in rows]
+            self.assertNotEqual(changed, rows)
+            self.assert_refused(self.report_check(self.report_text(changed), queue))
+        with self.subTest(change="Result cell reworded"):
+            changed = [row.replace("needs a design decision", "needs a decision") for row in rows]
+            self.assertNotEqual(changed, rows)
+            self.assert_refused(self.report_check(self.report_text(changed), queue))
+        with self.subTest(change="missing row"):
+            self.assert_refused(self.report_check(
+                self.report_text([row for row in rows if row != blocked[0]]), queue))
+        with self.subTest(change="missing table header"):
+            self.assert_refused(self.report_check(self.report_text(rows[1:]), queue))
+        with self.subTest(change="extra row"):
+            self.assert_refused(self.report_check(self.report_text(
+                rows + ["| c Extra job | local checks passed | approve |"]), queue))
+        with self.subTest(change="rows reordered"):
+            reordered = rows[:2] + list(reversed(rows[2:]))
+            self.assertNotEqual(reordered, rows)
+            self.assert_refused(self.report_check(self.report_text(reordered), queue))
+        with self.subTest(change="row with trailing space"):
+            self.assert_refused(self.report_check(
+                self.report_text([row + " " if row == passed[0] else row for row in rows]),
+                queue))
+        self.assert_accepted(self.report_check(self.report_text(rows), queue))
+
+    def test_auto_report_requires_queue_and_refuses_other_options(self):
+        queue = self.build_queue()
+        text = self.report_text(self.report_lines(queue))
+        self.assert_accepted(self.report_check(text, queue))
+        with self.subTest(option="no --queue (while ACTIVE names this queue)"):
+            # Required: the checker must not fall back to <home>/ACTIVE.
+            self.assertTrue((self.home / "ACTIVE").is_file())
+            self.assert_refused(self.check("auto_report", self.put(text)))
+        with self.subTest(option="--queue names a missing directory"):
+            self.assert_refused(self.report_check(text, self.root / "no-such-queue"))
+        other = self.root / "other.txt"
+        other.write_text("x\n")
+        for option, value in (("--evidence", self.root), ("--reading", other),
+                              ("--disposition", other)):
+            with self.subTest(option=option):
+                self.assert_refused(self.report_check(text, queue, option, str(value)))
+
+    def test_auto_report_stale_run_old_passed_copy_refused_fresh_copy_accepted(self):
+        queue = self.build_queue()
+        old_rows = self.report_lines(queue)
+        old_text = self.report_text(old_rows)
+        self.assertTrue(any("local checks passed" in row for row in old_rows), old_rows)
+        self.assert_accepted(self.report_check(old_text, queue))
+        criterion = self.queue_base / "criterion-2.txt"
+        criterion.write_text("Criterion two, changed.\n")
+        self.queue_tool("criterion", "a", "--file", str(criterion), queue=queue)
+        fresh_rows = self.report_lines(queue)
+        self.assertNotEqual(fresh_rows, old_rows)
+        self.assertFalse(any("passed" in row for row in fresh_rows), fresh_rows)
+        self.assertTrue(any("stale" in row for row in fresh_rows), fresh_rows)
+        self.assert_refused(self.report_check(old_text, queue))
+        self.assert_accepted(self.report_check(self.report_text(
+            fresh_rows, simple=("Job a must be checked again.", "Job b needs a decision.")),
+            queue))
+
+    def test_auto_report_jobs_are_the_non_blank_report_lines_after_a_stop(self):
+        queue = self.build_queue()
+        before = self.report_lines(queue)
+        stop = self.queue_tool("stop", queue=queue, expect=None)
+        self.assertIn(stop.returncode, (0, 10), stop.stdout + stop.stderr)
+        report = self.queue_tool("report", queue=queue).stdout
+        rows = [line for line in report.splitlines() if line.strip()]
+        self.assertEqual(rows[0], "**Stopped**", report)
+        self.assertNotEqual(rows, before)
+        self.assert_accepted(self.report_check(self.report_text(rows), queue))
+        with self.subTest(change="stop line omitted"):
+            self.assert_refused(self.report_check(self.report_text(rows[1:]), queue))
+        with self.subTest(change="pre-stop copy"):
+            self.assert_refused(self.report_check(self.report_text(before), queue))
+
+    def test_auto_report_stopped_word_needs_a_stopped_report(self):
+        """Revision 2 (S6): `stopped` (whole word, any case) in IN SIMPLE WORDS
+        or NEXT is refused unless the report starts with **Stopped**."""
+        queue = self.build_queue()
+        rows = self.report_lines(queue)
+        self.assertFalse(rows[0].startswith("**"), rows)
+        self.assert_accepted(self.report_check(self.report_text(rows), queue))
+        with self.subTest(control="not a whole word"):
+            self.assert_accepted(self.report_check(self.report_text(
+                rows, simple=("Job a passed its local checks; work went on unstopped.",)), queue))
+        for label, text in (
+                ("IN SIMPLE WORDS", self.report_text(
+                    rows, simple=("Job a passed its local checks.", "The queue stopped."))),
+                ("upper case", self.report_text(
+                    rows, simple=("Job a passed its local checks.", "The queue STOPPED."))),
+                ("capitalized", self.report_text(
+                    rows, simple=("Job a passed its local checks.", "Stopped: the queue."))),
+                ("NEXT", self.report_text(rows).replace(
+                    "Approve job a for integration,",
+                    "The queue stopped; approve job a for integration,", 1))):
+            with self.subTest(running_queue=label):
+                self.assert_refused(self.report_check(text, queue))
+        # Positive control: the same words once the report starts with **Stopped**.
+        self.queue_tool("stop", queue=queue)
+        rows = self.report_lines(queue)
+        self.assertEqual(rows[0], "**Stopped**", rows)
+        for label, text in (
+                ("IN SIMPLE WORDS", self.report_text(
+                    rows, simple=("Job a passed its local checks.", "The queue stopped."))),
+                ("NEXT", self.report_text(rows).replace(
+                    "Approve job a for integration,",
+                    "The queue STOPPED; approve job a for integration,", 1))):
+            with self.subTest(stopped_queue=label):
+                self.assert_accepted(self.report_check(text, queue))
+
+    def test_auto_report_stopped_word_refused_while_only_stopping(self):
+        """Revision 2 (S6): a report starting **Stopping** does not allow
+        `stopped`."""
+        queue = self.build_queue()
+        self.queue_tool("worker", "start", "b", "--id", "worker-b", queue=queue)
+        self.queue_tool("stop", queue=queue, expect=10)
+        rows = self.report_lines(queue)
+        self.assertTrue(rows[0].startswith("**Stopping**"), rows)
+        # A registered worker also suspends job a's readiness (AUTO_QUEUE
+        # Revision 2, B4), so these summaries avoid `passed`.
+        self.assert_accepted(self.report_check(self.report_text(
+            rows, simple=("Job a waits for the worker to end.", "The queue is stopping.")),
+            queue))
+        self.assert_refused(self.report_check(self.report_text(
+            rows, simple=("Job a waits for the worker to end.", "The queue stopped.")), queue))
+
+    def test_auto_report_passed_word_needs_a_passed_row(self):
+        """Revision 2 (S6): `passed` in IN SIMPLE WORDS or NEXT is refused
+        unless some JOBS row contains `passed`."""
+        queue = self.build_queue()
+        rows = self.report_lines(queue)
+        self.assertTrue(any("passed" in row for row in rows), rows)
+        # Positive control: a row says passed, so the summary may say it.
+        self.assert_accepted(self.report_check(self.report_text(rows), queue))
+        self.assert_accepted(self.report_check(self.report_text(rows).replace(
+            "Approve job a for integration,", "Job a passed; approve it for integration,", 1),
+            queue))
+        criterion = self.queue_base / "criterion-2.txt"
+        criterion.write_text("Criterion two, changed.\n")
+        self.queue_tool("criterion", "a", "--file", str(criterion), queue=queue)
+        rows = self.report_lines(queue)
+        self.assertFalse(any("passed" in row for row in rows), rows)
+        neutral = ("Job a must be checked again.", "Job b needs a design decision.")
+        self.assert_accepted(self.report_check(self.report_text(rows, simple=neutral), queue))
+        for label, text in (
+                ("IN SIMPLE WORDS", self.report_text(
+                    rows, simple=("Job a passed its local checks.",
+                                  "Job b needs a design decision."))),
+                ("NEXT", self.report_text(rows, simple=neutral).replace(
+                    "Approve job a for integration,",
+                    "Job a passed earlier; approve it for integration,", 1))):
+            with self.subTest(section=label):
+                self.assert_refused(self.report_check(text, queue))
+
+    def test_auto_report_jobs_include_test_installation_unavailable_line(self):
+        """AUTO_QUEUE Revision 4 (installation availability): when the report
+        starts with the `**Test installation unavailable:**` line, JOBS is
+        still exactly the report's non-blank lines."""
+        queue = self.build_queue()
+        before = self.report_lines(queue)
+        script = self.queue_base / "fingerprint.sh"
+        script.write_text("#!/bin/sh\necho 'FINGERPRINT x'\n")
+        script.chmod(0o755)
+        self.queue_tool("install", "check", "--script", str(script), "--expect", "y",
+                        queue=queue, expect=12)
+        rows = self.report_lines(queue)
+        self.assertTrue(rows[0].startswith("**Test installation unavailable:**"), rows)
+        self.assertNotEqual(rows, before)
+        neutral = ("The test installation does not match.", "Job b needs a design decision.")
+        self.assert_accepted(self.report_check(self.report_text(rows, simple=neutral), queue))
+        with self.subTest(change="installation line omitted"):
+            self.assert_refused(self.report_check(self.report_text(rows[1:], simple=neutral),
+                                                  queue))
+        with self.subTest(change="pre-check copy"):
+            self.assert_refused(self.report_check(self.report_text(before, simple=neutral),
+                                                  queue))
+
+    def test_auto_report_waiting_row_never_says_resumes_automatically(self):
+        """AUTO_QUEUE Revision 4 (resume claims): a Waiting row does not say the
+        queue resumes automatically; the copied report is accepted."""
+        queue = self.build_queue()
+        self.queue_tool("set", "b", "Preparing", queue=queue)
+        self.queue_tool("wait", "b", "--until", "2026-10-09T06:00:00Z", queue=queue)
+        rows = self.report_lines(queue)
+        waiting = [row for row in rows if "| b " in row]
+        self.assertEqual(len(waiting), 1, rows)
+        self.assertIn("waiting", waiting[0].lower(), rows)
+        report = self.queue_tool("report", queue=queue).stdout
+        self.assertNotIn("resumes automatically", report.lower(), report)
+        self.assert_accepted(self.report_check(self.report_text(
+            rows, simple=("Job a passed its local checks.", "Job b waits for a reset.")),
+            queue))
+
+    def test_auto_report_form_rules(self):
+        queue = self.build_queue()
+        rows = self.report_lines(queue)
+        good = self.report_text(rows)
+        self.assert_accepted(self.report_check(good, queue))
+        summaries = "APPROVAL SUMMARIES\n" + "".join(l + "\n" for l in self.summaries_for(rows))
+        self.assertIn(summaries, good)
+        cases = [
+            ("start title", good.replace("AUTO REPORT |", "AUTO START |", 1)),
+            ("bad queue id", self.report_text(rows, queue_id="Night_1")),
+            ("first heading on line 3", good.replace("JOBS\n", "Overnight.\nJOBS\n", 1)),
+            ("other action", self.report_text(rows, action=AUTO_START_ACTION)),
+            ("action with trailing text", self.report_text(rows, action=AUTO_REPORT_ACTION + " x")),
+            ("line after action", good + "postscript\n"),
+            ("second ACTION line", self.report_text(
+                rows, simple=("ACTION: APPROVE", "Job b needs a design decision."))),
+            ("blank line in section", self.report_text(
+                rows, simple=("Job a passed its local checks.", "",
+                              "Job b needs a design decision."))),
+            ("angle placeholder", self.report_text(rows, simple=("Job <id> passed.",))),
+            ("brace placeholder", self.report_text(rows, simple=("Job {{id}} passed.",))),
+            ("NEXT before IN SIMPLE WORDS", good.replace(
+                "IN SIMPLE WORDS\nJob a passed its local checks.\nJob b needs a design decision.\n"
+                + summaries +
+                "NEXT\nApprove job a for integration, or inspect, revise or discard it.\n",
+                "NEXT\nApprove job a for integration, or inspect, revise or discard it.\n"
+                + summaries +
+                "IN SIMPLE WORDS\nJob a passed its local checks.\nJob b needs a design decision.\n")),
+            ("NEXT before APPROVAL SUMMARIES", good.replace(
+                summaries + "NEXT\nApprove job a for integration, or inspect, revise or discard it.\n",
+                "NEXT\nApprove job a for integration, or inspect, revise or discard it.\n"
+                + summaries)),
+            ("APPROVAL SUMMARIES before IN SIMPLE WORDS", good.replace(
+                "IN SIMPLE WORDS\nJob a passed its local checks.\nJob b needs a design decision.\n"
+                + summaries,
+                summaries + "IN SIMPLE WORDS\nJob a passed its local checks.\n"
+                "Job b needs a design decision.\n")),
+        ]
+        for heading in AUTO_REPORT_HEADINGS:
+            lines = good.splitlines(keepends=True)
+            cases.append((f"missing {heading}",
+                          "".join(l for l in lines if l != heading + "\n")))
+            cases.append((f"repeated {heading}", good.replace(
+                AUTO_REPORT_ACTION, f"{heading}\nSee above.\n{AUTO_REPORT_ACTION}")))
+        for label, altered in cases:
+            with self.subTest(form=label):
+                self.assertNotEqual(altered, good)
+                self.assert_refused(self.report_check(altered, queue))
+        for label, data in (("CRLF", good.replace("\n", "\r\n").encode()),
+                            ("no final newline", good.rstrip("\n").encode()),
+                            ("not UTF-8", good.replace("Job a passed", "Job \xff passed")
+                             .encode("latin-1"))):
+            with self.subTest(form=label):
+                self.assert_refused(self.check("auto_report", self.put_bytes(data),
+                                               "--queue", str(queue)))
+
+    def test_auto_report_budget_90_lines_and_900_words(self):
+        """Revision 9: at most 90 lines and 900 words (was 60 and 600)."""
+        queue = self.build_queue()
+        rows = self.report_lines(queue)
+        base = self.report_text(rows)
+        room = 90 - len(base.splitlines())
+        self.assertGreater(room, 2)
+        simple = ["Job a passed its local checks.", "Job b needs a design decision."]
+        fill = simple + [f"Filler line {n}." for n in range(room)]
+        at_limit = self.report_text(rows, simple=fill)
+        self.assertEqual(len(at_limit.splitlines()), 90)
+        self.assert_accepted(self.report_check(at_limit, queue))
+        over = self.report_text(rows, simple=fill + ["One more."])
+        self.assertEqual(len(over.splitlines()), 91)
+        self.assert_refused(self.report_check(over, queue))
+        missing = 900 - word_count(base)
+        self.assertGreater(missing, 0)
+        words = self.report_text(rows, simple=simple + [" ".join(["word"] * missing)])
+        self.assertEqual(word_count(words), 900)
+        self.assertLessEqual(len(words.splitlines()), 90)
+        self.assert_accepted(self.report_check(words, queue))
+        words = self.report_text(rows, simple=simple + [" ".join(["word"] * (missing + 1))])
+        self.assertEqual(word_count(words), 901)
+        self.assert_refused(self.report_check(words, queue))
+
+    def test_auto_report_present_shows_action_needed_attention_line(self):
+        queue = self.build_queue()
+        rows = self.report_lines(queue)
+        screen = self.put(self.report_text(rows))
+        shown = self.tool("present", "auto_report", str(screen), "--queue", str(queue))
+        self.assert_accepted(shown)
+        display = shown.stdout
+        self.assertTrue(display.startswith("**PLEASE READ — ACTION NEEDED**\n\n```\n"), display)
+        self.assertTrue(display.endswith("\n```\n"), display)
+        self.assertIn(f"AUTO REPORT | {self.QUEUE_ID}\n", display)
+        for heading in AUTO_REPORT_HEADINGS:
+            self.assertIn("\n\n" + heading + "\n", display)
+        for row in rows:
+            self.assertIn(row, display)
+        self.assertIn(AUTO_REPORT_ACTION, display)
+        missing_queue = self.tool("present", "auto_report", str(screen))
+        self.assert_refused(missing_queue)
+        self.assertNotIn("PLEASE READ", missing_queue.stdout)
+        wrong = self.tool("present", "auto_report",
+                          str(self.put(self.report_text(rows[:-1]))), "--queue", str(queue))
+        self.assert_refused(wrong)
+        self.assertNotIn("PLEASE READ", wrong.stdout)
+
+    # ---- Revision 9: approval summaries, usage limit -------------------------
+
+    def test_auto_start_must_mention_usage_limit_and_manual_resume(self):
+        """Revision 9: auto_start mentions, anywhere in its body, `usage limit`
+        (any case) and `/gc auto resume`; otherwise refused with the stated reason."""
+        reason = "auto_start must say a usage limit stops the queue and resume is manual"
+        good = self.start_text()
+        line = "A usage limit stops the queue; resume is manual with /gc auto resume.\n"
+        self.assertIn(line, good)
+        for label, text in (
+                ("neither", good.replace(line, "")),
+                ("no usage limit", good.replace(line, "Resume is manual with /gc auto resume.\n")),
+                ("no /gc auto resume", good.replace(line, "A usage limit stops the queue.\n")),
+                ("resume command misspelt", good.replace("/gc auto resume", "/gc resume")),
+                ("usage and limit apart", good.replace("usage limit", "usage-limit"))):
+            with self.subTest(refused=label):
+                self.assertNotEqual(text, good)
+                result = self.check("auto_start", self.put(text))
+                self.assert_refused(result)
+                self.assertIn(reason, result.stderr)
+        for label, text in (
+                ("upper case", good.replace("usage limit", "USAGE LIMIT")),
+                ("other sections", good.replace(line, "").replace(
+                    "Job A: clarify one comment,", "Job A (stops at a Usage Limit): clarify one comment,")
+                 .replace("Nothing is merged to master and nothing is published.",
+                          "Nothing is merged to master and nothing is published; /gc auto resume "
+                          "is manual."))):
+            with self.subTest(accepted=label):
+                self.assertNotEqual(text, good)
+                self.assert_accepted(self.check("auto_start", self.put(text)))
+
+    def summaries_refused(self, queue, rows, summaries, simple=None):
+        """Refused, and (no verbatim reason in the spec) the reason names the
+        APPROVAL SUMMARIES section or a job's block."""
+        options = {} if simple is None else {"simple": simple}
+        result = self.report_check(self.report_text(rows, summaries=summaries, **options), queue)
+        self.assert_refused(result)
+        self.assertTrue("APPROVAL SUMMARIES" in result.stderr
+                        or re.search(r"\bjob \S+", result.stderr, re.IGNORECASE), result.stderr)
+
+    def test_auto_report_one_summary_block_per_ready_job_in_report_order(self):
+        """Revision 9: APPROVAL SUMMARIES has exactly one block per ready job in the
+        order of the report rows. Refused: a missing block, a block for a job that
+        is not ready (or not in the report), a duplicate, blocks out of order,
+        extra lines, `None ready.` while a job is ready."""
+        queue = self.build_queue(extra_ready=("c",))
+        rows = self.report_lines(queue)
+        self.assertEqual(self.ready_jobs(rows), ["a", "c"], rows)
+        a, b, c = (self.summary_block(job, f"title of {job}") for job in ("a", "b", "c"))
+        self.assert_accepted(self.report_check(self.report_text(rows, summaries=a + c), queue))
+        with self.subTest(control="Job line without optional text"):
+            self.assert_accepted(self.report_check(self.report_text(
+                rows, summaries=self.summary_block("a") + self.summary_block("c")), queue))
+        for label, summaries in (
+                ("missing block for c", a),
+                ("missing block for a", c),
+                ("no blocks at all", []),
+                ("block for blocked job b", a + b + c),
+                ("block for job b instead of c", a + b),
+                ("block for a job not in the report", a + c + self.summary_block("z")),
+                ("duplicate block for a", a + a + c),
+                ("duplicate block for c", a + c + c),
+                ("out of order", c + a),
+                ("extra line before blocks", ["Two jobs are ready."] + a + c),
+                ("extra line between blocks", a + ["Next block:"] + c),
+                ("extra line after blocks", a + c + ["That is all."]),
+                ("None ready. while jobs are ready", ["None ready."]),
+                ("None ready. with the blocks", ["None ready."] + a + c),
+                ("block cut to six lines", a[:-1] + c),
+                ("Job line names no job", ["Job:"] + a[1:] + c),
+                ("Job line without the colon", ["Job a"] + a[1:] + c),
+                ("literal `Job ID:` before the id", ["Job ID: a"] + a[1:] + c)):
+            with self.subTest(refused=label):
+                self.summaries_refused(queue, rows, summaries)
+
+    def test_auto_report_decide_p_row_is_ready(self):
+        """Revision 9: a row whose step begins `decide P` (pending provisional
+        choice) is ready: its block is required; with it the screen is accepted."""
+        queue = self.build_queue(extra_ready=("c",), provisional=("c",))
+        rows = self.report_lines(queue)
+        steps = {row.split("|")[1].split()[0]: row.split("|")[3].strip() for row in rows[2:]}
+        self.assertTrue(steps["c"].startswith("decide P1"), rows)
+        self.assertTrue(steps["a"].startswith("approve for integration"), rows)
+        self.assertEqual(self.ready_jobs(rows), ["a", "c"], rows)
+        a, c = self.summary_block("a"), self.summary_block("c")
+        self.assert_accepted(self.report_check(self.report_text(rows, summaries=a + c), queue))
+        self.summaries_refused(queue, rows, a)
+        self.summaries_refused(queue, rows, c + a)
+
+    def test_auto_report_summary_labels_present_ordered_and_non_empty(self):
+        """Revision 9: after `Job ID:` a block has, in order, lines starting `Bug: `,
+        `Fix: `, `Test: `, `Criterion: `, `Limits: `, `Approval: `, each with
+        non-empty text; a missing, misordered or empty label is refused."""
+        queue = self.build_queue()
+        rows = self.report_lines(queue)
+        self.assertEqual(self.ready_jobs(rows), ["a"], rows)
+        good = self.summary_block("a", "Clarify comment")
+        self.assert_accepted(self.report_check(self.report_text(rows, summaries=good), queue))
+        for index, label in enumerate(SUMMARY_LABELS, 1):
+            with self.subTest(missing=label):
+                self.summaries_refused(queue, rows, good[:index] + good[index + 1:])
+            with self.subTest(replaced_by_note=label):
+                self.summaries_refused(queue, rows, good[:index] + ["Note: something else."]
+                                       + good[index + 1:])
+            for empty in (label, label.rstrip(), label + "   "):
+                with self.subTest(empty=repr(empty)):
+                    self.summaries_refused(queue, rows, good[:index] + [empty] + good[index + 1:])
+            with self.subTest(no_space_after_colon=label):
+                text = good[index][len(label):]
+                self.summaries_refused(queue, rows, good[:index] + [label.rstrip() + text]
+                                       + good[index + 1:])
+        for first, second in ((1, 2), (3, 4), (5, 6), (1, 6)):
+            with self.subTest(swapped=(SUMMARY_LABELS[first - 1], SUMMARY_LABELS[second - 1])):
+                swapped = list(good)
+                swapped[first], swapped[second] = swapped[second], swapped[first]
+                self.summaries_refused(queue, rows, swapped)
+        with self.subTest(job_line="after the labels"):
+            self.summaries_refused(queue, rows, good[1:] + good[:1])
+        with self.subTest(job_line="missing"):
+            self.summaries_refused(queue, rows, good[1:])
+
+    def test_auto_report_approval_line_needs_exact_packet_and_merges_nothing(self):
+        """Revision 9: the Approval line contains `exact packet` and `merges nothing`
+        (case-insensitive); lacking either is refused."""
+        queue = self.build_queue()
+        rows = self.report_lines(queue)
+        for text in ("Approval: accepts this exact packet and merges nothing.",
+                     "Approval: Accepts This EXACT PACKET; it MERGES NOTHING.",
+                     "Approval: merges nothing and approves the exact packet only."):
+            with self.subTest(accepted=text):
+                self.assert_accepted(self.report_check(self.report_text(
+                    rows, summaries=self.summary_block("a", approval=text)), queue))
+        for text in ("Approval: accepts this packet and merges nothing.",
+                     "Approval: accepts this exact packet.",
+                     "Approval: accepts this exact packet and merges no code.",
+                     "Approval: accepts the exact-packet and merges nothing.",
+                     "Approval: accepts this exactly packed set and merges nothing.",
+                     "Approval: yes."):
+            with self.subTest(refused=text):
+                self.summaries_refused(queue, rows, self.summary_block("a", approval=text))
+        with self.subTest(refused="phrases only on another line"):
+            self.summaries_refused(queue, rows, self.summary_block(
+                "a", limits="Limits: exact packet; merges nothing.", approval="Approval: yes."))
+
+    def test_auto_report_none_ready_when_no_job_is_ready(self):
+        """Revision 9: with no ready job the section is the single line `None ready.`;
+        a block, an empty section or other text is refused."""
+        queue = self.build_queue()
+        criterion = self.queue_base / "criterion-2.txt"
+        criterion.write_text("Criterion two, changed.\n")
+        self.queue_tool("criterion", "a", "--file", str(criterion), queue=queue)
+        rows = self.report_lines(queue)
+        self.assertEqual(self.ready_jobs(rows), [], rows)
+        simple = ("Job a must be checked again.", "Job b needs a design decision.")
+        self.assert_accepted(self.report_check(self.report_text(
+            rows, simple=simple, summaries=["None ready."]), queue))
+        for label, summaries in (
+                ("block for the stale job", self.summary_block("a")),
+                ("empty section", []),
+                ("None ready. twice", ["None ready.", "None ready."]),
+                ("None ready. with a note", ["None ready.", "Job a must be checked again."]),
+                ("without the full stop", ["None ready"]),
+                ("other words", ["Nothing is ready."]),
+                ("trailing text", ["None ready. Check again later."])):
+            with self.subTest(refused=label):
+                self.summaries_refused(queue, rows, summaries, simple=simple)
+
+    # ---- Revision 9 clarifications, prefixed stop command, re-read 8 -----------
+
+    def test_auto_start_must_also_say_manual(self):
+        """After re-read 8 (b) and after test round 2: auto_start also contains
+        `manual` or `manually` as a whole word (any case), with `usage limit` and
+        `/gc auto resume`; same refusal message."""
+        reason = "auto_start must say a usage limit stops the queue and resume is manual"
+        good = self.start_text()
+        self.assertIn("resume is manual with", good)
+        for label, text in (
+                ("no manual", good.replace("resume is manual with", "resume with")),
+                ("nonmanual alone", good.replace("resume is manual with",
+                                                 "resume is nonmanual with")),
+                ("manuals", good.replace("resume is manual with", "resume per manuals with")),
+                ("manualy misspelt", good.replace("resume is manual with",
+                                                  "resume manualy with"))):
+            with self.subTest(refused=label):
+                result = self.check("auto_start", self.put(text))
+                self.assert_refused(result)
+                self.assertIn(reason, result.stderr)
+        for label, text in (("upper case", good.replace("manual", "MANUAL")),
+                            ("manually", good.replace("resume is manual with",
+                                                      "resume manually with")),
+                            ("Manually capitalized", good.replace("resume is manual with",
+                                                                  "resume Manually with")),
+                            ("in parentheses", good.replace("resume is manual with",
+                                                            "resume (manual) with")),
+                            ("before a full stop", good.replace(
+                                "resume is manual with /gc auto resume.",
+                                "resume with /gc auto resume is manual.")),
+                            ("elsewhere", good.replace("resume is manual with", "resume with")
+                             .replace("Nothing is merged", "Manual steps only. Nothing is merged"))):
+            with self.subTest(accepted=label):
+                self.assert_accepted(self.check("auto_start", self.put(text)))
+
+    PREFIX = 'TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)"'
+
+    def test_auto_start_isolated_stop_command_accepted_exactly(self):
+        """Stop command form (option 1; supersedes the prefixed form): STOP accepts
+        exactly `python3 AQ stop` or `python3 -I -B AQ stop`; the TMPDIR-prefixed form
+        and near-misses are refused with "auto_start needs the stop command of this
+        procedure's auto_queue.py"."""
+        reason = "auto_start needs the stop command of this procedure's auto_queue.py"
+        isolated = f"python3 -I -B {CHECKER_AUTO_QUEUE} stop"
+        for label, line in (("-I -B", isolated),
+                            ("plain", f"python3 {CHECKER_AUTO_QUEUE} stop")):
+            with self.subTest(accepted=label):
+                self.assert_accepted(self.check("auto_start", self.put(
+                    self.start_text(stop_line=line))))
+        unresolved = Path(checker.__file__).parent / ".." / ".." / "auto_queue.py"
+        for label, line in (
+                ("TMPDIR prefix with -I -B", f"{self.PREFIX} {isolated}"),
+                ("TMPDIR prefix, plain", f"{self.PREFIX} python3 {CHECKER_AUTO_QUEUE} stop"),
+                ("-B -I order", f"python3 -B -I {CHECKER_AUTO_QUEUE} stop"),
+                ("-I only", f"python3 -I {CHECKER_AUTO_QUEUE} stop"),
+                ("-B only", f"python3 -B {CHECKER_AUTO_QUEUE} stop"),
+                ("-IB combined", f"python3 -IB {CHECKER_AUTO_QUEUE} stop"),
+                ("extra space after python3", isolated.replace("python3 ", "python3  ", 1)),
+                ("extra space between -I and -B", isolated.replace("-I -B", "-I  -B")),
+                ("extra space before stop", isolated.replace(" stop", "  stop")),
+                ("another path", "python3 -I -B /opt/guided_coding/auto_queue.py stop"),
+                ("unresolved path", f"python3 -I -B {unresolved} stop"),
+                ("relative path", "python3 -I -B auto_queue.py stop"),
+                ("leading space", " " + isolated),
+                ("trailing space", isolated + " "),
+                ("python instead of python3", f"python -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("env prefix", f"env python3 -I -B {CHECKER_AUTO_QUEUE} stop")):
+            with self.subTest(refused=label):
+                self.assertNotEqual(line, isolated)
+                result = self.check("auto_start", self.put(self.start_text(stop_line=line)))
+                self.assert_refused(result)
+                self.assertIn(reason, result.stderr)
+
+    def test_auto_report_passed_and_stopped_allowed_in_approval_summaries(self):
+        """Clarification: the revision 2 checks on `passed` and `stopped` apply to IN
+        SIMPLE WORDS and NEXT only: in APPROVAL SUMMARIES both words are accepted even
+        when no row says passed and the report is not Stopped."""
+        queue = self.build_queue()
+        rows = self.report_lines(queue)
+        self.assertFalse(rows[0].startswith("**"), rows)
+        block = self.summary_block("a", bug="Bug: the run stopped early and nothing passed.",
+                                   test="Test: failed before, passed after; never stopped.")
+        self.assert_accepted(self.report_check(self.report_text(rows, summaries=block), queue))
+        # The same words in IN SIMPLE WORDS are still refused here (control for the
+        # section boundary): `stopped` without a **Stopped** report.
+        self.assert_refused(self.report_check(self.report_text(
+            rows, summaries=block, simple=("Job a passed.", "The queue stopped.")), queue))
+
+    def test_auto_report_labels_and_job_word_are_case_sensitive(self):
+        """Clarification: labels are case-sensitive and the first line is the word
+        `Job`, a space, the id and a colon: lowercase labels and `job a:` are refused."""
+        queue = self.build_queue()
+        rows = self.report_lines(queue)
+        good = self.summary_block("a")
+        self.assert_accepted(self.report_check(self.report_text(rows, summaries=good), queue))
+        for index, label in enumerate(SUMMARY_LABELS, 1):
+            for changed in (label.lower(), label.upper()):
+                with self.subTest(label=changed):
+                    self.summaries_refused(queue, rows, good[:index]
+                                           + [changed + good[index][len(label):]]
+                                           + good[index + 1:])
+        for first in ("job a:", "JOB a:", "Job A:", "Job  a:", "Job a :", "Joba:"):
+            with self.subTest(first=first):
+                self.summaries_refused(queue, rows, [first] + good[1:])
+
+    def test_auto_report_job_id_with_pattern_characters(self):
+        """Revision 9: the id `a.b+` is matched literally: `Job a.b+:` is accepted;
+        `Job aXb+:`, `Job a.bb:` and `Job a.b:` are refused."""
+        queue = self.build_queue(extra_ready=("a.b+",))
+        rows = self.report_lines(queue)
+        self.assertEqual(self.ready_jobs(rows), ["a", "a.b+"], rows)
+        a = self.summary_block("a")
+        self.assert_accepted(self.report_check(self.report_text(
+            rows, summaries=a + self.summary_block("a.b+", "pattern id")), queue))
+        for other in ("aXb+", "a.bb", "a.b", "a.b++"):
+            with self.subTest(block=other):
+                self.summaries_refused(queue, rows, a + self.summary_block(other))
+
+    def test_auto_report_only_exact_header_and_separator_rows_skipped(self):
+        """After re-read 8 (a): only the exact header and separator rows are skipped;
+        a ready job whose id is `Job` is found and needs its block. (A job id `---`
+        is refused by init since AUTO_QUEUE "After test round 2", so it cannot occur.)"""
+        queue = self.build_queue(extra_ready=("Job",))
+        rows = self.report_lines(queue)
+        self.assertEqual(self.ready_jobs(rows), ["a", "Job"], rows)
+        a, job = self.summary_block("a"), self.summary_block("Job", "named Job")
+        self.assert_accepted(self.report_check(self.report_text(rows, summaries=a + job), queue))
+        self.summaries_refused(queue, rows, a)
+        self.summaries_refused(queue, rows, job + a)
+
+    def check_summaries_follow_rows(self, queue, rows, simple):
+        """Accepted with the blocks the rows call for; refused with the opposite."""
+        ready = self.ready_jobs(rows)
+        self.assert_accepted(self.report_check(self.report_text(rows, simple=simple), queue))
+        opposite = (["None ready."] if ready
+                    else self.summary_block(rows[-1].split("|")[1].split()[0]))
+        self.summaries_refused(queue, rows, opposite, simple=simple)
+        return ready
+
+    def test_auto_report_summaries_with_stop_and_installation_lines(self):
+        """Revision 9 with the report's leading lines: under **Stopping**, **Stopped**
+        and `**Test installation unavailable:**` the summaries still follow the rows
+        (one block per ready row, else `None ready.`)."""
+        queue = self.build_queue(queue_id="night-stopping")
+        self.queue_tool("worker", "start", "b", "--id", "worker-b", queue=queue)
+        self.queue_tool("stop", queue=queue, expect=10)
+        rows = self.report_lines(queue)
+        self.assertTrue(rows[0].startswith("**Stopping**"), rows)
+        with self.subTest(lead="Stopping"):
+            self.check_summaries_follow_rows(queue, rows, ("The queue is stopping.",))
+        self.queue_tool("worker", "end", "b", "--id", "worker-b", "--outcome", "cancelled",
+                        queue=queue)
+        self.queue_tool("stop", queue=queue)
+        rows = self.report_lines(queue)
+        self.assertEqual(rows[0], "**Stopped**", rows)
+        with self.subTest(lead="Stopped"):
+            self.assertEqual(self.check_summaries_follow_rows(
+                queue, rows, ("The queue stopped.",)), ["a"])
+        queue = self.build_queue(queue_id="night-install")
+        script = self.queue_base / "fingerprint.sh"
+        script.write_text("#!/bin/sh\necho 'FINGERPRINT x'\n")
+        script.chmod(0o755)
+        self.queue_tool("install", "check", "--script", str(script), "--expect", "y",
+                        queue=queue, expect=12)
+        rows = self.report_lines(queue)
+        self.assertTrue(rows[0].startswith("**Test installation unavailable:**"), rows)
+        with self.subTest(lead="Test installation unavailable"):
+            self.check_summaries_follow_rows(
+                queue, rows, ("The test installation does not match.",))
+
+    def test_existing_stop_kind_still_accepted_by_the_command_line(self):
+        """Existing kinds behave as before (control for the CLI used here)."""
+        stop = self.put("STOP | comment-1\nWHY\nThe intended meaning is uncertain.\n"
+                        "PRESERVED\nThe isolated draft is saved; no integration.\n"
+                        "NEEDED\nDecide intended meaning, or cancel this change.\n"
+                        "ACTION: DECIDE / CANCEL\n")
+        self.assert_accepted(self.check("stop", stop))
 
 
 if __name__ == "__main__":

@@ -22,13 +22,23 @@ HEADINGS = {
     "result": ("CHANGED", "CHECKED", "LIMITS", "GATE", "DECISION"),
     "stop": ("WHY", "PRESERVED", "NEEDED"),
     "publication": ("BATCH", "SERVER CHECK", "LIMITS", "GATE", "DECISION"),
+    "auto_start": ("JOBS", "CHECKS", "INSTALLATION", "RESULTS", "STOP", "NOT AUTHORIZED"),
+    "auto_report": ("JOBS", "IN SIMPLE WORDS", "APPROVAL SUMMARIES", "NEXT"),
 }
 ACTIONS = {
     "plan": "ACTION: APPROVE / REVISE / STOP",
     "result": "ACTION: INTEGRATE / REVISE / DISCARD",
     "stop": "ACTION: DECIDE / CANCEL",
     "publication": "ACTION: PUBLISH / HOLD",
+    "auto_start": "ACTION: NONE NEEDED (reply stop to stop the queue)",
+    "auto_report": "ACTION: APPROVE / INSPECT / REVISE / DISCARD",
 }
+ATTENTION = {
+    "auto_start": "**PLEASE READ — NO ACTION NEEDED**",
+    "auto_report": "**PLEASE READ — ACTION NEEDED**",
+}
+BUDGET = {"auto_report": (90, 900)}
+AUTO_QUEUE = Path(__file__).resolve().parent.parent.parent / "auto_queue.py"
 HEX = r"[0-9a-f]{40}(?:[0-9a-f]{24})?"
 SHA = r"[0-9a-f]{64}"
 NAME = r"[a-z0-9][a-z0-9-]{0,39}"
@@ -508,15 +518,85 @@ def code_identity(root, checked, changed):
         fail("screen tested tree does not match the evidence")
 
 
-def check(kind, screen, root=None, reading=None, disposition=None, report=True):
+def auto_screen(kind, body, queue):
+    """Auto screens: the start notice states its limits; the report repeats the helper's rows."""
+    if kind == "auto_start":
+        if queue:
+            fail("auto_start has no queue to compare")
+        if f"python3 {AUTO_QUEUE} stop" not in body["STOP"] and f"python3 -I -B {AUTO_QUEUE} stop" not in body["STOP"]:
+            fail("auto_start needs the stop command of this procedure's auto_queue.py")
+        limits = " ".join(body["NOT AUTHORIZED"]).lower()
+        if "master" not in limits or "publish" not in limits:
+            fail("auto_start must say master is unchanged and nothing is published")
+        text = " ".join(line for lines in body.values() for line in lines)
+        if ("usage limit" not in text.lower() or not re.search(r"\bmanual(?:ly)?\b", text, re.IGNORECASE)
+                or "/gc auto resume" not in text):
+            fail("auto_start must say a usage limit stops the queue and resume is manual")
+        return
+    if queue is None:
+        fail("auto_report requires --queue to compare with the queue record")
+    helper = subprocess.run([sys.executable, "-I", "-B", str(AUTO_QUEUE), "--queue", str(queue),
+                             "report"], capture_output=True, text=True)
+    if helper.returncode != 0:
+        fail("auto_queue.py report failed")
+    expected = [line for line in helper.stdout.splitlines() if line.strip()]
+    if body["JOBS"] != expected:
+        fail("JOBS does not repeat the queue report exactly")
+    words = " ".join(body["IN SIMPLE WORDS"] + body["NEXT"])
+    if re.search(r"\bstopped\b", words, re.IGNORECASE) and expected[0] != "**Stopped**":
+        fail("says stopped but the queue report does not")
+    if re.search(r"\bpassed\b", words, re.IGNORECASE) and not any("passed" in row for row in expected):
+        fail("says passed but no job row does")
+    approval_summaries(body["APPROVAL SUMMARIES"], ready_jobs(expected))
+
+
+SUMMARY_LABELS = ("Bug: ", "Fix: ", "Test: ", "Criterion: ", "Limits: ", "Approval: ")
+
+
+def ready_jobs(rows):
+    """Job ids of report rows whose step offers approval (or a provisional decision first)."""
+    ready = []
+    for row in rows:
+        if row in ("| Job | Result | Decision or next step |", "| --- | --- | --- |"):
+            continue
+        cells = [c.strip() for c in row.strip().strip("|").split("|")]
+        if len(cells) == 3 and (
+                cells[2].startswith("approve for integration") or cells[2].startswith("decide P")):
+            ready.append(cells[0].split()[0])
+    return ready
+
+
+def approval_summaries(section, ready):
+    """One plain-words summary block per ready job, in report order; 'None ready.' otherwise."""
+    if not ready:
+        if section != ["None ready."]:
+            fail("APPROVAL SUMMARIES must be 'None ready.' when no job is ready")
+        return
+    if len(section) != 7 * len(ready):
+        fail("APPROVAL SUMMARIES needs exactly one seven-line block per ready job")
+    for index, job in enumerate(ready):
+        block = section[7 * index : 7 * index + 7]
+        if not re.fullmatch(rf"Job {re.escape(job)}:.*", block[0]):
+            fail(f"APPROVAL SUMMARIES block {index + 1} must start 'Job {job}:'")
+        for label, line in zip(SUMMARY_LABELS, block[1:]):
+            if not line.startswith(label) or not line[len(label):].strip():
+                fail(f"summary for job {job} needs a non-empty '{label.strip()}' line in order")
+        approval = block[6].lower()
+        if "exact packet" not in approval or "merges nothing" not in approval:
+            fail(f"summary for job {job}: Approval must say it accepts the exact packet and merges nothing")
+
+
+def check(kind, screen, root=None, reading=None, disposition=None, report=True, queue=None):
     if not screen.is_file() or screen.is_symlink():
         fail("screen must be an ordinary file")
     try:
-        source = screen.read_text(encoding="utf-8")
+        # Bytes, so that a CR is seen rather than translated by universal newlines.
+        source = screen.read_bytes().decode("utf-8")
     except UnicodeDecodeError:
         fail("screen is not UTF-8")
     lines = source.splitlines()
-    if len(lines) > 28 or len(source.split()) > 220:
+    max_lines, max_words = BUDGET.get(kind, (28, 220))
+    if len(lines) > max_lines or len(source.split()) > max_words:
         fail("screen exceeds one-page budget")
     if not lines or not source.endswith("\n") or "\r" in source:
         fail("screen needs LF lines and a final newline")
@@ -527,6 +607,9 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True):
         expected = 3 if kind == "plan" else 4
         if len(parts) != expected or parts[0] != kind.upper() or not re.fullmatch(NAME, parts[1]) or parts[2] not in ("light", "full"):
             fail("invalid plan/result header")
+    elif kind in ATTENTION:
+        if len(parts) != 2 or parts[0] != kind.upper().replace("_", " ") or not re.fullmatch(NAME, parts[1]):
+            fail("invalid auto header")
     elif kind == "publication":
         if len(parts) != 3 or parts[0] != "PUBLICATION" or not re.fullmatch(NAME, parts[1]):
             fail("invalid publication header")
@@ -534,6 +617,12 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True):
         fail("invalid stop header")
     body = blocks(kind, lines)
     developer_view(kind, body)
+    if kind in ATTENTION:
+        if root or reading or disposition:
+            fail("auto screens have no frozen evidence or outside reading")
+        auto_screen(kind, body, queue)
+    elif queue:
+        fail("only auto_report compares with a queue")
     if kind in ("result", "publication"):
         if root is None or not re.fullmatch(SHA, parts[-1]):
             fail("evidence directory and manifest identity required")
@@ -566,20 +655,20 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True):
                     status in line for heading in ("LIMITS", "DECISION")
                     for line in body[heading]):
                 fail("waived or pending condition must be visible in Developer View")
-    elif root or reading or disposition:
+    elif kind not in ATTENTION and (root or reading or disposition):
         fail("plan and stop have no frozen evidence or outside reading")
     if report:
         print(f"CHECK OK {kind}")
 
 
-def present(kind, screen, root=None, reading=None, disposition=None):
+def present(kind, screen, root=None, reading=None, disposition=None, queue=None):
     """Check the saved decision, then render a conspicuous Developer view."""
-    check(kind, screen, root, reading, disposition, report=False)
+    check(kind, screen, root, reading, disposition, report=False, queue=queue)
     lines = screen.read_text(encoding="utf-8").splitlines()
-    if kind == "plan":
+    if kind == "plan" or kind in ATTENTION:
         spaced = []
         for line in lines:
-            if line in HEADINGS["plan"]:
+            if line in HEADINGS[kind]:
                 spaced.append("")
             spaced.append(line)
         lines = spaced
@@ -594,7 +683,7 @@ def present(kind, screen, root=None, reading=None, disposition=None):
     # A longer outer fence keeps any backticks in a screen inside its body.
     longest = max((len(match.group()) for match in re.finditer(r"`+", body)), default=0)
     fence = "`" * max(3, longest + 1)
-    print("**PLEASE READ — YOUR DECISION IS NEEDED**\n\n" +
+    print(ATTENTION.get(kind, "**PLEASE READ — YOUR DECISION IS NEEDED**") + "\n\n" +
           fence + "\n" + body + "\n" + fence)
 
 
@@ -614,6 +703,7 @@ def main():
         command.add_argument("--evidence", type=Path)
         command.add_argument("--reading", type=Path)
         command.add_argument("--disposition", type=Path)
+        command.add_argument("--queue", type=Path)
     args = parser.parse_args()
     try:
         if args.command == "freeze":
@@ -629,9 +719,11 @@ def main():
         elif args.command == "register-skill":
             register_skill(args.source)
         elif args.command == "check":
-            check(args.kind, args.screen, args.evidence, args.reading, args.disposition)
+            check(args.kind, args.screen, args.evidence, args.reading, args.disposition,
+                  queue=args.queue)
         else:
-            present(args.kind, args.screen, args.evidence, args.reading, args.disposition)
+            present(args.kind, args.screen, args.evidence, args.reading, args.disposition,
+                    queue=args.queue)
     except (ValueError, OSError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 2

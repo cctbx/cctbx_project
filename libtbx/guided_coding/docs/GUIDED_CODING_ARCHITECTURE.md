@@ -69,6 +69,8 @@ Whenever the Guide produces evidence for its own plan, both the packet and the r
 
 A subagent can provide another reading or a bounded check, but having its own context does not by itself make it independent of the Guide who briefed it. The outside review should come from a separate conversation, using a different model where possible.
 
+In auto mode, your one advance grant replaces the plan approval and the outside review before each job is saved. Claude chooses each job's test criterion and the ticket says so. Nothing is applied to your working project or published until you approve the job and later decide to merge and publish it.
+
 ## Programs check some things; instructions govern others
 
 Guided Coding combines instructions for Claude with small checking programs. They create the command link, check the source files and Claude Code version, freeze evidence and check decision screens. Other programs prepare review bundles, compare publication records with Git and list past tasks. Their responsibilities are explained below.
@@ -199,6 +201,7 @@ The details below are useful when examining a record, changing the implementatio
 | `payload/SETUP.md` and `SETUP_DEFAULTS.md` | Setup and recovery instructions, with proposed general defaults. |
 | `payload/screens/` and `templates/` | Decision-screen formats, report and handoff formats, and a starting project method. |
 | `payload/tools/` | Executable checking and packaging tools. |
+| `auto_queue.py` and `payload/AUTO.md` | The auto-mode queue helper and its procedure. |
 | The project's instruction file and method | Its decision to use the contract, working environment, commands and restrictions. |
 | The project's `.claude/records/` | Setup proposals, prior file copies, task evidence and decisions. |
 | Client configuration, transcripts and memory | State managed by Claude Code, which may be kept outside the project. |
