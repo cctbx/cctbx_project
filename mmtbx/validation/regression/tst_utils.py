@@ -367,6 +367,11 @@ def exercise_planarity_and_chi5_in_score():
   assert score(_make_residue(arg_chi5_twist=90.0)) == 10.0
   # Combined with a rotamer outlier (3.0): worst plus a quarter of the rest.
   assert score(_make_residue(rotalyze_category='outlier', arg_chi5_twist=90.0)) == 10.8
+  assert score(_make_residue(nacetyl_twist=18.0)) == 0.0
+  assert score(_make_residue(nacetyl_twist=57.3)) == round(_arg_chi5_severity(57.3), 1)
+  assert score(_make_residue(glycan_link_twist=22.0)) == round(_arg_chi5_severity(22.0), 1)
+  both = score(_make_residue(nacetyl_twist=57.3, glycan_link_twist=22.0))
+  assert both == round(_arg_chi5_severity(57.3) + 0.25 * _arg_chi5_severity(22.0), 1)
   print("  exercise_planarity_and_chi5_in_score: OK")
 
 
