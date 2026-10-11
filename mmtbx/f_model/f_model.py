@@ -1849,6 +1849,11 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
     if(params is None):
       params = llgi_scatfrac.llgi_scatfrac_params.extract()
+    # kept for refits with the same settings on copies of this fmodel
+    # (mmtbx.refinement.weights.adp_gradients)
+    llgi_data = llgi_hybrid.replace_llgi_data(llgi_data,
+      fit_params=group_args(scatfrac=params, e_scale=e_params))
+    self.set_llgi_data(llgi_data)
     if(getattr(llgi_data, "tncs_state", None) is not None):
       # tNCS: also tau, and the data renormalised (f_obs = Feff changes)
       import mmtbx.refinement.llgi_tncs as llgi_tncs
