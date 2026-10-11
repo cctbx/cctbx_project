@@ -113,6 +113,10 @@ skip_optimizations_after_seconds = 0.0
   .type = float
   .short_caption = Skip optimizations after this many seconds
   .help = Once the program has run for this many seconds, skip any further coarse optimizations.  Note that for many runs most of the time is spent on PDB interpretation and Mover placement, which will not be cut short. Fine optimizations are completed after coarse optimizations cease.  If this is 0.0, no time limit is imposed.
+qmready = False
+  .type = bool
+  .short_caption = Run with custom preset options suitable for QM
+  .help = Add H to water, use longer XH distances, add OXT, add terminal NH3 for all chains in hierarchy
 output
   .style = menu_item auto_align
 {
@@ -1046,14 +1050,24 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _AddHydrogens(self):
-    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
-      model = self.model,
-      use_neutron_distances=self.params.use_neutron_distances,
-      n_terminal_charge=self.params.n_terminal_charge,
-      exclude_water = self.params.exclude_water,
-      stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
-      keep_existing_H=self.params.keep_existing_H
-    )
+    if self.params.qmready:
+      reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+        model                 = self.model,
+        use_neutron_distances = True,
+        n_terminal_charge     = "first_in_chain",
+        exclude_water         = False,
+        stop_for_unknowns     = self.params.stop_on_any_missing_hydrogen,
+        keep_existing_H       = True,
+      )
+    else:
+      reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+        model = self.model,
+        use_neutron_distances=self.params.use_neutron_distances,
+        n_terminal_charge=self.params.n_terminal_charge,
+        exclude_water = self.params.exclude_water,
+        stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
+        keep_existing_H=self.params.keep_existing_H
+      )
     reduce_add_h_obj.run()
     reduce_add_h_obj.show(self.logger, verbose=self.params.verbosity > 2)
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
@@ -1240,6 +1254,9 @@ NOTES:
     self.model = self.model.select(~self.model.selection('element X'))
     if self.model.is_ca_only():
       raise Sorry("The model contains only CA atoms (CA trace); H atoms cannot be placed.")
+
+    #if self.params.qmready:
+    #  self.model.add_terminal_oxt()
 
     # Use model function to set crystal symmetry if necessary 2025-03-19 TT
     # The box is for the calculation only and is not written out. Cushion 5:
