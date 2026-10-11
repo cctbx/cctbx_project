@@ -90,8 +90,10 @@ _WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H1, acceptor) to count as donated t
 
 
 def _has_deuterium(hier):
-  """True if the model carries any D atom."""
-  return (hier.atoms().extract_element(strip=True) == "D").count(True) > 0
+  """True if the model carries any D atom or DOD water."""
+  if (hier.atoms().extract_element(strip=True) == "D").count(True):
+    return True
+  return any(ag.resname.strip().upper() == "DOD" for ag in hier.atom_groups())
 
 
 def count_environment_hydrogens(hier):
@@ -1680,7 +1682,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       O-H length and H-O-H angle, a key of ``_WATER_GEOMETRY``: ``"xray"``
       (0.850 A, 103.91 deg) or ``"neutron"`` (0.980 A, 103.91 deg), cctbx's
       restraint targets, or ``"gas_phase"`` (0.957 A, 104.5 deg). None
-      (default) picks neutron if the model contains D, else X-ray.
+      (default) picks neutron if the model contains D or a DOD water, else
+      X-ray.
 
   Returns
   -------
@@ -1884,30 +1887,36 @@ def _water_clash_stats(hier, crystal_symmetry=None,
   return _contact_stats(len(atoms), flex.double([c[0] for c in contacts]))
 
 
-def _clash_row(label, stats, log):
-  """Print one row of the per-sweep clash table for ``stats`` to ``log``."""
-  _, n20, n18, n15, worst = stats
-  w = f"{worst:.2f}" if worst is not None else ">2.0"
-  print(f"  {label:<9} <2.0={n20:<5} <1.8={n18:<5} <1.5={n15:<5} closest={w}",
+def _clash_header(log):
+  """Print the column header of the per-sweep clash table to ``log``."""
+  print(f"  {'state':<11}{'< 2.0 A':>9}{'< 1.8 A':>9}{'< 1.5 A':>9}  closest",
         file=log)
 
 
+def _clash_row(label, stats, log):
+  """Print one row of the per-sweep clash table for ``stats`` to ``log``."""
+  _, n20, n18, n15, worst = stats
+  w = f"{worst:.2f} A" if worst is not None else "-"
+  print(f"  {label:<11}{n20:>9}{n18:>9}{n15:>9}  {w}", file=log)
+
+
 def _atom_id(a):
-  """Compact atom identity, e.g. ``"HOH A 863 H2"`` (altloc in
-  parentheses)."""
+  """Compact atom identity, e.g. ``"HOH A 863 H2"`` or
+  ``"HOH A 863 H2 altloc B"``."""
   L = a.fetch_labels()
   alt = L.altloc.strip()
   return (f"{L.resname.strip()} {L.chain_id.strip()} "
           f"{L.resseq.strip()} {L.name.strip()}"
-          + (f" ({alt})" if alt else ""))
+          + (f" altloc {alt}" if alt else ""))
 
 
 def _water_id(ag):
-  """Compact water identity, e.g. ``"HOH A 863"`` (altloc in parentheses)."""
+  """Compact water identity, e.g. ``"HOH A 863"`` or
+  ``"HOH A 863 altloc B"``."""
   rg = ag.parent()
   alt = ag.altloc.strip()
   return (f"{ag.resname.strip()} {rg.parent().id.strip()} {rg.resseq.strip()}"
-          + (f" ({alt})" if alt else ""))
+          + (f" altloc {alt}" if alt else ""))
 
 
 def _worst_water_clashes(hier, crystal_symmetry=None,
@@ -1916,29 +1925,50 @@ def _worst_water_clashes(hier, crystal_symmetry=None,
 
   One ``(distance, id_a, id_b)`` per contact, as counted by
   :func:`_water_clash_stats`; ``id_b`` of a symmetry equivalent ends in its
-  operator.
+  operator, in brackets.
   """
   atoms, contacts = _all_water_h_contacts(hier, crystal_symmetry,
                                           min_distance_sym_equiv)
   return [(d, _atom_id(atoms[i]),
-           _atom_id(atoms[j]) + (f" ({op})" if op is not None else ""))
+           _atom_id(atoms[j]) + (f" [{op}]" if op is not None else ""))
           for d, i, j, op in sorted(contacts, key=lambda c: c[0])]
 
 
-def _detect_neutron(pdb_in, hier):
-  """Classify a model as neutron- or X-ray-like for O-H distance selection.
+def _experiment_type(pdb_in):
+  """The model's experiment type in plain words and the water geometry it
+  implies, ``(name, geometry)``.
 
-  Prefers the deposited experiment type (``EXPDTA`` in PDB,
-  ``_exptl.method`` in mmCIF), falling back to the presence of D atoms in
-  ``hier``. Returns ``(is_neutron, source)``, ``source`` being a short
-  human-readable reason.
+  Neutron (H at the nucleus) for neutron, joint X-ray/neutron and electron
+  (microscopy or diffraction) data, whose potential peaks near the nucleus,
+  as mmtbx.model restrains water for the electron scattering table; X-ray
+  for X-ray data. ``name`` is None when the model records no experiment
+  type, ``geometry`` None for one implying neither.
   """
   exp = pdb_in.get_experiment_type()
-  if not exp.is_empty():
-    if exp.is_neutron():            # includes joint X-ray/neutron
-      return True, f"experiment type {exp!r}"
-    if exp.is_xray() or exp.is_electron_microscopy():
-      return False, f"experiment type {exp!r}"
+  if exp.is_join_xn():
+    return "joint X-ray/neutron diffraction", "neutron"
+  if exp.is_neutron():
+    return "neutron diffraction", "neutron"
+  if exp.is_electron_microscopy():
+    return "electron microscopy", "neutron"
+  if any(line.startswith("ELECTRON") for line in exp.lines):
+    return "electron diffraction", "neutron"
+  if exp.is_xray():
+    return "X-ray diffraction", "xray"
+  return (None if exp.is_empty() else repr(exp)), None
+
+
+def _detect_geometry(pdb_in, hier):
+  """Pick the water geometry for a model, ``"neutron"`` or ``"xray"``.
+
+  The one its experiment type implies (:func:`_experiment_type`), else
+  neutron if it carries a D atom or DOD water. Returns ``(geometry, note)``,
+  ``note`` None when the experiment type decided, else a short phrase for
+  the log.
+  """
+  geometry = _experiment_type(pdb_in)[1]
+  if geometry is not None:
+    return geometry, None
   if _has_deuterium(hier):
-    return True, "D atoms present (no conclusive experiment metadata)"
-  return False, "no neutron signal (assuming X-ray)"
+    return "neutron", "model has D"
+  return "xray", "no D"

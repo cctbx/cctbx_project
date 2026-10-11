@@ -952,24 +952,43 @@ def exercise_environment_hydrogen_count():
   assert wp.count_environment_hydrogens(_hierarchy(_WATER_CLUSTER_PDB)) == 0
 
 
-def exercise_detect_neutron():
-  """``_detect_neutron`` prefers the experiment type, then D-atom presence."""
+def exercise_detect_geometry():
+  """``_experiment_type`` names the experiment type in plain words, and
+  ``_detect_geometry`` takes the geometry it implies, electron data taking
+  the neutron one, then falls back to D atoms or DOD waters."""
   def pdb_in(lines):
     return iotbx.pdb.input(source_info=None, lines=lines.split("\n"))
 
   neutron = "EXPDTA    NEUTRON DIFFRACTION\n" + _TWO_ACCEPTOR_PDB
   xray = "EXPDTA    X-RAY DIFFRACTION\n" + _TWO_ACCEPTOR_PDB
+  diffraction = "EXPDTA    ELECTRON DIFFRACTION\n" + _TWO_ACCEPTOR_PDB
+  cif = _hierarchy(_TWO_ACCEPTOR_PDB).as_mmcif_string()
   # No experiment record, but a D atom present -> neutron by fallback.
   d_atom = """\
 HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
 HETATM    2  D   DNR E   1       3.600   0.000   0.000  1.00 10.00           D
 END
 """
+  # Nor a D atom, but a DOD water -> neutron.
+  dod = """\
+HETATM    1  O   DOD W   1       0.000   0.000   0.000  1.00 10.00           O
+END
+"""
 
-  for src, want in ((neutron, True), (xray, False), (d_atom, True)):
+  for src, name, want in (
+      (neutron, "neutron diffraction", "neutron"),
+      (xray, "X-ray diffraction", "xray"),
+      (diffraction, "electron diffraction", "neutron"),
+      (cif + "_exptl.method 'ELECTRON MICROSCOPY'\n", "electron microscopy",
+       "neutron"),
+      (cif + "_exptl.method 'ELECTRON CRYSTALLOGRAPHY'\n",
+       "electron diffraction", "neutron"),
+      (d_atom, None, "neutron"), (dod, None, "neutron"),
+      (_TWO_ACCEPTOR_PDB, None, "xray")):
     pi = pdb_in(src)
-    got, _ = wp._detect_neutron(pi, pi.construct_hierarchy())
-    assert got is want, f"_detect_neutron returned {got}, expected {want}"
+    assert wp._experiment_type(pi)[0] == name, (src.split("\n")[0], name)
+    got, _ = wp._detect_geometry(pi, pi.construct_hierarchy())
+    assert got == want, (src.split("\n")[0], got, want)
 
 
 def exercise_crystal_symmetry():
@@ -1073,8 +1092,8 @@ def exercise_sym_equiv_contacts_counted():
   listed = wp._worst_water_clashes(hier, crystal_symmetry=cs)
   assert approx_equal([c[0] for c in listed], [1.486, 1.600], eps=1e-6)
   assert [c[1:] for c in listed] == [
-    ("HOH W 2 H1", "HOH W 3 H1 (x-1,y,z)"),
-    ("HOH W 1 H1", "HOH W 1 H1 (-x,-y+1,-z+1)")], listed
+    ("HOH W 2 H1", "HOH W 3 H1 [x-1,y,z]"),
+    ("HOH W 1 H1", "HOH W 1 H1 [-x,-y+1,-z+1]")], listed
 
   # A water split between altlocs has an O per conformer, yet each contact
   # with it counts once.
@@ -1087,8 +1106,8 @@ def exercise_sym_equiv_contacts_counted():
   listed = wp._worst_water_clashes(hier, crystal_symmetry=cs)
   assert approx_equal([c[0] for c in listed], [1.486, 1.603], eps=1e-3)
   assert [c[1:] for c in listed] == [
-    ("HOH W 2 H1", "HOH W 3 H1 (A) (x-1,y,z)"),
-    ("HOH W 2 H1", "HOH W 3 H1 (B) (x-1,y,z)")], listed
+    ("HOH W 2 H1", "HOH W 3 H1 altloc A [x-1,y,z]"),
+    ("HOH W 2 H1", "HOH W 3 H1 altloc B [x-1,y,z]")], listed
 
 
 def exercise_sym_equiv_on_symmetry_element():
@@ -1179,7 +1198,7 @@ def exercise_altloc_environment():
   assert aimed > 0.99, f"conformer A should aim at the acceptor ({aimed:.3f})"
   assert [s[1] for s in states] == [0], states
   assert wp._water_clash_stats(hier)[1] == 0
-  assert wp._atom_id(hs[0]) == f"HOH W 1 {hs[0].name.strip()} (A)"
+  assert wp._atom_id(hs[0]) == f"HOH W 1 {hs[0].name.strip()} altloc A"
 
 
 def exercise_improper_altloc_rejected():
@@ -1265,7 +1284,7 @@ def exercise_reorient_keeps_isotope():
   run_program(program_class=wp_program.Program, logger=log,
               args=[file_name, "existing_h=reorient", "water_geometry=xray",
                     "output.overwrite=True"])
-  assert "warning: placing D" in log.getvalue(), log.getvalue()
+  assert "Warning: placing D" in log.getvalue(), log.getvalue()
 
 
 def exercise_missing_elements_rejected():
@@ -1368,7 +1387,7 @@ def run():
   exercise_element_override()
   exercise_oh_length_auto()
   exercise_environment_hydrogen_count()
-  exercise_detect_neutron()
+  exercise_detect_geometry()
   exercise_crystal_symmetry()
   exercise_crystal_symmetry_leaves_model_fixed()
   exercise_sym_equiv_protons()
