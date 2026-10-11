@@ -36,7 +36,7 @@ water_geometry = *auto xray neutron gas_phase
 element = *auto H D
   .type = choice(multi=False)
   .short_caption = Hydrogen element
-  .help = "Element for the placed water hydrogens: H, D, or auto (the element the water already carries, else D for DOD residues and H for HOH)."
+  .help = "Element for the placed water hydrogens: H, D, or auto (the element the water already carries, else D if the model has D atoms or DOD waters, else H)."
 existing_h = *keep complete reorient
   .type = choice(multi=False)
   .short_caption = Waters that already carry H
@@ -172,7 +172,8 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
         print(f"Crystal symmetry: {cs.space_group_info()}", file=self.logger)
 
     # Element: "auto" leaves the per-water choice (the element it carries,
-    # else DOD->D, HOH->H) to the placer (element=None); "H"/"D" force it.
+    # else D if the model has D, else H) to the placer (element=None);
+    # "H"/"D" force it.
     placer_element = None if self.params.element == "auto" else self.params.element
 
     # Consistency warning: deuterium is modelled only from neutron (or joint)
@@ -180,11 +181,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     # the neutron length) is legitimate and is not flagged.
     places_d = (placer_element == "D"
                 or (placer_element is None
-                    and any(ag.resname.strip().upper() == "DOD"
-                            or (ag.atoms().extract_element(strip=True)
-                                == "D").count(True)
-                            for ag in hier.atom_groups()
-                            if water_protonation._is_water(ag.resname))))
+                    and water_protonation._has_deuterium(hier)))
     if places_d and geometry == "xray":
       neut = water_protonation._WATER_GEOMETRY["neutron"][0]
       self._warn(f"placing D at the X-ray O-H length ({oh:.3f} A); for "
@@ -227,6 +224,9 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     if not report_stats:
       print(self._summary(n_before, n_after), file=self.logger)
     elif header["printed"]:
+      if self.params.basin.rounds and not result.basin_rounds:
+        print("Basin hopping: no clashing placed waters, skipped",
+              file=self.logger)
       if result.kept_label is not None:
         print(f"Kept: {result.kept_label} (fewest contacts < 2.0 A)",
               file=self.logger)

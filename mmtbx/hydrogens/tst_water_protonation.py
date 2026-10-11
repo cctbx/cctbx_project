@@ -793,7 +793,8 @@ def exercise_h2_after_acceptor_fallback():
 def exercise_refinement_reduces_clashes():
   """Refinement relaxes the water-water H clashes the greedy pass leaves in
   a tight cluster (placed at the 0.984 A O-H and gas-phase H-O-H it is
-  built for)."""
+  built for). Basin hopping runs while a placed water clashes and stops once
+  none does."""
   geometry = dict(oh_length=0.984, geometry="gas_phase")
   greedy = _hierarchy(_WATER_CLUSTER_PDB)
   wp.place_water_hydrogens(greedy, n_refine=0, **geometry)
@@ -810,6 +811,15 @@ def exercise_refinement_reduces_clashes():
   listed = [c[0] for c in wp._worst_water_clashes(greedy)]
   assert len(listed) == n_greedy, (len(listed), n_greedy)
   assert listed == sorted(listed), listed
+
+  # One round clears the cluster, so the second is skipped; a clash-free
+  # placement runs none.
+  hopped = _hierarchy(_WATER_CLUSTER_PDB)
+  res = wp.place_water_hydrogens(hopped, n_refine=0, n_basin=2, **geometry)
+  assert res.basin_rounds == 1, res.basin_rounds
+  res = wp.place_water_hydrogens(_hierarchy(_TWO_ACCEPTOR_PDB), n_refine=0,
+                                 n_basin=2)
+  assert res.basin_rounds == 0, res.basin_rounds
 
 
 def exercise_completed_water_survives_refinement():
@@ -849,7 +859,8 @@ def exercise_completed_water_survives_refinement():
 
 
 def exercise_element_override():
-  """``element="D"`` forces deuterium (named D1/D2); the default is H."""
+  """``element="D"`` forces deuterium (named D1/D2); the default is H, or D
+  when the model has D elsewhere."""
   default = _hierarchy(_TWO_ACCEPTOR_PDB)
   wp.place_water_hydrogens(default, n_refine=0)
   _, hs = _water_atoms(default)
@@ -861,6 +872,14 @@ def exercise_element_override():
   assert set(hs) == {"D1", "D2"}, f"element='D' should place D; got {sorted(hs)}"
   for d in hs.values():
     assert d.element.strip().upper() == "D", "placed atom element must be D"
+
+  # A D on another residue means a deuterated solvent.
+  elsewhere = _hierarchy(_TWO_ACCEPTOR_PDB.replace(
+    "HETATM    3  O   ACB D   2       4.299   5.000   7.711  1.00 10.00           O",
+    "HETATM    3  D   ACB D   2       4.299   5.000   7.711  1.00 10.00           D"))
+  wp.place_water_hydrogens(elsewhere, n_refine=0)
+  _, hs = _water_atoms(elsewhere)
+  assert set(hs) == {"D1", "D2"}, f"D elsewhere should give D; got {sorted(hs)}"
 
 
 def exercise_oh_length_auto():
@@ -878,7 +897,8 @@ def exercise_oh_length_auto():
 
   def hoh(hier):
     o, hs = _water_atoms(hier)
-    return math.degrees(_unit(hs["H1"], o).angle(_unit(hs["H2"], o)))
+    h1, h2 = hs.values()
+    return math.degrees(_unit(h1, o).angle(_unit(h2, o)))
 
   xray_oh, xray_hoh = wp._WATER_GEOMETRY["xray"]
   neutron_oh, neutron_hoh = wp._WATER_GEOMETRY["neutron"]
@@ -1248,7 +1268,8 @@ def exercise_reorient_keeps_isotope():
   protons as the element it carried, not the one its residue name implies.
 
   Reorients D on an HOH and H on a DOD, checking the element, the names and
-  that the protons turned toward the acceptor, and an O split between
+  that the protons turned toward the acceptor, a bare HOH beside the D water,
+  which must take D as well, and an O split between
   altlocs that shares one blank D, whose altlocs each get a D pair. Then
   runs the program on the HOH carrying D at the X-ray O-H length, which must
   warn about placing D.
@@ -1268,6 +1289,15 @@ def exercise_reorient_keeps_isotope():
     best = max(_unit(h, o).dot((acc - matrix.col(o.xyz)).normalize())
                for h in hs)
     assert best > 0.9, f"{want} not re-placed toward the acceptor ({best:.3f})"
+
+  # A bare HOH beside the D water takes D too, though reorient strips the
+  # model's only D first.
+  hier = _hierarchy(_BAD_DEUTERATED_PDB.replace("END", (
+    "HETATM    5  O   HOH W   2      20.000  20.000  20.000  1.00 10.00"
+    "           O\nEND")))
+  wp.place_water_hydrogens(hier, n_refine=0, existing_h="reorient")
+  assert sorted(a.element.strip() for a in hier.atoms()
+                if a.element.strip() in ("H", "D")) == ["D"] * 4
 
   hier = _hierarchy(_ALTLOC_O_WATER_PDB)
   wp.place_water_hydrogens(hier, n_refine=0, existing_h="reorient")

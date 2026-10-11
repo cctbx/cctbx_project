@@ -684,6 +684,7 @@ class _WaterHydrogenPlacer(object):
     self.hier = hier
     self.oh_length = oh_length
     self.geometry = geometry
+    self.basin_rounds = 0
     self.element = element
     self.n_refine = n_refine
     self.refine_tol = refine_tol
@@ -1520,6 +1521,9 @@ class _WaterHydrogenPlacer(object):
         nbr.extend(off + s for s in slots_of[wj])
       return flex.size_t(nbr) if nbr else _EMPTY_SLOTS
 
+    # A bare water takes D when the model has D anywhere, the stripped
+    # protons included; resolved at the first bare water.
+    model_has_d = None
     for wi in range(n):
       (ag, o, own_idx, fixed_d1, existing, existing_names, wid, c, occ,
        carried) = waters[wi]
@@ -1530,7 +1534,11 @@ class _WaterHydrogenPlacer(object):
       elif carried:
         proton_element = carried[0]
       else:
-        proton_element = "D" if ag.resname.strip().upper() == "DOD" else "H"
+        if model_has_d is None:
+          model_has_d = (_has_deuterium(hier)
+                         or any(e == "D" for removed in stripped.values()
+                                for e, _ in removed))
+        proton_element = "D" if model_has_d else "H"
       h1, h2 = self._place_one(wi, nbr_slots(wi), fixed_d1)
 
       # Completing builds only the cone proton; the name takes the free slot.
@@ -1594,6 +1602,7 @@ class _WaterHydrogenPlacer(object):
         offenders = self._clashing_records()
         if not offenders:
           break  # nothing left to relax
+        self.basin_rounds += 1
         for ri in offenders:
           self._kick(ri, rng)
         for s in range(_WATER_BASIN_RELAX):
@@ -1641,8 +1650,9 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
   element : str or None, optional
       Element of the placed atoms, ``"H"`` or ``"D"``, forced on every water;
       None (default) takes the element of the water's own H/D, those
-      ``existing_h="reorient"`` strips included, else ``"D"`` for DOD and
-      ``"H"`` for HOH. Names follow it: ``H1``/``H2`` or ``D1``/``D2``.
+      ``existing_h="reorient"`` strips included, else ``"D"`` if the model
+      has D atoms or DOD waters and ``"H"`` otherwise. Names follow it:
+      ``H1``/``H2`` or ``D1``/``D2``.
   n_refine : int, optional
       Maximum relaxation sweeps after the greedy pass, each re-placing every
       water against the final environment, best state kept; 0 disables it.
@@ -1694,6 +1704,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       carried exactly one H on input, ``metal`` being ``(element, distance)``
       for a coordinating cation or None and ``action`` one of ``"kept"``,
       ``"completed"``, ``"stripped"``.
+      ``basin_rounds``: basin-hopping rounds run; fewer than ``n_basin`` once
+      no placed water clashes in the best state.
   """
   placer = _WaterHydrogenPlacer(
     hier, oh_length=oh_length, element=element, n_refine=n_refine,
@@ -1705,7 +1717,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
     geometry=geometry)
   kept_label = placer.run()
   return group_args(kept_label=kept_label,
-                    partial_waters=placer.partial_waters)
+                    partial_waters=placer.partial_waters,
+                    basin_rounds=placer.basin_rounds)
 
 
 def _water_h_contacts(xyz, wid, conf=None):
