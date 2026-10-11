@@ -147,6 +147,10 @@ class rna_pucker(residue):
 
 # analysis objects
 class rna_bonds(rna_geometry):
+  __slots__ = rna_geometry.__slots__ + [
+    "n_outliers_large_by_model",
+    "n_outliers_small_by_model",
+  ]
   output_header = "#residue:atom_1:atom_2:num_sigmas"
   label = "Backbone bond lenths"
   gui_list_headers = ["Residue", "Atom 1", "Atom 2", "Sigmas"]
@@ -236,6 +240,10 @@ class rna_bonds(rna_geometry):
         self.n_total), file=out)
 
 class rna_angles(rna_geometry):
+  __slots__ = rna_geometry.__slots__ + [
+    "n_outliers_large_by_model",
+    "n_outliers_small_by_model",
+  ]
   output_header = "#residue:atom_1:atom_2:atom_3:num_sigmas"
   label = "Backbone bond angles"
   gui_list_headers = ["Residue", "Atom 1", "Atom 2", "Atom 3", "Sigmas"]
