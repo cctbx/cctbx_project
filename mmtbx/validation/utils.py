@@ -377,7 +377,9 @@ def calculate_overall_residue_quality_score(
               is_epsilon_outlier (bool),
               num_planarity_outliers_res (int), worst_planarity_sigma (float),
               worst_planarity_tilt (float, degrees), worst_planarity_tilt_limit (float),
-              arg_chi5_twist (float, degrees from planar; Arg only).
+              arg_chi5_twist (float, degrees from planar; Arg only),
+              nacetyl_twist (float, degrees from planar; sugar N-acetyl groups only),
+              glycan_link_twist (float, degrees from planar; sugars on an Asn only).
 
     Returns:
         The triage score rounded to 1 decimal place (0.0 = no issues,
@@ -507,6 +509,14 @@ def calculate_overall_residue_quality_score(
     if chi5_sev > 0:
         has_any_metric = True
         severities.append(chi5_sev)
+
+    # --- 14-15. Sugar N-acetyl twist about N-C(=O) and Asn-glycan link twist about
+    # CG-ND2: the same conjugation as Arg chi5, the same curve ---
+    for key in ('nacetyl_twist', 'glycan_link_twist'):
+        sugar_sev = _arg_chi5_severity(get(key))
+        if sugar_sev > 0:
+            has_any_metric = True
+            severities.append(sugar_sev)
 
     if not has_any_metric:
         return None
