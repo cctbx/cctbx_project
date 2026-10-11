@@ -88,7 +88,9 @@ master_params = iotbx.phil.parse("""\
     target = ls_wunit_k1 ml *auto
       .type = choice
       .help = Rigid body refinement target function: least-squares or \
-              maximum-likelihood
+              maximum-likelihood. auto: least-squares at low resolution \
+              (target_auto_switch_resolution), otherwise maximum-likelihood \
+              (llgi if that is the refinement target, else ml).
     target_auto_switch_resolution = 6.0
       .type = float
       .help = Used if target=auto, use optimal target for given working \
@@ -133,7 +135,8 @@ def split_resolution_range(
       d_high,
       number_of_zones,
       zone_exponent,
-      log = None):
+      log = None,
+      ml_target_name = "ml"):
   assert n_bodies > 0
   assert target_auto_switch_resolution > 0
   assert multi_body_factor_n_ref_first is None or multi_body_factor_n_ref_first > 0
@@ -214,7 +217,7 @@ def split_resolution_range(
       if (d_min > target_auto_switch_resolution):
         target_names.append("ls_wunit_k1")
       else:
-        target_names.append("ml")
+        target_names.append(ml_target_name)
     else:
       target_names.append(target)
   if (len(d_mins) > 1):
@@ -286,7 +289,9 @@ class manager(object):
       d_high                        = params.high_resolution,
       number_of_zones               = params.number_of_zones,
       zone_exponent                 = params.zone_exponent,
-      log                           = log)
+      log                           = log,
+      ml_target_name                = "llgi"
+        if save_original_target_name == "llgi" else "ml")
     print(file=log)
     if (fmodel.target_name != target_names[0]):
       fmodel.update(target_name=target_names[0])

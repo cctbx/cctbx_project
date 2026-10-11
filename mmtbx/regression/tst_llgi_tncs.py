@@ -135,6 +135,22 @@ def exercise_pair_term(groups, xrs):
   a2 = direct_modulation(ms, groups, x2)
   assert flex.max(flex.abs(mod2.a - a2)) < 0.01
   assert flex.max(flex.abs(mod2.a)) < flex.max(flex.abs(mod.a))
+  # the consensus of two copies related exactly by the operator is the
+  # copies themselves; with the second copy perturbed, the consensus pair
+  # term is the stronger one (the perturbation is not in the consensus)
+  cons = llgi_tncs.pair_modulation(ms, groups, xrs, basis="consensus")
+  assert flex.max(flex.abs(cons.a - mod.a)) < 0.01
+  x3 = xrs.deep_copy_scatterers()
+  rnd = random.Random(2)
+  sites = x3.sites_cart()
+  for i in g.i_seqs[1]:
+    sites[i] = tuple(v + rnd.gauss(0, 0.6) for v in sites[i])
+  x3.set_sites_cart(sites)
+  noisy = llgi_tncs.pair_modulation(ms, groups, x3)
+  noisy_cons = llgi_tncs.pair_modulation(ms, groups, x3, basis="consensus")
+  hi = ms.d_spacings().data() < 7.
+  rms = lambda x: math.sqrt(flex.mean(flex.pow2(x.select(hi))))
+  assert rms(noisy_cons.a) > rms(noisy.a) * 1.05, (rms(noisy_cons.a), rms(noisy.a))
 
 def exercise_renormalise():
   n = 50
@@ -211,6 +227,18 @@ def exercise_fits(groups, xrs):
   tau = llgi_tncs.fit_tau(e2, sig, one, cen, em, flex.double(n, 0.5), a, dss,
     mod.f_total, flex.bool(n, True))
   assert abs(tau.p0) < 0.25, tau.p0
+  # coherence: with the consensus equal to the copies (A_cons = A), errors
+  # with u = 1 + tau A correspond to Gamma = tau (1 - sigmaA^2) + sigmaA^2
+  gamma_true = 0.9
+  tau_eq = (gamma_true - 0.25) / 0.75
+  e2, sig, em = synthetic_e_data(a, tau_eq, sigmaa=0.5, seed=8)
+  coherence = llgi_tncs.fit_coherence(e2, sig, cen, em, flex.double(n, 0.5),
+    a, a, dss, flex.bool(n, True))
+  assert abs(coherence.gamma - gamma_true) < 0.15, coherence.gamma
+  assert coherence.v < 0.5, coherence.v
+  u, n_low = llgi_tncs.error_variance_modulation(flex.double(n, 0.5), a, a,
+    coherence.at(dss))
+  assert n_low == 0 and flex.min(u) > 0
 
 def synthetic_fmodel(h, xrs, sigma_common=0.6, sigma_indep=0.15, d_min=3.5,
       seed=11):
@@ -291,15 +319,14 @@ def exercise_fmodel_integration(h, xrs):
   fmodel.update_all_scales()
   result = fmodel.update_llgi_sigmaa_scatfrac()
   ld = fmodel.llgi_data()
-  # errors shared by the copies: tau clearly positive
-  assert result.tau.p0 > 0.3, result.tau.p0
+  # errors shared by the copies: the true copies are coherent
+  assert result.coherence.gamma > 0.3, result.coherence.gamma
+  assert result.tncs_summary.startswith("coherence")
   assert approx_equal(fmodel.f_obs().data(), ld.feff.data())
   assert flex.min(ld.tncs_t.data()) > 0 and flex.min(ld.tncs_u.data()) > 0
   u, t, sa = ld.tncs_u.data(), ld.tncs_t.data(), ld.sigmaa.data()
-  # t exceeds (1 - a_eff^2) u: the frame is valid everywhere
-  k = fmodel.scale_ml_wrapper()
-  a_eff = sa * (k if k > 0 else 1.) / flex.sqrt(ld.scatfrac.data())
-  assert flex.min(t - (1 - a_eff * a_eff) * u) > 0
+  # t exceeds (1 - sigmaA^2) u: the frame is valid everywhere
+  assert flex.min(t - (1 - sa * sa) * u) > 0
   assert fmodel.llgi_sigmaa_is_current()
   # the coordinate target
   tf = fmodel.target_functor()(compute_gradients=True)
@@ -323,6 +350,13 @@ def exercise_fmodel_integration(h, xrs):
   assert fs.llgi_data().tncs_u.size() == sel.count(True)
   tf = fs.target_functor()(compute_gradients=False)
   assert math.isfinite(tf.target_work())
+  # the earlier form, u = 1 + tau A, fitted on all reflections (the free
+  # set of this small data set is too small for tau)
+  ld.tncs_state.params.coherence = "tau"
+  ld.tncs_state.params.fit_reflections = "all"
+  result = fmodel.update_llgi_sigmaa_scatfrac()
+  assert result.tau.p0 > 0.3, result.tau.p0
+  assert result.tncs_summary.startswith("tau")
 
 def run():
   h, xrs = build_model()

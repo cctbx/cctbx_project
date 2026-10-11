@@ -26,10 +26,17 @@ of pseudo-atoms at the difference vectors, with constant scattering Z^2
 and B = B_m + B_n, in the symmorphic group with the same rotations, so one
 FFT structure-factor calculation per pair gives it (pair_modulation).
 
-The error variance is modulated by u(h) = 1 + tau(s) A(h) (one tau shared
-by all groups), and the expected intensity by t(h) = sigmaA^2 M(h) +
-(1 - sigmaA^2) u(h), sigmaA being the coefficient of the unit-normalised
-model E-value. The LLGI functors take u and t per
+The true structure's expected intensity is modulated by T(h) = 1 +
+Gamma(s) A_cons(h): A_cons is the pair modulation of the group consensus
+(the model's copies superposed, averaged and placed back by each copy's
+operator, so that the model's own differences between copies do not
+weaken it), and Gamma(s) = gamma exp(-2 pi^2 v^2 s^2) is the coherence
+of the true copies relative to the consensus (gamma <= 1; v the rms
+difference per direction; one curve shared by all groups). The error
+variance is then modulated by u(h) = (T - sigmaA^2 M)/(1 - sigmaA^2), and
+the expected intensity by t(h) = sigmaA^2 M(h) + (1 - sigmaA^2) u(h) = T,
+sigmaA being the coefficient of the unit-normalised model E-value. The
+earlier form u(h) = 1 + tau(s) A(h) is available as coherence = tau. The LLGI functors take u and t per
 reflection (cctbx/xray/targets/llgi.h, tncs_frame); the data are normalised
 by t (renormalise). Parameter fits use the u-frame (t = u), in which the
 frame is valid for any sigmaA and which, with the exact likelihood, gives
@@ -228,12 +235,33 @@ def pair_term(miller_set, sites_frac_m, sites_frac_n, z_sq, b_sum):
   norm = _weight_sums(miller_set.d_star_sq().data(), z_sq, b_sum)
   return flex.real(fc) / (nsym * norm)
 
-def pair_modulation(miller_set, groups, xray_structure):
+def consensus_sites(group, sites_frac, unit_cell):
+  """ The group's consensus copy placed on each copy (fractional
+  coordinates of the common atoms, per copy): the copies (after their
+  symmetry operators) superposed on the reference copy, averaged, and
+  placed back by each copy's least-squares operator. """
+  placed = [apply_op(op, sites_frac.select(sel))
+            for op, sel in zip(group.ops, group.i_seqs)]
+  xyz = [unit_cell.orthogonalize(p) for p in placed]
+  fits = [superpose.least_squares_fit(reference_sites=xyz[0], other_sites=x)
+          for x in xyz]
+  mean = flex.vec3_double(xyz[0].size(), (0, 0, 0))
+  for f, x in zip(fits, xyz):
+    mean += f.r.elems * x + f.t.elems
+  mean = mean * (1. / len(xyz))
+  return [unit_cell.fractionalize(f.r.inverse().elems * (mean - f.t.elems))
+          for f in fits]
+
+def pair_modulation(miller_set, groups, xray_structure, basis="model"):
   """ A(h) for the current coordinates and B-factors: the model's
-  expected-intensity modulation is M = 1 + A. Returns group_args(a (flex.
-  double on miller_set's indices), fractions (per group, the scattering
-  fraction of each copy at s = 0), f_total (the largest fraction of the
-  scattering in tNCS groups at any resolution)). """
+  expected-intensity modulation is M = 1 + A (basis "model"); with basis
+  "consensus", the same for the group consensus (consensus_sites), the
+  pair modulation of the true structure's expected intensity. Returns
+  group_args(a (flex.double on miller_set's indices), fractions (per
+  group, the scattering fraction of each copy at s = 0), f_total (the
+  largest fraction of the scattering in tNCS groups at any
+  resolution)). """
+  assert basis in ("model", "consensus")
   w_sq = _atomic_weight_sq(xray_structure)
   w_total = flex.sum(w_sq)
   sites_frac = xray_structure.sites_frac()
@@ -251,8 +279,11 @@ def pair_modulation(miller_set, groups, xray_structure):
     f_s = [weights(sel) / w_total_s for sel in g.chain_i_seqs]
     for f in f_s: f_in_groups += f
     w_common = [weights(sel) for sel in g.i_seqs]
-    placed = [apply_op(op, sites_frac.select(sel))
-              for op, sel in zip(g.ops, g.i_seqs)]
+    if(basis == "consensus"):
+      placed = consensus_sites(g, sites_frac, xray_structure.unit_cell())
+    else:
+      placed = [apply_op(op, sites_frac.select(sel))
+                for op, sel in zip(g.ops, g.i_seqs)]
     z_sq = w_sq.select(g.i_seqs[0])
     for m, n in itertools.combinations(range(len(g.i_seqs)), 2):
       b_sum = b_iso.select(g.i_seqs[m]) + b_iso.select(g.i_seqs[n])
@@ -387,6 +418,68 @@ def fit_tau(i_obs, sig_i_obs, resn, centric_flags, e_model, sigmaa, a,
   p = _fit_strength(f, f_total, x0, linear)
   return linear_in_d_star_sq(ss_max, p[0], p[1])
 
+class coherence_curve(object):
+  """ Gamma(s) = gamma exp(-2 pi^2 v^2 s^2): the coherence of the true
+  tNCS-related copies relative to the model's consensus, gamma its
+  low-resolution limit and v (A) the rms difference per direction """
+  def __init__(self, gamma, v):
+    self.gamma, self.v = float(gamma), abs(float(v))
+
+  def at(self, d_star_sq):
+    return self.gamma * flex.exp(
+      -2 * math.pi ** 2 * self.v ** 2 * d_star_sq)
+
+  def summary(self):
+    return "coherence gamma = %.3f, rms difference %.2f A" % (
+      self.gamma, self.v)
+
+# u is kept at least U_MIN where the model's own modulation exceeds the
+# true one by more than the coherence allows (T < sigmaA^2 M)
+U_MIN = 0.02
+
+def error_variance_modulation(sigmaa, a_model, a_cons, gamma):
+  """ u = (T - sigmaA^2 M)/(1 - sigmaA^2), with T = 1 + Gamma A_cons and
+  M = 1 + A_model (Gamma per reflection), at least U_MIN. Returns
+  (u, number of reflections raised to U_MIN). """
+  sa2 = flex.pow2(sigmaa)
+  sa2.set_selected(sa2 > 0.999, 0.999)
+  u = (1 + gamma * a_cons - sa2 * (1 + a_model)) / (1 - sa2)
+  low = u < U_MIN
+  u.set_selected(low, U_MIN)
+  return u, low.count(True)
+
+def fit_coherence(e_obs_sq, sig_e_obs_sq, centric_flags, e_model, sigmaa,
+      a_model, a_cons, d_star_sq, selection, start=None):
+  """ Gamma(s) (coherence_curve) by the exact E-scale likelihood over the
+  selected reflections, with sigmaA fixed, as fit_tau but with u from
+  error_variance_modulation; 0 <= gamma <= 1, 0 <= v <= 3 A. """
+  from scipy.optimize import minimize
+  isel = selection.iselection()
+  io, si = e_obs_sq.select(isel), sig_e_obs_sq.select(isel)
+  cen, em = centric_flags.select(isel), e_model.select(isel)
+  sa, am = sigmaa.select(isel), a_model.select(isel)
+  ac, ss = a_cons.select(isel), d_star_sq.select(isel)
+  n = isel.size()
+  one = flex.double(n, 1.)
+  def f(x):
+    if not (0 <= x[0] <= 1 and 0 <= x[1] <= 3): return 1e10
+    u = error_variance_modulation(sa, am, ac,
+      coherence_curve(x[0], x[1]).at(ss))[0]
+    d = renormalise(io, si, one, u, cen)
+    hybrid = xray_ext.llgi_hybrid(e_obs_sq=d.e_obs_sq,
+      sig_e_obs_sq=d.sig_e_obs_sq, force_exact=d.force_exact,
+      centric_flags=cen, rice_kappa=0.)
+    r = xray_ext.llgi_e_sigmaa_target_and_gradients(e_eff=d.eeff,
+      selection=flex.bool(n, True), e_model=em, dobs=d.dobs, sigmaa=sa,
+      centric_flags=cen, hybrid=hybrid, tncs_u=u, tncs_t=u)
+    return r.target() - flex.mean(hybrid.null_log_z)
+  x0 = [0.95, 0.2] if start is None else [min(start.gamma, 0.99),
+    max(start.v, 0.05)]
+  r = minimize(f, x0, method="Nelder-Mead", options=dict(xatol=1e-4,
+    fatol=1e-9, maxiter=400, maxfev=400, initial_simplex=[x0,
+    [x0[0] - 0.05, x0[1]], [x0[0], x0[1] + 0.1]]))
+  return coherence_curve(r.x[0], r.x[1])
+
 def expected_intensity_modulation(sigmaa, a, u):
   """ t = sigmaA^2 M + (1 - sigmaA^2) u, with M = 1 + A: the tNCS
   modulation of the expected intensity. t exceeds (1 - sigmaA^2) u
@@ -448,20 +541,34 @@ llgi_tncs_params = iotbx.phil.parse("""\
   angle_max = 10.
     .type = float
     .short_caption = Largest rotation between tNCS-related copies (degrees)
+  ncs_restraints = True
+    .type = bool
+    .short_caption = NCS restraints for tNCS-related copies
+    .help = "With tNCS groups in the model, switch on NCS restraints " \\
+            "(pdb_interpretation.ncs_search.enabled) in phenix.refine. The " \\
+            "true copies are usually more alike than refined copies, and " \\
+            "the likelihood can only weaken the coherence of the model's " \\
+            "consensus, not strengthen it."
+  coherence = *physical tau
+    .type = choice
+    .short_caption = Model of the coherence between tNCS-related copies
+    .help = "physical: the true copies' coherence relative to the model's " \\
+            "consensus, gamma exp(-2 pi^2 v^2 s^2), on the consensus pair " \\
+            "terms, with the error-variance modulation derived from it. " \\
+            "tau: the error-variance modulation 1 + tau A on the model's " \\
+            "own pair terms (constant tau, or linear in d*^2)."
   tau_linear_in_resolution = False
     .type = bool
-    .short_caption = Let tau vary linearly with d*^2
-    .help = "tau, the correlation of the model errors in tNCS-related " \\
-            "copies, is constant by default."
+    .short_caption = Let tau vary linearly with d*^2 (coherence = tau)
   n_cycles = 2
     .type = int
-    .short_caption = sigmaA/tau fit cycles per update
-  tau_reflections = *all free
+    .short_caption = sigmaA/coherence fit cycles per update
+  fit_reflections = all *free
     .type = choice
-    .short_caption = Reflections for the tau fit
-    .help = "all: every reflection (precise, but refinement fits the " \
-            "working set, which can inflate tau); free: the R-free set, as " \
-            "for sigmaA."
+    .short_caption = Reflections for the coherence (or tau) fit
+    .help = "free: the R-free set, as for sigmaA; all: every reflection " \\
+            "(more precise, but refinement fits the working set, which can " \\
+            "inflate the coherence)."
 """)
 
 def renormalise_e(e_obs_sq_base, sig_e_obs_sq_base, resn, t, centric_flags):
@@ -529,16 +636,18 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
     e_obs_sq_base=f_obs.array(data=e_base),
     sig_e_obs_sq_base=f_obs.array(data=sig_base),
     tncs_state=group_args(groups=groups, tau=rho, rho=rho,
+      coherence=coherence_curve(min(max(rho.p0, 0.), 0.99), 0.2),
       f_total=mod.f_total, params=params))
 
 def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
-  """ Per macrocycle, for fmodel's current model and scales: A(h); sigmaA
-  (E scale, R-free set) and tau (params.tau_reflections: all reflections,
-  or the R-free set), alternately, in the u-frame; ScatFrac (F scale,
-  working set) in the u-frame; then the data
-  renormalised by t = sigmaA^2 (1 + A) + (1 - a_eff^2) u, with Feff the new
-  f_obs. Returns a group_args like llgi_e_sigmaa.
-  estimate_sigmaa_e_then_scatfrac_f's, plus .tau. """
+  """ Per macrocycle, for fmodel's current model and scales: A(h) (and
+  A_cons(h) for coherence = physical); sigmaA (E scale, R-free set) and
+  the coherence or tau (params.fit_reflections), alternately, in the
+  u-frame; ScatFrac (F scale, working set) in the u-frame; then the data
+  renormalised by t = sigmaA^2 (1 + A) + (1 - sigmaA^2) u, with Feff the
+  new f_obs. Returns a group_args like llgi_e_sigmaa.
+  estimate_sigmaa_e_then_scatfrac_f's, plus .tau or .coherence and
+  .tncs_summary. """
   import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
   import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
   llgi_data = fmodel.llgi_data()
@@ -556,29 +665,43 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
   sig_base = llgi_data.sig_e_obs_sq_base.data()
   rice_kappa = llgi_data.hybrid_params.rice_kappa \
     if getattr(llgi_data, "hybrid_params", None) is not None else 0.1
+  physical = getattr(params, "coherence", "tau") == "physical"
   a = pair_modulation(f_obs, state.groups, fmodel.xray_structure).a
+  a_cons = pair_modulation(f_obs, state.groups, fmodel.xray_structure,
+    basis="consensus").a if physical else None
   e_model = flex.abs(llgi_e_sigmaa.build_e_model(
     fmodel.f_model_no_aniso_scale().data(), eps, dss).e_model)
-  tau = state.tau
+  tau, coherence = state.tau, getattr(state, "coherence", None)
+  fit_selection = flex.bool(n, True)
+  if(getattr(params, "fit_reflections", "all") == "free"):
+    fit_selection = fmodel.r_free_flags().data()
   warnings = []
+  n_low = 0
+  u = llgi_data.tncs_u.data()     # the current frame, for the first sigmaA
   for cycle in range(max(1, params.n_cycles)):
-    u = 1 + tau.at(dss) * a
     d = renormalise_e(e_base, sig_base, resn, u, centric)
     hybrid_u = _hybrid(d, centric, rice_kappa)
     sigmaa_result = llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel(fmodel,
       dobs=d.dobs, feff=d.eeff * resn, resn=resn, params=e_params,
       hybrid=hybrid_u, tncs_u=u)
     sigmaa = sigmaa_result.sigmaa
-    tau_selection = flex.bool(n, True)
-    if(getattr(params, "tau_reflections", "all") == "free"):
-      tau_selection = fmodel.r_free_flags().data()
-    tau = fit_tau(e_base, sig_base, flex.double(n, 1.), centric, e_model,
-      sigmaa, a, dss, state.f_total, tau_selection,
-      tau_start=[tau.p0, tau.p1], linear=params.tau_linear_in_resolution)
+    if(physical):
+      coherence = fit_coherence(e_base, sig_base, centric, e_model, sigmaa,
+        a, a_cons, dss, fit_selection, start=coherence)
+      u, n_low = error_variance_modulation(sigmaa, a, a_cons,
+        coherence.at(dss))
+    else:
+      tau = fit_tau(e_base, sig_base, flex.double(n, 1.), centric, e_model,
+        sigmaa, a, dss, state.f_total, fit_selection,
+        tau_start=[tau.p0, tau.p1], linear=params.tau_linear_in_resolution)
+      u = 1 + tau.at(dss) * a
   if(sigmaa_result.lbfgs_error is not None):
     warnings.append("sigmaA fit: L-BFGS stopped early: %s" %
       sigmaa_result.lbfgs_error)
-  u = 1 + tau.at(dss) * a
+  if(n_low > 0):
+    warnings.append("tNCS: the model's modulation exceeds the true one for "
+      "%d reflections (error-variance modulation held at %g)" % (n_low,
+      U_MIN))
   d = renormalise_e(e_base, sig_base, resn, u, centric)
   scale_factor = fmodel.scale_ml_wrapper()
   scatfrac_result = llgi_scatfrac.estimate_llgi_scatfrac(
@@ -598,7 +721,7 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
     sigmaa_curve=sigmaa_result.evaluate_at,
     scatfrac=f_obs.array(data=scatfrac),
     tncs_state=group_args(groups=state.groups, tau=tau, rho=state.rho,
-      f_total=state.f_total, params=params),
+      coherence=coherence, f_total=state.f_total, params=params),
     _sigmaa_f_model=fmodel.f_model().data().deep_copy())
   fmodel.set_llgi_data(new)
   fmodel.update(f_obs=f_obs.customized_copy(data=d.feff))
@@ -607,4 +730,7 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
     scatfrac=scatfrac, target=scatfrac_result.target,
     scatfrac_inf=scatfrac_result.scatfrac_inf,
     b_scatfrac=scatfrac_result.b_scatfrac,
-    warnings=warnings, tau=tau)
+    warnings=warnings, tau=None if physical else tau,
+    coherence=coherence if physical else None,
+    tncs_summary=coherence.summary() if physical else "tau = %.3f%s" % (
+      tau.p0, "" if tau.p1 == 0 else " + %.3f d*^2/d*^2_max" % tau.p1))
