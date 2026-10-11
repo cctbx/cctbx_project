@@ -243,6 +243,52 @@ def _bond_angle_severity(num_outliers, worst_sigma):
         severity += min(math.log2(num_outliers), 4.0)
     return severity
 
+def _planarity_severity(num_outliers, worst_sigma, worst_tilt=None, tilt_limit=None):
+    """Map planarity outliers to a continuous severity.
+
+    A plane flagged in sigma uses the bond/angle curve.  A plane flagged for an atom
+    tilted out of its ring uses the same shape in tilt / limit, the limit standing in
+    for the 4-sigma threshold:
+
+      limit        -> 1.0     (7 deg for a CB, 11 deg for a C1')
+      2.5 x limit  -> 4.0     (as 10 sigma, 2.5 x the 4-sigma threshold)
+      5 x limit    -> 6.3
+
+    The count bonus matches _bond_angle_severity.
+    """
+    if worst_tilt is None or not tilt_limit:
+        return _bond_angle_severity(num_outliers, worst_sigma)
+    severity = 1.0 + BOND_ANGLE_K * math.log(max(1.0, worst_tilt / tilt_limit))
+    if num_outliers > 1:
+        severity += min(math.log2(num_outliers), 4.0)
+    return severity
+
+
+ARG_CHI5_OUTLIER = 20.0         # degrees from planar
+
+
+def _arg_chi5_severity(twist):
+    """Map an Arg guanidinium twist about NE-CZ (chi5, degrees from planar) to a severity.
+
+    Follows sin^2 of the twist, as _omega_twist_severity does, since the conjugation
+    holding CD in the guanidinium plane is lost as sin^2 of the rotation:
+
+      twist 20 deg (outlier threshold) ->  1.0
+      twist 30 deg                     ->  2.4
+      twist 45 deg                     ->  4.9
+      twist 60 deg                     ->  7.5
+      twist 90 deg (perpendicular)     -> 10.0
+
+    Capped below a perpendicular peptide (15.0): a twisted guanidinium is a side-chain
+    error, not a backbone one.  Returns 0.0 at or under the threshold.
+    """
+    if twist is None or abs(twist) <= ARG_CHI5_OUTLIER:
+        return 0.0
+    floor = math.sin(math.radians(ARG_CHI5_OUTLIER)) ** 2
+    frac = (math.sin(math.radians(min(abs(twist), 90.0))) ** 2 - floor) / (1.0 - floor)
+    return 1.0 + 9.0 * frac
+
+
 def _rna_suite_severity(is_outlier, suiteness):
     """Map an RNA backbone suite to a graded severity.
 
@@ -328,7 +374,10 @@ def calculate_overall_residue_quality_score(
               is_rna_residue (bool),
               is_rna_suite_outlier (bool), rna_suite_suiteness (float, 0..1),
               is_rna_pucker_outlier (bool), is_delta_outlier (bool),
-              is_epsilon_outlier (bool).
+              is_epsilon_outlier (bool),
+              num_planarity_outliers_res (int), worst_planarity_sigma (float),
+              worst_planarity_tilt (float, degrees), worst_planarity_tilt_limit (float),
+              arg_chi5_twist (float, degrees from planar; Arg only).
 
     Returns:
         The triage score rounded to 1 decimal place (0.0 = no issues,
@@ -444,6 +493,20 @@ def calculate_overall_residue_quality_score(
             get('is_rna_pucker_outlier', False))
         if pucker_sev > 0:
             severities.append(pucker_sev)
+
+    # --- 12. Planarity (sigma planes on the bond/angle curve, ring tilts by tilt / limit) ---
+    num_planar = get('num_planarity_outliers_res', 0) or 0
+    if num_planar > 0:
+        has_any_metric = True
+        severities.append(_planarity_severity(
+            num_planar, get('worst_planarity_sigma'),
+            get('worst_planarity_tilt'), get('worst_planarity_tilt_limit')))
+
+    # --- 13. Arg chi5 (guanidinium twist about NE-CZ) ---
+    chi5_sev = _arg_chi5_severity(get('arg_chi5_twist'))
+    if chi5_sev > 0:
+        has_any_metric = True
+        severities.append(chi5_sev)
 
     if not has_any_metric:
         return None
