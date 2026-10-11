@@ -4340,6 +4340,81 @@ class manager(object):
   def remove_solvent(self):
     return self.select(selection = ~self.solvent_selection())
 
+  def add_terminal_oxt(self, peptide_bond_cutoff=2.0, log=None):
+    """
+    Add C-terminal OXT atom to each protein chain end that does not have it.
+
+    Chain end is the last amino-acid residue of a chain, or the last residue
+    before a break in polypeptide chain: next residue is not an amino acid or
+    is not peptide-bonded (C(i)-N(i+1) distance >= peptide_bond_cutoff).
+
+    OXT is placed in CA-C-O plane at 1.231 A from C, symmetrically to O, and
+    inherits altloc, occupancy and B from O. Residues missing C, CA or O are
+    skipped. Alternative conformations are handled per conformer.
+    Hierarchy is changed: restraints are unset, call process() if needed.
+
+    Returns number of added atoms.
+    """
+    get_class = iotbx.pdb.common_residue_names_get_class
+    aa_classes = ["common_amino_acid", "modified_amino_acid", "d_amino_acid"]
+    def is_amino_acid(rg):
+      for ag in rg.atom_groups():
+        if get_class(name=ag.resname) in aa_classes: return True
+      return False
+    def is_peptide_bonded(rg1, rg2):
+      for c in rg1.atoms():
+        if c.name.strip() != "C": continue
+        for n in rg2.atoms():
+          if n.name.strip() != "N": continue
+          if c.distance(n) < peptide_bond_cutoff: return True
+      return False
+    # Find where to add, then add (do not change hierarchy while iterating)
+    to_add = []
+    for model in self._pdb_hierarchy.models():
+      # chain objects with same id that follow each other form one chain
+      rgs = []
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          rgs.append((chain.id, rg))
+      for i, (chain_id, rg) in enumerate(rgs):
+        if not is_amino_acid(rg): continue
+        if i+1 < len(rgs):
+          next_chain_id, next_rg = rgs[i+1]
+          if(next_chain_id == chain_id and is_amino_acid(next_rg) and
+             is_peptide_bonded(rg, next_rg)): continue
+        for conformer in rg.conformers():
+          atoms = {}
+          for a in conformer.only_residue().atoms():
+            atoms[a.name.strip()] = a
+          if "OXT" in atoms: continue
+          c, ca, o = [atoms.get(name) for name in ["C", "CA", "O"]]
+          if None in [c, ca, o]: continue
+          c_xyz = matrix.col(c.xyz)
+          u_ca = (matrix.col(ca.xyz) - c_xyz).normalize()
+          u_o  = (matrix.col(o.xyz)  - c_xyz).normalize()
+          xyz = c_xyz - 1.231 * (u_ca + u_o).normalize()
+          to_add.append((o, xyz))
+    n_added = 0
+    for o, xyz in to_add:
+      ag = o.parent()
+      if ag.get_atom("OXT") is not None: continue # shared by conformers
+      oxt = iotbx.pdb.hierarchy.atom()
+      oxt.set_name(" OXT")
+      oxt.set_element(" O")
+      oxt.set_xyz(xyz)
+      oxt.set_occ(o.occ)
+      oxt.set_b(o.b)
+      oxt.set_segid(o.segid)
+      oxt.hetero = o.hetero
+      if o.uij_is_defined(): oxt.set_uij(o.uij)
+      ag.append_atom(oxt)
+      n_added += 1
+      if log is not None:
+        print("Added OXT to %s" % ag.id_str(), file=log)
+    if n_added > 0:
+      self.reset_after_changing_hierarchy()
+    return n_added
+
   def remove_hydrogens(self):
     if self.has_hd():
       noh_selection = self.selection("not (element H or element D)")
