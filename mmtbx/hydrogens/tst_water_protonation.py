@@ -1255,7 +1255,8 @@ def exercise_electron_microscopy_isolated():
   recorded as X-ray diffraction and once as electron microscopy. The X-ray
   run must aim an H across the cell face at the translated acceptor; the
   electron microscopy run, whose cell is a map box rather than a lattice,
-  must treat the model as isolated and aim none there.
+  must treat the model as isolated and aim none there. Each written model
+  keeps its experiment type, also when the X-ray one is written as PDB.
   """
   hier, cs = _hierarchy_and_symmetry(_LATTICE_CONTACT_PDB)
   cif = hier.as_mmcif_string(crystal_symmetry=cs)
@@ -1274,6 +1275,15 @@ def exercise_electron_microscopy_isolated():
       assert aimed > 0.99, f"{method}: no H aims across the face ({aimed:.3f})"
     else:
       assert aimed < 0.9, f"{method}: an H aims across the face ({aimed:.3f})"
+    written = iotbx.pdb.input(result.output_file_name).get_experiment_type()
+    assert written.lines == [method], (method, written.lines)
+  result = run_program(program_class=wp_program.Program, logger=null_out(),
+                       args=["tst_water_protonation_xray.cif",
+                             "output.overwrite=True",
+                             "output.target_output_format=pdb"])
+  assert result.output_file_name.endswith(".pdb"), result.output_file_name
+  written = iotbx.pdb.input(result.output_file_name).get_experiment_type()
+  assert written.lines == ["X-RAY DIFFRACTION"], written.lines
 
 
 def exercise_reorient_keeps_isotope():
@@ -1390,25 +1400,34 @@ def exercise_multi_model_rejected():
 
 
 def exercise_output_file_name():
-  """The output file name follows the output.* parameters.
+  """The output file name follows the output.* parameters, and the written
+  model keeps the input's experiment type.
 
-  Runs the program with no output parameter, then with each of
-  ``output.prefix``, ``output.suffix`` and ``output.serial``, and checks the
-  name written (extension included).
+  Runs the program on a PDB input with a joint X-ray/neutron EXPDTA record,
+  with no output parameter, then with each of ``output.prefix``,
+  ``output.suffix``, ``output.serial`` and
+  ``output.target_output_format=mmcif``, and checks the name written
+  (extension included) and the experiment type read back.
   """
   file_name = "tst_water_protonation_naming.pdb"
   with open(file_name, "w") as f:
-    f.write(_TWO_ACCEPTOR_PDB)
+    f.write("EXPDTA    X-RAY DIFFRACTION; NEUTRON DIFFRACTION\n"
+            + _TWO_ACCEPTOR_PDB)
   for extra, want in (
       ([], "tst_water_protonation_naming_waters_protonated.pdb"),
       (["output.prefix=named"], "named_waters_protonated.pdb"),
       (["output.suffix=_h"], "tst_water_protonation_naming_h.pdb"),
       (["output.serial=2"],
-       "tst_water_protonation_naming_waters_protonated_002.pdb")):
+       "tst_water_protonation_naming_waters_protonated_002.pdb"),
+      (["output.target_output_format=mmcif"],
+       "tst_water_protonation_naming_waters_protonated.cif")):
     result = run_program(program_class=wp_program.Program, logger=null_out(),
                          args=[file_name, "output.overwrite=True"] + extra)
     got = os.path.basename(result.output_file_name)
     assert got == want, (extra, got)
+    written = iotbx.pdb.input(result.output_file_name).get_experiment_type()
+    assert sorted(written.lines) == [
+      "NEUTRON DIFFRACTION", "X-RAY DIFFRACTION"], (extra, written.lines)
 
 
 def run():
