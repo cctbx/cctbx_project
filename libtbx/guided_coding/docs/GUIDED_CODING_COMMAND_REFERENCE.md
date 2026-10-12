@@ -315,7 +315,7 @@ helper through a test-only launcher, `tests/auto_queue_standin.py`, that
 runs it without the sandbox and without the platform refusal; its
 stand-in for `sandbox-exec` runs commands unrestricted. The launcher is
 for the kit's own tests only and refuses real queues: before it starts or
-records anything it exits 16 unless every path the helper would open (the
+records anything it exits 16 unless every queue path the helper would open (the
 home from `--home` or `GC_AUTO_HOME`, never the default; every `--queue`;
 the queue named by the home's `ACTIVE` file) lies inside a temporary
 directory of the test run that holds the tests' marker file
@@ -327,10 +327,13 @@ path, falls back to another home or queue for an empty `--home`,
 directory, and refuses an empty `--lock-dir` itself). A marker written there
 by hand is accepted, and so is a symlink planted by hand inside a marked
 test queue (the check resolves the queue directory, not what is inside it),
-so this guards against mistaken use, not deliberate misuse.
-The following is the expected Linux coverage, shown so far only by a
-simulated non-macOS run on a Mac and verified on real Linux only by a
-later run of the kit suite on a Linux machine. The tests cover queue
+so this guards against mistaken use, not deliberate misuse. It checks only
+those queue paths: other paths, such as `--log`, `--cwd`, `--file`,
+`--packet`, `--script`, `--grant` and `--jobs`, are not checked, so a run
+started through it can write its log anywhere.
+The following is the Linux coverage, shown by a simulated non-macOS
+run on a Mac and by a real Linux run of the kit suite (anaconda, October 12,
+2026: 269 tests, 261 passed, 8 skipped). The tests cover queue
 states, init, runs and their records, time limits, approvals, frozen packets and
 screening, the worker registry, the lock, stop, reconcile, cleanup and
 recovery, the installation check, the report and the screens, and the

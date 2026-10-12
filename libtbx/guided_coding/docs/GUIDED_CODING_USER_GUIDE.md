@@ -154,7 +154,7 @@ Read Claude’s report to see what it restored and what remains unfinished. Do n
 
 ## Running several jobs unattended (auto mode)
 
-Auto mode works through a list of tasks one at a time while you are away. It is new and has had limited use.
+Auto mode works through a list of tasks one at a time while you are away. It is new and has had limited use. Auto mode runs only on macOS; on other systems its runs are refused.
 
 Before your first run, start an ordinary Guided Coding task and ask Claude to check whether your project is ready for auto mode and to prepare what is missing. There is no dedicated setup command yet. Your project needs a separate test copy of your software and saved settings for checking that copy, reserving it for testing, keeping task records and keeping enough free disk space. Without these settings, tasks that need the test copy are blocked.
 

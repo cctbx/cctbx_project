@@ -210,7 +210,7 @@ it imports `auto_queue.py` and, in its own process only, accepts the platform an
 through it is local. The installed helper has no hook for it; on a Mac without the simulation the
 tests use the real helper and the real `sandbox-exec`. Because the launcher runs commands
 unrestricted on any system, it acts only on queues the tests created: before it starts or
-records anything it refuses with exit 16 unless every path the helper would open lies inside
+records anything it refuses with exit 16 unless every queue path the helper would open lies inside
 one directory directly under the temporary directory that holds the marker file
 `GC_KIT_TEST_QUEUE_ROOT`, which the tests write there. It finds those paths as the helper does:
 the home given by `--home` or `GC_AUTO_HOME` (the default home is refused), every `--queue`, the
@@ -224,13 +224,14 @@ value (for example `--home " "`) as a relative path, falls back to another home 
 the temporary directory is accepted, and a queue there can then be run; and the check resolves the
 queue directory, not what is inside it, so a symlink planted by hand inside a marked test queue
 (for example its `runs/` pointing to a real queue's `runs/`) lets a run record land in the real
-queue. The check guards against mistaken use, not deliberate misuse.
+queue. The check guards against mistaken use, not deliberate misuse. It checks only those queue
+paths: other paths, such as `--log`, `--cwd`, `--file`, `--packet`, `--script`, `--grant` and
+`--jobs`, are not checked, so a run started through it can write its log anywhere.
 
-The Linux coverage below is the expected coverage. So far it is shown only by a simulated
-non-macOS run on a Mac; it is verified on real Linux only by a later run of the kit suite on a
-Linux machine.
+The Linux coverage below is shown by a simulated non-macOS run on a Mac and by a real Linux run
+of the kit suite (anaconda, October 12, 2026: 269 tests, 261 passed, 8 skipped).
 
-- **Expected to run on Linux:** queue states and transitions, init and its refusals (including
+- **Runs on Linux:** queue states and transitions, init and its refusals (including
   the missing `--lock-dir`), runs and their records, time limits, the probe, stale runs, approvals and
   readiness, frozen packets and `SCREENING.txt`, the worker registry, the lock, stop, check-stop,
   reconcile, cleanup and leftover processes found by group, session or parentage, the installation
