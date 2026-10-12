@@ -839,13 +839,16 @@ class xfel_db_application(db_application):
     tagids = [t.id for t in tags]
     if mode == "union":
       # Union is done by using a series of OR statements testing the tag ids
-      return self.get_all_x(Run, 'run', where = """
+      runs = self.get_all_x(Run, 'run', where = """
         JOIN `%s_rungroup_run` rg_r ON rg_r.run_id = run.id
         JOIN `%s_rungroup` rg ON rg.id = rg_r.rungroup_id
         JOIN `%s_run_tag` rt ON rt.run_id = run.id
         JOIN `%s_tag` tag ON tag.id = rt.tag_id
         WHERE rg.id = %d AND (%s)
          """%(tag, tag, tag, tag, rungroup.id, " OR ".join(["tag.id = %d"%i for i in tagids])))
+      # The join on run_tag returns a run once per matching tag; keep each run once
+      seen = set()
+      return [r for r in runs if r.id not in seen and not seen.add(r.id)]
     elif mode == "intersection":
       # Intersection is done using a series of INNER JOINS, one full set for each tag
       return self.get_all_x(Run, 'run', where = """
