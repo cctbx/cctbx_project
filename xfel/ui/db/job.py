@@ -1026,7 +1026,8 @@ class _job(object):
   def __eq__(self, other):
     return _job.job_hash(self) == _job.job_hash(other)
 
-def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_operator = None, tasks = None):
+def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_operator = None, tasks = None,
+                         runs_rungroups = None, submitted_jobs = None):
   """ The jobs submit_all_jobs would submit for a dataset once it is active, as
       an ordered dict of counts by task type, in pipeline order. Takes an
       existing dataset and/or the pieces of a new or revised one; a piece not
@@ -1039,7 +1040,11 @@ def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_ope
       submitted, one job per global task, plus any global job missing from a
       version that would still be filled in. In practice the order in which the
       local jobs finish decides how many versions, and so how many global jobs,
-      there are. """
+      there are.
+      @param runs_rungroups: (run, rungroup) pairs to use as the dataset's run
+      selection instead of querying it by tags; predict_trial_jobs passes a
+      selection from run groups that may not exist yet.
+      @param submitted_jobs: the job hash dict, if the caller already has it. """
   import collections
   if tasks is None:
     tasks = dataset.tasks
@@ -1055,16 +1060,18 @@ def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_ope
   if trial is None or not tasks:
     return counts
 
-  trial_tag_ids = [t.id for t in trial.tags]
-  dataset_tags = [t for t in tags if t.id in trial_tag_ids]
-  if not dataset_tags or len(dataset_tags) < len(tags):
-    return counts
-  runs_rungroups = []
-  for rungroup in trial.rungroups:
-    runs_rungroups.extend([(run, rungroup) for run in app.get_rungroup_runs_by_tags(rungroup, dataset_tags, tag_operator)])
+  if runs_rungroups is None:
+    trial_tag_ids = [t.id for t in trial.tags]
+    dataset_tags = [t for t in tags if t.id in trial_tag_ids]
+    if not dataset_tags or len(dataset_tags) < len(tags):
+      return counts
+    runs_rungroups = []
+    for rungroup in trial.rungroups:
+      runs_rungroups.extend([(run, rungroup) for run in app.get_rungroup_runs_by_tags(rungroup, dataset_tags, tag_operator)])
   if not runs_rungroups:
     return counts
-  submitted_jobs = {_job.job_hash(j):j for j in app.get_all_jobs()}
+  if submitted_jobs is None:
+    submitted_jobs = {_job.job_hash(j):j for j in app.get_all_jobs()}
 
   local_tasks = [t for t in tasks if t.scope == 'local']
   global_tasks = [t for t in tasks if t.scope == 'global']
@@ -1115,6 +1122,56 @@ def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_ope
   if roll:
     for task in global_tasks:
       counts[task.type] += 1
+  return counts
+
+def predict_trial_jobs(app, trial, rungroups = None):
+  """ The jobs submit_all_jobs would submit for a trial once active, as an
+      ordered dict of counts by task type: the indexing jobs for the runs of
+      its active run groups, then, for every active dataset on the trial, the
+      jobs predict_dataset_jobs expects for the runs the dataset selects from
+      those run groups.
+      @param rungroups: (rungroup, runs) pairs standing in for the trial's
+      active run groups, for a run group being created or edited. A rungroup
+      of None is one that does not exist yet, so every run of it is new (a run
+      group that replaces another reprocesses its runs). The default is the
+      trial's active run groups and their current runs. """
+  import collections
+  if rungroups is None:
+    rungroups = [(rungroup, rungroup.runs) for rungroup in trial.rungroups]
+  submitted_jobs = {_job.job_hash(j):j for j in app.get_all_jobs()}
+  counts = collections.OrderedDict([('indexing', 0)])
+  runs_rungroups = []
+  for rungroup, runs in rungroups:
+    for run in runs:
+      runs_rungroups.append((run, rungroup))
+      if rungroup is None or _job.job_hash(_job(trial, rungroup, run)) not in submitted_jobs:
+        counts['indexing'] += 1
+  if not runs_rungroups:
+    return counts
+
+  trial_tag_ids = {t.id for t in trial.tags}
+  run_tag_ids = {}
+  for dataset in app.get_all_datasets():
+    if not dataset.active: continue
+    tasks = dataset.tasks
+    if not tasks or not any(t.trial_id == trial.id for t in tasks): continue
+    tags = dataset.tags
+    if not tags or not all(t.id in trial_tag_ids for t in tags): continue
+    tag_ids = {t.id for t in tags}
+    selected = []
+    for run, rungroup in runs_rungroups:
+      if run.id not in run_tag_ids:
+        run_tag_ids[run.id] = {t.id for t in run.tags}
+      if dataset.tag_operator == 'union':
+        hit = bool(tag_ids & run_tag_ids[run.id])
+      else:
+        hit = tag_ids <= run_tag_ids[run.id]
+      if hit:
+        selected.append((run, rungroup))
+    dataset_counts = predict_dataset_jobs(app, dataset = dataset, trial = trial, tasks = tasks,
+                                          runs_rungroups = selected, submitted_jobs = submitted_jobs)
+    for task_type, n in dataset_counts.items():
+      counts[task_type] = counts.get(task_type, 0) + n
   return counts
 
 def submit_all_jobs(app):
