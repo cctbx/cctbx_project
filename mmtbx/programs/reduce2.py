@@ -1255,8 +1255,15 @@ NOTES:
     if self.model.is_ca_only():
       raise Sorry("The model contains only CA atoms (CA trace); H atoms cannot be placed.")
 
-    #if self.params.qmready:
-    #  self.model.add_terminal_oxt()
+    if self.params.qmready:
+      self.model.add_terminal_oxt()
+      if not self.model.is_atom_complete():
+        missing = self.model.missing_atoms_by_residue()
+        print("Missing atoms found:", file=self.logger)
+        for k, v in missing.items():
+          print("  where: '%s' missing:"%k,v)
+        raise Sorry(
+          "Model misses non-H atoms. Model must be atom-complete for qmready=true.")
 
     # Use model function to set crystal symmetry if necessary 2025-03-19 TT
     # The box is for the calculation only and is not written out. Cushion 5:
