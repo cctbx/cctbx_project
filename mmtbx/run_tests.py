@@ -102,6 +102,7 @@ general_tests = [
   "$D/regression/model/tst_model_get_vdw_radii.py",
   "$D/regression/model/tst_model_dedeuterate.py",
   "$D/regression/model/tst_model_add_terminal_oxt.py",
+  "$D/regression/model/tst_model_atom_completeness.py",
   "$D/regression/model/tst_model_utils_merge_models.py",
   "$D/regression/model/tst_model_pairs_within.py",
   "$D/regression/model/tst_restrain_selection_to_self_or_neighbors.py",

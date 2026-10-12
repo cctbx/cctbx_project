@@ -48,6 +48,7 @@ from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
 import collections
+import hashlib
 
 from scitbx import matrix
 from iotbx.bioinformatics import sequence
@@ -107,39 +108,70 @@ def find_common_water_resseq_max(pdb_hierarchy):
             break
   return result
 
-def missing_atoms(acp, verbose=False):
-  rc={}
-  for mm in acp.all_monomer_mappings:
-    # assert mm.incomplete_info is None, 'incomplete_info %s' % mm.incomplete_info
-    atom=None
-    for atom in mm.expected_atoms: break
-    if atom is None: continue
-    if atom.parent() is None: continue
-    if mm.conf_altloc:
-      key=f'"{mm.conf_altloc}"{atom.parent().id_str()}'
-    else:
-      key=f'{atom.parent().id_str()}'
-    resname=atom.parent().resname
-    if mm.incomplete_info:
-      rc[key]={}
-      rc[key]['resname']=resname
-      rc[key]['class']=mm.classification
-      rc[key]['incomplete']=mm.incomplete_info
-    elif mm.missing_atoms_info:
-      rc[key]={}
-      rc[key]['resname']=resname
-      rc[key]['class']=mm.classification
-      rc[key]['missing']=mm.missing_atoms_info
-    if verbose:
-      for types in ['heavy', 'hydrogens']:
-        atoms=mm.missing_atoms_info.get(types, [])
-        if atoms:
-          print(f'  {types}')
-          for name, item in atoms.items():
-            print(name)
-            # item.show()
-  return rc
+def _hierarchy_fingerprint(hierarchy):
+  """
+  Cheap fingerprint of hierarchy content (not coordinates): changes if atoms
+  are added, removed, renamed, reordered, or residues/conformers change.
+  """
+  items = [str(hierarchy.atoms_size()), "".join(hierarchy.atoms().extract_name())]
+  for model in hierarchy.models():
+    items.append(model.id)
+    for chain in model.chains():
+      items.append(chain.id)
+      for rg in chain.residue_groups():
+        for ag in rg.atom_groups():
+          items.append("%s%s%s%s%d" % (
+            rg.resseq, rg.icode, ag.altloc, ag.resname, ag.atoms_size()))
+  return hashlib.sha1("|".join(items).encode()).hexdigest()
 
+def _missing_atoms_records(acp):
+  """
+  Missing atoms per residue (conformer) from processed model: one record per
+  monomer mapping that has missing atoms or is incomplete.
+  Returns None if residues are not mapped to hierarchy atoms; this happens if
+  NCS shortcut was used (use_ncs_to_build_restraints): only master copy is
+  interpreted, using temporary hierarchy.
+  """
+  atoms = acp.pdb_hierarchy.atoms()
+  sites_cart = atoms.extract_xyz()
+  def sg_is_bonded(sg):
+    d2 = (sites_cart - sg.xyz).dot()
+    for i in (d2 < 2.5**2).iselection():
+      a = atoms[i]
+      if(a.element.strip().upper() in ["H", "D"]): continue
+      if(a.parent().parent().memory_id() ==
+         sg.parent().parent().memory_id()): continue
+      return True
+    return False
+  result = []
+  for mm in acp.all_monomer_mappings:
+    expected = mm.expected_atoms
+    if(isinstance(expected, dict)): expected = list(expected.values())
+    if(len(expected) == 0): continue
+    ag = expected[0].parent()
+    if(ag is None): return None
+    if(not (mm.incomplete_info or mm.missing_atoms_info)): continue
+    missing = mm.missing_atoms_info or {}
+    sg_bonded = False
+    if(ag.resname == "CYS" and "HG" in missing.get("hydrogens", {})):
+      for a in expected:
+        if(a.name.strip() == "SG" and sg_is_bonded(a)): sg_bonded = True
+    id_str = ag.id_str()
+    if(mm.conf_altloc):
+      key        = mm.conf_altloc + id_str[1:]
+      legacy_key = '"%s"%s' % (mm.conf_altloc, id_str)
+    else:
+      key        = id_str
+      legacy_key = id_str
+    result.append(group_args(
+      key            = key,
+      legacy_key     = legacy_key,
+      resname        = ag.resname,
+      classification = mm.classification,
+      incomplete     = mm.incomplete_info,
+      missing        = missing,  # {"heavy"/"hydrogens": {name: chem_comp_atom}}
+      sg_bonded      = sg_bonded))
+  return result
 
 def cctbx_depreciation_warning(s):
   print('%s\n# cctbx depreciation warning: %s\n%s' %(
@@ -419,7 +451,8 @@ class manager(object):
 
     self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
     self._all_monomer_mappings = None
-    self._missing_atoms = None
+    self._missing_atoms_records = None # see _get_missing_atoms_records()
+    self._missing_atoms_fingerprint = None
 
     # These are new
     self.xray_scattering_dict = None    # 2020: leave only one: self._scattering_dict
@@ -1716,6 +1749,8 @@ class manager(object):
     self.get_hierarchy().atoms().reset_i_seq() # redo the numbering
     self.unset_restraints_manager() # no longer applies
     self.unset_ncs_constraints_groups()
+    self._missing_atoms_records = None # no longer applies
+    self._missing_atoms_fingerprint = None
 
   def adopt_xray_structure(self, xray_structure=None):
     if xray_structure is None:
@@ -2310,8 +2345,14 @@ class manager(object):
     if self._processed_pdb_file:
       self._clash_guard_msg = self._processed_pdb_file.clash_guard(
         new_sites_cart = self.get_sites_cart())
-      if self._missing_atoms is None:
-        self._missing_atoms=missing_atoms(self._processed_pdb_file.all_chain_proxies)
+      # Always recompute: hierarchy may have changed since last process().
+      # None if not usable (NCS shortcut), then computed when needed.
+      self._missing_atoms_records = _missing_atoms_records(
+        acp = self._processed_pdb_file.all_chain_proxies)
+      self._missing_atoms_fingerprint = None
+      if(self._missing_atoms_records is not None):
+        self._missing_atoms_fingerprint = _hierarchy_fingerprint(
+          self._pdb_hierarchy)
     # This must happen after process call.
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
@@ -2325,10 +2366,98 @@ class manager(object):
         scattering_table = SAVE_scatering_table,
         d_min            = SAVE_scatering_table_d_min)
 
+  def _get_missing_atoms_records(self):
+    """
+    Missing atoms records (see _missing_atoms_records()) for current
+    hierarchy. Records obtained at process() are used if hierarchy did not
+    change since (checked by fingerprint), otherwise current hierarchy is
+    processed (model itself is not changed) and records are stored for later
+    calls.
+    """
+    fingerprint = _hierarchy_fingerprint(self.get_hierarchy())
+    if(self._missing_atoms_records is None or
+       self._missing_atoms_fingerprint != fingerprint):
+      pip = self._pdb_interpretation_params
+      if(pip is None): pip = self.get_default_pdb_interpretation_params()
+      # all residues must be interpreted, not only NCS master copy
+      pip = deepcopy(pip)
+      pip.pdb_interpretation.use_ncs_to_build_restraints = False
+      srv = mmtbx.utils.process_pdb_file_srv(
+        crystal_symmetry          = self.crystal_symmetry(),
+        pdb_interpretation_params = pip.pdb_interpretation,
+        stop_for_unknowns         = False,
+        log                       = null_out(),
+        cif_objects               = self._restraint_objects,
+        cif_parameters            = self._monomer_parameters,
+        mon_lib_srv               = self.get_mon_lib_srv(),
+        ener_lib                  = self.get_ener_lib(),
+        use_neutron_distances     = pip.pdb_interpretation.use_neutron_distances)
+      processed_pdb_file, _ = srv.process_pdb_files(
+        hierarchy              = self.get_hierarchy().deep_copy(),
+        allow_missing_symmetry = True)
+      self._missing_atoms_records = _missing_atoms_records(
+        acp = processed_pdb_file.all_chain_proxies)
+      assert self._missing_atoms_records is not None
+      self._missing_atoms_fingerprint = fingerprint
+    return self._missing_atoms_records
+
   def get_missing_atoms(self):
-    if self._missing_atoms is None:
-      self.process(make_restraints=True)
-    return self._missing_atoms
+    """
+    Residues with missing atoms or incomplete, as defined by monomer library
+    (no special treatment of hydrogen atoms, unlike missing_atoms_by_residue).
+
+    Returns dictionary: residue id (with altloc in quotes) ->
+      {'resname', 'class', and either
+       'incomplete': type of incompleteness (e.g. 'backbone_only') or
+       'missing': {'heavy'/'hydrogens': {atom name: chem_comp_atom}}}
+    """
+    result = {}
+    for r in self._get_missing_atoms_records():
+      item = {"resname": r.resname, "class": r.classification}
+      if(r.incomplete): item["incomplete"] = r.incomplete
+      elif(r.missing):  item["missing"] = dict(r.missing)
+      else: continue
+      result[r.legacy_key] = item
+    return result
+
+  def missing_atoms_by_residue(self, include_hydrogens=False):
+    """
+    Find residues with missing atoms. Expected atoms are those of monomer
+    library definitions after applying modifications (as for restraints).
+    Residues are checked per conformer. Residues not in monomer library are
+    not checked. Missing C-terminal OXT is not reported.
+
+    If include_hydrogens:
+      - hydrogen atoms of water are not required;
+      - HG of CYS is not required if SG is bonded (disulfide, metal, etc);
+      - only one of HD1 and HE2 is required for HIS (tautomers).
+
+    Uses current hierarchy, model itself is not changed (see
+    _get_missing_atoms_records()).
+
+    Returns dictionary: residue id (with altloc) -> sorted list of missing
+    atom names (monomer library names).
+    """
+    get_class = iotbx.pdb.common_residue_names_get_class
+    result = collections.OrderedDict()
+    for r in self._get_missing_atoms_records():
+      missing = list(r.missing.get("heavy", {}).keys())
+      if(include_hydrogens and get_class(name=r.resname) != "common_water"):
+        missing_h = set(r.missing.get("hydrogens", {}).keys())
+        if(r.resname == "HIS" and len(missing_h & {"HD1", "HE2"}) == 1):
+          missing_h -= {"HD1", "HE2"}
+        if(r.sg_bonded): missing_h.discard("HG")
+        missing.extend(missing_h)
+      if(len(missing) == 0): continue
+      result[r.key] = sorted(set(result.get(r.key, []) + missing))
+    return result
+
+  def is_atom_complete(self, include_hydrogens=False):
+    """
+    True if no atoms are missing, see missing_atoms_by_residue() for details.
+    """
+    return len(self.missing_atoms_by_residue(
+      include_hydrogens = include_hydrogens)) == 0
 
   def scale_restraints(self, factor, bond_cutoff, angle_cutoff, one_time_scale):
     if self.rsm is None: return

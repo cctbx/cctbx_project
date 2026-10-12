@@ -515,7 +515,7 @@ Example:
     # p.pdb_interpretation.nonbonded_distance_cutoff = nonbonded_distance_cutoff
     model.process(make_restraints=True) #pdb_interpretation_params=p
 
-    missing_atoms_rc = model._missing_atoms
+    missing_atoms_rc = model.get_missing_atoms()
     v=Nietzsche(missing_atoms_rc)
     process_voids(v, model) #.get_restraints_manager())
     if not self.params.quiet: print_voids(v)
