@@ -1345,13 +1345,20 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
   at that total. Otherwise DetermineBondOrders at that total, in the input atom
   order, then RDKit's canonical order, then 10 seeded random orders (it depends on
   the order); the first that succeeds and agrees with the file is taken
-  (search["order"]); none: failure.
-  Without formal charges: the totals -4..+4; valid: DetermineBondOrders succeeds and
-  the bonds agree with the file; totals whose structure charges a carbon set aside
-  when others are valid; one left: taken, charge_certain False; else failure.
+  (search["order"]). If none does and the file charges a carbon with four bonds
+  (e.g. GeoStd's -1 on the CH2 next to a sulfonium), the same is tried with those
+  charges ignored and the total lowered by them (noted in charge_notes);
+  charge_certain stays True. Still none: the formal charges are inconsistent
+  (noted) and the total is searched as without formal charges.
+  Without formal charges, or with inconsistent ones: the totals -10..+10; valid:
+  DetermineBondOrders succeeds and the bonds agree with the file; totals whose
+  structure charges a carbon set aside when others are valid; one left: taken,
+  charge_certain False; else failure.
   Agreement: the file's explicit single/double/triple bonds between heavy atoms,
   bonds aromatic in RDKit apart; bonds from one atom to neighbours of one element
-  (carboxylate, nitro, guanidinium, phosphate) compared as a set of orders.
+  (carboxylate, nitro, guanidinium, phosphate) compared as a set of orders; a file
+  double bond that RDKit draws as a single bond between a +1 and a -1 atom (a
+  sulfoxide S=O as [S+]-[O-]) agrees.
 
   Returns group_args: ok, reason (why not ok), mol (None unless ok; never
   unsanitized; metal-free), rdkit_to_iseq {mol index: model i_seq} (caps and added
