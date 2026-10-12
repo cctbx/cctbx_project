@@ -75,6 +75,19 @@ def _ReportTiming(verbosity, message):
   _lastTime = curTime
   return _VerboseCheck(verbosity, 2,"Time to {}: {:0.3f}".format(message,diff)+"\n")
 
+class _InfoAccumulator(object):
+  """Collects the Optimizer's information string.  += appends a part in O(1),
+  str() joins once.  A plain str attribute is copied in full on every
+  self._infoString += ..., which is quadratic in the number of Movers."""
+  def __init__(self):
+    self._parts = []
+  def __iadd__(self, s):
+    if s:
+      self._parts.append(s)
+    return self
+  def __str__(self):
+    return "".join(self._parts)
+
 def AlternatesInModel(model):
   """Returns a set of altloc names of all conformers in all chains.
   :param model: pdb.hierarchy.model to search for alternates.
@@ -256,7 +269,7 @@ class Optimizer(object):
 
     ################################################################################
     # Initialize internal variables.
-    self._infoString = ""
+    self._infoString = _InfoAccumulator()
     self._warningString = ""
     self._atomDump = ""
     self._waterOccCutoff = 0.66 # @todo Make this a parameter, -WaterOCCcutoff param in reduce
@@ -793,8 +806,8 @@ class Optimizer(object):
       If the object was constructed with fillAtomDump = False, then the atom dump will always be
       empty.
     """
-    ret = self._infoString
-    self._infoString = ""
+    ret = str(self._infoString)
+    self._infoString = _InfoAccumulator()
     return ret
 
   def getWarnings(self):
