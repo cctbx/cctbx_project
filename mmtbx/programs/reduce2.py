@@ -1261,7 +1261,7 @@ NOTES:
         missing = self.model.missing_atoms_by_residue()
         print("Missing atoms found:", file=self.logger)
         for k, v in missing.items():
-          print("  where: '%s' missing:"%k,v)
+          print("  where: '%s' missing:"%k,v, file=self.logger)
         raise Sorry(
           "Model misses non-H atoms. Model must be atom-complete for qmready=true.")
 
