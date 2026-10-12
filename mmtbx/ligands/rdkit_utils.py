@@ -997,43 +997,6 @@ def _generate_models_from_residues(cctbx_model):
     tm = cctbx_model.select(sel)
     yield tm
 
-def _generate_models_from_fragments(cctbx_model):
-  assert 0
-  from mmtbx.conformation_dependent_library import generate_protein_fragments
-  pdb_hierarchy=cctbx_model.get_hierarchy()
-  geometry_restraints_manager=cctbx_model.get_restraints_manager().geometry
-  selections=[[]]
-  for j, threes in enumerate(generate_protein_fragments(pdb_hierarchy,
-                                                        geometry_restraints_manager,
-                                                        length=2,
-                                                        include_non_linked=True,
-                                                        include_non_standard_peptides=True,
-                                                        include_d_amino_acids=True,
-                                                        # verbose=1,
-                                                        )):
-    if threes.are_linked():
-      # selections[-1].append(threes[0].resseq.strip())
-      chain_resseq=(threes[1].parent().parent().id, threes[1].resseq.strip())
-      if chain_resseq not in selections[-1]: selections[-1].append(chain_resseq)
-    else:
-      chain_resseq=(threes[0].parent().parent().id, threes[0].resseq.strip())
-      if chain_resseq not in selections[-1]: selections[-1].append(chain_resseq)
-      selections.append([])
-      chain_resseq=(threes[1].parent().parent().id, threes[1].resseq.strip())
-      if chain_resseq not in selections[-1]: selections[-1].append(chain_resseq)
-    # yield threes.are_linked()
-  for st in selections:
-    if len(st)==1:
-      chain, resseq = st[0]
-      s=f'chain {chain} and resseq {resseq}'
-    else:
-      chain, resseq1 = st[0]
-      tmp, resseq2 = st[-1]
-      s=f'chain {chain} and resseq {resseq1}:{resseq2}'
-    sel = cctbx_model.selection(s)
-    tm = cctbx_model.select(sel)
-    yield tm
-
 def convert_model_to_rdkit_molecules(cctbx_model):
   mols=[]
   mods=[]
