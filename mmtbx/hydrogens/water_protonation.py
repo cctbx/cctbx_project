@@ -104,8 +104,7 @@ def count_environment_hydrogens(hier):
 
 def _hd_flags(ag):
   """``(atoms array, per-atom H/D flags)`` for one atom_group."""
-  # Callers index this array, never ``for a in ats``: af_shared_atom has no
-  # __iter__, so a Python loop ends on a Boost.Python IndexError, ~66 us.
+  # Callers index this array: an af_shared_atom has no __iter__.
   ats = ag.atoms()
   e = ats.extract_element(strip=True)
   return ats, (e == "H") | (e == "D")
@@ -207,8 +206,7 @@ def _cat_ok(cat, pts, o):
   return ok
 
 
-# The H2 cone is sampled at fixed azimuths, so its cosines and sines are
-# constants, as is the normalized fallback sphere.
+# Fixed H2-cone azimuth cosines and sines, and the normalized fallback sphere.
 _CONE_COS = flex.double([math.cos(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
                          for k in range(_WATER_CONE_SAMPLES)])
 _CONE_SIN = flex.double([math.sin(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
@@ -239,7 +237,7 @@ def _ortho_frame(d1):
 
 
 def _split_dirs(a1, a2, cos_half, sin_half):
-  """O-H directions sharing the misfit between two acceptors.
+  """O-H directions equally far off two acceptors.
 
   Both lie in the plane of the unit acceptor directions ``a1`` and ``a2``,
   symmetric about their bisector and H-O-H apart (``cos_half``/``sin_half``
@@ -506,10 +504,8 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
                           min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
   """Copies of the atoms crystal symmetry places within ``radius`` of a water.
 
-  Each copy carries its whole residue group, so an acceptor keeps the bonded
-  neighbours its lobe geometry needs and an N keeps the H that marks it a
-  donor. Copies are environment only: the waters to protonate come from the
-  asymmetric unit, and a mate's placed protons are tracked separately (see
+  Each copy carries its whole residue group. Copies are environment only;
+  a mate's placed protons are tracked separately (see
   :func:`_water_sym_equiv_neighbours`). An equivalent closer than
   ``min_distance_sym_equiv`` to its own site counts as that same atom, which
   the asymmetric unit already holds.
@@ -581,7 +577,6 @@ def _sym_equiv_pairs(sites, crystal_symmetry, radius,
   """
   if not sites.size():
     return []
-  # One table build serves the query for every site.
   tables = super_cell.get_sym_equiv_tables(
     sites_cart=sites, crystal_symmetry=crystal_symmetry, radius=radius,
     min_distance_sym_equiv=min_distance_sym_equiv)
@@ -623,8 +618,8 @@ def _water_sym_equiv_neighbours(sites, crystal_symmetry, radius,
              if _compatible(conf[wi], conf[wj])]
   if not found:
     return by_site, transforms, own
-  # Number the blocks by operator rather than by discovery order, so the slot
-  # order a site sees does not depend on the order the tables list pairs in.
+  # Blocks numbered by operator, independent of the order the tables list
+  # pairs in.
   unit_cell = crystal_symmetry.unit_cell()
   blocks = {}
   for key, op in sorted({str(op): op for _, _, op in found}.items()):
@@ -688,11 +683,8 @@ class _WaterHydrogenPlacer(object):
   per-water neighbour blocks, placed protons) and the placement, refinement
   and basin-hopping logic.
 
-  Only the placed water H move: the model and the water O do not, and every
-  candidate H lies exactly ``oh_length`` from its O. Each water's static
-  neighbour block and water-neighbour list are therefore built once in
-  :meth:`run` and reused by the greedy pass, every relaxation sweep and every
-  basin round.
+  Only the placed water H move; each water's static neighbour block and
+  water-neighbour list are built once in :meth:`run`.
 
   The constructor records the parameters; :meth:`run` does the work, in
   place. Parameter semantics: :func:`place_water_hydrogens`.
@@ -747,9 +739,8 @@ class _WaterHydrogenPlacer(object):
     if not m:
       return None, 0, ok
     ik, im = _tile(k, m)
-    # Squared distances go through parts() and pow2, never .dot() or .norms():
-    # those contract to fused multiply-add in C++, breaking exactness and
-    # flipping threshold tests. Same for every squared distance in this file.
+    # Squared distances via parts() and pow2, never .dot() or .norms() (fused
+    # multiply-add changes the last bits); likewise throughout this file.
     dx, dy, dz = (cands.select(ik) - P.select(im)).parts()
     d = flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)
     bad = (d < self.w_sthr[wi].select(im)).iselection()
@@ -761,7 +752,7 @@ class _WaterHydrogenPlacer(object):
     """Static half of the clearance test, reduced and cached per water.
 
     ``cands`` must be an invariant candidate set (the acceptor directions,
-    the fallback sphere, or one acceptor pair's shared-misfit protons) and
+    the fallback sphere, or one acceptor pair's even-split protons) and
     ``key`` the geometry-dict slot to cache under.
     Returns ``(ok, mins)``: the per-candidate flag and the per-candidate
     minimum squared distance, the latter None when the water has no static
@@ -820,11 +811,9 @@ class _WaterHydrogenPlacer(object):
   def _clear(self, wi, cands, nbr_slots, static_key=None, own_fixed=()):
     """Clearance test over the candidate H positions of one water.
 
-    Every candidate lies exactly ``oh_length`` from the water O, so water
-    ``wi``'s cached static block (a ball of
-    ``oh_length + _WATER_CLEARANCE_RADIUS`` about the O, own atoms already
-    dropped) covers every candidate's own clearance ball. The test is one dense
-    (candidate x neighbour) block.
+    One dense (candidate x neighbour) block against water ``wi``'s static
+    block (a ball of ``oh_length + _WATER_CLEARANCE_RADIUS`` about the O, own
+    atoms dropped) and its neighbouring protons.
 
     ``nbr_slots`` are the pool slots that may lie near this water, its own
     excluded; they index symmetry equivalents as readily as placed protons.
@@ -839,8 +828,7 @@ class _WaterHydrogenPlacer(object):
     (static or placed) by ``_WATER_MIN_H_CLEARANCE``; the clearance distances
     are left to :meth:`_Clearance.best_at`.
     """
-    # Squared distances throughout: the thresholds and the cap are exact
-    # squares and sqrt is monotone.
+    # Squared distances throughout.
     k = cands.size()
     cl = _Clearance(k)
     if static_key is not None:
@@ -1105,10 +1093,9 @@ class _WaterHydrogenPlacer(object):
     j = int(rows[flex.max_index(c_cl.best_at(rows))])
     h2_xyz = cone_pts[j]
 
-    # Both protons on acceptors: turn the water so they share the misfit
-    # between the acceptors' angle and H-O-H, as real waters bend both
-    # bonds, if that stays clash-free and away from cations. Not for a
-    # given H1, nor for lone-pair aiming.
+    # Both protons on acceptors: turn the water so each is equally far off its
+    # acceptor, if that stays clash-free and away from cations. Not for a given
+    # H1, nor for lone-pair aiming.
     if (fixed_d1 is not None or self.lone_pair_directed or h1_k < 0
         or rank != 3 or not use):
       return h1_xyz, h2_xyz
@@ -1121,8 +1108,8 @@ class _WaterHydrogenPlacer(object):
         k2, best = k, dot
     if k2 < 0:
       return h1_xyz, h2_xyz
-    # The pair's positions, cation test and static clearance never change,
-    # so they are cached per water and acceptor pair.
+    # Positions, cation test and static clearance, cached per water and
+    # acceptor pair.
     key = (h1_k, k2)
     split = g.get(("split",) + key, False)
     if split is False:
@@ -1138,8 +1125,6 @@ class _WaterHydrogenPlacer(object):
       return h1_xyz, h2_xyz
     pts = split[0]
     s1, s2 = pts[0], pts[1]
-    # One test for both; H1 settled first only adds its own equivalent,
-    # which the test already checks.
     if self._clear(wi, pts, nbr_slots, ("split_static",) + key,
                    own_fixed=(s1,)).ok.all_eq(True):
       return s1, s2
@@ -1173,13 +1158,9 @@ class _WaterHydrogenPlacer(object):
   def _dirty(self, wi):
     """Whether re-placing water ``wi`` could move its H.
 
-    A water is placed against its static surroundings, which never move, and
-    the placed H of the waters in ``w_wnbr[wi]`` and the symmetry
-    equivalents in ``w_sym_nbr[wi]``, an equivalent moving exactly when its
-    own water does. If none of those H has moved since this water was last
-    placed, the placement re-derives the two positions it already holds. The
-    monotonic tick is bumped once per water per sweep, so a neighbour that
-    moves earlier in the same sweep still counts.
+    True if the water was kicked, or if a placed H of the waters in
+    ``w_wnbr[wi]`` or their symmetry equivalents in ``w_sym_nbr[wi]`` moved
+    since it was last placed. The tick is bumped once per water per sweep.
     """
     t = self.w_placed_at[wi]
     if t < 0:
@@ -1212,11 +1193,7 @@ class _WaterHydrogenPlacer(object):
       self.w_placed_at[wi] = self.tick
 
   def _snapshot(self):
-    """Capture the placed-H state as ``(coords, placed_at, moved_at)``.
-
-    Whether a water may be skipped is a function of the coordinates and the
-    stamps together, so the three are captured and restored as one.
-    """
+    """Capture the placed-H state as ``(coords, placed_at, moved_at)``."""
     return (list(self.placed_coords), list(self.w_placed_at),
             list(self.w_moved_at))
 
@@ -1273,7 +1250,6 @@ class _WaterHydrogenPlacer(object):
     hier = self.hier
     assert hier.models_size() <= 1, (
       f"place_water_hydrogens takes one model, not {hier.models_size()}")
-    # Every test below reads the element column.
     check_for_missing_elements(hier)
     # Resolve before stripping, which would remove the D this keys on.
     if self.geometry is None:
@@ -1281,8 +1257,7 @@ class _WaterHydrogenPlacer(object):
     oh, self.hoh_deg = _WATER_GEOMETRY[self.geometry]
     if self.oh_length is None:
       self.oh_length = oh
-    # What each water carried is read off the strip; the walk below sees the
-    # same protons in every other mode.
+    # The strip records what each water carried.
     stripped = {}
     if self.existing_h == "reorient":
       stripped = _strip_water_hydrogens(hier)
@@ -1292,20 +1267,16 @@ class _WaterHydrogenPlacer(object):
     if not atoms:
       return None
     sel.reset_i_seq()
-    # Conformer index per atom, 0 for blank; which atoms coexist follows
-    # cctbx's rule (see _compatible). An improper altloc (one atom name both
-    # blank and in an altloc) would read as an altloc of its own.
+    # Conformer index per atom, 0 for blank (see _compatible).
     ci = hier.get_conformer_indices()
     if " " in ci.index_altloc_mapping:
       hier.overall_counts().raise_improper_alt_conf_if_necessary()
     conf = ci.conformer_indices
     altloc_index = dict(ci.index_altloc_mapping)
 
-    # Gather the waters to protonate: one per water conformer, a residue's
-    # blank atoms plus one altloc's (see _water_conformers), so a blank O
-    # whose H sit in altlocs A and B is two complete waters. Every water H
-    # is also listed once for the clash statistics, the residue being the
-    # water it belongs to.
+    # The waters to protonate, one per water conformer (see
+    # _water_conformers); every water H is also listed once for the clash
+    # statistics.
     waters = []
     # Single-H waters to report, once per such H, annotated once the tree
     # exists.
@@ -1400,11 +1371,8 @@ class _WaterHydrogenPlacer(object):
     # Water H pairs across symmetry for the clash counts, built by _stats.
     self.h_sym_pairs = None
 
-    # Neighbouring asymmetric units, as environment atoms appended after the
-    # model's own. They keep the asymmetric unit's indices 0..n-1 valid as
-    # both tree and i_seq, and the waters come from the walk above, so only
-    # the model's waters are protonated. Only placement and the single-H
-    # report read them.
+    # Symmetry-equivalent environment atoms, appended after the model's own so
+    # the indices 0..n-1 stay valid.
     self.sym_hier = []
     sym_atoms = []
     sym_xyz = flex.vec3_double()
@@ -1416,7 +1384,7 @@ class _WaterHydrogenPlacer(object):
             _WATER_ACCEPTOR_RADIUS), self.min_distance_sym_equiv)
     atoms = atoms + sym_atoms
     self.atoms = atoms
-    # A copy keeps its source's altloc, whatever the operator, as in cctbx.
+    # A copy keeps its source's altloc.
     self.conf = conf.concatenate(conf.select(sym_src))
 
     # Static neighbours (protein, ligands, water O, pre-existing H) never
@@ -1431,9 +1399,7 @@ class _WaterHydrogenPlacer(object):
     self.static_thr.set_selected(self.static_is_h,
                                  _WATER_MIN_H_CLEARANCE ** 2)
 
-    # N atoms that already carry an H are donors, not acceptors (amide,
-    # ammonium, guanidinium, protonated His ring N, ...). O always accepts,
-    # so only N is filtered.
+    # N atoms carrying an H are donors, not acceptors.
     self.donor_n = set()
     h_idx = self.static_is_h.iselection()
     if h_idx.size():
@@ -1458,18 +1424,15 @@ class _WaterHydrogenPlacer(object):
       (rid, self._nearest_cation(o_xyz, own_idx, c), action)
       for rid, o_xyz, own_idx, c, action in single]
 
-    # Per-water constants: every neighbour list the placement needs, built
-    # once here and reused by the greedy pass, every relaxation sweep and
-    # every basin round.
+    # Per-water neighbour lists, built once for every pass.
     n = len(waters)
     self.w_geom = [None] * n
     self.placed_coords = []
     self.placed_xyz = flex.vec3_double(2 * n, (0.0, 0.0, 0.0))
-    # Protons the clearance test may draw on: the placed ones, plus one
+    # Protons the clearance test draws on: the placed ones, plus one
     # transformed block per symmetry operator that brings another water's
-    # protons into reach. Block b slot s lives at b * n_slots + s, so a
-    # symmetry-equivalent proton is just another slot. Without them the pool
-    # is the placed array itself and nothing extra is paid.
+    # protons into reach, block b slot s at b * n_slots + s. Without symmetry
+    # the pool is the placed array itself.
     self.n_slots = 2 * n
     self.pool_xyz = self.placed_xyz
     self.sym_tf = [None]
@@ -1633,11 +1596,9 @@ class _WaterHydrogenPlacer(object):
     # The placed-H neighbourhood of every water, now that all of them exist.
     self.w_nbr_slots = [nbr_slots(wi) for wi in range(n)]
 
-    # Refinement sweeps: re-place each water against the final set of all
-    # placed H, its own excluded. With refine_tol > 0 this stops early once a
-    # sweep reduces the close (<2.0 A) contact count by fewer than refine_tol
-    # (n_refine is then a cap); refine_tol == 0 runs all n_refine sweeps. The
-    # best state is kept and restored at the end.
+    # Refinement sweeps: re-place each water against all other placed H,
+    # stopping once a sweep removes fewer than refine_tol close (< 2.0 A)
+    # contacts (0: all n_refine sweeps). The best state is kept.
     stats = self._stats() \
         if (self.on_state or self.n_refine or self.n_basin) else None
     if self.on_state is not None:
@@ -1703,8 +1664,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
   excluded as donors), else the max-clearance direction over a dense sphere;
   H2 on the H-O-H cone about O-H1, at a clash-free angle toward
   a second acceptor when there is one, else the clearest; with both on
-  acceptors, the water turns so the two share the misfit between the
-  acceptors' angle and H-O-H, where that stays clash-free. Candidates are
+  acceptors, the water turns so each is equally far off its acceptor, where
+  that stays clash-free. Candidates are
   scored against every other atom and every other water's placed H; waters go
   most-crowded first and new H inherit the parent O's occupancy and B
   factor.
@@ -1746,17 +1707,14 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       sweep, ``"basin N.M"`` during basin-hopping; ``stats`` is the
       ``_water_clash_stats`` tuple, under ``crystal_symmetry``.
   crystal_symmetry : cctbx.crystal.symmetry or None, optional
-      Honour crystal packing: atoms that symmetry places within reach of a
-      water join its environment, so H at a lattice contact avoid the
-      neighbouring asymmetric units instead of pointing into them. None
-      (default) treats the model as isolated. A symmetry mate contributes its
-      O and its placed protons both, and contacts with its protons count
-      towards the kept state.
+      Symmetry-equivalent atoms within reach of a water join its
+      environment, placed protons included, and contacts with those protons
+      count towards the kept state. None (default) treats the model as
+      isolated.
   min_distance_sym_equiv : float, optional
       Distance in A under which a symmetry equivalent counts as coincident
       with its own site, and so as that same atom rather than a second copy
-      (default 0.5). A water refined a little off a symmetry element needs a
-      larger value to be recognised as sitting on it.
+      (default 0.5).
   geometry : str or None, optional
       O-H length and H-O-H angle, a key of ``_WATER_GEOMETRY``: ``"xray"``
       (0.850 A, 103.91 deg) or ``"neutron"`` (0.980 A, 103.91 deg), cctbx's
@@ -2020,11 +1978,9 @@ def _experiment_type(pdb_in):
   """The model's experiment type in plain words and the water geometry it
   implies, ``(name, geometry)``.
 
-  Neutron (H at the nucleus) for neutron, joint X-ray/neutron and electron
-  (microscopy or diffraction) data, whose potential peaks near the nucleus,
-  as mmtbx.model restrains water for the electron scattering table; X-ray
-  for X-ray data. ``name`` is None when the model records no experiment
-  type, ``geometry`` None for one implying neither.
+  Neutron for neutron, joint X-ray/neutron and electron (microscopy or
+  diffraction) data; X-ray for X-ray data. ``name`` is None when the model
+  records no experiment type, ``geometry`` None for one implying neither.
   """
   exp = pdb_in.get_experiment_type()
   if exp.is_join_xn():

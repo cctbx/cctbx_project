@@ -46,22 +46,22 @@ existing_h = *keep complete reorient
 symmetry = True
   .type = bool
   .short_caption = Honour crystal symmetry
-  .help = "Add the atoms that crystal symmetry places near a water to its environment, so H at a lattice contact avoid the neighbouring asymmetric units instead of pointing into them. Ignored for a model without a unit cell and space group, and for an electron microscopy model."
+  .help = "Include the symmetry-equivalent atoms near each water in its environment. Ignored for a model without a unit cell and space group, and for an electron microscopy model."
 lone_pair = False
   .type = bool
   .short_caption = Lone-pair-directed placement
-  .help = "Aim each O-H at an acceptor lone-pair lobe (derived from its bonded-neighbour geometry) rather than its nucleus, for better D-H...A angles."
+  .help = "Aim each O-H at an acceptor lone-pair lobe (derived from its bonded-neighbour geometry) rather than its nucleus."
 refine
   .short_caption = Refinement sweeps
 {
   max_sweeps = 5
     .type = int(value_min=0)
     .short_caption = Maximum relaxation sweeps
-    .help = "Maximum relaxation sweeps re-placing each water against the final environment to relax water-water clashes. Each sweep costs about one placement pass; 0 disables refinement. Sweeping stops early once a sweep removes fewer than tolerance close contacts, so a generous cap is safe."
+    .help = "Maximum relaxation sweeps, each re-placing every water against the others' current H; 0 disables refinement."
   tolerance = 1
     .type = int(value_min=0)
     .short_caption = Early-stop tolerance
-    .help = "Stop refining once a sweep removes fewer than this many close (<2.0 A) H-H contacts (1 = stop at a true plateau, larger = stop sooner on diminishing returns, 0 = run all max_sweeps). The best sweep is always kept."
+    .help = "Stop refining once a sweep removes fewer than this many close (< 2.0 A) H-H contacts; 0 runs all max_sweeps. The best sweep is kept."
 }
 basin
   .short_caption = Basin-hopping
@@ -69,7 +69,7 @@ basin
   rounds = 0
     .type = int(value_min=0)
     .short_caption = Basin-hopping rounds
-    .help = "Basin-hopping rounds after refinement (0 = off): each round randomly re-orients the still-clashing waters and relaxes, keeping the best. Deterministic (seeded); helps only where a better orientation exists."
+    .help = "Basin-hopping rounds after refinement (0 = off): each round randomly re-orients the still-clashing waters and relaxes, keeping the best. Seeded, so deterministic."
 }
 stats = False
   .type = bool
@@ -102,11 +102,10 @@ Output:
   <model-stem>_waters_protonated.<ext> unless output.file_name is given. The
   format follows the input (output.target_output_format overrides it).
 
-By default it is idempotent: waters that already carry H are left untouched.
-That includes a water carrying a single H, since omitting the second proton
-is a common way of writing hydroxide; those are reported rather than
-completed. existing_h=complete builds the missing partner on the existing
-proton's cone, and existing_h=reorient strips all water H and re-places both.
+By default, waters that already carry H are left untouched, including those
+carrying a single H (possibly hydroxide), which are reported.
+existing_h=complete builds the missing partner on the existing proton's cone,
+and existing_h=reorient strips all water H and re-places both.
 '''
   datatypes = ['model', 'phil']
   master_phil_str = master_phil_str
@@ -124,7 +123,6 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     n_models = model.get_number_of_models()
     if n_models > 1:
       raise Sorry(f"Multi-model files are not supported ({n_models} models).")
-    # Water, H and acceptor detection read the element column.
     try:
       check_for_missing_elements(
         model.get_hierarchy(),
@@ -144,8 +142,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     experiment = water_protonation._experiment_type(pdb_in)[0]
     print(f"Experiment type: {experiment or 'not given'}", file=self.logger)
 
-    # Water geometry: honour an explicit choice, else infer from the structure.
-    # The note says why, unless the experiment type decided.
+    # Water geometry: the explicit choice, else from the structure.
     geometry = self.params.water_geometry
     if geometry == "auto":
       geometry, note = water_protonation._detect_geometry(pdb_in, hier)
@@ -165,22 +162,15 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
         print("Crystal symmetry: none in the model", file=self.logger)
         cs = None
       elif pdb_in.get_experiment_type().is_electron_microscopy():
-        # The cell of an electron microscopy model is the map box, not a
-        # lattice.
         print("Crystal symmetry: not used (cell is the map box)",
               file=self.logger)
         cs = None
       else:
         print(f"Crystal symmetry: {cs.space_group_info()}", file=self.logger)
 
-    # Element: "auto" leaves the per-water choice (the element it carries,
-    # else D if the model has D, else H) to the placer (element=None);
-    # "H"/"D" force it.
+    # Element: None leaves the choice to the placer, per water.
     placer_element = None if self.params.element == "auto" else self.params.element
 
-    # Consistency warning: deuterium is modelled only from neutron (or joint)
-    # data, whose O-D distances are the longer neutron value. The reverse (H at
-    # the neutron length) is legitimate and is not flagged.
     places_d = (placer_element == "D"
                 or (placer_element is None
                     and water_protonation._has_deuterium(hier)))
@@ -194,9 +184,8 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     n_before = self._count_water_h(hier)
     report_stats = self.params.stats
 
-    # Stream the clash table as the sweeps complete: the summary and header
-    # print lazily on the first state, when the H count is final, then each
-    # row as its sweep finishes.
+    # The summary and table header print at the first state, then one row
+    # per state.
     header = {"printed": False}
     def on_state(label, stats):
       if not header["printed"]:
@@ -236,8 +225,6 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     self._print_partial_waters(result.partial_waters)
 
     self._write_output(model)
-    # Placement added atoms to the hierarchy in place, past the loaded
-    # model's caches; the result is a model built on it.
     hier.atoms().reset_i_seq()
     self.model = mmtbx.model.manager(
       model_input=None, pdb_hierarchy=hier,
@@ -253,8 +240,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     dropping to mmCIF for structures too large for the standard PDB format.
     The writer fixes the extension to match the format actually written.
     """
-    # New H atoms come back with blank serial numbers; the mmCIF writer
-    # rejects blanks as "invalid number literal". Re-number first.
+    # New H atoms have blank serial numbers.
     model.get_hierarchy().atoms().reset_serial()
     target = self.params.output.target_output_format
     if (target == "mmcif"
@@ -325,7 +311,6 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     """One line on the water H/D before and after, ``(H, D)`` counts."""
     n_before, n_now = sum(before), sum(now)
     kind = "H/D" if all(now) else ("D" if now[1] else "H")
-    # Reorient strips every water H, so the net change alone reads as "+0".
     if self.params.existing_h == "reorient" and n_before:
       return f"Water {kind} atoms: {n_before} removed, {n_now} placed"
     return f"Water {kind} atoms: {n_before} -> {n_now} (+{n_now - n_before})"
@@ -339,7 +324,7 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
     hier = model.get_hierarchy()
     if not any(not water_protonation._is_water(ag.resname)
                for ag in hier.atom_groups()):
-      return  # solvent-only model: there is nothing else to protonate
+      return  # solvent-only model
     if water_protonation.count_environment_hydrogens(hier):
       return
     self._warn("no hydrogens outside the waters. Placement checks water H "
@@ -360,7 +345,6 @@ proton's cone, and existing_h=reorient strips all water H and re-places both.
       "completed": "completed (any hydroxide is now water)",
       "stripped": "stripped and re-placed",
     }
-    # One mode can produce more than one outcome.
     for action in ("completed", "stripped", "kept"):
       group = [p for p in partial if p[2] == action]
       if not group:

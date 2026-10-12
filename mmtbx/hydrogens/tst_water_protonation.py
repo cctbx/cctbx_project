@@ -131,8 +131,7 @@ END
 _NO_ELEMENT_PDB = "\n".join(l[:76].rstrip()
                             for l in _TWO_ACCEPTOR_PDB.split("\n"))
 
-# A water by an unidentified atom in a crystal. The wwPDB writes such an
-# atom as UNX with element X, which has no scattering type.
+# A water by an unidentified atom (UNX, element X) in a crystal.
 _UNKNOWN_ATOM_PDB = """\
 CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
 HETATM    1  UNK UNX A   1       5.000   5.000   5.000  1.00 10.00           X
@@ -165,7 +164,7 @@ END
 # A water in the plane of an sp2 carbonyl (C=O with the C bonded to two
 # more C, defining the plane), off to one side. With lone-pair-directed
 # placement the O-H aims at an in-plane lobe (~120 deg from C=O); without
-# it, at the O nucleus (a poorer C=O...H angle).
+# it, at the O nucleus.
 _CARBONYL_PDB = """\
 HETATM    1  O   HOH W   1       2.000   1.500   0.000  1.00 10.00           O
 HETATM    2  O   ACO A   1       0.000   0.000   0.000  1.00 10.00           O
@@ -198,9 +197,9 @@ _BAD_DEUTERATED_PDB = (_BAD_PROTONATED_PDB
                        .replace(" H1 ", " D1 ").replace(" H2 ", " D2 ")
                        .replace("           H\n", "           D\n"))
 
-# A water carrying a single H (a common way of writing hydroxide), with one
-# acceptor along +x. The deposited proton points along +y, well off the
-# acceptor, so completing it must build the partner on *that* proton's cone.
+# A water carrying a single H, with one acceptor along +x. The deposited
+# proton points along +y, well off the acceptor, so completing it must build
+# the partner on *that* proton's cone.
 _SINGLE_H_WATER_PDB = """\
 HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
 HETATM    2  H1  HOH W   1       0.000   0.957   0.000  1.00 10.00           H
@@ -773,9 +772,7 @@ def exercise_h2_after_acceptor_fallback():
   Places on ``_fallback_cage_pdb`` with the gas-phase geometry it is
   built for, where every H1 candidate clashes and the fallback settles on
   the lone acceptor. With no other acceptor, H2 must take the clash-free
-  point of the sampled H-O-H cone with the most clearance; scoring H1's
-  acceptor, which every cone point sees at the same angle, would leave the
-  choice to rounding noise.
+  point of the sampled H-O-H cone with the most clearance.
   """
   hier = _hierarchy(_fallback_cage_pdb())
   wp.place_water_hydrogens(hier, n_refine=0, geometry="gas_phase")
@@ -838,7 +835,7 @@ def exercise_refinement_reduces_clashes():
 def exercise_completed_water_survives_refinement():
   """Refinement sweeps and basin kicks must hold a completed water's O-H1
   axis fixed: the deposited proton never moves and the partner stays on its
-  cone, instead of the axis being re-derived from the environment."""
+  cone."""
   hier = _hierarchy(_MIXED_CLUSTER_PDB)
   before = {}
   for ag in hier.atom_groups():
@@ -1070,8 +1067,7 @@ def _min_sym_equiv_proton_gap(hier, cell_a):
   """Closest approach between a placed water proton and the lattice copy of
   any proton one cell away along a.
 
-  The translations are applied here rather than taken from the symmetry
-  machinery, so the test measures the placement instead of agreeing with it.
+  The translations are applied here, not through the symmetry code.
 
   Parameters
   ----------
@@ -1341,11 +1337,11 @@ def exercise_reorient_keeps_isotope():
 
 
 def exercise_missing_elements_rejected():
-  """A model without element columns is refused, not placed on blindly.
+  """A model without element columns is refused.
 
   Runs the placer and the program on a fixture with its element columns
   stripped. The placer must raise an AssertionError and the program a Sorry,
-  both from the missing-element check, instead of skipping every water. The
+  both from the missing-element check. The
   program's checks must accept an unidentified atom written as element X.
   """
   try:
@@ -1378,7 +1374,7 @@ def exercise_multi_model_rejected():
 
   Runs the program on a two-model file and expects a Sorry naming the
   problem, raised before any placement; the placer, called directly on the
-  same hierarchy, must raise an AssertionError instead of placing.
+  same hierarchy, must raise an AssertionError.
   """
   file_name = "tst_water_protonation_multi_model.pdb"
   with open(file_name, "w") as f:
