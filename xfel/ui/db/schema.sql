@@ -97,11 +97,18 @@ CREATE TABLE IF NOT EXISTS `mydb`.`task` (
   `type` VARCHAR(45) NOT NULL,
   `trial_id` INT NULL,
   `parameters` TEXT NULL,
+  `parent_task_id` INT NULL,
   PRIMARY KEY (`id`),
   INDEX `fk_task_trial1_idx` (`trial_id` ASC),
+  INDEX `fk_task_task1_idx` (`parent_task_id` ASC),
   CONSTRAINT `fk_task_trial1`
     FOREIGN KEY (`trial_id`)
     REFERENCES `mydb`.`trial` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_task_task1`
+    FOREIGN KEY (`parent_task_id`)
+    REFERENCES `mydb`.`task` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
