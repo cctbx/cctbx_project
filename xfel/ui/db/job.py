@@ -1188,8 +1188,16 @@ def submit_all_jobs(app):
       # to the version -- this also covers resubmitting a merge whose job the
       # user deleted, since the on-disk folder was removed by delete() and the
       # new submission writes to the same path under the same version number.
+      current_task_ids = {t.id for t in tasks}
       current_local_task_ids = {t.id for t in tasks if t.scope == 'local'}
       current_run_ids = {run.id for run, rungroup in runs_rungroups}
+      def ran_task_no_longer_in_dataset(version):
+        # Tasks are content-addressed, so editing a global stage's parameters
+        # gives the dataset a different task. A version that ran the old task
+        # is a result of the old settings; it is left as it is, and the new
+        # settings get a version of their own (see below).
+        return any(j.task and j.task.scope == 'global' and j.task_id not in current_task_ids
+                   for j in version.jobs)
       for version in versions:
         # Only process versions created under the current task list. If any
         # local input belongs to a task no longer in the dataset's task list,
@@ -1206,6 +1214,8 @@ def submit_all_jobs(app):
         # resubmitting it as-is would merge the wrongly-tagged runs. The new
         # dataset version created below picks up only the currently-tagged runs.
         if not all(j.run_id in current_run_ids for j in local_inputs):
+          continue
+        if ran_task_no_longer_in_dataset(version):
           continue
 
         if any(j.task_id == task.id for j in version.jobs):
@@ -1262,6 +1272,11 @@ def submit_all_jobs(app):
         # later global tasks (e.g. phenix) key off the version's merge job.
         removed_runs = prev_task.scope != 'global' and \
           any(j.run_id not in current_run_ids for j in latest_version_local_jobs)
+        # Also roll one when a global stage's parameters were edited since the
+        # latest version ran: that version is frozen above, so the new task
+        # needs a version of its own, built from the same local jobs.
+        edited_global_task = prev_task.scope != 'global' and \
+          ran_task_no_longer_in_dataset(latest_version)
         # Note: the new version's local-input set may duplicate that of an older
         # version (e.g. de-tagging C from {A,B,C} reproduces an earlier {A,B}
         # version). This is intentional -- keeping the latest version correct is
@@ -1269,7 +1284,7 @@ def submit_all_jobs(app):
         # version already exists" guard here. Only one corrective version is
         # created: on the next pass latest == the corrected set with no removed
         # runs, so it is not repeated.
-        if new_jobs or removed_runs:
+        if new_jobs or removed_runs or edited_global_task:
           next_version = latest_version.version + 1
 
       if next_version is not None:
