@@ -315,6 +315,25 @@ def _drop_unbonded_for_probe(model_manager, probe2, processed=False):
     log               = null_out())
   return trimmed, dropped, False
 
+def _master_with_atoms_of(processed_master, hierarchy, in_place):
+  """processed_master (an ensemble's first model, processed for probe2, as
+  clashscore2.processed_master is) carrying the coordinates, occupancies and B
+  factors of the single-model hierarchy, so that model need not be processed.
+  in_place writes into the master itself, else into a copy. None when the atoms
+  do not correspond one-to-one."""
+  from mmtbx.validation.clashscore2 import (
+    _apply_atom_parameters, _atom_index_by_key, _deep_copy_with_selection_support,
+    _gather_atom_parameters)
+  data = _gather_atom_parameters(
+    _atom_index_by_key(processed_master.get_hierarchy()), hierarchy)
+  if data is None:
+    return None
+  work = processed_master
+  if not in_place:
+    work = _deep_copy_with_selection_support(processed_master)
+  _apply_atom_parameters(work, *data)
+  return work
+
 def _probe_dots_note(lines):
   """Explain missing or partial probe dots in the kinemage and on stderr."""
   import sys
@@ -447,7 +466,7 @@ def make_probe_dots(hierarchy, keep_hydrogens=False, restraint_objects=None,
 def make_probe_dots_from_model(model_manager, per_model=False,
                                approach="self", source_selection=None,
                                target_selection=None, vdw_dots=False,
-                               processed=False):
+                               processed=False, processed_master=None):
   """Generate probe dot kinemage output from an already-hydrogenated model.
 
   Like make_probe_dots() but skips reduce2 + Optimizer since the model
@@ -465,6 +484,9 @@ def make_probe_dots_from_model(model_manager, per_model=False,
   with probe2.getPdbInterpretationParams() (as clashscore2.processed_model has),
   so it is used as is, or copied when it has waters (probe2 adds Phantom
   Hydrogens to the model it runs on), instead of being interpreted again.
+  processed_master does the same for each model of an ensemble, given its first
+  model so processed (clashscore2.processed_master); a model whose atoms differ
+  from it is interpreted as before.
   """
   try:
     import mmtbx.model
@@ -488,6 +510,16 @@ def make_probe_dots_from_model(model_manager, per_model=False,
     r = pdb.hierarchy.root()
     mdc = m.detached_copy()
     r.append_model(mdc)
+
+    if processed_master is not None:
+      from mmtbx.validation.clashscore2 import _hierarchy_contains_waters
+      work = _master_with_atoms_of(processed_master, r,
+                                   in_place=not _hierarchy_contains_waters(r))
+      if work is not None:
+        sections.append(_run_probe2_kinemage(
+          work, approach=approach, source_selection=source_selection,
+          target_selection=target_selection, vdw_dots=vdw_dots, processed=True))
+        continue
 
     # Build a model manager for this sub-model, preserving restraint objects
     # (e.g. CCD restraints for element-stub-shadowed residues like AS)
@@ -1190,11 +1222,15 @@ def _build_group_body(hierarchy, bond_hash, i_seq_name_hash, pdbID,
 
 def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
                                keep_hydrogens, include_cablam_wheels,
-                               plain_coils, vdw_dots=False):
+                               plain_coils, vdw_dots=False,
+                               processed_master=None, results_by_model=None):
   """One animatable group per MODEL ("@group {mN pdbID} dominant animate"),
   each with that model's sticks, markup, ribbons, and dots.  Each model is
   interpreted and validated separately (correct for superimposed ensembles,
-  and linear in the model count)."""
+  and linear in the model count), except that processed_master stands in for
+  interpreting a model whose atoms match it, and results_by_model ({model id:
+  validator results, keyed as build_kinemage_from_model's arguments}) for
+  running the validators it holds."""
   import mmtbx.model
   from libtbx.utils import null_out
   hierarchy = model.get_hierarchy()
@@ -1242,14 +1278,19 @@ def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
   for i_mod, m in enumerate(hierarchy.models()):
     r = pdb.hierarchy.root()
     r.append_model(m.detached_copy())
-    sub = mmtbx.model.manager(
-      model_input       = None,
-      pdb_hierarchy     = r,
-      stop_for_unknowns = False,
-      crystal_symmetry  = model.crystal_symmetry(),
-      restraint_objects = model.get_restraint_objects(),
-      log               = null_out())
-    sub.process(make_restraints=True, pdb_interpretation_params=p)
+    sub = None
+    if processed_master is not None:
+      # Nothing here changes the model, so the master is reused in place.
+      sub = _master_with_atoms_of(processed_master, r, in_place=True)
+    if sub is None:
+      sub = mmtbx.model.manager(
+        model_input       = None,
+        pdb_hierarchy     = r,
+        stop_for_unknowns = False,
+        crystal_symmetry  = model.crystal_symmetry(),
+        restraint_objects = model.get_restraint_objects(),
+        log               = null_out())
+      sub.process(make_restraints=True, pdb_interpretation_params=p)
     sub_h = sub.get_hierarchy()
     geometry = sub.get_restraints_manager().geometry
 
@@ -1264,29 +1305,37 @@ def _build_multimodel_kinemage(model, pdbID, ss_annotation, probe_dots_kin,
                       for mdl in sub_h.models() for chain in mdl.chains())
     has_rna = any(chain.is_na()
                   for mdl in sub_h.models() for chain in mdl.chains())
-    rot_outliers = rotalyze(pdb_hierarchy=sub_h, outliers_only=True)
-    rama_result = ramalyze(pdb_hierarchy=sub_h, outliers_only=True)
-    cb_result = cbetadev(pdb_hierarchy=sub_h, outliers_only=True)
-    omega_result = omegalyze.omegalyze(
-        pdb_hierarchy=sub_h, nontrans_only=True, out=None, quiet=True)
+    given = (results_by_model or {}).get(m.id.strip(), {})
+    def result(name, run):
+      return given[name] if given.get(name) is not None else run()
+    rot_outliers = result("rot_outliers",
+      lambda: rotalyze(pdb_hierarchy=sub_h, outliers_only=True))
+    rama_result = result("rama_result",
+      lambda: ramalyze(pdb_hierarchy=sub_h, outliers_only=True))
+    cb_result = result("cb_result",
+      lambda: cbetadev(pdb_hierarchy=sub_h, outliers_only=True))
+    omega_result = result("omega_result", lambda: omegalyze.omegalyze(
+        pdb_hierarchy=sub_h, nontrans_only=True, out=None, quiet=True))
     cablam_result = None
     if has_protein:
       from mmtbx.validation.cablam import cablamalyze
-      cablam_result = cablamalyze(
-          pdb_hierarchy=sub_h, outliers_only=True, out=null_out(), quiet=True)
+      cablam_result = result("cablam_result", lambda: cablamalyze(
+          pdb_hierarchy=sub_h, outliers_only=True, out=null_out(), quiet=True))
     rna_puckers_result = None
     suite_result = None
     if has_rna:
-      rna_puckers_result = rna_validate.rna_puckers(pdb_hierarchy=sub_h)
+      rna_puckers_result = result("rna_puckers_result",
+        lambda: rna_validate.rna_puckers(pdb_hierarchy=sub_h))
       from mmtbx.suitename.suitealyze import suitealyze
-      suite_result = suitealyze(pdb_hierarchy=sub_h, outliers_only=True)
+      suite_result = result("suite_result",
+        lambda: suitealyze(pdb_hierarchy=sub_h, outliers_only=True))
     from mmtbx.validation.restraints import combined as _restraints_combined
-    restraints_result = _restraints_combined(
+    restraints_result = result("restraints_result", lambda: _restraints_combined(
         pdb_hierarchy=sub_h,
         xray_structure=sub.get_xray_structure(),
         geometry_restraints_manager=geometry,
         ignore_hd=True,
-        outliers_only=True)
+        outliers_only=True))
 
     model_label = m.id.strip()
     if len(model_label) == 0:
@@ -1328,7 +1377,9 @@ def build_kinemage_from_model(
     keep_hydrogens=False,
     include_cablam_wheels=False,
     plain_coils=False,
-    vdw_dots=False):
+    vdw_dots=False,
+    processed_master=None,
+    results_by_model=None):
   """High-level kinemage builder that takes an mmtbx.model.manager.
 
   Encapsulates the i_seq_name_hash / bond_hash / ss_bonds / sites_cart plumbing
@@ -1360,16 +1411,20 @@ def build_kinemage_from_model(
   Returns:
     The kinemage string.
 
-  Multi-model files get one animatable group per MODEL (injected validator
-  results are ignored and re-run per model; probe_dots_kin may be a per-model
-  list, a concatenated string, or "" to suppress dots).
+  Multi-model files get one animatable group per MODEL (probe_dots_kin may be
+  a per-model list, a concatenated string, or "" to suppress dots). There the
+  single-model validator arguments are ignored: results_by_model gives them per
+  model ({model id: {argument name: result}}), and processed_master, the first
+  model processed for probe2 (clashscore2.processed_master), saves interpreting
+  each model whose atoms match it.
   """
   if len(model.get_hierarchy().models()) > 1:
     return _build_multimodel_kinemage(
       model=model, pdbID=pdbID, ss_annotation=ss_annotation,
       probe_dots_kin=probe_dots_kin, keep_hydrogens=keep_hydrogens,
       include_cablam_wheels=include_cablam_wheels, plain_coils=plain_coils,
-      vdw_dots=vdw_dots)
+      vdw_dots=vdw_dots, processed_master=processed_master,
+      results_by_model=results_by_model)
   if model.get_restraints_manager() is None:
     # Only bonded topology and covalent geometry are consumed here: skip the
     # plain-pair table (quadratic for superimposed ensemble models) and use
