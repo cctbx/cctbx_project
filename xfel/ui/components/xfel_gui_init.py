@@ -3859,6 +3859,11 @@ class DatasetPanel(wx.Panel):
 
   def onToggleActivity(self, e):
     if self.chk_active.GetValue():
+      from xfel.ui.db.job import predict_dataset_jobs
+      counts = predict_dataset_jobs(self.db, dataset=self.dataset)
+      if not dlg.confirm_job_count(self, self.db, counts, 'Activating this dataset'):
+        self.chk_active.SetValue(False)
+        return
       self.dataset.active = True
     else:
       self.dataset.active = False

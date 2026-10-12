@@ -3920,6 +3920,26 @@ def get_trial_integration_phil(db, trial):
   return "reintegration {\n%s}\n" % integration
 
 
+def confirm_job_count(parent, db, counts, action):
+  ''' Ask before an action that would submit at least job_count_warning jobs.
+      counts is predict_dataset_jobs' result; action completes "<action> will
+      submit about N jobs". Returns True to go ahead. '''
+  limit = db.params.job_count_warning
+  total = sum(counts.values())
+  if limit is None or total < limit:
+    return True
+  lines = '\n'.join('    %s: %d' % (DATASET_STAGE_LABELS.get(t, t), n)
+                    for t, n in counts.items() if n)
+  msg = ('%s will submit about %d jobs:\n%s\n\n'
+         'Global stages are counted once; how the local jobs finish may add '
+         'more. Go ahead?' % (action, total, lines))
+  msg_dlg = wx.MessageDialog(parent, message=msg, caption='Many jobs',
+                             style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING)
+  result = msg_dlg.ShowModal()
+  msg_dlg.Destroy()
+  return result == wx.ID_YES
+
+
 class DatasetStagePanel(wx.Panel):
   ''' One pipeline stage. Holds friendly controls for its task type plus (for
       PHIL-backed types) a working_phil_scope and an Edit PHIL button. The
@@ -4892,14 +4912,16 @@ class DatasetDialog(BaseDialog):
   def onOK(self, e):
     msg = self.commit()
     if msg is not None:
-      self._warn(msg)
-      return
+      if msg:
+        self._warn(msg)
+      return   # an empty message means the user declined; keep the dialog open
     e.Skip()
 
   def commit(self):
     ''' Validate the dialog and create/update the dataset + its tasks. Returns
-        an error message string on failure (nothing written) or None on
-        success. Callable programmatically (e.g. from the new-dataset wizard).
+        an error message string on failure (nothing written), an empty string
+        if the user declined to go ahead (nothing written), or None on success.
+        Callable programmatically (e.g. from the new-dataset wizard).
 
         Tasks are content-addressed (see find_or_create_task): each enabled
         stage resolves to the existing task with the same type, trial,
@@ -4982,6 +5004,33 @@ class DatasetDialog(BaseDialog):
                 'aligned patterns to.\nEither choose a reference model, or remove '
                 'postrefine from the merging step list.')
 
+    # Pipeline: resolve the enabled stages, in order, to tasks. Each stage's
+    # parent is the task resolved for the stage before it, so the identity of
+    # a stage covers everything upstream of it. Task rows may be created here;
+    # nothing else is written until the user has agreed to the job count.
+    checked = self.tag_checklist.ctr.GetCheckedItems()
+    tags = [tag for tag_idx, tag in enumerate(self.all_tags) if tag_idx in checked]
+    tasks = []
+    for s in self.stages:
+      if not s.is_enabled():
+        continue
+      task = self.db.find_or_create_task(s.task_type, trial.id, s.get_parameters(),
+                                         parent_task_id=(tasks[-1].id if tasks else None),
+                                         phil_scope=s.phil_scope)
+      tasks.append(task)
+      s.task = task
+
+    # An active dataset starts submitting as soon as it is saved, so ask now if
+    # that would be a lot of jobs. New datasets are saved inactive and are
+    # asked when activated.
+    if not self.new and self.dataset.active:
+      from xfel.ui.db.job import predict_dataset_jobs
+      counts = predict_dataset_jobs(self.db, dataset=self.dataset, trial=trial,
+                                    tags=tags, tag_operator=mode, tasks=tasks)
+      if not confirm_job_count(self, self.db, counts, 'Saving this dataset'):
+        self.db.delete_orphan_tasks()
+        return ''
+
     # Identity
     if self.new:
       self.dataset = self.db.create_dataset(name=name, comment=comment,
@@ -4992,28 +5041,15 @@ class DatasetDialog(BaseDialog):
       self.dataset.tag_operator = mode
 
     # Tags
-    checked = self.tag_checklist.ctr.GetCheckedItems()
-    for tag_idx, tag in enumerate(self.all_tags):
-      if tag_idx in checked:
+    for tag in self.all_tags:
+      if tag in tags:
         if tag.name not in self.dataset_tagnames:
           self.dataset.add_tag(tag)
       else:
         if tag.name in self.dataset_tagnames:
           self.dataset.remove_tag(tag)
 
-    # Pipeline: resolve the enabled stages, in order, to tasks. Each stage's
-    # parent is the task resolved for the stage before it, so the identity of
-    # a stage covers everything upstream of it.
     old_tasks = self.dataset.tasks
-    tasks = []
-    for s in self.stages:
-      if not s.is_enabled():
-        continue
-      task = self.db.find_or_create_task(s.task_type, trial.id, s.get_parameters(),
-                                         parent_task_id=(tasks[-1].id if tasks else None),
-                                         phil_scope=s.phil_scope)
-      tasks.append(task)
-      s.task = task
     if [t.id for t in tasks] != [t.id for t in old_tasks]:
       for t in old_tasks:
         self.dataset.remove_task(t)
@@ -5341,7 +5377,8 @@ class DatasetWizard(BaseDialog):
     err = backing.commit()
     backing.Destroy()
     if err is not None:
-      wx.MessageBox(err, 'Could not create dataset', wx.OK | wx.ICON_ERROR, self)
+      if err:
+        wx.MessageBox(err, 'Could not create dataset', wx.OK | wx.ICON_ERROR, self)
       return
     self.EndModal(wx.ID_OK)
 
