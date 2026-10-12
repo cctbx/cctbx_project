@@ -3910,25 +3910,6 @@ class DatasetPanel(wx.Panel):
                           flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.EXPAND,
                           border=5)
 
-    def add_task_line(text, shared_with=None):
-      ''' A task summary line, optionally prefixed with a link icon whose
-          tooltip lists the datasets it is shared with. '''
-      if not shared_with:
-        add_line(text)
-        return
-      row = wx.BoxSizer(wx.HORIZONTAL)
-      bmp = wx.StaticBitmap(self.task_panel,
-                            bitmap=wx.Bitmap('{}/16x16/linked.png'.format(icons)))
-      tip = 'Shared with: %s' % ', '.join(shared_with)
-      bmp.SetToolTip(tip)
-      row.Add(bmp, flag=wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, border=4)
-      lbl = wx.StaticText(self.task_panel, label=text, style=wx.ALIGN_LEFT)
-      lbl.Wrap(wrap_width - 24)
-      row.Add(lbl, proportion=1, flag=wx.ALIGN_CENTER_VERTICAL)
-      self.task_sizer.Add(row,
-                          flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.EXPAND,
-                          border=5)
-
     # Show tags
     tags = self.dataset.tags
     if tags:
@@ -3962,11 +3943,7 @@ class DatasetPanel(wx.Panel):
           if params_text:
             task_text += params_text
 
-        # Annotate tasks that are shared with other datasets via a link icon.
-        sharing = self.db.get_datasets_for_task(task.id)
-        shared_with = [d.name for d in sharing if d.id != self.dataset.id]
-
-        add_task_line(task_text, shared_with)
+        add_line(task_text)
 
       # Show version info if available
       if self.dataset.latest_version:
@@ -3983,11 +3960,12 @@ class DatasetPanel(wx.Panel):
       self.refresh_dataset()
 
   def onDuplicateDataset(self, e):
-    ''' Create an inactive copy of this dataset under a new name. The copy
-        shares the original's tasks (the same Task rows, as a linked task would
-        be), in the same pipeline order, and carries over the tags, tag operator
-        and comment. Dataset names are unique in the database, so the name is
-        checked here rather than letting the insert fail. '''
+    ''' Create an inactive copy of this dataset under a new name, with the
+        same pipeline, tags, tag operator and comment. Tasks are content-
+        addressed, so the copy starts out on the original's tasks and moves to
+        its own as soon as its parameters are edited. Dataset names are unique
+        in the database, so the name is checked here rather than letting the
+        insert fail. '''
     existing = set(d.name for d in self.db.get_all_datasets())
     suggestion = '%s copy' % self.dataset.name
     n = 2
