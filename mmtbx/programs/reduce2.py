@@ -1267,7 +1267,7 @@ NOTES:
       # make sure model is atom-complete.
       if not self.model.is_atom_complete():
         missing = self.model.missing_atoms_by_residue()
-        print("Missing atoms found:", file=self.logger)
+        print("Missing atoms found (this may or may not be an issue):", file=self.logger)
         for k, v in missing.items():
           print("  where: '%s' missing:"%k,v, file=self.logger)
         raise Sorry(
