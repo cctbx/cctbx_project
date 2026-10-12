@@ -158,7 +158,8 @@ class clashscore2(validation):
     "probe_file",
     "probe_clashscore_manager",
     "hydrogenated_model",
-    "processed_model"
+    "processed_model",
+    "processed_master",
   ]
   program_description = "Analyze clashscore for protein model"
   gui_list_headers = ["Atom 1", "Atom 2", "Overlap"]
@@ -197,6 +198,10 @@ class clashscore2(validation):
     # parameters and restraints, so later stages need not process it again. It stays
     # pristine (with waters probe2 runs on a copy). None otherwise.
     self.processed_model = None
+    # Any input: the first model so processed. On an ensemble without waters it is
+    # reused in place, so it holds the last model's coordinates; a caller writes in
+    # the model it wants (see mmtbx.kinemage.validation._master_with_atoms_of).
+    self.processed_master = None
     if verbose:
       if not nuclear:
         print("\nUsing electron cloud x-H distances and vdW radii")
@@ -286,6 +291,7 @@ class clashscore2(validation):
               plain_pairs_radius=probe2.PLAIN_PAIRS_RADIUS)
           if master.get_restraints_manager() is not None:
             processed_master = master
+            self.processed_master = master
             if n_models == 1:
               self.processed_model = processed_master
             master_key_to_index = _atom_index_by_key(master.get_hierarchy())
