@@ -2797,38 +2797,59 @@ class RunBlockDialog(BaseDialog):
       elif type(value) == bool:
         rg_dict[key] = int(value)
 
+    # Decide what this save means: a new run group, an unchanged one (nothing
+    # to do), one whose open flag, comment or run range moves (kept, runs
+    # re-synced), or one changed enough to be replaced by a new run group.
     if self.block is None:
-      self.block = self.db.create_rungroup(**rg_dict)
-      self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
-      self.parent.trial.add_rungroup(self.block)
+      action = 'new'
     else:
-      # if all the parameters are unchanged, do nothing
       all_the_same = [str(rg_dict[key]).strip() == str(getattr(self.block, key)).strip() for key in rg_dict].count(False) == 0
       all_the_same &= self.first_run == self.orig_first_run and self.last_run == self.orig_last_run
-      if not all_the_same:
-        # if all the parameters except open and comment are the same,
-        # only update those fields
-        keep_old_run_group = [str(rg_dict[key]).strip() == str(getattr(self.block, key)).strip() for key in rg_dict \
-                              if key not in ['open', 'comment']].count(False) == 0
-        if keep_old_run_group:
-          main = self.parent.parent.GetParent().main
-          running = main.job_sentinel is not None and main.job_sentinel.active
-          if running:
-            main.stop_job_sentinel()
+      keep_old_run_group = [str(rg_dict[key]).strip() == str(getattr(self.block, key)).strip() for key in rg_dict \
+                            if key not in ['open', 'comment']].count(False) == 0
+      if all_the_same:
+        action = 'none'
+      elif keep_old_run_group:
+        action = 'update'
+      else:
+        action = 'replace'
 
-          self.block.open = rg_open
-          self.block.comment = rg_dict['comment']
-          self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
+    # An active trial starts processing the run group's runs as soon as it is
+    # saved, and so do the active datasets on the trial: ask first if that is
+    # a lot of jobs. A replaced run group reprocesses every run it covers.
+    trial = self.parent.trial
+    if action != 'none' and trial.active:
+      from xfel.ui.db.job import predict_trial_jobs
+      from xfel.ui.db.rungroup import runs_in_range
+      new_runs = runs_in_range(self.db.get_all_runs(), self.first_run, self.last_run, self.use_ids)
+      rungroups = [(rg, rg.runs) for rg in trial.rungroups
+                   if self.block is None or rg.id != self.block.id]
+      rungroups.append((self.block if action == 'update' else None, new_runs))
+      counts = predict_trial_jobs(self.db, trial, rungroups=rungroups)
+      if not confirm_job_count(self, self.db, counts, 'Saving this run block'):
+        return
 
-          if running:
-            main.start_job_sentinel()
+    if action == 'new':
+      self.block = self.db.create_rungroup(**rg_dict)
+      self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
+      trial.add_rungroup(self.block)
+    elif action == 'update':
+      main = self.parent.parent.GetParent().main
+      running = main.job_sentinel is not None and main.job_sentinel.active
+      if running:
+        main.stop_job_sentinel()
 
-        else:
-          # enough parameters have changed to warrant creating a new run group
-          self.block.active = False
-          self.block = self.db.create_rungroup(**rg_dict)
-          self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
-          self.parent.trial.add_rungroup(self.block)
+      self.block.open = rg_open
+      self.block.comment = rg_dict['comment']
+      self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
+
+      if running:
+        main.start_job_sentinel()
+    elif action == 'replace':
+      self.block.active = False
+      self.block = self.db.create_rungroup(**rg_dict)
+      self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
+      trial.add_rungroup(self.block)
 
     e.Skip()
 
@@ -3010,6 +3031,16 @@ class SelectRunBlocksDialog(BaseDialog):
   def onOK(self, e):
     trial_rungroups = [t.id for t in self.db.get_trial_rungroups(self.trial.id, only_active=False)]
     trials = self.db.get_all_trials()
+
+    # The selected run groups are processed as soon as they are on an active
+    # trial, so ask first if that is a lot of jobs.
+    if self.trial.active:
+      from xfel.ui.db.job import predict_trial_jobs
+      selected = [(rg, rg.runs) for i, rg in enumerate(self.all_rungroups)
+                  if self.runblocks_list.ctr.IsChecked(i)]
+      counts = predict_trial_jobs(self.db, self.trial, rungroups=selected)
+      if not confirm_job_count(self, self.db, counts, 'Selecting these run blocks'):
+        return
 
     for i, rungroup in enumerate(self.all_rungroups):
       if self.runblocks_list.ctr.IsChecked(i):

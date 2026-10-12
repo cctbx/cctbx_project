@@ -3758,6 +3758,11 @@ class TrialPanel(wx.Panel):
 
   def onToggleActivity(self, e):
     if self.chk_active.GetValue():
+      from xfel.ui.db.job import predict_trial_jobs
+      counts = predict_trial_jobs(self.db, self.trial)
+      if not dlg.confirm_job_count(self, self.db, counts, 'Activating this trial'):
+        self.chk_active.SetValue(False)
+        return
       self.trial.active = True
     else:
       self.trial.active = False
