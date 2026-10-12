@@ -634,7 +634,22 @@ class Optimizer(object):
         self._infoString += _ReportTiming(self._verbosity, "optimize singletons (coarse)")
 
         # Do coarse optimization on the multi-Mover Cliques.
-        for g in groupCliques:
+        # Sort the interaction-graph edges into their Cliques in one pass, in graph
+        # order.  (Building each Clique's subgraph with _subsetGraph() scanned every
+        # vertex and edge of the whole graph once per Clique: quadratic in the
+        # number of Movers.)
+        cliqueOf = {}
+        for ci, g in enumerate(groupCliques):
+          for v in g:
+            cliqueOf[self._interactionGraph.vertex_label(v)] = ci
+        cliqueEdges = [[] for g in groupCliques]
+        for e in self._interactionGraph.edges():
+          source = self._interactionGraph.vertex_label(self._interactionGraph.source(e))
+          ci = cliqueOf.get(source)
+          if ci is not None:
+            cliqueEdges[ci].append((source,
+              self._interactionGraph.vertex_label(self._interactionGraph.target(e))))
+        for ci, g in enumerate(groupCliques):
           remainingSeconds = 1e12
           if stopOptimizingAt > 0.0:
             remainingSeconds = stopOptimizingAt - time.time()
@@ -643,19 +658,17 @@ class Optimizer(object):
                                               "Stopping clique optimization due to time limit\n")
             break
 
-          movers = [self._interactionGraph.vertex_label(i) for i in g]
-          subset = _subsetGraph(self._interactionGraph, movers)
-
           # Find all of the Movers in the clique so that we know which ones to capture the state for.
-          movers = [self._interactionGraph.vertex_label(v) for v in subset.vertices()]
+          # connected_components() lists them in graph order, as _subsetGraph() did.
+          movers = [self._interactionGraph.vertex_label(i) for i in g]
+          index = dict((m, i) for i, m in enumerate(movers))
 
           # Turn the graph edges into a versa array that holds the edges. The first index is the
           # number of edge and the second is 2D, listing the index of each mover.
-          vertexList = list(subset.vertices())
-          edges = flex.int(flex.grid(len(list(subset.edges())), 2))
-          for i,e in enumerate(subset.edges()):
-            edges[(i,0)] = vertexList.index(subset.source(e))
-            edges[(i,1)] = vertexList.index(subset.target(e))
+          edges = flex.int(flex.grid(len(cliqueEdges[ci]), 2))
+          for i, (source, target) in enumerate(cliqueEdges[ci]):
+            edges[(i,0)] = index[source]
+            edges[(i,1)] = index[target]
 
           (bestScore, infoString) = optC.OptimizeCliqueCoarse(movers, edges, remainingSeconds)
           self._infoString += infoString
