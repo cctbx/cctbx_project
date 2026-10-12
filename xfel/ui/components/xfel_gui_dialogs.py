@@ -16,7 +16,6 @@ import wx
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection, ColumnSorterMixin
 from wx.lib.scrolledpanel import ScrolledPanel
 from iotbx.phil import parse
-from xfel.ui.db.task import task_types
 import numpy as np
 
 import xfel.ui.components.xfel_gui_controls as gctr
@@ -3921,23 +3920,14 @@ def get_trial_integration_phil(db, trial):
   return "reintegration {\n%s}\n" % integration
 
 
-_LINK_BITMAPS = {}
-def _link_bitmap(linked):
-  ''' Lazily load + cache the link/unlink icons. Bitmaps can only be created
-      after a wx.App exists, so this must not run at import time. '''
-  key = 'linked' if linked else 'unlinked'
-  if key not in _LINK_BITMAPS:
-    _LINK_BITMAPS[key] = wx.Bitmap('{}/16x16/{}.png'.format(icons, key))
-  return _LINK_BITMAPS[key]
-
-
 class DatasetStagePanel(wx.Panel):
-  ''' One pipeline stage = one Task. Holds friendly controls for its task type
-      plus (for PHIL-backed types) a working_phil_scope and an Edit PHIL button. '''
+  ''' One pipeline stage. Holds friendly controls for its task type plus (for
+      PHIL-backed types) a working_phil_scope and an Edit PHIL button. The
+      task the stage was loaded from, if any, only seeds the controls: on OK
+      the dialog resolves each stage's parameters to a task afresh. '''
 
   def __init__(self, parent, dialog, task_type,
-               task=None, enabled=True, removable=False,
-               linked=False, is_in_dataset=True):
+               task=None, enabled=True, removable=False):
     wx.Panel.__init__(self, parent)
     from xfel.ui.db.task import Task, task_scope, task_types as _task_types
 
@@ -3948,12 +3938,6 @@ class DatasetStagePanel(wx.Panel):
     self.removable = removable
     self.scope = task_scope[_task_types.index(task_type)]
     self.toggle_ctrls = []
-
-    # Shared-task state
-    self.linked = linked          # True → task belongs to another dataset too
-    self.is_in_dataset = is_in_dataset  # False → join row not yet inserted
-    self.phil_was_edited = False  # True → user chose "Edit (affects all)"
-    self._detach_original_task = None  # holds old task when detaching
 
     box = wx.StaticBox(self, label=DATASET_STAGE_LABELS.get(task_type, task_type))
     self.sizer = wx.StaticBoxSizer(box, wx.VERTICAL)
@@ -3971,15 +3955,6 @@ class DatasetStagePanel(wx.Panel):
       header.Add(chk_panel, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
       self.Bind(wx.EVT_CHECKBOX, lambda e: self._update_enabled_state(), self.enable_chk)
     header.AddStretchSpacer()
-
-    # Link/unlink icon button — present for all non-indexing stages. The icon
-    # shows whether this stage's task is shared with other datasets; the details
-    # (which datasets) live in the tooltip. Click to link/re-link/unlink.
-    self.btn_link = None
-    if task_type != 'indexing':
-      self.btn_link = gctr.BitmapButton(self, bitmap=_link_bitmap(False))
-      header.Add(self.btn_link, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL, border=5)
-      self.Bind(wx.EVT_BUTTON, self.onLinkFrom, self.btn_link)
 
     self.btn_edit = None
     if task_type not in ('indexing', 'phenix'):
@@ -4024,7 +3999,6 @@ class DatasetStagePanel(wx.Panel):
     self.sizer.Add(self.body, flag=wx.EXPAND | wx.ALL, border=5)
     self._build_controls()
     self.sync_controls()
-    self._update_link_display()
     self._update_enabled_state()
 
   # -- construction helpers --------------------------------------------------
@@ -4202,10 +4176,6 @@ class DatasetStagePanel(wx.Panel):
       w.Enable(state)
     if self.btn_edit is not None:
       self.btn_edit.Enable(state)
-    # btn_link is always active regardless of the enable checkbox so that the
-    # user can link/unlink even when a stage is temporarily disabled.
-    if self.btn_link is not None:
-      self.btn_link.Enable(True)
     # Within an enabled scaling stage, only one unit-cell filter mode is active.
     if state and self.task_type == 'scaling' and \
        getattr(self, 'chk_use_cluster', None) is not None:
@@ -4370,80 +4340,6 @@ class DatasetStagePanel(wx.Panel):
 
   # -- events ----------------------------------------------------------------
   def onEditPhil(self, e):
-    if self.linked:
-      self._onEditPhilShared()
-      return
-    self._do_edit_phil()
-
-  def _onEditPhilShared(self):
-    result = self._shared_task_prompt(
-      '', labels=('Edit (affects all)', 'Detach && Edit'))
-    if result == wx.ID_CANCEL:
-      return
-    self._apply_shared_choice(result)
-    self._do_edit_phil()
-
-  def _shared_task_prompt(self, intro, labels):
-    ''' Ask how a change to a task shared with other datasets should land.
-        labels are the (apply to all, detach) button labels. Returns wx.ID_YES
-        for apply to every dataset using the task, wx.ID_NO for detach into a
-        private copy for this dataset, or wx.ID_CANCEL. '''
-    others = self._linked_others()
-    names = ', '.join(d.name for d in others[:5])
-    if len(others) > 5:
-      names += ', ...'
-    all_label, detach_label = (l.replace('&&', '&') for l in labels)
-    msg = ("%sThis task is shared with %d other dataset(s): %s.\n\n"
-           "  • %s: parameter changes apply to every dataset using this task.\n"
-           "  • %s: create a private copy for this dataset only.\n"
-           "  • Cancel: no changes.") % (intro + '\n\n' if intro else '',
-                                         len(others), names or '(none yet)',
-                                         all_label, detach_label)
-    dlg = wx.MessageDialog(self.dialog, message=msg, caption='Shared Task',
-                           style=wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION)
-    dlg.SetYesNoCancelLabels(labels[0], labels[1], 'Cancel')
-    result = dlg.ShowModal()
-    dlg.Destroy()
-    return result
-
-  def _apply_shared_choice(self, result):
-    ''' Record a _shared_task_prompt answer on this stage: wx.ID_YES marks the
-        shared task as deliberately edited so commit() writes to it; wx.ID_NO
-        detaches so commit() creates a private task instead. '''
-    if result == wx.ID_YES:
-      self.phil_was_edited = True
-    elif result == wx.ID_NO:
-      self._detach_original_task = self.task
-      self.task = None
-      self.linked = False
-      self.is_in_dataset = False
-      self._update_link_display()
-
-  def shared_parameters_changed(self):
-    ''' True if this stage's task is shared with other datasets, the user has
-        not already answered the shared-task prompt, and the parameters now
-        in the dialog differ from what is stored on the task. The shared
-        controls and friendly stage controls change the working scope without
-        going through Edit PHIL, so commit() uses this to know when to ask.
-        Assumes push_scope() has run. '''
-    if self.task is None or not self.linked or self.phil_was_edited:
-      return False
-    if self.task_type == 'indexing':
-      return False
-    current = self.get_parameters()
-    stored = self.task.parameters or ""
-    if self.task_type == 'phenix':
-      return current != stored
-    # Re-emit the stored PHIL the way get_parameters() does, so formatting
-    # differences (wrapping, choice rendering) do not read as changes.
-    try:
-      normalized = self.phil_scope.fetch_diff(
-        self.phil_scope.fetch(parse(stored))).as_str(print_width=100000)
-    except Exception:
-      return True   # unreadable stored parameters: the write is a real change
-    return current != normalized
-
-  def _do_edit_phil(self):
     msg = self.push_scope()
     if msg is not None:
       self.dialog._warn(msg + '\nFix the parameters and try again')
@@ -4457,91 +4353,6 @@ class DatasetStagePanel(wx.Panel):
       if msg is None:
         self.sync_controls()
     edit_dlg.Destroy()
-
-  def _linked_others(self):
-    ''' Other datasets (besides this one) that share this stage's task. '''
-    if self.task is None:
-      return []
-    datasets = self.db.get_datasets_for_task(self.task.id)
-    exclude_id = self.dialog.dataset.id if self.dialog.dataset else None
-    return [d for d in datasets if d.id != exclude_id] if exclude_id else list(datasets)
-
-  def _update_link_display(self):
-    if self.btn_link is None:
-      return
-    if self.linked and self.task is not None:
-      others = self._linked_others()
-      if others:
-        names = ', '.join(d.name for d in others[:5])
-        if len(others) > 5:
-          names += ', …'
-        tip = 'Shared with: %s\nClick to re-link or unlink.' % names
-      else:
-        tip = 'Shared task. Click to re-link or unlink.'
-      self.btn_link.SetBitmap(_link_bitmap(True))
-      self.btn_link.SetToolTip(tip)
-    else:
-      self.btn_link.SetBitmap(_link_bitmap(False))
-      self.btn_link.SetToolTip(
-        'Not shared. Click to link this %s stage to a task from another '
-        'dataset.' % self.task_type)
-
-  def _unlink(self):
-    ''' Detach from a shared task, making this stage's parameters private.
-        A fresh owned task is created from the current PHIL on OK. '''
-    self.task = None
-    self.linked = False
-    self.is_in_dataset = False
-    self.phil_was_edited = False
-    self._detach_original_task = None
-    self.sync_controls()
-    self._update_link_display()
-
-  def onLinkFrom(self, e):
-    all_datasets = self.db.get_all_datasets()
-    exclude_id = self.dialog.dataset.id if self.dialog.dataset else None
-    choices = []
-    for dataset in all_datasets:
-      if dataset.id == exclude_id:
-        continue
-      for task in dataset.tasks:
-        if task.type == self.task_type:
-          choices.append((dataset, task))
-
-    UNLINK = '— Unlink (make a private copy) —'
-    labels = ['%s — task #%d' % (d.name, t.id) for d, t in choices]
-    if self.linked:
-      labels = [UNLINK] + labels
-
-    if not labels:
-      wx.MessageBox('No other datasets have a %s task to link.' % self.task_type,
-                    'Link Task', wx.OK | wx.ICON_INFORMATION, self.dialog)
-      return
-
-    dlg = wx.SingleChoiceDialog(self.dialog,
-                                'Choose a %s task to link:' % self.task_type,
-                                'Link Task from Another Dataset',
-                                labels)
-    if dlg.ShowModal() == wx.ID_OK:
-      sel = dlg.GetSelection()
-      if self.linked and sel == 0:
-        self._unlink()
-      else:
-        idx = sel - 1 if self.linked else sel
-        chosen_dataset, chosen_task = choices[idx]
-        # If this stage had an owned task, queue its join-row removal.
-        if self.task is not None and not self.linked:
-          self.dialog.removed_tasks.append(self.task)
-        self.task = chosen_task
-        self.linked = True
-        self.is_in_dataset = False
-        self.phil_was_edited = False
-        self._detach_original_task = None
-        if self.phil_scope is not None and chosen_task.parameters:
-          self.working_phil_scope = self.phil_scope.fetch(parse(chosen_task.parameters))
-        self.sync_controls()
-        self._update_link_display()
-    dlg.Destroy()
 
   def onRemove(self, e):
     self.dialog.remove_stage(self)
@@ -4559,7 +4370,6 @@ class DatasetDialog(BaseDialog):
     self.new = new
     self.dataset = dataset
     self.stages = []
-    self.removed_tasks = []
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
@@ -4981,11 +4791,9 @@ class DatasetDialog(BaseDialog):
     self._apply_cosym_from_trial(values.get('cosym', False))
 
   # -- stage management ------------------------------------------------------
-  def _append_stage(self, task_type, task=None, enabled=True, removable=False,
-                    linked=False, is_in_dataset=True):
+  def _append_stage(self, task_type, task=None, enabled=True, removable=False):
     stage = DatasetStagePanel(self.scroll, self, task_type,
-                              task=task, enabled=enabled, removable=removable,
-                              linked=linked, is_in_dataset=is_in_dataset)
+                              task=task, enabled=enabled, removable=removable)
     self.stages.append(stage)
     return stage
 
@@ -5004,40 +4812,29 @@ class DatasetDialog(BaseDialog):
     for t in self.dataset.tasks:
       by_type.setdefault(t.type, []).append(t)
 
-    def _is_linked(task):
-      ''' True if this task is also used by at least one other dataset. '''
-      if task is None:
-        return False
-      others = self.db.get_datasets_for_task(task.id)
-      return any(d.id != self.dataset.id for d in others)
-
     idx = by_type.get('indexing', [])
     self._append_stage('indexing', task=(idx[0] if idx else None), enabled=True)
 
     ens = by_type.get('ensemble_refinement', [])
-    t_ens = ens[0] if ens else None
     self._append_stage('ensemble_refinement',
-                       task=t_ens, enabled=bool(ens), linked=_is_linked(t_ens))
+                       task=(ens[0] if ens else None), enabled=bool(ens))
 
     scals = by_type.get('scaling', [])
     if scals:
       for j, t in enumerate(scals):
-        self._append_stage('scaling', task=t, enabled=True, removable=(j > 0),
-                           linked=_is_linked(t))
+        self._append_stage('scaling', task=t, enabled=True, removable=(j > 0))
     else:
       self._append_stage('scaling', enabled=False)
 
     mrgs = by_type.get('merging', [])
     if mrgs:
       for j, t in enumerate(mrgs):
-        self._append_stage('merging', task=t, enabled=True, removable=(j > 0),
-                           linked=_is_linked(t))
+        self._append_stage('merging', task=t, enabled=True, removable=(j > 0))
     else:
       self._append_stage('merging', enabled=False)
 
     for t in by_type.get('phenix', []):
-      self._append_stage('phenix', task=t, enabled=True, removable=True,
-                         linked=_is_linked(t))
+      self._append_stage('phenix', task=t, enabled=True, removable=True)
 
   def _first_global_index(self):
     for i, s in enumerate(self.stages):
@@ -5060,8 +4857,6 @@ class DatasetDialog(BaseDialog):
     self._rebuild_pipeline()
 
   def remove_stage(self, stage):
-    if stage.task is not None:
-      self.removed_tasks.append(stage.task)
     self.pipeline_sizer.Detach(stage)
     self.stages.remove(stage)
     stage.Destroy()
@@ -5097,16 +4892,21 @@ class DatasetDialog(BaseDialog):
   def onOK(self, e):
     msg = self.commit()
     if msg is not None:
-      if msg:
-        self._warn(msg)
-      return   # an empty message means the user cancelled; keep the dialog open
+      self._warn(msg)
+      return
     e.Skip()
 
   def commit(self):
     ''' Validate the dialog and create/update the dataset + its tasks. Returns
-        an error message string on failure (nothing written), an empty string
-        if the user cancelled a prompt (nothing written), or None on success.
-        Callable programmatically (e.g. from the new-dataset wizard). '''
+        an error message string on failure (nothing written) or None on
+        success. Callable programmatically (e.g. from the new-dataset wizard).
+
+        Tasks are content-addressed (see find_or_create_task): each enabled
+        stage resolves to the existing task with the same type, trial,
+        parameters and predecessor, or to a new one. Datasets whose pipelines
+        agree up to a stage therefore share that stage's task and its jobs,
+        and editing a stage's parameters moves the dataset to a different task
+        rather than rewriting one other datasets may use. '''
     name = self.name.ctr.GetValue().strip()
     comment = self.comment.ctr.GetValue()
     mode = 'union' if self.selection_type_radio.union.GetValue() == 1 else 'intersection'
@@ -5147,6 +4947,15 @@ class DatasetDialog(BaseDialog):
         if msg is not None:
           return msg + '\nFix the parameters and press OK again'
 
+    # Consecutive stages of one type with the same parameters (two identical
+    # merging stages, say) would resolve to the same task, which a dataset can
+    # hold only once; they would also compute the same thing twice.
+    enabled = [s for s in self.stages if s.is_enabled()]
+    for a, b in zip(enabled, enabled[1:]):
+      if a.task_type == b.task_type and a.get_parameters() == b.get_parameters():
+        return ('Two consecutive %s stages have the same parameters. Change one '
+                'of them or remove it.' % DATASET_STAGE_LABELS.get(a.task_type, a.task_type))
+
     # Resolving an indexing ambiguity and then postrefining needs a reference
     # model: cosym aligns the patterns to each other, which fixes the indexing
     # only up to an overall choice, and anchoring that choice to the model is
@@ -5173,26 +4982,6 @@ class DatasetDialog(BaseDialog):
                 'aligned patterns to.\nEither choose a reference model, or remove '
                 'postrefine from the merging step list.')
 
-    # The shared controls and the friendly stage controls change a stage's
-    # scope without going through Edit PHIL, so a task shared with other
-    # datasets could otherwise be rewritten (or, as before, silently left
-    # unchanged) on OK. Ask the same question Edit PHIL asks. All prompts come
-    # before anything is written and are only applied once all are answered,
-    # so Cancel leaves both the database and the dialog state untouched.
-    decisions = []
-    for s in self.stages:
-      if not s.is_enabled() or not s.shared_parameters_changed():
-        continue
-      result = s._shared_task_prompt(
-        'The %s stage parameters have changed.'
-        % DATASET_STAGE_LABELS.get(s.task_type, s.task_type),
-        labels=('Apply to all', 'Detach && apply'))
-      if result == wx.ID_CANCEL:
-        return ''
-      decisions.append((s, result))
-    for s, result in decisions:
-      s._apply_shared_choice(result)
-
     # Identity
     if self.new:
       self.dataset = self.db.create_dataset(name=name, comment=comment,
@@ -5212,59 +5001,27 @@ class DatasetDialog(BaseDialog):
         if tag.name in self.dataset_tagnames:
           self.dataset.remove_tag(tag)
 
-    # Remove tasks for explicitly removed or disabled stages.
-    # For linked tasks, remove_task only drops the join row — the Task row and
-    # any other datasets' join rows are untouched.
-    for task in self.removed_tasks:
-      self.dataset.remove_task(task)
-    self.removed_tasks = []
+    # Pipeline: resolve the enabled stages, in order, to tasks. Each stage's
+    # parent is the task resolved for the stage before it, so the identity of
+    # a stage covers everything upstream of it.
+    old_tasks = self.dataset.tasks
+    tasks = []
     for s in self.stages:
-      if (not s.is_enabled()) and s.task is not None:
-        self.dataset.remove_task(s.task)
-        s.task = None
-
-    # Create / update tasks for enabled stages, assigning pipeline order.
-    #
-    # Four cases:
-    #   (a) task is None (new or detached) → create a fresh Task row.
-    #   (b) linked, join row not yet inserted → add_task only; update
-    #       parameters only if the user explicitly chose "Edit (affects all)".
-    #   (c) linked, join row already exists, not edited → just update sequence.
-    #   (d) owned (or edited-shared) → update type/trial/parameters + sequence.
-    ordered = [s for s in self.stages if s.is_enabled()]
-    for i, s in enumerate(ordered):
-      parameters = s.get_parameters()
-
-      if s.task is None:
-        # (a) New or detached stage: create a fresh Task row.
-        if s._detach_original_task is not None:
-          self.dataset.remove_task(s._detach_original_task)
-          s._detach_original_task = None
-        task = self.db.create_task(type=s.task_type, trial_id=trial.id,
-                                   parameters=parameters)
-        self.dataset.add_task(task, sequence=i)
-        s.task = task
-        s.is_in_dataset = True
-        s.linked = False
-
-      elif s.linked and not s.is_in_dataset:
-        # (b) Newly linked task — insert the join row, optionally update params.
-        self.dataset.add_task(s.task, sequence=i)
-        s.is_in_dataset = True
-        if s.phil_was_edited:
-          s.task.trial_id = trial.id
-          s.task.parameters = parameters
-
-      elif s.linked and not s.phil_was_edited:
-        # (c) Linked, already in dataset, not edited — only reorder.
-        self.dataset.set_task_sequence(s.task, i)
-
-      else:
-        # (d) Owned task or linked task the user chose "Edit (affects all)" for.
-        s.task.type = s.task_type
-        s.task.trial_id = trial.id
-        s.task.parameters = parameters
-        self.dataset.set_task_sequence(s.task, i)
+      if not s.is_enabled():
+        continue
+      task = self.db.find_or_create_task(s.task_type, trial.id, s.get_parameters(),
+                                         parent_task_id=(tasks[-1].id if tasks else None),
+                                         phil_scope=s.phil_scope)
+      tasks.append(task)
+      s.task = task
+    if [t.id for t in tasks] != [t.id for t in old_tasks]:
+      for t in old_tasks:
+        self.dataset.remove_task(t)
+      for i, t in enumerate(tasks):
+        self.dataset.add_task(t, sequence=i)
+    # Tasks this dataset no longer uses stay if any job ran them (their
+    # output folders are named after the task id); the rest are clutter.
+    self.db.delete_orphan_tasks()
 
     return None
 
@@ -5584,129 +5341,10 @@ class DatasetWizard(BaseDialog):
     err = backing.commit()
     backing.Destroy()
     if err is not None:
-      if err:
-        wx.MessageBox(err, 'Could not create dataset', wx.OK | wx.ICON_ERROR, self)
+      wx.MessageBox(err, 'Could not create dataset', wx.OK | wx.ICON_ERROR, self)
       return
     self.EndModal(wx.ID_OK)
 
-
-class TaskDialog(BaseDialog):
-  def __init__(self, parent, db,
-               dataset=None,
-               task=None,
-               label_style='bold',
-               content_style='normal',
-               *args, **kwargs):
-
-    self.db = db
-    self.dataset = dataset
-    self.task = task
-    self.all_trials = db.get_all_trials()
-    self.all_trial_numbers = [str(t.trial) for t in self.all_trials]
-
-    BaseDialog.__init__(self, parent,
-                        label_style=label_style,
-                        content_style=content_style,
-                        size=(600, 600),
-                        *args, **kwargs)
-
-    self.type = gctr.ChoiceCtrl(self,
-                                label='Task type:',
-                                label_size=(100, -1),
-                                ctrl_size=(150, -1),
-                                choices=task_types)
-
-    self.trial = gctr.ChoiceCtrl(self,
-                                 label='Trial:',
-                                 label_size=(100, -1),
-                                 ctrl_size=(150, -1),
-                                 choices=self.all_trial_numbers)
-
-    self.phil_box = gctr.RichTextCtrl(self, style=wx.VSCROLL, size=(550, 400))
-
-    self.main_sizer.Add(self.type,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.trial,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.phil_box, 1,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-
-    # Dialog control
-    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
-
-    self.Layout()
-
-    if task is None:
-      self.SetTitle('New Task Settings')
-
-      # If previous tasks exist, propagate previous settings from them
-      # XXX
-      self.type.ctr.SetSelection(0)
-      self.trial.ctr.SetSelection(0)
-    else:
-      self.SetTitle('Task Settings')
-      self.type.ctr.SetSelection(task_types.index(self.task.type))
-      self.trial.ctr.SetSelection(self.all_trial_numbers.index(str(self.task.trial.trial)))
-      if self.task.parameters is not None:
-        self.phil_box.SetValue(self.task.parameters)
-
-    # Bindings
-    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
-
-  def onOK(self, e):
-    task_type = self.type.ctr.GetStringSelection()
-    # Remember, a trial number doesn't necessarily match its id and they are not guaranteed to be consecutive
-    trial = self.all_trials[self.all_trial_numbers.index(self.trial.ctr.GetStringSelection())]
-    parameters = self.phil_box.GetValue()
-
-    # Parameter validation
-    from xfel.ui.db.task import Task
-    dispatcher, phil_scope = Task.get_phil_scope(self.db, task_type)
-
-    if phil_scope is not None:
-      msg = None
-      try:
-        task_params, unused = phil_scope.fetch(parse(parameters), track_unused_definitions = True)
-      except Exception as e:
-        msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (dispatcher, str(e))
-      else:
-        if len(unused) > 0:
-          msg = [str(item) for item in unused]
-          msg = '\n'.join(['  %s' % line for line in msg])
-          msg = 'The following definitions were not recognized:\n%s\n' % msg
-
-        try:
-          params = task_params.extract()
-        except Exception as e:
-          if msg is None: msg = ""
-          msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
-
-      if msg is not None:
-        msg += '\nFix the parameters and press OK again'
-        msgdlg = wx.MessageDialog(self,
-                                  message=msg,
-                                  caption='Warning',
-                                  style=wx.OK |  wx.ICON_EXCLAMATION)
-        msgdlg.ShowModal()
-        return
-
-    if self.task is None:
-      task = self.db.create_task(type = task_type,
-                                 trial_id = trial.id,
-                                 parameters = parameters)
-      self.dataset.add_task(task)
-    else:
-      self.task.type = task_type
-      self.task.trial_id = trial.id
-      self.task.parameters = parameters
-
-    e.Skip()
 
 class SelectTasksDialog(BaseDialog):
   def __init__(self, parent, dataset,
