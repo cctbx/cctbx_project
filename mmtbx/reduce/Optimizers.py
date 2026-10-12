@@ -1232,6 +1232,15 @@ class Optimizer(object):
         except Exception as e:
           self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
 
+    # The Mover constructors above moved atoms after the spatial query was built
+    # (rotators turn their Hydrogens to a starting orientation; tetrahedral methyls are
+    # staggered; ion-bound Histidines are locked down).  SpatialQuery.remove() finds an
+    # atom by its current position, so these atoms stay listed in the bin of their old
+    # position, and whether a neighbor query finds them depends on the bin layout, which
+    # depends on the bounding box of all atoms, near or far.  Rebuild it from the current
+    # positions before the searches below and the optimization.
+    self._spatialQuery = Helpers.createSpatialQuery(atoms, self._probePhil)
+
     # Make a dictionary looked up up by i_seq that returns the relevant atom. We use this to
     # look up the single-hydrogen rotators. We only place atoms that are in our current model
     # index and alternate.
@@ -1312,9 +1321,18 @@ class Optimizer(object):
             if acceptor or flipPartner:
               potentialAcceptors.append(c)
 
+          oldXYZ = a.xyz
           self._movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, self._extraAtomInfo,
                                                                 hParameters, potentialAcceptors,
                                                                 potentialTouches))
+          # The constructor turned the Hydrogen to its starting orientation; move its
+          # spatial-query entry along with it.
+          newXYZ = a.xyz
+          if newXYZ != oldXYZ:
+            a.xyz = oldXYZ
+            self._spatialQuery.remove(a)
+            a.xyz = newXYZ
+            self._spatialQuery.add(a)
           self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverSingleHydrogenRotator "+str(len(self._movers))+" to "+resNameAndID+" "+aName+
             " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
           self._moverInfo[self._movers[-1]] = "SingleHydrogenRotator at "+resNameAndID+" "+aName;
