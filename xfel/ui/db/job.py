@@ -1027,7 +1027,7 @@ class _job(object):
     return _job.job_hash(self) == _job.job_hash(other)
 
 def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_operator = None, tasks = None,
-                         runs_rungroups = None, submitted_jobs = None):
+                         runs_rungroups = None, submitted_jobs = None, planned = None):
   """ The jobs submit_all_jobs would submit for a dataset once it is active, as
       an ordered dict of counts by task type, in pipeline order. Takes an
       existing dataset and/or the pieces of a new or revised one; a piece not
@@ -1044,7 +1044,9 @@ def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_ope
       @param runs_rungroups: (run, rungroup) pairs to use as the dataset's run
       selection instead of querying it by tags; predict_trial_jobs passes a
       selection from run groups that may not exist yet.
-      @param submitted_jobs: the job hash dict, if the caller already has it. """
+      @param submitted_jobs: the job hash dict, if the caller already has it.
+      @param planned: hashes of jobs an earlier prediction in the same call
+      already counted; a local job two datasets share is submitted once. """
   import collections
   if tasks is None:
     tasks = dataset.tasks
@@ -1080,11 +1082,14 @@ def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_ope
   for run, rungroup in runs_rungroups:
     for task in local_tasks:
       job = _job(trial, rungroup, run, None if task.type == 'indexing' else task)
-      existing = submitted_jobs.get(_job.job_hash(job))
+      job_hash = _job.job_hash(job)
+      existing = submitted_jobs.get(job_hash)
       if existing is None:
         new_local = True
-        if task.type != 'indexing':
+        if task.type != 'indexing' and (planned is None or job_hash not in planned):
           counts[task.type] += 1
+          if planned is not None:
+            planned.add(job_hash)
       elif task is local_tasks[-1]:
         final_local_job_ids.add(existing.id)
   if not global_tasks:
@@ -1151,6 +1156,7 @@ def predict_trial_jobs(app, trial, rungroups = None):
 
   trial_tag_ids = {t.id for t in trial.tags}
   run_tag_ids = {}
+  planned = set()
   for dataset in app.get_all_datasets():
     if not dataset.active: continue
     tasks = dataset.tasks
@@ -1169,7 +1175,8 @@ def predict_trial_jobs(app, trial, rungroups = None):
       if hit:
         selected.append((run, rungroup))
     dataset_counts = predict_dataset_jobs(app, dataset = dataset, trial = trial, tasks = tasks,
-                                          runs_rungroups = selected, submitted_jobs = submitted_jobs)
+                                          runs_rungroups = selected, submitted_jobs = submitted_jobs,
+                                          planned = planned)
     for task_type, n in dataset_counts.items():
       counts[task_type] = counts.get(task_type, 0) + n
   return counts
