@@ -98,7 +98,7 @@ The plan should explain the problem, what Claude will change, how it will check 
 
 Choose **APPROVE** when the plan describes the work you want and a useful way to check it. Choose **REVISE** to ask for a different plan. Choose **STOP** to end the attempt.
 
-Approving the plan lets Claude do that work. Pushing changes to your repository needs a separate decision later. Claude Code may also ask permission to use a tool. Those prompts are separate from your plan and result decisions. In the app, Claude may suggest Auto mode to reduce routine tool prompts when it is available. You still decide whether to accept the plan, keep the change and publish it.
+Approving the plan lets Claude do that work. Pushing changes to your remote Git repository needs a separate decision later. Claude Code may also ask permission to use a tool. Those prompts are separate from your plan and result decisions. In the app, Claude may suggest Auto mode to reduce routine tool prompts when it is available. You still decide whether to accept the plan, keep the change and publish it.
 
 ## 6. Ask for outside review when requested
 
@@ -154,19 +154,25 @@ Read Claude’s report to see what it restored and what remains unfinished. Do n
 
 ## Running several jobs unattended (auto mode)
 
-Auto mode works through a list of jobs one at a time while you are away, for example overnight. Type `/gc auto` yourself, choosing it from the command menu, and then paste the list of jobs after it. A pasted message that only begins with the command does not start it.
+Auto mode works through a list of tasks one at a time while you are away. It is new and has had limited use.
 
-Claude shows one start notice and then works without asking questions. Each job is prepared in its own branch and tested in a separate test-only installation. It is then saved as **Ready for approval**, or as **Blocked** with one reason. Nothing is merged into your main branch, your working installation is not changed and nothing is published. Tests that would contact outside services are left out unless the job allows it.
+Before your first run, start an ordinary Guided Coding task and ask Claude to check whether your project is ready for auto mode and to prepare what is missing. There is no dedicated setup command yet. Your project needs a separate test copy of your software and saved settings for checking that copy, reserving it for testing, keeping task records and keeping enough free disk space. Without these settings, tasks that need the test copy are blocked.
 
-Starting auto mode lets Claude choose each job's test criterion and skip the plan approval and the outside review before the job is saved. Each ticket says that Claude chose the criterion. You can still ask for an outside review before you approve.
+Type `/gc auto` yourself, choosing it from the command menu, and paste the task list after it in the same message before sending. A pasted message that merely begins with the command does not start auto mode. Say when the run should end; otherwise it ends at 8 a.m. the next morning.
 
-In the morning, send `/gc auto status`. The report has one row per job. For each ready job it gives a short summary: the bug, the fix, the test, the criterion, the limits and what approving means. Approving a job accepts that exact tested change; it merges nothing. You can approve several jobs in one message. Merging and publishing approved jobs is ordinary guided work that needs your later instruction and your PUBLISH decision.
+Claude shows one start notice and works without asking questions. Each task has its own branch and is tested in the separate copy. Your main branch and working installation stay unchanged. Each task is saved as **Ready for approval**, or as **Blocked** with a reason. Tests that contact outside services are left out unless you allow them for that task in your list.
 
-To stop, send `/gc stop`, or run the stop command shown in the start notice in any Terminal window. It works in any shell. Claude reports **Stopped** only when nothing the queue started is still running; otherwise it says what remains.
+Claude decides how to test each change and what counts as passing; your project’s required checks still apply. Claude records that choice before testing and identifies it in the report. Auto mode skips each task’s plan approval and outside review before saving it. Claude’s reviewer and checker assistants still examine the work. You can ask for an outside review before approving a saved change.
 
-If you reach a usage limit, the queue stops and does not continue by itself. After the limit resets, send `/gc auto resume`. Keep the computer awake and the lid open: a closed lid still sleeps.
+When you return, send `/gc auto status`. The report calls each task a job. It summarizes each ready job’s problem, change, checks, expected result and remaining uncertainty. If Claude did something outside a task’s instructions, the report asks you about it separately. That task cannot be approved until you answer. Approving a task accepts that exact saved change; it merges nothing. You can approve several tasks in one message. Adding them to your main branch and publishing them require your later instructions and the standard procedure, including its required outside review. Publishing also needs your **PUBLISH** decision.
 
-The [registration and command reference](GUIDED_CODING_COMMAND_REFERENCE.md) gives the details and limits.
+To stop, send `/gc stop`, or run the stop command shown in the start notice from any Terminal window. Claude reports **Stopped** only if its checks find that the active task, builds and tests have stopped. Otherwise it reports **Stopping** and what remains. These checks can miss some programs; see the [auto-mode limits](GUIDED_CODING_VERIFICATION.md#important-remaining-uncertainty).
+
+If a usage limit interrupts the session, resume it yourself with `/gc auto resume` after the limit resets. Do not rely on automatic continuation. The app’s behavior at a real usage limit, including what happens to a running task, has not been tested in this release. In a new conversation, Claude waits until you confirm that the earlier session has ended. Resume does not restart a run that has finished, passed its end time or been stopped.
+
+Keep the computer powered and awake. On a laptop, keep the lid open; closing it can put the computer to sleep.
+
+The [registration and command reference](GUIDED_CODING_COMMAND_REFERENCE.md#auto-mode) gives further details.
 
 ## Updates and removal
 

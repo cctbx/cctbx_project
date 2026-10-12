@@ -4,6 +4,7 @@ State, stop flag, tracked command runs, the local run lock, reconciliation
 and the morning report for `/gc auto`. Standard library only. No scheduler
 and no worker pool. Interface: AUTO_QUEUE_SPEC, including Revisions 2-8
 (record 2026-10-08-gc-auto-release-plan/stage1).
+Revision 12: `run` refuses on any system other than macOS; `init` needs --lock-dir.
 
 Stop from any Terminal, without the coding conversation:
     python3 <procedure root>/auto_queue.py stop
@@ -40,7 +41,9 @@ TRANSITIONS = {
 }
 ACTIVE_STATES = ("Queued", "Preparing", "Testing", "Waiting")
 FINAL_STATES = ("Published", "Discarded")
-DEFAULT_LOCK = "/Users/terwill/unix/PHENIX/gc_test/RUN.lock"
+# Revision 12: `run` needs macOS (sandbox-exec for the network block, `ps -E` for the run-id
+# marker); elsewhere it refuses with this exit code. Nothing but sys.platform decides it.
+PLATFORM_REFUSED = 15
 # Start times are read the same way whatever the caller's TZ, locale or PATH.
 PS = "/bin/ps"
 PS_ENV = {"LC_ALL": "C", "TZ": "UTC", "PATH": "/bin:/usr/bin"}
@@ -60,6 +63,11 @@ class Refused(Exception):
     def __init__(self, code, message):
         Exception.__init__(self, message)
         self.code = code
+
+
+def platform_supported():
+    """Revision 12: auto-mode runs need macOS. Reads sys.platform only; there is no switch."""
+    return sys.platform == "darwin"
 
 
 def now():
@@ -166,9 +174,9 @@ def snapshot():
         return _SNAPSHOT["procs"]
     procs = {}
     try:
-        out = subprocess.run([PS, "-ax", "-o", "pid=,ppid=,pgid=,lstart="], env=PS_ENV,
+        out = subprocess.run([PS, "-ax", "-o", "pid=", "-o", "ppid=", "-o", "pgid=", "-o", "lstart="], env=PS_ENV,
                              capture_output=True, text=True).stdout
-        marks = subprocess.run([PS, "-E", "-ww", "-ax", "-o", "pid=,command="], env=PS_ENV,
+        marks = subprocess.run([PS, "-E", "-ww", "-ax", "-o", "pid=", "-o", "command="], env=PS_ENV,
                                capture_output=True, text=True).stdout
     except OSError:
         out, marks = "", ""
@@ -217,17 +225,19 @@ def survivors(record):
     ended = epoch(record.get("ended", ""), "%Y-%m-%dT%H:%M:%SZ")
 
     def during(start):
-        # Both times are whole UTC seconds, truncated the same way: a process that started
-        # while the run ran cannot have a later second than `ended` or an earlier one than
-        # `started`, so the window is exact to the second.
-        return (start is not None and (started is None or start >= started)
+        # Both times are whole UTC seconds: a process that started while the run ran cannot
+        # have a later second than `ended`. Revision 12 (P10): the earlier bound allows one
+        # second (`started` - 1), as the descendant rule below does, because Linux ps can
+        # report a start time up to 1 s early; every other identity check still applies.
+        return (start is not None and (started is None or start >= started - 1)
                 and (ended is None or start <= ended))
 
     probe_start = epoch(record.get("probe_started", ""), "%Y-%m-%dT%H:%M:%SZ")
     probe_end = epoch(record.get("probe_ended", ""), "%Y-%m-%dT%H:%M:%SZ")
 
     def during_probe(start):
-        return (start is not None and (probe_start is None or start >= probe_start)
+        # The same one-second allowance on the earlier bound (Revision 12, P10).
+        return (start is not None and (probe_start is None or start >= probe_start - 1)
                 and (probe_end is None or start <= probe_end))
 
     found = set()
@@ -515,6 +525,10 @@ def free_gib(path):
 # ---------------------------------------------------------------- commands
 
 def cmd_init(args):
+    if not args.lock_dir:
+        # Revision 12: no default lock; nothing is created or changed without one.
+        raise Refused(2, "init needs --lock-dir: give the lock directory from the project "
+                         "method's lock directory")
     previous = active_dir(args)
     if previous and not Queue(previous).finished():
         raise Refused(8, "active queue %s is not finished" % previous)
@@ -549,7 +563,7 @@ def cmd_init(args):
     data = {
         "queue_id": args.queue_id,
         "created": now(),
-        "lock_dir": str(Path(args.lock_dir or DEFAULT_LOCK).resolve()),
+        "lock_dir": str(Path(args.lock_dir).resolve()),
         "min_free_gib": args.min_free_gib,
         "space_path": str(Path(args.space_path).resolve()) if args.space_path else str(directory),
         "allowed_roots": [str(Path(r).resolve()) for r in (args.allowed_root or [])],
@@ -774,6 +788,11 @@ def cmd_lock(args):
 
 
 def cmd_run(args):
+    if not platform_supported():
+        # Revision 12: before the queue is read, any record is written or anything is started.
+        raise Refused(PLATFORM_REFUSED,
+                      "auto-mode runs need macOS (sandbox-exec and `ps -E`); this system is %s"
+                      % sys.platform)
     queue = open_queue(args)
     command = list(args.command)
     if not command:

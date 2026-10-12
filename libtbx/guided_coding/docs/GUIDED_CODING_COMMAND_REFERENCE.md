@@ -63,9 +63,9 @@ The complete-source check rejects missing, changed and extra source files,
 links and multiply linked files. Its narrow exception permits certain
 installer-generated `__pycache__` files beside listed Python modules. It
 reports the ignored count and checks their names and header type, not their
-contents. The two tools do not load that package bytecode when invoked as
-documented. Ordinary Python imports, including direct unit-test imports,
-can load caches; run those tests on a trusted clean copy.
+contents. The documented checking tools run from source rather than loading
+that package bytecode. Ordinary Python imports, including direct unit-test
+imports, can load caches; run those tests on a trusted clean copy.
 
 The commands shown here require Bash and `shasum`, plus a suitable Python 3.
 They are not csh syntax. Use the appropriate shell explicitly rather than
@@ -299,6 +299,49 @@ command does not start the skill. Claude turns the request into a job
 list, shows one checked start notice and then works without questions.
 The start notice gives the absolute path of the queue helper in use, the
 stop command and the run boundary.
+
+**Auto-mode runs need macOS.** The queue helper blocks outside network
+for its runs with `sandbox-exec` and finds a run's processes by an
+environment marker read with `ps -E`; both are macOS mechanisms. On any
+other system `auto_queue.py run` refuses (exit 15, "auto-mode runs need
+macOS (sandbox-exec and `ps -E`)") before anything starts, whether or not
+the job has a network grant. The helper has no option, environment
+variable or setting that allows it. `init` needs
+`--lock-dir`, the lock directory named in the project method; without it
+init refuses (exit 2) and creates nothing.
+
+The kit's tests are meant to run on Linux as well. There they run the
+helper through a test-only launcher, `tests/auto_queue_standin.py`, that
+runs it without the sandbox and without the platform refusal; its
+stand-in for `sandbox-exec` runs commands unrestricted. The launcher is
+for the kit's own tests only and refuses real queues: before it starts or
+records anything it exits 16 unless every path the helper would open (the
+home from `--home` or `GC_AUTO_HOME`, never the default; every `--queue`;
+the queue named by the home's `ACTIVE` file) lies inside a temporary
+directory of the test run that holds the tests' marker file
+`GC_KIT_TEST_QUEUE_ROOT`. It refuses an empty or blank `--home`, `--queue`,
+`--records`, `--lock-dir` or `GC_AUTO_HOME` so that the paths it checks are
+the ones the helper opens (the helper reads a blank value as a relative
+path, falls back to another home or queue for an empty `--home`,
+`GC_AUTO_HOME` or `--queue`, resolves an empty `--records` to the current
+directory, and refuses an empty `--lock-dir` itself). A marker written there
+by hand is accepted, and so is a symlink planted by hand inside a marked
+test queue (the check resolves the queue directory, not what is inside it),
+so this guards against mistaken use, not deliberate misuse.
+The following is the expected Linux coverage, shown so far only by a
+simulated non-macOS run on a Mac and verified on real Linux only by a
+later run of the kit suite on a Linux machine. The tests cover queue
+states, init, runs and their records, time limits, approvals, frozen packets and
+screening, the worker registry, the lock, stop, reconcile, cleanup and
+recovery, the installation check, the report and the screens, and the
+real helper's refusal of runs off macOS. Four checks need macOS and are
+skipped elsewhere with their reason: `test_outside_network_blocked_by_default`
+and `test_probe_network_blocked_by_default` (the real sandbox-exec
+refusal of outside connections) and
+`test_survivor_setsid_found_by_run_id_marker` and
+`test_probe_surviving_killed_wrapper_is_found` (the `ps -E` marker). The
+three tests that would contact a real outside host run only with
+`GC_TEST_NETWORK=1`, on any system.
 
 **What the invocation grants.** It is your advance grant for the listed
 jobs only, filed as `GRANT.md` in the queue's record before any job

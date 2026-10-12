@@ -7,6 +7,19 @@ unchanged.
 Re-read this file and the queue record (`auto_queue.py status`) at the start of every job, after
 a resume, and after the conversation has been summarized.
 
+**Auto-mode runs need macOS.** `auto_queue.py run` blocks outside network with
+`/usr/bin/sandbox-exec` and finds a run's processes by their environment marker with `ps -E`.
+On any other system `run` refuses with exit 15 ("auto-mode runs need macOS (sandbox-exec and
+`ps -E`)") before it reads the queue, writes a run record or starts the probe or CMD, with or
+without a network grant. The helper has no option, environment variable or setting that
+permits runs off macOS; the other commands work on any system. A queue whose checks must run
+elsewhere is not an auto queue. The kit's tests include a test-only launcher,
+`tests/auto_queue_standin.py`, that runs the helper without the sandbox and without the platform
+refusal so that the portable tests can run on Linux (see "Tests off macOS" below). It is for the
+kit's own tests only and refuses real queues (exit 16); a marker written by hand, or a symlink
+planted by hand inside a marked test queue, can defeat that, so it guards against mistakes, not
+deliberate misuse.
+
 ## What `/gc auto` authorizes
 
 The invocation is the Developer's advance grant (contract §9), filed as `GRANT.md` in the queue
@@ -39,7 +52,8 @@ job and before each run.
 4. Draft `screens/AUTO_START.md` into the queue's record, check it with
    `screen_check.py present auto_start FILE`, show the output once. The STOP section gives the
    absolute path of the `auto_queue.py` actually in use (the verified procedure root).
-5. `auto_queue.py init …`, write `GRANT.md` first, then
+5. `auto_queue.py init --lock-dir <method's lock directory> …` (there is no default lock: without
+   `--lock-dir` init refuses with exit 2 and creates nothing), write `GRANT.md` first, then
    `auto_queue.py install check --script <method's fingerprint script> --expect <recorded value>`
    (unavailable → every installation-test job is Blocked with that reason). Never pass
    `--new-baseline` unattended: recording a new starting state for the test installation is an
@@ -185,6 +199,49 @@ records a pause the controller knows about (for example a reset time it can see 
 a controller stopped by a limit cannot record one. `/gc auto resume` in a new conversation does
 the same and continues the remaining jobs only while the grant has not ended; otherwise it
 reports.
+
+## Tests off macOS
+
+The kit's tests (`tests/tst_*_v20.py`, and `libtbx/tst_guided_coding.py` in the shared suite) are
+meant to run on Linux. There, and on a Mac when `GC_TEST_SIMULATE_NON_MACOS=1` simulates it
+inside the test processes, the tests run the helper through the test-only launcher `tests/auto_queue_standin.py`:
+it imports `auto_queue.py` and, in its own process only, accepts the platform and replaces
+`sandbox-exec` with a stand-in that runs the command unrestricted. Every command the tests run
+through it is local. The installed helper has no hook for it; on a Mac without the simulation the
+tests use the real helper and the real `sandbox-exec`. Because the launcher runs commands
+unrestricted on any system, it acts only on queues the tests created: before it starts or
+records anything it refuses with exit 16 unless every path the helper would open lies inside
+one directory directly under the temporary directory that holds the marker file
+`GC_KIT_TEST_QUEUE_ROOT`, which the tests write there. It finds those paths as the helper does:
+the home given by `--home` or `GC_AUTO_HOME` (the default home is refused), every `--queue`, the
+queue named by the home's `ACTIVE` file and, for `init`, the records root and the lock directory.
+An empty or blank `--home`, `--queue`, `--records`, `--lock-dir` or `GC_AUTO_HOME` is refused too,
+so that the paths the launcher checks are the ones the helper opens: the helper treats a blank
+value (for example `--home " "`) as a relative path, falls back to another home for an empty
+`--home` or `GC_AUTO_HOME` (and to the `ACTIVE` queue for an empty `--queue`), resolves an empty
+`--records` to the current directory, and refuses an empty `--lock-dir` itself. A real queue, for example under `.claude/records/` or
+`~/GuidedCoding/auto`, is refused. The limits: a marker file written by hand into a directory under
+the temporary directory is accepted, and a queue there can then be run; and the check resolves the
+queue directory, not what is inside it, so a symlink planted by hand inside a marked test queue
+(for example its `runs/` pointing to a real queue's `runs/`) lets a run record land in the real
+queue. The check guards against mistaken use, not deliberate misuse.
+
+The Linux coverage below is the expected coverage. So far it is shown only by a simulated
+non-macOS run on a Mac; it is verified on real Linux only by a later run of the kit suite on a
+Linux machine.
+
+- **Expected to run on Linux:** queue states and transitions, init and its refusals (including
+  the missing `--lock-dir`), runs and their records, time limits, the probe, stale runs, approvals and
+  readiness, frozen packets and `SCREENING.txt`, the worker registry, the lock, stop, check-stop,
+  reconcile, cleanup and leftover processes found by group, session or parentage, the installation
+  check, the morning report and the `auto_start` and `auto_report` screens; and the refusal of
+  `run` off macOS, with and without a network grant, by the real helper.
+- **Needs macOS (skipped off macOS, each with its reason):** `test_outside_network_blocked_by_default`
+  and `test_probe_network_blocked_by_default` (the real sandbox-exec refusal of outside
+  connections), and `test_survivor_setsid_found_by_run_id_marker` and
+  `test_probe_surviving_killed_wrapper_is_found` (the `ps -E` environment marker).
+- **Opt-in everywhere:** the three tests that would contact a real outside host or name run only
+  with `GC_TEST_NETWORK=1`.
 
 ## Not in this release
 

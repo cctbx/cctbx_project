@@ -1252,6 +1252,15 @@ class VersionGateScopeChecks(unittest.TestCase):
 
 
 AUTO_QUEUE = Path(__file__).resolve().parent.parent / "auto_queue.py"
+# AUTO_QUEUE Revision 12: `run` needs macOS; off macOS (real, or simulated inside the
+# test processes with GC_TEST_SIMULATE_NON_MACOS=1, read only by the tests) the queue
+# is built through the test-only launcher, whose sandbox stand-in runs the local
+# command `true` unrestricted.
+AUTO_QUEUE_STANDIN = Path(__file__).resolve().parent / "auto_queue_standin.py"
+# Revision 12 (P8): the launcher runs only queues in a temporary directory with this marker.
+STANDIN_MARKER = "GC_KIT_TEST_QUEUE_ROOT"
+STANDIN_MARKER_TEXT = "guided_coding kit tests: test-only queue root for this test run; never a real queue\n"
+NON_MACOS = sys.platform != "darwin" or os.environ.get("GC_TEST_SIMULATE_NON_MACOS") == "1"
 # Revision 2 (S5): the one STOP command the checker accepts names the
 # auto_queue.py in the same procedure root as the screen_check.py being run.
 CHECKER_AUTO_QUEUE = (Path(checker.__file__).parent.parent.parent / "auto_queue.py").resolve()
@@ -1281,6 +1290,7 @@ class AutoScreenChecks(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
+        (self.root / STANDIN_MARKER).write_text(STANDIN_MARKER_TEXT)  # Revision 12 (P8)
         self.home = self.root / "home"
         self.home.mkdir()
         self.environment = dict(os.environ, GC_AUTO_HOME=str(self.home),
@@ -1295,7 +1305,8 @@ class AutoScreenChecks(unittest.TestCase):
             cwd=self.root, env=self.environment, text=True, capture_output=True)
 
     def queue_tool(self, *arguments, queue=None, expect=0):
-        command = [sys.executable, "-I", "-B", str(AUTO_QUEUE), "--home", str(self.home)]
+        helper = AUTO_QUEUE_STANDIN if NON_MACOS else AUTO_QUEUE
+        command = [sys.executable, "-I", "-B", str(helper), "--home", str(self.home)]
         if queue is not None:
             command += ["--queue", str(queue)]
         result = subprocess.run(command + list(arguments), cwd=self.root,

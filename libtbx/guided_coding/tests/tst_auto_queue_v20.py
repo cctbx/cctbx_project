@@ -14,12 +14,31 @@ Revision 9: the packet's SCREENING.txt (form, line numbers, included test, outsi
 access against the network grant, re-check at Approved and in the report) and the
 manual-resume Waiting step.
 
-The tool is only ever run through subprocess (-I -B); nothing here imports it
-or reads its source. Every queue, control home, lock directory, space path,
+The tool is only ever run through subprocess (-I -B); the test process never
+imports it or reads its source. Every queue, control home, lock directory, space path,
 allowed root and git repository lives under a temporary directory; --home and
---lock-dir are always passed, so the default home and lock are never touched.
+--lock-dir are always passed, so the default home is never touched.
 Each refusal is paired with a positive control (the same call without the
 forbidden condition is accepted).
+Revision 12: `run` needs macOS. Off macOS (real, or simulated inside the test
+processes with GC_TEST_SIMULATE_NON_MACOS=1) the helper is run through the
+test-only launcher tests/auto_queue_standin.py, whose stand-in for sandbox-exec
+runs commands unrestricted; every command run through it is local. Only the
+four checks of the real macOS mechanisms are skipped there. The refusal tests
+run the real helper (a subprocess that imports it and sets sys.platform), never
+the launcher. `init` without --lock-dir is refused. The launcher cannot run a
+real queue job (P8): it refuses (exit 16) any queue outside a temporary
+directory of this test run that holds the test-only marker, which setUp writes.
+P9: one test reads the helper's own process table (auto_queue.snapshot(), in a
+subprocess that imports the helper) and checks that it lists a test process with
+its parent and group, and that cleanup ends that process.
+P10: the helper allows one second on the earlier bound of a run's window, because
+Linux ps can report a start time up to 1 s early. On the Mac the tests imitate that
+inside a test-side launcher (LINUX_PS_SCRIPT: the helper's ps start times are taken
+as floor(exact fork time - 0.8 s) and its `ps -E` markers are dropped, as on Linux);
+four tests use it always, and GC_TEST_IMITATE_LINUX_PS=1 (read only by the tests) runs
+every helper call of a selected test through it. Off the Mac the launcher changes
+nothing: real Linux ps already reports early.
 """
 
 import calendar
@@ -43,6 +62,23 @@ import unittest
 from pathlib import Path
 
 TOOL = Path(__file__).resolve().parent.parent / "auto_queue.py"
+# Revision 12: the test-only launcher, used only where the platform is not macOS
+# (real, or simulated with GC_TEST_SIMULATE_NON_MACOS=1, read only by the tests).
+STANDIN = Path(__file__).resolve().parent / "auto_queue_standin.py"
+NON_MACOS = sys.platform != "darwin" or os.environ.get("GC_TEST_SIMULATE_NON_MACOS") == "1"
+# Revision 12 (P8): the launcher runs only queues inside a directory directly under the
+# temporary directory that holds this marker (written by setUp); otherwise exit 16.
+STANDIN_MARKER = "GC_KIT_TEST_QUEUE_ROOT"
+STANDIN_MARKER_TEXT = "guided_coding kit tests: test-only queue root for this test run; never a real queue\n"
+STANDIN_REFUSED = 16
+STANDIN_MESSAGE = ("REFUSED: tests/auto_queue_standin.py is a test-only launcher and runs only "
+                   "queues the kit's own tests created; nothing was started or recorded.")
+MACOS_ONLY = "macOS mechanism, skipped off macOS: "
+PLATFORM_REFUSED = 15
+PLATFORM_MESSAGE = "REFUSED: auto-mode runs need macOS (sandbox-exec and `ps -E`); this system is "
+# The real helper with non-macOS forced inside its own process (no option or variable).
+FORCED_NON_MACOS = ("import sys; sys.path.insert(0, sys.argv[1]); import auto_queue; "
+                    "sys.platform = 'linux'; sys.exit(auto_queue.main(sys.argv[2:]))")
 QID = "q1"
 ALPHA, BETA = "job-alpha", "job-beta"
 JOBS = [{"id": ALPHA, "title": "Alpha", "requires": ["unit", "build"], "depends_on": []},
@@ -90,6 +126,13 @@ with open(pids + ".tmp", "w") as handle:
 os.replace(pids + ".tmp", pids)
 if end == "hold":
     time.sleep(30)
+"""
+# Revision 12 (P9): print the helper's own process table, pid -> [ppid, pgid, sid, start],
+# from auto_queue.snapshot() in this subprocess (the test process never imports the helper).
+SNAPSHOT_SCRIPT = """import json, sys
+sys.path.insert(0, sys.argv[1])
+import auto_queue
+print(json.dumps({str(pid): entry[:4] for pid, entry in auto_queue.snapshot().items()}))
 """
 # A fingerprint script for `install check`.
 FINGERPRINT_SCRIPT = """#!{python}
@@ -158,6 +201,49 @@ with open(sys.argv[1] + ".tmp", "w") as handle:
 os.replace(sys.argv[1] + ".tmp", sys.argv[1])
 subprocess.run(["/bin/sleep", "30"])
 """
+# Revision 12 (P10): a test-side launcher that runs the helper (argv[2]: auto_queue.py, or the
+# stand-in launcher, which then imports this already patched module) with Linux procps start
+# times imitated inside this one process: every ps start time the helper reads (snapshot() and
+# process_start()) becomes floor(exact fork time - LAG), the way procps adds clock ticks to a
+# boot time truncated to whole seconds, and the `ps -E` markers are dropped (Linux ps has no
+# -E). The exact fork time comes from the macOS kernel (sysctl KERN_PROC_PID, p_starttime).
+# Off macOS it changes nothing. The installed helper is never changed.
+IMITATE_LINUX_PS = os.environ.get("GC_TEST_IMITATE_LINUX_PS") == "1"
+LINUX_PS_LAG = 0.8
+LINUX_PS_SCRIPT = """import ctypes, math, os, runpy, sys, time
+kit, helper, lag = sys.argv[1], sys.argv[2], float(sys.argv[3])
+sys.path.insert(0, kit)
+import auto_queue
+if sys.platform == "darwin":
+    libc = ctypes.CDLL(None)
+    real_snapshot, real_process_start = auto_queue.snapshot, auto_queue.process_start
+
+    def lagged(pid):
+        mib = (ctypes.c_int * 4)(1, 14, 1, int(pid))  # CTL_KERN, KERN_PROC, KERN_PROC_PID
+        buf, size = ctypes.create_string_buffer(1024), ctypes.c_size_t(1024)
+        if libc.sysctl(mib, 4, buf, ctypes.byref(size), None, 0) != 0 or size.value < 16:
+            return None
+        sec = int.from_bytes(buf.raw[0:8], "little", signed=True)
+        usec = int.from_bytes(buf.raw[8:12], "little", signed=True)
+        return int(math.floor(sec + usec / 1e6 - lag)) if sec > 0 else None
+
+    def snapshot():
+        return {pid: [ppid, pgid, sid, None if start is None else lagged(pid), set()]
+                for pid, (ppid, pgid, sid, start, marks) in real_snapshot().items()}
+
+    def process_start(pid):
+        text = real_process_start(pid)
+        if text in (None, auto_queue.UNREADABLE):
+            return text
+        start = lagged(pid)
+        return text if start is None else time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(start))
+
+    auto_queue.snapshot, auto_queue.process_start = snapshot, process_start
+sys.argv = [helper] + sys.argv[4:]
+if os.path.realpath(helper) == os.path.realpath(auto_queue.__file__):
+    sys.exit(auto_queue.main(sys.argv[1:]))
+runpy.run_path(helper, run_name="__main__")
+"""
 # A name lookup; exit 0 when the host resolves.
 DNS_SCRIPT = """import socket, sys
 try:
@@ -214,10 +300,13 @@ def job_entry(data, job):
 
 
 class AutoQueueChecks(unittest.TestCase):
+    linux_ps = IMITATE_LINUX_PS  # Revision 12 (P10); the P10 tests set it for themselves
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.tmp = Path(os.path.realpath(self.temp.name))
+        (self.tmp / STANDIN_MARKER).write_text(STANDIN_MARKER_TEXT)  # Revision 12 (P8)
         self.procs, self.stray, self.workers, self.ready_packets = [], [], {}, {}
         self.addCleanup(self.kill_leftovers)
         user = self.tmp / "user"
@@ -239,6 +328,8 @@ class AutoQueueChecks(unittest.TestCase):
         self.work.mkdir()
         self.wait_script = self.work / "wait.py"
         self.wait_script.write_text(WAIT_SCRIPT)
+        self.linux_ps_script = self.work / "linux_ps.py"  # Revision 12 (P10)
+        self.linux_ps_script.write_text(LINUX_PS_SCRIPT)
         self.counter = 0
         self.grant = self.tmp / "GRANT.md"
         self.grant.write_text("# Grant\nSynthetic grant for tests.\n")
@@ -294,16 +385,21 @@ class AutoQueueChecks(unittest.TestCase):
     def tree(self):
         return self.git("rev-parse", "HEAD^{tree}")
 
-    def command(self, args, home, queue):
-        command = [sys.executable, "-I", "-B", str(TOOL), "--home", str(home or self.home)]
+    def command(self, args, home, queue, real=False):
+        """Revision 12: off macOS through the test-only launcher, unless `real`."""
+        helper = STANDIN if NON_MACOS and not real else TOOL
+        command = [sys.executable, "-I", "-B", str(helper), "--home", str(home or self.home)]
+        if self.linux_ps and not real:  # Revision 12 (P10): Linux ps start times imitated
+            command[3:4] = [str(self.linux_ps_script), str(TOOL.parent), str(helper),
+                            str(LINUX_PS_LAG)]
         if queue is True:
             queue = self.queue
         if queue:
             command += ["--queue", str(queue)]
         return command + [str(a) for a in args]
 
-    def tool(self, *args, home=None, queue=True, env=None):
-        return subprocess.run(self.command(args, home, queue), cwd=self.tmp,
+    def tool(self, *args, home=None, queue=True, env=None, real=False):
+        return subprocess.run(self.command(args, home, queue, real), cwd=self.tmp,
                               env=dict(self.env, **(env or {})), text=True,
                               capture_output=True, timeout=60)
 
@@ -1359,11 +1455,15 @@ class AutoQueueChecks(unittest.TestCase):
         """Revision 4 fix 1 (b): a child in a new process group, same session, is found."""
         self.check_survivor_counted(*self.survivor_after_wrapper_kill("note+pgrp"))
 
+    @unittest.skipIf(NON_MACOS, MACOS_ONLY + "finds the survivor by its GC_AUTO_RUN_ID "
+                     "environment marker, read with `ps -E` (Linux ps has no -E)")
     def test_survivor_setsid_found_by_run_id_marker(self):
         """Revision 4 fix 1 (c): a non-system program calling os.setsid() is found by
         its GC_AUTO_RUN_ID environment marker."""
         self.check_survivor_counted(*self.survivor_after_wrapper_kill("note+setsid"))
 
+    @unittest.skipIf(NON_MACOS, MACOS_ONLY + "finds the surviving probe by its GC_AUTO_RUN_ID "
+                     "environment marker, read with `ps -E` (Linux ps has no -E)")
     def test_probe_surviving_killed_wrapper_is_found(self):
         """Revision 4 fix 1: a probe that outlives a SIGKILLed wrapper is counted;
         CMD never starts; once it is gone, unknown and Stopped."""
@@ -1518,13 +1618,17 @@ class AutoQueueChecks(unittest.TestCase):
         return shell
 
     def test_easy_run_pattern_shell_survivor(self):
-        """Revision 5 S2: a shell started with setsid by CMD (python, then /bin/sleep 41)
+        """Revision 5 S2: a shell started with setsid by CMD (python, then /bin/sleep 41.<pid>)
         keeps the run from passing; report says running; stop signals the shell and
         the sleep; no sleep 41 remains after Stopped."""
         self.prepare(BETA)
         self.ok(self.set(BETA, "Testing"))
         python = shlex.quote(sys.executable)
-        shell = self.easy_run(f"{python} -c 'import time; time.sleep(4)'; /bin/sleep 41")
+        # Revision 12: the sleep's own command line carries a marker (this test
+        # process's pid as the fraction), so it is found without assuming it is the
+        # shell's child (a Linux shell may exec into its last command).
+        sleep_argv = ["/bin/sleep", "41.%d" % os.getpid()]
+        shell = self.easy_run(f"{python} -c 'import time; time.sleep(4)'; " + " ".join(sleep_argv))
         self.assertTrue(alive(shell))
         cell = self.result_cell(self.report(), BETA)
         self.assertIn("running", cell.lower())
@@ -1533,15 +1637,19 @@ class AutoQueueChecks(unittest.TestCase):
         sleeper = []
 
         def sleep_started():
-            table = subprocess.run(["/bin/ps", "-A", "-o", "pid=,ppid=,command="], text=True,
+            table = subprocess.run(["/bin/ps", "-A", "-o", "pid=", "-o", "command="], text=True,
                                    capture_output=True).stdout
             for line in table.splitlines():
-                pid, ppid, command = line.split(None, 2)
-                if int(ppid) == shell and command.strip().endswith("sleep 41"):
-                    sleeper.append(int(pid))
+                # Revision 12: Linux ps can print a line with an empty command;
+                # such a line is not the sleep.
+                fields = line.split(None, 1)
+                if len(fields) < 2 or not fields[0].isdigit():
+                    continue
+                if fields[1].split() == sleep_argv:
+                    sleeper.append(int(fields[0]))
                     return True
             return False
-        self.wait_for(sleep_started, "the shell's /bin/sleep 41")
+        self.wait_for(sleep_started, "the shell's " + " ".join(sleep_argv))
         self.stray.extend(sleeper)
         cell = self.result_cell(self.report(), BETA)
         self.assertIn("running", cell.lower())
@@ -1581,7 +1689,8 @@ class AutoQueueChecks(unittest.TestCase):
 
     def test_ended_run_bound_exact_to_the_second(self):
         """Revision 5 S1 (window exact to whole UTC seconds); the orphan starts just
-        after the next whole UTC second following `ended`."""
+        after the next whole UTC second following `ended` (Revision 12: waits until
+        ps reports that second for a new process)."""
         self.check_ended_bound(lambda ended: ended + 1.05)
 
     def utc(self, iso):
@@ -1592,6 +1701,19 @@ class AutoQueueChecks(unittest.TestCase):
                                 env={"LC_ALL": "C", "TZ": "UTC"}, text=True,
                                 capture_output=True).stdout.strip()
         return calendar.timegm(time.strptime(lstart, "%a %b %d %H:%M:%S %Y"))
+
+    def wait_past_second(self, bound):
+        """Revision 12: wait until a newly started process's ps start time is a later
+        whole UTC second than `bound`. Linux ps derives start times from the boot time
+        and clock ticks, so the wall clock passing bound + 1 is not enough."""
+        def later():
+            probe = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(5)"])
+            try:
+                return self.start_epoch(probe.pid) > bound
+            finally:
+                probe.kill()
+                probe.wait(5)
+        self.wait_for(later, f"a process start time later than {bound}")
 
     def orphan_of_dead_leader(self):
         """An exited, unrelated session leader P and its orphan (sid = pgid = P,
@@ -1646,6 +1768,7 @@ class AutoQueueChecks(unittest.TestCase):
         (record,) = self.runs().values()
         ended = self.utc(record["ended"])
         time.sleep(max(0.0, start_at(ended) - time.time()))
+        self.wait_past_second(ended)
         leader, orphan, ready, start = self.orphan_of_dead_leader()
         self.assertGreater(start, ended)
         excluded = dict(pid=leader, pgid=leader, process_start=None)
@@ -1655,13 +1778,15 @@ class AutoQueueChecks(unittest.TestCase):
     def test_probe_window_bounds_probe_leader(self):
         """Revision 6 S1 variant: a running record's probe_pgid (an exited, unrelated
         session leader) claims its orphan only if the orphan started within
-        [probe_started, probe_ended]."""
+        [probe_started, probe_ended]. Revision 12: the orphan starts once ps reports
+        a later second than probe_ended for a new process."""
         self.prepare(BETA)
         self.ok(self.run_cmd(BETA, "unit"))
         (record,) = self.runs().values()
         probe_ended = self.utc(record["probe_ended"])
         self.assertLessEqual(self.utc(record["probe_started"]), probe_ended)
         time.sleep(max(0.0, probe_ended + 1.05 - time.time()))
+        self.wait_past_second(probe_ended)
         leader, orphan, ready, start = self.orphan_of_dead_leader()
         self.assertGreater(start, probe_ended)
         excluded = dict(status="running", ended=None, probe_pgid=leader, probe_start=None)
@@ -1946,6 +2071,56 @@ class AutoQueueChecks(unittest.TestCase):
         self.assertNotIn("running", self.result_cell(self.report(), BETA).lower())
         self.attempt(BETA, 0)
 
+    def helper_snapshot(self):
+        """Revision 12 (P9): the helper's own process table, pid -> [ppid, pgid, sid, start]."""
+        script = self.work / "snapshot.py"
+        script.write_text(SNAPSHOT_SCRIPT)
+        result = subprocess.run([sys.executable, "-I", "-B", str(script), str(TOOL.parent)],
+                                cwd=self.tmp, env=self.env, text=True, capture_output=True,
+                                timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return {int(pid): entry for pid, entry in json.loads(result.stdout).items()}
+
+    def test_helper_process_table_lists_test_process_and_cleanup_ends_it(self):
+        """Revision 12 (P9): a test process started by a run's CMD appears in the helper's
+        own process table with its pid, its parent (the CMD leader) and its group (the
+        run's); after the wrapper and the leader are killed, cleanup ends it. An empty
+        or wrong table fails here."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        launcher, pids = self.work / "launch.py", self.work / "pids-table"
+        launcher.write_text(LAUNCH_SCRIPT)
+        _, ready, release = self.wait_cmd("default")
+        proc = self.popen_run(BETA, [sys.executable, str(launcher), "hold", str(self.wait_script),
+                                     str(pids), f"default,{ready},{release}"])
+        stem, record = self.wait_record(set())
+        self.wait_for(pids.exists, "the test process's pid")
+        (child,) = [int(pid) for pid in pids.read_text().split()]
+        self.stray.append(child)
+        self.wait_for(ready.exists, "the test process to start")
+        leader = record["pid"]
+        self.assertEqual(os.getpgid(child), record["pgid"])
+        procs = self.helper_snapshot()
+        self.assertIn(child, procs, "the helper's process table lacks the test process %d "
+                      "(%d processes listed)" % (child, len(procs)))
+        self.assertIn(leader, procs, "the helper's process table lacks the CMD leader")
+        ppid, pgid, sid, start = procs[child]
+        self.assertEqual(ppid, leader, "parent of the test process in the helper's table")
+        self.assertEqual(pgid, record["pgid"], "group of the test process in the helper's table")
+        self.assertEqual(sid, os.getsid(child))
+        self.assertIsInstance(start, int)
+        os.kill(proc.pid, signal.SIGKILL)
+        proc.wait(5)
+        os.kill(leader, signal.SIGKILL)
+        self.wait_for(lambda: not alive(leader), "the CMD leader to exit")
+        self.assertTrue(alive(child))
+        self.end_worker()
+        result = self.cleanup(0)
+        self.assertTrue(result.stdout.strip().startswith("Cleaned"), result.stdout)
+        self.assertFalse(alive(child), "cleanup left the test process running")
+        self.assertIn("process %d of run %s" % (child, record["run_id"]),
+                      (self.queue / "EVENTS.log").read_text())
+
     def test_cleanup_refused_while_run_leader_alive(self):
         """Revision 7: cleanup gives 13 and signals nothing while a run of the job is
         running with its leader alive; afterwards it is accepted."""
@@ -2157,6 +2332,8 @@ class AutoQueueChecks(unittest.TestCase):
             self.skipTest("no outside network from this machine (outside the sandbox): "
                           + (check.stdout + check.stderr).strip()[-200:])
 
+    @unittest.skipIf(NON_MACOS, MACOS_ONLY + "checks the real sandbox-exec refusal of outside "
+                     "connections (the test-only stand-in does not block the network)")
     def test_outside_network_blocked_by_default(self):
         """Revision 8 / Revision 10: a job without "network" runs CMD with outside
         network blocked: an HTTPS request to https://192.0.2.1/ and a TCP connection
@@ -2199,6 +2376,9 @@ class AutoQueueChecks(unittest.TestCase):
         thread.join(TIMEOUT)
         self.assertTrue(all(r["network"] == "blocked" for r in self.runs().values()))
 
+    @unittest.skipIf(NON_MACOS, MACOS_ONLY + "checks the real sandbox-exec refusal of the "
+                     "probe's outside connection (the test-only stand-in does not block "
+                     "the network)")
     def test_probe_network_blocked_by_default(self):
         """Revision 8 / Revision 10: the probe runs under the same block (its HTTPS
         request to https://192.0.2.1/ fails: exit 7, not started). Re-read 10 (a):
@@ -2328,11 +2508,18 @@ class AutoQueueChecks(unittest.TestCase):
         (own session, output inherited) outlives it does not hold the wrapper: exit
         124 within about 15 s, `not started` / `probe timed out`, the detached python
         is ended (by the run, or by cleanup before lock release is accepted)."""
+        self.check_probe_timeout_detached()
+
+    def check_probe_timeout_detached(self, align=False):
+        """The body of the probe time-out test; with `align` (Revision 12, P10) the run
+        starts just after a whole UTC second and the record is returned."""
         self.prepare(BETA)
         script, pidfile = self.work / "detach_probe.py", self.work / "detached.pid"
         script.write_text(DETACH_PROBE)
         marker, cmd = self.marker_cmd("ran-after-detached-probe")
         probe = f"{shlex.quote(sys.executable)} {shlex.quote(str(script))} {shlex.quote(str(pidfile))}"
+        if align:
+            time.sleep(1.02 - time.time() % 1)
         began = time.time()
         result = self.run_cmd(BETA, "unit", probe=probe, cmd=cmd, extra=("--timeout", "3"))
         elapsed = time.time() - began
@@ -2352,6 +2539,55 @@ class AutoQueueChecks(unittest.TestCase):
             self.ok(self.tool("lock", "release"))
         self.assertFalse(alive(detached), "the detached python was left")
         self.assertFalse(self.lock.exists())
+        return record
+
+    # ---- Revision 12 (P10): one second allowed for early Linux ps start times ------
+
+    def test_linux_ps_lag_probe_timeout_finds_leader_and_detached_child(self):
+        """P10 (i): with ps start times reported up to 1 s early (Linux procps; imitated on
+        the Mac by LINUX_PS_SCRIPT, markers dropped), a run started just after a whole
+        second has its probe leader reported in the second before `started`. The helper
+        still counts the leader (one second allowed), so it finds the leader's detached
+        python (own session, reachable off macOS only as the leader's child) and ends it,
+        at the time-out or by cleanup before lock release is accepted."""
+        self.linux_ps = True
+        record = self.check_probe_timeout_detached(align=True)
+        if sys.platform == "darwin":  # the imitated case: the leader is reported early
+            leader_start = calendar.timegm(time.strptime(record["probe_start"],
+                                                         "%a %b %d %H:%M:%S %Y"))
+            self.assertLess(leader_start, self.utc(record["started"]),
+                            "the probe leader was not reported before `started`: %r" % record)
+
+    def test_linux_ps_lag_earlier_process_not_claimed(self):
+        """P10 (ii): with Linux ps start times imitated, an orphan of a dead group and
+        session leader (sid = pgid = leader, ppid 1) whose record says the run started
+        2 s after the orphan's start second (it started more than the allowance before
+        the run) is not counted and not signalled by stop. Control: the same record with
+        `started` at the orphan's start second counts it (13, Stopping, SIGTERM)."""
+        self.linux_ps = True
+        self.prepare(BETA)
+        self.ok(self.run_cmd(BETA, "unit"))
+        (record,) = self.runs().values()
+        leader, orphan, ready, start = self.orphan_of_dead_leader()
+        iso = lambda second: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(second))
+        excluded = dict(pid=leader, pgid=leader, process_start=None, ended=None,
+                        status="running", started=iso(start + 2))
+        self.check_counted_only_when(record, excluded, dict(excluded, started=iso(start)),
+                                     orphan, ready)
+
+    def test_linux_ps_lag_cleanup_ends_survivor_not_outsider(self):
+        """P10 (ii): with Linux ps start times imitated, cleanup still ends the run's
+        group survivor and leaves an unrelated process (the test's own child, in the
+        test's group and session) unsignalled."""
+        self.linux_ps = True
+        self.test_cleanup_ends_group_survivor_not_outsider()
+
+    def test_linux_ps_lag_stop_spares_unrelated_process(self):
+        """P10 (ii): with Linux ps start times imitated, a process in the test's own
+        session that the run did not start, started while the run ran, is neither
+        counted nor signalled by stop."""
+        self.linux_ps = True
+        self.test_unrelated_process_in_same_session_not_counted()
 
     # ---- Revision 9: screening record --------------------------------------------
 
@@ -3048,6 +3284,322 @@ class AutoQueueChecks(unittest.TestCase):
         self.assertEqual((home / "ACTIVE").read_text().splitlines()[0], str(real / "linked-1"))
         self.assertTrue(link.is_symlink())
         self.assertEqual(sorted(p.name for p in self.tmp.glob("records-link*")), ["records-link"])
+
+
+    # ---- Revision 12: macOS only, lock directory required -----------------------
+
+    def forced_non_macos(self, *args, queue=True, env=None):
+        """The real helper (auto_queue.py imported by a plain subprocess, never the
+        test-only launcher) with sys.platform set to `linux` in that process only."""
+        command = self.command(args, None, queue, real=True)
+        command[1:4] = ["-I", "-B", "-c", FORCED_NON_MACOS, str(TOOL.parent)]
+        return subprocess.run(command, cwd=self.tmp, env=dict(self.env, **(env or {})),
+                              text=True, capture_output=True, timeout=60)
+
+    def check_platform_refusal(self, result, cmd_marker, probe_marker):
+        """Exit 15 with the one message; neither the probe nor CMD started; no run
+        record or run event written."""
+        self.refused(result, PLATFORM_REFUSED)
+        self.assertEqual(result.stderr.strip().splitlines(), [PLATFORM_MESSAGE + "linux"])
+        self.assertFalse(cmd_marker.exists(), "CMD started")
+        self.assertFalse(probe_marker.exists(), "the probe started")
+        self.assertEqual(self.runs(), {})
+        events = (self.queue / "EVENTS.log").read_text()
+        self.assertNotRegex(events, r"(?m)^\S+ run ")
+
+    def refusal_attempt(self, job, name, env=None):
+        cmd_marker, cmd = self.marker_cmd(f"{name}-cmd")
+        probe_marker = self.work / f"{name}-probe"
+        probe = f"touch {shlex.quote(str(probe_marker))}; echo {shlex.quote(str(self.src))}"
+        result = self.forced_non_macos("run", job, "unit", "--log", self.work / f"{name}.log",
+                                       "--probe", probe, "--", *cmd, env=env)
+        self.check_platform_refusal(result, cmd_marker, probe_marker)
+        return cmd, probe, cmd_marker, probe_marker
+
+    def test_run_refused_off_macos_with_and_without_network_grant(self):
+        """Revision 12: off macOS (forced inside the real helper's own process) `run`
+        exits 15 with `auto-mode runs need macOS (sandbox-exec and `ps -E`)`, for a
+        job without and a job with "network": true, before the probe or CMD starts and
+        before any run record; the job stays Preparing and `status` still works.
+        Control (real macOS only, where the real helper may run): the same call is
+        accepted and runs the probe and CMD."""
+        jobs = self.tmp / "JOBS-net.json"
+        jobs.write_text(json.dumps([dict(JOBS[1], network=True)]))
+        for network in (False, True):
+            with self.subTest(network=network):
+                if network:
+                    home = self.tmp / "home-q-net"
+                    home.mkdir()
+                    self.home, self.lock = home, self.tmp / "RUN-q-net.lock"
+                    self.ok(self.tool(*self.init_args("q-net", self.lock, jobs=jobs), home=home,
+                                      queue=None, real=True))
+                    self.queue = self.records / "q-net"
+                self.assertEqual(job_entry(self.status(), BETA).get("network", False), network)
+                self.prepare(BETA, real=True)
+                cmd, probe, cmd_marker, probe_marker = self.refusal_attempt(
+                    BETA, f"refused-{network}")
+                self.assertEqual(self.state(BETA), "Preparing")
+                shown = self.forced_non_macos("status")
+                self.assertEqual(shown.returncode, 0, shown.stderr)
+                self.assertEqual(job_entry(json.loads(shown.stdout), BETA)["state"], "Preparing")
+                if sys.platform == "darwin" and not NON_MACOS:
+                    self.ok(self.tool("run", BETA, "unit", "--log", self.work / "control.log",
+                                      "--probe", probe, "--", *cmd, real=True))
+                    self.assertTrue(cmd_marker.exists())
+                    self.assertTrue(probe_marker.exists())
+                    (record,) = self.runs().values()
+                    self.assertEqual(record["network"], "allowed" if network else "blocked")
+
+    def test_run_refusal_has_no_switch(self):
+        """Revision 12: no environment variable or option lets `run` go ahead off
+        macOS: with plausible variables set (including the tests' own simulation
+        variable) and with --timeout and --cwd, the real helper still exits 15 with
+        the same message and starts nothing."""
+        self.prepare(BETA, real=True)
+        plausible = {"GC_TEST_SIMULATE_NON_MACOS": "1", "GC_AUTO_ALLOW_NON_MACOS": "1",
+                     "GC_AUTO_PLATFORM": "darwin", "GC_AUTO_NO_SANDBOX": "1",
+                     "GC_AUTO_SANDBOX": "/usr/bin/true", "GC_ALLOW_UNSANDBOXED": "1",
+                     "SANDBOX": "/bin/sh", "PLATFORM": "darwin", "OSTYPE": "darwin"}
+        self.refusal_attempt(BETA, "switch-env", env=plausible)
+        cmd_marker, cmd = self.marker_cmd("switch-options-cmd")
+        result = self.forced_non_macos("run", BETA, "unit", "--log", self.work / "o.log",
+                                       "--timeout", "30", "--cwd", self.work, "--", *cmd,
+                                       env=plausible)
+        self.check_platform_refusal(result, cmd_marker, self.work / "no-probe")
+
+    def test_init_without_lock_dir_refused(self):
+        """Revision 12: init without --lock-dir (or with an empty one) exits 2, saying
+        the lock directory comes from the project method's lock directory; it creates
+        nothing (no queue folder, no ACTIVE, ACTIVE unchanged where it exists). Control:
+        the same call with --lock-dir creates the queue."""
+        for index, home in enumerate((self.contain_home(40), self.home)):
+            for lock in (None, ""):
+                with self.subTest(home=home.name, lock=lock):
+                    args = self.init_args("q-nolock", self.tmp / "unused.lock")
+                    at = args.index("--lock-dir")
+                    args[at:at + 2] = [] if lock is None else ["--lock-dir", lock]
+                    active = home / "ACTIVE"
+                    before_active = active.read_text() if active.exists() else None
+                    before = self.snapshot()
+                    result = self.tool(*args, home=home, queue=None, real=True)
+                    self.refused(result, 2)
+                    self.assertIn("--lock-dir", result.stderr)
+                    self.assertIn("project method's lock directory", result.stderr)
+                    self.assertEqual(self.snapshot(), before)
+                    self.assertFalse((self.records / "q-nolock").exists())
+                    self.assertEqual(active.read_text() if active.exists() else None,
+                                     before_active)
+        home = self.contain_home(41)
+        self.ok(self.tool(*self.init_args("q-nolock", self.tmp / "RUN-nolock.lock"), home=home,
+                          queue=None, real=True))
+        self.assertTrue((self.records / "q-nolock" / "QUEUE.json").is_file())
+        self.assertEqual(json.loads((self.records / "q-nolock" / "QUEUE.json").read_text())
+                         ["lock_dir"], str(self.tmp / "RUN-nolock.lock"))
+
+    # ---- Revision 12 (P8): the test-only launcher cannot run a real queue job ----
+
+    def standin(self, *args, env=None, drop=(), cwd=None):
+        """The test-only launcher itself, on any platform."""
+        environment = {k: v for k, v in dict(self.env, **(env or {})).items() if k not in drop}
+        return subprocess.run([sys.executable, "-I", "-B", str(STANDIN), *map(str, args)],
+                              cwd=cwd or self.tmp, env=environment, text=True,
+                              capture_output=True, timeout=60)
+
+    def files_and_bytes(self, *directories):
+        return {str(p): (p.read_bytes() if p.is_file() else None)
+                for d in directories for p in sorted(Path(d).rglob("*"))}
+
+    def other_temp_queue(self, marked):
+        """A queue made with the real helper (init, lock, criterion, candidate, Preparing
+        and a worker: no `run`, so on any platform) in a new temporary directory of its
+        own, with or without the test-only marker."""
+        other = tempfile.TemporaryDirectory()
+        self.addCleanup(other.cleanup)
+        root = Path(os.path.realpath(other.name))
+        if marked:
+            (root / STANDIN_MARKER).write_text(STANDIN_MARKER_TEXT)
+        home, records = root / "home", root / "records"
+        home.mkdir()
+        records.mkdir()
+        self.ok(self.tool(*self.init_args("q-other", root / "RUN.lock", records=records),
+                          home=home, queue=None, real=True))
+        queue = records / "q-other"
+        self.prepare(BETA, real=True, home=home, queue=queue)
+        return root, home, queue
+
+    def standin_refused(self, name, *where, reason, env=None, drop=(), watch=(), cwd=None):
+        """`run` through the launcher is refused with exit 16 and one message naming
+        `reason`; neither the probe nor CMD starts; nothing in `watch` changes."""
+        cmd_marker, cmd = self.marker_cmd(f"{name}-cmd")
+        probe_marker = self.work / f"{name}-probe"
+        probe = f"touch {shlex.quote(str(probe_marker))}; echo {shlex.quote(str(self.src))}"
+        before = self.files_and_bytes(*watch)
+        result = self.standin(*where, "run", BETA, "unit", "--log", self.work / f"{name}.log",
+                              "--probe", probe, "--", *cmd, env=env, drop=drop, cwd=cwd)
+        self.refused(result, STANDIN_REFUSED)
+        lines = result.stderr.strip().splitlines()
+        self.assertEqual(len(lines), 1, result.stderr)
+        self.assertTrue(lines[0].startswith(STANDIN_MESSAGE), lines[0])
+        self.assertIn(reason, lines[0])
+        self.assertFalse(cmd_marker.exists(), "CMD started")
+        self.assertFalse(probe_marker.exists(), "the probe started")
+        self.assertFalse((self.work / f"{name}.log").exists(), "run log written")
+        self.assertEqual(self.files_and_bytes(*watch), before)
+        return cmd, probe, cmd_marker
+
+    def test_standin_refuses_queue_without_marker(self):
+        """Revision 12 (P8): the launcher refuses (exit 16, before the probe, CMD or any
+        record) a queue whose temporary directory has no test-only marker: by --queue,
+        through the home's ACTIVE file, from the marked home of this test, with the
+        default home, with the marker only in a subdirectory, as a link, or with other
+        text; `status` too. Control: with the marker written, the same launcher runs the
+        same queue's job (a local command)."""
+        root, home, queue = self.other_temp_queue(marked=False)
+        watch = (root,)
+        no_marker = f"has no test-only marker {STANDIN_MARKER}"
+        self.standin_refused("p8-queue", "--home", home, "--queue", queue,
+                             reason=no_marker, watch=watch)
+        self.standin_refused("p8-active", "--home", home, reason=no_marker, watch=watch)
+        self.standin_refused("p8-env-home", "--queue", queue, env={"GC_AUTO_HOME": str(home)},
+                             reason=no_marker, watch=watch)
+        self.standin_refused("p8-marked-home", "--home", self.home, "--queue", queue,
+                             reason=no_marker, watch=watch)
+        self.standin_refused("p8-default-home", "--queue", queue, drop=("GC_AUTO_HOME",),
+                             reason="no helper home given", watch=watch)
+        result = self.standin("--home", home, "--queue", queue, "status")
+        self.refused(result, STANDIN_REFUSED)
+        self.assertEqual(result.stdout, "")
+        (root / "records" / STANDIN_MARKER).write_text(STANDIN_MARKER_TEXT)
+        self.standin_refused("p8-deeper", "--home", home, "--queue", queue,
+                             reason=no_marker, watch=watch)
+        (root / STANDIN_MARKER).symlink_to(root / "records" / STANDIN_MARKER)
+        self.standin_refused("p8-link", "--home", home, "--queue", queue,
+                             reason=no_marker, watch=watch)
+        (root / STANDIN_MARKER).unlink()
+        (root / STANDIN_MARKER).write_text(STANDIN_MARKER_TEXT + "x")
+        self.standin_refused("p8-text", "--home", home, "--queue", queue,
+                             reason=no_marker, watch=watch)
+        (root / STANDIN_MARKER).write_text(STANDIN_MARKER_TEXT)
+        shown = self.standin("--home", home, "--queue", queue, "status")
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        self.assertEqual(job_entry(json.loads(shown.stdout), BETA)["state"], "Preparing")
+        cmd_marker, cmd = self.marker_cmd("p8-control-cmd")
+        self.ok(self.standin("--home", home, "--queue", queue, "run", BETA, "unit", "--log",
+                             self.work / "p8-control.log", "--probe",
+                             "echo " + shlex.quote(str(self.src)), "--", *cmd))
+        self.assertTrue(cmd_marker.exists())
+
+    def test_standin_refuses_marked_queue_outside_temporary_directory(self):
+        """Revision 12 (P8): a queue that has the marker but is not inside the launcher's
+        temporary directory (TMPDIR moved to a folder inside this test's directory, so
+        nothing is written elsewhere), or whose home is in another marked directory, is
+        refused with exit 16 before the probe, CMD or any record; init through the
+        launcher with its records root or lock directory outside a marked directory is
+        refused and creates nothing. Control: the same queue with the real temporary
+        directory is accepted (`status`)."""
+        self.prepare(BETA, real=True)
+        moved = self.tmp / "other-temp"
+        moved.mkdir()
+        watch = (self.queue, self.home)
+        self.standin_refused("p8-outside", "--home", self.home, "--queue", self.queue,
+                             env={"TMPDIR": str(moved)},
+                             reason="is not inside the temporary directory", watch=watch)
+        root, home, queue = self.other_temp_queue(marked=True)
+        self.standin_refused("p8-split", "--home", home, "--queue", self.queue,
+                             reason="different test directories", watch=watch + (root,))
+        unmarked = tempfile.TemporaryDirectory()
+        self.addCleanup(unmarked.cleanup)
+        outside = Path(os.path.realpath(unmarked.name))
+        for name, args in (("records", self.init_args("q-p8", self.tmp / "RUN-p8.lock",
+                                                       records=outside)),
+                           ("lock", self.init_args("q-p8", outside / "RUN.lock"))):
+            with self.subTest(init=name):
+                before = self.files_and_bytes(self.tmp, outside)
+                result = self.standin("--home", self.home, *args)
+                self.refused(result, STANDIN_REFUSED)
+                self.assertIn(f"has no test-only marker {STANDIN_MARKER}", result.stderr)
+                self.assertEqual(self.files_and_bytes(self.tmp, outside), before)
+        shown = self.standin("--home", self.home, "--queue", self.queue, "status")
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+
+    def test_standin_refuses_empty_home_that_helper_ignores(self):
+        """Revision 12 (P8, REVIEW_4 F1): an empty or blank --home (`--home=`, `--home ""`,
+        `--home " "`), or an empty GC_AUTO_HOME, is refused with exit 16 even when the
+        current directory is a marked test directory. auto_queue.py treats an empty home
+        as absent and falls back to GC_AUTO_HOME or the default home, whose ACTIVE names
+        a "real" queue outside the launcher's temporary directory (TMPDIR is moved to a
+        folder inside this test's directory, so nothing is written elsewhere). Includes
+        the reviewer's reproduction (`--home "" run`, `--home= status`). Nothing in the
+        real queue changes. Control: the real helper with `--home=` does open that queue."""
+        real = self.tmp / "real"
+        home, records, user = real / "home", real / "records", real / "user"
+        for directory in (home, records, user):
+            directory.mkdir(parents=True)
+        self.ok(self.tool(*self.init_args("q-real", real / "RUN.lock", records=records),
+                          home=home, queue=None, real=True))
+        queue = records / "q-real"
+        self.prepare(BETA, real=True, home=home, queue=queue)
+        default_home = user / "GuidedCoding" / "auto"
+        default_home.mkdir(parents=True)
+        (default_home / "ACTIVE").write_text((home / "ACTIVE").read_text())
+        temp = self.tmp / "launcher-temp"
+        marked_cwd = temp / "test-run"
+        marked_cwd.mkdir(parents=True)
+        (marked_cwd / STANDIN_MARKER).write_text(STANDIN_MARKER_TEXT)
+        watch = (real,)
+        via_env = {"TMPDIR": str(temp), "GC_AUTO_HOME": str(home)}
+        via_default = {"TMPDIR": str(temp), "HOME": str(user)}
+        empty = "empty or blank --home"
+        for name, where, env, drop, reason in (
+                ("p8-home-equals", ("--home=",), via_env, (), empty),
+                ("p8-home-empty", ("--home", ""), via_env, (), empty),
+                ("p8-home-blank", ("--home", " "), via_env, (), empty),
+                ("p8-home-empty-default", ("--home", ""), via_default, ("GC_AUTO_HOME",), empty),
+                ("p8-home-equals-queue", ("--home=", "--queue", queue), via_env, (), empty),
+                ("p8-env-home-empty", (), dict(via_default, GC_AUTO_HOME=""), (),
+                 "no helper home given"),
+                ("p8-env-home-blank", (), dict(via_default, GC_AUTO_HOME=" "), (),
+                 "no helper home given")):
+            with self.subTest(case=name):
+                self.standin_refused(name, *where, reason=reason, env=env, drop=drop,
+                                     watch=watch, cwd=marked_cwd)
+        before = self.files_and_bytes(real)
+        result = self.standin("--home=", "status", env=via_default, drop=("GC_AUTO_HOME",),
+                              cwd=marked_cwd)
+        self.refused(result, STANDIN_REFUSED)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(self.files_and_bytes(real), before)
+        shown = subprocess.run([sys.executable, "-I", "-B", str(TOOL), "--home=", "status"],
+                               cwd=marked_cwd, env=dict(self.env, **via_default, GC_AUTO_HOME=""),
+                               text=True, capture_output=True, timeout=60)
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        self.assertEqual(json.loads(shown.stdout)["queue_id"], "q-real")
+
+    def test_standin_refuses_queue_named_by_marked_home_active(self):
+        """Revision 12 (P8, REVIEW_4 F2): a MARKED home (this test's) whose ACTIVE file
+        names a queue in an unmarked directory is refused with exit 16 when no --queue is
+        given, by --home and by GC_AUTO_HOME; only the ACTIVE check can refuse here, since
+        the home itself is marked. Control: with ACTIVE naming this test's own queue the
+        same call runs the job (a local command)."""
+        self.prepare(BETA, real=True)
+        root, home, queue = self.other_temp_queue(marked=False)
+        own_active = (self.home / "ACTIVE").read_text()
+        (self.home / "ACTIVE").write_text(str(queue) + "\n")
+        watch = (root, self.queue)
+        reason = f"queue named by ACTIVE {queue}: "
+        self.standin_refused("p8-active-arg", "--home", self.home, reason=reason, watch=watch)
+        self.standin_refused("p8-active-env", reason=reason, watch=watch,
+                             env={"GC_AUTO_HOME": str(self.home)})
+        result = self.standin("--home", self.home, "status")
+        self.refused(result, STANDIN_REFUSED)
+        self.assertIn(reason, result.stderr)
+        self.assertEqual(result.stdout, "")
+        (self.home / "ACTIVE").write_text(own_active)
+        cmd_marker, cmd = self.marker_cmd("p8-active-control-cmd")
+        self.ok(self.standin("--home", self.home, "run", BETA, "unit", "--log",
+                             self.work / "p8-active-control.log", "--probe",
+                             "echo " + shlex.quote(str(self.src)), "--", *cmd))
+        self.assertTrue(cmd_marker.exists())
 
 
 if __name__ == "__main__":
