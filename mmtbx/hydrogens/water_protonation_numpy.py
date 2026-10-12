@@ -177,6 +177,29 @@ def _ortho_frame(d1):
                       x * p[1] - p[0] * y))
 
 
+def _split_dirs(a1, a2, cos_half, sin_half):
+  """O-H directions sharing the misfit between two acceptors.
+
+  Both lie in the plane of the unit acceptor directions ``a1`` and ``a2``,
+  symmetric about their bisector and H-O-H apart (``cos_half``/``sin_half``
+  of half that angle), so each proton is equally far off its acceptor.
+  None when the acceptors are (anti)collinear and the plane is undefined.
+  """
+  b = (a1[0] + a2[0], a1[1] + a2[1], a1[2] + a2[2])
+  bn = math.sqrt(b[0] * b[0] + b[1] * b[1] + b[2] * b[2])
+  if bn < 1e-6:
+    return None
+  b = (b[0] / bn, b[1] / bn, b[2] / bn)
+  t = a1[0] * b[0] + a1[1] * b[1] + a1[2] * b[2]
+  w = (a1[0] - t * b[0], a1[1] - t * b[1], a1[2] - t * b[2])
+  wn = math.sqrt(w[0] * w[0] + w[1] * w[1] + w[2] * w[2])
+  if wn < 1e-6:
+    return None
+  w = (w[0] / wn, w[1] / wn, w[2] / wn)
+  return (tuple(b[c] * cos_half + w[c] * sin_half for c in range(3)),
+          tuple(b[c] * cos_half - w[c] * sin_half for c in range(3)))
+
+
 def _rand_unit(rng):
   """A random unit vector, from Gaussian deviates of ``rng``."""
   while True:
@@ -631,14 +654,15 @@ class _WaterHydrogenPlacer(object):
   def _static_clear(self, wi, cands, key):
     """Static half of the clearance test, reduced and cached per water.
 
-    ``cands`` must be an invariant candidate set (the acceptor directions or
-    the fallback sphere) and ``key`` the geometry-dict slot to cache under.
+    ``cands`` must be an invariant candidate set (the acceptor directions,
+    the fallback sphere, or one acceptor pair's shared-misfit protons) and
+    ``key`` the geometry-dict slot to cache under.
     Returns ``(ok, mins)``: the per-candidate flag and the per-candidate
     minimum squared distance, the latter None when the water has no static
     neighbour.
     """
     g = self.w_geom[wi]
-    st = g[key]
+    st = g.get(key)
     if st is None:
       d, ok = self._static_block(wi, cands)
       st = g[key] = (ok, None if d is None else d.min(axis=1))
@@ -965,7 +989,48 @@ class _WaterHydrogenPlacer(object):
     top = rank == rank.max()
     a3 = np.where(c_cat & c_ok, align, 0.0)
     top &= a3 == np.where(top, a3, -np.inf).max()
-    return h1_xyz, cone_pts[int(np.argmax(np.where(top, c_best, -np.inf)))]
+    j = int(np.argmax(np.where(top, c_best, -np.inf)))
+    h2_xyz = cone_pts[j]
+
+    # Both protons on acceptors: turn the water so they share the misfit
+    # between the acceptors' angle and H-O-H, as real waters bend both
+    # bonds, if that stays clash-free and away from cations. Not for a
+    # given H1, nor for lone-pair aiming.
+    use = [k for k in range(na) if k != h1_k]
+    if (fixed_d1 is not None or self.lone_pair_directed or h1_k < 0
+        or rank.max() != 3 or not use):
+      return h1_xyz, h2_xyz
+    d2 = cone_dirs[j]
+    k2, best = -1, _WATER_H1_ACC_ALIGN
+    for k in use:
+      a = acc_dirs[k]
+      dot = d2[0] * a[0] + d2[1] * a[1] + d2[2] * a[2]
+      if dot >= best:
+        k2, best = k, dot
+    if k2 < 0:
+      return h1_xyz, h2_xyz
+    # The pair's positions, cation test and static clearance never change,
+    # so they are cached per water and acceptor pair.
+    key = (h1_k, k2)
+    split = g.get(("split",) + key, False)
+    if split is False:
+      split = None
+      dirs = _split_dirs(acc_dirs[h1_k], acc_dirs[k2],
+                         self.cos_half_hoh, self.sin_half_hoh)
+      if dirs is not None:
+        pts = o + self.oh_length * np.array(dirs)
+        split = (pts, bool(self._cat_ok(cat, pts, o).all()))
+      g[("split",) + key] = split
+    if split is None or not split[1]:
+      return h1_xyz, h2_xyz
+    pts = split[0]
+    s1, s2 = pts[0], pts[1]
+    # One test for both; H1 settled first only adds its own equivalent,
+    # which the test already checks.
+    if self._clear(wi, pts, nbr_slots, ("split_static",) + key,
+                   own_fixed=(s1,))[1].all():
+      return s1, s2
+    return h1_xyz, h2_xyz
 
   def _pool_write(self, wi, slot, xyz):
     """Put one proton of water ``wi`` at ``xyz``, its equivalents with it."""
@@ -1268,6 +1333,8 @@ class _WaterHydrogenPlacer(object):
 
     self.cos_hoh = math.cos(math.radians(self.hoh_deg))
     self.sin_hoh = math.sin(math.radians(self.hoh_deg))
+    self.cos_half_hoh = math.cos(math.radians(self.hoh_deg) / 2.0)
+    self.sin_half_hoh = math.sin(math.radians(self.hoh_deg) / 2.0)
 
     # The cation coordinating each single-H water, symmetry copies included.
     self.partial_waters = [
@@ -1515,7 +1582,9 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
   (``_WATER_ACCEPTOR_RADIUS``, ``_WATER_ACCEPTOR_ELEMENTS``, N carrying an H
   excluded as donors), else the max-clearance direction over a dense sphere;
   H2 on the H-O-H cone about O-H1, at a clash-free angle toward
-  a second acceptor when there is one, else the clearest. Candidates are
+  a second acceptor when there is one, else the clearest; with both on
+  acceptors, the water turns so the two share the misfit between the
+  acceptors' angle and H-O-H, where that stays clash-free. Candidates are
   scored against every other atom and every other water's placed H; waters go
   most-crowded first and new H inherit the parent O's occupancy and B
   factor.

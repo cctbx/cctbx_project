@@ -241,15 +241,15 @@ HETATM    4  O   ACC F   1      -0.725  -2.807   0.000  1.00 10.00           O
 END
 """
 
-# Six bare waters on a tight 2.8 A grid with no other acceptors: the greedy
-# pass leaves at least one close H-H contact that refinement relaxes.
+# Six bare waters on a tight 2.6 A grid with no other acceptors: the greedy
+# pass leaves close H-H contacts that refinement relaxes.
 _WATER_CLUSTER_PDB = """\
 HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
-HETATM    2  O   HOH W   2       0.000   2.800   0.000  1.00 10.00           O
-HETATM    3  O   HOH W   3       2.800   0.000   0.000  1.00 10.00           O
-HETATM    4  O   HOH W   4       2.800   2.800   0.000  1.00 10.00           O
-HETATM    5  O   HOH W   5       5.600   0.000   0.000  1.00 10.00           O
-HETATM    6  O   HOH W   6       5.600   2.800   0.000  1.00 10.00           O
+HETATM    2  O   HOH W   2       0.000   2.600   0.000  1.00 10.00           O
+HETATM    3  O   HOH W   3       2.600   0.000   0.000  1.00 10.00           O
+HETATM    4  O   HOH W   4       2.600   2.600   0.000  1.00 10.00           O
+HETATM    5  O   HOH W   5       5.200   0.000   0.000  1.00 10.00           O
+HETATM    6  O   HOH W   6       5.200   2.600   0.000  1.00 10.00           O
 END
 """
 
@@ -517,7 +517,8 @@ END
 
 def exercise_acceptor_directed():
   """Both protons point at the flanking acceptors, clash-free, with the
-  right O-H length and H-O-H angle."""
+  right O-H length and H-O-H angle. Acceptors wider apart than H-O-H leave
+  both protons equally far off, in the acceptors' plane."""
   hier = _hierarchy(_TWO_ACCEPTOR_PDB)
   wp.place_water_hydrogens(hier, n_refine=0)
   atoms = list(hier.atoms())
@@ -543,6 +544,20 @@ def exercise_acceptor_directed():
   assert abs(oh - oh_target) < 1e-3, f"O-H length off: {oh:.3f}"
   ang = math.degrees(_unit(hs["H1"], o).angle(_unit(hs["H2"], o)))
   assert abs(ang - hoh_target) < 1.0, f"H-O-H angle off: {ang:.1f}"
+
+  # The second acceptor at 124 deg from the first: each proton 10.05 deg off.
+  wide = _hierarchy(_TWO_ACCEPTOR_PDB.replace(
+    "4.299   5.000   7.711", "3.434   5.000   7.321"))
+  wp.place_water_hydrogens(wide, n_refine=0)
+  o, hs = _water_atoms(wide)
+  a1, a2 = sorted((a for a in wide.atoms()
+                   if a.parent().resname.strip() in ("ACA", "ACB")),
+                  key=lambda a: a.distance(o))
+  off = [math.degrees(_unit(hs[n], o).angle(_unit(a, o)))
+         for n, a in (("H1", a1), ("H2", a2))]
+  assert max(abs(x - (124.0 - hoh_target) / 2) for x in off) < 0.05, off
+  assert max(abs(h.xyz[1] - 5.0) for h in hs.values()) < 1e-3, (
+    "protons should lie in the acceptors' plane")
 
 
 def exercise_cation_repulsion():
@@ -792,14 +807,12 @@ def exercise_h2_after_acceptor_fallback():
 
 def exercise_refinement_reduces_clashes():
   """Refinement relaxes the water-water H clashes the greedy pass leaves in
-  a tight cluster (placed at the 0.984 A O-H and gas-phase H-O-H it is
-  built for). Basin hopping runs while a placed water clashes and stops once
-  none does."""
-  geometry = dict(oh_length=0.984, geometry="gas_phase")
+  a tight cluster. Basin hopping runs while a placed water clashes and stops
+  once none does."""
   greedy = _hierarchy(_WATER_CLUSTER_PDB)
-  wp.place_water_hydrogens(greedy, n_refine=0, **geometry)
+  wp.place_water_hydrogens(greedy, n_refine=0)
   refined = _hierarchy(_WATER_CLUSTER_PDB)
-  wp.place_water_hydrogens(refined, n_refine=5, **geometry)
+  wp.place_water_hydrogens(refined, n_refine=5)
 
   n_greedy = wp._water_clash_stats(greedy)[1]
   n_refined = wp._water_clash_stats(refined)[1]
@@ -815,7 +828,7 @@ def exercise_refinement_reduces_clashes():
   # One round clears the cluster, so the second is skipped; a clash-free
   # placement runs none.
   hopped = _hierarchy(_WATER_CLUSTER_PDB)
-  res = wp.place_water_hydrogens(hopped, n_refine=0, n_basin=2, **geometry)
+  res = wp.place_water_hydrogens(hopped, n_refine=0, n_basin=2)
   assert res.basin_rounds == 1, res.basin_rounds
   res = wp.place_water_hydrogens(_hierarchy(_TWO_ACCEPTOR_PDB), n_refine=0,
                                  n_basin=2)
