@@ -1112,6 +1112,11 @@ NOTES:
     #p.pdb_interpretation.sort_atoms=True
     self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
     self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p)
+    #
+    if self.params.qmready and make_restraints:
+      g = self.model.geometry_statistics().result(slim = True)
+      if g.nonbonded.min < 1.0:
+        raise Sorry("Bad clash(es) prevents qmready=True")
 
 # ------------------------------------------------------------------------------
 
@@ -1255,8 +1260,11 @@ NOTES:
     if self.model.is_ca_only():
       raise Sorry("The model contains only CA atoms (CA trace); H atoms cannot be placed.")
 
+    # qmready=True
     if self.params.qmready:
+      # add OXT
       self.model.add_terminal_oxt()
+      # make sure model is atom-complete.
       if not self.model.is_atom_complete():
         missing = self.model.missing_atoms_by_residue()
         print("Missing atoms found:", file=self.logger)
