@@ -1026,6 +1026,97 @@ class _job(object):
   def __eq__(self, other):
     return _job.job_hash(self) == _job.job_hash(other)
 
+def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_operator = None, tasks = None):
+  """ The jobs submit_all_jobs would submit for a dataset once it is active, as
+      an ordered dict of counts by task type, in pipeline order. Takes an
+      existing dataset and/or the pieces of a new or revised one; a piece not
+      given comes from the dataset. The dataset supplies the versions already
+      run, which decide whether the global stages run again.
+
+      Local counts are exact: one job per tagged run and local task that has no
+      job yet (indexing jobs belong to the trial and are not counted). Global
+      counts assume every local job finishes and one set of global jobs is then
+      submitted, one job per global task, plus any global job missing from a
+      version that would still be filled in. In practice the order in which the
+      local jobs finish decides how many versions, and so how many global jobs,
+      there are. """
+  import collections
+  if tasks is None:
+    tasks = dataset.tasks
+  if tags is None:
+    tags = dataset.tags
+  if tag_operator is None:
+    tag_operator = dataset.tag_operator
+  if trial is None:
+    trial = next((t.trial for t in tasks if t.trial is not None), None)
+  counts = collections.OrderedDict()
+  for task in tasks:
+    counts.setdefault(task.type, 0)
+  if trial is None or not tasks:
+    return counts
+
+  trial_tag_ids = [t.id for t in trial.tags]
+  dataset_tags = [t for t in tags if t.id in trial_tag_ids]
+  if not dataset_tags or len(dataset_tags) < len(tags):
+    return counts
+  runs_rungroups = []
+  for rungroup in trial.rungroups:
+    runs_rungroups.extend([(run, rungroup) for run in app.get_rungroup_runs_by_tags(rungroup, dataset_tags, tag_operator)])
+  if not runs_rungroups:
+    return counts
+  submitted_jobs = {_job.job_hash(j):j for j in app.get_all_jobs()}
+
+  local_tasks = [t for t in tasks if t.scope == 'local']
+  global_tasks = [t for t in tasks if t.scope == 'global']
+  new_local = False
+  final_local_job_ids = set() # existing jobs of the last local task, which feed the global stages
+  for run, rungroup in runs_rungroups:
+    for task in local_tasks:
+      job = _job(trial, rungroup, run, None if task.type == 'indexing' else task)
+      existing = submitted_jobs.get(_job.job_hash(job))
+      if existing is None:
+        new_local = True
+        if task.type != 'indexing':
+          counts[task.type] += 1
+      elif task is local_tasks[-1]:
+        final_local_job_ids.add(existing.id)
+  if not global_tasks:
+    return counts
+
+  # Mirror the version handling in submit_all_jobs: versions set up under the
+  # current tasks and runs get any global job they lack; a new version rolls
+  # when the local jobs feeding the global stages are not the latest version's.
+  current_task_ids = {t.id for t in tasks}
+  current_local_task_ids = {t.id for t in local_tasks}
+  current_run_ids = {run.id for run, rungroup in runs_rungroups}
+  versions = dataset.versions if dataset is not None else []
+  latest = None
+  for version in versions:
+    if latest is None or version.version > latest.version:
+      latest = version
+    local_inputs = [j for j in version.jobs if j.task and j.task.scope == 'local']
+    if not local_inputs: continue
+    if not all(j.task_id in current_local_task_ids for j in local_inputs): continue
+    if not all(j.run_id in current_run_ids for j in local_inputs): continue
+    if any(j.task and j.task.scope == 'global' and j.task_id not in current_task_ids for j in version.jobs): continue
+    present = {j.task_id for j in version.jobs}
+    for task in global_tasks:
+      if task.id not in present:
+        counts[task.type] += 1
+  if latest is None:
+    roll = True
+  else:
+    latest_local = [j for j in latest.jobs if j.task and j.task.scope == 'local']
+    latest_local_ids = {j.id for j in latest_local}
+    roll = new_local or \
+      any(job_id not in latest_local_ids for job_id in final_local_job_ids) or \
+      any(j.run_id not in current_run_ids for j in latest_local) or \
+      any(j.task and j.task.scope == 'global' and j.task_id not in current_task_ids for j in latest.jobs)
+  if roll:
+    for task in global_tasks:
+      counts[task.type] += 1
+  return counts
+
 def submit_all_jobs(app):
   submitted_jobs = {_job.job_hash(j):j for j in app.get_all_jobs()}
   if app.params.mp.method == 'local': # only run one job at a time

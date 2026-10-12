@@ -92,6 +92,10 @@ facility {
 output_folder = ""
   .type = path
   .help = Processing results will go in this folder
+job_count_warning = 50
+  .type = int
+  .help = Ask for confirmation before saving or activating a dataset that would \
+          submit at least this many jobs. None disables the check.
 
 include scope xfel.command_line.submit_job.mp_phil_scope
 """
