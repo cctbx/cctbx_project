@@ -622,6 +622,7 @@ class Optimizer(object):
 
         # Do coarse optimization on the multi-Mover Cliques.
         for g in groupCliques:
+          startTime = time.time()
           remainingSeconds = 1e12
           if stopOptimizingAt > 0.0:
             remainingSeconds = stopOptimizingAt - time.time()
@@ -648,7 +649,11 @@ class Optimizer(object):
           self._infoString += infoString
           ret = bestScore
 
-          self._infoString += _VerboseCheck(self._verbosity, 1,"Clique optimized with score {:.2f}\n".format(ret))
+          stopTime = time.time()
+
+          self._infoString += _VerboseCheck(self._verbosity, 1,
+            "Clique of size {:d} optimized with score {:.2f} in {:.2f} seconds\n".format(
+              len(movers), ret, stopTime - startTime))
         self._infoString += _ReportTiming(self._verbosity, "optimize cliques (coarse)")
 
         # Do fine optimization on the Movers.  This is done independently for
