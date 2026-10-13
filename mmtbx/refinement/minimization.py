@@ -3,7 +3,7 @@ from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.lbfgs
-from libtbx import adopt_init_args
+from libtbx import adopt_init_args, group_args
 import math
 import sys
 from libtbx.utils import user_plus_sys_time
@@ -90,10 +90,8 @@ class lbfgs(object):
     #  gradient_only=True,
       exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
                          ignore_line_search_failed_step_at_lower_bound = True))
-    if(self._adaptive is not None and self.log is not None):
-      print("  LBFGS (%s): %d iterations, adaptive limit %d" % (
-        "xyz" if self.refine_xyz else "adp", self.minimizer.iter(),
-        lbfgs_termination_params.max_iterations), file=self.log)
+    if(self._adaptive is not None):
+      self._llgi_restore_best_free(lbfgs_termination_params)
     self.apply_shifts()
     del self._scatterers_start
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
@@ -141,10 +139,16 @@ class lbfgs(object):
   def _llgi_adaptive_termination(self, termination_params):
     """ With the llgi target and llgi_data.lbfgs_max_iterations above the
     usual limit, the minimisation may continue past that limit (up to
-    lbfgs_max_iterations) while it is still making progress: it stops once
-    the last 10 iterations have reduced the target by less than
-    lbfgs_stop_fraction of the reduction so far (callback_after_step). """
+    lbfgs_max_iterations) while it is still making progress
+    (callback_after_step). With llgi_data.lbfgs_stop = free (and a free
+    set), progress is judged by the data target on the free reflections: the
+    minimisation continues while that has reached a new minimum within the
+    last lbfgs_patience iterations, and the parameters at its minimum are
+    restored at the end (_llgi_restore_best_free). With lbfgs_stop =
+    progress, it stops once the last 10 iterations have reduced the total
+    target by less than lbfgs_stop_fraction of the reduction so far. """
     self._adaptive = None
+    self._free = None
     fmodel = self.fmodels.fmodel_xray()
     if(termination_params is None or fmodel.target_name != "llgi" or
        self.fmodels.fmodel_neutron() is not None):
@@ -159,7 +163,30 @@ class lbfgs(object):
     result.max_iterations = n_max
     self._adaptive = (n_min, getattr(llgi_data, "lbfgs_stop_fraction", 0.01),
       [])
+    if(getattr(llgi_data, "lbfgs_stop", "progress") == "free" and
+       fmodel.r_free_flags() is not None and
+       fmodel.r_free_flags().data().count(True) > 0):
+      self._free = group_args(patience=getattr(llgi_data, "lbfgs_patience", 10),
+        last=None, best=None, best_iter=None, best_x=None)
     return result
+
+  def _llgi_restore_best_free(self, termination_params):
+    """ With lbfgs_stop = free, return to the iterate with the lowest free
+    data target, and report the choice. """
+    fr = self._free
+    restored = False
+    if(fr is not None and fr.best_x is not None and
+       fr.best_iter != self.minimizer.iter()):
+      self.x = fr.best_x
+      restored = True
+    if(self.log is not None):
+      extra = ""
+      if(fr is not None and fr.best_iter is not None):
+        extra = ", free-target minimum at iteration %d%s" % (fr.best_iter,
+          " (restored)" if restored else "")
+      print("  LBFGS (%s): %d iterations, adaptive limit %d%s" % (
+        "xyz" if self.refine_xyz else "adp", self.minimizer.iter(),
+        termination_params.max_iterations, extra), file=self.log)
 
   def compute_functional_gradients_diag(self):
     f, g = self.compute_functional_and_gradients()
@@ -232,6 +259,9 @@ class lbfgs(object):
       compute_gradients      = compute_gradients,
       u_iso_refinable_params = u_iso_refinable_params)
     self.f = fmodels_target_and_gradients.target()
+    if(getattr(self, "_free", None) is not None):
+      self._free.last = \
+        fmodels_target_and_gradients.target_result_xray.target_test()
     self.g = fmodels_target_and_gradients.gradients()
     if(self.refine_xyz and self.restraints_manager is not None and
        self.weights.w > 0.0):
@@ -330,6 +360,15 @@ class lbfgs(object):
       print(self.f,minimizer.iter(),minimizer.nfun())
     if (self._adaptive is not None):
       n_min, fraction, history = self._adaptive
+      fr = self._free
+      if (fr is not None):
+        # self.x and fr.last are those of the accepted iterate
+        it = minimizer.iter()
+        if (fr.best is None or fr.last < fr.best):
+          fr.best, fr.best_iter, fr.best_x = fr.last, it, self.x.deep_copy()
+        if (it >= n_min and it - fr.best_iter >= fr.patience):
+          return True
+        return
       history.append(self.f)
       if (minimizer.iter() >= n_min and len(history) > 10 and
           history[-11] - history[-1] < fraction * (history[0] - history[-1])):

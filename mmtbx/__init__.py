@@ -298,6 +298,7 @@ class fmodels(object):
       def __init__(self, fmodels):
         self.fmodels = fmodels
         tfx_r = tfx(compute_gradients = compute_gradients)
+        self.target_result_xray = tfx_r
         wx=1.
         if(weights is not None): wx = weights.wx * weights.wx_scale
         self.target_work_xray = tfx_r.target_work()
