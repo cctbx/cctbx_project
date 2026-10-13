@@ -640,8 +640,8 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
       std::ostringstream oss;
       oss << "   No time remaining, leaving clique of size " << boost::num_vertices(clique)
         << " in its current state\n";
-      return std::pair<double, std::string>(0.0, oss.str());
     }
+    return std::pair<double, std::string>(0.0, oss.str());
   }
   auto startTime = std::chrono::steady_clock::now();
 
