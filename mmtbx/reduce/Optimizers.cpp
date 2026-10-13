@@ -220,8 +220,17 @@ void OptimizerC::findVertexCut(CliqueGraph const& graph,
 {
   // Check all vertex cut sizes from 1 to 2 less than the number of vertices(we must
   // have at least 2 vertices left to have a disconnected graph).
+  // For each cut size, find the cut whose resulting components are most similar
+  // in size (smallest difference between the largest and smallest component).
+  // Return the best cut from the smallest cut size that disconnects the graph.
   size_t numVerts = boost::num_vertices(graph);
   for (size_t n = 0; n < numVerts; n++) {
+    bool found = false;
+    int bestSpread = std::numeric_limits<int>::max();
+    int bestLargest = std::numeric_limits<int>::max();
+    std::vector<int> bestVertexSet;
+    CliqueGraph bestGraph;
+
     // Iterate over all sets of vertices of size n that might be removed
     std::vector< std::vector<int> > vertexSets = nChooseM(numVerts, n);
     for (std::vector< std::vector<int> >::const_iterator it = vertexSets.begin(); it != vertexSets.end(); ++it) {
@@ -239,17 +248,42 @@ void OptimizerC::findVertexCut(CliqueGraph const& graph,
       CliqueGraph currentGraph = subsetGraph(graph, keepMovers);
 
       // Check if the graph is disconnected
-      std::vector<int> componentMap(boost::num_vertices(currentGraph));
+      size_t numKept = boost::num_vertices(currentGraph);
+      if (numKept < 2) {
+        continue;
+      }
+      std::vector<int> componentMap(numKept);
       int numComponents = boost::connected_components(currentGraph, &componentMap[0]);
       if (numComponents > 1) {
-        // The graph is disconnected, so we have found a vertex cut.
-        // Make a list of the movers that correspond to the vertices that were removed.
-        for (size_t i = 0; i < vertexSet.size(); i++) {
-          cutMovers.push_back(graph[vertexSet[i]]);
+        // Count the number of vertices in each component.
+        std::vector<int> componentSizes(numComponents, 0);
+        for (size_t i = 0; i < componentMap.size(); i++) {
+          componentSizes[componentMap[i]]++;
         }
-        cutGraph = currentGraph;
-        return;
+        int largest = *std::max_element(componentSizes.begin(), componentSizes.end());
+        int smallest = *std::min_element(componentSizes.begin(), componentSizes.end());
+        int spread = largest - smallest;
+
+        // Keep this cut if it is more balanced than the best so far, breaking ties
+        // by preferring the smaller largest component.
+        if (!found || spread < bestSpread ||
+            (spread == bestSpread && largest < bestLargest)) {
+          found = true;
+          bestSpread = spread;
+          bestLargest = largest;
+          bestVertexSet = vertexSet;
+          bestGraph = currentGraph;
+        }
       }
+    }
+
+    if (found) {
+      // Make a list of the movers that correspond to the vertices that were removed.
+      for (size_t i = 0; i < bestVertexSet.size(); i++) {
+        cutMovers.push_back(graph[bestVertexSet[i]]);
+      }
+      cutGraph = bestGraph;
+      return;
     }
   }
 
