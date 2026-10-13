@@ -15,6 +15,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
          libxss1 \
          locales \
          pciutils \
+         procps \
          rsync \
          sudo \
          unzip \

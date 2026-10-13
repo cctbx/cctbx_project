@@ -25,6 +25,7 @@ RUN yum groupinstall -y 'Development Tools' \
          mesa-libGL-devel \
          mesa-libGLU-devel \
          pciutils \
+         procps-ng \
          rsync \
          sudo \
          tcsh \
