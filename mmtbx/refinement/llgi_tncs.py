@@ -541,14 +541,15 @@ llgi_tncs_params = iotbx.phil.parse("""\
   angle_max = 10.
     .type = float
     .short_caption = Largest rotation between tNCS-related copies (degrees)
-  ncs_restraints = True
+  ncs_restraints = False
     .type = bool
     .short_caption = NCS restraints for tNCS-related copies
     .help = "With tNCS groups in the model, switch on NCS restraints " \\
-            "(pdb_interpretation.ncs_search.enabled) in phenix.refine. The " \\
-            "true copies are usually more alike than refined copies, and " \\
-            "the likelihood can only weaken the coherence of the model's " \\
-            "consensus, not strengthen it."
+            "(pdb_interpretation.ncs_search.enabled) in phenix.refine. Off " \\
+            "by default: where the true copies differ (1e94, four and two " \\
+            "copies) they pull the model's copies together and cost " \\
+            "accuracy, and with two copies (esterase) they made no " \\
+            "difference."
   coherence = *physical tau
     .type = choice
     .short_caption = Model of the coherence between tNCS-related copies

@@ -75,6 +75,10 @@ class lbfgs(object):
     self.x = flex.double(self.xray_structure.n_parameters(), 0)
     self.riding_h_manager = self.model.riding_h_manager
     self._scatterers_start = self.xray_structure.scatterers()
+    self.diag_mode = None
+    self._setup_llgi_preconditioning()
+    lbfgs_termination_params = self._llgi_adaptive_termination(
+      lbfgs_termination_params)
     #lbfgs_core_params = scitbx.lbfgs.core_parameters(
     #  stpmin = 1.e-9,
     #  stpmax = adptbx.b_as_u(10))
@@ -86,6 +90,10 @@ class lbfgs(object):
     #  gradient_only=True,
       exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
                          ignore_line_search_failed_step_at_lower_bound = True))
+    if(self._adaptive is not None and self.log is not None):
+      print("  LBFGS (%s): %d iterations, adaptive limit %d" % (
+        "xyz" if self.refine_xyz else "adp", self.minimizer.iter(),
+        lbfgs_termination_params.max_iterations), file=self.log)
     self.apply_shifts()
     del self._scatterers_start
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
@@ -103,6 +111,59 @@ class lbfgs(object):
        print('{:-^80}'.format(""), file=self.qblib_params.qblib_log)
        print(file=self.qblib_params.qblib_log)
 # QBLIB END
+
+  def _setup_llgi_preconditioning(self):
+    """ With the llgi target and llgi_data.precondition, coordinate
+    minimisation uses a diagonal estimate of the Hessian as LBFGS's initial
+    inverse Hessian (mmtbx.refinement.llgi_curvature). """
+    fmodel = self.fmodels.fmodel_xray()
+    if(not self.refine_xyz or self.refine_adp or
+       self.fmodels.fmodel_neutron() is not None or
+       fmodel.target_name != "llgi"):
+      return
+    llgi_data = fmodel.llgi_data()
+    if(not getattr(llgi_data, "precondition", False)): return
+    import mmtbx.refinement.llgi_curvature as llgi_curvature
+    w = 0.
+    if(self.restraints_manager is not None and self.weights.w > 0.0):
+      w = self.weights.w
+    diag, h_data, h_restr = llgi_curvature.xyz_inverse_diagonal(
+      fmodel=fmodel, model=self.model, weights=self.weights,
+      xray_structure=self.xray_structure, restraints_weight=w)
+    if(diag.size() != self.x.size()): return
+    self._diag = diag
+    self.diag_mode = "always"
+    if(self.log is not None):
+      print("  LLGI preconditioning: data curvature per coordinate "
+        "(median, x weight included) %.4g, restraints %.4g" % (
+        flex.median(h_data) if h_data.size() else 0, h_restr), file=self.log)
+
+  def _llgi_adaptive_termination(self, termination_params):
+    """ With the llgi target and llgi_data.lbfgs_max_iterations above the
+    usual limit, the minimisation may continue past that limit (up to
+    lbfgs_max_iterations) while it is still making progress: it stops once
+    the last 10 iterations have reduced the target by less than
+    lbfgs_stop_fraction of the reduction so far (callback_after_step). """
+    self._adaptive = None
+    fmodel = self.fmodels.fmodel_xray()
+    if(termination_params is None or fmodel.target_name != "llgi" or
+       self.fmodels.fmodel_neutron() is not None):
+      return termination_params
+    llgi_data = fmodel.llgi_data()
+    n_max = getattr(llgi_data, "lbfgs_max_iterations", None)
+    n_min = termination_params.max_iterations
+    if(n_max is None or n_min is None or n_max <= n_min):
+      return termination_params
+    import copy
+    result = copy.copy(termination_params)
+    result.max_iterations = n_max
+    self._adaptive = (n_min, getattr(llgi_data, "lbfgs_stop_fraction", 0.01),
+      [])
+    return result
+
+  def compute_functional_gradients_diag(self):
+    f, g = self.compute_functional_and_gradients()
+    return f, g, self._diag
 
   def apply_shifts(self):
     if(self.refine_adp):
@@ -267,6 +328,12 @@ class lbfgs(object):
     if (self.verbose > 0):
       print("refinement.minimization step: f,iter,nfun:", end=' ')
       print(self.f,minimizer.iter(),minimizer.nfun())
+    if (self._adaptive is not None):
+      n_min, fraction, history = self._adaptive
+      history.append(self.f)
+      if (minimizer.iter() >= n_min and len(history) > 10 and
+          history[-11] - history[-1] < fraction * (history[0] - history[-1])):
+        return True
 
   def compute_functional_and_gradients(self):
     u_iso_refinable_params = self.apply_shifts()
