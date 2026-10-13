@@ -113,6 +113,25 @@ ATOM      8  CA  ALA A  13      -7.313  -1.820 -14.420  1.00141.04           C
     f.write(pdb_raw)
   v1 = run_validation(pdb_file, ignore_hd=True)
 
+def exercise_json_no_planarity_outliers():
+  """
+  as_JSON() for a restraint type without outliers must still report a
+  per-model summary with num_outliers = 0 (planarities raised KeyError).
+  1yjp has no planarity outliers; its 13 planes are 6 trans-peptide links,
+  3 Asn and 2 Gln side-chain amides, 1 Tyr ring and the C-terminal COO.
+  """
+  import json
+  from mmtbx.regression import model_1yjp
+  pdb_file = "tst_validate_restraints_json.pdb"
+  with open(pdb_file, "w") as f:
+    f.write(model_1yjp)
+  v = run_validation(pdb_file, ignore_hd=True)
+  planarities_json = json.loads(v.planarities.as_JSON())
+  assert planarities_json["flat_results"] == [], planarities_json["flat_results"]
+  assert planarities_json["summary_results"] == {
+    "": {"num_outliers": 0, "num_total": 13}}, planarities_json["summary_results"]
+
 if (__name__ == "__main__"):
   exercise_simple()
+  exercise_json_no_planarity_outliers()
   print("OK")
