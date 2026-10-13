@@ -281,6 +281,38 @@ def workaround_003(model):
     model = model.select(keep_selection)
   return model, removed
 
+_ener_lib_types = None
+
+def get_ccd_energy_types(cc_cif):
+  '''
+  Energy types for a CCD entry, which has none: element plus the H the CCD puts
+  on the atom (free, neutral molecule). Without a type the probe atom info gets
+  no radius and no acceptor (2e4i BGM). A type ener_lib does not know -> None.
+  '''
+  global _ener_lib_types
+  if _ener_lib_types is None:
+    from mmtbx.monomer_library import server
+    _ener_lib_types = set(server.ener_lib().lib_atom.keys())
+  element = dict((a.atom_id, a.type_symbol.strip().upper())
+    for a in cc_cif.get('_chem_comp_atom', []))
+  neighbors = {}
+  for b in cc_cif.get('_chem_comp_bond', []):
+    neighbors.setdefault(b.atom_id_1, []).append(b.atom_id_2)
+    neighbors.setdefault(b.atom_id_2, []).append(b.atom_id_1)
+  result = {}
+  for name, e in element.items():
+    bonded = [element.get(x) for x in neighbors.get(name, [])]
+    n_h = sum(1 for x in bonded if x in ('H', 'D'))
+    if e in ('H', 'D'):
+      parent = bonded[0] if len(bonded) == 1 else None
+      t = {'O': 'HOH1', 'N': 'HNH1', 'S': 'HSH1'}.get(parent, 'HCH')
+    elif e == 'O': t = 'OH1' if n_h else 'O'
+    elif e == 'N': t = {0: 'N', 1: 'NH1'}.get(n_h, 'NH2')
+    elif e == 'S': t = 'SH1' if n_h else 'S'
+    else:          t = e
+    result[name] = t if t in _ener_lib_types else None
+  return result
+
 def get_h_restraints(resname, strict=True):
   from mmtbx.monomer_library import cif_types
   from mmtbx.chemical_components import get_cif_dictionary
@@ -301,6 +333,7 @@ def get_h_restraints(resname, strict=True):
     desc_level=".")
   comp_comp_id = cif_types.comp_comp_id(source_info=None, chem_comp=chem_comp)
   lookup = {}
+  energy_types = get_ccd_energy_types(cc_cif)
   for i, a in enumerate(cc_cif.get('_chem_comp_atom',[])):
     lookup[a.atom_id]=i
     lookup[i]=a.atom_id
@@ -310,7 +343,7 @@ def get_h_restraints(resname, strict=True):
     comp_comp_id.atom_list.append(cif_types.chem_comp_atom(
       atom_id=a.atom_id,
       type_symbol=a.type_symbol,
-      # type_energy=a.type_energy,
+      type_energy=energy_types.get(a.atom_id),
       # partial_charge=a.partial_charge,
       ))
   conf =  molecule.GetConformer()

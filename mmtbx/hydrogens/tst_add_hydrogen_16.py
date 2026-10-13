@@ -24,6 +24,7 @@ def run():
   test_014()
   test_015()
   test_016()
+  test_017()
 
 # ------------------------------------------------------------------------------
 
@@ -269,6 +270,52 @@ def test_016():
     atoms, 'BGM', '14', 'OP2')
   atoms = place_atoms(pdb_str_016)
   assert h_on(atoms, '35G', '1', 'O2P') == ['HOP2'], h_on(atoms, '35G', '1', 'O2P')
+
+def test_017():
+  '''
+  BGM has no geostd entry; its restraints come from the CCD, which has no
+  energy types. Without a type the probe atom info had no radius and no
+  acceptor: every BGM atom gave "Could not find atom info", the element
+  fallback made polar H 1.22 A, and no O was an acceptor. The types now come
+  from element + the H the CCD puts on the atom.
+  '''
+  from libtbx import group_args
+  from mmtbx.probe import Helpers
+  md = reduce_hydrogen.get_h_restraints('BGM', strict=False)
+  types = dict((a.atom_id, a.type_energy) for a in md.atom_list)
+  expected = {'O6': 'O', 'OP1': 'O', 'OP2': 'OH1', 'N1': 'NH1', 'N2': 'NH2',
+    'N7': 'N', 'H1': 'HNH1', 'HOP2': 'HOH1', "H1'": 'HCH', 'BR': 'BR', 'P': 'P'}
+  for name, t in expected.items():
+    assert types[name] == t, (name, types[name], t)
+  known = server.ener_lib().lib_atom
+  assert all(t in known for t in types.values()), types
+  # an element ener_lib does not know gets no type, not a bad one
+  cc_cif = {
+    '_chem_comp_atom': [group_args(atom_id=n, type_symbol=e) for n, e in
+      (('X1', 'XX'), ('S1', 'S'), ('HS1', 'H'))],
+    '_chem_comp_bond': [group_args(atom_id_1='X1', atom_id_2='S1'),
+                        group_args(atom_id_1='S1', atom_id_2='HS1')]}
+  assert reduce_hydrogen.get_ccd_energy_types(cc_cif) == {
+    'X1': None, 'S1': 'SH1', 'HS1': 'HSH1'}
+  # probe atom info on the placed fragment
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_015.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj.run()
+  model = obj.get_model()
+  bps, asu = model.get_restraints_manager().geometry.get_all_bond_proxies(
+    sites_cart = model.get_sites_cart())
+  neighbors = Helpers.getBondedNeighborLists(model.get_atoms(), bps, asu)
+  from mmtbx.hydrogens import default_probe_phil
+  ret = Helpers.getExtraAtomInfo(model=model, bondedNeighborLists=neighbors,
+    probePhil=default_probe_phil())
+  assert 'Could not find atom info' not in ret.warnings, ret.warnings
+  info = dict(((a.parent().parent().resseq.strip(), a.name.strip()),
+    ret.extraAtomInfo.getMappingFor(a)) for a in model.get_atoms())
+  for name in ('O6', 'OP1', "O4'"):
+    assert info[('15', name)].isAcceptor, name
+  assert approx_equal(info[('15', 'H1')].vdwRadius, 1.05)
+  assert approx_equal(info[('15', 'C2')].vdwRadius, 1.70)
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
