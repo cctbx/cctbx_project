@@ -34,16 +34,16 @@ Example:
   include scope mmtbx.validation.molprobity_cmdline_phil_str
     json = False
       .type = bool
-      .help = "Prints results as JSON format dictionary"
+      .help = Prints results as JSON format dictionary
     cbetadev {
       output = *text kin bullseye
         .type = choice
-        .help = '''choose output type'''
+        .help = choose output type
       apply_positive_phi_correction = False
         .type = bool
         .help = Subtract the mean C-beta deviation for the residue (phi, psi) \
-                bin, but only for residues with positive phi. Cannot be used \
-                with apply_phi_psi_correction.
+                bin, but only for residues with 0 < phi < 150. Cannot be \
+                used with apply_phi_psi_correction.
       apply_phi_psi_correction = False
         .type = bool
         .help = Subtract the mean C-beta deviation for the residue (phi, psi) \

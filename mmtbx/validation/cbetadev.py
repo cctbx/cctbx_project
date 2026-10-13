@@ -194,7 +194,7 @@ class cbetadev(validation):
                   id_str = '|%s:%s|' % (residue.id_str(), altchar)
                   phi_psi = phi_psi_angles.get(id_str, None)
                   if phi_psi and apply_positive_phi_correction:
-                    if phi_psi[0]<0:
+                    if not (0 < phi_psi[0] < 150):
                       phi_psi=None
                   if phi_psi:
                     rc = cbd_utils.get_phi_psi_correction(
