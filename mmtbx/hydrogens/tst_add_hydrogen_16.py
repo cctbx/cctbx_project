@@ -25,6 +25,7 @@ def run():
   test_015()
   test_016()
   test_017()
+  test_018()
 
 # ------------------------------------------------------------------------------
 
@@ -316,6 +317,38 @@ def test_017():
     assert info[('15', name)].isAcceptor, name
   assert approx_equal(info[('15', 'H1')].vdwRadius, 1.05)
   assert approx_equal(info[('15', 'C2')].vdwRadius, 1.70)
+
+def test_018():
+  '''
+  7bev (20 NMR models): model.process() builds, by default, a 5 A pair table
+  for ADP restraints that ignores model boundaries. Superposed models made it
+  6.5 GB; placement built it twice (process, then again after a select).
+  Neither place_hydrogens nor reduce2's reinterpretation (approach=optimize,
+  flipkins) needs it. Two models of a 7bev fragment.
+  '''
+  import iotbx.phil
+  from mmtbx.programs import reduce2
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_018.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj.run()
+  model = obj.get_model()
+  grm = model.get_restraints_manager().geometry
+  grm.pair_proxies(sites_cart=model.get_sites_cart())
+  assert grm.plain_pairs_radius is None
+  assert grm.plain_pair_sym_table is None
+  n_h = [sum(1 for a in m.atoms() if a.element.strip() == 'H')
+    for m in model.get_hierarchy().models()]
+  assert len(n_h) == 2 and n_h[0] == n_h[1] > 0, n_h
+  # reduce2's reinterpretation with restraints
+  params = iotbx.phil.parse(reduce2.master_phil_str,
+    process_includes=True).extract()
+  task = reduce2.Program(data_manager=None, params=params, logger=null_out())
+  task.model = model
+  task._ReinterpretModel(make_restraints=True)
+  grm = task.model.get_restraints_manager().geometry
+  grm.pair_proxies(sites_cart=task.model.get_sites_cart())
+  assert grm.plain_pair_sym_table is None
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -970,6 +1003,56 @@ HETATM   20  C2  35G A   1      37.382  29.777  94.342  1.00 20.00           C
 HETATM   21  N2  35G A   1      37.987  29.092  95.330  1.00 20.00           N
 HETATM   22  N3  35G A   1      38.055  30.104  93.256  1.00 20.00           N
 HETATM   23  C4  35G A   1      37.340  30.832  92.383  1.00 20.00           C
+END
+"""
+
+pdb_str_018 = """
+MODEL        1
+ATOM      1  N   GLY A 202      17.011  19.566   6.604  1.00  0.00           N
+ATOM      2  CA  GLY A 202      15.941  18.568   6.783  1.00  0.00           C
+ATOM      3  C   GLY A 202      15.797  18.196   8.252  1.00  0.00           C
+ATOM      4  O   GLY A 202      16.055  19.048   9.103  1.00  0.00           O
+ATOM     10  N   PRO A 203      15.393  16.952   8.573  1.00  0.00           N
+ATOM     11  CA  PRO A 203      15.401  16.399   9.933  1.00  0.00           C
+ATOM     12  C   PRO A 203      16.792  15.872  10.343  1.00  0.00           C
+ATOM     13  O   PRO A 203      17.746  15.930   9.561  1.00  0.00           O
+ATOM     14  CB  PRO A 203      14.365  15.269   9.880  1.00  0.00           C
+ATOM     15  CG  PRO A 203      14.551  14.718   8.469  1.00  0.00           C
+ATOM     16  CD  PRO A 203      14.860  15.967   7.639  1.00  0.00           C
+ATOM     24  N   HIS A 204      16.902  15.311  11.556  1.00  0.00           N
+ATOM     25  CA  HIS A 204      18.108  14.658  12.103  1.00  0.00           C
+ATOM     26  C   HIS A 204      19.382  15.513  12.044  1.00  0.00           C
+ATOM     27  O   HIS A 204      20.489  14.992  11.921  1.00  0.00           O
+ATOM     28  CB  HIS A 204      18.319  13.285  11.452  1.00  0.00           C
+ATOM     29  CG  HIS A 204      17.114  12.383  11.482  1.00  0.00           C
+ATOM     30  ND1 HIS A 204      16.433  11.921  10.375  1.00  0.00           N1+
+ATOM     31  CD2 HIS A 204      16.521  11.852  12.592  1.00  0.00           C
+ATOM     32  CE1 HIS A 204      15.446  11.111  10.804  1.00  0.00           C
+ATOM     33  NE2 HIS A 204      15.476  11.063  12.151  1.00  0.00           N
+ENDMDL
+MODEL        2
+ATOM      1  N   GLY A 202      20.851  15.633   2.605  1.00  0.00           N
+ATOM      2  CA  GLY A 202      21.227  14.437   3.379  1.00  0.00           C
+ATOM      3  C   GLY A 202      20.033  13.890   4.148  1.00  0.00           C
+ATOM      4  O   GLY A 202      18.905  14.325   3.908  1.00  0.00           O
+ATOM     10  N   PRO A 203      20.237  12.925   5.066  1.00  0.00           N
+ATOM     11  CA  PRO A 203      19.142  12.235   5.753  1.00  0.00           C
+ATOM     12  C   PRO A 203      18.563  13.008   6.950  1.00  0.00           C
+ATOM     13  O   PRO A 203      17.344  13.033   7.125  1.00  0.00           O
+ATOM     14  CB  PRO A 203      19.736  10.885   6.174  1.00  0.00           C
+ATOM     15  CG  PRO A 203      21.221  11.190   6.377  1.00  0.00           C
+ATOM     16  CD  PRO A 203      21.504  12.252   5.313  1.00  0.00           C
+ATOM     24  N   HIS A 204      19.419  13.622   7.780  1.00  0.00           N
+ATOM     25  CA  HIS A 204      19.057  14.325   9.023  1.00  0.00           C
+ATOM     26  C   HIS A 204      20.059  15.445   9.334  1.00  0.00           C
+ATOM     27  O   HIS A 204      21.244  15.297   9.043  1.00  0.00           O
+ATOM     28  CB  HIS A 204      19.006  13.330  10.204  1.00  0.00           C
+ATOM     29  CG  HIS A 204      18.099  12.139  10.029  1.00  0.00           C
+ATOM     30  ND1 HIS A 204      18.479  10.807   9.996  1.00  0.00           N1+
+ATOM     31  CD2 HIS A 204      16.739  12.183   9.926  1.00  0.00           C
+ATOM     32  CE1 HIS A 204      17.366  10.061   9.859  1.00  0.00           C
+ATOM     33  NE2 HIS A 204      16.297  10.881   9.817  1.00  0.00           N
+ENDMDL
 END
 """
 

@@ -1111,7 +1111,9 @@ NOTES:
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     #p.pdb_interpretation.sort_atoms=True
     self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
-    self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p)
+    # no ADP pair table, as in place_hydrogens
+    self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p,
+      plain_pairs_radius=None)
     #
     if self.params.qmready and make_restraints:
       g = self.model.geometry_statistics().result(slim = True)

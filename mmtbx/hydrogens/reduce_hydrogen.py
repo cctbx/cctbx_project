@@ -1031,8 +1031,11 @@ class place_hydrogens():
       crystal_symmetry  = self.model.crystal_symmetry(),
       restraint_objects = ro,
       log               = null_out())
+    # plain_pairs_radius: that table is for ADP restraints only and ignores
+    # model boundaries
     self.model.process(pdb_interpretation_params=p,
                        make_restraints=True,
+                       plain_pairs_radius=None,
                        # retain_zero_dihedrals=True,
                        )
 
