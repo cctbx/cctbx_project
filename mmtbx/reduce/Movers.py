@@ -536,8 +536,11 @@ class MoverSingleHydrogenRotator(_MoverRotator):
           minGap = gap
       # Find the minimum gap distance that is closest to zero, either
       # above or below zero. This is the one with the best just-touch
-      # value.
-      if abs(minGap) < bestTouchGap:
+      # value.  Differences below 1e-6 A are ties, kept by the earlier angle:
+      # angles placed symmetrically about the starting orientation (such as
+      # +-120 degrees from a Hydrogen anti to the conventional friend) have the
+      # same gap, and rounding noise must not choose between them.
+      if abs(minGap) < bestTouchGap - 1e-6:
         bestTouchGap = abs(minGap)
         bestTouchAngle = ang
 

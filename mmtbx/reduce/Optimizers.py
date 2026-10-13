@@ -75,6 +75,19 @@ def _ReportTiming(verbosity, message):
   _lastTime = curTime
   return _VerboseCheck(verbosity, 2,"Time to {}: {:0.3f}".format(message,diff)+"\n")
 
+class _InfoAccumulator(object):
+  """Collects the Optimizer's information string.  += appends a part in O(1),
+  str() joins once.  A plain str attribute is copied in full on every
+  self._infoString += ..., which is quadratic in the number of Movers."""
+  def __init__(self):
+    self._parts = []
+  def __iadd__(self, s):
+    if s:
+      self._parts.append(s)
+    return self
+  def __str__(self):
+    return "".join(self._parts)
+
 def AlternatesInModel(model):
   """Returns a set of altloc names of all conformers in all chains.
   :param model: pdb.hierarchy.model to search for alternates.
@@ -256,7 +269,7 @@ class Optimizer(object):
 
     ################################################################################
     # Initialize internal variables.
-    self._infoString = ""
+    self._infoString = _InfoAccumulator()
     self._warningString = ""
     self._atomDump = ""
     self._waterOccCutoff = 0.66 # @todo Make this a parameter, -WaterOCCcutoff param in reduce
@@ -621,7 +634,22 @@ class Optimizer(object):
         self._infoString += _ReportTiming(self._verbosity, "optimize singletons (coarse)")
 
         # Do coarse optimization on the multi-Mover Cliques.
-        for g in groupCliques:
+        # Sort the interaction-graph edges into their Cliques in one pass, in graph
+        # order.  (Building each Clique's subgraph with _subsetGraph() scanned every
+        # vertex and edge of the whole graph once per Clique: quadratic in the
+        # number of Movers.)
+        cliqueOf = {}
+        for ci, g in enumerate(groupCliques):
+          for v in g:
+            cliqueOf[self._interactionGraph.vertex_label(v)] = ci
+        cliqueEdges = [[] for g in groupCliques]
+        for e in self._interactionGraph.edges():
+          source = self._interactionGraph.vertex_label(self._interactionGraph.source(e))
+          ci = cliqueOf.get(source)
+          if ci is not None:
+            cliqueEdges[ci].append((source,
+              self._interactionGraph.vertex_label(self._interactionGraph.target(e))))
+        for ci, g in enumerate(groupCliques):
           remainingSeconds = 1e12
           if stopOptimizingAt > 0.0:
             remainingSeconds = stopOptimizingAt - time.time()
@@ -630,19 +658,17 @@ class Optimizer(object):
                                               "Stopping clique optimization due to time limit\n")
             break
 
-          movers = [self._interactionGraph.vertex_label(i) for i in g]
-          subset = _subsetGraph(self._interactionGraph, movers)
-
           # Find all of the Movers in the clique so that we know which ones to capture the state for.
-          movers = [self._interactionGraph.vertex_label(v) for v in subset.vertices()]
+          # connected_components() lists them in graph order, as _subsetGraph() did.
+          movers = [self._interactionGraph.vertex_label(i) for i in g]
+          index = dict((m, i) for i, m in enumerate(movers))
 
           # Turn the graph edges into a versa array that holds the edges. The first index is the
           # number of edge and the second is 2D, listing the index of each mover.
-          vertexList = list(subset.vertices())
-          edges = flex.int(flex.grid(len(list(subset.edges())), 2))
-          for i,e in enumerate(subset.edges()):
-            edges[(i,0)] = vertexList.index(subset.source(e))
-            edges[(i,1)] = vertexList.index(subset.target(e))
+          edges = flex.int(flex.grid(len(cliqueEdges[ci]), 2))
+          for i, (source, target) in enumerate(cliqueEdges[ci]):
+            edges[(i,0)] = index[source]
+            edges[(i,1)] = index[target]
 
           (bestScore, infoString) = optC.OptimizeCliqueCoarse(movers, edges, remainingSeconds)
           self._infoString += infoString
@@ -786,8 +812,8 @@ class Optimizer(object):
       If the object was constructed with fillAtomDump = False, then the atom dump will always be
       empty.
     """
-    ret = self._infoString
-    self._infoString = ""
+    ret = str(self._infoString)
+    self._infoString = _InfoAccumulator()
     return ret
 
   def getWarnings(self):
@@ -1199,6 +1225,15 @@ class Optimizer(object):
         except Exception as e:
           self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
 
+    # The Mover constructors above moved atoms after the spatial query was built
+    # (rotators turn their Hydrogens to a starting orientation; tetrahedral methyls are
+    # staggered; ion-bound Histidines are locked down).  SpatialQuery.remove() finds an
+    # atom by its current position, so these atoms stay listed in the bin of their old
+    # position, and whether a neighbor query finds them depends on the bin layout, which
+    # depends on the bounding box of all atoms, near or far.  Rebuild it from the current
+    # positions before the searches below and the optimization.
+    self._spatialQuery = Helpers.createSpatialQuery(atoms, self._probePhil)
+
     # Make a dictionary looked up up by i_seq that returns the relevant atom. We use this to
     # look up the single-hydrogen rotators. We only place atoms that are in our current model
     # index and alternate.
@@ -1279,9 +1314,18 @@ class Optimizer(object):
             if acceptor or flipPartner:
               potentialAcceptors.append(c)
 
+          oldXYZ = a.xyz
           self._movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, self._extraAtomInfo,
                                                                 hParameters, potentialAcceptors,
                                                                 potentialTouches))
+          # The constructor turned the Hydrogen to its starting orientation; move its
+          # spatial-query entry along with it.
+          newXYZ = a.xyz
+          if newXYZ != oldXYZ:
+            a.xyz = oldXYZ
+            self._spatialQuery.remove(a)
+            a.xyz = newXYZ
+            self._spatialQuery.add(a)
           self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverSingleHydrogenRotator "+str(len(self._movers))+" to "+resNameAndID+" "+aName+
             " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
           self._moverInfo[self._movers[-1]] = "SingleHydrogenRotator at "+resNameAndID+" "+aName;
