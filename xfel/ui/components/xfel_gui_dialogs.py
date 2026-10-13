@@ -3784,6 +3784,76 @@ def get_trial_symmetry(db, trial):
     return None, None
 
 
+def reference_model_symmetry(path):
+  ''' Return the crystal.symmetry of a reference model file, or None if the
+      file cannot be read. Accepts what cctbx.xfel.merge accepts as
+      scaling.model: a PDB or mmCIF model (CRYST1 / cell items), or an MTZ or
+      structure factor CIF (header symmetry). '''
+  try:
+    p = str(path or '').strip()
+    if not p or not os.path.exists(p):
+      return None
+    low = p.lower()
+    if low.endswith('.mtz') or low.endswith('sf.cif'):
+      from iotbx import reflection_file_reader
+      arrays = reflection_file_reader.any_reflection_file(file_name=p).as_miller_arrays()
+      return arrays[0].crystal_symmetry() if arrays else None
+    import iotbx.pdb
+    return iotbx.pdb.input(file_name=p).crystal_symmetry()
+  except Exception:
+    return None
+
+
+def trial_reference_symmetry_mismatch(db, trial, model_path,
+                                      relative_length_tolerance=0.1,
+                                      absolute_angle_tolerance=2.0):
+  ''' Return a message when the trial's known symmetry would not survive
+      merging against the reference model, or None when it would (or when
+      nothing can be judged, e.g. the model file cannot be read).
+
+      Mirrors the merge's unit cell filter, which takes its target from the
+      reference model and rejects every experiment whose Patterson group differs
+      from the target's or whose cell is not similar to it within the filter
+      tolerances (filter.unit_cell.value). A trial indexed in the wrong space
+      group, or without a known symmetry at all, is rejected wholesale by that
+      filter, so a dataset built on it runs to completion with no data. The
+      check reads the trial's indexing parameters, as the pipeline does, not the
+      indexed experiments themselves. '''
+  from cctbx import sgtbx, uctbx
+  model = reference_model_symmetry(model_path)
+  if model is None or model.space_group() is None or model.unit_cell() is None:
+    return None
+  model_pg = model.space_group().build_derived_patterson_group().info()
+  model_desc = '%s, cell %s' % (model.space_group_info(), model.unit_cell())
+  try:
+    uc_str, sg_str = get_trial_symmetry(db, trial)
+    trial_uc = uctbx.unit_cell(uc_str) if uc_str else None
+    trial_sg = sgtbx.space_group_info(sg_str) if sg_str else None
+  except Exception:
+    return None
+  trial_no = getattr(trial, 'trial', '?')
+  if trial_sg is None:
+    return ('Trial %s has no known space group in its indexing parameters, so '
+            'its lattices carry P1 symmetry.\nThe reference model is %s.\n'
+            'Merging filters experiments against the reference and would '
+            'reject every image.' % (trial_no, model_desc))
+  trial_pg = trial_sg.group().build_derived_patterson_group().info()
+  if trial_pg.symbol_and_number() != model_pg.symbol_and_number():
+    return ('Trial %s was indexed in %s (Laue group %s).\nThe reference model '
+            'is %s (Laue group %s).\nMerging filters experiments against the '
+            'reference and would reject every image.'
+            % (trial_no, trial_sg, trial_pg, model_desc, model_pg))
+  if trial_uc is not None and not trial_uc.is_similar_to(
+      model.unit_cell(), relative_length_tolerance=relative_length_tolerance,
+      absolute_angle_tolerance=absolute_angle_tolerance):
+    return ('Trial %s was indexed with cell %s.\nThe reference model is %s.\n'
+            'The cells differ by more than the merge filter allows (%g relative '
+            'in length, %g degrees in angle), so merging would reject most or '
+            'all images.' % (trial_no, trial_uc, model_desc,
+                             relative_length_tolerance, absolute_angle_tolerance))
+  return None
+
+
 # Tolerance in degrees when asking whether the unit cell metric supports a higher
 # symmetry than the space group does (the Le Page delta). This matches the
 # default that cosym itself uses, dials lattice_symmetry_max_delta, so that the
@@ -5184,6 +5254,11 @@ class DatasetWizard(BaseDialog):
                                                direction='horizontal',
                                                items={'inter': 'intersection',
                                                       'union': 'union'})
+    # How many of the trial's runs the ticked tags select under the chosen
+    # operator, counted the way the pipeline selects them, so a wrong trial or
+    # a tag the trial does not use shows up here rather than as a dataset that
+    # runs with no data.
+    self.run_count_lbl = wx.StaticText(p, label='')
     tag_names = [t.name for t in self.all_tags]
     if tag_names:
       self.tag_checklist.ctr.InsertItems(items=tag_names, pos=0)
@@ -5192,9 +5267,15 @@ class DatasetWizard(BaseDialog):
     self.selection_type_radio.inter.SetValue(1)
     for c in (self.name, self.trial, self.tag_checklist, self.selection_type_radio):
       s.Add(c, flag=wx.EXPAND | wx.ALL, border=6)
+    s.Add(self.run_count_lbl, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=12)
     p.SetSizer(s)
     self.page_sizer.Add(p, 1, flag=wx.EXPAND)
     self.pages.append(('Trial & tags', p))
+    self.Bind(wx.EVT_CHOICE, self._onRunSelectionChanged, self.trial.ctr)
+    self.Bind(wx.EVT_CHECKLISTBOX, self._onRunSelectionChanged, self.tag_checklist.ctr)
+    self.Bind(wx.EVT_RADIOBUTTON, self._onRunSelectionChanged, self.selection_type_radio.inter)
+    self.Bind(wx.EVT_RADIOBUTTON, self._onRunSelectionChanged, self.selection_type_radio.union)
+    self._update_run_count()
 
   def _build_page2(self):
     p = wx.Panel(self.page_panel)
@@ -5273,6 +5354,67 @@ class DatasetWizard(BaseDialog):
       return None
     return self.all_trials[self.all_trial_numbers.index(sel)]
 
+  def _selected_tags(self):
+    names = set(self.tag_checklist.ctr.GetString(i)
+                for i in self.tag_checklist.ctr.GetCheckedItems())
+    return [t for t in self.all_tags if t.name in names]
+
+  def _onRunSelectionChanged(self, e):
+    self._update_run_count()
+    e.Skip()
+
+  def _update_run_count(self):
+    ''' Say how many runs the trial, tags and operator select, the way the
+        pipeline will select them (predict_dataset_jobs): every ticked tag must
+        be one the trial uses, and the runs come from the trial's run groups by
+        tag under the operator. '''
+    trial = self._selected_trial()
+    if trial is None:
+      self.run_count_lbl.SetLabel('')
+      return
+    tags = self._selected_tags()
+    try:
+      if not tags:
+        label = 'Runs selected: none (no tags ticked)'
+      else:
+        trial_tag_ids = set(t.id for t in trial.tags)
+        unused = [t.name for t in tags if t.id not in trial_tag_ids]
+        if unused:
+          label = ('Runs selected: none (tag%s %s not used by trial %s)'
+                   % ('s' if len(unused) > 1 else '', ', '.join(unused), trial.trial))
+        else:
+          mode = 'union' if self.selection_type_radio.union.GetValue() else 'intersection'
+          seen = set()
+          for rungroup in trial.rungroups:
+            for run in self.db.get_rungroup_runs_by_tags(rungroup, tags, mode):
+              seen.add(run.id)
+          total = len(self.db.get_trial_runs(trial.id))
+          label = ('Runs selected: %d of %d in trial %s (%s of %d tag%s)'
+                   % (len(seen), total, trial.trial, mode, len(tags),
+                      's' if len(tags) > 1 else ''))
+    except Exception as exc:
+      label = 'Runs selected: could not be counted (%s)' % exc
+    self.run_count_lbl.SetLabel(label)
+    self.page_panel.Layout()
+
+  def _confirm_reference_matches_trial(self):
+    ''' With a known reference model, warn when the trial's symmetry would be
+        rejected by the merge filter against it. Returns False to stay on the
+        page. A warning rather than a refusal: the comparison reads the trial's
+        indexing parameters, and the user may know better. '''
+    if not self.model_mode_radio.known.GetValue():
+      return True
+    msg = trial_reference_symmetry_mismatch(
+      self.db, self._selected_trial(), self.shared_model.ctr.GetValue())
+    if msg is None:
+      return True
+    dlg = wx.MessageDialog(self, message=msg + '\n\nContinue anyway?',
+                           caption='Trial and reference symmetry differ',
+                           style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING)
+    answer = dlg.ShowModal()
+    dlg.Destroy()
+    return answer == wx.ID_YES
+
   def _onCosymToggle(self, e):
     # Once the user has an opinion, stop overriding it when they navigate back
     # and forth between the pages.
@@ -5339,6 +5481,8 @@ class DatasetWizard(BaseDialog):
                            % (i + 1, len(self.pages), self.pages[i][0]))
     self.btn_back.Enable(i > 0)
     self.btn_next.SetLabel('Finish' if i == len(self.pages) - 1 else 'Next >')
+    if i == 0:
+      self._update_run_count()
     if i == 1:
       self._update_model_mode()
     if i == 2:
@@ -5354,6 +5498,8 @@ class DatasetWizard(BaseDialog):
     err = self._validate_page(self.page)
     if err:
       wx.MessageBox(err, 'Incomplete', wx.OK | wx.ICON_WARNING, self)
+      return
+    if self.page == 1 and not self._confirm_reference_matches_trial():
       return
     if self.page < len(self.pages) - 1:
       self._show_page(self.page + 1)
