@@ -636,8 +636,8 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
 {
   if (remainingSeconds <= 0.0) {
     // No time remaining, so we leave the clique in its current state and return a score of 0.
+    std::ostringstream oss;
     if (m_verbosity >= 1) {
-      std::ostringstream oss;
       oss << "   No time remaining, leaving clique of size " << boost::num_vertices(clique)
         << " in its current state\n";
     }
