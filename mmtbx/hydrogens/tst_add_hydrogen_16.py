@@ -22,6 +22,7 @@ def run():
   test_012()
   test_013()
   test_014()
+  test_015()
 
 # ------------------------------------------------------------------------------
 
@@ -238,6 +239,19 @@ def test_014():
   atoms = place_atoms(pdb_str_014_ht7)
   assert h_on(atoms, 'HT7', '3', 'CA') == ['HB1', 'HC2'], h_on(atoms, 'HT7', '3', 'CA')
   assert h_on(atoms, 'HT7', '3', 'CB') == ['HA'], h_on(atoms, 'HT7', '3', 'CB')
+
+def test_015():
+  '''
+  2e4i: BGM 14 -> BGM 15, two nucleotides whose H come from the CCD (no
+  geostd entry). HO3' of BGM 14 was removed only after the riding H setup,
+  which stopped with a Sorry: no H-O3'-P angle, and P of BGM 15 is the
+  neighbour of an H parent (HOP2 on OP2). A BGM next to a standard
+  nucleotide passed. The 3' end BGM 15 keeps its hydroxyl H.
+  '''
+  atoms = place_atoms(pdb_str_015)
+  assert h_on(atoms, 'BGM', '14', "O3'") == [], h_on(atoms, 'BGM', '14', "O3'")
+  assert h_on(atoms, 'BGM', '15', "O3'") == ["HO3'"], h_on(
+    atoms, 'BGM', '15', "O3'")
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -815,6 +829,56 @@ HETATM   12  CZ3 HT7 H   3     -44.383   5.366  22.628  1.00 29.19           C
 HETATM   13  CH2 HT7 H   3     -46.149   6.246  20.583  1.00 32.02           C
 HETATM   14  CH3 HT7 H   3     -44.805   4.510  21.637  1.00 29.79           C
 HETATM   15  CT2 HT7 H   3     -45.670   4.949  20.628  1.00 32.39           C
+END
+"""
+
+pdb_str_015 = """
+HETATM  421  P   BGM A  14     -11.641  -6.888   0.692  1.00  0.00           P
+HETATM  422  OP1 BGM A  14     -12.726  -7.004  -0.316  1.00  0.00           O
+HETATM  423  OP2 BGM A  14     -11.949  -7.102   2.128  1.00  0.00           O
+HETATM  424  O5' BGM A  14     -10.470  -7.884   0.276  1.00  0.00           O
+HETATM  425  C5' BGM A  14      -9.316  -8.044   1.100  1.00  0.00           C
+HETATM  426  C4' BGM A  14      -8.293  -8.912   0.405  1.00  0.00           C
+HETATM  427  O4' BGM A  14      -7.610  -8.119  -0.598  1.00  0.00           O
+HETATM  428  C1' BGM A  14      -6.214  -8.121  -0.343  1.00  0.00           C
+HETATM  429  N9  BGM A  14      -5.686  -6.811  -0.712  1.00  0.00           N
+HETATM  430  C8  BGM A  14      -5.048  -6.468  -1.881  1.00  0.00           C
+HETATM  431  N7  BGM A  14      -4.689  -5.214  -1.921  1.00  0.00           N
+HETATM  432  C5  BGM A  14      -5.114  -4.697  -0.705  1.00  0.00           C
+HETATM  433  C4  BGM A  14      -5.731  -5.670   0.053  1.00  0.00           C
+HETATM  434  N3  BGM A  14      -6.274  -5.562   1.283  1.00  0.00           N
+HETATM  435  C2  BGM A  14      -6.165  -4.336   1.766  1.00  0.00           C
+HETATM  436  N2  BGM A  14      -6.653  -4.052   2.982  1.00  0.00           N
+HETATM  437  N1  BGM A  14      -5.570  -3.296   1.093  1.00  0.00           N
+HETATM  438  C6  BGM A  14      -5.003  -3.385  -0.175  1.00  0.00           C
+HETATM  439  O6  BGM A  14      -4.490  -2.385  -0.693  1.00  0.00           O
+HETATM  440  C2' BGM A  14      -6.064  -8.472   1.123  1.00  0.00           C
+HETATM  441  C3' BGM A  14      -7.194  -9.468   1.312  1.00  0.00           C
+HETATM  442  O3' BGM A  14      -6.817 -10.779   0.874  1.00  0.00           O
+HETATM  443 BR   BGM A  14      -4.719  -7.696  -3.314  1.00  0.00          BR
+HETATM  454  P   BGM A  15      -5.374 -11.371   1.266  1.00  0.00           P
+HETATM  455  OP1 BGM A  15      -5.290 -12.745   0.711  1.00  0.00           O
+HETATM  456  OP2 BGM A  15      -5.159 -11.152   2.719  1.00  0.00           O
+HETATM  457  O5' BGM A  15      -4.354 -10.448   0.463  1.00  0.00           O
+HETATM  458  C5' BGM A  15      -2.945 -10.667   0.541  1.00  0.00           C
+HETATM  459  C4' BGM A  15      -2.335 -10.632  -0.841  1.00  0.00           C
+HETATM  460  O4' BGM A  15      -2.416  -9.278  -1.353  1.00  0.00           O
+HETATM  461  C1' BGM A  15      -1.159  -8.905  -1.881  1.00  0.00           C
+HETATM  462  N9  BGM A  15      -1.032  -7.455  -1.771  1.00  0.00           N
+HETATM  463  C8  BGM A  15      -0.465  -6.598  -2.684  1.00  0.00           C
+HETATM  464  N7  BGM A  15      -0.488  -5.351  -2.301  1.00  0.00           N
+HETATM  465  C5  BGM A  15      -1.112  -5.385  -1.061  1.00  0.00           C
+HETATM  466  C4  BGM A  15      -1.455  -6.676  -0.721  1.00  0.00           C
+HETATM  467  N3  BGM A  15      -2.073  -7.118   0.394  1.00  0.00           N
+HETATM  468  C2  BGM A  15      -2.357  -6.130   1.226  1.00  0.00           C
+HETATM  469  N2  BGM A  15      -2.977  -6.394   2.385  1.00  0.00           N
+HETATM  470  N1  BGM A  15      -2.057  -4.811   0.983  1.00  0.00           N
+HETATM  471  C6  BGM A  15      -1.420  -4.334  -0.159  1.00  0.00           C
+HETATM  472  O6  BGM A  15      -1.194  -3.123  -0.279  1.00  0.00           O
+HETATM  473  C2' BGM A  15      -0.142  -9.693  -1.085  1.00  0.00           C
+HETATM  474  C3' BGM A  15      -0.854 -11.020  -0.902  1.00  0.00           C
+HETATM  475  O3' BGM A  15      -0.612 -11.878  -2.021  1.00  0.00           O
+HETATM  476 BR   BGM A  15       0.273  -7.165  -4.357  1.00  0.00          BR
 END
 """
 

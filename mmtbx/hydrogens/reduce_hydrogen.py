@@ -1009,6 +1009,9 @@ class place_hydrogens():
     # them on the model would leak idealized placement-only geometry (0.9x
     # bonds, esd=1/period=1 torsions) into any downstream re-interpretation.
     self.remove_auto_restraint_objects()
+    # before riding H: an H on an esterified O has no H-O-X angle to the second
+    # heavy neighbour (2e4i BGM 14 -> BGM 15)
+    self.exclude_H_on_esterified_O()
     # Return if no H have been placed
     sel_h = self.model.get_hd_selection()
     if sel_h.count(True) == 0: return
@@ -1130,7 +1133,6 @@ class place_hydrogens():
     name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv(),
                      kinds = (2,))
     self.exclude_H_on_links()
-    self.exclude_H_on_esterified_O()
     # propellers only now: a methyl that lost an H to a link is a CH2, and the
     # names that survived it stay as they are
     name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv(),
