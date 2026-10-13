@@ -2803,10 +2803,20 @@ class RunBlockDialog(BaseDialog):
     if self.block is None:
       action = 'new'
     else:
-      all_the_same = [str(rg_dict[key]).strip() == str(getattr(self.block, key)).strip() for key in rg_dict].count(False) == 0
+      def unchanged(key):
+        old = getattr(self.block, key)
+        if key == 'extra_phil_str':
+          # Stored text written by older versions of this dialog is the user's
+          # input verbatim; normalize it the way extra_phil_str above was
+          # derived so the settings are compared, not their formatting.
+          try:
+            old = self.phil_scope.fetch_diff(self.phil_scope.fetch(parse(old or ''))).as_str() or None
+          except Exception:
+            pass
+        return str(rg_dict[key]).strip() == str(old).strip()
+      all_the_same = all(unchanged(key) for key in rg_dict)
       all_the_same &= self.first_run == self.orig_first_run and self.last_run == self.orig_last_run
-      keep_old_run_group = [str(rg_dict[key]).strip() == str(getattr(self.block, key)).strip() for key in rg_dict \
-                            if key not in ['open', 'comment']].count(False) == 0
+      keep_old_run_group = all(unchanged(key) for key in rg_dict if key not in ['open', 'comment'])
       if all_the_same:
         action = 'none'
       elif keep_old_run_group:
