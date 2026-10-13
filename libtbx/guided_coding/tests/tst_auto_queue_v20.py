@@ -24,7 +24,8 @@ Revision 12: `run` needs macOS. Off macOS (real, or simulated inside the test
 processes with GC_TEST_SIMULATE_NON_MACOS=1) the helper is run through the
 test-only launcher tests/auto_queue_standin.py, whose stand-in for sandbox-exec
 runs commands unrestricted; every command run through it is local. Only the
-four checks of the real macOS mechanisms are skipped there. The refusal tests
+tests of the real macOS mechanisms (and their duplicates) are skipped there, each
+with its reason (GUIDED_CODING_VERIFICATION.md lists them). The refusal tests
 run the real helper (a subprocess that imports it and sets sys.platform), never
 the launcher. `init` without --lock-dir is refused. The launcher cannot run a
 real queue job (P8): it refuses (exit 16) any queue outside a temporary
@@ -51,6 +52,7 @@ import os
 import shlex
 import shutil
 import socket
+import struct
 import re
 import signal
 import subprocess
@@ -133,6 +135,51 @@ SNAPSHOT_SCRIPT = """import json, sys
 sys.path.insert(0, sys.argv[1])
 import auto_queue
 print(json.dumps({str(pid): entry[:4] for pid, entry in auto_queue.snapshot().items()}))
+"""
+# Revision 13 (item 14): a test-side launcher that runs the helper (argv[2]) with its ps path
+# replaced, inside this one process, by argv[3] (a missing path or a stand-in ps script); the
+# installed helper is never changed. With argv[4] == "linux" the platform is also set to linux
+# in that process (only for snapshot(), never for `run`).
+FAKE_PS_SCRIPT = """import os, runpy, sys
+kit, helper, ps = sys.argv[1:4]
+sys.path.insert(0, kit)
+import auto_queue
+auto_queue.PS = ps
+sys.argv = [helper] + sys.argv[4:]
+if os.path.realpath(helper) == os.path.realpath(auto_queue.__file__):
+    sys.exit(auto_queue.main(sys.argv[1:]))
+runpy.run_path(helper, run_name="__main__")
+"""
+# Stand-ins for ps (Revision 13): refused as inside sandbox-exec, empty, malformed, and one that
+# fails only for the `ps -E` marker query (as Linux ps has no -E).
+FAKE_PS = {
+    "refused": "#!/bin/sh\necho 'ps: Operation not permitted' >&2\nexit 71\n",
+    "empty": "#!/bin/sh\nexit 0\n",
+    "malformed": "#!/bin/sh\necho 'PID garbage line'\necho '12 x'\nexit 0\n",
+    "no-marker": ('#!/bin/sh\ncase " $* " in *" -E "*) echo "ps: unsupported option -E" >&2; '
+                  'exit 1;; esac\nexec /bin/ps "$@"\n'),
+    # Checkpoint 3 (REVIEW_CP2 findings 1 and 3): the whole-table query fails while
+    # `ps -p` works; the `ps -E` marker query exits 0 with nothing, or with garbage.
+    "ax-fails": ('#!/bin/sh\ncase " $* " in *" -ax "*) echo "ps: Operation not permitted" >&2; '
+                 'exit 71;; esac\nexec /bin/ps "$@"\n'),
+    "empty-marker": '#!/bin/sh\ncase " $* " in *" -E "*) exit 0;; esac\nexec /bin/ps "$@"\n',
+    "garbage-marker": ('#!/bin/sh\ncase " $* " in *" -E "*) echo garbage; exit 0;; esac\n'
+                       'exec /bin/ps "$@"\n'),
+}
+# snapshot() in a subprocess that imports the helper with PS = argv[2] (and, with argv[3]
+# == "linux", sys.platform = "linux"): prints `table N` (its size) or `refused CODE MESSAGE`.
+SNAPSHOT_PROBE = """import sys
+sys.path.insert(0, sys.argv[1])
+import auto_queue
+auto_queue.PS = sys.argv[2]
+if sys.argv[3] == "linux":
+    sys.platform = "linux"
+try:
+    procs = auto_queue.snapshot()
+except auto_queue.Refused as refusal:
+    print("refused", refusal.code, refusal)
+else:
+    print("table", len(procs), int(any(procs[p][4] for p in procs)))
 """
 # A fingerprint script for `install check`.
 FINGERPRINT_SCRIPT = """#!{python}
@@ -275,6 +322,84 @@ sys.exit(int(sys.argv[2]))
 """
 
 
+# Revision 13 (item 12): the kit's own suite needs a working /bin/ps. Inside sandbox-exec (for
+# example a queue run's outer sandbox) the setuid ps is refused; then this module runs ONE
+# failing test naming the cause and the supported route instead of many unrelated failures.
+PS_ROUTE = ("run the kit's own suite attended, outside the queue's outer sandbox (sandbox-exec), "
+            "from an ordinary shell; see AUTO.md, 'Running the kit's own tests'. A queue job "
+            "that must run it needs that exception stated in advance; never disable the "
+            "network protection to make it run.")
+
+
+def ps_problem(ps="/bin/ps"):
+    """None when `ps -p <this pid>` works, else a message naming the cause and the route."""
+    try:
+        out = subprocess.run([ps, "-p", str(os.getpid()), "-o", "pid="], capture_output=True,
+                             text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        cause = "%s could not be run: %s" % (ps, error)
+    else:
+        if out.returncode == 0 and out.stdout.split() == [str(os.getpid())]:
+            return None
+        cause = "%s exited %d%s" % (ps, out.returncode, (
+            " (%s)" % out.stderr.strip().splitlines()[0]) if out.stderr.strip() else
+            " and did not list this process")
+    return ("PROCESS TABLE UNREADABLE: the auto-queue tests cannot run here: %s. This happens "
+            "inside sandbox-exec, where the setuid ps is refused. Supported route: %s"
+            % (cause, PS_ROUTE))
+
+
+class KitSelfTestRoute(unittest.TestCase):
+    """Revision 13 (item 12): the one test that stands for the whole module when ps cannot run."""
+
+    def test_process_table_readable(self):
+        problem = ps_problem()
+        if problem:
+            self.fail(problem)
+
+    def test_preflight_fires_on_refused_ps_and_is_silent_normally(self):
+        """A ps stand-in refused like ps inside sandbox-exec (exit 71), one that prints
+        nothing, and a missing ps each give the message with the cause and the route;
+        the real ps gives None."""
+        self.assertIsNone(ps_problem())
+        with tempfile.TemporaryDirectory() as temp:
+            for mode in ("refused", "empty"):
+                fake = Path(os.path.realpath(temp)) / mode
+                fake.write_text(FAKE_PS[mode])
+                fake.chmod(0o755)
+                problem = ps_problem(str(fake))
+                self.assertIsNotNone(problem, mode)
+                self.assertTrue(problem.startswith("PROCESS TABLE UNREADABLE"), problem)
+                self.assertIn("sandbox-exec", problem)
+                self.assertIn("Running the kit's own tests", problem)
+            self.assertIn("exited 71 (ps: Operation not permitted)",
+                          ps_problem(str(Path(temp) / "refused")))
+            self.assertIn("could not be run", ps_problem(str(Path(temp) / "missing")))
+
+    @unittest.skipUnless(sys.platform == "darwin" and os.path.exists("/usr/bin/sandbox-exec"),
+                         MACOS_ONLY + "the real sandbox-exec refusal of ps")
+    def test_module_under_sandbox_exec_fails_once(self):
+        """Under `sandbox-exec -p '(version 1)(allow default)'` this module runs exactly one
+        test, which fails with the message; nothing else runs."""
+        kit = Path(__file__).resolve().parent.parent
+        result = subprocess.run(["/usr/bin/sandbox-exec", "-p", "(version 1)(allow default)",
+                                 sys.executable, "-I", "-B", "-m", "unittest", "discover", "-s",
+                                 "tests", "-p", Path(__file__).name], cwd=kit, text=True,
+                                capture_output=True, timeout=300)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Ran 1 test", result.stderr)
+        self.assertIn("FAILED (failures=1)", result.stderr)
+        self.assertEqual(result.stderr.count("PROCESS TABLE UNREADABLE"), 1, result.stderr)
+        self.assertIn("Supported route", result.stderr)
+
+
+def load_tests(loader, standard_tests, pattern):
+    """Revision 13 (item 12): when ps cannot run, only the route test (failing once)."""
+    if ps_problem() is None:
+        return standard_tests
+    return unittest.TestSuite([KitSelfTestRoute("test_process_table_readable")])
+
+
 def alive(pid):
     try:
         os.kill(pid, 0)
@@ -301,6 +426,7 @@ def job_entry(data, job):
 
 class AutoQueueChecks(unittest.TestCase):
     linux_ps = IMITATE_LINUX_PS  # Revision 12 (P10); the P10 tests set it for themselves
+    fake_ps = None  # Revision 13: a ps stand-in path for the helper (FAKE_PS_SCRIPT)
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -389,7 +515,11 @@ class AutoQueueChecks(unittest.TestCase):
         """Revision 12: off macOS through the test-only launcher, unless `real`."""
         helper = STANDIN if NON_MACOS and not real else TOOL
         command = [sys.executable, "-I", "-B", str(helper), "--home", str(home or self.home)]
-        if self.linux_ps and not real:  # Revision 12 (P10): Linux ps start times imitated
+        if self.fake_ps and not real:  # Revision 13: the helper's ps replaced
+            script = self.work / "fake_ps_launcher.py"
+            script.write_text(FAKE_PS_SCRIPT)
+            command[3:4] = [str(script), str(TOOL.parent), str(helper), str(self.fake_ps)]
+        elif self.linux_ps and not real:  # Revision 12 (P10): Linux ps start times imitated
             command[3:4] = [str(self.linux_ps_script), str(TOOL.parent), str(helper),
                             str(LINUX_PS_LAG)]
         if queue is True:
@@ -513,6 +643,20 @@ class AutoQueueChecks(unittest.TestCase):
             args += ["--probe", probe]
         cmd = cmd or [sys.executable, "-c", f"import sys; sys.exit({code})"]
         return self.tool(*args, "--", *cmd, **where)
+
+    def held_probe(self, name, ignore_term=False):
+        """Checkpoint 3: a probe that marks its start, then waits (at most 30 s) for a
+        release file the test creates, then names the source; replaces fixed `sleep N`
+        probe windows, so a test no longer depends on how fast helper subprocesses start.
+        With ignore_term (checkpoint 5) the probe and its children ignore SIGTERM, so a
+        stop (which signals the run's marked processes) cannot end it early.
+        Returns (probe, started, release)."""
+        started, release = self.work / f"{name}-started", self.work / f"{name}-release"
+        probe = (("trap '' TERM; " if ignore_term else "")
+                 + f"touch {shlex.quote(str(started))}; i=0; "
+                 f"while [ ! -e {shlex.quote(str(release))} ] && [ $i -lt 300 ]; do "
+                 f"sleep 0.1; i=$((i+1)); done; echo {shlex.quote(str(self.src))}")
+        return probe, started, release
 
     def marker_cmd(self, name):
         marker = self.work / name
@@ -1140,21 +1284,40 @@ class AutoQueueChecks(unittest.TestCase):
     def test_stop_during_probe_never_starts_cmd(self):
         """Revision 2 B2: a `starting` record exists during the probe; a stop then
         means CMD never starts (`not started`, exit 3) and no Stopped while the
-        wrapper lives."""
+        wrapper lives. Checkpoint 3: the probe waits for a release file (bounded,
+        30 s) that the test creates only after the stop has been recorded
+        (STOP_REQUESTED exists), instead of a fixed `sleep 2`; so the stop always
+        falls inside the probe, however slowly helper subprocesses start.
+        Checkpoint 5 (review CP3 finding 2): the probe stays held until the stop
+        command itself has finished, so its result is read while the starting
+        wrapper is certainly alive: it must be Stopping (exit 10), never Stopped.
+        The probe ignores SIGTERM (stop signals the run's marked processes, which
+        would otherwise end the probe and the wrapper at once). Only then is the
+        probe released; the wrapper exits 3 and a later stop prints Stopped."""
         self.prepare(BETA)
-        started = self.work / "probe-started"
         marker, cmd = self.marker_cmd("cmd-ran")
-        probe = f"touch {shlex.quote(str(started))}; sleep 2; echo {shlex.quote(str(self.src))}"
+        probe, started, release = self.held_probe("stop-probe", ignore_term=True)
         proc = self.popen_run(BETA, cmd, probe=probe)
         self.wait_for(started.exists, "the probe to start")
         stem, record = self.wait_record(set(), status="starting")
         self.assertEqual(record["wrapper_pid"], proc.pid)
         self.end_worker()
-        first = self.tool("stop")
-        if first.returncode == 0:
-            self.assertIsNotNone(proc.poll(), "Stopped while the starting wrapper lived")
-        else:
-            self.stopping(first)
+        out = self.work / "stop-during-probe.out"
+        with open(out, "w") as handle:
+            stopper = subprocess.Popen(self.command(["stop"], None, True), cwd=self.tmp,
+                                       env=self.env, stdout=handle, stderr=subprocess.STDOUT)
+            self.procs.append(stopper)
+            self.wait_for((self.queue / "STOP_REQUESTED").exists, "the stop to be recorded")
+            self.assertIsNone(proc.poll(), "the wrapper ended before the probe was released")
+            self.assertEqual(self.runs()[stem]["status"], "starting")
+            code = stopper.wait(TIMEOUT)  # the probe is still held: the wrapper lives
+        self.assertIsNone(proc.poll(), "the wrapper ended while the probe was held")
+        self.assertFalse(release.exists())
+        self.assertNotEqual(code, 0, "Stopped while the starting wrapper lived: "
+                            + out.read_text())
+        self.assertEqual(code, 10, out.read_text())
+        self.assertTrue(out.read_text().startswith("Stopping"), out.read_text())
+        release.write_text("")
         self.assertEqual(proc.wait(TIMEOUT), 3)
         self.assertFalse(marker.exists())
         self.assertEqual(self.runs()[stem]["status"], "not started")
@@ -1185,7 +1348,9 @@ class AutoQueueChecks(unittest.TestCase):
         proc = self.popen_run(BETA, ["sleep", "5"])
         stem, record = self.wait_record(set())
         self.end_worker()
-        time.sleep(2.1)  # the decoy must start in a later second than the tracked run
+        # The decoy must start in a later second than the tracked run (checkpoint 3:
+        # bounded polling on ps start times instead of a fixed 2.1 s sleep).
+        self.wait_past_second(self.start_epoch(record["pid"]))
         decoy = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(5)"],
                                  start_new_session=True)
         self.procs.append(decoy)
@@ -1822,19 +1987,25 @@ class AutoQueueChecks(unittest.TestCase):
         self.stop_until_stopped()
 
     def check_term_while_lock_held(self, send_term):
-        """A 1 s probe; the test holds .queue.lock for about 2 s from the end of the
-        probe; optionally SIGTERM the wrapper while it waits for the lock."""
+        """A held probe; the test takes .queue.lock, releases the probe and holds the
+        lock until the probe process has ended (bounded polling; checkpoint 3, before:
+        a 1 s probe and a fixed 1.5 s hold) and 0.5 s more; optionally SIGTERM the
+        wrapper while it waits for the lock."""
         self.prepare(BETA)
-        started = self.work / f"probe-started-{self.counter}"
-        probe = f"touch {shlex.quote(str(started))}; sleep 1; echo {shlex.quote(str(self.src))}"
+        probe, started, release = self.held_probe(f"n1-probe-{self.counter}")
         marker, cmd = self.marker_cmd(f"n1-cmd-{self.counter}")
         proc = self.popen_run(BETA, cmd, probe=probe)
         output = self.work / f"popen-{len(self.procs) - 1}.out"
         self.wait_for(started.exists, "the probe")
+        stem, record = self.wait_record(set(), status="starting")
+        self.wait_for(lambda: self.runs()[stem].get("probe_pgid"), "the probe to be recorded")
+        probe_pid = self.runs()[stem]["probe_pgid"]
         with open(self.queue / ".queue.lock", "a+") as handle:
             fcntl.flock(handle, fcntl.LOCK_EX)
             try:
-                time.sleep(1.5)  # the probe has ended; the wrapper waits for the lock
+                release.write_text("")
+                # the probe ends; the wrapper (which reaps it) then waits for the lock
+                self.wait_for(lambda: not alive(probe_pid), "the probe to end")
                 if send_term:
                     os.kill(proc.pid, signal.SIGTERM)
                 time.sleep(0.5)
@@ -2190,11 +2361,15 @@ class AutoQueueChecks(unittest.TestCase):
         probe is not killed and the run completes normally."""
         self.prepare(BETA)
         marker, cmd = self.marker_cmd("ran-after-probe-cleanup")
-        probe = "sleep 3; echo " + shlex.quote(str(self.src))
+        # Checkpoint 3: the probe is held until cleanup has answered (before: a 3 s probe
+        # and cleanup after a fixed 1 s, which a slow start could push past the probe).
+        probe, started, release = self.held_probe("cleanup-probe")
         proc = self.popen_run(BETA, cmd, probe=probe)
         stem, _ = self.wait_record(set(), status="starting")
-        time.sleep(1.0)  # cleanup at about 1 s into the 3 s probe
+        self.wait_for(started.exists, "the probe to start")
         self.refused(self.tool("cleanup", BETA), 13)
+        self.assertIsNone(proc.poll(), "the run ended before the probe was released")
+        release.write_text("")
         self.assertEqual(proc.wait(TIMEOUT), 0)
         self.assertEqual(self.runs()[stem]["status"], "completed")
         self.assertTrue(marker.exists())
@@ -2399,6 +2574,9 @@ class AutoQueueChecks(unittest.TestCase):
         (record,) = self.runs().values()
         self.assertEqual((record["status"], record["network"]), ("not started", "blocked"))
 
+    @unittest.skipIf(NON_MACOS, MACOS_ONLY + "the allowed-job control is the companion of the "
+                     "sandbox-exec block (off macOS the stand-in never blocks, so success there "
+                     "says nothing about the production control)")
     def test_network_allowed_job(self):
         """Revision 8 control: a job with "network": true records `allowed`; the same
         request succeeds in CMD and in the probe (skipped without internet).
@@ -2451,6 +2629,9 @@ class AutoQueueChecks(unittest.TestCase):
         script.write_text(DNS_SCRIPT)
         return [sys.executable, str(script), host]
 
+    @unittest.skipIf(NON_MACOS, MACOS_ONLY + "checks the real sandbox-exec refusal of an outside "
+                     "name lookup (off macOS the stand-in does not block, so a failed lookup "
+                     "would only show that this host is offline)")
     def test_outside_name_lookup_blocked(self):
         """Re-read 8: without "network", an outside name lookup fails inside CMD while
         localhost resolves. Revision 10: opt-in (it would query if the block failed)."""
@@ -2463,6 +2644,9 @@ class AutoQueueChecks(unittest.TestCase):
         self.assertEqual([r["exit_code"] == 0 for r in records], [True, False])
         self.assertTrue(all(r["network"] == "blocked" for r in records))
 
+    @unittest.skipIf(NON_MACOS, MACOS_ONLY + "the allowed-job control is the companion of the "
+                     "sandbox-exec block (off macOS the stand-in never blocks, so success there "
+                     "says nothing about the production control)")
     def test_outside_name_lookup_allowed_job(self):
         """Re-read 8 control: a job with "network": true resolves example.com (skipped
         without internet). Revision 10: opt-in (GC_TEST_NETWORK=1)."""
@@ -2481,9 +2665,18 @@ class AutoQueueChecks(unittest.TestCase):
         self.assertEqual(record["network"], "allowed")
 
     def test_probe_timeout(self):
-        """Re-read 8: a probe longer than the limit: exit 124 within about 10 s,
-        `not started` with reason `probe timed out`, CMD never runs, no probe
-        process left. Control: a short probe runs CMD."""
+        """Re-read 8: a probe longer than the limit (3 s against a 30 s probe): exit
+        124, `not started` with reason `probe timed out`, CMD never runs, no probe
+        process left. Control: a short probe runs CMD. Checkpoint 3: the time bound is
+        measured from the run record's own timestamps (probe_started to ended, whole
+        UTC seconds): at most 3 s limit + 2.5 s of the helper's TERM/KILL waits + 2 s
+        for rounding and scheduling = 7 s, so helper start-up under load no longer
+        counts; the whole call must still end well before the probe's 30 s (25 s).
+        Checkpoint 5 (review CP3 finding 3): the lower bound is 5 s: the 3 s limit
+        plus the helper's unconditional 2.5 s of TERM/KILL waits is 5.5 s, which in
+        whole seconds is never below 5; a probe ended early (0.2 s) gives 2-3 s.
+        The leftover check waits at most 5 s for the killed group to be reaped, and
+        uses separate -o flags (procps reads `-o pgid=,command=` as one column)."""
         self.use_new_queue("q-probe-timeout", extra=("--default-timeout", "3"))
         self.prepare(BETA)
         marker, cmd = self.marker_cmd("ran-after-probe-timeout")
@@ -2491,23 +2684,37 @@ class AutoQueueChecks(unittest.TestCase):
         result = self.run_cmd(BETA, "unit", cmd=cmd,
                               probe="sleep 30; echo " + shlex.quote(str(self.src)))
         self.assertEqual(result.returncode, 124, result.stdout + result.stderr)
-        self.assertLess(time.time() - began, 10)
+        self.assertLess(time.time() - began, 25)
         self.assertFalse(marker.exists())
         (record,) = self.runs().values()
         self.assertEqual(record["status"], "not started")
         self.assertIn("probe timed out", record.get("reason", ""))
-        table = subprocess.run(["/bin/ps", "-A", "-o", "pgid=,command="], text=True,
-                               capture_output=True).stdout
-        leftovers = [line for line in table.splitlines()
-                     if line.split(None, 1)[0] == str(record["probe_pgid"])]
-        self.assertEqual(leftovers, [], "a probe process was left")
+        took = self.utc(record["ended"]) - self.utc(record["probe_started"])
+        self.assertGreaterEqual(took, 5, record)  # 3 s limit + 2.5 s waits, less rounding
+        self.assertLessEqual(took, 7, record)
+
+        def leftovers():
+            table = subprocess.run(["/bin/ps", "-A", "-o", "pgid=", "-o", "command="],
+                                   text=True, capture_output=True)
+            self.assertEqual(table.returncode, 0, table.stderr)
+            return [line for line in table.stdout.splitlines()
+                    if line.split(None, 1)[:1] == [str(record["probe_pgid"])]]
+        self.wait_for(lambda: not leftovers(), "the probe's group to be reaped", 5)
         self.attempt(BETA, 0)
 
+    @unittest.skipIf(NON_MACOS, "duplicate off macOS: there "
+                     "test_linux_ps_lag_probe_timeout_finds_leader_and_detached_child runs the "
+                     "same body with the real ps (the imitation changes nothing off the Mac)")
     def test_probe_timeout_with_detached_child_holding_output(self):
         """Probe time-out (confirmation of re-read 7): a probe whose detached python
         (own session, output inherited) outlives it does not hold the wrapper: exit
         124 within about 15 s, `not started` / `probe timed out`, the detached python
-        is ended (by the run, or by cleanup before lock release is accepted)."""
+        is ended (by the run, or by cleanup before lock release is accepted).
+        Checkpoint 3: on macOS this finds the detached python by its `ps -E` run-id
+        marker, while the P10 variant drops the markers and finds it as the probe
+        leader's child under imitated early Linux start times, so both run here. Off
+        macOS the P10 variant is this same test with the real (early-reporting) ps,
+        aligned to a whole second, so this one is skipped there."""
         self.check_probe_timeout_detached()
 
     def check_probe_timeout_detached(self, align=False):
@@ -2873,9 +3080,10 @@ class AutoQueueChecks(unittest.TestCase):
     def test_report_step_for_packet_and_screening_failures(self):
         """After re-read 8 (a): a Ready row failing with a reason that begins `packet`
         or `SCREENING.txt` has the step "freeze a corrected packet in a new directory
-        and mark it ready again"; another failure (a stale run) keeps "rerun the
-        affected checks"."""
-        freeze_step = "freeze a corrected packet in a new directory and mark it ready again"
+        and mark it ready again" (Revision 13: with the clerical-slip note, same evidence,
+        ERRATA.md, no rerun); another failure (a stale run) keeps "rerun the affected checks"."""
+        freeze_step = ("freeze a corrected packet in a new directory and mark it ready again "
+                       "(clerical slip: same evidence, note in ERRATA.md, no rerun)")
         rerun_step = "rerun the affected checks"
         frozen = self.screened_beta(network=True)
         packet = frozen(SCREENING + "test: fetch_pdb | outside: HTTPS to rcsb.org | included\n")
@@ -2971,11 +3179,19 @@ class AutoQueueChecks(unittest.TestCase):
         process, connect, resolve or fetch raises, so anything run before the skip
         decision would show as an error instead of a skip. Re-read 10 (d) control:
         with the value `1` each opt-in test goes on and reaches an intercepted call
-        (an error or failure naming the interception, not a skip)."""
+        (an error or failure naming the interception, not a skip). Checkpoint 5: off
+        macOS (real or simulated) a test that is also macOS-only (checkpoint 3) is
+        skipped for that reason first, for every value including `1`, and is checked
+        for the macOS-mechanism reason instead; the opt-in rule is checked for every
+        test that is not skipped as macOS-only (on macOS: all three)."""
         expected = {"test_network_allowed_job": (OUTSIDE_URL, f"{OUTSIDE_ADDRESS}:443"),
                     "test_outside_name_lookup_allowed_job": (OUTSIDE_NAME,),
                     "test_outside_name_lookup_blocked": (OUTSIDE_NAME,)}
 
+        macos_only = {name for name in expected
+                      if getattr(getattr(AutoQueueChecks, name), "__unittest_skip__", False)}
+        self.assertEqual(macos_only, set(expected) if NON_MACOS else set())
+        opt_in = {name: where for name, where in expected.items() if name not in macos_only}
         scratch = self.tmp / "gated"
         scratch.mkdir()
 
@@ -3007,19 +3223,21 @@ class AutoQueueChecks(unittest.TestCase):
                         unittest.mock.patch.object(socket, "getaddrinfo", forbidden), \
                         unittest.mock.patch.object(urllib.request, "urlopen", forbidden):
                     suite.run(result)
+                reasons = {test._testMethodName: reason for test, reason in result.skipped}
+                self.assertEqual(result.testsRun, len(expected))
+                for name in macos_only:
+                    self.assertTrue(reasons.get(name, "").startswith(MACOS_ONLY), reasons.get(name))
                 if value == "1":
-                    self.assertEqual(result.skipped, [])
+                    self.assertEqual(sorted(reasons), sorted(macos_only))
                     reached = {test._testMethodName: trace
                                for test, trace in result.errors + result.failures}
-                    self.assertEqual(sorted(reached), sorted(expected))
+                    self.assertEqual(sorted(reached), sorted(opt_in))
                     for name, trace in reached.items():
                         self.assertIn(marker, trace, name)
                     continue
                 self.assertEqual((result.errors, result.failures), ([], []))
-                self.assertEqual(result.testsRun, len(expected))
-                reasons = {test._testMethodName: reason for test, reason in result.skipped}
                 self.assertEqual(sorted(reasons), sorted(expected))
-                for name, destinations in expected.items():
+                for name, destinations in opt_in.items():
                     self.assertTrue(reasons[name].startswith(OPT_IN_PREFIX), reasons[name])
                     for destination in destinations:
                         self.assertIn(destination, reasons[name])
@@ -3600,6 +3818,491 @@ class AutoQueueChecks(unittest.TestCase):
                              self.work / "p8-active-control.log", "--probe",
                              "echo " + shlex.quote(str(self.src)), "--", *cmd))
         self.assertTrue(cmd_marker.exists())
+
+
+    # ---- Revision 13 (item 14): an unreadable process table fails closed ---------
+
+    def fake_ps_path(self, mode):
+        if mode == "missing":
+            return self.work / "no-such-ps"
+        path = self.work / f"ps-{mode}"
+        path.write_text(FAKE_PS[mode])
+        path.chmod(0o755)
+        return path
+
+    def snapshot_probe(self, ps, platform="native"):
+        script = self.work / "snapshot_probe.py"
+        script.write_text(SNAPSHOT_PROBE)
+        result = subprocess.run([sys.executable, "-I", "-B", str(script), str(TOOL.parent), str(ps),
+                                 platform], cwd=self.tmp, env=self.env, text=True,
+                                capture_output=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return result.stdout.strip()
+
+    def test_snapshot_fails_closed_when_ps_fails(self):
+        """Revision 13 (item 14): snapshot() raises a refusal (17, "cannot read the process
+        table") when ps cannot start, exits nonzero, prints nothing or prints a line that
+        does not parse; it never returns an empty table. Control: the real ps gives a table.
+        Linux: a failing `ps -E` marker query alone is tolerated off macOS (markers dropped,
+        as before) and refused on macOS, where the marker is needed."""
+        table = self.snapshot_probe("/bin/ps")
+        self.assertTrue(table.startswith("table "), table)
+        self.assertGreater(int(table.split()[1]), 1)
+        for mode in ("missing", "refused", "empty", "malformed"):
+            with self.subTest(ps=mode):
+                out = self.snapshot_probe(self.fake_ps_path(mode))
+                self.assertTrue(out.startswith("refused 17 cannot read the process table"), out)
+                self.assertIn("whether queue processes are alive is unknown", out)
+        no_marker = self.fake_ps_path("no-marker")
+        out = self.snapshot_probe(no_marker, "linux")
+        self.assertTrue(out.startswith("table "), out)
+        self.assertEqual(out.split()[2], "0", "markers should be dropped, not invented")
+        if sys.platform == "darwin":
+            out = self.snapshot_probe(no_marker)
+            self.assertTrue(out.startswith("refused 17 "), out)
+            self.assertIn("exited 1", out)
+
+    def test_snapshot_refuses_empty_or_unparsable_marker_output_on_macos(self):
+        """Checkpoint 3 (REVIEW_CP2 finding 3): on macOS a `ps -E` marker query that exits
+        0 with no output, or with a line that does not parse, refuses (17) like the main
+        table, since a survivor found only by its marker would be invisible. Off macOS
+        (simulated in the probe) the same output only drops the markers, as before."""
+        for mode in ("empty-marker", "garbage-marker"):
+            with self.subTest(ps=mode):
+                out = self.snapshot_probe(self.fake_ps_path(mode), "linux")
+                self.assertTrue(out.startswith("table "), out)
+                if sys.platform != "darwin":
+                    continue
+                out = self.snapshot_probe(self.fake_ps_path(mode))
+                self.assertTrue(out.startswith("refused 17 cannot read the process table"), out)
+                self.assertIn("ps -E listed no environment line for this process", out)
+
+    def test_stop_signals_confirmed_run_when_another_record_needs_the_table(self):
+        """Checkpoint 3 (REVIEW_CP2 finding 1): a completed run's record sorts before a
+        running one; with a ps that fails only for the whole table (`ps -p` works), stop
+        still sends SIGTERM to the running run's group (confirmed by `ps -p`), then
+        refuses 17 with Stopping, never Stopped. The run ends 128+15."""
+        self.prepare(BETA)
+        self.ok(self.run_cmd(BETA, "unit", cmd=["true"]))
+        (first,) = self.runs()
+        time.sleep(1.02 - time.time() % 1)  # the next record's name sorts after the first
+        proc = self.popen_run(BETA, ["sleep", "30"])
+        stem, record = self.wait_record({first})
+        self.assertLess(first, stem)
+        self.end_worker()
+        self.fake_ps = self.fake_ps_path("ax-fails")
+        try:
+            result = self.tool("stop")
+        finally:
+            self.fake_ps = None
+        self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
+        self.assertTrue(result.stdout.strip().startswith("Stopping:"), result.stdout)
+        self.assertEqual(proc.wait(TIMEOUT), 128 + signal.SIGTERM)
+        self.assertIn(f"stop sent SIGTERM to group {record['pgid']} of run {stem}",
+                      (self.queue / "EVENTS.log").read_text())
+        self.stop_until_stopped()
+
+    def test_unreadable_table_refuses_stop_cleanup_release_transfer_without_runs(self):
+        """Checkpoint 3 (REVIEW_CP2 finding 2): with no run record at all and the helper's
+        ps refused, stop prints Stopping (17, never Stopped) and cleanup, lock release and
+        transfer refuse 17 (lock kept, job not transferred), consistent with report.
+        Control: with the real ps each succeeds."""
+        self.prepare(BETA)
+        self.end_worker()
+        successor = self.tmp / "attended-none"
+        successor.mkdir()
+        self.fake_ps = self.fake_ps_path("refused")
+        try:
+            result = self.tool("cleanup", BETA)
+            self.refused(result, 17)
+            self.assertNotIn("Cleaned", result.stdout)
+            self.refused(self.tool("lock", "release"), 17)
+            self.assertTrue((self.lock / "owner.txt").exists())
+            self.refused(self.tool("transfer", BETA, "--to", successor, "--note", "attended"), 17)
+            self.assertNotEqual(self.state(BETA), "Transferred")
+            result = self.tool("stop")
+            self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
+            self.assertTrue(result.stdout.strip().startswith("Stopping:"), result.stdout)
+            self.assertNotIn("Stopped", result.stdout)
+            report = self.tool("report")
+            self.assertEqual(report.returncode, 17, report.stdout + report.stderr)
+            self.assertEqual(self.first_line(report.stdout), "**Stopping**")
+        finally:
+            self.fake_ps = None
+        self.assertTrue(self.cleanup(0).stdout.strip().startswith("Cleaned"))  # control
+        self.stop_until_stopped()
+        self.ok(self.tool("transfer", BETA, "--to", successor, "--note", "attended"))
+        self.ok(self.tool("lock", "release"))
+
+    def test_unreadable_process_table_never_reports_stopped_cleaned_or_released(self):
+        """Revision 13 (item 14): with a run's leftover process alive and the helper's ps
+        missing, refused (as inside sandbox-exec), empty or malformed: `run` refuses (17) and
+        its CMD never starts; Ready, cleanup and lock release refuse (17) and change nothing
+        (the leftover lives, the lock stays); reconcile marks no run unknown; report prints no
+        readiness and shows the job unknown, exits 17; stop records the stop but prints
+        Stopping, never Stopped (17), and report then says **Stopping**. Control: with the
+        real ps cleanup prints Cleaned, the lock is released and stop prints Stopped."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        stem, (child,), _ = self.launch("default")
+        packet = self.packet(self.tree())
+        modes = ("missing", "refused", "empty", "malformed")
+        for mode in modes:
+            with self.subTest(ps=mode):
+                self.fake_ps = self.fake_ps_path(mode)
+                try:
+                    marker, cmd = self.marker_cmd(f"fake-ps-{mode}")
+                    result = self.run_cmd(BETA, "unit", cmd=cmd)
+                    self.refused(result, 17)
+                    self.assertIn("cannot read the process table", result.stderr)
+                    self.assertFalse(marker.exists(), "CMD started without a process table")
+                    self.end_worker()
+                    self.refused(self.set(BETA, "Ready for approval", "--packet", packet), 17)
+                    self.start_worker(BETA)
+                    self.assertIn(self.tool("reconcile").returncode, (0, 17))
+                    result = self.tool("cleanup", BETA)
+                    self.refused(result, 17)
+                    self.assertNotIn("Cleaned", result.stdout)
+                    self.assertTrue(alive(child))
+                    self.refused(self.tool("lock", "release"), 17)
+                    self.assertTrue((self.lock / "owner.txt").exists())
+                    result = self.tool("report")
+                    self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
+                    self.assertIn(REPORT_HEADER, result.stdout.splitlines())
+                    self.assertIn("**Process table unreadable:**", result.stdout)
+                    self.assertNotIn("**Stopped**", result.stdout)
+                    self.assertIn("unknown", self.result_cell(result.stdout, BETA))
+                    self.assertNotIn("passed", self.result_cell(result.stdout, BETA))
+                finally:
+                    self.fake_ps = None
+        self.assertEqual(self.state(BETA), "Testing")
+        self.assertNotEqual(self.runs()[stem]["status"], "unknown")
+        for mode in modes:
+            with self.subTest(stop=mode):
+                self.fake_ps = self.fake_ps_path(mode)
+                try:
+                    result = self.tool("stop")
+                    self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
+                    self.assertTrue(result.stdout.strip().startswith("Stopping:"), result.stdout)
+                    self.assertNotIn("Stopped", result.stdout)
+                    self.assertTrue((self.queue / "STOP_REQUESTED").exists())
+                    report = self.tool("report")
+                    self.assertEqual(report.returncode, 17, report.stdout + report.stderr)
+                    self.assertEqual(self.first_line(report.stdout), "**Stopping**")
+                finally:
+                    self.fake_ps = None
+        self.assertTrue(alive(child))
+        self.end_worker()
+        self.assertTrue(self.cleanup(0).stdout.strip().startswith("Cleaned"))  # control
+        self.assertFalse(alive(child))
+        self.ok(self.tool("lock", "release"))
+        self.stop_until_stopped()
+
+    # ---- Revision 13 (item 10): transfer from auto to attended -------------------
+
+    def successor(self, name="successor"):
+        path = self.tmp / "attended" / name
+        path.mkdir(parents=True)
+        return path
+
+    def test_transfer_from_blocked_is_final_and_offers_no_decision(self):
+        """Revision 13 (item 10): `transfer JOB --to DIR --note TEXT` from Blocked makes the
+        job Transferred: the report shows "transferred to DIR" and no decision; the decision
+        and the note are kept in the record; the job cannot change afterwards (set, wait,
+        criterion, candidate, worker start, transfer again); `set JOB Transferred` is not a
+        way in; a missing successor directory is refused."""
+        self.ok(self.set(ALPHA, "Preparing"))
+        self.ok(self.set(ALPHA, "Blocked", "--note", "two fixes possible",
+                         "--decision", "choose option a or b"))
+        self.assertEqual(self.tool("set", BETA, "Transferred").returncode, 2)
+        target = self.successor()
+        result = self.tool("transfer", ALPHA, "--to", self.tmp / "no-such-dir", "--note", "x")
+        self.refused(result, 2)
+        self.assertEqual(self.state(ALPHA), "Blocked")
+        result = self.ok(self.tool("transfer", ALPHA, "--to", target, "--note",
+                                   "continued attended in the successor record"))
+        self.assertIn(f"{ALPHA} Transferred to {target}", result.stdout)
+        entry = job_entry(self.status(), ALPHA)
+        self.assertEqual(entry["state"], "Transferred")
+        self.assertEqual(entry["transfer"]["to"], str(target))
+        self.assertEqual(entry["transfer"]["from_state"], "Blocked")
+        self.assertEqual(entry["transfer"]["decision_needed_at_transfer"], "choose option a or b")
+        self.assertNotIn("decision_needed", entry)
+        report = self.report()
+        self.assertEqual(self.result_cell(report, ALPHA), f"transferred to {target}")
+        step = self.result_cell(report, ALPHA, column=2)
+        self.assertNotIn("decision needed", step)
+        self.assertNotIn("choose option", report)
+        self.assertIn("Transferred to", (self.queue / "EVENTS.log").read_text())
+        for args, code in ((("set", ALPHA, "Preparing"), 8), (("set", ALPHA, "Discarded"), 8),
+                           (("wait", ALPHA, "--until", "2026-10-13T06:00:00Z"), 8),
+                           (("criterion", ALPHA, "--file", self.criterion), 8),
+                           (("candidate", ALPHA, "--repo", self.repo, "--commit", "HEAD"), 8),
+                           (("worker", "start", ALPHA, "--id", "w-after"), 8),
+                           (("transfer", ALPHA, "--to", target, "--note", "again"), 8)):
+            with self.subTest(args=args[:2]):
+                self.refused(self.tool(*args), code)
+                self.assertEqual(self.state(ALPHA), "Transferred")
+
+    def test_transfer_from_ready_keeps_the_packet_record(self):
+        """Revision 13 (item 10): a Ready job can be transferred; its packet and manifest
+        identity move into the transfer record (kept, no longer offered for approval) and
+        the report offers no approval for it."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        self.ok(self.run_cmd(BETA, "unit"))
+        packet = self.packet(self.tree())
+        self.ok(self.ready(BETA, "--packet", packet))
+        target = self.successor()
+        self.ok(self.tool("transfer", BETA, "--to", target, "--note", "attended from here"))
+        entry = job_entry(self.status(), BETA)
+        self.assertEqual(entry["state"], "Transferred")
+        self.assertEqual(entry["transfer"]["from_state"], "Ready for approval")
+        self.assertEqual(entry["transfer"]["packet"], str(packet.resolve()))
+        self.assertEqual(entry["transfer"]["packet_manifest_sha256"],
+                         sha256_file(packet / "MANIFEST.sha256"))
+        self.assertNotIn("packet", entry)
+        report = self.report()
+        self.assertNotIn("approve for integration", self.result_cell(report, BETA, column=2))
+        self.refused(self.approve(BETA, f"approve {BETA}"), 8)
+        self.assertTrue(packet.is_dir())
+
+    def test_transfer_refused_while_worker_registered_and_all_finishes_queue(self):
+        """Revision 13 (item 10): transfer from Preparing is refused (9) while a worker for
+        the job is registered, and the job stays Preparing; after `worker end` it is accepted.
+        `transfer --all` moves every job that is not final, and a queue whose jobs are all
+        transferred is finished (another queue can be started in the same home)."""
+        self.prepare(BETA)
+        target = self.successor()
+        result = self.tool("transfer", BETA, "--to", target, "--note", "handover")
+        self.refused(result, 9)
+        self.assertIn("still registered", result.stderr)
+        self.assertEqual(self.state(BETA), "Preparing")
+        self.refused(self.tool("init", *self.init_args("q-next", self.tmp / "RUN-next.lock")[1:],
+                               queue=None), 8)
+        self.end_worker()
+        self.ok(self.tool("transfer", "--all", "--to", target, "--note", "handover"))
+        self.assertEqual(self.state(BETA), "Transferred")
+        self.assertEqual(self.state(ALPHA), "Transferred")
+        self.refused(self.tool("transfer", "--all", "--to", target, "--note", "again"), 8)
+        self.ok(self.tool("lock", "release"))
+        self.ok(self.tool(*self.init_args("q-next", self.tmp / "RUN-next.lock"), queue=None))
+
+    # ---- Revision 13 (item 13): timestamp-only installation differences ---------
+
+    def archive_tools(self):
+        tools = [shutil.which(name, path=self.env.get("PATH")) for name in ("ar", "ranlib")]
+        if not all(tools):
+            self.skipTest("needs ar and ranlib on PATH")
+        return tools
+
+    def make_archive(self, path, members, when):
+        """An archive of `members` (name -> bytes) made with the real ar and ranlib, every
+        member file dated `when` (epoch seconds)."""
+        ar, ranlib = self.archive_tools()
+        build = self.work / f"ar-{self.counter}-{path.name}"
+        self.counter += 1
+        build.mkdir()
+        names = []
+        for name, data in members.items():
+            (build / name).write_bytes(data)
+            os.utime(build / name, (when, when))
+            names.append(name)
+        if path.exists():
+            path.unlink()
+        flags = getattr(self, "ar_flags", "rc")
+        subprocess.run([ar, flags, str(path), *names], cwd=build, check=True,
+                       capture_output=True, env=self.env)
+        subprocess.run([ranlib, str(path)], cwd=build, check=True, capture_output=True,
+                       env=self.env)
+        return path.read_bytes()
+
+    def normalized_fingerprint_script(self, archive):
+        """A fingerprint script printing the archive's exact digest and its normalized
+        digest from payload/tools/fingerprint_normalize.py."""
+        self.counter += 1
+        path = self.work / f"fingerprint-ar-{self.counter}.py"
+        normalizer = TOOL.parent / "payload" / "tools" / "fingerprint_normalize.py"
+        path.write_text(f"""#!{sys.executable}
+import hashlib, subprocess, sys
+data = open({str(archive)!r}, "rb").read()
+print("FINGERPRINT " + hashlib.sha256(data).hexdigest())
+out = subprocess.run([sys.executable, "-I", "-B", {str(normalizer)!r}, "file", "--kind",
+                      "archive", {str(archive)!r}], capture_output=True, text=True, check=True)
+print("NORMALIZED " + out.stdout.split()[0])
+""")
+        path.chmod(0o755)
+        return path
+
+    def exact(self, script):
+        out = subprocess.run([str(script)], capture_output=True, text=True, check=True).stdout
+        return dict(line.split() for line in out.splitlines())
+
+    def test_install_check_classifies_timestamp_only_archive_change(self):
+        """Revision 13 (item 13): with a real ar/ranlib archive, an exact match is available
+        and records the normalized value; the same members re-archived with other dates
+        change the exact fingerprint, and install check then says "timestamp-only
+        differences: attended validation needed" but keeps the installation unavailable
+        (12; runs refused; the recorded value is not replaced); a member whose content
+        changed is not classified; restoring the exact bytes makes it available again."""
+        self.prepare(BETA)
+        archive = self.work / "libsynthetic.a"
+        members = {"one.txt": b"first member\n", "two.txt": b"second member\n"}
+        original = self.make_archive(archive, members, 1000000000)
+        script = self.normalized_fingerprint_script(archive)
+        values = self.exact(script)
+        expect = values["FINGERPRINT"]
+        self.ok(self.tool("install", "check", "--script", script, "--expect", expect))
+        shown = json.loads(self.ok(self.tool("install", "show")).stdout)
+        self.assertEqual(shown["state"], "available")
+        self.assertEqual(shown["expected_normalized"], values["NORMALIZED"])
+        redated = self.make_archive(archive, members, 1100000000)
+        if redated == original:
+            self.ar_flags = "rcU"  # GNU ar in deterministic mode writes no dates
+            redated = self.make_archive(archive, members, 1100000000)
+        if redated == original:
+            self.skipTest("this ar writes no member dates")
+        self.assertNotEqual(self.exact(script)["FINGERPRINT"], expect)
+        self.assertEqual(self.exact(script)["NORMALIZED"], values["NORMALIZED"])
+        result = self.tool("install", "check", "--script", script, "--expect", expect)
+        self.assertEqual(result.returncode, 12, result.stdout + result.stderr)
+        shown = json.loads(self.ok(self.tool("install", "show")).stdout)
+        self.assertEqual(shown["state"], "unavailable")
+        self.assertTrue(shown["reason"].startswith(
+            "timestamp-only differences: attended validation needed"), shown["reason"])
+        self.assertEqual(shown["expected"], expect)
+        self.attempt(BETA, 12)
+        self.assertIn("timestamp-only differences", self.report())
+        self.make_archive(archive, dict(members, **{"two.txt": b"second member, changed\n"}),
+                          1100000000)
+        self.assertNotEqual(self.exact(script)["NORMALIZED"], values["NORMALIZED"])
+        result = self.tool("install", "check", "--script", script, "--expect", expect)
+        self.assertEqual(result.returncode, 12, result.stdout + result.stderr)
+        shown = json.loads(self.ok(self.tool("install", "show")).stdout)
+        self.assertEqual(shown["reason"], "it no longer matches its recorded starting state")
+        archive.write_bytes(original)
+        self.ok(self.tool("install", "check", "--script", script, "--expect", expect))
+        self.assertEqual(json.loads(self.ok(self.tool("install", "show")).stdout)["state"],
+                         "available")
+        self.attempt(BETA, 0)
+
+    def test_install_check_expect_normalized_and_known_exit_codes(self):
+        """Revision 13 (items 13, 14): on a queue with no stored normalized value,
+        --expect-normalized gives the value to compare; the classification still leaves the
+        installation unavailable. Exit 3 and exit 4 of a fingerprint script are named."""
+        script = self.fingerprint_script("abc123")
+        script.write_text(script.read_text().replace(
+            'print("FINGERPRINT abc123")', 'print("FINGERPRINT abc123")\nprint("NORMALIZED n1")'))
+        result = self.tool("install", "check", "--script", script, "--expect", "zzz999",
+                           "--expect-normalized", "n1")
+        self.assertEqual(result.returncode, 12, result.stdout + result.stderr)
+        shown = json.loads(self.ok(self.tool("install", "show")).stdout)
+        self.assertEqual(shown["state"], "unavailable")
+        self.assertIn("timestamp-only differences", shown["reason"])
+        result = self.tool("install", "check", "--script", script, "--expect", "zzz999",
+                           "--expect-normalized", "n2")
+        self.assertEqual(result.returncode, 12)
+        self.assertNotIn("timestamp-only", self.ok(self.tool("install", "show")).stdout)
+        for code, words in ((3, "a process runs from the installation"),
+                            (4, "the process table could not be read")):
+            with self.subTest(code=code):
+                bad = self.fingerprint_script("zzz999", code)
+                self.assertEqual(self.tool("install", "check", "--script", bad, "--expect",
+                                           "zzz999").returncode, 12)
+                reason = json.loads(self.ok(self.tool("install", "show")).stdout)["reason"]
+                self.assertEqual(reason, f"its fingerprint script failed (exit {code}: {words})")
+
+    def test_normalizer_build_time_masks_date_and_derived_fields(self):
+        """Revision 13 (item 13): a bundle built twice from source differing only in an
+        embedded asctime build date has a different exact digest and the same build-time
+        digest (date, LC_UUID and code signature masked); a different other string changes
+        it. A non-archive given as an archive is compared byte for byte."""
+        cc = shutil.which("cc", path=self.env.get("PATH"))
+        if sys.platform != "darwin" or not cc:
+            self.skipTest(MACOS_ONLY + "needs cc producing Mach-O")
+        normalizer = TOOL.parent / "payload" / "tools" / "fingerprint_normalize.py"
+
+        def bundle(name, date, extra="phaser"):
+            source = self.work / f"{name}.c"
+            source.write_text(f'const char *build_time = "{date}";\nconst char *what = "{extra}";\n'
+                              'int version(void) { return 1; }\n')
+            out = self.work / f"{name}.so"
+            subprocess.run([cc, "-bundle", "-o", str(out), str(source)], check=True,
+                           capture_output=True, env=self.env)
+            return out
+
+        def digest(path, kind="build-time"):
+            out = subprocess.run([sys.executable, "-I", "-B", str(normalizer), "file", "--kind",
+                                  kind, str(path)], capture_output=True, text=True, check=True)
+            return out.stdout.split()[0]
+        a = bundle("a", "Sun Oct 11 08:54:45 2026")
+        b = bundle("b", "Tue Oct 13 01:02:03 2026")
+        c = bundle("c", "Sun Oct 11 08:54:45 2026", extra="phasex")
+        self.assertNotEqual(sha256_file(a), sha256_file(b))
+        self.assertEqual(digest(a), digest(b))
+        self.assertNotEqual(digest(a), digest(c))
+        self.assertEqual(digest(a, "archive"), sha256_file(a))
+
+    def test_normalizer_masks_code_signature_only_at_the_end(self):
+        """Checkpoint 3 (REVIEW_CP2 finding 4): two bundles that differ in code, whose
+        LC_CODE_SIGNATURE load command is rewritten to declare the whole file
+        (dataoff 0, datasize = file length), keep different build-time digests (the
+        declared range is not masked, and stderr says so). Control: unmodified, the same
+        two bundles also differ, and a signature at the end is still masked (see the
+        test above). Checkpoint 5 (review CP3 finding 6): the same holds for a range
+        from the end of the load commands to the end of the file, and for that range
+        with __LINKEDIT also rewritten to cover it (it would overlap __TEXT); such a
+        file is compared byte for byte."""
+        cc = shutil.which("cc", path=self.env.get("PATH"))
+        if sys.platform != "darwin" or not cc:
+            self.skipTest(MACOS_ONLY + "needs cc producing Mach-O")
+        normalizer = TOOL.parent / "payload" / "tools" / "fingerprint_normalize.py"
+
+        def bundle(name, value):
+            source = self.work / f"{name}.c"
+            source.write_text('const char *build_time = "Sun Oct 11 08:54:45 2026";\n'
+                              f"int version(void) {{ return {value}; }}\n")
+            out = self.work / f"{name}.so"
+            subprocess.run([cc, "-bundle", "-o", str(out), str(source)], check=True,
+                           capture_output=True, env=self.env)
+            return out
+
+        def widen(path, how):
+            data = bytearray(path.read_bytes())
+            ncmds, sizeofcmds = struct.unpack_from("<II", data, 16)
+            begin = 0 if how == "whole" else 32 + sizeofcmds
+            offset, found = 32, False
+            for _ in range(ncmds):
+                cmd, size = struct.unpack_from("<II", data, offset)
+                if cmd == 0x1d:  # LC_CODE_SIGNATURE
+                    struct.pack_into("<II", data, offset + 8, begin, len(data) - begin)
+                    found = True
+                elif (cmd == 0x19 and how == "linkedit"
+                      and data[offset + 8:offset + 24].rstrip(b"\0") == b"__LINKEDIT"):
+                    struct.pack_into("<QQ", data, offset + 40, begin, len(data) - begin)
+                offset += size
+            if not found:
+                self.skipTest("this linker wrote no LC_CODE_SIGNATURE")
+            path.write_bytes(bytes(data))
+
+        def digest(path):
+            out = subprocess.run([sys.executable, "-I", "-B", str(normalizer), "file", "--kind",
+                                  "build-time", str(path)], capture_output=True, text=True,
+                                 check=True)
+            return out.stdout.split()[0], out.stderr
+        for how in ("whole", "after-load-commands", "linkedit"):
+            with self.subTest(range=how):
+                # Names of equal length: the ad-hoc signature embeds the file name, and
+                # the reviewer's case needs files of equal size (the load commands equal).
+                one, seven = bundle(f"b1-{how}", 1), bundle(f"b7-{how}", 7)
+                self.assertNotEqual(digest(one)[0], digest(seven)[0])  # control
+                widen(one, how)
+                widen(seven, how)
+                self.assertNotEqual(sha256_file(one), sha256_file(seven))
+                (first, note), (second, _) = digest(one), digest(seven)
+                self.assertNotEqual(first, second, "a widened signature range hid a code change")
+                self.assertIn("LC_CODE_SIGNATURE not masked", note)
+                self.assertEqual(first, sha256_file(one))  # compared byte for byte
 
 
 if __name__ == "__main__":

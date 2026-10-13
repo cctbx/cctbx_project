@@ -83,8 +83,13 @@ artifact. Write down your provisional findings at that point.
 review's conclusions, the checker's sheet, and the Guide's message if it
 states one. Say where your findings and theirs differ. Being told to
 discount a conclusion you have already read is weaker than not having
-read it yet. A frozen packet is never edited after the fact; corrections
-live in the errata.
+read it yet. A frozen packet is never edited after the fact; clerical
+corrections live in the errata and need no rerun or technical review
+(this replaces treating every correction as a new packet). When a
+checker refuses the packet for one, it may be refrozen with the same
+bytes and you may be asked for a short addendum; errata added after your
+reading are offered to you with the next one. A correction of substance
+is a new packet with its own identity.
 
 **Then run, when it is code.** Run the test the kit or packet names,
 exactly as shipped, and say whether it printed OK on your machine. If
@@ -103,7 +108,13 @@ refuse is a finding.
 happened, what should have happened, and whether it blocks or can wait.
 Distinguish an **evidence failure** — the fact a line asserts does not
 hold, or you could not establish it — from a **clerical** one, where the
-fact holds and is in the packet but a number, time or sentence is wrong.
+fact holds and is in the packet but a number, time, sentence, heading,
+label or format is wrong, or a verified file sits in the wrong place with
+the same bytes. A clerical finding does not block: it goes in the errata
+(this definition replaces calling every such slip a blocker).
+Correctness, meaningful verification, safety, authorization and any
+unresolved mismatch of commit, tree, base or packet identity are never
+clerical.
 Do not soften a blocker because the rest is good. Do not inflate a
 residual because you found nothing else. When the message's claim and the
 bundle's contents differ, the bundle wins, and say so.
@@ -132,7 +143,9 @@ tell from the bundle which grant it is acting under, say so.
 A "nothing blocking" answer means you tried to break it and could not.
 Say what you tried. Absence of new ideas is not a verdict.
 
-**End with this block, so it can be recorded unchanged.**
+**End with this block, so it can be recorded unchanged.** If you repeat
+it (for example in a summary), repeat it identically; conflicting values
+are refused.
 
 ```
 Bundle hash:      <sha256>

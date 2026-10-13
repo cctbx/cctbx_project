@@ -39,17 +39,18 @@ manifest cannot establish their origin by themselves. Inspect its member
 names before extraction; the expected source archive contains
 `libtbx/guided_coding/`, without an enclosing release-named folder.
 
-Use an empty staging directory. Replace the paths and run this **whole
-Bash block**, not separate commands:
+Use an empty staging directory. Replace the paths and paste this **whole
+block** as one command, not separate commands (each line ends with `\`,
+which continues it on the next line):
 
 ```bash
-mkdir /path/to/empty-gc-review &&
-tar -xzf /path/to/reviewed-guided-coding.tgz -C /path/to/empty-gc-review &&
-cd /path/to/empty-gc-review/libtbx/guided_coding &&
-shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
-GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
-cat payload/RELEASE &&
-grep -Fq 'r10 rev18 candidate' payload/RELEASE
+mkdir /path/to/empty-gc-review && \
+tar -xzf /path/to/reviewed-guided-coding.tgz -C /path/to/empty-gc-review && \
+cd /path/to/empty-gc-review/libtbx/guided_coding && \
+shasum -a 256 -c SOURCE_MANIFEST.sha256 && \
+env GC_PAYLOAD_ROOT="`pwd -P`/payload" python3 -I -B payload/tools/screen_check.py verify-source . && \
+cat payload/RELEASE && \
+grep -Eq '^guided_coding 2\.0 pilot r10 rev19 ' payload/RELEASE
 ```
 
 Any failed command skips the rest of the block. In particular, a failed
@@ -57,7 +58,8 @@ listed checksum must stop **before executing the package's checker**.
 Stop dependent work on failure; a successful command appended later would
 not repair the failed check. Require all listed hashes, `VERIFIED complete
 source`, and the expected release identity from your handoff. The final
-`grep` is only a family-label check, not an exact revision check.
+`grep` checks that the release line begins with the `r10 rev19` label;
+it is not an exact revision check.
 
 The complete-source check rejects missing, changed and extra source files,
 links and multiply linked files. Its narrow exception permits certain
@@ -67,10 +69,15 @@ contents. The documented checking tools run from source rather than loading
 that package bytecode. Ordinary Python imports, including direct unit-test
 imports, can load caches; run those tests on a trusted clean copy.
 
-The commands shown here require Bash and `shasum`, plus a suitable Python 3.
-They are not csh syntax. Use the appropriate shell explicitly rather than
-pasting Bash environment assignments into csh. Project build/test commands
-may have a different, recorded shell requirement.
+The commands shown here work as written in bash, zsh, csh and tcsh. They
+need `shasum` and a suitable Python 3. Where `shasum` is missing (some
+Linux systems), replace `shasum -a 256 -c SOURCE_MANIFEST.sha256` in the
+block with `sha256sum -c SOURCE_MANIFEST.sha256`; it reads the same
+manifest file.
+
+Project build/test commands may have a different, recorded shell
+requirement. Supported systems: macOS and Linux; auto-mode runs need macOS;
+Windows is not supported (see the User Guide's "Before you begin").
 
 ## One-time registration
 
@@ -79,13 +86,13 @@ any existing personal skill path. Then run the complete guarded block with
 your canonical source path:
 
 ```bash
-cd /path/to/cctbx_project/libtbx/guided_coding &&
-shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
-GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
-cat payload/RELEASE &&
-grep -Fq 'r10 rev18 candidate' payload/RELEASE &&
-GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py check-claude-version &&
-GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py register-skill .
+cd /path/to/cctbx_project/libtbx/guided_coding && \
+shasum -a 256 -c SOURCE_MANIFEST.sha256 && \
+env GC_PAYLOAD_ROOT="`pwd -P`/payload" python3 -I -B payload/tools/screen_check.py verify-source . && \
+cat payload/RELEASE && \
+grep -Eq '^guided_coding 2\.0 pilot r10 rev19 ' payload/RELEASE && \
+env GC_PAYLOAD_ROOT="`pwd -P`/payload" python3 -I -B payload/tools/screen_check.py check-claude-version && \
+env GC_PAYLOAD_ROOT="`pwd -P`/payload" python3 -I -B payload/tools/screen_check.py register-skill .
 ```
 
 `register-skill` rechecks the source and the Claude Code version itself, then creates exactly
@@ -268,13 +275,19 @@ of each guided conversation, not before every message.
 
 A task presents **APPROVE / REVISE / STOP** for its plan and
 **INTEGRATE / REVISE / DISCARD** for the tested result. Publication has its
-own **PUBLISH / HOLD** decision. The approval report includes the complete
+own **PUBLISH / HOLD** decision. While a required outside reading is
+still pending, **ACCEPT / REVISE / DISCARD** can accept the exact frozen
+candidate; it merges and publishes nothing. Every decision screen is
+pasted in full into Claude's reply, with earlier screens marked
+superseded. The approval report includes the complete
 tested diff and exact new test code, or an explicit “none added” with the
 check used. An Outside Reviewer recommends; the Developer decides.
 A tool-permission dialog does not replace those decisions.
 
 For a batch that will be published, the frozen packet also records the
-exact outgoing commits (`OUTGOING.txt`) and the suite result or the
+exact outgoing commits (`OUTGOING.txt`, generated by
+`publication_precheck.py outgoing ... --fetch >> PACKET/OUTGOING.txt` once
+per repository; see `payload/PUBLICATION_PACKET.md`) and the suite result or the
 Developer's quoted waiver for that batch, so that one outside reading can
 answer the integration and the publication question for that packet. If
 the proposal changes afterwards, it gets a new identity and a
@@ -337,14 +350,34 @@ run on a Mac and by a real Linux run of the kit suite (anaconda, October 12,
 states, init, runs and their records, time limits, approvals, frozen packets and
 screening, the worker registry, the lock, stop, reconcile, cleanup and
 recovery, the installation check, the report and the screens, and the
-real helper's refusal of runs off macOS. Four checks need macOS and are
-skipped elsewhere with their reason: `test_outside_network_blocked_by_default`
-and `test_probe_network_blocked_by_default` (the real sandbox-exec
-refusal of outside connections) and
-`test_survivor_setsid_found_by_run_id_marker` and
-`test_probe_surviving_killed_wrapper_is_found` (the `ps -E` marker). The
-three tests that would contact a real outside host run only with
-`GC_TEST_NETWORK=1`, on any system.
+real helper's refusal of runs off macOS. Eight tests are skipped off macOS
+with their reason (revision 13 corrects the earlier count of four):
+`test_outside_network_blocked_by_default` and
+`test_probe_network_blocked_by_default` (the real sandbox-exec refusal of
+outside connections), `test_survivor_setsid_found_by_run_id_marker` and
+`test_probe_surviving_killed_wrapper_is_found` (the `ps -E` marker),
+`test_outside_name_lookup_blocked` and its allowed-job companions
+`test_network_allowed_job` and `test_outside_name_lookup_allowed_job`
+(off macOS the stand-in never blocks, so they would show only that the
+host is offline or online), and
+`test_probe_timeout_with_detached_child_holding_output` (a duplicate of
+its P10 variant there). The three tests that would contact a real
+outside host run only with `GC_TEST_NETWORK=1`. Off a real Mac the
+sandbox-exec self-test route and the two Mach-O normalizer tests are
+skipped too.
+
+Revision 13 adds `auto_queue.py transfer JOB|--all --to DIR --note TEXT`,
+which hands jobs over to an attended task record: the job becomes
+Transferred (final, never reopened; its decision is no longer offered;
+its history and evidence are kept). `install check` also reads an
+optional `NORMALIZED` line from the fingerprint script and
+`--expect-normalized VALUE`; when only that value matches it says
+"timestamp-only differences: attended validation needed" and the
+installation stays unavailable. When the process table cannot be read,
+the helper refuses with exit 17 and reports nothing as stopped, cleaned
+or released, also when no run record exists; stop first
+signals every run whose wrapper or group `ps -p` confirms. The kit's own suite must run outside `sandbox-exec`; inside
+it, the auto-queue tests report one failure naming that route.
 
 **What the invocation grants.** It is your advance grant for the listed
 jobs only, filed as `GRANT.md` in the queue's record before any job
@@ -412,6 +445,27 @@ the earlier session has ended.
 **Not in this release.** There is no `auto integrate`. Integration and
 publication of approved jobs are ordinary guided work on your later
 instruction, with your PUBLISH decision for the combined packet.
+
+## Coordinating several sessions
+
+Guided Coding has no scheduler for parallel jobs. When you run more than
+one Claude session on related work (for example two attended tasks, or an
+attended task beside an auto queue), the sessions coordinate by messages
+between them, which you pass on or which one session sends to another.
+They agree, before either starts the affected step:
+
+- **owner**: which session owns which task and branch;
+- **files**: which files or repositories each may change;
+- **order**: in which order their changes are integrated and published;
+- **lock**: who uses a shared installation, server or data folder, when,
+  and through which lock (for example a server's lock directory).
+
+Each session keeps its own worktree. Shared resources are used only under
+their lock. An auto queue has exactly one worker; do not start a second
+queue or worker on the same test installation. A message from another
+session is information, not your approval: it cannot authorize
+integration, publication, an installation update or a waiver. Those still
+need your decision in the session that does the work.
 
 ## Ordinary conversations and session titles
 

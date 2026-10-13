@@ -129,7 +129,7 @@ Help, status, history and uninstall remain available when the version check fail
 
 ## Evidence and outside review
 
-A **frozen packet** contains the proposed change, test results, report and other evidence, recorded in a manifest. Freezing lets later checks detect changed files. It does not make the evidence complete or its claims true. The tool refuses to replace an existing manifest; changed evidence needs a new freeze and identity.
+A **frozen packet** contains the proposed change, test results, report and other evidence, recorded in a manifest. Freezing lets later checks detect changed files. It does not make the evidence complete or its claims true. The tool refuses to replace an existing manifest; a change of substance to the evidence needs a new freeze and identity. A clerical correction (a typo, heading, formatting or label, or a verified file copied to the wrong place with the same bytes) is recorded in the separate errata instead and needs no new approval, repackaging, rerun or review. Correctness, meaningful verification, safety, authorization and an unresolved mismatch of commit, tree, base or packet identity are never clerical.
 
 The review bundle holds the frozen packet and, separately, the approvals record, checker notes and any corrections. Both groups have their own checksums. This preserves the proposal as reviewed; the reviewer's reply and later responses to findings stay outside the packet too.
 
@@ -141,7 +141,7 @@ Leave the packet and output files alone during packaging, and deliver only a com
 
 A review names the packet it examined and says whether it covers applying the change, publishing it, or both. One review can cover both decisions for the same frozen packet.
 
-If the commit, starting version, packet or review file changes, the review must be reconsidered for that version. A short follow-up may be enough, but it must identify the new version and the decisions it covers. An earlier refusal or a made-up reply used for testing cannot count as a review that says to proceed.
+If the commit, starting version, packet or review file changes, the review must be reconsidered for that version. A short follow-up may be enough, but it must identify the new version and the decisions it covers. After a restage, earlier test results carry over only when a recorded comparison shows the changed files have identical content and the upstream changes touch none of the tested files or what they use; otherwise the tests are rerun. An earlier refusal or a made-up reply used for testing cannot count as a review that says to proceed.
 
 For a change on the full path, outside review precedes the decision to apply it. A change can take the light path only if it cannot change behavior, requirements, interfaces or an important claim, and the plan states the worst effect if it is wrong. You must accept that limit in the plan. The light path defers outside review to publication. Size alone does not decide which path applies.
 
@@ -153,6 +153,8 @@ The checker verifies required headings, the final action line and the specified 
 
 These checks do not run the reported test or establish who wrote it. The records and outside review still need to support those claims.
 
+An **accept** screen lets you accept an exact frozen candidate while its outside review is still pending. It merges nothing and publishes nothing, says what is pending, and is checked like a result's evidence without a review; the result and publication decisions follow the review.
+
 For a full result or publication, the checker requires a review that identifies the same packet, covers the appropriate decision and says to proceed. If the reviewer makes that conditional, a separate record must address the exact condition. A waived or still-pending condition must remain visible in the decision screen. Recording a person's words does not authenticate them.
 
 Before publication, the procedure calls for the project's full test suite—the complete required set of tests—and a comparison with a valid earlier baseline run. The packet records those results, the outgoing commits and their destination. The screen checker requires the relevant files to be present and nonempty. It does not interpret the test results or perform the result screen's code-identity checks at this stage.
@@ -163,7 +165,7 @@ If a required suite was not run, the records must say so and contain your quoted
 
 The publication tool compares the outgoing record with the live repository. It checks the effective destination, relevant Git settings, the recorded commit and tree, the parent commit and the remote-tracking branch. The tree identifies the files in a Git commit; the remote-tracking branch is Git's local record of the remote branch.
 
-The optional `--fetch` step contacts the remote and refreshes local Git information. The optional `--dry-run` asks Git what a push would do without pushing. It passes only when Git exits successfully and reports exactly one permitted branch update: a fast-forward, which adds the proposed commits without replacing the branch's existing history.
+The `--fetch` option (required by the publication procedure) contacts the remote and refreshes local Git information. The optional `--dry-run` asks Git what a push would do without pushing. It passes only when Git exits successfully and reports exactly one permitted branch update: a fast-forward, which adds the proposed commits without replacing the branch's existing history.
 
 Without those options, the checks do not contact the remote. The tool never pushes the commits itself.
 
@@ -183,7 +185,7 @@ Keep project methods, permissions and existing records separate from kit updates
 
 This version does not install a separate procedure in each project, create profiles automatically, add an account hook or coordinate parallel jobs. Saving, applying, testing and restoring a candidate still follow the Worker's existing instructions.
 
-A separate Git worktree gives a task separate working files. It does not by itself establish that tests import from a separate installation or that shared resources are safe to use concurrently. The history and publication-check tools do not reserve resources, schedule work or update installations.
+A separate Git worktree gives a task separate working files. It does not by itself establish that tests import from a separate installation or that shared resources are safe to use concurrently. The history and publication-check tools do not reserve resources, schedule work or update installations. Separate sessions coordinate by messages that name the owner, files, order and lock; see [session coordination](GUIDED_CODING_COMMAND_REFERENCE.md#coordinating-several-sessions).
 
 ## Technical reference
 
@@ -235,12 +237,14 @@ The tools are in the shared kit's `payload/tools/` directory. Invoke the Python 
 | `screen_check.py verify DIR` | Checks the frozen evidence against its manifest. |
 | `screen_check.py check KIND SCREEN` | Checks a saved decision screen, with evidence and review arguments when required. |
 | `screen_check.py present KIND SCREEN` | Checks the saved screen and formats it for you. |
+| `screen_check.py check-draft publication DIR` | Runs the publication checks that need no freeze, screen or review on an unfrozen packet and names those it skipped. |
 | `review_bundle.py PACKET COMPANIONS OUTPUT` | Packages the frozen packet and separate companions for outside review. |
 | `publication_precheck.py check REPO OUTGOING.txt [--repository NAME] [--fetch] [--dry-run]` | Compares the publication record with Git, optionally fetching or checking a proposed push without sending commits. |
+| `publication_precheck.py outgoing REPO --commit C [--remote R] [--branch B] [--repository NAME] [--fetch] [--output FILE]` | Writes the one-commit `OUTGOING.txt` block from the live repository and checks it; refuses a dirty tree, a missing remote, several push URLs, a wrong parent or a chain. |
 | `publication_precheck.py vet -- <proposed push command>` | Checks that the submitted push command has the permitted form. |
 | `records_history.py RECORDS_DIR [--limit N]` | Lists saved task summaries without activating a task. |
 
-Square brackets mark optional arguments. Result and publication screens also need `--evidence DIR`, and `--reading READING` and `--disposition NOTE` where required. The screen type is `plan`, `result`, `publication` or `stop`.
+Square brackets mark optional arguments. Result and publication screens also need `--evidence DIR`, and `--reading READING` and `--disposition NOTE` where required. `--corrections DIR` names a correction companion outside the packet (`ERRATA.md` with `Relocated: NAME from PATH` and a byte-identical copy of a verified file frozen in the wrong place); the copy is used only when its hash equals that file's entry in the frozen manifest, that file has the same name NAME, no other line names it, and the screen's LIMITS names `ERRATA.md`; `present` then names the file read from the companion. The screen type is `plan`, `result`, `accept`, `publication` or `stop` (and `auto_start` or `auto_report` in auto mode).
 
 ### Source, packet and bundle identities
 
@@ -258,7 +262,7 @@ Permitted bytecode names follow the recognized `__pycache__` pattern beside a li
 
 A saved screen is limited to 28 lines and 220 words. It must use the required headings, contain no unresolved template placeholders, and end with exactly the required `ACTION` line. Plan and result screens also need a statement of why the work matters, a recommendation with a reason, and the next action.
 
-A review has exactly one `Scope:` line:
+A review has exactly one `Scope:` value. Identical repeated `Packet identity:`, `Verdict:` or `Scope:` lines, such as a closing block repeated in a summary, count as one; repeats with different values are refused, and the review file is never changed:
 
 | Screen | Accepted review scope |
 | --- | --- |
@@ -267,7 +271,7 @@ A review has exactly one `Scope:` line:
 
 If a review sets conditions, a separate note must say how each was handled. This is the disposition record. Its status is `SATISFIED`, `WAIVED` or `PENDING`; the latter two must be visible in the decision screen.
 
-The frozen review packet includes `README_FIRST.md`, `PROOF_SUMMARY.md` and the proposed report. The separate companions include `APPROVALS.md` and `CHECKER.md`, with `ERRATA.md` when needed. The bundle helper refuses nested companions directories and duplicated reserved companion filenames in the packet.
+The frozen review packet includes `README_FIRST.md`, `PROOF_SUMMARY.md` and the proposed report. The separate companions include `APPROVALS.md` and `CHECKER.md`, with `ERRATA.md` for clerical corrections. The bundle helper refuses nested companions directories and duplicated reserved companion filenames in the packet.
 
 The archive must be written in the packet's own parent directory; another path to that same directory is allowed. The helper checks directory identity and keeps directories open to limit output redirection. It does not promise safety if another process moves directories while it runs.
 
@@ -275,14 +279,19 @@ The archive must be written in the packet's own parent directory; another path t
 
 `OUTGOING.txt` records, for each repository, the remote name, URL, base commit, outgoing commit, its tree and the destination in the form `<commit>:refs/heads/<branch>`. This form is called a **refspec**: it names the exact commit to send and the branch to receive it. Every outgoing commit must also appear in the screen's `BATCH` section.
 
-Publication requires nonempty `SERVER_SUITE.txt`, which records the full test-suite result or why it was not run, and `ROSTER_COMPARISON.txt`, which records the comparison with the baseline. If the suite file's first line starts with `SERVER_SUITE: NOT RUN`, it must include a `Waiver (Developer ...):` line followed by nonempty quoted lines beginning `> `. These are form checks, not authentication or interpretation of your decision.
+The [publication packet checklist](../payload/PUBLICATION_PACKET.md) lists every top-level file and its format; descriptions go in `PUBLICATION_NOTES.md`, never as prose in `OUTGOING.txt`.
+
+Publication requires nonempty `SERVER_SUITE.txt`, whose first line is `SERVER_SUITE: <outcome>` (the full test-suite result or why it was not run), and `ROSTER_COMPARISON.txt`, which records the comparison with the baseline; `OUTGOING.txt` holds only the seven key lines, and no companion file may be inside the packet (the draft check and the final check apply the same rules). If the suite file's first line starts with `SERVER_SUITE: NOT RUN`, it must include a `Waiver (Developer ...):` line followed by nonempty quoted lines beginning `> `. These are form checks, not authentication or interpretation of your decision.
 
 The Git checking tool accepts:
 
 ```
+publication_precheck.py outgoing REPO --commit C [--remote R] [--branch B] [--repository NAME] [--fetch] [--output FILE]
 publication_precheck.py check REPO OUTGOING.txt [--repository NAME] [--fetch] [--dry-run]
 publication_precheck.py vet -- <proposed push command>
 ```
+
+`outgoing` covers one commit per repository whose parent is the remote-tracking tip; multi-commit ranges are not supported yet.
 
 The exact permitted push form is documented in [the tool's source](../payload/tools/publication_precheck.py). It requires `--no-follow-tags`, a remote given by name rather than a URL, and a refspec naming one exact commit and branch. This command-form check does not establish that the named remote is configured. It permits `--dry-run` and `--porcelain` in the documented positions.
 

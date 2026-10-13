@@ -3,7 +3,11 @@
 forbidden push settings, outgoing bindings, an optional dry run, and the
 form of a proposed push command. It never pushes; it fetches only with
 --fetch. Passing establishes that the recorded proposal matches the live
-repository, not that the Developer has decided to publish."""
+repository, not that the Developer has decided to publish.
+
+`outgoing` (checkpoint 3) writes the strict one-commit OUTGOING.txt block
+for one repository from the live repository, so it is generated, not
+typed; it applies the same checks to what it wrote."""
 
 import sys
 # When run as a script, keep this directory out of module resolution before
@@ -15,6 +19,7 @@ import argparse
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import types
 
 # Load the reviewed sibling explicitly from its source text, as
@@ -58,9 +63,11 @@ def select_block(blocks, name):
     fail(f"repository not in outgoing record: {name}")
 
 
-def check_destinations(repo, block):
+def check_destinations(repo, block, notes=None):
     """Exactly one effective push URL, equal to the record, and no setting
-    that rewrites, mirrors, adds refspecs or follows tags."""
+    that rewrites, mirrors, adds refspecs or follows tags. Notes about
+    harmless push settings go to `notes` (standard output by default;
+    `outgoing` sends them to standard error so its output is only the block)."""
     remote = block["remote"]
     urls = git(repo, "remote", "get-url", "--all", "--push", remote).splitlines()
     if urls != [block["remote_url"]]:
@@ -79,7 +86,7 @@ def check_destinations(repo, block):
         if lowered.startswith("push."):
             if lowered == "push.followtags" and value.strip().lower() in TRUE_VALUES:
                 fail(f"forbidden push setting: {key}={value} ({origin})")
-            print(f"NOTE push setting present: {key}={value} ({origin})")
+            print(f"NOTE push setting present: {key}={value} ({origin})", file=notes or sys.stdout)
             continue
         fail(f"forbidden push setting: {key}={value} ({origin})")
 
@@ -130,6 +137,78 @@ def dry_run(repo, block):
     if flag != " " or not refs.endswith(f":refs/heads/{block['branch']}"):
         fail(f"dry run refused: {flag.strip() or 'flag'} {refs} {summary}".rstrip())
     return summary or "fast-forward"
+
+
+def generate_outgoing(args):
+    """Write the OUTGOING.txt block for one commit whose parent is the remote
+    tip: repository, remote, remote_url, base, commit, tree, refspec, in the
+    strict form parse_outgoing accepts. Refused when the working tree is
+    dirty, the remote is missing or has no single push URL, the commit is a
+    merge, its parent is not the (fetched, with --fetch) remote-tracking tip,
+    or it is a chain of several commits on that tip. Multi-commit ranges are
+    not supported (deferred). The block is printed, or written to a new file
+    with --output (an existing file is refused); before that it is parsed
+    back with parse_outgoing and checked against the repository exactly as
+    `check` does (destinations, push settings, bindings)."""
+    repo = args.repo
+    if not repo.is_dir():
+        fail("repository directory not found")
+    top = Path(git(repo, "rev-parse", "--show-toplevel").strip())
+    name = args.repository or top.name
+    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9._-]*", name):
+        fail(f"repository name must be a plain name: {name}")
+    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9._-]*", args.remote) or args.remote in (".", ".."):
+        fail(f"the remote must be a configured remote name: {args.remote}")
+    if not re.fullmatch(BRANCH, args.branch) or args.branch.startswith("-"):
+        fail(f"invalid branch name: {args.branch}")
+    dirty = git(repo, "status", "--porcelain", "--untracked-files=normal")
+    if dirty.strip():
+        fail("working tree is not clean; commit or remove the changes first:\n" + dirty.rstrip())
+    code, out, err = git_query(repo, "remote", "get-url", "--all", "--push", args.remote)
+    if code != 0:
+        fail(f"remote not found: {args.remote} ({err.strip() or out.strip() or 'no output'})")
+    urls = out.splitlines()
+    if len(urls) != 1 or not urls[0].strip():
+        fail(f"remote {args.remote} has {len(urls)} push URLs; exactly one is required: "
+             f"{' '.join(urls) or 'none'}")
+    if args.fetch:
+        git(repo, "fetch", args.remote)
+    tracking = f"refs/remotes/{args.remote}/{args.branch}"
+    code, out, err = git_query(repo, "rev-parse", "--verify", "-q", tracking + "^{commit}")
+    if code != 0:
+        fail(f"remote-tracking branch {tracking} not found; fetch it first (--fetch)")
+    tip = out.strip()
+    code, out, err = git_query(repo, "rev-parse", "--verify", "-q", args.commit + "^{commit}")
+    if code != 0:
+        fail(f"commit not found: {args.commit}")
+    commit = out.strip()
+    parents = git(repo, "rev-list", "--parents", "-n", "1", commit).split()[1:]
+    if len(parents) != 1:
+        fail(f"commit {commit} has {len(parents)} parents; one commit on the remote tip is required")
+    if parents[0] != tip:
+        code, _, _ = git_query(repo, "merge-base", "--is-ancestor", tip, parents[0])
+        if code == 0:
+            count = git(repo, "rev-list", "--count", f"{tip}..{commit}").strip()
+            fail(f"commit {commit} is a chain of {count} commits on {tracking}; one commit is "
+                 "required (multi-commit ranges are not supported)")
+        fail(f"parent {parents[0]} of commit {commit} is not the remote tip {tracking} {tip}")
+    tree = git(repo, "rev-parse", f"{commit}^{{tree}}").strip()
+    text = (f"repository: {name}\nremote: {args.remote}\nremote_url: {urls[0]}\n"
+            f"base: {tip}\ncommit: {commit}\ntree: {tree}\n"
+            f"refspec: {commit}:refs/heads/{args.branch}\n")
+    with tempfile.TemporaryDirectory() as scratch:
+        draft = Path(scratch) / "OUTGOING.txt"
+        draft.write_text(text, encoding="utf-8")
+        (block,) = parse_outgoing(draft)
+    check_destinations(repo, block, notes=sys.stderr)
+    check_bindings(repo, block)
+    if args.output:
+        with open(args.output, "x", encoding="utf-8", newline="\n") as stream:
+            stream.write(text)
+        print(f"OUTGOING written: {args.output}")
+    else:
+        sys.stdout.write(text)
+    print(f"OUTGOING OK {name} {commit} on {tracking} {tip}", file=sys.stderr)
 
 
 def check_command(args):
@@ -215,12 +294,22 @@ def main():
     check.add_argument("--fetch", action="store_true", help="git fetch the remote first (network)")
     check.add_argument("--dry-run", action="store_true",
                        help="git push --dry-run and require one fast-forward of the branch (network)")
+    out = commands.add_parser("outgoing", help="write the OUTGOING.txt block for one commit")
+    out.add_argument("repo", type=Path)
+    out.add_argument("--commit", required=True, help="the one outgoing commit")
+    out.add_argument("--remote", default="origin")
+    out.add_argument("--branch", default="master")
+    out.add_argument("--repository", help="block name (default: the repository directory name)")
+    out.add_argument("--fetch", action="store_true", help="git fetch the remote first (network)")
+    out.add_argument("--output", type=Path, help="new file to write (default: standard output)")
     vet = commands.add_parser("vet", help="refuse forbidden forms in a proposed push command")
     vet.add_argument("words", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
         if args.command == "check":
             check_command(args)
+        elif args.command == "outgoing":
+            generate_outgoing(args)
         else:
             vet_command(args.words)
     except (ValueError, OSError) as error:

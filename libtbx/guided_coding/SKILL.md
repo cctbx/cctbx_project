@@ -23,19 +23,23 @@ commands into separate shell calls or continue after a failed block.
 
 ```bash
 cd /absolute/path/to/libtbx/guided_coding &&
-shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
+if command -v shasum >/dev/null 2>&1; then shasum -a 256 -c SOURCE_MANIFEST.sha256; else sha256sum -c SOURCE_MANIFEST.sha256; fi &&
 GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev18 candidate' payload/RELEASE
+grep -Eq '^guided_coding 2\.0 pilot r10 rev19 ' payload/RELEASE
 ```
 After changing directory, the listed-hash check must succeed before any
-checker code runs; the checker then checks the **complete source inventory** and rejects unlisted files,
+checker code runs. It uses `shasum` when that command exists and otherwise
+`sha256sum` (some Linux systems); the tool is chosen by presence, and a
+failed check is never retried with the other tool. The
+checker then checks the **complete source inventory** and rejects unlisted files,
 links and changed bytes. The isolated Python invocation prevents an
 unlisted module in `payload/tools/` from loading during verification.
 A directory, checksum, inventory or release failure returns nonzero and
 stops all dependent work. Only after this block succeeds, read
 `payload/DEVELOPER_GUIDE_CONTRACT.md`.
-This candidate requires the release label to say `r10 rev18`; if it does not,
+This revision requires the release line to begin `guided_coding 2.0 pilot r10 rev19 `
+(the label, not a mention of it later in the line); if it does not,
 stop and report the different version before starting a guided change.
 
 Once the source check has passed, give the session a useful name. If the

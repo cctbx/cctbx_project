@@ -50,9 +50,24 @@ cleanup responsibility. Distinguish hardware facts from resource approval.
 Name the fresh checks needed before use. Do not borrow another host's
 paths or authorization. Omit this section for a local-only project.
 
+## Auto mode — only if used
+
+Fields read at the start of `/gc auto` (AUTO.md "Start" step 2). Missing
+values block only the jobs that need them. Auto-mode runs need macOS.
+
+| Setting | Value | Source and verification state |
+| --- | --- | --- |
+| Test-only installation | <absolute path; never a working installation> | <who created it; when verified> |
+| Fingerprint script and recorded value | <script path>; `FINGERPRINT` <value>; `NORMALIZED` <value, if the script prints one> | <attended validation record and date> |
+| Lock directory | <absolute path passed to `init --lock-dir`; shared with any other user of that installation> | <source> |
+| Queue home and records | <`--home`/`GC_AUTO_HOME`, default `~/GuidedCoding/auto`>; <records root for `init --records`> | <source> |
+| Disk floor | <GiB for `init --min-free-gib`, default 8; path for `--space-path`> | <source> |
+
 ## Coordination and action boundaries
 
-Record relevant branch/worktree and sharing rules; who may update a working
+Record relevant branch/worktree and sharing rules; the commit-message rule
+(for example: at most 55 words, no AI attribution lines, if that is this
+project's rule); who may update a working
 installation; current restrictions on tests, integration and publication;
 and pointers to applicable decisions/grants. Recording a command does not
 authorize running it. Preserve no-push and stage-specific restrictions.

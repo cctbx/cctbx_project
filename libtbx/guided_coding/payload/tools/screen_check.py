@@ -20,6 +20,7 @@ from pathlib import Path
 HEADINGS = {
     "plan": ("GOAL", "SCOPE", "CHECK", "LIMITS", "DECISION"),
     "result": ("CHANGED", "CHECKED", "LIMITS", "GATE", "DECISION"),
+    "accept": ("CANDIDATE", "CHECKED", "PENDING", "LIMITS", "DECISION"),
     "stop": ("WHY", "PRESERVED", "NEEDED"),
     "publication": ("BATCH", "SERVER CHECK", "LIMITS", "GATE", "DECISION"),
     "auto_start": ("JOBS", "CHECKS", "INSTALLATION", "RESULTS", "STOP", "NOT AUTHORIZED"),
@@ -28,6 +29,7 @@ HEADINGS = {
 ACTIONS = {
     "plan": "ACTION: APPROVE / REVISE / STOP",
     "result": "ACTION: INTEGRATE / REVISE / DISCARD",
+    "accept": "ACTION: ACCEPT / REVISE / DISCARD",
     "stop": "ACTION: DECIDE / CANCEL",
     "publication": "ACTION: PUBLISH / HOLD",
     "auto_start": "ACTION: NONE NEEDED (reply stop to stop the queue)",
@@ -317,13 +319,14 @@ def blocks(kind, lines):
 
 def developer_view(kind, body):
     """Require the brief human decision fields; their truth remains a judgment."""
-    if kind not in ("plan", "result"):
+    if kind not in ("plan", "result", "accept"):
         return
-    event = body["GOAL" if kind == "plan" else "CHANGED"]
+    event = body[{"plan": "GOAL", "result": "CHANGED", "accept": "CANDIDATE"}[kind]]
     if not any(re.fullmatch(r"Why it matters: \S.*", line) for line in event):
         fail("missing Why it matters in Developer View")
     decision = body["DECISION"]
-    choices = "APPROVE|REVISE|STOP" if kind == "plan" else "INTEGRATE|REVISE|DISCARD"
+    choices = {"plan": "APPROVE|REVISE|STOP", "result": "INTEGRATE|REVISE|DISCARD",
+               "accept": "ACCEPT|REVISE|DISCARD"}[kind]
     if not any(re.fullmatch(rf"Recommendation: (?:{choices}) because \S.*", line)
                for line in decision):
         fail("missing recommendation and reason in Developer View")
@@ -334,11 +337,20 @@ def developer_view(kind, body):
 def reading_matches(kind, path, evidence_id, gate, disposition=None):
     """Bind the screen's GATE to one verbatim reading of this exact packet.
 
-    The reading states its scope once: integration, publication, or both.
+    The reading states its scope: integration, publication, or both.
     A reading scoped to both may serve the RESULT and the PUBLICATION screen
     of the same frozen packet. A changed packet, commit, base or reading
-    byte needs a new reading bound to the new identity (a correction is a
-    new directory); the earlier verdict is never inherited.
+    byte needs a new reading, or a short addendum, bound to the new
+    identity; the earlier verdict is never inherited.
+
+    `Packet identity:`, `Verdict:` and `Scope:` lines that repeat the same
+    value (for example a closing block repeated in a summary) count as one;
+    repeats with different values are refused. Checkpoint 3: so are
+    such lines written indented, bulleted, quoted or in bold (for example
+    `- **Verdict:** DO NOT PROCEED`) whose value differs from the column-0
+    value; before, only column-0 lines were read and these were ignored.
+    The reading file is only read, and the GATE names the SHA-256 of its
+    exact bytes.
     """
     if not path or not path.is_file() or path.is_symlink():
         fail("verbatim outside reading file is required")
@@ -347,15 +359,20 @@ def reading_matches(kind, path, evidence_id, gate, disposition=None):
         reading = data.decode("utf-8")
     except UnicodeDecodeError:
         fail("outside reading is not UTF-8")
-    identities = re.findall(rf"^Packet identity:\s*({SHA})\s*$", reading, re.M)
-    verdicts = re.findall(r"^Verdict:\s*(.+?)\s*$", reading, re.M)
-    if identities != [evidence_id] or len(verdicts) != 1 or not re.fullmatch(r"PROCEED(?: IF .+)?", verdicts[0]):
+    identities = set(re.findall(rf"^Packet identity:\s*(\S.*?)\s*$", reading, re.M))
+    verdicts = sorted(set(re.findall(r"^Verdict:\s*(.+?)\s*$", reading, re.M)))
+    if identities != {evidence_id} or len(verdicts) != 1 or not re.fullmatch(r"PROCEED(?: IF .+)?", verdicts[0]):
         fail("outside reading does not name this packet with a proceeding verdict")
-    declared = re.findall(r"^Scope:(.*)$", reading, re.M)
+    declared = set(value.strip() for value in re.findall(r"^Scope:(.*)$", reading, re.M))
     if len(declared) != 1:
-        fail("outside reading needs exactly one Scope line: integration, publication, "
-             "or integration and publication")
-    scopes = [declared[0].strip()]
+        fail("outside reading needs exactly one Scope line (identical repeats count as "
+             "one): integration, publication, or integration and publication")
+    scopes = [declared.pop()]
+    plain = {"Packet identity": {evidence_id}, "Verdict": set(verdicts), "Scope": set(scopes)}
+    for label, value in decorated_fields(reading):
+        if value not in plain[label]:
+            fail(f"outside reading has an indented, bulleted, quoted or bold {label} line "
+                 f"that differs from its {label} line: {value[:60]!r}")
     if scopes[0] not in ("integration", "publication", "integration and publication"):
         fail(f"reading Scope value not recognized: {scopes[0]!r}")
     if kind == "result" and scopes[0] == "publication":
@@ -388,6 +405,31 @@ def reading_matches(kind, path, evidence_id, gate, disposition=None):
     return status
 
 
+DECORATION = "*_`\"'"
+
+
+def decorated_fields(reading):
+    """(label, value) of every Packet identity, Verdict or Scope line that is
+    not in the plain column-0 form: indented, bulleted (-, *, +, a number),
+    quoted (>, quote marks) or bold/italic/code, with that decoration removed.
+    Checkpoint 5 (review CP3 note 8): also a Markdown heading (`## Verdict:
+    ...`) and a table row (`| Verdict | ... |`, the cell separator standing
+    for the colon); a table header row naming these labels fails closed."""
+    found = []
+    for line in reading.splitlines():
+        if re.match(r"(?:Packet identity|Verdict|Scope):", line):
+            continue
+        bare = re.sub(rf"^(?:[\s>+#|{DECORATION}-]|\d+[.)])*", "", line)
+        match = re.match(rf"(Packet identity|Verdict|Scope)[{DECORATION}]*\s*[:|][{DECORATION}]*(.*)$",
+                         bare)
+        if match:
+            value = match[2].strip()
+            if line.lstrip().startswith("|"):
+                value = value.rstrip("|").strip()
+            found.append((match[1], value.strip(DECORATION).strip()))
+    return found
+
+
 OUTGOING_KEYS = ("repository", "remote", "remote_url", "base", "commit", "tree", "refspec")
 COMMIT = r"[0-9a-f]{40}"
 BRANCH = r"[A-Za-z0-9._/-]+"
@@ -400,6 +442,13 @@ def parse_outgoing(path):
     The checker binds these values to the PUBLICATION screen;
     publication_precheck.py compares them with the live repository before
     a push. Neither establishes that the push is authorized.
+
+    Checkpoint 3: the same strict line rule as check-draft (column-0
+    lowercase `key: value` lines of the seven keys only; blank lines and
+    `#` comments ignored), so the draft and the final check agree. A packet
+    frozen earlier with prose or another key in OUTGOING.txt is refused and
+    needs a corrected packet. `publication_precheck.py outgoing` writes a
+    block in this form.
     """
     if not path.is_file() or path.is_symlink() or not path.stat().st_size:
         fail("missing or empty publication evidence: OUTGOING.txt")
@@ -412,9 +461,16 @@ def parse_outgoing(path):
     for line in text.splitlines():
         if not line.strip() or line.lstrip().startswith("#"):
             continue
-        if ": " not in line:
-            fail("malformed outgoing record line")
+        # Checkpoint 3: one rule for the draft and the final check (replaces the
+        # final check's looser `key: value` split): column-0 lowercase key lines
+        # only, and only the seven keys, so prose is refused even with ': '.
+        if not re.fullmatch(r"[a-z][a-z0-9_]*: \S.*", line):
+            fail(f"OUTGOING.txt has a prose or non-key line (put prose in "
+                 f"PUBLICATION_NOTES.md): {line[:60]!r}")
         key, value = (part.strip() for part in line.split(": ", 1))
+        if key not in OUTGOING_KEYS:
+            fail(f"OUTGOING.txt key is not one of the seven outgoing keys (put descriptions "
+                 f"in PUBLICATION_NOTES.md): {key}")
         if key == "repository":
             blocks.append({})
         if not blocks:
@@ -448,12 +504,19 @@ def suite_waiver(path):
     mark before it does not evade the check. The form establishes no authorization:
     whether those words waive the suite for this batch and scope is judged
     by the Developer and the Outside Reviewer, not by this check.
+
+    Checkpoint 3: the first line (after a byte-order mark and surrounding
+    spaces) must be `SERVER_SUITE: <outcome>`, as PUBLICATION_PACKET.md
+    says, in the draft and the final check; before, any other first line
+    passed unchecked. What the outcome says is not judged here.
     """
     try:
         lines = path.read_text(encoding="utf-8-sig").splitlines()
     except UnicodeDecodeError:
         fail("publication evidence is not UTF-8: SERVER_SUITE.txt")
-    if not lines or not lines[0].strip().startswith("SERVER_SUITE: NOT RUN"):
+    if not lines or not re.match(r"SERVER_SUITE: \S", lines[0].strip()):
+        fail("SERVER_SUITE.txt first line must be 'SERVER_SUITE: <outcome>'")
+    if not lines[0].strip().startswith("SERVER_SUITE: NOT RUN"):
         return
     for index, line in enumerate(lines):
         if re.fullmatch(r"Waiver \(Developer[^)]*\):\s*", line):
@@ -468,17 +531,87 @@ def suite_waiver(path):
     fail("suite not run without the Developer's quoted waiver")
 
 
-def code_identity(root, checked, changed):
-    path = root / "CODE_IDENTITY.txt"
-    for required in (path, root / "RUN_LOG.txt", root / "CHANGE.diff"):
+# Checkpoint 3 (1b): the top-level files the checks read, which a correction
+# companion may supply when a verified copy was frozen in the wrong place.
+CORRECTABLE = ("CODE_IDENTITY.txt", "RUN_LOG.txt", "CHANGE.diff", "APPROVAL_REPORT.md",
+               "OUTGOING.txt", "SERVER_SUITE.txt", "ROSTER_COMPARISON.txt")
+
+
+def corrections_map(root, corrections):
+    """Checkpoint 3 (1b): misplaced verified evidence named by a correction
+    companion. `corrections` is a directory outside the frozen packet holding
+    ERRATA.md, whose lines `Relocated: NAME from PATH` say that the top-level
+    file NAME was frozen at the packet-relative PATH instead, and a copy of
+    it as corrections/NAME. The copy is used for NAME only when NAME is
+    absent from the packet's top level, PATH is inside the packet and listed
+    in its MANIFEST.sha256, PATH's own file name is NAME (checkpoint 5: a
+    file frozen under another name, such as notes/draft.txt, cannot stand in
+    for SERVER_SUITE.txt), no other line names the same PATH, and the copy's
+    SHA-256 equals that listed hash (verify() has already matched the packet
+    file to it). Anything else is refused, so no content enters that was not
+    frozen and verified under that name. Other ERRATA.md lines are not read.
+    Returns {NAME: copy path}."""
+    if corrections is None:
+        return {}
+    if corrections.is_symlink() or not corrections.is_dir():
+        fail("corrections must be an ordinary directory outside the packet")
+    inside, packet = corrections.resolve(), root.resolve()
+    if inside == packet or packet in inside.parents:
+        fail("corrections directory must be outside the frozen packet")
+    errata = corrections / "ERRATA.md"
+    if errata.is_symlink() or not errata.is_file():
+        fail("corrections directory needs an ordinary ERRATA.md")
+    try:
+        text = errata.read_bytes().decode("utf-8")
+    except UnicodeDecodeError:
+        fail("ERRATA.md is not UTF-8")
+    listed = dict(reversed(line.split("  ", 1)) for line in
+                  (root / "MANIFEST.sha256").read_text(encoding="utf-8").splitlines())
+    found, sources = {}, set()
+    for line in text.splitlines():
+        match = re.fullmatch(r"Relocated: (\S+) from (\S+)\s*", line)
+        if not match:
+            continue
+        name, source = match[1], match[2]
+        if name not in CORRECTABLE:
+            fail(f"ERRATA.md relocates a file the checker does not read: {name}")
+        if name in found:
+            fail(f"ERRATA.md relocates {name} twice")
+        if (source.startswith("/") or "\\" in source
+                or any(part in ("", ".", "..") for part in source.split("/"))):
+            fail(f"ERRATA.md names a path outside the packet: {source}")
+        if source not in listed:
+            fail(f"ERRATA.md names a file not listed in the frozen manifest: {source}")
+        if (root / name).exists() or (root / name).is_symlink():
+            fail(f"ERRATA.md relocates {name}, but the packet has it at the top level")
+        if source.split("/")[-1] != name:
+            fail(f"ERRATA.md relocates {name} from a file of another name: {source}")
+        if source in sources:
+            fail(f"ERRATA.md names {source} for more than one file")
+        sources.add(source)
+        copy = corrections / name
+        if copy.is_symlink() or not copy.is_file():
+            fail(f"corrections directory has no ordinary copy of {name}")
+        if digest(copy.read_bytes()) != listed[source]:
+            fail(f"corrected copy of {name} differs from the frozen {source}")
+        found[name] = copy
+    return found
+
+
+def code_identity(root, checked, changed, top=None):
+    top = top or {}
+    path = top.get("CODE_IDENTITY.txt", root / "CODE_IDENTITY.txt")
+    log = top.get("RUN_LOG.txt", root / "RUN_LOG.txt")
+    diff = top.get("CHANGE.diff", root / "CHANGE.diff")
+    for required in (path, log, diff):
         if not required.is_file() or not required.stat().st_size:
             fail(f"missing or empty change evidence: {required.name}")
-    report = root / "APPROVAL_REPORT.md"
+    report = top.get("APPROVAL_REPORT.md", root / "APPROVAL_REPORT.md")
     if not report.is_file() or report.is_symlink():
         fail("missing approval report")
     try:
         body = report.read_text(encoding="utf-8")
-        patch = (root / "CHANGE.diff").read_text(encoding="utf-8")
+        patch = diff.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         fail("approval report and change diff must be UTF-8")
     if ("## Exact tested changes" not in body or
@@ -550,6 +683,32 @@ def auto_screen(kind, body, queue):
     approval_summaries(body["APPROVAL SUMMARIES"], ready_jobs(expected))
 
 
+# Checkpoint 3: every verb form of integrate, merge, push and publish (the nouns
+# "integration" and "publication" stay allowed, for PENDING and the follow-up note).
+ACCEPT_CLAIMS = re.compile(r"\b(?:integrat(?:e|ed|es|ing)|merg(?:e|ed|es|ing)|"
+                           r"push(?:ed|es|ing)?|publish(?:ed|es|ing)?)\b", re.IGNORECASE)
+
+
+def accept_screen(body):
+    """ACCEPT accepts one exact frozen candidate while the outside reading is
+    pending. It names what is still pending, says that master and origin
+    stay unchanged, and neither offers nor claims integration or
+    publication (those are the RESULT and PUBLICATION decisions): any verb
+    form of integrate, merge, push or publish is refused. Checkpoint 3: the
+    DECISION's required words are now "master and origin stay unchanged"
+    (replacing "merges nothing and publishes nothing", which used the
+    refused verbs)."""
+    text = "\n".join(line for lines in body.values() for line in lines)
+    claim = ACCEPT_CLAIMS.search(text)
+    if claim:
+        fail(f"accept screen must not offer or claim integration or publication: {claim.group()!r}")
+    if not any(re.fullmatch(r"Pending: \S.*", line) for line in body["PENDING"]):
+        fail("accept screen needs a 'Pending:' line naming what is still pending")
+    decision = " ".join(body["DECISION"]).lower()
+    if "master and origin stay unchanged" not in decision:
+        fail("accept DECISION must say master and origin stay unchanged")
+
+
 SUMMARY_LABELS = ("Bug: ", "Fix: ", "Test: ", "Criterion: ", "Limits: ", "Approval: ")
 
 
@@ -586,7 +745,8 @@ def approval_summaries(section, ready):
             fail(f"summary for job {job}: Approval must say it accepts the exact packet and merges nothing")
 
 
-def check(kind, screen, root=None, reading=None, disposition=None, report=True, queue=None):
+def check(kind, screen, root=None, reading=None, disposition=None, report=True, queue=None,
+          corrections=None):
     if not screen.is_file() or screen.is_symlink():
         fail("screen must be an ordinary file")
     try:
@@ -610,9 +770,9 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True, 
     elif kind in ATTENTION:
         if len(parts) != 2 or parts[0] != kind.upper().replace("_", " ") or not re.fullmatch(NAME, parts[1]):
             fail("invalid auto header")
-    elif kind == "publication":
-        if len(parts) != 3 or parts[0] != "PUBLICATION" or not re.fullmatch(NAME, parts[1]):
-            fail("invalid publication header")
+    elif kind in ("publication", "accept"):
+        if len(parts) != 3 or parts[0] != kind.upper() or not re.fullmatch(NAME, parts[1]):
+            fail(f"invalid {kind} header")
     elif len(parts) != 2 or parts[0] != "STOP" or not re.fullmatch(NAME, parts[1]):
         fail("invalid stop header")
     body = blocks(kind, lines)
@@ -623,14 +783,27 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True, 
         auto_screen(kind, body, queue)
     elif queue:
         fail("only auto_report compares with a queue")
-    if kind in ("result", "publication"):
+    if kind in ("result", "publication", "accept"):
         if root is None or not re.fullmatch(SHA, parts[-1]):
             fail("evidence directory and manifest identity required")
         identity = verify(root)
         if parts[-1] != identity:
             fail("screen does not identify the current evidence")
-        if kind == "result":
-            code_identity(root, body["CHECKED"], body["CHANGED"])
+        top = corrections_map(root, corrections)
+        # Checkpoint 5 (review CP3 finding 5): post-reading errata are named in LIMITS.
+        if top and not any("ERRATA.md" in line for line in body["LIMITS"]):
+            fail("a correction companion was used: LIMITS must name ERRATA.md")
+        if report:
+            for name, copy in sorted(top.items()):
+                print(f"NOTE {name} read from the correction companion {copy} "
+                      "(byte-identical to the frozen file ERRATA.md names)")
+        if kind == "accept":
+            if reading or disposition:
+                fail("accept is used while the outside reading is pending; it takes no reading")
+            code_identity(root, body["CHECKED"], body["CANDIDATE"], top)
+            accept_screen(body)
+        elif kind == "result":
+            code_identity(root, body["CHECKED"], body["CHANGED"], top)
             if parts[2] == "light":
                 if reading or disposition or body["GATE"] != ["Reading: deferred to publication", "Verdict: deferred to publication"]:
                     fail("light-path outside reading belongs to publication batch")
@@ -641,15 +814,20 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True, 
                         for line in body[heading]):
                     fail("waived or pending condition must be visible in Developer View")
         else:
+            # Checkpoint 3: companions inside the packet are refused here as in
+            # check-draft (before, only the draft refused them).
+            for name, _ in regular_files(root):
+                if Path(name).name in COMPANION_NAMES:
+                    fail(f"companion file inside the packet (keep it outside): {name}")
             for filename in ("SERVER_SUITE.txt", "ROSTER_COMPARISON.txt"):
-                item = root / filename
+                item = top.get(filename, root / filename)
                 if not item.is_file() or not item.stat().st_size:
                     fail(f"missing or empty publication evidence: {filename}")
             batch = "\n".join(body["BATCH"])
-            for block in parse_outgoing(root / "OUTGOING.txt"):
+            for block in parse_outgoing(top.get("OUTGOING.txt", root / "OUTGOING.txt")):
                 if not re.search(rf"(?<![0-9A-Za-z]){block['commit']}(?![0-9A-Za-z])", batch):
                     fail("outgoing commit is not named in BATCH")
-            suite_waiver(root / "SERVER_SUITE.txt")
+            suite_waiver(top.get("SERVER_SUITE.txt", root / "SERVER_SUITE.txt"))
             status = reading_matches("publication", reading, identity, body["GATE"], disposition)
             if status in ("WAIVED", "PENDING") and not any(
                     status in line for heading in ("LIMITS", "DECISION")
@@ -657,13 +835,63 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True, 
                 fail("waived or pending condition must be visible in Developer View")
     elif kind not in ATTENTION and (root or reading or disposition):
         fail("plan and stop have no frozen evidence or outside reading")
+    if corrections is not None and kind not in ("result", "publication", "accept"):
+        fail("only result, publication and accept read a correction companion")
     if report:
         print(f"CHECK OK {kind}")
+    return top if kind in ("result", "publication", "accept") else {}
 
 
-def present(kind, screen, root=None, reading=None, disposition=None, queue=None):
+PUBLICATION_FILES = ("OUTGOING.txt", "SERVER_SUITE.txt", "ROSTER_COMPARISON.txt")
+PUBLICATION_LISTED = ("README_FIRST.md", "PROOF_SUMMARY.md", "APPROVAL_REPORT.md",
+                      "PUBLICATION_NOTES.md")
+COMPANION_NAMES = ("APPROVALS.md", "CHECKER.md", "ERRATA.md")
+
+
+def check_draft(kind, root):
+    """Run, on an unfrozen publication packet, every publication check that
+    needs neither the freeze, the screen nor the outside reading (see
+    payload/PUBLICATION_PACKET.md), and say which checks were skipped.
+
+    Checkpoint 3: the OUTGOING.txt line rule (column-0 key lines of the
+    seven keys, prose refused), the SERVER_SUITE.txt first-line form and
+    the companion refusal are the final check's own rules (before, the draft
+    alone applied the first and the last). A passing draft is not a frozen
+    packet, a reading or a PUBLISH decision.
+    """
+    if kind != "publication":
+        fail("check-draft supports only publication")
+    files = dict(regular_files(root))
+    for name in PUBLICATION_FILES:
+        item = root / name
+        if name not in files or not item.stat().st_size:
+            fail(f"missing or empty publication evidence at the packet top level: {name}")
+    for name in files:
+        if Path(name).name in COMPANION_NAMES:
+            fail(f"companion file inside the packet (keep it outside): {name}")
+    blocks = parse_outgoing(root / "OUTGOING.txt")
+    suite_waiver(root / "SERVER_SUITE.txt")
+    print(f"DRAFT OK publication ({len(blocks)} outgoing repository block(s))")
+    print("checked: OUTGOING.txt key lines and blocks, SERVER_SUITE.txt and "
+          "ROSTER_COMPARISON.txt at top level, SERVER_SUITE first line and NOT RUN waiver "
+          "form, no companions inside")
+    if "MANIFEST.sha256" in files:
+        verify(root)
+        print("checked: existing MANIFEST.sha256 matches the files")
+    else:
+        print("skipped: freeze and packet identity (not frozen)")
+    print("skipped: outgoing commits named in BATCH (needs the PUBLICATION screen)")
+    print("skipped: outside reading, its scope and any disposition (needs the reading)")
+    for name in PUBLICATION_LISTED:
+        if name not in files:
+            print(f"NOTE not present (listed in PUBLICATION_PACKET.md, not checked): {name}")
+
+
+def present(kind, screen, root=None, reading=None, disposition=None, queue=None,
+            corrections=None):
     """Check the saved decision, then render a conspicuous Developer view."""
-    check(kind, screen, root, reading, disposition, report=False, queue=queue)
+    top = check(kind, screen, root, reading, disposition, report=False, queue=queue,
+                corrections=corrections)
     lines = screen.read_text(encoding="utf-8").splitlines()
     if kind == "plan" or kind in ATTENTION:
         spaced = []
@@ -672,7 +900,7 @@ def present(kind, screen, root=None, reading=None, disposition=None, queue=None)
                 spaced.append("")
             spaced.append(line)
         lines = spaced
-    if kind in ("result", "publication"):
+    if kind in ("result", "publication", "accept"):
         lines[0] = " | ".join(lines[0].split(" | ")[:-1])
     lines = [line for line in lines if not line.startswith(
         ("Tested tree: ", "Reading SHA256: ", "Disposition SHA256: "))]
@@ -685,6 +913,11 @@ def present(kind, screen, root=None, reading=None, disposition=None, queue=None)
     fence = "`" * max(3, longest + 1)
     print(ATTENTION.get(kind, "**PLEASE READ — YOUR DECISION IS NEEDED**") + "\n\n" +
           fence + "\n" + body + "\n" + fence)
+    # Checkpoint 5 (review CP3 finding 5): the rendered screen says that a
+    # correction companion supplied evidence, and names it.
+    for name, copy in sorted(top.items()):
+        print(f"NOTE: correction companion used: {name} was read from {copy} "
+              f"(ERRATA.md in {copy.parent}; byte-identical to the frozen file it names)")
 
 
 def main():
@@ -695,6 +928,9 @@ def main():
     commands.add_parser("verify-source").add_argument("source", type=Path)
     commands.add_parser("check-claude-version")
     commands.add_parser("register-skill").add_argument("source", type=Path)
+    draft = commands.add_parser("check-draft")
+    draft.add_argument("kind", choices=("publication",))
+    draft.add_argument("evidence", type=Path)
     command = commands.add_parser("check")
     presenter = commands.add_parser("present")
     for command in (command, presenter):
@@ -704,6 +940,9 @@ def main():
         command.add_argument("--reading", type=Path)
         command.add_argument("--disposition", type=Path)
         command.add_argument("--queue", type=Path)
+        command.add_argument("--corrections", type=Path,
+                             help="correction companion directory (ERRATA.md and byte-identical "
+                                  "copies of misplaced frozen files), outside the packet")
     args = parser.parse_args()
     try:
         if args.command == "freeze":
@@ -718,12 +957,14 @@ def main():
             check_claude_version()
         elif args.command == "register-skill":
             register_skill(args.source)
+        elif args.command == "check-draft":
+            check_draft(args.kind, args.evidence)
         elif args.command == "check":
             check(args.kind, args.screen, args.evidence, args.reading, args.disposition,
-                  queue=args.queue)
+                  queue=args.queue, corrections=args.corrections)
         else:
             present(args.kind, args.screen, args.evidence, args.reading, args.disposition,
-                    queue=args.queue)
+                    queue=args.queue, corrections=args.corrections)
     except (ValueError, OSError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 2

@@ -30,9 +30,10 @@ directory before any job starts:
   and checker subagent readings; freezing evidence; tickets; parking as Ready for approval.
 - **Waives** (a recorded, user-authorized deviation, contract §13): the per-job PLAN approval and
   the full-path outside reading before parking. Both stay available at morning approval.
-- **Does not cover**: required tests, new server access, accepting an unchosen risk, behaviour
-  choices outside a job's text, integration into master, publication, installation updates,
-  removing anything that existed before the queue.
+- **Does not cover**: required tests, server access other than a job's staging grant (below),
+  accepting an unchosen risk, behaviour choices outside a job's text, integration into master,
+  publication, installation updates, removing anything that existed before the queue. This
+  replaces the earlier blanket exclusion of "new server access".
 - **Ends** when every job is parked or blocked, at a stop, or at the run boundary (default 08:00
   local the next morning). It is not renewed by a timer. Integration and publication never rely
   on it.
@@ -40,17 +41,34 @@ directory before any job starts:
 Re-read `GRANT.md`, check `auto_queue.py check-stop` and look for a revocation note before each
 job and before each run.
 
+**Staging grant (optional, per job).** `GRANT.md` may give a job a staging grant naming, all
+three exactly: the host, the isolated workspace root on it, and the staging command form (for
+example `rsync -a --delete <worktree>/ host:/scratch/gc-stage/<job>/`). It lets that routine
+staging run without a question each time. It covers only that staging, to that workspace, in
+that form: not suite runs or any other command on the host, not installation updates, not
+integration and not publication; each of those still needs its own authority. A job without a
+staging grant has no server access. Reducing the app's permission prompts for that staging is a
+separate step: a narrowly scoped settings rule for exactly that command, one rule per job, with
+the worktree and workspace named literally (for example
+`Bash(rsync -a --delete /Users/me/gc_worktrees/gc-q5-a/ host:/scratch/gc-stage/gc-q5-a/)`), never a
+broad `Bash(ssh:*)` or `Bash(ssh host:*)` rule. A proposed rule has no wildcard that could add
+options (such as `-e` or `--rsync-path`, which run commands) or a `..` path (which with `--delete`
+reaches outside the workspace) (checkpoint 3; replaces an example with wildcards). A settings rule is persistent configuration: the Guide
+proposes its exact text and the Developer approves it; the Guide does not write it on its own.
+
 ## Start (target: about one minute for a prepared project)
 
 1. The SKILL.md source and version checks.
-2. Read the method: test installation path, its fingerprint script, lock directory, queue home,
-   disk floor. Missing → every job that needs installation tests is Blocked, with one reason.
+2. Read the method (the template's "Auto mode" section; `/gc setup` proposes it): test
+   installation path, its fingerprint script, lock directory, queue home, disk floor.
+   Missing → every job that needs installation tests is Blocked, with one reason.
 3. Turn the request into `JOBS.json`: id, title, scope, `requires` (required local check labels),
    `depends_on`, and `"network": true` only for a job whose grant explicitly authorizes outside
    contact. A job whose scope or checks cannot be stated from the request is Blocked with the
    needed decision; do not guess. `init` creates the queue folder itself; do not create it first.
 4. Draft `screens/AUTO_START.md` into the queue's record, check it with
-   `screen_check.py present auto_start FILE`, show the output once. The STOP section gives the
+   `screen_check.py present auto_start FILE`, paste the output in full into the reply once (tool
+   output is not visible to the Developer). The STOP section gives the
    absolute path of the `auto_queue.py` actually in use (the verified procedure root).
 5. `auto_queue.py init --lock-dir <method's lock directory> …` (there is no default lock: without
    `--lock-dir` init refuses with exit 2 and creates nothing), write `GRANT.md` first, then
@@ -58,6 +76,18 @@ job and before each run.
    (unavailable → every installation-test job is Blocked with that reason). Never pass
    `--new-baseline` unattended: recording a new starting state for the test installation is an
    attended step after a deliberate refresh, and the helper accepts it only when the check matches.
+   Pass `--expect-normalized <recorded normalized value>` too when the method records one (see
+   "Test installation after a rebuild").
+   Then the pre-batch checks (after init, so the jobs and the queue exist; checkpoint 3 moved
+   them here from step 1). Small preparation, not a new trial: for each job confirm the baseline
+   commit, that the reported failure reproduces at that baseline (or that the job is not a fix),
+   the platform its checks and expected outputs need, that its checks can run through `run`
+   (local, within the time limit, no outside contact unless granted), and the outside-service
+   screening of the tests it will use. Write one line per job in `PRECHECK.txt` in the queue's
+   record: `job: ID | baseline: COMMIT | reproduces: yes/no/not a fix | platform: WHAT |
+   run: yes/no | outside: none/WHAT | start: ok/blocked REASON`. A job failing a check is set
+   Blocked (`set JOB Blocked`) with that reason (and the decision needed, if any); it is not
+   started.
 6. Keep the computer awake: where the session has the app's keep-awake request, call it with
    `until: session_idle` (it holds across follow-up turns until the session is idle about five
    minutes). The app's own "Keep computer awake while Claude works" setting, when on, covers
@@ -67,9 +97,13 @@ job and before each run.
 
 ## Each job, in this order
 
-worker prepares candidate and unfrozen evidence → reviewer reads → any correction gets its checks
-rerun → freeze → checker reads the frozen packet → park. A correction after the freeze needs a new
-evidence directory and a new freeze; the earlier one is kept and marked superseded.
+worker prepares candidate and unfrozen evidence → reviewer reads → any correction of substance gets
+its checks rerun → freeze → checker reads the frozen packet → park. A correction of substance after
+the freeze needs a new evidence directory and a new freeze; the earlier one is kept and marked
+superseded. A clerical correction follows WORKER.md's one definition (ERRATA.md companion, no rerun;
+a misplaced verified file through `--corrections`; another checker-refused slip refrozen with the
+same bytes and a short addendum reading); this replaces the earlier rule that every correction
+refreezes.
 
 **Controller (the Guide):**
 
@@ -85,8 +119,10 @@ evidence directory and a new freeze; the earlier one is kept and marked supersed
    Stopping and start no other worker.
 4. Reviewer subagent on the unfrozen candidate and evidence. A defect goes back to a worker (same
    registration rule) and its checks are rerun.
-5. `screen_check.py freeze`; checker subagent on the frozen packet. A needed change returns to 4
-   with a new evidence directory.
+5. `screen_check.py freeze`; checker subagent on the frozen packet. A needed change of substance
+   returns to 4 with a new evidence directory; a clerical one goes in `ERRATA.md` and the job goes on
+   (replaces "every needed change returns to 4"; post-reading errata are named in the report's
+   LIMITS and offered to the reviewer with the next reading, WORKER.md).
 6. Check delivery (GUIDE §6, not a gate): the frozen packet names the recorded candidate tree;
    every required run is current, exit 0, for this candidate and criterion; master, the live index
    and the working installations are unchanged.
@@ -108,7 +144,7 @@ installation (refresh or rebuild when compiled code changed); required checks th
 return the installation to its baseline and verify its fingerprint, or mark it unavailable;
 `lock release`; evidence with `CODE_IDENTITY.txt` (a `candidate_id:` line with the id that
 `candidate` printed and a `tested_tree:` line for every candidate repository), `RUN_LOG.txt`, `CHANGE.diff`,
-`SCREENING.txt` and `APPROVAL_REPORT.md` (criterion first); ticket draft; `JOB_SUMMARY.txt` lines. Return without
+`SCREENING.txt` and `APPROVAL_REPORT.md` (the template's Summary first, with the criterion in it); ticket draft; `JOB_SUMMARY.txt` lines. Return without
 freezing. After two repair cycles with no new passing check, stop: the job is Blocked with the
 finding.
 
@@ -141,6 +177,47 @@ helper refuses Approved while any of the job's provisional choices is undecided.
 A failed job blocks only that job. An unusable test installation blocks further installation
 tests until it is repaired or recreated; the working installation is never borrowed.
 
+**Unreadable process table.** The helper finds queue processes with `ps`. When `ps` cannot
+start, exits nonzero, prints nothing usable or leaves out the helper's own process (for example
+inside `sandbox-exec`, where the setuid `ps` is refused), every command that needs the table
+refuses with exit 17 ("cannot read the process table ...; whether queue processes are alive is
+unknown") and claims nothing: `run` starts nothing, `cleanup` never prints Cleaned, `lock
+release` keeps the lock, Ready and Approved are refused, `stop` records the stop but prints
+Stopping (never Stopped), and `report` prints its table with **Process table unreadable** and
+every job that has runs as unknown, then exits 17. A run already going records the gap
+(`process_table_unreadable`), and such a run never counts for readiness. Report the condition;
+do not work around it. The project's fingerprint script does the same: no fingerprint when the
+table cannot be read (gc_test's `fingerprint.sh` exits 4).
+
+**Test installation after a rebuild.** A rebuild that restores the recorded commits can still
+change files through known timestamp fields only (macOS: static archive member dates, including
+the date ranlib writes into the index; a library that embeds its build time as text). The
+project's fingerprint script may print, besides `FINGERPRINT`, a `NORMALIZED` value computed with
+`payload/tools/fingerprint_normalize.py`, which ignores exactly those fields. Verified
+automatically: the exact fingerprint (availability needs it, always) and, when exact differs,
+whether the normalized value equals the recorded normalized value; then `install check` says
+"timestamp-only differences: attended validation needed" and the installation stays unavailable
+(exit 12), exactly as for any other difference. Never accepted automatically: the helper never
+makes an installation available from the normalized value, and nothing replaces a recorded
+fingerprint to clear a block. Attended (the Guide, holding the lock): no process from the
+installation, every repository at its recorded commit with no tracked changes, the cause of each
+changed file explained, compiled extensions import and smoke checks pass, then a checked save of
+the new exact (and normalized) value. The busy check and the lock are unchanged.
+
+## Transfer to attended work
+
+When the Developer decides that a job (or the rest of the queue) continues as ordinary attended
+work, record it with `auto_queue.py transfer JOB --to <successor record directory> --note TEXT`
+(or `transfer --all ...` for every job that is not final). The successor directory must exist
+(create the attended task record first). The job becomes **Transferred**, a final state: it leaves
+Preparing, Blocked or wherever it was; any decision it had is no longer offered (the report row
+says "transferred to <directory>"; the decision, packet and approval fields move into the job's
+transfer record); its history, runs and evidence are kept; a queue whose remaining jobs are all
+final counts as finished. The helper refuses while a worker for the job is registered (exit 9) or
+a run of it may be alive (exit 13, or 17 when the process table cannot be read). A transferred job
+is never reopened in the queue: the successor owns the work, and any later candidate is made and
+approved there under the standard procedure. Transfer is allowed under a stop.
+
 ## Stop
 
 `/gc stop` here, or from any Terminal (any shell, csh included)
@@ -155,7 +232,8 @@ recovery is verified. Saved candidates and pre-existing work are kept.
 ## Morning: `/gc auto status`
 
 Run `auto_queue.py report`, draft `screens/AUTO_REPORT.md` with that table copied exactly, check
-it with `screen_check.py present auto_report FILE --queue DIR`, and show the output. Its
+it with `screen_check.py present auto_report FILE --queue DIR`, and paste the output in full into the
+reply, blocked jobs included; an earlier report shown again is labelled superseded. Its
 APPROVAL SUMMARIES section (its form is checked; its truth is the Guide's) gives, for each ready job in table order, a seven-line block
 with no blank lines between blocks (`Job A: title`, then `Bug:`, `Fix:`, `Test:`, `Criterion:`,
 `Limits:`, `Approval:`) — a short approval summary in plain
@@ -200,6 +278,18 @@ a controller stopped by a limit cannot record one. `/gc auto resume` in a new co
 the same and continues the remaining jobs only while the grant has not ended; otherwise it
 reports.
 
+## Running the kit's own tests
+
+The kit's own suite (`tests/tst_*_v20.py`, and `libtbx/tst_guided_coding.py`) needs a working
+`/bin/ps`. Inside `sandbox-exec` (for example a queue run's outer sandbox) the setuid `ps` is
+refused, so the auto-queue test module checks `ps` first and, when it cannot run, reports ONE
+failure (`PROCESS TABLE UNREADABLE: ...`) naming the cause and this route instead of many
+unrelated failures; it is not skipped silently. The supported route is an attended run outside
+the queue's outer sandbox, from an ordinary shell (TMPDIR set to a resolved path). The helper's
+own restrictions are unchanged. A queue job that must run the kit suite needs that exception
+stated in advance in its grant; never disable the network protection, silently or otherwise,
+to make it run.
+
 ## Tests off macOS
 
 The kit's tests (`tests/tst_*_v20.py`, and `libtbx/tst_guided_coding.py` in the shared suite) are
@@ -237,10 +327,13 @@ of the kit suite (anaconda, October 12, 2026: 269 tests, 261 passed, 8 skipped).
   reconcile, cleanup and leftover processes found by group, session or parentage, the installation
   check, the morning report and the `auto_start` and `auto_report` screens; and the refusal of
   `run` off macOS, with and without a network grant, by the real helper.
-- **Needs macOS (skipped off macOS, each with its reason):** `test_outside_network_blocked_by_default`
-  and `test_probe_network_blocked_by_default` (the real sandbox-exec refusal of outside
-  connections), and `test_survivor_setsid_found_by_run_id_marker` and
-  `test_probe_surviving_killed_wrapper_is_found` (the `ps -E` environment marker).
+- **Needs macOS (skipped elsewhere, each with its reason):** the complete list is in
+  `docs/GUIDED_CODING_VERIFICATION.md`, "Running the package tests": eight tests skipped off
+  macOS (real or simulated) and four more on a real Linux host, 12 in all. The archive
+  classification test uses the system `ar` and `ranlib` (GNU ar's
+  deterministic mode is switched off for it with `U`; it is skipped if no dates can be written).
+  Off macOS a failing `ps -E` marker query only drops the markers, as before; on macOS it makes
+  the process table unreadable (exit 17).
 - **Opt-in everywhere:** the three tests that would contact a real outside host or name run only
   with `GC_TEST_NETWORK=1`.
 

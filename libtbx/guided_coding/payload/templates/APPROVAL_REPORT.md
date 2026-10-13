@@ -7,6 +7,28 @@ the Developer a usable path to the same file before INTEGRATE. It is the
 substantive report the Outside Reviewer can evaluate and the Developer
 can approve. The Outside Reviewer never approves on his behalf.
 
+## Summary
+
+In plain words, one or two lines each, no internal labels, hashes or
+history (those belong in the evidence sections below):
+
+- **Problem:** what was wrong and who it affects.
+- **Change:** what now behaves differently.
+- **Checks:** what was run, and the result.
+- **Criterion:** the decisive check and who chose it.
+- **Behaviour changes:** what a user will notice, or `none`.
+- **Limits:** what was not checked or remains uncertain.
+- **Decision needed:** the exact choice and what each option does.
+
+## Test results
+
+| Check | Passed | Skipped | Failed | Not run | Started (UTC) | Ended (UTC) |
+| --- | --- | --- | --- | --- | --- | --- |
+| name of each run | n | n | n | n | recorded time | recorded time |
+
+Copy counts and times from the run logs; write `unknown` for anything
+not recorded, never an estimate.
+
 ## Problem and intended result
 
 Describe the observed bug, why it matters, and the agreed meaning.
@@ -55,5 +77,11 @@ the ticket copy in Downloads (or a location the Developer chooses).
 Append the final RESULT and PUBLICATION screens if they were not present
 in the proposed report, without altering the text approved above.
 The Developer may attach it to the ticket; this copy is a record, not a
-new approval request. On REVISE, rebuild and re-review the report for
-the new tested tree instead of editing a frozen one.
+new approval request. Mark an earlier working copy historical with
+`SUPERSEDED` in its file name or first line. A clerical correction, as
+WORKER.md defines it, goes in the companion `ERRATA.md` and needs no
+rebuild or rerun; this replaces the earlier rule that any change
+rebuilds the report. Errata added after the reading are named in this
+ticket copy. On REVISE, or any correction of substance, rebuild
+and re-review the report for the new tested tree instead of editing a
+frozen one.

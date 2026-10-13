@@ -246,6 +246,10 @@ with its exact source, checks and material limits. Send this same frozen
 report with the Outside Reviewer packet when a gate applies; the
 reviewer evaluates evidence and recommends, never approves for him.
 Show the report and its usable file path before asking him to integrate.
+While a full-path or combined reading is still pending he may accept the
+exact frozen candidate with the ACCEPT screen (`screens/ACCEPT.md`):
+master and origin stay unchanged and it names what is pending; RESULT
+decides integration and PUBLICATION the push, after the reading.
 After his decision, make a ticket copy by appending the verbatim choice,
 final commit and publication outcome; do not edit the approved body.
 Put that copy in Downloads or another location he can attach. For a
@@ -297,16 +301,43 @@ One reading may answer both the integration and the publication question
 for the same frozen packet: ask for both explicitly and record its
 `Scope:` line. If the proposal changes afterwards — a moved base, a
 rewritten commit, a changed byte — it is a new packet with a new identity:
-rerun the tests and ask the reviewer to reassess the affected scope
-against that identity, which may be a short addendum. Never carry the
-earlier verdict across.
+ask the reviewer to reassess the affected scope against that identity,
+which may be a short addendum. Never carry the earlier verdict across.
+Tests are rerun unless WORKER.md's restage carry-over rule holds: the
+`RESTAGE_COMPARISON.txt` shows identical content for the candidate's
+changed paths and an upstream delta touching none of the tested paths or
+what they import or read, directly or transitively, including compiled
+extensions, build configuration and data; when this cannot be
+established, rerun. This replaces the earlier rule that every changed
+packet reruns its tests.
+
+**Stop only for important failures.** Correctness, meaningful
+verification, safety, authorization and any unresolved mismatch of
+commit, tree, base or packet identity are mandatory checks. A clerical
+correction is defined once in WORKER.md (ERRATA.md companion, no rerun;
+a misplaced verified file through `--corrections`; another
+checker-refused slip refrozen with a short addendum reading;
+post-reading errata named in LIMITS and the ticket copy and offered to
+the reviewer). This replaces the earlier rule that any clerical
+correction reopens the gate; a changed packet byte is still a new
+packet, as above.
 
 File the reply verbatim and resolve what it actually says. Record a
 clerical closing-block error when the substantive reading is usable;
-do not request a repeat technical review solely to fix its label. A
-changed frozen packet still needs its own identity checked before the
-result decision. Never contact an outside person without the Developer's
-authorization.
+do not request a repeat technical review solely to fix its label
+(replaces the earlier repeat review). When the checker refuses the
+reading for such a slip (a conflicting repeat, an unrecognized Scope
+value, a `Packet identity:` that is not the bare hash), the reading may
+not be edited and `ERRATA.md` does not change what the checker reads:
+ask the reviewer for a short addendum carrying the corrected closing
+block, bound to the same packet identity with a `Supersedes reading
+SHA256:` line, and use it as the reading; it is not a technical
+re-review. Identical repeated `Packet identity:`, `Verdict:` and
+`Scope:` lines count as one; the checker refuses conflicting repeats,
+including indented, bulleted, quoted or bold ones (replaces "only
+column-0 lines are read"), and never edits the reading. A changed frozen packet still needs its own identity
+checked before the result decision. Never contact an outside person
+without the Developer's authorization.
 
 ## 6. How you read a Worker
 
@@ -345,8 +376,10 @@ or planned.
 - **Verify a delivered artifact against its own top-level manifest**,
   named explicitly. A packet containing packets has more than one.
 - **Never hand-edit a candidate.** Changes to an artifact under review go
-  through the gate. His own file is his: give him the block, and end the
-  block by checking that the intended text is in the file. A passing
+  through the gate, except a clerical correction, which is recorded in
+  `ERRATA.md` beside the frozen packet and changes none of its bytes.
+  His own file is his: give him the block, and end the block by checking
+  that the intended text is in the file. A passing
   verify after an edit proves only that the manifest matches what is on
   disk.
 - **Every block pastes and runs whole.** It finds its own paths, stops on
@@ -360,7 +393,18 @@ or planned.
   re-run afterwards.
 - **A foreseeable gate failure goes to him before the gated step**, not
   after it fails.
-- **State the expected runtime** for anything he waits on.
+- **State the expected runtime** for anything he waits on. Before
+  substantial work, give a time range and what the next update will
+  contain; when it is late, say so and revise the range. An interim
+  update never replaces a required decision screen.
+- **Paste every presented screen in full** (RESULT, ACCEPT, STOP,
+  PUBLICATION, AUTO_START, AUTO_REPORT) into the reply he reads; tool
+  output is not visible to him. Blocked jobs included. Show the current
+  screen as current; earlier ones are labelled superseded or historical
+  and kept separately. Each states the exact decision and its consequence.
+- **Every canonical report has a copy he can open**, such as in
+  Downloads, refreshed when the candidate changes; earlier copies carry
+  `SUPERSEDED` in the file name or first line.
 - **Report waiting time as waiting time.** Nothing measures how long he
   spent reading. Never present a waiting figure as his attention.
 - **Make no claim in a README that the code does not carry.**

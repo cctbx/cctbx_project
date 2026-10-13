@@ -499,7 +499,8 @@ class ScreenChecks(unittest.TestCase):
             "# Approval report\n## Exact tested changes\n```diff\n"
             "+ # sample comment\n```\n## New tests\nNone added\n"
         )
-        (self.evidence / "SERVER_SUITE.txt").write_text("synthetic suite log\n")
+        (self.evidence / "SERVER_SUITE.txt").write_text("SERVER_SUITE: PASS 12/12\n"
+                                                        "synthetic suite log\n")
         (self.evidence / "ROSTER_COMPARISON.txt").write_text("synthetic roster comparison\n")
         # SPEC_A 1.2: one valid block; its commit is named in the publication BATCH.
         (self.evidence / "OUTGOING.txt").write_text(outgoing())
@@ -542,7 +543,8 @@ class ScreenChecks(unittest.TestCase):
                         "Next: If approved, edit the comment and run the stated check.\n"
                         "ACTION: APPROVE / REVISE / STOP\n")
 
-    def result(self, path="light", evidence_id=None, reading_id=None):
+    def result(self, path="light", evidence_id=None, reading_id=None,
+               limits="It did not test runtime behavior."):
         evidence_id = evidence_id or self.identity
         if path == "light":
             gate = "Reading: deferred to publication\nVerdict: deferred to publication"
@@ -554,7 +556,7 @@ class ScreenChecks(unittest.TestCase):
                         "Why it matters: Readers can understand the comment more easily.\n"
                         "Full diff and exact new tests: evidence/APPROVAL_REPORT.md\n"
                         f"CHECKED\nTested tree: {TREE}\nThe log says compile passed.\n"
-                        "LIMITS\nIt did not test runtime behavior.\n"
+                        f"LIMITS\n{limits}\n"
                         f"GATE\n{gate}\nDECISION\n"
                         "Integrate applies this tree; revise updates it; discard abandons it.\n"
                         "Recommendation: INTEGRATE because the check passed and scope is contained.\n"
@@ -567,14 +569,14 @@ class ScreenChecks(unittest.TestCase):
                         "NEEDED\nDecide intended meaning, or cancel this change.\n"
                         "ACTION: DECIDE / CANCEL\n")
 
-    def publication(self, batch=None, commit=COMMIT):
+    def publication(self, batch=None, commit=COMMIT, limits="No material gap claimed."):
         reading_id = checker.digest(self.reading.read_bytes())
         if batch is None:
             batch = f"One local change to shared master.\nphenix commit {commit} to master."
         return self.put(f"PUBLICATION | batch-1 | {self.identity}\n"
                         f"BATCH\n{batch}\n"
                         "SERVER CHECK\nSuite and roster are in evidence.\n"
-                        "LIMITS\nNo material gap claimed.\n"
+                        f"LIMITS\n{limits}\n"
                         f"GATE\nReading SHA256: {reading_id}\nVerdict: PROCEED\n"
                         "DECISION\nPublish this batch, or hold locally.\n"
                         "ACTION: PUBLISH / HOLD\n")
@@ -861,14 +863,15 @@ class ScreenChecks(unittest.TestCase):
     # ---- SPEC_A 1.1: reading scope ------------------------------------------
 
     def test_reading_needs_exactly_one_scope_line(self):
-        """SPEC_A 1.1, counted as in SPEC_A 10: zero or several Scope lines are
-        refused on the full RESULT and on the PUBLICATION screen with "exactly
-        one Scope line"; a single line with an unrecognized value is refused
-        with "Scope value not recognized"."""
+        """SPEC_A 1.1, counted as in SPEC_A 10: zero Scope lines, or several
+        with different values, are refused on the full RESULT and on the
+        PUBLICATION screen with "exactly one Scope line"; a single line with an
+        unrecognized value is refused with "Scope value not recognized".
+        Changed in checkpoint 1 (rev19): two identical Scope lines are accepted
+        as one (this test refused them before)."""
         for label, scope_lines in (
                 ("none", ""),
-                ("two different", "Scope: integration\nScope: publication\n"),
-                ("two identical", "Scope: integration and publication\n" * 2)):
+                ("two different", "Scope: integration\nScope: publication\n")):
             with self.subTest(scope=label):
                 self.write_reading(scope=None, extra=scope_lines)
                 with self.assertRaisesRegex(ValueError, "exactly one Scope line"):
@@ -884,6 +887,10 @@ class ScreenChecks(unittest.TestCase):
                     self.ok("result", self.result("full"), self.reading, self.evidence)
                 with self.assertRaisesRegex(ValueError, "Scope value not recognized"):
                     self.ok("publication", self.publication(), self.reading, self.evidence)
+        # Checkpoint 1 (rev19): two identical Scope lines now count as one.
+        self.write_reading(scope=None, extra="Scope: integration and publication\n" * 2)
+        self.ok("result", self.result("full"), self.reading, self.evidence)
+        self.ok("publication", self.publication(), self.reading, self.evidence)
 
     def test_publication_only_reading_does_not_cover_a_result(self):
         """SPEC_A 1.1: kind result needs scope integration or integration and
@@ -1112,9 +1119,9 @@ class ScreenChecks(unittest.TestCase):
         """SPEC_A 1.3 (prefix rule, section 5): a first line that does not start
         with SERVER_SUITE: NOT RUN needs no waiver; one that starts with it,
         whatever the suffix, needs the quoted waiver; RESULT never applies the
-        check."""
-        for text in ("synthetic suite log\n", "SERVER_SUITE: PASS 12/12\n",
-                     "Summary\nSERVER_SUITE: NOT RUN\n"):
+        check. Checkpoint 3: the first line must be `SERVER_SUITE: <outcome>`
+        (see test_suite_first_line_form_is_checked_in_draft_and_final)."""
+        for text in ("SERVER_SUITE: PASS 12/12\n", "SERVER_SUITE: RUN, 3 failed\nSummary\n"):
             with self.subTest(first_line=text.splitlines()[0]):
                 self.suite(text)
                 self.ok("publication", self.publication(), self.reading, self.evidence)
@@ -1127,6 +1134,32 @@ class ScreenChecks(unittest.TestCase):
             self.ok("publication", self.publication(), self.reading, self.evidence)
         self.suite("SERVER_SUITE: NOT RUN\nNo waiver here.\n")
         self.ok("result", self.result("full"), self.reading, self.evidence)
+
+    def test_suite_first_line_form_is_checked_in_draft_and_final(self):
+        """Checkpoint 3 (review finding 4): SERVER_SUITE.txt's first line must be
+        `SERVER_SUITE: <outcome>` (after a byte-order mark and spaces) at the
+        final PUBLICATION check, as in check-draft; the forms that passed
+        before because only a first line starting NOT RUN was read are refused."""
+        reason = "first line must be 'SERVER_SUITE: <outcome>'"
+        for label, text in (
+                ("free text", "synthetic suite log\n"),
+                ("heading first", "# server suite\nSERVER_SUITE: NOT RUN\n"),
+                ("summary first", "Summary\nSERVER_SUITE: NOT RUN\n"),
+                ("prose not run", "not run, he said it was fine\n"),
+                ("no outcome", "SERVER_SUITE:\n"),
+                ("lowercase key", "server_suite: PASS\n")):
+            with self.subTest(form=label):
+                self.suite(text)
+                self.publication_refused(reason)
+                packet = self.root / "draft"
+                shutil.rmtree(packet, ignore_errors=True)
+                shutil.copytree(self.evidence, packet)
+                (packet / "MANIFEST.sha256").unlink()
+                with self.assertRaisesRegex(ValueError, reason), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    checker.check_draft("publication", packet)
+        self.suite("\ufeff  SERVER_SUITE: PASS 12/12\n")
+        self.ok("publication", self.publication(), self.reading, self.evidence)
 
     # ---- SPEC_A 6: byte-order mark before SERVER_SUITE: NOT RUN -------------
 
@@ -1194,11 +1227,12 @@ class ScreenChecks(unittest.TestCase):
                     self.ok(kind, screen, self.reading, self.evidence)
 
     def test_duplicate_key_within_an_outgoing_block_is_refused(self):
-        """SPEC_A 10 (1.2): a key repeated within one repository block, required
-        (remote_url: first a different destination, then the correct one) or
-        optional (companions twice), is refused at PUBLICATION with "duplicate
-        key in outgoing record: <key>"; a single optional key and the plain
-        single block still pass."""
+        """SPEC_A 10 (1.2): a key repeated within one repository block
+        (remote_url: first a different destination, then the correct one) is
+        refused at PUBLICATION with "duplicate key in outgoing record: <key>";
+        the plain single block passes. Checkpoint 3 (review finding 3): a key
+        outside the seven, such as the formerly tolerated `companions`, is
+        refused once or twice."""
         record = self.evidence / "OUTGOING.txt"
         with self.subTest(key="remote_url"):
             record.write_text(outgoing().replace(
@@ -1208,15 +1242,516 @@ class ScreenChecks(unittest.TestCase):
         with self.subTest(key="companions"):
             record.write_text(outgoing() + "companions: cctbx\ncompanions: dxtbx\n")
             self.refreeze()
-            self.publication_refused("duplicate key in outgoing record: companions")
-        with self.subTest(key="single optional key"):
+            self.publication_refused("not one of the seven outgoing keys")
+        with self.subTest(key="single extra key"):
             record.write_text(outgoing() + "companions: cctbx\n")
             self.refreeze()
-            self.ok("publication", self.publication(), self.reading, self.evidence)
+            self.publication_refused("not one of the seven outgoing keys")
         with self.subTest(key="plain single block"):
             record.write_text(outgoing())
             self.refreeze()
             self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    # ---- Checkpoint 1 (rev19): repeated reading fields ----------------------
+
+    def both_gates_accept(self):
+        self.ok("result", self.result("full"), self.reading, self.evidence)
+        self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    def both_gates_refuse(self, reason):
+        with self.assertRaisesRegex(ValueError, reason):
+            self.ok("result", self.result("full"), self.reading, self.evidence)
+        with self.assertRaisesRegex(ValueError, reason):
+            self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    def test_identical_repeated_reading_fields_count_once(self):
+        """Identical repeated `Packet identity:`, `Verdict:` and `Scope:` lines
+        are accepted as one at RESULT and PUBLICATION, including a whole
+        closing block repeated in a summary."""
+        block = (f"Packet identity:  {self.identity}\nVerdict:          PROCEED\n"
+                 "Scope:            integration and publication\n")
+        for label, extra in (
+                ("identity", f"Packet identity: {self.identity}\n"),
+                ("verdict", "Verdict: PROCEED\n"),
+                ("scope", "Scope: integration and publication\n"),
+                ("whole closing block in a summary",
+                 "\nSummary of the reading\n" + block + "Findings: 0 blocking\n")):
+            with self.subTest(repeated=label):
+                self.write_reading(extra=extra)
+                self.both_gates_accept()
+
+    def test_conflicting_repeated_reading_fields_are_refused(self):
+        """Repeats with a different value are still refused: identity,
+        verdict and scope."""
+        for label, extra, reason in (
+                ("identity", f"Packet identity: {'0' * 64}\n", "does not name this packet"),
+                ("identity not a hash", "Packet identity: see the message\n",
+                 "does not name this packet"),
+                ("verdict", "Verdict: DO NOT PROCEED\n", "does not name this packet"),
+                ("verdict condition", "Verdict: PROCEED IF suite matches\n",
+                 "does not name this packet"),
+                ("scope", "Scope: integration\n", "exactly one Scope line")):
+            with self.subTest(conflict=label):
+                self.write_reading(extra=extra)
+                self.both_gates_refuse(reason)
+
+    def test_wrong_identity_refused_even_when_repeated_identically(self):
+        """A reading naming another packet is refused, once or repeated."""
+        other = "0" * 64
+        for extra in ("", f"Packet identity: {other}\n"):
+            with self.subTest(repeated=bool(extra)):
+                self.write_reading(identity=other, extra=extra)
+                self.both_gates_refuse("does not name this packet")
+
+    def test_repeated_conditional_verdict_still_needs_its_disposition(self):
+        """An identical repeated PROCEED IF is one condition: it still needs
+        its disposition, and is accepted with it."""
+        self.write_reading("PROCEED IF suite matches",
+                           extra="Verdict: PROCEED IF suite matches\n")
+        with self.assertRaisesRegex(ValueError, "conditional verdict"):
+            self.ok("result", self.result("full"), self.reading, self.evidence)
+        disposition = self.root / "disposition.txt"
+        disposition.write_text("Condition: suite matches\nStatus: SATISFIED\nEvidence: roster review\n")
+        gate = (f"Verdict: PROCEED IF suite matches\nDisposition SHA256: "
+                f"{checker.digest(disposition.read_bytes())}")
+        screen = self.put(self.result("full").read_text().replace("Verdict: PROCEED", gate))
+        self.ok("result", screen, self.reading, self.evidence, disposition)
+
+    def test_reading_with_repeats_is_never_modified_and_gate_names_its_exact_bytes(self):
+        """The checker only reads the reading: its bytes are unchanged after
+        both gates, and a GATE naming a de-duplicated copy is refused."""
+        self.write_reading(extra=f"Packet identity: {self.identity}\nVerdict: PROCEED\n")
+        before = self.reading.read_bytes()
+        self.both_gates_accept()
+        self.assertEqual(self.reading.read_bytes(), before)
+        cleaned = before.replace(f"Packet identity: {self.identity}\nVerdict: PROCEED\n".encode(), b"")
+        self.assertNotEqual(cleaned, before)
+        with self.assertRaisesRegex(ValueError, "does not identify"):
+            self.ok("result", self.result("full", reading_id=checker.digest(cleaned)),
+                    self.reading, self.evidence)
+        self.assertEqual(self.reading.read_bytes(), before)
+
+    # ---- Checkpoint 3: final check agrees with the draft; decorated reading lines
+
+    def test_final_publication_check_refuses_prose_and_extra_keys_like_the_draft(self):
+        """Checkpoint 3 (item 3b, review finding 3): the final PUBLICATION check
+        applies check-draft's OUTGOING.txt rule: prose (with or without ': '),
+        an indented key and a key outside the seven are refused in both."""
+        for label, extra, reason in (
+                ("sentence", "This batch fixes the map sharpening bug.\n", "prose or non-key line"),
+                ("capitalized prose key", "Public description: fixes the bug.\n",
+                 "prose or non-key line"),
+                ("indented key", " remote: origin\n", "prose or non-key line"),
+                ("description key", "description: fixes the map sharpening bug for Miao\n",
+                 "not one of the seven outgoing keys")):
+            with self.subTest(case=label):
+                (self.evidence / "OUTGOING.txt").write_text(outgoing() + extra)
+                self.refreeze()
+                self.publication_refused(reason)
+                packet = self.root / "draft"
+                shutil.rmtree(packet, ignore_errors=True)
+                shutil.copytree(self.evidence, packet)
+                (packet / "MANIFEST.sha256").unlink()
+                with self.assertRaisesRegex(ValueError, reason), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    checker.check_draft("publication", packet)
+        (self.evidence / "OUTGOING.txt").write_text("# comment\n\n" + outgoing())
+        self.refreeze()
+        self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    def test_final_publication_check_refuses_companions_inside_the_packet(self):
+        """Checkpoint 3 (review finding 14): a companion file inside the frozen
+        packet is refused by the final check, as by check-draft."""
+        for name in ("ERRATA.md", "notes/APPROVALS.md", "CHECKER.md"):
+            with self.subTest(name=name):
+                path = self.evidence / name
+                path.parent.mkdir(exist_ok=True)
+                path.write_text("companion\n")
+                self.refreeze()
+                self.publication_refused("companion file inside the packet")
+                path.unlink()
+        self.refreeze()
+        self.ok("publication", self.publication(), self.reading, self.evidence)
+
+    def test_decorated_conflicting_reading_fields_are_refused(self):
+        """Checkpoint 3 (review finding 14): an indented, bulleted, quoted or
+        bold Verdict, Scope or Packet identity line whose value differs from
+        the column-0 value is refused at both gates; the same decorations
+        with the same value are accepted. Checkpoint 5: Markdown headings and
+        table rows too."""
+        other = "0" * 64
+        for label, extra in (
+                ("indented verdict", "    Verdict: DO NOT PROCEED\n"),
+                ("bulleted verdict", "- Verdict: DO NOT PROCEED\n"),
+                ("bold bulleted verdict", "* **Verdict:** DO NOT PROCEED\n"),
+                ("quoted verdict", "> Verdict: DO NOT PROCEED\n"),
+                ("numbered verdict", "1. Verdict: PROCEED IF the suite passes\n"),
+                ("bold scope", "**Scope:** integration\n"),
+                ("code identity", f"`Packet identity: {other}`\n"),
+                ("heading verdict", "## Verdict: DO NOT PROCEED\n"),
+                ("table verdict", "| Verdict | DO NOT PROCEED |\n"),
+                ("table bold scope", "| **Scope** | integration |\n")):
+            with self.subTest(conflict=label):
+                self.write_reading(extra=extra)
+                self.both_gates_refuse("indented, bulleted, quoted or bold")
+        for label, extra in (
+                ("bold verdict", "**Verdict:** PROCEED\n"),
+                ("bulleted block", f"- Packet identity: {self.identity}\n- Verdict: PROCEED\n"
+                                   "- Scope: integration and publication\n"),
+                ("unrelated prose", "  The verdict above stands; scope is as stated.\n"),
+                ("heading same verdict", "### Verdict: PROCEED\n"),
+                ("table same verdict", "| Verdict | PROCEED |\n|---|---|\n")):
+            with self.subTest(same=label):
+                self.write_reading(extra=extra)
+                self.both_gates_accept()
+
+    # ---- Checkpoint 3 (1b): misplaced verified evidence, correction companion
+
+    def misplace(self, name="SERVER_SUITE.txt", where="previous_packet"):
+        """Freeze the packet with `name` only under `where/` (the batch 4 case)."""
+        (self.evidence / where).mkdir(exist_ok=True)
+        (self.evidence / name).rename(self.evidence / where / name)
+        self.refreeze()
+        corrections = self.root / "corrections"
+        corrections.mkdir(exist_ok=True)
+        return corrections
+
+    def correct(self, corrections, name, source, data):
+        (corrections / "ERRATA.md").write_text(
+            f"# Errata\nClerical: verified file frozen in the wrong place.\n"
+            f"Relocated: {name} from {source}\n")
+        (corrections / name).write_bytes(data)
+
+    ERRATA_LIMITS = "SERVER_SUITE.txt was relocated after the reading; see ERRATA.md."
+
+    def publication_with(self, corrections, limits=ERRATA_LIMITS):
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            checker.check("publication", self.publication(limits=limits), self.evidence,
+                          self.reading, corrections=corrections)
+        return output.getvalue()
+
+    def test_misplaced_verified_file_accepted_from_identical_correction_copy(self):
+        """1b: SERVER_SUITE.txt frozen only under previous_packet/ is refused
+        without a companion; with ERRATA.md naming it and a byte-identical copy
+        beside it, PUBLICATION passes (and says it used the copy) and the
+        packet identity is unchanged. RESULT accepts a misplaced RUN_LOG.txt
+        the same way."""
+        data = (self.evidence / "SERVER_SUITE.txt").read_bytes()
+        corrections = self.misplace()
+        identity = self.identity
+        self.publication_refused("missing or empty publication evidence: SERVER_SUITE.txt")
+        self.correct(corrections, "SERVER_SUITE.txt", "previous_packet/SERVER_SUITE.txt", data)
+        output = self.publication_with(corrections)
+        self.assertIn("CHECK OK publication", output)
+        self.assertIn("NOTE SERVER_SUITE.txt read from the correction companion", output)
+        self.assertEqual(checker.verify(self.evidence), identity)
+        log = (self.evidence / "RUN_LOG.txt").read_bytes()
+        corrections = self.misplace("RUN_LOG.txt", "logs")
+        with self.assertRaisesRegex(ValueError, "missing or empty change evidence: RUN_LOG.txt"):
+            self.ok("result", self.result("full"), self.reading, self.evidence)
+        self.correct(corrections, "RUN_LOG.txt", "logs/RUN_LOG.txt", log)
+        with contextlib.redirect_stdout(io.StringIO()):
+            checker.check("result", self.result("full", limits="RUN_LOG.txt: see ERRATA.md."),
+                          self.evidence, self.reading, corrections=corrections)
+
+    def test_correction_source_must_have_the_same_name_and_serve_one_name(self):
+        """Checkpoint 5 (review CP3 finding 4): a frozen notes/draft.txt whose text
+        is a passing SERVER_SUITE line cannot stand in for SERVER_SUITE.txt, even
+        with a byte-identical copy; one frozen file cannot serve two names (the
+        reviewer's previous_packet/SERVER_SUITE.txt for ROSTER_COMPARISON.txt too)."""
+        corrections = self.misplace()
+        (self.evidence / "notes").mkdir()
+        fake = b"SERVER_SUITE: PASS 999/999\n"
+        (self.evidence / "notes" / "draft.txt").write_bytes(fake)
+        self.refreeze()
+        self.correct(corrections, "SERVER_SUITE.txt", "notes/draft.txt", fake)
+        with self.assertRaisesRegex(ValueError, "from a file of another name: notes/draft.txt"):
+            self.publication_with(corrections)
+        data = (self.evidence / "previous_packet" / "SERVER_SUITE.txt").read_bytes()
+        (self.evidence / "ROSTER_COMPARISON.txt").rename(self.evidence / "roster.txt")
+        self.refreeze()
+        (corrections / "ERRATA.md").write_text(
+            "Relocated: SERVER_SUITE.txt from previous_packet/SERVER_SUITE.txt\n"
+            "Relocated: ROSTER_COMPARISON.txt from previous_packet/SERVER_SUITE.txt\n")
+        (corrections / "SERVER_SUITE.txt").write_bytes(data)
+        (corrections / "ROSTER_COMPARISON.txt").write_bytes(data)
+        with self.assertRaisesRegex(ValueError, "relocates ROSTER_COMPARISON.txt from a file "
+                                                "of another name"):
+            self.publication_with(corrections)
+        # Control: the same-name relocation alone is accepted once the roster is back.
+        (self.evidence / "roster.txt").rename(self.evidence / "ROSTER_COMPARISON.txt")
+        self.refreeze()
+        self.correct(corrections, "SERVER_SUITE.txt", "previous_packet/SERVER_SUITE.txt", data)
+        self.assertIn("CHECK OK publication", self.publication_with(corrections))
+
+    def test_correction_companion_use_is_named_in_limits_and_in_present(self):
+        """Checkpoint 5 (review CP3 finding 5): with a correction companion used,
+        a screen whose LIMITS does not name ERRATA.md is refused, and `present`
+        says which file came from the companion; without a companion, present
+        says nothing of it."""
+        data = (self.evidence / "SERVER_SUITE.txt").read_bytes()
+        corrections = self.misplace()
+        self.correct(corrections, "SERVER_SUITE.txt", "previous_packet/SERVER_SUITE.txt", data)
+        with self.assertRaisesRegex(ValueError, "LIMITS must name ERRATA.md"):
+            self.publication_with(corrections, limits="No material gap claimed.")
+        with self.assertRaisesRegex(ValueError, "LIMITS must name ERRATA.md"):
+            with contextlib.redirect_stdout(io.StringIO()):
+                checker.present("publication", self.publication(), self.evidence, self.reading,
+                                corrections=corrections)
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            checker.present("publication", self.publication(limits=self.ERRATA_LIMITS),
+                            self.evidence, self.reading, corrections=corrections)
+        shown = output.getvalue()
+        self.assertIn("NOTE: correction companion used: SERVER_SUITE.txt was read from "
+                      + str(corrections / "SERVER_SUITE.txt"), shown)
+        self.assertIn("ERRATA.md", shown)
+        self.assertNotIn("CHECK OK", shown)
+        (self.evidence / "previous_packet" / "SERVER_SUITE.txt").rename(
+            self.evidence / "SERVER_SUITE.txt")
+        self.refreeze()
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            checker.present("publication", self.publication(), self.evidence, self.reading)
+        self.assertNotIn("correction companion", output.getvalue())
+
+    def test_correction_copy_one_byte_different_is_refused(self):
+        data = (self.evidence / "SERVER_SUITE.txt").read_bytes()
+        corrections = self.misplace()
+        self.correct(corrections, "SERVER_SUITE.txt", "previous_packet/SERVER_SUITE.txt",
+                     data[:-1] + b"!")
+        with self.assertRaisesRegex(ValueError, "differs from the frozen"):
+            self.publication_with(corrections)
+
+    def test_correction_naming_a_file_not_in_the_manifest_is_refused(self):
+        data = (self.evidence / "SERVER_SUITE.txt").read_bytes()
+        corrections = self.misplace()
+        for source in ("previous_packet/OTHER.txt", "SERVER_SUITE.txt"):
+            with self.subTest(source=source):
+                self.correct(corrections, "SERVER_SUITE.txt", source, data)
+                with self.assertRaisesRegex(ValueError, "not listed in the frozen manifest"):
+                    self.publication_with(corrections)
+
+    def test_correction_naming_a_path_outside_the_packet_is_refused(self):
+        data = (self.evidence / "SERVER_SUITE.txt").read_bytes()
+        corrections = self.misplace()
+        outside = self.root / "SERVER_SUITE.txt"
+        outside.write_bytes(data)
+        for source in ("../SERVER_SUITE.txt", str(outside), "previous_packet/../../SERVER_SUITE.txt",
+                       "./previous_packet/SERVER_SUITE.txt"):
+            with self.subTest(source=source):
+                self.correct(corrections, "SERVER_SUITE.txt", source, data)
+                with self.assertRaisesRegex(ValueError, "path outside the packet"):
+                    self.publication_with(corrections)
+
+    def test_correction_companion_limits(self):
+        """1b limits: the companion directory must lie outside the packet; it may
+        not stand in for a file the packet has at the top level or for a file the
+        checker does not read; plan screens take none."""
+        data = (self.evidence / "SERVER_SUITE.txt").read_bytes()
+        corrections = self.misplace()
+        self.correct(corrections, "SERVER_SUITE.txt", "previous_packet/SERVER_SUITE.txt", data)
+        inside = self.evidence / "previous_packet"
+        with self.assertRaisesRegex(ValueError, "outside the frozen packet"):
+            self.publication_with(inside)
+        roster = (self.evidence / "ROSTER_COMPARISON.txt").read_bytes()
+        (corrections / "ERRATA.md").write_text(
+            "Relocated: ROSTER_COMPARISON.txt from previous_packet/SERVER_SUITE.txt\n")
+        (corrections / "ROSTER_COMPARISON.txt").write_bytes(roster)
+        with self.assertRaisesRegex(ValueError, "has it at the top level"):
+            self.publication_with(corrections)
+        (corrections / "ERRATA.md").write_text(
+            "Relocated: README_FIRST.md from previous_packet/SERVER_SUITE.txt\n")
+        with self.assertRaisesRegex(ValueError, "does not read"):
+            self.publication_with(corrections)
+        with self.assertRaisesRegex(ValueError, "only result, publication and accept"):
+            with contextlib.redirect_stdout(io.StringIO()):
+                checker.check("plan", self.plan(), corrections=corrections)
+
+    # ---- Checkpoint 1 (rev19): ACCEPT screen ---------------------------------
+
+    def accept(self, evidence_id=None, candidate_extra="", pending="Pending: combined outside "
+               "reading (integration and publication) of this packet.",
+               decision="Accept records this exact candidate; master and origin stay unchanged.",
+               name="screen.md"):
+        path = self.root / name
+        path.write_text(f"ACCEPT | comment-1 | {evidence_id or self.identity}\n"
+                        "CANDIDATE\nClarified a comment in sample.py.\n"
+                        "Why it matters: Readers can understand the comment more easily.\n"
+                        "Full diff and exact new tests: evidence/APPROVAL_REPORT.md\n"
+                        f"{candidate_extra}"
+                        f"CHECKED\nTested tree: {TREE}\nThe log says compile passed.\n"
+                        f"PENDING\n{pending}\n"
+                        "LIMITS\nIt did not test runtime behavior.\n"
+                        f"DECISION\n{decision}\n"
+                        "Recommendation: ACCEPT because the check passed and scope is contained.\n"
+                        "Next: After the reading, show the RESULT screen for this packet.\n"
+                        "ACTION: ACCEPT / REVISE / DISCARD\n")
+        return path
+
+    def test_accept_screen_valid_and_presented_without_identities(self):
+        """A valid ACCEPT names this exact frozen packet and is presented with
+        its identities hidden."""
+        screen = self.accept()
+        self.ok("accept", screen, evidence=self.evidence)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            checker.present("accept", screen, self.evidence)
+        display = output.getvalue()
+        self.assertTrue(display.startswith("**PLEASE READ — YOUR DECISION IS NEEDED**\n\n```\n"))
+        self.assertIn("\nACCEPT | comment-1\n", display)
+        self.assertNotIn(self.identity, display)
+        self.assertNotIn(TREE, display)
+        self.assertIn("ACTION: ACCEPT / REVISE / DISCARD", display)
+
+    def test_accept_screen_claiming_integration_or_publication_is_refused(self):
+        """ACCEPT neither offers nor claims integration or publication.
+        Checkpoint 3 (review findings 1, 2): each screen is written to its own
+        file and checked in its own subtest, and the claim cases must fail for
+        the claim (not for another rule): every verb form of integrate, merge,
+        push and publish is refused. The action-line case is separate, with
+        its own reason. The nouns integration and publication stay allowed."""
+        claims = (
+            ("integrated", "Integrated into master.", "candidate"),
+            ("merged", "Merged on master.", "candidate"),
+            ("published", "Published to origin.", "candidate"),
+            ("pushed", "Pushed to origin.", "candidate"),
+            ("integrate offered", "Accept and integrate; master and origin stay unchanged.",
+             "decision"),
+            ("will merge and push", "Next: On ACCEPT I will merge to master and push to origin.",
+             "candidate"),
+            ("integrating", "Now integrating into master.", "candidate"),
+            ("will publish", "Accepting will publish this to origin.", "candidate"),
+            ("merges", "It merges the fix.", "candidate"),
+            ("push noun-verb", "Then push.", "candidate"),
+            ("publishes", "It publishes nothing yet but publishes later.", "candidate"))
+        for index, (label, text, where) in enumerate(claims):
+            with self.subTest(claim=label):
+                if where == "candidate":
+                    screen = self.accept(candidate_extra=text + "\n", name=f"claim-{index}.md")
+                else:
+                    screen = self.accept(decision=text, name=f"claim-{index}.md")
+                self.assertIn(text, screen.read_text())
+                with self.assertRaisesRegex(ValueError, "must not offer or claim"):
+                    self.ok("accept", screen, evidence=self.evidence)
+        with self.subTest(case="integration action line"):
+            screen = self.accept(name="action.md")
+            screen.write_text(screen.read_text().replace(
+                "ACTION: ACCEPT / REVISE / DISCARD", "ACTION: INTEGRATE / REVISE / DISCARD"))
+            with self.assertRaisesRegex(ValueError, "last line must be the one exact action line"):
+                self.ok("accept", screen, evidence=self.evidence)
+        with self.subTest(case="nouns allowed"):
+            self.ok("accept", self.accept(
+                candidate_extra="Integration and publication decisions follow the reading.\n",
+                name="nouns.md"), evidence=self.evidence)
+        with self.assertRaisesRegex(ValueError, "master and origin stay unchanged"):
+            self.ok("accept", self.accept(decision="Accept records this exact candidate.",
+                                          name="no-unchanged.md"), evidence=self.evidence)
+        with self.assertRaisesRegex(ValueError, "Pending:"):
+            self.ok("accept", self.accept(pending="The reading.", name="no-pending.md"),
+                    evidence=self.evidence)
+
+    def test_accept_screen_without_its_frozen_evidence_is_refused(self):
+        """ACCEPT needs the frozen packet it names: no evidence, an unfrozen
+        directory, another identity and a reading are refused."""
+        with self.assertRaisesRegex(ValueError, "evidence directory and manifest identity"):
+            self.ok("accept", self.accept())
+        with self.assertRaisesRegex(ValueError, "current evidence"):
+            self.ok("accept", self.accept(evidence_id="0" * 64), evidence=self.evidence)
+        with self.assertRaisesRegex(ValueError, "takes no reading"):
+            self.ok("accept", self.accept(), self.reading, self.evidence)
+        screen = self.accept()
+        (self.evidence / "MANIFEST.sha256").unlink()
+        with self.assertRaisesRegex(ValueError, "missing manifest"):
+            self.ok("accept", screen, evidence=self.evidence)
+
+
+class DraftPublicationChecks(unittest.TestCase):
+    """Checkpoint 1 (rev19): `check-draft publication DIR` on an unfrozen packet."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.packet = Path(self.temp.name) / "packet"
+        self.packet.mkdir()
+        (self.packet / "OUTGOING.txt").write_text(outgoing())
+        (self.packet / "SERVER_SUITE.txt").write_text("SERVER_SUITE: PASS 12/12\n")
+        (self.packet / "ROSTER_COMPARISON.txt").write_text(
+            "baseline: run 1\ncandidate: run 2\nnew failures: none\n")
+        (self.packet / "PUBLICATION_NOTES.md").write_text("Public description: fix.\n")
+
+    def draft(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            checker.check_draft("publication", self.packet)
+        return output.getvalue()
+
+    def refused(self, reason):
+        with self.assertRaisesRegex(ValueError, reason):
+            self.draft()
+
+    def snapshot(self):
+        """Every path under the packet, with the bytes of each file (checkpoint 3,
+        review finding 13: subdirectories and contents, not only top-level names)."""
+        return sorted((p.relative_to(self.packet).as_posix(),
+                       p.read_bytes() if p.is_file() else None)
+                      for p in self.packet.rglob("*"))
+
+    def test_draft_passes_names_skipped_checks_and_writes_nothing(self):
+        (self.packet / "logs").mkdir()
+        (self.packet / "logs" / "suite.log").write_text("suite log\n")
+        before = self.snapshot()
+        output = self.draft()
+        self.assertIn("DRAFT OK publication", output)
+        self.assertIn("skipped: freeze and packet identity", output)
+        self.assertIn("skipped: outgoing commits named in BATCH", output)
+        self.assertIn("skipped: outside reading", output)
+        self.assertEqual(self.snapshot(), before)
+        result = subprocess.run(
+            [sys.executable, "-I", "-B", checker.__file__, "check-draft", "publication",
+             str(self.packet)], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("DRAFT OK publication", result.stdout)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_draft_refuses_missing_outgoing(self):
+        (self.packet / "OUTGOING.txt").unlink()
+        self.refused("missing or empty publication evidence at the packet top level: OUTGOING.txt")
+
+    def test_draft_refuses_prose_in_outgoing(self):
+        for prose in ("This batch fixes the map sharpening bug.\n",
+                      "Public description: fixes the map sharpening bug.\n",
+                      " remote: origin\n"):
+            with self.subTest(prose=prose):
+                (self.packet / "OUTGOING.txt").write_text(outgoing() + prose)
+                self.refused("prose or non-key line")
+
+    def test_draft_refuses_prose_disguised_as_an_extra_key(self):
+        """Checkpoint 3 (review finding 3): a lowercase key outside the seven,
+        for example a description, is refused."""
+        for extra in ("description: fixes the map sharpening bug for Miao\n",
+                      "companions: cctbx\n"):
+            with self.subTest(extra=extra):
+                (self.packet / "OUTGOING.txt").write_text(outgoing() + extra)
+                self.refused("not one of the seven outgoing keys")
+
+    def test_draft_refuses_suite_or_roster_not_at_top_level(self):
+        for name in ("SERVER_SUITE.txt", "ROSTER_COMPARISON.txt"):
+            with self.subTest(name=name):
+                (self.packet / "logs").mkdir(exist_ok=True)
+                (self.packet / name).rename(self.packet / "logs" / name)
+                self.refused(f"at the packet top level: {name}")
+                (self.packet / "logs" / name).rename(self.packet / name)
+
+    def test_draft_refuses_not_run_suite_without_quoted_waiver(self):
+        (self.packet / "SERVER_SUITE.txt").write_text(
+            "SERVER_SUITE: NOT RUN\nReason: no server reachable.\n")
+        self.refused("suite not run without the Developer's quoted waiver")
+        (self.packet / "SERVER_SUITE.txt").write_text(
+            "SERVER_SUITE: NOT RUN\nWaiver (Developer, 2026-10-12, batch x):\n> quoted words\n")
+        self.assertIn("DRAFT OK publication", self.draft())
+
+    def test_draft_refuses_companions_inside_the_packet(self):
+        (self.packet / "ERRATA.md").write_text("errata\n")
+        self.refused("companion file inside the packet")
 
 
 class VersionGateScopeChecks(unittest.TestCase):

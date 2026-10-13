@@ -11,7 +11,9 @@ unlisted files already present in the package are reported. It also runs the
 installer's precompile step, libtbx.py_compile_all -i, on another copy and
 checks that the copy still verifies while an unlisted module is still
 refused. The package and its tools are for macOS and Linux only: on Windows,
-or under Python 2, this test prints a skip line and OK.
+or under Python 2, this test prints a skip line and OK. It first prints what
+is tested: the SHA-256 of SOURCE_MANIFEST.sha256, the RELEASE line and the
+Git HEAD when there is one.
 """
 import hashlib
 import os
@@ -121,7 +123,45 @@ def exercise_real_precompile(tmp, env):
   print("precompiled copy verifies; an unlisted module is still refused")
 
 
+def identify_tested_source():
+  """Print what is tested: the SHA-256 of SOURCE_MANIFEST.sha256, the RELEASE
+  line and, when the package is in a Git checkout, `git rev-parse HEAD`, marked
+  dirty when `git status --porcelain` lists changes in the package (a missing git
+  or a non-Git directory is reported, never a failure)."""
+  with open(os.path.join(PACKAGE, "SOURCE_MANIFEST.sha256"), "rb") as f:
+    print("tested SOURCE_MANIFEST.sha256 sha256: %s" % hashlib.sha256(f.read()).hexdigest())
+  release = os.path.join(PACKAGE, "payload", "RELEASE")
+  if os.path.isfile(release):
+    with open(release, "rb") as f:
+      lines = f.read().decode("utf-8", "replace").splitlines()
+    print("tested RELEASE: %s" % (lines[0] if lines else "(empty)"))
+  else:
+    print("tested RELEASE: (no payload/RELEASE)")
+  try:
+    p = subprocess.Popen(["git", "-C", PACKAGE, "rev-parse", "HEAD"],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    head = out.decode("utf-8", "replace").strip() if p.returncode == 0 else None
+  except OSError:
+    head = None
+  if head:
+    # Checkpoint 5: say when the package differs from HEAD (the manifest hash above
+    # remains the identity of what was tested).
+    try:
+      p = subprocess.Popen(["git", "-C", PACKAGE, "status", "--porcelain", "--", "."],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      out, err = p.communicate()
+      if p.returncode != 0:
+        head += " (dirty state unknown)"
+      elif out.strip():
+        head += " (dirty: the package has changes not in this commit)"
+    except OSError:
+      head += " (dirty state unknown)"
+  print("tested git HEAD: %s" % (head or "not available (not a Git checkout, or no git)"))
+
+
 def exercise():
+  identify_tested_source()
   extra = sorted(files_under(PACKAGE) - listed_names())
   if extra:
     print("note: unlisted files present in the package (not used by this test): %s"

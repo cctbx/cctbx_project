@@ -11,8 +11,10 @@ no hook, variable or option for this; run directly, auto_queue.py refuses
 `run` off macOS.
 
 This launcher refuses real queues (Revision 12, P8). Before it imports the
-helper, starts anything or writes anything, it exits 16 unless every path the
-helper would open lies inside one directory directly under the temporary
+helper, starts anything or writes anything, it exits 16 unless every queue
+path it checks (the helper home, every --queue, the queue named by the home's
+ACTIVE file, and init's records root and lock directory) lies inside one
+directory directly under the temporary
 directory (tempfile.gettempdir()) that holds the test-only marker file
 GC_KIT_TEST_QUEUE_ROOT with exactly MARKER_TEXT. It resolves those paths as
 auto_queue.py does: the helper home is --home, else GC_AUTO_HOME, else the
@@ -31,7 +33,10 @@ inside the temporary directory is accepted, and so is a symlink planted by
 hand inside a marked test queue (for example its runs/ pointing to a real
 queue's runs/, which then receives the run record), because the check
 resolves the queue directory, not what is inside it. This guards against
-mistaken use, not deliberate misuse.
+mistaken use, not deliberate misuse. Only those queue paths are checked:
+other paths the helper opens or writes (--log, --cwd, --file, --packet,
+--script, --grant, --jobs) are not, so a run started through the launcher
+can write its log anywhere.
 
 Because the stand-in does not block the network, the tests run through it
 only controlled local commands; the tests of the real network block and of
@@ -98,8 +103,9 @@ def marked(root):
 
 
 def not_a_test_queue(argv, environ):
-    """None when every path the helper would open is inside one marked test root;
-    else the reason. Mirrors auto_queue.home_dir/open_queue. An empty or blank
+    """None when every checked queue path (helper home, --queue, the ACTIVE queue,
+    init's --records and --lock-dir) is inside one marked test root; else the
+    reason. Other paths (--log, --cwd, --file, ...) are not checked. Mirrors auto_queue.home_dir/open_queue. An empty or blank
     value is refused here: the helper would read it as absent, as the current
     directory or as a relative path, not as the value checked here."""
     temp = os.path.realpath(tempfile.gettempdir())

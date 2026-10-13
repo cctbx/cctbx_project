@@ -498,6 +498,139 @@ class CheckCommand(PrecheckFixture):
         self.assertIn(f"PRECHECK OK phenix {self.commit}", control.stdout)
 
 
+class OutgoingCommand(PrecheckFixture):
+    """Checkpoint 3 (item 17): `outgoing` writes the strict one-commit OUTGOING.txt
+    block from the live repository, checks it with the same parser and the `check`
+    comparisons, and refuses a chain, a wrong parent, a missing remote, several push
+    URLs and a dirty tree. Local bare repositories only."""
+
+    def outgoing_tool(self, *options, commit=None):
+        before = self.snapshot()
+        result = subprocess.run(
+            [sys.executable, "-I", "-B", str(TOOL), "outgoing", str(self.repo),
+             "--commit", commit or self.commit, "--repository", "phenix", *options],
+            env=self.env, cwd=self.root, text=True, capture_output=True)
+        if "--fetch" not in options:
+            self.assertEqual(self.snapshot(), before, "outgoing changed Git state")
+        return result
+
+    def refused(self, result, reason):
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("ERROR:", result.stderr)
+        self.assertIn(reason, result.stderr)
+        self.assertEqual(result.stdout, "")
+
+    def test_generated_block_is_exact_parses_and_passes_check_dry_run(self):
+        result = self.outgoing_tool()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, self.block())
+        self.assertIn(f"OUTGOING OK phenix {self.commit}", result.stderr)
+        self.outgoing.write_text(result.stdout)
+        checked = self.check("--dry-run")
+        self.assertEqual(checked.returncode, 0, checked.stderr)
+        self.assertIn(f"PRECHECK OK phenix {self.commit}", checked.stdout)
+        written = self.root / "written" / "OUTGOING.txt"
+        written.parent.mkdir()
+        result = self.outgoing_tool("--output", str(written))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(written.read_text(), self.block())
+        again = self.outgoing_tool("--output", str(written))
+        self.assertEqual(again.returncode, 2, again.stdout)
+        self.assertEqual(written.read_text(), self.block())
+        with self.subTest(fetch=True):
+            fetched = self.outgoing_tool("--fetch")
+            self.assertEqual(fetched.returncode, 0, fetched.stderr)
+            self.assertEqual(fetched.stdout, self.block())
+
+    def test_push_setting_note_goes_to_stderr_and_stdout_passes_check(self):
+        """Review CP3 finding 1: with a harmless push setting (push.default=simple,
+        common in ~/.gitconfig) the standard output is still exactly the block, the
+        NOTE goes to standard error, and the redirected file passes check --dry-run."""
+        self.git("config", "push.default", "simple", cwd=self.repo)
+        self.git("config", "push.autoSetupRemote", "true", cwd=self.repo)
+        result = self.outgoing_tool()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, self.block())
+        self.assertNotIn("NOTE", result.stdout)
+        self.assertIn("NOTE push setting present: push.default=simple", result.stderr)
+        self.outgoing.write_text(result.stdout)
+        checked = self.check("--dry-run")
+        self.assertEqual(checked.returncode, 0, checked.stderr)
+        self.assertIn(f"PRECHECK OK phenix {self.commit}", checked.stdout)
+        self.assertIn("NOTE push setting present: push.default=simple", checked.stdout)
+
+    def test_two_repositories_appended_to_one_file_pass_check(self):
+        """Review CP45 finding 4: the documented route (WORKER.md, PUBLICATION_PACKET.md)
+        appends each repository's standard output to one OUTGOING.txt; both blocks then
+        pass `check --dry-run` for their repository. `--output` cannot add the second."""
+        bare2, repo2 = self.root / "second.git", self.root / "second"
+        self.git("init", "-q", "--bare", str(bare2), cwd=self.root)
+        self.git("symbolic-ref", "HEAD", "refs/heads/master", cwd=bare2)
+        repo2.mkdir()
+        self.git("init", "-q", cwd=repo2)
+        self.git("symbolic-ref", "HEAD", "refs/heads/master", cwd=repo2)
+        self.configure_user(repo2)
+        self.git("remote", "add", "origin", str(bare2), cwd=repo2)
+        base2 = self.commit_file(repo2, "b.txt", "base\n", "base")
+        self.git("push", "-q", "origin", "master", cwd=repo2)
+        commit2 = self.commit_file(repo2, "b.txt", "change\n", "change")
+        packet = self.root / "packet"
+        packet.mkdir()
+        outgoing = packet / "OUTGOING.txt"
+        for repo, commit, name in ((self.repo, self.commit, "phenix"), (repo2, commit2, "second")):
+            result = subprocess.run(
+                [sys.executable, "-I", "-B", str(TOOL), "outgoing", str(repo), "--commit", commit,
+                 "--repository", name, "--remote", "origin", "--branch", "master", "--fetch"],
+                env=self.env, cwd=self.root, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            with open(outgoing, "a", encoding="utf-8") as stream:  # the shell's >>
+                stream.write(result.stdout)
+        text = outgoing.read_text()
+        self.assertTrue(text.startswith(self.block()), text)
+        self.assertIn("repository: second\n", text)
+        self.assertIn(f"base: {base2}\ncommit: {commit2}\n", text)
+        for repo, commit, name in ((self.repo, self.commit, "phenix"), (repo2, commit2, "second")):
+            checked = subprocess.run(
+                [sys.executable, "-I", "-B", str(TOOL), "check", str(repo), str(outgoing),
+                 "--repository", name, "--fetch", "--dry-run"],
+                env=self.env, cwd=self.root, text=True, capture_output=True)
+            self.assertEqual(checked.returncode, 0, checked.stderr)
+            self.assertIn(f"PRECHECK OK {name} {commit}", checked.stdout)
+        refused = subprocess.run(
+            [sys.executable, "-I", "-B", str(TOOL), "outgoing", str(repo2), "--commit", commit2,
+             "--repository", "second", "--output", str(outgoing)],
+            env=self.env, cwd=self.root, text=True, capture_output=True)
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertEqual(outgoing.read_text(), text)
+
+    def test_two_commit_chain_is_refused(self):
+        second = self.commit_file(self.repo, "a.txt", "change 2\n", "second")
+        self.refused(self.outgoing_tool(commit=second), "is a chain of 2 commits")
+
+    def test_wrong_parent_is_refused(self):
+        self.advance_remote()
+        self.refused(self.outgoing_tool("--fetch"), "is not the remote tip")
+        self.refused(self.outgoing_tool(commit=self.base), "has 0 parents")
+
+    def test_missing_remote_is_refused(self):
+        self.refused(self.outgoing_tool("--remote", "nowhere"), "remote not found: nowhere")
+        self.refused(self.outgoing_tool("--branch", "other"),
+                     "remote-tracking branch refs/remotes/origin/other not found")
+
+    def test_several_push_urls_are_refused(self):
+        self.git("remote", "set-url", "--add", "--push", "origin", str(self.bare), cwd=self.repo)
+        self.git("remote", "set-url", "--add", "--push", "origin", str(self.root / "elsewhere.git"),
+                 cwd=self.repo)
+        self.refused(self.outgoing_tool(), "has 2 push URLs")
+
+    def test_dirty_tree_is_refused(self):
+        (self.repo / "a.txt").write_text("uncommitted\n")
+        self.refused(self.outgoing_tool(), "working tree is not clean")
+        (self.repo / "a.txt").write_text("change\n")
+        (self.repo / "new.txt").write_text("untracked\n")
+        self.refused(self.outgoing_tool(), "working tree is not clean")
+
+
 class VetCommand(unittest.TestCase):
     REFSPEC = f"{HEX}:refs/heads/master"
 

@@ -5,6 +5,9 @@ and the morning report for `/gc auto`. Standard library only. No scheduler
 and no worker pool. Interface: AUTO_QUEUE_SPEC, including Revisions 2-8
 (record 2026-10-08-gc-auto-release-plan/stage1).
 Revision 12: `run` refuses on any system other than macOS; `init` needs --lock-dir.
+Revision 13: an unreadable process table refuses (exit 17) instead of reading as empty;
+`transfer` hands jobs to an attended record (final state Transferred); `install check` can
+classify timestamp-only differences from a NORMALIZED value (report-only, never available).
 
 Stop from any Terminal, without the coding conversation:
     python3 <procedure root>/auto_queue.py stop
@@ -27,7 +30,7 @@ import time
 from pathlib import Path
 
 STATES = ("Queued", "Preparing", "Testing", "Ready for approval", "Approved",
-          "Waiting", "Blocked", "Discarded", "Published")
+          "Waiting", "Blocked", "Discarded", "Published", "Transferred")
 TRANSITIONS = {
     "Queued": ("Preparing", "Blocked", "Discarded"),
     "Preparing": ("Testing", "Blocked", "Waiting", "Discarded"),
@@ -38,12 +41,18 @@ TRANSITIONS = {
     "Approved": ("Published", "Preparing", "Discarded"),
     "Published": (),
     "Discarded": (),
+    # Revision 13: reached only through `transfer` (auto -> attended); final, never reopened:
+    # the successor record owns the work from then on.
+    "Transferred": (),
 }
 ACTIVE_STATES = ("Queued", "Preparing", "Testing", "Waiting")
-FINAL_STATES = ("Published", "Discarded")
+FINAL_STATES = ("Published", "Discarded", "Transferred")
 # Revision 12: `run` needs macOS (sandbox-exec for the network block, `ps -E` for the run-id
 # marker); elsewhere it refuses with this exit code. Nothing but sys.platform decides it.
 PLATFORM_REFUSED = 15
+# Revision 13: the process table could not be read (ps failed, printed nothing usable, or
+# left out this process): every command that needs it refuses with this code.
+PROCESS_TABLE_UNREADABLE = 17
 # Start times are read the same way whatever the caller's TZ, locale or PATH.
 PS = "/bin/ps"
 PS_ENV = {"LC_ALL": "C", "TZ": "UTC", "PATH": "/bin:/usr/bin"}
@@ -131,7 +140,8 @@ def process_start(pid):
         text = out.stdout.strip()
     except OSError:
         text = ""
-    if text:
+    # Revision 13: only a start time that parses counts; anything else is unreadable.
+    if text and epoch(text, "%a %b %d %H:%M:%S %Y") is not None:
         return text
     return UNREADABLE if process_exists(pid) else None
 
@@ -168,34 +178,88 @@ def epoch(text, fmt):
         return None
 
 
+class ProcessTableUnreadable(Refused):
+    """Revision 13: the process table could not be read, so whether a process is alive is
+    unknown. Every caller refuses or reports unknown; none treats it as an empty table."""
+
+    def __init__(self, why):
+        Refused.__init__(self, PROCESS_TABLE_UNREADABLE,
+                         "cannot read the process table (%s); whether queue processes are alive "
+                         "is unknown" % why)
+
+
+def read_ps(args):
+    """stdout of `ps ARGS`; raises ProcessTableUnreadable if ps cannot start or exits nonzero."""
+    try:
+        out = subprocess.run([PS] + args, env=PS_ENV, capture_output=True, text=True)
+    except OSError as error:
+        raise ProcessTableUnreadable("%s could not be started: %s" % (PS, error))
+    if out.returncode != 0:
+        detail = out.stderr.strip().splitlines()[0] if out.stderr.strip() else ""
+        raise ProcessTableUnreadable("%s exited %d%s" % (PS, out.returncode,
+                                                         (": " + detail) if detail else ""))
+    return out.stdout
+
+
 def snapshot():
-    """All processes: pid -> (ppid, pgid, sid, start epoch, run ids in the environment)."""
+    """All processes: pid -> (ppid, pgid, sid, start epoch, run ids in the environment).
+    Revision 13: fails closed. A ps that cannot start, exits nonzero, prints a line that does
+    not parse, or prints a table without this process raises ProcessTableUnreadable; nothing
+    is cached then. The `ps -E` marker query is held to the same rule on macOS; elsewhere
+    (Linux ps has no -E) its failure only drops the markers, as before. Checkpoint 3: on
+    macOS the marker output must also contain a parsable line for this process (empty or
+    unparsable output with exit 0 refuses, as for the main table); continuation lines of
+    multi-line environment values are still skipped."""
     if _SNAPSHOT["procs"] is not None and time.time() - _SNAPSHOT["time"] < 0.3:
         return _SNAPSHOT["procs"]
     procs = {}
-    try:
-        out = subprocess.run([PS, "-ax", "-o", "pid=", "-o", "ppid=", "-o", "pgid=", "-o", "lstart="], env=PS_ENV,
-                             capture_output=True, text=True).stdout
-        marks = subprocess.run([PS, "-E", "-ww", "-ax", "-o", "pid=", "-o", "command="], env=PS_ENV,
-                               capture_output=True, text=True).stdout
-    except OSError:
-        out, marks = "", ""
-    for line in out.splitlines():
-        fields = line.split(None, 3)
-        if len(fields) < 4:
+    out = read_ps(["-ax", "-o", "pid=", "-o", "ppid=", "-o", "pgid=", "-o", "lstart="])
+    marker_args = ["-E", "-ww", "-ax", "-o", "pid=", "-o", "command="]
+    if sys.platform == "darwin":
+        marks = read_ps(marker_args)
+    else:
+        try:
+            marks = read_ps(marker_args)
+        except ProcessTableUnreadable:
+            marks = ""
+    for number, line in enumerate(out.splitlines(), 1):
+        if not line.strip():
             continue
+        fields = line.split(None, 3)
+        start = epoch(fields[3], "%a %b %d %H:%M:%S %Y") if len(fields) == 4 else None
+        if len(fields) < 4 or not all(f.isdigit() for f in fields[:3]) or start is None:
+            raise ProcessTableUnreadable("unparsable ps line %d: %r" % (number, line[:80]))
         pid, ppid, pgid = int(fields[0]), int(fields[1]), int(fields[2])
         try:
             sid = os.getsid(pid)
         except OSError:
             sid = None
-        procs[pid] = [ppid, pgid, sid, epoch(fields[3], "%a %b %d %H:%M:%S %Y"), set()]
+        procs[pid] = [ppid, pgid, sid, start, set()]
+    if os.getpid() not in procs:
+        raise ProcessTableUnreadable("ps listed %d process(es) but not this one (%d)"
+                                     % (len(procs), os.getpid()))
+    own = False
     for line in marks.splitlines():
+        # An environment value may contain a newline: such continuation lines are skipped.
         fields = line.split(None, 1)
         if len(fields) == 2 and fields[0].isdigit() and int(fields[0]) in procs:
             procs[int(fields[0])][4].update(re.findall(r"\b%s=(\S+)" % MARKER, fields[1]))
+            own = own or int(fields[0]) == os.getpid()
+    if sys.platform == "darwin" and not own:
+        raise ProcessTableUnreadable("ps -E listed no environment line for this process (%d)"
+                                     % os.getpid())
     _SNAPSHOT.update(time=time.time(), procs=procs)
     return procs
+
+
+def snapshot_or_none():
+    """For a run's own bookkeeping while its command runs: the table, or None when it is
+    unreadable (the caller then signals by group only and records the gap; it never
+    concludes that nothing is left)."""
+    try:
+        return snapshot()
+    except ProcessTableUnreadable:
+        return None
 
 
 def leaders_of(record, procs):
@@ -280,6 +344,17 @@ def survivors(record):
         found |= more
         grew = bool(more)
     return sorted(found)
+
+
+def survivors_or_unknown(record):
+    """survivors(record), or None when the process table is unreadable (Revision 13)."""
+    try:
+        return survivors(record)
+    except ProcessTableUnreadable:
+        return None
+
+
+UNKNOWN_LEFT = "unknown (process table unreadable)"
 
 
 def run_live(record):
@@ -427,6 +502,7 @@ class Queue:
                     if r.get("label") == label and r.get("status") == "completed"
                     and r.get("exit_code") == 0 and not r.get("stale")
                     and not r.get("group_left_running")
+                    and not r.get("process_table_unreadable")
                     and r.get("candidate_id") == job["candidate_id"]
                     and r.get("criterion_sha256") == job["criterion_sha256"]
                     and r.get("tested_paths")
@@ -596,6 +672,8 @@ def cmd_set(args):
     queue = open_queue(args)
     if args.state not in STATES:
         raise Refused(2, "unknown state %r" % args.state)
+    if args.state == "Transferred":
+        raise Refused(2, "a job is transferred only with `transfer JOB --to DIR --note TEXT`")
     with queue.locked():
         job = queue.job(args.job)
         if queue.stop_requested() and args.state not in ("Blocked", "Waiting"):
@@ -715,11 +793,13 @@ def git_rev(repo, rev):
 def cmd_worker(args):
     queue = open_queue(args)
     with queue.locked():
-        queue.job(args.job)
+        job = queue.job(args.job)
         active = queue.worker_active()
         if args.action == "start":
             if queue.stop_requested():
                 raise Refused(3, "stop requested")
+            if job["state"] in FINAL_STATES:
+                raise Refused(8, "job %s is %s" % (job["id"], job["state"]))
             if active:
                 raise Refused(9, "worker %s for job %s is still registered"
                               % (active["id"], active["job"]))
@@ -773,6 +853,8 @@ def cmd_lock(args):
     with queue.locked():
         if not queue.lock_held():
             raise Refused(4, "lock %s is not held by this queue" % lock)
+        _SNAPSHOT["procs"] = None
+        snapshot()  # Checkpoint 3: unreadable refuses (17) even with no run record
         live = queue.live_runs()
         if live:
             raise Refused(13, "queue-owned processes are still alive (%s); run cleanup first"
@@ -827,6 +909,10 @@ def cmd_run(args):
                           % (free, queue.data["min_free_gib"]))
         if not job.get("criterion_sha256") or not job.get("candidate_id"):
             raise Refused(6, "record the criterion and candidate before running checks")
+        # Revision 13: a run starts only while the process table can be read (it is needed to
+        # find earlier runs' processes and to track this one); unreadable refuses with 17.
+        _SNAPSHOT["procs"] = None
+        snapshot()
         live = queue.live_runs(job["id"])
         if live:
             raise Refused(13, "an earlier run of job %s still has live processes (%s)"
@@ -880,7 +966,7 @@ def cmd_run(args):
             # waiting on its output: a detached child may hold the pipe open.
             for sig in (signal.SIGTERM, signal.SIGKILL):
                 _SNAPSHOT["procs"] = None
-                targets = set(survivors(read_json(record_path)))
+                targets = set(survivors_or_unknown(read_json(record_path)) or ())
                 try:
                     os.killpg(probe.pid, sig)
                 except OSError:
@@ -904,9 +990,9 @@ def cmd_run(args):
                 except subprocess.TimeoutExpired:
                     pass
             _SNAPSHOT["procs"] = None
-            left = survivors(read_json(record_path))
+            left = survivors_or_unknown(read_json(record_path))
             finish("not started", reason="probe timed out after %d s" % timeout,
-                   left_after_timeout=left)
+                   left_after_timeout=UNKNOWN_LEFT if left is None else left)
             raise SystemExit(124)
         with queue.locked():
             current = read_json(record_path)
@@ -974,8 +1060,9 @@ def cmd_run(args):
             os.killpg(proc.pid, signum)
         except OSError:
             pass
+        procs = snapshot_or_none() or {}  # unreadable: the group signal above only
         for pid, start in list(tracked.items()):
-            live = snapshot().get(pid)
+            live = procs.get(pid)
             if live is not None and live[3] == start:
                 try:
                     os.kill(pid, signum)
@@ -989,7 +1076,12 @@ def cmd_run(args):
         """Record every descendant of CMD (pid and start time), so a process that later leaves
         the group and the session is still known."""
         _SNAPSHOT["procs"] = None
-        procs = snapshot()
+        procs = snapshot_or_none()
+        if procs is None:
+            # Revision 13: nothing new can be learned now; the gap is recorded, and the end of
+            # the run cannot then establish that nothing was left behind.
+            gaps.append(now())
+            return
         known = {proc.pid} | {pid for pid, start in tracked.items()
                               if pid in procs and procs[pid][3] == start}
         grew = True
@@ -1006,6 +1098,7 @@ def cmd_run(args):
                 current["tracked"] = [{"pid": p, "start": t} for p, t in sorted(tracked.items())]
                 write_json(record_path, current)
 
+    gaps = []
     deadline = time.time() + timeout
     timed_out = False
     while True:
@@ -1020,8 +1113,9 @@ def cmd_run(args):
     if timed_out:
         # End the run and everything identified as its own: TERM, up to 10 s, then KILL.
         record_now = read_json(record_path)
-        targets = set(survivors(record_now)) | {pid for pid, start in tracked.items()
-                                                 if snapshot().get(pid, [None] * 4)[3] == start}
+        procs = snapshot_or_none() or {}
+        targets = set(survivors_or_unknown(record_now) or ()) | {
+            pid for pid, start in tracked.items() if procs.get(pid, [None] * 4)[3] == start}
         for sig in (signal.SIGTERM, signal.SIGKILL):
             try:
                 os.killpg(proc.pid, sig)
@@ -1035,7 +1129,9 @@ def cmd_run(args):
             end = time.time() + (10 if sig == signal.SIGTERM else 2)
             while time.time() < end:
                 _SNAPSHOT["procs"] = None
-                if proc.poll() is not None and not [p for p in targets if p in snapshot()]:
+                procs = snapshot_or_none()
+                if proc.poll() is not None and procs is not None and not [
+                        p for p in targets if p in procs]:
                     break
                 time.sleep(0.2)
             else:
@@ -1046,18 +1142,27 @@ def cmd_run(args):
         except subprocess.TimeoutExpired:
             code = -signal.SIGKILL
         _SNAPSHOT["procs"] = None
-        left = survivors(read_json(record_path))
-        finish("timed out", exit_code=124, left_after_timeout=left, signals=received)
+        left = survivors_or_unknown(read_json(record_path))
+        if left is None:
+            left = UNKNOWN_LEFT
+        finish("timed out", exit_code=124, left_after_timeout=left, signals=received,
+               **({"process_table_unreadable": gaps} if gaps else {}))
         queue.event("run %s timed out after %d s%s" % (run_id, timeout,
                                                        (", still alive: %s" % left) if left else ""))
         raise SystemExit(124)
     track()
     exit_code = code if code >= 0 else 128 - code
     _SNAPSHOT["procs"] = None
-    left = group_alive(proc.pid) or bool(survivors(read_json(record_path)))
+    remaining = survivors_or_unknown(read_json(record_path))
+    if remaining is None:
+        gaps.append(now())
+    # Revision 13: when the process table could not be read, leftovers cannot be excluded;
+    # the gaps are recorded with the run, and readiness never accepts such a run.
+    left = group_alive(proc.pid) or bool(remaining)
     interrupted = bool(received) or queue.stop_requested()
     finish("interrupted" if interrupted else "completed", exit_code=exit_code,
-           group_left_running=left, signals=received)
+           group_left_running=left, signals=received,
+           **({"process_table_unreadable": gaps} if gaps else {}))
     raise SystemExit(exit_code)
 
 
@@ -1069,7 +1174,19 @@ def identity_known(pid, recorded_start):
 
 
 def signal_live(queue):
-    for _, record, _ in queue.live_runs():
+    """Send SIGTERM to every run's confirmed target and survivors. Checkpoint 3: records are
+    taken one at a time, so a record whose liveness needs the process table, when the table
+    is unreadable, no longer prevents signalling another run whose wrapper or group is
+    confirmed by `ps -p` alone; the unreadable table is raised after the loop (stop then
+    still ends with exit 17, never Stopped)."""
+    unreadable = None
+    for _, record in queue.runs():
+        try:
+            if not run_live(record):
+                continue
+        except ProcessTableUnreadable as error:
+            unreadable = unreadable or error
+            continue
         if record.get("status") == "starting":
             target = ("pid", record.get("wrapper_pid"))
             known = identity_known(record.get("wrapper_pid"), record.get("wrapper_start"))
@@ -1090,12 +1207,19 @@ def signal_live(queue):
         else:
             queue.event("stop did not signal %s %s of run %s: identity not confirmed"
                         % (target[0], target[1], record["run_id"]))
-        for pid in survivors(record):
+        try:
+            left = survivors(record)
+        except ProcessTableUnreadable as error:
+            unreadable = unreadable or error
+            continue
+        for pid in left:
             try:
                 os.kill(pid, signal.SIGTERM)
                 queue.event("stop sent SIGTERM to surviving process %d of run %s" % (pid, record["run_id"]))
             except OSError:
                 pass
+    if unreadable is not None:
+        raise unreadable
 
 
 def cmd_stop(args):
@@ -1105,21 +1229,98 @@ def cmd_stop(args):
         if not flag.exists():
             write_text(flag, "time: %s\npid: %d\ncwd: %s\n" % (now(), os.getpid(), os.getcwd()))
             queue.event("stop requested")
-        signal_live(queue)
-        left = queue.remaining()
-    deadline = time.time() + 5
-    while left and time.time() < deadline:
-        time.sleep(0.2)
-        _SNAPSHOT["procs"] = None
-        queue.reload()
-        if queue.worker_active():
+        try:
+            signal_live(queue)
+            # Checkpoint 3: read the table even when no run record needs it, so that stop
+            # never prints Stopped under an unreadable table (report would say Stopping).
+            _SNAPSHOT["procs"] = None
+            snapshot()
             left = queue.remaining()
-            break
-        left = queue.remaining()
+        except ProcessTableUnreadable as error:
+            stop_unknown(queue, error)
+    deadline = time.time() + 5
+    try:
+        while left and time.time() < deadline:
+            time.sleep(0.2)
+            _SNAPSHOT["procs"] = None
+            queue.reload()
+            if queue.worker_active():
+                left = queue.remaining()
+                break
+            left = queue.remaining()
+    except ProcessTableUnreadable as error:
+        stop_unknown(queue, error)
     if left:
         print("Stopping: " + "; ".join(left))
         raise SystemExit(10)
     print("Stopped")
+
+
+def stop_unknown(queue, error):
+    """Revision 13: the stop is recorded, but whether tracked processes remain is unknown:
+    never Stopped. Prints Stopping with the reason and refuses (exit 17)."""
+    queue.event("stop: %s" % error)
+    worker = queue.worker_active()
+    print("Stopping: %s%s" % (error, ("; worker for job %s registered, not yet ended" % worker["job"])
+                              if worker else ""))
+    raise error
+
+
+def cmd_transfer(args):
+    """Revision 13: hand jobs over from the auto queue to an attended successor record.
+    The job (or every job that is not final, with --all) becomes Transferred, a final state:
+    its decision_needed is no longer offered, the successor directory is recorded, and its
+    history, runs and evidence are kept. Refused while a worker is registered for the job or
+    a run of it may be alive (an unreadable process table counts as may be alive)."""
+    queue = open_queue(args)
+    if bool(args.job) == bool(args.all):
+        raise Refused(2, "give one job or --all")
+    if not args.note or not args.note.strip():
+        raise Refused(2, "transfer needs --note saying why and what continues attended")
+    successor = Path(args.to)
+    if not successor.is_dir():
+        raise Refused(2, "successor record directory %s does not exist" % args.to)
+    successor = successor.resolve()
+    if successor == queue.dir or queue.dir in successor.parents:
+        raise Refused(2, "the successor record must be outside the queue directory")
+    with queue.locked():
+        if args.all:
+            jobs = [j for j in queue.data["jobs"] if j["state"] not in FINAL_STATES]
+            if not jobs:
+                raise Refused(8, "no job left to transfer")
+        else:
+            jobs = [queue.job(args.job)]
+        worker = queue.worker_active()
+        _SNAPSHOT["procs"] = None
+        snapshot()  # Checkpoint 3: unreadable refuses (17) even with no run record
+        for job in jobs:
+            if job["state"] in FINAL_STATES:
+                raise Refused(8, "job %s is %s; a final job is not transferred" % (job["id"], job["state"]))
+            if worker and worker["job"] == job["id"]:
+                raise Refused(9, "worker %s for job %s is still registered; end it first"
+                              % (worker["id"], job["id"]))
+            live = queue.live_runs(job["id"])
+            if live:
+                raise Refused(13, "a run of job %s still has live processes (%s); run cleanup first"
+                              % (job["id"], live[0][2]))
+        for job in jobs:
+            old = job["state"]
+            entry = {"time": now(), "from_state": old, "to": str(successor), "note": args.note}
+            if job.get("decision_needed"):
+                entry["decision_needed_at_transfer"] = job.pop("decision_needed")
+            for key in ("packet", "packet_manifest_sha256", "approval_quote",
+                        "approval_manifest_sha256"):
+                if job.get(key):
+                    entry[key] = job.pop(key)
+            job.pop("waiting", None)
+            job["transfer"] = entry
+            job["state"] = "Transferred"
+            job["notes"].append({"time": entry["time"], "state": "Transferred", "note": args.note})
+            queue.event("job %s %s -> Transferred to %s note: %s"
+                        % (job["id"], old, successor, args.note.replace("\n", " ")))
+        queue.save()
+    for job in jobs:
+        print("%s Transferred to %s" % (job["id"], successor))
 
 
 def cmd_reconcile(args):
@@ -1178,25 +1379,47 @@ def cmd_install(args):
         start_error = str(error)
     else:
         start_error = None
-    found = None
+    found = normalized = None
     for line in stdout.splitlines():
         fields = line.split()
         if len(fields) == 2 and fields[0] == "FINGERPRINT":
             found = fields[1]
+        elif len(fields) == 2 and fields[0] == "NORMALIZED":
+            normalized = fields[1]
+    # Availability needs the exact fingerprint, always (Revision 13 changes only the reason).
     ok = returncode == 0 and found is not None and found == args.expect
+    known_codes = {3: "a process runs from the installation",
+                   4: "the process table could not be read"}
+    previous = queue.data.get("installation") or {}
+    recorded_normalized = args.expect_normalized or previous.get("expected_normalized")
     if start_error:
         reason = "its fingerprint script could not be started"
     elif returncode:
-        reason = "its fingerprint script failed (exit %d)" % returncode
+        reason = "its fingerprint script failed (exit %d%s)" % (
+            returncode, (": " + known_codes[returncode]) if returncode in known_codes else "")
     elif found is None:
         reason = "its fingerprint script printed no fingerprint"
+    elif normalized and recorded_normalized and normalized == recorded_normalized:
+        # Revision 13: report-only classification. The installation stays unavailable; only
+        # an attended validation may record a new exact value.
+        reason = ("timestamp-only differences: attended validation needed (the exact fingerprint "
+                  "differs from the recorded starting state; the normalized value, which ignores "
+                  "only known timestamp fields, matches)")
     else:
         reason = "it no longer matches its recorded starting state"
     with queue.locked():
         kept = baseline if (baseline and not ok) else args.expect
+        if ok:
+            kept_normalized = normalized
+        else:
+            kept_normalized = previous.get("expected_normalized") or args.expect_normalized
         queue.data["installation"] = {
             "state": "available" if ok else "unavailable", "checked": now(), "script": args.script,
             "expected": kept, "found": found, "reason": "" if ok else reason}
+        if kept_normalized:
+            queue.data["installation"]["expected_normalized"] = kept_normalized
+        if normalized:
+            queue.data["installation"]["found_normalized"] = normalized
         queue.save()
         queue.event("installation %s%s%s" % (queue.data["installation"]["state"],
                                              "" if ok else ": " + reason,
@@ -1243,6 +1466,10 @@ def cmd_cleanup(args):
     queue = open_queue(args)
     with queue.locked():
         job = queue.job(args.job)
+        # Checkpoint 3: the table is read even when the job has no run record; unreadable
+        # refuses (17) rather than printing Cleaned.
+        _SNAPSHOT["procs"] = None
+        snapshot()
         for _, record in queue.runs(job["id"]):
             if (record.get("status") == "running" and same_process(record.get("pid"),
                                                                    record.get("process_start"))) or (
@@ -1296,8 +1523,18 @@ def cmd_workers(args):
 def cmd_report(args):
     queue = open_queue(args)
     lines = []
+    # Revision 13: with an unreadable process table nothing about live processes is known:
+    # never Stopped, no readiness, and every job with runs shows unknown; exit 17 after printing.
+    table_error = None
+    try:
+        snapshot()
+    except ProcessTableUnreadable as error:
+        table_error = error
     if queue.stop_requested():
-        lines.append("**Stopping**" if queue.remaining() else "**Stopped**")
+        lines.append("**Stopping**" if table_error or queue.remaining() else "**Stopped**")
+        lines.append("")
+    if table_error:
+        lines.append("**Process table unreadable:** %s" % table_error)
         lines.append("")
     installation = queue.data.get("installation") or {}
     if installation.get("state") == "unavailable":
@@ -1307,9 +1544,13 @@ def cmd_report(args):
     lines.append("| --- | --- | --- |")
     for job in queue.data["jobs"]:
         runs = [r for _, r in queue.runs(job["id"])]
-        open_runs = [r for r in runs if r.get("status") in ("starting", "running") or run_live(r)]
         state = job["state"]
-        if open_runs:
+        open_runs = [] if table_error else [
+            r for r in runs if r.get("status") in ("starting", "running") or run_live(r)]
+        if table_error and runs:
+            result = "unknown (%s; process table unreadable)" % state.lower()
+            step = "report again once the process table can be read"
+        elif open_runs:
             alive = [r for r in open_runs if run_live(r)]
             result = ("running %s" % alive[0]["label"] if alive
                       else "unknown (a run ended without a completion record)")
@@ -1326,8 +1567,15 @@ def cmd_report(args):
                 step = "approve for integration / inspect / revise / discard"
             else:
                 result = "results stale or incomplete (%s)" % failed
-                step = ("freeze a corrected packet in a new directory and mark it ready again"
+                # Revision 13: the helper refuses only what is in the frozen bytes, which an
+                # ERRATA.md note cannot change; for a clerical slip the new freeze reuses the
+                # same evidence with no rerun (WORKER.md).
+                step = ("freeze a corrected packet in a new directory and mark it ready again "
+                        "(clerical slip: same evidence, note in ERRATA.md, no rerun)"
                         if failed.startswith(("packet", "SCREENING.txt")) else "rerun the affected checks")
+        elif state == "Transferred":
+            result = "transferred to %s" % job["transfer"]["to"]
+            step = "continued attended there; nothing to decide in this queue"
         elif state == "Blocked":
             result = "blocked: %s" % last_note(job)
             step = (("decision needed: " + job["decision_needed"]) if job.get("decision_needed")
@@ -1345,6 +1593,8 @@ def cmd_report(args):
         title = job["id"] + ((" " + job["title"]) if job.get("title") else "")
         lines.append("| %s | %s | %s |" % (cell(title), cell(result), cell(step)))
     print("\n".join(lines))
+    if table_error:
+        raise table_error
 
 
 def last_note(job):
@@ -1418,6 +1668,13 @@ def main(argv=None):
     p.add_argument("--timeout", type=int)
     p.set_defaults(func=cmd_run)
 
+    p = sub.add_parser("transfer", allow_abbrev=False)
+    p.add_argument("job", nargs="?")
+    p.add_argument("--all", action="store_true")
+    p.add_argument("--to", required=True)
+    p.add_argument("--note", required=True)
+    p.set_defaults(func=cmd_transfer)
+
     sub.add_parser("stop", allow_abbrev=False).set_defaults(func=cmd_stop)
     sub.add_parser("reconcile", allow_abbrev=False).set_defaults(func=cmd_reconcile)
 
@@ -1455,6 +1712,7 @@ def main(argv=None):
     p.add_argument("action", choices=("check", "show"))
     p.add_argument("--script")
     p.add_argument("--expect")
+    p.add_argument("--expect-normalized")
     p.add_argument("--new-baseline", action="store_true")
     p.set_defaults(func=cmd_install)
 
