@@ -1847,6 +1847,8 @@ Note:
 
   def _clear_results(self):
     # Initialize the results to empty.
+    # The name cache is keyed on memory_id, which a later model can reuse for other atoms.
+    DotInfo._nameCache.clear()
     self._results = {}
     for c in _allAtomClasses:
       interactionTypeDicts = {}
