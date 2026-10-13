@@ -23,6 +23,7 @@ def run():
   test_013()
   test_014()
   test_015()
+  test_016()
 
 # ------------------------------------------------------------------------------
 
@@ -252,6 +253,22 @@ def test_015():
   assert h_on(atoms, 'BGM', '14', "O3'") == [], h_on(atoms, 'BGM', '14', "O3'")
   assert h_on(atoms, 'BGM', '15', "O3'") == ["HO3'"], h_on(
     atoms, 'BGM', '15', "O3'")
+
+def test_016():
+  '''
+  The CCD free nucleotide gives BGM an H on OP2. Inside a chain the phosphate
+  is a diester (pKa ~1), so the H goes once P bridges to another residue:
+  BGM 15 (O3' of BGM 14 + its own O5'). BGM 14 is the 5' end of the fragment;
+  its P bridges only through O5', so it keeps HOP2. Free 35G (cGMP, geostd)
+  is a diester within one residue and keeps its HOP2 as well.
+  '''
+  atoms = place_atoms(pdb_str_015)
+  assert h_on(atoms, 'BGM', '15', 'OP1') == []
+  assert h_on(atoms, 'BGM', '15', 'OP2') == [], h_on(atoms, 'BGM', '15', 'OP2')
+  assert h_on(atoms, 'BGM', '14', 'OP2') == ['HOP2'], h_on(
+    atoms, 'BGM', '14', 'OP2')
+  atoms = place_atoms(pdb_str_016)
+  assert h_on(atoms, '35G', '1', 'O2P') == ['HOP2'], h_on(atoms, '35G', '1', 'O2P')
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -879,6 +896,33 @@ HETATM  473  C2' BGM A  15      -0.142  -9.693  -1.085  1.00  0.00           C
 HETATM  474  C3' BGM A  15      -0.854 -11.020  -0.902  1.00  0.00           C
 HETATM  475  O3' BGM A  15      -0.612 -11.878  -2.021  1.00  0.00           O
 HETATM  476 BR   BGM A  15       0.273  -7.165  -4.357  1.00  0.00          BR
+END
+"""
+
+pdb_str_016 = """
+HETATM    1  P   35G A   1      40.589  33.310  86.588  1.00 20.00           P
+HETATM    2  O1P 35G A   1      41.439  33.145  85.410  1.00 20.00           O
+HETATM    3  O2P 35G A   1      39.279  34.185  86.398  1.00 20.00           O
+HETATM    4  O5' 35G A   1      41.295  34.060  87.788  1.00 20.00           O
+HETATM    5  C5' 35G A   1      40.748  34.048  89.142  1.00 20.00           C
+HETATM    6  C4' 35G A   1      40.485  32.596  89.477  1.00 20.00           C
+HETATM    7  O4' 35G A   1      39.809  32.402  90.710  1.00 20.00           O
+HETATM    8  C3' 35G A   1      39.519  31.984  88.475  1.00 20.00           C
+HETATM    9  O3' 35G A   1      40.103  31.901  87.171  1.00 20.00           O
+HETATM   10  C2' 35G A   1      39.158  30.672  89.148  1.00 20.00           C
+HETATM   11  O2' 35G A   1      40.202  29.745  88.940  1.00 20.00           O
+HETATM   12  C1' 35G A   1      39.105  31.145  90.637  1.00 20.00           C
+HETATM   13  N9  35G A   1      37.779  31.316  91.172  1.00 20.00           N
+HETATM   14  C8  35G A   1      36.714  32.012  90.621  1.00 20.00           C
+HETATM   15  N7  35G A   1      35.655  31.993  91.380  1.00 20.00           N
+HETATM   16  C5  35G A   1      36.022  31.256  92.493  1.00 20.00           C
+HETATM   17  C6  35G A   1      35.282  30.898  93.657  1.00 20.00           C
+HETATM   18  O6  35G A   1      34.119  31.163  93.950  1.00 20.00           O
+HETATM   19  N1  35G A   1      36.074  30.137  94.539  1.00 20.00           N
+HETATM   20  C2  35G A   1      37.382  29.777  94.342  1.00 20.00           C
+HETATM   21  N2  35G A   1      37.987  29.092  95.330  1.00 20.00           N
+HETATM   22  N3  35G A   1      38.055  30.104  93.256  1.00 20.00           N
+HETATM   23  C4  35G A   1      37.340  30.832  92.383  1.00 20.00           C
 END
 """
 

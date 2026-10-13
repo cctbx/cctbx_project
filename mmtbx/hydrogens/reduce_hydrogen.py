@@ -1275,26 +1275,44 @@ class place_hydrogens():
     molecule gives the O a hydroxyl H, but here it is an ester or an ether -
     O3' of a nucleotide inside a chain carries the next phosphate. A polymer
     bond has origin_id 0, so exclude_H_on_links never sees these.
+    Also remove H from the terminal O/S of a phosphodiester that bridges to
+    another residue (pKa ~1): free-nucleotide dictionaries carry it (CCD BGM
+    HOP2 in 2e4i, geostd GS HSP2 in 5zmn).
+    Diesters within one residue keep their dictionary H (35G; 58 geostd
+    entries have one).
     '''
     grm = self.model.get_restraints_manager().geometry
     bps, asu = grm.get_all_bond_proxies(
       sites_cart = self.model.get_sites_cart())
-    elements = self.model.get_hierarchy().atoms().extract_element()
+    atoms = self.model.get_hierarchy().atoms()
+    elements = atoms.extract_element()
     is_h = lambda i: elements[i].strip() in ('H', 'D')
-    # one pass over the bonds, keeping only what the oxygens carry
-    h_on_o, heavy_on_o = {}, {}
+    # one pass over the bonds, keeping only what O, S and P carry
+    h_on, heavy_on = {}, {}
     for proxy in list(bps) + list(asu):
       if   isinstance(proxy, ext.bond_simple_proxy): i,j = proxy.i_seqs
       elif isinstance(proxy, ext.bond_asu_proxy):    i,j = proxy.i_seq, proxy.j_seq
       else: continue
-      for i_o, other in ((i, j), (j, i)):
-        if elements[i_o].strip() != 'O': continue
-        if is_h(other): h_on_o.setdefault(i_o, set()).add(other)
-        else:           heavy_on_o.setdefault(i_o, set()).add(other)
-    remove = flex.size_t()
-    for i_o, hs in h_on_o.items():
-      if len(heavy_on_o.get(i_o, ())) > 1:
-        for i_h in sorted(hs): remove.append(i_h)
+      for i_x, other in ((i, j), (j, i)):
+        if elements[i_x].strip() not in ('O', 'S', 'P'): continue
+        if is_h(other): h_on.setdefault(i_x, set()).add(other)
+        else:           heavy_on.setdefault(i_x, set()).add(other)
+    remove = set()
+    for i_o, hs in h_on.items():
+      if elements[i_o].strip() == 'O' and len(heavy_on.get(i_o, ())) > 1:
+        remove.update(hs)
+    residue = lambda i: atoms[i].parent().parent().memory_id()
+    for i_p, neighbors in heavy_on.items():
+      if elements[i_p].strip() != 'P': continue
+      os_ = [k for k in neighbors if elements[k].strip() in ('O', 'S')]
+      bridged = dict((k, heavy_on.get(k, set()) - {i_p}) for k in os_)
+      bridged = dict((k, v) for k, v in bridged.items() if v)
+      if len(bridged) < 2: continue
+      r_p = residue(i_p)
+      if all(residue(m) == r_p for v in bridged.values() for m in v): continue
+      for k in os_:
+        if k not in bridged: remove.update(h_on.get(k, ()))
+    remove = flex.size_t(sorted(remove))
     if remove.size():
       sel = flex.bool(elements.size(), True).set_selected(remove, False)
       self.model = self.model.select(sel)
