@@ -1122,6 +1122,36 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _CalculateTotalCharge(self):
+    # Calculate the total charge of the model (same as Q|R qr.finalise with
+    # calculate_charge=True) and, if the output file names were not specified,
+    # insert it into them: model.pdb -> modelH_charge-3.pdb
+    make_sub_header('Calculating total charge', out=self.logger)
+    from mmtbx.ligands import electrons
+    cif_objects = None
+    if self.data_manager.has_restraints():
+      cif_objects = [(name, self.data_manager.get_restraint(name))
+        for name in self.data_manager.get_restraint_names()]
+    # As qrefine.charges.charges_class does; on a copy, the model is written out
+    hierarchy = self.model.get_hierarchy().deep_copy()
+    hierarchy.merge_atoms_at_end_to_residues()
+    self.total_charge = electrons.run(
+      pdb_hierarchy    = hierarchy,
+      crystal_symmetry = self.model.crystal_symmetry(),
+      cif_objects      = cif_objects,
+    )
+    print('Total charge:', self.total_charge, file=self.logger)
+    if self._default_output_filename:
+      base, suffix = os.path.splitext(self.params.output.filename)
+      self.params.output.filename = "%s_charge%s%s"%(
+        base, str(self.total_charge), suffix)
+      if self._default_description_file_name:
+        base = os.path.splitext(self.params.output.description_file_name)[0]
+        self.params.output.description_file_name = "%s_charge%s.txt"%(
+          base, str(self.total_charge))
+
+# ------------------------------------------------------------------------------
+
   def _GetAtomCharacteristics(self, bondedNeighborLists):
     '''Determine additional characteristics needed to determine probe dots.
     :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
@@ -1205,6 +1235,10 @@ NOTES:
 
   def validate(self):
     # Set the default output file name if one has not been given.
+    # With qmready=True the total charge is appended to the default name later.
+    self._default_output_filename = self.params.output.filename is None
+    self._default_description_file_name = \
+      self.params.output.description_file_name is None
     if self.params.output.filename is None:
       inName = self.data_manager.get_default_model_name()
       if inName is None: raise Sorry('model not found')
@@ -1417,6 +1451,12 @@ NOTES:
     # We had to do this to keep from crashing on a call to pair_proxies when generating
     # mmCIF files, so we always do it for safety.
     self._ReinterpretModel(False)
+
+    # qmready=True: calculate the total charge, as qr.finalise does with
+    # calculate_charge=True, and add it to the default output file name.
+    self.total_charge = None
+    if self.params.qmready and self.params.approach == 'add':
+      self._CalculateTotalCharge()
 
     make_sub_header('Writing output', out=self.logger)
 
@@ -1827,7 +1867,9 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def get_results(self):
-    return group_args(model = self.model)
+    return group_args(
+      model        = self.model,
+      total_charge = getattr(self, 'total_charge', None))
 
 # ------------------------------------------------------------------------------
 
