@@ -11,6 +11,11 @@ __pycache__/
 # Claude
 .claude
 
+# Superpowers plugin: specs/plans, brainstorm and SDD workspaces, worktrees
+/docs
+.superpowers
+.worktrees
+
 # Text editor files
 *~
 *.swp
