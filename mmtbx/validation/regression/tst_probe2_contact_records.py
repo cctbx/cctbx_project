@@ -213,11 +213,18 @@ def exercise_contact_records():
   assert records.as_JSON() == dots.as_JSON()
   assert records.get_clashscore() == dots.get_clashscore()
 
+def exercise_keep_processed_model():
+  assert run_clashscore2().processed_model is None
+  kept = run_clashscore2(keep_processed_model=True)
+  assert kept.processed_model is kept.processed_master
+  assert kept.processed_model.get_restraints_manager() is not None
+
 if (__name__ == "__main__"):
   if (libtbx.env.has_module("reduce") and libtbx.env.has_module("probe")):
     t0 = time.time()
     exercise_dots()
     exercise_contact_records()
+    exercise_keep_processed_model()
     print("OK. Time: %8.3f" % (time.time() - t0))
   else:
     print("Skipping tst_probe2_contact_records: probe or reduce not configured")
