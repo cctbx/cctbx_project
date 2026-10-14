@@ -6,12 +6,14 @@ import iotbx.phil
 """ LLGI map coefficients from the exact posterior of E. On the E scale,
 with Ec = |Emodel| along the model phase, sigmaA (clamped to SIGMAA_MAX)
 and the information fraction phi(sigmaA, sigma(E_obs^2))
-(mmtbx.refinement.llgi_phi_table):
+(mmtbx.refinement.llgi_phi_table), three coefficients along the model phase:
 
-  filled         <E>                                    (missing: sigmaA*Ec)
   bias-reduced   M = (<E> - c*Ec)/(1 - c*sigmaA),  c = (1 - phi)*sigmaA
-                                                        (missing: 0)
-  difference     <E> - sigmaA*Ec  (proportional to dLLGI/dEc; missing: 0)
+                 (tends to 0 as the information in a reflection goes to 0)
+  fill           2<E> - sigmaA*Ec (acentric), <E> (centric)
+                 (tends to sigmaA*Ec, the LLGI D*Fc, as the information goes
+                 to 0: a generalisation of the filled 2mFo-DFc map)
+  difference     <E> - sigmaA*Ec
 
 <E> is the exact posterior mean along the model phase (cctbx.xray.
 llgi_exact_evaluate) for every reflection, whatever form the target uses.
@@ -21,10 +23,27 @@ much of Ec. Then E[M0*conj(E)] = phi and E[|M0|^2] = phi*(1 - c*sigmaA)
 1/(1 - c*sigmaA) minimises the mean-square error E[|M - E|^2] among
 multiples of M0 (checked by Monte Carlo).
 
-F scale: multiply by sqrt(TEPS)*RESN, the data's own normalisation, with
-nacelle's anisotropic factor divided out (RESN/sqrt(ANISOBETA): the
-isotropic overall falloff is kept, the anisotropy removed) unless
-remove_anisotropy=False.
+F scale: sqrt(TEPS)*RESN/sqrt(ANISOBETA), the data's own normalisation with
+nacelle's anisotropic factor divided out (the overall isotropic falloff of
+the data kept), or, for the _aniso maps (only with anisotropic_maps=True),
+sqrt(TEPS)*RESN with the anisotropy left in. Maps (labels in LABELS):
+
+  IWT            bias-reduced            IWT_aniso       (anisotropy left in)
+  IWT_fill       fill                    IWT_fill_aniso
+  dIWT           difference              dIWT_aniso
+
+The anisotropy-removed maps correlate better with the true map and the true
+difference map, most clearly for anisotropic data. Without an ANISOBETA
+column the anisotropy cannot be removed, and the maps without suffix keep it.
+
+IWT and dIWT have the reflections used by the LLGI target. IWT_fill adds
+every other reflection to the resolution limit (unmeasured, or measured but
+left out of the target as uninformative) with sigmaA*Ec, i.e. the value the
+fill coefficient tends to; there the F scale is the data's isotropic falloff
+RESN/sqrt(epsilon*ANISOBETA) at the nearest observed resolution, times
+sqrt(epsilon), and for IWT_fill_aniso also sqrt(ANISOBETA(h)), with
+ANISOBETA(h) = exp(h^T B h) fitted to nacelle's ANISOBETA (an exact
+quadratic form in h); TEPS is taken as 1.
 """
 
 from mmtbx.refinement.llgi_e_dmodel import SIGMAA_MAX
@@ -33,23 +52,21 @@ llgi_map_params = iotbx.phil.parse("""\
   enabled = True
     .type = bool
     .short_caption = Write LLGI map coefficients
-    .help = "Write the LLGI map coefficients (filled, bias-reduced and " \
-            "difference; see mmtbx.refinement.llgi_maps) to the output " \
-            "MTZ file when target=llgi, in addition to the usual ones."
-  remove_anisotropy = True
+    .help = "Write the LLGI map coefficients (IWT, IWT_fill, dIWT; see " \
+            "mmtbx.refinement.llgi_maps) to the output MTZ file when " \
+            "target=llgi, in place of the usual ones."
+  anisotropic_maps = False
     .type = bool
-    .short_caption = Remove anisotropy from F-scale LLGI maps
-    .help = "Put F-scale LLGI map coefficients on the isotropic overall " \
-            "falloff (RESN/sqrt(ANISOBETA)) rather than the anisotropic " \
-            "one (RESN). Needs the ANISOBETA column."
-  e_scale = True
-    .type = bool
-    .short_caption = Also write E-scale bias-reduced and difference maps
+    .short_caption = Also write the LLGI maps with the anisotropy left in
+    .help = "Also write IWT_aniso, IWT_fill_aniso and dIWT_aniso: the LLGI " \
+            "maps on the data's anisotropic scale (sqrt(TEPS)*RESN), without " \
+            "nacelle's anisotropy (ANISOBETA) divided out."
 """)
 
 LABELS = group_args(
-  filled="LLGI_FILLED", bias_reduced="LLGI_BIASRED", difference="LLGI_DIFF",
-  bias_reduced_e="LLGI_BIASRED_E", difference_e="LLGI_DIFF_E")
+  bias_reduced="IWT", fill="IWT_fill", difference="dIWT",
+  bias_reduced_aniso="IWT_aniso", fill_aniso="IWT_fill_aniso",
+  difference_aniso="dIWT_aniso")
 
 def posterior_mean_e(e_obs_sq, sig_e_obs_sq, e_calc, sigmaa, centric_flags):
   """ Exact <E> along the model phase. sig_e_obs_sq <= 0 (no measurement
@@ -82,24 +99,45 @@ def posterior_mean_e(e_obs_sq, sig_e_obs_sq, e_calc, sigmaa, centric_flags):
     result.set_selected(isel, e * ratio)
   return result
 
-def e_scale_coefficients(e_expected, e_calc, sigmaa, phi):
-  """ The three E-scale coefficient magnitudes (signed, along the model
-  phase), as flex.double arrays. """
+def e_scale_coefficients(e_expected, e_calc, sigmaa, phi, centric_flags):
+  """ The E-scale coefficient magnitudes (signed, along the model phase),
+  as flex.double arrays: bias_reduced, fill and difference. """
   c = (1 - phi) * sigmaa
+  difference = e_expected - sigmaa * e_calc
+  fill = e_expected + difference
+  fill.set_selected(centric_flags, e_expected.select(centric_flags))
   return group_args(
-    filled=e_expected,
     bias_reduced=(e_expected - c * e_calc) / (1 - c * sigmaa),
-    difference=e_expected - sigmaa * e_calc)
+    fill=fill,
+    difference=difference)
 
 def _unit_phase(f):
   # exp(i*phase); 1 where f = 0
   return flex.polar(flex.double(f.size(), 1), flex.arg(f))
 
+def fit_anisobeta(indices, anisobeta):
+  """ nacelle's ANISOBETA as exp(h^T B h): the six coefficients of the
+  quadratic form in h fitted (least squares) to log(ANISOBETA), and a
+  function evaluating it for other indices. """
+  import numpy as np
+  def design(idx):
+    h = np.array(idx, dtype=float).reshape(-1, 3)
+    return np.column_stack([h[:, 0]**2, h[:, 1]**2, h[:, 2]**2,
+      h[:, 0]*h[:, 1], h[:, 0]*h[:, 2], h[:, 1]*h[:, 2]])
+  y = np.log(np.asarray(anisobeta, dtype=float))
+  coef = np.linalg.lstsq(design(indices), y, rcond=None)[0]
+  rms = float(np.sqrt(np.mean((y - design(indices).dot(coef))**2)))
+  def evaluate(idx):
+    return flex.double(np.exp(design(idx).dot(coef)).tolist())
+  return group_args(coefficients=coef, rms_log_residual=rms, evaluate=evaluate)
+
 def compute(fmodel, params=None, log=None):
   """ LLGI map coefficients for fmodel (target=llgi, llgi_data with sigmaa
   and the intensities attached). Returns group_args(arrays=[(label,
   complex miller.array)], ...) or None (with a message on log) if the
-  data needed are not available. """
+  data needed are not available. The maps have nacelle's anisotropy
+  removed (if there is an ANISOBETA column); with
+  params.anisotropic_maps, the _aniso versions are added. """
   import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
   import mmtbx.refinement.llgi_phi_table as llgi_phi_table
   if(params is None):
@@ -135,56 +173,72 @@ def compute(fmodel, params=None, log=None):
   sig = llgi_data.sig_e_obs_sq.data()
   e_expected = posterior_mean_e(e_obs_sq, sig, e_calc, sigmaa, centric)
   phi = llgi_phi_table.phi(sigmaa, sig, centric)
-  ce = e_scale_coefficients(e_expected, e_calc, sigmaa, phi)
-  # F scale
+  ce = e_scale_coefficients(e_expected, e_calc, sigmaa, phi, centric)
+  # F scales: f_scale_aniso keeps the anisotropy, f_scale removes it
   resn = llgi_data.resn.data()
-  teps = llgi_data.teps.data()
+  teps = llgi_data.teps.data() if tncs_u is None else tncs_t
+  f_scale_aniso = flex.sqrt(teps) * resn
   anisobeta = getattr(llgi_data, "anisobeta", None)
-  remove_aniso = params.remove_anisotropy and anisobeta is not None
-  if(params.remove_anisotropy and anisobeta is None):
-    say("no ANISOBETA column; F-scale maps keep the anisotropy.")
-  aniso = anisobeta.data() if remove_aniso else flex.double(resn.size(), 1)
-  if(tncs_u is not None):
-    teps = tncs_t
-  f_scale = flex.sqrt(teps) * resn / flex.sqrt(aniso)
-  def as_complex(values, scale=None):
-    v = values if scale is None else values * scale
+  if(anisobeta is None):
+    say("no ANISOBETA column; the maps keep the anisotropy of the data.")
+    f_scale = f_scale_aniso
+  else:
+    f_scale = f_scale_aniso / flex.sqrt(anisobeta.data())
+  def as_complex(values, scale):
+    v = values * scale
     return f_obs.customized_copy(
       data=flex.complex_double(v, flex.double(v.size(), 0)) * phase,
       sigmas=None)
-  arrays = []
-  filled_obs = as_complex(ce.filled, f_scale)
-  # Filled: unmeasured reflections get sigmaA*Ec, the posterior mean with
-  # no data (model_missing_reflections_llgi supplies Ec, sigmaA and RESN
-  # there, from the nearest observed resolution).
+  # the reflections left out: sigmaA*Ec on the F scale (model_missing_
+  # reflections_llgi supplies Ec and sigmaA on the complete set; complete_with
+  # takes those not in f_obs)
   from mmtbx.map_tools import model_missing_reflections_llgi
-  mro = model_missing_reflections_llgi(fmodel=fmodel, coeffs=filled_obs)
+  mro = model_missing_reflections_llgi(fmodel=fmodel,
+    coeffs=as_complex(ce.fill, f_scale_aniso))
   mro.get_missing()
   mis = mro.e_scale_missing
   sa_m = mis.sigmaa.deep_copy()
   sa_m.set_selected(sa_m < 0, 0)
   sa_m.set_selected(sa_m > SIGMAA_MAX, SIGMAA_MAX)
-  scale_m = mis.resn
-  if(remove_aniso):
-    scale_m = scale_m / flex.sqrt(mro.nearest_observed(
-      mis.miller_set.d_star_sq().data(), aniso))
-  fill = mis.miller_set.customized_copy(
-    data=flex.complex_double(sa_m * mis.e_model_abs * scale_m,
-      flex.double(sa_m.size(), 0)) * _unit_phase(mis.f_model_no_aniso))
-  filled = filled_obs.complete_with(other=fill, scale=False)
-  arrays.append((LABELS.filled, filled))
-  arrays.append((LABELS.bias_reduced, as_complex(ce.bias_reduced, f_scale)))
-  arrays.append((LABELS.difference, as_complex(ce.difference, f_scale)))
-  if(params.e_scale):
-    arrays.append((LABELS.bias_reduced_e, as_complex(ce.bias_reduced)))
-    arrays.append((LABELS.difference_e, as_complex(ce.difference)))
+  ms_m = mis.miller_set
+  eps_m = ms_m.epsilons().data().as_double()
+  # the data's isotropic falloff RESN/sqrt(epsilon*ANISOBETA) (smooth in
+  # resolution) at the nearest observed resolution
+  ab = anisobeta.data() if anisobeta is not None else flex.double(resn.size(), 1)
+  iso_m = mro.nearest_observed(ms_m.d_star_sq().data(),
+    resn / flex.sqrt(epsilons * ab))
+  if(anisobeta is not None):
+    fit = fit_anisobeta(f_obs.indices(), anisobeta.data())
+    if(fit.rms_log_residual > 1.e-3):
+      say("ANISOBETA is not a quadratic form in h (rms residual of the fit "
+        "%.3g in ln); the anisotropy of the filled reflections is approximate."
+        % fit.rms_log_residual)
+    ab_m = fit.evaluate(ms_m.indices())
+  else:
+    ab_m = flex.double(ms_m.size(), 1)
+  def fill_array(scale):
+    return ms_m.customized_copy(
+      data=flex.complex_double(sa_m * mis.e_model_abs * scale,
+        flex.double(sa_m.size(), 0)) * _unit_phase(mis.f_model_no_aniso))
+  # added reflections: the isotropic falloff (times sqrt(ANISOBETA(h)) in the
+  # _aniso map, as on its observed reflections)
+  arrays = [
+    (LABELS.bias_reduced, as_complex(ce.bias_reduced, f_scale)),
+    (LABELS.fill, as_complex(ce.fill, f_scale).complete_with(
+      other=fill_array(iso_m * flex.sqrt(eps_m)), scale=False)),
+    (LABELS.difference, as_complex(ce.difference, f_scale))]
+  if(params.anisotropic_maps and anisobeta is not None):
+    arrays += [
+      (LABELS.bias_reduced_aniso, as_complex(ce.bias_reduced, f_scale_aniso)),
+      (LABELS.fill_aniso, as_complex(ce.fill, f_scale_aniso).complete_with(
+        other=fill_array(iso_m * flex.sqrt(eps_m * ab_m)), scale=False)),
+      (LABELS.difference_aniso, as_complex(ce.difference, f_scale_aniso))]
   if(getattr(llgi_data, "from_amplitudes", False)):
     say("WARNING: computed from intensities reconstructed from amplitudes "
       "(approximate). Use the original intensities if at all possible.")
-  say("wrote %s (F scale%s)%s." % (", ".join(a[0] for a in arrays),
-    ", anisotropy removed" if remove_aniso else "",
-    "; filled map completed with %d unmeasured reflections" % (
-      filled.size() - f_obs.size())))
+  n_filled = arrays[1][1].size() - f_obs.size()
+  say("wrote %s; the fill maps add %d reflections (unmeasured or left out "
+    "of the target) as sigmaA*Ec." % (", ".join(a[0] for a in arrays), n_filled))
   return group_args(arrays=arrays, e_expected=e_expected, phi=phi,
     sigmaa=sigmaa, e_calc=e_calc, coefficients_e=ce, f_scale=f_scale,
-    n_filled=filled.size() - f_obs.size())
+    f_scale_aniso=f_scale_aniso, n_filled=n_filled)

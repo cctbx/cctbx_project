@@ -28,10 +28,13 @@ def exercise_handoff_fixtures():
   # bias-reduced coefficient with the handoff's own phi
   c = llgi_maps.e_scale_coefficients(e_expected=flex.double(col(6)),
     e_calc=flex.double(col(3)), sigmaa=flex.double(col(2)),
-    phi=flex.double(col(5)))
+    phi=flex.double(col(5)), centric_flags=flex.bool(col(4)))
   assert approx_equal(c.bias_reduced, col(7), eps=1e-7)
   assert approx_equal(c.difference,
     [h[6] - h[2]*h[3] for h in handoff], eps=1e-12)
+  # fill: 2<E> - sigmaA*Ec (acentric), <E> (centric)
+  assert approx_equal(c.fill,
+    [h[6] if h[4] else 2*h[6] - h[2]*h[3] for h in handoff], eps=1e-12)
   # tabulated phi (phi_ref's acentric values at large sigma are slightly
   # high; the table follows the large-sigma limit)
   for h in handoff:
@@ -66,50 +69,80 @@ def exercise_no_measurement_error():
   assert approx_equal(e[1], 2*math.tanh(x/2), eps=1e-12)
   assert e[2] == 0
 
+def exercise_fit_anisobeta():
+  # an exact quadratic form is recovered; evaluation at other indices
+  from cctbx import miller
+  idx = flex.miller_index([(h, k, l) for h in range(-4, 5) for k in range(0, 5)
+    for l in range(1, 6)])
+  b = [-0.010, -0.004, 0.006, 0.002, -0.003, 0.001]
+  f = lambda h: math.exp(b[0]*h[0]**2 + b[1]*h[1]**2 + b[2]*h[2]**2 +
+    b[3]*h[0]*h[1] + b[4]*h[0]*h[2] + b[5]*h[1]*h[2])
+  fit = llgi_maps.fit_anisobeta(idx, flex.double([f(h) for h in idx]))
+  assert approx_equal(list(fit.coefficients), b, eps=1e-10)
+  assert fit.rms_log_residual < 1e-10
+  other = flex.miller_index([(7, 3, -2), (0, 9, 4)])
+  assert approx_equal(fit.evaluate(other), [f(h) for h in other], eps=1e-9)
+
 def exercise_compute_on_fmodel():
   from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
   fmodel = build_llgi_fmodel(40, 2.2, seed=3, rice_kappa=0.1)
   llgi_data = fmodel.llgi_data()
   f_obs = fmodel.f_obs()
-  aniso = f_obs.array(data=flex.double(
-    [0.8 + 0.4*((i*37) % 11)/10. for i in range(f_obs.size())]))
+  # anisotropy as nacelle writes it, exp(h^T B h)
+  quad = lambda h: math.exp(-0.002*h[0]**2 + 0.001*h[1]**2 + 0.0005*h[2]**2
+    + 0.0003*h[0]*h[1])
+  aniso = f_obs.array(data=flex.double([quad(h) for h in f_obs.indices()]))
   fmodel.set_llgi_data(llgi_hybrid.replace_llgi_data(llgi_data,
     anisobeta=aniso))
+  # default: the maps with nacelle's anisotropy removed
   r = llgi_maps.compute(fmodel)
+  assert [a[0] for a in r.arrays] == ["IWT", "IWT_fill", "dIWT"]
+  # with anisotropic_maps: the _aniso versions as well
+  p = llgi_maps.llgi_map_params.extract()
+  p.anisotropic_maps = True
+  r = llgi_maps.compute(fmodel, params=p)
   labels = [a[0] for a in r.arrays]
-  assert labels == ["LLGI_FILLED", "LLGI_BIASRED", "LLGI_DIFF",
-    "LLGI_BIASRED_E", "LLGI_DIFF_E"], labels
+  assert labels == ["IWT", "IWT_fill", "dIWT", "IWT_aniso", "IWT_fill_aniso",
+    "dIWT_aniso"], labels
   arrays = dict(r.arrays)
   n = f_obs.size()
-  assert arrays["LLGI_FILLED"].size() == n + r.n_filled
-  for k in labels[1:]:
+  for k in ["IWT", "dIWT", "IWT_aniso", "dIWT_aniso"]:
     assert arrays[k].size() == n
     assert arrays[k].indices().all_eq(f_obs.indices())
-  # F scale = RESN/sqrt(ANISOBETA)
-  resn = fmodel.llgi_data().resn.data()
-  ratio = flex.abs(arrays["LLGI_DIFF"].data()) / flex.abs(
-    arrays["LLGI_DIFF_E"].data()).set_selected(
-      flex.abs(arrays["LLGI_DIFF_E"].data()) == 0, 1)
-  sel = flex.abs(arrays["LLGI_DIFF_E"].data()) > 1e-6
-  assert approx_equal(ratio.select(sel),
-    (resn / flex.sqrt(aniso.data())).select(sel), eps=1e-9)
-  # sigmaA clamp, and the phase of the coefficients is the model phase
+  for k in ["IWT_fill", "IWT_fill_aniso"]:
+    assert arrays[k].size() == n + r.n_filled
+  ce = r.coefficients_e
+  resn = fmodel.llgi_data().resn.data()   # TEPS = 1 here
+  sel = flex.abs(ce.difference) > 1e-6
+  # default F scale RESN/sqrt(ANISOBETA); _aniso: RESN
+  assert approx_equal(r.f_scale, resn / flex.sqrt(aniso.data()), eps=1e-12)
+  assert approx_equal(r.f_scale_aniso, resn, eps=1e-12)
+  for lab, coef, scale in [("IWT", ce.bias_reduced, r.f_scale),
+      ("dIWT", ce.difference, r.f_scale),
+      ("IWT_aniso", ce.bias_reduced, resn),
+      ("dIWT_aniso", ce.difference, resn)]:
+    assert approx_equal(flex.abs(arrays[lab].data()).select(sel),
+      flex.abs(coef * scale).select(sel), eps=1e-9), lab
+  # the fill maps on the reflections used: the fill coefficient
+  for lab, scale in [("IWT_fill", r.f_scale), ("IWT_fill_aniso", resn)]:
+    obs = arrays[lab].common_set(f_obs)
+    assert approx_equal(flex.abs(obs.data()), flex.abs(ce.fill * scale),
+      eps=1e-9), lab
+  # added reflections: the two fill maps differ by sqrt(ANISOBETA(h))
+  if(r.n_filled > 0):
+    a = arrays["IWT_fill_aniso"].lone_set(f_obs)
+    b = arrays["IWT_fill"].common_set(a)
+    ratio = flex.abs(a.data()) / flex.abs(b.data())
+    assert approx_equal(ratio,
+      flex.sqrt(flex.double([quad(h) for h in a.indices()])), eps=1e-6)
   assert flex.max(r.sigmaa) <= llgi_maps.SIGMAA_MAX
-  # without anisotropy removal
-  p = llgi_maps.llgi_map_params.extract()
-  p.remove_anisotropy = False
-  p.e_scale = False
-  r2 = llgi_maps.compute(fmodel, params=p)
-  assert [a[0] for a in r2.arrays] == labels[:3]
-  d2 = dict(r2.arrays)["LLGI_DIFF"]
-  assert approx_equal(flex.abs(d2.data()).select(sel),
-    (flex.abs(arrays["LLGI_DIFF_E"].data()) * resn).select(sel), eps=1e-9)
 
 def run():
   exercise_handoff_fixtures()
   exercise_phi_table_limits()
   exercise_no_measurement_error()
+  exercise_fit_anisobeta()
   exercise_compute_on_fmodel()
   print("OK")
 
