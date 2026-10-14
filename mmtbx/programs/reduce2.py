@@ -1259,8 +1259,19 @@ NOTES:
     self.model = self.data_manager.get_model()
 
     self.model = self.model.select(~self.model.selection('element X'))
-    if self.model.is_ca_only():
+    # CA and/or P trace; waters and ions do not count
+    names = set()
+    for ag in self.model.get_hierarchy().atom_groups():
+      if common_residue_names_get_class(name=ag.resname) in (
+          'common_water', 'common_element'): continue
+      names.update(n.strip() for n in ag.atoms().extract_name())
+      if not names <= {'CA', 'P'}: break
+    if names == {'CA'}:
       raise Sorry("The model contains only CA atoms (CA trace); H atoms cannot be placed.")
+    if names == {'P'}:
+      raise Sorry("The model contains only P atoms (P trace); H atoms cannot be placed.")
+    if names == {'CA', 'P'}:
+      raise Sorry("The model contains only CA and P atoms (CA/P trace); H atoms cannot be placed.")
 
     # qmready=True
     if self.params.qmready:
