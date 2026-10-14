@@ -1,14 +1,19 @@
 """
-clashscore2's per-atom-pair contact records must give the same results as the per-dot
-JSON parse they replace.
+probe2 output.cxx_dots and clashscore2's per-atom-pair contact records must give the same
+results as the Python dot loop and the per-dot JSON parse they replace.
 """
 from __future__ import absolute_import, division, print_function
-import time
+import re, time
+import iotbx.cli_parser
 import iotbx.phil
+import iotbx.pdb
 import libtbx.load_env
+import mmtbx.model
 from iotbx.data_manager import DataManager
 from libtbx.utils import null_out
+from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.probe import Helpers
+from mmtbx.programs import probe2
 from mmtbx.validation import clashscore2
 
 # Alternates on a backbone and a side chain, partial-occupancy waters (from tst_clashscore_2).
@@ -105,6 +110,45 @@ HETATM  230  O   HOH A 247      23.962   1.544  18.100  0.26  4.79           O
 END
 """
 
+def hydrogenated():
+  """(hierarchy, crystal symmetry) of the model with H placed."""
+  inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  model = mmtbx.model.manager(model_input=inp, log=null_out())
+  ph = reduce_hydrogen.place_hydrogens(model=model)
+  ph.run()
+  return ph.get_model().get_hierarchy(), model.crystal_symmetry()
+
+def fresh_model(hierarchy, symmetry):
+  # A new model each run: probe2 adds Phantom Hydrogens to the waters of the one it runs on.
+  return mmtbx.model.manager(model_input=None, pdb_hierarchy=hierarchy.deep_copy(),
+                             crystal_symmetry=symmetry, log=null_out())
+
+def run_probe2(model, args):
+  parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
+  parser.parse_args(args + ["output.write_files=False", "ignore_lack_of_explicit_hydrogens=True"])
+  dm = DataManager()
+  dm.add_model("model", model)
+  p2 = probe2.Program(dm, parser.working_phil.extract(), master_phil=parser.master_phil,
+                      logger=null_out())
+  p2.overrideModel(model)
+  # The header carries the time of the run.
+  return re.sub(r"run \d{4}-\d\d-\d\d \d\d:\d\d:\d\d", "run <time>", p2.run()[1])
+
+def exercise_cxx_dots():
+  h = hydrogenated()
+  for args in (["output.format=kinemage"],
+               ["output.format=kinemage", "output.report_vdws=False"],
+               ["output.format=raw"],
+               ["output.format=json"],
+               ["output.count_dots=True"],
+               # Waters as source take the Phantom Hydrogen path.
+               ["approach=both", "source_selection=water", "target_selection=all",
+                "output.format=raw"]):
+    python = run_probe2(fresh_model(*h), args + ["output.cxx_dots=False"])
+    cxx = run_probe2(fresh_model(*h), args + ["output.cxx_dots=True"])
+    assert len(python.splitlines()) > 5, (args, python)
+    assert cxx == python, args
+
 def run_clashscore2(**kwds):
   dm = DataManager()
   dm.process_model_str("model", pdb_str)
@@ -128,6 +172,7 @@ def exercise_contact_records():
 if (__name__ == "__main__"):
   if (libtbx.env.has_module("reduce") and libtbx.env.has_module("probe")):
     t0 = time.time()
+    exercise_cxx_dots()
     exercise_contact_records()
     print("OK. Time: %8.3f" % (time.time() - t0))
   else:
