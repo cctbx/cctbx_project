@@ -1392,12 +1392,16 @@ class place_hydrogens():
     hs_on = {}
     for h, p in parent.items():
       if p in heavy: hs_on.setdefault(p, []).append(h)
+    altloc = lambda i: atoms[i].parent().altloc.strip()
     remove = set()
     for p, hs in hs_on.items():
       if len(hs) < 2: continue
       for b in heavy[p]:
-        kept = [h for h in hs if b in angle_to.get(h, ())]
-        if kept: remove.update(h for h in hs if h not in kept)
+        # one H per altloc, each with its own neighbour (7a5m ALA A 103)
+        hs_b = [h for h in hs
+                if '' in (altloc(h), altloc(b)) or altloc(h) == altloc(b)]
+        kept = [h for h in hs_b if b in angle_to.get(h, ())]
+        if kept: remove.update(h for h in hs_b if h not in kept)
     if remove:
       sel = flex.bool(elements.size(), True).set_selected(
         flex.size_t(sorted(remove)), False)
