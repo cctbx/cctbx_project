@@ -129,6 +129,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
         af::const_ref<double> const& tncs_u,
         af::const_ref<double> const& tncs_t)
       {
+        CCTBX_ASSERT(tncs_t.size() == tncs_u.size());
         bool tncs = tncs_u.size() != 0;
         CCTBX_ASSERT(!tncs || (tncs_u.size() == e_eff.size()
                             && tncs_t.size() == e_eff.size()));

@@ -24,8 +24,8 @@ def rice_dobs_eeff(e_obs_sq, sig_e_obs_sq, centric_flags):
   return dobs, eeff, ~rm.valid
 
 def make_case(n, centric, seed=0):
-  """ Intensities and a model with tNCS: per reflection a (effective
-  sigmaA, E scale), u (error-variance modulation), resn, fc, I, sig(I). """
+  """ Intensities and a model with tNCS: per reflection a (sigmaA), u
+  (error-variance modulation), resn, fc, I, sig(I). """
   def frac(i, k): return ((seed + 7 * i + k) * 0.6180339887) % 1.0
   case = dict(n=n, centric=flex.bool(n, centric))
   case["a"] = flex.double([0.35 + 0.5 * frac(i, 1) for i in range(n)])
@@ -74,7 +74,7 @@ def f_scale_target(case, t, data, hybrid=True, f_calc=None, sigmaa=None,
     hybrid=data["hybrid"] if hybrid else None,
     tncs_u=case["u"] if tncs else flex.double(), tncs_t=t if tncs else flex.double())
 
-def absolute_log_likelihood(case, t, target_per_reflection, data):
+def absolute_log_likelihood(case, target_per_reflection, data):
   """ log p(I) from a target computed in the t-normalised frame (exact
   path): LLGI + M(0,b) - ln(sqrt(2 pi) sig_I) [- ln(2 pi)/2 centric] """
   out = flex.double()
@@ -101,7 +101,7 @@ def reference_log_likelihood(case):
     e_calc=ec, sigmaa=a, centric_flags=case["centric"])
   h = ext.llgi_hybrid(e_obs_sq=e_obs_sq, sig_e_obs_sq=sig,
     force_exact=flex.bool(n, False), centric_flags=case["centric"], rice_kappa=0.)
-  return absolute_log_likelihood(case, None, -r.ll, dict(hybrid=h))
+  return absolute_log_likelihood(case, -r.ll, dict(hybrid=h))
 
 def assert_gradient(ana, fd, label):
   """ finite-difference agreement to 1e-5 relative: the exact kernel's
@@ -116,7 +116,7 @@ def exercise_identity_without_modulation(centric):
   one = flex.double(n, 1.)
   case["u"] = one
   sigmaa = case["a"] * 0.9; scatfrac = flex.double([0.9 + 0.005 * i for i in range(n)])
-  assert flex.max(sigmaa * 1.1 / flex.sqrt(scatfrac)) < 1
+  assert flex.max(sigmaa) < 0.999   # the hybrid's exact path needs sigmaA < 0.999
   for rice_kappa in (0.0, 0.1, None):
     data = normalised_data(case, one, rice_kappa if rice_kappa is not None else 0.)
     use_h = rice_kappa is not None
@@ -126,6 +126,7 @@ def exercise_identity_without_modulation(centric):
       scatfrac=scatfrac, k=1.1, compute_gradients=True, tncs=True)
     assert approx_equal(r0.target_per_reflection(), r1.target_per_reflection(), eps=1e-12)
     assert approx_equal(r0.gradients_work(), r1.gradients_work(), eps=1e-12)
+    assert r0.n_exact() == r1.n_exact()
     sel = flex.bool([i % 3 != 0 for i in range(n)])
     args = dict(f_eff=data["f_eff"], selection=sel, f_calc=case["f_calc"],
       dobs=data["dobs"], sigmaa=sigmaa, scatfrac=scatfrac, scale_factor=1.1,
@@ -136,6 +137,7 @@ def exercise_identity_without_modulation(centric):
     assert approx_equal(s0.target(), s1.target(), eps=1e-12)
     assert approx_equal(s0.d_target_by_dsigmaa(), s1.d_target_by_dsigmaa(), eps=1e-12)
     assert approx_equal(s0.d_target_by_dscatfrac(), s1.d_target_by_dscatfrac(), eps=1e-12)
+    assert s0.n_exact() == s1.n_exact()
     e_args = dict(e_eff=data["eeff"], selection=sel,
       e_model=flex.abs(case["f_calc"]), dobs=data["dobs"], sigmaa=sigmaa,
       centric_flags=case["centric"], hybrid=data["hybrid"] if use_h else None)
@@ -143,6 +145,7 @@ def exercise_identity_without_modulation(centric):
     e1 = ext.llgi_e_sigmaa_target_and_gradients(tncs_u=one, tncs_t=one, **e_args)
     assert approx_equal(e0.target(), e1.target(), eps=1e-12)
     assert approx_equal(e0.d_target_by_dsigmaa(), e1.d_target_by_dsigmaa(), eps=1e-12)
+    assert e0.n_exact() == e1.n_exact()
 
 def exercise_exact_path_is_absolute_likelihood(centric):
   """ exact path: the absolute log p(I) does not depend on the
@@ -152,7 +155,7 @@ def exercise_exact_path_is_absolute_likelihood(centric):
   for t in (t_consistent(case), t_consistent(case, scale=1.4, offset=0.3)):
     data = normalised_data(case, t, rice_kappa=0.)
     r = f_scale_target(case, t, data)
-    absolute = absolute_log_likelihood(case, t, r.target_per_reflection(), data)
+    absolute = absolute_log_likelihood(case, r.target_per_reflection(), data)
     assert r.n_exact() == case["n"]
     assert approx_equal(absolute, ref, eps=1e-8)
 
@@ -205,8 +208,7 @@ def exercise_sigmaa_scatfrac_gradients(centric):
   sigmaa = case["a"] * 0.8
   scatfrac = flex.double([0.6 + 0.03 * i for i in range(n)])
   k = 1.05
-  # effective a = sigmaa*k/sqrt(scatfrac) must stay below 1
-  assert flex.max(sigmaa * k / flex.sqrt(scatfrac)) < 1
+  assert flex.max(sigmaa) < 0.999   # the hybrid's exact path needs sigmaA < 0.999
   sel = flex.bool([i % 4 != 1 for i in range(n)])
   for rice_kappa in (0., None):
     data = normalised_data(case, t, 0. if rice_kappa is None else rice_kappa)

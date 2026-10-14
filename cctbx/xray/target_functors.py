@@ -103,9 +103,10 @@ class llgi(object):
   reflections evaluated with the exact LLGI (mmtbx.refinement.
   llgi_hybrid).
 
-  tncs_u, tncs_t (optional, flex.double): the tNCS modulations of the
-  error variance and of the expected intensity (llgi.h tncs_frame); f_eff
-  and the hybrid's observations are then normalised by tncs_t.
+  tncs_u, tncs_t (optional, flex.double, both or neither): the tNCS
+  modulations of the error variance and of the expected intensity (llgi.h
+  tncs_frame); f_eff and the hybrid's observations are then normalised by
+  tncs_t, and teps must be all ones.
   """
 
   def __init__(self,
@@ -120,6 +121,7 @@ class llgi(object):
         hybrid=None,
         tncs_u=None,
         tncs_t=None):
+    assert (tncs_u is None) == (tncs_t is None)
     adopt_init_args(self, locals())
     self.centric_flags = f_eff.centric_flags().data()
 

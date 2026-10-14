@@ -7,8 +7,8 @@ import math
 
 def make_inputs(n_refl, centric, seed=0, teps=1.0):
   # Deterministic pseudo-random-ish inputs (no RNG dependency) covering a
-  # spread of magnitudes, chosen so that dobs*sigmaa/sqrt(scatfrac) stays
-  # comfortably below sqrt(teps) (i.e. v_e = teps - d^2 > 0) for every
+  # spread of magnitudes, chosen so that dobs*sigmaa stays comfortably
+  # below sqrt(teps) (i.e. v_e = teps - (dobs*sigmaa)^2 > 0) for every
   # reflection, avoiding the negative-variance guard in the basic checks.
   f_eff = flex.double([0.3 + 0.17 * ((seed + i) % 7) for i in range(n_refl)])
   dobs = flex.double([0.4 + 0.05 * ((seed + i) % 6) for i in range(n_refl)])
@@ -104,7 +104,7 @@ def exercise_negative_variance_guard():
   # rather than producing a NaN/inf or spurious gradient.
   n_refl = 3
   inputs = make_inputs(n_refl, centric=False, seed=5)
-  # Force d^2 to exceed teps for every reflection.
+  # Force (dobs*sigmaa)^2 to exceed teps for every reflection.
   inputs["dobs"] = flex.double([0.95, 0.9, 0.97])
   inputs["sigmaa"] = flex.double([0.9, 0.9, 0.9])
   inputs["scatfrac"] = flex.double([1.0, 1.0, 1.0])
@@ -119,10 +119,9 @@ def exercise_negative_variance_guard():
 def exercise_scatfrac_sensitivity():
   # Construct f_calc tuned so that d*fc == feff exactly (d = dobs*sigmaa/
   # sqrt(scatfrac), the mean's coefficient), i.e. the best possible fit
-  # for this scatfrac. Moving
-  # scatfrac away from that tuned value should make the fit worse
-  # (target_work, a minimize-me quantity, increases), since fc no longer
-  # matches the (now different) effective d.
+  # for this scatfrac. Moving scatfrac away from that tuned value should
+  # make the fit worse (target_work, a minimize-me quantity, increases),
+  # since fc no longer matches the (now different) d.
   n_refl = 6
   inputs = make_inputs(n_refl, centric=False, seed=2)
   tuned = dict(inputs)
@@ -259,8 +258,7 @@ def exercise_target_matches_three_term_form():
 def exercise_target_is_symmetric_in_feff_and_fc():
   # The target depends on feff and fc through (D^2/teps)*feff^2,
   # (d*fc)^2 and the Bessel argument, so at teps == 1, scatfrac == 1 and
-  # k == 1 (d == D) swapping
-  # feff and fc must leave it unchanged.
+  # k == 1 (d == D) swapping feff and fc must leave it unchanged.
   import random
   rnd = random.Random(13)
   for trial in range(200):

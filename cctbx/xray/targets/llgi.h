@@ -47,7 +47,9 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
                  only (see above).
       k        = overall scale coefficient (values <= 0 are taken as 1).
       teps     = per-reflection tNCS-adjusted normalization factor (nacelle
-                 TEPS column); equals 1 in the ordinary case (no tNCS).
+                 TEPS column); equals 1 in the ordinary case (no tNCS), and
+                 must be all ones when the tncs_u/tncs_t arrays are given
+                 (the tNCS modulation then comes from tncs_t).
       resn     = per-reflection Root-EpsilonSigmaN normalization (nacelle
                  RESN column), i.e. sqrt(epsilon * mean intensity at this
                  resolution).
@@ -447,6 +449,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
         af::const_ref<double> const& tncs_u,
         af::const_ref<double> const& tncs_t)
       {
+        CCTBX_ASSERT(tncs_t.size() == tncs_u.size());
         bool tncs = tncs_u.size() != 0;
         CCTBX_ASSERT(!tncs || (tncs_u.size() == f_eff.size()
                             && tncs_t.size() == f_eff.size()));
@@ -632,6 +635,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
         af::const_ref<double> const& tncs_u,
         af::const_ref<double> const& tncs_t)
       {
+        CCTBX_ASSERT(tncs_t.size() == tncs_u.size());
         bool tncs = tncs_u.size() != 0;
         CCTBX_ASSERT(!tncs || (tncs_u.size() == f_eff.size()
                             && tncs_t.size() == f_eff.size()));
