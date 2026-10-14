@@ -303,6 +303,12 @@ def exercise_moments_form():
   s_k = llgi_scatfrac.scatfrac_moments(f_calc, flex.double(n, 1.), resn, dss,
     n_bins=10, scale_factor=k)
   assert approx_equal(s_k, s_m * k * k)
+  # a reflection with RESN = 0 is left out of the bin means
+  resn_0 = resn.deep_copy(); resn_0[7] = 0
+  s_0 = llgi_scatfrac.scatfrac_moments(f_calc, flex.double(n, 1.), resn_0,
+    dss, n_bins=10)
+  assert all(math.isfinite(x) for x in s_0)
+  assert flex.max(flex.abs(s_0 / s_m - 1)) < 0.05
   f_eff = flex.double([rs.uniform(1, 30) for i in range(n)])
   dobs = flex.double([rs.uniform(0.5, 1) for i in range(n)])
   sigmaa = flex.double(n, 0.8)

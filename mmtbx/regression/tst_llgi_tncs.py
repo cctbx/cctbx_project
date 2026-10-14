@@ -71,10 +71,11 @@ def exercise_groups(h):
   return groups
 
 def direct_pair_term(ms, sites_m, sites_n, z_sq, b_sum):
-  """ (1/Nsym) sum_k sum_j w_j exp(2 pi i (T_k^T h).d_j) / sum_j w_j """
+  """ (1/Nsym) sum_k sum_j w_j exp(2 pi i (T_k^T h).d_j) / sum_j w_j over
+  all the space group's operators (inversion and centring included) """
   d = sites_m - sites_n
   out = flex.double()
-  rots = [op.r().as_double() for op in ms.space_group().smx()]
+  rots = [op.r().as_double() for op in ms.space_group().all_ops()]
   for h, ss in zip(ms.indices(), ms.d_star_sq().data()):
     w = z_sq * flex.exp(-b_sum * (ss / 4.))
     tot = 0
@@ -151,6 +152,25 @@ def exercise_pair_term(groups, xrs):
   hi = ms.d_spacings().data() < 7.
   rms = lambda x: math.sqrt(flex.mean(flex.pow2(x.select(hi))))
   assert rms(noisy_cons.a) > rms(noisy.a) * 1.05, (rms(noisy_cons.a), rms(noisy.a))
+
+def exercise_pair_term_centrosymmetric():
+  """ P-1: the pair term counts the inversion (Re is the same for R and -R) """
+  cs = crystal.symmetry(unit_cell=(40, 45, 50, 80, 95, 100),
+    space_group_symbol="P -1")
+  rnd = random.Random(4)
+  n = 80
+  m = flex.vec3_double([(rnd.uniform(0.3, 0.5), rnd.uniform(0.3, 0.5),
+    rnd.uniform(0.3, 0.5)) for i in range(n)])
+  copy = m + flex.vec3_double(n, (0.03, 0.5, 0.02)) + flex.vec3_double([
+    tuple(rnd.gauss(0, 0.004) for k in range(3)) for i in range(n)])
+  z_sq = flex.double(n, 64.); b_sum = flex.double(n, 40.)
+  ms = miller.build_set(cs, anomalous_flag=False, d_min=5.0)
+  p_fft = llgi_tncs.pair_term(ms, copy, m, z_sq, b_sum)
+  p_dir = direct_pair_term(ms, copy, m, z_sq, b_sum)
+  slope = flex.sum(p_fft * p_dir) / flex.sum(p_dir * p_dir)
+  rms = math.sqrt(flex.mean(flex.pow2(p_fft - p_dir)))
+  assert abs(slope - 1) < 0.02 and rms < 0.01, (slope, rms)  # not 0.5
+  assert flex.max(flex.abs(p_dir)) > 0.5
 
 def exercise_renormalise():
   n = 50
@@ -310,6 +330,16 @@ def exercise_fmodel_integration(h, xrs):
   xrs.scatterers().flags_set_grad_site(
     iselection=flex.size_t(range(xrs.scatterers().size())))
   fmodel = synthetic_fmodel(h, xrs)
+  # no tNCS treatment when switched off or without tNCS groups
+  p = llgi_tncs.llgi_tncs_params.extract()
+  p.enabled = False
+  assert llgi_tncs.setup(fmodel.llgi_data(), fmodel.f_obs(), h, xrs,
+    params=p) is None
+  no_b = h.atom_selection_cache().selection("not chain B")
+  h_no_b = h.select(no_b)
+  h_no_b.atoms().reset_i_seq()
+  assert llgi_tncs.setup(fmodel.llgi_data(), fmodel.f_obs(), h_no_b,
+    xrs.select(no_b)) is None
   log = StringIO()
   new = llgi_tncs.setup(fmodel.llgi_data(), fmodel.f_obs(), h, xrs, log=log)
   assert new is not None
@@ -336,7 +366,14 @@ def exercise_fmodel_integration(h, xrs):
   # (d target/d Fcalc is checked by finite differences in
   # cctbx/xray/targets/tst_llgi_tncs.py)
   assert flex.max(flex.abs(g)) > 0 and all(math.isfinite(x) for x in g)
-  assert fmodel.llgi_hybrid_counts() is not None
+  # the Python frame (llgi_tncs.frame, as in llgi_hybrid_counts) and the
+  # C++ functor make the same exact/Rice choice (the functor counts the
+  # working set)
+  exact = llgi_hybrid.get_hybrid(ld).exact_selection(
+    llgi_tncs.frame(sa, u, t)[0])
+  work = ~fmodel.r_free_flags().data()
+  assert (exact & work).count(True) == tf.core_result.n_exact()
+  assert fmodel.llgi_hybrid_counts().n_exact == exact.count(True)
   # statistics/map helper and LLGI maps
   mch = fmodel.map_calculation_helper_llgi()
   assert mch.n_exact > 0
@@ -344,6 +381,24 @@ def exercise_fmodel_integration(h, xrs):
   maps = llgi_maps.compute(fmodel)
   for label, a in maps.arrays:
     assert flex.max(flex.abs(a.data())) < 1e10, label
+  # sigmaA and ScatFrac refitted with atoms removed (as for the ADP weight,
+  # mmtbx.refinement.weights.adp_gradients): the tNCS frame and the data
+  # are kept; refitting the tNCS treatment itself needs the full model
+  fd = fmodel.deep_copy()
+  keep = h.atom_selection_cache().selection("not chain D")
+  fd.update_xray_structure(xray_structure=fd.xray_structure.select(keep),
+    update_f_calc=True)
+  u0, f0 = fd.llgi_data().tncs_u.data().deep_copy(), fd.f_obs().data().deep_copy()
+  r = fd.update_llgi_sigmaa_scatfrac(refit_tncs=False)
+  assert r.sigmaa.size() == u0.size() and flex.max(r.sigmaa) > 0
+  assert fd.llgi_data().tncs_u.data().all_eq(u0)
+  assert fd.f_obs().data().all_eq(f0)
+  try:
+    fd.update_llgi_sigmaa_scatfrac()
+  except AssertionError as e:
+    assert "tNCS groups were found for a model with" in str(e)
+  else:
+    raise RuntimeError("expected the atom-count check")
   # a selection keeps the tNCS arrays aligned
   sel = fmodel.f_obs().d_spacings().data() > 4.0
   fs = fmodel.select(sel)
@@ -362,6 +417,7 @@ def run():
   h, xrs = build_model()
   groups = exercise_groups(h)
   exercise_pair_term(groups, xrs)
+  exercise_pair_term_centrosymmetric()
   exercise_renormalise()
   exercise_fits(groups, xrs)
   exercise_fmodel_integration(h, xrs)

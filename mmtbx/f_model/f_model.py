@@ -1774,11 +1774,15 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     (checked here), optional intensities and hybrid settings (see
     mmtbx.refinement.llgi_hybrid), and, once update_llgi_sigmaa_scatfrac()
     has run, .sigmaa, .sigmaa_curve (sigmaA as a function of d*^2) and
-    .scatfrac.
+    .scatfrac; with tNCS (mmtbx.refinement.llgi_tncs) also .tncs_u,
+    .tncs_t, .e_obs_sq_base and .sig_e_obs_sq_base on the same index set.
     """
     if(llgi_data is not None):
       f_obs = self._f_obs
-      for name in ["dobs", "feff", "teps", "resn"]:
+      names = ["dobs", "feff", "teps", "resn"]
+      if(getattr(llgi_data, "tncs_state", None) is not None):
+        names += ["tncs_u", "tncs_t", "e_obs_sq_base", "sig_e_obs_sq_base"]
+      for name in names:
         array = getattr(llgi_data, name, None)
         if(array is None):
           raise Sorry(
@@ -1824,7 +1828,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     return group_args(n=exact.size(), n_exact=exact.count(True),
       n_forced=(exact & hybrid.force_exact).count(True))
 
-  def update_llgi_sigmaa_scatfrac(self, params=None, e_params=None):
+  def update_llgi_sigmaa_scatfrac(self, params=None, e_params=None,
+        refit_tncs=True):
     """ Fit sigmaA and ScatFrac against the current model
     (mmtbx.refinement.llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f) and
     attach .sigmaa, .sigmaa_curve and .scatfrac to llgi_data. Called by
@@ -1838,6 +1843,10 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     e_params: extracted mmtbx.refinement.llgi_e_sigmaa.
     llgi_e_sigmaa_params (phenix.refine's llgi_data.e_scale_sigmaa),
     or None for defaults.
+    refit_tncs: with tNCS, also refit the coherence and A(h) and
+    renormalise the data (llgi_tncs.fit_and_renormalise); False keeps the
+    tNCS frame (llgi_tncs.refit_sigmaa_scatfrac), for temporary changes to
+    the model such as atoms removed.
     """
     llgi_data = self.llgi_data()
     if(llgi_data is None):
@@ -1855,8 +1864,11 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       fit_params=group_args(scatfrac=params, e_scale=e_params))
     self.set_llgi_data(llgi_data)
     if(getattr(llgi_data, "tncs_state", None) is not None):
-      # tNCS: also tau, and the data renormalised (f_obs = Feff changes)
       import mmtbx.refinement.llgi_tncs as llgi_tncs
+      if(not refit_tncs):
+        return llgi_tncs.refit_sigmaa_scatfrac(self, scatfrac_params=params,
+          e_params=e_params)
+      # also the coherence, and the data renormalised (f_obs = Feff changes)
       return llgi_tncs.fit_and_renormalise(self, scatfrac_params=params,
         e_params=e_params)
     f_obs = self.f_obs()

@@ -20,8 +20,9 @@ different resolutions; c_mn(s) = sum_j w_j / sqrt(sum_j Z_j^2 exp(-B_jm
 s^2/2) sum_j Z_j^2 exp(-B_jn s^2/2)) <= 1, the loss of coherence from
 B-factor differences between corresponding atoms; sums over j are over
 the atoms common to all copies of the group, in the frame of the group's
-reference copy; T_k the rotations of the space group). Pbar is the
-structure factor
+reference copy; T_k the rotations of the space group's representative
+operators, Nsym of them, without the inversion: with a centre of symmetry,
+R and -R give the same real part). Pbar is the structure factor
 of pseudo-atoms at the difference vectors, with constant scattering Z^2
 and B = B_m + B_n, in the symmorphic group with the same rotations, so one
 FFT structure-factor calculation per pair gives it (pair_modulation).
@@ -109,11 +110,13 @@ class tncs_groups(object):
   .groups: list of group_args(chain_ids, i_seqs (one flex.size_t per copy,
   aligned: the common atoms), chain_i_seqs (one flex.size_t per copy: all
   its polymer atoms, for the scattering fractions), ops (rt_mx per copy),
-  angles (degrees, relative to the reference copy)).
+  angles (degrees, relative to the reference copy)); .n_atoms: the number
+  of atoms in the model, which the i_seqs index.
   """
   def __init__(self, pdb_hierarchy, crystal_symmetry, angle_max=10.,
                min_identity=0.9, min_overlap=0.5, min_atoms=50):
     self.crystal_symmetry = crystal_symmetry
+    self.n_atoms = pdb_hierarchy.atoms().size()
     sites_frac = crystal_symmetry.unit_cell().fractionalize(
       pdb_hierarchy.atoms().extract_xyz())
     chains = []
@@ -231,7 +234,7 @@ def pair_term(miller_set, sites_frac_m, sites_frac_n, z_sq, b_sum):
   # quality_factor 1e5: errors in Pbar ~0.001 rms (the default, ~0.02)
   fc = ms.structure_factors_from_scatterers(xray_structure=xrs,
     algorithm="fft", quality_factor=100000).f_calc().data()
-  nsym = miller_set.space_group().order_p()
+  nsym = miller_set.space_group().n_smx()   # the operators in symmorphic_group
   norm = _weight_sums(miller_set.d_star_sq().data(), z_sq, b_sum)
   return flex.real(fc) / (nsym * norm)
 
@@ -262,6 +265,9 @@ def pair_modulation(miller_set, groups, xray_structure, basis="model"):
   largest fraction of the scattering in tNCS groups at any
   resolution)). """
   assert basis in ("model", "consensus")
+  assert xray_structure.scatterers().size() == groups.n_atoms, (
+    "tNCS groups were found for a model with %d atoms; this structure has %d"
+    % (groups.n_atoms, xray_structure.scatterers().size()))
   w_sq = _atomic_weight_sq(xray_structure)
   w_total = flex.sum(w_sq)
   sites_frac = xray_structure.sites_frac()
@@ -434,8 +440,12 @@ class coherence_curve(object):
       self.gamma, self.v)
 
 # u is kept at least U_MIN where the model's own modulation exceeds the
-# true one by more than the coherence allows (T < sigmaA^2 M)
+# true one by more than the coherence allows (T < sigmaA^2 M); the same
+# floor applies to t0 = 1 + rho A and to u = 1 + tau A
 U_MIN = 0.02
+
+# fewer free reflections than this: the coherence (or tau) is fitted to all
+MIN_FIT_REFLECTIONS = 200
 
 def error_variance_modulation(sigmaa, a_model, a_cons, gamma):
   """ u = (T - sigmaA^2 M)/(1 - sigmaA^2), with T = 1 + Gamma A_cons and
@@ -614,6 +624,11 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
     params = llgi_tncs_params.extract()
   if(params.enabled is False):
     return None
+  assert getattr(llgi_data, "tncs_state", None) is None  # t would apply twice
+  if(getattr(llgi_data, "e_obs_sq", None) is None):
+    from libtbx.utils import Sorry
+    raise Sorry("The LLGI treatment of translational NCS needs the "
+      "intensities (I, SIGI); the LLGI data have none.")
   groups = tncs_groups(pdb_hierarchy, f_obs.crystal_symmetry(),
     angle_max=params.angle_max)
   if(log is not None): groups.show(log)
@@ -628,6 +643,7 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
   rho = fit_wilson_modulation(e_base, sig_base, centric, mod.a, dss,
     mod.f_total, linear=params.tau_linear_in_resolution)
   t0 = 1 + rho.at(dss) * mod.a
+  t0.set_selected(t0 < U_MIN, U_MIN)   # rho was checked on a subset only
   d = renormalise_e(e_base, sig_base, llgi_data.resn.data(), t0, centric)
   if(log is not None):
     print("tNCS: %.3f of the model's scattering in tNCS groups; data-only "
@@ -640,6 +656,67 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
       coherence=coherence_curve(min(max(rho.p0, 0.), 0.99), 0.2),
       f_total=mod.f_total, params=params))
 
+def _rice_kappa(llgi_data):
+  return llgi_data.hybrid_params.rice_kappa \
+    if getattr(llgi_data, "hybrid_params", None) is not None else 0.1
+
+def _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params, rice_kappa,
+      warnings):
+  """ ScatFrac (F scale, working set) in the u-frame, for the data d
+  (renormalise_e by u) """
+  import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
+  if(scatfrac_params is None):
+    scatfrac_params = llgi_scatfrac.llgi_scatfrac_params.extract()
+  f_obs = fmodel.f_obs()
+  centric = f_obs.centric_flags().data()
+  result = llgi_scatfrac.estimate_llgi_scatfrac(
+    f_eff=d.feff, working_selection=~fmodel.r_free_flags().data(),
+    f_calc=fmodel.f_model().data(), dobs=d.dobs, sigmaa=sigmaa,
+    teps=flex.double(f_obs.size(), 1.), resn=fmodel.llgi_data().resn.data(),
+    centric_flags=centric, d_star_sq=f_obs.d_star_sq().data(),
+    scale_factor=fmodel.scale_ml_wrapper(), params=scatfrac_params,
+    hybrid=_hybrid(d, centric, rice_kappa), tncs_u=u)
+  if(result.lbfgs_error is not None):
+    warnings.append("ScatFrac fit: L-BFGS stopped early: %s" %
+      result.lbfgs_error)
+  return result
+
+def refit_sigmaa_scatfrac(fmodel, scatfrac_params=None, e_params=None):
+  """ sigmaA and ScatFrac for fmodel's current model in the current tNCS
+  frame (u and t, and so the data, are kept; A(h) is not recomputed): for
+  refits on a copy of fmodel whose model is changed temporarily, e.g. with
+  atoms removed or B-factors shaken (mmtbx.refinement.weights.
+  adp_gradients). Returns a group_args as fit_and_renormalise. """
+  import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
+  llgi_data = fmodel.llgi_data()
+  f_obs = fmodel.f_obs()
+  centric = f_obs.centric_flags().data()
+  resn = llgi_data.resn.data()
+  rice_kappa = _rice_kappa(llgi_data)
+  u = llgi_data.tncs_u.data()
+  d = renormalise_e(llgi_data.e_obs_sq_base.data(),
+    llgi_data.sig_e_obs_sq_base.data(), resn, u, centric)
+  warnings = []
+  sigmaa_result = llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel(fmodel,
+    dobs=d.dobs, feff=d.eeff * resn, resn=resn, params=e_params,
+    hybrid=_hybrid(d, centric, rice_kappa), tncs_u=u)
+  if(sigmaa_result.lbfgs_error is not None):
+    warnings.append("sigmaA fit: L-BFGS stopped early: %s" %
+      sigmaa_result.lbfgs_error)
+  sigmaa = sigmaa_result.sigmaa
+  scatfrac_result = _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params,
+    rice_kappa, warnings)
+  fmodel.set_llgi_data(replace_llgi_data(llgi_data,
+    sigmaa=f_obs.array(data=sigmaa), sigmaa_curve=sigmaa_result.evaluate_at,
+    scatfrac=f_obs.array(data=scatfrac_result.scatfrac),
+    _sigmaa_f_model=fmodel.f_model().data().deep_copy()))
+  return group_args(
+    sigmaa=sigmaa, sigmaa_curve=sigmaa_result.evaluate_at,
+    scatfrac=scatfrac_result.scatfrac, target=scatfrac_result.target,
+    scatfrac_inf=scatfrac_result.scatfrac_inf,
+    b_scatfrac=scatfrac_result.b_scatfrac, warnings=warnings, tau=None,
+    coherence=None, tncs_summary=None)
+
 def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
   """ Per macrocycle, for fmodel's current model and scales: A(h) (and
   A_cons(h) for coherence = physical); sigmaA (E scale, R-free set) and
@@ -650,33 +727,31 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
   estimate_sigmaa_e_then_scatfrac_f's, plus .tau or .coherence and
   .tncs_summary. """
   import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
-  import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
   llgi_data = fmodel.llgi_data()
   state = llgi_data.tncs_state
   params = state.params
-  if(scatfrac_params is None):
-    scatfrac_params = llgi_scatfrac.llgi_scatfrac_params.extract()
   f_obs = fmodel.f_obs()
   centric = f_obs.centric_flags().data()
   dss = f_obs.d_star_sq().data()
-  eps = f_obs.epsilons().data().as_double()
   n = f_obs.size()
   resn = llgi_data.resn.data()
   e_base = llgi_data.e_obs_sq_base.data()
   sig_base = llgi_data.sig_e_obs_sq_base.data()
-  rice_kappa = llgi_data.hybrid_params.rice_kappa \
-    if getattr(llgi_data, "hybrid_params", None) is not None else 0.1
+  rice_kappa = _rice_kappa(llgi_data)
   physical = getattr(params, "coherence", "tau") == "physical"
   a = pair_modulation(f_obs, state.groups, fmodel.xray_structure).a
   a_cons = pair_modulation(f_obs, state.groups, fmodel.xray_structure,
     basis="consensus").a if physical else None
-  e_model = flex.abs(llgi_e_sigmaa.build_e_model(
-    fmodel.f_model_no_aniso_scale().data(), eps, dss).e_model)
   tau, coherence = state.tau, getattr(state, "coherence", None)
+  warnings = []
   fit_selection = flex.bool(n, True)
   if(getattr(params, "fit_reflections", "all") == "free"):
-    fit_selection = fmodel.r_free_flags().data()
-  warnings = []
+    free = fmodel.r_free_flags().data()
+    if(free.count(True) >= MIN_FIT_REFLECTIONS):
+      fit_selection = free
+    else:
+      warnings.append("tNCS: only %d free reflections; the coherence is "
+        "fitted to all reflections" % free.count(True))
   n_low = 0
   u = llgi_data.tncs_u.data()     # the current frame, for the first sigmaA
   for cycle in range(max(1, params.n_cycles)):
@@ -686,6 +761,7 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
       dobs=d.dobs, feff=d.eeff * resn, resn=resn, params=e_params,
       hybrid=hybrid_u, tncs_u=u)
     sigmaa = sigmaa_result.sigmaa
+    e_model = sigmaa_result.e_model
     if(physical):
       coherence = fit_coherence(e_base, sig_base, centric, e_model, sigmaa,
         a, a_cons, dss, fit_selection, start=coherence)
@@ -695,7 +771,9 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
       tau = fit_tau(e_base, sig_base, flex.double(n, 1.), centric, e_model,
         sigmaa, a, dss, state.f_total, fit_selection,
         tau_start=[tau.p0, tau.p1], linear=params.tau_linear_in_resolution)
-      u = 1 + tau.at(dss) * a
+      u = 1 + tau.at(dss) * a   # tau was checked on fit_selection only
+      n_low = (u < U_MIN).count(True)
+      u.set_selected(u < U_MIN, U_MIN)
   if(sigmaa_result.lbfgs_error is not None):
     warnings.append("sigmaA fit: L-BFGS stopped early: %s" %
       sigmaa_result.lbfgs_error)
@@ -704,16 +782,8 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
       "%d reflections (error-variance modulation held at %g)" % (n_low,
       U_MIN))
   d = renormalise_e(e_base, sig_base, resn, u, centric)
-  scale_factor = fmodel.scale_ml_wrapper()
-  scatfrac_result = llgi_scatfrac.estimate_llgi_scatfrac(
-    f_eff=d.feff, working_selection=~fmodel.r_free_flags().data(),
-    f_calc=fmodel.f_model().data(), dobs=d.dobs, sigmaa=sigmaa,
-    teps=flex.double(n, 1.), resn=resn, centric_flags=centric,
-    d_star_sq=dss, scale_factor=scale_factor, params=scatfrac_params,
-    hybrid=_hybrid(d, centric, rice_kappa), tncs_u=u)
-  if(scatfrac_result.lbfgs_error is not None):
-    warnings.append("ScatFrac fit: L-BFGS stopped early: %s" %
-      scatfrac_result.lbfgs_error)
+  scatfrac_result = _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params,
+    rice_kappa, warnings)
   scatfrac = scatfrac_result.scatfrac
   t = expected_intensity_modulation(sigmaa, a, u)
   d = renormalise_e(e_base, sig_base, resn, t, centric)

@@ -157,13 +157,17 @@ def scatfrac_moments(f_calc, teps, resn, d_star_sq, n_bins=20,
       scale_factor=1.0):
   """ ScatFrac as the model's own normalisation: <k^2 |F_calc|^2/(TEPS
   RESN^2)> in n_bins equal-count resolution bins, interpolated linearly
-  in d*^2 between bin means (constant beyond the outermost means). """
+  in d*^2 between bin means (constant beyond the outermost means).
+  Reflections with TEPS or RESN <= 0 are left out of the bin means. """
   import numpy as np
   k = scale_factor if scale_factor > 0 else 1.0
-  x = np.array(flex.norm(f_calc) * (k * k) / (teps * resn * resn))
   dss = np.array(d_star_sq)
+  ok = np.array((teps > 0) & (resn > 0))
+  x = np.zeros(dss.size)
+  x[ok] = np.array(flex.norm(f_calc) * (k * k) / (teps * resn * resn))[ok]
   order = np.argsort(dss)
-  bins = [c for c in np.array_split(order, max(1, min(n_bins, x.size)))
+  order = order[ok[order]]
+  bins = [c for c in np.array_split(order, max(1, min(n_bins, order.size)))
           if c.size > 0]
   x_mean = np.array([x[c].mean() for c in bins])
   d_mean = np.array([dss[c].mean() for c in bins])
