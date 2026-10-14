@@ -143,8 +143,13 @@ def xyz_inverse_diagonal(fmodel, model, weights, xray_structure,
   h_restr = 0.
   if(restraints_weight > 0 and model is not None and
      model.restraints_manager is not None):
-    h_restr = restraints_weight * restraint_curvature(model,
-      xray_structure.sites_cart(), refine)
+    sites, sel = xray_structure.sites_cart(), refine
+    ias = model.ias_manager.get_ias_selection() \
+      if model.ias_manager is not None else None
+    if(ias is not None and ias.count(True) > 0):
+      # ias are not in the geometry restraints (as in the minimiser)
+      sites, sel = sites.select(~ias), sel.select(~ias)
+    h_restr = restraints_weight * restraint_curvature(model, sites, sel)
   result = flex.double()
   floor = max(1.e-6, 1.e-3 * flex.max(h_data + h_restr))
   for i in refine.iselection():

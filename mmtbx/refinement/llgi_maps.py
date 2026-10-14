@@ -128,7 +128,7 @@ def fit_anisobeta(indices, anisobeta):
   coef = np.linalg.lstsq(design(indices), y, rcond=None)[0]
   rms = float(np.sqrt(np.mean((y - design(indices).dot(coef))**2)))
   def evaluate(idx):
-    return flex.double(np.exp(design(idx).dot(coef)).tolist())
+    return flex.double(np.exp(design(idx).dot(coef)))
   return group_args(coefficients=coef, rms_log_residual=rms, evaluate=evaluate)
 
 def compute(fmodel, params=None, log=None):
@@ -179,11 +179,17 @@ def compute(fmodel, params=None, log=None):
   teps = llgi_data.teps.data() if tncs_u is None else tncs_t
   f_scale_aniso = flex.sqrt(teps) * resn
   anisobeta = getattr(llgi_data, "anisobeta", None)
+  ab = flex.double(resn.size(), 1)
   if(anisobeta is None):
     say("no ANISOBETA column; the maps keep the anisotropy of the data.")
-    f_scale = f_scale_aniso
   else:
-    f_scale = f_scale_aniso / flex.sqrt(anisobeta.data())
+    ab = anisobeta.data().deep_copy()
+    ab_bad = ab <= 0
+    if(ab_bad.count(True) > 0):
+      say("%d reflection(s) with ANISOBETA <= 0 keep their anisotropy."
+        % ab_bad.count(True))
+      ab.set_selected(ab_bad, 1.)
+  f_scale = f_scale_aniso / flex.sqrt(ab)
   def as_complex(values, scale):
     v = values * scale
     return f_obs.customized_copy(
@@ -195,7 +201,7 @@ def compute(fmodel, params=None, log=None):
   from mmtbx.map_tools import model_missing_reflections_llgi
   mro = model_missing_reflections_llgi(fmodel=fmodel,
     coeffs=as_complex(ce.fill, f_scale_aniso))
-  mro.get_missing()
+  mro.get_missing()   # for its e_scale_missing (Ec, sigmaA, the phases)
   mis = mro.e_scale_missing
   sa_m = mis.sigmaa.deep_copy()
   sa_m.set_selected(sa_m < 0, 0)
@@ -204,18 +210,8 @@ def compute(fmodel, params=None, log=None):
   eps_m = ms_m.epsilons().data().as_double()
   # the data's isotropic falloff RESN/sqrt(epsilon*ANISOBETA) (smooth in
   # resolution) at the nearest observed resolution
-  ab = anisobeta.data() if anisobeta is not None else flex.double(resn.size(), 1)
   iso_m = mro.nearest_observed(ms_m.d_star_sq().data(),
     resn / flex.sqrt(epsilons * ab))
-  if(anisobeta is not None):
-    fit = fit_anisobeta(f_obs.indices(), anisobeta.data())
-    if(fit.rms_log_residual > 1.e-3):
-      say("ANISOBETA is not a quadratic form in h (rms residual of the fit "
-        "%.3g in ln); the anisotropy of the filled reflections is approximate."
-        % fit.rms_log_residual)
-    ab_m = fit.evaluate(ms_m.indices())
-  else:
-    ab_m = flex.double(ms_m.size(), 1)
   def fill_array(scale):
     return ms_m.customized_copy(
       data=flex.complex_double(sa_m * mis.e_model_abs * scale,
@@ -228,6 +224,13 @@ def compute(fmodel, params=None, log=None):
       other=fill_array(iso_m * flex.sqrt(eps_m)), scale=False)),
     (LABELS.difference, as_complex(ce.difference, f_scale))]
   if(params.anisotropic_maps and anisobeta is not None):
+    good = ~ab_bad
+    fit = fit_anisobeta(f_obs.indices().select(good), ab.select(good))
+    if(fit.rms_log_residual > 1.e-3):
+      say("ANISOBETA is not a quadratic form in h (rms residual of the fit "
+        "%.3g in ln); the anisotropy of the filled reflections is approximate."
+        % fit.rms_log_residual)
+    ab_m = fit.evaluate(ms_m.indices())
     arrays += [
       (LABELS.bias_reduced_aniso, as_complex(ce.bias_reduced, f_scale_aniso)),
       (LABELS.fill_aniso, as_complex(ce.fill, f_scale_aniso).complete_with(

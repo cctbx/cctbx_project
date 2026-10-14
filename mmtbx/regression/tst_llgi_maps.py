@@ -71,7 +71,6 @@ def exercise_no_measurement_error():
 
 def exercise_fit_anisobeta():
   # an exact quadratic form is recovered; evaluation at other indices
-  from cctbx import miller
   idx = flex.miller_index([(h, k, l) for h in range(-4, 5) for k in range(0, 5)
     for l in range(1, 6)])
   b = [-0.010, -0.004, 0.006, 0.002, -0.003, 0.001]
@@ -114,29 +113,45 @@ def exercise_compute_on_fmodel():
     assert arrays[k].size() == n + r.n_filled
   ce = r.coefficients_e
   resn = fmodel.llgi_data().resn.data()   # TEPS = 1 here
-  sel = flex.abs(ce.difference) > 1e-6
   # default F scale RESN/sqrt(ANISOBETA); _aniso: RESN
   assert approx_equal(r.f_scale, resn / flex.sqrt(aniso.data()), eps=1e-12)
   assert approx_equal(r.f_scale_aniso, resn, eps=1e-12)
+  # signed coefficients along the model phase
+  phase = flex.polar(flex.double(n, 1),
+    flex.arg(fmodel.f_model_no_aniso_scale().data()))
+  def along_phase(v): return flex.complex_double(v, flex.double(n, 0)) * phase
   for lab, coef, scale in [("IWT", ce.bias_reduced, r.f_scale),
       ("dIWT", ce.difference, r.f_scale),
       ("IWT_aniso", ce.bias_reduced, resn),
       ("dIWT_aniso", ce.difference, resn)]:
-    assert approx_equal(flex.abs(arrays[lab].data()).select(sel),
-      flex.abs(coef * scale).select(sel), eps=1e-9), lab
+    assert approx_equal(arrays[lab].data(), along_phase(coef * scale),
+      eps=1e-9), lab
   # the fill maps on the reflections used: the fill coefficient
   for lab, scale in [("IWT_fill", r.f_scale), ("IWT_fill_aniso", resn)]:
     obs = arrays[lab].common_set(f_obs)
-    assert approx_equal(flex.abs(obs.data()), flex.abs(ce.fill * scale),
+    assert approx_equal(obs.data(), along_phase(ce.fill * scale),
       eps=1e-9), lab
-  # added reflections: the two fill maps differ by sqrt(ANISOBETA(h))
-  if(r.n_filled > 0):
-    a = arrays["IWT_fill_aniso"].lone_set(f_obs)
-    b = arrays["IWT_fill"].common_set(a)
-    ratio = flex.abs(a.data()) / flex.abs(b.data())
-    assert approx_equal(ratio,
-      flex.sqrt(flex.double([quad(h) for h in a.indices()])), eps=1e-6)
+  # added reflections (sigmaA*Ec): on the level of the observed ones at
+  # similar resolution, and the two fill maps differ by sqrt(ANISOBETA(h))
+  assert r.n_filled > 0
+  a = arrays["IWT_fill_aniso"].lone_set(f_obs)
+  b = arrays["IWT_fill"].common_set(a)
+  ratio = flex.abs(a.data()) / flex.abs(b.data())
+  assert approx_equal(ratio,
+    flex.sqrt(flex.double([quad(h) for h in a.indices()])), eps=1e-6)
+  obs = arrays["IWT_fill"].common_set(f_obs)
+  ss_obs = obs.d_star_sq().data()
+  for amp, ss in zip(flex.abs(b.data()), b.d_star_sq().data()):
+    order = flex.sort_permutation(flex.abs(ss_obs - ss))[:50]
+    near = flex.mean(flex.abs(obs.data()).select(order))
+    assert 0.05 * near < amp < 20 * near, (amp, near)
   assert flex.max(r.sigmaa) <= llgi_maps.SIGMAA_MAX
+  # without ANISOBETA: the maps keep the anisotropy (scale RESN) and no
+  # _aniso maps are written
+  fmodel.set_llgi_data(llgi_data)
+  r = llgi_maps.compute(fmodel, params=p)
+  assert [a[0] for a in r.arrays] == ["IWT", "IWT_fill", "dIWT"]
+  assert approx_equal(r.f_scale, resn, eps=1e-12)
 
 def run():
   exercise_handoff_fixtures()

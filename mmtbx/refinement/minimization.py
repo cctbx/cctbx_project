@@ -11,6 +11,19 @@ from cctbx import adptbx
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
 import mmtbx.refinement.minimization_ncs_constraints
+import copy
+
+def adaptive_lbfgs_params(all_params):
+  """ The adaptive LBFGS settings (phenix's llgi_data.lbfgs_*) for the
+  coordinate and individual-ADP minimisations of phenix.refine (lbfgs's
+  adaptive_params): with target llgi, or with any target when
+  main.adaptive_lbfgs_all_targets is set; otherwise None (the usual
+  limit). """
+  main = getattr(all_params, "main", None)
+  if(getattr(main, "target", None) != "llgi" and
+     not getattr(main, "adaptive_lbfgs_all_targets", False)):
+    return None
+  return getattr(all_params, "llgi_data", None)
 
 class lbfgs(object):
 
@@ -78,7 +91,7 @@ class lbfgs(object):
     self._scatterers_start = self.xray_structure.scatterers()
     self.diag_mode = None
     self._setup_llgi_preconditioning()
-    lbfgs_termination_params = self._llgi_adaptive_termination(
+    lbfgs_termination_params = self._adaptive_termination(
       lbfgs_termination_params)
     #lbfgs_core_params = scitbx.lbfgs.core_parameters(
     #  stpmin = 1.e-9,
@@ -92,7 +105,7 @@ class lbfgs(object):
       exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
                          ignore_line_search_failed_step_at_lower_bound = True))
     if(self._adaptive is not None):
-      self._llgi_restore_best_free(lbfgs_termination_params)
+      self._restore_best_free(lbfgs_termination_params)
     self.apply_shifts()
     del self._scatterers_start
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
@@ -137,11 +150,11 @@ class lbfgs(object):
         "(median, x weight included) %.4g, restraints %.4g" % (
         flex.median(h_data) if h_data.size() else 0, h_restr), file=self.log)
 
-  def _llgi_adaptive_termination(self, termination_params):
+  def _adaptive_termination(self, termination_params):
     """ With adaptive_params (an object with the attributes
     lbfgs_max_iterations, lbfgs_stop, lbfgs_patience and
     lbfgs_stop_fraction, e.g. phenix's llgi_data parameters; see
-    adp_refinement.adaptive_lbfgs_params) and lbfgs_max_iterations above the
+    adaptive_lbfgs_params) and lbfgs_max_iterations above the
     usual limit, the minimisation may continue past that limit (up to
     lbfgs_max_iterations) while it is still making progress
     (callback_after_step). With lbfgs_stop = free (and a free set),
@@ -149,34 +162,33 @@ class lbfgs(object):
     minimisation continues while that has reached a new minimum within the
     last lbfgs_patience iterations, and the parameters at its minimum (the
     starting point included) are restored at the end
-    (_llgi_restore_best_free). With lbfgs_stop = progress, it stops once the
+    (_restore_best_free). With lbfgs_stop = progress, it stops once the
     last 10 iterations have reduced the total target by less than
     lbfgs_stop_fraction of the reduction so far. Without adaptive_params
     the usual limit applies. """
     self._adaptive = None
     self._free = None
     fmodel = self.fmodels.fmodel_xray()
-    llgi_data = self.adaptive_params
-    if(termination_params is None or llgi_data is None or
+    settings = self.adaptive_params
+    if(termination_params is None or settings is None or
        self.fmodels.fmodel_neutron() is not None):
       return termination_params
-    n_max = getattr(llgi_data, "lbfgs_max_iterations", None)
+    n_max = getattr(settings, "lbfgs_max_iterations", None)
     n_min = termination_params.max_iterations
     if(n_max is None or n_min is None or n_max <= n_min):
       return termination_params
-    import copy
     result = copy.copy(termination_params)
     result.max_iterations = n_max
-    self._adaptive = (n_min, getattr(llgi_data, "lbfgs_stop_fraction", 0.01),
-      [])
-    if(getattr(llgi_data, "lbfgs_stop", "progress") == "free" and
+    self._adaptive = group_args(n_min=n_min,
+      fraction=getattr(settings, "lbfgs_stop_fraction", 0.01), history=[])
+    if(getattr(settings, "lbfgs_stop", "progress") == "free" and
        fmodel.r_free_flags() is not None and
        fmodel.r_free_flags().data().count(True) > 0):
-      self._free = group_args(patience=getattr(llgi_data, "lbfgs_patience", 10),
+      self._free = group_args(patience=getattr(settings, "lbfgs_patience", 10),
         target_result=None, best=None, best_iter=None, best_x=None)
     return result
 
-  def _llgi_restore_best_free(self, termination_params):
+  def _restore_best_free(self, termination_params):
     """ With lbfgs_stop = free, return to the iterate with the lowest free
     data target, and report the choice. """
     fr = self._free
@@ -377,7 +389,8 @@ class lbfgs(object):
       print("refinement.minimization step: f,iter,nfun:", end=' ')
       print(self.f,minimizer.iter(),minimizer.nfun())
     if (self._adaptive is not None):
-      n_min, fraction, history = self._adaptive
+      n_min, fraction = self._adaptive.n_min, self._adaptive.fraction
+      history = self._adaptive.history
       fr = self._free
       if (fr is not None):
         # self.x and the last target evaluation are those of the accepted

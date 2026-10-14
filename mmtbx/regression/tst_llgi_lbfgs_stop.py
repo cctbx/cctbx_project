@@ -49,7 +49,7 @@ def run_rule(free_values, n_min=25, n_max=100, patience=10, stop="free",
   o.verbose = 0
   o.refine_xyz = True
   o.log = StringIO()
-  params = o._llgi_adaptive_termination(group_args(max_iterations=n_min))
+  params = o._adaptive_termination(group_args(max_iterations=n_min))
   if(o._adaptive is None):              # the usual limit only
     assert params.max_iterations == n_min
     return n_min, None, ""
@@ -65,7 +65,7 @@ def run_rule(free_values, n_min=25, n_max=100, patience=10, stop="free",
     o.f = -m.i if f_values is None else f_values[i]
     if(o.callback_after_step(m) is True or m.i >= n_max): break
   o.minimizer = m
-  o._llgi_restore_best_free(params)
+  o._restore_best_free(params)
   return m.i, o.x[0], o.log.getvalue()
 
 def exercise_interior_minimum():
@@ -107,7 +107,7 @@ def exercise_restore_after_exception():
   o._free = group_args(best_x=flex.double([7]), best_iter=7)
   m = fake_lbfgs_minimizer(); m.i = 7
   o.minimizer, o.x = m, flex.double([99])
-  o._llgi_restore_best_free(group_args(max_iterations=100))
+  o._restore_best_free(group_args(max_iterations=100))
   assert o.x[0] == 7
   assert "iteration 7" in o.log.getvalue()
   assert "(restored)" not in o.log.getvalue()
