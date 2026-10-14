@@ -564,7 +564,8 @@ class refine_adp(object):
         iso_restraints           = self.adp_restraints_params.iso,
         verbose                  = 0,
         target_weights           = self.target_weights,
-        h_params                 = self.h_params)
+        h_params                 = self.h_params,
+        adaptive_params          = adaptive_lbfgs_params(self.all_params))
     elif(self.all_params.ncs.constraints.apply_to_coordinates):
       fmodel = self.fmodels.fmodel_xray()
       # update NCS groups
@@ -602,3 +603,11 @@ class weight_result(object):
       print("", file=out)
       print("Neutron data: r_work=%5.2f r_free=%5.2f"%(
         self.neutron_r_work, self.neutron_r_free), file=out)
+
+def adaptive_lbfgs_params(all_params):
+  """ The LBFGS settings (llgi_data.lbfgs_*) for targets other than llgi when
+  main.adaptive_lbfgs_all_targets is set (mmtbx.refinement.minimization), or
+  None. """
+  main = getattr(all_params, "main", None)
+  if(not getattr(main, "adaptive_lbfgs_all_targets", False)): return None
+  return getattr(all_params, "llgi_data", None)

@@ -32,6 +32,7 @@ class lbfgs(object):
                      u_min                    = adptbx.b_as_u(-5.0),
                      u_max                    = adptbx.b_as_u(999.99),
                      collect_monitor          = True,
+                     adaptive_params          = None,
                      log                      = None):
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
@@ -146,14 +147,21 @@ class lbfgs(object):
     last lbfgs_patience iterations, and the parameters at its minimum are
     restored at the end (_llgi_restore_best_free). With lbfgs_stop =
     progress, it stops once the last 10 iterations have reduced the total
-    target by less than lbfgs_stop_fraction of the reduction so far. """
+    target by less than lbfgs_stop_fraction of the reduction so far.
+    For other targets, adaptive_params (an object with the same lbfgs_*
+    attributes, e.g. phenix's llgi_data parameters) switches on the same
+    rule; without it the usual limit applies. """
     self._adaptive = None
     self._free = None
     fmodel = self.fmodels.fmodel_xray()
-    if(termination_params is None or fmodel.target_name != "llgi" or
-       self.fmodels.fmodel_neutron() is not None):
+    if(termination_params is None or self.fmodels.fmodel_neutron() is not None):
       return termination_params
-    llgi_data = fmodel.llgi_data()
+    if(fmodel.target_name == "llgi"):
+      llgi_data = fmodel.llgi_data()
+    elif(self.adaptive_params is not None):
+      llgi_data = self.adaptive_params
+    else:
+      return termination_params
     n_max = getattr(llgi_data, "lbfgs_max_iterations", None)
     n_min = termination_params.max_iterations
     if(n_max is None or n_min is None or n_max <= n_min):

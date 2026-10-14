@@ -7,16 +7,17 @@ import mmtbx.refinement.minimization as minimization
 """ The LLGI stopping rule of mmtbx.refinement.minimization.lbfgs past the
 usual iteration limit (llgi_data.lbfgs_stop = free): continue while the
 free data target has reached a new minimum within the last lbfgs_patience
-iterations, then restore the parameters at that minimum. The minimiser is
-driven through callback_after_step with a scripted free target. """
+iterations, then restore the parameters at that minimum; for other targets
+only with adaptive_params. The minimiser is driven through
+callback_after_step with a scripted free target. """
 
 class fake_lbfgs_minimizer(object):
   def __init__(self): self.i = 0
   def iter(self): return self.i
 
 class fake_fmodel(object):
-  def __init__(self, n_free, llgi_data):
-    self.target_name = "llgi"
+  def __init__(self, n_free, llgi_data, target_name="llgi"):
+    self.target_name = target_name
     self._flags = flex.bool(100, False)
     self._flags.set_selected(flex.size_t(range(n_free)), True)
     self._llgi_data = llgi_data
@@ -29,18 +30,23 @@ class fake_fmodels(object):
   def fmodel_neutron(self): return None
 
 def run_rule(free_values, n_min=25, n_max=100, patience=10, stop="free",
-             n_free=10):
+             n_free=10, target_name="llgi", adaptive=True):
   """ Feed free_values (one per iteration; x = iteration number) to the
   rule; return (iterations run, x after restore, log). """
   llgi_data = group_args(lbfgs_max_iterations=n_max, lbfgs_stop=stop,
     lbfgs_patience=patience, lbfgs_stop_fraction=0.01)
   o = minimization.lbfgs.__new__(minimization.lbfgs)
-  o.fmodels = fake_fmodels(fake_fmodel(n_free, llgi_data))
+  o.fmodels = fake_fmodels(fake_fmodel(n_free, llgi_data, target_name))
+  # other targets: the settings come from adaptive_params, if given
+  o.adaptive_params = llgi_data if (target_name != "llgi" and adaptive) else None
   o.verbose = 0
   o.refine_xyz = True
   o.log = StringIO()
   params = o._llgi_adaptive_termination(
     group_args(max_iterations=n_min))
+  if(o._adaptive is None):              # the usual limit only
+    assert params.max_iterations == n_min
+    return n_min, None, ""
   assert params.max_iterations == n_max
   m = fake_lbfgs_minimizer()
   o.x = flex.double([0])
@@ -87,9 +93,19 @@ def exercise_fallbacks():
     assert (n, x) == (100, 100), (kw, n, x)
     assert "free-target" not in log, log
 
+def exercise_other_targets():
+  # ml with adaptive_params: the same rule; without: the usual limit
+  values = [-(i + 1) if i < 40 else -40 + 0.1 * (i - 39) for i in range(100)]
+  n, x, log = run_rule(values, target_name="ml")
+  assert (n, x) == (50, 40), (n, x)
+  assert "free-target minimum at iteration 40 (restored)" in log, log
+  n, x, log = run_rule(values, target_name="ml", adaptive=False)
+  assert (n, x) == (25, None), (n, x)
+
 if(__name__ == "__main__"):
   exercise_interior_minimum()
   exercise_still_improving()
   exercise_patience()
   exercise_fallbacks()
+  exercise_other_targets()
   print("OK")
