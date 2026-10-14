@@ -25,7 +25,10 @@ inside.
 `python3 -I -B "$GC_PAYLOAD_ROOT/tools/publication_precheck.py" outgoing REPO --commit C --remote origin --branch master --fetch >> PACKET/OUTGOING.txt`
 Standard output carries only the block (notes about push settings go to
 standard error), so each call appends one repository's block; blocks need
-no separator. If any call fails, stop, delete the partial file and start
+no separator. With more than one block, `check` needs `--repository NAME`
+(it refuses otherwise: "several repositories; name one with --repository");
+NAME is the block's `repository:` value, the repository's top folder name
+unless `outgoing` was given `--repository`. If any call fails, stop, delete the partial file and start
 again. Do not use `--output` here: it writes a new file and refuses an
 existing one, so it cannot add a second repository's block. `--fetch` is required here and
 on `check`: without it a stale remote-tracking ref can make a

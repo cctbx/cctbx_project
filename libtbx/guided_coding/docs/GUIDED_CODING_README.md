@@ -70,7 +70,7 @@ The kit does not automatically reserve shared installations or coordinate parall
 
 This version is a limited trial (a pilot) of the procedure, used only when you explicitly ask for it. Its release file, `payload/RELEASE`, carries the version label used by the startup check. That label is not proof of approval or publication.
 
-Guided Coding runs on macOS and Linux; auto mode runs only on macOS; Windows is not supported. In auto mode, Claude works through several jobs one at a time while you are away and saves each for your approval. It merges and publishes nothing. Recovery after a usage limit is manual (`/gc auto resume`), and the app's behaviour at a real usage limit has not been tested.
+Guided Coding runs on macOS and Linux (on Linux its tests run, but a real `/gc` session there has not yet been observed; see [Clients and platforms](GUIDED_CODING_VERIFICATION.md#important-remaining-uncertainty)); auto mode runs only on macOS; Windows is not supported. In auto mode, Claude works through several jobs one at a time while you are away and saves each for your approval. It merges and publishes nothing. Recovery after a usage limit is manual (`/gc auto resume`), and the app's behaviour at a real usage limit has not been tested.
 
 Recorded observations cover particular Mac Terminal and Claude app sessions. They include help loading and four non-interactive Terminal sessions that checked status, listed task history and included two setup trials that stopped on damaged or missing recovery records. The app observations have narrower scope, including help loading, session titles and the app-aware version check. They do not establish all setup and recovery behavior across clients or platforms.
 

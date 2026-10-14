@@ -329,7 +329,10 @@ of the kit suite (anaconda, October 12, 2026: 269 tests, 261 passed, 8 skipped).
   `run` off macOS, with and without a network grant, by the real helper.
 - **Needs macOS (skipped elsewhere, each with its reason):** the complete list is in
   `docs/GUIDED_CODING_VERIFICATION.md`, "Running the package tests": eight tests skipped off
-  macOS (real or simulated) and four more on a real Linux host, 12 in all. The archive
+  macOS (real or simulated) and three more off a real Mac. A twelfth
+  (`test_case_variant_of_packet_refused_on_case_insensitive_volume`) is skipped
+  on a case-sensitive filesystem, not for lack of macOS; a default Linux run
+  reports all 12. The archive
   classification test uses the system `ar` and `ranlib` (GNU ar's
   deterministic mode is switched off for it with `U`; it is skipped if no dates can be written).
   Off macOS a failing `ps -E` marker query only drops the markers, as before; on macOS it makes
