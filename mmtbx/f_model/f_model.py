@@ -1616,8 +1616,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     self.update(f_obs = f_obs_new)
     # The F-scale llgi target pairs f_model() with llgi_data's FEFF and
     # RESN, so these must follow f_obs onto the model's scale (otherwise
-    # ScatFrac absorbs sc^2 and the Rice variance 1 - (Dobs sigmaA)^2/
-    # ScatFrac is wrong). Everything on the E scale (Eeff = FEFF/RESN,
+    # ScatFrac absorbs sc^2). Everything on the E scale (Eeff = FEFF/RESN,
     # E_obs^2, Dobs) is unchanged.
     llgi_data = self.llgi_data()
     if(llgi_data is not None):
@@ -2646,6 +2645,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     .x, X or its equivalent for the exact fom (phase_errors_llgi()), and
     .n_exact; .llgi marks the helper for electron_density_map's fill of
     missing reflections.
+    With tNCS (llgi_data.tncs_u/tncs_t, TEPS = 1) everything above is in the
+    t-normalised frame of mmtbx.refinement.llgi_tncs.frame: sigmaA -> a',
+    Emodel -> s*Emodel, and sqrt(t) in place of sqrt(TEPS).
 
     Raises AttributeError unless llgi_data with .sigmaa is attached.
     """

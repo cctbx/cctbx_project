@@ -405,7 +405,7 @@ def exercise_fmodel_integration(h, xrs):
   assert fs.llgi_data().tncs_u.size() == sel.count(True)
   tf = fs.target_functor()(compute_gradients=False)
   assert math.isfinite(tf.target_work())
-  # the earlier form, u = 1 + tau A, fitted on all reflections (the free
+  # coherence = tau, u = 1 + tau A, fitted on all reflections (the free
   # set of this small data set is too small for tau)
   ld.tncs_state.params.coherence = "tau"
   ld.tncs_state.params.fit_reflections = "all"

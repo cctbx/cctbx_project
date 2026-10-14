@@ -36,9 +36,9 @@ of the true copies relative to the consensus (gamma <= 1; v the rms
 difference per direction; one curve shared by all groups). The error
 variance is then modulated by u(h) = (T - sigmaA^2 M)/(1 - sigmaA^2), and
 the expected intensity by t(h) = sigmaA^2 M(h) + (1 - sigmaA^2) u(h) = T,
-sigmaA being the coefficient of the unit-normalised model E-value. The
-earlier form u(h) = 1 + tau(s) A(h) is available as coherence = tau. The LLGI functors take u and t per
-reflection (cctbx/xray/targets/llgi.h, tncs_frame); the data are normalised
+sigmaA being the coefficient of the unit-normalised model E-value. With
+coherence = tau, u(h) = 1 + tau(s) A(h) on the model's own pair terms
+instead. The LLGI functors take u and t per reflection (cctbx/xray/targets/llgi.h, tncs_frame); the data are normalised
 by t (renormalise). Parameter fits use the u-frame (t = u), in which the
 frame is valid for any sigmaA and which, with the exact likelihood, gives
 the same result as any other frame.
@@ -99,7 +99,9 @@ class tncs_groups(object):
 
   Chains are copies of the same molecule if at least min_identity of the
   residue names agree at their shared residue numbers, which cover at
-  least min_overlap of the shorter chain. Two copies are tNCS-related if,
+  least min_overlap of the shorter chain: corresponding atoms are matched
+  by residue number, insertion code and atom name, so copies must be
+  numbered alike. Two copies are tNCS-related if,
   after the symmetry operator that brings one closest to a pure
   translation of the other, they differ by less than angle_max degrees;
   groups are the connected components of that relation. Within a group,
@@ -264,7 +266,15 @@ def pair_modulation(miller_set, groups, xray_structure, basis="model"):
   group, the scattering fraction of each copy at s = 0), f_total (the
   largest fraction of the scattering in tNCS groups at any
   resolution)). """
-  assert basis in ("model", "consensus")
+  result = pair_modulations(miller_set, groups, xray_structure, (basis,))
+  return group_args(a=result.a[basis], fractions=result.fractions,
+    f_total=result.f_total)
+
+def pair_modulations(miller_set, groups, xray_structure,
+      bases=("model", "consensus")):
+  """ pair_modulation for several bases at once (the weights are computed
+  once): group_args(a ({basis: flex.double}), fractions, f_total) """
+  assert all(basis in ("model", "consensus") for basis in bases)
   assert xray_structure.scatterers().size() == groups.n_atoms, (
     "tNCS groups were found for a model with %d atoms; this structure has %d"
     % (groups.n_atoms, xray_structure.scatterers().size()))
@@ -276,7 +286,7 @@ def pair_modulation(miller_set, groups, xray_structure, basis="model"):
   def weights(sel):  # sum_j Z_j^2 exp(-B_j s^2/2) over sel, per reflection
     return _weight_sums(dss, w_sq.select(sel), 2 * b_iso.select(sel))
   w_total_s = _weight_sums(dss, w_sq, 2 * b_iso)
-  a = flex.double(dss.size(), 0)
+  a = dict((basis, flex.double(dss.size(), 0)) for basis in bases)
   f_in_groups = flex.double(dss.size(), 0)
   fractions = []
   for g in groups.groups:
@@ -285,18 +295,21 @@ def pair_modulation(miller_set, groups, xray_structure, basis="model"):
     f_s = [weights(sel) / w_total_s for sel in g.chain_i_seqs]
     for f in f_s: f_in_groups += f
     w_common = [weights(sel) for sel in g.i_seqs]
-    if(basis == "consensus"):
-      placed = consensus_sites(g, sites_frac, xray_structure.unit_cell())
-    else:
-      placed = [apply_op(op, sites_frac.select(sel))
-                for op, sel in zip(g.ops, g.i_seqs)]
+    placed = {}
+    for basis in bases:
+      if(basis == "consensus"):
+        placed[basis] = consensus_sites(g, sites_frac, xray_structure.unit_cell())
+      else:
+        placed[basis] = [apply_op(op, sites_frac.select(sel))
+                         for op, sel in zip(g.ops, g.i_seqs)]
     z_sq = w_sq.select(g.i_seqs[0])
     for m, n in itertools.combinations(range(len(g.i_seqs)), 2):
       b_sum = b_iso.select(g.i_seqs[m]) + b_iso.select(g.i_seqs[n])
-      coherence = _weight_sums(dss, z_sq, b_sum) / flex.sqrt(
-        w_common[m] * w_common[n])
-      a += 2 * flex.sqrt(f_s[m] * f_s[n]) * coherence * pair_term(
-        miller_set, placed[m], placed[n], z_sq, b_sum)
+      weight = 2 * flex.sqrt(f_s[m] * f_s[n]) * _weight_sums(dss, z_sq, b_sum) \
+        / flex.sqrt(w_common[m] * w_common[n])   # including the coherence
+      for basis in bases:
+        a[basis] += weight * pair_term(miller_set, placed[basis][m],
+          placed[basis][n], z_sq, b_sum)
   return group_args(a=a, fractions=fractions,
     f_total=max(flex.max(f_in_groups), sum(sum(f) for f in fractions)))
 
@@ -493,8 +506,8 @@ def fit_coherence(e_obs_sq, sig_e_obs_sq, centric_flags, e_model, sigmaa,
 def expected_intensity_modulation(sigmaa, a, u):
   """ t = sigmaA^2 M + (1 - sigmaA^2) u, with M = 1 + A: the tNCS
   modulation of the expected intensity. t exceeds (1 - sigmaA^2) u
-  wherever sigmaA > 0, so the frame of the LLGI functors is valid, and in
-  that frame the model term's coefficient is the correlation
+  wherever sigmaA > 0 and M > 0, so the frame of the LLGI functors is valid
+  there, and in that frame the model term's coefficient is the correlation
   sigmaA sqrt(M/t). """
   return sigmaa * sigmaa * (1 + a) + (1 - sigmaa * sigmaa) * u
 
@@ -502,23 +515,21 @@ def expected_intensity_modulation(sigmaa, a, u):
 # Functor calls with or without tNCS
 
 def e_sigmaa_functor(e_eff, selection, e_model, dobs, sigmaa, centric_flags,
-      hybrid=None, tncs_u=None, tncs_t=None):
-  """ cctbx.xray.ext.llgi_e_sigmaa_target_and_gradients, with the tNCS
-  arrays when tncs_u is given (tncs_t defaults to tncs_u: the u-frame) """
-  from cctbx.xray import ext as xray_ext
+      hybrid=None, tncs_u=None):
+  """ cctbx.xray.ext.llgi_e_sigmaa_target_and_gradients, in the u-frame
+  (tncs_t = tncs_u) when tncs_u is given """
   args = dict(e_eff=e_eff, selection=selection, e_model=e_model, dobs=dobs,
     sigmaa=sigmaa, centric_flags=centric_flags, hybrid=hybrid)
   if(tncs_u is not None):
-    args.update(tncs_u=tncs_u, tncs_t=tncs_u if tncs_t is None else tncs_t)
+    args.update(tncs_u=tncs_u, tncs_t=tncs_u)
   return xray_ext.llgi_e_sigmaa_target_and_gradients(**args)
 
-def sigmaa_scatfrac_functor(tncs_u=None, tncs_t=None, **args):
-  """ cctbx.xray.ext.llgi_sigmaa_scatfrac_target_and_gradients, with the
-  tNCS arrays when tncs_u is given (tncs_t defaults to tncs_u) """
-  from cctbx.xray import ext as xray_ext
+def sigmaa_scatfrac_functor(tncs_u=None, **args):
+  """ cctbx.xray.ext.llgi_sigmaa_scatfrac_target_and_gradients, in the
+  u-frame (tncs_t = tncs_u) when tncs_u is given """
   if(tncs_u is not None):
     args.setdefault("hybrid", None)
-    args.update(tncs_u=tncs_u, tncs_t=tncs_u if tncs_t is None else tncs_t)
+    args.update(tncs_u=tncs_u, tncs_t=tncs_u)
   return xray_ext.llgi_sigmaa_scatfrac_target_and_gradients(**args)
 
 def frame(a, u, t):
@@ -555,11 +566,9 @@ llgi_tncs_params = iotbx.phil.parse("""\
     .type = bool
     .short_caption = NCS restraints for tNCS-related copies
     .help = "With tNCS groups in the model, switch on NCS restraints " \\
-            "(pdb_interpretation.ncs_search.enabled) in phenix.refine. Off " \\
-            "by default: where the true copies differ (1e94, four and two " \\
-            "copies) they pull the model's copies together and cost " \\
-            "accuracy, and with two copies (esterase) they made no " \\
-            "difference."
+            "(pdb_interpretation.ncs_search.enabled) in phenix.refine. " \\
+            "They pull the model's copies together, which costs accuracy " \\
+            "where the true copies differ."
   coherence = *physical tau
     .type = choice
     .short_caption = Model of the coherence between tNCS-related copies
@@ -570,7 +579,7 @@ llgi_tncs_params = iotbx.phil.parse("""\
             "own pair terms (constant tau, or linear in d*^2)."
   tau_linear_in_resolution = False
     .type = bool
-    .short_caption = Let tau vary linearly with d*^2 (coherence = tau)
+    .short_caption = Let tau vary linearly with d*^2 (coherence = tau only)
   n_cycles = 2
     .type = int
     .short_caption = sigmaA/coherence fit cycles per update
@@ -595,7 +604,7 @@ def _hybrid(d, centric_flags, rice_kappa):
     sig_e_obs_sq=d.sig_e_obs_sq, force_exact=d.force_exact,
     centric_flags=centric_flags, rice_kappa=rice_kappa)
 
-def _framed_llgi_data(llgi_data, f_obs, d, u, t, a, **changes):
+def _framed_llgi_data(llgi_data, f_obs, d, u, t, **changes):
   """ llgi_data with the data d (renormalise_e) in the t-frame and the
   tNCS arrays; the cached hybrid is dropped """
   return replace_llgi_data(llgi_data,
@@ -604,7 +613,7 @@ def _framed_llgi_data(llgi_data, f_obs, d, u, t, a, **changes):
     e_obs_sq=f_obs.array(data=d.e_obs_sq),
     sig_e_obs_sq=f_obs.array(data=d.sig_e_obs_sq),
     force_exact=f_obs.array(data=d.force_exact),
-    tncs_a=f_obs.array(data=a), tncs_u=f_obs.array(data=u),
+    tncs_u=f_obs.array(data=u),
     tncs_t=f_obs.array(data=t), _hybrid_object=None, **changes)
 
 def replace_llgi_data(llgi_data, **changes):
@@ -616,10 +625,10 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
   """ The tNCS treatment for llgi_data (on f_obs's index set), if the model
   has groups of chains related by tNCS: the observations are kept on the E
   scale without tNCS (nacelle's TEPS is not used), and renormalised by
-  t0 = 1 + rho A, rho fitted to the data alone, until sigmaA and tau are
-  first fitted (fit_and_renormalise). Returns the new llgi_data (Feff in
-  it is the new f_obs), or None if there are no tNCS groups or the
-  treatment is switched off. """
+  t0 = 1 + rho A, rho fitted to the data alone, until sigmaA and the
+  coherence (or tau) are first fitted (fit_and_renormalise). Returns the
+  new llgi_data (Feff in it is the new f_obs), or None if there are no tNCS
+  groups or the treatment is switched off. """
   if(params is None):
     params = llgi_tncs_params.extract()
   if(params.enabled is False):
@@ -641,7 +650,7 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
   sig_base = llgi_data.sig_e_obs_sq.data() * teps
   mod = pair_modulation(f_obs, groups, xray_structure)
   rho = fit_wilson_modulation(e_base, sig_base, centric, mod.a, dss,
-    mod.f_total, linear=params.tau_linear_in_resolution)
+    mod.f_total)
   t0 = 1 + rho.at(dss) * mod.a
   t0.set_selected(t0 < U_MIN, U_MIN)   # rho was checked on a subset only
   d = renormalise_e(e_base, sig_base, llgi_data.resn.data(), t0, centric)
@@ -649,10 +658,10 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
     print("tNCS: %.3f of the model's scattering in tNCS groups; data-only "
       "modulation rho = %.3f%s" % (mod.f_total, rho.p0,
       "" if rho.p1 == 0 else " + %.3f d*^2/d*^2_max" % rho.p1), file=log)
-  return _framed_llgi_data(llgi_data, f_obs, d, u=t0, t=t0, a=mod.a,
+  return _framed_llgi_data(llgi_data, f_obs, d, u=t0, t=t0,
     e_obs_sq_base=f_obs.array(data=e_base),
     sig_e_obs_sq_base=f_obs.array(data=sig_base),
-    tncs_state=group_args(groups=groups, tau=rho, rho=rho,
+    tncs_state=group_args(groups=groups, tau=rho,
       coherence=coherence_curve(min(max(rho.p0, 0.), 0.99), 0.2),
       f_total=mod.f_total, params=params))
 
@@ -738,14 +747,14 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
   e_base = llgi_data.e_obs_sq_base.data()
   sig_base = llgi_data.sig_e_obs_sq_base.data()
   rice_kappa = _rice_kappa(llgi_data)
-  physical = getattr(params, "coherence", "tau") == "physical"
-  a = pair_modulation(f_obs, state.groups, fmodel.xray_structure).a
-  a_cons = pair_modulation(f_obs, state.groups, fmodel.xray_structure,
-    basis="consensus").a if physical else None
-  tau, coherence = state.tau, getattr(state, "coherence", None)
+  physical = params.coherence == "physical"
+  pm = pair_modulations(f_obs, state.groups, fmodel.xray_structure,
+    ("model", "consensus") if physical else ("model",))
+  a, a_cons = pm.a["model"], pm.a.get("consensus")
+  tau, coherence = state.tau, state.coherence
   warnings = []
   fit_selection = flex.bool(n, True)
-  if(getattr(params, "fit_reflections", "all") == "free"):
+  if(params.fit_reflections == "free"):
     free = fmodel.r_free_flags().data()
     if(free.count(True) >= MIN_FIT_REFLECTIONS):
       fit_selection = free
@@ -787,11 +796,11 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
   scatfrac = scatfrac_result.scatfrac
   t = expected_intensity_modulation(sigmaa, a, u)
   d = renormalise_e(e_base, sig_base, resn, t, centric)
-  new = _framed_llgi_data(llgi_data, f_obs, d, u=u, t=t, a=a,
+  new = _framed_llgi_data(llgi_data, f_obs, d, u=u, t=t,
     sigmaa=f_obs.array(data=sigmaa),
     sigmaa_curve=sigmaa_result.evaluate_at,
     scatfrac=f_obs.array(data=scatfrac),
-    tncs_state=group_args(groups=state.groups, tau=tau, rho=state.rho,
+    tncs_state=group_args(groups=state.groups, tau=tau,
       coherence=coherence, f_total=state.f_total, params=params),
     _sigmaa_f_model=fmodel.f_model().data().deep_copy())
   fmodel.set_llgi_data(new)
