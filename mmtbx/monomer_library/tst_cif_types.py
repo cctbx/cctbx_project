@@ -218,7 +218,47 @@ def exercise_charge():
   assert d["A1"].charge == "-1" and d["A1"].type_energy == "OC"
   assert d["A7"].charge is None
 
+def exercise_add_existing_h():
+  """A chem_mod "add" of an H the residue already has replaces it (3d5k SCY:
+  H2 on N in the entry, NH3 adds H2 again, two H2-N-CA angles conflict).
+  A heavy atom (OXT, mod_COO) is still added as before."""
+  comp = cif_types.comp_comp_id(source_info=None, chem_comp=cif_types.chem_comp(
+    id="AAH", three_letter_code="AAH", name="", group="peptide",
+    number_atoms_all=6, number_atoms_nh=4, desc_level=""))
+  for name, element in [("N","N"), ("CA","C"), ("C","C"), ("OXT","O"),
+                        ("H","H"), ("H2","H")]:
+    comp.atom_list.append(cif_types.chem_comp_atom(atom_id=name,
+      type_symbol=element, type_energy=element, partial_charge=0))
+  for a1, a2 in [("N","CA"), ("CA","C"), ("C","OXT"), ("N","H"), ("N","H2")]:
+    comp.bond_list.append(cif_types.chem_comp_bond(atom_id_1=a1, atom_id_2=a2,
+      type="single", value_dist=1., value_dist_esd=0.02))
+  for a1, a3, value in [("H","CA",114.0), ("H2","CA",110.2)]:
+    comp.angle_list.append(cif_types.chem_comp_angle(atom_id_1=a1,
+      atom_id_2="N", atom_id_3=a3, value_angle=value, value_angle_esd=3.))
+  mod = cif_types.mod_mod_id(source_info=None, chem_mod=cif_types.chem_mod(
+    id="NH3", name="", comp_id="", group_id=""))
+  mod.atom_list.append(cif_types.chem_mod_atom(function="delete", atom_id="H",
+    new_atom_id="", new_type_symbol="", new_type_energy="", new_partial_charge=""))
+  for name, element in [("H1","H"), ("H2","H"), ("H3","H"), ("OXT","O")]:
+    mod.atom_list.append(cif_types.chem_mod_atom(function="add", atom_id="",
+      new_atom_id=name, new_type_symbol=element, new_type_energy=element,
+      new_partial_charge=0))
+  for name in ("H1", "H2", "H3"):
+    mod.angle_list.append(cif_types.chem_mod_angle(function="add",
+      atom_id_1=name, atom_id_2="N", atom_id_3="CA",
+      new_value_angle=109.47, new_value_angle_esd=3.))
+  c = comp.apply_mod(mod)
+  names = [a.atom_id for a in c.atom_list]
+  assert names.count("H2") == 1, names
+  assert names.count("OXT") == 2, names
+  h2 = [a.value_angle for a in c.angle_list if "H2" in (a.atom_id_1, a.atom_id_3)]
+  assert h2 == [109.47], h2
+  # the residue entry itself is unchanged
+  assert [a.atom_id for a in comp.atom_list].count("H2") == 1
+  assert len(comp.angle_list) == 2
+
 if (__name__ == "__main__"):
   exercise()
   exercise_charge()
+  exercise_add_existing_h()
   print("OK")
