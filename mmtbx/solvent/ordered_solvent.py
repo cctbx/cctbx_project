@@ -1135,6 +1135,7 @@ class manager(object):
               filter_map=False,
               filter_occ=False,
               filter_adp=False):
+    r_work = self.fmodel.r_work()
     mfp = self.params.secondary_map_and_map_cc_filter
     maps_ = None
     if filter_map: maps_ = self._get_maps()
@@ -1169,7 +1170,7 @@ class manager(object):
                 if(b_isos[i_seq] < self.params.b_iso_min or
                    b_isos[i_seq] > self.params.b_iso_max): keep = False
               #
-              if filter_map:
+              if filter_map and r_work*100 > 5.:
                 good_map = maps_.score_atom(
                   atom      = atom,
                   min_cc    = mfp.poor_cc_threshold,
