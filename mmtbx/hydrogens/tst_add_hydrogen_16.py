@@ -26,6 +26,7 @@ def run():
   test_016()
   test_017()
   test_018()
+  test_019()
 
 # ------------------------------------------------------------------------------
 
@@ -349,6 +350,22 @@ def test_018():
   grm = task.model.get_restraints_manager().geometry
   grm.pair_proxies(sites_cart=task.model.get_sites_cart())
   assert grm.plain_pair_sym_table is None
+
+def test_019():
+  '''
+  2fd6 ASN U 172 - NAG C 1: the NAG-ASN link gives an angle to C1 only for
+  HD21 and deletes HD22, which went only after riding H. The deposited NAG
+  still has O1, so C1 is the second neighbour of HO1, and riding H stopped:
+  "angle restraints involving an H atom are missing". HD22 now goes first.
+  1a7s ASN 114 - NAG 401 (no O1) is the control: HD21 only, as before.
+  '''
+  atoms = place_atoms(pdb_str_019)
+  # HO1 of the misplaced O1 (0.79 A from ND2) is close too
+  hd = [n for n in h_on(atoms, 'ASN', '172', 'ND2') if n.startswith('HD')]
+  assert hd == ['HD21'], hd
+  atoms = place_atoms(pdb_str_019_control)
+  assert h_on(atoms, 'ASN', '114', 'ND2') == ['HD21'], h_on(
+    atoms, 'ASN', '114', 'ND2')
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -1053,6 +1070,59 @@ ATOM     31  CD2 HIS A 204      16.739  12.183   9.926  1.00  0.00           C
 ATOM     32  CE1 HIS A 204      17.366  10.061   9.859  1.00  0.00           C
 ATOM     33  NE2 HIS A 204      16.297  10.881   9.817  1.00  0.00           N
 ENDMDL
+END
+"""
+
+pdb_str_019 = """
+ATOM   5392  N   ASN U 172      28.919 -35.712  34.830  1.00 43.06           N
+ATOM   5393  CA  ASN U 172      29.803 -36.865  34.659  1.00 42.35           C
+ATOM   5394  C   ASN U 172      30.623 -36.917  33.379  1.00 40.69           C
+ATOM   5395  O   ASN U 172      30.581 -37.901  32.648  1.00 39.42           O
+ATOM   5396  CB  ASN U 172      28.999 -38.145  34.780  1.00 43.40           C
+ATOM   5397  CG  ASN U 172      27.809 -38.142  33.876  1.00 50.40           C
+ATOM   5398  OD1 ASN U 172      27.350 -37.080  33.448  1.00 50.72           O
+ATOM   5399  ND2 ASN U 172      27.289 -39.330  33.572  1.00 54.60           N
+HETATM 6170  C1  NAG C   1      26.142 -38.639  32.099  1.00 77.20           C
+HETATM 6171  C2  NAG C   1      25.260 -39.875  32.134  1.00 77.28           C
+HETATM 6172  C3  NAG C   1      24.134 -39.690  31.125  1.00 76.77           C
+HETATM 6173  C4  NAG C   1      23.347 -38.412  31.448  1.00 75.42           C
+HETATM 6174  C5  NAG C   1      24.298 -37.207  31.547  1.00 76.20           C
+HETATM 6175  C6  NAG C   1      23.588 -35.950  32.029  1.00 76.67           C
+HETATM 6176  C7  NAG C   1      27.298 -41.161  32.257  1.00 77.02           C
+HETATM 6177  C8  NAG C   1      28.395 -41.056  31.211  1.00 77.44           C
+HETATM 6178  N2  NAG C   1      26.041 -41.060  31.830  1.00 77.79           N
+HETATM 6179  O1  NAG C   1      27.173 -38.796  33.005  1.00 78.97           O
+HETATM 6180  O3  NAG C   1      23.271 -40.814  31.167  1.00 80.30           O
+HETATM 6181  O4  NAG C   1      22.383 -38.172  30.432  1.00 71.73           O
+HETATM 6182  O5  NAG C   1      25.376 -37.484  32.475  1.00 76.45           O
+HETATM 6183  O6  NAG C   1      24.190 -35.421  33.203  1.00 79.30           O
+HETATM 6184  O7  NAG C   1      27.592 -41.308  33.445  1.00 75.78           O
+END
+"""
+
+pdb_str_019_control = """
+ATOM    859  N   ASN A 114      13.568   0.065  35.530  1.00  8.61           N
+ATOM    860  CA  ASN A 114      13.918  -0.275  36.879  1.00  9.29           C
+ATOM    861  C   ASN A 114      15.288   0.210  37.331  1.00 10.96           C
+ATOM    862  O   ASN A 114      15.734  -0.079  38.422  1.00 15.40           O
+ATOM    863  CB  ASN A 114      13.746  -1.754  37.229  1.00 11.35           C
+ATOM    864  CG  ASN A 114      12.350  -2.251  37.154  1.00 11.55           C
+ATOM    865  OD1 ASN A 114      11.372  -1.469  37.146  1.00 11.66           O
+ATOM    866  ND2 ASN A 114      12.173  -3.567  37.053  1.00 12.97           N
+HETATM 1710  C1  NAG A 401      10.902  -4.146  37.038  1.00 13.79           C
+HETATM 1711  C2  NAG A 401      10.956  -5.537  36.326  1.00 15.71           C
+HETATM 1712  C3  NAG A 401       9.504  -6.092  36.328  1.00 17.70           C
+HETATM 1713  C4  NAG A 401       9.043  -6.173  37.788  1.00 20.69           C
+HETATM 1714  C5  NAG A 401       9.072  -4.723  38.394  1.00 21.37           C
+HETATM 1715  C6  NAG A 401       8.589  -4.620  39.782  1.00 28.32           C
+HETATM 1716  C7  NAG A 401      12.396  -5.712  34.327  1.00 17.48           C
+HETATM 1717  C8  NAG A 401      12.509  -5.462  32.899  1.00 22.32           C
+HETATM 1718  N2  NAG A 401      11.252  -5.279  34.917  1.00 15.00           N
+HETATM 1719  O3  NAG A 401       9.545  -7.411  35.765  1.00 21.47           O
+HETATM 1720  O4  NAG A 401       7.678  -6.625  37.777  1.00 25.59           O
+HETATM 1721  O5  NAG A 401      10.488  -4.329  38.368  1.00 17.19           O
+HETATM 1722  O6  NAG A 401       9.364  -5.399  40.659  1.00 38.39           O
+HETATM 1723  O7  NAG A 401      13.161  -6.362  34.883  1.00 19.28           O
 END
 """
 

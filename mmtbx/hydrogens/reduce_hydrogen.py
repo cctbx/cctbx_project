@@ -1048,6 +1048,7 @@ class place_hydrogens():
     # before riding H: an H on an esterified O has no H-O-X angle to the second
     # heavy neighbour (2e4i BGM 14 -> BGM 15)
     self.exclude_H_on_esterified_O()
+    self.exclude_H_without_link_angle()
     # Return if no H have been placed
     sel_h = self.model.get_hd_selection()
     if sel_h.count(True) == 0: return
@@ -1351,6 +1352,55 @@ class place_hydrogens():
     remove = flex.size_t(sorted(remove))
     if remove.size():
       sel = flex.bool(elements.size(), True).set_selected(remove, False)
+      self.model = self.model.select(sel)
+
+  def exclude_H_without_link_angle(self):
+    '''
+    A link gives an angle only to the H it keeps (NAG-ASN: HD21-ND2-C1) and
+    deletes the other (HD22), which exclude_H_on_links removes only after
+    riding H. Riding H stops on that mismatch when the linked atom is itself
+    the second neighbour of an H (2fd6: NAG C1 still carries O1 and HO1).
+    Remove the H without the angle when another H on the same parent has it.
+    Only neighbours in another residue: a gap within one dictionary still
+    raises.
+    '''
+    grm = self.model.get_restraints_manager().geometry
+    bps, asu = grm.get_all_bond_proxies(
+      sites_cart = self.model.get_sites_cart())
+    atoms = self.model.get_hierarchy().atoms()
+    elements = atoms.extract_element()
+    is_h = lambda i: elements[i].strip() in ('H', 'D')
+    residue = lambda i: atoms[i].parent().parent().memory_id()
+    parent, heavy = {}, {}
+    for proxy in list(bps) + list(asu):
+      if   isinstance(proxy, ext.bond_simple_proxy): i,j = proxy.i_seqs
+      elif isinstance(proxy, ext.bond_asu_proxy):    i,j = proxy.i_seq, proxy.j_seq
+      else: continue
+      if is_h(i) and is_h(j): continue
+      if is_h(i):   parent[i] = j
+      elif is_h(j): parent[j] = i
+      elif residue(i) != residue(j):
+        heavy.setdefault(i, set()).add(j)
+        heavy.setdefault(j, set()).add(i)
+    if not heavy: return
+    angle_to = {}
+    for ap in grm.get_all_angle_proxies():
+      i, j, k = ap.i_seqs
+      for h, x in ((i, k), (k, i)):
+        if is_h(h) and parent.get(h) == j and not is_h(x):
+          angle_to.setdefault(h, set()).add(x)
+    hs_on = {}
+    for h, p in parent.items():
+      if p in heavy: hs_on.setdefault(p, []).append(h)
+    remove = set()
+    for p, hs in hs_on.items():
+      if len(hs) < 2: continue
+      for b in heavy[p]:
+        kept = [h for h in hs if b in angle_to.get(h, ())]
+        if kept: remove.update(h for h in hs if h not in kept)
+    if remove:
+      sel = flex.bool(elements.size(), True).set_selected(
+        flex.size_t(sorted(remove)), False)
       self.model = self.model.select(sel)
 
   def place_anchorless_h(self, iseqs, bonds, heavy_neighbors):
