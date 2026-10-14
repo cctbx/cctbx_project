@@ -28,6 +28,7 @@ def run():
   test_018()
   test_019()
   test_020()
+  test_021()
 
 # ------------------------------------------------------------------------------
 
@@ -387,6 +388,24 @@ def test_020():
     # planar: the three angles around N add up to 360
     assert approx_equal(angle(c, h) + angle(ca, h) + angle(c, ca), 360,
       eps=1), (alt, angle(c, h), angle(ca, h), angle(c, ca))
+
+def test_021():
+  '''
+  An atom name the dictionary does not know (here ASP CG misnamed CGX; in
+  7a5m the backbone of 2L5/2L6, whose geostd names predate the CCD) is
+  reported as such; the H next to it used to be listed under "incomplete
+  side chains".
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_021.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj.run()
+  counts = obj.get_counts()
+  assert counts.residues_unknown_atoms == [('ASP A 11', ['CGX'])], \
+    counts.residues_unknown_atoms
+  assert sorted(l.split()[0] for l in counts.site_labels_unknown_atoms) == \
+    ['HB2', 'HB3'], counts.site_labels_unknown_atoms
+  assert counts.residues_missing_neighbor == [], counts.residues_missing_neighbor
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -1168,6 +1187,27 @@ ATOM   2119  C   ALA A 103      -0.434  -6.917   4.050  1.00 11.54           C
 ATOM   2120  O   ALA A 103       0.175  -5.884   4.351  1.00 12.98           O
 ATOM   2121  CB AALA A 103      -2.475  -6.621   2.598  0.62 13.63           C
 ATOM   2122  CB BALA A 103      -2.223  -6.688   2.343  0.38 12.27           C
+END
+"""
+
+pdb_str_021 = """
+CRYST1   57.482   57.482   54.469  90.00  90.00  90.00 P 42 21 2     8
+ATOM     84  N   GLY A  10       3.511  23.530   4.999  1.00  6.37           N
+ATOM     85  CA  GLY A  10       3.794  22.322   4.237  1.00  6.80           C
+ATOM     86  C   GLY A  10       3.735  22.565   2.744  1.00  6.99           C
+ATOM     87  O   GLY A  10       3.789  23.705   2.292  1.00  9.58           O
+ATOM     88  N   ASP A  11       3.619  21.484   1.977  1.00  6.21           N
+ATOM     89  CA  ASP A  11       3.612  21.594   0.527  1.00  6.44           C
+ATOM     90  C   ASP A  11       2.281  22.091  -0.033  1.00  6.88           C
+ATOM     91  O   ASP A  11       2.200  22.414  -1.208  1.00  7.79           O
+ATOM     92  CB  ASP A  11       4.111  20.307  -0.163  1.00  6.77           C
+ATOM     93  CGX ASP A  11       3.109  19.154  -0.141  1.00  7.29           C
+ATOM     94  OD1 ASP A  11       2.010  19.254   0.435  1.00  6.86           O
+ATOM     95  OD2 ASP A  11       3.456  18.124  -0.766  1.00 10.63           O
+ATOM     96  N   GLY A  12       1.252  22.153   0.807  1.00  7.18           N
+ATOM     97  CA  GLY A  12      -0.056  22.616   0.386  1.00  8.11           C
+ATOM     98  C   GLY A  12      -0.787  21.679  -0.546  1.00  8.25           C
+ATOM     99  O   GLY A  12      -1.761  22.086  -1.177  1.00  9.47           O
 END
 """
 

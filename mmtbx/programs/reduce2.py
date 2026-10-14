@@ -1360,7 +1360,23 @@ NOTES:
       warnings = opt.getWarnings()
       # Find the lines from warnings that start with "Warning: " and
       # concatenate them into a single string.
-      warnings = '\n'.join([line for line in warnings.split('\n') if line.startswith('Warning:')])
+      lines = [line for line in warnings.split('\n') if line.startswith('Warning:')]
+      # one line, by residue, for the atoms without an energy type (7a5m: 39)
+      prefix = 'Warning: Could not find atom info for '
+      no_info = [l for l in lines if l.startswith(prefix) and ' (perhaps' in l]
+      if no_info:
+        lines = [l for l in lines if l not in no_info]
+        residues = []
+        for l in no_info:
+          tokens = l[len(prefix):l.index(' (perhaps')].split()[:-1]
+          if len(tokens) == 3: tokens = [tokens[1], tokens[0], tokens[2]]
+          if ' '.join(tokens) not in residues: residues.append(' '.join(tokens))
+        shown = ', '.join(residues[:12])
+        if len(residues) > 12: shown += ' (+%d more)' % (len(residues) - 12)
+        lines.append('Warning: %d atoms have no energy type (element radius used, '
+          'not H-bond acceptors) - %d residues: %s' % (
+          len(no_info), len(residues), shown))
+      warnings = '\n'.join(lines)
       if len(warnings) > 0:
         print('\nWarnings during optimization:\n'+warnings, file=self.logger)
       outString += opt.getInfo()

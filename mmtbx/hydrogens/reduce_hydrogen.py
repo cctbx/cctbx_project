@@ -923,6 +923,8 @@ class place_hydrogens():
     self.site_labels_tertiary_amide = list()
     self.site_labels_missing_neighbor = list()
     self.residues_missing_neighbor    = list()
+    self.residues_unknown_atoms       = list()
+    self.site_labels_unknown_atoms    = list()
     # Names of restraint dictionaries auto-generated for unknown ligands during
     # placement; these are throwaway (purpose-built for H placement) and are
     # removed from the model before returning so they don't leak into
@@ -1040,6 +1042,7 @@ class place_hydrogens():
                        )
 
     self.time_make_grm = round(time.time()-t0, 2)
+    self.find_atoms_not_in_dictionary()
     # Drop the throwaway auto-generated ligand restraints now that the grm has
     # been built. They were only needed to place H on unknown ligands; keeping
     # them on the model would leak idealized placement-only geometry (0.9x
@@ -1112,6 +1115,8 @@ class place_hydrogens():
     self.site_labels_tertiary_amide = list()
     self.site_labels_missing_neighbor = list()
     self.residues_missing_neighbor = list()
+    self.site_labels_unknown_atoms = list()
+    unknown = set(r for r, names in self.residues_unknown_atoms)
     if not sel_h_not_in_para_but_not_lone.all_eq(False):
       grm = self.model.get_restraints_manager().geometry
       bps, asu = grm.get_all_bond_proxies(sites_cart=self.model.get_sites_cart())
@@ -1138,13 +1143,17 @@ class place_hydrogens():
         if atom.i_seq in tertiary:
           self.site_labels_tertiary_amide.append(label)
           continue
+        rg = atom.parent().parent()
+        resid = '%s %s %s' % (atom.parent().resname.strip(),
+          rg.parent().id.strip(), rg.resseq.strip())
+        # its residue has atoms the dictionary does not know: not incomplete
+        if resid in unknown:
+          self.site_labels_unknown_atoms.append(label)
+          continue
         parents = _heavy_neighbors(atom.i_seq)
         # parent atom missing an expected heavy neighbour -> incomplete residue
         if len(parents) == 1 and len(_heavy_neighbors(parents[0])) < 2:
           self.site_labels_missing_neighbor.append(label)
-          rg = atom.parent().parent()
-          resid = '%s %s %s' % (atom.parent().resname.strip(),
-            rg.parent().id.strip(), rg.resseq.strip())
           if resid not in seen_residues:
             seen_residues.add(resid)
             self.residues_missing_neighbor.append(resid)
@@ -1359,6 +1368,28 @@ class place_hydrogens():
     if remove.size():
       sel = flex.bool(elements.size(), True).set_selected(remove, False)
       self.model = self.model.select(sel)
+
+  def find_atoms_not_in_dictionary(self):
+    '''
+    Heavy atoms whose name is not in their residue's dictionary; model
+    processing gives them energy type False. Typically a dictionary older than
+    the CCD (7a5m 2L5: geostd N4/C12/C11/O4, model N/CA/C/O). For the report.
+    '''
+    te = getattr(self.model, '_type_energies', None)
+    if te is None: return
+    found, order = {}, []
+    for a in self.model.get_hierarchy().atoms():
+      if a.element_is_hydrogen() or te[a.i_seq] not in (False, 'False'):
+        continue
+      rg = a.parent().parent()
+      resid = '%s %s %s' % (a.parent().resname.strip(),
+        rg.parent().id.strip(), rg.resseq.strip())
+      if resid not in found:
+        found[resid] = []
+        order.append(resid)
+      if a.name.strip() not in found[resid]:
+        found[resid].append(a.name.strip())
+    self.residues_unknown_atoms = [(r, found[r]) for r in order]
 
   def exclude_H_without_link_angle(self):
     '''
@@ -1941,6 +1972,22 @@ proline-type or N-substituted residue)'''
       for label in self.site_labels_tertiary_amide:
         print(label, file=log)
     #
+    if self.residues_unknown_atoms:
+      print('', file=log)
+      msg = ('Atom names not in the restraint dictionary of their residue '
+        '(dictionary older\nthan the CCD?) - %d residues; %d H atoms on them '
+        'were not placed:')
+      print(msg % (len(self.residues_unknown_atoms),
+        len(self.site_labels_unknown_atoms)), file=log)
+      cap = 12
+      for resid, names in self.residues_unknown_atoms[:cap]:
+        print(' %s: %s' % (resid, ' '.join(names)), file=log)
+      if len(self.residues_unknown_atoms) > cap:
+        print(' (+%d more)' % (len(self.residues_unknown_atoms) - cap), file=log)
+      if verbose:
+        for label in self.site_labels_unknown_atoms:
+          print(label, file=log)
+    #
     if self.site_labels_missing_neighbor:
       n_atoms = len(self.site_labels_missing_neighbor)
       residues = self.residues_missing_neighbor
@@ -2010,7 +2057,9 @@ The following H atoms were not placed because they could not be parameterized
       site_labels_no_para = self.site_labels_no_para,
       site_labels_tertiary_amide = self.site_labels_tertiary_amide,
       site_labels_missing_neighbor = self.site_labels_missing_neighbor,
-      residues_missing_neighbor = self.residues_missing_neighbor)
+      residues_missing_neighbor = self.residues_missing_neighbor,
+      residues_unknown_atoms = self.residues_unknown_atoms,
+      site_labels_unknown_atoms = self.site_labels_unknown_atoms)
 
 # ------------------------------------------------------------------------------
 
