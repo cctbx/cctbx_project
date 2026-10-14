@@ -536,6 +536,9 @@ class json_probe_line_info(probe_line_info):
       self.overlap_value = self.gap
 
 class probe_clashscore_manager(object):
+  # False restores the per-dot JSON path for the default mode (for comparisons).
+  use_contact_records = True
+
   def __init__(self,
                fast = False,
                condensed_probe=False,
@@ -569,8 +572,6 @@ class probe_clashscore_manager(object):
     self.fast = fast
     self.condensed_probe = condensed_probe
     self.save_probe_output = save_probe_output
-    # False restores the per-dot JSON path for the default mode (for comparisons).
-    self.use_contact_records = True
     self.use_segids=use_segids
     self.model_id = model_id
     self.occupancy_frac = 0.1
