@@ -26,6 +26,7 @@ tooltips = {
   'experiment_ctr': get_help('facility.lcls.experiment'),
   'output_ctr': get_help('output_folder'),
   'advanced': 'Multiprocessing, queueing, and other options',
+  'settings_help': 'Open the online documentation for this dialog',
   # Advanced settings dialog
   'mp_option_ctr': get_help('mp.method'),
   'queue_ctr': get_help('mp.queue'),

@@ -20,6 +20,7 @@ import numpy as np
 
 import xfel.ui.components.xfel_gui_controls as gctr
 from xfel.ui.components.tooltips import setup_tooltip, tooltips
+from xfel.ui.components.online_help import open_help
 from xfel.ui.components.submission_tracker import QueueInterrogator
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
@@ -307,15 +308,17 @@ class SettingsDialog(BaseDialog):
     self.btn_load_project = gctr.Button(self, name='load_project', label='Load Project...')
     self.btn_save_project = gctr.Button(self, name='save_project', label='Save Project As...')
     self.btn_op = gctr.Button(self, name='advanced', label='Advanced Settings...')
+    self.btn_help = gctr.Button(self, name='settings_help', label='Help', id=wx.ID_HELP)
     self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
     self.btn_OK.SetDefault()
     self.btn_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
 
-    button_sizer = wx.FlexGridSizer(1, 6, 0, 10)
+    button_sizer = wx.FlexGridSizer(1, 7, 0, 10)
     button_sizer.AddMany([(self.btn_load_project),
                           (self.btn_save_project),
                           (self.btn_op),
                           (0,0),
+                          (self.btn_help),
                           (self.btn_OK),
                           (self.btn_cancel)])
 
@@ -333,8 +336,13 @@ class SettingsDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onDBCredentialsButton, id=self.db_cred.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onLoadProject, id=self.btn_load_project.GetId())
     self.Bind(wx.EVT_BUTTON, self.onSaveProjectAs, id=self.btn_save_project.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onHelp, id=self.btn_help.GetId())
 
     self.setup_facility_options()
+
+  def onHelp(self, e):
+    ''' Open the online documentation for this dialog. '''
+    open_help(self, 'Settings')
 
   def onBrowse(self, e):
     dlg = wx.DirDialog(self, "Choose the input directory:",
