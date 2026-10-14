@@ -1016,6 +1016,12 @@ class voyager_regression_module(SourceModule):
                'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/voyager_regression.git',
                'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/voyager_regression.git']
 
+class phasertng_regression_module(SourceModule):
+  module = 'phasertng_regression'
+  anonymous = ['git',
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phasertng_regression.git',
+               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phasertng_regression.git']
+
 # DIALS repositories
 class labelit_module(SourceModule):
   module = 'labelit'
@@ -2472,6 +2478,7 @@ class PhenixBuilder(CCIBuilder):
     'king',
     'phaser',
     'phasertng',
+    'phasertng_regression',
     'phaser_regression',
     'voyager_regression',
     'phaser_voyager',
@@ -2493,6 +2500,7 @@ class PhenixBuilder(CCIBuilder):
     'reel',
     'phaser',
     'phasertng',
+    'phasertng_regression',
     'phaser_regression',
     'voyager_regression',
     'phaser_voyager',
