@@ -169,13 +169,15 @@ These categories are general suggestions. Check your electron density; trust you
 
     # First we must rebuild the model from the new hierarchy so that the copy can succeed.
     # Make a copy of the original model to use for submodel processing, we'll trim atoms out
-    # of it for each submodel.
+    # of it for each submodel. Keep the restraint objects: without them a ligand the
+    # monomer library lacks has H with no bonded parent, and probe2 refuses the model.
+    ro = data_manager_model.get_restraint_objects()
     data_manager_model = mmtbx.model.manager(
       model_input       = None,
       pdb_hierarchy     = data_manager_model.get_hierarchy(),
       stop_for_unknowns = False,
       crystal_symmetry  = data_manager_model.crystal_symmetry(),
-      restraint_objects = None,
+      restraint_objects = ro,
       log               = null_out())
     original_model = data_manager_model.deep_copy()
 
@@ -220,7 +222,7 @@ These categories are general suggestions. Check your electron density; trust you
         pdb_hierarchy     = r,
         stop_for_unknowns = False,
         crystal_symmetry  = submodel.crystal_symmetry(),
-        restraint_objects = None,
+        restraint_objects = ro,
         log               = null_out())
 
       self.probe_undowser_manager = probe_undowser_manager(
