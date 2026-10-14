@@ -164,7 +164,7 @@ class FlippedMoverInfo(object):
 
 class Optimizer(object):
 
-  def __init__(self, probePhil, addFlipMovers, model, modelIndex = 0, altID = None,
+  def __init__(self, probePhil, addFlipMovers, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
@@ -2011,7 +2011,7 @@ END
   global _DoCliqueOptimizationInC
 
   print('Testing Optimizer')
-  opt = Optimizer(probePhil, True, model, modelIndex = 0, altID = None,
+  opt = Optimizer(probePhil, True, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
@@ -2109,7 +2109,7 @@ END
   # Optimization will place the movers. Make sure we got as many as we expected.
   # Make sure that the orientation for all of the movers is correct.
   probePhil = _philLike()
-  opt = Optimizer(probePhil, True, model, modelIndex = 0, altID = None,
+  opt = Optimizer(probePhil, True, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
