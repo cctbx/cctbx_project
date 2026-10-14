@@ -256,6 +256,9 @@ def find_and_build_ions(
         tolerance=1.0)
     model.get_xray_structure().replace_scatterers(scatterers=scatterers)
     model.set_xray_structure(model.get_xray_structure())
+    # New ion scattering types: use the model's table and d_min, otherwise
+    # they default to d_min=0 (e.g. 6-term n_gaussian instead of 2-term).
+    model._restore_scattering_dictionaries()
     def show_r_factors():
        return "r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(), fmodel.r_free())
     fmodel.update_xray_structure(
