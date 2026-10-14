@@ -1297,6 +1297,16 @@ class place_hydrogens():
                 if atoms[j].name.strip() == 'CA'
                 and atoms[j].parent().parent().memory_id() == rg_n.memory_id()
                 and same_conf(j, i_h)]
+        # a covalent link (cyclic peptide, 1evd MDH 5 C - ACB 1 N) has the bond
+        # but not C-N-CA, which riding H needs for an H with two heavy neighbours
+        if ca and ca[0].value_angle_esd and i_ca:
+          key_ca = (min(i_c, i_ca[0]), i_n, max(i_c, i_ca[0]))
+          if key_ca not in known:
+            known.add(key_ca)
+            new.append(geometry_restraints.angle_proxy(
+              i_seqs      = [i_c, i_n, i_ca[0]],
+              angle_ideal = ca[0].value_angle,
+              weight      = 1./ca[0].value_angle_esd**2))
         if plane_esd and i_ca:
           i_seqs = [i_c, i_n, i_ca[0], i_h]
           planarities.append(geometry_restraints.planarity_proxy(
@@ -1518,7 +1528,12 @@ class place_hydrogens():
     Place NH3 at residue #1 or at first residue in chain
     Changes hierarchy in place
     '''
+    # an N bonded to another residue is no terminus (cyclic peptide: 1evd ACB 1
+    # N - MDH 5 C); metals do not count (coordination, not a covalent bond)
+    nonmetals = ('C', 'N', 'O', 'S', 'P', 'SE', 'B', 'SI', 'F', 'CL', 'BR', 'I')
     for m in pdb_hierarchy.models():
+      model_atoms = m.atoms()
+      model_sites = model_atoms.extract_xyz()
       for chain in m.chains():
         rgs = chain.residue_groups()[0]
         # by default, place NH3 only at residue with resseq 1
@@ -1537,8 +1552,17 @@ class place_hydrogens():
         if ag.resname in ['PRO']: # needs a PRO child lookup
           heavies = 3
         if len(bonds) >= heavies: continue
+        d2 = (model_sites - n.xyz).dot()
+        if [i for i in (d2 < 1.75**2).iselection()
+            if model_atoms[i].element.strip().upper() in nonmetals
+            and model_atoms[i].parent().parent().memory_id() != rgs.memory_id()]:
+          continue
+        # remove the amide H also for peptide-like residues of class 'other'
+        # (UNK, ACB): add_n_terminal_hydrogens keeps an existing H in place of
+        # H1, and H, H2, H3 do not match mod_NH3
         if (get_class(name=ag.resname) in
-            ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+            ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']
+            or (ag.get_atom('CA') and ag.get_atom('C'))):
           for ag_h in rgs.atom_groups():
             h = ag_h.get_atom('H')
             if h:
