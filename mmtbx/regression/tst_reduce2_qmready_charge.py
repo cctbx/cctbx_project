@@ -58,6 +58,74 @@ ATOM     21  OXT LYS A   3      20.995   0.451  11.763  1.00 20.00           O
 END
 """
 
+# Peptide fragments from 3vt9 (143-144, 147, 150, 232-233): NH3+ and COO- at
+# each fragment, Asp -1 -> -1
+pdb_str_frag = """\
+CRYST1   27.973   30.241   36.301  90.00  90.00  90.00 P 1
+ATOM      1  N   TYR A 143      18.189  17.846   5.000  1.00 23.64           N
+ATOM      2  CA  TYR A 143      18.357  18.668   6.193  1.00 24.34           C
+ATOM      3  C   TYR A 143      18.140  20.148   5.894  1.00 25.18           C
+ATOM      4  O   TYR A 143      18.982  20.801   5.278  1.00 26.15           O
+ATOM      5  CB  TYR A 143      19.753  18.468   6.795  1.00 23.00           C
+ATOM      6  CG  TYR A 143      19.906  19.085   8.170  1.00 26.16           C
+ATOM      7  CD1 TYR A 143      19.546  18.377   9.315  1.00 26.15           C
+ATOM      8  CD2 TYR A 143      20.374  20.392   8.326  1.00 29.44           C
+ATOM      9  CE1 TYR A 143      19.644  18.953  10.580  1.00 23.54           C
+ATOM     10  CE2 TYR A 143      20.475  20.979   9.587  1.00 19.77           C
+ATOM     11  CZ  TYR A 143      20.108  20.254  10.711  1.00 29.80           C
+ATOM     12  OH  TYR A 143      20.202  20.824  11.966  1.00 26.06           O
+ATOM     13  N   ASP A 144      17.005  20.671   6.345  1.00 26.39           N
+ATOM     14  CA  ASP A 144      16.656  22.072   6.145  1.00 26.41           C
+ATOM     15  C   ASP A 144      16.935  22.856   7.424  1.00 27.66           C
+ATOM     16  O   ASP A 144      16.168  22.794   8.387  1.00 27.41           O
+ATOM     17  CB  ASP A 144      15.177  22.187   5.774  1.00 26.75           C
+ATOM     18  CG  ASP A 144      14.663  23.604   5.876  1.00 32.49           C
+ATOM     19  OD1 ASP A 144      15.387  24.533   5.455  1.00 28.31           O
+ATOM     20  OD2 ASP A 144      13.534  23.787   6.382  1.00 41.39           O
+ATOM     21  N   TYR A 147      14.226  25.192   9.139  1.00 35.91           N
+ATOM     22  CA  TYR A 147      13.181  24.667  10.017  1.00 36.98           C
+ATOM     23  C   TYR A 147      11.773  24.971   9.506  1.00 37.02           C
+ATOM     24  O   TYR A 147      10.821  25.037  10.285  1.00 36.71           O
+ATOM     25  CB  TYR A 147      13.343  25.241  11.430  1.00 40.78           C
+ATOM     26  CG  TYR A 147      14.497  24.655  12.217  1.00 42.98           C
+ATOM     27  CD1 TYR A 147      15.745  24.462  11.627  1.00 44.97           C
+ATOM     28  CD2 TYR A 147      14.340  24.301  13.555  1.00 50.93           C
+ATOM     29  CE1 TYR A 147      16.806  23.931  12.347  1.00 50.90           C
+ATOM     30  CE2 TYR A 147      15.396  23.769  14.285  1.00 54.15           C
+ATOM     31  CZ  TYR A 147      16.625  23.587  13.674  1.00 54.34           C
+ATOM     32  OH  TYR A 147      17.672  23.064  14.392  1.00 56.08           O
+ATOM     33  N   PHE A 150       8.896  22.695  10.613  1.00 32.01           N
+ATOM     34  CA  PHE A 150       8.615  22.605  12.043  1.00 33.65           C
+ATOM     35  C   PHE A 150       7.281  23.232  12.427  1.00 34.16           C
+ATOM     36  O   PHE A 150       6.780  23.014  13.527  1.00 33.81           O
+ATOM     37  CB  PHE A 150       9.737  23.269  12.847  1.00 36.30           C
+ATOM     38  CG  PHE A 150      10.953  22.404  13.022  1.00 35.86           C
+ATOM     39  CD1 PHE A 150      11.504  21.724  11.937  1.00 36.69           C
+ATOM     40  CD2 PHE A 150      11.548  22.267  14.271  1.00 32.00           C
+ATOM     41  CE1 PHE A 150      12.628  20.920  12.095  1.00 37.39           C
+ATOM     42  CE2 PHE A 150      12.672  21.466  14.442  1.00 32.96           C
+ATOM     43  CZ  PHE A 150      13.214  20.791  13.352  1.00 37.79           C
+ATOM     59  N   TYR A 232       9.572  13.044  12.058  1.00 22.04           N
+ATOM     60  CA  TYR A 232      10.003  13.787  10.879  1.00 19.32           C
+ATOM     61  C   TYR A 232      11.468  13.494  10.564  1.00 19.71           C
+ATOM     62  O   TYR A 232      11.830  13.220   9.418  1.00 18.34           O
+ATOM     63  CB  TYR A 232       9.805  15.286  11.125  1.00 16.65           C
+ATOM     64  CG  TYR A 232      10.406  16.197  10.076  1.00 17.99           C
+ATOM     65  CD1 TYR A 232       9.680  16.574   8.949  1.00 22.93           C
+ATOM     66  CD2 TYR A 232      11.691  16.710  10.231  1.00 23.97           C
+ATOM     67  CE1 TYR A 232      10.220  17.444   8.000  1.00 24.15           C
+ATOM     68  CE2 TYR A 232      12.241  17.578   9.293  1.00 21.34           C
+ATOM     69  CZ  TYR A 232      11.504  17.942   8.183  1.00 27.57           C
+ATOM     70  OH  TYR A 232      12.055  18.799   7.259  1.00 25.99           O
+ATOM     71  N   SER A 233      12.301  13.542  11.598  1.00 19.07           N
+ATOM     72  CA  SER A 233      13.732  13.341  11.442  1.00 19.75           C
+ATOM     73  C   SER A 233      14.047  11.941  10.931  1.00 19.48           C
+ATOM     74  O   SER A 233      14.990  11.756  10.163  1.00 17.69           O
+ATOM     75  CB  SER A 233      14.449  13.574  12.776  1.00 20.71           C
+ATOM     76  OG  SER A 233      14.283  14.908  13.217  1.00 13.41           O
+END
+"""
+
 def run(model_text, prefix, expected_files, in_suffix=".pdb", extra_args=()):
   fn_in = prefix + in_suffix
   with open(fn_in, "w") as f:
@@ -112,10 +180,31 @@ def test_no_qmready_no_charge():
   assert r.total_charge is None, r.total_charge
   assert not os.path.exists(prefix+"H_charge-2.pdb")
 
+def test_qmready_chain_breaks():
+  # NH3 at each fragment start and OXT at each fragment end, not only at the
+  # first and last residue of the chain
+  import iotbx.pdb
+  prefix = "tst_reduce2_qmready_charge_6"
+  fn_out = prefix+"H_charge-1.pdb"
+  r = run(pdb_str_frag, prefix,
+    expected_files=[fn_out, prefix+"H_charge-1.txt"],
+    extra_args=["qmready=True"])
+  assert r.total_charge == -1, r.total_charge
+  nh3, oxt = [], []
+  for rg in iotbx.pdb.input(fn_out).construct_hierarchy().residue_groups():
+    names = [a.name.strip() for a in rg.atoms()]
+    if 'H1' in names and 'H2' in names and 'H3' in names:
+      nh3.append(rg.resseq.strip())
+    if 'OXT' in names:
+      oxt.append(rg.resseq.strip())
+  assert nh3 == ['143', '147', '150', '232'], nh3
+  assert oxt == ['144', '147', '150', '233'], oxt
+
 if __name__ == "__main__":
   test_qmready_negative_charge()
   test_qmready_positive_charge()
   test_qmready_cif()
   test_qmready_explicit_filename()
   test_no_qmready_no_charge()
+  test_qmready_chain_breaks()
   print("OK")

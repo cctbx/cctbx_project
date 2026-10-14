@@ -45,10 +45,13 @@ keep_existing_H = False
   .type = bool
   .short_caption = Do not remove Hydrogens in the original model
   .help = Keep existing H atoms in the model
-n_terminal_charge = *residue_one first_in_chain no_charge
+n_terminal_charge = *residue_one first_in_chain all_chain_starts no_charge
   .type = choice(multi=False)
   .short_caption = N terminal charge approach
-  .help = Mode for placing H3 at terminal nitrogen.
+  .help = Mode for placing H3 at terminal nitrogen: residue_one (resseq 1),\
+          first_in_chain (first residue of each chain), all_chain_starts\
+          (first residue of each chain and each residue after a chain\
+          break), no_charge.
 exclude_water = True
   .type = bool
   .short_caption = Add H to water if False
@@ -116,7 +119,7 @@ skip_optimizations_after_seconds = 0.0
 qmready = False
   .type = bool
   .short_caption = Run with custom preset options suitable for QM
-  .help = Add H to water, use longer XH distances, add OXT, add terminal NH3 for all chains in hierarchy
+  .help = Add H to water, use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks
 output
   .style = menu_item auto_align
 {
@@ -1054,7 +1057,7 @@ NOTES:
       reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
         model                 = self.model,
         use_neutron_distances = True,
-        n_terminal_charge     = "first_in_chain",
+        n_terminal_charge     = "all_chain_starts",
         exclude_water         = False,
         stop_for_unknowns     = self.params.stop_on_any_missing_hydrogen,
         keep_existing_H       = True,

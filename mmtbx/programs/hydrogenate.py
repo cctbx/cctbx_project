@@ -17,9 +17,12 @@ keep_existing_H = False
   .type = bool
   .help = Keep existing H atoms in the model
 
-n_terminal_charge = *residue_one first_in_chain no_charge
+n_terminal_charge = *residue_one first_in_chain all_chain_starts no_charge
   .type = choice(multi=False)
-  .help = Mode for placing H3 at terminal nitrogen.
+  .help = Mode for placing H3 at terminal nitrogen: residue_one (resseq 1),\
+          first_in_chain (first residue of each chain), all_chain_starts\
+          (first residue of each chain and each residue after a chain\
+          break), no_charge.
 
 add_h_to_water = False
   .type = bool

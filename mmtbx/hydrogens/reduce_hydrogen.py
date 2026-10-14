@@ -8,6 +8,7 @@ import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
 from libtbx import group_args
 from scitbx import matrix
+import scitbx.cubicle_neighbors
 from cctbx.array_family import flex
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
 from cctbx import geometry_restraints
@@ -408,6 +409,40 @@ def atom_in_restraints(name, cc_cif):
     if a.atom_id==name:
       return a
   return None
+
+def chain_start_residue_groups(model, peptide_bond_cutoff=2.0):
+  '''
+  Residue groups that start a chain or follow a chain break: first residue
+  group of each chain, and each residue group whose N is not peptide-bonded
+  (C(i-1)-N(i) distance >= peptide_bond_cutoff, same as add_terminal_oxt) to
+  C of the preceding residue group. Alternative conformations: bonded if any
+  C-N pair is bonded. Cost is linear in number of residue groups.
+  '''
+  cutoff_sq = peptide_bond_cutoff**2
+  result = []
+  for chain in model.chains():
+    prev_c_sites = None
+    for rg in chain.residue_groups():
+      n_sites, c_sites = [], []
+      for ag in rg.atom_groups():
+        n = ag.get_atom('N')
+        if n: n_sites.append(n.xyz)
+        c = ag.get_atom('C')
+        if c: c_sites.append(c.xyz)
+      bonded = False
+      if prev_c_sites:
+        for a in prev_c_sites:
+          for b in n_sites:
+            if (a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2 < cutoff_sq:
+              bonded = True
+              break
+          if bonded: break
+      if not bonded:
+        result.append(rg)
+      prev_c_sites = c_sites
+  return result
+
+# ==============================================================================
 
 def bonds_in_restraints(atom, exclude_hydrogens=False):
   from mmtbx.chemical_components import get_cif_dictionary
@@ -893,6 +928,12 @@ class place_hydrogens():
 
   keep_existing_H : bool
     keep existing H atoms in model, only place missing H
+
+  n_terminal_charge : str
+    where to place N-terminal NH3: 'residue_one' (residue with resseq 1),
+    'first_in_chain' (first residue of each chain), 'all_chain_starts'
+    (first residue of each chain and each residue after a chain break, i.e.
+    N not peptide-bonded to C of preceding residue), 'no_charge' (nowhere)
   '''
 
 # ------------------------------------------------------------------------------
@@ -1014,7 +1055,8 @@ class place_hydrogens():
     # Place N-terminal propeller hydrogens
     # TODO double check N-terminal position for PRO residues
     # ------------------------------------
-    if self.n_terminal_charge in ['residue_one', 'first_in_chain']:
+    if self.n_terminal_charge in ['residue_one', 'first_in_chain',
+                                  'all_chain_starts']:
       t0 = time.time()
       self.place_n_terminal_propeller(pdb_hierarchy = pdb_hierarchy)
       self.time_terminal_propeller = round(time.time()-t0, 2)
@@ -1525,7 +1567,8 @@ class place_hydrogens():
 
   def place_n_terminal_propeller(self, pdb_hierarchy):
     '''
-    Place NH3 at residue #1 or at first residue in chain
+    Place NH3 at residue #1, at first residue in chain, or at all chain starts
+    (first residue in chain and first residue after a chain break)
     Changes hierarchy in place
     '''
     # an N bonded to another residue is no terminus (cyclic peptide: 1evd ACB 1
@@ -1534,13 +1577,15 @@ class place_hydrogens():
     for m in pdb_hierarchy.models():
       model_atoms = m.atoms()
       model_sites = model_atoms.extract_xyz()
-      for chain in m.chains():
-        rgs = chain.residue_groups()[0]
+      if self.n_terminal_charge == 'all_chain_starts':
+        rgs_list = chain_start_residue_groups(m)
+      else:
+        rgs_list = [chain.residue_groups()[0] for chain in m.chains()]
+      candidates = []
+      for rgs in rgs_list:
         # by default, place NH3 only at residue with resseq 1
         if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
           continue
-        elif (self.n_terminal_charge == 'first_in_chain'):
-          pass
         # SAC in 5xdq, 5zcp. Never needs propeller. Also AYA
         n = None
         for ag in rgs.atom_groups():
@@ -1552,8 +1597,30 @@ class place_hydrogens():
         if ag.resname in ['PRO']: # needs a PRO child lookup
           heavies = 3
         if len(bonds) >= heavies: continue
-        d2 = (model_sites - n.xyz).dot()
-        if [i for i in (d2 < 1.75**2).iselection()
+        candidates.append((rgs, ag, n))
+      if not candidates: continue
+      # Atoms within 1.75 A of candidate N. Few candidates: scan all atoms per
+      # N. Many (all_chain_starts, models can have very many chain starts):
+      # one spatial lookup for all N, as scan is O(N_atoms) per N. Crossover
+      # is at ~15 candidates.
+      cutoff_sq = 1.75**2
+      neighbors = None
+      if len(candidates) > 10:
+        n_sites = flex.vec3_double([n.xyz for rgs, ag, n in candidates])
+        neighbors = scitbx.cubicle_neighbors.cubicle_neighbors(
+          main_sites_cart = model_sites,
+          cubicle_edge    = 5).neighbors_of(
+            other_sites_cart   = n_sites,
+            distance_cutoff_sq = cutoff_sq)
+      for i_n, (rgs, ag, n) in enumerate(candidates):
+        if neighbors is None:
+          nb = ((model_sites - n.xyz).dot() < cutoff_sq).iselection()
+        elif i_n in neighbors:
+          nb = flex.size_t(list(neighbors[i_n]))
+          nb = nb.select((model_sites.select(nb) - n.xyz).dot() < cutoff_sq)
+        else:
+          nb = []
+        if [i for i in nb
             if model_atoms[i].element.strip().upper() in nonmetals
             and model_atoms[i].parent().parent().memory_id() != rgs.memory_id()]:
           continue
