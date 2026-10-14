@@ -72,11 +72,18 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     # only permitted values are ATOM or HETATM
     group_PDB = cif_block.get("_atom_site.group_PDB")
     # TODO: read esds
-    B_iso_or_equiv = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.B_iso_or_equiv"))
+    # Integrative (IHM) models deposited in the PDB give occupancy and
+    # B_iso_or_equiv as the mmCIF null values "." or "?" on every atom.
+    # Both default to 0.0, same as blank columns in the PDB-format reader.
+    B_iso_or_equiv = self._flex_double_with_null_default(
+      self._wrap_loop_if_needed(cif_block, "_atom_site.B_iso_or_equiv"),
+      default=0.0)
     cart_x = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.Cartn_x"))
     cart_y = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.Cartn_y"))
     cart_z = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.Cartn_z"))
-    occu =   flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.occupancy"))
+    occu = self._flex_double_with_null_default(
+      self._wrap_loop_if_needed(cif_block, "_atom_site.occupancy"),
+      default=0.0)
     formal_charge = self._wrap_loop_if_needed(cif_block, "_atom_site.pdbx_formal_charge")
     resolution = self._wrap_loop_if_needed(cif_block, "_atom_site.phenix_resolution")
     # anisotropic b-factors
@@ -248,6 +255,17 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     if isinstance(data, string_types):
       data = flex.std_string([data])
     return data
+
+  def _flex_double_with_null_default(self, data, default):
+    """
+    Convert a numeric _atom_site column to flex.double, replacing the mmCIF
+    null values "." (not applicable) and "?" (unknown) with default.
+    """
+    null_sel = (data == ".") | (data == "?")
+    if null_sel.count(True) > 0:
+      data = data.deep_copy()
+      data.set_selected(null_sel, str(default))
+    return flex.double(data)
 
 
 def is_aa_or_rna_dna(resname):
