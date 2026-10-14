@@ -27,6 +27,7 @@ def run():
   test_017()
   test_018()
   test_019()
+  test_020()
 
 # ------------------------------------------------------------------------------
 
@@ -366,6 +367,26 @@ def test_019():
   atoms = place_atoms(pdb_str_019_control)
   assert h_on(atoms, 'ASN', '114', 'ND2') == ['HD21'], h_on(
     atoms, 'ASN', '114', 'ND2')
+
+def test_020():
+  '''
+  7a5m ALA A 103: N, C and O have no altloc, CA and CB are in A and B, SER
+  A 102 is all A/B. Each altloc gets its amide H. add_link_h_restraints gave
+  H/A the angle C/B(102)-N-H as well (and H/B C/A), and riding H stopped:
+  "angle restraints involving an H atom are missing ... N ALA A 103 / CA A".
+  Each H must lie in the amide plane of its own altloc.
+  '''
+  atoms = place_atoms(pdb_str_020)
+  a = dict(((x.parent().parent().resseq.strip(), x.parent().altloc,
+    x.name.strip()), matrix.col(x.xyz)) for x in atoms)
+  n = a[('103', '', 'N')]
+  angle = lambda x, z: (x-n).angle(z-n, deg=True)
+  for alt in 'AB':
+    h, c, ca = a[('103', alt, 'H')], a[('102', alt, 'C')], a[('103', alt, 'CA')]
+    assert approx_equal(abs(h-n), 0.86, eps=0.01)
+    # planar: the three angles around N add up to 360
+    assert approx_equal(angle(c, h) + angle(ca, h) + angle(c, ca), 360,
+      eps=1), (alt, angle(c, h), angle(ca, h), angle(c, ca))
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -1123,6 +1144,30 @@ HETATM 1720  O4  NAG A 401       7.678  -6.625  37.777  1.00 25.59           O
 HETATM 1721  O5  NAG A 401      10.488  -4.329  38.368  1.00 17.19           O
 HETATM 1722  O6  NAG A 401       9.364  -5.399  40.659  1.00 38.39           O
 HETATM 1723  O7  NAG A 401      13.161  -6.362  34.883  1.00 19.28           O
+END
+"""
+
+pdb_str_020 = """
+CRYST1   35.150   61.360   88.940  90.00  90.00  90.00 C 2 2 21     16
+ATOM   2094  N  ASER A 102      -0.505 -11.072   2.316  0.62 14.20           N
+ATOM   2095  N  BSER A 102      -0.440 -11.462   2.296  0.38  8.25           N
+ATOM   2096  CA ASER A 102       0.562 -10.397   1.608  0.62 14.24           C
+ATOM   2097  CA BSER A 102       0.488 -10.636   1.545  0.38  9.67           C
+ATOM   2098  C  ASER A 102       0.420  -8.947   2.004  0.62 13.70           C
+ATOM   2099  C  BSER A 102       0.444  -9.171   1.999  0.38  8.99           C
+ATOM   2100  O  ASER A 102       1.376  -8.180   2.169  0.62 14.83           O
+ATOM   2101  O  BSER A 102       1.496  -8.531   2.119  0.38  9.78           O
+ATOM   2102  CB ASER A 102       0.481 -10.668   0.054  0.62 12.00           C
+ATOM   2103  CB BSER A 102       0.155 -10.652   0.056  0.38 14.81           C
+ATOM   2104  OG ASER A 102       0.909 -11.911  -0.426  0.62 12.63           O
+ATOM   2105  OG BSER A 102       1.222 -10.020  -0.610  0.38 17.17           O
+ATOM   2116  N   ALA A 103      -0.777  -8.531   2.155  1.00 12.01           N
+ATOM   2117  CA AALA A 103      -1.028  -7.141   2.663  0.62 12.55           C
+ATOM   2118  CA BALA A 103      -0.799  -7.167   2.561  0.38 11.32           C
+ATOM   2119  C   ALA A 103      -0.434  -6.917   4.050  1.00 11.54           C
+ATOM   2120  O   ALA A 103       0.175  -5.884   4.351  1.00 12.98           O
+ATOM   2121  CB AALA A 103      -2.475  -6.621   2.598  0.62 13.63           C
+ATOM   2122  CB BALA A 103      -2.223  -6.688   2.343  0.38 12.27           C
 END
 """
 

@@ -1261,6 +1261,10 @@ class place_hydrogens():
     for proxy in grm.angle_proxies:
       i, j, k = proxy.i_seqs
       known.add((min(i, k), j, max(i, k)))
+    # H/A must not get C/B of the previous residue (7a5m ALA A 103: N without
+    # altloc, CA and H in A and B)
+    altloc = lambda i: atoms[i].parent().altloc.strip()
+    same_conf = lambda i, j: '' in (altloc(i), altloc(j)) or altloc(i) == altloc(j)
     for i_h, atom in enumerate(atoms):
       if elements[i_h].strip() not in ('H', 'D'): continue
       heavy = [j for j in set(bonds.get(i_h, []))
@@ -1272,6 +1276,7 @@ class place_hydrogens():
       for i_c in set(bonds.get(i_n, [])):
         if atoms[i_c].name.strip() != 'C': continue
         if atoms[i_c].parent().parent().memory_id() == rg_n.memory_id(): continue
+        if not same_conf(i_c, i_h): continue
         key = (min(i_c, i_h), i_n, max(i_c, i_h))
         if key in known: continue
         known.add(key)
@@ -1281,7 +1286,8 @@ class place_hydrogens():
           weight      = 1./esd**2))
         i_ca = [j for j in set(bonds.get(i_n, []))
                 if atoms[j].name.strip() == 'CA'
-                and atoms[j].parent().parent().memory_id() == rg_n.memory_id()]
+                and atoms[j].parent().parent().memory_id() == rg_n.memory_id()
+                and same_conf(j, i_h)]
         if plane_esd and i_ca:
           i_seqs = [i_c, i_n, i_ca[0], i_h]
           planarities.append(geometry_restraints.planarity_proxy(
