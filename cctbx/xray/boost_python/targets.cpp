@@ -485,6 +485,21 @@ namespace {
         ;
       }
       {
+        typedef llgi::tncs_frame_many w_t;
+        class_<w_t>("llgi_tncs_frame", no_init)
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&>((
+              arg("a"),
+              arg("u"),
+              arg("t"))))
+          .add_property("a_p", make_getter(&w_t::a_p, return_value_policy<return_by_value>()))
+          .add_property("s", make_getter(&w_t::s, return_value_policy<return_by_value>()))
+          .add_property("valid", make_getter(&w_t::valid, return_value_policy<return_by_value>()))
+        ;
+      }
+      {
         typedef llgi_exact::hybrid w_t;
         class_<w_t>("llgi_hybrid", no_init)
           .def(init<

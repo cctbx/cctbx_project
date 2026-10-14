@@ -272,6 +272,21 @@ def exercise_invalid_frame_contributes_nothing():
     else:
       assert r.target_per_reflection()[i] != 0
 
+def exercise_frame_arrays():
+  """ llgi_tncs_frame (tncs_frame for arrays): a' and s, 0 where the frame
+  is invalid (a outside (0, 1), u or t not positive, a'^2 not positive) """
+  a = flex.double([0.5, 0.5, 0.5, 1.0, 0.0, 0.9, 0.5])
+  u = flex.double([1.0, 2.0, 0.0, 1.0, 1.0, 1.5, 1.0])
+  t = flex.double([1.0, 2.5, 1.0, 1.0, 1.0, 0.0, 0.5])
+  r = ext.llgi_tncs_frame(a=a, u=u, t=t)
+  assert list(r.valid) == [True, True, False, False, False, False, False]
+  assert approx_equal(r.a_p[0], 0.5) and approx_equal(r.s[0], 1.)
+  a_p = math.sqrt(1 - 0.75 * 2.0 / 2.5)
+  assert approx_equal(r.a_p[1], a_p)
+  assert approx_equal(r.s[1], 0.5 / (math.sqrt(2.5) * a_p))
+  for i in range(2, 7):
+    assert r.a_p[i] == 0 and r.s[i] == 0
+
 def exercise():
   for centric in (False, True):
     exercise_identity_without_modulation(centric)
@@ -280,6 +295,7 @@ def exercise():
     exercise_fcalc_gradients(centric)
     exercise_sigmaa_scatfrac_gradients(centric)
   exercise_invalid_frame_contributes_nothing()
+  exercise_frame_arrays()
   print("OK")
 
 if __name__ == "__main__":

@@ -320,6 +320,27 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
     }
   };
 
+  //! tncs_frame for arrays of a (sigmaA), u and t: a' and s per reflection,
+  //! 0 where the frame is invalid (no contribution), and the valid flags.
+  struct tncs_frame_many
+  {
+    af::shared<double> a_p, s;
+    af::shared<bool> valid;
+
+    tncs_frame_many(
+      af::const_ref<double> const& a,
+      af::const_ref<double> const& u,
+      af::const_ref<double> const& t)
+    {
+      CCTBX_ASSERT(u.size() == a.size() && t.size() == a.size());
+      a_p.reserve(a.size()); s.reserve(a.size()); valid.reserve(a.size());
+      for (std::size_t i = 0; i < a.size(); i++) {
+        tncs_frame f(a[i], u[i], t[i]);
+        a_p.push_back(f.a_p); s.push_back(f.s); valid.push_back(f.valid);
+      }
+    }
+  };
+
   //! Target (minimize-me) for one reflection in the t-normalised frame of
   //! tncs_frame, and its derivatives w.r.t. ec' and a': the exact LLGI
   //! where the hybrid says so, otherwise the Rice form (target_one_h with

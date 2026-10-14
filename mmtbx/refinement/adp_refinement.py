@@ -605,9 +605,13 @@ class weight_result(object):
         self.neutron_r_work, self.neutron_r_free), file=out)
 
 def adaptive_lbfgs_params(all_params):
-  """ The LBFGS settings (llgi_data.lbfgs_*) for targets other than llgi when
-  main.adaptive_lbfgs_all_targets is set (mmtbx.refinement.minimization), or
-  None. """
+  """ The adaptive LBFGS settings (phenix's llgi_data.lbfgs_*) for the
+  coordinate and individual-ADP minimisations of phenix.refine
+  (mmtbx.refinement.minimization): with target llgi, or with any target when
+  main.adaptive_lbfgs_all_targets is set; otherwise None (the usual
+  limit). """
   main = getattr(all_params, "main", None)
-  if(not getattr(main, "adaptive_lbfgs_all_targets", False)): return None
+  if(getattr(main, "target", None) != "llgi" and
+     not getattr(main, "adaptive_lbfgs_all_targets", False)):
+    return None
   return getattr(all_params, "llgi_data", None)

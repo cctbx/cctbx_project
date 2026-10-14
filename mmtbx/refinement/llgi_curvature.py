@@ -49,26 +49,31 @@ def fisher_information(fmodel):
   k = fmodel.scale_ml_wrapper()
   if(k <= 0): k = 1.
   u, t = llgi_tncs.arrays(ld)
-  centric = f_obs.centric_flags().data()
-  work = ~fmodel.r_free_flags().data()
+  ok = ~fmodel.r_free_flags().data() & (sf > 0) & (resn > 0) & (sa > 0) & \
+    (sa < 1)
+  if(u is not None):
+    # the t-normalised frame (llgi.h tncs_frame): a' and s
+    a_p, s = llgi_tncs.frame(sa, u, t)
+    ok &= a_p > 0
+    d = dobs * a_p
+    i_e = flex.pow2(d * s)
+    v = 1. - d * d
+  else:
+    d = dobs * sa
+    i_e = d * d
+    v = teps - d * d
+  v.set_selected(v < 1.e-3, 1.e-3)
+  half = flex.double(n, 0.5)                 # acentric: half per component
+  half.set_selected(f_obs.centric_flags().data(), 1.)
+  i_e = i_e / v * half
+  sf_safe = sf.deep_copy()
+  sf_safe.set_selected(~ok, 1.)
+  resn_safe = resn.deep_copy()
+  resn_safe.set_selected(~ok, 1.)
+  ec_per_fc = k / (resn_safe * flex.sqrt(sf_safe))
   k_total = fmodel.k_isotropic() * fmodel.k_anisotropic()
-  result = flex.double(n, 0.)
-  for i in range(n):
-    if(not work[i] or sf[i] <= 0 or resn[i] <= 0 or not 0 < sa[i] < 1):
-      continue
-    if(u is not None):
-      a_p_sq = 1. - (1. - sa[i] ** 2) * u[i] / t[i]
-      if(not a_p_sq > 0): continue
-      a_p = math.sqrt(a_p_sq)
-      s = sa[i] / (math.sqrt(t[i]) * a_p)
-      d = dobs[i] * a_p
-      i_e = (d * s) ** 2 / max(1. - d * d, 1.e-3)
-    else:
-      d = dobs[i] * sa[i]
-      i_e = d * d / max(teps[i] - d * d, 1.e-3)
-    if(not centric[i]): i_e *= 0.5
-    ec_per_fc = k / (resn[i] * math.sqrt(sf[i]))
-    result[i] = i_e * (ec_per_fc * k_total[i]) ** 2
+  result = i_e * flex.pow2(ec_per_fc * k_total)
+  result.set_selected(~ok, 0.)
   return result
 
 def data_curvatures(fmodel, xray_structure, n_bins=40):

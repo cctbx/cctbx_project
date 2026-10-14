@@ -138,29 +138,27 @@ class lbfgs(object):
         flex.median(h_data) if h_data.size() else 0, h_restr), file=self.log)
 
   def _llgi_adaptive_termination(self, termination_params):
-    """ With the llgi target and llgi_data.lbfgs_max_iterations above the
+    """ With adaptive_params (an object with the attributes
+    lbfgs_max_iterations, lbfgs_stop, lbfgs_patience and
+    lbfgs_stop_fraction, e.g. phenix's llgi_data parameters; see
+    adp_refinement.adaptive_lbfgs_params) and lbfgs_max_iterations above the
     usual limit, the minimisation may continue past that limit (up to
     lbfgs_max_iterations) while it is still making progress
-    (callback_after_step). With llgi_data.lbfgs_stop = free (and a free
-    set), progress is judged by the data target on the free reflections: the
+    (callback_after_step). With lbfgs_stop = free (and a free set),
+    progress is judged by the data target on the free reflections: the
     minimisation continues while that has reached a new minimum within the
-    last lbfgs_patience iterations, and the parameters at its minimum are
-    restored at the end (_llgi_restore_best_free). With lbfgs_stop =
-    progress, it stops once the last 10 iterations have reduced the total
-    target by less than lbfgs_stop_fraction of the reduction so far.
-    For other targets, adaptive_params (an object with the same lbfgs_*
-    attributes, e.g. phenix's llgi_data parameters) switches on the same
-    rule; without it the usual limit applies. """
+    last lbfgs_patience iterations, and the parameters at its minimum (the
+    starting point included) are restored at the end
+    (_llgi_restore_best_free). With lbfgs_stop = progress, it stops once the
+    last 10 iterations have reduced the total target by less than
+    lbfgs_stop_fraction of the reduction so far. Without adaptive_params
+    the usual limit applies. """
     self._adaptive = None
     self._free = None
     fmodel = self.fmodels.fmodel_xray()
-    if(termination_params is None or self.fmodels.fmodel_neutron() is not None):
-      return termination_params
-    if(fmodel.target_name == "llgi"):
-      llgi_data = fmodel.llgi_data()
-    elif(self.adaptive_params is not None):
-      llgi_data = self.adaptive_params
-    else:
+    llgi_data = self.adaptive_params
+    if(termination_params is None or llgi_data is None or
+       self.fmodels.fmodel_neutron() is not None):
       return termination_params
     n_max = getattr(llgi_data, "lbfgs_max_iterations", None)
     n_min = termination_params.max_iterations
@@ -175,7 +173,7 @@ class lbfgs(object):
        fmodel.r_free_flags() is not None and
        fmodel.r_free_flags().data().count(True) > 0):
       self._free = group_args(patience=getattr(llgi_data, "lbfgs_patience", 10),
-        last=None, best=None, best_iter=None, best_x=None)
+        target_result=None, best=None, best_iter=None, best_x=None)
     return result
 
   def _llgi_restore_best_free(self, termination_params):
@@ -183,10 +181,11 @@ class lbfgs(object):
     data target, and report the choice. """
     fr = self._free
     restored = False
-    if(fr is not None and fr.best_x is not None and
-       fr.best_iter != self.minimizer.iter()):
+    if(fr is not None and fr.best_x is not None):
+      # also when the best iterate is the last one: after an exception
+      # scitbx.lbfgs leaves x at the lowest total target, maybe a trial step
       self.x = fr.best_x
-      restored = True
+      restored = (fr.best_iter != self.minimizer.iter())
     if(self.log is not None):
       extra = ""
       if(fr is not None and fr.best_iter is not None):
@@ -195,6 +194,18 @@ class lbfgs(object):
       print("  LBFGS (%s): %d iterations, adaptive limit %d%s" % (
         "xyz" if self.refine_xyz else "adp", self.minimizer.iter(),
         termination_params.max_iterations, extra), file=self.log)
+
+  def _note_free_target(self, target_result):
+    """ Keep the target result of the latest evaluation; its free target is
+    read only for accepted iterates (callback_after_step) and, at the first
+    evaluation, for the starting point (iteration 0). Without a free
+    target, the progress rule applies. """
+    fr = self._free
+    fr.target_result = target_result
+    if(fr.best_iter is None):
+      fr.best = target_result.target_test()
+      fr.best_iter, fr.best_x = 0, self.x.deep_copy()
+      if(fr.best is None): self._free = None
 
   def compute_functional_gradients_diag(self):
     f, g = self.compute_functional_and_gradients()
@@ -268,8 +279,7 @@ class lbfgs(object):
       u_iso_refinable_params = u_iso_refinable_params)
     self.f = fmodels_target_and_gradients.target()
     if(getattr(self, "_free", None) is not None):
-      self._free.last = \
-        fmodels_target_and_gradients.target_result_xray.target_test()
+      self._note_free_target(fmodels_target_and_gradients.target_result_xray)
     self.g = fmodels_target_and_gradients.gradients()
     if(self.refine_xyz and self.restraints_manager is not None and
        self.weights.w > 0.0):
@@ -370,10 +380,12 @@ class lbfgs(object):
       n_min, fraction, history = self._adaptive
       fr = self._free
       if (fr is not None):
-        # self.x and fr.last are those of the accepted iterate
+        # self.x and the last target evaluation are those of the accepted
+        # iterate
         it = minimizer.iter()
-        if (fr.best is None or fr.last < fr.best):
-          fr.best, fr.best_iter, fr.best_x = fr.last, it, self.x.deep_copy()
+        free = fr.target_result.target_test()
+        if (free < fr.best):
+          fr.best, fr.best_iter, fr.best_x = free, it, self.x.deep_copy()
         if (it >= n_min and it - fr.best_iter >= fr.patience):
           return True
         return

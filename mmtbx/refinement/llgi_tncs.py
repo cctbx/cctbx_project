@@ -533,15 +533,10 @@ def sigmaa_scatfrac_functor(tncs_u=None, **args):
   return xray_ext.llgi_sigmaa_scatfrac_target_and_gradients(**args)
 
 def frame(a, u, t):
-  """ llgi.h tncs_frame for arrays: (a', s), with a' = 0 where the frame
-  is invalid (no contribution) """
-  a_p = flex.double(a.size(), 0)
-  s = flex.double(a.size(), 0)
-  a_p_sq = 1 - (1 - a * a) * u / t
-  ok = (a > 0) & (a < 1) & (u > 0) & (t > 0) & (a_p_sq > 0)
-  a_p.set_selected(ok, flex.sqrt(a_p_sq.select(ok)))
-  s.set_selected(ok, a.select(ok) / (flex.sqrt(t.select(ok)) * a_p.select(ok)))
-  return a_p, s
+  """ llgi.h tncs_frame for arrays: (a', s), both 0 where the frame is
+  invalid (no contribution) """
+  r = xray_ext.llgi_tncs_frame(a=a, u=u, t=t)
+  return r.a_p, r.s
 
 def arrays(llgi_data):
   """ (u, t) as flex.double from llgi_data, or (None, None) without tNCS """
