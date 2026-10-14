@@ -302,6 +302,7 @@ general_tests = [
   "$D/ringer/tst_em_rscc.py",
   # validation/molprobity
   "$D/regression/tst_probe.py",
+  "$D/regression/tst_probe2_name_cache.py",
   "$D/regression/tst_reduce.py",
   "$D/regression/tst_ribbons.py",
   "$D/validation/regression/tst_molprobity_arguments.py",
