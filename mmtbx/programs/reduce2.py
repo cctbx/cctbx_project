@@ -21,7 +21,7 @@ from datetime import datetime
 from libtbx.program_template import ProgramTemplate
 from libtbx import group_args, phil
 from libtbx.str_utils import make_sub_header
-from libtbx.utils import Sorry, null_out
+from libtbx.utils import Sorry, null_out, peak_memory_usage, human_readable_size
 import mmtbx
 from mmtbx.probe import Helpers
 from iotbx import pdb, cli_parser
@@ -1866,6 +1866,10 @@ NOTES:
       self._pr.disable()
       ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
       ps.print_stats(profile_params['num_entries'])
+
+    print('', file=self.logger)
+    print('peak memory:', human_readable_size(peak_memory_usage()),
+      file=self.logger)
 
 # ------------------------------------------------------------------------------
 

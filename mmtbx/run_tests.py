@@ -483,6 +483,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce_custom_bond.py",
   "$D/regression/tst_reduce2_no_symmetry.py",
   "$D/regression/tst_reduce2_qmready_charge.py",
+  "$D/regression/tst_reduce2_peak_memory.py",
   "$D/regression/tst_altloc_chain_break.py",
   "$D/regression/ncs/tst_geometry_minimization_ncs_constraints.py",
   "$D/regression/tst_clashes.py",

@@ -2569,6 +2569,58 @@ def guess_total_memory():
   import psutil
   return psutil.virtual_memory().total
 
+def peak_memory_usage():
+  '''
+  Peak (maximum) resident memory used by the current process so far, in
+  bytes, or None if it cannot be determined. Child processes are not included.
+  Linux and macOS: getrusage maxrss; Windows: PeakWorkingSetSize.
+  '''
+  try:
+    if sys.platform == 'win32':
+      import ctypes
+      from ctypes import wintypes
+      class PROCESS_MEMORY_COUNTERS(ctypes.Structure):
+        _fields_ = [
+          ('cb', wintypes.DWORD),
+          ('PageFaultCount', wintypes.DWORD),
+          ('PeakWorkingSetSize', ctypes.c_size_t),
+          ('WorkingSetSize', ctypes.c_size_t),
+          ('QuotaPeakPagedPoolUsage', ctypes.c_size_t),
+          ('QuotaPagedPoolUsage', ctypes.c_size_t),
+          ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
+          ('QuotaNonPagedPoolUsage', ctypes.c_size_t),
+          ('PagefileUsage', ctypes.c_size_t),
+          ('PeakPagefileUsage', ctypes.c_size_t)]
+      counters = PROCESS_MEMORY_COUNTERS()
+      counters.cb = ctypes.sizeof(counters)
+      get_current_process = ctypes.windll.kernel32.GetCurrentProcess
+      get_current_process.restype = wintypes.HANDLE
+      get_memory_info = ctypes.windll.psapi.GetProcessMemoryInfo
+      get_memory_info.argtypes = [wintypes.HANDLE,
+        ctypes.POINTER(PROCESS_MEMORY_COUNTERS), wintypes.DWORD]
+      get_memory_info.restype = wintypes.BOOL
+      if not get_memory_info(get_current_process(), ctypes.byref(counters),
+                             counters.cb):
+        return None
+      return counters.PeakWorkingSetSize
+    import resource
+    maxrss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    if sys.platform == 'darwin':
+      return maxrss # bytes
+    return maxrss * 1024 # kilobytes on Linux and other Unix
+  except Exception:
+    return None
+
+def human_readable_size(n_bytes):
+  '''
+  Memory size as string: MB below 1 GB, GB otherwise. "unknown" for None.
+  '''
+  if n_bytes is None:
+    return "unknown"
+  if n_bytes < 1024**3:
+    return "%.1f MB" % (n_bytes / 1024**2)
+  return "%.2f GB" % (n_bytes / 1024**3)
+
 MANGLE_LEN = 256 # magic constant from compile.c
 def mangle(name, klass):
   '''

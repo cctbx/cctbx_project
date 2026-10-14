@@ -401,6 +401,21 @@ def exercise_round2():
 def exercise_guess_total_memory():
   assert(utils.guess_total_memory() > 0)
 
+def exercise_peak_memory_usage():
+  p0 = utils.peak_memory_usage()
+  assert p0 is not None and p0 > 0, p0
+  data = b'x' * (300 * 1024**2) # written, so pages are resident
+  p1 = utils.peak_memory_usage()
+  assert p1 - p0 > 200 * 1024**2, (p0, p1)
+  del data
+  assert utils.peak_memory_usage() >= p1 # peak, not current
+  assert utils.human_readable_size(0) == "0.0 MB"
+  assert utils.human_readable_size(512 * 1024**2) == "512.0 MB"
+  assert utils.human_readable_size(1023.94 * 1024**2) == "1023.9 MB"
+  assert utils.human_readable_size(1024**3) == "1.00 GB"
+  assert utils.human_readable_size(2.5 * 1024**3) == "2.50 GB"
+  assert utils.human_readable_size(None) == "unknown"
+
 def exercise_display_context():
   text = """
    line with word1
@@ -456,6 +471,7 @@ def run(args):
   exercise_group_args()
   exercise_round2()
   exercise_display_context()
+  exercise_peak_memory_usage()
   print(utils.format_cpu_times())
 
 if (__name__ == "__main__"):
