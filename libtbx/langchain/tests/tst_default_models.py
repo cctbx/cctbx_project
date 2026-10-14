@@ -494,15 +494,15 @@ def test_baseline_values_unchanged():
     # v120: anthropic + portkey entries added.  portkey fronts Azure OpenAI
     # (default gpt-5); anthropic chat defaults for decision/expensive roles.
     expected_decision = {
-      "google":    "gemini-2.5-flash-lite",
-      "openai":    "gpt-4o-mini",
-      "anthropic": "claude-sonnet-4-6",
+      "google":    "gemini-3.5-flash-lite",
+      "openai":    "gpt-6-luna",
+      "anthropic": "claude-sonnet-5-5",
       "ollama":    "llama3.2",
       "portkey":   "gpt-5",
     }
     expected_rag = {
-      "google":    "gemini-2.5-flash-lite",
-      "openai":    "gpt-5.4-nano",
+      "google":    "gemini-3.5-flash-lite",
+      "openai":    "gpt-6-luna",
       "ollama":    "llama3.1:70b",
       "portkey":   "gpt-5",
     }
@@ -515,10 +515,10 @@ def test_baseline_values_unchanged():
       "portkey":   "text-embedding-3-small-1",
     }
     expected_expensive = {
-      "google":    "gemini-2.5-pro",
+      "google":    "gemini-3.8-flash",
       "openai":    "gpt-5.5",
       "ollama":    "qwen3:32b",
-      "anthropic": "claude-opus-4-7",
+      "anthropic": "claude-opus-5-5",
       "portkey":   "gpt-5",
     }
     expected_cheap = {

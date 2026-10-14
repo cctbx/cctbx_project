@@ -2742,7 +2742,11 @@ FINAL REPORT:"""
             else:
                 response = llm.invoke(prompt)
 
-            summary = response.content.strip()
+            try:
+              from libtbx.langchain.core.llm import response_text
+            except ImportError:
+              from core.llm import response_text
+            summary = response_text(response).strip()
             self.data["summary"] = summary
             self.save()
             return summary

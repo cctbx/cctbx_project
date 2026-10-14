@@ -2303,7 +2303,11 @@ def plan(state):
             # No rate limit handler available, call directly
             response = llm.invoke(messages)
 
-        content = response.content
+        try:
+          from libtbx.langchain.core.llm import response_text
+        except ImportError:
+          from core.llm import response_text
+        content = response_text(response)
 
         state = _log(state, "PLAN: LLM response received (%d chars)" % len(content))
 

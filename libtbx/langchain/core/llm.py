@@ -49,9 +49,9 @@ _llm_verbosity = None
 # revisiting the budget arithmetic.
 
 DECISION_MODEL_DEFAULTS = {
-  "google":    "gemini-2.5-flash-lite",
-  "openai":    "gpt-4o-mini",
-  "anthropic": "claude-sonnet-4-6",
+  "google":    "gemini-3.5-flash-lite",   # was gemini-2.5-flash-lite (2.5: existing users only)
+  "openai":    "gpt-6-luna",              # was gpt-4o-mini (snapshot retires 2027-01-14)
+  "anthropic": "claude-sonnet-5-5",   # was claude-sonnet-4-6 (still active)
   "ollama":    "llama3.2",
   # portkey fronts Azure OpenAI; the upstream model is chosen by
   # PHENIX_PORTKEY_MODEL (default below).  gpt-5 is the deployment default.
@@ -61,8 +61,8 @@ DECISION_MODEL_DEFAULTS = {
 RAG_MODEL_DEFAULTS = {
   # anthropic has no entry: get_llm_and_embeddings delegates anthropic
   # embeddings (no native endpoint) and anthropic is not used for RAG.
-  "google":    "gemini-2.5-flash-lite",
-  "openai":    "gpt-5.4-nano",   # was gpt-5-nano; gpt-5-nano-2025-08-07 retires 2026-12-11
+  "google":    "gemini-3.5-flash-lite",   # was gemini-2.5-flash-lite
+  "openai":    "gpt-6-luna",   # was gpt-5.4-nano (retires 2027-04-01); before that gpt-5-nano
   "ollama":    "llama3.1:70b",
   "portkey":   "gpt-5",
 }
@@ -101,10 +101,10 @@ EMBEDDING_EXPECTED_DIM = {
 }
 
 EXPENSIVE_MODEL_DEFAULTS = {
-  "google":    "gemini-2.5-pro",
+  "google":    "gemini-3.8-flash",   # was gemini-2.5-pro (2.5: existing users only; no stable 3.x Pro)
   "openai":    "gpt-5.5",   # was gpt-5; gpt-5-2025-08-07 retires 2026-12-11
   "ollama":    "qwen3:32b",
-  "anthropic": "claude-opus-4-7",
+  "anthropic": "claude-opus-5-5",   # was claude-opus-4-7 (still active)
   "portkey":   "gpt-5",
 }
 
@@ -522,35 +522,265 @@ def portkey_langchain_config():
 def anthropic_model_rejects_sampling_params(model_name):
   """True if the given Anthropic model rejects temperature/top_p/top_k.
 
-  v120 update: the Claude 4.6 / 4.7 (and later) reasoning family retired the
-  sampling parameters -- adaptive thinking controls randomness instead, and
-  Anthropic returns HTTP 400 "temperature is deprecated for this model" if
-  any are sent.  Older Claude models (Sonnet 4 / Opus 4 / 3.x) still accept
-  temperature.  We detect by model-name family rather than hardcoding a list,
-  so future 4.8+ models are covered without another edit.
+  The Claude 4.6 / 4.7 / 4.8 reasoning family and every Claude 5.x model
+  (claude-sonnet-5-5, claude-opus-5-5, claude-opus-5, claude-haiku-5-5,
+  claude-fable-5-1, ...) reject the sampling parameters with HTTP 400;
+  adaptive thinking controls randomness instead.  Older Claude models
+  (Sonnet 4 / Opus 4 / Sonnet 4.5 / Haiku 4.5 / 3.x) still accept
+  temperature.  Detected by model-name family rather than a list, so later
+  models in either generation are covered without another edit.
 
-  Matches: claude-*-4-6*, claude-*-4-7*, and 4.8+ (any claude-*-4-N with
-  N >= 6), e.g. claude-sonnet-4-6, claude-opus-4-7, claude-opus-4-8.
+  Matches claude-<family>-<major>[-<minor>] with major >= 5, or major 4 with
+  minor >= 6.  A dated snapshot (claude-opus-4-20250514) has an 8-digit
+  "minor" and is the older, temperature-accepting form.
   """
   m = (model_name or "").lower()
   if "claude" not in m:
     return False
-  # Find a 4-minor pattern like "4-6", "4-7", "4-8" ... (dateless canonical IDs
-  # for the 4.6 generation and later).  Sonnet 4 / Opus 4 use a date suffix
-  # (claude-opus-4-20250514) -- a 4 followed by an 8-digit date, NOT a small
-  # minor -- so those correctly fall through as "accepts temperature".
   import re as _re
-  match = _re.search(r"claude-[a-z]+-4-(\d+)", m)
+  match = _re.search(r"claude-[a-z]+-(\d+)(?:-(\d+))?", m)
   if not match:
     return False
-  minor = match.group(1)
-  # A date snapshot (8 digits) is the pre-4.6 dated form; treat as accepts.
-  if len(minor) >= 5:
+  major = int(match.group(1))
+  minor = match.group(2)
+  if major >= 5 and len(match.group(1)) < 5:
+    return True
+  if major != 4 or minor is None or len(minor) >= 5:
     return False
+  return int(minor) >= 6
+
+
+def _raise_if_langchain_reply_cut_off(response):
+  """Raise RuntimeError if a LangChain message says it was cut off.
+
+  LangChain puts the provider's own stop reason in response_metadata:
+  Anthropic stop_reason "max_tokens" / "model_context_window_exceeded",
+  OpenAI finish_reason "length", Gemini finish_reason "MAX_TOKENS".  A cut-off
+  reply used to pass as complete text.  The message carries no numbers
+  (rate_limit_handler would read "429"/"503" in it as a rate limit).
+  """
+  meta = getattr(response, "response_metadata", None)
+  if not isinstance(meta, dict):
+    return
+  stop_reason = meta.get("stop_reason")
+  finish = meta.get("finish_reason")
+  finish_name = str(getattr(finish, "name", finish) or "").upper()
+  if (stop_reason in ANTHROPIC_CUTOFF_STOP_REASONS
+      or finish_name in ("LENGTH", "MAX_TOKENS")):
+    raise RuntimeError(
+      "LLM reply was cut off (stop_reason=%r, finish_reason=%r); raise the "
+      "output budget or shorten the request" % (stop_reason, finish_name.lower() or None))
+
+
+def response_text(response):
+  """Plain text of an LLM reply, whatever shape the provider returned.
+
+  Accepts a LangChain message (``.content`` is a string, or a list of
+  content blocks when the model also returned thinking blocks, as Claude
+  5.x does), an Anthropic SDK Message (``.content`` is a list of typed
+  blocks; the first may be a thinking block), or a plain string.  Returns
+  the concatenated text blocks; thinking and tool blocks are skipped.
+  Never raises on an unexpected shape: falls back to str().
+  """
+  if response is None:
+    return ""
+  if isinstance(response, str):
+    return response
+  _raise_if_langchain_reply_cut_off(response)
+  content = getattr(response, "content", response)
+  if content is None:
+    return ""
+  if isinstance(content, str):
+    return content
+  if isinstance(content, (list, tuple)):
+    parts = []
+    for block in content:
+      if isinstance(block, str):
+        parts.append(block)
+      elif isinstance(block, dict):
+        if block.get("type", "text") == "text":
+          parts.append(block.get("text") or "")
+      elif getattr(block, "type", None) == "text":
+        parts.append(getattr(block, "text", "") or "")
+    return "".join(parts)
+  return str(content)
+
+
+# Output-token cap for Claude requests.  On Claude 5.x models thinking is on
+# by default and its tokens count toward max_tokens, so the cap must leave
+# room for thinking plus the answer.  Measured 2026-10-14 (live probe): a
+# short reasoning task used 2000-2900 output tokens (1000-1800 of them
+# thinking) on claude-sonnet-5-5 / claude-opus-5-5, and a 2000 cap truncated
+# both.  Only tokens actually generated are billed, so a higher cap costs
+# nothing unless it is used.  Upper limit: these requests are not streamed,
+# and the anthropic SDK (0.122) refuses a non-streaming request whose
+# max_tokens implies more than 10 minutes (above 21333 tokens) when the
+# client keeps its default timeout, so do not raise this past
+# ANTHROPIC_NONSTREAMING_MAX_TOKENS without switching to streaming.  That
+# ceiling applies only while the client uses the SDK's default timeout (both
+# direct calls do); the SDK also caps a few retired Opus 4 / 4.1 models at
+# 8192 non-streaming tokens, which this floor would exceed.
+ANTHROPIC_MAX_TOKENS = 16000
+ANTHROPIC_NONSTREAMING_MAX_TOKENS = 21333
+
+# stop_reason values that mean the reply was cut off before it finished.
+ANTHROPIC_CUTOFF_STOP_REASONS = ("max_tokens", "model_context_window_exceeded")
+
+
+def anthropic_request_max_tokens(requested):
+  """max_tokens to send on a non-streaming Claude request.
+
+  At least ANTHROPIC_MAX_TOKENS (thinking shares the budget) and at most
+  ANTHROPIC_NONSTREAMING_MAX_TOKENS (the SDK refuses larger non-streaming
+  requests), whatever the caller asked for.
+  """
+  return min(max(int(requested or 0), ANTHROPIC_MAX_TOKENS),
+             ANTHROPIC_NONSTREAMING_MAX_TOKENS)
+
+
+def anthropic_reply_text(response):
+  """Text of an Anthropic SDK reply; raises RuntimeError if it is unusable.
+
+  On Claude 5.x models thinking is on by default and its tokens count
+  toward max_tokens, so a reply can stop (stop_reason "max_tokens", or
+  "model_context_window_exceeded" when the context window fills) with no
+  text or with the text cut off.  Raising keeps that failure visible through
+  the callers' existing error handling instead of returning "" or a
+  truncated answer silently.
+  """
+  text = response_text(response)
+  stop_reason = getattr(response, "stop_reason", None)
+  if stop_reason in ANTHROPIC_CUTOFF_STOP_REASONS:
+    raise RuntimeError(
+      "Anthropic reply was cut off (stop_reason=%r); on Claude 5.x models "
+      "thinking counts toward max_tokens" % (stop_reason,))
+  if not text.strip():
+    raise RuntimeError(
+      "Anthropic reply contained no text (stop_reason=%r); on Claude 5.x "
+      "models thinking counts toward max_tokens"
+      % (getattr(response, "stop_reason", None),))
+  return text
+
+
+# Output budget for the direct (non-LangChain) Google and OpenAI calls.
+# Thinking / reasoning models spend output tokens before they answer: a live
+# probe on 2026-10-14 saw gemini-2.5-pro and gpt-6-luna use all of a 2000
+# token cap on a short reasoning task and return no text.  Only generated
+# tokens are billed, so the larger cap costs nothing unless it is used.
+REASONING_MAX_TOKENS = 16000
+
+# Minimum request timeout (seconds) for hosted-provider LangChain clients.
+HOSTED_LLM_MIN_TIMEOUT = 180
+
+
+def openai_model_is_reasoning(model_name):
+  """True for OpenAI reasoning models (gpt-5*, gpt-6* and later, o1/o3/o4).
+
+  These reject a non-default temperature (HTTP 400 "Only the default (1)
+  value is supported") and take max_completion_tokens.  The *-chat variants
+  are not reasoning models.  langchain-openai 1.5 strips temperature only
+  for gpt-5* names, so this check is needed for gpt-6* and later.
+  """
+  import re as _re
+  m = (model_name or "").lower().strip()
+  if "chat" in m:
+    return False
+  # Allow gateway / fine-tune prefixes: "openai/gpt-6-luna", "azure/gpt-5",
+  # "ft:gpt-5-mini:org::id".
+  match = _re.search(r"(?:^|[/:])gpt-(\d+)", m)
+  if match:
+    return int(match.group(1)) >= 5
+  return bool(_re.search(r"(?:^|[/:])o\d", m))
+
+
+def google_model_ignores_sampling(model_name):
+  """True for Gemini 3 and later, which use fixed sampling defaults.
+
+  They ignore temperature/top_p/top_k (langchain-google-genai warns), so
+  PHENIX does not send them.
+  """
+  import re as _re
+  match = _re.search(r"gemini-(\d+)", (model_name or "").lower())
+  return bool(match) and int(match.group(1)) >= 3
+
+
+def openai_reply_text(response):
+  """Text of an OpenAI chat completion; raises RuntimeError if unusable.
+
+  The error messages carry no numbers: rate_limit_handler treats any message
+  containing "429" or "503" as a rate limit and would retry a cut-off call.
+
+  finish_reason "length" means the reply was cut off (on reasoning models
+  the reasoning tokens can use the whole budget and leave no text).
+  """
+  choice = response.choices[0]
+  text = getattr(choice.message, "content", None) or ""
+  finish = getattr(choice, "finish_reason", None)
+  if finish == "length":
+    raise RuntimeError(
+      "OpenAI reply was cut off (finish_reason='length')")
+  if not text.strip():
+    raise RuntimeError(
+      "OpenAI reply contained no text (finish_reason=%r)" % (finish,))
+  return text
+
+
+def google_reply_text(response):
+  """Text of a Gemini generate_content reply; raises RuntimeError if unusable.
+
+  finish_reason MAX_TOKENS means the reply was cut off (thinking can use the
+  whole budget and leave no text).
+  """
+  candidates = getattr(response, "candidates", None) or []
+  finish = getattr(candidates[0], "finish_reason", None) if candidates else None
+  finish_name = getattr(finish, "name", None) or str(finish or "")
   try:
-    return int(minor) >= 6
-  except ValueError:
-    return False
+    text = response.text or ""
+  except (ValueError, AttributeError):
+    text = ""
+  if "MAX_TOKENS" in finish_name.upper():
+    raise RuntimeError(
+      "Gemini reply was cut off (finish_reason=MAX_TOKENS)")
+  if not text.strip():
+    raise RuntimeError(
+      "Gemini reply contained no text (finish_reason=%s)" % (finish_name or None,))
+  return text
+
+
+def google_generation_kwargs(model_name, temperature, max_tokens):
+  """Generation settings for a direct Gemini call.
+
+  Thinking models spend output tokens before answering, so the budget is
+  at least REASONING_MAX_TOKENS; Gemini 3+ ignores temperature, so it is
+  not sent there.
+  """
+  kwargs = {"max_output_tokens": max(int(max_tokens or 0), REASONING_MAX_TOKENS)}
+  if not google_model_ignores_sampling(model_name):
+    kwargs["temperature"] = temperature
+  return kwargs
+
+
+def openai_completion_kwargs(model_name, temperature, max_tokens):
+  """Sampling and length settings for a direct OpenAI chat completion.
+
+  Reasoning models reject a non-default temperature and need room for
+  their reasoning tokens (max_completion_tokens); other models keep
+  temperature and max_tokens as before.
+  """
+  if openai_model_is_reasoning(model_name):
+    return {"max_completion_tokens": max(int(max_tokens or 0), REASONING_MAX_TOKENS)}
+  return {"temperature": temperature, "max_tokens": max_tokens}
+
+
+def portkey_max_completion_tokens(model_name, max_tokens):
+  """max_completion_tokens for a Portkey (Azure OpenAI) chat call.
+
+  Azure gpt-5 is a reasoning model: its reasoning tokens share the budget, so
+  reasoning deployments get at least REASONING_MAX_TOKENS.
+  """
+  if openai_model_is_reasoning(model_name):
+    return max(int(max_tokens or 0), REASONING_MAX_TOKENS)
+  return max_tokens
 
 
 def sanitize_llm_kwargs(provider, kwargs):
@@ -564,7 +794,7 @@ def sanitize_llm_kwargs(provider, kwargs):
                max_completion_tokens, drop temperature (Azure gpt-5 rejects
                both forms).
     - anthropic: keep max_tokens (ChatAnthropic REQUIRES it).  For
-               temperature, it depends on the model: the 4.6/4.7+ reasoning
+               temperature, it depends on the model: the 4.6+/5.x reasoning
                family REJECTS temperature (HTTP 400), so drop it for those;
                older Claude models keep it.  Detected via
                anthropic_model_rejects_sampling_params() on the 'model' kwarg.
@@ -583,7 +813,7 @@ def sanitize_llm_kwargs(provider, kwargs):
     clean.pop("temperature", None)
   elif prov == "anthropic":
     # Keep max_tokens (required).  Drop temperature only for models that
-    # reject it (4.6/4.7+ reasoning family); older models keep it.
+    # reject it (4.6+/5.x reasoning family); older models keep it.
     model_name = clean.get("model") or clean.get("model_name")
     if anthropic_model_rejects_sampling_params(model_name):
       clean.pop("temperature", None)
@@ -683,6 +913,12 @@ def get_llm_and_embeddings(
   if provider is None:
     provider = os.getenv("LLM_PROVIDER", "ollama")
   provider = provider.lower()
+  # Hosted reasoning/thinking models can take well over a minute on long
+  # prompts (live replies of 31-41 s on short ones, 2026-10-14), so never give
+  # their clients less than HOSTED_LLM_MIN_TIMEOUT.  A timeout is a ceiling:
+  # raising it only lengthens the wait for a call that would otherwise fail.
+  if provider in ("anthropic", "google", "openai", "portkey"):
+    timeout = max(timeout or 0, HOSTED_LLM_MIN_TIMEOUT)
 
   if provider == "ollama":
     from langchain_ollama import ChatOllama, OllamaEmbeddings
@@ -760,12 +996,15 @@ def get_llm_and_embeddings(
       embedding_model_name = default_model_for_provider(
         "google", role="rag_embedding")
 
-    llm = ChatGoogleGenerativeAI(
-      model=llm_model_name,
-      temperature=temperature,
-      timeout=timeout,
-      max_retries=0
-    )
+    google_kwargs = {
+      "model": llm_model_name,
+      "timeout": timeout,
+      "max_retries": 0,
+    }
+    # Gemini 3+ ignores sampling parameters; do not send them.
+    if not google_model_ignores_sampling(llm_model_name):
+      google_kwargs["temperature"] = temperature
+    llm = ChatGoogleGenerativeAI(**google_kwargs)
     embeddings = GoogleGenerativeAIEmbeddings(
       model=embedding_model_name,
       timeout=timeout,
@@ -786,12 +1025,15 @@ def get_llm_and_embeddings(
       embedding_model_name = default_model_for_provider(
         "openai", role="rag_embedding")
 
-    llm = ChatOpenAI(
-      model=llm_model_name,
-      temperature=temperature,
-      timeout=timeout,
-      max_retries=2
-    )
+    openai_kwargs = {
+      "model": llm_model_name,
+      "timeout": timeout,
+      "max_retries": 2,
+    }
+    # Reasoning models reject a non-default temperature (HTTP 400).
+    if not openai_model_is_reasoning(llm_model_name):
+      openai_kwargs["temperature"] = temperature
+    llm = ChatOpenAI(**openai_kwargs)
     embeddings = OpenAIEmbeddings(
       model=embedding_model_name,
       chunk_size=batch_size
@@ -858,12 +1100,12 @@ def get_llm_and_embeddings(
         "anthropic", role="expensive")
 
     # ChatAnthropic REQUIRES max_tokens.  temperature is model-dependent: the
-    # 4.6/4.7+ reasoning family rejects it (HTTP 400 "temperature is
+    # 4.6+/5.x reasoning family rejects it (HTTP 400 "temperature is
     # deprecated for this model"), so only pass it for models that accept it.
     anthropic_kwargs = {
       "model": llm_model_name,
       "timeout": timeout,
-      "max_tokens": 4096,
+      "max_tokens": ANTHROPIC_MAX_TOKENS,
       "max_retries": 2,
     }
     if not anthropic_model_rejects_sampling_params(llm_model_name):

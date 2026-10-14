@@ -14,7 +14,7 @@ Usage:
     directives = extract_directives(
         user_advice="use resolution 3 in autosol but 2.5 in refine",
         provider="google",
-        model="gemini-2.5-flash-lite"   # or None for the agent default
+        model="gemini-3.5-flash-lite"   # or None for the agent default
     )
 
     # Result:
@@ -45,6 +45,13 @@ try:
         normalize_ollama_openai_base_url,
         resolve_model_for_provider,
         _classify_provider_error,
+        anthropic_reply_text,
+        anthropic_request_max_tokens,
+        google_reply_text,
+        openai_reply_text,
+        google_generation_kwargs,
+        openai_completion_kwargs,
+        portkey_max_completion_tokens,
     )
 except ImportError:
     from core.llm import (
@@ -53,6 +60,13 @@ except ImportError:
         normalize_ollama_openai_base_url,
         resolve_model_for_provider,
         _classify_provider_error,
+        anthropic_reply_text,
+        anthropic_request_max_tokens,
+        google_reply_text,
+        openai_reply_text,
+        google_generation_kwargs,
+        openai_completion_kwargs,
+        portkey_max_completion_tokens,
     )
 
 
@@ -1239,11 +1253,9 @@ def _call_llm_fallback(prompt, provider, model, log):
                         model=model_name,
                         contents=prompt,
                         config=types.GenerateContentConfig(
-                            temperature=0.1,
-                            max_output_tokens=2000
-                        )
+                            **google_generation_kwargs(model_name, 0.1, 2000))
                     )
-                    return response.text
+                    return google_reply_text(response)
 
                 if get_google_handler:
                     handler = get_google_handler()
@@ -1268,11 +1280,9 @@ def _call_llm_fallback(prompt, provider, model, log):
                     response = gen_model.generate_content(
                         prompt,
                         generation_config=genai_old.types.GenerationConfig(
-                            temperature=0.1,
-                            max_output_tokens=2000
-                        )
+                            **google_generation_kwargs(model_name, 0.1, 2000))
                     )
-                    return response.text
+                    return google_reply_text(response)
 
                 if get_google_handler:
                     handler = get_google_handler()
@@ -1305,10 +1315,8 @@ def _call_llm_fallback(prompt, provider, model, log):
                 response = client.chat.completions.create(
                     model=model_name,
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.1,
-                    max_tokens=2000
-                )
-                return response.choices[0].message.content
+                    **openai_completion_kwargs(model_name, 0.1, 2000))
+                return openai_reply_text(response)
 
             if get_openai_handler:
                 handler = get_openai_handler()
@@ -1336,10 +1344,10 @@ def _call_llm_fallback(prompt, provider, model, log):
             def make_call():
                 response = client.messages.create(
                     model=model_name,
-                    max_tokens=2000,
+                    max_tokens=anthropic_request_max_tokens(None),
                     messages=[{"role": "user", "content": prompt}]
                 )
-                return response.content[0].text
+                return anthropic_reply_text(response)
 
             if get_anthropic_handler:
                 handler = get_anthropic_handler()
@@ -1385,9 +1393,9 @@ def _call_llm_fallback(prompt, provider, model, log):
                 response = client.chat.completions.create(
                     model=model_name,
                     messages=[{"role": "user", "content": prompt}],
-                    max_completion_tokens=2000,
+                    max_completion_tokens=portkey_max_completion_tokens(model_name, 2000),
                 )
-                return response.choices[0].message.content
+                return openai_reply_text(response)
 
             if get_portkey_handler:
                 handler = get_portkey_handler()

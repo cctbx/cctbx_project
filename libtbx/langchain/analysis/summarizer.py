@@ -700,7 +700,17 @@ async def summarize_log_text(
         timeout=timeout)
 
       for j, result in enumerate(map_results):
-        summary_text = result.content
+        try:
+          from libtbx.langchain.core.llm import response_text
+        except ImportError:
+          from core.llm import response_text
+        try:
+          summary_text = response_text(result)
+        except RuntimeError as e:
+          # A cut-off chunk summary is skipped like a timed-out batch;
+          # the other chunks still make a summary.
+          print(f"Chunk {j + 1} of batch {i + 1} skipped: {e}")
+          continue
         all_intermediate_summaries.append(summary_text)
         debug_print(
           f"\n    Chunk {j+1} MAP OUTPUT"
@@ -769,10 +779,11 @@ async def summarize_log_text(
   from langchain_core.messages import HumanMessage
   prompt_text = combine_prompt.format(context=combined_text)
   response = llm.invoke([HumanMessage(content=prompt_text)])
-  final_output = (
-    response.content
-    if hasattr(response, 'content')
-    else str(response))
+  try:
+    from libtbx.langchain.core.llm import response_text
+  except ImportError:
+    from core.llm import response_text
+  final_output = response_text(response)
 
   debug_print(f"\n--- FINAL OUTPUT ({len(final_output)} chars) ---")
   debug_print("=" * 60)
