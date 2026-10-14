@@ -5,7 +5,7 @@ from mmtbx.programs import probe2
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.validation import validation, atoms, residue, atom_info
 from mmtbx.validation.clashscore2 import check_and_add_hydrogen, probe_clashscore_manager
-from mmtbx.validation.clashscore2 import remove_models_except_index
+from mmtbx.validation.clashscore2 import remove_models_except_index, _deep_copy_with_selection_support
 from libtbx.utils import null_out
 import json
 import iotbx.cli_parser
@@ -138,7 +138,11 @@ These categories are general suggestions. Check your electron density; trust you
       save_modified_hierarchy=False,
       verbose=False,
       do_flips=False,
+      processed_model=None,
       out=sys.stdout):
+    # processed_model: optional single-model H-added model with restraints made with
+    # probe2's parameters (clashscore2.processed_model); probe2 then runs on a copy of
+    # it instead of interpreting the model again.
     validation.__init__(self)
     if verbose:
       if not nuclear:
@@ -216,20 +220,27 @@ These categories are general suggestions. Check your electron density; trust you
 
       occ_max = flex.max(r.atoms().extract_occ())
 
-      # Make yet another model for the new hierarchy
-      subset_model_manager = mmtbx.model.manager(
-        model_input       = None,
-        pdb_hierarchy     = r,
-        stop_for_unknowns = False,
-        crystal_symmetry  = submodel.crystal_symmetry(),
-        restraint_objects = ro,
-        log               = null_out())
+      if processed_model is not None and n_models == 1:
+        # A copy: probe2 adds Phantom Hydrogens to the waters of the model it runs on.
+        subset_model_manager = _deep_copy_with_selection_support(processed_model)
+        model_is_processed = True
+      else:
+        # Make yet another model for the new hierarchy
+        subset_model_manager = mmtbx.model.manager(
+          model_input       = None,
+          pdb_hierarchy     = r,
+          stop_for_unknowns = False,
+          crystal_symmetry  = submodel.crystal_symmetry(),
+          restraint_objects = ro,
+          log               = null_out())
+        model_is_processed = False
 
       self.probe_undowser_manager = probe_undowser_manager(
         nuclear=nuclear,
         verbose=verbose,
         model_id=model.id)
-      self.probe_undowser_manager.run_probe_undowser(data_manager, subset_model_manager)
+      self.probe_undowser_manager.run_probe_undowser(data_manager, subset_model_manager,
+                                                     processed=model_is_processed)
       water_contacts = self.probe_undowser_manager.get_water_contacts()
       for src_atom_id, wc_list in water_contacts.items():
         src_chain_id=probe_undowser_manager.get_chain_probe_atom_id(src_atom_id)
@@ -564,7 +575,7 @@ class probe_undowser_manager(probe_clashscore_manager):
                model_id=model_id)
     self.water_contacts = {}
 
-  def run_probe_undowser(self, data_manager, hydrogenated_model):
+  def run_probe_undowser(self, data_manager, hydrogenated_model, processed=False):
 
     # Construct override parameters and then run probe2 using them and delete the resulting
     # temporary file.
@@ -588,7 +599,7 @@ class probe_undowser_manager(probe_clashscore_manager):
     parser.parse_args(args)
     p2 = probe2.Program(data_manager, parser.working_phil.extract(),
                        master_phil=parser.master_phil, logger=null_out())
-    p2.overrideModel(hydrogenated_model)
+    p2.overrideModel(hydrogenated_model, processed=processed)
     dots, output = p2.run()
     probe_unformatted = output.splitlines()
     os.unlink(tempName)
