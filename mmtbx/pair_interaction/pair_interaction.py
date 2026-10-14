@@ -111,12 +111,10 @@ def run(ph, core=None):
         if(ai.distance(aj)<15):
           non_core_atoms_filtered.append(aj)
     selection=flex.bool(len(atoms),False)
-    atom_list=list(atoms)
     for atom in set(core_atoms+non_core_atoms_filtered):
-      selection[atom_list.index(atom)-1]=True
+      selection[atom.i_seq]=True
     sub_ph=ph.select(selection)
     atom_in_residue_selected = list(flex.int(atom_in_residue).select(selection))
-    del atom_list
     #
     interactions=get_interactions(sub_ph,atom_in_residue_selected,silva_type='sedd',core=core)
     #print("interactions(sedd)(cpp)", interactions)
