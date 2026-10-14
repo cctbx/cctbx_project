@@ -13,7 +13,13 @@ checks that the copy still verifies while an unlisted module is still
 refused. The package and its tools are for macOS and Linux only: on Windows,
 or under Python 2, this test prints a skip line and OK. It first prints what
 is tested: the SHA-256 of SOURCE_MANIFEST.sha256, the RELEASE line and the
-Git HEAD when there is one.
+Git HEAD when there is one. On Linux it checks whether exited orphan
+processes are reaped; where they are not (a container whose process 1 does not
+reap, such as the Azure CI containers started with `sleep infinity`), the
+auto-mode tests in tests/tst_auto_queue_v20.py would wait for zombies to exit,
+so that one file is skipped with a skip line and the other package tests run.
+When the package tests fail, their output is also written to stderr, which is
+what the libtbx test runner shows for a failed test.
 """
 import hashlib
 import os
@@ -22,6 +28,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PACKAGE = os.path.join(HERE, "guided_coding")
@@ -75,15 +82,68 @@ def listed_problems():
   return problems
 
 
+# Needs exited orphans to be reaped: its auto-mode tests wait for leftover
+# processes to exit, and the helper counts a zombie as alive.
+NEEDS_REAPING = "tst_auto_queue_v20.py"
+
+
+def orphans_are_reaped(timeout=5.0):
+  """Linux only: start a short-lived orphan (its shell exits at once) and watch
+  /proc. True when the orphan disappears or its stat cannot be read; False when
+  it is still a zombie at the timeout, as under a process 1 that never reaps;
+  None when /proc is absent or the probe cannot start. Only False skips tests."""
+  if not os.path.isdir("/proc/self"):
+    return None
+  try:
+    p = subprocess.Popen(["/bin/sh", "-c", "sleep 0.3 >/dev/null 2>&1 & echo $!"],
+                         stdout=subprocess.PIPE)
+    out = p.communicate()[0].decode("ascii", "replace").strip()
+  except OSError:
+    return None
+  if p.returncode != 0 or not out.isdigit():
+    return None
+  stat = "/proc/%s/stat" % out
+  deadline = time.time() + timeout
+  state = None
+  while time.time() < deadline:
+    try:
+      with open(stat) as f:
+        state = f.read().rsplit(")", 1)[1].split()[0]
+    except (IOError, OSError):
+      return True  # gone: it exited and was reaped
+    except IndexError:
+      return None
+    time.sleep(0.1)
+  return state != "Z"
+
+
 def exercise_package_tests(tmp, env):
   copy = copy_listed(os.path.join(tmp, "tested", "guided_coding"))
   before = files_under(copy)
-  rc, out = run([sys.executable, "-B", "-m", "unittest", "discover",
-                 "-s", "tests", "-p", "tst_*.py", "-v"], env, copy)
-  print(out)
-  assert rc == 0, "package unit tests failed (exit %d)" % rc
-  ran = re.search(r"^Ran (\d+) tests? in ", out, re.M)
-  assert ran is not None and int(ran.group(1)) > 0, "no package tests ran"
+  patterns = ["tst_*.py"]
+  if sys.platform.startswith("linux") and orphans_are_reaped() is False:
+    modules = sorted(name for name in os.listdir(os.path.join(copy, "tests"))
+                     if re.match(r"tst_.*\.py$", name))
+    assert NEEDS_REAPING in modules, modules
+    patterns = [name for name in modules if name != NEEDS_REAPING]
+    print("skip: tests/%s (a test orphan was still a zombie after 5 s: exited "
+          "orphans are not reaped here, as in a container whose process 1 does "
+          "not reap); running %s"
+          % (NEEDS_REAPING, ", ".join(patterns)))
+  total = 0
+  for pattern in patterns:
+    rc, out = run([sys.executable, "-B", "-m", "unittest", "discover",
+                   "-s", "tests", "-p", pattern, "-v"], env, copy)
+    print(out)
+    if rc != 0:
+      sys.stderr.write(out)
+      sys.stderr.flush()
+    assert rc == 0, "package unit tests failed (exit %d): %s" % (
+      rc, "; ".join(re.findall(r"^(?:FAIL|ERROR): .*$", out, re.M)) or "see output")
+    ran = re.search(r"^Ran (\d+) tests? in ", out, re.M)
+    assert ran is not None and int(ran.group(1)) > 0, "no package tests ran"
+    total += int(ran.group(1))
+  print("package tests run: %d" % total)
   created = sorted(files_under(copy) - before)
   assert not created, "the package tests created files in the package: %s" % \
     ", ".join(created)
