@@ -178,6 +178,7 @@ tst_list_base = [
   "$D/regression/tst_hierarchy_copy_select.py",
   "$D/regression/tst_hierarchy_id_str.py",
   "$D/regression/tst_hierarchy_altlocs.py",
+  "$D/regression/tst_mmcif_to_from_hierarchy.py",
   "$D/regression/tst_fetch.py",
   ]
 
@@ -188,7 +189,6 @@ tst_list_windows_fail = [
 
 tst_list_fail = [
   "$D/regression/ncs/tst_ncs_reordered_chains.py",
-  "$D/regression/tst_mmcif_to_from_hierarchy.py",
   ]
 if sys.platform == 'win32':
   tst_list_fail += tst_list_windows_fail
