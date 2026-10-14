@@ -208,10 +208,10 @@ class cbetadev(validation):
                       # if start or finish: print(id_str,dev,dihedralNABB,start,finish)
                       if start and not finish:
                         if rg not in outliers_removed:
-                          outliers_removed.append([rg, phi_psi])
+                          outliers_removed.append([rg.id_str(), phi_psi])
                       elif not start and finish:
                         if rg not in new_outliers:
-                          new_outliers.append([rg, phi_psi])
+                          new_outliers.append([rg.id_str(), phi_psi])
                 if(exclude_d_peptides and dev>=2.):
                   pass
                 elif(dev >=0.25 or outliers_only==False):
@@ -243,13 +243,13 @@ class cbetadev(validation):
                     self.beta_ideal[key] = betaxyz
       if apply_phi_psi_correction or apply_positive_phi_correction:
         outln = '  '
-        for rg, phi_psi in new_outliers:
+        for rg_id_str, phi_psi in new_outliers:
           # print(rg.id_str(), len(rg.atom_groups()), len(new_outliers), phi_psi)
-          outln += '%s, ' % rg.id_str().strip()
+          outln += '%s, ' % rg_id_str.strip()
         outlo = '  '
-        for rg, phi_psi in outliers_removed:
+        for rg_id_str, phi_psi in outliers_removed:
           # print(rg.id_str(), len(rg.atom_groups()), len(outliers_removed), phi_psi)
-          outlo += '%s, ' % rg.id_str().strip()
+          outlo += '%s, ' % rg_id_str.strip()
         print('''
   Outliers removed : %5d %s
   New outliers     : %5d %s
