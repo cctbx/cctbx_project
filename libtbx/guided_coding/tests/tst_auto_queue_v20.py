@@ -90,10 +90,11 @@ WAITING_STEP = ("resume with /gc auto resume after the reset "
                 "(automatic continuation is not supported)")
 TIMEOUT = 15
 # A CMD (or grandchild) that signals readiness and exits 0 once the release file
-# appears (safety deadline 30 s). mode is `+`-joined flags: `ignore`: SIGTERM
-# ignored; `exit0`: SIGTERM exits 0 (a test script that traps TERM); `note`:
-# SIGTERM writes <ready>.term and is otherwise ignored; `pgrp`: move to a new
-# process group (same session); `setsid`: new session; `default`: SIGTERM kills it.
+# appears (safety deadline 30 s; 120 s with the flag `long`, revision 14). mode is
+# `+`-joined flags: `ignore`: SIGTERM ignored; `exit0`: SIGTERM exits 0 (a test
+# script that traps TERM); `note`: SIGTERM writes <ready>.term and is otherwise
+# ignored; `pgrp`: move to a new process group (same session); `setsid`: new
+# session; `default`: SIGTERM kills it.
 WAIT_SCRIPT = """import os, signal, sys, time
 mode, ready, release = sys.argv[1:4]
 flags = set(mode.split("+"))
@@ -108,7 +109,7 @@ if "pgrp" in flags:
 if "setsid" in flags:
     os.setsid()
 open(ready, "w").close()
-deadline = time.time() + 30
+deadline = time.time() + (120 if "long" in flags else 30)
 while not os.path.exists(release) and time.time() < deadline:
     time.sleep(0.05)
 """
@@ -180,6 +181,54 @@ except auto_queue.Refused as refusal:
     print("refused", refusal.code, refusal)
 else:
     print("table", len(procs), int(any(procs[p][4] for p in procs)))
+"""
+# Revision 14: the helper's own view of each pid in argv[2:] (imported in this subprocess; the
+# test process never imports it): pid -> [process_exists, group_alive (pid as a group id),
+# listed by snapshot()].
+# The third view is "listed as a live process": in the table and (revision 14) not flagged as a
+# zombie there.
+ZOMBIE_PROBE = """import json, sys
+sys.path.insert(0, sys.argv[1])
+import auto_queue
+procs = auto_queue.snapshot()
+def listed(pid):
+    entry = procs.get(pid)
+    return entry is not None and not (len(entry) > 5 and entry[5])
+print(json.dumps({p: [auto_queue.process_exists(int(p)), auto_queue.group_alive(int(p)),
+                      listed(int(p))] for p in sys.argv[2:]}))
+"""
+# Revision 14 (review finding 2): survivors() and leaders_of() of the run record in the JSON file
+# argv[2], in the helper's own process.
+SURVIVORS_PROBE = """import json, sys
+sys.path.insert(0, sys.argv[1])
+import auto_queue
+with open(sys.argv[2]) as handle:
+    record = json.load(handle)
+print(json.dumps({"survivors": auto_queue.survivors(record),
+                  "leaders": sorted(auto_queue.leaders_of(record, auto_queue.snapshot()))}))
+"""
+# Revision 14 (review finding 1): a live process whose main thread has exited while a worker
+# thread runs. On Linux its leader task then shows state Z (ps `Zl`) until the whole process
+# exits. The main thread ends with the raw exit system call (not exit_group), made through
+# ctypes, which releases the interpreter lock for the call; the worker writes a heartbeat
+# file every 0.1 s until the release file appears (at most 60 s), then exits the process.
+# SIGTERM is ignored, so a stop's signal leaves it running.
+MT_SCRIPT = """import ctypes, os, signal, sys, threading, time
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+beat, release = sys.argv[1:3]
+SYS_EXIT = {"x86_64": 60, "aarch64": 93}[os.uname().machine]
+def worker():
+    deadline, n = time.time() + 60, 0
+    while not os.path.exists(release) and time.time() < deadline:
+        n += 1
+        with open(beat + ".tmp", "w") as handle:
+            handle.write(str(n))
+        os.replace(beat + ".tmp", beat)
+        time.sleep(0.1)
+    os._exit(0)
+threading.Thread(target=worker).start()
+time.sleep(0.3)
+ctypes.CDLL(None, use_errno=True).syscall(SYS_EXIT, 0)
 """
 # A fingerprint script for `install check`.
 FINGERPRINT_SCRIPT = """#!{python}
@@ -275,8 +324,9 @@ if sys.platform == "darwin":
         return int(math.floor(sec + usec / 1e6 - lag)) if sec > 0 else None
 
     def snapshot():
-        return {pid: [ppid, pgid, sid, None if start is None else lagged(pid), set()]
-                for pid, (ppid, pgid, sid, start, marks) in real_snapshot().items()}
+        # Revision 14: any further fields (the zombie flag) are kept as they are.
+        return {pid: [ppid, pgid, sid, None if start is None else lagged(pid), set(), *rest]
+                for pid, (ppid, pgid, sid, start, marks, *rest) in real_snapshot().items()}
 
     def process_start(pid):
         text = real_process_start(pid)
@@ -400,14 +450,38 @@ def load_tests(loader, standard_tests, pattern):
     return unittest.TestSuite([KitSelfTestRoute("test_process_table_readable")])
 
 
+def ps_state(pid):
+    """Revision 14: the ps stat of one process ("" when ps lists nothing for it)."""
+    return subprocess.run(["/bin/ps", "-o", "stat=", "-p", str(pid)], text=True,
+                          capture_output=True).stdout.strip()
+
+
+def proc_stat(pid):
+    """Revision 14, Linux: (state, num_threads) from /proc/<pid>/stat, or None."""
+    try:
+        data = Path("/proc/%d/stat" % pid).read_bytes()
+        fields = data[data.rindex(b")") + 1:].split()
+        return fields[0].decode(), int(fields[17])
+    except (OSError, ValueError, IndexError):
+        return None
+
+
 def alive(pid):
+    """Revision 14: as in the helper, a zombie (exited, not yet collected by its parent, as
+    under a container's process 1 that never reaps) counts as gone: on Linux /proc state Z
+    with one thread (a Z leader with running threads is alive); elsewhere ps stat Z without
+    the `l` flag. Anything unread counts as alive."""
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
     except PermissionError:
-        return True
-    return True
+        pass
+    if sys.platform.startswith("linux"):
+        reading = proc_stat(pid)
+        return not (reading is not None and reading[0] == "Z" and reading[1] == 1)
+    state = ps_state(pid)
+    return not (state.startswith("Z") and "l" not in state[1:])
 
 
 def sha256_file(path):
@@ -1882,7 +1956,9 @@ class AutoQueueChecks(unittest.TestCase):
 
     def orphan_of_dead_leader(self):
         """An exited, unrelated session leader P and its orphan (sid = pgid = P,
-        ppid 1) that notes SIGTERM. Returns (P, orphan pid, ready, orphan start)."""
+        reparented away from P) that notes SIGTERM. Returns (P, orphan pid, ready, orphan
+        start). Revision 14: the new parent may be any process but P (launchd or init is
+        process 1; a container or a child subreaper can be another process)."""
         cmd, ready, _ = self.wait_cmd("note")
         pidfile = self.work / f"orphan-{self.counter}.pid"
         shell = subprocess.Popen(["/bin/sh", "-c", " ".join(shlex.quote(c) for c in cmd)
@@ -1897,8 +1973,9 @@ class AutoQueueChecks(unittest.TestCase):
         self.assertFalse(alive(leader))
         self.assertEqual((os.getpgid(orphan), os.getsid(orphan)), (leader, leader))
         self.wait_for(lambda: subprocess.run(["/bin/ps", "-o", "ppid=", "-p", str(orphan)],
-                                             text=True, capture_output=True).stdout.strip() == "1",
-                      "the orphan to be reparented to launchd")
+                                             text=True, capture_output=True).stdout.strip()
+                      not in ("", str(leader)),
+                      "the orphan to be reparented away from its dead leader")
         return leader, orphan, ready, start
 
     def check_counted_only_when(self, record, excluded, included, orphan, ready):
@@ -1924,7 +2001,7 @@ class AutoQueueChecks(unittest.TestCase):
 
     def check_ended_bound(self, start_at):
         """Revision 5 S1, isolated: the record's leader P is dead (so its group and
-        session are trusted); P's orphaned child (sid = pgid = P, ppid 1) started
+        session are trusted); P's orphaned child (sid = pgid = P, reparented) started
         after the record's `ended` is not counted or signalled, and a new run is
         accepted. Control: the same record without `ended` counts it (13, Stopping,
         SIGTERM)."""
@@ -2050,7 +2127,10 @@ class AutoQueueChecks(unittest.TestCase):
 
     def test_child_of_tracked_pid_is_counted(self):
         """Revision 5: a running record's tracked, live pid makes its children
-        survivors (report running, run refused 13, stop signals them)."""
+        survivors (report running, run refused 13, stop signals them).
+        Revision 14: the tracked parent ignores SIGTERM, so it stays live through the stop;
+        before, the parent killed by the stop stayed counted only as an uncollected zombie
+        (a child of this test process), which now counts as gone."""
         self.prepare(BETA)
         self.ok(self.run_cmd(BETA, "unit"))
         self.end_worker()
@@ -2058,8 +2138,11 @@ class AutoQueueChecks(unittest.TestCase):
         launcher, pids = self.work / "launch.py", self.work / "pids-tracked"
         launcher.write_text(LAUNCH_SCRIPT)
         cmd, child_ready, child_release = self.wait_cmd("note")
-        parent = subprocess.Popen([sys.executable, str(launcher), "hold", str(self.wait_script),
-                                   str(pids), f"note,{child_ready},{child_release}"],
+        ignore_term = ("import runpy, signal, sys; signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+                       "sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')")
+        parent = subprocess.Popen([sys.executable, "-c", ignore_term, str(launcher), "hold",
+                                   str(self.wait_script), str(pids),
+                                   f"note,{child_ready},{child_release}"],
                                   start_new_session=True)
         self.procs.append(parent)
         self.wait_for(pids.exists, "the tracked parent's child")
@@ -2077,6 +2160,7 @@ class AutoQueueChecks(unittest.TestCase):
         self.end_worker()
         self.stopping(self.tool("stop"))
         self.wait_for(Path(str(child_ready) + ".term").exists, "the counted child to get SIGTERM", 5)
+        self.assertIsNone(parent.poll(), "the tracked parent ignores SIGTERM")
 
     def test_no_relaunch_while_earlier_run_live(self):
         """Revision 5 S4: run of a job refused (13) while an earlier run of it has a
@@ -2694,12 +2778,14 @@ class AutoQueueChecks(unittest.TestCase):
         self.assertLessEqual(took, 7, record)
 
         def leftovers():
-            table = subprocess.run(["/bin/ps", "-A", "-o", "pgid=", "-o", "command="],
-                                   text=True, capture_output=True)
+            # Revision 14: a zombie member (exited, not collected) is not a leftover.
+            table = subprocess.run(["/bin/ps", "-A", "-o", "pgid=", "-o", "stat=", "-o",
+                                    "command="], text=True, capture_output=True)
             self.assertEqual(table.returncode, 0, table.stderr)
             return [line for line in table.stdout.splitlines()
-                    if line.split(None, 1)[:1] == [str(record["probe_pgid"])]]
-        self.wait_for(lambda: not leftovers(), "the probe's group to be reaped", 5)
+                    if line.split(None, 2)[:1] == [str(record["probe_pgid"])]
+                    and not line.split(None, 2)[1].startswith("Z")]
+        self.wait_for(lambda: not leftovers(), "the probe's group to be gone", 5)
         self.attempt(BETA, 0)
 
     @unittest.skipIf(NON_MACOS, "duplicate off macOS: there "
@@ -2767,7 +2853,7 @@ class AutoQueueChecks(unittest.TestCase):
 
     def test_linux_ps_lag_earlier_process_not_claimed(self):
         """P10 (ii): with Linux ps start times imitated, an orphan of a dead group and
-        session leader (sid = pgid = leader, ppid 1) whose record says the run started
+        session leader (sid = pgid = leader, reparented) whose record says the run started
         2 s after the orphan's start second (it started more than the allowance before
         the run) is not counted and not signalled by stop. Control: the same record with
         `started` at the orphan's start second counts it (13, Stopping, SIGTERM)."""
@@ -3998,6 +4084,244 @@ class AutoQueueChecks(unittest.TestCase):
         self.ok(self.tool("lock", "release"))
         self.stop_until_stopped()
 
+    # ---- Revision 14: a zombie counts as gone ----------------------------------------
+
+    def zombie(self, cmd=None):
+        """A real zombie: a child of this test process, in its own session, that exits and
+        is not waited for (kill_leftovers collects it at the end). With `cmd` it is that
+        command (which may leave children in its group); otherwise it exits at once."""
+        proc = subprocess.Popen(cmd or [sys.executable, "-c", "pass"], start_new_session=True,
+                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
+        self.procs.append(proc)
+        self.wait_for(lambda: ps_state(proc.pid).startswith("Z"), "a zombie (ps stat Z)")
+        self.assertFalse(alive(proc.pid))
+        return proc.pid
+
+    def zombie_leader_with_member(self, mode="note"):
+        """A zombie session and group leader Z whose child M (mode `note`: notes SIGTERM and
+        stays until released) lives on in Z's group and session. Returns (Z, M, ready,
+        release)."""
+        launcher, pids = self.work / "launch.py", self.work / f"pids-zombie-{self.counter}"
+        launcher.write_text(LAUNCH_SCRIPT)
+        _, ready, release = self.wait_cmd(mode)
+        leader = self.zombie([sys.executable, str(launcher), "exit", str(self.wait_script),
+                              str(pids), f"{mode},{ready},{release}"])
+        (member,) = [int(pid) for pid in pids.read_text().split()]
+        self.stray.append(member)
+        self.wait_for(ready.exists, "the zombie leader's live member")
+        self.assertTrue(alive(member))
+        self.assertEqual((os.getpgid(member), os.getsid(member)), (leader, leader))
+        return leader, member, ready, release
+
+    def zombie_probe(self, *pids):
+        script = self.work / "zombie_probe.py"
+        script.write_text(ZOMBIE_PROBE)
+        result = subprocess.run([sys.executable, "-I", "-B", str(script), str(TOOL.parent),
+                                 *[str(pid) for pid in pids]], cwd=self.tmp, env=self.env,
+                                text=True, capture_output=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return {int(pid): views for pid, views in json.loads(result.stdout).items()}
+
+    def lstart(self, pid):
+        return subprocess.run(["/bin/ps", "-o", "lstart=", "-p", str(pid)],
+                              env={"LC_ALL": "C", "TZ": "UTC", "PATH": "/bin:/usr/bin"},
+                              text=True, capture_output=True).stdout.strip()
+
+    def survivors_probe(self, record):
+        path = self.work / f"probe-record-{self.counter}.json"
+        self.counter += 1
+        path.write_text(json.dumps({k: v for k, v in record.items() if v is not None}))
+        script = self.work / "survivors_probe.py"
+        script.write_text(SURVIVORS_PROBE)
+        result = subprocess.run([sys.executable, "-I", "-B", str(script), str(TOOL.parent),
+                                 str(path)], cwd=self.tmp, env=self.env, text=True,
+                                capture_output=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return json.loads(result.stdout)
+
+    def test_zombie_holding_recorded_leader_id_with_other_start_is_not_ours(self):
+        """Revision 14 (review finding 2): a record names as its leader an id now held by a
+        zombie Z with another start time (the id was reused), and Z's group has a live member:
+        the leader is not the run's, the member is no survivor, and stop prints Stopped
+        without signalling it. Control: with Z's real start time Z is the leader, the member
+        a survivor, stop Stopping and the member gets SIGTERM. Revision 13 gives [] (the
+        zombie's start time is compared); the first revision 14 candidate (ae6e63ff), which
+        left zombies out of the table, gave [member]."""
+        self.prepare(BETA)
+        self.ok(self.run_cmd(BETA, "unit"))
+        (record,) = self.runs().values()
+        leader, member, ready, release = self.zombie_leader_with_member()
+        wrong = time.strftime("%a %b %d %H:%M:%S %Y",
+                              time.gmtime(self.utc(record["started"]) - 3600))
+        right = self.lstart(leader)
+        foreign = dict(record, status="running", pid=leader, pgid=leader, process_start=wrong,
+                       ended=None, exit_code=None)
+        view = self.survivors_probe(foreign)  # (the run's own dead probe group stays a leader)
+        self.assertNotIn(leader, view["leaders"], "reused id counted as ours")
+        self.assertEqual(view["survivors"], [], "an outsider counted as a survivor")
+        view = self.survivors_probe(dict(foreign, process_start=right))
+        self.assertIn(leader, view["leaders"])
+        self.assertEqual(view["survivors"], [member])
+        name = record["run_id"] + "-reused-zombie"
+        self.forge(record, name, status="running", pid=leader, pgid=leader,
+                   process_start=wrong, ended=None, exit_code=None)
+        self.end_worker()
+        result = self.ok(self.tool("stop"))
+        self.assertTrue(result.stdout.strip().startswith("Stopped"), result.stdout)
+        self.assertFalse(Path(str(ready) + ".term").exists(), "stop signalled an outsider")
+        self.assertTrue(alive(member))
+        self.forge(record, name, status="running", pid=leader, pgid=leader,
+                   process_start=right, ended=None, exit_code=None)  # control
+        self.stopping(self.tool("stop"))
+        self.wait_for(Path(str(ready) + ".term").exists, "the member to get SIGTERM", 5)
+        release.write_text("")
+
+    @unittest.skipUnless(sys.platform.startswith("linux")
+                         and os.uname().machine in ("x86_64", "aarch64"),
+                         "Linux only (x86_64 or aarch64): a process whose main thread has "
+                         "exited shows state Z only on Linux (macOS shows it running, S)")
+    def test_multithreaded_process_with_exited_main_thread_is_alive(self):
+        """Revision 14 (review finding 1): a live process whose main thread has exited while
+        another thread runs (its leader shows /proc state Z with 2 threads, ps `Zl`, and its
+        heartbeat still advances) is alive in the helper's views (process_exists, group_alive,
+        listed live in snapshot()) and in the test's own check; a `running` record whose
+        leader it is stays running after reconcile, and stop prints Stopping. Fails on the
+        first revision 14 candidate (ae6e63ff), which read any Z as gone."""
+        self.prepare(BETA)
+        self.ok(self.run_cmd(BETA, "unit"))
+        (record,) = self.runs().values()
+        script, beat, release = self.work / "mt.py", self.work / "mt-beat", self.work / "mt-release"
+        script.write_text(MT_SCRIPT)
+        proc = subprocess.Popen([sys.executable, str(script), str(beat), str(release)],
+                                start_new_session=True)
+        self.procs.append(proc)
+        self.wait_for(lambda: (proc_stat(proc.pid) or ("", 0))[0] == "Z",
+                      "the main thread to exit (leader state Z)")
+        state, threads = proc_stat(proc.pid)
+        self.assertGreater(threads, 1, "the worker thread runs")
+        self.assertIn("l", ps_state(proc.pid), "ps shows the multi-threaded flag")
+        first = beat.read_text()
+        self.wait_for(lambda: beat.read_text() != first, "a heartbeat after the main thread exited")
+        self.assertTrue(alive(proc.pid))
+        self.assertEqual(self.zombie_probe(proc.pid)[proc.pid], [True, True, True])
+        name = record["run_id"] + "-threads"
+        self.forge(record, name, status="running", pid=proc.pid, pgid=proc.pid,
+                   process_start=self.lstart(proc.pid), ended=None, exit_code=None)
+        self.ok(self.tool("reconcile"))
+        self.assertEqual(self.runs()[name]["status"], "running")
+        self.end_worker()
+        self.stopping(self.tool("stop"))
+        release.write_text("")
+        proc.wait(TIMEOUT)
+
+    def test_zombie_is_gone_live_sibling_is_not_in_helper_views(self):
+        """Revision 14: in the helper's own process (process_exists, group_alive with the
+        pid as group id, and the snapshot() table) a zombie that is alone in its group is
+        gone; a live process beside it, and a zombie leader's group while a live member
+        remains in it, are alive and listed; once that member has exited, the group with
+        only its zombie leader is gone. Fails on revision 13, which reads a zombie as
+        alive."""
+        lone = self.zombie()
+        cmd, ready, release = self.wait_cmd("default")
+        sibling = subprocess.Popen(cmd, start_new_session=True)
+        self.procs.append(sibling)
+        self.wait_for(ready.exists, "the live sibling")
+        leader, member, _, member_release = self.zombie_leader_with_member()
+        views = self.zombie_probe(lone, sibling.pid, leader, member)
+        self.assertEqual(views[lone], [False, False, False], "zombie alone in its group")
+        self.assertEqual(views[sibling.pid], [True, True, True], "live sibling")
+        self.assertEqual(views[leader][0], False, "zombie leader as a process")
+        self.assertEqual(views[leader][2], False, "zombie leader in the table")
+        self.assertEqual(views[leader][1], True, "group with a live member")
+        self.assertEqual(views[member][0], True, "live member as a process")
+        self.assertEqual(views[member][2], True, "live member in the table")
+        member_release.write_text("")
+        self.wait_for(lambda: not alive(member), "the member to exit")
+        self.assertTrue(ps_state(leader).startswith("Z"), "the leader is still a zombie")
+        views = self.zombie_probe(leader, sibling.pid)
+        self.assertEqual(views[leader], [False, False, False], "group of only a zombie")
+        self.assertEqual(views[sibling.pid], [True, True, True], "live sibling")
+        release.write_text("")
+        self.assertEqual(sibling.wait(TIMEOUT), 0)
+
+    def test_zombie_run_leader_is_gone_and_unreadable_table_still_refuses(self):
+        """Revision 14: a `running` record whose CMD leader (pid and group, with its real start
+        time) is a zombie: the report does not show it running, a new run of the job is not
+        refused (13), reconcile marks it unknown; with the helper's ps refused, cleanup, lock
+        release and stop still refuse (17: never Cleaned, released or Stopped); with the real
+        ps stop prints Stopped at once (it does not wait for the zombie), cleanup prints
+        Cleaned and the lock is released. Fails on revision 13 (running, 13, Stopping)."""
+        self.prepare(BETA)
+        self.ok(self.run_cmd(BETA, "unit"))
+        (record,) = self.runs().values()
+        leader = self.zombie()
+        start = self.lstart(leader)
+        self.assertTrue(start, "ps gives the zombie's start time")
+        name = record["run_id"] + "-zombie"
+        self.forge(record, name, status="running", pid=leader, pgid=leader,
+                   process_start=start, ended=None, exit_code=None)
+        self.assertNotIn("running", self.result_cell(self.report(), BETA).lower())
+        self.attempt(BETA, 0)
+        self.ok(self.tool("reconcile"))
+        self.assertEqual(self.runs()[name]["status"], "unknown")
+        self.end_worker()
+        self.fake_ps = self.fake_ps_path("refused")
+        try:
+            result = self.tool("cleanup", BETA)
+            self.refused(result, 17)
+            self.assertNotIn("Cleaned", result.stdout)
+            self.refused(self.tool("lock", "release"), 17)
+            self.assertTrue((self.lock / "owner.txt").exists())
+            result = self.tool("stop")
+            self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
+            self.assertNotIn("Stopped", result.stdout)
+        finally:
+            self.fake_ps = None
+        result = self.ok(self.tool("stop"))
+        self.assertTrue(result.stdout.strip().startswith("Stopped"), result.stdout)
+        self.assertTrue(self.cleanup(0).stdout.strip().startswith("Cleaned"))
+        self.ok(self.tool("lock", "release"))
+        self.assertTrue(ps_state(leader).startswith("Z"), "the zombie was never collected")
+
+    def test_zombie_leader_group_counted_while_member_lives(self):
+        """Revision 14: a `running` record whose leader is a zombie but whose group still
+        has a live member (the member's parent, the leader, has exited): the member is a
+        survivor, so reconcile leaves the run running, readiness and a new run are refused,
+        stop prints Stopping and sends it SIGTERM, cleanup gives Still alive (it ignores the
+        signal). Once the member has exited, the zombie alone keeps nothing alive: reconcile
+        marks the run unknown, stop prints Stopped and cleanup Cleaned. Fails on revision 13
+        (cleanup refuses 13: the zombie leader reads as a running run).
+        The member's safety deadline is 120 s (`long`): on a loaded Linux host the test took
+        up to 80 s, and with 30 s the member could exit by itself before cleanup."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        self.ok(self.run_cmd(BETA, "unit"))
+        (record,) = self.runs().values()
+        leader, member, ready, release = self.zombie_leader_with_member("note+long")
+        name = record["run_id"] + "-zombie"
+        self.forge(record, name, status="running", pid=leader, pgid=leader,
+                   process_start=self.lstart(leader), ended=None, exit_code=None)
+        self.ok(self.tool("reconcile"))
+        self.assertEqual(self.runs()[name]["status"], "running")
+        self.assertIn("running", self.result_cell(self.report(), BETA).lower())
+        self.attempt(BETA, 13)
+        self.refused(self.ready(BETA, "--packet", self.packet(self.tree())), 8)
+        self.end_worker()
+        self.stopping(self.tool("stop"))
+        self.wait_for(Path(str(ready) + ".term").exists, "the member to get SIGTERM", 5)
+        result = self.cleanup(10)
+        self.assertTrue(result.stdout.strip().startswith("Still alive"), result.stdout)
+        self.assertTrue(alive(member))
+        release.write_text("")
+        self.wait_for(lambda: not alive(member), "the member to exit")
+        self.assertTrue(ps_state(leader).startswith("Z"), "the leader is still a zombie")
+        self.ok(self.tool("reconcile"))
+        self.assertEqual(self.runs()[name]["status"], "unknown")
+        result = self.ok(self.tool("stop"))
+        self.assertTrue(result.stdout.strip().startswith("Stopped"), result.stdout)
+        self.assertTrue(self.cleanup(0).stdout.strip().startswith("Cleaned"))
+
     # ---- Revision 13 (item 10): transfer from auto to attended -------------------
 
     def successor(self, name="successor"):
@@ -4091,31 +4415,147 @@ class AutoQueueChecks(unittest.TestCase):
     # ---- Revision 13 (item 13): timestamp-only installation differences ---------
 
     def archive_tools(self):
+        """The real ar and ranlib on PATH, or None when either is missing."""
         tools = [shutil.which(name, path=self.env.get("PATH")) for name in ("ar", "ranlib")]
-        if not all(tools):
-            self.skipTest("needs ar and ranlib on PATH")
-        return tools
+        return tools if all(tools) else None
 
-    def make_archive(self, path, members, when):
+    def make_archive(self, path, members, when, flags="rc"):
         """An archive of `members` (name -> bytes) made with the real ar and ranlib, every
-        member file dated `when` (epoch seconds)."""
+        member file dated `when` (epoch seconds). Returns its bytes; raises CalledProcessError
+        when ar or ranlib fails."""
         ar, ranlib = self.archive_tools()
         build = self.work / f"ar-{self.counter}-{path.name}"
         self.counter += 1
         build.mkdir()
-        names = []
         for name, data in members.items():
             (build / name).write_bytes(data)
             os.utime(build / name, (when, when))
-            names.append(name)
         if path.exists():
             path.unlink()
-        flags = getattr(self, "ar_flags", "rc")
-        subprocess.run([ar, flags, str(path), *names], cwd=build, check=True,
+        subprocess.run([ar, flags, str(path), *members], cwd=build, check=True,
                        capture_output=True, env=self.env)
         subprocess.run([ranlib, str(path)], cwd=build, check=True, capture_output=True,
                        env=self.env)
         return path.read_bytes()
+
+    @staticmethod
+    def archive_entries(data):
+        """Revision 14: the members of an `!<arch>` archive as (header, name, content), the
+        name read from BSD `#1/N` or GNU `name/` and `/N` forms; None if it does not parse."""
+        if not data.startswith(b"!<arch>\n"):
+            return None
+        entries, pos, names = [], 8, b""
+        while pos < len(data):
+            header = data[pos:pos + 60]
+            if len(header) < 60 or header[58:60] != b"`\n" or not header[48:58].strip().isdigit():
+                return None
+            size = int(header[48:58])
+            body = data[pos + 60:pos + 60 + size]
+            if len(body) < size:
+                return None
+            raw = header[:16].rstrip(b" ")
+            if raw.startswith(b"#1/") and raw[3:].isdigit():
+                length = int(raw[3:])
+                name, content = body[:length].rstrip(b"\0"), body[length:]
+            elif raw == b"//":
+                names, name, content = body, raw, body
+            elif raw.startswith(b"/") and raw[1:].isdigit() and names:
+                name = names[int(raw[1:]):].split(b"/\n")[0]
+                content = body
+            else:
+                name = raw[:-1] if raw.endswith(b"/") and raw != b"/" else raw
+                content = body
+            entries.append((header, name.decode("latin-1"), content))
+            pos += 60 + size + (size % 2)
+        return entries
+
+    def archive_members_ok(self, data, members):
+        """The archive's own members (index and name-table members left aside) are exactly
+        `members`, in order, with these contents. macOS ar pads a member's content with up to
+        seven newlines (inside its size) to keep 8-byte alignment; such padding is allowed."""
+        entries = self.archive_entries(data)
+        if entries is None:
+            return False
+        own = [(name, content) for _, name, content in entries
+               if not (name.startswith("__.SYMDEF") or name in ("/", "//", "/SYM64"))]
+        if [name for name, _ in own] != list(members):
+            return False
+        for (_, content), intended in zip(own, members.values()):
+            rest = content[len(intended):]
+            if not content.startswith(intended) or len(rest) > 7 or rest.strip(b"\n"):
+                return False
+        return True
+
+    def dates_only_differ(self, first, second):
+        """The two archives differ, and only in member header date fields (bytes 16-28)."""
+        a, b = self.archive_entries(first), self.archive_entries(second)
+        if first == second or a is None or b is None or len(a) != len(b):
+            return False
+        return all(x[0][:16] + x[0][28:] == y[0][:16] + y[0][28:] and x[2] == y[2]
+                   for x, y in zip(a, b))
+
+    @staticmethod
+    def python_archive(members, when):
+        """Revision 14: a GNU/SysV-style `!<arch>` archive of `members` written here, every
+        member header dated `when`, uid and gid 0, mode 100644 (no index member)."""
+        out = [b"!<arch>\n"]
+        for name, data in members.items():
+            out.append(b"%-16s%-12d%-6d%-6d%-8s%-10d`\n" % ((name + "/").encode(), when, 0, 0,
+                                                            b"100644", len(data)))
+            out.append(data + (b"\n" if len(data) % 2 else b""))
+        return b"".join(out)
+
+    def timestamp_archives(self, path, members, changed, same_size):
+        """Revision 14: (how, original, redated, changed, same_size) archive bytes for the
+        timestamp test. With the real ar and ranlib: the members dated 1000000000, the same
+        members dated 1100000000, and `changed` and `same_size` (a member changed without
+        changing its size) dated 1100000000, all with the same ar flags: `rc`, or `rcU` for
+        every archive when plain `rc` writes no dates (GNU ar and llvm-ar in deterministic
+        mode). Every archive is checked byte by byte: it holds
+        exactly the intended members and contents, and the re-dated one differs from the
+        original in member header dates only. If the real tools are missing, fail, or produce
+        anything else (for example an archive that does not hold the changed member), the four
+        archives are written by the test itself
+        (python_archive) and the reason is printed; what the test proves is unchanged."""
+        tools = self.archive_tools()
+        why = None if tools else "ar or ranlib is not on PATH"
+        if tools:
+            try:
+                original = self.make_archive(path, members, 1000000000)
+                flags = "rc"
+                redated = self.make_archive(path, members, 1100000000)
+                if redated == original:
+                    # Deterministic by default (GNU ar, llvm-ar): `U` writes dates, and also the
+                    # real uid, gid and mode, so the original is rebuilt with the same flags.
+                    flags = "rcU"
+                    original = self.make_archive(path, members, 1000000000, flags)
+                    redated = self.make_archive(path, members, 1100000000, flags)
+                after = self.make_archive(path, changed, 1100000000, flags)
+                same = self.make_archive(path, same_size, 1100000000, flags)
+            except subprocess.CalledProcessError as error:
+                why = "%s exited %s: %s" % (error.cmd[0], error.returncode,
+                                            (error.stderr or b"").decode(errors="replace")[:200])
+            else:
+                if not self.archive_members_ok(original, members):
+                    why = "the original archive does not hold exactly the intended members"
+                elif not self.archive_members_ok(redated, members):
+                    why = "the re-dated archive does not hold exactly the intended members"
+                elif not self.archive_members_ok(after, changed):
+                    why = "the content-changed archive does not hold the changed member"
+                elif not self.archive_members_ok(same, same_size):
+                    why = "the same-size changed archive does not hold the changed member"
+                elif not self.dates_only_differ(original, redated):
+                    why = ("re-archiving with other dates (ar %s) changed more than the member "
+                           "dates, or nothing" % flags)
+                else:
+                    return "real ar %s and ranlib (%s, %s)" % (flags, *tools), original, \
+                        redated, after, same
+        print("\n[archive test] real ar/ranlib not used: %s; the test writes its own archives"
+              % why, file=sys.stderr)
+        return ("archives written by the test (%s)" % why, self.python_archive(members, 1000000000),
+                self.python_archive(members, 1100000000),
+                self.python_archive(changed, 1100000000),
+                self.python_archive(same_size, 1100000000))
 
     def normalized_fingerprint_script(self, archive):
         """A fingerprint script printing the archive's exact digest and its normalized
@@ -4139,16 +4579,27 @@ print("NORMALIZED " + out.stdout.split()[0])
         return dict(line.split() for line in out.splitlines())
 
     def test_install_check_classifies_timestamp_only_archive_change(self):
-        """Revision 13 (item 13): with a real ar/ranlib archive, an exact match is available
+        """Revision 13 (item 13): for an archive (made by ar and ranlib where they work, see
+        revision 14 below), an exact match is available
         and records the normalized value; the same members re-archived with other dates
         change the exact fingerprint, and install check then says "timestamp-only
         differences: attended validation needed" but keeps the installation unavailable
         (12; runs refused; the recorded value is not replaced); a member whose content
-        changed is not classified; restoring the exact bytes makes it available again."""
+        changed is not classified; restoring the exact bytes makes it available again.
+        Revision 14 (review): also not a member whose content changed but not its size.
+        Revision 14: the four archives are made first and checked byte by byte
+        (timestamp_archives); when the real ar and ranlib are missing or do not produce exactly
+        the intended archives, the test writes them itself and says so on stderr, instead of
+        skipping or failing on the tool."""
         self.prepare(BETA)
         archive = self.work / "libsynthetic.a"
         members = {"one.txt": b"first member\n", "two.txt": b"second member\n"}
-        original = self.make_archive(archive, members, 1000000000)
+        changed_members = dict(members, **{"two.txt": b"second member, changed\n"})
+        same_size_members = dict(members, **{"two.txt": b"SECOND member\n"})
+        self.assertEqual(len(same_size_members["two.txt"]), len(members["two.txt"]))
+        how, original, redated, changed, same_size = self.timestamp_archives(
+            archive, members, changed_members, same_size_members)
+        archive.write_bytes(original)
         script = self.normalized_fingerprint_script(archive)
         values = self.exact(script)
         expect = values["FINGERPRINT"]
@@ -4156,14 +4607,9 @@ print("NORMALIZED " + out.stdout.split()[0])
         shown = json.loads(self.ok(self.tool("install", "show")).stdout)
         self.assertEqual(shown["state"], "available")
         self.assertEqual(shown["expected_normalized"], values["NORMALIZED"])
-        redated = self.make_archive(archive, members, 1100000000)
-        if redated == original:
-            self.ar_flags = "rcU"  # GNU ar in deterministic mode writes no dates
-            redated = self.make_archive(archive, members, 1100000000)
-        if redated == original:
-            self.skipTest("this ar writes no member dates")
-        self.assertNotEqual(self.exact(script)["FINGERPRINT"], expect)
-        self.assertEqual(self.exact(script)["NORMALIZED"], values["NORMALIZED"])
+        archive.write_bytes(redated)
+        self.assertNotEqual(self.exact(script)["FINGERPRINT"], expect, how)
+        self.assertEqual(self.exact(script)["NORMALIZED"], values["NORMALIZED"], how)
         result = self.tool("install", "check", "--script", script, "--expect", expect)
         self.assertEqual(result.returncode, 12, result.stdout + result.stderr)
         shown = json.loads(self.ok(self.tool("install", "show")).stdout)
@@ -4173,9 +4619,10 @@ print("NORMALIZED " + out.stdout.split()[0])
         self.assertEqual(shown["expected"], expect)
         self.attempt(BETA, 12)
         self.assertIn("timestamp-only differences", self.report())
-        self.make_archive(archive, dict(members, **{"two.txt": b"second member, changed\n"}),
-                          1100000000)
-        self.assertNotEqual(self.exact(script)["NORMALIZED"], values["NORMALIZED"])
+        archive.write_bytes(same_size)
+        self.assertNotEqual(self.exact(script)["NORMALIZED"], values["NORMALIZED"], how)
+        archive.write_bytes(changed)
+        self.assertNotEqual(self.exact(script)["NORMALIZED"], values["NORMALIZED"], how)
         result = self.tool("install", "check", "--script", script, "--expect", expect)
         self.assertEqual(result.returncode, 12, result.stdout + result.stderr)
         shown = json.loads(self.ok(self.tool("install", "show")).stdout)

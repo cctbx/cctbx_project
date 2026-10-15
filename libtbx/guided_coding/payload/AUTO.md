@@ -169,7 +169,10 @@ helper reports them; `install check` refuses while they use the installation), e
 `auto_queue.py cleanup JOB` — an ordinary step, run automatically after the job's runs and before
 `lock release`, which the helper refuses while any queue-owned process is alive. Never end a
 process by hand. A process using the installation that the helper cannot attribute to the queue
-keeps the installation unavailable; report it, do not end it. Anything a worker or the controller does outside its
+keeps the installation unavailable; report it, do not end it. A zombie (a process that has
+exited but that its parent has not collected, `ps` state `Z`, on Linux a single-threaded one;
+common in containers whose process 1 never collects them) counts as gone: it keeps no run,
+group, `stop`, `cleanup` or `lock release` waiting. Anything a worker or the controller does outside its
 named discretion — ending a process by hand included — is recorded with
 `auto_queue.py provisional JOB --note TEXT` and becomes its own question for the Developer; the
 helper refuses Approved while any of the job's provisional choices is undecided.
@@ -333,8 +336,9 @@ of the kit suite (anaconda, October 12, 2026: 269 tests, 261 passed, 8 skipped).
   (`test_case_variant_of_packet_refused_on_case_insensitive_volume`) is skipped
   on a case-sensitive filesystem, not for lack of macOS; a default Linux run
   reports all 12. The archive
-  classification test uses the system `ar` and `ranlib` (GNU ar's
-  deterministic mode is switched off for it with `U`; it is skipped if no dates can be written).
+  classification test never skips: it uses the system `ar` and `ranlib` where they produce
+  exactly the intended archives (with `U` when `ar` is deterministic by default), otherwise
+  archives it writes itself, and says which on stderr.
   Off macOS a failing `ps -E` marker query only drops the markers, as before; on macOS it makes
   the process table unreadable (exit 17).
 - **Opt-in everywhere:** the three tests that would contact a real outside host or name run only

@@ -8,6 +8,8 @@ Revision 12: `run` refuses on any system other than macOS; `init` needs --lock-d
 Revision 13: an unreadable process table refuses (exit 17) instead of reading as empty;
 `transfer` hands jobs to an attended record (final state Transferred); `install check` can
 classify timestamp-only differences from a NORMALIZED value (report-only, never available).
+Revision 14: a zombie (an exited process its parent has not collected, as in a container
+whose process 1 never reaps) counts as gone everywhere liveness is decided.
 
 Stop from any Terminal, without the coding conversation:
     python3 <procedure root>/auto_queue.py stop
@@ -120,14 +122,85 @@ def read_json(path):
 
 # ---------------------------------------------------------------- processes
 
+def proc_reading(pid):
+    """Linux: (state, number of threads) of PID from /proc/<pid>/stat, or None if unreadable.
+    The command name in parentheses may contain spaces or ')': the fields follow the last ')'
+    (state is field 3, num_threads field 20)."""
+    try:
+        with open("/proc/%d/stat" % pid, "rb") as handle:
+            data = handle.read()
+        fields = data[data.rindex(b")") + 1:].split()
+        return fields[0].decode("ascii", "replace"), int(fields[17])
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def ps_reading(pid):
+    """(ps stat, number of threads or None) of PID; ("", None) when ps cannot read it. The
+    thread count (nlwp) is asked for on Linux only; macOS ps has no such column."""
+    linux = sys.platform.startswith("linux")
+    try:
+        out = subprocess.run([PS, "-o", "stat="] + (["-o", "nlwp="] if linux else [])
+                             + ["-p", str(pid)], env=PS_ENV, capture_output=True, text=True)
+    except OSError:
+        return "", None
+    fields = out.stdout.split() if out.returncode == 0 else []
+    if not fields:
+        return "", None
+    threads = int(fields[1]) if linux and len(fields) > 1 and fields[1].isdigit() else None
+    return fields[0], threads
+
+
+def zombie_gone(pid, state=None):
+    """Revision 14: True only for a positive reading that PID is a zombie: a process that has
+    exited and only waits for its parent to collect it (in a container whose process 1 never
+    does, forever). Such a process runs nothing and counts as gone wherever liveness is
+    decided. Everything else counts as alive, including any state that cannot be read.
+    A state beginning with Z is not enough on Linux: there the leader of a multi-threaded
+    process whose main thread has exited also shows Z (ps `Zl`) while its other threads run.
+    So on Linux the process must also be single-threaded, read from /proc/<pid>/stat (state Z,
+    num_threads 1) or else from ps (stat Z without the `l` flag, nlwp 1); an unknown thread
+    count counts as alive. On macOS (no thread count in ps, and no `l` flag) a stat of Z
+    without `l` is enough: there a process with a running thread never shows Z. STATE is the
+    ps stat when the caller has already read it (macOS uses it as is)."""
+    if sys.platform == "darwin":
+        if state is None:
+            state = ps_reading(pid)[0]
+        return state.startswith("Z") and "l" not in state[1:]
+    if state is not None and (not state.startswith("Z") or "l" in state[1:]):
+        return False
+    reading = proc_reading(pid) if sys.platform.startswith("linux") else None
+    if reading is None:
+        reading = ps_reading(pid)
+    state, threads = reading
+    return state.startswith("Z") and "l" not in state[1:] and threads == 1
+
+
+def group_states(pgid):
+    """(pid, ps stat) of the members of process group PGID from `ps -ax`, or None when the
+    table cannot be read."""
+    try:
+        out = read_ps(["-ax", "-o", "pid=", "-o", "pgid=", "-o", "stat="])
+    except ProcessTableUnreadable:
+        return None
+    states = []
+    for line in out.splitlines():
+        fields = line.split()
+        if len(fields) == 3 and fields[0].isdigit() and fields[1].isdigit() \
+                and int(fields[1]) == pgid:
+            states.append((int(fields[0]), fields[2]))
+    return states
+
+
 def process_exists(pid):
+    """True while PID is a process that has not exited. Revision 14: a zombie is gone."""
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
     except PermissionError:
-        return True
-    return True
+        pass
+    return not zombie_gone(pid)
 
 
 def process_start(pid):
@@ -157,6 +230,9 @@ def same_process(pid, recorded_start):
 
 
 def group_alive(pgid):
+    """True while process group PGID has a member that has not exited. Revision 14: a group
+    whose only members are zombies is gone (macOS then answers killpg with EPERM, Linux with
+    success). An unreadable table keeps the group alive."""
     if not pgid:
         return False
     try:
@@ -164,8 +240,20 @@ def group_alive(pgid):
     except ProcessLookupError:
         return False
     except PermissionError:
+        pass
+    states = group_states(pgid)
+    if states is None:
         return True
-    return True
+    if not states:
+        # Every member left between the two reads, or ps does not list them: ask again.
+        try:
+            os.killpg(pgid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        return True
+    return not all(zombie_gone(pid, state) for pid, state in states)
 
 
 _SNAPSHOT = {"time": 0.0, "procs": None}
@@ -202,7 +290,11 @@ def read_ps(args):
 
 
 def snapshot():
-    """All processes: pid -> (ppid, pgid, sid, start epoch, run ids in the environment).
+    """All processes: pid -> [ppid, pgid, sid, start epoch, run ids in the environment, zombie].
+    Revision 14: a zombie (zombie_gone) stays in the table with its flag set, so that a
+    recorded leader id is still compared with its start time (leaders_of); it counts as gone
+    for liveness (live_table, survivors). A Z line whose start time does not parse is kept
+    with start None.
     Revision 13: fails closed. A ps that cannot start, exits nonzero, prints a line that does
     not parse, or prints a table without this process raises ProcessTableUnreadable; nothing
     is cached then. The `ps -E` marker query is held to the same rule on macOS; elsewhere
@@ -213,7 +305,8 @@ def snapshot():
     if _SNAPSHOT["procs"] is not None and time.time() - _SNAPSHOT["time"] < 0.3:
         return _SNAPSHOT["procs"]
     procs = {}
-    out = read_ps(["-ax", "-o", "pid=", "-o", "ppid=", "-o", "pgid=", "-o", "lstart="])
+    out = read_ps(["-ax", "-o", "pid=", "-o", "ppid=", "-o", "pgid=", "-o", "stat=",
+                   "-o", "lstart="])
     marker_args = ["-E", "-ww", "-ax", "-o", "pid=", "-o", "command="]
     if sys.platform == "darwin":
         marks = read_ps(marker_args)
@@ -225,16 +318,18 @@ def snapshot():
     for number, line in enumerate(out.splitlines(), 1):
         if not line.strip():
             continue
-        fields = line.split(None, 3)
-        start = epoch(fields[3], "%a %b %d %H:%M:%S %Y") if len(fields) == 4 else None
-        if len(fields) < 4 or not all(f.isdigit() for f in fields[:3]) or start is None:
+        fields = line.split(None, 4)
+        ids = len(fields) >= 4 and all(f.isdigit() for f in fields[:3])
+        zombie = ids and fields[3].startswith("Z") and zombie_gone(int(fields[0]), fields[3])
+        start = epoch(fields[4], "%a %b %d %H:%M:%S %Y") if len(fields) == 5 else None
+        if not ids or (start is None and not zombie):
             raise ProcessTableUnreadable("unparsable ps line %d: %r" % (number, line[:80]))
         pid, ppid, pgid = int(fields[0]), int(fields[1]), int(fields[2])
         try:
             sid = os.getsid(pid)
         except OSError:
             sid = None
-        procs[pid] = [ppid, pgid, sid, start, set()]
+        procs[pid] = [ppid, pgid, sid, start, set(), bool(zombie)]
     if os.getpid() not in procs:
         raise ProcessTableUnreadable("ps listed %d process(es) but not this one (%d)"
                                      % (len(procs), os.getpid()))
@@ -250,6 +345,13 @@ def snapshot():
                                      % os.getpid())
     _SNAPSHOT.update(time=time.time(), procs=procs)
     return procs
+
+
+def live_table(procs):
+    """Revision 14: the table without zombies (None stays None), for every liveness decision."""
+    if procs is None:
+        return None
+    return {pid: entry for pid, entry in procs.items() if not (len(entry) > 5 and entry[5])}
 
 
 def snapshot_or_none():
@@ -271,7 +373,8 @@ def leaders_of(record, procs):
             continue
         recorded = epoch(record.get(start_key) or "", "%a %b %d %H:%M:%S %Y")
         live = procs.get(leader)
-        # A live leader with another start time means the id was reused: not ours.
+        # A leader with another start time means the id was reused: not ours. Revision 14:
+        # this includes a zombie (still in the table) that holds the id.
         if live is not None and (recorded is None or live[3] is None or live[3] != recorded):
             continue
         leaders.add(leader)
@@ -304,16 +407,17 @@ def survivors(record):
         return (start is not None and (probe_start is None or start >= probe_start - 1)
                 and (probe_end is None or start <= probe_end))
 
+    leaders = leaders_of(record, procs)  # Revision 14: with zombies, for the start-time check
+    procs = live_table(procs)  # then only processes that have not exited
     found = set()
     for item in record.get("tracked", []):
         live = procs.get(item.get("pid"))
         if live is not None and live[3] is not None and live[3] == item.get("start"):
             found.add(item["pid"])
-    leaders = leaders_of(record, procs)
     probe_leader = record.get("probe_pgid") if record.get("probe_pgid") in leaders else None
     roots = {1, wrapper} | leaders
     marked = set()
-    for pid, (ppid, pgid, sid, start, marks) in procs.items():
+    for pid, (ppid, pgid, sid, start, marks) in ((p, e[:5]) for p, e in procs.items()):
         if pid in (me, wrapper) or not during(start):
             continue
         if record["run_id"] in marks:
@@ -1060,7 +1164,7 @@ def cmd_run(args):
             os.killpg(proc.pid, signum)
         except OSError:
             pass
-        procs = snapshot_or_none() or {}  # unreadable: the group signal above only
+        procs = live_table(snapshot_or_none()) or {}  # unreadable: the group signal above only
         for pid, start in list(tracked.items()):
             live = procs.get(pid)
             if live is not None and live[3] == start:
@@ -1076,7 +1180,7 @@ def cmd_run(args):
         """Record every descendant of CMD (pid and start time), so a process that later leaves
         the group and the session is still known."""
         _SNAPSHOT["procs"] = None
-        procs = snapshot_or_none()
+        procs = live_table(snapshot_or_none())
         if procs is None:
             # Revision 13: nothing new can be learned now; the gap is recorded, and the end of
             # the run cannot then establish that nothing was left behind.
@@ -1113,7 +1217,7 @@ def cmd_run(args):
     if timed_out:
         # End the run and everything identified as its own: TERM, up to 10 s, then KILL.
         record_now = read_json(record_path)
-        procs = snapshot_or_none() or {}
+        procs = live_table(snapshot_or_none()) or {}
         targets = set(survivors_or_unknown(record_now) or ()) | {
             pid for pid, start in tracked.items() if procs.get(pid, [None] * 4)[3] == start}
         for sig in (signal.SIGTERM, signal.SIGKILL):
@@ -1129,7 +1233,7 @@ def cmd_run(args):
             end = time.time() + (10 if sig == signal.SIGTERM else 2)
             while time.time() < end:
                 _SNAPSHOT["procs"] = None
-                procs = snapshot_or_none()
+                procs = live_table(snapshot_or_none())
                 if proc.poll() is not None and procs is not None and not [
                         p for p in targets if p in procs]:
                     break

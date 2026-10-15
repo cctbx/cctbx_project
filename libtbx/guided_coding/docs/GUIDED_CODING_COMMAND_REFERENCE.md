@@ -431,7 +431,8 @@ start notice from any Terminal; it works in any shell, csh included. It
 reports **Stopped** only when the registered worker has ended and no
 build or test started through the helper, or any descendant it can
 identify, is still alive; otherwise it reports **Stopping** and what
-remains. Known gaps: a system program that a test starts in its own
+remains. A process that has exited but that its parent has not yet
+collected (a zombie; on Linux, a single-threaded one) does not count as alive. Known gaps: a system program that a test starts in its own
 session, from a parent that exits within about a second, is not seen;
 and a request that a test hands to another system service is not
 blocked by the network block.
