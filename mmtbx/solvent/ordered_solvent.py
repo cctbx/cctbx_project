@@ -683,10 +683,14 @@ class maps(object):
         self.difference_map = self.difference_map * mask_p1
 
   def _get_real_map(self, map_type):
+    # working reflections only, so that the free set does not guide where
+    # waters go (fmodel.electron_density_map_for_model_building: with the
+    # llgi target, possibly D*Fc in place of the free reflections)
     coeffs = self.e_map.map_coefficients(
       map_type     = map_type,
       fill_missing = False,
-      isotropize   = True)
+      isotropize   = True,
+      exclude_free_r_reflections = True)
     fft_map = coeffs.fft_map(crystal_gridding = self.crystal_gridding)
     fft_map.apply_sigma_scaling()
     return fft_map.real_map_unpadded()
