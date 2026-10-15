@@ -161,6 +161,26 @@ class manager_mixin(object):
       return self.electron_density_map_llgi()
     return self.electron_density_map()
 
+  def electron_density_map_for_model_building(self):
+    """ The electron_density_map for the steps that build or move atoms in
+    a map (real-space refinement, water picking, ion placement) and for the
+    residual-map peaks: electron_density_map_for_target(), and with the
+    llgi target, as llgi_data.real_space_map says, for the 2mFo-DFc-type
+    maps of the working reflections: posterior_filled, the LLGI posterior
+    map with D*Fc for every other reflection (mmtbx.refinement.llgi_maps.
+    filled_posterior_map_server); bias_reduced, the LLGI bias-reduced map
+    (bias_reduced_map_server); posterior_2mfo_dfc (or none), the LLGI
+    posterior map without them. """
+    emap = self.electron_density_map_for_target()
+    if(self.llgi_target_active()):
+      import mmtbx.refinement.llgi_maps as llgi_maps
+      choice = getattr(self.llgi_data(), "real_space_map", None)
+      if(choice == "bias_reduced"):
+        return llgi_maps.bias_reduced_map_server(fmodel=self, emap=emap)
+      if(choice == "posterior_filled"):
+        return llgi_maps.filled_posterior_map_server(fmodel=self, emap=emap)
+    return emap
+
 sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
   algorithm = *fft direct taam
     .type = choice

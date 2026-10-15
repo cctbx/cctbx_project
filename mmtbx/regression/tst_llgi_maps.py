@@ -233,6 +233,106 @@ def exercise_fit_k_anisotropic():
     assert f.rms_log_residual < 1e-8
     assert approx_equal(f.evaluate(other), k(other), eps=1e-6)
 
+def exercise_model_building_maps():
+  # fmodel.electron_density_map_for_model_building with real_space_map =
+  # bias_reduced: the 2mFo-DFc-type maps (whatever their spelling) are IWT,
+  # from the working reflections when asked (exclude_free_r_reflections,
+  # use_all_data=False); other maps come from the LLGI helper; with
+  # posterior_2mfo_dfc, or another target, the helper itself
+  from cctbx import miller
+  import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+  from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
+  fmodel = build_llgi_fmodel(30, 2.2, seed=3, rice_kappa=0.1)
+  ld = fmodel.llgi_data()
+  fmodel.set_llgi_data(llgi_hybrid.replace_llgi_data(ld,
+    real_space_map="bias_reduced"))
+  emap = fmodel.electron_density_map_for_model_building()
+  assert isinstance(emap, llgi_maps.bias_reduced_map_server)
+  iwt = dict(llgi_maps.compute(fmodel).arrays)[llgi_maps.LABELS.bias_reduced]
+  work = fmodel.arrays.work_sel
+  assert 0 < work.count(False) < work.size()
+  for map_type in ["2mFo-DFc", "2mFobs-DFmodel", "2mFo-DFc_filled"]:
+    mc = emap.map_coefficients(map_type=map_type, fill_missing=True,
+      isotropize=True)
+    assert mc.indices().all_eq(iwt.indices())
+    assert approx_equal(mc.data(), iwt.data())
+  mc = emap.map_coefficients(map_type="2mFo-DFc",
+    exclude_free_r_reflections=True)
+  assert mc.indices().all_eq(iwt.indices().select(work))
+  assert approx_equal(mc.data(), iwt.data().select(work))
+  helper = fmodel.electron_density_map_for_target()
+  for map_type in ["mFo-DFc", "mFobs-DFmodel", "Fmodel", "mFo"]:
+    assert approx_equal(emap.map_coefficients(map_type=map_type).data(),
+      helper.map_coefficients(map_type=map_type).data())
+  # the map from the working set, on the grid of another map
+  m_all = emap.fft_map(map_type="2mFo-DFc", resolution_factor=0.25)
+  m_work = emap.fft_map(map_type="2mFo-DFc", resolution_factor=0.25,
+    use_all_data=False, other_fft_map=m_all)
+  ref = miller.fft_map(crystal_gridding=m_all,
+    fourier_coefficients=iwt.select(work))
+  assert approx_equal(m_work.real_map_unpadded(), ref.real_map_unpadded())
+  assert flex.max(flex.abs(m_work.real_map_unpadded() -
+    m_all.real_map_unpadded())) > 0
+  md = emap.fft_map(map_type="mFo-DFc", resolution_factor=0.25,
+    use_all_data=False, other_fft_map=m_all)
+  ref = miller.fft_map(crystal_gridding=m_all, fourier_coefficients=
+    helper.map_coefficients(map_type="mFo-DFc").select(work))
+  assert approx_equal(md.real_map_unpadded(), ref.real_map_unpadded())
+  # posterior_filled: for the real-space steps (fft_map, working
+  # reflections), the posterior map of the working reflections with D*Fc
+  # (the LLGI fill) for the free reflections and those without data, as
+  # the helper's map_coefficients gives with exclude_free_r_reflections and
+  # fill_missing; without fill_missing (water picking), the working
+  # reflections alone
+  from mmtbx.map_tools import model_missing_reflections_llgi
+  fmodel.set_llgi_data(llgi_hybrid.replace_llgi_data(ld,
+    real_space_map="posterior_filled"))
+  emap = fmodel.electron_density_map_for_model_building()
+  assert isinstance(emap, llgi_maps.filled_posterior_map_server)
+  fill = model_missing_reflections_llgi(fmodel=fmodel).get_missing()
+  post = helper.map_coefficients(map_type="2mFo-DFc").select(work)
+  assert approx_equal(emap.map_coefficients(map_type="2mFo-DFc",
+    exclude_free_r_reflections=True).data(), post.data())
+  for map_type in ["2mFo-DFc", "2mFobs-DFmodel"]:
+    mc = emap.map_coefficients(map_type=map_type,
+      exclude_free_r_reflections=True, fill_missing=True)
+    assert mc.size() == fill.size()
+    a, b = mc.common_sets(post)
+    assert a.size() == post.size()
+    assert approx_equal(a.data(), b.data())
+    a, b = mc.lone_set(post).common_sets(fill)
+    assert a.size() == fill.size() - post.size()
+    assert approx_equal(a.data(), b.data())
+  m_work = emap.fft_map(map_type="2mFo-DFc", resolution_factor=0.25,
+    use_all_data=False, other_fft_map=m_all)
+  ref = miller.fft_map(crystal_gridding=m_all,
+    fourier_coefficients=emap.map_coefficients(map_type="2mFo-DFc",
+      exclude_free_r_reflections=True, fill_missing=True))
+  assert approx_equal(m_work.real_map_unpadded(), ref.real_map_unpadded())
+  for kw in [dict(), dict(fill_missing=False)]:
+    assert approx_equal(emap.map_coefficients(map_type="2mFo-DFc", **kw).data(),
+      helper.map_coefficients(map_type="2mFo-DFc", **kw).data())
+  md = emap.fft_map(map_type="mFo-DFc", resolution_factor=0.25,
+    use_all_data=False, other_fft_map=m_all)
+  ref = miller.fft_map(crystal_gridding=m_all, fourier_coefficients=
+    helper.map_coefficients(map_type="mFo-DFc").select(work))
+  assert approx_equal(md.real_map_unpadded(), ref.real_map_unpadded())
+  # posterior_2mfo_dfc: the LLGI helper; target ml: the ordinary map
+  fmodel.set_llgi_data(llgi_hybrid.replace_llgi_data(ld,
+    real_space_map="posterior_2mfo_dfc"))
+  emap = fmodel.electron_density_map_for_model_building()
+  assert not isinstance(emap, llgi_maps.bias_reduced_map_server)
+  assert approx_equal(emap.map_coefficients(map_type="2mFo-DFc").data(),
+    helper.map_coefficients(map_type="2mFo-DFc").data())
+  fmodel.set_llgi_data(llgi_hybrid.replace_llgi_data(ld,
+    real_space_map="bias_reduced"))
+  fmodel.set_target_name("ml")
+  emap = fmodel.electron_density_map_for_model_building()
+  assert not isinstance(emap, llgi_maps.bias_reduced_map_server)
+  assert approx_equal(emap.map_coefficients(map_type="2mFo-DFc").data(),
+    fmodel.electron_density_map().map_coefficients(
+      map_type="2mFo-DFc").data())
+
 def run():
   exercise_handoff_fixtures()
   exercise_phi_table_limits()
@@ -241,6 +341,7 @@ def run():
   exercise_compute_on_fmodel()
   exercise_resn_model()
   exercise_fit_k_anisotropic()
+  exercise_model_building_maps()
   print("OK")
 
 if (__name__ == "__main__"):

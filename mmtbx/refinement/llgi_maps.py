@@ -343,3 +343,108 @@ def compute(fmodel, params=None, log=None):
   return group_args(arrays=arrays, e_expected=e_expected, phi=phi,
     sigmaa=sigmaa, e_calc=e_calc, coefficients_e=ce, f_scale=f_scale,
     f_scale_aniso=f_scale_aniso, n_filled=n_filled)
+
+def _is_two_fofc(map_type):
+  import mmtbx
+  mn = mmtbx.map_names(map_name_string=map_type)
+  return mn.k == 2 and mn.n == -1 and mn.ml_map is True
+
+class filled_posterior_map_server(object):
+  """ Stands in for the electron_density_map object emap of the LLGI helper
+  (fmodel.electron_density_map_for_model_building): for the real-space
+  steps (fft_map with use_all_data=False), the 2mFo-DFc-type maps
+  (mmtbx.map_names k = 2, n = -1, ML weights) are the LLGI posterior map
+  2<E> - sigmaA*Ec of the working reflections with every other reflection
+  to the resolution limit, free or without data, filled with D*Fc
+  (mmtbx.map_tools.model_missing_reflections_llgi: sigmaA*Ec, the limit of
+  the posterior coefficient as the information goes to 0), i.e. emap's
+  map_coefficients with exclude_free_r_reflections and fill_missing.
+  Everything else comes from emap, map_coefficients included: filled where
+  fill_missing is asked for (ion placement), not otherwise (water picking,
+  which looks for atoms the model lacks). """
+
+  def __init__(self, fmodel, emap):
+    self.fmodel = fmodel
+    self.emap = emap
+
+  def __getattr__(self, name):
+    if(name == "emap"): raise AttributeError(name)
+    return getattr(self.emap, name)
+
+  def _filled(self, map_type, isotropize=True):
+    return self.emap.map_coefficients(map_type=map_type,
+      exclude_free_r_reflections=True, fill_missing=True,
+      isotropize=isotropize)
+
+  def fft_map(self, map_type, resolution_factor=0.25, symmetry_flags=None,
+        other_fft_map=None, use_all_data=True, **kwds):
+    if(use_all_data or not _is_two_fofc(map_type)):
+      return self.emap.fft_map(map_type=map_type,
+        resolution_factor=resolution_factor, symmetry_flags=symmetry_flags,
+        other_fft_map=other_fft_map, use_all_data=use_all_data, **kwds)
+    coeffs = self._filled(map_type)
+    if(other_fft_map is not None):
+      return miller.fft_map(crystal_gridding=other_fft_map,
+        fourier_coefficients=coeffs)
+    return coeffs.fft_map(resolution_factor=resolution_factor,
+      symmetry_flags=symmetry_flags)
+
+class bias_reduced_map_server(object):
+  """ Stands in for the electron_density_map object emap of the LLGI helper
+  (fmodel.electron_density_map_for_model_building): the 2mFo-DFc-type maps
+  (mmtbx.map_names k = 2, n = -1, ML weights) are the bias-reduced map
+  IWT (missing reflections 0, whatever fill_missing; the free reflections
+  too with exclude_free_r_reflections=True, or use_all_data=False in
+  fft_map, as in mmtbx.map_tools); everything else comes from emap, whose
+  mFo-DFc form <E> - sigmaA*Ec is the LLGI difference map. """
+
+  def __init__(self, fmodel, emap):
+    self.fmodel = fmodel
+    self.emap = emap
+    self._coeffs = None
+
+  def __getattr__(self, name):
+    if(name == "emap"): raise AttributeError(name)
+    return getattr(self.emap, name)
+
+  def _bias_reduced(self):
+    if(self._coeffs is None):
+      from libtbx.utils import Sorry
+      result = compute(fmodel=self.fmodel,
+        params=getattr(self.fmodel.llgi_data(), "map_params", None))
+      if(result is None):
+        raise Sorry("LLGI bias-reduced map not available "
+          "(llgi_data.real_space_map=bias_reduced); "
+          "llgi_data.real_space_map=posterior_2mfo_dfc uses the LLGI "
+          "2mFo-DFc map instead.")
+      self._coeffs = dict(result.arrays)[LABELS.bias_reduced]
+    return self._coeffs
+
+  def _is_two_fofc(self, map_type):
+    return _is_two_fofc(map_type)
+
+  def _work(self, coeffs):
+    return coeffs.select(self.fmodel.arrays.work_sel)
+
+  def map_coefficients(self, map_type, exclude_free_r_reflections=False,
+        **kwds):
+    if(self._is_two_fofc(map_type)):
+      coeffs = self._bias_reduced()
+      return self._work(coeffs) if exclude_free_r_reflections else coeffs
+    return self.emap.map_coefficients(map_type=map_type,
+      exclude_free_r_reflections=exclude_free_r_reflections, **kwds)
+
+  def fft_map(self, map_type, resolution_factor=0.25, symmetry_flags=None,
+        other_fft_map=None, use_all_data=True, **kwds):
+    if(self._is_two_fofc(map_type)):
+      coeffs = self._bias_reduced()
+      if(not use_all_data):
+        coeffs = self._work(coeffs)
+      if(other_fft_map is not None):
+        return miller.fft_map(crystal_gridding=other_fft_map,
+          fourier_coefficients=coeffs)
+      return coeffs.fft_map(resolution_factor=resolution_factor,
+        symmetry_flags=symmetry_flags)
+    return self.emap.fft_map(map_type=map_type,
+      resolution_factor=resolution_factor, symmetry_flags=symmetry_flags,
+      other_fft_map=other_fft_map, use_all_data=use_all_data, **kwds)

@@ -372,7 +372,8 @@ class manager(object):
     -------
     scitbx.array_family.flex.double
     """
-    map_coeffs = self.fmodel.map_coefficients(
+    map_coeffs = self.fmodel.electron_density_map_for_model_building(
+      ).map_coefficients(
       map_type = map_type,
       exclude_free_r_reflections = True,
       fill_missing = True,

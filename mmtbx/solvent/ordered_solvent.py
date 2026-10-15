@@ -633,7 +633,7 @@ class maps(object):
     self.fmodel = fmodel
     self.model  = model
     self.r_work = fmodel.r_work()
-    self.e_map = fmodel.electron_density_map()
+    self.e_map = fmodel.electron_density_map_for_model_building()
     self.crystal_symmetry = fmodel.xray_structure.crystal_symmetry()
     self.crystal_gridding = maptbx.crystal_gridding(
       unit_cell        = self.crystal_symmetry.unit_cell(),
@@ -722,7 +722,7 @@ class maps(object):
       sc.occupancy=0
       self.fmodel.update_xray_structure(update_f_calc=True)
 
-      coeffs = self.fmodel.electron_density_map().map_coefficients(
+      coeffs = self.fmodel.electron_density_map_for_model_building().map_coefficients(
         map_type     = "mFobs-DFmodel",
         fill_missing = False,
         isotropize   = True)

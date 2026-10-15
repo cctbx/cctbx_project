@@ -382,7 +382,7 @@ class manager(object):
     else: silent = True
     #
     from cctbx import maptbx
-    e_map = self.fmodel.electron_density_map()
+    e_map = self.fmodel.electron_density_map_for_model_building()
     crystal_symmetry = self.fmodel.xray_structure.crystal_symmetry()
     crystal_gridding = maptbx.crystal_gridding(
       unit_cell        = crystal_symmetry.unit_cell(),
