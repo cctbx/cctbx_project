@@ -141,7 +141,8 @@ END
 
 def exercise_water_maps_from_working_reflections():
   # the water-picking maps (maps._get_real_map) are computed from the working
-  # reflections only, so the free set does not guide where waters go
+  # reflections only, so the free set does not guide where waters go; the
+  # model map (Fmodel, for the CC filter) from the same reflections
   from cctbx import maptbx, miller
   from mmtbx.regression.llgi_test_utils import build_fmodel
   fmodel = build_fmodel(30, 2.2, seed=3)
@@ -154,7 +155,7 @@ def exercise_water_maps_from_working_reflections():
   m.crystal_gridding = maptbx.crystal_gridding(unit_cell=cs.unit_cell(),
     space_group_info=cs.space_group_info(),
     symmetry_flags=maptbx.use_space_group_symmetry, step=0.6)
-  for map_type in ["2mFobs-DFmodel", "mFobs-DFmodel"]:
+  for map_type in ["2mFobs-DFmodel", "mFobs-DFmodel", "Fmodel"]:
     work = m.e_map.map_coefficients(map_type=map_type, fill_missing=False,
       isotropize=True).select(~free)
     ref = miller.fft_map(crystal_gridding=m.crystal_gridding,
