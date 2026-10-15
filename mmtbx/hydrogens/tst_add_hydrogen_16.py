@@ -6,6 +6,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 from mmtbx.monomer_library import server
 from mmtbx.hydrogens import reduce_hydrogen
+from six.moves import cStringIO as StringIO
 
 def run():
   test_001()
@@ -32,6 +33,7 @@ def run():
   test_022()
   test_023()
   test_024()
+  test_025()
 
 # ------------------------------------------------------------------------------
 
@@ -491,6 +493,29 @@ def test_024():
   o3, h = matrix.col(a[('G4S', 'O3')].xyz), matrix.col(hs[0].xyz)
   c = matrix.col(c1.xyz)
   assert approx_equal((o3-c).angle(h-c, deg=True), 109.5, eps=5)
+
+def test_025():
+  '''
+  3evj NAG A 2 has no C2 (not recorded as unobserved). The glycosidic link
+  O4(NAG A 1)-C1 needs C2 for its chirality, and pdb_interpretation stopped:
+  "Unable to determine the linking chiral atoms". The link is applied without
+  the chirality, which the "Links applied" log says.
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_025.split("\n"), source_info=None)
+  log = StringIO()
+  model = mmtbx.model.manager(model_input=pdb_inp, log=log)
+  model.process(make_restraints=True)
+  lines = [l for l in log.getvalue().splitlines() if 'NAG A   2' in l]
+  note = 'link chirality not restrained: ring carbon bonded to C1 missing'
+  assert any(note in l for l in lines), lines
+  atoms = model.get_hierarchy().atoms()
+  i_c1, i_o4 = [a.i_seq for a in atoms if a.id_str() in
+    ('pdb=" C1  NAG A   2 "', 'pdb=" O4  NAG A   1 "')]
+  grm = model.get_restraints_manager().geometry
+  assert grm.bond_params_table.lookup(i_c1, i_o4) is not None
+  atoms = place_atoms(pdb_str_025)
+  assert 'H3' in [a.name.strip() for a in atoms
+    if a.parent().parent().resseq.strip() == '2']
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -1439,6 +1464,36 @@ HETATM10819  O2  9RN B 505     167.492 180.458  82.149  1.00 31.32           O
 HETATM10820  O3  9RN B 505     166.293 178.833  79.073  1.00 32.67           O
 HETATM10821  O4  9RN B 505     163.782 179.157  80.370  1.00 37.51           O
 HETATM10822  O5  9RN B 505     166.759 177.469  81.766  1.00 33.83           O
+"""
+
+pdb_str_025 = """
+HETATM 6165  C1  NAG A   1      61.546  16.098  32.754  1.00 74.25           C
+HETATM 6166  C2  NAG A   1      62.891  15.764  33.430  1.00 72.04           C
+HETATM 6167  C3  NAG A   1      63.947  15.398  32.405  1.00 72.75           C
+HETATM 6168  C4  NAG A   1      63.430  14.369  31.392  1.00 73.40           C
+HETATM 6169  C5  NAG A   1      62.038  14.751  30.838  1.00 74.99           C
+HETATM 6170  C6  NAG A   1      61.382  13.593  30.109  1.00 76.45           C
+HETATM 6171  C7  NAG A   1      64.017  16.644  35.364  1.00 69.95           C
+HETATM 6172  C8  NAG A   1      63.197  16.785  36.634  1.00 69.96           C
+HETATM 6173  N2  NAG A   1      63.387  16.878  34.217  1.00 69.43           N
+HETATM 6174  O3  NAG A   1      65.072  14.868  33.095  1.00 72.98           O
+HETATM 6175  O4  NAG A   1      64.367  14.264  30.307  1.00 70.35           O
+HETATM 6176  O5  NAG A   1      61.133  15.038  31.905  1.00 75.84           O
+HETATM 6177  O6  NAG A   1      60.999  12.571  31.032  1.00 74.25           O
+HETATM 6178  O7  NAG A   1      65.203  16.308  35.431  1.00 70.55           O
+HETATM 6179  C1  NAG A   2      64.890  13.003  30.125  1.00 70.93           C
+HETATM 6180  C3  NAG A   2      66.313  12.186  27.815  1.00 68.91           C
+HETATM 6181  C4  NAG A   2      67.421  11.795  28.801  1.00 72.69           C
+HETATM 6182  C5  NAG A   2      66.898  11.769  30.230  1.00 72.04           C
+HETATM 6183  C6  NAG A   2      67.998  11.555  31.233  1.00 71.27           C
+HETATM 6184  C7  NAG A   2      63.308  14.465  27.502  1.00 72.83           C
+HETATM 6185  C8  NAG A   2      62.551  14.527  26.175  1.00 72.02           C
+HETATM 6186  N2  NAG A   2      64.112  13.426  27.683  1.00 71.78           N
+HETATM 6187  O3  NAG A   2      66.868  12.585  26.575  1.00 63.39           O
+HETATM 6188  O4  NAG A   2      67.917  10.481  28.481  1.00 79.58           O
+HETATM 6189  O5  NAG A   2      66.248  13.006  30.560  1.00 72.37           O
+HETATM 6190  O6  NAG A   2      67.476  11.011  32.432  1.00 74.19           O
+HETATM 6191  O7  NAG A   2      63.161  15.352  28.348  1.00 70.45           O
 """
 
 if __name__ == '__main__':
