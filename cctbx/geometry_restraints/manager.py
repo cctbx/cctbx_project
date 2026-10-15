@@ -1152,13 +1152,16 @@ class manager(Base_geometry):
           max_p_distance)
     bonded_distance_cutoff = min(bonded_distance_cutoff,
         max_distance_between_connecting_atoms)+0.1
-    bonded_distance_cutoff = max(bonded_distance_cutoff,
+    # The asu buffer must cover existing bonds so that add_pair_sym_table
+    # below finds every bonded mate; bonded_distance_cutoff stays the limit
+    # for new bonds and must not grow with them.
+    buffer_thickness = max(bonded_distance_cutoff,
         existing_max_bonded_distance)
     t2 = time.time()
     # print("bonded_distance_cutoff", bonded_distance_cutoff)
     # make asu mappings
     all_asu_mappings = self.crystal_symmetry.special_position_settings().\
-        asu_mappings(buffer_thickness=bonded_distance_cutoff)
+        asu_mappings(buffer_thickness=buffer_thickness)
     all_asu_mappings.process_sites_cart(
       original_sites=sites_cart,
       site_symmetry_table=self.site_symmetry_table)

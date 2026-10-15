@@ -808,6 +808,16 @@ HETATM    5  O   HOH C   1       5.000   5.000   7.100  1.00 20.00           O
 END
 """
 
+raw_records_long_bond_inside_cell = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1  O   HOH A   1      10.000  10.000  10.000  1.00 20.00           O
+HETATM    2  H1  HOH A   1      18.000  10.000  10.000  1.00 20.00           H
+HETATM    3  H2  HOH A   1      10.240  10.930  10.000  1.00 20.00           H
+HETATM    4 ZN    ZN B   1      10.000  10.000   3.000  1.00 20.00          ZN
+HETATM    5  O   HOH C   1      10.000  10.000   0.900  1.00 20.00           O
+END
+"""
+
 def _model_without_mcl(records):
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.restraints_library.mcl=False
@@ -862,6 +872,29 @@ def exercise_add_bond_with_long_existing_bond(mon_lib_srv, ener_lib):
   assert grm.is_bonded_atoms(3, 4)
   assert grm.is_bonded_atoms(0, 1)
 
+def exercise_long_existing_bond_keeps_max_distance(mon_lib_srv, ener_lib):
+  """
+  An existing bond longer than max_distance_between_connecting_atoms (HOH H1
+  8 A from O) must widen only the asu buffer, not the distance limit for new
+  bonds: a 7 A ZN-O proxy is still rejected at the default 5 A while a 2.1 A
+  ZN-O proxy in the same call is added.
+  """
+  model = _model_without_mcl(raw_records_long_bond_inside_cell)
+  grm = model.get_restraints_manager().geometry
+  assert grm.is_bonded_atoms(0, 1)
+  assert not grm.is_bonded_atoms(0, 3)
+  proxies = [
+      geometry_restraints.bond_simple_proxy(
+          i_seqs=(3, 0), distance_ideal=2.1, weight=400),
+      geometry_restraints.bond_simple_proxy(
+          i_seqs=(3, 4), distance_ideal=2.1, weight=400)]
+  grm.add_new_bond_restraints_in_place(
+      proxies=proxies, sites_cart=model.get_sites_cart(),
+      max_distance_between_connecting_atoms=5)
+  assert not grm.is_bonded_atoms(0, 3)
+  assert grm.is_bonded_atoms(3, 4)
+  assert grm.is_bonded_atoms(0, 1)
+
 def exercise():
   mon_lib_srv = None
   ener_lib = None
@@ -885,6 +918,7 @@ def exercise():
     exercise_add_new_bond_between_same_atoms(mon_lib_srv, ener_lib)
     exercise_bond_over_screw_axis_reversed_pair(mon_lib_srv, ener_lib)
     exercise_add_bond_with_long_existing_bond(mon_lib_srv, ener_lib)
+    exercise_long_existing_bond_keeps_max_distance(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()
