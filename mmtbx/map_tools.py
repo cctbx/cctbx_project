@@ -246,7 +246,8 @@ class electron_density_map(object):
         coeffs = coeffs.average_bijvoet_mates()
       if(fill_missing_method == "f_model" and getattr(self.mch, "llgi", False)):
         coeffs = fill_missing_f_obs_llgi(coeffs = coeffs, fmodel = self.fmodel,
-          isotropize = isotropize)
+          isotropize = isotropize,
+          scale = map_name_manager.k + map_name_manager.n)
       else:
         coeffs = fill_missing_f_obs(
           coeffs = coeffs,
@@ -544,14 +545,15 @@ class model_missing_reflections_llgi(object):
                   observed reflections (llgi_e_sigmaa.build_sigma_p)
     sigmaA        the fitted curve (llgi_data.sigmaa_curve)
     RESN          nacelle's value or its model (llgi_maps.resn_model)
-    TEPS          1
+    TEPS          llgi_data.teps for the reflections refined, otherwise 1
   With isotropize, as the map coefficients (electron_density_map.
   map_coefficients), divided by k_isotropic*k_anisotropic, k_anisotropic
   in the form fmodel's anisotropic scale takes, fitted to fmodel's values
-  (llgi_maps.fit_k_anisotropic). For an observed reflection this is the D*Fc term of the
-  LLGI map coefficients (with intensities; the Rice form's is
-  Dobs*sigmaA*Emodel). coeffs is not used (kept for the interface of
-  model_missing_reflections). Requires llgi_data with sigmaa_curve
+  (llgi_maps.fit_k_anisotropic). For an observed reflection this is the
+  D*Fc term of the LLGI map coefficients (with intensities; the Rice
+  form's is Dobs*sigmaA*Emodel). coeffs is not used (kept for the
+  interface of model_missing_reflections). Requires llgi_data with
+  sigmaa_curve
   (update_llgi_sigmaa_scatfrac()); raises AttributeError otherwise.
   """
 
@@ -573,7 +575,6 @@ class model_missing_reflections_llgi(object):
     Also sets .e_scale_missing (miller_set, sigmaa, e_model_abs,
     f_model_no_aniso, resn: the E-scale quantities, for mmtbx.refinement.
     llgi_maps). """
-    import mmtbx.masks
     import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
     import mmtbx.refinement.llgi_maps as llgi_maps
     fmodel = self.fmodel
@@ -589,6 +590,7 @@ class model_missing_reflections_llgi(object):
       force_update=True)
     k_iso = at(fmodel.k_isotropic())
     f_part = f_calc.data().deep_copy()
+    assert len(fmodel.k_masks()) == len(f_masks)
     for k_mask, f_mask in zip(fmodel.k_masks(), f_masks):
       f_part += at(k_mask) * f_mask.data()
     fmnas = k_iso * f_part
@@ -597,10 +599,14 @@ class model_missing_reflections_llgi(object):
     e_model_abs = flex.abs(fmnas) / flex.sqrt(
       cs.epsilons().data().as_double() * sigma_p)
     sigmaa = self.llgi_data.sigmaa_curve(d_star_sq)
-    resn, _ = llgi_maps.resn_model(self.llgi_data).resn_for(cs)
+    resn, _ = llgi_maps.get_resn_model(self.llgi_data).resn_for(cs)
     self.e_scale_missing = group_args(miller_set=cs, sigmaa=sigmaa,
       e_model_abs=e_model_abs, f_model_no_aniso=fmnas, resn=resn)
-    fill = sigmaa * e_model_abs * resn       # TEPS = 1
+    teps = flex.double(cs.size(), 1)
+    pairs = miller.match_indices(cs.indices(), f_obs.indices()).pairs()
+    teps.set_selected(pairs.column(0),
+      self.llgi_data.teps.data().select(pairs.column(1)))
+    fill = sigmaa * e_model_abs * flex.sqrt(teps) * resn
     if(isotropize):
       k_aniso = llgi_maps.fit_k_anisotropic(f_obs.array(
         data=fmodel.k_anisotropic())).evaluate(cs)
@@ -608,13 +614,17 @@ class model_missing_reflections_llgi(object):
     return cs.array(data=flex.complex_double(fill, flex.double(fill.size(), 0))
       * llgi_maps._unit_phase(fmnas))
 
-def fill_missing_f_obs_llgi(coeffs, fmodel, isotropize=True):
+def fill_missing_f_obs_llgi(coeffs, fmodel, isotropize=True, scale=1):
   """ LLGI counterpart of fill_missing_f_obs_1 (method "f_model"): the
   reflections absent from coeffs filled by model_missing_reflections_llgi,
-  on the scale of coeffs (isotropize as for coeffs). """
+  on the scale of coeffs (isotropize as for coeffs), times scale: for map
+  coefficients k*mFo + n*DFc, k + n (the limit of the coefficient as the
+  information goes to 0), so a difference map is not filled. """
+  if(scale == 0): return coeffs
   missing = model_missing_reflections_llgi(fmodel=fmodel).get_missing(
     isotropize=isotropize)
-  return coeffs.complete_with(other=missing, scale=False)
+  return coeffs.complete_with(
+    other=missing.customized_copy(data=missing.data() * scale), scale=False)
 
 def sharp_evaluation_target(sites_frac, map_coeffs, resolution_factor = 0.25):
   fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)

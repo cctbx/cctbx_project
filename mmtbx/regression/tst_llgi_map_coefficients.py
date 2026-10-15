@@ -298,6 +298,34 @@ def exercise_llgi_fill_is_d_fc():
   a, b = filled.common_sets(fill.common_set(free))
   assert a.size() == free.size()
   assert approx_equal(a.data(), b.data(), eps=1e-6)
+  # times k + n for k*mFo + n*DFc: a difference map is not filled
+  work = ~fmodel.r_free_flags().data()
+  diff = emap.map_coefficients(map_type="mFo-DFc",
+    exclude_free_r_reflections=True, fill_missing=True)
+  assert diff.indices().all_eq(fmodel.f_obs().indices().select(work))
+  # with TEPS != 1 (no tNCS treatment), nacelle_all on another scale (as
+  # read, before apply_scale_k1_to_f_obs) and ANISOBETA: still D*Fc
+  import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+  from libtbx import group_args
+  ld = fmodel.llgi_data()
+  f_obs = fmodel.f_obs()
+  rnd = random.Random(7)
+  teps = f_obs.array(data=flex.double([rnd.uniform(0.5, 2) for i in
+    range(f_obs.size())]))
+  quad = lambda h: math.exp(-0.002*h[0]**2 + 0.001*h[1]**2 + 0.0005*h[2]**2)
+  ab = f_obs.array(data=flex.double([quad(h) for h in f_obs.indices()]))
+  fmodel.set_llgi_data(llgi_hybrid.replace_llgi_data(ld, teps=teps,
+    anisobeta=ab, nacelle_all=group_args(resn=ld.resn.customized_copy(
+      data=ld.resn.data() * 10), anisobeta=ab)))
+  emap = fmodel.electron_density_map_llgi()
+  mfo = emap.map_coefficients(map_type="mFo")
+  diff = emap.map_coefficients(map_type="mFo-DFc")
+  half = flex.double([1.0 if c else 0.5 for c in mfo.centric_flags().data()])
+  dfc = mfo.customized_copy(data=mfo.data() - diff.data() * half)
+  f, d = mt.model_missing_reflections_llgi(fmodel=fmodel).get_missing(
+    ).common_sets(dfc)
+  assert f.size() == dfc.size()
+  assert flex.max(flex.abs(f.data() - d.data()) / flex.abs(d.data())) < 0.01
 
 def exercise_phase_errors_llgi_match_numerical_integration():
   # Expected |phase error| implied by the LLGI fom, checked against direct

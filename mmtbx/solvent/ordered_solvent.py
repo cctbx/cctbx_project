@@ -683,9 +683,9 @@ class maps(object):
         self.difference_map = self.difference_map * mask_p1
 
   def _get_real_map(self, map_type):
-    # working reflections only, so that the free set does not guide where
-    # waters go (fmodel.electron_density_map_for_model_building: with the
-    # llgi target, possibly D*Fc in place of the free reflections)
+    # working reflections only (free reflections omitted, no fill), so that
+    # the free set does not guide where waters go (the twin map ignores
+    # exclude_free_r_reflections: unchanged for twin refinement)
     coeffs = self.e_map.map_coefficients(
       map_type     = map_type,
       fill_missing = False,

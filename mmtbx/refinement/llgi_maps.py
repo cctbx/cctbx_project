@@ -116,13 +116,19 @@ def _unit_phase(f):
   # exp(i*phase); 1 where f = 0
   return flex.polar(flex.double(f.size(), 1), flex.arg(f))
 
+def _indices_as_numpy(indices):
+  import numpy as np
+  if(hasattr(indices, "as_vec3_double")):
+    return indices.as_vec3_double().as_numpy_array()
+  return np.array(indices, dtype=float).reshape(-1, 3)
+
 def fit_anisobeta(indices, anisobeta):
   """ nacelle's ANISOBETA as exp(h^T B h): the six coefficients of the
   quadratic form in h fitted (least squares) to log(ANISOBETA), and a
   function evaluating it for other indices. """
   import numpy as np
   def design(idx):
-    h = np.array(idx, dtype=float).reshape(-1, 3)
+    h = _indices_as_numpy(idx)
     return np.column_stack([h[:, 0]**2, h[:, 1]**2, h[:, 2]**2,
       h[:, 0]*h[:, 1], h[:, 0]*h[:, 2], h[:, 1]*h[:, 2]])
   y = np.log(np.asarray(anisobeta, dtype=float))
@@ -143,7 +149,7 @@ def fit_k_anisotropic(miller_array):
   uc = miller_array.unit_cell()
   ras, rbs, rcs = uc.reciprocal_parameters()[:3]
   def poly_design(ms):
-    h = np.array(ms.indices(), dtype=float).reshape(-1, 3)
+    h = _indices_as_numpy(ms.indices())
     stol = np.array(ms.sin_theta_over_lambda_sq().data())
     s = np.where(stol != 0, 1. / np.where(stol != 0, stol, 1), 0)
     hh, kk, ll = h[:, 0]**2*ras*ras, h[:, 1]**2*rbs*rbs, h[:, 2]**2*rcs*rcs
@@ -160,8 +166,11 @@ def fit_k_anisotropic(miller_array):
   if(quad.rms_log_residual <= rms_poly):
     return group_args(form="exp", rms_log_residual=quad.rms_log_residual,
       evaluate=lambda ms: quad.evaluate(ms.indices()))
+  from mmtbx.f_model import ext as f_model_ext
   def evaluate(ms):
-    return flex.double(np.clip(1 + poly_design(ms).dot(a), 1e-12, None))
+    k = f_model_ext.k_anisotropic(ms.indices(), flex.double(a), uc)
+    k.set_selected(k < 1e-12, 1e-12)
+    return k
   return group_args(form="polynomial", rms_log_residual=rms_poly,
     evaluate=evaluate)
 
@@ -191,8 +200,8 @@ class resn_model(object):
       refined = llgi_data.resn.map_to_asu()
       pairs = miller.match_indices(refined.indices(), resn.indices()).pairs()
       if(pairs.size() > 0):
-        k = flex.median(refined.data().select(pairs.column(0)) /
-          resn.data().select(pairs.column(1)))
+        k = float(np.median((refined.data().select(pairs.column(0)) /
+          resn.data().select(pairs.column(1))).as_numpy_array()))
         resn = resn.customized_copy(data=resn.data() * k)
     else:
       resn, anisobeta = llgi_data.resn, getattr(llgi_data, "anisobeta", None)
@@ -207,19 +216,14 @@ class resn_model(object):
     self.anisotropic = anisobeta is not None
     ab = anisobeta.data() if self.anisotropic else flex.double(resn.size(), 1)
     self.fit = fit_anisobeta(resn.indices(), ab) if self.anisotropic else None
-    g = flex.pow2(resn.data()) / (resn.epsilons().data().as_double() * ab)
-    dss = resn.d_star_sq().data().as_numpy_array()
-    order = np.argsort(dss)
-    self._dss, self._g = dss[order], g.as_numpy_array()[order]
+    self._g = flex.pow2(resn.data()) / (
+      resn.epsilons().data().as_double() * ab)
+    self._dss = resn.d_star_sq().data()
 
   def g(self, d_star_sq):
     """ G = RESN^2/(epsilon*ANISOBETA) at the nearest reflection in d*^2 """
-    import numpy as np
-    d = np.asarray(d_star_sq, dtype=float)
-    i = np.clip(np.searchsorted(self._dss, d), 0, len(self._dss) - 1)
-    j = np.clip(i - 1, 0, len(self._dss) - 1)
-    use_j = np.abs(self._dss[j] - d) < np.abs(self._dss[i] - d)
-    return flex.double(self._g[np.where(use_j, j, i)])
+    from mmtbx.map_tools import nearest_in_d_star_sq
+    return nearest_in_d_star_sq(self._dss, self._g, d_star_sq)
 
   def anisobeta(self, miller_set):
     if(not self.anisotropic): return flex.double(miller_set.size(), 1)
@@ -236,6 +240,17 @@ class resn_model(object):
     exact = flex.bool(ms.size(), False)
     exact.set_selected(pairs.column(0), True)
     return result, exact
+
+def get_resn_model(llgi_data):
+  """ resn_model(llgi_data), kept on llgi_data (._resn_model) while
+  llgi_data.resn is the same array (it is replaced when f_obs is
+  rescaled, mmtbx.f_model.manager.apply_scale_k1_to_f_obs) """
+  cached = getattr(llgi_data, "_resn_model", None)
+  if(cached is not None and cached[0] is llgi_data.resn):
+    return cached[1]
+  result = resn_model(llgi_data)
+  llgi_data._resn_model = (llgi_data.resn, result)
+  return result
 
 def compute(fmodel, params=None, log=None):
   """ LLGI map coefficients for fmodel (target=llgi, llgi_data with sigmaa
@@ -312,7 +327,7 @@ def compute(fmodel, params=None, log=None):
   sa_m.set_selected(sa_m < 0, 0)
   sa_m.set_selected(sa_m > SIGMAA_MAX, SIGMAA_MAX)
   ms_m = mis.miller_set
-  rm = resn_model(llgi_data)
+  rm = get_resn_model(llgi_data)
   def fill_array(scale):
     return ms_m.array(
       data=flex.complex_double(sa_m * mis.e_model_abs * scale,
@@ -324,7 +339,7 @@ def compute(fmodel, params=None, log=None):
     (LABELS.fill, as_complex(ce.fill, f_scale).complete_with(
       other=fill_array(mis.resn / flex.sqrt(rm.anisobeta(ms_m))), scale=False)),
     (LABELS.difference, as_complex(ce.difference, f_scale))]
-  if(params.anisotropic_maps and anisobeta is not None):
+  if(params.anisotropic_maps and anisobeta is not None and rm.anisotropic):
     if(rm.fit.rms_log_residual > 1.e-3):
       say("ANISOBETA is not a quadratic form in h (rms residual of the fit "
         "%.3g in ln); the anisotropy of the filled reflections is approximate."
@@ -376,12 +391,16 @@ class filled_posterior_map_server(object):
       exclude_free_r_reflections=True, fill_missing=True,
       isotropize=isotropize)
 
-  def fft_map(self, map_type, resolution_factor=0.25, symmetry_flags=None,
+  def fft_map(self, map_type, resolution_factor=1/3., symmetry_flags=None,
         other_fft_map=None, use_all_data=True, **kwds):
     if(use_all_data or not _is_two_fofc(map_type)):
       return self.emap.fft_map(map_type=map_type,
         resolution_factor=resolution_factor, symmetry_flags=symmetry_flags,
         other_fft_map=other_fft_map, use_all_data=use_all_data, **kwds)
+    assert kwds.get("map_coefficients") is None
+    assert kwds.get("acentrics_scale", 2.0) == 2.0
+    assert kwds.get("centrics_pre_scale", 1.0) == 1.0
+    assert not kwds.get("force_anomalous_flag_false")
     coeffs = self._filled(map_type)
     if(other_fft_map is not None):
       return miller.fft_map(crystal_gridding=other_fft_map,
@@ -420,23 +439,20 @@ class bias_reduced_map_server(object):
       self._coeffs = dict(result.arrays)[LABELS.bias_reduced]
     return self._coeffs
 
-  def _is_two_fofc(self, map_type):
-    return _is_two_fofc(map_type)
-
   def _work(self, coeffs):
     return coeffs.select(self.fmodel.arrays.work_sel)
 
   def map_coefficients(self, map_type, exclude_free_r_reflections=False,
         **kwds):
-    if(self._is_two_fofc(map_type)):
+    if(_is_two_fofc(map_type)):
       coeffs = self._bias_reduced()
       return self._work(coeffs) if exclude_free_r_reflections else coeffs
     return self.emap.map_coefficients(map_type=map_type,
       exclude_free_r_reflections=exclude_free_r_reflections, **kwds)
 
-  def fft_map(self, map_type, resolution_factor=0.25, symmetry_flags=None,
+  def fft_map(self, map_type, resolution_factor=1/3., symmetry_flags=None,
         other_fft_map=None, use_all_data=True, **kwds):
-    if(self._is_two_fofc(map_type)):
+    if(_is_two_fofc(map_type)):
       coeffs = self._bias_reduced()
       if(not use_all_data):
         coeffs = self._work(coeffs)

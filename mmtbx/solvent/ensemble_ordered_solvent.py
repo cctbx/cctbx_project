@@ -389,7 +389,7 @@ class manager(object):
       symmetry_flags   = maptbx.use_space_group_symmetry,
       step             = 0.6)
     # working reflections only, so that the free set does not guide where
-    # waters go
+    # waters go (the twin map ignores exclude_free_r_reflections)
     coeffs = e_map.map_coefficients(
       map_type     = map_type,
       fill_missing = False,

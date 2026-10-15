@@ -721,15 +721,15 @@ def refit_sigmaa_scatfrac(fmodel, scatfrac_params=None, e_params=None):
     b_scatfrac=scatfrac_result.b_scatfrac, warnings=warnings, tau=None,
     coherence=None, tncs_summary=None)
 
-def _current_groups(state, crystal_symmetry, xray_structure, pdb_hierarchy,
-      warnings):
-  """ state.groups, or, if the model has gained or lost atoms since they were
-  found (e.g. waters, ions), the groups found again in pdb_hierarchy, which
-  must match xray_structure """
+def _current_groups(state, crystal_symmetry, xray_structure, pdb_hierarchy):
+  """ (groups, note): state.groups, or, if the model has gained or lost
+  atoms since they were found (e.g. waters, ions), the groups found again
+  in pdb_hierarchy, which must match xray_structure, and a note saying so
+  (None otherwise) """
   from libtbx.utils import Sorry
   n_atoms = xray_structure.scatterers().size()
   if(state.groups.n_atoms == n_atoms):
-    return state.groups
+    return state.groups, None
   if(pdb_hierarchy is None or pdb_hierarchy.atoms().size() != n_atoms):
     raise Sorry("tNCS: the model now has %d atoms, not the %d for which the "
       "tNCS groups were found, and no model with the current atoms was "
@@ -740,9 +740,8 @@ def _current_groups(state, crystal_symmetry, xray_structure, pdb_hierarchy,
     raise Sorry("tNCS: no groups of chains related by tNCS in the model with "
       "%d atoms (they were found in the model with %d atoms)." % (n_atoms,
       state.groups.n_atoms))
-  warnings.append("tNCS: groups found again for the model's %d atoms "
-    "(previously %d)" % (n_atoms, state.groups.n_atoms))
-  return groups
+  return groups, "groups found again for the model's %d atoms (previously " \
+    "%d)" % (n_atoms, state.groups.n_atoms)
 
 def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
       pdb_hierarchy=None):
@@ -761,8 +760,8 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
   state = llgi_data.tncs_state
   params = state.params
   warnings = []
-  groups = _current_groups(state, fmodel.f_obs().crystal_symmetry(),
-    fmodel.xray_structure, pdb_hierarchy, warnings)
+  groups, regrouped = _current_groups(state, fmodel.f_obs().crystal_symmetry(),
+    fmodel.xray_structure, pdb_hierarchy)
   f_obs = fmodel.f_obs()
   centric = f_obs.centric_flags().data()
   dss = f_obs.d_star_sq().data()
@@ -836,5 +835,6 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
     b_scatfrac=scatfrac_result.b_scatfrac,
     warnings=warnings, tau=None if physical else tau,
     coherence=coherence if physical else None,
-    tncs_summary=coherence.summary() if physical else "tau = %.3f%s" % (
-      tau.p0, "" if tau.p1 == 0 else " + %.3f d*^2/d*^2_max" % tau.p1))
+    tncs_summary=(coherence.summary() if physical else "tau = %.3f%s" % (
+      tau.p0, "" if tau.p1 == 0 else " + %.3f d*^2/d*^2_max" % tau.p1)) +
+      ("" if regrouped is None else "; " + regrouped))

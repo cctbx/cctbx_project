@@ -139,11 +139,36 @@ END
   assert approx_equal(
     atoms.extract_xyz(), model.get_xray_structure().sites_cart())
 
+def exercise_water_maps_from_working_reflections():
+  # the water-picking maps (maps._get_real_map) are computed from the working
+  # reflections only, so the free set does not guide where waters go
+  from cctbx import maptbx, miller
+  from mmtbx.regression.llgi_test_utils import build_fmodel
+  fmodel = build_fmodel(30, 2.2, seed=3)
+  free = fmodel.r_free_flags().data()
+  assert 0 < free.count(True) < free.size()
+  m = ordered_solvent.maps.__new__(ordered_solvent.maps)
+  m.fmodel = fmodel
+  m.e_map = fmodel.electron_density_map_for_model_building()
+  cs = fmodel.xray_structure.crystal_symmetry()
+  m.crystal_gridding = maptbx.crystal_gridding(unit_cell=cs.unit_cell(),
+    space_group_info=cs.space_group_info(),
+    symmetry_flags=maptbx.use_space_group_symmetry, step=0.6)
+  for map_type in ["2mFobs-DFmodel", "mFobs-DFmodel"]:
+    work = m.e_map.map_coefficients(map_type=map_type, fill_missing=False,
+      isotropize=True).select(~free)
+    ref = miller.fft_map(crystal_gridding=m.crystal_gridding,
+      fourier_coefficients=work)
+    ref.apply_sigma_scaling()
+    assert approx_equal(m._get_real_map(map_type=map_type),
+      ref.real_map_unpadded())
+
 def run():
   exercise_added_solvent_atom_name()
   exercise_added_solvent_unique_serials()
   exercise_added_solvent_merges_into_existing_chain()
   exercise_added_solvent_water_chain_not_last()
+  exercise_water_maps_from_working_reflections()
 
 if (__name__ == "__main__"):
   t0 = time.time()

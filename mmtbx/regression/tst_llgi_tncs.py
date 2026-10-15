@@ -451,11 +451,11 @@ def exercise_atoms_added(fmodel, h):
   groups = fw.llgi_data().tncs_state.groups
   assert groups.n_atoms == xrs_w.scatterers().size()
   assert [g.chain_ids for g in groups.groups] == [["A", "B"]]
-  assert any("groups found again" in w for w in result.warnings)
+  assert "groups found again" in result.tncs_summary
   assert result.coherence.gamma > 0.3, result.coherence.gamma
   # the next refit uses the new groups without finding them again
   result = fw.update_llgi_sigmaa_scatfrac()
-  assert not any("groups found again" in w for w in result.warnings)
+  assert "groups found again" not in result.tncs_summary
   assert fw.llgi_data().tncs_state.groups is groups
 
 def run():
