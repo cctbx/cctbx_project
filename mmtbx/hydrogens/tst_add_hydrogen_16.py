@@ -31,6 +31,7 @@ def run():
   test_021()
   test_022()
   test_023()
+  test_024()
 
 # ------------------------------------------------------------------------------
 
@@ -473,6 +474,23 @@ def test_023():
     # the N-terminus code removed "H" by name, here a C H
     assert sorted(x.name.strip() for x in atoms if x.element.strip() == 'H'
       and x.distance(c) < 1.2) == ['H', 'HA'], charge
+
+def test_024():
+  '''
+  6b0k G4S B 504 O3 - 9RN B 505 C1: the glycosidic link takes as anomeric H
+  the first H within 2 A of C1, and all H added by reduce2 still sit at one
+  point. That was H1, which geostd 9RN puts on C2 (the C1 H is H9); riding
+  H stopped: "angle and bond restraints are conflicting". The anomeric H now
+  comes from the restraint bonds.
+  '''
+  atoms = place_atoms(pdb_str_024)
+  a = dict(((x.parent().resname.strip(), x.name.strip()), x) for x in atoms)
+  c1 = a[('9RN', 'C1')]
+  hs = [x for x in atoms if x.element.strip() == 'H' and x.distance(c1) < 1.2]
+  assert [x.name.strip() for x in hs] == ['H9'], [x.name.strip() for x in hs]
+  o3, h = matrix.col(a[('G4S', 'O3')].xyz), matrix.col(hs[0].xyz)
+  c = matrix.col(c1.xyz)
+  assert approx_equal((o3-c).angle(h-c, deg=True), 109.5, eps=5)
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -1393,6 +1411,34 @@ HETATM 1956  CG  ASJ C 505      23.651   1.958  37.095  1.00 22.63           C
 HETATM 1957  OD1 ASJ C 505      24.572   1.633  37.874  1.00 18.73           O
 HETATM 1958  OD2 ASJ C 505      22.458   1.603  37.218  1.00 20.52           O
 END
+"""
+
+pdb_str_024 = """
+HETATM10798  C1  G4S B 504     170.430 175.131  83.975  1.00 33.68           C
+HETATM10799  C2  G4S B 504     169.856 176.547  83.828  1.00 33.23           C
+HETATM10800  C3  G4S B 504     169.465 176.791  82.370  1.00 33.11           C
+HETATM10801  C4  G4S B 504     170.660 176.553  81.455  1.00 32.83           C
+HETATM10802  C5  G4S B 504     171.094 175.104  81.659  1.00 32.17           C
+HETATM10803  C6  G4S B 504     172.254 174.667  80.787  1.00 30.58           C
+HETATM10804  O2  G4S B 504     168.684 176.757  84.632  1.00 30.79           O
+HETATM10805  O3  G4S B 504     168.967 178.124  82.225  1.00 34.25           O
+HETATM10806  O4  G4S B 504     171.719 177.486  81.744  1.00 34.09           O
+HETATM10807  O5  G4S B 504     171.476 174.936  83.031  1.00 33.31           O
+HETATM10808  O6  G4S B 504     172.465 173.269  81.043  1.00 31.03           O
+HETATM10809  O7  G4S B 504     172.821 177.464  79.625  1.00 31.55           O
+HETATM10810  O8  G4S B 504     171.066 179.014  79.994  1.00 35.59           O
+HETATM10811  O9  G4S B 504     173.353 179.496  80.968  1.00 38.41           O
+HETATM10812  S   G4S B 504     172.233 178.356  80.567  1.00 35.74           S
+HETATM10813  C1  9RN B 505     167.906 178.192  81.296  1.00 33.21           C
+HETATM10814  C2  9RN B 505     167.530 179.651  80.965  1.00 32.84           C
+HETATM10815  C3  9RN B 505     166.187 179.676  80.225  1.00 32.21           C
+HETATM10816  C4  9RN B 505     165.076 179.015  81.017  1.00 34.43           C
+HETATM10817  C5  9RN B 505     165.609 177.594  80.924  1.00 33.66           C
+HETATM10818  C6  9RN B 505     165.916 177.501  79.426  1.00 32.36           C
+HETATM10819  O2  9RN B 505     167.492 180.458  82.149  1.00 31.32           O
+HETATM10820  O3  9RN B 505     166.293 178.833  79.073  1.00 32.67           O
+HETATM10821  O4  9RN B 505     163.782 179.157  80.370  1.00 37.51           O
+HETATM10822  O5  9RN B 505     166.759 177.469  81.766  1.00 33.83           O
 """
 
 if __name__ == '__main__':

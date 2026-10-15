@@ -652,6 +652,13 @@ anomeric carbon.
              gla.link_carbon.quote(),
              gla)
              )
+  # the anomeric H from the restraint bonds: get_anomeric_hydrogen takes the
+  # first H within link_carbon_dist, and H added by reduce2 all sit at one
+  # point (6b0k 9RN: H1 is on C2, the C1 H is H9)
+  c = gla.anomeric_carbon
+  hs = [a for a in c.parent().atoms() if a.element.strip() in ('H', 'D')
+        and bond_params_table.lookup(c.i_seq, a.i_seq) is not None]
+  gla.anomeric_hydrogen = hs[0] if len(hs) == 1 else None
   origin_id = origin_ids.get('link_%s' % gla.get_isomer(), None)
   if not origin_id: origin_id=origin_ids['glycosidic custom']
   i_seqs = [gla.anomeric_carbon.i_seq, gla.link_oxygen.i_seq]
