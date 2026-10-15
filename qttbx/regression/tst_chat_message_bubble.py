@@ -640,7 +640,6 @@ def exercise_thinking_cell_append_streams_and_survives_highlights():
   assert cell.view.isReadOnly()
   assert cell.view.frameShape() == QtWidgets.QFrame.NoFrame
   assert cell.view.verticalScrollBarPolicy() == QtCore.Qt.ScrollBarAlwaysOff
-  assert hasattr(cell.view, "_auto_height_refresh")
   assert cell.view.textInteractionFlags() & QtCore.Qt.TextSelectableByMouse
   # Apply a highlight-style extra selection, then keep streaming.
   sel = QtWidgets.QTextEdit.ExtraSelection()
