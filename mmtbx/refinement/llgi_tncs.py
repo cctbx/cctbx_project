@@ -229,8 +229,8 @@ def pair_term(miller_set, sites_frac_m, sites_frac_n, z_sq, b_sum):
   calculation in the symmorphic group """
   sym = crystal.symmetry(unit_cell=miller_set.unit_cell(),
     space_group=symmorphic_group(miller_set.space_group()))
-  d = sites_frac_m - sites_frac_n
-  d = d - flex.vec3_double([tuple(math.floor(x) for x in v) for v in d])
+  d = (sites_frac_m - sites_frac_n).as_double()
+  d = flex.vec3_double(d - flex.floor(d))
   xrs = _pseudo_atom_structure(sym, d, z_sq, b_sum)
   ms = miller.set(sym, miller_set.indices(), anomalous_flag=False)
   # quality_factor 1e5: errors in Pbar ~0.001 rms (the default, ~0.02)

@@ -426,6 +426,24 @@ def remove_selections(selection, other, size):
       result.append(new_group)
   return result
 
+def _approx_equal_fast(a1, a2, eps, multiplier=1.e10):
+  """ libtbx.test_utils.approx_equal(a1, a2, eps) without output, for flex
+  arrays of numbers (vec3_double included), vectorised: elementwise,
+  |a1 - a2| <= eps, or the difference lost against max(a1, a2)*multiplier,
+  as approx_equal_core decides """
+  import numpy as np
+  def as_np(a):
+    if(hasattr(a, "as_double")): a = a.as_double()
+    return np.asarray(a.as_numpy_array() if hasattr(a, "as_numpy_array")
+      else a, dtype=float)
+  x, y = as_np(a1), as_np(a2)
+  if(x.shape != y.shape): return False
+  d = x - y
+  bad = np.abs(d) > eps
+  if(not bad.any()): return True
+  am = np.maximum(x[bad], y[bad]) * multiplier
+  return not (((am - d[bad]) - am) != 0).any()
+
 def assert_xray_structures_equal(
       x1,
       x2,
@@ -446,14 +464,19 @@ def assert_xray_structures_equal(
   if(selection is not None):
     x1 = x1.select(selection)
     x2 = x2.select(selection)
+  # (the vectorised test first; approx_equal reports a difference)
   if(sites):
-    assert approx_equal(x1.sites_frac(), x2.sites_frac(), eps)
+    if(not _approx_equal_fast(x1.sites_frac(), x2.sites_frac(), eps)):
+      assert approx_equal(x1.sites_frac(), x2.sites_frac(), eps)
   if(adp):
-    assert approx_equal(x1.extract_u_iso_or_u_equiv(),
-                        x2.extract_u_iso_or_u_equiv(), eps)
+    u1, u2 = x1.extract_u_iso_or_u_equiv(), x2.extract_u_iso_or_u_equiv()
+    if(not _approx_equal_fast(u1, u2, eps)):
+      assert approx_equal(u1, u2, eps)
   if(occupancies):
-    assert approx_equal(x1.scatterers().extract_occupancies(),
-                        x2.scatterers().extract_occupancies(), eps_occ)
+    o1 = x1.scatterers().extract_occupancies()
+    o2 = x2.scatterers().extract_occupancies()
+    if(not _approx_equal_fast(o1, o2, eps_occ)):
+      assert approx_equal(o1, o2, eps_occ)
   if(elements):
     sct1 = x1.scatterers().extract_scattering_types()
     sct2 = x2.scatterers().extract_scattering_types()
@@ -465,6 +488,27 @@ def assert_xray_structures_equal(
     for s1,s2 in zip(sr1,sr2):
       assert approx_equal(s1.parameters(), s2.parameters(), eps)
 
+def _compare_hierarchy_fast(hierarchy, scatterers, cell):
+  """ True if compare_hierarchy's checks all pass (vectorised): every
+  scatterer index once, elements and coordinates agree, every atom named """
+  import numpy as np
+  atoms = hierarchy.atoms()
+  n = scatterers.size()
+  i_seqs = atoms.extract_i_seq()
+  if(atoms.size() != n or not np.array_equal(
+       np.sort(i_seqs.as_numpy_array()), np.arange(n))): return False
+  element_of = {}
+  for t in set(scatterers.extract_scattering_types()):
+    element_of[t] = cctbx.xray.scatterer(scattering_type=t).element_symbol(
+      ).strip().upper()
+  types = scatterers.extract_scattering_types()
+  for e, i in zip(atoms.extract_element(), i_seqs):
+    if(e.strip().upper() != element_of[types[i]]): return False
+  for name in atoms.extract_name():
+    if(len(name.strip()) < 1): return False
+  sites = cell.orthogonalize(scatterers.extract_sites()).select(i_seqs)
+  return _approx_equal_fast(sites, atoms.extract_xyz(), 0.001)
+
 def compare_hierarchy(hierarchy, scatterers, cell):
   from libtbx.test_utils import approx_equal
   # Primary "view" of hierarchy:
@@ -472,6 +516,8 @@ def compare_hierarchy(hierarchy, scatterers, cell):
   n = hierarchy.atoms_size()
   n2 = scatterers.size()
   assert n == n2, " size mismatch %d != %d"%(n,n2)
+  # the vectorised checks first; the loop below reports a difference
+  if(_compare_hierarchy_fast(hierarchy, scatterers, cell)): return
   match = flex.bool()
   match.resize(n, False)
   assert match.size() == n

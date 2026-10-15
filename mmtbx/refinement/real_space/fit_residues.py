@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
-from libtbx import adopt_init_args
+from libtbx import adopt_init_args, group_args
 import iotbx.pdb
 import mmtbx.refinement.real_space
 import mmtbx.refinement.real_space.fit_residue
@@ -375,11 +375,10 @@ class run(object):
         residue_i_selection.append(a.i_seq)
     sites_cart = self.atoms.extract_xyz()
     #
-    residue_b_selection = flex.bool(sites_cart.size(), residue_i_selection)
-    selection_around_residue = self.special_position_settings.pair_generator(
-      sites_cart      = sites_cart,
-      distance_cutoff = radius
-        ).neighbors_of(primary_selection = residue_b_selection).iselection()
+    selection_around_residue = self._neighbors_of(
+      sites_cart = sites_cart,
+      i_selection = residue_i_selection,
+      radius = radius)
 
     residue_i_selection = residue.atoms().extract_i_seq()
 
@@ -392,6 +391,54 @@ class run(object):
       if(not self.rotatable_hd[s]):
         selection_around_residue_minus_residue_minus_rotatableH.append(s)
     return selection_around_residue_minus_residue_minus_rotatableH
+
+  def _neighbors_of(self, sites_cart, i_selection, radius):
+    """ i_seqs (ascending) of the atoms with a copy under the crystal
+    symmetry within radius of an atom of i_selection, as
+    special_position_settings.pair_generator(...).neighbors_of(), which is
+    run on the atoms that can be that close: those with a symmetry copy
+    within radius + (the extent of i_selection) of its centre. Pairs and
+    site symmetries depend only on the atoms involved, so the result is the
+    same as for all atoms. The candidates are found by the nearest lattice
+    translation in fractional coordinates, which is exact while that
+    distance is below half the smallest spacing of the (100), (010), (001)
+    planes; otherwise all atoms are used. """
+    import numpy as np
+    def all_atoms():
+      return self.special_position_settings.pair_generator(
+        sites_cart      = sites_cart,
+        distance_cutoff = radius).neighbors_of(primary_selection =
+          flex.bool(sites_cart.size(), i_selection)).iselection()
+    if(not hasattr(self, "_neighbor_search")):
+      uc = self.crystal_symmetry.unit_cell()
+      f = np.array(uc.fractionalization_matrix()).reshape(3, 3)
+      self._neighbor_search = group_args(f=f,
+        o=np.array(uc.orthogonalization_matrix()).reshape(3, 3),
+        half_spacing=0.5 / np.sqrt((f * f).sum(axis=1)).max(),
+        ops=[(np.array(op.r().as_double()).reshape(3, 3),
+              np.array(op.t().as_double()))
+             for op in self.crystal_symmetry.space_group().all_ops()])
+    ns = self._neighbor_search
+    xyz = sites_cart.as_numpy_array()
+    primary = xyz[np.array(i_selection, dtype=int)]
+    centre = primary.mean(axis=0)
+    reach = radius + np.sqrt(((primary - centre)**2).sum(axis=1)).max() + 1.e-3
+    if(reach >= ns.half_spacing): return all_atoms()
+    frac = xyz.dot(ns.f.T)
+    centre_frac = ns.f.dot(centre)
+    keep = np.zeros(xyz.shape[0], dtype=bool)
+    for r, t in ns.ops:
+      d = frac.dot(r.T) + t - centre_frac
+      d -= np.round(d)
+      keep |= ((d.dot(ns.o.T))**2).sum(axis=1) <= reach * reach
+    keep[np.array(i_selection, dtype=int)] = True
+    subset = flex.size_t(np.nonzero(keep)[0].tolist())
+    in_subset = flex.bool(sites_cart.size(), i_selection).select(subset)
+    selection = self.special_position_settings.pair_generator(
+      sites_cart      = sites_cart.select(subset),
+      distance_cutoff = radius).neighbors_of(
+        primary_selection = in_subset).iselection()
+    return subset.select(selection)
 
   def get_nonbonded_bumpers(self, residue, radius):
     #
