@@ -6313,9 +6313,17 @@ class map_model_manager(object):
 
     return tlso_info_by_region[True] # inside
 
+  def _get_anisotropy_spread(self, u_cart):
+    '''  Anisotropy of u_cart: largest minus smallest eigenvalue (zero if
+       isotropic, independent of orientation) '''
+    from scitbx.linalg import eigensystem
+    values = eigensystem.real_symmetric(tuple(u_cart)).values()
+    return max(values) - min(values)
+
   def _get_scale_factor_info_most_anisotropy(self,scale_factor_info,
      use_lowest = False):
-    '''  Find scale_factor info with best resolution '''
+    '''  Find scale_factor info with most (or least) anisotropy of
+       fo_b_cart_as_u_cart (eigenvalue spread) '''
 
     best_scaling_group_info = None
     best_xyz = None
@@ -6323,9 +6331,9 @@ class map_model_manager(object):
     for scaling_group_info, xyz in zip(
        scale_factor_info.value_list,
        scale_factor_info.xyz_list):
-      if scaling_group_info.get('cc_b_cart_as_u_cart'):
-        average_aniso = flex.abs(flex.double(
-         scaling_group_info.cc_b_cart_as_u_cart)).min_max_mean().mean
+      if scaling_group_info.get('fo_b_cart_as_u_cart'):
+        average_aniso = self._get_anisotropy_spread(
+         scaling_group_info.fo_b_cart_as_u_cart)
 
         if best_average is None or (
            ((not use_lowest) and
@@ -6351,13 +6359,13 @@ class map_model_manager(object):
     for scaling_group_info, xyz in zip(
        scale_factor_info.value_list,
        scale_factor_info.xyz_list):
-      average_cc_star_list = self._get_average_cc_star_list(scaling_group_info)
+      mean_cc_star = self._get_mean_cc_star(scaling_group_info)
+      if mean_cc_star is None:
+        continue # No CC* values for this location
       if best_average is None or (
-         ((not use_lowest) and
-          average_cc_star_list.min_max_mean().mean > best_average) or
-         ((use_lowest) and
-          average_cc_star_list.min_max_mean().mean < best_average)):
-        best_average = average_cc_star_list.min_max_mean().mean
+         ((not use_lowest) and mean_cc_star > best_average) or
+         ((use_lowest) and mean_cc_star < best_average)):
+        best_average = mean_cc_star
         best_xyz = xyz
         best_scaling_group_info =scaling_group_info
     average_scale_factor_info = group_args(
@@ -6365,12 +6373,24 @@ class map_model_manager(object):
        xyz_list = [best_xyz])
     return average_scale_factor_info
 
+  def _get_mean_cc_star(self, scaling_group_info):
+    """Get mean of average cc_star from scaling_info, or None if not
+       available"""
+    if scaling_group_info is None:
+      return None
+    average_cc_star_list = self._get_average_cc_star_list(scaling_group_info)
+    if not average_cc_star_list:
+      return None
+    return average_cc_star_list.min_max_mean().mean
+
   def _get_average_cc_star_list(self, scaling_group_info):
     """Get average cc_star from scaling_info"""
     average_cc_star_list = None
     if not scaling_group_info.scaling_info_list:
       return average_cc_star_list
     for si in scaling_group_info.scaling_info_list:
+      if si.cc_list is None:
+        return None # Missing CC* values
       if average_cc_star_list is None:
         average_cc_star_list = si.cc_list.deep_copy()
       else:
@@ -6411,7 +6431,9 @@ class map_model_manager(object):
     for scaling_group_info in scaling_group_info_list:
       # Catch case with missing values and skip it
       ok = True
-      for si in scaling_group_info.scaling_info_list:
+      if not scaling_group_info.scaling_info_list:
+        ok = False
+      for si in scaling_group_info.scaling_info_list or []:
         for key in ('target_scale_factors','cc_list','rms_fo_list'):
           if getattr(si,key) is None:
             ok = False
@@ -6470,7 +6492,7 @@ class map_model_manager(object):
           setattr(si,key, getattr(si,key)/max(1,n_used))
         setattr(average_scaling_group_info.overall_si,key,
            getattr(average_scaling_group_info.overall_si,key)/
-           len(scaling_group_info_list))
+           max(1,n_used))
       if average_scaling_group_info.overall_scale:
         average_scaling_group_info.overall_scale = \
           average_overall_scale/max(1, n_used)
@@ -6557,43 +6579,34 @@ class map_model_manager(object):
 
 
     if len(scale_factor_info.value_list) > 1:
-      # Highest resolution
-      average_scale_factor_info = self._get_scale_factor_info_best_resolution(
-          scale_factor_info)
-      print("\nScaling information for location with highest resolution" +
-       " (Mean CC*: %.2f )" %(
-           self._get_average_cc_star_list(
-             average_scale_factor_info.value_list[0]).min_max_mean().mean),
-          file = self.log)
-      self._summarize_scale_factor_info(average_scale_factor_info,
-        aniso_b_cart = aniso_b_cart,
-        b_iso = b_iso
-       )
-
-      # Lowest resolution
-      average_scale_factor_info = self._get_scale_factor_info_best_resolution(
-          scale_factor_info, use_lowest = True)
-      print("\nScaling information for location with lowest resolution" +
-       " (Mean CC*: %.2f )" %(
-           self._get_average_cc_star_list(
-             average_scale_factor_info.value_list[0]).min_max_mean().mean),
-          file = self.log)
-      self._summarize_scale_factor_info(average_scale_factor_info,
-        aniso_b_cart = aniso_b_cart,
-        b_iso = b_iso
-       )
+      # Highest and lowest resolution
+      for use_lowest, text in ((False, 'highest'), (True, 'lowest')):
+        average_scale_factor_info = \
+          self._get_scale_factor_info_best_resolution(
+            scale_factor_info, use_lowest = use_lowest)
+        mean_cc_star = self._get_mean_cc_star(
+           average_scale_factor_info.value_list[0])
+        if mean_cc_star is None:
+          print("\nNo CC* values available for location with %s resolution"
+            %(text), file = self.log)
+          continue
+        print("\nScaling information for location with %s resolution" %(
+           text) + " (Mean CC*: %.2f )" %(mean_cc_star), file = self.log)
+        self._summarize_scale_factor_info(average_scale_factor_info,
+          aniso_b_cart = aniso_b_cart,
+          b_iso = b_iso
+         )
 
       # Worst anisotropy
       average_scale_factor_info = self._get_scale_factor_info_most_anisotropy(
-          scale_factor_info, use_lowest = True)
+          scale_factor_info, use_lowest = False)
       if average_scale_factor_info.value_list and \
           average_scale_factor_info.value_list[0] and \
         average_scale_factor_info.value_list[0].fo_b_cart_as_u_cart:
-        cc_abs = flex.abs(flex.double(
-        average_scale_factor_info.value_list[0].fo_b_cart_as_u_cart)
-           ).min_max_mean().mean
+        aniso_spread = self._get_anisotropy_spread(
+          average_scale_factor_info.value_list[0].fo_b_cart_as_u_cart)
         print("\nScaling information for location with most anisotropy" +
-         " (Mean abs(anisotropy)): %.2f )" %(cc_abs),
+         " (Anisotropy (eigenvalue spread of U): %.2f )" %(aniso_spread),
            file = self.log)
         self._summarize_scale_factor_info(average_scale_factor_info,
           aniso_b_cart = aniso_b_cart,
@@ -6624,7 +6637,11 @@ class map_model_manager(object):
           file = self.log)
       average_scale_factor_info = self._average_scale_factor_info_over_xyz(
           scale_factor_info)
-      self._summarize_scale_factor_info(average_scale_factor_info,
+      if not average_scale_factor_info.value_list[0].scaling_info_list:
+        print("\nNo locations with complete scaling information; "+
+          "skipping overall summary", file = self.log)
+      else:
+        self._summarize_scale_factor_info(average_scale_factor_info,
           aniso_b_cart = aniso_b_cart,
           b_iso = b_iso
          )
@@ -6653,20 +6670,22 @@ class map_model_manager(object):
       decimal_places = 1,
      )
 
+    mean_cc_star = self._get_mean_cc_star(scaling_group_info)
     self._display_scale_values(
       si_list = scaling_group_info.scaling_info_list,
       direction_vectors = scaling_group_info.direction_vectors,
       key = 'cc_list',
       text = 'Estimated CC*',
-      extra_text = " (Mean CC*: %.2f)" %(
-       self._get_average_cc_star_list(scaling_group_info).min_max_mean().mean),
+      extra_text = " (Mean CC*: %.2f)" %(mean_cc_star) if
+          mean_cc_star is not None else '',
       decimal_places = 2,
      )
 
     self._display_scale_values(
       si_list = scaling_group_info.scaling_info_list,
       direction_vectors = scaling_group_info.direction_vectors,
-      overall_values = scaling_group_info.overall_si.target_scale_factors,
+      overall_values = scaling_group_info.overall_si.target_scale_factors if
+          scaling_group_info.overall_si else None,
       key = 'target_scale_factors',
       text = 'Scale factors',
       extra_text = '',

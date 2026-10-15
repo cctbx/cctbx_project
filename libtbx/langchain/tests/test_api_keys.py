@@ -37,9 +37,11 @@ if _LANGCHAIN_DIR not in sys.path:
 # path first, then the direct path.
 try:
   from libtbx.langchain.core.llm import default_model_for_provider
+  from libtbx.langchain.core.llm import openai_completion_kwargs
 except ImportError:
   try:
     from core.llm import default_model_for_provider
+    from core.llm import openai_completion_kwargs
   except ImportError:
     # Hard failure: if core/llm.py is unreachable, this diagnostic
     # script can't reliably check the right models.  Print a clear
@@ -50,6 +52,22 @@ except ImportError:
       "  langchain/ directory with 'python tests/test_api_keys.py'.",
       file=sys.stderr)
     sys.exit(2)
+
+def openai_probe_body(model):
+  """Request body for the OpenAI key check.
+
+  Reasoning models (gpt-5 and later, o-series) reject max_tokens and
+  take max_completion_tokens; openai_completion_kwargs picks the right
+  one.  The probe sends no temperature.
+  """
+  body = {
+    "model": model,
+    "messages": [{"role": "user", "content": "Reply with exactly: OK"}],
+  }
+  kwargs = openai_completion_kwargs(model, None, 5)
+  kwargs.pop("temperature", None)
+  body.update(kwargs)
+  return body
 
 def test_openai(model=None):
   """Test OpenAI API key."""
@@ -71,11 +89,7 @@ def test_openai(model=None):
     else:
       from urllib2 import Request, urlopen, HTTPError, URLError
 
-    body = json.dumps({
-      "model": model,
-      "messages": [{"role": "user", "content": "Reply with exactly: OK"}],
-      "max_tokens": 5,
-    }).encode("utf-8")
+    body = json.dumps(openai_probe_body(model)).encode("utf-8")
 
     req = Request(
       "https://api.openai.com/v1/chat/completions",
@@ -87,7 +101,7 @@ def test_openai(model=None):
     )
     resp = urlopen(req, timeout=30)
     data = json.loads(resp.read().decode("utf-8"))
-    reply = data["choices"][0]["message"]["content"].strip()
+    reply = (data["choices"][0]["message"].get("content") or "").strip()
     actual_model = data.get("model", "?")
     return "OK", "Key %s  model=%s  reply=%s" % (masked, actual_model, reply), model
 
