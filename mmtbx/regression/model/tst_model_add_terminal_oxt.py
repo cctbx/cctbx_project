@@ -143,10 +143,24 @@ def exercise_missing_o():
     keep=lambda l: not is_oxt(l) and not (l[17:20]=="TYR" and l[12:16]==" O  ")))
   assert model.add_terminal_oxt() == 0
 
+def exercise_bonded_c():
+  """
+  No OXT if C is bonded to another residue: an NH2 cap (next residue, not an
+  amino acid; OXT was put 0.12 A from its N), or an atom of another chain
+  (ring closure of a cyclic peptide, link). N sits at the deposited OXT site.
+  """
+  oxt = [l for l in tripeptide.splitlines() if is_oxt(l)][0]
+  cap = "HETATM   31  N   NH2 A   4" + oxt[26:76] + " N\n"
+  link = "HETATM   31  N   NH2 B   1" + oxt[26:76] + " N\n"
+  for extra in [cap, link]:
+    model = get_model(edit(tripeptide, keep=lambda l: not is_oxt(l)) + extra)
+    assert model.add_terminal_oxt() == 0, extra
+
 def run():
   exercise_chain_ends_and_breaks()
   exercise_alt_confs()
   exercise_missing_o()
+  exercise_bonded_c()
   print("OK")
 
 if (__name__ == "__main__"):
