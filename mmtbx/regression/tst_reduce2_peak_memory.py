@@ -2,7 +2,6 @@
 the "Job complete" block printed by run_program. Other programs do not.
 """
 from __future__ import absolute_import, division, print_function
-import os
 from six.moves import cStringIO as StringIO
 from libtbx.utils import multi_out
 from iotbx.cli_parser import run_program
