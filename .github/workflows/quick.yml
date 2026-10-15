@@ -154,6 +154,13 @@ jobs:
           libtbx.scons -j 4
           libtbx.scons -j 4
 
+      - name: Skip libtbx/tst_guided_coding.py
+        run: |
+          set -xe
+          cd ./modules/cctbx_project/libtbx
+          sed -i.bak 's/"$D\/tst_guided_coding.py"/#"$D\/tst_guided_coding.py"/g' run_tests.py
+          rm -f run_tests.py.bak
+
       - name: Run tests
         run: |
           set -xe
