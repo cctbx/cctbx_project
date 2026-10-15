@@ -1965,6 +1965,7 @@ class place_hydrogens():
       if (order > 1 and atoms[i].distance(atoms[j]) >
           ideal_distance.get(frozenset((i, j)), 0) + 0.1): return 1
       return order
+    missing_neighbor = 'a missing heavy neighbour'
     for i_seq in sorted(reversed(list(sel_remove)), key=_drop_order):
       j_seq=parent_dict[i_seq]
       # need to add the use of atomic charge
@@ -1975,6 +1976,10 @@ class place_hydrogens():
         remove_from_sel_remove.append(i_seq) # ??
         del removed_dict[i_seq]
       else:
+        # too few bonds: a heavy neighbour is missing, not the link's fault
+        # (3evj NAG A 2 C1 has no C2)
+        if number_of_bonds < min(valences):
+          removed_dict[i_seq] = missing_neighbor
         bonds[j_seq].remove(i_seq)
         bonds[i_seq].remove(j_seq)
 
@@ -2046,9 +2051,18 @@ class place_hydrogens():
     #
     def _removed_label(v):
       return v if isinstance(v, str) else origin_ids.get_origin_key(v)
-    sl_removed = [(atom.id_str().replace('pdb=','').replace('"',''),
-                   _removed_label(removed_dict[atom.i_seq]))
-        for atom in self.model.get_hierarchy().atoms().select(sel_remove)]
+    sl_removed = []
+    for atom in self.model.get_hierarchy().atoms().select(sel_remove):
+      label = atom.id_str().replace('pdb=','').replace('"','')
+      if removed_dict[atom.i_seq] == missing_neighbor:
+        rg = atom.parent().parent()
+        resid = '%s %s %s' % (atom.parent().resname.strip(),
+          rg.parent().id.strip(), rg.resseq.strip())
+        self.site_labels_missing_neighbor.append(label)
+        if resid not in self.residues_missing_neighbor:
+          self.residues_missing_neighbor.append(resid)
+        continue
+      sl_removed.append((label, _removed_label(removed_dict[atom.i_seq])))
     #
     if sel_remove:
       self.model = self.model.select(~flex.bool(self.model.size(), sel_remove))

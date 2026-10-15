@@ -499,7 +499,8 @@ def test_025():
   3evj NAG A 2 has no C2 (not recorded as unobserved). The glycosidic link
   O4(NAG A 1)-C1 needs C2 for its chirality, and pdb_interpretation stopped:
   "Unable to determine the linking chiral atoms". The link is applied without
-  the chirality, which the "Links applied" log says.
+  the chirality, which the "Links applied" log says. reduce2 drops H1 (C1
+  has no C2) and reported it as "involved in link_BETA1-4".
   '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_025.split("\n"), source_info=None)
   log = StringIO()
@@ -513,9 +514,20 @@ def test_025():
     ('pdb=" C1  NAG A   2 "', 'pdb=" O4  NAG A   1 "')]
   grm = model.get_restraints_manager().geometry
   assert grm.bond_params_table.lookup(i_c1, i_o4) is not None
-  atoms = place_atoms(pdb_str_025)
+  # H1 is dropped (C1 lacks C2), and reported as such, not as linked
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_025.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj.run()
+  atoms = obj.get_model().get_hierarchy().atoms()
   assert 'H3' in [a.name.strip() for a in atoms
     if a.parent().parent().resseq.strip() == '2']
+  counts = obj.get_counts()
+  assert counts.residues_missing_neighbor == ['NAG A 2'], \
+    counts.residues_missing_neighbor
+  assert [l.split()[0] for l in counts.site_labels_missing_neighbor] == \
+    ['H1'], counts.site_labels_missing_neighbor
+  assert not [x for x in obj.sl_removed if 'NAG A   2' in x[0]], obj.sl_removed
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
