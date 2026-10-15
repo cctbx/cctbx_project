@@ -81,7 +81,7 @@ def _bind_probe():
   """Bind _input_mtz_rfree_state from command_builder source as a free function
   (it never references self), so the probe is tested without the heavy stack."""
   src_path = os.path.join(PROJECT_ROOT, "agent", "command_builder.py")
-  lines = open(src_path).read().splitlines()
+  lines = open(src_path, encoding="utf-8").read().splitlines()
   start = next(i for i, l in enumerate(lines)
                if l.strip().startswith("def _input_mtz_rfree_state"))
   end = len(lines)

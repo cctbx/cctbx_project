@@ -79,7 +79,7 @@ def _source_text(rel_path):
     path = _source_path(rel_path)
     if path is None:
         return None
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return f.read()
 
 
@@ -338,7 +338,7 @@ def test_no_orphan_model_strings_in_agent_runtime_code():
     for rel_path in files:
         path = _source_path(rel_path)
         assert path is not None, "%s not found" % rel_path
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             source = f.read()
         tree = ast.parse(source)
         module_docstring = ast.get_docstring(tree)

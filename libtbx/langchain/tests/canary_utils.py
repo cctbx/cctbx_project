@@ -45,7 +45,7 @@ def load_canary_expected():
     if not os.path.isfile(path):
         return None, "canary_expected.json not found at %s" % path
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             cfg = json.load(f)
     except Exception as e:
         return None, "Failed to parse %s: %s" % (path, e)

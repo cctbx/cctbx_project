@@ -891,7 +891,12 @@ def test_summarizer_skips_cutoff_chunk():
                 program_name="phenix.refine"))
     printed = out.getvalue()
     assert result.error is None, result.error
-    assert result.log_summary == "FINAL-SUMMARY", repr(result.log_summary)
+    # Since the coverage note (2026-10-15) the summary says a part was skipped.
+    assert result.log_summary.startswith("FINAL-SUMMARY\n\n**Note: partial coverage.**"), \
+      repr(result.log_summary)
+    assert "2 of 3 parts" in result.log_summary, repr(result.log_summary)
+    assert (result.parts_total, result.parts_skipped) == (3, 1), (
+      result.parts_total, result.parts_skipped)
     assert "Chunk 2 of batch 1 skipped" in printed, printed[-2000:]
     assert len(llm.reduce_prompts) == 1, llm.reduce_prompts
     combined = llm.reduce_prompts[0]
@@ -924,13 +929,18 @@ _TESTS = [
 ]
 
 
-if __name__ == "__main__":
-    # Fail-fast: any exception (including AssertionError) propagates and
-    # exits non-zero.
+def run_all_tests():
+    """Run every test in _TESTS, fail-fast (used by run_all_tests.py)."""
     for test_fn in _TESTS:
         print("  Running %s..." % test_fn.__name__)
         test_fn()
         print("  PASS: %s" % test_fn.__name__)
+
+
+if __name__ == "__main__":
+    # Fail-fast: any exception (including AssertionError) propagates and
+    # exits non-zero.
+    run_all_tests()
     print()
     print("All %d tests passed." % len(_TESTS))
     print("OK")

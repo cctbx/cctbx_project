@@ -3170,7 +3170,7 @@ def _read_sequence(filepath):
     no whitespace), or empty string on failure.
     """
     try:
-        with open(filepath, "r") as f:
+        with open(filepath, "r", encoding='utf-8') as f:
             lines = f.readlines()
         seq_lines = []
         for line in lines:

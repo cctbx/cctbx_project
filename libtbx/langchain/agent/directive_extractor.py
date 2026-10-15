@@ -1444,7 +1444,8 @@ def _call_llm_fallback(prompt, provider, model, log):
                     temperature=0.1,
                     max_tokens=2000
                 )
-                return response.choices[0].message.content
+                # Same cut-off / content-filter checks as the OpenAI path.
+                return openai_reply_text(response)
 
             # No rate limit handler for ollama (local model)
             return make_call()

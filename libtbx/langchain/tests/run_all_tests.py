@@ -202,6 +202,53 @@ import traceback
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+def _result_failed(result):
+    """True if a test module's run function reported failure by its return value.
+
+    The modules use several conventions: None or True (success, failures
+    raise), False, a unittest-style exit code (0 = success), or a dict with
+    'status' ('FAIL' = failure; 'PASS' and 'PARTIAL' = success) or 'failed'.
+    Before this check the runner counted only raised exceptions, so modules
+    that report failures by return value were listed as PASSED.
+    """
+    if result is None or result is True:
+        return False
+    if result is False:
+        return True
+    if isinstance(result, int):
+        return result != 0
+    if isinstance(result, dict):
+        if "status" in result:
+            return str(result["status"]).upper() == "FAIL"
+        return bool(result.get("failed"))
+    return False
+
+
+# Module globals some test files use to count failed checks without raising.
+_FAILURE_COUNTER_NAMES = ("FAIL", "_fail", "FAILED", "_FAIL", "_failed",
+                          "FAILURES", "_failures", "failures", "_FAILURES")
+
+
+def _module_failure_counters(run_func):
+    """Nonzero failure counters left in the run function's module.
+
+    Some test files count failed checks in a module global (an int, or a
+    list of messages) and never raise, so neither an exception nor the
+    return value shows the failure.  Returns {name: value} for every such
+    global that is a positive int or a non-empty list.
+    """
+    module = sys.modules.get(getattr(run_func, "__module__", None) or "")
+    found = {}
+    for name in _FAILURE_COUNTER_NAMES:
+        value = getattr(module, name, None)
+        if isinstance(value, bool):
+            continue
+        if (isinstance(value, int) and value > 0) or (
+                isinstance(value, list) and value):
+            found[name] = value if isinstance(value, int) else len(value)
+    return found
+
+
 def run_test_module(module_name, run_func, verbose=False):
     """
     Run a test module and return success status.
@@ -221,8 +268,17 @@ def run_test_module(module_name, run_func, verbose=False):
     start_time = time.time()
 
     try:
-        run_func()
+        result = run_func()
         elapsed = time.time() - start_time
+        if _result_failed(result):
+            print(f"\n❌ {module_name} FAILED ({elapsed:.2f}s)")
+            print(f"   Reported failure: {result!r}")
+            return False, elapsed
+        counters = _module_failure_counters(run_func)
+        if counters:
+            print(f"\n❌ {module_name} FAILED ({elapsed:.2f}s)")
+            print(f"   Failed checks counted in module globals: {counters}")
+            return False, elapsed
         print(f"\n✅ {module_name} PASSED ({elapsed:.2f}s)")
         return True, elapsed
     except Exception as e:
@@ -289,6 +345,18 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import tst_v120_providers: {e}")
         results.append(("v120 Providers (Portkey/Anthropic)", "tst_v120_providers", False, 0))
+
+    for _mod, _label in (("tst_claude5_readiness", "Claude 5.x readiness"),
+                         ("tst_provider_reasoning_models", "Provider reasoning models"),
+                         ("tst_runner_and_encoding", "Runner failure counting and encodings"),
+                         ("tst_provider_cutoff_signals", "Provider cut-off signals and summary coverage")):
+        try:
+            _run = __import__("tests." + _mod, fromlist=["run_all_tests"]).run_all_tests
+            success, elapsed = run_test_module(_mod, _run, args.verbose)
+            results.append((_label, _mod, success, elapsed))
+        except (ImportError, AttributeError) as e:
+            print(f"⚠️  Could not import {_mod}: {e}")
+            results.append((_label, _mod, False, 0))
 
     try:
         from tests.tst_llm_unavailable_notice import run_all_tests as run_llm_unavailable_tests

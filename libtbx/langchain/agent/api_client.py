@@ -732,8 +732,9 @@ def call_llm_simple(prompt, provider="google", model=None, temperature=0.1, max_
         str: The LLM response text.
 
     Raises:
-        RuntimeError: for google, openai, anthropic and portkey when the
-        reply was cut off or contains no text; other provider and network
+        RuntimeError: for every provider when the reply was cut off or
+        contains no text (and for openai, portkey and ollama when the
+        content filter withheld it); other provider and network
         errors propagate as raised by the SDK.
     """
     if provider == "google":
@@ -887,4 +888,6 @@ def _call_ollama_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
         temperature=temperature,
         max_tokens=max_tokens
     )
-    return response.choices[0].message.content
+    # Ollama's /v1 endpoint reports finish_reason "length" for a cut-off
+    # reply; check it like the OpenAI path does.
+    return openai_reply_text(response)

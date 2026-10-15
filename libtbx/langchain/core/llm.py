@@ -555,9 +555,11 @@ def _raise_if_langchain_reply_cut_off(response):
 
   LangChain puts the provider's own stop reason in response_metadata:
   Anthropic stop_reason "max_tokens" / "model_context_window_exceeded",
-  OpenAI finish_reason "length", Gemini finish_reason "MAX_TOKENS".  A cut-off
-  reply used to pass as complete text.  The message carries no numbers
-  (rate_limit_handler would read "429"/"503" in it as a rate limit).
+  OpenAI finish_reason "length", Gemini finish_reason "MAX_TOKENS", Ollama
+  done_reason "length".  A cut-off reply used to pass as complete text.
+  OpenAI finish_reason "content_filter" (reply withheld or truncated by the
+  provider's filter) raises too, with its own message.  The messages carry no
+  numbers (rate_limit_handler would read "429"/"503" in them as a rate limit).
   """
   meta = getattr(response, "response_metadata", None)
   if not isinstance(meta, dict):
@@ -565,11 +567,18 @@ def _raise_if_langchain_reply_cut_off(response):
   stop_reason = meta.get("stop_reason")
   finish = meta.get("finish_reason")
   finish_name = str(getattr(finish, "name", finish) or "").upper()
-  if (stop_reason in ANTHROPIC_CUTOFF_STOP_REASONS
-      or finish_name in ("LENGTH", "MAX_TOKENS")):
+  done_reason = meta.get("done_reason")
+  if finish_name == "CONTENT_FILTER":
     raise RuntimeError(
-      "LLM reply was cut off (stop_reason=%r, finish_reason=%r); raise the "
-      "output budget or shorten the request" % (stop_reason, finish_name.lower() or None))
+      "LLM reply was blocked by the provider's content filter "
+      "(finish_reason='content_filter')")
+  if (stop_reason in ANTHROPIC_CUTOFF_STOP_REASONS
+      or finish_name in ("LENGTH", "MAX_TOKENS")
+      or done_reason == "length"):
+    raise RuntimeError(
+      "LLM reply was cut off (stop_reason=%r, finish_reason=%r, "
+      "done_reason=%r); raise the output budget or shorten the request"
+      % (stop_reason, finish_name.lower() or None, done_reason))
 
 
 def response_text(response):
@@ -712,10 +721,16 @@ def openai_reply_text(response):
 
   finish_reason "length" means the reply was cut off (on reasoning models
   the reasoning tokens can use the whole budget and leave no text).
+  finish_reason "content_filter" means the provider's filter withheld or
+  truncated the reply.
   """
   choice = response.choices[0]
   text = getattr(choice.message, "content", None) or ""
   finish = getattr(choice, "finish_reason", None)
+  if finish == "content_filter":
+    raise RuntimeError(
+      "OpenAI reply was blocked by the content filter "
+      "(finish_reason='content_filter')")
   if finish == "length":
     raise RuntimeError(
       "OpenAI reply was cut off (finish_reason='length')")

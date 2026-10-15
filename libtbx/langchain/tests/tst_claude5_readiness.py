@@ -670,13 +670,18 @@ _TESTS = [
 ]
 
 
-if __name__ == "__main__":
-    # Fail-fast: any exception (including AssertionError) propagates and
-    # exits non-zero.
+def run_all_tests():
+    """Run every test in _TESTS, fail-fast (used by run_all_tests.py)."""
     for test_fn in _TESTS:
         print("  Running %s..." % test_fn.__name__)
         test_fn()
         print("  PASS: %s" % test_fn.__name__)
+
+
+if __name__ == "__main__":
+    # Fail-fast: any exception (including AssertionError) propagates and
+    # exits non-zero.
+    run_all_tests()
     print()
     print("All %d tests passed." % len(_TESTS))
     print("OK")

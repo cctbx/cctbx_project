@@ -69,7 +69,7 @@ def _read_source(rel_path):
     # Layout (a): sandbox — rel_path is sibling to tests/
     candidate_a = os.path.join(parent, rel_path)
     if os.path.exists(candidate_a):
-        with open(candidate_a, 'r') as f:
+        with open(candidate_a, 'r', encoding="utf-8") as f:
             return f.read()
 
     # Layout (b): PHENIX deployment — walk up from
@@ -83,7 +83,7 @@ def _read_source(rel_path):
         candidate_b = os.path.join(
             modules_dir, "phenix", "phenix", rel_path)
         if os.path.exists(candidate_b):
-            with open(candidate_b, 'r') as f:
+            with open(candidate_b, 'r', encoding="utf-8") as f:
                 return f.read()
     else:
         candidate_b = None
