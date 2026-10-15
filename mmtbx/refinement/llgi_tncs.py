@@ -721,7 +721,31 @@ def refit_sigmaa_scatfrac(fmodel, scatfrac_params=None, e_params=None):
     b_scatfrac=scatfrac_result.b_scatfrac, warnings=warnings, tau=None,
     coherence=None, tncs_summary=None)
 
-def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
+def _current_groups(state, crystal_symmetry, xray_structure, pdb_hierarchy,
+      warnings):
+  """ state.groups, or, if the model has gained or lost atoms since they were
+  found (e.g. waters, ions), the groups found again in pdb_hierarchy, which
+  must match xray_structure """
+  from libtbx.utils import Sorry
+  n_atoms = xray_structure.scatterers().size()
+  if(state.groups.n_atoms == n_atoms):
+    return state.groups
+  if(pdb_hierarchy is None or pdb_hierarchy.atoms().size() != n_atoms):
+    raise Sorry("tNCS: the model now has %d atoms, not the %d for which the "
+      "tNCS groups were found, and no model with the current atoms was "
+      "given to find them again." % (n_atoms, state.groups.n_atoms))
+  groups = tncs_groups(pdb_hierarchy, crystal_symmetry,
+    angle_max=state.params.angle_max)
+  if(len(groups) == 0):
+    raise Sorry("tNCS: no groups of chains related by tNCS in the model with "
+      "%d atoms (they were found in the model with %d atoms)." % (n_atoms,
+      state.groups.n_atoms))
+  warnings.append("tNCS: groups found again for the model's %d atoms "
+    "(previously %d)" % (n_atoms, state.groups.n_atoms))
+  return groups
+
+def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
+      pdb_hierarchy=None):
   """ Per macrocycle, for fmodel's current model and scales: A(h) (and
   A_cons(h) for coherence = physical); sigmaA (E scale, R-free set) and
   the coherence or tau (params.fit_reflections), alternately, in the
@@ -729,11 +753,16 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
   renormalised by t = sigmaA^2 (1 + A) + (1 - sigmaA^2) u, with Feff the
   new f_obs. Returns a group_args like llgi_e_sigmaa.
   estimate_sigmaa_e_then_scatfrac_f's, plus .tau or .coherence and
-  .tncs_summary. """
+  .tncs_summary. pdb_hierarchy: the model, matching fmodel's
+  xray_structure, in which the tNCS groups are found again if the number of
+  atoms has changed. """
   import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
   llgi_data = fmodel.llgi_data()
   state = llgi_data.tncs_state
   params = state.params
+  warnings = []
+  groups = _current_groups(state, fmodel.f_obs().crystal_symmetry(),
+    fmodel.xray_structure, pdb_hierarchy, warnings)
   f_obs = fmodel.f_obs()
   centric = f_obs.centric_flags().data()
   dss = f_obs.d_star_sq().data()
@@ -743,11 +772,11 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
   sig_base = llgi_data.sig_e_obs_sq_base.data()
   rice_kappa = _rice_kappa(llgi_data)
   physical = params.coherence == "physical"
-  pm = pair_modulations(f_obs, state.groups, fmodel.xray_structure,
+  pm = pair_modulations(f_obs, groups, fmodel.xray_structure,
     ("model", "consensus") if physical else ("model",))
   a, a_cons = pm.a["model"], pm.a.get("consensus")
   tau, coherence = state.tau, state.coherence
-  warnings = []
+  f_total = state.f_total if groups is state.groups else pm.f_total
   fit_selection = flex.bool(n, True)
   if(params.fit_reflections == "free"):
     free = fmodel.r_free_flags().data()
@@ -773,7 +802,7 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
         coherence.at(dss))
     else:
       tau = fit_tau(e_base, sig_base, flex.double(n, 1.), centric, e_model,
-        sigmaa, a, dss, state.f_total, fit_selection,
+        sigmaa, a, dss, f_total, fit_selection,
         tau_start=[tau.p0, tau.p1], linear=params.tau_linear_in_resolution)
       u = 1 + tau.at(dss) * a   # tau was checked on fit_selection only
       n_low = (u < U_MIN).count(True)
@@ -795,8 +824,8 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None):
     sigmaa=f_obs.array(data=sigmaa),
     sigmaa_curve=sigmaa_result.evaluate_at,
     scatfrac=f_obs.array(data=scatfrac),
-    tncs_state=group_args(groups=state.groups, tau=tau,
-      coherence=coherence, f_total=state.f_total, params=params),
+    tncs_state=group_args(groups=groups, tau=tau,
+      coherence=coherence, f_total=f_total, params=params),
     _sigmaa_f_model=fmodel.f_model().data().deep_copy())
   fmodel.set_llgi_data(new)
   fmodel.update(f_obs=f_obs.customized_copy(data=d.feff))

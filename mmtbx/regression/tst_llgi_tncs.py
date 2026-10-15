@@ -383,7 +383,9 @@ def exercise_fmodel_integration(h, xrs):
     assert flex.max(flex.abs(a.data())) < 1e10, label
   # sigmaA and ScatFrac refitted with atoms removed (as for the ADP weight,
   # mmtbx.refinement.weights.adp_gradients): the tNCS frame and the data
-  # are kept; refitting the tNCS treatment itself needs the full model
+  # are kept; refitting the tNCS treatment itself needs the model with the
+  # current atoms
+  from libtbx.utils import Sorry
   fd = fmodel.deep_copy()
   keep = h.atom_selection_cache().selection("not chain D")
   fd.update_xray_structure(xray_structure=fd.xray_structure.select(keep),
@@ -395,10 +397,11 @@ def exercise_fmodel_integration(h, xrs):
   assert fd.f_obs().data().all_eq(f0)
   try:
     fd.update_llgi_sigmaa_scatfrac()
-  except AssertionError as e:
-    assert "tNCS groups were found for a model with" in str(e)
+  except Sorry as e:
+    assert "tNCS groups were found" in str(e)
   else:
     raise RuntimeError("expected the atom-count check")
+  exercise_atoms_added(fmodel, h)
   # a selection keeps the tNCS arrays aligned
   sel = fmodel.f_obs().d_spacings().data() > 4.0
   fs = fmodel.select(sel)
@@ -412,6 +415,48 @@ def exercise_fmodel_integration(h, xrs):
   result = fmodel.update_llgi_sigmaa_scatfrac()
   assert result.tau.p0 > 0.3, result.tau.p0
   assert result.tncs_summary.startswith("tau")
+
+def exercise_atoms_added(fmodel, h):
+  """ waters added after setup (as by ordered solvent): the tNCS groups are
+  found again in the new model, and the treatment continues """
+  from libtbx.utils import Sorry
+  from six.moves import cStringIO as StringIO
+  lines = [l for l in h.as_pdb_string().splitlines()
+           if l.startswith("ATOM")]
+  uc = CS.unit_cell()
+  for k in range(20):
+    xyz = uc.orthogonalize((0.05 * k, 0.9 - 0.04 * k, 0.5))
+    lines.append("HETATM%5d  O   HOH W%4d    %8.3f%8.3f%8.3f  1.00 30.00"
+      "           O" % (len(lines) + 1, k + 1, xyz[0], xyz[1], xyz[2]))
+  h_w = iotbx.pdb.input(source_info=None,
+    lines=flex.split_lines("\n".join(lines))).construct_hierarchy()
+  xrs_w = h_w.extract_xray_structure(crystal_symmetry=CS)
+  fw = fmodel.deep_copy()
+  fw.update_xray_structure(xray_structure=xrs_w, update_f_calc=True)
+  # without the new model, a Sorry, not a failed assertion
+  try:
+    fw.update_llgi_sigmaa_scatfrac()
+  except Sorry as e:
+    assert "no model with the current atoms" in str(e), str(e)
+  else:
+    raise RuntimeError("expected a Sorry")
+  # or with a model that does not match the structure
+  try:
+    fw.update_llgi_sigmaa_scatfrac(pdb_hierarchy=h)
+  except Sorry as e:
+    assert "no model with the current atoms" in str(e), str(e)
+  else:
+    raise RuntimeError("expected a Sorry")
+  result = fw.update_llgi_sigmaa_scatfrac(pdb_hierarchy=h_w)
+  groups = fw.llgi_data().tncs_state.groups
+  assert groups.n_atoms == xrs_w.scatterers().size()
+  assert [g.chain_ids for g in groups.groups] == [["A", "B"]]
+  assert any("groups found again" in w for w in result.warnings)
+  assert result.coherence.gamma > 0.3, result.coherence.gamma
+  # the next refit uses the new groups without finding them again
+  result = fw.update_llgi_sigmaa_scatfrac()
+  assert not any("groups found again" in w for w in result.warnings)
+  assert fw.llgi_data().tncs_state.groups is groups
 
 def run():
   h, xrs = build_model()

@@ -1828,7 +1828,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       n_forced=(exact & hybrid.force_exact).count(True))
 
   def update_llgi_sigmaa_scatfrac(self, params=None, e_params=None,
-        refit_tncs=True):
+        refit_tncs=True, pdb_hierarchy=None):
     """ Fit sigmaA and ScatFrac against the current model
     (mmtbx.refinement.llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f) and
     attach .sigmaa, .sigmaa_curve and .scatfrac to llgi_data. Called by
@@ -1846,6 +1846,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     renormalise the data (llgi_tncs.fit_and_renormalise); False keeps the
     tNCS frame (llgi_tncs.refit_sigmaa_scatfrac), for temporary changes to
     the model such as atoms removed.
+    pdb_hierarchy: with tNCS, the model matching xray_structure, in which
+    the tNCS groups are found again if atoms have been added or removed
+    (llgi_tncs.fit_and_renormalise).
     """
     llgi_data = self.llgi_data()
     if(llgi_data is None):
@@ -1869,7 +1872,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
           e_params=e_params)
       # also the coherence, and the data renormalised (f_obs = Feff changes)
       return llgi_tncs.fit_and_renormalise(self, scatfrac_params=params,
-        e_params=e_params)
+        e_params=e_params, pdb_hierarchy=pdb_hierarchy)
     f_obs = self.f_obs()
     result = llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f(
       self,
