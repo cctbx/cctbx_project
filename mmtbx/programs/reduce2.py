@@ -1322,6 +1322,15 @@ NOTES:
     if names == {'CA', 'P'}:
       raise Sorry("The model contains only CA and P atoms (CA/P trace); H atoms cannot be placed.")
 
+    # Use model function to set crystal symmetry if necessary 2025-03-19 TT
+    # The box is for the calculation only and is not written out. Cushion 5:
+    # H added later overhang the heavy-atom box; 3 left 4.4 A to the nonbonded
+    # cutoff of 3.4 A. Before add_terminal_oxt: a hierarchy change without
+    # symmetry leaves an xray_structure that boxing then asserts against.
+    self._output_cs = reduce_hydrogen.get_output_crystal_symmetry(
+      self.data_manager.get_model())
+    self.model.add_crystal_symmetry_if_necessary(box_cushion=5)
+
     # qmready=True
     if self.params.qmready:
       # add OXT
@@ -1335,13 +1344,6 @@ NOTES:
         raise Sorry(
           "Model misses non-H atoms. Model must be atom-complete for qmready=true.")
 
-    # Use model function to set crystal symmetry if necessary 2025-03-19 TT
-    # The box is for the calculation only and is not written out. Cushion 5:
-    # H added later overhang the heavy-atom box; 3 left 4.4 A to the nonbonded
-    # cutoff of 3.4 A.
-    self._output_cs = reduce_hydrogen.get_output_crystal_symmetry(
-      self.data_manager.get_model())
-    self.model.add_crystal_symmetry_if_necessary(box_cushion=5)
     if self.data_manager.has_restraints():
       self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
       self.model.process(make_restraints=False)

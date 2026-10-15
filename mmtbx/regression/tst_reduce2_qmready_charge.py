@@ -200,6 +200,21 @@ def test_qmready_chain_breaks():
   assert nh3 == ['143', '147', '150', '232'], nh3
   assert oxt == ['144', '147', '150', '233'], oxt
 
+def test_qmready_no_cryst1():
+  # OXT added to a model without symmetry: reduce2 crashed boxing it
+  import iotbx.pdb
+  prefix = "tst_reduce2_qmready_charge_7"
+  fn_out = prefix+"H_charge-2.pdb"
+  pdb_str = "".join(l + "\n" for l in pdb_str_neg.splitlines()
+    if not l.startswith("CRYST1"))
+  r = run(pdb_str, prefix, expected_files=[fn_out, prefix+"H_charge-2.txt"],
+    extra_args=["qmready=True"])
+  assert r.total_charge == -2, r.total_charge
+  inp = iotbx.pdb.input(fn_out)
+  assert inp.crystal_symmetry() is None
+  names = [a.name.strip() for a in inp.construct_hierarchy().atoms()]
+  assert 'OXT' in names
+
 if __name__ == "__main__":
   test_qmready_negative_charge()
   test_qmready_positive_charge()
@@ -207,4 +222,5 @@ if __name__ == "__main__":
   test_qmready_explicit_filename()
   test_no_qmready_no_charge()
   test_qmready_chain_breaks()
+  test_qmready_no_cryst1()
   print("OK")
