@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from xfel.ui import settings_dir
 from xfel.ui.db import db_proxy, get_run_path, write_xtc_locator, get_image_mode
 import os, shutil, copy
+import glob
 from iotbx.phil import parse
 
 known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED", "HOLD", "TIMEOUT"]
@@ -33,6 +34,33 @@ class JobFactory(object):
     else:
       task_type = None
     return JobFactory.from_job(Job(app, job_id, **kwargs), task_type=task_type)
+
+def known_orientations_wildcard(trial_params, output_folder=None):
+  """Glob pattern matching the experiments written by an earlier indexing
+  trial, used as known orientations.
+
+  dials.stills_process names its output idx-<tag>_<suffix>.expt using the
+  output.XXX_suffix parameters. Older versions used output.XXX_filename
+  templates with a %s placeholder and wrote the models to _refined.expt.
+  If output_folder is given, the first pattern that matches files there is
+  returned, so results from either naming scheme are found."""
+  output = trial_params.output
+  if not hasattr(output, 'indexed_suffix'):
+    return output.refined_experiments_filename.replace('%s', '*')
+  # Trials written for older versions may still set output.XXX_filename
+  from dials.command_line.stills_process import translate_deprecated_output_params
+  for warning in translate_deprecated_output_params(trial_params):
+    print(warning)
+  patterns = []
+  if trial_params.dispatch.refine and output.refined_suffix:
+    patterns.append('*_%s.expt' % output.refined_suffix)
+  patterns.append('*_%s.expt' % output.indexed_suffix)
+  patterns.append('*_refined.expt') # results from older versions
+  if output_folder is not None:
+    for pattern in patterns:
+      if glob.glob(os.path.join(output_folder, pattern)):
+        return pattern
+  return patterns[0]
 
 class Job(db_proxy):
   def __init__(self, app, job_id = None, **kwargs):
@@ -272,7 +300,7 @@ class IndexingJob(Job):
           pass
         else:
           ko_run_path = get_run_path(self.app.params.output_folder, ko_trial, ko_rungroup, self.run)
-          ko_wildcard = trial_params.output.refined_experiments_filename.replace('%s', '*')
+          ko_wildcard = known_orientations_wildcard(trial_params, os.path.join(ko_run_path, 'out'))
           trial_params.indexing.stills.known_orientations[0] = os.path.join(ko_run_path, 'out', ko_wildcard)
 
     if self.rungroup.calib_dir is not None or self.rungroup.config_str is not None or dispatcher == 'cxi.xtc_process' or image_format == 'pickle':

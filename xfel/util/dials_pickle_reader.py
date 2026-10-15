@@ -12,26 +12,35 @@ def find_json(pickle, pickle_ext=None, json_ext=None):
   """find the matching json file for a given dials-format non-image pickle file"""
   name = os.path.basename(pickle).split(".refl")[0]
   dirname = os.path.dirname(pickle)
+  kind = None # the reflection table's suffix, e.g. _integrated
   if pickle_ext is not None:
     if pickle_ext == "":
       base = name
     else:
       base = name.split(pickle_ext)[0]
+      kind = pickle_ext
   elif name.endswith("_indexed"):
     base = name.split("_indexed")[0]
+    kind = "_indexed"
   elif name.endswith("_integrated"):
     base = name.split("_integrated")[0]
+    kind = "_integrated"
   else:
     base = name
   if json_ext is not None:
-    json = os.path.join(dirname, base + json_ext + ".expt")
-  elif os.path.exists(os.path.join(dirname, base + "_refined.expt")):
-    json = os.path.join(dirname, base + "_refined.expt")
-  elif os.path.exists(os.path.join(dirname, base + "_indexed.expt")):
-    json = os.path.join(dirname, base + "_indexed.expt")
-  else:
-    json = None
-  return json
+    return os.path.join(dirname, base + json_ext + ".expt")
+  # dials.stills_process writes each reflection table next to an experiment
+  # list with the same suffix. Older versions paired _integrated.refl and
+  # _indexed.refl with _refined.expt, so that is tried next.
+  candidates = []
+  if kind:
+    candidates.append(kind + ".expt")
+  candidates.extend(["_refined.expt", "_indexed.expt"])
+  for ext in candidates:
+    json = os.path.join(dirname, base + ext)
+    if os.path.exists(json):
+      return json
+  return None
 
 class read_dials_pickle(object):
   """given a dials-format non-image pickle file with matching json file, return a dictionary pickle"""
