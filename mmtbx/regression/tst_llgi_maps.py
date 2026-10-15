@@ -131,20 +131,29 @@ def exercise_compute_on_fmodel():
     obs = arrays[lab].common_set(f_obs)
     assert approx_equal(obs.data(), along_phase(ce.fill * scale),
       eps=1e-9), lab
-  # added reflections (sigmaA*Ec): on the level of the observed ones at
-  # similar resolution, and the two fill maps differ by sqrt(ANISOBETA(h))
+  # added reflections (sigmaA*Ec): the two fill maps differ by
+  # sqrt(ANISOBETA(h))
   assert r.n_filled > 0
   a = arrays["IWT_fill_aniso"].lone_set(f_obs)
   b = arrays["IWT_fill"].common_set(a)
   ratio = flex.abs(a.data()) / flex.abs(b.data())
   assert approx_equal(ratio,
     flex.sqrt(flex.double([quad(h) for h in a.indices()])), eps=1e-6)
-  obs = arrays["IWT_fill"].common_set(f_obs)
-  ss_obs = obs.d_star_sq().data()
-  for amp, ss in zip(flex.abs(b.data()), b.d_star_sq().data()):
-    order = flex.sort_permutation(flex.abs(ss_obs - ss))[:50]
-    near = flex.mean(flex.abs(obs.data()).select(order))
-    assert 0.05 * near < amp < 20 * near, (amp, near)
+  # the fill (map_tools.model_missing_reflections_llgi: Ec from the whole
+  # model on the complete set, the fitted sigmaA curve, resn_model's RESN)
+  # evaluated for the observed reflections: sigmaA*Ec on their F scale
+  from mmtbx.map_tools import model_missing_reflections_llgi
+  mro = model_missing_reflections_llgi(fmodel=fmodel)
+  mro.get_missing(isotropize=False)
+  mis = mro.e_scale_missing
+  rm = llgi_maps.resn_model(fmodel.llgi_data())
+  sa = mis.sigmaa.deep_copy()
+  sa.set_selected(sa > llgi_maps.SIGMAA_MAX, llgi_maps.SIGMAA_MAX)
+  fill = mis.miller_set.array(data=sa * mis.e_model_abs * mis.resn /
+    flex.sqrt(rm.anisobeta(mis.miller_set))).common_set(f_obs)
+  assert fill.indices().all_eq(f_obs.indices())
+  expected = r.sigmaa * r.e_calc * r.f_scale
+  assert flex.max(flex.abs(fill.data() - expected) / expected) < 0.01
   assert flex.max(r.sigmaa) <= llgi_maps.SIGMAA_MAX
   # without ANISOBETA: the maps keep the anisotropy (scale RESN) and no
   # _aniso maps are written
@@ -153,12 +162,85 @@ def exercise_compute_on_fmodel():
   assert [a[0] for a in r.arrays] == ["IWT", "IWT_fill", "dIWT"]
   assert approx_equal(r.f_scale, resn, eps=1e-12)
 
+def exercise_resn_model():
+  # RESN as nacelle computes it, epsilon*G(s^2)*ANISOBETA(h) (G smooth in
+  # resolution, with a step between bins; ANISOBETA a quadratic form):
+  # reflections held out are recovered from the rest; nacelle's own values
+  # are returned as they are; nacelle_all takes precedence over the refined
+  # subset; without ANISOBETA the model is isotropic
+  from cctbx import crystal
+  from libtbx import group_args
+  cs = crystal.symmetry(unit_cell=(51, 62, 73, 90, 97, 90), space_group_symbol="C 2")
+  ms = cs.build_miller_set(anomalous_flag=False, d_min=2.5)
+  dss = ms.d_star_sq().data()
+  g = flex.exp(-12 * dss) * (1 + 0.3 * flex.cos(5 * dss))
+  g.set_selected(dss > 0.08, g.select(dss > 0.08) * 1.05)    # bin step
+  quad = lambda h: math.exp(0.004*h[0]**2 - 0.002*h[1]**2 + 0.001*h[2]**2
+    - 0.0007*h[0]*h[2])
+  ab = flex.double([quad(h) for h in ms.indices()])
+  resn = ms.array(data=flex.sqrt(ms.epsilons().data().as_double() * g * ab))
+  anisobeta = ms.array(data=ab)
+  # the weakest directions held out, as phenix's sigma(E^2) cutoff does
+  held = ab < 0.6
+  assert 0 < held.count(True) < ms.size() // 2
+  m = llgi_maps.resn_model(group_args(resn=resn.select(~held),
+    anisobeta=anisobeta.select(~held)))
+  assert m.fit.rms_log_residual < 1e-8
+  pred, exact = m.resn_for(resn.select(held))
+  assert exact.count(True) == 0
+  rel = flex.abs(pred / resn.data().select(held) - 1)
+  assert flex.max(rel) < 0.06 and flex.mean(rel) < 2e-3, (flex.max(rel), flex.mean(rel))
+  # nacelle's values where it has them, in the order asked
+  sub = resn.select(~held)
+  perm = flex.random_permutation(sub.size())
+  pred, exact = m.resn_for(sub.select(perm))
+  assert exact.all_eq(True)
+  assert approx_equal(pred, sub.data().select(perm), eps=0)
+  # nacelle_all: every reflection, though only some are refined
+  m = llgi_maps.resn_model(group_args(resn=sub, anisobeta=anisobeta.select(~held),
+    nacelle_all=group_args(resn=resn, anisobeta=anisobeta)))
+  pred, exact = m.resn_for(resn.select(held))
+  assert exact.all_eq(True)
+  # put on the scale of the refined RESN (rescaled with f_obs by
+  # apply_scale_k1_to_f_obs)
+  m = llgi_maps.resn_model(group_args(resn=sub.customized_copy(
+    data=sub.data() * 0.1), anisobeta=anisobeta.select(~held),
+    nacelle_all=group_args(resn=resn, anisobeta=anisobeta)))
+  pred, exact = m.resn_for(resn.select(held))
+  assert approx_equal(pred, resn.data().select(held) * 0.1, eps=1e-9)
+  # no ANISOBETA: isotropic, G = RESN^2/epsilon
+  iso = ms.array(data=flex.sqrt(ms.epsilons().data().as_double() * g))
+  m = llgi_maps.resn_model(group_args(resn=iso.select(~held), anisobeta=None))
+  assert not m.anisotropic
+  pred, exact = m.resn_for(iso.select(held))
+  assert flex.max(flex.abs(pred / iso.data().select(held) - 1)) < 0.06
+
+def exercise_fit_k_anisotropic():
+  # both forms of fmodel's anisotropic scale (mmtbx.bulk_solvent.scaler) are
+  # recovered exactly and evaluated for other reflections
+  from cctbx import crystal, adptbx
+  from mmtbx.f_model import ext as f_model_ext
+  cs = crystal.symmetry(unit_cell=(51, 62, 73, 90, 97, 90), space_group_symbol="C 2")
+  ms = cs.build_miller_set(anomalous_flag=False, d_min=2.5)
+  sel = flex.random_bool(ms.size(), 0.8)
+  fit_on, other = ms.select(sel), ms.select(~sel)
+  u_star = adptbx.u_cart_as_u_star(cs.unit_cell(), adptbx.b_as_u((4, -3, 2, 0, 1.5, 0)))
+  a = flex.double([0.002, -0.3, -0.001, 0.2, 0.0005, 0.1, 0, 0, 0.0003, -0.05, 0, 0])
+  for form, k in [("exp", lambda m: f_model_ext.k_anisotropic(m.indices(), u_star)),
+                  ("polynomial", lambda m: f_model_ext.k_anisotropic(m.indices(), a, cs.unit_cell()))]:
+    f = llgi_maps.fit_k_anisotropic(fit_on.array(data=k(fit_on)))
+    assert f.form == form, (f.form, form)
+    assert f.rms_log_residual < 1e-8
+    assert approx_equal(f.evaluate(other), k(other), eps=1e-6)
+
 def run():
   exercise_handoff_fixtures()
   exercise_phi_table_limits()
   exercise_no_measurement_error()
   exercise_fit_anisobeta()
   exercise_compute_on_fmodel()
+  exercise_resn_model()
+  exercise_fit_k_anisotropic()
   print("OK")
 
 if (__name__ == "__main__"):

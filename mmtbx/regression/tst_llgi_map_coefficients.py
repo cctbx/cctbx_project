@@ -244,10 +244,6 @@ def exercise_fill_missing_uses_fitted_sigmaa_curve():
   import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
   from mmtbx import map_tools as mt
   fmodel = build_llgi_fmodel_with_gaps(n_atoms=50, d_min=2.1, seed=32)
-  # f_model() as the coefficients being completed: model_missing_
-  # reflections keeps only atoms whose map correlates with the model map,
-  # and this fixture's Feff is unrelated to the model.
-  coeffs = fmodel.f_model()
   fills = []
   for sigmaa_model in ["d_model", "spline"]:
     e_params = llgi_e_sigmaa.llgi_e_sigmaa_params.extract()
@@ -261,7 +257,7 @@ def exercise_fill_missing_uses_fitted_sigmaa_curve():
     assert selected.llgi_data().sigmaa_curve is curve
     for c in (copy.deepcopy(curve), pickle.loads(pickle.dumps(curve))):
       assert approx_equal(c(d_star_sq), curve(d_star_sq), eps=0)
-    mro = mt.model_missing_reflections_llgi(fmodel=fmodel, coeffs=coeffs)
+    mro = mt.model_missing_reflections_llgi(fmodel=fmodel)
     fill = mro.get_missing()
     assert flex.min(flex.abs(fill.data())) > 0
     assert approx_equal(mro.e_scale_missing.sigmaa,
@@ -272,6 +268,36 @@ def exercise_fill_missing_uses_fitted_sigmaa_curve():
   abs_a, abs_b = flex.abs(a.data()), flex.abs(b.data())
   rel_diff = flex.mean(flex.abs(abs_a - abs_b)) / flex.mean(abs_a)
   assert rel_diff > 0.01, rel_diff
+
+def exercise_llgi_fill_is_d_fc():
+  # The LLGI fill, evaluated for the observed reflections, is the D*Fc term
+  # of the LLGI map coefficients there (mFo - (mFo-DFc), phenix's acentric
+  # difference coefficients being doubled), with and without isotropize:
+  # the map's own scale, no rescaling. With intensities (the exact
+  # posterior: coefficient sigmaA, as for a reflection without data; the
+  # Rice form's is Dobs*sigmaA).
+  from mmtbx import map_tools as mt
+  fmodel = build_llgi_fmodel(n_atoms=40, d_min=2.2, seed=3, rice_kappa=0.1)
+  emap = fmodel.electron_density_map_llgi()
+  for isotropize in (True, False):
+    mfo = emap.map_coefficients(map_type="mFo", isotropize=isotropize)
+    diff = emap.map_coefficients(map_type="mFo-DFc", isotropize=isotropize)
+    half = flex.double([1.0 if c else 0.5
+      for c in mfo.centric_flags().data()])
+    dfc = mfo.customized_copy(data=mfo.data() - diff.data() * half)
+    fill = mt.model_missing_reflections_llgi(fmodel=fmodel).get_missing(
+      isotropize=isotropize)
+    f, d = fill.common_sets(dfc)
+    assert f.size() == dfc.size()
+    assert flex.max(flex.abs(f.data() - d.data()) / flex.abs(d.data())) < 0.01
+  # the filled (isotropized) map adds the fill for the reflections it lacks
+  fill = mt.model_missing_reflections_llgi(fmodel=fmodel).get_missing()
+  filled = emap.map_coefficients(map_type="2mFo-DFc",
+    exclude_free_r_reflections=True, fill_missing=True)
+  free = fmodel.f_obs().select(fmodel.r_free_flags().data())
+  a, b = filled.common_sets(fill.common_set(free))
+  assert a.size() == free.size()
+  assert approx_equal(a.data(), b.data(), eps=1e-6)
 
 def exercise_phase_errors_llgi_match_numerical_integration():
   # Expected |phase error| implied by the LLGI fom, checked against direct
@@ -369,6 +395,7 @@ def exercise():
   exercise_map_coefficients_llgi_anomalous_as_ordinary()
   exercise_llgi_fill_missing_matches_hand_computation()
   exercise_fill_missing_uses_fitted_sigmaa_curve()
+  exercise_llgi_fill_is_d_fc()
   exercise_phase_errors_llgi_match_numerical_integration()
   exercise_outlier_selection_skips_model_based_test_for_llgi()
   exercise_map_coefficients_from_fmodel_ml_target_unaffected()

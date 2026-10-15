@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from cctbx import miller
 from cctbx.array_family import flex
 from libtbx import group_args
 import iotbx.phil
@@ -39,9 +40,9 @@ column the anisotropy cannot be removed, and the maps without suffix keep it.
 IWT and dIWT have the reflections used by the LLGI target. IWT_fill adds
 every other reflection to the resolution limit (unmeasured, or measured but
 left out of the target as uninformative) with sigmaA*Ec, i.e. the value the
-fill coefficient tends to; there the F scale is the data's isotropic falloff
-RESN/sqrt(epsilon*ANISOBETA) at the nearest observed resolution, times
-sqrt(epsilon), and for IWT_fill_aniso also sqrt(ANISOBETA(h)), with
+fill coefficient tends to; there the F scale is RESN/sqrt(ANISOBETA)
+(RESN for IWT_fill_aniso), with nacelle's RESN for every reflection in the
+nacelle file and nacelle's model of it for the others (resn_model), and
 ANISOBETA(h) = exp(h^T B h) fitted to nacelle's ANISOBETA (an exact
 quadratic form in h); TEPS is taken as 1.
 """
@@ -131,6 +132,111 @@ def fit_anisobeta(indices, anisobeta):
     return flex.double(np.exp(design(idx).dot(coef)))
   return group_args(coefficients=coef, rms_log_residual=rms, evaluate=evaluate)
 
+def fit_k_anisotropic(miller_array):
+  """ fmodel's anisotropic scale k_anisotropic (a miller array of positive
+  values) as one of the forms mmtbx.bulk_solvent.scaler chooses between:
+  exp(-h^T U* h)-type (fit_anisobeta) or the 12-parameter polynomial
+  1 + sum a_i p_i(h) of mmtbx.f_model.ext.k_anisotropic(indices, a,
+  unit_cell), whichever fits better (in ln). Returns group_args(form,
+  rms_log_residual, evaluate(miller_set)). """
+  import numpy as np
+  uc = miller_array.unit_cell()
+  ras, rbs, rcs = uc.reciprocal_parameters()[:3]
+  def poly_design(ms):
+    h = np.array(ms.indices(), dtype=float).reshape(-1, 3)
+    stol = np.array(ms.sin_theta_over_lambda_sq().data())
+    s = np.where(stol != 0, 1. / np.where(stol != 0, stol, 1), 0)
+    hh, kk, ll = h[:, 0]**2*ras*ras, h[:, 1]**2*rbs*rbs, h[:, 2]**2*rcs*rcs
+    kl, hl = 2*h[:, 1]*h[:, 2]*rbs*rcs, 2*h[:, 0]*h[:, 2]*ras*rcs
+    hk = 2*h[:, 0]*h[:, 1]*ras*rbs
+    return np.column_stack([hh*s, hh, kk*s, kk, ll*s, ll, kl*s, kl, hl*s, hl,
+      hk*s, hk])
+  k = np.array(miller_array.data())
+  y = np.log(k)
+  quad = fit_anisobeta(miller_array.indices(), miller_array.data())
+  a = np.linalg.lstsq(poly_design(miller_array), k - 1, rcond=None)[0]
+  k_poly = 1 + poly_design(miller_array).dot(a)
+  rms_poly = float(np.sqrt(np.mean((np.log(np.clip(k_poly, 1e-12, None)) - y)**2)))
+  if(quad.rms_log_residual <= rms_poly):
+    return group_args(form="exp", rms_log_residual=quad.rms_log_residual,
+      evaluate=lambda ms: quad.evaluate(ms.indices()))
+  def evaluate(ms):
+    return flex.double(np.clip(1 + poly_design(ms).dot(a), 1e-12, None))
+  return group_args(form="polynomial", rms_log_residual=rms_poly,
+    evaluate=evaluate)
+
+class resn_model(object):
+  """ nacelle's RESN for any reflections. nacelle computes
+    RESN^2 = epsilon * SigmaN(s^2) * ANISOBETA(h),
+  SigmaN its isotropic fit to the data as a function of resolution
+  (smooth, with steps between its resolution bins) and ANISOBETA(h) =
+  exp(h^T B h) its anisotropy model. So G = RESN^2/(epsilon*ANISOBETA)
+  depends on resolution only, and ANISOBETA is an exact quadratic form in
+  h. RESN is nacelle's value where nacelle has one; otherwise from G at the
+  nearest reflection in d*^2 and the fitted quadratic form.
+
+  Built from llgi_data.nacelle_all (every reflection in the nacelle file,
+  including those excluded from refinement) if present, otherwise from
+  llgi_data.resn and .anisobeta (the reflections refined). nacelle_all is
+  as read, so it is put on the scale of llgi_data.resn (which
+  mmtbx.f_model.manager.apply_scale_k1_to_f_obs rescales) by their ratio
+  on the reflections they share. Without ANISOBETA, G = RESN^2/epsilon and
+  the model is isotropic. """
+
+  def __init__(self, llgi_data):
+    import numpy as np
+    source = getattr(llgi_data, "nacelle_all", None)
+    if(source is not None):
+      resn, anisobeta = source.resn.map_to_asu(), source.anisobeta
+      refined = llgi_data.resn.map_to_asu()
+      pairs = miller.match_indices(refined.indices(), resn.indices()).pairs()
+      if(pairs.size() > 0):
+        k = flex.median(refined.data().select(pairs.column(0)) /
+          resn.data().select(pairs.column(1)))
+        resn = resn.customized_copy(data=resn.data() * k)
+    else:
+      resn, anisobeta = llgi_data.resn, getattr(llgi_data, "anisobeta", None)
+    resn = resn.map_to_asu()
+    keep = resn.data() > 0
+    if(anisobeta is not None):
+      resn, anisobeta = resn.common_sets(anisobeta.map_to_asu())
+      keep = (resn.data() > 0) & (anisobeta.data() > 0)
+      anisobeta = anisobeta.select(keep)
+    resn = resn.select(keep)
+    self.resn = resn
+    self.anisotropic = anisobeta is not None
+    ab = anisobeta.data() if self.anisotropic else flex.double(resn.size(), 1)
+    self.fit = fit_anisobeta(resn.indices(), ab) if self.anisotropic else None
+    g = flex.pow2(resn.data()) / (resn.epsilons().data().as_double() * ab)
+    dss = resn.d_star_sq().data().as_numpy_array()
+    order = np.argsort(dss)
+    self._dss, self._g = dss[order], g.as_numpy_array()[order]
+
+  def g(self, d_star_sq):
+    """ G = RESN^2/(epsilon*ANISOBETA) at the nearest reflection in d*^2 """
+    import numpy as np
+    d = np.asarray(d_star_sq, dtype=float)
+    i = np.clip(np.searchsorted(self._dss, d), 0, len(self._dss) - 1)
+    j = np.clip(i - 1, 0, len(self._dss) - 1)
+    use_j = np.abs(self._dss[j] - d) < np.abs(self._dss[i] - d)
+    return flex.double(self._g[np.where(use_j, j, i)])
+
+  def anisobeta(self, miller_set):
+    if(not self.anisotropic): return flex.double(miller_set.size(), 1)
+    return self.fit.evaluate(miller_set.map_to_asu().indices())
+
+  def resn_for(self, miller_set):
+    """ RESN for the reflections of miller_set (flex.double, in its
+    order), and a flex.bool marking nacelle's own values """
+    ms = miller_set.map_to_asu()
+    result = flex.sqrt(ms.epsilons().data().as_double() *
+      self.g(ms.d_star_sq().data()) * self.anisobeta(ms))
+    pairs = miller.match_indices(ms.indices(), self.resn.indices()).pairs()
+    result.set_selected(pairs.column(0), self.resn.data().select(pairs.column(1)))
+    exact = flex.bool(ms.size(), False)
+    exact.set_selected(pairs.column(0), True)
+    return result, exact
+
 def compute(fmodel, params=None, log=None):
   """ LLGI map coefficients for fmodel (target=llgi, llgi_data with sigmaa
   and the intensities attached). Returns group_args(arrays=[(label,
@@ -197,44 +303,36 @@ def compute(fmodel, params=None, log=None):
       sigmas=None)
   # the reflections left out: sigmaA*Ec on the F scale (model_missing_
   # reflections_llgi supplies Ec and sigmaA on the complete set; complete_with
-  # takes those not in f_obs)
+  # takes those not in f_obs), with nacelle's RESN (resn_model)
   from mmtbx.map_tools import model_missing_reflections_llgi
-  mro = model_missing_reflections_llgi(fmodel=fmodel,
-    coeffs=as_complex(ce.fill, f_scale_aniso))
-  mro.get_missing()   # for its e_scale_missing (Ec, sigmaA, the phases)
+  mro = model_missing_reflections_llgi(fmodel=fmodel)
+  mro.get_missing(isotropize=False)   # for its e_scale_missing
   mis = mro.e_scale_missing
   sa_m = mis.sigmaa.deep_copy()
   sa_m.set_selected(sa_m < 0, 0)
   sa_m.set_selected(sa_m > SIGMAA_MAX, SIGMAA_MAX)
   ms_m = mis.miller_set
-  eps_m = ms_m.epsilons().data().as_double()
-  # the data's isotropic falloff RESN/sqrt(epsilon*ANISOBETA) (smooth in
-  # resolution) at the nearest observed resolution
-  iso_m = mro.nearest_observed(ms_m.d_star_sq().data(),
-    resn / flex.sqrt(epsilons * ab))
+  rm = resn_model(llgi_data)
   def fill_array(scale):
-    return ms_m.customized_copy(
+    return ms_m.array(
       data=flex.complex_double(sa_m * mis.e_model_abs * scale,
         flex.double(sa_m.size(), 0)) * _unit_phase(mis.f_model_no_aniso))
-  # added reflections: the isotropic falloff (times sqrt(ANISOBETA(h)) in the
-  # _aniso map, as on its observed reflections)
+  # added reflections: the F scale RESN/sqrt(ANISOBETA) = sqrt(epsilon*G)
+  # (RESN itself in the _aniso map), as on the observed reflections
   arrays = [
     (LABELS.bias_reduced, as_complex(ce.bias_reduced, f_scale)),
     (LABELS.fill, as_complex(ce.fill, f_scale).complete_with(
-      other=fill_array(iso_m * flex.sqrt(eps_m)), scale=False)),
+      other=fill_array(mis.resn / flex.sqrt(rm.anisobeta(ms_m))), scale=False)),
     (LABELS.difference, as_complex(ce.difference, f_scale))]
   if(params.anisotropic_maps and anisobeta is not None):
-    good = ~ab_bad
-    fit = fit_anisobeta(f_obs.indices().select(good), ab.select(good))
-    if(fit.rms_log_residual > 1.e-3):
+    if(rm.fit.rms_log_residual > 1.e-3):
       say("ANISOBETA is not a quadratic form in h (rms residual of the fit "
         "%.3g in ln); the anisotropy of the filled reflections is approximate."
-        % fit.rms_log_residual)
-    ab_m = fit.evaluate(ms_m.indices())
+        % rm.fit.rms_log_residual)
     arrays += [
       (LABELS.bias_reduced_aniso, as_complex(ce.bias_reduced, f_scale_aniso)),
       (LABELS.fill_aniso, as_complex(ce.fill, f_scale_aniso).complete_with(
-        other=fill_array(iso_m * flex.sqrt(eps_m * ab_m)), scale=False)),
+        other=fill_array(mis.resn), scale=False)),
       (LABELS.difference_aniso, as_complex(ce.difference, f_scale_aniso))]
   if(getattr(llgi_data, "from_amplitudes", False)):
     say("WARNING: computed from intensities reconstructed from amplitudes "
