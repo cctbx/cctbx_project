@@ -37,10 +37,10 @@ import csv
 version = "3.4.0"
 
 master_phil_str = '''
-approach = *add remove optimize
+approach = *add remove optimize place
   .type = choice
-  .short_caption = Add (and optimize), remove, or optimize Hydrogens
-  .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model. Note: if using optimize and add_flip_movers=True, all possible hydrogens must be added to histidines (even ones making collision).
+  .short_caption = Add (and optimize), remove, optimize, or place Hydrogens
+  .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model, or place them without optimizing (place). Note: if using optimize and add_flip_movers=True, all possible hydrogens must be added to histidines (even ones making collision).
 keep_existing_H = False
   .type = bool
   .short_caption = Do not remove Hydrogens in the original model
@@ -1237,6 +1237,18 @@ NOTES:
   # ------------------------------------------------------------------------------
 
   def validate(self):
+    # place: no optimizer, so nothing that needs it
+    if self.params.approach == 'place':
+      p = self.params
+      bad = [name for name, value in [
+        ('add_flip_movers', p.add_flip_movers),
+        ('output.flipkin_directory', p.output.flipkin_directory),
+        ('comparison_file', p.comparison_file),
+        ('qmready', p.qmready)] if value]
+      if bad:
+        raise Sorry('%s requires optimization; it cannot be used with '
+          'approach=place.' % ', '.join(bad))
+
     # Set the default output file name if one has not been given.
     # With qmready=True the total charge is appended to the default name later.
     self._default_output_filename = self.params.output.filename is None
@@ -1363,7 +1375,14 @@ NOTES:
     # about the original model for use by Kinemages.
     initialModel = self.model.deep_copy()
 
-    if self.params.approach == 'add' or self.params.approach == 'optimize':
+    if self.params.approach == 'place':
+      make_sub_header('Adding Hydrogens', out=self.logger)
+      startAdd = time.time()
+      self._AddHydrogens()
+      outString += 'Time to Add Hydrogen = {:.3f} sec'.format(
+        time.time()-startAdd)+'\n'
+
+    elif self.params.approach == 'add' or self.params.approach == 'optimize':
 
       if self.params.approach == 'add':
         # Add Hydrogens to the model
