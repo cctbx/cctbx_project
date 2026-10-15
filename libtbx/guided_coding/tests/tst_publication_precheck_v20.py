@@ -10,7 +10,6 @@ configuration is kept out with GIT_CONFIG_GLOBAL and GIT_CONFIG_NOSYSTEM.
 
 import itertools
 import os
-import shlex
 import shutil
 import subprocess
 import sys
@@ -21,6 +20,27 @@ from pathlib import Path
 TOOL = Path(__file__).resolve().parent.parent / "payload" / "tools" / "publication_precheck.py"
 HEX = "0123456789abcdef0123456789abcdef01234567"
 KEYS = ("repository", "remote", "remote_url", "base", "commit", "tree", "refspec")
+
+
+
+def fake_git_script(real_git, calls, trigger, out, err, code):
+    """Revision 15: the text of a Python test double for git (formerly /bin/sh). A call whose
+    argument words include every word of `trigger` appends its words (space-joined) to the
+    file `calls`, prints the lines `out` to stdout and `err` to stderr and exits `code`; every
+    other call is replaced by the real git with the same arguments."""
+    return ("#!%s\n" % sys.executable
+            + "# test double: one intercepted git question; every other call is the real git\n"
+            + "import os, sys\n"
+            + "args = sys.argv[1:]\n"
+            + "if all(word in args for word in %r):\n" % (tuple(trigger),)
+            + "    with open(%r, 'a') as log:\n" % str(calls)
+            + "        log.write(' '.join(args) + '\\n')\n"
+            + "    for line in %r:\n" % (list(out),)
+            + "        print(line)\n"
+            + "    for line in %r:\n" % (list(err),)
+            + "        print(line, file=sys.stderr)\n"
+            + "    sys.exit(%d)\n" % code
+            + "os.execv(%r, [%r] + args)\n" % (real_git, real_git))
 
 
 def git_environment(home):
@@ -345,24 +365,12 @@ class CheckCommand(PrecheckFixture):
         calls = self.root / "dry-run-calls.txt"
 
         def install(status):
-            fake.write_text(
-                "#!/bin/sh\n"
-                "# test double: canned porcelain for the dry-run push, the real git otherwise\n"
-                "is_push=0; is_dry=0\n"
-                'for word in "$@"; do\n'
-                '  [ "$word" = push ] && is_push=1\n'
-                '  [ "$word" = --dry-run ] && is_dry=1\n'
-                "done\n"
-                'if [ "$is_push" = 1 ] && [ "$is_dry" = 1 ]; then\n'
-                f'  printf "%s\\n" "$*" >> {shlex.quote(str(calls))}\n'
-                f"  printf 'To %s\\n' {shlex.quote(str(self.bare))}\n"
-                f"  printf ' \\t%s:refs/heads/master\\t%s..%s\\n' "
-                f"{self.commit} {self.base[:7]} {self.commit[:7]}\n"
-                "  printf 'Done\\n'\n"
-                f"  printf 'fake git: dry run exits {status}\\n' >&2\n"
-                f"  exit {status}\n"
-                "fi\n"
-                f'exec {shlex.quote(real_git)} "$@"\n')
+            # Revision 15: a Python test double (formerly /bin/sh) with the same output.
+            fake.write_text(fake_git_script(
+                real_git, calls, ("push", "--dry-run"),
+                [f"To {self.bare}",
+                 f" \t{self.commit}:refs/heads/master\t{self.base[:7]}..{self.commit[:7]}",
+                 "Done"], [f"fake git: dry run exits {status}"], status))
             fake.chmod(0o755)
 
         env = dict(self.env, PATH=str(fake_bin) + os.pathsep + self.env.get("PATH", os.defpath))
@@ -398,32 +406,19 @@ class CheckCommand(PrecheckFixture):
 
     # ---- SPEC_A 10: every Git query's exit status is checked first ----------
 
-    def fake_git(self, name, trigger, body):
+    def fake_git(self, name, trigger, out, err, code):
         """Put a fake `git` first on PATH for the tool subprocess only. A call
-        whose words include every word of `trigger` logs itself and runs
-        `body` (sh lines that must exit); every other call is exec'd to the
+        whose words include every word of `trigger` logs itself, prints the
+        lines `out` and `err` and exits `code`; every other call is exec'd to the
         real git, so the test does not guess which other questions the tool
-        asks. Returns (environment, log file)."""
+        asks. Returns (environment, log file). Revision 15: a Python test
+        double (fake_git_script; formerly /bin/sh)."""
         real_git = shutil.which("git", path=self.env.get("PATH", os.defpath))
         self.assertTrue(real_git, "real git not found on PATH")
         fake_bin = self.root / f"fakebin-{name}"
         fake_bin.mkdir()
         calls = fake_bin / "intercepted.txt"
-        patterns = "".join(f"    {shlex.quote(word)}) hit=$((hit | {1 << index})) ;;\n"
-                           for index, word in enumerate(trigger))
-        script = ("#!/bin/sh\n"
-                  "# test double: one intercepted git question; every other call is the real git\n"
-                  "hit=0\n"
-                  'for word in "$@"; do\n'
-                  '  case "$word" in\n'
-                  f"{patterns}"
-                  "  esac\n"
-                  "done\n"
-                  f'if [ "$hit" = {(1 << len(trigger)) - 1} ]; then\n'
-                  f'  printf "%s\\n" "$*" >> {shlex.quote(str(calls))}\n'
-                  f"{body}"
-                  "fi\n"
-                  f'exec {shlex.quote(real_git)} "$@"\n')
+        script = fake_git_script(real_git, calls, trigger, out, err, code)
         (fake_bin / "git").write_text(script)
         (fake_bin / "git").chmod(0o755)
         env = dict(self.env, PATH=str(fake_bin) + os.pathsep + self.env.get("PATH", os.defpath))
@@ -448,14 +443,10 @@ class CheckCommand(PrecheckFixture):
         matching settings (exit 1, empty output) is the positive control."""
         failure = "fatal: injected configuration query failure"
         trigger = ("config", "--show-origin", "--get-regexp")
-        for label, body in (
-                ("nothing on stdout",
-                 f"  printf '%s\\n' {shlex.quote(failure)} >&2\n  exit 128\n"),
-                ("one benign line on stdout",
-                 "  printf 'file:fixture\\tpush.default simple\\n'\n"
-                 f"  printf '%s\\n' {shlex.quote(failure)} >&2\n  exit 128\n")):
+        for label, out in (("nothing on stdout", []),
+                           ("one benign line on stdout", ["file:fixture\tpush.default simple"])):
             with self.subTest(form=label):
-                env, calls = self.fake_git(label.replace(" ", "-"), trigger, body)
+                env, calls = self.fake_git(label.replace(" ", "-"), trigger, out, [failure], 128)
                 result = self.check_with(env)
                 self.assertTrue(calls.exists(), "the fake git never saw the configuration query")
                 self.assertIn("--get-regexp", calls.read_text())
@@ -483,8 +474,7 @@ class CheckCommand(PrecheckFixture):
         failure = "fatal: injected object lookup failure"
         env, calls = self.fake_git(
             "binding", ("rev-parse", "--verify", "-q", f"{self.commit}^{{commit}}"),
-            f"  printf '%s\\n' {self.commit}\n"
-            f"  printf '%s\\n' {shlex.quote(failure)} >&2\n  exit 128\n")
+            [self.commit], [failure], 128)
         result = self.check_with(env)
         self.assertTrue(calls.exists(), "the fake git never saw the commit query")
         self.assertIn(f"{self.commit}^{{commit}}", calls.read_text())

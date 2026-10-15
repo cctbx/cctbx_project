@@ -153,19 +153,26 @@ runpy.run_path(helper, run_name="__main__")
 """
 # Stand-ins for ps (Revision 13): refused as inside sandbox-exec, empty, malformed, and one that
 # fails only for the `ps -E` marker query (as Linux ps has no -E).
+# Revision 15: Python scripts run by this test's own interpreter (no /bin/sh). Each takes one
+# argument word (-E or -ax) as its trigger, as the earlier `case " $* "` did, prints the same
+# lines with the same exit status, and otherwise replaces itself with the real /bin/ps.
+FAKE_PS_HEAD = "#!%s\nimport os, sys\nargs = sys.argv[1:]\n" % sys.executable
+FAKE_PS_PASS = 'os.execv("/bin/ps", ["/bin/ps"] + args)\n'
 FAKE_PS = {
-    "refused": "#!/bin/sh\necho 'ps: Operation not permitted' >&2\nexit 71\n",
-    "empty": "#!/bin/sh\nexit 0\n",
-    "malformed": "#!/bin/sh\necho 'PID garbage line'\necho '12 x'\nexit 0\n",
-    "no-marker": ('#!/bin/sh\ncase " $* " in *" -E "*) echo "ps: unsupported option -E" >&2; '
-                  'exit 1;; esac\nexec /bin/ps "$@"\n'),
+    "refused": FAKE_PS_HEAD + 'print("ps: Operation not permitted", file=sys.stderr)\nsys.exit(71)\n',
+    "empty": FAKE_PS_HEAD + "sys.exit(0)\n",
+    "malformed": FAKE_PS_HEAD + 'print("PID garbage line")\nprint("12 x")\nsys.exit(0)\n',
+    "no-marker": (FAKE_PS_HEAD + 'if "-E" in args:\n'
+                  '    print("ps: unsupported option -E", file=sys.stderr)\n    sys.exit(1)\n'
+                  + FAKE_PS_PASS),
     # Checkpoint 3 (REVIEW_CP2 findings 1 and 3): the whole-table query fails while
     # `ps -p` works; the `ps -E` marker query exits 0 with nothing, or with garbage.
-    "ax-fails": ('#!/bin/sh\ncase " $* " in *" -ax "*) echo "ps: Operation not permitted" >&2; '
-                 'exit 71;; esac\nexec /bin/ps "$@"\n'),
-    "empty-marker": '#!/bin/sh\ncase " $* " in *" -E "*) exit 0;; esac\nexec /bin/ps "$@"\n',
-    "garbage-marker": ('#!/bin/sh\ncase " $* " in *" -E "*) echo garbage; exit 0;; esac\n'
-                       'exec /bin/ps "$@"\n'),
+    "ax-fails": (FAKE_PS_HEAD + 'if "-ax" in args:\n'
+                 '    print("ps: Operation not permitted", file=sys.stderr)\n    sys.exit(71)\n'
+                 + FAKE_PS_PASS),
+    "empty-marker": FAKE_PS_HEAD + 'if "-E" in args:\n    sys.exit(0)\n' + FAKE_PS_PASS,
+    "garbage-marker": (FAKE_PS_HEAD + 'if "-E" in args:\n    print("garbage")\n    sys.exit(0)\n'
+                       + FAKE_PS_PASS),
 }
 # snapshot() in a subprocess that imports the helper with PS = argv[2] (and, with argv[3]
 # == "linux", sys.platform = "linux"): prints `table N` (its size) or `refused CODE MESSAGE`.
@@ -237,12 +244,48 @@ print("FINGERPRINT {fingerprint}")
 sys.exit({code})
 """
 # The libtbx.easy_run pattern: CMD starts a shell in a new session, waits 2 s, exits.
+# Revision 15: the "shell" is a Python process running SHELL_STANDIN (the file argv[3]), started
+# with setsid as easy_run starts /bin/sh, with the JSON spec argv[2].
 EASY_RUN_SCRIPT = """import os, subprocess, sys, time
-shell = subprocess.Popen(["/bin/sh", "-c", sys.argv[2]], preexec_fn=os.setsid)
+shell = subprocess.Popen([sys.executable, sys.argv[3], sys.argv[2]], preexec_fn=os.setsid)
 with open(sys.argv[1] + ".tmp", "w") as handle:
     handle.write(str(shell.pid))
 os.replace(sys.argv[1] + ".tmp", sys.argv[1])
 time.sleep(2)
+"""
+# Revision 15 (review finding 1): a platform /bin/sh (and /bin/sleep) shows no environment to
+# `ps -E` on macOS, so the helper cannot see a run-id marker on it and must find it through the
+# wrapper's tracked descendants. The stand-in therefore first re-executes itself (same pid,
+# start time and parent) with the marker moved to another variable, so that its own visible
+# environment has no marker; each command runs as its child with the marker restored, except a
+# command flagged "platform" (standing in for a platform binary such as /bin/sleep), which runs
+# without it. Review finding 3: with "exec_last" the last command replaces the stand-in
+# (os.execve), as bash 5.1 and later and dash do with the last simple command of `sh -c 'a; b'`;
+# otherwise it runs as a child and the stand-in waits, as macOS /bin/sh (bash 3.2) and the bash
+# 4.2 of cci-gpu-00 do. The exit status is the last command's.
+SHELL_STANDIN = """import json, os, subprocess, sys
+MARKER, KEPT = "GC_AUTO_RUN_ID", "GC_TEST_STANDIN_KEPT_RUN_ID"
+if MARKER in os.environ:
+    env = dict(os.environ)
+    env[KEPT] = env.pop(MARKER)
+    os.execve(sys.executable, [sys.executable] + sys.argv, env)
+spec = json.loads(sys.argv[1])
+
+
+def environment(platform):
+    env = {key: value for key, value in os.environ.items() if key != KEPT}
+    if KEPT in os.environ and not platform:
+        env[MARKER] = os.environ[KEPT]
+    return env
+
+
+code, commands = 0, spec["commands"]
+for index, command in enumerate(commands):
+    env = environment(command.get("platform", False))
+    if spec.get("exec_last") and index == len(commands) - 1:
+        os.execve(command["argv"][0], command["argv"], env)
+    code = subprocess.call(command["argv"], env=env)
+sys.exit(code)
 """
 # Revision 8 CMD: a background child (`plain`, or `ignore` SIGTERM) and a 60 s sleep.
 TIMEOUT_SCRIPT = """import os, subprocess, sys, time
@@ -288,15 +331,24 @@ except OSError as error:
 print("connected")
 """
 # A probe that detaches a 25 s python into its own session with output inherited,
-# then runs /bin/sleep 30.
+# then runs a 30 s child (revision 15: a python child in its group instead of /bin/sleep 30).
 DETACH_PROBE = """import os, subprocess, sys
 child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(25)"],
                          start_new_session=True)
 with open(sys.argv[1] + ".tmp", "w") as handle:
     handle.write(str(child.pid))
 os.replace(sys.argv[1] + ".tmp", sys.argv[1])
-subprocess.run(["/bin/sleep", "30"])
+subprocess.run([sys.executable, "-c", "import time; time.sleep(30)"])
 """
+
+
+def sleep_cmd(seconds):
+    """Revision 15: a CMD that stays for `seconds` (instead of `sleep N`)."""
+    return [sys.executable, "-c", "import time; time.sleep(%s)" % seconds]
+
+
+# Revision 15: a CMD that exits 0 at once (instead of `true`).
+QUICK_CMD = [sys.executable, "-c", "pass"]
 # Revision 12 (P10): a test-side launcher that runs the helper (argv[2]: auto_queue.py, or the
 # stand-in launcher, which then imports this already patched module) with Linux procps start
 # times imitated inside this one process: every ps start time the helper reads (snapshot() and
@@ -496,6 +548,242 @@ def job_entry(data, job):
     matches = [entry for entry in jobs if entry.get("id") == job]
     assert len(matches) == 1, (job, jobs)
     return matches[0]
+
+
+# ---- Revision 15: archive and Mach-O fixtures written by the tests (no ar, ranlib or cc) ----
+AR_DATE, AR_REDATE = 1000000000, 1100000000
+
+
+def ar_header(field, when, size, uid=0):
+    """One 60-byte `!<arch>` member header; `when` None leaves the date, owner, group and mode
+    fields blank, as GNU ar writes its `//` name table."""
+    if when is None:
+        return b"%-16s%-12s%-6s%-6s%-8s%-10d`\n" % (field, b"", b"", b"", b"", size)
+    return b"%-16s%-12d%-6d%-6d%-8s%-10d`\n" % (field, when, uid, uid, b"100644", size)
+
+
+def ar_archive(members, when, style="gnu", index_when=None, uid=0):
+    """Revision 15: an `!<arch>` archive of `members` (name -> bytes) written by the test,
+    every member header dated `when` and the index member dated `index_when` (default
+    `when`; macOS ranlib dates its index with the current time), in the two real layouts:
+    - "gnu" (GNU and SysV ar): a `/` symbol table first (big-endian count, member offsets,
+      NUL-terminated names), a `//` name table for names longer than 15 bytes (each name
+      followed by `/` and a newline, the table padded to an even size with a newline inside
+      its size, as GNU ar writes it; those members are then named `/N`), other names as
+      `name/`; a member whose size is odd is
+      followed by one newline outside its size;
+    - "bsd" (BSD and macOS ar with ranlib): a `__.SYMDEF SORTED` index first (`#1/20`;
+      ranlib entries of string index and member offset, then the strings, NUL-padded to a
+      multiple of 8), every name in `#1/N` form (the name NUL-padded to N = 4 more than a
+      multiple of 8, at least one NUL, at the start of the member data and counted in its
+      size), member data padded with newlines to a multiple of 8 inside the size, so that every
+      member's size is 4 more than a multiple of 8 and every header starts 8-aligned: as Apple
+      ar and ranlib (Xcode 26) write it (review finding 5; compared in the record).
+    The index names one symbol per member (`sym_` and the member name's stem)."""
+    index_when = when if index_when is None else index_when
+    parts, longnames = [], b""  # (owner member or None, name field, stored bytes, date)
+    for name, data in members.items():
+        raw = name.encode()
+        if style == "bsd":
+            raw = raw.ljust((len(raw) + 1 + 7) // 8 * 8 + 4, b"\0")
+            body = raw + data + b"\n" * (-len(data) % 8)
+            parts.append((name, b"#1/%d" % len(raw), body, when))
+        elif len(raw) > 15:
+            parts.append((name, b"/%d" % len(longnames), data, when))
+            longnames += raw + b"/\n"
+        else:
+            parts.append((name, raw + b"/", data, when))
+    if longnames:
+        # GNU ar pads the name table to an even size with a newline inside its size (found by
+        # test_real_tool_conformance_archive against GNU ar 2.27 on cci-gpu-00).
+        parts.insert(0, (None, b"//", longnames + b"\n" * (len(longnames) % 2), None))
+    symbols = [("sym_" + name.split(".")[0], name) for name in members]
+
+    def index(offsets):
+        if style == "bsd":
+            ranlibs, strings = b"", b""
+            for symbol, member in symbols:
+                ranlibs += struct.pack("<II", len(strings), offsets[member])
+                strings += symbol.encode() + b"\0"
+            strings += b"\0" * (-len(strings) % 8)
+            raw = b"__.SYMDEF SORTED\0\0\0\0"
+            return b"#1/%d" % len(raw), (raw + struct.pack("<I", len(ranlibs)) + ranlibs
+                                         + struct.pack("<I", len(strings)) + strings)
+        return b"/", (struct.pack(">I", len(symbols))
+                      + b"".join(struct.pack(">I", offsets[member]) for _, member in symbols)
+                      + b"".join(symbol.encode() + b"\0" for symbol, _ in symbols))
+
+    def stored(body):
+        return 60 + len(body) + len(body) % 2
+
+    pos, offsets = 8 + stored(index({member: 0 for _, member in symbols})[1]), {}
+    for owner, _, body, _ in parts:
+        if owner:
+            offsets[owner] = pos
+        pos += stored(body)
+    field, body = index(offsets)
+    out = [b"!<arch>\n", ar_header(field, index_when, len(body), uid), body, b"\n" * (len(body) % 2)]
+    for _, field, body, date in parts:
+        out += [ar_header(field, date, len(body), uid), body, b"\n" * (len(body) % 2)]
+    return b"".join(out)
+
+
+def ar_corruptions(data):
+    """Revision 15: damaged forms of a parsable archive (name -> bytes): cut inside its last
+    member, a member header shorter than 60 bytes, bad member header magic, a member size
+    past the end, a size that is not a number, bad archive magic."""
+    size = data[8 + 48:8 + 58]
+    return {
+        "truncated archive": data[:-5],
+        "truncated member header": data[:8 + 30],
+        "bad header magic": data[:8 + 58] + b"!!" + data[8 + 60:],
+        "size past end": data[:8 + 48] + b"%-10d" % len(data) + data[8 + 58:],
+        "size not a number": data[:8 + 48] + size.replace(b" ", b"x", 1) + data[8 + 58:],
+        "bad archive magic": b"!<arcx>\n" + data[8:],
+    }
+
+
+MACHO_DATE = "Sun Oct 11 08:54:45 2026"
+MACHO_SIGNATURE_SIZE = 256
+
+
+def macho_bundle(date=MACHO_DATE, extra="phaser", value=1):
+    """Revision 15: the bytes of a 64-bit little-endian Mach-O bundle written by the test (no
+    cc). Review finding 2: it carries the load commands of `cc -bundle` output on arm64 macOS
+    (Apple clang 17), in that order, with the same command sizes (848 bytes in all): __TEXT (the
+    header, the load commands, then __text with the code `mov w0, #value; ret`, __cstring with
+    the asctime build date and `extra`, and __unwind_info), __DATA, __LINKEDIT,
+    LC_DYLD_CHAINED_FIXUPS, LC_DYLD_EXPORTS_TRIE, LC_SYMTAB, LC_DYSYMTAB, LC_UUID,
+    LC_BUILD_VERSION, LC_SOURCE_VERSION, LC_LOAD_DYLIB (/usr/lib/libSystem.B.dylib),
+    LC_FUNCTION_STARTS, LC_DATA_IN_CODE and LC_CODE_SIGNATURE; the data of the fixups, the
+    exports trie, the function starts, the symbol and string tables lie in __LINKEDIT before
+    the signature range, which ends at the end of __LINKEDIT and of the file. As the linker
+    does, the UUID and the signature range are derived from the file's other bytes (here:
+    SHA-256 of the file with both zeroed; the signature range is a block of derived bytes
+    standing in for the linker's ad-hoc signature, not a real code signature), so both change
+    whenever the date, `extra` or `value` does. The contents of the fixups, trie, function
+    starts and tables are fixed bytes of the right sizes, not a working dynamic library."""
+    page, text_at, cstring_at, linkedit_at = 0x4000, 0x3f80, 0x3f88, 0x8000
+    code = struct.pack("<II", 0x52800000 | (value << 5), 0xd65f03c0)
+    cstring = date.encode() + b"\0" + extra.encode() + b"\0"
+    unwind_at = (cstring_at + len(cstring) + 3) // 4 * 4
+    unwind = bytes(range(88))
+    fixups, trie, starts = bytes(range(1, 81)), bytes(range(101, 157)), b"\x80\x7f" + b"\0" * 6
+    strings = b" \0_build_time\0_version\0_what\0".ljust(32, b"\0")
+    symbols = b"".join(struct.pack("<IBBHQ", strx, 0x0f, 1 + (n == 2), 0, 0x3f80 + 8 * n)
+                       for n, strx in enumerate((2, 14, 23)))
+    at = {"fixups": linkedit_at, "trie": linkedit_at + 80, "starts": linkedit_at + 136,
+          "symtab": linkedit_at + 144, "strtab": linkedit_at + 192, "signature": linkedit_at + 224}
+    end = at["signature"] + MACHO_SIGNATURE_SIZE
+
+    def segment(name, fileoff, filesize, sections):
+        head = struct.pack("<II16sQQQQiiII", 0x19, 72 + 80 * len(sections), name,
+                           0x100000000 + fileoff, filesize, fileoff, filesize, 7, 5,
+                           len(sections), 0)
+        return head + b"".join(struct.pack("<16s16sQQIIIIIIII", sect, name,
+                                           0x100000000 + offset, size, offset, 2, 0, 0, 0,
+                                           0, 0, 0) for sect, offset, size in sections)
+
+    def linkedit_data(cmd, offset, size):
+        return struct.pack("<IIII", cmd, 16, offset, size)
+    dylib = b"/usr/lib/libSystem.B.dylib\0".ljust(32, b"\0")
+    commands = [segment(b"__TEXT", 0, page, [(b"__text", text_at, len(code)),
+                                             (b"__cstring", cstring_at, len(cstring)),
+                                             (b"__unwind_info", unwind_at, len(unwind))]),
+                segment(b"__DATA", page, page, [(b"__data", page, 16)]),
+                segment(b"__LINKEDIT", linkedit_at, end - linkedit_at, []),
+                linkedit_data(0x80000034, at["fixups"], len(fixups)),  # LC_DYLD_CHAINED_FIXUPS
+                linkedit_data(0x80000033, at["trie"], len(trie)),  # LC_DYLD_EXPORTS_TRIE
+                struct.pack("<IIIIII", 0x2, 24, at["symtab"], 3, at["strtab"], len(strings)),
+                struct.pack("<II18I", 0xb, 80, 0, 0, 0, 3, 3, *([0] * 13)),  # LC_DYSYMTAB
+                struct.pack("<II16s", 0x1b, 24, b"\0" * 16),  # LC_UUID
+                struct.pack("<IIIIIIII", 0x32, 32, 1, 26 << 16, 26 << 16 | 1 << 8, 1, 3,
+                            1230 << 16 | 1 << 8),  # LC_BUILD_VERSION
+                struct.pack("<IIQ", 0x2a, 16, 0),  # LC_SOURCE_VERSION
+                struct.pack("<IIIIII", 0xc, 56, 24, 2, 1356 << 16, 1 << 16) + dylib,  # LC_LOAD_DYLIB
+                linkedit_data(0x26, at["starts"], len(starts)),  # LC_FUNCTION_STARTS
+                linkedit_data(0x29, at["symtab"], 0),  # LC_DATA_IN_CODE
+                linkedit_data(0x1d, at["signature"], MACHO_SIGNATURE_SIZE)]  # LC_CODE_SIGNATURE
+    loads = b"".join(commands)
+    data = bytearray(end)
+    data[0:32] = struct.pack("<IiiIIIII", 0xfeedfacf, 0x0100000c, 0, 8, len(commands),
+                             len(loads), 0x85, 0)
+    data[32:32 + len(loads)] = loads
+    data[text_at:text_at + len(code)] = code
+    data[cstring_at:cstring_at + len(cstring)] = cstring
+    data[unwind_at:unwind_at + len(unwind)] = unwind
+    data[page:page + 16] = struct.pack("<QQ", 0x100000000 + cstring_at,
+                                       0x100000000 + cstring_at + len(date) + 1)
+    for key, blob in (("fixups", fixups), ("trie", trie), ("starts", starts),
+                      ("symtab", symbols), ("strtab", strings)):
+        data[at[key]:at[key] + len(blob)] = blob
+    uuid_at = 32 + sum(len(command) for command in commands[:7]) + 8
+    derived = hashlib.sha256(bytes(data)).digest()
+    data[uuid_at:uuid_at + 16] = derived[:16]
+    block = b"GC-TEST-STANDIN-SIGNATURE\0"
+    while len(block) < MACHO_SIGNATURE_SIZE:
+        block += hashlib.sha256(derived + len(block).to_bytes(4, "little")).digest()
+    data[at["signature"]:end] = block[:MACHO_SIGNATURE_SIZE]
+    return bytes(data)
+
+
+# Revision 15 (review finding 2): the load command types of `cc -bundle` output (Apple clang 17,
+# arm64, macOS 26 SDK), in order, as macho_bundle() writes them.
+MACHO_CC_COMMANDS = [0x19, 0x19, 0x19, 0x80000034, 0x80000033, 0x2, 0xb, 0x1b, 0x32, 0x2a, 0xc,
+                     0x26, 0x29, 0x1d]
+MACHO_LINKEDIT_DATA = {0x80000034: "fixups", 0x80000033: "exports trie", 0x26: "function starts"}
+MACHO_OTHER_COMMANDS = {0x32: "build version command", 0xc: "load dylib command",
+                        0xb: "dysymtab command"}
+
+
+def macho_load_commands(data):
+    """Revision 15: the load command types of a 64-bit Mach-O file, in order."""
+    ncmds = struct.unpack_from("<I", data, 16)[0]
+    types, offset = [], 32
+    for _ in range(ncmds):
+        cmd, size = struct.unpack_from("<II", data, offset)
+        types.append(cmd)
+        offset += size
+    return types
+
+
+def macho_ranges(data):
+    """Revision 15: named byte ranges of a 64-bit Mach-O file, read from its load commands:
+    uuid, signature, the sections (text, cstring, unwind_info, data), linkedit (before the
+    signature), the __LINKEDIT data of the fixups, exports trie, function starts, symbol table
+    and string table, some other load commands, and the whole load command area (commands)."""
+    ncmds, sizeofcmds = struct.unpack_from("<II", data, 16)
+    ranges, offset = {"commands": (32, 32 + sizeofcmds)}, 32
+    for _ in range(ncmds):
+        cmd, size = struct.unpack_from("<II", data, offset)
+        if cmd == 0x19:
+            name = data[offset + 8:offset + 24].rstrip(b"\0")
+            fileoff, filesize = struct.unpack_from("<QQ", data, offset + 40)
+            for index in range(struct.unpack_from("<I", data, offset + 64)[0]):
+                at = offset + 72 + 80 * index
+                sect = data[at:at + 16].rstrip(b"\0").decode()
+                sect_size, sect_offset = struct.unpack_from("<QI", data, at + 40)
+                ranges[sect.strip("_")] = (sect_offset, sect_offset + sect_size)
+            if name == b"__LINKEDIT":
+                ranges["linkedit"] = (fileoff, None)
+        elif cmd == 0x1b:
+            ranges["uuid"] = (offset + 8, offset + 24)
+        elif cmd == 0x1d:
+            dataoff, datasize = struct.unpack_from("<II", data, offset + 8)
+            ranges["signature"] = (dataoff, dataoff + datasize)
+        elif cmd in MACHO_LINKEDIT_DATA:
+            dataoff, datasize = struct.unpack_from("<II", data, offset + 8)
+            if datasize:
+                ranges[MACHO_LINKEDIT_DATA[cmd]] = (dataoff, dataoff + datasize)
+        elif cmd == 0x2:
+            symoff, nsyms, stroff, strsize = struct.unpack_from("<IIII", data, offset + 8)
+            ranges["symbol table"] = (symoff, symoff + 16 * nsyms)
+            ranges["string table"] = (stroff, stroff + strsize)
+        if cmd in MACHO_OTHER_COMMANDS:
+            ranges[MACHO_OTHER_COMMANDS[cmd]] = (offset + 8, offset + size)
+        offset += size
+    ranges["linkedit"] = (ranges["linkedit"][0], ranges["signature"][0])
+    return ranges
 
 
 class AutoQueueChecks(unittest.TestCase):
@@ -724,12 +1012,23 @@ class AutoQueueChecks(unittest.TestCase):
         probe windows, so a test no longer depends on how fast helper subprocesses start.
         With ignore_term (checkpoint 5) the probe and its children ignore SIGTERM, so a
         stop (which signals the run's marked processes) cannot end it early.
+        Revision 15: the waiting is done by a python child of the probe's shell (the helper
+        runs every probe with /bin/sh -c), which ignores SIGTERM itself with ignore_term,
+        instead of touch, a sleep loop and echo.
         Returns (probe, started, release)."""
         started, release = self.work / f"{name}-started", self.work / f"{name}-release"
+        code = ("import os, signal, sys, time\n"
+                "if sys.argv[4] == '1':\n"
+                "    signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+                "open(sys.argv[1], 'w').close()\n"
+                "deadline = time.time() + 30\n"
+                "while not os.path.exists(sys.argv[2]) and time.time() < deadline:\n"
+                "    time.sleep(0.1)\n"
+                "print(sys.argv[3])\n")
         probe = (("trap '' TERM; " if ignore_term else "")
-                 + f"touch {shlex.quote(str(started))}; i=0; "
-                 f"while [ ! -e {shlex.quote(str(release))} ] && [ $i -lt 300 ]; do "
-                 f"sleep 0.1; i=$((i+1)); done; echo {shlex.quote(str(self.src))}")
+                 + " ".join(shlex.quote(str(word)) for word in (
+                     sys.executable, "-c", code, started, release, self.src,
+                     "1" if ignore_term else "0")))
         return probe, started, release
 
     def marker_cmd(self, name):
@@ -1401,7 +1700,7 @@ class AutoQueueChecks(unittest.TestCase):
         """Revision 2 B1: stop and reconcile run with another TZ, LC_ALL and PATH than
         the run still recognise the live run; stop signals it."""
         self.prepare(BETA)
-        proc = self.popen_run(BETA, ["sleep", "5"], env={"TZ": "UTC", "LC_ALL": "C"})
+        proc = self.popen_run(BETA, sleep_cmd(5), env={"TZ": "UTC", "LC_ALL": "C"})
         stem, record = self.wait_record(set())
         foreign = {"TZ": "America/Denver", "LC_ALL": "fr_FR.ISO8859-1", "PATH": "/nonexistent"}
         self.ok(self.tool("reconcile", env=foreign))
@@ -1419,7 +1718,7 @@ class AutoQueueChecks(unittest.TestCase):
         whose pid has a different start time is not signalled and reconcile marks
         it unknown."""
         self.prepare(BETA)
-        proc = self.popen_run(BETA, ["sleep", "5"])
+        proc = self.popen_run(BETA, sleep_cmd(5))
         stem, record = self.wait_record(set())
         self.end_worker()
         # The decoy must start in a later second than the tracked run (checkpoint 3:
@@ -1449,7 +1748,7 @@ class AutoQueueChecks(unittest.TestCase):
         is never relaunched; report shows unknown; it cannot satisfy readiness."""
         self.prepare(BETA)
         self.ok(self.set(BETA, "Testing"))
-        proc = self.popen_run(BETA, ["sleep", "5"])
+        proc = self.popen_run(BETA, sleep_cmd(5))
         stem, record = self.wait_record(set())
         self.ok(self.tool("reconcile"))  # control: alive run stays running
         self.assertEqual(self.runs()[stem]["status"], "running")
@@ -1846,50 +2145,87 @@ class AutoQueueChecks(unittest.TestCase):
 
     # ---- Revision 5 ---------------------------------------------------------------
 
-    def easy_run(self, shell_command):
-        """Run CMD in the libtbx.easy_run pattern; returns the shell's pid."""
+    def easy_run(self, commands, exec_last=False):
+        """Run CMD in the libtbx.easy_run pattern; returns the shell's pid. Revision 15: the
+        shell is SHELL_STANDIN (a python process started with setsid, as easy_run starts
+        /bin/sh) running `commands`, (argv list, platform) pairs, one after another; see
+        SHELL_STANDIN for `platform` and `exec_last`."""
         script, pidfile = self.work / "easy_run.py", self.work / f"shell-{self.counter}.pid"
         script.write_text(EASY_RUN_SCRIPT)
+        standin = self.work / "shell_standin.py"
+        standin.write_text(SHELL_STANDIN)
+        spec = {"commands": [{"argv": argv, "platform": platform} for argv, platform in commands],
+                "exec_last": exec_last}
         self.ok(self.run_cmd(BETA, "unit", cmd=[sys.executable, str(script), str(pidfile),
-                                                 shell_command]))
+                                                 json.dumps(spec), str(standin)]))
         shell = int(pidfile.read_text())
         self.stray.append(shell)
         return shell
 
+    def easy_run_shape(self, shell, child, exec_last=False):
+        """Revision 15 (positive control of the stand-in): the shell leads its own session and
+        group, which is not the run's; `child` is its child in that session, or (exec_last)
+        the shell itself after it replaced itself with its last command. On macOS neither
+        shows a run-id marker to `ps -E`, as a platform /bin/sh and /bin/sleep do not."""
+        self.assertEqual((os.getsid(shell), os.getpgid(shell)), (shell, shell))
+        self.assertNotIn(shell, {record.get("pgid") for record in self.runs().values()})
+        if exec_last:
+            self.assertEqual(child, shell, "the shell did not replace itself with its last command")
+        else:
+            self.assertNotEqual(child, shell)
+            self.assertEqual(os.getsid(child), shell)
+            self.assertEqual(subprocess.run(["/bin/ps", "-o", "ppid=", "-p", str(child)],
+                                            text=True, capture_output=True).stdout.strip(),
+                             str(shell))
+        if sys.platform == "darwin":
+            for pid in {shell, child}:
+                shown = subprocess.run(["/bin/ps", "-E", "-ww", "-o", "command=", "-p", str(pid)],
+                                       text=True, capture_output=True).stdout
+                self.assertTrue(shown.strip(), "ps -E listed nothing for %d" % pid)
+                self.assertNotIn("GC_AUTO_RUN_ID=", shown, "a run-id marker is visible on %d" % pid)
+
+    def held_child(self, seconds, name):
+        """Revision 15: an argv list for a python that writes its pid to a file (returned)
+        and stays `seconds` seconds (instead of /bin/sleep)."""
+        pidfile = self.work / f"{name}-{self.counter}.pid"
+        code = ("import os, sys, time\n"
+                "open(sys.argv[1] + '.tmp', 'w').write(str(os.getpid()))\n"
+                "os.replace(sys.argv[1] + '.tmp', sys.argv[1])\n"
+                "time.sleep(%s)\n" % seconds)
+        return [sys.executable, "-c", code, str(pidfile)], pidfile
+
     def test_easy_run_pattern_shell_survivor(self):
-        """Revision 5 S2: a shell started with setsid by CMD (python, then /bin/sleep 41.<pid>)
+        """Revision 5 S2: a shell started with setsid by CMD (python, then a 41 s child)
         keeps the run from passing; report says running; stop signals the shell and
-        the sleep; no sleep 41 remains after Stopped."""
+        the child; neither remains after Stopped. Revision 15: the shell is a python stand-in
+        and the 41 s child (formerly /bin/sleep 41) a python that names its own pid; neither
+        shows a run-id marker (as the platform /bin/sh and /bin/sleep did not), so on macOS
+        too they are found through the wrapper's tracked descendants; the shell's session and
+        group and the child's parentage are checked (easy_run_shape). The shell waits for
+        its last command, as macOS /bin/sh does; see the exec_last variant below."""
+        self.check_easy_run_survivor(exec_last=False)
+
+    def test_easy_run_pattern_exec_last_shell_survivor(self):
+        """Revision 15 (review finding 3): the test above with a shell that replaces itself
+        with its last command (the 41 s child), as bash 5.1 and later and dash do: that one
+        process, in the shell's new session, must keep the run from passing and be ended by
+        stop."""
+        self.check_easy_run_survivor(exec_last=True)
+
+    def check_easy_run_survivor(self, exec_last):
         self.prepare(BETA)
         self.ok(self.set(BETA, "Testing"))
-        python = shlex.quote(sys.executable)
-        # Revision 12: the sleep's own command line carries a marker (this test
-        # process's pid as the fraction), so it is found without assuming it is the
-        # shell's child (a Linux shell may exec into its last command).
-        sleep_argv = ["/bin/sleep", "41.%d" % os.getpid()]
-        shell = self.easy_run(f"{python} -c 'import time; time.sleep(4)'; " + " ".join(sleep_argv))
+        child_argv, child_pidfile = self.held_child(41, "child41")
+        shell = self.easy_run([(sleep_cmd(4), False), (child_argv, True)], exec_last)
         self.assertTrue(alive(shell))
         cell = self.result_cell(self.report(), BETA)
         self.assertIn("running", cell.lower())
         self.assertNotIn("passed", cell.lower())
         self.refused(self.ready(BETA, "--packet", self.packet(self.tree())), 8)
-        sleeper = []
-
-        def sleep_started():
-            table = subprocess.run(["/bin/ps", "-A", "-o", "pid=", "-o", "command="], text=True,
-                                   capture_output=True).stdout
-            for line in table.splitlines():
-                # Revision 12: Linux ps can print a line with an empty command;
-                # such a line is not the sleep.
-                fields = line.split(None, 1)
-                if len(fields) < 2 or not fields[0].isdigit():
-                    continue
-                if fields[1].split() == sleep_argv:
-                    sleeper.append(int(fields[0]))
-                    return True
-            return False
-        self.wait_for(sleep_started, "the shell's " + " ".join(sleep_argv))
-        self.stray.extend(sleeper)
+        self.wait_for(child_pidfile.exists, "the shell's 41 s child")
+        child = int(child_pidfile.read_text())
+        self.stray.append(child)
+        self.easy_run_shape(shell, child, exec_last)
         cell = self.result_cell(self.report(), BETA)
         self.assertIn("running", cell.lower())
         self.assertNotIn("passed", cell.lower())
@@ -1898,14 +2234,14 @@ class AutoQueueChecks(unittest.TestCase):
         self.assertIn(first.returncode, (0, 10), first.stdout + first.stderr)
         self.stop_until_stopped()
         self.assertFalse(alive(shell), "the shell survived Stopped")
-        self.assertFalse(alive(sleeper[0]), "sleep 41 survived Stopped")
+        self.assertFalse(alive(child), "the 41 s child survived Stopped")
 
     def test_easy_run_pattern_quick_shell_passes(self):
         """Revision 5 S2 control: the same pattern with a shell that ends quickly
         completes and passes."""
         self.prepare(BETA)
         self.ok(self.set(BETA, "Testing"))
-        shell = self.easy_run(f"{shlex.quote(sys.executable)} -c 'pass'; /bin/sleep 0")
+        shell = self.easy_run([(QUICK_CMD, False), (QUICK_CMD, True)])
         self.wait_for(lambda: not alive(shell), "the quick shell to exit")
         (record,) = self.runs().values()
         self.assertEqual(record["status"], "completed")
@@ -1958,11 +2294,18 @@ class AutoQueueChecks(unittest.TestCase):
         """An exited, unrelated session leader P and its orphan (sid = pgid = P,
         reparented away from P) that notes SIGTERM. Returns (P, orphan pid, ready, orphan
         start). Revision 14: the new parent may be any process but P (launchd or init is
-        process 1; a container or a child subreaper can be another process)."""
+        process 1; a container or a child subreaper can be another process).
+        Revision 15: P is a python process (formerly `/bin/sh -c 'CMD & echo $! > FILE; exit
+        0'`) that starts the child in P's group and session, with stdin from /dev/null as
+        sh gives a background job, writes the child's pid and exits 0 without waiting."""
         cmd, ready, _ = self.wait_cmd("note")
         pidfile = self.work / f"orphan-{self.counter}.pid"
-        shell = subprocess.Popen(["/bin/sh", "-c", " ".join(shlex.quote(c) for c in cmd)
-                                  + f" & echo $! > {shlex.quote(str(pidfile))}; exit 0"],
+        code = ("import json, os, subprocess, sys\n"
+                "child = subprocess.Popen(json.loads(sys.argv[1]), stdin=subprocess.DEVNULL)\n"
+                "with open(sys.argv[2], 'w') as handle:\n"
+                "    handle.write('%d\\n' % child.pid)\n"
+                "os._exit(0)\n")
+        shell = subprocess.Popen([sys.executable, "-c", code, json.dumps(cmd), str(pidfile)],
                                  start_new_session=True)
         self.assertEqual(shell.wait(TIMEOUT), 0)
         leader = shell.pid
@@ -2038,7 +2381,11 @@ class AutoQueueChecks(unittest.TestCase):
 
     def test_shell_parent_of_marked_process_not_signalled(self):
         """Revision 6 M3: a bash started by the user during a run, whose child carries
-        the marker text only in its arguments, is never signalled by stop."""
+        the marker text only in its arguments, is never signalled by stop. Revision 15: the
+        user's "bash" is a python parent (the test's child) that notes SIGTERM in a file, as
+        the bash trap did, runs the marked child and waits for it; its own command line holds
+        the marker text only inside a JSON word (`...=<run id>"]`), as the bash command line
+        held it only as `...=<run id>;`."""
         self.prepare(BETA)
         cmd, ready, release = self.wait_cmd("default")
         proc = self.popen_run(BETA, cmd)
@@ -2046,10 +2393,12 @@ class AutoQueueChecks(unittest.TestCase):
         self.wait_for(ready.exists, "the run")
         marked, marked_ready, marked_release = self.wait_cmd("default")
         trapped, done = self.work / "bash-got-term", self.work / "bash-done"
-        script = (f"trap 'touch {shlex.quote(str(trapped))}' TERM; "
-                  + " ".join(shlex.quote(c) for c in marked) + f" GC_AUTO_RUN_ID={stem}; "
-                  + f"touch {shlex.quote(str(done))}")
-        bash = subprocess.Popen(["/bin/bash", "-c", script])  # parent: the test
+        code = ("import json, signal, subprocess, sys\n"
+                "signal.signal(signal.SIGTERM, lambda *_: open(sys.argv[1], 'w').close())\n"
+                "subprocess.call(json.loads(sys.argv[3]))\n"
+                "open(sys.argv[2], 'w').close()\n")
+        bash = subprocess.Popen([sys.executable, "-c", code, str(trapped), str(done),
+                                 json.dumps(marked + [f"GC_AUTO_RUN_ID={stem}"])])  # parent: the test
         self.procs.append(bash)
         self.wait_for(marked_ready.exists, "the marked python")
         self.end_worker()
@@ -2315,14 +2664,29 @@ class AutoQueueChecks(unittest.TestCase):
         self.attempt(BETA, 0)  # no live earlier run any more
 
     def test_cleanup_ends_easy_run_shell(self):
-        """Revision 7: cleanup ends the setsid shell of the easy_run pattern."""
+        """Revision 7: cleanup ends the setsid shell of the easy_run pattern. Revision 15:
+        python stand-ins for the shell and its 41 s child, without visible run-id markers (see
+        test_easy_run_pattern_shell_survivor); the child is ended too."""
+        self.check_cleanup_easy_run(exec_last=False)
+
+    def test_cleanup_ends_easy_run_exec_last_shell(self):
+        """Revision 15 (review finding 3): the test above with a shell that replaces itself
+        with its last command, as bash 5.1 and later and dash do."""
+        self.check_cleanup_easy_run(exec_last=True)
+
+    def check_cleanup_easy_run(self, exec_last):
         self.prepare(BETA)
-        shell = self.easy_run(f"{shlex.quote(sys.executable)} -c 'import time; time.sleep(4)';"
-                              " /bin/sleep 41")
+        child_argv, child_pidfile = self.held_child(41, "cleanup41")
+        shell = self.easy_run([(sleep_cmd(4), False), (child_argv, True)], exec_last)
         self.assertIn("running", self.result_cell(self.report(), BETA).lower())
+        self.wait_for(child_pidfile.exists, "the shell's 41 s child")  # revision 15
+        child = int(child_pidfile.read_text())
+        self.stray.append(child)
+        self.easy_run_shape(shell, child, exec_last)
         result = self.cleanup(0)
         self.assertTrue(result.stdout.strip().startswith("Cleaned"), result.stdout)
         self.assertFalse(alive(shell))
+        self.assertFalse(alive(child))  # revision 15
         self.assertNotIn("running", self.result_cell(self.report(), BETA).lower())
         self.attempt(BETA, 0)
 
@@ -2765,8 +3129,10 @@ class AutoQueueChecks(unittest.TestCase):
         self.prepare(BETA)
         marker, cmd = self.marker_cmd("ran-after-probe-timeout")
         began = time.time()
+        # Revision 15: the shell's 30 s child is a python process instead of `sleep 30`.
         result = self.run_cmd(BETA, "unit", cmd=cmd,
-                              probe="sleep 30; echo " + shlex.quote(str(self.src)))
+                              probe=" ".join(shlex.quote(word) for word in sleep_cmd(30))
+                              + "; echo " + shlex.quote(str(self.src)))
         self.assertEqual(result.returncode, 124, result.stdout + result.stderr)
         self.assertLess(time.time() - began, 25)
         self.assertFalse(marker.exists())
@@ -3969,10 +4335,10 @@ class AutoQueueChecks(unittest.TestCase):
         still sends SIGTERM to the running run's group (confirmed by `ps -p`), then
         refuses 17 with Stopping, never Stopped. The run ends 128+15."""
         self.prepare(BETA)
-        self.ok(self.run_cmd(BETA, "unit", cmd=["true"]))
+        self.ok(self.run_cmd(BETA, "unit", cmd=QUICK_CMD))
         (first,) = self.runs()
         time.sleep(1.02 - time.time() % 1)  # the next record's name sorts after the first
-        proc = self.popen_run(BETA, ["sleep", "30"])
+        proc = self.popen_run(BETA, sleep_cmd(30))
         stem, record = self.wait_record({first})
         self.assertLess(first, stem)
         self.end_worker()
@@ -4414,29 +4780,21 @@ class AutoQueueChecks(unittest.TestCase):
 
     # ---- Revision 13 (item 13): timestamp-only installation differences ---------
 
-    def archive_tools(self):
-        """The real ar and ranlib on PATH, or None when either is missing."""
-        tools = [shutil.which(name, path=self.env.get("PATH")) for name in ("ar", "ranlib")]
-        return tools if all(tools) else None
-
-    def make_archive(self, path, members, when, flags="rc"):
-        """An archive of `members` (name -> bytes) made with the real ar and ranlib, every
-        member file dated `when` (epoch seconds). Returns its bytes; raises CalledProcessError
-        when ar or ranlib fails."""
-        ar, ranlib = self.archive_tools()
-        build = self.work / f"ar-{self.counter}-{path.name}"
-        self.counter += 1
-        build.mkdir()
-        for name, data in members.items():
-            (build / name).write_bytes(data)
-            os.utime(build / name, (when, when))
+    def write_fixture(self, path, data, writer=None):
+        """Revision 15: write fixture bytes with `writer` (default: Path.write_bytes) and
+        return what is then on disk. A step that reports success but leaves no file, or other
+        bytes, is a test failure naming the file (revision 14 review finding 1: never
+        FileNotFoundError)."""
         if path.exists():
             path.unlink()
-        subprocess.run([ar, flags, str(path), *members], cwd=build, check=True,
-                       capture_output=True, env=self.env)
-        subprocess.run([ranlib, str(path)], cwd=build, check=True, capture_output=True,
-                       env=self.env)
-        return path.read_bytes()
+        (writer or (lambda target, payload: target.write_bytes(payload)))(path, data)
+        if not path.is_file():
+            self.fail("the archive fixture step reported success but wrote no archive at %s"
+                      % path)
+        written = path.read_bytes()
+        if written != data:
+            self.fail("the archive fixture step wrote other bytes than intended at %s" % path)
+        return written
 
     @staticmethod
     def archive_entries(data):
@@ -4494,68 +4852,39 @@ class AutoQueueChecks(unittest.TestCase):
         return all(x[0][:16] + x[0][28:] == y[0][:16] + y[0][28:] and x[2] == y[2]
                    for x, y in zip(a, b))
 
-    @staticmethod
-    def python_archive(members, when):
-        """Revision 14: a GNU/SysV-style `!<arch>` archive of `members` written here, every
-        member header dated `when`, uid and gid 0, mode 100644 (no index member)."""
-        out = [b"!<arch>\n"]
-        for name, data in members.items():
-            out.append(b"%-16s%-12d%-6d%-6d%-8s%-10d`\n" % ((name + "/").encode(), when, 0, 0,
-                                                            b"100644", len(data)))
-            out.append(data + (b"\n" if len(data) % 2 else b""))
-        return b"".join(out)
-
-    def timestamp_archives(self, path, members, changed, same_size):
-        """Revision 14: (how, original, redated, changed, same_size) archive bytes for the
-        timestamp test. With the real ar and ranlib: the members dated 1000000000, the same
-        members dated 1100000000, and `changed` and `same_size` (a member changed without
-        changing its size) dated 1100000000, all with the same ar flags: `rc`, or `rcU` for
-        every archive when plain `rc` writes no dates (GNU ar and llvm-ar in deterministic
-        mode). Every archive is checked byte by byte: it holds
-        exactly the intended members and contents, and the re-dated one differs from the
-        original in member header dates only. If the real tools are missing, fail, or produce
-        anything else (for example an archive that does not hold the changed member), the four
-        archives are written by the test itself
-        (python_archive) and the reason is printed; what the test proves is unchanged."""
-        tools = self.archive_tools()
-        why = None if tools else "ar or ranlib is not on PATH"
-        if tools:
-            try:
-                original = self.make_archive(path, members, 1000000000)
-                flags = "rc"
-                redated = self.make_archive(path, members, 1100000000)
-                if redated == original:
-                    # Deterministic by default (GNU ar, llvm-ar): `U` writes dates, and also the
-                    # real uid, gid and mode, so the original is rebuilt with the same flags.
-                    flags = "rcU"
-                    original = self.make_archive(path, members, 1000000000, flags)
-                    redated = self.make_archive(path, members, 1100000000, flags)
-                after = self.make_archive(path, changed, 1100000000, flags)
-                same = self.make_archive(path, same_size, 1100000000, flags)
-            except subprocess.CalledProcessError as error:
-                why = "%s exited %s: %s" % (error.cmd[0], error.returncode,
-                                            (error.stderr or b"").decode(errors="replace")[:200])
-            else:
-                if not self.archive_members_ok(original, members):
-                    why = "the original archive does not hold exactly the intended members"
-                elif not self.archive_members_ok(redated, members):
-                    why = "the re-dated archive does not hold exactly the intended members"
-                elif not self.archive_members_ok(after, changed):
-                    why = "the content-changed archive does not hold the changed member"
-                elif not self.archive_members_ok(same, same_size):
-                    why = "the same-size changed archive does not hold the changed member"
-                elif not self.dates_only_differ(original, redated):
-                    why = ("re-archiving with other dates (ar %s) changed more than the member "
-                           "dates, or nothing" % flags)
-                else:
-                    return "real ar %s and ranlib (%s, %s)" % (flags, *tools), original, \
-                        redated, after, same
-        print("\n[archive test] real ar/ranlib not used: %s; the test writes its own archives"
-              % why, file=sys.stderr)
-        return ("archives written by the test (%s)" % why, self.python_archive(members, 1000000000),
-                self.python_archive(members, 1100000000),
-                self.python_archive(changed, 1100000000),
-                self.python_archive(same_size, 1100000000))
+    def timestamp_archives(self, path, members, changed, same_size, style="gnu"):
+        """Revision 15: (how, original, redated, changed, same_size) archive bytes for the
+        timestamp test, written by the test (ar_archive, in the `style` layout; no ar or
+        ranlib): the members dated 1000000000 (index 1000000007), the same members dated
+        1100000000 (index 1100000007), and `changed` and `same_size` (a member changed
+        without changing its size) dated 1100000000. Each is written to `path` and read back
+        (write_fixture) and checked byte by byte: it holds exactly the intended members and
+        contents, its index member comes first, and the re-dated one differs from the
+        original in member header dates only. Any other result is a test failure that says
+        which archive is wrong."""
+        archives = []
+        for contents, when in ((members, AR_DATE), (members, AR_REDATE), (changed, AR_REDATE),
+                               (same_size, AR_REDATE)):
+            archives.append(self.write_fixture(path, ar_archive(contents, when, style,
+                                                                index_when=when + 7)))
+        original, redated, after, same = archives
+        for label, data, contents in (("original", original, members),
+                                      ("re-dated", redated, members),
+                                      ("content-changed", after, changed),
+                                      ("same-size changed", same, same_size)):
+            entries = self.archive_entries(data)
+            if not self.archive_members_ok(data, contents):
+                self.fail("the %s %s archive does not hold exactly the intended members"
+                          % (label, style))
+            index = "__.SYMDEF SORTED" if style == "bsd" else "/"
+            if entries[0][1] != index:
+                self.fail("the %s %s archive does not start with its index %r"
+                          % (label, style, index))
+        if not self.dates_only_differ(original, redated):
+            self.fail("the re-dated %s archive differs from the original in more than the "
+                      "member dates, or not at all" % style)
+        return ("archives written by the test (%s layout)" % style, original, redated, after,
+                same)
 
     def normalized_fingerprint_script(self, archive):
         """A fingerprint script printing the archive's exact digest and its normalized
@@ -4578,27 +4907,44 @@ print("NORMALIZED " + out.stdout.split()[0])
         out = subprocess.run([str(script)], capture_output=True, text=True, check=True).stdout
         return dict(line.split() for line in out.splitlines())
 
+    def normalize(self, path, kind="archive"):
+        """Revision 15: (digest, stderr) of payload/tools/fingerprint_normalize.py for one file."""
+        normalizer = TOOL.parent / "payload" / "tools" / "fingerprint_normalize.py"
+        out = subprocess.run([sys.executable, "-I", "-B", str(normalizer), "file", "--kind", kind,
+                              str(path)], capture_output=True, text=True, check=True)
+        return out.stdout.split()[0], out.stderr
+
     def test_install_check_classifies_timestamp_only_archive_change(self):
-        """Revision 13 (item 13): for an archive (made by ar and ranlib where they work, see
-        revision 14 below), an exact match is available
+        """Revision 13 (item 13): for an archive, an exact match is available
         and records the normalized value; the same members re-archived with other dates
         change the exact fingerprint, and install check then says "timestamp-only
         differences: attended validation needed" but keeps the installation unavailable
         (12; runs refused; the recorded value is not replaced); a member whose content
         changed is not classified; restoring the exact bytes makes it available again.
         Revision 14 (review): also not a member whose content changed but not its size.
-        Revision 14: the four archives are made first and checked byte by byte
-        (timestamp_archives); when the real ar and ranlib are missing or do not produce exactly
-        the intended archives, the test writes them itself and says so on stderr, instead of
-        skipping or failing on the tool."""
-        self.prepare(BETA)
-        archive = self.work / "libsynthetic.a"
-        members = {"one.txt": b"first member\n", "two.txt": b"second member\n"}
+        Revision 15: the archives are written by the test (timestamp_archives) in both real
+        layouts, GNU/SysV (with a `/` symbol table, a `//` long-name table and odd-size
+        padding) and BSD/macOS (with a dated `__.SYMDEF SORTED` index, `#1/N` names and
+        alignment padding), each on its own queue, on every platform; ar and ranlib are not
+        used."""
+        members = {"one.txt": b"first member\n", "two.txt": b"second member\n",
+                   "a_member_with_a_long_name.o": b"long-named member\n"}
         changed_members = dict(members, **{"two.txt": b"second member, changed\n"})
         same_size_members = dict(members, **{"two.txt": b"SECOND member\n"})
         self.assertEqual(len(same_size_members["two.txt"]), len(members["two.txt"]))
+        for style in ("gnu", "bsd"):
+            with self.subTest(layout=style):
+                if style != "gnu":
+                    self.use_new_queue("q-archive-" + style)
+                self.check_timestamp_only_archive(style, members, changed_members,
+                                                  same_size_members)
+
+    def check_timestamp_only_archive(self, style, members, changed_members, same_size_members):
+        """The body of the test above for one archive layout, on the current queue."""
+        self.prepare(BETA)
+        archive = self.work / f"libsynthetic-{style}.a"
         how, original, redated, changed, same_size = self.timestamp_archives(
-            archive, members, changed_members, same_size_members)
+            archive, members, changed_members, same_size_members, style)
         archive.write_bytes(original)
         script = self.normalized_fingerprint_script(archive)
         values = self.exact(script)
@@ -4633,6 +4979,88 @@ print("NORMALIZED " + out.stdout.split()[0])
                          "available")
         self.attempt(BETA, 0)
 
+    def test_normalizer_archive_fields_and_corruption(self):
+        """Revision 15: the normalizer on archives written by the test, in both layouts. Only
+        member header dates are ignored: the same members re-dated (the index too) give the
+        same value; a changed member name, owner, index entry or member content (also of the
+        same size), and a reordered member list, give another. Damaged archives (cut inside
+        the last member, a short member header, bad header magic, a member size past the end,
+        a size that is not a number, bad archive magic) are compared byte for byte, with
+        "not a parsable archive" on stderr, so a damaged archive re-dated is never
+        timestamp-only. Control: each undamaged pair has the same value."""
+        members = {"one.txt": b"first member\n", "two.txt": b"second member\n",
+                   "a_member_with_a_long_name.o": b"long-named member\n"}
+        path = self.work / "fields.a"
+        for style in ("gnu", "bsd"):
+            with self.subTest(layout=style):
+                base = ar_archive(members, AR_DATE, style, index_when=AR_DATE + 7)
+                redated = ar_archive(members, AR_REDATE, style, index_when=AR_REDATE + 9)
+                self.assertTrue(self.archive_members_ok(base, members))
+                self.assertTrue(self.dates_only_differ(base, redated))
+                self.write_fixture(path, base)
+                reference, note = self.normalize(path)
+                self.assertNotIn("not a parsable archive", note)
+                self.assertNotEqual(reference, sha256_file(path))
+                self.write_fixture(path, redated)
+                self.assertEqual(self.normalize(path)[0], reference, "re-dated")
+                reordered = dict(reversed(list(members.items())))
+                variants = {
+                    "member name": base.replace(b"two.txt", b"twX.txt", 1),
+                    "owner": ar_archive(members, AR_DATE, style, index_when=AR_DATE + 7, uid=501),
+                    "member order": ar_archive(reordered, AR_DATE, style, index_when=AR_DATE + 7),
+                    "same-size content": ar_archive(dict(members, **{"two.txt": b"SECOND member\n"}),
+                                                    AR_DATE, style, index_when=AR_DATE + 7),
+                    "index entry": base.replace(b"sym_one", b"sym_ONE", 1)}
+                for label in ("member name", "index entry"):  # the same bytes but one
+                    self.assertEqual(len(variants[label]), len(base), label)
+                for label, data in variants.items():
+                    self.assertNotEqual(data, base, label)
+                    self.write_fixture(path, data)
+                    digest, note = self.normalize(path)
+                    self.assertNotIn("not a parsable archive", note, label)
+                    self.assertNotEqual(digest, reference, label)
+                damaged_redated = ar_corruptions(redated)
+                for label, data in ar_corruptions(base).items():
+                    self.write_fixture(path, data)
+                    digest, note = self.normalize(path)
+                    self.assertIn("not a parsable archive; compared byte for byte", note, label)
+                    self.assertEqual(digest, hashlib.sha256(data).hexdigest(), label)
+                    self.write_fixture(path, damaged_redated[label])
+                    self.assertNotEqual(self.normalize(path)[0], digest,
+                                        "a damaged archive re-dated counted as timestamp-only: "
+                                        + label)
+
+    def test_archive_step_without_output_never_ends_in_file_not_found(self):
+        """Revision 15 (revision 14 review, finding 1, the outside reader): a tool or step
+        that reports success without writing the archive must lead to the stated fallback or
+        a clear failure, never FileNotFoundError. (a) The reader's case: ar and ranlib
+        stand-ins first on PATH that exit 0 and write nothing. With 1664dd1f's test code
+        this ended in FileNotFoundError; now the archives are the intended ones (no outside
+        tool is used). (b) The fixture's own write step replaced by one that returns without
+        writing: a test failure that names the missing archive."""
+        fakebin = self.work / "fake-ar-bin"
+        fakebin.mkdir()
+        for name in ("ar", "ranlib"):
+            (fakebin / name).write_text("#!%s\nimport sys\nsys.exit(0)\n" % sys.executable)
+            (fakebin / name).chmod(0o755)
+        self.env["PATH"] = str(fakebin) + os.pathsep + self.env.get("PATH", os.defpath)
+        members = {"one.txt": b"first member\n", "two.txt": b"second member\n"}
+        changed = dict(members, **{"two.txt": b"second member, changed\n"})
+        same_size = dict(members, **{"two.txt": b"SECOND member\n"})
+        try:
+            how, original, redated, after, same = self.timestamp_archives(
+                self.work / "lib-no-output.a", members, changed, same_size)
+        except FileNotFoundError as error:
+            self.fail("an archive step that wrote nothing ended in FileNotFoundError: %s" % error)
+        self.assertTrue(self.archive_members_ok(original, members), how)
+        self.assertTrue(self.archive_members_ok(after, changed), how)
+        self.assertTrue(self.archive_members_ok(same, same_size), how)
+        self.assertTrue(self.dates_only_differ(original, redated), how)
+        target = self.work / "never-written.a"
+        with self.assertRaises(self.failureException) as caught:
+            self.write_fixture(target, original, writer=lambda path, data: None)
+        self.assertIn("wrote no archive at %s" % target, str(caught.exception))
+
     def test_install_check_expect_normalized_and_known_exit_codes(self):
         """Revision 13 (items 13, 14): on a queue with no stored normalized value,
         --expect-normalized gives the value to compare; the classification still leaves the
@@ -4663,32 +5091,199 @@ print("NORMALIZED " + out.stdout.split()[0])
         """Revision 13 (item 13): a bundle built twice from source differing only in an
         embedded asctime build date has a different exact digest and the same build-time
         digest (date, LC_UUID and code signature masked); a different other string changes
-        it. A non-archive given as an archive is compared byte for byte."""
-        cc = shutil.which("cc", path=self.env.get("PATH"))
-        if sys.platform != "darwin" or not cc:
-            self.skipTest(MACOS_ONLY + "needs cc producing Mach-O")
-        normalizer = TOOL.parent / "payload" / "tools" / "fingerprint_normalize.py"
-
-        def bundle(name, date, extra="phaser"):
-            source = self.work / f"{name}.c"
-            source.write_text(f'const char *build_time = "{date}";\nconst char *what = "{extra}";\n'
-                              'int version(void) { return 1; }\n')
-            out = self.work / f"{name}.so"
-            subprocess.run([cc, "-bundle", "-o", str(out), str(source)], check=True,
-                           capture_output=True, env=self.env)
-            return out
-
-        def digest(path, kind="build-time"):
-            out = subprocess.run([sys.executable, "-I", "-B", str(normalizer), "file", "--kind",
-                                  kind, str(path)], capture_output=True, text=True, check=True)
-            return out.stdout.split()[0]
-        a = bundle("a", "Sun Oct 11 08:54:45 2026")
-        b = bundle("b", "Tue Oct 13 01:02:03 2026")
-        c = bundle("c", "Sun Oct 11 08:54:45 2026", extra="phasex")
+        it. A non-archive given as an archive is compared byte for byte.
+        Revision 15: the bundles are written by the test (macho_bundle; formerly built with
+        cc on macOS only), so this runs on every platform. Controls: the UUID and the
+        signature range really differ between the two dates (so the masking is needed); a
+        changed code byte, or one changed byte in the load commands (also LC_DYSYMTAB,
+        LC_BUILD_VERSION and LC_LOAD_DYLIB, review finding 2), __cstring, __unwind_info, __DATA,
+        or __LINKEDIT before the signature (also the fixups, exports trie, function starts,
+        symbol and string tables), changes the digest; a changed byte inside the UUID or the
+        signature range does not. The fixture's load commands are those of cc output, in
+        order (MACHO_CC_COMMANDS)."""
+        a = self.work / "a.so"
+        a.write_bytes(macho_bundle())
+        b = self.work / "b.so"
+        b.write_bytes(macho_bundle(date="Tue Oct 13 01:02:03 2026"))
+        c = self.work / "c.so"
+        c.write_bytes(macho_bundle(extra="phasex"))
+        seven = self.work / "seven.so"
+        seven.write_bytes(macho_bundle(value=7))
+        ranges = macho_ranges(a.read_bytes())
+        for name in ("uuid", "signature"):
+            begin, end = ranges[name]
+            self.assertNotEqual(a.read_bytes()[begin:end], b.read_bytes()[begin:end], name)
         self.assertNotEqual(sha256_file(a), sha256_file(b))
-        self.assertEqual(digest(a), digest(b))
-        self.assertNotEqual(digest(a), digest(c))
-        self.assertEqual(digest(a, "archive"), sha256_file(a))
+        digest = self.normalize(a, "build-time")[0]
+        self.assertEqual(self.normalize(b, "build-time")[0], digest)
+        self.assertNotEqual(self.normalize(c, "build-time")[0], digest)
+        self.assertNotEqual(self.normalize(seven, "build-time")[0], digest, "a code change")
+        self.assertEqual(self.normalize(a, "archive")[0], sha256_file(a))
+        original = a.read_bytes()
+        changed = self.work / "changed.so"
+        date_at = original.index(MACHO_DATE.encode())
+        self.assertEqual(macho_load_commands(original), MACHO_CC_COMMANDS)
+        for name, masked in (("text", False), ("cstring", False), ("unwind_info", False),
+                             ("data", False), ("linkedit", False), ("fixups", False),
+                             ("exports trie", False), ("function starts", False),
+                             ("symbol table", False), ("string table", False),
+                             ("dysymtab command", False), ("build version command", False),
+                             ("load dylib command", False), ("commands", False),
+                             ("uuid", True), ("signature", True)):
+            begin, end = ranges[name]
+            at = date_at + len(MACHO_DATE) + 2 if name == "cstring" else (begin + end) // 2
+            with self.subTest(byte=name):
+                data = bytearray(original)
+                data[at] ^= 0x01
+                changed.write_bytes(bytes(data))
+                if masked:
+                    self.assertEqual(self.normalize(changed, "build-time")[0], digest)
+                else:
+                    self.assertNotEqual(self.normalize(changed, "build-time")[0], digest)
+
+    # ---- Revision 15 (review finding 4): real-tool conformance, where the tools exist ----------
+
+    def real_tool(self, *names):
+        """The paths of `names` on the test's PATH, or None when one is missing."""
+        tools = [shutil.which(name, path=self.env.get("PATH")) for name in names]
+        return tools if all(tools) else None
+
+    @staticmethod
+    def ar_family(ar):
+        """Revision 15 (second reading, finding 1): "apple" for Apple (cctools) ar, whose
+        `--version` prints its usage, "gnu" for GNU binutils ar, None for any other ar."""
+        try:
+            out = subprocess.run([ar, "--version"], capture_output=True, text=True, timeout=30)
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        text = out.stdout + out.stderr
+        if "GNU ar" in text or "GNU Binutils" in text:
+            return "gnu"
+        if text.lstrip().startswith("usage:") and "ar -d" in text:
+            return "apple"
+        return None
+
+    def test_real_tool_conformance_archive(self):
+        """Revision 15 (review finding 4): where `ar` and `ranlib` are on PATH, an archive they
+        write must have what the normalizer and the fixtures rely on: it parses as `!<arch>`
+        (no "not a parsable archive"); its members hold exactly the intended contents; with
+        the same members the fixture of the matching layout (BSD `#1/N` names: ar_archive
+        "bsd"; otherwise "gnu") has the same member name fields, sizes and contents (the
+        index member aside: its contents depend on the symbols), checked only when `ar`
+        identifies itself as Apple (cctools) ar or GNU binutils ar, the families the fixtures
+        follow (revision 15, second reading, finding 1: another valid `ar`, for example llvm-ar,
+        pads names differently; for it the layout difference is only noted on stderr); for every
+        `ar`, re-dating every member header
+        of the real archive keeps the normalized value and changes the exact digest, and one
+        changed content byte changes the normalized value. These are the only uses of real
+        tools in the kit's tests; without the tools the test is skipped with that reason, and
+        the fixture tests above still run. A tool that fails or writes no archive is reported
+        as a skip with its reason, never as FileNotFoundError."""
+        tools = self.real_tool("ar", "ranlib")
+        if not tools:
+            self.skipTest("real-tool conformance check skipped: ar and ranlib are not both on "
+                          "PATH (the archive fixture tests do not need them)")
+        ar, ranlib = tools
+        members = {"one.txt": b"first member\n", "two.txt": b"second member\n",
+                   "a_member_with_a_long_name.o": b"long-named member\n"}
+        build = self.work / "real-ar"
+        build.mkdir()
+        for name, data in members.items():
+            (build / name).write_bytes(data)
+            os.utime(build / name, (AR_DATE, AR_DATE))
+        archive = build / "libreal.a"
+        for argv in ([ar, "rc", str(archive), *members], [ranlib, str(archive)]):
+            done = subprocess.run(argv, cwd=build, capture_output=True, env=self.env)
+            if done.returncode != 0 or not archive.is_file():
+                self.skipTest("real-tool conformance check skipped: %s exited %d%s" % (
+                    argv[0], done.returncode, "" if archive.is_file() else " and wrote no archive"))
+        real = archive.read_bytes()
+        print("\n[conformance] real archive from %s and %s (%d bytes)" % (ar, ranlib, len(real)),
+              file=sys.stderr)
+        entries = self.archive_entries(real)
+        self.assertIsNotNone(entries, "the real archive does not parse as !<arch>")
+        self.assertTrue(self.archive_members_ok(real, members), "real archive members")
+        digest, note = self.normalize(archive)
+        self.assertNotIn("not a parsable archive", note)
+        style = "bsd" if any(e[0][:3] == b"#1/" for e in entries) else "gnu"
+        fixture = self.archive_entries(ar_archive(members, AR_DATE, style))
+
+        def own(items):
+            return [(e[0][:16], e[0][48:58], e[2]) for e in items
+                    if not (e[1].startswith("__.SYMDEF") or e[1] in ("/", "/SYM64"))]
+        family = self.ar_family(ar)
+        if family is None:
+            print("[conformance] NOTE: %s is neither Apple (cctools) nor GNU binutils ar; its "
+                  "layout is not compared with the %s fixture (%s)" % (
+                      ar, style, "same member layout" if own(fixture) == own(entries)
+                      else "member layout differs"), file=sys.stderr)
+        else:
+            self.assertEqual(own(fixture), own(entries),
+                             "the %s fixture's members differ from the real tools' archive (%s ar)"
+                             % (style, family))
+        redated, pos = bytearray(real), 8
+        while pos < len(redated):
+            size = int(redated[pos + 48:pos + 58])
+            redated[pos + 16:pos + 28] = b"%-12d" % (AR_REDATE + pos)
+            pos += 60 + size + size % 2
+        self.write_fixture(archive, bytes(redated))
+        self.assertNotEqual(sha256_file(archive), hashlib.sha256(real).hexdigest())
+        self.assertEqual(self.normalize(archive)[0], digest, "re-dated real archive")
+        changed = bytearray(real)
+        changed[real.index(b"second member")] ^= 0x01
+        self.write_fixture(archive, bytes(changed))
+        self.assertNotEqual(self.normalize(archive)[0], digest, "changed content byte")
+
+    def test_real_tool_conformance_macho_bundle(self):
+        """Revision 15 (review finding 4): on macOS where `cc` is on PATH, bundles it builds
+        (`cc -bundle`) must have what the normalizer and the fixture rely on: an LC_UUID and
+        one LC_CODE_SIGNATURE whose range ends at the end of __LINKEDIT and of the file, after
+        the load commands; two builds differing only in the asctime date differ exactly and
+        have the same build-time digest, with nothing reported unmasked; a code change
+        (`return 7`) changes it. A load command sequence other than the fixture's
+        (MACHO_CC_COMMANDS) is reported on stderr, so the fixture can be brought up to date; it
+        does not fail the test. Skipped, with the reason, off macOS, without cc, or when cc
+        cannot build a bundle."""
+        cc = self.real_tool("cc")
+        if sys.platform != "darwin" or not cc:
+            self.skipTest("real-tool conformance check skipped: needs macOS and cc on PATH "
+                          "(the Mach-O fixture tests do not need them)")
+
+        def bundle(name, date, value=1):
+            source = self.work / f"{name}.c"
+            source.write_text(f'const char *build_time = "{date}";\nconst char *what = "phaser";\n'
+                              f"int version(void) {{ return {value}; }}\n")
+            out = self.work / f"{name}.so"
+            done = subprocess.run([cc[0], "-bundle", "-o", str(out), str(source)],
+                                  capture_output=True, text=True, env=self.env)
+            if done.returncode != 0 or not out.is_file():
+                self.skipTest("real-tool conformance check skipped: cc -bundle exited %d: %s"
+                              % (done.returncode, done.stderr.strip()[:200]))
+            return out
+        a = bundle("ra", MACHO_DATE)
+        b = bundle("rb", "Tue Oct 13 01:02:03 2026")
+        seven = bundle("r7", MACHO_DATE, 7)
+        data = a.read_bytes()
+        types = macho_load_commands(data)
+        print("\n[conformance] cc bundle load commands: %s" % " ".join(hex(t) for t in types),
+              file=sys.stderr)
+        if types != MACHO_CC_COMMANDS:
+            print("[conformance] NOTE: differs from the fixture's MACHO_CC_COMMANDS %s"
+                  % " ".join(hex(t) for t in MACHO_CC_COMMANDS), file=sys.stderr)
+        self.assertEqual(types.count(0x1b), 1, "LC_UUID")
+        self.assertEqual(types.count(0x1d), 1, "LC_CODE_SIGNATURE")
+        ranges = macho_ranges(data)
+        sizeofcmds = struct.unpack_from("<I", data, 20)[0]
+        begin, end = ranges["signature"]
+        self.assertEqual(end, len(data), "the signature does not end at the end of the file")
+        self.assertGreaterEqual(begin, 32 + sizeofcmds)
+        self.assertGreaterEqual(begin, ranges["linkedit"][0])
+        self.assertNotEqual(sha256_file(a), sha256_file(b))
+        (first, note), (second, other) = self.normalize(a, "build-time"), self.normalize(b, "build-time")
+        self.assertNotIn("not masked", note + other)
+        self.assertNotIn("no build-time date found", note + other)
+        self.assertEqual(first, second, "two cc builds differing only in the date")
+        self.assertNotEqual(self.normalize(seven, "build-time")[0], first, "a code change")
 
     def test_normalizer_masks_code_signature_only_at_the_end(self):
         """Checkpoint 3 (REVIEW_CP2 finding 4): two bundles that differ in code, whose
@@ -4699,19 +5294,13 @@ print("NORMALIZED " + out.stdout.split()[0])
         test above). Checkpoint 5 (review CP3 finding 6): the same holds for a range
         from the end of the load commands to the end of the file, and for that range
         with __LINKEDIT also rewritten to cover it (it would overlap __TEXT); such a
-        file is compared byte for byte."""
-        cc = shutil.which("cc", path=self.env.get("PATH"))
-        if sys.platform != "darwin" or not cc:
-            self.skipTest(MACOS_ONLY + "needs cc producing Mach-O")
-        normalizer = TOOL.parent / "payload" / "tools" / "fingerprint_normalize.py"
+        file is compared byte for byte. Revision 15: the bundles are written by the test
+        (macho_bundle, code `mov w0, #1` and `mov w0, #7`; formerly built with cc on macOS
+        only), so this runs on every platform."""
 
         def bundle(name, value):
-            source = self.work / f"{name}.c"
-            source.write_text('const char *build_time = "Sun Oct 11 08:54:45 2026";\n'
-                              f"int version(void) {{ return {value}; }}\n")
             out = self.work / f"{name}.so"
-            subprocess.run([cc, "-bundle", "-o", str(out), str(source)], check=True,
-                           capture_output=True, env=self.env)
+            out.write_bytes(macho_bundle(value=value))
             return out
 
         def widen(path, how):
@@ -4728,19 +5317,13 @@ print("NORMALIZED " + out.stdout.split()[0])
                       and data[offset + 8:offset + 24].rstrip(b"\0") == b"__LINKEDIT"):
                     struct.pack_into("<QQ", data, offset + 40, begin, len(data) - begin)
                 offset += size
-            if not found:
-                self.skipTest("this linker wrote no LC_CODE_SIGNATURE")
+            self.assertTrue(found, "the bundle has no LC_CODE_SIGNATURE")
             path.write_bytes(bytes(data))
 
         def digest(path):
-            out = subprocess.run([sys.executable, "-I", "-B", str(normalizer), "file", "--kind",
-                                  "build-time", str(path)], capture_output=True, text=True,
-                                 check=True)
-            return out.stdout.split()[0], out.stderr
+            return self.normalize(path, "build-time")
         for how in ("whole", "after-load-commands", "linkedit"):
             with self.subTest(range=how):
-                # Names of equal length: the ad-hoc signature embeds the file name, and
-                # the reviewer's case needs files of equal size (the load commands equal).
                 one, seven = bundle(f"b1-{how}", 1), bundle(f"b7-{how}", 7)
                 self.assertNotEqual(digest(one)[0], digest(seven)[0])  # control
                 widen(one, how)

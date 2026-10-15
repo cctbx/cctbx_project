@@ -367,8 +367,10 @@ host is offline or online), and
 `test_probe_timeout_with_detached_child_holding_output` (a duplicate of
 its P10 variant there). The three tests that would contact a real
 outside host run only with `GC_TEST_NETWORK=1`. Off a real Mac the
-sandbox-exec self-test route and the two Mach-O normalizer tests are
-skipped too.
+sandbox-exec self-test route is skipped too (since revision 15 the two
+Mach-O normalizer tests use bundles the tests write and run everywhere;
+the real-tool conformance tests are skipped where `cc`, or `ar` and
+`ranlib`, are missing, and the Mach-O one off macOS).
 
 Revision 13 adds `auto_queue.py transfer JOB|--all --to DIR --note TEXT`,
 which hands jobs over to an attended task record: the job becomes

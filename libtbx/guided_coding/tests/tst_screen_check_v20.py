@@ -27,6 +27,13 @@ REMOTE_URL = "ssh://git@example.invalid/phenix.git"
 OUTGOING_KEYS = ("repository", "remote", "remote_url", "base", "commit", "tree", "refspec")
 
 
+def stand_in(lines, code=0):
+    """Revision 15: an executable stand-in run by this test's own interpreter (no /bin/sh):
+    prints `lines` and exits `code`."""
+    return ("#!%s\nimport sys\n" % sys.executable
+            + "".join("print(%r)\n" % line for line in lines) + "sys.exit(%d)\n" % code)
+
+
 def outgoing(omit=None, **fields):
     """One OUTGOING.txt block (SPEC_A 1.2); `omit` drops a key, fields override."""
     values = dict(repository="phenix", remote="origin", remote_url=REMOTE_URL,
@@ -206,7 +213,7 @@ class SkillRegistrationChecks(unittest.TestCase):
         self.bin = self.source.parent / "bin"
         self.bin.mkdir()
         self.claude = self.bin / "claude"
-        self.claude.write_text("#!/bin/sh\necho '2.1.284 (Claude Code)'\n")
+        self.claude.write_text(stand_in(["2.1.284 (Claude Code)"]))
         self.claude.chmod(0o755)
 
     def register(self, config=None, entrypoint=None):
@@ -270,10 +277,10 @@ class SkillRegistrationChecks(unittest.TestCase):
                     link.unlink()
 
     def test_old_version_and_symlinked_skills_parent_refused(self):
-        self.claude.write_text("#!/bin/sh\necho '2.1.268 (Claude Code)'\n")
+        self.claude.write_text(stand_in(["2.1.268 (Claude Code)"]))
         self.assertEqual(self.register().returncode, 2)
         self.assertFalse(self.config.exists())
-        self.claude.write_text("#!/bin/sh\necho '2.1.284 (Claude Code)'\n")
+        self.claude.write_text(stand_in(["2.1.284 (Claude Code)"]))
         self.config.mkdir()
         other = self.source.parent / "other_skills"
         other.mkdir()
@@ -347,7 +354,7 @@ class ClaudeVersionChecks(unittest.TestCase):
 
     @staticmethod
     def write_fake(path, version, exit_code):
-        path.write_text("#!/bin/sh\n" + f"printf '%s\\n' '{version}'\n" + f"exit {exit_code}\n")
+        path.write_text(stand_in([version], exit_code))
         path.chmod(0o755)
 
     def run_gate(self, path_version=None, path_exit=0, entrypoint=None, engine=None):
@@ -2142,7 +2149,8 @@ class AutoScreenChecks(unittest.TestCase):
         self.queue_tool("set", job, "Testing", queue=queue)
         self.assertTrue((repo / "sample.py").is_file())
         self.queue_tool("run", job, "unit", "--log", str(base / f"unit-{job}.log"),
-                        "--probe", f"echo {repo / 'sample.py'}", "--", "true", queue=queue)
+                        "--probe", f"echo {repo / 'sample.py'}", "--", sys.executable, "-c",
+                        "pass", queue=queue)
         self.queue_tool("worker", "end", job, "--id", f"worker-{job}", "--outcome", "finished",
                         queue=queue)
         # Revision 4: the packet is really frozen with this procedure's
@@ -2387,7 +2395,7 @@ class AutoScreenChecks(unittest.TestCase):
         queue = self.build_queue()
         before = self.report_lines(queue)
         script = self.queue_base / "fingerprint.sh"
-        script.write_text("#!/bin/sh\necho 'FINGERPRINT x'\n")
+        script.write_text(stand_in(["FINGERPRINT x"]))
         script.chmod(0o755)
         self.queue_tool("install", "check", "--script", str(script), "--expect", "y",
                         queue=queue, expect=12)
@@ -2850,7 +2858,7 @@ class AutoScreenChecks(unittest.TestCase):
                 queue, rows, ("The queue stopped.",)), ["a"])
         queue = self.build_queue(queue_id="night-install")
         script = self.queue_base / "fingerprint.sh"
-        script.write_text("#!/bin/sh\necho 'FINGERPRINT x'\n")
+        script.write_text(stand_in(["FINGERPRINT x"]))
         script.chmod(0o755)
         self.queue_tool("install", "check", "--script", str(script), "--expect", "y",
                         queue=queue, expect=12)

@@ -332,13 +332,13 @@ of the kit suite (anaconda, October 12, 2026: 269 tests, 261 passed, 8 skipped).
   `run` off macOS, with and without a network grant, by the real helper.
 - **Needs macOS (skipped elsewhere, each with its reason):** the complete list is in
   `docs/GUIDED_CODING_VERIFICATION.md`, "Running the package tests": eight tests skipped off
-  macOS (real or simulated) and three more off a real Mac. A twelfth
+  macOS (real or simulated) and one more off a real Mac. A tenth
   (`test_case_variant_of_packet_refused_on_case_insensitive_volume`) is skipped
   on a case-sensitive filesystem, not for lack of macOS; a default Linux run
-  reports all 12. The archive
-  classification test never skips: it uses the system `ar` and `ranlib` where they produce
-  exactly the intended archives (with `U` when `ar` is deterministic by default), otherwise
-  archives it writes itself, and says which on stderr.
+  reports all 10, plus the Mach-O real-tool conformance test (and the archive one where `ar` or
+  `ranlib` is missing). The archive classification test and the two Mach-O normalizer tests never
+  skip (revision 15): they write their archives and bundles themselves and use no `ar`,
+  `ranlib` or `cc`; only the two conformance tests use those tools, where present.
   Off macOS a failing `ps -E` marker query only drops the markers, as before; on macOS it makes
   the process table unreadable (exit 17).
 - **Opt-in everywhere:** the three tests that would contact a real outside host or name run only
