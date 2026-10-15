@@ -5,7 +5,7 @@ from __future__ import absolute_import, division, print_function
 from six.moves import cStringIO as StringIO
 from libtbx.utils import multi_out
 from iotbx.cli_parser import run_program
-from mmtbx.programs import reduce2, hydrogenate
+from mmtbx.programs import reduce2, pdbtools
 
 pdb_str = """\
 CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
@@ -39,7 +39,7 @@ def test_reduce2_peak_memory():
   assert fields[3] in ["MB", "GB"], line
 
 def test_other_program_no_peak_memory():
-  lines = run(hydrogenate.Program, "tst_reduce2_peak_memory_2",
+  lines = run(pdbtools.Program, "tst_reduce2_peak_memory_2",
     extra_args=["output.prefix=tst_reduce2_peak_memory_2_out"])
   assert lines[-1].startswith("wall clock time:"), lines[-3:]
   assert not [l for l in lines if l.startswith("peak memory:")]

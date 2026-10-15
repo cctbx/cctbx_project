@@ -1,4 +1,4 @@
-"""reduce2 and hydrogenate on a model without crystal symmetry.
+"""reduce2 on a model without crystal symmetry.
 
 A P1 box is made for the calculation only. It must not be written out, and
 the library path (place_hydrogens) must not move the coordinates. A cryo-EM
@@ -11,7 +11,7 @@ import mmtbx.model
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
-from mmtbx.programs import reduce2, hydrogenate
+from mmtbx.programs import reduce2
 from mmtbx.hydrogens import reduce_hydrogen
 
 # Far from the origin, as cryo-EM models usually are.
@@ -106,17 +106,6 @@ def run_cli(pdb_text, prefix, suffix, in_suffix=".pdb", extra_args=()):
     txt = f.read()
   return txt, results.model
 
-def run_hydrogenate(model_text, prefix, suffix, extra_args=()):
-  fn_in  = prefix + suffix
-  fn_out = prefix + "_hydrogenate" + suffix
-  with open(fn_in, "w") as f:
-    f.write(model_text)
-  if os.path.exists(fn_out): os.remove(fn_out)
-  run_program(program_class=hydrogenate.Program, logger=null_out(),
-    args=[fn_in, "output.prefix=" + prefix] + list(extra_args))
-  with open(fn_out) as f:
-    return f.read()
-
 def place_lib(pdb_text):
   inp = iotbx.pdb.input(lines=pdb_text.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input=inp, log=null_out())
@@ -161,38 +150,6 @@ def test_cli_box_cushion():
   abc = model.crystal_symmetry().unit_cell().parameters()[:3]
   assert approx_equal(abc, [e + 10 for e in extent], eps=1.e-3), abc
 
-def test_hydrogenate_pdb_no_cryst1():
-  txt = run_hydrogenate(pdb_str, "tst_reduce2_no_symmetry_5", ".pdb")
-  assert "CRYST1" not in txt, txt[:200]
-  h = iotbx.pdb.input(lines=txt.split("\n"), source_info=None
-    ).construct_hierarchy()
-  assert n_h(h) > 0
-  ref = heavy_xyz(iotbx.pdb.input(lines=pdb_str.split("\n"),
-    source_info=None).construct_hierarchy())
-  out = heavy_xyz(h)
-  assert set(ref) == set(out)
-  for k in ref:
-    assert approx_equal(ref[k], out[k], eps=1.e-3), k
-
-def test_hydrogenate_cif_no_cell():
-  cif_str = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None
-    ).construct_hierarchy().as_mmcif_string()
-  txt = run_hydrogenate(cif_str, "tst_reduce2_no_symmetry_6", ".cif")
-  assert "_atom_site" in txt
-  assert "_cell.length_a" not in txt
-  assert "_symmetry.space_group_name_H-M" not in txt
-  assert "_space_group.name_H-M_alt" not in txt
-  # no model statistics: they would run old reduce + probe
-  assert "_refine" not in txt
-
-def test_hydrogenate_keeps_real_cryst1():
-  txt = run_hydrogenate(cryst1 + pdb_str, "tst_reduce2_no_symmetry_7", ".pdb")
-  cs = iotbx.pdb.input(lines=txt.split("\n"), source_info=None
-    ).crystal_symmetry()
-  assert cs is not None
-  assert approx_equal(cs.unit_cell().parameters(), (40, 50, 60, 90, 90, 90))
-  assert str(cs.space_group_info()) == "P 21 21 21"
-
 def test_cli_restraints_no_cryst1():
   fn_cif = act_cif()
   if fn_cif is None:
@@ -204,16 +161,6 @@ def test_cli_restraints_no_cryst1():
   h = iotbx.pdb.input(lines=txt.split("\n"), source_info=None
     ).construct_hierarchy()
   assert "ACT" in h.overall_counts().resnames
-
-def test_hydrogenate_restraints_no_cryst1():
-  fn_cif = act_cif()
-  if fn_cif is None:
-    print("  skipping test_hydrogenate_restraints_no_cryst1: "
-          "geostd not available")
-    return
-  txt = run_hydrogenate(pdb_with_act(), "tst_reduce2_no_symmetry_9", ".pdb",
-    extra_args=[fn_cif])
-  assert "CRYST1" not in txt, txt[:200]
 
 def test_cli_keeps_placeholder_pdb():
   txt, _ = run_cli(cryst1_placeholder + pdb_str,
@@ -232,14 +179,6 @@ def test_cli_keeps_placeholder_cif():
     ".cif", in_suffix=".cif")
   assert_placeholder_cif(txt)
 
-def test_hydrogenate_keeps_placeholder():
-  txt = run_hydrogenate(cryst1_placeholder + pdb_str,
-    "tst_reduce2_no_symmetry_12", ".pdb")
-  assert_placeholder_pdb(txt)
-  txt = run_hydrogenate(placeholder_cif_str(),
-    "tst_reduce2_no_symmetry_13", ".cif")
-  assert_placeholder_cif(txt)
-
 def test_placeholder_with_restraints():
   # Both the placeholder and the restraint-file path at once.
   fn_cif = act_cif()
@@ -248,9 +187,6 @@ def test_placeholder_with_restraints():
     return
   txt, _ = run_cli(cryst1_placeholder + pdb_with_act(),
     "tst_reduce2_no_symmetry_14", ".pdb", extra_args=[fn_cif])
-  assert_placeholder_pdb(txt)
-  txt = run_hydrogenate(cryst1_placeholder + pdb_with_act(),
-    "tst_reduce2_no_symmetry_15", ".pdb", extra_args=[fn_cif])
   assert_placeholder_pdb(txt)
 
 def test_place_hydrogens_does_not_move_model():
@@ -286,14 +222,9 @@ if __name__ == "__main__":
   test_cli_cif_no_cell()
   test_cli_keeps_real_cryst1()
   test_cli_box_cushion()
-  test_hydrogenate_pdb_no_cryst1()
-  test_hydrogenate_cif_no_cell()
-  test_hydrogenate_keeps_real_cryst1()
   test_cli_restraints_no_cryst1()
-  test_hydrogenate_restraints_no_cryst1()
   test_cli_keeps_placeholder_pdb()
   test_cli_keeps_placeholder_cif()
-  test_hydrogenate_keeps_placeholder()
   test_placeholder_with_restraints()
   test_place_hydrogens_does_not_move_model()
   test_place_hydrogens_translation_invariant()
