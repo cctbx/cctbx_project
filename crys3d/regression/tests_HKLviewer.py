@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 import libtbx.load_env, os.path, re, sys, os, time, subprocess
+from libtbx.utils import kill_process_tree
 from crys3d.hklviewer import cmdlineframes, jsview_3d
 import traceback
 
@@ -149,6 +150,49 @@ def check_log_file(fname, refls2match):
   print("Indices of visible reflections match the expected ones.")
 
 
+def communicate_or_kill(obj, budget, what):
+  """Collect a subprocess's output, killing its whole process tree on timeout.
+
+  The HKLviewer is started through a shell, and on Windows through a .bat
+  dispatcher as well, so obj.kill() alone leaves the viewer and its helper
+  processes running. They keep the stdout pipe open and a plain
+  communicate() then blocks until the CI job is killed.
+
+  Parameters
+  ----------
+  obj : subprocess.Popen
+    Process started with stdout=PIPE and stderr=STDOUT.
+  budget : float
+    Seconds to wait before giving up.
+  what : str
+    Name of the command, for the error message.
+
+  Returns
+  -------
+  bytes
+    Combined stdout and stderr of the process.
+
+  Raises
+  ------
+  RuntimeError
+    If the process did not finish within budget. Its output so far is
+    printed first so the CI log shows where it stalled.
+  """
+  try:
+    return obj.communicate(timeout=budget)[0]
+  except subprocess.TimeoutExpired:
+    pass
+  kill_process_tree(obj.pid)
+  try:
+    out = obj.communicate(timeout=30)[0]
+  except subprocess.TimeoutExpired as e:
+    # a process spawned after the tree was listed still holds the pipe;
+    # POSIX attaches the output read so far, Windows attaches nothing
+    out = e.output or b"(no output captured: a process still holds the pipe)"
+  print(out.decode(errors="replace"))
+  raise RuntimeError("%s exceeded %d s and was killed" % (what, budget))
+
+
 def Append2LogFile(fname, souterr):
   # write terminal output to our log file
   str1 = souterr.decode().replace("\r\n", "\n") # omit \r\n line endings on Windows
@@ -211,12 +255,8 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
                          stdin = subprocess.PIPE,
                          stdout = subprocess.PIPE,
                          stderr = subprocess.STDOUT)
-  try:
-    remove_settings_result,err = obj.communicate(timeout=30)
-  except subprocess.TimeoutExpired:
-    obj.kill()
-    remove_settings_result,err = obj.communicate()
-    raise RuntimeError("cctbx.HKLviewer remove_settings exceeded 30 s and was killed")
+  remove_settings_result = communicate_or_kill(obj, 30,
+                                               "cctbx.HKLviewer remove_settings")
 
   print("Starting the real HKLviewer test...")
   with open(prefix + "HKLviewer_philinput.txt","w") as f:
@@ -241,13 +281,7 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
                          stdin = subprocess.PIPE,
                          stdout = subprocess.PIPE,
                          stderr = subprocess.STDOUT)
-  hklviewer_budget = closetime * 2 + 60
-  try:
-    HKLviewer_result,err = obj.communicate(timeout=hklviewer_budget)
-  except subprocess.TimeoutExpired:
-    obj.kill()
-    HKLviewer_result,err = obj.communicate()
-    raise RuntimeError("cctbx.HKLviewer exceeded %d s and was killed" % hklviewer_budget)
+  HKLviewer_result = communicate_or_kill(obj, closetime * 2 + 60, "cctbx.HKLviewer")
   # append terminal output to log file
   Append2LogFile(outputfname, remove_settings_result)
   Append2LogFile(outputfname, HKLviewer_result)

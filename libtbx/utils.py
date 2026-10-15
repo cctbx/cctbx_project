@@ -2569,6 +2569,33 @@ def guess_total_memory():
   import psutil
   return psutil.virtual_memory().total
 
+def kill_process_tree(pid):
+  """Kill a process together with all of its descendants.
+
+  Popen.kill() reaches only the direct child. When that child is a shell
+  or a .bat dispatcher, the program it launched survives and keeps the
+  inherited stdout pipe open, so a following communicate() never returns.
+
+  Parameters
+  ----------
+  pid : int
+    Process id of the root of the tree. A pid that no longer exists is
+    ignored. The root itself is not waited for, so the caller's
+    communicate() or wait() still reaps it and sees its exit status.
+  """
+  import psutil
+  try:
+    root = psutil.Process(pid)
+  except psutil.NoSuchProcess:
+    return
+  descendants = root.children(recursive=True)
+  for p in [root] + descendants:
+    try:
+      p.kill()
+    except psutil.NoSuchProcess:
+      pass
+  psutil.wait_procs(descendants, timeout=10)
+
 def peak_memory_usage():
   '''
   Peak (maximum) resident memory used by the current process so far, in
