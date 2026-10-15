@@ -34,12 +34,13 @@ def run():
 
 # ------------------------------------------------------------------------------
 
-def place_atoms(pdb_str):
+def place_atoms(pdb_str, n_terminal_charge='residue_one'):
   '''Place H (no optimization); return all atoms. Names repeat between
   residues, so only single-residue models may be keyed by name (place()).'''
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
-  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj = reduce_hydrogen.place_hydrogens(model=model,
+    n_terminal_charge=n_terminal_charge)
   obj.run()
   return list(obj.get_model().get_hierarchy().atoms())
 
@@ -446,7 +447,8 @@ def test_023():
   the residue's dictionary bonds elsewhere; the amide H gets its angle from
   add_link_h_restraints and lies in the C-N-CA plane.
   ASJ has no C=O, so test_for_peptide missed it and N kept both dictionary H
-  (superposed). The control, ASJ without the VAL, keeps both.
+  (superposed). The control, ASJ without the VAL, keeps both, also when
+  treated as an N-terminus (first_in_chain, all_chain_starts).
   '''
   atoms = place_atoms(pdb_str_023)
   a = dict(((x.parent().resname.strip(), x.name.strip()), x) for x in atoms)
@@ -461,12 +463,16 @@ def test_023():
   assert sorted(x.name.strip() for x in atoms if x.element.strip() == 'H'
     and x.distance(c) < 1.2) == ['H', 'HA']
   free = "\n".join(l for l in pdb_str_023.split("\n") if 'VAL' not in l)
-  atoms = place_atoms(free)
-  n = [x for x in atoms if x.name.strip() == 'N'][0]
-  hs = [x for x in atoms if x.element.strip() == 'H' and x.distance(n) < 1.2]
-  assert sorted(x.name.strip() for x in hs) == ['HN', 'HNA'], \
-    [x.name.strip() for x in hs]
-  assert hs[0].distance(hs[1]) > 1.4
+  for charge in ('residue_one', 'first_in_chain', 'all_chain_starts'):
+    atoms = place_atoms(free, n_terminal_charge=charge)
+    n, c = [[x for x in atoms if x.name.strip() == name][0] for name in 'NC']
+    hs = [x for x in atoms if x.element.strip() == 'H' and x.distance(n) < 1.2]
+    assert sorted(x.name.strip() for x in hs) == ['HN', 'HNA'], \
+      (charge, [x.name.strip() for x in hs])
+    assert hs[0].distance(hs[1]) > 1.4
+    # the N-terminus code removed "H" by name, here a C H
+    assert sorted(x.name.strip() for x in atoms if x.element.strip() == 'H'
+      and x.distance(c) < 1.2) == ['H', 'HA'], charge
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''

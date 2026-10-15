@@ -505,6 +505,18 @@ def _bonded_to_other_residue(atom, rg, model_atoms, model_sites):
       return True
   return False
 
+def _dictionary_h_on_n(ag, mon_lib_srv):
+  '''
+  False if the dictionary bonds "H" to an atom other than N (geostd ASJ: C).
+  '''
+  if get_class(name=ag.resname) == 'common_amino_acid': return True
+  mlq = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv, raise_sorry=False)[0]
+  if mlq is None: return True
+  for b in mlq.bond_list:
+    if 'H' in (b.atom_id_1, b.atom_id_2):
+      return 'N' in (b.atom_id_1, b.atom_id_2)
+  return True
+
 def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry=True):
   # if get_class(residue.resname) in ['common_rna_dna']:
   #   md = get_h_restraints(residue.resname)
@@ -1647,7 +1659,7 @@ class place_hydrogens():
             or (ag.get_atom('CA') and ag.get_atom('C'))):
           for ag_h in rgs.atom_groups():
             h = ag_h.get_atom('H')
-            if h:
+            if h and _dictionary_h_on_n(ag_h, self.model.get_mon_lib_srv()):
               ag_h.remove_atom(h)
         # TODO make the function below smart, so it
         # 1) knows when to add H1H2H3 or not
