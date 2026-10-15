@@ -103,6 +103,8 @@ Inputs:
       self.model.set_unit_cell_crystal_symmetry(output_cs)
     if self.data_manager.get_model().input_model_format_cif():
       self.output_file_name = self.params.output.prefix+"_hydrogenate.cif"
+      # no restraints -> no statistics (old reduce + probe via clashscore)
+      self.model.unset_restraints_manager()
       self.data_manager.write_model_file(
         model_str = self.model.model_as_mmcif(
           output_cs = output_cs is not None),

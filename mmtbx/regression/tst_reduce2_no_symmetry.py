@@ -182,6 +182,8 @@ def test_hydrogenate_cif_no_cell():
   assert "_cell.length_a" not in txt
   assert "_symmetry.space_group_name_H-M" not in txt
   assert "_space_group.name_H-M_alt" not in txt
+  # no model statistics: they would run old reduce + probe
+  assert "_refine" not in txt
 
 def test_hydrogenate_keeps_real_cryst1():
   txt = run_hydrogenate(cryst1 + pdb_str, "tst_reduce2_no_symmetry_7", ".pdb")
