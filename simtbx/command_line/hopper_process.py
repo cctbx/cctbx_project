@@ -137,43 +137,8 @@ class Hopper_Processor(Processor):
         return dev
 
     def find_spots(self, experiments):
-        st = time.time()
-
-        logger.info("*" * 80)
-        logger.info("Finding Strong Spots")
-        logger.info("*" * 80)
-
-        # Find the strong spots
-        observed = flex.reflection_table.from_observations(
-            experiments, self.params, is_stills=True
-        )
-
-        # Reset z coordinates for dials.image_viewer; see Issues #226 for details
-        xyzobs = observed["xyzobs.px.value"]
-        for i in range(len(xyzobs)):
-            xyzobs[i] = (xyzobs[i][0], xyzobs[i][1], 0)
-        bbox = observed["bbox"]
-        for i in range(len(bbox)):
-            bbox[i] = (bbox[i][0], bbox[i][1], bbox[i][2], bbox[i][3], 0, 1)
-
-        if self.params.output.composite_output:
-            n = len(self.all_strong_reflections.experiment_identifiers())
-            for i, experiment in enumerate(experiments):
-                refls = observed.select(observed["id"] == i)
-                refls["id"] = flex.int(len(refls), n)
-                del refls.experiment_identifiers()[i]
-                refls.experiment_identifiers()[n] = experiment.identifier
-                self.all_strong_reflections.extend(refls)
-                n += 1
-        else:
-            # Save the reflections to file
-            logger.info("\n" + "-" * 80)
-            if self.params.output.strong_filename:
-                self.save_reflections(observed, self.params.output.strong_filename)
-
-        logger.info("")
-        logger.info("Time Taken = %f seconds", time.time() - st)
-        self.observed = observed  # note this is the only change needed to dials.stills_process.find_spots
+        observed = super(Hopper_Processor, self).find_spots(experiments)
+        self.observed = observed  # kept for _reindex_obs
         return observed
 
     def refine(self, exps, ref, refining_predictions=False, best=None):
@@ -191,8 +156,10 @@ class Hopper_Processor(Processor):
                                                self.params.diffBragg,
                                                spec=self.params.refspec,
                                                gpu_device=self.device_id, return_modeler=True, best=best)
-            orig_exp_name = os.path.abspath(self.params.output.refined_experiments_filename)
-            refls_name = os.path.abspath(self.params.output.indexed_filename)
+            if not self.refined_experiments_filename:
+                raise Sorry("hopper_process requires output.refined_suffix to be set")
+            orig_exp_name = os.path.abspath(self.refined_experiments_filename)
+            refls_name = os.path.abspath(self.refined_reflections_filename)
             self.params.diffBragg.outdir = self.params.output.output_dir
             # TODO: what about composite mode ?
 
@@ -203,6 +170,11 @@ class Hopper_Processor(Processor):
                                             write_expt=False, write_pandas=True, exp_idx=0)
             exps_out = ExperimentList()
             exps_out.append(exp)
+
+            # dials.stills_process only writes the refined output when
+            # dispatch.refine is set, which was switched off above, so store
+            # the diffBragg-refined models and reflections here
+            self.store_results("refined", exps_out, ref)
 
             basename = os.path.splitext(os.path.basename(refls_name))[0]
             self._save_modeler_info(basename)
@@ -382,36 +354,7 @@ class Hopper_Processor(Processor):
         if self.params.integration.debug.delete_shoeboxes and "shoebox" in integrated:
             del integrated["shoebox"]
 
-        if self.params.output.composite_output:
-            if (
-                self.params.output.integrated_experiments_filename
-                or self.params.output.integrated_filename
-            ):
-                assert (
-                    self.params.output.integrated_experiments_filename is not None
-                    and self.params.output.integrated_filename is not None
-                )
-
-                n = len(self.all_integrated_experiments)
-                self.all_integrated_experiments.extend(experiments)
-                for i, experiment in enumerate(experiments):
-                    refls = integrated.select(integrated["id"] == i)
-                    refls["id"] = flex.int(len(refls), n)
-                    del refls.experiment_identifiers()[i]
-                    refls.experiment_identifiers()[n] = experiment.identifier
-                    self.all_integrated_reflections.extend(refls)
-                    n += 1
-        else:
-            # Dump experiments to disk
-            if self.params.output.integrated_experiments_filename:
-
-                experiments.as_json(self.params.output.integrated_experiments_filename)
-
-            if self.params.output.integrated_filename:
-                # Save the reflections
-                self.save_reflections(
-                    integrated, self.params.output.integrated_filename
-                )
+        self.store_results("integrated", experiments, integrated)
 
         self.write_integration_pickles(integrated, experiments)
         from dials.algorithms.indexing.stills_indexer import (
