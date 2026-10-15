@@ -489,6 +489,22 @@ no atom named 'H2' (e.g. 9FZ uses H3/H4).
     remove.extend(h for h in on['N'] if h != keep)
   return remove
 
+# metals do not count as bonded to N (coordination, not a covalent bond)
+nonmetals = ('C', 'N', 'O', 'S', 'P', 'SE', 'B', 'SI', 'F', 'CL', 'BR', 'I')
+
+def _bonded_to_other_residue(atom, rg, model_atoms, model_sites):
+  '''
+  True if a non-metal atom of another residue is within bonding distance of
+  atom.
+  '''
+  d2 = (model_sites - atom.xyz).dot()
+  for i in (d2 < 1.75**2).iselection():
+    a = model_atoms[i]
+    if (a.element.strip().upper() in nonmetals
+        and a.parent().parent().memory_id() != rg.memory_id()):
+      return True
+  return False
+
 def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry=True):
   # if get_class(residue.resname) in ['common_rna_dna']:
   #   md = get_h_restraints(residue.resname)
@@ -1572,8 +1588,7 @@ class place_hydrogens():
     Changes hierarchy in place
     '''
     # an N bonded to another residue is no terminus (cyclic peptide: 1evd ACB 1
-    # N - MDH 5 C); metals do not count (coordination, not a covalent bond)
-    nonmetals = ('C', 'N', 'O', 'S', 'P', 'SE', 'B', 'SI', 'F', 'CL', 'BR', 'I')
+    # N - MDH 5 C)
     for m in pdb_hierarchy.models():
       model_atoms = m.atoms()
       model_sites = model_atoms.extract_xyz()
@@ -1679,6 +1694,8 @@ class place_hydrogens():
             pass
     #XXX This breaks for 1jxt, residue 2, TYR
     for m in pdb_hierarchy.models():
+      model_atoms = m.atoms()
+      model_sites = model_atoms.extract_xyz()
       for chain in m.chains():
         for rg in chain.residue_groups():
           n_atom_groups = len(rg.atom_groups())
@@ -1719,7 +1736,13 @@ class place_hydrogens():
             #
             # don't add polymer H atoms. Terminal H atoms added elsewhere
             #
-            if mlq.test_for_peptide(atom_dict):
+            # test_for_peptide wants C=O; a reduced C-terminus (ASJ, 4dco) has
+            # C-O, and its N is in the chain only if bonded to the previous C
+            n = ag.get_atom('N')
+            if (mlq.test_for_peptide(atom_dict) or
+                (get_class(name=ag.resname) == 'modified_amino_acid'
+                 and 'CA' in atom_dict and n is not None
+                 and _bonded_to_other_residue(n, rg, model_atoms, model_sites))):
               atom_dict = _remove_atoms(
                 atom_dict, _terminal_h(mlq, atom_dict))
             # HO3' used to go here for every RNA/DNA residue, because in a

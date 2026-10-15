@@ -30,6 +30,7 @@ def run():
   test_020()
   test_021()
   test_022()
+  test_023()
 
 # ------------------------------------------------------------------------------
 
@@ -435,6 +436,37 @@ def test_022():
     names = sorted(x.name.strip() for x in atoms if x.element.strip() == 'H'
       and x.distance(n) < 1.2 and x.parent().parent().parent().parent().id == m)
     assert names == ['H1', 'H2', 'H3'], (m, names)
+
+def test_023():
+  '''
+  4dco VAL C 504 - ASJ C 505: geostd ASJ calls a C H "H" (the amide H on N
+  are HN, HNA). The peptide link's C-N-H angle and plane are matched by name,
+  so they took the C H, and riding H stopped: "angle and bond restraints are
+  conflicting". pdb_interpretation now skips a link restraint on an H that
+  the residue's dictionary bonds elsewhere; the amide H gets its angle from
+  add_link_h_restraints and lies in the C-N-CA plane.
+  ASJ has no C=O, so test_for_peptide missed it and N kept both dictionary H
+  (superposed). The control, ASJ without the VAL, keeps both.
+  '''
+  atoms = place_atoms(pdb_str_023)
+  a = dict(((x.parent().resname.strip(), x.name.strip()), x) for x in atoms)
+  n, c = a[('ASJ', 'N')], a[('ASJ', 'C')]
+  hs = [x for x in atoms if x.element.strip() == 'H' and x.distance(n) < 1.2]
+  assert len(hs) == 1, [x.name.strip() for x in hs]
+  nv = matrix.col(n.xyz)
+  v = lambda x: matrix.col(x.xyz) - nv
+  h, cv, ca = v(hs[0]), v(a[('VAL', 'C')]), v(a[('ASJ', 'CA')])
+  total = h.angle(cv, deg=True) + h.angle(ca, deg=True) + cv.angle(ca, deg=True)
+  assert approx_equal(total, 360, eps=1), total
+  assert sorted(x.name.strip() for x in atoms if x.element.strip() == 'H'
+    and x.distance(c) < 1.2) == ['H', 'HA']
+  free = "\n".join(l for l in pdb_str_023.split("\n") if 'VAL' not in l)
+  atoms = place_atoms(free)
+  n = [x for x in atoms if x.name.strip() == 'N'][0]
+  hs = [x for x in atoms if x.element.strip() == 'H' and x.distance(n) < 1.2]
+  assert sorted(x.name.strip() for x in hs) == ['HN', 'HNA'], \
+    [x.name.strip() for x in hs]
+  assert hs[0].distance(hs[1]) > 1.4
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -1335,6 +1367,25 @@ ATOM     21  O   SER A   2     -18.567  -6.548  -3.511  1.00  1.00           O
 ATOM     22  CB  SER A   2     -20.227  -6.316  -5.805  1.00  1.00           C
 ATOM     23  OG  SER A   2     -20.801  -6.046  -7.072  1.00  1.00           O
 ENDMDL
+END
+"""
+
+pdb_str_023 = """
+ATOM   1944  N   VAL C 504      25.617   7.043  38.901  1.00 21.91           N
+ATOM   1945  CA  VAL C 504      25.298   6.520  37.593  1.00 25.45           C
+ATOM   1946  C   VAL C 504      26.023   5.185  37.459  1.00 27.80           C
+ATOM   1947  O   VAL C 504      26.017   4.447  38.451  1.00 32.85           O
+ATOM   1948  CB  VAL C 504      25.759   7.467  36.446  1.00 22.73           C
+ATOM   1949  CG1 VAL C 504      25.062   8.814  36.558  1.00 21.23           C
+ATOM   1950  CG2 VAL C 504      27.268   7.641  36.479  1.00 21.12           C
+HETATM 1951  C   ASJ C 505      25.757   3.265  34.352  1.00 21.67           C
+HETATM 1952  N   ASJ C 505      25.878   4.624  36.266  1.00 30.84           N
+HETATM 1953  O   ASJ C 505      25.368   2.035  33.737  1.00 21.73           O
+HETATM 1954  CA  ASJ C 505      25.449   3.280  35.850  1.00 24.76           C
+HETATM 1955  CB  ASJ C 505      23.949   3.073  36.085  1.00 25.50           C
+HETATM 1956  CG  ASJ C 505      23.651   1.958  37.095  1.00 22.63           C
+HETATM 1957  OD1 ASJ C 505      24.572   1.633  37.874  1.00 18.73           O
+HETATM 1958  OD2 ASJ C 505      22.458   1.603  37.218  1.00 20.52           O
 END
 """
 

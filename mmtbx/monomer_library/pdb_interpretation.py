@@ -853,6 +853,20 @@ def involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs):
         return True
   return False
 
+def link_h_bonded_elsewhere(m_x, atom_id, partner_ids):
+  '''
+  True if the dictionary of m_x bonds H atom_id to an atom not in partner_ids.
+  Links name the H (TRANS C-N-H); in geostd ASJ "H" is on C (4dco).
+  '''
+  if m_x.monomer_atom_dict[atom_id].type_symbol not in ("H", "D"):
+    return False
+  for bond in m_x.monomer.bond_list:
+    if   bond.atom_id_1 == atom_id: other = bond.atom_id_2
+    elif bond.atom_id_2 == atom_id: other = bond.atom_id_1
+    else: continue
+    if other not in partner_ids: return True
+  return False
+
 class source_info_server(object):
 
   def __init__(self, m_i, m_j):
@@ -2203,6 +2217,13 @@ class add_angle_proxies(object):
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue
+      if (m_j is not None and
+          ((m_1 is m_2 and link_h_bonded_elsewhere(
+             m_1, angle.atom_id_1, [angle.atom_id_2])) or
+           (m_3 is m_2 and link_h_bonded_elsewhere(
+             m_3, angle.atom_id_3, [angle.atom_id_2])))):
+        counters.unresolved_hydrogen += 1
+        continue
       atoms = (m_1.expected_atoms.get(angle.atom_id_1, None),
                m_2.expected_atoms.get(angle.atom_id_2, None),
                m_3.expected_atoms.get(angle.atom_id_3, None))
@@ -2549,6 +2570,11 @@ class add_planarity_proxies(object):
           else:
             counters.corrupt_monomer_library_definitions += 1
             continue
+        if (m_j is not None and link_h_bonded_elsewhere(m_x, plane_atom.atom_id,
+              [p.atom_id for p in plane.plane_atoms
+               if p.atom_comp_id == plane_atom.atom_comp_id])):
+          counters.unresolved_hydrogen += 1
+          continue
         atom = m_x.expected_atoms.get(plane_atom.atom_id, None)
         if (atom is None):
           if (m_x.monomer_atom_dict[plane_atom.atom_id].type_symbol == "H"):
