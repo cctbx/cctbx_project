@@ -887,37 +887,50 @@ def read_chemical_component_filename(filename, verbose=False):
   Generating H restraints from Chemical Components for %s failed. Please supply
   restraints.
   ''' % code)
-  for i, (code, monomer) in enumerate(ccd.items()):
-    molecule = Chem.Mol()
-    desc = monomer.get_loop_or_row('_chem_comp')
-    rwmol = Chem.RWMol(molecule)
-    atom = monomer.get_loop_or_row('_chem_comp_atom')
-    # if atom is None: continue
-    conformer = Chem.Conformer(atom.n_rows())
-    for j, tmp in enumerate(atom.iterrows()):
-      new = Chem.Atom(tmp.get('_chem_comp_atom.type_symbol').capitalize())
-      new.SetFormalCharge(int(tmp.get('_chem_comp_atom.charge')))
-      for prop in ['atom_id', 'type_symbol']:
-        new.SetProp(prop, tmp.get('_chem_comp_atom.%s' % prop, '?'))
-      rdatom = rwmol.AddAtom(new)
-      if xyzs[j][0] in ['?']:
-        pass
-      else:
-        xyz = (float(xyzs[j][0]), float(xyzs[j][1]), float(xyzs[j][2]))
-        conformer.SetAtomPosition(rdatom, xyz)
-      lookup[tmp.get('_chem_comp_atom.atom_id')]=j
-    bond = monomer.get_loop_or_row('_chem_comp_bond')
-    if bond:
-      for tmp in bond.iterrows():
-        atom1 = tmp.get('_chem_comp_bond.atom_id_1')
-        atom2 = tmp.get('_chem_comp_bond.atom_id_2')
-        atom1 = lookup.get(atom1)
-        atom2 = lookup.get(atom2)
-        order = tmp.get('_chem_comp_bond.value_order')
-        order = bond_order_ccd[order]
-        rwmol.AddBond(atom1, atom2, order)
-  rwmol.AddConformer(conformer)
-  Chem.SanitizeMol(rwmol)
+  def build(skip_metal_bonds):
+    for i, (code, monomer) in enumerate(ccd.items()):
+      molecule = Chem.Mol()
+      desc = monomer.get_loop_or_row('_chem_comp')
+      rwmol = Chem.RWMol(molecule)
+      atom = monomer.get_loop_or_row('_chem_comp_atom')
+      # if atom is None: continue
+      conformer = Chem.Conformer(atom.n_rows())
+      for j, tmp in enumerate(atom.iterrows()):
+        new = Chem.Atom(tmp.get('_chem_comp_atom.type_symbol').capitalize())
+        # unknown charge (TPT PT1) -> 0
+        charge = tmp.get('_chem_comp_atom.charge')
+        new.SetFormalCharge(0 if charge in ['?', '.'] else int(charge))
+        for prop in ['atom_id', 'type_symbol']:
+          new.SetProp(prop, tmp.get('_chem_comp_atom.%s' % prop, '?'))
+        rdatom = rwmol.AddAtom(new)
+        if xyzs[j][0] in ['?']:
+          pass
+        else:
+          xyz = (float(xyzs[j][0]), float(xyzs[j][1]), float(xyzs[j][2]))
+          conformer.SetAtomPosition(rdatom, xyz)
+        lookup[tmp.get('_chem_comp_atom.atom_id')]=j
+      bond = monomer.get_loop_or_row('_chem_comp_bond')
+      if bond:
+        for tmp in bond.iterrows():
+          if (skip_metal_bonds and
+              tmp.get('_chem_comp_bond.pdbx_metal_coordination_flag') == 'Y'):
+            continue
+          atom1 = tmp.get('_chem_comp_bond.atom_id_1')
+          atom2 = tmp.get('_chem_comp_bond.atom_id_2')
+          atom1 = lookup.get(atom1)
+          atom2 = lookup.get(atom2)
+          order = tmp.get('_chem_comp_bond.value_order')
+          order = bond_order_ccd[order]
+          rwmol.AddBond(atom1, atom2, order)
+    rwmol.AddConformer(conformer)
+    return code, desc, rwmol
+  code, desc, rwmol = build(skip_metal_bonds=False)
+  try:
+    Chem.SanitizeMol(rwmol)
+  except Exception:
+    # metal coordination as plain SING bonds over-fills valences (TPT Pt-N)
+    code, desc, rwmol = build(skip_metal_bonds=True)
+    Chem.SanitizeMol(rwmol)
   # from rdkit.Chem.PropertyMol import PropertyMol
   # molecule = PropertyMol(molecule)
   molecule = rwmol.GetMol()
@@ -938,7 +951,7 @@ def get_molecule_from_resname(resname):
   try:
     molecule = read_chemical_component_filename(filename)
   except Exception as e:
-    print(e)
+    print('Could not read CCD entry %s: %s' % (resname, e))
     return None
   return molecule
 

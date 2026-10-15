@@ -34,6 +34,7 @@ def run():
   test_023()
   test_024()
   test_025()
+  test_026()
 
 # ------------------------------------------------------------------------------
 
@@ -528,6 +529,20 @@ def test_025():
   assert [l.split()[0] for l in counts.site_labels_missing_neighbor] == \
     ['H1'], counts.site_labels_missing_neighbor
   assert not [x for x in obj.sl_removed if 'NAG A   2' in x[0]], obj.sl_removed
+
+def test_026():
+  '''
+  1b7e TPT (Pt terpyridine) is not in geostd. Its CCD entry has charge "?" on
+  PT1, and Pt-N/Pt-Cl as SING bonds (metal coordination). The CCD reader
+  stopped at int('?'), then at RDKit valence: no restraints, and reduce2
+  stopped with "Restraints were not found".
+  '''
+  a = place(pdb_str_026)
+  hs = sorted(n for n in a if a[n].element.strip() == 'H')
+  expected = sorted('H%d' % i for i in (1, 2, 3, 4, 7, 8, 9, 12, 13, 14, 15))
+  assert hs == expected, hs
+  for n in hs:
+    assert a[n].distance(a['C' + n[1:]]) < 1.2, n
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -1506,6 +1521,29 @@ HETATM 6188  O4  NAG A   2      67.917  10.481  28.481  1.00 79.58           O
 HETATM 6189  O5  NAG A   2      66.248  13.006  30.560  1.00 72.37           O
 HETATM 6190  O6  NAG A   2      67.476  11.011  32.432  1.00 74.19           O
 HETATM 6191  O7  NAG A   2      63.161  15.352  28.348  1.00 70.45           O
+"""
+
+pdb_str_026 = """
+HETATM 2889 PT1  TPT A 480      77.954  43.783  27.190  0.90 63.06          PT  
+HETATM 2890  N1  TPT A 480      78.596  45.649  26.606  0.90 13.24           N  
+HETATM 2891  N2  TPT A 480      78.869  44.331  29.089  0.90 27.53           N  
+HETATM 2892  N3  TPT A 480      77.426  42.244  28.444  0.90 21.02           N  
+HETATM 2893  C1  TPT A 480      78.516  46.105  25.353  0.90 24.43           C  
+HETATM 2894  C2  TPT A 480      79.155  47.284  25.061  0.90 89.68           C  
+HETATM 2895  C3  TPT A 480      79.930  47.925  26.024  0.90 94.93           C  
+HETATM 2896  C4  TPT A 480      80.086  47.379  27.281  0.90100.00           C  
+HETATM 2897  C5  TPT A 480      79.435  46.213  27.578  0.90  7.99           C  
+HETATM 2898  C6  TPT A 480      79.564  45.502  28.929  0.90 29.55           C  
+HETATM 2899  C7  TPT A 480      80.274  45.923  30.032  0.90100.00           C  
+HETATM 2900  C8  TPT A 480      80.250  45.167  31.210  0.90100.00           C  
+HETATM 2901  C9  TPT A 480      79.554  43.959  31.301  0.90 45.52           C  
+HETATM 2902  C10 TPT A 480      78.824  43.518  30.221  0.90 45.38           C  
+HETATM 2903  C11 TPT A 480      77.914  42.468  29.673  0.90 50.45           C  
+HETATM 2904  C12 TPT A 480      77.607  41.469  30.550  0.90 16.84           C  
+HETATM 2905  C13 TPT A 480      76.825  40.413  30.196  0.90 19.26           C  
+HETATM 2906  C14 TPT A 480      76.289  40.309  28.936  0.90100.00           C  
+HETATM 2907  C15 TPT A 480      76.635  41.239  28.023  0.90 40.27           C  
+END
 """
 
 if __name__ == '__main__':
