@@ -1965,12 +1965,22 @@ class place_hydrogens():
       if (order > 1 and atoms[i].distance(atoms[j]) >
           ideal_distance.get(frozenset((i, j)), 0) + 0.1): return 1
       return order
+    def _altloc(i_seq):
+      return atoms[i_seq].parent().altloc
+    # Count one conformer: H copies in A and B are not simultaneous bonds of a
+    # shared parent. A blank-altloc H is checked against the fullest conformer.
+    def _number_of_bonds(j_seq, i_h):
+      nbs = bonds[j_seq]
+      alts = [_altloc(i_h)] if _altloc(i_h) else (
+        sorted(set(_altloc(n) for n in nbs) - set([''])) or [''])
+      return max(sum(_bond_order(j_seq, n) for n in nbs
+                     if _altloc(n) in ('', alt)) for alt in alts)
     missing_neighbor = 'a missing heavy neighbour'
     for i_seq in sorted(reversed(list(sel_remove)), key=_drop_order):
       j_seq=parent_dict[i_seq]
       # need to add the use of atomic charge
       valences=get_valences(elements[j_seq])
-      number_of_bonds=sum(_bond_order(j_seq, n) for n in bonds[j_seq])
+      number_of_bonds=_number_of_bonds(j_seq, i_seq)
       if number_of_bonds in valences:
         # remove this H from delection
         remove_from_sel_remove.append(i_seq) # ??
@@ -1990,8 +2000,12 @@ class place_hydrogens():
     for _i in remove_from_sel_remove:
       parent = fsc0[_i][0]
       first_neighbors = fsc1[_i]
-      fn_filtered = [item for item in first_neighbors if item not in sel_remove]
-      n_kept = sum(1 for k in remove_from_sel_remove if fsc0[k][0] == parent)
+      # same conformer as the H
+      fn_filtered = [item for item in first_neighbors if item not in sel_remove
+                     and _altloc(item) in ('', _altloc(_i))]
+      def _sibling(k):
+        return fsc0[k][0] == parent and _altloc(k) == _altloc(_i)
+      n_kept = sum(1 for k in remove_from_sel_remove if _sibling(k))
       coordp = matrix.col(atoms[parent].xyz)
       # Two H kept on an sp3 atom with two heavy neighbours: a methyl that
       # became a CH2 via a link (e.g. B0I CB1/CB2 in 6b17, linked to a thioether
@@ -2000,7 +2014,7 @@ class place_hydrogens():
       # (not eclipsed). The single-H branches below cannot handle this: they
       # would place both H at the same in-plane bisector site.
       if n_kept == 2 and len(fn_filtered) == 2:
-        siblings = sorted(k for k in remove_from_sel_remove if fsc0[k][0] == parent)
+        siblings = sorted(k for k in remove_from_sel_remove if _sibling(k))
         u1 = (matrix.col(atoms[fn_filtered[0]].xyz) - coordp).normalize()
         u2 = (matrix.col(atoms[fn_filtered[1]].xyz) - coordp).normalize()
         anti = -(u1 + u2).normalize()       # bisects H-C-H, points away from neighbours
