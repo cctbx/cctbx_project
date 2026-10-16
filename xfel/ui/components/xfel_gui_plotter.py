@@ -419,31 +419,34 @@ class PopUpCharts(object):
     ax.set_ylabel(BB)
     ax.set_zlabel(CC)
 
-def plot_cluster_volumes(subplot, plots, cells):
+def plot_cluster_volumes(subplot, plots, cells, outliers=True):
   ''' Histogram of unit cell volume, one filled step per cluster in the
       cluster's color, for the cells the uc_metrics plot manager (plots) was
       fit on, given as (a, b, c, alpha, beta, gamma) tuples in the order they
-      were handed to it. Cells the clustering left unassigned are not drawn
-      but do set the range. '''
+      were handed to it. Cells the clustering left unassigned are never drawn;
+      they widen the range to show where the clusters sit among all the cells
+      unless outliers is False, when the clusters alone set it. '''
   from cctbx import uctbx
   assert len(cells) == len(plots.Lab), 'one label per cell'
   volumes = np.array([uctbx.unit_cell(cell).volume() / 1000. for cell in cells]) # nm^3
   components = np.array([plots.pop.reverse_lookup[label] for label in plots.Lab])
+  assigned = components >= 0
+  ranged = volumes if outliers or not assigned.any() else volumes[assigned]
   bins = max(10, len(cells) // 100)
   for j in range(len(plots.pop.fit_components)):
-    subplot.hist(volumes[components == j], bins=bins, range=(volumes.min(), volumes.max()),
+    subplot.hist(volumes[components == j], bins=bins, range=(ranged.min(), ranged.max()),
                  histtype='stepfilled', color=plots.appcolors[j], label='%d' % j)
   subplot.set_title('Unit cell volume')
   subplot.set_xlabel('Volume (nm$^3$)')
   subplot.set_ylabel('Cells')
   subplot.legend(loc='upper right')
 
-def plot_unit_cell_clustering(figure, plots, cells, all_pairs=False, side_plot='probability'):
+def plot_unit_cell_clustering(figure, plots, cells, all_pairs=False, side_plot='probability', outliers=True):
   ''' Draw a unit cell clustering made by the uc_metrics plot manager (plots)
       into the figure: the pairwise projections of the feature vector, the
       cluster report along the bottom, and beside them either the probability
       plot of the clusters' Mahalanobis distances or a histogram of the cell
-      volumes (side_plot 'probability' or 'volume'; cells as for
+      volumes (side_plot 'probability' or 'volume'; cells and outliers as for
       plot_cluster_volumes). Two features give one projection, three the
       three projections in the plot manager's own arrangement, more than
       three either the first three that way or, with all_pairs, a corner plot
@@ -453,7 +456,7 @@ def plot_unit_cell_clustering(figure, plots, cells, all_pairs=False, side_plot='
   assert n >= 2, 'need at least two features to plot'
   def side(cell):
     if side_plot == 'volume':
-      plot_cluster_volumes(figure.add_subplot(cell), plots, cells)
+      plot_cluster_volumes(figure.add_subplot(cell), plots, cells, outliers=outliers)
     else:
       plots.qq(figure.add_subplot(cell))
   if n == 2:

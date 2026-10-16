@@ -973,7 +973,8 @@ class UnitCellSentinel(Thread):
               figure.clear()
               shown = pltr.plot_unit_cell_clustering(figure, plots, cells,
                                                      all_pairs=settings.plot_all_pairs,
-                                                     side_plot=settings.side_plot)
+                                                     side_plot=settings.side_plot,
+                                                     outliers=not reject_outliers)
               title = 'Clustered on %s' % ', '.join(labels)
               if shown < len(labels):
                 title += '; showing %s' % ', '.join(labels[:shown])
