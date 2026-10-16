@@ -3092,14 +3092,10 @@ class UnitCellTab(BaseTab):
     self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
     # self.tab_panel.SetSizer(self.tab_sizer)
 
-    self.selection_columns_panel = wx.Panel(self, size=(230, 120))
+    self.selection_columns_panel = ScrolledPanel(self)
     self.selection_columns_box = wx.StaticBox(self.selection_columns_panel, label='Select tag sets')
     self.selection_columns_sizer = wx.StaticBoxSizer(self.selection_columns_box, wx.VERTICAL)
     self.selection_columns_panel.SetSizer(self.selection_columns_sizer)
-
-    # self.selection_columns_panel = wx.Panel(self, size=(100, 120))
-    # self.selection_columns_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    # self.selection_columns_panel.SetSizer(self.selection_columns_sizer)
 
     self.trial_number = gctr.ChoiceCtrl(self.selection_columns_panel,
                                         label='Trial:',
@@ -3112,7 +3108,7 @@ class UnitCellTab(BaseTab):
                                             label='Available tags:',
                                             label_size=(200, -1),
                                             label_style='normal',
-                                            ctrl_size=(150, 100),
+                                            ctrl_size=(150, 80),
                                             direction='vertical',
                                             choices=[])
 
@@ -3125,25 +3121,19 @@ class UnitCellTab(BaseTab):
                                                items={'union':'union',
                                                       'inter':'intersection'})
 
-    self.add_sele_button = wx.Button(self.selection_columns_panel,
-                                     label='Add selection',
-                                     size=(200, -1))
+    self.add_sele_button = wx.Button(self.selection_columns_panel, label='Add selection')
 
     self.tag_set_checklist = gctr.CheckListCtrl(self.selection_columns_panel,
                                                 label='Tag sets to display:',
                                                 label_size=(200, -1),
                                                 label_style='normal',
-                                                ctrl_size=(150, 100),
+                                                ctrl_size=(150, 80),
                                                 direction='vertical',
                                                 choices=[])
 
-    self.remove_sele_button = wx.Button(self.selection_columns_panel,
-                                        label='Remove selection',
-                                        size=(200, -1))
+    self.remove_sele_button = wx.Button(self.selection_columns_panel, label='Remove selection')
 
-    self.reset_sele_button = wx.Button(self.selection_columns_panel,
-                                       label='Reset selections',
-                                       size=(200, -1))
+    self.reset_sele_button = wx.Button(self.selection_columns_panel, label='Reset selections')
 
     self.chk_reject_outliers = wx.CheckBox(self.selection_columns_panel, label='Reject outliers')
     self.chk_reject_outliers.SetValue(True)
@@ -3176,21 +3166,33 @@ class UnitCellTab(BaseTab):
     self.add_sele_sizer.Add(self.selection_type_radio, pos=(2, 0),
                             flag=wx.ALL | wx.ALIGN_CENTER, border=0)
     self.add_sele_sizer.Add(self.add_sele_button, pos=(3, 0),
-                            flag=wx.ALL)
-    self.selection_columns_sizer.Add(self.add_sele_sizer, flag=wx.ALL | wx.EXPAND, border=10)
+                            flag=wx.ALL | wx.EXPAND)
+    self.add_sele_sizer.AddGrowableCol(0)
+    self.add_sele_sizer.AddGrowableRow(1)
+    self.selection_columns_sizer.Add(self.add_sele_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.remove_sele_sizer = wx.GridBagSizer(3, 1)
     self.remove_sele_sizer.Add(self.tag_set_checklist, pos=(0, 0),
                                flag=wx.ALL | wx.EXPAND, border=0)
     self.remove_sele_sizer.Add(self.remove_sele_button, pos=(1, 0),
-                               flag=wx.ALL)
+                               flag=wx.ALL | wx.EXPAND)
     self.remove_sele_sizer.Add(self.reset_sele_button, pos=(2, 0),
-                               flag=wx.ALL)
-    self.selection_columns_sizer.Add(self.remove_sele_sizer, flag=wx.ALL | wx.EXPAND, border=10)
-    self.selection_columns_sizer.Add(self.chk_reject_outliers, flag=wx.ALL | wx.EXPAND, border=10)
-    self.selection_columns_sizer.Add(self.chk_plot_clusters, flag=wx.ALL | wx.EXPAND, border=10)
-    self.selection_columns_sizer.Add(self.plot_eps, flag=wx.ALL | wx.EXPAND, border=10)
-    self.selection_columns_sizer.Add(self.chk_auto_update, flag=wx.ALL | wx.EXPAND, border=10)
+                               flag=wx.ALL | wx.EXPAND)
+    self.remove_sele_sizer.AddGrowableCol(0)
+    self.remove_sele_sizer.AddGrowableRow(0)
+    self.selection_columns_sizer.Add(self.remove_sele_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
+    self.selection_columns_sizer.Add(self.chk_reject_outliers, flag=wx.ALL | wx.EXPAND, border=5)
+    self.selection_columns_sizer.Add(self.chk_plot_clusters, flag=wx.ALL | wx.EXPAND, border=5)
+    self.selection_columns_sizer.Add(self.plot_eps, flag=wx.ALL | wx.EXPAND, border=5)
+    self.selection_columns_sizer.Add(self.chk_auto_update, flag=wx.ALL | wx.EXPAND, border=5)
+
+    # The column is as wide as its contents need, which depends on the
+    # platform's fonts and widget padding. The two lists share any extra
+    # height, and the column scrolls rather than clipping when the window is
+    # shorter than its contents.
+    self.selection_columns_panel.SetupScrolling(scroll_x=False, scrollToTop=False)
+    scrollbar_width = max(wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X), 0)
+    self.selection_columns_panel.SetMinSize((self.selection_columns_sizer.GetMinSize().width + scrollbar_width, -1))
 
     self.unit_cell_panel = wx.Panel(self, size=(200, 120))
     self.unit_cell_box = wx.StaticBox(self.unit_cell_panel, label='Unit cell analysis')
@@ -3222,7 +3224,6 @@ class UnitCellTab(BaseTab):
                        flag=wx.EXPAND | wx.ALL, border=0)
     self.main_sizer.Add(self.tab_sizer, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
-    self.selection_columns_sizer.Layout()
 
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_BUTTON, self.onAddTagSet, self.add_sele_button)
