@@ -27,8 +27,10 @@ depending on core count.
 
     source $PREFIX/build/conda_setpaths.sh
 
-Re-running `build.sh` is safe but redoes everything. Paths are baked in, so
-moving the checkout means rebuilding.
+Paths are baked in, so moving the checkout means rebuilding. If
+`conda_base/` already exists, `build.sh` requires `CCTBX_RECREATE_CONDA` to be
+set: `1` recreates the conda environment, `0` reuses it as-is and skips
+straight to the `bootstrap.py` build.
 
 ## Notes
 

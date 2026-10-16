@@ -3,9 +3,9 @@
 # Build cctbx/DIALS (+ psana, CUDA, Kokkos) on NERSC Perlmutter.
 # Run it, do not source it.
 #
-# modules/cctbx_project is your clone of this repo; build/, mc3/, opt/,
-# activate.sh and bootstrap.py are created next to modules/.  Clone where you
-# want the build to live ($CFS or $SCRATCH, not $HOME):
+# modules/cctbx_project is your clone of this repo; build/, mc3/, conda_base/,
+# opt/, activate.sh and bootstrap.py are created next to modules/.  Clone
+# where you want the build to live ($CFS or $SCRATCH, not $HOME):
 #
 #   git clone https://github.com/cctbx/cctbx_project $PREFIX/modules/cctbx_project
 #   $PREFIX/modules/cctbx_project/xfel/conda_envs/site/nersc_perlmutter/build.sh
@@ -21,8 +21,18 @@ esac
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 BUILD_PREFIX=$(cd "$SCRIPT_DIR/../../../../../.." && pwd)
-CONDA_BASE=$BUILD_PREFIX/mc3
+MINIFORGE_PREFIX=$BUILD_PREFIX/mc3
+ENV_PREFIX=$BUILD_PREFIX/conda_base
 NPROC=32
+
+SKIP_CONDA=
+if [[ -e $ENV_PREFIX ]]; then
+    case "${CCTBX_RECREATE_CONDA:-}" in
+        1) ;;
+        0) SKIP_CONDA=1 ;;
+        *) echo "$ENV_PREFIX exists; set CCTBX_RECREATE_CONDA=1 (recreate) or 0 (reuse)" >&2; exit 1 ;;
+    esac
+fi
 
 MINIFORGE_VERSION=26.3.2-3
 MINIFORGE=Miniforge3-$MINIFORGE_VERSION-Linux-x86_64.sh
@@ -60,48 +70,53 @@ step "copy bootstrap.py and download Miniforge3"
 cp modules/cctbx_project/libtbx/auto_build/bootstrap.py bootstrap.py
 wget -O "opt/$MINIFORGE" "$MINIFORGE_URL"
 
-step "install Miniforge3 into $CONDA_BASE"
-bash "opt/$MINIFORGE" -b -u -p "$CONDA_BASE"   # -b: no prompts, no conda init.  -u: re-runnable.
+step "install Miniforge3 into $MINIFORGE_PREFIX"
+bash "opt/$MINIFORGE" -b -u -p "$MINIFORGE_PREFIX"   # -b: no prompts, no conda init.  -u: re-runnable.
 
 step "module load PrgEnv-gnu cudatoolkit cpe-cuda"
 module load PrgEnv-gnu cudatoolkit cpe-cuda
 
-source "$CONDA_BASE/etc/profile.d/conda.sh"
+source "$MINIFORGE_PREFIX/etc/profile.d/conda.sh"
 
-# Capture the Cray wrapper BEFORE `conda activate`: the env's c-compiler package
-# shadows `cc` with a conda shim, and mpi4py then links against the wrong MPI.
-native_cc=$(which cc)
+if [[ -z $SKIP_CONDA ]]; then
+    # Capture the Cray wrapper BEFORE `conda activate`: the env's c-compiler package
+    # shadows `cc` with a conda shim, and mpi4py then links against the wrong MPI.
+    native_cc=$(which cc)
 
-step "conda env create (5-10 min)"
-case "$PSANA_CHANNEL" in
-    lcls-i)  PSANA_SPEC='psana=4.0.66' ;;
-    lcls-ii) PSANA_SPEC='psana' ;;
-esac
-sed -e "s/__PSANA_CHANNEL__/$PSANA_CHANNEL/" -e "s/__PSANA__/$PSANA_SPEC/" \
-    "$SCRIPT_DIR/perlmutter_environment.yml" > "$BUILD_PREFIX/opt/environment.yml"
-grep -q '__PSANA' "$BUILD_PREFIX/opt/environment.yml" \
-    && { echo "placeholder substitution into opt/environment.yml did not fully apply" >&2; exit 1; }
-conda env create -f "$BUILD_PREFIX/opt/environment.yml" --yes -v
-conda activate psana_env
+    step "conda env create (5-10 min)"
+    case "$PSANA_CHANNEL" in
+        lcls-i)  PSANA_SPEC='psana=4.0.66' ;;
+        lcls-ii) PSANA_SPEC='psana' ;;
+    esac
+    sed -e "s/__PSANA_CHANNEL__/$PSANA_CHANNEL/" -e "s/__PSANA__/$PSANA_SPEC/" \
+        "$SCRIPT_DIR/perlmutter_environment.yml" > "$BUILD_PREFIX/opt/environment.yml"
+    grep -q '__PSANA' "$BUILD_PREFIX/opt/environment.yml" \
+        && { echo "placeholder substitution into opt/environment.yml did not fully apply" >&2; exit 1; }
+    conda env create -f "$BUILD_PREFIX/opt/environment.yml" -p "$ENV_PREFIX" --yes -v
+fi
 
-# gemmi is deliberately not in the yml -- it makes the solve pathological.  It is
-# a pure runtime dependency (dials.export/dials.merge), nothing in the build
-# needs it, and it must go in before the MPI strip leaves the prefix inconsistent.
-step "install gemmi"
-conda install -y -p "$CONDA_PREFIX" -c conda-forge --override-channels --no-deps -v gemmi
+conda activate "$ENV_PREFIX"
 
-# psana pulls in openmpi, which is incompatible with Cray MPICH.  The remove
-# routinely fails partially, hence `|| true`.
-step "rebuild mpi4py against Cray MPICH"
-conda remove --force mpi4py mpi openmpi mpich --yes || true
-MPICC="$native_cc -shared -target-accel=nvidia80 -lmpi -lgdrapi" \
-    pip install -v --no-binary mpi4py --no-cache-dir mpi4py mpi4py
+if [[ -z $SKIP_CONDA ]]; then
+    # gemmi is deliberately not in the yml -- it makes the solve pathological.  It is
+    # a pure runtime dependency (dials.export/dials.merge), nothing in the build
+    # needs it, and it must go in before the MPI strip leaves the prefix inconsistent.
+    step "install gemmi"
+    conda install -y -p "$ENV_PREFIX" -c conda-forge --override-channels --no-deps -v gemmi
+
+    # psana pulls in openmpi, which is incompatible with Cray MPICH.  The remove
+    # routinely fails partially, hence `|| true`.
+    step "rebuild mpi4py against Cray MPICH"
+    conda remove --force mpi4py mpi openmpi mpich --yes || true
+    MPICC="$native_cc -shared -target-accel=nvidia80 -lmpi -lgdrapi" \
+        pip install -v --no-binary mpi4py --no-cache-dir mpi4py mpi4py
+fi
 
 step "bootstrap.py hot update"
-python bootstrap.py "${BOOTSTRAP_FLAGS[@]}" --use-conda "$CONDA_PREFIX" hot update
+python bootstrap.py "${BOOTSTRAP_FLAGS[@]}" --use-conda "$ENV_PREFIX" hot update
 
 step "bootstrap.py build"
-python bootstrap.py "${BOOTSTRAP_FLAGS[@]}" --use-conda "$CONDA_PREFIX" build
+python bootstrap.py "${BOOTSTRAP_FLAGS[@]}" --use-conda "$ENV_PREFIX" build
 
 step "write activate.sh"
 cat > activate.sh << EOF
@@ -109,8 +124,8 @@ cat > activate.sh << EOF
 export BUILD_PREFIX=$BUILD_PREFIX
 
 module load PrgEnv-gnu cudatoolkit cpe-cuda
-source $CONDA_BASE/etc/profile.d/conda.sh
-conda activate psana_env
+source $MINIFORGE_PREFIX/etc/profile.d/conda.sh
+conda activate $ENV_PREFIX
 source $BUILD_PREFIX/build/setpaths.sh
 
 export OMP_PLACES=threads

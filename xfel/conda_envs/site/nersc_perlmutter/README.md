@@ -1,8 +1,8 @@
 # cctbx-perlmutter-build
 
 Builds cctbx/DIALS on NERSC Perlmutter with psana, CUDA and Kokkos, in a conda
-environment (`psana_env`, from `perlmutter_environment.yml`) with mpi4py built
-against Cray MPICH.
+environment (installed to `conda_base/` from `perlmutter_environment.yml`)
+with mpi4py built against Cray MPICH.
 
 ## Running it
 
@@ -35,8 +35,10 @@ environment:
     mk-cctbx build              # recompile
     mk-cctbx build hot update   # re-fetch sources, then recompile
 
-Re-running `build.sh` is safe but redoes everything. Paths are baked in, so
-moving the checkout means rebuilding.
+Paths are baked in, so moving the checkout means rebuilding. If
+`conda_base/` already exists, `build.sh` requires `CCTBX_RECREATE_CONDA` to be
+set: `1` recreates the conda environment (including the mpi4py-against-Cray-MPICH
+rebuild), `0` reuses it as-is and skips straight to the `bootstrap.py` build.
 
 ## Notes
 
