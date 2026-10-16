@@ -664,10 +664,19 @@ def _rice_kappa(llgi_data):
   return llgi_data.hybrid_params.rice_kappa \
     if getattr(llgi_data, "hybrid_params", None) is not None else 0.1
 
+def _model_anisotropy(e_params, llgi_data):
+  # llgi_e_sigmaa's model_anisotropy (resolved), as in the sigmaA fit
+  import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
+  import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
+  if(e_params is None):
+    e_params = llgi_e_sigmaa.llgi_e_sigmaa_params.extract()
+  return llgi_model_anisotropy.resolve(
+    getattr(e_params, "model_anisotropy", "off"), llgi_data)
+
 def _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params, rice_kappa,
-      warnings):
+      warnings, model_anisotropy="off"):
   """ ScatFrac (F scale, working set) in the u-frame, for the data d
-  (renormalise_e by u) """
+  (renormalise_e by u); model_anisotropy as llgi_e_sigmaa's """
   import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
   if(scatfrac_params is None):
     scatfrac_params = llgi_scatfrac.llgi_scatfrac_params.extract()
@@ -679,7 +688,8 @@ def _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params, rice_kappa,
     teps=flex.double(f_obs.size(), 1.), resn=fmodel.llgi_data().resn.data(),
     centric_flags=centric, d_star_sq=f_obs.d_star_sq().data(),
     scale_factor=fmodel.scale_ml_wrapper(), params=scatfrac_params,
-    hybrid=_hybrid(d, centric, rice_kappa), tncs_u=u)
+    hybrid=_hybrid(d, centric, rice_kappa), tncs_u=u, miller_set=f_obs,
+    model_anisotropy=model_anisotropy)
   if(result.lbfgs_error is not None):
     warnings.append("ScatFrac fit: L-BFGS stopped early: %s" %
       result.lbfgs_error)
@@ -709,7 +719,8 @@ def refit_sigmaa_scatfrac(fmodel, scatfrac_params=None, e_params=None):
       sigmaa_result.lbfgs_error)
   sigmaa = sigmaa_result.sigmaa
   scatfrac_result = _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params,
-    rice_kappa, warnings)
+    rice_kappa, warnings, model_anisotropy=_model_anisotropy(e_params,
+      fmodel.llgi_data()))
   fmodel.set_llgi_data(replace_llgi_data(llgi_data,
     sigmaa=f_obs.array(data=sigmaa), sigmaa_curve=sigmaa_result.evaluate_at,
     scatfrac=f_obs.array(data=scatfrac_result.scatfrac),
@@ -815,7 +826,8 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
       U_MIN))
   d = renormalise_e(e_base, sig_base, resn, u, centric)
   scatfrac_result = _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params,
-    rice_kappa, warnings)
+    rice_kappa, warnings, model_anisotropy=_model_anisotropy(e_params,
+      fmodel.llgi_data()))
   scatfrac = scatfrac_result.scatfrac
   t = expected_intensity_modulation(sigmaa, a, u)
   d = renormalise_e(e_base, sig_base, resn, t, centric)

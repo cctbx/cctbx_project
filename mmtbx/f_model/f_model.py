@@ -2696,10 +2696,13 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         epsilons = f_obs.epsilons().data().as_double()
         d_star_sq = f_obs.d_star_sq().data()
         fmnas = fmodel.f_model_no_aniso_scale()
+        import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
         e_model_result = llgi_e_sigmaa.build_e_model(
-          fmnas.data(), epsilons, d_star_sq)
+          fmnas.data(), epsilons, d_star_sq, miller_set=f_obs,
+          model_anisotropy=llgi_model_anisotropy.mode_for(llgi_data))
         e_model_abs = flex.abs(e_model_result.e_model)
-        sigma_p = e_model_result.sigma_p
+        # the model's normalisation, with its anisotropy (A = 1 if off)
+        sigma_p = e_model_result.sigma_p * e_model_result.anisotropy
         eeff = llgi_e_sigmaa.build_e_eff(
           feff.data(), llgi_data.resn.data())
         self.f_obs = feff

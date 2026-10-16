@@ -541,8 +541,10 @@ class model_missing_reflections_llgi(object):
                   structure and mask, with fmodel's k_isotropic and k_mask
                   (functions of resolution) at the nearest observed
                   reflection in d*^2
-    Emodel        F_model/sqrt(epsilon*SigmaP), SigmaP fitted to the
-                  observed reflections (llgi_e_sigmaa.build_sigma_p)
+    Emodel        F_model/sqrt(epsilon*SigmaP*A), SigmaP (and, with
+                  llgi_e_sigmaa's model_anisotropy, the anisotropic factor A)
+                  fitted to the observed reflections (llgi_e_sigmaa.
+                  build_e_model), as for the sigmaA fit
     sigmaA        the fitted curve (llgi_data.sigmaa_curve)
     RESN          nacelle's value or its model (llgi_maps.resn_model)
     TEPS          llgi_data.teps for the reflections refined, otherwise 1
@@ -594,8 +596,17 @@ class model_missing_reflections_llgi(object):
     for k_mask, f_mask in zip(fmodel.k_masks(), f_masks):
       f_part += at(k_mask) * f_mask.data()
     fmnas = k_iso * f_part
-    sigma_p = llgi_e_sigmaa.build_sigma_p(
-      fmodel.f_model_no_aniso_scale().data(), d_obs, d_star_sq_eval=d_star_sq)
+    # the model's normalisation as for the sigmaA fit (fitted to the
+    # observed reflections, evaluated for all), anisotropic with
+    # llgi_e_sigmaa's model_anisotropy
+    import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
+    em_obs = llgi_e_sigmaa.build_e_model(
+      fmodel.f_model_no_aniso_scale().data(),
+      f_obs.epsilons().data().as_double(), d_obs, miller_set=f_obs,
+      model_anisotropy=llgi_model_anisotropy.mode_for(self.llgi_data))
+    sigma_p = em_obs.sigma_p_at(d_star_sq)
+    if(em_obs.factor is not None):
+      sigma_p = sigma_p * em_obs.factor.evaluate(cs.indices())
     e_model_abs = flex.abs(fmnas) / flex.sqrt(
       cs.epsilons().data().as_double() * sigma_p)
     sigmaa = self.llgi_data.sigmaa_curve(d_star_sq)

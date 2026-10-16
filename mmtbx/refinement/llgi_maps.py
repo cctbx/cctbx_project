@@ -289,7 +289,9 @@ def compute(fmodel, params=None, log=None):
   epsilons = f_obs.epsilons().data().as_double()
   d_star_sq = f_obs.d_star_sq().data()
   fmnas = fmodel.f_model_no_aniso_scale()
-  em = llgi_e_sigmaa.build_e_model(fmnas.data(), epsilons, d_star_sq)
+  import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
+  em = llgi_e_sigmaa.build_e_model(fmnas.data(), epsilons, d_star_sq,
+    miller_set=f_obs, model_anisotropy=llgi_model_anisotropy.mode_for(llgi_data))
   e_calc = flex.abs(em.e_model)
   phase = _unit_phase(fmnas.data())
   sigmaa = llgi_data.sigmaa.data().deep_copy()

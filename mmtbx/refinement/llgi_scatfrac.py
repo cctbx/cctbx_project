@@ -154,11 +154,16 @@ class llgi_scatfrac_b_factor_target_evaluator(object):
     return math.exp(self.x[0] + b * self.ss_ref), b
 
 def scatfrac_moments(f_calc, teps, resn, d_star_sq, n_bins=20,
-      scale_factor=1.0):
+      scale_factor=1.0, miller_set=None, model_anisotropy="off"):
   """ ScatFrac as the model's own normalisation: <k^2 |F_calc|^2/(TEPS
   RESN^2)> in n_bins equal-count resolution bins, interpolated linearly
   in d*^2 between bin means (constant beyond the outermost means).
-  Reflections with TEPS or RESN <= 0 are left out of the bin means. """
+  Reflections with TEPS or RESN <= 0 are left out of the bin means.
+  With model_anisotropy ("ellipsoid" or "resolution_dependent", which need
+  miller_set, the reflections of f_calc), ScatFrac(h) is these moments of
+  x/A times an anisotropic factor A(h) fitted to x = k^2 |F_calc|^2/(TEPS
+  RESN^2) (mmtbx.refinement.llgi_model_anisotropy.fit), so that the model's
+  E in the target has unit mean square by direction as well. """
   import numpy as np
   k = scale_factor if scale_factor > 0 else 1.0
   dss = np.array(d_star_sq)
@@ -169,9 +174,18 @@ def scatfrac_moments(f_calc, teps, resn, d_star_sq, n_bins=20,
   order = order[ok[order]]
   bins = [c for c in np.array_split(order, max(1, min(n_bins, order.size)))
           if c.size > 0]
-  x_mean = np.array([x[c].mean() for c in bins])
   d_mean = np.array([dss[c].mean() for c in bins])
-  return flex.double(np.interp(dss, d_mean, x_mean))
+  def iso_fn(values):
+    v = np.array(values)
+    return flex.double(np.interp(dss, d_mean, np.array([v[c].mean() for c in bins])))
+  if(model_anisotropy == "off" or miller_set is None):
+    return iso_fn(flex.double(x))
+  import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
+  r = llgi_model_anisotropy.fit(intensity=flex.double(x),
+    indices=miller_set.indices(), centric_flags=miller_set.centric_flags().data(),
+    unit_cell=miller_set.unit_cell(), space_group=miller_set.space_group(),
+    iso_fn=iso_fn, mode=model_anisotropy, selection=flex.bool(list(ok)))
+  return r.sigma
 
 def estimate_llgi_scatfrac_moments(
       f_eff,
@@ -186,15 +200,18 @@ def estimate_llgi_scatfrac_moments(
       scale_factor=1.0,
       params=None,
       hybrid=None,
-      tncs_u=None):
-  """ ScatFrac from the model's moments (scatfrac_moments), with the
-  F-scale target on working_selection. Returns a group_args like
-  estimate_llgi_scatfrac_likelihood's, with scatfrac_inf and b_scatfrac
-  None. """
+      tncs_u=None,
+      miller_set=None,
+      model_anisotropy="off"):
+  """ ScatFrac from the model's moments (scatfrac_moments, anisotropic
+  with model_anisotropy), with the F-scale target on working_selection.
+  Returns a group_args like estimate_llgi_scatfrac_likelihood's, with
+  scatfrac_inf and b_scatfrac None. """
   if(params is None):
     params = llgi_scatfrac_params.extract()
   scatfrac = scatfrac_moments(f_calc, teps, resn, d_star_sq,
-    n_bins=params.moments_n_bins, scale_factor=scale_factor)
+    n_bins=params.moments_n_bins, scale_factor=scale_factor,
+    miller_set=miller_set, model_anisotropy=model_anisotropy)
   final_result = llgi_tncs.sigmaa_scatfrac_functor(tncs_u=tncs_u,
     f_eff=f_eff, selection=working_selection, f_calc=f_calc, dobs=dobs,
     sigmaa=sigmaa, scatfrac=scatfrac, scale_factor=scale_factor, teps=teps,
@@ -210,6 +227,8 @@ def estimate_llgi_scatfrac(params=None, **args):
     params = llgi_scatfrac_params.extract()
   if(params.method == "moments"):
     return estimate_llgi_scatfrac_moments(params=params, **args)
+  for name in ("miller_set", "model_anisotropy"):  # moments only
+    args.pop(name, None)
   return estimate_llgi_scatfrac_likelihood(params=params, **args)
 
 def estimate_llgi_scatfrac_likelihood(

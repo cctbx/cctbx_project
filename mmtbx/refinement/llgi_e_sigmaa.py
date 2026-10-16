@@ -11,6 +11,7 @@ import scitbx.lbfgs
 from libtbx import group_args
 import iotbx.phil
 import mmtbx.refinement.llgi_e_dmodel_fit as llgi_e_dmodel_fit
+import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
 
 llgi_e_sigmaa_params = iotbx.phil.parse("""\
   sigmaa_model = spline *d_model
@@ -25,6 +26,20 @@ llgi_e_sigmaa_params = iotbx.phil.parse("""\
   d_model_params {
     include scope mmtbx.refinement.llgi_e_dmodel_fit.llgi_e_dmodel_params
   }
+  model_anisotropy = off ellipsoid resolution_dependent *auto
+    .type = choice
+    .short_caption = Anisotropic normalisation of the model (LLGI)
+    .help = "Normalisation of the model's E (for the sigmaA fit and the "\
+            "LLGI maps) and of ScatFrac (for the target): off, isotropic "\
+            "(SigmaP(d*^2), and ScatFrac in resolution bins); ellipsoid, "\
+            "also an anisotropic factor exp(-q^T B q/4) with B trace-free "\
+            "and invariant under the point group; resolution_dependent, "\
+            "with B changing linearly with d*^2 as nacelle's anisotropy "\
+            "correction can (mmtbx.refinement.llgi_model_anisotropy). Each "\
+            "is fitted to the model's own intensities. auto: the same "\
+            "family as nacelle's correction of the data (resolution_"\
+            "dependent if its ANISOBETA changes with resolution, otherwise "\
+            "ellipsoid)."
   n_sigmap_nodes = 15
     .type = int
     .expert_level = 3
@@ -188,23 +203,50 @@ def build_sigma_p(f_model_no_aniso_scale, d_star_sq, n_nodes=15,
   return flex.exp(poly.f(eval_at))
 
 def build_e_model(f_model_no_aniso_scale, epsilons, d_star_sq,
-      n_sigmap_nodes=15, auto_kernel_number=50):
-  """ Emodel = f_model_no_aniso_scale / sqrt(EPS * SigmaP), with SigmaP
-  from build_sigma_p.
+      n_sigmap_nodes=15, auto_kernel_number=50, miller_set=None,
+      model_anisotropy="off"):
+  """ Emodel = f_model_no_aniso_scale / sqrt(EPS * SigmaP * A), with SigmaP
+  from build_sigma_p and A = 1, or with model_anisotropy ("ellipsoid" or
+  "resolution_dependent", which need miller_set, the reflections of
+  f_model_no_aniso_scale) the anisotropic factor fitted with SigmaP to
+  |F|^2/EPS (mmtbx.refinement.llgi_model_anisotropy.fit); SigmaP is then
+  the trend of |F|^2/A.
 
   epsilons: per-reflection epsilon factors, as flex.double.
 
-  Returns a group_args with .e_model (flex.complex_double) and .sigma_p
-  (flex.double).
+  Returns a group_args with .e_model (flex.complex_double), .sigma_p
+  (flex.double), .anisotropy (A, flex.double), .factor
+  (llgi_model_anisotropy.anisotropic_factor or None) and
+  .sigma_p_at(d_star_sq_eval), SigmaP at other resolutions (as
+  build_sigma_p's d_star_sq_eval).
   """
   n = f_model_no_aniso_scale.size()
   assert epsilons.size() == n
   assert d_star_sq.size() == n
-  sigma_p = build_sigma_p(
-    f_model_no_aniso_scale, d_star_sq,
-    n_nodes=n_sigmap_nodes, auto_kernel_number=auto_kernel_number)
-  e_model = f_model_no_aniso_scale * (1.0 / flex.sqrt(epsilons * sigma_p))
-  return group_args(e_model=e_model, sigma_p=sigma_p)
+  def sigma_p_of(f, d_star_sq_eval=None):
+    return build_sigma_p(f, d_star_sq, n_nodes=n_sigmap_nodes,
+      auto_kernel_number=auto_kernel_number, d_star_sq_eval=d_star_sq_eval)
+  if(model_anisotropy == "off" or miller_set is None):
+    sigma_p = sigma_p_of(f_model_no_aniso_scale)
+    a = flex.double(n, 1)
+    factor = None
+  else:
+    assert miller_set.size() == n
+    def iso_fn(i_over_a):  # SigmaP of |F|^2/A (without epsilon, as above)
+      return sigma_p_of(flex.complex_double(flex.sqrt(i_over_a * epsilons),
+        flex.double(n, 0)))
+    r = llgi_model_anisotropy.fit(
+      intensity=flex.norm(f_model_no_aniso_scale) / epsilons,
+      indices=miller_set.indices(),
+      centric_flags=miller_set.centric_flags().data(),
+      unit_cell=miller_set.unit_cell(), space_group=miller_set.space_group(),
+      iso_fn=iso_fn, mode=model_anisotropy)
+    sigma_p, a, factor = r.sigma_iso, r.a, r.factor
+  e_model = f_model_no_aniso_scale * (1.0 / flex.sqrt(epsilons * sigma_p * a))
+  f_over_root_a = f_model_no_aniso_scale * (1.0 / flex.sqrt(a))
+  return group_args(e_model=e_model, sigma_p=sigma_p, anisotropy=a,
+    factor=factor,
+    sigma_p_at=lambda d_star_sq_eval: sigma_p_of(f_over_root_a, d_star_sq_eval))
 
 def build_e_eff(feff, resn):
   """ Eeff = Feff / RESN. nacelle's RESN (root-epsilon-SigmaN) already
@@ -407,7 +449,9 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None,
   e_model = flex.abs(build_e_model(
     fmodel.f_model_no_aniso_scale().data(), epsilons, d_star_sq,
     n_sigmap_nodes=params.n_sigmap_nodes,
-    auto_kernel_number=params.auto_kernel_number).e_model)
+    auto_kernel_number=params.auto_kernel_number, miller_set=f_obs,
+    model_anisotropy=llgi_model_anisotropy.resolve(params.model_anisotropy,
+      fmodel.llgi_data())).e_model)
   k_sol, b_sol = bss_k_sol_b_sol(fmodel)
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
   if(hybrid is None):
@@ -490,7 +534,9 @@ def estimate_sigmaa_e_then_scatfrac_f(
     centric_flags=f_obs.centric_flags().data(),
     d_star_sq=f_obs.d_star_sq().data(),
     scale_factor=fmodel.scale_ml_wrapper(),
-    params=scatfrac_params, hybrid=llgi_hybrid.get_hybrid(llgi_data))
+    params=scatfrac_params, hybrid=llgi_hybrid.get_hybrid(llgi_data),
+    miller_set=f_obs, model_anisotropy=llgi_model_anisotropy.resolve(
+      e_params.model_anisotropy, llgi_data))
   return group_args(
     sigmaa=sigmaa, sigmaa_curve=sigmaa_result.evaluate_at,
     scatfrac=scatfrac_result.scatfrac,

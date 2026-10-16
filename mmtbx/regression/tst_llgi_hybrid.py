@@ -35,6 +35,7 @@ def exercise_map_coefficients_exact_branch():
   (m*F on the E scale) must be the exact posterior mean from
   llgi_exact_evaluate, and D must be sigmaA (no Dobs). """
   import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
+  import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
   fmodel = build_llgi_fmodel(40, 2.2, seed=3, rice_kappa=0.0)
   mch = fmodel.map_calculation_helper_llgi()
   assert mch.n_exact > 0
@@ -42,7 +43,9 @@ def exercise_map_coefficients_exact_branch():
   f_obs = fmodel.f_obs()
   fmnas = fmodel.f_model_no_aniso_scale()
   em = llgi_e_sigmaa.build_e_model(fmnas.data(),
-    f_obs.epsilons().data().as_double(), f_obs.d_star_sq().data())
+    f_obs.epsilons().data().as_double(), f_obs.d_star_sq().data(),
+    miller_set=f_obs, model_anisotropy=llgi_model_anisotropy.mode_for(
+      llgi_data))
   emodel_abs = flex.abs(em.e_model)
   sa = llgi_data.sigmaa.data()
   resn = llgi_data.resn.data()
@@ -51,7 +54,8 @@ def exercise_map_coefficients_exact_branch():
   ex = ext.llgi_exact_evaluate(e_obs_sq=h.e_obs_sq,
     sig_e_obs_sq=h.sig_e_obs_sq, e_calc=emodel_abs, sigmaa=sa,
     centric_flags=centric, null_log_z=h.null_log_z)
-  inv = 1 / flex.sqrt(em.sigma_p * f_obs.epsilons().data().as_double())
+  inv = 1 / flex.sqrt(em.sigma_p * em.anisotropy *
+    f_obs.epsilons().data().as_double())
   n_checked = 0
   for i in range(f_obs.size()):
     if(sa[i] <= 0 or not h.sig_e_obs_sq[i] > 0): continue
