@@ -184,6 +184,9 @@ tooltips = {
   'uc_plot_all_pairs': 'Show every pair of features as a panel of a corner plot. '
                        'Otherwise the plot shows the first three features only, '
                        'which for three or fewer features is already every pair.',
+  'uc_side_plot': 'What to draw beside the projections: a probability plot of each '
+                  'cluster\'s Mahalanobis distances against a normal distribution, '
+                  'or a histogram of unit cell volume colored by cluster.',
   # Dataset scaling stage — unit-cell cluster filter
   'chk_use_cluster': 'When checked, filter lattices using a covariance model previously '
                      'computed on the Unit Cells tab. When unchecked, the relative-length '
