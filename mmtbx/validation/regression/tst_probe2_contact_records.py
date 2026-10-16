@@ -134,18 +134,51 @@ def run_probe2(model, args):
   # The header carries the time of the run.
   return re.sub(r"run \d{4}-\d\d-\d\d \d\d:\d\d:\d\d", "run <time>", p2.run()[1])
 
+def two_models(hierarchy):
+  h = hierarchy.deep_copy()
+  h.only_model().id = "1"
+  second = h.only_model().detached_copy()
+  second.id = "2"
+  h.append_model(second)
+  return h
+
+RAW, KIN = ["output.format=raw"], ["output.format=kinemage"]
+
+# One case per ContactDB input (set_params, atom flags, bonds) and per kinemage writer option,
+# since kinemage without count_dots or contact_summary is written from the C++ arrays.
+CXX_DOTS_CASES = [
+  KIN, RAW, ["output.format=json"], ["output.count_dots=True"],
+  # Waters as source take the Phantom Hydrogen path.
+  ["approach=both", "source_selection=water", "target_selection=all"] + RAW,
+  ["approach=both", "source_selection=protein", "target_selection=water"] + KIN,
+  ["approach=once", "source_selection=protein", "target_selection=not protein"] + RAW,
+  ["output.contact_summary=True"] + KIN,
+  ["output.condensed=True"] + RAW,
+  ["minimum_occupancy=0.5"] + RAW,
+  ["excluded_bond_chain_length=3"] + RAW,
+  ["excluded_bond_chain_length=5"] + RAW,
+  ["include_mainchain_mainchain=False"] + RAW,
+  ["include_water_water=True", "source_selection=all"] + RAW,
+  ["overlap_scale_factor=0.3"] + RAW,
+  ["probe.probe_radius=0.0"] + RAW,
+  # Weak H-bond and worse overlap dots need these; the lower cutoffs give this model bad overlaps.
+  ["probe.allow_weak_hydrogen_bonds=True", "output.separate_worse_clashes=True",
+   "probe.clash_cutoff=0.1", "probe.worse_clash_cutoff=0.2"] + RAW,
+  ["output.separate_worse_clashes=True"] + KIN,
+  ["output.report_hydrogen_bonds=False", "output.report_clashes=False"] + RAW,
+  ["output.report_vdws=False"] + KIN,
+  ["output.bin_gaps=True"] + KIN,
+  ["output.color_by_gap=False", "output.merge_contacts=False"] + KIN,
+  ["output.atoms_are_masters=True", "output.altid_as_pointmaster=False"] + KIN,
+]
+
 def exercise_cxx_dots():
-  h = hydrogenated()
-  for args in (["output.format=kinemage"],
-               ["output.format=kinemage", "output.report_vdws=False"],
-               ["output.format=raw"],
-               ["output.format=json"],
-               ["output.count_dots=True"],
-               # Waters as source take the Phantom Hydrogen path.
-               ["approach=both", "source_selection=water", "target_selection=all",
-                "output.format=raw"]):
-    python = run_probe2(fresh_model(*h), args + ["output.cxx_dots=False"])
-    cxx = run_probe2(fresh_model(*h), args + ["output.cxx_dots=True"])
+  hierarchy, symmetry = hydrogenated()
+  # Two identical models: dots between them would be all clashes.
+  cases = [(hierarchy, args) for args in CXX_DOTS_CASES] + [(two_models(hierarchy), RAW)]
+  for h, args in cases:
+    python = run_probe2(fresh_model(h, symmetry), args + ["output.cxx_dots=False"])
+    cxx = run_probe2(fresh_model(h, symmetry), args + ["output.cxx_dots=True"])
     assert len(python.splitlines()) > 5, (args, python)
     assert cxx == python, args
 
