@@ -872,8 +872,14 @@ class UnitCellSentinel(Thread):
     while self.active:
       try:
         wx.CallAfter(self.parent.run_window.unitcell_light.change_status, 'idle')
-        trial = self.parent.run_window.unitcell_tab.trial
-        tag_sets = self.parent.run_window.unitcell_tab.tag_sets
+        # The tab's trial object belongs to the main thread's database
+        # connection, which is not safe to use from this thread while the main
+        # thread is also querying: fetch the trial again over this thread's own
+        # connection, so the run groups, runs and tags the stats walk through
+        # are read over it too. No trial selected means nothing to plot.
+        tab_trial = self.parent.run_window.unitcell_tab.trial
+        trial = self.db.get_trial(trial_id=tab_trial.id) if tab_trial is not None else None
+        tag_sets = self.parent.run_window.unitcell_tab.tag_sets if trial is not None else []
         sizex, sizey = self.parent.run_window.unitcell_tab.unit_cell_panelsize
 
         info_list = []
