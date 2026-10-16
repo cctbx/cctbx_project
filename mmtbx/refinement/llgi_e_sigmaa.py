@@ -39,7 +39,8 @@ llgi_e_sigmaa_params = iotbx.phil.parse("""\
             "is fitted to the model's own intensities. auto: the same "\
             "family as nacelle's correction of the data (resolution_"\
             "dependent if its ANISOBETA changes with resolution, otherwise "\
-            "ellipsoid)."
+            "ellipsoid). ScatFrac is anisotropic only in its moments form "\
+            "(llgi_scatfrac method=moments, the default)."
   n_sigmap_nodes = 15
     .type = int
     .expert_level = 3
@@ -220,6 +221,7 @@ def build_e_model(f_model_no_aniso_scale, epsilons, d_star_sq,
   .sigma_p_at(d_star_sq_eval), SigmaP at other resolutions (as
   build_sigma_p's d_star_sq_eval).
   """
+  llgi_model_anisotropy.check_mode(model_anisotropy)
   n = f_model_no_aniso_scale.size()
   assert epsilons.size() == n
   assert d_star_sq.size() == n
@@ -232,6 +234,9 @@ def build_e_model(f_model_no_aniso_scale, epsilons, d_star_sq,
     factor = None
   else:
     assert miller_set.size() == n
+    # A is fitted to |F|^2/EPS against the trend of |F|^2/A (SigmaP excludes
+    # epsilon, as above); A is trace-free, so the 1/<EPS> this leaves in
+    # shells with EPS > 1 reflections hardly affects it
     def iso_fn(i_over_a):  # SigmaP of |F|^2/A (without epsilon, as above)
       return sigma_p_of(flex.complex_double(flex.sqrt(i_over_a * epsilons),
         flex.double(n, 0)))
@@ -247,6 +252,31 @@ def build_e_model(f_model_no_aniso_scale, epsilons, d_star_sq,
   return group_args(e_model=e_model, sigma_p=sigma_p, anisotropy=a,
     factor=factor,
     sigma_p_at=lambda d_star_sq_eval: sigma_p_of(f_over_root_a, d_star_sq_eval))
+
+def build_e_model_as_fitted(llgi_data, f_model_no_aniso_scale, miller_set):
+  """ build_e_model for the reflections of miller_set with the settings of
+  the sigmaA fit that made llgi_data's sigmaA (llgi_data.fit_params.
+  e_scale, or the defaults; the model anisotropy as llgi_model_anisotropy.
+  mode_for), for the maps """
+  fp = getattr(llgi_data, "fit_params", None)
+  e_params = getattr(fp, "e_scale", None) if fp is not None else None
+  if(e_params is None):
+    e_params = llgi_e_sigmaa_params.extract()
+  return build_e_model(f_model_no_aniso_scale,
+    miller_set.epsilons().data().as_double(), miller_set.d_star_sq().data(),
+    n_sigmap_nodes=e_params.n_sigmap_nodes,
+    auto_kernel_number=e_params.auto_kernel_number, miller_set=miller_set,
+    model_anisotropy=llgi_model_anisotropy.mode_for(llgi_data))
+
+def isotropic_scatfrac_warnings(scatfrac_params, model_anisotropy):
+  """ A warning (list of messages) if ScatFrac stays isotropic although the
+  model's E is normalised anisotropically (the likelihood form) """
+  if(model_anisotropy == "off" or scatfrac_params is None or
+     scatfrac_params.method == "moments"):
+    return []
+  return ["ScatFrac (method=%s) is isotropic; the model anisotropy (%s) "
+    "applies to the sigmaA fit and the maps only" % (scatfrac_params.method,
+      model_anisotropy)]
 
 def build_e_eff(feff, resn):
   """ Eeff = Feff / RESN. nacelle's RESN (root-epsilon-SigmaN) already
@@ -510,7 +540,7 @@ def estimate_sigmaa_e_then_scatfrac_f(
   ScatFrac target on the working set),
   .scatfrac_inf/.b_scatfrac (ScatFrac = scatfrac_inf*exp(-b_scatfrac*ss),
   likelihood method; None for moments) and .warnings (list of
-  messages about fits that stopped early).
+  messages about fits that stopped early, and isotropic_scatfrac_warnings).
   """
   import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
   if(e_params is None):
@@ -522,6 +552,8 @@ def estimate_sigmaa_e_then_scatfrac_f(
   sigmaa = sigmaa_result.sigmaa
   f_obs = fmodel.f_obs()
   llgi_data = fmodel.llgi_data()
+  model_anisotropy = llgi_model_anisotropy.resolve(e_params.model_anisotropy,
+    llgi_data)
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
   scatfrac_result = llgi_scatfrac.estimate_llgi_scatfrac(
     f_eff=feff,
@@ -535,8 +567,7 @@ def estimate_sigmaa_e_then_scatfrac_f(
     d_star_sq=f_obs.d_star_sq().data(),
     scale_factor=fmodel.scale_ml_wrapper(),
     params=scatfrac_params, hybrid=llgi_hybrid.get_hybrid(llgi_data),
-    miller_set=f_obs, model_anisotropy=llgi_model_anisotropy.resolve(
-      e_params.model_anisotropy, llgi_data))
+    miller_set=f_obs, model_anisotropy=model_anisotropy)
   return group_args(
     sigmaa=sigmaa, sigmaa_curve=sigmaa_result.evaluate_at,
     scatfrac=scatfrac_result.scatfrac,
@@ -547,4 +578,5 @@ def estimate_sigmaa_e_then_scatfrac_f(
       "%s fit: L-BFGS stopped early: %s" % (name, error)
       for name, error in (("sigmaA", sigmaa_result.lbfgs_error),
                           ("ScatFrac", scatfrac_result.lbfgs_error))
-      if error is not None])
+      if error is not None] + isotropic_scatfrac_warnings(scatfrac_params,
+        model_anisotropy))

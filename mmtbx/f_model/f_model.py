@@ -2647,14 +2647,16 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     """ The LLGI counterpart of map_calculation_helper(): .f_obs, .f_model,
     .alpha, .beta and .fom for mmtbx.map_tools.combine, from the LLGI
     quantities instead of an ML alpha/beta fit. On the E scale, without
-    anisotropy or ScatFrac, as for the sigmaA fit:
+    nacelle's anisotropy or ScatFrac, as for the sigmaA fit:
       Eeff   = Feff/(sqrt(TEPS)*RESN)
-      Emodel = f_model_no_aniso_scale/sqrt(EPS*SigmaP)
+      Emodel = f_model_no_aniso_scale/sqrt(EPS*SigmaP*A)
+    (A the model's anisotropic factor, llgi_e_sigmaa's model_anisotropy;
+    1 if off)
       D      = Dobs*sigmaA,  V = TEPS - D^2
     combine() forms fo_scale*fom*f_obs + fc_scale*alpha*f_model, with
       .f_model  f_model_no_aniso_scale (the phase of f_model, without
                 k_anisotropic)
-      .alpha    the model coefficient times sqrt(TEPS)*RESN/sqrt(EPS*SigmaP),
+      .alpha    the model coefficient times sqrt(TEPS)*RESN/sqrt(EPS*SigmaP*A),
                 so that alpha*f_model is on the F scale.
     For reflections with measured intensities (llgi_data.e_obs_sq), the
     exact posterior is used whether or not the hybrid target is enabled:
@@ -2694,12 +2696,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         feff = llgi_data.feff
         f_obs = fmodel.f_obs()
         epsilons = f_obs.epsilons().data().as_double()
-        d_star_sq = f_obs.d_star_sq().data()
         fmnas = fmodel.f_model_no_aniso_scale()
-        import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
-        e_model_result = llgi_e_sigmaa.build_e_model(
-          fmnas.data(), epsilons, d_star_sq, miller_set=f_obs,
-          model_anisotropy=llgi_model_anisotropy.mode_for(llgi_data))
+        e_model_result = llgi_e_sigmaa.build_e_model_as_fitted(llgi_data,
+          fmnas.data(), f_obs)
         e_model_abs = flex.abs(e_model_result.e_model)
         # the model's normalisation, with its anisotropy (A = 1 if off)
         sigma_p = e_model_result.sigma_p * e_model_result.anisotropy

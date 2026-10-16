@@ -125,8 +125,9 @@ def _indices_as_numpy(indices):
 
 def fit_anisobeta(indices, anisobeta, unit_cell=None):
   """ An anisotropic factor exp(h^T B h) as fitted (least squares) to
-  log(anisobeta): the six coefficients of the quadratic form in h, and a
-  function evaluating it for other indices. With unit_cell, the form is
+  log(anisobeta): the six coefficients of the quadratic form in h, a
+  function evaluating it for other indices, and the design matrix
+  (design(indices), numpy, a column per coefficient). With unit_cell, the form is
   exp(h^T B0 h + d*^2 h^T B1 h) (twelve coefficients, B0's first): nacelle's
   ANISOBETA with resolution-dependent anisotropy, in which the anisotropy
   changes linearly with d*^2 (phasertng.macaniso.resolution_dependent); it
@@ -145,7 +146,8 @@ def fit_anisobeta(indices, anisobeta, unit_cell=None):
   rms = float(np.sqrt(np.mean((y - design(indices).dot(coef))**2)))
   def evaluate(idx):
     return flex.double(np.exp(design(idx).dot(coef)))
-  return group_args(coefficients=coef, rms_log_residual=rms, evaluate=evaluate)
+  return group_args(coefficients=coef, rms_log_residual=rms, evaluate=evaluate,
+    design=design)
 
 def fit_k_anisotropic(miller_array):
   """ fmodel's anisotropic scale k_anisotropic (a miller array of positive
@@ -286,12 +288,8 @@ def compute(fmodel, params=None, log=None):
     return None
   f_obs = fmodel.f_obs()
   centric = f_obs.centric_flags().data()
-  epsilons = f_obs.epsilons().data().as_double()
-  d_star_sq = f_obs.d_star_sq().data()
   fmnas = fmodel.f_model_no_aniso_scale()
-  import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
-  em = llgi_e_sigmaa.build_e_model(fmnas.data(), epsilons, d_star_sq,
-    miller_set=f_obs, model_anisotropy=llgi_model_anisotropy.mode_for(llgi_data))
+  em = llgi_e_sigmaa.build_e_model_as_fitted(llgi_data, fmnas.data(), f_obs)
   e_calc = flex.abs(em.e_model)
   phase = _unit_phase(fmnas.data())
   sigmaa = llgi_data.sigmaa.data().deep_copy()
@@ -355,7 +353,7 @@ def compute(fmodel, params=None, log=None):
     (LABELS.difference, as_complex(ce.difference, f_scale))]
   if(params.anisotropic_maps and anisobeta is not None and rm.anisotropic):
     if(rm.fit.rms_log_residual > 1.e-3):
-      say("ANISOBETA is not a quadratic form in h (rms residual of the fit "
+      say("ANISOBETA is not of nacelle's form (rms residual of the fit "
         "%.3g in ln); the anisotropy of the filled reflections is approximate."
         % rm.fit.rms_log_residual)
     arrays += [

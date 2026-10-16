@@ -22,12 +22,18 @@ def exercise_tensor_basis():
       ((41, 47, 283, 90, 90, 90), "P 2 2 21", 2),
       ((60, 60, 90, 90, 90, 90), "P 41 21 2", 1),
       ((172, 172, 277, 90, 90, 120), "P 63 2 2", 1),
+      ((60, 60, 60, 80, 80, 80), "R 3 :R", 1),
+      ((75, 75, 140, 90, 90, 120), "R 3 2 :H", 1),
       ((80, 80, 80, 90, 90, 90), "P 21 3", 0)]:
     ms = miller_set(cell, symbol, 4.0)
     basis = llgi_model_anisotropy.tensor_basis(ms.unit_cell(), ms.space_group())
     assert len(basis) == n, (symbol, len(basis))
-    for t in basis:
+    # the symmetry-allowed ADPs, less the isotropic one
+    assert n == ms.space_group().adp_constraints().n_independent_params() - 1
+    for i, t in enumerate(basis):
       assert abs(np.trace(t)) < 1e-12 and np.allclose(t, t.T)
+      for j, t2 in enumerate(basis):
+        assert abs(np.sum(t * t2) - (i == j)) < 1e-12
     # the factor is the same for symmetry-equivalent reflections
     if(n > 0):
       f = llgi_model_anisotropy.anisotropic_factor(ms.unit_cell(), ms.space_group(),
@@ -130,6 +136,53 @@ def exercise_build_e_model_and_scatfrac():
   x = np.abs(np.array(f)) ** 2 / np.array(s)
   assert abs(x[weak].mean() / x.mean() - 1) < 0.05 and abs(x[strong].mean() / x.mean() - 1) < 0.05
 
+def exercise_safeguards():
+  # too few reflections per parameter: A = 1; "auto" must be resolved first
+  ms = miller_set((51, 62, 73, 90, 97, 90), "C 2", 8.0)
+  assert ms.size() < llgi_model_anisotropy.MIN_REFLECTIONS_PER_PARAMETER * 3
+  r = llgi_model_anisotropy.fit(wilson_intensities(ms, None), ms.indices(),
+    ms.centric_flags().data(), ms.unit_cell(), ms.space_group(),
+    binned_iso_fn(ms), "ellipsoid")
+  assert r.a.all_eq(1) and np.all(r.factor.b == 0)
+  f = flex.complex_double(ms.size(), 1)
+  for call in (
+      lambda: llgi_e_sigmaa.build_e_model(f, ms.epsilons().data().as_double(),
+        ms.d_star_sq().data(), miller_set=ms, model_anisotropy="auto"),
+      lambda: llgi_scatfrac.scatfrac_moments(f, flex.double(ms.size(), 1),
+        flex.double(ms.size(), 1), ms.d_star_sq().data(), miller_set=ms,
+        model_anisotropy="auto")):
+    try: call()
+    except ValueError: pass
+    else: raise AssertionError("auto accepted")
+  # ScatFrac's likelihood form stays isotropic: a warning
+  import mmtbx.refinement.llgi_scatfrac as ls
+  p = ls.llgi_scatfrac_params.extract()
+  assert llgi_e_sigmaa.isotropic_scatfrac_warnings(p, "ellipsoid") == []
+  p.method = "likelihood"
+  assert len(llgi_e_sigmaa.isotropic_scatfrac_warnings(p, "ellipsoid")) == 1
+  assert llgi_e_sigmaa.isotropic_scatfrac_warnings(p, "off") == []
+
+def exercise_missing_reflections():
+  # the maps' fill normalises the model as the map coefficients (and the
+  # sigmaA fit) do: the same |Emodel| for the observed reflections
+  from mmtbx import map_tools as mt
+  from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
+  fmodel = build_llgi_fmodel(n_atoms=40, d_min=2.2, seed=3)
+  llgi_data = fmodel.llgi_data()
+  assert llgi_model_anisotropy.mode_for(llgi_data) == "ellipsoid"
+  mro = mt.model_missing_reflections_llgi(fmodel=fmodel)
+  mro.get_missing()
+  m = mro.e_scale_missing
+  f_obs = fmodel.f_obs()
+  em = llgi_e_sigmaa.build_e_model_as_fitted(llgi_data,
+    fmodel.f_model_no_aniso_scale().data(), f_obs)
+  assert em.factor is not None
+  from cctbx import miller as cmiller
+  pairs = cmiller.match_indices(m.miller_set.indices(), f_obs.indices()).pairs()
+  assert pairs.size() == f_obs.size()
+  assert approx_equal(m.e_model_abs.select(pairs.column(0)),
+    flex.abs(em.e_model).select(pairs.column(1)), eps=1e-8)
+
 def exercise_resolve():
   # auto takes the family of nacelle's ANISOBETA: resolution_dependent if
   # it changes with resolution, otherwise (also without it) ellipsoid
@@ -149,6 +202,20 @@ def exercise_resolve():
   assert resolve("auto", flat) == "ellipsoid"
   assert resolve("auto", None) == "ellipsoid"
   assert resolve("auto", group_args(anisobeta=None)) == "ellipsoid"
+  # fill values (1) for reflections without nacelle's value, and values
+  # <= 0: nacelle's own values (nacelle_all) are used if present, values
+  # <= 0 are ignored
+  filled = ell.anisobeta.deep_copy()
+  filled.data().set_selected(flex.size_t(range(0, filled.size(), 50)), 1.0)
+  assert resolve("auto", group_args(anisobeta=filled)) == "resolution_dependent"
+  assert resolve("auto", group_args(anisobeta=filled,
+    nacelle_all=group_args(anisobeta=ell.anisobeta))) == "ellipsoid"
+  zeros = ell.anisobeta.deep_copy()
+  zeros.data().set_selected(flex.size_t(range(0, zeros.size(), 50)), 0.0)
+  assert resolve("auto", group_args(anisobeta=zeros)) == "ellipsoid"
+  # kept on llgi_data while the array is the same
+  assert resolve("auto", rd) == "resolution_dependent"
+  assert rd._model_anisotropy_auto[0] is rd.anisobeta
   for mode in llgi_model_anisotropy.MODES:
     assert resolve(mode, rd) == mode
   # mode_for: the sigmaA fit's setting (the default, auto, if e_scale is
@@ -165,6 +232,8 @@ def run():
   exercise_tensor_basis()
   exercise_fit_recovers_factor()
   exercise_build_e_model_and_scatfrac()
+  exercise_safeguards()
+  exercise_missing_reflections()
   exercise_resolve()
   print("OK")
 

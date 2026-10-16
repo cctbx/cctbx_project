@@ -678,8 +678,12 @@ def _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params, rice_kappa,
   """ ScatFrac (F scale, working set) in the u-frame, for the data d
   (renormalise_e by u); model_anisotropy as llgi_e_sigmaa's """
   import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
+  import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
   if(scatfrac_params is None):
     scatfrac_params = llgi_scatfrac.llgi_scatfrac_params.extract()
+  for w in llgi_e_sigmaa.isotropic_scatfrac_warnings(scatfrac_params,
+      model_anisotropy):
+    if(w not in warnings): warnings.append(w)
   f_obs = fmodel.f_obs()
   centric = f_obs.centric_flags().data()
   result = llgi_scatfrac.estimate_llgi_scatfrac(

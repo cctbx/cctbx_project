@@ -4,12 +4,12 @@ The LLGI likelihood compares the data and the model on the E scale, and
 assumes both have unit mean square everywhere in reciprocal space. The data
 are normalised by nacelle's RESN, which includes its anisotropy correction,
 an ellipsoid that may change with resolution (phasertng.macaniso.
-resolution_dependent). The model's normalisation (SigmaP for the sigmaA fit,
-ScatFrac for the target) was isotropic, so wherever the model's own
-intensities fall off differently with direction, for instance because TLS
-or anisotropic ADPs carry part of the anisotropy, or because the anisotropic
-scale in F_model and nacelle's correction differ, the model's E had the wrong
-mean square by direction, which sigmaA cannot repair.
+resolution_dependent). An isotropic normalisation of the model (SigmaP for
+the sigmaA fit, ScatFrac for the target) leaves the model's E with the wrong
+mean square by direction wherever the model's own intensities fall off
+differently with direction, for instance because TLS or anisotropic ADPs
+carry part of the anisotropy, or because the anisotropic scale in F_model
+and nacelle's correction differ; sigmaA cannot repair that.
 
 Here the model normalisation is
 
@@ -41,6 +41,19 @@ from cctbx.array_family import flex
 from libtbx import group_args
 
 MODES = ("off", "ellipsoid", "resolution_dependent")
+# fewer reflections per parameter than this in the fit: A = 1
+MIN_REFLECTIONS_PER_PARAMETER = 100
+
+def check_mode(mode):
+  """ ValueError unless mode is one of MODES ("auto" is resolved first,
+  by resolve) """
+  if(mode not in MODES):
+    raise ValueError("model_anisotropy %r: one of %s expected%s" % (mode,
+      ", ".join(MODES), " (resolve auto first)" if mode == "auto" else ""))
+
+def _as_numpy(values):
+  return values.as_numpy_array() if hasattr(values, "as_numpy_array") \
+    else np.asarray(values)
 
 def tensor_basis(unit_cell, space_group):
   """ Orthonormal basis (Frobenius) of the symmetric, trace-free Cartesian
@@ -79,7 +92,9 @@ class anisotropic_factor(object):
 
   def design(self, indices):
     """ u_k(h) for each reflection (rows) and parameter (columns) """
-    h = np.array(indices, dtype=float).reshape(-1, 3)
+    h = indices.as_vec3_double().as_numpy_array() \
+      if hasattr(indices, "as_vec3_double") else \
+      np.array(indices, dtype=float).reshape(-1, 3)
     q = h.dot(np.array(self.unit_cell.fractionalization_matrix()).reshape(3, 3))
     u = np.column_stack([0.25 * np.einsum("ij,jk,ik->i", q, t, q)
       for t in self.basis]) if self.basis else np.zeros((h.shape[0], 0))
@@ -100,29 +115,34 @@ def fit(intensity, indices, centric_flags, unit_cell, space_group, iso_fn,
   iso_fn(I/A) -> Sigma_iso per reflection (flex.double, all reflections).
   selection: the reflections used in the fit (flex.bool, or None for all).
 
+  With fewer than MIN_REFLECTIONS_PER_PARAMETER reflections per parameter,
+  or if the fit fails (non-finite values), A = 1 (b = 0).
+
   Returns group_args(sigma (Sigma_iso*A, flex.double), sigma_iso, a (A),
   factor (anisotropic_factor, or None for mode "off")). """
+  check_mode(mode)
   n = intensity.size()
   if(mode == "off"):
     sigma_iso = iso_fn(intensity)
     return group_args(sigma=sigma_iso, sigma_iso=sigma_iso,
       a=flex.double(n, 1), factor=None)
-  sel = np.ones(n, bool) if selection is None else np.array(selection)
-  i_np = np.array(intensity)
+  sel = np.ones(n, bool) if selection is None else _as_numpy(selection)
+  i_np = _as_numpy(intensity)
   d_star_sq = unit_cell.d_star_sq(indices).as_numpy_array()
   factor = anisotropic_factor(unit_cell, space_group, mode,
     d_star_sq_max=float(d_star_sq[sel].max()))
-  if(factor.n_parameters() == 0):
+  if(factor.n_parameters() == 0 or
+     sel.sum() < MIN_REFLECTIONS_PER_PARAMETER * factor.n_parameters()):
     sigma_iso = iso_fn(intensity)
     return group_args(sigma=sigma_iso, sigma_iso=sigma_iso,
       a=flex.double(n, 1), factor=factor)
   u = factor.design(indices)
-  w = np.where(np.array(centric_flags), 0.5, 1.0)
+  w = np.where(_as_numpy(centric_flags), 0.5, 1.0)
   us, ws = u[sel], w[sel]
   b = np.zeros(u.shape[1])
   a = np.ones(n)
   for outer in range(n_outer):
-    sigma_iso = np.array(iso_fn(flex.double(i_np / a)))
+    sigma_iso = iso_fn(flex.double(i_np / a)).as_numpy_array()
     y = (i_np / sigma_iso)[sel]
     for it in range(max_newton):
       e = np.exp(us.dot(b))            # 1/A
@@ -130,7 +150,11 @@ def fit(intensity, indices, centric_flags, unit_cell, space_group, iso_fn,
       hess = (us * (ws * y * e)[:, None]).T.dot(us)
       step = np.linalg.solve(hess + 1.e-9 * np.eye(len(b)), g)
       b -= step
-      if(np.max(np.abs(step)) < 1.e-7): break
+      if(not np.all(np.isfinite(b)) or np.max(np.abs(step)) < 1.e-7): break
+    if(not np.all(np.isfinite(b))):
+      b = np.zeros(u.shape[1])
+      a = np.ones(n)
+      break
     a = np.exp(-u.dot(b))
   factor.b = b
   sigma_iso = iso_fn(flex.double(i_np / a))
@@ -144,28 +168,38 @@ def fit(intensity, indices, centric_flags, unit_cell, space_group, iso_fn,
 RESOLUTION_DEPENDENT_THRESHOLD = 1.e-4
 
 def data_anisotropy_is_resolution_dependent(anisobeta):
-  """ True if nacelle's ANISOBETA (a miller array) changes with resolution
-  (phasertng.macaniso.resolution_dependent kept its beta1): the d*^2 part
-  of its exact form exp(h^T B0 h + d*^2 h^T B1 h) (llgi_maps.fit_anisobeta)
-  is not negligible """
+  """ True if nacelle's ANISOBETA (a miller array; values <= 0 ignored)
+  changes with resolution (phasertng.macaniso.resolution_dependent kept its
+  beta1): the d*^2 term of its exact form exp(h^T B0 h + d*^2 h^T B1 h)
+  (llgi_maps.fit_anisobeta) is not negligible """
   import mmtbx.refinement.llgi_maps as llgi_maps
-  fit = llgi_maps.fit_anisobeta(anisobeta.indices(), anisobeta.data())
-  full = llgi_maps.fit_anisobeta(anisobeta.indices(), anisobeta.data(),
+  anisobeta = anisobeta.select(anisobeta.data() > 0)
+  if(anisobeta.size() == 0): return False
+  fit = llgi_maps.fit_anisobeta(anisobeta.indices(), anisobeta.data(),
     unit_cell=anisobeta.unit_cell())
-  b0 = np.log(np.array(fit.evaluate(anisobeta.indices())))
-  b01 = np.log(np.array(full.evaluate(anisobeta.indices())))
-  return bool(np.max(np.abs(b01 - b0)) > RESOLUTION_DEPENDENT_THRESHOLD)
+  b1_term = fit.design(anisobeta.indices())[:, 6:].dot(fit.coefficients[6:])
+  return bool(np.max(np.abs(b1_term)) > RESOLUTION_DEPENDENT_THRESHOLD)
 
 def resolve(mode, llgi_data):
   """ mode, with "auto" replaced by the family of the data's anisotropy
-  correction (llgi_data.anisobeta): resolution_dependent or ellipsoid
-  (ellipsoid also without llgi_data or ANISOBETA) """
+  correction: resolution_dependent or ellipsoid (ellipsoid also without
+  llgi_data or ANISOBETA). From nacelle's values for every reflection in its
+  file (llgi_data.nacelle_all.anisobeta) if present, otherwise
+  llgi_data.anisobeta; kept on llgi_data while that array is the same. """
   if(mode != "auto"): return mode
-  anisobeta = getattr(llgi_data, "anisobeta", None)
-  if(anisobeta is not None and anisobeta.size() > 0 and
-     data_anisotropy_is_resolution_dependent(anisobeta)):
-    return "resolution_dependent"
-  return "ellipsoid"
+  nacelle_all = getattr(llgi_data, "nacelle_all", None)
+  anisobeta = getattr(nacelle_all, "anisobeta", None)
+  if(anisobeta is None):
+    anisobeta = getattr(llgi_data, "anisobeta", None)
+  if(anisobeta is None or anisobeta.size() == 0):
+    return "ellipsoid"
+  cached = getattr(llgi_data, "_model_anisotropy_auto", None)
+  if(cached is not None and cached[0] is anisobeta):
+    return cached[1]
+  result = "resolution_dependent" if \
+    data_anisotropy_is_resolution_dependent(anisobeta) else "ellipsoid"
+  llgi_data._model_anisotropy_auto = (anisobeta, result)
+  return result
 
 def mode_for(llgi_data):
   """ The model_anisotropy (resolved) of the sigmaA fit that made

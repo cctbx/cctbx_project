@@ -165,26 +165,27 @@ def scatfrac_moments(f_calc, teps, resn, d_star_sq, n_bins=20,
   RESN^2) (mmtbx.refinement.llgi_model_anisotropy.fit), so that the model's
   E in the target has unit mean square by direction as well. """
   import numpy as np
+  import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
+  llgi_model_anisotropy.check_mode(model_anisotropy)
   k = scale_factor if scale_factor > 0 else 1.0
-  dss = np.array(d_star_sq)
-  ok = np.array((teps > 0) & (resn > 0))
+  dss = d_star_sq.as_numpy_array()
+  ok = ((teps > 0) & (resn > 0)).as_numpy_array()
   x = np.zeros(dss.size)
-  x[ok] = np.array(flex.norm(f_calc) * (k * k) / (teps * resn * resn))[ok]
+  x[ok] = (flex.norm(f_calc) * (k * k) / (teps * resn * resn)).as_numpy_array()[ok]
   order = np.argsort(dss)
   order = order[ok[order]]
   bins = [c for c in np.array_split(order, max(1, min(n_bins, order.size)))
           if c.size > 0]
   d_mean = np.array([dss[c].mean() for c in bins])
   def iso_fn(values):
-    v = np.array(values)
+    v = values.as_numpy_array()
     return flex.double(np.interp(dss, d_mean, np.array([v[c].mean() for c in bins])))
   if(model_anisotropy == "off" or miller_set is None):
     return iso_fn(flex.double(x))
-  import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
   r = llgi_model_anisotropy.fit(intensity=flex.double(x),
     indices=miller_set.indices(), centric_flags=miller_set.centric_flags().data(),
     unit_cell=miller_set.unit_cell(), space_group=miller_set.space_group(),
-    iso_fn=iso_fn, mode=model_anisotropy, selection=flex.bool(list(ok)))
+    iso_fn=iso_fn, mode=model_anisotropy, selection=ok)
   return r.sigma
 
 def estimate_llgi_scatfrac_moments(
