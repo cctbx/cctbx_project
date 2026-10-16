@@ -6,12 +6,15 @@ against Cray MPICH.
 
 ## Running it
 
-Clone on `$CFS` or `$SCRATCH` (the checkout directory is the install prefix)
-and run from a login node with no conda environment active:
+Clone cctbx_project into `modules/` under wherever you want the build to live
+on `$CFS` or `$SCRATCH` (the parent of `modules/` is the install prefix), then
+run `build.sh` from a login node with no conda environment active:
 
-    git clone <this repo> $SCRATCH/cctbx-perlmutter-build
-    cd $SCRATCH/cctbx-perlmutter-build
-    script -q -e -c ./build.sh build.log
+    git clone https://github.com/cctbx/cctbx_project $SCRATCH/cctbx/modules/cctbx_project
+    cd $SCRATCH/cctbx/modules/cctbx_project
+    git checkout <branch>   # optional, e.g. cuda13-kokkos-4.7 -- see Open item below
+    cd $SCRATCH/cctbx
+    script -q -e -c modules/cctbx_project/xfel/conda_envs/site/nersc-perlmutter/build.sh build.log
 
 The conda solve takes 5-10 minutes and `bootstrap.py` 1-3 hours. A GPU is not
 needed to build. Use `script` rather than `| tee` for the log so progress bars
@@ -19,7 +22,7 @@ keep working; `col -b < build.log` strips the control characters.
 
 ## Using the result
 
-    source $SCRATCH/cctbx-perlmutter-build/activate.sh
+    source $SCRATCH/cctbx/activate.sh
 
 `activate.sh` also defines `mk-cctbx` for rebuilding without redoing the conda
 environment:
@@ -32,9 +35,10 @@ moving the checkout means rebuilding.
 
 ## Notes
 
-* `bootstrap.py` is pinned to a cctbx commit (`BOOTSTRAP_COMMIT` in `build.sh`);
-  it owns the repo list, the Kokkos pin and the configure flags. Record the SHA
-  of whichever build succeeds.
+* `build.sh` copies `bootstrap.py` from your `modules/cctbx_project` checkout,
+  so it owns the repo list, the Kokkos pin and the configure flags. `bootstrap.py`'s
+  `hot update` runs `git pull --rebase` on an existing `modules/cctbx_project`
+  checkout, so whatever branch you checked out survives the build.
 * Last checked on Perlmutter 2026-08-17: `PrgEnv-gnu/8.6.0`, `cudatoolkit/12.9`
   and `cpe-cuda/25.09` exist; `cc -shared -target-accel=nvidia80 -lmpi -lgdrapi`
   works. `SIT_ROOT=/reg/g/psdm` in `activate.sh` is an SLAC path and unverified.
@@ -44,6 +48,6 @@ moving the checkout means rebuilding.
 
 As of 2026-08-26 the unversioned `cudatoolkit` module gives CUDA 13, which the
 Kokkos 4.2.00 pinned in cctbx master and cctbx's CUDA arch flags do not
-support. `build.sh` therefore checks out the cctbx branch `cuda13-kokkos-4.7`
-(Kokkos 4.7.03 plus CUDA >= 13 arch flags). Revert that commit once the branch
-is merged upstream.
+support. Check out the cctbx branch `cuda13-kokkos-4.7` (Kokkos 4.7.03 plus
+CUDA >= 13 arch flags) before running `build.sh`, until that branch is merged
+upstream.
