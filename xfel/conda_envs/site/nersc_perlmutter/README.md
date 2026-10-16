@@ -14,7 +14,7 @@ run `build.sh` from a login node with no conda environment active:
     cd $SCRATCH/cctbx/modules/cctbx_project
     git checkout <branch>   # optional, e.g. cuda13-kokkos-4.7 -- see Open item below
     cd $SCRATCH/cctbx
-    script -q -e -c modules/cctbx_project/xfel/conda_envs/site/nersc-perlmutter/build.sh build.log
+    script -q -e -c modules/cctbx_project/xfel/conda_envs/site/nersc_perlmutter/build.sh build.log
 
 The conda solve takes 5-10 minutes and `bootstrap.py` 1-3 hours. A GPU is not
 needed to build. Use `script` rather than `| tee` for the log so progress bars

@@ -8,7 +8,7 @@
 # want the build to live ($CFS or $SCRATCH, not $HOME):
 #
 #   git clone https://github.com/cctbx/cctbx_project $PREFIX/modules/cctbx_project
-#   $PREFIX/modules/cctbx_project/xfel/conda_envs/site/nersc-perlmutter/build.sh
+#   $PREFIX/modules/cctbx_project/xfel/conda_envs/site/nersc_perlmutter/build.sh
 
 set -eo pipefail
 
