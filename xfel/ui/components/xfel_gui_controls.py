@@ -535,12 +535,16 @@ class CheckListCtrl(CtrlBase):
     else:
       if direction == 'horizontal':
         ctr_box = wx.FlexGridSizer(1, 2, 0, 10)
+        ctr_box.AddGrowableRow(0)
+        ctr_box.AddGrowableCol(1)
       elif direction == 'vertical':
         ctr_box = wx.FlexGridSizer(2, 1, 10, 0)
+        ctr_box.AddGrowableRow(1)
+        ctr_box.AddGrowableCol(0)
       ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
 
-    ctr_box.Add(self.ctr, proportion=1,
-                flag=wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
+    # The list takes whatever room the parent gives the control
+    ctr_box.Add(self.ctr, proportion=1, flag=wx.EXPAND)
 
     self.SetSizer(ctr_box)
 
