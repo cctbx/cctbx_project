@@ -116,6 +116,7 @@ general_tests = [
   "$D/regression/tst_llgi_hybrid.py",
   "$D/regression/tst_llgi_maps.py",
   "$D/regression/tst_llgi_model_anisotropy.py",
+  "$D/regression/tst_fit_residues_neighbors.py",
   "$D/regression/tst_llgi_tncs.py",
   "$D/regression/tst_llgi_lbfgs_stop.py",
   "$D/regression/tst_llgi_curvature.py",

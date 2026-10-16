@@ -685,17 +685,18 @@ class maps(object):
   def _get_real_map(self, map_type):
     # working reflections only (free reflections omitted, no fill), so that
     # the free set does not guide where waters go; the model map too (the
-    # Fcalc-type map ignores exclude_free_r_reflections), so that the CC
-    # filter compares maps of the same reflections. The twin map ignores
-    # exclude_free_r_reflections: unchanged for twin refinement.
+    # Fcalc-type map, k = 0 and |n| = 1, ignores exclude_free_r_reflections),
+    # so that the CC filter compares maps of the same reflections. The twin
+    # map uses all reflections (it ignores exclude_free_r_reflections).
     coeffs = self.e_map.map_coefficients(
       map_type     = map_type,
       fill_missing = False,
       isotropize   = True,
       exclude_free_r_reflections = True)
     import mmtbx.f_model
+    mnm = mmtbx.map_names(map_name_string=map_type)
     if(isinstance(self.fmodel, mmtbx.f_model.manager) and
-       mmtbx.map_names(map_name_string=map_type).k == 0):
+       mnm.k == 0 and abs(mnm.n) == 1):
       assert coeffs.indices().all_eq(self.fmodel.f_obs().indices())
       coeffs = coeffs.select(~self.fmodel.r_free_flags().data())
     fft_map = coeffs.fft_map(crystal_gridding = self.crystal_gridding)

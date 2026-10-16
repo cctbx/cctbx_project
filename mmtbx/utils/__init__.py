@@ -438,11 +438,12 @@ def _approx_equal_fast(a1, a2, eps, multiplier=1.e10):
       else a, dtype=float)
   x, y = as_np(a1), as_np(a2)
   if(x.shape != y.shape): return False
-  d = x - y
-  bad = np.abs(d) > eps
-  if(not bad.any()): return True
-  am = np.maximum(x[bad], y[bad]) * multiplier
-  return not (((am - d[bad]) - am) != 0).any()
+  with np.errstate(all="ignore"):  # inf and huge values, as approx_equal
+    d = x - y
+    bad = np.abs(d) > eps
+    if(not bad.any()): return True
+    am = np.maximum(x[bad], y[bad]) * multiplier
+    return not (((am - d[bad]) - am) != 0).any()
 
 def assert_xray_structures_equal(
       x1,

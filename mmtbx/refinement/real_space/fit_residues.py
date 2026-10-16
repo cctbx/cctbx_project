@@ -397,12 +397,15 @@ class run(object):
     symmetry within radius of an atom of i_selection, as
     special_position_settings.pair_generator(...).neighbors_of(), which is
     run on the atoms that can be that close: those with a symmetry copy
-    within radius + (the extent of i_selection) of its centre. Pairs and
-    site symmetries depend only on the atoms involved, so the result is the
-    same as for all atoms. The candidates are found by the nearest lattice
-    translation in fractional coordinates, which is exact while that
-    distance is below half the smallest spacing of the (100), (010), (001)
-    planes; otherwise all atoms are used. """
+    within radius + (the extent of i_selection) + 2*min_distance_sym_equiv
+    of its centre (pair_generator measures distances after moving atoms
+    near a symmetry element onto it, by up to min_distance_sym_equiv each).
+    Pairs and site symmetries depend only on the atoms involved, so the
+    result is the same as for all atoms. The candidates are found by the
+    nearest lattice translation in fractional coordinates, which is exact
+    while that distance is below half the smallest spacing of the (100),
+    (010), (001) planes; otherwise, or for an empty i_selection, all atoms
+    are used. """
     import numpy as np
     def all_atoms():
       return self.special_position_settings.pair_generator(
@@ -418,11 +421,13 @@ class run(object):
         ops=[(np.array(op.r().as_double()).reshape(3, 3),
               np.array(op.t().as_double()))
              for op in self.crystal_symmetry.space_group().all_ops()])
+    if(len(i_selection) == 0): return all_atoms()
     ns = self._neighbor_search
     xyz = sites_cart.as_numpy_array()
     primary = xyz[np.array(i_selection, dtype=int)]
     centre = primary.mean(axis=0)
-    reach = radius + np.sqrt(((primary - centre)**2).sum(axis=1)).max() + 1.e-3
+    reach = (radius + np.sqrt(((primary - centre)**2).sum(axis=1)).max() +
+      2 * self.special_position_settings.min_distance_sym_equiv() + 1.e-3)
     if(reach >= ns.half_spacing): return all_atoms()
     frac = xyz.dot(ns.f.T)
     centre_frac = ns.f.dot(centre)
