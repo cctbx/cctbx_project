@@ -116,7 +116,7 @@ std::vector< std::vector<unsigned> > OptimizerC::generateAllStates(
   // Cycle the curStateValues[] list through all possible states for each element,
   // incremementing each until it rolls over and then jumping up to the next.
   // This is similar to doing + 1 arithmetic with carry on a multi - digit number.
-  // Increment the state.We do this by increasing the current element until it reaches its
+  // Increment the state.  We do this by increasing the current element until it reaches its
   // number of values, then we bump it and all of its neighbors to the right back to 0 and, if
   // we're not at the left end, bump the next one up.  If we are at the left end, we're done.
   // When done, return.
@@ -552,7 +552,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
 
       score += m_preferenceMagnitude * states[movers[m]].preferenceEnergies[curStateValues[m]];
 
-      // Score all atoms that have not been marked for deletion, calling the Python object's
+      // Score all atoms that have not been marked for deletion, calling the
       // scoring function (which may or may not use caching to do the scoring).
       score += scorePosition(states[movers[m]], curStateValues[m], 0);
     }
