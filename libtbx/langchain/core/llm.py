@@ -550,6 +550,21 @@ def anthropic_model_rejects_sampling_params(model_name):
   return int(minor) >= 6
 
 
+# Gemini finish reasons meaning the reply was withheld or stopped by a safety
+# or policy filter (not cut off by the token budget).
+GEMINI_BLOCKED_FINISH_REASONS = (
+  "SAFETY", "RECITATION", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII")
+
+
+def _gemini_blocked_reason(finish):
+  """The GEMINI_BLOCKED_FINISH_REASONS name for a finish_reason, or None.
+
+  Accepts an enum (its .name), "FinishReason.SAFETY" or a plain string.
+  """
+  name = str(getattr(finish, "name", finish) or "").upper().split(".")[-1]
+  return name if name in GEMINI_BLOCKED_FINISH_REASONS else None
+
+
 def _raise_if_langchain_reply_cut_off(response):
   """Raise RuntimeError if a LangChain message says it was cut off.
 
@@ -558,8 +573,10 @@ def _raise_if_langchain_reply_cut_off(response):
   OpenAI finish_reason "length", Gemini finish_reason "MAX_TOKENS", Ollama
   done_reason "length".  A cut-off reply used to pass as complete text.
   OpenAI finish_reason "content_filter" (reply withheld or truncated by the
-  provider's filter) raises too, with its own message.  The messages carry no
-  numbers (rate_limit_handler would read "429"/"503" in them as a rate limit).
+  provider's filter) raises too, with its own message, as do Anthropic
+  stop_reason "refusal" and the Gemini safety finish reasons
+  (GEMINI_BLOCKED_FINISH_REASONS).  The messages carry no numbers
+  (rate_limit_handler would read "429"/"503" in them as a rate limit).
   """
   meta = getattr(response, "response_metadata", None)
   if not isinstance(meta, dict):
@@ -568,6 +585,14 @@ def _raise_if_langchain_reply_cut_off(response):
   finish = meta.get("finish_reason")
   finish_name = str(getattr(finish, "name", finish) or "").upper()
   done_reason = meta.get("done_reason")
+  if stop_reason == "refusal":
+    raise RuntimeError(
+      "LLM declined to answer (stop_reason='refusal')")
+  blocked = _gemini_blocked_reason(finish)
+  if blocked:
+    raise RuntimeError(
+      "LLM reply was blocked by the provider's safety filter "
+      "(finish_reason=%s)" % blocked)
   if finish_name == "CONTENT_FILTER":
     raise RuntimeError(
       "LLM reply was blocked by the provider's content filter "
@@ -659,6 +684,9 @@ def anthropic_reply_text(response):
   """
   text = response_text(response)
   stop_reason = getattr(response, "stop_reason", None)
+  if stop_reason == "refusal":
+    raise RuntimeError(
+      "Anthropic model declined to answer (stop_reason='refusal')")
   if stop_reason in ANTHROPIC_CUTOFF_STOP_REASONS:
     raise RuntimeError(
       "Anthropic reply was cut off (stop_reason=%r); on Claude 5.x models "
@@ -744,7 +772,8 @@ def google_reply_text(response):
   """Text of a Gemini generate_content reply; raises RuntimeError if unusable.
 
   finish_reason MAX_TOKENS means the reply was cut off (thinking can use the
-  whole budget and leave no text).
+  whole budget and leave no text); the GEMINI_BLOCKED_FINISH_REASONS mean a
+  safety or policy filter withheld or stopped it.
   """
   candidates = getattr(response, "candidates", None) or []
   finish = getattr(candidates[0], "finish_reason", None) if candidates else None
@@ -753,6 +782,10 @@ def google_reply_text(response):
     text = response.text or ""
   except (ValueError, AttributeError):
     text = ""
+  blocked = _gemini_blocked_reason(finish)
+  if blocked:
+    raise RuntimeError(
+      "Gemini reply was blocked by a safety filter (finish_reason=%s)" % blocked)
   if "MAX_TOKENS" in finish_name.upper():
     raise RuntimeError(
       "Gemini reply was cut off (finish_reason=MAX_TOKENS)")

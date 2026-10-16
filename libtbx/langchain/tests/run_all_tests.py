@@ -207,9 +207,13 @@ def _result_failed(result):
 
     The modules use several conventions: None or True (success, failures
     raise), False, a unittest-style exit code (0 = success), or a dict with
-    'status' ('FAIL' = failure; 'PASS' and 'PARTIAL' = success) or 'failed'.
-    Before this check the runner counted only raised exceptions, so modules
-    that report failures by return value were listed as PASSED.
+    'status' and/or 'failed'.  Status FAIL, FAILED or ERROR is a failure;
+    PARTIAL is a success (expected, whitelisted divergences only, which
+    tst_phase2_path_consistency also counts in 'failed'); any other status
+    (PASS, OK) with a nonzero 'failed' count is a failure, since the count
+    contradicts the status.  Before this check the runner counted only
+    raised exceptions, so modules that report failures by return value were
+    listed as PASSED.
     """
     if result is None or result is True:
         return False
@@ -218,8 +222,11 @@ def _result_failed(result):
     if isinstance(result, int):
         return result != 0
     if isinstance(result, dict):
-        if "status" in result:
-            return str(result["status"]).upper() == "FAIL"
+        status = str(result.get("status", "")).upper()
+        if status in ("FAIL", "FAILED", "ERROR"):
+            return True
+        if status == "PARTIAL":
+            return False
         return bool(result.get("failed"))
     return False
 
@@ -281,6 +288,24 @@ def run_test_module(module_name, run_func, verbose=False):
             return False, elapsed
         print(f"\n✅ {module_name} PASSED ({elapsed:.2f}s)")
         return True, elapsed
+    except SystemExit as e:
+        # Eight run functions call sys.exit(1) when checks fail; count that
+        # as this module's result instead of letting it end the whole run
+        # without a summary.  A zero/None exit counts as a pass unless the
+        # module's failure counters say otherwise.
+        elapsed = time.time() - start_time
+        code = e.code
+        counters = {}
+        if code is None or code == 0:
+            counters = _module_failure_counters(run_func)
+            if not counters:
+                print(f"\n✅ {module_name} PASSED ({elapsed:.2f}s)")
+                return True, elapsed
+        print(f"\n❌ {module_name} FAILED ({elapsed:.2f}s)")
+        print(f"   Exited with sys.exit({code!r})")
+        if counters:
+            print(f"   Failed checks counted in module globals: {counters}")
+        return False, elapsed
     except Exception as e:
         elapsed = time.time() - start_time
         print(f"\n❌ {module_name} FAILED ({elapsed:.2f}s)")
@@ -349,7 +374,8 @@ def main():
     for _mod, _label in (("tst_claude5_readiness", "Claude 5.x readiness"),
                          ("tst_provider_reasoning_models", "Provider reasoning models"),
                          ("tst_runner_and_encoding", "Runner failure counting and encodings"),
-                         ("tst_provider_cutoff_signals", "Provider cut-off signals and summary coverage")):
+                         ("tst_provider_cutoff_signals", "Provider cut-off signals and summary coverage"),
+                         ("tst_provider_refusal_signals", "Provider refusal and safety-block signals")):
         try:
             _run = __import__("tests." + _mod, fromlist=["run_all_tests"]).run_all_tests
             success, elapsed = run_test_module(_mod, _run, args.verbose)
