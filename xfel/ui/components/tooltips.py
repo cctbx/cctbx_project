@@ -152,6 +152,10 @@ tooltips = {
   'shared_space_group': 'Space group applied to all stages in this dataset '
                         '(e.g. "P 21 21 21").',
   'shared_d_min': 'High-resolution cutoff for scaling and merging (Å).',
+  'cosym_max_delta': 'How far (degrees) the unit cell may be from a higher lattice '
+                     'symmetry for that symmetry, and the indexing modes it implies, '
+                     'to count. Passed to cosym as lattice_symmetry_max_delta. Tighten '
+                     'it to drop modes a merely pseudo-symmetric cell picks up.',
   'shared_resolution_scalar': 'Scalar multiplied by d_min to set the internal '
                               'resolution limit. Values less than 1 extend slightly '
                               'beyond d_min.',

@@ -15,6 +15,7 @@ import collections
 import wx
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection, ColumnSorterMixin
 from wx.lib.scrolledpanel import ScrolledPanel
+from wx.lib.agw.floatspin import EVT_FLOATSPIN
 from iotbx.phil import parse
 import numpy as np
 
@@ -4722,9 +4723,11 @@ class DatasetDialog(BaseDialog):
       except Exception:
         continue
 
-  def _apply_cosym_from_trial(self, enabled):
+  def _apply_cosym_from_trial(self, enabled, max_delta=LATTICE_SYMMETRY_MAX_DELTA):
     ''' Set the scaling and merging stages up to resolve an indexing ambiguity
-        with cosym, or leave them alone if there is nothing to resolve.
+        with cosym, or leave them alone if there is nothing to resolve. The
+        ambiguity is judged at the lattice symmetry tolerance max_delta, which
+        is also handed to cosym so it finds the same symmetry the count rests on.
 
         Scaling drops the steps that cannot mean anything until the ambiguity is
         broken, and merging gains modify_cosym followed by those steps. The cosym
@@ -4742,7 +4745,7 @@ class DatasetDialog(BaseDialog):
         it. '''
     if not enabled:
       return
-    ambiguity = get_trial_indexing_ambiguity(self.db, self._selected_trial())
+    ambiguity = get_trial_indexing_ambiguity(self.db, self._selected_trial(), max_delta=max_delta)
     if ambiguity.n_cosets <= 1:
       return
     # The filter tolerances come from the scaling stage. Its friendly control for
@@ -4783,7 +4786,8 @@ class DatasetDialog(BaseDialog):
         phil_str += ('modify.cosym.space_group = "%s"\n'
                      'modify.cosym.dimensions = %d\n'
                      'modify.cosym.anchor = %s\n'
-                     % (ambiguity.space_group, ambiguity.n_cosets, anchor))
+                     'modify.cosym.lattice_symmetry_max_delta = %s\n'
+                     % (ambiguity.space_group, ambiguity.n_cosets, anchor, max_delta))
         if rel_tol is not None:
           phil_str += 'modify.cosym.relative_length_tolerance = %s\n' % rel_tol
         if ang_tol is not None:
@@ -4927,7 +4931,8 @@ class DatasetDialog(BaseDialog):
     # wizard actually picked. Cosym goes last: it reads the trial for the
     # symmetry and the model controls for whether it can anchor.
     self._populate_integration_from_trial(overwrite=True)
-    self._apply_cosym_from_trial(values.get('cosym', False))
+    self._apply_cosym_from_trial(values.get('cosym', False),
+                                 max_delta=values.get('cosym_max_delta', LATTICE_SYMMETRY_MAX_DELTA))
 
   # -- stage management ------------------------------------------------------
   def _append_stage(self, task_type, task=None, enabled=True, removable=False):
@@ -5344,6 +5349,17 @@ class DatasetWizard(BaseDialog):
     self.chk_cosym = wx.CheckBox(p, label='Resolve indexing ambiguity (cosym)')
     self._cosym_touched = False
     self.Bind(wx.EVT_CHECKBOX, self._onCosymToggle, self.chk_cosym)
+    # How far the cell may be from a higher lattice symmetry for that symmetry
+    # to count: the Le Page delta cosym itself uses. A pseudo-symmetric cell
+    # can pick up extra, spurious indexing modes at a loose tolerance, so the
+    # user can tighten it until the count matches what the data show.
+    self.cosym_max_delta = gctr.SpinCtrl(p, name='cosym_max_delta',
+                                         label='Lattice tolerance (\u00b0):',
+                                         label_size=(200, -1), label_style='normal',
+                                         ctrl_size=(150, -1), ctrl_value=str(LATTICE_SYMMETRY_MAX_DELTA),
+                                         ctrl_min=0.0, ctrl_max=20.0, ctrl_step=0.5,
+                                         ctrl_digits=2)
+    self.Bind(EVT_FLOATSPIN, self._onCosymMaxDelta, self.cosym_max_delta.ctr)
     self.shared_d_min = gctr.SpinCtrl(p, label='High res. limit (d_min):',
                                       label_size=(200, -1), label_style='normal',
                                       ctrl_size=(150, -1), ctrl_value='1.5',
@@ -5356,6 +5372,7 @@ class DatasetWizard(BaseDialog):
                                        ctrl_digits=0)
     s.Add(self.chk_ensemble, flag=wx.ALL, border=10)
     s.Add(self.chk_cosym, flag=wx.ALL, border=10)
+    s.Add(self.cosym_max_delta, flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, border=6)
     s.Add(self.shared_d_min, flag=wx.EXPAND | wx.ALL, border=6)
     s.Add(self.shared_n_bins, flag=wx.EXPAND | wx.ALL, border=6)
     p.SetSizer(s)
@@ -5439,6 +5456,11 @@ class DatasetWizard(BaseDialog):
     self._cosym_touched = True
     e.Skip()
 
+  def _onCosymMaxDelta(self, e):
+    self._update_cosym_suggestion()
+    self.page_panel.Layout()
+    e.Skip()
+
   def _update_cosym_suggestion(self):
     ''' Tick the cosym box, and say what was found, when the trial's symmetry has
         an indexing ambiguity. The label carries how far the cell is from the
@@ -5447,7 +5469,8 @@ class DatasetWizard(BaseDialog):
         a fraction of a degree makes it an inference from the tolerance that the
         data may or may not bear out. Only ever a suggestion: an explicit choice
         by the user is left alone. '''
-    ambiguity = get_trial_indexing_ambiguity(self.db, self._selected_trial())
+    ambiguity = get_trial_indexing_ambiguity(self.db, self._selected_trial(),
+                                             max_delta=self.cosym_max_delta.ctr.GetValue())
     if ambiguity.n_cosets > 1:
       if ambiguity.max_delta is not None and ambiguity.max_delta >= 0.005:
         detail = 'lattice %.2f\u00b0 from %s' % (ambiguity.max_delta,
@@ -5463,7 +5486,7 @@ class DatasetWizard(BaseDialog):
       self.chk_cosym.SetLabel(label)
     else:
       self.chk_cosym.SetLabel(
-        'Resolve indexing ambiguity (cosym) \u2014 none found for this symmetry')
+        'Resolve indexing ambiguity (cosym) \u2014 none found for this symmetry at this tolerance')
     if not self._cosym_touched:
       self.chk_cosym.SetValue(ambiguity.n_cosets > 1)
 
@@ -5561,6 +5584,7 @@ class DatasetWizard(BaseDialog):
       'n_bins': self.shared_n_bins.ctr.GetValue(),
       'ensemble_refinement': self.chk_ensemble.GetValue(),
       'cosym': self.chk_cosym.GetValue(),
+      'cosym_max_delta': self.cosym_max_delta.ctr.GetValue(),
     }
 
   def _finish(self):
