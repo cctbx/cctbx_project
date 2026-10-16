@@ -14,6 +14,11 @@ set -eo pipefail
 
 [[ -z ${CONDA_PREFIX:-} ]] || { echo "conda env active; run 'conda deactivate' first" >&2; exit 1; }
 
+case "${PSANA_CHANNEL:-}" in
+    lcls-i|lcls-ii) ;;
+    *) echo "set PSANA_CHANNEL=lcls-i (psana1) or lcls-ii (psana2)" >&2; exit 1 ;;
+esac
+
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 BUILD_PREFIX=$(cd "$SCRIPT_DIR/../../../../../.." && pwd)
 CONDA_BASE=$BUILD_PREFIX/mc3
@@ -68,7 +73,14 @@ source "$CONDA_BASE/etc/profile.d/conda.sh"
 native_cc=$(which cc)
 
 step "conda env create (5-10 min)"
-conda env create -f "$SCRIPT_DIR/perlmutter_environment.yml" --yes -v
+case "$PSANA_CHANNEL" in
+    lcls-i)  SED_EXPR='' ;;
+    lcls-ii) SED_EXPR='s/^ - lcls-i$/ - lcls-ii/; s/^ - psana=.*/ - psana/' ;;
+esac
+sed -e "$SED_EXPR" "$SCRIPT_DIR/perlmutter_environment.yml" > "$BUILD_PREFIX/opt/environment.yml"
+grep -qx " - $PSANA_CHANNEL" "$BUILD_PREFIX/opt/environment.yml" \
+    || { echo "channel substitution for PSANA_CHANNEL=$PSANA_CHANNEL did not apply -- check perlmutter_environment.yml format" >&2; exit 1; }
+conda env create -f "$BUILD_PREFIX/opt/environment.yml" --yes -v
 conda activate psana_env
 
 # gemmi is deliberately not in the yml -- it makes the solve pathological.  It is
