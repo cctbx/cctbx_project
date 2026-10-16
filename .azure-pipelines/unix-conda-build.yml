@@ -52,8 +52,7 @@ steps:
     set -xe
     cd $(Pipeline.Workspace)/modules/cctbx_project/libtbx
     sed -i.bak 's/"$D\/tst_guided_coding.py"/#"$D\/tst_guided_coding.py"/g' run_tests.py
-  displayName: Skip libtbx/tst_guided_coding.py on Linux
-  condition: eq(variables['OS'], 'linux-64')
+  displayName: Skip libtbx/tst_guided_coding.py
 
 - script: |
     set -xe
