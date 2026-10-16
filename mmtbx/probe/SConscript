@@ -17,12 +17,6 @@ if (not env_etc.no_boost_python):
   Import("env_cctbx_boost_python_ext")
   env_bpl = env_cctbx_boost_python_ext.Clone()
 
-  # ContactDB must round exactly as the probe2.py code it replaces, so no fused
-  # multiply-adds (GCC fuses by default where the hardware has FMA).
-  env_contact = env_bpl.Clone()
-  if (env_etc.compiler != "win32_cl"):
-    env_contact.Append(CCFLAGS=["-ffp-contract=off"])
-
   # We need Boost Python to compile this C++ library because Scoring.cpp uses it.
   env_bpl.StaticLibrary(
     target=["#probe/lib/probelib"],
@@ -30,7 +24,7 @@ if (not env_etc.no_boost_python):
       "Scoring.cpp",
       "DotSpheres.cpp",
       "SpatialQuery.cpp",
-      env_contact.StaticObject("ContactDB.cpp")])
+      "ContactDB.cpp"])
 
   env_bpl.Append(LIBPATH=["#probe/lib"])
   env_bpl.Prepend(LIBS=["probelib", "iotbx_pdb", "cctbx", "scitbx_boost_python"])

@@ -16,9 +16,6 @@
 #include <cmath>
 #include <stdexcept>
 
-// The distance tests below must round exactly as the probe2.py code they replace;
-// SConscript builds this file with -ffp-contract=off.
-
 namespace molprobity {
   namespace probe {
 
