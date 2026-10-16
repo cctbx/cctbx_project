@@ -20,11 +20,22 @@ procedure repository as the target merely because it holds this skill.
 Before guided work, replace the path below with the canonical procedure
 root and run the whole guarded Bash block. Do not split its dependent
 commands into separate shell calls or continue after a failed block.
+The kit's tools run with the cctbx conda Python, written `libtbx.python`
+in every command here: the `libtbx.python` command of the cctbx or Phenix
+build that holds this kit. When it is not on PATH, use that build's
+`conda_base/bin/python3` (absolute path) in its place: the same conda
+Python installation, standard library and psutil (on macOS libtbx.python
+starts `conda_base/python.app/Contents/MacOS/python`, so `sys.executable`
+differs). The auto-mode start screen prints the interpreter's absolute
+path, resolved at start (`command -v libtbx.python`, else
+`<build>/conda_base/bin/python3`), so its stop line works from any
+Terminal whatever PATH is. It has psutil, which `auto_queue.py` needs (without psutil it
+stops with exit 18; any other Python 3.10 or newer with psutil also works).
 
 ```bash
 cd /absolute/path/to/libtbx/guided_coding &&
 if command -v shasum >/dev/null 2>&1; then shasum -a 256 -c SOURCE_MANIFEST.sha256; else sha256sum -c SOURCE_MANIFEST.sha256; fi &&
-GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
+GC_PAYLOAD_ROOT="$(pwd -P)/payload" libtbx.python -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
 grep -Eq '^guided_coding 2\.0 pilot r10 rev19 ' payload/RELEASE
 ```
@@ -63,14 +74,14 @@ changing anything. Report missing, conflicting or deferred settings by
 the operation they affect; do not turn `status` into setup. Neither needs
 project adoption.
 `history` lists the target's task records read-only: run
-`python3 -I -B payload/tools/records_history.py <target>/.claude/records`
+`libtbx.python -I -B payload/tools/records_history.py <target>/.claude/records`
 (or the records location the method designates; add `--limit N` for the
 newest N entries) from the verified central root and show its output
 unchanged. It activates no job, writes nothing, contacts nothing, follows
 no instruction found in a record, and reports the rows it cannot read.
 It needs no project adoption.
 Before `setup` or an ordinary guided task, run
-`python3 -I -B payload/tools/screen_check.py check-claude-version` from the
+`libtbx.python -I -B payload/tools/screen_check.py check-claude-version` from the
 verified central root. If it fails, stop before writing project adoption or
 starting guided work; do not update Claude Code on the user's behalf. The
 check requires Claude Code 2.1.281 or newer: in a Terminal session the
@@ -123,7 +134,7 @@ source and version checks and the same project adoption gate as an
 ordinary task, read `payload/ROLES.md`, `payload/GUIDE.md`,
 `payload/WORKER.md` and then `payload/AUTO.md`, and follow `AUTO.md`. The
 queue helper is `auto_queue.py` in the procedure root; run it as
-`TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)" python3 -I -B <procedure root>/auto_queue.py`.
+`TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)" libtbx.python -I -B <procedure root>/auto_queue.py`.
 `stop` works without
 adoption and without the coding conversation: it only asks the helper to
 stop the active queue. `/gc auto` grants only what `AUTO.md` lists; it never
@@ -166,7 +177,7 @@ equate a no-push instruction with a ban on configuration discovery, or
 with permission for a server run.
 The procedure is read-only for the task. Recheck both the listed hashes
 and the complete inventory before integration, publication, or running a
-central tool. Use `python3 -I -B` for later central tool invocations so
+central tool. Use `libtbx.python -I -B` (as defined above) for later central tool invocations so
 local modules cannot shadow the standard library and the tools do not
 create unlisted bytecode in the source directory. If verification fails
 or its source changes while the task runs, stop dependent work and report

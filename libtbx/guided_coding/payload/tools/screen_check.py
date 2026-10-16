@@ -656,8 +656,23 @@ def auto_screen(kind, body, queue):
     if kind == "auto_start":
         if queue:
             fail("auto_start has no queue to compare")
-        if f"python3 {AUTO_QUEUE} stop" not in body["STOP"] and f"python3 -I -B {AUTO_QUEUE} stop" not in body["STOP"]:
-            fail("auto_start needs the stop command of this procedure's auto_queue.py")
+        # Revision 16: the stop command runs the helper with the cctbx conda Python (it needs
+        # psutil), by its absolute path so that it works from any Terminal whatever PATH is
+        # (repair 1, finding 3): `/.../libtbx.python -I -B AQ stop` or
+        # `/.../conda_base/bin/python3[.N] -I -B AQ stop`. A plain or bare python3, and a bare
+        # libtbx.python, are refused. Repair 2 (reading 2, finding 2): the interpreter must be an
+        # existing, executable regular file (symbolic links resolved). A path with a space
+        # cannot be written in this form.
+        def stop_line(line):
+            match = re.fullmatch(r"(/\S+/libtbx\.python|/\S+/conda_base/bin/python3(?:\.\d+)?) -I -B "
+                                 + re.escape(str(AUTO_QUEUE)) + " stop", line)
+            if not match:
+                return False
+            interpreter = os.path.realpath(match.group(1))
+            return os.path.isfile(interpreter) and os.access(interpreter, os.X_OK)
+        if not any(stop_line(line) for line in body["STOP"]):
+            fail("auto_start needs the stop command of this procedure's auto_queue.py, run by an "
+                 "existing executable interpreter")
         limits = " ".join(body["NOT AUTHORIZED"]).lower()
         if "master" not in limits or "publish" not in limits:
             fail("auto_start must say master is unchanged and nothing is published")
@@ -670,6 +685,9 @@ def auto_screen(kind, body, queue):
         fail("auto_report requires --queue to compare with the queue record")
     helper = subprocess.run([sys.executable, "-I", "-B", str(AUTO_QUEUE), "--queue", str(queue),
                              "report"], capture_output=True, text=True)
+    if helper.returncode == 18:
+        # Revision 16: the helper needs psutil (the cctbx conda Python has it).
+        fail("auto_queue.py report failed: " + (helper.stderr.strip().splitlines() or [""])[-1])
     if helper.returncode != 0:
         fail("auto_queue.py report failed")
     expected = [line for line in helper.stdout.splitlines() if line.strip()]

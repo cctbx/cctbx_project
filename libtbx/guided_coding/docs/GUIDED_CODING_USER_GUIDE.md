@@ -6,7 +6,7 @@ Start with a small task in a project you know. This guide tells you how to insta
 
 ## Before you begin
 
-These instructions use the [Guided Coding download](https://www.thomasterwilliger.org/guided_coding/). Use Claude Code on your computer and a project managed with Git. You also need Python 3.10 or newer and `shasum` or `sha256sum` to check the download. The Terminal commands in this guide work in bash, zsh, csh and tcsh. In Terminal, `git --version` and `python3 --version` show which versions of Git and Python you have.
+These instructions use the [Guided Coding download](https://www.thomasterwilliger.org/guided_coding/). Use Claude Code on your computer and a project managed with Git. You also need Python 3.10 or newer with psutil (the cctbx conda Python, `libtbx.python`, has it, and the kit's documented commands use it; any such Python can stand in for it) and `shasum` or `sha256sum` to check the download. The Terminal commands in this guide work in bash, zsh, csh and tcsh. In Terminal, `git --version` and `libtbx.python --version` show which versions of Git and Python you have.
 
 **Supported systems.** Guided Coding runs on macOS and Linux. On Linux its tests run, but a real `/gc` session there has not yet been observed (see [Clients and platforms](GUIDED_CODING_VERIFICATION.md#important-remaining-uncertainty)). Auto mode (running several jobs while you are away) runs only on macOS; on other systems its runs are refused. Windows is not supported.
 

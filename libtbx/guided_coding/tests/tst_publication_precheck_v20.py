@@ -52,6 +52,13 @@ def git_environment(home):
     return environment
 
 
+# Revision 16: `check` and `outgoing` read a git repository; without git on PATH their tests
+# skip with this reason (`vet` needs no git), and NoGitRefusal checks the tool's refusal.
+GIT_SKIP = ("git not on PATH: the check and outgoing tests need git repositories; the tool "
+            "refuses those commands without git (NoGitRefusal)")
+
+
+@unittest.skipIf(shutil.which("git") is None, GIT_SKIP)
 class PrecheckFixture(unittest.TestCase):
     """A work repository one commit ahead of a bare remote it tracks."""
 
@@ -619,6 +626,35 @@ class OutgoingCommand(PrecheckFixture):
         (self.repo / "a.txt").write_text("change\n")
         (self.repo / "new.txt").write_text("untracked\n")
         self.refused(self.outgoing_tool(), "working tree is not clean")
+
+
+class NoGitRefusal(unittest.TestCase):
+    """Revision 16: with no git on PATH, `check` and `outgoing` refuse (exit 2) with the
+    cause before doing anything; `vet` still works. PATH holds only an empty directory."""
+
+    def test_check_and_outgoing_refuse_without_git_vet_works(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(os.path.realpath(temp))
+            empty = root / "empty-bin"
+            empty.mkdir()
+            env = dict(git_environment(root), PATH=str(empty))
+            (root / "OUTGOING.txt").write_text("repository: x\n")
+            for words in (["check", str(root), str(root / "OUTGOING.txt")],
+                          ["outgoing", str(root), "--commit", HEX]):
+                with self.subTest(command=words[0]):
+                    result = subprocess.run([sys.executable, "-I", "-B", str(TOOL), *words],
+                                            env=env, cwd=root, text=True, capture_output=True)
+                    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                    self.assertEqual(result.stderr.strip(),
+                                     f"ERROR: requires git on PATH: `{words[0]}` reads the "
+                                     "repository with git (`vet` needs no git)")
+                    self.assertEqual(result.stdout, "")
+            result = subprocess.run([sys.executable, "-I", "-B", str(TOOL), "vet", "--", "git",
+                                     "-C", "X", "-c", "push.followTags=false", "push",
+                                     "--no-follow-tags", "origin", f"{HEX}:refs/heads/master"],
+                                    env=env, cwd=root, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("VET OK", result.stdout)
 
 
 class VetCommand(unittest.TestCase):

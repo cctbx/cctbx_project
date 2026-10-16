@@ -22,7 +22,7 @@ inside.
 | `MANIFEST.sha256` | freeze, verify | Written by `screen_check.py freeze`; never by hand. |
 
 **`OUTGOING.txt`.** Generate it before packaging by running, once per repository:
-`python3 -I -B "$GC_PAYLOAD_ROOT/tools/publication_precheck.py" outgoing REPO --commit C --remote origin --branch master --fetch >> PACKET/OUTGOING.txt`
+`libtbx.python -I -B "$GC_PAYLOAD_ROOT/tools/publication_precheck.py" outgoing REPO --commit C --remote origin --branch master --fetch >> PACKET/OUTGOING.txt`
 Standard output carries only the block (notes about push settings go to
 standard error), so each call appends one repository's block; blocks need
 no separator. With more than one block, `check` needs `--repository NAME`
@@ -84,7 +84,7 @@ manifest where one applies, the companions, and the path of the rollout
 plan for the named installations.
 
 **Draft check.** Before freezing, run
-`python3 -I -B "$GC_PAYLOAD_ROOT/tools/screen_check.py" check-draft publication DIR`.
+`libtbx.python -I -B "$GC_PAYLOAD_ROOT/tools/screen_check.py" check-draft publication DIR`.
 It runs every publication check that needs neither the freeze, the
 screen nor the reading (the three files at top level, `OUTGOING.txt`
 blocks and key lines, the `SERVER_SUITE:` first line and the `NOT RUN`

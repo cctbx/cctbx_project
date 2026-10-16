@@ -18,6 +18,7 @@ if __name__ == "__main__" and not sys.flags.isolated:
 import argparse
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 import types
@@ -305,6 +306,11 @@ def main():
     vet = commands.add_parser("vet", help="refuse forbidden forms in a proposed push command")
     vet.add_argument("words", nargs=argparse.REMAINDER)
     args = parser.parse_args()
+    if args.command in ("check", "outgoing") and shutil.which("git") is None:
+        # Revision 16: these read the live repository with git; vet needs no git.
+        print(f"ERROR: requires git on PATH: `{args.command}` reads the repository with git "
+              "(`vet` needs no git)", file=sys.stderr)
+        return 2
     try:
         if args.command == "check":
             check_command(args)

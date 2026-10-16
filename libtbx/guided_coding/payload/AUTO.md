@@ -8,8 +8,11 @@ Re-read this file and the queue record (`auto_queue.py status`) at the start of 
 a resume, and after the conversation has been summarized.
 
 **Auto-mode runs need macOS.** `auto_queue.py run` blocks outside network with
-`/usr/bin/sandbox-exec` and finds a run's processes by their environment marker with `ps -E`.
-On any other system `run` refuses with exit 15 ("auto-mode runs need macOS (sandbox-exec and
+`/usr/bin/sandbox-exec` and finds a run's processes by their environment marker, which it reads
+on macOS only (with `ps -E` until revision 16; since then through psutil, like the whole process
+table). The helper and its tools run with the cctbx conda Python (`libtbx.python`; see SKILL.md),
+which has psutil; without psutil the helper stops with exit 18 ("requires psutil: ..."). On any
+other system `run` refuses with exit 15 ("auto-mode runs need macOS (sandbox-exec and
 `ps -E`)") before it reads the queue, writes a run record or starts the probe or CMD, with or
 without a network grant. The helper has no option, environment variable or setting that
 permits runs off macOS; the other commands work on any system. A queue whose checks must run
@@ -170,7 +173,8 @@ helper reports them; `install check` refuses while they use the installation), e
 `lock release`, which the helper refuses while any queue-owned process is alive. Never end a
 process by hand. A process using the installation that the helper cannot attribute to the queue
 keeps the installation unavailable; report it, do not end it. A zombie (a process that has
-exited but that its parent has not collected, `ps` state `Z`, on Linux a single-threaded one;
+exited but that its parent has not collected, status zombie (`ps` state `Z`), on Linux a
+single-threaded one;
 common in containers whose process 1 never collects them) counts as gone: it keeps no run,
 group, `stop`, `cleanup` or `lock release` waiting. Anything a worker or the controller does outside its
 named discretion — ending a process by hand included — is recorded with
@@ -180,9 +184,11 @@ helper refuses Approved while any of the job's provisional choices is undecided.
 A failed job blocks only that job. An unusable test installation blocks further installation
 tests until it is repaired or recreated; the working installation is never borrowed.
 
-**Unreadable process table.** The helper finds queue processes with `ps`. When `ps` cannot
-start, exits nonzero, prints nothing usable or leaves out the helper's own process (for example
-inside `sandbox-exec`, where the setuid `ps` is refused), every command that needs the table
+**Unreadable process table.** The helper finds queue processes through psutil (revision 16;
+before, `ps`). When psutil cannot list the processes, cannot read a field a decision needs
+(status, parent, group, start time; AccessDenied or ZombieProcess), finds a process gone that a
+re-check still finds, or leaves out the helper's own process (on macOS also when its own
+environment cannot be read), every command that needs the table
 refuses with exit 17 ("cannot read the process table ...; whether queue processes are alive is
 unknown") and claims nothing: `run` starts nothing, `cleanup` never prints Cleaned, `lock
 release` keeps the lock, Ready and Approved are refused, `stop` records the stop but prints
@@ -224,7 +230,10 @@ approved there under the standard procedure. Transfer is allowed under a stop.
 ## Stop
 
 `/gc stop` here, or from any Terminal (any shell, csh included)
-`python3 -I -B <procedure root>/auto_queue.py stop`. Report
+`<cctbx conda Python> -I -B <procedure root>/auto_queue.py stop`, with both paths absolute as the
+start screen prints them (the interpreter: the absolute path of `libtbx.python`, resolved at
+start with `command -v libtbx.python`, or `<build>/conda_base/bin/python3`; never a bare
+`python3`, which may lack psutil). Report
 **Stopped** only when the helper prints Stopped; otherwise report **Stopping** and what remains.
 The helper can stop only what it tracks: the registered worker (which stops at its next
 `check-stop`) and processes started through `run`, including their process group. Anything the
@@ -283,13 +292,22 @@ reports.
 
 ## Running the kit's own tests
 
-The kit's own suite (`tests/tst_*_v20.py`, and `libtbx/tst_guided_coding.py`) needs a working
-`/bin/ps`. Inside `sandbox-exec` (for example a queue run's outer sandbox) the setuid `ps` is
-refused, so the auto-queue test module checks `ps` first and, when it cannot run, reports ONE
-failure (`PROCESS TABLE UNREADABLE: ...`) naming the cause and this route instead of many
-unrelated failures; it is not skipped silently. The supported route is an attended run outside
-the queue's outer sandbox, from an ordinary shell (TMPDIR set to a resolved path). The helper's
-own restrictions are unchanged. A queue job that must run the kit suite needs that exception
+The kit's own suite (`tests/tst_*_v20.py`, and `libtbx/tst_guided_coding.py`) runs with the
+cctbx conda Python: `libtbx.python -B -m unittest discover -s tests -p 'tst_*.py' -v` from the
+kit root, TMPDIR set to a resolved path. It needs a readable process table, which it reads
+through psutil (revision 16): that works inside `sandbox-exec` too, where the setuid `/bin/ps`
+was refused, so the suite now runs there. Inside `sandbox-exec` a second profile cannot be
+applied (`sandbox_apply: Operation not permitted`), so the tests that run the helper's `run`
+(whose network block is a `sandbox-exec` profile) are skipped there with that reason; the
+process-table tests run. When psutil cannot
+read the table, the auto-queue test module reports ONE failure (`PROCESS TABLE UNREADABLE: ...`)
+naming the cause and this route instead of many unrelated failures; it is not skipped silently.
+Without psutil the auto-queue tests (and the screen tests that build a queue) are skipped with
+the reason, and one test checks that the helper stops with exit 18. Without git on PATH the tests
+that need a repository skip with their reason (`git not on PATH: ...`); `publication_precheck.py
+check` and `outgoing` then refuse (exit 2, "requires git on PATH"), and `auto_queue.py candidate`
+refuses (exit 2). The supported route remains an attended run from an ordinary shell. The
+helper's own restrictions are unchanged. A queue job that must run the kit suite needs that exception
 stated in advance in its grant; never disable the network protection, silently or otherwise,
 to make it run.
 
@@ -339,8 +357,9 @@ of the kit suite (anaconda, October 12, 2026: 269 tests, 261 passed, 8 skipped).
   `ranlib` is missing). The archive classification test and the two Mach-O normalizer tests never
   skip (revision 15): they write their archives and bundles themselves and use no `ar`,
   `ranlib` or `cc`; only the two conformance tests use those tools, where present.
-  Off macOS a failing `ps -E` marker query only drops the markers, as before; on macOS it makes
-  the process table unreadable (exit 17).
+  Off macOS the helper reads no run-id markers, as before (Linux `ps` had no `-E`); on macOS an
+  unreadable environment of the helper's own process makes the process table unreadable (exit
+  17), and another process whose environment cannot be read shows no marker, as with `ps -E`.
 - **Opt-in everywhere:** the three tests that would contact a real outside host or name run only
   with `GC_TEST_NETWORK=1`.
 

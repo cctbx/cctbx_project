@@ -113,7 +113,7 @@ The procedure is read-only during a task. Its source is checked again before con
 
 Python can leave compiled cache files in `__pycache__` directories. The source checker permits only a recognized cache filename beside a listed Python source file, with a permitted header flag. It does not verify the contents of that cache file.
 
-The documented tool calls use `python3 -I -B`. The `-I` option limits Python's use of local import paths and environment settings; `-B` prevents it from writing new bytecode files. The checker runs from source. The bundle and publication tools explicitly load the sibling checker from its source text.
+The documented tool calls use `libtbx.python -I -B` (revision 16; before, `python3 -I -B`). `libtbx.python` is the cctbx conda Python of the build that holds the kit; without it on PATH, that build's `conda_base/bin/python3` serves: the same conda Python installation, standard library and psutil (on macOS `libtbx.python` starts `conda_base/python.app/Contents/MacOS/python`, so `sys.executable` differs). It has psutil, which the auto-mode helper needs for its process table (without psutil the helper stops with exit 18); the other tools need only the standard library. The `-I` option limits Python's use of local import paths and environment settings; `-B` prevents it from writing new bytecode files. The checker runs from source. The bundle and publication tools explicitly load the sibling checker from its source text.
 
 Ordinary test imports can behave differently, so run the shipped tests on a trusted clean copy of the kit.
 
@@ -226,7 +226,7 @@ The app-version branch is selected by `CLAUDE_CODE_ENTRYPOINT=claude-desktop`. I
 
 ### Tool commands
 
-The tools are in the shared kit's `payload/tools/` directory. Invoke the Python tools with `python3 -I -B` as described above. In this table, capitalized words such as `SOURCE` and `DIR` stand for paths you supply; `KIND` is the type of screen.
+The tools are in the shared kit's `payload/tools/` directory. Invoke the Python tools with `libtbx.python -I -B` as described above. In this table, capitalized words such as `SOURCE` and `DIR` stand for paths you supply; `KIND` is the type of screen.
 
 | Command | What it does |
 | --- | --- |

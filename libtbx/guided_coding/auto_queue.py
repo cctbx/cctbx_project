@@ -1,7 +1,7 @@
 """GuidedCoding auto queue: one controller, one worker, one queue record.
 
 State, stop flag, tracked command runs, the local run lock, reconciliation
-and the morning report for `/gc auto`. Standard library only. No scheduler
+and the morning report for `/gc auto`. Standard library and psutil. No scheduler
 and no worker pool. Interface: AUTO_QUEUE_SPEC, including Revisions 2-8
 (record 2026-10-08-gc-auto-release-plan/stage1).
 Revision 12: `run` refuses on any system other than macOS; `init` needs --lock-dir.
@@ -10,9 +10,14 @@ Revision 13: an unreadable process table refuses (exit 17) instead of reading as
 classify timestamp-only differences from a NORMALIZED value (report-only, never available).
 Revision 14: a zombie (an exited process its parent has not collected, as in a container
 whose process 1 never reaps) counts as gone everywhere liveness is decided.
+Revision 16: the process table is read through psutil instead of /bin/ps, with the same
+refusals; without psutil every command stops (exit 18). Run it with the cctbx conda Python
+(libtbx.python, or the build's conda_base/bin/python3), which has psutil.
 
-Stop from any Terminal, without the coding conversation:
-    python3 <procedure root>/auto_queue.py stop
+Stop from any Terminal, without the coding conversation, with both paths absolute (as the
+auto-mode start screen prints them, resolved at start):
+    /ABS/libtbx.python -I -B /ABS/<procedure root>/auto_queue.py stop
+(or <build>/conda_base/bin/python3, by its absolute path, in place of libtbx.python)
 """
 
 import argparse
@@ -30,6 +35,11 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+try:
+    import psutil
+except ImportError:  # Revision 16: main() stops with PSUTIL_MESSAGE (exit 18)
+    psutil = None
 
 STATES = ("Queued", "Preparing", "Testing", "Ready for approval", "Approved",
           "Waiting", "Blocked", "Discarded", "Published", "Transferred")
@@ -50,14 +60,17 @@ TRANSITIONS = {
 ACTIVE_STATES = ("Queued", "Preparing", "Testing", "Waiting")
 FINAL_STATES = ("Published", "Discarded", "Transferred")
 # Revision 12: `run` needs macOS (sandbox-exec for the network block, `ps -E` for the run-id
-# marker); elsewhere it refuses with this exit code. Nothing but sys.platform decides it.
+# marker; Revision 16: psutil reads the marker, the message is unchanged); elsewhere it
+# refuses with this exit code. Nothing but sys.platform decides it.
 PLATFORM_REFUSED = 15
-# Revision 13: the process table could not be read (ps failed, printed nothing usable, or
-# left out this process): every command that needs it refuses with this code.
+# Revision 13: the process table could not be read (Revision 16: psutil could not list the
+# processes or read a field a decision needs, or left out this process): every command that
+# needs it refuses with this code.
 PROCESS_TABLE_UNREADABLE = 17
-# Start times are read the same way whatever the caller's TZ, locale or PATH.
-PS = "/bin/ps"
-PS_ENV = {"LC_ALL": "C", "TZ": "UTC", "PATH": "/bin:/usr/bin"}
+# Revision 16: psutil is required (the process table); without it every command stops.
+PSUTIL_MISSING = 18
+PSUTIL_MESSAGE = ("requires psutil: run with the cctbx conda Python (libtbx.python) or pip "
+                  "install psutil")
 UNREADABLE = "unreadable"
 SCREEN_CHECK = Path(__file__).resolve().parent / "payload" / "tools" / "screen_check.py"
 MARKER = "GC_AUTO_RUN_ID"
@@ -122,33 +135,56 @@ def read_json(path):
 
 # ---------------------------------------------------------------- processes
 
-def proc_reading(pid):
-    """Linux: (state, number of threads) of PID from /proc/<pid>/stat, or None if unreadable.
-    The command name in parentheses may contain spaces or ')': the fields follow the last ')'
-    (state is field 3, num_threads field 20)."""
-    try:
-        with open("/proc/%d/stat" % pid, "rb") as handle:
-            data = handle.read()
-        fields = data[data.rindex(b")") + 1:].split()
-        return fields[0].decode("ascii", "replace"), int(fields[17])
-    except (OSError, ValueError, IndexError):
-        return None
+# Revision 16: the process table is read through psutil, never /bin/ps (whose setuid binary
+# is refused inside sandbox-exec). psutil reads the same kernel records ps read (macOS:
+# sysctl KERN_PROC and KERN_PROCARGS2; Linux: /proc). It gives no process-group or session
+# id, so those come from os.getpgid and os.getsid, as the session id always did. macOS
+# refuses getpgid (ESRCH) for a process that is exiting or a zombie; its group id is then
+# read from the kernel record that ps read (kernel_pgid). Every field a decision needs fails
+# closed (Revision 13): AccessDenied and ZombieProcess on such a field make the table
+# unreadable (exit 17); NoSuchProcess means the process is gone only once a re-check finds
+# it gone.
+ZOMBIE = "zombie"  # psutil.STATUS_ZOMBIE
+START_FORMAT = "%a %b %d %H:%M:%S %Y"  # the text form of a start time (that of ps lstart)
+# Repair 1 (reading 1, finding 2): any exception while reading a process counts as a failed
+# reading (none of these sites can raise a refusal): on the whole table it makes the table
+# unreadable (17); on one process's field that field is unreadable (the process alive).
+PSUTIL_ERRORS = (Exception,)
 
 
-def ps_reading(pid):
-    """(ps stat, number of threads or None) of PID; ("", None) when ps cannot read it. The
-    thread count (nlwp) is asked for on Linux only; macOS ps has no such column."""
-    linux = sys.platform.startswith("linux")
+def start_text(seconds):
+    """A start time in whole UTC seconds as ps lstart printed it (C asctime, LC_ALL=C TZ=UTC),
+    so that records written by earlier revisions compare equal."""
+    return time.asctime(time.gmtime(seconds))
+
+
+def start_seconds(process):
+    """Whole seconds of the start time, truncated as ps truncated it. Repair 2 (reading 2,
+    finding 1): on macOS the raw kernel start time (kinfo_proc p_starttime, what ps printed),
+    because psutil's create_time() there is shifted by whole seconds after a clock step,
+    differently in processes that imported psutil before and after it. On Linux psutil's
+    value: start ticks plus the boot time read at each call, the formula of procps."""
+    if sys.platform == "darwin":
+        return kernel_start(process.pid)
+    return int(process.create_time())
+
+
+def proc_state(pid):
+    """(status, number of threads or None) of PID; ("", None) when the status cannot be read.
+    The thread count is read on Linux only (the macOS rule needs none, and macOS lets psutil
+    read it only for this user's processes); an unreadable count is None."""
     try:
-        out = subprocess.run([PS, "-o", "stat="] + (["-o", "nlwp="] if linux else [])
-                             + ["-p", str(pid)], env=PS_ENV, capture_output=True, text=True)
-    except OSError:
+        process = psutil.Process(pid)
+        state = process.status()
+    except PSUTIL_ERRORS:
         return "", None
-    fields = out.stdout.split() if out.returncode == 0 else []
-    if not fields:
-        return "", None
-    threads = int(fields[1]) if linux and len(fields) > 1 and fields[1].isdigit() else None
-    return fields[0], threads
+    threads = None
+    if sys.platform.startswith("linux"):
+        try:
+            threads = process.num_threads()
+        except PSUTIL_ERRORS:
+            threads = None
+    return state, threads
 
 
 def zombie_gone(pid, state=None):
@@ -156,40 +192,279 @@ def zombie_gone(pid, state=None):
     exited and only waits for its parent to collect it (in a container whose process 1 never
     does, forever). Such a process runs nothing and counts as gone wherever liveness is
     decided. Everything else counts as alive, including any state that cannot be read.
-    A state beginning with Z is not enough on Linux: there the leader of a multi-threaded
-    process whose main thread has exited also shows Z (ps `Zl`) while its other threads run.
-    So on Linux the process must also be single-threaded, read from /proc/<pid>/stat (state Z,
-    num_threads 1) or else from ps (stat Z without the `l` flag, nlwp 1); an unknown thread
-    count counts as alive. On macOS (no thread count in ps, and no `l` flag) a stat of Z
-    without `l` is enough: there a process with a running thread never shows Z. STATE is the
-    ps stat when the caller has already read it (macOS uses it as is)."""
+    A zombie status is not enough on Linux: there the leader of a multi-threaded process
+    whose main thread has exited also shows Z while its other threads run. So on Linux the
+    process must also be single-threaded (status zombie and num_threads 1, both from
+    /proc/<pid>/stat through psutil); an unknown thread count counts as alive. On macOS a
+    zombie status is enough: there a process with a running thread never shows Z. STATE is
+    the psutil status when the caller has already read it (macOS uses it as is)."""
     if sys.platform == "darwin":
         if state is None:
-            state = ps_reading(pid)[0]
-        return state.startswith("Z") and "l" not in state[1:]
-    if state is not None and (not state.startswith("Z") or "l" in state[1:]):
+            state = proc_state(pid)[0]
+        return state == ZOMBIE
+    if state is not None and state != ZOMBIE:
         return False
-    reading = proc_reading(pid) if sys.platform.startswith("linux") else None
-    if reading is None:
-        reading = ps_reading(pid)
-    state, threads = reading
-    return state.startswith("Z") and "l" not in state[1:] and threads == 1
+    state, threads = proc_state(pid)
+    return state == ZOMBIE and threads == 1
+
+
+_KINFO = {}
+
+
+def kinfo_raw(pid):
+    """macOS: the 648-byte kernel record of PID (sysctl CTL_KERN, KERN_PROC, KERN_PROC_PID:
+    struct kinfo_proc), or None when it cannot be read."""
+    import ctypes
+    if "sysctl" not in _KINFO:
+        sysctl = ctypes.CDLL(None, use_errno=True).sysctl
+        sysctl.argtypes = (ctypes.POINTER(ctypes.c_int), ctypes.c_uint, ctypes.c_void_p,
+                           ctypes.POINTER(ctypes.c_size_t), ctypes.c_void_p, ctypes.c_size_t)
+        sysctl.restype = ctypes.c_int
+        _KINFO["sysctl"] = sysctl
+    mib = (ctypes.c_int * 4)(1, 14, 1, int(pid))
+    buf, size = ctypes.create_string_buffer(648), ctypes.c_size_t(648)
+    if _KINFO["sysctl"](mib, 4, buf, ctypes.byref(size), None, 0) != 0 or size.value != 648:
+        return None
+    return buf.raw
+
+
+def kinfo_record(pid):
+    """macOS: (p_pid, e_ppid, e_pgid) of PID from its kernel record (p_pid at 40, e_ppid at
+    560, e_pgid at 564), or None when it cannot be read."""
+    raw = kinfo_raw(pid)
+    if raw is None:
+        return None
+    return tuple(int.from_bytes(raw[at:at + 4], "little", signed=True) for at in (40, 560, 564))
+
+
+def kernel_start(pid):
+    """macOS, repair 2: whole seconds of PID's start time from its kernel record
+    (kp_proc.p_starttime.tv_sec, at offset 0), what ps lstart printed, read only after the
+    layout check (kinfo_layout_ok) and only from a record whose p_pid is PID. Raises
+    psutil.NoSuchProcess when there is no record and the process is gone, otherwise an error
+    (the start time is then unreadable: fail closed)."""
+    if not kinfo_layout_ok():
+        raise RuntimeError("kernel record layout not confirmed")
+    raw = kinfo_raw(pid)
+    if raw is None:
+        if not psutil.pid_exists(pid):
+            raise psutil.NoSuchProcess(pid)
+        raise RuntimeError("no kernel record for process %d" % pid)
+    if int.from_bytes(raw[40:44], "little", signed=True) != pid:
+        raise RuntimeError("kernel record of another process")
+    seconds = int.from_bytes(raw[0:8], "little", signed=True)
+    if seconds <= 0:
+        raise RuntimeError("no start time in the kernel record of process %d" % pid)
+    return seconds
+
+
+def kinfo_layout_ok():
+    """Repair 1 (finding 9), repair 2: the kinfo_proc layout is trusted only when the record of
+    a process whose parent and group differ (so that the two offsets cannot be confused)
+    names that process, its parent and its group: this process when its own parent and group
+    differ (getppid, getpgid), else a short-lived child started in its own session (its
+    parent is this process, its group itself: this Python running a one-line program that
+    waits for the end of a pipe, so no outside program is needed; repair 3). The start time at
+    offset 0 of this process's record must also be a time in the past, after 2001. Any
+    failure: False, so the group and (macOS) the start time of processes read from the record
+    are unreadable: fail closed. Checked once per helper process."""
+    if "layout" not in _KINFO:
+        ok = False
+        try:
+            me, parent, group = os.getpid(), os.getppid(), os.getpgid(0)
+            if parent != group:
+                ok = kinfo_record(me) == (me, parent, group)
+            else:
+                child = subprocess.Popen([sys.executable, "-I", "-S", "-c",
+                                          "import sys; sys.stdin.read()"], stdin=subprocess.PIPE,
+                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                         start_new_session=True)
+                try:
+                    ok = kinfo_record(child.pid) == (child.pid, me, child.pid)
+                finally:
+                    child.stdin.close()
+                    try:
+                        child.wait(5)
+                    except subprocess.TimeoutExpired:
+                        # Repair 3 (reading 3, finding 1): a child that does not end at the end
+                        # of its pipe is killed and reaped; the check then fails (closed).
+                        ok = False
+                        child.kill()
+                        child.wait()
+            if ok:
+                own = kinfo_raw(me)
+                started = int.from_bytes(own[0:8], "little", signed=True) if own else 0
+                ok = 978307200 <= started <= time.time() + 1
+        except Exception:
+            ok = False
+        _KINFO["layout"] = ok
+    return _KINFO["layout"]
+
+
+def kernel_pgid(pid):
+    """macOS: the process-group id of PID from its kernel record (kinfo_record), the record ps
+    read, for a process whose group getpgid refuses: one that is exiting (still running or
+    idle, not yet a zombie) or a zombie. None when it cannot be read or the layout check
+    (kinfo_layout_ok) fails, and always off macOS."""
+    if sys.platform != "darwin":
+        return None
+    try:
+        if not kinfo_layout_ok():
+            return None
+        found = kinfo_record(pid)
+    except Exception:
+        return None
+    if found is None or found[0] != pid or found[2] <= 0:
+        return None
+    return found[2]
+
+
+def environment_marks(process):
+    """Run ids in a process's visible command line and environment, read as `ps -E -ww`
+    printed them (the command, then NAME=value words): the same pattern on the same text.
+    Raises psutil errors when neither can be read."""
+    words = []
+    readable = False
+    try:
+        words.extend(process.cmdline())
+        readable = True
+    except PSUTIL_ERRORS:
+        pass
+    try:
+        environ = process.environ()
+    except PSUTIL_ERRORS:
+        if not readable:
+            raise
+    else:
+        words.extend("%s=%s" % item for item in environ.items())
+    return set(re.findall(r"\b%s=(\S+)" % MARKER, " ".join(words)))
+
+
+def gone(error):
+    """True for psutil's NoSuchProcess, which the caller re-checks before it counts the
+    process as gone. ZombieProcess is a subclass of NoSuchProcess in psutil, but it is a
+    process that exists unread: never gone."""
+    return isinstance(error, psutil.NoSuchProcess) and not isinstance(error, psutil.ZombieProcess)
+
+
+def needed(read, what, pid):
+    """A field a decision needs: AccessDenied or ZombieProcess (or any other failure but
+    NoSuchProcess, which the caller re-checks) makes the table unreadable."""
+    try:
+        return read()
+    except PSUTIL_ERRORS as error:
+        if gone(error):
+            raise
+        raise ProcessTableUnreadable("cannot read %s of process %d: %s"
+                                     % (what, pid, type(error).__name__))
+
+
+def read_entry(pid, markers):
+    """One process: {ppid, pgid, sid, state, start, marks, zombie}. Raises psutil.NoSuchProcess
+    when it is gone, ProcessTableUnreadable when a needed field cannot be read."""
+    process = needed(lambda: psutil.Process(pid), "the record", pid)
+    with process.oneshot():
+        state = needed(process.status, "the status", pid)
+        ppid = needed(process.ppid, "the parent", pid)
+        zombie = state == ZOMBIE and zombie_gone(pid, state)
+        try:
+            start = start_seconds(process)
+        except PSUTIL_ERRORS as error:
+            if gone(error):
+                raise
+            if not zombie:
+                raise ProcessTableUnreadable("cannot read the start time of process %d: %s"
+                                             % (pid, type(error).__name__))
+            start = None  # a zombie whose start time cannot be read is kept with None
+        try:
+            pgid = os.getpgid(pid)
+        except ProcessLookupError:
+            # macOS refuses getpgid for a process that is exiting or a zombie: the kernel
+            # record still has the group. Otherwise (or when that cannot be read either) the
+            # process may be gone: read_table re-checks and, while it exists, reads it again.
+            pgid = kernel_pgid(pid)
+            if pgid is None:
+                raise psutil.NoSuchProcess(pid)
+        except Exception as error:
+            raise ProcessTableUnreadable("cannot read the group of process %d: %s" % (pid, error))
+        try:
+            sid = os.getsid(pid)
+        except Exception:
+            sid = None
+        marks = set()
+        if markers and pid == os.getpid():
+            # Checkpoint 3, repair 1 (reading 1, finding 1): this process's own environment
+            # must be readable, whatever its command line shows, and must show its own run-id
+            # marker when it has one; otherwise markers may be missing: unreadable (17).
+            environ = needed(process.environ, "the environment", pid)
+            if os.environ.get(MARKER) and environ.get(MARKER) != os.environ[MARKER]:
+                raise ProcessTableUnreadable("the environment of this process (%d) does not "
+                                             "show its run-id marker" % pid)
+            marks = environment_marks(process)
+        elif markers and not zombie:
+            try:
+                marks = environment_marks(process)
+            except PSUTIL_ERRORS as error:
+                if gone(error):
+                    raise
+                # As `ps -E`, which shows no environment for another user's process.
+    return {"ppid": ppid, "pgid": pgid, "sid": sid, "state": state, "start": start,
+            "marks": marks, "zombie": bool(zombie)}
+
+
+def read_table(markers=False):
+    """Every process: pid -> read_entry(). Revision 13, fails closed: raises
+    ProcessTableUnreadable when the process list cannot be read, a needed field of a listed
+    process cannot be read, a listed process vanishes (or, on macOS, its group cannot be read
+    because it exited meanwhile) but a re-check still finds it, twice, or the table leaves out
+    this process. A process that vanished counts as gone only when
+    the re-check (psutil.pid_exists) also finds it gone. Process 0 (the macOS kernel task,
+    which ps -ax never listed) is left out."""
+    try:
+        pids = psutil.pids()
+    except PSUTIL_ERRORS as error:
+        raise ProcessTableUnreadable("psutil could not list processes: %s" % error)
+    table = {}
+    for pid in pids:
+        if pid <= 0:
+            continue
+        for attempt in (1, 2):
+            try:
+                table[pid] = read_entry(pid, markers)
+                break
+            except ProcessTableUnreadable:
+                raise
+            except Exception as error:
+                # Repair 1 (finding 2): an unexpected failure anywhere in the reading of one
+                # process (for example inside psutil's oneshot()) makes the table unreadable;
+                # NoSuchProcess alone (gone()) is re-checked below.
+                if not gone(error):
+                    raise ProcessTableUnreadable("cannot read process %d: %s"
+                                                 % (pid, type(error).__name__))
+                try:
+                    exists = psutil.pid_exists(pid)
+                except PSUTIL_ERRORS:
+                    exists = True
+                if not exists:
+                    break
+                if attempt == 2:
+                    raise ProcessTableUnreadable("process %d could not be read completely "
+                                                 "(twice), but still exists" % pid)
+    if os.getpid() not in table:
+        raise ProcessTableUnreadable("psutil listed %d process(es) but not this one (%d)"
+                                     % (len(table), os.getpid()))
+    return table
 
 
 def group_states(pgid):
-    """(pid, ps stat) of the members of process group PGID from `ps -ax`, or None when the
-    table cannot be read."""
+    """(pid, status) of the members of process group PGID, or None when the table cannot be
+    read."""
     try:
-        out = read_ps(["-ax", "-o", "pid=", "-o", "pgid=", "-o", "stat="])
+        table = read_table()
     except ProcessTableUnreadable:
         return None
-    states = []
-    for line in out.splitlines():
-        fields = line.split()
-        if len(fields) == 3 and fields[0].isdigit() and fields[1].isdigit() \
-                and int(fields[1]) == pgid:
-            states.append((int(fields[0]), fields[2]))
-    return states
+    return [(pid, entry["state"]) for pid, entry in sorted(table.items())
+            if entry["pgid"] == pgid]
 
 
 def process_exists(pid):
@@ -208,13 +483,11 @@ def process_start(pid):
     if not pid or not process_exists(pid):
         return None
     try:
-        out = subprocess.run([PS, "-o", "lstart=", "-p", str(pid)], env=PS_ENV,
-                             capture_output=True, text=True)
-        text = out.stdout.strip()
-    except OSError:
+        text = start_text(start_seconds(psutil.Process(pid)))
+    except PSUTIL_ERRORS:
         text = ""
     # Revision 13: only a start time that parses counts; anything else is unreadable.
-    if text and epoch(text, "%a %b %d %H:%M:%S %Y") is not None:
+    if text and epoch(text, START_FORMAT) is not None:
         return text
     return UNREADABLE if process_exists(pid) else None
 
@@ -245,7 +518,7 @@ def group_alive(pgid):
     if states is None:
         return True
     if not states:
-        # Every member left between the two reads, or ps does not list them: ask again.
+        # Every member left between the two reads, or the table does not list them: ask again.
         try:
             os.killpg(pgid, 0)
         except ProcessLookupError:
@@ -276,73 +549,21 @@ class ProcessTableUnreadable(Refused):
                          "is unknown" % why)
 
 
-def read_ps(args):
-    """stdout of `ps ARGS`; raises ProcessTableUnreadable if ps cannot start or exits nonzero."""
-    try:
-        out = subprocess.run([PS] + args, env=PS_ENV, capture_output=True, text=True)
-    except OSError as error:
-        raise ProcessTableUnreadable("%s could not be started: %s" % (PS, error))
-    if out.returncode != 0:
-        detail = out.stderr.strip().splitlines()[0] if out.stderr.strip() else ""
-        raise ProcessTableUnreadable("%s exited %d%s" % (PS, out.returncode,
-                                                         (": " + detail) if detail else ""))
-    return out.stdout
-
-
 def snapshot():
     """All processes: pid -> [ppid, pgid, sid, start epoch, run ids in the environment, zombie].
     Revision 14: a zombie (zombie_gone) stays in the table with its flag set, so that a
     recorded leader id is still compared with its start time (leaders_of); it counts as gone
-    for liveness (live_table, survivors). A Z line whose start time does not parse is kept
+    for liveness (live_table, survivors). A zombie whose start time cannot be read is kept
     with start None.
-    Revision 13: fails closed. A ps that cannot start, exits nonzero, prints a line that does
-    not parse, or prints a table without this process raises ProcessTableUnreadable; nothing
-    is cached then. The `ps -E` marker query is held to the same rule on macOS; elsewhere
-    (Linux ps has no -E) its failure only drops the markers, as before. Checkpoint 3: on
-    macOS the marker output must also contain a parsable line for this process (empty or
-    unparsable output with exit 0 refuses, as for the main table); continuation lines of
-    multi-line environment values are still skipped."""
+    Revision 13: fails closed (read_table); nothing is cached then. Revision 16: the run-id
+    markers are read on macOS only, as before (Linux ps had no -E, so off macOS there were
+    none); there this process's own environment must be readable (Checkpoint 3), and another
+    process whose environment cannot be read shows none, as with `ps -E`."""
     if _SNAPSHOT["procs"] is not None and time.time() - _SNAPSHOT["time"] < 0.3:
         return _SNAPSHOT["procs"]
-    procs = {}
-    out = read_ps(["-ax", "-o", "pid=", "-o", "ppid=", "-o", "pgid=", "-o", "stat=",
-                   "-o", "lstart="])
-    marker_args = ["-E", "-ww", "-ax", "-o", "pid=", "-o", "command="]
-    if sys.platform == "darwin":
-        marks = read_ps(marker_args)
-    else:
-        try:
-            marks = read_ps(marker_args)
-        except ProcessTableUnreadable:
-            marks = ""
-    for number, line in enumerate(out.splitlines(), 1):
-        if not line.strip():
-            continue
-        fields = line.split(None, 4)
-        ids = len(fields) >= 4 and all(f.isdigit() for f in fields[:3])
-        zombie = ids and fields[3].startswith("Z") and zombie_gone(int(fields[0]), fields[3])
-        start = epoch(fields[4], "%a %b %d %H:%M:%S %Y") if len(fields) == 5 else None
-        if not ids or (start is None and not zombie):
-            raise ProcessTableUnreadable("unparsable ps line %d: %r" % (number, line[:80]))
-        pid, ppid, pgid = int(fields[0]), int(fields[1]), int(fields[2])
-        try:
-            sid = os.getsid(pid)
-        except OSError:
-            sid = None
-        procs[pid] = [ppid, pgid, sid, start, set(), bool(zombie)]
-    if os.getpid() not in procs:
-        raise ProcessTableUnreadable("ps listed %d process(es) but not this one (%d)"
-                                     % (len(procs), os.getpid()))
-    own = False
-    for line in marks.splitlines():
-        # An environment value may contain a newline: such continuation lines are skipped.
-        fields = line.split(None, 1)
-        if len(fields) == 2 and fields[0].isdigit() and int(fields[0]) in procs:
-            procs[int(fields[0])][4].update(re.findall(r"\b%s=(\S+)" % MARKER, fields[1]))
-            own = own or int(fields[0]) == os.getpid()
-    if sys.platform == "darwin" and not own:
-        raise ProcessTableUnreadable("ps -E listed no environment line for this process (%d)"
-                                     % os.getpid())
+    table = read_table(markers=sys.platform == "darwin")
+    procs = {pid: [entry["ppid"], entry["pgid"], entry["sid"], entry["start"], entry["marks"],
+                   entry["zombie"]] for pid, entry in table.items()}
     _SNAPSHOT.update(time=time.time(), procs=procs)
     return procs
 
@@ -395,7 +616,8 @@ def survivors(record):
         # Both times are whole UTC seconds: a process that started while the run ran cannot
         # have a later second than `ended`. Revision 12 (P10): the earlier bound allows one
         # second (`started` - 1), as the descendant rule below does, because Linux ps can
-        # report a start time up to 1 s early; every other identity check still applies.
+        # report a start time up to 1 s early (Revision 16: psutil, which reads the same
+        # clock ticks, too); every other identity check still applies.
         return (start is not None and (started is None or start >= started - 1)
                 and (ended is None or start <= ended))
 
@@ -887,8 +1109,13 @@ def cmd_candidate(args):
 
 
 def git_rev(repo, rev):
-    out = subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "--quiet", rev],
-                         capture_output=True, text=True)
+    # Revision 16: without git on PATH this refuses (2) with the cause, not a traceback.
+    try:
+        out = subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "--quiet", rev],
+                             capture_output=True, text=True)
+    except OSError as error:
+        raise Refused(2, "cannot resolve %s in %s: git could not be run (%s); recording a "
+                         "candidate needs git on PATH" % (rev, repo, error.strerror or error))
     if out.returncode != 0 or not out.stdout.strip():
         raise Refused(2, "cannot resolve %s in %s" % (rev, repo))
     return out.stdout.strip()
@@ -1281,7 +1508,7 @@ def signal_live(queue):
     """Send SIGTERM to every run's confirmed target and survivors. Checkpoint 3: records are
     taken one at a time, so a record whose liveness needs the process table, when the table
     is unreadable, no longer prevents signalling another run whose wrapper or group is
-    confirmed by `ps -p` alone; the unreadable table is raised after the loop (stop then
+    confirmed by its own process alone (`ps -p` before Revision 16); the unreadable table is raised after the loop (stop then
     still ends with exit 17, never Stopped)."""
     unreadable = None
     for _, record in queue.runs():
@@ -1820,6 +2047,10 @@ def main(argv=None):
     p.add_argument("--new-baseline", action="store_true")
     p.set_defaults(func=cmd_install)
 
+    if psutil is None:
+        # Revision 16: before any argument is read or any file touched.
+        print("REFUSED: %s" % PSUTIL_MESSAGE, file=sys.stderr)
+        return PSUTIL_MISSING
     argv = list(sys.argv[1:] if argv is None else argv)
     command = []
     if "--" in argv:

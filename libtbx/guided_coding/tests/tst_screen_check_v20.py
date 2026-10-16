@@ -1816,6 +1816,51 @@ SUMMARY_LABELS = ("Bug: ", "Fix: ", "Test: ", "Criterion: ", "Limits: ", "Approv
 APPROVAL_LINE = "Approval: accepts this exact packet and merges nothing."
 
 
+# Revision 16: the auto-queue helper needs psutil, and building a queue needs git; tests that
+# need either skip with these reasons when it is missing.
+HAS_PSUTIL = importlib.util.find_spec("psutil") is not None
+PSUTIL_SKIP = ("psutil not importable by %s: the auto-queue helper stops without it (exit 18); "
+               "run with the cctbx conda Python (libtbx.python) or pip install psutil"
+               % sys.executable)
+GIT_SKIP = "git not on PATH: building a test queue needs a git repository (candidate)"
+# Revision 16 (repair 1, finding 3): the start screen prints the interpreter's absolute path.
+# Repair 2 (reading 2, finding 2): the checker requires an existing executable interpreter, so
+# the tests make stand-in interpreter files (never run) in a temporary build tree.
+import atexit
+STOP_BUILD = Path(os.path.realpath(tempfile.mkdtemp(prefix="gc-stop-build-")))
+atexit.register(shutil.rmtree, str(STOP_BUILD), True)
+for _name in ("build/bin/libtbx.python", "conda_base/bin/python3", "conda_base/bin/python3.11",
+              "noexec/build/bin/libtbx.python"):
+    (STOP_BUILD / _name).parent.mkdir(parents=True, exist_ok=True)
+    (STOP_BUILD / _name).write_text("#!/bin/sh\nexit 0\n")
+    (STOP_BUILD / _name).chmod(0o644 if _name.startswith("noexec") else 0o755)
+(STOP_BUILD / "dir" / "bin" / "libtbx.python").mkdir(parents=True)  # executable, not a file
+(STOP_BUILD / "link" / "bin").mkdir(parents=True)
+(STOP_BUILD / "link" / "bin" / "libtbx.python").symlink_to(STOP_BUILD / "build/bin/libtbx.python")
+STOP_PYTHON = f"{STOP_BUILD}/build/bin/libtbx.python -I -B"
+_SANDBOX_STATE = []
+
+
+def sandbox_problem():
+    """Revision 16: None when /usr/bin/sandbox-exec can apply a profile (the helper's network
+    block for `run` on macOS); else why not (missing, or refused as inside another
+    sandbox-exec). Checked once."""
+    if not _SANDBOX_STATE:
+        problem = None
+        if not os.path.exists("/usr/bin/sandbox-exec"):
+            problem = "/usr/bin/sandbox-exec missing: building a test queue runs it (`run`)"
+        else:
+            probe = subprocess.run(["/usr/bin/sandbox-exec", "-p", "(version 1)(allow default)",
+                                    sys.executable, "-c", "pass"], capture_output=True, text=True,
+                                   timeout=60)
+            if probe.returncode != 0:
+                problem = ("sandbox-exec cannot apply a profile here (exit %d: %s), as inside "
+                           "another sandbox-exec; building a test queue runs it (`run`)"
+                           % (probe.returncode, probe.stderr.strip()[:120] or "no message"))
+        _SANDBOX_STATE.append(problem)
+    return _SANDBOX_STATE[0]
+
+
 def word_count(text):
     return len(text.split())
 
@@ -1847,6 +1892,10 @@ class AutoScreenChecks(unittest.TestCase):
             cwd=self.root, env=self.environment, text=True, capture_output=True)
 
     def queue_tool(self, *arguments, queue=None, expect=0):
+        if not HAS_PSUTIL:
+            self.skipTest(PSUTIL_SKIP)
+        if arguments and arguments[0] == "run" and not NON_MACOS and sandbox_problem():
+            self.skipTest(sandbox_problem())  # Revision 16: `run` applies a sandbox-exec profile
         helper = AUTO_QUEUE_STANDIN if NON_MACOS else AUTO_QUEUE
         command = [sys.executable, "-I", "-B", str(helper), "--home", str(self.home)]
         if queue is not None:
@@ -1859,6 +1908,8 @@ class AutoScreenChecks(unittest.TestCase):
         return result
 
     def git(self, repo, *arguments):
+        if shutil.which("git") is None:
+            self.skipTest(GIT_SKIP)
         result = subprocess.run(
             ["git", "-C", str(repo), "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
              "-c", "commit.gpgsign=false", *arguments],
@@ -1888,7 +1939,7 @@ class AutoScreenChecks(unittest.TestCase):
 
     def start_text(self, queue_id=None, extra_results=(), stop_line=None,
                    not_authorized="Nothing is merged to master and nothing is published."):
-        stop_line = stop_line or f"python3 {CHECKER_AUTO_QUEUE} stop"
+        stop_line = stop_line or f"{STOP_PYTHON} {CHECKER_AUTO_QUEUE} stop"
         lines = [f"AUTO START | {queue_id or self.QUEUE_ID}",
                  "JOBS",
                  "Job A: clarify one comment, needs the unit check.",
@@ -2022,32 +2073,34 @@ class AutoScreenChecks(unittest.TestCase):
         self.start_refused(words)
 
     def test_auto_start_stop_section_needs_absolute_stop_command(self):
-        """Revision 2 (S5): STOP contains exactly `python3 <AQ> stop`, <AQ> the
-        resolved auto_queue.py beside this screen_check.py; any other path,
-        absolute or not, is refused."""
+        """Revision 2 (S5): STOP contains exactly the stop command of <AQ>, the resolved
+        auto_queue.py beside this screen_check.py; any other path, absolute or not, is
+        refused. Revision 16: the command is `/ABS/libtbx.python -I -B <AQ> stop` (the helper
+        needs psutil)."""
         self.assertTrue(CHECKER_AUTO_QUEUE.is_file())
         self.assert_accepted(self.check("auto_start", self.put(self.start_text(
-            stop_line=f"python3 {CHECKER_AUTO_QUEUE} stop"))))
+            stop_line=f"{STOP_PYTHON} {CHECKER_AUTO_QUEUE} stop"))))
         unresolved = Path(checker.__file__).parent / ".." / ".." / "auto_queue.py"
         for label, line in (
-                ("other absolute path", "python3 /opt/guided_coding/auto_queue.py stop"),
-                ("nonexistent absolute path", "python3 /nonexistent/auto_queue.py stop"),
-                ("same file, unresolved path", f"python3 {unresolved} stop"),
-                ("trailing text", f"python3 {CHECKER_AUTO_QUEUE} stop now"),
-                ("leading text", f"Run: python3 {CHECKER_AUTO_QUEUE} stop"),
-                ("python instead of python3", f"python {CHECKER_AUTO_QUEUE} stop"),
-                ("relative path", "python3 auto_queue.py stop"),
-                ("dot relative path", "python3 ./payload/auto_queue.py stop"),
-                ("home tilde path", "python3 ~/GuidedCoding/auto_queue.py stop"),
-                ("no stop subcommand", f"python3 {CHECKER_AUTO_QUEUE} status"),
+                ("other absolute path", f"{STOP_PYTHON} /opt/guided_coding/auto_queue.py stop"),
+                ("nonexistent absolute path", f"{STOP_PYTHON} /nonexistent/auto_queue.py stop"),
+                ("same file, unresolved path", f"{STOP_PYTHON} {unresolved} stop"),
+                ("trailing text", f"{STOP_PYTHON} {CHECKER_AUTO_QUEUE} stop now"),
+                ("leading text", f"Run: {STOP_PYTHON} {CHECKER_AUTO_QUEUE} stop"),
+                ("python instead of libtbx.python", f"python -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("bare libtbx.python (repair 1)", f"libtbx.python -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("relative path", f"{STOP_PYTHON} auto_queue.py stop"),
+                ("dot relative path", f"{STOP_PYTHON} ./payload/auto_queue.py stop"),
+                ("home tilde path", f"{STOP_PYTHON} ~/GuidedCoding/auto_queue.py stop"),
+                ("no stop subcommand", f"{STOP_PYTHON} {CHECKER_AUTO_QUEUE} status"),
                 ("other tool",
-                 f"python3 {CHECKER_AUTO_QUEUE.with_name('screen_check.py')} stop"),
+                 f"{STOP_PYTHON} {CHECKER_AUTO_QUEUE.with_name('screen_check.py')} stop"),
                 ("no command", "Ask the Guide to stop the queue.")):
             with self.subTest(form=label):
                 self.start_refused(self.start_text(stop_line=line))
         with self.subTest(form="command only in RESULTS, not in STOP"):
             self.start_refused(self.start_text(
-                extra_results=[f"python3 {CHECKER_AUTO_QUEUE} stop"],
+                extra_results=[f"{STOP_PYTHON} {CHECKER_AUTO_QUEUE} stop"],
                 stop_line="Ask the Guide to stop the queue."))
 
     def test_auto_start_not_authorized_mentions_master_and_publish(self):
@@ -2088,7 +2141,7 @@ class AutoScreenChecks(unittest.TestCase):
         self.assertIn(AUTO_START_ACTION, display)
         self.assertEqual(screen.read_bytes(), saved)
         refused = self.tool("present", "auto_start",
-                            str(self.put(self.start_text(stop_line="python3 auto_queue.py stop"))))
+                            str(self.put(self.start_text(stop_line=f"{STOP_PYTHON} auto_queue.py stop"))))
         self.assert_refused(refused)
         self.assertNotIn("PLEASE READ", refused.stdout)
 
@@ -2736,40 +2789,90 @@ class AutoScreenChecks(unittest.TestCase):
     PREFIX = 'TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)"'
 
     def test_auto_start_isolated_stop_command_accepted_exactly(self):
-        """Stop command form (option 1; supersedes the prefixed form): STOP accepts
-        exactly `python3 AQ stop` or `python3 -I -B AQ stop`; the TMPDIR-prefixed form
-        and near-misses are refused with "auto_start needs the stop command of this
-        procedure's auto_queue.py"."""
+        """Stop command form (option 1; supersedes the prefixed form). Revision 16: STOP
+        accepts exactly `/ABS/libtbx.python -I -B AQ stop`, or the same with a build's
+        /ABS/conda_base/bin/python3 in place of libtbx.python (repair 1: absolute paths only,
+        so that the line works whatever PATH is; a bare libtbx.python is refused); the earlier
+        `python3 AQ stop` and `python3 -I -B AQ stop` (a python3 that may lack psutil, so the
+        stop would fail with exit 18), the TMPDIR-prefixed form and near-misses are refused
+        with "auto_start needs the stop command of this procedure's auto_queue.py"."""
         reason = "auto_start needs the stop command of this procedure's auto_queue.py"
-        isolated = f"python3 -I -B {CHECKER_AUTO_QUEUE} stop"
-        for label, line in (("-I -B", isolated),
-                            ("plain", f"python3 {CHECKER_AUTO_QUEUE} stop")):
+        isolated = f"{STOP_PYTHON} {CHECKER_AUTO_QUEUE} stop"
+        conda = f"{STOP_BUILD}/conda_base/bin/python3"
+        for label, line in (("absolute libtbx.python", isolated),
+                            ("libtbx.python through a symbolic link",
+                             f"{STOP_BUILD}/link/bin/libtbx.python -I -B {CHECKER_AUTO_QUEUE} stop"),
+                            ("conda python3", f"{conda} -I -B {CHECKER_AUTO_QUEUE} stop"),
+                            ("conda python3.11", f"{conda}.11 -I -B {CHECKER_AUTO_QUEUE} stop")):
             with self.subTest(accepted=label):
                 self.assert_accepted(self.check("auto_start", self.put(
                     self.start_text(stop_line=line))))
         unresolved = Path(checker.__file__).parent / ".." / ".." / "auto_queue.py"
         for label, line in (
+                ("python3 -I -B (Revision 16)", f"python3 -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("nonexistent libtbx.python (repair 2)",
+                 f"/nonexistent/zz/libtbx.python -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("nonexistent conda python3 (repair 2)",
+                 f"{STOP_BUILD}/conda_base/bin/python3.99 -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("non-executable libtbx.python (repair 2)",
+                 f"{STOP_BUILD}/noexec/build/bin/libtbx.python -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("directory named libtbx.python (repair 2)",
+                 f"{STOP_BUILD}/dir/bin/libtbx.python -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("python3 plain (Revision 16)", f"python3 {CHECKER_AUTO_QUEUE} stop"),
+                ("libtbx.python plain", f"libtbx.python {CHECKER_AUTO_QUEUE} stop"),
+                ("bare libtbx.python -I -B (repair 1)", f"libtbx.python -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("relative libtbx.python", f"build/bin/libtbx.python -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("relative conda python", f"conda_base/bin/python3 -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("other python by path", f"/usr/bin/python3 -I -B {CHECKER_AUTO_QUEUE} stop"),
                 ("TMPDIR prefix with -I -B", f"{self.PREFIX} {isolated}"),
                 ("TMPDIR prefix, plain", f"{self.PREFIX} python3 {CHECKER_AUTO_QUEUE} stop"),
-                ("-B -I order", f"python3 -B -I {CHECKER_AUTO_QUEUE} stop"),
-                ("-I only", f"python3 -I {CHECKER_AUTO_QUEUE} stop"),
-                ("-B only", f"python3 -B {CHECKER_AUTO_QUEUE} stop"),
-                ("-IB combined", f"python3 -IB {CHECKER_AUTO_QUEUE} stop"),
-                ("extra space after python3", isolated.replace("python3 ", "python3  ", 1)),
+                ("-B -I order", isolated.replace("-I -B", "-B -I")),
+                ("-I only", isolated.replace("-I -B", "-I")),
+                ("-B only", isolated.replace("-I -B", "-B")),
+                ("-IB combined", isolated.replace("-I -B", "-IB")),
+                ("extra space after the interpreter",
+                 isolated.replace("libtbx.python ", "libtbx.python  ", 1)),
                 ("extra space between -I and -B", isolated.replace("-I -B", "-I  -B")),
                 ("extra space before stop", isolated.replace(" stop", "  stop")),
-                ("another path", "python3 -I -B /opt/guided_coding/auto_queue.py stop"),
-                ("unresolved path", f"python3 -I -B {unresolved} stop"),
-                ("relative path", "python3 -I -B auto_queue.py stop"),
+                ("another path", f"{STOP_PYTHON} /opt/guided_coding/auto_queue.py stop"),
+                ("unresolved path", f"{STOP_PYTHON} {unresolved} stop"),
+                ("relative path", f"{STOP_PYTHON} auto_queue.py stop"),
                 ("leading space", " " + isolated),
                 ("trailing space", isolated + " "),
-                ("python instead of python3", f"python -I -B {CHECKER_AUTO_QUEUE} stop"),
-                ("env prefix", f"env python3 -I -B {CHECKER_AUTO_QUEUE} stop")):
+                ("python instead of libtbx.python", f"python -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("env prefix", f"env {isolated}")):
             with self.subTest(refused=label):
                 self.assertNotEqual(line, isolated)
                 result = self.check("auto_start", self.put(self.start_text(stop_line=line)))
                 self.assert_refused(result)
                 self.assertIn(reason, result.stderr)
+
+    def test_auto_report_names_psutil_when_the_helper_needs_it(self):
+        """Revision 16: when the helper stops for lack of psutil (exit 18), auto_report is
+        refused with the helper's message, not only "report failed". A copy of this
+        screen_check.py beside a stand-in auto_queue.py that answers as the helper does
+        without psutil; control: a stand-in that fails otherwise gives the old message."""
+        for code, expected in ((18, "auto_queue.py report failed: REFUSED: requires psutil"),
+                               (1, "auto_queue.py report failed")):
+            with self.subTest(exit=code):
+                kit = self.root / f"kit-{code}"
+                (kit / "payload" / "tools").mkdir(parents=True)
+                shutil.copy(checker.__file__, kit / "payload" / "tools" / "screen_check.py")
+                (kit / "auto_queue.py").write_text(
+                    "import sys\nprint('REFUSED: requires psutil: run with the cctbx conda "
+                    "Python (libtbx.python) or pip install psutil', file=sys.stderr)\n"
+                    "sys.exit(%d)\n" % code)
+                queue = self.root / "queue"
+                queue.mkdir(exist_ok=True)
+                text = self.report_text(["| a | local checks passed | approve |"])
+                result = subprocess.run(
+                    [sys.executable, "-I", "-B", str(kit / "payload" / "tools" / "screen_check.py"),
+                     "check", "auto_report", str(self.put(text)), "--queue", str(queue)],
+                    cwd=self.root, env=self.environment, text=True, capture_output=True)
+                self.assert_refused(result)
+                self.assertEqual(result.stderr.strip(), "ERROR: " + expected
+                                 + ("" if code == 1 else ": run with the cctbx conda Python "
+                                    "(libtbx.python) or pip install psutil"))
 
     def test_auto_report_passed_and_stopped_allowed_in_approval_summaries(self):
         """Clarification: the revision 2 checks on `passed` and `stopped` apply to IN

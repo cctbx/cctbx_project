@@ -40,6 +40,16 @@ as floor(exact fork time - 0.8 s) and its `ps -E` markers are dropped, as on Lin
 four tests use it always, and GC_TEST_IMITATE_LINUX_PS=1 (read only by the tests) runs
 every helper call of a selected test through it. Off the Mac the launcher changes
 nothing: real Linux ps already reports early.
+Revision 16: the helper reads the process table through psutil, not /bin/ps; so do the
+tests' own process checks (psutil in this test process; /proc on Linux where it was used
+before). Unreadable-table controls make psutil fail inside the helper's own process
+(FAULT_SETUP: psutil.pids, or one Process field, raising AccessDenied, ZombieProcess or
+NoSuchProcess, or os.getpgid failing), never the installed helper. Without psutil in this
+interpreter the module runs only the PsutilMissing tests (the helper stops with exit 18; the
+rest is skipped with the reason). Tests that need git (the queue repository, candidates)
+skip with GIT_SKIP when git is not on PATH; tests that run sandbox-exec skip without
+/usr/bin/sandbox-exec. The suite now also runs inside sandbox-exec, where /bin/ps is refused
+but psutil reads the table.
 """
 
 import calendar
@@ -63,6 +73,11 @@ import time
 import unittest
 from pathlib import Path
 
+try:
+    import psutil  # Revision 16: the helper requires it, and the tests' own checks use it
+except ImportError:
+    psutil = None
+
 TOOL = Path(__file__).resolve().parent.parent / "auto_queue.py"
 # Revision 12: the test-only launcher, used only where the platform is not macOS
 # (real, or simulated with GC_TEST_SIMULATE_NON_MACOS=1, read only by the tests).
@@ -76,6 +91,44 @@ STANDIN_REFUSED = 16
 STANDIN_MESSAGE = ("REFUSED: tests/auto_queue_standin.py is a test-only launcher and runs only "
                    "queues the kit's own tests created; nothing was started or recorded.")
 MACOS_ONLY = "macOS mechanism, skipped off macOS: "
+# Revision 16: git and sandbox-exec are optional for the suite. A test that needs one skips
+# with these reasons when it is missing (git: not on PATH; sandbox-exec: the helper runs
+# /usr/bin/sandbox-exec by that path, so PATH does not hide it; GC_TEST_NO_SANDBOX_EXEC=1,
+# read only by the tests, makes the tests treat it as missing, as a control of the skips).
+GIT = shutil.which("git")
+GIT_SKIP = ("git not on PATH: this test needs a git repository (queue candidates, packet "
+            "trees); the helper refuses `candidate` without git (exit 2)")
+SANDBOX_EXEC = "/usr/bin/sandbox-exec"
+NO_SANDBOX_EXEC = (not os.path.exists(SANDBOX_EXEC)
+                   or os.environ.get("GC_TEST_NO_SANDBOX_EXEC") == "1")
+SANDBOX_SKIP = ("/usr/bin/sandbox-exec missing: this test runs the real sandbox-exec (the "
+                "helper refuses a blocked-network run without it, exit 14)")
+_SANDBOX_STATE = []
+
+
+def sandbox_exec_problem():
+    """Revision 16: None when /usr/bin/sandbox-exec can apply a profile here; else why not:
+    missing (SANDBOX_SKIP), or refused as inside another sandbox-exec, which cannot apply a
+    second profile ("sandbox_apply: Operation not permitted", exit 71). Checked once."""
+    if not _SANDBOX_STATE:
+        problem = SANDBOX_SKIP if NO_SANDBOX_EXEC else None
+        if problem is None:
+            try:
+                probe = subprocess.run([SANDBOX_EXEC, "-p", "(version 1)(allow default)",
+                                        sys.executable, "-c", "pass"], capture_output=True,
+                                       text=True, timeout=60)
+            except (OSError, subprocess.TimeoutExpired) as error:
+                problem = "sandbox-exec could not be run: %s" % error
+            else:
+                if probe.returncode != 0:
+                    problem = ("sandbox-exec cannot apply a profile here (exit %d: %s), as inside "
+                               "another sandbox-exec; this test needs the real network block"
+                               % (probe.returncode, probe.stderr.strip()[:120] or "no message"))
+        _SANDBOX_STATE.append(problem)
+    return _SANDBOX_STATE[0]
+PSUTIL_MISSING, PSUTIL_MESSAGE = 18, (
+    "REFUSED: requires psutil: run with the cctbx conda Python (libtbx.python) or pip "
+    "install psutil")
 PLATFORM_REFUSED = 15
 PLATFORM_MESSAGE = "REFUSED: auto-mode runs need macOS (sandbox-exec and `ps -E`); this system is "
 # The real helper with non-macOS forced inside its own process (no option or variable).
@@ -137,57 +190,140 @@ sys.path.insert(0, sys.argv[1])
 import auto_queue
 print(json.dumps({str(pid): entry[:4] for pid, entry in auto_queue.snapshot().items()}))
 """
-# Revision 13 (item 14): a test-side launcher that runs the helper (argv[2]) with its ps path
-# replaced, inside this one process, by argv[3] (a missing path or a stand-in ps script); the
-# installed helper is never changed. With argv[4] == "linux" the platform is also set to linux
-# in that process (only for snapshot(), never for `run`).
-FAKE_PS_SCRIPT = """import os, runpy, sys
-kit, helper, ps = sys.argv[1:4]
+# Revision 16 (replaces the Revision 13 ps stand-ins, which tested a ps the helper no longer
+# runs): psutil failures made inside the helper's own process only. FAULT_SETUP defines
+# install_faults(spec): spec["pids"] makes psutil.pids() return [] ("empty") or raise
+# AccessDenied, ZombieProcess, NoSuchProcess or OSError; spec["fields"] maps a psutil.Process
+# method (status, ppid, create_time, num_threads, environ, cmdline) or "pgid" (os.getpgid) to
+# the error it raises for the processes chosen by spec["who"] ("all", "own", "others", one
+# pid or a list of pids; repair 1: also RuntimeError, and "DropMarker" for environ, which then
+# returns the environment without GC_AUTO_RUN_ID); spec["exists"] fixes psutil.pid_exists() for them (the re-check after
+# NoSuchProcess); with spec["once"] each field fails only on its first read of each process;
+# spec["platform"] sets sys.platform in that process (probes only). Repair 2: a create_time
+# fault also hits the helper's kernel_start (its macOS start time) when it is imported.
+FAULT_SETUP = """import os, sys
+import psutil
+def install_faults(spec):
+    me = os.getpid()
+    fired = set()
+    def fire(field, pid):
+        if not spec.get("once"):
+            return True
+        if (field, pid) in fired:
+            return False
+        fired.add((field, pid))
+        return True
+    def hit(pid):
+        who = spec.get("who", "all")
+        return bool(pid) and (who == "all" or (who == "own" and pid == me)
+                              or (who == "others" and pid != me) or who == pid
+                              or (isinstance(who, list) and pid in who))
+    def error(name, pid):
+        if name == "OSError":
+            return PermissionError(1, "Operation not permitted (test fault)")
+        if name == "RuntimeError":
+            return RuntimeError("synthetic test fault")
+        return getattr(psutil, name)(pid)
+    pids = spec.get("pids")
+    if pids == "empty":
+        psutil.pids = lambda: []
+    elif pids:
+        def failing_pids():
+            raise error(pids, 0)
+        psutil.pids = failing_pids
+    for field, name in spec.get("fields", {}).items():
+        if field == "pgid":
+            real_getpgid = os.getpgid
+            def getpgid(pid, real=real_getpgid, name=name):
+                if hit(pid) and fire("pgid", pid):
+                    if name == "NoSuchProcess":
+                        raise ProcessLookupError(3, "No such process (test fault)")
+                    if name == "RuntimeError":
+                        raise RuntimeError("synthetic test fault")
+                    raise PermissionError(1, "Operation not permitted (test fault)")
+                return real(pid)
+            os.getpgid = getpgid
+            continue
+        helper = sys.modules.get("auto_queue")
+        if field == "create_time" and helper is not None and hasattr(helper, "kernel_start"):
+            # Repair 2: on macOS the helper reads the start time from the kernel record.
+            real_start = helper.kernel_start
+            def kernel_start(pid, real=real_start, name=name):
+                if hit(pid) and fire("create_time", pid):
+                    raise error(name, pid)
+                return real(pid)
+            helper.kernel_start = kernel_start
+        real = getattr(psutil.Process, field)
+        def method(self, *args, real=real, name=name, field=field, **kwargs):
+            if hit(self.pid) and fire(field, self.pid):
+                if name == "DropMarker":  # environ without the run-id marker
+                    return {k: v for k, v in real(self, *args, **kwargs).items()
+                            if k != "GC_AUTO_RUN_ID"}
+                raise error(name, self.pid)
+            return real(self, *args, **kwargs)
+        for attribute in ("cache_activate", "cache_deactivate"):  # psutil's oneshot() cache
+            if hasattr(real, attribute):
+                setattr(method, attribute, getattr(real, attribute))
+        setattr(psutil.Process, field, method)
+    if "exists" in spec:
+        real_exists = psutil.pid_exists
+        def exists(pid):
+            if hit(pid):
+                if spec["exists"] == "RuntimeError":
+                    raise RuntimeError("synthetic test fault")
+                return spec["exists"]
+            return real_exists(pid)
+        psutil.pid_exists = exists
+    if spec.get("platform"):
+        sys.platform = spec["platform"]
+"""
+# A test-side launcher that runs the helper (argv[2]) with the faults of the JSON spec argv[3]
+# installed in this one process; the installed helper is never changed.
+FAULT_SCRIPT = """import json, os, runpy, sys
+kit, helper, spec = sys.argv[1], sys.argv[2], json.loads(sys.argv[3])
 sys.path.insert(0, kit)
 import auto_queue
-auto_queue.PS = ps
+""" + FAULT_SETUP + """
+install_faults(spec)
 sys.argv = [helper] + sys.argv[4:]
 if os.path.realpath(helper) == os.path.realpath(auto_queue.__file__):
     sys.exit(auto_queue.main(sys.argv[1:]))
 runpy.run_path(helper, run_name="__main__")
 """
-# Stand-ins for ps (Revision 13): refused as inside sandbox-exec, empty, malformed, and one that
-# fails only for the `ps -E` marker query (as Linux ps has no -E).
-# Revision 15: Python scripts run by this test's own interpreter (no /bin/sh). Each takes one
-# argument word (-E or -ax) as its trigger, as the earlier `case " $* "` did, prints the same
-# lines with the same exit status, and otherwise replaces itself with the real /bin/ps.
-FAKE_PS_HEAD = "#!%s\nimport os, sys\nargs = sys.argv[1:]\n" % sys.executable
-FAKE_PS_PASS = 'os.execv("/bin/ps", ["/bin/ps"] + args)\n'
-FAKE_PS = {
-    "refused": FAKE_PS_HEAD + 'print("ps: Operation not permitted", file=sys.stderr)\nsys.exit(71)\n',
-    "empty": FAKE_PS_HEAD + "sys.exit(0)\n",
-    "malformed": FAKE_PS_HEAD + 'print("PID garbage line")\nprint("12 x")\nsys.exit(0)\n',
-    "no-marker": (FAKE_PS_HEAD + 'if "-E" in args:\n'
-                  '    print("ps: unsupported option -E", file=sys.stderr)\n    sys.exit(1)\n'
-                  + FAKE_PS_PASS),
-    # Checkpoint 3 (REVIEW_CP2 findings 1 and 3): the whole-table query fails while
-    # `ps -p` works; the `ps -E` marker query exits 0 with nothing, or with garbage.
-    "ax-fails": (FAKE_PS_HEAD + 'if "-ax" in args:\n'
-                 '    print("ps: Operation not permitted", file=sys.stderr)\n    sys.exit(71)\n'
-                 + FAKE_PS_PASS),
-    "empty-marker": FAKE_PS_HEAD + 'if "-E" in args:\n    sys.exit(0)\n' + FAKE_PS_PASS,
-    "garbage-marker": (FAKE_PS_HEAD + 'if "-E" in args:\n    print("garbage")\n    sys.exit(0)\n'
-                       + FAKE_PS_PASS),
+# Revision 13 faults, now as psutil faults (Revision 16): the whole table refused (as /bin/ps
+# inside sandbox-exec), not startable, empty, a needed field unreadable for other processes,
+# and the whole-table listing failing while one-process reads work.
+FAULTS = {
+    "refused": {"pids": "AccessDenied"},
+    "missing": {"pids": "OSError"},
+    "empty": {"pids": "empty"},
+    "malformed": {"fields": {"status": "AccessDenied"}, "who": "others"},
+    "ax-fails": {"pids": "AccessDenied"},
 }
-# snapshot() in a subprocess that imports the helper with PS = argv[2] (and, with argv[3]
-# == "linux", sys.platform = "linux"): prints `table N` (its size) or `refused CODE MESSAGE`.
-SNAPSHOT_PROBE = """import sys
+# snapshot() in a subprocess that imports the helper with the faults of the JSON spec argv[2]:
+# prints `table N M` (its size, and 1 when any process has a marker) or `refused CODE MESSAGE`.
+SNAPSHOT_PROBE = """import json, sys
 sys.path.insert(0, sys.argv[1])
 import auto_queue
-auto_queue.PS = sys.argv[2]
-if sys.argv[3] == "linux":
-    sys.platform = "linux"
+""" + FAULT_SETUP + """
+install_faults(json.loads(sys.argv[2]))
 try:
     procs = auto_queue.snapshot()
 except auto_queue.Refused as refusal:
     print("refused", refusal.code, refusal)
 else:
     print("table", len(procs), int(any(procs[p][4] for p in procs)))
+"""
+# Revision 16: the helper's single-process views of argv[3:] under the faults of argv[2]:
+# pid -> [process_exists, process_start, zombie_gone, group_alive (pid as group id)].
+VIEWS_PROBE = """import json, sys
+sys.path.insert(0, sys.argv[1])
+import auto_queue
+""" + FAULT_SETUP + """
+install_faults(json.loads(sys.argv[2]))
+print(json.dumps({p: [auto_queue.process_exists(int(p)), auto_queue.process_start(int(p)),
+                      auto_queue.zombie_gone(int(p)), auto_queue.group_alive(int(p))]
+                  for p in sys.argv[3:]}))
 """
 # Revision 14: the helper's own view of each pid in argv[2:] (imported in this subprocess; the
 # test process never imports it): pid -> [process_exists, group_alive (pid as a group id),
@@ -424,88 +560,225 @@ sys.exit(int(sys.argv[2]))
 """
 
 
-# Revision 13 (item 12): the kit's own suite needs a working /bin/ps. Inside sandbox-exec (for
-# example a queue run's outer sandbox) the setuid ps is refused; then this module runs ONE
-# failing test naming the cause and the supported route instead of many unrelated failures.
-PS_ROUTE = ("run the kit's own suite attended, outside the queue's outer sandbox (sandbox-exec), "
+# Revision 13 (item 12), Revision 16: the kit's own suite needs a readable process table, now
+# read through psutil (which works inside sandbox-exec too, where the setuid /bin/ps is
+# refused). When psutil cannot read it, this module runs ONE failing test naming the cause and
+# the supported route instead of many unrelated failures. Without psutil in this interpreter
+# every class but PsutilRequirement is skipped with PSUTIL_SKIP.
+PS_ROUTE = ("run the kit's own suite attended with the cctbx conda Python (libtbx.python), "
             "from an ordinary shell; see AUTO.md, 'Running the kit's own tests'. A queue job "
             "that must run it needs that exception stated in advance; never disable the "
             "network protection to make it run.")
+PSUTIL_SKIP = ("psutil not importable by %s: the helper stops without it (exit 18; "
+               "PsutilRequirement checks that), so its tests need the cctbx conda Python "
+               "(libtbx.python) or pip install psutil" % sys.executable)
+needs_psutil = unittest.skipIf(psutil is None, PSUTIL_SKIP)
 
 
-def ps_problem(ps="/bin/ps"):
-    """None when `ps -p <this pid>` works, else a message naming the cause and the route."""
+def table_problem(reader=None):
+    """None when psutil lists this process and reads its status and start time, else a
+    message naming the cause and the route. READER (the tests of this check) stands in for
+    the psutil module."""
+    reader = reader or psutil
     try:
-        out = subprocess.run([ps, "-p", str(os.getpid()), "-o", "pid="], capture_output=True,
-                             text=True, timeout=30)
-    except (OSError, subprocess.TimeoutExpired) as error:
-        cause = "%s could not be run: %s" % (ps, error)
+        pids = reader.pids()
+        me = reader.Process(os.getpid())
+        me.status()
+        me.create_time()
+    except Exception as error:  # whatever stops the reading is the cause shown
+        cause = "psutil could not read the process table (%s: %s)" % (type(error).__name__, error)
     else:
-        if out.returncode == 0 and out.stdout.split() == [str(os.getpid())]:
+        if os.getpid() in pids:
             return None
-        cause = "%s exited %d%s" % (ps, out.returncode, (
-            " (%s)" % out.stderr.strip().splitlines()[0]) if out.stderr.strip() else
-            " and did not list this process")
-    return ("PROCESS TABLE UNREADABLE: the auto-queue tests cannot run here: %s. This happens "
-            "inside sandbox-exec, where the setuid ps is refused. Supported route: %s"
-            % (cause, PS_ROUTE))
+        cause = "psutil listed %d process(es) but not this one" % len(pids)
+    return ("PROCESS TABLE UNREADABLE: the auto-queue tests cannot run here: %s. Supported "
+            "route: %s" % (cause, PS_ROUTE))
 
 
+class PsutilRequirement(unittest.TestCase):
+    """Revision 16: the helper needs psutil; these run with or without it."""
+
+    def helper(self, args, block):
+        code = ("import sys\nif sys.argv[1] == 'block':\n    sys.modules['psutil'] = None\n"
+                "sys.path.insert(0, sys.argv[2])\nimport auto_queue\n"
+                "sys.exit(auto_queue.main(sys.argv[3:]))\n")
+        return subprocess.run([sys.executable, "-I", "-B", "-c", code,
+                               "block" if block else "keep", str(TOOL.parent), *args],
+                              capture_output=True, text=True, timeout=60)
+
+    def test_helper_stops_without_psutil(self):
+        """With psutil not importable (blocked in the helper's process here, or missing from
+        the interpreter), every command stops with exit 18 and the one-line message, before
+        any argument is read or any file is written: init, status, stop, an unknown command
+        and --help. Control: with psutil importable, the same status call does not stop with
+        18."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(os.path.realpath(temp))
+            home, records = root / "home", root / "records"
+            for args in (["--home", str(home), "init", "--records", str(records), "--queue-id",
+                          "q", "--grant", str(root / "g"), "--jobs", str(root / "j"),
+                          "--lock-dir", str(root / "lock")],
+                         ["--home", str(home), "status"], ["--home", str(home), "stop"],
+                         ["no-such-command"], ["--help"]):
+                with self.subTest(args=args[2:3] or args):
+                    result = self.helper(args, block=True)
+                    self.assertEqual(result.returncode, PSUTIL_MISSING,
+                                     result.stdout + result.stderr)
+                    self.assertEqual(result.stderr.strip(), PSUTIL_MESSAGE)
+                    self.assertEqual(result.stdout, "")
+            self.assertEqual(sorted(p.name for p in root.iterdir()), [])
+            direct = subprocess.run([sys.executable, "-I", "-B", str(TOOL), "--home", str(home),
+                                     "status"], capture_output=True, text=True, timeout=60)
+            control = self.helper(["--home", str(home), "status"], block=False)
+            if psutil is None:
+                self.assertEqual(direct.returncode, PSUTIL_MISSING, direct.stderr)
+                self.assertEqual(direct.stderr.strip(), PSUTIL_MESSAGE)
+            else:
+                for result in (direct, control):
+                    self.assertNotEqual(result.returncode, PSUTIL_MISSING, result.stderr)
+                    self.assertNotIn("requires psutil", result.stderr)
+
+
+@needs_psutil
 class KitSelfTestRoute(unittest.TestCase):
-    """Revision 13 (item 12): the one test that stands for the whole module when ps cannot run."""
+    """Revision 13 (item 12): the one test that stands for the whole module when the process
+    table cannot be read. Revision 16: read through psutil."""
 
     def test_process_table_readable(self):
-        problem = ps_problem()
+        problem = table_problem()
         if problem:
             self.fail(problem)
 
-    def test_preflight_fires_on_refused_ps_and_is_silent_normally(self):
-        """A ps stand-in refused like ps inside sandbox-exec (exit 71), one that prints
-        nothing, and a missing ps each give the message with the cause and the route;
-        the real ps gives None."""
-        self.assertIsNone(ps_problem())
-        with tempfile.TemporaryDirectory() as temp:
-            for mode in ("refused", "empty"):
-                fake = Path(os.path.realpath(temp)) / mode
-                fake.write_text(FAKE_PS[mode])
-                fake.chmod(0o755)
-                problem = ps_problem(str(fake))
-                self.assertIsNotNone(problem, mode)
-                self.assertTrue(problem.startswith("PROCESS TABLE UNREADABLE"), problem)
-                self.assertIn("sandbox-exec", problem)
-                self.assertIn("Running the kit's own tests", problem)
-            self.assertIn("exited 71 (ps: Operation not permitted)",
-                          ps_problem(str(Path(temp) / "refused")))
-            self.assertIn("could not be run", ps_problem(str(Path(temp) / "missing")))
+    def test_preflight_fires_on_unreadable_table_and_is_silent_normally(self):
+        """Revision 16 (replaces the Revision 13 ps stand-ins): a reading that is refused
+        (AccessDenied), lists nothing, leaves out this process or cannot read its status
+        each give the message with the cause and the route; the real psutil gives None."""
+        self.assertIsNone(table_problem())
 
-    @unittest.skipUnless(sys.platform == "darwin" and os.path.exists("/usr/bin/sandbox-exec"),
-                         MACOS_ONLY + "the real sandbox-exec refusal of ps")
-    def test_module_under_sandbox_exec_fails_once(self):
-        """Under `sandbox-exec -p '(version 1)(allow default)'` this module runs exactly one
-        test, which fails with the message; nothing else runs."""
-        kit = Path(__file__).resolve().parent.parent
-        result = subprocess.run(["/usr/bin/sandbox-exec", "-p", "(version 1)(allow default)",
-                                 sys.executable, "-I", "-B", "-m", "unittest", "discover", "-s",
-                                 "tests", "-p", Path(__file__).name], cwd=kit, text=True,
-                                capture_output=True, timeout=300)
-        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn("Ran 1 test", result.stderr)
-        self.assertIn("FAILED (failures=1)", result.stderr)
-        self.assertEqual(result.stderr.count("PROCESS TABLE UNREADABLE"), 1, result.stderr)
-        self.assertIn("Supported route", result.stderr)
+        class Reader:
+            def __init__(self, pids=None, fail=None, status=None):
+                self._pids, self._fail, self._status = pids, fail, status
+                self.Process = lambda pid: self
+
+            def pids(self):
+                if self._fail:
+                    raise self._fail
+                return psutil.pids() if self._pids is None else self._pids
+
+            def status(self):
+                if self._status:
+                    raise self._status
+                return "running"
+
+            def create_time(self):
+                return time.time()
+
+        for label, reader, cause in (
+                ("refused", Reader(fail=psutil.AccessDenied(0)), "AccessDenied"),
+                ("empty", Reader(pids=[]), "listed 0 process(es) but not this one"),
+                ("other processes only", Reader(pids=[os.getpid() + 1]), "listed 1 process(es)"),
+                ("status unreadable", Reader(status=psutil.ZombieProcess(os.getpid())),
+                 "ZombieProcess")):
+            with self.subTest(reader=label):
+                problem = table_problem(reader)
+                self.assertIsNotNone(problem)
+                self.assertTrue(problem.startswith("PROCESS TABLE UNREADABLE"), problem)
+                self.assertIn(cause, problem)
+                self.assertIn("Running the kit's own tests", problem)
+        self.assertIsNone(table_problem(Reader()))
+
+    @unittest.skipUnless(sys.platform == "darwin", MACOS_ONLY + "sandbox-exec")
+    def test_helper_reads_table_inside_sandbox_exec_where_ps_is_refused(self):
+        """Revision 16 (replaces test_module_under_sandbox_exec_fails_once): under
+        `sandbox-exec -p '(version 1)(allow default)'` the helper's snapshot() lists the
+        processes, with the run-id marker of its own process, and the preflight is silent;
+        control: /bin/ps is refused there, as before."""
+        if sandbox_exec_problem():
+            self.skipTest(sandbox_exec_problem())
+        with tempfile.TemporaryDirectory() as temp:
+            script = Path(os.path.realpath(temp)) / "probe.py"
+            script.write_text(SNAPSHOT_PROBE)
+            profile = "(version 1)(allow default)"
+            env = dict(os.environ, GC_AUTO_RUN_ID="sandbox-probe")
+            probe = subprocess.run([SANDBOX_EXEC, "-p", profile, sys.executable, "-I", "-B",
+                                    str(script), str(TOOL.parent), "{}"], env=env, text=True,
+                                   capture_output=True, timeout=120)
+            self.assertEqual(probe.returncode, 0, probe.stdout + probe.stderr)
+            words = probe.stdout.split()
+            self.assertEqual(words[0], "table", probe.stdout)
+            self.assertGreater(int(words[1]), 1, probe.stdout)
+            self.assertEqual(words[2], "1", "own run-id marker not read: " + probe.stdout)
+            check = ("import os, sys; sys.path.insert(0, sys.argv[1]); "
+                     "import tst_auto_queue_v20 as t; print(t.table_problem())")
+            route = subprocess.run([SANDBOX_EXEC, "-p", profile, sys.executable, "-I", "-B",
+                                    "-c", check, str(Path(__file__).resolve().parent)],
+                                   text=True, capture_output=True, timeout=120)
+            self.assertEqual(route.stdout.strip(), "None", route.stdout + route.stderr)
+            ps = subprocess.run([SANDBOX_EXEC, "-p", profile, "/bin/ps", "-p", str(os.getpid()),
+                                 "-o", "pid="], text=True, capture_output=True, timeout=60)
+            self.assertNotEqual(ps.returncode, 0, "control: /bin/ps ran inside sandbox-exec")
 
 
 def load_tests(loader, standard_tests, pattern):
-    """Revision 13 (item 12): when ps cannot run, only the route test (failing once)."""
-    if ps_problem() is None:
+    """Revision 13 (item 12): when the table cannot be read, only the route test (failing
+    once). Revision 16: without psutil the classes that need it are skipped (needs_psutil)."""
+    if psutil is None or table_problem() is None:
         return standard_tests
     return unittest.TestSuite([KitSelfTestRoute("test_process_table_readable")])
 
 
-def ps_state(pid):
-    """Revision 14: the ps stat of one process ("" when ps lists nothing for it)."""
-    return subprocess.run(["/bin/ps", "-o", "stat=", "-p", str(pid)], text=True,
-                          capture_output=True).stdout.strip()
+def status_of(pid):
+    """Revision 16 (was ps_state, the ps stat): the psutil status of one process ("zombie" for
+    a zombie), or "" when it cannot be read."""
+    try:
+        return psutil.Process(pid).status()
+    except (psutil.Error, OSError):
+        return ""
+
+
+def ppid_of(pid):
+    """Revision 16 (was `ps -o ppid=`): the parent id as text, or "" when unreadable."""
+    try:
+        return str(psutil.Process(pid).ppid())
+    except (psutil.Error, OSError):
+        return ""
+
+
+def kinfo_start_of(pid):
+    """Repair 2, macOS: whole seconds of kp_proc.p_starttime (offset 0 of the 648-byte
+    kinfo_proc from sysctl CTL_KERN, KERN_PROC, KERN_PROC_PID), what ps lstart printed; the
+    record must name PID (p_pid at 40). Raises OSError when it cannot be read."""
+    import ctypes
+    sysctl = ctypes.CDLL(None, use_errno=True).sysctl
+    sysctl.argtypes = (ctypes.POINTER(ctypes.c_int), ctypes.c_uint, ctypes.c_void_p,
+                       ctypes.POINTER(ctypes.c_size_t), ctypes.c_void_p, ctypes.c_size_t)
+    sysctl.restype = ctypes.c_int
+    mib = (ctypes.c_int * 4)(1, 14, 1, int(pid))
+    buf, size = ctypes.create_string_buffer(648), ctypes.c_size_t(648)
+    if sysctl(mib, 4, buf, ctypes.byref(size), None, 0) != 0 or size.value != 648:
+        raise OSError("no kernel record for %d" % pid)
+    raw = buf.raw
+    if int.from_bytes(raw[40:44], "little", signed=True) != pid:
+        raise OSError("kernel record of another process")
+    return int.from_bytes(raw[0:8], "little", signed=True)
+
+
+def start_of(pid):
+    """Revision 16 (was `ps -o lstart=` with TZ=UTC): the start time in whole UTC seconds.
+    Repair 2: on macOS the raw kernel start time, as ps read it (psutil's create_time() there
+    moves by whole seconds after a clock step); on Linux psutil's value."""
+    if sys.platform == "darwin":
+        return kinfo_start_of(pid)
+    return int(psutil.Process(pid).create_time())
+
+
+def lstart_of(pid):
+    """Revision 16: the start time as ps lstart printed it (asctime, UTC), or "" when it
+    cannot be read; a run record stores this form."""
+    try:
+        return time.asctime(time.gmtime(start_of(pid)))
+    except (psutil.Error, OSError):
+        return ""
 
 
 def proc_stat(pid):
@@ -521,8 +794,9 @@ def proc_stat(pid):
 def alive(pid):
     """Revision 14: as in the helper, a zombie (exited, not yet collected by its parent, as
     under a container's process 1 that never reaps) counts as gone: on Linux /proc state Z
-    with one thread (a Z leader with running threads is alive); elsewhere ps stat Z without
-    the `l` flag. Anything unread counts as alive."""
+    with one thread (a Z leader with running threads is alive); elsewhere the psutil status
+    zombie (Revision 16; before, ps stat Z without the `l` flag). Anything unread counts as
+    alive."""
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -532,8 +806,7 @@ def alive(pid):
     if sys.platform.startswith("linux"):
         reading = proc_stat(pid)
         return not (reading is not None and reading[0] == "Z" and reading[1] == 1)
-    state = ps_state(pid)
-    return not (state.startswith("Z") and "l" not in state[1:])
+    return status_of(pid) != "zombie"
 
 
 def sha256_file(path):
@@ -786,9 +1059,10 @@ def macho_ranges(data):
     return ranges
 
 
+@needs_psutil
 class AutoQueueChecks(unittest.TestCase):
     linux_ps = IMITATE_LINUX_PS  # Revision 12 (P10); the P10 tests set it for themselves
-    fake_ps = None  # Revision 13: a ps stand-in path for the helper (FAKE_PS_SCRIPT)
+    fault = None  # Revision 16: psutil faults in the helper's own process (FAULT_SCRIPT)
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -827,11 +1101,12 @@ class AutoQueueChecks(unittest.TestCase):
         self.criterion.write_text("Criterion one: the tool exits 0.\n")
         self.repo = self.tmp / "repo"
         self.repo.mkdir()
-        self.git("init", "-q")
-        self.git("config", "user.name", "Test Writer")
-        self.git("config", "user.email", "test@example.invalid")
-        self.git("config", "commit.gpgsign", "false")
-        self.commit("first")
+        if GIT:  # Revision 16: without git, a test skips when it first needs the repository
+            self.git("init", "-q")
+            self.git("config", "user.name", "Test Writer")
+            self.git("config", "user.email", "test@example.invalid")
+            self.git("config", "commit.gpgsign", "false")
+            self.commit("first")
         self.queue = self.init_queue(QID, self.home, self.lock)
 
     # ---- helpers -------------------------------------------------------------
@@ -862,6 +1137,8 @@ class AutoQueueChecks(unittest.TestCase):
                         pass
 
     def git(self, *args):
+        if not GIT:
+            self.skipTest(GIT_SKIP)
         return subprocess.run(["git", "-C", str(self.repo), *args], env=self.env, check=True,
                               text=True, capture_output=True).stdout.strip()
 
@@ -875,12 +1152,20 @@ class AutoQueueChecks(unittest.TestCase):
 
     def command(self, args, home, queue, real=False):
         """Revision 12: off macOS through the test-only launcher, unless `real`."""
+        if args and str(args[0]) == "candidate" and not GIT:
+            self.skipTest(GIT_SKIP)  # Revision 16: `candidate` resolves the commit with git
+        if (args and str(args[0]) == "run" and sys.platform == "darwin" and (real or not NON_MACOS)
+                and self.network_blocked(args[1] if len(args) > 1 else None, queue)
+                and sandbox_exec_problem()):
+            # Revision 16 (repair 1, finding 5): the real helper on macOS applies a
+            # sandbox-exec profile only for a job whose network is blocked.
+            self.skipTest(sandbox_exec_problem())
         helper = STANDIN if NON_MACOS and not real else TOOL
         command = [sys.executable, "-I", "-B", str(helper), "--home", str(home or self.home)]
-        if self.fake_ps and not real:  # Revision 13: the helper's ps replaced
-            script = self.work / "fake_ps_launcher.py"
-            script.write_text(FAKE_PS_SCRIPT)
-            command[3:4] = [str(script), str(TOOL.parent), str(helper), str(self.fake_ps)]
+        if self.fault and not real:  # Revision 16: psutil faults in the helper's process
+            script = self.work / "fault_launcher.py"
+            script.write_text(FAULT_SCRIPT)
+            command[3:4] = [str(script), str(TOOL.parent), str(helper), json.dumps(self.fault)]
         elif self.linux_ps and not real:  # Revision 12 (P10): Linux ps start times imitated
             command[3:4] = [str(self.linux_ps_script), str(TOOL.parent), str(helper),
                             str(LINUX_PS_LAG)]
@@ -889,6 +1174,16 @@ class AutoQueueChecks(unittest.TestCase):
         if queue:
             command += ["--queue", str(queue)]
         return command + [str(a) for a in args]
+
+    def network_blocked(self, job, queue):
+        """Repair 1: whether `run JOB` blocks the network (the job has no "network": true in
+        the queue record); True when that cannot be read."""
+        path = Path(self.queue if queue is True else queue or self.queue) / "QUEUE.json"
+        try:
+            jobs = json.loads(path.read_text())["jobs"]
+            return not next(j for j in jobs if j.get("id") == str(job)).get("network")
+        except (OSError, ValueError, KeyError, StopIteration, TypeError, AttributeError):
+            return True
 
     def tool(self, *args, home=None, queue=True, env=None, real=False):
         return subprocess.run(self.command(args, home, queue, real), cwd=self.tmp,
@@ -2174,14 +2469,14 @@ class AutoQueueChecks(unittest.TestCase):
         else:
             self.assertNotEqual(child, shell)
             self.assertEqual(os.getsid(child), shell)
-            self.assertEqual(subprocess.run(["/bin/ps", "-o", "ppid=", "-p", str(child)],
-                                            text=True, capture_output=True).stdout.strip(),
-                             str(shell))
+            self.assertEqual(ppid_of(child), str(shell))
         if sys.platform == "darwin":
             for pid in {shell, child}:
-                shown = subprocess.run(["/bin/ps", "-E", "-ww", "-o", "command=", "-p", str(pid)],
-                                       text=True, capture_output=True).stdout
-                self.assertTrue(shown.strip(), "ps -E listed nothing for %d" % pid)
+                # Revision 16: what the helper reads (psutil command line and environment)
+                process = psutil.Process(pid)
+                shown = " ".join(process.cmdline() + ["%s=%s" % item
+                                                      for item in process.environ().items()])
+                self.assertTrue(shown.strip(), "nothing readable for %d" % pid)
                 self.assertNotIn("GC_AUTO_RUN_ID=", shown, "a run-id marker is visible on %d" % pid)
 
     def held_child(self, seconds, name):
@@ -2272,10 +2567,7 @@ class AutoQueueChecks(unittest.TestCase):
         return calendar.timegm(time.strptime(iso, "%Y-%m-%dT%H:%M:%SZ"))
 
     def start_epoch(self, pid):
-        lstart = subprocess.run(["/bin/ps", "-o", "lstart=", "-p", str(pid)],
-                                env={"LC_ALL": "C", "TZ": "UTC"}, text=True,
-                                capture_output=True).stdout.strip()
-        return calendar.timegm(time.strptime(lstart, "%a %b %d %H:%M:%S %Y"))
+        return start_of(pid)  # Revision 16: psutil (was ps lstart)
 
     def wait_past_second(self, bound):
         """Revision 12: wait until a newly started process's ps start time is a later
@@ -2315,9 +2607,7 @@ class AutoQueueChecks(unittest.TestCase):
         self.wait_for(ready.exists, "the orphaned child")
         self.assertFalse(alive(leader))
         self.assertEqual((os.getpgid(orphan), os.getsid(orphan)), (leader, leader))
-        self.wait_for(lambda: subprocess.run(["/bin/ps", "-o", "ppid=", "-p", str(orphan)],
-                                             text=True, capture_output=True).stdout.strip()
-                      not in ("", str(leader)),
+        self.wait_for(lambda: ppid_of(orphan) not in ("", str(leader)),
                       "the orphan to be reparented away from its dead leader")
         return leader, orphan, ready, start
 
@@ -2497,10 +2787,7 @@ class AutoQueueChecks(unittest.TestCase):
         self.wait_for(pids.exists, "the tracked parent's child")
         (child,) = [int(pid) for pid in pids.read_text().split()]
         self.stray.append(child)
-        lstart = subprocess.run(["/bin/ps", "-o", "lstart=", "-p", str(parent.pid)],
-                                env={"LC_ALL": "C", "TZ": "UTC"}, text=True,
-                                capture_output=True).stdout.strip()
-        start = calendar.timegm(time.strptime(lstart, "%a %b %d %H:%M:%S %Y"))
+        start = start_of(parent.pid)  # Revision 16: psutil (was ps lstart)
         self.forge(record, stem + "-tracked", ended=None, status="running", pgid=child,
                    tracked=[{"pid": parent.pid, "start": start}])
         self.assertIn("running", self.result_cell(self.report(), BETA).lower())
@@ -3145,12 +3432,15 @@ class AutoQueueChecks(unittest.TestCase):
 
         def leftovers():
             # Revision 14: a zombie member (exited, not collected) is not a leftover.
-            table = subprocess.run(["/bin/ps", "-A", "-o", "pgid=", "-o", "stat=", "-o",
-                                    "command="], text=True, capture_output=True)
-            self.assertEqual(table.returncode, 0, table.stderr)
-            return [line for line in table.stdout.splitlines()
-                    if line.split(None, 2)[:1] == [str(record["probe_pgid"])]
-                    and not line.split(None, 2)[1].startswith("Z")]
+            # Revision 16: psutil and os.getpgid (was `ps -A -o pgid= -o stat=`).
+            found = []
+            for pid in psutil.pids():
+                try:
+                    if os.getpgid(pid) == record["probe_pgid"] and status_of(pid) != "zombie":
+                        found.append(pid)
+                except OSError:
+                    pass
+            return found
         self.wait_for(lambda: not leftovers(), "the probe's group to be gone", 5)
         self.attempt(BETA, 0)
 
@@ -3700,6 +3990,8 @@ class AutoQueueChecks(unittest.TestCase):
     def two_repository_beta(self):
         """BETA Testing with a passing current run on a candidate of two repositories;
         returns (candidate id as printed by `candidate`, tree 1, tree 2)."""
+        if not GIT:
+            self.skipTest(GIT_SKIP)  # Revision 16
         second = self.tmp / "repo2"
         second.mkdir()
         for args in (("init", "-q"), ("config", "user.name", "Test Writer"),
@@ -4274,66 +4566,73 @@ class AutoQueueChecks(unittest.TestCase):
 
     # ---- Revision 13 (item 14): an unreadable process table fails closed ---------
 
-    def fake_ps_path(self, mode):
-        if mode == "missing":
-            return self.work / "no-such-ps"
-        path = self.work / f"ps-{mode}"
-        path.write_text(FAKE_PS[mode])
-        path.chmod(0o755)
-        return path
-
-    def snapshot_probe(self, ps, platform="native"):
+    def snapshot_probe(self, spec):
+        """Revision 16: snapshot() in the helper's process with the psutil faults SPEC."""
         script = self.work / "snapshot_probe.py"
         script.write_text(SNAPSHOT_PROBE)
-        result = subprocess.run([sys.executable, "-I", "-B", str(script), str(TOOL.parent), str(ps),
-                                 platform], cwd=self.tmp, env=self.env, text=True,
+        result = subprocess.run([sys.executable, "-I", "-B", str(script), str(TOOL.parent),
+                                 json.dumps(spec)], cwd=self.tmp, env=self.env, text=True,
                                 capture_output=True, timeout=60)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         return result.stdout.strip()
 
-    def test_snapshot_fails_closed_when_ps_fails(self):
-        """Revision 13 (item 14): snapshot() raises a refusal (17, "cannot read the process
-        table") when ps cannot start, exits nonzero, prints nothing or prints a line that
-        does not parse; it never returns an empty table. Control: the real ps gives a table.
-        Linux: a failing `ps -E` marker query alone is tolerated off macOS (markers dropped,
-        as before) and refused on macOS, where the marker is needed."""
-        table = self.snapshot_probe("/bin/ps")
+    def test_snapshot_fails_closed_when_psutil_fails(self):
+        """Revision 13 (item 14), Revision 16 (psutil faults replace the ps stand-ins):
+        snapshot() raises a refusal (17, "cannot read the process table") when the process
+        list is refused or cannot be read, lists nothing, or a needed field of other
+        processes cannot be read; it never returns an empty table. Control: without a fault
+        it gives a table. The run-id marker: when this process's own environment and command
+        line cannot be read, macOS refuses (the marker is needed there); off macOS (simulated
+        in the probe) the markers are not read, as before (Linux ps had no -E)."""
+        table = self.snapshot_probe({})
         self.assertTrue(table.startswith("table "), table)
         self.assertGreater(int(table.split()[1]), 1)
         for mode in ("missing", "refused", "empty", "malformed"):
-            with self.subTest(ps=mode):
-                out = self.snapshot_probe(self.fake_ps_path(mode))
+            with self.subTest(fault=mode):
+                out = self.snapshot_probe(FAULTS[mode])
                 self.assertTrue(out.startswith("refused 17 cannot read the process table"), out)
                 self.assertIn("whether queue processes are alive is unknown", out)
-        no_marker = self.fake_ps_path("no-marker")
-        out = self.snapshot_probe(no_marker, "linux")
+        own = {"fields": {"environ": "AccessDenied", "cmdline": "AccessDenied"}, "who": "own"}
+        out = self.snapshot_probe(dict(own, platform="linux"))
         self.assertTrue(out.startswith("table "), out)
         self.assertEqual(out.split()[2], "0", "markers should be dropped, not invented")
         if sys.platform == "darwin":
-            out = self.snapshot_probe(no_marker)
+            out = self.snapshot_probe(own)
             self.assertTrue(out.startswith("refused 17 "), out)
-            self.assertIn("exited 1", out)
+            self.assertIn("cannot read the environment of process", out)
 
-    def test_snapshot_refuses_empty_or_unparsable_marker_output_on_macos(self):
-        """Checkpoint 3 (REVIEW_CP2 finding 3): on macOS a `ps -E` marker query that exits
-        0 with no output, or with a line that does not parse, refuses (17) like the main
-        table, since a survivor found only by its marker would be invisible. Off macOS
-        (simulated in the probe) the same output only drops the markers, as before."""
-        for mode in ("empty-marker", "garbage-marker"):
-            with self.subTest(ps=mode):
-                out = self.snapshot_probe(self.fake_ps_path(mode), "linux")
+    def test_snapshot_marker_unreadable_elsewhere_is_dropped_own_is_needed(self):
+        """Checkpoint 3 (REVIEW_CP2 finding 3), Revision 16: on macOS this process's own
+        environment must be readable (else 17, as an empty `ps -E` output refused); another
+        process whose environment cannot be read (AccessDenied or ZombieProcess) shows no
+        marker, as `ps -E` showed none for another user's process. Off macOS (simulated)
+        markers are not read."""
+        env = dict(self.env, GC_AUTO_RUN_ID="own-marker")
+        script = self.work / "snapshot_probe.py"
+        script.write_text(SNAPSHOT_PROBE)
+        for name in ("AccessDenied", "ZombieProcess"):
+            spec = {"fields": {"environ": name, "cmdline": name}, "who": "others"}
+            with self.subTest(others=name):
+                out = subprocess.run([sys.executable, "-I", "-B", str(script), str(TOOL.parent),
+                                      json.dumps(spec)], env=env, text=True, capture_output=True,
+                                     timeout=60).stdout.strip()
                 self.assertTrue(out.startswith("table "), out)
-                if sys.platform != "darwin":
-                    continue
-                out = self.snapshot_probe(self.fake_ps_path(mode))
-                self.assertTrue(out.startswith("refused 17 cannot read the process table"), out)
-                self.assertIn("ps -E listed no environment line for this process", out)
+                self.assertEqual(out.split()[2], "1" if sys.platform == "darwin" else "0", out)
+            with self.subTest(own=name):
+                spec["who"] = "own"
+                out = self.snapshot_probe(spec)
+                if sys.platform == "darwin":
+                    self.assertTrue(out.startswith("refused 17 cannot read the process table"), out)
+                    self.assertIn("cannot read the environment of process", out)
+                else:
+                    self.assertTrue(out.startswith("table "), out)
 
     def test_stop_signals_confirmed_run_when_another_record_needs_the_table(self):
         """Checkpoint 3 (REVIEW_CP2 finding 1): a completed run's record sorts before a
         running one; with a ps that fails only for the whole table (`ps -p` works), stop
         still sends SIGTERM to the running run's group (confirmed by `ps -p`), then
-        refuses 17 with Stopping, never Stopped. The run ends 128+15."""
+        refuses 17 with Stopping, never Stopped. The run ends 128+15. Revision 16: the
+        whole-table listing (psutil.pids) fails while one-process reads work."""
         self.prepare(BETA)
         self.ok(self.run_cmd(BETA, "unit", cmd=QUICK_CMD))
         (first,) = self.runs()
@@ -4342,11 +4641,11 @@ class AutoQueueChecks(unittest.TestCase):
         stem, record = self.wait_record({first})
         self.assertLess(first, stem)
         self.end_worker()
-        self.fake_ps = self.fake_ps_path("ax-fails")
+        self.fault = FAULTS["ax-fails"]
         try:
             result = self.tool("stop")
         finally:
-            self.fake_ps = None
+            self.fault = None
         self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
         self.assertTrue(result.stdout.strip().startswith("Stopping:"), result.stdout)
         self.assertEqual(proc.wait(TIMEOUT), 128 + signal.SIGTERM)
@@ -4358,12 +4657,13 @@ class AutoQueueChecks(unittest.TestCase):
         """Checkpoint 3 (REVIEW_CP2 finding 2): with no run record at all and the helper's
         ps refused, stop prints Stopping (17, never Stopped) and cleanup, lock release and
         transfer refuse 17 (lock kept, job not transferred), consistent with report.
-        Control: with the real ps each succeeds."""
+        Control: with the real ps each succeeds. Revision 16: psutil faults (FAULTS) in
+        place of the ps stand-ins."""
         self.prepare(BETA)
         self.end_worker()
         successor = self.tmp / "attended-none"
         successor.mkdir()
-        self.fake_ps = self.fake_ps_path("refused")
+        self.fault = FAULTS["refused"]
         try:
             result = self.tool("cleanup", BETA)
             self.refused(result, 17)
@@ -4380,7 +4680,7 @@ class AutoQueueChecks(unittest.TestCase):
             self.assertEqual(report.returncode, 17, report.stdout + report.stderr)
             self.assertEqual(self.first_line(report.stdout), "**Stopping**")
         finally:
-            self.fake_ps = None
+            self.fault = None
         self.assertTrue(self.cleanup(0).stdout.strip().startswith("Cleaned"))  # control
         self.stop_until_stopped()
         self.ok(self.tool("transfer", BETA, "--to", successor, "--note", "attended"))
@@ -4388,7 +4688,8 @@ class AutoQueueChecks(unittest.TestCase):
 
     def test_unreadable_process_table_never_reports_stopped_cleaned_or_released(self):
         """Revision 13 (item 14): with a run's leftover process alive and the helper's ps
-        missing, refused (as inside sandbox-exec), empty or malformed: `run` refuses (17) and
+        missing, refused (as inside sandbox-exec), empty or malformed (Revision 16: the
+        psutil faults of the same names, FAULTS): `run` refuses (17) and
         its CMD never starts; Ready, cleanup and lock release refuse (17) and change nothing
         (the leftover lives, the lock stays); reconcile marks no run unknown; report prints no
         readiness and shows the job unknown, exits 17; stop records the stop but prints
@@ -4400,8 +4701,8 @@ class AutoQueueChecks(unittest.TestCase):
         packet = self.packet(self.tree())
         modes = ("missing", "refused", "empty", "malformed")
         for mode in modes:
-            with self.subTest(ps=mode):
-                self.fake_ps = self.fake_ps_path(mode)
+            with self.subTest(fault=mode):
+                self.fault = FAULTS[mode]
                 try:
                     marker, cmd = self.marker_cmd(f"fake-ps-{mode}")
                     result = self.run_cmd(BETA, "unit", cmd=cmd)
@@ -4426,12 +4727,12 @@ class AutoQueueChecks(unittest.TestCase):
                     self.assertIn("unknown", self.result_cell(result.stdout, BETA))
                     self.assertNotIn("passed", self.result_cell(result.stdout, BETA))
                 finally:
-                    self.fake_ps = None
+                    self.fault = None
         self.assertEqual(self.state(BETA), "Testing")
         self.assertNotEqual(self.runs()[stem]["status"], "unknown")
         for mode in modes:
             with self.subTest(stop=mode):
-                self.fake_ps = self.fake_ps_path(mode)
+                self.fault = FAULTS[mode]
                 try:
                     result = self.tool("stop")
                     self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
@@ -4442,7 +4743,7 @@ class AutoQueueChecks(unittest.TestCase):
                     self.assertEqual(report.returncode, 17, report.stdout + report.stderr)
                     self.assertEqual(self.first_line(report.stdout), "**Stopping**")
                 finally:
-                    self.fake_ps = None
+                    self.fault = None
         self.assertTrue(alive(child))
         self.end_worker()
         self.assertTrue(self.cleanup(0).stdout.strip().startswith("Cleaned"))  # control
@@ -4460,7 +4761,7 @@ class AutoQueueChecks(unittest.TestCase):
                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                 stderr=subprocess.DEVNULL)
         self.procs.append(proc)
-        self.wait_for(lambda: ps_state(proc.pid).startswith("Z"), "a zombie (ps stat Z)")
+        self.wait_for(lambda: status_of(proc.pid) == "zombie", "a zombie (psutil status zombie)")
         self.assertFalse(alive(proc.pid))
         return proc.pid
 
@@ -4490,9 +4791,7 @@ class AutoQueueChecks(unittest.TestCase):
         return {int(pid): views for pid, views in json.loads(result.stdout).items()}
 
     def lstart(self, pid):
-        return subprocess.run(["/bin/ps", "-o", "lstart=", "-p", str(pid)],
-                              env={"LC_ALL": "C", "TZ": "UTC", "PATH": "/bin:/usr/bin"},
-                              text=True, capture_output=True).stdout.strip()
+        return lstart_of(pid)  # Revision 16: psutil (was ps lstart)
 
     def survivors_probe(self, record):
         path = self.work / f"probe-record-{self.counter}.json"
@@ -4566,7 +4865,8 @@ class AutoQueueChecks(unittest.TestCase):
                       "the main thread to exit (leader state Z)")
         state, threads = proc_stat(proc.pid)
         self.assertGreater(threads, 1, "the worker thread runs")
-        self.assertIn("l", ps_state(proc.pid), "ps shows the multi-threaded flag")
+        process = psutil.Process(proc.pid)  # Revision 16: what the helper reads (was ps `Zl`)
+        self.assertEqual((process.status(), process.num_threads() > 1), ("zombie", True))
         first = beat.read_text()
         self.wait_for(lambda: beat.read_text() != first, "a heartbeat after the main thread exited")
         self.assertTrue(alive(proc.pid))
@@ -4604,7 +4904,7 @@ class AutoQueueChecks(unittest.TestCase):
         self.assertEqual(views[member][2], True, "live member in the table")
         member_release.write_text("")
         self.wait_for(lambda: not alive(member), "the member to exit")
-        self.assertTrue(ps_state(leader).startswith("Z"), "the leader is still a zombie")
+        self.assertEqual(status_of(leader), "zombie", "the leader is still a zombie")
         views = self.zombie_probe(leader, sibling.pid)
         self.assertEqual(views[leader], [False, False, False], "group of only a zombie")
         self.assertEqual(views[sibling.pid], [True, True, True], "live sibling")
@@ -4614,7 +4914,7 @@ class AutoQueueChecks(unittest.TestCase):
     def test_zombie_run_leader_is_gone_and_unreadable_table_still_refuses(self):
         """Revision 14: a `running` record whose CMD leader (pid and group, with its real start
         time) is a zombie: the report does not show it running, a new run of the job is not
-        refused (13), reconcile marks it unknown; with the helper's ps refused, cleanup, lock
+        refused (13), reconcile marks it unknown; with the helper's table refused (Revision 16: psutil), cleanup, lock
         release and stop still refuse (17: never Cleaned, released or Stopped); with the real
         ps stop prints Stopped at once (it does not wait for the zombie), cleanup prints
         Cleaned and the lock is released. Fails on revision 13 (running, 13, Stopping)."""
@@ -4632,7 +4932,7 @@ class AutoQueueChecks(unittest.TestCase):
         self.ok(self.tool("reconcile"))
         self.assertEqual(self.runs()[name]["status"], "unknown")
         self.end_worker()
-        self.fake_ps = self.fake_ps_path("refused")
+        self.fault = FAULTS["refused"]
         try:
             result = self.tool("cleanup", BETA)
             self.refused(result, 17)
@@ -4643,12 +4943,12 @@ class AutoQueueChecks(unittest.TestCase):
             self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
             self.assertNotIn("Stopped", result.stdout)
         finally:
-            self.fake_ps = None
+            self.fault = None
         result = self.ok(self.tool("stop"))
         self.assertTrue(result.stdout.strip().startswith("Stopped"), result.stdout)
         self.assertTrue(self.cleanup(0).stdout.strip().startswith("Cleaned"))
         self.ok(self.tool("lock", "release"))
-        self.assertTrue(ps_state(leader).startswith("Z"), "the zombie was never collected")
+        self.assertEqual(status_of(leader), "zombie", "the zombie was never collected")
 
     def test_zombie_leader_group_counted_while_member_lives(self):
         """Revision 14: a `running` record whose leader is a zombie but whose group still
@@ -4681,7 +4981,7 @@ class AutoQueueChecks(unittest.TestCase):
         self.assertTrue(alive(member))
         release.write_text("")
         self.wait_for(lambda: not alive(member), "the member to exit")
-        self.assertTrue(ps_state(leader).startswith("Z"), "the leader is still a zombie")
+        self.assertEqual(status_of(leader), "zombie", "the leader is still a zombie")
         self.ok(self.tool("reconcile"))
         self.assertEqual(self.runs()[name]["status"], "unknown")
         result = self.ok(self.tool("stop"))
@@ -5331,6 +5631,600 @@ print("NORMALIZED " + out.stdout.split()[0])
                 self.assertNotEqual(first, second, "a widened signature range hid a code change")
                 self.assertIn("LC_CODE_SIGNATURE not masked", note)
                 self.assertEqual(first, sha256_file(one))  # compared byte for byte
+
+
+ISO = "%Y-%m-%dT%H:%M:%SZ"
+# Revision 16: a python that stays (at most 60 s) and, with argv words NAME VALUE, first sets
+# that environment variable for itself and re-executes (so its command line never holds
+# NAME=VALUE); with "child NAME VALUE FILE" it starts such a python as its child with the
+# variable, writes the child's pid to FILE and stays (unmarked itself); with "join GROUP FILE"
+# it starts a python child in process group GROUP, writes its pid and stays (repair 1).
+HOLD = """import os, subprocess, sys, time
+args = sys.argv[1:]
+if args[:1] == ["child"]:
+    env = dict(os.environ)
+    env[args[1]] = args[2]
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], env=env,
+                             stdin=subprocess.DEVNULL)
+    with open(args[3] + ".tmp", "w") as handle:
+        handle.write(str(child.pid))
+    os.replace(args[3] + ".tmp", args[3])
+elif args[:1] == ["join"]:
+    group = int(args[1])
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"],
+                             preexec_fn=lambda: os.setpgid(0, group), stdin=subprocess.DEVNULL)
+    with open(args[2] + ".tmp", "w") as handle:
+        handle.write(str(child.pid))
+    os.replace(args[2] + ".tmp", args[2])
+elif args[:1] == ["orphan"]:
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"],
+                             preexec_fn=lambda: os.setpgid(0, 0), stdin=subprocess.DEVNULL)
+    with open(args[1] + ".tmp", "w") as handle:
+        handle.write(str(child.pid))
+    os.replace(args[1] + ".tmp", args[1])
+    os._exit(0)
+time.sleep(60)
+"""
+
+
+class ProcessFixture(unittest.TestCase):
+    """Revision 16: real processes for the helper's single-process views and survivors(),
+    with no queue and no git."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.tmp = Path(os.path.realpath(self.temp.name))
+        self.hold = self.tmp / "hold.py"
+        self.hold.write_text(HOLD)
+        self.procs, self.stray, self.counter = [], [], 0
+        self.addCleanup(self.kill_all)
+
+    def kill_all(self):
+        for proc in self.procs:
+            if proc.poll() is None:
+                proc.kill()
+            proc.wait(5)
+        for pid in self.stray:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+
+    def start(self, *args, **popen):
+        proc = subprocess.Popen([sys.executable, str(self.hold), *args], stdin=subprocess.DEVNULL,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **popen)
+        self.procs.append(proc)
+        return proc
+
+    def wait_for(self, condition, what, timeout=TIMEOUT):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if condition():
+                return
+            time.sleep(0.05)
+        self.fail("timed out waiting for " + what)
+
+    def zombie(self):
+        proc = subprocess.Popen([sys.executable, "-c", "pass"], start_new_session=True)
+        self.procs.append(proc)
+        self.wait_for(lambda: status_of(proc.pid) == "zombie", "a zombie")
+        return proc.pid
+
+    def probe(self, source, *args, env=None):
+        self.counter += 1
+        script = self.tmp / f"probe-{self.counter}.py"
+        script.write_text(source)
+        result = subprocess.run([sys.executable, "-I", "-B", str(script), str(TOOL.parent),
+                                 *[str(a) for a in args]], cwd=self.tmp, text=True,
+                                capture_output=True, timeout=60, env=env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return result.stdout.strip()
+
+    def snapshot(self, spec):
+        return self.probe(SNAPSHOT_PROBE, json.dumps(spec))
+
+    def views(self, spec, *pids):
+        out = json.loads(self.probe(VIEWS_PROBE, json.dumps(spec), *pids))
+        return {int(pid): view for pid, view in out.items()}
+
+    def survivors(self, record):
+        self.counter += 1
+        path = self.tmp / f"record-{self.counter}.json"
+        path.write_text(json.dumps(record))
+        return json.loads(self.probe(SURVIVORS_PROBE, path))["survivors"]
+
+    def later_second(self, bound):
+        """Wait until a newly started process's start time (whole seconds) is after BOUND."""
+        def later():
+            proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(5)"])
+            try:
+                return start_of(proc.pid) > bound
+            finally:
+                proc.kill()
+                proc.wait(5)
+        self.wait_for(later, "a start time later than %d" % bound)
+
+
+@needs_psutil
+class PsutilFaultMatrix(ProcessFixture):
+    """Revision 16: every refusal of the process layer with psutil made to fail inside the
+    helper's own process (FAULT_SETUP), each error type on each field a decision needs."""
+
+    REFUSED = "refused 17 cannot read the process table"
+
+    def test_process_list_failure_refuses(self):
+        """psutil.pids() raising any error, or listing nothing (so not this process), makes
+        the table unreadable (17); control: no fault gives a table."""
+        self.assertTrue(self.snapshot({}).startswith("table "))
+        for name in ("AccessDenied", "ZombieProcess", "NoSuchProcess", "OSError", "empty"):
+            with self.subTest(pids=name):
+                out = self.snapshot({"pids": name})
+                self.assertTrue(out.startswith(self.REFUSED), out)
+                self.assertIn("whether queue processes are alive is unknown", out)
+
+    def test_needed_field_failures(self):
+        """For each needed field (status, parent, start time, group id): AccessDenied and
+        ZombieProcess refuse (17) whether they hit another process or this one;
+        NoSuchProcess refuses while the re-check still finds the process (17, "still
+        exists"), and counts it as gone only when the re-check finds it gone: then the table
+        is readable without it (for other processes; this process missing refuses). The group
+        id on macOS: getpgid failing with ESRCH (as for a process that is exiting or a zombie)
+        is answered from the kernel record, so the table stays complete, whatever the
+        re-check says; the test checks that separately (test_macos_group_from_kernel_record)."""
+        for field in ("status", "ppid", "create_time", "pgid"):
+            for name in ("AccessDenied", "ZombieProcess"):
+                if field == "pgid" and name == "ZombieProcess":
+                    continue  # os.getpgid fails with an OSError, never a psutil error
+                for who in ("others", "own"):
+                    with self.subTest(field=field, error=name, who=who):
+                        out = self.snapshot({"fields": {field: name}, "who": who})
+                        self.assertTrue(out.startswith(self.REFUSED), out)
+            if field == "pgid" and sys.platform == "darwin":
+                continue  # test_macos_group_from_kernel_record
+            for who in ("others", "own"):
+                with self.subTest(field=field, error="NoSuchProcess", who=who, recheck="exists"):
+                    out = self.snapshot({"fields": {field: "NoSuchProcess"}, "who": who,
+                                         "exists": True})
+                    self.assertTrue(out.startswith(self.REFUSED), out)
+            with self.subTest(field=field, error="NoSuchProcess", who="others", recheck="gone"):
+                out = self.snapshot({"fields": {field: "NoSuchProcess"}, "who": "others",
+                                     "exists": False})
+                self.assertEqual(out.split()[:2], ["table", "1"], out)
+            with self.subTest(field=field, error="NoSuchProcess", who="own", recheck="gone"):
+                out = self.snapshot({"fields": {field: "NoSuchProcess"}, "who": "own",
+                                     "exists": False})
+                self.assertTrue(out.startswith(self.REFUSED), out)
+                self.assertIn("but not this one", out)
+
+    @unittest.skipUnless(sys.platform == "darwin", MACOS_ONLY + "the kernel record of a "
+                         "process whose group getpgid refuses")
+    def test_macos_group_from_kernel_record(self):
+        """macOS refuses getpgid (ESRCH) for a process that is exiting (still running, not yet a
+        zombie) and for a zombie; ps read the group from the kernel record, and so does the
+        helper. Repair 1 (finding 4): with getpgid failing so for the test's own processes
+        only (a live process in its own group, one in the test's group, a zombie, and the
+        reading process itself), whether the re-check would find them or not, the table holds
+        each of them with the group getpgid gives. Unrelated processes are not faulted, so
+        processes that start and end meanwhile cannot change the outcome."""
+        own_group = self.start(preexec_fn=lambda: os.setpgid(0, 0))
+        same_group = self.start()
+        zombie = self.zombie()
+        for proc in (own_group, same_group):
+            self.wait_for(lambda proc=proc: start_of(proc.pid) > 0, "a live process")
+        targets = [own_group.pid, same_group.pid, zombie]
+        script = ("import json, os, sys\nsys.path.insert(0, sys.argv[1])\nimport auto_queue\n"
+                  + FAULT_SETUP + "\nspec = json.loads(sys.argv[2])\n"
+                  "spec['who'] = spec['who'] + [os.getpid()]\n"
+                  "truth = {p: os.getpgid(p) for p in spec['who'] if p != spec['zombie']}\n"
+                  "truth[spec['zombie']] = spec['zombie']\n"
+                  "install_faults(spec)\n"
+                  "procs = auto_queue.snapshot()\n"
+                  "print(json.dumps({p: (procs[p][1] if p in procs else None) for p in truth}))\n")
+        for exists in (True, False):
+            with self.subTest(exists=exists):
+                groups = json.loads(self.probe(script, json.dumps(
+                    {"fields": {"pgid": "NoSuchProcess"}, "who": targets, "exists": exists,
+                     "zombie": zombie})))
+                expected = {own_group.pid: own_group.pid, same_group.pid: os.getpgid(0),
+                            zombie: zombie}
+                for pid, group in expected.items():
+                    self.assertEqual(groups[str(pid)], group, "group of %d" % pid)
+                self.assertEqual(len(groups), 4)
+                self.assertTrue(all(g is not None for g in groups.values()), groups)
+
+    @unittest.skipUnless(sys.platform == "darwin", MACOS_ONLY + "the kernel record layout check")
+    def test_kernel_record_layout_check_needs_parent_and_group_apart(self):
+        """Repair 1 (finding 9), repair 2: the kernel-record layout is trusted only when
+        checked on a process whose parent and group differ. In a reading process whose own
+        parent is its group leader (parent and group equal) the helper checks a child it
+        starts in its own session (its own Python, repair 3); when that child cannot be
+        started, or never ends (killed and reaped after about 5 s, nothing left), the check fails and
+        neither a group nor a start time is read from the kernel record (fail closed); with the
+        child it passes (control), as it does where its own parent and group differ."""
+        code = ("import json, os, sys\nsys.path.insert(0, sys.argv[1])\nimport auto_queue\n"
+                "own = (os.getppid() == os.getpgid(0))\n"
+                "if sys.argv[2] == 'nochild':\n"
+                "    def refuse(*args, **kwargs):\n        raise OSError('no child (test)')\n"
+                "    auto_queue.subprocess.Popen = refuse\n"
+                "children = []\n"
+                "if sys.argv[2] == 'stuck':\n"
+                "    real = auto_queue.subprocess.Popen\n"
+                "    def stuck(args, **kwargs):\n"
+                "        child = real([sys.executable, '-c', 'import time; time.sleep(60)'], **kwargs)\n"
+                "        children.append(child.pid)\n        return child\n"
+                "    auto_queue.subprocess.Popen = stuck\n"
+                "import time\nbegin = time.time()\n"
+                "ok = auto_queue.kinfo_layout_ok()\n"
+                "took = time.time() - begin\n"
+                "def left(pid):\n"
+                "    try:\n        os.waitpid(pid, os.WNOHANG)\n        return True\n"
+                "    except ChildProcessError:\n        return auto_queue.psutil.pid_exists(pid)\n"
+                "if sys.argv[2] == 'stuck':\n"
+                "    print(json.dumps([ok, took, [p for p in children if left(p)], len(children)]))\n"
+                "    sys.exit(0)\n"
+                "try:\n    start = auto_queue.kernel_start(os.getpid())\n"
+                "except Exception:\n    start = None\n"
+                "print(json.dumps([own, ok, auto_queue.kernel_pgid(os.getpid()), start]))\n")
+        leader = ("import os, subprocess, sys\nos.setpgid(0, 0)\n"
+                  "sys.exit(subprocess.call(sys.argv[1:]))\n")
+        script = self.tmp / "layout.py"
+        script.write_text(code)
+        for mode, layout in (("nochild", False), ("child", True)):
+            with self.subTest(mode=mode):
+                out = subprocess.run([sys.executable, "-c", leader, sys.executable, "-I", "-B",
+                                      str(script), str(TOOL.parent), mode], text=True,
+                                     capture_output=True, timeout=60)
+                self.assertEqual(out.returncode, 0, out.stderr)
+                own, ok, group, start = json.loads(out.stdout)
+                self.assertTrue(own, "the reading process's parent is its group leader")
+                self.assertEqual(ok, layout, out.stdout)
+                self.assertEqual(group is not None, layout, out.stdout)
+                self.assertEqual(start is not None, layout, out.stdout)
+        own, ok, group, start = json.loads(self.probe(code, "child"))
+        self.assertEqual((ok, group), (True, os.getpgid(0)), (own, ok, group))
+        self.assertIsNotNone(start)
+        # Repair 3 (reading 3, finding 1): a layout child that never ends is killed and reaped
+        # after about 5 s, the check fails (closed), and no process is left.
+        out = subprocess.run([sys.executable, "-c", leader, sys.executable, "-I", "-B",
+                              str(script), str(TOOL.parent), "stuck"], text=True,
+                             capture_output=True, timeout=60)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        ok, took, left, started = json.loads(out.stdout)
+        self.assertEqual((ok, left, started), (False, [], 1), out.stdout)
+        self.assertGreater(took, 4)
+        self.assertLess(took, 15)
+
+    @unittest.skipUnless(sys.platform == "darwin", MACOS_ONLY + "psutil's macOS clock-step "
+                         "adjustment of create_time")
+    def test_start_time_unmoved_by_a_clock_step(self):
+        """Repair 2 (reading 2, finding 1): psutil on macOS shifts create_time() by whole
+        seconds when the boot time it read at import differs from the current one (after a
+        clock step), so two helper processes could see one process start a second apart. The
+        helper reads the kernel's p_starttime instead: with psutil's import-time boot value
+        shifted by -1, +1 or +5 s in the reading process, a live process recorded by another
+        process stays the same process (same_process True, process_start and the table's start
+        unchanged) and stays counted from the run's tracked list."""
+        live = self.start(start_new_session=True)
+        self.wait_for(lambda: start_of(live.pid) > 0, "the live process")
+        start, text = start_of(live.pid), lstart_of(live.pid)
+        record = {"run_id": "clock-step", "wrapper_pid": os.getpid(),
+                  "started": time.strftime(ISO, time.gmtime(start - 5)),
+                  "tracked": [{"pid": live.pid, "start": start}]}
+        path = self.tmp / "clock-record.json"
+        path.write_text(json.dumps(record))
+        code = ("import json, sys\nsys.path.insert(0, sys.argv[1])\nimport auto_queue\n"
+                "from psutil import _psosx\n"
+                "_psosx.INIT_BOOT_TIME = _psosx.boot_time() + float(sys.argv[2])\n"
+                "pid, text = int(sys.argv[3]), sys.argv[4]\n"
+                "record = json.load(open(sys.argv[5]))\n"
+                "print(json.dumps([auto_queue.same_process(pid, text), auto_queue.process_start(pid),"
+                " auto_queue.snapshot()[pid][3], pid in auto_queue.survivors(record),"
+                " auto_queue.psutil.Process(pid).create_time()]))\n")
+        for shift in (-1, 1, 5):
+            with self.subTest(shift=shift):
+                same, shown, table, counted, psutil_time = json.loads(
+                    self.probe(code, shift, live.pid, text, path))
+                self.assertNotEqual(int(psutil_time), start, "control: psutil's value moved")
+                self.assertEqual((same, shown, table, counted), (True, text, start, True))
+
+    def test_own_environment_alone_unreadable_refuses(self):
+        """Repair 1 (reading 1, finding 1): on macOS the helper's own environment must be
+        readable whatever its command line shows: environ() alone failing (AccessDenied,
+        ZombieProcess or any other error) for this process, or for every process, refuses
+        (17); an environment that lacks this process's own run-id marker refuses too.
+        Controls: the same faults on other processes only leave a table with this process's
+        marker; a missing marker where none is set is no refusal. Off macOS markers are not
+        read: no refusal."""
+        env = dict(os.environ, GC_AUTO_RUN_ID="own-marker")
+        def run(spec, environment=env):
+            return self.probe(SNAPSHOT_PROBE, json.dumps(spec), env=environment)
+        darwin = sys.platform == "darwin"
+        for name in ("AccessDenied", "ZombieProcess", "RuntimeError"):
+            for who in ("own", "all"):
+                with self.subTest(error=name, who=who):
+                    out = run({"fields": {"environ": name}, "who": who})
+                    if darwin:
+                        self.assertTrue(out.startswith(self.REFUSED), out)
+                        self.assertIn("cannot read the environment of process", out)
+                    else:
+                        self.assertTrue(out.startswith("table "), out)
+            with self.subTest(error=name, who="others"):
+                out = run({"fields": {"environ": name}, "who": "others"})
+                self.assertTrue(out.startswith("table "), out)
+                self.assertEqual(out.split()[2], "1" if darwin else "0", out)
+        with self.subTest(marker="dropped"):
+            out = run({"fields": {"environ": "DropMarker"}, "who": "own"})
+            if darwin:
+                self.assertTrue(out.startswith(self.REFUSED), out)
+                self.assertIn("does not show its run-id marker", out)
+            else:
+                self.assertTrue(out.startswith("table "), out)
+        with self.subTest(marker="none set"):
+            plain = {k: v for k, v in os.environ.items() if k != "GC_AUTO_RUN_ID"}
+            out = run({"fields": {"environ": "DropMarker"}, "who": "own"}, plain)
+            self.assertTrue(out.startswith("table "), out)
+
+    def test_unexpected_exceptions_fail_closed(self):
+        """Repair 1 (reading 1, finding 2): an exception psutil does not normally raise
+        (RuntimeError) while listing the processes, or on a needed field of any process (also
+        inside psutil's oneshot(), the reviewer's case of a replaced method), makes
+        the table unreadable (17), never a traceback; on an environment of another process it
+        drops that process's markers; a failing re-check counts the process as existing. In the
+        single-process views it makes that field unreadable: a zombie with an unreadable
+        status is alive, a live process with an unreadable start time is `unreadable`, and
+        (Linux) an unreadable thread count keeps a zombie alive."""
+        out = self.snapshot({"pids": "RuntimeError"})
+        self.assertTrue(out.startswith(self.REFUSED), out)
+        for field in ("status", "ppid", "create_time", "pgid", "oneshot"):
+            with self.subTest(field=field):
+                out = self.snapshot({"fields": {field: "RuntimeError"}, "who": "others"})
+                self.assertTrue(out.startswith(self.REFUSED), out)
+        out = self.snapshot({"fields": {"environ": "RuntimeError", "cmdline": "RuntimeError"},
+                             "who": "others"})
+        self.assertTrue(out.startswith("table "), out)
+        out = self.snapshot({"fields": {"status": "NoSuchProcess"}, "who": "others",
+                             "exists": "RuntimeError"})
+        self.assertTrue(out.startswith(self.REFUSED), out)
+        self.assertIn("still exists", out)
+        live = self.start(preexec_fn=lambda: os.setpgid(0, 0))
+        self.wait_for(lambda: start_of(live.pid) > 0, "the live process")
+        zombie = self.zombie()
+        view = self.views({"fields": {"status": "RuntimeError"}, "who": zombie}, zombie)[zombie]
+        self.assertEqual((view[0], view[2], view[3]), (True, False, True), view)
+        view = self.views({"fields": {"create_time": "RuntimeError"}, "who": live.pid},
+                          live.pid)[live.pid]
+        self.assertEqual(view, [True, "unreadable", False, True])
+        view = self.views({"fields": {"num_threads": "RuntimeError"}, "who": zombie},
+                          zombie)[zombie]
+        if sys.platform.startswith("linux"):
+            self.assertEqual((view[0], view[2]), (True, False), view)
+        else:
+            self.assertEqual(view, [False, None, True, False])
+
+    def test_vanished_once_but_existing_is_read_again(self):
+        """NoSuchProcess (or, for the group, ESRCH, as macOS gives for a process that exited
+        after its status was read) on the first read of every other process, while the
+        re-check (the real psutil.pid_exists) still finds it: the process is read once more
+        and the table is readable, with every process; the same fault on every read, with a
+        re-check that finds the process, refuses (17) (on macOS not for the group, which the
+        kernel record then gives)."""
+        whole = self.snapshot({})
+        for field in ("status", "ppid", "create_time", "pgid"):
+            with self.subTest(field=field):
+                out = self.snapshot({"fields": {field: "NoSuchProcess"}, "who": "others",
+                                     "once": True})
+                self.assertTrue(out.startswith("table "), out)
+                self.assertGreater(int(out.split()[1]), int(whole.split()[1]) // 2, out)
+                if field == "pgid" and sys.platform == "darwin":
+                    continue  # answered from the kernel record: test_macos_group_from_kernel_record
+                out = self.snapshot({"fields": {field: "NoSuchProcess"}, "who": "others",
+                                     "exists": True})
+                self.assertTrue(out.startswith(self.REFUSED), out)
+
+    def test_table_stays_readable_while_processes_exit(self):
+        """Real processes exiting (and becoming zombies) while the table is read: 150
+        snapshots in the helper's process, with a child that keeps starting short-lived
+        processes, are all readable (none refuses 17)."""
+        churn = ("import subprocess, sys, time\nend = time.time() + 20\nkids = []\n"
+                 "while time.time() < end:\n"
+                 "    kids.append(subprocess.Popen([sys.executable, '-c', 'pass']))\n"
+                 "    if len(kids) > 20:\n        kids.pop(0).wait()\n"
+                 "    time.sleep(0.01)\n")
+        spawner = subprocess.Popen([sys.executable, "-c", churn], stdin=subprocess.DEVNULL)
+        self.procs.append(spawner)
+        loop = ("import json, sys, time\nsys.path.insert(0, sys.argv[1])\nimport auto_queue\n"
+                "refused = []\nfor n in range(150):\n    auto_queue._SNAPSHOT['procs'] = None\n"
+                "    try:\n        auto_queue.snapshot()\n"
+                "    except auto_queue.Refused as error:\n        refused.append(str(error))\n"
+                "print(json.dumps(refused))\n")
+        refused = json.loads(self.probe(loop))
+        self.assertEqual(refused, [], "%d of 150 snapshots refused" % len(refused))
+
+    def test_zombie_start_time_unreadable_is_kept_live_one_refuses(self):
+        """A zombie whose start time cannot be read stays in the table (start None, flagged);
+        the same fault on a live process refuses (17)."""
+        zombie = self.zombie()
+        live = self.start()
+        out = self.snapshot({"fields": {"create_time": "ZombieProcess"}, "who": zombie})
+        self.assertTrue(out.startswith("table "), out)
+        out = self.snapshot({"fields": {"create_time": "AccessDenied"}, "who": live.pid})
+        self.assertTrue(out.startswith(self.REFUSED), out)
+
+    def test_single_process_views_fail_safe(self):
+        """process_exists, process_start, zombie_gone and group_alive (pid as group id) of a
+        live process L and a zombie Z. Control: L is alive with a start time, Z is gone.
+        An unreadable status (AccessDenied or ZombieProcess) makes Z alive everywhere (its
+        group too, since the table is then unreadable); an unreadable start time of L
+        (AccessDenied, ZombieProcess, or NoSuchProcess while it still exists) is
+        `unreadable`, never gone; on Linux an unreadable thread count makes Z alive, while
+        on macOS (no thread count needed) it changes nothing."""
+        live = self.start(preexec_fn=lambda: os.setpgid(0, 0))
+        self.wait_for(lambda: start_of(live.pid) > 0, "the live process")
+        zombie = self.zombie()
+        views = self.views({}, live.pid, zombie)
+        self.assertEqual(views[live.pid], [True, lstart_of(live.pid), False, True])
+        self.assertEqual(views[zombie], [False, None, True, False])
+        for name in ("AccessDenied", "ZombieProcess"):
+            with self.subTest(status=name):
+                view = self.views({"fields": {"status": name}, "who": zombie}, zombie)[zombie]
+                self.assertEqual((view[0], view[2], view[3]), (True, False, True), view)
+        for name in ("AccessDenied", "ZombieProcess", "NoSuchProcess"):
+            with self.subTest(create_time=name):
+                view = self.views({"fields": {"create_time": name}, "who": live.pid},
+                                  live.pid)[live.pid]
+                self.assertEqual(view[:3], [True, "unreadable", False], view)
+                self.assertTrue(view[3])
+        view = self.views({"fields": {"num_threads": "AccessDenied"}, "who": zombie},
+                          zombie)[zombie]
+        if sys.platform.startswith("linux"):
+            self.assertEqual((view[0], view[2]), (True, False), view)
+        else:
+            self.assertEqual(view, [False, None, True, False])
+
+
+@needs_psutil
+class SurvivorsSingleRules(ProcessFixture):
+    """Revision 16 (revision 15 reading, note 11): one test per attribution rule of
+    survivors(), each with a process that only that rule attributes to the run: its parent is
+    the wrapper (or process 1 or a subreaper standing in for the wrapper), so the descendant
+    rule does not reach it, and no other rule matches it. Switching off that one rule fails
+    the test (mutants in the job's CONTROLS.log)."""
+
+    RUN = "single-rule-run"
+
+    def record(self, earliest, **fields):
+        record = {"run_id": self.RUN, "wrapper_pid": os.getpid(),
+                  "started": time.strftime(ISO, time.gmtime(earliest - 5))}
+        record.update(fields)
+        return record
+
+    def test_group_rule(self):
+        """A member of the CMD's process group G (leader exited) that is the wrapper's child in
+        another session than G: only the group rule (pgid in the leaders) counts it."""
+        leader = self.start(preexec_fn=lambda: os.setpgid(0, 0))
+        self.wait_for(lambda: start_of(leader.pid) > 0, "the leader")
+        group, leader_start = leader.pid, lstart_of(leader.pid)
+        member = self.start(preexec_fn=lambda: os.setpgid(0, group))
+        self.wait_for(lambda: ppid_of(member.pid) == str(os.getpid()), "the member")
+        leader.kill()
+        leader.wait(5)
+        self.assertEqual(os.getpgid(member.pid), group)
+        self.assertNotEqual(os.getsid(member.pid), group)
+        record = self.record(start_of(member.pid), pgid=group, process_start=leader_start)
+        self.assertIn(member.pid, self.survivors(record))
+        self.assertNotIn(member.pid, self.survivors(dict(record, pgid=group + 100000)))  # control
+
+    def test_ancestry_gate(self):
+        """Repair 1 (reading 1, finding 6): a member M of the CMD's process group G (leader
+        exited) is counted by the group rule only when M is a leader or its parent is process
+        1, the wrapper or a leader. Here M's parent P is an unrelated live process in the
+        test's group, not counted itself: M is not counted. Control: with P as the run's
+        wrapper (so M's parent is a root), M is counted."""
+        leader = self.start(preexec_fn=lambda: os.setpgid(0, 0))
+        self.wait_for(lambda: start_of(leader.pid) > 0, "the leader")
+        group, leader_start = leader.pid, lstart_of(leader.pid)
+        pidfile = self.tmp / "joined.pid"
+        parent = self.start("join", str(group), str(pidfile))
+        self.wait_for(pidfile.exists, "the joined member")
+        member = int(pidfile.read_text())
+        self.stray.append(member)
+        leader.kill()
+        leader.wait(5)
+        self.assertEqual(os.getpgid(member), group)
+        self.assertEqual(ppid_of(member), str(parent.pid))
+        self.assertNotEqual(os.getpgid(parent.pid), group)
+        record = self.record(start_of(parent.pid), pgid=group, process_start=leader_start)
+        found = self.survivors(record)
+        self.assertNotIn(member, found, "a group member whose parent is no root was counted")
+        self.assertNotIn(parent.pid, found)
+        self.assertIn(member, self.survivors(dict(record, wrapper_pid=parent.pid)))  # control
+
+    def test_session_rule(self):
+        """A process in the session S of the CMD (leader S exited) but in its own group, now
+        an orphan: only the session rule (sid in the leaders) counts it."""
+        pidfile = self.tmp / "orphan.pid"
+        shell = self.start("orphan", str(pidfile), start_new_session=True)
+        self.assertEqual(shell.wait(TIMEOUT), 0)
+        session = shell.pid
+        orphan = int(pidfile.read_text())
+        self.stray.append(orphan)
+        self.wait_for(lambda: ppid_of(orphan) not in ("", str(session)), "the orphan's new parent")
+        self.assertEqual((os.getsid(orphan), os.getpgid(orphan)), (session, orphan))
+        parent = int(ppid_of(orphan))
+        record = self.record(start_of(orphan), pgid=session,
+                             wrapper_pid=parent if parent != 1 else os.getpid())
+        self.assertIn(orphan, self.survivors(record))
+        self.assertNotIn(orphan, self.survivors(dict(record, pgid=session + 100000)))  # control
+
+    @unittest.skipIf(sys.platform != "darwin", MACOS_ONLY + "run-id markers are read on macOS "
+                     "only (Linux ps had no -E)")
+    def test_marker_rule(self):
+        """A process in its own session carrying the run's marker in its environment (not on
+        its command line), the wrapper's child: only the marker rule counts it."""
+        marked = self.start(env=dict(os.environ, GC_AUTO_RUN_ID=self.RUN), start_new_session=True)
+        self.wait_for(lambda: start_of(marked.pid) > 0, "the marked process")
+        record = self.record(start_of(marked.pid))
+        self.assertIn(marked.pid, self.survivors(record))
+        self.assertNotIn(marked.pid, self.survivors(dict(record, run_id="another-run")))  # control
+
+    @unittest.skipIf(sys.platform != "darwin", MACOS_ONLY + "run-id markers are read on macOS "
+                     "only (Linux ps had no -E)")
+    def test_marked_parent_chain_rule(self):
+        """An unmarked process P in its own session (the wrapper's child) whose child carries
+        the marker: only the marked-parent chain counts P."""
+        pidfile = self.tmp / "marked.pid"
+        parent = self.start("child", "GC_AUTO_RUN_ID", self.RUN, str(pidfile),
+                            start_new_session=True)
+        self.wait_for(pidfile.exists, "the marked child")
+        child = int(pidfile.read_text())
+        self.stray.append(child)
+        record = self.record(start_of(parent.pid))
+        found = self.survivors(record)
+        self.assertIn(child, found)
+        self.assertIn(parent.pid, found)
+
+    def test_tracked_list_rule(self):
+        """A process in its own session, the wrapper's child, unmarked, in the run's tracked
+        list with its start time: only the tracked rule counts it; with another start time it
+        is not counted (reused pid)."""
+        tracked = self.start(start_new_session=True)
+        self.wait_for(lambda: start_of(tracked.pid) > 0, "the tracked process")
+        start = start_of(tracked.pid)
+        record = self.record(start, tracked=[{"pid": tracked.pid, "start": start}])
+        self.assertIn(tracked.pid, self.survivors(record))
+        record["tracked"][0]["start"] = start + 1
+        self.assertNotIn(tracked.pid, self.survivors(record))  # control
+
+    def test_probe_window_rule(self):
+        """Members of the probe's group Q, each the wrapper's child: one started before the
+        probe window's start (less the one-second allowance), one inside it, one after its
+        end. Only the one inside is counted; switching off either bound of the window counts
+        another."""
+        probe = self.start(preexec_fn=lambda: os.setpgid(0, 0))
+        self.wait_for(lambda: start_of(probe.pid) > 0, "the probe leader")
+        group = probe.pid
+        before = self.start(preexec_fn=lambda: os.setpgid(0, group))
+        self.wait_for(lambda: ppid_of(before.pid) == str(os.getpid()), "the early member")
+        self.later_second(start_of(before.pid) + 1)
+        inside = self.start(preexec_fn=lambda: os.setpgid(0, group))
+        self.wait_for(lambda: ppid_of(inside.pid) == str(os.getpid()), "the member inside")
+        window = start_of(inside.pid)
+        self.assertLess(start_of(before.pid), window - 1)
+        self.later_second(window)
+        after = self.start(preexec_fn=lambda: os.setpgid(0, group))
+        self.wait_for(lambda: ppid_of(after.pid) == str(os.getpid()), "the late member")
+        self.assertGreater(start_of(after.pid), window)
+        for pid in (before.pid, inside.pid, after.pid):
+            self.assertEqual(os.getpgid(pid), group)
+        record = self.record(start_of(probe.pid), probe_pgid=group,
+                             probe_start=lstart_of(probe.pid),
+                             probe_started=time.strftime(ISO, time.gmtime(window)),
+                             probe_ended=time.strftime(ISO, time.gmtime(window)))
+        found = self.survivors(record)
+        self.assertIn(inside.pid, found)
+        self.assertNotIn(before.pid, found, "a member started before the probe window")
+        self.assertNotIn(after.pid, found, "a member started after the probe window")
 
 
 if __name__ == "__main__":

@@ -42,7 +42,7 @@ Because the stand-in does not block the network, the tests run through it
 only controlled local commands; the tests of the real network block and of
 the `ps -E` run-id marker are skipped off macOS.
 
-    python3 -I -B auto_queue_standin.py [auto_queue.py arguments]
+    libtbx.python -I -B auto_queue_standin.py [auto_queue.py arguments]
 """
 
 import os

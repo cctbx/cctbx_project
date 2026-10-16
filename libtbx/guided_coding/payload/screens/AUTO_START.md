@@ -10,7 +10,7 @@ RESULTS
 <Next update: a time range and what it will contain, for example the morning report.>
 STOP
 <Say /gc stop here, or run this from any Terminal (the next line, exactly):>
-python3 -I -B <absolute path of this procedure's auto_queue.py> stop
+<absolute path of the cctbx conda Python, resolved at start> -I -B <absolute path of this procedure's auto_queue.py> stop
 NOT AUTHORIZED
 <Master and working installations are not changed; nothing is integrated or published; no new server access.>
 ACTION: NONE NEEDED (reply stop to stop the queue)

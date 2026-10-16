@@ -48,7 +48,7 @@ mkdir /path/to/empty-gc-review && \
 tar -xzf /path/to/reviewed-guided-coding.tgz -C /path/to/empty-gc-review && \
 cd /path/to/empty-gc-review/libtbx/guided_coding && \
 shasum -a 256 -c SOURCE_MANIFEST.sha256 && \
-env GC_PAYLOAD_ROOT="`pwd -P`/payload" python3 -I -B payload/tools/screen_check.py verify-source . && \
+env GC_PAYLOAD_ROOT="`pwd -P`/payload" libtbx.python -I -B payload/tools/screen_check.py verify-source . && \
 cat payload/RELEASE && \
 grep -Eq '^guided_coding 2\.0 pilot r10 rev19 ' payload/RELEASE
 ```
@@ -90,11 +90,11 @@ your canonical source path:
 ```bash
 cd /path/to/cctbx_project/libtbx/guided_coding && \
 shasum -a 256 -c SOURCE_MANIFEST.sha256 && \
-env GC_PAYLOAD_ROOT="`pwd -P`/payload" python3 -I -B payload/tools/screen_check.py verify-source . && \
+env GC_PAYLOAD_ROOT="`pwd -P`/payload" libtbx.python -I -B payload/tools/screen_check.py verify-source . && \
 cat payload/RELEASE && \
 grep -Eq '^guided_coding 2\.0 pilot r10 rev19 ' payload/RELEASE && \
-env GC_PAYLOAD_ROOT="`pwd -P`/payload" python3 -I -B payload/tools/screen_check.py check-claude-version && \
-env GC_PAYLOAD_ROOT="`pwd -P`/payload" python3 -I -B payload/tools/screen_check.py register-skill .
+env GC_PAYLOAD_ROOT="`pwd -P`/payload" libtbx.python -I -B payload/tools/screen_check.py check-claude-version && \
+env GC_PAYLOAD_ROOT="`pwd -P`/payload" libtbx.python -I -B payload/tools/screen_check.py register-skill .
 ```
 
 `register-skill` rechecks the source and the Claude Code version itself, then creates exactly
@@ -319,7 +319,11 @@ stop command and the run boundary.
 
 **Auto-mode runs need macOS.** The queue helper blocks outside network
 for its runs with `sandbox-exec` and finds a run's processes by an
-environment marker read with `ps -E`; both are macOS mechanisms. On any
+environment marker, read on macOS only (with `ps -E` until revision 16,
+since then through psutil); both are macOS mechanisms. The helper needs
+psutil and runs with the cctbx conda Python, `libtbx.python`; without
+psutil every helper command stops (exit 18, "requires psutil: run with the
+cctbx conda Python (libtbx.python) or pip install psutil"). On any
 other system `auto_queue.py run` refuses (exit 15, "auto-mode runs need
 macOS (sandbox-exec and `ps -E`)") before anything starts, whether or not
 the job has a network grant. The helper has no option, environment
@@ -382,8 +386,13 @@ optional `NORMALIZED` line from the fingerprint script and
 installation stays unavailable. When the process table cannot be read,
 the helper refuses with exit 17 and reports nothing as stopped, cleaned
 or released, also when no run record exists; stop first
-signals every run whose wrapper or group `ps -p` confirms. The kit's own suite must run outside `sandbox-exec`; inside
-it, the auto-queue tests report one failure naming that route.
+signals every run whose wrapper or group `ps -p` confirms. Revision 16:
+the helper reads the process table through psutil instead of `ps`, with
+the same refusals, and the kit's own suite now runs inside `sandbox-exec`
+too (where `/bin/ps` was refused); when psutil cannot read the table, the
+auto-queue tests report one failure naming the attended route. Tests that
+need git skip without it, and `publication_precheck.py check` and
+`outgoing` refuse without git (exit 2).
 
 **What the invocation grants.** It is your advance grant for the listed
 jobs only, filed as `GRANT.md` in the queue's record before any job
