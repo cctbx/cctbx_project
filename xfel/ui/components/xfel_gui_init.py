@@ -11,6 +11,7 @@ Description : XFEL UI Initialization module
 import os
 import wx
 import time
+import collections
 import numpy as np
 from threading import Thread
 from wx.lib.scrolledpanel import ScrolledPanel
@@ -821,9 +822,17 @@ CLUSTERING_FEATURE_VECTORS = {
   "Cubic": None,
 }
 
+# What the Unit Cell tab clusters with: the space group symbol the features were
+# chosen for, the cell parameters making up the feature vector (in the order of
+# xfel_gui_dialogs.CELL_PARAMETERS) and the DBSCAN epsilon. The tab rebinds its
+# record as a whole whenever any of these change and never mutates it, so the
+# sentinel thread, which reads it once per cycle, sees either the old or the new
+# settings and never a mixture.
+ClusterSettings = collections.namedtuple('ClusterSettings', ['space_group', 'features', 'eps'])
+
 def clustering_feature_vector(sginfo):
-  ''' The feature vector to cluster the cells of a space group on, or None if
-      the crystal system has too few free parameters to be worth clustering.
+  ''' The default feature vector to cluster the cells of a space group on, or
+      None if the crystal system has too few free parameters to be worth clustering.
 
       Trigonal groups need more than the crystal system to decide, because they
       are used with either of two cell settings and the free parameters differ:
@@ -911,17 +920,14 @@ class UnitCellSentinel(Thread):
         elif len(info_list) > 0:
           from uc_metrics.clustering.step1 import phil_scope
           from uc_metrics.clustering.step_dbscan3d import dbscan_plot_manager
-          from cctbx.sgtbx import space_group_info
 
           if len(info_list) > 1:
             print("Warning, only first tag set will be plotted")
 
+          # One snapshot of the clustering settings, see ClusterSettings
+          settings = self.parent.run_window.unitcell_tab.cluster_settings
+          sg = settings.space_group
           params = phil_scope.extract()
-          try:
-            sg = self.parent.run_window.unitcell_tab.trial.cell.lookup_symbol
-          except AttributeError:
-            sg = "P1"
-          sg = "".join(sg.split()) # remove spaces
           params.input.space_group = sg
 
           iterable = ["{a} {b} {c} {alpha} {beta} {gamma} ".format(**c) + sg for c in info_list[0]]
@@ -933,17 +939,16 @@ class UnitCellSentinel(Thread):
           else:
             assert False, 'Iterable already populated'
           params.file_name = None
-          params.cluster.dbscan.eps = self.parent.run_window.unitcell_tab.eps
+          params.cluster.dbscan.eps = settings.eps
           params.show_plot = True
           params.plot.legend = legend_list[0]
           reject_outliers = self.parent.run_window.unitcell_tab.reject_outliers
           params.plot.outliers = not reject_outliers
 
-          sginfo = space_group_info(params.input.space_group)
-          cs = sginfo.group().crystal_system()
-          params.input.feature_vector = clustering_feature_vector(sginfo)
+          features = settings.features
+          params.input.feature_vector = ",".join(features)
 
-          if params.input.feature_vector:
+          if len(features) >= 2:
             figure = self.parent.run_window.unitcell_tab.figure
             _params = params
             # Run the clustering here on the worker thread (heavy numeric work,
@@ -952,9 +957,13 @@ class UnitCellSentinel(Thread):
             # it into the CallAfter closure purely for rendering. Keeping a
             # reference here also lets us write the covariance pickle below.
             plots = dbscan_plot_manager(_params)
+            labels = [dlg.CELL_PARAMETER_LABELS[f] for f in features]
             def _draw_cluster():
               figure.clear()
               plots.wrap_3D_features(fig=figure, embedded=True)
+              if len(labels) > 3:
+                # the plot manager draws the first three features only
+                figure.suptitle('Clustered on %s; showing %s' % (', '.join(labels), ', '.join(labels[:3])))
               figure.canvas.draw_idle()
             wx.CallAfter(_draw_cluster)
             cluster_dir = os.path.join(self.parent.params.output_folder, "cluster")
@@ -971,7 +980,7 @@ class UnitCellSentinel(Thread):
                      sample=plots.FV.sample_name),FF
                 )
           else:
-            print("Unsupported crystal system", cs)
+            print("Clustering needs at least two free unit cell parameters; space group %s offers %s" % (sg, ", ".join(features) or "none"))
 
         self.post_refresh()
         wx.CallAfter(self.parent.run_window.unitcell_light.change_status, 'on')
@@ -3084,7 +3093,7 @@ class UnitCellTab(BaseTab):
     self.tags = []
     self.tag_sets = []
     self.reject_outliers = True
-    self.eps = 0.8
+    self.cluster_settings = None  # a ClusterSettings, set by sync_cluster_settings
     self.plot_clusters = False
     self.auto_update = True
 
@@ -3139,24 +3148,18 @@ class UnitCellTab(BaseTab):
     self.chk_reject_outliers.SetValue(True)
 
     self.chk_plot_clusters = wx.CheckBox(self.selection_columns_panel, label='Plot clusters')
+    self.btn_cluster_options = gctr.Button(self.selection_columns_panel,
+                                           name='uc_cluster_options',
+                                           label='Options...')
 
     self.chk_auto_update = wx.CheckBox(self.selection_columns_panel, label='Auto update')
     self.chk_auto_update.SetValue(True)
-
-    self.plot_eps = gctr.OptionCtrl(self.selection_columns_panel,
-                                    name='uc_plot_eps',
-                                    label='Cluster epsilon',
-                                    sub_labels=[''],
-                                    label_size=(160, -1),
-                                    ctrl_size=(50, -1),
-                                    items=[('eps', 0.8)])
-    self.plot_eps.eps.Disable()
 
     try:
       import uc_metrics # import dependency
     except ImportError:
       self.chk_plot_clusters.Hide()
-      self.plot_eps.Hide()
+      self.btn_cluster_options.Hide()
 
     self.add_sele_sizer = wx.GridBagSizer(4, 1)
     self.add_sele_sizer.Add(self.trial_number, pos=(0, 0),
@@ -3182,8 +3185,11 @@ class UnitCellTab(BaseTab):
     self.remove_sele_sizer.AddGrowableRow(0)
     self.selection_columns_sizer.Add(self.remove_sele_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
     self.selection_columns_sizer.Add(self.chk_reject_outliers, flag=wx.ALL | wx.EXPAND, border=5)
-    self.selection_columns_sizer.Add(self.chk_plot_clusters, flag=wx.ALL | wx.EXPAND, border=5)
-    self.selection_columns_sizer.Add(self.plot_eps, flag=wx.ALL | wx.EXPAND, border=5)
+    self.cluster_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.cluster_sizer.Add(self.chk_plot_clusters, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.cluster_sizer.AddStretchSpacer()
+    self.cluster_sizer.Add(self.btn_cluster_options, flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=10)
+    self.selection_columns_sizer.Add(self.cluster_sizer, flag=wx.ALL | wx.EXPAND, border=5)
     self.selection_columns_sizer.Add(self.chk_auto_update, flag=wx.ALL | wx.EXPAND, border=5)
 
     # The column is as wide as its contents need, which depends on the
@@ -3193,6 +3199,7 @@ class UnitCellTab(BaseTab):
     self.selection_columns_panel.SetupScrolling(scroll_x=False, scrollToTop=False)
     scrollbar_width = max(wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X), 0)
     self.selection_columns_panel.SetMinSize((self.selection_columns_sizer.GetMinSize().width + scrollbar_width, -1))
+    self.sync_cluster_settings()
 
     self.unit_cell_panel = wx.Panel(self, size=(200, 120))
     self.unit_cell_box = wx.StaticBox(self.unit_cell_panel, label='Unit cell analysis')
@@ -3231,8 +3238,8 @@ class UnitCellTab(BaseTab):
     self.Bind(wx.EVT_BUTTON, self.onResetTagSets, self.reset_sele_button)
     self.Bind(wx.EVT_CHECKBOX, self.onChkRejectOutliers, self.chk_reject_outliers)
     self.Bind(wx.EVT_CHECKBOX, self.onChkPlotClusters, self.chk_plot_clusters)
+    self.Bind(wx.EVT_BUTTON, self.onClusterOptions, self.btn_cluster_options)
     self.Bind(wx.EVT_CHECKBOX, self.onChkAutoUpdate, self.chk_auto_update)
-    self.Bind(wx.EVT_TEXT_ENTER, self.onEpsChange, self.plot_eps.eps)
     self.Bind(EVT_UNITCELL_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
 
@@ -3269,7 +3276,38 @@ class UnitCellTab(BaseTab):
     elif self.trial_number.ctr.GetClientData(trial_idx) != self.trial_no:
       self.trial_no = int(self.trial_number.ctr.GetClientData(trial_idx))
       self.trial = self.main.db.get_trial(trial_number=self.trial_no)
+    self.sync_cluster_settings()
     self.find_tags()
+
+  def cluster_space_group(self):
+    ''' Symbol of the space group the selected trial's cells are indexed in,
+        P1 when no trial is selected or the trial has no target cell. '''
+    try:
+      symbol = self.trial.cell.lookup_symbol
+    except AttributeError:
+      symbol = 'P1'
+    return ''.join(str(symbol).split())
+
+  def sync_cluster_settings(self):
+    ''' Make the clustering settings follow the selected trial: when its space
+        group differs from the one the features were chosen for, the features
+        return to the defaults for the new group. The record is rebound whole,
+        never mutated, see ClusterSettings. '''
+    symbol = self.cluster_space_group()
+    if self.cluster_settings is not None and symbol == self.cluster_settings.space_group:
+      return
+    from cctbx.sgtbx import space_group_info
+    default = clustering_feature_vector(space_group_info(symbol))
+    eps = self.cluster_settings.eps if self.cluster_settings is not None else 0.8
+    self.cluster_settings = ClusterSettings(symbol, default.split(',') if default else [], eps)
+
+  def onClusterOptions(self, e):
+    settings = self.cluster_settings
+    options = dlg.ClusterOptionsDialog(self, eps=settings.eps, features=settings.features,
+                                       space_group=settings.space_group)
+    if options.ShowModal() == wx.ID_OK:
+      self.cluster_settings = ClusterSettings(settings.space_group, options.features, options.eps)
+    options.Destroy()
 
   def find_tags(self):
     self.tag_checklist.ctr.Clear()
@@ -3313,21 +3351,11 @@ class UnitCellTab(BaseTab):
     self.tag_sets = []
     self.selected_tag_sets = []
 
-  def onEpsChange(self, e):
-    try:
-      self.eps = float(self.plot_eps.eps.GetValue())
-    except ValueError:
-      pass
-
   def onChkRejectOutliers(self, e):
     self.reject_outliers = self.chk_reject_outliers.GetValue()
 
   def onChkPlotClusters(self, e):
     self.plot_clusters = self.chk_plot_clusters.GetValue()
-    if self.plot_clusters:
-      self.plot_eps.eps.Enable()
-    else:
-      self.plot_eps.eps.Disable()
 
   def onChkAutoUpdate(self, e):
     self.auto_update = self.chk_auto_update.GetValue()

@@ -174,6 +174,13 @@ tooltips = {
   'uc_plot_eps': 'DBSCAN epsilon: maximum distance between two unit cells to be '
                  'considered neighbours when forming clusters. Smaller values '
                  'produce tighter, more selective clusters.',
+  'uc_cluster_options': 'DBSCAN epsilon and the unit cell parameters to cluster on',
+  'uc_feature_a': 'Include the a axis length in the feature vector',
+  'uc_feature_b': 'Include the b axis length in the feature vector',
+  'uc_feature_c': 'Include the c axis length in the feature vector',
+  'uc_feature_alpha': 'Include the α angle in the feature vector',
+  'uc_feature_beta': 'Include the β angle in the feature vector',
+  'uc_feature_gamma': 'Include the γ angle in the feature vector',
   # Dataset scaling stage — unit-cell cluster filter
   'chk_use_cluster': 'When checked, filter lattices using a covariance model previously '
                      'computed on the Unit Cells tab. When unchecked, the relative-length '

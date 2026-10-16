@@ -5655,3 +5655,103 @@ class SelectTasksDialog(BaseDialog):
         self.dataset.add_task(task)
 
     e.Skip()
+
+# ------------------------------ Cluster Options ----------------------------- #
+
+CELL_PARAMETERS = ('a', 'b', 'c', 'alpha', 'beta', 'gamma')
+CELL_PARAMETER_LABELS = dict(zip(CELL_PARAMETERS, ('a', 'b', 'c', u'α', u'β', u'γ')))
+
+def free_cell_parameters(space_group_symbol):
+  ''' The unit cell parameters the space group leaves free to vary, in the
+      order of CELL_PARAMETERS. They are read off a cell cctbx generates to
+      obey the group's symmetry: a length is fixed when the symmetry makes it
+      equal to an earlier one, an angle when it is held at 90 or 120 degrees
+      or made equal to an earlier free angle. This tells apart settings the
+      crystal system alone does not, such as monoclinic unique axis c (gamma
+      free rather than beta) or rhombohedral axes (a and alpha free). '''
+  from cctbx.sgtbx import space_group_info
+  cell = space_group_info(space_group_symbol).any_compatible_unit_cell(volume=1.e6).parameters()
+  def same(i, j):
+    return abs(cell[i] - cell[j]) < 1.e-6
+  free = []
+  for i, name in enumerate(CELL_PARAMETERS):
+    if i < 3:
+      fixed = any(same(i, j) for j in range(i))
+    else:
+      fixed = abs(cell[i] - 90.) < 1.e-6 or abs(cell[i] - 120.) < 1.e-6 or \
+              any(same(i, j) for j in range(3, i))
+    if not fixed:
+      free.append(name)
+  return free
+
+class ClusterOptionsDialog(BaseDialog):
+  ''' Settings for clustering the unit cells on the Unit Cell tab: the DBSCAN
+      epsilon and which cell parameters make up the feature vector. Parameters
+      the trial's space group fixes cannot be chosen. On OK, eps and features
+      hold the validated values. '''
+
+  def __init__(self, parent, eps, features, space_group,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        *args, **kwargs)
+
+    self.eps = eps
+    self.features = list(features)
+    free = free_cell_parameters(space_group)
+
+    self.plot_eps = gctr.OptionCtrl(self,
+                                    name='uc_plot_eps',
+                                    label='Cluster epsilon',
+                                    sub_labels=[''],
+                                    label_size=(160, -1),
+                                    ctrl_size=(80, -1),
+                                    items=[('eps', eps)])
+    self.main_sizer.Add(self.plot_eps, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.features_box = wx.StaticBox(self, label='Feature vector')
+    features_sizer = wx.StaticBoxSizer(self.features_box, wx.VERTICAL)
+    note = wx.StaticText(self, label='Unit cell parameters to cluster on. Space group %s fixes the greyed-out ones.' % space_group)
+    note.Wrap(360)
+    features_sizer.Add(note, flag=wx.ALL, border=5)
+
+    grid = wx.FlexGridSizer(2, 3, 5, 30)
+    self.feature_checks = {}
+    for name in CELL_PARAMETERS:
+      chk = wx.CheckBox(self, name='uc_feature_' + name, label=CELL_PARAMETER_LABELS[name])
+      chk.SetValue(name in self.features and name in free)
+      chk.Enable(name in free)
+      setup_tooltip(chk)
+      self.feature_checks[name] = chk
+      grid.Add(chk)
+    features_sizer.Add(grid, flag=wx.ALL, border=10)
+    self.main_sizer.Add(features_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.SetTitle('Cluster options')
+    self.Fit()
+
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def onOK(self, e):
+    try:
+      eps = float(self.plot_eps.eps.GetValue())
+      assert eps > 0
+    except (ValueError, AssertionError):
+      wx.MessageBox('Cluster epsilon must be a positive number.',
+                    'Warning!', wx.ICON_EXCLAMATION)
+      return
+    features = [name for name in CELL_PARAMETERS if self.feature_checks[name].GetValue()]
+    if len(features) < 2:
+      wx.MessageBox('Choose at least two unit cell parameters to cluster on.',
+                    'Warning!', wx.ICON_EXCLAMATION)
+      return
+    self.eps = eps
+    self.features = features
+    e.Skip()
