@@ -280,24 +280,44 @@ namespace molprobity {
       /// @param [in] states: A map from Movers to the potential states for each. This
       ///         holds the result of calling CoarsePositions() on each Mover.
       /// @param [in] clique: The clique graph to optimize.
+      /// @param [in] scoreButDoNotMove: A graph of Movers that we should score along with
+      ///         those in the clique but we should not move them to optimize.  This is
+      ///         to handle the case in the VertexCut optimization where we have a set
+      ///         of Movers in a cut set that are not part of the clique but are connected
+      ///         to it.  We need to score them along with those that are moving to get
+      ///         the same score in both brute-force and vertex-cut optimization.
+      ///         For a direct call of this function on a clique, this will be an empty graph.
+      ///         Only recursive calls within OptimizeCliqueCoarseVertexCut() will have this set.
       /// @return A tuple, where the first is the score at the best position for all movers
       ///         and the second is a string describing what was done, which may be empty
       ///         if verbosity is too small.
       std::pair<double, std::string> OptimizeCliqueCoarseBruteForce(
         std::map<boost::python::object*, molprobity::reduce::PositionReturn>& states,
-        CliqueGraph& clique);
+        CliqueGraph& clique, CliqueGraph& scoreButDoNotMove);
 
       /// @brief Function to perform vertex-cut optimization on a clique of Movers.
       ///
       /// This attempts to find a vertex cut in the clique graph, and if it does, it
-      /// optimizes each connected component separately. If it cannot find a vertex
+      /// recursively optimizes each connected component separately. If it cannot find a vertex
       /// cut, it calls OptimizeCliqueCoarseBruteForce.
       ///
       /// When it finds a vertex cut, it will recursively call itself on each connected
       /// component and jointly optimize the cut vertices, then combine the results.
+      /// It scores the Movers in the cut set along with those in the connected components,
+      /// but it does not move them.  For the final score on each call, it scores all
+      /// of the Movers in the clique along with all of the Movers in scoreButDoNotMove.
       /// @param [in] states: A map from Movers to the potential states for each. This
       ///         holds the result of calling CoarsePositions() on each Mover.
       /// @param [in] clique: The clique graph to optimize.
+      /// @param [in] scoreButDoNotMove: A graph of Movers that we should score along with
+      ///         those in the clique but we should not move them to optimize.  This is
+      ///         to handle the recursive case where we have a set
+      ///         of Movers in a cut set that are not part of the sub-clique but are connected
+      ///         to it.  We need to score them along with those that are moving to get
+      ///         the same score in both brute-force and vertex-cut optimization.
+      ///         At the root call for a clique, this will be an empty graph.  Only recursive
+      ///         calls will have this set, with the accumulated set of Movers that are in the cut
+      ///         sets for all calls.
       /// @param [in] remainingSeconds: The number of seconds remaining for the optimization. If this is
       ///         negative or zero, do no optimization.
       /// @return A tuple, where the first is the score at the best position for all movers
@@ -305,7 +325,7 @@ namespace molprobity {
       ///         if verbosity is too small.
       std::pair<double, std::string> OptimizeCliqueCoarseVertexCut(
         std::map<boost::python::object*, molprobity::reduce::PositionReturn> &states,
-        CliqueGraph &clique, double remainingSeconds);
+        CliqueGraph &clique, CliqueGraph& scoreButDoNotMove, double remainingSeconds);
     };
 
     //=====================================================================================================
