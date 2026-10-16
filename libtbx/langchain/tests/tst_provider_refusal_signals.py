@@ -32,6 +32,32 @@ Covers:
     is missing): google.genai.types.FinishReason.SAFETY with
     google_reply_text, and anthropic.types.Message with stop_reason
     "refusal" with anthropic_reply_text.
+  - Prompt blocked (Gemini prompt_feedback.block_reason): response_text with
+    content "" and response_metadata["prompt_feedback"] = {"block_reason": X}
+    raises "prompt was blocked" naming X, for each of SAFETY, OTHER,
+    BLOCKLIST, PROHIBITED_CONTENT, IMAGE_SAFETY, MODEL_ARMOR, JAILBREAK, given
+    as a plain string and as an enum-like object; google_reply_text with no
+    candidates and block_reason SAFETY raises "prompt was blocked", not
+    "no text"; a nonzero int block_reason gives "UNRECOGNIZED" and the
+    message has no digits; these messages (including for int block_reason
+    429 and 503) contain no "429" or "503" and are not rate limits.
+  - Prompt-feedback controls (pass on base too): block_reason 0,
+    "BLOCKED_REASON_UNSPECIFIED", None, a missing prompt_feedback and a
+    MagicMock prompt_feedback return the text.
+  - Real google.genai GenerateContentResponse with
+    GenerateContentResponsePromptFeedback(block_reason=BlockedReason.SAFETY)
+    and no candidates raises "prompt was blocked"; with
+    BLOCKED_REASON_UNSPECIFIED and a STOP candidate it returns the text
+    (skipped with a note if google.genai is missing).
+  - LangChain model_dump shape with a real google.genai BlockedReason member
+    in the dict ({"block_reason": BlockedReason.PROHIBITED_CONTENT,
+    "safety_ratings": None}) raises "prompt was blocked" naming
+    PROHIBITED_CONTENT (skipped with a note if google.genai is missing).
+  - Other dict forms: "BlockedReason.SAFETY" gives SAFETY, an unknown name
+    "NEW_REASON" gives UNRECOGNIZED, and bool True / False are not blocked
+    (the text is returned).
+  - summary_coverage_note(5, 2) mentions "refused or blocked" and still
+    "3 of 5".
 
 Fail-fast: the first failing test stops the run with a non-zero exit;
 AssertionError is never swallowed.
@@ -40,11 +66,14 @@ import os
 import re
 import sys
 import types
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)            # .../libtbx/langchain
 
 BLOCKED = ["SAFETY", "RECITATION", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII"]
+PROMPT_BLOCKED = ["SAFETY", "OTHER", "BLOCKLIST", "PROHIBITED_CONTENT",
+                  "IMAGE_SAFETY", "MODEL_ARMOR", "JAILBREAK"]
 
 
 def _llm_module():
@@ -67,6 +96,16 @@ def _rate_limit_module():
     return rate_limit_handler
 
 
+def _summarizer_module():
+    try:
+        from libtbx.langchain.analysis import summarizer
+    except ImportError:
+        if _ROOT not in sys.path:
+            sys.path.insert(0, _ROOT)
+        from analysis import summarizer
+    return summarizer
+
+
 def _reply(content="some text", **meta):
     return types.SimpleNamespace(content=content, response_metadata=dict(meta))
 
@@ -79,6 +118,20 @@ def _anthropic_reply(text, stop_reason):
 def _google_reply(text, finish):
     cand = types.SimpleNamespace(finish_reason=finish)
     return types.SimpleNamespace(candidates=[cand], text=text)
+
+
+def _prompt_blocked_reply(block_reason, content=""):
+    """LangChain shape of a Gemini blocked prompt: AIMessage("") with
+    prompt_feedback in response_metadata."""
+    return _reply(content, prompt_feedback={"block_reason": block_reason,
+                                            "safety_ratings": []})
+
+
+def _google_prompt_blocked_reply(block_reason):
+    """Direct Gemini reply for a blocked prompt: no candidates."""
+    return types.SimpleNamespace(
+        candidates=[], text=None,
+        prompt_feedback=types.SimpleNamespace(block_reason=block_reason))
 
 
 def _expect_runtime_error(fn, *args):
@@ -330,6 +383,144 @@ def test_anthropic_real_message_refusal():
         assert "no text" not in msg, (content, msg)
 
 
+# ---------------------------------------------------------------------------
+# 10. Gemini prompt blocked (prompt_feedback.block_reason)
+# ---------------------------------------------------------------------------
+
+def test_langchain_prompt_blocked_raises():
+    llm = _llm_module()
+    for name in PROMPT_BLOCKED:
+        for reason in (name, types.SimpleNamespace(name=name)):
+            err = _expect_runtime_error(
+                llm.response_text, _prompt_blocked_reply(reason))
+            msg = str(err)
+            assert "prompt was blocked" in msg, (name, reason, msg)
+            assert "block_reason=%s" % name in msg, (name, reason, msg)
+            assert "no text" not in msg, (name, reason, msg)
+
+
+def test_langchain_prompt_feedback_unblocked_returns_text():
+    # Control: passes on base too.
+    llm = _llm_module()
+    for reason in (0, "BLOCKED_REASON_UNSPECIFIED", None):
+        got = llm.response_text(_prompt_blocked_reply(reason, content="ok"))
+        assert got == "ok", (reason, got)
+    assert llm.response_text(_reply("ok")) == "ok"
+    got = llm.response_text(_reply("ok", prompt_feedback=mock.MagicMock()))
+    assert got == "ok", got
+
+
+def test_google_reply_text_prompt_blocked_no_candidates():
+    llm = _llm_module()
+    err = _expect_runtime_error(
+        llm.google_reply_text,
+        _google_prompt_blocked_reply(types.SimpleNamespace(name="SAFETY")))
+    msg = str(err)
+    assert "prompt was blocked" in msg, msg
+    assert "SAFETY" in msg, msg
+    assert "no text" not in msg, msg
+
+
+def test_prompt_blocked_unrecognized_int():
+    llm = _llm_module()
+    for fn, reply in ((llm.response_text, _prompt_blocked_reply(5)),
+                      (llm.google_reply_text, _google_prompt_blocked_reply(5))):
+        msg = str(_expect_runtime_error(fn, reply))
+        assert "prompt was blocked" in msg, msg
+        assert "UNRECOGNIZED" in msg, msg
+        assert re.search(r"\d", msg) is None, msg
+
+
+def test_prompt_blocked_errors_not_rate_limits():
+    llm = _llm_module()
+    is_rate_limit_error = _rate_limit_module().is_rate_limit_error
+    errors = []
+    for name in PROMPT_BLOCKED:
+        errors.append(_expect_runtime_error(
+            llm.response_text, _prompt_blocked_reply(name)))
+        errors.append(_expect_runtime_error(
+            llm.google_reply_text, _google_prompt_blocked_reply(
+                types.SimpleNamespace(name=name))))
+    for reason in (429, 503):
+        errors.append(_expect_runtime_error(
+            llm.response_text, _prompt_blocked_reply(reason)))
+        errors.append(_expect_runtime_error(
+            llm.google_reply_text, _google_prompt_blocked_reply(reason)))
+    for err in errors:
+        msg = str(err)
+        assert "prompt was blocked" in msg, msg
+        assert "429" not in msg and "503" not in msg, msg
+        assert is_rate_limit_error(err) is False, msg
+
+
+def test_google_genai_real_prompt_blocked():
+    try:
+        from google.genai import types as gtypes
+    except ImportError as e:
+        print("    SKIP: google.genai not importable (%s)" % e)
+        return
+    llm = _llm_module()
+    blocked = gtypes.GenerateContentResponse(
+        prompt_feedback=gtypes.GenerateContentResponsePromptFeedback(
+            block_reason=gtypes.BlockedReason.SAFETY))
+    assert not blocked.candidates, blocked.candidates
+    msg = str(_expect_runtime_error(llm.google_reply_text, blocked))
+    assert "prompt was blocked" in msg, msg
+    assert "SAFETY" in msg, msg
+    assert "no text" not in msg, msg
+    ok = gtypes.GenerateContentResponse(
+        prompt_feedback=gtypes.GenerateContentResponsePromptFeedback(
+            block_reason=gtypes.BlockedReason.BLOCKED_REASON_UNSPECIFIED),
+        candidates=[gtypes.Candidate(
+            finish_reason=gtypes.FinishReason.STOP,
+            content=gtypes.Content(role="model",
+                                   parts=[gtypes.Part(text="ok")]))])
+    assert llm.google_reply_text(ok) == "ok"
+
+
+def test_langchain_prompt_blocked_real_enum_in_dict():
+    # The actual LangChain shape: model_dump of PromptFeedback keeps the
+    # BlockedReason member in the dict.
+    try:
+        from google.genai import types as gtypes
+    except ImportError as e:
+        print("    SKIP: google.genai not importable (%s)" % e)
+        return
+    llm = _llm_module()
+    reply = _reply("", prompt_feedback={
+        "block_reason": gtypes.BlockedReason.PROHIBITED_CONTENT,
+        "safety_ratings": None})
+    msg = str(_expect_runtime_error(llm.response_text, reply))
+    assert "prompt was blocked" in msg, msg
+    assert "PROHIBITED_CONTENT" in msg, msg
+    assert "no text" not in msg, msg
+
+
+def test_langchain_prompt_blocked_dict_forms():
+    llm = _llm_module()
+    for reason, name in (("BlockedReason.SAFETY", "SAFETY"),
+                         ("NEW_REASON", "UNRECOGNIZED")):
+        msg = str(_expect_runtime_error(
+            llm.response_text, _prompt_blocked_reply(reason)))
+        assert "prompt was blocked" in msg, (reason, msg)
+        assert "block_reason=%s" % name in msg, (reason, msg)
+
+
+def test_langchain_prompt_feedback_bool_not_blocked():
+    # True / False are not block reasons; the text is returned.
+    llm = _llm_module()
+    for reason in (True, False):
+        got = llm.response_text(_prompt_blocked_reply(reason, content="ok"))
+        assert got == "ok", (reason, got)
+
+
+def test_summary_coverage_note_mentions_refused_or_blocked():
+    s = _summarizer_module()
+    note = s.summary_coverage_note(5, 2)
+    assert "refused or blocked" in note, note
+    assert "3 of 5" in note, note
+
+
 _TESTS = [
     test_langchain_refusal_raises,
     test_langchain_gemini_blocked_reasons_raise,
@@ -345,6 +536,16 @@ _TESTS = [
     test_content_filter_keeps_its_message,
     test_google_genai_real_safety_enum,
     test_anthropic_real_message_refusal,
+    test_langchain_prompt_blocked_raises,
+    test_langchain_prompt_feedback_unblocked_returns_text,
+    test_google_reply_text_prompt_blocked_no_candidates,
+    test_prompt_blocked_unrecognized_int,
+    test_prompt_blocked_errors_not_rate_limits,
+    test_google_genai_real_prompt_blocked,
+    test_langchain_prompt_blocked_real_enum_in_dict,
+    test_langchain_prompt_blocked_dict_forms,
+    test_langchain_prompt_feedback_bool_not_blocked,
+    test_summary_coverage_note_mentions_refused_or_blocked,
 ]
 
 

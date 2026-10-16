@@ -566,9 +566,9 @@ def summary_coverage_note(parts_total, parts_skipped):
     return ""
   return (
     "**Note: partial coverage.** This summary is based on %d of %d parts "
-    "of the log; %d part(s) could not be summarized (the reply was cut off "
-    "or the request timed out), so information from those parts may be "
-    "missing." % (parts_total - parts_skipped, parts_total, parts_skipped))
+    "of the log; %d part(s) could not be summarized (the reply was cut off, "
+    "refused or blocked, or the request timed out), so information from "
+    "those parts may be missing." % (parts_total - parts_skipped, parts_total, parts_skipped))
 
 
 async def summarize_log_text(
@@ -600,8 +600,9 @@ async def summarize_log_text(
         group_args with:
             - group_args_type: 'log_summary'
             - log_summary: The final summary text (or None if failed).
-              If some parts of the log were skipped (reply cut off, or
-              batch timed out) the summary ends with a coverage note.
+              If some parts of the log were skipped (reply cut off,
+              refused or blocked, or batch timed out) the summary ends
+              with a coverage note.
             - error: Error message (or None if successful)
             - parts_total, parts_skipped: number of log parts and how
               many were not summarized (absent on the early returns)
@@ -726,7 +727,8 @@ async def summarize_log_text(
         try:
           summary_text = response_text(result)
         except RuntimeError as e:
-          # A cut-off chunk summary is skipped like a timed-out batch;
+          # A chunk whose reply was cut off, refused or blocked is skipped
+          # like a timed-out batch;
           # the other chunks still make a summary.
           print(f"Chunk {j + 1} of batch {i + 1} skipped: {e}")
           parts_skipped += 1

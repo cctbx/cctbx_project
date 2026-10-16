@@ -565,6 +565,47 @@ def _gemini_blocked_reason(finish):
   return name if name in GEMINI_BLOCKED_FINISH_REASONS else None
 
 
+# Gemini prompt_feedback.block_reason values meaning the prompt itself was
+# blocked, so no candidate (reply) was produced.  Normal replies carry 0 or
+# BLOCKED_REASON_UNSPECIFIED.
+GEMINI_BLOCKED_PROMPT_REASONS = (
+  "SAFETY", "OTHER", "BLOCKLIST", "PROHIBITED_CONTENT", "IMAGE_SAFETY",
+  "MODEL_ARMOR", "JAILBREAK")
+
+
+def _gemini_prompt_block_reason(feedback):
+  """Name of the reason Gemini blocked the prompt, or None if it did not.
+
+  feedback is a google.genai PromptFeedback (or None), or the dict
+  langchain_google_genai puts in response_metadata["prompt_feedback"].
+  block_reason may be an enum, a name ("SAFETY", "BlockedReason.SAFETY")
+  or a number; 0, None and BLOCKED_REASON_UNSPECIFIED mean not blocked.
+  A nonzero number or unknown name is reported as "UNRECOGNIZED" so that
+  the message carries no digits; any other value type is ignored.
+  """
+  if feedback is None:
+    return None
+  if isinstance(feedback, dict):
+    reason = feedback.get("block_reason")
+  else:
+    reason = getattr(feedback, "block_reason", None)
+  if reason is None or isinstance(reason, bool):
+    return None
+  name_attr = getattr(reason, "name", None)
+  if isinstance(name_attr, str):
+    name = name_attr
+  elif isinstance(reason, str):
+    name = reason
+  elif isinstance(reason, int):
+    return "UNRECOGNIZED" if reason else None
+  else:
+    return None    # not a recognizable value (e.g. a test double)
+  name = name.upper().split(".")[-1]
+  if not name or name in ("0", "BLOCKED_REASON_UNSPECIFIED"):
+    return None
+  return name if name in GEMINI_BLOCKED_PROMPT_REASONS else "UNRECOGNIZED"
+
+
 def _raise_if_langchain_reply_cut_off(response):
   """Raise RuntimeError if a LangChain message says it was cut off.
 
@@ -588,6 +629,11 @@ def _raise_if_langchain_reply_cut_off(response):
   if stop_reason == "refusal":
     raise RuntimeError(
       "LLM declined to answer (stop_reason='refusal')")
+  prompt_blocked = _gemini_prompt_block_reason(meta.get("prompt_feedback"))
+  if prompt_blocked:
+    raise RuntimeError(
+      "LLM prompt was blocked by the provider's safety filter "
+      "(block_reason=%s)" % prompt_blocked)
   blocked = _gemini_blocked_reason(finish)
   if blocked:
     raise RuntimeError(
@@ -778,6 +824,12 @@ def google_reply_text(response):
   candidates = getattr(response, "candidates", None) or []
   finish = getattr(candidates[0], "finish_reason", None) if candidates else None
   finish_name = getattr(finish, "name", None) or str(finish or "")
+  prompt_blocked = _gemini_prompt_block_reason(
+    getattr(response, "prompt_feedback", None))
+  if prompt_blocked:
+    raise RuntimeError(
+      "Gemini prompt was blocked by a safety filter (block_reason=%s)"
+      % prompt_blocked)
   try:
     text = response.text or ""
   except (ValueError, AttributeError):
