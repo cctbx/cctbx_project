@@ -191,6 +191,16 @@ tooltips = {
   'uc_side_plot': 'What to draw beside the projections: a probability plot of each '
                   'cluster\'s Mahalanobis distances against a normal distribution, '
                   'or a histogram of unit cell volume colored by cluster.',
+  # MergingStatsTab, detector drift page
+  'drift_origin': 'Detector origin to plot per chunk: the first experiment\'s, the '
+                  'reflection-weighted average, the whole distribution as a heatmap, or '
+                  'the same three for the center of mass of the panels.',
+  'drift_color_by': 'Which variable colors the points: run, run group, chunk, task, trial '
+                    'or dataset version.',
+  'drift_unit_cell': 'Plot the reflection-weighted average cell lengths per chunk, or the '
+                     'whole distribution as a heatmap.',
+  'drift_uncertainties': 'Error bars on the origin from the mean difference between observed '
+                         'and predicted reflection positions. Roughly doubles the reading time.',
   # Dataset scaling stage — unit-cell cluster filter
   'chk_use_cluster': 'When checked, filter lattices using a covariance model previously '
                      'computed on the Unit Cells tab. When unchecked, the relative-length '

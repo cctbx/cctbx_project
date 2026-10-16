@@ -26,6 +26,7 @@ except ImportError:
 from xfel.clustering.cluster import Cluster
 import xfel.ui.components.xfel_gui_controls as gctr
 from xfel.ui.components.online_help import open_help, HELP_TAB_PAGES
+from xfel.ui.components.tooltips import setup_tooltip
 import xfel.ui.components.xfel_gui_dialogs as dlg
 import xfel.ui.components.xfel_gui_plotter as pltr
 
@@ -1168,6 +1169,58 @@ class RefreshMergingStats(wx.PyCommandEvent):
   def GetValue(self):
     return self.result
 
+# Detector drift (cctbx.xfel.drift) on the Merging stats tab. The settings are
+# the scraping and coloring choices the page offers; the tab rebinds its record
+# whole, and the sentinel reads it once per cycle, as with the Unit Cell tab's
+# ClusterSettings. The result is what the sentinel hands back: the drift table
+# for one dataset version at one set of settings, or a message saying why there
+# is none.
+DriftSettings = collections.namedtuple('DriftSettings', ['origin', 'color_by', 'unit_cell', 'uncertainties'])
+DriftResult = collections.namedtuple('DriftResult', ['version_id', 'settings', 'table', 'message'])
+DRIFT_ORIGINS = ['first', 'average', 'distribution', 'panel_com_first', 'panel_com_average', 'panel_com_distribution']
+DRIFT_COLOR_BY = ['run', 'rungroup', 'chunk', 'task', 'trial', 'merge']
+DRIFT_UNIT_CELLS = ['average', 'distribution']
+
+def drift_parameters(settings):
+  ''' cctbx.xfel.drift parameters for a DriftSettings, with plotting set up for
+      embedding in the GUI. '''
+  from xfel.util.drift import phil_scope
+  params = phil_scope.extract()
+  params.scrap.origin = settings.origin
+  params.scrap.uncertainties = settings.uncertainties
+  params.scrap.unit_cell = settings.unit_cell
+  params.plot.color.by = settings.color_by
+  params.plot.show = False
+  return params
+
+def drift_entries_for_version(app, version):
+  ''' The ensemble refinement output behind a dataset version, as the
+      (combine_phil_path, metadata) entries drift's ExplicitDriftScraper reads:
+      one per chunk of every run whose local job the version holds, found by
+      walking that job's task back to the ensemble refinement task and taking
+      the task's run path. Empty when the pipeline has no ensemble refinement
+      or nothing has been written yet. The metadata comes from the database
+      rather than from the paths, so run names of any form are fine. '''
+  import glob
+  import re
+  entries = []
+  for job in version.jobs:
+    task = job.task
+    while task is not None and task.type != 'ensemble_refinement':
+      task = task.parent
+    if task is None:
+      continue
+    run_path = get_run_path(app.params.output_folder, job.trial, job.rungroup, job.run, task)
+    pattern = os.path.join(run_path, 'combine_experiments_t%03d' % job.trial.trial,
+                           'intermediates', '*_combine_experiments.phil')
+    for combine_phil_path in sorted(glob.glob(pattern)):
+      match = re.search(r'chunk(\d+)', os.path.basename(combine_phil_path))
+      entries.append((combine_phil_path,
+                      {'merge': 'v%03d' % version.version, 'run': str(job.run.run),
+                       'rungroup': job.rungroup.id, 'trial': job.trial.trial, 'task': task.id,
+                       'chunk': int(match.group(1)) if match else 0}))
+  return entries
+
 class MergingStatsSentinel(Thread):
   ''' Worker thread for merging stats; generated so that the GUI does not lock up when
       processing is running '''
@@ -1196,6 +1249,7 @@ class MergingStatsSentinel(Thread):
       try:
         wx.CallAfter(self.parent.run_window.mergingstats_light.change_status, 'idle')
         self.plot_stats_static()
+        self.scrap_drift()
         self.post_refresh()
         wx.CallAfter(self.parent.run_window.mergingstats_light.change_status, 'on')
         time.sleep(5)
@@ -1237,6 +1291,54 @@ class MergingStatsSentinel(Thread):
                                                                                 self.parent.run_window.mergingstats_tab.dataset_name,
                                                                                 sizex, sizey, interactive=False)
     self.parent.run_window.mergingstats_tab.redraw_windows = True
+
+  def scrap_drift(self):
+    ''' Build the detector drift table for the tab's selected version, when its
+        drift page is showing. Reading every chunk's refined experiments is slow,
+        so results are cached per chunk beside the dataset's version folders and
+        only new or changed chunks are read again; a cycle with nothing new costs
+        a few file stats. Everything here runs over this thread's own database
+        connection; the table is handed to the main thread to draw. '''
+    import pickle
+    from xfel.util.drift import DriftTable, DriftScraperFactory, ExplicitDriftScraper
+    tab = self.parent.run_window.mergingstats_tab
+    if not tab.drift_wanted:
+      return
+    version_id = tab.drift_version_id
+    settings = tab.drift_settings  # one snapshot, see DriftSettings
+    if version_id is None:
+      tab.drift_result = DriftResult(None, settings, None, 'Select a dataset version.')
+      return
+    version = self.db.get_dataset_version(version_id)
+    entries = drift_entries_for_version(self.db, version)
+    if not entries:
+      tab.drift_result = DriftResult(version_id, settings, None,
+        'No ensemble refinement output behind this version yet.\nThe drift plot reads the '
+        'refined experiments the ensemble refinement stage writes for each run and chunk.')
+      return
+    cache_dir = os.path.join(self.db.params.output_folder, version.dataset.name)
+    cache_path = os.path.join(cache_dir, 'drift_cache_v%03d_%s_%s_%s.pkl' % (
+      version.version, settings.origin, settings.unit_cell, 'unc' if settings.uncertainties else 'nounc'))
+    cache = {}
+    try:
+      with open(cache_path, 'rb') as f:
+        cache = pickle.load(f)
+    except (IOError, OSError, EOFError, pickle.UnpicklingError, AttributeError):
+      pass
+    params = drift_parameters(settings)
+    table = DriftTable()
+    scraper = DriftScraperFactory.get_drift_scraper_class(ExplicitDriftScraper, params)
+    scraper(table, params, entries, cache).scrap()
+    try:
+      if not os.path.isdir(cache_dir):
+        os.makedirs(cache_dir)
+      with open(cache_path, 'wb') as f:
+        pickle.dump(cache, f)
+    except (IOError, OSError) as e:
+      print('Could not write drift cache', cache_path, e)
+    message = ('Read %d of %d chunks; the rest have no refined experiments yet.'
+               % (len(table), len(entries))) if len(table) < len(entries) else ''
+    tab.drift_result = DriftResult(version_id, settings, table, message)
 
 # ------------------------------- Main Window -------------------------------- #
 
@@ -3489,6 +3591,12 @@ class MergingStatsTab(BaseTab):
     self.static_bitmap = None
     self.cosym_bitmap = None
     self.redraw_windows = True
+    # Detector drift page state, shared with the sentinel: see DriftSettings
+    self.drift_settings = DriftSettings('first', 'run', 'average', True)
+    self.drift_version_id = None
+    self.drift_wanted = False
+    self.drift_result = None
+    self.drift_drawn = None
 
     self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -3538,8 +3646,50 @@ class MergingStatsTab(BaseTab):
     self.cosym_sizer.Add(self.cosym_image_sizer, 1, flag=wx.EXPAND)
     self.cosym_page.SetSizer(self.cosym_sizer)
 
+    # Detector drift: cctbx.xfel.drift's figure of detector origin and cell
+    # lengths against run and chunk, read from the ensemble refinement output
+    # behind the selected version. Scraped by the sentinel only while this page
+    # is showing, since it reads every chunk's refined experiments.
+    import matplotlib as mpl
+    from matplotlib.backends.backend_wxagg import (
+      FigureCanvasWxAgg as FigureCanvas,
+      NavigationToolbar2WxAgg as NavigationToolbar)
+    self.drift_page = wx.Panel(self.plots_nb)
+    self.drift_sizer = wx.BoxSizer(wx.VERTICAL)
+    drift_controls = wx.WrapSizer(wx.HORIZONTAL)  # flows onto a second line on a narrow page
+    self.drift_origin = gctr.ChoiceCtrl(self.drift_page, name='drift_origin', label='Origin:',
+                                        label_size=(-1, -1), label_style='normal',
+                                        ctrl_size=(-1, -1), choices=DRIFT_ORIGINS)
+    self.drift_color_by = gctr.ChoiceCtrl(self.drift_page, name='drift_color_by', label='Color by:',
+                                          label_size=(-1, -1), label_style='normal',
+                                          ctrl_size=(-1, -1), choices=DRIFT_COLOR_BY)
+    self.drift_unit_cell = gctr.ChoiceCtrl(self.drift_page, name='drift_unit_cell', label='Unit cell:',
+                                           label_size=(-1, -1), label_style='normal',
+                                           ctrl_size=(-1, -1), choices=DRIFT_UNIT_CELLS)
+    self.chk_drift_uncertainties = wx.CheckBox(self.drift_page, name='drift_uncertainties', label='Uncertainties')
+    setup_tooltip(self.chk_drift_uncertainties)
+    for ctrl, value in ((self.drift_origin, self.drift_settings.origin),
+                        (self.drift_color_by, self.drift_settings.color_by),
+                        (self.drift_unit_cell, self.drift_settings.unit_cell)):
+      ctrl.ctr.SetStringSelection(value)
+    self.chk_drift_uncertainties.SetValue(self.drift_settings.uncertainties)
+    for ctrl in (self.drift_origin, self.drift_color_by, self.drift_unit_cell):
+      drift_controls.Add(ctrl, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT | wx.BOTTOM, border=5)
+    drift_controls.Add(self.chk_drift_uncertainties, flag=wx.ALIGN_CENTER_VERTICAL | wx.BOTTOM, border=5)
+    self.drift_label = wx.StaticText(self.drift_page, label='')
+    self.drift_figure = mpl.figure.Figure()
+    self.drift_canvas = FigureCanvas(self.drift_page, -1, self.drift_figure)
+    self.drift_toolbar = NavigationToolbar(self.drift_canvas)
+    self.drift_toolbar.Realize()
+    self.drift_sizer.Add(drift_controls, 0, flag=wx.ALL, border=5)
+    self.drift_sizer.Add(self.drift_label, 0, flag=wx.LEFT | wx.RIGHT, border=5)
+    self.drift_sizer.Add(self.drift_canvas, 1, flag=wx.EXPAND)
+    self.drift_sizer.Add(self.drift_toolbar, 0, flag=wx.LEFT | wx.EXPAND)
+    self.drift_page.SetSizer(self.drift_sizer)
+
     self.plots_nb.AddPage(self.stats_page, 'Statistics')
     self.plots_nb.AddPage(self.cosym_page, 'Cosym embedding')
+    self.plots_nb.AddPage(self.drift_page, 'Detector drift')
     plots_panel_sizer = wx.BoxSizer(wx.VERTICAL)
     # Without a floor GTK warns about a negative content width while laying the
     # notebook header out inside the panel's small initial size.
@@ -3563,6 +3713,22 @@ class MergingStatsTab(BaseTab):
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
     self.Bind(wx.EVT_SIZE, self.OnSize)
     self.Bind(wx.EVT_CHOICE, self.onCosymChoice, self.cosym_choice.ctr)
+    for ctrl in (self.drift_origin, self.drift_color_by, self.drift_unit_cell):
+      self.Bind(wx.EVT_CHOICE, self.onDriftSettings, ctrl.ctr)
+    self.Bind(wx.EVT_CHECKBOX, self.onDriftSettings, self.chk_drift_uncertainties)
+    self.plots_nb.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onPlotPageChanged)
+
+  def onPlotPageChanged(self, e):
+    self.drift_wanted = self.plots_nb.GetCurrentPage() is self.drift_page
+    e.Skip()
+
+  def onDriftSettings(self, e):
+    # Rebind whole, never mutate: the sentinel reads this record
+    self.drift_settings = DriftSettings(self.drift_origin.ctr.GetStringSelection(),
+                                        self.drift_color_by.ctr.GetStringSelection(),
+                                        self.drift_unit_cell.ctr.GetStringSelection(),
+                                        self.chk_drift_uncertainties.GetValue())
+    self.drift_label.SetLabel('Reading...')
 
   def OnSize(self, e):
     # Only record the size. Both plots are redrawn at the new size on the next
@@ -3620,12 +3786,18 @@ class MergingStatsTab(BaseTab):
           self.merging_task_parameters = task.parameters
     except Exception:
       pass
+    versions = dataset.active_versions
     if self.dataset_version.ctr.GetSelection() == 0:
-      self.dataset_versions = [version.output_path() for version in dataset.active_versions]
+      self.dataset_versions = [version.output_path() for version in versions]
+      # The drift plot shows one version at a time: the latest when all are chosen
+      self.drift_version_id = versions[-1].id if versions else None
     else:
-      version = dataset.active_versions[self.dataset_version.ctr.GetSelection()-1]
+      version = versions[self.dataset_version.ctr.GetSelection()-1]
       self.dataset_name += " v%03d"%version.version
       self.dataset_versions = [version.output_path()]
+      self.drift_version_id = version.id
+    if self.drift_wanted:
+      self.drift_label.SetLabel('Reading...')
 
   def onRefresh(self, e):
     self.plot_merging_stats()
@@ -3657,6 +3829,27 @@ class MergingStatsTab(BaseTab):
     self.mergingstats_panelsize = self.stats_page.GetSize()
     self._draw_stats()
     self._draw_cosym()
+    self._draw_drift()
+
+  def _draw_drift(self):
+    ''' Draw the sentinel's latest drift result, once per result. '''
+    result = self.drift_result
+    if result is None or result is self.drift_drawn:
+      return
+    self.drift_drawn = result
+    self.drift_figure.clear()
+    if result.table is None or len(result.table) == 0:
+      self.drift_label.SetLabel(result.message or 'No drift data for this selection.')
+    else:
+      from xfel.util.drift import DriftArtist
+      try:
+        DriftArtist(result.table, drift_parameters(result.settings), fig=self.drift_figure).plot()
+        self.drift_label.SetLabel(result.message or '%d chunks' % len(result.table))
+      except Exception as e:
+        self.drift_figure.clear()
+        self.drift_label.SetLabel('Could not draw the drift plot: %s' % e)
+    self.drift_canvas.draw_idle()
+    self.drift_page.Layout()
 
   def _draw_stats(self):
     ''' Draw the statistics figure, or nothing at all when there is none. Clearing
