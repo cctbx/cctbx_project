@@ -125,6 +125,7 @@ general_tests = [
   #
   ["$D/regression/tst_fmodel.py", "1"],
   ["$D/regression/tst_fmodel.py", "2"],
+  "$D/regression/tst_fit_residues_neighbors.py",
   "$D/regression/tst_utils.py",
   "$D/regression/tst_alignment.py",
   ["$D/regression/tst_fmodel_fd.py", "P31"],
