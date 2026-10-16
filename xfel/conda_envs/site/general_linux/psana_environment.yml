@@ -1,0 +1,90 @@
+name: psana_env
+channels:
+ - __PSANA_CHANNEL__   # set by build.sh: lcls-i (psana1) or lcls-ii (psana2)
+ - conda-forge
+ - cctbx
+ - nodefaults
+
+dependencies:
+ # conda compilers
+ - c-compiler
+ - cxx-compiler
+ - scons
+
+ # psana
+ - __PSANA__           # set by build.sh: psana=4.0.66 (lcls-i, https://github.com/lcls-psana/pytools/issues/1) or psana (lcls-ii)
+
+ # python
+ - python
+ - pip
+ - biopython
+ - ipython
+
+ # testing
+ - pytest
+ - pytest-xdist
+
+ # documentation
+ - docutils
+ - numpydoc
+ - sphinx
+
+ # graphics
+ - pillow
+ - reportlab
+ - wxpython
+ - pyopengl
+ - mesa-libgl-devel-conda-x86_64
+
+ # HDF5 (main libraries come with psana)
+ - h5py
+ - hdf5plugin  # [unix]
+
+ # other
+ - libsvm
+ - mrcfile
+ - psutil
+ - mpi4py
+ - pandas
+ - pybind11
+ - setuptools
+ - natsort
+
+ # cctbx channel
+ - libsvm_py
+
+ # dials
+ - jinja2
+ - msgpack-python
+ - msgpack-c
+ - msgpack-cxx
+ - ordered-set
+ - python-blosc
+ - scikit-learn
+ - tqdm
+ - eigen
+ - dials-data
+ - pint
+ - nxmx
+ # - gemmi  # add this separately with --no-deps due to a solver problem
+ - hatchling
+
+ # xia2
+ - tabulate
+
+ # Phenix
+ - send2trash
+ - PyRTF
+
+ # xfel gui
+ - mysql
+ - mysqlclient
+ - pydrive2
+
+ # Avoid numpy 1.21.[01234]
+ # See https://github.com/cctbx/cctbx_project/issues/627
+ - numpy=1.20|>=1.21.5
+
+ # boost
+ - boost
+ - boost-cpp
