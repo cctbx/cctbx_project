@@ -82,6 +82,30 @@ def exercise_fit_anisobeta():
   other = flex.miller_index([(7, 3, -2), (0, 9, 4)])
   assert approx_equal(fit.evaluate(other), [f(h) for h in other], eps=1e-9)
 
+def exercise_fit_anisobeta_resolution_dependent():
+  # nacelle's resolution-dependent anisotropy, exp(h^T B0 h + d*^2 h^T B1 h),
+  # is recovered exactly with the unit cell (twelve coefficients); a plain
+  # quadratic form gives B1 = 0; without the unit cell the fit is poorer
+  from cctbx import uctbx
+  uc = uctbx.unit_cell((51, 62, 73, 90, 97, 90))
+  idx = flex.miller_index([(h, k, l) for h in range(-6, 7) for k in range(0, 7)
+    for l in range(1, 8)])
+  b0 = [-0.010, -0.004, 0.006, 0.002, -0.003, 0.001]
+  b1 = [0.20, -0.10, 0.05, 0.0, 0.08, -0.03]
+  m = lambda h: [h[0]**2, h[1]**2, h[2]**2, h[0]*h[1], h[0]*h[2], h[1]*h[2]]
+  f = lambda h, c1: math.exp(sum(c*x for c, x in zip(b0, m(h))) +
+    uc.d_star_sq(h) * sum(c*x for c, x in zip(c1, m(h))))
+  data = flex.double([f(h, b1) for h in idx])
+  fit = llgi_maps.fit_anisobeta(idx, data, unit_cell=uc)
+  assert approx_equal(list(fit.coefficients), b0 + b1, eps=1e-8)
+  assert fit.rms_log_residual < 1e-10
+  other = flex.miller_index([(7, 3, -2), (0, 9, 4)])
+  assert approx_equal(fit.evaluate(other), [f(h, b1) for h in other], eps=1e-8)
+  fit = llgi_maps.fit_anisobeta(idx, flex.double([f(h, [0]*6) for h in idx]),
+    unit_cell=uc)
+  assert approx_equal(list(fit.coefficients), b0 + [0]*6, eps=1e-8)
+  assert llgi_maps.fit_anisobeta(idx, data).rms_log_residual > 1e-3
+
 def exercise_compute_on_fmodel():
   from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
@@ -208,6 +232,19 @@ def exercise_resn_model():
     nacelle_all=group_args(resn=resn, anisobeta=anisobeta)))
   pred, exact = m.resn_for(resn.select(held))
   assert approx_equal(pred, resn.data().select(held) * 0.1, eps=1e-9)
+  # resolution-dependent anisotropy (phasertng.macaniso.resolution_dependent):
+  # held-out reflections recovered as well
+  quartic = lambda h: quad(h) * math.exp(cs.unit_cell().d_star_sq(h) * (
+    0.05*h[0]**2 - 0.03*h[1]**2 + 0.02*h[2]**2 + 0.01*h[0]*h[2]))
+  ab4 = flex.double([quartic(h) for h in ms.indices()])
+  resn4 = ms.array(data=flex.sqrt(ms.epsilons().data().as_double() * g * ab4))
+  held4 = ab4 < 0.6
+  m = llgi_maps.resn_model(group_args(resn=resn4.select(~held4),
+    anisobeta=ms.array(data=ab4).select(~held4)))
+  assert m.fit.rms_log_residual < 1e-8
+  pred, exact = m.resn_for(resn4.select(held4))
+  rel = flex.abs(pred / resn4.data().select(held4) - 1)
+  assert flex.max(rel) < 0.06 and flex.mean(rel) < 2e-3, (flex.max(rel), flex.mean(rel))
   # no ANISOBETA: isotropic, G = RESN^2/epsilon
   iso = ms.array(data=flex.sqrt(ms.epsilons().data().as_double() * g))
   m = llgi_maps.resn_model(group_args(resn=iso.select(~held), anisobeta=None))
@@ -338,6 +375,7 @@ def run():
   exercise_phi_table_limits()
   exercise_no_measurement_error()
   exercise_fit_anisobeta()
+  exercise_fit_anisobeta_resolution_dependent()
   exercise_compute_on_fmodel()
   exercise_resn_model()
   exercise_fit_k_anisotropic()

@@ -43,8 +43,9 @@ left out of the target as uninformative) with sigmaA*Ec, i.e. the value the
 fill coefficient tends to; there the F scale is RESN/sqrt(ANISOBETA)
 (RESN for IWT_fill_aniso), with nacelle's RESN for every reflection in the
 nacelle file and nacelle's model of it for the others (resn_model), and
-ANISOBETA(h) = exp(h^T B h) fitted to nacelle's ANISOBETA (an exact
-quadratic form in h); TEPS is taken as 1.
+ANISOBETA(h) = exp(h^T B0 h + d*^2 h^T B1 h) fitted to nacelle's ANISOBETA
+(exact for nacelle's anisotropy model, with or without its resolution
+dependence, phasertng.macaniso.resolution_dependent); TEPS is taken as 1.
 """
 
 from mmtbx.refinement.llgi_e_dmodel import SIGMAA_MAX
@@ -122,15 +123,23 @@ def _indices_as_numpy(indices):
     return indices.as_vec3_double().as_numpy_array()
   return np.array(indices, dtype=float).reshape(-1, 3)
 
-def fit_anisobeta(indices, anisobeta):
-  """ nacelle's ANISOBETA as exp(h^T B h): the six coefficients of the
-  quadratic form in h fitted (least squares) to log(ANISOBETA), and a
-  function evaluating it for other indices. """
+def fit_anisobeta(indices, anisobeta, unit_cell=None):
+  """ An anisotropic factor exp(h^T B h) as fitted (least squares) to
+  log(anisobeta): the six coefficients of the quadratic form in h, and a
+  function evaluating it for other indices. With unit_cell, the form is
+  exp(h^T B0 h + d*^2 h^T B1 h) (twelve coefficients, B0's first): nacelle's
+  ANISOBETA with resolution-dependent anisotropy, in which the anisotropy
+  changes linearly with d*^2 (phasertng.macaniso.resolution_dependent); it
+  includes the quadratic form (B1 = 0). """
   import numpy as np
   def design(idx):
     h = _indices_as_numpy(idx)
-    return np.column_stack([h[:, 0]**2, h[:, 1]**2, h[:, 2]**2,
+    quad = np.column_stack([h[:, 0]**2, h[:, 1]**2, h[:, 2]**2,
       h[:, 0]*h[:, 1], h[:, 0]*h[:, 2], h[:, 1]*h[:, 2]])
+    if(unit_cell is None): return quad
+    g = unit_cell.reciprocal_metrical_matrix()   # (G11, G22, G33, G12, G13, G23)
+    dss = quad.dot(np.array([g[0], g[1], g[2], 2*g[3], 2*g[4], 2*g[5]]))
+    return np.column_stack([quad, quad * dss[:, None]])
   y = np.log(np.asarray(anisobeta, dtype=float))
   coef = np.linalg.lstsq(design(indices), y, rcond=None)[0]
   rms = float(np.sqrt(np.mean((y - design(indices).dot(coef))**2)))
@@ -179,10 +188,12 @@ class resn_model(object):
     RESN^2 = epsilon * SigmaN(s^2) * ANISOBETA(h),
   SigmaN its isotropic fit to the data as a function of resolution
   (smooth, with steps between its resolution bins) and ANISOBETA(h) =
-  exp(h^T B h) its anisotropy model. So G = RESN^2/(epsilon*ANISOBETA)
-  depends on resolution only, and ANISOBETA is an exact quadratic form in
-  h. RESN is nacelle's value where nacelle has one; otherwise from G at the
-  nearest reflection in d*^2 and the fitted quadratic form.
+  exp(h^T B0 h + d*^2 h^T B1 h) its anisotropy model (B1 = 0 without
+  resolution-dependent anisotropy). So G = RESN^2/(epsilon*ANISOBETA)
+  depends on resolution only, and log(ANISOBETA) is exactly of that form
+  (fit_anisobeta with the unit cell). RESN is nacelle's value where nacelle
+  has one; otherwise from G at the nearest reflection in d*^2 and the
+  fitted anisotropy.
 
   Built from llgi_data.nacelle_all (every reflection in the nacelle file,
   including those excluded from refinement) if present, otherwise from
@@ -215,7 +226,8 @@ class resn_model(object):
     self.resn = resn
     self.anisotropic = anisobeta is not None
     ab = anisobeta.data() if self.anisotropic else flex.double(resn.size(), 1)
-    self.fit = fit_anisobeta(resn.indices(), ab) if self.anisotropic else None
+    self.fit = fit_anisobeta(resn.indices(), ab,
+      unit_cell=resn.unit_cell()) if self.anisotropic else None
     self._g = flex.pow2(resn.data()) / (
       resn.epsilons().data().as_double() * ab)
     self._dss = resn.d_star_sq().data()
