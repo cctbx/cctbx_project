@@ -74,12 +74,13 @@ native_cc=$(which cc)
 
 step "conda env create (5-10 min)"
 case "$PSANA_CHANNEL" in
-    lcls-i)  SED_EXPR='' ;;
-    lcls-ii) SED_EXPR='s/^ - lcls-i$/ - lcls-ii/; s/^ - psana=.*/ - psana/' ;;
+    lcls-i)  PSANA_SPEC='psana=4.0.66' ;;
+    lcls-ii) PSANA_SPEC='psana' ;;
 esac
-sed -e "$SED_EXPR" "$SCRIPT_DIR/perlmutter_environment.yml" > "$BUILD_PREFIX/opt/environment.yml"
-grep -qx " - $PSANA_CHANNEL" "$BUILD_PREFIX/opt/environment.yml" \
-    || { echo "channel substitution for PSANA_CHANNEL=$PSANA_CHANNEL did not apply -- check perlmutter_environment.yml format" >&2; exit 1; }
+sed -e "s/__PSANA_CHANNEL__/$PSANA_CHANNEL/" -e "s/__PSANA__/$PSANA_SPEC/" \
+    "$SCRIPT_DIR/perlmutter_environment.yml" > "$BUILD_PREFIX/opt/environment.yml"
+grep -q '__PSANA' "$BUILD_PREFIX/opt/environment.yml" \
+    && { echo "placeholder substitution into opt/environment.yml did not fully apply" >&2; exit 1; }
 conda env create -f "$BUILD_PREFIX/opt/environment.yml" --yes -v
 conda activate psana_env
 

@@ -1,6 +1,6 @@
 name: psana_env
 channels:
- - lcls-i
+ - __PSANA_CHANNEL__   # set by build.sh: lcls-i (psana1) or lcls-ii (psana2)
  - conda-forge
  - cctbx
  - nodefaults
@@ -18,7 +18,7 @@ dependencies:
  - scons
 
  # psana
- - psana=4.0.66 # https://github.com/lcls-psana/pytools/issues/1
+ - __PSANA__           # set by build.sh: psana=4.0.66 (lcls-i, https://github.com/lcls-psana/pytools/issues/1) or psana (lcls-ii)
 
  # python
  - python=3.11
