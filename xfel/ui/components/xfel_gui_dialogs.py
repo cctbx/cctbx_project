@@ -5687,10 +5687,14 @@ def free_cell_parameters(space_group_symbol):
 class ClusterOptionsDialog(BaseDialog):
   ''' Settings for clustering the unit cells on the Unit Cell tab: the DBSCAN
       epsilon and which cell parameters make up the feature vector. Parameters
-      the trial's space group fixes cannot be chosen. On OK, eps, features and
-      plot_all_pairs hold the validated values. '''
+      the trial's space group fixes cannot be chosen. On OK, eps, features,
+      plot_all_pairs and side_plot hold the validated values. '''
+
+  SIDE_PLOTS = collections.OrderedDict([('probability', 'Probability plot'),
+                                        ('volume', 'Cell volume histogram')])
 
   def __init__(self, parent, eps, features, space_group, plot_all_pairs=False,
+               side_plot='probability',
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
@@ -5703,6 +5707,7 @@ class ClusterOptionsDialog(BaseDialog):
     self.eps = eps
     self.features = list(features)
     self.plot_all_pairs = plot_all_pairs
+    self.side_plot = side_plot
     free = free_cell_parameters(space_group)
 
     self.plot_eps = gctr.OptionCtrl(self,
@@ -5737,6 +5742,16 @@ class ClusterOptionsDialog(BaseDialog):
     setup_tooltip(self.chk_all_pairs)
     self.main_sizer.Add(self.chk_all_pairs, flag=wx.ALL, border=10)
 
+    self.side_plot_radio = gctr.RadioCtrl(self,
+                                          name='uc_side_plot',
+                                          label='Beside the projections:',
+                                          label_size=(160, -1),
+                                          label_style='normal',
+                                          direction='horizontal',
+                                          items=self.SIDE_PLOTS)
+    getattr(self.side_plot_radio, side_plot if side_plot in self.SIDE_PLOTS else 'probability').SetValue(True)
+    self.main_sizer.Add(self.side_plot_radio, flag=wx.ALL, border=10)
+
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -5761,4 +5776,5 @@ class ClusterOptionsDialog(BaseDialog):
     self.eps = eps
     self.features = features
     self.plot_all_pairs = self.chk_all_pairs.GetValue()
+    self.side_plot = [key for key in self.SIDE_PLOTS if getattr(self.side_plot_radio, key).GetValue()][0]
     e.Skip()

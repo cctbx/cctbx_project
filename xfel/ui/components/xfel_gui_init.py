@@ -824,12 +824,14 @@ CLUSTERING_FEATURE_VECTORS = {
 
 # What the Unit Cell tab clusters with: the space group symbol the features were
 # chosen for, the cell parameters making up the feature vector (in the order of
-# xfel_gui_dialogs.CELL_PARAMETERS), the DBSCAN epsilon and whether to plot
-# every pair of features rather than the first three. The tab rebinds its record
-# as a whole whenever any of these change and never mutates it, so the sentinel
-# thread, which reads it once per cycle, sees either the old or the new settings
-# and never a mixture.
-ClusterSettings = collections.namedtuple('ClusterSettings', ['space_group', 'features', 'eps', 'plot_all_pairs'])
+# xfel_gui_dialogs.CELL_PARAMETERS), the DBSCAN epsilon, whether to plot every
+# pair of features rather than the first three, and what to draw beside the
+# projections ('probability' plot or 'volume' histogram). The tab rebinds its
+# record as a whole whenever any of these change and never mutates it, so the
+# sentinel thread, which reads it once per cycle, sees either the old or the new
+# settings and never a mixture.
+ClusterSettings = collections.namedtuple('ClusterSettings',
+                                         ['space_group', 'features', 'eps', 'plot_all_pairs', 'side_plot'])
 
 def clustering_feature_vector(sginfo):
   ''' The default feature vector to cluster the cells of a space group on, or
@@ -965,17 +967,17 @@ class UnitCellSentinel(Thread):
             # reference here also lets us write the covariance pickle below.
             plots = dbscan_plot_manager(_params)
             labels = [dlg.CELL_PARAMETER_LABELS[f] for f in features]
-            # the plot manager's layout draws the first three features only
-            all_pairs = settings.plot_all_pairs and len(features) > 3
+            # the cells in the order the plot manager saw them, for the volume histogram
+            cells = [(c['a'], c['b'], c['c'], c['alpha'], c['beta'], c['gamma']) for c in info_list[0]]
             def _draw_cluster():
               figure.clear()
-              if all_pairs:
-                pltr.plot_cluster_feature_pairs(figure, plots)
-                figure.suptitle('Clustered on %s' % ', '.join(labels))
-              else:
-                plots.wrap_3D_features(fig=figure, embedded=True)
-                if len(labels) > 3:
-                  figure.suptitle('Clustered on %s; showing %s' % (', '.join(labels), ', '.join(labels[:3])))
+              shown = pltr.plot_unit_cell_clustering(figure, plots, cells,
+                                                     all_pairs=settings.plot_all_pairs,
+                                                     side_plot=settings.side_plot)
+              title = 'Clustered on %s' % ', '.join(labels)
+              if shown < len(labels):
+                title += '; showing %s' % ', '.join(labels[:shown])
+              figure.suptitle(title)
               figure.canvas.draw_idle()
             wx.CallAfter(_draw_cluster)
             cluster_dir = os.path.join(self.parent.params.output_folder, "cluster")
@@ -3313,16 +3315,18 @@ class UnitCellTab(BaseTab):
     previous = self.cluster_settings
     self.cluster_settings = ClusterSettings(symbol, default.split(',') if default else [],
                                             previous.eps if previous is not None else 0.8,
-                                            previous.plot_all_pairs if previous is not None else False)
+                                            previous.plot_all_pairs if previous is not None else False,
+                                            previous.side_plot if previous is not None else 'probability')
 
   def onClusterOptions(self, e):
     settings = self.cluster_settings
     options = dlg.ClusterOptionsDialog(self, eps=settings.eps, features=settings.features,
                                        space_group=settings.space_group,
-                                       plot_all_pairs=settings.plot_all_pairs)
+                                       plot_all_pairs=settings.plot_all_pairs,
+                                       side_plot=settings.side_plot)
     if options.ShowModal() == wx.ID_OK:
       self.cluster_settings = ClusterSettings(settings.space_group, options.features, options.eps,
-                                              options.plot_all_pairs)
+                                              options.plot_all_pairs, options.side_plot)
     options.Destroy()
 
   def find_tags(self):
