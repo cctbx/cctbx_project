@@ -599,6 +599,55 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             self.scrap_results.append(self.scrap_dict)
 
 
+class ExplicitDriftScraper(BaseDriftScraper):
+  """Drift scraper for a caller that already knows which combining phils to
+  read and what they are: a list of (combine_phil_path, metadata) entries, the
+  metadata being the 'merge', 'run', 'rungroup', 'trial', 'task' and 'chunk'
+  values the other scrapers infer from the paths. The cctbx.xfel GUI builds
+  these from its database. Results are cached per combining phil in `cache`,
+  a dict the caller may persist, keyed by path and keeping the refined
+  experiments' modification time, so a later scrap re-reads only chunks that
+  are new or have changed."""
+  input_kind = None  # not selectable through scrap.input.kind
+
+  def __init__(self, table: DriftTable, parameters,
+               entries: Sequence[Tuple[str, dict]], cache: dict = None) -> None:
+    super().__init__(table=table, parameters=parameters)
+    self.entries = list(entries)
+    self.cache = cache if cache is not None else {}
+
+  @staticmethod
+  def refined_mtime(combine_phil_path: str) -> float:
+    path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
+    mtimes = [os.path.getmtime(p) for p in path_lookup(path_stem + '_refined.expt')]
+    return max(mtimes) if mtimes else -1.
+
+  def scrap(self) -> None:
+    for combine_phil_path, metadata in self.entries:
+      mtime = self.refined_mtime(combine_phil_path)
+      cached = self.cache.get(combine_phil_path)
+      if cached is not None and cached[0] == mtime:
+        self.scrap_results.append(cached[1])
+        continue
+      try:
+        self.scrap_dict = dict(metadata)
+        refined_expts, refined_refls = self.locate_refined_expts_refls(combine_phil_path)
+        elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
+        if elen == 0:
+          continue
+        self.scrap_dict.update({'expts': elen, 'refls': rlen})
+        self.scrap_origin(refined_expts)
+        self.scrap_unit_cell(refined_expts)
+        self.scrap_origin_deltas(refined_expts, refined_refls)
+      except (KeyError, IndexError, JSONDecodeError, OSError) as e:
+        print(e)
+      else:
+        self.cache[combine_phil_path] = (mtime, self.scrap_dict)
+        self.scrap_results.append(self.scrap_dict)
+    for scrap_dict in self.scrap_results:
+      self.table.add(scrap_dict)
+
+
 class DriftScraperMixin(object):
   scrap_dict: Dict[str, Union[str, float, Sequence]]
 
@@ -788,9 +837,8 @@ class DriftScraperFactory(object):
   }
 
   @classmethod
-  def get_drift_scraper(cls, table: DriftTable, parameters) \
-          -> BaseDriftScraper:
-    base = DriftScraperRegistrar.REGISTRY[parameters.scrap.input.kind]
+  def get_drift_scraper_class(cls, base: type, parameters) -> type:
+    """Combine a scraper base class with the mixins phil `parameters` ask for"""
     mixins = [
       cls.ORIGIN_MIXINS[parameters.scrap.origin],
       cls.UNCERTAINTIES_MIXINS[parameters.scrap.uncertainties],
@@ -798,7 +846,13 @@ class DriftScraperFactory(object):
     ]
     class DriftScraper(base, *mixins):
       """The actual data scraping class generated based on phil parameters"""
-    return DriftScraper(table=table, parameters=parameters)
+    return DriftScraper
+
+  @classmethod
+  def get_drift_scraper(cls, table: DriftTable, parameters) \
+          -> BaseDriftScraper:
+    base = DriftScraperRegistrar.REGISTRY[parameters.scrap.input.kind]
+    return cls.get_drift_scraper_class(base, parameters)(table=table, parameters=parameters)
 
 
 ############################## DRIFT VISUALIZING ##############################
@@ -806,7 +860,11 @@ class DriftScraperFactory(object):
 
 class DriftArtist(object):
   """Object responsible for plotting an instance of `DriftTable`."""
-  def __init__(self, table: DriftTable, parameters):
+  def __init__(self, table: DriftTable, parameters, fig: plt.Figure = None):
+    """Plot `table`; into `fig` when given (which is cleared and never shown
+    interactively, for embedding), else into a new pyplot figure."""
+    self.embedded = fig is not None
+    self.fig = fig
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
     self.corr_colormap = plt.get_cmap(parameters.plot.color.correlation)
@@ -821,7 +879,11 @@ class DriftArtist(object):
     self._setup_figure()
 
   def _init_figure(self) -> None:
-    self.fig = plt.figure(tight_layout=True)
+    if self.embedded:
+      self.fig.clear()
+      self.fig.set_tight_layout(True)
+    else:
+      self.fig = plt.figure(tight_layout=True)
     gs = GridSpec(7, 2, hspace=0, wspace=0, width_ratios=[4, 1],
                   height_ratios=[2, 3, 3, 3, 3, 3, 3])
     self.axh = self.fig.add_subplot(gs[0, 0])
@@ -986,7 +1048,7 @@ class DriftArtist(object):
       self.fig.set_size_inches(self.parameters.plot.width,
                                self.parameters.plot.height)
       self.fig.savefig(self.parameters.plot.path)
-    if self.parameters.plot.show:
+    if self.parameters.plot.show and not self.embedded:
       plt.show()
 
 
