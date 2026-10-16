@@ -306,30 +306,27 @@ xtc_phil_str = '''
     logging_dir = None
       .type = str
       .help = Directory output log files will be placed
-    experiments_filename = %s.expt
+    imported_suffix = None
       .type = str
-      .help = The filename for output experiment list
-    strong_filename = %s_strong.refl
+      .help = The suffix for imported experiments. Not written by cxi.xtc_process.
+    strong_suffix = strong
       .type = str
-      .help = The filename for strong reflections from spot finder output.
-    indexed_filename = %s_indexed.refl
+      .help = The suffix for strong reflections, written as hit-<timestamp>_<suffix>.refl \
+              when dispatch.dump_strong is set
+    indexed_suffix = indexed
       .type = str
-      .help = The filename for indexed reflections.
-    refined_experiments_filename = %s_refined.expt
+      .help = The suffix for indexed experiments and reflections.
+    refined_suffix = refined
       .type = str
-      .help = The filename for saving refined experimental models
-    integrated_filename = %s_integrated.refl
+      .help = The suffix for refined experiments and reflections. Only used if \
+              dispatch.refine=True
+    integrated_suffix = integrated
       .type = str
-      .help = The filename for final experimental modls
-    integrated_experiments_filename = %s_integrated.expt
+      .help = The suffix for final integrated experiments and reflections.
+    coset_suffix = coset
       .type = str
-      .help = The filename for final integrated reflections.
-    coset_filename = %s_coset%d.refl
-      .type = str
-      .help = The filename for final coset reflections.
-    coset_experiments_filename = %s_coset%d.expt
-      .type = str
-      .help = The filename for saving final coset experimental models.
+      .help = The suffix for final coset experiments and reflections. The coset \
+              transformation number is appended, e.g. coset6
     profile_filename = None
       .type = str
       .help = The filename for output reflection profile parameters
@@ -476,13 +473,31 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     self.composite_tag = None
     self.all_imported_experiments = None
+    self.all_strong_experiments = None
     self.all_strong_reflections = None
     self.all_indexed_experiments = None
     self.all_indexed_reflections = None
+    self.all_refined_experiments = None
+    self.all_refined_reflections = None
     self.all_integrated_experiments = None
     self.all_integrated_reflections = None
+    self.all_coset_experiments = None
+    self.all_coset_reflections = None
     self.all_int_pickle_filenames = []
     self.all_int_pickles = []
+
+    # Output file names, set from the templates by setup_filenames
+    self.imported_filename = None
+    self.strong_experiments_filename = None
+    self.strong_reflections_filename = None
+    self.indexed_experiments_filename = None
+    self.indexed_reflections_filename = None
+    self.refined_experiments_filename = None
+    self.refined_reflections_filename = None
+    self.integrated_experiments_filename = None
+    self.integrated_reflections_filename = None
+    self.coset_experiments_filename = None
+    self.coset_reflections_filename = None
 
     self.cached_ranges = None
 
@@ -492,6 +507,21 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     self.idxr = None
     self.debug_file_handle = None
+
+  def setup_filename_templates(self, params):
+    """Build the output file name templates from the output.XXX_suffix
+    parameters, matching dials.stills_process.Processor.__init__"""
+    suffix = params.output.imported_suffix
+    self.imported_filename_template = "%%s_%s.expt" % suffix if suffix else None
+    for stage in ("strong", "indexed", "refined", "integrated"):
+      suffix = getattr(params.output, stage + "_suffix")
+      setattr(self, stage + "_experiments_filename_template", "%%s_%s.expt" % suffix if suffix else None)
+      setattr(self, stage + "_reflections_filename_template", "%%s_%s.refl" % suffix if suffix else None)
+    if params.dispatch.coset:
+      suffix = params.output.coset_suffix
+      self.coset_experiments_filename_template = "%%s_%s%%d.expt" % suffix if suffix else None
+      self.coset_reflections_filename_template = "%%s_%s%%d.refl" % suffix if suffix else None
+    self.reindexedstrong_filename_template = params.output.reindexedstrong_filename
 
   def debug_start(self, ts):
     self.debug_str = "%s,%s"%(socket.gethostname(), ts)
@@ -601,26 +631,24 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     if params.output.composite_output:
       self.all_imported_experiments = ExperimentList()
+      self.all_strong_experiments = ExperimentList()
       self.all_strong_reflections = flex.reflection_table()
       self.all_indexed_experiments = ExperimentList()
       self.all_indexed_reflections = flex.reflection_table()
+      self.all_refined_experiments = ExperimentList()
+      self.all_refined_reflections = flex.reflection_table()
       self.all_integrated_experiments = ExperimentList()
       self.all_integrated_reflections = flex.reflection_table()
-    else:
-      # The convention is to put %s in the phil parameter to add a time stamp to
-      # each output datafile. Save the initial templates here.
-      self.strong_filename_template                 = params.output.strong_filename
-      self.indexed_filename_template                = params.output.indexed_filename
-      self.refined_experiments_filename_template    = params.output.refined_experiments_filename
-      self.integrated_filename_template             = params.output.integrated_filename
-      self.integrated_experiments_filename_template = params.output.integrated_experiments_filename
-      self.coset_filename_template                  = params.output.coset_filename
-      self.coset_experiments_filename_template      = params.output.coset_experiments_filename
-      self.reindexedstrong_filename_template        = params.output.reindexedstrong_filename
+      self.all_coset_experiments = ExperimentList()
+      self.all_coset_reflections = flex.reflection_table()
+
+    # Output file name templates. The %s is replaced with the image tag by
+    # setup_filenames, per image or once per process for composite output.
+    self.setup_filename_templates(params)
 
     # Don't allow the strong reflections to be written unless there are enough to
-    # process
-    params.output.strong_filename = None
+    # process. The strong template saved above is used instead.
+    params.output.strong_suffix = None
 
     # Save the paramters
     self.params_cache = copy.deepcopy(params)
@@ -938,7 +966,11 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         for filename in os.listdir(params.output.output_dir):
           if not filename.endswith("_indexed.refl"):
             continue
-          experiment_jsons.append(os.path.join(params.output.output_dir, filename.split("_indexed.refl")[0] + "_refined.expt"))
+          base = os.path.join(params.output.output_dir, filename.split("_indexed.refl")[0])
+          if os.path.exists(base + "_refined.expt"):
+            experiment_jsons.append(base + "_refined.expt")
+          else:
+            experiment_jsons.append(base + "_indexed.expt")
           indexed_tables.append(os.path.join(params.output.output_dir, filename))
           if params.format.file_format == "cbf":
             images.append(os.path.join(params.output.output_dir, filename.split("_indexed.refl")[0] + ".cbf"))
@@ -988,7 +1020,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
             refls = reflections.select(reflections['id'] == expt_id)
             refls['id'] = flex.int(len(refls), 0)
             base_name = os.path.splitext(os.path.basename(img_file))[0]
-            self.params.output.integrated_filename = os.path.join(reint_dir, base_name + "_integrated.refl")
+            self.integrated_reflections_filename = os.path.join(reint_dir, base_name + "_integrated.refl")
+            self.integrated_experiments_filename = os.path.join(reint_dir, base_name + "_integrated.expt")
 
             expts = ExperimentList([expt])
             self.integrate(expts, refls)
@@ -1172,25 +1205,23 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     # before calling DIALS for processing, set output paths according to the templates
     if not self.params.output.composite_output:
-      if self.indexed_filename_template is not None and "%s" in self.indexed_filename_template:
-        self.params.output.indexed_filename = os.path.join(self.params.output.output_dir, self.indexed_filename_template%("idx-" + s))
-      if "%s" in self.refined_experiments_filename_template:
-        self.params.output.refined_experiments_filename = os.path.join(self.params.output.output_dir, self.refined_experiments_filename_template%("idx-" + s))
-      if "%s" in self.integrated_filename_template:
-        self.params.output.integrated_filename = os.path.join(self.params.output.output_dir, self.integrated_filename_template%("idx-" + s))
-      if "%s" in self.integrated_experiments_filename_template:
-        self.params.output.integrated_experiments_filename = os.path.join(self.params.output.output_dir, self.integrated_experiments_filename_template%("idx-" + s))
-      if "%s" in self.coset_filename_template:
-        self.params.output.coset_filename = os.path.join(self.params.output.output_dir, self.coset_filename_template%("idx-" + s,
-          self.params.integration.coset.transformation))
-      if "%s" in self.coset_experiments_filename_template:
-        self.params.output.coset_experiments_filename = os.path.join(self.params.output.output_dir, self.coset_experiments_filename_template%("idx-" + s,
-          self.params.integration.coset.transformation))
+      self.setup_filenames(s)
       if "%s" in self.reindexedstrong_filename_template:
         self.params.output.reindexedstrong_filename = os.path.join(self.params.output.output_dir, self.reindexedstrong_filename_template%("idx-" + s))
 
     if self.params.input.known_orientations_folder is not None:
-      expected_orientation_path = os.path.join(self.params.input.known_orientations_folder, os.path.basename(self.params.output.refined_experiments_filename))
+      # Look for the experiments file this image would produce. Results from
+      # older versions named the refined models idx-<timestamp>_refined.expt.
+      candidates = []
+      if self.params.dispatch.refine and self.refined_experiments_filename_template:
+        candidates.append(self.refined_experiments_filename_template%("idx-" + s))
+      if self.indexed_experiments_filename_template:
+        candidates.append(self.indexed_experiments_filename_template%("idx-" + s))
+      candidates.append("idx-%s_refined.expt"%s)
+      for candidate in candidates:
+        expected_orientation_path = os.path.join(self.params.input.known_orientations_folder, os.path.basename(candidate))
+        if os.path.exists(expected_orientation_path):
+          break
       if os.path.exists(expected_orientation_path):
         print("Known orientation found")
         from dxtbx.model.experiment_list import ExperimentListFactory
@@ -1239,12 +1270,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
       # save strong reflections.  self.find_spots() would have done this, but we only
       # want to save data if it is enough to try and index it
-      if self.strong_filename_template:
-        if "%s" in self.strong_filename_template:
-          strong_filename = self.strong_filename_template%("hit-" + s)
-        else:
-          strong_filename = self.strong_filename_template
-        strong_filename = os.path.join(self.params.output.output_dir, strong_filename)
+      if self.strong_reflections_filename_template:
+        strong_filename = os.path.join(self.params.output.output_dir, self.strong_reflections_filename_template%("hit-" + s))
 
         from dials.util.command_line import Command
         Command.start('Saving {0} reflections to {1}'.format(
@@ -1398,15 +1425,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     if self.params.output.composite_output:
       # Each process will write its own set of output files
       s = self.composite_tag
-      self.params.output.indexed_filename                = os.path.join(self.params.output.output_dir, self.params.output.indexed_filename%("idx-" + s))
-      self.params.output.refined_experiments_filename    = os.path.join(self.params.output.output_dir, self.params.output.refined_experiments_filename%("idx-" + s))
-      self.params.output.integrated_filename             = os.path.join(self.params.output.output_dir, self.params.output.integrated_filename%("idx-" + s))
-      self.params.output.integrated_experiments_filename = os.path.join(self.params.output.output_dir, self.params.output.integrated_experiments_filename%("idx-" + s))
-      self.params.output.coset_filename                  = os.path.join(self.params.output.output_dir, self.params.output.coset_filename%("idx-" + s,
-        self.params.integration.coset.transformation))
-      self.params.output.coset_experiments_filename      = os.path.join(self.params.output.output_dir, self.params.output.coset_experiments_filename%("idx-" + s,
-        self.params.integration.coset.transformation))
-      self.params.output.reindexedstrong_filename        = os.path.join(self.params.output.output_dir, self.params.output.reindexedstrong_filename%("idx-" + s))
+      self.setup_filenames(s)
+      self.params.output.reindexedstrong_filename = os.path.join(self.params.output.output_dir, self.params.output.reindexedstrong_filename%("idx-" + s))
 
     super(InMemScript, self).finalize()
 

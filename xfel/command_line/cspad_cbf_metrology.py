@@ -248,16 +248,18 @@ def find_files(path, reflections):
     if reflections in filename:
       extension = os.path.splitext(filename)[1]
       if extension not in ['.pickle', '.mpack', '.refl']: continue
+      base = os.path.join(path, filename.rstrip("_%s%s"%(reflections, extension)))
       if extension == ".pickle":
-        exp_path = os.path.join(path, filename.rstrip("_%s%s"%(reflections, extension)) + "_refined_experiments.json")
+        candidates = ["_refined_experiments.json", "_experiments.json"]
       else:
-        exp_path = os.path.join(path, filename.rstrip("_%s%s"%(reflections, extension)) + "_refined.expt")
-      if not os.path.exists(exp_path):
-        if extension == ".pickle":
-          exp_path = os.path.join(path, filename.rstrip("_%s%s"%(reflections, extension)) + "_experiments.json")
-        else:
-          exp_path = os.path.join(path, filename.rstrip("_%s%s"%(reflections, extension)) + "_indexed.expt")
-        if not os.path.exists(exp_path): continue
+        # dials.stills_process writes the experiments with the same suffix as
+        # the reflections; older results used _refined.expt or _indexed.expt
+        candidates = ["_%s.expt"%reflections, "_refined.expt", "_indexed.expt"]
+      for candidate in candidates:
+        exp_path = base + candidate
+        if os.path.exists(exp_path): break
+      else:
+        continue
       all_exp.append(exp_path)
       all_ref.append(os.path.join(path, filename))
   return all_exp, all_ref
