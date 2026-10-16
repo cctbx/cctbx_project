@@ -5687,10 +5687,10 @@ def free_cell_parameters(space_group_symbol):
 class ClusterOptionsDialog(BaseDialog):
   ''' Settings for clustering the unit cells on the Unit Cell tab: the DBSCAN
       epsilon and which cell parameters make up the feature vector. Parameters
-      the trial's space group fixes cannot be chosen. On OK, eps and features
-      hold the validated values. '''
+      the trial's space group fixes cannot be chosen. On OK, eps, features and
+      plot_all_pairs hold the validated values. '''
 
-  def __init__(self, parent, eps, features, space_group,
+  def __init__(self, parent, eps, features, space_group, plot_all_pairs=False,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
@@ -5702,6 +5702,7 @@ class ClusterOptionsDialog(BaseDialog):
 
     self.eps = eps
     self.features = list(features)
+    self.plot_all_pairs = plot_all_pairs
     free = free_cell_parameters(space_group)
 
     self.plot_eps = gctr.OptionCtrl(self,
@@ -5731,6 +5732,11 @@ class ClusterOptionsDialog(BaseDialog):
     features_sizer.Add(grid, flag=wx.ALL, border=10)
     self.main_sizer.Add(features_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.chk_all_pairs = wx.CheckBox(self, name='uc_plot_all_pairs', label='Plot all pairs of features')
+    self.chk_all_pairs.SetValue(plot_all_pairs)
+    setup_tooltip(self.chk_all_pairs)
+    self.main_sizer.Add(self.chk_all_pairs, flag=wx.ALL, border=10)
+
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -5754,4 +5760,5 @@ class ClusterOptionsDialog(BaseDialog):
       return
     self.eps = eps
     self.features = features
+    self.plot_all_pairs = self.chk_all_pairs.GetValue()
     e.Skip()

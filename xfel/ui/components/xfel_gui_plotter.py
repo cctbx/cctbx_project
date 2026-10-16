@@ -418,3 +418,27 @@ class PopUpCharts(object):
     ax.set_xlabel(AA)
     ax.set_ylabel(BB)
     ax.set_zlabel(CC)
+
+def plot_cluster_feature_pairs(figure, plots):
+  ''' Corner plot of a unit cell clustering: every pair of features in the
+      feature vector as one panel of a lower-triangular grid, feature j along x
+      against feature i along y for j < i, drawn by the uc_metrics plot manager
+      (plots) into the given figure. The probability plot takes the empty
+      upper right and the cluster report a strip along the bottom. For three
+      features this shows the same pairs as the manager's own layout; it is
+      meant for longer vectors, which that layout truncates to the first three. '''
+  features = plots.FV.features_
+  n = len(features)
+  assert n >= 3, 'a corner plot needs at least three features'
+  gsp = GridSpec(n - 1, n - 1, figure=figure, bottom=0.18)
+  columns = {}
+  rows = {}
+  for i in range(1, n):
+    for j in range(i):
+      subplot = figure.add_subplot(gsp[i - 1, j], sharex=columns.get(j), sharey=rows.get(i))
+      plots.plot_2D_features(ax=(j, i), plt=subplot)
+      subplot.label_outer()
+      columns.setdefault(j, subplot)
+      rows.setdefault(i, subplot)
+  plots.qq(figure.add_subplot(gsp[0, n - 2]))
+  figure.text(s=plots.legend, x=0.05, y=0.02, va='bottom', fontsize='small', fontfamily='monospace')

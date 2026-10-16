@@ -181,6 +181,9 @@ tooltips = {
   'uc_feature_alpha': 'Include the α angle in the feature vector',
   'uc_feature_beta': 'Include the β angle in the feature vector',
   'uc_feature_gamma': 'Include the γ angle in the feature vector',
+  'uc_plot_all_pairs': 'Show every pair of features as a panel of a corner plot. '
+                       'Otherwise the plot shows the first three features only, '
+                       'which for three or fewer features is already every pair.',
   # Dataset scaling stage — unit-cell cluster filter
   'chk_use_cluster': 'When checked, filter lattices using a covariance model previously '
                      'computed on the Unit Cells tab. When unchecked, the relative-length '

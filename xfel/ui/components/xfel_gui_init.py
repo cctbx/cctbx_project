@@ -824,11 +824,12 @@ CLUSTERING_FEATURE_VECTORS = {
 
 # What the Unit Cell tab clusters with: the space group symbol the features were
 # chosen for, the cell parameters making up the feature vector (in the order of
-# xfel_gui_dialogs.CELL_PARAMETERS) and the DBSCAN epsilon. The tab rebinds its
-# record as a whole whenever any of these change and never mutates it, so the
-# sentinel thread, which reads it once per cycle, sees either the old or the new
-# settings and never a mixture.
-ClusterSettings = collections.namedtuple('ClusterSettings', ['space_group', 'features', 'eps'])
+# xfel_gui_dialogs.CELL_PARAMETERS), the DBSCAN epsilon and whether to plot
+# every pair of features rather than the first three. The tab rebinds its record
+# as a whole whenever any of these change and never mutates it, so the sentinel
+# thread, which reads it once per cycle, sees either the old or the new settings
+# and never a mixture.
+ClusterSettings = collections.namedtuple('ClusterSettings', ['space_group', 'features', 'eps', 'plot_all_pairs'])
 
 def clustering_feature_vector(sginfo):
   ''' The default feature vector to cluster the cells of a space group on, or
@@ -958,12 +959,17 @@ class UnitCellSentinel(Thread):
             # reference here also lets us write the covariance pickle below.
             plots = dbscan_plot_manager(_params)
             labels = [dlg.CELL_PARAMETER_LABELS[f] for f in features]
+            # the plot manager's layout draws the first three features only
+            all_pairs = settings.plot_all_pairs and len(features) > 3
             def _draw_cluster():
               figure.clear()
-              plots.wrap_3D_features(fig=figure, embedded=True)
-              if len(labels) > 3:
-                # the plot manager draws the first three features only
-                figure.suptitle('Clustered on %s; showing %s' % (', '.join(labels), ', '.join(labels[:3])))
+              if all_pairs:
+                pltr.plot_cluster_feature_pairs(figure, plots)
+                figure.suptitle('Clustered on %s' % ', '.join(labels))
+              else:
+                plots.wrap_3D_features(fig=figure, embedded=True)
+                if len(labels) > 3:
+                  figure.suptitle('Clustered on %s; showing %s' % (', '.join(labels), ', '.join(labels[:3])))
               figure.canvas.draw_idle()
             wx.CallAfter(_draw_cluster)
             cluster_dir = os.path.join(self.parent.params.output_folder, "cluster")
@@ -3298,15 +3304,19 @@ class UnitCellTab(BaseTab):
       return
     from cctbx.sgtbx import space_group_info
     default = clustering_feature_vector(space_group_info(symbol))
-    eps = self.cluster_settings.eps if self.cluster_settings is not None else 0.8
-    self.cluster_settings = ClusterSettings(symbol, default.split(',') if default else [], eps)
+    previous = self.cluster_settings
+    self.cluster_settings = ClusterSettings(symbol, default.split(',') if default else [],
+                                            previous.eps if previous is not None else 0.8,
+                                            previous.plot_all_pairs if previous is not None else False)
 
   def onClusterOptions(self, e):
     settings = self.cluster_settings
     options = dlg.ClusterOptionsDialog(self, eps=settings.eps, features=settings.features,
-                                       space_group=settings.space_group)
+                                       space_group=settings.space_group,
+                                       plot_all_pairs=settings.plot_all_pairs)
     if options.ShowModal() == wx.ID_OK:
-      self.cluster_settings = ClusterSettings(settings.space_group, options.features, options.eps)
+      self.cluster_settings = ClusterSettings(settings.space_group, options.features, options.eps,
+                                              options.plot_all_pairs)
     options.Destroy()
 
   def find_tags(self):
