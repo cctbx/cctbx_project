@@ -184,6 +184,11 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
   // Export the helper functions
   def("set_atom_i_seq", set_atom_i_seq, "Set the i_seq on an atom, required for Phantom Hydrogen processing.");
 
+  def("getAtomsWithinNBonds", getAtomsWithinNBonds,
+      (arg("atom"), arg("bondedNeighborLists"), arg("extraAtomInfo"), arg("probeRad"), arg("N"),
+       arg("nonHydrogenN") = 1e10),
+      "C++ implementation of mmtbx.probe.Helpers.getAtomsWithinNBonds.");
+
   // The two SpatialQuery arguments are referenced, so keep them alive with the ContactDB.
   class_<ContactDB>("ContactDB", init<ExtraAtomInfoMap const&, DotScorer const&, SpatialQuery&,
                                       SpatialQuery&, DotSphereCache const&>()
@@ -193,11 +198,14 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .def("set_params", &ContactDB::set_params)
     .def("build", &ContactDB::build)
     .def("pairs", &ContactDB::pairs)
+    .def("set_keep_dots", &ContactDB::set_keep_dots)
+    .def("dots", &ContactDB::dots)
     ;
   scope().attr("ContactDB_IGNORE") = int(ContactDB::IGNORE);
   scope().attr("ContactDB_MAINCHAIN") = int(ContactDB::MAINCHAIN);
   scope().attr("ContactDB_HET") = int(ContactDB::HET);
   scope().attr("ContactDB_WATER") = int(ContactDB::WATER);
   scope().attr("ContactDB_TARGET") = int(ContactDB::TARGET);
+  scope().attr("ContactDB_SIDECHAIN") = int(ContactDB::SIDECHAIN);
   scope().attr("ContactDB_N_TYPES") = int(ContactDB::N_TYPES);
 }
