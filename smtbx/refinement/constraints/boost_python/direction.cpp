@@ -22,7 +22,7 @@ namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       class_<wt, bases<direction_base>,
-          std::auto_ptr<wt> >("static_direction", no_init)
+          boost::shared_ptr<wt> >("static_direction", no_init)
         .def(init<cart_t const &>
           ((arg("direction"))))
         .def("best_line", &wt::best_line,
@@ -47,7 +47,7 @@ namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       class_<wt, bases<direction_base>,
-          std::auto_ptr<wt> >("vector_direction", no_init)
+          boost::shared_ptr<wt> >("vector_direction", no_init)
         .def(init<site_parameter *,
           site_parameter *>
             ((arg("from"),
@@ -64,7 +64,7 @@ namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       class_<wt, bases<direction_base>,
-          std::auto_ptr<wt> >("normal_direction", no_init)
+          boost::shared_ptr<wt> >("normal_direction", no_init)
         .def(init<af::shared<site_parameter *> const &>
           ((arg("sites"))))
         ;

@@ -107,7 +107,7 @@ namespace molprobity {
 
       /// We need the less-than operator to be defined on our atom type so that we can
       /// insert it into a set.
-      struct atom_less : public std::binary_function<iotbx::pdb::hierarchy::atom, iotbx::pdb::hierarchy::atom, bool> {
+      struct atom_less {
         bool operator()(const iotbx::pdb::hierarchy::atom& lhs, const iotbx::pdb::hierarchy::atom& rhs) const
         {
           return lhs.data.get() < rhs.data.get();

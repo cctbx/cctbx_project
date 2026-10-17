@@ -322,8 +322,9 @@ class atom_parser(parser, variable_decoder):
     scatterer_index = 0
     conformer_index = 0
     sym_excl_index = 0
+    part_number = 0
     part_sof = None
-    current_residue = (None, None)
+    current_residue = (None, None, None)
     line_of_scatterer_named = {}
     in_the_midst_of_atom_list = False
     idx_assigned_by_builder_to_free_var_idx = {}
@@ -359,8 +360,29 @@ class atom_parser(parser, variable_decoder):
         if part_number > 0: conformer_index = part_number
         elif part_number < 0: sym_excl_index = abs(part_number)
       elif cmd == "RESI":
-        current_residue = args
-        self.builder.add_residue(*current_residue)
+        # RESI takes a class and a number, and ShelXL tells them apart by
+        # whether the token is a number rather than by where it sits: the
+        # manual gives the class first, which is what a protein .res written
+        # by ShelXL has, but the other order is met with too. Taking them
+        # positionally swapped the two, and the duplicate check below then
+        # keyed on the class -- so every proline collided with every other.
+        # Olex2 qualifies the number with a chain, as "A:1". ShelXL itself
+        # has no chains, but a file exported from a PDB or mmCIF entry always
+        # carries them, and taking "A:1" for a class left every residue at
+        # number 0 -- so every chain's backbone N collided with every other
+        # and the file would not load at all.
+        residue_number, residue_class, chain = 0, None, None
+        for arg in args:
+          token = arg
+          if isinstance(token, str) and ':' in token:
+            chain, _, token = token.partition(':')
+          try:
+            residue_number = int(token)
+          except (TypeError, ValueError):
+            if residue_class is None:
+              residue_class = arg
+        current_residue = (residue_number, residue_class, chain)
+        self.builder.add_residue(residue_number, residue_class)
       elif cmd == '__ATOM__':
         if not in_the_midst_of_atom_list:
           if self.label_for_sfac is None:
@@ -369,16 +391,26 @@ class atom_parser(parser, variable_decoder):
           in_the_midst_of_atom_list = True
         scatterer, behaviour_of_variable = self.lex_scatterer(
           args, scatterer_index)
-        residue_number, residue_class = current_residue
+        residue_number, residue_class, residue_chain = current_residue
         name = scatterer.label.upper()
-        line_1 = line_of_scatterer_named.get((residue_number, name))
+        # Keyed on the chain as well: two chains of the same protein hold the
+        # same residue numbers and the same atom names, so without it a
+        # multi-chain model looks like one full of duplicates.
+        # The disorder part belongs in the key too: ShelXL lets alternate
+        # conformers of one atom keep the same name and tells them apart by
+        # PART, which is what a file written from an mmCIF does - the PDB
+        # atom name is the join to every geometry table, so renaming the
+        # second conformer to keep this check happy loses it.
+        key = (residue_chain, residue_number, part_number, name)
+        line_1 = line_of_scatterer_named.get(key)
         if line_1 is not None:
-          raise shelx_error("Residue #%i has two scatterers named %s, "
-                            "(with perhaps a difference in letter case)"
-                            "defined at lines %i and %i"
-                            % (residue_number, name, line, line_1),
+          raise shelx_error("Residue #%s%s has two scatterers named %s "
+                            "(with perhaps a difference in letter case), "
+                            "defined at lines %s and %s"
+                            % ("%s:" % residue_chain if residue_chain else "",
+                               residue_number, name, line, line_1),
                             line=None)
-        line_of_scatterer_named[(residue_number, name)] = line
+        line_of_scatterer_named[key] = line
         if (conformer_index or sym_excl_index) and part_sof:
           scatterer.occupancy, behaviour_of_variable[3] = part_sof
         builder.add_scatterer(scatterer, behaviour_of_variable,

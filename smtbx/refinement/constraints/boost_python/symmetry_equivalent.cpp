@@ -16,13 +16,13 @@ namespace boost_python {
       return_internal_reference<> rir;
       class_<wt,
              bases<site_parameter>,
-             std::auto_ptr<wt> >("symmetry_equivalent_site_parameter", no_init)
+             boost::shared_ptr<wt> >("symmetry_equivalent_site_parameter", no_init)
         .def(init<site_parameter *, sgtbx::rt_mx const &>
              ((arg("site"), arg("motion"))))
         .add_property("original", make_function(&wt::original, rir))
         .add_property("motion", make_function(&wt::motion, rir))
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 

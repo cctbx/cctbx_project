@@ -5,6 +5,7 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/auto_array.h>
+#include <boost/shared_ptr.hpp>
 #include <map>
 #include <vector>
 
@@ -90,7 +91,7 @@ namespace mmtbx { namespace ncs { namespace cartesian_restraints {
       return af::tiny<unsigned, 2>(0u, 0u);
     }
 
-    std::auto_ptr<pair_registry>
+    boost::shared_ptr<pair_registry>
     proxy_select(af::const_ref<std::size_t> const& iselection) const
     {
       unsigned n_seq = static_cast<unsigned>(tab_i_seqs_.size());
@@ -102,7 +103,7 @@ namespace mmtbx { namespace ncs { namespace cartesian_restraints {
         if (iselection[i] < n_seq) result_n_seq++;
         else                       result_n_addl++;
       }
-      std::auto_ptr<pair_registry> result(
+      boost::shared_ptr<pair_registry> result(
         new pair_registry(result_n_seq, counts_.size()));
       unsigned* result_counts = &*result->counts_.begin();
       result->number_of_additional_isolated_sites = result_n_addl;

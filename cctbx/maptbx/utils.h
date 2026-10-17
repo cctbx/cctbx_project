@@ -282,7 +282,7 @@ DataType cc_peak(
         }
   }}}
   return scitbx::math::linear_correlation<>(
-    m1.ref(), m2.ref()).coefficient();;
+    m1.ref(), m2.ref()).coefficient();
 }
 
 template <typename DataType>

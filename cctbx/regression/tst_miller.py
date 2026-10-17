@@ -2155,8 +2155,8 @@ def exercise_shelxl_extinction_correction():
   ec = xray.shelx_extinction_correction(cs.unit_cell(), value=exti_val,
                                         wavelength=wavelength)
   fc_sq = fc.as_intensity_array().data()
-  coef = [math.sqrt(ec.compute(mi[0],fc_sq[0],False)[0]),
-          math.sqrt(ec.compute(mi[1],fc_sq[1],False)[0])]
+  coef = [math.sqrt(ec.compute(mi[0],fc_sq[0],False)),
+          math.sqrt(ec.compute(mi[1],fc_sq[1],False))]
   assert approx_equal(corr, coef)
 
 def exercise_complete_with1():

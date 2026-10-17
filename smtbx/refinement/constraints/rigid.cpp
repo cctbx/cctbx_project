@@ -1,4 +1,5 @@
 #include <smtbx/refinement/constraints/rigid.h>
+#include <scitbx/math/euler_angles.h>
 
 namespace smtbx { namespace refinement { namespace constraints {
 
@@ -115,35 +116,10 @@ namespace smtbx { namespace refinement { namespace constraints {
       dynamic_cast<scalar_parameter *>(argument(3)),
       dynamic_cast<scalar_parameter *>(argument(4))
     };
-    const double
-      a_v = angles[0]->value, c_a = cos(a_v), s_a = sin(a_v),
-      b_v = angles[1]->value, c_b = cos(b_v), s_b = sin(b_v),
-      g_v = angles[2]->value, c_g = cos(g_v), s_g = sin(g_v),
-      size_value = size->value;
-    // rotation matrix, for ref: http://en.wikipedia.org/wiki/Rotation_matrix
-    const scitbx::mat3<double> rm(
-      c_b*c_g, -c_b*s_g,  s_b,
-      s_a*s_b*c_g + c_a*s_g, -s_a*s_b*s_g+c_a*c_g, -s_a*c_b,
-      -c_a*s_b*c_g + s_a*s_g, c_a*s_b*s_g + s_a*c_g, c_a*c_b
+    scitbx::mat3<double> rmd[3];
+    scitbx::mat3<double> rm = scitbx::math::euler_angles::xyz_matrix_rad(
+      angles[0]->value, angles[1]->value, angles[2]->value, &rmd[0]
     );
-    // derivative of the rotation matrix by angle
-    const scitbx::mat3<double> rmd[3] = {
-      scitbx::mat3<double>(
-        0,                      0,                      0,
-        c_a*s_b*c_g - s_a*s_g, -c_a*s_b*s_g - s_a*c_g, -c_a*c_b,
-        s_a*s_b*c_g + c_a*s_g, -s_a*s_b*s_g + c_a*c_g, -s_a*c_b
-      ),
-      scitbx::mat3<double>(
-        -c_g*s_b,     s_g*s_b,      c_b,
-        s_a*c_g*c_b, -s_a*s_g*c_b,  s_a*s_b,
-        -c_a*c_g*c_b, c_a*s_g*c_b, -c_a*s_b
-      ),
-      scitbx::mat3<double>(
-        -c_b*s_g,               -c_b*c_g,               0,
-        -s_a*s_b*s_g + c_a*c_g, -s_a*s_b*c_g - c_a*s_g, 0,
-         c_a*s_b*s_g + s_a*c_g,  c_a*s_b*c_g - s_a*s_g, 0
-      )
-    };
     if (!crd_initialised) {
       const cart_t original_pivot_crd = unit_cell.orthogonalize(pivot->value);
       cart_t rotation_center = original_pivot_crd;
@@ -158,6 +134,7 @@ namespace smtbx { namespace refinement { namespace constraints {
       crd_initialised = true;
     }
     const cart_t new_pivot_crd = unit_cell.orthogonalize(pivot->value);
+    const double size_value = size->value;
     const cart_t shift = new_pivot_crd - size_value*shift_to_pivot*rm;
     // expansion/contraction happens from/to the center
     for (int i=0; i < scatterers_.size(); i++) {

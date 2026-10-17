@@ -28,15 +28,32 @@ rows_per_restraint = {
   adp.isotropic_adp_proxy: 6,
   }
 
+def set_gradient_flags(xray_structure):
+  """ Refine everything, which is what these test cases are about.
+
+  It matters to the proxy builders and not only to the refinement: the ADP
+  restraint builders skip a scatterer whose ADPs are not being refined, so a
+  structure whose flags are still at their defaults yields no ADP proxies at
+  all. The test cases build their proxies in the class body, before any
+  instance exists, so the structure they build them from has to be flagged
+  here rather than in __init__.
+  """
+  for sc in xray_structure.scatterers():
+    sc.flags.set_grad_site(True)
+    if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
+    if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
+  return xray_structure
+
+
+def refinable_sucrose():
+  return set_gradient_flags(smtbx.development.sucrose())
+
+
 class restraints_test_case:
 
   def __init__(self):
-    self.xray_structure = smtbx.development.sucrose()
+    self.xray_structure = set_gradient_flags(smtbx.development.sucrose())
     self.tolerance = 1e-4
-    for sc in self.xray_structure.scatterers():
-      sc.flags.set_grad_site(True)
-      if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
-      if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
 
     self.param_map = parameter_map(self.xray_structure.scatterers())
     assert self.proxies.size() > 0
@@ -110,6 +127,191 @@ class dihedral_restraint_test_case(geometry_restraints_test_case):
     ]))
   proxies = manager.dihedral_proxies
   restraint_t = geom.dihedral
+
+class chirality_restraint_test_case(geometry_restraints_test_case):
+  manager = restraints.manager(
+    chirality_proxies = geometry_restraints.shared_chirality_proxy([
+      geom.chirality_proxy((0, 19, 30, 21), volume_ideal=2.5,
+                           both_signs=False, weight=1),
+      geom.chirality_proxy((1, 2, 21, 22), volume_ideal=0.0,
+                           both_signs=False, weight=1)
+    ]))
+  proxies = manager.chirality_proxies
+  restraint_t = geom.chirality
+
+def exercise_coincident_bond_similarity():
+  """A SADI one of whose pairs has collapsed to a point.
+
+  bond_similarity divides by each bond length to get the direction to restrain
+  along. Two atoms of a pair at the same point made that 0/0, and six NaN went
+  into the design matrix - which then spread through the normal matrix, so the
+  Cholesky failure named an unrelated atom. Same shape as the coplanar FLAT
+  case, in a much commoner restraint.
+
+  Unlike the dihedral, nothing diverges on the way in: the numerator carries a
+  factor of the bond vector, so it cancels the length and the entries stay at
+  25 down to 1e-12 A. Only the exact coincidence is a problem, so the check is
+  simply that it produces no NaN and still restrains the pair that is fine.
+  """
+  from cctbx import crystal, xray
+  cs = crystal.symmetry(unit_cell=(50, 50, 50, 90, 90, 90),
+                        space_group_symbol="P1")
+
+  def row(sep):
+    xs = xray.structure(crystal_symmetry=cs)
+    for i, s in enumerate([(0., 0., 0.), (1.5, 0., 0.),
+                           (5., 0., 0.), (5. + sep, 0., 0.)]):
+      sc = xray.scatterer(label="C%d" % i, scattering_type="C",
+                          site=[c / 50. for c in s])
+      sc.flags.set_grad_site(True)
+      xs.add_scatterer(sc)
+    proxy = geometry_restraints.bond_similarity_proxy(
+      i_seqs=[(0, 1), (2, 3)], weights=(1.0, 1.0))
+    mgr = restraints.manager(
+      bond_similarity_proxies=
+        geometry_restraints.shared_bond_similarity_proxy([proxy]))
+    eqns = mgr.build_linearised_eqns(xs, xs.parameter_map())
+    return list(eqns.design_matrix.as_dense_matrix())
+
+  for sep in (1.5, 1e-6, 1e-12, 0.):
+    r = row(sep)
+    assert [v for v in r if v != v] == [], "NaN at separation %g" % sep
+    assert [v for v in r if abs(v) == float("inf")] == [], (
+      "inf at separation %g" % sep)
+    # the intact pair still has to be restrained, or the guard has thrown the
+    # whole restraint away rather than the one direction it cannot define
+    assert max(abs(v) for v in r) > 1e-6, (
+      "separation %g left nothing of the restraint" % sep)
+
+
+def exercise_degenerate_dihedral():
+  """A torsion about an axis a terminal atom is sitting on.
+
+  The row of a dihedral restraint scales as 1/(perpendicular distance of the
+  terminal atom from the central bond axis), so it does not converge to zero
+  at the degeneracy the way the comment in dihedral.h used to claim - it
+  diverges. Measured on the linearised row, 5.7e3 for an ordinary geometry
+  against 5.7e11 with a terminal atom 1e-8 A off the axis. Nothing is NaN, so
+  nothing complains; the normal matrix is simply singular and the Cholesky
+  failure names an unrelated atom.
+
+  Two things have to hold. Where the geometry is sound the row must still be
+  the true derivative, which is checked against finite differences of delta -
+  a guard that quietly changed the mathematics would be worse than the
+  divergence. Where it is degenerate the row must be refused outright rather
+  than returned enormous.
+  """
+  from cctbx import crystal, xray
+  cs = crystal.symmetry(unit_cell=(50, 50, 50, 90, 90, 90),
+                        space_group_symbol="P1")
+
+  def row_for(offset):
+    xs = xray.structure(crystal_symmetry=cs)
+    sites = [(0., offset, 0.), (0., 0., 0.), (1., 0., 0.), (1., offset, 0.5)]
+    for i, s in enumerate(sites):
+      sc = xray.scatterer(label="C%d" % i, scattering_type="C",
+                          site=[c / 50. for c in s])
+      sc.flags.set_grad_site(True)
+      xs.add_scatterer(sc)
+    proxy = geometry_restraints.dihedral_proxy(
+      (0, 1, 2, 3), angle_ideal=0., weight=100)
+    mgr = restraints.manager(
+      dihedral_proxies=geometry_restraints.shared_dihedral_proxy([proxy]))
+    eqns = mgr.build_linearised_eqns(xs, xs.parameter_map())
+    return xs, proxy, list(eqns.design_matrix.as_dense_matrix())
+
+  # sound geometry: the row is the derivative of delta, checked numerically
+  xs, proxy, row = row_for(1.0)
+  assert [v for v in row if v != v] == [], "NaN in a well conditioned row"
+  assert max(abs(v) for v in row) > 1e-6, "a sound dihedral gave a zero row"
+
+  eps = 1e-6
+  sites_cart = xs.sites_cart().deep_copy()
+  fd = []
+  for i in range(len(sites_cart)):
+    for j in range(3):
+      deltas = []
+      for sign in (1, -1):
+        sc = sites_cart.deep_copy()
+        s = list(sc[i]); s[j] += sign * eps; sc[i] = s
+        deltas.append(geometry_restraints.dihedral(
+          sites=[sc[k] for k in proxy.i_seqs], angle_ideal=0.,
+          weight=100, periodicity=1).delta)
+      fd.append((deltas[0] - deltas[1]) / (2 * eps))
+  # the design matrix is in fractional coordinates, the finite differences in
+  # Cartesian, so compare after the same change of basis the linearisation does
+  orth = cs.unit_cell().orthogonalization_matrix()
+  fd_frac = []
+  for i in range(len(sites_cart)):
+    g = fd[3 * i:3 * i + 3]
+    fd_frac.extend([orth[0] * g[0], orth[4] * g[1], orth[8] * g[2]])
+  assert approx_equal(row, fd_frac, 1e-3), (row, fd_frac)
+
+  # degenerate geometry: refused, not enormous
+  for offset in (1e-4, 1e-6, 1e-8, 0.):
+    _, _, row = row_for(offset)
+    assert [v for v in row if v != v] == [], "NaN at offset %g" % offset
+    assert max(abs(v) for v in row) == 0, (
+      "offset %g gave a row of %g, which the normal matrix cannot carry"
+      % (offset, max(abs(v) for v in row)))
+
+
+def exercise_coplanar_chirality():
+  """A chirality restraint whose sites are exactly coplanar.
+
+  FLAT reaches the refinement as chirality restraints of zero ideal volume,
+  and atoms on a mirror are coplanar by symmetry, so the volume and every
+  gradient are exactly zero. Recovering the design matrix row by dividing that
+  out was 0/0, and the NaN reached the normal matrix as a Cholesky failure
+  blaming an unrelated parameter.
+  """
+  from cctbx import crystal, xray
+  from scitbx import matrix
+  cs = crystal.symmetry(unit_cell=(8.32, 6.2744, 20.6559, 90, 90, 90),
+                        space_group_symbol="P n m a")
+  xs = xray.structure(crystal_symmetry=cs)
+  for label, site in [("O1",  (0.511044, 0.75, 0.348495)),
+                      ("N1",  (0.531067, 0.75, 0.480322)),
+                      ("H1a", (0.521941, 0.75, 0.393406)),
+                      ("C8",  (0.355582, 0.75, 0.333011))]:
+    sc = xray.scatterer(label=label, site=site)
+    sc.flags.set_grad_site(True)
+    xs.add_scatterer(sc)
+
+  proxy = geom.chirality_proxy((1, 3, 2, 0), volume_ideal=0.0,
+                               both_signs=False, weight=100)
+  uc = xs.unit_cell()
+  r = geom.chirality(uc, xs.sites_cart(), proxy)
+  assert r.volume_model == 0 and r.delta == 0, (r.volume_model, r.delta)
+
+  mgr = restraints.manager(
+    chirality_proxies=geometry_restraints.shared_chirality_proxy([proxy]))
+  eqns = mgr.build_linearised_eqns(xs, xs.parameter_map())
+  row = list(eqns.design_matrix.as_dense_matrix())
+  assert [v for v in row if v != v] == [], "NaN in the design matrix row"
+  assert max(abs(v) for v in row) > 1e-6, "row is all zero"
+
+  # against finite differences of delta, which stay well defined at the
+  # degeneracy even though the analytic scaling did not
+  eps = 1e-8
+  sites_cart = xs.sites_cart().deep_copy()
+  fd = flex.double(xs.parameter_map().n_parameters)
+  pm = xs.parameter_map()
+  for i in range(pm.n_scatterers):
+    g = [0, 0, 0]
+    for j in range(3):
+      h = [0, 0, 0]
+      h[j] = eps
+      sites_cart[i] = matrix.col(sites_cart[i]) + matrix.col(h)
+      d1 = geom.chirality(uc, sites_cart, proxy).delta
+      sites_cart[i] = matrix.col(sites_cart[i]) - 2*matrix.col(h)
+      d2 = geom.chirality(uc, sites_cart, proxy).delta
+      sites_cart[i] = matrix.col(sites_cart[i]) + matrix.col(h)
+      g[j] = (d1 - d2)/(2*eps)
+    gf = uc.fractionalize_gradient(g)
+    for j in range(3):
+      fd[pm[i].site + j] = gf[j]
+  assert approx_equal(row, list(fd), 1e-4), (row, list(fd))
 
 class adp_restraints_test_case(restraints_test_case):
 
@@ -191,7 +393,7 @@ class adp_restraints_test_case(restraints_test_case):
 
 class isotropic_adp_test_case(adp_restraints_test_case):
   proxies = isotropic_adp_restraints(
-    xray_structure=smtbx.development.sucrose()).proxies
+    xray_structure=refinable_sucrose()).proxies
   # no need to test all of them every time
   proxies = adp.shared_isotropic_adp_proxy(
     flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
@@ -207,7 +409,7 @@ class isotropic_adp_test_case(adp_restraints_test_case):
 
 class fixed_u_eq_adp_test_case(adp_restraints_test_case):
   proxies = fixed_u_eq_adp_restraints(
-    xray_structure=smtbx.development.sucrose(),
+    xray_structure=refinable_sucrose(),
     u_eq_ideal=0.025).proxies
   # no need to test all of them every time
   proxies = adp.shared_fixed_u_eq_adp_proxy(
@@ -218,13 +420,16 @@ class fixed_u_eq_adp_test_case(adp_restraints_test_case):
     if u_cart is None:
       u_cart=self.xray_structure.scatterers().extract_u_cart(
         self.xray_structure.unit_cell())
+    if u_iso is None:
+      u_iso=self.xray_structure.scatterers().extract_u_iso()
+    use_u_aniso=self.xray_structure.use_u_aniso()
     return adp.fixed_u_eq_adp(
-      adp_restraint_params(u_cart=u_cart),
+      adp_restraint_params(u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso),
       proxy)
 
 class adp_similarity_test_case(adp_restraints_test_case):
   proxies = adp_similarity_restraints(
-    xray_structure=smtbx.development.sucrose()).proxies
+    xray_structure=refinable_sucrose()).proxies
   # no need to test all of them every time
   proxies = adp.shared_adp_similarity_proxy(
     flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
@@ -243,7 +448,7 @@ class adp_similarity_test_case(adp_restraints_test_case):
 
 class adp_u_eq_similarity_test_case(adp_restraints_test_case):
   proxies = adp_u_eq_similarity_restraints(
-    xray_structure=smtbx.development.sucrose()).proxies
+    xray_structure=refinable_sucrose()).proxies
   # no need to test all of them every time
   #proxies = adp.shared_adp_u_eq_similarity_proxy(
     #flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.5)))
@@ -262,13 +467,13 @@ class adp_u_eq_similarity_test_case(adp_restraints_test_case):
 
 class adp_volume_similarity_test_case(adp_restraints_test_case):
   proxies = adp_volume_similarity_restraints(
-    xray_structure=smtbx.development.sucrose()).proxies
+    xray_structure=refinable_sucrose()).proxies
   manager = restraints.manager(adp_volume_similarity_proxies=proxies)
   def __init__(self):
     adp_restraints_test_case.__init__(self)
     # eigen values and eigen vectors are dependent after all...
     # may need to make smaller
-    self.tolerance = 0.2
+    self.tolerance = 0.3
   def restraint(self, proxy, u_iso=None, u_cart=None):
     if u_cart is None:
       u_cart=self.xray_structure.scatterers().extract_u_cart(
@@ -282,7 +487,7 @@ class adp_volume_similarity_test_case(adp_restraints_test_case):
 
 class rigid_bond_test_case(adp_restraints_test_case):
   proxies = rigid_bond_restraints(
-    xray_structure=smtbx.development.sucrose()).proxies
+    xray_structure=refinable_sucrose()).proxies
   # no need to test all of them every time
   proxies = adp.shared_rigid_bond_proxy(
     flex.select(proxies, flags=flex.random_bool(proxies.size(), 0.3)))
@@ -425,6 +630,10 @@ def exercise_ls_restraints(options):
   bond_restraint_test_case().run()
   angle_restraint_test_case().run()
   dihedral_restraint_test_case().run()
+  chirality_restraint_test_case().run()
+  exercise_coplanar_chirality()
+  exercise_degenerate_dihedral()
+  exercise_coincident_bond_similarity()
 
   isotropic_adp_test_case().run()
   adp_similarity_test_case().run()

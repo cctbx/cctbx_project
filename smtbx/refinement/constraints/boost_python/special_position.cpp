@@ -15,14 +15,14 @@ namespace boost_python {
       return_internal_reference<> rir;
       class_<wt,
              bases<ancestor>,
-             std::auto_ptr<wt> >(name, no_init)
+             boost::shared_ptr<wt> >(name, no_init)
         .def(init<sgtbx::site_symmetry_ops const &,
                   typename wt::scatterer_type *>
              ((arg("site_symmetry"), arg("scatterer"))))
         .add_property("independent_params",
                       make_function(&wt::independent_params, rir))
         ;
-      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      implicitly_convertible<boost::shared_ptr<wt>, boost::shared_ptr<parameter> >();
     }
   };
 
