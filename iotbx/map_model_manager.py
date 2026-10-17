@@ -4502,6 +4502,11 @@ class map_model_manager(object):
     assert self.get_map_manager_by_id(map_id)
     assert self.get_map_manager_by_id(map_id_external_map)
 
+    if tlso_group_info:  # convert to lists (before any copy of kw)
+      convert_tlso_group_info_to_lists(tlso_group_info)
+      if kw['get_tls_from_u'] is None:
+        kw['get_tls_from_u'] = True
+
     # Allow sharpening globally before and after local sharpening
     if local_sharpen and overall_sharpen_before_and_after_local:
       print ("\nRunning external sharpening (global, local, global)\n",
@@ -4588,6 +4593,11 @@ class map_model_manager(object):
     # Set what maps are going to be sharpened and new names
     kw = self.set_map_id_lists(kw)
 
+    if tlso_group_info:  # convert to lists (before any copy of kw)
+      convert_tlso_group_info_to_lists(tlso_group_info)
+      if kw['get_tls_from_u'] is None:
+        kw['get_tls_from_u'] = True
+
     # Allow sharpening globally before and after local sharpening
     if local_sharpen and overall_sharpen_before_and_after_local:
       print ("\nRunning half-map sharpening (global, local, global)\n",
@@ -4603,11 +4613,6 @@ class map_model_manager(object):
     print("Sharpened maps after half-map sharpening will be in "+
        "'%s' in map_model_manager '%s'" %(
       str(kw['map_id_scaled_list']),self.name),file = self.log)
-
-    if tlso_group_info:  # convert to lists
-      convert_tlso_group_info_to_lists(tlso_group_info)
-      if kw['get_tls_from_u'] is None:
-        kw['get_tls_from_u'] = True
 
     # Now get scaling from comparison of the two half-maps
     #  apply the scaling to map_id_to_be_scaled
@@ -4977,11 +4982,16 @@ class map_model_manager(object):
 
     # remove any extra models and maps to speed up boxing and not modify orig
     map_id_list = [map_id,map_id_1,map_id_2]+kw['map_id_to_be_scaled_list']
+    if is_model_based and self.get_model_by_id(model_id_for_rms_fc):
+      model_id_list = [model_id_for_rms_fc]
+    elif tlso_group_info and self.get_model_by_id('model'):
+      # Supplied TLS uses the model 'model' for group masks and model points
+      model_id_list = ['model']
+    else:
+      model_id_list = None
     working_mmm = self.get_map_model_manager_with_selected(
       map_id_list = map_id_list,
-      model_id_list =
-          [model_id_for_rms_fc] if is_model_based and self.get_model_by_id(
-            model_id_for_rms_fc) else None,
+      model_id_list = model_id_list,
       deep_copy=True)
     working_mmm.set_log(self.log)
 
@@ -9707,6 +9717,9 @@ def convert_tlso_group_info_to_lists(tlso_group_info):
       #tlso_group_info.tlso_selection_list,
       # tlso_group_info.tlso_shift_cart_list,):
       """Convert from tlso group info object to lists"""
+      if getattr(tlso_group_info, 'tlso_list', None) is None and \
+          getattr(tlso_group_info, 'T_list', None) is not None:
+        return  # already converted (for example in an earlier call)
       tlso_group_info.T_list = []
       tlso_group_info.L_list = []
       tlso_group_info.S_list = []

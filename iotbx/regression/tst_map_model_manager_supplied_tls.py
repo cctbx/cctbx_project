@@ -111,7 +111,9 @@ def run_tls_groups(key, setup, reverse = False):
         original entries, the mask returned by
         _create_mask_from_selection_as_string for each selection, the
         model sites of each selection, and the xyz and
-        uu_b_cart_as_u_cart of every entry when it returns.
+        uu_b_cart_as_u_cart of every entry when it returns (all of these
+        from the last call), and for every call the selections, T and L
+        lists it received (tl_calls).
      Nothing here depends on the order in which that function makes masks
      or processes groups; group membership is worked out afterwards from
      these records (see get_ownership).'''
@@ -122,7 +124,7 @@ def run_tls_groups(key, setup, reverse = False):
   rec = group_args(run_group_kw_list = [], update_calls = [],
      replace_calls = 0, active = False, kw = None, masks = {},
      n_original = None, entries = None, group_definitions = None,
-     selections = None, sites = None, has_model = None)
+     selections = None, sites = None, has_model = None, tl_calls = [])
   originals = dict(
     _update_scale_factor_info_from_aniso =
       M._update_scale_factor_info_from_aniso,
@@ -168,6 +170,11 @@ def run_tls_groups(key, setup, reverse = False):
     rec.replace_calls += 1
     rec.active = True
     rec.kw = dict(kw)
+    tgi = kw['tlso_group_info']
+    rec.tl_calls.append(group_args(
+      selections = list(getattr(tgi, 'tlso_selection_list', None) or []),
+      T_list = [tuple(x) for x in (getattr(tgi, 'T_list', None) or [])],
+      L_list = [tuple(x) for x in (getattr(tgi, 'L_list', None) or [])]))
     rec.n_original = len(scale_factor_info.value_list)
     try:
       result = originals['_analyze_aniso_replace_with_supplied'](
@@ -287,11 +294,12 @@ def get_ownership(rec, model_points = True):
         in_masks = in_masks)
   return owner
 
-def check_tls_run(rec, model_points = True):
-  '''Common checks of a two-group run; returns the overall U (removed from
-     each TLS U) and the ownership of entries (get_ownership)'''
+def check_tls_run(rec, model_points = True, n_calls = 1):
+  '''Common checks of a two-group run (n_calls calls of the TLS step; the
+     records are those of the last call); returns the overall U (removed
+     from each TLS U) and the ownership of entries (get_ownership)'''
   from cctbx import adptbx
-  assert rec.replace_calls == 1, rec.replace_calls
+  assert rec.replace_calls == n_calls, (rec.replace_calls, n_calls)
   # get_tls_from_u None is taken as True by _analyze_aniso_replace_with_supplied
   assert rec.kw.get('get_tls_from_u') in (None, True), \
     rec.kw.get('get_tls_from_u')
@@ -578,7 +586,7 @@ def tst_tie_first_listed():
 
 NO_MODEL_NOISE = 0.3 # uniform noise added to each half map (x rms of map)
 
-def no_model_setup():
+def no_model_setup(n_boxes = 8):
   '''half_map_sharpen in a map_model_manager with two half maps and no
      model.  Half maps: the map of get_mmm() plus independent uniform
      noise (own generator with a fixed seed, so the global random state
@@ -607,7 +615,7 @@ def no_model_setup():
   assert new_mmm.get_model_by_id('model') is None
   def sharpen(tlso_group_info):
     new_mmm.half_map_sharpen(local_sharpen = True, anisotropic_sharpen = True,
-      tlso_group_info = tlso_group_info, n_boxes = 8, nproc = 1)
+      tlso_group_info = tlso_group_info, n_boxes = n_boxes, nproc = 1)
   return new_mmm, groups, sharpen
 
 def tst_no_model_first_listed():
@@ -678,6 +686,205 @@ def tst_multi_grid_ownership():
      "processed last: %s" %(n_differs_from_later))
   assert n_differs_from_later > 0, \
     "test setup: nearest group is always the group processed last"
+
+# ---------------------------------------------------------------------------
+# Supplied TLS through external_sharpen and half_map_sharpen on a manager
+#  with the model 'model' (group masks around each group's atoms, nearest-
+#  atom rule and model points, as in model_sharpen), and the same
+#  tlso_group_info object converted more than once (used twice, and
+#  model_sharpen global-local-global).
+
+def check_with_model(rec, n_calls = 1):
+  '''The TLS step (last call) sees the model; every owned entry has its own
+     group's U (nearest-atom rule, get_ownership); each group has
+     model-point entries and at least one original grid entry is owned.
+     Returns the counts of check_all_owned.'''
+  assert rec.has_model is True, rec.has_model
+  overall_u, owner = check_tls_run(rec, n_calls = n_calls)
+  counts = check_all_owned(rec, overall_u, owner)
+  print("Order %s: original entries %s, entries after the TLS step %s; "
+     "entries checked (selection, kind): %s" %(rec.selections,
+     rec.n_original, len(rec.entries),
+     ", ".join(["'%s' %s: %s" %(k[0], k[1], counts[k])
+       for k in sorted(counts.keys())])))
+  for s in rec.selections:
+    assert counts.get((s, 'model')), (s, counts)
+  assert [1 for k in counts.keys() if k[1] == 'grid'], counts
+  return counts
+
+def check_tl_calls(rec, n_calls = None):
+  '''Every call of the TLS step received both groups (in the order of the
+     run) with their own T and L'''
+  if n_calls is not None:
+    assert len(rec.tl_calls) == n_calls, (len(rec.tl_calls), n_calls)
+  assert rec.tl_calls
+  for i, c in enumerate(rec.tl_calls):
+    print("TLS step call %s: selections %s" %(i + 1, c.selections))
+    assert c.selections == rec.selections, (i, c.selections, rec.selections)
+    assert len(c.T_list) == 2 and len(c.L_list) == 2, (i, c.T_list,
+       c.L_list)
+    for s, T, L in zip(c.selections, c.T_list, c.L_list):
+      t = rec.group_definitions[s].tlso
+      assert approx_equal(T, t.t, out = None), (i, s, T, t.t)
+      assert approx_equal(L, t.l, out = None), (i, s, L, t.l)
+
+def external_setup():
+  '''external_sharpen of get_mmm() (with its model 'model') against an
+     'external_map' that is an identical deep copy of the map.  A differing
+     (for example noisy) external map hits a separate, older crash in
+     cctbx/maptbx/refine_sharpening.py: for external-map sharpening the
+     overall cc is fixed at 1, so the overall ssqr is zero and bb_values are
+     infinite (deepcopy in _average_scale_factor_info_over_xyz then fails).
+     So this case tests the TLS conversion and group rules only, not
+     realistic external sharpening.  TLS groups: get_groups split A.'''
+  mmm = get_mmm()
+  groups = get_groups(mmm, SPLIT_A)
+  mmm.add_map_manager_by_id(map_manager = mmm.map_manager().deep_copy(),
+     map_id = 'external_map')
+  assert mmm.get_model_by_id('model') is not None
+  def sharpen(tlso_group_info):
+    mmm.external_sharpen(local_sharpen = True, anisotropic_sharpen = True,
+      tlso_group_info = tlso_group_info, n_boxes = 8, nproc = 1)
+  return mmm, groups, sharpen
+
+def tst_external_tls():
+  '''external_sharpen with supplied TLS (group_args with tlso_list and
+     selection_as_text_list) and an 'external_map' (identical copy of the
+     map, see external_setup) runs; the manager has a
+     model, so every entry owned by the TLS step has the U of its group by
+     the nearest-atom rule, and each group gets model-point entries (the
+     checks of the model_sharpen cases)'''
+  rec = run_tls_groups(('external',), external_setup)
+  check_tl_calls(rec, n_calls = 1)
+  check_with_model(rec)
+
+HALF_MAP_N_BOXES = 8
+HALF_MAP_SPLIT = SPLIT_A
+
+def half_map_with_model_setup(n_boxes = HALF_MAP_N_BOXES,
+    split = HALF_MAP_SPLIT):
+  '''no_model_setup (two half maps; n_boxes) with the model of get_mmm()
+     added as 'model' (same map grid and origin); TLS groups get_groups
+     (split)'''
+  new_mmm, groups, sharpen = no_model_setup(n_boxes = n_boxes)
+  model = get_mmm().model()
+  new_mmm.add_model_by_id(model = model, model_id = 'model')
+  assert new_mmm.get_model_by_id('model') is not None
+  if split != SPLIT_A:
+    groups = get_groups(new_mmm, split)
+  return new_mmm, groups, sharpen
+
+def run_half_map_with_model(reverse, n_boxes = HALF_MAP_N_BOXES,
+    split = HALF_MAP_SPLIT):
+  return run_tls_groups(('half_map_model', n_boxes, split),
+    lambda: half_map_with_model_setup(n_boxes = n_boxes, split = split),
+    reverse = reverse)
+
+def tst_half_map_with_model():
+  '''half_map_sharpen with supplied TLS on a manager with two half maps and
+     the model 'model': the TLS step sees the model, the two groups' masks
+     differ, every owned entry has its own group's U by the nearest-atom
+     rule, each group gets model-point entries, and the result is the same
+     with the group order reversed.  At least one original entry is inside
+     both masks, and for at least one such entry (over both orders) the
+     nearest group is not the group processed last (so "later group wins"
+     would give a different result).'''
+  runs = []
+  n_both = []
+  n_differs_from_later = 0
+  for reverse in (False, True):
+    rec = run_half_map_with_model(reverse)
+    check_tl_calls(rec, n_calls = 1)
+    check_with_model(rec)
+    m0, m1 = [(rec.masks[s].map_data().as_1d().as_double() > 0.5).as_int()
+       for s in rec.selections]
+    n_inside = [m0.count(1), m1.count(1)]
+    n_diff = (m0 != m1).count(True)
+    print("Order %s: grid points inside the masks %s; inside one mask only "
+       "%s of %s" %(rec.selections, n_inside, n_diff, m0.size()))
+    assert min(n_inside) > 0, n_inside
+    assert n_diff > 0, "masks of the two groups are identical"
+    overall_u, owner = check_tls_run(rec)
+    both = [o for i, o in sorted(owner.items()) if o.kind == 'grid' and
+       len(o.in_masks) > 1]
+    n_not_later = len([o for o in both if o.selection != o.in_masks[-1]])
+    print("Order %s: original entries %s, inside both masks %s (owner %s); "
+       "nearest group not the group processed last: %s" %(rec.selections,
+       rec.n_original, len(both),
+       ", ".join(["'%s'" %(o.selection) for o in both]), n_not_later))
+    n_both.append(len(both))
+    n_differs_from_later += n_not_later
+    runs.append(rec)
+  assert min(n_both) > 0, ("test setup: no original entry inside both masks",
+     n_both)
+  assert n_differs_from_later > 0, \
+    "test setup: nearest group is always the group processed last"
+  compare_orders(runs[0], runs[1])
+
+def reused_setup():
+  '''model_sharpen (as model_sharpen_setup, split A) run twice with the same
+     tlso_group_info object'''
+  mmm, groups, sharpen = model_sharpen_setup(
+    get_groups_f = lambda mmm: get_groups(mmm, SPLIT_A))
+  def sharpen_twice(tlso_group_info):
+    sharpen(tlso_group_info)
+    sharpen(tlso_group_info)
+  return mmm, groups, sharpen_twice
+
+def tst_tls_reused():
+  '''The same tlso_group_info object passed to model_sharpen twice: both
+     runs complete, and the TLS step of each (in particular the second)
+     receives both groups' T and L; the second run's entries follow the
+     nearest-atom rule'''
+  rec = run_tls_groups(('reused',), reused_setup)
+  check_tl_calls(rec, n_calls = 2)
+  check_with_model(rec, n_calls = 2)
+
+def global_local_global_setup():
+  '''model_sharpen as model_sharpen_setup (split A) with
+     overall_sharpen_before_and_after_local'''
+  mmm = get_mmm()
+  def sharpen(tlso_group_info):
+    mmm.model_sharpen(local_sharpen = True, anisotropic_sharpen = True,
+      overall_sharpen_before_and_after_local = True,
+      tlso_group_info = tlso_group_info,
+      replace_aniso_with_tls_equiv = True,
+      n_boxes = 8, nproc = 1)
+  return mmm, get_groups(mmm, SPLIT_A), sharpen
+
+def tst_global_local_global_model():
+  '''model_sharpen global-local-global with supplied TLS (the object is
+     copied and converted again by the inner runs) completes; every call
+     of the TLS step receives both groups' T and L, and the entries of the
+     last call follow the nearest-atom rule'''
+  rec = run_tls_groups(('global_local_global',), global_local_global_setup)
+  print("TLS step calls: %s" %(rec.replace_calls))
+  check_tl_calls(rec)
+  check_with_model(rec, n_calls = rec.replace_calls)
+
+def glg_setup(setup, method_name):
+  '''(mmm, groups, sharpen) from setup(), with sharpen replaced by the
+     method method_name of mmm (for example half_map_sharpen) run
+     global-local-global (local_sharpen, anisotropic_sharpen and
+     overall_sharpen_before_and_after_local) with supplied TLS'''
+  mmm, groups, unused_sharpen = setup()
+  def sharpen(tlso_group_info):
+    getattr(mmm, method_name)(local_sharpen = True,
+      anisotropic_sharpen = True,
+      overall_sharpen_before_and_after_local = True,
+      tlso_group_info = tlso_group_info, n_boxes = 8, nproc = 1)
+  return mmm, groups, sharpen
+
+def tst_global_local_global_half_map():
+  '''half_map_sharpen global-local-global with supplied TLS
+     (half_map_with_model_setup) completes; every call of the TLS step
+     receives both groups' T and L, and the entries of the last call follow
+     the nearest-atom rule'''
+  rec = run_tls_groups(('global_local_global_half_map',),
+    lambda: glg_setup(half_map_with_model_setup, 'half_map_sharpen'))
+  print("TLS step calls: %s" %(rec.replace_calls))
+  check_tl_calls(rec)
+  check_with_model(rec, n_calls = rec.replace_calls)
 
 # ---------------------------------------------------------------------------
 # Synthetic averaging over locations
@@ -874,6 +1081,11 @@ def run(args = None):
      ('tie_first_listed', tst_tie_first_listed),
      ('no_model_first_listed', tst_no_model_first_listed),
      ('multi_grid_ownership', tst_multi_grid_ownership),
+     ('half_map_with_model', tst_half_map_with_model),
+     ('tls_reused', tst_tls_reused),
+     ('global_local_global_model', tst_global_local_global_model),
+     ('global_local_global_half_map', tst_global_local_global_half_map),
+     ('external_tls', tst_external_tls),
      ('average_overall_scale_stored', tst_average_overall_scale_stored),
      ('mixed_overall_si', tst_mixed_overall_si),
      ('averaged_ssqr', tst_averaged_ssqr),
