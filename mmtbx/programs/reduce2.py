@@ -1205,6 +1205,50 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _NeutronDescription(self):
+    # H/D section for the description file and the log: distances, counts
+    # and the listed sites with their reasons, by their written names. Lists
+    # are capped at 20 entries unless verbosity > 2.
+    r = self._neutron_result
+    cap = None if self.params.verbosity > 2 else 20
+    lines = ['', 'H/D model (neutron_option=%s):' % self.params.neutron_option,
+      '  Neutron distances used (%s)' % self._neutron_distance_reason,
+      '  Exchangeable H sites (not water): %d' % r.n_exchangeable,
+      '  Split into H/D pairs: %d (new, at 0.5 x parent occupancy: %d)' % (
+        r.n_split, r.n_split_new),
+      '  Converted to D: %d' % r.n_to_d,
+      '  Waters renamed DOD: %d, HOH: %d' % (r.n_water, r.n_water_to_hoh),
+      '  Values restored from the input: %d' % r.n_restored]
+    def section(title, entries, detail, remark=None):
+      if not entries: return
+      lines.append('  %s (%d):' % (title, len(entries)))
+      if remark: lines.append('    ' + remark)
+      shown = entries if cap is None else entries[:cap]
+      for e in shown:
+        lines.append('    %s  %s' % (e.output, detail(e)))
+      if len(shown) < len(entries):
+        lines.append('    (+%d more)' % (len(entries) - len(shown)))
+    by_reason = lambda entries, reason: [e for e in entries if e.reason == reason]
+    section('Conformer sites written as one isotope',
+      by_reason(r.conformer_sites, 'conformer'), lambda e: e.reason)
+    section('Not split, no free altloc letters',
+      by_reason(r.conformer_sites, 'no free altloc letters'), lambda e: e.reason)
+    section('Name not pairable by phenix.refine, kept as H',
+      r.unclassified_sites, lambda e: e.reason)
+    section('Conformer copies merged into one site', r.merged_sites,
+      lambda e: '%s (%d copies)' % (e.reason, len(e.copies)))
+    section('Split sites with a partially occupied parent',
+      r.partial_parent_sites, lambda e: 'parent occupancy %.2f' % e.parent_occ,
+      remark='H and D get half the parent occupancy each; phenix.refine '
+             'currently refines H + D = 1.')
+    section('Occupancy notes', r.notes, lambda e: e.text)
+    text = '\n'.join(lines) + '\n'
+    # the same section in the log, so it is not lost without files
+    print(text, file=self.logger)
+    return text
+
+# ------------------------------------------------------------------------------
+
   def _CheckNeutronOutput(self):
     # The written H/D model against the parent table: provenance is a
     # bijection, every pair collapses, exchangeable_hd_selections() finds
@@ -1447,7 +1491,10 @@ NOTES:
 
     # One distance flag for the whole run: qmready and neutron_option place H
     # at neutron distances, so every later step must use them
-    if not p.use_neutron_distances:
+    self._neutron_distance_reason = None
+    if p.use_neutron_distances:
+      self._neutron_distance_reason = 'use_neutron_distances=True'
+    else:
       reason = None
       if p.qmready:
         reason = 'qmready=True'
@@ -1455,6 +1502,7 @@ NOTES:
         reason = 'neutron_option=%s' % p.neutron_option
       if reason is not None:
         p.use_neutron_distances = True
+        self._neutron_distance_reason = reason
         print('%s: use_neutron_distances set to True' % reason, file=self.logger)
 
     # place: no optimizer, so nothing that needs it
@@ -1736,9 +1784,10 @@ NOTES:
       h = self.model.get_hierarchy().deep_copy()
       self._neutron_result = hd_exchange.apply_neutron_option(h,
         self.params.neutron_option, parent_table=self._h_parents,
-        records=self._hd_records, log=self.logger)
+        records=self._hd_records)
       self._output_model = self._RebuildModel(h, make_restraints=False)
       self._CheckNeutronOutput()
+      outString += self._NeutronDescription()
 
     make_sub_header('Writing output', out=self.logger)
 

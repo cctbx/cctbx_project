@@ -867,6 +867,9 @@ def test_merge_conformer_copies():
   assert hd["C"] == ["H"] and hd["D"] == ["D"], hd # merged and split
   assert hd["A"] == hd["B"] == ["DG", "HB2", "HB3"], hd
   assert sorted(names(x.site) for x in r.merged_sites) == ["H", "HA"]
+  # exchangeable output sites (not water): Ala H1 H2 H3, Ser H once (merged
+  # from two copies), HG in A and in B, Lys H HZ1 HZ2 HZ3
+  assert r.n_exchangeable == 10, r.n_exchangeable
   assert all(x.reason == "merged conformer copies" for x in r.merged_sites)
   assert all(len(x.copies) == 2 for x in r.merged_sites)
   assert sorted((names(x.site), x.reason) for x in r.conformer_sites) == [
@@ -943,7 +946,8 @@ def test_no_free_altloc_letters():
                 if a.element.strip() == "D") == ["D", "DG"]
 
 def test_name_not_pairable():
-  # 1HO2: written as one isotope, listed; HO3 next to it is split
+  # 1HO2 (exchangeable) and 1HC1 (not): never split or D; HO3 follows the
+  # mode
   h = iotbx.pdb.input(source_info=None, lines="""\
 HETATM    1  O2  LIG A   1       1.000   1.000   1.000  1.00 20.00           O
 HETATM    2 1HO2 LIG A   1       1.900   1.000   1.000  1.00 20.00           H
@@ -956,36 +960,32 @@ HETATM    6 1HC1 LIG A   1       8.000   1.000   1.000  1.00 20.00           H
     return dict((key, group_args(status="ok", exchangeable=key[-2] != "1HC1",
       parent_occ=1.0, parent_altloc="", parent_id="O")) for key in
       hd_exchange.atom_keys(h) if key[-1] == "H")
-  for option, element in (("hd_and_h", "D"), ("hd_and_d", "D"),
-                          ("all_hd", "D"), ("all_h", "H")):
+  # an H whose name does not start with H is never split and never D, in
+  # any mode; listed wherever the mode would split it or write D
+  for option, listed, ho3 in (
+      ("hd_and_h", ["1HO2"], "split"), ("hd_and_d", ["1HC1", "1HO2"], "split"),
+      ("all_hd", ["1HC1", "1HO2"], "split"), ("all_d", ["1HC1", "1HO2"], "D"),
+      ("all_h", [], "H")):
     hc = h.deep_copy()
     r = hd_exchange.apply_neutron_option(hc, option, table_for(h))
-    site = [a for a in hc.atoms() if a.name.startswith("1") and
-            a.name[2] == "O"]
-    assert len(site) == 1 and site[0].element.strip() == element, option
-    assert site[0].parent().altloc == ""
-    # the non-exchangeable 1HC1 follows the mode (D in hd_and_d); it is a
-    # split site only in all_hd, where it is written as a single H in its
-    # own group, listed, without D
-    c_h = [(a.name, a.element.strip(), a.parent().altloc) for a in hc.atoms()
-           if a.name[2:] == "C1" and a.name[0] == "1"]
-    expected_c_h = ("1DC1", "D", "") if option == "hd_and_d" else \
-      ("1HC1", "H", "")
-    assert c_h == [expected_c_h], (option, c_h)
-    if option == "all_h":
-      assert r.unclassified_sites == []
-      continue
-    assert site[0].name == "1DO2"
-    # sites are listed by their input (H) name
-    expected = (["1HC1"] if option == "all_hd" else []) + ["1HO2"]
-    assert sorted(x.site[5:9] for x in r.unclassified_sites) == expected
-    assert set(x.reason for x in r.unclassified_sites) == set([
-      "name not pairable by phenix.refine"])
-    assert r.n_split == 1
+    digit = sorted((a.name, a.element.strip(), a.parent().altloc)
+                   for a in hc.atoms() if a.name[0] == "1")
+    assert digit == [("1HC1", "H", ""), ("1HO2", "H", "")], (option, digit)
+    assert sorted(x.site[5:9] for x in r.unclassified_sites) == listed, option
+    for x in r.unclassified_sites:
+      assert x.reason == hd_exchange.NOT_PAIRABLE
+      assert "kept as H" in x.reason
+      # written as it was: output label equals the input label
+      assert x.output == x.site.replace("pdb=", "").replace('"', "")
+    o3 = sorted((a.name.strip(), a.parent().altloc) for a in hc.atoms()
+                if a.name.strip() in ("HO3", "DO3"))
     pairs = hc.exchangeable_hd_selections()
-    assert len(pairs) == 1
-    assert sorted(hc.atoms()[x[0]].name.strip() for x in pairs[0]) == \
-      ["DO3", "HO3"]
+    if ho3 == "split":
+      assert o3 == [("DO3", "B"), ("HO3", "A")], (option, o3)
+      assert r.n_split == 1 and len(pairs) == 1
+    else:
+      assert o3 == [("%sO3" % ho3, "")], (option, o3)
+      assert r.n_split == 0 and pairs == []
 
 def test_parent_occupancy_from_table():
   # 10: H written at 1.0 on a parent at 0.6 -> 0.3 / 0.3, partial parent
@@ -1341,6 +1341,28 @@ def test_water_names_follow_content():
     assert r.n_water_to_hoh == (1 if label.startswith("DOD+H") and
                                 option == "all_h" else 0), (label, option)
 
+def test_conformer_copy_occupancy_note():
+  # H copied into each conformer (blank parent CB) at the conformer's
+  # occupancy: no note; a copy that differs from its conformer: one note
+  model = placed(pdb_pep_og_ab)
+  h, r = run_option(model, "hd_and_h")
+  hb = [a for a in h.atoms() if a.parent().resname == "SER" and
+        a.name.strip() in ("HB2", "HB3")]
+  assert sorted((a.name.strip(), a.parent().altloc, a.occ) for a in hb) == [
+    ("HB2", "A", 0.5), ("HB2", "B", 0.5), ("HB3", "A", 0.5),
+    ("HB3", "B", 0.5)]
+  assert r.notes == [], [(x.output, x.text) for x in r.notes]
+  hb2 = [a for a in model.get_hierarchy().atoms() if a.parent().resname ==
+         "SER" and a.name.strip() == "HB2" and a.parent().altloc == "A"][0]
+  hb2.set_occ(0.3)
+  try:
+    h, r = run_option(model, "hd_and_h")
+  finally:
+    hb2.set_occ(0.5)
+  assert [(names(x.site), x.reason, x.text) for x in r.notes] == [
+    ("HB2", "occupancy differs from conformer",
+     "occupancy 0.30, conformer 0.50")]
+
 if __name__ == "__main__":
   test_parent_table_30f()
   test_edits_covalent_limit()
@@ -1387,4 +1409,5 @@ if __name__ == "__main__":
   test_two_models()
   test_repeated_labels_restore()
   test_water_names_follow_content()
+  test_conformer_copy_occupancy_note()
   print("OK")

@@ -600,6 +600,7 @@ def _merge_conformer_copies(hierarchy, parent_table):
   key_of = dict((a.memory_id(), k) for a, k in zip(hierarchy.atoms(), keys))
   merged = {}
   sites = []
+  site_atoms = []
   for rg in hierarchy.residue_groups():
     conformers = sorted(set(ag.altloc for ag in rg.atom_groups()) - set([""]))
     # a lone alternate H (one conformer) is not a copy
@@ -630,10 +631,29 @@ def _merge_conformer_copies(hierarchy, parent_table):
       sites.append(group_args(site=h.id_str(),
         reason="merged conformer copies",
         copies=[a.id_str() for a in atoms]))
+      site_atoms.append(h)
       for a in atoms:
         a.parent().remove_atom(a)
     _remove_empty_atom_groups(rg)
-  return merged, sites
+  return merged, sites, site_atoms
+
+NOT_PAIRABLE = "name not pairable by phenix.refine, kept as H"
+
+def _conformer_occupancy(ag):
+  """occupancy of the heavy atoms with ag's altloc in its residue_group if
+  they agree on one value (0.01), None if they do not, "no heavy atoms" if
+  there are none"""
+  occ = [a.occ for g in ag.parent().atom_groups() if g.altloc == ag.altloc
+         for a in g.atoms() if not _is_hd(a)]
+  if not occ:
+    return "no heavy atoms"
+  if max(occ) - min(occ) > 0.01:
+    return None
+  return occ[0]
+
+def output_label(atom):
+  """atom label as in the reduce2 reports, e.g. ' DG ASER A  37 '"""
+  return atom.id_str().replace("pdb=", "").replace('"', "")
 
 def _to_d(atom):
   atom.set_name(atom.name.replace("H", "D", 1))
@@ -648,27 +668,36 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
   a blank-group parent are first merged into one blank-group H. Not split,
   one isotope, listed with a reason: conformer sites and H in an altloc
   group ("conformer"); residues with fewer than two free letters ("no free
-  altloc letters"); names not starting with H ("name not pairable by
-  phenix.refine"). option "none" returns at once, hierarchy unchanged. Values follow the restoration policy: recorded pair as pair
+  altloc letters"); names not starting with H, never split or D in any
+  mode (NOT_PAIRABLE). option "none" returns at once, hierarchy unchanged.
+  Values follow the restoration policy: recorded pair as pair
   -> both restored; recorded pair as one isotope -> parent occupancy, that
   isotope's B/uij; new pair -> 0.5 x parent occupancy each, B/uij of the H;
   single without record -> unchanged (occupancy note if not the parent's).
   Water names follow the content: D -> DOD, H -> HOH where it was DOD.
-  Returns group_args(n_split, n_to_d, n_water (residue_groups renamed to
+  Returns group_args(n_exchangeable (exchangeable output sites after the
+  merge, not water), n_split, n_split_new (split without a record, at
+  0.5 x parent occupancy), n_to_d, n_water (residue_groups renamed to
   DOD), n_water_to_hoh (DOD renamed to HOH), n_restored,
   partial_parent_sites, conformer_sites, unclassified_sites, merged_sites,
   notes, provenance={output atom_key: source atom_key}); merged H map to
-  the first copy's atom_key."""
+  the first copy's atom_key. Every listed entry has site (input label),
+  reason and output (label of the atom as written; the H of a split site)."""
   if option not in NEUTRON_OPTIONS:
     raise Sorry("Internal error: unknown neutron option %s" % option)
-  result = group_args(n_split=0, n_to_d=0, n_water=0, n_water_to_hoh=0,
-    n_restored=0,
+  result = group_args(n_exchangeable=0, n_split=0, n_split_new=0, n_to_d=0,
+    n_water=0,
+    n_water_to_hoh=0, n_restored=0,
     partial_parent_sites=[], conformer_sites=[], unclassified_sites=[],
     merged_sites=[], notes=[], provenance={})
   if option == "none": return result
   if records is None: records = {}
-  merged, result.merged_sites = _merge_conformer_copies(hierarchy,
-    parent_table)
+  merged, result.merged_sites, merged_atoms = _merge_conformer_copies(
+    hierarchy, parent_table)
+  # listed entries and the atom each describes; their output labels are
+  # filled in once the atoms are written
+  listed = list(zip(result.merged_sites, merged_atoms))
+  written_as = {}   # memory_id of an input H -> the atom written for it
   # identity after the merge, one pass each
   atoms = hierarchy.atoms()
   keys = atom_keys(hierarchy)
@@ -697,10 +726,14 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
     water = _is_water(ag)
     conformer = e.parent_altloc != "" or ag.altloc != ""
     kind, reason = _output_kind(option, water, e.exchangeable, conformer)
-    # sites that cannot be split are written as conformer sites are
-    if kind == "split" and not atom.name.strip().startswith("H"):
-      kind = _output_kind(option, water, e.exchangeable, True)[0]
-      reason = "name not pairable by phenix.refine"
+    # an H whose name does not start with H is never split and never D:
+    # phenix.refine cannot pair it, and pdb_interpretation has no D alias for
+    # it (cif_types.hydrogen_deuterium_aliases(): H names starting with H)
+    if kind in ("split", "D") and not atom.name.strip().startswith("H"):
+      kind, reason = "H", NOT_PAIRABLE
+    # one per output site, after the merge (a split pair counts once)
+    if e.exchangeable and not water:
+      result.n_exchangeable += 1
     item = group_args(atom=atom, source_key=source_key, entry=e, kind=kind,
       reason=reason, water=water,
       record=records.get(site_key(atom, e.parent_altloc,
@@ -735,10 +768,11 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
     site = atom.id_str()
     if item.reason is not None:
       target = result.unclassified_sites if \
-        item.reason == "name not pairable by phenix.refine" else \
+        item.reason == NOT_PAIRABLE else \
         result.conformer_sites
       target.append(group_args(site=site, reason=item.reason,
         written=item.kind))
+      listed.append((target[-1], atom))
     if item.kind == "split":
       rg_id = atom.parent().parent().memory_id()
       rg, h_alt, d_alt, made = groups[rg_id]
@@ -759,10 +793,13 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
       new_group(rg_id, d_alt, resname).append_atom(d)
       written.append((h, item.source_key))
       written.append((d, item.source_key))
+      written_as[atom.memory_id()] = h
       result.n_split += 1
+      if record is None: result.n_split_new += 1
       if abs(e.parent_occ - 1) > 0.01:
         result.partial_parent_sites.append(group_args(site=site,
           reason="partial parent occupancy", parent_occ=e.parent_occ))
+        listed.append((result.partial_parent_sites[-1], atom))
       continue
     if item.kind == "D":
       _to_d(atom)
@@ -771,11 +808,22 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
       occ, b, uij = record[item.kind]
       _set_values(atom, e.parent_occ, b, uij)
       result.n_restored += 1
-    elif abs(atom.occ - e.parent_occ) > 0.01:
-      result.notes.append(group_args(site=atom.id_str(),
-        reason="occupancy differs from parent",
-        text="occupancy %.2f, parent %.2f" % (atom.occ, e.parent_occ)))
+    else:
+      # a conformer copy (H in an altloc group, parent in the blank group) is
+      # compared with its conformer's occupancy, other H with the parent's
+      ref, what = e.parent_occ, "parent"
+      if atom.parent().altloc != "" and e.parent_altloc == "":
+        occ = _conformer_occupancy(atom.parent())
+        # no heavy atom in that altloc: a lone alternate H, keeps the parent
+        if occ != "no heavy atoms":
+          ref, what = occ, "conformer"
+      if ref is not None and abs(atom.occ - ref) > 0.01:
+        result.notes.append(group_args(site=atom.id_str(),
+          reason="occupancy differs from %s" % what,
+          text="occupancy %.2f, %s %.2f" % (atom.occ, what, ref)))
+        listed.append((result.notes[-1], atom))
     written.append((atom, item.source_key))
+    written_as[atom.memory_id()] = atom
   # water names follow the content, per residue_group and for every water
   # atom_group of it (including a blank-altloc O, so that the residue stays
   # one residue): D -> DOD; H -> HOH where it was DOD (other names such as
@@ -797,6 +845,10 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
       result.n_water_to_hoh += 1
   for rg_id in groups:
     _remove_empty_atom_groups(groups[rg_id][0])
+  # output label of each listed site: the atom as written (for a split site
+  # its H); site keeps the input label
+  for entry, atom in listed:
+    entry.output = output_label(written_as.get(atom.memory_id(), atom))
   # provenance, keyed by the written atoms' final identity
   parts = _residue_parts(hierarchy)
   for atom, source_key in written:

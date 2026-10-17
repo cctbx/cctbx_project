@@ -730,6 +730,10 @@ def test_conformers():
     sites = prog._neutron_result.conformer_sites
     assert sorted(x.site[5:9].strip() for x in sites
                   if x.reason == "conformer") == ["HG", "HG"], sites
+    # 8 split sites and the two conformer D (water excluded)
+    assert prog._neutron_result.n_exchangeable == 10
+    with open(prog.params.output.description_file_name) as f:
+      assert "Exchangeable H sites (not water): 10" in f.read()
 
 def test_output_symmetry():
   # 9d: none in -> none out; cryo-EM placeholder -> 1 1 1 P 1; cell -> cell
@@ -1038,6 +1042,436 @@ def test_dod_input_flipkins():
   assert water_groups(fn) == [("HOH", ["H", "O"])] * 7, water_groups(fn)
   assert len(os.listdir(d)) > 0
 
+# ------------------------------------------------------------------------------
+# step 3.3: per-mode labels, His, ligands, glycan, mmCIF, description
+
+def atom_label_set(src, is_file=True):
+  """{(resseq, name, altloc, element, occupancy)}"""
+  inp = iotbx.pdb.input(file_name=src) if is_file else iotbx.pdb.input(
+    source_info=None, lines=src)
+  h = inp.construct_hierarchy()
+  return set((a.parent().parent().resseq.strip(), a.name.strip(),
+              a.parent().altloc, a.element.strip(), round(a.occ, 2))
+             for a in h.atoms())
+
+def hd_table(text):
+  """{(resseq, name, altloc, element, occupancy)} from lines
+  'resseq name altloc element occupancy', altloc '-' for blank"""
+  result = set()
+  for line in text.strip().splitlines():
+    resseq, name, altloc, element, occ = line.split()
+    result.add((resseq, name, "" if altloc == "-" else altloc, element,
+                float(occ)))
+  return result
+
+def hd_labels(fn):
+  return set(x for x in atom_label_set(fn) if x[3] in ("H", "D"))
+
+# Ser-Leu dipeptide; Leu stops after CA
+dipeptide = """\
+CRYST1   14.228   15.246   13.577  90.00  90.00  90.00 P 1
+ATOM    577  N   SER A  37       8.872   5.000   5.995  1.00 25.33           N
+ATOM    578  CA  SER A  37       7.827   5.915   6.440  1.00 31.94           C
+ATOM    579  CB  SER A  37       7.709   5.892   7.965  1.00 42.16           C
+ATOM    580  OG  SER A  37       8.926   6.283   8.577  1.00 54.74           O
+ATOM    581  C   SER A  37       8.095   7.336   5.956  1.00 32.18           C
+ATOM    582  O   SER A  37       9.228   7.814   6.002  1.00 31.99           O
+ATOM    588  N   LEU A  38       7.045   8.005   5.492  1.00 34.04           N
+ATOM    589  CA  LEU A  38       7.165   9.372   5.000  1.00 36.58           C
+ATOM    594  C   LEU A  38       6.026  10.246   5.515  1.00 37.03           C
+ATOM    595  O   LEU A  38       5.000   9.741   5.969  1.00 35.00           O
+END
+"""
+# expected H/D per mode: the chain-start N-H (Ser 37 H, not resseq 1, so no
+# NH3) and HA on the truncated Leu are placed like any other H
+dipeptide_hd = {
+"all_h": """
+37 H - H 1.0
+37 HA - H 1.0
+37 HB2 - H 1.0
+37 HB3 - H 1.0
+37 HG - H 1.0
+38 H - H 1.0
+38 HA - H 1.0""",
+"all_d": """
+37 D - D 1.0
+37 DA - D 1.0
+37 DB2 - D 1.0
+37 DB3 - D 1.0
+37 DG - D 1.0
+38 D - D 1.0
+38 DA - D 1.0""",
+"hd_and_h": """
+37 H A H 0.5
+37 D B D 0.5
+37 HG A H 0.5
+37 DG B D 0.5
+37 HA - H 1.0
+37 HB2 - H 1.0
+37 HB3 - H 1.0
+38 H A H 0.5
+38 D B D 0.5
+38 HA - H 1.0""",
+"hd_and_d": """
+37 H A H 0.5
+37 D B D 0.5
+37 HG A H 0.5
+37 DG B D 0.5
+37 DA - D 1.0
+37 DB2 - D 1.0
+37 DB3 - D 1.0
+38 H A H 0.5
+38 D B D 0.5
+38 DA - D 1.0""",
+"all_hd": """
+37 H A H 0.5
+37 D B D 0.5
+37 HA A H 0.5
+37 DA B D 0.5
+37 HB2 A H 0.5
+37 DB2 B D 0.5
+37 HB3 A H 0.5
+37 DB3 B D 0.5
+37 HG A H 0.5
+37 DG B D 0.5
+38 H A H 0.5
+38 D B D 0.5
+38 HA A H 0.5
+38 DA B D 0.5""",
+}
+
+def test_dipeptide_modes():
+  # checked against phenix.ready_set on 2026-10-17; differences explained in
+  # the neutron_option plan
+  for option in NEUTRON:
+    fn, log, description = run_reduce2("tst_reduce2_neutron_dipep_" + option,
+      dipeptide, ["neutron_option=" + option])
+    ours, expected = hd_labels(fn), hd_table(dipeptide_hd[option])
+    assert ours == expected, (option, sorted(ours ^ expected))
+
+his_no_h = """\
+CRYST1   12.670   14.862   15.186  90.00  90.00  90.00 P 1
+ATOM    780  N   HIS A  45       5.209   7.219   5.800  1.00  9.38           N
+ATOM    781  CA  HIS A  45       6.450   6.586   6.229  1.00 10.30           C
+ATOM    782  C   HIS A  45       6.629   5.221   5.572  1.00 11.06           C
+ATOM    783  O   HIS A  45       7.669   4.940   4.976  1.00 12.76           O
+ATOM    784  CB  HIS A  45       6.482   6.444   7.752  1.00 11.71           C
+ATOM    785  CG  HIS A  45       6.466   7.752   8.482  1.00 17.20           C
+ATOM    786  ND1 HIS A  45       6.374   7.837   9.854  1.00 28.53           N
+ATOM    787  CD2 HIS A  45       6.532   9.027   8.030  1.00 22.78           C
+ATOM    788  CE1 HIS A  45       6.383   9.107  10.217  1.00 26.38           C
+ATOM    789  NE2 HIS A  45       6.478   9.850   9.129  1.00 20.23           N
+END
+"""
+his_hd = """
+45 H A H 0.5
+45 D B D 0.5
+45 HD1 A H 0.5
+45 DD1 B D 0.5
+45 HE2 A H 0.5
+45 DE2 B D 0.5
+45 HA - H 1.0
+45 HB2 - H 1.0
+45 HB3 - H 1.0
+45 HD2 - H 1.0
+45 HE1 - H 1.0"""
+
+def test_his_split():
+  # His in hd_and_h: HD1 and HE2 split into A/B with DD1/DE2. approach=place
+  # keeps both ring N-H (no Optimizer, so no His flip or protonation choice).
+  # checked against phenix.ready_set on 2026-10-17; differences explained in
+  # the neutron_option plan
+  fn, log, description = run_reduce2("tst_reduce2_neutron_his", his_no_h,
+    ["neutron_option=hd_and_h", "approach=place"])
+  ours, expected = hd_labels(fn), hd_table(his_hd)
+  assert ours == expected, sorted(ours ^ expected)
+
+hc4_no_h = """\
+CRYST1   67.145   67.145   41.119  90.00  90.00 120.00 P 63          6
+HETATM 1987  C1  HC4 A 169      12.270  -2.851   7.690  1.00  2.51           C
+HETATM 1988  O1  HC4 A 169      12.412  -3.051   8.915  1.00  5.58           O
+HETATM 1989  C2  HC4 A 169      13.073  -1.969   6.902  1.00  3.66           C
+HETATM 1990  C3  HC4 A 169      13.948  -1.115   7.480  1.00  4.10           C
+HETATM 1991  C1' HC4 A 169      14.960  -0.357   6.862  1.00  3.50           C
+HETATM 1992  C2' HC4 A 169      15.734   0.515   7.642  1.00  7.24           C
+HETATM 1993  C3' HC4 A 169      16.796   1.251   7.105  1.00  7.06           C
+HETATM 1994  C4' HC4 A 169      17.093   1.090   5.743  1.00  6.80           C
+HETATM 1995  C5' HC4 A 169      16.317   0.232   4.947  1.00  7.54           C
+HETATM 1996  C6' HC4 A 169      15.255  -0.474   5.508  1.00  4.60           C
+HETATM 1997  O4' HC4 A 169      18.097   1.748   5.166  1.00  7.92           O
+END
+"""
+hc4_all_d = """
+169 D2 - D 1.0
+169 D3 - D 1.0
+169 D2' - D 1.0
+169 D3' - D 1.0
+169 D5' - D 1.0
+169 D6' - D 1.0
+169 DO4' - D 1.0"""
+
+def test_hc4_all_d():
+  # HC4 ligand, all_d: 7 D and no H
+  # checked against phenix.ready_set on 2026-10-17; differences explained in
+  # the neutron_option plan
+  fn, log, description = run_reduce2("tst_reduce2_neutron_hc4_d", hc4_no_h,
+    ["neutron_option=all_d"])
+  ours, expected = hd_labels(fn), hd_table(hc4_all_d)
+  assert ours == expected, sorted(ours ^ expected)
+
+def test_hc4_hd_and_h():
+  # 6: ligand OH: HO4' split, the six C-H stay H
+  fn, log, description = run_reduce2("tst_reduce2_neutron_hc4_hd",
+    hc4_no_h, ["neutron_option=hd_and_h"])
+  labels = atom_label_set(fn)
+  hd = sorted((x[1], x[2]) for x in labels if x[3] in ("H", "D"))
+  assert ("HO4'", "A") in hd and ("DO4'", "B") in hd, hd
+  assert len([x for x in hd if x[1] == ""]) == 6, hd
+
+def test_glycan_link():
+  # 7: NAG-ASN (fixture of tst_add_hydrogen_16, 1a7s ASN 114 - NAG 401):
+  # ASN ND2 H split, ring OH split, no H on the O1 the link replaces
+  from mmtbx.hydrogens.tst_add_hydrogen_16 import pdb_str_019_control
+  fn, log, description = run_reduce2("tst_reduce2_neutron_nag",
+    pdb_str_019_control, ["neutron_option=hd_and_h"])
+  h = iotbx.pdb.input(fn).construct_hierarchy()
+  def hd(resname):
+    return sorted((a.name.strip(), a.parent().altloc) for a in h.atoms()
+      if a.parent().resname == resname and a.element.strip() in ("H", "D"))
+  asn, nag = hd("ASN"), hd("NAG")
+  assert ("HD21", "A") in asn and ("DD21", "B") in asn, asn
+  assert not [x for x in asn if x[0][1:] == "D22"], asn
+  for name in ("O3", "O4", "O6"):
+    assert ("H" + name, "A") in nag and ("D" + name, "B") in nag, nag
+  assert not [x for x in nag if x[0][1:] == "O1"], nag
+
+def make_cif(code, atoms, bonds, angles):
+  """monomer CIF: atoms (name, element, energy type, x, y, z), bonds
+  (a, b, x-ray, neutron), angles (a, b, c, value)"""
+  lines = ["data_comp_list", "loop_", "_chem_comp.id",
+    "_chem_comp.three_letter_code", "_chem_comp.name", "_chem_comp.group",
+    "_chem_comp.number_atoms_all", "_chem_comp.number_atoms_nh",
+    "_chem_comp.desc_level",
+    " %s  %s  'test ligand'  ligand  %d  %d  ." % (code, code, len(atoms),
+      len([x for x in atoms if x[1] != "H"])), "", "data_comp_" + code,
+    "loop_", "_chem_comp_atom.comp_id", "_chem_comp_atom.atom_id",
+    "_chem_comp_atom.type_symbol", "_chem_comp_atom.type_energy",
+    "_chem_comp_atom.charge", "_chem_comp_atom.x", "_chem_comp_atom.y",
+    "_chem_comp_atom.z"]
+  lines += [" %s  %-4s  %s  %-4s  0  %.3f  %.3f  %.3f" % ((code,) + x)
+            for x in atoms]
+  lines += ["", "loop_", "_chem_comp_bond.comp_id",
+    "_chem_comp_bond.atom_id_1", "_chem_comp_bond.atom_id_2",
+    "_chem_comp_bond.type", "_chem_comp_bond.value_dist",
+    "_chem_comp_bond.value_dist_esd", "_chem_comp_bond.value_dist_neutron"]
+  lines += [" %s  %-4s  %-4s  single  %.3f  0.020  %.3f" % ((code,) + x)
+            for x in bonds]
+  lines += ["", "loop_", "_chem_comp_angle.comp_id",
+    "_chem_comp_angle.atom_id_1", "_chem_comp_angle.atom_id_2",
+    "_chem_comp_angle.atom_id_3", "_chem_comp_angle.value_angle",
+    "_chem_comp_angle.value_angle_esd"]
+  lines += [" %s  %-4s  %-4s  %-4s  %.1f  3.0" % ((code,) + x)
+            for x in angles]
+  return "\n".join(lines) + "\n"
+
+def heavy_pdb(code, atoms, offset=(10.0, 10.0, 10.0), cryst1=True):
+  lines = []
+  if cryst1:
+    lines.append("CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1")
+  for i, (name, element, energy, x, y, z) in enumerate(atoms):
+    if element == "H": continue
+    lines.append("HETATM%5d %-4s %s A   1    %8.3f%8.3f%8.3f  1.00 20.00"
+      "          %2s" % (i + 1, name if len(name) == 4 else " " + name, code,
+      x + offset[0], y + offset[1], z + offset[2], element))
+  return "\n".join(lines) + "\n"
+
+def _tetra(center, a, b):
+  """angles for the H on a CH2 between a and b"""
+  return [(a, center, "H%s1" % center[-1]), (a, center, "H%s2" % center[-1]),
+          (b, center, "H%s1" % center[-1]), (b, center, "H%s2" % center[-1]),
+          ("H%s1" % center[-1], center, "H%s2" % center[-1])]
+
+# ZQ3: ethylene glycol; one hydroxyl H named 1HO2 (digit first)
+zq3_atoms = [
+  ("O2", "O", "OH1", -0.700, 1.210, 0.0), ("C1", "C", "CH2", 0.0, 0.0, 0.0),
+  ("C2", "C", "CH2", 1.520, 0.0, 0.0), ("O3", "O", "OH1", 2.220, 1.210, 0.0),
+  ("1HO2", "H", "HOH1", -1.600, 1.000, 0.0),
+  ("H11", "H", "HCH2", -0.330, -0.550, 0.890),
+  ("H12", "H", "HCH2", -0.330, -0.550, -0.890),
+  ("H21", "H", "HCH2", 1.850, -0.550, 0.890),
+  ("H22", "H", "HCH2", 1.850, -0.550, -0.890),
+  ("HO3", "H", "HOH1", 3.120, 1.000, 0.0)]
+zq3_cif = make_cif("ZQ3", zq3_atoms,
+  [("C1", "O2", 1.43, 1.43), ("C1", "C2", 1.52, 1.52),
+   ("C2", "O3", 1.43, 1.43), ("O2", "1HO2", 0.85, 0.98),
+   ("O3", "HO3", 0.85, 0.98), ("C1", "H11", 0.97, 1.09),
+   ("C1", "H12", 0.97, 1.09), ("C2", "H21", 0.97, 1.09),
+   ("C2", "H22", 0.97, 1.09)],
+  [(x[0], x[1], x[2], 109.5) for x in
+    [("O2", "C1", "C2"), ("C1", "C2", "O3"), ("C1", "O2", "1HO2"),
+     ("C2", "O3", "HO3")] + _tetra("C1", "O2", "C2") +
+    _tetra("C2", "C1", "O3")])
+
+# ZQ4: N-methyl ethanolamine, NH and OH (a terminal NH2 has no dihedral
+# anchor for its riding H and is not placed: one heavy neighbour)
+zq4_atoms = [
+  ("C3", "C", "CH3", -1.430, 1.800, 0.0), ("N1", "N", "NH1", -0.700, 1.210, 0.0),
+  ("C1", "C", "CH2", 0.0, 0.0, 0.0), ("C2", "C", "CH2", 1.520, 0.0, 0.0),
+  ("O1", "O", "OH1", 2.220, 1.210, 0.0),
+  ("HN1", "H", "HNH1", -0.200, 1.900, 0.500),
+  ("H31", "H", "HCH3", -2.400, 1.400, 0.0),
+  ("H32", "H", "HCH3", -1.300, 2.400, 0.880),
+  ("H33", "H", "HCH3", -1.300, 2.400, -0.880),
+  ("H11", "H", "HCH2", -0.330, -0.550, 0.890),
+  ("H12", "H", "HCH2", -0.330, -0.550, -0.890),
+  ("H21", "H", "HCH2", 1.850, -0.550, 0.890),
+  ("H22", "H", "HCH2", 1.850, -0.550, -0.890),
+  ("HO1", "H", "HOH1", 3.120, 1.000, 0.0)]
+zq4_cif = make_cif("ZQ4", zq4_atoms,
+  [("C3", "N1", 1.47, 1.47), ("C1", "N1", 1.47, 1.47),
+   ("C1", "C2", 1.52, 1.52), ("C2", "O1", 1.43, 1.43),
+   ("N1", "HN1", 0.89, 1.01), ("O1", "HO1", 0.85, 0.98),
+   ("C3", "H31", 0.96, 1.09), ("C3", "H32", 0.96, 1.09),
+   ("C3", "H33", 0.96, 1.09), ("C1", "H11", 0.97, 1.09),
+   ("C1", "H12", 0.97, 1.09), ("C2", "H21", 0.97, 1.09),
+   ("C2", "H22", 0.97, 1.09)],
+  [(x[0], x[1], x[2], 109.5) for x in
+    [("C3", "N1", "C1"), ("N1", "C1", "C2"), ("C1", "C2", "O1"),
+     ("C3", "N1", "HN1"), ("C1", "N1", "HN1"), ("C2", "O1", "HO1"),
+     ("N1", "C3", "H31"), ("N1", "C3", "H32"), ("N1", "C3", "H33"),
+     ("H31", "C3", "H32"), ("H31", "C3", "H33"), ("H32", "C3", "H33")] +
+    _tetra("C1", "N1", "C2") + _tetra("C2", "C1", "O1")])
+
+def test_user_cif_ligand():
+  # 9c (add): invented ligand with OH and NH2 from a CIF written here: the
+  # polar H are split, no missing restraints; without the CIF the run fails
+  prog = run_prog("tst_reduce2_neutron_zq4", heavy_pdb("ZQ4", zq4_atoms),
+    zq4_cif, neutron_option="hd_and_h")
+  h = iotbx.pdb.input(prog.params.output.filename).construct_hierarchy()
+  hd = sorted((a.name.strip(), a.parent().altloc) for a in h.atoms()
+              if a.element.strip() in ("H", "D"))
+  for name in ("HN1", "HO1"):
+    assert (name, "A") in hd and ("D" + name[1:], "B") in hd, hd
+  assert len([x for x in hd if x[1] == ""]) == 7, hd
+  with open(prog.params.output.description_file_name) as f:
+    description = f.read()
+  for text in ("Restraints were not found", "Insufficient restraints",
+               "not placed", "Could not find atom info"):
+    assert text not in description and text not in prog.log_text, text
+  try:
+    run_prog("tst_reduce2_neutron_zq4_nocif", heavy_pdb("ZQ4", zq4_atoms),
+      neutron_option="hd_and_h")
+  except Sorry:
+    pass
+  else:
+    raise AssertionError("ZQ4 ran without its CIF")
+
+def test_name_not_pairable_end_to_end():
+  # 9i: 1HO2 stays H (never D) and is listed; the other OH is split
+  # (hd_and_h) or D (all_d); the written model reinterprets with restraints
+  for option, ho3 in (("hd_and_h", "split"), ("all_d", "D")):
+    prog = run_prog("tst_reduce2_neutron_zq3_" + option,
+      heavy_pdb("ZQ3", zq3_atoms), zq3_cif, neutron_option=option)
+    fn = prog.params.output.filename
+    h = iotbx.pdb.input(fn).construct_hierarchy()
+    hd = sorted((a.name.strip(), a.parent().altloc, a.element.strip())
+                for a in h.atoms() if a.element.strip() in ("H", "D"))
+    assert ("1HO2", "", "H") in hd, (option, hd)
+    assert not [x for x in hd if x[0] == "1DO2"], hd
+    if ho3 == "split":
+      assert ("HO3", "A", "H") in hd and ("DO3", "B", "D") in hd, hd
+    else:
+      assert ("DO3", "", "D") in hd, hd
+    with open(prog.params.output.description_file_name) as f:
+      description = f.read()
+    line = [l for l in description.splitlines() if "1HO2 ZQ3" in l]
+    assert len(line) == 1 and "name not pairable by phenix.refine" in line[0]
+    split = sorted(tuple(sorted(h.atoms()[i[0]].name.strip() for i in x))
+                   for x in h.exchangeable_hd_selections())
+    assert split == ([("DO3", "HO3")] if ho3 == "split" else []), split
+    # reads back and reinterprets with restraints (and the CIF)
+    from iotbx.cif import reader as cif_reader
+    model = mmtbx.model.manager(model_input=iotbx.pdb.input(fn),
+      restraint_objects=[("zq3.cif", cif_reader(
+        input_string=zq3_cif).model())], log=null_out())
+    model.process(make_restraints=True)
+    from mmtbx.hydrogens import hd_exchange
+    table = hd_exchange.h_parent_table(model)
+    assert set(e.status for e in table.values()) == set(["ok"])
+
+def test_section_in_log():
+  # the H/D section also goes to the log, so it is there without files
+  prefix = "tst_reduce2_neutron_zq3_log"
+  for ext in ("_out.pdb", ".txt"):
+    if os.path.exists(prefix + ext): os.remove(prefix + ext)
+  prog = run_prog(prefix, heavy_pdb("ZQ3", zq3_atoms), zq3_cif,
+    neutron_option="all_d", output__write_files=False)
+  assert not os.path.exists(prefix + "_out.pdb")
+  log = prog.log_text
+  assert log.count("H/D model (neutron_option=all_d):") == 1
+  line = [l for l in log.splitlines() if "1HO2 ZQ3" in l]
+  assert len(line) == 1 and "kept as H" in line[0], line
+  # the counts are printed once
+  assert log.count("Split into H/D pairs") == 1
+
+def test_mmcif_output():
+  # 11: .cif output reads back with the PDB output's H/D labels and
+  # occupancies and the same exchangeable pairs
+  results = {}
+  for ext in ("pdb", "cif"):
+    fn, log, description = run_reduce2("tst_reduce2_neutron_mmcif_" + ext,
+      pdb_1yjp, ["neutron_option=hd_and_h",
+      "output.filename=tst_reduce2_neutron_mmcif_out." + ext])
+    fn = "tst_reduce2_neutron_mmcif_out." + ext
+    h = iotbx.pdb.input(fn).construct_hierarchy()
+    labels = set((a.parent().parent().resseq.strip(), a.parent().resname,
+      a.name.strip(), a.parent().altloc, a.element.strip(), round(a.occ, 2))
+      for a in h.atoms())
+    atoms = h.atoms()
+    pairs = set(frozenset(atoms[i[0]].parent().parent().resseq.strip() + ":" +
+      atoms[i[0]].name.strip() for i in x)
+      for x in h.exchangeable_hd_selections())
+    results[ext] = (labels, pairs)
+  assert results["cif"][0] == results["pdb"][0], sorted(
+    results["cif"][0] ^ results["pdb"][0])
+  assert results["cif"][1] == results["pdb"][1]
+  assert len(results["pdb"][1]) == 20
+
+def test_description_file():
+  # every category, by written name and with its reason: conformer site,
+  # merged copies, partial parent, name not pairable, water renamed
+  from mmtbx.hydrogens.tst_hd_exchange import pdb_pep_og_ab
+  pdb_str = pdb_pep_og_ab.replace(
+    "NZ  LYS A   3      19.531  -1.812  18.059  1.00",
+    "NZ  LYS A   3      19.531  -1.812  18.059  0.80").replace("END\n", "")
+  assert "0.80" in pdb_str
+  pdb_str += heavy_pdb("ZQ3", zq3_atoms, offset=(5.0, 15.0, 5.0),
+    cryst1=False) + "END\n"
+  prog = run_prog("tst_reduce2_neutron_desc", pdb_str, zq3_cif,
+    neutron_option="hd_and_h", exclude_water=False)
+  with open(prog.params.output.description_file_name) as f:
+    description = f.read()
+  section = description[description.index("H/D model (neutron_option="
+    "hd_and_h)"):]
+  def entry(label):
+    found = [l for l in section.splitlines() if l.strip().startswith(label)]
+    assert len(found) == 1, (label, found)
+    return found[0]
+  assert "Neutron distances used (neutron_option=hd_and_h)" in section
+  assert "Waters renamed DOD: 1" in section
+  assert entry("DG ASER A   2").endswith("conformer")
+  assert entry("DG BSER A   2").endswith("conformer")
+  assert "merged conformer copies" in entry("H  CSER A   2")
+  assert "merged conformer copies" in entry("HA  SER A   2")
+  for name in ("HZ1", "HZ2", "HZ3"):
+    assert "parent occupancy 0.80" in entry("%sALYS A   3" % name)
+  assert "phenix.refine currently refines H + D = 1" in section
+  assert "name not pairable by phenix.refine" in entry("1HO2 ZQ3 A   1")
+  # none: no H/D section
+  fn, log, description = run_reduce2("tst_reduce2_neutron_desc_none",
+    pdb_1yjp, [])
+  assert "H/D model" not in description
+
 if __name__ == "__main__":
   test_xray_default()
   test_neutron_add()
@@ -1078,4 +1512,14 @@ if __name__ == "__main__":
   test_dod_input_with_d_kept()
   test_dod_input_hd_and_h()
   test_dod_input_flipkins()
+  test_dipeptide_modes()
+  test_his_split()
+  test_hc4_all_d()
+  test_hc4_hd_and_h()
+  test_glycan_link()
+  test_user_cif_ligand()
+  test_name_not_pairable_end_to_end()
+  test_section_in_log()
+  test_mmcif_output()
+  test_description_file()
   print("OK")
