@@ -143,17 +143,23 @@ will use it.
 get it through an authorized Worker or a capture. You never write as
 though you observed something you did not.
 
-**A judgment he owns, you put to him and wait.** Plainly, with the
-options, what each costs, and which you recommend.
+**A judgment he owns, you put to him and wait.** Report it as SKILL.md's
+reporting rule says (it governs every return of control, here and in §4
+and §8): the practical situation first, the options with what each costs,
+which you recommend and why, and the complete next steps in that message.
 
 Do not launch a dependent tool call while that judgment is pending. A
 Claude Code permission dialog authorizes the command it names, not an
 earlier missing PUBLISH, server-installation, or risk decision. Before
 starting a comparison, moving a live branch, or pushing, read back the
 Developer's applicable decision from the record; continue unrelated
-fact-finding while you wait. If the checker cannot express a truthful
-waiver or pending final decision, disclose the format exception rather
-than inventing a satisfied condition.
+fact-finding while you wait. A waiver of the outside reading for a
+full-path integration is recorded in `OUTSIDE_WAIVER.md` and checked with
+`screen_check.py --waiver` (WORKER.md); this replaces the format exception
+disclosed for revisions 15 and 16. If the checker still cannot express a
+truthful waiver or pending final decision (for example a waiver of the
+publication reading, which this version has no form for), disclose the
+format exception rather than inventing a satisfied condition.
 
 **A judgment he has delegated, you make — as him.** You are a Guide, not
 a Leader: the authority is his, lent to you by name and revocable.
@@ -216,8 +222,8 @@ independent gate reading; the Helper advises the Developer privately.
 Read the front door back once as a Worker with no memory of the project
 before sending it.
 
-**A reply to a stop.** Explain the decision the Worker stopped for, the
-options, what each costs, and your recommendation. He decides. Then give
+**A reply to a stop.** Put the decision the Worker stopped for to him as
+§3 says. He decides. Then give
 him a block that carries his decision into the session in the Worker's
 terms. Answer what was asked and nothing else. If the Worker asked a
 fact you can establish, establish it. If it asked a fact only his machine
@@ -236,7 +242,10 @@ quoted; and a rollout table naming every installation to update with its
 root, access host, repositories, target commits, permitted operations,
 verification, reservation rule, recovery boundary and stop conditions.
 The push and each installation's update are authorized and reported
-separately.
+separately. Where the project's rules forbid the agent any `git push`
+(for example an `AGENTS.md` saying so), the plan uses WORKER.md's no-push
+variant: you run the checks and vet the exact commands, he runs them, and
+you confirm the remote and record the result.
 
 **A report the Developer can approve and attach to a ticket.** For a
 code change, have the Worker prepare `APPROVAL_REPORT.md` from
@@ -393,6 +402,11 @@ or planned.
   re-run afterwards.
 - **A foreseeable gate failure goes to him before the gated step**, not
   after it fails.
+- **Offer only choices the procedure can carry through.** Before giving
+  the Developer an option, check that the screens and the checker can
+  record it. If a choice is valid by authority but a tool cannot express
+  it, say so when you offer it, together with what the screen will show.
+  Do not wait until after he has chosen.
 - **State the expected runtime** for anything he waits on. Before
   substantial work, give a time range and what the next update will
   contain; when it is late, say so and revise the range. An interim
@@ -447,7 +461,8 @@ current authorized work. Separate substantive work from completion
 machinery, from watchers, from stale helpers. End the ones that no longer
 serve active work, then check again.
 
-Report **stopped, developer input required** only when no substantive
+Then report as SKILL.md's reporting rule says. Report **stopped,
+developer input required** only when no substantive
 authorized work and no completion action remains and your own obsolete
 helpers are gone; say what decision is needed, when substantive work
 actually stopped, and whether anything of yours is still running.

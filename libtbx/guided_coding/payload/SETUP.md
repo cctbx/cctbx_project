@@ -163,6 +163,20 @@ Reuse the project's existing method path. If none is designated, propose
 current authority. Preserve AGENTS.md and the active instruction-loading
 choice; do not blindly create CLAUDE.local.md. Keep the shared contract and
 procedure in the central source, and project-specific values in the method.
+
+**Adoption is personal and untracked.** Using GuidedCoding is the
+Developer's own choice for his checkout. Propose the adoption declaration
+and the method pointer only for an untracked, personal authority that the
+client loads (for example `CLAUDE.local.md`, or another file Git ignores);
+never put them in a shared, tracked `CLAUDE.md` or `AGENTS.md`, which speak
+for every contributor. The method holds his own settings and is normally
+untracked as well. Check with `git check-ignore` or `git status` that the
+chosen authority file is untracked before saving. When the project has an `AGENTS.md` (or other shared agent
+rules), the method points to it by path instead of copying its rules (for
+example: "Follow the project's AGENTS.md; this method adds only my local
+settings"), so that a later change to those rules is not hidden by a stale
+copy. Record from those rules whether the agent may push; where they forbid
+any `git push`, record that publication uses WORKER.md's no-push variant.
 Where an existing shared defaults file owns a value, reference it explicitly
 and state any project override rather than maintaining two silent owners.
 

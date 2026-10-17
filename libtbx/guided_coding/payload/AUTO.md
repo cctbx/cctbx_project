@@ -73,6 +73,9 @@ proposes its exact text and the Developer approves it; the Guide does not write 
    `screen_check.py present auto_start FILE`, paste the output in full into the reply once (tool
    output is not visible to the Developer). The STOP section gives the
    absolute path of the `auto_queue.py` actually in use (the verified procedure root).
+   Write its stop line as `screen_check.py stop-command <interpreter>` prints it (revision 17),
+   with the interpreter resolved at start: it puts a path containing a space in single quotes,
+   which every supported shell reads as one word, and refuses a relative or bare name.
 5. `auto_queue.py init --lock-dir <method's lock directory> …` (there is no default lock: without
    `--lock-dir` init refuses with exit 2 and creates nothing), write `GRANT.md` first, then
    `auto_queue.py install check --script <method's fingerprint script> --expect <recorded value>`
@@ -233,7 +236,12 @@ approved there under the standard procedure. Transfer is allowed under a stop.
 `<cctbx conda Python> -I -B <procedure root>/auto_queue.py stop`, with both paths absolute as the
 start screen prints them (the interpreter: the absolute path of `libtbx.python`, resolved at
 start with `command -v libtbx.python`, or `<build>/conda_base/bin/python3`; never a bare
-`python3`, which may lack psutil). Report
+`python3`, which may lack psutil). A path containing a space is written in single or double
+quotes (`'/Users/a b/build/bin/libtbx.python' -I -B ... stop`); `screen_check.py stop-command`
+prints the line in that form, and the checker refuses the path unquoted. A path containing a
+single quote or `!` cannot be written (both are refused). A path containing a tab is accepted in
+quotes, but pasting it at an interactive bash 3.2 prompt (macOS `/bin/bash`) can trigger
+completion; keep tabs out of installation paths. Report
 **Stopped** only when the helper prints Stopped; otherwise report **Stopping** and what remains.
 The helper can stop only what it tracks: the registered worker (which stops at its next
 `check-stop`) and processes started through `run`, including their process group. Anything the

@@ -8,11 +8,11 @@ Start with a small task in a project you know. This guide tells you how to insta
 
 These instructions use the [Guided Coding download](https://www.thomasterwilliger.org/guided_coding/). Use Claude Code on your computer and a project managed with Git. You also need Python 3.10 or newer with psutil (the cctbx conda Python, `libtbx.python`, has it, and the kit's documented commands use it; any such Python can stand in for it) and `shasum` or `sha256sum` to check the download. The Terminal commands in this guide work in bash, zsh, csh and tcsh. In Terminal, `git --version` and `libtbx.python --version` show which versions of Git and Python you have.
 
-**Supported systems.** Guided Coding runs on macOS and Linux. On Linux its tests run, but a real `/gc` session there has not yet been observed (see [Clients and platforms](GUIDED_CODING_VERIFICATION.md#important-remaining-uncertainty)). Auto mode (running several jobs while you are away) runs only on macOS; on other systems its runs are refused. Windows is not supported.
+**Supported systems.** Guided Coding supports the Claude app on macOS, and Claude Code in Terminal on macOS and Linux. On Linux its tests run, but a real `/gc` session there has not yet been observed (see [Clients and platforms](GUIDED_CODING_VERIFICATION.md#important-remaining-uncertainty)). Auto mode (running several jobs while you are away) runs only on macOS; on other systems its runs are refused. Windows is not supported.
 
 Getting started has three separate steps: (a) install Claude Code, described below; (b) register Guided Coding once, so that Claude Code knows the `/guided_coding` command (section 2); and (c) set up each project in which you want to use it (section 3).
 
-**(a) Install Claude Code.** On a Mac, open the Claude app, choose the **Code** tab and select **Local**. The app includes Claude Code. If you need the app, follow Anthropic’s [desktop setup instructions](https://code.claude.com/docs/en/desktop-quickstart). Update the app if needed and sign in with an account that includes Claude Code.
+**(a) Install Claude Code.** On a Mac, open the Claude app and choose the **Code** tab. The app includes Claude Code. If you need the app, follow Anthropic’s [desktop setup instructions](https://code.claude.com/docs/en/desktop-quickstart). Update the app if needed and sign in with an account that includes Claude Code.
 
 You can also use Claude Code in Terminal on macOS or Linux. Follow Anthropic’s [Terminal installation](https://code.claude.com/docs/en/setup) and [sign-in and API key](https://code.claude.com/docs/en/authentication) instructions. If you use an API key, keep using the Terminal window where you set it.
 
@@ -56,8 +56,14 @@ This is step (b). You do it once, not once per project.
 
 Open a Claude Code conversation in the kit folder you just unzipped, `GuidedCoding` in Downloads (the folder that contains `guided_coding`). Do not choose your home folder: the folder you choose is the folder Claude may work in, and your home folder would give it all of your files.
 
-- In the app, choose the **Code** tab, select **Local** and choose the folder `GuidedCoding` inside Downloads.
-- In Terminal, run these two commands:
+In the Claude app, the environment and the folder are two separate controls:
+
+1. Open the **Code** tab and start a new session.
+2. Under **Environment**, choose **Local**, then **My computer**.
+3. At the bottom of the page, use the folder selector to choose `GuidedCoding` inside Downloads. In the Mac folder window, you can press Cmd+Shift+G and paste the full path, `~/Downloads/GuidedCoding`.
+4. Type your message and send it.
+
+In Terminal (on a Mac or on Linux), run these two commands:
 
 ```bash
 cd ~/Downloads/GuidedCoding
@@ -73,6 +79,8 @@ Copy and send the whole message below. It gives Claude the exact setup instructi
 Please set up GuidedCoding from ~/Downloads/GuidedCoding/guided_coding for this Claude Code configuration. Read docs/GUIDED_CODING_COMMAND_REFERENCE.md there. Verify the source and release, check the Claude Code version for this session, and inspect the existing personal skill. If a working shared Guided Coding registration already exists, keep it and show its resolved source. Otherwise register the central link only if the destination is unoccupied. Show what changed. Do not connect to servers, change permission settings, or start a coding task.
 ```
 
+If Claude Code is already helping you install Guided Coding, it can perform this registration step in the same conversation. Open a new conversation only afterward, to use `/guided_coding`.
+
 Claude checks the kit and creates a link to it. This step is called **registration**. The link lets Claude Code find the `/guided_coding` command. If a working link already exists, Claude should keep it and show you where it points. If something else is in the way, Claude should inspect it before proposing a change.
 
 **Access requests.** The link is created in Claude Code's own settings folder (normally `~/.claude/skills`), which is outside the kit folder, so Claude Code may ask before running that command. On a Mac the system may also ask whether the Claude app or Terminal may open files in Downloads. Read each request. Allow only what this step needs, as narrowly as the dialog offers: the one command, once or for this conversation, and access to the Downloads folder if asked. Do not grant access to your whole home folder or add a permanent rule for broad command patterns.
@@ -87,7 +95,7 @@ If the command is missing, see “If something goes wrong” below.
 
 ## 3. Set up your project
 
-This is step (c), activating Guided Coding in one project. Open a new Claude Code conversation in the folder for the Git project you want to change (its top folder, the one that contains `.git`). In the app, choose the **Code** tab, select **Local** and pick that folder. In Terminal, use `cd` to enter the folder before running `claude`. Claude Code may again ask before reading or running something outside that folder, such as the kit; allow the specific request, not a broad rule.
+This is step (c), activating Guided Coding in one project. Open a new Claude Code conversation in the folder for the Git project you want to change (its top folder, the one that contains `.git`). In the app, follow the four steps in section 2 and choose that folder with the folder selector. In Terminal, use `cd` to enter the folder before running `claude`. Claude Code may again ask before reading or running something outside that folder, such as the kit; allow the specific request, not a broad rule.
 
 The download includes an optional [general setup card](https://www.thomasterwilliger.org/guided_coding/GENERAL_DEVELOPER_CARD.md). You can attach it in the app, or tell Claude in Terminal to read `~/Downloads/GuidedCoding/GENERAL_DEVELOPER_CARD.md`.
 
@@ -99,7 +107,7 @@ Type and send exactly the line below. When you type `/`, Claude Code shows a com
 
 Claude reads your project’s documentation and saved settings. It looks for the commands to build and test your program, the folders where those commands should run, and places to keep temporary files and task records. It should ask you only for information it cannot find. Server settings are needed only if your project uses a server.
 
-Read the proposed settings before approving them. Check that the build and test commands are right and that Claude will run them in the right folders. Claude may also propose a few lines in your project’s instructions saying that Guided Coding’s rules apply there. Read those too. It can keep an existing correct setup.
+Read the proposed settings before approving them. The approval box shows only a summary; the full proposed files, including the build and test commands, are in the conversation text above it. Check that the build and test commands are right and that Claude will run them in the right folders. Claude may also propose a few lines in your project’s instructions saying that Guided Coding’s rules apply there. Read those too. It can keep an existing correct setup.
 
 After you approve, let Claude finish saving and checking the files. It should save the old settings and the text you approved before changing the project’s instructions. If saving fails, some files may already have changed. Ask what was saved and what needs to be put back before continuing.
 
@@ -139,6 +147,8 @@ Copy the reviewer’s complete response back into the Guided Coding conversation
 
 Outside review may wait until publication only if the change cannot affect behavior, requirements, interfaces or an important claim, and you accept the worst possible effect described in the plan. Correcting formatting without changing meaning can qualify. The reviewer recommends what to do; you decide whether to accept the work.
 
+You can also waive the outside review before putting a change into your project, by saying so in your own words for that change. Claude records your words; the result screen then says the review was waived, and its limits say what remains uncertain. A waiver covers only that exact tested change and never publication: the outside review before publication is still required.
+
 ## 7. Decide whether to keep the result
 
 Read what changed, which tests ran and what remains uncertain. The report starts with a short summary in plain words and a table of test results with their times; a copy you can open is kept up to date, and older copies are marked `SUPERSEDED`. It should show all the file changes and the full code for any new tests. If no tests were added, it should explain how the result was checked.
@@ -149,9 +159,9 @@ If the outside review is still pending, Claude may show an **ACCEPT** screen: ac
 
 Choose **INTEGRATE** to put the tested change into your project. Choose **REVISE** to ask for more work. Choose **DISCARD** to abandon the proposed change. The change you accept must be the one that was tested.
 
-Before publication, the procedure calls for a full test suite and an outside review of exactly the changes to be sent. You can choose to skip the test suite by saying so explicitly for that set of changes. In this version, the outside review cannot be skipped. Claude should record your choice and which checks were not done. A **PUBLISH** decision alone does not skip those checks.
+Before publication, the procedure calls for a full test suite and an outside review of exactly the changes to be sent. You can choose to skip the test suite by saying so explicitly for that set of changes. In this version, the outside review before publication cannot be skipped. Claude should record your choice and which checks were not done. A **PUBLISH** decision alone does not skip those checks.
 
-The choices are **PUBLISH** and **HOLD**. Check which commits will be sent, to which branch and to which repository. A commit is Git’s saved record of a set of changes. Updating copies of your program on other computers or servers needs a separate update plan.
+The choices are **PUBLISH** and **HOLD**. Check which commits will be sent, to which branch and to which repository. A commit is Git’s saved record of a set of changes. If your project’s rules forbid Claude to push (for example its `AGENTS.md`), Claude still runs the checks, then gives you the exact command to run yourself in Terminal, and afterwards confirms what reached the remote repository and records it. Updating copies of your program on other computers or servers needs a separate update plan.
 
 ## Good to know
 

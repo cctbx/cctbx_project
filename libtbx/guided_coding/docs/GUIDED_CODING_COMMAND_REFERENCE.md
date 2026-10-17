@@ -17,7 +17,11 @@ Please set up GuidedCoding from /absolute/path/to/cctbx_project/libtbx/guided_co
 ```
 
 This message asks Claude to perform the setup steps. It needs the source
-path to find the kit from another project. If the skill folder was created
+path to find the kit from another project. If Claude Code is already
+helping you install Guided Coding, it performs this registration step in
+the same conversation; a new conversation is needed only afterward, to use
+`/guided_coding`. (Claude: perform the registration step in the current
+conversation.) If the skill folder was created
 after the conversation started, open a new conversation.
 Confirm the command with `/guided_coding help`; the `/skills` listing alone
 was not a reliable indicator in the recorded Mac trial.
@@ -76,8 +80,9 @@ block with `sha256sum -c SOURCE_MANIFEST.sha256`; it reads the same
 manifest file.
 
 Project build/test commands may have a different, recorded shell
-requirement. Supported systems: macOS and Linux (on Linux a real `/gc`
-session has not yet been observed; see [Clients and
+requirement. Supported systems: the Claude app on macOS, and Claude Code
+in Terminal on macOS and Linux (on Linux a real `/gc` session has not yet
+been observed; see [Clients and
 platforms](GUIDED_CODING_VERIFICATION.md#important-remaining-uncertainty));
 auto-mode runs need macOS; Windows is not supported (see the User Guide's "Before you begin").
 
@@ -185,6 +190,22 @@ The generic GC package supplies none of these PHENIX-specific values.
 Relevant adopted values and their provenance go into the project's method,
 so a later session does not need the original card attachment.
 
+When a later conversation needs a card (for example the setup conversation
+after a registration step), the handoff either includes the complete card
+text or names a **verified local file**: a file at an absolute path that
+the handing-over conversation has itself opened and read in full, and
+found to contain the complete card, from its first heading to its end, with
+nothing missing or changed. A file the procedure produced and verified also
+qualifies when the card in it is stored in another encoding, such as the
+generated PHENIX developer page, where the card is HTML-escaped: the
+handing-over conversation checks that the decoded card text is complete
+and unchanged. The handoff message names the file and where it is (and,
+for an encoded copy, that the card is HTML-escaped); it carries no hash.
+Record the file's SHA-256 in the task record instead, where a later check
+can compare it. A path that was not opened, a file that holds only part of
+the card, or a summary of it is not a verified local file; include the
+card text instead.
+
 ### Contract adoption and loaded instructions
 
 Before guided work, the project’s current instructions must state that it
@@ -208,6 +229,11 @@ build, test, coordination and publication rules.
 
 Review that example before using it. Keep the project’s existing
 instruction files; do not create another one just to match the example.
+Adoption is personal and untracked: record it in an untracked file the
+client loads, such as `CLAUDE.local.md`, never in a shared, tracked
+`CLAUDE.md` or `AGENTS.md`. When the project has an `AGENTS.md`, the
+method points to it rather than copying its rules, and records whether
+those rules let the agent push.
 In particular, adding `CLAUDE.local.md` can change whether `AGENTS.md` loads
 under Claude Code's default selection. Inspect the active setting rather
 than assuming both files load; see the
@@ -302,6 +328,26 @@ with tag following disabled, after `publication_precheck.py` has compared
 the live repository with the record; no development or recovery tag is
 created.
 
+Where the project's rules forbid the agent any `git push` (cctbx's
+draft `AGENTS.md` says "in any form", which this procedure reads as including
+dry runs), publication uses the **no-push
+variant** (WORKER.md): Claude runs `publication_precheck.py check` without
+`--dry-run` and `confirm --before`, vets the exact push command (and its
+dry-run form), hands both to you to run yourself, then runs `confirm
+--tags STATE` (the tag state `--before` printed) to check that the remote
+branch is at the outgoing commit and no tag was added, removed or moved,
+and records the result. `confirm` reads the remote with
+`git ls-remote` and never pushes or fetches.
+
+The STOP and PUBLICATION screens, like PLAN, ACCEPT and RESULT, end with
+a `Recommendation:` line giving the recommended choice and why, and a
+`Next:` line; the checker refuses either missing (revision 17). For a
+full-path change you may waive the outside reading before integration in
+your own words; it is recorded in `OUTSIDE_WAIVER.md` and checked with
+`screen_check.py present result ... --waiver OUTSIDE_WAIVER.md` (never
+together with `--reading`). A waiver names one packet, covers integration
+only, and never covers publication.
+
 Use the project's adopted testing and publication rules. Preparing a test,
 running it, integration and a push are different actions. The pilot's
 one-time server-suite waiver is not permission to skip a later required
@@ -315,7 +361,10 @@ the job text after it. A pasted message that merely begins with the
 command does not start the skill. Claude turns the request into a job
 list, shows one checked start notice and then works without questions.
 The start notice gives the absolute path of the queue helper in use, the
-stop command and the run boundary.
+stop command and the run boundary. The stop command is written as
+`screen_check.py stop-command <interpreter>` prints it: a path that
+contains a space is put in single quotes, which every supported shell
+reads as one word (revision 17).
 
 **Auto-mode runs need macOS.** The queue helper blocks outside network
 for its runs with `sandbox-exec` and finds a run's processes by an

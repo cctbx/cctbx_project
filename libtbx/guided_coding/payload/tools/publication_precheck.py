@@ -7,7 +7,11 @@ repository, not that the Developer has decided to publish.
 
 `outgoing` (checkpoint 3) writes the strict one-commit OUTGOING.txt block
 for one repository from the live repository, so it is generated, not
-typed; it applies the same checks to what it wrote."""
+typed; it applies the same checks to what it wrote.
+
+`confirm` (revision 17) reads the remote branch and its tag state with
+`git ls-remote`, before and after a push the Developer runs himself, for
+projects whose rules forbid the agent any `git push`."""
 
 import sys
 # When run as a script, keep this directory out of module resolution before
@@ -16,8 +20,11 @@ if __name__ == "__main__" and not sys.flags.isolated:
     sys.path.pop(0)
 
 import argparse
+import hashlib
+import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -228,6 +235,89 @@ def check_command(args):
           f"{block['remote']} {block['refspec']}")
 
 
+def no_prompt_environment(repo):
+    """Revision 17 (repair 1, reading 1 finding 3): the environment for `confirm`'s git calls.
+    GIT_TERMINAL_PROMPT=0 stops git asking for an HTTPS user name or password; ssh gets
+    `-o BatchMode=yes`, so it never asks for a key passphrase, a password or a host-key
+    confirmation and fails instead (an agent's keys still work). It is appended to the ssh
+    command git would otherwise use, keeping that command's options: GIT_SSH_COMMAND if set,
+    else the repository's core.sshCommand, else GIT_SSH (a program name; one that is not
+    OpenSSH may refuse -o, which fails closed), else `ssh`."""
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
+    command = (env.get("GIT_SSH_COMMAND") or "").strip()
+    if not command:
+        code, out, _ = git_query(repo, "config", "--get", "core.sshCommand")
+        command = out.strip() if code == 0 else ""
+    if not command and env.get("GIT_SSH"):
+        command = shlex.quote(env["GIT_SSH"])
+    env["GIT_SSH_COMMAND"] = (command or "ssh") + " -o BatchMode=yes"
+    return env
+
+
+def remote_heads(repo, block):
+    """Revision 17: (branch head on the remote or None, tag state), read with `git ls-remote`
+    from the recorded push URL (read-only; network; with no_prompt_environment, so neither
+    git nor ssh waits for typed input). The tag state is `<count>/<sha256 of the sorted tag
+    ref lines>`, so a tag added and another removed is seen as well as a changed count. No
+    other ref is read: a branch pushed besides the outgoing one is not seen."""
+    url, branch = block["remote_url"], block["branch"]
+    env = no_prompt_environment(repo)
+
+    def ls_remote(*words):
+        result = subprocess.run(["git", "-C", str(repo), "ls-remote", *words, url],
+                                text=True, capture_output=True, env=env)
+        if result.returncode != 0:
+            fail(f"git ls-remote {' '.join(words)} failed (exit {result.returncode}): "
+                 f"{result.stderr.strip() or result.stdout.strip() or 'no output'}")
+        return result.stdout.splitlines()
+    lines = ls_remote("--heads")
+    heads = [line.split("\t")[0] for line in lines
+             if line.split("\t")[1:] == [f"refs/heads/{branch}"]]
+    if len(heads) > 1:
+        fail(f"remote lists refs/heads/{branch} more than once")
+    tags = sorted(line for line in ls_remote("--tags") if line.strip())
+    digest = hashlib.sha256("".join(line + "\n" for line in tags).encode()).hexdigest()
+    count = sum(1 for line in tags if not line.endswith("^{}"))
+    return (heads[0] if heads else None), f"{count}/{digest}"
+
+
+def confirm_command(args):
+    """Revision 17, the no-push publication variant (a project whose rules forbid the agent
+    any `git push`, read as including dry runs): the agent runs `check` without --dry-run and
+    `vet`s the exact commands, the Developer runs them himself, and this command then confirms
+    the remote. Read-only: it reads the remote with `git ls-remote` on the recorded push URL
+    (no HTTPS prompt, ssh in BatchMode: no_prompt_environment) and never pushes or fetches. With --before it confirms that
+    the remote branch is still at the recorded base (nothing pushed yet) and prints the
+    remote's tag state; without it, --tags STATE (the state printed before the push) is
+    required, and it confirms that the branch is now at the outgoing commit and the tag
+    state is unchanged (refused when the branch is still at the base, or anywhere else, or
+    any tag was added, removed or moved)."""
+    blocks = parse_outgoing(args.outgoing)
+    block = select_block(blocks, args.repository)
+    if not args.repo.is_dir():
+        fail("repository directory not found")
+    if not args.before and args.tags is None:
+        fail("after the push, give --tags with the tag state that confirm --before printed")
+    check_destinations(args.repo, block)
+    head, tags = remote_heads(args.repo, block)
+    branch = f"refs/heads/{block['branch']}"
+    if args.before:
+        if head != block["base"]:
+            fail(f"remote {branch} is {head or 'absent'}, not the recorded base {block['base']}")
+    elif head != block["commit"]:
+        if head == block["base"]:
+            fail(f"remote {branch} is still at the base {block['base']}: the push has not "
+                 "happened")
+        fail(f"remote {branch} is {head or 'absent'}, not the outgoing commit {block['commit']}")
+    if args.tags is not None and tags != args.tags:
+        fail(f"remote tag state is {tags}, not {args.tags}: a tag was added, removed or moved")
+    state = "still at the base" if args.before else "at the outgoing commit"
+    print(f"REMOTE {block['repository']} {block['remote']} {branch} {head} ({state})")
+    print(f"REMOTE TAGS {tags}")
+    print("CONFIRMED before the push" if args.before else
+          f"CONFIRMED {block['repository']} {block['commit']} is {block['remote']} {branch}")
+
+
 def vet_command(words):
     """Accept only the documented push command shape and refuse everything
     else. Git accepts abbreviated options (--ta for --tags), combined short
@@ -303,10 +393,19 @@ def main():
     out.add_argument("--repository", help="block name (default: the repository directory name)")
     out.add_argument("--fetch", action="store_true", help="git fetch the remote first (network)")
     out.add_argument("--output", type=Path, help="new file to write (default: standard output)")
+    confirm = commands.add_parser("confirm", help="revision 17: read the remote branch and tag "
+                                  "count after (or, with --before, before) the Developer's push")
+    confirm.add_argument("repo", type=Path)
+    confirm.add_argument("outgoing", type=Path)
+    confirm.add_argument("--repository", help="block to confirm when the record names several")
+    confirm.add_argument("--before", action="store_true",
+                         help="confirm the branch is still at the base (before the push)")
+    confirm.add_argument("--tags", help="after the push (required): the tag state COUNT/SHA256 "
+                         "that confirm --before printed")
     vet = commands.add_parser("vet", help="refuse forbidden forms in a proposed push command")
     vet.add_argument("words", nargs=argparse.REMAINDER)
     args = parser.parse_args()
-    if args.command in ("check", "outgoing") and shutil.which("git") is None:
+    if args.command in ("check", "outgoing", "confirm") and shutil.which("git") is None:
         # Revision 16: these read the live repository with git; vet needs no git.
         print(f"ERROR: requires git on PATH: `{args.command}` reads the repository with git "
               "(`vet` needs no git)", file=sys.stderr)
@@ -316,6 +415,8 @@ def main():
             check_command(args)
         elif args.command == "outgoing":
             generate_outgoing(args)
+        elif args.command == "confirm":
+            confirm_command(args)
         else:
             vet_command(args.words)
     except (ValueError, OSError) as error:

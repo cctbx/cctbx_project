@@ -155,7 +155,7 @@ These checks do not run the reported test or establish who wrote it. The records
 
 An **accept** screen lets you accept an exact frozen candidate while its outside review is still pending. It merges nothing and publishes nothing, says what is pending, and is checked like a result's evidence without a review; the result and publication decisions follow the review.
 
-For a full result or publication, the checker requires a review that identifies the same packet, covers the appropriate decision and says to proceed. If the reviewer makes that conditional, a separate record must address the exact condition. A waived or still-pending condition must remain visible in the decision screen. Recording a person's words does not authenticate them.
+For a full result or publication, the checker requires a review that identifies the same packet, covers the appropriate decision and says to proceed. If the reviewer makes that conditional, a separate record must address the exact condition. A waived or still-pending condition must remain visible in the decision screen. For a full result only, you may instead waive the review in your own words: the waiver record names the same packet and the scope `integration`, quotes you, and the screen's gate and limits say the review was waived. A waiver never serves publication. Recording a person's words does not authenticate them.
 
 Before publication, the procedure calls for the project's full test suite—the complete required set of tests—and a comparison with a valid earlier baseline run. The packet records those results, the outgoing commits and their destination. The screen checker requires the relevant files to be present and nonempty. It does not interpret the test results or perform the result screen's code-identity checks at this stage.
 
@@ -168,6 +168,8 @@ The publication tool compares the outgoing record with the live repository. It c
 The `--fetch` option (required by the publication procedure) contacts the remote and refreshes local Git information. The optional `--dry-run` asks Git what a push would do without pushing. It passes only when Git exits successfully and reports exactly one permitted branch update: a fast-forward, which adds the proposed commits without replacing the branch's existing history.
 
 Without those options, the checks do not contact the remote. The tool never pushes the commits itself.
+
+Some projects forbid the agent any `git push` (for example a project `AGENTS.md` saying "in any form", which this procedure reads as including the dry run). There the agent runs the checks without `--dry-run` and vets the exact commands; you run them yourself; and the tool's `confirm` command then reads the remote branch and its tags with `git ls-remote` (before the push, and after it with the tag state printed before) and refuses unless the branch is at the outgoing commit and no tag was added, removed or moved. `confirm` neither pushes nor fetches.
 
 The tool also checks a proposed push command against a narrow permitted form. It refuses other forms because Git's abbreviated options and environment settings make a list of forbidden words insufficient. This checks only the submitted command text; it neither intercepts other Git commands nor gives permission to publish.
 
@@ -238,13 +240,15 @@ The tools are in the shared kit's `payload/tools/` directory. Invoke the Python 
 | `screen_check.py check KIND SCREEN` | Checks a saved decision screen, with evidence and review arguments when required. |
 | `screen_check.py present KIND SCREEN` | Checks the saved screen and formats it for you. |
 | `screen_check.py check-draft publication DIR` | Runs the publication checks that need no freeze, screen or review on an unfrozen packet and names those it skipped. |
+| `screen_check.py stop-command INTERPRETER` | Prints the auto-mode start screen's stop line, quoting a path that contains a space; refuses a relative or bare interpreter name. |
 | `review_bundle.py PACKET COMPANIONS OUTPUT` | Packages the frozen packet and separate companions for outside review. |
 | `publication_precheck.py check REPO OUTGOING.txt [--repository NAME] [--fetch] [--dry-run]` | Compares the publication record with Git, optionally fetching or checking a proposed push without sending commits. |
 | `publication_precheck.py outgoing REPO --commit C [--remote R] [--branch B] [--repository NAME] [--fetch] [--output FILE]` | Writes the one-commit `OUTGOING.txt` block from the live repository and checks it; refuses a dirty tree, a missing remote, several push URLs, a wrong parent or a chain. |
 | `publication_precheck.py vet -- <proposed push command>` | Checks that the submitted push command has the permitted form. |
+| `publication_precheck.py confirm REPO OUTGOING.txt [--repository NAME] (--before \| --tags STATE)` | Reads the remote branch and tags with `git ls-remote`, for a push you run yourself: before it (`--before`: the branch still at the base; prints the tag state COUNT/SHA256) and after it (`--tags STATE`, required: the branch at the outgoing commit, the tag state unchanged). |
 | `records_history.py RECORDS_DIR [--limit N]` | Lists saved task summaries without activating a task. |
 
-Square brackets mark optional arguments. Result and publication screens also need `--evidence DIR`, and `--reading READING` and `--disposition NOTE` where required. `--corrections DIR` names a correction companion outside the packet (`ERRATA.md` with `Relocated: NAME from PATH` and a byte-identical copy of a verified file frozen in the wrong place); the copy is used only when its hash equals that file's entry in the frozen manifest, that file has the same name NAME, no other line names it, and the screen's LIMITS names `ERRATA.md`; `present` then names the file read from the companion. The screen type is `plan`, `result`, `accept`, `publication` or `stop` (and `auto_start` or `auto_report` in auto mode).
+Square brackets mark optional arguments. Result and publication screens also need `--evidence DIR`, and `--reading READING` and `--disposition NOTE` where required; a full result may take `--waiver OUTSIDE_WAIVER.md` instead of `--reading` (never both). `--corrections DIR` names a correction companion outside the packet (`ERRATA.md` with `Relocated: NAME from PATH` and a byte-identical copy of a verified file frozen in the wrong place); the copy is used only when its hash equals that file's entry in the frozen manifest, that file has the same name NAME, no other line names it, and the screen's LIMITS names `ERRATA.md`; `present` then names the file read from the companion. The screen type is `plan`, `result`, `accept`, `publication` or `stop` (and `auto_start` or `auto_report` in auto mode).
 
 ### Source, packet and bundle identities
 
@@ -260,7 +264,7 @@ Permitted bytecode names follow the recognized `__pycache__` pattern beside a li
 
 ### Screens and review records
 
-A saved screen is limited to 28 lines and 220 words. It must use the required headings, contain no unresolved template placeholders, and end with exactly the required `ACTION` line. Plan and result screens also need a statement of why the work matters, a recommendation with a reason, and the next action.
+A saved screen is limited to 28 lines and 220 words. It must use the required headings, contain no unresolved template placeholders, and end with exactly the required `ACTION` line. Plan, accept and result screens also need a statement of why the work matters, a recommendation with a reason, and the next action. Stop and publication screens need the recommendation with a reason and the next action (`Recommendation: ... because ...` and `Next: ...`, in NEEDED and in DECISION; a publication recommends PUBLISH or HOLD).
 
 A review has exactly one `Scope:` value. Identical repeated `Packet identity:`, `Verdict:` or `Scope:` lines, such as a closing block repeated in a summary, count as one; repeats with different values are refused, and the review file is never changed:
 
@@ -289,6 +293,7 @@ The Git checking tool accepts:
 publication_precheck.py outgoing REPO --commit C [--remote R] [--branch B] [--repository NAME] [--fetch] [--output FILE]
 publication_precheck.py check REPO OUTGOING.txt [--repository NAME] [--fetch] [--dry-run]
 publication_precheck.py vet -- <proposed push command>
+publication_precheck.py confirm REPO OUTGOING.txt [--repository NAME] (--before | --tags STATE)
 ```
 
 `outgoing` covers one commit per repository whose parent is the remote-tracking tip; multi-commit ranges are not supported yet.

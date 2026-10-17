@@ -94,3 +94,10 @@ prints `DRAFT OK publication`, names the checks it skipped, and notes
 listed files that are absent. A draft pass is not a frozen packet, a
 reading or a PUBLISH decision; the Developer's PUBLISH / HOLD choice
 stays his.
+
+**No-push variant.** Where the project's rules forbid the agent any
+`git push` (WORKER.md), the packet is the same: `OUTGOING.txt` is generated
+the same way, and the screen and the reading are unchanged. Only the steps
+after PUBLISH differ: `check` without `--dry-run`, `confirm --before`, the
+vetted commands run by the Developer, and `confirm --tags STATE`; their outputs
+go in the ticket report, not in the frozen packet.

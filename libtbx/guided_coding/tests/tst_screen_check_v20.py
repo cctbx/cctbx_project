@@ -571,9 +571,12 @@ class ScreenChecks(unittest.TestCase):
                         "ACTION: INTEGRATE / REVISE / DISCARD\n")
 
     def stop(self):
+        # Revision 17: STOP carries Recommendation and Next lines in NEEDED.
         return self.put("STOP | comment-1\nWHY\nThe intended meaning is uncertain.\n"
                         "PRESERVED\nThe isolated draft is saved; no integration.\n"
                         "NEEDED\nDecide intended meaning, or cancel this change.\n"
+                        "Recommendation: keep the old meaning because the bug report uses it.\n"
+                        "Next: If you decide, I update the draft and rerun its check.\n"
                         "ACTION: DECIDE / CANCEL\n")
 
     def publication(self, batch=None, commit=COMMIT, limits="No material gap claimed."):
@@ -586,6 +589,8 @@ class ScreenChecks(unittest.TestCase):
                         f"LIMITS\n{limits}\n"
                         f"GATE\nReading SHA256: {reading_id}\nVerdict: PROCEED\n"
                         "DECISION\nPublish this batch, or hold locally.\n"
+                        "Recommendation: PUBLISH because the suite and the reading passed.\n"
+                        "Next: If you publish, I push, confirm the remote and record it.\n"
                         "ACTION: PUBLISH / HOLD\n")
 
     def ok(self, kind, path, reading=None, evidence=None, disposition=None):
@@ -686,6 +691,246 @@ class ScreenChecks(unittest.TestCase):
                     changed = "".join(line for line in lines if not line.startswith(prefix))
                     with self.assertRaisesRegex(ValueError, reason):
                         self.ok(kind, self.put(changed), evidence=self.evidence if kind == "result" else None)
+
+    def test_stop_and_publication_require_recommendation_and_next(self):
+        """Revision 17 (the reporting rule): STOP (in NEEDED) and PUBLICATION (in DECISION)
+        need `Recommendation: ... because ...` and `Next: ...`; a PUBLICATION recommends
+        PUBLISH or HOLD. Each refusal below is a negative control of one new rule; the
+        fixtures (with both lines) are the positive control."""
+        self.ok("stop", self.stop())
+        self.ok("publication", self.publication(), self.reading, self.evidence)
+        for kind, original, options in (
+                ("stop", self.stop().read_text(), {}),
+                ("publication", self.publication().read_text(),
+                 dict(reading=self.reading, evidence=self.evidence))):
+            for prefix, reason in (("Recommendation:", "recommendation and reason"),
+                                   ("Next:", "next action")):
+                with self.subTest(kind=kind, missing=prefix):
+                    lines = original.splitlines(keepends=True)
+                    changed = "".join(line for line in lines if not line.startswith(prefix))
+                    with self.assertRaisesRegex(ValueError, reason):
+                        self.ok(kind, self.put(changed), **options)
+            recommendation = next(line for line in original.splitlines()
+                                  if line.startswith("Recommendation: "))
+            for label, line, reason in (
+                    ("no reason", recommendation.split(" because ")[0], "recommendation and reason"),
+                    ("empty reason", recommendation.split(" because ")[0] + " because ",
+                     "recommendation and reason"),
+                    ("lower case label", recommendation.replace("Recommendation:", "recommendation:"),
+                     "recommendation and reason"),
+                    ("empty next", "Next: ", "next action")):
+                with self.subTest(kind=kind, form=label):
+                    target = recommendation if not label.startswith("empty next") else next(
+                        x for x in original.splitlines() if x.startswith("Next: "))
+                    with self.assertRaisesRegex(ValueError, reason):
+                        self.ok(kind, self.put(original.replace(target + "\n", line + "\n")),
+                                **options)
+        publication = self.publication().read_text()
+        for choice in ("INTEGRATE", "APPROVE", "publish", "PUBLISH or HOLD"):
+            with self.subTest(publication_choice=choice):
+                with self.assertRaisesRegex(ValueError, "recommendation and reason"):
+                    self.ok("publication", self.put(publication.replace(
+                        "Recommendation: PUBLISH because", f"Recommendation: {choice} because")),
+                        self.reading, self.evidence)
+        self.ok("publication", self.put(publication.replace(
+            "Recommendation: PUBLISH because the suite and the reading passed.",
+            "Recommendation: HOLD because the server suite is still running.")),
+            self.reading, self.evidence)
+        # the lines must sit in their own section: in WHY (STOP) or LIMITS (PUBLICATION) they
+        # do not count
+        stop = self.stop().read_text()
+        moved = stop.replace("Recommendation: keep the old meaning because the bug report uses it.\n", "")
+        moved = moved.replace("WHY\nThe intended meaning is uncertain.\n",
+                              "WHY\nThe intended meaning is uncertain.\n"
+                              "Recommendation: keep the old meaning because the bug report uses it.\n")
+        with self.assertRaisesRegex(ValueError, "recommendation and reason"):
+            self.ok("stop", self.put(moved))
+        moved = publication.replace("Next: If you publish, I push, confirm the remote and record it.\n", "")
+        moved = moved.replace("LIMITS\nNo material gap claimed.\n",
+                              "LIMITS\nNo material gap claimed.\n"
+                              "Next: If you publish, I push, confirm the remote and record it.\n")
+        with self.assertRaisesRegex(ValueError, "next action"):
+            self.ok("publication", self.put(moved), self.reading, self.evidence)
+
+    def test_screen_templates_carry_recommendation_and_next(self):
+        """Revision 17: the STOP and PUBLICATION templates show the two new lines in the
+        section the checker reads, with PUBLISH as the publication choice."""
+        screens = Path(checker.__file__).resolve().parent.parent / "screens"
+        for name, section, recommendation in (("STOP.md", "NEEDED", "Recommendation: <"),
+                                              ("PUBLICATION.md", "DECISION",
+                                               "Recommendation: PUBLISH because <")):
+            with self.subTest(template=name):
+                lines = (screens / name).read_text(encoding="utf-8").splitlines()
+                tail = lines[lines.index(section) + 1:-1]
+                self.assertTrue(any(line.startswith(recommendation) for line in tail), lines)
+                self.assertTrue(any(line.startswith("Next: <") for line in tail), lines)
+                self.assertTrue(lines[-1].startswith("ACTION: "))
+
+    def waiver_file(self, identity=None, scope="integration", quote=True, extra="",
+                    header="Outside reading: WAIVED\n", name="OUTSIDE_WAIVER.md", where=None):
+        """Revision 17: OUTSIDE_WAIVER.md in a companions directory outside the packet."""
+        folder = where or (self.root / "companions")
+        folder.mkdir(exist_ok=True)
+        path = folder / name
+        path.write_text(
+            header + f"Packet identity: {identity or self.identity}\n"
+            + (f"Scope: {scope}\n" if scope is not None else "")
+            + "Developer authorization:\n"
+            + ('> "I waive the outside reading for comment-1, integration only."\n'
+               if quote else "") + extra)
+        return path
+
+    def waived_result(self, waiver, limits="It did not test runtime behavior. WAIVED outside "
+                      "reading by the Developer; integration only.", sha=None):
+        screen = self.result("full", limits=limits).read_text()
+        gate_start = screen.index("GATE\n") + len("GATE\n")
+        gate_end = screen.index("DECISION\n")
+        gate = ("Reading: WAIVED by the Developer\n"
+                f"Waiver SHA256: {sha or checker.digest(waiver.read_bytes())}\n")
+        path = self.root / "waived_screen.md"  # its own file: put() reuses screen.md
+        path.write_text(screen[:gate_start] + gate + screen[gate_end:])
+        return path
+
+    def waiver_ok(self, screen, waiver):
+        with contextlib.redirect_stdout(io.StringIO()):
+            checker.check("result", screen, self.evidence, None, None, waiver=waiver)
+
+    def waiver_refused(self, screen, waiver, reason, reading=None, disposition=None,
+                       kind="result"):
+        with self.assertRaisesRegex(ValueError, reason):
+            checker.check(kind, screen, self.evidence, reading, disposition, report=False,
+                          waiver=waiver)
+
+    def test_outside_reading_waiver_accepted_for_full_result_and_presented(self):
+        """Revision 17: --waiver in place of --reading for a full-path RESULT: the waiver
+        names this packet, Scope: integration and the Developer's quoted words; the GATE
+        reads `Reading: WAIVED by the Developer` and `Waiver SHA256:`; LIMITS names WAIVED.
+        The presented screen hides the waiver hash."""
+        waiver = self.waiver_file()
+        screen = self.waived_result(waiver)
+        self.waiver_ok(screen, waiver)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            checker.present("result", screen, self.evidence, waiver=waiver)
+        display = output.getvalue()
+        self.assertIn("Reading: WAIVED by the Developer", display)
+        self.assertNotIn("Waiver SHA256", display)
+        self.assertNotIn(checker.digest(waiver.read_bytes()), display)
+        self.assertNotIn(self.identity, display)
+        # identical repeats of the identity and scope count once, as for a reading
+        repeated = self.waiver_file(extra=f"Packet identity: {self.identity}\nScope: integration\n",
+                                    name="repeated.md")
+        self.waiver_ok(self.waived_result(repeated), repeated)
+
+    def test_outside_reading_waiver_refusals(self):
+        """Revision 17: negative controls, one per waiver rule."""
+        good = self.waiver_file()
+        self.waiver_ok(self.waived_result(good), good)  # positive control
+        cases = []
+        wrong = self.waiver_file(identity="0" * 64, name="wrong_identity.md")
+        cases.append(("wrong packet identity", wrong, "does not name this packet identity"))
+        missing = self.waiver_file(quote=False, name="no_quote.md")
+        cases.append(("missing quote", missing, "Developer's own words"))
+        blank = self.waiver_file(quote=False, extra="> \n", name="blank_quote.md")
+        cases.append(("blank quote", blank, "Developer's own words"))
+        late = self.waiver_file(quote=False, extra="\n> I waive it.\n", name="late_quote.md")
+        cases.append(("quote not right after the line", late, "Developer's own words"))
+        # revision 17 repair 1b (reviewer mutant X9): words on the authorization line itself,
+        # even with a `> ` quote after it, are refused; the words belong in the quote
+        inline = self.waiver_file(name="inline_authorization.md")
+        inline.write_text(inline.read_text().replace(
+            "Developer authorization:\n", "Developer authorization: I waive it, integration only.\n"))
+        cases.append(("words on the authorization line", inline, "Developer's own words"))
+        publication = self.waiver_file(scope="integration and publication", name="pub_scope.md")
+        cases.append(("scope with publication", publication, "Scope: integration"))
+        noscope = self.waiver_file(scope=None, name="no_scope.md")
+        cases.append(("no scope", noscope, "Scope: integration"))
+        twoscopes = self.waiver_file(extra="Scope: publication\n", name="two_scopes.md")
+        cases.append(("conflicting scope lines", twoscopes, "Scope: integration"))
+        nohead = self.waiver_file(header="", name="no_header.md")
+        cases.append(("no Outside reading line", nohead, "Outside reading: WAIVED"))
+        other = self.waiver_file(header="Outside reading: PENDING\n", name="other_header.md")
+        cases.append(("Outside reading not WAIVED", other, "Outside reading: WAIVED"))
+        decorated = self.waiver_file(extra=f"- **Packet identity:** {'0' * 64}\n",
+                                     name="decorated.md")
+        cases.append(("decorated conflicting identity", decorated, "differs"))
+        # repair 1 (reviewer findings 3 and 4)
+        undone = self.waiver_file(extra="- **Outside reading:** NOT WAIVED\n", name="undone.md")
+        cases.append(("decorated Outside reading not WAIVED", undone, "differs from 'WAIVED'"))
+        verdict = self.waiver_file(extra="Verdict: PROCEED\n", name="verdict.md")
+        cases.append(("Verdict line", verdict, "no Verdict line"))
+        bold_verdict = self.waiver_file(extra="**Verdict:** DO NOT PROCEED\n", name="bold_verdict.md")
+        cases.append(("bold Verdict line", bold_verdict, "no Verdict line"))
+        split = self.waiver_file(name="split.md")
+        split.write_text(split.read_text().replace(f"Packet identity: {self.identity}\n",
+                                                   f"Packet identity:\n{self.identity}\n"))
+        cases.append(("identity on the next line", split, "does not name this packet identity"))
+        for label, waiver, reason in cases:
+            with self.subTest(refused=label):
+                self.waiver_refused(self.waived_result(waiver), waiver, reason)
+        with self.subTest(refused="gate names another hash"):
+            self.waiver_refused(self.waived_result(good, sha="0" * 64), good,
+                                "does not identify the waiver")
+        with self.subTest(refused="gate keeps reading lines"):
+            self.waiver_refused(self.result("full"), good, "does not identify the waiver")
+        with self.subTest(refused="LIMITS without WAIVED"):
+            self.waiver_refused(self.waived_result(good, limits="It did not test runtime."),
+                                good, "named in LIMITS")
+        for limits in ("Outside reading NOT WAIVED; it did not test runtime.",
+                       "The outside reading was not WAIVED; it did not test runtime.",
+                       "The outside reading was Not  WAIVED.",
+                       "WAIVED nothing else; it did not test runtime.",
+                       "UNWAIVED outside reading."):
+            with self.subTest(refused=f"LIMITS {limits!r}"):
+                self.waiver_refused(self.waived_result(good, limits=limits), good,
+                                    "named in LIMITS")
+        with self.subTest(refused="symbolic link"):
+            link = self.root / "companions" / "link.md"
+            link.symlink_to(good)
+            self.waiver_refused(self.waived_result(good), link, "ordinary file")
+        with self.subTest(refused="missing file"):
+            self.waiver_refused(self.waived_result(good), self.root / "absent.md", "ordinary file")
+        with self.subTest(refused="waiver frozen inside the packet"):
+            # frozen with the packet (so the packet verifies), then named by its new identity
+            self.waiver_file(name="OUTSIDE_WAIVER.md", where=self.evidence)
+            self.refreeze()
+            inside = self.waiver_file(name="OUTSIDE_WAIVER.md", where=self.evidence)
+            (self.evidence / "MANIFEST.sha256").unlink()
+            self.refreeze()
+            self.waiver_refused(self.waived_result(inside), inside, "outside the frozen packet")
+
+    def test_outside_reading_waiver_is_exclusive_and_never_for_publication(self):
+        """Revision 17: --reading and --waiver together are refused (the reading alone, and
+        the waiver alone, pass); a waiver with a disposition, for a light result, for a
+        PUBLICATION, ACCEPT, PLAN or STOP is refused."""
+        waiver = self.waiver_file()
+        screen = self.waived_result(waiver)
+        self.waiver_ok(screen, waiver)
+        self.ok("result", self.result("full"), self.reading, self.evidence)
+        for gate_screen in (screen, self.result("full")):
+            with self.subTest(both_given=gate_screen.read_text().splitlines()[-6]):
+                self.waiver_refused(gate_screen, waiver, "either --reading or --waiver",
+                                    reading=self.reading)
+        disposition = self.root / "disposition.txt"
+        disposition.write_text("Condition: x\nStatus: SATISFIED\nEvidence: y\n")
+        self.waiver_refused(screen, waiver, "takes no disposition", disposition=disposition)
+        self.waiver_refused(self.result(), waiver, "a light result defers its reading")
+        self.waiver_refused(self.publication(), waiver, "never covers publication",
+                            kind="publication")
+        for kind, make in (("plan", self.plan), ("stop", self.stop)):
+            with self.subTest(kind=kind):
+                with self.assertRaisesRegex(ValueError, "only a full-path result"):
+                    checker.check(kind, make(), report=False, waiver=waiver)
+        # the command line: both options give exit 2 and the reason; the waiver alone passes
+        tool = Path(checker.__file__)
+        common = [sys.executable, "-I", "-B", str(tool), "check", "result", str(screen),
+                  "--evidence", str(self.evidence), "--waiver", str(waiver)]
+        alone = subprocess.run(common, capture_output=True, text=True)
+        self.assertEqual(alone.returncode, 0, alone.stderr)
+        both = subprocess.run(common + ["--reading", str(self.reading)], capture_output=True,
+                              text=True)
+        self.assertEqual(both.returncode, 2, both.stdout + both.stderr)
+        self.assertIn("either --reading or --waiver", both.stderr)
 
     def test_manifest_rejects_change_or_extra(self):
         (self.evidence / "RUN_LOG.txt").write_text("check failed\n")
@@ -2847,6 +3092,107 @@ class AutoScreenChecks(unittest.TestCase):
                 self.assert_refused(result)
                 self.assertIn(reason, result.stderr)
 
+    def test_auto_start_stop_interpreter_path_with_spaces(self):
+        """Revision 17 (outside reading of revision 16): an interpreter path containing a
+        space is accepted when the path is quoted (single or double quotes, which sh, bash,
+        zsh, csh and tcsh all read as one word) and refused unquoted; a quoted relative or
+        bare name, a partly quoted path and a quoted path with csh's history character `!`
+        are still refused (and `!` unquoted, which csh expands). `screen_check.py stop-command INTERPRETER` prints the line the
+        start screen shows, quoting a path that needs it, and refuses a relative or bare name.
+        Each refusal is a negative control of the quoting rule; the accepted forms are its
+        positive control."""
+        reason = "auto_start needs the stop command of this procedure's auto_queue.py"
+        spaced = self.root / "My Builds" / "build 39"
+        bang = self.root / "odd!dir"
+        for base in (spaced, bang):
+            for name in ("build/bin/libtbx.python", "conda_base/bin/python3"):
+                (base / name).parent.mkdir(parents=True, exist_ok=True)
+                (base / name).write_text("#!/bin/sh\nexit 0\n")
+                (base / name).chmod(0o755)
+        lib, conda = f"{spaced}/build/bin/libtbx.python", f"{spaced}/conda_base/bin/python3"
+        aq = CHECKER_AUTO_QUEUE
+        # relative and bare names that do exist from the checker's working directory (self.root),
+        # so that only the absolute-path rule can refuse them
+        (self.root / "libtbx.python").write_text("#!/bin/sh\nexit 0\n")
+        (self.root / "libtbx.python").chmod(0o755)
+        relative = "My Builds/build 39/build/bin/libtbx.python"
+        # repair 1 (reviewer finding 2): shell-special characters must be single-quoted
+        dollar, tick = self.root / "a$HOME", self.root / "b`id`"
+        # repair 1 of e9421261 (reading 1, findings 1 and 5): existing directories whose names
+        # only the double-quote exclusions can refuse
+        slash, apostrophe = self.root / "c\\d", self.root / "e'f"
+        for base in (dollar, tick, slash, apostrophe):
+            (base / "build/bin").mkdir(parents=True)
+            (base / "build/bin/libtbx.python").write_text("#!/bin/sh\nexit 0\n")
+            (base / "build/bin/libtbx.python").chmod(0o755)
+        self.assertTrue((self.root / relative).is_file())
+        for label, line in (("single-quoted libtbx.python with spaces", f"'{lib}' -I -B {aq} stop"),
+                            ("double-quoted libtbx.python with spaces", f'"{lib}" -I -B {aq} stop'),
+                            ("single-quoted conda python3 with spaces", f"'{conda}' -I -B {aq} stop"),
+                            ("quoted path without spaces",
+                             f"'{STOP_BUILD}/build/bin/libtbx.python' -I -B {aq} stop"),
+                            ("quoted auto_queue.py", f"{STOP_PYTHON} '{aq}' stop"),
+                            ("both quoted", f"'{lib}' -I -B \"{aq}\" stop")):
+            with self.subTest(accepted=label):
+                self.assert_accepted(self.check("auto_start", self.put(
+                    self.start_text(stop_line=line))))
+        for label, line in (("unquoted path with spaces", f"{lib} -I -B {aq} stop"),
+                            ("unquoted conda path with spaces", f"{conda} -I -B {aq} stop"),
+                            ("partly quoted path", f"'{spaced}'/build/bin/libtbx.python -I -B {aq} stop"),
+                            ("escaped spaces", lib.replace(" ", "\\ ") + f" -I -B {aq} stop"),
+                            ("quoted relative libtbx.python (exists)", f"'{relative}' -I -B {aq} stop"),
+                            ("double-quoted relative libtbx.python (exists)",
+                             f'"{relative}" -I -B {aq} stop'),
+                            ("quoted bare libtbx.python (exists)", f"'libtbx.python' -I -B {aq} stop"),
+                            ("quoted bare python3", f'"python3" -I -B {aq} stop'),
+                            ("quoted tilde path", f"'~/build 39/build/bin/libtbx.python' -I -B {aq} stop"),
+                            ("mismatched quotes", f"'{lib}\" -I -B {aq} stop"),
+                            ("unclosed quote", f"'{lib} -I -B {aq} stop"),
+                            ("quoted path with !", f"'{bang}/build/bin/libtbx.python' -I -B {aq} stop"),
+                            ("unquoted path with !", f"{bang}/build/bin/libtbx.python -I -B {aq} stop"),
+                            ("quoted other python", f"'/usr/bin/python3' -I -B {aq} stop"),
+                            ("quoted nonexistent path with spaces",
+                             f"'{spaced}/missing/bin/libtbx.python' -I -B {aq} stop"),
+                            ("flags inside the quotes", f"'{lib} -I -B' {aq} stop"),
+                            ("unquoted path with $", f"{dollar}/build/bin/libtbx.python -I -B {aq} stop"),
+                            ("unquoted path with a backquote",
+                             f"{tick}/build/bin/libtbx.python -I -B {aq} stop"),
+                            ("double-quoted path with $",
+                             f'"{dollar}/build/bin/libtbx.python" -I -B {aq} stop'),
+                            ("double-quoted path with !",
+                             f'"{bang}/build/bin/libtbx.python" -I -B {aq} stop'),
+                            ("double-quoted path with a backquote",
+                             f'"{tick}/build/bin/libtbx.python" -I -B {aq} stop'),
+                            ("double-quoted path with a backslash",
+                             f'"{slash}/build/bin/libtbx.python" -I -B {aq} stop'),
+                            ("double-quoted path with a single quote",
+                             f'"{apostrophe}/build/bin/libtbx.python" -I -B {aq} stop')):
+            with self.subTest(refused=label):
+                result = self.check("auto_start", self.put(self.start_text(stop_line=line)))
+                self.assert_refused(result)
+                self.assertIn(reason, result.stderr)
+        for interpreter, expected in ((lib, f"'{lib}' -I -B {aq} stop"),
+                                      (conda, f"'{conda}' -I -B {aq} stop"),
+                                      (f"{STOP_BUILD}/build/bin/libtbx.python",
+                                       f"{STOP_PYTHON} {aq} stop"),
+                                      (f"{dollar}/build/bin/libtbx.python",
+                                       f"'{dollar}/build/bin/libtbx.python' -I -B {aq} stop"),
+                                      (f"{tick}/build/bin/libtbx.python",
+                                       f"'{tick}/build/bin/libtbx.python' -I -B {aq} stop"),
+                                      (f"{slash}/build/bin/libtbx.python",
+                                       f"'{slash}/build/bin/libtbx.python' -I -B {aq} stop")):
+            with self.subTest(stop_command=interpreter):
+                printed = self.tool("stop-command", interpreter)
+                self.assert_accepted(printed)
+                self.assertEqual(printed.stdout, expected + "\n")
+                self.assert_accepted(self.check("auto_start", self.put(
+                    self.start_text(stop_line=printed.stdout.strip()))))
+        for interpreter in (relative, "libtbx.python", "python3",
+                            f"{apostrophe}/build/bin/libtbx.python",
+                            f"{bang}/build/bin/libtbx.python", f"{spaced}/missing/libtbx.python"):
+            with self.subTest(stop_command_refused=interpreter):
+                self.assert_refused(self.tool("stop-command", interpreter))
+
     def test_auto_report_names_psutil_when_the_helper_needs_it(self):
         """Revision 16: when the helper stops for lack of psutil (exit 18), auto_report is
         refused with the helper's message, not only "report failed". A copy of this
@@ -2976,8 +3322,13 @@ class AutoScreenChecks(unittest.TestCase):
         stop = self.put("STOP | comment-1\nWHY\nThe intended meaning is uncertain.\n"
                         "PRESERVED\nThe isolated draft is saved; no integration.\n"
                         "NEEDED\nDecide intended meaning, or cancel this change.\n"
+                        "Recommendation: cancel because the report is unclear.\n"
+                        "Next: If you cancel, I remove the draft worktree.\n"
                         "ACTION: DECIDE / CANCEL\n")
         self.assert_accepted(self.check("stop", stop))
+        # Revision 17: the command line refuses a STOP without its Recommendation line.
+        self.assert_refused(self.check("stop", self.put(stop.read_text().replace(
+            "Recommendation: cancel because the report is unclear.\n", ""))))
 
 
 if __name__ == "__main__":

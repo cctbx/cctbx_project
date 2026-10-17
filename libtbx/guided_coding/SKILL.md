@@ -63,6 +63,54 @@ leave it and do not ask again. On the CLI, say once:
 unavailable rename never blocks the work, and a title is not evidence of
 which skill loaded.
 
+## Reporting to the Developer
+
+Whenever you pause or finish and return control to the Developer (setup,
+control requests and guided work alike), report briefly, in plain English:
+
+- **The practical situation first**, before technical details: what is
+  finished, what is published, and what remains only on his machine.
+  Define a necessary technical term when you first use it.
+- **Recommend the next step and say why.** If he needs to decide, explain
+  the options, their main tradeoffs and your recommendation; never ask him
+  to choose a technical method without explaining its consequences. If
+  facts are missing, recommend the smallest useful check. If no action is
+  needed, say so.
+- **Effects on his work:** how a proposed action affects his existing work
+  and how that work will be preserved. If a requirement was waived, say
+  plainly what was waived and what uncertainty remains.
+- **Complete next steps in the final message:** put every step he must do
+  next in your last message, even if you listed it earlier; never refer him
+  to earlier messages.
+- Keep commit identifiers and detailed history in supporting evidence.
+- Do not create extra pauses, approvals or work merely to provide a
+  recommendation.
+
+GUIDE.md and WORKER.md apply this rule to plans, stops and decision
+screens; the STOP and PUBLICATION screens carry `Recommendation:` and
+`Next:` lines, as PLAN, ACCEPT and RESULT do.
+
+**Read a step before describing it.** Before you tell him what a Guided
+Coding step will show or ask (the registration step, `/gc setup`, a
+decision screen), read the procedure for that step: `payload/SETUP.md`, the
+screen files in `payload/screens/`, and the User Guide's section for the
+registration step. Describe what he will actually see, where to find it (an
+app approval box shows only a summary; the full proposed text is in the
+conversation above it) and what to check before approving. If you have not
+read the relevant file, say that your description is unverified.
+
+**Directions for a new conversation.** Check his operating system first.
+Supported: the Claude app on macOS, and Claude Code in Terminal on macOS or
+Linux. Windows is not supported. For the app: open the Code tab and start a
+new session; under Environment choose Local, then My computer; at the
+bottom of the page use the folder selector to choose the folder (in the Mac
+folder window press Cmd+Shift+G and paste the full path); type the message
+and send it. Mention the Terminal alternative: `cd` to the folder, then run
+`claude`. On Linux give the Terminal steps. On Windows, say that Guided
+Coding is not supported there, explain what it needs (macOS or Linux,
+Claude Code, Git, and Python 3.10 or newer with psutil) and ask how he wants
+to proceed.
+
 ## Setup and control requests
 
 Treat exactly `help`, `status`, `history`, `setup`, `setup <target directory>`,
@@ -112,7 +160,10 @@ authority edit. Save to the existing designated method or the chosen
 target-local path, preserve unrelated instructions and verify the saved
 values and pointer.
 Inspect `AGENTS.md` and the instruction-loading setting before choosing an
-authority; do not blindly create `CLAUDE.local.md`. Default setup is local
+authority; do not blindly create `CLAUDE.local.md`. Adoption is personal
+and untracked (SETUP.md section 5): never propose it for a shared, tracked
+`CLAUDE.md` or `AGENTS.md`; a method points to the project's `AGENTS.md`
+rather than copying it. Default setup is local
 read-only discovery and an authorized configuration save. Any remote check
 or execution needs its own applicable authorization as described in
 SETUP.md. Setup alone does not start a coding task. If adoption is declined,

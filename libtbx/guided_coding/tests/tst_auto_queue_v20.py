@@ -2744,6 +2744,107 @@ class AutoQueueChecks(unittest.TestCase):
         self.ok(self.tool("reconcile"))
         self.assertNotIn(self.runs()[record["run_id"]]["status"], ("running", "unknown"))
 
+    def test_sigterm_while_waiting_for_queue_lock_never_starts_cmd(self):
+        """Revision 17 (revision 15 follow-up; mutant K_lock_term): SIGTERM that reaches the
+        wrapper while it waits for the queue lock after the probe means the command never
+        starts: the record is `not started` with the reason "signal during probe", the
+        command's marker file is absent and the wrapper exits 128 + 15. The earlier test
+        above also accepted `interrupted`, which a wrapper that ignored the signal until the
+        command had started (and then forwarded it) also gave; this one does not.
+        Control: test_queue_lock_hold_without_signal_completes."""
+        code, record, marker = self.check_term_while_lock_held(True)
+        self.assertEqual(code, 128 + signal.SIGTERM, record)
+        self.assertEqual(record["status"], "not started", record)
+        self.assertEqual(record.get("reason"), "signal during probe", record)
+        self.assertNotIn("pid", record, "the command was started")
+        self.assertFalse(marker.exists(), "the command ran after the SIGTERM")
+
+    def test_sigterm_before_start_never_starts_cmd(self):
+        """Repair 1 of revision 17 (reading 1, finding 6): the "signal before start" block.
+        A run without a probe whose wrapper receives SIGTERM while it waits for the queue lock
+        it takes first (its SIGTERM handler is installed before it opens .queue.lock) never
+        starts its command: `not started`, reason "signal before start", exit 128 + 15, marker
+        absent. The test holds .queue.lock, starts the run, waits until a process of the run
+        has .queue.lock open (so the handler is installed and the wrapper waits on the lock),
+        sends SIGTERM to that process, then releases the lock. Without the block the command
+        would start and the signal be forwarded to it (`interrupted`). Control:
+        test_queue_lock_hold_without_signal_completes (the same hold without a signal)."""
+        self.prepare(BETA)
+        marker, cmd = self.marker_cmd(f"before-start-{self.counter}")
+        lock = os.path.realpath(self.queue / ".queue.lock")
+
+        def holder():
+            try:
+                family = [psutil.Process(proc.pid)] + psutil.Process(proc.pid).children(recursive=True)
+            except psutil.Error:
+                return None
+            for process in family:
+                try:
+                    if any(os.path.realpath(f.path) == lock for f in process.open_files()):
+                        return process.pid
+                except psutil.Error:
+                    continue
+            return None
+        with open(lock, "a+") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+            try:
+                self.counter += 1
+                proc = self.popen_tool("run", BETA, "unit", "--log",
+                                       self.work / f"before-start-{self.counter}.log", "--", *cmd)
+                found = []
+                self.wait_for(lambda: found.append(holder()) or found[-1], "the wrapper to wait on the queue lock")
+                os.kill(found[-1], signal.SIGTERM)
+                time.sleep(0.5)
+            finally:
+                fcntl.flock(handle, fcntl.LOCK_UN)
+        code = proc.wait(TIMEOUT)
+        (record,) = self.runs().values()
+        self.assertEqual(code, 128 + signal.SIGTERM, record)
+        self.assertEqual(record["status"], "not started", record)
+        self.assertEqual(record.get("reason"), "signal before start", record)
+        self.assertNotIn("pid", record, "the command was started")
+        self.assertFalse(marker.exists(), "the command ran after the SIGTERM")
+
+    def test_starting_run_with_live_wrapper_blocks_relaunch(self):
+        """Revision 17 (revision 15 follow-up; mutant K_starting): a run record still
+        `starting` whose wrapper process is alive (same pid and start time) is live by
+        that alone, before any probe or command process exists: a new run of the job is
+        refused (13, "starting"); the same record naming another start time is not live
+        (control of the identity check); once that process is gone it is not live, and a
+        run is accepted. The record is
+        written by the test with only a wrapper (no probe group, no command), so no other
+        rule of survivors() can find a process for it."""
+        self.prepare(BETA)
+        wrapper = subprocess.Popen(sleep_cmd(60), start_new_session=True)
+        self.procs.append(wrapper)
+        self.wait_for(lambda: lstart_of(wrapper.pid), "the stand-in wrapper's start time")
+        name = "starting-only-wrapper"
+        record = {"run_id": name, "job": BETA, "label": "unit", "status": "starting",
+                  "wrapper_pid": wrapper.pid, "wrapper_start": lstart_of(wrapper.pid),
+                  "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                  "command": ["unit"], "cwd": str(self.tmp), "tested_paths": [],
+                  "stale": False, "network": "blocked"}
+        staging = self.work / "starting.json"
+        staging.write_text(json.dumps(record))
+        os.replace(staging, self.queue / "runs" / f"{name}.json")
+        self.counter += 1
+        marker, cmd = self.marker_cmd(f"starting-{self.counter}")
+        refused = self.run_cmd(BETA, "unit", cmd=cmd)
+        self.refused(refused, 13)
+        self.assertIn(f"run {name} starting", refused.stderr)
+        self.assertFalse(marker.exists())
+        # the same record with another start time is not this process: not live
+        other = dict(record, wrapper_start="Thu Jan  1 00:00:00 1970")
+        staging.write_text(json.dumps(other))
+        os.replace(staging, self.queue / "runs" / f"{name}.json")
+        self.attempt(BETA, 0)
+        staging.write_text(json.dumps(record))
+        os.replace(staging, self.queue / "runs" / f"{name}.json")
+        self.attempt(BETA, 13)
+        wrapper.kill()
+        wrapper.wait(5)
+        self.attempt(BETA, 0)
+
     def test_queue_lock_hold_without_signal_completes(self):
         """Revision 6 N1 control: a held queue lock only delays the run."""
         code, record, marker = self.check_term_while_lock_held(False)

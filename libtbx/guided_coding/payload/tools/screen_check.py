@@ -318,7 +318,22 @@ def blocks(kind, lines):
 
 
 def developer_view(kind, body):
-    """Require the brief human decision fields; their truth remains a judgment."""
+    """Require the brief human decision fields; their truth remains a judgment.
+
+    Revision 17 (the reporting rule): the STOP and PUBLICATION screens also carry
+    a `Recommendation: ... because ...` line and a `Next: ...` line, in NEEDED and
+    in DECISION. A STOP recommends one of the options it names in NEEDED (free
+    text, which may be the smallest useful check); a PUBLICATION recommends
+    PUBLISH or HOLD."""
+    if kind in ("stop", "publication"):
+        section = body["NEEDED" if kind == "stop" else "DECISION"]
+        choice = r"\S.*?" if kind == "stop" else r"(?:PUBLISH|HOLD)"
+        if not any(re.fullmatch(rf"Recommendation: {choice} because \S.*", line)
+                   for line in section):
+            fail("missing recommendation and reason in Developer View")
+        if not any(re.fullmatch(r"Next: \S.*", line) for line in section):
+            fail("missing next action in Developer View")
+        return
     if kind not in ("plan", "result", "accept"):
         return
     event = body[{"plan": "GOAL", "result": "CHANGED", "accept": "CANDIDATE"}[kind]]
@@ -403,6 +418,79 @@ def reading_matches(kind, path, evidence_id, gate, disposition=None):
     if gate != expected:
         fail("screen gate does not identify the outside reading")
     return status
+
+
+WAIVER_GATE = "Reading: WAIVED by the Developer"
+
+
+def waiver_matches(path, evidence_id, gate, root):
+    """Revision 17: the Developer's waiver of the outside reading for one full-path
+    integration, in place of a reading (`--waiver`, never with `--reading`).
+
+    OUTSIDE_WAIVER.md (WORKER.md) lies outside the frozen packet and has the
+    lines `Outside reading: WAIVED`, `Packet identity: <sha256 of this packet's
+    MANIFEST.sha256>`, `Scope: integration` and `Developer authorization:`,
+    followed at once by one or more `> ` lines quoting the Developer's own words.
+    Each of the first three appears once (identical repeats count as one; an
+    indented, bulleted, quoted or bold copy with another value is refused, as for
+    a reading). The screen's GATE is then exactly `Reading: WAIVED by the
+    Developer` and `Waiver SHA256: <sha256 of the waiver file>`; check() also
+    requires WAIVED in LIMITS. A waiver covers only the packet identity it names
+    and never publication. The form establishes no authorization: whether the
+    quoted words waive the reading for this change is judged by the Developer
+    and the Outside Reviewer, not by this check. The waiver file is only read."""
+    if not path or not path.is_file() or path.is_symlink():
+        fail("waiver file is required and must be an ordinary file")
+    inside, packet = path.resolve(), root.resolve()
+    if packet in inside.parents:
+        fail("waiver must be outside the frozen packet (in the companions directory)")
+    data = path.read_bytes()
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        fail("waiver is not UTF-8")
+    lines = text.splitlines()
+    # Repair 1: fields are read within their own line ([ \t]*, not \s*, which crossed lines).
+    if set(re.findall(r"^Outside reading:[ \t]*(\S.*?)[ \t]*$", text, re.M)) != {"WAIVED"}:
+        fail("waiver needs the line 'Outside reading: WAIVED'")
+    for line in lines:
+        if line.startswith("Outside reading:"):
+            continue
+        bare = re.sub(rf"^(?:[\s>+#|{DECORATION}-]|\d+[.)])*", "", line)
+        match = re.match(rf"Outside reading[{DECORATION}]*\s*[:|][{DECORATION}]*(.*)$", bare)
+        if match and match[1].strip().rstrip("|").strip().strip(DECORATION).strip() != "WAIVED":
+            fail(f"waiver has an indented, bulleted, quoted or bold Outside reading line that "
+                 f"differs from 'WAIVED': {line[:60]!r}")
+    if any(label == "Verdict" for label, _ in decorated_fields(text)) or re.search(
+            r"^Verdict:", text, re.M):
+        fail("a waiver has no Verdict line (it replaces the reading; it is not one)")
+    identities = set(re.findall(r"^Packet identity:[ \t]*(\S.*?)[ \t]*$", text, re.M))
+    if identities != {evidence_id}:
+        fail("waiver does not name this packet identity")
+    scopes = set(value.strip() for value in re.findall(r"^Scope:(.*)$", text, re.M))
+    if scopes != {"integration"}:
+        fail("waiver needs exactly one Scope line, 'Scope: integration' (a waiver never "
+             "covers publication)")
+    plain = {"Packet identity": identities, "Scope": scopes}
+    for label, value in decorated_fields(text):
+        if label in plain and value not in plain[label]:
+            fail(f"waiver has an indented, bulleted, quoted or bold {label} line that "
+                 f"differs from its {label} line: {value[:60]!r}")
+    quoted = 0
+    for index, line in enumerate(lines):
+        if re.fullmatch(r"Developer authorization:\s*", line):
+            for following in lines[index + 1:]:
+                if following.startswith("> ") and following[2:].strip():
+                    quoted += 1
+                else:
+                    break
+            break
+    if not quoted:
+        fail("waiver needs 'Developer authorization:' followed by the Developer's own words "
+             "as '> ' lines")
+    if gate != [WAIVER_GATE, f"Waiver SHA256: {digest(data)}"]:
+        fail("screen gate does not identify the waiver: it must be "
+             f"'{WAIVER_GATE}' and 'Waiver SHA256: <sha256 of the waiver file>'")
 
 
 DECORATION = "*_`\"'"
@@ -651,6 +739,59 @@ def code_identity(root, checked, changed, top=None):
         fail("screen tested tree does not match the evidence")
 
 
+# Revision 17: a shell word for an absolute path, bare or quoted. Unquoted, only characters
+# no supported shell treats specially (letters, digits and _ . / + @ % : , = -), which is
+# tighter than revision 16's any non-space; anything else must be quoted. Inside single
+# quotes nothing is special in sh, bash, zsh, csh or tcsh except the closing quote and csh's
+# history character `!` (refused in every form); inside double quotes `$`, a backquote and a
+# backslash are also refused.
+SAFE_BARE = r"[A-Za-z0-9_./+@%:,=-]+"
+PATH_WORD = (r"(?:(?P<{0}_bare>/" + SAFE_BARE + r")|'(?P<{0}_single>/[^'!\n]+)'"
+             r"|\"(?P<{0}_double>/[^\"$`\\!\n]+)\")")
+INTERPRETER = re.compile(r"/.+/libtbx\.python|/.+/conda_base/bin/python3(?:\.\d+)?")
+
+
+def path_word(match, name):
+    """The path a PATH_WORD group matched, without its quotes."""
+    return next(match.group(f"{name}_{form}") for form in ("bare", "single", "double")
+                if match.group(f"{name}_{form}") is not None)
+
+
+def stop_line(line):
+    """The auto_start stop command: `INTERPRETER -I -B AUTO_QUEUE stop`, both absolute,
+    each bare or quoted (a path with a space must be quoted); the interpreter is an
+    existing executable regular file named libtbx.python or conda_base/bin/python3[.N]."""
+    match = re.fullmatch(PATH_WORD.format("python") + " -I -B " + PATH_WORD.format("queue")
+                         + " stop", line)
+    if not match or path_word(match, "queue") != str(AUTO_QUEUE):
+        return False
+    interpreter = path_word(match, "python")
+    # Repair 1 (reading 1, finding 5): the checker accepts only what stop_command can write,
+    # so a single quote (which stop_command cannot put inside single quotes) is refused in
+    # the double-quoted form too.
+    if "'" in interpreter or "'" in path_word(match, "queue"):
+        return False
+    if not INTERPRETER.fullmatch(interpreter):
+        return False
+    resolved = os.path.realpath(interpreter)
+    return os.path.isfile(resolved) and os.access(resolved, os.X_OK)
+
+
+def stop_command(interpreter, queue=AUTO_QUEUE):
+    """Revision 17: the stop line for the auto_start screen, each path bare when it has no
+    space or quote, otherwise in single quotes; refused unless stop_line() accepts it (an
+    absolute, existing, executable libtbx.python or conda_base/bin/python3[.N])."""
+    def word(path):
+        path = str(path)
+        return path if re.fullmatch(SAFE_BARE, path) else "'%s'" % path
+    line = f"{word(interpreter)} -I -B {word(queue)} stop"
+    if not stop_line(line):
+        fail("the interpreter must be an absolute path to an existing executable "
+             "libtbx.python or conda_base/bin/python3[.N], without a ' or ! character: "
+             f"{interpreter}")
+    return line
+
+
 def auto_screen(kind, body, queue):
     """Auto screens: the start notice states its limits; the report repeats the helper's rows."""
     if kind == "auto_start":
@@ -661,15 +802,10 @@ def auto_screen(kind, body, queue):
         # (repair 1, finding 3): `/.../libtbx.python -I -B AQ stop` or
         # `/.../conda_base/bin/python3[.N] -I -B AQ stop`. A plain or bare python3, and a bare
         # libtbx.python, are refused. Repair 2 (reading 2, finding 2): the interpreter must be an
-        # existing, executable regular file (symbolic links resolved). A path with a space
-        # cannot be written in this form.
-        def stop_line(line):
-            match = re.fullmatch(r"(/\S+/libtbx\.python|/\S+/conda_base/bin/python3(?:\.\d+)?) -I -B "
-                                 + re.escape(str(AUTO_QUEUE)) + " stop", line)
-            if not match:
-                return False
-            interpreter = os.path.realpath(match.group(1))
-            return os.path.isfile(interpreter) and os.access(interpreter, os.X_OK)
+        # existing, executable regular file (symbolic links resolved). Revision 17 (outside
+        # reading of revision 16): either path may be written in single or double quotes,
+        # which a path containing a space needs ('/Users/a b/.../libtbx.python' -I -B ...);
+        # an unquoted path with a space, and a quoted relative or bare name, are refused.
         if not any(stop_line(line) for line in body["STOP"]):
             fail("auto_start needs the stop command of this procedure's auto_queue.py, run by an "
                  "existing executable interpreter")
@@ -764,7 +900,7 @@ def approval_summaries(section, ready):
 
 
 def check(kind, screen, root=None, reading=None, disposition=None, report=True, queue=None,
-          corrections=None):
+          corrections=None, waiver=None):
     if not screen.is_file() or screen.is_symlink():
         fail("screen must be an ordinary file")
     try:
@@ -795,6 +931,19 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True, 
         fail("invalid stop header")
     body = blocks(kind, lines)
     developer_view(kind, body)
+    # Revision 17: the outside-reading waiver serves only a full-path RESULT, in place of a
+    # reading; never with one, never with a disposition and never for publication.
+    if waiver is not None:
+        if reading is not None:
+            fail("give either --reading or --waiver, not both")
+        if disposition is not None:
+            fail("a waiver replaces the reading; it takes no disposition")
+        if kind == "result" and parts[2:3] == ["light"]:
+            fail("--waiver serves only a full-path result; a light result defers its reading "
+                 "to publication")
+        if kind != "result" or parts[2:3] != ["full"]:
+            fail("--waiver serves only a full-path result (integration); it never covers "
+                 "publication")
     if kind in ATTENTION:
         if root or reading or disposition:
             fail("auto screens have no frozen evidence or outside reading")
@@ -825,6 +974,16 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True, 
             if parts[2] == "light":
                 if reading or disposition or body["GATE"] != ["Reading: deferred to publication", "Verdict: deferred to publication"]:
                     fail("light-path outside reading belongs to publication batch")
+            elif waiver is not None:
+                waiver_matches(waiver, identity, body["GATE"], root)
+                # The word WAIVED on a line naming the outside reading or review; "not WAIVED",
+                # in any case, is refused (repair 1, reading 1 finding 10).
+                if not any(re.search(r"\bWAIVED\b", line)
+                           and not re.search(r"\bnot\s+WAIVED\b", line, re.I)
+                           and re.search(r"\boutside (?:reading|review)\b", line, re.I)
+                           for line in body["LIMITS"]):
+                    fail("a waived outside reading must be named in LIMITS (WAIVED, on a line "
+                         "naming the outside reading)")
             else:
                 status = reading_matches("result", reading, identity, body["GATE"], disposition)
                 if status in ("WAIVED", "PENDING") and not any(
@@ -906,10 +1065,10 @@ def check_draft(kind, root):
 
 
 def present(kind, screen, root=None, reading=None, disposition=None, queue=None,
-            corrections=None):
+            corrections=None, waiver=None):
     """Check the saved decision, then render a conspicuous Developer view."""
     top = check(kind, screen, root, reading, disposition, report=False, queue=queue,
-                corrections=corrections)
+                corrections=corrections, waiver=waiver)
     lines = screen.read_text(encoding="utf-8").splitlines()
     if kind == "plan" or kind in ATTENTION:
         spaced = []
@@ -921,7 +1080,7 @@ def present(kind, screen, root=None, reading=None, disposition=None, queue=None,
     if kind in ("result", "publication", "accept"):
         lines[0] = " | ".join(lines[0].split(" | ")[:-1])
     lines = [line for line in lines if not line.startswith(
-        ("Tested tree: ", "Reading SHA256: ", "Disposition SHA256: "))]
+        ("Tested tree: ", "Reading SHA256: ", "Disposition SHA256: ", "Waiver SHA256: "))]
     lines = [DISPLAY_ID.sub(
         lambda match: "[recorded]" if any(c in "abcdef" for c in match.group())
         else match.group(), line) for line in lines]
@@ -946,6 +1105,8 @@ def main():
     commands.add_parser("verify-source").add_argument("source", type=Path)
     commands.add_parser("check-claude-version")
     commands.add_parser("register-skill").add_argument("source", type=Path)
+    commands.add_parser("stop-command", help="revision 17: print the auto_start stop line, "
+                        "quoting a path that needs it").add_argument("interpreter")
     draft = commands.add_parser("check-draft")
     draft.add_argument("kind", choices=("publication",))
     draft.add_argument("evidence", type=Path)
@@ -961,6 +1122,9 @@ def main():
         command.add_argument("--corrections", type=Path,
                              help="correction companion directory (ERRATA.md and byte-identical "
                                   "copies of misplaced frozen files), outside the packet")
+        command.add_argument("--waiver", type=Path,
+                             help="revision 17: OUTSIDE_WAIVER.md, the Developer's waiver of the "
+                                  "outside reading for a full-path result; not with --reading")
     args = parser.parse_args()
     try:
         if args.command == "freeze":
@@ -975,14 +1139,16 @@ def main():
             check_claude_version()
         elif args.command == "register-skill":
             register_skill(args.source)
+        elif args.command == "stop-command":
+            print(stop_command(args.interpreter))
         elif args.command == "check-draft":
             check_draft(args.kind, args.evidence)
         elif args.command == "check":
             check(args.kind, args.screen, args.evidence, args.reading, args.disposition,
-                  queue=args.queue, corrections=args.corrections)
+                  queue=args.queue, corrections=args.corrections, waiver=args.waiver)
         else:
             present(args.kind, args.screen, args.evidence, args.reading, args.disposition,
-                    queue=args.queue, corrections=args.corrections)
+                    queue=args.queue, corrections=args.corrections, waiver=args.waiver)
     except (ValueError, OSError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 2

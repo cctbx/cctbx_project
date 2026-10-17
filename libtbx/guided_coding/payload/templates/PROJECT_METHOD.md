@@ -9,7 +9,8 @@ recovery, verification, authorization, saving and migration.
 ## Project and instructions
 
 - Project/checkout: <actual target and account/machine scope>
-- Current authority: <actually loaded project instruction path>
+- Current authority: <actually loaded project instruction path; adoption is personal and untracked, never in a shared CLAUDE.md or AGENTS.md>
+- Project agent rules: <path of the project's AGENTS.md or other shared agent rules, followed by reference, not copied; or none>
 - Canonical project method: <this method's actual path>
 - Related repositories: <paths and permitted scope, if relevant>
 - Shared defaults: <existing source and project overrides, if any>
@@ -74,7 +75,10 @@ authorize running it. Preserve no-push and stage-specific restrictions.
 
 Record the destination's tag and release convention with its source, and
 the accepted push shape: explicit `<commit>:refs/heads/<branch>`, tag
-following disabled, no development or recovery tags. Name each
+following disabled, no development or recovery tags. Record who runs the
+push: the agent, or, where the project's rules forbid the agent any
+`git push` (name the rule and its file), the Developer through WORKER.md's
+no-push variant. Name each
 installation kept in step after a publication: canonical root, access
 host (hostnames sharing one filesystem are one installation),
 repositories, permitted operations, verification, reservation and load

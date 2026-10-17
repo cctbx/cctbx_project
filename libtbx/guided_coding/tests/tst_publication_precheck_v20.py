@@ -628,8 +628,200 @@ class OutgoingCommand(PrecheckFixture):
         self.refused(self.outgoing_tool(), "working tree is not clean")
 
 
+class NoPushVariant(PrecheckFixture):
+    """Revision 17: the no-push publication variant, for a project whose rules forbid the
+    agent any `git push` (for example a project AGENTS.md: "Do not run `git push` in any form", read as including
+    dry runs). The agent
+    runs `check` without --dry-run and `vet`s the exact commands; the Developer runs them;
+    `confirm` then reads the remote with `git ls-remote` (read-only: no push and no fetch)
+    and confirms the branch is at the outgoing commit and the tag state is unchanged."""
+
+    def tool(self, *words, env=None):
+        """Run the tool and prove it changed no Git state, here or on the remote."""
+        before = self.snapshot()
+        result = subprocess.run([sys.executable, "-I", "-B", str(TOOL), *words],
+                                env=env or self.env, cwd=self.root, text=True,
+                                capture_output=True)
+        self.assertEqual(self.snapshot(), before, f"{words[0]} changed Git state")
+        return result
+
+    def confirm(self, *options, env=None):
+        return self.tool("confirm", str(self.repo), str(self.outgoing), *options, env=env)
+
+    def push_as_developer(self, line):
+        """The Developer runs the printed command himself (here: the test, outside the tool)."""
+        words = line.split()
+        self.assertEqual(words[:3], ["git", "-C", str(self.repo)])
+        self.git(*words[3:], cwd=self.repo)
+
+    def logging_git(self, trigger):
+        """A git that logs every call whose words include `trigger` and runs the real git."""
+        real_git = shutil.which("git", path=self.env.get("PATH", os.defpath))
+        fake_bin = self.root / f"logbin-{'-'.join(trigger)}"
+        fake_bin.mkdir()
+        calls = fake_bin / "calls.txt"
+        script = ("#!%s\nimport os, sys\nargs = sys.argv[1:]\n" % sys.executable
+                  + "if any(word in args for word in %r):\n" % (tuple(trigger),)
+                  + "    open(%r, 'a').write(' '.join(args) + '\\n')\n" % str(calls)
+                  + "os.execv(%r, [%r] + args)\n" % (real_git, real_git))
+        (fake_bin / "git").write_text(script)
+        (fake_bin / "git").chmod(0o755)
+        return dict(self.env, PATH=str(fake_bin) + os.pathsep + self.env.get("PATH", "")), calls
+
+    def tag_state(self, result):
+        line = next(x for x in result.stdout.splitlines() if x.startswith("REMOTE TAGS "))
+        return line.split()[-1]
+
+    def test_whole_variant_check_vet_developer_push_confirm(self):
+        """The variant end to end: confirm --before passes and prints the tag state; check
+        without --dry-run prints the push command, which vet accepts, as it does the dry-run
+        form the Developer may run first; the agent's tools never call `git push` or `git
+        fetch` (a logging git); after the Developer's push, confirm passes with the tag state
+        from before, and confirm --before now refuses. Repair 1: after the push --tags is
+        required."""
+        env, calls = self.logging_git(("push", "fetch"))
+        before = self.confirm("--before", env=env)
+        self.assertEqual(before.returncode, 0, before.stderr)
+        state = self.tag_state(before)
+        self.assertTrue(state.startswith("0/"), state)
+        self.assertIn("CONFIRMED before the push", before.stdout)
+        not_yet = self.confirm("--tags", state, env=env)
+        self.assertEqual(not_yet.returncode, 2, not_yet.stdout)
+        self.assertIn("the push has not happened", not_yet.stderr)
+        checked = self.tool("check", str(self.repo), str(self.outgoing), env=env)
+        self.assertEqual(checked.returncode, 0, checked.stderr)
+        self.assertNotIn("DRY RUN", checked.stdout)
+        command = checked.stdout.splitlines()[-1]
+        self.assertFalse(calls.exists(), "the agent's tools called git push or fetch: "
+                         + (calls.read_text() if calls.exists() else ""))
+        dry = command.replace("--no-follow-tags", "--no-follow-tags --dry-run --porcelain")
+        for line in (command, dry):
+            with self.subTest(vet=line):
+                vetted = self.tool("vet", "--", *line.split())
+                self.assertEqual(vetted.returncode, 0, vetted.stderr)
+                self.assertIn("VET OK", vetted.stdout)
+        self.push_as_developer(command)
+        self.assertEqual(self.git("rev-parse", "refs/heads/master", cwd=self.bare), self.commit)
+        no_tags = self.confirm(env=env)
+        self.assertEqual(no_tags.returncode, 2, no_tags.stdout)
+        self.assertIn("give --tags", no_tags.stderr)
+        after = self.confirm("--tags", state, env=env)
+        self.assertEqual(after.returncode, 0, after.stderr)
+        self.assertIn(f"CONFIRMED phenix {self.commit} is origin refs/heads/master",
+                      after.stdout)
+        self.assertEqual(self.tag_state(after), state)
+        late = self.confirm("--before", env=env)
+        self.assertEqual(late.returncode, 2, late.stdout)
+        self.assertIn("not the recorded base", late.stderr)
+        self.assertFalse(calls.exists(), "confirm called git push or fetch")
+
+    def test_confirm_refuses_a_changed_tag_set(self):
+        """Negative controls: a tag pushed with the commit changes the state, and so does
+        one tag removed and another added (the count unchanged, repair 1); the actual state
+        passes."""
+        self.git("tag", "v-old", self.base, cwd=self.repo)
+        self.git("push", "-q", "origin", "refs/tags/v-old", cwd=self.repo)
+        state = self.tag_state(self.confirm("--before"))
+        self.assertTrue(state.startswith("1/"), state)
+        self.git("tag", "v-test", cwd=self.repo)
+        self.git("push", "-q", "origin", f"{self.commit}:refs/heads/master",
+                 "refs/tags/v-test", cwd=self.repo)
+        tagged = self.confirm("--tags", state)
+        self.assertEqual(tagged.returncode, 2, tagged.stdout)
+        self.assertIn("a tag was added, removed or moved", tagged.stderr)
+        self.git("push", "-q", "origin", ":refs/tags/v-old", cwd=self.repo)
+        swapped = self.confirm("--tags", state)
+        self.assertEqual(swapped.returncode, 2, swapped.stdout)
+        self.assertIn("a tag was added, removed or moved", swapped.stderr)
+        current = subprocess.run([sys.executable, "-I", "-B", str(TOOL), "confirm", str(self.repo),
+                                  str(self.outgoing), "--tags", "x"], env=self.env,
+                                 text=True, capture_output=True)
+        actual = current.stderr.split("remote tag state is ")[1].split(",")[0]
+        self.assertTrue(actual.startswith("1/") and actual != state, actual)
+        self.assertEqual(self.confirm("--tags", actual).returncode, 0)
+
+    def test_confirm_refuses_a_remote_moved_elsewhere(self):
+        """Negative control: a remote moved by someone else (not to the outgoing commit) is
+        refused after and before the push."""
+        other = self.advance_remote()
+        for options, reason in ((("--tags", "0/unused"), "not the outgoing commit"),
+                                (("--before",), "not the recorded base")):
+            with self.subTest(options=options):
+                result = self.confirm(*options)
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertIn(reason, result.stderr)
+                self.assertIn(other, result.stderr)
+
+    def test_confirm_after_the_push_refuses_a_deleted_branch(self):
+        """Repair 1 of e9421261 (reading 1, finding 2): after the push, a remote branch that
+        is absent (deleted) is refused, never confirmed; the same remote with the branch
+        restored to the outgoing commit is the positive control."""
+        state = self.tag_state(self.confirm("--before"))
+        self.git("push", "-q", "origin", f"{self.commit}:refs/heads/master", cwd=self.repo)
+        self.git("update-ref", "-d", "refs/heads/master", cwd=self.bare)
+        result = self.confirm("--tags", state)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("refs/heads/master is absent, not the outgoing commit", result.stderr)
+        self.assertNotIn("CONFIRMED", result.stdout)
+        self.git("update-ref", "refs/heads/master", self.commit, cwd=self.bare)
+        self.assertEqual(self.confirm("--tags", state).returncode, 0)
+
+    def env_logging_git(self, name):
+        """A git that records GIT_SSH_COMMAND and GIT_TERMINAL_PROMPT of every ls-remote call
+        and runs the real git."""
+        real_git = shutil.which("git", path=self.env.get("PATH", os.defpath))
+        fake_bin = self.root / f"envbin-{name}"
+        fake_bin.mkdir()
+        calls = fake_bin / "env.txt"
+        script = ("#!%s\nimport os, sys\nargs = sys.argv[1:]\n" % sys.executable
+                  + "if 'ls-remote' in args:\n"
+                  + "    open(%r, 'a').write('%%s|%%s\\n' %% (os.environ.get('GIT_SSH_COMMAND'), "
+                    "os.environ.get('GIT_TERMINAL_PROMPT')))\n" % str(calls)
+                  + "os.execv(%r, [%r] + args)\n" % (real_git, real_git))
+        (fake_bin / "git").write_text(script)
+        (fake_bin / "git").chmod(0o755)
+        return fake_bin, calls
+
+    def test_confirm_runs_git_without_prompts_and_ssh_in_batch_mode(self):
+        """Repair 1 of e9421261 (reading 1, finding 3): every `git ls-remote` that confirm
+        runs has GIT_TERMINAL_PROMPT=0 and a GIT_SSH_COMMAND ending in `-o BatchMode=yes`,
+        appended to the ssh command git would otherwise use: plain ssh; the repository's
+        core.sshCommand; a GIT_SSH_COMMAND already set; a GIT_SSH program (quoted)."""
+        cases = (("plain", {}, None, "ssh -o BatchMode=yes"),
+                 ("core.sshCommand", {}, "ssh -i /keys/id_test", "ssh -i /keys/id_test -o BatchMode=yes"),
+                 ("GIT_SSH_COMMAND", {"GIT_SSH_COMMAND": "ssh -p 2222"}, "ssh -i /ignored",
+                  "ssh -p 2222 -o BatchMode=yes"),
+                 ("GIT_SSH", {"GIT_SSH": "/opt/my ssh"}, None, "'/opt/my ssh' -o BatchMode=yes"))
+        for label, extra, config, expected in cases:
+            with self.subTest(source=label):
+                if config:
+                    self.git("config", "core.sshCommand", config, cwd=self.repo)
+                fake_bin, calls = self.env_logging_git(label.replace(".", "-"))
+                env = dict(self.env, PATH=str(fake_bin) + os.pathsep + self.env.get("PATH", ""),
+                           **extra)
+                result = self.confirm("--before", env=env)
+                if config:
+                    self.git("config", "--unset", "core.sshCommand", cwd=self.repo)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                lines = calls.read_text().splitlines()
+                self.assertEqual(len(lines), 2, lines)  # the branch and the tags
+                self.assertEqual(set(lines), {f"{expected}|0"}, lines)
+
+    def test_confirm_refuses_another_destination_and_a_missing_branch(self):
+        """Negative controls: a push URL that differs from the record is refused before the
+        remote is read; a branch the remote does not have is reported absent."""
+        self.outgoing.write_text(self.block(remote_url=str(self.root / "elsewhere.git")))
+        result = self.confirm("--before")
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("push destination differs from outgoing record", result.stderr)
+        self.outgoing.write_text(self.block(refspec=f"{self.commit}:refs/heads/absent"))
+        result = self.confirm("--before")
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("refs/heads/absent is absent", result.stderr)
+
+
 class NoGitRefusal(unittest.TestCase):
-    """Revision 16: with no git on PATH, `check` and `outgoing` refuse (exit 2) with the
+    """Revision 16: with no git on PATH, `check` and `outgoing` (revision 17: and `confirm`) refuse (exit 2) with the
     cause before doing anything; `vet` still works. PATH holds only an empty directory."""
 
     def test_check_and_outgoing_refuse_without_git_vet_works(self):
@@ -640,7 +832,8 @@ class NoGitRefusal(unittest.TestCase):
             env = dict(git_environment(root), PATH=str(empty))
             (root / "OUTGOING.txt").write_text("repository: x\n")
             for words in (["check", str(root), str(root / "OUTGOING.txt")],
-                          ["outgoing", str(root), "--commit", HEX]):
+                          ["outgoing", str(root), "--commit", HEX],
+                          ["confirm", str(root), str(root / "OUTGOING.txt")]):  # revision 17
                 with self.subTest(command=words[0]):
                     result = subprocess.run([sys.executable, "-I", "-B", str(TOOL), *words],
                                             env=env, cwd=root, text=True, capture_output=True)
