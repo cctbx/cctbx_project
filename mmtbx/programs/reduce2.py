@@ -1201,7 +1201,106 @@ NOTES:
     # Parent of every H/D while the restraints match the hierarchy; the
     # output step uses it after the restraints are gone.
     self._h_parents = hd_exchange.h_parent_table(self.model)
-    self._hd_records = {}
+
+# ------------------------------------------------------------------------------
+
+  def _RebuildHint(self):
+    # The parameters that discard the input H/D for this run: qmready and
+    # optimize always keep them (add also optimizes), add/place keep them
+    # only on request.
+    if self.params.qmready:
+      return 'remove the H/D first (approach=remove), then run qmready=True'
+    if self.params.approach == 'optimize':
+      return 'approach=add keep_existing_H=False'
+    return 'keep_existing_H=False'
+
+# ------------------------------------------------------------------------------
+
+  def _MatchInputHD(self):
+    # Candidates and collapse check on the interpreted self.model.
+    # :return: Tuple (candidates, match).
+    table = hd_exchange.h_parent_table(self.model)
+    candidates = hd_exchange.find_hd_candidates(self.model.get_hierarchy(),
+      table, model=self.model)
+    return candidates, hd_exchange.collapse_check(candidates)
+
+# ------------------------------------------------------------------------------
+
+  def _NormalizeInput(self):
+    # Input with D that the run keeps: every H/D must be a single or a
+    # collapsible pair (no repair). Floating H/D are dropped. Pairs are
+    # collapsed to H with their values recorded (self._hd_records), single D
+    # renamed to H, DOD -> HOH. self.model is rebuilt from the H-only
+    # hierarchy, with restraints for optimize (the branch uses them).
+    # :return: Unprocessed model of the H-only hierarchy, the snapshot for
+    # the flipkin passes.
+    make_sub_header('Checking input H/D', out=self.logger)
+    if self.params.neutron_option == 'none':
+      raise Sorry('input contains deuterium; set neutron_option, or rebuild '
+        'H: ' + self._RebuildHint())
+    self._ReinterpretModel(make_restraints=True)
+    candidates, match = self._MatchInputHD()
+    clean = lambda id_str: id_str.replace('pdb=', '').replace('"', '')
+    titles = {
+      'pair': 'H/D pairs that cannot be collapsed',
+      'different parents': 'Same-name H and D on different parents',
+      'same conformer': 'H and D of one site in one conformer',
+      'name collision': 'D whose H name already exists'}
+    categories = []
+    def add(title, line):
+      for t, lines in categories:
+        if t == title:
+          lines.append(line)
+          return
+      categories.append((title, [line]))
+    for x in match.problems:
+      ids = [clean(i) for i in (x.h_id, x.d_id) if i is not None]
+      reasons = '; '.join(x.reasons)
+      add(titles[x.kind], ' / '.join(ids) + ': ' + reasons if ids else reasons)
+    for u in match.unresolved:
+      if u.action != 'stop': continue
+      add('H/D with more than one covalent partner', clean(u.atom_id) + ': ' +
+        '; '.join('%s %s, ideal %.3f A, %s' % (clean(s[0]), s[1], s[2], s[3])
+                  for s in u.source))
+    if categories:
+      text = []
+      for title, lines in categories:
+        text.append('  %s (%d):' % (title, len(lines)))
+        text.extend('    ' + l for l in lines[:20])
+        if len(lines) > 20:
+          text.append('    (+%d more)' % (len(lines) - 20))
+      raise Sorry('The input H/D cannot be used with approach=%s (no repair):'
+        '\n%s\nRebuild H: %s' % (self.params.approach, '\n'.join(text),
+        self._RebuildHint()))
+    # floating: dropped (select() keeps the restraints), then matched again
+    floating = [u for u in candidates.unresolved if u.status == 'floating']
+    self._input_floating = [clean(u.atom_id) for u in floating]
+    if floating:
+      drop = set(u.atom_key for u in floating)
+      keys = hd_exchange.atom_keys(self.model.get_hierarchy())
+      self.model = self.model.select(
+        flex.bool([k not in drop for k in keys]))
+      candidates, match = self._MatchInputHD()
+    self._input_notes = [group_args(output=clean(n.h_id) + ' / ' +
+      clean(n.d_id), text=n.text) for n in match.notes]
+    h = self.model.get_hierarchy().deep_copy()
+    normalized = hd_exchange.normalize_to_h(h, match)
+    self._hd_records = normalized.records
+    c = normalized.counts
+    print('Input H/D: %d pairs collapsed to H, %d D renamed to H, %d DOD '
+      'renamed to HOH, %d floating dropped' % (c.n_pairs, c.n_d_renamed,
+      c.n_dod, len(floating)), file=self.logger)
+    snapshot = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = h.deep_copy(),
+      crystal_symmetry  = self.model.crystal_symmetry(),
+      restraint_objects = self.model.get_restraint_objects(),
+      stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
+      log               = null_out())
+    self._normalized_with_restraints = self.params.approach == 'optimize'
+    self.model = self._RebuildModel(h,
+      make_restraints=self._normalized_with_restraints)
+    return snapshot
 
 # ------------------------------------------------------------------------------
 
@@ -1225,7 +1324,7 @@ NOTES:
       if remark: lines.append('    ' + remark)
       shown = entries if cap is None else entries[:cap]
       for e in shown:
-        lines.append('    %s  %s' % (e.output, detail(e)))
+        lines.append(('    %s  %s' % (e.output, detail(e))).rstrip())
       if len(shown) < len(entries):
         lines.append('    (+%d more)' % (len(entries) - len(shown)))
     by_reason = lambda entries, reason: [e for e in entries if e.reason == reason]
@@ -1237,11 +1336,28 @@ NOTES:
       r.unclassified_sites, lambda e: e.reason)
     section('Conformer copies merged into one site', r.merged_sites,
       lambda e: '%s (%d copies)' % (e.reason, len(e.copies)))
-    section('Split sites with a partially occupied parent',
+    section('Split sites on a partially occupied parent',
       r.partial_parent_sites, lambda e: 'parent occupancy %.2f' % e.parent_occ,
-      remark='H and D get half the parent occupancy each; phenix.refine '
-             'currently refines H + D = 1.')
+      remark='New pairs get half the parent occupancy each, restored pairs '
+             'keep their input values; phenix.refine currently refines '
+             'H + D = 1.')
     section('Occupancy notes', r.notes, lambda e: e.text)
+    section('Input H/D notes (values not changed)', self._input_notes,
+      lambda e: e.text)
+    section('H/D without a covalent partner, dropped at the input check',
+      [group_args(output=label) for label in self._input_floating],
+      lambda e: '')
+    def record_label(key):
+      # site key: residue part, parent altloc, name
+      model_index, chain_id, _, resseq, icode, _, resname, altloc, name = key
+      label = '%s %s %s %s%s' % (name.strip(), resname, chain_id,
+        resseq.strip(), icode.strip())
+      if altloc: label += ' (parent altloc %s)' % altloc
+      if model_index > 0: label += ' (model %d)' % (model_index + 1)
+      return label
+    section('Input values not used (site no longer in the model)',
+      [group_args(output=record_label(k)) for k in r.unused_records],
+      lambda e: '')
     text = '\n'.join(lines) + '\n'
     # the same section in the log, so it is not lost without files
     print(text, file=self.logger)
@@ -1479,15 +1595,6 @@ NOTES:
       if p.qmready:
         raise Sorry('neutron_option=%s cannot be used with qmready=True.'
           % p.neutron_option)
-      # Interim guard, removed in step 4 (input normalization)
-      if p.approach == 'optimize':
-        raise Sorry('neutron_option with approach=optimize is not supported yet.')
-      # Interim guard, removed in step 4 (input normalization)
-      if p.keep_existing_H and self.data_manager.has_models() and any(
-          e.strip().upper() == 'D' for e in
-          self.data_manager.get_model().get_hierarchy().atoms().extract_element()):
-        raise Sorry('neutron_option with keep_existing_H=True and D in the '
-          'input is not supported yet.')
 
     # One distance flag for the whole run: qmready and neutron_option place H
     # at neutron distances, so every later step must use them
@@ -1566,6 +1673,13 @@ NOTES:
     # Set our bonded-neighbor depth
     self._bondedNeighborDepth = self.params.bonded_neighbor_depth
 
+    # Input H/D check (neutron_option): records of collapsed pairs, notes and
+    # floating H/D dropped there
+    self._hd_records = {}
+    self._input_notes = []
+    self._input_floating = []
+    self._normalized_with_restraints = False
+
     # String describing the run that will be output to the specified file.
     outString = 'reduce2 v.{}, run {}\n'.format(version, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     for a in sys.argv:
@@ -1643,9 +1757,23 @@ NOTES:
 
       self.model = subset_model_manager
 
+    # Input with D that the run keeps (never for remove; qmready forces
+    # keep_existing_H=True in _AddHydrogens()): checked and normalized to H;
+    # the H-only model is the snapshot for the flipkins
+    snapshot = None
+    if self.params.approach != 'remove' and \
+       (self.params.keep_existing_H or self.params.qmready or
+        self.params.approach == 'optimize') and \
+       any(e.strip().upper() == 'D'
+           for e in self.model.get_hierarchy().atoms().extract_element()):
+      snapshot = self._NormalizeInput()
+
     # Stores the initial coordinates for all of the atoms and the rest of the information
     # about the original model for use by Kinemages.
-    initialModel = self.model.deep_copy()
+    if snapshot is None:
+      initialModel = self.model.deep_copy()
+    else:
+      initialModel = snapshot
 
     neutron = self.params.neutron_option != 'none'
     if self.params.approach == 'place':
@@ -1672,7 +1800,9 @@ NOTES:
           self._CheckAmbiguousParents()
       else:
         # We need restraints on the model for optimization, so we interpret it to get them.
-        self._ReinterpretModel(make_restraints=True)
+        # (normalized input was rebuilt with them)
+        if not self._normalized_with_restraints:
+          self._ReinterpretModel(make_restraints=True)
         # H/D without a covalent partner are removed, as placement does; same
         # rule as the H parent table. Also keeps them out of probe scoring.
         text, removed = self._RemoveFloatingHD()
@@ -1680,6 +1810,8 @@ NOTES:
         # and from the snapshot the flipkin passes restart from
         if removed:
           initialModel = self._RemoveFromSnapshot(initialModel, removed)
+        if neutron:
+          self._CheckAmbiguousParents()
 
       # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
       # but the desired model ID structure from the model.
@@ -1755,11 +1887,27 @@ NOTES:
         print(opt.getAtomDump(), file=self.logger)
 
     else: # Removing Hydrogens from the model rather than adding them.
+      # Own path, independent of the isotope logic: any H/D layout, no
+      # matcher, keep_existing_H ignored
       make_sub_header('Removing Hydrogens', out=self.logger)
-      sel = self.model.selection("element H")
+      sel = self.model.selection("element H or element D")
       for a in self.model.get_atoms():
         if sel[a.i_seq]:
           a.parent().remove_atom(a)
+      # H/D-only atom_groups (and residue_groups, chains) are now empty;
+      # waters without D are HOH
+      for m in self.model.get_hierarchy().models():
+        for chain in list(m.chains()):
+          for rg in list(chain.residue_groups()):
+            for ag in list(rg.atom_groups()):
+              if ag.atoms_size() == 0:
+                rg.remove_atom_group(ag)
+              elif ag.resname == 'DOD':
+                ag.resname = 'HOH'
+            if rg.atom_groups_size() == 0:
+              chain.remove_residue_group(rg)
+          if chain.residue_groups_size() == 0:
+            m.remove_chain(chain)
 
     # Re-process the model because we have removed some atoms that were previously
     # bonded.  Don't make restraints during the reprocessing.

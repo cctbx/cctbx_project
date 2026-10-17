@@ -294,6 +294,17 @@ def test_water_layouts():
       f.write(pdb_str)
     for lengths, angle in water_geometry(prefix + "_in.pdb"):
       for d in lengths: assert approx_equal(d, 0.90, eps=0.001, out=None)
+    if key == "e":
+      # DOD with D, kept by optimize: needs a neutron_option since step 4
+      # (the hd_and_h run of this layout is test 9l(e))
+      try:
+        run_reduce2(prefix, pdb_str,
+          ["approach=optimize", "use_neutron_distances=True"])
+      except Sorry as e:
+        assert "input contains deuterium" in str(e), str(e)
+      else:
+        raise AssertionError("D input with none ran")
+      continue
     fn, log, description = run_reduce2(prefix, pdb_str,
       ["approach=optimize", "use_neutron_distances=True"])
     check_water(fn, 0.98, n_groups)
@@ -525,32 +536,20 @@ def test_validate_sorrys():
       neutron_option=option, approach="remove")
     check_sorry(prefix, pdb_1yjp, "cannot be used with qmready=True",
       neutron_option=option, qmready=True)
-    # interim guards until step 4
-    check_sorry(prefix, pdb_1yjp,
-      "neutron_option with approach=optimize is not supported yet",
-      neutron_option=option, approach="optimize")
-    check_sorry(prefix, pdb_ser_dg, "keep_existing_H=True and D in the input "
-      "is not supported yet", neutron_option=option, keep_existing_H=True)
-    # H-only input with keep_existing_H=True is fine
-    prog, log = make_program(prefix, pdb_1yjp, neutron_option=option,
-      keep_existing_H=True)
-    prog.validate()
+    # optimize, and D input with keep_existing_H=True, pass validate(); the
+    # input check in run() decides (step 4)
+    for pdb_str, params in ((pdb_1yjp, dict(approach="optimize")),
+                            (pdb_1yjp, dict(keep_existing_H=True)),
+                            (pdb_ser_dg, dict(keep_existing_H=True))):
+      prog, log = make_program(prefix, pdb_str, neutron_option=option,
+        **params)
+      prog.validate()
   # none: the same runs pass validate()
   for params in (dict(approach="remove"), dict(qmready=True),
                  dict(approach="optimize"), dict(keep_existing_H=True)):
     prog, log = make_program(prefix, pdb_ser_dg, neutron_option="none",
       **params)
     prog.validate()
-
-def test_optimize_guard_reached():
-  # the optimize guard stops a real run before any work is done
-  try:
-    run_reduce2("tst_reduce2_neutron_guard", pdb_1yjp,
-      ["approach=optimize", "neutron_option=hd_and_h"])
-  except Sorry as e:
-    assert "not supported yet" in str(e)
-  else:
-    raise AssertionError("approach=optimize neutron_option=hd_and_h ran")
 
 def test_none_distances():
   # 9b: none keeps today's distances; no D anywhere
@@ -1021,32 +1020,42 @@ def test_dod_input_none_exclude_water():
   assert water_groups(fn) == [("DOD", ["O"])] * 7, water_groups(fn)
   assert RENAMED not in log and RENAMED not in description
 
+pdb_1yjp_dod_d = pdb_1yjp_dod.replace(
+  "HETATM   61  O   DOD A   8      -6.471   5.227   7.124  1.00 22.62"
+  "           O\n",
+  "HETATM   61  O   DOD A   8      -6.471   5.227   7.124  1.00 22.62"
+  "           O\n"
+  "HETATM   61  D1  DOD A   8      -5.621   5.227   7.124  1.00 22.62"
+  "           D\n"
+  "HETATM   61  D2  DOD A   8      -6.675   6.052   7.124  1.00 22.62"
+  "           D\n")
+
 def test_dod_input_with_d_kept():
-  # keep_existing_H=True and a DOD water with D1/D2: stays DOD with its D
-  # (today's behaviour until step 4)
-  pdb_str = pdb_1yjp_dod.replace(
-    "HETATM   61  O   DOD A   8      -6.471   5.227   7.124  1.00 22.62"
-    "           O\n",
-    "HETATM   61  O   DOD A   8      -6.471   5.227   7.124  1.00 22.62"
-    "           O\n"
-    "HETATM   61  D1  DOD A   8      -5.621   5.227   7.124  1.00 22.62"
-    "           D\n"
-    "HETATM   61  D2  DOD A   8      -6.675   6.052   7.124  1.00 22.62"
-    "           D\n")
-  assert pdb_str.count("D1  DOD") == 1
-  fn, log, description = run_reduce2("tst_reduce2_neutron_dodd", pdb_str,
-    ["keep_existing_H=True", "exclude_water=False"])
-  # existing behaviour: placement keeps D1/D2 and also adds H1/H2 (it does
-  # not match D1/D2 to the dictionary's H1/H2); the water has D, so the
-  # rename leaves it as DOD; the six other waters are renamed
-  groups = water_groups(fn)
-  assert groups.count(("DOD", ["D", "H", "O"])) == 1, groups
-  assert groups.count(("HOH", ["H", "O"])) == 6, groups
+  # keep_existing_H=True and a DOD water with D1/D2, neutron_option=none:
+  # the D would be kept, so the run stops (before step 4 placement kept
+  # D1/D2 and added H1/H2)
+  assert pdb_1yjp_dod_d.count("D1  DOD") == 1
+  try:
+    run_reduce2("tst_reduce2_neutron_dodd", pdb_1yjp_dod_d,
+      ["keep_existing_H=True", "exclude_water=False"])
+  except Sorry as e:
+    assert "input contains deuterium; set neutron_option" in str(e), str(e)
+    assert str(e).endswith("rebuild H: keep_existing_H=False"), str(e)
+  else:
+    raise AssertionError("D input with none ran")
+
+def test_dod_input_with_d_normalized():
+  # the same water with hd_and_h: D1/D2 normalized to H1/H2 before
+  # placement, no extra H, written as DOD with D1/D2 at 0.98 A
+  fn, log, description = run_reduce2("tst_reduce2_neutron_doddn",
+    pdb_1yjp_dod_d, ["keep_existing_H=True", "exclude_water=False",
+                     "neutron_option=hd_and_h"])
+  assert water_groups(fn) == [("DOD", ["D", "O"])] * 7, water_groups(fn)
   h = iotbx.pdb.input(fn).construct_hierarchy()
   w8 = sorted(a.name.strip() for a in h.atoms()
               if a.parent().parent().resseq.strip() == "8")
-  assert w8 == ["D1", "D2", "H1", "H2", "O"], w8
-  assert "6 " + RENAMED in log
+  assert w8 == ["D1", "D2", "O"], w8
+  check_water(fn, 0.98, 7)
 
 def test_dod_input_hd_and_h():
   # the earlier rename to HOH does not break the neutron path or the
@@ -1488,12 +1497,328 @@ def test_description_file():
   assert "merged conformer copies" in entry("HA  SER A   2")
   for name in ("HZ1", "HZ2", "HZ3"):
     assert "parent occupancy 0.80" in entry("%sALYS A   3" % name)
-  assert "phenix.refine currently refines H + D = 1" in section
+  assert ("Split sites on a partially occupied parent (3):\n"
+    "    New pairs get half the parent occupancy each, restored pairs keep "
+    "their input values; phenix.refine currently refines H + D = 1.") in \
+    section, section
   assert "name not pairable by phenix.refine" in entry("1HO2 ZQ3 A   1")
   # none: no H/D section
   fn, log, description = run_reduce2("tst_reduce2_neutron_desc_none",
     pdb_1yjp, [])
   assert "H/D model" not in description
+
+# ------------------------------------------------------------------------------
+# step 4.1: input check and normalization
+
+def hd_values(fn):
+  """{(resseq, name, altloc, element): (occupancy, B)} of the H/D"""
+  h = iotbx.pdb.input(fn).construct_hierarchy()
+  return dict(((a.parent().parent().resseq.strip(), a.name.strip(),
+                a.parent().altloc, a.element.strip()),
+               (round(a.occ, 2), round(a.b, 2)))
+              for a in h.atoms() if a.element.strip() in ("H", "D"))
+
+def edit_atoms(pdb_str, edit):
+  """pdb_str with edit(atom) applied to every atom (CRYST1 kept)"""
+  inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  h = inp.construct_hierarchy()
+  for a in h.atoms():
+    edit(a)
+  return h.as_pdb_string(crystal_symmetry=inp.crystal_symmetry())
+
+_dipeptide_out = {}
+def dipeptide_out(option):
+  """written output of the Ser-Leu dipeptide in mode option"""
+  if option not in _dipeptide_out:
+    fn, _, _ = run_reduce2("tst_reduce2_neutron_dpo_" + option, dipeptide,
+      ["neutron_option=" + option])
+    with open(fn) as f: _dipeptide_out[option] = f.read()
+  return _dipeptide_out[option]
+
+def test_rerun_same_mode():
+  # 2: the written hd_and_h and all_d outputs, run again in the same mode
+  # with optimize and with add keep_existing_H=True -> same labels and values.
+  # all_d input goes through the rename path, no pairs to collapse
+  for option in ("hd_and_h", "all_d"):
+    src = dipeptide_out(option)
+    with open("tst_reduce2_neutron_rr_%s_in.pdb" % option, "w") as f:
+      f.write(src)
+    first = hd_values("tst_reduce2_neutron_rr_%s_in.pdb" % option)
+    for args in (["approach=optimize"],
+                 ["approach=add", "keep_existing_H=True"]):
+      fn, log, description = run_reduce2("tst_reduce2_neutron_rr_%s_%s" % (
+        option, args[0][9:]), src, args + ["neutron_option=" + option])
+      assert hd_values(fn) == first, (option, args,
+        sorted(set(hd_values(fn).items()) ^ set(first.items())))
+      n = 3 if option == "hd_and_h" else 0
+      assert "Values restored from the input: %d" % n in description
+
+def pairs_03_07():
+  """hd_and_h dipeptide, each pair H 0.3 B 15 / D 0.7 B 25 (parents 1.0)"""
+  def edit(a):
+    if a.parent().altloc == "A":
+      a.set_occ(0.3); a.set_b(15.0)
+    elif a.parent().altloc == "B":
+      a.set_occ(0.7); a.set_b(25.0)
+  return edit_atoms(dipeptide_out("hd_and_h"), edit)
+
+def test_record_restore():
+  # 3: refined values of input H/D pairs are kept, not reset to 0.5/0.5;
+  # written as one isotope: parent occupancy, that isotope's B
+  src = pairs_03_07()
+  exchangeable = [("37", "H"), ("37", "HG"), ("38", "H")]
+  fn, log, description = run_reduce2("tst_reduce2_neutron_rec_hd", src,
+    ["approach=optimize", "neutron_option=hd_and_h"])
+  v = hd_values(fn)
+  for resseq, name in exchangeable:
+    d_name = name.replace("H", "D", 1)
+    assert v[(resseq, name, "A", "H")] == (0.3, 15.0), v
+    assert v[(resseq, d_name, "B", "D")] == (0.7, 25.0), v
+  assert "Values restored from the input: 3" in description
+  for option, element, b in (("all_d", "D", 25.0), ("all_h", "H", 15.0)):
+    fn, log, description = run_reduce2("tst_reduce2_neutron_rec_" + option,
+      src, ["approach=optimize", "neutron_option=" + option])
+    v = hd_values(fn)
+    for resseq, name in exchangeable:
+      if element == "D": name = name.replace("H", "D", 1)
+      assert v[(resseq, name, "", element)] == (1.0, b), (option, v)
+    assert not [k for k in v if k[2] != ""], v
+    assert "Values restored from the input: 3" in description
+
+def test_pair_sum_note():
+  # 4: report, don't repair. Ser at 0.6 whose pairs have H + D = 1 (0.5 +
+  # 0.5): the run completes, the values are unchanged and the sum is noted.
+  # This tests that reduce2 passes such input through with a note; it does
+  # not say that H + D = 1 on a parent at 0.6 is right
+  def edit(a):
+    if a.parent().parent().resseq.strip() == "37" and \
+       a.parent().altloc == "":
+      a.set_occ(0.6)
+  src = edit_atoms(dipeptide_out("hd_and_h"), edit)
+  fn, log, description = run_reduce2("tst_reduce2_neutron_sum", src,
+    ["approach=optimize", "neutron_option=hd_and_h"])
+  v = hd_values(fn)
+  for name in ("H", "HG"):
+    assert v[("37", name, "A", "H")][0] == 0.5, v
+    assert v[("37", name.replace("H", "D", 1), "B", "D")][0] == 0.5, v
+  notes = description.split("Input H/D notes (values not changed)")[1]
+  assert notes.count("H + D occupancy 1.00, parent 0.60 (sum 1)") == 2, notes
+  # listed as split sites on a partial parent, with the remark that restored
+  # pairs keep their input values (0.5/0.5 above, not 0.3/0.3)
+  partial = description.split(
+    "Split sites on a partially occupied parent (2):")[1].splitlines()
+  assert "restored pairs keep their input values" in partial[1], partial
+  for line, name in zip(partial[2:4], ("H  ASER A  37", "HG ASER A  37")):
+    assert line.strip().startswith(name), partial
+    assert line.endswith("parent occupancy 0.60"), partial
+  assert "Values restored from the input: 3" in description
+
+def dg_moved():
+  """hd_and_h dipeptide with Ser DG 0.5 A away from HG"""
+  def edit(a):
+    if a.name.strip() == "DG":
+      a.set_xyz((a.xyz[0] + 0.5, a.xyz[1], a.xyz[2]))
+  src = edit_atoms(dipeptide_out("hd_and_h"), edit)
+  assert src != dipeptide_out("hd_and_h")
+  return src
+
+def test_invalid_input():
+  # 5: a matcher problem stops the run when the input H/D are kept, with
+  # the parameters that rebuild them for this run
+  src = dg_moved()
+  for args, hint in (
+      (["approach=optimize"], "approach=add keep_existing_H=False"),
+      (["approach=optimize", "keep_existing_H=False"],
+       "approach=add keep_existing_H=False"),
+      (["approach=add", "keep_existing_H=True"], "keep_existing_H=False")):
+    try:
+      run_reduce2("tst_reduce2_neutron_inv", src,
+        args + ["neutron_option=hd_and_h"])
+    except Sorry as e:
+      text = str(e)
+      assert "H/D pairs that cannot be collapsed (1)" in text, text
+      assert "HG ASER A  37" in text and "DG BSER A  37" in text, text
+      assert "H and D 0.50 A apart" in text, text
+      assert text.endswith("Rebuild H: " + hint), text
+    else:
+      raise AssertionError("ran: %s" % args)
+  # discarding the input H/D: runs, Ser HG/DG split as new
+  fn, log, description = run_reduce2("tst_reduce2_neutron_inv_ok", src,
+    ["approach=add", "keep_existing_H=False", "neutron_option=hd_and_h"])
+  assert hd_labels(fn) == hd_table(dipeptide_hd["hd_and_h"])
+
+def test_floating_h_hd_and_h():
+  # 5a, hd_and_h with D input: Ser OG missing, so HG and DG have no covalent
+  # partner; they are dropped and listed, the other pairs are kept as H/D
+  src = "\n".join(l for l in dipeptide_out("hd_and_h").splitlines()
+                  if l[12:16] != " OG ") + "\n"
+  fn, log, description = run_reduce2("tst_reduce2_neutron_flhd", src,
+    ["approach=optimize", "neutron_option=hd_and_h"])
+  dropped = description.split(
+    "H/D without a covalent partner, dropped at the input check (2):")[1]
+  assert "HG ASER A  37" in dropped and "DG BSER A  37" in dropped, dropped
+  expected = set(x for x in hd_table(dipeptide_hd["hd_and_h"])
+                 if x[1] not in ("HG", "DG"))
+  assert hd_labels(fn) == expected, sorted(hd_labels(fn) ^ expected)
+
+def ser_cif_hg_cb():
+  """geostd SER with an extra CB-HG bond (below the covalent limit)"""
+  import libtbx.load_env
+  fn = libtbx.env.find_in_repositories(
+    relative_path="chem_data/geostd/s/data_SER.cif", test=os.path.isfile)
+  with open(fn) as f: cif = f.read()
+  old = " SER  OG  HG   coval  0.840  0.020  0.980\n"
+  assert cif.count(old) == 1
+  return cif.replace(old, old + " SER  CB  HG   coval  1.100  0.020  1.100\n")
+
+def test_ambiguous_parent_optimize():
+  # 5b, optimize end to end: H-only input (no D, so no input check), a user
+  # SER CIF bonds HG to OG and CB; hd_and_h stops before the Optimizer,
+  # naming HG and both restraints; none runs
+  fn, _, _ = run_reduce2("tst_reduce2_neutron_ambo_in", dipeptide, [])
+  with open(fn) as f: src = f.read()
+  cif = ser_cif_hg_cb()
+  try:
+    run_prog("tst_reduce2_neutron_ambo", src, cif, approach="optimize",
+      neutron_option="hd_and_h")
+  except Sorry as e:
+    text = str(e)
+    assert "more than one covalent bond partner" in text, text
+    assert "HG  SER A  37" in text, text
+    assert "OG  SER A  37" in text and "CB  SER A  37" in text, text
+    assert text.count("covalent geometry") == 2, text
+  else:
+    raise AssertionError("ambiguous HG not reported")
+  prog = run_prog("tst_reduce2_neutron_ambo_none", src, cif,
+    approach="optimize", neutron_option="none")
+  assert "Optimizing" in prog.log_text
+
+def test_d_input_none():
+  # D input with none: optimize and add keep_existing_H=True would keep the
+  # D -> Sorry with the hint for the run; add keep_existing_H=False discards
+  # them and runs
+  for args, hint in (
+      (["approach=optimize"], "approach=add keep_existing_H=False"),
+      (["approach=add", "keep_existing_H=True"], "keep_existing_H=False")):
+    try:
+      run_reduce2("tst_reduce2_neutron_dnone", pdb_ser_dg, args)
+    except Sorry as e:
+      assert str(e) == ("input contains deuterium; set neutron_option, or "
+        "rebuild H: " + hint), str(e)
+    else:
+      raise AssertionError("ran: %s" % args)
+  fn, log, description = run_reduce2("tst_reduce2_neutron_dnone_ok",
+    pdb_ser_dg, ["approach=add", "keep_existing_H=False"])
+  assert not [k for k in hd_values(fn) if k[3] == "D"]
+
+def test_d_input_qmready():
+  # qmready forces keep_existing_H=True and allows only none: D input stops,
+  # with the hint to remove the H/D first
+  try:
+    run_reduce2("tst_reduce2_neutron_dqm", pdb_ser_dg,
+      ["approach=add", "qmready=True"])
+  except Sorry as e:
+    assert str(e) == ("input contains deuterium; set neutron_option, or "
+      "rebuild H: remove the H/D first (approach=remove), then run "
+      "qmready=True"), str(e)
+  else:
+    raise AssertionError("D input with qmready ran")
+
+def atom_records(fn):
+  """[(resseq, resname, name, altloc, element, xyz, occ, b)] in file order"""
+  h = iotbx.pdb.input(fn).construct_hierarchy()
+  return [(a.parent().parent().resseq.strip(), a.parent().resname,
+           a.name.strip(), a.parent().altloc, a.element.strip(),
+           tuple(round(x, 3) for x in a.xyz), round(a.occ, 2), round(a.b, 2))
+          for a in h.atoms()]
+
+def check_removed(fn_in, fn_out):
+  """no H/D, no empty or H/D-only atom_groups, no DOD, heavy atoms as in
+  the input (DOD read as HOH)"""
+  h = iotbx.pdb.input(fn_out).construct_hierarchy()
+  assert not [a for a in h.atoms() if a.element.strip() in ("H", "D")]
+  for ag in h.atom_groups():
+    assert ag.atoms_size() > 0 and ag.resname != "DOD", ag.id_str()
+  heavy = lambda records: sorted(
+    (r[0], "HOH" if r[1] == "DOD" else r[1]) + r[2:]
+    for r in records if r[4] not in ("H", "D"))
+  assert heavy(atom_records(fn_out)) == heavy(atom_records(fn_in))
+
+def test_remove_d_input():
+  # 9a: approach=remove is its own path: D input, an H/D layout the matcher
+  # rejects (Leu HA and DA in one atom_group) and a DOD water with D1/D2,
+  # also with keep_existing_H=True -> no Sorry, every H/D removed
+  da = [l for l in dipeptide_out("hd_and_h").splitlines()
+        if l[12:16] == " HA " and l[17:26] == "LEU A  38"]
+  assert len(da) == 1
+  src = dipeptide_out("hd_and_h").replace(da[0] + "\n",
+    da[0] + "\n" + da[0][:12] + " DA " + da[0][16:76] + " D\n")
+  src = src.replace("END\n", "") + "\n".join(l for l in
+    pdb_1yjp_dod_d.splitlines() if " DOD A   8" in l) + "\nEND\n"
+  assert src.count("DOD A   8") == 3 and src.count(" DA  LEU") == 1
+  with open("tst_reduce2_neutron_rmd_in.pdb", "w") as f:
+    f.write(src)
+  # the layout is rejected when the H/D are kept
+  try:
+    run_reduce2("tst_reduce2_neutron_rmd_kept", src,
+      ["approach=add", "keep_existing_H=True", "neutron_option=hd_and_h"])
+  except Sorry as e:
+    assert "H and D of one site in one conformer" in str(e), str(e)
+  else:
+    raise AssertionError("HA/DA in one atom_group accepted")
+  for args in ([], ["keep_existing_H=True"]):
+    fn, log, description = run_reduce2("tst_reduce2_neutron_rmd", src,
+      ["approach=remove"] + args)
+    check_removed("tst_reduce2_neutron_rmd_in.pdb", fn)
+    h = iotbx.pdb.input(fn).construct_hierarchy()
+    assert [ag.resname for ag in h.atom_groups()
+            if ag.parent().resseq.strip() == "8"] == ["HOH"]
+    # Ser and Leu: only the blank group is left
+    assert sorted(set(ag.altloc for ag in h.atom_groups())) == [""]
+
+def test_remove_then_qmready():
+  # the qmready hint: hd_and_h output -> approach=remove -> qmready=True runs
+  # free His: atom-complete, as qmready requires (the dipeptide is not)
+  fn, _, _ = run_reduce2("tst_reduce2_neutron_rmq_in", his_no_h,
+    ["neutron_option=hd_and_h"])
+  with open(fn) as f: src = f.read()
+  assert " DD1BHIS" in src
+  fn, log, description = run_reduce2("tst_reduce2_neutron_rmq", src,
+    ["approach=remove"])
+  with open(fn) as f: src = f.read()
+  fn, log, description = run_reduce2("tst_reduce2_neutron_rmq2", src,
+    ["approach=add", "qmready=True"])
+  assert not [k for k in hd_values(fn) if k[3] == "D"]
+  assert hd_values(fn)
+
+def test_remove_h_input():
+  # H-only input: the output is the input without its H, atom for atom
+  from mmtbx.hydrogens import tst_hd_exchange as th
+  fn_conf, _, _ = run_reduce2("tst_reduce2_neutron_rmh_conf",
+    th.pdb_pep_og_ab, [])
+  with open(fn_conf) as f: conf = f.read()
+  for key, src in (("1yjp", pdb_1yjp_h()), ("conf", conf)):
+    fn_in = "tst_reduce2_neutron_rmh_%s_in.pdb" % key
+    with open(fn_in, "w") as f: f.write(src)
+    fn, log, description = run_reduce2("tst_reduce2_neutron_rmh_" + key, src,
+      ["approach=remove"])
+    assert atom_records(fn) == [r for r in atom_records(fn_in)
+                                if r[4] != "H"], key
+
+def test_unused_records():
+  # an input pair on His HE2: the Optimizer flips the His and deletes HE2,
+  # so its recorded values are not used and listed by site
+  fn, _, _ = run_reduce2("tst_reduce2_neutron_unused_in", his_no_h,
+    ["neutron_option=hd_and_h"])
+  with open(fn) as f: src = f.read()
+  fn, log, description = run_reduce2("tst_reduce2_neutron_unused", src,
+    ["approach=optimize", "neutron_option=hd_and_h", "add_flip_movers=True"])
+  assert "Deleting chain A HIS 45 HE2" in description, description
+  unused = description.split(
+    "Input values not used (site no longer in the model) (1):")[1]
+  assert unused.splitlines()[1].strip() == "HE2 HIS A 45", unused
+  assert not [k for k in hd_values(fn) if k[1] in ("HE2", "DE2")]
+  assert "Values restored from the input: 2" in description
 
 if __name__ == "__main__":
   test_xray_default()
@@ -1513,7 +1838,6 @@ if __name__ == "__main__":
   test_water_single_altloc_h()
   test_output_names()
   test_validate_sorrys()
-  test_optimize_guard_reached()
   test_none_distances()
   test_resolved_flag_all_h()
   test_rebuild_model()
@@ -1534,6 +1858,7 @@ if __name__ == "__main__":
   test_dod_input_none()
   test_dod_input_none_exclude_water()
   test_dod_input_with_d_kept()
+  test_dod_input_with_d_normalized()
   test_dod_input_hd_and_h()
   test_dod_input_flipkins()
   test_dipeptide_modes()
@@ -1546,4 +1871,16 @@ if __name__ == "__main__":
   test_section_in_log()
   test_mmcif_output()
   test_description_file()
+  test_rerun_same_mode()
+  test_record_restore()
+  test_pair_sum_note()
+  test_invalid_input()
+  test_floating_h_hd_and_h()
+  test_ambiguous_parent_optimize()
+  test_d_input_none()
+  test_d_input_qmready()
+  test_unused_records()
+  test_remove_d_input()
+  test_remove_then_qmready()
+  test_remove_h_input()
   print("OK")

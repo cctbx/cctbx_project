@@ -1,7 +1,8 @@
 """Exchangeable H/D: atom and site identity, H parent table.
 
 Pure hierarchy functions except h_parent_table(), which needs a model manager
-with restraints. Used by reduce2 (neutron_option); not wired in yet.
+with restraints. Used by reduce2 (neutron_option): input check and
+normalization, output model and output check.
 """
 from __future__ import absolute_import, division, print_function
 from libtbx import group_args
@@ -680,8 +681,9 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
   0.5 x parent occupancy), n_to_d, n_water (residue_groups renamed to
   DOD), n_water_to_hoh (DOD renamed to HOH), n_restored,
   partial_parent_sites, conformer_sites, unclassified_sites, merged_sites,
-  notes, provenance={output atom_key: source atom_key}); merged H map to
-  the first copy's atom_key. Every listed entry has site (input label),
+  notes, provenance={output atom_key: source atom_key}, unused_records
+  (sorted record keys whose site is not in the hierarchy, e.g. an H deleted
+  by the Optimizer)); merged H map to the first copy's atom_key. Every listed entry has site (input label),
   reason and output (label of the atom as written; the H of a split site)."""
   if option not in NEUTRON_OPTIONS:
     raise Sorry("Internal error: unknown neutron option %s" % option)
@@ -689,9 +691,10 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
     n_water=0,
     n_water_to_hoh=0, n_restored=0,
     partial_parent_sites=[], conformer_sites=[], unclassified_sites=[],
-    merged_sites=[], notes=[], provenance={})
+    merged_sites=[], notes=[], provenance={}, unused_records=[])
   if option == "none": return result
   if records is None: records = {}
+  used_records = set()
   merged, result.merged_sites, merged_atoms = _merge_conformer_copies(
     hierarchy, parent_table)
   # listed entries and the atom each describes; their output labels are
@@ -734,10 +737,10 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
     # one per output site, after the merge (a split pair counts once)
     if e.exchangeable and not water:
       result.n_exchangeable += 1
+    record_key = site_key(atom, e.parent_altloc, parts[ag.memory_id()])
+    if record_key in records: used_records.add(record_key)
     item = group_args(atom=atom, source_key=source_key, entry=e, kind=kind,
-      reason=reason, water=water,
-      record=records.get(site_key(atom, e.parent_altloc,
-                                  parts[ag.memory_id()])))
+      reason=reason, water=water, record=records.get(record_key))
     plan.append(item)
     if kind == "split":
       split_by_rg.setdefault(ag.parent().memory_id(), []).append(item)
@@ -856,6 +859,7 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
     if key in result.provenance:
       raise Sorry("Internal error: duplicate output atom %s" % atom.id_str())
     result.provenance[key] = source_key
+  result.unused_records = sorted(set(records) - used_records)
   _finish(hierarchy)
   if log is not None:
     print("Neutron option %s: %d split, %d to D, %d water, %d restored" % (
