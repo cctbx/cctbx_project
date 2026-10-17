@@ -1205,6 +1205,8 @@ def drift_entries_for_version(app, version):
   import re
   entries = []
   for job in version.jobs:
+    if job.trial is None or job.rungroup is None or job.run is None:
+      continue  # a global job (merging, phenix) belongs to the version as a whole
     task = job.task
     while task is not None and task.type != 'ensemble_refinement':
       task = task.parent
@@ -1309,8 +1311,15 @@ class MergingStatsSentinel(Thread):
     if version_id is None:
       tab.drift_result = DriftResult(None, settings, None, 'Select a dataset version.')
       return
-    version = self.db.get_dataset_version(version_id)
-    entries = drift_entries_for_version(self.db, version)
+    try:
+      version = self.db.get_dataset_version(version_id)
+      entries = drift_entries_for_version(self.db, version)
+    except Exception as e:
+      # Report on the drift page and leave the statistics running
+      import traceback
+      traceback.print_exc()
+      tab.drift_result = DriftResult(version_id, settings, None, 'Could not read the drift data: %s' % e)
+      return
     if not entries:
       tab.drift_result = DriftResult(version_id, settings, None,
         'No ensemble refinement output behind this version yet.\nThe drift plot reads the '
