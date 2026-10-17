@@ -317,6 +317,106 @@ def test_optimizer_passes_flag():
   Optimizers.Optimizer(Optimizers._philLike(), False, model, verbosity=0)
   check_oh(model, 0.98)
 
+FLOATING = "H/D without a covalent partner, removed before optimization:"
+
+def h_input_without_tyr_oh(prefix, args=()):
+  """1yjp with H from reduce2, then Tyr OH deleted: its HH has no partner"""
+  fn, _, _ = run_reduce2(prefix + "_h", pdb_1yjp, list(args))
+  with open(fn) as f:
+    lines = [l for l in f.read().splitlines() if " OH  TYR" not in l]
+  return "\n".join(lines) + "\n"
+
+def atom_labels(file_name):
+  h = iotbx.pdb.input(file_name).construct_hierarchy()
+  return sorted((a.parent().parent().resseq, a.parent().resname, a.name,
+                 a.parent().altloc) for a in h.atoms())
+
+def test_floating_h_removed():
+  # 5a (none): approach=optimize on input with an H whose parent heavy atom
+  # is missing: the run completes, the H is gone and listed, all other atoms
+  # unchanged in count and names
+  pdb_str = h_input_without_tyr_oh("tst_reduce2_neutron_float")
+  with open("tst_reduce2_neutron_float_in.pdb", "w") as f:
+    f.write(pdb_str)
+  fn, log, description = run_reduce2("tst_reduce2_neutron_float", pdb_str,
+    ["approach=optimize"])
+  assert FLOATING in description and FLOATING in log
+  listed = description.split(FLOATING)[1].strip().splitlines()[0]
+  assert listed.split() == ["HH", "TYR", "A", "7"], listed
+  before = [l for l in atom_labels("tst_reduce2_neutron_float_in.pdb")
+            if l[1:3] != ("TYR", " HH ")]
+  assert atom_labels(fn) == before
+
+def test_floating_h_water_098():
+  # 9k(b): water at 0.85 A in the input, a floating H removed with select();
+  # with neutron distances the written water O-H is 0.98 A
+  pdb_str = h_input_without_tyr_oh("tst_reduce2_neutron_float_w",
+    ["exclude_water=False"])
+  fn, log, description = run_reduce2("tst_reduce2_neutron_float_w", pdb_str,
+    ["approach=optimize", "use_neutron_distances=True",
+     "exclude_water=False"])
+  assert FLOATING in description
+  assert not [l for l in atom_labels(fn) if l[1:3] == ("TYR", " HH ")]
+  check_water(fn, 0.98, 7)
+
+def test_no_floating_h_unchanged():
+  # input without floating H/D: no removal, output as without the step
+  fn_in, _, _ = run_reduce2("tst_reduce2_neutron_nofloat_h", pdb_1yjp, [])
+  with open(fn_in) as f:
+    pdb_str = f.read()
+  fn, log, description = run_reduce2("tst_reduce2_neutron_nofloat", pdb_str,
+    ["approach=optimize"])
+  assert FLOATING not in description
+  original = reduce2.Program._RemoveFloatingHD
+  reduce2.Program._RemoveFloatingHD = lambda self: ("", [])
+  try:
+    fn_ref, _, _ = run_reduce2("tst_reduce2_neutron_nofloat_ref", pdb_str,
+      ["approach=optimize"])
+  finally:
+    reduce2.Program._RemoveFloatingHD = original
+  def atom_lines(file_name):
+    with open(file_name) as f:
+      return [l for l in f if l.startswith(("ATOM", "HETATM", "ANISOU"))]
+  assert atom_lines(fn) == atom_lines(fn_ref)
+
+def test_floating_h_flipkins():
+  # orphan water H (water 8 without its O): removed in the main run and not
+  # brought back by the flipkin passes, which restart from the initial model
+  fn, _, _ = run_reduce2("tst_reduce2_neutron_orphan_h", pdb_1yjp,
+    ["exclude_water=False"])
+  with open(fn) as f:
+    pdb_str = "\n".join(l for l in f.read().splitlines()
+                        if " O   HOH A   8" not in l) + "\n"
+  assert pdb_str.count("HOH A   8") == 2       # H1, H2
+  def orphans(hierarchy):
+    return [a for a in hierarchy.atoms() if a.parent().resname == "HOH" and
+            a.parent().parent().resseq.strip() == "8"]
+  seen = []
+  original = Optimizers.Optimizer.__init__
+  def init(self, probePhil, addFlipMovers, model, *args, **kwargs):
+    seen.append(len(orphans(model.get_hierarchy())))
+    return original(self, probePhil, addFlipMovers, model, *args, **kwargs)
+  if not os.path.isdir("tst_reduce2_neutron_orphan_fk"):
+    os.mkdir("tst_reduce2_neutron_orphan_fk")
+  for keep in ("True", "False"):
+    del seen[:]
+    Optimizers.Optimizer.__init__ = init
+    try:
+      fn, log, description = run_reduce2(
+        "tst_reduce2_neutron_orphan_" + keep, pdb_str,
+        ["approach=optimize", "keep_existing_H=" + keep, "exclude_water=False",
+         "add_flip_movers=True",
+         "output.flipkin_directory=tst_reduce2_neutron_orphan_fk"])
+    finally:
+      Optimizers.Optimizer.__init__ = original
+    # main run and both flipkin configurations, none with the orphan H
+    assert seen == [0, 0, 0], (keep, seen)
+    assert description.count(FLOATING) == 1
+    listed = description.split(FLOATING)[1].strip().splitlines()[:2]
+    assert sorted(l.split()[0] for l in listed) == ["H1", "H2"], listed
+    assert all(l.split()[1:] == ["HOH", "A", "8"] for l in listed), listed
+    assert orphans(iotbx.pdb.input(fn).construct_hierarchy()) == []
+
 if __name__ == "__main__":
   test_xray_default()
   test_neutron_add()
@@ -327,4 +427,8 @@ if __name__ == "__main__":
   test_neutron_after_select()
   test_water_layouts()
   test_optimizer_passes_flag()
+  test_floating_h_removed()
+  test_floating_h_water_098()
+  test_no_floating_h_unchanged()
+  test_floating_h_flipkins()
   print("OK")

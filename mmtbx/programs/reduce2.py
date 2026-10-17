@@ -26,6 +26,7 @@ import mmtbx
 from mmtbx.probe import Helpers
 from iotbx import pdb, cli_parser
 from mmtbx.hydrogens import reduce_hydrogen
+from mmtbx.hydrogens import hd_exchange
 from mmtbx.reduce import Optimizers
 from scitbx.array_family import flex
 from iotbx.pdb import common_residue_names_get_class, amino_acid_codes, nucleic_acid_codes
@@ -1099,6 +1100,47 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _RemoveFloatingHD(self):
+    # Remove H/D atoms that have no covalent bond partner in the restraints.
+    # :return: Tuple of the description-file text listing the removed atoms
+    # ('' if none) and their atom keys (hd_exchange.atom_keys()).
+    partners = hd_exchange.covalent_h_partners(self.model)
+    atoms = self.model.get_hierarchy().atoms()
+    sel = flex.bool(atoms.size(), False)
+    for i, a in enumerate(atoms):
+      if a.element.strip().upper() in ('H', 'D') and i not in partners:
+        sel[i] = True
+    if sel.count(True) == 0:
+      return '', []
+    keys = hd_exchange.atom_keys(self.model.get_hierarchy())
+    removed = [keys[i] for i in sel.iselection()]
+    labels = [atoms[i].id_str().replace('pdb=', '').replace('"', '')
+              for i in sel.iselection()]
+    text = ('\nH/D without a covalent partner, removed before optimization:\n'
+            + '\n'.join(labels) + '\n')
+    print(text, file=self.logger)
+    self.model = self.model.select(~sel)
+    return text, removed
+
+# ------------------------------------------------------------------------------
+
+  def _RemoveFromSnapshot(self, snapshot, removed):
+    # Remove the atoms with the given atom keys from an unprocessed snapshot
+    # of the model, keeping its atom order (keys, not indices: the processed
+    # model is re-sorted). Each key must occur exactly once.
+    # :return: The snapshot without those atoms.
+    keys = hd_exchange.atom_keys(snapshot.get_hierarchy())
+    index = dict((k, i) for i, k in enumerate(keys))
+    sel = flex.bool(len(keys), False)
+    for key in removed:
+      if key not in index:
+        raise Sorry("Internal error: removed atom not in the initial model: "
+          + str(key))
+      sel[index[key]] = True
+    return snapshot.select(~sel)
+
+# ------------------------------------------------------------------------------
+
   def _ReinterpretModel(self, make_restraints=True):
     # Reinterpret the model using the same approach that hydrogen-placement does.
     # :param make_restraints: Should we compute restraints during the interpretation?
@@ -1400,6 +1442,13 @@ NOTES:
       else:
         # We need restraints on the model for optimization, so we interpret it to get them.
         self._ReinterpretModel(make_restraints=True)
+        # H/D without a covalent partner are removed, as placement does; same
+        # rule as the H parent table. Also keeps them out of probe scoring.
+        text, removed = self._RemoveFloatingHD()
+        outString += text
+        # and from the snapshot the flipkin passes restart from
+        if removed:
+          initialModel = self._RemoveFromSnapshot(initialModel, removed)
 
       # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
       # but the desired model ID structure from the model.
