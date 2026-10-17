@@ -1750,13 +1750,26 @@ class place_hydrogens():
       for chain in m.chains():
         for rg in chain.residue_groups():
           n_atom_groups = len(rg.atom_groups())
-          for ag in rg.atom_groups():
+          ags = rg.atom_groups()
+          # blank + one altloc, same resname: one conformer. Missing H are
+          # added once, to the blank group; per group, each got the other's H
+          single_altloc = (n_atom_groups == 2 and
+            sorted(ag.altloc == '' for ag in ags) == [False, True] and
+            ags[0].resname == ags[1].resname)
+          for ag in ags:
+            # blank + two or more altlocs: blank-parent H go into each altloc
             if n_atom_groups > 2 and ag.altloc == '':
+              continue
+            if single_altloc and ag.altloc != '':
               continue
             #print list(ag.atoms().extract_name())
             if exclude_water:
               if(get_class(name=ag.resname) == "common_water"): continue
             actual = [a.name.strip().upper() for a in ag.atoms()]
+            if single_altloc:
+              actual += [a.name.strip().upper()
+                         for other in ags if other.altloc != ''
+                         for a in other.atoms()]
             #
             mlq, cif_object = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv, raise_sorry=False)
             if mlq is None:

@@ -436,6 +436,29 @@ def test_water_without_o_add():
   for block in log.split("could not be parameterized")[1:]:
     assert "HOH A   8" not in block.split("\n\n")[0]
 
+def test_water_single_altloc_h():
+  # water 8 with a blank O and H1/H2 in altloc A, approach=add
+  # keep_existing_H=True: one pair, still in A, at the neutron distance; no
+  # blank pair added next to it, nothing listed as not parameterized
+  o_line = ("HETATM   61  O   HOH A   8      -6.471   5.227   7.124  1.00 22.62"
+            "           O\n")
+  assert pdb_1yjp.count(o_line) == 1
+  pdb_str = pdb_1yjp.replace(o_line, o_line +
+    "HETATM   61  H1 AHOH A   8      -5.571   5.327   7.124  1.00 22.62"
+    "           H\n"
+    "HETATM   61  H2 AHOH A   8      -6.771   6.127   7.124  1.00 22.62"
+    "           H\n")
+  fn, log, description = run_reduce2("tst_reduce2_neutron_w8a", pdb_str,
+    ["approach=add", "keep_existing_H=True", "exclude_water=False",
+     "use_neutron_distances=True"])
+  h = iotbx.pdb.input(fn).construct_hierarchy()
+  w8 = sorted((a.name.strip(), a.parent().altloc) for a in h.atoms()
+              if a.parent().parent().resseq.strip() == "8")
+  assert w8 == [("H1", "A"), ("H2", "A"), ("O", "")], w8
+  check_water(fn, 0.98, 7)
+  for block in log.split("could not be parameterized")[1:]:
+    assert "HOH A   8" not in block.split("\n\n")[0], log
+
 # ------------------------------------------------------------------------------
 # step 3.1: phil, validate(), file names, _RebuildModel()
 
@@ -1487,6 +1510,7 @@ if __name__ == "__main__":
   test_no_floating_h_unchanged()
   test_floating_h_flipkins()
   test_water_without_o_add()
+  test_water_single_altloc_h()
   test_output_names()
   test_validate_sorrys()
   test_optimize_guard_reached()
