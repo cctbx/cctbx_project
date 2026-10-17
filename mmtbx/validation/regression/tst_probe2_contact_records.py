@@ -1,14 +1,19 @@
 """
-clashscore2's per-atom-pair contact records must give the same results as the per-dot
-JSON parse they replace.
+probe2's dot output must match fingerprints recorded from the Python dot loop that ContactDB
+replaced, and clashscore2's per-atom-pair contact records must match the per-dot JSON parse.
 """
 from __future__ import absolute_import, division, print_function
-import time
+import hashlib, re, time
+import iotbx.cli_parser
 import iotbx.phil
+import iotbx.pdb
 import libtbx.load_env
+import mmtbx.model
 from iotbx.data_manager import DataManager
 from libtbx.utils import null_out
+from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.probe import Helpers
+from mmtbx.programs import probe2
 from mmtbx.validation import clashscore2
 
 # Alternates on a backbone and a side chain, partial-occupancy waters (from tst_clashscore_2).
@@ -105,6 +110,87 @@ HETATM  230  O   HOH A 247      23.962   1.544  18.100  0.26  4.79           O
 END
 """
 
+def hydrogenated():
+  """(hierarchy, crystal symmetry) of the model with H placed."""
+  inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  model = mmtbx.model.manager(model_input=inp, log=null_out())
+  ph = reduce_hydrogen.place_hydrogens(model=model)
+  ph.run()
+  return ph.get_model().get_hierarchy(), model.crystal_symmetry()
+
+def fresh_model(hierarchy, symmetry):
+  # A new model each run: probe2 adds Phantom Hydrogens to the waters of the one it runs on.
+  return mmtbx.model.manager(model_input=None, pdb_hierarchy=hierarchy.deep_copy(),
+                             crystal_symmetry=symmetry, log=null_out())
+
+def run_probe2(model, args):
+  parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
+  parser.parse_args(args + ["output.write_files=False", "ignore_lack_of_explicit_hydrogens=True"])
+  dm = DataManager()
+  dm.add_model("model", model)
+  p2 = probe2.Program(dm, parser.working_phil.extract(), master_phil=parser.master_phil,
+                      logger=null_out())
+  p2.overrideModel(model)
+  # The header carries the time of the run.
+  return re.sub(r"run \d{4}-\d\d-\d\d \d\d:\d\d:\d\d", "run <time>", p2.run()[1])
+
+def two_models(hierarchy):
+  h = hierarchy.deep_copy()
+  h.only_model().id = "1"
+  second = h.only_model().detached_copy()
+  second.id = "2"
+  h.append_model(second)
+  return h
+
+def fingerprint(out):
+  """(line count, hash) of probe2 output, leaving out the lines with its version and command."""
+  skip = ("@caption", "command:", "program:")
+  body = [l for l in out.splitlines() if not l.lstrip().startswith(skip)]
+  return len(body), hashlib.sha256("\n".join(body).encode("utf-8")).hexdigest()[:12]
+
+RAW, KIN = ["output.format=raw"], ["output.format=kinemage"]
+
+# One case per ContactDB input (set_params, atom flags, bonds) and per kinemage writer option,
+# since kinemage without count_dots or contact_summary is written from ContactDB's arrays.
+# A change to H placement, radii or dot output changes these; the assertion prints the new values.
+DOTS_CASES = [
+  (KIN, 1212, "4078d33b9432"),
+  (RAW, 1194, "6ed83bc2d12d"),
+  (["output.format=json"], 1196, "8f16f9759972"),
+  (["output.count_dots=True"], 29, "39023a498ce5"),
+  # Waters as source take the Phantom Hydrogen path.
+  (["approach=both", "source_selection=water", "target_selection=all"] + RAW, 229, "462482ad3740"),
+  (["approach=both", "source_selection=protein", "target_selection=water"] + KIN, 251, "61d0d456ce78"),
+  (["approach=once", "source_selection=protein", "target_selection=not protein"] + RAW, 123, "1b1c87f15240"),
+  (["output.contact_summary=True"] + KIN, 1218, "4973513a2c2d"),
+  (["output.condensed=True"] + RAW, 217, "14d144ebfa76"),
+  (["minimum_occupancy=0.5"] + RAW, 1141, "51b03a5fa273"),
+  (["excluded_bond_chain_length=3"] + RAW, 2230, "68b5bbfbe6a4"),
+  (["excluded_bond_chain_length=5"] + RAW, 940, "ed74fed55775"),
+  (["include_mainchain_mainchain=False"] + RAW, 960, "92fb0469a515"),
+  (["include_water_water=True", "source_selection=all"] + RAW, 1634, "c1a22e97811f"),
+  (["overlap_scale_factor=0.3"] + RAW, 1194, "178f02b39517"),
+  (["probe.probe_radius=0.0"] + RAW, 166, "69bdb333f41b"),
+  # Weak H-bond and worse overlap dots need these; the lower cutoffs give this model bad overlaps.
+  (["probe.allow_weak_hydrogen_bonds=True", "output.separate_worse_clashes=True",
+    "probe.clash_cutoff=0.1", "probe.worse_clash_cutoff=0.2"] + RAW, 1194, "ccfb123c9c7c"),
+  (["output.separate_worse_clashes=True"] + KIN, 1213, "ad7295fb3330"),
+  (["output.report_hydrogen_bonds=False", "output.report_clashes=False"] + RAW, 1028, "ddd5bebf3d8c"),
+  (["output.report_vdws=False"] + KIN, 177, "22b8b6aede86"),
+  (["output.bin_gaps=True"] + KIN, 1283, "d18de61d1da5"),
+  (["output.color_by_gap=False", "output.merge_contacts=False"] + KIN, 1213, "5a60cb36e6ea"),
+  (["output.atoms_are_masters=True", "output.altid_as_pointmaster=False"] + KIN, 1212, "1a119352bb28"),
+]
+# Two identical models: dots between them would be all clashes.
+TWO_MODELS_CASE = (RAW, 2388, "fcc53b45b78c")
+
+def exercise_dots():
+  hierarchy, symmetry = hydrogenated()
+  cases = [(hierarchy,) + c for c in DOTS_CASES] + [(two_models(hierarchy),) + TWO_MODELS_CASE]
+  for h, args, lines, digest in cases:
+    got = fingerprint(run_probe2(fresh_model(h, symmetry), args))
+    assert got == (lines, digest), (args, got)
+
 def run_clashscore2(**kwds):
   dm = DataManager()
   dm.process_model_str("model", pdb_str)
@@ -128,6 +214,7 @@ def exercise_contact_records():
 if (__name__ == "__main__"):
   if (libtbx.env.has_module("reduce") and libtbx.env.has_module("probe")):
     t0 = time.time()
+    exercise_dots()
     exercise_contact_records()
     print("OK. Time: %8.3f" % (time.time() - t0))
   else:
