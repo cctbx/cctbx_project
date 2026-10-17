@@ -3,6 +3,7 @@ import iotbx.mrcfile
 from cctbx.array_family import flex
 from cctbx import crystal
 from iotbx.data_manager import DataManager
+from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
 import math
 import mrcfile
@@ -67,18 +68,21 @@ def test_foreign_byte_order():
       assert src.data.dtype.byteorder in (byte_order, '=')
       assert np.array_equal(src.data, d)
 
-  m_native = iotbx.mrcfile.map_reader(file_name='native_byte_order.mrc')
-  m_foreign = iotbx.mrcfile.map_reader(file_name='foreign_byte_order.mrc')
-  assert m_native.map_data().all() == m_foreign.map_data().all()
-  assert m_native.map_data().all() == (10, 20, 30), m_native.map_data().all()
-  assert math.isclose(flex.max(m_native.map_data()), float(d.max()),
-    rel_tol=1e-6)
-  assert flex.sum(flex.abs(m_native.map_data() - m_foreign.map_data())) == 0
+  native = iotbx.mrcfile.map_reader(file_name='native_byte_order.mrc'
+    ).map_data()
+  foreign = iotbx.mrcfile.map_reader(file_name='foreign_byte_order.mrc'
+    ).map_data()
+  assert native.all() == (10, 20, 30), native.all()
+  assert foreign.all() == native.all(), (foreign.all(), native.all())
+  assert approx_equal(flex.max(native), float(d.max()))
+  max_diff = flex.max(flex.abs(native - foreign))
+  assert max_diff == 0, (max_diff, list(native[:5]), list(foreign[:5]))
 
   dm = DataManager()
   dm.process_real_map_file('foreign_byte_order.mrc')
   mm = dm.get_real_map('foreign_byte_order.mrc')
-  assert flex.sum(flex.abs(mm.map_data() - m_native.map_data())) == 0
+  max_diff = flex.max(flex.abs(mm.map_data() - native))
+  assert max_diff == 0, (max_diff, list(mm.map_data()[:5]), list(native[:5]))
 
 def run():
   test_nan_in_mrc()
