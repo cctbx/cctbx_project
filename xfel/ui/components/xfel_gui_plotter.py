@@ -418,3 +418,75 @@ class PopUpCharts(object):
     ax.set_xlabel(AA)
     ax.set_ylabel(BB)
     ax.set_zlabel(CC)
+
+def plot_cluster_volumes(subplot, plots, cells, outliers=True):
+  ''' Histogram of unit cell volume, one filled step per cluster in the
+      cluster's color, for the cells the uc_metrics plot manager (plots) was
+      fit on, given as (a, b, c, alpha, beta, gamma) tuples in the order they
+      were handed to it. Cells the clustering left unassigned are never drawn;
+      they widen the range to show where the clusters sit among all the cells
+      unless outliers is False, when the clusters alone set it. '''
+  from cctbx import uctbx
+  assert len(cells) == len(plots.Lab), 'one label per cell'
+  volumes = np.array([uctbx.unit_cell(cell).volume() / 1000. for cell in cells]) # nm^3
+  components = np.array([plots.pop.reverse_lookup[label] for label in plots.Lab])
+  assigned = components >= 0
+  ranged = volumes if outliers or not assigned.any() else volumes[assigned]
+  bins = max(10, len(cells) // 100)
+  for j in range(len(plots.pop.fit_components)):
+    subplot.hist(volumes[components == j], bins=bins, range=(ranged.min(), ranged.max()),
+                 histtype='stepfilled', color=plots.appcolors[j], label='%d' % j)
+  subplot.set_title('Unit cell volume')
+  subplot.set_xlabel('Volume (nm$^3$)')
+  subplot.set_ylabel('Cells')
+  subplot.legend(loc='upper right')
+
+def plot_unit_cell_clustering(figure, plots, cells, all_pairs=False, side_plot='probability', outliers=True):
+  ''' Draw a unit cell clustering made by the uc_metrics plot manager (plots)
+      into the figure: the pairwise projections of the feature vector, the
+      cluster report along the bottom, and beside them either the probability
+      plot of the clusters' Mahalanobis distances or a histogram of the cell
+      volumes (side_plot 'probability' or 'volume'; cells and outliers as for
+      plot_cluster_volumes). Two features give one projection, three the
+      three projections in the plot manager's own arrangement, more than
+      three either the first three that way or, with all_pairs, a corner plot
+      of every pair. Returns how many features are shown. '''
+  features = plots.FV.features_
+  n = len(features)
+  assert n >= 2, 'need at least two features to plot'
+  def side(cell):
+    if side_plot == 'volume':
+      plot_cluster_volumes(figure.add_subplot(cell), plots, cells, outliers=outliers)
+    else:
+      plots.qq(figure.add_subplot(cell))
+  if n == 2:
+    gsp = GridSpec(1, 2, figure=figure, bottom=0.18)
+    plots.plot_2D_features(ax=(0, 1), plt=figure.add_subplot(gsp[0]))
+    inner = gsp[1].subgridspec(3, 3, **plots.QQ_INNER)
+    side(inner[1, 1])
+    shown = 2
+  elif n == 3 or not all_pairs:
+    gsp = GridSpec(2, 2, figure=figure, bottom=0.18)
+    subplot1 = figure.add_subplot(gsp[0]);                  plots.plot_2D_features(ax=(0, 1), plt=subplot1)
+    subplot2 = figure.add_subplot(gsp[1], sharey=subplot1); plots.plot_2D_features(ax=(2, 1), plt=subplot2)
+    subplot3 = figure.add_subplot(gsp[2], sharex=subplot1); plots.plot_2D_features(ax=(0, 2), plt=subplot3)
+    subplot3.invert_yaxis()
+    inner = gsp[3].subgridspec(3, 3, **plots.QQ_INNER)
+    side(inner[1, 1])
+    shown = 3
+  else:
+    # corner plot: feature j along x against feature i along y for j < i
+    gsp = GridSpec(n - 1, n - 1, figure=figure, bottom=0.18)
+    columns = {}
+    rows = {}
+    for i in range(1, n):
+      for j in range(i):
+        subplot = figure.add_subplot(gsp[i - 1, j], sharex=columns.get(j), sharey=rows.get(i))
+        plots.plot_2D_features(ax=(j, i), plt=subplot)
+        subplot.label_outer()
+        columns.setdefault(j, subplot)
+        rows.setdefault(i, subplot)
+    side(gsp[0, n - 2])
+    shown = n
+  figure.text(s=plots.legend, x=0.05, y=0.02, va='bottom', fontsize='small', fontfamily='monospace')
+  return shown
