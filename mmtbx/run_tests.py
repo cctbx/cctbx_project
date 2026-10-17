@@ -75,6 +75,7 @@ general_tests = [
   "$D/real_space/tst.py",
   "$D/ias/tst_ias.py",
   "$D/refinement/tst_fit_rotamers.py",
+  "$D/refinement/rotamer_bayes/tst_rotamer_bayes.py",
   "$D/regression/tst_process_predicted_model.py",
   "$D/regression/tst_process_predicted_model_cif.py",
   "$D/regression/tst_domains_from_pae.py",
