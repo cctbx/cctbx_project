@@ -53,22 +53,9 @@ def _residue_part(ag):
   return (model_index, chain.id, chain_occurrence, rg.resseq, rg.icode,
           rg_occurrence, canonical_resname(ag.resname))
 
-def atom_key(atom):
-  """residue part + own altloc + name as written + element"""
-  ag = atom.parent()
-  return _residue_part(ag) + (ag.altloc, atom.name,
-                              atom.element.strip().upper())
-
-def site_key(atom, parent_altloc):
-  """residue part + parent's altloc + normalized name; for H or D of a
-  validated pair (both give the same key) or a single"""
-  return _residue_part(atom.parent()) + (parent_altloc, normalized_name(atom))
-
-def atom_keys(hierarchy):
-  """atom_key() of every atom in one pass, in hierarchy.atoms() order; a
-  duplicate key is an internal error naming both atoms"""
-  result = []
-  seen = {}
+def _residue_parts(hierarchy):
+  """residue part of every atom_group in one pass: {memory_id: tuple}"""
+  result = {}
   for model_index, model in enumerate(hierarchy.models()):
     chain_count = {}
     for chain in model.chains():
@@ -80,16 +67,36 @@ def atom_keys(hierarchy):
         rg_occurrence = rg_count.get(rid, 0)
         rg_count[rid] = rg_occurrence + 1
         for ag in rg.atom_groups():
-          residue = (model_index, chain.id, chain_occurrence, rg.resseq,
-            rg.icode, rg_occurrence, canonical_resname(ag.resname))
-          for atom in ag.atoms():
-            key = residue + (ag.altloc, atom.name,
-                             atom.element.strip().upper())
-            if key in seen:
-              raise Sorry("Internal error: duplicate atom identity:\n  %s\n  %s"
-                % (seen[key], atom.id_str()))
-            seen[key] = atom.id_str()
-            result.append(key)
+          result[ag.memory_id()] = (model_index, chain.id, chain_occurrence,
+            rg.resseq, rg.icode, rg_occurrence, canonical_resname(ag.resname))
+  return result
+
+def atom_key(atom, residue_part=None):
+  """residue part + own altloc + name as written + element; residue_part
+  (from _residue_parts()) saves the scan of preceding residues"""
+  ag = atom.parent()
+  if residue_part is None: residue_part = _residue_part(ag)
+  return residue_part + (ag.altloc, atom.name, atom.element.strip().upper())
+
+def site_key(atom, parent_altloc, residue_part=None):
+  """residue part + parent's altloc + normalized name; for H or D of a
+  validated pair (both give the same key) or a single"""
+  if residue_part is None: residue_part = _residue_part(atom.parent())
+  return residue_part + (parent_altloc, normalized_name(atom))
+
+def atom_keys(hierarchy):
+  """atom_key() of every atom in one pass, in hierarchy.atoms() order; a
+  duplicate key is an internal error naming both atoms"""
+  parts = _residue_parts(hierarchy)
+  result = []
+  seen = {}
+  for atom in hierarchy.atoms():
+    key = atom_key(atom, parts[atom.parent().memory_id()])
+    if key in seen:
+      raise Sorry("Internal error: duplicate atom identity:\n  %s\n  %s"
+        % (seen[key], atom.id_str()))
+    seen[key] = atom.id_str()
+    result.append(key)
   return result
 
 # ------------------------------------------------------------------------------
@@ -472,3 +479,325 @@ def collapse_check(candidates, xyz_tolerance=0.2):
       action=action, source=u.source))
   return group_args(pairs=pairs, problems=problems, unresolved=unresolved,
     notes=notes)
+
+# ------------------------------------------------------------------------------
+# Normalization and output
+
+NEUTRON_OPTIONS = ("none", "all_h", "all_d", "hd_and_h", "hd_and_d", "all_hd")
+
+_ALTLOC_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+def _values(atom):
+  uij = None
+  if atom.uij_is_defined(): uij = tuple(atom.uij)
+  return (atom.occ, atom.b, uij)
+
+def _set_values(atom, occ, b, uij):
+  atom.set_occ(occ)
+  atom.set_b(b)
+  if uij is None:
+    atom.uij_erase()
+  else:
+    atom.set_uij(uij)
+
+def _finish(hierarchy):
+  hierarchy.sort_atoms_in_place()
+  hierarchy.atoms().reset_serial()
+  hierarchy.atoms().reset_i_seq()
+
+def _remove_empty_atom_groups(rg):
+  for ag in list(rg.atom_groups()):
+    if ag.atoms_size() == 0:
+      rg.remove_atom_group(ag)
+
+def _is_water(ag):
+  return get_class(name=ag.resname) == "common_water"
+
+def normalize_to_h(hierarchy, match):
+  """H-only hierarchy from validated H/D input -> group_args(records, counts).
+  match: collapse_check() result without problems or ambiguous atoms, made on
+  this hierarchy (floating atoms already removed). For each pair: record
+  {site_key: {"H": (occ, b, uij), "D": (occ, b, uij)}} (uij None when
+  isotropic), keep the H in the blank-altloc atom_group of its residue at the
+  parent occupancy, delete the D. Every other D (a single) is renamed to H in
+  place, altloc kept. DOD -> HOH."""
+  if len(match.problems) > 0 or \
+     any(u.action == "stop" for u in match.unresolved):
+    raise Sorry("Internal error: normalize_to_h() on input with problems.")
+  atoms = hierarchy.atoms()
+  # site keys of all pairs before any atom moves
+  parts = _residue_parts(hierarchy)
+  pairs = []
+  for c in match.pairs:
+    h, d = atoms[c.i_h], atoms[c.i_d]
+    key = site_key(h, c.parent_altloc, parts[h.parent().memory_id()])
+    assert key == site_key(d, c.parent_altloc, parts[d.parent().memory_id()])
+    pairs.append((h, d, c, key))
+  records = {}
+  n_pairs = 0
+  for h, d, c, key in pairs:
+    if key in records:
+      raise Sorry("Internal error: duplicate H/D site %s" % h.id_str())
+    records[key] = {"H": _values(h), "D": _values(d)}
+    h_ag = h.parent()
+    rg = h_ag.parent()
+    blank = [ag for ag in rg.atom_groups()
+             if ag.altloc == "" and ag.resname == h_ag.resname]
+    if len(blank) != 1:
+      raise Sorry("Internal error: no blank-altloc atom_group for %s" %
+        h.id_str())
+    moved = h.detached_copy()
+    moved.set_occ(c.parent_occ)
+    blank[0].append_atom(moved)
+    h_ag.remove_atom(h)
+    d.parent().remove_atom(d)
+    _remove_empty_atom_groups(rg)
+    n_pairs += 1
+  n_renamed = 0
+  for atom in hierarchy.atoms():
+    if atom.element.strip().upper() != "D": continue
+    atom.set_name(normalized_name(atom))
+    atom.set_element(" H")
+    n_renamed += 1
+  n_water = 0
+  for ag in hierarchy.atom_groups():
+    if ag.resname == "DOD":
+      ag.resname = "HOH"
+      n_water += 1
+  _finish(hierarchy)
+  return group_args(records=records,
+    counts=group_args(n_pairs=n_pairs, n_d_renamed=n_renamed,
+                      n_dod=n_water))
+
+def _output_kind(option, water, exchangeable, conformer):
+  """'H', 'D' or 'split' per "What each mode writes"; plus a reason when an
+  exchangeable or all_hd site is written as one isotope because of its
+  conformer"""
+  if water:
+    return ("H" if option in ("none", "all_h") else "D"), None
+  if option in ("none", "all_h"): return "H", None
+  if option == "all_d": return "D", None
+  if exchangeable:
+    if conformer: return "D", "conformer"
+    return "split", None
+  if option == "hd_and_h": return "H", None
+  if option == "hd_and_d": return "D", None
+  # all_hd, non-exchangeable
+  if conformer: return "H", "conformer"
+  return "split", None
+
+_MERGE_TOLERANCE = 0.05
+
+def _merge_conformer_copies(hierarchy, parent_table):
+  """Placement copies every H of a residue with alternates into each
+  conformer group, also H whose parent is in the blank group. In a
+  residue_group with at least two conformers, copies with exactly one per
+  conformer, the same name and all within 0.05 A of the first are
+  merged into one blank-group H (parent occupancy, B/uij of the first copy,
+  the lowest altloc). Returns {memory_id of merged H: (atom_key, entry) of
+  the first copy} and the merged sites."""
+  keys = atom_keys(hierarchy)
+  key_of = dict((a.memory_id(), k) for a, k in zip(hierarchy.atoms(), keys))
+  merged = {}
+  sites = []
+  for rg in hierarchy.residue_groups():
+    conformers = sorted(set(ag.altloc for ag in rg.atom_groups()) - set([""]))
+    # a lone alternate H (one conformer) is not a copy
+    if len(conformers) < 2: continue
+    copies = {}
+    for ag in rg.atom_groups():
+      if ag.altloc == "": continue
+      for atom in ag.atoms():
+        if atom.element.strip().upper() != "H": continue
+        e = parent_table.get(key_of[atom.memory_id()])
+        if e is None or e.status != "ok" or e.parent_altloc != "": continue
+        copies.setdefault((ag.resname, atom.name), []).append(atom)
+    for (resname, name), atoms in sorted(copies.items()):
+      if sorted(a.parent().altloc for a in atoms) != conformers: continue
+      atoms.sort(key=lambda a: a.parent().altloc)
+      first = atoms[0]
+      if any(_distance(first, a) > _MERGE_TOLERANCE for a in atoms[1:]):
+        continue
+      blank = [ag for ag in rg.atom_groups()
+               if ag.altloc == "" and ag.resname == resname]
+      if len(blank) != 1: continue
+      first_key = key_of[first.memory_id()]
+      e = parent_table[first_key]
+      h = first.detached_copy()
+      h.set_occ(e.parent_occ)
+      blank[0].append_atom(h)
+      merged[h.memory_id()] = (first_key, e)
+      sites.append(group_args(site=h.id_str(),
+        reason="merged conformer copies",
+        copies=[a.id_str() for a in atoms]))
+      for a in atoms:
+        a.parent().remove_atom(a)
+    _remove_empty_atom_groups(rg)
+  return merged, sites
+
+def _to_d(atom):
+  atom.set_name(atom.name.replace("H", "D", 1))
+  atom.set_element(" D")
+
+def apply_neutron_option(hierarchy, option, parent_table, records=None,
+                         log=None):
+  """H-only hierarchy -> H/D output for option (see NEUTRON_OPTIONS).
+  Exchangeability, parent occupancy and altloc come from parent_table (keyed
+  by atom_key). Split sites of a residue_group go into the first two unused
+  altloc letters (H group, D group). Coincident conformer copies of an H on
+  a blank-group parent are first merged into one blank-group H. Not split,
+  one isotope, listed with a reason: conformer sites and H in an altloc
+  group ("conformer"); residues with fewer than two free letters ("no free
+  altloc letters"); names not starting with H ("name not pairable by
+  phenix.refine"). option "none" returns at once, hierarchy unchanged. Values follow the restoration policy: recorded pair as pair
+  -> both restored; recorded pair as one isotope -> parent occupancy, that
+  isotope's B/uij; new pair -> 0.5 x parent occupancy each, B/uij of the H;
+  single without record -> unchanged (occupancy note if not the parent's).
+  Returns group_args(n_split, n_to_d, n_water, n_restored,
+  partial_parent_sites, conformer_sites, unclassified_sites, merged_sites,
+  notes, provenance={output atom_key: source atom_key}); merged H map to
+  the first copy's atom_key."""
+  if option not in NEUTRON_OPTIONS:
+    raise Sorry("Internal error: unknown neutron option %s" % option)
+  result = group_args(n_split=0, n_to_d=0, n_water=0, n_restored=0,
+    partial_parent_sites=[], conformer_sites=[], unclassified_sites=[],
+    merged_sites=[], notes=[], provenance={})
+  if option == "none": return result
+  if records is None: records = {}
+  merged, result.merged_sites = _merge_conformer_copies(hierarchy,
+    parent_table)
+  # identity after the merge, one pass each
+  atoms = hierarchy.atoms()
+  keys = atom_keys(hierarchy)
+  parts = _residue_parts(hierarchy)
+  # decide per H; group split sites by residue_group
+  plan = []
+  split_by_rg = {}
+  for i, atom in enumerate(atoms):
+    element = atom.element.strip().upper()
+    if element == "D":
+      raise Sorry("Internal error: apply_neutron_option() input has D: %s" %
+        atom.id_str())
+    if element != "H": continue
+    source_key = keys[i]
+    if atom.memory_id() in merged:
+      source_key, e = merged[atom.memory_id()]
+    elif source_key not in parent_table:
+      raise Sorry("Internal error: %s not in the H parent table" %
+        atom.id_str())
+    else:
+      e = parent_table[source_key]
+    if e.status != "ok":
+      raise Sorry("Internal error: %s has parent status %s" %
+        (atom.id_str(), e.status))
+    ag = atom.parent()
+    water = _is_water(ag)
+    conformer = e.parent_altloc != "" or ag.altloc != ""
+    kind, reason = _output_kind(option, water, e.exchangeable, conformer)
+    # sites that cannot be split are written as conformer sites are
+    if kind == "split" and not atom.name.strip().startswith("H"):
+      kind = _output_kind(option, water, e.exchangeable, True)[0]
+      reason = "name not pairable by phenix.refine"
+    item = group_args(atom=atom, source_key=source_key, entry=e, kind=kind,
+      reason=reason, water=water,
+      record=records.get(site_key(atom, e.parent_altloc,
+                                  parts[ag.memory_id()])))
+    plan.append(item)
+    if kind == "split":
+      split_by_rg.setdefault(ag.parent().memory_id(), []).append(item)
+  # altloc letters, once per residue_group
+  groups = {}
+  for rg_id, items in split_by_rg.items():
+    rg = items[0].atom.parent().parent()
+    used = set(ag.altloc for ag in rg.atom_groups())
+    free = [c for c in _ALTLOC_LETTERS if c not in used]
+    if len(free) < 2:
+      for item in items:
+        item.kind = _output_kind(option, item.water, item.entry.exchangeable,
+                                 True)[0]
+        item.reason = "no free altloc letters"
+      continue
+    groups[rg_id] = (rg, free[0], free[1], {})
+  def new_group(rg_id, altloc, resname):
+    rg, h_alt, d_alt, made = groups[rg_id]
+    key = (altloc, resname)
+    if key not in made:
+      ag = iotbx.pdb.hierarchy.atom_group(altloc=altloc, resname=resname)
+      rg.append_atom_group(ag)
+      made[key] = ag
+    return made[key]
+  written = []   # (atom, source key)
+  for item in plan:
+    atom, e, record = item.atom, item.entry, item.record
+    site = atom.id_str()
+    if item.reason is not None:
+      target = result.unclassified_sites if \
+        item.reason == "name not pairable by phenix.refine" else \
+        result.conformer_sites
+      target.append(group_args(site=site, reason=item.reason,
+        written=item.kind))
+    if item.kind == "split":
+      rg_id = atom.parent().parent().memory_id()
+      rg, h_alt, d_alt, made = groups[rg_id]
+      resname = atom.parent().resname
+      h = atom.detached_copy()
+      d = atom.detached_copy()
+      _to_d(d)
+      if record is not None:
+        _set_values(h, *record["H"])
+        _set_values(d, *record["D"])
+        result.n_restored += 1
+      else:
+        occ = 0.5 * e.parent_occ
+        _set_values(h, occ, atom.b, _values(atom)[2])
+        _set_values(d, occ, atom.b, _values(atom)[2])
+      atom.parent().remove_atom(atom)
+      new_group(rg_id, h_alt, resname).append_atom(h)
+      new_group(rg_id, d_alt, resname).append_atom(d)
+      written.append((h, item.source_key))
+      written.append((d, item.source_key))
+      result.n_split += 1
+      if abs(e.parent_occ - 1) > 0.01:
+        result.partial_parent_sites.append(group_args(site=site,
+          reason="partial parent occupancy", parent_occ=e.parent_occ))
+      continue
+    if item.kind == "D":
+      _to_d(atom)
+      result.n_to_d += 1
+    if record is not None:
+      occ, b, uij = record[item.kind]
+      _set_values(atom, e.parent_occ, b, uij)
+      result.n_restored += 1
+    elif abs(atom.occ - e.parent_occ) > 0.01:
+      result.notes.append(group_args(site=atom.id_str(),
+        reason="occupancy differs from parent",
+        text="occupancy %.2f, parent %.2f" % (atom.occ, e.parent_occ)))
+    written.append((atom, item.source_key))
+  # waters: every water atom_group of a residue_group with D is DOD,
+  # including a blank-altloc O, so that the residue stays one residue
+  for rg in hierarchy.residue_groups():
+    water = [ag for ag in rg.atom_groups() if _is_water(ag)]
+    elements = set(a.element.strip().upper() for ag in water
+                   for a in ag.atoms())
+    if "D" not in elements: continue
+    if "H" in elements:
+      raise Sorry("Internal error: water with H and D: %s" %
+        water[0].atoms()[0].id_str())
+    for ag in water:
+      ag.resname = "DOD"
+    result.n_water += 1
+  for rg_id in groups:
+    _remove_empty_atom_groups(groups[rg_id][0])
+  # provenance, keyed by the written atoms' final identity
+  parts = _residue_parts(hierarchy)
+  for atom, source_key in written:
+    key = atom_key(atom, parts[atom.parent().memory_id()])
+    if key in result.provenance:
+      raise Sorry("Internal error: duplicate output atom %s" % atom.id_str())
+    result.provenance[key] = source_key
+  _finish(hierarchy)
+  if log is not None:
+    print("Neutron option %s: %d split, %d to D, %d water, %d restored" % (
+      option, result.n_split, result.n_to_d, result.n_water,
+      result.n_restored), file=log)
+  return result

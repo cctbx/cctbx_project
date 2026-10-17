@@ -5,6 +5,7 @@ import iotbx.phil
 import mmtbx.model
 from libtbx import group_args
 from libtbx.utils import null_out, Sorry
+from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from scitbx import matrix
 from cctbx import geometry_restraints, sgtbx
@@ -649,6 +650,669 @@ def test_alternative_h_orientations():
               if names(x.atom_id) == "HG")
   assert hg == [("A", "HG"), ("B", "HG")], hg
 
+# ------------------------------------------------------------------------------
+# 2.3: normalization, output, restoration
+
+# Ala-Ser-Lys and a water; H are placed by reduce_hydrogen
+pdb_pep = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  N   ALA A   1      11.204   2.315  10.312  1.00 20.00           N
+ATOM      2  CA  ALA A   1      12.555   2.835  10.528  1.00 20.00           C
+ATOM      3  C   ALA A   1      13.588   1.726  10.381  1.00 20.00           C
+ATOM      4  O   ALA A   1      13.325   0.567  10.721  1.00 20.00           O
+ATOM      5  CB  ALA A   1      12.866   3.965   9.556  1.00 20.00           C
+ATOM      6  N   SER A   2      14.767   2.090   9.884  1.00 20.00           N
+ATOM      7  CA  SER A   2      15.853   1.130   9.701  1.00 20.00           C
+ATOM      8  C   SER A   2      16.968   1.370  10.713  1.00 20.00           C
+ATOM      9  O   SER A   2      17.281   2.516  11.041  1.00 20.00           O
+ATOM     10  CB  SER A   2      16.411   1.224   8.278  1.00 20.00           C
+ATOM     11  OG  SER A   2      15.456   0.826   7.311  1.00 20.00           O
+ATOM     12  N   LYS A   3      17.560   0.282  11.199  1.00 20.00           N
+ATOM     13  CA  LYS A   3      18.643   0.370  12.172  1.00 20.00           C
+ATOM     14  C   LYS A   3      19.945  -0.148  11.570  1.00 20.00           C
+ATOM     15  O   LYS A   3      19.964  -1.176  10.892  1.00 20.00           O
+ATOM     16  CB  LYS A   3      18.290  -0.424  13.432  1.00 20.00           C
+ATOM     17  CG  LYS A   3      19.308  -0.301  14.556  1.00 20.00           C
+ATOM     18  CD  LYS A   3      18.913  -1.137  15.762  1.00 20.00           C
+ATOM     19  CE  LYS A   3      19.919  -1.002  16.894  1.00 20.00           C
+ATOM     20  NZ  LYS A   3      19.531  -1.812  18.059  1.00 20.00           N
+ATOM     21  OXT LYS A   3      20.995   0.451  11.763  1.00 20.00           O
+HETATM   22  O   HOH A   4      24.000   6.000  20.000  1.00 20.00           O
+END
+"""
+EXCHANGEABLE_PEP = 9   # Ala H1 H2 H3, Ser H HG, Lys H HZ1 HZ2 HZ3
+ALL_H_PEP = 25         # without the water
+
+def model_from_str(pdb_str):
+  return make_model(pdb_str)
+
+def placed(pdb_str):
+  model = make_model(pdb_str, process=False)
+  o = reduce_hydrogen.place_hydrogens(model=model, exclude_water=False)
+  o.run()
+  return o.get_model()
+
+def model_from_hierarchy(hierarchy, crystal_symmetry):
+  return make_model(hierarchy.as_pdb_string(crystal_symmetry=crystal_symmetry))
+
+def atom_values(hierarchy):
+  return dict((hd_exchange.atom_key(a), (a.name, a.xyz, a.occ, a.b,
+    tuple(a.uij) if a.uij_is_defined() else None))
+    for a in hierarchy.atoms())
+
+def heavy(hierarchy):
+  return dict((k, v) for k, v in atom_values(hierarchy).items()
+              if k[-1] not in ("H", "D"))
+
+def check_output(h_out, table, r, h_in):
+  """output check, exchangeable_hd_selections(), heavy atoms, numbering"""
+  c = hd_exchange.find_hd_candidates(h_out, table, provenance=r.provenance)
+  k = hd_exchange.collapse_check(c)
+  assert k.problems == [], [(p.kind, p.reasons) for p in k.problems]
+  assert k.unresolved == []
+  assert len(k.pairs) == r.n_split, (len(k.pairs), r.n_split)
+  pairs = set(frozenset((p.i_h, p.i_d)) for p in k.pairs)
+  exchangeable = set(frozenset((x[0][0], x[1][0]))
+                     for x in h_out.exchangeable_hd_selections())
+  assert exchangeable == pairs
+  # provenance: a bijection onto the written H/D
+  hd = [hd_exchange.atom_key(a) for a in h_out.atoms()
+        if a.element.strip().upper() in ("H", "D")]
+  assert sorted(hd) == sorted(r.provenance)
+  # heavy atoms untouched (canonical water name in the key)
+  assert heavy(h_out) == heavy(h_in)
+  atoms = h_out.atoms()
+  assert list(atoms.extract_i_seq()) == list(range(atoms.size()))
+  assert [int(a.serial) for a in atoms] == list(range(1, atoms.size() + 1))
+  return k
+
+def run_option(model, option, records=None):
+  h_in = model.get_hierarchy()
+  h = h_in.deep_copy()
+  table = hd_exchange.h_parent_table(model)
+  r = hd_exchange.apply_neutron_option(h, option, table, records=records)
+  check_output(h, table, r, h_in)
+  return h, r
+
+def normalize(pdb_str):
+  """H/D input -> (H-only model, records)"""
+  model = model_from_str(pdb_str)
+  h = model.get_hierarchy()
+  table = hd_exchange.h_parent_table(model)
+  match = hd_exchange.collapse_check(hd_exchange.find_hd_candidates(h, table))
+  assert match.problems == [] and match.unresolved == []
+  heavy_in = heavy(h)
+  result = hd_exchange.normalize_to_h(h, match)
+  assert heavy(h) == heavy_in
+  assert not any(a.element.strip().upper() == "D" for a in h.atoms())
+  atoms = h.atoms()
+  assert list(atoms.extract_i_seq()) == list(range(atoms.size()))
+  assert [int(a.serial) for a in atoms] == list(range(1, atoms.size() + 1))
+  return model_from_hierarchy(h, model.crystal_symmetry()), result.records
+
+def find(hierarchy, resname, name, altloc=None):
+  found = [a for a in hierarchy.atoms() if a.parent().resname == resname
+           and a.name.strip() == name and
+           (altloc is None or a.parent().altloc == altloc)]
+  assert len(found) == 1, (resname, name, altloc, len(found))
+  return found[0]
+
+def values(atom):
+  return (round(atom.occ, 3), round(atom.b, 3),
+          tuple(atom.uij) if atom.uij_is_defined() else None)
+
+_pep_h = []
+def pep_h():
+  if not _pep_h: _pep_h.append(placed(pdb_pep))
+  return _pep_h[0]
+
+def hd_input(option, edit=None):
+  """pdb string of the tripeptide written in option, with edit(hierarchy)"""
+  h, r = run_option(pep_h(), option)
+  if edit is not None: edit(h)
+  return h.as_pdb_string(crystal_symmetry=pep_h().crystal_symmetry())
+
+def test_modes():
+  # "What each mode writes" on H-only input (with the water)
+  model = pep_h()
+  # none: hierarchy unchanged, empty results
+  h = model.get_hierarchy().deep_copy()
+  before = h.as_pdb_string()
+  r = hd_exchange.apply_neutron_option(h, "none",
+    hd_exchange.h_parent_table(model))
+  assert h.as_pdb_string() == before
+  assert (r.n_split, r.n_to_d, r.n_water, r.n_restored) == (0, 0, 0, 0)
+  assert r.provenance == {} and r.merged_sites == [] and r.notes == []
+  for option, n_split, n_d, water in (
+      ("all_h", 0, 0, "HOH"),
+      ("all_d", 0, ALL_H_PEP + 2, "DOD"),
+      ("hd_and_h", EXCHANGEABLE_PEP, 2, "DOD"),
+      ("hd_and_d", EXCHANGEABLE_PEP, ALL_H_PEP - EXCHANGEABLE_PEP + 2, "DOD"),
+      ("all_hd", ALL_H_PEP, 2, "DOD")):
+    h, r = run_option(model, option)
+    assert (r.n_split, r.n_to_d) == (n_split, n_d), (option, r.n_split,
+      r.n_to_d)
+    w = [ag for ag in h.atom_groups()
+         if iotbx.pdb.common_residue_names_get_class(ag.resname) ==
+            "common_water"]
+    assert [ag.resname for ag in w] == [water]
+    e = set(a.element.strip() for a in w[0].atoms()) - set(["O"])
+    assert e == set(["H" if water == "HOH" else "D"])
+    # new pairs: 0.5 x parent occupancy, H's B
+    for a in h.atoms():
+      if a.parent().altloc != "":
+        assert abs(a.occ - 0.5) < 1e-6 and abs(a.b - 20.0) < 1e-6
+    assert r.conformer_sites == [] and r.unclassified_sites == []
+
+def test_altloc_groups():
+  # 12: Ser H and HG in A, D and DG in B; exactly two new groups per residue
+  h, r = run_option(pep_h(), "hd_and_h")
+  for resseq, h_names in (("   1", ["H1", "H2", "H3"]), ("   2", ["H", "HG"]),
+                          ("   3", ["H", "HZ1", "HZ2", "HZ3"])):
+    rg = [x for x in h.only_chain().residue_groups()
+          if x.resseq == resseq][0]
+    by_alt = dict((ag.altloc, sorted(a.name.strip() for a in ag.atoms()))
+                  for ag in rg.atom_groups())
+    assert sorted(by_alt) == ["", "A", "B"], by_alt
+    assert by_alt["A"] == sorted(h_names)
+    assert by_alt["B"] == sorted("D" + n[1:] for n in h_names)
+
+def test_altloc_groups_conformers():
+  # 12: OG/HG in A and B, backbone H blank: HG is a conformer site (D in A
+  # and in B), the backbone H of that residue is split into C/D.
+  # (place_hydrogens would put every H of the residue into A and B.)
+  h = pep_h().get_hierarchy().deep_copy()
+  og, hg = find(h, "SER", "OG"), find(h, "SER", "HG")
+  rg = og.parent().parent()
+  for altloc, shift in (("A", 0.0), ("B", 0.6)):
+    ag = iotbx.pdb.hierarchy.atom_group(altloc=altloc, resname="SER")
+    for atom in (og, hg):
+      a = atom.detached_copy()
+      a.set_xyz((atom.xyz[0] + shift, atom.xyz[1], atom.xyz[2]))
+      a.set_occ(0.5)
+      ag.append_atom(a)
+    rg.append_atom_group(ag)
+  og.parent().remove_atom(og)
+  hg.parent().remove_atom(hg)
+  model = model_from_hierarchy(h, pep_h().crystal_symmetry())
+  h, r = run_option(model, "hd_and_h")
+  rg = [x for x in h.only_chain().residue_groups() if x.resseq == "   2"][0]
+  hd = dict((ag.altloc, sorted(a.name.strip() for a in ag.atoms()
+             if a.element.strip() in ("H", "D"))) for ag in rg.atom_groups())
+  assert hd["A"] == ["DG"] and hd["B"] == ["DG"], hd
+  assert hd["C"] == ["H"] and hd["D"] == ["D"], hd
+  assert sorted(x.reason for x in r.conformer_sites) == ["conformer"] * 2
+
+pdb_pep_og_ab = pdb_pep.replace(
+  "ATOM     11  OG  SER A   2      15.456   0.826   7.311  1.00",
+  "ATOM     11  OG ASER A   2      15.456   0.826   7.311  0.50").replace(
+  "ATOM     12  N   LYS",
+  "ATOM     11  OG BSER A   2      16.300   0.000   7.300  0.50 20.00"
+  "           O\nATOM     12  N   LYS")
+
+def ser_h_d(h):
+  rg = [x for x in h.only_chain().residue_groups() if x.resseq == "   2"][0]
+  return dict((ag.altloc, sorted(a.name.strip() for a in ag.atoms()
+    if a.element.strip() in ("H", "D"))) for ag in rg.atom_groups())
+
+def test_merge_conformer_copies():
+  # placement copies every H of Ser into A and B; H and HA (blank parents,
+  # coincident copies) are merged into the blank group, HB2/HB3/HG differ
+  model = placed(pdb_pep_og_ab)
+  hd = ser_h_d(model.get_hierarchy())
+  assert hd[""] == [] and hd["A"] == hd["B"] == ["H", "HA", "HB2", "HB3", "HG"]
+  h, r = run_option(model, "hd_and_h")
+  hd = ser_h_d(h)
+  assert hd[""] == ["HA"], hd                      # merged, not exchangeable
+  assert hd["C"] == ["H"] and hd["D"] == ["D"], hd # merged and split
+  assert hd["A"] == hd["B"] == ["DG", "HB2", "HB3"], hd
+  assert sorted(names(x.site) for x in r.merged_sites) == ["H", "HA"]
+  assert all(x.reason == "merged conformer copies" for x in r.merged_sites)
+  assert all(len(x.copies) == 2 for x in r.merged_sites)
+  assert sorted((names(x.site), x.reason) for x in r.conformer_sites) == [
+    ("HG", "conformer"), ("HG", "conformer")]
+  # merged H at the parent occupancy; the split pair 0.5 each
+  assert find(h, "SER", "HA").occ == 1.0
+  assert find(h, "SER", "H").occ == 0.5 and find(h, "SER", "D").occ == 0.5
+  # the split pair maps to the first (A) copy
+  src = [r.provenance[hd_exchange.atom_key(find(h, "SER", n))]
+         for n in ("H", "D")]
+  assert src[0] == src[1] and src[0][-3:] == ("A", " H  ", "H"), src
+
+def test_conformer_copies_differ():
+  # a backbone H whose copies are 0.1 A apart is not merged: conformer site
+  model = placed(pdb_pep_og_ab)
+  copies = [a for a in model.get_hierarchy().atoms()
+            if a.parent().resname == "SER" and a.name == " H  "]
+  assert sorted(a.parent().altloc for a in copies) == ["A", "B"]
+  b = [a for a in copies if a.parent().altloc == "B"][0]
+  b.set_xyz((b.xyz[0] + 0.1, b.xyz[1], b.xyz[2]))
+  h, r = run_option(model, "hd_and_h")
+  hd = ser_h_d(h)
+  assert "C" not in hd and hd["A"] == hd["B"] == ["D", "DG", "HB2", "HB3"], hd
+  assert [names(x.site) for x in r.merged_sites] == ["HA"]
+  assert sorted(names(x.site) for x in r.conformer_sites) == [
+    "H", "H", "HG", "HG"]
+
+def test_no_free_altloc_letters():
+  # 12: all letters but one in use: no site of that residue is split
+  lines = ["ATOM      1  N   SER A   2      14.767   2.090   9.884  1.00 20.00"
+           "           N",
+           "ATOM      2  OG  SER A   2      15.456   0.826   7.311  1.00 20.00"
+           "           O",
+           "ATOM      3  H   SER A   2      14.965   2.892   9.644  1.00 20.00"
+           "           H",
+           "ATOM      4  HG  SER A   2      14.778   1.319   7.357  1.00 20.00"
+           "           H",
+           "ATOM      5  CA  SER A   2      15.853   1.130   9.701  1.00 20.00"
+           "           C",
+           "ATOM      6  HA  SER A   2      15.510   0.233   9.835  1.00 20.00"
+           "           H"]
+  for i, alt in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxy"):
+    lines.append("ATOM  %5d  CB %sSER A   2      16.411   1.224   8.278  0.02"
+                 " 20.00           C" % (i + 7, alt))
+  h = iotbx.pdb.input(source_info=None, lines=lines).construct_hierarchy()
+  keys = hd_exchange.atom_keys(h)
+  table = {}
+  for key in keys:
+    if key[-1] != "H": continue
+    parent = {" H  ": "N", " HG ": "OG", " HA ": "CA"}[key[-2]]
+    table[key] = group_args(status="ok", exchangeable=parent != "CA",
+      parent_occ=1.0, parent_altloc="",
+      parent_id='pdb=" %-3s SER A   2 "' % parent)
+  hc = h.deep_copy()
+  r = hd_exchange.apply_neutron_option(hc, "hd_and_h", table)
+  assert r.n_split == 0 and r.n_to_d == 2
+  assert sorted(x.reason for x in r.conformer_sites) == \
+    ["no free altloc letters"] * 2
+  assert sorted(a.name.strip() for a in hc.atoms()
+                if a.element.strip() == "D") == ["D", "DG"]
+  # all_hd: written as conformer sites are; exchangeable -> D, the
+  # non-exchangeable C-H -> a single H in its own (blank) group, no D
+  hc = h.deep_copy()
+  r = hd_exchange.apply_neutron_option(hc, "all_hd", table)
+  assert r.n_split == 0
+  ha = [a for a in hc.atoms() if a.name.strip() in ("HA", "DA")]
+  assert [(a.name.strip(), a.element.strip(), a.parent().altloc)
+          for a in ha] == [("HA", "H", "")], ha
+  # sites are listed by their input (H) name
+  assert sorted((names(x.site), x.reason) for x in r.conformer_sites) == [
+    ("H", "no free altloc letters"), ("HA", "no free altloc letters"),
+    ("HG", "no free altloc letters")]
+  assert sorted(a.name.strip() for a in hc.atoms()
+                if a.element.strip() == "D") == ["D", "DG"]
+
+def test_name_not_pairable():
+  # 1HO2: written as one isotope, listed; HO3 next to it is split
+  h = iotbx.pdb.input(source_info=None, lines="""\
+HETATM    1  O2  LIG A   1       1.000   1.000   1.000  1.00 20.00           O
+HETATM    2 1HO2 LIG A   1       1.900   1.000   1.000  1.00 20.00           H
+HETATM    3  O3  LIG A   1       4.000   1.000   1.000  1.00 20.00           O
+HETATM    4  HO3 LIG A   1       4.900   1.000   1.000  1.00 20.00           H
+HETATM    5  C1  LIG A   1       7.000   1.000   1.000  1.00 20.00           C
+HETATM    6 1HC1 LIG A   1       8.000   1.000   1.000  1.00 20.00           H
+""".split("\n")).construct_hierarchy()
+  def table_for(h):
+    return dict((key, group_args(status="ok", exchangeable=key[-2] != "1HC1",
+      parent_occ=1.0, parent_altloc="", parent_id="O")) for key in
+      hd_exchange.atom_keys(h) if key[-1] == "H")
+  for option, element in (("hd_and_h", "D"), ("hd_and_d", "D"),
+                          ("all_hd", "D"), ("all_h", "H")):
+    hc = h.deep_copy()
+    r = hd_exchange.apply_neutron_option(hc, option, table_for(h))
+    site = [a for a in hc.atoms() if a.name.startswith("1") and
+            a.name[2] == "O"]
+    assert len(site) == 1 and site[0].element.strip() == element, option
+    assert site[0].parent().altloc == ""
+    # the non-exchangeable 1HC1 follows the mode (D in hd_and_d); it is a
+    # split site only in all_hd, where it is written as a single H in its
+    # own group, listed, without D
+    c_h = [(a.name, a.element.strip(), a.parent().altloc) for a in hc.atoms()
+           if a.name[2:] == "C1" and a.name[0] == "1"]
+    expected_c_h = ("1DC1", "D", "") if option == "hd_and_d" else \
+      ("1HC1", "H", "")
+    assert c_h == [expected_c_h], (option, c_h)
+    if option == "all_h":
+      assert r.unclassified_sites == []
+      continue
+    assert site[0].name == "1DO2"
+    # sites are listed by their input (H) name
+    expected = (["1HC1"] if option == "all_hd" else []) + ["1HO2"]
+    assert sorted(x.site[5:9] for x in r.unclassified_sites) == expected
+    assert set(x.reason for x in r.unclassified_sites) == set([
+      "name not pairable by phenix.refine"])
+    assert r.n_split == 1
+    pairs = hc.exchangeable_hd_selections()
+    assert len(pairs) == 1
+    assert sorted(hc.atoms()[x[0]].name.strip() for x in pairs[0]) == \
+      ["DO3", "HO3"]
+
+def test_parent_occupancy_from_table():
+  # 10: H written at 1.0 on a parent at 0.6 -> 0.3 / 0.3, partial parent
+  pdb = pdb_pep.replace(
+    "OG  SER A   2      15.456   0.826   7.311  1.00",
+    "OG  SER A   2      15.456   0.826   7.311  0.60")
+  model = placed(pdb)
+  hg = find(model.get_hierarchy(), "SER", "HG")
+  hg.set_occ(1.0)
+  h, r = run_option(model, "hd_and_h")
+  assert values(find(h, "SER", "HG"))[0] == 0.3
+  assert values(find(h, "SER", "DG"))[0] == 0.3
+  assert [x.parent_occ for x in r.partial_parent_sites] == [0.6]
+
+def test_anisotropic():
+  # 13: split keeps uij on H and copies it to D
+  uij = (0.20, 0.21, 0.22, 0.01, 0.02, 0.03)
+  model = pep_h()
+  hg = find(model.get_hierarchy(), "SER", "HG")
+  hg.set_uij(uij)
+  try:
+    h, r = run_option(model, "hd_and_h")
+  finally:
+    hg.uij_erase()
+  for name in ("HG", "DG"):
+    assert approx_equal(find(h, "SER", name).uij, uij)
+  # record/restore keeps uij of both exactly
+  uij_d = (0.30, 0.31, 0.32, 0.04, 0.05, 0.06)
+  def edit(h):
+    find(h, "SER", "HG").set_uij(uij)
+    find(h, "SER", "DG").set_uij(uij_d)
+  model, records = normalize(hd_input("hd_and_h", edit))
+  h, r = run_option(model, "hd_and_h", records)
+  assert approx_equal(find(h, "SER", "HG").uij, uij, eps=1e-4)
+  assert approx_equal(find(h, "SER", "DG").uij, uij_d, eps=1e-4)
+
+def set_pair(h, resname, h_name, d_name, h_vals, d_vals):
+  for name, (occ, b) in ((h_name, h_vals), (d_name, d_vals)):
+    a = find(h, resname, name)
+    a.set_occ(occ)
+    a.set_b(b)
+
+def test_round_trip():
+  # 8: normalize_to_h() + apply_neutron_option() restore occupancy and B
+  def edit(h):
+    set_pair(h, "SER", "HG", "DG", (0.3, 15.0), (0.7, 25.0))
+    set_pair(h, "LYS", "HZ1", "DZ1", (0.45, 18.0), (0.55, 22.0))
+  model, records = normalize(hd_input("hd_and_h", edit))
+  assert len(records) == EXCHANGEABLE_PEP
+  # normalized: H at the parent occupancy, in the blank group
+  hg = find(model.get_hierarchy(), "SER", "HG")
+  assert hg.parent().altloc == "" and hg.occ == 1.0
+  for option in ("hd_and_h", "hd_and_d", "all_hd"):
+    h, r = run_option(model, option, records)
+    assert values(find(h, "SER", "HG"))[:2] == (0.3, 15.0)
+    assert values(find(h, "SER", "DG"))[:2] == (0.7, 25.0)
+    assert values(find(h, "LYS", "HZ1"))[:2] == (0.45, 18.0)
+    assert values(find(h, "LYS", "DZ1"))[:2] == (0.55, 22.0)
+    assert r.n_restored >= EXCHANGEABLE_PEP
+
+def test_30f_split():
+  # 8a: Se-H (1.444 A) is split and the output check accepts it
+  model = make_model(pdb_30f)
+  h, r = run_option(model, "hd_and_h")
+  assert r.n_split == 3   # H2 on Se, H1 and H3 on N
+  assert find(h, "30F", "H2").parent().altloc == "A"
+  assert find(h, "30F", "D2").parent().altloc == "B"
+
+def test_alternative_orientations_output():
+  # 18b: Ser HG in A and another HG in B (both H): single isotope with their
+  # altlocs, listed; the backbone H of the residue is split into C/D
+  h = pep_h().get_hierarchy().deep_copy()
+  hg = find(h, "SER", "HG")
+  rg = hg.parent().parent()
+  for altloc, xyz in (("A", hg.xyz), ("B", (15.300, 0.200, 6.600))):
+    ag = iotbx.pdb.hierarchy.atom_group(altloc=altloc, resname="SER")
+    a = hg.detached_copy()
+    a.set_xyz(xyz)
+    a.set_occ(0.5)
+    ag.append_atom(a)
+    rg.append_atom_group(ag)
+  hg.parent().remove_atom(hg)
+  model = model_from_hierarchy(h, pep_h().crystal_symmetry())
+  h, r = run_option(model, "hd_and_h")
+  dg = sorted(a.parent().altloc for a in h.atoms() if a.name.strip() == "DG")
+  assert dg == ["A", "B"], dg
+  assert [x.reason for x in r.conformer_sites] == ["conformer"] * 2
+  rg = [x for x in h.only_chain().residue_groups() if x.resseq == "   2"][0]
+  hd = dict((ag.altloc, sorted(a.name.strip() for a in ag.atoms()
+             if a.element.strip() in ("H", "D"))) for ag in rg.atom_groups())
+  assert hd["C"] == ["H"] and hd["D"] == ["D"], hd
+
+def test_cross_mode():
+  # 19, fully occupied parent, input pair H 0.3 / D 0.7, different B and uij
+  uij_h = (0.20, 0.21, 0.22, 0.01, 0.02, 0.03)
+  uij_d = (0.30, 0.31, 0.32, 0.04, 0.05, 0.06)
+  def edit(h):
+    set_pair(h, "SER", "HG", "DG", (0.3, 15.0), (0.7, 25.0))
+    find(h, "SER", "HG").set_uij(uij_h)
+    find(h, "SER", "DG").set_uij(uij_d)
+  model, records = normalize(hd_input("hd_and_h", edit))
+  # with ANISOU, B is the isotropic equivalent of uij: compare with records
+  rec = records[hd_exchange.site_key(find(model.get_hierarchy(), "SER", "HG"),
+                                     "")]
+  assert rec["H"][0] == 0.3 and rec["D"][0] == 0.7
+  assert abs(rec["H"][1] - rec["D"][1]) > 1
+  assert approx_equal(rec["H"][2], uij_h) and approx_equal(rec["D"][2], uij_d)
+  def same(atom, occ, record):
+    assert approx_equal(atom.occ, occ) and approx_equal(atom.b, record[1])
+    assert approx_equal(atom.uij, record[2])
+  for option in ("hd_and_h", "hd_and_d", "all_hd"):
+    h, r = run_option(model, option, records)
+    same(find(h, "SER", "HG"), 0.3, rec["H"])
+    same(find(h, "SER", "DG"), 0.7, rec["D"])
+  h, r = run_option(model, "all_d", records)
+  dg = find(h, "SER", "DG")
+  same(dg, 1.0, rec["D"])
+  assert dg.parent().altloc == ""
+  h, r = run_option(model, "all_h", records)
+  hg = find(h, "SER", "HG")
+  same(hg, 1.0, rec["H"])
+  assert hg.parent().altloc == ""
+  # parent at 0.6, input sum 1: a single isotope gets the parent's 0.6
+  pdb = hd_input("hd_and_h", edit).replace(
+    "OG  SER A   2      15.456   0.826   7.311  1.00",
+    "OG  SER A   2      15.456   0.826   7.311  0.60")
+  model6, records6 = normalize(pdb)
+  for option, name in (("all_d", "DG"), ("all_h", "HG")):
+    h, r = run_option(model6, option, records6)
+    assert values(find(h, "SER", name))[0] == 0.6
+  # input all_d (single D, no record) -> hd_and_h: new pair from the parent,
+  # both with the former D's B and uij
+  def edit_d(h):
+    dg = find(h, "SER", "DG")
+    dg.set_b(33.0)
+    dg.set_uij(uij_d)
+  model_d, records_d = normalize(hd_input("all_d", edit_d))
+  assert records_d == {}
+  former_d = find(model_d.get_hierarchy(), "SER", "HG")   # renamed to H
+  b_d = former_d.b
+  h, r = run_option(model_d, "hd_and_h", records_d)
+  for name in ("HG", "DG"):
+    a = find(h, "SER", name)
+    assert approx_equal(a.occ, 0.5) and approx_equal(a.b, b_d)
+    assert approx_equal(a.uij, uij_d, eps=1e-4)
+  # single D at 0.7 on a parent at 1.0, no record: kept and noted as one
+  # isotope; split from the parent
+  def edit_d7(h):
+    find(h, "SER", "DG").set_occ(0.7)
+  model7, records7 = normalize(hd_input("all_d", edit_d7))
+  for option, name in (("all_d", "DG"), ("all_h", "HG")):
+    h, r = run_option(model7, option, records7)
+    assert values(find(h, "SER", name))[0] == 0.7
+    assert [x.site[5:9].strip() for x in r.notes] == [name]
+  h, r = run_option(model7, "hd_and_h", records7)
+  assert values(find(h, "SER", "HG"))[0] == 0.5
+  assert values(find(h, "SER", "DG"))[0] == 0.5
+
+pdb_water_hd = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1  O   %(res)s A   1      10.000  10.000  10.000  0.80 20.00           O
+HETATM    2  H1 A%(res)s A   1      10.850  10.000  10.000  0.30 14.00           H
+HETATM    3  H2 A%(res)s A   1       9.795  10.825  10.000  0.30 14.00           H
+HETATM    4  D1 B%(res)s A   1      10.850  10.000  10.000  0.70 26.00           D
+HETATM    5  D2 B%(res)s A   1       9.795  10.825  10.000  0.70 26.00           D
+END
+"""
+
+def test_water_cross_mode():
+  # 19: an input water H/D pair becomes one isotope at the O's occupancy
+  # with that isotope's B: DOD with D in every neutron mode except all_h,
+  # HOH with H in all_h; never a pair. Input named HOH, DOD and WAT.
+  for res in ("HOH", "DOD", "WAT"):
+    model, records = normalize(pdb_water_hd % {"res": res})
+    assert len(records) == 2
+    w = [ag for ag in model.get_hierarchy().atom_groups()]
+    assert len(w) == 1 and w[0].altloc == ""
+    assert w[0].resname == ("HOH" if res == "DOD" else res)
+    for option in ("all_d", "hd_and_h", "hd_and_d", "all_hd", "all_h"):
+      h, r = run_option(model, option, records)
+      assert r.n_split == 0 and r.n_restored == 2
+      ags = list(h.atom_groups())
+      assert len(ags) == 1 and ags[0].altloc == ""
+      element = "H" if option == "all_h" else "D"
+      expected = "DOD" if element == "D" else (
+        "HOH" if res == "DOD" else res)
+      assert ags[0].resname == expected, (res, option, ags[0].resname)
+      for a in ags[0].atoms():
+        if a.name.strip() == "O": continue
+        assert a.element.strip() == element
+        assert values(a)[:2] == (0.8, 14.0 if element == "H" else 26.0)
+  # input HOH (H only) -> DOD
+  h, r = run_option(pep_h(), "hd_and_h")
+  assert "DOD" in [ag.resname for ag in h.atom_groups()]
+
+pdb_water_alt = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1  O   %(res)s A   1      10.000  10.000  10.000  1.00 20.00           O
+HETATM    2 %(x)s1 A%(res)s A   1      10.850  10.000  10.000  0.50 20.00          %(x)s
+HETATM    3 %(x)s2 A%(res)s A   1       9.795  10.825  10.000  0.50 20.00          %(x)s
+HETATM    4 %(x)s1 B%(res)s A   1       9.150  10.000  10.000  0.50 20.00          %(x)s
+HETATM    5 %(x)s2 B%(res)s A   1      10.205   9.175  10.000  0.50 20.00          %(x)s
+END
+"""
+
+def check_water_reinterpreted(h, crystal_symmetry, element):
+  """fresh restraints: every H/D bonded to the O, nothing floating"""
+  assert set(ag.resname for ag in h.atom_groups()) == set(
+    ["DOD" if element == "D" else "HOH"])
+  model = model_from_hierarchy(h, crystal_symmetry)
+  table = hd_exchange.h_parent_table(model)
+  assert len(table) == 4
+  for e in table.values():
+    assert e.status == "ok" and " O  " in e.parent_id, (e.h_id, e.status)
+    assert e.h_id[5:7] == " " + element
+
+def test_water_alternative_orientations():
+  # 19: blank O, alternative H1/H2 in A and B: in hd_and_h every atom_group
+  # of the residue_group is DOD, and reinterpretation bonds every D to the O
+  model = model_from_str(pdb_water_alt % {"res": "HOH", "x": " H"})
+  h, r = run_option(model, "hd_and_h")
+  assert r.n_water == 1 and r.n_split == 0
+  check_water_reinterpreted(h, model.crystal_symmetry(), "D")
+  # the normalize_to_h() direction: DOD with alternative D orientations
+  model, records = normalize(pdb_water_alt % {"res": "DOD", "x": " D"})
+  assert records == {}
+  check_water_reinterpreted(model.get_hierarchy(), model.crystal_symmetry(),
+                            "H")
+
+def test_lone_alternate_h():
+  # blank OG, HG only in A at 0.30: never merged or split; one isotope in A
+  pdb = pdb_ser_hd.replace(
+    "ATOM     10  HG ASER A   2      15.856   0.874   6.441  0.50",
+    "ATOM     10  HG ASER A   2      15.856   0.874   6.441  0.30").replace(
+    "ATOM     11  DG BSER A   2      15.856   0.874   6.441  0.50 20.00"
+    "           D\n", "")
+  model = model_from_str(pdb)
+  h, r = run_option(model, "all_h")
+  hg = find(h, "SER", "HG")
+  assert hg.parent().altloc == "A" and values(hg)[0] == 0.3
+  assert r.merged_sites == []
+  assert [(names(x.site), x.reason) for x in r.notes] == [
+    ("HG", "occupancy differs from parent")]
+  h, r = run_option(model, "hd_and_h")
+  assert r.n_split == 0 and r.merged_sites == []
+  dg = find(h, "SER", "DG")
+  assert dg.parent().altloc == "A" and values(dg)[0] == 0.3
+  assert [(names(x.site), x.reason) for x in r.conformer_sites] == [
+    ("HG", "conformer")]
+  assert not [a for a in h.atoms() if a.name.strip() == "HG"]
+
+pdb_two_models = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+MODEL        1
+%s
+ENDMDL
+MODEL        2
+%s
+ENDMDL
+END
+"""
+
+def water_block(chain, resseq, h_vals, d_vals, x=10.0):
+  lines = ["HETATM    1  O   HOH %s%4d    %8.3f  10.000  10.000  1.00 20.00"
+           "           O" % (chain, resseq, x)]
+  for name, alt, element, (occ, b), dx, dy in (
+      ("H1", "A", "H", h_vals, 0.850, 0.0), ("H2", "A", "H", h_vals, -0.205,
+       0.825), ("D1", "B", "D", d_vals, 0.850, 0.0), ("D2", "B", "D", d_vals,
+       -0.205, 0.825)):
+    lines.append("HETATM    1  %-3s%sHOH %s%4d    %8.3f%8.3f  10.000%6.2f%6.2f"
+      "           %s" % (name, alt, chain, resseq, x + dx, 10.0 + dy, occ, b,
+      element))
+  return "\n".join(lines)
+
+def test_two_models():
+  # 16: identical labels in two models, different values: each keeps its own
+  pdb = pdb_two_models % (
+    water_block("A", 1, (0.3, 11.0), (0.7, 21.0)),
+    water_block("A", 1, (0.8, 12.0), (0.2, 22.0)))
+  model, records = normalize(pdb)
+  assert len(records) == 4
+  for option, b in (("hd_and_h", (21.0, 22.0)), ("all_h", (11.0, 12.0))):
+    h, r = run_option(model, option, records)
+    for m, b_expected in zip(h.models(), b):
+      for a in m.atoms():
+        if a.name.strip() != "O":
+          assert values(a)[:2] == (1.0, b_expected), (option, values(a))
+
+def hand_table(hierarchy):
+  """parent table for waters by hand: every H/D on the O of its residue"""
+  table = {}
+  for key, atom in zip(hd_exchange.atom_keys(hierarchy), hierarchy.atoms()):
+    if key[-1] not in ("H", "D"): continue
+    rg = atom.parent().parent()
+    o = [a for a in rg.atoms() if a.name.strip() == "O"][0]
+    table[key] = group_args(status="ok", exchangeable=True, parent_occ=o.occ,
+      parent_altloc="", parent_key=hd_exchange.atom_key(o),
+      parent_sym_ops=("x,y,z",), parent_id=o.id_str(), source=[])
+  return table
+
+def test_repeated_labels_restore():
+  # 17: repeated chain id (two chain A blocks) and a duplicated residue
+  # number within one chain: each site keeps its own values.
+  # pdb_interpretation rejects duplicate labels, so the tables are by hand.
+  pdb = "\n".join([
+    water_block("A", 1, (0.3, 11.0), (0.7, 21.0), x=5.0),
+    water_block("A", 2, (0.3, 12.0), (0.7, 22.0), x=10.0),
+    water_block("A", 1, (0.3, 13.0), (0.7, 23.0), x=15.0),
+    water_block("B", 1, (0.3, 14.0), (0.7, 24.0), x=20.0),
+    water_block("A", 1, (0.3, 15.0), (0.7, 25.0), x=25.0)])
+  h = iotbx.pdb.input(source_info=None, lines=pdb.split("\n")
+    ).construct_hierarchy()
+  assert [c.id for c in h.only_model().chains()] == ["A", "B", "A"]
+  match = hd_exchange.collapse_check(
+    hd_exchange.find_hd_candidates(h, hand_table(h)))
+  assert match.problems == [] and len(match.pairs) == 10
+  records = hd_exchange.normalize_to_h(h, match).records
+  assert len(records) == 10
+  table = hand_table(h)
+  r = hd_exchange.apply_neutron_option(h, "hd_and_h", table, records=records)
+  assert r.n_restored == 10
+  b = [round(a.b, 1) for a in h.atoms() if a.name.strip() == "D1"]
+  assert b == [21.0, 22.0, 23.0, 24.0, 25.0], b
+  c = hd_exchange.find_hd_candidates(h, table, provenance=r.provenance)
+  k = hd_exchange.collapse_check(c)
+  assert k.problems == [] and k.unresolved == []
+
 if __name__ == "__main__":
   test_parent_table_30f()
   test_edits_covalent_limit()
@@ -676,4 +1340,22 @@ if __name__ == "__main__":
   test_different_parents_5A()
   test_reversed_order()
   test_alternative_h_orientations()
+  test_modes()
+  test_altloc_groups()
+  test_altloc_groups_conformers()
+  test_merge_conformer_copies()
+  test_conformer_copies_differ()
+  test_no_free_altloc_letters()
+  test_name_not_pairable()
+  test_parent_occupancy_from_table()
+  test_anisotropic()
+  test_round_trip()
+  test_30f_split()
+  test_alternative_orientations_output()
+  test_cross_mode()
+  test_water_cross_mode()
+  test_water_alternative_orientations()
+  test_lone_alternate_h()
+  test_two_models()
+  test_repeated_labels_restore()
   print("OK")
