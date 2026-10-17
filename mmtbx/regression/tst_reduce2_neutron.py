@@ -970,6 +970,74 @@ def test_output_check_water_names():
   finally:
     hd_exchange.apply_neutron_option = original
 
+RENAMED = "water(s) renamed DOD -> HOH (their D were replaced by H)"
+
+def water_groups(fn):
+  h = iotbx.pdb.input(fn).construct_hierarchy()
+  return [(ag.resname, sorted(set(a.element.strip() for a in ag.atoms())))
+          for ag in h.atom_groups() if ag.resname in ("HOH", "DOD")]
+
+def test_dod_input_none():
+  # none, add and place: placement replaced the D, so the waters are HOH
+  for approach in ("add", "place"):
+    fn, log, description = run_reduce2("tst_reduce2_neutron_dodn_" + approach,
+      pdb_1yjp_dod, ["approach=" + approach, "exclude_water=False"])
+    assert water_groups(fn) == [("HOH", ["H", "O"])] * 7, water_groups(fn)
+    with open(fn) as f:
+      assert "DOD" not in f.read()
+    assert "7 " + RENAMED in log and "7 " + RENAMED in description
+
+def test_dod_input_none_exclude_water():
+  # no H added to water: the waters stay DOD with O only, nothing logged
+  fn, log, description = run_reduce2("tst_reduce2_neutron_dodx", pdb_1yjp_dod,
+    [])
+  assert water_groups(fn) == [("DOD", ["O"])] * 7, water_groups(fn)
+  assert RENAMED not in log and RENAMED not in description
+
+def test_dod_input_with_d_kept():
+  # keep_existing_H=True and a DOD water with D1/D2: stays DOD with its D
+  # (today's behaviour until step 4)
+  pdb_str = pdb_1yjp_dod.replace(
+    "HETATM   61  O   DOD A   8      -6.471   5.227   7.124  1.00 22.62"
+    "           O\n",
+    "HETATM   61  O   DOD A   8      -6.471   5.227   7.124  1.00 22.62"
+    "           O\n"
+    "HETATM   61  D1  DOD A   8      -5.621   5.227   7.124  1.00 22.62"
+    "           D\n"
+    "HETATM   61  D2  DOD A   8      -6.675   6.052   7.124  1.00 22.62"
+    "           D\n")
+  assert pdb_str.count("D1  DOD") == 1
+  fn, log, description = run_reduce2("tst_reduce2_neutron_dodd", pdb_str,
+    ["keep_existing_H=True", "exclude_water=False"])
+  # existing behaviour: placement keeps D1/D2 and also adds H1/H2 (it does
+  # not match D1/D2 to the dictionary's H1/H2); the water has D, so the
+  # rename leaves it as DOD; the six other waters are renamed
+  groups = water_groups(fn)
+  assert groups.count(("DOD", ["D", "H", "O"])) == 1, groups
+  assert groups.count(("HOH", ["H", "O"])) == 6, groups
+  h = iotbx.pdb.input(fn).construct_hierarchy()
+  w8 = sorted(a.name.strip() for a in h.atoms()
+              if a.parent().parent().resseq.strip() == "8")
+  assert w8 == ["D1", "D2", "H1", "H2", "O"], w8
+  assert "6 " + RENAMED in log
+
+def test_dod_input_hd_and_h():
+  # the earlier rename to HOH does not break the neutron path or the
+  # resname invariant: written as DOD with D, output check passes
+  fn, log, description = run_reduce2("tst_reduce2_neutron_dodhd",
+    pdb_1yjp_dod, ["neutron_option=hd_and_h", "exclude_water=False"])
+  assert water_groups(fn) == [("DOD", ["D", "O"])] * 7, water_groups(fn)
+  check_water(fn, 0.98, 7)
+
+def test_dod_input_flipkins():
+  d = "tst_reduce2_neutron_dodfk"
+  if not os.path.isdir(d): os.mkdir(d)
+  fn, log, description = run_reduce2("tst_reduce2_neutron_dodfk_run",
+    pdb_1yjp_dod, ["exclude_water=False", "add_flip_movers=True",
+    "output.flipkin_directory=" + d])
+  assert water_groups(fn) == [("HOH", ["H", "O"])] * 7, water_groups(fn)
+  assert len(os.listdir(d)) > 0
+
 if __name__ == "__main__":
   test_xray_default()
   test_neutron_add()
@@ -1005,4 +1073,9 @@ if __name__ == "__main__":
   test_output_check_fires()
   test_dod_input_all_h()
   test_output_check_water_names()
+  test_dod_input_none()
+  test_dod_input_none_exclude_water()
+  test_dod_input_with_d_kept()
+  test_dod_input_hd_and_h()
+  test_dod_input_flipkins()
   print("OK")

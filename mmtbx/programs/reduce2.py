@@ -1105,6 +1105,26 @@ NOTES:
 
     self.model = reduce_add_h_obj.get_model()
 
+    # Placement replaced the D of an input DOD water by H but kept the name
+    self._dod_renamed_note = ''
+    n_renamed = 0
+    for rg in self.model.get_hierarchy().residue_groups():
+      water = [ag for ag in rg.atom_groups()
+               if common_residue_names_get_class(name=ag.resname) ==
+                  'common_water']
+      elements = set(a.element.strip().upper() for ag in water
+                     for a in ag.atoms())
+      if 'H' not in elements or 'D' in elements: continue
+      dod = [ag for ag in water if ag.resname == 'DOD']
+      if not dod: continue
+      for ag in dod:
+        ag.resname = 'HOH'
+      n_renamed += 1
+    if n_renamed > 0:
+      self._dod_renamed_note = ('%d water(s) renamed DOD -> HOH (their D were '
+        'replaced by H)\n' % n_renamed)
+      print(self._dod_renamed_note, file=self.logger)
+
     if not self.model.has_hd():
       raise Sorry("It was not possible to place any H atoms. Is this a single atom model?")
 
@@ -1584,6 +1604,7 @@ NOTES:
       make_sub_header('Adding Hydrogens', out=self.logger)
       startAdd = time.time()
       self._AddHydrogens()
+      outString += self._dod_renamed_note
       if neutron:
         self._CheckAmbiguousParents()
         self._CaptureParentTable()
@@ -1598,6 +1619,7 @@ NOTES:
         startAdd = time.time()
         self._AddHydrogens()
         doneAdd = time.time()
+        outString += self._dod_renamed_note
         if neutron:
           self._CheckAmbiguousParents()
       else:
