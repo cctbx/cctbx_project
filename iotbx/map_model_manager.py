@@ -4734,6 +4734,7 @@ class map_model_manager(object):
          nproc = nproc,
          log = self.log)
       kw['tlso_group_info'] = tlso_group_info
+    kw['get_tls_from_u'] = get_tls_from_u # pass on value set here
 
     # Allow sharpening globally before and after local sharpening
     if local_sharpen and overall_sharpen_before_and_after_local:
@@ -4971,6 +4972,7 @@ class map_model_manager(object):
     if get_scale_as_aniso_u is None:
       if replace_aniso_with_tls_equiv or tlso_group_info:
         get_scale_as_aniso_u = True
+        kw['get_scale_as_aniso_u'] = get_scale_as_aniso_u # pass it on
         print("Getting scale factors as aniso U values", file = self.log)
 
     # remove any extra models and maps to speed up boxing and not modify orig
@@ -5992,23 +5994,69 @@ class map_model_manager(object):
     else:
       print("\nSupplied TLS assumed to be desired anisotropy of scale factors",
          file = self.log)
-    for T,L,S,origin,selection,other_shift_cart in zip(
+    # Only the original entries are tested against each group's mask, so
+    #  model-point entries appended for one group keep that group's TLS
+    #  regardless of group order
+    original_scale_factor_info = group_args(**scale_factor_info())
+    original_scale_factor_info.xyz_list = flex.vec3_double(
+       scale_factor_info.xyz_list)
+    original_scale_factor_info.value_list = list(
+       scale_factor_info.value_list)
+
+    # Masks for all groups.  An original entry inside more than one mask
+    #  belongs to the group with the nearest selected atom, so with a model
+    #  the result does not depend on group order (except on an exact tie,
+    #  and without a model, where the group listed first is used)
+    group_masks = []
+    owner_by_entry = {}
+    for k, selection in enumerate(tlso_group_info.tlso_selection_list):
+      mask_map_manager = self._create_mask_from_selection_as_string(
+        map_id = map_id,
+        model_id = model_id,
+        selection_string=selection)
+      group_masks.append(mask_map_manager)
+      inside_info = self._get_scale_factor_info_inside_mask(
+         original_scale_factor_info,
+         mask_map_manager = mask_map_manager,
+         inside = True)
+      if self.get_model_by_id(model_id):
+        group_sites = self.get_model_by_id(
+           model_id).apply_selection_string(selection).get_sites_cart()
+      else:
+        group_sites = None
+      for xyz, value in zip(inside_info.xyz_list, inside_info.value_list):
+        if group_sites is not None and group_sites.size() > 0:
+          dist = (group_sites - xyz).norms().min_max_mean().min
+        else:
+          dist = 0.
+        if (not id(value) in owner_by_entry) or (
+            dist < owner_by_entry[id(value)][1]):
+          owner_by_entry[id(value)] = (k, dist)
+
+    for k, (T,L,S,origin,selection,other_shift_cart) in enumerate(zip(
        tlso_group_info.T_list,
        tlso_group_info.L_list,
        tlso_group_info.S_list,
        tlso_group_info.O_list,
        tlso_group_info.tlso_selection_list,
-       tlso_group_info.tlso_shift_cart_list,):
-      # Get mask representing this TLS
-      mask_map_manager = self._create_mask_from_selection_as_string(
-        map_id = map_id,
-        model_id = model_id,
-        selection_string=selection)
+       tlso_group_info.tlso_shift_cart_list,)):
+      # TLS for this group
+      tlso_value = tlso(t = T, l = L, s = S, origin = origin)
 
+      # Original entries inside this group's mask that belong to this group
       working_scale_factor_info = self._get_scale_factor_info_inside_mask(
-         scale_factor_info,
-         mask_map_manager = mask_map_manager,
+         original_scale_factor_info,
+         mask_map_manager = group_masks[k],
          inside = True)
+      owned_xyz_list = flex.vec3_double()
+      owned_value_list = []
+      for xyz, value in zip(working_scale_factor_info.xyz_list,
+          working_scale_factor_info.value_list):
+        if owner_by_entry[id(value)][0] == k:
+          owned_xyz_list.append(xyz)
+          owned_value_list.append(value)
+      working_scale_factor_info.xyz_list = owned_xyz_list
+      working_scale_factor_info.value_list = owned_value_list
 
       xyz_list = working_scale_factor_info.xyz_list
       print("\nAdding info from tls for %s" %(selection), file = self.log)
@@ -6025,12 +6073,6 @@ class map_model_manager(object):
           xyz_list_use = xyz_list
 
         print("Using TLS information from tlso_group_info", file = self.log)
-        tlso_value = tlso(
-             t = tlso_group_info.T_list[0],
-             l = tlso_group_info.L_list[0],
-             s = tlso_group_info.S_list[0],
-             origin = tlso_group_info.O_list[0],
-               )
 
         anisos_from_tls = uaniso_from_tls_one_group(
            tlso = tlso_value,
@@ -6080,7 +6122,7 @@ class map_model_manager(object):
       if self.get_model_by_id(model_id):
         new_xyz_list = self.get_model_by_id(
            model_id).apply_selection_string(selection).get_sites_cart()
-        number_to_add = max(25,len(scale_factor_info.xyz_list))
+        number_to_add = max(25,len(original_scale_factor_info.xyz_list))
         number_available = new_xyz_list.size()
         i_ratio = max(1,int((1+new_xyz_list.size())/number_to_add))
         if i_ratio > 1:
@@ -6433,6 +6475,8 @@ class map_model_manager(object):
       ok = True
       if not scaling_group_info.scaling_info_list:
         ok = False
+      if not scaling_group_info.get('overall_si'):
+        ok = False
       for si in scaling_group_info.scaling_info_list or []:
         for key in ('target_scale_factors','cc_list','rms_fo_list'):
           if getattr(si,key) is None:
@@ -6493,7 +6537,13 @@ class map_model_manager(object):
         setattr(average_scaling_group_info.overall_si,key,
            getattr(average_scaling_group_info.overall_si,key)/
            max(1,n_used))
-      if average_scaling_group_info.overall_scale:
+      # Error estimates (ssqr) follow the averaged CC*, as in refine_sharpening
+      for si in average_scaling_group_info.scaling_info_list:
+        if si.get('ssqr_values') is not None:
+          cc_list = flex.double(si.cc_list)
+          cc_list.set_selected(cc_list < 1.e-10, 1.e-10)
+          si.ssqr_values = 2. * ( -1 + 1./cc_list)  # cc* is in cc_list
+      if average_overall_scale:
         average_scaling_group_info.overall_scale = \
           average_overall_scale/max(1, n_used)
 

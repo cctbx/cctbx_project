@@ -40,6 +40,7 @@ tst_list_base = [
   "$D/regression/tst_map_model_manager_cleanup.py",
   "$D/regression/tst_map_model_manager_aniso_summary.py",
   "$D/regression/tst_map_model_manager_aniso_averaging.py",
+  "$D/regression/tst_map_model_manager_supplied_tls.py",
   "$D/regression/tst_map_tools.py",
   "$D/regression/tst_patterson.py",
   "$D/regression/tst_restraints_merge.py",

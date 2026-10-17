@@ -53,12 +53,21 @@ except ImportError:
       file=sys.stderr)
     sys.exit(2)
 
+# Completion cap for the OpenAI key check on a reasoning model.  The
+# agent's shared REASONING_MAX_TOKENS (16000) is sized for real work;
+# this check only needs a short reasoning pass plus a one-word reply,
+# and it runs at every server start.  If the model spends the whole
+# cap reasoning, the reply comes back empty with finish_reason
+# "length"; the key and model were still accepted, so that is OK.
+OPENAI_PROBE_REASONING_MAX_TOKENS = 1000
+
 def openai_probe_body(model):
   """Request body for the OpenAI key check.
 
   Reasoning models (gpt-5 and later, o-series) reject max_tokens and
   take max_completion_tokens; openai_completion_kwargs picks the right
-  one.  The probe sends no temperature.
+  one, and the probe caps it at OPENAI_PROBE_REASONING_MAX_TOKENS.
+  The probe sends no temperature.
   """
   body = {
     "model": model,
@@ -66,6 +75,8 @@ def openai_probe_body(model):
   }
   kwargs = openai_completion_kwargs(model, None, 5)
   kwargs.pop("temperature", None)
+  if "max_completion_tokens" in kwargs:
+    kwargs["max_completion_tokens"] = OPENAI_PROBE_REASONING_MAX_TOKENS
   body.update(kwargs)
   return body
 
@@ -101,7 +112,10 @@ def test_openai(model=None):
     )
     resp = urlopen(req, timeout=30)
     data = json.loads(resp.read().decode("utf-8"))
-    reply = (data["choices"][0]["message"].get("content") or "").strip()
+    choice = data["choices"][0]
+    reply = (choice["message"].get("content") or "").strip()
+    if not reply and choice.get("finish_reason") == "length":
+      reply = "(empty: cut off at the token limit)"
     actual_model = data.get("model", "?")
     return "OK", "Key %s  model=%s  reply=%s" % (masked, actual_model, reply), model
 
