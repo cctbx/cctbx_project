@@ -11,7 +11,7 @@ import os
 from six.moves import cStringIO as StringIO
 import iotbx.pdb
 import mmtbx.model
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 from cctbx import geometry_restraints
@@ -436,6 +436,220 @@ def test_water_without_o_add():
   for block in log.split("could not be parameterized")[1:]:
     assert "HOH A   8" not in block.split("\n\n")[0]
 
+# ------------------------------------------------------------------------------
+# step 3.1: phil, validate(), file names, _RebuildModel()
+
+OPTIONS = ("none", "all_h", "all_d", "hd_and_h", "hd_and_d", "all_hd")
+
+def make_program(prefix, pdb_str, cif_str=None, **params):
+  """reduce2.Program as run_program builds it, validate() not yet called;
+  params: name=value, with __ for the scope separator"""
+  from iotbx.cli_parser import CCTBXParser
+  with open(prefix + ".pdb", "w") as f:
+    f.write(pdb_str)
+  args = [prefix + ".pdb"]
+  if cif_str is not None:
+    with open(prefix + ".cif", "w") as f:
+      f.write(cif_str)
+    args.append(prefix + ".cif")
+  args += ["%s=%s" % (name.replace("__", "."), value)
+           for name, value in params.items()]
+  parser = CCTBXParser(program_class=reduce2.Program, logger=null_out())
+  parser.parse_args(args)
+  log = StringIO()
+  prog = reduce2.Program(parser.data_manager, parser.working_phil.extract(),
+    logger=log)
+  return prog, log
+
+def test_output_names():
+  # 13: default output and description file names
+  for option in OPTIONS:
+    for flips, pad in ((False, "H"), (True, "FH")):
+      prog, log = make_program("tst_reduce2_neutron_names", pdb_1yjp,
+        neutron_option=option, add_flip_movers=flips)
+      prog.validate()
+      suffix = "" if option == "none" else "_" + option
+      expected = "tst_reduce2_neutron_names" + pad + suffix
+      assert prog.params.output.filename == expected + ".pdb", (
+        option, flips, prog.params.output.filename)
+      assert prog.params.output.description_file_name == expected + ".txt"
+
+def check_sorry(prefix, pdb_str, text, **params):
+  prog, log = make_program(prefix, pdb_str, **params)
+  try:
+    prog.validate()
+  except Sorry as e:
+    assert text in str(e), str(e)
+  else:
+    raise AssertionError("no Sorry for %s" % params)
+
+pdb_ser_dg = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  N   SER A   2      14.767   2.090   9.884  1.00 20.00           N
+ATOM      2  CA  SER A   2      15.853   1.130   9.701  1.00 20.00           C
+ATOM      3  C   SER A   2      16.968   1.370  10.713  1.00 20.00           C
+ATOM      4  O   SER A   2      17.281   2.516  11.041  1.00 20.00           O
+ATOM      5  CB  SER A   2      16.411   1.224   8.278  1.00 20.00           C
+ATOM      6  OG  SER A   2      15.456   0.826   7.311  1.00 20.00           O
+ATOM      7  DG  SER A   2      15.856   0.874   6.441  1.00 20.00           D
+END
+"""
+
+def test_validate_sorrys():
+  prefix = "tst_reduce2_neutron_validate"
+  for option in OPTIONS[1:]:
+    check_sorry(prefix, pdb_1yjp, "cannot be used with approach=remove",
+      neutron_option=option, approach="remove")
+    check_sorry(prefix, pdb_1yjp, "cannot be used with qmready=True",
+      neutron_option=option, qmready=True)
+    # interim guards until step 4
+    check_sorry(prefix, pdb_1yjp,
+      "neutron_option with approach=optimize is not supported yet",
+      neutron_option=option, approach="optimize")
+    check_sorry(prefix, pdb_ser_dg, "keep_existing_H=True and D in the input "
+      "is not supported yet", neutron_option=option, keep_existing_H=True)
+    # H-only input with keep_existing_H=True is fine
+    prog, log = make_program(prefix, pdb_1yjp, neutron_option=option,
+      keep_existing_H=True)
+    prog.validate()
+  # none: the same runs pass validate()
+  for params in (dict(approach="remove"), dict(qmready=True),
+                 dict(approach="optimize"), dict(keep_existing_H=True)):
+    prog, log = make_program(prefix, pdb_ser_dg, neutron_option="none",
+      **params)
+    prog.validate()
+
+def test_optimize_guard_reached():
+  # the optimize guard stops a real run before any work is done
+  try:
+    run_reduce2("tst_reduce2_neutron_guard", pdb_1yjp,
+      ["approach=optimize", "neutron_option=hd_and_h"])
+  except Sorry as e:
+    assert "not supported yet" in str(e)
+  else:
+    raise AssertionError("approach=optimize neutron_option=hd_and_h ran")
+
+def test_none_distances():
+  # 9b: none keeps today's distances; no D anywhere
+  for args, neutron in (([], False), (["use_neutron_distances=True"], True),
+                        (["qmready=True"], True)):
+    fn, log, description = run_reduce2("tst_reduce2_neutron_9b", pdb_1yjp,
+      ["neutron_option=none"] + args)
+    check_bond_lengths(fn, use_neutron_distances=neutron)
+    h = iotbx.pdb.input(fn).construct_hierarchy()
+    assert "D" not in [a.element.strip() for a in h.atoms()]
+    assert "DOD" not in [ag.resname for ag in h.atom_groups()]
+
+def test_resolved_flag_all_h():
+  # neutron_option switches neutron distances on; output still H-only
+  fn, log, description = run_reduce2("tst_reduce2_neutron_all_h", pdb_1yjp,
+    ["neutron_option=all_h", "approach=place", "exclude_water=False"])
+  assert "neutron_option=all_h: use_neutron_distances set to True" in log
+  check_water(fn, 0.98, 7)
+  check_bond_lengths(fn, use_neutron_distances=True)
+  h = iotbx.pdb.input(fn).construct_hierarchy()
+  assert "D" not in [a.element.strip() for a in h.atoms()]
+
+# ligand unknown to the CCD and the monomer library; C1-O1 1.4321 A
+pdb_lig = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1  C1  ZQ1 A   1      10.000  10.000  10.000  1.00 20.00           C
+HETATM    2  O1  ZQ1 A   1      11.432  10.000  10.000  1.00 20.00           O
+HETATM    3  H11 ZQ1 A   1       9.640  11.020  10.000  1.00 20.00           H
+HETATM    4  H12 ZQ1 A   1       9.640   9.490  10.880  1.00 20.00           H
+HETATM    5  H13 ZQ1 A   1       9.640   9.490   9.120  1.00 20.00           H
+HETATM    6  HO1 ZQ1 A   1      11.750  10.900  10.000  1.00 20.00           H
+END
+"""
+cif_lig = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZQ1  ZQ1  'test methanol'  ligand  6  2  .
+
+data_comp_ZQ1
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZQ1  C1   C  CH3  0   0.000   0.000   0.000
+ ZQ1  O1   O  OH1  0   1.432   0.000   0.000
+ ZQ1  H11  H  HCH3 0  -0.360   1.020   0.000
+ ZQ1  H12  H  HCH3 0  -0.360  -0.510   0.880
+ ZQ1  H13  H  HCH3 0  -0.360  -0.510  -0.880
+ ZQ1  HO1  H  HOH1 0   1.750   0.900   0.000
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ ZQ1  C1  O1   single  1.4321  0.020  1.4321
+ ZQ1  C1  H11  single  0.970   0.020  1.090
+ ZQ1  C1  H12  single  0.970   0.020  1.090
+ ZQ1  C1  H13  single  0.970   0.020  1.090
+ ZQ1  O1  HO1  single  0.850   0.020  0.980
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ ZQ1  H11  C1  H12  109.5  3.0
+ ZQ1  H11  C1  H13  109.5  3.0
+ ZQ1  H12  C1  H13  109.5  3.0
+ ZQ1  O1   C1  H11  109.5  3.0
+ ZQ1  O1   C1  H12  109.5  3.0
+ ZQ1  O1   C1  H13  109.5  3.0
+ ZQ1  C1   O1  HO1  109.5  3.0
+"""
+
+def test_rebuild_model():
+  # _RebuildModel(): user CIF restraints, crystal symmetry, atom count
+  prog, log = make_program("tst_reduce2_neutron_rebuild", pdb_lig, cif_lig,
+    stop_on_any_missing_hydrogen=True)
+  prog.validate()
+  prog.model = prog.data_manager.get_model()
+  hierarchy = prog.model.get_hierarchy().deep_copy()
+  for make_restraints in (True, False):
+    rebuilt = prog._RebuildModel(hierarchy.deep_copy(), make_restraints)
+    assert rebuilt.get_number_of_atoms() == prog.model.get_number_of_atoms()
+    assert rebuilt.crystal_symmetry().is_similar_symmetry(
+      prog.model.crystal_symmetry())
+    assert (rebuilt.get_restraints_manager() is not None) == make_restraints
+  # the CIF's C1-O1 target is used: the restraints come from the user CIF
+  simple, asu = prog._RebuildModel(hierarchy.deep_copy(),
+    True).get_restraints_manager().geometry.get_all_bond_proxies()
+  ideal = sorted(round(p.distance_ideal, 4) for p in simple)
+  assert 1.4321 in ideal, ideal
+  # without the CIF the ligand cannot be interpreted
+  prog, log = make_program("tst_reduce2_neutron_rebuild_nocif", pdb_lig,
+    stop_on_any_missing_hydrogen=True)
+  prog.validate()
+  prog.model = prog.data_manager.get_model()
+  try:
+    prog._RebuildModel(prog.model.get_hierarchy().deep_copy(), True)
+  except Sorry:
+    pass
+  else:
+    raise AssertionError("ZQ1 interpreted without its CIF")
+
 if __name__ == "__main__":
   test_xray_default()
   test_neutron_add()
@@ -451,4 +665,10 @@ if __name__ == "__main__":
   test_no_floating_h_unchanged()
   test_floating_h_flipkins()
   test_water_without_o_add()
+  test_output_names()
+  test_validate_sorrys()
+  test_optimize_guard_reached()
+  test_none_distances()
+  test_resolved_flag_all_h()
+  test_rebuild_model()
   print("OK")

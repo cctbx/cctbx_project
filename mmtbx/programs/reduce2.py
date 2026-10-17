@@ -61,6 +61,16 @@ use_neutron_distances = False
   .type = bool
   .short_caption = Use neutron distances
   .help = Use neutron distances (-nuclear in reduce)
+neutron_option = *none all_h all_d hd_and_h hd_and_d all_hd
+  .type = choice(multi=False)
+  .short_caption = H/D model for neutron refinement
+  .help = none (default): no deuterium, distances follow use_neutron_distances \
+          and qmready as before. all_h: hydrogens only, neutron distances. \
+          all_d: all deuterium. hd_and_h: H/D pairs (altlocs) at exchangeable \
+          sites, H elsewhere. hd_and_d: H/D pairs at exchangeable sites, D \
+          elsewhere. all_hd: H/D pairs at all sites. Every option other than \
+          none uses neutron distances. Waters become DOD in all_d, hd_and_h, \
+          hd_and_d and all_hd, with all_h they stay HOH.
 preference_magnitude = 1.0
   .type = float
   .short_caption = Rotational-preference magnitude
@@ -910,6 +920,7 @@ Output:
   written into the current working directory with the same base name and type as the
   original file and with FH or H added to the base name (FH when flips are requested);
   1xs0.pdb would be written to ./1xsoH.pdb and 1xso.cif to ./1xsoH.cif by default.
+  With neutron_option other than none, _<option> follows: ./1xsoH_all_d.pdb.
 
 NOTES:
   If multiple alternates are present in the file and a specific one is not specified on the
@@ -919,6 +930,10 @@ NOTES:
   for the final alternate tested.  This may leave other alternates in sub-optimal configurations.
   When a single alternate is selected using alt_id= on the command line, everything is
   optimized a single time and for that configuration.
+
+  neutron_option writes a model for neutron refinement (all_h, all_d, hd_and_h, hd_and_d,
+  all_hd), with neutron distances; exchangeable H/D are written as altloc pairs. It
+  cannot be combined with approach=remove or qmready=True.
 
   Note that the program also takes probe Phil arguments; run with --show_defaults to see
   all Phil arguments.
@@ -1141,11 +1156,14 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _ReinterpretModel(self, make_restraints=True):
+  def _ReinterpretModel(self, make_restraints=True, model=None):
     # Reinterpret the model using the same approach that hydrogen-placement does.
     # :param make_restraints: Should we compute restraints during the interpretation?
-    self.model.get_hierarchy().sort_atoms_in_place()
-    self.model.get_hierarchy().atoms().reset_serial()
+    # :param model: The model to interpret; self.model if None.
+    if model is None:
+      model = self.model
+    model.get_hierarchy().sort_atoms_in_place()
+    model.get_hierarchy().atoms().reset_serial()
 
     p = reduce_hydrogen.get_reduce_pdb_interpretation_params(
       self.params.use_neutron_distances)
@@ -1155,15 +1173,32 @@ NOTES:
     # by Hydrogen placement will have flipped them, so we don't need to do it again.
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     #p.pdb_interpretation.sort_atoms=True
-    self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
+    model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
     # no ADP pair table, as in place_hydrogens
-    self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p,
+    model.process(make_restraints=make_restraints, pdb_interpretation_params=p,
       plain_pairs_radius=None)
     #
     if self.params.qmready and make_restraints:
-      g = self.model.geometry_statistics().result(slim = True)
+      g = model.geometry_statistics().result(slim = True)
       if g.nonbonded.min < 1.0:
         raise Sorry("Bad clash(es) prevents qmready=True")
+
+# ------------------------------------------------------------------------------
+
+  def _RebuildModel(self, hierarchy, make_restraints):
+    # Turn a modified hierarchy back into a model: working crystal symmetry,
+    # user restraint objects and stop_for_unknowns of self.model, interpreted
+    # with the same settings as _ReinterpretModel().
+    # :return: The new model.
+    model = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = hierarchy,
+      crystal_symmetry  = self.model.crystal_symmetry(),
+      restraint_objects = self.model.get_restraint_objects(),
+      stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
+      log               = null_out())
+    self._ReinterpretModel(make_restraints=make_restraints, model=model)
+    return model
 
 # ------------------------------------------------------------------------------
 
@@ -1279,10 +1314,38 @@ NOTES:
   # ------------------------------------------------------------------------------
 
   def validate(self):
-    # qmready places H at neutron distances, so every later step must use them
-    if self.params.qmready and not self.params.use_neutron_distances:
-      self.params.use_neutron_distances = True
-      print('qmready=True: use_neutron_distances set to True', file=self.logger)
+    p = self.params
+    # phil turns an explicit neutron_option=none into None
+    if p.neutron_option is None:
+      p.neutron_option = 'none'
+    if p.neutron_option != 'none':
+      if p.approach == 'remove':
+        raise Sorry('neutron_option=%s cannot be used with approach=remove.'
+          % p.neutron_option)
+      if p.qmready:
+        raise Sorry('neutron_option=%s cannot be used with qmready=True.'
+          % p.neutron_option)
+      # Interim guard, removed in step 4 (input normalization)
+      if p.approach == 'optimize':
+        raise Sorry('neutron_option with approach=optimize is not supported yet.')
+      # Interim guard, removed in step 4 (input normalization)
+      if p.keep_existing_H and self.data_manager.has_models() and any(
+          e.strip().upper() == 'D' for e in
+          self.data_manager.get_model().get_hierarchy().atoms().extract_element()):
+        raise Sorry('neutron_option with keep_existing_H=True and D in the '
+          'input is not supported yet.')
+
+    # One distance flag for the whole run: qmready and neutron_option place H
+    # at neutron distances, so every later step must use them
+    if not p.use_neutron_distances:
+      reason = None
+      if p.qmready:
+        reason = 'qmready=True'
+      elif p.neutron_option != 'none':
+        reason = 'neutron_option=%s' % p.neutron_option
+      if reason is not None:
+        p.use_neutron_distances = True
+        print('%s: use_neutron_distances set to True' % reason, file=self.logger)
 
     # place: no optimizer, so nothing that needs it
     if self.params.approach == 'place':
@@ -1309,6 +1372,8 @@ NOTES:
         pad = 'FH'
       else:
         pad = 'H'
+      if self.params.neutron_option != 'none':
+        pad += '_' + self.params.neutron_option
       base = os.path.splitext(os.path.basename(inName))[0] + pad
       self.params.output.filename = base + suffix
       print('Writing model output to', self.params.output.filename, file=self.logger)
