@@ -3280,7 +3280,8 @@ class manager(object):
     self.riding_h_manager = None
 
   def setup_riding_h_manager(self, idealize=True, use_ideal_dihedral=False,
-                             ignore_h_with_dof = False):
+                             ignore_h_with_dof = False,
+                             use_neutron_distances = None):
     if self.riding_h_manager is not None: return
     if not self.has_hd(): return
     if(self.restraints_manager is None): return
@@ -3291,11 +3292,17 @@ class manager(object):
       ignore_h_with_dof   = ignore_h_with_dof,
       mon_lib_srv         = self.get_mon_lib_srv())
     if(idealize):
-      self.idealize_h_riding()
+      self.idealize_h_riding(use_neutron_distances = use_neutron_distances)
 
-  def idealize_h_riding(self):
+  def idealize_h_riding(self, use_neutron_distances=None):
+    """
+    use_neutron_distances: water O-H length. None: from the scattering table
+    (0.85, or 0.98 for neutron/electron); True: HOH restraint target (0.98 if
+    not found); False: 0.85.
+    """
     if self.riding_h_manager is None:
-      self.setup_riding_h_manager(idealize=True)
+      self.setup_riding_h_manager(idealize=True,
+        use_neutron_distances = use_neutron_distances)
     else:
       sites_cart = self.get_sites_cart()
       if self.refinement_flags:
@@ -3332,6 +3339,10 @@ class manager(object):
       new_H1 = O + new_v1
       new_H2 = O + new_v2
       return new_H1.elems, new_H2.elems
+    if use_neutron_distances is not None:
+      self._idealize_water_by_bonded_o(
+        use_neutron_distances, idealize_water_geometry)
+      return
     get_class = iotbx.pdb.common_residue_names_get_class
     for model in self.get_hierarchy().models():
       for chain in model.chains():
@@ -3353,6 +3364,83 @@ class manager(object):
               h_atoms[1].xyz = h2_new
     self.set_sites_cart( self.get_hierarchy().atoms().extract_xyz() )
     # AD HOC fix for the riding H issue for water END
+
+  def _idealize_water_by_bonded_o(self, use_neutron_distances,
+                                  idealize_water_geometry):
+    """
+    Water O-H/D length and H-O-H angle for idealize_h_riding() with
+    use_neutron_distances True or False. H/D are found through their bonded O,
+    so incomplete waters and blank-altloc O with altloc H/D are included.
+    True: bond restraint target (0.98 without restraints); False: 0.85.
+    """
+    atoms = self.get_hierarchy().atoms()
+    get_class = iotbx.pdb.common_residue_names_get_class
+    default = 0.98 if use_neutron_distances else 0.85
+    # (i_seq of O, i_seq of H/D) -> target length
+    pairs = {}
+    bpt = None
+    if self.restraints_manager is not None:
+      bpt = self.restraints_manager.geometry.bond_params_table
+      if bpt.size() != atoms.size(): bpt = None
+    if bpt is not None:
+      # O-H bonds are stored in the row of the lower i_seq; both are water atoms
+      water = set()
+      for i, a in enumerate(atoms):
+        if get_class(name=a.parent().resname) == "common_water":
+          water.add(i)
+      for i in sorted(water):
+        for j in bpt[i].keys():
+          if j not in water: continue
+          ei = atoms[i].element.strip().upper()
+          ej = atoms[j].element.strip().upper()
+          if ei == "O" and ej in ["H", "D"]:   o, h = i, j
+          elif ej == "O" and ei in ["H", "D"]: o, h = j, i
+          else: continue
+          d = default
+          if use_neutron_distances: d = bpt[i][j].distance_ideal
+          pairs[(o, h)] = d
+    else:
+      # conformer residues combine blank-altloc O with altloc H/D
+      index = dict((a.memory_id(), i) for i, a in enumerate(atoms))
+      for model in self.get_hierarchy().models():
+        for chain in model.chains():
+          for conformer in chain.conformers():
+            for residue in conformer.residues():
+              if get_class(name=residue.resname) != "common_water": continue
+              ra = residue.atoms()
+              os_ = [a for a in ra if a.element.strip().upper() == "O"]
+              hs = [a for a in ra if a.element.strip().upper() in ["H", "D"]]
+              if len(os_) != 1: continue
+              for h in hs:
+                pairs[(index[os_[0].memory_id()], index[h.memory_id()])] = \
+                  default
+    if len(pairs) == 0: return
+    # length: each H/D along its own O-H direction
+    h_of_o = {}
+    for (o, h), d in pairs.items():
+      O = matrix.col(atoms[o].xyz)
+      v = matrix.col(atoms[h].xyz) - O
+      if v.length() > 1e-6:
+        atoms[h].xyz = (O + v.normalize() * d).elems
+      h_of_o.setdefault(o, []).append(h)
+    # angle: per O and conformer with exactly two H/D; an H/D shared with a
+    # conformer already corrected keeps its length correction only
+    moved = set()
+    for o, hs in h_of_o.items():
+      altlocs = sorted(set(atoms[h].parent().altloc for h in hs) - set([""]))
+      for altloc in (altlocs or [""]):
+        hc = [h for h in hs if atoms[h].parent().altloc in ["", altloc]]
+        if len(hc) != 2 or moved.intersection(hc): continue
+        h1, h2 = sorted(hc)
+        h1_new, h2_new = idealize_water_geometry(
+          o_xyz      = atoms[o].xyz,
+          h1_xyz     = atoms[h1].xyz,
+          h2_xyz     = atoms[h2].xyz,
+          dist_ideal = pairs[(o, h1)])
+        atoms[h1].xyz = h1_new
+        atoms[h2].xyz = h2_new
+        moved.update(hc)
+    self.set_sites_cart(atoms.extract_xyz())
 
   def get_hierarchy(self):
     """

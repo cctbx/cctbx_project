@@ -1056,7 +1056,7 @@ NOTES:
     if self.params.qmready:
       reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
         model                 = self.model,
-        use_neutron_distances = True,
+        use_neutron_distances = self.params.use_neutron_distances,
         n_terminal_charge     = "all_chain_starts",
         exclude_water         = False,
         stop_for_unknowns     = self.params.stop_on_any_missing_hydrogen,
@@ -1237,6 +1237,11 @@ NOTES:
   # ------------------------------------------------------------------------------
 
   def validate(self):
+    # qmready places H at neutron distances, so every later step must use them
+    if self.params.qmready and not self.params.use_neutron_distances:
+      self.params.use_neutron_distances = True
+      print('qmready=True: use_neutron_distances set to True', file=self.logger)
+
     # place: no optimizer, so nothing that needs it
     if self.params.approach == 'place':
       p = self.params
@@ -1407,6 +1412,7 @@ NOTES:
         self.model, altID=self.params.alt_id,
         preferenceMagnitude=self.params.preference_magnitude,
         bondedNeighborDepth = self._bondedNeighborDepth,
+        useNeutronDistances=self.params.use_neutron_distances,
         nonFlipPreference=self.params.non_flip_preference,
         skipBondFixup=self.params.skip_bond_fix_up,
         flipStates = self.params.set_flip_states,
@@ -1714,6 +1720,7 @@ NOTES:
           opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
             self.model, altID=self.params.alt_id,
             preferenceMagnitude=self.params.preference_magnitude,
+            useNeutronDistances=self.params.use_neutron_distances,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
@@ -1834,6 +1841,7 @@ NOTES:
           opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
             self.model, altID=self.params.alt_id,
             preferenceMagnitude=self.params.preference_magnitude,
+            useNeutronDistances=self.params.use_neutron_distances,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,

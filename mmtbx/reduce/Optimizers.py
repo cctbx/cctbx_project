@@ -307,7 +307,9 @@ class Optimizer(object):
     # None is specified and the specified one if it is specified.
 
     try:
-      model.setup_riding_h_manager()
+      # None, not False: callers outside reduce2 keep the scattering-table rule
+      model.setup_riding_h_manager(
+        use_neutron_distances=True if self._useNeutronDistances else None)
     except Exception:
       # If an optimized has already been run on the model, our riding H manager will
       # have already been set up.  When one has already been set up, this causes

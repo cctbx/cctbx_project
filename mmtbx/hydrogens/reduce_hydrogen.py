@@ -714,7 +714,26 @@ def find_H1_H2(X, d, angle_deg):
         z)
   return H1, H2
 
-def workaround_002(model, selection):
+def _water_oh_targets(model, use_neutron_distances):
+  '''O-H length and H-O-H angle from the HOH restraints; constants if absent'''
+  d = 0.98 if use_neutron_distances else 0.85
+  angle = 103.91
+  comp = model.get_mon_lib_srv().get_comp_comp_id_direct("HOH")
+  if comp is not None:
+    for bond in comp.bond_list:
+      value = bond.value_dist_neutron if use_neutron_distances \
+        else bond.value_dist
+      if value is not None:
+        d = value
+        break
+    for a in comp.angle_list:
+      if a.value_angle is not None:
+        angle = a.value_angle
+        break
+  return d, angle
+
+def workaround_002(model, selection, use_neutron_distances=False):
+  d, angle = _water_oh_targets(model, use_neutron_distances)
   h = model.get_hierarchy()
   atoms = h.atoms()
   for m in h.models():
@@ -730,7 +749,7 @@ def workaround_002(model, selection):
             if e == "O": X = atom.xyz
             else:        ij.append(atom.i_seq)
           if len(ij)!=2: continue
-          p1, p2 = find_H1_H2(X=X, d=0.85, angle_deg=103.91)
+          p1, p2 = find_H1_H2(X=X, d=d, angle_deg=angle)
           atoms[ij[0]].xyz = p1
           atoms[ij[1]].xyz = p2
 
@@ -1165,7 +1184,8 @@ class place_hydrogens():
     if not self.exclude_water and water_selection.count(True)>0:
       workaround_002(
         model     = self.model,
-        selection = water_selection.iselection())
+        selection = water_selection.iselection(),
+        use_neutron_distances = self.use_neutron_distances)
       water_selection = self.model.solvent_selection()
     # water H are placed by workaround_002, not by riding: keep them and
     # leave them out of the report of unplaced H
@@ -1239,7 +1259,9 @@ class place_hydrogens():
     self.model.reset_occupancy_for_hydrogens_simple()
     self.time_reset = round(time.time()-t0, 2)
     t0 = time.time()
-    self.model.idealize_h_riding()
+    # None, not False: callers outside reduce2 keep the scattering-table rule
+    self.model.idealize_h_riding(
+      use_neutron_distances = True if self.use_neutron_distances else None)
     self.time_idealize = round(time.time()-t0, 2)
 
     # Remove H atoms that are involved in links (bonds, metal coordination, etc)
