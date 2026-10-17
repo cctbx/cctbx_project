@@ -108,12 +108,32 @@ class evidence(object):
   def quadratic(self, xyz, ff):
     """ 1/2 sum_h c_h |dF_h|^2 for atoms at xyz (n, 3) with signed form
     factors ff (n, n_shells) """
-    d = np.sqrt(((xyz[:, None, :] - xyz[None, :, :]) ** 2).sum(axis=2))
-    x = 2 * math.pi * d[:, :, None] * self.shell_s[None, None, :]
-    sinc = np.where(x > 1.e-8, np.sin(x) / np.where(x > 1.e-8, x, 1.), 1.)
-    pair = ff[:, None, :] * ff[None, :, :] * sinc
-    return 0.5 * self.n_sym * float((pair.sum(axis=(0, 1)) *
-      self.shell_c).sum())
+    # diagonal (sin(x)/x -> 1 at r = 0) plus twice the upper triangle
+    wc = ff * self.shell_c[None, :]
+    total = float((ff * wc).sum())
+    n = len(xyz)
+    if(n > 1):
+      j, k = np.triu_indices(n, 1)
+      r = np.sqrt(((xyz[j] - xyz[k]) ** 2).sum(axis=1))
+      y = (2 * math.pi) * np.maximum(r, 1.e-9)[:, None] * \
+        self.shell_s[None, :]
+      total += 2 * float((wc[j] * ff[k] * (np.sin(y) / y)).sum())
+    return 0.5 * self.n_sym * total
+
+  def quadratic_batch(self, xyz, ff):
+    """ quadratic() for T sets of sites at once: xyz (T, n, 3), the same
+    form factors ff (n, n_shells) for all; returns (T,) """
+    wc = ff * self.shell_c[None, :]
+    total = np.full(xyz.shape[0], float((ff * wc).sum()))
+    n = xyz.shape[1]
+    if(n > 1):
+      j, k = np.triu_indices(n, 1)
+      r = np.sqrt(((xyz[:, j] - xyz[:, k]) ** 2).sum(axis=2))     # (T, P)
+      w = (wc[j] * ff[k])                                        # (P, S)
+      y = (2 * math.pi) * np.maximum(r, 1.e-9)[:, :, None] * \
+        self.shell_s[None, None, :]
+      total += 2 * np.einsum("tps,ps->t", np.sin(y) / y, w)
+    return 0.5 * self.n_sym * total
 
   # --- linear term ---------------------------------------------------------
   def occupancy_gradients(self, i_seqs_list, sites_list):
@@ -251,14 +271,30 @@ class evidence(object):
     from cctbx.eltbx import xray_scattering
     self._const = xray_scattering.gaussian(1.0)
 
-  def _excluded(self, pts, xyz, radii):
-    """ grid points within r + probe of any of the atoms """
-    out = np.zeros(len(pts), dtype=bool)
+  def _excluded(self, pts, xyz, radii, ctx=None):
+    """ grid points within r + probe of any of the atoms; with the context
+    (regular grid) only each atom's own block of the grid is tested """
+    if(ctx is None):
+      out = np.zeros(len(pts), dtype=bool)
+      for x, r in zip(xyz, radii):
+        rr = (r + self.mask_probe) ** 2
+        d = pts - x
+        out |= (d * d).sum(axis=1) < rr
+      return out
+    n = np.array(ctx.shape); sp = ctx.spacing; lo = ctx.lo
+    out = np.zeros(ctx.shape, dtype=bool)
+    axes = [lo[k] + np.arange(n[k]) * sp for k in range(3)]
     for x, r in zip(xyz, radii):
-      rr = (r + self.mask_probe) ** 2
-      d = pts - x
-      out |= (d * d).sum(axis=1) < rr
-    return out
+      R = r + self.mask_probe
+      i0 = np.maximum(np.floor((x - R - lo) / sp).astype(int), 0)
+      i1 = np.minimum(np.ceil((x + R - lo) / sp).astype(int) + 1, n)
+      if(np.any(i1 <= i0)): continue
+      dx = (axes[0][i0[0]:i1[0]] - x[0]) ** 2
+      dy = (axes[1][i0[1]:i1[1]] - x[1]) ** 2
+      dz = (axes[2][i0[2]:i1[2]] - x[2]) ** 2
+      block = dx[:, None, None] + dy[None, :, None] + dz[None, None, :] < R * R
+      out[i0[0]:i1[0], i0[1]:i1[1], i0[2]:i1[2]] |= block
+    return out.ravel()
 
   def _shrink(self, excluded, shape, spacing):
     """ solvent: points within the shrink radius of an accessible point """
@@ -297,18 +333,19 @@ class evidence(object):
     fix_xyz = np.concatenate([env_xyz, np.array(
       self.xrs.sites_cart().select(flex.size_t(others))).reshape(-1, 3)])
     fix_r = np.concatenate([self.mask_radii[env_i], self.mask_radii[others]])
-    excl_fixed = self._excluded(pts, fix_xyz, fix_r)
     ctx = group_args(pts=pts, shape=tuple(n), lo=lo, hi=hi, keep=keep,
-      r_mv=r_mv, excl_fixed=excl_fixed, spacing=spacing,
+      r_mv=r_mv, spacing=spacing,
       inside=np.all((pts > lo + self.mask_shrink + spacing) &
                     (pts < hi - self.mask_shrink - spacing), axis=1))
+    ctx.excl_fixed = self._excluded(pts, fix_xyz, fix_r, ctx=ctx)
     return ctx
 
   def mask_solvent(self, ctx, xyz, occ):
     """ solvent on the context grid with the moving atoms at xyz (those of
     occ > 0) """
     x = np.array(xyz)[ctx.keep]; on = np.array(occ)[ctx.keep] > 0
-    excl = ctx.excl_fixed | self._excluded(ctx.pts, x[on], ctx.r_mv[on])
+    excl = ctx.excl_fixed | self._excluded(ctx.pts, x[on], ctx.r_mv[on],
+      ctx=ctx)
     return self._shrink(excl, ctx.shape, ctx.spacing)
 
   def mask_cells(self, ctx, solvent_old, solvent_new):

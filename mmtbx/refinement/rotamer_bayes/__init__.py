@@ -77,6 +77,10 @@ mask_correction = True
   .type = bool
 mask_predict_spacing = 0.5
   .type = float
+mask_cell = 1.5
+  .type = float
+  .help = Size (A) of the cells into which changes of the mask are gathered \
+          (as pseudo-atoms)
   .help = Grid spacing (A) of the local mask in the prediction
   .help = Include the change of the bulk-solvent mask in the exact dLL \
           (recomputed on a local grid). Without it every change is biased \
@@ -197,7 +201,7 @@ class run(object):
       crystal_symmetry=fmodel.xray_structure.crystal_symmetry(),
       sites_cart=sites, keep=keep)
     if(params.mask_correction):
-      self.ev.setup_mask(self.env)
+      self.ev.setup_mask(self.env, cell=params.mask_cell)
     self.records = []
     self.skipped = {}
     self._sample = set()
@@ -298,6 +302,15 @@ class run(object):
   def _skip(self, reason):
     self.skipped[reason] = self.skipped.get(reason, 0) + 1
 
+  def _min_distances(self, sc, xyz):
+    """ _min_distance for T sets of residue sites (T, n_atoms, 3) """
+    heavy = sc.moving & ~sc.is_h
+    near = sc.near
+    if(heavy.sum() == 0 or len(near) == 0): return np.full(len(xyz), 1.e9)
+    x = xyz[:, heavy]                                            # (T, m, 3)
+    d = ((x[:, :, None, :] - near[None, None, :, :]) ** 2).sum(axis=3)
+    return np.sqrt(d.min(axis=(1, 2)))
+
   def _min_distance(self, sc, xyz):
     heavy = sc.moving & ~sc.is_h
     near = sc.near
@@ -333,6 +346,24 @@ class run(object):
       np.concatenate([-ff_old, ff_new]))
     return -self.ev.n_work * (lin + quad)
 
+  def _search_scores(self, rec, xyzs):
+    """ _search_score for T sets of residue sites (T, n_atoms, 3) """
+    sc = rec.sc
+    setup, ff_old, ff_new, lin_old = rec._search
+    new = xyzs[:, sc.moving]                                     # (T, m, 3)
+    t, m = new.shape[0], new.shape[1]
+    lin_new = self.ev.search_linear(new.reshape(-1, 3), (np.tile(setup[0], t),
+      np.tile(setup[1], t), np.tile(setup[2], t)), self.search_scale)
+    lin = (rec.occ_new[None, :] * lin_new.reshape(t, m)).sum(axis=1) - \
+      float((rec.occ_old * lin_old).sum())
+    old = np.broadcast_to(sc.xyz[sc.moving], (t, m, 3))
+    quad = self.ev.quadratic_batch(np.concatenate([old, new], axis=1),
+      np.concatenate([-ff_old, ff_new]))
+    score = -self.ev.n_work * (lin + quad)
+    clash = self._min_distances(sc, xyzs) < self.params.clash_distance
+    score[clash] = -1.e30
+    return score
+
   def _tune(self, rec):
     p = self.params
     sc = rec.sc
@@ -354,14 +385,16 @@ class run(object):
       for _ in range(p.tune_passes if n_steps > 0 else 0):
         for k in range(len(centre)):
           base_xyz, base_chi = best_xyz, best_chis[k]
-          for off in offsets:
-            target = centre[k] + off
-            if(target == base_chi): continue
-            xyz = sc.rotate_chi(base_xyz, k, target - base_chi)
-            s = self._search_score(rec, xyz)
-            if(s > best):
-              best, best_xyz = s, xyz
-              best_chis = list(best_chis); best_chis[k] = target
+          targets = [centre[k] + off for off in offsets
+            if centre[k] + off != base_chi]
+          if(not targets): continue
+          trials = np.array([sc.rotate_chi(base_xyz, k, x - base_chi)
+            for x in targets])
+          scores = self._search_scores(rec, trials)
+          i = int(np.argmax(scores))
+          if(scores[i] > best):
+            best, best_xyz = float(scores[i]), trials[i]
+            best_chis = list(best_chis); best_chis[k] = targets[i]
       cand.chis = best_chis
       cand.xyz = best_xyz
       cand.search = best

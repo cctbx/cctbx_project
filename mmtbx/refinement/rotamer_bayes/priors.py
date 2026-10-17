@@ -38,13 +38,8 @@ class well(object):
 
 def _read_table(file_name):
   """ [(cell centre tuple, value)] from a rota8000 .data file """
-  cells = []
-  with open(file_name) as f:
-    for line in f:
-      if(line.startswith("#") or not line.strip()): continue
-      v = [float(x) for x in line.split()]
-      cells.append((tuple(v[:-1]), v[-1]))
-  return cells
+  a = np.loadtxt(file_name, comments="#", ndmin=2)
+  return [(tuple(row[:-1]), row[-1]) for row in a]
 
 def cell_masses(cells):
   """ Probability mass of each cell, by differencing the sorted contour
