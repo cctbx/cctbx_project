@@ -743,13 +743,12 @@ def workaround_002(model, selection, use_neutron_distances=False):
           if not get_class(name=r.resname) == "common_water": continue
           three = r.atoms().extract_i_seq()
           #assert three in selection
-          ij=[]
-          for atom in r.atoms():
-            e = atom.element.strip().upper()
-            if e == "O": X = atom.xyz
-            else:        ij.append(atom.i_seq)
-          if len(ij)!=2: continue
-          p1, p2 = find_H1_H2(X=X, d=d, angle_deg=angle)
+          # only this residue's own O: exactly one O and two H/D
+          o = [a for a in r.atoms() if a.element.strip().upper() == "O"]
+          ij = [a.i_seq for a in r.atoms()
+                if a.element.strip().upper() in ("H", "D")]
+          if len(o) != 1 or len(ij) != 2: continue
+          p1, p2 = find_H1_H2(X=o[0].xyz, d=d, angle_deg=angle)
           atoms[ij[0]].xyz = p1
           atoms[ij[1]].xyz = p2
 
@@ -1188,8 +1187,15 @@ class place_hydrogens():
         use_neutron_distances = self.use_neutron_distances)
       water_selection = self.model.solvent_selection()
     # water H are placed by workaround_002, not by riding: keep them and
-    # leave them out of the report of unplaced H
-    sel_h_not_in_para = sel_h_not_in_para.set_selected(water_selection, False)
+    # leave them out of the report of unplaced H. Only waters with an O: the
+    # H of a water without O are removed like any other unplaced H.
+    water_without_o = flex.bool(water_selection.size(), False)
+    for rg in self.model.get_hierarchy().residue_groups():
+      if get_class(name=rg.atom_groups()[0].resname) != "common_water": continue
+      if any(a.element.strip().upper() == "O" for a in rg.atoms()): continue
+      water_without_o.set_selected(rg.atoms().extract_i_seq(), True)
+    sel_h_not_in_para = sel_h_not_in_para.set_selected(
+      water_selection & ~water_without_o, False)
     # no need to display lone H atoms in the log, so remove from labels
     sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
     # Classify the unplaceable H so the report reflects the real cause:
@@ -1249,6 +1255,17 @@ class place_hydrogens():
             self.residues_missing_neighbor.append(resid)
         else:
           self.site_labels_no_para.append(label)
+    # lone H of a water without O are left out of the labels above (lone H
+    # are not displayed); report them as missing their heavy atom
+    for atom in self.model.get_hierarchy().atoms().select(
+        water_without_o & sel_lone_H & sel_h_not_in_para):
+      self.site_labels_missing_neighbor.append(
+        atom.id_str().replace('pdb=','').replace('"',''))
+      rg = atom.parent().parent()
+      resid = '%s %s %s' % (atom.parent().resname.strip(),
+        rg.parent().id.strip(), rg.resseq.strip())
+      if resid not in self.residues_missing_neighbor:
+        self.residues_missing_neighbor.append(resid)
     if not sel_h_not_in_para.all_eq(False):
       self.model = self.model.select(~sel_h_not_in_para)
     self.time_remove_H_nopara = round(time.time()-t0, 2)

@@ -417,6 +417,25 @@ def test_floating_h_flipkins():
     assert all(l.split()[1:] == ["HOH", "A", "8"] for l in listed), listed
     assert orphans(iotbx.pdb.input(fn).construct_hierarchy()) == []
 
+def test_water_without_o_add():
+  # approach=add keep_existing_H=True on 1yjp with water H and water 8's O
+  # deleted: no crash in workaround_002(); the two H are removed and reported
+  # as missing their heavy atom, not as not parameterized
+  fn, _, _ = run_reduce2("tst_reduce2_neutron_no_o_h", pdb_1yjp,
+    ["exclude_water=False"])
+  with open(fn) as f:
+    pdb_str = "\n".join(l for l in f.read().splitlines()
+                        if " O   HOH A   8" not in l) + "\n"
+  fn, log, description = run_reduce2("tst_reduce2_neutron_no_o", pdb_str,
+    ["approach=add", "keep_existing_H=True", "exclude_water=False"])
+  h = iotbx.pdb.input(fn).construct_hierarchy()
+  assert not [a for a in h.atoms() if a.parent().resname == "HOH" and
+              a.parent().parent().resseq.strip() == "8"]
+  report = log.split("were not placed because a neighbouring heavy atom is")
+  assert len(report) == 2 and "HOH A 8" in report[1].split("\n\n")[0], log
+  for block in log.split("could not be parameterized")[1:]:
+    assert "HOH A   8" not in block.split("\n\n")[0]
+
 if __name__ == "__main__":
   test_xray_default()
   test_neutron_add()
@@ -431,4 +450,5 @@ if __name__ == "__main__":
   test_floating_h_water_098()
   test_no_floating_h_unchanged()
   test_floating_h_flipkins()
+  test_water_without_o_add()
   print("OK")
