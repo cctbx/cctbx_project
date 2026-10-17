@@ -27,6 +27,9 @@ _KNOWN_KEYS = {
   "backend", "claude", "portkey",
 }
 
+# Values accepted for portkey.tools_reasoning_effort (OpenAI reasoning_effort).
+_TOOLS_REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high")
+
 # Backends supported by the agent factory. Validated at load time so
 # typos surface before the chat window opens.
 _KNOWN_BACKENDS = ("anthropic", "claude_code", "openai", "portkey", "google")
@@ -209,6 +212,11 @@ class Profile:
   # read them unconditionally (the launcher falls back to these).
   portkey_virtual_key: str = None
   portkey_config: str = None
+  # reasoning_effort sent on Portkey tool turns, for deployments whose model
+  # name hides the underlying GPT version (e.g. an Azure deployment named
+  # "my-gpt"): "none" makes gpt-5.6+ accept function tools on Chat
+  # Completions.  None (default) lets the backend decide from the model name.
+  portkey_tools_reasoning_effort: str = None
   source_path: Path = None                             # which file this came from
 
 
@@ -495,6 +503,11 @@ def _build_profile(data, source_path):
   # portkey backend will consult it; for other backends it just yields
   # None defaults so attribute access on the Profile is always safe.
   portkey_data = data.get("portkey", {}) or {}
+  tools_effort = portkey_data.get("tools_reasoning_effort")
+  if tools_effort is not None and tools_effort not in _TOOLS_REASONING_EFFORTS:
+    raise Sorry("Profile %s: portkey.tools_reasoning_effort must be one of "
+                "%s; got %r" % (source_path, ", ".join(_TOOLS_REASONING_EFFORTS),
+                                tools_effort))
 
   # System prompt: inline xor file (file content inlined here if present).
   system_prompt = data.get("system_prompt", "") or ""
@@ -571,6 +584,7 @@ def _build_profile(data, source_path):
     claude=claude_opts,
     portkey_virtual_key=portkey_data.get("virtual_key"),
     portkey_config=portkey_data.get("config"),
+    portkey_tools_reasoning_effort=tools_effort,
     source_path=source_path,
   )
 
@@ -618,6 +632,7 @@ def _profile_to_dict(p):
     "portkey": {
       "virtual_key": p.portkey_virtual_key,
       "config": p.portkey_config,
+      "tools_reasoning_effort": p.portkey_tools_reasoning_effort,
     },
   }
 
