@@ -3847,16 +3847,24 @@ def exercise_numpy_byte_order():
   # multi-dimensional, with a NaN that must survive as a NaN
   n = np.arange(24, dtype=np.float32).reshape(2, 3, 4)
   for byte_order in ['<', '>']:
-    f = flex.float(n.astype(np.dtype(byte_order + 'f4')))
-    assert f.all() == (2, 3, 4)
-    assert list(f.as_1d()) == list(range(24))
-    f = flex.double(n.astype(np.dtype(byte_order + 'f8')))
-    assert f.all() == (2, 3, 4)
-    assert list(f.as_1d()) == list(range(24))
+    for flex_type, npy_code in [(flex.float, 'f4'), (flex.double, 'f8')]:
+      f = flex_type(n.astype(np.dtype(byte_order + npy_code)))
+      assert f.all() == (2, 3, 4), (byte_order, npy_code, f.all())
+      assert list(f.as_1d()) == list(range(24)), (
+        byte_order, npy_code, list(f.as_1d()))
   n = np.array([1.0, float("nan"), 3.0])
   for byte_order in ['<', '>']:
     f = flex.double(n.astype(np.dtype(byte_order + 'f8')))
     assert f[0] == 1.0 and f[2] == 3.0 and f[1] != f[1], (byte_order, list(f))
+  # C-contiguous but unaligned, e.g. a buffer read at a 1-byte offset or a
+  # memory-mapped map whose extended header is not a multiple of 4 bytes.
+  # numpy's aligned flag is independent of contiguity.
+  for byte_order in ['<', '>']:
+    raw = bytearray(1) + np.array(values, dtype=byte_order + 'f4').tobytes()
+    n = np.frombuffer(raw, dtype=byte_order + 'f4', offset=1)
+    assert n.flags.c_contiguous and not n.flags.aligned, n.flags
+    f = flex.float(n)
+    assert list(f) == values, (byte_order, list(f))
 
 def run(iterations):
   i = 0
