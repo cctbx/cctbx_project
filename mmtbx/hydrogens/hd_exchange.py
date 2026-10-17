@@ -653,13 +653,16 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
   -> both restored; recorded pair as one isotope -> parent occupancy, that
   isotope's B/uij; new pair -> 0.5 x parent occupancy each, B/uij of the H;
   single without record -> unchanged (occupancy note if not the parent's).
-  Returns group_args(n_split, n_to_d, n_water, n_restored,
+  Water names follow the content: D -> DOD, H -> HOH where it was DOD.
+  Returns group_args(n_split, n_to_d, n_water (residue_groups renamed to
+  DOD), n_water_to_hoh (DOD renamed to HOH), n_restored,
   partial_parent_sites, conformer_sites, unclassified_sites, merged_sites,
   notes, provenance={output atom_key: source atom_key}); merged H map to
   the first copy's atom_key."""
   if option not in NEUTRON_OPTIONS:
     raise Sorry("Internal error: unknown neutron option %s" % option)
-  result = group_args(n_split=0, n_to_d=0, n_water=0, n_restored=0,
+  result = group_args(n_split=0, n_to_d=0, n_water=0, n_water_to_hoh=0,
+    n_restored=0,
     partial_parent_sites=[], conformer_sites=[], unclassified_sites=[],
     merged_sites=[], notes=[], provenance={})
   if option == "none": return result
@@ -773,19 +776,25 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
         reason="occupancy differs from parent",
         text="occupancy %.2f, parent %.2f" % (atom.occ, e.parent_occ)))
     written.append((atom, item.source_key))
-  # waters: every water atom_group of a residue_group with D is DOD,
-  # including a blank-altloc O, so that the residue stays one residue
+  # water names follow the content, per residue_group and for every water
+  # atom_group of it (including a blank-altloc O, so that the residue stays
+  # one residue): D -> DOD; H -> HOH where it was DOD (other names such as
+  # WAT are kept); no H/D -> unchanged
   for rg in hierarchy.residue_groups():
     water = [ag for ag in rg.atom_groups() if _is_water(ag)]
     elements = set(a.element.strip().upper() for ag in water
                    for a in ag.atoms())
-    if "D" not in elements: continue
-    if "H" in elements:
+    if "D" in elements and "H" in elements:
       raise Sorry("Internal error: water with H and D: %s" %
         water[0].atoms()[0].id_str())
-    for ag in water:
-      ag.resname = "DOD"
-    result.n_water += 1
+    if "D" in elements:
+      for ag in water:
+        ag.resname = "DOD"
+      result.n_water += 1
+    elif "H" in elements and any(ag.resname == "DOD" for ag in water):
+      for ag in water:
+        if ag.resname == "DOD": ag.resname = "HOH"
+      result.n_water_to_hoh += 1
   for rg_id in groups:
     _remove_empty_atom_groups(groups[rg_id][0])
   # provenance, keyed by the written atoms' final identity

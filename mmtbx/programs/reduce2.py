@@ -1156,6 +1156,96 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _CheckAmbiguousParents(self):
+    # neutron_option: an H/D with more than one covalent partner cannot be
+    # classified; stop before the Optimizer runs, naming the restraints.
+    partners = hd_exchange.covalent_h_partners(self.model)
+    atoms = self.model.get_hierarchy().atoms()
+    bad = []
+    for i in sorted(partners):
+      if len(partners[i]) < 2: continue
+      lines = [' ' + atoms[i].id_str()]
+      for j in sorted(partners[i]):
+        for info in partners[i][j]:
+          lines.append('    %s: %s, ideal %.3f A, %s' % (atoms[j].id_str(),
+            info.origin, info.distance_ideal, info.sym_op))
+      bad.append('\n'.join(lines))
+    if bad:
+      raise Sorry('neutron_option=%s: H/D with more than one covalent bond '
+        'partner (check the restraints):\n%s' % (self.params.neutron_option,
+        '\n'.join(bad)))
+
+# ------------------------------------------------------------------------------
+
+  def _CaptureParentTable(self):
+    # Parent of every H/D while the restraints match the hierarchy; the
+    # output step uses it after the restraints are gone.
+    self._h_parents = hd_exchange.h_parent_table(self.model)
+    self._hd_records = {}
+
+# ------------------------------------------------------------------------------
+
+  def _CheckNeutronOutput(self):
+    # The written H/D model against the parent table: provenance is a
+    # bijection, every pair collapses, exchangeable_hd_selections() finds
+    # exactly the split pairs, no residue_group gained a resname, and water
+    # names match their H/D.
+    out_h = self._output_model.get_hierarchy()
+    provenance = self._neutron_result.provenance
+    atoms = out_h.atoms()
+    keys = hd_exchange.atom_keys(out_h)
+    hd = [k for k, a in zip(keys, atoms)
+          if a.element.strip().upper() in ('H', 'D')]
+    problems = []
+    for k, a in zip(keys, atoms):
+      if a.element.strip().upper() in ('H', 'D') and k not in provenance:
+        problems.append('no provenance: ' + a.id_str())
+    for k in sorted(set(provenance) - set(hd)):
+      problems.append('provenance names a missing atom: ' + str(k))
+    if not problems:
+      match = hd_exchange.collapse_check(hd_exchange.find_hd_candidates(
+        out_h, self._h_parents, provenance=provenance))
+      for x in match.problems:
+        problems.append('%s %s: %s' % (x.h_id, x.d_id, '; '.join(x.reasons)))
+      for x in match.unresolved:
+        problems.append('%s: %s' % (x.atom_id, x.status))
+      pairs = set(frozenset((c.i_h, c.i_d)) for c in match.pairs)
+      written = set(frozenset((s[0][0], s[1][0]))
+                    for s in out_h.exchangeable_hd_selections())
+      if len(pairs) != self._neutron_result.n_split or pairs != written:
+        problems.append('split pairs: %d written, %d paired, %d found by '
+          'exchangeable_hd_selections()' % (self._neutron_result.n_split,
+          len(pairs), len(written)))
+    rgs_in = list(self.model.get_hierarchy().residue_groups())
+    rgs_out = list(out_h.residue_groups())
+    if len(rgs_in) != len(rgs_out):
+      problems.append('%d residue groups in, %d out' % (len(rgs_in),
+        len(rgs_out)))
+    else:
+      for rg_in, rg_out in zip(rgs_in, rgs_out):
+        n_in = len(set(ag.resname for ag in rg_in.atom_groups()))
+        n_out = len(set(ag.resname for ag in rg_out.atom_groups()))
+        if n_in != n_out:
+          problems.append('resnames changed in %s' %
+            rg_out.atoms()[0].id_str())
+    # water names follow the content: with D DOD, with H not DOD
+    for rg in rgs_out:
+      water = [ag for ag in rg.atom_groups()
+               if common_residue_names_get_class(name=ag.resname) ==
+                  'common_water']
+      elements = set(a.element.strip().upper() for ag in water
+                     for a in ag.atoms())
+      names = set(ag.resname for ag in water)
+      if ('D' in elements and names != set(['DOD'])) or \
+         ('H' in elements and 'DOD' in names):
+        problems.append('water name %s does not match its H/D: %s' % (
+          '/'.join(sorted(names)), rg.atoms()[0].id_str()))
+    if problems:
+      raise Sorry('Internal error: H/D output check failed:\n  ' +
+        '\n  '.join(problems))
+
+# ------------------------------------------------------------------------------
+
   def _ReinterpretModel(self, make_restraints=True, model=None):
     # Reinterpret the model using the same approach that hydrogen-placement does.
     # :param make_restraints: Should we compute restraints during the interpretation?
@@ -1489,10 +1579,14 @@ NOTES:
     # about the original model for use by Kinemages.
     initialModel = self.model.deep_copy()
 
+    neutron = self.params.neutron_option != 'none'
     if self.params.approach == 'place':
       make_sub_header('Adding Hydrogens', out=self.logger)
       startAdd = time.time()
       self._AddHydrogens()
+      if neutron:
+        self._CheckAmbiguousParents()
+        self._CaptureParentTable()
       outString += 'Time to Add Hydrogen = {:.3f} sec'.format(
         time.time()-startAdd)+'\n'
 
@@ -1504,6 +1598,8 @@ NOTES:
         startAdd = time.time()
         self._AddHydrogens()
         doneAdd = time.time()
+        if neutron:
+          self._CheckAmbiguousParents()
       else:
         # We need restraints on the model for optimization, so we interpret it to get them.
         self._ReinterpretModel(make_restraints=True)
@@ -1559,6 +1655,11 @@ NOTES:
         print('\nWarnings during optimization:\n'+warnings, file=self.logger)
       outString += opt.getInfo()
 
+      # the restraints still match the hierarchy here: before the deletions
+      # and before the final reinterpretation without restraints
+      if neutron:
+        self._CaptureParentTable()
+
       # Delete any hydrogens that we've been asked to delete, adding this to the info.
       hToDelete = opt.getHydrogensToDelete()
       if len(hToDelete) > 0:
@@ -1602,6 +1703,21 @@ NOTES:
     if self.params.qmready and self.params.approach == 'add':
       self._CalculateTotalCharge()
 
+    # The model that is written and returned; self.model stays H-only for
+    # the comparison and the flipkins.
+    self._neutron_result = None
+    if not neutron:
+      self._output_model = self.model
+    else:
+      make_sub_header('Writing H/D model (neutron_option=%s)' %
+        self.params.neutron_option, out=self.logger)
+      h = self.model.get_hierarchy().deep_copy()
+      self._neutron_result = hd_exchange.apply_neutron_option(h,
+        self.params.neutron_option, parent_table=self._h_parents,
+        records=self._hd_records, log=self.logger)
+      self._output_model = self._RebuildModel(h, make_restraints=False)
+      self._CheckNeutronOutput()
+
     make_sub_header('Writing output', out=self.logger)
 
     # Skip writing the main output file and description output file if output.write_files is False.
@@ -1615,11 +1731,11 @@ NOTES:
       suffix = os.path.splitext(self.params.output.filename)[1]
       output_cs = self._output_cs is not None
       if output_cs:
-        self.model.set_unit_cell_crystal_symmetry(self._output_cs)
+        self._output_model.set_unit_cell_crystal_symmetry(self._output_cs)
       if suffix.lower() == ".pdb":
-        txt = self.model.model_as_pdb(output_cs=output_cs)
+        txt = self._output_model.model_as_pdb(output_cs=output_cs)
       else:
-        txt = self.model.model_as_mmcif(output_cs=output_cs)
+        txt = self._output_model.model_as_mmcif(output_cs=output_cs)
       self.data_manager._write_text("model", txt, self.params.output.filename)
 
       print('Wrote', self.params.output.filename,'and',
@@ -2018,7 +2134,7 @@ NOTES:
 
   def get_results(self):
     return group_args(
-      model        = self.model,
+      model        = getattr(self, '_output_model', self.model),
       total_charge = getattr(self, 'total_charge', None))
 
 # ------------------------------------------------------------------------------

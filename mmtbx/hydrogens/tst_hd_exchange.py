@@ -1313,6 +1313,34 @@ def test_repeated_labels_restore():
   k = hd_exchange.collapse_check(c)
   assert k.problems == [] and k.unresolved == []
 
+def test_water_names_follow_content():
+  # DOD with H -> HOH in all_h (every atom_group), DOD with D in hd_and_h;
+  # DOD with only O and WAT with H keep their names
+  def water(resname, h_altloc=" ", h=True):
+    lines = ["HETATM    1  O   %s A   1      10.000  10.000  10.000  1.00 20.00"
+             "           O" % resname]
+    if h:
+      for name, x, y in (("H1", 10.850, 10.0), ("H2", 9.795, 10.825)):
+        lines.append("HETATM    1  %-3s%s%s A   1    %8.3f%8.3f  10.000  1.00"
+          " 20.00           H" % (name, h_altloc, resname, x, y))
+    return iotbx.pdb.input(source_info=None, lines=lines).construct_hierarchy()
+  for label, h, option, names, element in (
+      ("DOD+H", water("DOD"), "all_h", ["HOH"], "H"),
+      ("DOD+H", water("DOD"), "hd_and_h", ["DOD"], "D"),
+      ("DOD+H in A", water("DOD", "A"), "all_h", ["HOH", "HOH"], "H"),
+      ("DOD+H in A", water("DOD", "A"), "hd_and_h", ["DOD", "DOD"], "D"),
+      ("DOD O only", water("DOD", h=False), "all_h", ["DOD"], None),
+      ("DOD O only", water("DOD", h=False), "hd_and_h", ["DOD"], None),
+      ("WAT+H", water("WAT"), "all_h", ["WAT"], "H")):
+    r = hd_exchange.apply_neutron_option(h, option, hand_table(h))
+    assert [ag.resname for ag in h.atom_groups()] == names, (label, option,
+      [ag.resname for ag in h.atom_groups()])
+    elements = set(a.element.strip() for a in h.atoms()) - set(["O"])
+    assert elements == (set([element]) if element else set()), (label, option)
+    assert r.n_water == (1 if element == "D" else 0)
+    assert r.n_water_to_hoh == (1 if label.startswith("DOD+H") and
+                                option == "all_h" else 0), (label, option)
+
 if __name__ == "__main__":
   test_parent_table_30f()
   test_edits_covalent_limit()
@@ -1358,4 +1386,5 @@ if __name__ == "__main__":
   test_lone_alternate_h()
   test_two_models()
   test_repeated_labels_restore()
+  test_water_names_follow_content()
   print("OK")

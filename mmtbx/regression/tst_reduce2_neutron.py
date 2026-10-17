@@ -650,6 +650,326 @@ def test_rebuild_model():
   else:
     raise AssertionError("ZQ1 interpreted without its CIF")
 
+# ------------------------------------------------------------------------------
+# step 3.2: output step for add and place
+
+NEUTRON = ("all_h", "all_d", "hd_and_h", "hd_and_d", "all_hd")
+
+def run_prog(prefix, pdb_str, cif_str=None, **params):
+  """validate() and run() a reduce2.Program; returns the program"""
+  params.setdefault("output__filename", prefix + "_out.pdb")
+  params.setdefault("output__description_file_name", prefix + ".txt")
+  params.setdefault("output__overwrite", True)
+  prog, log = make_program(prefix, pdb_str, cif_str, **params)
+  prog.validate()
+  prog.run()
+  prog.log_text = log.getvalue()
+  return prog
+
+def hd_pairs(hierarchy):
+  """[(H, D)] from exchangeable_hd_selections()"""
+  atoms = hierarchy.atoms()
+  result = []
+  for x in hierarchy.exchangeable_hd_selections():
+    a, b = atoms[x[0][0]], atoms[x[1][0]]
+    if a.element.strip() == "D": a, b = b, a
+    result.append((a, b))
+  return result
+
+def heavy_atoms(hierarchy):
+  from mmtbx.hydrogens import hd_exchange
+  return dict((hd_exchange.atom_key(a), (a.name, a.parent().altloc, a.xyz,
+    a.occ, a.b, tuple(a.uij) if a.uij_is_defined() else None))
+    for a in hierarchy.atoms() if a.element.strip() not in ("H", "D"))
+
+def test_distances_all_modes():
+  # neutron targets for every mode, add and place; water 0.98 A; H and D of
+  # a pair at the same position
+  for option in NEUTRON:
+    for approach in ("add", "place"):
+      prefix = "tst_reduce2_neutron_32_%s_%s" % (option, approach)
+      fn, log, description = run_reduce2(prefix, pdb_1yjp,
+        ["neutron_option=" + option, "approach=" + approach,
+         "exclude_water=False"])
+      check_bond_lengths(fn, use_neutron_distances=True)
+      check_water(fn, 0.98, 7)
+      h = iotbx.pdb.input(fn).construct_hierarchy()
+      waters = set(ag.resname for ag in h.atom_groups()
+                   if ag.resname in ("HOH", "DOD"))
+      assert waters == set(["HOH" if option == "all_h" else "DOD"]), waters
+      pairs = hd_pairs(h)
+      assert (len(pairs) > 0) == (option in ("hd_and_h", "hd_and_d",
+                                             "all_hd")), (option, len(pairs))
+      for hh, dd in pairs:
+        assert approx_equal(hh.xyz, dd.xyz, eps=1e-3), (hh.id_str())
+
+def test_n_terminal_nh3():
+  # 1: Gly 1 H1, H2, H3 all split in hd_and_h
+  fn, log, description = run_reduce2("tst_reduce2_neutron_nh3", pdb_1yjp,
+    ["neutron_option=hd_and_h"])
+  h = iotbx.pdb.input(fn).construct_hierarchy()
+  gly = [rg for rg in h.residue_groups() if rg.resseq.strip() == "1"][0]
+  by_alt = dict((ag.altloc, sorted(a.name.strip() for a in ag.atoms()))
+                for ag in gly.atom_groups())
+  assert by_alt["A"] == ["H1", "H2", "H3"], by_alt
+  assert by_alt["B"] == ["D1", "D2", "D3"], by_alt
+
+def test_conformers():
+  # 8: Ser with OG in A and B: backbone H on the blank N split into C/D,
+  # HG in A and B written as D and listed as conformer sites
+  from mmtbx.hydrogens.tst_hd_exchange import pdb_pep_og_ab
+  for approach in ("add", "place"):
+    prog = run_prog("tst_reduce2_neutron_conf_" + approach, pdb_pep_og_ab,
+      neutron_option="hd_and_h", approach=approach)
+    h = iotbx.pdb.input(prog.params.output.filename).construct_hierarchy()
+    ser = [rg for rg in h.residue_groups() if rg.resseq.strip() == "2"][0]
+    hd = dict((ag.altloc, sorted(a.name.strip() for a in ag.atoms()
+               if a.element.strip() in ("H", "D"))) for ag in ser.atom_groups())
+    assert hd["C"] == ["H"] and hd["D"] == ["D"], hd
+    assert "DG" in hd["A"] and "DG" in hd["B"], hd
+    sites = prog._neutron_result.conformer_sites
+    assert sorted(x.site[5:9].strip() for x in sites
+                  if x.reason == "conformer") == ["HG", "HG"], sites
+
+def test_output_symmetry():
+  # 9d: none in -> none out; cryo-EM placeholder -> 1 1 1 P 1; cell -> cell
+  no_cs = "\n".join(l for l in pdb_1yjp.splitlines()
+                    if not l.startswith("CRYST1"))
+  placeholder = pdb_1yjp.replace(
+    "CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1",
+    "CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1")
+  for label, pdb_str, cryst1 in (("nocs", no_cs, None),
+      ("placeholder", placeholder, "CRYST1    1.000    1.000    1.000"),
+      ("cell", pdb_1yjp, "CRYST1   21.937    4.866   23.477")):
+    fn, log, description = run_reduce2("tst_reduce2_neutron_cs_" + label,
+      pdb_str, ["neutron_option=hd_and_h"])
+    with open(fn) as f:
+      lines = [l for l in f.read().splitlines() if l.startswith("CRYST1")]
+    if cryst1 is None:
+      assert lines == [], lines
+    else:
+      assert len(lines) == 1 and lines[0].startswith(cryst1), lines
+
+def test_output_model():
+  # 9e, 9f, 9h: results and heavy atoms
+  prog = run_prog("tst_reduce2_neutron_out", pdb_1yjp,
+    neutron_option="hd_and_h", exclude_water=False)
+  results = prog.get_results()
+  assert results.model is prog._output_model
+  assert hasattr(results, "total_charge")
+  out_h = results.model.get_hierarchy()
+  assert "D" in [a.element.strip() for a in out_h.atoms()]
+  # self.model stays H-only
+  assert "D" not in [a.element.strip()
+                     for a in prog.model.get_hierarchy().atoms()]
+  # 9h: heavy atoms identical (xyz to round-off from rebuilding the model)
+  out_heavy = heavy_atoms(out_h)
+  in_heavy = heavy_atoms(prog.model.get_hierarchy())
+  assert sorted(out_heavy) == sorted(in_heavy)
+  for key, (name, altloc, xyz, occ, b, uij) in in_heavy.items():
+    o = out_heavy[key]
+    assert (o[0], o[1], o[3], o[4], o[5]) == (name, altloc, occ, b, uij), key
+    assert approx_equal(o[2], xyz, eps=1e-9, out=None), key
+  # 9e: TYR ring names as in self.model
+  def ring(h):
+    return dict((a.name.strip(), a.xyz) for a in h.atoms()
+      if a.parent().resname == "TYR" and a.name.strip() in
+      ("CD1", "CD2", "CE1", "CE2"))
+  assert ring(out_h) == ring(prog.model.get_hierarchy())
+
+def test_write_files_false():
+  # 9g: no files, and the results model is the H/D model
+  prefix = "tst_reduce2_neutron_nowrite"
+  for ext in ("_out.pdb", ".txt"):
+    if os.path.exists(prefix + ext): os.remove(prefix + ext)
+  prog = run_prog(prefix, pdb_1yjp, neutron_option="hd_and_h",
+    output__write_files=False)
+  assert not os.path.exists(prefix + "_out.pdb")
+  assert not os.path.exists(prefix + ".txt")
+  model = prog.get_results().model
+  assert "D" in [a.element.strip() for a in model.get_hierarchy().atoms()]
+
+def test_water_after_select_hd():
+  # 9k(a): placement drops the unparameterizable Lys HD2/HD3 (select());
+  # the water O-D stays 0.98 A
+  fn, log, description = run_reduce2("tst_reduce2_neutron_9ka",
+    pdb_truncated_lys, ["neutron_option=hd_and_h", "exclude_water=False"])
+  h = iotbx.pdb.input(fn).construct_hierarchy()
+  names = [a.name.strip() for a in h.atoms() if a.parent().resname == "LYS"]
+  assert "HD2" not in names and "HD3" not in names, names
+  assert [ag.resname for ag in h.atom_groups()
+          if ag.resname in ("HOH", "DOD")] == ["DOD"]
+  check_water(fn, 0.98, 1)
+
+def test_occupancy_groups():
+  # 10: one exchangeable pair per split site; phenix.refine's
+  # occupancy_selections() puts each split site in one two-atom group
+  from mmtbx.refinement.occupancies import occupancy_selections
+  prog = run_prog("tst_reduce2_neutron_occ", pdb_1yjp,
+    neutron_option="hd_and_h")
+  fn = prog.params.output.filename
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(fn), log=null_out())
+  model.process(make_restraints=True)
+  h = model.get_hierarchy()
+  pairs = h.exchangeable_hd_selections()
+  assert len(pairs) == prog._neutron_result.n_split
+  groups = occupancy_selections(model=model, as_flex_arrays=False)
+  for x in pairs:
+    i_h, i_d = x[0][0], x[1][0]
+    found = [g for g in groups if any(i_h in s for s in g)]
+    assert len(found) == 1, (h.atoms()[i_h].id_str(), found)
+    members = sorted(i for s in found[0] for i in s)
+    assert members == sorted([i_h, i_d]), (h.atoms()[i_h].id_str(), members)
+
+def test_partial_parent():
+  # 12: Tyr OH at 0.8 -> HH 0.4 / DH 0.4, listed
+  pdb_str = pdb_1yjp.replace(
+    "OH  TYR A   7       3.766   0.589  10.291  1.00",
+    "OH  TYR A   7       3.766   0.589  10.291  0.80")
+  prog = run_prog("tst_reduce2_neutron_partial", pdb_str,
+    neutron_option="hd_and_h")
+  h = iotbx.pdb.input(prog.params.output.filename).construct_hierarchy()
+  occ = dict((a.name.strip(), a.occ) for a in h.atoms()
+             if a.parent().resname == "TYR" and a.name.strip() in ("HH", "DH"))
+  assert approx_equal(occ["HH"], 0.4) and approx_equal(occ["DH"], 0.4), occ
+  sites = prog._neutron_result.partial_parent_sites
+  assert [(x.site[5:9].strip(), x.parent_occ) for x in sites] == [
+    ("HH", 0.8)], sites
+
+def test_ambiguous_parent():
+  # 5b: an H/D with two covalent partners stops the run before the Optimizer.
+  # reduce2 takes no geometry_restraints.edits, and placement drops an H
+  # that a CIF bonds to two heavy atoms, so the check is called directly on
+  # a model whose edits make Ser HG ambiguous
+  from mmtbx.hydrogens import tst_hd_exchange as t
+  model = t.make_model(t.pdb_ser_hd.replace(
+    "ATOM     11  DG BSER A   2      15.856   0.874   6.441  0.50 20.00"
+    "           D\n", ""), [t.edits_bond("name HG", "name CB", 1.1)])
+  prog, log = make_program("tst_reduce2_neutron_amb", pdb_1yjp,
+    neutron_option="hd_and_h")
+  prog.validate()
+  prog.model = model
+  try:
+    prog._CheckAmbiguousParents()
+  except Sorry as e:
+    text = str(e)
+    assert "more than one covalent bond partner" in text
+    assert 'HG ASER' in text and 'OG  SER' in text and 'CB  SER' in text
+    assert "covalent geometry" in text and "edits" in text
+  else:
+    raise AssertionError("ambiguous HG not reported")
+  # a normal model passes the check
+  prog.model = make_model_from_str(pdb_1yjp_h())
+  prog._CheckAmbiguousParents()
+  # end to end, a CIF bond from HO1 to a second heavy atom: placement drops
+  # HO1 (not parameterizable), so the run completes with none and hd_and_h
+  cif = cif_lig.replace(" ZQ1  O1  HO1  single  0.850   0.020  0.980\n",
+    " ZQ1  O1  HO1  single  0.850   0.020  0.980\n"
+    " ZQ1  C1  HO1  single  1.050   0.020  1.050\n")
+  assert cif != cif_lig
+  for option in ("none", "hd_and_h"):
+    prog = run_prog("tst_reduce2_neutron_amb_" + option, pdb_lig, cif,
+      neutron_option=option, keep_existing_H=True)
+    h = iotbx.pdb.input(prog.params.output.filename).construct_hierarchy()
+    assert "HO1" not in [a.name.strip() for a in h.atoms()]
+
+_pdb_1yjp_h = []
+def pdb_1yjp_h():
+  if not _pdb_1yjp_h:
+    fn, _, _ = run_reduce2("tst_reduce2_neutron_1yjp_h", pdb_1yjp, [])
+    with open(fn) as f: _pdb_1yjp_h.append(f.read())
+  return _pdb_1yjp_h[0]
+
+def make_model_from_str(pdb_str):
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(
+    lines=pdb_str.split("\n"), source_info=None), log=null_out())
+  model.process(make_restraints=True)
+  return model
+
+def test_flipkins_hd():
+  # hd_and_h with flipkins: completes, the written model is the H/D model,
+  # and the flipkins are those of the H-only run with the same (neutron)
+  # distances: they are made from self.model
+  kins = {}
+  for option, args in (("none", dict(use_neutron_distances=True)),
+                       ("hd_and_h", {})):
+    d = "tst_reduce2_neutron_fk_" + option
+    if not os.path.isdir(d): os.mkdir(d)
+    prefix = "tst_reduce2_neutron_fkrun_" + option
+    prog = run_prog(prefix, pdb_1yjp, neutron_option=option,
+      add_flip_movers=True, output__flipkin_directory=d, **args)
+    h = iotbx.pdb.input(prog.params.output.filename).construct_hierarchy()
+    has_d = "D" in [a.element.strip() for a in h.atoms()]
+    assert has_d == (option != "none")
+    kins[option] = {}
+    for f in sorted(os.listdir(d)):
+      with open(os.path.join(d, f)) as fh:
+        text = fh.read().replace(prefix, "BASE")
+      kins[option][f.replace(prefix, "BASE")] = [l for l in text.splitlines()
+        if not l.startswith("@caption")]
+  assert len(kins["none"]) > 0
+  assert kins["none"] == kins["hd_and_h"]
+
+def test_output_check_fires():
+  # a provenance map missing an entry is an internal error
+  from mmtbx.hydrogens import hd_exchange
+  original = hd_exchange.apply_neutron_option
+  def broken(*args, **kwargs):
+    r = original(*args, **kwargs)
+    r.provenance.pop(sorted(r.provenance)[0])
+    return r
+  hd_exchange.apply_neutron_option = broken
+  try:
+    run_reduce2("tst_reduce2_neutron_broken", pdb_1yjp,
+      ["neutron_option=hd_and_h"])
+  except Sorry as e:
+    assert "Internal error: H/D output check failed" in str(e), str(e)
+    assert "no provenance" in str(e)
+  else:
+    raise AssertionError("output check did not fire")
+  finally:
+    hd_exchange.apply_neutron_option = original
+
+pdb_1yjp_dod = pdb_1yjp.replace("HOH A", "DOD A")
+
+def test_dod_input_all_h():
+  # input waters named DOD (O only), all_h: placement adds H, the written
+  # waters are HOH with H and there is no DOD anywhere
+  assert pdb_1yjp_dod.count("DOD A") == 7
+  for approach in ("add", "place"):
+    fn, log, description = run_reduce2("tst_reduce2_neutron_dod_" + approach,
+      pdb_1yjp_dod, ["neutron_option=all_h", "approach=" + approach,
+      "exclude_water=False", "keep_existing_H=False"])
+    h = iotbx.pdb.input(fn).construct_hierarchy()
+    waters = [ag for ag in h.atom_groups() if ag.resname in ("HOH", "DOD")]
+    assert len(waters) == 7
+    assert set(ag.resname for ag in waters) == set(["HOH"])
+    assert set(a.element.strip() for ag in waters for a in ag.atoms()) == \
+      set(["O", "H"])
+    assert "DOD" not in open(fn).read()
+    check_water(fn, 0.98, 7)
+
+def test_output_check_water_names():
+  # the water-name check: renaming left out, a water with H named DOD
+  from mmtbx.hydrogens import hd_exchange
+  original = hd_exchange.apply_neutron_option
+  def no_rename(hierarchy, *args, **kwargs):
+    r = original(hierarchy, *args, **kwargs)
+    for ag in hierarchy.atom_groups():
+      if ag.resname == "HOH": ag.resname = "DOD"
+    return r
+  hd_exchange.apply_neutron_option = no_rename
+  try:
+    run_reduce2("tst_reduce2_neutron_wname", pdb_1yjp_dod,
+      ["neutron_option=all_h", "exclude_water=False"])
+  except Sorry as e:
+    assert "Internal error: H/D output check failed" in str(e), str(e)
+    assert "water name DOD does not match its H/D" in str(e), str(e)
+  else:
+    raise AssertionError("water-name check did not fire")
+  finally:
+    hd_exchange.apply_neutron_option = original
+
 if __name__ == "__main__":
   test_xray_default()
   test_neutron_add()
@@ -671,4 +991,18 @@ if __name__ == "__main__":
   test_none_distances()
   test_resolved_flag_all_h()
   test_rebuild_model()
+  test_distances_all_modes()
+  test_n_terminal_nh3()
+  test_conformers()
+  test_output_symmetry()
+  test_output_model()
+  test_write_files_false()
+  test_water_after_select_hd()
+  test_occupancy_groups()
+  test_partial_parent()
+  test_ambiguous_parent()
+  test_flipkins_hd()
+  test_output_check_fires()
+  test_dod_input_all_h()
+  test_output_check_water_names()
   print("OK")
