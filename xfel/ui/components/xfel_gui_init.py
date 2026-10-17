@@ -1336,8 +1336,8 @@ class MergingStatsSentinel(Thread):
       pass
     params = drift_parameters(settings)
     table = DriftTable()
-    scraper = DriftScraperFactory.get_drift_scraper_class(ExplicitDriftScraper, params)
-    scraper(table, params, entries, cache).scrap()
+    scraper = DriftScraperFactory.get_drift_scraper_class(ExplicitDriftScraper, params)(table, params, entries, cache)
+    scraper.scrap()
     try:
       if not os.path.isdir(cache_dir):
         os.makedirs(cache_dir)
@@ -1345,8 +1345,11 @@ class MergingStatsSentinel(Thread):
         pickle.dump(cache, f)
     except (IOError, OSError) as e:
       print('Could not write drift cache', cache_path, e)
-    message = ('Read %d of %d chunks; the rest have no refined experiments yet.'
-               % (len(table), len(entries))) if len(table) < len(entries) else ''
+    message = ''
+    if scraper.failures:
+      path, why = scraper.failures[0]
+      message = ('Read %d of %d chunks. First skipped: %s\n%s'
+                 % (len(table), len(entries), os.path.basename(path), why))
     tab.drift_result = DriftResult(version_id, settings, table, message)
 
 # ------------------------------- Main Window -------------------------------- #

@@ -615,6 +615,7 @@ class ExplicitDriftScraper(BaseDriftScraper):
     super().__init__(table=table, parameters=parameters)
     self.entries = list(entries)
     self.cache = cache if cache is not None else {}
+    self.failures: List[Tuple[str, str]] = []  # (combine_phil_path, why it was skipped)
 
   @staticmethod
   def refined_mtime(combine_phil_path: str) -> float:
@@ -634,13 +635,16 @@ class ExplicitDriftScraper(BaseDriftScraper):
         refined_expts, refined_refls = self.locate_refined_expts_refls(combine_phil_path)
         elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
         if elen == 0:
+          stem = combine_phil_path.replace('_combine_experiments.phil', '')
+          self.failures.append((combine_phil_path, 'no experiments in %s_refined.expt' % stem))
           continue
         self.scrap_dict.update({'expts': elen, 'refls': rlen})
         self.scrap_origin(refined_expts)
         self.scrap_unit_cell(refined_expts)
         self.scrap_origin_deltas(refined_expts, refined_refls)
-      except (KeyError, IndexError, JSONDecodeError, OSError) as e:
-        print(e)
+      except Exception as e:  # noqa: one bad chunk must not stop the rest
+        self.failures.append((combine_phil_path, '%s: %s' % (type(e).__name__, e)))
+        print(combine_phil_path, type(e).__name__, e)
       else:
         self.cache[combine_phil_path] = (mtime, self.scrap_dict)
         self.scrap_results.append(self.scrap_dict)
