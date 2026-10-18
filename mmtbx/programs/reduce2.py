@@ -1596,21 +1596,27 @@ NOTES:
     # with output.write_files=False: the input cell, the cryo-EM placeholder
     # (unit cell symmetry only) or none. A model on reduce2's box is rebuilt
     # unprocessed, as if read from that file: a processed model without
-    # symmetry fails in selection().
+    # symmetry fails in selection(). Shifted input: the returned model is put
+    # back into the caller's frame (shift, working box, unit cell symmetry).
     # :return: The model to return.
     cs = self._output_cs
     if (cs is not None) and (not cs.is_nonsense()):
       model.set_unit_cell_crystal_symmetry(cs)
-      return model
-    new = mmtbx.model.manager(
-      model_input       = None,
-      pdb_hierarchy     = model.get_hierarchy(),
-      crystal_symmetry  = None,
-      restraint_objects = model.get_restraint_objects(),
-      stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
-      log               = null_out())
-    if cs is not None:
-      new.set_unit_cell_crystal_symmetry(cs)
+      new = model
+    else:
+      new = mmtbx.model.manager(
+        model_input       = None,
+        pdb_hierarchy     = model.get_hierarchy(),
+        crystal_symmetry  = None,
+        restraint_objects = model.get_restraint_objects(),
+        stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
+        log               = null_out())
+      if cs is not None:
+        new.set_unit_cell_crystal_symmetry(cs)
+    if self._input_shift is not None:
+      shift_cart, box_cs, unit_cell_cs = self._input_shift
+      new.shift_model_and_set_crystal_symmetry(shift_cart=shift_cart,
+        crystal_symmetry=box_cs, unit_cell_crystal_symmetry=unit_cell_cs)
     return new
 
 # ------------------------------------------------------------------------------
@@ -1849,6 +1855,17 @@ NOTES:
     self.model = self.data_manager.get_model()
 
     self.model = self.model.select(~self.model.selection('element X'))
+    # A model shifted in memory (e.g. boxed with a map) is shifted back on
+    # this copy: placement builds a new model without the shift, so the run
+    # is the file run. _ReturnedModel() puts the shift back. Any non-zero
+    # shift, not shifted() (1e-3 A tolerance): set_unit_cell_crystal_symmetry()
+    # asserts exactly (0, 0, 0).
+    self._input_shift = None
+    shift_cart = self.model.shift_cart()
+    if shift_cart is not None and tuple(shift_cart) != (0, 0, 0):
+      self._input_shift = (shift_cart,
+        self.model.crystal_symmetry(), self.model.unit_cell_crystal_symmetry())
+      self.model.shift_model_back()
     # CA and/or P trace; waters and ions do not count
     names = set()
     for ag in self.model.get_hierarchy().atom_groups():

@@ -292,6 +292,86 @@ def test_rerun_after_process():
       assert cryst1_records(mem_out)[0].split()[1:4] == \
         ["%.3f" % x for x in cs.unit_cell().parameters()[:3]]
 
+def shifted_model(pdb_text):
+  """pdb_text (80 A P 21 21 21 cell) shifted by (10, 20, 30) into a 60 A
+  P 1 working box, as boxing with a map does it"""
+  from cctbx import crystal
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(
+    lines=pdb_text.split("\n"), source_info=None), log=null_out())
+  model.shift_model_and_set_crystal_symmetry(shift_cart=(10, 20, 30),
+    crystal_symmetry=crystal.symmetry((60, 60, 60, 90, 90, 90), "P 1"))
+  return model
+
+def same_symmetry(a, b):
+  return a.is_similar_symmetry(b) and \
+    a.unit_cell().parameters() == b.unit_cell().parameters()
+
+def test_shifted_model_in_memory():
+  # A model shifted and boxed in memory gives the file of the file route
+  # (the writer shifts back); the returned model stays in the caller's frame
+  h = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None
+    ).construct_hierarchy()
+  h.atoms().set_xyz(h.atoms().extract_xyz() + (-96, -90, -147))
+  heavy_text = ("CRYST1   80.000   80.000   80.000  90.00  90.00  90.00"
+    " P 21 21 21\n" + h.as_pdb_string())
+  prefix = "tst_reduce2_no_symmetry_22"
+  run_prog(prefix + "_h", heavy_text, ["output.filename=" + prefix + "_h.pdb"])
+  with open(prefix + "_h.pdb") as f: h_text = f.read()
+  cases = (("none", heavy_text, []),
+           ("hd_and_h", heavy_text, ["neutron_option=hd_and_h"]),
+           ("optimize", h_text, ["approach=optimize"]))
+  for case, text, args in cases:
+    for suffix in (".pdb", ".cif"):
+      p = "%s_%s_%s" % (prefix, case, suffix[1:])
+      model = shifted_model(text)
+      xyz = model.get_sites_cart().deep_copy()
+      cs, uc_cs = model.crystal_symmetry(), model.unit_cell_crystal_symmetry()
+      run_prog(p + "_file", model.model_as_pdb(),
+        args + ["output.filename=" + p + "_file" + suffix])
+      prog = run_prog(p + "_mem", None,
+        args + ["output.filename=" + p + "_mem" + suffix], model=model)
+      with open(p + "_file" + suffix) as f: file_out = f.read()
+      with open(p + "_mem" + suffix) as f: mem_out = f.read()
+      assert mem_out == file_out, (case, suffix)
+      # caller's model unchanged
+      assert model.shift_cart() == (10, 20, 30)
+      assert same_symmetry(model.crystal_symmetry(), cs)
+      assert same_symmetry(model.unit_cell_crystal_symmetry(), uc_cs)
+      assert approx_equal(model.get_sites_cart(), xyz, eps=1.e-6)
+      # returned model: caller's frame, written as the file
+      returned = prog.get_results().model
+      assert returned.shift_cart() == (10, 20, 30), (case, suffix)
+      assert same_symmetry(returned.crystal_symmetry(), cs)
+      assert same_symmetry(returned.unit_cell_crystal_symmetry(), uc_cs)
+      ref = heavy_xyz(model.get_hierarchy())
+      out = heavy_xyz(returned.get_hierarchy())
+      assert set(ref) == set(out)
+      for k in ref:
+        assert approx_equal(ref[k], out[k], eps=1.e-3), (case, suffix, k)
+      if suffix == ".pdb":
+        assert returned.model_as_pdb() == file_out, case
+      else:
+        assert returned.model_as_mmcif() == file_out, case
+      # in-memory rerun on the returned model
+      run_prog(p + "_rerun", None,
+        args + ["output.filename=" + p + "_rerun" + suffix], model=returned)
+      with open(p + "_rerun" + suffix) as f:
+        assert f.read() == file_out, (case, suffix)
+  # Round-off shift on a real-cell model (below shifted()'s 1e-3 A):
+  # set_unit_cell_crystal_symmetry() asserts exactly (0, 0, 0)
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(
+    lines=h_text.split("\n"), source_info=None), log=null_out())
+  model.shift_model_and_set_crystal_symmetry(shift_cart=(1.e-6, 0, 0))
+  p = prefix + "_tiny"
+  run_prog(p + "_file", model.model_as_pdb(),
+    ["approach=optimize", "output.filename=" + p + "_file.pdb"])
+  prog = run_prog(p + "_mem", None,
+    ["approach=optimize", "output.filename=" + p + "_mem.pdb"], model=model)
+  with open(p + "_file.pdb") as f: file_out = f.read()
+  with open(p + "_mem.pdb") as f: mem_out = f.read()
+  assert mem_out == file_out
+  assert prog.get_results().model.shift_cart() == (1.e-6, 0, 0)
+
 def test_place_hydrogens_does_not_move_model():
   model = place_lib(pdb_str)
   assert n_h(model.get_hierarchy()) > 0
@@ -331,6 +411,7 @@ if __name__ == "__main__":
   test_placeholder_with_restraints()
   test_returned_model_symmetry()
   test_rerun_after_process()
+  test_shifted_model_in_memory()
   test_place_hydrogens_does_not_move_model()
   test_place_hydrogens_translation_invariant()
   print("OK")
