@@ -419,7 +419,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     # a single bonded neighbor that has a single other bonded partner that has 2-3 other bonded friends.
     # Find the friends bonded to the partner besides the neighbor, which will be used to
     # determine the initial orientation for the hydrogen.
-    if atom.element != "H":
+    if not atom.element_is_hydrogen():
       raise ValueError("MoverSingleHydrogenRotator(): Atom is not a hydrogen")
     neighbors = bondedNeighborLists[atom]
     if len(neighbors) != 1:

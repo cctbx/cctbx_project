@@ -2537,6 +2537,119 @@ def test_ccd_only_neutron_lengths():
       f.write("".join(protein))
     check_bond_lengths(fn[:-4] + "_protein.pdb", use_neutron_distances=True)
 
+def placed_text(pdb_str):
+  """pdb_str with H placed by the library (no reduce2 normalization)"""
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(source_info=None,
+    lines=pdb_str), log=null_out())
+  ph = reduce_hydrogen.place_hydrogens(model=model)
+  ph.run()
+  return ph.get_model().model_as_pdb()
+
+def h_to_d(text, names=None):
+  """H -> D (name and element), for all H or the given names"""
+  result = []
+  for l in text.splitlines(True):
+    if l.startswith(("ATOM", "HETATM")) and l[76:78] == " H" and (
+        names is None or l[12:16].strip() in names):
+      i = l[12:16].index("H")
+      l = l[:12+i] + "D" + l[13+i:76] + " D" + l[78:]
+    result.append(l)
+  return "".join(result)
+
+def processed_model(text):
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(source_info=None,
+    lines=text), log=null_out())
+  model.process(make_restraints=True, pdb_interpretation_params=
+    reduce_hydrogen.get_reduce_pdb_interpretation_params(False))
+  return model
+
+def probe_setup(model):
+  """atoms, bonded neighbor lists and extra atom info, as the Optimizer"""
+  from mmtbx.probe import Helpers
+  atoms = model.get_atoms()
+  bond_proxies, asu_proxies = model.get_restraints_manager().geometry.\
+    get_all_bond_proxies(sites_cart=model.get_sites_cart())
+  bonded = Helpers.getBondedNeighborLists(atoms, bond_proxies, asu_proxies)
+  extra = Helpers.getExtraAtomInfo(model=model, bondedNeighborLists=bonded,
+    useNeutronDistances=False, probePhil=Optimizers._philLike()).extraAtomInfo
+  return atoms, bonded, extra
+
+def test_optimizer_single_rotator_d():
+  # Ser with DG (no reduce2 normalization) gets a MoverSingleHydrogenRotator,
+  # as with HG
+  from mmtbx.reduce import Movers
+  text = placed_text(pdb_ser_dg.replace(
+    pdb_ser_dg.splitlines(True)[7], ""))
+  for name, model_text in (("HG", text), ("DG", h_to_d(text, ["HG"]))):
+    model = processed_model(model_text)
+    model.setup_riding_h_manager()
+    atoms, bonded, extra = probe_setup(model)
+    atom = [a for a in atoms if a.name.strip() == name][0]
+    mover = Movers.MoverSingleHydrogenRotator(atom, bonded, extra,
+      model.get_riding_h_manager().h_parameterization)
+    assert len(mover.CoarsePositions().positions) == 7, name
+
+def test_phantom_targets_skip_d():
+  # getPhantomHydrogensFor(): a D next to the water O is skipped as an
+  # orientation target exactly as an H is (Optimizer call, acceptorOnly=False)
+  from mmtbx.probe import Helpers
+  import mmtbx_probe_ext as probe_ext
+  text = placed_text(pdb_ser_dg.replace(
+    pdb_ser_dg.splitlines(True)[7], ""))
+  model = processed_model(text)
+  og, hg = [[a for a in model.get_atoms() if a.name.strip() == n][0]
+            for n in ("OG", "HG")]
+  # water O 2.8 A from OG, on the OG-HG line
+  o = matrix.col(og.xyz) + 2.8 * (matrix.col(hg.xyz) -
+    matrix.col(og.xyz)).normalize()
+  text = text.replace("END", "HETATM  999  O   HOH B   1    %8.3f%8.3f%8.3f"
+    "  1.00 20.00           O\nEND" % tuple(o))
+  phantoms = {}
+  for name, model_text in (("HG", text), ("DG", h_to_d(text, ["HG"]))):
+    model = processed_model(model_text)
+    atoms, bonded, extra = probe_setup(model)
+    water = [a for a in atoms if a.parent().resname == "HOH"][0]
+    result = Helpers.getPhantomHydrogensFor(Helpers.getMaxISeq(model), water,
+      probe_ext.SpatialQuery(atoms), extra, 0.0, False)
+    phantoms[name] = sorted(tuple(round(x, 3) for x in p.xyz) for p in result)
+  assert len(phantoms["HG"]) > 0
+  assert phantoms["DG"] == phantoms["HG"], phantoms
+
+def test_probe2_deuterated():
+  # probe2 on the fully deuterated model gives the contacts of the H model
+  import iotbx.cli_parser
+  from iotbx.data_manager import DataManager
+  from mmtbx.programs import probe2
+  def run_probe2(model, output_format):
+    parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program,
+      logger=null_out())
+    parser.parse_args(["output.write_files=False",
+      "output.format=" + output_format])
+    dm = DataManager()
+    dm.add_model("model", model)
+    p2 = probe2.Program(dm, parser.working_phil.extract(),
+      master_phil=parser.master_phil, logger=null_out())
+    p2.overrideModel(model)
+    return p2.run()[1]
+  def as_h(line):
+    # raw line with D atom names written as H (the element columns give the
+    # parent's element for H and D)
+    f = line.split(":")
+    for i in (3, 4):
+      if f[i][-5:].lstrip().startswith("D"):
+        f[i] = f[i][:-5] + f[i][-5:].replace("D", "H", 1)
+    return ":".join(f)
+  text = placed_text(pdb_1yjp)
+  h_model, d_model = processed_model(text), processed_model(h_to_d(text))
+  assert set(a.element for a in d_model.get_atoms()
+             if a.element_is_hydrogen()) == set(["D"])
+  assert run_probe2(h_model, "oneline") == run_probe2(d_model, "oneline")
+  h_raw = run_probe2(h_model, "raw").splitlines()
+  d_raw = run_probe2(d_model, "raw").splitlines()
+  assert len(h_raw) > 100, len(h_raw)
+  assert d_raw != h_raw  # D names in the D contacts
+  assert [as_h(l) for l in d_raw] == h_raw
+
 if __name__ == "__main__":
   test_xray_default()
   test_neutron_add()
@@ -2616,4 +2729,7 @@ if __name__ == "__main__":
   test_in_memory_rerun()
   test_ccd_only_neutron_targets()
   test_ccd_only_neutron_lengths()
+  test_optimizer_single_rotator_d()
+  test_phantom_targets_skip_d()
+  test_probe2_deuterated()
   print("OK")

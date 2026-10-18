@@ -714,7 +714,7 @@ def getPhantomHydrogensFor(largestISeq, atom, spatialQuery, extraAtomInfo, minOc
     # before we consider possible Hs.
     overlap = ( (rvec3(atom.xyz) - rvec3(a.xyz)).length()  -
                 (placedHydrogenRadius + extraAtomInfo.getMappingFor(a).vdwRadius + placedHydrogenDistance) )
-    if overlap <= -0.1 and a.occ >= minOccupancy and a.element != "H":
+    if overlap <= -0.1 and a.occ >= minOccupancy and not a.element_is_hydrogen():
       if not acceptorOnly or extraAtomInfo.getMappingFor(a).isAcceptor:
         # If we have multiple atoms in the same Aromatic ring (part of the same residue)
         # we only point at the closest one.  To ensure this, we check all current candidates
