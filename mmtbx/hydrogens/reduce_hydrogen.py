@@ -314,6 +314,33 @@ def get_ccd_energy_types(cc_cif):
     result[name] = t if t in _ener_lib_types else None
   return result
 
+_library_neutron_xh = None
+
+def get_library_neutron_xh():
+  '''
+  Neutron X-H lengths of the monomer library, read from its own entries:
+  {'C': sp3 C-H, 'C_aromatic': aromatic C-H, 'N': N-H, 'O': O-H, 'S': S-H}.
+  The library has no X-H for other elements.
+  '''
+  global _library_neutron_xh
+  if _library_neutron_xh is None:
+    from mmtbx.monomer_library import server
+    srv = server.server()
+    sources = {
+      'C':          ('ALA', 'CA', 'HA'),
+      'C_aromatic': ('PHE', 'CD1', 'HD1'),
+      'N':          ('ALA', 'N', 'H'),
+      'O':          ('SER', 'OG', 'HG'),
+      'S':          ('CYS', 'SG', 'HG')}
+    result = {}
+    for key, (code, x, h) in sources.items():
+      for b in srv.get_comp_comp_id_direct(code).bond_list:
+        if set((b.atom_id_1, b.atom_id_2)) == set((x, h)):
+          result[key] = float(b.value_dist_neutron)
+    assert sorted(result) == sorted(sources)
+    _library_neutron_xh = result
+  return _library_neutron_xh
+
 def get_h_restraints(resname, strict=True):
   from mmtbx.monomer_library import cif_types
   from mmtbx.chemical_components import get_cif_dictionary
@@ -359,12 +386,23 @@ def get_h_restraints(resname, strict=True):
     atom_idx1=lookup[b.atom_id_1]
     atom_idx2=lookup[b.atom_id_2]
     bl = rdMolTransforms.GetBondLength(conf, atom_idx1, atom_idx2)
+    # X-H: the library's neutron length for the heavy atom (aromatic from
+    # the RDKit molecule); value_dist (X-ray) stays 0.9 x the CCD length
+    value_dist_neutron = None
+    if (b.atom_id_1 in hs) != (b.atom_id_2 in hs):
+      x_idx = atom_idx2 if b.atom_id_1 in hs else atom_idx1
+      x_atom = molecule.GetAtomWithIdx(x_idx)
+      key = x_atom.GetSymbol().upper()
+      if key == 'C' and x_atom.GetIsAromatic(): key = 'C_aromatic'
+      neutron = get_library_neutron_xh().get(key)
+      if neutron is not None: value_dist_neutron = '%0.3f' % neutron
     comp_comp_id.bond_list.append(cif_types.chem_comp_bond(
       atom_id_1=b.atom_id_1,
       atom_id_2=b.atom_id_2,
       type=b.value_order,
       value_dist='%0.3f' % (bl*.9),
-      value_dist_esd=".1"))
+      value_dist_esd=".1",
+      value_dist_neutron=value_dist_neutron))
 
   from mmtbx.ligands.rdkit_utils import enumerate_angles
   for angle in enumerate_angles(molecule):
