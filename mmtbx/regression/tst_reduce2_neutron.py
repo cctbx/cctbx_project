@@ -1535,23 +1535,62 @@ def dipeptide_out(option):
     with open(fn) as f: _dipeptide_out[option] = f.read()
   return _dipeptide_out[option]
 
+# Ser-Leu dipeptide plus a water, for the reruns and the cross-mode runs
+dipeptide_water = dipeptide.replace("END\n",
+  "HETATM  600  O   HOH A 101      11.500  11.000   9.500  1.00 30.00"
+  "           O\nEND\n")
+# exchangeable sites (H name) of the dipeptide; the water is separate
+dipeptide_exchangeable = set([("37", "H"), ("37", "HG"), ("38", "H")])
+# the Optimizer rotates these (Ser 37 N has one heavy neighbour)
+dipeptide_rotatable = set([("37", "H"), ("37", "HG")])
+
+_dipeptide_water_out = {}
+def dipeptide_water_out(option):
+  """written output of dipeptide_water in mode option, exclude_water=False"""
+  if option not in _dipeptide_water_out:
+    fn, _, _ = run_reduce2("tst_reduce2_neutron_dwo_" + option,
+      dipeptide_water, ["neutron_option=" + option, "exclude_water=False"])
+    with open(fn) as f: _dipeptide_water_out[option] = f.read()
+  return _dipeptide_water_out[option]
+
+def h_name(name, element):
+  """the H name of an H or D (first D -> H for D)"""
+  return name.replace("D", "H", 1) if element == "D" else name
+
+def all_atoms(src, is_file=True):
+  """{(resseq, name, altloc, element): (occupancy, B, xyz)}"""
+  inp = iotbx.pdb.input(file_name=src) if is_file else iotbx.pdb.input(
+    source_info=None, lines=src)
+  h = inp.construct_hierarchy()
+  return dict(((a.parent().parent().resseq.strip(), a.name.strip(),
+                a.parent().altloc, a.element.strip()),
+               (round(a.occ, 2), round(a.b, 2), matrix.col(a.xyz)))
+              for a in h.atoms())
+
 def test_rerun_same_mode():
-  # 2: the written hd_and_h and all_d outputs, run again in the same mode
-  # with optimize and with add keep_existing_H=True -> same labels and values.
-  # all_d input goes through the rename path, no pairs to collapse
-  for option in ("hd_and_h", "all_d"):
-    src = dipeptide_out(option)
-    with open("tst_reduce2_neutron_rr_%s_in.pdb" % option, "w") as f:
-      f.write(src)
-    first = hd_values("tst_reduce2_neutron_rr_%s_in.pdb" % option)
+  # 2: each mode's written output (dipeptide + water), run again in the same
+  # mode with optimize and with add keep_existing_H=True -> the same labels,
+  # occupancy and B per atom, and the same positions except for the H the
+  # Optimizer rotates. all_d goes through the rename path without pairs
+  restored = {"all_h": 0, "all_d": 0, "hd_and_h": 3, "hd_and_d": 3,
+              "all_hd": 7}
+  for option in NEUTRON:
+    src = dipeptide_water_out(option)
+    first = all_atoms(src, is_file=False)
     for args in (["approach=optimize"],
                  ["approach=add", "keep_existing_H=True"]):
       fn, log, description = run_reduce2("tst_reduce2_neutron_rr_%s_%s" % (
-        option, args[0][9:]), src, args + ["neutron_option=" + option])
-      assert hd_values(fn) == first, (option, args,
-        sorted(set(hd_values(fn).items()) ^ set(first.items())))
-      n = 3 if option == "hd_and_h" else 0
-      assert "Values restored from the input: %d" % n in description
+        option, args[0][9:]), src,
+        args + ["neutron_option=" + option, "exclude_water=False"])
+      second = all_atoms(fn)
+      assert sorted(second) == sorted(first), (option, args,
+        sorted(set(second) ^ set(first)))
+      for key, (occ, b, xyz) in first.items():
+        assert second[key][:2] == (occ, b), (option, args, key)
+        if (key[0], h_name(key[1], key[3])) in dipeptide_rotatable: continue
+        assert abs(second[key][2] - xyz) < 0.01, (option, args, key)
+      assert "Values restored from the input: %d" % restored[option] in \
+        description, (option, args)
 
 def pairs_03_07():
   """hd_and_h dipeptide, each pair H 0.3 B 15 / D 0.7 B 25 (parents 1.0)"""
@@ -1820,6 +1859,165 @@ def test_unused_records():
   assert not [k for k in hd_values(fn) if k[1] in ("HE2", "DE2")]
   assert "Values restored from the input: 2" in description
 
+# ------------------------------------------------------------------------------
+# step 4.2: the broad tests
+
+def written_kind(option, resseq, name):
+  """what option writes at a dipeptide_water site ("What each mode writes"):
+  "split", "H" or "D"; all its parents are in the blank group"""
+  if resseq == "101":
+    return "H" if option == "all_h" else "D"
+  if option in ("all_h", "all_d"):
+    return option[-1].upper()
+  if option == "all_hd" or (resseq, name) in dipeptide_exchangeable:
+    return "split"
+  return "H" if option == "hd_and_h" else "D"
+
+def expected_hd(src, option):
+  """{(resseq, name, altloc, element): (occupancy, B)} that option writes
+  for the H/D of src, per "Restoration policy" (all parents at 1.0):
+  recorded pair as pair -> both restored; recorded pair as one isotope ->
+  parent occupancy, that isotope's B; new pair -> 0.5 each, B of the input
+  atom; single without record -> unchanged"""
+  sites = {}
+  for (resseq, name, altloc, element), (occ, b, xyz) in \
+      all_atoms(src, is_file=False).items():
+    if element not in ("H", "D"): continue
+    sites.setdefault((resseq, h_name(name, element)), {})[element] = (occ, b)
+  result = {}
+  for (resseq, name), values in sites.items():
+    kind = written_kind(option, resseq, name)
+    d_name = name.replace("H", "D", 1)
+    recorded = len(values) == 2
+    if kind == "split":
+      if recorded:
+        h, d = values["H"], values["D"]
+      else:
+        (occ, b), = values.values()
+        h = d = (0.5, b)
+      result[(resseq, name, "A", "H")] = h
+      result[(resseq, d_name, "B", "D")] = d
+    else:
+      if recorded:
+        v = (1.0, values[kind][1])
+      else:
+        (v,) = values.values()
+      result[(resseq, name if kind == "H" else d_name, "", kind)] = v
+  return result
+
+def hg_pair_03_07(src):
+  """src with the Ser HG pair at H 0.3 B 15 / D 0.7 B 25"""
+  def edit(a):
+    if a.parent().parent().resseq.strip() != "37": return
+    if a.name.strip() == "HG" and a.parent().altloc == "A":
+      a.set_occ(0.3); a.set_b(15.0)
+    if a.name.strip() == "DG" and a.parent().altloc == "B":
+      a.set_occ(0.7); a.set_b(25.0)
+  return edit_atoms(src, edit)
+
+def test_cross_mode():
+  # 2b: each mode's output (dipeptide + water) as input for every other mode,
+  # through optimize; in the paired inputs the Ser HG pair is at 0.3 / 0.7
+  # with different B. Labels per "What each mode writes", values per
+  # "Restoration policy", water O-D/H at 0.98 A
+  inputs = {}
+  for option in NEUTRON:
+    src = dipeptide_water_out(option)
+    if option in ("hd_and_h", "hd_and_d", "all_hd"):
+      src = hg_pair_03_07(src)
+      assert src.count("  0.30 15.00") == 1 and src.count("  0.70 25.00") == 1
+    inputs[option] = src
+  failed = []
+  for source in NEUTRON:
+    for option in NEUTRON:
+      if option == source: continue
+      fn, log, description = run_reduce2("tst_reduce2_neutron_x_%s_%s" % (
+        source, option), inputs[source], ["approach=optimize",
+        "neutron_option=" + option, "exclude_water=False"])
+      got = dict((k, v[:2]) for k, v in all_atoms(fn).items()
+                 if k[3] in ("H", "D"))
+      expected = expected_hd(inputs[source], option)
+      if got != expected:
+        failed.append("%s -> %s: %s" % (source, option, sorted(
+          (k, expected.get(k), got.get(k)) for k in set(got) | set(expected)
+          if got.get(k) != expected.get(k))))
+      check_water(fn, 0.98, 1)
+      assert water_groups(fn) == [("HOH" if option == "all_h" else "DOD",
+        ["H" if option == "all_h" else "D", "O"])], (source, option)
+  assert not failed, "\n".join(failed)
+
+def test_user_cif_ligand_optimize():
+  # 9c (optimize): the ZQ4 hd_and_h output (D input) with its CIF, optimize
+  # hd_and_h: runs, the polar H are split, no missing restraints
+  prog = run_prog("tst_reduce2_neutron_zq4o_in", heavy_pdb("ZQ4", zq4_atoms),
+    zq4_cif, neutron_option="hd_and_h")
+  with open(prog.params.output.filename) as f: src = f.read()
+  assert " DN1BZQ4" in src and " DO1BZQ4" in src
+  prog = run_prog("tst_reduce2_neutron_zq4o", src, zq4_cif,
+    approach="optimize", neutron_option="hd_and_h")
+  h = iotbx.pdb.input(prog.params.output.filename).construct_hierarchy()
+  hd = sorted((a.name.strip(), a.parent().altloc) for a in h.atoms()
+              if a.element.strip() in ("H", "D"))
+  for name in ("HN1", "HO1"):
+    assert (name, "A") in hd and ("D" + name[1:], "B") in hd, hd
+  assert len([x for x in hd if x[1] == ""]) == 7, hd
+  with open(prog.params.output.description_file_name) as f:
+    description = f.read()
+  for text in ("Restraints were not found", "Insufficient restraints",
+               "without a covalent partner", "Could not find atom info"):
+    assert text not in description and text not in prog.log_text, text
+  assert "Values restored from the input: 2" in description
+
+def test_floating_h_water_hd():
+  # 9k(b), hd_and_h: Tyr HH without its OH is dropped by the removal step;
+  # the written water O-D stays at 0.98 A
+  pdb_str = h_input_without_tyr_oh("tst_reduce2_neutron_float_wd",
+    ["exclude_water=False"])
+  fn, log, description = run_reduce2("tst_reduce2_neutron_float_wd", pdb_str,
+    ["approach=optimize", "neutron_option=hd_and_h", "exclude_water=False"])
+  assert FLOATING in description
+  assert not [l for l in atom_labels(fn) if l[1] == "TYR" and
+              l[2].strip() in ("HH", "DH")]
+  assert water_groups(fn) == [("DOD", ["D", "O"])] * 7, water_groups(fn)
+  check_water(fn, 0.98, 7)
+
+def test_water_layout_e_neutron():
+  # 9l(e): a DOD water with D at 0.90 A, optimize hd_and_h: normalized and
+  # written as DOD with D at 0.98 A / 103.91 deg
+  pdb_str = ("CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1\n" +
+    layouts["e"] + "END\n")
+  with open("tst_reduce2_neutron_l9e_in.pdb", "w") as f:
+    f.write(pdb_str)
+  for lengths, angle in water_geometry("tst_reduce2_neutron_l9e_in.pdb"):
+    for d in lengths: assert approx_equal(d, 0.90, eps=0.001, out=None)
+  fn, log, description = run_reduce2("tst_reduce2_neutron_l9e", pdb_str,
+    ["approach=optimize", "neutron_option=hd_and_h"])
+  assert water_groups(fn) == [("DOD", ["D", "O"])], water_groups(fn)
+  check_water(fn, 0.98, 1)
+
+def test_flipkins_d_input():
+  # optimize hd_and_h on D input with flipkins: the flipkin passes do not
+  # change the written model or the H/D section; the flipkin file is written
+  fn, _, _ = run_reduce2("tst_reduce2_neutron_fkd_in", pdb_1yjp,
+    ["neutron_option=hd_and_h"])
+  with open(fn) as f: src = f.read()
+  assert "DD21BASN" in src
+  directory = "tst_reduce2_neutron_fkd"
+  if not os.path.isdir(directory): os.mkdir(directory)
+  for f in os.listdir(directory): os.remove(os.path.join(directory, f))
+  args = ["approach=optimize", "neutron_option=hd_and_h",
+          "add_flip_movers=True"]
+  fn_on, log_on, d_on = run_reduce2("tst_reduce2_neutron_fkd_on", src,
+    args + ["output.flipkin_directory=" + directory])
+  fn_off, log_off, d_off = run_reduce2("tst_reduce2_neutron_fkd_off", src,
+    args)
+  with open(fn_on) as f1, open(fn_off) as f2:
+    assert f1.read() == f2.read()
+  section = lambda d: d[d.index("H/D model (neutron_option=hd_and_h)"):]
+  assert section(d_on) == section(d_off)
+  assert "Values restored from the input: 20" in d_on
+  assert os.listdir(directory) == ["tst_reduce2_neutron_fkd_onFH-flipnq.kin"]
+
 if __name__ == "__main__":
   test_xray_default()
   test_neutron_add()
@@ -1883,4 +2081,9 @@ if __name__ == "__main__":
   test_remove_d_input()
   test_remove_then_qmready()
   test_remove_h_input()
+  test_cross_mode()
+  test_user_cif_ligand_optimize()
+  test_floating_h_water_hd()
+  test_water_layout_e_neutron()
+  test_flipkins_d_input()
   print("OK")
