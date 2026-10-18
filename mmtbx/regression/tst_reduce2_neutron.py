@@ -2357,6 +2357,30 @@ def test_in_memory_rerun():
       neutron_option=second)
     assert atom_lines(prog.params.output.filename) == \
       atom_lines(reread.params.output.filename), (system, first, second)
+  # no crystal symmetry in: the returned model has none (not reduce2's box),
+  # so the rerun writes the same file as the file rerun, without CRYST1; the
+  # cryo-EM placeholder in: both write it
+  no_symmetry = "".join(l for l in pdb_1yjp.splitlines(True)
+                        if not l.startswith("CRYST1"))
+  placeholder = "CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 " \
+    "P 1           1\n" + no_symmetry
+  for case, option in (("nosym", "none"), ("nosym", "hd_and_h"),
+      ("placeholder", "hd_and_h")):
+    prefix = "tst_reduce2_neutron_inmem_%s_%s" % (case, option)
+    prog = run_prog(prefix + "_1", no_symmetry if case == "nosym" else
+      placeholder, neutron_option=option)
+    with open(prog.params.output.filename) as f: written = f.read()
+    prog = run_prog_on_model(prefix + "_2", prog.get_results().model,
+      approach="optimize", neutron_option=option)
+    reread = run_prog(prefix + "_file", written, approach="optimize",
+      neutron_option=option)
+    with open(prog.params.output.filename) as f: in_memory = f.read()
+    with open(reread.params.output.filename) as f: from_file = f.read()
+    cryst1 = [l.split()[1:4] for l in in_memory.splitlines()
+              if l.startswith("CRYST1")]
+    assert cryst1 == ([] if case == "nosym" else
+      [["1.000", "1.000", "1.000"]]), (case, option, cryst1)
+    assert in_memory == from_file, (case, option)
   # X-H lengths follow the second run: X-ray first, neutron distances second
   # (the first run's riding-H manager is not reused)
   prefix = "tst_reduce2_neutron_inmem_neutron_distances"

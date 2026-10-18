@@ -665,14 +665,18 @@ def add_ccd_restraint_objects(model):
 def get_output_crystal_symmetry(model):
   '''
   Crystal symmetry to write out for a model that is boxed for H placement.
-  Returns the model's own symmetry; else the CRYST1 1 1 1 P 1 placeholder if
-  the input file had a cell record that cctbx discards as nonsense (cryo-EM
-  convention); else None. Call before process(), which boxes a model that has
-  no symmetry.
+  Returns the model's own symmetry; else its unit cell symmetry (the
+  placeholder on a model returned by reduce2); else the CRYST1 1 1 1 P 1
+  placeholder if the input file had a cell record that cctbx discards as
+  nonsense (cryo-EM convention); else None. Call before process(), which
+  boxes a model that has no symmetry.
   '''
   cs = model.crystal_symmetry()
   if (cs is not None) and (cs.unit_cell() is not None):
     return cs
+  # the placeholder on a model returned by reduce2
+  if model.unit_cell_crystal_symmetry() is not None:
+    return model.unit_cell_crystal_symmetry()
   model_input = model.get_model_input()
   if model_input is None:
     return None

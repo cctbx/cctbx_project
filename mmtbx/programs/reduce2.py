@@ -1591,6 +1591,30 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _ReturnedModel(self, model):
+    # The returned model gets the crystal symmetry of the written file, also
+    # with output.write_files=False: the input cell, the cryo-EM placeholder
+    # (unit cell symmetry only) or none. A model on reduce2's box is rebuilt
+    # unprocessed, as if read from that file: a processed model without
+    # symmetry fails in selection().
+    # :return: The model to return.
+    cs = self._output_cs
+    if (cs is not None) and (not cs.is_nonsense()):
+      model.set_unit_cell_crystal_symmetry(cs)
+      return model
+    new = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = model.get_hierarchy(),
+      crystal_symmetry  = None,
+      restraint_objects = model.get_restraint_objects(),
+      stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
+      log               = null_out())
+    if cs is not None:
+      new.set_unit_cell_crystal_symmetry(cs)
+    return new
+
+# ------------------------------------------------------------------------------
+
   def _CalculateTotalCharge(self):
     # Calculate the total charge of the model (same as Q|R qr.finalise with
     # calculate_charge=True) and, if the output file names were not specified,
@@ -2499,6 +2523,7 @@ NOTES:
     # the output model is the self.model of before the flipkin passes
     self._DropAutoRestraints(self.model)
     self._DropAutoRestraints(self._output_model)
+    self._output_model = self._ReturnedModel(self._output_model)
 
     # Report profiling info if we've been asked to in the Phil parameters
     if self.params.profile:
