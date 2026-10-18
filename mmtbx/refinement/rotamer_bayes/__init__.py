@@ -33,6 +33,8 @@ import math, sys, time
 import numpy as np
 import iotbx.phil
 from libtbx import group_args
+from libtbx.utils import Sorry
+from libtbx import Auto
 from cctbx.array_family import flex
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 from mmtbx.refinement.rotamer_bayes import priors as priors_module
@@ -123,8 +125,12 @@ self_check = True
           poor models beta is inflated (local changes absorb other errors).
 self_check_alpha = 0.4 0.6
   .type = floats(size=2)
-self_check_beta_max = 1.5
+self_check_beta_max = Auto
   .type = float
+  .help = Largest beta accepted by the self-check. Auto: 1.5 for llgi, 3 \
+          for ml and mlhl, whose likelihood leaves out the measurement \
+          errors, so that dLL varies about twice as much as the curvature \
+          predicts even for a correct model (beta ~1.1-1.3 in tests)
 self_check_min_candidates = 200
   .type = int
 n_shells = 40
@@ -135,6 +141,23 @@ def master_params():
   return iotbx.phil.parse(master_params_str)
 
 SKIP_RESNAMES = ("ALA", "GLY", "PRO")
+
+SUPPORTED_TARGETS = ("ml", "mlhl", "llgi")
+
+def check_fmodel(fmodel):
+  """ The evidence is a change of log-likelihood with F_model changing
+  reflection by reflection: likelihood targets only, no twinning. """
+  if(fmodel.is_twin_fmodel_manager()):
+    raise Sorry("rotamer_bayes: twinned data are not supported (a change of "
+      "the model affects twin-related reflections together).")
+  name = fmodel.target_name
+  if(name not in SUPPORTED_TARGETS):
+    if(fmodel.target_attributes().family == "ls"):
+      raise Sorry("rotamer_bayes: target %s is least squares, not a "
+        "likelihood; the evidence would have no probabilistic scale. Use one "
+        "of: %s." % (name, ", ".join(SUPPORTED_TARGETS)))
+    raise Sorry("rotamer_bayes: target %s is not supported (tested: %s)."
+      % (name, ", ".join(SUPPORTED_TARGETS)))
 
 class candidate(object):
   def __init__(self, well, xyz):
@@ -177,6 +200,8 @@ class run(object):
     if(log is None): log = sys.stdout
     self.params = params
     self.log = log
+    check_fmodel(fmodel)
+    self.target_name = fmodel.target_name
     t0 = time.time()
     self.ev = evidence_module.evidence(fmodel=fmodel,
       n_shells=params.n_shells)
@@ -285,8 +310,11 @@ class run(object):
     z = (d + self.alpha * inf) / np.sqrt(inf)
     self.beta = float((np.median(np.abs(z - np.median(z))) * 1.4826) ** 2)
     lo, hi = p.self_check_alpha
+    self.beta_max = p.self_check_beta_max
+    if(self.beta_max is None or self.beta_max is Auto):
+      self.beta_max = 1.5 if self.target_name == "llgi" else 3.
     self.self_check_passed = (lo <= self.alpha <= hi and
-      self.beta <= p.self_check_beta_max)
+      self.beta <= self.beta_max)
 
   def _information_scale(self):
     """ I_eff / I = 4 alpha^2 / beta (theory 1) """
@@ -589,8 +617,9 @@ class run(object):
     print("  LLG of the model %.1f; scattering power %.0f" % (
       self.llg_total, self.model_scattering), file=out)
     if(self.alpha is not None):
-      print("  evidence self-check: alpha %.2f beta %.2f (expected ~0.5, "
-        "<~1): %s%s" % (self.alpha, self.beta, "passed" if
+      print("  evidence self-check (%s target): alpha %.2f beta %.2f "
+        "(expected ~0.5, <= %.1f): %s%s" % (self.target_name, self.alpha,
+        self.beta, self.beta_max, "passed" if
         self.self_check_passed else "FAILED", "" if self.self_check_passed
         or not self.params.self_check else " -- no changes made"), file=out)
     else:

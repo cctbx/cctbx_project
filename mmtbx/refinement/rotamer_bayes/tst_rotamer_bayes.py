@@ -218,10 +218,24 @@ def exercise_local_refinement():
     fd = (lr.well_penalty(xp)[0] - lr.well_penalty(xm)[0]) / (2 * h)
     assert abs(fd - g[i, j]) < 1.e-3 * max(1., abs(fd)), (fd, g[i, j])
 
+def exercise_unsupported_targets():
+  """ least-squares targets are refused (no likelihood scale) """
+  from libtbx.test_utils import Exception_expected
+  t, m = build_pair()
+  fmodel = make_fmodel(t, m)
+  fmodel.set_target_name("ls_wunit_k1")
+  try:
+    rb.run(fmodel=fmodel, pdb_hierarchy=m.construct_hierarchy(),
+      log=null_out())
+  except Exception as e:
+    assert "least squares" in str(e), str(e)
+  else: raise Exception_expected
+
 if(__name__ == "__main__"):
   exercise_priors()
   exercise_side_chain()
   exercise_evidence_and_decisions()
   exercise_stubs()
   exercise_local_refinement()
+  exercise_unsupported_targets()
   print("OK")
