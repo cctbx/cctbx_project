@@ -46,6 +46,15 @@ Usage:
 Exit 2 for a usage error or an unreadable listed file. Standard library only.
 """
 
+import sys
+
+# Revision 18: the kit needs Python 3.10 or newer; an older Python refuses here, before
+# anything else runs, with exit 19 (the same message and code in every tool).
+if sys.version_info < (3, 10):
+    sys.stderr.write("REFUSED: requires Python 3.10 or newer; this is Python %d.%d.%d (%s)\n"
+                     % (tuple(sys.version_info[:3]) + (sys.executable,)))
+    sys.exit(19)
+
 import argparse
 import fnmatch
 import hashlib

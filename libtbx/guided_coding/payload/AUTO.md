@@ -10,8 +10,10 @@ a resume, and after the conversation has been summarized.
 **Auto-mode runs need macOS.** `auto_queue.py run` blocks outside network with
 `/usr/bin/sandbox-exec` and finds a run's processes by their environment marker, which it reads
 on macOS only (with `ps -E` until revision 16; since then through psutil, like the whole process
-table). The helper and its tools run with the cctbx conda Python (`libtbx.python`; see SKILL.md),
-which has psutil; without psutil the helper stops with exit 18 ("requires psutil: ..."). On any
+table). The helper and its tools run with Python 3.10 or newer (written `libtbx.python`; see
+SKILL.md); the helper also needs psutil, and without it stops with exit 18 ("requires psutil,
+which <python> does not have: make a venv and install it there ..."; not `pip install --user`,
+which the kit's `-I` ignores). On any
 other system `run` refuses with exit 15 ("auto-mode runs need macOS (sandbox-exec and
 `ps -E`)") before it reads the queue, writes a run record or starts the probe or CMD, with or
 without a network grant. The helper has no option, environment variable or setting that
@@ -73,9 +75,10 @@ proposes its exact text and the Developer approves it; the Guide does not write 
    `screen_check.py present auto_start FILE`, paste the output in full into the reply once (tool
    output is not visible to the Developer). The STOP section gives the
    absolute path of the `auto_queue.py` actually in use (the verified procedure root).
-   Write its stop line as `screen_check.py stop-command <interpreter>` prints it (revision 17),
-   with the interpreter resolved at start: it puts a path containing a space in single quotes,
-   which every supported shell reads as one word, and refuses a relative or bare name.
+   Write its stop line exactly as `screen_check.py stop-command` prints it, run like the other
+   tools (revision 18: without an argument it prints the absolute interpreter path of the Python
+   running it, `sys.executable`, and refuses when that Python has no psutil; revision 17: a
+   path containing a space goes in single quotes, which every supported shell reads as one word).
 5. `auto_queue.py init --lock-dir <method's lock directory> …` (there is no default lock: without
    `--lock-dir` init refuses with exit 2 and creates nothing), write `GRANT.md` first, then
    `auto_queue.py install check --script <method's fingerprint script> --expect <recorded value>`
@@ -233,15 +236,19 @@ approved there under the standard procedure. Transfer is allowed under a stop.
 ## Stop
 
 `/gc stop` here, or from any Terminal (any shell, csh included)
-`<cctbx conda Python> -I -B <procedure root>/auto_queue.py stop`, with both paths absolute as the
-start screen prints them (the interpreter: the absolute path of `libtbx.python`, resolved at
-start with `command -v libtbx.python`, or `<build>/conda_base/bin/python3`; never a bare
-`python3`, which may lack psutil). A path containing a space is written in single or double
-quotes (`'/Users/a b/build/bin/libtbx.python' -I -B ... stop`); `screen_check.py stop-command`
-prints the line in that form, and the checker refuses the path unquoted. A path containing a
-single quote or `!` cannot be written (both are refused). A path containing a tab is accepted in
-quotes, but pasting it at an interactive bash 3.2 prompt (macOS `/bin/bash`) can trigger
-completion; keep tabs out of installation paths. Report
+`<interpreter> -I -B <procedure root>/auto_queue.py stop`, with both paths absolute as the
+start screen prints them (the interpreter: the absolute interpreter path printed on the start
+screen, the Python that runs the kit, which has psutil; never a bare `python3`, which may be
+another Python without psutil). The checker accepts any absolute path to an existing executable
+file named `python`, `python3`, `python3.N` or `libtbx.python` (revision 18). A path containing
+a space is written in single or double quotes (`'/Users/a b/venv/bin/python3' -I -B ... stop`);
+`screen_check.py stop-command` prints the line in that form, and the checker refuses the path unquoted. A path containing a
+single quote or `!` cannot be written (both are refused). Inside quotes every character must be
+printable (revision 18): accented letters and other scripts, as in a home folder's name, are
+accepted; a tab, another control character (Ctrl-U, CR, ESC, DEL), a format character such as the
+bidi overrides U+202E and U+2066 or the zero-width space U+200B, a line or paragraph separator or a
+non-breaking space is refused, because a terminal or line editor can act on it, or hide it, when the
+line is pasted. Report
 **Stopped** only when the helper prints Stopped; otherwise report **Stopping** and what remains.
 The helper can stop only what it tracks: the registered worker (which stops at its next
 `check-stop`) and processes started through `run`, including their process group. Anything the
@@ -300,8 +307,8 @@ reports.
 
 ## Running the kit's own tests
 
-The kit's own suite (`tests/tst_*_v20.py`, and `libtbx/tst_guided_coding.py`) runs with the
-cctbx conda Python: `libtbx.python -B -m unittest discover -s tests -p 'tst_*.py' -v` from the
+The kit's own suite (`tests/tst_*_v20.py`, and `libtbx/tst_guided_coding.py`) runs with Python
+3.10 or newer that has psutil: `libtbx.python -B -m unittest discover -s tests -p 'tst_*.py' -v` from the
 kit root, TMPDIR set to a resolved path. It needs a readable process table, which it reads
 through psutil (revision 16): that works inside `sandbox-exec` too, where the setuid `/bin/ps`
 was refused, so the suite now runs there. Inside `sandbox-exec` a second profile cannot be

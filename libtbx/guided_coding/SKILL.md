@@ -20,17 +20,21 @@ procedure repository as the target merely because it holds this skill.
 Before guided work, replace the path below with the canonical procedure
 root and run the whole guarded Bash block. Do not split its dependent
 commands into separate shell calls or continue after a failed block.
-The kit's tools run with the cctbx conda Python, written `libtbx.python`
-in every command here: the `libtbx.python` command of the cctbx or Phenix
-build that holds this kit. When it is not on PATH, use that build's
-`conda_base/bin/python3` (absolute path) in its place: the same conda
-Python installation, standard library and psutil (on macOS libtbx.python
-starts `conda_base/python.app/Contents/MacOS/python`, so `sys.executable`
-differs). The auto-mode start screen prints the interpreter's absolute
-path, resolved at start (`command -v libtbx.python`, else
-`<build>/conda_base/bin/python3`), so its stop line works from any
-Terminal whatever PATH is. It has psutil, which `auto_queue.py` needs (without psutil it
-stops with exit 18; any other Python 3.10 or newer with psutil also works).
+The kit's tools need Python 3.10 or newer; with an older Python each tool
+refuses before doing anything (exit 19, "requires Python 3.10 or newer").
+Every command here writes the interpreter as `libtbx.python`; any Python
+3.10 or newer serves in its place. Auto mode (`auto_queue.py`) also needs
+the psutil package; without it the helper stops with exit 18. Install it
+in a venv and run the kit with that venv's Python: `python3 -m venv DIR`,
+then `DIR/bin/python -m pip install psutil`, then use `DIR/bin/python`.
+Not `pip install --user`: the kit runs Python with `-I`, which ignores the
+user site directory. The other tools need only the standard
+library. The auto-mode start screen prints the absolute interpreter path
+of the Python that runs the kit (`screen_check.py stop-command` prints
+its `sys.executable`), so its stop line works from any Terminal whatever
+PATH is.
+In a cctbx or Phenix build, `libtbx.python` is the build's conda Python, which has psutil.
+When `libtbx.python` is not on PATH, use that build's `conda_base/bin/python3` by its absolute path.
 
 ```bash
 cd /absolute/path/to/libtbx/guided_coding &&
@@ -108,7 +112,7 @@ folder window press Cmd+Shift+G and paste the full path); type the message
 and send it. Mention the Terminal alternative: `cd` to the folder, then run
 `claude`. On Linux give the Terminal steps. On Windows, say that Guided
 Coding is not supported there, explain what it needs (macOS or Linux,
-Claude Code, Git, and Python 3.10 or newer with psutil) and ask how he wants
+Claude Code, Git, Python 3.10 or newer, and psutil for auto mode) and ask how he wants
 to proceed.
 
 ## Setup and control requests

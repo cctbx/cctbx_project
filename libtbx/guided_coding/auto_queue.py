@@ -11,14 +11,24 @@ classify timestamp-only differences from a NORMALIZED value (report-only, never 
 Revision 14: a zombie (an exited process its parent has not collected, as in a container
 whose process 1 never reaps) counts as gone everywhere liveness is decided.
 Revision 16: the process table is read through psutil instead of /bin/ps, with the same
-refusals; without psutil every command stops (exit 18). Run it with the cctbx conda Python
-(libtbx.python, or the build's conda_base/bin/python3), which has psutil.
+refusals; without psutil every command stops (exit 18).
+Revision 18: any Python 3.10 or newer that has psutil runs it (an older Python refuses, exit 19),
+for example a venv's bin/python with psutil installed there, or libtbx.python.
 
-Stop from any Terminal, without the coding conversation, with both paths absolute (as the
-auto-mode start screen prints them, resolved at start):
-    /ABS/libtbx.python -I -B /ABS/<procedure root>/auto_queue.py stop
-(or <build>/conda_base/bin/python3, by its absolute path, in place of libtbx.python)
+Stop from any Terminal, without the coding conversation, with both paths absolute, exactly as the
+auto-mode start screen prints them (`screen_check.py stop-command` gives the interpreter that
+runs the kit):
+    /ABS/<interpreter> -I -B /ABS/<procedure root>/auto_queue.py stop
 """
+
+import sys
+
+# Revision 18: the kit needs Python 3.10 or newer; an older Python refuses here, before
+# anything else runs, with exit 19 (the same message and code in every tool).
+if sys.version_info < (3, 10):
+    sys.stderr.write("REFUSED: requires Python 3.10 or newer; this is Python %d.%d.%d (%s)\n"
+                     % (tuple(sys.version_info[:3]) + (sys.executable,)))
+    sys.exit(19)
 
 import argparse
 import calendar
@@ -69,8 +79,13 @@ PLATFORM_REFUSED = 15
 PROCESS_TABLE_UNREADABLE = 17
 # Revision 16: psutil is required (the process table); without it every command stops.
 PSUTIL_MISSING = 18
-PSUTIL_MESSAGE = ("requires psutil: run with the cctbx conda Python (libtbx.python) or pip "
-                  "install psutil")
+# Revision 18: the message names the install command for the Python that runs the helper
+# (a path that needs it in single quotes, as screen_check.py stop-command writes it).
+PSUTIL_MESSAGE = ("requires psutil, which %s does not have: make a venv and install it there "
+                  "(python3 -m venv DIR, then DIR/bin/python -m pip install psutil; not --user, "
+                  "which the kit's -I ignores), then run with DIR/bin/python; or use libtbx.python"
+                  % (sys.executable if re.fullmatch(r"[A-Za-z0-9_./+@%:,=-]+", sys.executable or "")
+                     else "'%s'" % sys.executable))
 UNREADABLE = "unreadable"
 SCREEN_CHECK = Path(__file__).resolve().parent / "payload" / "tools" / "screen_check.py"
 MARKER = "GC_AUTO_RUN_ID"

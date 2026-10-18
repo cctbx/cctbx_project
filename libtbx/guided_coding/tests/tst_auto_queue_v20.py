@@ -126,9 +126,17 @@ def sandbox_exec_problem():
                                % (probe.returncode, probe.stderr.strip()[:120] or "no message"))
         _SANDBOX_STATE.append(problem)
     return _SANDBOX_STATE[0]
+# Revision 18: the message names this Python's own install command (the helper runs with the
+# tests' sys.executable) and libtbx.python, and no longer names cctbx; repair 1: the venv route.
+# Repair 1 (reading 1, finding 1): the venv route (pip may refuse an externally managed Python,
+# and a --user install is invisible under -I).
+VENV_ROUTE = ("make a venv and install it there (python3 -m venv DIR, then DIR/bin/python -m pip "
+              "install psutil; not --user, which the kit's -I ignores), then run with DIR/bin/python; "
+              "or use libtbx.python")
 PSUTIL_MISSING, PSUTIL_MESSAGE = 18, (
-    "REFUSED: requires psutil: run with the cctbx conda Python (libtbx.python) or pip "
-    "install psutil")
+    "REFUSED: requires psutil, which %s does not have: %s"
+    % (sys.executable if re.fullmatch(r"[A-Za-z0-9_./+@%:,=-]+", sys.executable)
+       else "'%s'" % sys.executable, VENV_ROUTE))
 PLATFORM_REFUSED = 15
 PLATFORM_MESSAGE = "REFUSED: auto-mode runs need macOS (sandbox-exec and `ps -E`); this system is "
 # The real helper with non-macOS forced inside its own process (no option or variable).
@@ -565,13 +573,14 @@ sys.exit(int(sys.argv[2]))
 # refused). When psutil cannot read it, this module runs ONE failing test naming the cause and
 # the supported route instead of many unrelated failures. Without psutil in this interpreter
 # every class but PsutilRequirement is skipped with PSUTIL_SKIP.
-PS_ROUTE = ("run the kit's own suite attended with the cctbx conda Python (libtbx.python), "
+PS_ROUTE = ("run the kit's own suite attended with libtbx.python or another Python 3.10 or "
+            "newer that has psutil, "
             "from an ordinary shell; see AUTO.md, 'Running the kit's own tests'. A queue job "
             "that must run it needs that exception stated in advance; never disable the "
             "network protection to make it run.")
 PSUTIL_SKIP = ("psutil not importable by %s: the helper stops without it (exit 18; "
-               "PsutilRequirement checks that), so its tests need the cctbx conda Python "
-               "(libtbx.python) or pip install psutil" % sys.executable)
+               "PsutilRequirement checks that), so its tests need psutil: %s" % (sys.executable,
+                                                                                VENV_ROUTE))
 needs_psutil = unittest.skipIf(psutil is None, PSUTIL_SKIP)
 
 
@@ -638,6 +647,35 @@ class PsutilRequirement(unittest.TestCase):
                     self.assertNotEqual(result.returncode, PSUTIL_MISSING, result.stderr)
                     self.assertNotIn("requires psutil", result.stderr)
 
+
+    def test_psutil_message_names_this_python_and_not_cctbx(self):
+        """Revision 18: the message without psutil names the Python that runs the helper (the
+        path single-quoted when it holds a space or another character a shell treats specially),
+        the venv route (repair 1: python3 -m venv DIR, DIR/bin/python -m pip install psutil, not
+        --user) and libtbx.python, and does not name cctbx. The helper runs with sys.executable replaced before it is
+        imported; control: the unchanged executable gives the module's PSUTIL_MESSAGE."""
+        code = ("import sys\nsys.modules['psutil'] = None\nif sys.argv[1] != '-':\n"
+                "    sys.executable = sys.argv[1]\nsys.path.insert(0, sys.argv[2])\n"
+                "import auto_queue\nsys.exit(auto_queue.main(['status']))\n")
+        for executable, shown in (("/opt/py env/bin/python3", "'/opt/py env/bin/python3'"),
+                                  ("/opt/a$b/bin/python", "'/opt/a$b/bin/python'"),
+                                  ("/usr/local/bin/python3.12", "/usr/local/bin/python3.12")):
+            with self.subTest(executable=executable):
+                result = subprocess.run([sys.executable, "-I", "-B", "-c", code, executable,
+                                         str(TOOL.parent)], capture_output=True, text=True,
+                                        timeout=60)
+                self.assertEqual(result.returncode, PSUTIL_MISSING, result.stderr)
+                self.assertEqual(result.stderr.strip(),
+                                 "REFUSED: requires psutil, which %s does not have: %s"
+                                 % (shown, VENV_ROUTE))
+                self.assertNotIn("cctbx", result.stderr)
+        control = subprocess.run([sys.executable, "-I", "-B", "-c", code, "-", str(TOOL.parent)],
+                                 capture_output=True, text=True, timeout=60)
+        self.assertEqual(control.returncode, PSUTIL_MISSING, control.stderr)
+        self.assertEqual(control.stderr.strip(), PSUTIL_MESSAGE)
+        self.assertIn("python3 -m venv DIR, then DIR/bin/python -m pip install psutil", PSUTIL_MESSAGE)
+        self.assertIn("not --user", PSUTIL_MESSAGE)
+        self.assertNotIn("cctbx", PSUTIL_MESSAGE)
 
 @needs_psutil
 class KitSelfTestRoute(unittest.TestCase):

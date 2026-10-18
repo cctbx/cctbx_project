@@ -2,6 +2,12 @@
 """Check screen form, frozen bytes, source identity, and local registration."""
 
 import sys
+# Revision 18: the kit needs Python 3.10 or newer; an older Python refuses here, before
+# anything else runs, with exit 19 (the same message and code in every tool).
+if sys.version_info < (3, 10):
+    sys.stderr.write("REFUSED: requires Python 3.10 or newer; this is Python %d.%d.%d (%s)\n"
+                     % (tuple(sys.version_info[:3]) + (sys.executable,)))
+    sys.exit(19)
 # When run as a script, keep this directory out of module resolution before
 # importing the standard library. The documented -I invocation also ignores
 # PYTHONPATH and the current directory.
@@ -10,6 +16,7 @@ if __name__ == "__main__" and not sys.flags.isolated:
 
 import argparse
 import hashlib
+import importlib.util
 import os
 import re
 import shutil
@@ -744,11 +751,23 @@ def code_identity(root, checked, changed, top=None):
 # tighter than revision 16's any non-space; anything else must be quoted. Inside single
 # quotes nothing is special in sh, bash, zsh, csh or tcsh except the closing quote and csh's
 # history character `!` (refused in every form); inside double quotes `$`, a backquote and a
-# backslash are also refused.
+# backslash are also refused. Revision 18 (repair 1, reading 1, finding 2; repair 1b): inside
+# either kind of quotes every character must also be printable (str.isprintable: letters with
+# accents and other scripts pass; tab, DEL and other control characters such as Ctrl-U, CR and ESC,
+# format characters such as the bidi overrides U+202E and U+2066 and U+200B, line and paragraph
+# separators, other non-space separators and surrogates do not), see printable_path(), so that a
+# terminal or line editor has nothing to act on when the line is pasted; before, anything but the
+# excluded characters and a newline.
 SAFE_BARE = r"[A-Za-z0-9_./+@%:,=-]+"
-PATH_WORD = (r"(?:(?P<{0}_bare>/" + SAFE_BARE + r")|'(?P<{0}_single>/[^'!\n]+)'"
-             r"|\"(?P<{0}_double>/[^\"$`\\!\n]+)\")")
-INTERPRETER = re.compile(r"/.+/libtbx\.python|/.+/conda_base/bin/python3(?:\.\d+)?")
+QUOTED_SINGLE = r"[^'!]"  # with printable_path(): printable, except ' and !
+QUOTED_DOUBLE = r"[^\"$`\\!]"  # also except " $ \ and a backquote
+PATH_WORD = (r"(?:(?P<{0}_bare>/" + SAFE_BARE + r")|'(?P<{0}_single>/" + QUOTED_SINGLE + r"+)'"
+             r"|\"(?P<{0}_double>/" + QUOTED_DOUBLE + r"+)\")")
+# Revision 18: any absolute path to a Python 3 interpreter, by its file name: python, python3,
+# python3.N or libtbx.python (a venv's bin/python, a system or Homebrew python3.N, the cctbx
+# conda Python and the python that libtbx.python starts on macOS). Before: only
+# /.../libtbx.python or /.../conda_base/bin/python3[.N].
+INTERPRETER = re.compile(r"/.+/(?:python(?:3(?:\.\d+)?)?|libtbx\.python)")
 
 
 def path_word(match, name):
@@ -757,10 +776,17 @@ def path_word(match, name):
                 if match.group(f"{name}_{form}") is not None)
 
 
+def printable_path(path):
+    """Revision 18 (repair 1b): every character printable (str.isprintable), as a quoted stop path
+    needs; refuses control, format and separator characters other than the space, and surrogates."""
+    return path.isprintable()
+
+
 def stop_line(line):
     """The auto_start stop command: `INTERPRETER -I -B AUTO_QUEUE stop`, both absolute,
     each bare or quoted (a path with a space must be quoted); the interpreter is an
-    existing executable regular file named libtbx.python or conda_base/bin/python3[.N]."""
+    existing executable regular file named python, python3, python3.N or libtbx.python
+    (revision 18; before, only libtbx.python or conda_base/bin/python3[.N])."""
     match = re.fullmatch(PATH_WORD.format("python") + " -I -B " + PATH_WORD.format("queue")
                          + " stop", line)
     if not match or path_word(match, "queue") != str(AUTO_QUEUE):
@@ -771,24 +797,38 @@ def stop_line(line):
     # the double-quoted form too.
     if "'" in interpreter or "'" in path_word(match, "queue"):
         return False
+    if not (printable_path(interpreter) and printable_path(path_word(match, "queue"))):
+        return False
     if not INTERPRETER.fullmatch(interpreter):
         return False
     resolved = os.path.realpath(interpreter)
     return os.path.isfile(resolved) and os.access(resolved, os.X_OK)
 
 
-def stop_command(interpreter, queue=AUTO_QUEUE):
+def stop_command(interpreter=None, queue=AUTO_QUEUE):
     """Revision 17: the stop line for the auto_start screen, each path bare when it has no
     space or quote, otherwise in single quotes; refused unless stop_line() accepts it (an
-    absolute, existing, executable libtbx.python or conda_base/bin/python3[.N])."""
+    absolute, existing, executable python, python3, python3.N or libtbx.python, revision 18).
+    Revision 18: without an interpreter, the absolute sys.executable of the Python running
+    this checker, which must then have psutil (the helper the stop line runs needs it)."""
     def word(path):
         path = str(path)
         return path if re.fullmatch(SAFE_BARE, path) else "'%s'" % path
+    if interpreter is None:
+        interpreter = sys.executable
+        if not interpreter or not os.path.isabs(interpreter):
+            fail("this Python reports no absolute interpreter path (sys.executable); "
+                 "name the interpreter: stop-command INTERPRETER")
+        if importlib.util.find_spec("psutil") is None:
+            fail(f"this Python ({word(interpreter)}) has no psutil, which auto_queue.py needs: "
+                 "make a venv and install it there (python3 -m venv DIR, then DIR/bin/python -m "
+                 "pip install psutil; not --user, which the kit's -I ignores), then run this "
+                 "command with DIR/bin/python")
     line = f"{word(interpreter)} -I -B {word(queue)} stop"
     if not stop_line(line):
-        fail("the interpreter must be an absolute path to an existing executable "
-             "libtbx.python or conda_base/bin/python3[.N], without a ' or ! character: "
-             f"{interpreter}")
+        fail("the interpreter must be an absolute path to an existing executable Python 3 "
+             "interpreter named python, python3, python3.N or libtbx.python, without a ' or ! "
+             f"character or a character that is not printable: {interpreter!r}")
     return line
 
 
@@ -797,11 +837,12 @@ def auto_screen(kind, body, queue):
     if kind == "auto_start":
         if queue:
             fail("auto_start has no queue to compare")
-        # Revision 16: the stop command runs the helper with the cctbx conda Python (it needs
-        # psutil), by its absolute path so that it works from any Terminal whatever PATH is
-        # (repair 1, finding 3): `/.../libtbx.python -I -B AQ stop` or
-        # `/.../conda_base/bin/python3[.N] -I -B AQ stop`. A plain or bare python3, and a bare
-        # libtbx.python, are refused. Repair 2 (reading 2, finding 2): the interpreter must be an
+        # Revision 16: the stop command runs the helper with a Python that has psutil, by its
+        # absolute path so that it works from any Terminal whatever PATH is (repair 1, finding
+        # 3). Revision 18: any absolute python, python3, python3.N or libtbx.python (before,
+        # only libtbx.python or conda_base/bin/python3[.N]); stop-command without an argument
+        # prints the absolute sys.executable of the Python that runs it. A bare or relative
+        # name is refused. Repair 2 (reading 2, finding 2): the interpreter must be an
         # existing, executable regular file (symbolic links resolved). Revision 17 (outside
         # reading of revision 16): either path may be written in single or double quotes,
         # which a path containing a space needs ('/Users/a b/.../libtbx.python' -I -B ...);
@@ -822,7 +863,7 @@ def auto_screen(kind, body, queue):
     helper = subprocess.run([sys.executable, "-I", "-B", str(AUTO_QUEUE), "--queue", str(queue),
                              "report"], capture_output=True, text=True)
     if helper.returncode == 18:
-        # Revision 16: the helper needs psutil (the cctbx conda Python has it).
+        # Revision 16: the helper needs psutil.
         fail("auto_queue.py report failed: " + (helper.stderr.strip().splitlines() or [""])[-1])
     if helper.returncode != 0:
         fail("auto_queue.py report failed")
@@ -1106,7 +1147,9 @@ def main():
     commands.add_parser("check-claude-version")
     commands.add_parser("register-skill").add_argument("source", type=Path)
     commands.add_parser("stop-command", help="revision 17: print the auto_start stop line, "
-                        "quoting a path that needs it").add_argument("interpreter")
+                        "quoting a path that needs it; revision 18: without INTERPRETER, the "
+                        "absolute path of the Python running this command").add_argument(
+                            "interpreter", nargs="?")
     draft = commands.add_parser("check-draft")
     draft.add_argument("kind", choices=("publication",))
     draft.add_argument("evidence", type=Path)

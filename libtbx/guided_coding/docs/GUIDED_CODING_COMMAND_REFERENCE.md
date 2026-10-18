@@ -74,7 +74,7 @@ that package bytecode. Ordinary Python imports, including direct unit-test
 imports, can load caches; run those tests on a trusted clean copy.
 
 The commands shown here work as written in bash, zsh, csh and tcsh. They
-need `shasum` and a suitable Python 3. Where `shasum` is missing (some
+need `shasum` and Python 3.10 or newer. Where `shasum` is missing (some
 Linux systems), replace `shasum -a 256 -c SOURCE_MANIFEST.sha256` in the
 block with `sha256sum -c SOURCE_MANIFEST.sha256`; it reads the same
 manifest file.
@@ -362,17 +362,21 @@ command does not start the skill. Claude turns the request into a job
 list, shows one checked start notice and then works without questions.
 The start notice gives the absolute path of the queue helper in use, the
 stop command and the run boundary. The stop command is written as
-`screen_check.py stop-command <interpreter>` prints it: a path that
-contains a space is put in single quotes, which every supported shell
-reads as one word (revision 17).
+`screen_check.py stop-command` prints it: the absolute interpreter path
+of the Python that runs the kit (revision 18), `-I -B`, the helper and
+`stop`; a path that contains a space is put in single quotes, which
+every supported shell reads as one word (revision 17).
 
 **Auto-mode runs need macOS.** The queue helper blocks outside network
 for its runs with `sandbox-exec` and finds a run's processes by an
 environment marker, read on macOS only (with `ps -E` until revision 16,
 since then through psutil); both are macOS mechanisms. The helper needs
-psutil and runs with the cctbx conda Python, `libtbx.python`; without
-psutil every helper command stops (exit 18, "requires psutil: run with the
-cctbx conda Python (libtbx.python) or pip install psutil"). On any
+Python 3.10 or newer (written `libtbx.python`) and psutil; without
+psutil every helper command stops (exit 18, "requires psutil, which
+<python> does not have: make a venv and install it there (python3 -m venv
+DIR, then DIR/bin/python -m pip install psutil; not --user, which the
+kit's -I ignores), then run with DIR/bin/python; or use libtbx.python").
+On any
 other system `auto_queue.py run` refuses (exit 15, "auto-mode runs need
 macOS (sandbox-exec and `ps -E`)") before anything starts, whether or not
 the job has a network grant. The helper has no option, environment

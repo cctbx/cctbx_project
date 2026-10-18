@@ -2065,8 +2065,8 @@ APPROVAL_LINE = "Approval: accepts this exact packet and merges nothing."
 # need either skip with these reasons when it is missing.
 HAS_PSUTIL = importlib.util.find_spec("psutil") is not None
 PSUTIL_SKIP = ("psutil not importable by %s: the auto-queue helper stops without it (exit 18); "
-               "run with the cctbx conda Python (libtbx.python) or pip install psutil"
-               % sys.executable)
+               "make a venv and install it there (python3 -m venv DIR, then DIR/bin/python -m pip "
+               "install psutil; not --user), or run with libtbx.python" % sys.executable)
 GIT_SKIP = "git not on PATH: building a test queue needs a git repository (candidate)"
 # Revision 16 (repair 1, finding 3): the start screen prints the interpreter's absolute path.
 # Repair 2 (reading 2, finding 2): the checker requires an existing executable interpreter, so
@@ -2074,14 +2074,35 @@ GIT_SKIP = "git not on PATH: building a test queue needs a git repository (candi
 import atexit
 STOP_BUILD = Path(os.path.realpath(tempfile.mkdtemp(prefix="gc-stop-build-")))
 atexit.register(shutil.rmtree, str(STOP_BUILD), True)
-for _name in ("build/bin/libtbx.python", "conda_base/bin/python3", "conda_base/bin/python3.11",
-              "noexec/build/bin/libtbx.python"):
+# Revision 18: also a venv's bin/python, python3 and python3.N, a system-style usr/bin/python3,
+# the python that libtbx.python starts on macOS, and files that exist and are executable but
+# whose names are not a Python 3 interpreter's (negative controls of the name rule).
+GENERAL_PYTHONS = ("venv/bin/python", "venv/bin/python3", "venv/bin/python3.10", "usr/bin/python3",
+                   "usr/bin/python3.12", "conda_base/python.app/Contents/MacOS/python")
+OTHER_NAMES = ("python2", "python2.7", "pythonw", "ipython", "python3.10-config", "python3.x",
+               "python3.", "python3.10.1", "libtbx.python3", "pypy3", "sh", "Python3", "python4",
+               "python310", "python3.10t")
+for _name in (("build/bin/libtbx.python", "conda_base/bin/python3", "conda_base/bin/python3.11",
+               "noexec/build/bin/libtbx.python", "noexec/venv/bin/python3", "real/python3.10",
+               "real/python3.12-intel64")
+              + GENERAL_PYTHONS + tuple("other/bin/" + name for name in OTHER_NAMES)):
     (STOP_BUILD / _name).parent.mkdir(parents=True, exist_ok=True)
     (STOP_BUILD / _name).write_text("#!/bin/sh\nexit 0\n")
     (STOP_BUILD / _name).chmod(0o644 if _name.startswith("noexec") else 0o755)
 (STOP_BUILD / "dir" / "bin" / "libtbx.python").mkdir(parents=True)  # executable, not a file
+(STOP_BUILD / "dir" / "bin" / "python3").mkdir(parents=True)
 (STOP_BUILD / "link" / "bin").mkdir(parents=True)
 (STOP_BUILD / "link" / "bin" / "libtbx.python").symlink_to(STOP_BUILD / "build/bin/libtbx.python")
+# a venv whose python3 is a link to the base interpreter (as `python3 -m venv` makes it)
+(STOP_BUILD / "linkvenv" / "bin").mkdir(parents=True)
+(STOP_BUILD / "linkvenv" / "bin" / "python3").symlink_to(STOP_BUILD / "real/python3.10")
+(STOP_BUILD / "linkvenv" / "bin" / "python").symlink_to("python3")
+(STOP_BUILD / "linkvenv" / "bin" / "dangling").mkdir()
+(STOP_BUILD / "linkvenv" / "bin" / "python3.99").symlink_to(STOP_BUILD / "missing/python3.99")
+# the written name decides, not the link target's: python3.12 -> python3.12-intel64 (as some macOS
+# installers lay it out) is accepted, and pythonw -> python3.10 is refused
+(STOP_BUILD / "linkvenv" / "bin" / "python3.12").symlink_to(STOP_BUILD / "real/python3.12-intel64")
+(STOP_BUILD / "linkvenv" / "bin" / "pythonw").symlink_to(STOP_BUILD / "real/python3.10")
 STOP_PYTHON = f"{STOP_BUILD}/build/bin/libtbx.python -I -B"
 _SANDBOX_STATE = []
 
@@ -3036,7 +3057,8 @@ class AutoScreenChecks(unittest.TestCase):
     def test_auto_start_isolated_stop_command_accepted_exactly(self):
         """Stop command form (option 1; supersedes the prefixed form). Revision 16: STOP
         accepts exactly `/ABS/libtbx.python -I -B AQ stop`, or the same with a build's
-        /ABS/conda_base/bin/python3 in place of libtbx.python (repair 1: absolute paths only,
+        /ABS/conda_base/bin/python3 in place of libtbx.python (revision 18: or any other absolute
+        python, python3 or python3.N; see test_auto_start_stop_line_general_python) (repair 1: absolute paths only,
         so that the line works whatever PATH is; a bare libtbx.python is refused); the earlier
         `python3 AQ stop` and `python3 -I -B AQ stop` (a python3 that may lack psutil, so the
         stop would fail with exit 18), the TMPDIR-prefixed form and near-misses are refused
@@ -3068,7 +3090,8 @@ class AutoScreenChecks(unittest.TestCase):
                 ("bare libtbx.python -I -B (repair 1)", f"libtbx.python -I -B {CHECKER_AUTO_QUEUE} stop"),
                 ("relative libtbx.python", f"build/bin/libtbx.python -I -B {CHECKER_AUTO_QUEUE} stop"),
                 ("relative conda python", f"conda_base/bin/python3 -I -B {CHECKER_AUTO_QUEUE} stop"),
-                ("other python by path", f"/usr/bin/python3 -I -B {CHECKER_AUTO_QUEUE} stop"),
+                ("other executable by path (revision 18: python2 is not a Python 3 name)",
+                 f"{STOP_BUILD}/other/bin/python2 -I -B {CHECKER_AUTO_QUEUE} stop"),
                 ("TMPDIR prefix with -I -B", f"{self.PREFIX} {isolated}"),
                 ("TMPDIR prefix, plain", f"{self.PREFIX} python3 {CHECKER_AUTO_QUEUE} stop"),
                 ("-B -I order", isolated.replace("-I -B", "-B -I")),
@@ -3150,7 +3173,8 @@ class AutoScreenChecks(unittest.TestCase):
                             ("unclosed quote", f"'{lib} -I -B {aq} stop"),
                             ("quoted path with !", f"'{bang}/build/bin/libtbx.python' -I -B {aq} stop"),
                             ("unquoted path with !", f"{bang}/build/bin/libtbx.python -I -B {aq} stop"),
-                            ("quoted other python", f"'/usr/bin/python3' -I -B {aq} stop"),
+                            ("quoted other executable (revision 18)",
+                             f"'{STOP_BUILD}/other/bin/pythonw' -I -B {aq} stop"),
                             ("quoted nonexistent path with spaces",
                              f"'{spaced}/missing/bin/libtbx.python' -I -B {aq} stop"),
                             ("flags inside the quotes", f"'{lib} -I -B' {aq} stop"),
@@ -3193,6 +3217,172 @@ class AutoScreenChecks(unittest.TestCase):
             with self.subTest(stop_command_refused=interpreter):
                 self.assert_refused(self.tool("stop-command", interpreter))
 
+    def test_auto_start_stop_line_general_python(self):
+        """Revision 18: the stop line's interpreter may be any absolute path to an existing,
+        executable regular file named python, python3, python3.N or libtbx.python: a venv's
+        bin/python, bin/python3 or bin/python3.N (also a venv link to the base interpreter,
+        whose resolved name is checked for existence only: the written name decides), a system-style usr/bin/python3, and
+        the python that libtbx.python starts on macOS. Negative controls: the same forms with a
+        name that is not a Python 3 interpreter's (the files exist and are executable, so only
+        the name rule refuses them), and a venv interpreter that is missing, not executable, a
+        directory, a dangling link, relative (it exists from the checker's working directory)
+        or bare."""
+        reason = "auto_start needs the stop command of this procedure's auto_queue.py"
+        aq = CHECKER_AUTO_QUEUE
+        accepted = [f"{STOP_BUILD}/{name}" for name in GENERAL_PYTHONS] + [
+            f"{STOP_BUILD}/linkvenv/bin/python3", f"{STOP_BUILD}/linkvenv/bin/python",
+            f"{STOP_BUILD}/linkvenv/bin/python3.12", f"{STOP_BUILD}/build/bin/libtbx.python", f"{STOP_BUILD}/conda_base/bin/python3.11"]
+        for interpreter in accepted:
+            for line in (f"{interpreter} -I -B {aq} stop", f"'{interpreter}' -I -B {aq} stop",
+                         f'"{interpreter}" -I -B {aq} stop'):
+                with self.subTest(accepted=line):
+                    self.assert_accepted(self.check("auto_start", self.put(
+                        self.start_text(stop_line=line))))
+            with self.subTest(stop_command=interpreter):
+                printed = self.tool("stop-command", interpreter)
+                self.assert_accepted(printed)
+                self.assertEqual(printed.stdout, f"{interpreter} -I -B {aq} stop\n")
+        (self.root / "venv" / "bin").mkdir(parents=True)
+        (self.root / "venv" / "bin" / "python3").write_text("#!/bin/sh\nexit 0\n")
+        (self.root / "venv" / "bin" / "python3").chmod(0o755)
+        (self.root / "python3").write_text("#!/bin/sh\nexit 0\n")
+        (self.root / "python3").chmod(0o755)
+        refused = [f"{STOP_BUILD}/other/bin/{name}" for name in OTHER_NAMES] + [
+            f"{STOP_BUILD}/missing/bin/python3", f"{STOP_BUILD}/noexec/venv/bin/python3",
+            f"{STOP_BUILD}/dir/bin/python3", f"{STOP_BUILD}/linkvenv/bin/python3.99",
+            f"{STOP_BUILD}/linkvenv/bin/dangling", f"{STOP_BUILD}/linkvenv/bin/pythonw",
+            "venv/bin/python3", "./venv/bin/python3",
+            "python3", "python", "python3.10"]
+        for interpreter in refused:
+            for line in (f"{interpreter} -I -B {aq} stop", f"'{interpreter}' -I -B {aq} stop"):
+                with self.subTest(refused=line):
+                    result = self.check("auto_start", self.put(self.start_text(stop_line=line)))
+                    self.assert_refused(result)
+                    self.assertIn(reason, result.stderr)
+            with self.subTest(stop_command_refused=interpreter):
+                result = self.tool("stop-command", interpreter)
+                self.assert_refused(result)
+                self.assertIn("python, python3, python3.N or libtbx.python", result.stderr)
+
+    def test_stop_command_without_interpreter_prints_this_python(self):
+        """Revision 18: `stop-command` without an interpreter prints the stop line for the
+        absolute sys.executable of the Python running the checker, quoted as stop-command quotes
+        any path, and the start screen accepts that line; that Python must have psutil (the
+        helper the line runs needs it). Without psutil (blocked in the checker's own process,
+        or missing from this interpreter) it is refused naming this Python and the venv route.
+        Control: the same launcher with psutil not blocked prints the line when psutil is
+        importable."""
+        aq = CHECKER_AUTO_QUEUE
+        executable = sys.executable
+        word = executable if re.fullmatch(r"[A-Za-z0-9_./+@%:,=-]+", executable) else "'%s'" % executable
+        code = ("import sys, runpy\nif sys.argv[1] == 'block':\n    sys.modules['psutil'] = None\n"
+                "sys.argv = [sys.argv[2], 'stop-command']\n"
+                "runpy.run_path(sys.argv[0], run_name='__main__')\n")
+        def launch(mode):
+            return subprocess.run([sys.executable, "-I", "-B", "-c", code, mode,
+                                   str(Path(checker.__file__))], cwd=self.root,
+                                  env=self.environment, text=True, capture_output=True)
+        blocked = launch("block")
+        self.assert_refused(blocked)
+        self.assertIn(f"this Python ({word}) has no psutil", blocked.stderr)
+        # repair 1 (reading 1, finding 1): the venv route, not a bare pip install
+        self.assertIn("python3 -m venv DIR, then DIR/bin/python -m pip install psutil; not --user",
+                      blocked.stderr)
+        self.assertEqual(blocked.stdout, "")
+        for result in (launch("keep"), self.tool("stop-command")):
+            if HAS_PSUTIL:
+                self.assert_accepted(result)
+                self.assertEqual(result.stdout, f"{word} -I -B {aq} stop\n")
+                self.assert_accepted(self.check("auto_start", self.put(
+                    self.start_text(stop_line=result.stdout.strip()))))
+            else:
+                self.assert_refused(result)
+                self.assertIn("-m pip install psutil", result.stderr)
+
+    def test_auto_start_quoted_stop_path_printable_only(self):
+        """Repair 1 (reading 1, finding 2; present since revision 17) and repair 1b: inside single
+        or double quotes every character of a stop line's path must be printable
+        (str.isprintable) apart from the characters already refused. A path with Ctrl-U (which a
+        terminal without bracketed paste reads as "erase the line typed so far", ending the quote
+        early), CR, ESC, tab (bash 3.2 completes on it; refused rather than documented), DEL,
+        another control character, a bidi override (U+202E, U+2066), a zero-width space (U+200B),
+        a line separator (U+2028) or a non-breaking space is refused by stop_line, by
+        `stop-command` and by `check auto_start`. Accepted (repair 1b): accented letters and other
+        scripts (é, ü, CJK), as in a home folder's name, in both quote forms and as stop-command
+        prints them. Controls: the same form with an ASCII directory name is accepted, and the
+        reviewer's probe paths with ; $( ) a backquote and a backslash stay accepted in single
+        quotes, where no supported shell treats them specially."""
+        reason = "auto_start needs the stop command of this procedure's auto_queue.py"
+        aq = CHECKER_AUTO_QUEUE
+        def interpreter(name):
+            path = self.root / name / "bin" / "python3"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("#!/bin/sh\nexit 0\n")
+            path.chmod(0o755)
+            return str(path)
+        for label, name in (("Ctrl-U", "a\x15b"), ("CR", "a\rb"), ("ESC", "a\x1bb"), ("tab", "a\tb"),
+                            ("DEL", "a\x7fb"), ("Ctrl-C", "a\x03b"), ("BEL", "a\x07b"),
+                            ("U+202E right-to-left override", "a\u202eb"),
+                            ("U+2066 left-to-right isolate", "a\u2066b"),
+                            ("U+200B zero-width space", "a\u200bb"), ("U+2028 line separator", "a\u2028b"),
+                            ("non-breaking space", "a\u00a0b")):
+            path = interpreter(name)
+            control = interpreter("ascii-" + label.split()[0].replace("+", ""))
+            with self.subTest(refused=label):
+                for line in (f"'{path}' -I -B {aq} stop", f'"{path}" -I -B {aq} stop'):
+                    self.assertFalse(checker.stop_line(line), repr(line))
+                result = self.tool("stop-command", path)
+                self.assert_refused(result)
+                self.assertIn("a character that is not printable", result.stderr)
+                result = self.check("auto_start", self.put(self.start_text(
+                    stop_line=f"'{path}' -I -B {aq} stop")))
+                self.assert_refused(result)
+                # a screen file with a CR, or a line or paragraph separator, is refused whole or split
+                if label not in ("CR", "U+2028 line separator"):
+                    self.assertIn(reason, result.stderr)
+            with self.subTest(control=label):
+                for line in (f"'{control}' -I -B {aq} stop", f'"{control}" -I -B {aq} stop'):
+                    self.assertTrue(checker.stop_line(line), repr(line))
+        for label, name in (("é", "caf\u00e9"), ("ü", "M\u00fcller"), ("CJK", "\u7528\u6237"),
+                            ("accented home with a space", "Jos\u00e9 Garc\u00eda")):
+            path = interpreter(name)
+            with self.subTest(accepted=label):
+                for line in (f"'{path}' -I -B {aq} stop", f'"{path}" -I -B {aq} stop'):
+                    self.assertTrue(checker.stop_line(line), repr(line))
+                printed = self.tool("stop-command", path)
+                self.assert_accepted(printed)
+                self.assertEqual(printed.stdout, f"'{path}' -I -B {aq} stop\n")
+                self.assert_accepted(self.check("auto_start", self.put(self.start_text(
+                    stop_line=printed.stdout.strip()))))
+        # the helper's own path (the STOP line's second path) obeys the same rule: a copy of this
+        # checker beside an auto_queue.py in a directory with a bidi override refuses its own
+        # stop line; control: the same copy in an ASCII directory prints it
+        ok = interpreter("ascii-kit-python")
+        for label, kit_name, refused in (("bidi override in the kit path", "kit\u202ekit", True),
+                                         ("ASCII kit path", "kit-ascii", False)):
+            kit = self.root / kit_name
+            (kit / "payload" / "tools").mkdir(parents=True)
+            shutil.copy(checker.__file__, kit / "payload" / "tools" / "screen_check.py")
+            (kit / "auto_queue.py").write_text("import sys\nsys.exit(0)\n")
+            with self.subTest(queue_path=label):
+                result = subprocess.run([sys.executable, "-I", "-B",
+                                         str(kit / "payload" / "tools" / "screen_check.py"),
+                                         "stop-command", ok], cwd=self.root, env=self.environment,
+                                        text=True, capture_output=True)
+                if refused:
+                    self.assert_refused(result)
+                else:
+                    self.assert_accepted(result)
+                    self.assertEqual(result.stdout, f"{ok} -I -B {kit / 'auto_queue.py'} stop\n")
+        for name in ("a;b", "a$(x)b", "a`x`b", "a\\b", "a b"):
+            path = interpreter(name)
+            with self.subTest(accepted_in_single_quotes=name):
+                printed = self.tool("stop-command", path)
+                self.assert_accepted(printed)
+                self.assertEqual(printed.stdout, f"'{path}' -I -B {aq} stop\n")
+                self.assert_accepted(self.check("auto_start", self.put(self.start_text(
+                    stop_line=printed.stdout.strip()))))
+
     def test_auto_report_names_psutil_when_the_helper_needs_it(self):
         """Revision 16: when the helper stops for lack of psutil (exit 18), auto_report is
         refused with the helper's message, not only "report failed". A copy of this
@@ -3205,8 +3395,8 @@ class AutoScreenChecks(unittest.TestCase):
                 (kit / "payload" / "tools").mkdir(parents=True)
                 shutil.copy(checker.__file__, kit / "payload" / "tools" / "screen_check.py")
                 (kit / "auto_queue.py").write_text(
-                    "import sys\nprint('REFUSED: requires psutil: run with the cctbx conda "
-                    "Python (libtbx.python) or pip install psutil', file=sys.stderr)\n"
+                    "import sys\nprint('REFUSED: requires psutil, which python3 does not have: "
+                    "make a venv and install it there', file=sys.stderr)\n"
                     "sys.exit(%d)\n" % code)
                 queue = self.root / "queue"
                 queue.mkdir(exist_ok=True)
@@ -3217,8 +3407,8 @@ class AutoScreenChecks(unittest.TestCase):
                     cwd=self.root, env=self.environment, text=True, capture_output=True)
                 self.assert_refused(result)
                 self.assertEqual(result.stderr.strip(), "ERROR: " + expected
-                                 + ("" if code == 1 else ": run with the cctbx conda Python "
-                                    "(libtbx.python) or pip install psutil"))
+                                 + ("" if code == 1 else ", which python3 does not have: make a venv "
+                                    "and install it there"))
 
     def test_auto_report_passed_and_stopped_allowed_in_approval_summaries(self):
         """Clarification: the revision 2 checks on `passed` and `stopped` apply to IN
@@ -3329,6 +3519,144 @@ class AutoScreenChecks(unittest.TestCase):
         # Revision 17: the command line refuses a STOP without its Recommendation line.
         self.assert_refused(self.check("stop", self.put(stop.read_text().replace(
             "Recommendation: cancel because the report is unclear.\n", ""))))
+
+
+# Revision 18: the tools people run directly need Python 3.10 or newer and refuse an older one
+# with this exit code and message before anything else runs; only auto_queue.py needs psutil.
+KIT_ROOT = Path(checker.__file__).resolve().parent.parent.parent
+DIRECT_TOOLS = ("payload/tools/screen_check.py", "payload/tools/publication_precheck.py",
+                "payload/tools/review_bundle.py", "payload/tools/records_history.py",
+                "payload/tools/fingerprint_normalize.py", "auto_queue.py")
+OLD_PYTHON_EXIT = 19
+OLD_PYTHON_MESSAGE = "REFUSED: requires Python 3.10 or newer; this is Python %s (%s)\n"
+# Runs a tool as a script in this interpreter with sys.version_info replaced first (argv[1]).
+AS_VERSION = ("import sys, runpy\nsys.version_info = tuple(int(x) for x in sys.argv[1].split('.'))"
+              " + ('final', 0)\npath = sys.argv[2]\nsys.argv = [path] + sys.argv[3:]\n"
+              "runpy.run_path(path, run_name='__main__')\n")
+# Runs a tool as a script in this interpreter with psutil made unimportable first.
+NO_PSUTIL = ("import sys, runpy\nsys.modules['psutil'] = None\npath = sys.argv[1]\n"
+             "sys.argv = [path] + sys.argv[2:]\nrunpy.run_path(path, run_name='__main__')\n")
+
+
+class GeneralPythonChecks(unittest.TestCase):
+    """Revision 18: the kit runs under a general Python 3.10 or newer (not only the cctbx conda
+    Python). Older versions are refused cleanly, and the tools that do not need psutil work
+    without it."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(os.path.realpath(self.temp.name))
+
+    def launch(self, code, *arguments, cwd=None):
+        return subprocess.run([sys.executable, "-I", "-B", "-c", code, *map(str, arguments)],
+                              cwd=cwd or self.root, text=True, capture_output=True, timeout=120)
+
+    def test_every_direct_tool_refuses_python_older_than_3_10(self):
+        """Each tool run directly refuses Python 3.9 (and older) with exit 19 and one message
+        naming the version and the interpreter, writes nothing on stdout, and does nothing
+        else: `screen_check.py freeze` writes no manifest and `auto_queue.py --home H status`
+        creates no H. The version is simulated in the tool's own process (sys.version_info
+        replaced before the tool runs). Control: the same launcher with 3.10.0 runs the tool
+        (no exit 19; the same freeze writes its manifest)."""
+        for tool in DIRECT_TOOLS:
+            for version in ("3.9.6", "3.8.10", "3.6.0"):
+                with self.subTest(tool=tool, version=version):
+                    result = self.launch(AS_VERSION, version, KIT_ROOT / tool, "--help")
+                    self.assertEqual(result.returncode, OLD_PYTHON_EXIT,
+                                     result.stdout + result.stderr)
+                    self.assertEqual(result.stderr, OLD_PYTHON_MESSAGE % (version, sys.executable))
+                    self.assertEqual(result.stdout, "")
+            with self.subTest(tool=tool, version="3.10.0 (control)"):
+                result = self.launch(AS_VERSION, "3.10.0", KIT_ROOT / tool, "--help")
+                self.assertNotEqual(result.returncode, OLD_PYTHON_EXIT, result.stderr)
+                self.assertNotIn("requires Python 3.10", result.stderr)
+        evidence = self.root / "evidence"
+        evidence.mkdir()
+        (evidence / "a.txt").write_text("a\n")
+        home = self.root / "home"
+        for version, refused in (("3.9.6", True), ("3.10.0", False)):
+            with self.subTest(freeze=version):
+                result = self.launch(AS_VERSION, version, KIT_ROOT / "payload/tools/screen_check.py",
+                                     "freeze", evidence)
+                self.assertEqual(result.returncode == OLD_PYTHON_EXIT, refused, result.stderr)
+                self.assertEqual((evidence / "MANIFEST.sha256").exists(), not refused)
+        result = self.launch(AS_VERSION, "3.9.6", KIT_ROOT / "auto_queue.py", "--home", home,
+                             "status")
+        self.assertEqual(result.returncode, OLD_PYTHON_EXIT, result.stderr)
+        self.assertFalse(home.exists())
+
+    def test_direct_tools_parse_as_python_3_8(self):
+        """Repair 1 (reading 1, finding 7): exit 19 is reachable only if an older Python can parse
+        the file, so the six tools' sources must parse with ast.parse(feature_version=(3, 8))
+        (best effort: ast checks the grammar features it knows by version). Control: a `match`
+        statement (3.10 grammar) is refused at that version and accepted at 3.10."""
+        import ast
+        for tool in DIRECT_TOOLS:
+            with self.subTest(tool=tool):
+                path = KIT_ROOT / tool
+                ast.parse(path.read_text(encoding="utf-8"), str(path), feature_version=(3, 8))
+        newer = "match x:\n    case 1:\n        pass\n"
+        with self.assertRaises(SyntaxError):
+            ast.parse(newer, feature_version=(3, 8))
+        ast.parse(newer, feature_version=(3, 10))
+
+    def test_tools_that_need_no_psutil_work_without_it(self):
+        """Only auto_queue.py needs psutil. With psutil made unimportable in the tool's own
+        process, the checker verifies a kit source, freezes and verifies evidence and prints a
+        stop line for a named interpreter; the review bundle tool, the task-history listing,
+        the fingerprint normalizer and the push-command vet run normally. Control: under the
+        same launcher auto_queue.py stops with exit 18, so psutil really was unimportable."""
+        tools = KIT_ROOT / "payload" / "tools"
+        source = self.root / "source"
+        (source / "payload" / "tools").mkdir(parents=True)
+        for name in ("screen_check.py", "review_bundle.py"):
+            shutil.copy2(tools / name, source / "payload" / "tools" / name)
+        (source / "SKILL.md").write_text("entry\n")
+        (source / "SOURCE_MANIFEST.sha256").write_text("".join(
+            f"{checker.digest((source / name).read_bytes())}  ./{name}\n"
+            for name in ("SKILL.md", "payload/tools/review_bundle.py",
+                         "payload/tools/screen_check.py")))
+        evidence = self.root / "evidence"
+        evidence.mkdir()
+        (evidence / "a.txt").write_text("a\n")
+        records = self.root / "records"
+        (records / "2026-10-17-a").mkdir(parents=True)
+        (records / "2026-10-17-a" / "RECORD.md").write_text("# 2026-10-17-a\n- start\n")
+        archive = self.root / "lib.a"
+        archive.write_bytes(b"!<arch>\n")
+        hex40 = "c" * 40
+        cases = (
+            ("screen_check verify-source", [tools / "screen_check.py", "verify-source", source],
+             "VERIFIED complete source"),
+            ("screen_check freeze", [tools / "screen_check.py", "freeze", evidence], ""),
+            ("screen_check verify", [tools / "screen_check.py", "verify", evidence],
+             "VERIFIED evidence"),
+            ("screen_check stop-command", [tools / "screen_check.py", "stop-command",
+                                           f"{STOP_BUILD}/venv/bin/python3"],
+             f"{STOP_BUILD}/venv/bin/python3 -I -B {CHECKER_AUTO_QUEUE} stop"),
+            ("review_bundle --help", [tools / "review_bundle.py", "--help"], "usage"),
+            ("records_history", [tools / "records_history.py", records], "1 entries"),
+            ("fingerprint_normalize", [tools / "fingerprint_normalize.py", "file", "--kind",
+                                       "archive", archive], str(archive)),
+            ("publication_precheck vet", [tools / "publication_precheck.py", "vet", "--", "git",
+                                          "-C", "X", "-c", "push.followTags=false", "push",
+                                          "--no-follow-tags", "origin",
+                                          f"{hex40}:refs/heads/master"], "VET OK"))
+        for label, arguments, expected in cases:
+            with self.subTest(tool=label):
+                result = self.launch(NO_PSUTIL, *arguments)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn(expected, result.stdout)
+                # (not a bare "psutil": the scratch paths in the output may contain that word)
+                self.assertNotRegex(result.stderr, r"requires psutil|No module named|ImportError|"
+                                    r"Traceback")
+        with self.subTest(control="auto_queue.py without psutil"):
+            result = self.launch(NO_PSUTIL, KIT_ROOT / "auto_queue.py", "--home",
+                                 self.root / "home", "status")
+            self.assertEqual(result.returncode, 18, result.stdout + result.stderr)
+            self.assertIn("requires psutil", result.stderr)
+            self.assertFalse((self.root / "home").exists())
 
 
 if __name__ == "__main__":

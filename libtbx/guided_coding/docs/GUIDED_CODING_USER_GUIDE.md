@@ -6,7 +6,7 @@ Start with a small task in a project you know. This guide tells you how to insta
 
 ## Before you begin
 
-These instructions use the [Guided Coding download](https://www.thomasterwilliger.org/guided_coding/). Use Claude Code on your computer and a project managed with Git. You also need Python 3.10 or newer with psutil (the cctbx conda Python, `libtbx.python`, has it, and the kit's documented commands use it; any such Python can stand in for it) and `shasum` or `sha256sum` to check the download. The Terminal commands in this guide work in bash, zsh, csh and tcsh. In Terminal, `git --version` and `libtbx.python --version` show which versions of Git and Python you have.
+These instructions use the [Guided Coding download](https://www.thomasterwilliger.org/guided_coding/). Use Claude Code on your computer and a project managed with Git. You also need Python 3.10 or newer, and `shasum` or `sha256sum` to check the download. Auto mode (running several jobs while you are away) also needs the psutil package. Install it in a virtual environment and use that environment's Python for Guided Coding: `python3 -m venv ~/guided_coding_venv`, then `~/guided_coding_venv/bin/python -m pip install psutil`, then use `~/guided_coding_venv/bin/python`. Do not use `pip install --user`: Guided Coding runs Python with `-I`, which ignores packages installed that way, and many systems refuse a plain `pip install` outside a virtual environment. The Terminal commands in this guide work in bash, zsh, csh and tcsh. In Terminal, `git --version` and `python3 --version` show which versions of Git and Python you have.
 
 **Supported systems.** Guided Coding supports the Claude app on macOS, and Claude Code in Terminal on macOS and Linux. On Linux its tests run, but a real `/gc` session there has not yet been observed (see [Clients and platforms](GUIDED_CODING_VERIFICATION.md#important-remaining-uncertainty)). Auto mode (running several jobs while you are away) runs only on macOS; on other systems its runs are refused. Windows is not supported.
 
@@ -18,13 +18,9 @@ You can also use Claude Code in Terminal on macOS or Linux. Follow Anthropic’s
 
 Guided Coding checks for Claude Code 2.1.281 or newer. In the app, it checks the copy of Claude Code built into the app. If it cannot read that version, it prints **NOT CHECKED** and continues. You can continue, but the required version has not been confirmed. In Terminal, it checks the `claude` program that runs when you type that command.
 
-## Using Guided Coding in the cloud or with cctbx_project or PHENIX
+## Using Guided Coding in the cloud or inside other software
 
-A cloud session cannot use the link on your computer. It can obtain its own copy from the [source repository](https://github.com/cctbx/cctbx_project/tree/master/libtbx/guided_coding); this guide does not cover cloud setup.
-
-[cctbx_project](https://github.com/cctbx/cctbx_project) includes the Guided Coding source. If you use your own copy, follow the one-time setup below with the path to its `libtbx/guided_coding` folder instead of downloading the kit.
-
-[PHENIX](https://www.phenix-online.org) includes Guided Coding. Run `phenix.developer` to open the instructions and default settings for using it with PHENIX.
+A cloud session cannot use the link on your computer; this guide does not cover cloud setup. Some software packages include Guided Coding; the [overview](GUIDED_CODING_README.md#where-guided-coding-is-included) says which, and how to use their copies.
 
 ## 1. Download and check the kit
 

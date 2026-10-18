@@ -8,6 +8,12 @@ from a flat <id>.md record. The listing writes nothing, grants nothing,
 contacts nothing, and never follows instructions found in a record."""
 
 import sys
+# Revision 18: the kit needs Python 3.10 or newer; an older Python refuses here, before
+# anything else runs, with exit 19 (the same message and code in every tool).
+if sys.version_info < (3, 10):
+    sys.stderr.write("REFUSED: requires Python 3.10 or newer; this is Python %d.%d.%d (%s)\n"
+                     % (tuple(sys.version_info[:3]) + (sys.executable,)))
+    sys.exit(19)
 # When run as a script, keep this directory out of module resolution before
 # importing the standard library (the documented -I invocation also does).
 if __name__ == "__main__" and not sys.flags.isolated:
