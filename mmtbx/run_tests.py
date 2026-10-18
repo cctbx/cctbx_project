@@ -102,6 +102,7 @@ general_tests = [
   "$D/regression/model/tst_model_remove_alternative_conformations.py",
   "$D/regression/model/tst_model_get_vdw_radii.py",
   "$D/regression/model/tst_model_dedeuterate.py",
+  "$D/regression/model/tst_exchangeable_hd_selections.py",
   "$D/regression/model/tst_model_add_terminal_oxt.py",
   "$D/regression/model/tst_model_atom_completeness.py",
   "$D/regression/model/tst_model_utils_merge_models.py",
