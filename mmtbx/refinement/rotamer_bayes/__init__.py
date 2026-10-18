@@ -40,6 +40,7 @@ from mmtbx.rotamer.sidechain_angles import SidechainAngles
 from mmtbx.refinement.rotamer_bayes import priors as priors_module
 from mmtbx.refinement.rotamer_bayes import side_chain as side_chain_module
 from mmtbx.refinement.rotamer_bayes import evidence as evidence_module
+from mmtbx.refinement.rotamer_bayes import ncs as ncs_module
 
 master_params_str = """
 p_min = 0.001
@@ -87,6 +88,11 @@ mask_cell = 1.5
   .help = Include the change of the bulk-solvent mask in the exact dLL \
           (recomputed on a local grid). Without it every change is biased \
           against: new atoms land in solvent, the old sites stay excluded.
+ncs_pooling = True
+  .type = bool
+  .help = Pool the evidence of NCS-related copies of a residue: the prior \
+          over their wells is a mixture of "all copies share one well" \
+          (probability rho, estimated from the structure) and "independent"
 stubs = True
   .type = bool
   .help = Treat side chains whose moving atoms all have zero occupancy as \
@@ -195,7 +201,9 @@ class record(object):
 class run(object):
 
   def __init__(self, fmodel, pdb_hierarchy, selection=None, params=None,
-               log=None):
+               log=None, ncs_groups=None):
+    """ ncs_groups: lists of NCS-equivalent residues, as (chain id, resseq,
+    icode) (stripped); by default from the NCS search of the hierarchy """
     if(params is None): params = master_params().extract()
     if(log is None): log = sys.stdout
     self.params = params
@@ -265,6 +273,7 @@ class run(object):
         rec = record(label, sc, name, 1. if stub else (wells[name].mass
           if name in wells else priors_module.OUTLIER_THRESHOLD), chis)
         rec.stub = stub
+        rec.key = (chain.id, rg.resseq.strip(), rg.icode.strip())
         rec.occ_old = occ[sc.moving]
         rec.occ_new = np.ones(int(sc.moving.sum())) if stub else rec.occ_old
         rec.moving_scattering = self.ev.scattering_power(
@@ -288,6 +297,10 @@ class run(object):
     t0 = time.time()
     self._exact_and_decide()
     self.time_exact = time.time() - t0
+    self.ncs_rho = None
+    self.ncs_n_groups = 0
+    if(params.ncs_pooling):
+      self._ncs_decide(pdb_hierarchy, ncs_groups)
     if(params.self_check and self.self_check_passed is False):
       for rec in self.records:
         if(not rec.stub): rec.accept = False
@@ -569,6 +582,55 @@ class run(object):
     rec.accept = (rec.posterior_best > p.stub_threshold and
       self._gates(rec.best))
 
+  def _ncs_decide(self, pdb_hierarchy, ncs_groups):
+    """ decisions with the evidence of NCS-related copies pooled """
+    p = self.params
+    keys = ncs_groups if ncs_groups is not None else \
+      ncs_module.groups_from_search(pdb_hierarchy)
+    by_key = dict((r.key, r) for r in self.records if not r.stub)
+    groups = []
+    for g in keys:
+      recs = [by_key[tuple(k)] for k in g if tuple(k) in by_key]
+      if(len(recs) < 2): continue
+      names = [r.sc.resname for r in recs]
+      main = max(set(names), key=names.count)
+      recs = [r for r in recs if r.sc.resname == main]
+      if(len(recs) >= 2): groups.append(recs)
+    if(not groups): return
+    pool = ncs_module.pooled(groups, self.priors, p.exact)
+    self.ncs_rho = pool.rho
+    self.ncs_n_groups = len(pool.groups)
+    scale = self._information_scale()
+    for rec, lp, r_shared, others, e in pool.posteriors():
+      rec.ncs_shared = r_shared
+      cur = rec.current_well if rec.current_well in lp else "CURRENT"
+      best = max(lp, key=lp.get)
+      rec.accept = False
+      if(best == cur): continue
+      c = e.cands.get(best)
+      if(c is None): continue
+      lo = lp[best] - lp[cur]
+      # evidence and information expected under the group's posterior
+      d = c.dll(p.exact)
+      info = c.information or 0.
+      if(cur != "CURRENT"):
+        for x in others:
+          db = x.log_l.get(best, ncs_module.NEG)
+          dc = x.log_l.get(cur, ncs_module.NEG)
+          if(db > ncs_module.NEG / 2 and dc > ncs_module.NEG / 2):
+            d += r_shared * (db - dc)
+          xc = x.cands.get(best) or x.cands.get(cur)
+          if(xc is not None and xc.information):
+            info += r_shared * xc.information
+      c.log_odds = lo
+      rec.best = c
+      rec.ncs_dll = d
+      # the copy's own data must favour the change too: pooling adds
+      # confidence, it does not override a copy (copies can differ, and
+      # errors shared by the copies add up as if independent)
+      rec.accept = (lo > p.threshold and d > p.min_dll and
+        c.dll(p.exact) > p.min_dll and scale * info >= p.min_information)
+
   # --- output -----------------------------------------------------------------
   def accepted(self):
     """ Accepted records, without conflicts: of two accepted changes whose
@@ -624,6 +686,9 @@ class run(object):
         or not self.params.self_check else " -- no changes made"), file=out)
     else:
       print("  evidence self-check: too few candidates", file=out)
+    if(self.ncs_rho is not None):
+      print("  NCS pooling: %d groups, rho (copies share a well) %.3f" % (
+        self.ncs_n_groups, self.ncs_rho), file=out)
     print("  search map scale %.4g (CC with exact gradients %s)" % (
       self.search_scale, "%.3f" % self.search_cc
       if self.search_cc is not None else "n/a"), file=out)

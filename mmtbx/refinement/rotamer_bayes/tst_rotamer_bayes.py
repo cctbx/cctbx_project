@@ -75,7 +75,7 @@ LAYOUT = [("leu", "tp", "mt"), ("phe", "m-80", "m-80"), ("lys", "mttt",
   "mt"), ("tyr", "t80", "m-80"), ("asn", "m-40", "m-40"), ("lys", "tttt",
   "tttt")]
 
-def build_pair(d_min=2.0, seed=1):
+def build_pair(d_min=2.0, seed=1, layout=None, b_iso=20.):
   """ truth and model hierarchies in a P1 box, residues in the wells of
   LAYOUT """
   sa = SidechainAngles(False)
@@ -84,7 +84,7 @@ def build_pair(d_min=2.0, seed=1):
   pdb_t, pdb_m = [], []
   n = 0
   serial = 1
-  for k, (aa, wt, wm) in enumerate(LAYOUT):
+  for k, (aa, wt, wm) in enumerate(layout or LAYOUT):
     h = iotbx.pdb.input(os.path.join(residue_files(), aa + ".pdb")
       ).construct_hierarchy()
     ag = h.only_model().chains()[0].residue_groups()[0].atom_groups()[0]
@@ -94,21 +94,22 @@ def build_pair(d_min=2.0, seed=1):
     for well_name, out in ((wt, pdb_t), (wm, pdb_m)):
       xyz = sc.set_chis(p.wells(aa)[well_name].chis) + shift
       for a, x in zip(ag.atoms(), xyz):
-        out.append("ATOM  %5d %4s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00"
+        out.append("ATOM  %5d %4s %3s %s%4d    %8.3f%8.3f%8.3f  1.00%6.2f"
           "          %2s" % (serial + len(out), a.name, aa.upper(),
-          chr(ord("A") + k), 1, x[0], x[1], x[2], a.element.strip()))
+          chr(ord("A") + k), 1, x[0], x[1], x[2], b_iso, a.element.strip()))
   t = iotbx.pdb.input(source_info=None, lines=lines + pdb_t)
   m = iotbx.pdb.input(source_info=None, lines=lines + pdb_m)
   return t, m
 
-def make_fmodel(truth_inp, model_inp, d_min=2.0, seed=1):
+def make_fmodel(truth_inp, model_inp, d_min=2.0, seed=1, noise=0.05):
   random.seed(seed); flex.set_random_seed(seed)
   xt = truth_inp.xray_structure_simple()
   xm = model_inp.xray_structure_simple()
   f = abs(xt.structure_factors(d_min=d_min, algorithm="direct").f_calc())
-  noise = flex.double([random.gauss(0, 1) for i in range(f.size())])
-  f = f.customized_copy(data=f.data() * (1 + 0.05 * noise),
-    sigmas=f.data() * 0.05)
+  sigma = noise
+  noise_ = flex.double([random.gauss(0, 1) for i in range(f.size())])
+  f = f.customized_copy(data=f.data() * (1 + sigma * noise_),
+    sigmas=f.data() * sigma)
   f = f.select(f.data() > 0)
   flags = f.generate_r_free_flags(fraction=0.1)
   fmodel = mmtbx.f_model.manager(f_obs=f, r_free_flags=flags,
@@ -231,6 +232,32 @@ def exercise_unsupported_targets():
     assert "least squares" in str(e), str(e)
   else: raise Exception_expected
 
+NCS_LAYOUT = [("leu", "tp", "mt")] * 4 + [("leu", "mt", "mt")] * 4
+
+def exercise_ncs_pooling():
+  """ four NCS copies of a wrong Leu and four of a right one, weak data
+  (3 A, B 60, 20% noise): unpooled, one wrong copy goes to a wrong well;
+  pooled, all four go to the right well, the right copies are not changed
+  and rho (copies share a well) is high """
+  t, m = build_pair(layout=NCS_LAYOUT, b_iso=60.)
+  fmodel = make_fmodel(t, m, d_min=3.0, noise=0.2)
+  groups = [[(c, "1", "") for c in "ABCD"], [(c, "1", "") for c in "EFGH"]]
+  hm = m.construct_hierarchy()
+  p = rb.master_params().extract()
+  p.ncs_pooling = False
+  r0 = rb.run(fmodel=fmodel, pdb_hierarchy=hm.deep_copy(), ncs_groups=groups,
+    params=p, log=null_out())
+  wells0 = [rr.best.well for rr in r0.records[:4] if rr.accept]
+  assert wells0.count("tp") < 4, wells0
+  r = rb.run(fmodel=fmodel, pdb_hierarchy=hm, ncs_groups=groups,
+    log=null_out())
+  assert r.ncs_n_groups == 2 and r.ncs_rho > 0.5, (r.ncs_n_groups, r.ncs_rho)
+  for rr in r.records:
+    k = ord(rr.label.split()[0]) - ord("A")
+    if(k < 4): assert rr.accept and rr.best.well == "tp", (rr.label,
+      rr.best.well if rr.best else None)
+    else: assert not rr.accept, rr.label
+
 if(__name__ == "__main__"):
   exercise_priors()
   exercise_side_chain()
@@ -238,4 +265,5 @@ if(__name__ == "__main__"):
   exercise_stubs()
   exercise_local_refinement()
   exercise_unsupported_targets()
+  exercise_ncs_pooling()
   print("OK")
