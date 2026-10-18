@@ -106,14 +106,20 @@ def run_cli(pdb_text, prefix, suffix, in_suffix=".pdb", extra_args=()):
     txt = f.read()
   return txt, results.model
 
-def run_prog(prefix, pdb_text, extra_args=()):
-  """validate() and run() a reduce2.Program; returns the program"""
+def run_prog(prefix, pdb_text, extra_args=(), model=None):
+  """validate() and run() a reduce2.Program on pdb_text written to a file,
+  or on model in memory; returns the program"""
   from iotbx.cli_parser import CCTBXParser
-  with open(prefix + ".pdb", "w") as f:
-    f.write(pdb_text)
+  files = []
+  if model is None:
+    with open(prefix + ".pdb", "w") as f:
+      f.write(pdb_text)
+    files = [prefix + ".pdb"]
   parser = CCTBXParser(program_class=reduce2.Program, logger=null_out())
-  parser.parse_args([prefix + ".pdb", "overwrite=True",
+  parser.parse_args(files + ["overwrite=True",
     "output.description_file=" + prefix + ".txt"] + list(extra_args))
+  if model is not None:
+    parser.data_manager.add_model(prefix, model)
   prog = reduce2.Program(parser.data_manager, parser.working_phil.extract(),
     logger=null_out())
   prog.validate()
@@ -254,6 +260,38 @@ def test_returned_model_symmetry():
         m.process(make_restraints=True)
         assert m.get_restraints_manager() is not None
 
+def test_rerun_after_process():
+  # A caller runs process(make_restraints=True) on the returned model, which
+  # boxes a model without working symmetry. A rerun on it in memory writes
+  # the CRYST1 of that model written to a file and read back: the input
+  # cell, the placeholder 1 1 1 P 1, or for no symmetry the box process()
+  # made (the writer writes it).
+  cases = (("none", pdb_str), ("placeholder", cryst1_placeholder + pdb_str),
+           ("real", cryst1 + pdb_str))
+  for case, text in cases:
+    prefix = "tst_reduce2_no_symmetry_21_%s" % case
+    model = run_prog(prefix, text,
+      ["output.filename=" + prefix + "_out.pdb"]).get_results().model
+    model.process(make_restraints=True)
+    written = model.model_as_pdb()
+    from_file = run_prog(prefix + "_file", written,
+      ["output.filename=" + prefix + "_file_out.pdb"])
+    in_memory = run_prog(prefix + "_mem", None,
+      ["output.filename=" + prefix + "_mem_out.pdb"], model=model)
+    with open(prefix + "_file_out.pdb") as f: file_out = f.read()
+    with open(prefix + "_mem_out.pdb") as f: mem_out = f.read()
+    assert cryst1_records(mem_out) == cryst1_records(file_out), (case,
+      cryst1_records(mem_out), cryst1_records(file_out))
+    assert cryst1_records(file_out) == cryst1_records(written), case
+    if case == "placeholder":
+      assert_placeholder_pdb(mem_out)
+    elif case == "real":
+      assert cryst1_records(mem_out)[0].split()[1:7] == cryst1.split()[1:7]
+    else:
+      cs = model.crystal_symmetry()
+      assert cryst1_records(mem_out)[0].split()[1:4] == \
+        ["%.3f" % x for x in cs.unit_cell().parameters()[:3]]
+
 def test_place_hydrogens_does_not_move_model():
   model = place_lib(pdb_str)
   assert n_h(model.get_hierarchy()) > 0
@@ -292,6 +330,7 @@ if __name__ == "__main__":
   test_cli_keeps_placeholder_cif()
   test_placeholder_with_restraints()
   test_returned_model_symmetry()
+  test_rerun_after_process()
   test_place_hydrogens_does_not_move_model()
   test_place_hydrogens_translation_invariant()
   print("OK")
