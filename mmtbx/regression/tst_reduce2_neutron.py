@@ -2578,8 +2578,8 @@ def test_optimizer_single_rotator_d():
   # Ser with DG (no reduce2 normalization) gets a MoverSingleHydrogenRotator,
   # as with HG
   from mmtbx.reduce import Movers
-  text = placed_text(pdb_ser_dg.replace(
-    pdb_ser_dg.splitlines(True)[7], ""))
+  text = placed_text("".join(l for l in pdb_ser_dg.splitlines(True)
+    if l[12:16].strip() != "DG"))
   for name, model_text in (("HG", text), ("DG", h_to_d(text, ["HG"]))):
     model = processed_model(model_text)
     model.setup_riding_h_manager()
@@ -2594,8 +2594,8 @@ def test_phantom_targets_skip_d():
   # orientation target exactly as an H is (Optimizer call, acceptorOnly=False)
   from mmtbx.probe import Helpers
   import mmtbx_probe_ext as probe_ext
-  text = placed_text(pdb_ser_dg.replace(
-    pdb_ser_dg.splitlines(True)[7], ""))
+  text = placed_text("".join(l for l in pdb_ser_dg.splitlines(True)
+    if l[12:16].strip() != "DG"))
   model = processed_model(text)
   og, hg = [[a for a in model.get_atoms() if a.name.strip() == n][0]
             for n in ("OG", "HG")]
