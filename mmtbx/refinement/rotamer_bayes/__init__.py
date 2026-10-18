@@ -32,6 +32,7 @@ from __future__ import absolute_import, division, print_function
 import math, sys, time
 import numpy as np
 import iotbx.phil
+import iotbx.pdb
 from libtbx import group_args
 from libtbx.utils import Sorry
 from libtbx import Auto
@@ -233,6 +234,10 @@ class run(object):
     self.env = side_chain_module.environment(
       crystal_symmetry=fmodel.xray_structure.crystal_symmetry(),
       sites_cart=sites, keep=keep)
+    get_class = iotbx.pdb.common_residue_names_get_class
+    self._is_protein = np.array([get_class(a.parent().resname) in
+      ("common_amino_acid", "modified_amino_acid") for a in atoms])
+    self._is_sg = np.array([a.name.strip() == "SG" for a in atoms])
     if(params.mask_correction):
       self.ev.setup_mask(self.env, cell=params.mask_cell)
     self.records = []
@@ -263,8 +268,7 @@ class run(object):
           self._skip("no CA"); continue
         sc.near = self.env.near(sc.xyz[sc.names.index("CA")], 13.,
           sc.i_seqs)
-        if(not stub and
-           self._min_distance(sc, sc.xyz) < params.bound_distance):
+        if(not stub and self._bound(sc, sc.xyz, params.bound_distance)):
           self._skip("bound side chain"); continue
         chis = sc.chis()
         name = "STUB" if stub else self.priors.classify(resname, chis)
@@ -342,6 +346,23 @@ class run(object):
 
   def _skip(self, reason):
     self.skipped[reason] = self.skipped.get(reason, 0) + 1
+
+  def _bound(self, sc, xyz, distance):
+    """ a side-chain heavy atom this close to a non-protein atom (ligand,
+    sugar, metal), or a Cys SG to another SG: a link, not a clash (close
+    protein-protein contacts are clashes of a wrong conformer and are
+    tested) """
+    heavy = np.nonzero(sc.moving & ~sc.is_h)[0]
+    if(len(heavy) == 0): return False
+    centre = xyz[heavy].mean(axis=0)
+    near, i_near = self.env.near(centre, 10., sc.i_seqs, return_i_seqs=True)
+    if(len(near) == 0): return False
+    d = np.sqrt(((xyz[heavy][:, None, :] - near[None, :, :]) ** 2).sum(axis=2))
+    for a, b in zip(*np.nonzero(d < distance)):
+      j = int(i_near[b])
+      if(not self._is_protein[j]): return True
+      if(sc.names[heavy[a]] == "SG" and self._is_sg[j]): return True
+    return False
 
   def _min_distances(self, sc, xyz):
     """ _min_distance for T sets of residue sites (T, n_atoms, 3) """
