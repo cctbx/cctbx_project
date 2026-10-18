@@ -270,6 +270,7 @@ general_tests = [
   "$D/refinement/real_space/tst_aa_residue_axes_and_clusters.py",
   "$D/refinement/real_space/tst_fit_residue_full_sampling.py",
   "$D/refinement/real_space/tst_fit_residue_0.py",
+  "$D/refinement/real_space/tst_backrub_move.py",
   "$D/refinement/real_space/tst_fit_residue_0H.py",
   "$D/refinement/real_space/tst_fit_residue_1.py",
   "$D/refinement/real_space/tst_fit_residue_1H.py",
