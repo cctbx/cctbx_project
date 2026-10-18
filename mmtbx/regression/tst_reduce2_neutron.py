@@ -2054,7 +2054,8 @@ def ligand_split_records(pdb_str, ligand):
 
 def test_missing_restraints_optimize():
   # ligand 04 without its CIF stops optimize with the missing-restraints
-  # Sorry: H input (optimize branch) and D input (input check)
+  # Sorry, H input and D input: checked once at the start of the run,
+  # before the input check
   import traceback
   for option in ("none", "hd_and_h"):
     try:
@@ -2064,8 +2065,8 @@ def test_missing_restraints_optimize():
     except Sorry as e:
       assert str(e) == MISSING_RESTRAINTS + " 04", str(e)
       functions = [f[2] for f in traceback.extract_tb(e.__traceback__)]
-      assert ("_NormalizeInput" in functions) == (option != "none"), \
-        functions
+      assert "_PrepareRestraints" in functions and \
+        "_NormalizeInput" not in functions, functions
     else:
       raise AssertionError("04 ran without its CIF (%s)" % option)
 
@@ -2098,17 +2099,21 @@ def test_missing_restraints_ignored():
     else:
       assert protein(out) == protein(src), option
 
+def bgm_atoms():
+  """BGM (no monomer library entry, CCD only): heavy atoms at the CCD ideal
+  coordinates, as heavy_pdb() atoms"""
+  from mmtbx.chemical_components import get_cif_dictionary
+  cc = get_cif_dictionary("BGM")
+  return [(a.atom_id, a.type_symbol, "", float(a.pdbx_model_Cartn_x_ideal),
+           float(a.pdbx_model_Cartn_y_ideal), float(a.pdbx_model_Cartn_z_ideal))
+          for a in cc["_chem_comp_atom"] if a.type_symbol != "H"]
+
 def test_ccd_only_ligand_optimize():
   # BGM has no monomer library entry: placement builds its restraints from
   # the CCD; optimize and the input check get the same objects, so its H
   # are kept (before: removed as floating, then the Optimizer crashed when
   # BGM was the only residue)
-  from mmtbx.chemical_components import get_cif_dictionary
-  cc = get_cif_dictionary("BGM")
-  atoms = [(a.atom_id, a.type_symbol, "", a.pdbx_model_Cartn_x_ideal,
-            a.pdbx_model_Cartn_y_ideal, a.pdbx_model_Cartn_z_ideal)
-           for a in cc["_chem_comp_atom"] if a.type_symbol != "H"]
-  prog = run_prog("tst_reduce2_neutron_bgm", heavy_pdb("BGM", atoms),
+  prog = run_prog("tst_reduce2_neutron_bgm", heavy_pdb("BGM", bgm_atoms()),
     neutron_option="none")
   with open(prog.params.output.filename) as f: src = f.read()
   def hd(pdb_str):
@@ -2196,6 +2201,211 @@ def test_atom_characteristics_unbonded_h():
   a = [a for a in prog.model.get_atoms() if a.name.strip() == "HH"][0]
   assert in_main[a] is False and not in_water[a]
 
+def test_ccd_only_ligand_flipkins():
+  # 1yjp plus BGM (CCD only) with flipkins, add and optimize (on the add
+  # output): the flipkin passes interpret with the CCD restraints too, so
+  # the BGM H are bonded there (before: "Found Hydrogen with no neigbors");
+  # the written model is the one without flipkins
+  lig = heavy_pdb("BGM", bgm_atoms(), offset=(15.0, 10.0, 15.0),
+    cryst1=False).replace(" A   1 ", " B   1 ")
+  model = pdb_1yjp.replace("END\n", "") + lig + "END\n"
+  directory = "tst_reduce2_neutron_bgmfk"
+  if not os.path.isdir(directory): os.mkdir(directory)
+  for option in ("none", "hd_and_h"):
+    src = None
+    for approach in ("add", "optimize"):
+      prefix = "tst_reduce2_neutron_bgmfk_%s_%s" % (approach, option)
+      pdb_str = model if approach == "add" else src
+      for f in os.listdir(directory): os.remove(os.path.join(directory, f))
+      args = ["approach=" + approach, "neutron_option=" + option,
+              "add_flip_movers=True"]
+      fn_on, _, _ = run_reduce2(prefix + "_on", pdb_str,
+        args + ["output.flipkin_directory=" + directory])
+      assert os.listdir(directory) == [prefix + "_onFH-flipnq.kin"], \
+        os.listdir(directory)
+      with open(fn_on) as f: written = f.read()
+      assert len([l for l in written.splitlines() if "BGM" in l and
+                  l[76:78].strip() in ("H", "D")]) == \
+        (13 if option == "none" else 19)
+      if option == "hd_and_h":
+        fn_off, _, _ = run_reduce2(prefix + "_off", pdb_str, args)
+        with open(fn_off) as f: assert f.read() == written
+      if approach == "add": src = written
+
+def test_ccd_only_ligand_his_flipkins():
+  # His flipkin section with BGM (CCD only): add, and optimize on the place
+  # output (both ring N-H; a His with one ring H gets no flip mover on
+  # optimize), complete and write the His flipkin
+  lig = heavy_pdb("BGM", bgm_atoms(), offset=(25.0, 25.0, 25.0),
+    cryst1=False).replace(" A   1 ", " B   1 ")
+  model = his_no_h.replace(his_no_h.splitlines()[0],
+    "CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1").replace(
+    "END\n", "") + lig + "END\n"
+  fn, _, _ = run_reduce2("tst_reduce2_neutron_bgmhis_place", model,
+    ["approach=place"])
+  with open(fn) as f: placed = f.read()
+  assert " HD1 HIS" in placed and " HE2 HIS" in placed
+  directory = "tst_reduce2_neutron_bgmhis"
+  if not os.path.isdir(directory): os.mkdir(directory)
+  for approach, src in (("add", model), ("optimize", placed)):
+    prefix = "tst_reduce2_neutron_bgmhis_" + approach
+    for f in os.listdir(directory): os.remove(os.path.join(directory, f))
+    fn, _, _ = run_reduce2(prefix, src, ["approach=" + approach,
+      "add_flip_movers=True", "output.flipkin_directory=" + directory])
+    assert prefix + "FH-fliphis.kin" in os.listdir(directory), \
+      os.listdir(directory)
+    with open(fn) as f: out = f.read()
+    assert len([l for l in out.splitlines() if "BGM" in l and
+                l[76:78].strip() == "H"]) == 13
+
+def test_no_auto_restraint_objects_in_output():
+  # 1yjp plus BGM (CCD objects attached for the run) plus ligand 04 with its
+  # CIF, flipkins on: the written PDB and mmCIF, get_results().model and the
+  # final self.model carry no auto restraint objects; the data manager's
+  # input model keeps exactly its own (the user CIF)
+  bgm = heavy_pdb("BGM", bgm_atoms(), offset=(15.0, 10.0, 15.0),
+    cryst1=False).replace(" A   1 ", " B   1 ")
+  lig = heavy_pdb("04", zq4_atoms, offset=(-10.0, 10.0, -8.0),
+    cryst1=False).replace(" A   1 ", " C   1 ")
+  model = pdb_1yjp.replace("END\n", "") + bgm + lig + "END\n"
+  directory = "tst_reduce2_neutron_noauto"
+  if not os.path.isdir(directory): os.mkdir(directory)
+  names = lambda m: [n for n, o in (m.get_restraint_objects() or [])]
+  sources = {}
+  for approach, option, ext in (("add", "none", "pdb"),
+      ("add", "hd_and_h", "cif"), ("optimize", "none", "cif"),
+      ("optimize", "hd_and_h", "pdb")):
+    prefix = "tst_reduce2_neutron_noauto_%s_%s" % (approach, option)
+    src = model if approach == "add" else sources[option]
+    prog, log = make_program(prefix, src, zq4_cif,
+      approach=approach, neutron_option=option, add_flip_movers=True,
+      output__flipkin_directory=directory,
+      output__filename=prefix + "_out." + ext,
+      output__description_file_name=prefix + ".txt", output__overwrite=True)
+    input_model = prog.data_manager.get_model()
+    before = names(input_model)
+    assert len(before) == 1, before
+    prog.validate()
+    prog.run()
+    assert names(prog.data_manager.get_model()) == before
+    assert prog.data_manager.get_model() is input_model
+    for m in (prog.get_results().model, prog.model):
+      assert not [n for n in names(m) if n.startswith("auto_")], names(m)
+    with open(prefix + "_out." + ext) as f: written = f.read()
+    assert "auto_" not in written and "data_comp_BGM" not in written
+    assert "BGM" in written
+    if approach == "add":
+      if ext == "cif":
+        model_out = mmtbx.model.manager(model_input=iotbx.pdb.input(
+          prefix + "_out." + ext), log=null_out())
+        sources[option] = model_out.model_as_pdb()
+      else:
+        sources[option] = written
+
+def run_prog_on_model(prefix, model, **params):
+  """validate() and run() a reduce2.Program on a model in memory (no file)"""
+  from iotbx.cli_parser import CCTBXParser
+  params.setdefault("output__filename", prefix + "_out.pdb")
+  params.setdefault("output__description_file_name", prefix + ".txt")
+  params.setdefault("output__overwrite", True)
+  parser = CCTBXParser(program_class=reduce2.Program, logger=null_out())
+  parser.parse_args(["%s=%s" % (name.replace("__", "."), value)
+                     for name, value in params.items()])
+  parser.data_manager.add_model(prefix, model)
+  log = StringIO()
+  prog = reduce2.Program(parser.data_manager, parser.working_phil.extract(),
+    logger=log)
+  prog.validate()
+  prog.run()
+  prog.log_text = log.getvalue()
+  return prog
+
+def test_in_memory_rerun():
+  # get_results().model passed straight into a second run gives the same
+  # result as the written and reread file: its monomer library server
+  # already knows BGM (CCD only), its riding-H manager has the first run's
+  # X-H lengths, a scattering table set on it would set the water O-H,
+  # refinement flags would restrict the idealization; the second run starts
+  # from none of them
+  bgm = heavy_pdb("BGM", bgm_atoms(), offset=(15.0, 10.0, 15.0),
+    cryst1=False).replace(" A   1 ", " B   1 ")
+  systems = {"protein": pdb_1yjp.replace("END\n", "") + bgm + "END\n",
+             "alone": heavy_pdb("BGM", bgm_atoms())}
+  def atom_lines(file_name):
+    with open(file_name) as f:
+      return [l for l in f if l.startswith(("ATOM", "HETATM"))]
+  for system, first, second in (("protein", "none", "hd_and_h"),
+      ("alone", "none", "hd_and_h"), ("protein", "none", "none"),
+      ("protein", "hd_and_h", "hd_and_h")):
+    prefix = "tst_reduce2_neutron_inmem_%s_%s_%s" % (system, first, second)
+    prog = run_prog(prefix + "_1", systems[system], neutron_option=first)
+    with open(prog.params.output.filename) as f: written = f.read()
+    model = prog.get_results().model
+    prog = run_prog_on_model(prefix + "_2", model, approach="optimize",
+      neutron_option=second)
+    with open(prog.params.output.description_file_name) as f:
+      description = f.read()
+    assert FLOATING not in description, (system, first, second)
+    hd = [l for l in atom_lines(prog.params.output.filename)
+          if l[17:20] == "BGM" and l[76:78].strip() in ("H", "D")]
+    n_d = len([l for l in hd if l[76:78].strip() == "D"])
+    if second == "none":
+      assert (len(hd), n_d) == (13, 0), len(hd)
+    else:
+      assert (len(hd), n_d) == (19, 6), (len(hd), n_d)
+    reread = run_prog(prefix + "_file", written, approach="optimize",
+      neutron_option=second)
+    assert atom_lines(prog.params.output.filename) == \
+      atom_lines(reread.params.output.filename), (system, first, second)
+  # X-H lengths follow the second run: X-ray first, neutron distances second
+  # (the first run's riding-H manager is not reused)
+  prefix = "tst_reduce2_neutron_inmem_neutron_distances"
+  prog = run_prog(prefix + "_1", systems["protein"])
+  with open(prog.params.output.filename) as f: written = f.read()
+  def c_h(file_name):
+    h = iotbx.pdb.input(file_name).construct_hierarchy()
+    return sorted(set(round((matrix.col(a.xyz) -
+      matrix.col(ag.get_atom("CA").xyz)).length(), 2) for ag in h.atom_groups()
+      for a in ag.atoms() if a.name.strip() in ("HA", "HA2", "HA3")))
+  assert c_h(prog.params.output.filename) == [0.97]
+  prog = run_prog_on_model(prefix + "_2", prog.get_results().model,
+    approach="optimize", use_neutron_distances=True)
+  assert c_h(prog.params.output.filename) == [1.09]
+  reread = run_prog(prefix + "_file", written, approach="optimize",
+    use_neutron_distances=True)
+  assert atom_lines(prog.params.output.filename) == \
+    atom_lines(reread.params.output.filename)
+  # a scattering table set on the model (neutron: water O-H 0.98 from the
+  # table) is not used: X-ray run, water O-H 0.85 as from the file
+  prefix = "tst_reduce2_neutron_inmem_table"
+  prog = run_prog(prefix + "_1", pdb_1yjp, exclude_water=False)
+  with open(prog.params.output.filename) as f: written = f.read()
+  model = prog.get_results().model
+  model.setup_scattering_dictionaries(scattering_table="neutron")
+  prog = run_prog_on_model(prefix + "_2", model, approach="optimize",
+    exclude_water=False)
+  check_water(prog.params.output.filename, 0.85, 7)
+  reread = run_prog(prefix + "_file", written, approach="optimize",
+    exclude_water=False)
+  assert atom_lines(prog.params.output.filename) == \
+    atom_lines(reread.params.output.filename)
+  # refinement flags on the model (here: no site refined) do not restrict
+  # the riding-H idealization
+  from mmtbx.refinement import refinement_flags
+  from scitbx.array_family import flex
+  prefix = "tst_reduce2_neutron_inmem_flags"
+  prog = run_prog(prefix + "_1", pdb_1yjp)
+  with open(prog.params.output.filename) as f: written = f.read()
+  model = prog.get_results().model
+  model.set_refinement_flags(refinement_flags.manager(
+    sites_individual=flex.bool(model.get_number_of_atoms(), False)))
+  prog = run_prog_on_model(prefix + "_2", model, approach="optimize",
+    use_neutron_distances=True)
+  reread = run_prog(prefix + "_file", written, approach="optimize",
+    use_neutron_distances=True)
+  assert atom_lines(prog.params.output.filename) == \
+    atom_lines(reread.params.output.filename)
+
 if __name__ == "__main__":
   test_xray_default()
   test_neutron_add()
@@ -2269,4 +2479,8 @@ if __name__ == "__main__":
   test_ccd_only_ligand_optimize()
   test_missing_restraints_flipkins()
   test_atom_characteristics_unbonded_h()
+  test_ccd_only_ligand_flipkins()
+  test_ccd_only_ligand_his_flipkins()
+  test_no_auto_restraint_objects_in_output()
+  test_in_memory_rerun()
   print("OK")

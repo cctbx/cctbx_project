@@ -1139,13 +1139,14 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _PrepareRestraints(self):
-    # Before an interpretation with restraints of a model with H that
-    # placement does not see (optimize, the input check): one
-    # mon_lib_query() per residue name. CCD-only residues get placement's
-    # CCD-generated restraint objects (dropped with _DropAutoRestraints()
-    # after the interpretation). Residues without restraints (as placement's
-    # no_H_placed_mlq) stop the run unless ignore_missing_restraints=True;
-    # then all their atoms are left as in the input.
+    # Once per run, before the flipkin snapshot: one mon_lib_query() per
+    # residue name. CCD-only residues get placement's CCD-generated restraint
+    # objects, kept for the whole run (main run, input check, placement,
+    # flipkin passes; a server returns them only the first time it sees a
+    # residue) and dropped with _DropAutoRestraints(). Residues without
+    # restraints (as placement's no_H_placed_mlq) stop the run unless
+    # ignore_missing_restraints=True; then all their atoms are left as in
+    # the input.
     # :return: group_args(keys (atom keys of the residues left unchanged),
     # labels).
     # the objects are appended to the model's list: its own copy, so that
@@ -1180,11 +1181,11 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _DropAutoRestraints(self):
-    # the CCD-generated restraint objects of _PrepareRestraints(), off the
-    # model again (its restraints stay), so that output and user CIF handling
-    # do not change
-    reduce_hydrogen.remove_auto_restraint_objects(self.model,
+  def _DropAutoRestraints(self, model):
+    # the CCD-generated restraint objects of _PrepareRestraints(), off a
+    # model that leaves the run (its restraints stay), so that output and
+    # downstream validation do not see them (92b7fa5beb)
+    reduce_hydrogen.remove_auto_restraint_objects(model,
       self._auto_restraint_names)
 
 # ------------------------------------------------------------------------------
@@ -1312,8 +1313,6 @@ NOTES:
     if self.params.neutron_option == 'none':
       raise Sorry('input contains deuterium; set neutron_option, or rebuild '
         'H: ' + self._RebuildHint())
-    user_restraint_objects = self.model.get_restraint_objects()
-    self._unrestrained = self._PrepareRestraints()
     self._ReinterpretModel(make_restraints=True)
     skip = self._unrestrained.keys
     def checked_part(full):
@@ -1403,13 +1402,12 @@ NOTES:
       model_input       = None,
       pdb_hierarchy     = h.deep_copy(),
       crystal_symmetry  = self.model.crystal_symmetry(),
-      restraint_objects = user_restraint_objects,
+      restraint_objects = self.model.get_restraint_objects(),
       stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
       log               = null_out())
     self._normalized_with_restraints = self.params.approach == 'optimize'
     self.model = self._RebuildModel(h,
       make_restraints=self._normalized_with_restraints)
-    self._DropAutoRestraints()
     return snapshot
 
 # ------------------------------------------------------------------------------
@@ -1892,6 +1890,25 @@ NOTES:
 
       self.model = subset_model_manager
 
+    # CCD restraint objects attached once, for the whole run (also the
+    # flipkin passes, which restart from initialModel); residues without
+    # restraints stop the run here, or are left unchanged
+    if self.params.approach != 'remove':
+      # A model passed in memory (e.g. from an earlier run) gives the same
+      # result as read from a file. Its cached monomer library server returns
+      # no CCD object for a CCD-only residue it has seen (no setter in
+      # mmtbx.model.manager; get_mon_lib_srv() builds a new one), and its
+      # riding-H manager, which setup_riding_h_manager() keeps, has the
+      # earlier run's X-H lengths; a scattering table set on it (kept by
+      # process()) sets the water O-H length when use_neutron_distances is
+      # off; refinement flags restrict the riding-H idealization to their
+      # sites. A model read from a file has none of these.
+      self.model._mon_lib_srv = None
+      self.model.unset_riding_h_manager()
+      self.model.get_xray_structure(force=True)
+      self.model.set_refinement_flags(None)
+      self._unrestrained = self._PrepareRestraints()
+
     # Input with D that the run keeps (never for remove; qmready forces
     # keep_existing_H=True in _AddHydrogens()): checked and normalized to H;
     # the H-only model is the snapshot for the flipkins
@@ -1936,12 +1953,9 @@ NOTES:
       else:
         # We need restraints on the model for optimization, so we interpret it to get them.
         # (normalized input was rebuilt with them)
-        # Residues without restraints stop the run, as placement does, or
-        # with ignore_missing_restraints=True are left unchanged.
         if not self._normalized_with_restraints:
-          self._unrestrained = self._PrepareRestraints()
           self._ReinterpretModel(make_restraints=True)
-          self._DropAutoRestraints()
+        # residues without restraints (with ignore_missing_restraints=True)
         if self._unrestrained.labels:
           text = ('\nResidues without restraints, left unchanged:\n' +
             '\n'.join(self._unrestrained.labels) + '\n')
@@ -2078,6 +2092,7 @@ NOTES:
         self.params.neutron_option, parent_table=self._h_parents,
         records=self._hd_records, unchanged_keys=self._UnrestrainedKeys())
       self._output_model = self._RebuildModel(h, make_restraints=False)
+      self._DropAutoRestraints(self._output_model)
       self._CheckNeutronOutput()
       outString += self._NeutronDescription()
 
@@ -2479,6 +2494,11 @@ NOTES:
         # Write the accumulated Flipkin string to the output file.
         with open(flipkinBase+"-fliphis.kin", "w") as f:
           f.write(flipkinText)
+
+    # self.model kept them for the flipkin passes; with neutron_option=none
+    # the output model is the self.model of before the flipkin passes
+    self._DropAutoRestraints(self.model)
+    self._DropAutoRestraints(self._output_model)
 
     # Report profiling info if we've been asked to in the Phil parameters
     if self.params.profile:
