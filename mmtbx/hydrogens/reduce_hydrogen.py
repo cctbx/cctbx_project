@@ -551,6 +551,77 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry
     cif_object = iotbx.cif.reader(input_string=input_string).model()
   return md, cif_object
 
+def load_restraint_objects_into_server(model, mon_lib_srv):
+  '''
+  Load any user-provided restraint CIF objects into the server so that
+  mon_lib_query() finds them and does not generate auto_* CIF objects
+  with empty type_energy values that would overwrite the user entries.
+  '''
+  ro = model.get_restraint_objects()
+  if ro:
+    for fname, cif_obj in ro:
+      if cif_obj is not None:
+        try:
+          mon_lib_srv.process_cif_object(
+            cif_object=cif_obj, file_name=fname)
+        except Exception:
+          pass
+
+def add_auto_restraint_object(model, resname, cif_object,
+                              auto_restraint_names):
+  '''
+  Add the restraint dictionary that mon_lib_query() generated from the CCD
+  for resname to the model's restraint objects, as auto_<resname>.
+  '''
+  ro = model.get_restraint_objects()
+  if ro is None: ro=[]
+  auto_name = 'auto_%s' % resname
+  ro.append((auto_name, cif_object))
+  model.set_restraint_objects(ro)
+  if auto_name not in auto_restraint_names:
+    auto_restraint_names.append(auto_name)
+
+def remove_auto_restraint_objects(model, auto_restraint_names):
+  '''
+  Remove the auto-generated restraint dictionaries from the model's restraint
+  objects without unsetting its restraints manager (see
+  place_hydrogens.remove_auto_restraint_objects).
+  '''
+  if not auto_restraint_names: return
+  ro = model.get_restraint_objects()
+  if not ro: return
+  model._restraint_objects = [
+    (name, obj) for name, obj in ro
+    if name not in auto_restraint_names]
+
+def add_ccd_restraint_objects(model):
+  '''
+  For a model with H that is interpreted without placement (reduce2
+  approach=optimize): one mon_lib_query() per residue name, as placement does
+  per residue. Residues found only in the CCD get placement's CCD-generated
+  restraint objects; drop them after the interpretation with
+  remove_auto_restraint_objects().
+  Returns group_args(no_restraints (residue names without restraints, as
+  placement's no_H_placed_mlq), auto_restraint_names).
+  '''
+  mon_lib_srv = model.get_mon_lib_srv()
+  load_restraint_objects_into_server(model, mon_lib_srv)
+  no_restraints = set()
+  auto_restraint_names = []
+  seen = set()
+  for ag in model.get_hierarchy().atom_groups():
+    if ag.resname in seen: continue
+    seen.add(ag.resname)
+    mlq, cif_object = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv,
+      raise_sorry=False)
+    if mlq is None:
+      no_restraints.add(ag.resname)
+    elif cif_object:
+      add_auto_restraint_object(model, ag.resname, cif_object,
+        auto_restraint_names)
+  return group_args(no_restraints=no_restraints,
+    auto_restraint_names=auto_restraint_names)
+
 # ==============================================================================
 
 def get_output_crystal_symmetry(model):
@@ -1048,12 +1119,7 @@ class place_hydrogens():
     manager, and we need the already-built grm (and riding-H manager) to remain
     intact for the rest of run() and for callers that reuse it.
     '''
-    if not self.auto_restraint_names: return
-    ro = self.model.get_restraint_objects()
-    if not ro: return
-    self.model._restraint_objects = [
-      (name, obj) for name, obj in ro
-      if name not in self.auto_restraint_names]
+    remove_auto_restraint_objects(self.model, self.auto_restraint_names)
 
 # ------------------------------------------------------------------------------
 
@@ -1731,18 +1797,7 @@ class place_hydrogens():
     # end TODO
     pdb_hierarchy = self.model.get_hierarchy()
     mon_lib_srv = self.model.get_mon_lib_srv()
-    # Load any user-provided restraint CIF objects into the server so that
-    # mon_lib_query() finds them and does not generate auto_* CIF objects
-    # with empty type_energy values that would overwrite the user entries.
-    ro = self.model.get_restraint_objects()
-    if ro:
-      for fname, cif_obj in ro:
-        if cif_obj is not None:
-          try:
-            mon_lib_srv.process_cif_object(
-              cif_object=cif_obj, file_name=fname)
-          except Exception:
-            pass
+    load_restraint_objects_into_server(self.model, mon_lib_srv)
     #XXX This breaks for 1jxt, residue 2, TYR
     for m in pdb_hierarchy.models():
       model_atoms = m.atoms()
@@ -1777,13 +1832,8 @@ class place_hydrogens():
               continue
 
             if cif_object:
-              ro = self.model.get_restraint_objects()
-              if ro is None: ro=[]
-              auto_name = 'auto_%s' % ag.resname
-              ro.append((auto_name, cif_object))
-              self.model.set_restraint_objects(ro)
-              if auto_name not in self.auto_restraint_names:
-                self.auto_restraint_names.append(auto_name)
+              add_auto_restraint_object(self.model, ag.resname, cif_object,
+                self.auto_restraint_names)
 
             expected_h = []
             #expected_ha = []

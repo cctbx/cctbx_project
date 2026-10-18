@@ -589,7 +589,7 @@ def _output_kind(option, water, exchangeable, conformer):
 
 _MERGE_TOLERANCE = 0.05
 
-def _merge_conformer_copies(hierarchy, parent_table):
+def _merge_conformer_copies(hierarchy, parent_table, unchanged_keys=()):
   """Placement copies every H of a residue with alternates into each
   conformer group, also H whose parent is in the blank group. In a
   residue_group with at least two conformers, copies with exactly one per
@@ -611,6 +611,7 @@ def _merge_conformer_copies(hierarchy, parent_table):
       if ag.altloc == "": continue
       for atom in ag.atoms():
         if atom.element.strip().upper() != "H": continue
+        if key_of[atom.memory_id()] in unchanged_keys: continue
         e = parent_table.get(key_of[atom.memory_id()])
         if e is None or e.status != "ok" or e.parent_altloc != "": continue
         copies.setdefault((ag.resname, atom.name), []).append(atom)
@@ -661,7 +662,7 @@ def _to_d(atom):
   atom.set_element(" D")
 
 def apply_neutron_option(hierarchy, option, parent_table, records=None,
-                         log=None):
+                         log=None, unchanged_keys=None):
   """H-only hierarchy -> H/D output for option (see NEUTRON_OPTIONS).
   Exchangeability, parent occupancy and altloc come from parent_table (keyed
   by atom_key). Split sites of a residue_group go into the first two unused
@@ -684,7 +685,9 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
   notes, provenance={output atom_key: source atom_key}, unused_records
   (sorted record keys whose site is not in the hierarchy, e.g. an H deleted
   by the Optimizer)); merged H map to the first copy's atom_key. Every listed entry has site (input label),
-  reason and output (label of the atom as written; the H of a split site)."""
+  reason and output (label of the atom as written; the H of a split site).
+  unchanged_keys: atom keys written as they are (H or D, values kept), not
+  required in parent_table, mapped to themselves in the provenance."""
   if option not in NEUTRON_OPTIONS:
     raise Sorry("Internal error: unknown neutron option %s" % option)
   result = group_args(n_exchangeable=0, n_split=0, n_split_new=0, n_to_d=0,
@@ -694,9 +697,10 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
     merged_sites=[], notes=[], provenance={}, unused_records=[])
   if option == "none": return result
   if records is None: records = {}
+  if unchanged_keys is None: unchanged_keys = set()
   used_records = set()
   merged, result.merged_sites, merged_atoms = _merge_conformer_copies(
-    hierarchy, parent_table)
+    hierarchy, parent_table, unchanged_keys)
   # listed entries and the atom each describes; their output labels are
   # filled in once the atoms are written
   listed = list(zip(result.merged_sites, merged_atoms))
@@ -706,10 +710,14 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
   keys = atom_keys(hierarchy)
   parts = _residue_parts(hierarchy)
   # decide per H; group split sites by residue_group
+  written = []   # (atom, source key)
   plan = []
   split_by_rg = {}
   for i, atom in enumerate(atoms):
     element = atom.element.strip().upper()
+    if keys[i] in unchanged_keys:
+      if element in ("H", "D"): written.append((atom, keys[i]))
+      continue
     if element == "D":
       raise Sorry("Internal error: apply_neutron_option() input has D: %s" %
         atom.id_str())
@@ -765,7 +773,6 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
       rg.append_atom_group(ag)
       made[key] = ag
     return made[key]
-  written = []   # (atom, source key)
   for item in plan:
     atom, e, record = item.atom, item.entry, item.record
     site = atom.id_str()

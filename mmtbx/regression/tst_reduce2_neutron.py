@@ -575,12 +575,12 @@ def test_resolved_flag_all_h():
 # ligand unknown to the CCD and the monomer library; C1-O1 1.4321 A
 pdb_lig = """\
 CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
-HETATM    1  C1  ZQ1 A   1      10.000  10.000  10.000  1.00 20.00           C
-HETATM    2  O1  ZQ1 A   1      11.432  10.000  10.000  1.00 20.00           O
-HETATM    3  H11 ZQ1 A   1       9.640  11.020  10.000  1.00 20.00           H
-HETATM    4  H12 ZQ1 A   1       9.640   9.490  10.880  1.00 20.00           H
-HETATM    5  H13 ZQ1 A   1       9.640   9.490   9.120  1.00 20.00           H
-HETATM    6  HO1 ZQ1 A   1      11.750  10.900  10.000  1.00 20.00           H
+HETATM    1  C1   01 A   1      10.000  10.000  10.000  1.00 20.00           C
+HETATM    2  O1   01 A   1      11.432  10.000  10.000  1.00 20.00           O
+HETATM    3  H11  01 A   1       9.640  11.020  10.000  1.00 20.00           H
+HETATM    4  H12  01 A   1       9.640   9.490  10.880  1.00 20.00           H
+HETATM    5  H13  01 A   1       9.640   9.490   9.120  1.00 20.00           H
+HETATM    6  HO1  01 A   1      11.750  10.900  10.000  1.00 20.00           H
 END
 """
 cif_lig = """\
@@ -593,9 +593,9 @@ _chem_comp.group
 _chem_comp.number_atoms_all
 _chem_comp.number_atoms_nh
 _chem_comp.desc_level
- ZQ1  ZQ1  'test methanol'  ligand  6  2  .
+ 01  01  'test methanol'  ligand  6  2  .
 
-data_comp_ZQ1
+data_comp_01
 loop_
 _chem_comp_atom.comp_id
 _chem_comp_atom.atom_id
@@ -605,12 +605,12 @@ _chem_comp_atom.charge
 _chem_comp_atom.x
 _chem_comp_atom.y
 _chem_comp_atom.z
- ZQ1  C1   C  CH3  0   0.000   0.000   0.000
- ZQ1  O1   O  OH1  0   1.432   0.000   0.000
- ZQ1  H11  H  HCH3 0  -0.360   1.020   0.000
- ZQ1  H12  H  HCH3 0  -0.360  -0.510   0.880
- ZQ1  H13  H  HCH3 0  -0.360  -0.510  -0.880
- ZQ1  HO1  H  HOH1 0   1.750   0.900   0.000
+ 01  C1   C  CH3  0   0.000   0.000   0.000
+ 01  O1   O  OH1  0   1.432   0.000   0.000
+ 01  H11  H  HCH3 0  -0.360   1.020   0.000
+ 01  H12  H  HCH3 0  -0.360  -0.510   0.880
+ 01  H13  H  HCH3 0  -0.360  -0.510  -0.880
+ 01  HO1  H  HOH1 0   1.750   0.900   0.000
 
 loop_
 _chem_comp_bond.comp_id
@@ -620,11 +620,11 @@ _chem_comp_bond.type
 _chem_comp_bond.value_dist
 _chem_comp_bond.value_dist_esd
 _chem_comp_bond.value_dist_neutron
- ZQ1  C1  O1   single  1.4321  0.020  1.4321
- ZQ1  C1  H11  single  0.970   0.020  1.090
- ZQ1  C1  H12  single  0.970   0.020  1.090
- ZQ1  C1  H13  single  0.970   0.020  1.090
- ZQ1  O1  HO1  single  0.850   0.020  0.980
+ 01  C1  O1   single  1.4321  0.020  1.4321
+ 01  C1  H11  single  0.970   0.020  1.090
+ 01  C1  H12  single  0.970   0.020  1.090
+ 01  C1  H13  single  0.970   0.020  1.090
+ 01  O1  HO1  single  0.850   0.020  0.980
 
 loop_
 _chem_comp_angle.comp_id
@@ -633,13 +633,13 @@ _chem_comp_angle.atom_id_2
 _chem_comp_angle.atom_id_3
 _chem_comp_angle.value_angle
 _chem_comp_angle.value_angle_esd
- ZQ1  H11  C1  H12  109.5  3.0
- ZQ1  H11  C1  H13  109.5  3.0
- ZQ1  H12  C1  H13  109.5  3.0
- ZQ1  O1   C1  H11  109.5  3.0
- ZQ1  O1   C1  H12  109.5  3.0
- ZQ1  O1   C1  H13  109.5  3.0
- ZQ1  C1   O1  HO1  109.5  3.0
+ 01  H11  C1  H12  109.5  3.0
+ 01  H11  C1  H13  109.5  3.0
+ 01  H12  C1  H13  109.5  3.0
+ 01  O1   C1  H11  109.5  3.0
+ 01  O1   C1  H12  109.5  3.0
+ 01  O1   C1  H13  109.5  3.0
+ 01  C1   O1  HO1  109.5  3.0
 """
 
 def test_rebuild_model():
@@ -670,7 +670,7 @@ def test_rebuild_model():
   except Sorry:
     pass
   else:
-    raise AssertionError("ZQ1 interpreted without its CIF")
+    raise AssertionError("01 interpreted without its CIF")
 
 # ------------------------------------------------------------------------------
 # step 3.2: output step for add and place
@@ -889,9 +889,9 @@ def test_ambiguous_parent():
   prog._CheckAmbiguousParents()
   # end to end, a CIF bond from HO1 to a second heavy atom: placement drops
   # HO1 (not parameterizable), so the run completes with none and hd_and_h
-  cif = cif_lig.replace(" ZQ1  O1  HO1  single  0.850   0.020  0.980\n",
-    " ZQ1  O1  HO1  single  0.850   0.020  0.980\n"
-    " ZQ1  C1  HO1  single  1.050   0.020  1.050\n")
+  cif = cif_lig.replace(" 01  O1  HO1  single  0.850   0.020  0.980\n",
+    " 01  O1  HO1  single  0.850   0.020  0.980\n"
+    " 01  C1  HO1  single  1.050   0.020  1.050\n")
   assert cif != cif_lig
   for option in ("none", "hd_and_h"):
     prog = run_prog("tst_reduce2_neutron_amb_" + option, pdb_lig, cif,
@@ -1312,7 +1312,7 @@ def heavy_pdb(code, atoms, offset=(10.0, 10.0, 10.0), cryst1=True):
     lines.append("CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1")
   for i, (name, element, energy, x, y, z) in enumerate(atoms):
     if element == "H": continue
-    lines.append("HETATM%5d %-4s %s A   1    %8.3f%8.3f%8.3f  1.00 20.00"
+    lines.append("HETATM%5d %-4s %3s A   1    %8.3f%8.3f%8.3f  1.00 20.00"
       "          %2s" % (i + 1, name if len(name) == 4 else " " + name, code,
       x + offset[0], y + offset[1], z + offset[2], element))
   return "\n".join(lines) + "\n"
@@ -1323,7 +1323,7 @@ def _tetra(center, a, b):
           (b, center, "H%s1" % center[-1]), (b, center, "H%s2" % center[-1]),
           ("H%s1" % center[-1], center, "H%s2" % center[-1])]
 
-# ZQ3: ethylene glycol; one hydroxyl H named 1HO2 (digit first)
+# 03: ethylene glycol; one hydroxyl H named 1HO2 (digit first)
 zq3_atoms = [
   ("O2", "O", "OH1", -0.700, 1.210, 0.0), ("C1", "C", "CH2", 0.0, 0.0, 0.0),
   ("C2", "C", "CH2", 1.520, 0.0, 0.0), ("O3", "O", "OH1", 2.220, 1.210, 0.0),
@@ -1333,7 +1333,7 @@ zq3_atoms = [
   ("H21", "H", "HCH2", 1.850, -0.550, 0.890),
   ("H22", "H", "HCH2", 1.850, -0.550, -0.890),
   ("HO3", "H", "HOH1", 3.120, 1.000, 0.0)]
-zq3_cif = make_cif("ZQ3", zq3_atoms,
+zq3_cif = make_cif("03", zq3_atoms,
   [("C1", "O2", 1.43, 1.43), ("C1", "C2", 1.52, 1.52),
    ("C2", "O3", 1.43, 1.43), ("O2", "1HO2", 0.85, 0.98),
    ("O3", "HO3", 0.85, 0.98), ("C1", "H11", 0.97, 1.09),
@@ -1344,7 +1344,7 @@ zq3_cif = make_cif("ZQ3", zq3_atoms,
      ("C2", "O3", "HO3")] + _tetra("C1", "O2", "C2") +
     _tetra("C2", "C1", "O3")])
 
-# ZQ4: N-methyl ethanolamine, NH and OH (a terminal NH2 has no dihedral
+# 04: N-methyl ethanolamine, NH and OH (a terminal NH2 has no dihedral
 # anchor for its riding H and is not placed: one heavy neighbour)
 zq4_atoms = [
   ("C3", "C", "CH3", -1.430, 1.800, 0.0), ("N1", "N", "NH1", -0.700, 1.210, 0.0),
@@ -1359,7 +1359,7 @@ zq4_atoms = [
   ("H21", "H", "HCH2", 1.850, -0.550, 0.890),
   ("H22", "H", "HCH2", 1.850, -0.550, -0.890),
   ("HO1", "H", "HOH1", 3.120, 1.000, 0.0)]
-zq4_cif = make_cif("ZQ4", zq4_atoms,
+zq4_cif = make_cif("04", zq4_atoms,
   [("C3", "N1", 1.47, 1.47), ("C1", "N1", 1.47, 1.47),
    ("C1", "C2", 1.52, 1.52), ("C2", "O1", 1.43, 1.43),
    ("N1", "HN1", 0.89, 1.01), ("O1", "HO1", 0.85, 0.98),
@@ -1374,10 +1374,13 @@ zq4_cif = make_cif("ZQ4", zq4_atoms,
      ("H31", "C3", "H32"), ("H31", "C3", "H33"), ("H32", "C3", "H33")] +
     _tetra("C1", "N1", "C2") + _tetra("C2", "C1", "O1")])
 
+MISSING_RESTRAINTS = "Restraints were not found for the following residues:"
+UNCHANGED = "Residues without restraints, left unchanged:"
+
 def test_user_cif_ligand():
   # 9c (add): invented ligand with OH and NH2 from a CIF written here: the
   # polar H are split, no missing restraints; without the CIF the run fails
-  prog = run_prog("tst_reduce2_neutron_zq4", heavy_pdb("ZQ4", zq4_atoms),
+  prog = run_prog("tst_reduce2_neutron_zq4", heavy_pdb("04", zq4_atoms),
     zq4_cif, neutron_option="hd_and_h")
   h = iotbx.pdb.input(prog.params.output.filename).construct_hierarchy()
   hd = sorted((a.name.strip(), a.parent().altloc) for a in h.atoms()
@@ -1391,19 +1394,19 @@ def test_user_cif_ligand():
                "not placed", "Could not find atom info"):
     assert text not in description and text not in prog.log_text, text
   try:
-    run_prog("tst_reduce2_neutron_zq4_nocif", heavy_pdb("ZQ4", zq4_atoms),
+    run_prog("tst_reduce2_neutron_zq4_nocif", heavy_pdb("04", zq4_atoms),
       neutron_option="hd_and_h")
-  except Sorry:
-    pass
+  except Sorry as e:
+    assert str(e) == MISSING_RESTRAINTS + " 04", str(e)
   else:
-    raise AssertionError("ZQ4 ran without its CIF")
+    raise AssertionError("04 ran without its CIF")
 
 def test_name_not_pairable_end_to_end():
   # 9i: 1HO2 stays H (never D) and is listed; the other OH is split
   # (hd_and_h) or D (all_d); the written model reinterprets with restraints
   for option, ho3 in (("hd_and_h", "split"), ("all_d", "D")):
     prog = run_prog("tst_reduce2_neutron_zq3_" + option,
-      heavy_pdb("ZQ3", zq3_atoms), zq3_cif, neutron_option=option)
+      heavy_pdb("03", zq3_atoms), zq3_cif, neutron_option=option)
     fn = prog.params.output.filename
     h = iotbx.pdb.input(fn).construct_hierarchy()
     hd = sorted((a.name.strip(), a.parent().altloc, a.element.strip())
@@ -1416,7 +1419,7 @@ def test_name_not_pairable_end_to_end():
       assert ("DO3", "", "D") in hd, hd
     with open(prog.params.output.description_file_name) as f:
       description = f.read()
-    line = [l for l in description.splitlines() if "1HO2 ZQ3" in l]
+    line = [l for l in description.splitlines() if "1HO2  03" in l]
     assert len(line) == 1 and "name not pairable by phenix.refine" in line[0]
     split = sorted(tuple(sorted(h.atoms()[i[0]].name.strip() for i in x))
                    for x in h.exchangeable_hd_selections())
@@ -1436,12 +1439,12 @@ def test_section_in_log():
   prefix = "tst_reduce2_neutron_zq3_log"
   for ext in ("_out.pdb", ".txt"):
     if os.path.exists(prefix + ext): os.remove(prefix + ext)
-  prog = run_prog(prefix, heavy_pdb("ZQ3", zq3_atoms), zq3_cif,
+  prog = run_prog(prefix, heavy_pdb("03", zq3_atoms), zq3_cif,
     neutron_option="all_d", output__write_files=False)
   assert not os.path.exists(prefix + "_out.pdb")
   log = prog.log_text
   assert log.count("H/D model (neutron_option=all_d):") == 1
-  line = [l for l in log.splitlines() if "1HO2 ZQ3" in l]
+  line = [l for l in log.splitlines() if "1HO2  03" in l]
   assert len(line) == 1 and "kept as H" in line[0], line
   # the counts are printed once
   assert log.count("Split into H/D pairs") == 1
@@ -1477,7 +1480,7 @@ def test_description_file():
     "NZ  LYS A   3      19.531  -1.812  18.059  1.00",
     "NZ  LYS A   3      19.531  -1.812  18.059  0.80").replace("END\n", "")
   assert "0.80" in pdb_str
-  pdb_str += heavy_pdb("ZQ3", zq3_atoms, offset=(5.0, 15.0, 5.0),
+  pdb_str += heavy_pdb("03", zq3_atoms, offset=(5.0, 15.0, 5.0),
     cryst1=False) + "END\n"
   prog = run_prog("tst_reduce2_neutron_desc", pdb_str, zq3_cif,
     neutron_option="hd_and_h", exclude_water=False)
@@ -1501,7 +1504,7 @@ def test_description_file():
     "    New pairs get half the parent occupancy each, restored pairs keep "
     "their input values; phenix.refine currently refines H + D = 1.") in \
     section, section
-  assert "name not pairable by phenix.refine" in entry("1HO2 ZQ3 A   1")
+  assert "name not pairable by phenix.refine" in entry("1HO2  03 A   1")
   # none: no H/D section
   fn, log, description = run_reduce2("tst_reduce2_neutron_desc_none",
     pdb_1yjp, [])
@@ -1947,12 +1950,12 @@ def test_cross_mode():
   assert not failed, "\n".join(failed)
 
 def test_user_cif_ligand_optimize():
-  # 9c (optimize): the ZQ4 hd_and_h output (D input) with its CIF, optimize
+  # 9c (optimize): the 04 hd_and_h output (D input) with its CIF, optimize
   # hd_and_h: runs, the polar H are split, no missing restraints
-  prog = run_prog("tst_reduce2_neutron_zq4o_in", heavy_pdb("ZQ4", zq4_atoms),
+  prog = run_prog("tst_reduce2_neutron_zq4o_in", heavy_pdb("04", zq4_atoms),
     zq4_cif, neutron_option="hd_and_h")
   with open(prog.params.output.filename) as f: src = f.read()
-  assert " DN1BZQ4" in src and " DO1BZQ4" in src
+  assert " DN1B 04" in src and " DO1B 04" in src
   prog = run_prog("tst_reduce2_neutron_zq4o", src, zq4_cif,
     approach="optimize", neutron_option="hd_and_h")
   h = iotbx.pdb.input(prog.params.output.filename).construct_hierarchy()
@@ -1967,6 +1970,14 @@ def test_user_cif_ligand_optimize():
                "without a covalent partner", "Could not find atom info"):
     assert text not in description and text not in prog.log_text, text
   assert "Values restored from the input: 2" in description
+  # without the CIF: the missing-restraints Sorry
+  try:
+    run_prog("tst_reduce2_neutron_zq4o_nocif", src, approach="optimize",
+      neutron_option="hd_and_h")
+  except Sorry as e:
+    assert str(e) == MISSING_RESTRAINTS + " 04", str(e)
+  else:
+    raise AssertionError("04 ran without its CIF")
 
 def test_floating_h_water_hd():
   # 9k(b), hd_and_h: Tyr HH without its OH is dropped by the removal step;
@@ -2017,6 +2028,173 @@ def test_flipkins_d_input():
   assert section(d_on) == section(d_off)
   assert "Values restored from the input: 20" in d_on
   assert os.listdir(directory) == ["tst_reduce2_neutron_fkd_onFH-flipnq.kin"]
+
+# ------------------------------------------------------------------------------
+# optimize and the input check: residues without restraints, CCD-only residues
+
+_ligand_src = {}
+def protein_ligand_src(option):
+  """1yjp plus ligand 04 (chain B) from add with the CIF, for option"""
+  if option not in _ligand_src:
+    lig = heavy_pdb("04", zq4_atoms, offset=(15.0, 10.0, 15.0),
+      cryst1=False).replace(" A   1 ", " B   1 ")
+    prog = run_prog("tst_reduce2_neutron_lig_src_" + option,
+      pdb_1yjp.replace("END\n", "") + lig + "END\n", zq4_cif,
+      neutron_option=option)
+    with open(prog.params.output.filename) as f:
+      _ligand_src[option] = f.read()
+  return _ligand_src[option]
+
+def ligand_split_records(pdb_str, ligand):
+  """(label, element, xyz, occ, b) of the ligand's atoms or the others"""
+  h = iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
+  return sorted((a.id_str(), a.element.strip(), tuple(round(x, 3)
+    for x in a.xyz), round(a.occ, 2), round(a.b, 2)) for a in h.atoms()
+    if (a.parent().resname.strip() == "04") == ligand)
+
+def test_missing_restraints_optimize():
+  # ligand 04 without its CIF stops optimize with the missing-restraints
+  # Sorry: H input (optimize branch) and D input (input check)
+  import traceback
+  for option in ("none", "hd_and_h"):
+    try:
+      run_prog("tst_reduce2_neutron_mr_" + option,
+        protein_ligand_src(option), approach="optimize",
+        neutron_option=option)
+    except Sorry as e:
+      assert str(e) == MISSING_RESTRAINTS + " 04", str(e)
+      functions = [f[2] for f in traceback.extract_tb(e.__traceback__)]
+      assert ("_NormalizeInput" in functions) == (option != "none"), \
+        functions
+    else:
+      raise AssertionError("04 ran without its CIF (%s)" % option)
+
+def test_missing_restraints_ignored():
+  # ignore_missing_restraints=True: ligand 04 (no CIF) is written exactly as
+  # in the input (D stay D in all_h) and listed; the protein is converted
+  # as usual; nothing of the ligand is floating
+  for option, source in (("none", "none"), ("hd_and_h", "hd_and_h"),
+                         ("all_h", "hd_and_h")):
+    src = protein_ligand_src(source)
+    prog = run_prog("tst_reduce2_neutron_mri_" + option, src,
+      approach="optimize", neutron_option=option,
+      ignore_missing_restraints=True)
+    with open(prog.params.output.filename) as f: out = f.read()
+    lig_in = ligand_split_records(src, True)
+    assert len(lig_in) == (16 if source == "hd_and_h" else 14), len(lig_in)
+    assert ligand_split_records(out, True) == lig_in, option
+    with open(prog.params.output.description_file_name) as f:
+      description = f.read()
+    for text in (description, prog.log_text):
+      assert UNCHANGED + "\n04 B 1\n" in text, option
+    assert FLOATING not in description
+    # the protein: H/D labels as from the same mode without the ligand
+    def protein(pdb_str):
+      return sorted((r[0], r[1])
+                    for r in ligand_split_records(pdb_str, False))
+    if option == "all_h":
+      assert "D" not in [r[1] for r in ligand_split_records(out, False)]
+      assert sorted(r[1] for r in lig_in).count("D") == 2
+    else:
+      assert protein(out) == protein(src), option
+
+def test_ccd_only_ligand_optimize():
+  # BGM has no monomer library entry: placement builds its restraints from
+  # the CCD; optimize and the input check get the same objects, so its H
+  # are kept (before: removed as floating, then the Optimizer crashed when
+  # BGM was the only residue)
+  from mmtbx.chemical_components import get_cif_dictionary
+  cc = get_cif_dictionary("BGM")
+  atoms = [(a.atom_id, a.type_symbol, "", a.pdbx_model_Cartn_x_ideal,
+            a.pdbx_model_Cartn_y_ideal, a.pdbx_model_Cartn_z_ideal)
+           for a in cc["_chem_comp_atom"] if a.type_symbol != "H"]
+  prog = run_prog("tst_reduce2_neutron_bgm", heavy_pdb("BGM", atoms),
+    neutron_option="none")
+  with open(prog.params.output.filename) as f: src = f.read()
+  def hd(pdb_str):
+    h = iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
+    return sorted((a.name.strip(), a.parent().altloc, a.element.strip())
+                  for a in h.atoms() if a.element.strip() in ("H", "D"))
+  placed = hd(src)
+  assert len(placed) == 13, placed
+  polar = ["H1", "H21", "H22", "HO3'", "HOP2", "HOP3"]
+  for option in ("none", "hd_and_h"):
+    prog = run_prog("tst_reduce2_neutron_bgm_" + option, src,
+      approach="optimize", neutron_option=option)
+    with open(prog.params.output.filename) as f: out = f.read()
+    with open(prog.params.output.description_file_name) as f:
+      description = f.read()
+    assert FLOATING not in description and UNCHANGED not in description
+    if option == "none":
+      assert hd(out) == placed
+    else:
+      expected = sorted([x for x in placed if x[0] not in polar] +
+        [(n, "A", "H") for n in polar] +
+        [("D" + n[1:], "B", "D") for n in polar])
+      assert hd(out) == expected, hd(out)
+    # the OH (O-P-OH) H are now Optimizer movers
+    movers = [l for l in description.splitlines()
+              if l.strip().startswith("Added MoverSingleHydrogenRotator")
+              and "BGM" in l]
+    assert len(movers) == 3, movers
+  # input check (D input) gets the CCD restraints too
+  with open(prog.params.output.filename) as f: d_src = f.read()
+  prog = run_prog("tst_reduce2_neutron_bgm_d", d_src, approach="optimize",
+    neutron_option="hd_and_h")
+  with open(prog.params.output.filename) as f: out = f.read()
+  assert hd(out) == hd(d_src)
+  # the CCD objects are dropped again
+  assert [n for n, o in (prog.model.get_restraint_objects() or [])
+          if n.startswith("auto_")] == []
+
+def test_missing_restraints_flipkins():
+  # flipkins with ligand 04 left unchanged: its unbonded H are classified by
+  # their residue, the run completes
+  directory = "tst_reduce2_neutron_mrfk"
+  if not os.path.isdir(directory): os.mkdir(directory)
+  for f in os.listdir(directory): os.remove(os.path.join(directory, f))
+  src = protein_ligand_src("hd_and_h")
+  prog = run_prog("tst_reduce2_neutron_mrfk", src,
+    approach="optimize", neutron_option="hd_and_h",
+    ignore_missing_restraints=True, add_flip_movers=True,
+    output__flipkin_directory=directory)
+  with open(prog.params.output.filename) as f:
+    assert ligand_split_records(f.read(), True) == \
+      ligand_split_records(src, True)
+  assert os.listdir(directory) == [
+    "tst_reduce2_neutron_mrfkFH-flipnq.kin"], os.listdir(directory)
+
+def test_atom_characteristics_unbonded_h():
+  # _GetAtomCharacteristics(): an H without bonded neighbour raises, unless
+  # its residue is left unchanged (no restraints)
+  from mmtbx.probe import Helpers
+  from mmtbx.hydrogens import hd_exchange
+  from scitbx.array_family import flex
+  from libtbx import group_args
+  pdb_str = h_input_without_tyr_oh("tst_reduce2_neutron_gac")
+  prog, log = make_program("tst_reduce2_neutron_gac", pdb_str)
+  prog.validate()
+  prog.model = prog.data_manager.get_model()
+  prog._ReinterpretModel()
+  carts = flex.vec3_double([a.xyz for a in prog.model.get_atoms()])
+  bonds, asu = prog.model.get_restraints_manager().geometry.\
+    get_all_bond_proxies(sites_cart=carts)
+  neighbors = Helpers.getBondedNeighborLists(prog.model.get_atoms(), bonds,
+    asu)
+  try:
+    prog._GetAtomCharacteristics(neighbors)
+  except Sorry as e:
+    assert str(e) == "Found Hydrogen with no neigbors.", str(e)
+  else:
+    raise AssertionError("unbonded HH accepted")
+  keys = hd_exchange.atom_keys(prog.model.get_hierarchy())
+  hh = [k for k, a in zip(keys, prog.model.get_atoms())
+        if a.name.strip() == "HH"]
+  assert len(hh) == 1
+  prog._unrestrained = group_args(keys=set(hh), labels=["TYR A 7"])
+  in_water, in_het, in_main, in_side = prog._GetAtomCharacteristics(neighbors)
+  a = [a for a in prog.model.get_atoms() if a.name.strip() == "HH"][0]
+  assert in_main[a] is False and not in_water[a]
 
 if __name__ == "__main__":
   test_xray_default()
@@ -2086,4 +2264,9 @@ if __name__ == "__main__":
   test_floating_h_water_hd()
   test_water_layout_e_neutron()
   test_flipkins_d_input()
+  test_missing_restraints_optimize()
+  test_missing_restraints_ignored()
+  test_ccd_only_ligand_optimize()
+  test_missing_restraints_flipkins()
+  test_atom_characteristics_unbonded_h()
   print("OK")

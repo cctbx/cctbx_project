@@ -1092,10 +1092,7 @@ NOTES:
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if not self.params.ignore_missing_restraints:
       if len(missed_residues) > 0:
-        bad = ""
-        for res in missed_residues:
-          bad += " " + res
-        raise Sorry("Restraints were not found for the following residues:"+bad)
+        raise self._MissingRestraintsSorry(missed_residues)
     insufficient_restraints = list(reduce_add_h_obj.site_labels_no_para)
     if self.params.stop_on_any_missing_hydrogen and len(insufficient_restraints) > 0:
       bad = insufficient_restraints[0]
@@ -1135,19 +1132,89 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _MissingRestraintsSorry(self, resnames):
+    return Sorry("Restraints were not found for the following residues:" +
+      "".join(" " + r.strip() for r in sorted(resnames)))
+
+# ------------------------------------------------------------------------------
+
+  def _PrepareRestraints(self):
+    # Before an interpretation with restraints of a model with H that
+    # placement does not see (optimize, the input check): one
+    # mon_lib_query() per residue name. CCD-only residues get placement's
+    # CCD-generated restraint objects (dropped with _DropAutoRestraints()
+    # after the interpretation). Residues without restraints (as placement's
+    # no_H_placed_mlq) stop the run unless ignore_missing_restraints=True;
+    # then all their atoms are left as in the input.
+    # :return: group_args(keys (atom keys of the residues left unchanged),
+    # labels).
+    # the objects are appended to the model's list: its own copy, so that
+    # the input's list stays as it is
+    ro = self.model.get_restraint_objects()
+    if ro is not None:
+      self.model.set_restraint_objects(list(ro))
+    r = reduce_hydrogen.add_ccd_restraint_objects(self.model)
+    self._auto_restraint_names = r.auto_restraint_names
+    if r.no_restraints and not self.params.ignore_missing_restraints:
+      raise self._MissingRestraintsSorry(r.no_restraints)
+    hierarchy = self.model.get_hierarchy()
+    n_models = len(hierarchy.models())
+    missing = set()   # (residue_group memory_id, resname)
+    labels = []
+    for model_index, m in enumerate(hierarchy.models()):
+      for chain in m.chains():
+        for rg in chain.residue_groups():
+          for resname in sorted(set(ag.resname for ag in rg.atom_groups())
+                                & r.no_restraints):
+            missing.add((rg.memory_id(), resname))
+            label = '%s %s %s%s' % (resname.strip(), chain.id,
+              rg.resseq.strip(), rg.icode.strip())
+            if n_models > 1: label += ' (model %d)' % (model_index + 1)
+            labels.append(label)
+    keys = set()
+    if missing:
+      for a, k in zip(hierarchy.atoms(), hd_exchange.atom_keys(hierarchy)):
+        if (a.parent().parent().memory_id(), a.parent().resname) in missing:
+          keys.add(k)
+    return group_args(keys=keys, labels=labels)
+
+# ------------------------------------------------------------------------------
+
+  def _DropAutoRestraints(self):
+    # the CCD-generated restraint objects of _PrepareRestraints(), off the
+    # model again (its restraints stay), so that output and user CIF handling
+    # do not change
+    reduce_hydrogen.remove_auto_restraint_objects(self.model,
+      self._auto_restraint_names)
+
+# ------------------------------------------------------------------------------
+
+  def _UnrestrainedKeys(self):
+    # (also before run(): the checks are called directly in tests)
+    unrestrained = getattr(self, '_unrestrained', None)
+    if unrestrained is None: return set()
+    return unrestrained.keys
+
+# ------------------------------------------------------------------------------
+
   def _RemoveFloatingHD(self):
-    # Remove H/D atoms that have no covalent bond partner in the restraints.
+    # Remove H/D atoms that have no covalent bond partner in the restraints,
+    # except in residues without restraints (left unchanged).
     # :return: Tuple of the description-file text listing the removed atoms
     # ('' if none) and their atom keys (hd_exchange.atom_keys()).
     partners = hd_exchange.covalent_h_partners(self.model)
     atoms = self.model.get_hierarchy().atoms()
+    skip = self._UnrestrainedKeys()
+    keys = hd_exchange.atom_keys(self.model.get_hierarchy()) if skip else None
     sel = flex.bool(atoms.size(), False)
     for i, a in enumerate(atoms):
-      if a.element.strip().upper() in ('H', 'D') and i not in partners:
+      if a.element.strip().upper() in ('H', 'D') and i not in partners and \
+         not (skip and keys[i] in skip):
         sel[i] = True
     if sel.count(True) == 0:
       return '', []
-    keys = hd_exchange.atom_keys(self.model.get_hierarchy())
+    if keys is None:
+      keys = hd_exchange.atom_keys(self.model.get_hierarchy())
     removed = [keys[i] for i in sel.iselection()]
     labels = [atoms[i].id_str().replace('pdb=', '').replace('"', '')
               for i in sel.iselection()]
@@ -1181,9 +1248,12 @@ NOTES:
     # classified; stop before the Optimizer runs, naming the restraints.
     partners = hd_exchange.covalent_h_partners(self.model)
     atoms = self.model.get_hierarchy().atoms()
+    skip = self._UnrestrainedKeys()
+    keys = hd_exchange.atom_keys(self.model.get_hierarchy()) if skip else None
     bad = []
     for i in sorted(partners):
       if len(partners[i]) < 2: continue
+      if skip and keys[i] in skip: continue
       lines = [' ' + atoms[i].id_str()]
       for j in sorted(partners[i]):
         for info in partners[i][j]:
@@ -1216,12 +1286,14 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _MatchInputHD(self):
-    # Candidates and collapse check on the interpreted self.model.
+  def _MatchInputHD(self, model=None):
+    # Candidates and collapse check on an interpreted model (self.model if
+    # None).
     # :return: Tuple (candidates, match).
-    table = hd_exchange.h_parent_table(self.model)
-    candidates = hd_exchange.find_hd_candidates(self.model.get_hierarchy(),
-      table, model=self.model)
+    if model is None: model = self.model
+    table = hd_exchange.h_parent_table(model)
+    candidates = hd_exchange.find_hd_candidates(model.get_hierarchy(),
+      table, model=model)
     return candidates, hd_exchange.collapse_check(candidates)
 
 # ------------------------------------------------------------------------------
@@ -1230,16 +1302,30 @@ NOTES:
     # Input with D that the run keeps: every H/D must be a single or a
     # collapsible pair (no repair). Floating H/D are dropped. Pairs are
     # collapsed to H with their values recorded (self._hd_records), single D
-    # renamed to H, DOD -> HOH. self.model is rebuilt from the H-only
-    # hierarchy, with restraints for optimize (the branch uses them).
+    # renamed to H, DOD -> HOH. Residues without restraints stop the run, or
+    # with ignore_missing_restraints=True are left as they are. self.model is
+    # rebuilt from the H-only hierarchy, with restraints for optimize (the
+    # branch uses them).
     # :return: Unprocessed model of the H-only hierarchy, the snapshot for
     # the flipkin passes.
     make_sub_header('Checking input H/D', out=self.logger)
     if self.params.neutron_option == 'none':
       raise Sorry('input contains deuterium; set neutron_option, or rebuild '
         'H: ' + self._RebuildHint())
+    user_restraint_objects = self.model.get_restraint_objects()
+    self._unrestrained = self._PrepareRestraints()
     self._ReinterpretModel(make_restraints=True)
-    candidates, match = self._MatchInputHD()
+    skip = self._unrestrained.keys
+    def checked_part(full):
+      # the model without the residues left unchanged, and the full model's
+      # atom keys of its atoms (its own keys can differ: chain occurrence)
+      if not skip: return full, None
+      keys = hd_exchange.atom_keys(full.get_hierarchy())
+      sel = flex.bool([k not in skip for k in keys])
+      return full.select(sel), [k for k, x in zip(keys, sel) if x]
+    full = self.model
+    part, part_keys = checked_part(full)
+    candidates, match = self._MatchInputHD(part)
     clean = lambda id_str: id_str.replace('pdb=', '').replace('"', '')
     titles = {
       'pair': 'H/D pairs that cannot be collapsed',
@@ -1277,14 +1363,37 @@ NOTES:
     self._input_floating = [clean(u.atom_id) for u in floating]
     if floating:
       drop = set(u.atom_key for u in floating)
-      keys = hd_exchange.atom_keys(self.model.get_hierarchy())
-      self.model = self.model.select(
-        flex.bool([k not in drop for k in keys]))
-      candidates, match = self._MatchInputHD()
+      if part_keys is not None:
+        drop = set(fk for k, fk in zip(
+          hd_exchange.atom_keys(part.get_hierarchy()), part_keys) if k in drop)
+      keys = hd_exchange.atom_keys(full.get_hierarchy())
+      full = full.select(flex.bool([k not in drop for k in keys]))
+      part, part_keys = checked_part(full)
+      candidates, match = self._MatchInputHD(part)
+    self.model = full
     self._input_notes = [group_args(output=clean(n.h_id) + ' / ' +
       clean(n.d_id), text=n.text) for n in match.notes]
     h = self.model.get_hierarchy().deep_copy()
+    # atom_groups left unchanged are taken out while the matched part is
+    # normalized (its atom order is then the part's), and put back
+    detached = []
+    if skip:
+      key_of = dict((a.memory_id(), k) for a, k in
+                    zip(h.atoms(), hd_exchange.atom_keys(h)))
+      for rg in h.residue_groups():
+        for index, ag in enumerate(list(rg.atom_groups())):
+          if key_of[ag.atoms()[0].memory_id()] in skip:
+            detached.append((rg, index, ag))
+      for rg, index, ag in detached:
+        rg.remove_atom_group(ag)
+      assert h.atoms_size() == part.get_hierarchy().atoms_size()
     normalized = hd_exchange.normalize_to_h(h, match)
+    for rg, index, ag in detached:
+      rg.insert_atom_group(min(index, rg.atom_groups_size()), ag)
+    if detached:
+      h.sort_atoms_in_place()
+      h.atoms().reset_serial()
+      h.atoms().reset_i_seq()
     self._hd_records = normalized.records
     c = normalized.counts
     print('Input H/D: %d pairs collapsed to H, %d D renamed to H, %d DOD '
@@ -1294,12 +1403,13 @@ NOTES:
       model_input       = None,
       pdb_hierarchy     = h.deep_copy(),
       crystal_symmetry  = self.model.crystal_symmetry(),
-      restraint_objects = self.model.get_restraint_objects(),
+      restraint_objects = user_restraint_objects,
       stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
       log               = null_out())
     self._normalized_with_restraints = self.params.approach == 'optimize'
     self.model = self._RebuildModel(h,
       make_restraints=self._normalized_with_restraints)
+    self._DropAutoRestraints()
     return snapshot
 
 # ------------------------------------------------------------------------------
@@ -1382,16 +1492,27 @@ NOTES:
         problems.append('no provenance: ' + a.id_str())
     for k in sorted(set(provenance) - set(hd)):
       problems.append('provenance names a missing atom: ' + str(k))
+    # residues without restraints: in the provenance, not paired (their
+    # atoms are taken out; the keys of the rest can change)
+    skip = self._UnrestrainedKeys()
+    pair_h, pair_provenance = out_h, provenance
+    if not problems and skip:
+      sel = flex.bool([k not in skip for k in keys])
+      pair_h = out_h.select(sel, copy_atoms=True)
+      pair_h.atoms().reset_i_seq()
+      pair_provenance = dict((k, provenance[fk]) for k, fk in zip(
+        hd_exchange.atom_keys(pair_h), [k for k, x in zip(keys, sel) if x])
+        if fk in provenance)
     if not problems:
       match = hd_exchange.collapse_check(hd_exchange.find_hd_candidates(
-        out_h, self._h_parents, provenance=provenance))
+        pair_h, self._h_parents, provenance=pair_provenance))
       for x in match.problems:
         problems.append('%s %s: %s' % (x.h_id, x.d_id, '; '.join(x.reasons)))
       for x in match.unresolved:
         problems.append('%s: %s' % (x.atom_id, x.status))
       pairs = set(frozenset((c.i_h, c.i_d)) for c in match.pairs)
       written = set(frozenset((s[0][0], s[1][0]))
-                    for s in out_h.exchangeable_hd_selections())
+                    for s in pair_h.exchangeable_hd_selections())
       if len(pairs) != self._neutron_result.n_split or pairs != written:
         problems.append('split pairs: %d written, %d paired, %d found by '
           'exchangeable_hd_selections()' % (self._neutron_result.n_split,
@@ -1517,6 +1638,9 @@ NOTES:
     hetatm_sel = self.model.selection("hetatm")
     mainchain_sel = self.model.selection("backbone")  # Will NOT include Hydrogen atoms on the main chain
     sidechain_sel = self.model.selection("sidechain") # Will include Hydrogen atoms on the side chain
+    # residues without restraints, left unchanged: their H have no bonds
+    skip = self._UnrestrainedKeys()
+    keys = None
     for a in self.model.get_atoms():
       inWater[a] = common_residue_names_get_class(name=a.parent().resname) == "common_water"
       inHet[a] = hetatm_sel[a.i_seq]
@@ -1525,6 +1649,14 @@ NOTES:
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
         if len(bondedNeighborLists[a]) < 1:
+          if skip:
+            if keys is None:
+              keys = hd_exchange.atom_keys(self.model.get_hierarchy())
+            if keys[a.i_seq] in skip:
+              # classified by its residue (het or water), not main chain
+              inMainChain[a] = False
+              inSideChain[a] = sidechain_sel[a.i_seq]
+              continue
           raise Sorry("Found Hydrogen with no neigbors.")
         else:
           inMainChain[a] = mainchain_sel[bondedNeighborLists[a][0].i_seq]
@@ -1679,6 +1811,9 @@ NOTES:
     self._input_notes = []
     self._input_floating = []
     self._normalized_with_restraints = False
+    # residues without restraints (optimize, D input): None until checked
+    self._unrestrained = None
+    self._auto_restraint_names = []
 
     # String describing the run that will be output to the specified file.
     outString = 'reduce2 v.{}, run {}\n'.format(version, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -1801,8 +1936,17 @@ NOTES:
       else:
         # We need restraints on the model for optimization, so we interpret it to get them.
         # (normalized input was rebuilt with them)
+        # Residues without restraints stop the run, as placement does, or
+        # with ignore_missing_restraints=True are left unchanged.
         if not self._normalized_with_restraints:
+          self._unrestrained = self._PrepareRestraints()
           self._ReinterpretModel(make_restraints=True)
+          self._DropAutoRestraints()
+        if self._unrestrained.labels:
+          text = ('\nResidues without restraints, left unchanged:\n' +
+            '\n'.join(self._unrestrained.labels) + '\n')
+          print(text, file=self.logger)
+          outString += text
         # H/D without a covalent partner are removed, as placement does; same
         # rule as the H parent table. Also keeps them out of probe scoring.
         text, removed = self._RemoveFloatingHD()
@@ -1932,7 +2076,7 @@ NOTES:
       h = self.model.get_hierarchy().deep_copy()
       self._neutron_result = hd_exchange.apply_neutron_option(h,
         self.params.neutron_option, parent_table=self._h_parents,
-        records=self._hd_records)
+        records=self._hd_records, unchanged_keys=self._UnrestrainedKeys())
       self._output_model = self._RebuildModel(h, make_restraints=False)
       self._CheckNeutronOutput()
       outString += self._NeutronDescription()
