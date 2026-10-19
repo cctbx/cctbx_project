@@ -46,6 +46,15 @@ def outgoing(omit=None, **fields):
 APP_ENTRYPOINT = "claude-desktop"
 
 
+def as_read(display):
+    """Revision 19 (item 0.3): what the presented block quote reads as once Markdown renders
+    it: the `> ` marks and the bold markers removed and the backslash escapes resolved."""
+    body = [line[2:] if line.startswith("> ") else ("" if line == ">" else line)
+            for line in display.splitlines()]
+    text = re.sub(r"(?<!\\)\*\*", "", "\n".join(body))
+    return re.sub(r"\\(.)", r"\1", text)
+
+
 def session_environment(path, **variables):
     """A subprocess environment built from scratch, not inherited: `path` is
     the whole PATH, the interpreter keeps the few variables it needs, and the
@@ -503,7 +512,10 @@ class ScreenChecks(unittest.TestCase):
         (self.evidence / "RUN_LOG.txt").write_text("check exited 0\n")
         (self.evidence / "CHANGE.diff").write_text("+ # sample comment\n")
         (self.evidence / "APPROVAL_REPORT.md").write_text(
-            "# Approval report\n## Exact tested changes\n```diff\n"
+            "# Approval report\n## Plain-English review\n### phenix: clarify a comment\n"
+            "- **Purpose:** the comment misled readers.\n- **Code:** one comment line.\n"
+            "- **Tests:** none added; the file compiles.\n- **Assessment:** sound.\n"
+            "## Exact tested changes\n```diff\n"
             "+ # sample comment\n```\n## New tests\nNone added\n"
         )
         (self.evidence / "SERVER_SUITE.txt").write_text("SERVER_SUITE: PASS 12/12\n"
@@ -619,15 +631,15 @@ class ScreenChecks(unittest.TestCase):
                     checker.present(kind, path, evidence, reading)
                 display = output.getvalue()
                 self.assertTrue(display.startswith(
-                    "**PLEASE READ — YOUR DECISION IS NEEDED**\n\n```\n"))
-                self.assertTrue(display.endswith("\n```\n"))
-                self.assertIn("\n" + kind.upper() + " | ", display)
+                    "**PLEASE READ — YOUR DECISION IS NEEDED**\n\n> **"))
+                self.assertIn("\n> **" + kind.capitalize() + "** · ", display)
+                self.assertNotIn("```", display)
                 self.assertNotIn(self.identity, display)
                 self.assertNotIn(TREE, display)
                 self.assertNotIn(COMMIT, display)  # SPEC_A 1.2: shown as [recorded]
                 self.assertNotIn(checker.digest(self.reading.read_bytes()), display)
                 self.assertNotIn("SHA256:", display)
-                self.assertIn("ACTION:", display)
+                self.assertIn("\n> **Your choice:** **", display)
         screen = self.result()
         screen.write_text(screen.read_text().replace(
             "The log says compile passed.",
@@ -649,7 +661,7 @@ class ScreenChecks(unittest.TestCase):
             checker.present("plan", screen)
         display = output.getvalue()
         for heading in checker.HEADINGS["plan"]:
-            self.assertIn("\n\n" + heading + "\n", display)
+            self.assertIn(">\n> **" + heading.capitalize() + "**\n>\n", display)
         self.assertEqual(screen.read_bytes(), saved)
         self.ok("plan", screen)
 
@@ -663,9 +675,9 @@ class ScreenChecks(unittest.TestCase):
         with contextlib.redirect_stdout(output):
             checker.present("plan", screen)
         display = output.getvalue()
-        self.assertIn("**PLEASE READ — YOUR DECISION IS NEEDED**\n\n````\n", display)
-        self.assertTrue(display.endswith("\n````\n"))
-        self.assertIn("Example: ```python should remain in the screen body.", display)
+        # Revision 19: backticks are escaped in the block quote, and read as written.
+        self.assertIn("Example: \\`\\`\\`python should remain in the screen body.", display)
+        self.assertIn("Example: ```python should remain in the screen body.", as_read(display))
 
     def test_headings_action_and_placeholders(self):
         source = self.plan().read_text()
@@ -1848,11 +1860,11 @@ class ScreenChecks(unittest.TestCase):
         with contextlib.redirect_stdout(output):
             checker.present("accept", screen, self.evidence)
         display = output.getvalue()
-        self.assertTrue(display.startswith("**PLEASE READ — YOUR DECISION IS NEEDED**\n\n```\n"))
-        self.assertIn("\nACCEPT | comment-1\n", display)
+        self.assertTrue(display.startswith("**PLEASE READ — YOUR DECISION IS NEEDED**\n\n> "))
+        self.assertIn("\n> **Accept** · comment-1\n", display)
         self.assertNotIn(self.identity, display)
         self.assertNotIn(TREE, display)
-        self.assertIn("ACTION: ACCEPT / REVISE / DISCARD", display)
+        self.assertIn("**Your choice:** **Accept** / **Revise** / **Discard**", display)
 
     def test_accept_screen_claiming_integration_or_publication_is_refused(self):
         """ACCEPT neither offers nor claims integration or publication.
@@ -1914,6 +1926,841 @@ class ScreenChecks(unittest.TestCase):
         (self.evidence / "MANIFEST.sha256").unlink()
         with self.assertRaisesRegex(ValueError, "missing manifest"):
             self.ok("accept", screen, evidence=self.evidence)
+
+
+# ---- Revision 19: reading carry-over after a restage; reviewer formatting (2.2); records (2.3)
+
+OLD_BASE, OLD_COMMIT, OLD_TREE = "d" * 40, "e" * 40, "f" * 40
+CARRY_LIMITS = checker.CARRYOVER_LIMITS
+UPSTREAM = "1" * 40
+
+
+def carry_section(name="phenix", old=(OLD_BASE, OLD_COMMIT, OLD_TREE), new=(BASE, COMMIT, TREE),
+                  upstream=(("M", "mmtbx/other.py"),), result=None, imported=(), named=(),
+                  blob_differs=False, diff_differs=False, message_differs=False):
+    """One repository section of CARRYOVER.txt, internally consistent, in the order of repair 2:
+    the non-waivable facts, then every content comparison, then the content differences and
+    the result. An upstream row on sample.py (the changed file) is reported as touching it."""
+    flagged = {kind: [] for kind in checker.FLAG_KINDS}
+    rows, touching = [], []
+    for status, path in upstream:
+        flags = checker.upstream_flags(path)
+        rows.append(f"  {status} {path}" + (f" [{','.join(flags)}]" if flags else ""))
+        for kind in flags:
+            flagged[kind].append(path)
+        if path == "sample.py":
+            touching.append(f"{UPSTREAM[:12]} sample.py")
+    lines = [f"== repository: {name}", f"reviewed: base {old[0]} commit {old[1]} tree {old[2]}",
+             f"outgoing: base {new[0]} commit {new[1]} tree {new[2]}",
+             "reviewed base is an ancestor of the outgoing base: yes",
+             "changed paths: 1 (the same set in both commits)",
+             f"blob {'DIFFERS' if blob_differs else 'same'} reviewed 100644 {'2' * 40} outgoing 100644 "
+             f"{('6' if blob_differs else '2') * 40} sample.py",
+             f"diff sha256 reviewed {'3' * 64} outgoing {('5' if diff_differs else '3') * 64} (120 bytes)",
+             "diff: DIFFERS" if diff_differs else "diff: byte-identical"]
+    if upstream:
+        lines += ["upstream commits: 1", f"upstream commit {UPSTREAM}: {len(upstream)} file(s)"] + rows
+    else:
+        lines += ["upstream commits: 0"]
+    lines += ["upstream commits touching a changed path: " + ("; ".join(touching) or "none"),
+              checker.FLAGGED_INTRO + ", ".join(f"{k} {len(flagged[k])}" for k in checker.FLAG_KINDS)]
+    lines += [f"flagged {k}: {' '.join(sorted(flagged[k])) or 'none'}" for k in checker.FLAG_KINDS]
+    lines += ["changed Python files read for imports: 1 (not parsed: none)",
+              f"{checker.IMPORTED_LABEL}: " + ("; ".join(f"{p} (imported by sample.py)" for p in imported) or "none"),
+              f"{checker.NAMED_LABEL}: " + ("; ".join(f"{p} (named by sample.py)" for p in named) or "none"),
+              f"commit message sha256 reviewed {'7' * 64} outgoing {('8' if message_differs else '7') * 64}",
+              "commit message: DIFFERS" if message_differs else "commit message: identical"]
+    differences = ([checker.DIFF_BLOBS + "sample.py"] if blob_differs else []) + (
+        [checker.DIFF_DIFF] if diff_differs else []) + (
+        [checker.DIFF_TOUCH + "; ".join(touching)] if touching else []) + (
+        [checker.DIFF_MESSAGE] if message_differs else [])
+    lines += [f"difference ({name}): {text}" for text in differences]
+    if result is None:
+        result = f"REFUSED: {checker.content_result(len(differences))}" if differences else "OK"
+    return lines + [f"repository {name}: {result}"]
+
+
+def carryover_text(reviewed_outgoing, packet_outgoing, sections=None, final=checker.CARRYOVER_OK):
+    """CARRYOVER.txt in the fixed form publication_precheck.py carry-over writes."""
+    lines = [checker.CARRYOVER_HEADER,
+             f"reviewed_outgoing_sha256: {checker.digest(reviewed_outgoing)}",
+             f"outgoing_sha256: {checker.digest(packet_outgoing)}"]
+    for section in (sections if sections is not None else [carry_section()]):
+        lines += section
+    return "".join(line + "\n" for line in lines + [final])
+
+
+class CarryOverScreenChecks(unittest.TestCase):
+    """Revision 19: `present publication` accepts a reading of the EARLIER packet only with
+    CARRYOVER.txt (the OK line, no refusal, internally consistent sections),
+    evidence/reviewed/MANIFEST.sha256 (whose SHA-256 the reading names) and
+    evidence/reviewed/OUTGOING.txt (listed in it), CARRYOVER.txt identities equal to both
+    OUTGOING.txt files, the LIMITS wording and CODE_IDENTITY.txt's reading_carried_over_from;
+    a carried PROCEED IF keeps its condition. The server suite is never carried over. Each
+    refusal is the negative control of one rule; test_carried_reading_is_accepted is the
+    positive control."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        # The packet the outside reader read.
+        self.old = self.root / "packet_v1"
+        self.old.mkdir()
+        self.old_outgoing = outgoing(base=OLD_BASE, commit=OLD_COMMIT, tree=OLD_TREE)
+        (self.old / "OUTGOING.txt").write_text(self.old_outgoing)
+        (self.old / "SERVER_SUITE.txt").write_text("SERVER_SUITE: PASS 12/12\nsynthetic log\n")
+        (self.old / "ROSTER_COMPARISON.txt").write_text("synthetic roster comparison\n")
+        with contextlib.redirect_stdout(io.StringIO()):
+            checker.freeze(self.old)
+        self.reviewed_id = checker.verify(self.old)
+        # The restaged packet.
+        self.evidence = self.root / "packet_v2"
+        self.files = {
+            "OUTGOING.txt": outgoing(),
+            "SERVER_SUITE.txt": "SERVER_SUITE: PASS 12/12 on the restaged commit\nsynthetic log\n",
+            "ROSTER_COMPARISON.txt": "synthetic roster comparison\n",
+            "CODE_IDENTITY.txt": f"reading_carried_over_from: {OLD_COMMIT}\n",
+            "evidence/reviewed/MANIFEST.sha256": (self.old / "MANIFEST.sha256").read_text(),
+            "evidence/reviewed/OUTGOING.txt": self.old_outgoing,
+        }
+        self.files["CARRYOVER.txt"] = carryover_text(self.old_outgoing.encode(),
+                                                     self.files["OUTGOING.txt"].encode())
+        self.reading = self.root / "reading.md"
+        self.reading.write_text(f"Packet identity: {self.reviewed_id}\nVerdict: PROCEED\n"
+                                "Scope: integration and publication\n")
+        self.disposition = None
+        self.batch = ""
+
+    def build(self, changes=None):
+        """Write the packet with `changes` ({name: text, or None to omit}) and freeze it."""
+        if self.evidence.exists():
+            shutil.rmtree(self.evidence)
+        self.evidence.mkdir(parents=True)
+        for name, text in dict(self.files, **(changes or {})).items():
+            if text is not None:
+                path = self.evidence / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text)
+        with contextlib.redirect_stdout(io.StringIO()):
+            checker.freeze(self.evidence)
+        return checker.verify(self.evidence)
+
+    def screen(self, identity, limits=CARRY_LIMITS, verdict="PROCEED"):
+        gate = f"Reading SHA256: {checker.digest(self.reading.read_bytes())}\nVerdict: {verdict}"
+        if self.disposition is not None:
+            gate += f"\nDisposition SHA256: {checker.digest(self.disposition.read_bytes())}"
+        path = self.root / "PUBLICATION.md"
+        path.write_text(f"PUBLICATION | batch-1 | {identity}\nBATCH\n"
+                        f"phenix commit {COMMIT} to master.{self.batch}\nSERVER CHECK\nSuite run on the "
+                        f"restaged commit.\nLIMITS\n{limits}\nGATE\n{gate}\nDECISION\nPublish or hold.\n"
+                        "Recommendation: PUBLISH because the carry-over check passed.\n"
+                        "Next: If you publish, I push and confirm.\nACTION: PUBLISH / HOLD\n")
+        return path
+
+    def check(self, identity, kind="publication", **screen):
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            checker.check(kind, self.screen(identity, **screen), self.evidence, self.reading,
+                          self.disposition)
+        return output.getvalue()
+
+    def refused(self, reason, changes=None, **screen):
+        identity = self.build(changes)
+        with self.assertRaisesRegex(ValueError, reason):
+            self.check(identity, **screen)
+
+    def test_carried_reading_is_accepted(self):
+        identity = self.build()
+        self.check(identity)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            checker.present("publication", self.screen(identity), self.evidence, self.reading)
+        self.assertIn("NOTE: the outside reading names the earlier packet it read", output.getvalue())
+        self.assertIn("recomputes", output.getvalue())
+        # No upstream commits, and several flagged files, are accepted alike.
+        for section in (carry_section(upstream=()),
+                        carry_section(upstream=(("M", "mmtbx/x.cpp"), ("A", "mmtbx/tests/model.pdb"),
+                                                ("D", "lib/SConscript")))):
+            text = carryover_text(self.old_outgoing.encode(), self.files["OUTGOING.txt"].encode(), [section])
+            self.check(self.build({"CARRYOVER.txt": text}))
+        # The reading of the new identity itself still works with CARRYOVER.txt present, and
+        # then needs neither the LIMITS wording nor the CODE_IDENTITY line.
+        identity = self.build()
+        self.reading.write_text(f"Packet identity: {identity}\nVerdict: PROCEED\nScope: publication\n")
+        self.check(identity, limits="No material gap claimed.")
+
+    def test_the_documented_limits_wording_is_the_enforced_one(self):
+        for name in ("WORKER.md", "PUBLICATION_PACKET.md"):
+            text = (Path(checker.__file__).parent.parent / name).read_text()
+            self.assertIn(CARRY_LIMITS, " ".join(text.split()), name)
+
+    def test_without_carryover_evidence_an_earlier_reading_is_refused(self):
+        self.refused("does not name this packet", {"CARRYOVER.txt": None,
+                                                  "evidence/reviewed/MANIFEST.sha256": None,
+                                                  "evidence/reviewed/OUTGOING.txt": None})
+        # Repair 1: the reviewed copies without CARRYOVER.txt are refused, not ignored.
+        self.refused("no CARRYOVER.txt at its top level", {"CARRYOVER.txt": None})
+        self.refused("carry-over evidence missing", {"evidence/reviewed/MANIFEST.sha256": None})
+        self.refused("carry-over evidence missing", {"evidence/reviewed/OUTGOING.txt": None})
+
+    def test_carryover_must_be_ok_and_in_the_fixed_form(self):
+        text = self.files["CARRYOVER.txt"]
+        ok = checker.CARRYOVER_OK
+        for label, altered, reason in (
+                ("refused, final line only", text.replace(ok, "CARRYOVER REFUSED: changed file content differs: a"),
+                 "does not repeat the refusals"),
+                ("refused block", text.replace("repository phenix: OK", "repository phenix: REFUSED: x"),
+                 "records a refusal"),
+                ("refused line inside", text.replace("diff: byte-identical\n", "CARRYOVER REFUSED: x\n"),
+                 "records a refusal|exactly one final"),
+                ("no final line", text.replace(ok + "\n", ""), "must end with the one line"),
+                ("old OK form", text.replace(ok, ok + "; server suite: no compiled upstream files"),
+                 "must end with the one line"),
+                ("two OK lines", text.replace("diff: byte-identical\n", ok + "\n"),
+                 "must end with the one line"),
+                ("hand-written header", text.replace(checker.CARRYOVER_HEADER, "CARRYOVER"), "fixed form"),
+                ("no reviewed_outgoing_sha256", text.replace("reviewed_outgoing_sha256", "x"),
+                 "reviewed_outgoing_sha256 line in place"),
+                ("reviewed block differs", text.replace(f"reviewed: base {OLD_BASE}", f"reviewed: base {'9' * 40}"),
+                 "does not record the reviewed and outgoing phenix blocks"),
+                ("outgoing block differs", text.replace(f"commit {COMMIT}", f"commit {'9' * 40}"),
+                 "does not record the reviewed and outgoing phenix blocks"),
+                ("other repository", text.replace("== repository: phenix", "== repository: x"),
+                 "exactly the repositories"),
+                ("extra line outside sections", text.replace(ok, "note: fine\n" + ok),
+                 "outside its repository sections")):
+            with self.subTest(label):
+                self.refused(reason, {"CARRYOVER.txt": altered})
+
+    def test_an_internally_inconsistent_carryover_is_refused(self):
+        """A hand-edited CARRYOVER.txt that keeps its identities and its final line."""
+        text = self.files["CARRYOVER.txt"]
+        for label, altered in (
+                ("blob marked DIFFERS", text.replace("blob same", "blob DIFFERS")),
+                ("blob values differ", text.replace(f"outgoing 100644 {'2' * 40}", f"outgoing 100644 {'4' * 40}")),
+                ("changed-path count", text.replace("changed paths: 1 ", "changed paths: 2 ")),
+                ("diff hashes differ", text.replace(f"outgoing {'3' * 64}", f"outgoing {'5' * 64}")),
+                ("upstream count", text.replace("upstream commits: 1\n", "upstream commits: 0\n")),
+                ("upstream file count", text.replace(": 1 file(s)", ": 2 file(s)")),
+                ("upstream row removed", text.replace("  M mmtbx/other.py\n", "")),
+                ("upstream file is a changed file", text.replace("mmtbx/other.py", "sample.py")),
+                ("missing flag", carryover_text(self.old_outgoing.encode(), self.files["OUTGOING.txt"].encode(),
+                    [carry_section(upstream=(("M", "mmtbx/x.cpp"),))]).replace(" [compiled]", "")),
+                ("flag count", carryover_text(self.old_outgoing.encode(), self.files["OUTGOING.txt"].encode(),
+                    [carry_section(upstream=(("M", "mmtbx/x.cpp"),))]).replace("compiled 1,", "compiled 0,")),
+                ("flag list", carryover_text(self.old_outgoing.encode(), self.files["OUTGOING.txt"].encode(),
+                    [carry_section(upstream=(("M", "mmtbx/x.cpp"),))]).replace("flagged compiled: mmtbx/x.cpp",
+                                                                                "flagged compiled: none")),
+                ("touching line", text.replace("touching a changed path: none", "touching a changed path: one")),
+                ("ancestor line", text.replace("outgoing base: yes", "outgoing base: no")),
+                # Repair 1: the commit message hashes of an OK section are equal.
+                ("message hashes", text.replace(f"outgoing {'7' * 64}", f"outgoing {'8' * 64}")),
+                ("message line", text.replace("commit message: identical", "commit message: similar"))):
+            with self.subTest(label):
+                self.assertNotEqual(altered, text)
+                self.refused("not internally consistent|records a refusal", {"CARRYOVER.txt": altered})
+
+    def test_a_stale_carryover_is_refused(self):
+        """CARRYOVER.txt of an earlier restage: it names the OUTGOING.txt of that restage."""
+        earlier = outgoing(base="7" * 40, commit="8" * 40, tree="9" * 40)
+        stale = carryover_text(self.old_outgoing.encode(), earlier.encode(),
+                               [carry_section(new=("7" * 40, "8" * 40, "9" * 40))])
+        self.refused("stale carry-over from an earlier restage", {"CARRYOVER.txt": stale})
+
+    def test_forged_reviewed_manifest_or_outgoing_is_refused(self):
+        manifest = self.files["evidence/reviewed/MANIFEST.sha256"]
+        self.refused("does not name this packet",
+                     {"evidence/reviewed/MANIFEST.sha256": manifest.replace("  ROSTER", "  roster")})
+        forged = outgoing(base=OLD_BASE, commit="9" * 40, tree=OLD_TREE)
+        self.refused("is not the OUTGOING.txt that", {"evidence/reviewed/OUTGOING.txt": forged})
+        self.refused("is not the OUTGOING.txt that", {
+            "evidence/reviewed/OUTGOING.txt": forged,
+            "CARRYOVER.txt": carryover_text(forged.encode(), self.files["OUTGOING.txt"].encode())})
+        self.refused("lists no single OUTGOING.txt", {"evidence/reviewed/MANIFEST.sha256":
+                                                      manifest.replace("  OUTGOING.txt", "  OUT.txt")})
+        self.refused("not a packet manifest",
+                     {"evidence/reviewed/MANIFEST.sha256": "prose instead of a manifest\n"})
+        self.refused("names another reviewed OUTGOING.txt", {"CARRYOVER.txt": carryover_text(
+            b"other", self.files["OUTGOING.txt"].encode())})
+        self.refused("names another OUTGOING.txt than this packet's", {"CARRYOVER.txt":
+                     carryover_text(self.old_outgoing.encode(), b"other")})
+
+    def test_two_repositories(self):
+        """Both records name the same repositories, remotes, destinations and branches, and each
+        has its own consistent section."""
+        second_old = outgoing(repository="cctbx_project", base="a1" * 20, commit="b1" * 20, tree="c1" * 20)
+        second_new = outgoing(repository="cctbx_project", base="a2" * 20, commit="b2" * 20, tree="c2" * 20)
+        old_text, new_text = self.old_outgoing + second_old, self.files["OUTGOING.txt"] + second_new
+        (self.old / "MANIFEST.sha256").unlink()
+        (self.old / "OUTGOING.txt").write_text(old_text)
+        with contextlib.redirect_stdout(io.StringIO()):
+            checker.freeze(self.old)
+        self.reviewed_id = checker.verify(self.old)
+        self.reading.write_text(f"Packet identity: {self.reviewed_id}\nVerdict: PROCEED\nScope: publication\n")
+        cctbx = carry_section("cctbx_project", ("a1" * 20, "b1" * 20, "c1" * 20), ("a2" * 20, "b2" * 20, "c2" * 20))
+        sections = [cctbx, carry_section()]
+        files = {"OUTGOING.txt": new_text, "evidence/reviewed/OUTGOING.txt": old_text,
+                 "evidence/reviewed/MANIFEST.sha256": (self.old / "MANIFEST.sha256").read_text(),
+                 "CODE_IDENTITY.txt": f"reading_carried_over_from: {'b1' * 20} {OLD_COMMIT}\n",
+                 "CARRYOVER.txt": carryover_text(old_text.encode(), new_text.encode(), sections)}
+        self.files.update(files)
+        self.batch = f" cctbx_project commit {'b2' * 20} to master."
+        self.check(self.build())
+        for label, changes, reason in (
+                ("one section missing", {"CARRYOVER.txt": carryover_text(old_text.encode(), new_text.encode(),
+                                                                         [carry_section()])},
+                 "exactly the repositories"),
+                ("one section refused", {"CARRYOVER.txt": carryover_text(
+                    old_text.encode(), new_text.encode(), [cctbx[:-1] + ["repository cctbx_project: REFUSED: x"],
+                                                            carry_section()])}, "records a refusal"),
+                ("one commit named", {"CODE_IDENTITY.txt": f"reading_carried_over_from: {OLD_COMMIT}\n"},
+                 "reading_carried_over_from")):
+            with self.subTest(label):
+                self.refused(reason, changes)
+        # Another destination for one repository in the new record.
+        moved = self.files["OUTGOING.txt"].replace(REMOTE_URL, "ssh://elsewhere/x.git", 2)
+        self.refused("another remote_url", {"OUTGOING.txt": moved, "CARRYOVER.txt": carryover_text(
+            old_text.encode(), moved.encode(), sections)})
+
+    def test_limits_must_state_the_carry_over_and_what_it_does_not_show(self):
+        for limits in ("No material gap claimed.",
+                       "Reading carried over from packet 1.",
+                       "Reading carried over: the changed files are identical and untouched "
+                       "upstream.",
+                       "Reading carried over: the check shows the changed files are identical "
+                       "and untouched upstream, so upstream changes elsewhere cannot interact "
+                       "with them.",
+                       "The check shows the changed files are identical and untouched upstream; "
+                       "it does not show that upstream changes elsewhere cannot interact with "
+                       "them.",
+                       # The words split over two lines: the statement must be on one line.
+                       "Reading carried over: the check shows the changed files are identical "
+                       "and untouched upstream.\nIt does not show that upstream changes "
+                       "elsewhere cannot interact with them.",
+                       # Repair 1 (review finding 2): the reviewer's line, with every key word
+                       # and the opposite meaning; and the sentence plus a claim that nothing
+                       # can interact.
+                       "Reading carried over: identical and untouched upstream, which proves "
+                       "upstream changes elsewhere cannot interact with them; nothing here does "
+                       "not show that.",
+                       CARRY_LIMITS + " So upstream changes cannot interact with the change.",
+                       CARRY_LIMITS + " There is no interaction to fear.",
+                       CARRY_LIMITS.replace("does not show", "shows")):
+            with self.subTest(limits=limits):
+                self.refused("must be stated in LIMITS|claims that upstream changes cannot", limits=limits)
+        identity = self.build()
+        self.check(identity, limits=CARRY_LIMITS.upper())
+        self.check(identity, limits="Also: " + CARRY_LIMITS)
+        self.check(identity, limits=CARRY_LIMITS.replace(" ", "  ") + " Run t96 before PUBLISH.")
+
+    def test_code_identity_must_name_the_reviewed_commit(self):
+        for text in (None, "base_commit: x\n", f"reading_carried_over_from: {COMMIT}\n",
+                     f"reading_carried_over_from: {OLD_COMMIT}\nreading_carried_over_from: {OLD_COMMIT}\n"):
+            with self.subTest(text=text):
+                self.refused("reading_carried_over_from", {"CODE_IDENTITY.txt": text})
+
+    def test_a_carried_reading_never_serves_a_result(self):
+        identity = self.build()
+        carry = checker.carryover_evidence(self.evidence)
+        with self.assertRaisesRegex(ValueError, "does not name this packet"):
+            checker.reading_matches("result", self.reading, identity,
+                                    [f"Reading SHA256: {checker.digest(self.reading.read_bytes())}",
+                                     "Verdict: PROCEED"], carried=carry)
+
+    def conditional(self, condition, note):
+        self.reading.write_text(f"Packet identity: {self.reviewed_id}\nVerdict: PROCEED IF {condition}\n"
+                                "Scope: publication\n")
+        if note is None:
+            self.disposition = None
+        else:
+            self.disposition = self.root / "DISPOSITION.md"
+            self.disposition.write_text(f"Condition: {condition}\n" + note)
+        return self.build()
+
+    def test_a_carried_proceed_if_keeps_its_condition(self):
+        """Plan revision 5: the carried condition still needs a disposition, written against it
+        as worded; when it names a reviewed base, commit or tree (in full or by a prefix of 7+
+        hex digits), the disposition maps it to the new identity. Never satisfied automatically."""
+        named = (f"final prechecks confirm base {OLD_BASE}, commit {OLD_COMMIT[:12]}, "
+                 f"tree {OLD_TREE[:8]} and fast-forward")
+        mapping = (f"Mapping: {OLD_BASE} -> {BASE}\nMapping: {OLD_COMMIT} -> {COMMIT}\n"
+                   f"Mapping: {OLD_TREE} -> {TREE}\n")
+        verdict = f"PROCEED IF {named}"
+        # No disposition: the carry-over does not satisfy the condition.
+        identity = self.conditional(named, None)
+        with self.assertRaisesRegex(ValueError, "conditional verdict requires a separate disposition"):
+            self.check(identity, verdict=verdict)
+        # A disposition that does not map the old identities (for example the one written for
+        # the reviewed packet) is refused, one missing mapping at a time.
+        for missing in (0, 1, 2):
+            lines = mapping.splitlines(keepends=True)
+            del lines[missing]
+            identity = self.conditional(named, "Status: SATISFIED\nEvidence: precheck log\n" + "".join(lines))
+            with self.subTest(missing=missing):
+                with self.assertRaisesRegex(ValueError, "disposition needs the line 'Mapping:"):
+                    self.check(identity, verdict=verdict)
+        # A wrong mapping (to another commit) is refused.
+        identity = self.conditional(named, "Status: SATISFIED\nEvidence: log\n" +
+                                    mapping.replace(f"-> {COMMIT}", f"-> {'9' * 40}"))
+        with self.assertRaisesRegex(ValueError, "Mapping:"):
+            self.check(identity, verdict=verdict)
+        # With every mapping: accepted, as SATISFIED or PENDING (the decision stays visible).
+        identity = self.conditional(named, "Status: SATISFIED\nEvidence: precheck log\n" + mapping)
+        self.check(identity, verdict=verdict)
+        identity = self.conditional(named, "Status: PENDING\nEvidence: none yet\n"
+                                    "Pending: Developer authorization\n" + mapping)
+        with self.assertRaisesRegex(ValueError, "must be visible"):
+            self.check(identity, verdict=verdict)
+        self.check(identity, verdict=verdict, limits=CARRY_LIMITS + "\nPENDING: the condition.")
+        # A condition that names no identity needs only the usual disposition.
+        identity = self.conditional("the Developer authorizes publication",
+                                    "Status: SATISFIED\nEvidence: RECORD.md\n")
+        self.check(identity, verdict="PROCEED IF the Developer authorizes publication")
+
+    def test_the_server_suite_is_never_carried_over(self):
+        for first in (f"SERVER_SUITE: CARRIED OVER from {OLD_COMMIT}", "SERVER_SUITE: carried over",
+                      "SERVER_SUITE: CARRIED  OVER (no compiled upstream files)"):
+            with self.subTest(first=first):
+                self.refused("never carried over", {"SERVER_SUITE.txt": first + "\n> SERVER_SUITE: PASS\n"})
+        # The same rule without any carry-over evidence, and at the draft.
+        self.refused("never carried over", {"SERVER_SUITE.txt": "SERVER_SUITE: CARRIED OVER\n",
+                                            "CARRYOVER.txt": None,
+                                            "evidence/reviewed/MANIFEST.sha256": None,
+                                            "evidence/reviewed/OUTGOING.txt": None})
+        self.build({"SERVER_SUITE.txt": "SERVER_SUITE: CARRIED OVER\n"})
+        (self.evidence / "MANIFEST.sha256").unlink()
+        with self.assertRaisesRegex(ValueError, "never carried over"):
+            with contextlib.redirect_stdout(io.StringIO()):
+                checker.check_draft("publication", self.evidence)
+        # A run or a quoted waiver is accepted as before.
+        self.check(self.build({"SERVER_SUITE.txt": "SERVER_SUITE: NOT RUN\nWaiver (Developer, "
+                                                   "2026-10-18, batch b):\n> I waive t96 for this batch.\n"}))
+
+    def test_draft_checks_the_carry_over_evidence(self):
+        self.build()
+        (self.evidence / "MANIFEST.sha256").unlink()
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            checker.check_draft("publication", self.evidence)
+        self.assertIn("checked: CARRYOVER.txt is consistent", output.getvalue())
+        (self.evidence / "CARRYOVER.txt").write_text(self.files["CARRYOVER.txt"].replace("blob same", "blob DIFFERS"))
+        with self.assertRaisesRegex(ValueError, "not internally consistent"):
+            with contextlib.redirect_stdout(io.StringIO()):
+                checker.check_draft("publication", self.evidence)
+
+    def test_flagged_imports_and_named_files_must_be_stated_in_limits(self):
+        """Plan revision 6 (a): flags are information, but LIMITS must state each one."""
+        section = carry_section(upstream=(("M", "mmtbx/other.py"), ("M", "mmtbx/params.phil")),
+                                imported=("mmtbx/other.py",), named=("mmtbx/params.phil",))
+        text = carryover_text(self.old_outgoing.encode(), self.files["OUTGOING.txt"].encode(), [section])
+        both = (CARRY_LIMITS + "\nUpstream mmtbx/other.py is imported by a changed file; "
+                "mmtbx/params.phil is named by a changed file; neither is a gate.")
+        identity = self.build({"CARRYOVER.txt": text})
+        self.check(identity, limits=both)
+        for limits in (CARRY_LIMITS,
+                       CARRY_LIMITS + "\nmmtbx/other.py is imported by a changed file.",
+                       CARRY_LIMITS + "\nmmtbx/params.phil is named by a changed file.",
+                       CARRY_LIMITS + "\nSome upstream files are imported by a changed file.",
+                       # Both labels, but not the paths.
+                       CARRY_LIMITS + "\nSome files are imported by a changed file and some are "
+                       "named by a changed file."):
+            with self.subTest(limits=limits):
+                with self.assertRaisesRegex(ValueError, "LIMITS must state it"):
+                    self.check(identity, limits=limits)
+        # Inconsistent flags are refused like any other hand edit.
+        for label, altered in (
+                ("not an upstream file", text.replace("mmtbx/other.py (imported", "mmtbx/none.py (imported")),
+                ("not by a changed file", text.replace("(imported by sample.py)", "(imported by other.py)")),
+                ("wrong verb", text.replace("(named by sample.py)", "(imported by sample.py)")),
+                ("read count", text.replace("read for imports: 1", "read for imports: 2"))):
+            with self.subTest(label):
+                self.refused("not internally consistent", {"CARRYOVER.txt": altered}, limits=both)
+
+    # -- Plan revision 6 (b): a refused carry-over and the Developer's ADDENDUM_WAIVER.md
+
+    def refused_files(self, blob=True, diff=False, message=False, touch=False, extra_name=None):
+        """A refused CARRYOVER.txt with the chosen content differences, and the waiver that
+        quotes exactly its difference lines."""
+        upstream = (("M", "mmtbx/other.py"),) + ((("M", "sample.py"),) if touch else ())
+        section = carry_section(upstream=upstream, blob_differs=blob, diff_differs=diff,
+                                message_differs=message)
+        count = sum((blob, diff, message, touch))
+        carry = carryover_text(self.old_outgoing.encode(), self.files["OUTGOING.txt"].encode(),
+                               [section], final=f"CARRYOVER REFUSED: phenix: {checker.content_result(count)}")
+        quoted = "".join(f"> {line}\n" for line in section if line.startswith("difference ("))
+        waiver = (f"Addendum: WAIVED\nReviewed packet identity: {self.reviewed_id}\n"
+                  f"Outgoing: phenix base {BASE} commit {COMMIT} tree {TREE}\n"
+                  "Differences (from CARRYOVER.txt):\n" + quoted +
+                  'Developer decision: "The sample.py difference is a comment; I waive the addendum."\n')
+        return carry, waiver
+
+    WAIVED_LIMITS = ("Outside reading used with the addendum waived because the only difference is "
+                     "a comment in sample.py (ADDENDUM_WAIVER.md).")
+
+    def test_a_refused_carry_over_needs_the_addendum_waiver(self):
+        carry, waiver = self.refused_files()
+        identity = self.build({"CARRYOVER.txt": carry, "ADDENDUM_WAIVER.md": waiver})
+        self.check(identity, limits=self.WAIVED_LIMITS)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            checker.present("publication", self.screen(identity, limits=self.WAIVED_LIMITS),
+                            self.evidence, self.reading)
+        self.assertIn("the Developer waived the addendum", output.getvalue())
+        # Without the waiver: refused.
+        self.refused("records a refusal.*ADDENDUM_WAIVER", {"CARRYOVER.txt": carry},
+                     limits=self.WAIVED_LIMITS)
+        # Without the LIMITS line, or without a reason: refused.
+        for limits in (CARRY_LIMITS, "The addendum waived.", "Addendum waived for sample.py."):
+            with self.subTest(limits=limits):
+                self.refused("addendum waived because", {"CARRYOVER.txt": carry,
+                                                         "ADDENDUM_WAIVER.md": waiver}, limits=limits)
+        # An addendum reading of this packet needs no waiver with a refused CARRYOVER.txt.
+        identity = self.build({"CARRYOVER.txt": carry})
+        self.reading.write_text(f"Packet identity: {identity}\nVerdict: PROCEED\nScope: publication\n")
+        self.check(identity, limits="No material gap claimed.")
+
+    def test_the_addendum_waiver_form(self):
+        carry, waiver = self.refused_files()
+        for label, altered, reason in (
+                ("other reviewed identity", waiver.replace(self.reviewed_id, "0" * 64),
+                 "another reviewed packet identity"),
+                ("other outgoing commit", waiver.replace(f"commit {COMMIT}", f"commit {'9' * 40}"),
+                 "outgoing identities"),
+                ("no outgoing line", waiver.replace(f"Outgoing: phenix base {BASE} commit {COMMIT} tree {TREE}\n", ""),
+                 "outgoing identities"),
+                ("no WAIVED line", waiver.replace("Addendum: WAIVED\n", ""), "Addendum: WAIVED"),
+                ("no decision", waiver.replace('Developer decision: "', 'Developer decision: '),
+                 "Developer decision"),
+                ("a difference not quoted", waiver.replace("> difference (phenix):", "difference (phenix):"),
+                 "must quote"),
+                ("a quoted line not a difference", waiver.replace(
+                    "Developer decision", "> CARRYOVER REFUSED: phenix: 1 content difference(s)\nDeveloper decision"),
+                 "must quote"),
+                ("a difference quoted twice", waiver.replace("Developer decision",
+                    f"> difference (phenix): {checker.DIFF_BLOBS}sample.py\nDeveloper decision"), "must quote"),
+                ("an invented difference", waiver.replace("sample.py\nDeveloper", "sample.py other.py\nDeveloper"),
+                 "must quote"),
+                ("no differences", waiver.replace("Differences (from CARRYOVER.txt):\n", ""),
+                 "Differences")):
+            with self.subTest(label):
+                self.assertNotEqual(altered, waiver)
+                self.refused(reason, {"CARRYOVER.txt": carry, "ADDENDUM_WAIVER.md": altered},
+                             limits=self.WAIVED_LIMITS)
+        # A waiver with an OK carry-over is refused, and so is a refused file whose final line
+        # does not repeat its sections' refusals.
+        self.refused("only when CARRYOVER.txt records a refusal", {"ADDENDUM_WAIVER.md": waiver},
+                     limits=self.WAIVED_LIMITS)
+        self.refused("does not repeat the refusals", {
+            "CARRYOVER.txt": carry.replace("CARRYOVER REFUSED: phenix: 1 content", "CARRYOVER REFUSED: phenix: 2 content"),
+            "ADDENDUM_WAIVER.md": waiver}, limits=self.WAIVED_LIMITS)
+
+    def test_upstream_flags(self):
+        for path, kinds in (("a/x.cc", ("compiled",)), ("a/x.H", ("compiled",)), ("a/x.hpp", ("compiled",)),
+                            ("a/SConscript", ("compiled", "configuration")), ("a/tst_x.py", ("test",)),
+                            ("a/x_test.py", ("test",)), ("mmtbx/regression/x.py", ("test",)),
+                            ("a/setup.cfg", ("configuration",)), ("a/x.phil", ("configuration",)),
+                            ("a/x.pdb", ("data",)), ("a/data/x.txt", ("data",)),
+                            ("a/tests/x.mtz", ("test", "data")), ("a/x.py", ()), ("docs/x.md", ()),
+                            ("a/contest.py", ()), ("a/x.cc.txt", ()),
+                            (".gitattributes", ("checkout",)), ("sub/.gitmodules", ("checkout",)),
+                            ("a/x.pyx", ("compiled",)), ("a/x.ipp", ("compiled",)), ("a/k.cu", ("compiled",)),
+                            ("a/ext.so", ("compiled",))):
+            with self.subTest(path=path):
+                self.assertEqual(checker.upstream_flags(path), kinds)
+
+
+class PlainEnglishReviewChecks(unittest.TestCase):
+    """Revision 19, item 0.2: the frozen approval report needs `## Plain-English review` with
+    Purpose, Code, Tests and Assessment (form only). The ScreenChecks fixture is the positive
+    control; each refusal is a negative control."""
+
+    def setUp(self):
+        self.screens = ScreenChecks("test_four_valid_shapes")
+        self.screens.setUp()
+        self.addCleanup(self.screens.doCleanups)
+        self.report = self.screens.evidence / "APPROVAL_REPORT.md"
+        self.original = self.report.read_text()
+
+    def result_with(self, report):
+        self.report.write_text(report)
+        self.screens.refreeze()
+        with contextlib.redirect_stdout(io.StringIO()):
+            checker.check("result", self.screens.result(), self.screens.evidence)
+
+    def test_the_section_and_its_four_labels_are_required(self):
+        self.result_with(self.original)
+        for label in ("Purpose", "Code", "Tests", "Assessment"):
+            with self.subTest(missing=label):
+                altered = re.sub(rf"\n- \*\*{label}:\*\*[^\n]*", "", self.original)
+                self.assertNotEqual(altered, self.original)
+                with self.assertRaisesRegex(ValueError, f"needs a '{label}:' part"):
+                    self.result_with(altered)
+        for label, altered in (
+                ("no section", self.original.replace("## Plain-English review\n", "")),
+                ("revision 18 Summary", self.original.replace("## Plain-English review", "## Summary")),
+                ("twice", self.original.replace("## Exact tested changes",
+                                                "## Plain-English review\n## Exact tested changes"))):
+            with self.subTest(label):
+                with self.assertRaisesRegex(ValueError, "one '## Plain-English review' section"):
+                    self.result_with(altered)
+        # A label outside the section does not count.
+        moved = self.original.replace("- **Assessment:** sound.\n", "").replace(
+            "## New tests\n", "## New tests\nAssessment: in the wrong section.\n")
+        with self.assertRaisesRegex(ValueError, "needs a 'Assessment:' part"):
+            self.result_with(moved)
+
+    def test_label_forms_and_the_template(self):
+        plain = self.original.replace("- **Purpose:**", "Purpose:").replace("- **Code:**", "* Code:")
+        self.result_with(plain)
+        with self.assertRaisesRegex(ValueError, "needs a 'Purpose:' part"):
+            self.result_with(self.original.replace("- **Purpose:**", "- **Purpose of it:**"))
+        template = (Path(checker.__file__).parent.parent / "templates" / "APPROVAL_REPORT.md").read_text()
+        self.assertNotIn("## Summary", template.splitlines())
+        checker.plain_english_review(template)
+
+    def test_accept_needs_it_too(self):
+        self.report.write_text(self.original.replace("## Plain-English review", "## Summary"))
+        self.screens.refreeze()
+        with self.assertRaisesRegex(ValueError, "Plain-English review"):
+            self.screens.ok("accept", self.screens.accept(), evidence=self.screens.evidence)
+
+
+AWKWARD = ["Ids like run_2026_x, *stars*, `ticks`, a|b, #hash, [link](x), x<y, ~t~, & and !",
+           "- a leading dash", "+ a leading plus", "1. a numbered line", "2) a paren line",
+           "== equals", "a long sentence that continues", "on the next line of the screen",
+           r"back\slash and \*escaped\* text"]
+
+
+class DisplayChecks(unittest.TestCase):
+    """Revision 19, item 0.3: `present` prints the checked screen as a Markdown block quote.
+    These tests check that every decision word, option, consequence and field survives the
+    intended display changes (not literal equality), for every screen kind, awkward Markdown
+    characters and multi-line text, and that what Markdown would interpret is escaped."""
+
+    SPECIAL = re.compile(r"[*_`\[\]<>#|~&!{}]")
+
+    def setUp(self):
+        self.screens = ScreenChecks("test_four_valid_shapes")
+        self.screens.setUp()
+        self.addCleanup(self.screens.doCleanups)
+
+    def assert_preserved(self, kind, lines):
+        out = checker.render(kind, lines)
+        raw = "\n".join(out)
+        read = as_read(raw)
+        flat = " ".join(read.split())
+        for line in out:
+            self.assertTrue(line == ">" or line.startswith("> "), line)
+        parts = lines[0].split(" | ")
+        self.assertEqual(out[0], "> **" + parts[0].replace("_", " ").capitalize() + "** · "
+                         + " · ".join(checker.escape(p) for p in parts[1:]))
+        position = 0
+        for line in lines[1:-1]:
+            if line in checker.HEADINGS[kind]:
+                self.assertIn(f"> **{line.capitalize()}**", raw)
+                text = line.capitalize()
+            else:
+                text = " ".join(line.split())
+            found = flat.find(text, position)
+            self.assertGreaterEqual(found, 0, f"{text!r} lost or out of order in {flat!r}")
+            position = found
+        options = lines[-1].removeprefix("ACTION: ").split(" / ")
+        self.assertTrue(out[-1].startswith("> **Your choice:** "), out[-1])
+        for option in options:
+            words = re.match(r"[A-Z][A-Z ]*[A-Z]|[A-Z]", option)[0]
+            self.assertIn(f"**{words.capitalize()}**", out[-1])
+            self.assertIn(" ".join((words.capitalize() + option[len(words):]).split()), flat)
+        # Sections and paragraphs are separated by a blank quoted line.
+        for heading in checker.HEADINGS[kind]:
+            self.assertIn(f">\n> **{heading.capitalize()}**\n>\n", raw)
+        # Nothing Markdown would interpret is left unescaped, apart from the presenter's own
+        # bold markers, code spans and table rows.
+        for line in out:
+            body = line[2:]
+            if body.startswith("|") or body.startswith("`"):
+                continue
+            body = re.sub(r"\\.", "", body)
+            body = body.replace("**", "")
+            self.assertIsNone(self.SPECIAL.search(body), line)
+            self.assertIsNone(re.match(r"\s*(?:[-+=](?:\s|$)|\d+[.)])", body), line)
+        return out
+
+    def test_every_screen_kind_is_preserved(self):
+        s = self.screens
+        for kind, make in (("plan", s.plan), ("result", s.result), ("stop", s.stop),
+                           ("publication", s.publication), ("accept", s.accept)):
+            with self.subTest(kind=kind):
+                lines = make().read_text().splitlines()
+                if kind in ("result", "publication", "accept"):
+                    lines[0] = " | ".join(lines[0].split(" | ")[:-1])
+                lines = [line for line in lines if not line.startswith(checker.HIDDEN_PREFIXES)]
+                lines = [checker.DISPLAY_ID.sub("[recorded]", line) for line in lines]
+                self.assert_preserved(kind, lines)
+
+    def test_auto_screens_are_preserved(self):
+        start = (["AUTO_START | q1", "JOBS", "a: fix the bug_report parser", "CHECKS",
+                  "Each job runs its tests.", "INSTALLATION", "Fingerprint recorded.", "RESULTS",
+                  "In the morning report.", "STOP", "/abs/python -I -B '/a b/auto_queue.py' stop",
+                  "A usage limit stops the queue; /gc auto resume is manual.", "NOT AUTHORIZED",
+                  "master is unchanged; nothing is published.",
+                  "ACTION: NONE NEEDED (reply stop to stop the queue)"])
+        out = self.assert_preserved("auto_start", start)
+        self.assertIn("> `/abs/python -I -B '/a b/auto_queue.py' stop`", out)
+        report = (["AUTO_REPORT | q1", "JOBS", "| Job | Result | Decision or next step |",
+                   "| --- | --- | --- |", "| a | passed | approve for integration |", "IN SIMPLE WORDS",
+                   "Job a passed.", "APPROVAL SUMMARIES", "Job a: parser", "Bug: wrong *field*",
+                   "Fix: one line", "Test: tst_a", "Criterion: Developer", "Limits: none",
+                   "Approval: accepts the exact packet and merges nothing", "NEXT", "Approve a.",
+                   "ACTION: APPROVE / INSPECT / REVISE / DISCARD"])
+        out = self.assert_preserved("auto_report", report)
+        for row in report[2:5]:
+            self.assertIn("> " + row, out)  # table rows stay rows
+
+    def test_awkward_characters_and_multi_line_text(self):
+        lines = (["PLAN | odd_id-1 | full", "GOAL"] + AWKWARD[:1] + ["Why it matters: x_y"] +
+                 ["SCOPE"] + AWKWARD[1:6] + ["CHECK"] + AWKWARD[6:8] + ["LIMITS"] + AWKWARD[8:] +
+                 ["DECISION", "Recommendation: APPROVE because *it* works.", "Next: run_it.",
+                  "ACTION: APPROVE / REVISE / STOP"])
+        out = self.assert_preserved("plan", lines)
+        joined = "\n".join(out)
+        # Repair 2: every source line is its own paragraph; nothing is joined.
+        self.assertIn("> a long sentence that continues\n>\n> on the next line of the screen\n", joined)
+        self.assertIn("\n> Next: run\\_it.\n", joined)
+        self.assertIn("> \\- a leading dash", joined)
+        # Repair 1 (review note 10): a line that is not a continuation keeps its own paragraph.
+        for line in ("> 1\\. a numbered line", "> 2\\) a paren line", "> \\=\\= equals", "> \\+ a leading plus"):
+            self.assertIn("\n" + line + "\n", joined)
+        self.assertIn("> **Plan** · odd\\_id-1 · full", joined)
+
+    def test_present_output_and_saved_file(self):
+        s = self.screens
+        screen = s.plan()
+        text = screen.read_text().replace("Explain the confusing comment.",
+                                          "Explain the *confusing* comment_line.\n- with a dash")
+        screen.write_text(text)
+        before = screen.read_bytes()
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            checker.present("plan", screen)
+        display = output.getvalue()
+        self.assertEqual(screen.read_bytes(), before)
+        self.assertTrue(display.startswith("**PLEASE READ — YOUR DECISION IS NEEDED**\n\n> **Plan** · "))
+        self.assertIn("Explain the *confusing* comment_line. - with a dash", " ".join(as_read(display).split()))
+        self.assertIn("GOAL", screen.read_text())  # the saved file keeps CAPITALS
+        s.ok("plan", screen)
+
+    def test_documents_describe_the_quoted_block(self):
+        kit = Path(checker.__file__).resolve().parent.parent.parent
+        worker = " ".join((kit / "payload/WORKER.md").read_text().split())
+        skill = " ".join((kit / "SKILL.md").read_text().split())
+        self.assertNotIn("inside its code fence", worker)
+        self.assertIn("the quoted block printed", worker)
+        self.assertIn("quoted block", skill)
+        # Repair 3 (review 3, note 4): one sentence per line, in WORKER.md and GUIDE.md.
+        guide = " ".join((kit / "payload/GUIDE.md").read_text().split())
+        self.assertIn("Write one sentence per line in a screen", worker)
+        self.assertIn("One sentence per line in every screen", guide)
+
+
+class ReviewerFormattingChecks(unittest.TestCase):
+    """Revision 19, item 2.2: harmless reviewer formatting in a reading. Fixtures are the
+    field lines of real readings (identities replaced): the integrity table of
+    2026-10-17-mmm-tls-external-halfmap OUTSIDE_READING_2.md ("| Packet identity | Matches |"),
+    the bulleted "- Packet identity: `<id>` — matches." of 2026-10-16-gc-rev17-listb
+    READING_1.md, and the two Scope lines of that job's READING_2_ADDENDUM.md."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.reading = Path(self.temp.name) / "reading.md"
+        self.identity = "92c35cbb449171d6c55d583b37a3d4e4f427b5ef37a370c7f6faad0e6e0259f4"
+
+    def matches(self, text, kind="publication"):
+        self.reading.write_text(text)
+        gate = [f"Reading SHA256: {checker.digest(self.reading.read_bytes())}", "Verdict: PROCEED"]
+        return checker.reading_matches(kind, self.reading, self.identity, gate)
+
+    def closing(self, scope="publication"):
+        return (f"Packet identity: {self.identity}\nVerdict: PROCEED\nScope: {scope}\n")
+
+    TABLE = ("| Check                                | Result                                |\n"
+             "| ------------------------------------ | ------------------------------------- |\n"
+             "| Outer bundle SHA-256                 | Matches                               |\n"
+             "| Internal packet checksums            | 33/33 match                           |\n"
+             "| Packet identity                      | {value} |\n"
+             "| `CHANGE.diff` versus packet 1        | Byte-for-byte identical, 17,408 bytes |\n")
+
+    def test_the_real_matches_table_row_is_accepted(self):
+        self.matches("## Review\n\n" + self.TABLE.format(value="Matches") + "\n" + self.closing())
+
+    def test_pass_words_in_decorated_rows_are_accepted(self):
+        for row in ("| Packet identity | Verified |", "| Packet identity | Matches |",
+                    "| Packet identity | **Pass** |", "| Packet identity | Passed. |",
+                    "| Packet identity | ok |", "- **Packet identity:** Matches",
+                    "> Packet identity: confirmed", "| Verdict | Pass |", "| Scope | Verified |",
+                    f"- Packet identity: `{self.identity}` — matches.",
+                    f"| Packet identity | `{self.identity}` (verified) |",
+                    f"| Packet identity | {self.identity} |"):
+            with self.subTest(row=row):
+                self.matches(row + "\n" + self.closing())
+
+    def test_conflicting_real_values_still_block(self):
+        other = "0" * 64
+        for row in (self.TABLE.format(value=other), f"| Packet identity | {other} |",
+                    f"- Packet identity: `{other}` — matches.", "| Packet identity | Mismatch |",
+                    "| Packet identity | Does not match |", "| Packet identity | Matches packet 1 |",
+                    "| Verdict | DO NOT PROCEED |", "- **Verdict:** PROCEED IF the suite passes",
+                    "| Scope | integration |", "| Packet identity | not verified |"):
+            with self.subTest(row=row):
+                with self.assertRaisesRegex(ValueError, "differs from its"):
+                    self.matches(row + "\n" + self.closing())
+        # A pass word is not a value: a column-0 field with one still conflicts.
+        with self.assertRaisesRegex(ValueError, "does not name this packet"):
+            self.matches("Packet identity: Matches\n" + self.closing())
+
+    def test_identical_repeats_count_once(self):
+        self.matches(self.closing() + "\nSummary\n" + self.closing())
+        self.matches(self.closing() + "| Packet identity | Matches |\n" + self.closing())
+
+    def test_a_prose_scope_line_beside_a_valid_one_is_refused(self):
+        """Decision (revision 19): not acceptable. A second column-0 Scope line is a
+        conflicting value even when it reads as prose: the checker cannot tell a description
+        ("Restage of ...") from a narrower or wider scope, so the reading needs one Scope value
+        (the real addendum's closing value, "publication (restage addendum only)", is also not
+        a recognized scope). With carry-over, a restage addendum is needed only when the check
+        refuses."""
+        prose = ("Scope: Restage of the previously reviewed revision 17, from commit `51fa2367` "
+                 "to `4481aa26`. This is not a new review of the implementation.\n")
+        with self.assertRaisesRegex(ValueError, "exactly one Scope line"):
+            self.matches("# Outside review addendum\n\n" + prose + "\n" +
+                         self.closing("publication (restage addendum only)"))
+        with self.assertRaisesRegex(ValueError, "exactly one Scope line"):
+            self.matches(prose + self.closing())
+        with self.assertRaisesRegex(ValueError, "Scope value not recognized"):
+            self.matches(self.closing("publication (restage addendum only)"))
+        self.matches("Scope of this note: the restage only.\n" + self.closing())
+
+
+class RecordsLocationWording(unittest.TestCase):
+    """Revision 19, item 2.3: WORKER.md and SKILL.md allow the records location the project's
+    adoption or method designates (as SETUP.md does), beside the target's .claude/records/."""
+
+    def test_designated_records_location_is_allowed(self):
+        kit = Path(checker.__file__).resolve().parent.parent.parent
+        for name, count in (("payload/WORKER.md", 2), ("SKILL.md", 1), ("payload/SETUP.md", 1)):
+            text = " ".join((kit / name).read_text().split())
+            with self.subTest(name=name):
+                self.assertGreaterEqual(text.count("designated records location"), count)
+        worker = " ".join((kit / "payload/WORKER.md").read_text().split())
+        self.assertNotIn("Draft each screen to a target-local record file", worker)
+        # Plan revision 5 (finding 5): the first-use marker, the job record and the history
+        # command follow the designated location too.
+        self.assertIn("`INTRO_SHOWN` in the target's records location", worker)
+        self.assertNotIn("local `.claude/records/INTRO_SHOWN`", worker)
+        self.assertIn("`<records>/<date>-<change-id>/RECORD.md`", worker)
+        skill = " ".join((kit / "SKILL.md").read_text().split())
+        self.assertIn("records_history.py <records>`, where `<records>` is the designated records "
+                      "location", skill)
 
 
 class DraftPublicationChecks(unittest.TestCase):
@@ -2035,7 +2882,7 @@ class VersionGateScopeChecks(unittest.TestCase):
         self.assertIn("VERIFIED complete source", source.stdout)
         shown = self.run_tool("present", "plan", str(self.plan()))
         self.assertEqual(shown.returncode, 0, shown.stderr)
-        self.assertIn("PLAN | comment-1 | light", shown.stdout)
+        self.assertIn("**Plan** · comment-1 · light", shown.stdout)
 
 
 AUTO_QUEUE = Path(__file__).resolve().parent.parent / "auto_queue.py"
@@ -2398,13 +3245,12 @@ class AutoScreenChecks(unittest.TestCase):
         shown = self.tool("present", "auto_start", str(screen))
         self.assert_accepted(shown)
         display = shown.stdout
-        self.assertTrue(display.startswith("**PLEASE READ — NO ACTION NEEDED**\n\n```\n"),
-                        display)
-        self.assertTrue(display.endswith("\n```\n"), display)
-        self.assertIn(f"AUTO START | {self.QUEUE_ID}\n", display)
+        self.assertTrue(display.startswith("**PLEASE READ — NO ACTION NEEDED**\n\n> "), display)
+        self.assertIn(f"> **Auto start** · {self.QUEUE_ID}\n", display)
         for heading in AUTO_START_HEADINGS:
-            self.assertIn("\n\n" + heading + "\n", display)
-        self.assertIn(AUTO_START_ACTION, display)
+            self.assertIn(">\n> **" + heading.capitalize() + "**\n", display)
+        self.assertIn(AUTO_START_ACTION.replace("ACTION: NONE NEEDED", "Your choice: None needed"),
+                      as_read(display))
         self.assertEqual(screen.read_bytes(), saved)
         refused = self.tool("present", "auto_start",
                             str(self.put(self.start_text(stop_line=f"{STOP_PYTHON} auto_queue.py stop"))))
@@ -2834,14 +3680,13 @@ class AutoScreenChecks(unittest.TestCase):
         shown = self.tool("present", "auto_report", str(screen), "--queue", str(queue))
         self.assert_accepted(shown)
         display = shown.stdout
-        self.assertTrue(display.startswith("**PLEASE READ — ACTION NEEDED**\n\n```\n"), display)
-        self.assertTrue(display.endswith("\n```\n"), display)
-        self.assertIn(f"AUTO REPORT | {self.QUEUE_ID}\n", display)
+        self.assertTrue(display.startswith("**PLEASE READ — ACTION NEEDED**\n\n> "), display)
+        self.assertIn(f"> **Auto report** · {self.QUEUE_ID}\n", display)
         for heading in AUTO_REPORT_HEADINGS:
-            self.assertIn("\n\n" + heading + "\n", display)
+            self.assertIn(">\n> **" + heading.capitalize() + "**\n", display)
         for row in rows:
-            self.assertIn(row, display)
-        self.assertIn(AUTO_REPORT_ACTION, display)
+            self.assertIn(row, as_read(display))
+        self.assertIn("**Your choice:** **Approve** / **Inspect** / **Revise** / **Discard**", display)
         missing_queue = self.tool("present", "auto_report", str(screen))
         self.assert_refused(missing_queue)
         self.assertNotIn("PLEASE READ", missing_queue.stdout)
@@ -3661,3 +4506,172 @@ class GeneralPythonChecks(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CarryOverRepairChecks(unittest.TestCase):
+    """Revision 19 repair 1 (REVIEW_1.md findings 1, 3 and 6). The fixture is that of
+    CarryOverScreenChecks, used through a helper instance (its own tests are not repeated)."""
+
+    def setUp(self):
+        self.helper = CarryOverScreenChecks("test_carried_reading_is_accepted")
+        self.helper.setUp()
+        self.addCleanup(self.helper.doCleanups)
+
+    def __getattr__(self, name):
+        if name == "helper":
+            raise AttributeError(name)
+        return getattr(self.helper, name)
+
+    def test_a_relocated_carryover_is_refused(self):
+        """Finding 1: CARRYOVER.txt may not come from a correction companion, and a packet
+        that holds it elsewhere (or holds evidence/reviewed/ without it) is refused."""
+        identity = self.build({"CARRYOVER.txt": None, "evidence/moved/CARRYOVER.txt": self.files["CARRYOVER.txt"]})
+        corrections = self.root / "corrections"
+        corrections.mkdir()
+        (corrections / "ERRATA.md").write_text("Relocated: CARRYOVER.txt from evidence/moved/CARRYOVER.txt\n")
+        (corrections / "CARRYOVER.txt").write_text(self.files["CARRYOVER.txt"])
+        with self.assertRaisesRegex(ValueError, "never supply"):
+            with contextlib.redirect_stdout(io.StringIO()):
+                checker.check("publication", self.screen(identity), self.evidence, self.reading,
+                              corrections=corrections)
+        with self.assertRaisesRegex(ValueError, "no CARRYOVER.txt at its top level"):
+            self.check(identity)
+        self.refused("no CARRYOVER.txt at its top level", {"CARRYOVER.txt": None})
+        (corrections / "ERRATA.md").write_text("Relocated: ADDENDUM_WAIVER.md from x/ADDENDUM_WAIVER.md\n")
+        identity = self.build()
+        with self.assertRaisesRegex(ValueError, "never supply"):
+            with contextlib.redirect_stdout(io.StringIO()):
+                checker.check("publication", self.screen(identity), self.evidence, self.reading,
+                              corrections=corrections)
+
+    def test_a_waiver_never_covers_a_refusal_that_compared_nothing(self):
+        """Finding 3: missing or invalid commits, ancestry and repository mismatches."""
+        for reason in ("reviewed base eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee is not a commit in the repository",
+                       f"outgoing commit {COMMIT} does not have the recorded tree {TREE}",
+                       f"the reviewed base {OLD_BASE} is not an ancestor of the outgoing base {BASE}",
+                       "the commits change different paths (reviewed only: none; outgoing only: b.py)",
+                       "repository directory not found",
+                       "the remote_url differs between the reviewed and the outgoing record"):
+            with self.subTest(reason=reason):
+                section = carry_section()[:3] + [f"repository phenix: REFUSED: {reason}"]
+                carry = carryover_text(self.old_outgoing.encode(), self.files["OUTGOING.txt"].encode(),
+                                       [section], final=f"CARRYOVER REFUSED: phenix: {reason}")
+                waiver = (f"Addendum: WAIVED\nReviewed packet identity: {self.reviewed_id}\n"
+                          f"Outgoing: phenix base {BASE} commit {COMMIT} tree {TREE}\n"
+                          "Differences (from CARRYOVER.txt):\n"
+                          f"> repository phenix: REFUSED: {reason}\n> CARRYOVER REFUSED: phenix: {reason}\n"
+                          'Developer decision: "I waive it."\n')
+                self.refused("cannot be waived", {"CARRYOVER.txt": carry, "ADDENDUM_WAIVER.md": waiver},
+                             limits=self.WAIVED_LIMITS)
+        # Each content difference, and all of them together, can be waived (positive controls).
+        for kinds in ({"blob": True}, {"blob": False, "diff": True}, {"blob": False, "touch": True},
+                      {"blob": False, "message": True},
+                      {"blob": True, "diff": True, "touch": True, "message": True}):
+            with self.subTest(kinds=kinds):
+                carry, waiver = self.refused_files(**kinds)
+                self.check(self.build({"CARRYOVER.txt": carry, "ADDENDUM_WAIVER.md": waiver}),
+                           limits=self.WAIVED_LIMITS)
+        # A content section and a non-waivable one together cannot be waived.
+        carry, waiver = self.refused_files()
+        self.assertFalse(checker.waivable(carry.splitlines() + [
+            "repository other: REFUSED: the reviewed base x is not an ancestor of the outgoing base y"]))
+        # A refusal before any repository section (different repositories) cannot be waived.
+        carry = carryover_text(self.old_outgoing.encode(), self.files["OUTGOING.txt"].encode(), [],
+                               final="CARRYOVER REFUSED: the records name different repositories (reviewed: a; outgoing: b)")
+        self.assertFalse(checker.waivable(carry.splitlines()))
+
+    def test_mapping_is_case_insensitive_and_covers_packet_identities(self):
+        """Finding 6: the reviewer's uppercase base, and a 64-hex packet identity."""
+        upper = OLD_BASE.upper()[:12]
+        verdict = f"PROCEED IF rebased on {upper} only"
+        identity = self.conditional(f"rebased on {upper} only", "Status: SATISFIED\nEvidence: see CARRYOVER.txt\n")
+        with self.assertRaisesRegex(ValueError, "Mapping:"):
+            self.check(identity, verdict=verdict)
+        identity = self.conditional(f"rebased on {upper} only", "Status: SATISFIED\nEvidence: log\n"
+                                    f"Mapping: {OLD_BASE.upper()} -> {BASE.upper()}\n")
+        self.check(identity, verdict=verdict)
+        # The reviewed packet identity, in full: mapped to this packet's identity.
+        condition = f"packet {self.reviewed_id} is the one published"
+        identity = self.conditional(condition, "Status: SATISFIED\nEvidence: log\n")
+        with self.assertRaisesRegex(ValueError, "Mapping:"):
+            self.check(identity, verdict=f"PROCEED IF {condition}")
+        # The new identity depends on the disposition's bytes, which are outside the packet.
+        identity = self.build()
+        self.disposition.write_text(f"Condition: {condition}\nStatus: SATISFIED\nEvidence: log\n"
+                                    f"Mapping: {self.reviewed_id} -> {identity}\n")
+        self.check(identity, verdict=f"PROCEED IF {condition}")
+
+
+class RenderRepairChecks(unittest.TestCase):
+    """Revision 19 repair 1 (review note 10): `$` is escaped, and a line that is not a
+    continuation (a warning) keeps its own paragraph."""
+
+    def test_dollar_and_warning_lines(self):
+        lines = ["PLAN | x-1 | full", "GOAL", "Costs $x$ and $$y$$ in TeX terms.",
+                 "Why it matters: money", "SCOPE", "The suite ran on the Mac.",
+                 "WARNING the suite was not run on Linux", "and this line continues it",
+                 "CHECK", "c", "LIMITS", "l", "DECISION", "d", "ACTION: APPROVE / REVISE / STOP"]
+        out = "\n".join(checker.render("plan", lines))
+        self.assertIn("> Costs \\$x\\$ and \\$\\$y\\$\\$ in TeX terms.", out)
+        # Repair 2: no line merges into another, whatever its case or punctuation.
+        self.assertIn(">\n> WARNING the suite was not run on Linux\n>\n> and this line continues it\n", out)
+        more = lines[:5] + ["The suite ran on the Mac", "warning: the Linux suite was not run",
+                            "Tests passed on 3 hosts", "2 tests were skipped"] + lines[8:]
+        more_out = "\n".join(checker.render("plan", more))
+        for line in ("> The suite ran on the Mac\n>\n> warning: the Linux suite was not run\n",
+                     "> Tests passed on 3 hosts\n>\n> 2 tests were skipped\n"):
+            self.assertIn(line, more_out)
+        self.assertIn("> The suite ran on the Mac.\n>\n> WARNING", out)
+        self.assertIn("Costs $x$ and $$y$$ in TeX terms.", as_read(out))
+
+
+class LimitsScanChecks(unittest.TestCase):
+    """Revision 19 repair 2 (review 2, finding 2): every LIMITS line of a carried reading is
+    scanned for a claim that upstream changes cannot interact with or affect the change. The
+    reviewer's paraphrases (forge2.py) and the claim on the next line (forge3.py)."""
+
+    def setUp(self):
+        self.helper = CarryOverScreenChecks("test_carried_reading_is_accepted")
+        self.helper.setUp()
+        self.addCleanup(self.helper.doCleanups)
+
+    def test_claims_on_any_limits_line_are_refused(self):
+        """Repair 3 (the Developer's choice A): only the explicit forms are refused, on any
+        LIMITS line and in any case; honest limit lines pass."""
+        identity = self.helper.build()
+        sentence = checker.CARRYOVER_LIMITS
+        for claim in ("Upstream changes elsewhere cannot interact with this change.",
+                      "They can not interact.", "Upstream edits can't interact with it.",
+                      "There is no interaction with upstream.", "The mmtbx changes do not affect the kit.",
+                      "Upstream DOES NOT AFFECT this change.", "Upstream cannot affect the change.",
+                      "The new base will not affect the result.", "They CANNOT INTERACT."):
+            for limits in (sentence + "\n" + claim, sentence + " " + claim):
+                with self.subTest(limits=limits):
+                    with self.assertRaisesRegex(ValueError, "claims that upstream changes cannot"):
+                        self.helper.check(identity, limits=limits)
+        # Honest limit lines pass, including the reviewer's examples refused by repair 2.
+        for line in ("Possible interaction with upstream map_manager is not excluded.",
+                     "Upstream changes may interact with this change; not tested.",
+                     "I have not checked whether upstream changes affect runtime behaviour.",
+                     "This has no effect on Windows, which is not supported.",
+                     "The skipped tests are not effective on the Mac.",
+                     "Harmless-looking upstream renames were not reviewed.",
+                     "The t96 suite was run on the restaged commit."):
+            with self.subTest(line=line):
+                self.helper.check(identity, limits=sentence + "\n" + line)
+        # The sentence alone, or twice, is accepted.
+        self.helper.check(identity, limits=sentence + "\n" + sentence)
+        # The waived path is scanned too.
+        carry, waiver = self.helper.refused_files()
+        identity = self.helper.build({"CARRYOVER.txt": carry, "ADDENDUM_WAIVER.md": waiver})
+        with self.assertRaisesRegex(ValueError, "claims that upstream changes cannot"):
+            self.helper.check(identity, limits=self.helper.WAIVED_LIMITS + "\nUpstream cannot interact.")
+
+    def test_the_waivable_list_is_the_one_the_tool_writes(self):
+        """Finding 5: publication_precheck.py writes its content differences from the
+        checker's own constants."""
+        tool = (Path(checker.__file__).parent / "publication_precheck.py").read_text()
+        for name in ("DIFF_BLOBS", "DIFF_DIFF", "DIFF_TOUCH", "DIFF_MESSAGE"):
+            self.assertIn(f"_checker.{name}", tool)
+        self.assertEqual(checker.WAIVABLE_REFUSALS, (checker.DIFF_BLOBS, checker.DIFF_DIFF,
+                                                     checker.DIFF_TOUCH, checker.DIFF_MESSAGE))

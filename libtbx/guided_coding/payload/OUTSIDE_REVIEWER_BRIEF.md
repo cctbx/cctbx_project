@@ -38,6 +38,16 @@ about that one identity, and your reading says which it answers with a
 `Scope:` line. If the Guide later re-stages the change (a new commit,
 base or packet), you are asked again for the affected scope; a short
 addendum bound to the new identity is enough when nothing else changed.
+Revision 19: when a tool check shows that the restaged commit changes the
+same files with the same content and a byte-identical diff, and that no
+upstream commit added by the restage touches them, your publication
+reading carries over without a new request; the screen says so in LIMITS
+and that the check does not show that upstream changes elsewhere cannot
+interact with the change. When the check finds a content difference, the
+Developer may instead waive the addendum in his own words for that
+specific difference (`ADDENDUM_WAIVER.md`, quoting the differences); the
+screen then says "addendum waived" with the reason, and you may be asked
+about it in the next reading.
 
 **What you are sent.** A bundle. Inside it, the frozen proof packet as an
 archive. Beside it, and outside the packet by design, the approvals

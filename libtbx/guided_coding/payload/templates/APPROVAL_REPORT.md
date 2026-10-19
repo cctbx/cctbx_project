@@ -7,18 +7,31 @@ the Developer a usable path to the same file before INTEGRATE. It is the
 substantive report the Outside Reviewer can evaluate and the Developer
 can approve. The Outside Reviewer never approves on his behalf.
 
-## Summary
+## Plain-English review
 
-In plain words, one or two lines each, no internal labels, hashes or
-history (those belong in the evidence sections below):
+In plain words, for the Developer and the reviewer, one block for each
+proposed commit (normally one for each repository), under these four
+labels. No internal labels, hashes or history here (those belong in the
+evidence sections below). The decision itself stays on the screen: its
+Recommendation line is the only recommendation.
 
-- **Problem:** what was wrong and who it affects.
-- **Change:** what now behaves differently.
-- **Checks:** what was run, and the result.
-- **Criterion:** the decisive check and who chose it.
-- **Behaviour changes:** what a user will notice, or `none`.
-- **Limits:** what was not checked or remains uncertain.
-- **Decision needed:** the exact choice and what each option does.
+### <repository>: <what the commit does, in a few words>
+
+- **Purpose:** what it fixes or adds, and who it affects.
+- **Code:** short before and after snippets of the important changes, in
+  code blocks, each followed by a sentence on what it does. Not the whole
+  diff (that is below).
+- **Tests:** the new tests and their key assertions; whether they cover
+  the fix, and the gaps. If no tests were added, say so explicitly and
+  why, and name the check used instead.
+- **Assessment:** whether the change is sound, what a user will notice,
+  and the remaining risks and uncertainties.
+
+`screen_check.py` checks only that this section and its four labels are
+present (form, never content). A report frozen before revision 19 has
+`## Summary` instead and is refused at RESULT and ACCEPT, so revision 19
+is installed only when no guided job is at either; frozen records are
+not rewritten.
 
 ## Test results
 

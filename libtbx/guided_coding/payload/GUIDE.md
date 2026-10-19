@@ -311,7 +311,22 @@ for the same frozen packet: ask for both explicitly and record its
 `Scope:` line. If the proposal changes afterwards — a moved base, a
 rewritten commit, a changed byte — it is a new packet with a new identity:
 ask the reviewer to reassess the affected scope against that identity,
-which may be a short addendum. Never carry the earlier verdict across.
+which may be a short addendum. Never carry the earlier verdict across by
+judgment. Revision 19: after a restage the completed reading carries over
+mechanically when `publication_precheck.py carry-over` ends `CARRYOVER OK`
+(same changed files and blobs, byte-identical diff, an upstream range that
+touches none of them; WORKER.md, PUBLICATION_PACKET.md): no addendum and no
+Developer decision, with the packet files and the LIMITS line WORKER.md
+gives. An addendum is needed only when carry-over refuses. The PUBLISH
+precheck recomputes it (`carry-over --expect`, and `check`) and refuses on
+any difference. A carried `PROCEED IF` keeps its condition: its disposition
+maps the reviewed identities to the new ones and is never automatic. The
+server suite (t96) never carries over: a run, or a waiver in the
+Developer's words covering this batch; `CARRYOVER.txt` flags compiled, test,
+configuration and data files upstream, and files the changed code imports
+or names, to inform that decision. When carry-over refuses, report what
+differs, whether it is material and a recommendation; the Developer
+chooses an addendum or waives it in his words (`ADDENDUM_WAIVER.md`).
 Tests are rerun unless WORKER.md's restage carry-over rule holds: the
 `RESTAGE_COMPARISON.txt` shows identical content for the candidate's
 changed paths and an upstream delta touching none of the tested paths or
@@ -344,7 +359,11 @@ SHA256:` line, and use it as the reading; it is not a technical
 re-review. Identical repeated `Packet identity:`, `Verdict:` and
 `Scope:` lines count as one; the checker refuses conflicting repeats,
 including indented, bulleted, quoted or bold ones (replaces "only
-column-0 lines are read"), and never edits the reading. A changed frozen packet still needs its own identity
+column-0 lines are read"), and never edits the reading. Revision 19: a
+decorated or table row whose value is a pass word (`| Packet identity |
+Matches |`, `Verified`, `Pass`, `Passed`) or the value followed by one
+is not a conflict; a second column-0 `Scope:` line with another value,
+even prose such as `Scope: Restage of ...`, still is. A changed frozen packet still needs its own identity
 checked before the result decision. Never contact an outside person
 without the Developer's authorization.
 
@@ -411,6 +430,9 @@ or planned.
   substantial work, give a time range and what the next update will
   contain; when it is late, say so and revise the range. An interim
   update never replaces a required decision screen.
+- **One sentence per line in every screen** (revision 19): the presenter shows each
+  source line as its own paragraph, so a sentence wrapped over two lines shows as
+  two fragments.
 - **Paste every presented screen in full** (RESULT, ACCEPT, STOP,
   PUBLICATION, AUTO_START, AUTO_REPORT) into the reply he reads; tool
   output is not visible to him. Blocked jobs included. Show the current

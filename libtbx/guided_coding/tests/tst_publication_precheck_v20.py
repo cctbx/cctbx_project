@@ -9,6 +9,7 @@ configuration is kept out with GIT_CONFIG_GLOBAL and GIT_CONFIG_NOSYSTEM.
 """
 
 import itertools
+import re
 import os
 import shutil
 import subprocess
@@ -123,13 +124,32 @@ class PrecheckFixture(unittest.TestCase):
             ("for-each-ref",), ("config", "--list", "--local"))]
         return work, remote
 
+    def packet_words(self, outgoing):
+        """Revision 19 repair 3: `check` takes the frozen packet and its identity. A fresh packet
+        directory holding a copy of `outgoing` is frozen, and the words OUTGOING --packet DIR
+        --identity SHA256 are returned (for a missing or empty record, the record's own
+        refusal comes first, so no freeze is made)."""
+        import hashlib
+        self.packets = getattr(self, "packets", 0) + 1
+        packet = self.root / f"packet_{self.packets}"
+        packet.mkdir()
+        identity = "0" * 64
+        if outgoing.is_file() and outgoing.stat().st_size:
+            shutil.copy(outgoing, packet / "OUTGOING.txt")
+            frozen = subprocess.run([sys.executable, "-I", "-B", str(TOOL.with_name("screen_check.py")),
+                                     "freeze", str(packet)], env=self.env, text=True, capture_output=True)
+            self.assertEqual(frozen.returncode, 0, frozen.stderr)
+            identity = hashlib.sha256((packet / "MANIFEST.sha256").read_bytes()).hexdigest()
+        return [str(packet / "OUTGOING.txt"), "--packet", str(packet), "--identity", identity]
+
     def check(self, *options, fetch=False):
         """Run `check` and prove it changed nothing (with --fetch: nothing but
         remote-tracking refs and FETCH_HEAD)."""
+        words = self.packet_words(self.outgoing)
         before = self.snapshot()
         result = subprocess.run(
             [sys.executable, "-I", "-B", str(TOOL), "check", str(self.repo),
-             str(self.outgoing), *options],
+             *words, *options],
             env=self.env, cwd=self.root, text=True, capture_output=True)
         after = self.snapshot()
         if not fetch:
@@ -383,10 +403,11 @@ class CheckCommand(PrecheckFixture):
         env = dict(self.env, PATH=str(fake_bin) + os.pathsep + self.env.get("PATH", os.defpath))
 
         def check_dry_run():
+            words = self.packet_words(self.outgoing)
             before = self.snapshot()
             result = subprocess.run(
                 [sys.executable, "-I", "-B", str(TOOL), "check", str(self.repo),
-                 str(self.outgoing), "--dry-run"],
+                 *words, "--dry-run"],
                 env=env, cwd=self.root, text=True, capture_output=True)
             self.assertEqual(self.snapshot(), before, "check changed Git state")
             return result
@@ -433,10 +454,11 @@ class CheckCommand(PrecheckFixture):
 
     def check_with(self, env, *options):
         """Run `check` under `env` inside the fixture's Git-state snapshot bracket."""
+        words = self.packet_words(self.outgoing)
         before = self.snapshot()
         result = subprocess.run(
             [sys.executable, "-I", "-B", str(TOOL), "check", str(self.repo),
-             str(self.outgoing), *options],
+             *words, *options],
             env=env, cwd=self.root, text=True, capture_output=True)
         self.assertEqual(self.snapshot(), before, "check changed Git state")
         return result
@@ -588,7 +610,7 @@ class OutgoingCommand(PrecheckFixture):
         self.assertIn(f"base: {base2}\ncommit: {commit2}\n", text)
         for repo, commit, name in ((self.repo, self.commit, "phenix"), (repo2, commit2, "second")):
             checked = subprocess.run(
-                [sys.executable, "-I", "-B", str(TOOL), "check", str(repo), str(outgoing),
+                [sys.executable, "-I", "-B", str(TOOL), "check", str(repo), *self.packet_words(outgoing),
                  "--repository", name, "--fetch", "--dry-run"],
                 env=self.env, cwd=self.root, text=True, capture_output=True)
             self.assertEqual(checked.returncode, 0, checked.stderr)
@@ -688,7 +710,7 @@ class NoPushVariant(PrecheckFixture):
         not_yet = self.confirm("--tags", state, env=env)
         self.assertEqual(not_yet.returncode, 2, not_yet.stdout)
         self.assertIn("the push has not happened", not_yet.stderr)
-        checked = self.tool("check", str(self.repo), str(self.outgoing), env=env)
+        checked = self.tool("check", str(self.repo), *self.packet_words(self.outgoing), env=env)
         self.assertEqual(checked.returncode, 0, checked.stderr)
         self.assertNotIn("DRY RUN", checked.stdout)
         command = checked.stdout.splitlines()[-1]
@@ -1220,3 +1242,839 @@ class VetCommand(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---- Revision 19: carry-over of a completed reading after a restage -----------------------
+
+CHECKER = TOOL.with_name("screen_check.py")
+OK_LINE = "CARRYOVER OK reading"
+LIMITS_LINE = ("Reading carried over: the check shows the changed files are identical and "
+               "untouched upstream; it does not show that upstream changes elsewhere cannot "
+               "interact with them.")
+
+
+@unittest.skipIf(shutil.which("git") is None, GIT_SKIP)
+class CarryOverCommand(unittest.TestCase):
+    """`carry-over REPO --reviewed OLD --outgoing NEW`, in temporary repositories. The fixture:
+    a base B0, the reviewed commit C1 on it (changes a.txt), an upstream commit U1 on B0
+    (changes other.txt) giving the new base B1, and the restaged commit C2 on B1 with the same
+    change as C1. Each test changes one thing; the identical case is the positive control."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        home = self.root / "home"
+        home.mkdir()
+        self.env = git_environment(home)
+        self.repo = self.make_repo("work")
+
+    def make_repo(self, name):
+        repo = self.root / name
+        repo.mkdir()
+        self.git(repo, "init", "-q")
+        self.git(repo, "symbolic-ref", "HEAD", "refs/heads/master")
+        self.git(repo, "config", "user.name", "Test Writer")
+        self.git(repo, "config", "user.email", "writer@example.invalid")
+        self.write(repo, {"a.txt": "base\n", "other.txt": "other\n", "lib/x.cc": "int x;\n"})
+        return repo
+
+    def git(self, repo, *words):
+        result = subprocess.run(["git", "-C", str(repo), *words], env=self.env, text=True,
+                                capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.strip()
+
+    def write(self, repo, files, message="commit", parent=None):
+        """Commit `files` ({path: text or None to delete}) on `parent` (default HEAD)."""
+        if parent:
+            self.git(repo, "checkout", "-q", "--detach", parent)
+        for path, text in files.items():
+            target = repo / path
+            if text is None:
+                self.git(repo, "rm", "-q", path)
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text)
+            self.git(repo, "add", path)
+        self.git(repo, "commit", "-q", "--allow-empty", "-m", message)
+        return self.git(repo, "rev-parse", "HEAD")
+
+    def head(self, repo):
+        return self.git(repo, "rev-parse", "HEAD")
+
+    def block(self, repo, base, commit, name="phenix", url="ssh://git@example.invalid/x.git"):
+        tree = self.git(repo, "rev-parse", commit + "^{tree}")
+        return (f"repository: {name}\nremote: origin\nremote_url: {url}\nbase: {base}\n"
+                f"commit: {commit}\ntree: {tree}\nrefspec: {commit}:refs/heads/master\n")
+
+    def scenario(self, change=None, upstream=None, restaged=None, repo=None):
+        """(B0, C1, B1, C2): change and restaged are {path: text}; upstream is a list of
+        {path: text} commits on B0."""
+        repo = repo or self.repo
+        b0 = self.head(repo)
+        c1 = self.write(repo, change or {"a.txt": "changed\n"}, "change", parent=b0)
+        b1 = b0
+        for files in (upstream if upstream is not None else [{"other.txt": "upstream\n"}]):
+            b1 = self.write(repo, files, "upstream", parent=b1)
+        # Repair 1: the restaged commit has the reviewed message (it is compared); with the same
+        # base it gets another committer date, so that it is another commit.
+        c2 = self.write(repo, restaged or change or {"a.txt": "changed\n"}, "change", parent=b1)
+        if c2 == c1:
+            subprocess.run(["git", "-C", str(repo), "commit", "-q", "--amend", "--no-edit",
+                            "--allow-empty"], env=dict(self.env, GIT_COMMITTER_DATE="2001-01-01T00:00:00"),
+                           check=True, capture_output=True)
+            c2 = self.head(repo)
+        return b0, c1, b1, c2
+
+    def records(self, b0, c1, b1, c2, repo=None):
+        repo = repo or self.repo
+        old, new = self.root / "OLD_OUTGOING.txt", self.root / "NEW_OUTGOING.txt"
+        old.write_text(self.block(repo, b0, c1))
+        new.write_text(self.block(repo, b1, c2))
+        return old, new
+
+    def carry(self, old, new, *repos, extra=()):
+        result = subprocess.run(
+            [sys.executable, "-I", "-B", str(TOOL), "carry-over", *(repos or (str(self.repo),)),
+             "--reviewed", str(old), "--outgoing", str(new), *extra],
+            env=self.env, cwd=self.root, text=True, capture_output=True)
+        return result
+
+    def assert_ok(self, result, form=OK_LINE):
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout.splitlines()[-1], form)
+        self.assertNotIn("REFUSED", result.stdout)
+
+    def assert_refused(self, result, reason):
+        """Refused, with `reason` in the final line or (repair 2: content differences) in one
+        of the `difference (NAME): ...` lines."""
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        last = result.stdout.splitlines()[-1]
+        self.assertTrue(last.startswith("CARRYOVER REFUSED: "), last)
+        found = [last] + [line for line in result.stdout.splitlines() if line.startswith("difference (")]
+        self.assertTrue(any(reason in line for line in found), found)
+        self.assertEqual(sum(line.startswith("CARRYOVER ") for line in result.stdout.splitlines()
+                             if not line.startswith("CARRYOVER (")), 1)
+
+    def test_identical_content_untouched_files_is_ok_and_lists_upstream(self):
+        b0, c1, b1, c2 = self.scenario()
+        old, new = self.records(b0, c1, b1, c2)
+        result = self.carry(old, new)
+        self.assert_ok(result)
+        text = result.stdout
+        self.assertTrue(text.startswith("CARRYOVER (publication_precheck.py carry-over, revision 19)\n"))
+        self.assertIn(f"reviewed: base {b0} commit {c1} tree ", text)
+        self.assertIn(f"outgoing: base {b1} commit {c2} tree ", text)
+        self.assertIn("changed paths: 1 ", text)
+        self.assertRegex(text, r"\nblob same reviewed 100644 [0-9a-f]{40} outgoing 100644 [0-9a-f]{40} a\.txt\n")
+        self.assertIn("diff: byte-identical\n", text)
+        self.assertIn(f"upstream commits: 1\nupstream commit {b1}: 1 file(s)\n  M other.txt\n", text)
+        self.assertIn("flagged compiled: none\n", text)
+        self.assertIn("repository phenix: OK\nCARRYOVER OK reading\n", text)
+        import hashlib
+        self.assertIn(f"reviewed_outgoing_sha256: {hashlib.sha256(old.read_bytes()).hexdigest()}\n", text)
+        self.assertIn(f"outgoing_sha256: {hashlib.sha256(new.read_bytes()).hexdigest()}\n", text)
+
+    def test_the_tool_changes_no_repository_state(self):
+        b0, c1, b1, c2 = self.scenario()
+        old, new = self.records(b0, c1, b1, c2)
+        before = [self.git(self.repo, *w) for w in (("rev-parse", "HEAD"), ("for-each-ref",),
+                                                     ("status", "--porcelain"))]
+        self.assert_ok(self.carry(old, new))
+        after = [self.git(self.repo, *w) for w in (("rev-parse", "HEAD"), ("for-each-ref",),
+                                                    ("status", "--porcelain"))]
+        self.assertEqual(before, after)
+
+    def test_same_base_is_ok(self):
+        """No upstream commit (the base did not move; for example a reworded message)."""
+        b0, c1, b1, c2 = self.scenario(upstream=[])
+        self.assertEqual(b0, b1)
+        self.assertNotEqual(c1, c2)
+        result = self.carry(*self.records(b0, c1, b1, c2))
+        self.assert_ok(result)
+        self.assertIn("upstream commits: 0\n", result.stdout)
+
+    def test_upstream_files_are_flagged_for_information_only(self):
+        """Plan revision 5: compiled, test, configuration and data files upstream are flagged;
+        the result is the same OK line (the server suite is never carried over)."""
+        root = self.git(self.repo, "rev-list", "--max-parents=0", "HEAD")
+        for path, kinds in (("lib/x.cc", "compiled"), ("lib/y.c", "compiled"), ("lib/z.cpp", "compiled"),
+                            ("lib/w.h", "compiled"), ("lib/v.hpp", "compiled"),
+                            ("lib/SConscript", "compiled,configuration"),
+                            ("lib/libtbx_config", "compiled,configuration"),
+                            ("lib/tst_x.py", "test"), ("lib/tests/helper.py", "test"),
+                            ("mmtbx/regression/run.py", "test"), ("lib/setup.cfg", "configuration"),
+                            ("lib/params.phil", "configuration"), ("lib/model.pdb", "data"),
+                            ("lib/data/table.txt", "data"), ("lib/tests/model.cif", "test,data"),
+                            # Repair 1 (review finding 7):
+                            (".gitattributes", "checkout"), ("lib/.gitmodules", "checkout"),
+                            ("lib/x.pyx", "compiled"), ("lib/x.ipp", "compiled"),
+                            ("lib/k.cu", "compiled"), ("lib/ext.so", "compiled")):
+            with self.subTest(path=path):
+                self.git(self.repo, "checkout", "-q", "--detach", root)
+                b0, c1, b1, c2 = self.scenario(upstream=[{path: "changed upstream\n"}])
+                result = self.carry(*self.records(b0, c1, b1, c2))
+                self.assert_ok(result)
+                self.assertRegex(result.stdout, rf"\n  [AM] {re.escape(path)} \[{kinds}\]\n")
+                for kind in kinds.split(","):
+                    self.assertIn(f"flagged {kind}: {path}\n", result.stdout)
+                self.assertNotIn("server suite", result.stdout.splitlines()[-1])
+        self.git(self.repo, "checkout", "-q", "--detach", root)
+        b0, c1, b1, c2 = self.scenario(upstream=[{"lib/x.py": "python\n", "docs/x.md": "c\n"}])
+        result = self.carry(*self.records(b0, c1, b1, c2))
+        self.assert_ok(result)
+        self.assertIn("  A lib/x.py\n", result.stdout)
+        self.assertIn("compiled 0, test 0, configuration 0, data 0, checkout 0\n", result.stdout)
+
+    def test_one_changed_blob_is_refused(self):
+        b0, c1, b1, c2 = self.scenario(restaged={"a.txt": "changed again\n"})
+        result = self.carry(*self.records(b0, c1, b1, c2))
+        self.assert_refused(result, "changed file content differs: a.txt")
+        self.assertIn("blob DIFFERS", result.stdout)
+        # Repair 2: the diff was compared and recorded too; both differences end the section.
+        self.assertIn("difference (phenix): changed file content differs: a.txt\n"
+                      "difference (phenix): git diff of the outgoing commit is not byte-identical"
+                      " to the reviewed one\nrepository phenix: REFUSED: 2 content difference(s)\n",
+                      result.stdout)
+
+    def test_a_changed_mode_is_refused(self):
+        b0, c1, b1, c2 = self.scenario()
+        self.git(self.repo, "checkout", "-q", "--detach", c2)
+        (self.repo / "a.txt").chmod(0o755)
+        self.git(self.repo, "update-index", "--chmod=+x", "a.txt")
+        self.git(self.repo, "commit", "-q", "--amend", "--no-edit")
+        c2 = self.head(self.repo)
+        self.assert_refused(self.carry(*self.records(b0, c1, b1, c2)),
+                            "changed file content differs: a.txt")
+
+    def test_different_changed_path_sets_are_refused(self):
+        b0, c1, b1, c2 = self.scenario(restaged={"a.txt": "changed\n", "b.txt": "new\n"})
+        self.assert_refused(self.carry(*self.records(b0, c1, b1, c2)),
+                            "change different paths (reviewed only: none; outgoing only: b.txt)")
+
+    def test_a_different_diff_with_the_same_blobs_is_refused(self):
+        """Upstream changed the changed file's base content; the restaged commit gives it the
+        same final content, so every blob is the same but the diff is not."""
+        b0, c1, b1, c2 = self.scenario(upstream=[{"a.txt": "base, upstream edit\n"}])
+        result = self.carry(*self.records(b0, c1, b1, c2))
+        self.assert_refused(result, "is not byte-identical to the reviewed one")
+        self.assertIn("blob same", result.stdout)
+
+    def test_an_upstream_commit_touching_a_changed_path_is_refused(self):
+        """Upstream changed a.txt and changed it back: the net base content and the diff are
+        identical, but a commit in the range touched the path."""
+        b0, c1, b1, c2 = self.scenario(upstream=[{"a.txt": "temporary\n"}, {"a.txt": "base\n"}])
+        result = self.carry(*self.records(b0, c1, b1, c2))
+        self.assert_refused(result, "upstream commits touch changed paths")
+        self.assertIn("diff: byte-identical", result.stdout)
+        self.assertIn("upstream commits: 2", result.stdout)
+
+    def test_an_upstream_merge_bringing_a_changed_path_is_refused(self):
+        b0 = self.head(self.repo)
+        c1 = self.write(self.repo, {"a.txt": "changed\n"}, "change", parent=b0)
+        self.write(self.repo, {"a.txt": "side\n"}, "side", parent=b0)
+        side2 = self.write(self.repo, {"a.txt": "base\n"}, "side back")
+        self.write(self.repo, {"other.txt": "main\n"}, "main", parent=b0)
+        self.git(self.repo, "merge", "-q", "--no-ff", "-m", "merge", side2)
+        b1 = self.head(self.repo)
+        c2 = self.write(self.repo, {"a.txt": "changed\n"}, "change", parent=b1)
+        self.assert_refused(self.carry(*self.records(b0, c1, b1, c2)),
+                            "upstream commits touch changed paths")
+
+    def test_an_old_base_that_is_not_an_ancestor_is_refused(self):
+        b0 = self.head(self.repo)
+        side = self.write(self.repo, {"other.txt": "side\n"}, "side", parent=b0)
+        c1 = self.write(self.repo, {"a.txt": "changed\n"}, "change", parent=side)
+        b1 = self.write(self.repo, {"other.txt": "main\n"}, "main", parent=b0)
+        c2 = self.write(self.repo, {"a.txt": "changed\n"}, "change", parent=b1)
+        self.assert_refused(self.carry(*self.records(side, c1, b1, c2)),
+                            "is not an ancestor of the outgoing base")
+
+    def test_record_binding_errors_are_refused(self):
+        b0, c1, b1, c2 = self.scenario()
+        old, new = self.records(b0, c1, b1, c2)
+        good = self.block(self.repo, b1, c2)
+        for label, text, reason in (
+                ("wrong tree", good.replace(self.git(self.repo, "rev-parse", c2 + "^{tree}"), "0" * 40),
+                 "does not have the recorded tree"),
+                ("base is not the parent", self.block(self.repo, b0, c2), "is not one commit on its recorded base"),
+                ("unknown commit", good.replace(c2, "1" * 40), "is not a commit"),
+                ("other destination", self.block(self.repo, b1, c2, url="ssh://elsewhere/x.git"),
+                 "the remote_url differs"),
+                ("other remote", good.replace("remote: origin", "remote: upstream"),
+                 "the remote differs"),
+                ("other branch", good.replace(":refs/heads/master", ":refs/heads/release"),
+                 "the branch differs"),
+                ("other repository", self.block(self.repo, b1, c2, name="cctbx_project"),
+                 "the records name different repositories")):
+            with self.subTest(label):
+                new.write_text(text)
+                self.assert_refused(self.carry(old, new), reason)
+        new.write_text("prose line\n")
+        self.assert_refused(self.carry(old, new), "prose or non-key line")
+
+    def two_repositories(self, bad=False):
+        other = self.make_repo("cctbx")
+        first = self.scenario()
+        second = list(self.scenario(change={"lib/x.cc": "int y;\n"}, repo=other))
+        if bad:
+            second[3] = self.write(other, {"lib/x.cc": "int z;\n"}, "other", parent=second[2])
+        old, new = self.root / "OLD.txt", self.root / "NEW.txt"
+        old.write_text(self.block(self.repo, first[0], first[1]) +
+                       self.block(other, second[0], second[1], name="cctbx_project"))
+        new.write_text(self.block(other, second[2], second[3], name="cctbx_project") +
+                       self.block(self.repo, first[2], first[3]))
+        return other, old, new
+
+    def test_two_repositories_each_checked_by_path(self):
+        other, old, new = self.two_repositories()
+        result = self.carry(old, new, f"phenix={self.repo}", f"cctbx_project={other}")
+        self.assert_ok(result)
+        self.assertEqual(result.stdout.count("== repository: "), 2)
+        self.assertIn("repository cctbx_project: OK\n", result.stdout)
+        self.assertIn("repository phenix: OK\n", result.stdout)
+        for words, reason in (
+                ((f"phenix={self.repo}",), "needs exactly one REPO (missing: cctbx_project"),
+                ((f"phenix={self.repo}", f"cctbx_project={other}", f"extra={other}"),
+                 "not in the records: extra"),
+                ((str(self.repo), str(other)), "give each repository as NAME=PATH"),
+                ((f"phenix={self.repo}", f"phenix={other}"), "repository named twice"),
+                ((f"phenix={self.repo}", f"cctbx_project={self.root / 'absent'}"),
+                 "cctbx_project: repository directory not found"),
+                # The repositories swapped: each block is checked in the repository given for it.
+                ((f"phenix={other}", f"cctbx_project={self.repo}"), "is not a commit")):
+            with self.subTest(words=words):
+                self.assert_refused(self.carry(old, new, *words), reason)
+
+    def test_one_failing_repository_refuses_the_whole_carry_over(self):
+        other, old, new = self.two_repositories(bad=True)
+        result = self.carry(old, new, f"phenix={self.repo}", f"cctbx_project={other}")
+        self.assert_refused(result, "difference (cctbx_project): changed file content differs")
+        self.assertRegex(result.stdout.splitlines()[-1], r"cctbx_project: [1-9] content difference\(s\)$")
+        # The other block was still checked on its own, and passed.
+        self.assertIn("repository phenix: OK\n", result.stdout)
+        self.assertIn("repository cctbx_project: REFUSED: ", result.stdout)
+
+    def test_output_and_expect(self):
+        b0, c1, b1, c2 = self.scenario()
+        old, new = self.records(b0, c1, b1, c2)
+        target = self.root / "CARRYOVER.txt"
+        first = self.carry(old, new, extra=("--output", str(target)))
+        self.assert_ok(first)
+        self.assertEqual(target.read_text(), first.stdout)
+        again = self.carry(old, new, extra=("--output", str(target)))
+        self.assertNotEqual(again.returncode, 0)
+        same = self.carry(old, new, extra=("--expect", str(target)))
+        self.assertEqual(same.returncode, 0)
+        self.assertIn("CARRYOVER SAME", same.stderr)
+        missing = self.carry(old, new, extra=("--expect", str(self.root / "absent.txt")))
+        self.assertEqual(missing.returncode, 1)
+
+    def expect_refused(self, old, new, frozen_text, *repos):
+        frozen = self.root / "FROZEN_CARRYOVER.txt"
+        frozen.write_text(frozen_text)
+        result = self.carry(old, new, *repos, extra=("--expect", str(frozen)))
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("CARRYOVER DIFFERS", result.stderr)
+
+    def test_expect_refuses_a_stale_a_hand_edited_and_a_differing_file(self):
+        b0, c1, b1, c2 = self.scenario()
+        old, new = self.records(b0, c1, b1, c2)
+        good = self.carry(old, new).stdout
+        # Stale: CARRYOVER.txt of an earlier restage (c1 -> c2), while the packet is now c3 on
+        # a newer base b2.
+        b2 = self.write(self.repo, {"other.txt": "upstream again\n"}, "upstream 2", parent=b1)
+        c3 = self.write(self.repo, {"a.txt": "changed\n"}, "change, restaged twice", parent=b2)
+        new.write_text(self.block(self.repo, b2, c3))
+        self.expect_refused(old, new, good)
+        # Hand-edited and internally consistent: one upstream commit and its file removed.
+        new.write_text(self.block(self.repo, b1, c2))
+        edited = good.replace(f"upstream commits: 1\nupstream commit {b1}: 1 file(s)\n  M other.txt\n",
+                              "upstream commits: 0\n")
+        self.assertNotEqual(edited, good)
+        self.expect_refused(old, new, edited)
+        # Hand-edited blob table that keeps the identities and the final line.
+        self.expect_refused(old, new, good.replace("blob same reviewed 100644 ", "blob same reviewed 100755 ", 1))
+        # The unchanged file is still accepted (positive control for the three above).
+        frozen = self.root / "FROZEN_CARRYOVER.txt"
+        frozen.write_text(good)
+        self.assertEqual(self.carry(old, new, extra=("--expect", str(frozen))).returncode, 0)
+        # A recompute that is refused (a commit no longer present) is refused under --expect
+        # even when the frozen file is that refusal.
+        new.write_text(self.block(self.repo, b1, c2).replace(c2, "2" * 40))
+        refused = self.carry(old, new)
+        self.expect_refused(old, new, refused.stdout)
+
+    def test_the_written_file_is_what_the_screen_checker_accepts(self):
+        """End to end: CARRYOVER.txt from the tool, the reviewed packet's manifest and
+        OUTGOING.txt copied into evidence/reviewed/, and a PUBLICATION screen whose reading
+        names the reviewed packet: accepted; the same packet with a refusing CARRYOVER.txt is
+        refused."""
+        b0, c1, b1, c2 = self.scenario()
+        old, new = self.records(b0, c1, b1, c2)
+        checker = [sys.executable, "-I", "-B", str(CHECKER)]
+
+        def run(*words):
+            return subprocess.run(checker + list(words), env=self.env, cwd=self.root,
+                                  text=True, capture_output=True)
+        reviewed = self.root / "packet_v1"
+        reviewed.mkdir()
+        shutil.copy(old, reviewed / "OUTGOING.txt")
+        (reviewed / "SERVER_SUITE.txt").write_text("SERVER_SUITE: PASS 12/12\n")
+        self.assertEqual(run("freeze", str(reviewed)).returncode, 0)
+        import hashlib
+        reviewed_id = hashlib.sha256((reviewed / "MANIFEST.sha256").read_bytes()).hexdigest()
+        packet = self.root / "packet_v2"
+        (packet / "evidence" / "reviewed").mkdir(parents=True)
+        shutil.copy(new, packet / "OUTGOING.txt")
+        shutil.copy(reviewed / "MANIFEST.sha256", packet / "evidence" / "reviewed" / "MANIFEST.sha256")
+        shutil.copy(old, packet / "evidence" / "reviewed" / "OUTGOING.txt")
+        self.assert_ok(self.carry(old, new, extra=("--output", str(packet / "CARRYOVER.txt"))))
+        (packet / "SERVER_SUITE.txt").write_text("SERVER_SUITE: PASS 12/12 on the restaged commit\n")
+        (packet / "ROSTER_COMPARISON.txt").write_text("unchanged\n")
+        (packet / "CODE_IDENTITY.txt").write_text(f"reading_carried_over_from: {c1}\n")
+        self.assertEqual(run("check-draft", "publication", str(packet)).returncode, 0)
+        self.assertEqual(run("freeze", str(packet)).returncode, 0)
+        identity = hashlib.sha256((packet / "MANIFEST.sha256").read_bytes()).hexdigest()
+        reading = self.root / "reading.md"
+        reading.write_text(f"Packet identity: {reviewed_id}\nVerdict: PROCEED\nScope: publication\n")
+        screen = self.root / "PUBLICATION.md"
+        screen.write_text(
+            f"PUBLICATION | batch-1 | {identity}\nBATCH\nphenix commit {c2} to master.\n"
+            "SERVER CHECK\nSuite run on the restaged commit.\n"
+            f"LIMITS\n{LIMITS_LINE}\nGATE\n"
+            f"Reading SHA256: {hashlib.sha256(reading.read_bytes()).hexdigest()}\nVerdict: PROCEED\n"
+            "DECISION\nPublish or hold.\nRecommendation: PUBLISH because the check passed.\n"
+            "Next: If you publish, I push.\nACTION: PUBLISH / HOLD\n")
+        result = run("present", "publication", str(screen), "--evidence", str(packet),
+                     "--reading", str(reading))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("NOTE: the outside reading names the earlier packet it read", result.stdout)
+        # Negative control: the same packet frozen with a refusing CARRYOVER.txt.
+        (packet / "MANIFEST.sha256").unlink()
+        text = (packet / "CARRYOVER.txt").read_text()
+        (packet / "CARRYOVER.txt").write_text(
+            text.replace(OK_LINE, "CARRYOVER REFUSED: phenix: changed file content differs: a.txt")
+            .replace("repository phenix: OK", "repository phenix: REFUSED: changed file content "
+                     "differs: a.txt"))
+        self.assertEqual(run("freeze", str(packet)).returncode, 0)
+        identity2 = hashlib.sha256((packet / "MANIFEST.sha256").read_bytes()).hexdigest()
+        screen.write_text(screen.read_text().replace(identity, identity2))
+        result = run("check", "publication", str(screen), "--evidence", str(packet),
+                     "--reading", str(reading))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("records a refusal", result.stderr)
+
+    def test_imports_and_named_files_are_flagged_for_information(self):
+        """Plan revision 6 (a): upstream files that a changed Python file imports (absolute,
+        `from x import y`, relative) or names by a literal path are flagged; an unrelated
+        upstream file and a dynamic importlib import are not (documented limit)."""
+        root = self.head(self.repo)
+        base = self.write(self.repo, {
+            "lib/__init__.py": "", "lib/a.py": "x = 1\n", "lib/helper.py": "h = 1\n",
+            "lib/util.py": "u = 1\n", "lib/rel.py": "r = 1\n", "lib/sub/__init__.py": "",
+            "lib/sub/mod.py": "m = 1\n", "lib/data/table.txt": "t\n", "lib/dyn.py": "d = 1\n",
+            "lib/other.py": "o = 1\n", "lib/bad.py": "b = 1\n"}, "base", parent=root)
+        source = ("import lib.helper\nfrom lib import util\nfrom . import rel\nfrom .sub import mod\n"
+                  "import importlib\nTABLE = 'data/table.txt'\n"
+                  "dyn = importlib.import_module('lib.' + 'dyn')\n")
+        change = {"lib/a.py": source, "lib/bad.py": "def broken(:\n"}
+        b0, c1, b1, c2 = self.scenario(change=change, upstream=[{
+            "lib/helper.py": "h = 2\n", "lib/util.py": "u = 2\n", "lib/rel.py": "r = 2\n",
+            "lib/sub/mod.py": "m = 2\n", "lib/data/table.txt": "t2\n", "lib/dyn.py": "d = 2\n",
+            "lib/other.py": "o = 2\n"}])
+        self.assertEqual(b0, base)
+        result = self.carry(*self.records(b0, c1, b1, c2))
+        self.assert_ok(result)
+        text = result.stdout
+        self.assertIn("changed Python files read for imports: 1 (not parsed: lib/bad.py)\n", text)
+        imported = re.search(r"\nupstream files imported by a changed file: (.*)\n", text)[1]
+        for path in ("lib/helper.py", "lib/util.py", "lib/rel.py", "lib/sub/mod.py"):
+            self.assertIn(f"{path} (imported by lib/a.py)", imported)
+        self.assertIn("upstream files named by a changed file: lib/data/table.txt (named by lib/a.py)\n", text)
+        self.assertNotIn("lib/other.py (", text)
+        self.assertNotIn("lib/dyn.py (", text)  # dynamic import: not seen (documented)
+        # Unflagged: the same change with an unrelated upstream file.
+        self.git(self.repo, "checkout", "-q", "--detach", base)
+        b0, c1, b1, c2 = self.scenario(change=change, upstream=[{"lib/other.py": "o = 3\n"}])
+        text = self.carry(*self.records(b0, c1, b1, c2)).stdout
+        self.assertIn("upstream files imported by a changed file: none\n", text)
+        self.assertIn("upstream files named by a changed file: none\n", text)
+        self.assertTrue(text.endswith(OK_LINE + "\n"))
+
+    def test_a_different_commit_message_is_refused_and_recorded(self):
+        """Repair 1 (review finding 4): the published message is part of what was read."""
+        b0, c1, b1, c2 = self.scenario()
+        self.git(self.repo, "checkout", "-q", "--detach", c2)
+        self.git(self.repo, "commit", "-q", "--amend", "-m", "different message by someone else")
+        c2 = self.head(self.repo)
+        result = self.carry(*self.records(b0, c1, b1, c2))
+        self.assert_refused(result, "the commit message differs from the reviewed one")
+        self.assertRegex(result.stdout, r"\ncommit message sha256 reviewed [0-9a-f]{64} outgoing [0-9a-f]{64}\n")
+        # Same message, other author and date: identical.
+        self.git(self.repo, "checkout", "-q", "--detach", self.git(self.repo, "rev-list", "--max-parents=0", "HEAD"))
+        b0, c1, b1, c2 = self.scenario()
+        self.git(self.repo, "checkout", "-q", "--detach", c2)
+        self.git(self.repo, "-c", "user.name=Other", "commit", "-q", "--amend", "--no-edit",
+                 "--reset-author", "--date=2001-01-01T00:00:00")
+        c2 = self.head(self.repo)
+        result = self.carry(*self.records(b0, c1, b1, c2))
+        self.assert_ok(result)
+        self.assertIn("commit message: identical\n", result.stdout)
+
+    def test_refusal_text_names_no_path(self):
+        """Repair 1 (review finding 3): the same refusal from two spellings of the path."""
+        b0, c1, b1, c2 = self.scenario()
+        old, new = self.records(b0, c1, b1, c2)
+        new.write_text(self.block(self.repo, b1, c2).replace(c2, "3" * 40))
+        first = self.carry(old, new, str(self.repo))
+        second = self.carry(old, new, str(self.repo) + "/./")
+        self.assert_refused(first, "is not a commit in the repository")
+        self.assertEqual(first.stdout, second.stdout)
+        self.assertNotIn(str(self.repo), first.stdout)
+
+    def test_only_content_refusals_pass_expect_with_a_waiver(self):
+        """Repair 1 (review finding 3): a refusal that compared nothing (a missing commit) is
+        not accepted under --expect even with ADDENDUM_WAIVER.md beside it."""
+        b0, c1, b1, c2 = self.scenario()
+        old, new = self.records(b0, c1, b1, c2)
+        old.write_text(self.block(self.repo, b0, c1).replace(f"base: {b0}", f"base: {'e' * 40}"))
+        refused = self.carry(old, new)
+        self.assert_refused(refused, "is not a commit in the repository")
+        frozen = self.root / "pk" / "CARRYOVER.txt"
+        frozen.parent.mkdir()
+        frozen.write_text(refused.stdout)
+        (frozen.parent / "ADDENDUM_WAIVER.md").write_text("Addendum: WAIVED\n")
+        result = self.carry(old, new, extra=("--expect", str(frozen)))
+        self.assertEqual(result.returncode, 1, result.stderr)
+
+    # ---- Repair 2 (review 2): check --packet, ordering of the checks, waivers ----------------
+
+    def freeze(self, directory):
+        result = subprocess.run([sys.executable, "-I", "-B", str(CHECKER), "freeze", str(directory)],
+                                env=self.env, cwd=self.root, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def full_packet(self, old, new, repos=None, carry_text=None, waiver=None, name="packet"):
+        """A frozen packet: OUTGOING.txt, CARRYOVER.txt (computed unless given),
+        evidence/reviewed/ (the manifest of a frozen reviewed packet and its OUTGOING.txt), and
+        ADDENDUM_WAIVER.md when `waiver` is True (built from the difference lines) or a text."""
+        import hashlib
+        reviewed = self.root / (name + "_read")
+        if reviewed.exists():
+            shutil.rmtree(reviewed)
+        reviewed.mkdir()
+        shutil.copy(old, reviewed / "OUTGOING.txt")
+        self.freeze(reviewed)
+        reviewed_id = hashlib.sha256((reviewed / "MANIFEST.sha256").read_bytes()).hexdigest()
+        packet = self.root / name
+        if packet.exists():
+            shutil.rmtree(packet)
+        (packet / "evidence" / "reviewed").mkdir(parents=True)
+        shutil.copy(new, packet / "OUTGOING.txt")
+        shutil.copy(old, packet / "evidence" / "reviewed" / "OUTGOING.txt")
+        shutil.copy(reviewed / "MANIFEST.sha256", packet / "evidence" / "reviewed" / "MANIFEST.sha256")
+        if carry_text is None:
+            carry_text = self.carry(packet / "evidence" / "reviewed" / "OUTGOING.txt",
+                                    packet / "OUTGOING.txt", *(repos or ())).stdout
+        (packet / "CARRYOVER.txt").write_text(carry_text)
+        if waiver is True:
+            blocks = [b for b in new.read_text().split("repository: ")[1:]]
+            outgoing_lines = []
+            for block in blocks:
+                fields = dict(line.split(": ", 1) for line in ("repository: " + block).splitlines() if ": " in line)
+                outgoing_lines.append(f"Outgoing: {fields['repository']} base {fields['base']} "
+                                      f"commit {fields['commit']} tree {fields['tree']}")
+            differences = [line for line in carry_text.splitlines() if line.startswith("difference (")]
+            waiver = ("Addendum: WAIVED\n" f"Reviewed packet identity: {reviewed_id}\n"
+                      + "".join(line + "\n" for line in outgoing_lines)
+                      + "Differences (from CARRYOVER.txt):\n"
+                      + "".join(f"> {line}\n" for line in differences)
+                      + 'Developer decision: "I waive the addendum for these differences."\n')
+        if waiver:
+            (packet / "ADDENDUM_WAIVER.md").write_text(waiver)
+        self.freeze(packet)
+        return packet
+
+    def with_remote(self):
+        bare = self.root / "remote.git"
+        self.git(self.root, "init", "-q", "--bare", str(bare))
+        self.git(self.repo, "remote", "add", "origin", str(bare))
+        return bare
+
+    def publish_base(self, bare, base, repo=None):
+        repo = repo or self.repo
+        self.git(repo, "push", "-q", "-f", "origin", f"{base}:refs/heads/master")
+        self.git(repo, "fetch", "-q", "origin")
+
+    def check_tool(self, packet, *words, repo=None, outgoing=None, identity=True):
+        """`check` on a packet; with --packet and identity=True the packet's own current
+        identity is added (identity may also be a string, or False to leave it out)."""
+        import hashlib
+        words = list(words)
+        if "--packet" in words and identity:
+            directory = Path(words[words.index("--packet") + 1])
+            manifest = directory / "MANIFEST.sha256"
+            value = identity if isinstance(identity, str) else (
+                hashlib.sha256(manifest.read_bytes()).hexdigest() if manifest.is_file() else "0" * 64)
+            words += ["--identity", value]
+        return subprocess.run([sys.executable, "-I", "-B", str(TOOL), "check", str(repo or self.repo),
+                               str(outgoing or packet / "OUTGOING.txt"), *words], env=self.env,
+                              cwd=self.root, text=True, capture_output=True)
+
+    def expect_tool(self, packet, *repos):
+        return subprocess.run([sys.executable, "-I", "-B", str(TOOL), "carry-over", *(repos or (str(self.repo),)),
+                               "--reviewed", str(packet / "evidence" / "reviewed" / "OUTGOING.txt"),
+                               "--outgoing", str(packet / "OUTGOING.txt"),
+                               "--expect", str(packet / "CARRYOVER.txt")],
+                              env=self.env, cwd=self.root, text=True, capture_output=True)
+
+    def records_url(self, bare, b0, c1, b1, c2, repo=None):
+        repo = repo or self.repo
+        old, new = self.root / "OLD_OUTGOING.txt", self.root / "NEW_OUTGOING.txt"
+        old.write_text(self.block(repo, b0, c1, url=str(bare)))
+        new.write_text(self.block(repo, b1, c2, url=str(bare)))
+        return old, new
+
+    def test_check_packet_verifies_and_recomputes(self):
+        bare = self.with_remote()
+        b0, c1, b1, c2 = self.scenario()
+        self.publish_base(bare, b1)
+        old, new = self.records_url(bare, b0, c1, b1, c2)
+        packet = self.full_packet(old, new)
+        # Without --packet and --identity, check refuses (repair 3).
+        result = self.check_tool(packet)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("check needs --packet DIR and --identity SHA256", result.stderr)
+        result = self.check_tool(packet, "--packet", str(packet))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("CARRYOVER RECOMPUTED 1 repository block(s): same", result.stdout)
+        # Another directory as --packet; a manifest that no longer matches.
+        other = self.root / "elsewhere"
+        other.mkdir()
+        result = self.check_tool(packet, "--packet", str(other))
+        self.assertIn("must be the packet directory", result.stderr)
+        (packet / "notes.txt").write_text("added after freezing\n")
+        result = self.check_tool(packet, "--packet", str(packet))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("missing or extra evidence file", result.stderr)
+        # The reviewer's forged-but-consistent file, frozen in the packet: refused.
+        good = (packet / "CARRYOVER.txt").read_text()
+        forged = good.replace("upstream commits: 1\n", "upstream commits: 0\n").replace(
+            f"upstream commit {b1}: 1 file(s)\n  M other.txt\n", "")
+        self.assertNotEqual(forged, good)
+        packet = self.full_packet(old, new, carry_text=forged)
+        result = self.check_tool(packet, "--packet", str(packet))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("differs from the frozen CARRYOVER.txt", result.stderr)
+        # A packet without carry-over evidence verifies.
+        plain = self.root / "plain"
+        plain.mkdir()
+        shutil.copy(new, plain / "OUTGOING.txt")
+        self.freeze(plain)
+        result = self.check_tool(plain, "--packet", str(plain))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("PACKET VERIFIED (no carry-over)", result.stdout)
+        self.assertEqual(self.check_tool(plain).returncode, 2)
+
+    def test_check_packet_refuses_carry_over_evidence_out_of_place(self):
+        bare = self.with_remote()
+        b0, c1, b1, c2 = self.scenario()
+        self.publish_base(bare, b1)
+        old, new = self.records_url(bare, b0, c1, b1, c2)
+        packet = self.full_packet(old, new)
+        text = (packet / "CARRYOVER.txt").read_text()
+        for label, arrange in (
+                ("relocated", lambda p: ((p / "evidence" / "moved").mkdir(),
+                                         (p / "CARRYOVER.txt").rename(p / "evidence" / "moved" / "CARRYOVER.txt"))),
+                ("reviewed copies only", lambda p: (p / "CARRYOVER.txt").unlink()),
+                ("symbolic link", lambda p: ((p / "CARRYOVER.txt").unlink(),
+                                             (self.root / "real.txt").write_text(text),
+                                             (p / "CARRYOVER.txt").symlink_to(self.root / "real.txt")))):
+            with self.subTest(label):
+                packet = self.full_packet(old, new)
+                (packet / "MANIFEST.sha256").unlink()
+                arrange(packet)
+                self.freeze(packet) if label != "symbolic link" else None
+                result = self.check_tool(packet, "--packet", str(packet))
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertIn("cannot be recomputed" if label != "symbolic link" else "symbolic link", result.stderr)
+                result = self.check_tool(packet)
+                self.assertEqual(result.returncode, 2)
+        # A directory whose MANIFEST.sha256 only lists a CARRYOVER.txt: check without --packet
+        # refuses it (never skips silently).
+        listed = self.root / "listed"
+        listed.mkdir()
+        shutil.copy(new, listed / "OUTGOING.txt")
+        (listed / "MANIFEST.sha256").write_text(f"{'0' * 64}  notes/CARRYOVER.txt\n")
+        result = self.check_tool(listed)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("check needs --packet DIR and --identity SHA256", result.stderr)
+
+    def test_check_packet_recomputes_every_repository(self):
+        """Review 2, finding 3: in a two-repository packet, check --packet needs NAME=PATH for
+        every block and recomputes all of them, so a forged section of B is refused while
+        checking A."""
+        other = self.make_repo("cctbx")
+        bare = self.with_remote()
+        bare2 = self.root / "remote2.git"
+        self.git(self.root, "init", "-q", "--bare", str(bare2))
+        self.git(other, "remote", "add", "origin", str(bare2))
+        first = self.scenario()
+        second = self.scenario(change={"lib/x.cc": "int y;\n"}, repo=other)
+        self.publish_base(bare, first[2])
+        self.publish_base(bare2, second[2], repo=other)
+        old, new = self.root / "OLD2.txt", self.root / "NEW2.txt"
+        old.write_text(self.block(self.repo, first[0], first[1], url=str(bare)) +
+                       self.block(other, second[0], second[1], name="cctbx_project", url=str(bare2)))
+        new.write_text(self.block(self.repo, first[2], first[3], url=str(bare)) +
+                       self.block(other, second[2], second[3], name="cctbx_project", url=str(bare2)))
+        repos = (f"phenix={self.repo}", f"cctbx_project={other}")
+        packet = self.full_packet(old, new, repos=repos)
+        self.assertTrue((packet / "CARRYOVER.txt").read_text().endswith(OK_LINE + "\n"))
+        result = self.check_tool(packet, "--repository", "phenix", "--packet", str(packet))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("give every repository as NAME=PATH with --repos", result.stderr)
+        result = self.check_tool(packet, "--repository", "phenix", "--packet", str(packet), "--repos", *repos)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("CARRYOVER RECOMPUTED 2 repository block(s)", result.stdout)
+        good = (packet / "CARRYOVER.txt").read_text()
+        forged = good.replace(f"upstream commits: 1\nupstream commit {second[2]}: 1 file(s)\n  M other.txt\n",
+                              "upstream commits: 0\n")
+        self.assertNotEqual(forged, good)
+        packet = self.full_packet(old, new, repos=repos, carry_text=forged)
+        result = self.check_tool(packet, "--repository", "phenix", "--packet", str(packet), "--repos", *repos)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("differs from the frozen", result.stderr)
+
+    def test_waivers_are_validated_by_expect_and_check(self):
+        """Review 2, finding 3: the tools check ADDENDUM_WAIVER.md's form and identities, and
+        that it lists exactly the recorded differences."""
+        bare = self.with_remote()
+        b0, c1, b1, c2 = self.scenario(restaged={"a.txt": "changed again\n"})
+        self.publish_base(bare, b1)
+        old, new = self.records_url(bare, b0, c1, b1, c2)
+        packet = self.full_packet(old, new, waiver=True)
+        self.assertIn("difference (phenix): changed file content differs: a.txt", (packet / "CARRYOVER.txt").read_text())
+        result = self.expect_tool(packet)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("refused; the addendum is waived", result.stderr)
+        result = self.check_tool(packet, "--packet", str(packet))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("(refused; the addendum is waived)", result.stdout)
+        valid = (packet / "ADDENDUM_WAIVER.md").read_text()
+        for label, text in (("bare word", "Addendum: WAIVED\n"),
+                            ("a difference missing", "\n".join(l for l in valid.splitlines() if not l.startswith("> ")) + "\n"),
+                            ("another reviewed identity", re.sub(r"Reviewed packet identity: [0-9a-f]{64}",
+                                                                "Reviewed packet identity: " + "0" * 64, valid)),
+                            ("another outgoing commit", valid.replace(f"commit {c2}", f"commit {c1}"))):
+            with self.subTest(label):
+                packet = self.full_packet(old, new, waiver=text)
+                self.assertEqual(self.expect_tool(packet).returncode, 1)
+                result = self.check_tool(packet, "--packet", str(packet))
+                self.assertEqual(result.returncode, 2, result.stdout)
+        # No waiver at all.
+        packet = self.full_packet(old, new)
+        self.assertEqual(self.expect_tool(packet).returncode, 1)
+        self.assertEqual(self.check_tool(packet, "--packet", str(packet)).returncode, 2)
+
+    def test_non_waivable_checks_come_first(self):
+        """Review 2, finding 1 (the reviewer's `noancestor`): the new base is on an unrelated
+        history and the content and the message differ. The refusal is the ancestry failure,
+        no content difference is recorded, and a waiver is refused by both tools."""
+        bare = self.with_remote()
+        b0 = self.head(self.repo)
+        c1 = self.write(self.repo, {"a.txt": "changed\n"}, "change", parent=b0)
+        self.git(self.repo, "checkout", "-q", "--orphan", "rewritten")
+        self.git(self.repo, "rm", "-rqf", ".")
+        b1 = self.write(self.repo, {"a.txt": "rewritten base\n", "other.txt": "o\n"}, "rewritten")
+        c2 = self.write(self.repo, {"a.txt": "changed differently\n"}, "a different message")
+        self.publish_base(bare, b1)
+        old, new = self.records_url(bare, b0, c1, b1, c2)
+        packet = self.full_packet(old, new, waiver=("Addendum: WAIVED\n"))
+        text = (packet / "CARRYOVER.txt").read_text()
+        self.assertIn("REFUSED: the reviewed base", text)
+        self.assertIn("is not an ancestor of the outgoing base", text)
+        self.assertNotIn("difference (", text)
+        self.assertNotIn("blob ", text)
+        self.assertEqual(self.expect_tool(packet).returncode, 1)
+        self.assertEqual(self.check_tool(packet, "--packet", str(packet)).returncode, 2)
+
+    def test_every_content_difference_is_recorded_together(self):
+        """Review 2, finding 1 (the reviewer's `touchmsg`): upstream touches the changed file
+        and the message differs: both differences are recorded and a waiver must quote both."""
+        bare = self.with_remote()
+        b0 = self.head(self.repo)
+        c1 = self.write(self.repo, {"a.txt": "changed\n"}, "reviewed message", parent=b0)
+        up1 = self.write(self.repo, {"a.txt": "temporary\n"}, "up1", parent=b0)
+        b1 = self.write(self.repo, {"a.txt": "base\n"}, "up2", parent=up1)
+        c2 = self.write(self.repo, {"a.txt": "changed\n"}, "a different message", parent=b1)
+        self.publish_base(bare, b1)
+        old, new = self.records_url(bare, b0, c1, b1, c2)
+        packet = self.full_packet(old, new, waiver=True)
+        text = (packet / "CARRYOVER.txt").read_text()
+        self.assertIn("difference (phenix): upstream commits touch changed paths: ", text)
+        self.assertIn("difference (phenix): the commit message differs from the reviewed one", text)
+        self.assertIn("repository phenix: REFUSED: 2 content difference(s)\n", text)
+        self.assertIn("commit message: DIFFERS\n", text)
+        self.assertEqual(self.expect_tool(packet).returncode, 0)
+        # A waiver that quotes only one of the two is refused.
+        valid = (packet / "ADDENDUM_WAIVER.md").read_text()
+        partial = "\n".join(l for l in valid.splitlines() if "commit message differs" not in l) + "\n"
+        packet = self.full_packet(old, new, waiver=partial)
+        self.assertEqual(self.expect_tool(packet).returncode, 1)
+        self.assertEqual(self.check_tool(packet, "--packet", str(packet)).returncode, 2)
+
+
+    def test_check_is_tied_to_the_approved_packet_identity(self):
+        """Repair 3 (review 3, finding 1): the reviewer's P3 (a packet with a refused carry-over,
+        re-frozen without its CARRYOVER.txt and evidence/) and P4 (a copy of OUTGOING.txt in an
+        empty directory) are refused; the approved identity passes."""
+        import hashlib
+        bare = self.with_remote()
+        b0, c1, b1, c2 = self.scenario(restaged={"a.txt": "changed again\n"})
+        self.publish_base(bare, b1)
+        old, new = self.records_url(bare, b0, c1, b1, c2)
+        packet = self.full_packet(old, new)
+        approved = hashlib.sha256((packet / "MANIFEST.sha256").read_bytes()).hexdigest()
+        result = self.check_tool(packet, "--packet", str(packet), identity=approved)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("records a refusal", result.stderr)
+        # P3: re-frozen without the carry-over evidence: another identity, refused.
+        (packet / "CARRYOVER.txt").unlink()
+        shutil.rmtree(packet / "evidence")
+        (packet / "MANIFEST.sha256").unlink()
+        self.freeze(packet)
+        result = self.check_tool(packet, "--packet", str(packet), identity=approved)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("not the approved", result.stderr)
+        # P4: a copy of OUTGOING.txt in an empty directory: plain check, and --packet on it.
+        loose = self.root / "loose"
+        loose.mkdir()
+        shutil.copy(new, loose / "OUTGOING.txt")
+        for words in ((), ("--packet", str(loose))):
+            with self.subTest(words=words):
+                result = self.check_tool(packet, *words, outgoing=loose / "OUTGOING.txt", identity=approved)
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertNotIn("PRECHECK OK", result.stdout)
+        # --packet without --identity, or a malformed identity, is refused.
+        result = self.check_tool(packet, "--packet", str(packet), identity=False)
+        self.assertIn("check needs --packet DIR and --identity SHA256", result.stderr)
+        result = self.check_tool(packet, "--packet", str(packet), identity=approved[:12])
+        self.assertIn("64-hex packet identity", result.stderr)
+        # The approved identity of a passing packet passes.
+        b0, c1, b1, c2 = self.scenario()
+        self.publish_base(bare, b1)
+        old, new = self.records_url(bare, b0, c1, b1, c2)
+        packet = self.full_packet(old, new, name="good")
+        approved = hashlib.sha256((packet / "MANIFEST.sha256").read_bytes()).hexdigest()
+        result = self.check_tool(packet, "--packet", str(packet), identity=approved)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"PACKET IDENTITY {approved} (as approved)", result.stdout)
+        self.assertIn("PRECHECK OK", result.stdout)
+        # The approved packet and identity, but the OUTGOING.txt given is a copy elsewhere.
+        result = self.check_tool(packet, "--packet", str(packet), identity=approved,
+                                 outgoing=loose / "OUTGOING.txt")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("must be the packet directory that holds this OUTGOING.txt", result.stderr)

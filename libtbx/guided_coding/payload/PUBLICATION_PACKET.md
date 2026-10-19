@@ -19,6 +19,8 @@ inside.
 | `ROSTER_COMPARISON.txt` | PUBLICATION, draft (non-empty) | Below. |
 | `PUBLICATION_NOTES.md` | not checked | Public description, source manifest hash, companions, rollout pointer. |
 | `RESTAGE_COMPARISON.txt` | not checked | After a restage only (WORKER.md). |
+| `CARRYOVER.txt` | PUBLICATION, draft | Revision 19, after a restage whose reading carries over; written by `publication_precheck.py carry-over`; below. |
+| `evidence/reviewed/MANIFEST.sha256`, `evidence/reviewed/OUTGOING.txt` | PUBLICATION, draft | With `CARRYOVER.txt`: byte copies of the read packet's manifest and OUTGOING.txt. |
 | `MANIFEST.sha256` | freeze, verify | Written by `screen_check.py freeze`; never by hand. |
 
 **`OUTGOING.txt`.** Generate it before packaging by running, once per repository:
@@ -67,6 +69,84 @@ the Developer and the reviewer. If the suite was not run, the first line starts
 `Waiver (Developer, <date>, batch <id>):` and immediately by one or more
 `> ` lines quoting his words for this batch and scope.
 
+**Reading carry-over (revision 19).** After a restage, an addendum is
+needed only when the carry-over check refuses. Run
+`libtbx.python -I -B "$GC_PAYLOAD_ROOT/tools/publication_precheck.py" carry-over REPO --reviewed READ_PACKET/OUTGOING.txt --outgoing PACKET/OUTGOING.txt --fetch --output PACKET/CARRYOVER.txt`
+(with several repository blocks, each repository as `NAME=PATH`, NAME as
+in the block's `repository:` line). Each block is checked on its own:
+each changed file has the same blob and mode as in the read commit and
+both commits change the same paths, the two diffs are byte-identical, and
+the old base is an ancestor of the new one with no upstream commit
+between them touching a changed path. The two records must name the same
+repositories, remotes, destinations and branches; a missing or extra
+repository is refused. Every upstream commit is listed with the files it
+touched, and compiled, test, configuration and data files are flagged,
+as information for the server-suite decision. Each section ends
+`repository NAME: OK` or `repository NAME: REFUSED: <reason>`, and the
+file ends `CARRYOVER OK reading` (every block passed) or
+`CARRYOVER REFUSED: <reason>` (exit 1). After a refusal the Guide reports what differs, whether it is material and a recommendation, and the Developer chooses an addendum reading or a waiver in his own words in `ADDENDUM_WAIVER.md` (below). Changed Python files are also read statically (ast; never run) for the in-repository modules they import and the files they name by a literal path; upstream files among them are listed as "imported by a changed file" or "named by a changed file" (information only; dynamic imports are not seen), and LIMITS must state each.
+With an OK result the packet also holds `evidence/reviewed/MANIFEST.sha256`
+and `evidence/reviewed/OUTGOING.txt` (byte copies from the read packet),
+and `CODE_IDENTITY.txt` has `reading_carried_over_from: <reviewed commit>`
+(one per repository, separated by spaces). The PUBLICATION screen's GATE
+names the original reading as usual, and LIMITS has this line:
+
+`Reading carried over: the check shows the changed files are identical and untouched upstream; it does not show that upstream changes elsewhere cannot interact with them.`
+
+The checker accepts a reading that names the earlier packet only when
+`CARRYOVER.txt` ends `CARRYOVER OK reading` and records no refusal, every
+repository section is internally consistent (its counts, blob rows,
+diff hashes, upstream rows and flags agree; a hand edit is refused), the
+SHA-256 of `evidence/reviewed/MANIFEST.sha256` is the reading's identity,
+that manifest lists `evidence/reviewed/OUTGOING.txt`'s SHA-256 as its
+`OUTGOING.txt`, `CARRYOVER.txt` names both OUTGOING.txt files by SHA-256
+and each of their blocks, and one LIMITS line contains the sentence above
+itself (spacing and capitals aside) without also claiming that upstream
+changes cannot interact. Both commit messages must be identical (their
+hashes are recorded). `CARRYOVER.txt` and `ADDENDUM_WAIVER.md` are never
+supplied by a correction companion, and `check` refuses a packet that
+lists or holds a `CARRYOVER.txt` (or `evidence/reviewed/`) without one
+beside `OUTGOING.txt`. A carried `PROCEED IF` still
+needs its disposition, written against the condition as worded; for each
+reviewed base, commit or tree the condition names, the disposition has a
+line `Mapping: <reviewed id> -> <outgoing id>`. It is never satisfied
+automatically.
+
+**`ADDENDUM_WAIVER.md` (plan revision 6).** In the packet, beside the
+refused `CARRYOVER.txt` and `evidence/reviewed/`, one line each of
+`Addendum: WAIVED`, `Reviewed packet identity: <sha256>`, one
+`Outgoing: <repository> base <commit> commit <commit> tree <tree>` per
+block, `Differences (from CARRYOVER.txt):` followed at once by exactly
+the `difference (NAME): ...` lines of `CARRYOVER.txt` as `> ` lines, each
+once and nothing else, and `Developer decision: "<his own words>"`. The
+tool makes the checks that cannot be waived first (remote, destination
+and branch, commits, ancestry, the changed paths) and then records every
+content difference together, so the waiver lists all of them. Only content
+refusals can be waived (changed file content, the diff, an upstream
+commit touching a changed file, the commit message); a missing or invalid
+commit, an ancestry failure or a repository mismatch cannot. LIMITS then has a line
+with "addendum waived" and "because" and the reason. The checker accepts
+the earlier reading only with all of these and a consistent refused
+`CARRYOVER.txt`; it checks the form, not the decision.
+
+**Required recompute at the PUBLISH precheck.** The checker has no
+repository, so whenever the packet holds `CARRYOVER.txt`, run `carry-over`
+again after PUBLISH and before the push, with the same arguments and
+`--expect PACKET/CARRYOVER.txt`: it refuses when the recomputed file
+differs or cannot be computed (a refused result is accepted only when it
+is the frozen file and a valid `ADDENDUM_WAIVER.md` is in the packet). Then
+`publication_precheck.py check REPO PACKET/OUTGOING.txt --packet PACKET --identity PACKET_IDENTITY`
+(with `--repos NAME=PATH ...` for every block when there are several) for
+each repository before its push: it verifies the packet manifest, refuses
+unless its SHA-256 is PACKET_IDENTITY (the identity on the approved
+PUBLICATION screen), and recomputes the whole carry-over. `check` without
+`--packet` and `--identity` refuses, for every publication (repair 3). A
+refusal stops the push.
+
+**The server suite is never carried over.** `SERVER_SUITE.txt` records a
+run of the restaged commit or the Developer's waiver in his own words, as
+below; a first line `SERVER_SUITE: CARRIED OVER` is refused.
+
 **`ROSTER_COMPARISON.txt`.** Minimal form, one item per line:
 
 ```
@@ -88,8 +168,8 @@ plan for the named installations.
 It runs every publication check that needs neither the freeze, the
 screen nor the reading (the three files at top level, `OUTGOING.txt`
 blocks and key lines, the `SERVER_SUITE:` first line and the `NOT RUN`
-waiver form, no companions inside; the final check applies the same
-rules),
+waiver form, no companions inside, and, revision 19, `CARRYOVER.txt` with
+`evidence/reviewed/`; the final check applies the same rules),
 prints `DRAFT OK publication`, names the checks it skipped, and notes
 listed files that are absent. A draft pass is not a frozen packet, a
 reading or a PUBLISH decision; the Developer's PUBLISH / HOLD choice

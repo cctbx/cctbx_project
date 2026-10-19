@@ -11,7 +11,12 @@ typed; it applies the same checks to what it wrote.
 
 `confirm` (revision 17) reads the remote branch and its tag state with
 `git ls-remote`, before and after a push the Developer runs himself, for
-projects whose rules forbid the agent any `git push`."""
+projects whose rules forbid the agent any `git push`.
+
+`carry-over` (revision 19) compares the OUTGOING.txt the outside reader
+read with the OUTGOING.txt of a restaged packet and writes CARRYOVER.txt:
+the same changed files with the same blobs, a byte-identical diff, and an
+upstream range that touches none of them."""
 
 import sys
 # Revision 18: the kit needs Python 3.10 or newer; an older Python refuses here, before
@@ -26,6 +31,7 @@ if __name__ == "__main__" and not sys.flags.isolated:
     sys.path.pop(0)
 
 import argparse
+import ast
 import hashlib
 import os
 from pathlib import Path
@@ -225,15 +231,38 @@ def generate_outgoing(args):
     print(f"OUTGOING OK {name} {commit} on {tracking} {tip}", file=sys.stderr)
 
 
+def check_packet_identity(args):
+    """Repair 3 (review 3, finding 1): `check` is tied to the packet the Developer approved.
+    --packet DIR and --identity SHA256 (the packet identity on the PUBLICATION screen) are
+    required; DIR is the directory of the OUTGOING.txt given, its MANIFEST.sha256 must verify,
+    and its SHA-256 must be that identity. A re-frozen packet, or a copy of OUTGOING.txt
+    elsewhere, is refused."""
+    if args.packet is None or args.identity is None:
+        fail("check needs --packet DIR and --identity SHA256: the frozen publication packet that "
+             "holds this OUTGOING.txt and its identity as shown on the PUBLICATION screen")
+    if not re.fullmatch(_checker.SHA, args.identity):
+        fail("--identity must be the 64-hex packet identity (SHA-256 of the packet's MANIFEST.sha256)")
+    packet = args.packet
+    if packet.is_symlink() or not packet.is_dir() or args.outgoing.resolve() != (packet / "OUTGOING.txt").resolve():
+        fail("--packet must be the packet directory that holds this OUTGOING.txt")
+    identity = _checker.verify(packet)
+    if identity != args.identity:
+        fail(f"the packet's identity is {identity}, not the approved {args.identity}: it is not the "
+             "packet on the PUBLICATION screen")
+    print(f"PACKET IDENTITY {identity} (as approved)")
+
+
 def check_command(args):
     blocks = parse_outgoing(args.outgoing)
     block = select_block(blocks, args.repository)
+    check_packet_identity(args)
     if not args.repo.is_dir():
         fail("repository directory not found")
     if args.fetch:
         git(args.repo, "fetch", block["remote"])
     check_destinations(args.repo, block)
     check_bindings(args.repo, block)
+    check_carryover(args, block)
     if args.dry_run:
         print(f"DRY RUN one ref update: {dry_run(args.repo, block)}")
     print(f"PRECHECK OK {block['repository']} {block['commit']} -> {block['remote']} {block['refspec']}")
@@ -324,6 +353,448 @@ def confirm_command(args):
           f"CONFIRMED {block['repository']} {block['commit']} is {block['remote']} {branch}")
 
 
+# Revision 19: the carry-over check. The header, the OK line, the flags and the consistency
+# rules are screen_check.py's, which reads CARRYOVER.txt.
+CARRYOVER_OK, CARRYOVER_HEADER = _checker.CARRYOVER_OK, _checker.CARRYOVER_HEADER
+upstream_flags, FLAG_KINDS = _checker.upstream_flags, _checker.FLAG_KINDS
+
+
+class CarryOverRefused(Exception):
+    """One carry-over condition failed; the reason is recorded in CARRYOVER.txt."""
+
+
+def raw_git(repo, *args):
+    """A read-only git query returning bytes (diffs are compared byte for byte)."""
+    result = subprocess.run(["git", "-C", str(repo), *args], capture_output=True)
+    if result.returncode != 0:
+        fail(f"git {' '.join(args)} failed (exit {result.returncode}): "
+             f"{result.stderr.decode('utf-8', 'replace').strip() or 'no output'}")
+    return result.stdout
+
+
+# Fixed diff options, so that no user or repository setting (renames, colour, external diff
+# drivers, text conversion, quoting) changes the bytes that are compared.
+DIFF = ("-c", "core.quotePath=true", "diff", "--no-color", "--no-ext-diff", "--no-textconv",
+        "--binary", "--full-index", "--no-renames")
+
+
+def changed_entries(repo, base, commit):
+    """{path: (mode, blob) or None for a deletion} of the paths `commit` changes against `base`."""
+    out = raw_git(repo, "-c", "core.quotePath=true", "diff-tree", "-r", "-z", "--no-renames",
+                  base, commit)
+    fields = out.split(b"\0")
+    entries = {}
+    index = 0
+    while index + 1 < len(fields) and fields[index]:
+        meta, path = fields[index].decode(), fields[index + 1].decode("utf-8", "surrogateescape")
+        index += 2
+        _, new_mode, _, new_blob, status = meta.lstrip(":").split(" ")
+        entries[path] = None if status == "D" else (new_mode, new_blob)
+    return entries
+
+
+def module_paths(module, files):
+    """In-repository files a module name can be: a/b/c.py or a/b/c/__init__.py, at the
+    repository root (cctbx_project and phenix keep their packages there)."""
+    if not module:
+        return set()
+    base = module.replace(".", "/")
+    return {path for path in (base + ".py", base + "/__init__.py") if path in files}
+
+
+def imports_and_names(source, path, files):
+    """Revision 19 (plan revision 6): read one changed Python file with ast, never running
+    it, and return (in-repository files it imports, files it names by a literal path).
+    `import a.b` gives a/b(.py|/__init__.py) and the packages a and a.b; `from a import b`
+    gives a and a/b; a relative import is resolved from the file's own package. A literal
+    string naming an existing file of the repository, relative to the file's directory or to
+    the repository root, counts as named. Dynamic imports (importlib, __import__, exec) and
+    computed paths are not seen. Returns None when the file cannot be parsed."""
+    try:
+        tree = ast.parse(source, filename=path)
+    except (SyntaxError, ValueError):
+        return None
+    package = path.split("/")[:-1]
+    imported, named = set(), set()
+
+    def add(module):
+        parts = module.split(".")
+        for index in range(1, len(parts) + 1):
+            imported.update(module_paths(".".join(parts[:index]), files))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                add(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                if node.level - 1 > len(package):
+                    continue
+                prefix = package[:len(package) - (node.level - 1)]
+                base = ".".join(prefix + ([node.module] if node.module else []))
+            else:
+                base = node.module or ""
+            if base:
+                add(base)
+            for alias in node.names:
+                if alias.name != "*":
+                    imported.update(module_paths(f"{base}.{alias.name}" if base else alias.name, files))
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            text = node.value.strip()
+            if not text or "\n" in text or len(text) > 300 or text.startswith("/"):
+                continue
+            for candidate in ("/".join(package + [text]), text):
+                normal = [part for part in candidate.split("/") if part not in ("", ".")]
+                while ".." in normal:
+                    index = normal.index("..")
+                    if index == 0:
+                        normal = None
+                        break
+                    del normal[index - 1:index + 1]
+                if normal and "/".join(normal) in files:
+                    named.add("/".join(normal))
+    imported.discard(path)
+    named.discard(path)
+    return imported, named
+
+
+def resolve_commit(repo, ref, what):
+    """Repair 1 (review finding 3): the refusal names no path, so a recompute from another
+    spelling of the repository path gives the same text."""
+    code, out, err = git_query(repo, "rev-parse", "--verify", "-q", ref + "^{commit}")
+    if code != 0 or out.strip() != ref:
+        raise CarryOverRefused(f"{what} {ref} is not a commit in the repository")
+    return out.strip()
+
+
+def commit_message(repo, commit):
+    """The commit's message bytes exactly (what is published), without author, committer
+    and dates."""
+    raw = raw_git(repo, "cat-file", "commit", commit)
+    header, separator, message = raw.partition(b"\n\n")
+    return message if separator else b""
+
+
+def carry_block(repo, old, new, lines):
+    """The carry-over checks for one repository block, appending the report to `lines`.
+
+    Repair 2 (review 2, finding 1): first every check that cannot be waived (the same remote,
+    destination and branch; every commit resolves, with its recorded tree, as one commit on its
+    recorded base; the old base is an ancestor of the new base; the same set of changed paths),
+    any of which raises CarryOverRefused at once. Then every content comparison is made and
+    recorded (blobs, the diff, upstream commits touching changed paths, the commit message), and
+    all content differences together end the section as `difference (NAME): ...` lines and a
+    `repository NAME: REFUSED: N content difference(s)` result, which a Developer may waive.
+    Returns the list of content differences (empty when the block passes)."""
+    name = new["repository"]
+    lines += [f"== repository: {name}",
+              f"reviewed: base {old['base']} commit {old['commit']} tree {old['tree']}",
+              f"outgoing: base {new['base']} commit {new['commit']} tree {new['tree']}"]
+    for key in ("remote", "remote_url", "branch"):
+        if old[key] != new[key]:
+            raise CarryOverRefused(f"the {key} differs between the reviewed and the outgoing record")
+    for block, what in ((old, "reviewed"), (new, "outgoing")):
+        resolve_commit(repo, block["base"], f"{what} base")
+        resolve_commit(repo, block["commit"], f"{what} commit")
+        if git(repo, "rev-parse", block["commit"] + "^{tree}").strip() != block["tree"]:
+            raise CarryOverRefused(f"{what} commit {block['commit']} does not have the recorded "
+                                   f"tree {block['tree']}")
+        parents = git(repo, "rev-list", "--parents", "-n", "1", block["commit"]).split()[1:]
+        if parents != [block["base"]]:
+            raise CarryOverRefused(f"{what} commit {block['commit']} is not one commit on its "
+                                   f"recorded base {block['base']}")
+    code, _, err = git_query(repo, "merge-base", "--is-ancestor", old["base"], new["base"])
+    if code != 0:
+        raise CarryOverRefused(f"the reviewed base {old['base']} is not an ancestor of the "
+                               f"outgoing base {new['base']}"
+                               + (f" ({err.strip()})" if code != 1 and err.strip() else ""))
+    lines.append("reviewed base is an ancestor of the outgoing base: yes")
+    reviewed = changed_entries(repo, old["base"], old["commit"])
+    outgoing = changed_entries(repo, new["base"], new["commit"])
+    if not outgoing:
+        raise CarryOverRefused("the outgoing commit changes no file")
+    if set(reviewed) != set(outgoing):
+        only_r = sorted(set(reviewed) - set(outgoing))
+        only_o = sorted(set(outgoing) - set(reviewed))
+        raise CarryOverRefused(f"the commits change different paths "
+                               f"(reviewed only: {' '.join(only_r) or 'none'}; "
+                               f"outgoing only: {' '.join(only_o) or 'none'})")
+    lines.append(f"changed paths: {len(outgoing)} (the same set in both commits)")
+    # Content comparisons: each is made and recorded, whatever the others find.
+    differences = []
+    differing = []
+    for path in sorted(outgoing):
+        before, after = reviewed[path], outgoing[path]
+        same = before == after
+        describe = (lambda entry: "deleted" if entry is None else f"{entry[0]} {entry[1]}")
+        lines.append(f"blob {'same' if same else 'DIFFERS'} reviewed {describe(before)} "
+                     f"outgoing {describe(after)} {path}")
+        if not same:
+            differing.append(path)
+    if differing:
+        differences.append(_checker.DIFF_BLOBS + " ".join(differing))
+    reviewed_diff = raw_git(repo, *DIFF, old["base"], old["commit"])
+    outgoing_diff = raw_git(repo, *DIFF, new["base"], new["commit"])
+    lines.append(f"diff sha256 reviewed {hashlib.sha256(reviewed_diff).hexdigest()} "
+                 f"outgoing {hashlib.sha256(outgoing_diff).hexdigest()} "
+                 f"({len(outgoing_diff)} bytes)")
+    if reviewed_diff != outgoing_diff:
+        lines.append("diff: DIFFERS")
+        differences.append(_checker.DIFF_DIFF)
+    else:
+        lines.append("diff: byte-identical")
+    upstream = git(repo, "rev-list", "--reverse", f"{old['base']}..{new['base']}").split()
+    lines.append(f"upstream commits: {len(upstream)}")
+    touched_changed, flagged = [], {kind: set() for kind in FLAG_KINDS}
+    upstream_paths = {}
+    for commit in upstream:
+        # -m: a merge is compared with each parent, so a path brought in by either side counts.
+        out = raw_git(repo, "-c", "core.quotePath=true", "diff-tree", "-r", "-m", "-z",
+                      "--no-renames", "--no-commit-id", "--name-status", commit)
+        fields = [field.decode("utf-8", "surrogateescape") for field in out.split(b"\0") if field]
+        files = sorted(set(zip(fields[0::2], fields[1::2])), key=lambda item: (item[1], item[0]))
+        lines.append(f"upstream commit {commit}: {len(files)} file(s)")
+        upstream_paths[commit] = [path for _, path in files]
+        for status, path in files:
+            flags = upstream_flags(path)
+            lines.append(f"  {status} {path}" + (f" [{','.join(flags)}]" if flags else ""))
+            for kind in flags:
+                flagged[kind].add(path)
+            if path in outgoing and f"{commit[:12]} {path}" not in touched_changed:
+                touched_changed.append(f"{commit[:12]} {path}")
+    # The net base-to-base change is covered by the per-commit rows; it is kept as a guard.
+    net = set(git(repo, "-c", "core.quotePath=true", "diff", "--name-only", "--no-renames",
+                  old["base"], new["base"]).splitlines())
+    reported = {entry.split(" ", 1)[1] for entry in touched_changed}
+    if (net & set(outgoing)) - reported:
+        raise CarryOverRefused("upstream changed paths that no upstream commit lists: "
+                               + " ".join(sorted((net & set(outgoing)) - reported)))
+    if touched_changed:
+        lines.append("upstream commits touching a changed path: " + "; ".join(touched_changed))
+        differences.append(_checker.DIFF_TOUCH + "; ".join(touched_changed))
+    else:
+        lines.append("upstream commits touching a changed path: none")
+    lines.append(_checker.FLAGGED_INTRO + ", ".join(f"{kind} {len(flagged[kind])}"
+                                                     for kind in FLAG_KINDS))
+    for kind in FLAG_KINDS:
+        lines.append(f"flagged {kind}: {' '.join(sorted(flagged[kind])) or 'none'}")
+    # Plan revision 6 (a): upstream files that a changed Python file imports or names
+    # (information only; dynamic imports are not seen).
+    touched = set().union(*(set(paths) for paths in upstream_paths.values())) if upstream_paths else set()
+    files = set(path.decode("utf-8", "surrogateescape") for path in raw_git(
+        repo, "-c", "core.quotePath=true", "ls-tree", "-r", "-z", "--name-only", new["commit"]).split(b"\0") if path)
+    readable, unreadable, imported, named = 0, [], [], []
+    for path in sorted(outgoing):
+        if outgoing[path] is None or not path.endswith(".py"):
+            continue
+        source = raw_git(repo, "cat-file", "blob", outgoing[path][1])
+        found = imports_and_names(source, path, files)
+        if found is None:
+            unreadable.append(path)
+            continue
+        readable += 1
+        imported += [f"{target} (imported by {path})" for target in sorted(found[0] & touched)]
+        named += [f"{target} (named by {path})" for target in sorted(found[1] & touched)]
+    lines.append(f"changed Python files read for imports: {readable} (not parsed: "
+                 f"{' '.join(unreadable) or 'none'})")
+    lines.append(f"{_checker.IMPORTED_LABEL}: {'; '.join(imported) or 'none'}")
+    lines.append(f"{_checker.NAMED_LABEL}: {'; '.join(named) or 'none'}")
+    # Repair 1 (review finding 4): the published message is part of what was read.
+    reviewed_message = commit_message(repo, old["commit"])
+    outgoing_message = commit_message(repo, new["commit"])
+    lines.append(f"commit message sha256 reviewed {hashlib.sha256(reviewed_message).hexdigest()} "
+                 f"outgoing {hashlib.sha256(outgoing_message).hexdigest()}")
+    if reviewed_message != outgoing_message:
+        lines.append("commit message: DIFFERS")
+        differences.append(_checker.DIFF_MESSAGE)
+    else:
+        lines.append("commit message: identical")
+    lines += [f"difference ({name}): {text}" for text in differences]
+    return differences
+
+
+def repository_paths(words, names):
+    """REPO arguments, in the pattern of `check --repository NAME`: NAME=PATH for each
+    repository block (NAME is the block's `repository:` value). With one block, one bare PATH
+    is that block's repository."""
+    if len(names) == 1 and len(words) == 1 and "=" not in words[0]:
+        return {next(iter(names)): Path(words[0])}
+    paths = {}
+    for word in words:
+        name, separator, path = word.partition("=")
+        if not separator or not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9._-]*", name) or not path:
+            raise CarryOverRefused(f"with several repository blocks give each repository as "
+                                   f"NAME=PATH (NAME as in the block's repository: line): {word}")
+        if name in paths:
+            raise CarryOverRefused(f"repository named twice: {name}")
+        paths[name] = Path(path)
+    return paths
+
+
+def path_free(refusal, repo):
+    """A refusal's text with the repository path replaced, so that it depends only on the
+    repository's content and its NAME (repair 1, review finding 3)."""
+    text = " ".join(str(refusal).split())
+    for spelling in {str(repo), str(Path(repo).absolute()), str(Path(repo).resolve())}:
+        if spelling and spelling != ".":
+            text = text.replace(spelling, "<repository>")
+    return text
+
+
+def carry_over_lines(repos_words, reviewed, outgoing, fetch=False):
+    """Revision 19: CARRYOVER.txt in its fixed form, and whether the check passed. Every
+    repository block is checked on its own, and the result is OK only when all pass."""
+    lines = [CARRYOVER_HEADER]
+    try:
+        old_bytes, new_bytes = reviewed.read_bytes(), outgoing.read_bytes()
+        lines.append(f"reviewed_outgoing_sha256: {hashlib.sha256(old_bytes).hexdigest()}")
+        lines.append(f"outgoing_sha256: {hashlib.sha256(new_bytes).hexdigest()}")
+        old_blocks = {block["repository"]: block for block in parse_outgoing(reviewed)}
+        new_blocks = {block["repository"]: block for block in parse_outgoing(outgoing)}
+        if set(old_blocks) != set(new_blocks):
+            raise CarryOverRefused("the records name different repositories (reviewed: "
+                                   f"{' '.join(sorted(old_blocks))}; outgoing: "
+                                   f"{' '.join(sorted(new_blocks))})")
+        repos = repository_paths(repos_words, new_blocks)
+        missing = sorted(set(new_blocks) - set(repos))
+        extra = sorted(set(repos) - set(new_blocks))
+        if missing or extra:
+            raise CarryOverRefused("each repository block needs exactly one REPO (missing: "
+                                   f"{' '.join(missing) or 'none'}; not in the records: "
+                                   f"{' '.join(extra) or 'none'})")
+    except CarryOverRefused as refusal:
+        return lines + [f"CARRYOVER REFUSED: {refusal}"], False
+    except (ValueError, OSError) as error:
+        return lines + [f"CARRYOVER REFUSED: {error}"], False
+    refusals = []
+    for name in sorted(new_blocks):
+        try:
+            if not repos[name].is_dir():
+                raise CarryOverRefused("repository directory not found")
+            if fetch:
+                git(repos[name], "fetch", new_blocks[name]["remote"])
+            differences = carry_block(repos[name], old_blocks[name], new_blocks[name], lines)
+            if differences:
+                result = _checker.content_result(len(differences))
+                lines.append(f"repository {name}: REFUSED: {result}")
+                refusals.append(f"{name}: {result}")
+            else:
+                lines.append(f"repository {name}: OK")
+        except (CarryOverRefused, ValueError, OSError) as refusal:
+            if not any(line == f"== repository: {name}" for line in lines):
+                lines.append(f"== repository: {name}")
+            reason = path_free(refusal, repos[name])
+            lines.append(f"repository {name}: REFUSED: {reason}")
+            refusals.append(f"{name}: {reason}")
+    if refusals:
+        return lines + ["CARRYOVER REFUSED: " + "; ".join(refusals)], False
+    return lines + [CARRYOVER_OK], True
+
+
+def carry_over_command(args):
+    lines, passed = carry_over_lines(args.repo, args.reviewed, args.outgoing, args.fetch)
+    text = "".join(line + "\n" for line in lines)
+    if args.expect:
+        # The PUBLISH precheck: the live repositories must still give the frozen file, and it
+        # must be an OK result. A result that differs or cannot be computed is refused.
+        # Plan revision 6 (b): a refused result is accepted only when it is the frozen file and
+        # the packet beside it holds a valid ADDENDUM_WAIVER.md (repair 2: its form and
+        # identities are checked, and it must list exactly the recorded differences).
+        waived = False
+        if (not passed and args.expect.is_file()
+                and args.expect.read_bytes() == text.encode("utf-8")
+                and (args.expect.parent / _checker.ADDENDUM_WAIVER).exists()):
+            try:
+                validate_waiver(args.expect.parent)
+                waived = True
+            except ValueError as error:
+                print(f"ADDENDUM_WAIVER.md refused: {error}", file=sys.stderr)
+        if (not args.expect.is_file() or args.expect.read_bytes() != text.encode("utf-8")
+                or (not passed and not waived)):
+            sys.stdout.write(text)
+            print(f"CARRYOVER DIFFERS from {args.expect}: the recomputed carry-over is not the "
+                  "frozen CARRYOVER.txt (or it refused without ADDENDUM_WAIVER.md)", file=sys.stderr)
+            return 1
+        print(f"CARRYOVER SAME as {args.expect}" + ("" if passed else
+              f" (refused; the addendum is waived in {_checker.ADDENDUM_WAIVER})"), file=sys.stderr)
+        if not passed:
+            sys.stdout.write(text)
+            return 0
+    if args.output:
+        with open(args.output, "x", encoding="utf-8", newline="\n") as stream:
+            stream.write(text)
+        print(f"CARRYOVER written: {args.output}", file=sys.stderr)
+    sys.stdout.write(text)
+    return 0 if passed else 1
+
+
+def packet_has_carryover(packet):
+    """Whether a directory holds, or its MANIFEST.sha256 lists, a CARRYOVER.txt, or holds
+    evidence/reviewed/."""
+    manifest = packet / "MANIFEST.sha256"
+    listed = []
+    if manifest.is_file() and not manifest.is_symlink():
+        listed = [line.split("  ", 1)[-1] for line in
+                  manifest.read_text(encoding="utf-8", errors="replace").splitlines()]
+    return (any(name.split("/")[-1] == "CARRYOVER.txt" for name in listed)
+            or (packet / "CARRYOVER.txt").exists() or (packet / "CARRYOVER.txt").is_symlink()
+            or any(True for _ in packet.rglob("CARRYOVER.txt"))
+            or (packet / "evidence" / "reviewed").exists())
+
+
+def validate_waiver(packet):
+    """Repair 2 (review 2, finding 3): the tools check ADDENDUM_WAIVER.md's fixed form and
+    identities with the checker's own rules (an ordinary file, the reviewed and outgoing
+    identities, exactly the recorded differences, waivable kinds only)."""
+    carry = _checker.carryover_evidence(packet)
+    if carry is None or not carry["refused"]:
+        fail("ADDENDUM_WAIVER.md without a refused CARRYOVER.txt")
+    _checker.addendum_waiver(packet, carry)
+
+
+def check_carryover(args, block):
+    """`check` and the carry-over (revisions 19, repairs 1 and 2).
+
+    Without --packet: refused when the OUTGOING.txt sits in a directory that holds a
+    CARRYOVER.txt, a MANIFEST.sha256 listing one, or evidence/reviewed/ (use --packet).
+    With --packet DIR: DIR is the directory of OUTGOING.txt; its MANIFEST.sha256 must verify;
+    when it holds CARRYOVER.txt, every repository block needs a repository (NAME=PATH with
+    --repos, or the one REPO for a one-block record), the whole carry-over is recomputed and
+    must equal the frozen file byte for byte, and a refused result is accepted only with a
+    valid ADDENDUM_WAIVER.md. A packet that lists or holds CARRYOVER.txt anywhere else, or holds
+    evidence/reviewed/, without one at its top level is refused."""
+    outgoing = args.outgoing
+    packet = args.packet  # bound to the approved identity by check_packet_identity()
+    frozen = packet / "CARRYOVER.txt"
+    if not frozen.exists() and not frozen.is_symlink():
+        if packet_has_carryover(packet):
+            fail("the packet lists or holds a CARRYOVER.txt (or evidence/reviewed/) but has no "
+                 "CARRYOVER.txt beside OUTGOING.txt: the carry-over cannot be recomputed")
+        print("PACKET VERIFIED (no carry-over)")
+        return
+    reviewed = packet / _checker.REVIEWED_OUTGOING
+    if frozen.is_symlink() or not frozen.is_file() or reviewed.is_symlink() or not reviewed.is_file():
+        fail("CARRYOVER.txt is present, but it or evidence/reviewed/OUTGOING.txt is not an "
+             "ordinary file: the carry-over cannot be recomputed")
+    blocks = parse_outgoing(outgoing)
+    if args.repos:
+        words = list(args.repos)
+    elif len(blocks) == 1:
+        words = [str(args.repo)]
+    else:
+        fail("the packet holds CARRYOVER.txt and several repository blocks: give every "
+             "repository as NAME=PATH with --repos, so that all of them are recomputed")
+    lines, passed = carry_over_lines(words, reviewed, outgoing)
+    text = "".join(line + "\n" for line in lines)
+    if frozen.read_bytes() != text.encode("utf-8"):
+        fail("the carry-over recomputed for every repository differs from the frozen CARRYOVER.txt")
+    if not passed:
+        if not (packet / _checker.ADDENDUM_WAIVER).exists():
+            fail("CARRYOVER.txt records a refusal and the packet has no ADDENDUM_WAIVER.md")
+        validate_waiver(packet)
+    print(f"CARRYOVER RECOMPUTED {len(blocks)} repository block(s): same as the frozen "
+          "CARRYOVER.txt" + ("" if passed else " (refused; the addendum is waived)"))
+
+
 def vet_command(words):
     """Accept only the documented push command shape and refuse everything
     else. Git accepts abbreviated options (--ta for --tags), combined short
@@ -391,6 +862,13 @@ def main():
     check.add_argument("--fetch", action="store_true", help="git fetch the remote first (network)")
     check.add_argument("--dry-run", action="store_true",
                        help="git push --dry-run and require one fast-forward of the branch (network)")
+    check.add_argument("--packet", type=Path, help="revision 19 (required): the frozen packet "
+                       "directory holding OUTGOING.txt; its manifest is verified and any "
+                       "carry-over is recomputed for every repository")
+    check.add_argument("--identity", help="revision 19 (required): the packet identity shown on "
+                       "the PUBLICATION screen; refused unless it is the SHA-256 of DIR/MANIFEST.sha256")
+    check.add_argument("--repos", nargs="+", metavar="NAME=PATH", help="with --packet: every "
+                       "repository block's repository, for the carry-over recompute")
     out = commands.add_parser("outgoing", help="write the OUTGOING.txt block for one commit")
     out.add_argument("repo", type=Path)
     out.add_argument("--commit", required=True, help="the one outgoing commit")
@@ -408,10 +886,23 @@ def main():
                          help="confirm the branch is still at the base (before the push)")
     confirm.add_argument("--tags", help="after the push (required): the tag state COUNT/SHA256 "
                          "that confirm --before printed")
+    carry = commands.add_parser("carry-over", help="revision 19: check that a completed outside "
+                                "reading carries over to a restaged commit; writes CARRYOVER.txt")
+    carry.add_argument("repo", nargs="+", help="the repository: PATH when the records have one "
+                       "block, otherwise NAME=PATH for every block (NAME as in its repository: line)")
+    carry.add_argument("--reviewed", type=Path, required=True,
+                       help="the OUTGOING.txt of the packet the outside reader read")
+    carry.add_argument("--outgoing", type=Path, required=True,
+                       help="the OUTGOING.txt of the restaged packet")
+    carry.add_argument("--fetch", action="store_true", help="git fetch each remote first (network)")
+    carry.add_argument("--output", type=Path, help="new file to write CARRYOVER.txt to (an "
+                       "existing file is refused); the text is also printed")
+    carry.add_argument("--expect", type=Path, help="a frozen CARRYOVER.txt that the output must "
+                       "equal byte for byte (at the PUBLISH precheck)")
     vet = commands.add_parser("vet", help="refuse forbidden forms in a proposed push command")
     vet.add_argument("words", nargs=argparse.REMAINDER)
     args = parser.parse_args()
-    if args.command in ("check", "outgoing", "confirm") and shutil.which("git") is None:
+    if args.command in ("check", "outgoing", "confirm", "carry-over") and shutil.which("git") is None:
         # Revision 16: these read the live repository with git; vet needs no git.
         print(f"ERROR: requires git on PATH: `{args.command}` reads the repository with git "
               "(`vet` needs no git)", file=sys.stderr)
@@ -423,6 +914,8 @@ def main():
             generate_outgoing(args)
         elif args.command == "confirm":
             confirm_command(args)
+        elif args.command == "carry-over":
+            return carry_over_command(args)
         else:
             vet_command(args.words)
     except (ValueError, OSError) as error:

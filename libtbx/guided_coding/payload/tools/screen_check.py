@@ -356,7 +356,7 @@ def developer_view(kind, body):
         fail("missing next action in Developer View")
 
 
-def reading_matches(kind, path, evidence_id, gate, disposition=None):
+def reading_matches(kind, path, evidence_id, gate, disposition=None, carried=None):
     """Bind the screen's GATE to one verbatim reading of this exact packet.
 
     The reading states its scope: integration, publication, or both.
@@ -373,6 +373,25 @@ def reading_matches(kind, path, evidence_id, gate, disposition=None):
     value; before, only column-0 lines were read and these were ignored.
     The reading file is only read, and the GATE names the SHA-256 of its
     exact bytes.
+
+    Revision 19 (item 2.2): an indented, bulleted, quoted, bold or table copy
+    whose value is a pass word (`| Packet identity | Matches |`, `Verified`,
+    `Pass`, `Passed`, ...) or the plain value followed by one (`- Packet
+    identity: `<id>` — matches.`) is a reviewer's integrity note, not a
+    conflicting value (passing_note). Conflicting values still block, and so
+    does a second column-0 `Scope:` line with another value, even a prose
+    one such as `Scope: Restage of ...`: the checker cannot tell a
+    description from a narrower or wider scope.
+
+    Revision 19 (carry-over): `carried` is carryover_evidence() of the packet:
+    the identity of the earlier packet that the outside reader read, from
+    CARRYOVER.txt and the packet's evidence/reviewed/ copies, and the mapping of
+    the reviewed identities to the outgoing ones. A reading that names it
+    instead of this packet's identity is accepted for publication only; check()
+    then also requires the LIMITS line (CARRYOVER_LIMITS). A carried `PROCEED
+    IF` keeps its condition: the disposition is still required, addresses the
+    condition as worded and states the mapping of every reviewed identity the
+    condition names (carried_condition).
     """
     if not path or not path.is_file() or path.is_symlink():
         fail("verbatim outside reading file is required")
@@ -383,16 +402,23 @@ def reading_matches(kind, path, evidence_id, gate, disposition=None):
         fail("outside reading is not UTF-8")
     identities = set(re.findall(rf"^Packet identity:\s*(\S.*?)\s*$", reading, re.M))
     verdicts = sorted(set(re.findall(r"^Verdict:\s*(.+?)\s*$", reading, re.M)))
-    if identities != {evidence_id} or len(verdicts) != 1 or not re.fullmatch(r"PROCEED(?: IF .+)?", verdicts[0]):
+    named = evidence_id
+    if carried is not None and kind == "publication" and identities == {carried["reviewed_id"]}:
+        named = carried["reviewed_id"]
+    if identities != {named} or len(verdicts) != 1 or not re.fullmatch(r"PROCEED(?: IF .+)?", verdicts[0]):
+        if carried is None and len(identities) == 1 and kind == "publication":
+            fail("outside reading does not name this packet with a proceeding verdict (a "
+                 "reading of an earlier packet carries over only with CARRYOVER.txt and "
+                 "evidence/reviewed/ in this packet)")
         fail("outside reading does not name this packet with a proceeding verdict")
     declared = set(value.strip() for value in re.findall(r"^Scope:(.*)$", reading, re.M))
     if len(declared) != 1:
         fail("outside reading needs exactly one Scope line (identical repeats count as "
              "one): integration, publication, or integration and publication")
     scopes = [declared.pop()]
-    plain = {"Packet identity": {evidence_id}, "Verdict": set(verdicts), "Scope": set(scopes)}
+    plain = {"Packet identity": {named}, "Verdict": set(verdicts), "Scope": set(scopes)}
     for label, value in decorated_fields(reading):
-        if value not in plain[label]:
+        if value not in plain[label] and not passing_note(value, plain[label]):
             fail(f"outside reading has an indented, bulleted, quoted or bold {label} line "
                  f"that differs from its {label} line: {value[:60]!r}")
     if scopes[0] not in ("integration", "publication", "integration and publication"):
@@ -419,12 +445,20 @@ def reading_matches(kind, path, evidence_id, gate, disposition=None):
             fail("waiver requires the Developer's quoted authorization")
         if status == "PENDING" and not re.search(r"^Pending: Developer \S.*$", note, re.M):
             fail("pending disposition requires the Developer decision")
+        if named != evidence_id:
+            carried_condition(condition, note, carried, evidence_id)
         expected.append(f"Disposition SHA256: {digest(disposition.read_bytes())}")
     elif disposition:
         fail("unconditioned verdict has no disposition")
     if gate != expected:
         fail("screen gate does not identify the outside reading")
     return status
+
+
+def reading_identities(path):
+    """The column-0 Packet identity values of a reading (as reading_matches reads them)."""
+    return set(re.findall(r"^Packet identity:\s*(\S.*?)\s*$",
+                          path.read_bytes().decode("utf-8"), re.M))
 
 
 WAIVER_GATE = "Reading: WAIVED by the Developer"
@@ -501,6 +535,20 @@ def waiver_matches(path, evidence_id, gate, root):
 
 
 DECORATION = "*_`\"'"
+# Revision 19 (item 2.2): words with which a reviewer reports that a check passed.
+PASS_WORDS = r"(?:verified|matches|match|matched|pass|passed|ok|confirmed|identical|correct)"
+
+
+def passing_note(value, plain):
+    """Revision 19 (item 2.2): True when a decorated field's value is a pass word alone
+    (`Matches`, `Verified`, `Pass`, `Passed`, ...) or one of the plain values followed by a
+    pass word (`<id> — matches.`), with decoration and closing punctuation ignored. Such a
+    row reports a check, it does not state another value."""
+    bare = re.sub(rf"[{re.escape(DECORATION)}]", "", value).strip()
+    if re.fullmatch(rf"{PASS_WORDS}[.!]?", bare, re.I):
+        return True
+    return any(re.fullmatch(rf"{re.escape(item)}\s*(?:[-–—:,;(]\s*)?{PASS_WORDS}[.!)]*", bare, re.I)
+               for item in plain)
 
 
 def decorated_fields(reading):
@@ -604,6 +652,11 @@ def suite_waiver(path):
     spaces) must be `SERVER_SUITE: <outcome>`, as PUBLICATION_PACKET.md
     says, in the draft and the final check; before, any other first line
     passed unchecked. What the outcome says is not judged here.
+
+    Revision 19 (plan revision 5): the server suite is never carried over to a
+    restaged commit. A first line `SERVER_SUITE: CARRIED OVER ...` is refused: run
+    the suite, or quote the Developer's waiver; CARRYOVER.txt only informs that
+    decision.
     """
     try:
         lines = path.read_text(encoding="utf-8-sig").splitlines()
@@ -611,6 +664,9 @@ def suite_waiver(path):
         fail("publication evidence is not UTF-8: SERVER_SUITE.txt")
     if not lines or not re.match(r"SERVER_SUITE: \S", lines[0].strip()):
         fail("SERVER_SUITE.txt first line must be 'SERVER_SUITE: <outcome>'")
+    if re.match(r"SERVER_SUITE: CARRIED\s+OVER\b", lines[0].strip(), re.I):
+        fail("the server suite is never carried over to a restaged commit: run it, or quote "
+             "the Developer's waiver (SERVER_SUITE: NOT RUN)")
     if not lines[0].strip().startswith("SERVER_SUITE: NOT RUN"):
         return
     for index, line in enumerate(lines):
@@ -626,10 +682,494 @@ def suite_waiver(path):
     fail("suite not run without the Developer's quoted waiver")
 
 
+# Revision 19: the reading carry-over after a restage (publication_precheck.py carry-over).
+CARRYOVER_HEADER = "CARRYOVER (publication_precheck.py carry-over, revision 19)"
+CARRYOVER_OK = "CARRYOVER OK reading"
+REVIEWED_MANIFEST = "evidence/reviewed/MANIFEST.sha256"
+REVIEWED_OUTGOING = "evidence/reviewed/OUTGOING.txt"
+# The LIMITS line a carried-over reading needs (the Developer's condition, 2026-10-18), and
+# the key words the checker enforces on the one line that contains "reading carried over".
+CARRYOVER_LIMITS = ("Reading carried over: the check shows the changed files are identical and "
+                    "untouched upstream; it does not show that upstream changes elsewhere "
+                    "cannot interact with them.")
+CARRYOVER_WORDS = ("reading carried over", "identical", "untouched upstream", "does not show",
+                   "upstream changes elsewhere", "cannot interact")
+# Upstream files CARRYOVER.txt flags for the Developer's server-suite decision (information
+# only; the suite is never carried over).
+FLAG_KINDS = ("compiled", "test", "configuration", "data", "checkout")
+FLAGGED_INTRO = ("flagged upstream files (information for the server-suite decision; the suite "
+                 "is not carried over): ")
+# Plan revision 6 (a): upstream files a changed Python file imports or names by a literal path.
+IMPORTED_LABEL = "upstream files imported by a changed file"
+NAMED_LABEL = "upstream files named by a changed file"
+COMPILED_SUFFIXES = (".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".ipp", ".pyx", ".cu", ".so")
+# Repair 1 (review finding 7): files that change how the identical files are checked out or
+# archived (attributes, submodules).
+CHECKOUT_NAMES = (".gitattributes", ".gitmodules")
+COMPILED_NAMES = ("SConscript", "SConstruct", "libtbx_config")
+CONFIG_SUFFIXES = (".cfg", ".ini", ".toml", ".yaml", ".yml", ".conf", ".phil")
+CONFIG_NAMES = ("SConscript", "SConstruct", "libtbx_config", "libtbx_refresh.py", "setup.py",
+                "setup.cfg", "pyproject.toml", "CMakeLists.txt", "Makefile", "requirements.txt",
+                "environment.yml", "conftest.py", "run_tests.py")
+DATA_SUFFIXES = (".pdb", ".cif", ".mmcif", ".ent", ".mtz", ".hkl", ".sca", ".ccp4", ".mrc",
+                 ".map", ".dat", ".csv", ".tsv", ".npy", ".npz", ".pkl", ".pickle", ".gz",
+                 ".bz2", ".zip", ".tar", ".json", ".xml", ".seq", ".fa", ".fasta", ".pir")
+
+
+def upstream_flags(path):
+    """The kinds (FLAG_KINDS order) of an upstream file: compiled (C/C++ sources and headers,
+    SCons files, libtbx_config), test (tst_*, test_*, *_test.py, or under tests/, test/ or
+    regression/), configuration (build, setup and parameter files) and data (structure,
+    reflection, map and other data files, or under data/)."""
+    parts = path.split("/")
+    name = parts[-1]
+    lowered = name.lower()
+    kinds = []
+    if lowered.endswith(COMPILED_SUFFIXES) or name in COMPILED_NAMES:
+        kinds.append("compiled")
+    if (re.match(r"(?:tst|test)_", name) or lowered.endswith("_test.py")
+            or any(part in ("tests", "test", "regression") for part in parts[:-1])):
+        kinds.append("test")
+    if lowered.endswith(CONFIG_SUFFIXES) or name in CONFIG_NAMES:
+        kinds.append("configuration")
+    if lowered.endswith(DATA_SUFFIXES) or "data" in parts[:-1]:
+        kinds.append("data")
+    if name in CHECKOUT_NAMES:
+        kinds.append("checkout")
+    return tuple(kinds)
+
+
+def carryover_section(lines, name):
+    """The lines of one repository's section of CARRYOVER.txt, from `== repository: NAME`
+    through its `repository NAME: ...` result line (empty when absent)."""
+    try:
+        first = lines.index(f"== repository: {name}")
+    except ValueError:
+        return []
+    for index in range(first + 1, len(lines)):
+        if lines[index].startswith(f"repository {name}: "):
+            return lines[first:index + 1]
+        if lines[index].startswith("== repository: ") or lines[index].startswith("CARRYOVER "):
+            break
+    return []
+
+
+# Repair 2 (review 2, findings 1 and 5): the content differences, one shared list used by
+# publication_precheck.py to write them and by this checker to decide what may be waived.
+DIFF_BLOBS = "changed file content differs: "
+DIFF_DIFF = "git diff of the outgoing commit is not byte-identical to the reviewed one"
+DIFF_TOUCH = "upstream commits touch changed paths: "
+DIFF_MESSAGE = "the commit message differs from the reviewed one"
+WAIVABLE_REFUSALS = (DIFF_BLOBS, DIFF_DIFF, DIFF_TOUCH, DIFF_MESSAGE)
+
+
+def content_result(count):
+    """The result of a repository section whose only refusals are content differences."""
+    return f"{count} content difference(s)"
+
+
+def consistent_section(section, name):
+    """Revision 19: rebuild one repository's section from the values it states and refuse any
+    difference, so a hand edit that keeps the identities and the final line (a blob marked
+    DIFFERS or same against its values, a count that does not match its rows, an upstream row
+    on a changed path not reported, wrong flags, differences that the rows do not show) is
+    refused. Repair 2: the non-waivable facts (ancestry, the same changed paths) come first;
+    then every content comparison is recorded, and a section with content differences ends
+    with one `difference (NAME): ...` line per difference and `repository NAME: REFUSED: N
+    content difference(s)`. Facts that only Git can establish are rechecked by
+    `publication_precheck.py carry-over --expect` and `check --packet` at the PUBLISH precheck.
+    Returns ({imported, named}, differences)."""
+    rows = iter(section[3:])
+    rebuilt = list(section[:3])
+
+    def take(pattern, what):
+        line = next(rows, None)
+        match = re.fullmatch(pattern, line or "")
+        if not match:
+            fail(f"CARRYOVER.txt is not internally consistent ({name}: {what}): {(line or '')[:80]!r}")
+        return line, match
+    rebuilt.append(take(r"reviewed base is an ancestor of the outgoing base: yes", "ancestor")[0])
+    line, match = take(r"changed paths: ([1-9]\d*) \(the same set in both commits\)", "changed paths")
+    rebuilt.append(line)
+    changed, python, upstream, differing, order = set(), set(), set(), [], []
+    for _ in range(int(match[1])):
+        line, blob = take(r"blob (same|DIFFERS) reviewed (deleted|\d{6} [0-9a-f]{40}) outgoing "
+                          r"(deleted|\d{6} [0-9a-f]{40}) (.+)", "blob rows")
+        if (blob[1] == "same") != (blob[2] == blob[3]) or blob[4] in changed:
+            fail(f"CARRYOVER.txt is not internally consistent ({name}: blob row {blob[4]!r})")
+        changed.add(blob[4])
+        order.append(blob[4])
+        if blob[1] == "DIFFERS":
+            differing.append(blob[4])
+        if blob[4].endswith(".py") and blob[3] != "deleted":
+            python.add(blob[4])
+        rebuilt.append(line)
+    if order != sorted(order):
+        fail(f"CARRYOVER.txt is not internally consistent ({name}: blob rows out of order)")
+    differences = [DIFF_BLOBS + " ".join(differing)] if differing else []
+    line, match = take(r"diff sha256 reviewed ([0-9a-f]{64}) outgoing ([0-9a-f]{64}) \(\d+ bytes\)",
+                       "diff hashes")
+    rebuilt.append(line)
+    if match[1] == match[2]:
+        rebuilt.append(take(r"diff: byte-identical", "diff")[0])
+    else:
+        rebuilt.append(take(r"diff: DIFFERS", "diff")[0])
+        differences.append(DIFF_DIFF)
+    line, match = take(r"upstream commits: (\d+)", "upstream count")
+    rebuilt.append(line)
+    flagged = {kind: set() for kind in FLAG_KINDS}
+    touching = []
+    for _ in range(int(match[1])):
+        line, commit = take(r"upstream commit ([0-9a-f]{40}): (\d+) file\(s\)", "upstream commits")
+        rebuilt.append(line)
+        for _ in range(int(commit[2])):
+            line, row = take(r"  ([A-Z][0-9]*) (.+?)(?: \[([a-z,]+)\])?", "upstream files")
+            path = row[2]
+            flags = upstream_flags(path)
+            if tuple((row[3] or "").split(",") if row[3] else ()) != flags:
+                fail(f"CARRYOVER.txt is not internally consistent ({name}: upstream file {path!r})")
+            if path in changed and f"{commit[1][:12]} {path}" not in touching:
+                touching.append(f"{commit[1][:12]} {path}")
+            for kind in flags:
+                flagged[kind].add(path)
+            upstream.add(path)
+            rebuilt.append(line)
+    if touching:
+        rebuilt.append(take(re.escape("upstream commits touching a changed path: " + "; ".join(touching)),
+                            "touching")[0])
+        differences.append(DIFF_TOUCH + "; ".join(touching))
+    else:
+        rebuilt.append(take(r"upstream commits touching a changed path: none", "touching")[0])
+    rebuilt.append(FLAGGED_INTRO + ", ".join(f"{kind} {len(flagged[kind])}" for kind in FLAG_KINDS))
+    rebuilt += [f"flagged {kind}: {' '.join(sorted(flagged[kind])) or 'none'}" for kind in FLAG_KINDS]
+    for _ in FLAG_KINDS:
+        next(rows, None)
+    next(rows, None)
+    line, read = take(r"changed Python files read for imports: (\d+) \(not parsed: (.+)\)", "imports read")
+    unparsed = [] if read[2] == "none" else read[2].split(" ")
+    if int(read[1]) + len(unparsed) != len(python) or not set(unparsed) <= python:
+        fail(f"CARRYOVER.txt is not internally consistent ({name}: changed Python files read)")
+    rebuilt.append(line)
+    flagged_imports = {}
+    for label, verb in ((IMPORTED_LABEL, "imported"), (NAMED_LABEL, "named")):
+        line, found = take(rf"{re.escape(label)}: (.+)", label)
+        entries = [] if found[1] == "none" else found[1].split("; ")
+        for entry in entries:
+            item = re.fullmatch(rf"(\S+) \({verb} by (\S+)\)", entry)
+            if not item or item[1] not in upstream or item[2] not in python or item[2] in unparsed:
+                fail(f"CARRYOVER.txt is not internally consistent ({name}: {label}: {entry[:60]!r})")
+        flagged_imports[verb] = [entry.split(" ")[0] for entry in entries]
+        rebuilt.append(line)
+    line, message = take(r"commit message sha256 reviewed ([0-9a-f]{64}) outgoing ([0-9a-f]{64})",
+                         "commit message hashes")
+    rebuilt.append(line)
+    if message[1] == message[2]:
+        rebuilt.append(take(r"commit message: identical", "commit message")[0])
+    else:
+        rebuilt.append(take(r"commit message: DIFFERS", "commit message")[0])
+        differences.append(DIFF_MESSAGE)
+    rebuilt += [f"difference ({name}): {text}" for text in differences]
+    rebuilt.append(f"repository {name}: " + (f"REFUSED: {content_result(len(differences))}"
+                                              if differences else "OK"))
+    if rebuilt != section:
+        fail(f"CARRYOVER.txt is not internally consistent ({name}: its flagged lists, its "
+             "differences, its result line or extra lines)")
+    return flagged_imports, differences
+
+
+def waivable(lines):
+    """True when CARRYOVER.txt refused only in repository sections whose result is `N
+    content difference(s)` and every `difference (...)` line is one of WAIVABLE_REFUSALS: a
+    missing or invalid commit, an ancestry failure, other changed paths or a repository
+    mismatch compared no content and cannot be waived (repairs 1 and 2)."""
+    refused = [line.split(": REFUSED: ", 1)[1] for line in lines
+               if re.match(r"repository \S+: REFUSED: ", line)]
+    found = [line.split("): ", 1)[1] for line in lines if re.match(r"difference \(\S+\): ", line)]
+    return (bool(refused) and all(re.fullmatch(r"[1-9]\d* content difference\(s\)", reason)
+                                  for reason in refused)
+            and bool(found) and all(text.startswith(WAIVABLE_REFUSALS) for text in found))
+
+
+def normal(text):
+    return " ".join(text.split()).lower()
+
+
+# Repairs 1-3 (reviews 1-3, finding 2; the Developer's choice A on STOP_1): one LIMITS line
+# must contain the Developer's sentence itself, which is the real requirement. As a backstop,
+# no LIMITS line of a carried or waived reading may make one of these explicit claims (any
+# case): "cannot interact", "can not interact", "can't interact", "no interaction", "does not
+# affect", "do not affect", "cannot affect", "will not affect". Honest limit lines such as
+# "possible interaction ... is not excluded" or "may interact" pass; a paraphrase is the
+# reviewer's matter.
+INTERACTION_CLAIM = re.compile(
+    r"\b(?:cannot|can not|can['’]t)\s+interact\w*|\bno\s+interaction\b"
+    r"|\b(?:does|do|will)\s+not\s+affect\b|\bcannot\s+affect\b", re.I)
+
+
+def interaction_claim(line):
+    """True when a LIMITS line, once the Developer's sentence is removed, claims that nothing
+    upstream can interact with or affect the change."""
+    text = normal(line).replace(normal(CARRYOVER_LIMITS), " ")
+    return bool(INTERACTION_CLAIM.search(text))
+
+
+def carryover_limits_line(line):
+    text = normal(line)
+    sentence = normal(CARRYOVER_LIMITS)
+    if sentence not in text:
+        return False
+    return not interaction_claim(line)
+
+
+def ordinary(path, what):
+    if path.is_symlink() or not path.is_file() or not path.stat().st_size:
+        fail(f"carry-over evidence missing, empty or not an ordinary file: {what}")
+    return path.read_bytes()
+
+
+def carryover_evidence(root, top=None):
+    """Revision 19: the carry-over evidence of a publication packet, or None when the packet
+    has no CARRYOVER.txt. When present it must hold, or the check refuses:
+    - CARRYOVER.txt in the fixed form `publication_precheck.py carry-over` writes, with no
+      refusal, ending with the one line `CARRYOVER OK reading`, and every repository section
+      internally consistent (consistent_section);
+    - evidence/reviewed/MANIFEST.sha256, a copy of the MANIFEST.sha256 of the packet the
+      outside reader read (its SHA-256 is that packet's identity), with an `OUTGOING.txt`
+      entry, and evidence/reviewed/OUTGOING.txt whose SHA-256 is that entry;
+    - CARRYOVER.txt's reviewed_outgoing_sha256 and outgoing_sha256 equal to the SHA-256 of
+      evidence/reviewed/OUTGOING.txt and of this packet's OUTGOING.txt, and its reviewed: and
+      outgoing: lines equal to each repository block of the two records, which name the same
+      repositories, remotes, destinations and branches.
+    The Git facts are established by the tool that wrote CARRYOVER.txt; this checker has no
+    repository, so the PUBLISH precheck recomputes them (`carry-over --expect`, and `check`).
+    Returns {reviewed_id, reviewed_commits, mapping}; mapping pairs each reviewed base, commit
+    and tree with the outgoing one."""
+    top = top or {}
+    path = root / "CARRYOVER.txt"
+    if not path.exists() and not path.is_symlink():
+        # Repair 1 (review finding 1): a CARRYOVER.txt elsewhere in the packet, or the reviewed
+        # copies without one, is refused rather than ignored.
+        if any(found.name == "CARRYOVER.txt" for found in root.rglob("CARRYOVER.txt")) or (
+                root / "evidence" / "reviewed").exists():
+            fail("the packet holds a CARRYOVER.txt or evidence/reviewed/ but no CARRYOVER.txt at "
+                 "its top level")
+        return None
+    try:
+        lines = ordinary(path, "CARRYOVER.txt").decode("utf-8").splitlines()
+    except UnicodeDecodeError:
+        fail("CARRYOVER.txt is not UTF-8")
+    if not lines or lines[0] != CARRYOVER_HEADER:
+        fail("CARRYOVER.txt is not in the fixed form written by publication_precheck.py "
+             "carry-over")
+    refused = lines[-1].startswith("CARRYOVER REFUSED: ")
+    finals = [line for line in lines[1:] if line.startswith("CARRYOVER ")]
+    if refused:
+        if finals != [lines[-1]] or CARRYOVER_OK in lines:
+            fail("CARRYOVER.txt must end with exactly one final CARRYOVER line")
+    else:
+        if any(line.startswith("CARRYOVER REFUSED") or ": REFUSED: " in line for line in lines):
+            fail("CARRYOVER.txt records a refusal: the reading does not carry over (a real "
+                 "addendum is needed)")
+        if lines[-1] != CARRYOVER_OK or lines.count(CARRYOVER_OK) != 1 or finals != [CARRYOVER_OK]:
+            fail(f"CARRYOVER.txt must end with the one line '{CARRYOVER_OK}'")
+
+    def field(name, index):
+        if not re.fullmatch(rf"{name}: {SHA}", lines[index] if len(lines) > index else ""):
+            fail(f"CARRYOVER.txt needs its {name} line in place")
+        return lines[index][len(name) + 2:]
+    reviewed_sha, outgoing_sha = field("reviewed_outgoing_sha256", 1), field("outgoing_sha256", 2)
+    manifest = ordinary(root / REVIEWED_MANIFEST, REVIEWED_MANIFEST)
+    reviewed_outgoing = ordinary(root / REVIEWED_OUTGOING, REVIEWED_OUTGOING)
+    try:
+        entries = [re.fullmatch(r"([0-9a-f]{64})  ([^\n\r]+)", line)
+                   for line in manifest.decode("utf-8").splitlines()]
+    except UnicodeDecodeError:
+        fail(f"{REVIEWED_MANIFEST} is not UTF-8")
+    if not entries or any(entry is None for entry in entries):
+        fail(f"{REVIEWED_MANIFEST} is not a packet manifest")
+    listed = [entry[1] for entry in entries if entry[2] == "OUTGOING.txt"]
+    if len(listed) != 1:
+        fail(f"{REVIEWED_MANIFEST} lists no single OUTGOING.txt")
+    if digest(reviewed_outgoing) != listed[0]:
+        fail(f"{REVIEWED_OUTGOING} is not the OUTGOING.txt that {REVIEWED_MANIFEST} lists")
+    if reviewed_sha != digest(reviewed_outgoing):
+        fail(f"CARRYOVER.txt names another reviewed OUTGOING.txt than {REVIEWED_OUTGOING}")
+    outgoing_path = top.get("OUTGOING.txt", root / "OUTGOING.txt")
+    if outgoing_sha != digest(ordinary(outgoing_path, "OUTGOING.txt")):
+        fail("CARRYOVER.txt names another OUTGOING.txt than this packet's (a stale carry-over "
+             "from an earlier restage?)")
+    old = {block["repository"]: block for block in parse_outgoing(root / REVIEWED_OUTGOING)}
+    new = {block["repository"]: block for block in parse_outgoing(outgoing_path)}
+    if set(old) != set(new):
+        fail("the reviewed and the outgoing OUTGOING.txt name different repositories")
+    names = [line[len("== repository: "):] for line in lines if line.startswith("== repository: ")]
+    if sorted(names) != sorted(new) and not (refused and not names):
+        fail("CARRYOVER.txt does not cover exactly the repositories of both OUTGOING.txt files")
+    covered = 3
+    mapping, flagged, refusals = [], {"imported": [], "named": []}, []
+    for name in names:
+        before, after = old[name], new[name]
+        for key in ("remote", "remote_url", "branch"):
+            if before[key] != after[key]:
+                fail(f"the reviewed and the outgoing {name} blocks name another {key}")
+        section = carryover_section(lines, name)
+        expected = [f"== repository: {name}",
+                    f"reviewed: base {before['base']} commit {before['commit']} tree {before['tree']}",
+                    f"outgoing: base {after['base']} commit {after['commit']} tree {after['tree']}"]
+        if section[:3] != expected:
+            fail(f"CARRYOVER.txt does not record the reviewed and outgoing {name} blocks of the "
+                 "OUTGOING.txt files")
+        result = section[-1][len(f"repository {name}: "):] if section else ""
+        if result.startswith("REFUSED: ") and not refused:
+            fail("CARRYOVER.txt records a refusal: the reading does not carry over")
+        if result.startswith("REFUSED: ") and not re.fullmatch(
+                r"REFUSED: [1-9]\d* content difference\(s\)", result):
+            # A refusal that compared no content: the section stops where the tool stopped.
+            refusals.append(f"{name}: " + result[len("REFUSED: "):])
+        else:
+            found, differences = consistent_section(section, name)
+            for verb, paths in found.items():
+                flagged[verb] += paths
+            if differences:
+                refusals.append(f"{name}: {content_result(len(differences))}")
+        covered += len(section)
+        mapping += [(before[key], after[key]) for key in ("base", "commit", "tree")]
+    if covered + 1 != len(lines):
+        fail("CARRYOVER.txt has lines outside its repository sections")
+    if refused and names and lines[-1] != "CARRYOVER REFUSED: " + "; ".join(refusals):
+        fail("CARRYOVER.txt's final line does not repeat the refusals of its sections")
+    if refused and not names and len(lines) != 4:
+        fail("CARRYOVER.txt has lines outside its repository sections")
+    return {"reviewed_id": digest(manifest), "mapping": mapping, "refused": refused,
+            "lines": lines, "flagged": flagged, "outgoing": new,
+            "reviewed_commits": sorted(block["commit"] for block in old.values())}
+
+
+ADDENDUM_WAIVER = "ADDENDUM_WAIVER.md"
+
+
+def addendum_waiver(root, carry):
+    """Plan revision 6 (b): when carry-over refused, the earlier reading is used only with the
+    Developer's waiver of the addendum, in the packet as ADDENDUM_WAIVER.md, fixed form:
+
+        Addendum: WAIVED
+        Reviewed packet identity: <sha256 of evidence/reviewed/MANIFEST.sha256>
+        Outgoing: <repository> base <40 hex> commit <40 hex> tree <40 hex>   (one per block)
+        Differences (from CARRYOVER.txt):
+        > <each 'difference (NAME): ...' line of CARRYOVER.txt, copied, and nothing else>
+        Developer decision: "<his own words>"
+
+    The identities must be those of this packet and of the read packet; the quoted lines must
+    be exactly the content differences CARRYOVER.txt records (repair 2). Form only: whether the words waive the addendum for these
+    differences is the Developer's decision, judged with the reviewer."""
+    if not waivable(carry["lines"]):
+        fail("this carry-over refusal cannot be waived: only a content difference (changed file "
+             "content, the diff, an upstream commit touching a changed file, the commit message) "
+             "can; a missing or invalid commit, an ancestry failure or a repository mismatch "
+             "needs a new reading")
+    path = root / ADDENDUM_WAIVER
+    try:
+        text = ordinary(path, ADDENDUM_WAIVER).decode("utf-8")
+    except UnicodeDecodeError:
+        fail(f"{ADDENDUM_WAIVER} is not UTF-8")
+    lines = text.splitlines()
+
+    def once(pattern, what):
+        found = [line for line in lines if re.fullmatch(pattern, line)]
+        if len(found) != 1:
+            fail(f"{ADDENDUM_WAIVER} needs exactly one line {what}")
+        return found[0]
+    once(r"Addendum: WAIVED", "'Addendum: WAIVED'")
+    if once(rf"Reviewed packet identity: {SHA}", "'Reviewed packet identity: <sha256>'")[26:] != carry["reviewed_id"]:
+        fail(f"{ADDENDUM_WAIVER} names another reviewed packet identity than evidence/reviewed/")
+    outgoing = sorted(line for line in lines if line.startswith("Outgoing: "))
+    expected = sorted(f"Outgoing: {b['repository']} base {b['base']} commit {b['commit']} tree {b['tree']}"
+                      for b in carry["outgoing"].values())
+    if outgoing != expected:
+        fail(f"{ADDENDUM_WAIVER} does not name this packet's outgoing identities (one 'Outgoing:' "
+             "line per repository block)")
+    once(r'Developer decision: "\S.*"', 'Developer decision: "<his own words>"')
+    start = [index for index, line in enumerate(lines) if line == "Differences (from CARRYOVER.txt):"]
+    if len(start) != 1:
+        fail(f"{ADDENDUM_WAIVER} needs one line 'Differences (from CARRYOVER.txt):'")
+    quoted = []
+    for line in lines[start[0] + 1:]:
+        if not line.startswith("> "):
+            break
+        quoted.append(line[2:])
+    # Repair 2 (review 2, finding 1): exactly the content differences CARRYOVER.txt records,
+    # each once, and nothing else.
+    required = [line for line in carry["lines"] if re.match(r"difference \(\S+\): ", line)]
+    if sorted(quoted) != sorted(required):
+        fail(f"{ADDENDUM_WAIVER} must quote, as '> ' lines, exactly the 'difference (...)' lines "
+             "of CARRYOVER.txt, each once, and nothing else")
+
+
+def carried_condition(condition, note, carry, evidence_id=None):
+    """Revision 19 (plan revision 5): a carried `PROCEED IF` keeps its condition. The
+    disposition addresses it as worded; for every reviewed base, commit or tree that the
+    condition names (in full or by a prefix of 7 or more hex digits) it states the mapping on a
+    line `Mapping: <reviewed id> -> <outgoing id>`. Nothing marks it satisfied automatically."""
+    # Repair 1 (review finding 6): any case, and 64-hex packet identities as well as 40-hex
+    # Git identities; the reviewed packet identity maps to this packet's identity.
+    tokens = [token.lower() for token in
+              re.findall(r"(?<![0-9a-fA-F])[0-9a-fA-F]{7,64}(?![0-9a-fA-F])", condition)]
+    pairs = list(carry["mapping"])
+    if evidence_id:
+        pairs.append((carry["reviewed_id"], evidence_id))
+    for before, after in pairs:
+        if any(before.startswith(token) for token in tokens):
+            if not re.search(rf"^Mapping: {before} -> {after}\s*$", note, re.M | re.I):
+                fail(f"the carried condition names the reviewed identity {before[:12]}: the "
+                     f"disposition needs the line 'Mapping: {before} -> {after}'")
+
+
+def carried_reading(body, carry, top, root):
+    """Revision 19: a reading of the earlier packet is used. LIMITS needs one line containing
+    "reading carried over" with the key words of CARRYOVER_LIMITS (case-insensitive), or,
+    when carry-over refused and ADDENDUM_WAIVER.md is used, one line with "addendum waived"
+    and "because" (the reason); every upstream file a changed file imports or names
+    (plan revision 6) is named in LIMITS with "imported by a changed file" or "named by a
+    changed file"; and CODE_IDENTITY.txt has a line `reading_carried_over_from: <reviewed
+    commit> [...]` naming the reviewed commits of every repository block."""
+    limits = [line.lower() for line in body["LIMITS"]]
+    # Repair 2 (review 2, finding 2): no LIMITS line may claim that nothing upstream can
+    # interact with or affect the change.
+    for line in body["LIMITS"]:
+        if interaction_claim(line):
+            fail("a LIMITS line claims that upstream changes cannot interact with or affect the "
+                 f"change, which the carry-over check does not show: {line[:80]!r}")
+    if carry["refused"]:
+        if not any("addendum waived" in line and "because" in line for line in limits):
+            fail("a reading used with ADDENDUM_WAIVER.md needs a LIMITS line stating that the "
+                 "addendum was waived and why ('addendum waived because ...')")
+    else:
+        if not any(carryover_limits_line(line) for line in body["LIMITS"]):
+            fail("a carried-over reading must be stated in LIMITS on one line with the exact "
+                 f"sentence, and without claiming that nothing can interact: '{CARRYOVER_LIMITS}'")
+    for verb, label in (("imported", "imported by a changed file"), ("named", "named by a changed file")):
+        for path in carry["flagged"][verb]:
+            if not any(label in line and path.lower() in line for line in limits):
+                fail(f"CARRYOVER.txt flags {path} as {label}: LIMITS must state it on a line "
+                     f"with '{label}' and the path")
+    identity = top.get("CODE_IDENTITY.txt", root / "CODE_IDENTITY.txt")
+    try:
+        text = identity.read_text(encoding="utf-8") if identity.is_file() else ""
+    except UnicodeDecodeError:
+        fail("code identity is not UTF-8")
+    named = re.findall(r"^reading_carried_over_from: (.+)$", text, re.M)
+    if len(named) != 1 or sorted(named[0].split()) != carry["reviewed_commits"]:
+        fail("a carried-over reading needs CODE_IDENTITY.txt 'reading_carried_over_from: "
+             "<reviewed commit>' naming the reviewed commit of each repository")
+
+
 # Checkpoint 3 (1b): the top-level files the checks read, which a correction
 # companion may supply when a verified copy was frozen in the wrong place.
 CORRECTABLE = ("CODE_IDENTITY.txt", "RUN_LOG.txt", "CHANGE.diff", "APPROVAL_REPORT.md",
                "OUTGOING.txt", "SERVER_SUITE.txt", "ROSTER_COMPARISON.txt")
+# Repair 1 (review finding 1): never supplied by a correction companion, because the PUBLISH
+# precheck recomputes CARRYOVER.txt beside OUTGOING.txt and must not be steered around.
+NOT_CORRECTABLE = ("CARRYOVER.txt", "ADDENDUM_WAIVER.md")
 
 
 def corrections_map(root, corrections):
@@ -668,6 +1208,9 @@ def corrections_map(root, corrections):
         if not match:
             continue
         name, source = match[1], match[2]
+        if name in NOT_CORRECTABLE:
+            fail(f"ERRATA.md relocates {name}, which a correction companion may never supply "
+                 "(it must be frozen at the packet top level)")
         if name not in CORRECTABLE:
             fail(f"ERRATA.md relocates a file the checker does not read: {name}")
         if name in found:
@@ -693,6 +1236,35 @@ def corrections_map(root, corrections):
     return found
 
 
+REVIEW_HEADING = "## Plain-English review"
+REVIEW_LABELS = ("Purpose", "Code", "Tests", "Assessment")
+
+
+def plain_english_review(body):
+    """Revision 19 (item 0.2): the approval report opens with `## Plain-English review` (it
+    replaces `## Summary`), one block per proposed commit under the labels Purpose, Code
+    (short before and after snippets), Tests (key assertions, whether they cover the fix,
+    the gaps, or why none were added) and Assessment. Form only: the heading once and each
+    label at the start of a line in that section (optionally bulleted or bold); what they say
+    is the Developer's and the reviewer's to judge. A report frozen before revision 19 has
+    `## Summary` instead and is refused here; frozen records are not rewritten."""
+    lines = body.splitlines()
+    starts = [index for index, line in enumerate(lines) if line.strip() == REVIEW_HEADING]
+    if len(starts) != 1:
+        fail("approval report needs one '## Plain-English review' section (it replaces "
+             "'## Summary'; templates/APPROVAL_REPORT.md)")
+    section = []
+    for line in lines[starts[0] + 1:]:
+        if line.startswith("## "):
+            break
+        section.append(line)
+    for label in REVIEW_LABELS:
+        if not any(re.match(rf"\s*(?:[-*+]\s+)?(?:\*\*)?{label}:(?:\*\*)?(?:\s|$)", line)
+                   for line in section):
+            fail(f"the Plain-English review needs a '{label}:' part (Purpose, Code, Tests, "
+                 "Assessment)")
+
+
 def code_identity(root, checked, changed, top=None):
     top = top or {}
     path = top.get("CODE_IDENTITY.txt", root / "CODE_IDENTITY.txt")
@@ -712,6 +1284,7 @@ def code_identity(root, checked, changed, top=None):
     if ("## Exact tested changes" not in body or
             "## New tests" not in body or patch not in body):
         fail("approval report must contain the complete exact CHANGE.diff and new-test section")
+    plain_english_review(body)
     if not any(x.startswith("Full diff and exact new tests: ") and
                "APPROVAL_REPORT.md" in x for x in changed):
         fail("result must point to the complete approval report")
@@ -1045,8 +1618,24 @@ def check(kind, screen, root=None, reading=None, disposition=None, report=True, 
             for block in parse_outgoing(top.get("OUTGOING.txt", root / "OUTGOING.txt")):
                 if not re.search(rf"(?<![0-9A-Za-z]){block['commit']}(?![0-9A-Za-z])", batch):
                     fail("outgoing commit is not named in BATCH")
+            carry = carryover_evidence(root, top)
             suite_waiver(top.get("SERVER_SUITE.txt", root / "SERVER_SUITE.txt"))
-            status = reading_matches("publication", reading, identity, body["GATE"], disposition)
+            waived = (root / ADDENDUM_WAIVER).exists() or (root / ADDENDUM_WAIVER).is_symlink()
+            names_reviewed = bool(carry and reading and reading.is_file()
+                                  and reading_identities(reading) == {carry["reviewed_id"]} != {identity})
+            if waived and not (carry and carry["refused"]):
+                fail(f"{ADDENDUM_WAIVER} is used only when CARRYOVER.txt records a refusal")
+            if carry and carry["refused"] and names_reviewed:
+                if not waived:
+                    fail("CARRYOVER.txt records a refusal: the reading does not carry over; ask "
+                         f"for an addendum, or record the Developer's waiver in {ADDENDUM_WAIVER}")
+                addendum_waiver(root, carry)
+            elif carry and carry["refused"]:
+                carry = None  # an addendum reading of this packet; the refusal is only evidence
+            status = reading_matches("publication", reading, identity, body["GATE"], disposition,
+                                     carried=carry)
+            if carry and reading_identities(reading) == {carry["reviewed_id"]} != {identity}:
+                carried_reading(body, carry, top, root)
             if status in ("WAIVED", "PENDING") and not any(
                     status in line for heading in ("LIMITS", "DECISION")
                     for line in body[heading]):
@@ -1088,7 +1677,16 @@ def check_draft(kind, root):
         if Path(name).name in COMPANION_NAMES:
             fail(f"companion file inside the packet (keep it outside): {name}")
     blocks = parse_outgoing(root / "OUTGOING.txt")
+    carry = carryover_evidence(root)
     suite_waiver(root / "SERVER_SUITE.txt")
+    if (root / ADDENDUM_WAIVER).exists():
+        if not (carry and carry["refused"]):
+            fail(f"{ADDENDUM_WAIVER} is used only when CARRYOVER.txt records a refusal")
+        addendum_waiver(root, carry)
+        print(f"checked: {ADDENDUM_WAIVER} form against the refused CARRYOVER.txt")
+    if carry:
+        print("checked: CARRYOVER.txt is consistent and agrees with evidence/reviewed/ and "
+              "OUTGOING.txt (the PUBLISH precheck recomputes it)")
     print(f"DRAFT OK publication ({len(blocks)} outgoing repository block(s))")
     print("checked: OUTGOING.txt key lines and blocks, SERVER_SUITE.txt and "
           "ROSTER_COMPARISON.txt at top level, SERVER_SUITE first line and NOT RUN waiver "
@@ -1105,32 +1703,94 @@ def check_draft(kind, root):
             print(f"NOTE not present (listed in PUBLICATION_PACKET.md, not checked): {name}")
 
 
+HIDDEN_PREFIXES = ("Tested tree: ", "Reading SHA256: ", "Disposition SHA256: ", "Waiver SHA256: ")
+# Revision 19 (item 0.3): characters Markdown would interpret, escaped with a backslash.
+MARKDOWN_SPECIAL = re.compile(r"([\\`*_\[\]<>#|~&!{}$])")
+COMMAND_LINE = re.compile(r"""['"]?/\S""")
+
+
+def escape(text, table=False):
+    """Text as Markdown shows it literally: backslash before each special character (not
+    `|` inside a table row), before each character of a leading run of -, + or =, and after a
+    leading number followed by . or )."""
+    escaped = MARKDOWN_SPECIAL.sub(lambda m: m.group() if table and m.group() == "|" else "\\" + m.group(),
+                                   text)
+    return re.sub(r"^(\s*)([-+=]+|\d+(?=[.)]))", lambda m: m[1] + (
+        "".join("\\" + char for char in m[2]) if not m[2][0].isdigit() else m[2] + "\\"), escaped)
+
+
+def code_span(text):
+    """An inline code span that shows `text` exactly (a command to copy)."""
+    longest = max((len(m.group()) for m in re.finditer(r"`+", text)), default=0)
+    fence = "`" * (longest + 1)
+    pad = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{pad}{text}{pad}{fence}"
+
+
+def title(words):
+    return words.capitalize()
+
+
+def render(kind, lines):
+    """Revision 19 (item 0.3): the checked screen as a Markdown block quote, in the normal
+    typeface. The header becomes **Kind** · id · level; each section name is bold title case
+    (the saved file keeps CAPITALS, and every check reads the file); every source line is
+    its own paragraph, which the window wraps (repair 2; before, lines were joined), table rows
+    stay rows, and a command line (an absolute path) is shown as code;
+    a blank quoted line separates paragraphs and sections; the action line becomes **Your
+    choice:** with the options in bold. Everything else is escaped, so it shows literally."""
+    headings = HEADINGS[kind]
+    parts = lines[0].split(" | ")
+    out = [" · ".join([f"**{title(parts[0].replace('_', ' '))}**"] + [escape(p) for p in parts[1:]])]
+    paragraphs = []  # (kind, text) with kind "text", "table", "code", "heading"
+    for line in lines[1:-1]:
+        if line in headings:
+            paragraphs.append(("heading", f"**{title(line)}**"))
+        elif line.lstrip().startswith("|"):
+            if paragraphs and paragraphs[-1][0] == "table":
+                paragraphs[-1] = ("table", paragraphs[-1][1] + "\n" + escape(line, table=True))
+            else:
+                paragraphs.append(("table", escape(line, table=True)))
+        elif COMMAND_LINE.match(line):
+            paragraphs.append(("code", code_span(line)))
+        else:
+            # Repair 2 (review 2, note 7): every source line is its own paragraph, so nothing
+            # merges into the line before it; the reader's window still wraps each one.
+            paragraphs.append(("text", escape(line.strip())))
+    for _, text in paragraphs:
+        out.append("")
+        out += text.split("\n")
+    action = lines[-1].removeprefix("ACTION: ")
+    options = []
+    for option in action.split(" / "):
+        match = re.fullmatch(r"([A-Z][A-Z ]*[A-Z]|[A-Z])( .*)?", option)
+        options.append(f"**{title(match[1])}**" + escape(match[2] or "") if match else escape(option))
+    out += ["", "**Your choice:** " + " / ".join(options)]
+    return [("> " + line) if line else ">" for line in out]
+
+
 def present(kind, screen, root=None, reading=None, disposition=None, queue=None,
             corrections=None, waiver=None):
     """Check the saved decision, then render a conspicuous Developer view."""
     top = check(kind, screen, root, reading, disposition, report=False, queue=queue,
                 corrections=corrections, waiver=waiver)
     lines = screen.read_text(encoding="utf-8").splitlines()
-    if kind == "plan" or kind in ATTENTION:
-        spaced = []
-        for line in lines:
-            if line in HEADINGS[kind]:
-                spaced.append("")
-            spaced.append(line)
-        lines = spaced
     if kind in ("result", "publication", "accept"):
         lines[0] = " | ".join(lines[0].split(" | ")[:-1])
-    lines = [line for line in lines if not line.startswith(
-        ("Tested tree: ", "Reading SHA256: ", "Disposition SHA256: ", "Waiver SHA256: "))]
+    lines = [line for line in lines if not line.startswith(HIDDEN_PREFIXES)]
     lines = [DISPLAY_ID.sub(
         lambda match: "[recorded]" if any(c in "abcdef" for c in match.group())
         else match.group(), line) for line in lines]
-    body = "\n".join(lines)
-    # A longer outer fence keeps any backticks in a screen inside its body.
-    longest = max((len(match.group()) for match in re.finditer(r"`+", body)), default=0)
-    fence = "`" * max(3, longest + 1)
     print(ATTENTION.get(kind, "**PLEASE READ — YOUR DECISION IS NEEDED**") + "\n\n" +
-          fence + "\n" + body + "\n" + fence)
+          "\n".join(render(kind, lines)))
+    # Revision 19: the rendered screen says that the reading was carried over.
+    if kind == "publication" and root is not None:
+        carry = carryover_evidence(root, top)
+        if carry and reading_identities(reading) == {carry["reviewed_id"]}:
+            print("NOTE: the outside reading names the earlier packet it read; " +
+                  ("the carry-over check refused and the Developer waived the addendum "
+                   f"({ADDENDUM_WAIVER})" if carry["refused"] else
+                   "it is carried over by CARRYOVER.txt, which the PUBLISH precheck recomputes"))
     # Checkpoint 5 (review CP3 finding 5): the rendered screen says that a
     # correction companion supplied evidence, and names it.
     for name, copy in sorted(top.items()):

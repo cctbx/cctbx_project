@@ -141,7 +141,7 @@ Leave the packet and output files alone during packaging, and deliver only a com
 
 A review names the packet it examined and says whether it covers applying the change, publishing it, or both. One review can cover both decisions for the same frozen packet.
 
-If the commit, starting version, packet or review file changes, the review must be reconsidered for that version. A short follow-up may be enough, but it must identify the new version and the decisions it covers. After a restage, earlier test results carry over only when a recorded comparison shows the changed files have identical content and the upstream changes touch none of the tested files or what they use; otherwise the tests are rerun. An earlier refusal or a made-up reply used for testing cannot count as a review that says to proceed.
+If the commit, starting version, packet or review file changes, the review must be reconsidered for that version. A short follow-up may be enough, but it must identify the new version and the decisions it covers. Since revision 19 no follow-up is needed after a restage when a tool check (`publication_precheck.py carry-over`) shows the changed files have the same content and diff and the upstream changes touch none of them; the publication screen then says the reading was carried over and that the check does not show that upstream changes elsewhere cannot interact with the change. After a restage, earlier test results carry over only when a recorded comparison shows the changed files have identical content and the upstream changes touch none of the tested files or what they use; otherwise the tests are rerun. An earlier refusal or a made-up reply used for testing cannot count as a review that says to proceed.
 
 For a change on the full path, outside review precedes the decision to apply it. A change can take the light path only if it cannot change behavior, requirements, interfaces or an important claim, and the plan states the worst effect if it is wrong. You must accept that limit in the plan. The light path defers outside review to publication. Size alone does not decide which path applies.
 
@@ -242,7 +242,7 @@ The tools are in the shared kit's `payload/tools/` directory. Invoke the Python 
 | `screen_check.py check-draft publication DIR` | Runs the publication checks that need no freeze, screen or review on an unfrozen packet and names those it skipped. |
 | `screen_check.py stop-command [INTERPRETER]` | Prints the auto-mode start screen's stop line, quoting a path that contains a space; without INTERPRETER, for the Python running it (its absolute `sys.executable`, which must have psutil); refuses a relative or bare name, a file not named `python`, `python3`, `python3.N` or `libtbx.python`, and a path with a character that is not printable (a control, format or separator character). |
 | `review_bundle.py PACKET COMPANIONS OUTPUT` | Packages the frozen packet and separate companions for outside review. |
-| `publication_precheck.py check REPO OUTGOING.txt [--repository NAME] [--fetch] [--dry-run]` | Compares the publication record with Git, optionally fetching or checking a proposed push without sending commits. |
+| `publication_precheck.py check REPO PACKET/OUTGOING.txt --packet PACKET --identity PACKET_IDENTITY [--repos NAME=PATH...] [--repository NAME] [--fetch] [--dry-run]` | Checks that the packet is the approved one (its identity) and compares the publication record with Git, optionally fetching or checking a proposed push without sending commits. |
 | `publication_precheck.py outgoing REPO --commit C [--remote R] [--branch B] [--repository NAME] [--fetch] [--output FILE]` | Writes the one-commit `OUTGOING.txt` block from the live repository and checks it; refuses a dirty tree, a missing remote, several push URLs, a wrong parent or a chain. |
 | `publication_precheck.py vet -- <proposed push command>` | Checks that the submitted push command has the permitted form. |
 | `publication_precheck.py confirm REPO OUTGOING.txt [--repository NAME] (--before \| --tags STATE)` | Reads the remote branch and tags with `git ls-remote`, for a push you run yourself: before it (`--before`: the branch still at the base; prints the tag state COUNT/SHA256) and after it (`--tags STATE`, required: the branch at the outgoing commit, the tag state unchanged). |
@@ -291,7 +291,7 @@ The Git checking tool accepts:
 
 ```
 publication_precheck.py outgoing REPO --commit C [--remote R] [--branch B] [--repository NAME] [--fetch] [--output FILE]
-publication_precheck.py check REPO OUTGOING.txt [--repository NAME] [--fetch] [--dry-run]
+publication_precheck.py check REPO PACKET/OUTGOING.txt --packet PACKET --identity PACKET_IDENTITY [--repos NAME=PATH...] [--repository NAME] [--fetch] [--dry-run]
 publication_precheck.py vet -- <proposed push command>
 publication_precheck.py confirm REPO OUTGOING.txt [--repository NAME] (--before | --tags STATE)
 ```
