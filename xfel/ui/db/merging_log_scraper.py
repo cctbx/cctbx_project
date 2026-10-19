@@ -285,9 +285,11 @@ class Scraper(object):
 
     ax1a.plot(xvals, overall_cc, 'o-', color='blue')
     ax1b.plot(xvals, overall_mult, 'o-', color='red')
-    ax2.plot(xvals, 1/(np.array(cc_cutoff)**2), 'o-', color='blue')
-    ax2.plot(xvals, 1/(np.array(mult_cutoff)**2), 'o-', color='red')
-    ax2.plot(xvals, 1/(np.array(comp_cutoff)**2), 'o-', color='green')
+    # A cutoff of zero (no bin met the criterion) plots as infinity, off the axis
+    with np.errstate(divide='ignore'):
+      ax2.plot(xvals, 1/(np.array(cc_cutoff)**2), 'o-', color='blue')
+      ax2.plot(xvals, 1/(np.array(mult_cutoff)**2), 'o-', color='red')
+      ax2.plot(xvals, 1/(np.array(comp_cutoff)**2), 'o-', color='green')
 
     ax2.legend(["CC1/2 (monotonic)", "Multiplicity (10x)", "Completeness (90%)"])
 
