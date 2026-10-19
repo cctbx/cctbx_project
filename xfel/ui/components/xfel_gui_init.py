@@ -1175,7 +1175,7 @@ class RefreshMergingStats(wx.PyCommandEvent):
 # ClusterSettings. The result is what the sentinel hands back: the drift table
 # for one dataset version at one set of settings, or a message saying why there
 # is none.
-DriftSettings = collections.namedtuple('DriftSettings', ['origin', 'color_by', 'unit_cell', 'uncertainties'])
+DriftSettings = collections.namedtuple('DriftSettings', ['origin', 'color_by', 'unit_cell', 'uncertainties', 'iqr_ratio'])
 DriftResult = collections.namedtuple('DriftResult', ['version_id', 'settings', 'table', 'message'])
 DRIFT_ORIGINS = ['first', 'average', 'distribution', 'panel_com_first', 'panel_com_average', 'panel_com_distribution']
 DRIFT_COLOR_BY = ['run', 'rungroup', 'chunk', 'task', 'trial', 'merge']
@@ -1189,6 +1189,7 @@ def drift_parameters(settings):
   params.scrap.origin = settings.origin
   params.scrap.uncertainties = settings.uncertainties
   params.scrap.unit_cell = settings.unit_cell
+  params.scrap.iqr_ratio = settings.iqr_ratio
   params.plot.color.by = settings.color_by
   params.plot.show = False
   return params
@@ -1326,8 +1327,9 @@ class MergingStatsSentinel(Thread):
         'refined experiments the ensemble refinement stage writes for each run and chunk.')
       return
     cache_dir = os.path.join(self.db.params.output_folder, version.dataset.name)
-    cache_path = os.path.join(cache_dir, 'drift_cache_v%03d_%s_%s_%s.pkl' % (
-      version.version, settings.origin, settings.unit_cell, 'unc' if settings.uncertainties else 'nounc'))
+    cache_path = os.path.join(cache_dir, 'drift_cache_v%03d_%s_%s_%s_%s.pkl' % (
+      version.version, settings.origin, settings.unit_cell, 'unc' if settings.uncertainties else 'nounc',
+      'iqr%g' % settings.iqr_ratio if settings.iqr_ratio is not None else 'noiqr'))
     cache = {}
     try:
       with open(cache_path, 'rb') as f:
@@ -1675,7 +1677,8 @@ class MainWindow(wx.Frame):
       self.run_window.datasets_tab.refresh_datasets()
     elif name == self.run_window.mergingstats_tab.name:
       self.run_window.mergingstats_tab.refresh_datasets()
-      if self.mergingstats_sentinel is None or not self.mergingstats_sentinel.active:
+      if self.run_window.mergingstats_tab.auto_update and \
+         (self.mergingstats_sentinel is None or not self.mergingstats_sentinel.active):
         self.start_mergingstats_sentinel()
         self.run_window.mergingstats_light.change_status('on')
 
@@ -1701,7 +1704,7 @@ class MainWindow(wx.Frame):
         self.stop_unitcell_sentinel(block = False)
         self.run_window.unitcell_light.change_status('off')
     elif name == self.run_window.mergingstats_tab.name:
-      if self.mergingstats_sentinel.active:
+      if self.mergingstats_sentinel is not None and self.mergingstats_sentinel.active:
         self.stop_mergingstats_sentinel(block = False)
         self.run_window.mergingstats_light.change_status('off')
 
@@ -3604,7 +3607,8 @@ class MergingStatsTab(BaseTab):
     self.cosym_bitmap = None
     self.redraw_windows = True
     # Detector drift page state, shared with the sentinel: see DriftSettings
-    self.drift_settings = DriftSettings('first', 'run', 'average', True)
+    self.drift_settings = DriftSettings('first', 'run', 'average', True, None)
+    self.auto_update = True
     self.drift_version_id = None
     self.drift_wanted = False
     self.drift_result = None
@@ -3632,6 +3636,13 @@ class MergingStatsTab(BaseTab):
                                            ctrl_size=(100, -1),
                                            choices=[])
     self.datasets_sizer.Add(self.dataset_version, flag=wx.EXPAND | wx.ALL, border = 5)
+
+    # Unchecked, the sentinel stops and the plots stay as they are, so a zoomed
+    # drift plot is not redrawn out from under the user.
+    self.chk_auto_update = wx.CheckBox(self.datasets_panel, name='mergingstats_auto_update', label='Auto update')
+    self.chk_auto_update.SetValue(True)
+    setup_tooltip(self.chk_auto_update)
+    self.datasets_sizer.Add(self.chk_auto_update, flag=wx.EXPAND | wx.ALL, border = 5)
 
     self.plots_panel = wx.Panel(self, size=(200, 120))
     self.plots_nb = wx.Notebook(self.plots_panel)
@@ -3680,14 +3691,18 @@ class MergingStatsTab(BaseTab):
                                            ctrl_size=(-1, -1), choices=DRIFT_UNIT_CELLS)
     self.chk_drift_uncertainties = wx.CheckBox(self.drift_page, name='drift_uncertainties', label='Uncertainties')
     setup_tooltip(self.chk_drift_uncertainties)
+    self.chk_drift_reject_outliers = wx.CheckBox(self.drift_page, name='drift_reject_outliers', label='Reject outliers')
+    setup_tooltip(self.chk_drift_reject_outliers)
     for ctrl, value in ((self.drift_origin, self.drift_settings.origin),
                         (self.drift_color_by, self.drift_settings.color_by),
                         (self.drift_unit_cell, self.drift_settings.unit_cell)):
       ctrl.ctr.SetStringSelection(value)
     self.chk_drift_uncertainties.SetValue(self.drift_settings.uncertainties)
+    self.chk_drift_reject_outliers.SetValue(self.drift_settings.iqr_ratio is not None)
     for ctrl in (self.drift_origin, self.drift_color_by, self.drift_unit_cell):
       drift_controls.Add(ctrl, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT | wx.BOTTOM, border=5)
-    drift_controls.Add(self.chk_drift_uncertainties, flag=wx.ALIGN_CENTER_VERTICAL | wx.BOTTOM, border=5)
+    drift_controls.Add(self.chk_drift_uncertainties, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT | wx.BOTTOM, border=15)
+    drift_controls.Add(self.chk_drift_reject_outliers, flag=wx.ALIGN_CENTER_VERTICAL | wx.BOTTOM, border=5)
     self.drift_label = wx.StaticText(self.drift_page, label='')
     self.drift_figure = mpl.figure.Figure()
     self.drift_canvas = FigureCanvas(self.drift_page, -1, self.drift_figure)
@@ -3728,7 +3743,16 @@ class MergingStatsTab(BaseTab):
     for ctrl in (self.drift_origin, self.drift_color_by, self.drift_unit_cell):
       self.Bind(wx.EVT_CHOICE, self.onDriftSettings, ctrl.ctr)
     self.Bind(wx.EVT_CHECKBOX, self.onDriftSettings, self.chk_drift_uncertainties)
+    self.Bind(wx.EVT_CHECKBOX, self.onDriftSettings, self.chk_drift_reject_outliers)
+    self.Bind(wx.EVT_CHECKBOX, self.onChkAutoUpdate, self.chk_auto_update)
     self.plots_nb.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onPlotPageChanged)
+
+  def onChkAutoUpdate(self, e):
+    self.auto_update = self.chk_auto_update.GetValue()
+    if self.auto_update and (self.main.mergingstats_sentinel is None or not self.main.mergingstats_sentinel.active):
+      self.main.start_mergingstats_sentinel()
+    elif not self.auto_update:
+      self.main.stop_mergingstats_sentinel(block=False)
 
   def onPlotPageChanged(self, e):
     self.drift_wanted = self.plots_nb.GetCurrentPage() is self.drift_page
@@ -3739,7 +3763,8 @@ class MergingStatsTab(BaseTab):
     self.drift_settings = DriftSettings(self.drift_origin.ctr.GetStringSelection(),
                                         self.drift_color_by.ctr.GetStringSelection(),
                                         self.drift_unit_cell.ctr.GetStringSelection(),
-                                        self.chk_drift_uncertainties.GetValue())
+                                        self.chk_drift_uncertainties.GetValue(),
+                                        1.5 if self.chk_drift_reject_outliers.GetValue() else None)
     self.drift_label.SetLabel('Reading...')
 
   def OnSize(self, e):
