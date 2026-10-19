@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function
 from crys3d.regression import tests_HKLviewer
 from libtbx.test_utils import contains_substring
-import os, sys, subprocess
+import os, subprocess
 
 os.environ['PYTHONIOENCODING'] = 'UTF-8'
 

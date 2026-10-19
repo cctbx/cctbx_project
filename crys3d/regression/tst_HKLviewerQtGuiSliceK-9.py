@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from crys3d.regression import tests_HKLviewer
-import os, sys
 
 # Using the HKLviewer Qt GUI exerciseQtGUI() runs HKLviewer to enact the settings in philstr1 and
 # eventually asserts that the visible reflections in the browser match the indices in

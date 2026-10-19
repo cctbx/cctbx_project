@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from crys3d.hklviewer import jsview_3d
 from crys3d.regression import tests_HKLviewer
-import asyncio, os.path, websockets, socket, subprocess, time, threading
+import asyncio, os.path, websockets, socket, time, threading
 
 
 global socket_connected
