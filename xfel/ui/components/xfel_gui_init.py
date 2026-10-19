@@ -1224,6 +1224,13 @@ def drift_entries_for_version(app, version):
                        'chunk': int(match.group(1)) if match else 0}))
   return entries
 
+def stats_figure_size(page_size):
+  ''' Size in inches of the merging statistics figure for a plot page of the
+      given pixel size, never below one inch: a page that is not showing can
+      report a size of one pixel, which must not become a negative figure. '''
+  width, height = page_size
+  return max((width - 25) / 85, 1.0), max((height - 25) / 95, 1.0)
+
 class MergingStatsSentinel(Thread):
   ''' Worker thread for merging stats; generated so that the GUI does not lock up when
       processing is running '''
@@ -1266,9 +1273,7 @@ class MergingStatsSentinel(Thread):
 
     if not self.parent.run_window.mergingstats_tab.dataset_versions: return
 
-    sizex, sizey = self.parent.run_window.mergingstats_tab.mergingstats_panelsize
-    sizex = (sizex-25)/85
-    sizey = (sizey-25)/95
+    sizex, sizey = stats_figure_size(self.parent.run_window.mergingstats_tab.mergingstats_panelsize)
 
     if len(self.parent.run_window.mergingstats_tab.dataset_versions) > 1:
       # Several versions at once: an embedding plot belongs to one merging run,
@@ -3725,7 +3730,7 @@ class MergingStatsTab(BaseTab):
     self.plots_panel.SetSizer(plots_panel_sizer)
     # The statistics figure is generated to fit its page, so measure the page
     # rather than the panel that holds the notebook.
-    self.mergingstats_panelsize = self.stats_page.GetSize()
+    self.mergingstats_panelsize = self._plots_page_size()
 
     self.tab_sizer.Add(self.datasets_panel, 0,
                        flag=wx.ALIGN_LEFT | wx.EXPAND, border=10)
@@ -3767,11 +3772,22 @@ class MergingStatsTab(BaseTab):
                                         1.5 if self.chk_drift_reject_outliers.GetValue() else None)
     self.drift_label.SetLabel('Reading...')
 
+  def _plots_page_size(self):
+    ''' The size of the notebook's page area, taken from whichever page is
+        showing since a hidden page reports one pixel; the statistics page's own
+        size when nothing better is known. '''
+    current = self.plots_nb.GetCurrentPage()
+    if current is not None:
+      size = current.GetSize()
+      if size.width > 20 and size.height > 20:
+        return size
+    return self.stats_page.GetSize()
+
   def OnSize(self, e):
     # Only record the size. Both plots are redrawn at the new size on the next
     # refresh, which is how the statistics figure has always behaved, and it
     # keeps resizing from rescaling an image on every event.
-    self.mergingstats_panelsize = self.stats_page.GetSize()
+    self.mergingstats_panelsize = self._plots_page_size()
     e.Skip()
 
   def onCosymChoice(self, e):
@@ -3863,7 +3879,7 @@ class MergingStatsTab(BaseTab):
     # stay at its construction value until the user happens to resize the window.
     # Take it here as well, where it is certain to be current, so the statistics
     # figure is generated at the right size from the next refresh onwards.
-    self.mergingstats_panelsize = self.stats_page.GetSize()
+    self.mergingstats_panelsize = self._plots_page_size()
     self._draw_stats()
     self._draw_cosym()
     self._draw_drift()
