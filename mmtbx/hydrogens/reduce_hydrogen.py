@@ -8,6 +8,7 @@ import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
 from libtbx import group_args
 from scitbx import matrix
+import scitbx.cubicle_neighbors
 from cctbx.array_family import flex
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
 from cctbx import geometry_restraints
@@ -281,6 +282,65 @@ def workaround_003(model):
     model = model.select(keep_selection)
   return model, removed
 
+_ener_lib_types = None
+
+def get_ccd_energy_types(cc_cif):
+  '''
+  Energy types for a CCD entry, which has none: element plus the H the CCD puts
+  on the atom (free, neutral molecule). Without a type the probe atom info gets
+  no radius and no acceptor (2e4i BGM). A type ener_lib does not know -> None.
+  '''
+  global _ener_lib_types
+  if _ener_lib_types is None:
+    from mmtbx.monomer_library import server
+    _ener_lib_types = set(server.ener_lib().lib_atom.keys())
+  element = dict((a.atom_id, a.type_symbol.strip().upper())
+    for a in cc_cif.get('_chem_comp_atom', []))
+  neighbors = {}
+  for b in cc_cif.get('_chem_comp_bond', []):
+    neighbors.setdefault(b.atom_id_1, []).append(b.atom_id_2)
+    neighbors.setdefault(b.atom_id_2, []).append(b.atom_id_1)
+  result = {}
+  for name, e in element.items():
+    bonded = [element.get(x) for x in neighbors.get(name, [])]
+    n_h = sum(1 for x in bonded if x in ('H', 'D'))
+    if e in ('H', 'D'):
+      parent = bonded[0] if len(bonded) == 1 else None
+      t = {'O': 'HOH1', 'N': 'HNH1', 'S': 'HSH1'}.get(parent, 'HCH')
+    elif e == 'O': t = 'OH1' if n_h else 'O'
+    elif e == 'N': t = {0: 'N', 1: 'NH1'}.get(n_h, 'NH2')
+    elif e == 'S': t = 'SH1' if n_h else 'S'
+    else:          t = e
+    result[name] = t if t in _ener_lib_types else None
+  return result
+
+_library_neutron_xh = None
+
+def get_library_neutron_xh():
+  '''
+  Neutron X-H lengths of the monomer library, read from its own entries:
+  {'C': sp3 C-H, 'C_aromatic': aromatic C-H, 'N': N-H, 'O': O-H, 'S': S-H}.
+  The library has no X-H for other elements.
+  '''
+  global _library_neutron_xh
+  if _library_neutron_xh is None:
+    from mmtbx.monomer_library import server
+    srv = server.server()
+    sources = {
+      'C':          ('ALA', 'CA', 'HA'),
+      'C_aromatic': ('PHE', 'CD1', 'HD1'),
+      'N':          ('ALA', 'N', 'H'),
+      'O':          ('SER', 'OG', 'HG'),
+      'S':          ('CYS', 'SG', 'HG')}
+    result = {}
+    for key, (code, x, h) in sources.items():
+      for b in srv.get_comp_comp_id_direct(code).bond_list:
+        if set((b.atom_id_1, b.atom_id_2)) == set((x, h)):
+          result[key] = float(b.value_dist_neutron)
+    assert sorted(result) == sorted(sources)
+    _library_neutron_xh = result
+  return _library_neutron_xh
+
 def get_h_restraints(resname, strict=True):
   from mmtbx.monomer_library import cif_types
   from mmtbx.chemical_components import get_cif_dictionary
@@ -301,6 +361,7 @@ def get_h_restraints(resname, strict=True):
     desc_level=".")
   comp_comp_id = cif_types.comp_comp_id(source_info=None, chem_comp=chem_comp)
   lookup = {}
+  energy_types = get_ccd_energy_types(cc_cif)
   for i, a in enumerate(cc_cif.get('_chem_comp_atom',[])):
     lookup[a.atom_id]=i
     lookup[i]=a.atom_id
@@ -310,7 +371,7 @@ def get_h_restraints(resname, strict=True):
     comp_comp_id.atom_list.append(cif_types.chem_comp_atom(
       atom_id=a.atom_id,
       type_symbol=a.type_symbol,
-      # type_energy=a.type_energy,
+      type_energy=energy_types.get(a.atom_id),
       # partial_charge=a.partial_charge,
       ))
   conf =  molecule.GetConformer()
@@ -325,12 +386,23 @@ def get_h_restraints(resname, strict=True):
     atom_idx1=lookup[b.atom_id_1]
     atom_idx2=lookup[b.atom_id_2]
     bl = rdMolTransforms.GetBondLength(conf, atom_idx1, atom_idx2)
+    # X-H: the library's neutron length for the heavy atom (aromatic from
+    # the RDKit molecule); value_dist (X-ray) stays 0.9 x the CCD length
+    value_dist_neutron = None
+    if (b.atom_id_1 in hs) != (b.atom_id_2 in hs):
+      x_idx = atom_idx2 if b.atom_id_1 in hs else atom_idx1
+      x_atom = molecule.GetAtomWithIdx(x_idx)
+      key = x_atom.GetSymbol().upper()
+      if key == 'C' and x_atom.GetIsAromatic(): key = 'C_aromatic'
+      neutron = get_library_neutron_xh().get(key)
+      if neutron is not None: value_dist_neutron = '%0.3f' % neutron
     comp_comp_id.bond_list.append(cif_types.chem_comp_bond(
       atom_id_1=b.atom_id_1,
       atom_id_2=b.atom_id_2,
       type=b.value_order,
       value_dist='%0.3f' % (bl*.9),
-      value_dist_esd=".1"))
+      value_dist_esd=".1",
+      value_dist_neutron=value_dist_neutron))
 
   from mmtbx.ligands.rdkit_utils import enumerate_angles
   for angle in enumerate_angles(molecule):
@@ -375,6 +447,40 @@ def atom_in_restraints(name, cc_cif):
     if a.atom_id==name:
       return a
   return None
+
+def chain_start_residue_groups(model, peptide_bond_cutoff=2.0):
+  '''
+  Residue groups that start a chain or follow a chain break: first residue
+  group of each chain, and each residue group whose N is not peptide-bonded
+  (C(i-1)-N(i) distance >= peptide_bond_cutoff, same as add_terminal_oxt) to
+  C of the preceding residue group. Alternative conformations: bonded if any
+  C-N pair is bonded. Cost is linear in number of residue groups.
+  '''
+  cutoff_sq = peptide_bond_cutoff**2
+  result = []
+  for chain in model.chains():
+    prev_c_sites = None
+    for rg in chain.residue_groups():
+      n_sites, c_sites = [], []
+      for ag in rg.atom_groups():
+        n = ag.get_atom('N')
+        if n: n_sites.append(n.xyz)
+        c = ag.get_atom('C')
+        if c: c_sites.append(c.xyz)
+      bonded = False
+      if prev_c_sites:
+        for a in prev_c_sites:
+          for b in n_sites:
+            if (a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2 < cutoff_sq:
+              bonded = True
+              break
+          if bonded: break
+      if not bonded:
+        result.append(rg)
+      prev_c_sites = c_sites
+  return result
+
+# ==============================================================================
 
 def bonds_in_restraints(atom, exclude_hydrogens=False):
   from mmtbx.chemical_components import get_cif_dictionary
@@ -421,6 +527,34 @@ no atom named 'H2' (e.g. 9FZ uses H3/H4).
     remove.extend(h for h in on['N'] if h != keep)
   return remove
 
+# metals do not count as bonded to N (coordination, not a covalent bond)
+nonmetals = ('C', 'N', 'O', 'S', 'P', 'SE', 'B', 'SI', 'F', 'CL', 'BR', 'I')
+
+def _bonded_to_other_residue(atom, rg, model_atoms, model_sites):
+  '''
+  True if a non-metal atom of another residue is within bonding distance of
+  atom.
+  '''
+  d2 = (model_sites - atom.xyz).dot()
+  for i in (d2 < 1.75**2).iselection():
+    a = model_atoms[i]
+    if (a.element.strip().upper() in nonmetals
+        and a.parent().parent().memory_id() != rg.memory_id()):
+      return True
+  return False
+
+def _dictionary_h_on_n(ag, mon_lib_srv):
+  '''
+  False if the dictionary bonds "H" to an atom other than N (geostd ASJ: C).
+  '''
+  if get_class(name=ag.resname) == 'common_amino_acid': return True
+  mlq = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv, raise_sorry=False)[0]
+  if mlq is None: return True
+  for b in mlq.bond_list:
+    if 'H' in (b.atom_id_1, b.atom_id_2):
+      return 'N' in (b.atom_id_1, b.atom_id_2)
+  return True
+
 def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry=True):
   # if get_class(residue.resname) in ['common_rna_dna']:
   #   md = get_h_restraints(residue.resname)
@@ -455,16 +589,91 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry
     cif_object = iotbx.cif.reader(input_string=input_string).model()
   return md, cif_object
 
+def load_restraint_objects_into_server(model, mon_lib_srv):
+  '''
+  Load any user-provided restraint CIF objects into the server so that
+  mon_lib_query() finds them and does not generate auto_* CIF objects
+  with empty type_energy values that would overwrite the user entries.
+  '''
+  ro = model.get_restraint_objects()
+  if ro:
+    for fname, cif_obj in ro:
+      if cif_obj is not None:
+        try:
+          mon_lib_srv.process_cif_object(
+            cif_object=cif_obj, file_name=fname)
+        except Exception:
+          pass
+
+def add_auto_restraint_object(model, resname, cif_object,
+                              auto_restraint_names):
+  '''
+  Add the restraint dictionary that mon_lib_query() generated from the CCD
+  for resname to the model's restraint objects, as auto_<resname>.
+  '''
+  ro = model.get_restraint_objects()
+  if ro is None: ro=[]
+  auto_name = 'auto_%s' % resname
+  ro.append((auto_name, cif_object))
+  model.set_restraint_objects(ro)
+  if auto_name not in auto_restraint_names:
+    auto_restraint_names.append(auto_name)
+
+def remove_auto_restraint_objects(model, auto_restraint_names):
+  '''
+  Remove the auto-generated restraint dictionaries from the model's restraint
+  objects without unsetting its restraints manager (see
+  place_hydrogens.remove_auto_restraint_objects).
+  '''
+  if not auto_restraint_names: return
+  ro = model.get_restraint_objects()
+  if not ro: return
+  model._restraint_objects = [
+    (name, obj) for name, obj in ro
+    if name not in auto_restraint_names]
+
+def add_ccd_restraint_objects(model):
+  '''
+  For a model with H that is interpreted without placement (reduce2
+  approach=optimize): one mon_lib_query() per residue name, as placement does
+  per residue. Residues found only in the CCD get placement's CCD-generated
+  restraint objects; drop them after the interpretation with
+  remove_auto_restraint_objects().
+  Returns group_args(no_restraints (residue names without restraints, as
+  placement's no_H_placed_mlq), auto_restraint_names).
+  '''
+  mon_lib_srv = model.get_mon_lib_srv()
+  load_restraint_objects_into_server(model, mon_lib_srv)
+  no_restraints = set()
+  auto_restraint_names = []
+  seen = set()
+  for ag in model.get_hierarchy().atom_groups():
+    if ag.resname in seen: continue
+    seen.add(ag.resname)
+    mlq, cif_object = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv,
+      raise_sorry=False)
+    if mlq is None:
+      no_restraints.add(ag.resname)
+    elif cif_object:
+      add_auto_restraint_object(model, ag.resname, cif_object,
+        auto_restraint_names)
+  return group_args(no_restraints=no_restraints,
+    auto_restraint_names=auto_restraint_names)
+
 # ==============================================================================
 
 def get_output_crystal_symmetry(model):
   '''
-  Crystal symmetry to write out for a model that is boxed for H placement.
-  Returns the model's own symmetry; else the CRYST1 1 1 1 P 1 placeholder if
-  the input file had a cell record that cctbx discards as nonsense (cryo-EM
-  convention); else None. Call before process(), which boxes a model that has
-  no symmetry.
+  Crystal symmetry to write out for a model that is boxed for H placement,
+  in the precedence of the model's writer (_figure_out_cs_to_output()): the
+  model's unit cell symmetry if set (e.g. the placeholder on a model
+  returned by reduce2, also after process()); else its own symmetry; else
+  the CRYST1 1 1 1 P 1 placeholder if the input file had a cell record that
+  cctbx discards as nonsense (cryo-EM convention); else None. Call before
+  process(), which boxes a model that has no symmetry.
   '''
+  if model.unit_cell_crystal_symmetry() is not None:
+    return model.unit_cell_crystal_symmetry()
   cs = model.crystal_symmetry()
   if (cs is not None) and (cs.unit_cell() is not None):
     return cs
@@ -618,7 +827,26 @@ def find_H1_H2(X, d, angle_deg):
         z)
   return H1, H2
 
-def workaround_002(model, selection):
+def _water_oh_targets(model, use_neutron_distances):
+  '''O-H length and H-O-H angle from the HOH restraints; constants if absent'''
+  d = 0.98 if use_neutron_distances else 0.85
+  angle = 103.91
+  comp = model.get_mon_lib_srv().get_comp_comp_id_direct("HOH")
+  if comp is not None:
+    for bond in comp.bond_list:
+      value = bond.value_dist_neutron if use_neutron_distances \
+        else bond.value_dist
+      if value is not None:
+        d = value
+        break
+    for a in comp.angle_list:
+      if a.value_angle is not None:
+        angle = a.value_angle
+        break
+  return d, angle
+
+def workaround_002(model, selection, use_neutron_distances=False):
+  d, angle = _water_oh_targets(model, use_neutron_distances)
   h = model.get_hierarchy()
   atoms = h.atoms()
   for m in h.models():
@@ -628,13 +856,12 @@ def workaround_002(model, selection):
           if not get_class(name=r.resname) == "common_water": continue
           three = r.atoms().extract_i_seq()
           #assert three in selection
-          ij=[]
-          for atom in r.atoms():
-            e = atom.element.strip().upper()
-            if e == "O": X = atom.xyz
-            else:        ij.append(atom.i_seq)
-          if len(ij)!=2: continue
-          p1, p2 = find_H1_H2(X=X, d=0.85, angle_deg=103.91)
+          # only this residue's own O: exactly one O and two H/D
+          o = [a for a in r.atoms() if a.element.strip().upper() == "O"]
+          ij = [a.i_seq for a in r.atoms()
+                if a.element.strip().upper() in ("H", "D")]
+          if len(o) != 1 or len(ij) != 2: continue
+          p1, p2 = find_H1_H2(X=o[0].xyz, d=d, angle_deg=angle)
           atoms[ij[0]].xyz = p1
           atoms[ij[1]].xyz = p2
 
@@ -860,6 +1087,12 @@ class place_hydrogens():
 
   keep_existing_H : bool
     keep existing H atoms in model, only place missing H
+
+  n_terminal_charge : str
+    where to place N-terminal NH3: 'residue_one' (residue with resseq 1),
+    'first_in_chain' (first residue of each chain), 'all_chain_starts'
+    (first residue of each chain and each residue after a chain break, i.e.
+    N not peptide-bonded to C of preceding residue), 'no_charge' (nowhere)
   '''
 
 # ------------------------------------------------------------------------------
@@ -890,6 +1123,8 @@ class place_hydrogens():
     self.site_labels_tertiary_amide = list()
     self.site_labels_missing_neighbor = list()
     self.residues_missing_neighbor    = list()
+    self.residues_unknown_atoms       = list()
+    self.site_labels_unknown_atoms    = list()
     # Names of restraint dictionaries auto-generated for unknown ligands during
     # placement; these are throwaway (purpose-built for H placement) and are
     # removed from the model before returning so they don't leak into
@@ -926,12 +1161,7 @@ class place_hydrogens():
     manager, and we need the already-built grm (and riding-H manager) to remain
     intact for the rest of run() and for callers that reuse it.
     '''
-    if not self.auto_restraint_names: return
-    ro = self.model.get_restraint_objects()
-    if not ro: return
-    self.model._restraint_objects = [
-      (name, obj) for name, obj in ro
-      if name not in self.auto_restraint_names]
+    remove_auto_restraint_objects(self.model, self.auto_restraint_names)
 
 # ------------------------------------------------------------------------------
 
@@ -979,7 +1209,8 @@ class place_hydrogens():
     # Place N-terminal propeller hydrogens
     # TODO double check N-terminal position for PRO residues
     # ------------------------------------
-    if self.n_terminal_charge in ['residue_one', 'first_in_chain']:
+    if self.n_terminal_charge in ['residue_one', 'first_in_chain',
+                                  'all_chain_starts']:
       t0 = time.time()
       self.place_n_terminal_propeller(pdb_hierarchy = pdb_hierarchy)
       self.time_terminal_propeller = round(time.time()-t0, 2)
@@ -998,17 +1229,25 @@ class place_hydrogens():
       crystal_symmetry  = self.model.crystal_symmetry(),
       restraint_objects = ro,
       log               = null_out())
+    # plain_pairs_radius: that table is for ADP restraints only and ignores
+    # model boundaries
     self.model.process(pdb_interpretation_params=p,
                        make_restraints=True,
+                       plain_pairs_radius=None,
                        # retain_zero_dihedrals=True,
                        )
 
     self.time_make_grm = round(time.time()-t0, 2)
+    self.find_atoms_not_in_dictionary()
     # Drop the throwaway auto-generated ligand restraints now that the grm has
     # been built. They were only needed to place H on unknown ligands; keeping
     # them on the model would leak idealized placement-only geometry (0.9x
     # bonds, esd=1/period=1 torsions) into any downstream re-interpretation.
     self.remove_auto_restraint_objects()
+    # before riding H: an H on an esterified O has no H-O-X angle to the second
+    # heavy neighbour (2e4i BGM 14 -> BGM 15)
+    self.exclude_H_on_esterified_O()
+    self.exclude_H_without_link_angle()
     # Return if no H have been placed
     sel_h = self.model.get_hd_selection()
     if sel_h.count(True) == 0: return
@@ -1052,11 +1291,19 @@ class place_hydrogens():
     if not self.exclude_water and water_selection.count(True)>0:
       workaround_002(
         model     = self.model,
-        selection = water_selection.iselection())
+        selection = water_selection.iselection(),
+        use_neutron_distances = self.use_neutron_distances)
       water_selection = self.model.solvent_selection()
     # water H are placed by workaround_002, not by riding: keep them and
-    # leave them out of the report of unplaced H
-    sel_h_not_in_para = sel_h_not_in_para.set_selected(water_selection, False)
+    # leave them out of the report of unplaced H. Only waters with an O: the
+    # H of a water without O are removed like any other unplaced H.
+    water_without_o = flex.bool(water_selection.size(), False)
+    for rg in self.model.get_hierarchy().residue_groups():
+      if get_class(name=rg.atom_groups()[0].resname) != "common_water": continue
+      if any(a.element.strip().upper() == "O" for a in rg.atoms()): continue
+      water_without_o.set_selected(rg.atoms().extract_i_seq(), True)
+    sel_h_not_in_para = sel_h_not_in_para.set_selected(
+      water_selection & ~water_without_o, False)
     # no need to display lone H atoms in the log, so remove from labels
     sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
     # Classify the unplaceable H so the report reflects the real cause:
@@ -1072,6 +1319,8 @@ class place_hydrogens():
     self.site_labels_tertiary_amide = list()
     self.site_labels_missing_neighbor = list()
     self.residues_missing_neighbor = list()
+    self.site_labels_unknown_atoms = list()
+    unknown = set(r for r, names in self.residues_unknown_atoms)
     if not sel_h_not_in_para_but_not_lone.all_eq(False):
       grm = self.model.get_restraints_manager().geometry
       bps, asu = grm.get_all_bond_proxies(sites_cart=self.model.get_sites_cart())
@@ -1098,18 +1347,33 @@ class place_hydrogens():
         if atom.i_seq in tertiary:
           self.site_labels_tertiary_amide.append(label)
           continue
+        rg = atom.parent().parent()
+        resid = '%s %s %s' % (atom.parent().resname.strip(),
+          rg.parent().id.strip(), rg.resseq.strip())
+        # its residue has atoms the dictionary does not know: not incomplete
+        if resid in unknown:
+          self.site_labels_unknown_atoms.append(label)
+          continue
         parents = _heavy_neighbors(atom.i_seq)
         # parent atom missing an expected heavy neighbour -> incomplete residue
         if len(parents) == 1 and len(_heavy_neighbors(parents[0])) < 2:
           self.site_labels_missing_neighbor.append(label)
-          rg = atom.parent().parent()
-          resid = '%s %s %s' % (atom.parent().resname.strip(),
-            rg.parent().id.strip(), rg.resseq.strip())
           if resid not in seen_residues:
             seen_residues.add(resid)
             self.residues_missing_neighbor.append(resid)
         else:
           self.site_labels_no_para.append(label)
+    # lone H of a water without O are left out of the labels above (lone H
+    # are not displayed); report them as missing their heavy atom
+    for atom in self.model.get_hierarchy().atoms().select(
+        water_without_o & sel_lone_H & sel_h_not_in_para):
+      self.site_labels_missing_neighbor.append(
+        atom.id_str().replace('pdb=','').replace('"',''))
+      rg = atom.parent().parent()
+      resid = '%s %s %s' % (atom.parent().resname.strip(),
+        rg.parent().id.strip(), rg.resseq.strip())
+      if resid not in self.residues_missing_neighbor:
+        self.residues_missing_neighbor.append(resid)
     if not sel_h_not_in_para.all_eq(False):
       self.model = self.model.select(~sel_h_not_in_para)
     self.time_remove_H_nopara = round(time.time()-t0, 2)
@@ -1120,7 +1384,9 @@ class place_hydrogens():
     self.model.reset_occupancy_for_hydrogens_simple()
     self.time_reset = round(time.time()-t0, 2)
     t0 = time.time()
-    self.model.idealize_h_riding()
+    # None, not False: callers outside reduce2 keep the scattering-table rule
+    self.model.idealize_h_riding(
+      use_neutron_distances = True if self.use_neutron_distances else None)
     self.time_idealize = round(time.time()-t0, 2)
 
     # Remove H atoms that are involved in links (bonds, metal coordination, etc)
@@ -1130,7 +1396,6 @@ class place_hydrogens():
     name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv(),
                      kinds = (2,))
     self.exclude_H_on_links()
-    self.exclude_H_on_esterified_O()
     # propellers only now: a methyl that lost an H to a link is a CH2, and the
     # names that survived it stay as they are
     name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv(),
@@ -1222,6 +1487,10 @@ class place_hydrogens():
     for proxy in grm.angle_proxies:
       i, j, k = proxy.i_seqs
       known.add((min(i, k), j, max(i, k)))
+    # H/A must not get C/B of the previous residue (7a5m ALA A 103: N without
+    # altloc, CA and H in A and B)
+    altloc = lambda i: atoms[i].parent().altloc.strip()
+    same_conf = lambda i, j: '' in (altloc(i), altloc(j)) or altloc(i) == altloc(j)
     for i_h, atom in enumerate(atoms):
       if elements[i_h].strip() not in ('H', 'D'): continue
       heavy = [j for j in set(bonds.get(i_h, []))
@@ -1233,6 +1502,7 @@ class place_hydrogens():
       for i_c in set(bonds.get(i_n, [])):
         if atoms[i_c].name.strip() != 'C': continue
         if atoms[i_c].parent().parent().memory_id() == rg_n.memory_id(): continue
+        if not same_conf(i_c, i_h): continue
         key = (min(i_c, i_h), i_n, max(i_c, i_h))
         if key in known: continue
         known.add(key)
@@ -1242,7 +1512,18 @@ class place_hydrogens():
           weight      = 1./esd**2))
         i_ca = [j for j in set(bonds.get(i_n, []))
                 if atoms[j].name.strip() == 'CA'
-                and atoms[j].parent().parent().memory_id() == rg_n.memory_id()]
+                and atoms[j].parent().parent().memory_id() == rg_n.memory_id()
+                and same_conf(j, i_h)]
+        # a covalent link (cyclic peptide, 1evd MDH 5 C - ACB 1 N) has the bond
+        # but not C-N-CA, which riding H needs for an H with two heavy neighbours
+        if ca and ca[0].value_angle_esd and i_ca:
+          key_ca = (min(i_c, i_ca[0]), i_n, max(i_c, i_ca[0]))
+          if key_ca not in known:
+            known.add(key_ca)
+            new.append(geometry_restraints.angle_proxy(
+              i_seqs      = [i_c, i_n, i_ca[0]],
+              angle_ideal = ca[0].value_angle,
+              weight      = 1./ca[0].value_angle_esd**2))
         if plane_esd and i_ca:
           i_seqs = [i_c, i_n, i_ca[0], i_h]
           planarities.append(geometry_restraints.planarity_proxy(
@@ -1273,28 +1554,121 @@ class place_hydrogens():
     molecule gives the O a hydroxyl H, but here it is an ester or an ether -
     O3' of a nucleotide inside a chain carries the next phosphate. A polymer
     bond has origin_id 0, so exclude_H_on_links never sees these.
+    Also remove H from the terminal O/S of a phosphodiester that bridges to
+    another residue (pKa ~1): free-nucleotide dictionaries carry it (CCD BGM
+    HOP2 in 2e4i, geostd GS HSP2 in 5zmn).
+    Diesters within one residue keep their dictionary H (35G; 58 geostd
+    entries have one).
     '''
     grm = self.model.get_restraints_manager().geometry
     bps, asu = grm.get_all_bond_proxies(
       sites_cart = self.model.get_sites_cart())
-    elements = self.model.get_hierarchy().atoms().extract_element()
+    atoms = self.model.get_hierarchy().atoms()
+    elements = atoms.extract_element()
     is_h = lambda i: elements[i].strip() in ('H', 'D')
-    # one pass over the bonds, keeping only what the oxygens carry
-    h_on_o, heavy_on_o = {}, {}
+    # one pass over the bonds, keeping only what O, S and P carry
+    h_on, heavy_on = {}, {}
     for proxy in list(bps) + list(asu):
       if   isinstance(proxy, ext.bond_simple_proxy): i,j = proxy.i_seqs
       elif isinstance(proxy, ext.bond_asu_proxy):    i,j = proxy.i_seq, proxy.j_seq
       else: continue
-      for i_o, other in ((i, j), (j, i)):
-        if elements[i_o].strip() != 'O': continue
-        if is_h(other): h_on_o.setdefault(i_o, set()).add(other)
-        else:           heavy_on_o.setdefault(i_o, set()).add(other)
-    remove = flex.size_t()
-    for i_o, hs in h_on_o.items():
-      if len(heavy_on_o.get(i_o, ())) > 1:
-        for i_h in sorted(hs): remove.append(i_h)
+      for i_x, other in ((i, j), (j, i)):
+        if elements[i_x].strip() not in ('O', 'S', 'P'): continue
+        if is_h(other): h_on.setdefault(i_x, set()).add(other)
+        else:           heavy_on.setdefault(i_x, set()).add(other)
+    remove = set()
+    for i_o, hs in h_on.items():
+      if elements[i_o].strip() == 'O' and len(heavy_on.get(i_o, ())) > 1:
+        remove.update(hs)
+    residue = lambda i: atoms[i].parent().parent().memory_id()
+    for i_p, neighbors in heavy_on.items():
+      if elements[i_p].strip() != 'P': continue
+      os_ = [k for k in neighbors if elements[k].strip() in ('O', 'S')]
+      bridged = dict((k, heavy_on.get(k, set()) - {i_p}) for k in os_)
+      bridged = dict((k, v) for k, v in bridged.items() if v)
+      if len(bridged) < 2: continue
+      r_p = residue(i_p)
+      if all(residue(m) == r_p for v in bridged.values() for m in v): continue
+      for k in os_:
+        if k not in bridged: remove.update(h_on.get(k, ()))
+    remove = flex.size_t(sorted(remove))
     if remove.size():
       sel = flex.bool(elements.size(), True).set_selected(remove, False)
+      self.model = self.model.select(sel)
+
+  def find_atoms_not_in_dictionary(self):
+    '''
+    Heavy atoms whose name is not in their residue's dictionary; model
+    processing gives them energy type False. Typically a dictionary older than
+    the CCD (7a5m 2L5: geostd N4/C12/C11/O4, model N/CA/C/O). For the report.
+    '''
+    te = getattr(self.model, '_type_energies', None)
+    if te is None: return
+    found, order = {}, []
+    for a in self.model.get_hierarchy().atoms():
+      if a.element_is_hydrogen() or te[a.i_seq] not in (False, 'False'):
+        continue
+      rg = a.parent().parent()
+      resid = '%s %s %s' % (a.parent().resname.strip(),
+        rg.parent().id.strip(), rg.resseq.strip())
+      if resid not in found:
+        found[resid] = []
+        order.append(resid)
+      if a.name.strip() not in found[resid]:
+        found[resid].append(a.name.strip())
+    self.residues_unknown_atoms = [(r, found[r]) for r in order]
+
+  def exclude_H_without_link_angle(self):
+    '''
+    A link gives an angle only to the H it keeps (NAG-ASN: HD21-ND2-C1) and
+    deletes the other (HD22), which exclude_H_on_links removes only after
+    riding H. Riding H stops on that mismatch when the linked atom is itself
+    the second neighbour of an H (2fd6: NAG C1 still carries O1 and HO1).
+    Remove the H without the angle when another H on the same parent has it.
+    Only neighbours in another residue: a gap within one dictionary still
+    raises.
+    '''
+    grm = self.model.get_restraints_manager().geometry
+    bps, asu = grm.get_all_bond_proxies(
+      sites_cart = self.model.get_sites_cart())
+    atoms = self.model.get_hierarchy().atoms()
+    elements = atoms.extract_element()
+    is_h = lambda i: elements[i].strip() in ('H', 'D')
+    residue = lambda i: atoms[i].parent().parent().memory_id()
+    parent, heavy = {}, {}
+    for proxy in list(bps) + list(asu):
+      if   isinstance(proxy, ext.bond_simple_proxy): i,j = proxy.i_seqs
+      elif isinstance(proxy, ext.bond_asu_proxy):    i,j = proxy.i_seq, proxy.j_seq
+      else: continue
+      if is_h(i) and is_h(j): continue
+      if is_h(i):   parent[i] = j
+      elif is_h(j): parent[j] = i
+      elif residue(i) != residue(j):
+        heavy.setdefault(i, set()).add(j)
+        heavy.setdefault(j, set()).add(i)
+    if not heavy: return
+    angle_to = {}
+    for ap in grm.get_all_angle_proxies():
+      i, j, k = ap.i_seqs
+      for h, x in ((i, k), (k, i)):
+        if is_h(h) and parent.get(h) == j and not is_h(x):
+          angle_to.setdefault(h, set()).add(x)
+    hs_on = {}
+    for h, p in parent.items():
+      if p in heavy: hs_on.setdefault(p, []).append(h)
+    altloc = lambda i: atoms[i].parent().altloc.strip()
+    remove = set()
+    for p, hs in hs_on.items():
+      if len(hs) < 2: continue
+      for b in heavy[p]:
+        # one H per altloc, each with its own neighbour (7a5m ALA A 103)
+        hs_b = [h for h in hs
+                if '' in (altloc(h), altloc(b)) or altloc(h) == altloc(b)]
+        kept = [h for h in hs_b if b in angle_to.get(h, ())]
+        if kept: remove.update(h for h in hs_b if h not in kept)
+    if remove:
+      sel = flex.bool(elements.size(), True).set_selected(
+        flex.size_t(sorted(remove)), False)
       self.model = self.model.select(sel)
 
   def place_anchorless_h(self, iseqs, bonds, heavy_neighbors):
@@ -1368,17 +1742,24 @@ class place_hydrogens():
 
   def place_n_terminal_propeller(self, pdb_hierarchy):
     '''
-    Place NH3 at residue #1 or at first residue in chain
+    Place NH3 at residue #1, at first residue in chain, or at all chain starts
+    (first residue in chain and first residue after a chain break)
     Changes hierarchy in place
     '''
+    # an N bonded to another residue is no terminus (cyclic peptide: 1evd ACB 1
+    # N - MDH 5 C)
     for m in pdb_hierarchy.models():
-      for chain in m.chains():
-        rgs = chain.residue_groups()[0]
+      model_atoms = m.atoms()
+      model_sites = model_atoms.extract_xyz()
+      if self.n_terminal_charge == 'all_chain_starts':
+        rgs_list = chain_start_residue_groups(m)
+      else:
+        rgs_list = [chain.residue_groups()[0] for chain in m.chains()]
+      candidates = []
+      for rgs in rgs_list:
         # by default, place NH3 only at residue with resseq 1
         if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
           continue
-        elif (self.n_terminal_charge == 'first_in_chain'):
-          pass
         # SAC in 5xdq, 5zcp. Never needs propeller. Also AYA
         n = None
         for ag in rgs.atom_groups():
@@ -1390,11 +1771,42 @@ class place_hydrogens():
         if ag.resname in ['PRO']: # needs a PRO child lookup
           heavies = 3
         if len(bonds) >= heavies: continue
+        candidates.append((rgs, ag, n))
+      if not candidates: continue
+      # Atoms within 1.75 A of candidate N. Few candidates: scan all atoms per
+      # N. Many (all_chain_starts, models can have very many chain starts):
+      # one spatial lookup for all N, as scan is O(N_atoms) per N. Crossover
+      # is at ~15 candidates.
+      cutoff_sq = 1.75**2
+      neighbors = None
+      if len(candidates) > 10:
+        n_sites = flex.vec3_double([n.xyz for rgs, ag, n in candidates])
+        neighbors = scitbx.cubicle_neighbors.cubicle_neighbors(
+          main_sites_cart = model_sites,
+          cubicle_edge    = 5).neighbors_of(
+            other_sites_cart   = n_sites,
+            distance_cutoff_sq = cutoff_sq)
+      for i_n, (rgs, ag, n) in enumerate(candidates):
+        if neighbors is None:
+          nb = ((model_sites - n.xyz).dot() < cutoff_sq).iselection()
+        elif i_n in neighbors:
+          nb = flex.size_t(list(neighbors[i_n]))
+          nb = nb.select((model_sites.select(nb) - n.xyz).dot() < cutoff_sq)
+        else:
+          nb = []
+        if [i for i in nb
+            if model_atoms[i].element.strip().upper() in nonmetals
+            and model_atoms[i].parent().parent().memory_id() != rgs.memory_id()]:
+          continue
+        # remove the amide H also for peptide-like residues of class 'other'
+        # (UNK, ACB): add_n_terminal_hydrogens keeps an existing H in place of
+        # H1, and H, H2, H3 do not match mod_NH3
         if (get_class(name=ag.resname) in
-            ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+            ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']
+            or (ag.get_atom('CA') and ag.get_atom('C'))):
           for ag_h in rgs.atom_groups():
             h = ag_h.get_atom('H')
-            if h:
+            if h and _dictionary_h_on_n(ag_h, self.model.get_mon_lib_srv()):
               ag_h.remove_atom(h)
         # TODO make the function below smart, so it
         # 1) knows when to add H1H2H3 or not
@@ -1427,30 +1839,34 @@ class place_hydrogens():
     # end TODO
     pdb_hierarchy = self.model.get_hierarchy()
     mon_lib_srv = self.model.get_mon_lib_srv()
-    # Load any user-provided restraint CIF objects into the server so that
-    # mon_lib_query() finds them and does not generate auto_* CIF objects
-    # with empty type_energy values that would overwrite the user entries.
-    ro = self.model.get_restraint_objects()
-    if ro:
-      for fname, cif_obj in ro:
-        if cif_obj is not None:
-          try:
-            mon_lib_srv.process_cif_object(
-              cif_object=cif_obj, file_name=fname)
-          except Exception:
-            pass
+    load_restraint_objects_into_server(self.model, mon_lib_srv)
     #XXX This breaks for 1jxt, residue 2, TYR
     for m in pdb_hierarchy.models():
+      model_atoms = m.atoms()
+      model_sites = model_atoms.extract_xyz()
       for chain in m.chains():
         for rg in chain.residue_groups():
           n_atom_groups = len(rg.atom_groups())
-          for ag in rg.atom_groups():
+          ags = rg.atom_groups()
+          # blank + one altloc, same resname: one conformer. Missing H are
+          # added once, to the blank group; per group, each got the other's H
+          single_altloc = (n_atom_groups == 2 and
+            sorted(ag.altloc == '' for ag in ags) == [False, True] and
+            ags[0].resname == ags[1].resname)
+          for ag in ags:
+            # blank + two or more altlocs: blank-parent H go into each altloc
             if n_atom_groups > 2 and ag.altloc == '':
+              continue
+            if single_altloc and ag.altloc != '':
               continue
             #print list(ag.atoms().extract_name())
             if exclude_water:
               if(get_class(name=ag.resname) == "common_water"): continue
             actual = [a.name.strip().upper() for a in ag.atoms()]
+            if single_altloc:
+              actual += [a.name.strip().upper()
+                         for other in ags if other.altloc != ''
+                         for a in other.atoms()]
             #
             mlq, cif_object = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv, raise_sorry=False)
             if mlq is None:
@@ -1458,13 +1874,8 @@ class place_hydrogens():
               continue
 
             if cif_object:
-              ro = self.model.get_restraint_objects()
-              if ro is None: ro=[]
-              auto_name = 'auto_%s' % ag.resname
-              ro.append((auto_name, cif_object))
-              self.model.set_restraint_objects(ro)
-              if auto_name not in self.auto_restraint_names:
-                self.auto_restraint_names.append(auto_name)
+              add_auto_restraint_object(self.model, ag.resname, cif_object,
+                self.auto_restraint_names)
 
             expected_h = []
             #expected_ha = []
@@ -1481,7 +1892,13 @@ class place_hydrogens():
             #
             # don't add polymer H atoms. Terminal H atoms added elsewhere
             #
-            if mlq.test_for_peptide(atom_dict):
+            # test_for_peptide wants C=O; a reduced C-terminus (ASJ, 4dco) has
+            # C-O, and its N is in the chain only if bonded to the previous C
+            n = ag.get_atom('N')
+            if (mlq.test_for_peptide(atom_dict) or
+                (get_class(name=ag.resname) == 'modified_amino_acid'
+                 and 'CA' in atom_dict and n is not None
+                 and _bonded_to_other_residue(n, rg, model_atoms, model_sites))):
               atom_dict = _remove_atoms(
                 atom_dict, _terminal_h(mlq, atom_dict))
             # HO3' used to go here for every RNA/DNA residue, because in a
@@ -1692,16 +2109,31 @@ class place_hydrogens():
       if (order > 1 and atoms[i].distance(atoms[j]) >
           ideal_distance.get(frozenset((i, j)), 0) + 0.1): return 1
       return order
+    def _altloc(i_seq):
+      return atoms[i_seq].parent().altloc
+    # Count one conformer: H copies in A and B are not simultaneous bonds of a
+    # shared parent. A blank-altloc H is checked against the fullest conformer.
+    def _number_of_bonds(j_seq, i_h):
+      nbs = bonds[j_seq]
+      alts = [_altloc(i_h)] if _altloc(i_h) else (
+        sorted(set(_altloc(n) for n in nbs) - set([''])) or [''])
+      return max(sum(_bond_order(j_seq, n) for n in nbs
+                     if _altloc(n) in ('', alt)) for alt in alts)
+    missing_neighbor = 'a missing heavy neighbour'
     for i_seq in sorted(reversed(list(sel_remove)), key=_drop_order):
       j_seq=parent_dict[i_seq]
       # need to add the use of atomic charge
       valences=get_valences(elements[j_seq])
-      number_of_bonds=sum(_bond_order(j_seq, n) for n in bonds[j_seq])
+      number_of_bonds=_number_of_bonds(j_seq, i_seq)
       if number_of_bonds in valences:
         # remove this H from delection
         remove_from_sel_remove.append(i_seq) # ??
         del removed_dict[i_seq]
       else:
+        # too few bonds: a heavy neighbour is missing, not the link's fault
+        # (3evj NAG A 2 C1 has no C2)
+        if number_of_bonds < min(valences):
+          removed_dict[i_seq] = missing_neighbor
         bonds[j_seq].remove(i_seq)
         bonds[i_seq].remove(j_seq)
 
@@ -1712,8 +2144,12 @@ class place_hydrogens():
     for _i in remove_from_sel_remove:
       parent = fsc0[_i][0]
       first_neighbors = fsc1[_i]
-      fn_filtered = [item for item in first_neighbors if item not in sel_remove]
-      n_kept = sum(1 for k in remove_from_sel_remove if fsc0[k][0] == parent)
+      # same conformer as the H
+      fn_filtered = [item for item in first_neighbors if item not in sel_remove
+                     and _altloc(item) in ('', _altloc(_i))]
+      def _sibling(k):
+        return fsc0[k][0] == parent and _altloc(k) == _altloc(_i)
+      n_kept = sum(1 for k in remove_from_sel_remove if _sibling(k))
       coordp = matrix.col(atoms[parent].xyz)
       # Two H kept on an sp3 atom with two heavy neighbours: a methyl that
       # became a CH2 via a link (e.g. B0I CB1/CB2 in 6b17, linked to a thioether
@@ -1722,7 +2158,7 @@ class place_hydrogens():
       # (not eclipsed). The single-H branches below cannot handle this: they
       # would place both H at the same in-plane bisector site.
       if n_kept == 2 and len(fn_filtered) == 2:
-        siblings = sorted(k for k in remove_from_sel_remove if fsc0[k][0] == parent)
+        siblings = sorted(k for k in remove_from_sel_remove if _sibling(k))
         u1 = (matrix.col(atoms[fn_filtered[0]].xyz) - coordp).normalize()
         u2 = (matrix.col(atoms[fn_filtered[1]].xyz) - coordp).normalize()
         anti = -(u1 + u2).normalize()       # bisects H-C-H, points away from neighbours
@@ -1773,9 +2209,18 @@ class place_hydrogens():
     #
     def _removed_label(v):
       return v if isinstance(v, str) else origin_ids.get_origin_key(v)
-    sl_removed = [(atom.id_str().replace('pdb=','').replace('"',''),
-                   _removed_label(removed_dict[atom.i_seq]))
-        for atom in self.model.get_hierarchy().atoms().select(sel_remove)]
+    sl_removed = []
+    for atom in self.model.get_hierarchy().atoms().select(sel_remove):
+      label = atom.id_str().replace('pdb=','').replace('"','')
+      if removed_dict[atom.i_seq] == missing_neighbor:
+        rg = atom.parent().parent()
+        resid = '%s %s %s' % (atom.parent().resname.strip(),
+          rg.parent().id.strip(), rg.resseq.strip())
+        self.site_labels_missing_neighbor.append(label)
+        if resid not in self.residues_missing_neighbor:
+          self.residues_missing_neighbor.append(resid)
+        continue
+      sl_removed.append((label, _removed_label(removed_dict[atom.i_seq])))
     #
     if sel_remove:
       self.model = self.model.select(~flex.bool(self.model.size(), sel_remove))
@@ -1824,6 +2269,22 @@ proline-type or N-substituted residue)'''
       print(msg, file=log)
       for label in self.site_labels_tertiary_amide:
         print(label, file=log)
+    #
+    if self.residues_unknown_atoms:
+      print('', file=log)
+      msg = ('Atom names not in the restraint dictionary of their residue '
+        '(dictionary older\nthan the CCD?) - %d residues; %d H atoms on them '
+        'were not placed:')
+      print(msg % (len(self.residues_unknown_atoms),
+        len(self.site_labels_unknown_atoms)), file=log)
+      cap = 12
+      for resid, names in self.residues_unknown_atoms[:cap]:
+        print(' %s: %s' % (resid, ' '.join(names)), file=log)
+      if len(self.residues_unknown_atoms) > cap:
+        print(' (+%d more)' % (len(self.residues_unknown_atoms) - cap), file=log)
+      if verbose:
+        for label in self.site_labels_unknown_atoms:
+          print(label, file=log)
     #
     if self.site_labels_missing_neighbor:
       n_atoms = len(self.site_labels_missing_neighbor)
@@ -1894,7 +2355,9 @@ The following H atoms were not placed because they could not be parameterized
       site_labels_no_para = self.site_labels_no_para,
       site_labels_tertiary_amide = self.site_labels_tertiary_amide,
       site_labels_missing_neighbor = self.site_labels_missing_neighbor,
-      residues_missing_neighbor = self.residues_missing_neighbor)
+      residues_missing_neighbor = self.residues_missing_neighbor,
+      residues_unknown_atoms = self.residues_unknown_atoms,
+      site_labels_unknown_atoms = self.site_labels_unknown_atoms)
 
 # ------------------------------------------------------------------------------
 

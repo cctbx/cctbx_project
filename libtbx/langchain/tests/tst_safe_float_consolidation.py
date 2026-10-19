@@ -65,7 +65,7 @@ def test_single_definition_in_run_utils():
     if path is None:
         print("  (skip) run_utils.py not found")
         return
-    n = len(re.findall(r'^def _safe_float\(', open(path).read(), re.MULTILINE))
+    n = len(re.findall(r'^def _safe_float\(', open(path, encoding="utf-8").read(), re.MULTILINE))
     assert n == 1, "run_utils.py must define _safe_float exactly once (found %d)" % n
 
 
@@ -78,7 +78,7 @@ def test_no_other_definitions_in_agent():
     for fn in os.listdir(_AGENT):
         if not fn.endswith(".py"):
             continue
-        src = open(os.path.join(_AGENT, fn)).read()
+        src = open(os.path.join(_AGENT, fn), encoding="utf-8").read()
         if re.search(r'^def _safe_float\(', src, re.MULTILINE):
             offenders.append(fn)
     assert not offenders, \
@@ -93,7 +93,7 @@ def test_consumers_import_canonical():
         if path is None:
             print("  (skip) %s not found" % fn)
             continue
-        src = open(path).read()
+        src = open(path, encoding="utf-8").read()
         if "_safe_float" not in src:
             continue  # module no longer uses it; fine
         assert _CANONICAL_IMPORT in src, \
@@ -110,7 +110,7 @@ def _load_run_utils():
         return None
     # exec just the function to avoid importing run_utils' heavier deps.
     # Capture from the def line through the except-branch 'return None'.
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     m = re.search(
         r'def _safe_float\(val\):.*?except \(ValueError, TypeError\):\s*\n\s*return None\n',
         src, re.DOTALL)
@@ -141,7 +141,7 @@ def _load_coerce_resolution():
     path = _run_utils_path()
     if path is None:
         return None
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     # _coerce_resolution depends on _safe_float and the bound module constants;
     # exec the relevant span (constants + both defs) together.
     m = re.search(
@@ -160,7 +160,7 @@ def test_coerce_resolution_single_definition():
     if path is None:
         print("  (skip)")
         return
-    n = len(re.findall(r'^def _coerce_resolution\(', open(path).read(), re.MULTILINE))
+    n = len(re.findall(r'^def _coerce_resolution\(', open(path, encoding="utf-8").read(), re.MULTILINE))
     assert n == 1, "run_utils.py must define _coerce_resolution exactly once (found %d)" % n
 
 
@@ -192,7 +192,7 @@ def test_coerce_resolution_consumers():
     # graph_nodes resolver
     gn = _agent_file("graph_nodes.py")
     if gn is not None:
-        src = open(gn).read()
+        src = open(gn, encoding="utf-8").read()
         assert "_coerce_resolution" in src, \
             "graph_nodes must use the shared _coerce_resolution"
         assert "import _safe_float, _coerce_resolution" in src or \
@@ -201,7 +201,7 @@ def test_coerce_resolution_consumers():
     # command_builder.from_state
     cb = _agent_file("command_builder.py")
     if cb is not None:
-        src = open(cb).read()
+        src = open(cb, encoding="utf-8").read()
         assert "_coerce_resolution(state.get(\"session_resolution\"))" in src, \
             "command_builder.from_state must coerce session_resolution"
         assert "_coerce_resolution(workflow_state.get(\"resolution\"))" in src, \
@@ -221,7 +221,7 @@ def test_sanity_checker_coerces_metrics():
     if path is None:
         print("  (skip) sanity_checker.py not found")
         return
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     # both metric blocks must coerce via _safe_float, not use raw .get()
     assert '_safe_float(prev.get("r_free"))' in src
     assert '_safe_float(curr.get("r_free"))' in src

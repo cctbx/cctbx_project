@@ -85,11 +85,11 @@ def get_phi_psi_correction(result,
     start = (current.r>=0.25)
     finish = (rc.r>=0.25)
     if verbose:
-      print('current %s is corrected with %s' % (current, correction)),
-      print(' to give %s\n' % rc)
+      print(f'{current=} corrected with {correction=} ~> {rc=}')
     if display_phi_psi_correction and (start or finish):
       show_phi_psi_correction(residue, phi_psi, current, correction, rc)
-    return rc.r, rc.t/pi*180, start, finish
+    dihedral = (rc.t/pi*180 + 180) % 360 - 180
+    return rc.r, dihedral, start, finish
   else:
     return None
 

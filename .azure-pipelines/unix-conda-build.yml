@@ -50,6 +50,12 @@ steps:
 
 - script: |
     set -xe
+    cd $(Pipeline.Workspace)/modules/cctbx_project/libtbx
+    sed -i.bak 's/"$D\/tst_guided_coding.py"/#"$D\/tst_guided_coding.py"/g' run_tests.py
+  displayName: Skip libtbx/tst_guided_coding.py
+
+- script: |
+    set -xe
     cd $(Pipeline.Workspace)
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py

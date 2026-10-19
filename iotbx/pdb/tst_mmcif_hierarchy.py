@@ -1100,6 +1100,51 @@ def exercise_resolution():
                      1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
                      2.0, 2.1, 2.2, 2.3, 2.4, 2.5], new_res
 
+input_null_occ_b = """\
+data_test
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_seq_id
+_atom_site.label_asym_id
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.label_entity_id
+_atom_site.auth_asym_id
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_PDB_model_num
+ATOM 1 N N . GLU 73 L 510.840 1025.271 810.585 . 1 L . 1
+ATOM 2 C CA . GLU 73 L 509.572 1024.507 810.531 ? 1 L ? 1
+ATOM 3 C C . GLU 73 L 509.593 1023.424 811.561 0.50 1 L 20.00 1
+"""
+
+def exercise_null_occupancy_and_b_iso():
+  """
+  Integrative (IHM) models deposited in the PDB give occupancy and
+  B_iso_or_equiv as the mmCIF null values "." or "?". These must not crash
+  the hierarchy builder. Both default to 0.0, consistent with how the
+  PDB-format reader treats blank occupancy and B columns.
+  """
+  cif_model = iotbx.cif.reader(input_string=input_null_occ_b).model()
+  builder = pdb_hierarchy_builder(cif_model["test"])
+  atoms = builder.hierarchy.atoms()
+  assert atoms.size() == 3
+  assert approx_equal(list(atoms.extract_occ()), [0.0, 0.0, 0.5])
+  assert approx_equal(list(atoms.extract_b()), [0.0, 0.0, 20.0])
+  # Same through the generic entry point
+  h = iotbx.pdb.input(source_info=None,
+    lines=input_null_occ_b).construct_hierarchy()
+  atoms = h.atoms()
+  assert atoms.size() == 3
+  assert approx_equal(list(atoms.extract_occ()), [0.0, 0.0, 0.5])
+  assert approx_equal(list(atoms.extract_b()), [0.0, 0.0, 20.0])
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1114,6 +1159,7 @@ def run():
   else:
     print('chem_data not present, skipping exercise_struct_conn')
   exercise_resolution()
+  exercise_null_occupancy_and_b_iso()
 
 if __name__ == '__main__':
   run()

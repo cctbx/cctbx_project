@@ -14,6 +14,7 @@ def test_000():
     8b0x: NA 1MG not in GeoStd but in CCD
     renamed 1_G: 1MG is in GeoStd since 2026-09. 1_G classifies as 'other',
     not modified_rna_dna, which turns the unrestrained methyl by 10 deg.
+    No HOP2: the 1_G phosphate bridges to U 746 (phosphodiester).
   '''
   compare_models(pdb_str = pdb_str_000)
 
@@ -100,7 +101,6 @@ HETATM   64 HM12 1_G a 747     198.435 178.526 231.296  1.00 15.85           H
 HETATM   65 HM13 1_G a 747     199.397 178.492 232.576  1.00 15.85           H
 HETATM   66 HN21 1_G a 747     200.458 175.530 234.339  1.00 17.42           H
 HETATM   67 HN22 1_G a 747     200.576 176.792 233.521  1.00 17.42           H
-HETATM   68 HOP2 1_G a 747     189.972 173.310 232.711  1.00 28.21           H
 HETATM   70  P   PSU a 748     192.982 174.005 238.688  1.00 29.88           P
 HETATM   71  OP1 PSU a 748     192.917 173.694 240.110  1.00 34.23           O
 HETATM   72  OP2 PSU a 748     191.757 174.123 237.896  1.00 35.52           O

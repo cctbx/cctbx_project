@@ -1126,15 +1126,18 @@ class manager(Base_geometry):
     bonded_distance_cutoff = max_distance_between_connecting_atoms
     sites_frac = self.crystal_symmetry.unit_cell().\
         fractionalize(sites_cart=sites_cart)
+    # max over all shells: a bond can be longer than any 1-4 pair (an H not
+    # yet placed, 6e8p)
     existing_max_bonded_distance = 0
     for shell_sym_table in self.shell_sym_tables:
-      existing_max_bonded_distance = flex.max_default(
+      existing_max_bonded_distance = max(existing_max_bonded_distance,
+          flex.max_default(
               values=crystal.get_distances(
                   pair_sym_table=shell_sym_table,
                   orthogonalization_matrix=self.crystal_symmetry.unit_cell() \
                       .orthogonalization_matrix(),
                   sites_frac=sites_frac),
-              default=0)
+              default=0))
     t1 = time.time()
     max_p_distance=0
     if not skip_max_proxy_distance_calculation:
@@ -1149,13 +1152,16 @@ class manager(Base_geometry):
           max_p_distance)
     bonded_distance_cutoff = min(bonded_distance_cutoff,
         max_distance_between_connecting_atoms)+0.1
-    bonded_distance_cutoff = max(bonded_distance_cutoff,
+    # The asu buffer must cover existing bonds so that add_pair_sym_table
+    # below finds every bonded mate; bonded_distance_cutoff stays the limit
+    # for new bonds and must not grow with them.
+    buffer_thickness = max(bonded_distance_cutoff,
         existing_max_bonded_distance)
     t2 = time.time()
     # print("bonded_distance_cutoff", bonded_distance_cutoff)
     # make asu mappings
     all_asu_mappings = self.crystal_symmetry.special_position_settings().\
-        asu_mappings(buffer_thickness=bonded_distance_cutoff)
+        asu_mappings(buffer_thickness=buffer_thickness)
     all_asu_mappings.process_sites_cart(
       original_sites=sites_cart,
       site_symmetry_table=self.site_symmetry_table)
@@ -1229,6 +1235,9 @@ class manager(Base_geometry):
         rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
         rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
         rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
+        # reverted pair: its rt_mx_ji maps i onto j (3dgd ZN D 130 - HIS C 31)
+        if pair_in_origninal_indeces[0] != proxies[n_proxy].i_seqs[0]:
+          rt_mx_ji = rt_mx_ji.inverse()
         rt_mx_ji_options[n_proxy].append(rt_mx_ji)
         # print("  pair:",  pair.i_seq, pair.j_seq, "n_proxy ", n_proxy,rt_mx_ji)
     # print ("rt_mx_ji_options:", rt_mx_ji_options)

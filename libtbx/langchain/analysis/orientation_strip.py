@@ -353,7 +353,7 @@ def main():
     worst = 0
     print("%-32s %6s %6s" % ("log", "lines", "secs"))
     for f in sorted(os.listdir(G)):
-        text = open(os.path.join(G, f), errors="replace").read()
+        text = open(os.path.join(G, f), errors="replace", encoding="utf-8").read()
         t0 = time.time()
         lines, _ = build(text, f)
         dt = time.time() - t0
@@ -365,7 +365,7 @@ def main():
     print("\n" + "=" * 66)
     for name in ("molprobity_4_esterase", "refine_3_esterase",
                  "PHASER_beta_blip"):
-        text = open(os.path.join(G, name + ".log"), errors="replace").read()
+        text = open(os.path.join(G, name + ".log"), errors="replace", encoding="utf-8").read()
         lines, _ = build(text, name + ".log")
         print("\n--- %s (%d lines) ---" % (name, len(lines)))
         print("\n".join(lines))

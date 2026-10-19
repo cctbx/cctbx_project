@@ -119,6 +119,7 @@ Volatile facts such as a free lock or server load need checking at use time.
 | Actions | Existing permissions and restrictions for verification, builds, tests, installation changes, integration and publication | A specific action or policy change not covered by current authority |
 | Publication conventions | The destination repository's branch, tag and release conventions and who states them (for example, tags reserved for releases); every effective push URL (`git remote get-url --all --push`), `insteadOf`/`pushInsteadOf` rewrites, `pushurl`, `mirror`, push refspecs, `tagOpt` and `push.followTags`; the recovery convention (commit ids and branches, no tags) | A repository whose release workflow genuinely requires a tag: its own explicit tag authorization |
 | Installations | Each installation kept in step after a publication: canonical root, access host (two hostnames for one filesystem are one installation), repositories, how it is updated (fetch and fast-forward; refresh or rebuild only when stated), verification, reservation and load rules, recovery boundary | Which installations a publication plan names; nothing else is updated |
+| Auto mode (only when the Developer wants `/gc auto`) | The fields AUTO.md "Start" step 2 reads: a test-only installation path (never a working installation); its fingerprint script and recorded `FINGERPRINT` value (and `NORMALIZED` value when the script prints one); the lock directory passed to `init --lock-dir`; the queue home (`--home` or `GC_AUTO_HOME`, default `~/GuidedCoding/auto`) and queue records root (`init --records`); the disk floor (`init --min-free-gib`, default 8) and the path it is measured on (`--space-path`) | Whether a test-only installation exists or must be created (its creation is its own authorized step); the Developer's choice of locations and floor. Missing values block only the jobs that need them |
 
 Treat every related repository as separately scoped. Do not write to one
 merely because its path was discovered. Keep durable evidence out of a
@@ -162,6 +163,20 @@ Reuse the project's existing method path. If none is designated, propose
 current authority. Preserve AGENTS.md and the active instruction-loading
 choice; do not blindly create CLAUDE.local.md. Keep the shared contract and
 procedure in the central source, and project-specific values in the method.
+
+**Adoption is personal and untracked.** Using GuidedCoding is the
+Developer's own choice for his checkout. Propose the adoption declaration
+and the method pointer only for an untracked, personal authority that the
+client loads (for example `CLAUDE.local.md`, or another file Git ignores);
+never put them in a shared, tracked `CLAUDE.md` or `AGENTS.md`, which speak
+for every contributor. The method holds his own settings and is normally
+untracked as well. Check with `git check-ignore` or `git status` that the
+chosen authority file is untracked before saving. When the project has an `AGENTS.md` (or other shared agent
+rules), the method points to it by path instead of copying its rules (for
+example: "Follow the project's AGENTS.md; this method adds only my local
+settings"), so that a later change to those rules is not hidden by a stale
+copy. Record from those rules whether the agent may push; where they forbid
+any `git push`, record that publication uses WORKER.md's no-push variant.
 Where an existing shared defaults file owns a value, reference it explicitly
 and state any project override rather than maintaining two silent owners.
 

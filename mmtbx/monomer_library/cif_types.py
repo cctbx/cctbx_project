@@ -427,6 +427,14 @@ class comp_comp_id(slots_getstate_setstate):
     result = copy.copy(self)
     for mod_atom in mod.atom_list:
       if (mod_atom.function == "add"):
+        # an H the residue already has is replaced, not added twice: CCD-style
+        # entries have H2 on N and NH3 adds H2 again, with another H2-N-CA
+        # (3d5k SCY). Heavy atoms (OXT, mod_COO) are left as before.
+        i_old = result.i_atom_by_id(mod_atom.new_atom_id)
+        if (i_old is not None
+            and str(result.atom_list[i_old].type_symbol).strip().upper()
+              in ("H", "D")):
+          result.delete_atom_in_place(mod_atom.new_atom_id)
         result.atom_list.append(mod_atom.as_chem_comp())
       elif (mod_atom.function == "delete"):
         try:

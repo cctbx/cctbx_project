@@ -100,9 +100,16 @@ class TestHalfMapPairDetection(unittest.TestCase):
       ["data_1.ccp4", "data_2.ccp4"])
     self.assertIn("data_full.ccp4", fm)
 
-  def test_pair_without_companion_not_promoted(self):
+  def test_pair_without_companion_promoted_tier1(self):
     """Two _1/_2 maps without a companion full_map →
-    stay in full_map (could be segmented maps)."""
+    promoted to half_map.
+
+    This is the deliberate Tier 1 half-map pair rule in
+    agent/workflow_state.py (_categorize_files): exactly two
+    full_map files forming a _1/_2 pair, and no other maps, are
+    almost certainly half-maps.  (Also covered by
+    tst_phase3_bug5.test_bug6_tier1_exactly_two_files.)  The
+    companion-full-map guard applies only to Tier 2 (>= 3 maps)."""
     files = self._categorize([
       "resolve_cryo_em_1.ccp4",
       "resolve_cryo_em_2.ccp4",
@@ -112,10 +119,11 @@ class TestHalfMapPairDetection(unittest.TestCase):
           for f in files.get("half_map", [])]
     fm = [os.path.basename(f)
           for f in files.get("full_map", [])]
-    self.assertEqual(hm, [],
-      "Without companion full map, pair should NOT "
-      "be promoted to half_map")
-    self.assertEqual(len(fm), 2)
+    self.assertEqual(sorted(hm),
+      ["resolve_cryo_em_1.ccp4", "resolve_cryo_em_2.ccp4"],
+      "Tier 1: an exactly-two-map _1/_2 pair should be "
+      "promoted to half_map")
+    self.assertEqual(fm, [])
 
   def test_no_false_positive_on_non_map(self):
     """Non-map files with _1 suffix are not affected."""

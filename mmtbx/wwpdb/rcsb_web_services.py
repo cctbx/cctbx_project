@@ -492,7 +492,8 @@ def get_emdb_id_for_pdb_id(pdb_id):
   Args:
       pdb_id (str): pdb id
   Returns:
-    list of emdb ids, e.g. ['EMD-37438'] or None if X-ray or not defined
+    list of emdb ids, e.g. ['EMD-37438'] or None if X-ray, integrative
+    (no exptl block) or not defined
   """
 
   graphql_query = '''
@@ -512,7 +513,9 @@ query
   data_entry = r.json()['data']['entry']
   if not data_entry:
     return None
-  if data_entry['exptl'][0]['method'] != 'ELECTRON MICROSCOPY':
+  # Integrative (IHM) entries have no exptl block: the field comes back null
+  exptl = data_entry.get('exptl')
+  if not exptl or exptl[0].get('method') != 'ELECTRON MICROSCOPY':
     return None
   emdb_ids = data_entry['rcsb_entry_container_identifiers']['emdb_ids']
   if not emdb_ids:

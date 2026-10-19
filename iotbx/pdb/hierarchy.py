@@ -17,7 +17,7 @@ from iotbx.pdb import hy36encode, hy36decode, common_residue_names_get_class
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 from iotbx.pdb.modified_aa_names import lookup as aa_3_as_1_mod
 from iotbx.pdb.modified_rna_dna_names import lookup as na_3_as_1_mod
-from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
+from iotbx.pdb.utils import all_label_asym_ids
 import iotbx.cif.model
 from cctbx import crystal, adptbx, uctbx
 from cctbx.array_family import flex
@@ -1687,7 +1687,6 @@ class _():
     chem_comp_atom_ids = []
     struct_asym_ids = []
     #
-    chain_ids = all_chain_ids()
     for model in self.models():
       model_id = model.id
       is_first_in_chain = True
@@ -2790,29 +2789,47 @@ class _():
     return n_removed
 
   def exchangeable_hd_selections(self):
+    """
+    Pairs of H and D atoms, as [[i_seq_H_or_D], [i_seq_D_or_H]].
+
+    Two atom groups of the same residue group are compared when their
+    altlocs differ and at least one of them has only H/D atoms; a blank
+    element counts as non-H/D. Each pair of groups is compared once, in
+    atom_groups() order. An atom pair is one H and one D (element after
+    strip(), case-sensitive) with equal name.strip()[1:]. There is no
+    distance check, and one atom can be in several pairs. Order: pair of
+    groups, then atom order in the first group, then in the second.
+    """
     result = []
+    elements = set(e.strip() for e in self.atoms().extract_element())
+    if 'H' not in elements or 'D' not in elements:
+      return result
     for model in self.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-          for i_gr1, atom_group_1 in enumerate(residue_group.atom_groups()):
-            elements_group1 = [
-              e.strip() for e in atom_group_1.atoms().extract_element()]
-            non_H_atoms_group1 = list(set(elements_group1) - set(['H','D']))
-            for i_gr2, atom_group_2 in enumerate(residue_group.atom_groups()):
-              elements_group2 = [
-                e.strip() for e in atom_group_2.atoms().extract_element()]
-              non_H_atoms_group2 = list(set(elements_group2) - set(['H','D']))
-              if non_H_atoms_group1 and non_H_atoms_group2: continue
-              if(atom_group_1.altloc != atom_group_2.altloc and i_gr2 > i_gr1):
-                for atom1 in atom_group_1.atoms():
-                  e1 = atom1.element.strip()
-                  n1 = atom1.name.strip()[1:]
-                  for atom2 in atom_group_2.atoms():
-                    e2 = atom2.element.strip()
-                    n2 = atom2.name.strip()[1:]
-                    if(e1 in ["H","D"] and e2 in ["H","D"] and e1 != e2 and
-                       n1 == n2):
-                      result.append([[int(atom1.i_seq)], [int(atom2.i_seq)]])
+          if residue_group.atom_groups_size() < 2: continue
+          groups = []
+          for atom_group in residue_group.atom_groups():
+            hd_atoms = []
+            hd_by_name = {}
+            heavy = False
+            for atom in atom_group.atoms():
+              e = atom.element.strip()
+              if e not in ('H', 'D'):
+                heavy = True
+                continue
+              x = (e, atom.name.strip()[1:], int(atom.i_seq))
+              hd_atoms.append(x)
+              hd_by_name.setdefault(x[1], []).append(x)
+            groups.append((atom_group.altloc, heavy, hd_atoms, hd_by_name))
+          for i_gr1, (altloc_1, heavy_1, hd_atoms_1, _) in enumerate(groups):
+            for altloc_2, heavy_2, _, hd_by_name_2 in groups[i_gr1+1:]:
+              if heavy_1 and heavy_2: continue
+              if altloc_1 == altloc_2: continue
+              for e1, n1, i1 in hd_atoms_1:
+                for e2, n2, i2 in hd_by_name_2.get(n1, ()):
+                  if e1 != e2:
+                    result.append([[i1], [i2]])
     return result
 
   def de_deuterate(self):

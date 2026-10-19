@@ -383,6 +383,36 @@ def exercise_numbers_from_string():
   assert tuple(f.as_string("%+.3e")) in [
     ('+1.000e-001', '-2.340e-005'),
     ('+1.000e-01',  '-2.340e-05')]
+  # the default prints six significant digits, as a stream does; the format
+  # string picks the digits
+  f = flex.double([1/3., 2/3., 1e20, 1.5e-7, 1234567.0, 0.1 + 0.2, 100000.0,
+                   1000000.0, -0.0])
+  assert tuple(f.as_string()) == (
+    '0.333333', '0.666667', '1e+20', '1.5e-07', '1.23457e+06', '0.3', '100000',
+    '1e+06', '-0')
+  assert tuple(f.as_string("%.8g")) == (
+    '0.33333333', '0.66666667', '1e+20', '1.5e-07', '1234567', '0.3', '100000',
+    '1000000', '-0')
+  assert tuple(f.as_string("%.3f")[:2]) == ('0.333', '0.667')
+  assert tuple(f.as_string("%10.2e")[:2]) == ('  3.33e-01', '  6.67e-01')
+  assert tuple(f.as_string("%-8.1f|")[:2]) == ('0.3     |', '0.7     |')
+  f = flex.double([float("nan"), float("inf"), -float("inf")])
+  assert tuple(f.as_string()) == ('nan', 'inf', '-inf')
+  assert tuple(f.as_string("%.8g")) == ('nan', 'inf', '-inf')
+  # a result longer than any fixed buffer
+  s = flex.double([1e300]).as_string("%.0f")
+  assert len(s[0]) == 301 and s[0].startswith("1000000000000000")
+  # formats that are more than one printf directive
+  assert tuple(flex.double([1.5, -2]).as_string("(%g)")) == ('(1.5)', '(-2)')
+  assert tuple(flex.double([1.5]).as_string("%10d")) == ('       1.5',)
+  i = flex.int([255, -1, 7])
+  assert tuple(i.as_string("%5d")) == ('  255', '   -1', '    7')
+  assert tuple(i.as_string("%-4i|")) == ('255 |', '-1  |', '7   |')
+  assert tuple(i.as_string("%x")) == ('ff', 'ffffffff', '7')
+  assert tuple(flex.int64([2**62, -1, -2**63]).as_string()) == (
+    '4611686018427387904', '-1', '-9223372036854775808')
+  assert tuple(flex.int16([32767, -32768]).as_string()) == ('32767', '-32768')
+  assert tuple(flex.int8([65, -1, 7]).as_string()) == ('65', '-1', '7')
   f = flex.double(flex.std_string([".34+05", "+6-2", "-7+4(1)"]))
   assert approx_equal(f, [34000.0, 0.06, -70000.0])
   #

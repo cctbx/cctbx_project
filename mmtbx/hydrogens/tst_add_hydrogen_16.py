@@ -6,6 +6,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 from mmtbx.monomer_library import server
 from mmtbx.hydrogens import reduce_hydrogen
+from six.moves import cStringIO as StringIO
 
 def run():
   test_001()
@@ -22,15 +23,28 @@ def run():
   test_012()
   test_013()
   test_014()
+  test_015()
+  test_016()
+  test_017()
+  test_018()
+  test_019()
+  test_020()
+  test_021()
+  test_022()
+  test_023()
+  test_024()
+  test_025()
+  test_026()
 
 # ------------------------------------------------------------------------------
 
-def place_atoms(pdb_str):
+def place_atoms(pdb_str, n_terminal_charge='residue_one'):
   '''Place H (no optimization); return all atoms. Names repeat between
   residues, so only single-residue models may be keyed by name (place()).'''
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
-  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj = reduce_hydrogen.place_hydrogens(model=model,
+    n_terminal_charge=n_terminal_charge)
   obj.run()
   return list(obj.get_model().get_hierarchy().atoms())
 
@@ -238,6 +252,297 @@ def test_014():
   atoms = place_atoms(pdb_str_014_ht7)
   assert h_on(atoms, 'HT7', '3', 'CA') == ['HB1', 'HC2'], h_on(atoms, 'HT7', '3', 'CA')
   assert h_on(atoms, 'HT7', '3', 'CB') == ['HA'], h_on(atoms, 'HT7', '3', 'CB')
+
+def test_015():
+  '''
+  2e4i: BGM 14 -> BGM 15, two nucleotides whose H come from the CCD (no
+  geostd entry). HO3' of BGM 14 was removed only after the riding H setup,
+  which stopped with a Sorry: no H-O3'-P angle, and P of BGM 15 is the
+  neighbour of an H parent (HOP2 on OP2). A BGM next to a standard
+  nucleotide passed. The 3' end BGM 15 keeps its hydroxyl H.
+  '''
+  atoms = place_atoms(pdb_str_015)
+  assert h_on(atoms, 'BGM', '14', "O3'") == [], h_on(atoms, 'BGM', '14', "O3'")
+  assert h_on(atoms, 'BGM', '15', "O3'") == ["HO3'"], h_on(
+    atoms, 'BGM', '15', "O3'")
+
+def test_016():
+  '''
+  The CCD free nucleotide gives BGM an H on OP2. Inside a chain the phosphate
+  is a diester (pKa ~1), so the H goes once P bridges to another residue:
+  BGM 15 (O3' of BGM 14 + its own O5'). BGM 14 is the 5' end of the fragment;
+  its P bridges only through O5', so it keeps HOP2. Free 35G (cGMP, geostd)
+  is a diester within one residue and keeps its HOP2 as well.
+  '''
+  atoms = place_atoms(pdb_str_015)
+  assert h_on(atoms, 'BGM', '15', 'OP1') == []
+  assert h_on(atoms, 'BGM', '15', 'OP2') == [], h_on(atoms, 'BGM', '15', 'OP2')
+  assert h_on(atoms, 'BGM', '14', 'OP2') == ['HOP2'], h_on(
+    atoms, 'BGM', '14', 'OP2')
+  atoms = place_atoms(pdb_str_016)
+  assert h_on(atoms, '35G', '1', 'O2P') == ['HOP2'], h_on(atoms, '35G', '1', 'O2P')
+
+def test_017():
+  '''
+  BGM has no geostd entry; its restraints come from the CCD, which has no
+  energy types. Without a type the probe atom info had no radius and no
+  acceptor: every BGM atom gave "Could not find atom info", the element
+  fallback made polar H 1.22 A, and no O was an acceptor. The types now come
+  from element + the H the CCD puts on the atom.
+  '''
+  from libtbx import group_args
+  from mmtbx.probe import Helpers
+  md = reduce_hydrogen.get_h_restraints('BGM', strict=False)
+  types = dict((a.atom_id, a.type_energy) for a in md.atom_list)
+  expected = {'O6': 'O', 'OP1': 'O', 'OP2': 'OH1', 'N1': 'NH1', 'N2': 'NH2',
+    'N7': 'N', 'H1': 'HNH1', 'HOP2': 'HOH1', "H1'": 'HCH', 'BR': 'BR', 'P': 'P'}
+  for name, t in expected.items():
+    assert types[name] == t, (name, types[name], t)
+  known = server.ener_lib().lib_atom
+  assert all(t in known for t in types.values()), types
+  # an element ener_lib does not know gets no type, not a bad one
+  cc_cif = {
+    '_chem_comp_atom': [group_args(atom_id=n, type_symbol=e) for n, e in
+      (('X1', 'XX'), ('S1', 'S'), ('HS1', 'H'))],
+    '_chem_comp_bond': [group_args(atom_id_1='X1', atom_id_2='S1'),
+                        group_args(atom_id_1='S1', atom_id_2='HS1')]}
+  assert reduce_hydrogen.get_ccd_energy_types(cc_cif) == {
+    'X1': None, 'S1': 'SH1', 'HS1': 'HSH1'}
+  # probe atom info on the placed fragment
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_015.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj.run()
+  model = obj.get_model()
+  bps, asu = model.get_restraints_manager().geometry.get_all_bond_proxies(
+    sites_cart = model.get_sites_cart())
+  neighbors = Helpers.getBondedNeighborLists(model.get_atoms(), bps, asu)
+  from mmtbx.hydrogens import default_probe_phil
+  ret = Helpers.getExtraAtomInfo(model=model, bondedNeighborLists=neighbors,
+    probePhil=default_probe_phil())
+  assert 'Could not find atom info' not in ret.warnings, ret.warnings
+  info = dict(((a.parent().parent().resseq.strip(), a.name.strip()),
+    ret.extraAtomInfo.getMappingFor(a)) for a in model.get_atoms())
+  for name in ('O6', 'OP1', "O4'"):
+    assert info[('15', name)].isAcceptor, name
+  assert approx_equal(info[('15', 'H1')].vdwRadius, 1.05)
+  assert approx_equal(info[('15', 'C2')].vdwRadius, 1.70)
+
+def test_018():
+  '''
+  7bev (20 NMR models): model.process() builds, by default, a 5 A pair table
+  for ADP restraints that ignores model boundaries. Superposed models made it
+  6.5 GB; placement built it twice (process, then again after a select).
+  Neither place_hydrogens nor reduce2's reinterpretation (approach=optimize,
+  flipkins) needs it. Two models of a 7bev fragment.
+  '''
+  import iotbx.phil
+  from mmtbx.programs import reduce2
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_018.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj.run()
+  model = obj.get_model()
+  grm = model.get_restraints_manager().geometry
+  grm.pair_proxies(sites_cart=model.get_sites_cart())
+  assert grm.plain_pairs_radius is None
+  assert grm.plain_pair_sym_table is None
+  n_h = [sum(1 for a in m.atoms() if a.element.strip() == 'H')
+    for m in model.get_hierarchy().models()]
+  assert len(n_h) == 2 and n_h[0] == n_h[1] > 0, n_h
+  # reduce2's reinterpretation with restraints
+  params = iotbx.phil.parse(reduce2.master_phil_str,
+    process_includes=True).extract()
+  task = reduce2.Program(data_manager=None, params=params, logger=null_out())
+  task.model = model
+  task._ReinterpretModel(make_restraints=True)
+  grm = task.model.get_restraints_manager().geometry
+  grm.pair_proxies(sites_cart=task.model.get_sites_cart())
+  assert grm.plain_pair_sym_table is None
+
+def test_019():
+  '''
+  2fd6 ASN U 172 - NAG C 1: the NAG-ASN link gives an angle to C1 only for
+  HD21 and deletes HD22, which went only after riding H. The deposited NAG
+  still has O1, so C1 is the second neighbour of HO1, and riding H stopped:
+  "angle restraints involving an H atom are missing". HD22 now goes first.
+  1a7s ASN 114 - NAG 401 (no O1) is the control: HD21 only, as before.
+  '''
+  atoms = place_atoms(pdb_str_019)
+  # HO1 of the misplaced O1 (0.79 A from ND2) is close too
+  hd = [n for n in h_on(atoms, 'ASN', '172', 'ND2') if n.startswith('HD')]
+  assert hd == ['HD21'], hd
+  atoms = place_atoms(pdb_str_019_control)
+  assert h_on(atoms, 'ASN', '114', 'ND2') == ['HD21'], h_on(
+    atoms, 'ASN', '114', 'ND2')
+
+def test_020():
+  '''
+  7a5m ALA A 103: N, C and O have no altloc, CA and CB are in A and B, SER
+  A 102 is all A/B. Each altloc gets its amide H. add_link_h_restraints gave
+  H/A the angle C/B(102)-N-H as well (and H/B C/A), and riding H stopped:
+  "angle restraints involving an H atom are missing ... N ALA A 103 / CA A".
+  Each H must lie in the amide plane of its own altloc.
+  '''
+  atoms = place_atoms(pdb_str_020)
+  a = dict(((x.parent().parent().resseq.strip(), x.parent().altloc,
+    x.name.strip()), matrix.col(x.xyz)) for x in atoms)
+  n = a[('103', '', 'N')]
+  angle = lambda x, z: (x-n).angle(z-n, deg=True)
+  for alt in 'AB':
+    h, c, ca = a[('103', alt, 'H')], a[('102', alt, 'C')], a[('103', alt, 'CA')]
+    assert approx_equal(abs(h-n), 0.86, eps=0.01)
+    # planar: the three angles around N add up to 360
+    assert approx_equal(angle(c, h) + angle(ca, h) + angle(c, ca), 360,
+      eps=1), (alt, angle(c, h), angle(ca, h), angle(c, ca))
+
+def test_021():
+  '''
+  An atom name the dictionary does not know (here ASP CG misnamed CGX; in
+  7a5m the backbone of 2L5/2L6, whose geostd names predate the CCD) is
+  reported as such; the H next to it used to be listed under "incomplete
+  side chains".
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_021.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj.run()
+  counts = obj.get_counts()
+  assert counts.residues_unknown_atoms == [('ASP A 11', ['CGX'])], \
+    counts.residues_unknown_atoms
+  assert sorted(l.split()[0] for l in counts.site_labels_unknown_atoms) == \
+    ['HB2', 'HB3'], counts.site_labels_unknown_atoms
+  assert counts.residues_missing_neighbor == [], counts.residues_missing_neighbor
+
+def test_022():
+  '''
+  1evd is a cyclic peptide: ACB 1 N is bonded to MDH 5 C, so it is no
+  N-terminus. It got an NH3 propeller (mod_NH3 then made H2 conflict, and
+  after that all three H were dropped). Now it keeps one amide H in the
+  C-N-CA plane; the link has no C-N-CA angle, which riding H needs, so
+  add_link_h_restraints adds it. 1fb9 (two models) is the control: the
+  N-terminus keeps H1, H2, H3 in every model.
+  '''
+  atoms = place_atoms(pdb_str_022)
+  a = dict(((x.parent().resname.strip(), x.name.strip()), x) for x in atoms)
+  n = a[('ACB', 'N')]
+  hs = [x for x in atoms if x.element.strip() == 'H' and x.distance(n) < 1.2]
+  assert [x.name.strip() for x in hs] == ['H'], [x.name.strip() for x in hs]
+  nv = matrix.col(n.xyz)
+  v = lambda x: matrix.col(x.xyz) - nv
+  h, c, ca = v(hs[0]), v(a[('MDH', 'C')]), v(a[('ACB', 'CA')])
+  total = h.angle(c, deg=True) + h.angle(ca, deg=True) + c.angle(ca, deg=True)
+  assert approx_equal(total, 360, eps=1), total
+  atoms = place_atoms(pdb_str_022_control)
+  for m in ('   1', '   2'):
+    n = [x for x in atoms if x.name.strip() == 'N'
+         and x.parent().parent().resseq.strip() == '1'
+         and x.parent().parent().parent().parent().id == m][0]
+    names = sorted(x.name.strip() for x in atoms if x.element.strip() == 'H'
+      and x.distance(n) < 1.2 and x.parent().parent().parent().parent().id == m)
+    assert names == ['H1', 'H2', 'H3'], (m, names)
+
+def test_023():
+  '''
+  4dco VAL C 504 - ASJ C 505: geostd ASJ calls a C H "H" (the amide H on N
+  are HN, HNA). The peptide link's C-N-H angle and plane are matched by name,
+  so they took the C H, and riding H stopped: "angle and bond restraints are
+  conflicting". pdb_interpretation now skips a link restraint on an H that
+  the residue's dictionary bonds elsewhere; the amide H gets its angle from
+  add_link_h_restraints and lies in the C-N-CA plane.
+  ASJ has no C=O, so test_for_peptide missed it and N kept both dictionary H
+  (superposed). The control, ASJ without the VAL, keeps both, also when
+  treated as an N-terminus (first_in_chain, all_chain_starts).
+  '''
+  atoms = place_atoms(pdb_str_023)
+  a = dict(((x.parent().resname.strip(), x.name.strip()), x) for x in atoms)
+  n, c = a[('ASJ', 'N')], a[('ASJ', 'C')]
+  hs = [x for x in atoms if x.element.strip() == 'H' and x.distance(n) < 1.2]
+  assert len(hs) == 1, [x.name.strip() for x in hs]
+  nv = matrix.col(n.xyz)
+  v = lambda x: matrix.col(x.xyz) - nv
+  h, cv, ca = v(hs[0]), v(a[('VAL', 'C')]), v(a[('ASJ', 'CA')])
+  total = h.angle(cv, deg=True) + h.angle(ca, deg=True) + cv.angle(ca, deg=True)
+  assert approx_equal(total, 360, eps=1), total
+  assert sorted(x.name.strip() for x in atoms if x.element.strip() == 'H'
+    and x.distance(c) < 1.2) == ['H', 'HA']
+  free = "\n".join(l for l in pdb_str_023.split("\n") if 'VAL' not in l)
+  for charge in ('residue_one', 'first_in_chain', 'all_chain_starts'):
+    atoms = place_atoms(free, n_terminal_charge=charge)
+    n, c = [[x for x in atoms if x.name.strip() == name][0] for name in 'NC']
+    hs = [x for x in atoms if x.element.strip() == 'H' and x.distance(n) < 1.2]
+    assert sorted(x.name.strip() for x in hs) == ['HN', 'HNA'], \
+      (charge, [x.name.strip() for x in hs])
+    assert hs[0].distance(hs[1]) > 1.4
+    # the N-terminus code removed "H" by name, here a C H
+    assert sorted(x.name.strip() for x in atoms if x.element.strip() == 'H'
+      and x.distance(c) < 1.2) == ['H', 'HA'], charge
+
+def test_024():
+  '''
+  6b0k G4S B 504 O3 - 9RN B 505 C1: the glycosidic link takes as anomeric H
+  the first H within 2 A of C1, and all H added by reduce2 still sit at one
+  point. That was H1, which geostd 9RN puts on C2 (the C1 H is H9); riding
+  H stopped: "angle and bond restraints are conflicting". The anomeric H now
+  comes from the restraint bonds.
+  '''
+  atoms = place_atoms(pdb_str_024)
+  a = dict(((x.parent().resname.strip(), x.name.strip()), x) for x in atoms)
+  c1 = a[('9RN', 'C1')]
+  hs = [x for x in atoms if x.element.strip() == 'H' and x.distance(c1) < 1.2]
+  assert [x.name.strip() for x in hs] == ['H9'], [x.name.strip() for x in hs]
+  o3, h = matrix.col(a[('G4S', 'O3')].xyz), matrix.col(hs[0].xyz)
+  c = matrix.col(c1.xyz)
+  assert approx_equal((o3-c).angle(h-c, deg=True), 109.5, eps=5)
+
+def test_025():
+  '''
+  3evj NAG A 2 has no C2 (not recorded as unobserved). The glycosidic link
+  O4(NAG A 1)-C1 needs C2 for its chirality, and pdb_interpretation stopped:
+  "Unable to determine the linking chiral atoms". The link is applied without
+  the chirality, which the "Links applied" log says. reduce2 drops H1 (C1
+  has no C2) and reported it as "involved in link_BETA1-4".
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_025.split("\n"), source_info=None)
+  log = StringIO()
+  model = mmtbx.model.manager(model_input=pdb_inp, log=log)
+  model.process(make_restraints=True)
+  lines = [l for l in log.getvalue().splitlines() if 'NAG A   2' in l]
+  note = 'link chirality not restrained: ring carbon bonded to C1 missing'
+  assert any(note in l for l in lines), lines
+  atoms = model.get_hierarchy().atoms()
+  i_c1, i_o4 = [a.i_seq for a in atoms if a.id_str() in
+    ('pdb=" C1  NAG A   2 "', 'pdb=" O4  NAG A   1 "')]
+  grm = model.get_restraints_manager().geometry
+  assert grm.bond_params_table.lookup(i_c1, i_o4) is not None
+  # H1 is dropped (C1 lacks C2), and reported as such, not as linked
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_025.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj.run()
+  atoms = obj.get_model().get_hierarchy().atoms()
+  assert 'H3' in [a.name.strip() for a in atoms
+    if a.parent().parent().resseq.strip() == '2']
+  counts = obj.get_counts()
+  assert counts.residues_missing_neighbor == ['NAG A 2'], \
+    counts.residues_missing_neighbor
+  assert [l.split()[0] for l in counts.site_labels_missing_neighbor] == \
+    ['H1'], counts.site_labels_missing_neighbor
+  assert not [x for x in obj.sl_removed if 'NAG A   2' in x[0]], obj.sl_removed
+
+def test_026():
+  '''
+  1b7e TPT (Pt terpyridine) is not in geostd. Its CCD entry has charge "?" on
+  PT1, and Pt-N/Pt-Cl as SING bonds (metal coordination). The CCD reader
+  stopped at int('?'), then at RDKit valence: no restraints, and reduce2
+  stopped with "Restraints were not found".
+  '''
+  a = place(pdb_str_026)
+  hs = sorted(n for n in a if a[n].element.strip() == 'H')
+  expected = sorted('H%d' % i for i in (1, 2, 3, 4, 7, 8, 9, 12, 13, 14, 15))
+  assert hs == expected, hs
+  for n in hs:
+    assert a[n].distance(a['C' + n[1:]]) < 1.2, n
 
 def hand(atoms, resname, resseq, parent, first, second, third):
   '''
@@ -815,6 +1120,429 @@ HETATM   12  CZ3 HT7 H   3     -44.383   5.366  22.628  1.00 29.19           C
 HETATM   13  CH2 HT7 H   3     -46.149   6.246  20.583  1.00 32.02           C
 HETATM   14  CH3 HT7 H   3     -44.805   4.510  21.637  1.00 29.79           C
 HETATM   15  CT2 HT7 H   3     -45.670   4.949  20.628  1.00 32.39           C
+END
+"""
+
+pdb_str_015 = """
+HETATM  421  P   BGM A  14     -11.641  -6.888   0.692  1.00  0.00           P
+HETATM  422  OP1 BGM A  14     -12.726  -7.004  -0.316  1.00  0.00           O
+HETATM  423  OP2 BGM A  14     -11.949  -7.102   2.128  1.00  0.00           O
+HETATM  424  O5' BGM A  14     -10.470  -7.884   0.276  1.00  0.00           O
+HETATM  425  C5' BGM A  14      -9.316  -8.044   1.100  1.00  0.00           C
+HETATM  426  C4' BGM A  14      -8.293  -8.912   0.405  1.00  0.00           C
+HETATM  427  O4' BGM A  14      -7.610  -8.119  -0.598  1.00  0.00           O
+HETATM  428  C1' BGM A  14      -6.214  -8.121  -0.343  1.00  0.00           C
+HETATM  429  N9  BGM A  14      -5.686  -6.811  -0.712  1.00  0.00           N
+HETATM  430  C8  BGM A  14      -5.048  -6.468  -1.881  1.00  0.00           C
+HETATM  431  N7  BGM A  14      -4.689  -5.214  -1.921  1.00  0.00           N
+HETATM  432  C5  BGM A  14      -5.114  -4.697  -0.705  1.00  0.00           C
+HETATM  433  C4  BGM A  14      -5.731  -5.670   0.053  1.00  0.00           C
+HETATM  434  N3  BGM A  14      -6.274  -5.562   1.283  1.00  0.00           N
+HETATM  435  C2  BGM A  14      -6.165  -4.336   1.766  1.00  0.00           C
+HETATM  436  N2  BGM A  14      -6.653  -4.052   2.982  1.00  0.00           N
+HETATM  437  N1  BGM A  14      -5.570  -3.296   1.093  1.00  0.00           N
+HETATM  438  C6  BGM A  14      -5.003  -3.385  -0.175  1.00  0.00           C
+HETATM  439  O6  BGM A  14      -4.490  -2.385  -0.693  1.00  0.00           O
+HETATM  440  C2' BGM A  14      -6.064  -8.472   1.123  1.00  0.00           C
+HETATM  441  C3' BGM A  14      -7.194  -9.468   1.312  1.00  0.00           C
+HETATM  442  O3' BGM A  14      -6.817 -10.779   0.874  1.00  0.00           O
+HETATM  443 BR   BGM A  14      -4.719  -7.696  -3.314  1.00  0.00          BR
+HETATM  454  P   BGM A  15      -5.374 -11.371   1.266  1.00  0.00           P
+HETATM  455  OP1 BGM A  15      -5.290 -12.745   0.711  1.00  0.00           O
+HETATM  456  OP2 BGM A  15      -5.159 -11.152   2.719  1.00  0.00           O
+HETATM  457  O5' BGM A  15      -4.354 -10.448   0.463  1.00  0.00           O
+HETATM  458  C5' BGM A  15      -2.945 -10.667   0.541  1.00  0.00           C
+HETATM  459  C4' BGM A  15      -2.335 -10.632  -0.841  1.00  0.00           C
+HETATM  460  O4' BGM A  15      -2.416  -9.278  -1.353  1.00  0.00           O
+HETATM  461  C1' BGM A  15      -1.159  -8.905  -1.881  1.00  0.00           C
+HETATM  462  N9  BGM A  15      -1.032  -7.455  -1.771  1.00  0.00           N
+HETATM  463  C8  BGM A  15      -0.465  -6.598  -2.684  1.00  0.00           C
+HETATM  464  N7  BGM A  15      -0.488  -5.351  -2.301  1.00  0.00           N
+HETATM  465  C5  BGM A  15      -1.112  -5.385  -1.061  1.00  0.00           C
+HETATM  466  C4  BGM A  15      -1.455  -6.676  -0.721  1.00  0.00           C
+HETATM  467  N3  BGM A  15      -2.073  -7.118   0.394  1.00  0.00           N
+HETATM  468  C2  BGM A  15      -2.357  -6.130   1.226  1.00  0.00           C
+HETATM  469  N2  BGM A  15      -2.977  -6.394   2.385  1.00  0.00           N
+HETATM  470  N1  BGM A  15      -2.057  -4.811   0.983  1.00  0.00           N
+HETATM  471  C6  BGM A  15      -1.420  -4.334  -0.159  1.00  0.00           C
+HETATM  472  O6  BGM A  15      -1.194  -3.123  -0.279  1.00  0.00           O
+HETATM  473  C2' BGM A  15      -0.142  -9.693  -1.085  1.00  0.00           C
+HETATM  474  C3' BGM A  15      -0.854 -11.020  -0.902  1.00  0.00           C
+HETATM  475  O3' BGM A  15      -0.612 -11.878  -2.021  1.00  0.00           O
+HETATM  476 BR   BGM A  15       0.273  -7.165  -4.357  1.00  0.00          BR
+END
+"""
+
+pdb_str_016 = """
+HETATM    1  P   35G A   1      40.589  33.310  86.588  1.00 20.00           P
+HETATM    2  O1P 35G A   1      41.439  33.145  85.410  1.00 20.00           O
+HETATM    3  O2P 35G A   1      39.279  34.185  86.398  1.00 20.00           O
+HETATM    4  O5' 35G A   1      41.295  34.060  87.788  1.00 20.00           O
+HETATM    5  C5' 35G A   1      40.748  34.048  89.142  1.00 20.00           C
+HETATM    6  C4' 35G A   1      40.485  32.596  89.477  1.00 20.00           C
+HETATM    7  O4' 35G A   1      39.809  32.402  90.710  1.00 20.00           O
+HETATM    8  C3' 35G A   1      39.519  31.984  88.475  1.00 20.00           C
+HETATM    9  O3' 35G A   1      40.103  31.901  87.171  1.00 20.00           O
+HETATM   10  C2' 35G A   1      39.158  30.672  89.148  1.00 20.00           C
+HETATM   11  O2' 35G A   1      40.202  29.745  88.940  1.00 20.00           O
+HETATM   12  C1' 35G A   1      39.105  31.145  90.637  1.00 20.00           C
+HETATM   13  N9  35G A   1      37.779  31.316  91.172  1.00 20.00           N
+HETATM   14  C8  35G A   1      36.714  32.012  90.621  1.00 20.00           C
+HETATM   15  N7  35G A   1      35.655  31.993  91.380  1.00 20.00           N
+HETATM   16  C5  35G A   1      36.022  31.256  92.493  1.00 20.00           C
+HETATM   17  C6  35G A   1      35.282  30.898  93.657  1.00 20.00           C
+HETATM   18  O6  35G A   1      34.119  31.163  93.950  1.00 20.00           O
+HETATM   19  N1  35G A   1      36.074  30.137  94.539  1.00 20.00           N
+HETATM   20  C2  35G A   1      37.382  29.777  94.342  1.00 20.00           C
+HETATM   21  N2  35G A   1      37.987  29.092  95.330  1.00 20.00           N
+HETATM   22  N3  35G A   1      38.055  30.104  93.256  1.00 20.00           N
+HETATM   23  C4  35G A   1      37.340  30.832  92.383  1.00 20.00           C
+END
+"""
+
+pdb_str_018 = """
+MODEL        1
+ATOM      1  N   GLY A 202      17.011  19.566   6.604  1.00  0.00           N
+ATOM      2  CA  GLY A 202      15.941  18.568   6.783  1.00  0.00           C
+ATOM      3  C   GLY A 202      15.797  18.196   8.252  1.00  0.00           C
+ATOM      4  O   GLY A 202      16.055  19.048   9.103  1.00  0.00           O
+ATOM     10  N   PRO A 203      15.393  16.952   8.573  1.00  0.00           N
+ATOM     11  CA  PRO A 203      15.401  16.399   9.933  1.00  0.00           C
+ATOM     12  C   PRO A 203      16.792  15.872  10.343  1.00  0.00           C
+ATOM     13  O   PRO A 203      17.746  15.930   9.561  1.00  0.00           O
+ATOM     14  CB  PRO A 203      14.365  15.269   9.880  1.00  0.00           C
+ATOM     15  CG  PRO A 203      14.551  14.718   8.469  1.00  0.00           C
+ATOM     16  CD  PRO A 203      14.860  15.967   7.639  1.00  0.00           C
+ATOM     24  N   HIS A 204      16.902  15.311  11.556  1.00  0.00           N
+ATOM     25  CA  HIS A 204      18.108  14.658  12.103  1.00  0.00           C
+ATOM     26  C   HIS A 204      19.382  15.513  12.044  1.00  0.00           C
+ATOM     27  O   HIS A 204      20.489  14.992  11.921  1.00  0.00           O
+ATOM     28  CB  HIS A 204      18.319  13.285  11.452  1.00  0.00           C
+ATOM     29  CG  HIS A 204      17.114  12.383  11.482  1.00  0.00           C
+ATOM     30  ND1 HIS A 204      16.433  11.921  10.375  1.00  0.00           N1+
+ATOM     31  CD2 HIS A 204      16.521  11.852  12.592  1.00  0.00           C
+ATOM     32  CE1 HIS A 204      15.446  11.111  10.804  1.00  0.00           C
+ATOM     33  NE2 HIS A 204      15.476  11.063  12.151  1.00  0.00           N
+ENDMDL
+MODEL        2
+ATOM      1  N   GLY A 202      20.851  15.633   2.605  1.00  0.00           N
+ATOM      2  CA  GLY A 202      21.227  14.437   3.379  1.00  0.00           C
+ATOM      3  C   GLY A 202      20.033  13.890   4.148  1.00  0.00           C
+ATOM      4  O   GLY A 202      18.905  14.325   3.908  1.00  0.00           O
+ATOM     10  N   PRO A 203      20.237  12.925   5.066  1.00  0.00           N
+ATOM     11  CA  PRO A 203      19.142  12.235   5.753  1.00  0.00           C
+ATOM     12  C   PRO A 203      18.563  13.008   6.950  1.00  0.00           C
+ATOM     13  O   PRO A 203      17.344  13.033   7.125  1.00  0.00           O
+ATOM     14  CB  PRO A 203      19.736  10.885   6.174  1.00  0.00           C
+ATOM     15  CG  PRO A 203      21.221  11.190   6.377  1.00  0.00           C
+ATOM     16  CD  PRO A 203      21.504  12.252   5.313  1.00  0.00           C
+ATOM     24  N   HIS A 204      19.419  13.622   7.780  1.00  0.00           N
+ATOM     25  CA  HIS A 204      19.057  14.325   9.023  1.00  0.00           C
+ATOM     26  C   HIS A 204      20.059  15.445   9.334  1.00  0.00           C
+ATOM     27  O   HIS A 204      21.244  15.297   9.043  1.00  0.00           O
+ATOM     28  CB  HIS A 204      19.006  13.330  10.204  1.00  0.00           C
+ATOM     29  CG  HIS A 204      18.099  12.139  10.029  1.00  0.00           C
+ATOM     30  ND1 HIS A 204      18.479  10.807   9.996  1.00  0.00           N1+
+ATOM     31  CD2 HIS A 204      16.739  12.183   9.926  1.00  0.00           C
+ATOM     32  CE1 HIS A 204      17.366  10.061   9.859  1.00  0.00           C
+ATOM     33  NE2 HIS A 204      16.297  10.881   9.817  1.00  0.00           N
+ENDMDL
+END
+"""
+
+pdb_str_019 = """
+ATOM   5392  N   ASN U 172      28.919 -35.712  34.830  1.00 43.06           N
+ATOM   5393  CA  ASN U 172      29.803 -36.865  34.659  1.00 42.35           C
+ATOM   5394  C   ASN U 172      30.623 -36.917  33.379  1.00 40.69           C
+ATOM   5395  O   ASN U 172      30.581 -37.901  32.648  1.00 39.42           O
+ATOM   5396  CB  ASN U 172      28.999 -38.145  34.780  1.00 43.40           C
+ATOM   5397  CG  ASN U 172      27.809 -38.142  33.876  1.00 50.40           C
+ATOM   5398  OD1 ASN U 172      27.350 -37.080  33.448  1.00 50.72           O
+ATOM   5399  ND2 ASN U 172      27.289 -39.330  33.572  1.00 54.60           N
+HETATM 6170  C1  NAG C   1      26.142 -38.639  32.099  1.00 77.20           C
+HETATM 6171  C2  NAG C   1      25.260 -39.875  32.134  1.00 77.28           C
+HETATM 6172  C3  NAG C   1      24.134 -39.690  31.125  1.00 76.77           C
+HETATM 6173  C4  NAG C   1      23.347 -38.412  31.448  1.00 75.42           C
+HETATM 6174  C5  NAG C   1      24.298 -37.207  31.547  1.00 76.20           C
+HETATM 6175  C6  NAG C   1      23.588 -35.950  32.029  1.00 76.67           C
+HETATM 6176  C7  NAG C   1      27.298 -41.161  32.257  1.00 77.02           C
+HETATM 6177  C8  NAG C   1      28.395 -41.056  31.211  1.00 77.44           C
+HETATM 6178  N2  NAG C   1      26.041 -41.060  31.830  1.00 77.79           N
+HETATM 6179  O1  NAG C   1      27.173 -38.796  33.005  1.00 78.97           O
+HETATM 6180  O3  NAG C   1      23.271 -40.814  31.167  1.00 80.30           O
+HETATM 6181  O4  NAG C   1      22.383 -38.172  30.432  1.00 71.73           O
+HETATM 6182  O5  NAG C   1      25.376 -37.484  32.475  1.00 76.45           O
+HETATM 6183  O6  NAG C   1      24.190 -35.421  33.203  1.00 79.30           O
+HETATM 6184  O7  NAG C   1      27.592 -41.308  33.445  1.00 75.78           O
+END
+"""
+
+pdb_str_019_control = """
+ATOM    859  N   ASN A 114      13.568   0.065  35.530  1.00  8.61           N
+ATOM    860  CA  ASN A 114      13.918  -0.275  36.879  1.00  9.29           C
+ATOM    861  C   ASN A 114      15.288   0.210  37.331  1.00 10.96           C
+ATOM    862  O   ASN A 114      15.734  -0.079  38.422  1.00 15.40           O
+ATOM    863  CB  ASN A 114      13.746  -1.754  37.229  1.00 11.35           C
+ATOM    864  CG  ASN A 114      12.350  -2.251  37.154  1.00 11.55           C
+ATOM    865  OD1 ASN A 114      11.372  -1.469  37.146  1.00 11.66           O
+ATOM    866  ND2 ASN A 114      12.173  -3.567  37.053  1.00 12.97           N
+HETATM 1710  C1  NAG A 401      10.902  -4.146  37.038  1.00 13.79           C
+HETATM 1711  C2  NAG A 401      10.956  -5.537  36.326  1.00 15.71           C
+HETATM 1712  C3  NAG A 401       9.504  -6.092  36.328  1.00 17.70           C
+HETATM 1713  C4  NAG A 401       9.043  -6.173  37.788  1.00 20.69           C
+HETATM 1714  C5  NAG A 401       9.072  -4.723  38.394  1.00 21.37           C
+HETATM 1715  C6  NAG A 401       8.589  -4.620  39.782  1.00 28.32           C
+HETATM 1716  C7  NAG A 401      12.396  -5.712  34.327  1.00 17.48           C
+HETATM 1717  C8  NAG A 401      12.509  -5.462  32.899  1.00 22.32           C
+HETATM 1718  N2  NAG A 401      11.252  -5.279  34.917  1.00 15.00           N
+HETATM 1719  O3  NAG A 401       9.545  -7.411  35.765  1.00 21.47           O
+HETATM 1720  O4  NAG A 401       7.678  -6.625  37.777  1.00 25.59           O
+HETATM 1721  O5  NAG A 401      10.488  -4.329  38.368  1.00 17.19           O
+HETATM 1722  O6  NAG A 401       9.364  -5.399  40.659  1.00 38.39           O
+HETATM 1723  O7  NAG A 401      13.161  -6.362  34.883  1.00 19.28           O
+END
+"""
+
+pdb_str_020 = """
+CRYST1   35.150   61.360   88.940  90.00  90.00  90.00 C 2 2 21     16
+ATOM   2094  N  ASER A 102      -0.505 -11.072   2.316  0.62 14.20           N
+ATOM   2095  N  BSER A 102      -0.440 -11.462   2.296  0.38  8.25           N
+ATOM   2096  CA ASER A 102       0.562 -10.397   1.608  0.62 14.24           C
+ATOM   2097  CA BSER A 102       0.488 -10.636   1.545  0.38  9.67           C
+ATOM   2098  C  ASER A 102       0.420  -8.947   2.004  0.62 13.70           C
+ATOM   2099  C  BSER A 102       0.444  -9.171   1.999  0.38  8.99           C
+ATOM   2100  O  ASER A 102       1.376  -8.180   2.169  0.62 14.83           O
+ATOM   2101  O  BSER A 102       1.496  -8.531   2.119  0.38  9.78           O
+ATOM   2102  CB ASER A 102       0.481 -10.668   0.054  0.62 12.00           C
+ATOM   2103  CB BSER A 102       0.155 -10.652   0.056  0.38 14.81           C
+ATOM   2104  OG ASER A 102       0.909 -11.911  -0.426  0.62 12.63           O
+ATOM   2105  OG BSER A 102       1.222 -10.020  -0.610  0.38 17.17           O
+ATOM   2116  N   ALA A 103      -0.777  -8.531   2.155  1.00 12.01           N
+ATOM   2117  CA AALA A 103      -1.028  -7.141   2.663  0.62 12.55           C
+ATOM   2118  CA BALA A 103      -0.799  -7.167   2.561  0.38 11.32           C
+ATOM   2119  C   ALA A 103      -0.434  -6.917   4.050  1.00 11.54           C
+ATOM   2120  O   ALA A 103       0.175  -5.884   4.351  1.00 12.98           O
+ATOM   2121  CB AALA A 103      -2.475  -6.621   2.598  0.62 13.63           C
+ATOM   2122  CB BALA A 103      -2.223  -6.688   2.343  0.38 12.27           C
+END
+"""
+
+pdb_str_021 = """
+CRYST1   57.482   57.482   54.469  90.00  90.00  90.00 P 42 21 2     8
+ATOM     84  N   GLY A  10       3.511  23.530   4.999  1.00  6.37           N
+ATOM     85  CA  GLY A  10       3.794  22.322   4.237  1.00  6.80           C
+ATOM     86  C   GLY A  10       3.735  22.565   2.744  1.00  6.99           C
+ATOM     87  O   GLY A  10       3.789  23.705   2.292  1.00  9.58           O
+ATOM     88  N   ASP A  11       3.619  21.484   1.977  1.00  6.21           N
+ATOM     89  CA  ASP A  11       3.612  21.594   0.527  1.00  6.44           C
+ATOM     90  C   ASP A  11       2.281  22.091  -0.033  1.00  6.88           C
+ATOM     91  O   ASP A  11       2.200  22.414  -1.208  1.00  7.79           O
+ATOM     92  CB  ASP A  11       4.111  20.307  -0.163  1.00  6.77           C
+ATOM     93  CGX ASP A  11       3.109  19.154  -0.141  1.00  7.29           C
+ATOM     94  OD1 ASP A  11       2.010  19.254   0.435  1.00  6.86           O
+ATOM     95  OD2 ASP A  11       3.456  18.124  -0.766  1.00 10.63           O
+ATOM     96  N   GLY A  12       1.252  22.153   0.807  1.00  7.18           N
+ATOM     97  CA  GLY A  12      -0.056  22.616   0.386  1.00  8.11           C
+ATOM     98  C   GLY A  12      -0.787  21.679  -0.546  1.00  8.25           C
+ATOM     99  O   GLY A  12      -1.761  22.086  -1.177  1.00  9.47           O
+END
+"""
+
+pdb_str_022 = """
+HETATM    1  C   ACB A   1       2.446   1.907  -2.265  1.00  0.00           C
+HETATM    2  O   ACB A   1       1.420   2.124  -1.611  1.00  0.00           O
+HETATM    3  OXT ACB A   1       2.511   0.914  -3.003  1.00  0.00           O
+HETATM    4  CA  ACB A   1       3.666   2.852  -2.160  1.00  0.00           C
+HETATM    5  N   ACB A   1       4.493   2.334  -1.074  1.00  0.00           N
+HETATM    6  CB  ACB A   1       3.309   4.300  -1.999  1.00  0.00           C
+HETATM    7  CG  ACB A   1       2.709   4.844  -0.712  1.00  0.00           C
+HETATM    8  C4  ACB A   1       4.466   5.181  -2.274  1.00  0.00           C
+HETATM    9  OD2 ACB A   1       3.383   4.704   0.319  1.00  0.00           O
+ATOM     16  N   VAL A   2       1.508   5.383  -0.621  1.00  0.00           N
+ATOM     17  CA  VAL A   2       0.831   5.820   0.601  1.00  0.00           C
+ATOM     18  C   VAL A   2      -0.168   4.765   1.046  1.00  0.00           C
+ATOM     19  O   VAL A   2      -1.267   5.122   1.495  1.00  0.00           O
+ATOM     20  CB  VAL A   2       0.462   7.363   0.614  1.00  0.00           C
+ATOM     21  CG1 VAL A   2       0.534   8.119  -0.686  1.00  0.00           C
+ATOM     22  CG2 VAL A   2      -0.874   7.823   1.149  1.00  0.00           C
+HETATM   32  C1  1ZN A   3      -7.398  -0.933  -3.062  1.00  0.00           C
+HETATM   33  O1  1ZN A   3      -6.743  -0.971  -1.826  1.00  0.00           O
+HETATM   34  C2  1ZN A   3      -5.407  -1.333  -1.916  1.00  0.00           C
+HETATM   35  C3  1ZN A   3      -5.116  -2.581  -2.743  1.00  0.00           C
+HETATM   36  C4  1ZN A   3      -6.159  -3.648  -3.029  1.00  0.00           C
+HETATM   37  C5  1ZN A   3      -7.053  -4.123  -2.061  1.00  0.00           C
+HETATM   38  C6  1ZN A   3      -8.144  -4.905  -2.440  1.00  0.00           C
+HETATM   39  C7  1ZN A   3      -8.327  -5.247  -3.779  1.00  0.00           C
+HETATM   40  C8  1ZN A   3      -7.409  -4.834  -4.738  1.00  0.00           C
+HETATM   41  C9  1ZN A   3      -6.323  -4.053  -4.364  1.00  0.00           C
+HETATM   42  C10 1ZN A   3      -4.576  -0.178  -2.405  1.00  0.00           C
+HETATM   43  C11 1ZN A   3      -5.053   0.691  -3.523  1.00  0.00           C
+HETATM   44  C12 1ZN A   3      -4.103   0.686  -1.290  1.00  0.00           C
+HETATM   45  C13 1ZN A   3      -2.835   1.056  -1.225  1.00  0.00           C
+HETATM   46  C14 1ZN A   3      -1.920   0.679  -2.352  1.00  0.00           C
+HETATM   47  C15 1ZN A   3      -2.429   1.676  -0.130  1.00  0.00           C
+HETATM   48  C16 1ZN A   3      -1.153   1.597   0.239  1.00  0.00           C
+HETATM   49  CA  1ZN A   3      -0.669   2.408   1.336  1.00  0.00           C
+HETATM   50  N   1ZN A   3       0.187   3.520   0.932  1.00  0.00           N
+HETATM   51  C18 1ZN A   3       0.018   1.612   2.437  1.00  0.00           C
+HETATM   52  C19 1ZN A   3      -0.875   0.772   3.283  1.00  0.00           C
+HETATM   53  C   1ZN A   3       0.830   2.579   3.261  1.00  0.00           C
+HETATM   54  O   1ZN A   3       0.489   3.730   3.569  1.00  0.00           O
+HETATM   82  N   FGA A   4       1.905   2.010   3.721  1.00  0.00           N
+HETATM   83  CA  FGA A   4       2.861   2.665   4.609  1.00  0.00           C
+HETATM   84  C   FGA A   4       2.978   1.832   5.914  1.00  0.00           C
+HETATM   85  O   FGA A   4       4.055   1.309   6.252  1.00  0.00           O
+HETATM   86  CB  FGA A   4       4.163   2.893   3.900  1.00  0.00           C
+HETATM   87  CG  FGA A   4       4.920   1.738   3.242  1.00  0.00           C
+HETATM   88  CD  FGA A   4       5.387   1.427   1.819  1.00  0.00           C
+HETATM   89  OE1 FGA A   4       4.268   1.471   1.286  1.00  0.00           O
+HETATM   96  N   MDH A   5       6.206   1.058   0.852  1.00  0.00           N
+HETATM   97  CM  MDH A   5       7.489   1.578   1.487  1.00  0.00           C
+HETATM   98  CA  MDH A   5       6.631   0.777  -0.516  1.00  0.00           C
+HETATM   99  C   MDH A   5       5.615   1.660  -1.243  1.00  0.00           C
+HETATM  100  O   MDH A   5       6.060   1.412  -2.374  1.00  0.00           O
+HETATM  101  CB  MDH A   5       7.635  -0.135  -0.796  1.00  0.00           C
+HETATM  102  CG  MDH A   5       8.551  -0.894   0.158  1.00  0.00           C
+END
+"""
+
+pdb_str_022_control = """
+MODEL        1
+HETATM    1  N   CSU A   1     -17.038  -8.727  -8.532  1.00  1.00           N
+HETATM    2  CA  CSU A   1     -17.363  -7.323  -8.738  1.00  1.00           C
+HETATM    3  CB  CSU A   1     -18.453  -7.183  -9.802  1.00  1.00           C
+HETATM    4  SG  CSU A   1     -18.918  -5.438  -9.894  1.00  1.00           S
+HETATM    5  S   CSU A   1     -20.321  -5.607 -11.354  1.00  1.00           S
+HETATM    6  C   CSU A   1     -17.784  -6.690  -7.414  1.00  1.00           C
+HETATM    7  O   CSU A   1     -17.096  -5.821  -6.882  1.00  1.00           O
+HETATM    8  OD1 CSU A   1     -20.774  -4.175 -11.430  1.00  1.00           O
+HETATM    9  OD2 CSU A   1     -21.438  -6.382 -10.849  1.00  1.00           O
+HETATM   10  OD3 CSU A   1     -19.675  -5.949 -12.608  1.00  1.00           O
+ATOM     18  N   SER A   2     -18.871  -7.186  -6.818  1.00  1.00           N
+ATOM     19  CA  SER A   2     -19.308  -6.763  -5.491  1.00  1.00           C
+ATOM     20  C   SER A   2     -18.499  -7.499  -4.413  1.00  1.00           C
+ATOM     21  O   SER A   2     -19.057  -7.929  -3.403  1.00  1.00           O
+ATOM     22  CB  SER A   2     -20.819  -7.011  -5.355  1.00  1.00           C
+ATOM     23  OG  SER A   2     -21.285  -6.562  -4.099  1.00  1.00           O
+ENDMDL
+MODEL        2
+HETATM    1  N   CSU A   1     -16.367  -8.724  -8.446  1.00  1.00           N
+HETATM    2  CA  CSU A   1     -17.541  -8.173  -9.115  1.00  1.00           C
+HETATM    3  CB  CSU A   1     -18.544  -9.280  -9.455  1.00  1.00           C
+HETATM    4  SG  CSU A   1     -17.916 -10.298 -10.816  1.00  1.00           S
+HETATM    5  S   CSU A   1     -19.479 -11.591 -10.932  1.00  1.00           S
+HETATM    6  C   CSU A   1     -18.190  -7.113  -8.230  1.00  1.00           C
+HETATM    7  O   CSU A   1     -18.527  -6.023  -8.686  1.00  1.00           O
+HETATM    8  OD1 CSU A   1     -19.506 -12.426  -9.745  1.00  1.00           O
+HETATM    9  OD2 CSU A   1     -20.659 -10.869 -11.368  1.00  1.00           O
+HETATM   10  OD3 CSU A   1     -19.020 -12.433 -12.091  1.00  1.00           O
+ATOM     18  N   SER A   2     -18.353  -7.420  -6.943  1.00  1.00           N
+ATOM     19  CA  SER A   2     -18.701  -6.432  -5.922  1.00  1.00           C
+ATOM     20  C   SER A   2     -18.054  -6.828  -4.593  1.00  1.00           C
+ATOM     21  O   SER A   2     -18.567  -6.548  -3.511  1.00  1.00           O
+ATOM     22  CB  SER A   2     -20.227  -6.316  -5.805  1.00  1.00           C
+ATOM     23  OG  SER A   2     -20.801  -6.046  -7.072  1.00  1.00           O
+ENDMDL
+END
+"""
+
+pdb_str_023 = """
+ATOM   1944  N   VAL C 504      25.617   7.043  38.901  1.00 21.91           N
+ATOM   1945  CA  VAL C 504      25.298   6.520  37.593  1.00 25.45           C
+ATOM   1946  C   VAL C 504      26.023   5.185  37.459  1.00 27.80           C
+ATOM   1947  O   VAL C 504      26.017   4.447  38.451  1.00 32.85           O
+ATOM   1948  CB  VAL C 504      25.759   7.467  36.446  1.00 22.73           C
+ATOM   1949  CG1 VAL C 504      25.062   8.814  36.558  1.00 21.23           C
+ATOM   1950  CG2 VAL C 504      27.268   7.641  36.479  1.00 21.12           C
+HETATM 1951  C   ASJ C 505      25.757   3.265  34.352  1.00 21.67           C
+HETATM 1952  N   ASJ C 505      25.878   4.624  36.266  1.00 30.84           N
+HETATM 1953  O   ASJ C 505      25.368   2.035  33.737  1.00 21.73           O
+HETATM 1954  CA  ASJ C 505      25.449   3.280  35.850  1.00 24.76           C
+HETATM 1955  CB  ASJ C 505      23.949   3.073  36.085  1.00 25.50           C
+HETATM 1956  CG  ASJ C 505      23.651   1.958  37.095  1.00 22.63           C
+HETATM 1957  OD1 ASJ C 505      24.572   1.633  37.874  1.00 18.73           O
+HETATM 1958  OD2 ASJ C 505      22.458   1.603  37.218  1.00 20.52           O
+END
+"""
+
+pdb_str_024 = """
+HETATM10798  C1  G4S B 504     170.430 175.131  83.975  1.00 33.68           C
+HETATM10799  C2  G4S B 504     169.856 176.547  83.828  1.00 33.23           C
+HETATM10800  C3  G4S B 504     169.465 176.791  82.370  1.00 33.11           C
+HETATM10801  C4  G4S B 504     170.660 176.553  81.455  1.00 32.83           C
+HETATM10802  C5  G4S B 504     171.094 175.104  81.659  1.00 32.17           C
+HETATM10803  C6  G4S B 504     172.254 174.667  80.787  1.00 30.58           C
+HETATM10804  O2  G4S B 504     168.684 176.757  84.632  1.00 30.79           O
+HETATM10805  O3  G4S B 504     168.967 178.124  82.225  1.00 34.25           O
+HETATM10806  O4  G4S B 504     171.719 177.486  81.744  1.00 34.09           O
+HETATM10807  O5  G4S B 504     171.476 174.936  83.031  1.00 33.31           O
+HETATM10808  O6  G4S B 504     172.465 173.269  81.043  1.00 31.03           O
+HETATM10809  O7  G4S B 504     172.821 177.464  79.625  1.00 31.55           O
+HETATM10810  O8  G4S B 504     171.066 179.014  79.994  1.00 35.59           O
+HETATM10811  O9  G4S B 504     173.353 179.496  80.968  1.00 38.41           O
+HETATM10812  S   G4S B 504     172.233 178.356  80.567  1.00 35.74           S
+HETATM10813  C1  9RN B 505     167.906 178.192  81.296  1.00 33.21           C
+HETATM10814  C2  9RN B 505     167.530 179.651  80.965  1.00 32.84           C
+HETATM10815  C3  9RN B 505     166.187 179.676  80.225  1.00 32.21           C
+HETATM10816  C4  9RN B 505     165.076 179.015  81.017  1.00 34.43           C
+HETATM10817  C5  9RN B 505     165.609 177.594  80.924  1.00 33.66           C
+HETATM10818  C6  9RN B 505     165.916 177.501  79.426  1.00 32.36           C
+HETATM10819  O2  9RN B 505     167.492 180.458  82.149  1.00 31.32           O
+HETATM10820  O3  9RN B 505     166.293 178.833  79.073  1.00 32.67           O
+HETATM10821  O4  9RN B 505     163.782 179.157  80.370  1.00 37.51           O
+HETATM10822  O5  9RN B 505     166.759 177.469  81.766  1.00 33.83           O
+"""
+
+pdb_str_025 = """
+HETATM 6165  C1  NAG A   1      61.546  16.098  32.754  1.00 74.25           C
+HETATM 6166  C2  NAG A   1      62.891  15.764  33.430  1.00 72.04           C
+HETATM 6167  C3  NAG A   1      63.947  15.398  32.405  1.00 72.75           C
+HETATM 6168  C4  NAG A   1      63.430  14.369  31.392  1.00 73.40           C
+HETATM 6169  C5  NAG A   1      62.038  14.751  30.838  1.00 74.99           C
+HETATM 6170  C6  NAG A   1      61.382  13.593  30.109  1.00 76.45           C
+HETATM 6171  C7  NAG A   1      64.017  16.644  35.364  1.00 69.95           C
+HETATM 6172  C8  NAG A   1      63.197  16.785  36.634  1.00 69.96           C
+HETATM 6173  N2  NAG A   1      63.387  16.878  34.217  1.00 69.43           N
+HETATM 6174  O3  NAG A   1      65.072  14.868  33.095  1.00 72.98           O
+HETATM 6175  O4  NAG A   1      64.367  14.264  30.307  1.00 70.35           O
+HETATM 6176  O5  NAG A   1      61.133  15.038  31.905  1.00 75.84           O
+HETATM 6177  O6  NAG A   1      60.999  12.571  31.032  1.00 74.25           O
+HETATM 6178  O7  NAG A   1      65.203  16.308  35.431  1.00 70.55           O
+HETATM 6179  C1  NAG A   2      64.890  13.003  30.125  1.00 70.93           C
+HETATM 6180  C3  NAG A   2      66.313  12.186  27.815  1.00 68.91           C
+HETATM 6181  C4  NAG A   2      67.421  11.795  28.801  1.00 72.69           C
+HETATM 6182  C5  NAG A   2      66.898  11.769  30.230  1.00 72.04           C
+HETATM 6183  C6  NAG A   2      67.998  11.555  31.233  1.00 71.27           C
+HETATM 6184  C7  NAG A   2      63.308  14.465  27.502  1.00 72.83           C
+HETATM 6185  C8  NAG A   2      62.551  14.527  26.175  1.00 72.02           C
+HETATM 6186  N2  NAG A   2      64.112  13.426  27.683  1.00 71.78           N
+HETATM 6187  O3  NAG A   2      66.868  12.585  26.575  1.00 63.39           O
+HETATM 6188  O4  NAG A   2      67.917  10.481  28.481  1.00 79.58           O
+HETATM 6189  O5  NAG A   2      66.248  13.006  30.560  1.00 72.37           O
+HETATM 6190  O6  NAG A   2      67.476  11.011  32.432  1.00 74.19           O
+HETATM 6191  O7  NAG A   2      63.161  15.352  28.348  1.00 70.45           O
+"""
+
+pdb_str_026 = """
+HETATM 2889 PT1  TPT A 480      77.954  43.783  27.190  0.90 63.06          PT
+HETATM 2890  N1  TPT A 480      78.596  45.649  26.606  0.90 13.24           N
+HETATM 2891  N2  TPT A 480      78.869  44.331  29.089  0.90 27.53           N
+HETATM 2892  N3  TPT A 480      77.426  42.244  28.444  0.90 21.02           N
+HETATM 2893  C1  TPT A 480      78.516  46.105  25.353  0.90 24.43           C
+HETATM 2894  C2  TPT A 480      79.155  47.284  25.061  0.90 89.68           C
+HETATM 2895  C3  TPT A 480      79.930  47.925  26.024  0.90 94.93           C
+HETATM 2896  C4  TPT A 480      80.086  47.379  27.281  0.90100.00           C
+HETATM 2897  C5  TPT A 480      79.435  46.213  27.578  0.90  7.99           C
+HETATM 2898  C6  TPT A 480      79.564  45.502  28.929  0.90 29.55           C
+HETATM 2899  C7  TPT A 480      80.274  45.923  30.032  0.90100.00           C
+HETATM 2900  C8  TPT A 480      80.250  45.167  31.210  0.90100.00           C
+HETATM 2901  C9  TPT A 480      79.554  43.959  31.301  0.90 45.52           C
+HETATM 2902  C10 TPT A 480      78.824  43.518  30.221  0.90 45.38           C
+HETATM 2903  C11 TPT A 480      77.914  42.468  29.673  0.90 50.45           C
+HETATM 2904  C12 TPT A 480      77.607  41.469  30.550  0.90 16.84           C
+HETATM 2905  C13 TPT A 480      76.825  40.413  30.196  0.90 19.26           C
+HETATM 2906  C14 TPT A 480      76.289  40.309  28.936  0.90100.00           C
+HETATM 2907  C15 TPT A 480      76.635  41.239  28.023  0.90 40.27           C
 END
 """
 

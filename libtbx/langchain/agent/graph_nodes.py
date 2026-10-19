@@ -2303,7 +2303,11 @@ def plan(state):
             # No rate limit handler available, call directly
             response = llm.invoke(messages)
 
-        content = response.content
+        try:
+          from libtbx.langchain.core.llm import response_text
+        except ImportError:
+          from core.llm import response_text
+        content = response_text(response)
 
         state = _log(state, "PLAN: LLM response received (%d chars)" % len(content))
 
@@ -3166,7 +3170,7 @@ def _read_sequence(filepath):
     no whitespace), or empty string on failure.
     """
     try:
-        with open(filepath, "r") as f:
+        with open(filepath, "r", encoding='utf-8') as f:
             lines = f.readlines()
         seq_lines = []
         for line in lines:

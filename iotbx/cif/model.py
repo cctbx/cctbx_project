@@ -489,6 +489,70 @@ class block(block_base):
     new.saves = self.saves.copy()
     return new
 
+# The rows loop.show() converts to Python strings at a time.  Only a column
+# that needs quoting is formatted whole, so a big loop costs at most one
+# column of Python strings at a time, not the whole loop.
+_show_chunk_rows = 65536
+
+# format_value quotes a value that is empty, that starts with one of these
+# characters, or that contains whitespace (a newline makes it a text field).
+_quoting_leaders = "'\"#$[]_;"
+_blanks = " \t\r\x0b\x0c"   # string.whitespace without the newline
+
+def _column_may_need_quoting(column):
+  """True if format_value may change a value of the column (a
+  flex.std_string).  Conservative: a value that is already a complete quoted
+  string is reported although format_value leaves it alone."""
+  for start in range(0, column.size(), _show_chunk_rows):
+    values = list(column[start:start + _show_chunk_rows])
+    if "" in values:
+      return True
+    joined = "\n" + "\n".join(values)
+    if joined.count("\n") != len(values):
+      return True   # a value contains a newline
+    for c in _blanks:
+      if c in joined:
+        return True
+    for c in _quoting_leaders:
+      if "\n" + c in joined:
+        return True
+  return False
+
+def _is_numeric_column(column):
+  """True if every value of the column (a flex.std_string), '.' and '?'
+  aside, parses as a number.  loop.show() right-aligns such a column; its
+  values never need quoting."""
+  values = column.select(~((column == ".") | (column == "?")))
+  try:
+    flex.double(values)
+  except ValueError:
+    return False
+  return True
+
+def _printed_column(column, numeric=False):
+  """The column (a flex.std_string) as loop.show() prints it and the width
+  of its widest value that is not a text field: (values, width).  Every
+  value goes through format_value unless no value can need quoting: a
+  numeric column (numeric=True, decided by the caller) or one for which
+  _column_may_need_quoting is False."""
+  if numeric or not _column_may_need_quoting(column):
+    return column, column.max_element_length()
+  printed = [format_value(value) for value in list(column)]
+  # exclude semicolon text fields from column width calculation
+  width = flex.std_string(
+    [value for value in printed if "\n" not in value]).max_element_length()
+  return flex.std_string(printed), width
+
+def _rows_in_chunks(columns, n_rows):
+  """The rows of the columns (flex.std_string of n_rows each) as tuples,
+  _show_chunk_rows at a time."""
+  for column in columns:
+    assert column.size() == n_rows
+  for start in range(0, n_rows, _show_chunk_rows):
+    stop = min(start + _show_chunk_rows, n_rows)
+    yield zip(*[list(column[start:stop]) for column in columns])
+
+
 class loop(MutableMapping):
   def __init__(self, header=None, data=None):
     self._columns = OrderedDict()
@@ -664,32 +728,25 @@ class loop(MutableMapping):
       for i in range(self.size()):
         print(fmt_str % tuple([values[j][i] for j in range_len_values]), file=out)
     elif align_columns:
+      columns = []
       fmt_str = []
-      # Avoid modifying self in place
-      values = copy.deepcopy(values)
-      for i, v in enumerate(values):
-        for i_v in range(v.size()):
-          v[i_v] = format_value(v[i_v])
-        # exclude and semicolon text fields from column width calculation
-        v_ = flex.std_string(item for item in v if "\n" not in item)
-        width = v_.max_element_length()
-        # See if column contains only number, '.' or '?'
+      for v in values:
         # right-align numerical columns, left-align everything else
-        v = v.select(~( (v == ".") | (v == "?") ))
-        try:
-          flex.double(v)
-        except ValueError:
+        numeric = _is_numeric_column(v)
+        v, width = _printed_column(v, numeric=numeric)
+        if not numeric:
           width *= -1
+        columns.append(v)
         fmt_str.append("%%%is" %width)
       fmt_str = indent_row + "  ".join(fmt_str)
-      for i in range(self.size()):
-        print((fmt_str %
-                       tuple([values[j][i]
-                              for j in range_len_values])).rstrip(), file=out)
+      for rows in _rows_in_chunks(columns, self.size()):
+        out.write("\n".join([(fmt_str % row).rstrip() for row in rows]))
+        out.write("\n")
     else:
-      for i in range(self.size()):
-        values_to_print = [format_value(values[j][i]) for j in range_len_values]
-        print(' '.join([indent] + values_to_print), file=out)
+      columns = [_printed_column(v)[0] for v in values]
+      for rows in _rows_in_chunks(columns, self.size()):
+        out.write("\n".join([" ".join((indent,) + row) for row in rows]))
+        out.write("\n")
 
   def __str__(self):
     s = StringIO()

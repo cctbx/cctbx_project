@@ -9,7 +9,7 @@ Tested tree: <git-tree-id>
 LIMITS
 <What was not checked, or none material.>
 GATE
-<For light: Reading: deferred to publication; Verdict: deferred to publication. For full: Reading SHA256: <sha256>; Verdict: PROCEED or PROCEED IF condition; the reading file carries Scope: integration or Scope: integration and publication. When conditional, append Disposition SHA256: <sha256> and describe SATISFIED, WAIVED with the Developer's quoted decision, or PENDING with the actual unresolved Developer choice in LIMITS or DECISION.>
+<For light: Reading: deferred to publication; Verdict: deferred to publication. For full: Reading SHA256: <sha256>; Verdict: PROCEED or PROCEED IF condition; the reading file carries Scope: integration or Scope: integration and publication. When conditional, append Disposition SHA256: <sha256> and describe SATISFIED, WAIVED with the Developer's quoted decision, or PENDING with the actual unresolved Developer choice in LIMITS or DECISION. When the Developer waived the reading (OUTSIDE_WAIVER.md, --waiver): Reading: WAIVED by the Developer; Waiver SHA256: <sha256>; and, in LIMITS, WAIVED on a line naming the outside reading.>
 DECISION
 <Integrate applies this exact tested change; revise returns to work; discard abandons it.>
 Recommendation: INTEGRATE because <reason grounded in the check and remaining limits.>

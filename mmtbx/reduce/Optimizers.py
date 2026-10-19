@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021-2023 Richardson Lab at Duke University
+#                Copyright 2021-2026 Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 
-import argparse, re
+import argparse, re, time
 
 from boost_adaptbx import graph
 from boost_adaptbx.graph import connected_component_algorithm as cca
@@ -164,7 +164,7 @@ class FlippedMoverInfo(object):
 
 class Optimizer(object):
 
-  def __init__(self, probePhil, addFlipMovers, model, modelIndex = 0, altID = None,
+  def __init__(self, probePhil, addFlipMovers, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
@@ -174,7 +174,8 @@ class Optimizer(object):
                 flipStates = '',
                 verbosity = 1,
                 cliqueOutlineFileName = None,
-                fillAtomDump = True
+                fillAtomDump = True,
+                stopOptimizingAt = 0.0
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -234,6 +235,8 @@ class Optimizer(object):
     they are.
     :param fillAtomDump: If true, fill in the atomDump string with the atom information.
     This can take a long time to do, so the caller may want to turn it off if they don't need it.
+    :param stopOptimizingAt: If greater than 0, then we will stop coarse optimizations
+    at this time relative to time.time().
     """
 
     ################################################################################
@@ -304,7 +307,9 @@ class Optimizer(object):
     # None is specified and the specified one if it is specified.
 
     try:
-      model.setup_riding_h_manager()
+      # None, not False: callers outside reduce2 keep the scattering-table rule
+      model.setup_riding_h_manager(
+        use_neutron_distances=True if self._useNeutronDistances else None)
     except Exception:
       # If an optimized has already been run on the model, our riding H manager will
       # have already been set up.  When one has already been set up, this causes
@@ -606,15 +611,28 @@ class Optimizer(object):
         # Do coarse optimization on the singleton Movers.  Record the selected coarse
         # index.
         for s in singletonCliques:
+          if stopOptimizingAt > 0.0 and time.time() > stopOptimizingAt:
+            self._infoString += _VerboseCheck(self._verbosity, 1,
+                                              "Stopping singleton optimization due to time limit\n")
+            break
           mover = self._interactionGraph.vertex_label(s[0])
           (bestScore, infoString) = optC.OptimizeSingleMoverCoarse(mover)
           self._infoString += infoString
           ret = bestScore
-          self._infoString += _VerboseCheck(self._verbosity, 1,"Singleton optimized with score {:.2f}\n".format(ret))
+          self._infoString += _VerboseCheck(self._verbosity, 1, "Singleton optimized with score {:.2f}\n".format(ret))
         self._infoString += _ReportTiming(self._verbosity, "optimize singletons (coarse)")
 
         # Do coarse optimization on the multi-Mover Cliques.
         for g in groupCliques:
+          startTime = time.time()
+          remainingSeconds = 1e12
+          if stopOptimizingAt > 0.0:
+            remainingSeconds = stopOptimizingAt - time.time()
+          if remainingSeconds <= 0:
+            self._infoString += _VerboseCheck(self._verbosity, 1,
+                                              "Stopping clique optimization due to time limit\n")
+            break
+
           movers = [self._interactionGraph.vertex_label(i) for i in g]
           subset = _subsetGraph(self._interactionGraph, movers)
 
@@ -629,11 +647,15 @@ class Optimizer(object):
             edges[(i,0)] = vertexList.index(subset.source(e))
             edges[(i,1)] = vertexList.index(subset.target(e))
 
-          (bestScore, infoString) = optC.OptimizeCliqueCoarse(movers, edges)
+          (bestScore, infoString) = optC.OptimizeCliqueCoarse(movers, edges, remainingSeconds)
           self._infoString += infoString
           ret = bestScore
 
-          self._infoString += _VerboseCheck(self._verbosity, 1,"Clique optimized with score {:.2f}\n".format(ret))
+          stopTime = time.time()
+
+          self._infoString += _VerboseCheck(self._verbosity, 1,
+            "Clique of size {:d} optimized with score {:.2f} in {:.2f} seconds\n".format(
+              len(movers), ret, stopTime - startTime))
         self._infoString += _ReportTiming(self._verbosity, "optimize cliques (coarse)")
 
         # Do fine optimization on the Movers.  This is done independently for
@@ -1991,7 +2013,7 @@ END
   global _DoCliqueOptimizationInC
 
   print('Testing Optimizer')
-  opt = Optimizer(probePhil, True, model, modelIndex = 0, altID = None,
+  opt = Optimizer(probePhil, True, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
@@ -2089,7 +2111,7 @@ END
   # Optimization will place the movers. Make sure we got as many as we expected.
   # Make sure that the orientation for all of the movers is correct.
   probePhil = _philLike()
-  opt = Optimizer(probePhil, True, model, modelIndex = 0, altID = None,
+  opt = Optimizer(probePhil, True, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,

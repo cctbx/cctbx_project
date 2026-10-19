@@ -14,6 +14,7 @@ def run():
   test_004()
   test_005()
   test_006()
+  test_007()
 
 # ------------------------------------------------------------------------------
 
@@ -176,6 +177,38 @@ def test_006():
         assert 95.0 < a < 125.0, \
           '%s: %s-%s-%s angle = %.1f (not tetrahedral)' % (
             cb, atoms[hv].name.strip(), cb, atoms[h].name.strip(), a)
+
+
+def test_007():
+  '''
+    B0I of test_006 with the ring ends (CE*, CZ*) in conformers A and B and the
+    linked CB1/CB2 shared. The valence check counted the H copies of both
+    conformers as bonds of CB1/CB2: A kept two H each, B none.
+  '''
+  lines = []
+  for l in pdb_str_006.splitlines():
+    if l[17:20] == 'B0I' and l[12:16].strip()[:2] in ('CE', 'CZ'):
+      lines.append(l[:16] + 'A' + l[17:54] + '  0.50' + l[60:])
+      x = float(l[30:38]) + 0.3
+      lines.append(l[:16] + 'B' + l[17:30] + '%8.3f' % x + l[38:54] + '  0.50' +
+        l[60:])
+    else:
+      lines.append(l)
+  pdb_inp = iotbx.pdb.input(lines=lines, source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  model.set_stop_for_unknowns(False)
+  add_h = reduce_hydrogen.place_hydrogens(model=model, stop_for_unknowns=False)
+  add_h.run()
+  atoms = add_h.get_model().get_hierarchy().atoms()
+  b0i = [a for a in atoms if a.parent().resname.strip() == 'B0I']
+  for cb in ('CB1', 'CB2'):
+    c = [a for a in b0i if a.name.strip() == cb][0]
+    assert c.parent().altloc == ''
+    for altloc in ('A', 'B'):
+      hs = [a for a in b0i if a.element.strip() == 'H' and
+            a.parent().altloc == altloc and a.distance(c) < 1.2]
+      assert len(hs) == 2, (cb, altloc, [a.name.strip() for a in hs])
+      assert hs[0].distance(hs[1]) > 1.5, (cb, altloc)
 
 # ------------------------------------------------------------------------------
 

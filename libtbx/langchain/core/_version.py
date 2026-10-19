@@ -37,7 +37,7 @@ def get_version():
   """
   path = _version_file_path()
   try:
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
       return f.read().strip() or "unknown"
   except Exception:
     return "unknown"

@@ -361,19 +361,29 @@ class map_model_manager(object):
       if m and (not m is any_map_manager):
         m.shift_origin()
 
-    # Shift origins of all the extra models if not already done:
+    # Shift origins of all the extra models if not already done.
+    #  Give them the same crystal_symmetry and unit_cell_crystal_symmetry
+    #  as the main model (any_map_manager: map_manager may be None)
+    #  shift_any_model_to_match above may already have applied part or all
+    #  of the shift (map shifted before this constructor): apply only the
+    #  remainder, as map_manager.shift_model_to_match_map does
     for m in extra_model_list:
+      model_shift_cart = m.shift_cart() if m.shift_cart() else (0, 0, 0)
       m.shift_model_and_set_crystal_symmetry(
-          shift_cart=any_map_manager.shift_cart(),
-          crystal_symmetry=map_manager.crystal_symmetry())
+          shift_cart=tuple([s - o for s, o in zip(
+            any_map_manager.shift_cart(), model_shift_cart)]),
+          crystal_symmetry=any_map_manager.crystal_symmetry(),
+          unit_cell_crystal_symmetry=
+             any_map_manager.unit_cell_crystal_symmetry())
       assert approx_equal(m.shift_cart(), any_map_manager.shift_cart())
 
-    # Transfer ncs_object to all map_managers if one is present
-    if self.ncs_object():
+    # Transfer supplied ncs_object (now shifted, in any_map_manager) to all
+    #   map_managers
+    if ncs_object:
       for m in [map_manager, map_manager_1, map_manager_2]+\
            extra_map_manager_list:
-        if m:
-          m.set_ncs_object(self.ncs_object())
+        if m and (m is not any_map_manager):
+          m.set_ncs_object(any_map_manager.ncs_object())
 
     # Make sure all really match:
     for m in [map_manager, map_manager_1, map_manager_2]+\
@@ -642,26 +652,9 @@ class map_model_manager(object):
       # If map_manager_1 and map_manager_2 are supplied but no map_manager,
       #   create map_manager as average of map_manager_1 and map_manager_2
 
-      map_manager_1 = self._map_dict.get('map_manager_1')
-      map_manager_2 = self._map_dict.get('map_manager_2')
-      if map_manager_1 and map_manager_2:
-
-        map_manager = map_manager_1.customized_copy(map_data =
-          0.5 * (map_manager_1.map_data() + map_manager_2.map_data()))
-        # Try to make a file name
-        file_name = None
-        if map_manager_1.file_name and map_manager_2.file_name:
-          try:
-            file_name = "_and_".join([
-              os.path.splitext(os.path.split(
-                 map_manager_1.file_name)[-1])[0],
-              os.path.splitext(os.path.split(
-                 map_manager_2.file_name)[-1])[0]]) + \
-              os.path.splitext(map_manager_1.file_name)[1]
-          except Exception as e:
-            file_name = None
-        map_manager.file_name = file_name
-
+      average_map_manager = self._average_of_half_maps()
+      if average_map_manager:
+        map_manager = average_map_manager
         self._map_dict['map_manager'] = map_manager
     if self.model() and not map_manager:  # make one based on model
       crystal_symmetry = self.model().unit_cell_crystal_symmetry()
@@ -675,6 +668,33 @@ class map_model_manager(object):
         map_manager = dummy_map_manager(crystal_symmetry)
         self._map_dict['map_manager'] = map_manager
         self.info().dummy_map_manager = True # mark it
+    return map_manager
+
+  def _average_of_half_maps(self):
+    '''
+      Return a new map_manager that is the average of map_manager_1 and
+      map_manager_2, or None if either is missing.  Does not store it.
+    '''
+    map_manager_1 = self._map_dict.get('map_manager_1')
+    map_manager_2 = self._map_dict.get('map_manager_2')
+    if not (map_manager_1 and map_manager_2):
+      return None
+
+    map_manager = map_manager_1.customized_copy(map_data =
+      0.5 * (map_manager_1.map_data() + map_manager_2.map_data()))
+    # Try to make a file name
+    file_name = None
+    if map_manager_1.file_name and map_manager_2.file_name:
+      try:
+        file_name = "_and_".join([
+          os.path.splitext(os.path.split(
+             map_manager_1.file_name)[-1])[0],
+          os.path.splitext(os.path.split(
+             map_manager_2.file_name)[-1])[0]]) + \
+          os.path.splitext(map_manager_1.file_name)[1]
+      except Exception as e:
+        file_name = None
+    map_manager.file_name = file_name
     return map_manager
 
   def map_manager_1(self):
@@ -954,18 +974,17 @@ class map_model_manager(object):
   def get_any_map_manager(self):
     '''
     Return any map manager
+
+    Returns the first map present in map_dict (normally the full map
+    'map_manager'; a half map if only half maps are present), without
+    creating a full map from half maps.  If there are no maps, makes a
+    dummy map from the model if possible, otherwise returns None.
     '''
-    keys = list(self.map_dict().keys())
-    if not keys:
-      # Make a map dummy manager
-      mm = self.map_manager() # makes a dummy one if possible
-      keys = list(self.map_dict().keys())
-      if keys:
-        return self.map_dict()[keys[0]]
-      else:
-        return None
-    else:
-      return self.map_dict()[keys[0]]
+    for map_manager in self.map_dict().values():
+      if map_manager is not None:
+        return map_manager
+    # No maps: make a dummy map manager
+    return self.map_manager() # makes a dummy one if possible
 
   def get_map_data_by_id(self, map_id):
     ''' Get map_data from a map_manager with the name map_id'''
@@ -1001,10 +1020,13 @@ class map_model_manager(object):
       assert not model_id in self.model_id_list() # must not duplicate
 
     if model and \
-      self.map_manager() and (
+      self.map_manager() and ((
          not self.map_manager().is_compatible_model(model,
-          require_match_unit_cell_crystal_symmetry=True)):
-      # needs shifting
+          require_match_unit_cell_crystal_symmetry=True)) or (
+         model.shift_cart() is not None and not is_same_shift_cart(
+          model.shift_cart(), self.map_manager().shift_cart()))):
+      # needs shifting (is_compatible_model ignores shift_cart if map
+      #   shift_cart is zero, so check it here too)
       self.shift_any_model_to_match(model,
          set_unit_cell_crystal_symmetry = True)
     self._model_dict[model_id] = model
@@ -3629,7 +3651,7 @@ class map_model_manager(object):
     if not model:
       return
     if not map_manager:
-      map_manager = self.any_map_manager()
+      map_manager = self.get_any_map_manager()
     assert map_manager is not None
 
     assert isinstance(model, mmtbx.model.manager)
@@ -4480,6 +4502,11 @@ class map_model_manager(object):
     assert self.get_map_manager_by_id(map_id)
     assert self.get_map_manager_by_id(map_id_external_map)
 
+    if tlso_group_info:  # convert to lists (before any copy of kw)
+      convert_tlso_group_info_to_lists(tlso_group_info)
+      if kw['get_tls_from_u'] is None:
+        kw['get_tls_from_u'] = True
+
     # Allow sharpening globally before and after local sharpening
     if local_sharpen and overall_sharpen_before_and_after_local:
       print ("\nRunning external sharpening (global, local, global)\n",
@@ -4566,6 +4593,11 @@ class map_model_manager(object):
     # Set what maps are going to be sharpened and new names
     kw = self.set_map_id_lists(kw)
 
+    if tlso_group_info:  # convert to lists (before any copy of kw)
+      convert_tlso_group_info_to_lists(tlso_group_info)
+      if kw['get_tls_from_u'] is None:
+        kw['get_tls_from_u'] = True
+
     # Allow sharpening globally before and after local sharpening
     if local_sharpen and overall_sharpen_before_and_after_local:
       print ("\nRunning half-map sharpening (global, local, global)\n",
@@ -4581,11 +4613,6 @@ class map_model_manager(object):
     print("Sharpened maps after half-map sharpening will be in "+
        "'%s' in map_model_manager '%s'" %(
       str(kw['map_id_scaled_list']),self.name),file = self.log)
-
-    if tlso_group_info:  # convert to lists
-      convert_tlso_group_info_to_lists(tlso_group_info)
-      if kw['get_tls_from_u'] is None:
-        kw['get_tls_from_u'] = True
 
     # Now get scaling from comparison of the two half-maps
     #  apply the scaling to map_id_to_be_scaled
@@ -4712,6 +4739,7 @@ class map_model_manager(object):
          nproc = nproc,
          log = self.log)
       kw['tlso_group_info'] = tlso_group_info
+    kw['get_tls_from_u'] = get_tls_from_u # pass on value set here
 
     # Allow sharpening globally before and after local sharpening
     if local_sharpen and overall_sharpen_before_and_after_local:
@@ -4949,15 +4977,21 @@ class map_model_manager(object):
     if get_scale_as_aniso_u is None:
       if replace_aniso_with_tls_equiv or tlso_group_info:
         get_scale_as_aniso_u = True
+        kw['get_scale_as_aniso_u'] = get_scale_as_aniso_u # pass it on
         print("Getting scale factors as aniso U values", file = self.log)
 
     # remove any extra models and maps to speed up boxing and not modify orig
     map_id_list = [map_id,map_id_1,map_id_2]+kw['map_id_to_be_scaled_list']
+    if is_model_based and self.get_model_by_id(model_id_for_rms_fc):
+      model_id_list = [model_id_for_rms_fc]
+    elif tlso_group_info and self.get_model_by_id('model'):
+      # Supplied TLS uses the model 'model' for group masks and model points
+      model_id_list = ['model']
+    else:
+      model_id_list = None
     working_mmm = self.get_map_model_manager_with_selected(
       map_id_list = map_id_list,
-      model_id_list =
-          [model_id_for_rms_fc] if is_model_based and self.get_model_by_id(
-            model_id_for_rms_fc) else None,
+      model_id_list = model_id_list,
       deep_copy=True)
     working_mmm.set_log(self.log)
 
@@ -5467,6 +5501,9 @@ class map_model_manager(object):
     other._force_wrapping = deepcopy(self._force_wrapping)
     other._warning_message = self._warning_message
     other._stop_file = self._stop_file
+    other._absolute_angle_tolerance = self._absolute_angle_tolerance
+    other._absolute_length_tolerance = self._absolute_length_tolerance
+    other._shift_tol = self._shift_tol
 
     other.set_log(self.log)
 
@@ -5490,8 +5527,15 @@ class map_model_manager(object):
       deep_copy = False):
     """Create a new map_model_manager with just what we need"""
     assert map_id_list # Need maps to create map_model_manager with selected
+    map_manager = self._map_dict.get('map_manager')
+    if map_manager is None:
+      # Half maps only: use their average (as map_manager() would make it)
+      #  as the full map, without storing it in this map_model_manager
+      map_manager = self._average_of_half_maps()
+    if map_manager is None:
+      map_manager = self.get_any_map_manager()
     working_mmm = map_model_manager(
-      map_manager = self.get_any_map_manager(), log = self.log,
+      map_manager = map_manager, log = self.log,
       verbose = self.verbose)
     self._set_default_parameters(working_mmm)
 
@@ -5960,23 +6004,69 @@ class map_model_manager(object):
     else:
       print("\nSupplied TLS assumed to be desired anisotropy of scale factors",
          file = self.log)
-    for T,L,S,origin,selection,other_shift_cart in zip(
+    # Only the original entries are tested against each group's mask, so
+    #  model-point entries appended for one group keep that group's TLS
+    #  regardless of group order
+    original_scale_factor_info = group_args(**scale_factor_info())
+    original_scale_factor_info.xyz_list = flex.vec3_double(
+       scale_factor_info.xyz_list)
+    original_scale_factor_info.value_list = list(
+       scale_factor_info.value_list)
+
+    # Masks for all groups.  An original entry inside more than one mask
+    #  belongs to the group with the nearest selected atom, so with a model
+    #  the result does not depend on group order (except on an exact tie,
+    #  and without a model, where the group listed first is used)
+    group_masks = []
+    owner_by_entry = {}
+    for k, selection in enumerate(tlso_group_info.tlso_selection_list):
+      mask_map_manager = self._create_mask_from_selection_as_string(
+        map_id = map_id,
+        model_id = model_id,
+        selection_string=selection)
+      group_masks.append(mask_map_manager)
+      inside_info = self._get_scale_factor_info_inside_mask(
+         original_scale_factor_info,
+         mask_map_manager = mask_map_manager,
+         inside = True)
+      if self.get_model_by_id(model_id):
+        group_sites = self.get_model_by_id(
+           model_id).apply_selection_string(selection).get_sites_cart()
+      else:
+        group_sites = None
+      for xyz, value in zip(inside_info.xyz_list, inside_info.value_list):
+        if group_sites is not None and group_sites.size() > 0:
+          dist = (group_sites - xyz).norms().min_max_mean().min
+        else:
+          dist = 0.
+        if (not id(value) in owner_by_entry) or (
+            dist < owner_by_entry[id(value)][1]):
+          owner_by_entry[id(value)] = (k, dist)
+
+    for k, (T,L,S,origin,selection,other_shift_cart) in enumerate(zip(
        tlso_group_info.T_list,
        tlso_group_info.L_list,
        tlso_group_info.S_list,
        tlso_group_info.O_list,
        tlso_group_info.tlso_selection_list,
-       tlso_group_info.tlso_shift_cart_list,):
-      # Get mask representing this TLS
-      mask_map_manager = self._create_mask_from_selection_as_string(
-        map_id = map_id,
-        model_id = model_id,
-        selection_string=selection)
+       tlso_group_info.tlso_shift_cart_list,)):
+      # TLS for this group
+      tlso_value = tlso(t = T, l = L, s = S, origin = origin)
 
+      # Original entries inside this group's mask that belong to this group
       working_scale_factor_info = self._get_scale_factor_info_inside_mask(
-         scale_factor_info,
-         mask_map_manager = mask_map_manager,
+         original_scale_factor_info,
+         mask_map_manager = group_masks[k],
          inside = True)
+      owned_xyz_list = flex.vec3_double()
+      owned_value_list = []
+      for xyz, value in zip(working_scale_factor_info.xyz_list,
+          working_scale_factor_info.value_list):
+        if owner_by_entry[id(value)][0] == k:
+          owned_xyz_list.append(xyz)
+          owned_value_list.append(value)
+      working_scale_factor_info.xyz_list = owned_xyz_list
+      working_scale_factor_info.value_list = owned_value_list
 
       xyz_list = working_scale_factor_info.xyz_list
       print("\nAdding info from tls for %s" %(selection), file = self.log)
@@ -5993,12 +6083,6 @@ class map_model_manager(object):
           xyz_list_use = xyz_list
 
         print("Using TLS information from tlso_group_info", file = self.log)
-        tlso_value = tlso(
-             t = tlso_group_info.T_list[0],
-             l = tlso_group_info.L_list[0],
-             s = tlso_group_info.S_list[0],
-             origin = tlso_group_info.O_list[0],
-               )
 
         anisos_from_tls = uaniso_from_tls_one_group(
            tlso = tlso_value,
@@ -6048,7 +6132,7 @@ class map_model_manager(object):
       if self.get_model_by_id(model_id):
         new_xyz_list = self.get_model_by_id(
            model_id).apply_selection_string(selection).get_sites_cart()
-        number_to_add = max(25,len(scale_factor_info.xyz_list))
+        number_to_add = max(25,len(original_scale_factor_info.xyz_list))
         number_available = new_xyz_list.size()
         i_ratio = max(1,int((1+new_xyz_list.size())/number_to_add))
         if i_ratio > 1:
@@ -6281,9 +6365,17 @@ class map_model_manager(object):
 
     return tlso_info_by_region[True] # inside
 
+  def _get_anisotropy_spread(self, u_cart):
+    '''  Anisotropy of u_cart: largest minus smallest eigenvalue (zero if
+       isotropic, independent of orientation) '''
+    from scitbx.linalg import eigensystem
+    values = eigensystem.real_symmetric(tuple(u_cart)).values()
+    return max(values) - min(values)
+
   def _get_scale_factor_info_most_anisotropy(self,scale_factor_info,
      use_lowest = False):
-    '''  Find scale_factor info with best resolution '''
+    '''  Find scale_factor info with most (or least) anisotropy of
+       fo_b_cart_as_u_cart (eigenvalue spread) '''
 
     best_scaling_group_info = None
     best_xyz = None
@@ -6291,9 +6383,9 @@ class map_model_manager(object):
     for scaling_group_info, xyz in zip(
        scale_factor_info.value_list,
        scale_factor_info.xyz_list):
-      if scaling_group_info.get('cc_b_cart_as_u_cart'):
-        average_aniso = flex.abs(flex.double(
-         scaling_group_info.cc_b_cart_as_u_cart)).min_max_mean().mean
+      if scaling_group_info.get('fo_b_cart_as_u_cart'):
+        average_aniso = self._get_anisotropy_spread(
+         scaling_group_info.fo_b_cart_as_u_cart)
 
         if best_average is None or (
            ((not use_lowest) and
@@ -6319,13 +6411,13 @@ class map_model_manager(object):
     for scaling_group_info, xyz in zip(
        scale_factor_info.value_list,
        scale_factor_info.xyz_list):
-      average_cc_star_list = self._get_average_cc_star_list(scaling_group_info)
+      mean_cc_star = self._get_mean_cc_star(scaling_group_info)
+      if mean_cc_star is None:
+        continue # No CC* values for this location
       if best_average is None or (
-         ((not use_lowest) and
-          average_cc_star_list.min_max_mean().mean > best_average) or
-         ((use_lowest) and
-          average_cc_star_list.min_max_mean().mean < best_average)):
-        best_average = average_cc_star_list.min_max_mean().mean
+         ((not use_lowest) and mean_cc_star > best_average) or
+         ((use_lowest) and mean_cc_star < best_average)):
+        best_average = mean_cc_star
         best_xyz = xyz
         best_scaling_group_info =scaling_group_info
     average_scale_factor_info = group_args(
@@ -6333,12 +6425,24 @@ class map_model_manager(object):
        xyz_list = [best_xyz])
     return average_scale_factor_info
 
+  def _get_mean_cc_star(self, scaling_group_info):
+    """Get mean of average cc_star from scaling_info, or None if not
+       available"""
+    if scaling_group_info is None:
+      return None
+    average_cc_star_list = self._get_average_cc_star_list(scaling_group_info)
+    if not average_cc_star_list:
+      return None
+    return average_cc_star_list.min_max_mean().mean
+
   def _get_average_cc_star_list(self, scaling_group_info):
     """Get average cc_star from scaling_info"""
     average_cc_star_list = None
     if not scaling_group_info.scaling_info_list:
       return average_cc_star_list
     for si in scaling_group_info.scaling_info_list:
+      if si.cc_list is None:
+        return None # Missing CC* values
       if average_cc_star_list is None:
         average_cc_star_list = si.cc_list.deep_copy()
       else:
@@ -6379,7 +6483,11 @@ class map_model_manager(object):
     for scaling_group_info in scaling_group_info_list:
       # Catch case with missing values and skip it
       ok = True
-      for si in scaling_group_info.scaling_info_list:
+      if not scaling_group_info.scaling_info_list:
+        ok = False
+      if not scaling_group_info.get('overall_si'):
+        ok = False
+      for si in scaling_group_info.scaling_info_list or []:
         for key in ('target_scale_factors','cc_list','rms_fo_list'):
           if getattr(si,key) is None:
             ok = False
@@ -6438,8 +6546,14 @@ class map_model_manager(object):
           setattr(si,key, getattr(si,key)/max(1,n_used))
         setattr(average_scaling_group_info.overall_si,key,
            getattr(average_scaling_group_info.overall_si,key)/
-           len(scaling_group_info_list))
-      if average_scaling_group_info.overall_scale:
+           max(1,n_used))
+      # Error estimates (ssqr) follow the averaged CC*, as in refine_sharpening
+      for si in average_scaling_group_info.scaling_info_list:
+        if si.get('ssqr_values') is not None:
+          cc_list = flex.double(si.cc_list)
+          cc_list.set_selected(cc_list < 1.e-10, 1.e-10)
+          si.ssqr_values = 2. * ( -1 + 1./cc_list)  # cc* is in cc_list
+      if average_overall_scale:
         average_scaling_group_info.overall_scale = \
           average_overall_scale/max(1, n_used)
 
@@ -6525,43 +6639,34 @@ class map_model_manager(object):
 
 
     if len(scale_factor_info.value_list) > 1:
-      # Highest resolution
-      average_scale_factor_info = self._get_scale_factor_info_best_resolution(
-          scale_factor_info)
-      print("\nScaling information for location with highest resolution" +
-       " (Mean CC*: %.2f )" %(
-           self._get_average_cc_star_list(
-             average_scale_factor_info.value_list[0]).min_max_mean().mean),
-          file = self.log)
-      self._summarize_scale_factor_info(average_scale_factor_info,
-        aniso_b_cart = aniso_b_cart,
-        b_iso = b_iso
-       )
-
-      # Lowest resolution
-      average_scale_factor_info = self._get_scale_factor_info_best_resolution(
-          scale_factor_info, use_lowest = True)
-      print("\nScaling information for location with lowest resolution" +
-       " (Mean CC*: %.2f )" %(
-           self._get_average_cc_star_list(
-             average_scale_factor_info.value_list[0]).min_max_mean().mean),
-          file = self.log)
-      self._summarize_scale_factor_info(average_scale_factor_info,
-        aniso_b_cart = aniso_b_cart,
-        b_iso = b_iso
-       )
+      # Highest and lowest resolution
+      for use_lowest, text in ((False, 'highest'), (True, 'lowest')):
+        average_scale_factor_info = \
+          self._get_scale_factor_info_best_resolution(
+            scale_factor_info, use_lowest = use_lowest)
+        mean_cc_star = self._get_mean_cc_star(
+           average_scale_factor_info.value_list[0])
+        if mean_cc_star is None:
+          print("\nNo CC* values available for location with %s resolution"
+            %(text), file = self.log)
+          continue
+        print("\nScaling information for location with %s resolution" %(
+           text) + " (Mean CC*: %.2f )" %(mean_cc_star), file = self.log)
+        self._summarize_scale_factor_info(average_scale_factor_info,
+          aniso_b_cart = aniso_b_cart,
+          b_iso = b_iso
+         )
 
       # Worst anisotropy
       average_scale_factor_info = self._get_scale_factor_info_most_anisotropy(
-          scale_factor_info, use_lowest = True)
+          scale_factor_info, use_lowest = False)
       if average_scale_factor_info.value_list and \
           average_scale_factor_info.value_list[0] and \
         average_scale_factor_info.value_list[0].fo_b_cart_as_u_cart:
-        cc_abs = flex.abs(flex.double(
-        average_scale_factor_info.value_list[0].fo_b_cart_as_u_cart)
-           ).min_max_mean().mean
+        aniso_spread = self._get_anisotropy_spread(
+          average_scale_factor_info.value_list[0].fo_b_cart_as_u_cart)
         print("\nScaling information for location with most anisotropy" +
-         " (Mean abs(anisotropy)): %.2f )" %(cc_abs),
+         " (Anisotropy (eigenvalue spread of U): %.2f )" %(aniso_spread),
            file = self.log)
         self._summarize_scale_factor_info(average_scale_factor_info,
           aniso_b_cart = aniso_b_cart,
@@ -6592,7 +6697,11 @@ class map_model_manager(object):
           file = self.log)
       average_scale_factor_info = self._average_scale_factor_info_over_xyz(
           scale_factor_info)
-      self._summarize_scale_factor_info(average_scale_factor_info,
+      if not average_scale_factor_info.value_list[0].scaling_info_list:
+        print("\nNo locations with complete scaling information; "+
+          "skipping overall summary", file = self.log)
+      else:
+        self._summarize_scale_factor_info(average_scale_factor_info,
           aniso_b_cart = aniso_b_cart,
           b_iso = b_iso
          )
@@ -6621,20 +6730,22 @@ class map_model_manager(object):
       decimal_places = 1,
      )
 
+    mean_cc_star = self._get_mean_cc_star(scaling_group_info)
     self._display_scale_values(
       si_list = scaling_group_info.scaling_info_list,
       direction_vectors = scaling_group_info.direction_vectors,
       key = 'cc_list',
       text = 'Estimated CC*',
-      extra_text = " (Mean CC*: %.2f)" %(
-       self._get_average_cc_star_list(scaling_group_info).min_max_mean().mean),
+      extra_text = " (Mean CC*: %.2f)" %(mean_cc_star) if
+          mean_cc_star is not None else '',
       decimal_places = 2,
      )
 
     self._display_scale_values(
       si_list = scaling_group_info.scaling_info_list,
       direction_vectors = scaling_group_info.direction_vectors,
-      overall_values = scaling_group_info.overall_si.target_scale_factors,
+      overall_values = scaling_group_info.overall_si.target_scale_factors if
+          scaling_group_info.overall_si else None,
       key = 'target_scale_factors',
       text = 'Scale factors',
       extra_text = '',
@@ -8539,6 +8650,7 @@ class map_model_manager(object):
       id = "%s_%s" %(prefix,i)
       if not id in used_id_list:
         return id
+      i += 1
 
   def warning_message(self):
     """Return the warning message"""
@@ -8948,6 +9060,9 @@ class map_model_manager(object):
       unit_cell_crystal_symmetry, and shift_cart (if these are part of the
       objects).'''
 
+    if (not self.map_managers()) and (not self.models()):
+      return True # nothing to check
+
     if absolute_angle_tolerance is None:
       absolute_angle_tolerance = self._absolute_angle_tolerance
     if absolute_length_tolerance is None:
@@ -8955,32 +9070,74 @@ class map_model_manager(object):
     if shift_tol is None:
       shift_tol = self._shift_tol
 
-    object_list = self.models() + self.map_managers()
-    if self.ncs_object():
-      object_list.append(self.ncs_object())
+    # Placeholder (dummy) map_managers made from a model do not count as maps.
+    #   Models without crystal_symmetry keep the full check.
+    have_maps = (not self.models()) or any([
+      m.crystal_symmetry() is None for m in self.models()]) or any([
+      not mm.is_dummy_map_manager() for mm in self.map_managers()])
+    if have_maps:
+      object_list = self.models() + self.map_managers()
+      if self.ncs_object():
+        object_list.append(self.ncs_object())
 
-    object_list_with_self = object_list + [self]
-    # Check for consistency among all objects and also include self here
+      object_list_with_self = object_list + [self]
+      # Check for consistency among all objects and also include self here
+      compare = all_objects_have_same_symmetry_and_shift_cart
+    else:
+      # Models only: compare them with each other, ignoring any placeholder.
+      #   Do not use self or ncs_object(), which would create a placeholder.
+      object_list = self.models()
+      object_list_with_self = object_list
+      def compare(models, absolute_angle_tolerance = None,
+          absolute_length_tolerance = None, shift_tol = None,
+          print_errors = False):
+        # As all_objects_have_same_symmetry_and_shift_cart, but an attribute
+        #   that is None for every model is not compared
+        for key in ['crystal_symmetry', 'unit_cell_crystal_symmetry',
+            'shift_cart']:
+          value_list = [getattr(m, key)() for m in models]
+          if value_list.count(None) == len(value_list):
+            continue
+          if None in value_list:
+            return False
+          target = value_list[0]
+          for other in value_list[1:]:
+            if key == 'shift_cart':
+              same = is_same_shift_cart(target, other, tol = shift_tol)
+            else:
+              same = target.is_similar_symmetry(other,
+                absolute_angle_tolerance = absolute_angle_tolerance,
+                absolute_length_tolerance = absolute_length_tolerance)
+            if not same:
+              if print_errors:
+                print("\nThe attribute '%s' does not match between "
+                  "\n%s and \n%s" %(key, target, other))
+              return False
+        return True
 
-    ok = all_objects_have_same_symmetry_and_shift_cart(object_list_with_self,
+    ok = compare(object_list_with_self,
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
         shift_tol = shift_tol,
         print_errors = False)
 
-    target = self.map_manager()
+    error_messages = []
+    target = self.map_manager() if have_maps else None
     if target:
-      for mm in self.map_managers():
-        if (not mm.is_similar(target)):
+      for id in self.map_id_list():
+        if (not self.get_map_manager_by_id(id).is_similar(target)):
           ok = False
-          text = "Map managers %s and %s are not compatible" %(mm, target)
+          error_messages.append(
+            "Map managers '%s' and 'map_manager' are not compatible" %(id))
 
     if (not ok):
       text = "Consistency check failure in map_model_manager '%s'" %(
            self.name)
+      if error_messages:
+        text += "\n" + "\n".join(error_messages)
       if print_errors:
         self._print(text)
-        all_objects_have_same_symmetry_and_shift_cart(object_list_with_self,
+        compare(object_list_with_self,
           absolute_angle_tolerance = absolute_angle_tolerance,
           absolute_length_tolerance = absolute_length_tolerance,
           shift_tol = shift_tol,
@@ -9297,7 +9454,7 @@ class _match_map_model_ncs(object):
     ncs_object = ncs()
     ncs_object.read_ncs(file_name = file_name, log = self.log)
     if ncs_object.max_operators()<2:
-       self.ncs_object.set_unit_ncs()
+       ncs_object.set_unit_ncs()
     self.add_ncs_object(ncs_object)
 
   def set_original_origin_and_gridding(self,
@@ -9560,6 +9717,9 @@ def convert_tlso_group_info_to_lists(tlso_group_info):
       #tlso_group_info.tlso_selection_list,
       # tlso_group_info.tlso_shift_cart_list,):
       """Convert from tlso group info object to lists"""
+      if getattr(tlso_group_info, 'tlso_list', None) is None and \
+          getattr(tlso_group_info, 'T_list', None) is not None:
+        return  # already converted (for example in an earlier call)
       tlso_group_info.T_list = []
       tlso_group_info.L_list = []
       tlso_group_info.S_list = []

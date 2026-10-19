@@ -424,6 +424,7 @@ class linking_mixins(object):
     sym_links = 0
     done = ResidueLinkClass()
     links = {}
+    link_notes = {}
     custom_links = {}
     exclude_out_lines = {}
 
@@ -863,7 +864,7 @@ Residue classes
                        key.find("BETA2")>-1
                        )
       if is_glyco_link: # is handled in elif
-        key, cif, bond_i_seqs = \
+        key, cif, bond_i_seqs, note = \
           glyco_utils.apply_glyco_link_using_proxies_and_atoms(
             atom_group2,
             atom_group1,
@@ -877,6 +878,7 @@ Residue classes
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs
+        if note: link_notes[tuple(bond_i_seqs)] = note
         continue
       elif link:
         origin_id = origin_ids['link_%s' % key]
@@ -1118,16 +1120,20 @@ Residue classes
                                                 self.pdb_atoms[j_seq],
                                                 "x,y,z", #link_rt_mx_ji,
                                                 ])
+          note = link_notes.get((i_seq, j_seq), '')
+          if note: note = '  ' + note
           if ag1.altloc or ag2.altloc:
-            print('      "%s" - "%s" : altloc "%s" - "%s"' % (
+            print('      "%s" - "%s" : altloc "%s" - "%s"%s' % (
               ag1.id_str(),
               ag2.id_str(),
               ag1.altloc,
               ag2.altloc,
+              note,
               ), file=log)
           else:
-            print('      "%s" - "%s"' % (ag1.id_str(),
+            print('      "%s" - "%s"%s' % (ag1.id_str(),
                                                  ag2.id_str(),
+              note,
               ), file=log)
           explain=""
           if key.find("ALPHA")==0 or key.find("BETA")==0:

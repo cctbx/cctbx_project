@@ -129,10 +129,13 @@ class cbetadev(validation):
       outliers_only=False,
       out=sys.stdout,
       collect_ideal=False,
+      apply_positive_phi_correction=False,
       apply_phi_psi_correction=False,
       display_phi_psi_correction=False,
       exclude_d_peptides=False,
       quiet=False):
+    assert not (apply_phi_psi_correction and apply_positive_phi_correction), \
+      'Use either apply_phi_psi_correction or apply_positive_phi_correction'
     validation.__init__(self)
     self._outlier_i_seqs = flex.size_t()
     self.beta_ideal = {}
@@ -141,12 +144,10 @@ class cbetadev(validation):
                             n_weighted_results = 0,
                             n_weighted_outliers = 0)
     total_residues = 0
-    new_outliers = None
-    outliers_removed = None
-    if apply_phi_psi_correction:
+    new_outliers=[]
+    outliers_removed=[]
+    if apply_phi_psi_correction or apply_positive_phi_correction:
       phi_psi_angles = get_phi_psi_dict(pdb_hierarchy)
-      new_outliers = 0
-      outliers_removed = 0
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
@@ -189,9 +190,12 @@ class cbetadev(validation):
                 else:
                   altchar = " "
                 total_residues+=1
-                if apply_phi_psi_correction:
+                if apply_phi_psi_correction or apply_positive_phi_correction:
                   id_str = '|%s:%s|' % (residue.id_str(), altchar)
                   phi_psi = phi_psi_angles.get(id_str, None)
+                  if phi_psi and apply_positive_phi_correction:
+                    if not (0 < phi_psi[0] < 150):
+                      phi_psi=None
                   if phi_psi:
                     rc = cbd_utils.get_phi_psi_correction(
                       result,
@@ -203,9 +207,11 @@ class cbetadev(validation):
                       dev, dihedralNABB, start, finish = rc
                       # if start or finish: print(id_str,dev,dihedralNABB,start,finish)
                       if start and not finish:
-                        outliers_removed += 1
+                        if rg not in outliers_removed:
+                          outliers_removed.append([rg.id_str(), phi_psi])
                       elif not start and finish:
-                        new_outliers += 1
+                        if rg not in new_outliers:
+                          new_outliers.append([rg.id_str(), phi_psi])
                 if(exclude_d_peptides and dev>=2.):
                   pass
                 elif(dev >=0.25 or outliers_only==False):
@@ -235,14 +241,22 @@ class cbetadev(validation):
                   key = result.id_str()
                   if (collect_ideal):
                     self.beta_ideal[key] = betaxyz
-      if apply_phi_psi_correction:
+      if apply_phi_psi_correction or apply_positive_phi_correction:
+        outln = '  '
+        for rg_id_str, phi_psi in new_outliers:
+          # print(rg.id_str(), len(rg.atom_groups()), len(new_outliers), phi_psi)
+          outln += '%s, ' % rg_id_str.strip()
+        outlo = '  '
+        for rg_id_str, phi_psi in outliers_removed:
+          # print(rg.id_str(), len(rg.atom_groups()), len(outliers_removed), phi_psi)
+          outlo += '%s, ' % rg_id_str.strip()
         print('''
-  Outliers removed : %5d
-  New outliers     : %5d
+  Outliers removed : %5d %s
+  New outliers     : %5d %s
   Num. of outliers : %5d
   Num. of residues : %5d
-  ''' % (outliers_removed,
-         new_outliers,
+  ''' % (len(outliers_removed), outlo[:-2],
+         len(new_outliers), outln[:-2],
          self.n_outliers,
          total_residues,
         ))

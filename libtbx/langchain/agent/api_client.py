@@ -56,6 +56,13 @@ try:
         # v119.H13
         normalize_ollama_openai_base_url,
         resolve_model_for_provider,
+        anthropic_reply_text,
+        anthropic_request_max_tokens,
+        google_reply_text,
+        openai_reply_text,
+        google_generation_kwargs,
+        openai_completion_kwargs,
+        portkey_max_completion_tokens,
     )
 except ImportError:
     from core.llm import (
@@ -63,6 +70,13 @@ except ImportError:
         # v119.H13
         normalize_ollama_openai_base_url,
         resolve_model_for_provider,
+        anthropic_reply_text,
+        anthropic_request_max_tokens,
+        google_reply_text,
+        openai_reply_text,
+        google_generation_kwargs,
+        openai_completion_kwargs,
+        portkey_max_completion_tokens,
     )
 
 
@@ -715,7 +729,13 @@ def call_llm_simple(prompt, provider="google", model=None, temperature=0.1, max_
         max_tokens: Maximum tokens in response
 
     Returns:
-        str: The LLM response text, or None on failure
+        str: The LLM response text.
+
+    Raises:
+        RuntimeError: for every provider when the reply was cut off or
+        contains no text (and for openai, portkey and ollama when the
+        content filter withheld it); other provider and network
+        errors propagate as raised by the SDK.
     """
     if provider == "google":
         return _call_google_llm(prompt, model, temperature, max_tokens)
@@ -754,11 +774,9 @@ def _call_google_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
             model=model_name,
             contents=prompt,
             config=types.GenerateContentConfig(
-                temperature=temperature,
-                max_output_tokens=max_tokens
-            )
+                **google_generation_kwargs(model_name, temperature, max_tokens))
         )
-        return response.text
+        return google_reply_text(response)
 
     except ImportError:
         # Fall back to deprecated google.generativeai
@@ -770,11 +788,9 @@ def _call_google_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
         response = gen_model.generate_content(
             prompt,
             generation_config=genai_old.types.GenerationConfig(
-                temperature=temperature,
-                max_output_tokens=max_tokens
-            )
+                **google_generation_kwargs(model_name, temperature, max_tokens))
         )
-        return response.text
+        return google_reply_text(response)
 
 
 def _call_openai_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
@@ -787,10 +803,8 @@ def _call_openai_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
     response = client.chat.completions.create(
         model=model_name,
         messages=[{"role": "user", "content": prompt}],
-        temperature=temperature,
-        max_tokens=max_tokens
-    )
-    return response.choices[0].message.content
+        **openai_completion_kwargs(model_name, temperature, max_tokens))
+    return openai_reply_text(response)
 
 
 def _call_anthropic_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
@@ -800,12 +814,14 @@ def _call_anthropic_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
     model_name = model or default_model_for_provider("anthropic")
     client = anthropic.Anthropic()  # Uses ANTHROPIC_API_KEY env var
 
+    # Thinking shares the output budget on Claude 5.x; keep the request
+    # between ANTHROPIC_MAX_TOKENS and the SDK's non-streaming limit.
     response = client.messages.create(
         model=model_name,
-        max_tokens=max_tokens,
+        max_tokens=anthropic_request_max_tokens(max_tokens),
         messages=[{"role": "user", "content": prompt}]
     )
-    return response.content[0].text
+    return anthropic_reply_text(response)
 
 
 def _call_portkey_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
@@ -841,9 +857,9 @@ def _call_portkey_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
     response = client.chat.completions.create(
         model=model_name,
         messages=[{"role": "user", "content": prompt}],
-        max_completion_tokens=max_tokens,
+        max_completion_tokens=portkey_max_completion_tokens(model_name, max_tokens),
     )
-    return response.choices[0].message.content
+    return openai_reply_text(response)
 
 
 def _call_ollama_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
@@ -872,4 +888,6 @@ def _call_ollama_llm(prompt, model=None, temperature=0.1, max_tokens=2000):
         temperature=temperature,
         max_tokens=max_tokens
     )
-    return response.choices[0].message.content
+    # Ollama's /v1 endpoint reports finish_reason "length" for a cut-off
+    # reply; check it like the OpenAI path does.
+    return openai_reply_text(response)

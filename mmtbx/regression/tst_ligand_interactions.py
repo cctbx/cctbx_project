@@ -4258,22 +4258,25 @@ def exercise_show_blank_chain():
 def exercise_formal_charge_conflict():
   '''
   ACT restraints with OXT's formal charge set to 0 (no H on the carboxylate, as in
-  the model): the builder takes the file's charges, DetermineBondOrders fails at
-  total 0, so ACT has no groups (listed), no salt bridge, and its formal charges
-  are not compared. The conflict status itself: a dictionary charge differing from
-  the perception with the same H.
+  the model): DetermineBondOrders fails at the file's total 0, so the builder
+  searches the total: a carboxylate -1, uncertain, so the salt bridge to LYS 10 is
+  only possible; the restraint file's charges are compared and conflict, the CCD's
+  agree. The conflict status itself: a dictionary charge differing from the
+  perception with the same H. (A builder failure: ZC5, exercise_builder_groups.)
   '''
   model = get_model(salt_sym_model_str.split('\n'), cifs=(act_conflict_cif,))
   m = get_manager(model, sel='chain A and resseq 1')
-  assert m.charged_groups == [] and len(salt_bridges(m)) == 0
-  (f,) = m.charged_group_failures
-  assert f['residue'] == 'A ACT 1' and f['reason'].startswith(
-    'DetermineBondOrders fails for ACT with the formal total 0:'), f
-  act = [x for x in m.formal_charges if x['residue'] == 'A ACT 1']
-  assert [(x['source'], x['file'], x['status'].startswith(
-    'not compared (residue_molecule failed: ')) for x in act] == [
-    ('restraints', 'act_conflict.cif', True), ('CCD', None, True)], act
-  assert m.formal_charge_conflicts() == []
+  assert m.charged_group_failures == [] and len(salt_bridges(m)) == 0
+  (g,) = m.charged_groups
+  assert (g['residue'], g['kind'], g['charge'], g['certain'], g['charge_source']) == (
+    'A ACT 1', 'carboxylate', -1, False, 'search'), g
+  assert g['notes'] == ['total charge by search (formal charges inconsistent)'], g
+  act = [(x['source'], x['file'], x['status'], x['dictionary_charge'],
+    x['perceived_charge']) for x in m.formal_charges if x['residue'] == 'A ACT 1']
+  assert act == [('restraints', 'act_conflict.cif', 'conflict', 0, -1),
+    ('CCD', None, 'agrees', -1, -1)], act
+  assert [(x['residue'], x['source']) for x in m.formal_charge_conflicts()] == [
+    ('A ACT 1', 'restraints')], m.formal_charge_conflicts()
   d = dict(atoms=dict(C=('C', 0), O=('O', 0), OXT=('O', 0)), h=dict(C=set(), O=set(),
     OXT=set()))
   c = m._charge_check('A ACT 1', 'restraints', 'x.cif', 'carboxylate', ['C', 'O', 'OXT'],
@@ -4283,7 +4286,9 @@ def exercise_formal_charge_conflict():
   log = StringIO()
   m.show(log=log)
   assert 'formal-charge conflicts' in log.getvalue()
-  assert 'residues without charged groups (residue_molecule failed):' in log.getvalue()
+  assert 'A ACT 1 carboxylate uncertain (total charge by search (formal charges ' \
+    'inconsistent))' in log.getvalue(), log.getvalue()
+  assert 'residue_molecule failed' not in log.getvalue()
 
 def builder_rows(model, found):
   atoms = model.get_hierarchy().atoms()
@@ -4400,7 +4405,8 @@ def exercise_builder_groups():
   model = M.get_model(M.pdb_from_cif('ZC5', M.zc5_cif), cifs=(('ZC5', M.zc5_cif),))
   f = found_for(model)
   assert f.groups == [] and [x['residue'] for x in f.failures] == ['A ZC5 1']
-  assert f.failures[0]['reason'].startswith('DetermineBondOrders fails for ZC5')
+  assert f.failures[0]['reason'] == 'no valid structure for ZC5 with total charges ' \
+    '-10..+10 (formal charges inconsistent)', f.failures
   # the manager: ZZW 6 A away gives probe2 polar H
   zzw = [l[:21] + 'B' + l[22:30] + '%8.3f' % (float(l[30:38]) + 6.0) + l[38:]
     for l in M.pdb_from_cif('ZZW', M.zzw_cif).split('\n') if l.startswith('HETATM')]
@@ -4416,7 +4422,8 @@ def exercise_builder_groups():
   log = StringIO()
   m.show(log=log)
   assert 'residues without charged groups (residue_molecule failed):' in log.getvalue()
-  assert '    A ZC5 1: DetermineBondOrders fails for ZC5' in log.getvalue()
+  assert '    A ZC5 1: no valid structure for ZC5 with total charges -10..+10 ' \
+    '(formal charges inconsistent)' in log.getvalue(), log.getvalue()
 
 def pdb_from_cif_text(code, text):
   from mmtbx.regression import tst_rdkit_utils_molecule as M

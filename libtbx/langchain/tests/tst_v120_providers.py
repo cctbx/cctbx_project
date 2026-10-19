@@ -233,7 +233,7 @@ def test_phil_enums_cover_supported_providers():
     for path in targets:
         if path is None:
             continue
-        with open(path) as fh:
+        with open(path, encoding="utf-8") as fh:
             src = fh.read()
         m = re.search(r"provider\s*=\s*([^\n]*)", src)
         assert m, "no `provider = ...` PHIL enum in %s" % path
@@ -406,7 +406,7 @@ def test_embeddings_query_error_is_broad_and_echoes_message():
 
 def _scan(path, needles, label):
     assert os.path.isfile(path), "%s not found" % label
-    with open(path) as fh:
+    with open(path, encoding="utf-8") as fh:
         src = fh.read()
     for n in needles:
         assert n in src, "%s: expected %r" % (label, n)
@@ -423,7 +423,7 @@ def test_source_directive_extractor_has_portkey_both_paths():
     p = os.path.join(_AGENT, "directive_extractor.py")
     _scan(p, ['get_portkey_handler', 'provider == "portkey"',
               'provider="azure-openai"'], "directive_extractor.py")
-    with open(p) as fh:
+    with open(p, encoding="utf-8") as fh:
         src = fh.read()
     # both _call_llm handler-select and _call_llm_fallback should reference it
     assert src.count('get_portkey_handler') >= 3, \

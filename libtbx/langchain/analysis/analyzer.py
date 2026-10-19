@@ -151,7 +151,11 @@ async def analyze_log_summary(log_info, llm, embeddings,
       )
 
     final_analysis = llm.invoke(payload)
-    content = getattr(final_analysis, 'content', final_analysis)
+    try:
+      from libtbx.langchain.core.llm import response_text
+    except ImportError:
+      from core.llm import response_text
+    content = response_text(final_analysis)
 
     # Verifier, SHADOW MODE: log only, surface nothing.
     #

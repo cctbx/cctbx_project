@@ -5,6 +5,8 @@ from mmtbx.validation.utils import (
   _cbeta_severity,
   _bond_angle_severity,
   _omega_twist_severity,
+  _planarity_severity,
+  _arg_chi5_severity,
   _rna_suite_severity,
   _rna_pucker_severity,
   calculate_overall_residue_quality_score,
@@ -322,6 +324,57 @@ def exercise_rna_severity_ordering():
   print("  exercise_rna_severity_ordering: OK")
 
 
+def exercise_planarity_severity():
+  # A sigma plane is scored exactly as a bond or angle outlier.
+  for n, s in ((1, 4.0), (1, 10.0), (2, 10.0), (1, 35.0)):
+    assert approx_equal(_planarity_severity(n, s), _bond_angle_severity(n, s))
+  # A tilt is scored on the same shape in tilt / limit.
+  assert approx_equal(_planarity_severity(1, 3.0, 7.0, 7.0), 1.0, eps=0.01)
+  assert approx_equal(_planarity_severity(1, 3.0, 17.5, 7.0), 4.0, eps=0.01)
+  assert approx_equal(_planarity_severity(1, 3.0, 27.5, 11.0), 4.0, eps=0.01)
+  assert approx_equal(_planarity_severity(1, None, 13.5, 7.0), 3.15, eps=0.01)
+  # Its sigma is ignored: the tilt is what flagged it.
+  assert approx_equal(_planarity_severity(1, 2.0, 14.0, 7.0), _planarity_severity(1, 9.0, 14.0, 7.0))
+  assert approx_equal(_planarity_severity(2, None, 7.0, 7.0), 2.0, eps=0.01)
+  # Without its limit a tilt falls back to sigma.
+  assert approx_equal(_planarity_severity(1, 10.0, 14.0, None), 4.0, eps=0.01)
+  print("  exercise_planarity_severity: OK")
+
+
+def exercise_arg_chi5_severity():
+  assert _arg_chi5_severity(None) == 0.0
+  assert _arg_chi5_severity(15.0) == 0.0, "allowed is a display tier, not scored"
+  assert _arg_chi5_severity(20.0) == 0.0
+  assert approx_equal(_arg_chi5_severity(20.001), 1.0, eps=0.01)
+  assert approx_equal(_arg_chi5_severity(30.0), 2.36, eps=0.01)
+  assert approx_equal(_arg_chi5_severity(60.0), 7.45, eps=0.01)
+  assert approx_equal(_arg_chi5_severity(90.0), 10.0, eps=0.01)
+  assert approx_equal(_arg_chi5_severity(-45.0), _arg_chi5_severity(45.0))
+  vals = [_arg_chi5_severity(t) for t in range(21, 91, 5)]
+  assert vals == sorted(vals), "chi5 severity must rise with the twist"
+  assert _arg_chi5_severity(90.0) < _omega_twist_severity(90.0), \
+    "a twisted guanidinium must stay below a perpendicular peptide"
+  print("  exercise_arg_chi5_severity: OK")
+
+
+def exercise_planarity_and_chi5_in_score():
+  score = calculate_overall_residue_quality_score
+  assert score(_make_residue()) == 0.0
+  assert score(_make_residue(num_planarity_outliers_res=1, worst_planarity_sigma=10.0)) == 4.0
+  assert score(_make_residue(num_planarity_outliers_res=1, worst_planarity_sigma=3.2,
+                             worst_planarity_tilt=17.5, worst_planarity_tilt_limit=7.0)) == 4.0
+  assert score(_make_residue(arg_chi5_twist=18.0)) == 0.0
+  assert score(_make_residue(arg_chi5_twist=90.0)) == 10.0
+  # Combined with a rotamer outlier (3.0): worst plus a quarter of the rest.
+  assert score(_make_residue(rotalyze_category='outlier', arg_chi5_twist=90.0)) == 10.8
+  assert score(_make_residue(nacetyl_twist=18.0)) == 0.0
+  assert score(_make_residue(nacetyl_twist=57.3)) == round(_arg_chi5_severity(57.3), 1)
+  assert score(_make_residue(glycan_link_twist=22.0)) == round(_arg_chi5_severity(22.0), 1)
+  both = score(_make_residue(nacetyl_twist=57.3, glycan_link_twist=22.0))
+  assert both == round(_arg_chi5_severity(57.3) + 0.25 * _arg_chi5_severity(22.0), 1)
+  print("  exercise_planarity_and_chi5_in_score: OK")
+
+
 def exercise():
   exercise_clash_severity()
   exercise_cbeta_severity()
@@ -333,6 +386,9 @@ def exercise():
   exercise_rna_suite_severity()
   exercise_rna_pucker_severity()
   exercise_rna_severity_ordering()
+  exercise_planarity_severity()
+  exercise_arg_chi5_severity()
+  exercise_planarity_and_chi5_in_score()
 
 
 if __name__ == "__main__":

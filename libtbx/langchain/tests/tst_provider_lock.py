@@ -41,7 +41,7 @@ def _load_config_helpers():
     path = _find("UTILITIES_PY", "phenix_ai", "utilities.py")
     if path is None:
         return None, None
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     block = re.search(
         r'(def get_ai_config_path.*?def write_ai_config.*?return None\n)',
         src, re.DOTALL)
@@ -95,9 +95,9 @@ def test_corrupt_and_unknown_are_none():
     if ns is None:
         print("  (skip)")
         return
-    open(ns["get_ai_config_path"](), "w").write("{not json")
+    open(ns["get_ai_config_path"](), "w", encoding="utf-8").write("{not json")
     assert ns["get_locked_provider"]() is None
-    open(ns["get_ai_config_path"](), "w").write(
+    open(ns["get_ai_config_path"](), "w", encoding="utf-8").write(
         json.dumps({"allowed_provider": "bogus"}))
     assert ns["get_locked_provider"]() is None
 
@@ -107,7 +107,7 @@ def test_one_element_list_form():
     if ns is None:
         print("  (skip)")
         return
-    open(ns["get_ai_config_path"](), "w").write(
+    open(ns["get_ai_config_path"](), "w", encoding="utf-8").write(
         json.dumps({"allowed_provider": ["google"]}))
     assert ns["get_locked_provider"]() == "google"
 
@@ -119,7 +119,7 @@ def test_install_requires_provider_arg():
     if path is None:
         print("  (skip) install_ai_tools.py not found")
         return
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     assert "if not args:" in src, "must fail when no provider arg is given"
     assert "_usage" in src, "must show usage on missing/invalid arg"
     assert "_VALID_CHOICES" in src and "portkey" in src
@@ -133,7 +133,7 @@ def test_install_requires_provider_arg():
 # --- CLI steering (source-scan in both programs) -----------------------------
 
 def _assert_lock_steering(path, label):
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     assert "get_locked_provider" in src, \
         "%s must consult get_locked_provider" % label
     assert "self.params.communication.provider = _locked" in src, \
@@ -174,7 +174,7 @@ def _assert_gui_omits_run_on_server(env_var, default_relpath, label):
     if path is None:
         print("  (skip) GUI %s not found" % label)
         return
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     i_guard = src.find('FORCE_NO_AI_SERVER", "").strip() != "1"')
     i_draw = src.find("draw_phil_controls('communication.run_on_server')")
     assert i_guard != -1, "%s must branch on FORCE_NO_AI_SERVER" % label

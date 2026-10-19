@@ -100,7 +100,11 @@ async def extract_project_state_updates(log_summary, current_state, llm):
     })
 
     # Content is likely JSON string, possibly wrapped in markdown
-    text = response.content.strip()
+    try:
+      from libtbx.langchain.core.llm import response_text
+    except ImportError:
+      from core.llm import response_text
+    text = response_text(response).strip()
     if "```" in text:
       match = re.search(r'\{.*\}', text, re.DOTALL)
       if match:

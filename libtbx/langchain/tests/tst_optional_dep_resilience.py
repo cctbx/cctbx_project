@@ -215,7 +215,7 @@ class TestSectionG(unittest.TestCase):
         """
         # Verify by parsing the file and checking import structure
         path = os.path.join(ROOT, "rag", "vector_store.py")
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             source = f.read()
 
         # Should NOT have eager `import chromadb` or `from langchain_chroma`
@@ -244,7 +244,7 @@ class TestSectionG(unittest.TestCase):
         """K_G4: analysis/analyzer.py does not import retriever at
         module-top (G2 patch)."""
         path = os.path.join(ROOT, "analysis", "analyzer.py")
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             source = f.read()
         # Module-top retriever import must be absent
         # (lazy import inside analyze_log_summary is OK)
@@ -271,7 +271,7 @@ class TestSectionG(unittest.TestCase):
         """K_G5: utils/query.py does not import retriever or
         langchain_google_genai at module-top (G2b patches)."""
         path = os.path.join(ROOT, "utils", "query.py")
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             source = f.read()
         # Identify module-top section
         lines = source.split("\n")
@@ -327,7 +327,7 @@ class TestSectionG(unittest.TestCase):
         be invoked without needing chromadb (lazy retriever import
         inside analyze_log_summary, not get_log_analysis_prompt)."""
         path = os.path.join(ROOT, "analysis", "analyzer.py")
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             source = f.read()
         # Find the get_log_analysis_prompt function and verify it does
         # not reference retriever functions inside its body.
@@ -442,7 +442,7 @@ class TestSectionG(unittest.TestCase):
         """
         # Parse the source and verify the annotation does NOT reference Chroma
         path = os.path.join(ROOT, "rag", "vector_store.py")
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             source = f.read()
         # No `-> Chroma:` annotation anywhere
         self.assertNotIn("-> Chroma:", source,
@@ -507,7 +507,7 @@ def run_all_tests():
     """Run all K_G tests in this module."""
     loader = unittest.TestLoader()
     suite = loader.loadTestsFromTestCase(TestSectionG)
-    runner = unittest.TextTestRunner(verbosity=0, stream=open(os.devnull, "w"))
+    runner = unittest.TextTestRunner(verbosity=0, stream=open(os.devnull, "w", encoding="utf-8"))
     # Run with manual reporting to match the K_F output pattern
     passed = 0
     failed = 0

@@ -28,6 +28,7 @@ tst_list_base = [
   "$D/regression/tst_map_model_manager_model_sharpening_5.py",
   "$D/regression/tst_map_model_manager_model_sharpening_5_cif.py",
   "$D/regression/tst_map_model_manager_call_consistency.py",
+  "$D/regression/tst_map_model_manager_get_any_map_manager.py",
   "$D/regression/tst_map_model_manager_external_sharpening_7.py",
   "$D/regression/tst_map_model_manager_half_map_sharpening_6.py",
   "$D/regression/tst_map_model_manager_tls_from_map_8.py",
@@ -35,6 +36,11 @@ tst_list_base = [
   "$D/regression/tst_map_model_manager_9_remove_origin_shift_and_unit_cell_crystal_symmetry.py",
   "$D/regression/tst_map_model_manager_9_remove_origin_shift_and_unit_cell_crystal_symmetry_cif.py",
   "$D/regression/tst_map_model_manager_local_resolution_10.py",
+  "$D/regression/tst_map_model_manager_constructor_consistency.py",
+  "$D/regression/tst_map_model_manager_cleanup.py",
+  "$D/regression/tst_map_model_manager_aniso_summary.py",
+  "$D/regression/tst_map_model_manager_aniso_averaging.py",
+  "$D/regression/tst_map_model_manager_supplied_tls.py",
   "$D/regression/tst_map_tools.py",
   "$D/regression/tst_patterson.py",
   "$D/regression/tst_restraints_merge.py",
@@ -175,6 +181,7 @@ tst_list_base = [
   "$D/regression/tst_hierarchy_copy_select.py",
   "$D/regression/tst_hierarchy_id_str.py",
   "$D/regression/tst_hierarchy_altlocs.py",
+  "$D/regression/tst_mmcif_to_from_hierarchy.py",
   "$D/regression/tst_fetch.py",
   ]
 
@@ -185,7 +192,6 @@ tst_list_windows_fail = [
 
 tst_list_fail = [
   "$D/regression/ncs/tst_ncs_reordered_chains.py",
-  "$D/regression/tst_mmcif_to_from_hierarchy.py",
   ]
 if sys.platform == 'win32':
   tst_list_fail += tst_list_windows_fail

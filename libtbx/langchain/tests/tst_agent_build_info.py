@@ -275,7 +275,7 @@ def test_get_version_returns_unknown_when_file_empty():
     assert v.get_version() == "unknown", (
       "Empty VERSION should return 'unknown'")
     # Whitespace-only
-    with open(empty_path, "w") as f:
+    with open(empty_path, "w", encoding="utf-8") as f:
       f.write("   \n  \t\n")
     assert v.get_version() == "unknown", (
       "Whitespace-only VERSION should return 'unknown'")

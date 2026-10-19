@@ -101,7 +101,7 @@ def load_registry(path=None):
     if path and os.path.exists(path):
         try:
             import yaml
-            with open(path) as handle:
+            with open(path, encoding="utf-8") as handle:
                 names = tuple(sorted(yaml.safe_load(handle)))
             extra = tuple(n for n in _FALLBACK if n not in names)
             return names + extra

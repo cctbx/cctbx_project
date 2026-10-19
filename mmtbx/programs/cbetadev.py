@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from mmtbx.validation.cbetadev import cbetadev
 from libtbx.program_template import ProgramTemplate
-#from libtbx.utils import Sorry
+from libtbx.utils import Sorry
 from datetime import datetime
 
 class Program(ProgramTemplate):
@@ -34,17 +34,28 @@ Example:
   include scope mmtbx.validation.molprobity_cmdline_phil_str
     json = False
       .type = bool
-      .help = "Prints results as JSON format dictionary"
+      .help = Prints results as JSON format dictionary
     cbetadev {
       output = *text kin bullseye
         .type = choice
-        .help = '''choose output type'''
+        .help = choose output type
+      apply_positive_phi_correction = False
+        .type = bool
+        .help = Subtract the mean C-beta deviation for the residue (phi, psi) \
+                bin, but only for residues with 0 < phi < 150. Cannot be \
+                used with apply_phi_psi_correction.
       apply_phi_psi_correction = False
         .type = bool
-        .help = XXX
+        .help = Subtract the mean C-beta deviation for the residue (phi, psi) \
+                bin from each deviation. Uses 10 degree bins and separate \
+                tables for PRO, VAL/THR/ILE and other residues. Cannot be \
+                used with apply_positive_phi_correction.
       display_phi_psi_correction = False
         .type = bool
-        .help = XXX
+        .help = Plot (matplotlib) the original deviation, correction and \
+                result for each residue that is an outlier before or after \
+                correction. Requires apply_phi_psi_correction or \
+                apply_positive_phi_correction.
       exclude_d_peptides = False
         .type = bool
         .style = hidden
@@ -57,6 +68,15 @@ Example:
 
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
+    if (self.params.cbetadev.apply_phi_psi_correction and
+        self.params.cbetadev.apply_positive_phi_correction):
+      raise Sorry('Please use either apply_phi_psi_correction or '
+                  'apply_positive_phi_correction')
+    if (self.params.cbetadev.display_phi_psi_correction and
+        not (self.params.cbetadev.apply_phi_psi_correction or
+             self.params.cbetadev.apply_positive_phi_correction)):
+      raise Sorry('display_phi_psi_correction requires '
+                  'apply_phi_psi_correction or apply_positive_phi_correction')
 
   def get_results(self):
     return self.results
@@ -71,6 +91,7 @@ Example:
     self.results = cbetadev(
       pdb_hierarchy=hierarchy,
       outliers_only=self.params.outliers_only,
+      apply_positive_phi_correction=self.params.cbetadev.apply_positive_phi_correction,
       apply_phi_psi_correction=self.params.cbetadev.apply_phi_psi_correction,
       display_phi_psi_correction=self.params.cbetadev.display_phi_psi_correction,
       exclude_d_peptides=self.params.cbetadev.exclude_d_peptides,

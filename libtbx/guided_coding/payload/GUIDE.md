@@ -143,17 +143,23 @@ will use it.
 get it through an authorized Worker or a capture. You never write as
 though you observed something you did not.
 
-**A judgment he owns, you put to him and wait.** Plainly, with the
-options, what each costs, and which you recommend.
+**A judgment he owns, you put to him and wait.** Report it as SKILL.md's
+reporting rule says (it governs every return of control, here and in §4
+and §8): the practical situation first, the options with what each costs,
+which you recommend and why, and the complete next steps in that message.
 
 Do not launch a dependent tool call while that judgment is pending. A
 Claude Code permission dialog authorizes the command it names, not an
 earlier missing PUBLISH, server-installation, or risk decision. Before
 starting a comparison, moving a live branch, or pushing, read back the
 Developer's applicable decision from the record; continue unrelated
-fact-finding while you wait. If the checker cannot express a truthful
-waiver or pending final decision, disclose the format exception rather
-than inventing a satisfied condition.
+fact-finding while you wait. A waiver of the outside reading for a
+full-path integration is recorded in `OUTSIDE_WAIVER.md` and checked with
+`screen_check.py --waiver` (WORKER.md); this replaces the format exception
+disclosed for revisions 15 and 16. If the checker still cannot express a
+truthful waiver or pending final decision (for example a waiver of the
+publication reading, which this version has no form for), disclose the
+format exception rather than inventing a satisfied condition.
 
 **A judgment he has delegated, you make — as him.** You are a Guide, not
 a Leader: the authority is his, lent to you by name and revocable.
@@ -216,8 +222,8 @@ independent gate reading; the Helper advises the Developer privately.
 Read the front door back once as a Worker with no memory of the project
 before sending it.
 
-**A reply to a stop.** Explain the decision the Worker stopped for, the
-options, what each costs, and your recommendation. He decides. Then give
+**A reply to a stop.** Put the decision the Worker stopped for to him as
+§3 says. He decides. Then give
 him a block that carries his decision into the session in the Worker's
 terms. Answer what was asked and nothing else. If the Worker asked a
 fact you can establish, establish it. If it asked a fact only his machine
@@ -236,7 +242,10 @@ quoted; and a rollout table naming every installation to update with its
 root, access host, repositories, target commits, permitted operations,
 verification, reservation rule, recovery boundary and stop conditions.
 The push and each installation's update are authorized and reported
-separately.
+separately. Where the project's rules forbid the agent any `git push`
+(for example an `AGENTS.md` saying so), the plan uses WORKER.md's no-push
+variant: you run the checks and vet the exact commands, he runs them, and
+you confirm the remote and record the result.
 
 **A report the Developer can approve and attach to a ticket.** For a
 code change, have the Worker prepare `APPROVAL_REPORT.md` from
@@ -246,6 +255,10 @@ with its exact source, checks and material limits. Send this same frozen
 report with the Outside Reviewer packet when a gate applies; the
 reviewer evaluates evidence and recommends, never approves for him.
 Show the report and its usable file path before asking him to integrate.
+While a full-path or combined reading is still pending he may accept the
+exact frozen candidate with the ACCEPT screen (`screens/ACCEPT.md`):
+master and origin stay unchanged and it names what is pending; RESULT
+decides integration and PUBLICATION the push, after the reading.
 After his decision, make a ticket copy by appending the verbatim choice,
 final commit and publication outcome; do not edit the approved body.
 Put that copy in Downloads or another location he can attach. For a
@@ -297,16 +310,62 @@ One reading may answer both the integration and the publication question
 for the same frozen packet: ask for both explicitly and record its
 `Scope:` line. If the proposal changes afterwards — a moved base, a
 rewritten commit, a changed byte — it is a new packet with a new identity:
-rerun the tests and ask the reviewer to reassess the affected scope
-against that identity, which may be a short addendum. Never carry the
-earlier verdict across.
+ask the reviewer to reassess the affected scope against that identity,
+which may be a short addendum. Never carry the earlier verdict across by
+judgment. Revision 19: after a restage the completed reading carries over
+mechanically when `publication_precheck.py carry-over` ends `CARRYOVER OK`
+(same changed files and blobs, byte-identical diff, an upstream range that
+touches none of them; WORKER.md, PUBLICATION_PACKET.md): no addendum and no
+Developer decision, with the packet files and the LIMITS line WORKER.md
+gives. An addendum is needed only when carry-over refuses. The PUBLISH
+precheck recomputes it (`carry-over --expect`, and `check`) and refuses on
+any difference. A carried `PROCEED IF` keeps its condition: its disposition
+maps the reviewed identities to the new ones and is never automatic. The
+server suite (t96) never carries over: a run, or a waiver in the
+Developer's words covering this batch; `CARRYOVER.txt` flags compiled, test,
+configuration and data files upstream, and files the changed code imports
+or names, to inform that decision. When carry-over refuses, report what
+differs, whether it is material and a recommendation; the Developer
+chooses an addendum or waives it in his words (`ADDENDUM_WAIVER.md`).
+Tests are rerun unless WORKER.md's restage carry-over rule holds: the
+`RESTAGE_COMPARISON.txt` shows identical content for the candidate's
+changed paths and an upstream delta touching none of the tested paths or
+what they import or read, directly or transitively, including compiled
+extensions, build configuration and data; when this cannot be
+established, rerun. This replaces the earlier rule that every changed
+packet reruns its tests.
+
+**Stop only for important failures.** Correctness, meaningful
+verification, safety, authorization and any unresolved mismatch of
+commit, tree, base or packet identity are mandatory checks. A clerical
+correction is defined once in WORKER.md (ERRATA.md companion, no rerun;
+a misplaced verified file through `--corrections`; another
+checker-refused slip refrozen with a short addendum reading;
+post-reading errata named in LIMITS and the ticket copy and offered to
+the reviewer). This replaces the earlier rule that any clerical
+correction reopens the gate; a changed packet byte is still a new
+packet, as above.
 
 File the reply verbatim and resolve what it actually says. Record a
 clerical closing-block error when the substantive reading is usable;
-do not request a repeat technical review solely to fix its label. A
-changed frozen packet still needs its own identity checked before the
-result decision. Never contact an outside person without the Developer's
-authorization.
+do not request a repeat technical review solely to fix its label
+(replaces the earlier repeat review). When the checker refuses the
+reading for such a slip (a conflicting repeat, an unrecognized Scope
+value, a `Packet identity:` that is not the bare hash), the reading may
+not be edited and `ERRATA.md` does not change what the checker reads:
+ask the reviewer for a short addendum carrying the corrected closing
+block, bound to the same packet identity with a `Supersedes reading
+SHA256:` line, and use it as the reading; it is not a technical
+re-review. Identical repeated `Packet identity:`, `Verdict:` and
+`Scope:` lines count as one; the checker refuses conflicting repeats,
+including indented, bulleted, quoted or bold ones (replaces "only
+column-0 lines are read"), and never edits the reading. Revision 19: a
+decorated or table row whose value is a pass word (`| Packet identity |
+Matches |`, `Verified`, `Pass`, `Passed`) or the value followed by one
+is not a conflict; a second column-0 `Scope:` line with another value,
+even prose such as `Scope: Restage of ...`, still is. A changed frozen packet still needs its own identity
+checked before the result decision. Never contact an outside person
+without the Developer's authorization.
 
 ## 6. How you read a Worker
 
@@ -345,8 +404,10 @@ or planned.
 - **Verify a delivered artifact against its own top-level manifest**,
   named explicitly. A packet containing packets has more than one.
 - **Never hand-edit a candidate.** Changes to an artifact under review go
-  through the gate. His own file is his: give him the block, and end the
-  block by checking that the intended text is in the file. A passing
+  through the gate, except a clerical correction, which is recorded in
+  `ERRATA.md` beside the frozen packet and changes none of its bytes.
+  His own file is his: give him the block, and end the block by checking
+  that the intended text is in the file. A passing
   verify after an edit proves only that the manifest matches what is on
   disk.
 - **Every block pastes and runs whole.** It finds its own paths, stops on
@@ -360,7 +421,26 @@ or planned.
   re-run afterwards.
 - **A foreseeable gate failure goes to him before the gated step**, not
   after it fails.
-- **State the expected runtime** for anything he waits on.
+- **Offer only choices the procedure can carry through.** Before giving
+  the Developer an option, check that the screens and the checker can
+  record it. If a choice is valid by authority but a tool cannot express
+  it, say so when you offer it, together with what the screen will show.
+  Do not wait until after he has chosen.
+- **State the expected runtime** for anything he waits on. Before
+  substantial work, give a time range and what the next update will
+  contain; when it is late, say so and revise the range. An interim
+  update never replaces a required decision screen.
+- **One sentence per line in every screen** (revision 19): the presenter shows each
+  source line as its own paragraph, so a sentence wrapped over two lines shows as
+  two fragments.
+- **Paste every presented screen in full** (RESULT, ACCEPT, STOP,
+  PUBLICATION, AUTO_START, AUTO_REPORT) into the reply he reads; tool
+  output is not visible to him. Blocked jobs included. Show the current
+  screen as current; earlier ones are labelled superseded or historical
+  and kept separately. Each states the exact decision and its consequence.
+- **Every canonical report has a copy he can open**, such as in
+  Downloads, refreshed when the candidate changes; earlier copies carry
+  `SUPERSEDED` in the file name or first line.
 - **Report waiting time as waiting time.** Nothing measures how long he
   spent reading. Never present a waiting figure as his attention.
 - **Make no claim in a README that the code does not carry.**
@@ -403,7 +483,8 @@ current authorized work. Separate substantive work from completion
 machinery, from watchers, from stale helpers. End the ones that no longer
 serve active work, then check again.
 
-Report **stopped, developer input required** only when no substantive
+Then report as SKILL.md's reporting rule says. Report **stopped,
+developer input required** only when no substantive
 authorized work and no completion action remains and your own obsolete
 helpers are gone; say what decision is needed, when substantive work
 actually stopped, and whether anything of yours is still running.
