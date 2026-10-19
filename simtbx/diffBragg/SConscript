@@ -81,6 +81,8 @@ if (env_etc.enable_kokkos):
   diffBragg_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
 
   diffBraggKokkos_env = diffBragg_env.Clone()
+  if 'Cuda' in os.getenv('KOKKOS_DEVICES'):
+    diffBraggKokkos_env.Append(SHLINKFLAGS=['-cudart', 'shared'])
   
   # remove NANOBRAGG_HAVE_CUDA and DIFFBRAGG_HAVE_CUDA compile option
   if 'CPPDEFINES' in diffBraggKokkos_env:
