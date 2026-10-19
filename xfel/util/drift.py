@@ -104,6 +104,12 @@ phil_scope_str = """
     unit_cell = *average distribution
       .type = choice
       .help = Use average unit cell or distribution of all?
+    iqr_ratio = None
+      .type = float
+      .help = If set, reject a chunk's cells whose a, b or c lies more than this \
+              many interquartile ranges beyond that length's quartiles within the \
+              chunk, before anything is averaged or plotted. The usual value is \
+              1.5. None keeps every cell.
     }
   plot {
     color {
@@ -515,6 +521,33 @@ class BaseDriftScraper(object):
     refls = read_reflections(*sorted(refls_paths))
     return expts, refls
 
+  def reject_cell_outliers(self, expts: ExperimentList, refls: flex.reflection_table) \
+          -> Tuple[ExperimentList, flex.reflection_table]:
+    """Drop expts (and their refls) whose a, b or c is an outlier within the
+    chunk by the interquartile rule with scrap.iqr_ratio; None keeps all.
+    Done on the experiments rather than in one mixin so that every per-cell
+    array of the chunk (origin, cell, counts) stays the same length."""
+    ratio = self.parameters.scrap.iqr_ratio
+    if ratio is None or len(expts) < 4:
+      return expts, refls
+    lengths = np.array([expt.crystal.get_unit_cell().parameters()[:3] for expt in expts])
+    keep = np.ones(len(expts), dtype=bool)
+    for column in lengths.T:
+      q1, q3 = np.percentile(column, [25, 75])
+      cut = ratio * (q3 - q1) + 1e-6
+      keep &= (column >= q1 - cut) & (column <= q3 + cut)
+    if keep.all():
+      return expts, refls
+    kept_ids = [i for i, k in enumerate(keep) if k]
+    new_ids = {old: new for new, old in enumerate(kept_ids)}
+    mask = flex.bool([int(i) in new_ids for i in refls['id']])
+    refls = refls.select(mask)
+    refls['id'] = flex.int([new_ids[int(i)] for i in refls['id']])
+    kept_expts = ExperimentList()
+    for i in kept_ids:
+      kept_expts.append(expts[i])
+    return kept_expts, refls
+
   @autoupdate_scrap_dict_with_return
   def scrap_db_metadata(self, combine_phil_path: str) -> dict:
     """Get trial, task, rungroup, chunk, run info based on combining phil"""
@@ -555,6 +588,7 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
         self.scrap_db_metadata(cpp)
         print(f'Processing run {self.scrap_dict["run"]}')
         refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
+        refined_expts, refined_refls = self.reject_cell_outliers(refined_expts, refined_refls)
         elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
         print(f'Found {elen} expts and {sum(rlen)} refls')
         self.scrap_dict.update({'expts': elen, 'refls': rlen})
@@ -594,6 +628,7 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             print(f'Found {elen} expts and {sum(rlen)} refls')
             refined_expts.select_on_experiment_identifiers(scaled_identifiers)
             refined_refls = refined_refls.select(refined_expts)
+            refined_expts, refined_refls = self.reject_cell_outliers(refined_expts, refined_refls)
             elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
             print(f'Accepted {elen} expts and {sum(rlen)} refls')
             self.scrap_dict.update({'expts': elen, 'refls': rlen})
@@ -640,6 +675,7 @@ class ExplicitDriftScraper(BaseDriftScraper):
       try:
         self.scrap_dict = dict(metadata)
         refined_expts, refined_refls = self.locate_refined_expts_refls(combine_phil_path)
+        refined_expts, refined_refls = self.reject_cell_outliers(refined_expts, refined_refls)
         elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
         if elen == 0:
           stem = combine_phil_path.replace('_combine_experiments.phil', '')
