@@ -415,12 +415,23 @@ def exercise_keep_processed_model():
   assert kept.processed_model is kept.processed_master
   assert kept.processed_model.get_restraints_manager() is not None
 
+def exercise_kinemage_neutron_distances():
+  from mmtbx.kinemage.validation import make_probe_dots_from_model
+  kept = run_clashscore2(keep_processed_model=True, nuclear=True).processed_model
+  h, symmetry = kept.get_hierarchy(), kept.crystal_symmetry()
+  dots = lambda **kw: re.sub(r"run \d{4}-\d\d-\d\d \d\d:\d\d:\d\d", "run <time>",
+                             make_probe_dots_from_model(**kw))
+  nuclear = dots(model_manager=fresh_model(h, symmetry), use_neutron_distances=True)
+  assert nuclear != dots(model_manager=fresh_model(h, symmetry))
+  assert nuclear == dots(model_manager=kept, processed=True, use_neutron_distances=True)
+
 if (__name__ == "__main__"):
   if (libtbx.env.has_module("reduce") and libtbx.env.has_module("probe")):
     t0 = time.time()
     exercise_dots()
     exercise_contact_records()
     exercise_keep_processed_model()
+    exercise_kinemage_neutron_distances()
     print("OK. Time: %8.3f" % (time.time() - t0))
   else:
     print("Skipping tst_probe2_contact_records: probe or reduce not configured")

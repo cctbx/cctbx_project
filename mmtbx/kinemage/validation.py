@@ -261,7 +261,8 @@ def bond_outlier_as_kinemage(self):
   return kin_text
 
 
-def _drop_unbonded_for_probe(model_manager, probe2, processed=False):
+def _drop_unbonded_for_probe(model_manager, probe2, processed=False,
+                             use_neutron_distances=False):
   """Process model_manager with probe2's interpretation parameters and drop
   what probe2 cannot handle: multi-atom residues with any unbonded heavy atom
   (missing restraints, so its intra-residue pairs would read as clashes; one
@@ -273,7 +274,8 @@ def _drop_unbonded_for_probe(model_manager, probe2, processed=False):
     # processed: restraints already made with probe2's parameters; leave the model as is.
     model_manager.get_hierarchy().atoms().reset_i_seq()
     model_manager.process(make_restraints=True,
-      pdb_interpretation_params=probe2.getPdbInterpretationParams())
+      pdb_interpretation_params=probe2.getPdbInterpretationParams(
+        use_neutron_distances))
   geometry = model_manager.get_restraints_manager().geometry
   simple, asu = geometry.get_all_bond_proxies(
     sites_cart=model_manager.get_sites_cart())
@@ -345,7 +347,8 @@ def _probe_dots_note(lines):
 
 def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
                          target_selection=None, omit_unrestrained=True,
-                         vdw_dots=False, processed=False):
+                         vdw_dots=False, processed=False,
+                         use_neutron_distances=False):
   """Run probe2 on one hydrogenated model; returns kinemage dots text, with an
   @text note when residues were left out or probe2 failed.  With
   omit_unrestrained=False, residues lacking restraints raise Sorry instead."""
@@ -357,7 +360,8 @@ def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
   output = ""
   try:
     model_manager, dropped, processed = _drop_unbonded_for_probe(
-      model_manager, probe2, processed=processed)
+      model_manager, probe2, processed=processed,
+      use_neutron_distances=use_neutron_distances)
   except Exception as e:
     return _probe_dots_note(
       ["Probe dots could not be computed: %s" % str(e).strip()])
@@ -386,6 +390,7 @@ def _run_probe2_kinemage(model_manager, approach="self", source_selection=None,
       "output.add_group_name_master_line=True",
       "count_dots=False",
       "ignore_lack_of_explicit_hydrogens=True",
+      "use_neutron_distances=%s" % bool(use_neutron_distances),
     ]
     # Quoted: unquoted, a selection parses as several phil arguments.
     if source_selection is not None:
@@ -465,7 +470,8 @@ def make_probe_dots(hierarchy, keep_hydrogens=False, restraint_objects=None,
 def make_probe_dots_from_model(model_manager, per_model=False,
                                approach="self", source_selection=None,
                                target_selection=None, vdw_dots=False,
-                               processed=False, processed_master=None):
+                               processed=False, processed_master=None,
+                               use_neutron_distances=False):
   """Generate probe dot kinemage output from an already-hydrogenated model.
 
   Like make_probe_dots() but skips reduce2 + Optimizer since the model
@@ -486,6 +492,7 @@ def make_probe_dots_from_model(model_manager, per_model=False,
   processed_master does the same for each model of an ensemble, given its first
   model so processed (clashscore2.processed_master); a model whose atoms differ
   from it is interpreted as before.
+  use_neutron_distances must match the setting a processed model was made with.
   """
   try:
     import mmtbx.model
@@ -502,7 +509,8 @@ def make_probe_dots_from_model(model_manager, per_model=False,
       work = _deep_copy_with_selection_support(model_manager)
     section = _run_probe2_kinemage(
       work, approach=approach, source_selection=source_selection,
-      target_selection=target_selection, vdw_dots=vdw_dots, processed=True)
+      target_selection=target_selection, vdw_dots=vdw_dots, processed=True,
+      use_neutron_distances=use_neutron_distances)
     return [section] if per_model else section
   sections = []
   for i_mod, m in enumerate(hierarchy.models()):
@@ -517,7 +525,8 @@ def make_probe_dots_from_model(model_manager, per_model=False,
       if work is not None:
         sections.append(_run_probe2_kinemage(
           work, approach=approach, source_selection=source_selection,
-          target_selection=target_selection, vdw_dots=vdw_dots, processed=True))
+          target_selection=target_selection, vdw_dots=vdw_dots, processed=True,
+          use_neutron_distances=use_neutron_distances))
         continue
 
     # Build a model manager for this sub-model, preserving restraint objects
@@ -533,7 +542,8 @@ def make_probe_dots_from_model(model_manager, per_model=False,
 
     sections.append(_run_probe2_kinemage(
       sub_model, approach=approach, source_selection=source_selection,
-      target_selection=target_selection, vdw_dots=vdw_dots))
+      target_selection=target_selection, vdw_dots=vdw_dots,
+      use_neutron_distances=use_neutron_distances))
   if per_model:
     return sections
   if len(sections) > 1:
