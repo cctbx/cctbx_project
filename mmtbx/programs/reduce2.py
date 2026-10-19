@@ -41,11 +41,11 @@ master_phil_str = '''
 approach = *add remove optimize place
   .type = choice
   .short_caption = Add (and optimize), remove, optimize, or place Hydrogens
-  .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model, or place them without optimizing (place). Note: if using optimize and add_flip_movers=True, all possible hydrogens must be added to histidines (even ones making collision).
+  .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model, or place them without optimizing (place). Note: if using optimize and add_flip_movers=True, all possible hydrogens must be added to histidines (even ones making collision). remove removes all H and D atoms and renames DOD waters to HOH.
 keep_existing_H = False
   .type = bool
   .short_caption = Do not remove Hydrogens in the original model
-  .help = Keep existing H atoms in the model
+  .help = Keep existing H and D atoms in the model. Kept D need a neutron_option other than none.
 n_terminal_charge = *residue_one first_in_chain all_chain_starts no_charge
   .type = choice(multi=False)
   .short_caption = N terminal charge approach
@@ -60,7 +60,7 @@ exclude_water = True
 use_neutron_distances = False
   .type = bool
   .short_caption = Use neutron distances
-  .help = Use neutron distances (-nuclear in reduce)
+  .help = Use neutron distances (-nuclear in reduce). Switched on by any neutron_option other than none and by qmready=True.
 neutron_option = *none all_h all_d hd_and_h hd_and_d all_hd
   .type = choice(multi=False)
   .short_caption = H/D model for neutron refinement
@@ -70,7 +70,8 @@ neutron_option = *none all_h all_d hd_and_h hd_and_d all_hd
           sites, H elsewhere. hd_and_d: H/D pairs at exchangeable sites, D \
           elsewhere. all_hd: H/D pairs at all sites. Every option other than \
           none uses neutron distances. Waters become DOD in all_d, hd_and_h, \
-          hd_and_d and all_hd, with all_h they stay HOH.
+          hd_and_d and all_hd, with all_h they stay HOH. H whose names do not \
+          start with H stay H in every option.
 preference_magnitude = 1.0
   .type = float
   .short_caption = Rotational-preference magnitude
@@ -122,7 +123,7 @@ stop_on_any_missing_hydrogen = False
 ignore_missing_restraints = False
   .type = bool
   .short_caption = Don't stop if restraints for a residue are missing.
-  .help = Don't stop if restraints for a residue are missing.
+  .help = Don't stop if restraints for a residue are missing (otherwise every approach except remove stops). With approach=optimize such a residue is left exactly as in the input, also with a neutron_option (its H/D are not converted), and is listed in the log and the description file. With approach=add or place, such a residue gets no H (its existing H/D are removed) and is listed in the log.
 skip_optimizations_after_seconds = 0.0
   .type = float
   .short_caption = Skip optimizations after this many seconds
@@ -931,9 +932,29 @@ NOTES:
   When a single alternate is selected using alt_id= on the command line, everything is
   optimized a single time and for that configuration.
 
-  neutron_option writes a model for neutron refinement (all_h, all_d, hd_and_h, hd_and_d,
-  all_hd), with neutron distances; exchangeable H/D are written as altloc pairs. It
-  cannot be combined with approach=remove or qmready=True.
+  neutron_option writes a model for neutron refinement. Every option other than none
+  switches on use_neutron_distances (qmready=True does too). Exchangeable H are H on a
+  non-carbon atom. A split site is written as two altlocs, H and D, each at half the
+  parent's occupancy. Per option: non-exchangeable H, exchangeable H, water:
+    all_h     H      H      HOH
+    all_d     D      D      DOD
+    hd_and_h  H      split  DOD
+    hd_and_d  D      split  DOD
+    all_hd    split  split  DOD
+  In an existing alternate conformer, exchangeable H are written as D (and in all_hd the
+  other H as H), not split, and are listed. H whose names do not start with H stay H.
+  Input D is used only when the H/D are kept (approach=optimize, or keep_existing_H=True).
+  It must be unambiguous: there is no repair, and anything else stops with a Sorry that
+  includes a hint. Kept D input with neutron_option=none stops. Refined occupancies and
+  B of input H/D pairs are kept where the output writes the same pair, new pairs get half
+  the parent occupancy each. The log and the description file have an H/D section.
+  Limitation: after refinement, H and D of a rotatable group (OH, SH, NH3+) can point in
+  different directions. If they are more than 0.2 A apart, the input is refused. Use
+  approach=add keep_existing_H=False instead. With ignore_missing_restraints=True,
+  approach=optimize leaves residues without restraints exactly as in the input (not
+  converted) and lists them. With approach=add or place, such a residue gets no H (its
+  existing H/D are removed) and is listed in the log. Cannot be combined with
+  approach=remove or qmready=True.
 
   Note that the program also takes probe Phil arguments; run with --show_defaults to see
   all Phil arguments.
