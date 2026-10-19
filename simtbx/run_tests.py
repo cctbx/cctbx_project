@@ -73,7 +73,7 @@ OPT = libtbx.env.build_options
 tst_list_parallel = []
 
 tst_list = nb_tst_list
-if OPT.enable_cxx11 and sys.platform != 'win32':
+if OPT.cxxstd in ['c++11', 'c++14', 'c++17'] and sys.platform != 'win32':
   tst_list += db_tst_list+db_tst_list_nonCuda
 
 if OPT.enable_cuda:
@@ -100,7 +100,7 @@ if OPT.enable_kokkos and sys.platform.startswith('linux') and OPT.enable_cuda an
     ["$D/tests/tst_memory_policy.py","context=kokkos_gpu"],
   ]
 if OPT.enable_kokkos:
-  if OPT.enable_cxx11 and sys.platform != 'win32':
+  if OPT.cxxstd in ['c++11', 'c++14', 'c++17'] and sys.platform != 'win32':
     for tst in db_tst_list:
       if isinstance(tst, str):
         par_tst = [tst, "--kokkos"]
