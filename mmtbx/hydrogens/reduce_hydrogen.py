@@ -605,19 +605,27 @@ def load_restraint_objects_into_server(model, mon_lib_srv):
         except Exception:
           pass
 
+def with_auto_restraint_object(ro, resname, cif_object,
+                               auto_restraint_names):
+  '''
+  New list: the restraint objects ro plus the dictionary that mon_lib_query()
+  generated from the CCD for resname, as auto_<resname>. ro is not changed:
+  select() and deep_copy() pass the same list to the copy.
+  '''
+  auto_name = 'auto_%s' % resname
+  if auto_name not in auto_restraint_names:
+    auto_restraint_names.append(auto_name)
+  return list(ro or []) + [(auto_name, cif_object)]
+
 def add_auto_restraint_object(model, resname, cif_object,
                               auto_restraint_names):
   '''
   Add the restraint dictionary that mon_lib_query() generated from the CCD
-  for resname to the model's restraint objects, as auto_<resname>.
+  for resname to the model's restraint objects, as auto_<resname>. The model
+  gets a new list (see with_auto_restraint_object).
   '''
-  ro = model.get_restraint_objects()
-  if ro is None: ro=[]
-  auto_name = 'auto_%s' % resname
-  ro.append((auto_name, cif_object))
-  model.set_restraint_objects(ro)
-  if auto_name not in auto_restraint_names:
-    auto_restraint_names.append(auto_name)
+  model.set_restraint_objects(with_auto_restraint_object(
+    model.get_restraint_objects(), resname, cif_object, auto_restraint_names))
 
 def remove_auto_restraint_objects(model, auto_restraint_names):
   '''
@@ -1130,6 +1138,8 @@ class place_hydrogens():
     # removed from the model before returning so they don't leak into
     # downstream geometry validation.
     self.auto_restraint_names   = list()
+    # the received model's restraint objects plus the auto-generated ones
+    self.restraint_objects      = None
     #self.charged_atoms          = list()
     self.sl_removed             = list()
     self.n_H_initial            = 0
@@ -1220,7 +1230,7 @@ class place_hydrogens():
     # Make new model obj and get restraints manager
     # ---------------------------------------------
     p = get_reduce_pdb_interpretation_params(self.use_neutron_distances)
-    ro = self.model.get_restraint_objects()
+    ro = self.restraint_objects
     t0 = time.time()
     self.model = mmtbx.model.manager(
       model_input       = None,
@@ -1817,9 +1827,8 @@ class place_hydrogens():
 
   def add_missing_H_atoms_at_bogus_position(self, exclude_water):
     '''
-    Add missing H atoms at bogus positions to the pdb_hierarchy
-
-    This procedure changes the hierarchy in place.
+    Add missing H atoms at bogus positions to a copy of the model's
+    pdb_hierarchy and return the copy.
     All H atoms are placed at center of coordinates + (0.5, 0.5, 0.5)
     The translation is necessary because sometimes the center of coordinates
     coincides with the position of a heavy atom.
@@ -1837,7 +1846,10 @@ class place_hydrogens():
       ('HG11', 'HG12', 'HG13')
       ]
     # end TODO
-    pdb_hierarchy = self.model.get_hierarchy()
+    # With keep_existing_H, self.model is still the caller's model: H go into
+    # a copy of its hierarchy, auto objects into a new list
+    pdb_hierarchy = self.model.get_hierarchy().deep_copy()
+    self.restraint_objects = self.model.get_restraint_objects()
     mon_lib_srv = self.model.get_mon_lib_srv()
     load_restraint_objects_into_server(self.model, mon_lib_srv)
     #XXX This breaks for 1jxt, residue 2, TYR
@@ -1874,7 +1886,8 @@ class place_hydrogens():
               continue
 
             if cif_object:
-              add_auto_restraint_object(self.model, ag.resname, cif_object,
+              self.restraint_objects = with_auto_restraint_object(
+                self.restraint_objects, ag.resname, cif_object,
                 self.auto_restraint_names)
 
             expected_h = []
