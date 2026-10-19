@@ -11,8 +11,8 @@ import os, sys
 # to P1 with Friedel pairs, slice with a clip plane at k= -9
 
 def run():
-  if 'linux' in sys.platform and os.environ.get("DISPLAY", None) != "0:0":
-    return # Only run test if on a local linux machine with a connected monitor
+  if tests_HKLviewer.skip_browser_test():
+    return
   count = 0
   while True:
     print("running %d" %count)

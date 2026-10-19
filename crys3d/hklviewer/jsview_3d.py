@@ -14,7 +14,7 @@ from libtbx.utils import Sorry, to_str
 import threading, math, sys, cmath
 from crys3d.hklviewer.webbrowser_messenger_py3 import WBmessenger
 
-import os.path, time, copy, re, io, subprocess
+import os.path, time, copy, re, io, subprocess, atexit
 import libtbx
 import webbrowser, tempfile
 from six.moves import range
@@ -114,6 +114,34 @@ def get_browser_ctrl(using=None):
   webctrl = webbrowser.get(using)
   assert os.path.isfile(browser)
   return browser, webctrl
+
+
+headless_browsers = [] # (process, profile directory) of browsers from start_headless_browser()
+
+def start_headless_browser(browserpath, url):
+  # Start Firefox without a window, as in regression tests. A new instance with a temporary
+  # profile is used so the page is not opened in an already running Firefox. It is stopped
+  # with stop_headless_browsers(), which is also called on exit.
+  profiledir = tempfile.mkdtemp(prefix="HKLviewerFirefox")
+  proc = subprocess.Popen([browserpath, "--headless", "--no-remote", "--profile", profiledir, url],
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+  headless_browsers.append((proc, profiledir))
+  return proc
+
+
+def stop_headless_browsers():
+  import shutil
+  while headless_browsers:
+    proc, profiledir = headless_browsers.pop()
+    proc.terminate()
+    try:
+      proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+      proc.kill()
+      proc.wait()
+    shutil.rmtree(profiledir, ignore_errors=True)
+
+atexit.register(stop_headless_browsers)
 
 
 lock_timeout=120 # for the sempahores. Rendering could take a while for very large file. Until that
@@ -293,6 +321,9 @@ class HKLview_3d:
       #if self.UseOSBrowser != "default" and not os.path.isfile(self.UseOSBrowser):
       #  raise Sorry("Error: %s does not exist" %self.UseOSBrowser)
       self.browserpath, self.webctrl = get_browser_ctrl(self.UseOSBrowser)
+    # headless_browser=True starts the browser given by UseOSBrowser without a window, as in
+    # regression tests. Only for Firefox
+    self.headless_browser = kwds.get('headless_browser', "False") == "True"
 
     self.viewmtrx = None
     self.lastviewmtrx = None
@@ -1842,7 +1873,9 @@ Distance: %s
         if not self.webctrl.open(self.url):
           self.mprint("Could not open the default web browser")
           return False
-      if self.UseOSBrowser != "default" and self.UseOSBrowser != "":
+      if self.UseOSBrowser != "default" and self.UseOSBrowser != "" and self.headless_browser:
+        start_headless_browser(self.browserpath, self.url)
+      elif self.UseOSBrowser != "default" and self.UseOSBrowser != "":
         subprocess.run('"' + self.browserpath + '" ' + self.url + ' &',
                        shell=True,
         # the following flags ensures external browser process doesn't hang during regression tests

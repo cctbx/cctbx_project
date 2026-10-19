@@ -21,6 +21,29 @@ closetime = 150 # about half the maximum time each test will run
 maxruns = 4
 browser = "firefox"
 
+
+def skip_browser_test():
+  # Browser tests run Firefox without a window so they need no display, but Firefox must be installed
+  try:
+    jsview_3d.get_browser_ctrl(browser)
+  except AssertionError:
+    print("Skipping test as %s is not installed" %browser)
+    return True
+  return False
+
+
+def skip_QtGUI_test():
+  # The Qt GUI tests open the HKLviewer window as WebGL in QWebEngineView needs a display.
+  # On macOS only run them if requested with HKLVIEWER_RUN_GUI_TESTS=1 to avoid windows popping
+  # up when running regression tests on a laptop. On linux only run them on a local machine
+  # with a connected monitor
+  if sys.platform == "darwin" and os.environ.get("HKLVIEWER_RUN_GUI_TESTS", "") != "1":
+    print("Skipping test. Set HKLVIEWER_RUN_GUI_TESTS=1 to run it on macOS")
+    return True
+  if 'linux' in sys.platform and os.environ.get("DISPLAY", None) != "0:0":
+    return True
+  return False
+
 philstr1 = """
 clip_plane {
   normal_vector = "K-axis (0,1,0)"
@@ -226,11 +249,15 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
             "verbose=2_frustum_threadingmsg_orientmsg_browser", # dump displayed hkls to stdout when clipplaning as well as verbose=2
             "image_file=%sHKLviewer.png" %prefix,
             "UseOSBrowser=%s" %browser,
+            "headless_browser=True", # no browser window popping up
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
             "closing_time=%d" %closetime,
           ]
 
-  cmdlineframes.run(cmdargs)
+  try:
+    cmdlineframes.run(cmdargs)
+  finally:
+    jsview_3d.stop_headless_browsers()
   print("=" * 80)
   check_log_file(outputfname, refl2match)
 
