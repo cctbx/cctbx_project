@@ -120,7 +120,8 @@ refreezes.
 2. Write the front door (GUIDE §4) with these additions: queue and job ids; record the criterion
    with `auto_queue.py criterion` before any test; run `check-stop` before every edit, commit and
    new subprocess and stop at once with a checkpoint if it fails; run every build or test through
-   `auto_queue.py run` with `--probe` naming the tested source/build paths; do not freeze; ask the
+   `auto_queue.py run` with `--probe` naming the tested source/build paths, at least one path in
+   each candidate repository (revision 20; see "Which run decides"); do not freeze; ask the
    Developer nothing — an uncovered choice makes the job Blocked with the decision written down.
 3. `install check` again (the installation must still match its fingerprint), `worker start`,
    start one Worker subagent in the background, wait for its notification,
@@ -133,8 +134,9 @@ refreezes.
    (replaces "every needed change returns to 4"; post-reading errata are named in the report's
    LIMITS and offered to the reviewer with the next reading, WORKER.md).
 6. Check delivery (GUIDE §6, not a gate): the frozen packet names the recorded candidate tree;
-   every required run is current, exit 0, for this candidate and criterion; master, the live index
-   and the working installations are unchanged.
+   the latest current run of every required check passed, for this candidate and criterion, and
+   is bound to the candidate (revision 20); master, the live index and the working installations
+   are unchanged.
 7. `set JOB "Ready for approval" --packet DIR` (the helper verifies the whole frozen packet and
    records its manifest identity; it refuses unless 6 holds) or
    `set JOB Blocked --note REASON [--decision WHAT THE DEVELOPER MUST DECIDE]` (plain words, no run
@@ -172,6 +174,30 @@ helper also blocks outbound connections and name lookups for every run of a job 
 `"network": true`, so an unscreened test that connects directly fails rather than makes contact.
 Limit: a request a test hands to another system service (for example macOS URLSession through its
 own daemon) is not blocked; screening is the first defence.
+
+**Which run decides (revision 20).** For each required check, only the runs that are not stale and
+carry the job's current candidate and criterion count, and of those the latest one decides: the
+helper numbers every run record under the queue lock (`sequence`), and the highest number is the
+latest. That run must have completed with exit 0, left no process running, been tracked with a
+readable process table, named tested paths inside the allowed roots, and be bound to the
+candidate. A failure, `not started`, `interrupted`, `timed out` or `unknown` as the latest run
+keeps the job from Ready, and the refusal names the check and the run; a later passing rerun
+restores readiness, and the earlier runs stay in the records and the report. Binding: just before
+the command starts and again when it ends, the helper itself reads with git the checkout of each
+tested path (top level, commit, tree, and whether `git status` reports tracked changes), with the
+Git variables that select another repository (`GIT_DIR`, `GIT_WORK_TREE` and the like) removed,
+English messages and a 60-second limit per git call; a git failure or time-out binds nothing. For every
+candidate repository it must find, both times, a checkout of its own (one checkout binds one
+candidate repository, so two candidate repositories with the same tree need two checkouts) at that
+repository's tree with no tracked changes. The tree is compared, not the path, so the checks may run in the test-only
+installation's clone of the candidate. So the probe must name at least one path in each candidate
+repository; a path outside any Git repository is recorded as such and binds nothing. Run records
+written before revision 20 (no sequence number or no binding) never count; a current record without
+a sequence number keeps refusing after reruns, until a new criterion or candidate marks it stale.
+Limits: the binding shows which checkouts were at the candidate tree and unchanged at the start and
+end of the run, not that the command imported its code from them; that remains the probe's and the
+packet's job. "Unchanged" is what `git status` reports: tracked files marked skip-worktree or
+assume-unchanged (as in a sparse checkout) are not seen, and untracked files are not considered.
 
 **Leftover processes and choices outside discretion.** If a run leaves processes behind (the
 helper reports them; `install check` refuses while they use the installation), end them with

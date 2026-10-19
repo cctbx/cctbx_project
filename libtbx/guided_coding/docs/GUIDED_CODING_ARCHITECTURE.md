@@ -258,7 +258,7 @@ Square brackets mark optional arguments. Result and publication screens also nee
 | `MANIFEST.sha256` | Frozen evidence files except the manifest itself, with relative names without that `./` prefix. | The manifest's SHA-256 identifies the packet. |
 | Bundle `SHA256SUMS` | The inner packet archive and external companions. | The outer archive's SHA-256 is supplied separately. |
 
-The evidence `verify` command prints `VERIFIED evidence`, not the packet hash. Calculate the manifest's checksum separately when recording the packet identity.
+The evidence `verify` command prints `VERIFIED evidence` and, since revision 20, a second line `packet identity: <SHA-256 of MANIFEST.sha256>`, the packet identity to record. Before revision 20 it printed only the first line, and the manifest's checksum was calculated separately.
 
 Permitted bytecode names follow the recognized `__pycache__` pattern beside a listed `.py` file. The accepted header flags are `0` or `3`; the cache contents are not authenticated.
 

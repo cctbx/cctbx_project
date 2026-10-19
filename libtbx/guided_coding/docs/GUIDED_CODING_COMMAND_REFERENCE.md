@@ -54,7 +54,7 @@ cd /path/to/empty-gc-review/libtbx/guided_coding && \
 shasum -a 256 -c SOURCE_MANIFEST.sha256 && \
 env GC_PAYLOAD_ROOT="`pwd -P`/payload" libtbx.python -I -B payload/tools/screen_check.py verify-source . && \
 cat payload/RELEASE && \
-grep -Eq '^guided_coding 2\.0 pilot r10 rev19 ' payload/RELEASE
+grep -Eq '^guided_coding 2\.0 pilot r10 rev20 ' payload/RELEASE
 ```
 
 Any failed command skips the rest of the block. In particular, a failed
@@ -62,7 +62,7 @@ listed checksum must stop **before executing the package's checker**.
 Stop dependent work on failure; a successful command appended later would
 not repair the failed check. Require all listed hashes, `VERIFIED complete
 source`, and the expected release identity from your handoff. The final
-`grep` checks that the release line begins with the `r10 rev19` label;
+`grep` checks that the release line begins with the `r10 rev20` label;
 it is not an exact revision check.
 
 The complete-source check rejects missing, changed and extra source files,
@@ -97,7 +97,7 @@ cd /path/to/cctbx_project/libtbx/guided_coding && \
 shasum -a 256 -c SOURCE_MANIFEST.sha256 && \
 env GC_PAYLOAD_ROOT="`pwd -P`/payload" libtbx.python -I -B payload/tools/screen_check.py verify-source . && \
 cat payload/RELEASE && \
-grep -Eq '^guided_coding 2\.0 pilot r10 rev19 ' payload/RELEASE && \
+grep -Eq '^guided_coding 2\.0 pilot r10 rev20 ' payload/RELEASE && \
 env GC_PAYLOAD_ROOT="`pwd -P`/payload" libtbx.python -I -B payload/tools/screen_check.py check-claude-version && \
 env GC_PAYLOAD_ROOT="`pwd -P`/payload" libtbx.python -I -B payload/tools/screen_check.py register-skill .
 ```
@@ -472,7 +472,15 @@ run boundary (by default 08:00 local time the next morning).
 
 **Each job.** One worker at a time prepares the job in its own worktree,
 records the test criterion before any test and runs every build and test
-through the queue helper. Each run has a time limit; a run that exceeds
+through the queue helper. Since revision 20, for each required check the
+latest current run decides: a later failure, or a later run that did not
+complete, keeps the job from **Ready for approval** until a passing rerun,
+and the refusal names the check and the run. The worker's probe names at
+least one path in each candidate repository; just before the command
+starts and when it ends, the helper reads those Git checkouts itself
+(ignoring Git variables such as `GIT_DIR` that would point elsewhere), and
+a run counts only when, both times, every candidate repository's tree was
+checked out, in a checkout of its own, with no tracked changes reported by `git status`. Each run has a time limit; a run that exceeds
 it is ended with its identified processes and recorded as timed out,
 which is a failure. Unless the job's grant allows outside contact, the
 helper blocks outbound connections and name lookups for its runs. Tests
