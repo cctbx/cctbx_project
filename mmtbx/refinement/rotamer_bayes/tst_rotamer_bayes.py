@@ -9,12 +9,11 @@ Tests of mmtbx.refinement.rotamer_bayes:
     those are changed to the right wells and the others are not changed.
 """
 from __future__ import absolute_import, division, print_function
-import os, math, random
+import os, random
 import numpy as np
 import iotbx.pdb
 import libtbx.load_env
 import mmtbx.f_model
-from cctbx import crystal
 from cctbx.array_family import flex
 from scitbx.math import dihedral_angle
 from libtbx.utils import null_out

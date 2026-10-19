@@ -33,7 +33,6 @@ import math, sys, time
 import numpy as np
 import iotbx.phil
 import iotbx.pdb
-from libtbx import group_args
 from libtbx.utils import Sorry
 from libtbx import Auto
 from cctbx.array_family import flex
