@@ -23,8 +23,6 @@ from iotbx.cli_parser import run_program
 from mmtbx.programs import reduce2
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
-from mmtbx.regression.model.tst_model_idealize_h_riding_water import \
-  pdb_water, layouts, hoh_cif_096, make_model, check_oh
 
 # File-name prefix of what the helpers write (cached_run(),
 # protein_ligand_src(), dipeptide_water_out()): run_tests runs the test files
