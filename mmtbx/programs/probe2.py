@@ -829,7 +829,6 @@ Note:
     db = self._build_contact_records(sourceAtoms, targetSet, spatialQuery, phantomsQuery,
                                      bondedNeighborLists, keep_dots=True)
     src, cause, itype, overlapType, gap, loc, spike, ptmaster = db.dots()
-    sources = list(sourceAtoms)
     byIseq = {a.i_seq: a for a in self._atomClasses}
     for a, nbrs in bondedNeighborLists.items():
       byIseq.setdefault(a.i_seq, a)
@@ -845,15 +844,15 @@ Note:
     spo = self.params.output
     if spo.format == 'kinemage' and not spo.count_dots and not spo.contact_summary:
       # Only _writeOutput() reads these dots: keep the arrays, grouped as _results would be.
-      classOf = [self._atomClasses[s] for s in sources]
+      classOf = {a.i_seq: self._atomClasses[a] for a in sourceAtoms}
       groups = {}
       for k, (s, t) in enumerate(zip(src, itype)):
         groups.setdefault((classOf[s], t), []).append(k)
-      self._cxxDots.append((sources, byIseq, src, cause, gap, loc, spike, ptmaster, groups))
+      self._cxxDots.append((byIseq, src, cause, gap, loc, spike, ptmaster, groups))
       return
 
     for k in range(len(src)):
-      s = sources[src[k]]
+      s = byIseq[src[k]]
       it = interactionTypes[itype[k]]
       pm = ptmaster[k]
       self._results[self._atomClasses[s]][it].append(DotInfo(
@@ -1763,10 +1762,10 @@ Note:
     '''Dots of one class and type, in the order the Python loop would have saved them.'''
     for node in self._results[atomClass][interactionType]:
       yield node
-    for sources, byIseq, src, cause, gap, loc, spike, ptmaster, groups in self._cxxDots:
+    for byIseq, src, cause, gap, loc, spike, ptmaster, groups in self._cxxDots:
       for k in groups.get((atomClass, int(interactionType)), ()):
         d = _ArrayDot()
-        d.src = sources[src[k]]
+        d.src = byIseq[src[k]]
         d.target = byIseq[cause[k]]
         d.gap = gap[k]
         d.ptmaster = ptmaster[k]
@@ -1778,7 +1777,7 @@ Note:
     # Initialize the results to empty.
     # The name cache is keyed on memory_id, which a later model can reuse for other atoms.
     DotInfo._nameCache.clear()
-    self._cxxDots = []   # (sources, ..., groups) per _generate_interaction_dots() call; see there
+    self._cxxDots = []   # (byIseq, ..., groups) per _generate_interaction_dots() call; see there
     self._results = {}
     for c in _allAtomClasses:
       interactionTypeDicts = {}
