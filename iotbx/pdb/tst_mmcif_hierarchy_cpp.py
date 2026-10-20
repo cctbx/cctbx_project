@@ -692,6 +692,16 @@ def exercise_aniso_join_leading_zeros_f1():
     assert _cpp(text).atoms()[0].uij == cpp_uij, (atom_id, aniso_id)
 
 
+def exercise_reader_uses_cpp():
+  """cif_input and iotbx.pdb.input go through the C++ builder."""
+  import iotbx.pdb
+  text = atom_site_header + "ATOM 1 C C . ALA A 1 1A ? 1.0 2.0 3.0 1.00 10.00 1A ALA A C 1\n"
+  h = iotbx.pdb.input(lines=text.splitlines(), source_info=None).construct_hierarchy()
+  assert h.only_model().only_chain().residue_groups()[0].resseq == "  1A"   # F7 only the C++ path accepts
+  h = mmcif.pdb_hierarchy_builder(_block(text)).hierarchy
+  assert h.only_model().only_chain().residue_groups()[0].resseq == "  1A"
+
+
 def run():
   exercise_cpp_columns_skeleton()
   exercise_cpp_cell_parsing()
@@ -711,6 +721,7 @@ def run():
   exercise_cell_grammar_f11()
   exercise_blank_seq_id_f7()
   exercise_aniso_join_leading_zeros_f1()
+  exercise_reader_uses_cpp()
 
 
 if __name__ == "__main__":

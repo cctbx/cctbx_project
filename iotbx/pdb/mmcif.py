@@ -271,8 +271,13 @@ class pdb_hierarchy_builder_python(crystal_symmetry_builder):
 class pdb_hierarchy_builder(crystal_symmetry_builder):
   """
   Crystal symmetry and pdb hierarchy of an mmCIF model block. The hierarchy
-  comes from hierarchy_from_atom_site(); pdb_hierarchy_builder_python above is
-  the per-atom Python builder, the reference for tst_mmcif_hierarchy_parity.py.
+  comes from hierarchy_from_atom_site(), which builds it in C++.
+  pdb_hierarchy_builder_python above is the per-atom Python builder it
+  replaced, kept as the reference for tst_mmcif_hierarchy_parity.py and
+  tst_mmcif_hierarchy_cpp.py (the differences are listed in
+  iotbx/pdb/mmcif_hierarchy.h). Retirement: remove it after the first Phenix
+  release that ships the C++ builder if no parity failure has been reported;
+  the parity test then becomes a fixture regression test.
   """
 
   def __init__(self, cif_block):
@@ -281,8 +286,13 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
 
 
 def hierarchy_from_atom_site(cif_block):
-  """Build a hierarchy.root from the _atom_site loop of cif_block."""
-  return pdb_hierarchy_builder_python(cif_block).hierarchy
+  """
+  Build a hierarchy.root from the _atom_site loop of cif_block: Python resolves
+  the columns (atom_site_columns_from_block), C++ builds the hierarchy
+  (iotbx.pdb.build_mmcif_hierarchy, iotbx/pdb/mmcif_hierarchy.cpp).
+  """
+  from iotbx.pdb import build_mmcif_hierarchy
+  return build_mmcif_hierarchy(atom_site_columns_from_block(cif_block))
 
 
 def _as_column(cif_block, name):
