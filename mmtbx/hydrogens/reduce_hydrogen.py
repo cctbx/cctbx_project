@@ -531,6 +531,30 @@ no atom named 'H2' (e.g. 9FZ uses H3/H4).
 # metals do not count as bonded to N (coordination, not a covalent bond)
 nonmetals = ('C', 'N', 'O', 'S', 'P', 'SE', 'B', 'SI', 'F', 'CL', 'BR', 'I')
 
+def _blank_amide_group(rg, prev_rg):
+  '''
+  The blank atom group of rg if its amide H depends on no split atom: N and
+  CA only in the blank group, exactly one C of the previous residue bonded to
+  N, and no H on N yet. That H then goes once into the blank group instead of
+  into each altloc (6bhe VAL A 274: side chain in A and B, GLN A 273 in A
+  only, so H/B had no C). Without a bonded C the H turns with the split side
+  chain and stays split. None otherwise.
+  '''
+  blank = [ag for ag in rg.atom_groups() if ag.altloc == '']
+  if not blank or prev_rg is None: return None
+  for ag in rg.atom_groups():
+    if ag.altloc == '': continue
+    if ag.get_atom('N') is not None or ag.get_atom('CA') is not None:
+      return None
+  for ag in rg.atom_groups():
+    if ag.get_atom('H') is not None: return None
+  n = blank[0].get_atom('N')
+  if n is None or blank[0].get_atom('CA') is None: return None
+  cs = [ag.get_atom('C') for ag in prev_rg.atom_groups()]
+  cs = [c for c in cs if c is not None and c.distance(n) < 2.0]
+  if len(cs) != 1: return None
+  return blank[0]
+
 def _bonded_to_other_residue(atom, rg, model_atoms, model_sites):
   '''
   True if a non-metal atom of another residue is within bonding distance of
@@ -1895,7 +1919,8 @@ class place_hydrogens():
       model_atoms = m.atoms()
       model_sites = model_atoms.extract_xyz()
       for chain in m.chains():
-        for rg in chain.residue_groups():
+        chain_rgs = chain.residue_groups()
+        for i_rg, rg in enumerate(chain_rgs):
           n_atom_groups = len(rg.atom_groups())
           ags = rg.atom_groups()
           # blank + one altloc, same resname: one conformer. Missing H are
@@ -1903,8 +1928,14 @@ class place_hydrogens():
           single_altloc = (n_atom_groups == 2 and
             sorted(ag.altloc == '' for ag in ags) == [False, True] and
             ags[0].resname == ags[1].resname)
+          amide_ag = None
+          if n_atom_groups > 2:
+            amide_ag = _blank_amide_group(rg,
+              chain_rgs[i_rg-1] if i_rg > 0 else None)
+          add_amide_h = False
           for ag in ags:
             # blank + two or more altlocs: blank-parent H go into each altloc
+            # (not the amide H if it depends on no split atom, amide_ag)
             if n_atom_groups > 2 and ag.altloc == '':
               continue
             if single_altloc and ag.altloc != '':
@@ -1981,6 +2012,11 @@ class place_hydrogens():
                     #print('renamed %s to %s' % (altname[0], altname[2]))
             # TODO end
             missing_h = list(set(expected_h).difference(set(actual)))
+            if (amide_ag is not None and 'H' in missing_h and
+                any(set([b.atom_id_1, b.atom_id_2]) == set(['N', 'H'])
+                    for b in mlq.bond_list)):
+              missing_h.remove('H')
+              add_amide_h = True
             if 0: print(ag.resname, missing_h)
             #new_xyz = ag.atoms().extract_xyz().mean()
             new_xyz = flex.double(ag.atoms().extract_xyz().mean()) + \
@@ -2003,6 +2039,16 @@ class place_hydrogens():
                 .set_segid(new_segid=segid))
 
               ag.append_atom(a)
+          if add_amide_h:
+            new_xyz = tuple(flex.double(amide_ag.atoms().extract_xyz().mean())
+              + flex.double([0.5,0.5,0.5]))
+            amide_ag.append_atom(iotbx.pdb.hierarchy.atom()
+              .set_name(new_name=' H  ')
+              .set_element(new_element="H")
+              .set_xyz(new_xyz=new_xyz)
+              .set_hetero(new_hetero=amide_ag.atoms()[0].hetero)
+              .set_segid(new_segid=amide_ag.atoms()[0].segid))
+            self.residue_keys_new_h.add((m.id, chain.id, rg.resseq, rg.icode))
     return pdb_hierarchy
 
 # ------------------------------------------------------------------------------

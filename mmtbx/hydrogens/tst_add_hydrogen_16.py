@@ -35,6 +35,7 @@ def run():
   test_024()
   test_025()
   test_026()
+  test_027()
 
 # ------------------------------------------------------------------------------
 
@@ -556,6 +557,33 @@ def hand(atoms, resname, resseq, parent, first, second, third):
     and x.parent().parent().resseq.strip() == resseq)
   p = a[parent]
   return 1 if ((a[first]-p).cross(a[second]-p)).dot(a[third]-p) > 0 else -1
+
+def test_027():
+  '''
+  6bhe VAL A 274: N and CA have no altloc, the side chain is in A and B, GLN
+  A 273 is in A only (CA, C, O). The amide H went into A and B; H/B had no
+  C, and riding H stopped: "angle restraints involving an H atom are
+  missing ... N VAL A 274 / C AGLN A 273". Its position depends on no split
+  atom: one H without altloc, in the amide plane. With the previous C in A
+  and B, each altloc keeps its own H.
+  '''
+  def amide_h(pdb_str):
+    atoms = place_atoms(pdb_str)
+    a = dict(((x.parent().parent().resseq.strip(), x.parent().altloc,
+      x.name.strip()), matrix.col(x.xyz)) for x in atoms)
+    return a, sorted(k[1] for k in a if k[0] == '274' and k[2] == 'H')
+  a, alts = amide_h(pdb_str_027)
+  assert alts == [''], alts
+  n, h = a[('274', '', 'N')], a[('274', '', 'H')]
+  c, ca = a[('273', 'A', 'C')], a[('274', '', 'CA')]
+  angle = lambda x, z: (x-n).angle(z-n, deg=True)
+  assert approx_equal(angle(c, h) + angle(ca, h) + angle(c, ca), 360, eps=1)
+  # GLN A 273 also in B (shifted 0.15 A): H/A and H/B
+  lines = pdb_str_027.splitlines()
+  b = [l[:16] + 'B' + l[17:30] + '%8.3f' % (float(l[30:38]) + 0.15) + l[38:]
+       for l in lines if l[16:17] == 'A' and l[22:26] == ' 273']
+  _, alts = amide_h('\n'.join(lines + b) + '\n')
+  assert alts == ['A', 'B'], alts
 
 def test_010():
   '''
@@ -1544,6 +1572,23 @@ HETATM 2905  C13 TPT A 480      76.825  40.413  30.196  0.90 19.26           C
 HETATM 2906  C14 TPT A 480      76.289  40.309  28.936  0.90100.00           C
 HETATM 2907  C15 TPT A 480      76.635  41.239  28.023  0.90 40.27           C
 END
+"""
+
+pdb_str_027 = """
+CRYST1   37.051   71.372   52.055  90.00 104.23  90.00 P 1 21 1      2
+ATOM    644  CA AGLN A 273      52.491  -7.131  75.612  0.50 33.81           C
+ATOM    645  C  AGLN A 273      53.782  -6.727  74.879  0.50 37.55           C
+ATOM    646  O  AGLN A 273      53.756  -6.002  73.875  0.50 41.05           O
+ATOM    647  N   VAL A 274      54.908  -7.184  75.416  1.00 35.80           N
+ATOM    648  CA  VAL A 274      56.176  -7.155  74.698  1.00 34.21           C
+ATOM    649  C   VAL A 274      56.588  -8.604  74.297  1.00 31.10           C
+ATOM    650  O   VAL A 274      56.558  -9.509  75.137  1.00 35.64           O
+ATOM    651  CB AVAL A 274      57.307  -6.441  75.483  0.50 41.64           C
+ATOM    652  CB BVAL A 274      57.282  -6.463  75.524  0.50 39.72           C
+ATOM    653  CG1AVAL A 274      57.804  -7.268  76.669  0.50 42.93           C
+ATOM    654  CG1BVAL A 274      58.632  -6.525  74.811  0.50 38.98           C
+ATOM    655  CG2AVAL A 274      58.468  -6.118  74.550  0.50 41.13           C
+ATOM    656  CG2BVAL A 274      56.900  -5.014  75.809  0.50 40.98           C
 """
 
 if __name__ == '__main__':

@@ -1496,7 +1496,6 @@ def test_description_file():
   assert "Waters renamed DOD: 1" in section
   assert entry("DG ASER A   2").endswith("conformer")
   assert entry("DG BSER A   2").endswith("conformer")
-  assert "merged conformer copies" in entry("H  CSER A   2")
   assert "merged conformer copies" in entry("HA  SER A   2")
   for name in ("HZ1", "HZ2", "HZ3"):
     assert "parent occupancy 0.80" in entry("%sALYS A   3" % name)

@@ -856,19 +856,20 @@ def ser_h_d(h):
     if a.element.strip() in ("H", "D"))) for ag in rg.atom_groups())
 
 def test_merge_conformer_copies():
-  # placement copies every H of Ser into A and B; H and HA (blank parents,
-  # coincident copies) are merged into the blank group, HB2/HB3/HG differ
+  # placement puts the amide H once into the blank group (blank N, CA and
+  # Ala 1 C) and the other Ser H into A and B; HA (blank parent, coincident
+  # copies) is merged into the blank group, HB2/HB3/HG differ
   model = placed(pdb_pep_og_ab)
   hd = ser_h_d(model.get_hierarchy())
-  assert hd[""] == [] and hd["A"] == hd["B"] == ["H", "HA", "HB2", "HB3", "HG"]
+  assert hd[""] == ["H"] and hd["A"] == hd["B"] == ["HA", "HB2", "HB3", "HG"]
   h, r = run_option(model, "hd_and_h")
   hd = ser_h_d(h)
   assert hd[""] == ["HA"], hd                      # merged, not exchangeable
   assert hd["C"] == ["H"] and hd["D"] == ["D"], hd # merged and split
   assert hd["A"] == hd["B"] == ["DG", "HB2", "HB3"], hd
-  assert sorted(names(x.site) for x in r.merged_sites) == ["H", "HA"]
-  # exchangeable output sites (not water): Ala H1 H2 H3, Ser H once (merged
-  # from two copies), HG in A and in B, Lys H HZ1 HZ2 HZ3
+  assert sorted(names(x.site) for x in r.merged_sites) == ["HA"]
+  # exchangeable output sites (not water): Ala H1 H2 H3, Ser H once, HG in A
+  # and in B, Lys H HZ1 HZ2 HZ3
   assert r.n_exchangeable == 10, r.n_exchangeable
   assert all(x.reason == "merged conformer copies" for x in r.merged_sites)
   assert all(len(x.copies) == 2 for x in r.merged_sites)
@@ -877,14 +878,20 @@ def test_merge_conformer_copies():
   # merged H at the parent occupancy; the split pair 0.5 each
   assert find(h, "SER", "HA").occ == 1.0
   assert find(h, "SER", "H").occ == 0.5 and find(h, "SER", "D").occ == 0.5
-  # the split pair maps to the first (A) copy
+  # the split pair maps to the blank H
   src = [r.provenance[hd_exchange.atom_key(find(h, "SER", n))]
          for n in ("H", "D")]
-  assert src[0] == src[1] and src[0][-3:] == ("A", " H  ", "H"), src
+  assert src[0] == src[1] and src[0][-3:] == ("", " H  ", "H"), src
 
 def test_conformer_copies_differ():
   # a backbone H whose copies are 0.1 A apart is not merged: conformer site
-  model = placed(pdb_pep_og_ab)
+  # placement gives one blank amide H here: copy it into A and B
+  lines = placed(pdb_pep_og_ab).model_as_pdb().splitlines()
+  h = [l for l in lines if l[12:20] == " H   SER"]
+  assert len(h) == 1, h
+  lines = sum([[l[:16] + alt + l[17:54] + "  0.50" + l[60:]
+                for alt in "AB"] if l == h[0] else [l] for l in lines], [])
+  model = make_model("\n".join(lines))
   copies = [a for a in model.get_hierarchy().atoms()
             if a.parent().resname == "SER" and a.name == " H  "]
   assert sorted(a.parent().altloc for a in copies) == ["A", "B"]
