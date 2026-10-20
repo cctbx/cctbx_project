@@ -1198,6 +1198,8 @@ class place_hydrogens():
     # residues that got H but have no restraints in the processed model
     self.residues_no_restraints = list()
     self.residue_keys_new_h     = set()
+    # (model, chain, resseq, icode, resname) of no_H_placed_mlq
+    self.residue_keys_no_restraints = set()
     #self.charged_atoms          = list()
     self.sl_removed             = list()
     self.n_H_initial            = 0
@@ -1373,6 +1375,11 @@ class place_hydrogens():
       water_without_o.set_selected(rg.atoms().extract_i_seq(), True)
     sel_h_not_in_para = sel_h_not_in_para.set_selected(
       water_selection & ~water_without_o, False)
+    # keep_existing_H: the H/D of residues without restraints stay as in the
+    # input (lone H, not reported)
+    sel_kept = self.unrestrained_hd_selection()
+    sel_h_not_in_para.set_selected(sel_kept, False)
+    sel_lone_H = sel_lone_H & ~sel_kept
     # no need to display lone H atoms in the log, so remove from labels
     sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
     # Classify the unplaceable H so the report reflects the real cause:
@@ -1449,8 +1456,15 @@ class place_hydrogens():
     # Reset occupancies, ADPs and idealize H atom positions
     # -----------------------------------------------------
     t0 = time.time()
+    sel_kept = self.unrestrained_hd_selection()
+    kept_occ = self.model.get_occ().select(sel_kept)
+    kept_b = self.model.get_b_iso().select(sel_kept)
     self.model.reset_adp_for_hydrogens(scale = self.adp_scale, keep_aniso=True)
     self.model.reset_occupancy_for_hydrogens_simple()
+    if sel_kept.count(True) > 0:
+      self.model.set_occupancies(values = kept_occ, selection = sel_kept)
+      self.model.set_b_iso(values = kept_b, selection = sel_kept,
+        keep_aniso = True)
     self.time_reset = round(time.time()-t0, 2)
     t0 = time.time()
     # None, not False: callers outside reduce2 keep the scattering-table rule
@@ -1495,6 +1509,27 @@ class place_hydrogens():
 
     if self.print_time:
       self.print_times()
+
+  # ----------------------------------------------------------------------------
+
+  def unrestrained_hd_selection(self):
+    '''
+    With keep_existing_H, the H/D of the residues without restraints
+    (no_H_placed_mlq), by residue_group and resname: the same name can have
+    restraints elsewhere. Otherwise nothing.
+    '''
+    sel = flex.bool(self.model.size(), False)
+    if not (self.keep_existing_H and self.residue_keys_no_restraints):
+      return sel
+    for m in self.model.get_hierarchy().models():
+      for chain in m.chains():
+        for rg in chain.residue_groups():
+          for ag in rg.atom_groups():
+            if ((m.id, chain.id, rg.resseq, rg.icode, ag.resname) not in
+                self.residue_keys_no_restraints): continue
+            for a in ag.atoms():
+              if a.element_is_hydrogen(): sel[a.i_seq] = True
+    return sel
 
   # ----------------------------------------------------------------------------
 
@@ -1982,7 +2017,10 @@ class place_hydrogens():
             #
             mlq, cif_object = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv, raise_sorry=False)
             if mlq is None:
-              self.no_H_placed_mlq.append(ag.resname)
+              if ag.resname not in self.no_H_placed_mlq:
+                self.no_H_placed_mlq.append(ag.resname)
+              self.residue_keys_no_restraints.add(
+                (m.id, chain.id, rg.resseq, rg.icode, ag.resname))
               continue
 
             if cif_object:

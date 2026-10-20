@@ -103,6 +103,17 @@ _chem_comp_atom.charge
  04  HO1  H  HOH1  0
 """
 
+# its H, no dictionary; HO1/DO1 an altloc pair at 0.5, B not the parent's
+pdb_04_h = pdb_04 + """\
+HETATM   52  H11  04 B   1      14.640   9.490  15.890  0.90 24.00           H
+HETATM   53  H12  04 B   1      14.640   9.490  14.110  0.90 24.00           H
+HETATM   54  H13  04 B   1      14.640  11.020  15.000  0.90 24.00           H
+HETATM   55  H21  04 B   1      16.850   9.450  15.890  0.90 24.00           H
+HETATM   56  H22  04 B   1      16.850   9.450  14.110  0.90 24.00           H
+HETATM   57  HO1A 04 B   1      18.120  11.000  15.000  0.50 25.50           H
+HETATM   58  DO1B 04 B   1      18.110  11.010  15.020  0.50 26.50           D
+"""
+
 cases = {
   "protein_bgm": cryst1 + pdb_protein + pdb_bgm,
   "bgm":         cryst1 + pdb_bgm,
@@ -181,6 +192,34 @@ class counting_server(mmtbx.monomer_library.server.server):
     return mmtbx.monomer_library.server.server.\
       get_comp_comp_id_and_atom_name_interpretation(self, **kwargs)
 
+def test_keep_existing_h_no_restraints():
+  # 04 has no restraints (no CIF): with keep_existing_H=True its H/D stay as
+  # in the input (all fields), with False it gets none; listed once
+  def records(model):
+    return sorted((a.id_str(), a.element.strip(),
+      tuple(round(x, 3) for x in a.xyz), round(a.occ, 2), round(a.b, 2))
+      for a in model.get_hierarchy().atoms()
+      if a.parent().resname.strip() == "04")
+  text = cryst1 + pdb_protein + pdb_04_h
+  for keep in (True, False):
+    obj = place(from_text(text), keep_existing_H=keep)
+    out = records(obj.get_model())
+    if keep:
+      assert out == records(from_text(text)), out
+      assert len(out) == 10
+    else:
+      assert [r[1] for r in out] == ["C", "C", "O"], out
+    assert n_h(obj.get_model(), "ASN") > 0
+    assert obj.no_H_placed_mlq == [" 04"], obj.no_H_placed_mlq
+    assert obj.residues_no_restraints == []
+    for labels in (obj.site_labels_no_para, obj.site_labels_missing_neighbor,
+                   obj.site_labels_unknown_atoms, obj.sl_removed):
+      assert not [l for l in labels if " 04 " in l], labels
+    log = StringIO()
+    obj.show(log)
+    assert "were found:\n 04\n" in log.getvalue(), log.getvalue()
+    assert log.getvalue().count("\n 04\n") == 1, log.getvalue()
+
 def test_given_server():
   srv = counting_server()
   place(from_text(cases["protein_bgm"]), mon_lib_srv=srv)
@@ -190,5 +229,6 @@ if (__name__ == "__main__"):
   test_placement_twice()
   test_after_reduce2()
   test_no_restraints_listed()
+  test_keep_existing_h_no_restraints()
   test_given_server()
   print("OK")

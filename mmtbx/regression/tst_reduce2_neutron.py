@@ -2185,6 +2185,46 @@ def test_missing_restraints_flipkins():
   assert os.listdir(directory) == [
     "tst_reduce2_neutron_mrfkFH-flipnq.kin"], os.listdir(directory)
 
+def test_missing_restraints_keep_existing_h():
+  # add/place/optimize keep_existing_H=True ignore_missing_restraints=True:
+  # ligand 04 (no CIF) is written exactly as in the input, D and their 0.5
+  # occupancy and B too, and listed; flipkins (add, optimize) run.
+  # add keep_existing_H=False: no H
+  for approach in ("add", "place", "optimize"):
+    for option in ("none", "hd_and_h"):
+      prefix = "tst_reduce2_neutron_mrk_%s_%s" % (approach, option)
+      src = protein_ligand_src(option)
+      args = dict(approach=approach, neutron_option=option,
+        keep_existing_H=True, ignore_missing_restraints=True)
+      if approach != "place":
+        directory = prefix + "_fk"
+        if not os.path.isdir(directory): os.mkdir(directory)
+        for f in os.listdir(directory): os.remove(os.path.join(directory, f))
+        args.update(add_flip_movers=True, output__flipkin_directory=directory)
+      prog = run_prog(prefix, src, **args)
+      with open(prog.params.output.filename) as f: out = f.read()
+      lig_in = ligand_split_records(src, True)
+      assert len(lig_in) == (16 if option == "hd_and_h" else 14), len(lig_in)
+      assert ligand_split_records(out, True) == lig_in, (approach, option)
+      if option == "hd_and_h":
+        d_in = [r for r in lig_in if r[1] == "D"]
+        assert len(d_in) == 2 and [r[3] for r in d_in] == [0.5, 0.5], d_in
+        assert [r for r in ligand_split_records(out, True)
+                if r[1] == "D"] == d_in
+      with open(prog.params.output.description_file_name) as f:
+        description = f.read()
+      for text in (description, prog.log_text):
+        assert UNCHANGED + "\n04 B 1\n" in text, (approach, option)
+      if approach != "place":
+        assert os.listdir(directory) == [prefix + "FH-flipnq.kin"], \
+          os.listdir(directory)
+  prog = run_prog("tst_reduce2_neutron_mrk_nokeep", protein_ligand_src("none"),
+    approach="add", ignore_missing_restraints=True)
+  with open(prog.params.output.filename) as f: out = f.read()
+  assert [r[1] for r in ligand_split_records(out, True)] == \
+    ["C", "C", "C", "N", "O"]
+  assert UNCHANGED not in prog.log_text
+
 def test_atom_characteristics_unbonded_h():
   # _GetAtomCharacteristics(): an H without bonded neighbour raises, unless
   # its residue is left unchanged (no restraints)
@@ -2739,6 +2779,7 @@ if __name__ == "__main__":
   test_missing_restraints_ignored()
   test_ccd_only_ligand_optimize()
   test_missing_restraints_flipkins()
+  test_missing_restraints_keep_existing_h()
   test_atom_characteristics_unbonded_h()
   test_ccd_only_ligand_flipkins()
   test_ccd_only_ligand_his_flipkins()

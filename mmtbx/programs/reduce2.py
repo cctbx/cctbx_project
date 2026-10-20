@@ -123,7 +123,7 @@ stop_on_any_missing_hydrogen = False
 ignore_missing_restraints = False
   .type = bool
   .short_caption = Don't stop if restraints for a residue are missing.
-  .help = Don't stop if restraints for a residue are missing (otherwise every approach except remove stops). With approach=optimize such a residue is left exactly as in the input, also with a neutron_option (its H/D are not converted), and is listed in the log and the description file. With approach=add or place, such a residue gets no H (its existing H/D are removed) and is listed in the log.
+  .help = Don't stop if restraints for a residue are missing (otherwise every approach except remove stops). With approach=optimize such a residue is left exactly as in the input, also with a neutron_option (its H/D are not converted), and is listed in the log and the description file. With approach=add or place and keep_existing_H=True, its existing H/D are kept unchanged and it is listed in the log and the description file. With keep_existing_H=False it gets no H and is listed in the log.
 skip_optimizations_after_seconds = 0.0
   .type = float
   .short_caption = Skip optimizations after this many seconds
@@ -952,9 +952,9 @@ NOTES:
   different directions. If they are more than 0.2 A apart, the input is refused. Use
   approach=add keep_existing_H=False instead. With ignore_missing_restraints=True,
   approach=optimize leaves residues without restraints exactly as in the input (not
-  converted) and lists them. With approach=add or place, such a residue gets no H (its
-  existing H/D are removed) and is listed in the log. Cannot be combined with
-  approach=remove or qmready=True.
+  converted) and lists them. With approach=add or place and keep_existing_H=True, their
+  existing H/D are kept unchanged and they are listed. With keep_existing_H=False such a
+  residue gets no H. Cannot be combined with approach=remove or qmready=True.
 
   Note that the program also takes probe Phil arguments; run with --show_defaults to see
   all Phil arguments.
@@ -1203,6 +1203,22 @@ NOTES:
         if (a.parent().parent().memory_id(), a.parent().resname) in missing:
           keys.add(k)
     return group_args(keys=keys, labels=labels)
+
+# ------------------------------------------------------------------------------
+
+  def _UnchangedText(self):
+    # Residues without restraints (ignore_missing_restraints=True) that the
+    # run leaves as in the input: optimize, and placement keeping the input
+    # H/D (keep_existing_H, qmready). Printed here.
+    # :return: The description-file text ('' if none).
+    if not self._unrestrained.labels: return ''
+    if self.params.approach != 'optimize' and \
+       not (self.params.keep_existing_H or self.params.qmready):
+      return ''
+    text = ('\nResidues without restraints, left unchanged:\n' +
+      '\n'.join(self._unrestrained.labels) + '\n')
+    print(text, file=self.logger)
+    return text
 
 # ------------------------------------------------------------------------------
 
@@ -1717,6 +1733,22 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _ProbeModel(self):
+    # probe2 in the flipkin passes stops on H without a bonded neighbour and
+    # has no D radius: it gets a copy without the H/D of the residues left
+    # unchanged (placement dropped them up to this change).
+    # :return: self.model, or that copy.
+    skip = self._UnrestrainedKeys()
+    if not skip: return self.model
+    atoms = self.model.get_hierarchy().atoms()
+    keys = hd_exchange.atom_keys(self.model.get_hierarchy())
+    sel = flex.bool([not (a.element_is_hydrogen() and k in skip)
+                     for a, k in zip(atoms, keys)])
+    if sel.all_eq(True): return self.model
+    return self.model.select(sel)
+
+# ------------------------------------------------------------------------------
+
   def _DescribeLockdown(self, flipMover, invertFlip, fixedUp):
     '''Produce a flip-state string describing how to lock down the specified flip mover.
     :param flipMover: The Optimizers.FlipMoverState object being locked down.
@@ -1998,6 +2030,7 @@ NOTES:
       startAdd = time.time()
       self._AddHydrogens()
       outString += self._dod_renamed_note
+      outString += self._UnchangedText()
       if neutron:
         self._CheckAmbiguousParents()
         self._CaptureParentTable()
@@ -2013,6 +2046,7 @@ NOTES:
         self._AddHydrogens()
         doneAdd = time.time()
         outString += self._dod_renamed_note
+        outString += self._UnchangedText()
         if neutron:
           self._CheckAmbiguousParents()
       else:
@@ -2020,12 +2054,7 @@ NOTES:
         # (normalized input was rebuilt with them)
         if not self._normalized_with_restraints:
           self._ReinterpretModel(make_restraints=True)
-        # residues without restraints (with ignore_missing_restraints=True)
-        if self._unrestrained.labels:
-          text = ('\nResidues without restraints, left unchanged:\n' +
-            '\n'.join(self._unrestrained.labels) + '\n')
-          print(text, file=self.logger)
-          outString += text
+        outString += self._UnchangedText()
         # H/D without a covalent partner are removed, as placement does; same
         # rule as the H parent table. Also keeps them out of probe scoring.
         text, removed = self._RemoveFloatingHD()
@@ -2437,7 +2466,7 @@ NOTES:
           p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
                               master_phil=probeParser.master_phil, logger=self.logger)
 
-          p2.overrideModel(self.model)
+          p2.overrideModel(self._ProbeModel())
           dots, kinString = p2.run()
           flipkinText += kinString
 
@@ -2557,7 +2586,7 @@ NOTES:
           # the temporary file that it produced.
           p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
                               master_phil=probeParser.master_phil, logger=self.logger)
-          p2.overrideModel(self.model)
+          p2.overrideModel(self._ProbeModel())
           dots, kinString = p2.run()
           flipkinText += kinString
 
