@@ -2033,6 +2033,11 @@ NOTES:
         # and from the snapshot the flipkin passes restart from
         if removed:
           initialModel = self._RemoveFromSnapshot(initialModel, removed)
+        # nothing to optimize: the Optimizer has no riding H manager then
+        if not self.model.has_hd():
+          raise Sorry('The model has no H or D atoms to optimize: '
+            'approach=optimize does not add H. Use approach=add to add and '
+            'optimize them.')
         if neutron:
           self._CheckAmbiguousParents()
 

@@ -358,6 +358,23 @@ def test_floating_h_removed():
             if l[1:3] != ("TYR", " HH ")]
   assert atom_labels(fn) == before
 
+def test_optimize_without_h():
+  # approach=optimize adds no H: input without H, or whose only H is floating
+  # (removed before optimization), stops with a Sorry. Before: AttributeError
+  # in the Optimizer (no riding H manager)
+  text = "The model has no H or D atoms to optimize"
+  only_hh = [l for l in h_input_without_tyr_oh("tst_reduce2_neutron_noh_h")
+             .splitlines() if l[76:78].strip() != "H" or l[12:16] == " HH "]
+  assert sum(1 for l in only_hh if l[76:78].strip() == "H") == 1
+  for prefix, pdb_str in (("tst_reduce2_neutron_noh", pdb_1yjp),
+      ("tst_reduce2_neutron_noh_float", "\n".join(only_hh) + "\n")):
+    try:
+      run_reduce2(prefix, pdb_str, ["approach=optimize"])
+    except Sorry as e:
+      assert text in str(e), str(e)
+    else:
+      raise AssertionError("no Sorry for %s" % prefix)
+
 def test_floating_h_water_098():
   # 9k(b): water at 0.85 A in the input, a floating H removed with select();
   # with neutron distances the written water O-H is 0.98 A
@@ -2660,6 +2677,7 @@ if __name__ == "__main__":
   test_water_layouts()
   test_optimizer_passes_flag()
   test_floating_h_removed()
+  test_optimize_without_h()
   test_floating_h_water_098()
   test_no_floating_h_unchanged()
   test_floating_h_flipkins()
