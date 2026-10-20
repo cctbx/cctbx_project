@@ -12,6 +12,7 @@ from scitbx import matrix
 import scitbx.cubicle_neighbors
 from cctbx.array_family import flex
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
+from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_atom_group
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.linking_class import linking_class
 #
@@ -554,6 +555,24 @@ def _blank_amide_group(rg, prev_rg):
   cs = [c for c in cs if c is not None and c.distance(n) < 2.0]
   if len(cs) != 1: return None
   return blank[0]
+
+def _split_ca_groups(rg, n):
+  '''
+  The atom groups with CA if n has no altloc, CA is in two or more altlocs
+  and none blank, and the blank group has no N-terminal H. H1/H2/H3 then
+  depend on the split CA and go into each of these groups (9grf ALA M 1: in
+  the blank group they followed CA A only, and riding H stopped at CA B).
+  Empty otherwise.
+  '''
+  if n.parent().altloc != '': return []
+  ags = rg.atom_groups()
+  for ag in ags:
+    if ag.altloc != '': continue
+    if ag.get_atom('CA') is not None: return []
+    for name in ('H', 'H1', 'H2', 'H3', 'D', 'D1', 'D2', 'D3'):
+      if ag.get_atom(name) is not None: return []
+  result = [ag for ag in ags if ag.get_atom('CA') is not None]
+  return result if len(result) > 1 else []
 
 def _bonded_to_other_residue(atom, rg, model_atoms, model_sites):
   '''
@@ -1880,7 +1899,17 @@ class place_hydrogens():
         # TODO make the function below smart, so it
         # 1) knows when to add H1H2H3 or not
         # 2) renames H to H1 (so no need to remove it beforehand)
-        rc = add_n_terminal_hydrogens_to_residue_group(rgs) # rc is always empty list?
+        split_ca = _split_ca_groups(rgs, n)
+        for ag_ca in split_ca:
+          c = ag_ca.get_atom('C')
+          if c is None:
+            c = ([x.get_atom('C') for x in rgs.atom_groups()
+                  if x.altloc == '' and x.get_atom('C')] or [None])[0]
+          if c is None: continue
+          add_n_terminal_hydrogens_to_atom_group(ag_ca,
+            n_ca_c=(n, ag_ca.get_atom('CA'), c))
+        if not split_ca:
+          rc = add_n_terminal_hydrogens_to_residue_group(rgs) # rc is always empty list?
 
   # ----------------------------------------------------------------------------
 

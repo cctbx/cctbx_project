@@ -36,6 +36,7 @@ def run():
   test_025()
   test_026()
   test_027()
+  test_028()
 
 # ------------------------------------------------------------------------------
 
@@ -584,6 +585,33 @@ def test_027():
        for l in lines if l[16:17] == 'A' and l[22:26] == ' 273']
   _, alts = amide_h('\n'.join(lines + b) + '\n')
   assert alts == ['A', 'B'], alts
+
+def test_028():
+  '''
+  9grf ALA M 1: N, C and O have no altloc, CA and CB are in A and B. H1/H2/H3
+  went into the blank group, built from CA A only, and riding H stopped:
+  "angle restraints involving an H atom are missing ... N ALA M 1 / CA BALA
+  M 1". They depend on the split CA: each altloc gets its own, tetrahedral
+  with its CA. Placing again (keep_existing_H) adds none.
+  '''
+  def placed(pdb_str, keep):
+    pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+    model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+    obj = reduce_hydrogen.place_hydrogens(model=model, keep_existing_H=keep)
+    obj.run()
+    return obj.get_model()
+  model = placed(pdb_str_028, False)
+  a = dict(((x.parent().altloc, x.name.strip()), matrix.col(x.xyz))
+    for x in model.get_hierarchy().atoms())
+  hs = sorted(k for k in a if k[1] in ('H', 'H1', 'H2', 'H3'))
+  assert hs == [(alt, h) for alt in 'AB' for h in ('H1', 'H2', 'H3')], hs
+  n = a[('', 'N')]
+  for alt in 'AB':
+    for h in ('H1', 'H2', 'H3'):
+      angle = (a[(alt, h)]-n).angle(a[(alt, 'CA')]-n, deg=True)
+      assert approx_equal(angle, 109.5, eps=0.5), (alt, h, angle)
+  again = placed(model.model_as_pdb(), True)
+  assert again.get_hierarchy().atoms_size() == model.get_hierarchy().atoms_size()
 
 def test_010():
   '''
@@ -1589,6 +1617,17 @@ ATOM    653  CG1AVAL A 274      57.804  -7.268  76.669  0.50 42.93           C
 ATOM    654  CG1BVAL A 274      58.632  -6.525  74.811  0.50 38.98           C
 ATOM    655  CG2AVAL A 274      58.468  -6.118  74.550  0.50 41.13           C
 ATOM    656  CG2BVAL A 274      56.900  -5.014  75.809  0.50 40.98           C
+"""
+
+pdb_str_028 = """
+CRYST1   63.696   76.050   27.858  90.00  90.00  90.00 P 21 21 2
+ATOM    831  N   ALA M   1     -17.004  33.237  -4.450  1.00 25.69           N
+ATOM    832  CA AALA M   1     -16.112  33.766  -3.388  0.50 22.64           C
+ATOM    833  CA BALA M   1     -15.894  33.921  -3.834  0.50 24.57           C
+ATOM    834  C   ALA M   1     -14.743  32.990  -3.351  1.00 20.22           C
+ATOM    835  O   ALA M   1     -13.653  33.617  -3.248  1.00 27.19           O
+ATOM    836  CB AALA M   1     -16.833  33.680  -2.046  0.50 25.23           C
+ATOM    837  CB BALA M   1     -16.336  35.015  -2.865  0.50 25.08           C
 """
 
 if __name__ == '__main__':
