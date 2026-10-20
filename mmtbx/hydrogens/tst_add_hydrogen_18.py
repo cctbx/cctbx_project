@@ -1,9 +1,9 @@
 """place_hydrogens leaves the received model unchanged: hierarchy, restraint
-object list (same object, same entries), restraints manager and crystal
-symmetry, for keep_existing_H True and False, with a cell, without symmetry
-and with an element X atom. The list is shared with the model's copies
-(select(), deep_copy()), so a CCD-only ligand's auto_ dictionary must not be
-appended to it."""
+object list (same object, same entries), restraints manager, crystal
+symmetry and monomer library server, for keep_existing_H True and False, with
+a cell, without symmetry and with an element X atom. The list is shared with
+the model's copies (select(), deep_copy()), so a CCD-only ligand's auto_
+dictionary must not be appended to it."""
 from __future__ import absolute_import, division, print_function
 import iotbx.cif
 import iotbx.pdb
@@ -150,7 +150,8 @@ def snapshot(model):
     hierarchy=model.get_hierarchy(),
     ro=ro, ro_entries=list(ro),
     rm=model.get_restraints_manager(),
-    cs=model.crystal_symmetry())
+    cs=model.crystal_symmetry(),
+    srv=model._mon_lib_srv)
 
 def check_unchanged(model, before, label):
   after = snapshot(model)
@@ -160,6 +161,8 @@ def check_unchanged(model, before, label):
   assert after["ro_entries"] == before["ro_entries"], label
   assert [n for n, o in after["ro"]] == ["04.cif"], (label, after["ro"])
   assert after["rm"] is before["rm"], label
+  # not created (still None) or replaced
+  assert after["srv"] is before["srv"], label
   if before["cs"] is None:
     assert after["cs"] is None, label
   else:

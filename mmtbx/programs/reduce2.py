@@ -1090,6 +1090,8 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _AddHydrogens(self):
+    # placement queries the server of the model it gets: run() starts it
+    # fresh and it holds the run's restraint objects, so it is not stale
     if self.params.qmready:
       reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
         model                 = self.model,
@@ -1098,6 +1100,7 @@ NOTES:
         exclude_water         = False,
         stop_for_unknowns     = self.params.stop_on_any_missing_hydrogen,
         keep_existing_H       = True,
+        mon_lib_srv           = self.model.get_mon_lib_srv(),
       )
     else:
       reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
@@ -1106,7 +1109,8 @@ NOTES:
         n_terminal_charge=self.params.n_terminal_charge,
         exclude_water = self.params.exclude_water,
         stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
-        keep_existing_H=self.params.keep_existing_H
+        keep_existing_H=self.params.keep_existing_H,
+        mon_lib_srv=self.model.get_mon_lib_srv()
       )
     reduce_add_h_obj.run()
     reduce_add_h_obj.show(self.logger, verbose=self.params.verbosity > 2)

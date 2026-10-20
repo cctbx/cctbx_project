@@ -3,6 +3,7 @@ import six
 import sys, time
 from libtbx.utils import Sorry
 import mmtbx.model
+import mmtbx.monomer_library.server
 import iotbx.pdb
 import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
@@ -1101,6 +1102,11 @@ class place_hydrogens():
     'first_in_chain' (first residue of each chain), 'all_chain_starts'
     (first residue of each chain and each residue after a chain break, i.e.
     N not peptide-bonded to C of preceding residue), 'no_charge' (nowhere)
+
+  mon_lib_srv : monomer library server or None
+    server for the dictionary queries; with None, a new one. The model's
+    cached server is not used: it can know a CCD-only residue from an earlier
+    placement whose placeholder the processed model no longer has.
   '''
 
 # ------------------------------------------------------------------------------
@@ -1114,7 +1120,8 @@ class place_hydrogens():
                stop_for_unknowns     = False,
                keep_existing_H       = False,
                validate_e            = False,
-               print_time            = False):
+               print_time            = False,
+               mon_lib_srv           = None):
     self.model                 = model
     self.use_neutron_distances = use_neutron_distances
     self.n_terminal_charge     = n_terminal_charge
@@ -1124,6 +1131,7 @@ class place_hydrogens():
     self.keep_existing_H       = keep_existing_H
     self.validate_e            = validate_e
     self.print_time            = print_time
+    self.mon_lib_srv           = mon_lib_srv
     #
     self.no_H_placed_mlq        = list()
     self.site_labels_disulfides = list()
@@ -1140,6 +1148,11 @@ class place_hydrogens():
     self.auto_restraint_names   = list()
     # the received model's restraint objects plus the auto-generated ones
     self.restraint_objects      = None
+    # server of the queries in this run (see mon_lib_srv)
+    self.query_mon_lib_srv      = None
+    # residues that got H but have no restraints in the processed model
+    self.residues_no_restraints = list()
+    self.residue_keys_new_h     = set()
     #self.charged_atoms          = list()
     self.sl_removed             = list()
     self.n_H_initial            = 0
@@ -1268,6 +1281,7 @@ class place_hydrogens():
     t0 = time.time()
     sel_isolated = self.model.isolated_atoms_selection()
     sel_lone_H = sel_h & sel_isolated
+    self.find_residues_without_restraints(sel_isolated)
     # As h_parameterization will not include these, they can be removed in the
     # next step; for book-keeping it is useful to keep track of lone H as a
     # selection
@@ -1436,6 +1450,27 @@ class place_hydrogens():
 
     if self.print_time:
       self.print_times()
+
+  # ----------------------------------------------------------------------------
+
+  def find_residues_without_restraints(self, sel_isolated):
+    '''
+    Residues that got H but have no bond at all in the processed model: their
+    H go with the lone H, which are not reported otherwise. A truncated
+    residue keeps the bonds of the atoms it has and is not listed.
+    '''
+    self.residues_no_restraints = list()
+    for m in self.model.get_hierarchy().models():
+      for chain in m.chains():
+        for rg in chain.residue_groups():
+          if ((m.id, chain.id, rg.resseq, rg.icode) not in
+              self.residue_keys_new_h): continue
+          if not sel_isolated.select(rg.atoms().extract_i_seq()).all_eq(True):
+            continue
+          resid = '%s %s %s' % (rg.atom_groups()[0].resname.strip(),
+            chain.id.strip(), rg.resseq.strip())
+          if resid not in self.residues_no_restraints:
+            self.residues_no_restraints.append(resid)
 
   # ----------------------------------------------------------------------------
 
@@ -1816,7 +1851,7 @@ class place_hydrogens():
             or (ag.get_atom('CA') and ag.get_atom('C'))):
           for ag_h in rgs.atom_groups():
             h = ag_h.get_atom('H')
-            if h and _dictionary_h_on_n(ag_h, self.model.get_mon_lib_srv()):
+            if h and _dictionary_h_on_n(ag_h, self.query_mon_lib_srv):
               ag_h.remove_atom(h)
         # TODO make the function below smart, so it
         # 1) knows when to add H1H2H3 or not
@@ -1850,7 +1885,10 @@ class place_hydrogens():
     # a copy of its hierarchy, auto objects into a new list
     pdb_hierarchy = self.model.get_hierarchy().deep_copy()
     self.restraint_objects = self.model.get_restraint_objects()
-    mon_lib_srv = self.model.get_mon_lib_srv()
+    mon_lib_srv = self.mon_lib_srv
+    if mon_lib_srv is None:
+      mon_lib_srv = mmtbx.monomer_library.server.server()
+    self.query_mon_lib_srv = mon_lib_srv
     load_restraint_objects_into_server(self.model, mon_lib_srv)
     #XXX This breaks for 1jxt, residue 2, TYR
     for m in pdb_hierarchy.models():
@@ -1952,6 +1990,9 @@ class place_hydrogens():
             hetero = ag.atoms()[0].hetero
             segid = ag.atoms()[0].segid
 
+            if missing_h:
+              self.residue_keys_new_h.add(
+                (m.id, chain.id, rg.resseq, rg.icode))
             for mh in missing_h:
               if len(mh) < 4: mh = (' ' + mh).ljust(4)
               a = (iotbx.pdb.hierarchy.atom()
@@ -2266,6 +2307,13 @@ were found:'''
       for resname in self.no_H_placed_mlq:
         print(resname, file=log)
     #
+    if self.residues_no_restraints:
+      msg = ('\nNo H atoms were placed on the following residues because the '
+        'processed model has no restraints for them:')
+      print(msg, file=log)
+      for resid in self.residues_no_restraints:
+        print(resid, file=log)
+    #
     if self.site_labels_disulfides:
       msg = '''
 The following cysteine HG atoms were not placed because the sulfur atom is
@@ -2364,6 +2412,7 @@ The following H atoms were not placed because they could not be parameterized
     return group_args(
       number_h_final  = self.n_H_final,
       no_H_placed_mlq = self.no_H_placed_mlq,
+      residues_no_restraints = self.residues_no_restraints,
       site_labels_disulfides = self.site_labels_disulfides,
       site_labels_no_para = self.site_labels_no_para,
       site_labels_tertiary_amide = self.site_labels_tertiary_amide,
