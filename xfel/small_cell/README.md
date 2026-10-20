@@ -153,8 +153,8 @@ os.system(cmd_mpi)
 and `spotfind.phil` containing:
 ```
 output {
-  experiments_filename = %s_imported.expt
-  strong_filename = %s_strong.refl
+  imported_suffix = imported
+  strong_suffix = strong
 }
 dispatch.hit_finder {
   minimum_number_of_reflections = 3
@@ -316,7 +316,7 @@ $ for n in {1..5}; do
     echo
     echo $n
     egrep 'powdercell|spacegroup' $n.phil
-    grep real_space_a $n/out/*refined.expt 2>/dev/null|wc -l
+    grep real_space_a $n/out/*indexed.expt 2>/dev/null|wc -l
   done
 ```
 
