@@ -716,6 +716,59 @@ def add_ccd_restraint_objects(model):
 
 # ==============================================================================
 
+def residue_label(atom):
+  '''
+  'resname chain resseq' of an atom's residue, as in the reports.
+  '''
+  rg = atom.parent().parent()
+  return '%s %s %s' % (atom.parent().resname.strip(),
+    rg.parent().id.strip(), rg.resseq.strip())
+
+def atoms_not_in_dictionary(model):
+  '''
+  Heavy atoms whose name is not in their residue's dictionary, in a processed
+  model (energy type False; a residue without restraints has ''). Typically a
+  dictionary older than the CCD (7a5m 2L5: geostd N4/C12/C11/O4, model
+  N/CA/C/O).
+  :return: [(residue_label(), [atom names])], in model order.
+  '''
+  te = getattr(model, '_type_energies', None)
+  if te is None: return []
+  found, order = {}, []
+  for a in model.get_hierarchy().atoms():
+    if a.element_is_hydrogen() or te[a.i_seq] not in (False, 'False'):
+      continue
+    resid = residue_label(a)
+    if resid not in found:
+      found[resid] = []
+      order.append(resid)
+    if a.name.strip() not in found[resid]:
+      found[resid].append(a.name.strip())
+  return [(r, found[r]) for r in order]
+
+def atoms_not_in_dictionary_text(residues, n_h, h_text, h_labels=(),
+                                 cap=12):
+  '''
+  Report of atoms_not_in_dictionary() (placement and reduce2). h_text says
+  what happened to the n_h H on them, e.g. 'H atoms on them were not placed'
+  (no clause if n_h is 0). At most cap residues are listed, all h_labels.
+  '''
+  header = '%d residue%s' % (len(residues), 's' if len(residues) > 1 else '')
+  if n_h: header += '; %d %s' % (n_h, h_text)
+  lines = ['Atom names not in the restraint dictionary of their residue '
+    '(dictionary older', 'than the CCD?) - %s:' % header]
+  for resid, names in residues[:cap]:
+    lines.append(' %s: %s' % (resid, ' '.join(names)))
+  if len(residues) > cap:
+    lines.append(' (+%d more)' % (len(residues) - cap))
+  lines.extend('   ' + label.strip() for label in h_labels)
+  resnames = []
+  for resid, names in residues:
+    if resid.split()[0] not in resnames: resnames.append(resid.split()[0])
+  lines.append('Rename these atoms to match the dictionary, or supply a '
+    'restraint CIF for %s.' % ', '.join(resnames))
+  return '\n'.join(lines)
+
 def get_output_crystal_symmetry(model):
   '''
   Crystal symmetry to write out for a model that is boxed for H placement,
@@ -1723,25 +1776,9 @@ class place_hydrogens():
 
   def find_atoms_not_in_dictionary(self):
     '''
-    Heavy atoms whose name is not in their residue's dictionary; model
-    processing gives them energy type False. Typically a dictionary older than
-    the CCD (7a5m 2L5: geostd N4/C12/C11/O4, model N/CA/C/O). For the report.
+    For the report: see atoms_not_in_dictionary().
     '''
-    te = getattr(self.model, '_type_energies', None)
-    if te is None: return
-    found, order = {}, []
-    for a in self.model.get_hierarchy().atoms():
-      if a.element_is_hydrogen() or te[a.i_seq] not in (False, 'False'):
-        continue
-      rg = a.parent().parent()
-      resid = '%s %s %s' % (a.parent().resname.strip(),
-        rg.parent().id.strip(), rg.resseq.strip())
-      if resid not in found:
-        found[resid] = []
-        order.append(resid)
-      if a.name.strip() not in found[resid]:
-        found[resid].append(a.name.strip())
-    self.residues_unknown_atoms = [(r, found[r]) for r in order]
+    self.residues_unknown_atoms = atoms_not_in_dictionary(self.model)
 
   def exclude_H_without_link_angle(self):
     '''
@@ -2399,6 +2436,16 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
+  def unknown_atoms_text(self, verbose=False):
+    '''
+    The report of residues_unknown_atoms (show(), reduce2's description).
+    '''
+    return atoms_not_in_dictionary_text(self.residues_unknown_atoms,
+      len(self.site_labels_unknown_atoms), 'H atoms on them were not placed',
+      self.site_labels_unknown_atoms if verbose else ())
+
+# ------------------------------------------------------------------------------
+
   def show(self, log, verbose=False):
     '''
     Informative output. With verbose=True the per-atom lists of H that were not
@@ -2448,19 +2495,7 @@ proline-type or N-substituted residue)'''
     #
     if self.residues_unknown_atoms:
       print('', file=log)
-      msg = ('Atom names not in the restraint dictionary of their residue '
-        '(dictionary older\nthan the CCD?) - %d residues; %d H atoms on them '
-        'were not placed:')
-      print(msg % (len(self.residues_unknown_atoms),
-        len(self.site_labels_unknown_atoms)), file=log)
-      cap = 12
-      for resid, names in self.residues_unknown_atoms[:cap]:
-        print(' %s: %s' % (resid, ' '.join(names)), file=log)
-      if len(self.residues_unknown_atoms) > cap:
-        print(' (+%d more)' % (len(self.residues_unknown_atoms) - cap), file=log)
-      if verbose:
-        for label in self.site_labels_unknown_atoms:
-          print(label, file=log)
+      print(self.unknown_atoms_text(verbose), file=log)
     #
     if self.site_labels_missing_neighbor:
       n_atoms = len(self.site_labels_missing_neighbor)

@@ -2225,6 +2225,64 @@ def test_missing_restraints_keep_existing_h():
     ["C", "C", "C", "N", "O"]
   assert UNCHANGED not in prog.log_text
 
+UNKNOWN_ATOMS = ("Atom names not in the restraint dictionary of their "
+  "residue (dictionary older\nthan the CCD?) - ")
+UNKNOWN_ATOMS_DO = ("Rename these atoms to match the dictionary, or supply a "
+  "restraint CIF for ")
+
+def test_name_mismatch_reported():
+  # ligand 04's atoms named ZQ4 (a GeoStd entry without N1), no CIF: optimize
+  # lists the residue, its atom and the H/D removed there under that cause
+  # (not as floating); add has the report in the description file too, and
+  # optimize on its output (no H/D affected) without the H/D clause; a run
+  # without such a residue has no such text
+  for option in ("none", "hd_and_h"):
+    src = protein_ligand_src(option).replace(" 04 B", "ZQ4 B")
+    prog = run_prog("tst_reduce2_neutron_nm_opt_" + option, src,
+      approach="optimize", neutron_option=option)
+    with open(prog.params.output.description_file_name) as f:
+      description = f.read()
+    removed = ["H11 ZQ4 B   1", "H12 ZQ4 B   1", "H21 ZQ4 B   1",
+      "H31 ZQ4 B   1", "H32 ZQ4 B   1", "H33 ZQ4 B   1"]
+    if option == "none":
+      removed += ["HN1 ZQ4 B   1", "HO1 ZQ4 B   1"]
+    else:
+      removed += ["HN1AZQ4 B   1", "HO1AZQ4 B   1", "DN1BZQ4 B   1",
+                  "DO1BZQ4 B   1"]
+    block = (UNKNOWN_ATOMS + "1 residue; %d H/D on them were removed:\n"
+      " ZQ4 B 1: N1\n" % len(removed) +
+      "".join("   %s\n" % l for l in removed) + UNKNOWN_ATOMS_DO + "ZQ4.\n")
+    for text in (description, prog.log_text):
+      assert block in text, (option, text)
+      # not also as floating (optimize, input check)
+      assert "without a covalent partner" not in text, option
+  prog = run_prog("tst_reduce2_neutron_nm_add",
+    protein_ligand_src("none").replace(" 04 B", "ZQ4 B"), approach="add")
+  with open(prog.params.output.description_file_name) as f:
+    description = f.read()
+  block = (UNKNOWN_ATOMS + "1 residue; 4 H atoms on them were not placed:\n"
+    " ZQ4 B 1: N1\n" + UNKNOWN_ATOMS_DO + "ZQ4.\n")
+  for text in (description, prog.log_text):
+    assert block in text, text
+  # optimize on that output: no H/D affected, no H/D clause
+  with open(prog.params.output.filename) as f: added = f.read()
+  prog = run_prog("tst_reduce2_neutron_nm_opt_added", added,
+    approach="optimize")
+  with open(prog.params.output.description_file_name) as f:
+    description = f.read()
+  block = (UNKNOWN_ATOMS + "1 residue:\n ZQ4 B 1: N1\n" + UNKNOWN_ATOMS_DO +
+    "ZQ4.\n")
+  for text in (description, prog.log_text):
+    assert block in text, text
+  for approach in ("add", "optimize"):
+    src = protein_ligand_src("none") if approach == "optimize" else pdb_1yjp
+    prog = run_prog("tst_reduce2_neutron_nm_no_" + approach, src,
+      zq4_cif if approach == "optimize" else None, approach=approach)
+    with open(prog.params.output.description_file_name) as f:
+      description = f.read()
+    for text in (description, prog.log_text):
+      assert "Atom names not in" not in text and "Rename these" not in text
+
 def test_atom_characteristics_unbonded_h():
   # _GetAtomCharacteristics(): an H without bonded neighbour raises, unless
   # its residue is left unchanged (no restraints)
@@ -2780,6 +2838,7 @@ if __name__ == "__main__":
   test_ccd_only_ligand_optimize()
   test_missing_restraints_flipkins()
   test_missing_restraints_keep_existing_h()
+  test_name_mismatch_reported()
   test_atom_characteristics_unbonded_h()
   test_ccd_only_ligand_flipkins()
   test_ccd_only_ligand_his_flipkins()

@@ -1114,6 +1114,11 @@ NOTES:
       )
     reduce_add_h_obj.run()
     reduce_add_h_obj.show(self.logger, verbose=self.params.verbosity > 2)
+    # its report of atom names not in the dictionary, for the description
+    self._unknown_atoms_note = ''
+    if reduce_add_h_obj.residues_unknown_atoms:
+      self._unknown_atoms_note = '\n' + reduce_add_h_obj.unknown_atoms_text(
+        verbose=self.params.verbosity > 2) + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if not self.params.ignore_missing_restraints:
       if len(missed_residues) > 0:
@@ -1258,13 +1263,46 @@ NOTES:
     if keys is None:
       keys = hd_exchange.atom_keys(self.model.get_hierarchy())
     removed = [keys[i] for i in sel.iselection()]
-    labels = [atoms[i].id_str().replace('pdb=', '').replace('"', '')
-              for i in sel.iselection()]
-    text = ('\nH/D without a covalent partner, removed before optimization:\n'
-            + '\n'.join(labels) + '\n')
-    print(text, file=self.logger)
+    # in residues with atom names not in the dictionary: listed under that
+    # cause (_UnknownAtomsText())
+    unknown = set(r for r, names in getattr(self, '_unknown_atoms', []))
+    labels = []
+    for i in sel.iselection():
+      label = atoms[i].id_str().replace('pdb=', '').replace('"', '')
+      if reduce_hydrogen.residue_label(atoms[i]) in unknown:
+        self._unknown_atoms_removed.append(label)
+      else:
+        labels.append(label)
+    text = ''
+    if labels:
+      text = ('\nH/D without a covalent partner, removed before optimization:'
+              '\n' + '\n'.join(labels) + '\n')
+      print(text, file=self.logger)
     self.model = self.model.select(~sel)
     return text, removed
+
+# ------------------------------------------------------------------------------
+
+  def _UnknownAtomsText(self):
+    # optimize: placement's report of atom names not in the dictionary, with
+    # the H/D removed in those residues (at the input check and as floating)
+    # instead of in the floating lists. Printed here.
+    # :return: The description-file text ('' if none); in the log without
+    # its leading blank line (a sub-header or text with one precedes it).
+    if not self._unknown_atoms: return ''
+    resids = set(r for r, names in self._unknown_atoms)
+    moved = [l for l, r in zip(self._input_floating,
+             self._input_floating_resids) if r in resids]
+    kept = [(l, r) for l, r in zip(self._input_floating,
+            self._input_floating_resids) if r not in resids]
+    self._input_floating = [l for l, r in kept]
+    self._input_floating_resids = [r for l, r in kept]
+    labels = moved + self._unknown_atoms_removed
+    text = '\n' + reduce_hydrogen.atoms_not_in_dictionary_text(
+      self._unknown_atoms, len(labels), 'H/D on them were removed',
+      labels) + '\n'
+    print(text[1:], file=self.logger)
+    return text
 
 # ------------------------------------------------------------------------------
 
@@ -1401,6 +1439,9 @@ NOTES:
     # floating: dropped (select() keeps the restraints), then matched again
     floating = [u for u in candidates.unresolved if u.status == 'floating']
     self._input_floating = [clean(u.atom_id) for u in floating]
+    # residue_label() from the atom key, for _UnknownAtomsText()
+    self._input_floating_resids = ['%s %s %s' % (u.atom_key[6].strip(),
+      u.atom_key[1].strip(), u.atom_key[3].strip()) for u in floating]
     if floating:
       drop = set(u.atom_key for u in floating)
       if part_keys is not None:
@@ -1894,6 +1935,10 @@ NOTES:
     self._hd_records = {}
     self._input_notes = []
     self._input_floating = []
+    self._input_floating_resids = []
+    # optimize: atoms_not_in_dictionary() and the H/D removed on them
+    self._unknown_atoms = []
+    self._unknown_atoms_removed = []
     self._normalized_with_restraints = False
     # residues without restraints (optimize, D input): None until checked
     self._unrestrained = None
@@ -2030,6 +2075,7 @@ NOTES:
       startAdd = time.time()
       self._AddHydrogens()
       outString += self._dod_renamed_note
+      outString += self._unknown_atoms_note
       outString += self._UnchangedText()
       if neutron:
         self._CheckAmbiguousParents()
@@ -2046,6 +2092,7 @@ NOTES:
         self._AddHydrogens()
         doneAdd = time.time()
         outString += self._dod_renamed_note
+        outString += self._unknown_atoms_note
         outString += self._UnchangedText()
         if neutron:
           self._CheckAmbiguousParents()
@@ -2055,10 +2102,14 @@ NOTES:
         if not self._normalized_with_restraints:
           self._ReinterpretModel(make_restraints=True)
         outString += self._UnchangedText()
+        # atom names not in the dictionary, as placement reports them
+        self._unknown_atoms = reduce_hydrogen.atoms_not_in_dictionary(
+          self.model)
         # H/D without a covalent partner are removed, as placement does; same
         # rule as the H parent table. Also keeps them out of probe scoring.
         text, removed = self._RemoveFloatingHD()
         outString += text
+        outString += self._UnknownAtomsText()
         # and from the snapshot the flipkin passes restart from
         if removed:
           initialModel = self._RemoveFromSnapshot(initialModel, removed)
