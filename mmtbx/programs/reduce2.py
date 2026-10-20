@@ -1652,10 +1652,9 @@ NOTES:
     # insert it into them: model.pdb -> modelH_charge-3.pdb
     make_sub_header('Calculating total charge', out=self.logger)
     from mmtbx.ligands import electrons
-    cif_objects = None
-    if self.data_manager.has_restraints():
-      cif_objects = [(name, self.data_manager.get_restraint(name))
-        for name in self.data_manager.get_restraint_names()]
+    # user CIFs plus the CCD objects of _PrepareRestraints(), still attached:
+    # without them a CCD-only ligand is unknown there and the run stops
+    cif_objects = self.model.get_restraint_objects()
     # As qrefine.charges.charges_class does; on a copy, the model is written out
     hierarchy = self.model.get_hierarchy().deep_copy()
     hierarchy.merge_atoms_at_end_to_residues()

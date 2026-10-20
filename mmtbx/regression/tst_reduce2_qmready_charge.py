@@ -215,6 +215,37 @@ def test_qmready_no_cryst1():
   names = [a.name.strip() for a in inp.construct_hierarchy().atoms()]
   assert 'OXT' in names
 
+def ccd_ligand_pdb(code, offset=(-5.0, 20.0, 30.0)):
+  """heavy atoms of a CCD entry at its ideal coordinates, chain C"""
+  from mmtbx.chemical_components import get_cif_dictionary
+  lines = []
+  for i, a in enumerate(get_cif_dictionary(code)["_chem_comp_atom"]):
+    if a.type_symbol == "H": continue
+    xyz = [float(v) + o for v, o in zip((a.pdbx_model_Cartn_x_ideal,
+      a.pdbx_model_Cartn_y_ideal, a.pdbx_model_Cartn_z_ideal), offset)]
+    name = a.atom_id if len(a.atom_id) == 4 else " " + a.atom_id
+    lines.append("HETATM%5d %-4s %3s C   1    %8.3f%8.3f%8.3f  1.00 20.00"
+      "          %2s" % (900 + i, name, code, xyz[0], xyz[1], xyz[2],
+      a.type_symbol))
+  return "\n".join(lines) + "\n"
+
+def test_qmready_ccd_only_ligand():
+  # BGM and 6EM: in neither the monomer library nor GeoStd. The charge step
+  # had only the user CIFs, not reduce2's CCD objects, and stopped: "Number
+  # of atoms with unknown nonbonded energy type symbols". 1yjp is neutral
+  # (NH3+, COO-); BGM: 0, all 13 CCD H incl. HOP2/HOP3; 6EM: +1 on N4
+  from mmtbx.regression.tst_reduce2_neutron import pdb_1yjp
+  for i, code, n_h, charge in ((8, "BGM", 13, 0), (9, "6EM", 17, 1)):
+    prefix = "tst_reduce2_qmready_charge_%d" % i
+    model_text = pdb_1yjp.replace("END\n", "") + ccd_ligand_pdb(code) + "END\n"
+    r = run(model_text, prefix, expected_files=[
+      prefix + "H_charge%d.pdb" % charge, prefix + "H_charge%d.txt" % charge],
+      extra_args=["qmready=True"])
+    assert r.total_charge == charge, (code, r.total_charge)
+    h = [a for a in r.model.get_hierarchy().atoms()
+         if a.parent().resname.strip() == code and a.element_is_hydrogen()]
+    assert len(h) == n_h, (code, len(h))
+
 if __name__ == "__main__":
   test_qmready_negative_charge()
   test_qmready_positive_charge()
@@ -223,4 +254,5 @@ if __name__ == "__main__":
   test_no_qmready_no_charge()
   test_qmready_chain_breaks()
   test_qmready_no_cryst1()
+  test_qmready_ccd_only_ligand()
   print("OK")
