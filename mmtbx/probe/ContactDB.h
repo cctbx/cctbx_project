@@ -96,7 +96,7 @@ namespace molprobity {
 
       /// One reported dot, with the fields of probe2's DotInfo.
       struct DotRecord {
-        unsigned src;       ///< Index into the build() list
+        unsigned src;       ///< i_seq
         unsigned cause;     ///< i_seq
         int itype;          ///< DotScorer::InteractionType
         int overlapType;    ///< DotScorer::OverlapType
@@ -130,14 +130,14 @@ namespace molprobity {
       /// Score every source atom, in the given order.
       void build(scitbx::af::shared<iotbx::pdb::hierarchy::atom> sources);
 
-      /// Flat arrays, one entry per pair in source order: (source index into the build()
-      /// list, cause i_seq, min gap, N_TYPES counts per pair, has-Bump flag, Bump gap,
-      /// Bump location, N_TYPES minimum gaps per pair).
+      /// Flat arrays, one entry per pair in source order: (source i_seq, cause i_seq, min gap,
+      /// N_TYPES counts per pair, has-Bump flag, Bump gap, Bump location, N_TYPES minimum
+      /// gaps per pair).
       boost::python::tuple pairs() const;
 
-      /// Flat arrays, one entry per kept dot in the order they were scored: (source
-      /// index into the build() list, cause i_seq, InteractionType, OverlapType, gap,
-      /// location, spike end, ptmaster characters as one string).
+      /// Flat arrays, one entry per kept dot in the order they were scored: (source i_seq,
+      /// cause i_seq, InteractionType, OverlapType, gap, location, spike end, ptmaster
+      /// characters as one string).
       boost::python::tuple dots() const;
 
     private:
@@ -145,9 +145,8 @@ namespace molprobity {
       bool compatible(iotbx::pdb::hierarchy::atom const& a, iotbx::pdb::hierarchy::atom const& b) const;
       std::vector<iotbx::pdb::hierarchy::atom> excluded_for(iotbx::pdb::hierarchy::atom const& a,
                                                             unsigned N, unsigned nonHydrogenN) const;
-      void score_atom(iotbx::pdb::hierarchy::atom const& src, unsigned srcIndex,
-                      std::vector<PairRecord>& out);
-      void keep_dot(unsigned srcIndex, int sf, unsigned ci, Point const& sXYZ, double srcVdw,
+      void score_atom(iotbx::pdb::hierarchy::atom const& src, std::vector<PairRecord>& out);
+      void keep_dot(unsigned si, int sf, unsigned ci, Point const& sXYZ, double srcVdw,
                     int itype, DotScorer::CheckDotResult const& res);
 
       ExtraAtomInfoMap m_info;

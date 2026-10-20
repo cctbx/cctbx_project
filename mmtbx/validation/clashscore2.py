@@ -448,14 +448,15 @@ def contact_record_runs(p2):
   runs = collections.defaultdict(list)
   for call, (db, sources) in enumerate(p2._contactRecords):
     src, cause, gap, counts, hasBump, bumpGap, bumpLoc, typeGap = db.pairs()
+    order = {a.i_seq: n for n, a in enumerate(sources)}
     for k in range(len(src)):
-      s, t = sources[src[k]], atoms[cause[k]]
+      s, t = atoms[src[k]], atoms[cause[k]]
       for itype in range(n_types):
         count = counts[k * n_types + itype]
         if count:
           g = typeGap[k * n_types + itype]
           runs[(p2._atomClasses[s], itype)].append(
-            ((call, src[k], name(s) + name(t), g), s, t, count, g, bumpLoc[k] if itype == bump else None))
+            ((call, order[src[k]], name(s) + name(t), g), s, t, count, g, bumpLoc[k] if itype == bump else None))
   for atomClass in probe2._allAtomClasses:   # probe2 lists 'Se' twice and writes it twice
     for itype in probe2._interactionTypes:
       for _, s, t, count, g, loc in sorted(runs.get((atomClass, int(itype)), []), key=lambda r: r[0]):

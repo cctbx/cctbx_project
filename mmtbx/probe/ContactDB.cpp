@@ -133,7 +133,7 @@ namespace molprobity {
       m_records.assign(m_sources.size(), std::vector<PairRecord>());
       m_dots.clear();
       for (size_t i = 0; i < m_sources.size(); i++) {
-        score_atom(m_sources[i], static_cast<unsigned>(i), m_records[i]);
+        score_atom(m_sources[i], m_records[i]);
       }
     }
 
@@ -146,7 +146,7 @@ namespace molprobity {
       for (size_t i = 0; i < m_sources.size(); i++) {
         for (size_t j = 0; j < m_records[i].size(); j++) {
           PairRecord const& r = m_records[i][j];
-          src.push_back(static_cast<int>(i));
+          src.push_back(static_cast<int>(idx(m_sources[i])));
           cause.push_back(static_cast<int>(r.cause));
           gap.push_back(r.minGap);
           for (int t = 0; t < N_TYPES; t++) {
@@ -182,7 +182,7 @@ namespace molprobity {
       return boost::python::make_tuple(src, cause, itype, overlapType, gap, loc, spike, ptmaster);
     }
 
-    void ContactDB::keep_dot(unsigned srcIndex, int sf, unsigned ci, Point const& sXYZ, double srcVdw,
+    void ContactDB::keep_dot(unsigned si, int sf, unsigned ci, Point const& sXYZ, double srcVdw,
                              int itype, DotScorer::CheckDotResult const& res)
     {
       // Main/side chain class of the pair, then the dot and spike-end locations.
@@ -197,7 +197,7 @@ namespace molprobity {
 
       Point const& d = res.dotOffset;
       DotRecord rec;
-      rec.src = srcIndex; rec.cause = ci; rec.itype = itype;
+      rec.src = si; rec.cause = ci; rec.itype = itype;
       rec.overlapType = res.overlapType; rec.ptmaster = ptmaster; rec.gap = res.gap;
       rec.loc = Point(sXYZ[0] + d[0], sXYZ[1] + d[1], sXYZ[2] + d[2]);
       double dvLen = std::sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]);
@@ -228,7 +228,7 @@ namespace molprobity {
                                m_info, m_probeRadius, static_cast<int>(N), nonHydrogenN);
     }
 
-    void ContactDB::score_atom(atom const& src, unsigned srcIndex, std::vector<PairRecord>& out)
+    void ContactDB::score_atom(atom const& src, std::vector<PairRecord>& out)
     {
       unsigned si = idx(src);
       int sf = m_flags[si];
@@ -303,7 +303,7 @@ namespace molprobity {
           show = m_reportClashes && (itype == DotScorer::Bump || itype == DotScorer::BadBump);
         }
         if (!show) { continue; }
-        if (m_keepDots) { keep_dot(srcIndex, sf, ci, sXYZ, srcVdw, itype, res); }
+        if (m_keepDots) { keep_dot(si, sf, ci, sXYZ, srcVdw, itype, res); }
         PairRecord* rec = 0;
         for (size_t r = 0; r < out.size(); r++) {
           if (out[r].cause == ci) { rec = &out[r]; break; }
