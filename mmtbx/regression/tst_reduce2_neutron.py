@@ -222,18 +222,26 @@ def check_water(file_name, d_ideal, n_expected):
 
 def test_xray_default():
   # control: the default run stays at X-ray distances
-  fn, log, description = run_reduce2("tst_reduce2_neutron_xray", pdb_1yjp,
-    ["exclude_water=False"])
+  prog = cached_run(pdb_1yjp, exclude_water=False)
+  fn, description = prog.params.output.filename, prog.description
   check_bond_lengths(fn, use_neutron_distances=False)
   check_water(fn, 0.85, 7)
   assert INFO_FALSE in description and INFO_TRUE not in description
 
+def check_no_d(fn):
+  h = iotbx.pdb.input(fn).construct_hierarchy()
+  assert "D" not in [a.element.strip() for a in h.atoms()]
+  assert "DOD" not in [ag.resname for ag in h.atom_groups()]
+
 def test_neutron_add():
+  # 9b: also explicit neutron_option=none (none keeps today's distances)
   fn, log, description = run_reduce2("tst_reduce2_neutron_add", pdb_1yjp,
-    ["use_neutron_distances=True", "exclude_water=False"])
+    ["use_neutron_distances=True", "exclude_water=False",
+     "neutron_option=none"])
   check_bond_lengths(fn, use_neutron_distances=True)
   check_water(fn, 0.98, 7)
   assert INFO_TRUE in description and INFO_FALSE not in description
+  check_no_d(fn)
 
 def test_neutron_place():
   fn, log, description = run_reduce2("tst_reduce2_neutron_place", pdb_1yjp,
@@ -243,35 +251,24 @@ def test_neutron_place():
 
 def test_neutron_optimize():
   # input water H at 0.85 A (X-ray run), optimized with neutron distances
-  fn_in, _, _ = run_reduce2("tst_reduce2_neutron_opt_in", pdb_1yjp,
-    ["exclude_water=False"])
-  check_water(fn_in, 0.85, 7)
-  with open(fn_in) as f:
-    pdb_str = f.read()
+  prog = cached_run(pdb_1yjp, exclude_water=False)
+  check_water(prog.params.output.filename, 0.85, 7)
+  pdb_str = prog.text
   fn, log, description = run_reduce2("tst_reduce2_neutron_opt", pdb_str,
     ["use_neutron_distances=True", "exclude_water=False",
      "approach=optimize"])
   check_water(fn, 0.98, 7)
   assert INFO_TRUE in description and INFO_FALSE not in description
 
-def test_neutron_flipkins():
-  if not os.path.isdir("tst_reduce2_neutron_flipkins"):
-    os.mkdir("tst_reduce2_neutron_flipkins")
-  fn, log, description = run_reduce2("tst_reduce2_neutron_fk", pdb_1yjp,
-    ["use_neutron_distances=True", "add_flip_movers=True",
-     "output.flipkin_directory=tst_reduce2_neutron_flipkins"])
-  assert INFO_TRUE in description and INFO_FALSE not in description
-  # each flipkin configuration logs its own Optimizer run
-  assert log.count(INFO_TRUE) >= 2, log.count(INFO_TRUE)
-  assert INFO_FALSE not in log
-
 def test_qmready():
+  # 9b: also explicit neutron_option=none
   fn, log, description = run_reduce2("tst_reduce2_neutron_qmready", pdb_1yjp,
-    ["qmready=True"])
+    ["qmready=True", "neutron_option=none"])
   assert "qmready=True: use_neutron_distances set to True" in log
   check_bond_lengths(fn, use_neutron_distances=True)
   check_water(fn, 0.98, 7)
   assert INFO_TRUE in description and INFO_FALSE not in description
+  check_no_d(fn)
 
 def test_neutron_after_select():
   # placement drops the unparameterizable Lys HD2/HD3 with model.select();
@@ -330,11 +327,10 @@ def test_optimizer_passes_flag():
 
 FLOATING = "H/D without a covalent partner, removed before optimization:"
 
-def h_input_without_tyr_oh(prefix, args=()):
+def h_input_without_tyr_oh(**params):
   """1yjp with H from reduce2, then Tyr OH deleted: its HH has no partner"""
-  fn, _, _ = run_reduce2(prefix + "_h", pdb_1yjp, list(args))
-  with open(fn) as f:
-    lines = [l for l in f.read().splitlines() if " OH  TYR" not in l]
+  lines = [l for l in cached_run(pdb_1yjp, **params).text.splitlines()
+           if " OH  TYR" not in l]
   return "\n".join(lines) + "\n"
 
 def atom_labels(file_name):
@@ -346,7 +342,7 @@ def test_floating_h_removed():
   # 5a (none): approach=optimize on input with an H whose parent heavy atom
   # is missing: the run completes, the H is gone and listed, all other atoms
   # unchanged in count and names
-  pdb_str = h_input_without_tyr_oh("tst_reduce2_neutron_float")
+  pdb_str = h_input_without_tyr_oh()
   with open("tst_reduce2_neutron_float_in.pdb", "w") as f:
     f.write(pdb_str)
   fn, log, description = run_reduce2("tst_reduce2_neutron_float", pdb_str,
@@ -363,8 +359,8 @@ def test_optimize_without_h():
   # (removed before optimization), stops with a Sorry. Before: AttributeError
   # in the Optimizer (no riding H manager)
   text = "The model has no H or D atoms to optimize"
-  only_hh = [l for l in h_input_without_tyr_oh("tst_reduce2_neutron_noh_h")
-             .splitlines() if l[76:78].strip() != "H" or l[12:16] == " HH "]
+  only_hh = [l for l in h_input_without_tyr_oh().splitlines()
+             if l[76:78].strip() != "H" or l[12:16] == " HH "]
   assert sum(1 for l in only_hh if l[76:78].strip() == "H") == 1
   for prefix, pdb_str in (("tst_reduce2_neutron_noh", pdb_1yjp),
       ("tst_reduce2_neutron_noh_float", "\n".join(only_hh) + "\n")):
@@ -378,8 +374,7 @@ def test_optimize_without_h():
 def test_floating_h_water_098():
   # 9k(b): water at 0.85 A in the input, a floating H removed with select();
   # with neutron distances the written water O-H is 0.98 A
-  pdb_str = h_input_without_tyr_oh("tst_reduce2_neutron_float_w",
-    ["exclude_water=False"])
+  pdb_str = h_input_without_tyr_oh(exclude_water=False)
   fn, log, description = run_reduce2("tst_reduce2_neutron_float_w", pdb_str,
     ["approach=optimize", "use_neutron_distances=True",
      "exclude_water=False"])
@@ -389,9 +384,7 @@ def test_floating_h_water_098():
 
 def test_no_floating_h_unchanged():
   # input without floating H/D: no removal, output as without the step
-  fn_in, _, _ = run_reduce2("tst_reduce2_neutron_nofloat_h", pdb_1yjp, [])
-  with open(fn_in) as f:
-    pdb_str = f.read()
+  pdb_str = pdb_1yjp_h()
   fn, log, description = run_reduce2("tst_reduce2_neutron_nofloat", pdb_str,
     ["approach=optimize"])
   assert FLOATING not in description
@@ -408,13 +401,12 @@ def test_no_floating_h_unchanged():
   assert atom_lines(fn) == atom_lines(fn_ref)
 
 def test_floating_h_flipkins():
-  # orphan water H (water 8 without its O): removed in the main run and not
-  # brought back by the flipkin passes, which restart from the initial model
-  fn, _, _ = run_reduce2("tst_reduce2_neutron_orphan_h", pdb_1yjp,
-    ["exclude_water=False"])
-  with open(fn) as f:
-    pdb_str = "\n".join(l for l in f.read().splitlines()
-                        if " O   HOH A   8" not in l) + "\n"
+  # orphan water H (water 8 without its O), keep_existing_H=False: removed
+  # in the main run and not brought back by the flipkin passes (the
+  # keep_existing_H=True case is in test_flipkins_combined)
+  pdb_str = "\n".join(l for l in cached_run(pdb_1yjp,
+    exclude_water=False).text.splitlines()
+    if " O   HOH A   8" not in l) + "\n"
   assert pdb_str.count("HOH A   8") == 2       # H1, H2
   def orphans(hierarchy):
     return [a for a in hierarchy.atoms() if a.parent().resname == "HOH" and
@@ -426,7 +418,7 @@ def test_floating_h_flipkins():
     return original(self, probePhil, addFlipMovers, model, *args, **kwargs)
   if not os.path.isdir("tst_reduce2_neutron_orphan_fk"):
     os.mkdir("tst_reduce2_neutron_orphan_fk")
-  for keep in ("True", "False"):
+  for keep in ("False",):
     del seen[:]
     Optimizers.Optimizer.__init__ = init
     try:
@@ -449,11 +441,9 @@ def test_water_without_o_add():
   # approach=add keep_existing_H=True on 1yjp with water H and water 8's O
   # deleted: no crash in workaround_002(); the two H are removed and reported
   # as missing their heavy atom, not as not parameterized
-  fn, _, _ = run_reduce2("tst_reduce2_neutron_no_o_h", pdb_1yjp,
-    ["exclude_water=False"])
-  with open(fn) as f:
-    pdb_str = "\n".join(l for l in f.read().splitlines()
-                        if " O   HOH A   8" not in l) + "\n"
+  pdb_str = "\n".join(l for l in cached_run(pdb_1yjp,
+    exclude_water=False).text.splitlines()
+    if " O   HOH A   8" not in l) + "\n"
   fn, log, description = run_reduce2("tst_reduce2_neutron_no_o", pdb_str,
     ["approach=add", "keep_existing_H=True", "exclude_water=False"])
   h = iotbx.pdb.input(fn).construct_hierarchy()
@@ -499,10 +489,13 @@ def make_program(prefix, pdb_str, cif_str=None, **params):
   with open(prefix + ".pdb", "w") as f:
     f.write(pdb_str)
   args = [prefix + ".pdb"]
-  if cif_str is not None:
-    with open(prefix + ".cif", "w") as f:
-      f.write(cif_str)
-    args.append(prefix + ".cif")
+  cif_strs = [] if cif_str is None else (
+    [cif_str] if isinstance(cif_str, str) else list(cif_str))
+  for i, text in enumerate(cif_strs):
+    fn = prefix + ("_%d" % i if i else "") + ".cif"
+    with open(fn, "w") as f:
+      f.write(text)
+    args.append(fn)
   args += ["%s=%s" % (name.replace("__", "."), value)
            for name, value in params.items()]
   parser = CCTBXParser(program_class=reduce2.Program, logger=null_out())
@@ -567,27 +560,6 @@ def test_validate_sorrys():
     prog, log = make_program(prefix, pdb_ser_dg, neutron_option="none",
       **params)
     prog.validate()
-
-def test_none_distances():
-  # 9b: none keeps today's distances; no D anywhere
-  for args, neutron in (([], False), (["use_neutron_distances=True"], True),
-                        (["qmready=True"], True)):
-    fn, log, description = run_reduce2("tst_reduce2_neutron_9b", pdb_1yjp,
-      ["neutron_option=none"] + args)
-    check_bond_lengths(fn, use_neutron_distances=neutron)
-    h = iotbx.pdb.input(fn).construct_hierarchy()
-    assert "D" not in [a.element.strip() for a in h.atoms()]
-    assert "DOD" not in [ag.resname for ag in h.atom_groups()]
-
-def test_resolved_flag_all_h():
-  # neutron_option switches neutron distances on; output still H-only
-  fn, log, description = run_reduce2("tst_reduce2_neutron_all_h", pdb_1yjp,
-    ["neutron_option=all_h", "approach=place", "exclude_water=False"])
-  assert "neutron_option=all_h: use_neutron_distances set to True" in log
-  check_water(fn, 0.98, 7)
-  check_bond_lengths(fn, use_neutron_distances=True)
-  h = iotbx.pdb.input(fn).construct_hierarchy()
-  assert "D" not in [a.element.strip() for a in h.atoms()]
 
 # ligand unknown to the CCD and the monomer library; C1-O1 1.4321 A
 pdb_lig = """\
@@ -705,6 +677,22 @@ def run_prog(prefix, pdb_str, cif_str=None, **params):
   prog.log_text = log.getvalue()
   return prog
 
+_cached_runs = {}
+def cached_run(pdb_str, cif_str=None, **params):
+  """run_prog() once per input and parameters, shared by tests that only
+  read it: the program (with .text, .description) and its files
+  tst_reduce2_neutron_cache_<n>*"""
+  key = (pdb_str, cif_str if cif_str is None or isinstance(cif_str, str)
+    else tuple(cif_str), tuple(sorted(params.items())))
+  if key not in _cached_runs:
+    prog = run_prog("tst_reduce2_neutron_cache_%d" % len(_cached_runs),
+      pdb_str, cif_str, **params)
+    with open(prog.params.output.filename) as f: prog.text = f.read()
+    with open(prog.params.output.description_file_name) as f:
+      prog.description = f.read()
+    _cached_runs[key] = prog
+  return _cached_runs[key]
+
 def hd_pairs(hierarchy):
   """[(H, D)] from exchangeable_hd_selections()"""
   atoms = hierarchy.atoms()
@@ -722,10 +710,13 @@ def heavy_atoms(hierarchy):
     for a in hierarchy.atoms() if a.element.strip() not in ("H", "D"))
 
 def test_distances_all_modes():
-  # neutron targets for every mode, add and place; water 0.98 A; H and D of
-  # a pair at the same position
+  # neutron targets for every mode (add), and with place for a split mode
+  # and a one-isotope mode (the output step is the same for add and place);
+  # water 0.98 A; H and D of a pair at the same position. all_h switches
+  # neutron distances on and writes H only
   for option in NEUTRON:
-    for approach in ("add", "place"):
+    for approach in (("add", "place") if option in ("hd_and_h", "all_d")
+                     else ("add",)):
       prefix = "tst_reduce2_neutron_32_%s_%s" % (option, approach)
       fn, log, description = run_reduce2(prefix, pdb_1yjp,
         ["neutron_option=" + option, "approach=" + approach,
@@ -741,11 +732,13 @@ def test_distances_all_modes():
                                              "all_hd")), (option, len(pairs))
       for hh, dd in pairs:
         assert approx_equal(hh.xyz, dd.xyz, eps=1e-3), (hh.id_str())
+      if option == "all_h":
+        assert "neutron_option=all_h: use_neutron_distances set to True" in log
+        assert "D" not in [a.element.strip() for a in h.atoms()]
 
 def test_n_terminal_nh3():
   # 1: Gly 1 H1, H2, H3 all split in hd_and_h
-  fn, log, description = run_reduce2("tst_reduce2_neutron_nh3", pdb_1yjp,
-    ["neutron_option=hd_and_h"])
+  fn = cached_run(pdb_1yjp, neutron_option="hd_and_h").params.output.filename
   h = iotbx.pdb.input(fn).construct_hierarchy()
   gly = [rg for rg in h.residue_groups() if rg.resseq.strip() == "1"][0]
   by_alt = dict((ag.altloc, sorted(a.name.strip() for a in ag.atoms()))
@@ -784,8 +777,12 @@ def test_output_symmetry():
   for label, pdb_str, cryst1 in (("nocs", no_cs, None),
       ("placeholder", placeholder, "CRYST1    1.000    1.000    1.000"),
       ("cell", pdb_1yjp, "CRYST1   21.937    4.866   23.477")):
-    fn, log, description = run_reduce2("tst_reduce2_neutron_cs_" + label,
-      pdb_str, ["neutron_option=hd_and_h"])
+    if label == "cell":
+      fn = cached_run(pdb_str,
+        neutron_option="hd_and_h").params.output.filename
+    else:
+      fn, log, description = run_reduce2("tst_reduce2_neutron_cs_" + label,
+        pdb_str, ["neutron_option=hd_and_h"])
     with open(fn) as f:
       lines = [l for l in f.read().splitlines() if l.startswith("CRYST1")]
     if cryst1 is None:
@@ -794,9 +791,15 @@ def test_output_symmetry():
       assert len(lines) == 1 and lines[0].startswith(cryst1), lines
 
 def test_output_model():
-  # 9e, 9f, 9h: results and heavy atoms
-  prog = run_prog("tst_reduce2_neutron_out", pdb_1yjp,
-    neutron_option="hd_and_h", exclude_water=False)
+  # 9e, 9f, 9h: results and heavy atoms; 9g: no files, and the results model
+  # is the H/D model
+  prefix = "tst_reduce2_neutron_out"
+  for ext in ("_out.pdb", ".txt"):
+    if os.path.exists(prefix + ext): os.remove(prefix + ext)
+  prog = run_prog(prefix, pdb_1yjp, neutron_option="hd_and_h",
+    exclude_water=False, output__write_files=False)
+  assert not os.path.exists(prefix + "_out.pdb")
+  assert not os.path.exists(prefix + ".txt")
   results = prog.get_results()
   assert results.model is prog._output_model
   assert hasattr(results, "total_charge")
@@ -820,18 +823,6 @@ def test_output_model():
       ("CD1", "CD2", "CE1", "CE2"))
   assert ring(out_h) == ring(prog.model.get_hierarchy())
 
-def test_write_files_false():
-  # 9g: no files, and the results model is the H/D model
-  prefix = "tst_reduce2_neutron_nowrite"
-  for ext in ("_out.pdb", ".txt"):
-    if os.path.exists(prefix + ext): os.remove(prefix + ext)
-  prog = run_prog(prefix, pdb_1yjp, neutron_option="hd_and_h",
-    output__write_files=False)
-  assert not os.path.exists(prefix + "_out.pdb")
-  assert not os.path.exists(prefix + ".txt")
-  model = prog.get_results().model
-  assert "D" in [a.element.strip() for a in model.get_hierarchy().atoms()]
-
 def test_water_after_select_hd():
   # 9k(a): placement drops the unparameterizable Lys HD2/HD3 (select());
   # the water O-D stays 0.98 A
@@ -848,8 +839,7 @@ def test_occupancy_groups():
   # 10: one exchangeable pair per split site; phenix.refine's
   # occupancy_selections() puts each split site in one two-atom group
   from mmtbx.refinement.occupancies import occupancy_selections
-  prog = run_prog("tst_reduce2_neutron_occ", pdb_1yjp,
-    neutron_option="hd_and_h")
+  prog = cached_run(pdb_1yjp, neutron_option="hd_and_h")
   fn = prog.params.output.filename
   model = mmtbx.model.manager(model_input=iotbx.pdb.input(fn), log=null_out())
   model.process(make_restraints=True)
@@ -916,42 +906,14 @@ def test_ambiguous_parent():
     h = iotbx.pdb.input(prog.params.output.filename).construct_hierarchy()
     assert "HO1" not in [a.name.strip() for a in h.atoms()]
 
-_pdb_1yjp_h = []
 def pdb_1yjp_h():
-  if not _pdb_1yjp_h:
-    fn, _, _ = run_reduce2("tst_reduce2_neutron_1yjp_h", pdb_1yjp, [])
-    with open(fn) as f: _pdb_1yjp_h.append(f.read())
-  return _pdb_1yjp_h[0]
+  return cached_run(pdb_1yjp).text
 
 def make_model_from_str(pdb_str):
   model = mmtbx.model.manager(model_input=iotbx.pdb.input(
     lines=pdb_str.split("\n"), source_info=None), log=null_out())
   model.process(make_restraints=True)
   return model
-
-def test_flipkins_hd():
-  # hd_and_h with flipkins: completes, the written model is the H/D model,
-  # and the flipkins are those of the H-only run with the same (neutron)
-  # distances: they are made from self.model
-  kins = {}
-  for option, args in (("none", dict(use_neutron_distances=True)),
-                       ("hd_and_h", {})):
-    d = "tst_reduce2_neutron_fk_" + option
-    if not os.path.isdir(d): os.mkdir(d)
-    prefix = "tst_reduce2_neutron_fkrun_" + option
-    prog = run_prog(prefix, pdb_1yjp, neutron_option=option,
-      add_flip_movers=True, output__flipkin_directory=d, **args)
-    h = iotbx.pdb.input(prog.params.output.filename).construct_hierarchy()
-    has_d = "D" in [a.element.strip() for a in h.atoms()]
-    assert has_d == (option != "none")
-    kins[option] = {}
-    for f in sorted(os.listdir(d)):
-      with open(os.path.join(d, f)) as fh:
-        text = fh.read().replace(prefix, "BASE")
-      kins[option][f.replace(prefix, "BASE")] = [l for l in text.splitlines()
-        if not l.startswith("@caption")]
-  assert len(kins["none"]) > 0
-  assert kins["none"] == kins["hd_and_h"]
 
 def test_output_check_fires():
   # a provenance map missing an entry is an internal error
@@ -1082,15 +1044,6 @@ def test_dod_input_hd_and_h():
   assert water_groups(fn) == [("DOD", ["D", "O"])] * 7, water_groups(fn)
   check_water(fn, 0.98, 7)
 
-def test_dod_input_flipkins():
-  d = "tst_reduce2_neutron_dodfk"
-  if not os.path.isdir(d): os.mkdir(d)
-  fn, log, description = run_reduce2("tst_reduce2_neutron_dodfk_run",
-    pdb_1yjp_dod, ["exclude_water=False", "add_flip_movers=True",
-    "output.flipkin_directory=" + d])
-  assert water_groups(fn) == [("HOH", ["H", "O"])] * 7, water_groups(fn)
-  assert len(os.listdir(d)) > 0
-
 # ------------------------------------------------------------------------------
 # step 3.3: per-mode labels, His, ligands, glycan, mmCIF, description
 
@@ -1193,8 +1146,7 @@ def test_dipeptide_modes():
   # checked against phenix.ready_set on 2026-10-17; differences explained in
   # the neutron_option plan
   for option in NEUTRON:
-    fn, log, description = run_reduce2("tst_reduce2_neutron_dipep_" + option,
-      dipeptide, ["neutron_option=" + option])
+    fn = cached_run(dipeptide, neutron_option=option).params.output.filename
     ours, expected = hd_labels(fn), hd_table(dipeptide_hd[option])
     assert ours == expected, (option, sorted(ours ^ expected))
 
@@ -1397,8 +1349,8 @@ UNCHANGED = "Residues without restraints, left unchanged:"
 def test_user_cif_ligand():
   # 9c (add): invented ligand with OH and NH2 from a CIF written here: the
   # polar H are split, no missing restraints; without the CIF the run fails
-  prog = run_prog("tst_reduce2_neutron_zq4", heavy_pdb("04", zq4_atoms),
-    zq4_cif, neutron_option="hd_and_h")
+  prog = cached_run(heavy_pdb("04", zq4_atoms), zq4_cif,
+    neutron_option="hd_and_h")
   h = iotbx.pdb.input(prog.params.output.filename).construct_hierarchy()
   hd = sorted((a.name.strip(), a.parent().altloc) for a in h.atoms()
               if a.element.strip() in ("H", "D"))
@@ -1471,10 +1423,13 @@ def test_mmcif_output():
   # occupancies and the same exchangeable pairs
   results = {}
   for ext in ("pdb", "cif"):
-    fn, log, description = run_reduce2("tst_reduce2_neutron_mmcif_" + ext,
-      pdb_1yjp, ["neutron_option=hd_and_h",
-      "output.filename=tst_reduce2_neutron_mmcif_out." + ext])
-    fn = "tst_reduce2_neutron_mmcif_out." + ext
+    if ext == "pdb":
+      fn = cached_run(pdb_1yjp,
+        neutron_option="hd_and_h").params.output.filename
+    else:
+      fn = "tst_reduce2_neutron_mmcif_out." + ext
+      run_reduce2("tst_reduce2_neutron_mmcif_" + ext, pdb_1yjp,
+        ["neutron_option=hd_and_h", "output.filename=" + fn])
     h = iotbx.pdb.input(fn).construct_hierarchy()
     labels = set((a.parent().parent().resseq.strip(), a.parent().resname,
       a.name.strip(), a.parent().altloc, a.element.strip(), round(a.occ, 2))
@@ -1521,10 +1476,12 @@ def test_description_file():
     "their input values; phenix.refine currently refines H + D = 1.") in \
     section, section
   assert "name not pairable by phenix.refine" in entry("1HO2  03 A   1")
-  # none: no H/D section
+  # none: no H/D section; 9b: explicit none keeps today's distances
   fn, log, description = run_reduce2("tst_reduce2_neutron_desc_none",
-    pdb_1yjp, [])
+    pdb_1yjp, ["neutron_option=none"])
   assert "H/D model" not in description
+  check_bond_lengths(fn, use_neutron_distances=False)
+  check_no_d(fn)
 
 # ------------------------------------------------------------------------------
 # step 4.1: input check and normalization
@@ -1545,14 +1502,9 @@ def edit_atoms(pdb_str, edit):
     edit(a)
   return h.as_pdb_string(crystal_symmetry=inp.crystal_symmetry())
 
-_dipeptide_out = {}
 def dipeptide_out(option):
   """written output of the Ser-Leu dipeptide in mode option"""
-  if option not in _dipeptide_out:
-    fn, _, _ = run_reduce2("tst_reduce2_neutron_dpo_" + option, dipeptide,
-      ["neutron_option=" + option])
-    with open(fn) as f: _dipeptide_out[option] = f.read()
-  return _dipeptide_out[option]
+  return cached_run(dipeptide, neutron_option=option).text
 
 # Ser-Leu dipeptide plus a water, for the reruns and the cross-mode runs
 dipeptide_water = dipeptide.replace("END\n",
@@ -1837,9 +1789,7 @@ def test_remove_d_input():
 def test_remove_then_qmready():
   # the qmready hint: hd_and_h output -> approach=remove -> qmready=True runs
   # free His: atom-complete, as qmready requires (the dipeptide is not)
-  fn, _, _ = run_reduce2("tst_reduce2_neutron_rmq_in", his_no_h,
-    ["neutron_option=hd_and_h"])
-  with open(fn) as f: src = f.read()
+  src = cached_run(his_no_h, neutron_option="hd_and_h").text
   assert " DD1BHIS" in src
   fn, log, description = run_reduce2("tst_reduce2_neutron_rmq", src,
     ["approach=remove"])
@@ -1866,9 +1816,7 @@ def test_remove_h_input():
 def test_unused_records():
   # an input pair on His HE2: the Optimizer flips the His and deletes HE2,
   # so its recorded values are not used and listed by site
-  fn, _, _ = run_reduce2("tst_reduce2_neutron_unused_in", his_no_h,
-    ["neutron_option=hd_and_h"])
-  with open(fn) as f: src = f.read()
+  src = cached_run(his_no_h, neutron_option="hd_and_h").text
   fn, log, description = run_reduce2("tst_reduce2_neutron_unused", src,
     ["approach=optimize", "neutron_option=hd_and_h", "add_flip_movers=True"])
   assert "Deleting chain A HIS 45 HE2" in description, description
@@ -1968,9 +1916,8 @@ def test_cross_mode():
 def test_user_cif_ligand_optimize():
   # 9c (optimize): the 04 hd_and_h output (D input) with its CIF, optimize
   # hd_and_h: runs, the polar H are split, no missing restraints
-  prog = run_prog("tst_reduce2_neutron_zq4o_in", heavy_pdb("04", zq4_atoms),
-    zq4_cif, neutron_option="hd_and_h")
-  with open(prog.params.output.filename) as f: src = f.read()
+  src = cached_run(heavy_pdb("04", zq4_atoms), zq4_cif,
+    neutron_option="hd_and_h").text
   assert " DN1B 04" in src and " DO1B 04" in src
   prog = run_prog("tst_reduce2_neutron_zq4o", src, zq4_cif,
     approach="optimize", neutron_option="hd_and_h")
@@ -1998,8 +1945,7 @@ def test_user_cif_ligand_optimize():
 def test_floating_h_water_hd():
   # 9k(b), hd_and_h: Tyr HH without its OH is dropped by the removal step;
   # the written water O-D stays at 0.98 A
-  pdb_str = h_input_without_tyr_oh("tst_reduce2_neutron_float_wd",
-    ["exclude_water=False"])
+  pdb_str = h_input_without_tyr_oh(exclude_water=False)
   fn, log, description = run_reduce2("tst_reduce2_neutron_float_wd", pdb_str,
     ["approach=optimize", "neutron_option=hd_and_h", "exclude_water=False"])
   assert FLOATING in description
@@ -2021,29 +1967,6 @@ def test_water_layout_e_neutron():
     ["approach=optimize", "neutron_option=hd_and_h"])
   assert water_groups(fn) == [("DOD", ["D", "O"])], water_groups(fn)
   check_water(fn, 0.98, 1)
-
-def test_flipkins_d_input():
-  # optimize hd_and_h on D input with flipkins: the flipkin passes do not
-  # change the written model or the H/D section; the flipkin file is written
-  fn, _, _ = run_reduce2("tst_reduce2_neutron_fkd_in", pdb_1yjp,
-    ["neutron_option=hd_and_h"])
-  with open(fn) as f: src = f.read()
-  assert "DD21BASN" in src
-  directory = "tst_reduce2_neutron_fkd"
-  if not os.path.isdir(directory): os.mkdir(directory)
-  for f in os.listdir(directory): os.remove(os.path.join(directory, f))
-  args = ["approach=optimize", "neutron_option=hd_and_h",
-          "add_flip_movers=True"]
-  fn_on, log_on, d_on = run_reduce2("tst_reduce2_neutron_fkd_on", src,
-    args + ["output.flipkin_directory=" + directory])
-  fn_off, log_off, d_off = run_reduce2("tst_reduce2_neutron_fkd_off", src,
-    args)
-  with open(fn_on) as f1, open(fn_off) as f2:
-    assert f1.read() == f2.read()
-  section = lambda d: d[d.index("H/D model (neutron_option=hd_and_h)"):]
-  assert section(d_on) == section(d_off)
-  assert "Values restored from the input: 20" in d_on
-  assert os.listdir(directory) == ["tst_reduce2_neutron_fkd_onFH-flipnq.kin"]
 
 # ------------------------------------------------------------------------------
 # optimize and the input check: residues without restraints, CCD-only residues
@@ -2168,40 +2091,17 @@ def test_ccd_only_ligand_optimize():
   assert [n for n, o in (prog.model.get_restraint_objects() or [])
           if n.startswith("auto_")] == []
 
-def test_missing_restraints_flipkins():
-  # flipkins with ligand 04 left unchanged: its unbonded H are classified by
-  # their residue, the run completes
-  directory = "tst_reduce2_neutron_mrfk"
-  if not os.path.isdir(directory): os.mkdir(directory)
-  for f in os.listdir(directory): os.remove(os.path.join(directory, f))
-  src = protein_ligand_src("hd_and_h")
-  prog = run_prog("tst_reduce2_neutron_mrfk", src,
-    approach="optimize", neutron_option="hd_and_h",
-    ignore_missing_restraints=True, add_flip_movers=True,
-    output__flipkin_directory=directory)
-  with open(prog.params.output.filename) as f:
-    assert ligand_split_records(f.read(), True) == \
-      ligand_split_records(src, True)
-  assert os.listdir(directory) == [
-    "tst_reduce2_neutron_mrfkFH-flipnq.kin"], os.listdir(directory)
-
 def test_missing_restraints_keep_existing_h():
   # add/place/optimize keep_existing_H=True ignore_missing_restraints=True:
   # ligand 04 (no CIF) is written exactly as in the input, D and their 0.5
-  # occupancy and B too, and listed; flipkins (add, optimize) run.
+  # occupancy and B too, and listed (with flipkins: test_flipkins_combined).
   # add keep_existing_H=False: no H
   for approach in ("add", "place", "optimize"):
     for option in ("none", "hd_and_h"):
       prefix = "tst_reduce2_neutron_mrk_%s_%s" % (approach, option)
       src = protein_ligand_src(option)
-      args = dict(approach=approach, neutron_option=option,
+      prog = run_prog(prefix, src, approach=approach, neutron_option=option,
         keep_existing_H=True, ignore_missing_restraints=True)
-      if approach != "place":
-        directory = prefix + "_fk"
-        if not os.path.isdir(directory): os.mkdir(directory)
-        for f in os.listdir(directory): os.remove(os.path.join(directory, f))
-        args.update(add_flip_movers=True, output__flipkin_directory=directory)
-      prog = run_prog(prefix, src, **args)
       with open(prog.params.output.filename) as f: out = f.read()
       lig_in = ligand_split_records(src, True)
       assert len(lig_in) == (16 if option == "hd_and_h" else 14), len(lig_in)
@@ -2215,9 +2115,6 @@ def test_missing_restraints_keep_existing_h():
         description = f.read()
       for text in (description, prog.log_text):
         assert UNCHANGED + "\n04 B 1\n" in text, (approach, option)
-      if approach != "place":
-        assert os.listdir(directory) == [prefix + "FH-flipnq.kin"], \
-          os.listdir(directory)
   prog = run_prog("tst_reduce2_neutron_mrk_nokeep", protein_ligand_src("none"),
     approach="add", ignore_missing_restraints=True)
   with open(prog.params.output.filename) as f: out = f.read()
@@ -2275,9 +2172,11 @@ def test_name_mismatch_reported():
   for text in (description, prog.log_text):
     assert block in text, text
   for approach in ("add", "optimize"):
-    src = protein_ligand_src("none") if approach == "optimize" else pdb_1yjp
-    prog = run_prog("tst_reduce2_neutron_nm_no_" + approach, src,
-      zq4_cif if approach == "optimize" else None, approach=approach)
+    if approach == "add":
+      prog = cached_run(pdb_1yjp)
+    else:
+      prog = run_prog("tst_reduce2_neutron_nm_no_" + approach,
+        protein_ligand_src("none"), zq4_cif, approach=approach)
     with open(prog.params.output.description_file_name) as f:
       description = f.read()
     for text in (description, prog.log_text):
@@ -2290,7 +2189,7 @@ def test_atom_characteristics_unbonded_h():
   from mmtbx.hydrogens import hd_exchange
   from scitbx.array_family import flex
   from libtbx import group_args
-  pdb_str = h_input_without_tyr_oh("tst_reduce2_neutron_gac")
+  pdb_str = h_input_without_tyr_oh()
   prog, log = make_program("tst_reduce2_neutron_gac", pdb_str)
   prog.validate()
   prog.model = prog.data_manager.get_model()
@@ -2315,106 +2214,177 @@ def test_atom_characteristics_unbonded_h():
   a = [a for a in prog.model.get_atoms() if a.name.strip() == "HH"][0]
   assert in_main[a] is False and not in_water[a]
 
-def test_ccd_only_ligand_flipkins():
-  # 1yjp plus BGM (CCD only) with flipkins, add and optimize (on the add
-  # output): the flipkin passes interpret with the CCD restraints too, so
-  # the BGM H are bonded there (before: "Found Hydrogen with no neigbors");
-  # the written model is the one without flipkins
-  lig = heavy_pdb("BGM", bgm_atoms(), offset=(15.0, 10.0, 15.0),
-    cryst1=False).replace(" A   1 ", " B   1 ")
-  model = pdb_1yjp.replace("END\n", "") + lig + "END\n"
-  directory = "tst_reduce2_neutron_bgmfk"
-  if not os.path.isdir(directory): os.mkdir(directory)
+# ------------------------------------------------------------------------------
+# flipkins: one input with every feature the flipkin passes must handle
+
+def combined_flipkin_model():
+  """1yjp (Asn/Gln amides, waters), His 45 (chain C), BGM (CCD only, chain
+  B), 04 (chain D; its CIF is not given to the flipkin runs) and 03 (chain
+  E, user CIF): heavy atoms in a P1 box"""
+  def atom_lines(text):
+    return "".join(l + "\n" for l in text.splitlines()
+                   if l.startswith(("ATOM", "HETATM")))
+  his = iotbx.pdb.input(source_info=None, lines=his_no_h).construct_hierarchy()
+  his.atoms().set_xyz(his.atoms().extract_xyz() + (25.0, 0.0, 0.0))
+  his.only_chain().id = "C"
+  def ligand(code, atoms, offset, chain):
+    return heavy_pdb(code, atoms, offset=offset, cryst1=False).replace(
+      " A   1 ", " %s   1 " % chain)
+  return ("CRYST1   80.000   80.000   80.000  90.00  90.00  90.00 P 1\n" +
+    atom_lines(pdb_1yjp) + atom_lines(his.as_pdb_string()) +
+    ligand("BGM", bgm_atoms(), (15.0, 10.0, 15.0), "B") +
+    ligand("04", zq4_atoms, (-10.0, 10.0, -8.0), "D") +
+    ligand("03", zq3_atoms, (-10.0, -10.0, 20.0), "E") + "END\n")
+
+def test_flipkins_combined():
+  # Flipkins (amide and His) on one input, add and optimize, none and
+  # hd_and_h, keep_existing_H=True, ignore_missing_restraints=True:
+  # - the flipkin Optimizer runs use the neutron flag (none + neutron
+  #   distances: every configuration logs it)
+  # - flipkins are made from the H-only self.model: hd_and_h and none with
+  #   neutron distances give the same flipkins
+  # - an O-only water named DOD gets H in every pass (renamed HOH)
+  # - an orphan water H removed as floating stays out of every flipkin pass;
+  #   optimize: a water H the dictionary does not know (H3), which placement
+  #   in the passes keeps, too: removed from the snapshot
+  #   (_RemoveFromSnapshot())
+  # - 04 left unchanged: its unbonded H/D are classified by their residue
+  #   (_GetAtomCharacteristics()) and kept out of probe2 (_ProbeModel());
+  #   written exactly as in the input, listed
+  # - BGM (CCD only) is bonded in the passes (restraints attached once);
+  #   amide and His flipkins written; BGM H/D in the output
+  # - no auto restraint objects in the written files, the results model and
+  #   self.model; the data manager's input model keeps exactly its own
+  # - D input (optimize hd_and_h) and add hd_and_h: the flipkin passes do not
+  #   change the written model or the H/D section (run without flipkins)
+  model = combined_flipkin_model()
+  src = {}
   for option in ("none", "hd_and_h"):
-    src = None
-    for approach in ("add", "optimize"):
-      prefix = "tst_reduce2_neutron_bgmfk_%s_%s" % (approach, option)
-      pdb_str = model if approach == "add" else src
-      for f in os.listdir(directory): os.remove(os.path.join(directory, f))
-      args = ["approach=" + approach, "neutron_option=" + option,
-              "add_flip_movers=True"]
-      fn_on, _, _ = run_reduce2(prefix + "_on", pdb_str,
-        args + ["output.flipkin_directory=" + directory])
-      assert os.listdir(directory) == [prefix + "_onFH-flipnq.kin"], \
-        os.listdir(directory)
-      with open(fn_on) as f: written = f.read()
-      assert len([l for l in written.splitlines() if "BGM" in l and
-                  l[76:78].strip() in ("H", "D")]) == \
-        (13 if option == "none" else 19)
-      if option == "hd_and_h":
-        fn_off, _, _ = run_reduce2(prefix + "_off", pdb_str, args)
-        with open(fn_off) as f: assert f.read() == written
-      if approach == "add": src = written
-
-def test_ccd_only_ligand_his_flipkins():
-  # His flipkin section with BGM (CCD only): add, and optimize on the place
-  # output (both ring N-H; a His with one ring H gets no flip mover on
-  # optimize), complete and write the His flipkin
-  lig = heavy_pdb("BGM", bgm_atoms(), offset=(25.0, 25.0, 25.0),
-    cryst1=False).replace(" A   1 ", " B   1 ")
-  model = his_no_h.replace(his_no_h.splitlines()[0],
-    "CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1").replace(
-    "END\n", "") + lig + "END\n"
-  fn, _, _ = run_reduce2("tst_reduce2_neutron_bgmhis_place", model,
-    ["approach=place"])
-  with open(fn) as f: placed = f.read()
-  assert " HD1 HIS" in placed and " HE2 HIS" in placed
-  directory = "tst_reduce2_neutron_bgmhis"
-  if not os.path.isdir(directory): os.mkdir(directory)
-  for approach, src in (("add", model), ("optimize", placed)):
-    prefix = "tst_reduce2_neutron_bgmhis_" + approach
-    for f in os.listdir(directory): os.remove(os.path.join(directory, f))
-    fn, _, _ = run_reduce2(prefix, src, ["approach=" + approach,
-      "add_flip_movers=True", "output.flipkin_directory=" + directory])
-    assert prefix + "FH-fliphis.kin" in os.listdir(directory), \
-      os.listdir(directory)
-    with open(fn) as f: out = f.read()
-    assert len([l for l in out.splitlines() if "BGM" in l and
-                l[76:78].strip() == "H"]) == 13
-
-def test_no_auto_restraint_objects_in_output():
-  # 1yjp plus BGM (CCD objects attached for the run) plus ligand 04 with its
-  # CIF, flipkins on: the written PDB and mmCIF, get_results().model and the
-  # final self.model carry no auto restraint objects; the data manager's
-  # input model keeps exactly its own (the user CIF)
-  bgm = heavy_pdb("BGM", bgm_atoms(), offset=(15.0, 10.0, 15.0),
-    cryst1=False).replace(" A   1 ", " B   1 ")
-  lig = heavy_pdb("04", zq4_atoms, offset=(-10.0, 10.0, -8.0),
-    cryst1=False).replace(" A   1 ", " C   1 ")
-  model = pdb_1yjp.replace("END\n", "") + bgm + lig + "END\n"
-  directory = "tst_reduce2_neutron_noauto"
-  if not os.path.isdir(directory): os.mkdir(directory)
+    src[option] = cached_run(model, (zq3_cif, zq4_cif), approach="place",
+      neutron_option=option, exclude_water=False).text
+  # H input: water 8 without its O (orphan H1/H2), water 9 O only, as DOD
+  lines = []
+  for l in src["none"].splitlines():
+    if l[17:26] == "HOH A   8" and l[12:16] == " O  ": continue
+    if l[17:26] == "HOH A   9":
+      if l[76:78].strip() == "H": continue
+      l = l[:17] + "DOD" + l[20:]
+    lines.append(l)
+  h_src = "\n".join(lines) + "\n"
+  assert h_src.count("HOH A   8") == 2 and h_src.count("DOD A   9") == 1
+  # both His ring N-H (a His with one gets no flip mover on optimize)
+  assert " HD1 HIS" in h_src and " HE2 HIS" in h_src
+  # optimize: also an H3 on water 10 (no restraint, floating)
+  o = [l for l in lines if l[17:26] == "HOH A  10" and l[12:16] == " O  "][0]
+  h3 = o[:12] + " H3 " + o[16:30] + "%8.3f" % (float(o[30:38]) + 0.96) + \
+    o[38:76] + " H"
+  opt_src = h_src.replace(o + "\n", o + "\n" + h3 + "\n")
+  assert opt_src.count(" H3  HOH A  10") == 1
+  d_src = src["hd_and_h"]
+  assert "DD21BASN" in d_src
+  def orphans(hierarchy):
+    return [a for a in hierarchy.atoms() if a.parent().resname == "HOH" and
+            a.parent().parent().resseq.strip() == "8"]
+  seen = []
+  original_init = Optimizers.Optimizer.__init__
+  def init(self, probePhil, addFlipMovers, model, *args, **kwargs):
+    seen.append(len(orphans(model.get_hierarchy())))
+    return original_init(self, probePhil, addFlipMovers, model, *args,
+      **kwargs)
   names = lambda m: [n for n, o in (m.get_restraint_objects() or [])]
-  sources = {}
-  for approach, option, ext in (("add", "none", "pdb"),
-      ("add", "hd_and_h", "cif"), ("optimize", "none", "cif"),
-      ("optimize", "hd_and_h", "pdb")):
-    prefix = "tst_reduce2_neutron_noauto_%s_%s" % (approach, option)
-    src = model if approach == "add" else sources[option]
-    prog, log = make_program(prefix, src, zq4_cif,
-      approach=approach, neutron_option=option, add_flip_movers=True,
-      output__flipkin_directory=directory,
-      output__filename=prefix + "_out." + ext,
+  def run(prefix, source, ext, directory, **params):
+    params.update(keep_existing_H=True, ignore_missing_restraints=True,
+      exclude_water=False, add_flip_movers=True,
+      output__filename=prefix + "_out" + ext,
       output__description_file_name=prefix + ".txt", output__overwrite=True)
+    if directory is not None:
+      if not os.path.isdir(directory): os.mkdir(directory)
+      for f in os.listdir(directory): os.remove(os.path.join(directory, f))
+      params["output__flipkin_directory"] = directory
+    prog, log = make_program(prefix, source, zq3_cif, **params)
     input_model = prog.data_manager.get_model()
     before = names(input_model)
     assert len(before) == 1, before
     prog.validate()
     prog.run()
+    prog.log_text = log.getvalue()
     assert names(prog.data_manager.get_model()) == before
     assert prog.data_manager.get_model() is input_model
     for m in (prog.get_results().model, prog.model):
       assert not [n for n in names(m) if n.startswith("auto_")], names(m)
-    with open(prefix + "_out." + ext) as f: written = f.read()
-    assert "auto_" not in written and "data_comp_BGM" not in written
-    assert "BGM" in written
-    if approach == "add":
-      if ext == "cif":
-        model_out = mmtbx.model.manager(model_input=iotbx.pdb.input(
-          prefix + "_out." + ext), log=null_out())
-        sources[option] = model_out.model_as_pdb()
-      else:
-        sources[option] = written
+    with open(prog.params.output.filename) as f: prog.text = f.read()
+    with open(prog.params.output.description_file_name) as f:
+      prog.description = f.read()
+    assert "auto_" not in prog.text and "data_comp_BGM" not in prog.text
+    assert "BGM" in prog.text
+    return prog
+  def hd_section(description):
+    return description[description.index("H/D model (neutron_option="):]
+  kins = {}
+  for key, approach, option, source, ext, extra in (
+      ("add_none", "add", "none", h_src, ".pdb",
+       dict(use_neutron_distances=True)),
+      ("add_hd", "add", "hd_and_h", h_src, ".cif", {}),
+      ("opt_none", "optimize", "none", opt_src, ".cif", {}),
+      ("opt_hd", "optimize", "hd_and_h", d_src, ".pdb", {})):
+    prefix = "tst_reduce2_neutron_fkc_" + key
+    directory = prefix + "_fk"
+    del seen[:]
+    Optimizers.Optimizer.__init__ = init
+    try:
+      prog = run(prefix, source, ext, directory, approach=approach,
+        neutron_option=option, **extra)
+    finally:
+      Optimizers.Optimizer.__init__ = original_init
+    label = (approach, option)
+    h = iotbx.pdb.input(source_info=None, lines=prog.text).construct_hierarchy()
+    assert sorted(os.listdir(directory)) == [prefix + "FH-fliphis.kin",
+      prefix + "FH-flipnq.kin"], (label, os.listdir(directory))
+    kins[key] = {}
+    for f in sorted(os.listdir(directory)):
+      with open(os.path.join(directory, f)) as fh:
+        text = fh.read().replace(prefix + "_out" + ext, "BASE_out").replace(
+          prefix, "BASE")
+      kins[key][f.replace(prefix, "BASE")] = [l for l in text.splitlines()
+        if not l.startswith("@caption")]
+    # BGM bonded in the passes, its H/D written
+    assert len([a for a in h.atoms() if a.parent().resname == "BGM" and
+      a.element.strip() in ("H", "D")]) == (13 if option == "none" else 19)
+    # 04 left unchanged and listed
+    assert ligand_split_records(prog.text, True) == \
+      ligand_split_records(source, True), label
+    for text in (prog.description, prog.log_text):
+      assert UNCHANGED + "\n04 D 1\n" in text, label
+    has_d = "D" in [a.element.strip() for a in h.atoms()]
+    assert has_d == (option != "none"), label
+    # no orphan water H in any Optimizer run, nor written
+    assert orphans(h) == [], label
+    if key == "add_none":
+      assert INFO_TRUE in prog.description
+      assert prog.log_text.count(INFO_TRUE) >= 2, prog.log_text.count(INFO_TRUE)
+      assert INFO_FALSE not in prog.log_text
+      assert water_groups(prog.params.output.filename) == \
+        [("HOH", ["H", "O"])] * 6, water_groups(prog.params.output.filename)
+    if key == "add_hd":
+      assert kins["add_hd"] == kins["add_none"]
+    if key == "opt_none":
+      # main run and the four flipkin configurations (amide, His)
+      assert seen == [0] * 5, seen
+      assert prog.description.count(FLOATING) == 1
+      listed = prog.description.split(FLOATING)[1].strip().splitlines()[:2]
+      assert sorted(l.split()[0] for l in listed) == ["H1", "H2"], listed
+      assert all(l.split()[1:] == ["HOH", "A", "8"] for l in listed), listed
+      listed = prog.description.split(FLOATING)[1].strip().splitlines()[2]
+      assert listed.split() == ["H3", "HOH", "A", "10"], listed
+    if option == "hd_and_h":
+      # the same run without flipkins writes the same model and H/D section
+      off = run(prefix + "_off", source, ext, None, approach=approach,
+        neutron_option=option, **extra)
+      assert off.text.replace(prefix + "_off", prefix) == prog.text, label
+      assert hd_section(off.description) == hd_section(prog.description)
+    if key == "opt_hd":
+      assert "Values restored from the input: 29" in prog.description, \
+        hd_section(prog.description)
 
 def run_prog_on_model(prefix, model, **params):
   """validate() and run() a reduce2.Program on a model in memory (no file)"""
@@ -2496,7 +2466,11 @@ def test_in_memory_rerun():
       [["1.000", "1.000", "1.000"]]), (case, option, cryst1)
     assert in_memory == from_file, (case, option)
   # X-H lengths follow the second run: X-ray first, neutron distances second
-  # (the first run's riding-H manager is not reused)
+  # (the first run's riding-H manager is not reused); refinement flags on the
+  # model (here: no site refined) do not restrict the riding-H idealization
+  # (either would leave the X-ray C-H)
+  from mmtbx.refinement import refinement_flags
+  from scitbx.array_family import flex
   prefix = "tst_reduce2_neutron_inmem_neutron_distances"
   prog = run_prog(prefix + "_1", systems["protein"])
   with open(prog.params.output.filename) as f: written = f.read()
@@ -2506,7 +2480,10 @@ def test_in_memory_rerun():
       matrix.col(ag.get_atom("CA").xyz)).length(), 2) for ag in h.atom_groups()
       for a in ag.atoms() if a.name.strip() in ("HA", "HA2", "HA3")))
   assert c_h(prog.params.output.filename) == [0.97]
-  prog = run_prog_on_model(prefix + "_2", prog.get_results().model,
+  model = prog.get_results().model
+  model.set_refinement_flags(refinement_flags.manager(
+    sites_individual=flex.bool(model.get_number_of_atoms(), False)))
+  prog = run_prog_on_model(prefix + "_2", model,
     approach="optimize", use_neutron_distances=True)
   assert c_h(prog.params.output.filename) == [1.09]
   reread = run_prog(prefix + "_file", written, approach="optimize",
@@ -2525,22 +2502,6 @@ def test_in_memory_rerun():
   check_water(prog.params.output.filename, 0.85, 7)
   reread = run_prog(prefix + "_file", written, approach="optimize",
     exclude_water=False)
-  assert atom_lines(prog.params.output.filename) == \
-    atom_lines(reread.params.output.filename)
-  # refinement flags on the model (here: no site refined) do not restrict
-  # the riding-H idealization
-  from mmtbx.refinement import refinement_flags
-  from scitbx.array_family import flex
-  prefix = "tst_reduce2_neutron_inmem_flags"
-  prog = run_prog(prefix + "_1", pdb_1yjp)
-  with open(prog.params.output.filename) as f: written = f.read()
-  model = prog.get_results().model
-  model.set_refinement_flags(refinement_flags.manager(
-    sites_individual=flex.bool(model.get_number_of_atoms(), False)))
-  prog = run_prog_on_model(prefix + "_2", model, approach="optimize",
-    use_neutron_distances=True)
-  reread = run_prog(prefix + "_file", written, approach="optimize",
-    use_neutron_distances=True)
   assert atom_lines(prog.params.output.filename) == \
     atom_lines(reread.params.output.filename)
 
@@ -2578,9 +2539,7 @@ def test_ccd_only_neutron_targets():
   # C-H for TPT); X-ray targets stay 0.9 x the CCD length
   bgm = heavy_pdb("BGM", bgm_atoms(), offset=(15.0, 10.0, 15.0),
     cryst1=False).replace(" A   1 ", " B   1 ")
-  prog = run_prog("tst_reduce2_neutron_ccdn",
-    pdb_1yjp.replace("END\n", "") + bgm + "END\n")
-  with open(prog.params.output.filename) as f: h_model = f.read()
+  h_model = cached_run(pdb_1yjp.replace("END\n", "") + bgm + "END\n").text
   for neutron in (False, True):
     model = mmtbx.model.manager(model_input=iotbx.pdb.input(
       source_info=None, lines=h_model), log=null_out())
@@ -2629,7 +2588,7 @@ def test_ccd_only_neutron_lengths():
   bgm = heavy_pdb("BGM", bgm_atoms(), offset=(15.0, 10.0, 15.0),
     cryst1=False).replace(" A   1 ", " B   1 ")
   model = pdb_1yjp.replace("END\n", "") + bgm + "END\n"
-  prog = run_prog("tst_reduce2_neutron_ccdl_none", model)
+  prog = cached_run(model)
   for x, e, d, d_ideal in bgm_xh(prog.params.output.filename):
     assert abs(d - 0.9 * d_ideal) < 0.005, (x, e, d, d_ideal)
   prog = run_prog("tst_reduce2_neutron_ccdl_add", model,
@@ -2769,7 +2728,6 @@ if __name__ == "__main__":
   test_neutron_add()
   test_neutron_place()
   test_neutron_optimize()
-  test_neutron_flipkins()
   test_qmready()
   test_neutron_after_select()
   test_water_layouts()
@@ -2783,20 +2741,16 @@ if __name__ == "__main__":
   test_water_single_altloc_h()
   test_output_names()
   test_validate_sorrys()
-  test_none_distances()
-  test_resolved_flag_all_h()
   test_rebuild_model()
   test_distances_all_modes()
   test_n_terminal_nh3()
   test_conformers()
   test_output_symmetry()
   test_output_model()
-  test_write_files_false()
   test_water_after_select_hd()
   test_occupancy_groups()
   test_partial_parent()
   test_ambiguous_parent()
-  test_flipkins_hd()
   test_output_check_fires()
   test_dod_input_all_h()
   test_output_check_water_names()
@@ -2805,7 +2759,6 @@ if __name__ == "__main__":
   test_dod_input_with_d_kept()
   test_dod_input_with_d_normalized()
   test_dod_input_hd_and_h()
-  test_dod_input_flipkins()
   test_dipeptide_modes()
   test_his_split()
   test_hc4_all_d()
@@ -2832,17 +2785,13 @@ if __name__ == "__main__":
   test_user_cif_ligand_optimize()
   test_floating_h_water_hd()
   test_water_layout_e_neutron()
-  test_flipkins_d_input()
   test_missing_restraints_optimize()
   test_missing_restraints_ignored()
   test_ccd_only_ligand_optimize()
-  test_missing_restraints_flipkins()
   test_missing_restraints_keep_existing_h()
   test_name_mismatch_reported()
   test_atom_characteristics_unbonded_h()
-  test_ccd_only_ligand_flipkins()
-  test_ccd_only_ligand_his_flipkins()
-  test_no_auto_restraint_objects_in_output()
+  test_flipkins_combined()
   test_in_memory_rerun()
   test_ccd_only_neutron_targets()
   test_ccd_only_neutron_lengths()
