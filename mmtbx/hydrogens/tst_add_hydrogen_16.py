@@ -3,7 +3,7 @@ import iotbx.pdb, iotbx.cif
 import mmtbx.model
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 from mmtbx.monomer_library import server
 from mmtbx.hydrogens import reduce_hydrogen
 from six.moves import cStringIO as StringIO
@@ -37,6 +37,7 @@ def run():
   test_026()
   test_027()
   test_028()
+  test_029()
 
 # ------------------------------------------------------------------------------
 
@@ -612,6 +613,25 @@ def test_028():
       assert approx_equal(angle, 109.5, eps=0.5), (alt, h, angle)
   again = placed(model.model_as_pdb(), True)
   assert again.get_hierarchy().atoms_size() == model.get_hierarchy().atoms_size()
+
+def test_029():
+  '''
+  3ilz ARG A 228: NE has no altloc, CZ is in A only, NH1/NH2 are in A and B
+  (B has no CZ: model error). HE goes into A and B, and riding H stops. The
+  Sorry now names the atoms of B that have no CZ to bond to.
+  '''
+  try:
+    place_atoms(pdb_str_029)
+  except Sorry as e:
+    msg = str(e)
+  else:
+    assert 0, 'expected a Sorry'
+  assert msg.startswith('It looks like angle restraints involving an H atom '
+    'are missing.\n  Check H atoms bound to pdb=" NE  ARG A 228 " and with '
+    'second neighbor pdb=" CZ AARG A 228 "'), msg
+  assert msg.endswith('\n  Conformer B of ARG A 228 has NH1, NH2 but no CZ '
+    'to bond them to (CZ is in conformer A). Complete or remove conformer '
+    'B.'), msg
 
 def test_010():
   '''
@@ -1628,6 +1648,23 @@ ATOM    834  C   ALA M   1     -14.743  32.990  -3.351  1.00 20.22           C
 ATOM    835  O   ALA M   1     -13.653  33.617  -3.248  1.00 27.19           O
 ATOM    836  CB AALA M   1     -16.833  33.680  -2.046  0.50 25.23           C
 ATOM    837  CB BALA M   1     -16.336  35.015  -2.865  0.50 25.08           C
+"""
+
+pdb_str_029 = """
+CRYST1   59.914   80.351  102.886  90.00  90.00  90.00 P 21 21 21
+ATOM    690  N   ARG A 228      29.920  37.704  43.277  1.00 25.85           N
+ATOM    691  CA  ARG A 228      29.044  36.717  43.883  1.00 26.06           C
+ATOM    692  C   ARG A 228      29.481  35.267  43.613  1.00 23.80           C
+ATOM    693  O   ARG A 228      29.247  34.387  44.436  1.00 23.15           O
+ATOM    694  CB  ARG A 228      27.602  36.968  43.456  1.00 26.79           C
+ATOM    695  CG  ARG A 228      27.040  38.213  44.145  1.00 29.74           C
+ATOM    696  CD  ARG A 228      25.555  38.333  43.966  1.00 35.72           C
+ATOM    697  NE  ARG A 228      25.230  38.860  42.654  1.00 41.04           N
+ATOM    698  CZ AARG A 228      24.974  40.147  42.428  0.71 35.39           C
+ATOM    699  NH1AARG A 228      25.036  41.018  43.424  0.71 38.22           N
+ATOM    700  NH1BARG A 228      24.697  39.952  40.254  0.29 34.47           N
+ATOM    701  NH2AARG A 228      24.669  40.567  41.213  0.71 35.40           N
+ATOM    702  NH2BARG A 228      24.587  36.280  42.025  0.29 32.49           N
 """
 
 if __name__ == '__main__':
