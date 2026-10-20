@@ -110,7 +110,7 @@ def test_empty():
 def test_reduce2_outputs():
   # reduce2 neutron_option outputs of a small model
   from mmtbx.programs import reduce2
-  from mmtbx.regression.tst_reduce2_neutron import pdb_1yjp
+  from mmtbx.regression.reduce2_neutron_utils import pdb_1yjp
   with open("tst_exchangeable_hd_selections.pdb", "w") as f:
     f.write(pdb_1yjp)
   for option in ("hd_and_h", "hd_and_d", "all_hd"):

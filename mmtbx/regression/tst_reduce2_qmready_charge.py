@@ -234,7 +234,7 @@ def test_qmready_ccd_only_ligand():
   # had only the user CIFs, not reduce2's CCD objects, and stopped: "Number
   # of atoms with unknown nonbonded energy type symbols". 1yjp is neutral
   # (NH3+, COO-); BGM: 0, all 13 CCD H incl. HOP2/HOP3; 6EM: +1 on N4
-  from mmtbx.regression.tst_reduce2_neutron import pdb_1yjp
+  from mmtbx.regression.reduce2_neutron_utils import pdb_1yjp
   for i, code, n_h, charge in ((8, "BGM", 13, 0), (9, "6EM", 17, 1)):
     prefix = "tst_reduce2_qmready_charge_%d" % i
     model_text = pdb_1yjp.replace("END\n", "") + ccd_ligand_pdb(code) + "END\n"
