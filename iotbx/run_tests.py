@@ -68,6 +68,7 @@ tst_list_base = [
   "$D/pdb/tst_mmcif.py",
   "$D/pdb/tst_mmcif_hierarchy.py",
   "$D/pdb/tst_mmcif_hierarchy_parity.py",
+  "$D/pdb/tst_mmcif_hierarchy_cpp.py",
   "$D/pdb/tst_mmcif_hierarchy_2.py",
   "$D/pdb/tst_tls.py",
   ["$D/pdb/hybrid_36.py", "exercise"],
