@@ -235,6 +235,10 @@ Token Tokenizer::read_unquoted(int tok_line, int tok_col) {
   const char* start = cur_;
   while (!at_end() && is_ordinary(*cur_)) { ++cur_; ++col_; }
   std::size_t len = static_cast<std::size_t>(cur_ - start);
+  if (len == 0) {
+    throw CifError("NUL character is not allowed in CIF",
+                   tok_line, tok_col, source_name_);
+  }
 
   // Classify by prefix (case-insensitive)
   if (len > 0 && start[0] == '_') {
