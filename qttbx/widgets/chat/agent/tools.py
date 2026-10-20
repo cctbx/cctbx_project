@@ -12,6 +12,11 @@ from libtbx.utils import Sorry
 
 from qttbx.widgets.chat.agent.errors import AgentEvent
 
+# The model APIs take a tool name of letters, digits, underscore and
+# hyphen, at most this many: a name the registry makes up for a collision
+# has to fit it, whatever the profile called the server.
+_API_NAME_LIMIT = 64
+
 
 # ---- approval message types ------------------------------------------------
 
@@ -120,7 +125,7 @@ class ToolPolicy:
   Resolution order, highest first: an exact per-tool entry (a session
   ``allow`` remembered under the registered name); then the profile's
   per-server-scoped per-tool entry for the tool's owning server (so a
-  collision-renamed ``<server>:<tool>`` still resolves to its own server's
+  collision-renamed ``<server>__<tool>`` still resolves to its own server's
   decision); then the per-server (``'*'``) entry; then the default (``'ask'``
   unless overridden by ``profile.tool_policy_default``). The per-server and
   per-server-scoped lookups require the ``tool_to_source`` mapping to know
@@ -147,36 +152,42 @@ class ToolPolicy:
       ``deny`` -- the profile's per-tool policy, kept server-scoped so a
       cross-server name collision can't make one server's decision clobber
       another's. Built by :meth:`from_server_configs`.
+  renamed : dict, optional
+      Mapping of a registered name the registry made up for a collision
+      to the bare tool name it stands in for, from
+      :meth:`ToolRegistry.renamed_tool_map`. Without it a renamed tool
+      resolves under its registered name only.
   """
 
   def __init__(self, default="ask",
                per_tool=None, per_server=None,
-               tool_to_source=None, per_server_tool=None):
+               tool_to_source=None, per_server_tool=None, renamed=None):
     self.default = default
     self.per_tool = dict(per_tool or {})           # name -> allow|ask|deny
     self.per_server = dict(per_server or {})       # server -> allow|ask|deny
     # (server, bare tool) -> decision. Profile per-tool policy is per-server,
     # so it must stay keyed by its owning server: an MCP tool whose name
-    # collides across servers is registered as '<server>:<tool>', and this
+    # collides across servers is registered as '<server>__<tool>', and this
     # keying lets resolve() apply each server's own decision to the right tool
     # regardless of the rename (instead of flattening both into one bare key).
     self.per_server_tool = dict(per_server_tool or {})
     self.tool_to_source = dict(tool_to_source or {})  # tool -> 'mcp:server' or 'builtin'/'skill'
+    self.renamed = dict(renamed or {})             # registered -> bare name
 
   def _server_and_bare(self, tool_name):
     """Return ``(server, bare_tool)`` for *tool_name*, else ``(None, tool_name)``.
 
-    A collision-renamed MCP tool is registered as ``<server>:<tool>``; recover
-    the owning server (from ``tool_to_source``) and strip its prefix so the
-    per-server-scoped policy keys match whether or not the tool was renamed.
+    The owning server comes from ``tool_to_source``, and the bare name of
+    a collision-renamed tool from the registry's record of renames, so
+    the per-server-scoped policy keys match whether or not the tool was
+    renamed. A tool's own name is never cut down: one that happens to
+    start with its server's name is its own, and cutting it let a deny
+    keyed by the name fall through to an allow keyed by the rest.
     """
     source = self.tool_to_source.get(tool_name, "")
     if not source.startswith("mcp:"):
       return None, tool_name
-    server = source.split(":", 1)[1]
-    prefix = server + ":"
-    bare = tool_name[len(prefix):] if tool_name.startswith(prefix) else tool_name
-    return server, bare
+    return source.split(":", 1)[1], self.renamed.get(tool_name, tool_name)
 
   def resolve(self, tool_name):
     """Return the ``allow`` / ``ask`` / ``deny`` decision for a tool.
@@ -187,7 +198,7 @@ class ToolPolicy:
     entry; then the default.
 
     There is deliberately NO bare-name ``per_tool`` fallback for a
-    collision-renamed ``<server>:<tool>``: it would let one server's session
+    collision-renamed ``<server>__<tool>``: it would let one server's session
     allow (or a seeded bare builtin/skill name) override a DIFFERENT server's
     decision -- a cross-server deny->allow bypass. A session allow only ever
     matches the exact registered name it was remembered under (step 1).
@@ -206,7 +217,7 @@ class ToolPolicy:
     self.per_tool[tool_name] = "allow"
 
   @classmethod
-  def from_server_configs(cls, configs, default="ask", tool_to_source=None):
+  def from_server_configs(cls, configs, default="ask", registry=None):
     """Build a policy from per-server profile ``tool_policy`` dicts.
 
     Each config carries ``name`` and a ``tool_policy`` mapping of tool
@@ -220,9 +231,18 @@ class ToolPolicy:
         Server config objects (``McpServerConfig`` or equivalent).
     default : str, optional
         Fallback decision; defaults to ``'ask'``.
-    tool_to_source : dict, optional
-        Forwarded to the constructor (resolves per-server entries).
+    registry : ToolRegistry, optional
+        The registry whose tools the policy governs. Its source map
+        and its rename map reach the policy together, so that a
+        renamed tool's per-tool decision cannot be left behind by a
+        caller passing one map without the other, which let the deny
+        fall to the server's allow. ``None`` on the claude_code path,
+        which has no registry.
     """
+    tool_to_source = renamed = None
+    if registry is not None:
+      tool_to_source = registry.tool_to_source_map()
+      renamed = registry.renamed_tool_map()
     per_server, per_server_tool = {}, {}
     for cfg in (configs or []):
       name = getattr(cfg, "name", "")
@@ -231,11 +251,12 @@ class ToolPolicy:
           per_server[name] = decision
         else:
           # Keep per-tool policy scoped to its server so a cross-server name
-          # collision (and the registry's '<server>:<tool>' rename) can't make
+          # collision (and the registry's '<server>__<tool>' rename) can't make
           # one server's decision clobber another's or be silently bypassed.
           per_server_tool[(name, tool_name)] = decision
     return cls(default=default, per_server=per_server,
-               per_server_tool=per_server_tool, tool_to_source=tool_to_source)
+               per_server_tool=per_server_tool, tool_to_source=tool_to_source,
+               renamed=renamed)
 
 
 # ---- registry --------------------------------------------------------------
@@ -255,12 +276,13 @@ class ToolRegistry:
 
   Collision resolution: built-in beats skill beats MCP. Within MCP,
   the first-registered tool keeps the bare name and later ones get
-  ``<server>:<tool>`` namespacing.
+  ``<server>__<tool>`` namespacing.
   """
 
   def __init__(self, log=None):
     self.log = log if log is not None else sys.stdout
     self._entries = {}             # name -> _ToolEntry
+    self._renamed = {}             # collision name -> bare name
 
   # ---- registration --------------------------------------------------------
 
@@ -290,12 +312,20 @@ class ToolRegistry:
   def register_mcp_tool(self, spec, server_name, handler, risk="write"):
     """Register an MCP-sourced tool.
 
-    On name collision with an existing entry, the new MCP tool is
-    registered as ``<server>:<name>`` instead of the bare ``name``.
+    A tool whose name another server's tool holds, or the rename of
+    another tool of its own server, is registered as ``<server>__<name>``
+    instead of the bare ``name``, cut to a name the model APIs take (see
+    ``_collision_name``), and the rename recorded for
+    :meth:`renamed_tool_map`.
     """
     bare = spec.name
-    if bare in self._entries and self._entries[bare].source != "mcp:" + server_name:
-      namespaced = "%s:%s" % (server_name, bare)
+    source = "mcp:" + server_name
+    held = self._entries.get(bare)
+    # github's own github__create_issue is not the rename its
+    # create_issue got beside gitlab's: a name a rename holds is taken.
+    if held is not None and (held.source != source
+                             or bare in self._renamed):
+      namespaced = self._collision_name(server_name, bare)
       print("tool '%s' collides; registering MCP server '%s' tool as '%s'"
             % (bare, server_name, namespaced), file=self.log)
       # Replace name in a copy of the spec.
@@ -303,8 +333,32 @@ class ToolRegistry:
       spec = ToolSpec(name=namespaced,
                       description=spec.description,
                       input_schema=spec.input_schema)
+      self._renamed[namespaced] = bare
     self._add(spec.name, _ToolEntry(
-      spec=spec, source="mcp:" + server_name, handler=handler, risk=risk))
+      spec=spec, source=source, handler=handler, risk=risk))
+
+  def _collision_name(self, server_name, bare):
+    """A name for ``bare`` from ``server_name`` that the model APIs take
+    and no other tool holds: the server's name, which the profile
+    spells in anything, reduced to their letters, digits, underscore
+    and hyphen, a letter or underscore first, and a counter settling
+    what two servers reduce alike to. The server's own earlier rename
+    of the same tool is its name
+    again, for the registration to skip as the duplicate it is.
+    """
+    import re
+    server = re.sub(r"[^A-Za-z0-9_-]", "_", server_name)
+    if not re.match(r"[A-Za-z_]", server):
+      server = "_" + server       # Gemini: a letter or underscore first
+    source = "mcp:" + server_name
+    name, n = _within_limit(server, bare, ""), 1
+    while name in self._entries:
+      if (self._entries[name].source == source
+          and self._renamed.get(name) == bare):
+        return name
+      n += 1
+      name = _within_limit(server, bare, "_%d" % n)
+    return name
 
   def _add(self, name, entry, overwrite=False):
     """Insert an entry under ``name``.
@@ -392,6 +446,28 @@ class ToolRegistry:
   def tool_to_source_map(self):
     """Return a name-to-source snapshot for ``ToolPolicy`` construction."""
     return {name: e.source for name, e in self._entries.items()}
+
+  def renamed_tool_map(self):
+    """Return a snapshot of the collision renames for ``ToolPolicy``.
+
+    Returns
+    -------
+    dict
+        Registered name to the bare tool name it stands in for.
+    """
+    return dict(self._renamed)
+
+
+def _within_limit(server, bare, suffix):
+  """``<server>__<bare><suffix>`` cut to the length the model APIs take.
+
+  The server's name gives way first, and the ``__`` with the last of
+  it; the bare name's tail only to a counter nothing else has room for.
+  """
+  room = _API_NAME_LIMIT - len("__" + bare + suffix)
+  if room > 0:
+    return "%s__%s%s" % (server[:room], bare, suffix)
+  return bare[:_API_NAME_LIMIT - len(suffix)] + suffix
 
 
 # ---- builtin: phenix_ask_user_question -------------------------------------
