@@ -635,9 +635,11 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True, raise_sorry
 
 def load_restraint_objects_into_server(model, mon_lib_srv):
   '''
-  Load any user-provided restraint CIF objects into the server so that
-  mon_lib_query() finds them and does not generate auto_* CIF objects
-  with empty type_energy values that would overwrite the user entries.
+  Load the model's restraint CIF objects (user CIFs, and the CCD objects
+  reduce2 attaches) into mon_lib_srv, so that mon_lib_query() finds these
+  residues there and does not build a CCD placeholder for them
+  (get_h_restraints(): placement-only restraints with 0.9x CCD bond lengths
+  and approximate energy types) that would override the user's dictionary.
   '''
   ro = model.get_restraint_objects()
   if ro:
