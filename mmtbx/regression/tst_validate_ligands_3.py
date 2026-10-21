@@ -22,6 +22,7 @@ def run():
   run_test25()
   run_test26()
   run_test27()
+  run_test39()
 
 # ------------------------------------------------------------------------------
 
@@ -437,6 +438,63 @@ def run_test27():
   assert snap1.alt_conf.flag == 'ok'
 
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
+def _altconf_manager_nproc(pdb_str, nproc):
+  from mmtbx.validation import validate_ligands as vlmod
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  model.process(make_restraints=True)
+  params = vlmod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  params.nproc = nproc
+  vl_manager = vlmod.manager(
+    model=model, fmodel=None, map_manager=None, params=params, log=null_out())
+  vl_manager.run()
+  return vl_manager
+
+def _getter_summary(vl):
+  out = []
+  for lr in vl:
+    r, a, o, ac = (lr.get_rmsds(), lr.get_adps(), lr.get_occupancies(),
+                   lr.get_alt_conf())
+    out.append((lr.id_str, lr.altloc, r.bond_rmsd, r.angle_rmsd, r.bond_n,
+                a.b_mean, a.b_mean_within, o.occ_mean, ac.state, ac.flag))
+  return out
+
+def run_test39():
+  """
+  nproc=1, and any nproc on Windows, runs the getters in process: Windows
+  multiprocessing (spawn) cannot pickle the target. Same results as nproc=2.
+  """
+  print('test39')
+  import os, pickle
+  from libtbx import easy_mp, group_args
+  from mmtbx.validation import validate_ligands as vlmod
+  pickle.dumps(vlmod._run_result_func)
+
+  def _no_mp(*args, **kwds):
+    raise AssertionError('easy_mp.multi_core_run called')
+  multi_core_run = easy_mp.multi_core_run
+  easy_mp.multi_core_run = _no_mp
+  try:
+    vl1 = _altconf_manager_nproc(_altconf_state_pdb_str, nproc=1)
+    vlmod.os = group_args(name='nt')
+    try:
+      vl_nt = _altconf_manager_nproc(_altconf_state_pdb_str, nproc=2)
+    finally:
+      vlmod.os = os
+  finally:
+    easy_mp.multi_core_run = multi_core_run
+
+  s1 = _getter_summary(vl1)
+  assert len(s1) == 8, len(s1)
+  assert _getter_summary(vl_nt) == s1
+  if os.name != 'nt':
+    vl2 = _altconf_manager_nproc(_altconf_state_pdb_str, nproc=2)
+    s2 = _getter_summary(vl2)
+    assert s2 == s1, (s1, s2)
+
 
 if (__name__ == "__main__"):
   t0 = time.time()
