@@ -245,7 +245,11 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
   opposite isotope within 0.5 A and > 0.1 A closer than the name partner).
   Leftovers within 0.5 A of each other are matched by position; farther apart
   they are singles (one isotope per site on a multi-H parent). Both kinds of
-  geometric match are flagged name_mismatch."""
+  geometric match are flagged name_mismatch.
+  Atoms are given by label (h_id, d_id, geometric_partner, atom_id) and by
+  index into hierarchy.atoms() (i_h, i_d, i_geometric_partner, i_seq):
+  geometric_partner is the near D, the near H, or for a leftover matched by
+  position the pair's own D (both None without a name mismatch)."""
   atoms = hierarchy.atoms()
   keys = atom_keys(hierarchy)
   rotatable = None
@@ -300,7 +304,7 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
         counts[n] = counts.get(n, 0) + 1
       ag_names[k] = counts
     return ag_names[k].get(name, 0)
-  def candidate(ih, id_, name_mismatch, geometric_partner, n_competing):
+  def candidate(ih, id_, name_mismatch, i_geometric, n_competing):
     h, d = atoms[ih], atoms[id_]
     e = info[ih][1]
     occ_sum = h.occ + d.occ
@@ -319,7 +323,9 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
       parent_altloc     = e.parent_altloc,
       distance          = _distance(h, d),
       name_mismatch     = name_mismatch,
-      geometric_partner = geometric_partner,
+      geometric_partner = (None if i_geometric is None else
+                           atoms[i_geometric].id_str()),
+      i_geometric_partner = i_geometric,
       n_competing       = n_competing,
       layout_ok         = (e.parent_altloc == "" and
                            h.parent().memory_id() != d.parent().memory_id() and
@@ -359,10 +365,10 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
         d_near_h = _distance(atoms[near_h], atoms[id_])
         if near_d != id_ and d_near_d <= _SAME_SITE_RADIUS and \
            d_near_d < d_name - _NAME_MISMATCH_MARGIN:
-          geometric = atoms[near_d].id_str()
+          geometric = near_d
         elif near_h != ih and d_near_h <= _SAME_SITE_RADIUS and \
            d_near_h < d_name - _NAME_MISMATCH_MARGIN:
-          geometric = atoms[near_h].id_str()
+          geometric = near_h
         pairs.append(candidate(ih, id_, geometric is not None, geometric,
                                n_competing))
     # leftovers by position, same site only: one isotope per site on a
@@ -373,7 +379,7 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
       ih, id_ = min(((a, b) for a in lh for b in ld),
                     key=lambda p: _distance(atoms[p[0]], atoms[p[1]]))
       if _distance(atoms[ih], atoms[id_]) > _SAME_SITE_RADIUS: break
-      pairs.append(candidate(ih, id_, True, atoms[id_].id_str(), 0))
+      pairs.append(candidate(ih, id_, True, id_, 0))
       lh.remove(ih)
       ld.remove(id_)
     for i in lh + ld:
@@ -436,10 +442,10 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
         if partner is not None: break
     if partner is not None:
       same_conformer.append(group_args(atom_key=key, atom_id=atom.id_str(),
-        partner_id=partner.id_str()))
+        i_seq=i, partner_id=partner.id_str()))
     else:
       unresolved.append(group_args(atom_key=key, atom_id=atom.id_str(),
-        status=e.status, source=e.source))
+        i_seq=i, status=e.status, source=e.source))
   return group_args(pairs=pairs, singles=singles, unresolved=unresolved,
     different_parents=different_parents, same_conformer=same_conformer)
 

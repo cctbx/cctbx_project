@@ -217,21 +217,12 @@ class validate_H(object):
     atoms = self.pdb_hierarchy.atoms()
     self.unresolved_hd = unresolved_hd_entries(self.pdb_hierarchy,
       candidates.unresolved)
-    by_id = {}
-    for c in candidates.pairs:
-      if c.name_mismatch: by_id.setdefault(c.geometric_partner, None)
-    if by_id:
-      for a in atoms:
-        if a.id_str() in by_id:
-          by_id[a.id_str()] = (by_id[a.id_str()] or []) + [a.i_seq]
     proposed = []
     for c in candidates.pairs:
       i_h, i_d = c.i_h, c.i_d
       if c.name_mismatch:
-        # an H or a D (for a leftover matched by position: its own D); a
-        # duplicate id_str: the one closest to the pair
-        g = min(by_id[c.geometric_partner], key=lambda i: min(
-          atoms[i].distance(atoms[c.i_h]), atoms[i].distance(atoms[c.i_d])))
+        # an H or a D (for a leftover matched by position: its own D)
+        g = c.i_geometric_partner
         if is_deuterium(atoms[g]): i_d = g
         else:                      i_h = g
       proposed.append((atoms[i_h].distance(atoms[i_d]), i_h, i_d, c.i_h,
@@ -578,12 +569,10 @@ def unresolved_hd_entries(hierarchy, unresolved):
   'ambiguous' (several; their names are the partner names).
   '''
   if not unresolved: return []
-  from mmtbx.hydrogens import hd_exchange
   atoms = hierarchy.atoms()
-  index = dict((k, i) for i, k in enumerate(hd_exchange.atom_keys(hierarchy)))
   entries, order = {}, []
-  for u in sorted(unresolved, key=lambda u: index[u.atom_key]):
-    atom = atoms[index[u.atom_key]]
+  for u in sorted(unresolved, key=lambda u: u.i_seq):
+    atom = atoms[u.i_seq]
     ag = atom.parent()
     rg = ag.parent()
     resid = '%s %s %s%s' % (ag.resname.strip(), rg.parent().id.strip(),

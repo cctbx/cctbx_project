@@ -1551,14 +1551,15 @@ def exercise_v4_unresolved():
   keys = dict((a.name.strip(), k) for a, k in
               zip(h.atoms(), hd_exchange.atom_keys(h)))
   ids = dict((a.name.strip(), a.id_str()) for a in h.atoms())
+  index = dict((a.name.strip(), i) for i, a in enumerate(h.atoms()))
   unresolved = [
-    group_args(atom_key=keys['DO1'], atom_id=ids['DO1'],
+    group_args(atom_key=keys['DO1'], atom_id=ids['DO1'], i_seq=index['DO1'],
       status='ambiguous', source=[
         (ids['O1'], 'covalent geometry', 0.98, None),
         (ids['C1'], 'edits', 1.1, None)]),
-    group_args(atom_key=keys['H11'], atom_id=ids['H11'],
+    group_args(atom_key=keys['H11'], atom_id=ids['H11'], i_seq=index['H11'],
       status='floating', source=[]),
-    group_args(atom_key=keys['H12'], atom_id=ids['H12'],
+    group_args(atom_key=keys['H12'], atom_id=ids['H12'], i_seq=index['H12'],
       status='floating', source=[])]
   entries = unresolved_hd_entries(h, unresolved)
   # in hierarchy order of the first atom of each entry
