@@ -252,7 +252,8 @@ class validate_H(object):
     sites_different_b = []
     sites_sum_occ_not_1 = []
     sites_occ_sum_no_scattering = []
-    rotatable_hd_selection = self.model.rotatable_hd_selection()
+    # a set: `in` on the flex iselection scans it (1.7 s on 7TUR)
+    rotatable_hd_selection = set(self.model.rotatable_hd_selection())
     eps_xyz = 0.001
     eps_b = 0.01
     delta_occ_sum = 0.001

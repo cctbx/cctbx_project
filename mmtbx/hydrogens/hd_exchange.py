@@ -228,7 +228,10 @@ def _distance(a, b):
   return (matrix.col(a.xyz) - matrix.col(b.xyz)).length()
 
 def _hd_only(ag):
-  return all(_is_hd(a) for a in ag.atoms())
+  # by index: af_shared_atom has no __iter__ (each loop would end in a C++
+  # IndexError)
+  atoms = ag.atoms()
+  return all(_is_hd(atoms[k]) for k in range(atoms.size()))
 
 def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
   """Every H/D as a candidate pair, a single or unresolved, plus same-name H/D
@@ -280,6 +283,23 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
     by_name.setdefault((residue, normalized_name(atom)), []).append(i)
   pairs = []
   singles = []
+  # per atom_group, once: H/D only, and its atom names with their counts
+  hd_only = {}
+  def ag_hd_only(ag):
+    k = ag.memory_id()
+    if k not in hd_only: hd_only[k] = _hd_only(ag)
+    return hd_only[k]
+  ag_names = {}
+  def ag_name_count(ag, name):
+    k = ag.memory_id()
+    if k not in ag_names:
+      counts = {}
+      ag_atoms = ag.atoms()
+      for j in range(ag_atoms.size()):
+        n = ag_atoms[j].name
+        counts[n] = counts.get(n, 0) + 1
+      ag_names[k] = counts
+    return ag_names[k].get(name, 0)
   def candidate(ih, id_, name_mismatch, geometric_partner, n_competing):
     h, d = atoms[ih], atoms[id_]
     e = info[ih][1]
@@ -303,8 +323,10 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
       n_competing       = n_competing,
       layout_ok         = (e.parent_altloc == "" and
                            h.parent().memory_id() != d.parent().memory_id() and
-                           h.parent().altloc != "" and _hd_only(h.parent()) and
-                           d.parent().altloc != "" and _hd_only(d.parent())),
+                           h.parent().altloc != "" and
+                           ag_hd_only(h.parent()) and
+                           d.parent().altloc != "" and
+                           ag_hd_only(d.parent())),
       occ_sum           = occ_sum,
       b_diff            = h.b - d.b,
       uij_diff          = uij_diff,
@@ -359,8 +381,9 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
       collision = False
       if atom.element.strip().upper() == "D":
         nn = normalized_name(atom)
-        collision = any(a.name == nn for a in atom.parent().atoms()
-                        if a.memory_id() != atom.memory_id())
+        # another atom of its atom_group has that name
+        collision = ag_name_count(atom.parent(), nn) - \
+          (1 if atom.name == nn else 0) > 0
       singles.append(group_args(atom_key=info[i][0], atom_id=atom.id_str(),
         element=atom.element.strip().upper(), i_seq=i,
         parent_id=info[i][1].parent_id, name_collision=collision))
@@ -401,7 +424,9 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
         if not (other_ag.altloc == ag.altloc or other_ag.altloc == "" or
                 ag.altloc == ""):
           continue
-        for other in other_ag.atoms():
+        other_atoms = other_ag.atoms()
+        for k in range(other_atoms.size()):
+          other = other_atoms[k]
           j = index[other.memory_id()]
           if (j != i and j in info and info[j][1].status == "ok" and
               other.element.strip().upper() != element and
