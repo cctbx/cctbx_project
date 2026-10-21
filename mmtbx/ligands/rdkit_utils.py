@@ -795,6 +795,7 @@ def get_prop_safe(rd_obj, prop):
 def get_cc_cartesian_coordinates(cc_cif, label='pdbx_model_Cartn_x_ideal', ignore_question_mark=False):
   rc = []
   for i, (code, monomer) in enumerate(cc_cif.items()):
+    if code in ['comp_list']: continue
     atom = monomer.get_loop_or_row('_chem_comp_atom')
     # if atom is None: return rc
     for j, tmp in enumerate(atom.iterrows()):
@@ -807,6 +808,11 @@ def get_cc_cartesian_coordinates(cc_cif, label='pdbx_model_Cartn_x_ideal', ignor
         xyz = (tmp.get('_chem_comp_atom.model_Cartn_x'),
                tmp.get('_chem_comp_atom.model_Cartn_y'),
                tmp.get('_chem_comp_atom.model_Cartn_z'),
+               )
+      elif label=='x':
+        xyz = (tmp.get('_chem_comp_atom.x'),
+               tmp.get('_chem_comp_atom.y'),
+               tmp.get('_chem_comp_atom.z'),
                )
       rc.append(xyz)
       if not ignore_question_mark and '?' in xyz[-1]: return None
@@ -830,7 +836,6 @@ def overlay_two_molecules(mol1, mol2):
 
   return list(zip(highlightAtoms_mol1, highlightAtoms_mol2))
 
-
 def read_chemical_component_smiles(filename):
   from iotbx import cif
   ccd = cif.reader(filename).model()
@@ -842,6 +847,10 @@ def read_chemical_component_smiles(filename):
       if smiles_type=='SMILES_CANONICAL':
         smiles = tmp.get('_pdbx_chem_comp_descriptor.descriptor')
         return smiles
+
+def read_restraints_file(filename):
+  molecule = read_chemical_component_filename(filename, xyz_label='x')
+  return molecule
 
 def read_chemical_component_filename_new(filename):
   smiles=read_chemical_component_smiles(filename)
@@ -862,7 +871,7 @@ def read_chemical_component_filename_new(filename):
 
   assert 0
 
-def read_chemical_component_filename(filename, verbose=False):
+def read_chemical_component_filename(filename, xyz_label=None, verbose=False):
   from iotbx import cif
   bond_order_ccd = {
     1.5:Chem.rdchem.BondType.AROMATIC,
@@ -870,12 +879,25 @@ def read_chemical_component_filename(filename, verbose=False):
     'DOUB': Chem.rdchem.BondType.DOUBLE,
     'TRIP': Chem.rdchem.BondType.TRIPLE,
   }
+  bond_order_restraints = {
+    'aromatic' : Chem.rdchem.BondType.AROMATIC,
+    'single': Chem.rdchem.BondType.SINGLE,
+    'double': Chem.rdchem.BondType.DOUBLE,
+    'triple': Chem.rdchem.BondType.TRIPLE,
+    # 'deloc': Chem.rdchem.BondType.ONEANDAHALF,
+    # 'deloc': Chem.rdchem.BondType.OTHER,
+    'deloc': Chem.rdchem.BondType.SINGLE,
+  }
+
+  if xyz_label is None:
+    xyz_label='pdbx_model_Cartn_x_ideal'
+
   bond_order_rdkitkey = {value:key for key,value in bond_order_ccd.items()}
   ccd = cif.reader(filename).model()
   lookup={}
   def is_coordinates(x):
     return x!=('?', '?', '?')
-  xyzs = get_cc_cartesian_coordinates(ccd, ignore_question_mark=True)
+  xyzs = get_cc_cartesian_coordinates(ccd, label=xyz_label, ignore_question_mark=True)
   xyzs = list(filter(is_coordinates, xyzs))
   if xyzs is None or len(xyzs)==0:
     xyzs = get_cc_cartesian_coordinates(ccd, label='model_Cartn_x', ignore_question_mark=True)
@@ -888,9 +910,14 @@ def read_chemical_component_filename(filename, verbose=False):
   restraints.
   ''' % code)
   def build(skip_metal_bonds):
+    desc=None
     for i, (code, monomer) in enumerate(ccd.items()):
+      if code in ['comp_list']:
+        desc = monomer.get_loop_or_row('_chem_comp')
+        continue
       molecule = Chem.Mol()
-      desc = monomer.get_loop_or_row('_chem_comp')
+      if desc is None:
+        desc = monomer.get_loop_or_row('_chem_comp')
       rwmol = Chem.RWMol(molecule)
       atom = monomer.get_loop_or_row('_chem_comp_atom')
       # if atom is None: continue
@@ -931,8 +958,7 @@ def read_chemical_component_filename(filename, verbose=False):
     # metal coordination as plain SING bonds over-fills valences (TPT Pt-N)
     code, desc, rwmol = build(skip_metal_bonds=True)
     Chem.SanitizeMol(rwmol)
-  # from rdkit.Chem.PropertyMol import PropertyMol
-  # molecule = PropertyMol(molecule)
+
   molecule = rwmol.GetMol()
   for key, item in desc.items():
     key = key.split('.')[1]
@@ -1200,7 +1226,7 @@ def match_mol_indices(mol_list):
 
   Returns:
       match_list: (list): a list of tuples
-                          Each entry is a match beween in mols
+                          Each entry is a match between in mols
                           Each value is the atom index for each mol
   """
   mol_list = [Chem.Mol(mol) for mol in mol_list]

@@ -1288,6 +1288,16 @@ class monomer_mapping(slots_getstate_setstate):
       self.mon_lib_names = None
     else:
       self.mon_lib_names = self.atom_name_interpretation.mon_lib_names()
+      # if (self.monomer is not None):
+      #   # if every atom the interpretation would rename is already in the
+      #   # restraints as given (e.g. user cif with PDB v3 names), don't remap
+      #   atom_dict = self.monomer.atom_dict()
+      #   for given,mon_lib_name in zip(self.atom_names_given,
+      #                                 self.mon_lib_names):
+      #     if (mon_lib_name is None or mon_lib_name == given): continue
+      #     if (given not in atom_dict): break
+      #   else:
+      #     self.mon_lib_names = None
     if (self.monomer is None):
       self.expected_atoms = {}
       self.unexpected_atoms = {}
