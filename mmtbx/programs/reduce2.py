@@ -1275,7 +1275,7 @@ NOTES:
       self.data_manager.set_overwrite(True)
     if not self.params.output.overwrite:
       if os.path.exists(self.params.output.filename):
-        print('\n\tOutput filename exists. Use overwrite=True to continue.')
+        print('\n\tOutput filename exists. Use overwrite=True to continue.', file=self.logger)
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
@@ -1421,7 +1421,10 @@ NOTES:
         myModel = hierarchy.models()[mi]
         finalAtoms = len(myModel.atoms())
         if finalAtoms > initialAtoms:
-          print("Added "+str(finalAtoms-initialAtoms)+" symmetric copies of atoms near the boundary\n")
+          print("Added "+str(finalAtoms-initialAtoms)+" symmetric copies of atoms near the boundary", file=self.logger)
+        for c in self.model.get_hierarchy().models()[mi].chains():
+          if c.id not in originalChainSets[mi]:
+            print("Added symmetry chain "+c.id+" to model "+str(mi+1), file=self.logger)
 
       # Re-process the model because we have added atoms.
       self.model.set_log(null_out())
@@ -1530,7 +1533,7 @@ NOTES:
         for c in reversed(range(len(myModel.chains()))):
           chain = myModel.chains()[c]
           if chain.id not in originalChainSets[mi]:
-            print("Removing chain {} from model index {}".format(chain.id, mi))
+            print("Removed symmetry chain {} from model index {}".format(chain.id, mi), file=self.logger)
             myModel.remove_chain(c)
 
     # Re-process the model because we have removed some atoms that were previously
