@@ -57,6 +57,9 @@ class validate_H(object):
     # H (D) atoms in non-water residues that are in no pair
     self.count_h_only = None
     self.count_d_only = None
+    # H/D without a parent atom, per residue and reason (None when the
+    # matcher did not run or raised a Sorry)
+    self.unresolved_hd = None
     # pairs that lost an atom to a shorter pair (one-to-one guard)
     self.n_pairing_conflicts = 0
 
@@ -192,6 +195,8 @@ class validate_H(object):
     both atoms are free). renamed lists each D whose name does not match its
     H (report only, nothing is renamed). A Sorry from the matcher skips the
     pairs and sets hd_pairing_note: validation does not stop.
+    unresolved_hd: the H/D whose parent the restraints do not give (no
+    bonded atom, or several), per residue and reason.
     '''
     from libtbx.utils import Sorry
     from mmtbx.hydrogens import hd_exchange
@@ -210,6 +215,8 @@ class validate_H(object):
       self.hd_pairing_note = str(e)
       return
     atoms = self.pdb_hierarchy.atoms()
+    self.unresolved_hd = unresolved_hd_entries(self.pdb_hierarchy,
+      candidates.unresolved)
     by_id = {}
     for c in candidates.pairs:
       if c.name_mismatch: by_id.setdefault(c.geometric_partner, None)
@@ -559,8 +566,51 @@ class validate_H(object):
         outliers_bonds        = self.outliers_bonds,
         outliers_angles       = self.outliers_angles,
         bond_results          = self.bond_results,
-        hd_pairing_note       = self.hd_pairing_note
+        hd_pairing_note       = self.hd_pairing_note,
+        unresolved_hd         = self.unresolved_hd
         )
+
+def unresolved_hd_entries(hierarchy, unresolved):
+  '''
+  One entry per residue and reason from find_hd_candidates().unresolved:
+  (residue id, reason, atom names, partner names, xyz of the first atom), in
+  hierarchy order. reason: 'floating' (no bonded atom in the restraints) or
+  'ambiguous' (several; their names are the partner names).
+  '''
+  if not unresolved: return []
+  from mmtbx.hydrogens import hd_exchange
+  atoms = hierarchy.atoms()
+  index = dict((k, i) for i, k in enumerate(hd_exchange.atom_keys(hierarchy)))
+  entries, order = {}, []
+  for u in sorted(unresolved, key=lambda u: index[u.atom_key]):
+    atom = atoms[index[u.atom_key]]
+    ag = atom.parent()
+    rg = ag.parent()
+    resid = '%s %s %s%s' % (ag.resname.strip(), rg.parent().id.strip(),
+      rg.resseq.strip(), rg.icode.strip())
+    key = (resid, u.status)
+    if key not in entries:
+      entries[key] = (resid, u.status, [], [], atom.xyz)
+      order.append(key)
+    entries[key][2].append(atom.name.strip())
+    for partner_id, origin, distance_ideal, sym_op in u.source:
+      name = partner_id[5:9].strip() # the atom name in its id_str
+      if name not in entries[key][3]: entries[key][3].append(name)
+  return [entries[k] for k in order]
+
+def unresolved_hd_text(entry, max_names=10):
+  '''
+  One line for an unresolved_hd entry, at most max_names atom names.
+  '''
+  resid, reason, names, partners, xyz = entry
+  shown = ', '.join(names[:max_names])
+  if len(names) > max_names: shown += ', ...'
+  n = '%d H/D atom%s' % (len(names), '' if len(names) == 1 else 's')
+  if reason == 'floating':
+    return '%s: %s with no bonded atom in the restraints (%s)' % (
+      resid, n, shown)
+  return '%s: %s bonded to several atoms in the restraints (%s): %s' % (
+    resid, n, shown, ', '.join(partners))
 
 def parent_occupancy(item):
   '''
@@ -646,6 +696,26 @@ class validate_H_results(object):
     make_sub_header('H/D pairs not analyzed', out=log)
     print('%s%s' % (prefix, note), file=log)
 
+  def print_unresolved_hd(self, unresolved_hd, prefix='', log=None):
+    if (log is None):
+      log = self.log
+    make_sub_header('H/D atoms without a parent atom', out=log)
+    for entry in unresolved_hd:
+      print('%s%s' % (prefix, unresolved_hd_text(entry)), file=log)
+
+  def export_unresolved_hd_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    unresolved_hd = getattr(self.results, 'unresolved_hd', None)
+    if (unresolved_hd):
+      for resid, reason, names, partners, xyz in unresolved_hd:
+        if reason == 'floating':
+          text = 'no bonded atom in the restraints'
+        else:
+          text = 'bonded to %s' % ', '.join(partners)
+        table.append([resid, ' '.join(names), text, None, xyz])
+    return table
+
   def export_renamed_for_wxGUI(self):
     # last element should be xyz for residue/atom
     table = list()
@@ -687,7 +757,7 @@ class validate_H_results(object):
 
   def print_results_hd_sites(
       self, count_exchanged_sites, hd_sites_analysis, overall_counts_hd,
-      prefix='', log=None):
+      prefix='', log=None, unresolved_hd=None):
     if (log is None):
       log = self.log
 
@@ -704,6 +774,9 @@ class validate_H_results(object):
       ('Number of atoms modelled only as H', h_only),
       ('Number of atoms modelled only as D', d_only)
     ]
+    if unresolved_hd is not None:
+      self.hd_exchange_values.append(('H/D atoms without a parent atom',
+        sum(len(entry[2]) for entry in unresolved_hd)))
     self.formatted_print(prefix, self.hd_exchange_values, log)
 
     if sites_different_xyz:
@@ -869,10 +942,13 @@ class validate_H_results(object):
     if hd_atoms_with_occ_0 or single_hd_atoms_occ_lt_1:
       self.print_atoms_occ_lt_1(hd_atoms_with_occ_0, single_hd_atoms_occ_lt_1,
                                 prefix=prefix, log=log)
+    unresolved_hd = getattr(results, 'unresolved_hd', None)
     if count_exchanged_sites is not None:
       self.print_results_hd_sites(
         count_exchanged_sites, hd_sites_analysis, overall_counts_hd,
-        prefix=prefix, log=log)
+        prefix=prefix, log=log, unresolved_hd=unresolved_hd)
+    if unresolved_hd:
+      self.print_unresolved_hd(unresolved_hd, prefix=prefix, log=log)
     if missing_HD_atoms:
       self.print_missing_HD_atoms(missing_HD_atoms, prefix=prefix, log=log)
     if outliers_bonds or outliers_angles:

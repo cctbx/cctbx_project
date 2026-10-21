@@ -750,6 +750,11 @@ def exercise():
 
   assert (results.count_exchanged_sites == 22)
 
+  # H/D without a parent atom: D1 on a water named HOH, D3 on a DOD
+  assert ([e[:4] for e in results.unresolved_hd] == [
+    ('HOH B 5', 'floating', ['D1'], []),
+    ('DOD B 6', 'floating', ['D3'], [])])
+
   hd_sites_analysis  = results.hd_sites_analysis
   sites_different_xyz = hd_sites_analysis.sites_different_xyz
   xyz_answer = [0.0712]
@@ -1499,6 +1504,86 @@ def exercise_v3_analyses():
   test_output(old)
   test_output(results)
 
+# ------------------------------------------------------------------------------
+# H/D without a parent atom (V4): a ligand without restraints (code 01, not
+# in the monomer library or the CCD) with H and D: one entry for the residue
+# ------------------------------------------------------------------------------
+pdb_str_unresolved = """
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1  C1   01 A   1      10.000  10.000  10.000  1.00 20.00           C
+HETATM    2  O1   01 A   1      11.432  10.000  10.000  1.00 20.00           O
+HETATM    3  H11  01 A   1       9.640  11.020  10.000  1.00 20.00           H
+HETATM    4  H12  01 A   1       9.640   9.490  10.880  1.00 20.00           H
+HETATM    5  H13  01 A   1       9.640   9.490   9.120  1.00 20.00           H
+HETATM    6  DO1  01 A   1      11.750  10.900  10.000  1.00 20.00           D
+END
+"""
+
+def exercise_v4_unresolved():
+  from libtbx import group_args
+  from mmtbx.hydrogens.validate_H import unresolved_hd_entries, \
+    unresolved_hd_text
+  from six.moves import cStringIO as StringIO
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str_unresolved)
+  assert (len(results.unresolved_hd) == 1)
+  resid, reason, names, partners, xyz = results.unresolved_hd[0]
+  assert ((resid, reason, partners) == ('01 A 1', 'floating', []))
+  # in the processed model's order
+  assert (names == ['DO1', 'H11', 'H12', 'H13'])
+  assert approx_equal(xyz, (11.750, 10.900, 10.000))
+  assert (unresolved_hd_text(results.unresolved_hd[0]) ==
+    '01 A 1: 4 H/D atoms with no bonded atom in the restraints '
+    '(DO1, H11, H12, H13)')
+  out = validate_H_results(results)
+  assert (out.export_unresolved_hd_for_wxGUI() == [['01 A 1',
+    'DO1 H11 H12 H13', 'no bonded atom in the restraints', None, xyz]])
+  log = StringIO()
+  out.print_results(prefix='', log=log)
+  assert ('01 A 1: 4 H/D atoms with no bonded atom' in log.getvalue())
+  test_output(results)
+  # grouping (per residue and reason) and an ambiguous parent, on
+  # constructed entries; at most 10 names per line
+  h = iotbx.pdb.input(source_info=None,
+    lines=pdb_str_unresolved).construct_hierarchy()
+  from mmtbx.hydrogens import hd_exchange
+  keys = dict((a.name.strip(), k) for a, k in
+              zip(h.atoms(), hd_exchange.atom_keys(h)))
+  ids = dict((a.name.strip(), a.id_str()) for a in h.atoms())
+  unresolved = [
+    group_args(atom_key=keys['DO1'], atom_id=ids['DO1'],
+      status='ambiguous', source=[
+        (ids['O1'], 'covalent geometry', 0.98, None),
+        (ids['C1'], 'edits', 1.1, None)]),
+    group_args(atom_key=keys['H11'], atom_id=ids['H11'],
+      status='floating', source=[]),
+    group_args(atom_key=keys['H12'], atom_id=ids['H12'],
+      status='floating', source=[])]
+  entries = unresolved_hd_entries(h, unresolved)
+  # in hierarchy order of the first atom of each entry
+  order = [a.name.strip() for a in h.atoms()]
+  expected = sorted([('01 A 1', 'floating', ['H11', 'H12'], []),
+    ('01 A 1', 'ambiguous', ['DO1'], ['O1', 'C1'])],
+    key=lambda e: order.index(e[2][0]))
+  assert ([e[:4] for e in entries] == expected)
+  ambiguous = [e for e in entries if e[1] == 'ambiguous'][0]
+  assert (unresolved_hd_text(ambiguous) == '01 A 1: 1 H/D atom bonded to '
+    'several atoms in the restraints (DO1): O1, C1')
+  many = ('X A 2', 'floating', ['H%d' % i for i in range(12)], [], None)
+  assert unresolved_hd_text(many).endswith('(H0, H1, H2, H3, H4, H5, H6, '
+    'H7, H8, H9, ...)')
+  # results saved by older versions: no unresolved_hd
+  old = group_args(**results.__dict__)
+  del old.__dict__['unresolved_hd']
+  assert (validate_H_results(old).export_unresolved_hd_for_wxGUI() == [])
+  test_output(old)
+  # matcher not run (H only): None
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str4)
+  assert (results.unresolved_hd is None)
+
 def run():
   exercise()
   exercise1()
@@ -1519,6 +1604,7 @@ def run():
   exercise_lys_blank_d()
   exercise_pairing_sorry()
   exercise_v3_analyses()
+  exercise_v4_unresolved()
 
 if (__name__ == "__main__"):
   t0 = time.time()
