@@ -84,7 +84,8 @@ Usage:
 
   def print_renamed(self, renamed):
     print('*'*79, file=self.log)
-    print('The following atoms were renamed:', file=self.log)
+    print('D atoms whose name does not match the H at the same position:',
+      file=self.log)
     for entry in renamed:
       id_str = entry[0]
       oldname = entry[2]
@@ -173,6 +174,10 @@ Usage:
     bond_results       = results.bond_results
     if overall_counts_hd:
       self.print_overall_results(overall_counts_hd)
+    if getattr(results, 'hd_pairing_note', None):
+      print('*'*79, file=self.log)
+      print('H/D pairs not analyzed: %s' % results.hd_pairing_note,
+        file=self.log)
     if renamed:
       self.print_renamed(renamed)
     if hd_atoms_with_occ_0 or single_hd_atoms_occ_lt_1:

@@ -50,7 +50,10 @@ class validate_H(object):
     self.outliers_bonds = None
     self.outliers_angles = None
     self.bond_results = None
-    self.curated_hierarchy = None
+    # why the H/D pairs were not analyzed (matcher Sorry), else None
+    self.hd_pairing_note = None
+    # pairs that lost an atom to a shorter pair (one-to-one guard)
+    self.n_pairing_conflicts = 0
 
   def validate_inputs(self):
     if not self.model.has_hd():
@@ -175,133 +178,74 @@ class validate_H(object):
                                          xyz))
     self.missing_HD_atoms = missing_HD_atoms
 
-  def get_atom(self, residue_group, name):
-    for atom_group in residue_group.atom_groups():
-      atom = atom_group.get_atom(name.strip())
-      if atom: return atom
-    return None
-
-  def find_closest_hd(self, atom, residue_group, neighbors, minimum_distance):
-    exchange_atom = None
-    hd_without_altloc = []
-    if (is_hydrogen(atom)):
-      element = 'D'
-    else:
-      element = 'H'
-    for _atom in residue_group.atoms():
-      if (_atom.parent().altloc == ''):
-        hd_without_altloc.append(_atom.name)
-      if _atom.element.strip().upper()!= element: continue
-      if neighbors:
-        if _atom.i_seq not in neighbors: continue
-      current_distance = _atom.distance(atom)
-      if current_distance <= minimum_distance:
-        minimum_distance = current_distance
-        exchange_atom = _atom
-    return exchange_atom, hd_without_altloc
-
-  def find_exchanged_pair(self, atom_H, atom_D, residue_group, fsc1):
-    minimum_distance = atom_H.distance(atom_D)
-    if (atom_H.parent().altloc == '' and atom_D.parent().altloc != ''):
-      atom = atom_D
-    #elif (atom_D.parent().altloc == '' and atom_H.parent().altloc == ''):
-    #  STOP()
-    else:
-      atom = atom_H
-    exchange_atom, hd_without_altloc = self.find_closest_hd(
-      atom = atom,
-      residue_group = residue_group,
-      neighbors = list(fsc1[atom.i_seq]),
-      minimum_distance = minimum_distance)
-    if exchange_atom is not None:
-      if (is_hydrogen(atom)):
-        atom_H_new, atom_D_new = atom, exchange_atom
-      else:
-        atom_H_new, atom_D_new = exchange_atom, atom
-      self.rename_hd(
-        atom_H = atom_H_new,
-        atom_D = atom_D_new,
-        hd_without_altloc = hd_without_altloc,
-        residue_group = residue_group)
-    else:
-      return None, None
-    return atom_H_new, atom_D_new
-
-  def rename_hd(self, atom_H, atom_D, hd_without_altloc, residue_group):
-    atom_D_old_name = atom_D.name
-    atom_D_new_name = atom_H.name.replace('H','D',1)
-    if atom_D_old_name == atom_D_new_name:
-      return
-    if atom_D_new_name not in hd_without_altloc:
-      atom_with_same_target_name = self.get_atom(
-        residue_group = residue_group,
-        name = atom_D_new_name)
-      if atom_with_same_target_name is not None:
-        atom_with_same_target_name.set_name(atom_D_old_name)
-        self.renamed.append(
-                            (atom_with_same_target_name.id_str(), # id_str
-                             atom_with_same_target_name.name,     # new name
-                             atom_D_new_name,                     # old name
-                             atom_with_same_target_name.xyz))     # xyz
-      atom_D.set_name(atom_D_new_name)
-      self.renamed.append(
-                          (atom_D.id_str(),
-                           atom_D.name,
-                           atom_D_old_name,
-                           atom_D.xyz))
-    else:
-      atom_H_old_name = atom_H.name
-      atom_H_new_name = atom_D.name.replace('D','H',1)
-      if atom_H_old_name == atom_H_new_name:
-        return
-      atom_with_same_target_name = self.get_atom(
-        residue_group = residue_group,
-        name = atom_H_new_name)
-      if atom_with_same_target_name is not None:
-        atom_with_same_target_name.set_name(atom_H_old_name)
-        self.renamed.append(
-                            (atom_with_same_target_name.id_str(),
-                             atom_with_same_target_name.name,
-                             atom_H_new_name,
-                             atom_with_same_target_name.xyz))
-      atom_H.set_name(atom_H_new_name)
-      self.renamed.append(
-                          (atom_H.id_str(),
-                           atom_H.name,
-                           atom_H_old_name,
-                           atom_H.xyz))
-
-  def get_exchanged_sites_and_curate_swapped(self, pdb_hierarchy):
+  def get_exchanged_sites(self):
+    '''
+    H/D exchanged sites from the shared matcher (hd_exchange), H in a
+    protein-class residue: one pair per site, by position (the name pair, or
+    the H and its geometric partner when the names do not match), one-to-one
+    (on a conflict the shorter pair wins, the other keeps its name pair if
+    both atoms are free). renamed lists each D whose name does not match its
+    H (report only, nothing is renamed). A Sorry from the matcher skips the
+    pairs and sets hd_pairing_note: validation does not stop.
+    '''
+    from libtbx.utils import Sorry
+    from mmtbx.hydrogens import hd_exchange
     self.renamed = []
-    geometry_restraints = self.model.get_restraints_manager().geometry
-    fsc1 = geometry_restraints.shell_sym_tables[1].full_simple_connectivity()
+    self.hd_exchanged_sites = {}
+    self.n_pairing_conflicts = 0
+    try:
+      if self.model.get_hierarchy() is not self.pdb_hierarchy:
+        raise Sorry("H/D pairing: the model's hierarchy is not the one "
+          "validated")
+      table = hd_exchange.h_parent_table(self.model)
+      # without model=: no second rotatable_hd_selection()
+      candidates = hd_exchange.find_hd_candidates(self.pdb_hierarchy, table)
+    except Sorry as e:
+      self.hd_pairing_note = str(e)
+      return
+    atoms = self.pdb_hierarchy.atoms()
+    by_id = {}
+    for c in candidates.pairs:
+      if c.name_mismatch: by_id.setdefault(c.geometric_partner, None)
+    if by_id:
+      for a in atoms:
+        if a.id_str() in by_id:
+          by_id[a.id_str()] = (by_id[a.id_str()] or []) + [a.i_seq]
+    proposed = []
+    for c in candidates.pairs:
+      i_h, i_d = c.i_h, c.i_d
+      if c.name_mismatch:
+        # an H or a D (for a leftover matched by position: its own D); a
+        # duplicate id_str: the one closest to the pair
+        g = min(by_id[c.geometric_partner], key=lambda i: min(
+          atoms[i].distance(atoms[c.i_h]), atoms[i].distance(atoms[c.i_d])))
+        if is_deuterium(atoms[g]): i_d = g
+        else:                      i_h = g
+      proposed.append((atoms[i_h].distance(atoms[i_d]), i_h, i_d, c.i_h,
+        c.i_d))
+    proposed.sort()
+    used = set()
+    pairs = []
+    for distance, i_h, i_d, name_h, name_d in proposed:
+      if i_h in used or i_d in used:
+        self.n_pairing_conflicts += 1
+        if name_h in used or name_d in used: continue
+        i_h, i_d = name_h, name_d
+      used.update([i_h, i_d])
+      pairs.append((i_h, i_d))
+    # Pairs are positional; the analysis lists use the model's names, and
+    # renamed lists the D names that do not match their H partner.
     get_class = common_residue_names_get_class
-    hd_exchanged_sites = {}
-    for residue_group in pdb_hierarchy.residue_groups():
-      for atom in residue_group.atoms():
-        resname = atom.parent().resname
-        if (get_class(name=resname) in protein):
-          if (is_hydrogen(atom)):
-            atom_H = atom
-            name_atom_H = atom_H.name
-            name_atom_D = name_atom_H.replace('H','D',1)
-            atom_D = self.get_atom(
-              residue_group = residue_group,
-              name = name_atom_D)
-            if atom_D is None: continue
-            if atom_H.xyz == atom_D.xyz:
-              hd_exchanged_sites[atom_H.i_seq] = [atom_H, atom_D]
-            else:
-              atom_H_new, atom_D_new = self.find_exchanged_pair(
-                atom_H        = atom_H,
-                atom_D        = atom_D,
-                residue_group = residue_group,
-                fsc1          = fsc1)
-              if atom_H_new is not None:
-                hd_exchanged_sites[atom_H_new.i_seq] = [atom_H_new, atom_D_new]
-    self.hd_exchanged_sites = hd_exchanged_sites
-    if self.renamed is not None:
-      self.curated_hierarchy = pdb_hierarchy
+    for i_h, i_d in sorted(pairs):
+      atom_H, atom_D = atoms[i_h], atoms[i_d]
+      if get_class(name=atom_H.parent().resname) not in protein: continue
+      self.hd_exchanged_sites[i_h] = [atom_H, atom_D]
+    for atom_H, atom_D in sorted(self.hd_exchanged_sites.values(),
+                                 key=lambda x: x[1].i_seq):
+      new_name = atom_H.name.replace('H','D',1)
+      if atom_D.name != new_name:
+        self.renamed.append(
+          (atom_D.id_str(), new_name, atom_D.name, atom_D.xyz))
 
   def analyze_hd_sites(self):
     sites_different_xyz = []
@@ -559,10 +503,9 @@ class validate_H(object):
     self.bond_angle_outliers()
     # Find missing H atoms
     self.missing_hydrogens()
-    # if H and D are both present, analyse and curate potential H/D states
+    # if H and D are both present, find the H/D exchanged sites
     if self.get_hd_state() == 'h_and_d':
-      self.get_exchanged_sites_and_curate_swapped(
-        pdb_hierarchy = self.pdb_hierarchy.deep_copy())
+      self.get_exchanged_sites()
     # If H/D sites are present, analyze for mismatches
     if self.hd_exchanged_sites:
       self.analyze_hd_sites()
@@ -579,11 +522,9 @@ class validate_H(object):
         missing_HD_atoms      = self.missing_HD_atoms,
         outliers_bonds        = self.outliers_bonds,
         outliers_angles       = self.outliers_angles,
-        bond_results          = self.bond_results
+        bond_results          = self.bond_results,
+        hd_pairing_note       = self.hd_pairing_note
         )
-
-  def get_curated_hierarchy(self):
-    return self.curated_hierarchy
 
 class validate_H_results(object):
   '''
@@ -633,13 +574,20 @@ class validate_H_results(object):
     if (log is None):
       log = self.log
 
-    make_sub_header('The following atoms were renamed:', out=log)
+    make_sub_header('D atoms whose name does not match the H at the same '
+      'position:', out=log)
     for entry in renamed:
       id_str = entry[0]
       oldname = entry[2]
       newname = entry[1]
       print('%s%s atom %s --> %s' % (prefix, id_str, oldname, newname),
             file=log)
+
+  def print_hd_pairing_note(self, note, prefix='', log=None):
+    if (log is None):
+      log = self.log
+    make_sub_header('H/D pairs not analyzed', out=log)
+    print('%s%s' % (prefix, note), file=log)
 
   def export_renamed_for_wxGUI(self):
     # last element should be xyz for residue/atom
@@ -851,6 +799,9 @@ class validate_H_results(object):
 
     if overall_counts_hd:
       self.print_overall_results(overall_counts_hd, prefix=prefix, log=log)
+    if getattr(results, 'hd_pairing_note', None):
+      self.print_hd_pairing_note(results.hd_pairing_note, prefix=prefix,
+        log=log)
     if renamed:
       self.print_renamed(renamed, prefix=prefix, log=log)
     if hd_atoms_with_occ_0 or single_hd_atoms_occ_lt_1:
