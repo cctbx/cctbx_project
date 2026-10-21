@@ -33,8 +33,9 @@ from mmtbx.programs import probe2
 import copy
 from iotbx.data_manager import DataManager
 import csv
+from cctbx.crystal import super_cell
 
-version = "3.5.0"
+version = "4.0.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -120,6 +121,10 @@ qmready = False
   .type = bool
   .short_caption = Run with custom preset options suitable for QM
   .help = Add H to water, use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks
+include_symmetric_copies = True
+  .type = bool
+  .short_caption = Include symmetry copies of atoms and Movers in the optimization
+  .help = This uses the super_cell class to construct symmetry copiees of atoms that are near the boundary so that Movers can interact with them.
 output
   .style = menu_item auto_align
 {
@@ -1377,6 +1382,52 @@ NOTES:
     # about the original model for use by Kinemages.
     initialModel = self.model.deep_copy()
 
+    # If we've been asked to use symmetry-copy atoms, then we add them to each model
+    # in the hierarchy one at a time.
+    if self.params.include_symmetric_copies:
+      make_sub_header('Adding Symmetric Copies of Atoms Near the Boundary', out=self.logger)
+      # We keep track of all of the original chains in each model so that we can remove any
+      # symmetry copies from the output file later.
+      originalChainSets = []
+      for mi in range(len(self.model.get_hierarchy().models())):
+        # Get the original list of chains
+        originalChains = set()
+        for c in self.model.get_hierarchy().models()[mi].chains():
+          originalChains.add(c.id)
+        originalChainSets.append(originalChains)
+
+        # Add the symmetric copies to each model in the hierarchy.
+        myModel = self.model.get_hierarchy().models()[mi]
+
+        initialAtoms = len(myModel.atoms())
+        # Make a new hierarchy that has only the current model in it.
+        singleModel = self.model.get_hierarchy().deep_copy()
+        for indices in reversed(range(len(singleModel.models()))):
+          if indices != mi:
+            singleModel.remove_model(indices)
+        superCell = super_cell.manager(
+          pdb_hierarchy = singleModel,
+          crystal_symmetry = self.model.crystal_symmetry(),
+          select_within_radius = 10.0
+          )
+
+        # Replace the original model and myModel with the new one that has the symmetric copies added.
+        # models() returns a temporary list, so we must modify the hierarchy itself.
+        hierarchy = self.model.get_hierarchy()
+        newModel = superCell.super_sphere_hierarchy.models()[0].detached_copy()
+        hierarchy.remove_model(mi)
+        hierarchy.insert_model(mi, newModel)
+        hierarchy.atoms().reset_i_seq()
+        myModel = hierarchy.models()[mi]
+        finalAtoms = len(myModel.atoms())
+        if finalAtoms > initialAtoms:
+          print("Added "+str(finalAtoms-initialAtoms)+" symmetric copies of atoms near the boundary\n")
+
+      # Re-process the model because we have added atoms.
+      self.model.set_log(null_out())
+      self._ReinterpretModel(False)
+
+    # Perform the requested action on the model.
     if self.params.approach == 'place':
       make_sub_header('Adding Hydrogens', out=self.logger)
       startAdd = time.time()
@@ -1469,6 +1520,18 @@ NOTES:
       for a in self.model.get_atoms():
         if sel[a.i_seq]:
           a.parent().remove_atom(a)
+
+    # Remove any chains that were not in the original models, which may have been
+    # added by the symmetry operation.
+    if self.params.include_symmetric_copies:
+      make_sub_header('Removing symmetry chains that were not in the original model', out=self.logger)
+      for mi in range(len(self.model.get_hierarchy().models())):
+        myModel = self.model.get_hierarchy().models()[mi]
+        for c in reversed(range(len(myModel.chains()))):
+          chain = myModel.chains()[c]
+          if chain.id not in originalChainSets[mi]:
+            print("Removing chain {} from model index {}".format(chain.id, mi))
+            myModel.remove_chain(c)
 
     # Re-process the model because we have removed some atoms that were previously
     # bonded.  Don't make restraints during the reprocessing.
