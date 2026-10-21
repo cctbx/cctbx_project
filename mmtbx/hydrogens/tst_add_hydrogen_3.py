@@ -24,6 +24,7 @@ def run():
   test_011()
   test_012()
   test_013()
+  test_014()
 
 # ------------------------------------------------------------------------------
 
@@ -306,6 +307,32 @@ def test_013():
   '''
   h = place_residue_one(pdb_str_011.replace('RES', 'Z9Q') + ser_str_011)
   assert not h, sorted(h)
+
+# ------------------------------------------------------------------------------
+
+def test_014():
+  '''
+    Segid on every atom: N-terminal H inherit it. Residue 1 (residue_one),
+    and chain starts after breaks (all_chain_starts): a blank segid in an
+    inner residue flagged as terminus stops processing ("segid is not unique")
+  '''
+  for pdb_str, n_terminal_charge, nh3 in [
+      (pdb_str_011.replace('RES', 'ALA') + ser_str_011, 'residue_one', ['1']),
+      (pdb_str_008, 'all_chain_starts', ['143', '147', '150', '232'])]:
+    lines = []
+    for l in pdb_str.splitlines():
+      if l.startswith('ATOM'): l = l[:72] + 'UNK ' + l[76:]
+      lines.append(l)
+    model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=lines, source_info=None),
+      log         = null_out())
+    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+      model             = model,
+      n_terminal_charge = n_terminal_charge)
+    reduce_add_h_obj.run()
+    model = reduce_add_h_obj.get_model()
+    assert nh3_residues(model) == nh3, nh3_residues(model)
+    assert set(model.get_hierarchy().atoms().extract_segid()) == {'UNK '}
 
 # ------------------------------------------------------------------------------
 

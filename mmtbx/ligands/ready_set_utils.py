@@ -156,7 +156,7 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     atom.xyz = rh3[j]
     atom.occ = n.occ
     atom.b = n.b
-    atom.segid = ' '*4
+    atom.segid = n.segid
     # Inherit the hetero flag from the parent residue so terminal H atoms on a
     # HETATM residue (e.g. N-terminal MSE) are not emitted as ATOM records.
     atom.hetero = ag.atoms()[0].hetero
@@ -250,7 +250,7 @@ def add_c_terminal_oxygens_to_atom_group(ag,
       atom.element = atom_element
       atom.occ = c.occ
       atom.b = c.b
-      atom.segid = ' '*4
+      atom.segid = c.segid
       atom.xyz = ro2[i]
       if append_to_end_of_model:
         chain = _add_atom_to_chain(atom,
@@ -318,7 +318,7 @@ def add_main_chain_o_to_atom_group(ag, c_ca_n=None):
       atom.element = atom_element
       atom.occ = c.occ
       atom.b = c.b
-      atom.segid = ' '*4
+      atom.segid = c.segid
       atom.xyz = ro2[i]
       if append_to_end_of_model:
         chain = _add_atom_to_chain(atom, ag)
@@ -739,6 +739,7 @@ def add_water_hydrogen_atoms_simple(hierarchy, log=None):
               min_d2=min(d2, min_d2)
             j+=1
           h = get_hierarchy_h_atom(name, xyz, o_atom, proton_element=proton_element)
+          h.segid = o_atom.segid
           atom_group.append_atom(h)
       # for atom in atom_group.atoms(): print(atom.format_atom_record())
 
