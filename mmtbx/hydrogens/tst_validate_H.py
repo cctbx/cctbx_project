@@ -1355,6 +1355,150 @@ def exercise_pairing_sorry():
     pdb_str = pdb_str)
   assert (results.hd_pairing_note is None)
 
+# ------------------------------------------------------------------------------
+# Analyses (V3): Lys and Ser (reduce2 hd_and_h), the HC4 ligand, a water with
+# an H/D pair.
+# Occupancy: Lys NZ at 0.6 with HZ1/DZ1 0.3 + 0.3 (sum = parent), HZ2/DZ2
+# 0.3 + 0.7 (sum 1), HZ3/DZ3 0.2 + 0.2 (flagged); backbone H/D 0.5 + 0.4 on a
+# full parent (flagged). Two-decimal occupancies (tolerance 0.01): HC4 O4' at
+# 0.67 with HO4'/DO4' 0.34 + 0.34, Ser N (full) with H/D 0.37 + 0.64 (not
+# flagged).
+# Cancellation: Ser OG at 0.5, HG 0.32 and DG 0.18 at one position: H is 0.64
+# of the pair's total (flagged; not by the old absolute rule).
+# Scope: the HC4 pair is analysed, the water pair is not.
+# ------------------------------------------------------------------------------
+pdb_str_v3 = """
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+ATOM      1  N   LYS A  11       8.858   8.273   7.062  1.00  6.20           N
+ATOM      2  CA  LYS A  11      10.223   8.199   7.494  1.00  6.13           C
+ATOM      3  C   LYS A  11      10.782   6.775   7.278  1.00  5.87           C
+ATOM      4  O   LYS A  11      10.098   5.780   7.511  1.00  7.52           O
+ATOM      5  CB  LYS A  11      10.324   8.551   8.974  1.00  8.59           C
+ATOM      6  CG  LYS A  11      10.032  10.045   9.174  1.00 13.51           C
+ATOM      7  CD  LYS A  11      10.125  10.356  10.654  1.00 23.56           C
+ATOM      8  CE  LYS A  11      10.068  11.852  10.892  1.00 30.54           C
+ATOM      9  NZ  LYS A  11      10.150  11.965  12.433  0.60 40.48           N
+ATOM     10  HA  LYS A  11      10.820   8.907   6.920  1.00  6.13           H
+ATOM     11  HB2 LYS A  11       9.595   7.971   9.540  1.00  8.59           H
+ATOM     12  HB3 LYS A  11      11.330   8.338   9.335  1.00  8.59           H
+ATOM     13  HG2 LYS A  11      10.766  10.645   8.636  1.00 13.51           H
+ATOM     14  HG3 LYS A  11       9.028  10.281   8.822  1.00 13.51           H
+ATOM     15  HD2 LYS A  11       9.290   9.890  11.177  1.00 23.56           H
+ATOM     16  HD3 LYS A  11      11.069   9.979  11.047  1.00 23.56           H
+ATOM     17  HE2 LYS A  11      10.913  12.360  10.427  1.00 30.54           H
+ATOM     18  HE3 LYS A  11       9.132  12.276  10.528  1.00 30.54           H
+ATOM     19  H  ALYS A  11       8.196   7.811   7.685  0.50  6.20           H
+ATOM     20  HZ1ALYS A  11      11.038  11.544  12.774  0.30 40.48           H
+ATOM     21  HZ2ALYS A  11      10.119  12.965  12.719  0.30 40.48           H
+ATOM     22  HZ3ALYS A  11       9.350  11.464  12.869  0.20 40.48           H
+ATOM     23  D  BLYS A  11       8.196   7.811   7.685  0.40  6.20           D
+ATOM     24  DZ1BLYS A  11      11.038  11.544  12.774  0.30 40.48           D
+ATOM     25  DZ2BLYS A  11      10.119  12.965  12.719  0.70 40.48           D
+ATOM     26  DZ3BLYS A  11       9.350  11.464  12.869  0.20 40.48           D
+ATOM     27  N   SER B   2      25.751  11.412  10.135  1.00 12.44           N
+ATOM     28  CA  SER B   2      25.691  10.109   9.559  1.00 11.44           C
+ATOM     29  C   SER B   2      24.919  10.064   8.248  1.00  6.38           C
+ATOM     30  O   SER B   2      25.072   9.064   7.551  1.00  6.10           O
+ATOM     31  CB  SER B   2      25.081   9.088  10.495  1.00 16.20           C
+ATOM     32  OG  SER B   2      23.794   9.422  10.779  0.50 20.92           O
+ATOM     33  HA  SER B   2      26.728   9.836   9.363  1.00 11.44           H
+ATOM     34  HB2 SER B   2      25.099   8.109  10.017  1.00 16.20           H
+ATOM     35  HB3 SER B   2      25.656   9.062  11.420  1.00 16.20           H
+ATOM     36  H  ASER B   2      25.026  11.618  10.822  0.37 12.44           H
+ATOM     37  HG ASER B   2      23.581  10.297  10.392  0.32 20.92           H
+ATOM     38  D  BSER B   2      25.026  11.618  10.822  0.64 12.44           D
+ATOM     39  DG BSER B   2      23.581  10.297  10.392  0.18 20.92           D
+HETATM   40  C1  HC4 C 169       6.826  22.215  11.120  1.00  2.51           C
+HETATM   41  C1' HC4 C 169       9.516  24.709  10.292  1.00  3.50           C
+HETATM   42  C2  HC4 C 169       7.629  23.097  10.332  1.00  3.66           C
+HETATM   43  C2' HC4 C 169      10.290  25.581  11.072  1.00  7.24           C
+HETATM   44  C3  HC4 C 169       8.504  23.951  10.910  1.00  4.10           C
+HETATM   45  C3' HC4 C 169      11.352  26.317  10.535  1.00  7.06           C
+HETATM   46  C4' HC4 C 169      11.649  26.156   9.173  1.00  6.80           C
+HETATM   47  C5' HC4 C 169      10.873  25.298   8.377  1.00  7.54           C
+HETATM   48  C6' HC4 C 169       9.811  24.592   8.938  1.00  4.60           C
+HETATM   49  O1  HC4 C 169       6.968  22.015  12.345  1.00  5.58           O
+HETATM   50  O4' HC4 C 169      12.653  26.814   8.596  0.67  7.92           O
+HETATM   51  H2  HC4 C 169       7.509  23.054   9.260  1.00  3.66           H
+HETATM   52  H3  HC4 C 169       8.430  24.079  11.980  1.00  4.10           H
+HETATM   53  H2' HC4 C 169      10.063  25.692  12.122  1.00  7.24           H
+HETATM   54  H3' HC4 C 169      11.925  26.990  11.156  1.00  7.06           H
+HETATM   55  H5' HC4 C 169      11.105  25.189   7.328  1.00  7.54           H
+HETATM   56  H6' HC4 C 169       9.218  23.950   8.304  1.00  4.60           H
+HETATM   57 HO4'AHC4 C 169      12.838  27.647   9.078  0.34  7.92           H
+HETATM   58 DO4'BHC4 C 169      12.838  27.647   9.078  0.34  7.92           D
+HETATM   59  O   HOH D   1      25.000  25.000  25.000  1.00 20.00           O
+HETATM   60  H2  HOH D   1      24.760  25.927  25.000  1.00 20.00           H
+HETATM   61  H1 AHOH D   1      25.957  25.000  25.000  0.50 20.00           H
+HETATM   62  D1 BHOH D   1      25.957  25.000  25.000  0.50 20.00           D
+END
+"""
+
+def exercise_v3_analyses():
+  c = get_validate_H(neutron_distances = True, pdb_str = pdb_str_v3)
+  results = c.get_results()
+  a = results.hd_sites_analysis
+  # scope: protein and ligand pairs, no water pair
+  pairs = sorted((h.id_str(), d.id_str()) for h, d in
+                 c.hd_exchanged_sites.values())
+  assert (results.count_exchanged_sites == 7)
+  assert ('pdb="HO4\'AHC4 C 169 "', 'pdb="DO4\'BHC4 C 169 "') in pairs
+  assert not [p for p in pairs if 'HOH' in p[0]]
+  # occupancy: neither 1 nor the parent occupancy; entries carry the parent
+  # occupancy, xyz last
+  occ_answer = [
+    ('pdb=" H  ALYS A  11 "', 'pdb=" D  BLYS A  11 "', 0.9, 1.0),
+    ('pdb=" HZ3ALYS A  11 "', 'pdb=" DZ3BLYS A  11 "', 0.4, 0.6)]
+  sites_sum_occ_not_1 = a.sites_sum_occ_not_1
+  assert (len(sites_sum_occ_not_1) == len(occ_answer))
+  for item, answer in zip(sites_sum_occ_not_1, occ_answer):
+    assert (len(item) == 6)
+    assert (item[:2] == answer[:2])
+    assert approx_equal(item[2], answer[2], 1.e-3)
+    assert approx_equal(item[3], answer[3], 1.e-3)
+    assert (item[4] is not None and item[5] is not None)
+  # every analysed pair has its parent occupancy
+  parent_occ = dict((c.hd_exchanged_sites[i][0].id_str(), p)
+                    for i, p in c.hd_parent_occ.items())
+  assert (sorted(parent_occ) == sorted(p[0] for p in pairs))
+  assert approx_equal(parent_occ['pdb=" HZ1ALYS A  11 "'], 0.6)
+  assert approx_equal(parent_occ['pdb=" HG ASER B   2 "'], 0.5)
+  assert approx_equal(parent_occ['pdb="HO4\'AHC4 C 169 "'], 0.67)
+  assert approx_equal(parent_occ['pdb=" H  ASER B   2 "'], 1.0)
+  # cancellation: fraction of the pair's total
+  scatt = a.sites_occ_sum_no_scattering
+  assert (len(scatt) == 1)
+  assert (scatt[0][:2] == ('pdb=" HG ASER B   2 "', 'pdb=" DG BSER B   2 "'))
+  assert approx_equal(scatt[0][2:4], (0.32, 0.18))
+  # (the old rule, absolute 0.64 / 0.36, does not flag it)
+  assert (abs(0.32 - 0.64) > 0.05)
+  # modelled only as H (D): non-water H (D) in no pair
+  atoms = c.pdb_hierarchy.atoms()
+  paired = set()
+  for h, d in c.hd_exchanged_sites.values(): paired.update([h.i_seq, d.i_seq])
+  def only(element):
+    return len([x for x in atoms if x.element.strip() == element and
+      x.parent().resname != 'HOH' and x.i_seq not in paired])
+  assert (a.count_h_only == only('H') == 18)
+  assert (a.count_d_only == only('D') == 0)
+  # GUI table: parent occupancy column before the None
+  out = validate_H_results(results)
+  table = out.export_sites_sum_occ_for_wxGUI()
+  assert ([row[2:5] for row in table] == [[0.9, 1.0, None], [0.4, 0.6, None]])
+  # results saved by older versions: no parent occupancy, counts from protein
+  from libtbx import group_args
+  old = group_args(**results.__dict__)
+  old.hd_sites_analysis = group_args(
+    sites_different_xyz = a.sites_different_xyz,
+    sites_different_b = a.sites_different_b,
+    sites_sum_occ_not_1 = [x[:3] + x[4:] for x in a.sites_sum_occ_not_1],
+    sites_occ_sum_no_scattering = a.sites_occ_sum_no_scattering)
+  out_old = validate_H_results(old)
+  assert ([row[3] for row in out_old.export_sites_sum_occ_for_wxGUI()] ==
+          ['', ''])
+  test_output(old)
+  test_output(results)
+
 def run():
   exercise()
   exercise1()
@@ -1374,6 +1518,7 @@ def run():
   exercise_lys_cycle()
   exercise_lys_blank_d()
   exercise_pairing_sorry()
+  exercise_v3_analyses()
 
 if (__name__ == "__main__"):
   t0 = time.time()

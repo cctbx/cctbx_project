@@ -6,7 +6,8 @@ from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 import iotbx.phil
 import mmtbx.model
 from mmtbx.monomer_library import pdb_interpretation
-from mmtbx.hydrogens.validate_H import validate_H
+from mmtbx.hydrogens.validate_H import validate_H, parent_occupancy, \
+  only_hd_counts
 
 master_params_str = """\
 cif_file = None
@@ -112,10 +113,10 @@ Usage:
     print('*'*79, file=self.log)
     print('H/D EXCHANGED SITES:\n', file=self.log)
     print('Number of H/D exchanged sites: ', count_exchanged_sites, file=self.log)
-    print('Number of atoms modelled only as H: ', \
-     overall_counts_hd.count_h_protein - count_exchanged_sites, file=self.log)
-    print('Number of atoms modelled only as D: ', \
-     overall_counts_hd.count_d_protein - count_exchanged_sites, file=self.log)
+    h_only, d_only = only_hd_counts(
+      count_exchanged_sites, hd_sites_analysis, overall_counts_hd)
+    print('Number of atoms modelled only as H: ', h_only, file=self.log)
+    print('Number of atoms modelled only as D: ', d_only, file=self.log)
     if sites_different_xyz:
       print('\nH/D pairs not at identical positions:', file=self.log)
       for item in sites_different_xyz:
@@ -126,10 +127,12 @@ Usage:
       for item in sites_different_b:
         print('%s and %s ' % (item[0][5:-1], item[1][5:-1]), file=self.log)
     if sites_sum_occ_not_1:
-      print('\nH/D pairs with occupancy sum != 1:', file=self.log)
+      print('\nH/D pairs whose occupancy sum is neither 1 nor the parent '
+        'occupancy:', file=self.log)
       for item in sites_sum_occ_not_1:
-        print(' %s  and %s with occupancy sum %s' % \
-          (item[0][5:-1], item[1][5:-1], item[2]), file=self.log)
+        print(' %s  and %s with occupancy sum %s, parent occupancy %s' % \
+          (item[0][5:-1], item[1][5:-1], item[2], parent_occupancy(item)),
+          file=self.log)
     if sites_occ_sum_no_scattering:
       print('\nRotatable H/D pairs with zero scattering occupancy sum:', file=self.log)
       for item in sites_occ_sum_no_scattering:
