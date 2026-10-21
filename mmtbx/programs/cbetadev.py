@@ -56,6 +56,30 @@ Example:
                 result for each residue that is an outlier before or after \
                 correction. Requires apply_phi_psi_correction or \
                 apply_positive_phi_correction.
+      mahalanobis_z_score = False
+        .type = bool
+        .style = hidden
+        .help = Also score each uncorrected deviation vector by its \
+                Mahalanobis distance d from the reference distribution for \
+                its (phi, psi) bin. An isotropic model error s is fitted \
+                for each model so that the median d squared matches \
+                chi-squared with two degrees of freedom. The 0.25 Angstrom \
+                outliers are unchanged.
+      mahalanobis_cutoff = 4.0
+        .type = float
+        .style = hidden
+        .help = Residues with d at or above this value are counted as \
+                Mahalanobis outliers. Used with mahalanobis_z_score.
+      show_deviation_stats = False
+        .type = bool
+        .style = hidden
+        .help = Print descriptive statistics of the C-beta deviations \
+                projected onto the dihedralNABB = 45 degree axis.
+      plot_deviation_histogram = False
+        .type = bool
+        .style = hidden
+        .help = Plot (matplotlib) a histogram of the C-beta deviations \
+                projected onto the dihedralNABB = 45 degree axis.
       exclude_d_peptides = False
         .type = bool
         .style = hidden
@@ -95,6 +119,10 @@ Example:
       apply_phi_psi_correction=self.params.cbetadev.apply_phi_psi_correction,
       display_phi_psi_correction=self.params.cbetadev.display_phi_psi_correction,
       exclude_d_peptides=self.params.cbetadev.exclude_d_peptides,
+      mahalanobis_z_score=self.params.cbetadev.mahalanobis_z_score,
+      mahalanobis_cutoff=self.params.cbetadev.mahalanobis_cutoff,
+      show_deviation_stats=self.params.cbetadev.show_deviation_stats,
+      plot_deviation_histogram=self.params.cbetadev.plot_deviation_histogram,
       out=self.logger,
       quiet=False)
     if self.params.cbetadev.output == "kin":
