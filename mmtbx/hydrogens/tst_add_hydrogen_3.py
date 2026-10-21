@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
+import iotbx.cif
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.hydrogens.tst_add_hydrogen_1 import compare_models
 from libtbx.utils import null_out
@@ -20,6 +21,9 @@ def run():
   test_008()
   test_009()
   test_010()
+  test_011()
+  test_012()
+  test_013()
 
 # ------------------------------------------------------------------------------
 
@@ -246,6 +250,62 @@ def test_010():
       if 'H1' in names and 'H2' in names and 'H3' in names:
         result.append(rg.resseq.strip())
     assert result == ['143', '147', '150', '232'] * n_copies, result
+
+# ------------------------------------------------------------------------------
+
+def place_residue_one(pdb_str, cif_str=None):
+  '''
+  Place H, return {name: distance to N} for the H of residue 1
+  '''
+  restraint_objects = None
+  if cif_str is not None:
+    restraint_objects = [('user.cif',
+      iotbx.cif.reader(input_string=cif_str).model())]
+  model = mmtbx.model.manager(
+    model_input       = iotbx.pdb.input(lines=pdb_str.split("\n"),
+                                        source_info=None),
+    restraint_objects = restraint_objects,
+    stop_for_unknowns = False,
+    log               = null_out())
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  rg = list(reduce_add_h_obj.get_model().get_hierarchy().residue_groups())[0]
+  n = rg.atom_groups()[0].get_atom('N')
+  return dict((a.name.strip(), a.distance(n)) for a in rg.atoms()
+              if a.element.strip() == 'H')
+
+# ------------------------------------------------------------------------------
+
+def test_011():
+  '''
+    Residue 1 known only from a user CIF (Z9Q, not in CCD): NH3 placed
+  '''
+  h = place_residue_one(pdb_str_011.replace('RES', 'Z9Q') + ser_str_011,
+    cif_str_011)
+  on_n = sorted(k for k, d in h.items() if d < 1.2)
+  assert on_n == ['H1', 'H2', 'H3'], on_n
+
+# ------------------------------------------------------------------------------
+
+def test_012():
+  '''
+    Residue 1 is ALA redefined by a user CIF as N-methyl alanine: N has two
+    heavy neighbours (CA, CM), not one as in the CCD. One H at N, no NH3.
+  '''
+  h = place_residue_one(
+    pdb_str_011.replace('RES', 'ALA') + cm_str_012 + ser_str_011, cif_str_012)
+  on_n = sorted(k for k, d in h.items() if d < 1.2)
+  assert on_n == ['H'], on_n
+  assert {'HM1', 'HM2', 'HM3'}.issubset(h), sorted(h)
+
+# ------------------------------------------------------------------------------
+
+def test_013():
+  '''
+    Residue 1 in neither a CIF nor the CCD: no crash, no NH3
+  '''
+  h = place_residue_one(pdb_str_011.replace('RES', 'Z9Q') + ser_str_011)
+  assert not h, sorted(h)
 
 # ------------------------------------------------------------------------------
 
@@ -966,6 +1026,238 @@ ATOM     74  O   SER A 233      14.990  11.756  10.163  1.00 17.69           O
 ATOM     75  CB  SER A 233      14.449  13.574  12.776  1.00 20.71           C
 ATOM     76  OG  SER A 233      14.283  14.908  13.217  1.00 13.41           O
 END
+"""
+
+# ------------------------------------------------------------------------------
+
+# residue 1 (N, CA, C, O, CB; name RES replaced) and SER 2
+pdb_str_011 = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  N   RES A   1       9.572  13.044  12.058  1.00 20.00           N
+ATOM      2  CA  RES A   1      10.003  13.787  10.879  1.00 20.00           C
+ATOM      3  C   RES A   1      11.468  13.494  10.564  1.00 20.00           C
+ATOM      4  O   RES A   1      11.830  13.220   9.418  1.00 20.00           O
+ATOM      5  CB  RES A   1       9.805  15.286  11.125  1.00 20.00           C
+"""
+
+cm_str_012 = """\
+ATOM      6  CM  ALA A   1       8.158  12.930  12.260  1.00 20.00           C
+"""
+
+ser_str_011 = """\
+ATOM      7  N   SER A   2      12.301  13.542  11.598  1.00 19.07           N
+ATOM      8  CA  SER A   2      13.732  13.341  11.442  1.00 19.75           C
+ATOM      9  C   SER A   2      14.047  11.941  10.931  1.00 19.48           C
+ATOM     10  O   SER A   2      14.990  11.756  10.163  1.00 17.69           O
+ATOM     11  CB  SER A   2      14.449  13.574  12.776  1.00 20.71           C
+ATOM     12  OG  SER A   2      14.283  14.908  13.217  1.00 13.41           O
+END
+"""
+
+# geostd ALA, renamed (Z9Q is not in the CCD)
+cif_str_011 = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ Z9Q  Z9Q  'ALA copy'  L-peptide  10  5  .
+
+data_comp_Z9Q
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+ Z9Q  N    N  NH1
+ Z9Q  H    H  HNH1
+ Z9Q  CA   C  CH1
+ Z9Q  HA   H  HCH1
+ Z9Q  CB   C  CH3
+ Z9Q  HB1  H  HCH3
+ Z9Q  HB2  H  HCH3
+ Z9Q  HB3  H  HCH3
+ Z9Q  C    C  C
+ Z9Q  O    O  O
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ Z9Q  N   H    single  0.860  0.020
+ Z9Q  N   CA   single  1.458  0.019
+ Z9Q  CA  HA   single  0.970  0.020
+ Z9Q  CA  CB   single  1.521  0.033
+ Z9Q  CB  HB1  single  0.970  0.020
+ Z9Q  CB  HB2  single  0.970  0.020
+ Z9Q  CB  HB3  single  0.970  0.020
+ Z9Q  CA  C    single  1.525  0.021
+ Z9Q  C   O    double  1.231  0.020
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ Z9Q  H    N   CA   114.000  3.000
+ Z9Q  HA   CA  CB   109.000  3.000
+ Z9Q  CB   CA  C    110.500  1.500
+ Z9Q  HA   CA  C    109.000  3.000
+ Z9Q  N    CA  HA   110.000  3.000
+ Z9Q  N    CA  CB   110.400  1.500
+ Z9Q  HB1  CB  HB2  110.000  3.000
+ Z9Q  HB2  CB  HB3  110.000  3.000
+ Z9Q  HB1  CB  HB3  110.000  3.000
+ Z9Q  CA   CB  HB1  109.000  3.000
+ Z9Q  CA   CB  HB2  109.000  3.000
+ Z9Q  CA   CB  HB3  109.000  3.000
+ Z9Q  N    CA  C    111.000  2.800
+ Z9Q  CA   C   O    120.800  1.700
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ Z9Q  hh1     N  CA  CB  HB3   60.000   15.000   3
+ Z9Q  Var_01  C  CA  N   H    170.000  180.000  72
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ Z9Q  chir_01  CA  N  CB  C  negativ
+"""
+
+# geostd MAA (N-methyl-L-alanine) renamed ALA, without OXT
+cif_str_012 = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ALA  ALA  'N-methyl-L-alanine'  L-peptide  14  6  .
+
+data_comp_ALA
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+ ALA  N    N  NH1
+ ALA  CM   C  CH3
+ ALA  CA   C  CH1
+ ALA  CB   C  CH3
+ ALA  C    C  C
+ ALA  O    O  O
+ ALA  H    H  HNH1
+ ALA  HM1  H  HCH3
+ ALA  HM2  H  HCH3
+ ALA  HM3  H  HCH3
+ ALA  HA   H  HCH1
+ ALA  HB1  H  HCH3
+ ALA  HB2  H  HCH3
+ ALA  HB3  H  HCH3
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ALA  N   CM   single  1.449  0.020
+ ALA  N   CA   single  1.458  0.019
+ ALA  N   H    single  0.860  0.020
+ ALA  CM  HM1  single  0.970  0.020
+ ALA  CM  HM2  single  0.970  0.020
+ ALA  CM  HM3  single  0.970  0.020
+ ALA  CA  CB   single  1.521  0.033
+ ALA  CA  C    single  1.525  0.021
+ ALA  CA  HA   single  0.970  0.020
+ ALA  CB  HB1  single  0.970  0.020
+ ALA  CB  HB2  single  0.970  0.020
+ ALA  CB  HB3  single  0.970  0.020
+ ALA  C   O    double  1.231  0.020
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ ALA  H    N   CA   114.00  3.000
+ ALA  H    N   CM   109.03  3.000
+ ALA  CA   N   CM   114.79  3.000
+ ALA  HM3  CM  HM2  107.24  3.000
+ ALA  HM3  CM  HM1  107.27  3.000
+ ALA  HM2  CM  HM1  107.24  3.000
+ ALA  HM3  CM  N    109.69  3.000
+ ALA  HM2  CM  N    115.57  3.000
+ ALA  HM1  CM  N    109.49  3.000
+ ALA  HA   CA  C    109.00  3.000
+ ALA  HA   CA  CB   109.00  3.000
+ ALA  C    CA  CB   110.50  1.500
+ ALA  HA   CA  N    110.00  3.000
+ ALA  C    CA  N    111.00  2.800
+ ALA  CB   CA  N    110.40  1.500
+ ALA  HB3  CB  HB2  108.03  3.000
+ ALA  HB3  CB  HB1  107.42  3.000
+ ALA  HB2  CB  HB1  107.06  3.000
+ ALA  HB3  CB  CA   111.02  3.000
+ ALA  HB2  CB  CA   111.72  3.000
+ ALA  HB1  CB  CA   111.40  3.000
+ ALA  O    C   CA   120.80  1.700
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ ALA  Var_01  HM1  CM  N   CA  -176.32     30.0   3
+ ALA  Var_02  HB1  CB  CA  N   -176.55     30.0   3
+ ALA  Var_03  HB2  CB  CA  N    -56.87     30.0   3
+ ALA  Var_04  HB3  CB  CA  N     63.78     30.0   3
+ ALA  Var_05  HA   CA  N   CM   -49.72     30.0   3
+ ALA  Var_06  C    CA  N   H   170.000  180.000  72
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ ALA  chir_01  CA  N  CB  C  negativ
 """
 
 # ------------------------------------------------------------------------------

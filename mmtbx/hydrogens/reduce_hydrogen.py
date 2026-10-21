@@ -484,21 +484,36 @@ def chain_start_residue_groups(model, peptide_bond_cutoff=2.0):
 
 # ==============================================================================
 
-def bonds_in_restraints(atom, exclude_hydrogens=False):
-  from mmtbx.chemical_components import get_cif_dictionary
-  cc_cif = get_cif_dictionary(atom.parent().resname)
-  rc=[]
-  for b in cc_cif.get('_chem_comp_bond',[]):
-    if b.atom_id_1.strip()==atom.name.strip():
-      if exclude_hydrogens:
-        a=atom_in_restraints(b.atom_id_2, cc_cif)
-        if a.type_symbol in ['H', 'D']: continue
-      rc.append(b.atom_id_2)
-    if b.atom_id_2.strip()==atom.name.strip():
-      if exclude_hydrogens:
-        a=atom_in_restraints(b.atom_id_1, cc_cif)
-        if a.type_symbol in ['H', 'D']: continue
-      rc.append(b.atom_id_1)
+def heavy_neighbors_in_restraints(atom, mon_lib_srv):
+  '''
+  Names of the non-H atoms bonded to atom in the dictionary placement uses,
+  else in the CCD. None if neither knows the residue.
+  '''
+  name = atom.name.strip()
+  mlq = None
+  if mon_lib_srv is not None: # None: propeller called before placement
+    mlq = mon_lib_query(residue=atom.parent(), mon_lib_srv=mon_lib_srv,
+      raise_sorry=False)[0]
+  if mlq is not None:
+    types = dict((a.atom_id, a.type_symbol) for a in mlq.atom_list)
+    bonds = [(b.atom_id_1, b.atom_id_2) for b in mlq.bond_list]
+  else:
+    from mmtbx.chemical_components import get_cif_dictionary
+    cc_cif = get_cif_dictionary(atom.parent().resname)
+    if cc_cif is None: return None
+    types = {}
+    for b in cc_cif.get('_chem_comp_bond',[]):
+      for i in (b.atom_id_1, b.atom_id_2):
+        a = atom_in_restraints(i, cc_cif)
+        if a is not None: types[i] = a.type_symbol
+    bonds = [(b.atom_id_1, b.atom_id_2)
+             for b in cc_cif.get('_chem_comp_bond',[])]
+  rc = []
+  for b in bonds:
+    for this, other in (b, b[::-1]):
+      if (this.strip() == name
+          and types.get(other, '').strip().upper() not in ['H', 'D']):
+        rc.append(other)
   return rc
 
 # ==============================================================================
@@ -1930,7 +1945,8 @@ class place_hydrogens():
           n = ag.get_atom('N') # assumes atom name "N"
           if n: break
         if not n: continue
-        bonds = bonds_in_restraints(n, exclude_hydrogens=True)
+        bonds = heavy_neighbors_in_restraints(n, self.query_mon_lib_srv)
+        if bonds is None: continue
         heavies = 2
         if ag.resname in ['PRO']: # needs a PRO child lookup
           heavies = 3
