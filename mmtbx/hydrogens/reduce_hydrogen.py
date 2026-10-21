@@ -971,6 +971,8 @@ def workaround_002(model, selection, use_neutron_distances=False):
           p1, p2 = find_H1_H2(X=o[0].xyz, d=d, angle_deg=angle)
           atoms[ij[0]].xyz = p1
           atoms[ij[1]].xyz = p2
+  # direct xyz edits: keep the X-ray structure in step
+  model.set_sites_cart(model.get_sites_cart())
 
 def _chiral_volume(c, a, b, h):
   c, a, b, h = [matrix.col(x) for x in (c, a, b, h)]
@@ -2407,6 +2409,8 @@ class place_hydrogens():
         atoms[_i].xyz = coordp-half.normalize()*bond_lengths[_i]
 
     if remove_from_sel_remove:
+      # direct xyz edits above: keep the X-ray structure in step
+      self.model.set_sites_cart(self.model.get_sites_cart())
       sel_remove=list(sel_remove)
       for r in remove_from_sel_remove:
         sel_remove.remove(r)
