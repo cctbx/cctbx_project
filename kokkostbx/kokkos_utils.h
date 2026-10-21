@@ -59,7 +59,7 @@ void transfer_shared2kokkos(view_1d_t<T>& dst, const af::shared<T>& src) {
         // printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
     }
     if (dst.span() < src.size()) {
-        resize(dst, src.size());
+        Kokkos::resize(dst, src.size());
         // printf(" - size changed, new size: %d\n", dst.span() );
     }
 
