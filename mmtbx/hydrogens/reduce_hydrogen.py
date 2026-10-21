@@ -1147,11 +1147,17 @@ def name_prochiral_h(hierarchy, mon_lib_srv, kinds=(2, 3)):
           atoms = dict((a.name.strip(), a) for a in r.atoms())
           for n_h, (p, hv, hs, sites) in groups:
             if not all(n in atoms for n in (p,)+hv+hs): continue
-            if atoms[p].i_seq in done: continue # first source wins
-            # 2.4 A: C-SE is 1.96 and a modelled one reaches 2.04 (2h34 MSE),
-            # S-S 2.03; far enough below any non-bonded contact
-            if any(atoms[p].distance(atoms[n]) > 2.4 for n in hv+hs): continue
-            done.add(atoms[p].i_seq)
+            # first source wins. Keyed on the parent and its H atoms: a shared
+            # parent can carry its own H in each conformer (partly split GOL)
+            key = (atoms[p].i_seq,) + tuple(sorted(atoms[n].i_seq for n in hs))
+            if key in done: continue
+            # heavy neighbours 2.4 A: C-SE is 1.96 and a modelled one reaches
+            # 2.04 (2h34 MSE), S-S 2.03; far enough below any non-bonded
+            # contact. H 1.6 A: bonded to the parent, not an H of a neighbour
+            # with the same name (HT7: CCD HA on CA, model HA on CB, 2.1 A)
+            if any(atoms[p].distance(atoms[n]) > 2.4 for n in hv): continue
+            if any(atoms[p].distance(atoms[n]) > 1.6 for n in hs): continue
+            done.add(key)
             if n_h == 2:
               # the side of the two heavy neighbours the first H is named on
               ref = (hv[0], hv[1], hs[0])
