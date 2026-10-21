@@ -1750,7 +1750,10 @@ Wait for the command to finish, then try again.""" % vars())
     for n,v in essentials:
       if (len(v) == 0): continue
       v = ';'.join([ op.join('%LIBTBX_BUILD%', p.relocatable) for p in v ])
-      print('@set %s=%s;%%%s%%' % (n, v, n), file=f)
+      # avoid a trailing ';' when the variable is unset, since an empty
+      # PYTHONPATH entry puts the current directory on sys.path
+      print('@if defined %s @set "%s=%s;%%%s%%"' % (n, n, v, n), file=f)
+      print('@if not defined %s @set "%s=%s"' % (n, n, v), file=f)
     if self.build_options.use_conda:
       # Run the conda activate.d hooks here -- like the conda-package
       # dispatchers -- instead of from setpaths. The build directory is not
