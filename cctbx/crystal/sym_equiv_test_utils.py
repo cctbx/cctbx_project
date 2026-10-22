@@ -1,7 +1,7 @@
 """Fixtures and brute-force oracles for tests of symmetry-equivalent sites."""
 from cctbx import crystal
 from cctbx import sgtbx
-from libtbx.test_utils import approx_equal
+from scitbx import matrix
 from scitbx.array_family import flex
 
 # Fixtures whose first site lies on a symmetry element, with the sites to
@@ -75,7 +75,7 @@ def unique_positions(positions, tolerance=1.e-4):
   for position in positions:
     is_duplicate = False
     for kept in result:
-      if (approx_equal(position, kept, eps=tolerance, out=None)):
+      if ((matrix.col(position) - matrix.col(kept)).length() < tolerance):
         is_duplicate = True
         break
     if (not is_duplicate):
@@ -129,7 +129,8 @@ def assert_same_positions(expected, obtained, info, tolerance=1.e-4):
     for position in positions:
       i_match = None
       for i_candidate, candidate in enumerate(unmatched):
-        if (approx_equal(position, candidate, eps=tolerance, out=None)):
+        if ((matrix.col(position) - matrix.col(candidate)).length()
+            < tolerance):
           i_match = i_candidate
           break
       if (i_match is None):
