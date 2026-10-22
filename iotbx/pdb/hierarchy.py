@@ -1488,6 +1488,10 @@ class _():
       i_seqs = i_seqs.select(keep)
       hierarchy = self.select(i_seqs, copy_atoms=True)
       hierarchy.atoms().set_xyz(equiv.select(keep))
+      r_cart = unit_cell.matrix_cart(op.r())
+      for atom in hierarchy.atoms():
+        if (atom.uij_is_defined()):
+          atom.set_uij(adptbx.c_u_c_transpose(r_cart, atom.uij))
       result.append(group_args(rt_mx=op, i_seqs=i_seqs, hierarchy=hierarchy))
     return result
 

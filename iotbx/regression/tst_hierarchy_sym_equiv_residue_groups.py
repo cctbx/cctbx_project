@@ -1,10 +1,11 @@
 """Tests of iotbx.pdb.hierarchy.root.sym_equiv_residue_groups."""
 import iotbx.pdb.hierarchy
-from cctbx import crystal, sgtbx
+from cctbx import adptbx, crystal, sgtbx
 from cctbx.array_family import flex
 from cctbx.crystal import super_cell
 from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import Sorry
+from scitbx import matrix
 
 # (space group, unit cell, fractional sites, selection): site 0 lies on a
 # symmetry element.
@@ -103,6 +104,13 @@ def brute_force_copies(sites_cart, crystal_symmetry, radius,
                  for copy_frac in copy_fracs]))
   return result
 
+def rotated_uij(unit_cell, rt_mx, uij):
+  """uij under rt_mx, rotated as u_star in fractional coordinates."""
+  r = matrix.sqr(rt_mx.r().as_double())
+  u_star = matrix.sym(sym_mat3=adptbx.u_cart_as_u_star(unit_cell, uij))
+  return adptbx.u_star_as_u_cart(
+    unit_cell, (r * u_star * r.transpose()).as_sym_mat3())
+
 def index_of_position(positions, position, tolerance):
   """Index of the first of *positions* within *tolerance* of *position* in
   every coordinate, or None."""
@@ -113,9 +121,11 @@ def index_of_position(positions, position, tolerance):
 
 def exercise_match_brute_force(space_group_symbol):
   """A residue group with an atom whose equivalent is in range is copied
-  whole under that operator, and nothing else is copied.
+  whole under that operator, with its anisotropic U rotated, and nothing
+  else is copied.
 
   The sites are in general positions, so no copied atom lands on the model.
+  Every third atom is isotropic.
   """
   residue_sizes = [2, 3, 3, 4]
   residue_of = []
@@ -124,9 +134,16 @@ def exercise_match_brute_force(space_group_symbol):
   primary_selection = [0, 3, 7]
   radius = 5.0
   cs, sites_cart = general_position_structure(space_group_symbol)
-  copies = hierarchy_from_sites(sites_cart, residue_sizes) \
-    .sym_equiv_residue_groups(cs, radius,
-      selection=flex.size_t(primary_selection))
+  hierarchy = hierarchy_from_sites(sites_cart, residue_sizes)
+  uijs = flex.sym_mat3_double()
+  for i_seq in range(sites_cart.size()):
+    if (i_seq % 3 == 2):
+      uijs.append((-1, -1, -1, -1, -1, -1))
+    else:
+      uijs.append((0.30, 0.20, 0.25, 0.05 + 0.01 * i_seq, -0.04, 0.03))
+  hierarchy.atoms().set_uij(uijs)
+  copies = hierarchy.sym_equiv_residue_groups(cs, radius,
+    selection=flex.size_t(primary_selection))
   obtained = set()
   for copy in copies:
     i_rgs = set([residue_of[i_seq] for i_seq in copy.i_seqs])
@@ -139,6 +156,13 @@ def exercise_match_brute_force(space_group_symbol):
       super_cell.sym_equiv_sites_cart(
         sites_cart, cs.unit_cell(), copy.rt_mx, copy.i_seqs),
       out=None), (space_group_symbol, copy.rt_mx.as_xyz())
+    for i_seq, atom in zip(copy.i_seqs, copy.hierarchy.atoms()):
+      info = (space_group_symbol, copy.rt_mx.as_xyz(), i_seq)
+      if (i_seq % 3 == 2):
+        assert not atom.uij_is_defined(), info
+      else:
+        assert approx_equal(atom.uij,
+          rotated_uij(cs.unit_cell(), copy.rt_mx, uijs[i_seq]), out=None), info
     obtained.update([(i_rg, copy.rt_mx.as_xyz()) for i_rg in i_rgs])
   expected = set()
   for i_rg, as_xyz, _ in brute_force_copies(
