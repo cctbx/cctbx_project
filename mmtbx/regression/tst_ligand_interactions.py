@@ -3984,7 +3984,9 @@ def exercise_pi_ring_systems():
   (e,) = pi_entries(m)
   assert sorted([(p[0], p[2]) for p in pi_ring_pairs(e)]) == sorted([
     (' '.join(sorted(r)), ' '.join(sorted(r))) for r in LFN_RINGS.values()]), pi_ring_pairs(e)
-  assert e['geometry']['pi_stacking']['offset'] < 0.01
+  # straight up: every ring pair (PDB coordinates to 0.001 A leave up to ~0.02 A)
+  offsets = [q['offset'] for q in e['geometry']['pi_stacking']['ring_pairs']]
+  assert max(offsets) < 0.02, offsets
   # both flavins in the ligand (routing only): one internal record
   m.entries, m.internal = [], []
   m._lig = set(m._lig) | set(m.model.selection('chain B').iselection())
