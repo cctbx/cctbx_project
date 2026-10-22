@@ -18,7 +18,7 @@ def sym_equiv_near_selection(symmetry_tables, primary_selection):
     selection=primary_selection, symmetry_tables=symmetry_tables)[0]
 
 def sym_equiv_within_radius(sites_cart, crystal_symmetry, radius,
-                            primary_selection):
+                            primary_selection, keep_site_symmetry_ops=False):
   """The equivalents get_siiu finds within radius, without the operator
   list."""
   return super_cell.get_siiu(
@@ -27,7 +27,8 @@ def sym_equiv_within_radius(sites_cart, crystal_symmetry, radius,
     select_within_radius   = radius,
     selection              = primary_selection,
     buffer                 = 0,
-    min_distance_sym_equiv = super_cell.min_distance_sym_equiv_coincident)[0]
+    min_distance_sym_equiv = super_cell.min_distance_sym_equiv_coincident,
+    keep_site_symmetry_ops = keep_site_symmetry_ops)[0]
 
 def as_xyz_sets(equivalents):
   """{j_seq: set of operator strings}."""
@@ -453,7 +454,8 @@ def exercise_a_site_written_on_an_element_is_coincident():
 
 def exercise_special_positions_are_complete():
   """Every equivalent of an atom on a symmetry element is reported, exactly
-  once.
+  once; with keep_site_symmetry_ops, every operator that places it in range
+  is.
   """
   n_checked = 0
   for fixture in special_position_fixtures:
@@ -474,6 +476,12 @@ def exercise_special_positions_are_complete():
         assert len(ops) == len(obtained[j_seq]), (
           space_group_symbol, radius, j_seq)
         n_checked += len(ops)
+      every_operator = as_xyz_sets(sym_equiv_within_radius(
+        sites_cart, cs, radius, primary_selection=selection,
+        keep_site_symmetry_ops=True))
+      expected = brute_force_sym_equiv(sites_cart, cs, radius, selection)
+      assert every_operator == expected, (
+        space_group_symbol, radius, differences(expected, every_operator))
   assert n_checked > 0
 
 def exercise_tolerance_admits_a_three_decimal_worst_case():

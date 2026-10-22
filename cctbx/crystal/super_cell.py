@@ -71,7 +71,8 @@ def get_sym_equiv_tables(sites_cart, crystal_symmetry, radius,
 
 def get_siiu(pdb_hierarchy=None, crystal_symmetry=None,
              select_within_radius=None, sites_cart=None, selection=None,
-             buffer=1, min_distance_sym_equiv=0.5, symmetry_tables=None):
+             buffer=1, min_distance_sym_equiv=0.5, symmetry_tables=None,
+             keep_site_symmetry_ops=False):
   """Symmetry equivalents within select_within_radius+buffer of the selection.
 
   siiu: symmetry interacting indices unique.
@@ -93,6 +94,10 @@ def get_siiu(pdb_hierarchy=None, crystal_symmetry=None,
   symmetry_tables : sym_equiv_tables, optional
       From get_sym_equiv_tables, to search several selections without
       rebuilding them.
+  keep_site_symmetry_ops : bool
+      For a site on a symmetry element, every operator that places it in
+      range, rather than one per equivalent, including its own
+      site-symmetry operators when the site itself is in range.
 
   Returns
   -------
@@ -102,7 +107,8 @@ def get_siiu(pdb_hierarchy=None, crystal_symmetry=None,
       selected site, plus the distinct operators among them.  Operators
       carry denominators (1, 12), so equal operators hash equally.  One
       operator per equivalent, and an equivalent coincident with its site
-      is dropped.
+      is dropped, unless keep_site_symmetry_ops.  The identity is never
+      included.
   """
   if (symmetry_tables is None):
     if (sites_cart is None):
@@ -148,6 +154,18 @@ def get_siiu(pdb_hierarchy=None, crystal_symmetry=None,
           if (by_key is None):
             by_key = by_j_seq[j_seq] = {}
         if (site_symmetry_matrices is not None):
+          if (keep_site_symmetry_ops):
+            # Every coset member places site j at the same equivalent; the
+            # identity leaves it where it is.
+            for matrix in site_symmetry_matrices:
+              coset_member = rt_mx_ji.multiply(matrix)
+              if (coset_member.is_unit_mx()): continue
+              key = normalised.get(coset_member)
+              if (key is None):
+                key = normalised[coset_member] = (
+                  coset_member.new_denominators(1, 12))
+              by_key[key] = None
+            continue
           # The canonical coset member, so a union of selections gives the
           # union of the results.  min() orders by rt_mx.__lt__, the
           # ordering of space_group.make_tidy().
@@ -160,6 +178,32 @@ def get_siiu(pdb_hierarchy=None, crystal_symmetry=None,
         key = normalised.get(rt_mx_ji)
         if (key is None):
           key = normalised[rt_mx_ji] = rt_mx_ji.new_denominators(1, 12)
+        by_key[key] = None
+  if (keep_site_symmetry_ops):
+    # A site on a symmetry element that is selected, or in range of a
+    # selected site without an operator, under its own site-symmetry
+    # operators.  Each contact is listed from both ends, so the site's own
+    # row holds those recorded as the identity.
+    selected = set(selection)
+    for j_seq in site_symmetry_table.special_position_indices():
+      in_range = j_seq in selected
+      if (not in_range):
+        for i_seq, rt_mx_ij_list in pair_sym_table[j_seq].items():
+          if (i_seq not in selected): continue
+          for i_op in range(len(rt_mx_ij_list)):
+            if (rt_mx_ij_list[i_op].is_unit_mx()):
+              in_range = True
+              break
+          if (in_range): break
+      if (not in_range): continue
+      by_key = by_j_seq.get(j_seq)
+      if (by_key is None):
+        by_key = by_j_seq[j_seq] = {}
+      for matrix in site_symmetry_table.get(j_seq).matrices():
+        if (matrix.is_unit_mx()): continue
+        key = normalised.get(matrix)
+        if (key is None):
+          key = normalised[matrix] = matrix.new_denominators(1, 12)
         by_key[key] = None
   siiu = {}
   for j_seq, by_key in by_j_seq.items():

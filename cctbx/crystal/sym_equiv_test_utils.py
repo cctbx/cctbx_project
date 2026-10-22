@@ -41,7 +41,8 @@ def brute_force_sym_equiv(sites_cart, crystal_symmetry, radius,
   """Equivalents within *radius* of a selected site, from all operators over
   a block of lattice translations, without asu_mappings.
 
-  Compares operators, so it is valid only for sites in general positions.
+  Compares operators, so it is valid only for sites in general positions, or
+  against get_siiu with keep_site_symmetry_ops.
   """
   unit_cell = crystal_symmetry.unit_cell()
   sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
