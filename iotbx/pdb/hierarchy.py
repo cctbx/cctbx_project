@@ -1411,7 +1411,8 @@ class _():
     # siiu, "symmetry interacting indices unique": {j_seq: [rt_mx]}, the
     # operators that place atom j_seq within radius of a selected atom.
     siiu, _ = super_cell.get_siiu(
-      selection=selection, symmetry_tables=symmetry_tables)
+      selection=selection, symmetry_tables=symmetry_tables,
+      keep_site_symmetry_ops=True)
     # The atom range of each residue group, and the residue group of each
     # atom, by position in atoms().
     rg_ranges = []
@@ -1423,32 +1424,12 @@ class _():
     site_symmetry_table = symmetry_tables.site_symmetry_table
     # {rt_mx.as_xyz(): (rt_mx, residue groups it copies)}
     rgs_by_op = {}
-    def add(op, j_seq):
-      key = op.as_xyz()
-      if (key not in rgs_by_op):
-        rgs_by_op[key] = (op, set())
-      rgs_by_op[key][1].add(rg_of_atom[j_seq])
     for j_seq, ops in siiu.items():
-      if (site_symmetry_table.is_special_position(j_seq)):
-        # Every operator that places an atom on a symmetry element at the
-        # same equivalent.
-        matrices = site_symmetry_table.get(j_seq).matrices()
-        for op in ops:
-          for matrix in matrices:
-            add(op.multiply(matrix).new_denominators(1, 12), j_seq)
-      else:
-        for op in ops:
-          add(op, j_seq)
-    # The site-symmetry operators of each atom on a symmetry element within
-    # radius of a selected atom.
-    for j_seq in site_symmetry_table.special_position_indices():
-      # radius with the margin of the pair search.
-      if (flex.min((selected_sites - sites_cart[j_seq]).dot())
-          > (radius * (1 + 1.e-6))**2):
-        continue
-      for matrix in site_symmetry_table.get(j_seq).matrices():
-        if (not matrix.is_unit_mx()):
-          add(matrix.new_denominators(1, 12), j_seq)
+      for op in ops:
+        key = op.as_xyz()
+        if (key not in rgs_by_op):
+          rgs_by_op[key] = (op, set())
+        rgs_by_op[key][1].add(rg_of_atom[j_seq])
     # The atoms that may be copied onto another atom: those on a symmetry
     # element, and those with an equivalent within twice the tolerance of
     # another atom.
