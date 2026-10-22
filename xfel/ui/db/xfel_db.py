@@ -307,6 +307,21 @@ class initialize(initialize_base):
         """%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility with SQL tables v5.8: 10/22/26
+      # A dataset's merging schedule: when a new version, and its merging job,
+      # is cut as runs finish (see submit_all_jobs). Existing datasets keep the
+      # behaviour they always had, 'incremental'.
+      query = "SHOW columns FROM `%s_dataset`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'merge_mode' not in column_names:
+        print("Upgrading to version 5.8 of mysql database schema")
+        query = "ALTER TABLE `%s_dataset` ADD COLUMN merge_mode VARCHAR(45) NOT NULL DEFAULT 'incremental'"%self.params.experiment_tag
+        cursor.execute(query)
+        self.dbobj.commit()
+
       # Maintain backwards compatibility with SQL tables v5.7: 10/12/26
       # Tasks are content-addressed (see find_or_create_task): part of a task's
       # identity is the task that feeds it, stored as parent_task_id.

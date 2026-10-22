@@ -152,6 +152,11 @@ tooltips = {
   'shared_space_group': 'Space group applied to all stages in this dataset '
                         '(e.g. "P 21 21 21").',
   'shared_d_min': 'High-resolution cutoff for scaling and merging (Å).',
+  'merge_mode': 'When a new dataset version, and its merging job, is created as runs finish:\n'
+                '\u2022 As runs finish: whatever has finished since the last version goes into one new version.\n'
+                '\u2022 After every run: one new version per finished run, to follow the data improving.\n'
+                '\u2022 Once all runs finish: a single version when no run of the dataset is still processing. '
+                'Failed runs do not hold it up.',
   'cosym_max_delta': 'How far (degrees) the unit cell may be from a higher lattice '
                      'symmetry for that symmetry, and the indexing modes it implies, '
                      'to count. Passed to cosym as lattice_symmetry_max_delta. Tighten '

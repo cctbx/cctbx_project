@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`dataset` (
   `active` TINYINT(1) NOT NULL DEFAULT 0,
   `comment` VARCHAR(140) NULL,
   `tag_operator` VARCHAR(45) NOT NULL,
+  `merge_mode` VARCHAR(45) NOT NULL DEFAULT 'incremental',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `name_UNIQUE` (`name` ASC))
 ENGINE = InnoDB;

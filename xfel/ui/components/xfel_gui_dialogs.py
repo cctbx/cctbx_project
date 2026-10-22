@@ -4532,8 +4532,14 @@ class DatasetDialog(BaseDialog):
     self.comment = gctr.TextButtonCtrl(self.scroll, label='Comment:',
                                        label_size=(100, -1), label_style='bold',
                                        ghost_button=False)
+    # When a new dataset version, and so a merging job, is cut as runs finish
+    self.merge_mode = gctr.ChoiceCtrl(self.scroll, name='merge_mode', label='Merging:',
+                                      label_size=(100, -1), label_style='bold',
+                                      ctrl_size=(260, -1), choices=list(MERGE_MODE_LABELS.values()))
+    self.merge_mode.ctr.SetSelection(0)
     self.scroll_sizer.Add(self.name, flag=wx.EXPAND | wx.ALL, border=8)
     self.scroll_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL, border=8)
+    self.scroll_sizer.Add(self.merge_mode, flag=wx.EXPAND | wx.ALL, border=8)
 
     # --- run selection ---
     run_box = wx.StaticBox(self.scroll, label='Run selection')
@@ -4649,6 +4655,8 @@ class DatasetDialog(BaseDialog):
       self.SetTitle('Dataset Settings')
       self.name.ctr.SetValue(str(self.dataset.name))
       self.comment.ctr.SetValue(str(self.dataset.comment))
+      self.merge_mode.ctr.SetSelection(
+        list(MERGE_MODE_LABELS).index(self.dataset.merge_mode) if self.dataset.merge_mode in MERGE_MODE_LABELS else 0)
       if self.dataset.tag_operator == "union":
         self.selection_type_radio.union.SetValue(1)
       elif self.dataset.tag_operator == "intersection":
@@ -4891,6 +4899,8 @@ class DatasetDialog(BaseDialog):
       self.name.ctr.SetValue(values['name'] or '')
     if 'comment' in values:
       self.comment.ctr.SetValue(values['comment'] or '')
+    if values.get('merge_mode') in MERGE_MODE_LABELS:
+      self.merge_mode.ctr.SetSelection(list(MERGE_MODE_LABELS).index(values['merge_mode']))
 
     tnum = values.get('trial_number')
     if tnum is not None and str(tnum) in self.all_trial_numbers:
@@ -5156,13 +5166,16 @@ class DatasetDialog(BaseDialog):
         return ''
 
     # Identity
+    merge_mode = list(MERGE_MODE_LABELS)[self.merge_mode.ctr.GetSelection()]
     if self.new:
       self.dataset = self.db.create_dataset(name=name, comment=comment,
-                                            active=False, tag_operator=mode)
+                                            active=False, tag_operator=mode,
+                                            merge_mode=merge_mode)
     else:
       self.dataset.name = name
       self.dataset.comment = comment
       self.dataset.tag_operator = mode
+      self.dataset.merge_mode = merge_mode
 
     # Tags
     for tag in self.all_tags:
@@ -5343,6 +5356,10 @@ class DatasetWizard(BaseDialog):
     s = wx.BoxSizer(wx.VERTICAL)
     self.chk_ensemble = wx.CheckBox(p, label='Include ensemble refinement')
     self.chk_ensemble.SetValue(True)
+    self.merge_mode = gctr.ChoiceCtrl(p, name='merge_mode', label='Merging schedule:',
+                                      label_size=(200, -1), label_style='normal',
+                                      ctrl_size=(260, -1), choices=list(MERGE_MODE_LABELS.values()))
+    self.merge_mode.ctr.SetSelection(0)
     # Ticked for the user when the trial's symmetry has an indexing ambiguity,
     # but always theirs to change: the detection depends on a metric tolerance
     # and can flag a cell that is merely pseudo-symmetric.
@@ -5370,6 +5387,7 @@ class DatasetWizard(BaseDialog):
                                        ctrl_size=(150, -1), ctrl_value='20',
                                        ctrl_min=1, ctrl_max=1000, ctrl_step=1,
                                        ctrl_digits=0)
+    s.Add(self.merge_mode, flag=wx.EXPAND | wx.ALL, border=6)
     s.Add(self.chk_ensemble, flag=wx.ALL, border=10)
     s.Add(self.chk_cosym, flag=wx.ALL, border=10)
     s.Add(self.cosym_max_delta, flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, border=6)
@@ -5576,6 +5594,7 @@ class DatasetWizard(BaseDialog):
       'tags': tags,
       'tag_operator': 'union' if self.selection_type_radio.union.GetValue() == 1
                       else 'intersection',
+      'merge_mode': list(MERGE_MODE_LABELS)[self.merge_mode.ctr.GetSelection()],
       'model_mode': 'known' if known else 'unknown',
       'model': self.shared_model.ctr.GetValue().strip(),
       'unit_cell': self.shared_unit_cell.ctr.GetValue().strip(),
@@ -5679,6 +5698,15 @@ class SelectTasksDialog(BaseDialog):
         self.dataset.add_task(task)
 
     e.Skip()
+
+# When a dataset cuts a new version, and with it a merging job, as its runs'
+# local jobs finish. Keys are what the database stores; the order is the order
+# the choice controls offer them, default first.
+MERGE_MODE_LABELS = collections.OrderedDict([
+  ('incremental', 'Merge as runs finish (default)'),
+  ('per_run',     'Merge after every run'),
+  ('complete',    'Merge once all runs finish'),
+])
 
 # ------------------------------ Cluster Options ----------------------------- #
 

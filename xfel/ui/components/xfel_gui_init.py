@@ -4188,6 +4188,11 @@ class DatasetPanel(wx.Panel):
       add_line("Tags: " + ", ".join([t.name for t in tags]))
     else:
       add_line("No tags selected")
+    # The merging schedule changes how many versions the Merging stats tab
+    # will show; mention it when it is not the default every dataset had
+    merge_mode = getattr(self.dataset, 'merge_mode', 'incremental')
+    if merge_mode in dlg.MERGE_MODE_LABELS and merge_mode != 'incremental':
+      add_line(dlg.MERGE_MODE_LABELS[merge_mode])
 
     # Show pipeline summary
     if tasks:
@@ -4268,7 +4273,8 @@ class DatasetPanel(wx.Panel):
     new_dataset = self.db.create_dataset(name=name,
                                          comment=self.dataset.comment,
                                          active=False,
-                                         tag_operator=self.dataset.tag_operator)
+                                         tag_operator=self.dataset.tag_operator,
+                                         merge_mode=self.dataset.merge_mode)
     for tag in self.dataset.tags:
       new_dataset.add_tag(tag)
     for sequence, task in enumerate(self.dataset.tasks):
