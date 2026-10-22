@@ -2060,13 +2060,14 @@ NOTES:
         self.params.model_id).detached_copy()
       r.append_model(mdc)
 
-      # Make yet another model for the new hierarchy
+      # Make yet another model for the new hierarchy, with the user's
+      # restraint CIFs (a new list: _PrepareRestraints() appends to it)
       subset_model_manager = mmtbx.model.manager(
         model_input       = None,
         pdb_hierarchy     = r,
         stop_for_unknowns = False,
         crystal_symmetry  = self.model.crystal_symmetry(),
-        restraint_objects = None,
+        restraint_objects = list(self.model.get_restraint_objects() or []),
         log               = None)
 
       self.model = subset_model_manager
