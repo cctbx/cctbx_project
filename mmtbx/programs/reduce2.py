@@ -35,7 +35,7 @@ from mmtbx.programs import probe2
 import copy
 from iotbx.data_manager import DataManager
 import csv
-from cctbx.crystal import super_cell
+import iotbx.pdb.utils
 
 version = "4.0.0"
 
@@ -2460,33 +2460,32 @@ NOTES:
         make_sub_header('Adding Symmetric Copies of Atoms Near the Boundary', out=self.logger)
         # We keep track of all of the original chains in each model so that we can remove any
         # symmetry copies from the output file later.
-        originalChainSets = []
+        newChainSets = []
         for mi in range(len(self.model.get_hierarchy().models())):
-          # Get the original list of chains
-          originalChains = set()
-          for c in self.model.get_hierarchy().models()[mi].chains():
-            originalChains.add(c.id)
-          originalChainSets.append(originalChains)
-
           # Add the symmetric copies to each model in the hierarchy.
           myModel = self.model.get_hierarchy().models()[mi]
 
           initialAtoms = len(myModel.atoms())
           # Make a new hierarchy that has only the current model in it.
           singleModel = self.model.get_hierarchy().deep_copy()
-          for indices in reversed(range(len(singleModel.models()))):
-            if indices != mi:
-              singleModel.remove_model(indices)
-          superCell = super_cell.manager(
-            pdb_hierarchy = singleModel,
-            crystal_symmetry = self.model.crystal_symmetry(),
-            select_within_radius = 10.0
-            )
+          for index in reversed(range(len(singleModel.models()))):
+            if index != mi:
+              singleModel.remove_model(index)
+          m = singleModel.models()[0]
+          chainSet = set()
+          ids = iotbx.pdb.utils.chain_id_generator(used_ids=singleModel.chain_ids())
+          for entry in singleModel.sym_equiv_residue_groups(self.model.crystal_symmetry(), 3.0):
+            for chain in entry.hierarchy.models()[0].chains():
+              chain.id = next(ids)
+              chainSet.add(chain.id)
+              m.append_chain(chain.detached_copy())
+          m.atoms().reset_i_seq()
+          newChainSets.append(chainSet)
 
           # Replace the original model and myModel with the new one that has the symmetric copies added.
           # models() returns a temporary list, so we must modify the hierarchy itself.
           hierarchy = self.model.get_hierarchy()
-          newModel = superCell.super_sphere_hierarchy.models()[0].detached_copy()
+          newModel = m.detached_copy()
           hierarchy.remove_model(mi)
           hierarchy.insert_model(mi, newModel)
           hierarchy.atoms().reset_i_seq()
@@ -2496,7 +2495,7 @@ NOTES:
             print("Added "+str(finalAtoms-initialAtoms)+" symmetric copies of atoms near the boundary", file=self.logger)
             outString += "Added "+str(finalAtoms-initialAtoms)+" symmetric copies of atoms near the boundary\n"
           for c in self.model.get_hierarchy().models()[mi].chains():
-            if c.id not in originalChainSets[mi]:
+            if c.id in newChainSets[mi]:
               print("Added symmetry chain "+c.id+" to model "+str(mi+1), file=self.logger)
               outString += "Added symmetry chain "+c.id+" to model "+str(mi+1)+'\n'
 
@@ -2577,7 +2576,7 @@ NOTES:
           myModel = self.model.get_hierarchy().models()[mi]
           for c in reversed(range(len(myModel.chains()))):
             chain = myModel.chains()[c]
-            if chain.id not in originalChainSets[mi]:
+            if chain.id in newChainSets[mi]:
               print("Removed symmetry chain {} from model {}".format(chain.id, mi+1), file=self.logger)
               outString += "Removed symmetry chain {} from model {}\n".format(chain.id, mi+1)
               myModel.remove_chain(c)
