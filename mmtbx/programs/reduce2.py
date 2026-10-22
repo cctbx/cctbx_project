@@ -238,11 +238,13 @@ class _MoverLocation(object):
 
 
 def _FindMoversInOutputString(s, moverTypes = ['SingleHydrogenRotator',
-      'NH3Rotator', 'AromaticMethylRotator', 'AmideFlip', 'HisFlip']):
+      'NH3Rotator', 'AromaticMethylRotator', 'AmideFlip', 'HisFlip'],
+      validChains = None):
   '''Return a list of _MoverLocation items that include all of them found in the
   output string from an Optimizer.
   :param s: String returned from the getInfo() method on an optimizer.
   :param moverTypes: List of names for the movertypes to find.
+  :param validChains: List of valid chain identifiers to include. If None, all chains are included.
   :return: List of _MoverLocation objects indicating all flip Movers listed inside
   any BEGIN...END REPORT block in the string, including whether they were marked as
   flipped.
@@ -257,7 +259,9 @@ def _FindMoversInOutputString(s, moverTypes = ['SingleHydrogenRotator',
       if words[0:2] == ['END','REPORT']:
         inBlock = False
       elif words[0] in moverTypes:
-        ret.append(_MoverLocation(words[0], modelId, altId, words[3], words[4], int(words[5])))
+        chain = words[3]
+        if (validChains is None) or (chain in validChains):
+          ret.append(_MoverLocation(words[0], modelId, altId, words[3], words[4], int(words[5])))
     else:
       if words[0:2] == ['BEGIN','REPORT:']:
         modelId = int(words[3])
@@ -269,11 +273,12 @@ def _FindMoversInOutputString(s, moverTypes = ['SingleHydrogenRotator',
   return ret
 
 
-def _FindFlipsInOutputString(s, moverType):
+def _FindFlipsInOutputString(s, moverType, validChains = None):
   '''Return a list of Optimizers.FlipMoverState items that include all of them found in the
   output string from an Optimizer.
   :param s: String returned from the getInfo() method on an optimizer.
   :param moverType: Either AmideFlip or HisFlip, selects the flip type to report.
+  :param validChains: List of valid chain identifiers to include. If None, all chains are included.
   :return: List of Optimizers.FlipMoverState objects indicating all flip Movers listed inside
   any BEGIN...END REPORT block in the string, including whether they were marked as
   flipped.
@@ -288,7 +293,9 @@ def _FindFlipsInOutputString(s, moverType):
       if words[0:2] == ['END','REPORT']:
         inBlock = False
       elif words[0] == moverType:
-        ret.append(Optimizers.FlipMoverState(moverType, modelId, altId, words[3], words[4],
+        chain = words[3]
+        if (validChains is None) or (chain in validChains):
+          ret.append(Optimizers.FlipMoverState(moverType, modelId, altId, words[3], words[4],
                                    words[5], words[14] == 'Flipped', words[15] == 'AnglesAdjusted') )
     else:
       if words[0:2] == ['BEGIN','REPORT:']:
@@ -2711,8 +2718,10 @@ NOTES:
       compareOutName = self.params.output.filename + "_comparison.csv"
 
       # Find the list of all Movers in the model, which will be used to select
-      # each in turn for evaluation.
-      moverLocations = _FindMoversInOutputString(outString)
+      # each in turn for evaluation.  Only Movers that are in the current model,
+      # not in a symmetry copy, will be evaluated.
+      moverLocations = _FindMoversInOutputString(outString,
+                                                 validChains=self.model.get_hierarchy().chain_ids())
 
       # Make the first line in our table be the header line
       table = [ ["Mover",
@@ -2823,8 +2832,10 @@ NOTES:
       flipkinBase = self.params.output.flipkin_directory + "/" + base
 
       # Find the list of all Movers in the model, which will be used to segment
-      # it into parts for the Flipkin.
-      moverLocations = _FindMoversInOutputString(outString)
+      # it into parts for the Flipkin.  Only Movers that are in the current model,
+      # not in a symmetry copy, will be evaluated.
+      moverLocations = _FindMoversInOutputString(outString,
+                                                 validChains=self.model.get_hierarchy().chain_ids())
 
       # Find the list of all alternates in the model, ignoring empty ones.
       # Sort them in increasing alphabetical order.
@@ -2838,8 +2849,10 @@ NOTES:
       # Make list of Amides to lock in one flip orientation and then the other,
       # keeping track of which state they are in when Reduce was choosing.
       # We need a different list for the Amide Movers and the Histidine Movers
-      # because we generate two different Flipkin files, one for each.
-      amides = _FindFlipsInOutputString(outString, 'AmideFlip')
+      # because we generate two different Flipkin files, one for each.  Only Movers
+      # that are in the current model, not in a symmetry copy, will be evaluated.
+      amides = _FindFlipsInOutputString(outString, 'AmideFlip',
+                                        validChains=self.model.get_hierarchy().chain_ids())
 
       if len(amides) > 0:
         make_sub_header('Generating Amide Flipkin', out=self.logger)
@@ -2961,7 +2974,9 @@ NOTES:
           f.write(flipkinText)
 
       # ===========================================================================
-      hists = _FindFlipsInOutputString(outString, 'HisFlip')
+      # Only Movers that are in the current model, not in a symmetry copy, will be evaluated.
+      hists = _FindFlipsInOutputString(outString, 'HisFlip',
+                                       validChains=self.model.get_hierarchy().chain_ids())
 
       if len(hists) > 0:
         make_sub_header('Generating Histidine Flipkin', out=self.logger)
