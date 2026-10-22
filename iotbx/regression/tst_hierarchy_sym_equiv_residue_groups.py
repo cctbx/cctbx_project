@@ -6,7 +6,7 @@ from cctbx.crystal import super_cell
 from cctbx.crystal.sym_equiv_test_utils import (
   assert_same_positions, brute_force_sym_equiv, general_position_structure,
   special_position_fixtures, unique_positions)
-from libtbx.test_utils import Exception_expected, approx_equal
+from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from libtbx.utils import Sorry
 from scitbx import matrix
 
@@ -61,6 +61,30 @@ def rotated_uij(unit_cell, rt_mx, uij):
   u_star = matrix.sym(sym_mat3=adptbx.u_cart_as_u_star(unit_cell, uij))
   return adptbx.u_star_as_u_cart(
     unit_cell, (r * u_star * r.transpose()).as_sym_mat3())
+
+def exercise_copy_the_whole_residue():
+  """The two-fold of P 1 2 1 places the copy of N 3.2 A from N, so the
+  residue is copied whole, C included; no equivalent of the water comes
+  within 4 A.
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None, lines="""\
+CRYST1   20.000   15.000   20.000  90.00  90.00  90.00 P 1 2 1
+ATOM      1  N   ALA A   1       1.500   5.000   0.500  1.00 10.00           N
+ATOM      2  CA  ALA A   1       2.500   6.000   1.500  1.00 10.00           C
+ATOM      3  C   ALA A   1       4.000   6.000   1.000  1.00 10.00           C
+HETATM    4  O   HOH B   2       8.000   6.000   7.000  1.00 10.00           O
+""")
+  copies = pdb_inp.construct_hierarchy().sym_equiv_residue_groups(
+    pdb_inp.crystal_symmetry(), 4.0)
+  assert len(copies) == 1
+  assert copies[0].rt_mx.as_xyz() == "-x,y,-z"
+  assert list(copies[0].i_seqs) == [0, 1, 2]
+  assert not show_diff(copies[0].hierarchy.as_pdb_string(), """\
+ATOM      1  N   ALA A   1      -1.500   5.000  -0.500  1.00 10.00           N
+ATOM      2  CA  ALA A   1      -2.500   6.000  -1.500  1.00 10.00           C
+ATOM      3  C   ALA A   1      -4.000   6.000  -1.000  1.00 10.00           C
+TER
+""")
 
 def exercise_match_brute_force(space_group_symbol):
   """A residue group with an atom whose equivalent is in range is copied
@@ -274,6 +298,7 @@ def exercise_contract():
     raise Exception_expected
 
 def run():
+  exercise_copy_the_whole_residue()
   for space_group_symbol in ["P 21 21 21", "I 41/a c d", "P 63", "R 3 :H"]:
     exercise_match_brute_force(space_group_symbol)
   exercise_leave_out_atoms_on_the_model()
