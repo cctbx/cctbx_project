@@ -29,14 +29,27 @@ class Dataset(db_proxy):
     assert name not in ["tasks", "tags", "versions", "latest_version"]
     super(Dataset, self).__setattr__(name, value)
 
-  def add_task(self, task):
-    query = "INSERT INTO `%s_dataset_task` (dataset_id, task_id) VALUES (%d, %d)" % (
-      self.app.params.experiment_tag, self.id, task.id)
+  def add_task(self, task, sequence=None):
+    if sequence is None:
+      # Compute sequence as max(existing sequence) + 1, defaulting to 0 for the first task
+      query = "SELECT MAX(sequence) FROM `%s_dataset_task` WHERE dataset_id = %d" % (
+        self.app.params.experiment_tag, self.id)
+      cursor = self.app.execute_query(query)
+      result = cursor.fetchall()
+      max_sequence = result[0][0] if result and result[0][0] is not None else -1
+      sequence = max_sequence + 1
+    query = "INSERT INTO `%s_dataset_task` (dataset_id, task_id, sequence) VALUES (%d, %d, %d)" % (
+      self.app.params.experiment_tag, self.id, task.id, sequence)
     self.app.execute_query(query, commit=True)
 
   def remove_task(self, task):
     query = "DELETE FROM `%s_dataset_task` WHERE dataset_id = %d AND task_id = %s" % (
       self.app.params.experiment_tag, self.id, task.id)
+    self.app.execute_query(query, commit=True)
+
+  def set_task_sequence(self, task, sequence):
+    query = "UPDATE `%s_dataset_task` SET sequence = %d WHERE dataset_id = %d AND task_id = %d" % (
+      self.app.params.experiment_tag, sequence, self.id, task.id)
     self.app.execute_query(query, commit=True)
 
   def add_tag(self, tag):
