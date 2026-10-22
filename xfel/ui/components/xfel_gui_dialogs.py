@@ -5157,16 +5157,16 @@ class DatasetDialog(BaseDialog):
     # An active dataset starts submitting as soon as it is saved, so ask now if
     # that would be a lot of jobs. New datasets are saved inactive and are
     # asked when activated.
+    merge_mode = list(MERGE_MODE_LABELS)[self.merge_mode.ctr.GetSelection()]
     if not self.new and self.dataset.active:
       from xfel.ui.db.job import predict_dataset_jobs
       counts = predict_dataset_jobs(self.db, dataset=self.dataset, trial=trial,
-                                    tags=tags, tag_operator=mode, tasks=tasks)
+                                    tags=tags, tag_operator=mode, tasks=tasks, merge_mode=merge_mode)
       if not confirm_job_count(self, self.db, counts, 'Saving this dataset'):
         self.db.delete_orphan_tasks()
         return ''
 
     # Identity
-    merge_mode = list(MERGE_MODE_LABELS)[self.merge_mode.ctr.GetSelection()]
     if self.new:
       self.dataset = self.db.create_dataset(name=name, comment=comment,
                                             active=False, tag_operator=mode,
