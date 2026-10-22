@@ -83,7 +83,7 @@ alt_id = None
 model_id = None
   .type = int
   .short_caption = Model ID to optimize
-  .help = Model ID to optimize.  The default is to optimize all of them.  If one is selected, the others are removed from the output file.
+  .help = MODEL number to process (as in the file's MODEL records / pdbx_PDB_model_num). Default: all models. If one is selected, the others are removed from the output.
 add_flip_movers = False
   .type = bool
   .short_caption = Add flip movers
@@ -893,15 +893,26 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
 
   return ret
 
-def _RemoveModelsExceptIndex(model_manager, model_index):
-    hierarchy = model_manager.get_hierarchy()
-    models = hierarchy.models()
-    if model_index < len(models):
-        selected_model = models[model_index]
-        for model in models:
-            if model != selected_model:
-                hierarchy.remove_model(model=model)
-    return model_manager
+def _ModelNumbers(hierarchy):
+  '''MODEL number (model.id, PDB MODEL / mmCIF pdbx_PDB_model_num) of each
+  model, in order; None for an id that is not a number. A single model
+  without a number is MODEL 1.
+  '''
+  models = hierarchy.models()
+  if len(models) == 1 and models[0].id.strip() == '':
+    return [1]
+  result = []
+  for m in models:
+    try:
+      result.append(int(m.id))
+    except ValueError:
+      result.append(None)
+  return result
+
+def _SelectModelNumber(hierarchy, number):
+  '''The model of the hierarchy with MODEL number number (in _ModelNumbers()).
+  '''
+  return hierarchy.models()[_ModelNumbers(hierarchy).index(number)]
 
 # ------------------------------------------------------------------------------
 
@@ -1940,9 +1951,13 @@ NOTES:
       self.params.output.description_file_name=self.params.output.description_file_name.replace('.cif',
                                                                                    '.txt')
 
-    # Check the model ID to make sure they didn't set it to 0
-    if self.params.model_id == 0:
-      raise Sorry("Model ID must be >=1 if specified (None means all models)")
+    # model_id is a MODEL number of the input
+    if self.params.model_id is not None:
+      numbers = _ModelNumbers(self.data_manager.get_model().get_hierarchy())
+      if self.params.model_id <= 0 or self.params.model_id not in numbers:
+        raise Sorry("model_id=%d matches no model. Available MODEL numbers: %s"
+          % (self.params.model_id,
+             ", ".join(str(n) for n in numbers if n is not None) or "none"))
 
     # Turn on profiling if we've been asked to in the Phil parameters
     if self.params.profile:
@@ -2034,18 +2049,15 @@ NOTES:
       self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
       self.model.process(make_restraints=False)
 
-    # If we've been asked to only to a single model index from the file, strip the model down to
-    # only that index.
+    # If we've been asked to only to a single model from the file, strip the model down to
+    # only that one (checked in validate()); it keeps its MODEL number.
     if self.params.model_id is not None:
       make_sub_header('Selecting Model ID ' + str(self.params.model_id), out=self.logger)
 
-      # Select only the current submodel from the hierarchy
-      submodel = self.model.deep_copy()
-      _RemoveModelsExceptIndex(submodel, self.params.model_id)
-
-      # Construct a hierarchy for the current submodel
+      # Construct a hierarchy for the selected model
       r = pdb.hierarchy.root()
-      mdc = submodel.get_hierarchy().models()[0].detached_copy()
+      mdc = _SelectModelNumber(self.model.get_hierarchy(),
+        self.params.model_id).detached_copy()
       r.append_model(mdc)
 
       # Make yet another model for the new hierarchy
@@ -2053,7 +2065,7 @@ NOTES:
         model_input       = None,
         pdb_hierarchy     = r,
         stop_for_unknowns = False,
-        crystal_symmetry  = submodel.crystal_symmetry(),
+        crystal_symmetry  = self.model.crystal_symmetry(),
         restraint_objects = None,
         log               = None)
 
