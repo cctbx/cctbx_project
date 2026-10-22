@@ -2455,7 +2455,8 @@ NOTES:
             outString += '\n' + text + '\n'
 
       # If we've been asked to use symmetry-copy atoms, then we add them to each model
-      # in the hierarchy one at a time.
+      # in the hierarchy one at a time.  We do that here after hydrogen addition because
+      # hydrogen addition is aware of symmetry during placement.
       if self.params.include_symmetric_copies:
         make_sub_header('Adding Symmetric Copies of Atoms Near the Boundary', out=self.logger)
         # We keep track of all of the original chains in each model so that we can remove any
