@@ -1648,11 +1648,6 @@ NOTES:
     # no ADP pair table, as in place_hydrogens
     model.process(make_restraints=make_restraints, pdb_interpretation_params=p,
       plain_pairs_radius=None)
-    #
-    if self.params.qmready and make_restraints:
-      g = model.geometry_statistics().result(slim = True)
-      if g.nonbonded.min < 1.0:
-        raise Sorry("Bad clash(es) prevents qmready=True")
 
 # ------------------------------------------------------------------------------
 
@@ -1670,6 +1665,35 @@ NOTES:
       log               = null_out())
     self._ReinterpretModel(make_restraints=make_restraints, model=model)
     return model
+
+# ------------------------------------------------------------------------------
+
+  def _CheckQmreadyClashes(self):
+    # qmready=True: Sorry if the finished model has a non-bonded contact
+    # below 1.0 A. Checked on a copy with restraints (self.model has none);
+    # H included, as geometry_statistics() drops H with the X-ray table.
+    from cctbx import geometry_restraints
+    model = self._RebuildModel(self.model.get_hierarchy().deep_copy(),
+      make_restraints=True)
+    sites = model.get_sites_cart()
+    nb = model.get_restraints_manager().geometry.pair_proxies(
+      sites_cart=sites).nonbonded_proxies
+    # simple proxies first, then symmetry (asu) proxies
+    d = geometry_restraints.nonbonded_deltas(sites_cart=sites,
+      sorted_asu_proxies=nb)
+    if d.size() == 0 or flex.min(d) >= 1.0:
+      return
+    k = flex.min_index(d)
+    n = nb.simple.size()
+    if k < n:
+      i, j = nb.simple[k].i_seqs
+      where = ''
+    else:
+      i, j = nb.asu[k-n].i_seq, nb.asu[k-n].j_seq
+      where = ' (symmetry mate)'
+    atoms = model.get_hierarchy().atoms()
+    raise Sorry("Bad clash(es) prevents qmready=True: %s - %s%s %.3f A"
+      % (atoms[i].id_str(), atoms[j].id_str(), where, d[k]))
 
 # ------------------------------------------------------------------------------
 
@@ -2222,6 +2246,10 @@ NOTES:
     # We had to do this to keep from crashing on a call to pair_proxies when generating
     # mmCIF files, so we always do it for safety.
     self._ReinterpretModel(False)
+
+    # qmready=True: the finished model must be clash-free (remove adds no H)
+    if self.params.qmready and self.params.approach != 'remove':
+      self._CheckQmreadyClashes()
 
     # qmready=True: calculate the total charge, as qr.finalise does with
     # calculate_charge=True, and add it to the default output file name.
