@@ -834,9 +834,7 @@ class electron_distribution(dict):
       done_cycles.append(tmp)
       tries=10
       cycle_charge_count=self.get_cycle_charge_count(cycle)
-      import itertools
       # random.shuffle(cycle)
-      perms = list(itertools.permutations(cycle))
 
       subtract=[]
       while cycle_charge_count and tries:
@@ -861,10 +859,7 @@ class electron_distribution(dict):
                                                        self))
         cycle_charge_count=self.get_cycle_charge_count(cycle)
         import random
-        if 1:
-          random.shuffle(cycle)
-        else:
-          cycle=list(perms[tries])
+        random.shuffle(cycle)
         # assert 0
     if verbose: print('  Double & rings : %0.1fs' % (time.time()-t0))
     #
