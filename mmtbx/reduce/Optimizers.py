@@ -611,7 +611,10 @@ class Optimizer(object):
         # Compute and record the initial score for each Mover in its info
         optC.Initialize(self._movers)
         for m in self._movers:
-          self._moverInfo[m] += " Initial score: {:.2f}".format(optC.GetHighScore(m))
+          score = "{:.2f}".format(optC.GetHighScore(m))
+          self._moverInfo[m] += " Initial score: " + score
+          # Rounded as printed, so the clique totals below match the report.
+          self._initialScore[m] = float(score)
 
         ################################################################################
         # Call internal methods to optimize the single-element Cliques and then to optimize
@@ -748,12 +751,11 @@ class Optimizer(object):
         for g in sortedGroups:
           self._infoString += _VerboseCheck(self._verbosity, 1," Set of "+str(len(g))+" Movers:")
           movers = [self._interactionGraph.vertex_label(i) for i in g]
-          # Parse the record for each mover and pull out the initial score.  Sum the initial and
-          # final scores across all Movers in the group and report this.
+          # Sum the initial and final scores across all Movers in the group and report this.
           initial = 0.0
           final = 0.0
           for m in movers:
-            initial += float(self._moverInfo[m].split()[9])
+            initial += self._initialScore[m]
             final += optC.GetHighScore(m)
           self._infoString += _VerboseCheck(self._verbosity, 1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
           for m in movers:
@@ -963,6 +965,9 @@ class Optimizer(object):
     # Dictionary mapping from Mover to information about the Mover, so that we can keep track of
     # everything from its placement to its final state in the same string.
     self._moverInfo = {}
+
+    # Initial score of each Mover; the blank chain ID drops a token from its _moverInfo text.
+    self._initialScore = {}
 
     # The radius of a Polar Hydrogen (one that forms Hydrogen bonds)
     # @todo Can we look this up from inside CCTBX?

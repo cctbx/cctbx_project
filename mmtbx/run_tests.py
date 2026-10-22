@@ -491,6 +491,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_no_symmetry.py",
   "$D/regression/tst_reduce2_qmready_charge.py",
   "$D/regression/tst_reduce2_qmready_clash.py",
+  "$D/regression/tst_reduce2_blank_chain.py",
   "$D/regression/tst_reduce2_peak_memory.py",
   "$D/regression/tst_reduce2_place.py",
   "$D/regression/tst_reduce2_neutron_distances.py",
