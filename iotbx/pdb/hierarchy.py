@@ -1354,10 +1354,11 @@ class _():
     selection : flex.bool or flex.size_t, optional
         The atoms to measure from; all of them by default.
     min_distance_sym_equiv : float, optional
-        A copied atom closer than this to an atom of the same element, in
-        this hierarchy or in an earlier copy, is that atom, and is left out.
-        cctbx.crystal.super_cell.min_distance_sym_equiv_coincident by
-        default.
+        An atom closer than this to its own equivalent is considered on a
+        symmetry element.  A copied atom closer than this to an atom of the
+        same element, in this hierarchy or an earlier copy, is considered
+        that atom and left out.
+        Default: cctbx.crystal.super_cell.min_distance_sym_equiv_coincident.
 
     Returns
     -------
