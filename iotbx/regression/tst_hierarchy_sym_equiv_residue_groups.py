@@ -262,9 +262,9 @@ def exercise_tolerance():
 
 def exercise_contract():
   """A bool and an index selection give the same copies, an empty one gives
-  none, and more than one model is rejected.  Operators come in as_xyz order
-  on denominators (1, 12), each copy keeps the chain ID, and i_seq is not
-  relied on.
+  none, and a Python list and more than one model are rejected.  Operators
+  come in as_xyz order on denominators (1, 12), each copy keeps the chain
+  ID, and i_seq is not relied on.
   """
   cs, sites_cart = general_position_structure()
   # copy_atoms gives every atom i_seq 0.
@@ -288,6 +288,13 @@ def exercise_contract():
     assert [chain.id for chain in copy.hierarchy.chains()] == ["A"]
   assert hierarchy.sym_equiv_residue_groups(
     cs, 5.0, selection=flex.size_t()) == []
+  for selection in [[0, 4, 9], []]:
+    try:
+      hierarchy.sym_equiv_residue_groups(cs, 5.0, selection=selection)
+    except TypeError:
+      pass
+    else:
+      raise Exception_expected
   two_models = hierarchy.deep_copy()
   two_models.append_model(hierarchy.models()[0].detached_copy())
   try:

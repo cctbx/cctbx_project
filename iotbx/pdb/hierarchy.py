@@ -1398,7 +1398,11 @@ class _():
       assert selection.size() == sites_cart.size(), (
         f"selection covers {selection.size()} atoms, not {sites_cart.size()}")
       selection = selection.iselection()
-    if (selection is not None and len(selection) == 0): return []
+    if (selection is None):
+      selected_sites = sites_cart
+    else:
+      selected_sites = sites_cart.select(selection)
+    if (selected_sites.size() == 0): return []
     symmetry_tables = super_cell.get_sym_equiv_tables(
       sites_cart             = sites_cart,
       crystal_symmetry       = crystal_symmetry,
@@ -1437,10 +1441,6 @@ class _():
           add(op, j_seq)
     # The site-symmetry operators of each atom on a symmetry element within
     # radius of a selected atom.
-    if (selection is None):
-      selected_sites = sites_cart
-    else:
-      selected_sites = sites_cart.select(selection)
     for j_seq in site_symmetry_table.special_position_indices():
       # radius with the margin of the pair search.
       if (flex.min((selected_sites - sites_cart[j_seq]).dot())
