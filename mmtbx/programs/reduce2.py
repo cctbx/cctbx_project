@@ -1131,6 +1131,9 @@ NOTES:
       raise Sorry("Insufficient restraints were found for the following atoms:"+bad)
 
     self.model = reduce_add_h_obj.get_model()
+    # input pairs keep their values per site when placement renamed their H
+    self._hd_records = hd_exchange.rekey_records(self._hd_records,
+      reduce_add_h_obj.renamed_existing_h)
 
     # Placement replaced the D of an input DOD water by H but kept the name
     self._dod_renamed_note = ''

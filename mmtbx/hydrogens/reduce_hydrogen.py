@@ -17,7 +17,10 @@ from cctbx import geometry_restraints
 from cctbx.geometry_restraints.linking_class import linking_class
 #
 from cctbx.maptbx.box import shift_and_box_model
+# residue part of hd_exchange.site_key(), for the log of renamed input H
+from mmtbx.hydrogens.hd_exchange import residue_part, residue_parts
 import math
+import itertools
 from cctbx import crystal
 
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
@@ -1129,8 +1132,11 @@ def name_prochiral_h(hierarchy, mon_lib_srv, kinds=(2, 3)):
   named before exclude_H_on_links, which picks the H a link drops by position,
   the propellers after it: a linked methyl (BGS CS in 2b5z) is a CH2 by then,
   no longer matches a three-H reference and keeps the surviving names it had.
+
+  Returns the swaps made, in order, as (parent, h1, h2) atoms; h1 and h2
+  carry their new names.
   '''
-  cache, done = {}, set()
+  cache, done, swaps = {}, set(), []
   for m in hierarchy.models():
     for c in m.chains():
       for conformer in c.conformers():
@@ -1173,6 +1179,8 @@ def name_prochiral_h(hierarchy, mon_lib_srv, kinds=(2, 3)):
             if (v_ideal > 0) != (v_model > 0):
               h1, h2 = atoms[swap[0]], atoms[swap[1]]
               h1.name, h2.name = h2.name, h1.name
+              swaps.append((atoms[p], h1, h2))
+  return swaps
 
 def _bond_orders(resname, mon_lib_srv, cache):
   '''
@@ -1278,6 +1286,13 @@ class place_hydrogens():
     self.residue_keys_no_restraints = set()
     #self.charged_atoms          = list()
     self.sl_removed             = list()
+    # renames of H that were in the input (keep_existing_H), in the order
+    # made: (residue part as hd_exchange.site_key(), parent altloc, old name,
+    # new name); each exchanges the two names
+    self.renamed_existing_h     = list()
+    self._existing_h            = set()
+    # input positions of those H, by the same identity
+    self._existing_h_xyz        = dict()
     self.n_H_initial            = 0
     self.n_H_final              = 0
 
@@ -1344,6 +1359,9 @@ class place_hydrogens():
     self.n_H_initial = self.model.get_hd_selection().count(True)
     if not self.keep_existing_H:
       self.model = self.model.select(~self.model.get_hd_selection())
+    else:
+      self._existing_h_xyz = self._h_identities()
+      self._existing_h = set(self._existing_h_xyz)
 
     # Add missing H atoms and place them at bogus position
     # ----------------------------------------------------
@@ -1546,19 +1564,20 @@ class place_hydrogens():
     # None, not False: callers outside reduce2 keep the scattering-table rule
     self.model.idealize_h_riding(
       use_neutron_distances = True if self.use_neutron_distances else None)
+    self.keep_h_on_own_sites()
     self.time_idealize = round(time.time()-t0, 2)
 
     # Remove H atoms that are involved in links (bonds, metal coordination, etc)
     # --------------------------------------------------------------------------
     t0 = time.time()
     # CH2 names must be stereo-correct before a link picks which H to drop
-    name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv(),
-                     kinds = (2,))
+    self._log_swaps(name_prochiral_h(self.model.get_hierarchy(),
+      self.model.get_mon_lib_srv(), kinds = (2,)))
     self.exclude_H_on_links()
     # propellers only now: a methyl that lost an H to a link is a CH2, and the
     # names that survived it stay as they are
-    name_prochiral_h(self.model.get_hierarchy(), self.model.get_mon_lib_srv(),
-                     kinds = (3,))
+    self._log_swaps(name_prochiral_h(self.model.get_hierarchy(),
+      self.model.get_mon_lib_srv(), kinds = (3,)))
     self.time_remove_H_on_links = round(time.time()-t0, 2)
 
 
@@ -1585,6 +1604,91 @@ class place_hydrogens():
 
     if self.print_time:
       self.print_times()
+
+  # ----------------------------------------------------------------------------
+
+  def _h_identities(self):
+    '''
+    {(residue part, altloc, name): xyz} of every H/D; residue part as in
+    hd_exchange.site_key()
+    '''
+    h = self.model.get_hierarchy()
+    parts = residue_parts(h)
+    return dict((parts[a.parent().memory_id()] + (a.parent().altloc, a.name),
+                 a.xyz)
+                for a in h.atoms() if a.element.strip().upper() in ('H', 'D'))
+
+  # ----------------------------------------------------------------------------
+
+  def keep_h_on_own_sites(self):
+    '''
+    keep_existing_H: riding idealization rebuilds the H of a parent from the
+    ideal dihedral, so a kept propeller can come back turned by one site, each
+    H on another one's site. Per parent and altloc, deal the group's ideal
+    sites to its H so that the kept H move least in total (all permutations,
+    first found on a tie); new H take the remaining sites.
+    '''
+    if not self._existing_h_xyz: return
+    riding_h_manager = self.model.riding_h_manager
+    if riding_h_manager is None: return
+    h = self.model.get_hierarchy()
+    atoms = h.atoms()
+    parts = residue_parts(h)
+    groups = {}
+    for i_seq, rc in enumerate(riding_h_manager.h_parameterization):
+      if rc is None: continue
+      groups.setdefault((rc.a0, atoms[i_seq].parent().altloc), []).append(
+        i_seq)
+    sites_cart = self.model.get_sites_cart()
+    changed = False
+    for group in groups.values():
+      if len(group) < 2: continue
+      old = [self._existing_h_xyz.get(parts[atoms[i].parent().memory_id()] +
+               (atoms[i].parent().altloc, atoms[i].name)) for i in group]
+      if all(x is None for x in old): continue
+      sites = [matrix.col(sites_cart[i]) for i in group]
+      def moved(order):
+        return sum((sites[j] - matrix.col(x)).length()
+                   for x, j in zip(old, order) if x is not None)
+      best = min(itertools.permutations(range(len(group))), key=moved)
+      if list(best) == list(range(len(group))): continue
+      for i, j in zip(group, best):
+        sites_cart[i] = sites[j].elems
+      changed = True
+    if changed:
+      self.model.set_sites_cart(sites_cart)
+
+  # ----------------------------------------------------------------------------
+
+  def _log_rename(self, parent, atom, old_name, partner=None, part=None):
+    '''
+    Log the rename of atom (it carries the new name) if it or its swap
+    partner (now named old_name) was in the input.
+    '''
+    if not self._existing_h: return
+    if part is None: part = residue_part(atom.parent())
+    moved = [(atom, old_name)]
+    if partner is not None: moved.append((partner, atom.name))
+    old_keys = [part + (a.parent().altloc, n) for a, n in moved]
+    existed = [k in self._existing_h for k in old_keys]
+    if not any(existed): return
+    for k in old_keys: self._existing_h.discard(k)
+    for (a, n), e in zip(moved, existed):
+      if e: self._existing_h.add(part + (a.parent().altloc, a.name))
+    self.renamed_existing_h.append(
+      (part, parent.parent().altloc, old_name, atom.name))
+
+  # ----------------------------------------------------------------------------
+
+  def _log_swaps(self, swaps):
+    '''
+    Log the swaps of name_prochiral_h() that involve input H
+    '''
+    if not (swaps and self._existing_h): return
+    parts = residue_parts(self.model.get_hierarchy())
+    for parent, h1, h2 in swaps:
+      self._log_rename(parent, h1, h2.name, partner=h2,
+        part=parts[h1.parent().memory_id()])
 
   # ----------------------------------------------------------------------------
 
@@ -2410,7 +2514,9 @@ class place_hydrogens():
           get_class(name=parent_atom.parent().resname) in
             ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid'] and
           atoms[_i].name.strip() in ['H1', 'H2', 'H3', 'D1', 'D2', 'D3']):
+        old_name = atoms[_i].name
         atoms[_i].name = ' %s  ' % atoms[_i].element.strip()
+        self._log_rename(parent_atom, atoms[_i], old_name)
       # improve geometry of the single kept H
       # TODO make sure all atoms are in same conformer
       # TODO check that neighbor atoms are all non H

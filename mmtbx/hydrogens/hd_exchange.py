@@ -37,7 +37,9 @@ def _index_by_memory_id(objects, target):
       return i
   raise RuntimeError("internal error: object not found in its parent")
 
-def _residue_part(ag):
+def residue_part(ag):
+  """(model index, chain id, chain occurrence, resseq, icode, residue_group
+  occurrence, canonical resname): the residue part of atom_key()/site_key()"""
   rg = ag.parent()
   chain = rg.parent()
   model = chain.parent()
@@ -54,7 +56,7 @@ def _residue_part(ag):
   return (model_index, chain.id, chain_occurrence, rg.resseq, rg.icode,
           rg_occurrence, canonical_resname(ag.resname))
 
-def _residue_parts(hierarchy):
+def residue_parts(hierarchy):
   """residue part of every atom_group in one pass: {memory_id: tuple}"""
   result = {}
   for model_index, model in enumerate(hierarchy.models()):
@@ -72,9 +74,12 @@ def _residue_parts(hierarchy):
             rg.resseq, rg.icode, rg_occurrence, canonical_resname(ag.resname))
   return result
 
+# the keyword residue_part of atom_key()/site_key() shadows the function there
+_residue_part, _residue_parts = residue_part, residue_parts
+
 def atom_key(atom, residue_part=None):
   """residue part + own altloc + name as written + element; residue_part
-  (from _residue_parts()) saves the scan of preceding residues"""
+  (from residue_parts()) saves the scan of preceding residues"""
   ag = atom.parent()
   if residue_part is None: residue_part = _residue_part(ag)
   return residue_part + (ag.altloc, atom.name, atom.element.strip().upper())
@@ -84,6 +89,20 @@ def site_key(atom, parent_altloc, residue_part=None):
   validated pair (both give the same key) or a single"""
   if residue_part is None: residue_part = _residue_part(atom.parent())
   return residue_part + (parent_altloc, normalized_name(atom))
+
+def rekey_records(records, renames):
+  """records (site_key -> values) after placement renamed input H.
+  renames: (residue part, parent altloc, old name, new name) in the order
+  made (place_hydrogens.renamed_existing_h). Each exchanges the two names:
+  both recorded -> the records swap; one recorded -> it moves to the other
+  name. Returns a new dict."""
+  result = dict(records)
+  for part, parent_altloc, old, new in renames:
+    key_old, key_new = part + (parent_altloc, old), part + (parent_altloc, new)
+    value_old, value_new = result.pop(key_old, None), result.pop(key_new, None)
+    if value_old is not None: result[key_new] = value_old
+    if value_new is not None: result[key_old] = value_new
+  return result
 
 def atom_keys(hierarchy):
   """atom_key() of every atom in one pass, in hierarchy.atoms() order; a

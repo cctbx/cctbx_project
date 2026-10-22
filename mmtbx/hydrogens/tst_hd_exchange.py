@@ -196,6 +196,19 @@ def test_hd_pair_keys():
   assert hd_exchange.site_key(atoms["HG"], "") == \
          hd_exchange.site_key(atoms["DG"], "")
 
+def test_rekey_records():
+  # records follow placement's renames of input H, in order: a swap of two
+  # recorded names swaps the records, one recorded name moves to the other
+  part = (0, "A", 0, "  37", " ", 0, "SER")
+  hb2, hb3, h1, h = [part + ("", n) for n in (" HB2", " HB3", " H1 ", " H  ")]
+  records = {hb2: "x", hb3: "y", h1: "z", part + ("A", " HB2"): "w"}
+  renames = [(part, "", " HB2", " HB3"), (part, "", " H1 ", " H  ")]
+  result = hd_exchange.rekey_records(records, renames)
+  assert result == {hb2: "y", hb3: "x", h: "z", part + ("A", " HB2"): "w"}
+  assert records[hb2] == "x"   # input unchanged
+  # renamed twice: back where it was
+  assert hd_exchange.rekey_records(records, renames[:1] * 2) == records
+
 def test_name_normalization():
   # 18c: only D atoms are renamed, first D only
   h = iotbx.pdb.input(source_info=None, lines="""\
@@ -1441,4 +1454,5 @@ if __name__ == "__main__":
   test_repeated_labels_restore()
   test_water_names_follow_content()
   test_conformer_copy_occupancy_note()
+  test_rekey_records()
   print("OK")
