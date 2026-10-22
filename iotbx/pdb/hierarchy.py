@@ -1361,12 +1361,24 @@ class _():
 
     Returns
     -------
-    list of libtbx.group_args
+    result : list of libtbx.group_args
         One per operator, ordered by rt_mx.as_xyz(), each with ``rt_mx``, the
         operator on denominators (1, 12); ``i_seqs``, a flex.size_t of the
         atoms of this hierarchy copied; and ``hierarchy``, their copies in
         i_seqs order, at the symmetry-equivalent positions and with the
         original chain IDs.  The identity is not included.
+
+        ::
+
+          result[k]       one per operator
+          |-- .rt_mx      cctbx.sgtbx.rt_mx, on denominators (1, 12)
+          |-- .i_seqs     flex.size_t, indices into self.atoms()
+          `-- .hierarchy  iotbx.pdb.hierarchy.root, one model
+              `-- .chains()               original IDs
+                  `-- .residue_groups()
+                      `-- .atom_groups()
+                          `-- .atoms()    self.atoms().select(i_seqs),
+                                          moved by rt_mx
 
     Raises
     ------
