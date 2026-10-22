@@ -1403,6 +1403,8 @@ class _():
       crystal_symmetry       = crystal_symmetry,
       radius                 = radius,
       min_distance_sym_equiv = min_distance_sym_equiv)
+    # siiu, "symmetry interacting indices unique": {j_seq: [rt_mx]}, the
+    # operators that place atom j_seq within radius of a selected atom.
     siiu, _ = super_cell.get_siiu(
       selection=selection, symmetry_tables=symmetry_tables)
     # The atom range of each residue group, and the residue group of each

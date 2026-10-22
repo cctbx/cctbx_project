@@ -74,6 +74,8 @@ def get_siiu(pdb_hierarchy=None, crystal_symmetry=None,
              buffer=1, min_distance_sym_equiv=0.5, symmetry_tables=None):
   """Symmetry equivalents within select_within_radius+buffer of the selection.
 
+  siiu: symmetry interacting indices unique.
+
   Parameters
   ----------
   pdb_hierarchy : iotbx.pdb.hierarchy.root, optional
