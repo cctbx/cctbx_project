@@ -1,107 +1,58 @@
 """Tests of iotbx.pdb.hierarchy.root.sym_equiv_residue_groups."""
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 from cctbx import adptbx, crystal, sgtbx
 from cctbx.array_family import flex
 from cctbx.crystal import super_cell
+from cctbx.crystal.sym_equiv_test_utils import (
+  assert_same_positions, brute_force_sym_equiv, general_position_structure,
+  special_position_fixtures, unique_positions)
 from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import Sorry
 from scitbx import matrix
 
-# (space group, unit cell, fractional sites, selection): site 0 lies on a
-# symmetry element.
-special_position_fixtures = [
-  ("C 1 2 1", (6, 7, 28, 90, 90, 90),                 # two-fold
-   [(0.0, 0.2, 0.0), (0.13, 0.31, 0.07), (0.21, 0.44, 0.19)], [0, 1]),
-  ("F m m 2", (9.673, 12.574, 16.444, 90, 90, 90),    # mirror, F centred
-   [(0.0, 1 / 6., 0.0), (0.113, 0.207, 0.331), (0.717, 0.311, 0.613)], [1, 2]),
-  ("R 3 :H", (12.1, 12.1, 16.7, 90, 90, 120),         # three-fold
-   [(0.0, 0.0, 0.11), (0.213, 0.331, 0.07), (0.41, 0.62, 0.28)], [1, 2]),
-  ("P 43 21 2", (12.1, 12.1, 16.7, 90, 90, 90),       # two-fold at (x, x, 0)
-   [(0.19, 0.19, 0.0), (0.113, 0.407, 0.231), (0.617, 0.311, 0.513)], [1, 2]),
-  ("P -1", (7, 8, 9, 90, 90, 90),                     # inversion centre
-   [(0.0, 0.0, 0.0), (0.21, 0.33, 0.14), (0.44, 0.19, 0.37)], [1, 2]),
-  ("P m -3 m", (9, 9, 9, 90, 90, 90),                 # site symmetry m-3m
-   [(0.0, 0.0, 0.0), (0.213, 0.331, 0.07), (0.41, 0.28, 0.62)], [1, 2]),
-]
-
 def hierarchy_from_sites(sites_cart, residue_sizes, elements=None):
-  """A one-chain hierarchy of the sites, residue_sizes[i] atoms in residue i,
-  with i_seq left unset.  Every atom is carbon unless elements says otherwise.
+  """A one-chain hierarchy of the sites, residue_sizes[i] atoms in residue i.
+  Every atom is carbon unless elements says otherwise.
   """
+  import mmtbx.model
   if (elements is None):
     elements = ["C"] * sites_cart.size()
-  root = iotbx.pdb.hierarchy.root()
-  model = iotbx.pdb.hierarchy.model()
-  chain = iotbx.pdb.hierarchy.chain(id="A")
-  i_site = 0
+  resseq_list = []
   for i_rg, n_atoms in enumerate(residue_sizes):
-    rg = iotbx.pdb.hierarchy.residue_group(resseq=f"{i_rg + 1:4d}")
-    ag = iotbx.pdb.hierarchy.atom_group(resname="UNK")
-    for i_atom in range(n_atoms):
-      atom = iotbx.pdb.hierarchy.atom()
-      atom.name = f"{elements[i_site]:>2}{i_atom + 1:<2d}"
-      atom.element = f"{elements[i_site]:>2}"
-      atom.xyz = sites_cart[i_site]
-      ag.append_atom(atom)
-      i_site += 1
-    rg.append_atom_group(ag)
-    chain.append_residue_group(rg)
-  assert i_site == sites_cart.size()
-  model.append_chain(chain)
-  root.append_model(model)
-  return root
-
-def general_position_structure(space_group_symbol="P 21 21 21"):
-  """Twelve sites, all in general positions, in a cell of 3000 A**3."""
-  space_group_info = sgtbx.space_group_info(space_group_symbol)
-  cs = crystal.symmetry(
-    unit_cell=space_group_info.any_compatible_unit_cell(volume=3000.),
-    space_group_info=space_group_info)
-  sites_frac = flex.vec3_double()
-  for i in range(12):
-    sites_frac.append((
-      (0.0417 + 0.0713 * i) % 0.83,
-      (0.1103 + 0.0891 * i) % 0.79,
-      (0.0629 + 0.1097 * i) % 0.87))
-  return cs, cs.unit_cell().orthogonalize(sites_frac)
+    resseq_list.extend([iotbx.pdb.resseq_encode(i_rg + 1)] * n_atoms)
+  return mmtbx.model.manager.from_sites_cart(
+    sites_cart     = sites_cart,
+    atom_name_list = [f"{element:>2}  " for element in elements],
+    scatterer_list = elements,
+    resseq_list    = resseq_list).get_hierarchy()
 
 def brute_force_copies(sites_cart, crystal_symmetry, radius,
-      primary_selection, residue_sizes, n_shifts=2):
-  """Every copy of a residue with an atom within *radius* of a selected site,
-  from all operators over a block of lattice translations, without
-  asu_mappings.
+      primary_selection, residue_sizes):
+  """Every copy of a residue with an atom that brute_force_sym_equiv finds.
 
   Returns a list of (residue index, operator as_xyz, copied positions), the
   identity left out.
   """
   unit_cell = crystal_symmetry.unit_cell()
   sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
-  selected_fracs = [sites_frac[i_seq] for i_seq in primary_selection]
-  identity_as_xyz = sgtbx.rt_mx().as_xyz()
   residues = []
+  residue_of = []
   first = 0
-  for n_atoms in residue_sizes:
+  for i_rg, n_atoms in enumerate(residue_sizes):
     residues.append(range(first, first + n_atoms))
+    residue_of.extend([i_rg] * n_atoms)
     first += n_atoms
+  copies = set()
+  for j_seq, ops in brute_force_sym_equiv(
+      sites_cart, crystal_symmetry, radius, primary_selection).items():
+    for as_xyz in ops:
+      copies.add((residue_of[j_seq], as_xyz))
   result = []
-  for rotation_op in crystal_symmetry.space_group().all_ops():
-    for i in range(-n_shifts, n_shifts + 1):
-      for j in range(-n_shifts, n_shifts + 1):
-        for k in range(-n_shifts, n_shifts + 1):
-          op = rotation_op + (i, j, k)
-          as_xyz = op.as_xyz()
-          if (as_xyz == identity_as_xyz): continue
-          for i_rg, residue in enumerate(residues):
-            copy_fracs = [op * sites_frac[i_seq] for i_seq in residue]
-            in_range = False
-            for copy_frac in copy_fracs:
-              for selected_frac in selected_fracs:
-                if (unit_cell.distance(copy_frac, selected_frac) <= radius):
-                  in_range = True
-            if (in_range):
-              result.append((i_rg, as_xyz,
-                [unit_cell.orthogonalize(copy_frac)
-                 for copy_frac in copy_fracs]))
+  for i_rg, as_xyz in sorted(copies):
+    op = sgtbx.rt_mx(as_xyz)
+    result.append((i_rg, as_xyz,
+      [unit_cell.orthogonalize(op * sites_frac[i_seq])
+       for i_seq in residues[i_rg]]))
   return result
 
 def rotated_uij(unit_cell, rt_mx, uij):
@@ -110,14 +61,6 @@ def rotated_uij(unit_cell, rt_mx, uij):
   u_star = matrix.sym(sym_mat3=adptbx.u_cart_as_u_star(unit_cell, uij))
   return adptbx.u_star_as_u_cart(
     unit_cell, (r * u_star * r.transpose()).as_sym_mat3())
-
-def index_of_position(positions, position, tolerance):
-  """Index of the first of *positions* within *tolerance* of *position* in
-  every coordinate, or None."""
-  for i, candidate in enumerate(positions):
-    if (approx_equal(candidate, position, eps=tolerance, out=None)):
-      return i
-  return None
 
 def exercise_match_brute_force(space_group_symbol):
   """A residue group with an atom whose equivalent is in range is copied
@@ -133,7 +76,8 @@ def exercise_match_brute_force(space_group_symbol):
     residue_of.extend([i_rg] * n_atoms)
   primary_selection = [0, 3, 7]
   radius = 5.0
-  cs, sites_cart = general_position_structure(space_group_symbol)
+  cs, sites_cart = general_position_structure(
+    sgtbx.space_group_info(space_group_symbol))
   hierarchy = hierarchy_from_sites(sites_cart, residue_sizes)
   uijs = flex.sym_mat3_double()
   for i_seq in range(sites_cart.size()):
@@ -265,16 +209,10 @@ def exercise_on_special_positions_match_brute_force():
           if (flex.min(flex.sqrt((sites_cart - position).dot()))
               < tolerance):
             continue
-          if (index_of_position(expected, position, tolerance) is None):
-            expected.append(position)
+          expected.append(position)
+      expected = unique_positions(expected, tolerance)
       assert len(expected) > 0, info
-      assert len(obtained) == len(expected), (
-        info, len(expected), len(obtained))
-      unmatched = list(obtained)
-      for position in expected:
-        i = index_of_position(unmatched, position, 1.e-4)
-        assert i is not None, (info, position, unmatched)
-        del unmatched[i]
+      assert_same_positions({0: expected}, {0: obtained}, info)
 
 def exercise_tolerance():
   """min_distance_sym_equiv decides when a copied atom is the atom it lands
@@ -305,7 +243,9 @@ def exercise_contract():
   relied on.
   """
   cs, sites_cart = general_position_structure()
-  hierarchy = hierarchy_from_sites(sites_cart, [3, 3, 3, 3])
+  # copy_atoms gives every atom i_seq 0.
+  hierarchy = hierarchy_from_sites(sites_cart, [3, 3, 3, 3]).select(
+    flex.bool(sites_cart.size(), True), copy_atoms=True)
   assert hierarchy.atoms().extract_i_seq().all_eq(0)
   primary_selection = flex.size_t([0, 4, 9])
   by_index = hierarchy.sym_equiv_residue_groups(
