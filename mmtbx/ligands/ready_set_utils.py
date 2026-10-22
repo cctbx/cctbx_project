@@ -283,77 +283,6 @@ def add_c_terminal_oxygens_to_residue_group(residue_group,
     result += tmp
   return result
 
-def add_main_chain_o_to_atom_group(ag, c_ca_n=None):
-  # cetral functuon
-  if c_ca_n is not None:
-    c, ca, n = c_ca_n
-  else:
-    c = ag.get_atom("C")
-    if c is None: return
-    ca = ag.get_atom("CA")
-    if ca is None: return
-    n = ag.get_atom("N")
-    if n is None: return
-  atom = ag.get_atom('O')
-  dihedral = dihedral_angle(sites=[atom.xyz,
-                                   c.xyz,
-                                   ca.xyz,
-                                   n.xyz,
-                                 ],
-                            deg=True)
-  ro2 = construct_xyz(c, bond_length,
-                      ca, 120.,
-                      n, dihedral,
-                      period=2,
-                     )
-  oxys = [' O  ', atom_name]
-  for i in range(0,2):
-    name = oxys[i]
-    atom = ag.get_atom(name.strip())
-    if atom:
-      pass #atom.xyz = ro2[i]
-    else:
-      atom = iotbx.pdb.hierarchy.atom()
-      atom.name = name
-      atom.element = atom_element
-      atom.occ = c.occ
-      atom.b = c.b
-      atom.segid = c.segid
-      atom.xyz = ro2[i]
-      if append_to_end_of_model:
-        chain = _add_atom_to_chain(atom, ag)
-        rc.append(chain)
-      else:
-        # add the atom to the hierarchy
-        ag.append_atom(atom)
-
-  #for
-  assert atom
-
-def add_main_chain_atoms_to_residue_group(residue_group):
-  # I think this needs a three
-  assert 0
-  for ag, (c, ca, n, o) in generate_atom_group_atom_names(residue_group,
-                                                          ['C', 'CA', 'N', 'O'],
-                                                          return_Nones=True,
-                                                          ):
-    if o is None:
-      add_main_chain_o_to_atom_group(ag,
-                                     c_ca_n = [c, ca, n],
-                                    )
-
-def add_main_chain_atoms_to_protein_three(three):
-  for ag, (c, ca, n, o) in generate_atom_group_atom_names(three[1],
-                                                          ['C', 'CA', 'N', 'O'],
-                                                          return_Nones=True,
-                                                          ):
-    if o is None:
-      add_main_chain_o_to_atom_group(ag,
-                                     c_ca_n = [c, ca, n],
-                                    )
-
-  assert 0
-
 def generate_residues_via_conformer(hierarchy,
                                     backbone_only=False,
                                     verbose=False,
@@ -743,19 +672,6 @@ def add_water_hydrogen_atoms_simple(hierarchy, log=None):
           atom_group.append_atom(h)
       # for atom in atom_group.atoms(): print(atom.format_atom_record())
 
-def add_main_chain_atoms(hierarchy,
-                         geometry_restraints_manager,
-                         verbose=False,
-                         ):
-  from mmtbx.conformation_dependent_library import generate_protein_threes
-  for three in generate_protein_threes(hierarchy,
-                                       geometry_restraints_manager,
-                                       verbose=verbose,
-                                       ):
-    print(three)
-    add_main_chain_atoms_to_protein_three(three)
-  assert 0
-
 def perdeuterate_model_ligands(hierarchy,
                                verbose=False,
                                ):
@@ -814,7 +730,6 @@ def main_hydrogen(model,
   geometry_restraints_manager = model.get_restraints_manager().geometry
   atoms = hierarchy.atoms()
 
-  #ready_set_utils.add_main_chain_atoms(hierarchy, geometry_restraints_manager)
   if (terminate_all_N_terminals or
       terminate_all_C_terminals or
       cap_all_terminals
