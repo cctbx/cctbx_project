@@ -23,6 +23,8 @@ def run():
   run_test26()
   run_test27()
   run_test39()
+  run_test40()
+  run_test41()
 
 # ------------------------------------------------------------------------------
 
@@ -494,6 +496,50 @@ def run_test39():
     vl2 = _altconf_manager_nproc(_altconf_state_pdb_str, nproc=2)
     s2 = _getter_summary(vl2)
     assert s2 == s1, (s1, s2)
+
+def run_test40():
+  """
+  A ligand with a blank chain id is selected ('chain " "'; unquoted, 'chain  and'
+  selects nothing). No quotes in the PNG file name stem.
+  """
+  print('test40')
+  pdb_str = _altconf_state_pdb_str.replace('GOL A   1', 'GOL     1')
+  vl = _altconf_manager(pdb_str)
+  lr = find_lr(vl, 'chain " " and resseq 1')
+  assert lr.sel_str.startswith('chain " " and resseq 1 '), lr.sel_str
+  assert lr.ligand_isel_noH.size() == 6, lr.ligand_isel_noH.size()
+  assert approx_equal(lr.get_occupancies().occ_mean, 1.0)
+  assert lr.get_rmsds().bond_n == 5, lr.get_rmsds().bond_n
+  for x in vl:
+    assert '"' not in x.fn_string, x.fn_string
+  lr2 = _altconf_lr(vl, 2, 'A')
+  assert lr2.sel_str.startswith('chain A and resseq 2 '), lr2.sel_str
+
+def run_test41():
+  """
+  A getter that raises on the in-process path (nproc=1): the error is printed
+  with the selection and getter, the result is None, the other getters run.
+  """
+  print('test41')
+  import io, contextlib
+  from mmtbx.validation import validate_ligands as vlmod
+  def _raise(self):
+    raise RuntimeError('getter failed on purpose')
+  get_adps = vlmod.ligand_result.get_adps
+  vlmod.ligand_result.get_adps = _raise
+  out = io.StringIO()
+  try:
+    with contextlib.redirect_stdout(out):
+      vl = _altconf_manager(_altconf_state_pdb_str)
+  finally:
+    vlmod.ligand_result.get_adps = get_adps
+  text = out.getvalue()
+  assert text.count('Error output from Selection : ') == len(vl), text
+  assert 'Func : get_adps' in text, text
+  assert 'getter failed on purpose' in text, text
+  for lr in vl:
+    assert lr._adps is None
+    assert lr._occupancies is not None
 
 
 if (__name__ == "__main__"):

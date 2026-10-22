@@ -323,9 +323,9 @@ def _run_result_func(lr, func):
 def _run_serial(lr, func):
   """In-process _run_result_func: (args, result, err_str), as easy_mp.multi_core_run yields."""
   try:
-    return (lr, func), _run_result_func(lr, func), None
+    return [lr, func], _run_result_func(lr, func), None
   except Exception as e:
-    return (lr, func), None, str(e) + "\n" + traceback.format_exc()
+    return [lr, func], None, str(e) + "\n" + traceback.format_exc()
 
 # =============================================================================
 
@@ -397,7 +397,7 @@ class manager(list):
         print('\n  Returning Selection : %s AltLoc : %s Func : %s' % tuple(inputs[i]))
         print('  Cumulative time: %6.2f (s)' % (time.time()-t0))
       if err_str:
-        print('Error output from %s' % args)
+        print('Error output from Selection : %s AltLoc : %s Func : %s' % tuple(inputs[i]))
         print(err_str)
         print('_'*80)
 
@@ -437,7 +437,10 @@ class manager(list):
                 continue
             if (not get_class(name=resname) in _LIGAND_EXCLUDE_CLASSES):
               iselection = residue.atoms().extract_i_seq()
-              sel_str = 'chain %s and resseq %s and resname %s ' % (chain.id,
+              # blank chain id: unquoted, 'chain  and' selects nothing
+              chain_id = chain.id if chain.id.strip() == chain.id and chain.id \
+                else '"%s"' % chain.id
+              sel_str = 'chain %s and resseq %s and resname %s ' % (chain_id,
                 rg.resseq_as_int(), resname)
               if conformer.altloc:
                 sel_str = sel_str + ' and (altloc %s or altloc " ")' % conformer.altloc
@@ -1311,7 +1314,8 @@ class ligand_result(object):
     #  self.model.select(self.ligand_isel_noH).get_xray_structure()
     self._atoms_ligand_noH = self._ph.select(self.ligand_isel_noH).atoms()
 
-    new_s = re.sub(r"\band\b", "", self.sel_str)
+    # no quotes in file names (Windows)
+    new_s = re.sub(r"\band\b", "", self.sel_str).replace('"', '')
     self.fn_string = re.sub(r"\s+", "_", new_s.strip())  # strip + collapse spaces
 
     # ------ sites ------
