@@ -1422,9 +1422,11 @@ NOTES:
         finalAtoms = len(myModel.atoms())
         if finalAtoms > initialAtoms:
           print("Added "+str(finalAtoms-initialAtoms)+" symmetric copies of atoms near the boundary", file=self.logger)
+          outString += "Added "+str(finalAtoms-initialAtoms)+" symmetric copies of atoms near the boundary\n"
         for c in self.model.get_hierarchy().models()[mi].chains():
           if c.id not in originalChainSets[mi]:
             print("Added symmetry chain "+c.id+" to model "+str(mi+1), file=self.logger)
+            outString += "Added symmetry chain "+c.id+" to model "+str(mi+1)+'\n'
 
       # Re-process the model because we have added atoms.
       self.model.set_log(null_out())
@@ -1533,7 +1535,8 @@ NOTES:
         for c in reversed(range(len(myModel.chains()))):
           chain = myModel.chains()[c]
           if chain.id not in originalChainSets[mi]:
-            print("Removed symmetry chain {} from model index {}".format(chain.id, mi), file=self.logger)
+            print("Removed symmetry chain {} from model {}".format(chain.id, mi+1), file=self.logger)
+            outString += "Removed symmetry chain {} from model {}\n".format(chain.id, mi+1)
             myModel.remove_chain(c)
 
     # Re-process the model because we have removed some atoms that were previously
