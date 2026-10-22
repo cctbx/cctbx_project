@@ -6,9 +6,11 @@ from cctbx.crystal import super_cell
 from cctbx.crystal.sym_equiv_test_utils import (
   assert_same_positions, brute_force_sym_equiv, general_position_structure,
   special_position_fixtures, unique_positions)
+from cctbx.development import debug_utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from libtbx.utils import Sorry
 from scitbx import matrix
+import sys
 
 def hierarchy_from_sites(sites_cart, residue_sizes, elements=None):
   """A one-chain hierarchy of the sites, residue_sizes[i] atoms in residue i.
@@ -86,7 +88,7 @@ ATOM      3  C   ALA A   1      -4.000   6.000  -1.000  1.00 10.00           C
 TER
 """)
 
-def exercise_match_brute_force(space_group_symbol):
+def exercise_match_brute_force(space_group_info):
   """A residue group with an atom whose equivalent is in range is copied
   whole under that operator, with its anisotropic U rotated, and nothing
   else is copied.
@@ -100,8 +102,8 @@ def exercise_match_brute_force(space_group_symbol):
     residue_of.extend([i_rg] * n_atoms)
   primary_selection = [0, 3, 7]
   radius = 5.0
-  cs, sites_cart = general_position_structure(
-    sgtbx.space_group_info(space_group_symbol))
+  space_group_symbol = str(space_group_info)
+  cs, sites_cart = general_position_structure(space_group_info)
   hierarchy = hierarchy_from_sites(sites_cart, residue_sizes)
   uijs = flex.sym_mat3_double()
   for i_seq in range(sites_cart.size()):
@@ -304,16 +306,19 @@ def exercise_contract():
   else:
     raise Exception_expected
 
+def run_call_back(flags, space_group_info):
+  """The exercises that run once per space group."""
+  exercise_match_brute_force(space_group_info)
+
 def run():
   exercise_copy_the_whole_residue()
-  for space_group_symbol in ["P 21 21 21", "I 41/a c d", "P 63", "R 3 :H"]:
-    exercise_match_brute_force(space_group_symbol)
   exercise_leave_out_atoms_on_the_model()
   exercise_keep_atoms_of_another_element()
   exercise_on_an_element_get_every_copy()
   exercise_on_special_positions_match_brute_force()
   exercise_tolerance()
   exercise_contract()
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print("OK")
 
 if (__name__ == "__main__"):
