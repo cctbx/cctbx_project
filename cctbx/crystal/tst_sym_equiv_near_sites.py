@@ -420,7 +420,8 @@ def exercise_a_radius_that_is_not_a_distance_is_rejected():
       raise Exception_expected
 
 def exercise_tables_must_cover_the_same_sites():
-  """Two tables built for different numbers of sites are rejected."""
+  """Two tables built for different numbers of sites are rejected, and so is
+  a site symmetry table passed in for a different number of sites."""
   cs, sites_cart = general_position_structure()
   symmetry_tables = super_cell.get_sym_equiv_tables(
     sites_cart, cs, 5.0)
@@ -431,6 +432,14 @@ def exercise_tables_must_cover_the_same_sites():
       super_cell.sym_equiv_tables(symmetry_tables.pair_sym_table, fewer), [0])
   except AssertionError as e:
     assert str(e) == "the two tables cover different numbers of sites", str(e)
+  else:
+    raise Exception_expected
+  try:
+    super_cell.get_sym_equiv_tables(
+      sites_cart, cs, 5.0, site_symmetry_table=fewer)
+  except AssertionError as e:
+    assert str(e) == (
+      "the site symmetry table covers a different number of sites"), str(e)
   else:
     raise Exception_expected
 

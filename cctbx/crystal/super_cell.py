@@ -26,7 +26,8 @@ class sym_equiv_tables(libtbx.slots_getstate_setstate):
     self.site_symmetry_table = site_symmetry_table
 
 def get_sym_equiv_tables(sites_cart, crystal_symmetry, radius,
-                         min_distance_sym_equiv=None):
+                         min_distance_sym_equiv=None,
+                         site_symmetry_table=None):
   """Pair and site symmetry tables covering every contact within radius.
 
   Neither depends on the selection, so one build serves many of them.
@@ -39,6 +40,8 @@ def get_sym_equiv_tables(sites_cart, crystal_symmetry, radius,
       In Angstrom.
   min_distance_sym_equiv : float, optional
       min_distance_sym_equiv_coincident by default.
+  site_symmetry_table : cctbx.sgtbx.site_symmetry_table, optional
+      Built from the same sites and min_distance_sym_equiv, to reuse it.
 
   Returns
   -------
@@ -53,7 +56,11 @@ def get_sym_equiv_tables(sites_cart, crystal_symmetry, radius,
     min_distance_sym_equiv = min_distance_sym_equiv_coincident
   sps = crystal_symmetry.special_position_settings(
     min_distance_sym_equiv=min_distance_sym_equiv)
-  site_symmetry_table = sps.site_symmetry_table(sites_cart=sites_cart)
+  if (site_symmetry_table is None):
+    site_symmetry_table = sps.site_symmetry_table(sites_cart=sites_cart)
+  else:
+    assert site_symmetry_table.indices().size() == sites_cart.size(), (
+      "the site symmetry table covers a different number of sites")
   # add_all_pairs searches to distance_cutoff*(1+is_inside_epsilon()), which
   # defaults to 1e-6; the buffer matches.
   pair_asu_table = sps.pair_asu_table(
