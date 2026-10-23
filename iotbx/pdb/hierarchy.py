@@ -1438,7 +1438,8 @@ class _():
         sites_cart             = sites_cart,
         crystal_symmetry       = crystal_symmetry,
         radius                 = 2 * min_distance_sym_equiv,
-        min_distance_sym_equiv = min_distance_sym_equiv))
+        min_distance_sym_equiv = min_distance_sym_equiv,
+        site_symmetry_table    = site_symmetry_table))
     may_coincide = flex.bool(sites_cart.size(), False)
     may_coincide.set_selected(flex.size_t(list(near_another_atom)), True)
     may_coincide.set_selected(
