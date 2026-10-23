@@ -175,7 +175,7 @@ class metric_subgroups(base_subgroups):
   def parse_reference(self):
     try:
       o_file = ('crystal_orientation')
-      f = open(o_file,'r')
+      f = open(o_file,'rb')
       reference_ori = pickle.load(f)
       self.reference_subgroups = pickle.load(f)
       f.close()
