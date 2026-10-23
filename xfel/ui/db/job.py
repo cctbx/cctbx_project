@@ -1136,9 +1136,15 @@ def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_ope
       any(j.run_id not in current_run_ids for j in latest_local) or \
       any(j.task and j.task.scope == 'global' and j.task_id not in current_task_ids for j in latest.jobs)
   if roll:
-    # Merging after every run cuts a version per run not yet merged in
-    added = new_final + len(final_local_job_ids - latest_local_ids)
-    sets = added if merge_mode == 'per_run' and added else 1
+    sets = 1
+    if merge_mode == 'per_run':
+      # A version per run not yet merged in, plus the corrective version of the
+      # runs already merged when a run was tagged out or a global stage edited
+      added = new_final + len(final_local_job_ids - latest_local_ids)
+      corrective = latest is not None and (
+        any(j.run_id not in current_run_ids for j in latest_local) or
+        any(j.task and j.task.scope == 'global' and j.task_id not in current_task_ids for j in latest.jobs))
+      sets = max(1, added + (1 if corrective and (final_local_job_ids & latest_local_ids) else 0))
     for task in global_tasks:
       counts[task.type] += sets
   return counts
@@ -1475,14 +1481,17 @@ def submit_all_jobs(app):
 
       # The local job sets of the versions to create now, in order. One version
       # with everything finished, or, merging after every run, one per new job
-      # in the dataset's run order, each adding that run to what came before. A
-      # corrective version is always a single one.
+      # in the dataset's run order, each adding that run to what came before.
+      # A correction (a run tagged out, a global stage edited) is one version of
+      # the runs already merged that are still selected; merging after every
+      # run, the new runs then follow one version each rather than riding
+      # along in it.
       batches = []
       if new_jobs or corrective:
-        if first_global and merge_mode == 'per_run' and not corrective:
+        if first_global and merge_mode == 'per_run':
           run_order = {run.id: i for i, (run, rungroup) in enumerate(runs_rungroups)}
           ordered = sorted(new_jobs, key=lambda j: run_order.get(j.run_id, len(run_order)))
-          batches = [base + ordered[:i+1] for i in range(len(ordered))]
+          batches = ([base] if corrective and base else []) + [base + ordered[:i+1] for i in range(len(ordered))]
         else:
           batches = [pool]
 
