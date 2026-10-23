@@ -12,6 +12,7 @@ from mmtbx.probe import Helpers
 from mmtbx.validation import clashscore2
 
 # Alternates on a backbone and a side chain, partial-occupancy waters (from tst_clashscore_2).
+# HOH 248 overlaps Val 27 CG2: a clash that does not depend on reduce2's H placement.
 pdb_str = """\
 CRYST1   50.000   50.000   50.000  90.00  90.00  90.00 P 1
 ATOM      1  N   ASN A   1      12.388  -5.203  29.298  1.00 13.23           N
@@ -102,6 +103,7 @@ HETATM  156  O   HOH A 173       9.659  -2.091  27.019  0.29  6.50           O
 HETATM  191  O   HOH A 208      24.121   2.918  18.439  0.20  7.03           O
 HETATM  217  O   HOH A 234      10.755   0.622  29.147  0.23  8.84           O
 HETATM  230  O   HOH A 247      23.962   1.544  18.100  0.26  4.79           O
+HETATM  231  O   HOH A 248      13.860   5.233  22.899  1.00  5.00           O
 END
 """
 
