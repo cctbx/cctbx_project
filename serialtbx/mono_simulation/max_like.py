@@ -10,6 +10,15 @@ from scitbx.lbfgs import run,termination_parameters,exception_handling_parameter
 from six.moves import cPickle as pickle
 from six.moves import range
 
+def softplus(a):
+  return max(a, 0.) + math.log1p(exp(-abs(a)))
+
+def logistic(a):
+  if a >= 0.:
+    return 1. / (1. + exp(-a))
+  e = exp(a)
+  return e / (1. + e)
+
 class minimizer:
   def __init__(self, d_i, psi_i, eta_rad, Deff):
     self.safelog = -1. + math.log(sys.float_info.max)
@@ -100,8 +109,6 @@ class minimizer:
     partf_partP0 = 0.
     partf_partP1 = 0.
 
-    f = self.functional_only(alpha,eta)
-
     for i in allobs:
       psi_model = (self.d_i[i]*alpha + eta)/2.
       part_psi_model_partP0 = 0.5 * self.d_i[i] * alpha
@@ -114,12 +121,14 @@ class minimizer:
         from libtbx.utils import Sorry
         raise Sorry("Model has diverged, cannot continue")
 
-      expB = exp( B * (psi_i + psi_model) )
-      expBneg = exp( -B * (psi_i - psi_model) )
+      expBarg = B * (psi_i + psi_model)
+      expBnegarg = -B * (psi_i - psi_model)
 
-      if expB > 1e100 or expBneg < -1e100 or expBneg > 1e100:
-        from libtbx.utils import Sorry
-        raise Sorry("Model has diverged, cannot continue")
+      if max(expBarg, expBnegarg) > log(1e100):
+        return self.compute_functional_and_gradients_without_overflow(alpha, eta)
+
+      expB = exp(expBarg)
+      expBneg = exp(expBnegarg)
 
       Spos = 1. + expB
       Sneg = 1. + expBneg
@@ -176,6 +185,7 @@ class minimizer:
         part_prob_partP1 = temp * (part_fg_partP1 * psi_model - fx * gx * part_psi_model_partP1)
 
 
+      f -= math.log(prob)
       partf_partP0 -= (1./prob) * part_prob_partP0
       partf_partP1 -= (1./prob) * part_prob_partP1
 
@@ -184,6 +194,26 @@ class minimizer:
     #self.fd_compute_functional_and_gradients()
 
 
+    return (f, flex.double([partf_partP0,partf_partP1]))
+
+
+  def compute_functional_and_gradients_without_overflow(self, alpha, eta):
+    # The same functional and gradients, with log(1+e^a) and e^a/(1+e^a) in forms that cannot overflow
+    log_expnu = math.log1p(exp(self.escalate))
+    f = 0.
+    partf_partP0 = 0.
+    partf_partP1 = 0.
+    for i in range(self.Nobs):
+      psi_model = (self.d_i[i]*alpha + eta)/2.
+      psi_i = self.psi_i[i]
+      B = self.escalate / psi_model
+      expBarg = B * (psi_i + psi_model)
+      expBnegarg = -B * (psi_i - psi_model)
+      f += log(2. * psi_model) + softplus(expBarg) + softplus(expBnegarg) - 2 * log_expnu
+      zed = self.escalate * psi_i / (psi_model * psi_model)
+      partf_partpsi_model = 1. / psi_model - zed * logistic(expBarg) + zed * logistic(expBnegarg)
+      partf_partP0 += partf_partpsi_model * 0.5 * self.d_i[i] * alpha
+      partf_partP1 += partf_partpsi_model * 0.5 * eta
     return (f, flex.double([partf_partP0,partf_partP1]))
 
 
