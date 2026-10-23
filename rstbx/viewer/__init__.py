@@ -253,11 +253,12 @@ class image(screen_params):
         w=image_size[0],
         h=image_size[1])
 
-    pixel_size = detector[0].get_pixel_size()
-    for panel in detector:
-      pstest = panel.get_pixel_size()
-      assert pixel_size[0] == pixel_size[1] == pstest[0] == pstest[1]
-    self.set_detector_resolution(pixel_size[0])
+    # Panels may have different pixel sizes; use the finest one as the
+    # resolution of the composite picture. Pixels must be square.
+    pixel_sizes = [panel.get_pixel_size() for panel in detector]
+    for pstest in pixel_sizes:
+      assert pstest[0] == pstest[1], "non-square pixels are not supported"
+    self.set_detector_resolution(min(ps[0] for ps in pixel_sizes))
 
     try:
       from spotfinder.command_line.signal_strength import master_params
