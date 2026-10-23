@@ -63,11 +63,18 @@ def check_clique(desc):
   scores = [float(re.search(r"Initial score: (\S+)", l).group(1)) for l in lines]
   assert abs(total - sum(scores)) < 0.006, header + "\n".join(lines)
 
+_added = []
+def added():
+  """the approach=add run of pdb_str, shared by test_add and test_optimize"""
+  if not _added:
+    _added.append(run(pdb_str, "tst_reduce2_blank_chain_1"))
+  return _added[0]
+
 def test_add():
-  check_clique(run(pdb_str, "tst_reduce2_blank_chain_1")[1])
+  check_clique(added()[1])
 
 def test_optimize():
-  model_h = run(pdb_str, "tst_reduce2_blank_chain_2")[0]
+  model_h = added()[0]
   assert " HO BEOH   200" in model_h
   check_clique(run(model_h, "tst_reduce2_blank_chain_3",
     ["approach=optimize"])[1])

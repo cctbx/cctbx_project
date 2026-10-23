@@ -982,14 +982,15 @@ def test_occupancy_and_altlocs():
     # Zn at occupancy 0 does not count, nothing reported
     (m_zn_occ0, 'occ0', [('', True)], 0, 0),
     ]
+  descs = {}
   for model, name, expected, n_not_placed, n_unresolved in cases:
     out, desc = run(model, 'tst_reduce2_metal_thiol_' + name, ['approach=add'])
+    descs[name] = desc
     for altloc, present in expected:
       assert has(out, 'HG', '48', altloc) == present, (name, altloc, out)
     assert len(section(desc, NOT_PLACED)) == n_not_placed, (name, desc)
     assert len(section(desc, UNRESOLVED)) == n_unresolved, (name, desc)
-  out, desc = run(m_c4_two_sites, 'tst_reduce2_metal_thiol_c4_msg',
-    ['approach=add'])
+  desc = descs['c4']
   assert ('SG occupancy 1.00 exceeds coordinating ZN occupancy 0.60. '
     'Protonation may differ between bound and unbound populations. HG was '
     'added using the default thiol state; review this site.') in desc, desc
@@ -1018,6 +1019,15 @@ def test_cell_boundary():
     assert len(section(desc, SUPPLIED)) == 1, (name, desc)
   assert 'sym x-1,y,z' in desc, desc
 
+_pop_sg_altloc = []
+def pop_sg_altloc_added():
+  """the approach=add run of m_pop_sg_altloc, shared by
+  test_thiol_two_residues and test_population (read only)"""
+  if not _pop_sg_altloc:
+    _pop_sg_altloc.append(run(m_pop_sg_altloc,
+      'tst_reduce2_metal_thiol_pop_alt', ['approach=add']))
+  return _pop_sg_altloc[0]
+
 def test_thiol_two_residues():
   '''an S bonded to the CB of two residues is not a thiol, even with an H and
   a metal in the window; altloc copies of one atom count once (c2b)'''
@@ -1040,8 +1050,7 @@ def test_thiol_two_residues():
   control = sites(False)
   assert [s.verdict for s in control] == ['thiolate'], control
   assert sites(True) == []
-  out, desc = run(m_pop_sg_altloc, 'tst_reduce2_metal_thiol_cb_split',
-    ['approach=add'])
+  out, desc = pop_sg_altloc_added()
   assert len(section(desc, NOT_PLACED)) == 1, desc
 
 def test_metal_site_images():
@@ -1103,8 +1112,7 @@ def test_population():
   own occupancy (SG/B 0.30 with CB/B 0.50: Zn/B 0.30 covers it); a blank S
   and an H in altloc A whose conformer-A heavy atoms differ (C/A 0.40, O/A
   0.50): unresolved'''
-  out, desc = run(m_pop_sg_altloc, 'tst_reduce2_metal_thiol_pop_alt',
-    ['approach=add'])
+  out, desc = pop_sg_altloc_added()
   assert not has(out, 'HG', '48', 'B') and has(out, 'HG', '48', 'A'), out
   out, desc = run(m_pop_mixed, 'tst_reduce2_metal_thiol_pop_mixed',
     ['approach=add'])
