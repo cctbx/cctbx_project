@@ -57,6 +57,22 @@ def cb_in_main_chain(resname):
   _cb_in_main_chain_cache[resname] = rc
   return rc
 
+ca_flat_volume = 1.0 # Angstrom**3
+
+def classify_ca_chirality(resname, chiral_volume):
+  """'flat' if CB is close to the N-CA-C plane, 'inverted' if CA has the
+  wrong hand for the residue name, otherwise None. The chiral volume
+  (CA, N, CB, C) is about -2.5 A**3 for L-amino acids. The hand of other
+  nonstandard residues isn't known, so they can only be flat.
+  """
+  if chiral_volume is None: return None
+  if abs(chiral_volume) < ca_flat_volume: return "flat"
+  from iotbx.pdb import common_residue_names_get_class
+  res_class = common_residue_names_get_class(resname)
+  if res_class == "common_amino_acid" and chiral_volume > 0: return "inverted"
+  if res_class == "d_amino_acid" and chiral_volume < 0: return "inverted"
+  return None
+
 def get_phi_psi_dict(pdb_hierarchy):
   rc = {}
   for i, three in enumerate(generate_protein_threes(hierarchy=pdb_hierarchy,
@@ -153,7 +169,7 @@ class cbeta(residue):
 class cbetadev(validation):
   __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats",
                                       'percent_outliers', 'new_outliers', 'outliers_removed',
-                                      'deviations', 'mahalanobis']
+                                      'deviations', 'mahalanobis', 'ca_chirality']
   program_description = "Analyze protein sidechain C-beta deviation"
   output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
   gui_list_headers = ["Chain", "Residue","Deviation","Angle"]
@@ -190,6 +206,8 @@ class cbetadev(validation):
     outliers_removed=[]
     self.deviations = []
     self.mahalanobis = None
+    # [model id, chain id, resname, resid, altloc, chiral volume, kind, dev]
+    self.ca_chirality = []
     mahalanobis_pending = [] # [result, residual, model id, include]
     if use_phi_psi or mahalanobis_z_score:
       phi_psi_angles = get_phi_psi_dict(pdb_hierarchy)
@@ -240,6 +258,12 @@ class cbetadev(validation):
                 else:
                   altchar = " "
                 total_residues+=1
+                kind = classify_ca_chirality(residue.resname,
+                                             result.chiral_volume)
+                if kind:
+                  self.ca_chirality.append([model.id, chain_id,
+                    residue.resname, residue.resid(), altchar,
+                    result.chiral_volume, kind, dev])
                 if use_phi_psi or mahalanobis_z_score:
                   id_str = '|%s:%s|' % (residue.id_str(), altchar)
                   phi_psi = phi_psi_angles.get(id_str, None)
@@ -372,7 +396,27 @@ class cbetadev(validation):
       print(prefix + " :" + result.format_old(show_mahalanobis=show_mahalanobis),
             file=out)
     if (verbose):
+      self.show_ca_chirality(out)
       self.show_summary(out)
+
+  def show_ca_chirality(self, out):
+    """List residues with an inverted or flat C-alpha. These aren't part of
+    the summary."""
+    ca_chirality = getattr(self, "ca_chirality", [])
+    if not ca_chirality: return
+    print('C-alpha chirality: %d inverted, %d flat (|chiral volume| < %.1f '
+          'Angstrom**3)' % (
+      len([c for c in ca_chirality if c[6]=="inverted"]),
+      len([c for c in ca_chirality if c[6]=="flat"]),
+      ca_flat_volume), file=out)
+    multi_model = (len(self.n_total_by_model)>1)
+    for model_id, chain_id, resname, resid, altloc, volume, kind, dev in \
+        ca_chirality:
+      model_str = ''
+      if multi_model: model_str = 'model "%s" ' % model_id
+      print('  %-8s %s%2s %s %s%s  chiral volume %6.2f  dev %.3f' % (
+        kind, model_str, chain_id, resid, altloc, resname, volume, dev),
+        file=out)
 
   def show_summary(self, out, prefix=""):
     print(prefix + \
@@ -505,13 +549,14 @@ class cbetadev(validation):
     return data
 
 class calculate_ideal_and_deviation(object):
-  __slots__ = ["deviation", "ideal", "dihedral"]
+  __slots__ = ["deviation", "ideal", "dihedral", "chiral_volume"]
   def __init__(self, relevant_atoms, resname):
     assert (resname != "GLY")
     from cctbx.geometry_restraints import chirality
     self.deviation = None
     self.ideal = None
     self.dihedral = None
+    self.chiral_volume = None
     if cb_in_main_chain(resname) : return
     resCA = relevant_atoms[" CA "]
     resN  = relevant_atoms[" N  "]
@@ -525,6 +570,7 @@ class calculate_ideal_and_deviation(object):
                                ).volume_model
     else:
       chiral_volume = None
+    self.chiral_volume = chiral_volume
     dist, angleCAB, dihedralNCAB, angleNAB, dihedralCNAB, angleideal= \
       idealized_calpha_angles(resname, chiral_volume)
     betaNCAB = construct_fourth(resN,
