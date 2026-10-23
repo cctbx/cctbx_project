@@ -2436,6 +2436,38 @@ class _():
         else:
           residues[key] = ag
 
+  def reconcile_altlocs(self, crystal_symmetry, distance_cutoff=4.5,
+        clash_tolerance=0.5, include_hydrogens=False, check_only=False,
+        log=None):
+    """
+    Relabel altlocs of interacting residues so that the same label means the
+    same state (e.g. altloc A of a residue does not clash with altloc A of
+    its neighbor). Only labels change. Residues that cannot be made
+    consistent are reported and left unchanged. Restraints built before
+    this call must be rebuilt if labels change.
+
+    :param crystal_symmetry: used to find contacts between symmetry copies;
+      None for an isolated molecule
+    :param distance_cutoff: altloc atoms of two residues closer than this
+      make the residues interacting
+    :param clash_tolerance: van der Waals overlap (A) tolerated before
+      counting a clash
+    :param include_hydrogens: use hydrogens when scoring contacts
+    :param check_only: report changes without applying them
+    :returns: group_args with n_sites (residues with altlocs), n_components
+      (groups of interacting residues), swaps (list of (id_str, mapping))
+      and unresolved (list of lists of id_str)
+    """
+    from iotbx.pdb import altloc_reconciliation
+    return altloc_reconciliation.run(
+      hierarchy         = self,
+      crystal_symmetry  = crystal_symmetry,
+      distance_cutoff   = distance_cutoff,
+      clash_tolerance   = clash_tolerance,
+      include_hydrogens = include_hydrogens,
+      check_only        = check_only,
+      log               = log)
+
   def is_hierarchy_altloc_consistent(self, verbose=False):
     """Return True if altlocs are consistent"""
     altlocs = {}
@@ -3387,6 +3419,16 @@ class _():
     if (chain is not None):
       chain_id = chain.id
     return "%2s%4s%1s" % (chain_id, self.resseq, self.icode)
+
+  def relabel_altlocs(self, mapping):
+    """Relabel altlocs of atom_groups in place. mapping is a permutation of
+    non-blank altloc labels, e.g. {"A":"B", "B":"A"}; labels not in mapping
+    are unchanged. Atom order is not changed, so arrays aligned with the
+    hierarchy (e.g. xray_structure scatterers) stay valid."""
+    assert "" not in [k.strip() for k in mapping]
+    assert sorted(mapping.keys()) == sorted(mapping.values())
+    for ag in self.atom_groups():
+      ag.altloc = mapping.get(ag.altloc, ag.altloc)
 
 bp.inject(ext.atom_group, __hash_eq_mixin)
 @bp.inject_into(ext.atom_group)
