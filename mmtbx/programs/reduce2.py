@@ -1123,6 +1123,9 @@ NOTES:
         keep_existing_H=self.params.keep_existing_H,
         mon_lib_srv=self.model.get_mon_lib_srv()
       )
+    reduce_add_h_obj.supplied_h_hint = self._RebuildHint()
+    # the model is boxed for the calculation: contacts across its own symmetry
+    reduce_add_h_obj.input_crystal_symmetry = self._output_cs
     reduce_add_h_obj.run()
     reduce_add_h_obj.show(self.logger, verbose=self.params.verbosity > 2)
     # its report of atom names not in the dictionary, for the description
@@ -1130,6 +1133,11 @@ NOTES:
     if reduce_add_h_obj.residues_unknown_atoms:
       self._unknown_atoms_note = '\n' + reduce_add_h_obj.unknown_atoms_text(
         verbose=self.params.verbosity > 2) + '\n'
+    # its report of thiols bound to metals, for the description
+    self._metal_thiol_note = ''
+    text = reduce_add_h_obj.metal_thiol_text()
+    if text:
+      self._metal_thiol_note = '\n' + text + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if not self.params.ignore_missing_restraints:
       if len(missed_residues) > 0:
@@ -1365,6 +1373,21 @@ NOTES:
     # Parent of every H/D while the restraints match the hierarchy; the
     # output step uses it after the restraints are gone.
     self._h_parents = hd_exchange.h_parent_table(self.model)
+
+# ------------------------------------------------------------------------------
+
+  def _SuppliedThiolHText(self):
+    # approach=optimize keeps every input H: the H on thiols bound to metals,
+    # as placement lists them (nothing is deleted here).
+    # :return: The description-file text ('' if none); also in the log.
+    sites = reduce_hydrogen.thiol_metal_sites(self.model,
+      reduce_hydrogen.contact_symmetry(self._output_cs))
+    text = reduce_hydrogen.metal_thiol_text(
+      supplied = reduce_hydrogen.supplied_thiol_h(sites, lambda a: True),
+      hint = self._RebuildHint())
+    if not text: return ''
+    print('\n' + text, file=self.logger)
+    return '\n' + text + '\n'
 
 # ------------------------------------------------------------------------------
 
@@ -2116,6 +2139,7 @@ NOTES:
       self._AddHydrogens()
       outString += self._dod_renamed_note
       outString += self._unknown_atoms_note
+      outString += self._metal_thiol_note
       outString += self._UnchangedText()
       if neutron:
         self._CheckAmbiguousParents()
@@ -2133,6 +2157,7 @@ NOTES:
         doneAdd = time.time()
         outString += self._dod_renamed_note
         outString += self._unknown_atoms_note
+        outString += self._metal_thiol_note
         outString += self._UnchangedText()
         if neutron:
           self._CheckAmbiguousParents()
@@ -2160,6 +2185,7 @@ NOTES:
             'optimize them.')
         if neutron:
           self._CheckAmbiguousParents()
+        outString += self._SuppliedThiolHText()
 
       # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
       # but the desired model ID structure from the model.

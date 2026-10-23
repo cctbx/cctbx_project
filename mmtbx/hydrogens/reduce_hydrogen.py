@@ -22,6 +22,8 @@ from mmtbx.hydrogens.hd_exchange import residue_part, residue_parts
 import math
 import itertools
 from cctbx import crystal
+from cctbx import sgtbx
+from cctbx.eltbx import covalent_radii
 
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 get_class = iotbx.pdb.common_residue_names_get_class
@@ -830,6 +832,326 @@ def get_output_crystal_symmetry(model):
   return crystal.symmetry((1, 1, 1, 90, 90, 90), 'P 1')
 
 # ==============================================================================
+# Thiols bound to metals (A4)
+
+# alkali, alkaline earth, transition metals (Zn, Cd, Hg named), lanthanides,
+# actinides, Al Ga In Sn Tl Pb Bi; not B Si Ge As Sb Te. Membership makes an
+# atom a coordination candidate only. Left out: Rf-Cn and Fm-Lr, which never
+# occur in models, and Sg/No would match atom names when the element is
+# guessed from the name.
+METAL_ELEMENTS = frozenset((
+  'LI NA K RB CS FR BE MG CA SR BA RA '
+  'SC TI V CR MN FE CO NI CU ZN Y ZR NB MO TC RU RH PD AG CD '
+  'HF TA W RE OS IR PT AU HG '
+  'LA CE PR ND PM SM EU GD TB DY HO ER TM YB LU '
+  'AC TH PA U NP PU AM CM BK CF ES '
+  'AL GA IN SN TL PB BI').split())
+
+# images of one metal atom closer than this are one metal site
+METAL_SITE_IMAGE_DISTANCE = 2.0
+
+# S-metal window around the sum of the cctbx covalent radii (provisional: it
+# covers every S-metal contact of the A4 B0 models; Ni, Co, Cd, Hg untested)
+THIOL_METAL_WINDOW = (-0.55, 0.25)
+
+THIOL_H_SUPPLIED_NOTE = ('kept as supplied; thiols bound to metals are usually '
+  'deprotonated')
+
+def _atom_element(atom):
+  e = atom.element.strip().upper()
+  if not e:
+    e = (atom.determine_chemical_element_simple() or '').strip().upper()
+  return e
+
+def _atom_label(atom):
+  return atom.id_str().replace('pdb=', '').replace('"', '').strip()
+
+def _covalent_radius(element):
+  try:
+    return covalent_radii.table(element.title()).radius()
+  except (RuntimeError, ValueError):
+    return None
+
+def contact_symmetry(crystal_symmetry):
+  '''
+  The symmetry for contacts across symmetry: None without a cell or with the
+  CRYST1 1 1 1 P 1 placeholder.
+  '''
+  cs = crystal_symmetry
+  if (cs is None or cs.unit_cell() is None or cs.space_group_info() is None):
+    return None
+  if all(abs(x - 1) < 1.e-3 for x in cs.unit_cell().parameters()[:3]):
+    return None
+  return cs
+
+def _compatible(a, b):
+  alt_a, alt_b = a.parent().altloc, b.parent().altloc
+  return alt_a == '' or alt_b == '' or alt_a == alt_b
+
+class thiol_metal_sites(object):
+  '''
+  S-metal contacts of the thiols of a processed model, and the protonation
+  verdict for each H site on them.
+
+  Thiol: an S with exactly one non-metal heavy neighbour (counted by residue
+  and atom name, so altloc copies count once) in the bond restraints of the H
+  site's conformer, carrying that H.
+  Contacts: bond proxies with origin "metal coordination" (simple and asu), and
+  atoms of METAL_ELEMENTS within THIOL_METAL_WINDOW of the summed cctbx
+  covalent radii; same MODEL; across crystal_symmetry (None: no symmetry).
+  Verdict per H site, from the metals of a compatible conformer (blank or the
+  same altloc) with occupancy > 0. One metal site is a connected component of
+  the images of one metal atom (one name in one residue_group), with an edge
+  between two images closer than METAL_SITE_IMAGE_DISTANCE, whatever the
+  symmetry operator; its coverage is the sum of the occupancies of its
+  distinct altlocs (an altloc counted once), and the largest coverage is
+  compared with the population the H site represents: the S's occupancy if
+  the H is blank or the S is in the H's altloc; for a blank S and an H in
+  altloc X, the occupancy of the heavy atoms of conformer X.
+    thiolate     coverage >= population (1.e-6)
+    unresolved   coverage < population; the H's group has no heavy atoms;
+                 the heavy atoms of conformer X differ in occupancy
+    not counted  no such metal (incompatible altloc, occupancy 0)
+
+  contacts: group_args(i_s, i_metal, sym_op, image, distance, evidence)
+  h_sites:  group_args(i_h, i_s, verdict, reason, population, coverage,
+                       i_metal (of the largest site), contacts, proxy,
+                       sites: group_args(key, contacts, occ by altloc))
+  '''
+  def __init__(self, model, crystal_symmetry=None):
+    self.contacts = []
+    self.h_sites = []
+    hierarchy = model.get_hierarchy()
+    atoms = hierarchy.atoms()
+    self.atoms = atoms
+    elements = [_atom_element(a) for a in atoms]
+    model_index = {}
+    for i_model, m in enumerate(hierarchy.models()):
+      for a in m.atoms(): model_index[a.i_seq] = i_model
+    grm = model.get_restraints_manager().geometry
+    sites_cart = model.get_sites_cart()
+    simple, asu = grm.get_all_bond_proxies(sites_cart=sites_cart)
+    metal_origin = linking_class().get_origin_id('metal coordination')
+    asu_mappings = None
+    if asu.size() > 0:
+      asu_mappings = grm.pair_proxies().bond_proxies.asu_mappings()
+    is_h = lambda i: elements[i] in ('H', 'D')
+    heavy, h_on, proxied = {}, {}, {}
+    def add(i, j, origin_id, rt_mx_ji):
+      for x, y, rt in ((i, j, rt_mx_ji), (j, i, rt_mx_ji.inverse())):
+        if origin_id == metal_origin:
+          proxied.setdefault(x, []).append((y, rt))
+        elif is_h(y):
+          h_on.setdefault(x, []).append(y)
+        elif not is_h(x) and elements[y] not in METAL_ELEMENTS:
+          heavy.setdefault(x, []).append(y)
+    for p in simple:
+      add(p.i_seqs[0], p.i_seqs[1], p.origin_id, sgtbx.rt_mx())
+    for p in asu:
+      add(p.i_seq, p.j_seq, p.origin_id, asu_mappings.get_rt_mx_ji(pair=p))
+    # H sites on thiols
+    candidates = []
+    for i_s, hs in h_on.items():
+      if elements[i_s] != 'S': continue
+      for i_h in hs:
+        nb = set((atoms[j].parent().parent().memory_id(), atoms[j].name)
+                 for j in heavy.get(i_s, [])
+                 if _compatible(atoms[j], atoms[i_h]))
+        if len(nb) == 1: candidates.append((i_s, i_h))
+    if not candidates: return
+    thiols = sorted(set(i_s for i_s, i_h in candidates))
+    # contacts: proxies, then geometric; one per metal image
+    working_cs = model.crystal_symmetry()
+    by_s = {}
+    def image_of(i_m, rt, cs):
+      if rt.is_unit_mx(): return matrix.col(atoms[i_m].xyz)
+      uc = cs.unit_cell()
+      return matrix.col(uc.orthogonalize(rt * uc.fractionalize(atoms[i_m].xyz)))
+    def record(i_s, i_m, rt, cs, evidence):
+      image = image_of(i_m, rt, cs)
+      for c in by_s.setdefault(i_s, []):
+        if c.i_metal == i_m and (c.image - image).length() < 0.01: return
+      c = group_args(i_s = i_s, i_metal = i_m, sym_op = str(rt), image = image,
+        distance = (image - matrix.col(atoms[i_s].xyz)).length(),
+        evidence = evidence)
+      by_s[i_s].append(c)
+      self.contacts.append(c)
+    for i_s in thiols:
+      for i_m, rt in proxied.get(i_s, []):
+        record(i_s, i_m, rt, working_cs, 'metal coordination proxy')
+    metals = [i for i, e in enumerate(elements) if e in METAL_ELEMENTS
+              and _covalent_radius(e) is not None]
+    r_s = _covalent_radius('S')
+    if metals:
+      subset = thiols + metals
+      max_cut = r_s + max(_covalent_radius(elements[i]) for i in metals) + \
+        THIOL_METAL_WINDOW[1]
+      xyz = flex.vec3_double([atoms[i].xyz for i in subset])
+      cs = crystal_symmetry
+      if cs is None:
+        lo, hi = xyz.min(), xyz.max()
+        size = max(hi[k] - lo[k] for k in range(3)) + 3 * max_cut + 10
+        cs = crystal.symmetry(unit_cell=(size, size, size, 90, 90, 90),
+          space_group_symbol='P1')
+        xyz = xyz - lo + (max_cut, max_cut, max_cut)
+      uc = cs.unit_cell()
+      frac = uc.fractionalize(xyz)
+      am = cs.special_position_settings().asu_mappings(
+        buffer_thickness=max_cut)
+      am.process_sites_frac(original_sites=frac)
+      pt = crystal.pair_asu_table(asu_mappings=am)
+      pt.add_all_pairs(distance_cutoff=max_cut)
+      n_thiols = len(thiols)
+      for i, js in enumerate(pt.table()):
+        for j, j_syms in js.items():
+          for group in j_syms:
+            for j_sym in group:
+              rt_ji = am.get_rt_mx(i_seq=i, i_sym=0).inverse().multiply(
+                am.get_rt_mx(i_seq=j, i_sym=j_sym))
+              for x, y, rt in ((i, j, rt_ji), (j, i, rt_ji.inverse())):
+                if x >= n_thiols or y < n_thiols: continue
+                i_s, i_m = subset[x], subset[y]
+                if model_index[i_s] != model_index[i_m]: continue
+                d = uc.distance(frac[x], rt * frac[y])
+                r = r_s + _covalent_radius(elements[i_m])
+                if not (r + THIOL_METAL_WINDOW[0] <= d <= r + THIOL_METAL_WINDOW[1]):
+                  continue
+                if crystal_symmetry is None: rt = sgtbx.rt_mx()
+                record(i_s, i_m, rt, crystal_symmetry, 'geometric')
+    # verdicts
+    for i_s, i_h in candidates:
+      h_atom, s_atom = atoms[i_h], atoms[i_s]
+      alt = h_atom.parent().altloc
+      population, why = None, ''
+      if alt == '' or s_atom.parent().altloc == alt:
+        population = s_atom.occ
+      else:
+        occ = [a.occ for ag in s_atom.parent().parent().atom_groups()
+               if ag.altloc == alt for a in ag.atoms() if not is_h(a.i_seq)]
+        if not occ:
+          why = 'altloc group without heavy atoms'
+        elif max(occ) - min(occ) > 1.e-6:
+          why = 'heavy atoms of conformer %s differ in occupancy' % alt
+        else:
+          population = occ[0]
+      sites, counted, reasons = [], [], []
+      for c in by_s.get(i_s, []):
+        m = atoms[c.i_metal]
+        if not _compatible(m, h_atom):
+          reasons.append('%s: altloc %s, H in %s' % (_atom_label(m),
+            m.parent().altloc, alt))
+          continue
+        if m.occ <= 0:
+          reasons.append('%s: occupancy 0' % _atom_label(m))
+          continue
+        counted.append(c)
+      # metal sites: connected components of the images of one metal atom,
+      # an edge between images closer than METAL_SITE_IMAGE_DISTANCE
+      # (union-find, so the order of the contacts does not matter)
+      key = lambda c: (atoms[c.i_metal].parent().parent().memory_id(),
+                       atoms[c.i_metal].name)
+      root = list(range(len(counted)))
+      def find(k):
+        while root[k] != k:
+          root[k] = root[root[k]]
+          k = root[k]
+        return k
+      for k, c in enumerate(counted):
+        for l in range(k):
+          if (key(c) == key(counted[l]) and (c.image - counted[l].image).length()
+              < METAL_SITE_IMAGE_DISTANCE):
+            root[find(k)] = find(l)
+      components = {}
+      for k, c in enumerate(counted):
+        components.setdefault(find(k), []).append(c)
+      for k in sorted(components):
+        site = group_args(key = key(components[k][0]),
+          contacts = components[k], occ = {})
+        for c in components[k]:
+          site.occ[atoms[c.i_metal].parent().altloc] = atoms[c.i_metal].occ
+        sites.append(site)
+      proxy = any(c.evidence != 'geometric' for c in counted)
+      i_metal = None
+      if not counted:
+        verdict, coverage, reason = 'not counted', 0., '; '.join(reasons)
+      else:
+        coverage, i_metal = max((sum(site.occ.values()),
+          min(c.i_metal for c in site.contacts)) for site in sites)
+        if population is None:
+          verdict, reason = 'unresolved', why
+        elif coverage >= population - 1.e-6:
+          verdict, reason = 'thiolate', ''
+        else:
+          verdict, reason = 'unresolved', 'coverage below population'
+      self.h_sites.append(group_args(i_h = i_h, i_s = i_s, verdict = verdict,
+        reason = reason, population = population, coverage = coverage,
+        i_metal = i_metal, contacts = counted, proxy = proxy, sites = sites))
+
+  def contact_text(self, c):
+    a = self.atoms
+    return '%s - %s %.2f A%s (%s)' % (_atom_label(a[c.i_s]),
+      _atom_label(a[c.i_metal]), c.distance,
+      '' if c.sym_op == 'x,y,z' else ' sym ' + c.sym_op, c.evidence)
+
+  def unresolved_message(self, site):
+    a = self.atoms
+    h, s = a[site.i_h], a[site.i_s]
+    if site.population is None:
+      return ('%s: the population of %s is unknown (%s). %s was added using '
+        'the default thiol state; review this site.' % (_atom_label(h),
+        h.name.strip(), site.reason, h.name.strip()))
+    alt = h.parent().altloc
+    what = s.name.strip() if alt == '' else '%s conformer %s' % (
+      s.name.strip(), alt)
+    metal = a[site.i_metal]
+    return ('%s: %s occupancy %.2f exceeds coordinating %s occupancy %.2f. '
+      'Protonation may differ between bound and unbound populations. %s was '
+      'added using the default thiol state; review this site.' % (
+      _atom_label(h), what, site.population, metal.name.strip(),
+      site.coverage, h.name.strip()))
+
+def supplied_thiol_h(sites, is_supplied):
+  '''
+  [(H label, contacts, connectivity)] of the supplied H (is_supplied(atom))
+  on thiols with a counted metal; connectivity: whether the S has a
+  metal-coordination proxy.
+  '''
+  result = []
+  for site in sites.h_sites:
+    if site.verdict == 'not counted': continue
+    h = sites.atoms[site.i_h]
+    if not is_supplied(h): continue
+    result.append((_atom_label(h),
+      '; '.join(sites.contact_text(c) for c in site.contacts),
+      'metal-coordination proxy' if site.proxy else
+      'no metal-coordination proxy'))
+  return result
+
+def metal_thiol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
+  '''
+  Report of thiols bound to metals: H not placed [(label, contacts)],
+  messages of unresolved sites, supplied H kept (supplied_thiol_h()), and
+  how to drop them (hint); '' if there is nothing to report.
+  '''
+  lines = []
+  if not_placed:
+    lines.append('Thiol H not placed: the S is bound to a metal, taken as '
+      'thiolate')
+    for label, contact in not_placed:
+      lines.append('  %s  (%s)' % (label, contact))
+  if unresolved:
+    lines.append('Thiol H placed at metal sites with unresolved protonation')
+    for msg in unresolved:
+      lines.append('  ' + msg)
+  if supplied:
+    lines.append('Supplied thiol H at metal sites: %s' % THIOL_H_SUPPLIED_NOTE)
+    for label, contact, connectivity in supplied:
+      lines.append('  %s  (%s); %s' % (label, contact, connectivity))
+    if hint:
+      lines.append('  to drop it: ' + hint)
+  return '\n'.join(lines)
+
+# ==============================================================================
 
 def get_reduce_pdb_interpretation_params(use_neutron_distances):
   '''
@@ -1301,6 +1623,19 @@ class place_hydrogens():
     self.residue_keys_no_restraints = set()
     #self.charged_atoms          = list()
     self.sl_removed             = list()
+    # thiols bound to metals (thiol_metal_sites): H not placed, with the
+    # contact; messages of unresolved sites; supplied H kept, with the
+    # contact and whether the S has a metal-coordination proxy
+    self.site_labels_thiolate   = list()
+    self.thiol_h_unresolved     = list()
+    self.thiol_h_supplied_kept  = list()
+    # how to drop the supplied H, for the report (set by reduce2)
+    self.supplied_h_hint        = None
+    # the input's own symmetry for contacts (contact_symmetry()); a caller
+    # that boxed the model sets input_crystal_symmetry (reduce2: the output's,
+    # None without a cell); left as from_model, it is read from the model
+    self._contact_cs            = None
+    self.input_crystal_symmetry = 'from_model'
     # renames of H that were in the input (keep_existing_H), in the order
     # made: (residue part as hd_exchange.site_key(), parent altloc, old name,
     # new name); each exchanges the two names
@@ -1350,6 +1685,10 @@ class place_hydrogens():
     # ------------------------------
     model_has_bogus_cs = False
     t0 = time.time()
+    # before the box: contacts across the input's own symmetry only
+    cs = self.input_crystal_symmetry
+    if cs == 'from_model': cs = get_output_crystal_symmetry(self.model)
+    self._contact_cs = contact_symmetry(cs)
     cs = self.model.crystal_symmetry()
     if (cs is None) or (cs.unit_cell() is None):
       # Box in place: callers get their coordinates back unmoved.
@@ -1424,6 +1763,7 @@ class place_hydrogens():
     # X-H lengths, esd=1/period=1 torsions) into any downstream
     # re-interpretation.
     self.remove_auto_restraint_objects()
+    self.exclude_H_on_metal_thiolates()
     # before riding H: an H on an esterified O has no H-O-X angle to the second
     # heavy neighbour (2e4i BGM 14 -> BGM 15)
     self.exclude_H_on_esterified_O()
@@ -1887,9 +2227,12 @@ class place_hydrogens():
     atoms = self.model.get_hierarchy().atoms()
     elements = atoms.extract_element()
     is_h = lambda i: elements[i].strip() in ('H', 'D')
+    # metal coordination is not an ester bond (A4: O-H on a metal keeps its H)
+    metal = linking_class().get_origin_id('metal coordination')
     # one pass over the bonds, keeping only what O, S and P carry
     h_on, heavy_on = {}, {}
     for proxy in list(bps) + list(asu):
+      if proxy.origin_id == metal: continue
       if   isinstance(proxy, ext.bond_simple_proxy): i,j = proxy.i_seqs
       elif isinstance(proxy, ext.bond_asu_proxy):    i,j = proxy.i_seq, proxy.j_seq
       else: continue
@@ -1917,6 +2260,44 @@ class place_hydrogens():
       sel = flex.bool(elements.size(), True).set_selected(remove, False)
       self.model = self.model.select(sel)
 
+  def exclude_H_on_metal_thiolates(self):
+    '''
+    A thiol bound to a metal is taken as a thiolate (A4): an H that reduce2
+    built on it is removed when thiol_metal_sites() finds the site covered
+    (thiolate), and kept and reported when it is not (unresolved). Supplied
+    H (keep_existing_H) are kept, with a note. Geometric contacts and
+    metal-coordination proxies decide alike; exclude_H_on_links() leaves
+    metal coordination to this step.
+    '''
+    elements = self.model.get_hierarchy().atoms().extract_element()
+    if not any(e.strip().upper() in METAL_ELEMENTS for e in elements): return
+    sites = thiol_metal_sites(self.model, self._contact_cs)
+    if not sites.h_sites: return
+    hierarchy = self.model.get_hierarchy()
+    atoms = hierarchy.atoms()
+    parts = residue_parts(hierarchy)
+    def supplied(a):
+      return (self.keep_existing_H and parts[a.parent().memory_id()] +
+        (a.parent().altloc, a.name) in self._existing_h)
+    self.thiol_h_supplied_kept.extend(supplied_thiol_h(sites, supplied))
+    remove = []
+    for site in sites.h_sites:
+      if site.verdict == 'not counted': continue
+      h = atoms[site.i_h]
+      label = _atom_label(h)
+      contact = '; '.join(sites.contact_text(c) for c in site.contacts)
+      if supplied(h):
+        continue
+      elif site.verdict == 'thiolate':
+        remove.append(site.i_h)
+        self.site_labels_thiolate.append((label, contact))
+      else:
+        self.thiol_h_unresolved.append(sites.unresolved_message(site))
+    if remove:
+      sel = flex.bool(atoms.size(), True).set_selected(
+        flex.size_t(sorted(remove)), False)
+      self.model = self.model.select(sel)
+
   def find_atoms_not_in_dictionary(self):
     '''
     For the report: see atoms_not_in_dictionary().
@@ -1940,8 +2321,11 @@ class place_hydrogens():
     elements = atoms.extract_element()
     is_h = lambda i: elements[i].strip() in ('H', 'D')
     residue = lambda i: atoms[i].parent().parent().memory_id()
+    metal = linking_class().get_origin_id('metal coordination')
     parent, heavy = {}, {}
     for proxy in list(bps) + list(asu):
+      # metal coordination takes no H (A4)
+      if proxy.origin_id == metal: continue
       if   isinstance(proxy, ext.bond_simple_proxy): i,j = proxy.i_seqs
       elif isinstance(proxy, ext.bond_asu_proxy):    i,j = proxy.i_seq, proxy.j_seq
       else: continue
@@ -2360,8 +2744,19 @@ class place_hydrogens():
     exclusion_iseqs = list()
     exclusion_dict = dict()
     link_partners = dict()
-    all_proxies = [p for p in bond_proxies_simple]
-    for proxy in asu:
+    # Metal coordination is decided elsewhere (A4): thiols by
+    # exclude_H_on_metal_thiolates(), other H on metal-bound atoms stay. It
+    # neither marks a link nor counts as a bond here.
+    metal = origin_ids['metal coordination']
+    metal_partners = dict()
+    all_proxies = []
+    for proxy in list(bond_proxies_simple) + list(asu):
+      if proxy.origin_id == metal:
+        if isinstance(proxy, ext.bond_simple_proxy): i, j = proxy.i_seqs
+        else:                                        i, j = proxy.i_seq, proxy.j_seq
+        metal_partners.setdefault(i, set()).add(j)
+        metal_partners.setdefault(j, set()).add(i)
+        continue
       all_proxies.append(proxy)
     # Loop through bond proxies to find links (i.e. proxies with origin_id != 0)
     for proxy in all_proxies:
@@ -2496,7 +2891,8 @@ class place_hydrogens():
       first_neighbors = fsc1[_i]
       # same conformer as the H
       fn_filtered = [item for item in first_neighbors if item not in sel_remove
-                     and _altloc(item) in ('', _altloc(_i))]
+                     and _altloc(item) in ('', _altloc(_i))
+                     and item not in metal_partners.get(parent, ())]
       def _sibling(k):
         return fsc0[k][0] == parent and _altloc(k) == _altloc(_i)
       n_kept = sum(1 for k in remove_from_sel_remove if _sibling(k))
@@ -2594,6 +2990,17 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
+  def metal_thiol_text(self):
+    '''
+    The report of thiols bound to metals (show(), reduce2's description);
+    '' if there is none. supplied_h_hint, if set, says how to drop the
+    supplied H.
+    '''
+    return metal_thiol_text(self.site_labels_thiolate, self.thiol_h_unresolved,
+      self.thiol_h_supplied_kept, self.supplied_h_hint)
+
+# ------------------------------------------------------------------------------
+
   def show(self, log, verbose=False):
     '''
     Informative output. With verbose=True the per-atom lists of H that were not
@@ -2644,6 +3051,11 @@ proline-type or N-substituted residue)'''
     if self.residues_unknown_atoms:
       print('', file=log)
       print(self.unknown_atoms_text(verbose), file=log)
+    #
+    text = self.metal_thiol_text()
+    if text:
+      print('', file=log)
+      print(text, file=log)
     #
     if self.site_labels_missing_neighbor:
       n_atoms = len(self.site_labels_missing_neighbor)
@@ -2717,7 +3129,10 @@ The following H atoms were not placed because they could not be parameterized
       site_labels_missing_neighbor = self.site_labels_missing_neighbor,
       residues_missing_neighbor = self.residues_missing_neighbor,
       residues_unknown_atoms = self.residues_unknown_atoms,
-      site_labels_unknown_atoms = self.site_labels_unknown_atoms)
+      site_labels_unknown_atoms = self.site_labels_unknown_atoms,
+      site_labels_thiolate = self.site_labels_thiolate,
+      thiol_h_unresolved = self.thiol_h_unresolved,
+      thiol_h_supplied_kept = self.thiol_h_supplied_kept)
 
 # ------------------------------------------------------------------------------
 
