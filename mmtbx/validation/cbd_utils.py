@@ -65,16 +65,32 @@ class radial_deviation:
   def __ge__(self, other):
     return self.r >= other.r
 
+def get_table_resname(resname, use_parent_for_modified_residues=False):
+  """Residue name used to choose the phi/psi table: the name itself for
+  standard amino acids and, if use_parent_for_modified_residues, the parent
+  amino acid from iotbx.pdb.modified_aa_names for other residues. None if
+  the residue isn't corrected, which includes the D-amino acids."""
+  from iotbx.pdb import common_residue_names_get_class
+  if common_residue_names_get_class(resname) == 'common_amino_acid':
+    return resname
+  if not use_parent_for_modified_residues: return None
+  from iotbx.pdb.aa_utils import get_aa_parent
+  return get_aa_parent(resname)
+
 def get_phi_psi_correction(result,
                            residue,
                            phi_psi,
                            display_phi_psi_correction=False,
+                           use_parent_for_modified_residues=False,
                            verbose=False):
   rc = None
+  resname = get_table_resname(residue.resname,
+    use_parent_for_modified_residues=use_parent_for_modified_residues)
+  if resname is None: return rc
   key = (round_to_ten(phi_psi[0]), round_to_ten(phi_psi[1]))
-  if residue.resname=='PRO':
+  if resname=='PRO':
     correction = PRO_phi_psi.get(key, None)
-  elif residue.resname in ['VAL', 'THR', 'ILE']:
+  elif resname in ['VAL', 'THR', 'ILE']:
     correction = VAL_THR_ILE_phi_psi.get(key, None)
   else:
     correction = others_phi_psi.get(key, None)

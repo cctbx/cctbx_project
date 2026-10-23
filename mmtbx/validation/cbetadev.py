@@ -75,8 +75,13 @@ def classify_ca_chirality(resname, chiral_volume):
 
 def get_phi_psi_dict(pdb_hierarchy):
   rc = {}
+  # include modified and D-amino acids so their neighbours get phi/psi;
+  # modified residues are only corrected themselves with
+  # use_parent_for_modified_residues and D-amino acids never are
   for i, three in enumerate(generate_protein_threes(hierarchy=pdb_hierarchy,
-                                                    geometry=None)):
+                                                    geometry=None,
+                                                    include_non_standard_peptides=True,
+                                                    include_d_amino_acids=True)):
     phi_psi_angles = three.get_phi_psi_angles()
     is_alt_conf = ' '
     relevant_atoms = {}
@@ -185,6 +190,7 @@ class cbetadev(validation):
       apply_positive_phi_correction=False,
       apply_phi_psi_correction=False,
       display_phi_psi_correction=False,
+      use_parent_for_modified_residues=False,
       exclude_d_peptides=False,
       mahalanobis_z_score=False,
       mahalanobis_cutoff=4.,
@@ -270,7 +276,10 @@ class cbetadev(validation):
                 if mahalanobis_z_score:
                   # scored on the uncorrected deviation
                   residual = cbd_mahalanobis.get_bin_residual(
-                    residue.resname, phi_psi, dev, dihedralNABB)
+                    cbd_utils.get_table_resname(residue.resname,
+                      use_parent_for_modified_residues=
+                        use_parent_for_modified_residues),
+                    phi_psi, dev, dihedralNABB)
                 if use_phi_psi:
                   if phi_psi and apply_positive_phi_correction:
                     if not (0 < phi_psi[0] < 150):
@@ -281,6 +290,8 @@ class cbetadev(validation):
                       residue,
                       phi_psi,
                       display_phi_psi_correction=display_phi_psi_correction,
+                      use_parent_for_modified_residues=
+                        use_parent_for_modified_residues,
                       )
                     if rc:
                       dev, dihedralNABB, start, finish = rc

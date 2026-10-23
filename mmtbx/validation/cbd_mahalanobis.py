@@ -28,7 +28,8 @@ def get_table_class(resname):
 
 def get_bin_residual(resname, phi_psi, deviation, dihedral):
   """Return (dx, dy, cov_xx, cov_xy, cov_yy) for a residue or None if the
-  residue has no phi/psi or no table entry."""
+  residue has no phi/psi, no table or no table entry."""
+  if resname is None: return None
   if not phi_psi or phi_psi[0] is None or phi_psi[1] is None: return None
   key = (round_to_ten(phi_psi[0]), round_to_ten(phi_psi[1]))
   entry = cov_devs[get_table_class(resname)].get(key, None)
