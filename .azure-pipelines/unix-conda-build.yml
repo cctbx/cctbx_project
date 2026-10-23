@@ -199,6 +199,8 @@ steps:
     cd tests
     export PYTHONDEVMODE=1
     export PYTHONTRACEMALLOC=1
+    echo "##vso[task.setvariable variable=tests_failed]false"
+    rc=0
     libtbx.run_tests_parallel \
       module=annlib_adaptbx \
       module=boost_adaptbx \
@@ -218,7 +220,11 @@ steps:
       module=smtbx \
       module=spotfinder \
       max_retries=2 \
-      nproc=4
+      nproc=4 || rc=$?
+    if [ "$rc" -ne 0 ]; then
+      echo "##vso[task.setvariable variable=tests_failed]true"
+    fi
+    exit $rc
   failOnStderr: false
   displayName: Test
   retryCountOnTaskFailure: 3
@@ -259,7 +265,7 @@ steps:
 
 - publish: $(Pipeline.Workspace)/tests_$(job_name).tar.xz
   artifact: tests_$(job_name)_$(MODULES)
-  condition: succeededOrFailed()
+  condition: and(failed(), eq(variables['tests_failed'], 'true'))
   continueOnError: true
 
 # publish test results
