@@ -247,10 +247,11 @@ def test_name_mismatch_reported():
 def test_ccd_only_neutron_targets():
   # CCD-only ligand (BGM): with neutron distances its X-H targets are the
   # library's (as the protein's in the same model: C-H, N-H, O-H; aromatic
-  # C-H for TPT); X-ray targets stay 0.9 x the CCD length
+  # C-H for TPT), with X-ray distances too
   bgm = heavy_pdb("BGM", bgm_atoms(), offset=(15.0, 10.0, 15.0),
     cryst1=False).replace(" A   1 ", " B   1 ")
   h_model = cached_run(pdb_1yjp.replace("END\n", "") + bgm + "END\n").text
+  aromatic = {}
   for neutron in (False, True):
     model = mmtbx.model.manager(model_input=iotbx.pdb.input(
       source_info=None, lines=h_model), log=null_out())
@@ -274,34 +275,33 @@ def test_ccd_only_neutron_targets():
     bgm_targets = dict((k[1], v) for k, v in targets.items()
                        if k[0] == "BGM")
     assert sorted(bgm_targets) == ["C", "N", "O"], bgm_targets
-    if neutron:
-      for element in ("C", "N", "O"):
-        assert bgm_targets[element] == \
-          targets[("protein", element, False)], (element, targets)
-      aromatic = targets[("protein", "C", True)]
-    else:
-      # 0.9 x the CCD ideal lengths (C-H 1.089-1.090, N-H/O-H ~0.97)
-      assert bgm_targets["C"] == set([0.98, 0.981]), bgm_targets
-      assert bgm_targets["N"] == set([0.873]), bgm_targets
-      assert bgm_targets["O"] == set([0.87, 0.871]), bgm_targets
+    for element in ("C", "N", "O"):
+      assert bgm_targets[element] == \
+        targets[("protein", element, False)], (neutron, element, targets)
+    aromatic[neutron] = targets[("protein", "C", True)]
   # aromatic C-H of a CCD-only ligand (TPT): the library's aromatic value
   md = reduce_hydrogen.get_h_restraints("TPT", strict=False)
-  values = set(round(float(b.value_dist_neutron), 3) for b in md.bond_list
-               if b.value_dist_neutron is not None and "C" in (
-               b.atom_id_1[:1], b.atom_id_2[:1]))
-  assert aromatic <= values, (aromatic, values)
+  xh = [b for b in md.bond_list if b.value_dist_neutron is not None and
+        "C" in (b.atom_id_1[:1], b.atom_id_2[:1])]
+  for neutron in (False, True):
+    values = set(round(float(b.value_dist_neutron if neutron
+                             else b.value_dist), 3) for b in xh)
+    assert aromatic[neutron] == values, (neutron, aromatic, values)
 
 def test_ccd_only_neutron_lengths():
   # 1yjp plus BGM: hd_and_h (add, and optimize on the add output) writes
   # BGM's X-H/X-D within 0.02 A of the library's neutron targets, as the
-  # protein's; add none keeps 0.9 x the CCD length (X-ray unchanged)
+  # protein's; add none: within 0.02 A of the library's X-ray targets
   library = reduce_hydrogen.get_library_neutron_xh()
+  library_xray = reduce_hydrogen.get_library_xray_xh()
   bgm = heavy_pdb("BGM", bgm_atoms(), offset=(15.0, 10.0, 15.0),
     cryst1=False).replace(" A   1 ", " B   1 ")
   model = pdb_1yjp.replace("END\n", "") + bgm + "END\n"
   prog = cached_run(model)
-  for x, e, d, d_ideal in bgm_xh(prog.params.output.filename):
-    assert abs(d - 0.9 * d_ideal) < 0.005, (x, e, d, d_ideal)
+  found = bgm_xh(prog.params.output.filename)
+  assert len(found) == 13, len(found)
+  for x, e, d, d_ideal in found:
+    assert abs(d - library_xray[x]) < 0.02, (x, e, d)
   prog = run_prog("tst_r2n_ligands_ccdl_add", model,
     neutron_option="hd_and_h")
   fn = prog.params.output.filename
@@ -323,22 +323,25 @@ def test_ccd_only_neutron_lengths():
 
 def test_ccd_only_heavy_atom_bonds():
   # CCD placeholder (BGM): heavy-atom bonds at the CCD ideal length, X-H at
-  # 0.9 x; the grm that place_hydrogens leaves on the model has the same
+  # the library's X-ray value (BGM has no aromatic C-H); the grm that
+  # place_hydrogens leaves on the model has the same heavy-atom targets
   from mmtbx.chemical_components import get_cif_dictionary
   from scitbx import matrix
   cc = get_cif_dictionary("BGM")
   xyz = dict((a.atom_id, matrix.col((float(a.pdbx_model_Cartn_x_ideal),
     float(a.pdbx_model_Cartn_y_ideal), float(a.pdbx_model_Cartn_z_ideal))))
     for a in cc["_chem_comp_atom"])
-  is_h = dict((a.atom_id, a.type_symbol in ("H", "D"))
-              for a in cc["_chem_comp_atom"])
+  element = dict((a.atom_id, a.type_symbol) for a in cc["_chem_comp_atom"])
+  library_xray = reduce_hydrogen.get_library_xray_xh()
   md = reduce_hydrogen.get_h_restraints("BGM", strict=False)
   n_heavy = n_xh = 0
   for b in md.bond_list:
     d = (xyz[b.atom_id_1] - xyz[b.atom_id_2]).length()
-    if is_h[b.atom_id_1] or is_h[b.atom_id_2]:
-      assert abs(float(b.value_dist) - 0.9 * d) < 0.001, (b.atom_id_1,
-        b.atom_id_2, b.value_dist, d)
+    e1, e2 = element[b.atom_id_1], element[b.atom_id_2]
+    if "H" in (e1, e2):
+      x = e2 if e1 == "H" else e1
+      assert abs(float(b.value_dist) - library_xray[x]) < 0.001, (
+        b.atom_id_1, b.atom_id_2, b.value_dist)
       n_xh += 1
     else:
       assert abs(float(b.value_dist) - d) < 0.001, (b.atom_id_1,

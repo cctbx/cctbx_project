@@ -319,16 +319,17 @@ def get_ccd_energy_types(cc_cif):
     result[name] = t if t in _ener_lib_types else None
   return result
 
-_library_neutron_xh = None
+_library_xh = None
 
-def get_library_neutron_xh():
+def _get_library_xh():
   '''
-  Neutron X-H lengths of the monomer library, read from its own entries:
-  {'C': sp3 C-H, 'C_aromatic': aromatic C-H, 'N': N-H, 'O': O-H, 'S': S-H}.
-  The library has no X-H for other elements.
+  X-H lengths of the monomer library, read from its own entries:
+  {'xray': {...}, 'neutron': {...}}, each keyed 'C' (sp3 C-H), 'C_aromatic'
+  (aromatic C-H), 'N' (N-H), 'O' (O-H), 'S' (S-H). The library has no X-H
+  for other elements.
   '''
-  global _library_neutron_xh
-  if _library_neutron_xh is None:
+  global _library_xh
+  if _library_xh is None:
     from mmtbx.monomer_library import server
     srv = server.server()
     sources = {
@@ -337,14 +338,23 @@ def get_library_neutron_xh():
       'N':          ('ALA', 'N', 'H'),
       'O':          ('SER', 'OG', 'HG'),
       'S':          ('CYS', 'SG', 'HG')}
-    result = {}
+    xray, neutron = {}, {}
     for key, (code, x, h) in sources.items():
       for b in srv.get_comp_comp_id_direct(code).bond_list:
         if set((b.atom_id_1, b.atom_id_2)) == set((x, h)):
-          result[key] = float(b.value_dist_neutron)
-    assert sorted(result) == sorted(sources)
-    _library_neutron_xh = result
-  return _library_neutron_xh
+          xray[key] = float(b.value_dist)
+          neutron[key] = float(b.value_dist_neutron)
+    assert sorted(xray) == sorted(neutron) == sorted(sources)
+    _library_xh = {'xray': xray, 'neutron': neutron}
+  return _library_xh
+
+def get_library_xray_xh():
+  '''X-ray X-H lengths of the monomer library (see _get_library_xh)'''
+  return _get_library_xh()['xray']
+
+def get_library_neutron_xh():
+  '''Neutron X-H lengths of the monomer library (see _get_library_xh)'''
+  return _get_library_xh()['neutron']
 
 def get_h_restraints(resname, strict=True):
   from mmtbx.monomer_library import cif_types
@@ -391,10 +401,10 @@ def get_h_restraints(resname, strict=True):
     atom_idx1=lookup[b.atom_id_1]
     atom_idx2=lookup[b.atom_id_2]
     bl = rdMolTransforms.GetBondLength(conf, atom_idx1, atom_idx2)
-    # X-H: the library's neutron length for the heavy atom (aromatic from
-    # the RDKit molecule); value_dist (X-ray) stays 0.9 x the CCD length.
-    # Heavy-atom bonds: the CCD length (placement does not move heavy atoms,
-    # but the grm stays on the model)
+    # X-H: the library's X-ray and neutron lengths for the heavy atom
+    # (aromatic from the RDKit molecule); elements the library has no X-H
+    # for: 0.9 x the CCD length. Heavy-atom bonds: the CCD length
+    # (placement does not move heavy atoms, but the grm stays on the model)
     if b.atom_id_1 in hs or b.atom_id_2 in hs: bl *= .9
     value_dist_neutron = None
     if (b.atom_id_1 in hs) != (b.atom_id_2 in hs):
@@ -402,6 +412,8 @@ def get_h_restraints(resname, strict=True):
       x_atom = molecule.GetAtomWithIdx(x_idx)
       key = x_atom.GetSymbol().upper()
       if key == 'C' and x_atom.GetIsAromatic(): key = 'C_aromatic'
+      xray = get_library_xray_xh().get(key)
+      if xray is not None: bl = xray
       neutron = get_library_neutron_xh().get(key)
       if neutron is not None: value_dist_neutron = '%0.3f' % neutron
     comp_comp_id.bond_list.append(cif_types.chem_comp_bond(
@@ -659,7 +671,7 @@ def load_restraint_objects_into_server(model, mon_lib_srv):
   Load the model's restraint CIF objects (user CIFs, and the CCD objects
   reduce2 attaches) into mon_lib_srv, so that mon_lib_query() finds these
   residues there and does not build a CCD placeholder for them
-  (get_h_restraints(): placement-only restraints with 0.9x CCD X-H lengths
+  (get_h_restraints(): placement-only restraints with library X-H lengths
   and approximate energy types) that would override the user's dictionary.
   '''
   ro = model.get_restraint_objects()
@@ -1408,8 +1420,9 @@ class place_hydrogens():
     self.find_atoms_not_in_dictionary()
     # Drop the throwaway auto-generated ligand restraints now that the grm has
     # been built. They were only needed to place H on unknown ligands; keeping
-    # them on the model would leak idealized placement-only geometry (0.9x X-H
-    # bonds, esd=1/period=1 torsions) into any downstream re-interpretation.
+    # them on the model would leak idealized placement-only geometry (generic
+    # X-H lengths, esd=1/period=1 torsions) into any downstream
+    # re-interpretation.
     self.remove_auto_restraint_objects()
     # before riding H: an H on an esterified O has no H-O-X angle to the second
     # heavy neighbour (2e4i BGM 14 -> BGM 15)
