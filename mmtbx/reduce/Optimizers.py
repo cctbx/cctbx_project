@@ -294,7 +294,8 @@ class Optimizer(object):
     ################################################################################
     # Get the bonded neighbor lists for all of the atoms in the model, so we don't get
     # failures when we look up an atom from another in Helpers.getExtraAtomInfo().
-    # We won't get bonds between atoms in different conformations.
+    # Only for that: a blank atom here has the neighbors of every conformer (an H copied
+    # into A and B counts twice), so each alternate pass below builds its own lists.
     bondedNeighborLists = Helpers.getBondedNeighborLists(model.get_atoms(), bondProxies, asuProxies)
     self._infoString += _ReportTiming(self._verbosity, "compute bonded neighbor lists")
 
@@ -407,6 +408,11 @@ class Optimizer(object):
         # pick the first available conformation for each atom group.
         self._atoms = GetAtomsForConformer(myModel, alt)
 
+        # The bonded neighbors within this conformer, for everything in this pass (the
+        # shared lists above mix conformers). A new dictionary each pass, so the Phantom
+        # Hydrogens added below stay in it.
+        passNeighborLists = Helpers.getBondedNeighborLists(self._atoms, bondProxies, asuProxies)
+
         ################################################################################
         # Reset the timer
         _ReportTiming(self._verbosity, None)
@@ -456,7 +462,7 @@ class Optimizer(object):
           if a.element == 'O' and common_residue_names_get_class(name=a.parent().resname) == "common_water":
             if a.occ >= self._waterOccCutoff and a.b < self._waterBCutoff:
               # If the Oxygen is bonded (presumably to hydrogens/deuteriums), then we just leave it alone.
-              if len(bondedNeighborLists[a]) > 0:
+              if len(passNeighborLists[a]) > 0:
                 self._infoString += _VerboseCheck(self._verbosity, 3,"Not adding phantom Hydrogens on {} due to bonded neighbors\n".format(_ResNameAndID(a)))
 
               # We're an acceptor and not a donor.
@@ -503,7 +509,7 @@ class Optimizer(object):
             self._spatialQuery.add(p[0])
             eai = probeExt.ExtraAtomInfo(phantomHydrogenRadius, False, True, True)
             self._extraAtomInfo.setMappingFor(p[0], eai)
-            bondedNeighborLists[p[0]] = [p[1]]
+            passNeighborLists[p[0]] = [p[1]]
 
           self._infoString += _VerboseCheck(self._verbosity, 1,"Added "+str(len(phantoms))+" phantom Hydrogens on waters")
           self._infoString += _VerboseCheck(self._verbosity, 1," (Old total "+str(origCount)+", new total "+str(len(self._atoms))+")\n")
@@ -512,7 +518,7 @@ class Optimizer(object):
         ################################################################################
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
-        Helpers.fixupExplicitDonors(self._atoms, bondedNeighborLists, self._extraAtomInfo)
+        Helpers.fixupExplicitDonors(self._atoms, passNeighborLists, self._extraAtomInfo)
         self._infoString += _ReportTiming(self._verbosity, "fixup explicit doners")
 
         ################################################################################
@@ -522,7 +528,7 @@ class Optimizer(object):
         # only includes those from the current model index.
         # NOTE: We must do this after fixupExplicitDonors() so that the Hydrogens are properly
         # marked as donors.
-        deleteAtoms = self._PlaceMovers(self._atoms, rotatableHydrogens, bondedNeighborLists, h_parameterization,
+        deleteAtoms = self._PlaceMovers(self._atoms, rotatableHydrogens, passNeighborLists, h_parameterization,
                            addFlipMovers, alt)
         self._infoString += _VerboseCheck(self._verbosity, 1,"Inserted "+str(len(self._movers))+" Movers\n")
         self._infoString += _VerboseCheck(self._verbosity, 1,'Marked '+str(len(deleteAtoms))+' atoms for deletion\n')
@@ -585,7 +591,7 @@ class Optimizer(object):
         self._excludeDict = {}
         for a in moverAtoms:
           self._excludeDict[a.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
-            bondedNeighborLists, self._extraAtomInfo, self._probeRadius, self._bondedNeighborDepth, 3)
+            passNeighborLists, self._extraAtomInfo, self._probeRadius, self._bondedNeighborDepth, 3)
         self._infoString += _ReportTiming(self._verbosity, "determine excluded atoms")
 
         ################################################################################
@@ -942,7 +948,8 @@ class Optimizer(object):
     and they are rotatable.
     :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
     structure that the atom from the first parameter interacts with that lists all of the
-    bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
+    bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists()
+    on the atoms of the first parameter, so that only bonds within this conformer count.
     :param hParameters: List indexed by sequence ID that stores the riding
     coefficients for hydrogens that have associated dihedral angles.  This can be
     obtained by calling model.setup_riding_h_manager() and then model.get_riding_h_manager().

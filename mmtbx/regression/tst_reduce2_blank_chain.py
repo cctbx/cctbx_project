@@ -1,8 +1,10 @@
-"""reduce2 Optimizer on a model with a blank chain ID and a clique of two
+"""reduce2 Optimizer on a model with a blank chain ID and a clique of
 interacting Movers. The clique report summed initial scores parsed by position
 from each Mover's description; the blank chain ID drops a token and the run
 crashed with an IndexError. Model: 2ERL Ser 34 and EOH 200 (blank chain ID);
-in altloc B, Ser HG and EOH HO form a clique.
+in altloc B, Ser HG and EOH HO form a clique. With per-pass neighbour lists the
+lone residue's backbone H (blank N, H copied into A and B) gets a rotator and
+joins the B-pass clique, so the clique size is not fixed.
 """
 from __future__ import absolute_import, division, print_function
 import os, re
@@ -47,15 +49,19 @@ def run(model_text, prefix, extra_args=()):
     return model_out, f.read()
 
 def check_clique(desc):
-  # Totals line, then one line per Mover with its initial score
-  m = re.search(r"Set of 2 Movers:\s+Totals: initial score (\S+), final score \S+\n"
-    r"(.*)\n(.*)\n", desc)
-  assert m is not None, desc
-  scores = [float(re.search(r"Initial score: (\S+)", l).group(1))
-    for l in m.group(2, 3)]
-  assert "BSER 34 HG" in m.group(2) + m.group(3), m.group(0)
-  assert "BEOH 200 HO" in m.group(2) + m.group(3), m.group(0)
-  assert abs(float(m.group(1)) - sum(scores)) < 0.006, m.group(0)
+  # Totals line, then one line per Mover with its initial score; the clique
+  # that holds both BSER 34 HG and BEOH 200 HO, whatever its size
+  blocks = []
+  for m in re.finditer(r"Set of (\d+) Movers:\s+Totals: initial score (\S+), "
+      r"final score \S+\n", desc):
+    lines = desc[m.end():].split("\n")[:int(m.group(1))]
+    blocks.append((m.group(0), float(m.group(2)), lines))
+  found = [b for b in blocks if "BSER 34 HG" in "".join(b[2])
+           and "BEOH 200 HO" in "".join(b[2])]
+  assert len(found) == 1, desc
+  header, total, lines = found[0]
+  scores = [float(re.search(r"Initial score: (\S+)", l).group(1)) for l in lines]
+  assert abs(total - sum(scores)) < 0.006, header + "\n".join(lines)
 
 def test_add():
   check_clique(run(pdb_str, "tst_reduce2_blank_chain_1")[1])
