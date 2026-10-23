@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from six.moves import cPickle as pickle
 from libtbx import adopt_init_args
 from cctbx.sgtbx import subgroups
 from scitbx.array_family import flex
@@ -26,7 +25,6 @@ class metric_subgroups(base_subgroups):
         best_monoclinic_beta=True,
         interest_focus="metric_symmetry"):
     adopt_init_args(self,locals())
-    self.parse_reference()
     self.result_groups = []
     self.cb_op_best_cell_vector =[]
     self.minimum_symmetry = self.input_symmetry
@@ -42,10 +40,6 @@ class metric_subgroups(base_subgroups):
     #as a future reindexing reference, record the cb_op to best cell
     for i,j in zip(self.result_groups,self.cb_op_best_cell_vector):
       i['cb_op_best_cell']=j
-
-  reasonable_cutoff = 10.0 # maximum direct-space mean-square deviation of two orientations
-                           # measured in Angstrom^2; larger value indicates no match
-                           # later, this could be redefined as a fraction of cell size
 
   def derive_result_group_list_original_input(self,group_of_interest):
     # more-or-less a capitulation to code duplication.  Don't want to copy code
@@ -122,66 +116,14 @@ class metric_subgroups(base_subgroups):
 
   def change_of_basis_op_to_best_cell(self,ref_subsym):
 
-    #plain algorithm for routine work.  Triclinic input symmetry is already
-    #  in the minimum (reduced) form.  Determine the best cell for conventional
-    #  monoclinic and orthorhombic crystal systems.
+    #Triclinic input symmetry is already in the minimum (reduced) form.
+    #  Determine the best cell for conventional monoclinic and orthorhombic
+    #  crystal systems.
     subgroup_cb_op_best_cell = ref_subsym.change_of_basis_op_to_best_cell(
       best_monoclinic_beta=self.best_monoclinic_beta)
 
-    #fancy algorithm for reindexing work.  Triclinic symmetry is aligned
-    #  with a reference orientation, but is not necessarily in reduced
-    #  form.  Guarantee that the best cell
-    #  conforms to the one that has already been determined for a reference
-    #  dataset collected on the same cystal.  This option is only
-    #  executed if the reference information is present in a pickled file.
-    if self.reference_subgroups != None: #subsequent code only for reindexing cases
-      import inspect
-        #admittedly this is a private interface.  Rely on having this method always
-        #  called by derive_result_group_*.  Otherwise this breaks.
-        #do not save any frame references, thus avoiding reference circles:
-      current_supersym = inspect.currentframe().f_back.f_locals['supersym']
-      current_bravais = str(bravais_types.bravais_lattice(sgtbx.space_group_info(
-          group=current_supersym.space_group()).type().number()))
-      current_cb_op_minimum_ref = inspect.currentframe().f_back.f_locals['cb_op_minimum_ref']
-      guess1_cb_op_inp_best = subgroup_cb_op_best_cell * current_cb_op_minimum_ref *\
-                              self.cb_op_inp_minimum
-        #assume this frame is called in a very specific way such that four frames
-        # back gives the lepage module, class character.  It's the only way to
-        # pull out the current triclinic orientation.
-      guess1_orient = self.current_orientation.change_basis(matrix.sqr(
-        guess1_cb_op_inp_best.c().as_double_array()[0:9]).transpose().elems)
-
-      for j,refitem in enumerate(self.reference_subgroups):
-        if current_bravais != refitem['bravais']: continue
-
-        # first guess.  test plain algorithm best cell for match to refitem
-        dmsd = guess1_orient.direct_mean_square_difference(refitem['orient'])
-        if dmsd < self.reasonable_cutoff:
-          break
-
-        #second guess.  use the cb_op_best_cell from the reference indexing solution
-        guess2_cb_op_inp_best = refitem['cb_op_best_cell'] * current_cb_op_minimum_ref *\
-                              self.cb_op_inp_minimum
-        guess2_orient = self.current_orientation.change_basis(matrix.sqr(
-          guess2_cb_op_inp_best.c().as_double_array()[0:9]).transpose().elems)
-        dmsd = guess2_orient.direct_mean_square_difference(refitem['orient'])
-        if dmsd < self.reasonable_cutoff:
-          subgroup_cb_op_best_cell = refitem['cb_op_best_cell']
-          break
-
     self.cb_op_best_cell_vector.append(subgroup_cb_op_best_cell)
     return subgroup_cb_op_best_cell
-
-  def parse_reference(self):
-    try:
-      o_file = ('crystal_orientation')
-      f = open(o_file,'r')
-      reference_ori = pickle.load(f)
-      self.reference_subgroups = pickle.load(f)
-      f.close()
-
-    except Exception:
-      self.reference_subgroups = None
 
 class MetricSubgroup(dict):
 
