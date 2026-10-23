@@ -1341,6 +1341,154 @@ class _():
     r.append_model(m)
     return r
 
+  def sym_equiv_residue_groups(self, crystal_symmetry, radius,
+        selection=None, min_distance_sym_equiv=None):
+    """Symmetry copies of the residue groups that come close to selected atoms.
+
+    Parameters
+    ----------
+    crystal_symmetry : cctbx.crystal.symmetry
+    radius : float
+        In Angstrom.  A residue group is copied under an operator that places
+        one of its atoms this close to a selected atom.
+    selection : flex.bool or flex.size_t, optional
+        The atoms to measure from; all of them by default.
+    min_distance_sym_equiv : float, optional
+        An atom closer than this to its own equivalent is considered on a
+        symmetry element.  A copied atom closer than this to an atom of the
+        same element, in this hierarchy or an earlier copy, is considered
+        that atom and left out.
+        Default: cctbx.crystal.super_cell.min_distance_sym_equiv_coincident.
+
+    Returns
+    -------
+    result : list of libtbx.group_args
+        One per operator, ordered by rt_mx.as_xyz(), each with ``rt_mx``, the
+        operator on denominators (1, 12); ``i_seqs``, a flex.size_t of the
+        atoms of this hierarchy copied; and ``hierarchy``, their copies in
+        i_seqs order, at the symmetry-equivalent positions and with the
+        original chain IDs.  The identity is not included.  In the copies,
+        anisotropic U is rotated and sigxyz and siguij are cleared.
+
+        ::
+
+          result[k]       one per operator
+          |-- .rt_mx      cctbx.sgtbx.rt_mx, on denominators (1, 12)
+          |-- .i_seqs     flex.size_t, indices into self.atoms()
+          `-- .hierarchy  iotbx.pdb.hierarchy.root, one model
+              `-- .chains()               original IDs
+                  `-- .residue_groups()
+                      `-- .atom_groups()
+                          `-- .atoms()    self.atoms().select(i_seqs),
+                                          moved by rt_mx
+
+    Raises
+    ------
+    Sorry
+        If the hierarchy has more than one model.
+    """
+    from cctbx.crystal import super_cell
+    if (self.models_size() > 1):
+      raise Sorry(
+        f"Symmetry copies need one model, not {self.models_size()}.")
+    if (min_distance_sym_equiv is None):
+      min_distance_sym_equiv = super_cell.min_distance_sym_equiv_coincident
+    atoms = self.atoms()
+    sites_cart = atoms.extract_xyz()
+    if (isinstance(selection, flex.bool)):
+      assert selection.size() == sites_cart.size(), (
+        f"selection covers {selection.size()} atoms, not {sites_cart.size()}")
+      selection = selection.iselection()
+    if (selection is None):
+      selected_sites = sites_cart
+    else:
+      selected_sites = sites_cart.select(selection)
+    if (selected_sites.size() == 0): return []
+    symmetry_tables = super_cell.get_sym_equiv_tables(
+      sites_cart             = sites_cart,
+      crystal_symmetry       = crystal_symmetry,
+      radius                 = radius,
+      min_distance_sym_equiv = min_distance_sym_equiv)
+    # siiu, "symmetry interacting indices unique": {j_seq: [rt_mx]}, the
+    # operators that place atom j_seq within radius of a selected atom.
+    siiu, _ = super_cell.get_siiu(
+      selection=selection, symmetry_tables=symmetry_tables,
+      keep_site_symmetry_ops=True)
+    # The atom range of each residue group, and the residue group of each
+    # atom, by position in atoms().
+    rg_ranges = []
+    rg_of_atom = flex.size_t()
+    for rg in self.residue_groups():
+      first = rg_of_atom.size()
+      rg_of_atom.extend(flex.size_t(rg.atoms_size(), len(rg_ranges)))
+      rg_ranges.append((first, rg_of_atom.size()))
+    site_symmetry_table = symmetry_tables.site_symmetry_table
+    # {rt_mx.as_xyz(): (rt_mx, residue groups it copies)}
+    rgs_by_op = {}
+    for j_seq, ops in siiu.items():
+      for op in ops:
+        key = op.as_xyz()
+        if (key not in rgs_by_op):
+          rgs_by_op[key] = (op, set())
+        rgs_by_op[key][1].add(rg_of_atom[j_seq])
+    # The atoms that may be copied onto another atom: those on a symmetry
+    # element, and those with an equivalent within twice the tolerance of
+    # another atom.
+    near_another_atom, _ = super_cell.get_siiu(
+      symmetry_tables=super_cell.get_sym_equiv_tables(
+        sites_cart             = sites_cart,
+        crystal_symmetry       = crystal_symmetry,
+        radius                 = 2 * min_distance_sym_equiv,
+        min_distance_sym_equiv = min_distance_sym_equiv,
+        site_symmetry_table    = site_symmetry_table))
+    may_coincide = flex.bool(sites_cart.size(), False)
+    may_coincide.set_selected(flex.size_t(list(near_another_atom)), True)
+    may_coincide.set_selected(
+      site_symmetry_table.special_position_indices(), True)
+    # Per element, the sites of the model and of the copies kept so far.
+    elements = atoms.extract_element(strip=True)
+    occupied = {}
+    def occupied_sites(element):
+      if (element not in occupied):
+        occupied[element] = sites_cart.select(elements == element)
+      return occupied[element]
+    unit_cell = crystal_symmetry.unit_cell()
+    has_siguij = ext.atom.has_siguij()
+    result = []
+    for key in sorted(rgs_by_op):
+      op, i_rgs = rgs_by_op[key]
+      i_seqs = flex.size_t()
+      for i_rg in sorted(i_rgs):
+        first, last = rg_ranges[i_rg]
+        i_seqs.extend(flex.size_t_range(first, last))
+      equiv = super_cell.sym_equiv_sites_cart(
+        sites_cart=sites_cart, unit_cell=unit_cell, rt_mx=op,
+        selection=i_seqs)
+      keep = flex.bool(i_seqs.size(), True)
+      for i in may_coincide.select(i_seqs).iselection():
+        sites = occupied_sites(elements[i_seqs[i]])
+        if (flex.min((sites - equiv[i]).dot()) < min_distance_sym_equiv**2):
+          keep[i] = False
+        else:
+          sites.append(equiv[i])
+      if (not keep.count(True)): continue
+      i_seqs = i_seqs.select(keep)
+      hierarchy = self.select(i_seqs, copy_atoms=True)
+      hierarchy.atoms().set_xyz(equiv.select(keep))
+      r_cart = unit_cell.matrix_cart(op.r())
+      for atom in hierarchy.atoms():
+        if (atom.uij_is_defined()):
+          atom.set_uij(adptbx.c_u_c_transpose(r_cart, atom.uij))
+      # sigxyz and siguij rotate only with their covariances, which the atoms
+      # do not hold.
+      hierarchy.atoms().set_sigxyz(
+        flex.vec3_double(hierarchy.atoms_size(), (0, 0, 0)))
+      if (has_siguij):
+        for atom in hierarchy.atoms():
+          atom.siguij_erase()
+      result.append(group_args(rt_mx=op, i_seqs=i_seqs, hierarchy=hierarchy))
+    return result
+
   def write_pdb_file(self,
         file_name,
         open_append=False,

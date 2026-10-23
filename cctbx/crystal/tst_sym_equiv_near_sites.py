@@ -1,9 +1,13 @@
 from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx.crystal import super_cell
+from cctbx.crystal.sym_equiv_test_utils import (
+  assert_same_positions, brute_force_sym_equiv,
+  brute_force_sym_equiv_positions, general_position_structure,
+  special_position_fixtures)
 from cctbx import sgtbx
 from cctbx.development import debug_utils
-from libtbx.test_utils import Exception_expected, approx_equal
+from libtbx.test_utils import Exception_expected
 from scitbx.array_family import flex
 import sys
 
@@ -14,7 +18,7 @@ def sym_equiv_near_selection(symmetry_tables, primary_selection):
     selection=primary_selection, symmetry_tables=symmetry_tables)[0]
 
 def sym_equiv_within_radius(sites_cart, crystal_symmetry, radius,
-                            primary_selection):
+                            primary_selection, keep_site_symmetry_ops=False):
   """The equivalents get_siiu finds within radius, without the operator
   list."""
   return super_cell.get_siiu(
@@ -23,49 +27,8 @@ def sym_equiv_within_radius(sites_cart, crystal_symmetry, radius,
     select_within_radius   = radius,
     selection              = primary_selection,
     buffer                 = 0,
-    min_distance_sym_equiv = super_cell.min_distance_sym_equiv_coincident)[0]
-
-def general_position_structure(space_group_info=None, n_sites=12):
-  """A structure with all sites in general positions and fixed coordinates."""
-  if (space_group_info is None):
-    space_group_info = sgtbx.space_group_info("P 21 21 21")
-  cs = crystal.symmetry(
-    unit_cell=space_group_info.any_compatible_unit_cell(volume=3000.),
-    space_group_info=space_group_info)
-  sites_frac = flex.vec3_double()
-  for i in range(n_sites):
-    sites_frac.append((
-      (0.0417 + 0.0713 * i) % 0.83,
-      (0.1103 + 0.0891 * i) % 0.79,
-      (0.0629 + 0.1097 * i) % 0.87))
-  return cs, cs.unit_cell().orthogonalize(sites_frac)
-
-def brute_force_sym_equiv(sites_cart, crystal_symmetry, radius,
-                          primary_selection, n_shifts=2):
-  """Equivalents within *radius* of a selected site, from all operators over
-  a block of lattice translations, without asu_mappings.
-
-  Compares operators, so it is valid only for sites in general positions.
-  """
-  unit_cell = crystal_symmetry.unit_cell()
-  sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
-  selected_fracs = [sites_frac[i_seq] for i_seq in primary_selection]
-  identity_as_xyz = sgtbx.rt_mx().as_xyz()
-  result = {}
-  for rotation_op in crystal_symmetry.space_group().all_ops():
-    for i in range(-n_shifts, n_shifts + 1):
-      for j in range(-n_shifts, n_shifts + 1):
-        for k in range(-n_shifts, n_shifts + 1):
-          op = rotation_op + (i, j, k)
-          as_xyz = op.as_xyz()
-          if (as_xyz == identity_as_xyz): continue
-          for j_seq in range(sites_frac.size()):
-            equiv_frac = op * sites_frac[j_seq]
-            for selected_frac in selected_fracs:
-              if (unit_cell.distance(equiv_frac, selected_frac) <= radius):
-                result.setdefault(j_seq, set()).add(as_xyz)
-                break
-  return result
+    min_distance_sym_equiv = super_cell.min_distance_sym_equiv_coincident,
+    keep_site_symmetry_ops = keep_site_symmetry_ops)[0]
 
 def as_xyz_sets(equivalents):
   """{j_seq: set of operator strings}."""
@@ -82,49 +45,6 @@ def sym_equiv_positions(unit_cell, sites_frac, equivalents):
       [unit_cell.orthogonalize(op * sites_frac[j_seq]) for op in ops])
   return result
 
-def unique_positions(positions, tolerance=1.e-4):
-  """Positions, with duplicates closer than *tolerance* dropped.
-
-  Compares against every position kept: two positions can share a coordinate
-  to within rounding, so sorting does not bring duplicates together.
-  """
-  result = []
-  for position in positions:
-    if (not True in [approx_equal(position, kept, eps=tolerance, out=None)
-                     for kept in result]):
-      result.append(position)
-  return result
-
-def brute_force_sym_equiv_positions(sites_cart, crystal_symmetry, radius,
-                                primary_selection, n_shifts=2):
-  """Equivalent positions within *radius* of a selected site, from all
-  operators over a block of lattice translations, without asu_mappings.
-
-  Positions rather than operators, so this holds for sites on special
-  positions too.  Equivalents coincident with their site are dropped.
-  """
-  unit_cell = crystal_symmetry.unit_cell()
-  sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
-  selected_fracs = [sites_frac[i_seq] for i_seq in primary_selection]
-  result = {}
-  for rotation_op in crystal_symmetry.space_group().all_ops():
-    for i in range(-n_shifts, n_shifts + 1):
-      for j in range(-n_shifts, n_shifts + 1):
-        for k in range(-n_shifts, n_shifts + 1):
-          op = rotation_op + (i, j, k)
-          for j_seq in range(sites_frac.size()):
-            equiv_frac = op * sites_frac[j_seq]
-            if (unit_cell.distance(equiv_frac, sites_frac[j_seq]) <= 1.e-6):
-              continue
-            for selected_frac in selected_fracs:
-              if (unit_cell.distance(equiv_frac, selected_frac) <= radius):
-                result.setdefault(j_seq, []).append(
-                  unit_cell.orthogonalize(equiv_frac))
-                break
-  for j_seq in result:
-    result[j_seq] = unique_positions(result[j_seq])
-  return result
-
 def differences(expected, obtained):
   """Per j_seq, what is missing from and extra in *obtained*."""
   result = {}
@@ -134,27 +54,6 @@ def differences(expected, obtained):
     if (missing or extra):
       result[j_seq] = (sorted(missing), sorted(extra))
   return result
-
-def assert_same_positions(expected, obtained, info, tolerance=1.e-4):
-  """The two position tables list the same equivalents, in any order.
-
-  Two positions can share a coordinate to within rounding, so their order
-  after sorting is not the same on every platform; each position is matched
-  to one of its own instead.
-  """
-  assert sorted(obtained) == sorted(expected), (
-    info, sorted(expected), sorted(obtained))
-  for j_seq, positions in expected.items():
-    unmatched = list(obtained[j_seq])
-    assert len(unmatched) == len(positions), (
-      info, j_seq, len(positions), len(unmatched))
-    for position in positions:
-      for i_candidate, candidate in enumerate(unmatched):
-        if (approx_equal(position, candidate, eps=tolerance, out=None)):
-          del unmatched[i_candidate]
-          break
-      else:
-        raise AssertionError((info, j_seq, position, obtained[j_seq]))
 
 def exercise_matches_brute_force(space_group_info):
   """Every equivalent a direct search finds is found, and no others.
@@ -453,7 +352,9 @@ def exercise_every_selected_site_contributes():
       one = sym_equiv_within_radius(
         sites_cart, cs, radius, primary_selection=[i_seq])
       for j_seq, ops in as_xyz_sets(one).items():
-        apart.setdefault(j_seq, set()).update(ops)
+        if (j_seq not in apart):
+          apart[j_seq] = set()
+        apart[j_seq].update(ops)
     assert len(together) > 0
     assert together == apart, differences(apart, together)
 
@@ -471,23 +372,6 @@ def exercise_requires_crystal_symmetry():
       assert str(e) == message, str(e)
     else:
       raise Exception_expected
-
-# Fixtures whose first site lies on a symmetry element, with the sites to
-# select.
-special_position_fixtures = [
-  ("C 1 2 1", (6, 7, 28, 90, 90, 90),                 # two-fold
-   [(0.0, 0.2, 0.0), (0.13, 0.31, 0.07), (0.21, 0.44, 0.19)], [0, 1]),
-  ("F m m 2", (9.673, 12.574, 16.444, 90, 90, 90),    # mirror, F centred
-   [(0.0, 1 / 6., 0.0), (0.113, 0.207, 0.331), (0.717, 0.311, 0.613)], [1, 2]),
-  ("R 3 :H", (12.1, 12.1, 16.7, 90, 90, 120),         # three-fold
-   [(0.0, 0.0, 0.11), (0.213, 0.331, 0.07), (0.41, 0.62, 0.28)], [1, 2]),
-  ("P 43 21 2", (12.1, 12.1, 16.7, 90, 90, 90),       # two-fold at (x, x, 0)
-   [(0.19, 0.19, 0.0), (0.113, 0.407, 0.231), (0.617, 0.311, 0.513)], [1, 2]),
-  ("P -1", (7, 8, 9, 90, 90, 90),                     # inversion centre
-   [(0.0, 0.0, 0.0), (0.21, 0.33, 0.14), (0.44, 0.19, 0.37)], [1, 2]),
-  ("P m -3 m", (9, 9, 9, 90, 90, 90),                 # site symmetry m-3m
-   [(0.0, 0.0, 0.0), (0.213, 0.331, 0.07), (0.41, 0.28, 0.62)], [1, 2]),
-]
 
 def selected_site_near_an_element_structure():
   """A structure whose first site sits 0.15 A off an inversion centre, the
@@ -536,7 +420,8 @@ def exercise_a_radius_that_is_not_a_distance_is_rejected():
       raise Exception_expected
 
 def exercise_tables_must_cover_the_same_sites():
-  """Two tables built for different numbers of sites are rejected."""
+  """Two tables built for different numbers of sites are rejected, and so is
+  a site symmetry table passed in for a different number of sites."""
   cs, sites_cart = general_position_structure()
   symmetry_tables = super_cell.get_sym_equiv_tables(
     sites_cart, cs, 5.0)
@@ -547,6 +432,14 @@ def exercise_tables_must_cover_the_same_sites():
       super_cell.sym_equiv_tables(symmetry_tables.pair_sym_table, fewer), [0])
   except AssertionError as e:
     assert str(e) == "the two tables cover different numbers of sites", str(e)
+  else:
+    raise Exception_expected
+  try:
+    super_cell.get_sym_equiv_tables(
+      sites_cart, cs, 5.0, site_symmetry_table=fewer)
+  except AssertionError as e:
+    assert str(e) == (
+      "the site symmetry table covers a different number of sites"), str(e)
   else:
     raise Exception_expected
 
@@ -570,7 +463,8 @@ def exercise_a_site_written_on_an_element_is_coincident():
 
 def exercise_special_positions_are_complete():
   """Every equivalent of an atom on a symmetry element is reported, exactly
-  once.
+  once; with keep_site_symmetry_ops, every operator that places it in range
+  is.
   """
   n_checked = 0
   for fixture in special_position_fixtures:
@@ -591,6 +485,12 @@ def exercise_special_positions_are_complete():
         assert len(ops) == len(obtained[j_seq]), (
           space_group_symbol, radius, j_seq)
         n_checked += len(ops)
+      every_operator = as_xyz_sets(sym_equiv_within_radius(
+        sites_cart, cs, radius, primary_selection=selection,
+        keep_site_symmetry_ops=True))
+      expected = brute_force_sym_equiv(sites_cart, cs, radius, selection)
+      assert every_operator == expected, (
+        space_group_symbol, radius, differences(expected, every_operator))
   assert n_checked > 0
 
 def exercise_tolerance_admits_a_three_decimal_worst_case():
