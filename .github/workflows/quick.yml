@@ -234,7 +234,7 @@ jobs:
       - name: Setup conda
         uses: conda-incubator/setup-miniconda@v4
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           channels: conda-forge
           conda-remove-defaults: "true"
 
