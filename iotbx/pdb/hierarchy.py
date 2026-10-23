@@ -1223,8 +1223,23 @@ class _():
 
   def apply_rotation_translation(self, rot_matrices, trans_vectors):
     """
-    Apply rotation-translation to coordinates in the hierarchy
-    LIMITATION: ANISOU records in resulting hierarchy will be invalid!!!
+    Copy the hierarchy once per rotation-translation pair.
+
+    Copies under a rotation have anisotropic U rotated and sigxyz and siguij
+    cleared; copies under a translation keep them.
+
+    Parameters
+    ----------
+    rot_matrices : list of scitbx.matrix.sqr
+        Cartesian rotations.
+    trans_vectors : list of scitbx.matrix.col
+        Cartesian translations, one per rotation.
+
+    Returns
+    -------
+    iotbx.pdb.hierarchy.root
+        The copies, with a suffix 1, 2, ... per pair appended to the
+        one-character chain IDs.
     """
     roots=[]
     for r,t in zip(rot_matrices, trans_vectors):
@@ -1236,6 +1251,8 @@ class _():
           xyz = c.atoms().extract_xyz()
           new_xyz = r.elems*xyz+t
           c.atoms().set_xyz(new_xyz)
+          if (not r.is_r3_identity_matrix()):
+            c.atoms().rotate_uij_and_clear_sigmas(r_cart=r.elems)
           m.append_chain(c)
         root.append_model(m)
         roots.append(root)
@@ -1300,7 +1317,26 @@ class _():
     self.atoms().set_xyz(uc.orthogonalize(sites_frac+shift_best))
 
   def expand_to_p1(self, crystal_symmetry, exclude_self=False):
-    """ Expand model to P1.  ANISOU will be invalid"""
+    """
+    Expand the model to P1.
+
+    Copies under a rotation have anisotropic U rotated and sigxyz and siguij
+    cleared; copies under a translation keep them.
+
+    Parameters
+    ----------
+    crystal_symmetry : cctbx.crystal.symmetry
+        Symmetry whose operators generate the copies.
+    exclude_self : bool, optional
+        Leave out the copies under operators without a rotation: the
+        identity and any centring translations.
+
+    Returns
+    -------
+    iotbx.pdb.hierarchy.root
+        One model, with one chain per operator and chain.  The identity's
+        copies keep their chain IDs; the others get new two-letter IDs.
+    """
     import string
     import scitbx.matrix
     r = root()
@@ -1316,6 +1352,7 @@ class _():
         if(exclude_self and m3.is_r3_identity_matrix()): continue
         t = smx.t().as_double()
         t = scitbx.matrix.col((t[0],t[1],t[2]))
+        r_cart = crystal_symmetry.unit_cell().matrix_cart(smx.r())
         for c_ in m_.chains():
           n_at = len(c_.atoms())
           if(not n_at in n_atoms): n_atoms.append(n_at)
@@ -1324,6 +1361,8 @@ class _():
           xyz = crystal_symmetry.unit_cell().fractionalize(xyz)
           new_xyz = crystal_symmetry.unit_cell().orthogonalize(m3.elems*xyz+t)
           c_.atoms().set_xyz(new_xyz)
+          if (not smx.r().is_unit_mx()):
+            c_.atoms().rotate_uij_and_clear_sigmas(r_cart=r_cart)
           #
           if(not (smx.r().is_unit_mx() and smx.t().is_zero())):
             found = False
@@ -1367,8 +1406,9 @@ class _():
         operator on denominators (1, 12); ``i_seqs``, a flex.size_t of the
         atoms of this hierarchy copied; and ``hierarchy``, their copies in
         i_seqs order, at the symmetry-equivalent positions and with the
-        original chain IDs.  The identity is not included.  In the copies,
-        anisotropic U is rotated and sigxyz and siguij are cleared.
+        original chain IDs.  The identity is not included.  Copies under a
+        rotation have anisotropic U rotated and sigxyz and siguij cleared;
+        copies under a lattice translation keep them.
 
         ::
 
@@ -1453,7 +1493,6 @@ class _():
         occupied[element] = sites_cart.select(elements == element)
       return occupied[element]
     unit_cell = crystal_symmetry.unit_cell()
-    has_siguij = ext.atom.has_siguij()
     result = []
     for key in sorted(rgs_by_op):
       op, i_rgs = rgs_by_op[key]
@@ -1475,17 +1514,9 @@ class _():
       i_seqs = i_seqs.select(keep)
       hierarchy = self.select(i_seqs, copy_atoms=True)
       hierarchy.atoms().set_xyz(equiv.select(keep))
-      r_cart = unit_cell.matrix_cart(op.r())
-      for atom in hierarchy.atoms():
-        if (atom.uij_is_defined()):
-          atom.set_uij(adptbx.c_u_c_transpose(r_cart, atom.uij))
-      # sigxyz and siguij rotate only with their covariances, which the atoms
-      # do not hold.
-      hierarchy.atoms().set_sigxyz(
-        flex.vec3_double(hierarchy.atoms_size(), (0, 0, 0)))
-      if (has_siguij):
-        for atom in hierarchy.atoms():
-          atom.siguij_erase()
+      if (not op.r().is_unit_mx()):
+        hierarchy.atoms().rotate_uij_and_clear_sigmas(
+          r_cart=unit_cell.matrix_cart(op.r()))
       result.append(group_args(rt_mx=op, i_seqs=i_seqs, hierarchy=hierarchy))
     return result
 
