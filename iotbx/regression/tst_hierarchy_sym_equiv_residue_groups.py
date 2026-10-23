@@ -12,6 +12,13 @@ from libtbx.utils import Sorry
 from scitbx import matrix
 import sys
 
+def residue_of_atoms(residue_sizes):
+  """The residue index of each atom, residue_sizes[i] atoms in residue i."""
+  result = []
+  for i_rg, n_atoms in enumerate(residue_sizes):
+    result.extend([i_rg] * n_atoms)
+  return result
+
 def hierarchy_from_sites(sites_cart, residue_sizes, elements=None):
   """A one-chain hierarchy of the sites, residue_sizes[i] atoms in residue i.
   Every atom is carbon unless elements says otherwise.
@@ -19,9 +26,8 @@ def hierarchy_from_sites(sites_cart, residue_sizes, elements=None):
   import mmtbx.model
   if (elements is None):
     elements = ["C"] * sites_cart.size()
-  resseq_list = []
-  for i_rg, n_atoms in enumerate(residue_sizes):
-    resseq_list.extend([iotbx.pdb.resseq_encode(i_rg + 1)] * n_atoms)
+  resseq_list = [iotbx.pdb.resseq_encode(i_rg + 1)
+                 for i_rg in residue_of_atoms(residue_sizes)]
   return mmtbx.model.manager.from_sites_cart(
     sites_cart     = sites_cart,
     atom_name_list = [f"{element:>2}  " for element in elements],
@@ -37,13 +43,7 @@ def brute_force_copies(sites_cart, crystal_symmetry, radius,
   """
   unit_cell = crystal_symmetry.unit_cell()
   sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
-  residues = []
-  residue_of = []
-  first = 0
-  for i_rg, n_atoms in enumerate(residue_sizes):
-    residues.append(range(first, first + n_atoms))
-    residue_of.extend([i_rg] * n_atoms)
-    first += n_atoms
+  residue_of = residue_of_atoms(residue_sizes)
   copies = set()
   for j_seq, ops in brute_force_sym_equiv(
       sites_cart, crystal_symmetry, radius, primary_selection).items():
@@ -54,7 +54,7 @@ def brute_force_copies(sites_cart, crystal_symmetry, radius,
     op = sgtbx.rt_mx(as_xyz)
     result.append((i_rg, as_xyz,
       [unit_cell.orthogonalize(op * sites_frac[i_seq])
-       for i_seq in residues[i_rg]]))
+       for i_seq in range(len(residue_of)) if residue_of[i_seq] == i_rg]))
   return result
 
 def rotated_uij(unit_cell, rt_mx, uij):
@@ -97,9 +97,7 @@ def exercise_match_brute_force(space_group_info):
   Every third atom is isotropic.
   """
   residue_sizes = [2, 3, 3, 4]
-  residue_of = []
-  for i_rg, n_atoms in enumerate(residue_sizes):
-    residue_of.extend([i_rg] * n_atoms)
+  residue_of = residue_of_atoms(residue_sizes)
   primary_selection = [0, 3, 7]
   radius = 5.0
   space_group_symbol = str(space_group_info)
