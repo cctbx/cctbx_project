@@ -20,7 +20,7 @@ import iotbx.mtrix_biomt
 from six import string_types
 from six.moves import range, zip
 
-class pdb_hierarchy_builder(crystal_symmetry_builder):
+class pdb_hierarchy_builder_python(crystal_symmetry_builder):
 
   # The recommended translation for ATOM records can be found at:
   #   http://mmcif.rcsb.org/dictionaries/pdb-correspondence/pdb2mmcif-2010.html#ATOM
@@ -266,6 +266,128 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       data = data.deep_copy()
       data.set_selected(null_sel, str(default))
     return flex.double(data)
+
+
+class pdb_hierarchy_builder(crystal_symmetry_builder):
+  """
+  Crystal symmetry and pdb hierarchy of an mmCIF model block. The hierarchy
+  comes from hierarchy_from_atom_site(), which builds it in C++.
+  pdb_hierarchy_builder_python above is the per-atom Python builder it
+  replaced, kept as the reference for tst_mmcif_hierarchy_parity.py and
+  tst_mmcif_hierarchy_cpp.py (the differences are listed in
+  iotbx/pdb/mmcif_hierarchy.h). Retirement: remove it after the first Phenix
+  release that ships the C++ builder if no parity failure has been reported;
+  the parity test then becomes a fixture regression test.
+  """
+
+  def __init__(self, cif_block):
+    crystal_symmetry_builder.__init__(self, cif_block)
+    self.hierarchy = hierarchy_from_atom_site(cif_block)
+
+
+def hierarchy_from_atom_site(cif_block):
+  """
+  Build a hierarchy.root from the _atom_site loop of cif_block: Python resolves
+  the columns (atom_site_columns_from_block), C++ builds the hierarchy
+  (iotbx.pdb.build_mmcif_hierarchy, iotbx/pdb/mmcif_hierarchy.cpp).
+  """
+  from iotbx.pdb import build_mmcif_hierarchy
+  return build_mmcif_hierarchy(atom_site_columns_from_block(cif_block))
+
+
+def _as_column(cif_block, name):
+  data = cif_block.get(name)
+  if data is None:
+    return data
+  if isinstance(data, string_types):
+    data = flex.std_string([data])
+  return data
+
+
+def atom_site_columns_from_block(cif_block):
+  """
+  Resolve the _atom_site (and _atom_site_anisotrop) columns of cif_block into
+  an iotbx.pdb.atom_site_columns for build_mmcif_hierarchy. Same tags, fallbacks
+  and assertions as the Python builder; a missing type_symbol or numeric column
+  is a ValueError naming the tag.
+  """
+  from iotbx.pdb import atom_site_columns
+  type_symbol = _as_column(cif_block, "_atom_site.type_symbol")
+  atom_labels = _as_column(cif_block, "_atom_site.label_atom_id")
+  if atom_labels is None:
+    atom_labels = _as_column(cif_block, "_atom_site.auth_atom_id")
+  alt_id = _as_column(cif_block, "_atom_site.label_alt_id")
+  label_asym_id = _as_column(cif_block, "_atom_site.label_asym_id")
+  auth_asym_id = _as_column(cif_block, "_atom_site.auth_asym_id")
+  if label_asym_id is None: label_asym_id = auth_asym_id
+  if auth_asym_id is None: auth_asym_id = label_asym_id
+  comp_id = _as_column(cif_block, "_atom_site.auth_comp_id")
+  if comp_id is None:
+    comp_id = _as_column(cif_block, "_atom_site.label_comp_id")
+  entity_id = _as_column(cif_block, "_atom_site.label_entity_id")
+  seq_id = _as_column(cif_block, "_atom_site.auth_seq_id")
+  if seq_id is None:
+    seq_id = _as_column(cif_block, "_atom_site.label_seq_id")
+  error_message = """something is not present - not enough information
+    to make a hierarcy out of this CIF file.
+    It could be because this is restraints or component cif or a corrupted model cif."""
+  assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0, error_message
+  if type_symbol is None:
+    raise ValueError("_atom_site.type_symbol is missing")
+  cols = atom_site_columns()
+  cols.type_symbol = type_symbol
+  cols.atom_name = atom_labels
+  cols.alt_id = alt_id
+  cols.label_asym_id = label_asym_id
+  cols.auth_asym_id = auth_asym_id
+  cols.comp_id = comp_id
+  cols.seq_id = seq_id
+  for member, tag in (("cartn_x", "_atom_site.Cartn_x"),
+                      ("cartn_y", "_atom_site.Cartn_y"),
+                      ("cartn_z", "_atom_site.Cartn_z"),
+                      ("b_iso", "_atom_site.B_iso_or_equiv"),
+                      ("occupancy", "_atom_site.occupancy")):
+    column = _as_column(cif_block, tag)
+    if column is None:
+      raise ValueError("%s is missing" % tag)
+    setattr(cols, member, column)
+  for member, tag in (("model_num", "_atom_site.pdbx_PDB_model_num"),
+                      ("atom_id", "_atom_site.id"),
+                      ("ins_code", "_atom_site.pdbx_PDB_ins_code"),
+                      ("group_pdb", "_atom_site.group_PDB"),
+                      ("segid", "_atom_site.auth_segid"),
+                      ("auth_break", "_atom_site.auth_break"),
+                      ("formal_charge", "_atom_site.pdbx_formal_charge"),
+                      ("resolution", "_atom_site.phenix_resolution"),
+                      ("fp", "_atom_site.phenix_scat_dispersion_real"),
+                      ("fdp", "_atom_site.phenix_scat_dispersion_imag")):
+    column = _as_column(cif_block, tag)
+    if column is not None:
+      setattr(cols, member, column)
+  for bad in (".", "?", " "):
+    if (auth_asym_id == bad).count(True) > 0:
+      assert False, "mmCIF file contains " + \
+        "record with empty auth_asym_id, which is wrong."
+  anisotrop_id = _as_column(cif_block, "_atom_site_anisotrop.id")
+  if anisotrop_id is not None:
+    u_ij = [_as_column(cif_block, "_atom_site_anisotrop.U[%s][%s]" %(ij[0], ij[1]))
+            for ij in ("11", "22", "33", "12", "13", "23")]
+    assert u_ij.count(None) in (0, 6)
+    if u_ij.count(None) == 0:
+      adps = u_ij
+      cols.aniso_is_b = False
+    else:
+      b_ij = [_as_column(cif_block, "_atom_site_anisotrop.B[%s][%s]" %(ij[0], ij[1]))
+              for ij in ("11", "22", "33", "12", "13", "23")]
+      assert b_ij.count(None) in (0, 6)
+      adps = b_ij if b_ij.count(None) == 0 else None
+      cols.aniso_is_b = True
+      # as in the Python builder: an anisotrop loop with neither U nor B tensors is an error
+      assert adps is not None
+    if adps is not None:
+      cols.aniso_id = anisotrop_id
+      cols.aniso_11, cols.aniso_22, cols.aniso_33, cols.aniso_12, cols.aniso_13, cols.aniso_23 = adps
+  return cols
 
 
 def is_aa_or_rna_dna(resname):
