@@ -64,8 +64,10 @@ def rotated_uij(unit_cell, rt_mx, uij):
   return adptbx.u_star_as_u_cart(
     unit_cell, (r * u_star * r.transpose()).as_sym_mat3())
 
-def exercise_copy_the_whole_residue():
-  """The two-fold of P 1 2 1 places the copy of N 3.2 A from N, so the
+def exercise_simple_example():
+  """A small model and its sym_equiv copies within 4 A, as PDB strings.
+
+  The two-fold of P 1 2 1 places the copy of N 3.2 A from N, so the
   residue is copied whole, C included; no equivalent of the water comes
   within 4 A.
   """
@@ -76,11 +78,15 @@ ATOM      2  CA  ALA A   1       2.500   6.000   1.500  1.00 10.00           C
 ATOM      3  C   ALA A   1       4.000   6.000   1.000  1.00 10.00           C
 HETATM    4  O   HOH B   2       8.000   6.000   7.000  1.00 10.00           O
 """)
+  # All atoms are selected by default.
   copies = pdb_inp.construct_hierarchy().sym_equiv_residue_groups(
     pdb_inp.crystal_symmetry(), 4.0)
+  # One entry per operator that copies a residue; the identity is never one.
   assert len(copies) == 1
   assert copies[0].rt_mx.as_xyz() == "-x,y,-z"
+  # The atoms copied, as indices into the model's atoms(): all of ALA.
   assert list(copies[0].i_seqs) == [0, 1, 2]
+  # Their copies, moved by rt_mx, keep chain A and residue 1.
   assert not show_diff(copies[0].hierarchy.as_pdb_string(), """\
 ATOM      1  N   ALA A   1      -1.500   5.000  -0.500  1.00 10.00           N
 ATOM      2  CA  ALA A   1      -2.500   6.000  -1.500  1.00 10.00           C
@@ -316,7 +322,7 @@ def run_call_back(flags, space_group_info):
   exercise_match_brute_force(space_group_info)
 
 def run():
-  exercise_copy_the_whole_residue()
+  exercise_simple_example()
   exercise_leave_out_atoms_on_the_model()
   exercise_keep_atoms_of_another_element()
   exercise_on_an_element_get_every_copy()
