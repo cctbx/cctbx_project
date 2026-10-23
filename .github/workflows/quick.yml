@@ -75,14 +75,19 @@ jobs:
           fail-on-cache-miss: true
           key: modules-${{ github.sha }}
 
+      - name: Runner image id
+        id: image
+        shell: bash
+        run: echo "id=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+
       - name: Setup build cache
         id: build-cache
         uses: actions/cache@v5
         with:
           path: ./build
-          key: ${{ runner.os }}-build-${{ github.sha }}
+          key: ${{ runner.os }}-build-${{ steps.image.outputs.id }}-${{ hashFiles('./modules/cctbx_project/libtbx/auto_build/conda_envs') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-build
+            ${{ runner.os }}-build-${{ steps.image.outputs.id }}-${{ hashFiles('./modules/cctbx_project/libtbx/auto_build/conda_envs') }}
 
       - name: Setup conda
         uses: conda-incubator/setup-miniconda@v4
@@ -239,14 +244,19 @@ jobs:
           fail-on-cache-miss: true
           key: modules-${{ github.sha }}
 
+      - name: Runner image id
+        id: image
+        shell: bash
+        run: echo "id=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+
       - name: Setup build cache
         id: build-cache
         uses: actions/cache@v5
         with:
           path: ./build
-          key: ${{ runner.os }}-build-${{ github.sha }}
+          key: ${{ runner.os }}-build-${{ steps.image.outputs.id }}-${{ hashFiles('./modules/cctbx_project/libtbx/auto_build/conda_envs') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-build
+            ${{ runner.os }}-build-${{ steps.image.outputs.id }}-${{ hashFiles('./modules/cctbx_project/libtbx/auto_build/conda_envs') }}
 
       - name: Setup conda
         uses: conda-incubator/setup-miniconda@v4
