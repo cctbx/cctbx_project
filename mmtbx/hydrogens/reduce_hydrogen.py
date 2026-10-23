@@ -392,7 +392,10 @@ def get_h_restraints(resname, strict=True):
     atom_idx2=lookup[b.atom_id_2]
     bl = rdMolTransforms.GetBondLength(conf, atom_idx1, atom_idx2)
     # X-H: the library's neutron length for the heavy atom (aromatic from
-    # the RDKit molecule); value_dist (X-ray) stays 0.9 x the CCD length
+    # the RDKit molecule); value_dist (X-ray) stays 0.9 x the CCD length.
+    # Heavy-atom bonds: the CCD length (placement does not move heavy atoms,
+    # but the grm stays on the model)
+    if b.atom_id_1 in hs or b.atom_id_2 in hs: bl *= .9
     value_dist_neutron = None
     if (b.atom_id_1 in hs) != (b.atom_id_2 in hs):
       x_idx = atom_idx2 if b.atom_id_1 in hs else atom_idx1
@@ -405,7 +408,7 @@ def get_h_restraints(resname, strict=True):
       atom_id_1=b.atom_id_1,
       atom_id_2=b.atom_id_2,
       type=b.value_order,
-      value_dist='%0.3f' % (bl*.9),
+      value_dist='%0.3f' % bl,
       value_dist_esd=".1",
       value_dist_neutron=value_dist_neutron))
 
@@ -656,7 +659,7 @@ def load_restraint_objects_into_server(model, mon_lib_srv):
   Load the model's restraint CIF objects (user CIFs, and the CCD objects
   reduce2 attaches) into mon_lib_srv, so that mon_lib_query() finds these
   residues there and does not build a CCD placeholder for them
-  (get_h_restraints(): placement-only restraints with 0.9x CCD bond lengths
+  (get_h_restraints(): placement-only restraints with 0.9x CCD X-H lengths
   and approximate energy types) that would override the user's dictionary.
   '''
   ro = model.get_restraint_objects()
@@ -1405,7 +1408,7 @@ class place_hydrogens():
     self.find_atoms_not_in_dictionary()
     # Drop the throwaway auto-generated ligand restraints now that the grm has
     # been built. They were only needed to place H on unknown ligands; keeping
-    # them on the model would leak idealized placement-only geometry (0.9x
+    # them on the model would leak idealized placement-only geometry (0.9x X-H
     # bonds, esd=1/period=1 torsions) into any downstream re-interpretation.
     self.remove_auto_restraint_objects()
     # before riding H: an H on an esterified O has no H-O-X angle to the second

@@ -321,6 +321,51 @@ def test_ccd_only_neutron_lengths():
       f.write("".join(protein))
     check_bond_lengths(fn[:-4] + "_protein.pdb", use_neutron_distances=True)
 
+def test_ccd_only_heavy_atom_bonds():
+  # CCD placeholder (BGM): heavy-atom bonds at the CCD ideal length, X-H at
+  # 0.9 x; the grm that place_hydrogens leaves on the model has the same
+  from mmtbx.chemical_components import get_cif_dictionary
+  from scitbx import matrix
+  cc = get_cif_dictionary("BGM")
+  xyz = dict((a.atom_id, matrix.col((float(a.pdbx_model_Cartn_x_ideal),
+    float(a.pdbx_model_Cartn_y_ideal), float(a.pdbx_model_Cartn_z_ideal))))
+    for a in cc["_chem_comp_atom"])
+  is_h = dict((a.atom_id, a.type_symbol in ("H", "D"))
+              for a in cc["_chem_comp_atom"])
+  md = reduce_hydrogen.get_h_restraints("BGM", strict=False)
+  n_heavy = n_xh = 0
+  for b in md.bond_list:
+    d = (xyz[b.atom_id_1] - xyz[b.atom_id_2]).length()
+    if is_h[b.atom_id_1] or is_h[b.atom_id_2]:
+      assert abs(float(b.value_dist) - 0.9 * d) < 0.001, (b.atom_id_1,
+        b.atom_id_2, b.value_dist, d)
+      n_xh += 1
+    else:
+      assert abs(float(b.value_dist) - d) < 0.001, (b.atom_id_1,
+        b.atom_id_2, b.value_dist, d)
+      n_heavy += 1
+  assert (n_heavy, n_xh) == (26, 13), (n_heavy, n_xh)
+  bgm = heavy_pdb("BGM", bgm_atoms(), offset=(15.0, 10.0, 15.0),
+    cryst1=False).replace(" A   1 ", " B   1 ")
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(source_info=None,
+    lines=pdb_1yjp.replace("END\n", "") + bgm + "END\n"), log=null_out())
+  ph = reduce_hydrogen.place_hydrogens(model=model)
+  ph.run()
+  model = ph.get_model()
+  atoms = model.get_hierarchy().atoms()
+  simple, asu = model.get_restraints_manager().geometry.\
+    get_all_bond_proxies(sites_cart=model.get_sites_cart())
+  n = 0
+  for proxy in simple:
+    a, b = [atoms[i] for i in proxy.i_seqs]
+    if a.parent().resname != "BGM" or b.parent().resname != "BGM": continue
+    if "H" in (a.element.strip(), b.element.strip()): continue
+    d = (xyz[a.name.strip()] - xyz[b.name.strip()]).length()
+    assert abs(proxy.distance_ideal - d) < 0.001, (a.name, b.name,
+      proxy.distance_ideal, d)
+    n += 1
+  assert n == n_heavy, (n, n_heavy)
+
 if __name__ == "__main__":
   test_user_cif_ligand()
   test_user_cif_ligand_optimize()
@@ -331,4 +376,5 @@ if __name__ == "__main__":
   test_name_mismatch_reported()
   test_ccd_only_neutron_targets()
   test_ccd_only_neutron_lengths()
+  test_ccd_only_heavy_atom_bonds()
   print("OK")
