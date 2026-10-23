@@ -1367,7 +1367,8 @@ class _():
         operator on denominators (1, 12); ``i_seqs``, a flex.size_t of the
         atoms of this hierarchy copied; and ``hierarchy``, their copies in
         i_seqs order, at the symmetry-equivalent positions and with the
-        original chain IDs.  The identity is not included.
+        original chain IDs.  The identity is not included.  In the copies,
+        anisotropic U is rotated and sigxyz and siguij are cleared.
 
         ::
 
@@ -1452,6 +1453,7 @@ class _():
         occupied[element] = sites_cart.select(elements == element)
       return occupied[element]
     unit_cell = crystal_symmetry.unit_cell()
+    has_siguij = ext.atom.has_siguij()
     result = []
     for key in sorted(rgs_by_op):
       op, i_rgs = rgs_by_op[key]
@@ -1477,6 +1479,13 @@ class _():
       for atom in hierarchy.atoms():
         if (atom.uij_is_defined()):
           atom.set_uij(adptbx.c_u_c_transpose(r_cart, atom.uij))
+      # sigxyz and siguij rotate only with their covariances, which the atoms
+      # do not hold.
+      hierarchy.atoms().set_sigxyz(
+        flex.vec3_double(hierarchy.atoms_size(), (0, 0, 0)))
+      if (has_siguij):
+        for atom in hierarchy.atoms():
+          atom.siguij_erase()
       result.append(group_args(rt_mx=op, i_seqs=i_seqs, hierarchy=hierarchy))
     return result
 
