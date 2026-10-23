@@ -37,6 +37,26 @@ def project_onto_x(length, angle, degrees=False):
     angle = math.radians(angle)
   return length * math.cos(angle)
 
+_cb_in_main_chain_cache = {}
+
+def cb_in_main_chain(resname):
+  """True if CB is part of the N-C main chain, as in beta- and gamma-amino
+  acids (BAL: N-CB-CA-C, B3A: N-CA-CB-C). Alpha-amino acids have both N-CA
+  and CA-C bonds in the chemical components. Residues without a chemical
+  components entry are assumed to be alpha-amino acids.
+  """
+  rc = _cb_in_main_chain_cache.get(resname, None)
+  if rc is not None: return rc
+  rc = False
+  from iotbx.pdb import common_residue_names_get_class
+  if common_residue_names_get_class(resname) != "common_amino_acid":
+    from mmtbx.chemical_components import is_code, get_bond_pairs
+    if is_code(resname):
+      bonds = get_bond_pairs(resname, use_tuple=True)
+      rc = not (("CA", "N") in bonds and ("C", "CA") in bonds)
+  _cb_in_main_chain_cache[resname] = rc
+  return rc
+
 def get_phi_psi_dict(pdb_hierarchy):
   rc = {}
   for i, three in enumerate(generate_protein_threes(hierarchy=pdb_hierarchy,
@@ -189,6 +209,8 @@ class cbetadev(validation):
           for i_cf,cf in enumerate(rg.conformers()):
             for i_residue,residue in enumerate(cf.residues()):
               if (residue.resname == "GLY"):
+                continue
+              if cb_in_main_chain(residue.resname):
                 continue
               is_first = (i_cf == 0)
               is_alt_conf = False
@@ -490,6 +512,7 @@ class calculate_ideal_and_deviation(object):
     self.deviation = None
     self.ideal = None
     self.dihedral = None
+    if cb_in_main_chain(resname) : return
     resCA = relevant_atoms[" CA "]
     resN  = relevant_atoms[" N  "]
     resC  = relevant_atoms[" C  "]
