@@ -21,9 +21,6 @@ results=[]
 global mol_pair_has_interaction
 mol_pair_has_interaction=[]
 
-global wave_functions
-wave_functions = []
-
 def load_wfc(element):
   element = element.lower()
   folder = libtbx.env.find_in_repositories("mmtbx/pair_interaction")
@@ -160,6 +157,8 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   element_flags = flex.int()
   for e in elements:
     element_flags.append(eldict[e.strip()])
+  # element_flags index into wave_functions, so build it for this call only
+  wave_functions = []
   for e in eldict:
     k = e.lower()
     if(len(k)==1): k+="_"
