@@ -2214,6 +2214,10 @@ END
   model.process(make_restraints=True, pdb_interpretation_params=p)
   expected = [a.memory_id() for a in GetAtomsForConformer(model.get_hierarchy().models()[0], "")
     if a.parent().resname.strip() != 'HOH' or a.parent().parent().resseq_as_int() in (201, 203)]
+  def waterOxygens():
+    return [a.memory_id() for a in model.get_hierarchy().atoms()
+      if a.parent().resname.strip() == 'HOH' and a.element.strip().upper() == 'O']
+  watersBefore = waterOxygens()
   opt = Optimizer(_philLike(), True, model, modelIndex = None, altID = None, verbosity = 1)
   # Phantom Hydrogens are appended after the model's atoms
   got = [a.memory_id() for a in opt._atoms if not a.name.strip().startswith('H?')]
@@ -2221,7 +2225,7 @@ END
     return "Optimizers.Test(): Wrong atoms or order after ignoring waters"
   if not "Ignored 3 waters due to occupancy or B factor" in opt.getInfo():
     return "Optimizers.Test(): Missing ignored-waters line"
-  if sum(1 for ag in model.get_hierarchy().atom_groups() if ag.resname == 'HOH') != 5:
+  if waterOxygens() != watersBefore:
     return "Optimizers.Test(): Ignored waters were removed from the model"
 
   #========================================================================
