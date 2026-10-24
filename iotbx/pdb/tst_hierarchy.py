@@ -6878,20 +6878,74 @@ ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
   assert result == [True, False], result
 
 def exercise_expand_to_p1():
+  """
+  One atom with ANISOU in C 1 2 1, expanded to P1, matches the sites and
+  anisotropic U of xray.structure.expand_to_p1, and keeps its sigxyz under
+  the identity and the C centring but not under the 2-fold.
+  """
   pdb_str = """
 CRYST1  194.707   61.015   92.246  90.00 116.65  90.00 C 1 2 1       8
 ATOM      1  N   ASP L   1      52.015   9.560  31.693  1.00 25.58           N
+ANISOU    1  N   ASP L   1     3442   3176   3100   -128    630    -84       N
 END
 """
   pdb_inp = pdb.input(source_info=None, lines=pdb_str)
   cs = pdb_inp.crystal_symmetry()
   ph = pdb_inp.construct_hierarchy()
   assert len(ph.atoms())==1
-  xyz_p1 = ph.extract_xray_structure(
-    crystal_symmetry=cs).expand_to_p1().sites_cart()
+  sigxyz = (0.01, 0.02, 0.03)
+  ph.atoms()[0].set_sigxyz(sigxyz)
+  xrs_p1 = ph.extract_xray_structure(crystal_symmetry=cs).expand_to_p1()
   p1 = ph.expand_to_p1(crystal_symmetry=cs)
   assert len(p1.atoms())==4
-  assert approx_equal(xyz_p1, p1.atoms().extract_xyz())
+  assert approx_equal(xrs_p1.sites_cart(), p1.atoms().extract_xyz())
+  assert approx_equal(
+    xrs_p1.scatterers().extract_u_cart(xrs_p1.unit_cell()),
+    p1.atoms().extract_uij())
+  # One atom, so p1 holds one copy per operator, in all_ops() order.
+  for smx, atom in zip(cs.space_group().all_ops(), p1.atoms()):
+    if (smx.r().is_unit_mx()):
+      assert atom.sigxyz == sigxyz
+    else:
+      assert atom.sigxyz == (0, 0, 0)
+
+def exercise_apply_rotation_translation():
+  """
+  Two atoms, one with ANISOU, copied under a rotation and under a pure
+  translation: both copies have the moved sites, the rotated copy has U
+  rotated and sigxyz cleared, the translated copy keeps both, and the atom
+  without ANISOU stays without in both.
+  """
+  import scitbx.matrix
+  pdb_str = """
+ATOM      1  N   ASP L   1      52.015   9.560  31.693  1.00 25.58           N
+ANISOU    1  N   ASP L   1     3442   3176   3100   -128    630    -84       N
+ATOM      2  CA  ASP L   1      51.012  10.524  32.152  1.00 24.11           C
+END
+"""
+  ph = pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
+  sigxyz = (0.01, 0.02, 0.03)
+  ph.atoms().set_sigxyz(flex.vec3_double(2, sigxyz))
+  r = scitbx.matrix.sqr((
+     0.500000, -0.809017,  0.309017,
+     0.809017,  0.309017, -0.500000,
+     0.309017,  0.500000,  0.809017))
+  t = scitbx.matrix.col((1, 2, 3))
+  result = ph.apply_rotation_translation(
+    rot_matrices=[r, scitbx.matrix.identity(3)], trans_vectors=[t, t])
+  atoms = result.atoms()
+  # atoms[:2] is the rotated copy, atoms[2:] the translated one.
+  assert approx_equal(atoms[:2].extract_xyz(),
+    r.elems * ph.atoms().extract_xyz() + t.elems)
+  u = scitbx.matrix.sym(sym_mat3=ph.atoms()[0].uij)
+  assert approx_equal(atoms[0].uij, (r * u * r.transpose()).as_sym_mat3())
+  assert not atoms[1].uij_is_defined()
+  assert list(atoms[:2].extract_sigxyz()) == [(0, 0, 0)] * 2
+  assert approx_equal(atoms[2:].extract_xyz(),
+    ph.atoms().extract_xyz() + t.elems)
+  assert atoms[2].uij == ph.atoms()[0].uij
+  assert not atoms[3].uij_is_defined()
+  assert list(atoms[2:].extract_sigxyz()) == [sigxyz] * 2
 
 def exercise_convert_met_to_semet():
   pdb_str_met1 = """
@@ -7430,6 +7484,7 @@ def exercise(args):
     exercise_set_atomic_charge()
     exercise_remove_atoms()
     exercise_expand_to_p1()
+    exercise_apply_rotation_translation()
     exercise_chunk_selections()
     exercise_set_i_seq()
     exercise_get_peptide_c_alpha_selection()
