@@ -498,6 +498,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_place.py",
   "$D/regression/tst_reduce2_metal_thiol.py",
   "$D/regression/tst_reduce2_optimizer_conformers.py",
+  "$D/regression/tst_reduce2_output_files.py",
   "$D/regression/tst_reduce2_neutron_distances.py",
   "$D/regression/tst_reduce2_neutron_water.py",
   "$D/regression/tst_reduce2_neutron_optimizer.py",

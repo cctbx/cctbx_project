@@ -909,6 +909,22 @@ def _ModelNumbers(hierarchy):
       result.append(None)
   return result
 
+def _PdbFormatProblems(hierarchy):
+  '''The reasons found in the hierarchy why fits_in_pdb_format() (hybrid-36)
+  is False, as text; empty if none of them is found.
+  '''
+  chains = sorted(set(c.id for c in hierarchy.chains() if len(c.id) > 2))
+  resnames = sorted(set(ag.resname for ag in hierarchy.atom_groups()
+    if len(ag.resname) > 3))
+  found = []
+  if resnames:
+    found.append('residue name%s longer than 3 characters: %s' % (
+      's' if len(resnames) > 1 else '', ', '.join(resnames)))
+  if chains:
+    found.append('chain ID%s longer than 2 characters: %s' % (
+      's' if len(chains) > 1 else '', ', '.join(chains)))
+  return '; '.join(found)
+
 def _SelectModelNumber(hierarchy, number):
   '''The model of the hierarchy with MODEL number number (in _ModelNumbers()).
   '''
@@ -928,6 +944,8 @@ Inputs:
 Output:
   PDB or mmCIF file with added hydrogens.  If output.filename is specified, then the
   type of file to write will be determined by its suffix (.pdb or .cif).
+  A .pdb request for a model that cannot be written in PDB format gives mmCIF
+  with the same base name (.cif), and the log says so.
   If output.filename is not specified, the output file will be
   written into the current working directory with the same base name and type as the
   original file and with FH or H added to the base name (FH when flips are requested);
@@ -1963,9 +1981,6 @@ NOTES:
 
     if os.environ.get('PHENIX_OVERWRITE_ALL', False):
       self.data_manager.set_overwrite(True)
-    if not self.params.output.overwrite:
-      if os.path.exists(self.params.output.filename):
-        print('\n\tOutput filename exists. Use overwrite=True to continue.')
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
@@ -1973,6 +1988,24 @@ NOTES:
                                                                                    '.txt')
       self.params.output.description_file_name=self.params.output.description_file_name.replace('.cif',
                                                                                    '.txt')
+
+    # Existing output files stop the run here, not after it. Names not known
+    # yet keep the Sorry from _write_text() at write time: the qmready default
+    # names (_charge<N> appended later) and the mmCIF written for a .pdb
+    # request that does not fit PDB format.
+    if self.params.output.write_files and not self.data_manager.get_overwrite():
+      charge_pending = (self.params.qmready and self.params.approach == 'add'
+        and self._default_output_filename)
+      names = []
+      if not charge_pending:
+        names.append(self.params.output.filename)
+      if not (charge_pending and self._default_description_file_name):
+        names.append(self.params.output.description_file_name)
+      existing = [n for n in names if os.path.exists(n)]
+      if existing:
+        raise Sorry('%s already exist%s; use overwrite=True to replace %s.' % (
+          ' and '.join(existing), 's' if len(existing) == 1 else '',
+          'it' if len(existing) == 1 else 'them'))
 
     # model_id is a MODEL number of the input
     if self.params.model_id is not None:
@@ -2330,11 +2363,22 @@ NOTES:
       output_cs = self._output_cs is not None
       if output_cs:
         self._output_model.set_unit_cell_crystal_symmetry(self._output_cs)
-      if suffix.lower() == ".pdb":
-        txt = self._output_model.model_as_pdb(output_cs=output_cs)
+      if suffix.lower() == ".pdb" and not self._output_model.can_be_output_as_pdb():
+        # model_as_pdb() would return only header records; write mmCIF instead
+        requested = self.params.output.filename
+        self.params.output.filename = self.data_manager.write_model_file(
+          self._output_model, os.path.splitext(requested)[0] + '.cif',
+          format='cif', output_cs=output_cs)
+        cause = _PdbFormatProblems(self._output_model.get_hierarchy())
+        print('Model cannot be represented in PDB format%s; writing mmCIF to %s '
+          'instead of %s.' % (' (%s)' % cause if cause else '',
+          self.params.output.filename, requested), file=self.logger)
       else:
-        txt = self._output_model.model_as_mmcif(output_cs=output_cs)
-      self.data_manager._write_text("model", txt, self.params.output.filename)
+        if suffix.lower() == ".pdb":
+          txt = self._output_model.model_as_pdb(output_cs=output_cs)
+        else:
+          txt = self._output_model.model_as_mmcif(output_cs=output_cs)
+        self.data_manager._write_text("model", txt, self.params.output.filename)
 
       print('Wrote', self.params.output.filename,'and',
         self.params.output.description_file_name, file = self.logger)
