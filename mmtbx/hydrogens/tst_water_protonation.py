@@ -1148,7 +1148,7 @@ def exercise_sym_equiv_on_symmetry_element():
   hier, cs = _hierarchy_and_symmetry(_ON_TWO_FOLD_PDB)
   hier.atoms().reset_i_seq()
   hiers, atoms, xyz, source = wp._symmetry_environment(
-    hier, hier.atoms().extract_xyz(), cs, wp._WATER_ACCEPTOR_RADIUS)
+    hier, cs, wp._WATER_ACCEPTOR_RADIUS)
   assert [a.name.strip() for a in atoms] == ["H1"], (
     [a.name for a in atoms], list(xyz))
   assert approx_equal(xyz[0], (-0.757, 5.586, 0.0))

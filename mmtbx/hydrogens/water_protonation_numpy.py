@@ -441,70 +441,37 @@ def _view_lobes(views, c):
   return views.get(c, views.get(0, ()))
 
 
-def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
+def _symmetry_environment(hier, crystal_symmetry, radius,
                           min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
   """Copies of the atoms crystal symmetry places within ``radius`` of a water.
 
-  Each copy carries its whole residue group. Copies are environment only;
-  a mate's placed protons are tracked separately (see
-  :func:`_water_sym_equiv_neighbours`). An equivalent closer than
-  ``min_distance_sym_equiv`` to its own site counts as that same atom, which
-  the asymmetric unit already holds.
+  Each copy carries its whole residue group (see
+  :meth:`iotbx.pdb.hierarchy.root.sym_equiv_residue_groups`). Copies are
+  environment only; a mate's placed protons are tracked separately (see
+  :func:`_water_sym_equiv_neighbours`). A copied atom closer than
+  ``min_distance_sym_equiv`` to an atom of the same element, in the model or
+  an earlier copy, counts as that atom and is left out.
 
   Returns ``(hierarchies, atoms, xyz, source)``: the sub-hierarchies, which
   own the atom objects and must be kept alive, their atoms in coordinate
   order, their sites, and the index of the model atom each was copied from.
   All four are empty when symmetry places nothing in range.
   """
-  nothing = [], [], flex.vec3_double(), flex.size_t()
   o_sel = flex.size_t([a.i_seq for a in hier.atoms()
                        if _is_water(a.parent().resname)
                        and a.element.strip().upper() == "O"])
-  if not o_sel.size():
-    return nothing
-  siiu, _ = super_cell.get_siiu(
-    sites_cart=sites_cart, crystal_symmetry=crystal_symmetry,
-    select_within_radius=radius, selection=o_sel, buffer=0,
-    min_distance_sym_equiv=min_distance_sym_equiv)
-  if not siiu:
-    return nothing
-  # Group the residue groups by operator, keyed on str(op): get_siiu gives
-  # every operator the same denominators, so equal operators print alike.
-  hier_atoms = hier.atoms()
-  rg_of = {}
-  by_op = {}
-  for j_seq, ops in siiu.items():
-    rg = hier_atoms[j_seq].parent().parent()
-    grp = rg_of.get(rg.memory_id())
-    if grp is None:
-      grp = rg_of[rg.memory_id()] = rg.atoms().extract_i_seq()
-    for op in ops:
-      key = str(op)
-      if key not in by_op:
-        by_op[key] = (op, set())
-      by_op[key][1].update(grp)
-  unit_cell = crystal_symmetry.unit_cell()
   hiers = []
   atoms = []
   xyz = flex.vec3_double()
   source = flex.size_t()
-  for key in sorted(by_op):
-    op, grp = by_op[key]
-    sel = flex.size_t(sorted(grp))
-    equiv = super_cell.sym_equiv_sites_cart(
-      sites_cart=sites_cart, unit_cell=unit_cell, rt_mx=op, selection=sel)
-    # A grown atom on a symmetry element of op lands on itself.
-    dx, dy, dz = (equiv - sites_cart.select(sel)).parts()
-    keep = (flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)
-            >= min_distance_sym_equiv ** 2).iselection()
-    # copy_atoms: without it set_xyz moves the model's own atoms.
-    sub = hier.select(sel.select(keep), copy_atoms=True)
-    sub_atoms = sub.atoms()
-    sub_atoms.set_xyz(equiv.select(keep))
-    hiers.append(sub)
+  for equiv in hier.sym_equiv_residue_groups(
+      crystal_symmetry, radius, selection=o_sel,
+      min_distance_sym_equiv=min_distance_sym_equiv):
+    sub_atoms = equiv.hierarchy.atoms()
+    hiers.append(equiv.hierarchy)
     atoms.extend(list(sub_atoms))
     xyz.extend(sub_atoms.extract_xyz())
-    source.extend(sel.select(keep))
+    source.extend(equiv.i_seqs)
   return hiers, atoms, xyz, source
 
 
@@ -1268,7 +1235,7 @@ class _WaterHydrogenPlacer(object):
     sym_src = flex.size_t()
     if self.crystal_symmetry is not None and (waters or single):
       self.sym_hier, sym_atoms, sym_xyz, sym_src = _symmetry_environment(
-        hier, sel.extract_xyz(), self.crystal_symmetry,
+        hier, self.crystal_symmetry,
         max(self.oh_length + _WATER_CLEARANCE_RADIUS + 0.01,
             _WATER_ACCEPTOR_RADIUS), self.min_distance_sym_equiv)
     atoms = atoms + sym_atoms
