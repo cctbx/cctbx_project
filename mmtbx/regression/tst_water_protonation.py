@@ -574,7 +574,7 @@ def exercise_single_h_water():
     f"default must not complete a single-H water; got {sorted(hs)}")
   assert (matrix.col(hs["H1"].xyz) - h1_in).length() < 1e-6, (
     "the deposited proton must not move")
-  assert [r[2] for r in res.partial_waters] == ["kept"]
+  assert [r[2] for r in res.partial_waters] == ["kept"], res.partial_waters
 
   done = _hierarchy(_SINGLE_H_WATER_PDB)
   res = wp.place_water_hydrogens(done, n_refine=0, existing_h="complete")
@@ -591,7 +591,8 @@ def exercise_single_h_water():
              - oh_target) < 1e-6, "new O-H length"
   assert _unit(hs["H2"], o).dot((acc - O).normalize()) > 0.9, (
     "the new proton should aim at the acceptor")
-  assert [r[2] for r in res.partial_waters] == ["completed"]
+  assert [r[2] for r in res.partial_waters] == ["completed"], (
+    res.partial_waters)
 
   redone = _hierarchy(_SINGLE_H_WATER_PDB)
   res = wp.place_water_hydrogens(redone, n_refine=0, existing_h="reorient")
@@ -599,7 +600,8 @@ def exercise_single_h_water():
   assert len(hs) == 2, f"reorient must give two H; got {sorted(hs)}"
   assert (matrix.col(hs["H1"].xyz) - h1_in).length() > 0.1, (
     "reorient must re-place the deposited proton")
-  assert [r[2] for r in res.partial_waters] == ["stripped"]
+  assert [r[2] for r in res.partial_waters] == ["stripped"], (
+    res.partial_waters)
 
 
 def exercise_single_h_metal_annotation():
@@ -612,7 +614,7 @@ def exercise_single_h_metal_annotation():
   assert len(near) == 1, f"expected one single-H water; got {near}"
   rid, metal, action = near[0]
   assert rid == "HOH W 1", rid
-  assert action == "kept"
+  assert action == "kept", action
   assert metal is not None, "a 2.1 A Mg should be reported as coordinating"
   assert metal[0] == "MG" and abs(metal[1] - 2.100) < 1e-3, metal
 
@@ -688,7 +690,8 @@ def exercise_h2_after_acceptor_fallback():
   def clearance(pt):
     return min((pt - x).length() for x in heavy)
   # H1 clashes, so it came from the fallback.
-  assert clearance(matrix.col(hs["H1"].xyz)) < wp._WATER_MIN_CLEARANCE
+  h1_clearance = clearance(matrix.col(hs["H1"].xyz))
+  assert h1_clearance < wp._WATER_MIN_CLEARANCE, h1_clearance
   p, q = (matrix.col(v) for v in wp._ortho_frame(d1.elems))
   oh_gas, hoh_gas = wp._WATER_GEOMETRY["gas_phase"]
   hoh = math.radians(hoh_gas)
@@ -752,7 +755,7 @@ def exercise_completed_water_survives_refinement():
     hier, n_refine=3, n_basin=2, existing_h="complete",
     geometry="neutron",
     on_state=lambda label, stats: states.append(stats[1]))
-  assert len(res.partial_waters) == 4
+  assert len(res.partial_waters) == 4, res.partial_waters
   # The point of the fixture: refinement and basin-hopping really do run.
   assert len(states) > 1 and max(states) > 0, (
     f"fixture must clash so the sweeps engage; states={states}")
@@ -859,7 +862,8 @@ def exercise_oh_length_auto():
 def exercise_environment_hydrogen_count():
   """``count_environment_hydrogens`` counts H and D outside the waters, and
   is not fooled by a model whose only hydrogens are on its waters."""
-  assert wp.count_environment_hydrogens(_hierarchy(_ENV_H_PDB)) == 2
+  n = wp.count_environment_hydrogens(_hierarchy(_ENV_H_PDB))
+  assert n == 2, n
 
   # Waters keep their H; the residue loses its two.
   bare = "\n".join(l for l in _ENV_H_PDB.split("\n")
@@ -879,10 +883,12 @@ def exercise_environment_hydrogen_count():
   water_d = [a for a in hier.atoms()
              if a.parent().resname.strip() == "DOD" and a.element.strip() == "D"]
   assert len(water_d) == 2, f"fixture should carry two water D; got {len(water_d)}"
-  assert wp.count_environment_hydrogens(hier) == 2
+  n = wp.count_environment_hydrogens(hier)
+  assert n == 2, n
 
   # Solvent-only model.
-  assert wp.count_environment_hydrogens(_hierarchy(_WATER_CLUSTER_PDB)) == 0
+  n = wp.count_environment_hydrogens(_hierarchy(_WATER_CLUSTER_PDB))
+  assert n == 0, n
 
 
 def exercise_detect_geometry():
@@ -1019,8 +1025,10 @@ def exercise_sym_equiv_contacts_counted():
   wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs,
                            on_state=lambda label, stats: states.append(stats))
   assert [s[1] for s in states] == [2], states
-  assert wp._water_clash_stats(hier, crystal_symmetry=cs) == states[0]
-  assert wp._water_clash_stats(hier)[1] == 0
+  stats = wp._water_clash_stats(hier, crystal_symmetry=cs)
+  assert stats == states[0], (stats, states[0])
+  stats = wp._water_clash_stats(hier)
+  assert stats[1] == 0, stats
   listed = wp._worst_water_clashes(hier, crystal_symmetry=cs)
   assert approx_equal([c[0] for c in listed], [1.486, 1.600], eps=1e-6)
   assert [c[1:] for c in listed] == [
@@ -1034,7 +1042,8 @@ def exercise_sym_equiv_contacts_counted():
   wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs,
                            on_state=lambda label, stats: states.append(stats))
   assert [s[1] for s in states] == [2], states
-  assert wp._water_clash_stats(hier, crystal_symmetry=cs) == states[0]
+  stats = wp._water_clash_stats(hier, crystal_symmetry=cs)
+  assert stats == states[0], (stats, states[0])
   listed = wp._worst_water_clashes(hier, crystal_symmetry=cs)
   assert approx_equal([c[0] for c in listed], [1.486, 1.603], eps=1e-3)
   assert [c[1:] for c in listed] == [
@@ -1129,8 +1138,10 @@ def exercise_altloc_environment():
               for h in hs)
   assert aimed > 0.99, f"conformer A should aim at the acceptor ({aimed:.3f})"
   assert [s[1] for s in states] == [0], states
-  assert wp._water_clash_stats(hier)[1] == 0
-  assert wp._atom_id(hs[0]) == f"HOH W 1 {hs[0].name.strip()} altloc A"
+  stats = wp._water_clash_stats(hier)
+  assert stats[1] == 0, stats
+  atom_id = wp._atom_id(hs[0])
+  assert atom_id == f"HOH W 1 {hs[0].name.strip()} altloc A", atom_id
 
 
 def exercise_improper_altloc_rejected():
@@ -1218,8 +1229,9 @@ def exercise_reorient_keeps_isotope():
     "HETATM    5  O   HOH W   2      20.000  20.000  20.000  1.00 10.00"
     "           O\nEND")))
   wp.place_water_hydrogens(hier, n_refine=0, existing_h="reorient")
-  assert sorted(a.element.strip() for a in hier.atoms()
-                if a.element.strip() in ("H", "D")) == ["D"] * 4
+  elements = sorted(a.element.strip() for a in hier.atoms()
+                    if a.element.strip() in ("H", "D"))
+  assert elements == ["D"] * 4, elements
 
   hier = _hierarchy(_ALTLOC_O_WATER_PDB)
   wp.place_water_hydrogens(hier, n_refine=0, existing_h="reorient")
