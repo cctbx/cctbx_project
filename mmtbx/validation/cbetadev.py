@@ -191,6 +191,7 @@ class cbetadev(validation):
       apply_phi_psi_correction=False,
       display_phi_psi_correction=False,
       use_parent_for_modified_residues=False,
+      fill_empty_phi_psi_bins=False,
       exclude_d_peptides=False,
       mahalanobis_z_score=False,
       mahalanobis_cutoff=4.,
@@ -292,6 +293,7 @@ class cbetadev(validation):
                       display_phi_psi_correction=display_phi_psi_correction,
                       use_parent_for_modified_residues=
                         use_parent_for_modified_residues,
+                      fill_empty_phi_psi_bins=fill_empty_phi_psi_bins,
                       )
                     if rc:
                       dev, dihedralNABB, start, finish = rc

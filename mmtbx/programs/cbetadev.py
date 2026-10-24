@@ -58,6 +58,13 @@ Example:
                 parent, including D-amino acids, are not corrected. \
                 Requires apply_phi_psi_correction, \
                 apply_positive_phi_correction or mahalanobis_z_score.
+      fill_empty_phi_psi_bins = False
+        .type = bool
+        .help = For a residue with 0 < phi < 150 whose (phi, psi) bin has \
+                no correction, use the mean correction of the populated \
+                neighbouring bins, if at least 3 of the 8 are populated. \
+                Requires apply_phi_psi_correction or \
+                apply_positive_phi_correction.
       display_phi_psi_correction = False
         .type = bool
         .help = Plot (matplotlib) the original deviation, correction and \
@@ -116,6 +123,11 @@ Example:
       raise Sorry('use_parent_for_modified_residues requires '
                   'apply_phi_psi_correction, apply_positive_phi_correction '
                   'or mahalanobis_z_score')
+    if (self.params.cbetadev.fill_empty_phi_psi_bins and
+        not (self.params.cbetadev.apply_phi_psi_correction or
+             self.params.cbetadev.apply_positive_phi_correction)):
+      raise Sorry('fill_empty_phi_psi_bins requires '
+                  'apply_phi_psi_correction or apply_positive_phi_correction')
 
   def get_results(self):
     return self.results
@@ -134,6 +146,7 @@ Example:
       apply_phi_psi_correction=self.params.cbetadev.apply_phi_psi_correction,
       display_phi_psi_correction=self.params.cbetadev.display_phi_psi_correction,
       use_parent_for_modified_residues=self.params.cbetadev.use_parent_for_modified_residues,
+      fill_empty_phi_psi_bins=self.params.cbetadev.fill_empty_phi_psi_bins,
       exclude_d_peptides=self.params.cbetadev.exclude_d_peptides,
       mahalanobis_z_score=self.params.cbetadev.mahalanobis_z_score,
       mahalanobis_cutoff=self.params.cbetadev.mahalanobis_cutoff,
