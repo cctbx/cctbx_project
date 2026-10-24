@@ -43,11 +43,11 @@ _WATER_GEOMETRY = {
 }
 _WATER_ACCEPTOR_RADIUS = 3.5  # max distance to search for H-bond acceptors (A)
 _WATER_ACCEPTOR_ELEMENTS = frozenset({"O", "N", "F", "S", "CL"})
-_WATER_NH_BOND = 1.3          # max N-H distance for the "N carries an H" test (A)
+_WATER_NH_BOND = 1.3          # max N-H distance for "N carries an H" (A)
 # Lone-pair-directed placement (opt-in): H1 aims at an acceptor's lone-pair
 # lobe rather than its nucleus. Its distances and angles:
-_WATER_BOND_HEAVY = 1.9       # max heavy-heavy bond distance for lobe geometry (A)
-_WATER_HBOND_HA = 1.8         # nominal H...acceptor distance for the lobe target (A)
+_WATER_BOND_HEAVY = 1.9       # max heavy-atom bond length for lobe geometry (A)
+_WATER_HBOND_HA = 1.8         # nominal H...acceptor distance along a lobe (A)
 _WATER_SP2_LOBE_DEG = 60.0    # half-angle of the two sp2 carbonyl/-late lobes
 _WATER_CONE_SAMPLES = 36      # angular samples around the O-H1 cone
 # Element-aware "clash-free" thresholds: a candidate H must clear every
@@ -72,19 +72,19 @@ _WATER_BASIN_RELAX = 2        # relaxation sweeps after each random kick
 # Cations within _WATER_CATION_RADIUS of the water O are repellers, keeping
 # both H in the hemisphere away from them, rather than acceptors.
 _WATER_CATION_ELEMENTS = frozenset({
-  "LI", "NA", "K", "RB", "CS",                                    # alkali
-  "BE", "MG", "CA", "SR", "BA",                                   # alkaline earth
-  "SC", "TI", "V", "CR", "MN", "FE", "CO", "NI", "CU", "ZN",      # 3d
-  "Y", "ZR", "NB", "MO", "TC", "RU", "RH", "PD", "AG", "CD",      # 4d
-  "HF", "TA", "W", "RE", "OS", "IR", "PT", "AU", "HG",            # 5d
-  "AL", "GA", "IN", "SN", "SB", "TL", "PB", "BI",                 # p-block
-  "LA", "CE", "PR", "ND", "PM", "SM", "EU", "GD",                 # lanthanides
+  "LI", "NA", "K", "RB", "CS",                                # alkali
+  "BE", "MG", "CA", "SR", "BA",                               # alkaline earth
+  "SC", "TI", "V", "CR", "MN", "FE", "CO", "NI", "CU", "ZN",  # 3d
+  "Y", "ZR", "NB", "MO", "TC", "RU", "RH", "PD", "AG", "CD",  # 4d
+  "HF", "TA", "W", "RE", "OS", "IR", "PT", "AU", "HG",        # 5d
+  "AL", "GA", "IN", "SN", "SB", "TL", "PB", "BI",             # p-block
+  "LA", "CE", "PR", "ND", "PM", "SM", "EU", "GD",             # lanthanides
   "TB", "DY", "HO", "ER", "TM", "YB", "LU",
-  "TH", "U",                                                      # actinides
+  "TH", "U",                                                  # actinides
 })
 _WATER_CATION_RADIUS = 3.0
 _WATER_METAL_COORD_RADIUS = 2.6  # first-shell M-O bond, reporting only
-_WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H1, acceptor) to count as donated to
+_WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H1, acceptor) to be donated to
 
 
 def _has_deuterium(hier):
@@ -1485,7 +1485,8 @@ class _WaterHydrogenPlacer(object):
         best_n20 = stats[1]
         best_coords = self._snapshot()
         best_label = f"sweep {i + 1}"
-      if self.refine_tol and prev_n20 is not None and prev_n20 - stats[1] < self.refine_tol:
+      if (self.refine_tol and prev_n20 is not None
+          and prev_n20 - stats[1] < self.refine_tol):
         break  # gain below tolerance: converged
       prev_n20 = stats[1]
 

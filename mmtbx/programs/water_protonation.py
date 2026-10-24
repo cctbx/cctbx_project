@@ -167,7 +167,8 @@ and existing_h=reorient strips all water H and re-places both.
         print(f"Crystal symmetry: {cs.space_group_info()}", file=self.logger)
 
     # Element: None leaves the choice to the placer, per water.
-    placer_element = None if self.params.element == "auto" else self.params.element
+    placer_element = (None if self.params.element == "auto"
+                      else self.params.element)
 
     places_d = (placer_element == "D"
                 or (placer_element is None

@@ -427,7 +427,8 @@ def exercise_acceptor_directed():
   o, hs = _water_atoms(hier)
   assert set(hs) == {"H1", "H2"}, f"expected H1 and H2; got {sorted(hs)}"
 
-  acc = sorted([a for a in atoms if a.parent().resname.strip() in ("ACA", "ACB")],
+  acc = sorted([a for a in atoms
+                if a.parent().resname.strip() in ("ACA", "ACB")],
                key=lambda a: a.distance(o))
   a1, a2 = acc  # nearer first -> matches H1
   assert _unit(hs["H1"], o).dot(_unit(a1, o)) > 0.9, (
@@ -515,7 +516,8 @@ def exercise_lone_pair_directed():
   c = matrix.col((-1.220, 0.0, 0.0))   # the carbonyl C
   split = _CARBONYL_PDB.replace(
     "HETATM    2  O   ACO A   1       0.000   0.000   0.000  1.00 10.00",
-    "HETATM    2  O  AACO A   1       0.000   0.000   0.000  0.50 10.00").replace(
+    "HETATM    2  O  AACO A   1       0.000   0.000   0.000  0.50 10.00")
+  split = split.replace(
     "END", "HETATM    6  O  BACO A   1       0.250   0.000   0.000  0.50 10.00"
     "           O\nEND")
 
@@ -665,7 +667,8 @@ def exercise_h2_reachable_acceptor():
   aca = (matrix.col((2.700, 0.000, 0.000)) - O).normalize()
   acc = (matrix.col((-0.725, -2.807, 0.000)) - O).normalize()
   d1, d2 = _unit(hs["H1"], o), _unit(hs["H2"], o)
-  assert d1.dot(aca) > 0.99, f"H1 should take the nearest acceptor; got {d1.dot(aca):.3f}"
+  assert d1.dot(aca) > 0.99, (
+    f"H1 should take the nearest acceptor; got {d1.dot(aca):.3f}")
   assert d2.dot(acc) > 0.9, (
     f"H2 should aim at the reachable acceptor on the cone; "
     f"alignment {d2.dot(acc):.3f}")
@@ -785,7 +788,8 @@ def exercise_element_override():
   deut = _hierarchy(_TWO_ACCEPTOR_PDB)
   wp.place_water_hydrogens(deut, n_refine=0, element="D")
   _, hs = _water_atoms(deut)
-  assert set(hs) == {"D1", "D2"}, f"element='D' should place D; got {sorted(hs)}"
+  assert set(hs) == {"D1", "D2"}, (
+    f"element='D' should place D; got {sorted(hs)}")
   for d in hs.values():
     assert d.element.strip().upper() == "D", "placed atom element must be D"
 
@@ -881,8 +885,10 @@ def exercise_environment_hydrogen_count():
     for l in _ENV_H_PDB.split("\n"))
   hier = _hierarchy(dod)
   water_d = [a for a in hier.atoms()
-             if a.parent().resname.strip() == "DOD" and a.element.strip() == "D"]
-  assert len(water_d) == 2, f"fixture should carry two water D; got {len(water_d)}"
+             if a.parent().resname.strip() == "DOD"
+             and a.element.strip() == "D"]
+  assert len(water_d) == 2, (
+    f"fixture should carry two water D; got {len(water_d)}")
   n = wp.count_environment_hydrogens(hier)
   assert n == 2, n
 
