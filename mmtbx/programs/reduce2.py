@@ -1723,6 +1723,51 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _FinalizeModel(self, hierarchy):
+    # The model that ends the run: a fresh, unprocessed manager built from the
+    # finished hierarchy (crystal symmetry, restraint objects and
+    # stop_for_unknowns as _RebuildModel()). Replaces a full re-interpretation
+    # with make_restraints=False; the steps below are the parts of it the
+    # output depends on. No restraints manager, as before: that was the guard
+    # against the crash in pair_proxies() when writing mmCIF after atoms were
+    # removed, and it leaves no links to write (C4). No monomer mappings:
+    # selection() uses the atom-selection cache.
+    # :param hierarchy: The finished hierarchy; changed in place.
+    # :return: The new model.
+    # the sort and serials of _ReinterpretModel()
+    hierarchy.sort_atoms_in_place()
+    hierarchy.atoms().reset_serial()
+    cs = self.model.crystal_symmetry()
+    if cs is not None:
+      # process() rounds coordinates and ADPs through an X-ray structure
+      # (pdb_interpretation.py ~4270), visible in the written bytes. Extracted
+      # here, after the sort: adopt_xray_structure() matches by order.
+      hierarchy.adopt_xray_structure(
+        hierarchy.extract_xray_structure(crystal_symmetry=cs))
+    # process()'s _check_for_capitalised_element(): adopt gives "Ca"
+    for a in hierarchy.atoms():
+      if a.element != a.element.upper():
+        a.element = a.element.upper()
+    model = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = hierarchy,
+      crystal_symmetry  = cs,
+      restraint_objects = self.model.get_restraint_objects(),
+      stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
+      log               = null_out())
+    # the writer's symmetry choice and shift back (_figure_out_cs_to_output())
+    if self.model.shift_cart() is not None:
+      model.set_unit_cell_crystal_symmetry_and_shift_cart(
+        unit_cell_crystal_symmetry = self.model.unit_cell_crystal_symmetry(),
+        shift_cart = self.model.shift_cart())
+    # as select() does: info() (file names) and the input format, which
+    # write_model_file(format=Auto) follows
+    model.set_info(copy.deepcopy(self.model.info()))
+    model._original_model_format = self.model._original_model_format
+    return model
+
+# ------------------------------------------------------------------------------
+
   def _CheckQmreadyClashes(self):
     # qmready=True: Sorry if the finished model has a non-bonded contact
     # below 1.0 A. Checked on a copy with restraints (self.model has none);
@@ -2316,11 +2361,11 @@ NOTES:
           if chain.residue_groups_size() == 0:
             m.remove_chain(chain)
 
-    # Re-process the model because we have removed some atoms that were previously
-    # bonded.  Don't make restraints during the reprocessing.
-    # We had to do this to keep from crashing on a call to pair_proxies when generating
-    # mmCIF files, so we always do it for safety.
-    self._ReinterpretModel(False)
+    # Rebuild the model without restraints because we have removed some atoms
+    # that were previously bonded. Like the re-interpretation without restraints
+    # this replaces, it keeps us from crashing on a call to pair_proxies when
+    # generating mmCIF files, so we always do it for safety.
+    self.model = self._FinalizeModel(self.model.get_hierarchy())
 
     # qmready=True: the finished model must be clash-free (remove adds no H)
     if self.params.qmready and self.params.approach != 'remove':
@@ -2344,7 +2389,7 @@ NOTES:
       self._neutron_result = hd_exchange.apply_neutron_option(h,
         self.params.neutron_option, parent_table=self._h_parents,
         records=self._hd_records, unchanged_keys=self._UnrestrainedKeys())
-      self._output_model = self._RebuildModel(h, make_restraints=False)
+      self._output_model = self._FinalizeModel(h)
       self._DropAutoRestraints(self._output_model)
       self._CheckNeutronOutput()
       outString += self._NeutronDescription()
@@ -2524,12 +2569,13 @@ NOTES:
       if len(amides) > 0:
         make_sub_header('Generating Amide Flipkin', out=self.logger)
 
+        # Interpret the model to fill in things we need for determining the neighbor list
+        # and for the sidechain selection of the views (the finished model is not interpreted).
+        self._ReinterpretModel()
+
         # Find the viewpoint locations for each Mover we're going to
         # look at.
         views = self._GetViews(amides)
-
-        # Interpret the model to fill in things we need for determining the neighbor list.
-        self._ReinterpretModel()
 
         carts = flex.vec3_double()
         for a in self.model.get_atoms():
@@ -2645,12 +2691,13 @@ NOTES:
       if len(hists) > 0:
         make_sub_header('Generating Histidine Flipkin', out=self.logger)
 
+        # Interpret the model to fill in things we need for determining the neighbor list
+        # and for the sidechain selection of the views (the finished model is not interpreted).
+        self._ReinterpretModel()
+
         # Find the viewpoint locations for each Mover we're going to
         # look at.
         views = self._GetViews(hists)
-
-        # Interpret the model to fill in things we need for determining the neighbor list.
-        self._ReinterpretModel()
 
         carts = flex.vec3_double()
         for a in self.model.get_atoms():
@@ -2781,6 +2828,13 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def get_results(self):
+    '''
+    :return: group_args with model (the output model) and total_charge (qmready
+    add, otherwise None). The returned model is not guaranteed to be
+    interpreted. Callers needing interpretation-dependent operations (e.g.
+    backbone or sidechain selections) should check processed() and call
+    process(make_restraints=False) if necessary.
+    '''
     return group_args(
       model        = getattr(self, '_output_model', self.model),
       total_charge = getattr(self, 'total_charge', None))
