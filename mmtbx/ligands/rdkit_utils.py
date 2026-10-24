@@ -887,6 +887,9 @@ def read_chemical_component_filename(filename, xyz_label=None, verbose=False):
     # 'deloc': Chem.rdchem.BondType.ONEANDAHALF,
     # 'deloc': Chem.rdchem.BondType.OTHER,
     'deloc': Chem.rdchem.BondType.SINGLE,
+    'coval': Chem.rdchem.BondType.SINGLE,
+    'metal': Chem.rdchem.BondType.SINGLE,
+    'SING': Chem.rdchem.BondType.SINGLE,
   }
 
   if xyz_label is None:
@@ -924,9 +927,9 @@ def read_chemical_component_filename(filename, xyz_label=None, verbose=False):
       conformer = Chem.Conformer(atom.n_rows())
       for j, tmp in enumerate(atom.iterrows()):
         new = Chem.Atom(tmp.get('_chem_comp_atom.type_symbol').capitalize())
-        # unknown charge (TPT PT1) -> 0
+        # unknown charge (TPT PT1) or no charge column (older restraints) -> 0
         charge = tmp.get('_chem_comp_atom.charge')
-        new.SetFormalCharge(0 if charge in ['?', '.'] else int(charge))
+        new.SetFormalCharge(0 if charge in [None, '?', '.'] else int(charge))
         for prop in ['atom_id', 'type_symbol']:
           new.SetProp(prop, tmp.get('_chem_comp_atom.%s' % prop, '?'))
         rdatom = rwmol.AddAtom(new)
@@ -940,14 +943,18 @@ def read_chemical_component_filename(filename, xyz_label=None, verbose=False):
       if bond:
         for tmp in bond.iterrows():
           if (skip_metal_bonds and
-              tmp.get('_chem_comp_bond.pdbx_metal_coordination_flag') == 'Y'):
+              (tmp.get('_chem_comp_bond.pdbx_metal_coordination_flag') == 'Y' or
+               tmp.get('_chem_comp_bond.type') == 'metal')):
             continue
           atom1 = tmp.get('_chem_comp_bond.atom_id_1')
           atom2 = tmp.get('_chem_comp_bond.atom_id_2')
           atom1 = lookup.get(atom1)
           atom2 = lookup.get(atom2)
           order = tmp.get('_chem_comp_bond.value_order')
-          order = bond_order_ccd[order]
+          if order is not None:
+            order = bond_order_ccd[order]
+          else:
+            order = bond_order_restraints[tmp.get('_chem_comp_bond.type')]
           rwmol.AddBond(atom1, atom2, order)
     rwmol.AddConformer(conformer)
     return code, desc, rwmol
