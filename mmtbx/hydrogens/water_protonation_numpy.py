@@ -16,8 +16,6 @@ in place; :class:`mmtbx.programs.water_protonation.Program` wraps it as the
 Needs ``numpy`` and ``scipy`` (KDTree).
 """
 
-from __future__ import absolute_import, division, print_function
-
 import math
 import random
 

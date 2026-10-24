@@ -98,8 +98,6 @@ to get wrong:
   ``output.prefix``, ``output.suffix`` and ``output.serial`` change it.
 """
 
-from __future__ import absolute_import, division, print_function
-
 import math
 import os
 from io import StringIO

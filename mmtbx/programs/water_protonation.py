@@ -5,8 +5,6 @@ Thin DataManager/PHIL wrapper around
 command-line dispatcher is ``mmtbx.development.naiad``.
 """
 
-from __future__ import absolute_import, division, print_function
-
 import os
 import textwrap
 

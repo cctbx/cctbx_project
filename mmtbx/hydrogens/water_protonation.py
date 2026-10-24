@@ -17,8 +17,6 @@ Needs ``scipy`` (KDTree); the vectorised work is
 ``scitbx.array_family.flex``.
 """
 
-from __future__ import absolute_import, division, print_function
-
 import math
 import random
 
