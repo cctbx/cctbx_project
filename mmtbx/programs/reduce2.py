@@ -1251,6 +1251,33 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _ElementXText(self, selection):
+    # Atoms with element X, removed at loading: one line, then the atoms,
+    # capped at 20 unless verbosity > 2. Printed here.
+    # :param selection: The element X atoms of self.model.
+    # :return: The description-file text.
+    atoms = list(self.model.get_hierarchy().atoms().select(selection))
+    cap = None if self.params.verbosity > 2 else 20
+    lines = ['', 'Removed %d atom(s) with element X: the element is unknown, so '
+      'H cannot be placed around them; they are not in the output.' %
+      len(atoms)]
+    shown = atoms if cap is None else atoms[:cap]
+    for a in shown:
+      ag = a.parent()
+      rg = ag.parent()
+      label = '%s %s %s%s %s' % (ag.resname.strip(), rg.parent().id.strip(),
+        rg.resseq.strip(), rg.icode.strip(), a.name.strip())
+      if ag.altloc.strip():
+        label += ' altloc %s' % ag.altloc
+      lines.append('  ' + label)
+    if len(shown) < len(atoms):
+      lines.append('  (+%d more)' % (len(atoms) - len(shown)))
+    text = '\n'.join(lines) + '\n'
+    print(text, file=self.logger)
+    return text
+
+# ------------------------------------------------------------------------------
+
   def _UnchangedText(self):
     # Residues without restraints (ignore_missing_restraints=True) that the
     # run leaves as in the input: optimize, and placement keeping the input
@@ -2098,7 +2125,10 @@ NOTES:
     # Get our model.
     self.model = self.data_manager.get_model()
 
-    self.model = self.model.select(~self.model.selection('element X'))
+    sel_x = self.model.selection('element X')
+    if sel_x.count(True) > 0:
+      outString += self._ElementXText(sel_x)
+    self.model = self.model.select(~sel_x)
     # A model shifted in memory (e.g. boxed with a map) is shifted back on
     # this copy: placement builds a new model without the shift, so the run
     # is the file run. _ReturnedModel() puts the shift back. Any non-zero
