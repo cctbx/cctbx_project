@@ -418,10 +418,11 @@ def _acceptor_lobes(atoms, static_tree, donor_n, indices, conf=None):
     if not split:
       lobes[i] = {ci: _bond_lobes(atoms, static_tree, i, el, nbrs, conf, ci)}
     else:
-      lobes[i] = {
-        v: _bond_lobes(atoms, static_tree, i, el,
-                       [j for j in nbrs if conf[j] in (0, v)], conf, v)
-        for v in sorted(split | {0})}
+      lobes[i] = {}
+      for v in sorted(split | {0}):
+        lobes[i][v] = _bond_lobes(atoms, static_tree, i, el,
+                                  [j for j in nbrs if conf[j] in (0, v)],
+                                  conf, v)
   return lobes
 
 
@@ -432,7 +433,10 @@ def _view_lobes(views, c):
   if not views:
     return ()
   if not c:
-    split = [lobe for v in sorted(views) if v for lobe in views[v]]
+    split = []
+    for v in sorted(views):
+      if v:
+        split.extend(views[v])
     return split or views.get(0, ())
   return views.get(c, views.get(0, ()))
 
@@ -475,7 +479,10 @@ def _symmetry_environment(hier, sites_cart, crystal_symmetry, radius,
     if grp is None:
       grp = rg_of[rg.memory_id()] = rg.atoms().extract_i_seq()
     for op in ops:
-      by_op.setdefault(str(op), (op, set()))[1].update(grp)
+      key = str(op)
+      if key not in by_op:
+        by_op[key] = (op, set())
+      by_op[key][1].update(grp)
   unit_cell = crystal_symmetry.unit_cell()
   hiers = []
   atoms = []
@@ -1196,10 +1203,12 @@ class _WaterHydrogenPlacer(object):
           continue
         # What a reorient stripped from this conformer: its blank H and its
         # own altloc's, each with the atom group that held it.
-        carried = [(el, occ, g)
-                   for g in ([target] if target is blank else [blank, target])
-                   if g is not None
-                   for el, occ in stripped.get(g.memory_id(), ())]
+        carried = []
+        for g in ([target] if target is blank else [blank, target]):
+          if g is None:
+            continue
+          for el, occ in stripped.get(g.memory_id(), ()):
+            carried.append((el, occ, g))
         fixed_d1 = None
         skip = len(existing) >= 2          # already protonated
         if existing and not skip:
@@ -1227,8 +1236,9 @@ class _WaterHydrogenPlacer(object):
                     else existing[0].parent())
           action = ("stripped" if self.existing_h == "reorient"
                     else "completed" if fixed_d1 is not None else "kept")
-          single.setdefault((rg.memory_id(), holder.memory_id()),
-                            (_water_id(holder), o.xyz, own_idx, c, action))
+          key = (rg.memory_id(), holder.memory_id())
+          if key not in single:
+            single[key] = (_water_id(holder), o.xyz, own_idx, c, action)
         if skip:
           continue
         # New H take the conformer's occupancy: its own altloc's atoms', or
@@ -1338,11 +1348,17 @@ class _WaterHydrogenPlacer(object):
       # Order most-crowded first. ``crowd`` is the neighbour count within
       # the clash radius, the water's own atoms and atoms of other altlocs
       # excluded.
-      crowd = [sum(1 for j in nb if j not in waters[k][2]
-                   and (not w_conf[k] or _compatible(w_conf[k], self.conf[j])))
-               for k, nb in enumerate(self.static_tree.query_ball_point(
-                 o_pts, _WATER_CLEARANCE_RADIUS,
-                 return_sorted=False))]
+      crowd = []
+      for k, nb in enumerate(self.static_tree.query_ball_point(
+          o_pts, _WATER_CLEARANCE_RADIUS, return_sorted=False)):
+        count = 0
+        for j in nb:
+          if j in waters[k][2]:
+            continue
+          if w_conf[k] and not _compatible(w_conf[k], self.conf[j]):
+            continue
+          count += 1
+        crowd.append(count)
       order = sorted(range(n), key=lambda k: crowd[k], reverse=True)
       waters = [waters[k] for k in order]
       # Conformer index per water; the filters below run only for the
@@ -1391,11 +1407,12 @@ class _WaterHydrogenPlacer(object):
       # candidates.
       r_wh = _WATER_CLEARANCE_RADIUS + 2.0 * self.oh_length + 0.01
       split = any(self.w_conf)
-      self.w_wnbr = [[j for j in nb if j != wi and (
-                        not split or _compatible(self.w_conf[wi],
-                                                 self.w_conf[j]))]
-                     for wi, nb in enumerate(KDTree(o_pts).query_ball_point(
-                       o_pts, r_wh, return_sorted=False))]
+      self.w_wnbr = []
+      for wi, nb in enumerate(KDTree(o_pts).query_ball_point(
+          o_pts, r_wh, return_sorted=False)):
+        self.w_wnbr.append([j for j in nb if j != wi and (
+                              not split or _compatible(self.w_conf[wi],
+                                                       self.w_conf[j]))])
       # The same test against the symmetry equivalents of these waters.
       if self.crystal_symmetry is not None:
         self.w_sym_nbr, self.sym_tf, own_blocks = _water_sym_equiv_neighbours(
@@ -1403,16 +1420,20 @@ class _WaterHydrogenPlacer(object):
           self.min_distance_sym_equiv, self.w_conf if split else None)
         # matrix_cart's raw tuple is what multiplies a vec3_double array;
         # the matrix.sqr wrapper _pool_write uses does not.
-        self.w_self_ops = [
-          tuple((self.sym_tf[b][0].elems, self.sym_tf[b][1].elems)
-                for b in own_blocks[wi]) for wi in range(n)]
+        self.w_self_ops = []
+        for wi in range(n):
+          self.w_self_ops.append(tuple(
+            (self.sym_tf[b][0].elems, self.sym_tf[b][1].elems)
+            for b in own_blocks[wi]))
         if len(self.sym_tf) > 1:
           in_block = [set() for _ in range(n)]
           for wi in range(n):
             for b, wj in self.w_sym_nbr[wi]:
               in_block[wj].add(b)
-          self.w_blocks = [tuple((b,) + self.sym_tf[b] for b in sorted(bs))
-                           for bs in in_block]
+          self.w_blocks = []
+          for bs in in_block:
+            self.w_blocks.append(tuple((b,) + self.sym_tf[b]
+                                       for b in sorted(bs)))
           self.pool_np = np.zeros((len(self.sym_tf) * self.n_slots, 3))
 
     # Initial greedy pass over the ordered waters, each avoiding the H
@@ -1422,7 +1443,9 @@ class _WaterHydrogenPlacer(object):
 
     def nbr_slots(wi):
       """Pool slots of the waters and equivalents neighbouring water ``wi``."""
-      nbr = [s for wj in self.w_wnbr[wi] for s in slots_of[wj]]
+      nbr = []
+      for wj in self.w_wnbr[wi]:
+        nbr.extend(slots_of[wj])
       for b, wj in self.w_sym_nbr[wi]:
         off = b * self.n_slots
         nbr.extend(off + s for s in slots_of[wj])
@@ -1442,9 +1465,11 @@ class _WaterHydrogenPlacer(object):
         proton_element = carried[0]
       else:
         if model_has_d is None:
-          model_has_d = (_has_deuterium(hier)
-                         or any(e == "D" for removed in stripped.values()
-                                for e, _ in removed))
+          model_has_d = _has_deuterium(hier)
+          for removed in stripped.values():
+            for e, _ in removed:
+              if e == "D":
+                model_has_d = True
         proton_element = "D" if model_has_d else "H"
       h1, h2 = self._place_one(wi, nbr_slots(wi), fixed_d1)
 
@@ -1678,7 +1703,10 @@ def _water_h_sym_pairs(xyz, wid, anchor, crystal_symmetry,
                      + D[:, 2] * D[:, 2]).max())
   h_of = {}
   for k in sel.tolist():
-    h_of.setdefault(int(wid[k]), []).append(k)
+    w = int(wid[k])
+    if w not in h_of:
+      h_of[w] = []
+    h_of[w].append(k)
   sites = sorted({(int(wid[k]), anchor[k]) for k in sel.tolist()})
   found = _sym_equiv_pairs(
     flex.vec3_double([o for _, o in sites]), crystal_symmetry,
@@ -1692,7 +1720,10 @@ def _water_h_sym_pairs(xyz, wid, anchor, crystal_symmetry,
     mirror = (wj, wi, op.inverse().new_denominators(op))
     if mirror in listed and mirror < (wi, wj, op):
       continue
-    _, i, j = by_op.setdefault(str(op), (op, [], []))
+    key = str(op)
+    if key not in by_op:
+      by_op[key] = (op, [], [])
+    _, i, j = by_op[key]
     own_inverse = mirror == (wi, wj, op)
     for a in h_of[wi]:
       for b in h_of[wj]:
@@ -1779,8 +1810,10 @@ def _all_water_h_contacts(hier, crystal_symmetry, min_distance_sym_equiv):
       xyz, _water_h_sym_pairs(xyz, wid, anchor, crystal_symmetry,
                               min_distance_sym_equiv, conf),
       crystal_symmetry.unit_cell()))
-  contacts = [(dk, ik, jk, op) for op, i, j, d in groups
-              for ik, jk, dk in zip(i.tolist(), j.tolist(), d.tolist())]
+  contacts = []
+  for op, i, j, d in groups:
+    for ik, jk, dk in zip(i.tolist(), j.tolist(), d.tolist()):
+      contacts.append((dk, ik, jk, op))
   return atoms, contacts
 
 
