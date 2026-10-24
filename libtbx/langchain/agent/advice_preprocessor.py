@@ -759,10 +759,11 @@ def preprocess_advice(raw_advice, experiment_type=None, file_list=None,
         else:
             response = llm.invoke(prompt)
 
-        if hasattr(response, 'content'):
-            processed = response.content
-        else:
-            processed = str(response)
+        try:
+          from libtbx.langchain.core.llm import response_text
+        except ImportError:
+          from core.llm import response_text
+        processed = response_text(response)
 
         # Basic validation - should have some content
         if processed and len(processed) > 20:

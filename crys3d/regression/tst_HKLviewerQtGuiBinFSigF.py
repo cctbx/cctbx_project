@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function
 from crys3d.regression import tests_HKLviewer
 from libtbx.test_utils import contains_substring
-import os, sys, subprocess
+import os, subprocess
 
 os.environ['PYTHONIOENCODING'] = 'UTF-8'
 
@@ -28,8 +28,8 @@ Job complete
 """
 
 def run():
-  if 'linux' in sys.platform and os.environ.get("DISPLAY", None) != "0:0":
-    return # Only run test if on a local linux machine with a connected monitor
+  if tests_HKLviewer.skip_QtGUI_test():
+    return
   count = 0
   while True:
     print("running %d" %count)
@@ -49,12 +49,7 @@ def run():
                           stdin = subprocess.PIPE,
                           stdout = subprocess.PIPE,
                           stderr = subprocess.STDOUT)
-  try:
-    souterr,err = obj.communicate(timeout=60)
-  except subprocess.TimeoutExpired:
-    obj.kill()
-    souterr,err = obj.communicate()
-    raise RuntimeError("cctbx.HKLinfo exceeded 60 s and was killed")
+  souterr = tests_HKLviewer.communicate_or_kill(obj, 60, "cctbx.HKLinfo")
   tests_HKLviewer.Append2LogFile("QtGuiBinFSigFHKLviewer.log", souterr)
   souterr = souterr.decode().replace("\r\n", "\n") # omit \r\n line endings on Windows
   assert (contains_substring( souterr, expectedstr ) )

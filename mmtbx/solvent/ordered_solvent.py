@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import math,sys
+import copy
 from libtbx import adopt_init_args
 from cctbx import adptbx
 import iotbx.xplor.map
@@ -8,6 +9,7 @@ import iotbx.phil
 from mmtbx import find_peaks
 import mmtbx.utils
 from cctbx import maptbx
+from cctbx import crystal
 from libtbx.test_utils import approx_equal
 from six.moves import range
 from libtbx.utils import user_plus_sys_time
@@ -61,6 +63,16 @@ h_bond_params_str = """
     .expert_level = 1
   dist_min_altloc = 0.5
     .type = float
+  dist_min_h_nonpolar = 2.0
+    .type = float
+    .short_caption = Min distance between water and H bonded to carbon
+    .help = Closer contacts are clashes (O and H radii minus 0.4 A overlap)
+    .expert_level = 1
+  dist_min_h_polar = 1.5
+    .type = float
+    .short_caption = Min distance between water and polar H (on N, O, S)
+    .help = Polar H can make H-bonds with water, so shorter than for non-polar H
+    .expert_level = 1
 """
 
 adp_occ_params_str = """
@@ -353,6 +365,7 @@ def add_solvent_to_model_inplace(
   #
   # Finally, add new atoms to restraints manager
   #
+  geometry = None
   rm = model.get_restraints_manager()
   if(rm is not None):
     geometry = rm.geometry
@@ -409,6 +422,8 @@ def add_solvent_to_model_inplace(
             if(not get_class(name=r.resname) == "common_water"): continue
             i_seqs = r.atoms().extract_i_seq()
             if i_seqs.size() != 3: continue
+            # only new water: existing one already has restraints
+            if flex.min(i_seqs) < initial_model_size: continue
             io = None
             ihs = []
             for atom in r.atoms():
@@ -436,7 +451,7 @@ def add_solvent_to_model_inplace(
   #
   # Update H riding manager
   #
-  if model.riding_h_manager is not None:
+  if model.riding_h_manager is not None and geometry is not None:
     new_riding_h_manager = model.riding_h_manager.update(
       pdb_hierarchy       = model.get_hierarchy(),
       geometry_restraints = geometry,
@@ -742,15 +757,70 @@ class maps(object):
     mean = flex.mean(result)
     if mean/2 > 3: cutoff = 3
 
+def get_water_neighbors(model, distance_cutoff):
+  """
+  Neighbors (accounting for symmetry) of non-H atoms of water.
+  Returns dictionary: i_seq of water atom -> list of (j_seq, distance) for
+  atoms within distance_cutoff, excluding atoms of the same residue group
+  (own H and alternative conformations of the same water).
+  One neighbor search for all atoms: much faster than one search per water.
+  """
+  get_class = iotbx.pdb.common_residue_names_get_class
+  atoms = model.get_hierarchy().atoms()
+  water_i_seqs = []
+  for ag in model.get_hierarchy().atom_groups():
+    if(get_class(name=ag.resname) != "common_water"): continue
+    for a in ag.atoms():
+      if(not a.element_is_hydrogen()): water_i_seqs.append(a.i_seq)
+  result = {}
+  if(len(water_i_seqs) == 0): return result
+  sps = model.crystal_symmetry().special_position_settings()
+  sites_cart = model.get_sites_cart()
+  asu_mappings = sps.asu_mappings(
+    buffer_thickness = distance_cutoff,
+    sites_cart       = sites_cart)
+  pair_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
+  pair_asu_table.add_all_pairs(distance_cutoff = distance_cutoff)
+  table = pair_asu_table.table()
+  uc = model.crystal_symmetry().unit_cell()
+  sites_frac = uc.fractionalize(sites_cart)
+  for i in water_i_seqs:
+    rg_i = atoms[i].parent().parent().memory_id()
+    rt_mx_i_inv = asu_mappings.get_rt_mx(i, 0).inverse()
+    neighbors = []
+    for j, j_sym_groups in table[i].items():
+      if(atoms[j].parent().parent().memory_id() == rg_i): continue
+      d = None
+      for j_syms in j_sym_groups:
+        for j_sym in j_syms:
+          rt_mx = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j, j_sym))
+          d_ = uc.distance(sites_frac[i], rt_mx * sites_frac[j])
+          if(d is None or d_ < d): d = d_
+      neighbors.append((j, d))
+    result[i] = neighbors
+  return result
+
+def is_polar_h(atom):
+  """
+  True if H atom is bonded (closest non-H atom of the same residue group within
+  1.3 A) to N, O or S, i.e. can make H-bonds.
+  """
+  best = None
+  for a in atom.parent().parent().atoms():
+    if(a.element_is_hydrogen()): continue
+    d = a.distance(atom)
+    if(d < 1.3 and (best is None or d < best[0])):
+      best = (d, a.element.strip().upper())
+  return best is not None and best[1] in ["N", "O", "S"]
+
 def fix_altlocs_and_filter(model, dist_min=1.8, fix_only=False):
   present_altlocs = list(
     model.get_hierarchy().get_conformer_indices().index_altloc_mapping.keys())
-  sps = model.crystal_symmetry().special_position_settings()
   get_class = iotbx.pdb.common_residue_names_get_class
   only_model = model.get_hierarchy().only_model()
   eps = 1.e-3
   dist_min = dist_min-eps
-  sites_cart = model.get_sites_cart()
+  neighbors = get_water_neighbors(model=model, distance_cutoff=dist_min)
   atoms = only_model.atoms()
   remove_sel = flex.size_t()
   for agi in only_model.atom_groups(): # loop over water
@@ -758,9 +828,7 @@ def fix_altlocs_and_filter(model, dist_min=1.8, fix_only=False):
     for ai in agi.atoms():
       if ai.element_is_hydrogen(): continue # skip water H
       #
-      selection_around_ai = get_sphere_selection(
-        sites_cart_all=sites_cart, special_position_settings=sps,
-        radius=dist_min, i_seq=ai.i_seq)
+      selection_around_ai = [j for j, d in neighbors[ai.i_seq]]
       if len(selection_around_ai) == 0: continue
       #
       altlocs_inside = []
@@ -791,8 +859,6 @@ def fix_altlocs_and_filter(model, dist_min=1.8, fix_only=False):
         altlocs_inside.append( atoms[j].parent().altloc )
       #
       if agi.altloc in altlocs_inside or agi.altloc in [' ', '']:
-        #print(ai.i_seq, selection_around_ai, altlocs_inside, [agi.altloc])
-        #new_altloc = get_unique_altloc(exclude=altlocs_inside+[agi.altloc])
         new_altloc = get_unique_altloc2(
               available = present_altlocs,
               exclude   = altlocs_inside+[agi.altloc])
@@ -806,55 +872,57 @@ def fix_altlocs_and_filter(model, dist_min=1.8, fix_only=False):
     model = model.select(selection = remove_sel)
   return model
 
-def get_sphere_selection(
-      sites_cart_all, special_position_settings, radius, i_seq):
-  sel = flex.bool(sites_cart_all.size(), False)
-  sel[i_seq] = True
-  selection_around_i_seq = special_position_settings.pair_generator(
-    sites_cart      = sites_cart_all,
-    distance_cutoff = radius
-      ).neighbors_of(primary_selection = sel).iselection()
-  selection_around_i_seq = list(selection_around_i_seq)
-  if len(selection_around_i_seq) > 0:
-    selection_around_i_seq.remove(i_seq)
-  return selection_around_i_seq
-
 def filter_by_distance(model, fix_altlocs_and_filter_was_run, dist_min=1.8,
-                       dist_max=3.2):
+                       dist_max=3.2, dist_min_h_nonpolar=2.2,
+                       dist_min_h_polar=1.6):
+  """
+  Remove water that:
+    - is closer than dist_min to non-H atom, closer than dist_min_h_nonpolar
+      to H bonded to C, or closer than dist_min_h_polar to polar H, unless
+      these atoms are in different alternative conformations;
+    - has no interacting atom (N, O, S, metals; not H) at distance
+      dist_min..dist_max.
+  Atoms of the same residue group (own H) are ignored.
+  fix_altlocs_and_filter_was_run is not used and kept for compatibility.
+  """
   interaction_selection = model.selection(
     map_to_water.selection_string_interaction)
-  sps = model.crystal_symmetry().special_position_settings()
   get_class = iotbx.pdb.common_residue_names_get_class
   only_model = model.get_hierarchy().only_model()
-  sites_cart = model.get_sites_cart()
   atoms = only_model.atoms()
+  neighbors = get_water_neighbors(model=model, distance_cutoff=max(
+    dist_max, dist_min, dist_min_h_nonpolar, dist_min_h_polar))
+  h_is_polar = {}
+  def min_distance(aj):
+    if(not aj.element_is_hydrogen()): return dist_min
+    is_polar = h_is_polar.get(aj.i_seq)
+    if(is_polar is None):
+      is_polar = is_polar_h(aj)
+      h_is_polar[aj.i_seq] = is_polar
+    if(is_polar): return dist_min_h_polar
+    return dist_min_h_nonpolar
   remove_sel = flex.size_t()
   for agi in only_model.atom_groups(): # loop over water
     if(not get_class(name=agi.resname) == "common_water"): continue
     for ai in agi.atoms():
       if ai.element_is_hydrogen(): continue # skip water H
-      # Get selections
-      selection_around_ai_min = get_sphere_selection(
-        sites_cart_all=sites_cart, special_position_settings=sps,
-        radius=dist_min, i_seq=ai.i_seq)
-      selection_around_ai_max = get_sphere_selection(
-        sites_cart_all=sites_cart, special_position_settings=sps,
-        radius=dist_max, i_seq=ai.i_seq)
-      selection_shell = list( set(selection_around_ai_max) -
-                              set(selection_around_ai_min) )
-      #
       altloc_i = ai.parent().altloc.strip()
-      # Make sure anything inside smaller sphere are altlocs
-      for j in selection_around_ai_min:
+      # Too close: allowed for different alternative conformations only
+      too_close = False
+      for j, d in neighbors[ai.i_seq]:
         aj = atoms[j]
-        altloc_j = aj.parent().altloc
-        if fix_altlocs_and_filter_was_run:
-          if altloc_i =="" or altloc_i==" " or altloc_j =="" or altloc_j==" " or altloc_i==altloc_j:
-            remove_sel.extend(agi.atoms().extract_i_seq())
-
-      # Check water inside shell dist_min < dist < dist_max
+        if(d >= min_distance(aj)): continue
+        altloc_j = aj.parent().altloc.strip()
+        if altloc_i=="" or altloc_j=="" or altloc_i==altloc_j:
+          too_close = True
+          break
+      if too_close:
+        remove_sel.extend(agi.atoms().extract_i_seq())
+        continue
+      # Check water inside shell dist_min <= dist <= dist_max
       found = False
-      for j in selection_shell:
+      for j, d in neighbors[ai.i_seq]:
+        if d < dist_min or d > dist_max: continue
         if not interaction_selection[j]: continue
         aj = atoms[j]
         if aj.element_is_hydrogen(): continue
@@ -881,6 +949,11 @@ class manager(object):
                      find_peaks_params = None,
                      log = sys.stdout):
     adopt_init_args(self, locals())
+    # Copy: do not change caller's parameters
+    if(self.find_peaks_params is None):
+      self.find_peaks_params = find_peaks.master_params.extract()
+    else:
+      self.find_peaks_params = copy.deepcopy(self.find_peaks_params)
     # XXX Rationalize this:
     self.find_peaks_params.map_next_to_model.min_peak_peak_dist=self.params.dist_max
     if self.params.include_altlocs:
@@ -890,7 +963,8 @@ class manager(object):
     #
     self.ma         = libtbx.log.manager(log = self.log)
     self.total_time = 0
-    self._maps      = None
+    self._maps      = None # computed when needed, see _get_maps()
+    self._model_state = None # model state fmodel and maps correspond to
     self._peaks     = None
     self.n_water    = None
     self.model_size_init = self.model.size()
@@ -899,13 +973,11 @@ class manager(object):
     self._call(msg="Start",             func=None)
     self._call(msg="Filter (dist)",     func=self._filter_dist_fix_altlocs)
     self._call(msg="Filter (q & B)",    func=self._filter_q_b)
-    self._call(msg="Compute maps",      func=self._get_maps)
     self._call(msg="Filter (map)",      func=self._filter_map)
     self._call(msg="Find peaks",        func=self._find_peaks)
     self._call(msg="Add new water",     func=self._add_new_solvent)
     self._call(msg="Refine new water",  func=self._refine)
     self._call(msg="Filter (q & B)",    func=self._filter_q_b)
-    self._call(msg="Compute maps",      func=self._get_maps)
     self._call(msg="Build H",           func=self._build_h)
     self._call(msg="Filter (dist only)",func=self._filter_dist)
     #self._call(msg="Correct drifted",   func=self._correct_drifted_waters)
@@ -927,14 +999,35 @@ class manager(object):
     self.ma.add_and_show("  %s | %s | time (s): %s (total time: %s)"%(rs, nw,
       ("%8.3f"%this_step_time).strip(), ("%8.3f"%self.total_time).strip()))
 
+  def _get_model_state(self):
+    xrs = self.model.get_xray_structure()
+    scatterers = xrs.scatterers()
+    return group_args(
+      size  = scatterers.size(),
+      sites = xrs.sites_frac().as_double(),
+      occ   = scatterers.extract_occupancies(),
+      u     = scatterers.extract_u_iso_or_u_equiv(xrs.unit_cell()))
+
+  def _model_changed(self):
+    s1, s2 = self._model_state, self._get_model_state()
+    if(s1 is None or s1.size != s2.size): return True
+    for a, b in [(s1.sites, s2.sites), (s1.occ, s2.occ), (s1.u, s2.u)]:
+      if(a.size()>0 and flex.max(flex.abs(a - b)) > 0): return True
+    return False
+
   def _get_and_set_n_water_and_sync_fmodel_and_model_and_update_maps(self):
-    n_water = self.model.solvent_selection().count(True)
+    """
+    Update fmodel (and invalidate maps) only if model changed: this is
+    expensive (mask, structure factors).
+    """
+    self.n_water = self.model.solvent_selection().count(True)
+    if(not self._model_changed()): return
     self.fmodel.update_xray_structure(
       xray_structure = self.model.get_xray_structure(),
       update_f_calc  = True,
       update_f_mask  = True)
-    self._get_maps()
-    self.n_water = n_water
+    self._maps = None
+    self._model_state = self._get_model_state()
 
   def _assert_same_model(self):
     mmtbx.utils.assert_xray_structures_equal( # XXX MAKE METHOD OF XRS
@@ -948,85 +1041,89 @@ class manager(object):
     if self.fmodel.f_obs().d_min() > ahp.d_min: return
     if self.fmodel.r_work() > ahp.r_work: return
     mpl = maptbx.MapPeakLocator(
-      map_data    = self._maps.difference_map,
+      map_data    = self._get_maps().difference_map,
       unit_cell   = self.model.crystal_symmetry().unit_cell(),
       is_periodic = True)
     get_class = iotbx.pdb.common_residue_names_get_class
     self.model.get_hierarchy().atoms().reset_i_seq()
     self.model.get_hierarchy().atoms_reset_serial()
-    hoh_residue_groups = []
+    hoh_residue_groups = {} # chain id -> water residue groups with H
     keep_sel = flex.bool(self.model.size(), True)
-    chain_ids = []
     for m in self.model.get_hierarchy().models():
       for c in m.chains():
-        for conf in c.conformers():
-          for r in conf.residues():
-            if(not get_class(name=r.resname) == "common_water"): continue
-            i_seqs = r.atoms().extract_i_seq()
-            # skip water with H
-            has_h = False
-            for atom in r.atoms():
-              if(atom.element_is_hydrogen()): has_h = True
-            if has_h: continue
-            #
-            for atom in r.atoms():
-              if(atom.element.strip().upper()=="O"):
-                sites_cart, peaks_heights = mpl.get_peaks_within_radius(
-                  target_cart = atom.xyz,
-                  R           = ahp.max_dist,
-                  threshold   = ahp.diff_map_peak_threshold)
-                wo = find_water_hydrogens(
-                  o_site       = atom.xyz,
-                  peak_heights = peaks_heights,
-                  peak_coords  = sites_cart,
-                  min_od       = ahp.min_dist,
-                  max_od       = ahp.max_dist,
-                  min_angle    = ahp.min_angle,
-                  max_angle    = ahp.max_angle)
-                if wo is not None:
-                  hoh_rg = get_detached_water_residue_group(
-                    o_atom       = atom,
-                    h_sites_cart = wo.h_sites)
-                  hoh_residue_groups.append(hoh_rg)
-                  keep_sel[atom.i_seq] = False
-                  chain_ids.append(atom.parent().parent().parent().id)
+        for rg in c.residue_groups():
+          # skip water with alternative conformations
+          if rg.atom_groups_size() != 1: continue
+          r = rg.atom_groups()[0]
+          if(not get_class(name=r.resname) == "common_water"): continue
+          # skip water with H
+          has_h = False
+          for atom in r.atoms():
+            if(atom.element_is_hydrogen()): has_h = True
+          if has_h: continue
+          #
+          for atom in r.atoms():
+            if(atom.element.strip().upper()=="O"):
+              sites_cart, peaks_heights = mpl.get_peaks_within_radius(
+                target_cart = atom.xyz,
+                R           = ahp.max_dist,
+                threshold   = ahp.diff_map_peak_threshold)
+              wo = find_water_hydrogens(
+                o_site       = atom.xyz,
+                peak_heights = peaks_heights,
+                peak_coords  = sites_cart,
+                min_od       = ahp.min_dist,
+                max_od       = ahp.max_dist,
+                min_angle    = ahp.min_angle,
+                max_angle    = ahp.max_angle)
+              if wo is not None:
+                hoh_rg = get_detached_water_residue_group(
+                  o_atom       = atom,
+                  h_sites_cart = wo.h_sites)
+                hoh_residue_groups.setdefault(c.id, []).append(hoh_rg)
+                keep_sel[atom.i_seq] = False
     if len(hoh_residue_groups) > 0:
       self.model = self.model.select(keep_sel)
-      assert len(list(set(chain_ids)))==1, list(set(chain_ids))
-      add_solvent_to_model_inplace(
-        model                = self.model,
-        params               = self.params,
-        water_residue_groups = hoh_residue_groups, # come together
-        chain_id             = chain_ids[0],       # come together
-        conformer_indices    = None)
+      for chain_id, water_residue_groups in hoh_residue_groups.items():
+        add_solvent_to_model_inplace(
+          model                = self.model,
+          params               = self.params,
+          water_residue_groups = water_residue_groups, # come together
+          chain_id             = chain_id,             # come together
+          conformer_indices    = None)
 
   def _get_maps(self):
-    p = self.params
-    self._maps = maps(
-      fmodel               = self.fmodel,
-      model                = self.model,
-      mask_atoms_selection = p.mask_atoms_selection,
-      difference_map_type  = p.primary_map_type,
-      model_map_type       = p.secondary_map_and_map_cc_filter.cc_map_1_type,
-      data_map_type        = p.secondary_map_and_map_cc_filter.cc_map_2_type)
+    """
+    Maps for current model; computed only if model changed since last time.
+    """
+    if(self._model_changed()):
+      self._get_and_set_n_water_and_sync_fmodel_and_model_and_update_maps()
+    if(self._maps is None):
+      p = self.params
+      self._maps = maps(
+        fmodel               = self.fmodel,
+        model                = self.model,
+        mask_atoms_selection = p.mask_atoms_selection,
+        difference_map_type  = p.primary_map_type,
+        model_map_type       = p.secondary_map_and_map_cc_filter.cc_map_1_type,
+        data_map_type        = p.secondary_map_and_map_cc_filter.cc_map_2_type)
+    return self._maps
 
   def _filter_dist_fix_altlocs(self):
     if self.params.include_altlocs:
       self.model = fix_altlocs_and_filter(
         model    = self.model,
         dist_min = self.params.dist_min)
-    self.model = filter_by_distance(
-      model                          = self.model,
-      fix_altlocs_and_filter_was_run = self.params.include_altlocs,
-      dist_min                       = self.params.dist_min,
-      dist_max                       = self.params.dist_max)
+    self._filter_dist()
 
   def _filter_dist(self):
     self.model = filter_by_distance(
       model                          = self.model,
       fix_altlocs_and_filter_was_run = self.params.include_altlocs,
       dist_min                       = self.params.dist_min,
-      dist_max                       = self.params.dist_max)
+      dist_max                       = self.params.dist_max,
+      dist_min_h_nonpolar            = self.params.dist_min_h_nonpolar,
+      dist_min_h_polar               = self.params.dist_min_h_polar)
 
   def _filter_q_b(self):
     self._filter(filter_occ=True, filter_adp=True)
@@ -1038,7 +1135,10 @@ class manager(object):
               filter_map=False,
               filter_occ=False,
               filter_adp=False):
+    r_work = self.fmodel.r_work()
     mfp = self.params.secondary_map_and_map_cc_filter
+    maps_ = None
+    if filter_map: maps_ = self._get_maps()
     selection = flex.bool(self.model.size(), True)
     get_class = iotbx.pdb.common_residue_names_get_class
     scatterers = self.model.get_xray_structure().scatterers()
@@ -1070,8 +1170,8 @@ class manager(object):
                 if(b_isos[i_seq] < self.params.b_iso_min or
                    b_isos[i_seq] > self.params.b_iso_max): keep = False
               #
-              if filter_map:
-                good_map = self._maps.score_atom(
+              if filter_map and r_work*100 > 5.:
+                good_map = maps_.score_atom(
                   atom      = atom,
                   min_cc    = mfp.poor_cc_threshold,
                   min_value = mfp.poor_map_value_threshold)
@@ -1084,7 +1184,8 @@ class manager(object):
 
   def _refine(self):
     if(self.params.mode == "filter_only"): return
-    if(self.model.size() == self.model_size_init or
+    if(self.new_solvent_selection is None or
+       self.new_solvent_selection.count(True)==0 or
        self.n_water==0): return
     for i in range(self.params.n_cycles):
       self.refine_oat()
@@ -1097,7 +1198,7 @@ class manager(object):
     assert self.params.primary_map_type is not None
     self._peaks = find_peaks.manager(
       xray_structure = self.fmodel.xray_structure,
-      map_data       = self._maps.difference_map, # diff-map
+      map_data       = self._get_maps().difference_map, # diff-map
       map_cutoff     = self.params.primary_map_cutoff,
       params         = self.find_peaks_params,
       log            = null_out()).peaks_mapped()
@@ -1208,7 +1309,7 @@ class manager(object):
     find_peaks_params_drifted.peak_search.min_cross_distance=0.5
     peaks = find_peaks.manager(
       xray_structure = self.fmodel.xray_structure,
-      map_data       = self._maps.data_map,
+      map_data       = self._get_maps().data_map,
       map_cutoff     = map_cutoff,
       params         = find_peaks_params_drifted,
       log            = null_out()).peaks_mapped()

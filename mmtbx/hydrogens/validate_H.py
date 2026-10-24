@@ -50,7 +50,18 @@ class validate_H(object):
     self.outliers_bonds = None
     self.outliers_angles = None
     self.bond_results = None
-    self.curated_hierarchy = None
+    # why the H/D pairs were not analyzed (matcher Sorry), else None
+    self.hd_pairing_note = None
+    # parent occupancy of each pair, keyed like hd_exchanged_sites
+    self.hd_parent_occ = None
+    # H (D) atoms in non-water residues that are in no pair
+    self.count_h_only = None
+    self.count_d_only = None
+    # H/D without a parent atom, per residue and reason (None when the
+    # matcher did not run or raised a Sorry)
+    self.unresolved_hd = None
+    # pairs that lost an atom to a shorter pair (one-to-one guard)
+    self.n_pairing_conflicts = 0
 
   def validate_inputs(self):
     if not self.model.has_hd():
@@ -175,143 +186,100 @@ class validate_H(object):
                                          xyz))
     self.missing_HD_atoms = missing_HD_atoms
 
-  def get_atom(self, residue_group, name):
-    for atom_group in residue_group.atom_groups():
-      atom = atom_group.get_atom(name.strip())
-      if atom: return atom
-    return None
-
-  def find_closest_hd(self, atom, residue_group, neighbors, minimum_distance):
-    exchange_atom = None
-    hd_without_altloc = []
-    if (is_hydrogen(atom)):
-      element = 'D'
-    else:
-      element = 'H'
-    for _atom in residue_group.atoms():
-      if (_atom.parent().altloc == ''):
-        hd_without_altloc.append(_atom.name)
-      if _atom.element.strip().upper()!= element: continue
-      if neighbors:
-        if _atom.i_seq not in neighbors: continue
-      current_distance = _atom.distance(atom)
-      if current_distance <= minimum_distance:
-        minimum_distance = current_distance
-        exchange_atom = _atom
-    return exchange_atom, hd_without_altloc
-
-  def find_exchanged_pair(self, atom_H, atom_D, residue_group, fsc1):
-    minimum_distance = atom_H.distance(atom_D)
-    if (atom_H.parent().altloc == '' and atom_D.parent().altloc != ''):
-      atom = atom_D
-    #elif (atom_D.parent().altloc == '' and atom_H.parent().altloc == ''):
-    #  STOP()
-    else:
-      atom = atom_H
-    exchange_atom, hd_without_altloc = self.find_closest_hd(
-      atom = atom,
-      residue_group = residue_group,
-      neighbors = list(fsc1[atom.i_seq]),
-      minimum_distance = minimum_distance)
-    if exchange_atom is not None:
-      if (is_hydrogen(atom)):
-        atom_H_new, atom_D_new = atom, exchange_atom
-      else:
-        atom_H_new, atom_D_new = exchange_atom, atom
-      self.rename_hd(
-        atom_H = atom_H_new,
-        atom_D = atom_D_new,
-        hd_without_altloc = hd_without_altloc,
-        residue_group = residue_group)
-    else:
-      return None, None
-    return atom_H_new, atom_D_new
-
-  def rename_hd(self, atom_H, atom_D, hd_without_altloc, residue_group):
-    atom_D_old_name = atom_D.name
-    atom_D_new_name = atom_H.name.replace('H','D',1)
-    if atom_D_old_name == atom_D_new_name:
-      return
-    if atom_D_new_name not in hd_without_altloc:
-      atom_with_same_target_name = self.get_atom(
-        residue_group = residue_group,
-        name = atom_D_new_name)
-      if atom_with_same_target_name is not None:
-        atom_with_same_target_name.set_name(atom_D_old_name)
-        self.renamed.append(
-                            (atom_with_same_target_name.id_str(), # id_str
-                             atom_with_same_target_name.name,     # new name
-                             atom_D_new_name,                     # old name
-                             atom_with_same_target_name.xyz))     # xyz
-      atom_D.set_name(atom_D_new_name)
-      self.renamed.append(
-                          (atom_D.id_str(),
-                           atom_D.name,
-                           atom_D_old_name,
-                           atom_D.xyz))
-    else:
-      atom_H_old_name = atom_H.name
-      atom_H_new_name = atom_D.name.replace('D','H',1)
-      if atom_H_old_name == atom_H_new_name:
-        return
-      atom_with_same_target_name = self.get_atom(
-        residue_group = residue_group,
-        name = atom_H_new_name)
-      if atom_with_same_target_name is not None:
-        atom_with_same_target_name.set_name(atom_H_old_name)
-        self.renamed.append(
-                            (atom_with_same_target_name.id_str(),
-                             atom_with_same_target_name.name,
-                             atom_H_new_name,
-                             atom_with_same_target_name.xyz))
-      atom_H.set_name(atom_H_new_name)
-      self.renamed.append(
-                          (atom_H.id_str(),
-                           atom_H.name,
-                           atom_H_old_name,
-                           atom_H.xyz))
-
-  def get_exchanged_sites_and_curate_swapped(self, pdb_hierarchy):
+  def get_exchanged_sites(self):
+    '''
+    H/D exchanged sites from the shared matcher (hd_exchange), H in any
+    residue except water: one pair per site, by position (the name pair, or
+    the H and its geometric partner when the names do not match), one-to-one
+    (on a conflict the shorter pair wins, the other keeps its name pair if
+    both atoms are free). renamed lists each D whose name does not match its
+    H (report only, nothing is renamed). A Sorry from the matcher skips the
+    pairs and sets hd_pairing_note: validation does not stop.
+    unresolved_hd: the H/D whose parent the restraints do not give (no
+    bonded atom, or several), per residue and reason.
+    '''
+    from libtbx.utils import Sorry
+    from mmtbx.hydrogens import hd_exchange
     self.renamed = []
-    geometry_restraints = self.model.get_restraints_manager().geometry
-    fsc1 = geometry_restraints.shell_sym_tables[1].full_simple_connectivity()
+    self.hd_exchanged_sites = {}
+    self.hd_parent_occ = {}
+    self.n_pairing_conflicts = 0
+    try:
+      if self.model.get_hierarchy() is not self.pdb_hierarchy:
+        raise Sorry("H/D pairing: the model's hierarchy is not the one "
+          "validated")
+      table = hd_exchange.h_parent_table(self.model)
+      # without model=: no second rotatable_hd_selection()
+      candidates = hd_exchange.find_hd_candidates(self.pdb_hierarchy, table)
+    except Sorry as e:
+      self.hd_pairing_note = str(e)
+      return
+    atoms = self.pdb_hierarchy.atoms()
+    self.unresolved_hd = unresolved_hd_entries(self.pdb_hierarchy,
+      candidates.unresolved)
+    proposed = []
+    for c in candidates.pairs:
+      i_h, i_d = c.i_h, c.i_d
+      if c.name_mismatch:
+        # an H or a D (for a leftover matched by position: its own D)
+        g = c.i_geometric_partner
+        if is_deuterium(atoms[g]): i_d = g
+        else:                      i_h = g
+      proposed.append((atoms[i_h].distance(atoms[i_d]), i_h, i_d, c.i_h,
+        c.i_d, c.parent_occ))
+    proposed.sort()
+    used = set()
+    pairs = []
+    for distance, i_h, i_d, name_h, name_d, parent_occ in proposed:
+      if i_h in used or i_d in used:
+        self.n_pairing_conflicts += 1
+        if name_h in used or name_d in used: continue
+        i_h, i_d = name_h, name_d
+      used.update([i_h, i_d])
+      pairs.append((i_h, i_d, parent_occ))
+    # Pairs are positional; the analysis lists use the model's names, and
+    # renamed lists the D names that do not match their H partner.
     get_class = common_residue_names_get_class
-    hd_exchanged_sites = {}
-    for residue_group in pdb_hierarchy.residue_groups():
-      for atom in residue_group.atoms():
-        resname = atom.parent().resname
-        if (get_class(name=resname) in protein):
-          if (is_hydrogen(atom)):
-            atom_H = atom
-            name_atom_H = atom_H.name
-            name_atom_D = name_atom_H.replace('H','D',1)
-            atom_D = self.get_atom(
-              residue_group = residue_group,
-              name = name_atom_D)
-            if atom_D is None: continue
-            if atom_H.xyz == atom_D.xyz:
-              hd_exchanged_sites[atom_H.i_seq] = [atom_H, atom_D]
-            else:
-              atom_H_new, atom_D_new = self.find_exchanged_pair(
-                atom_H        = atom_H,
-                atom_D        = atom_D,
-                residue_group = residue_group,
-                fsc1          = fsc1)
-              if atom_H_new is not None:
-                hd_exchanged_sites[atom_H_new.i_seq] = [atom_H_new, atom_D_new]
-    self.hd_exchanged_sites = hd_exchanged_sites
-    if self.renamed is not None:
-      self.curated_hierarchy = pdb_hierarchy
+    water = {}
+    def is_water(atom):
+      resname = atom.parent().resname
+      if resname not in water:
+        water[resname] = get_class(name=resname) == "common_water"
+      return water[resname]
+    for i_h, i_d, parent_occ in sorted(pairs):
+      atom_H, atom_D = atoms[i_h], atoms[i_d]
+      if is_water(atom_H): continue
+      self.hd_exchanged_sites[i_h] = [atom_H, atom_D]
+      self.hd_parent_occ[i_h] = parent_occ
+    # modelled only as H (D): in a non-water residue and in no pair
+    paired = set()
+    for atom_H, atom_D in self.hd_exchanged_sites.values():
+      paired.update([atom_H.i_seq, atom_D.i_seq])
+    self.count_h_only, self.count_d_only = 0, 0
+    for k in range(atoms.size()):
+      atom = atoms[k]
+      if k in paired or is_water(atom): continue
+      if is_hydrogen(atom):     self.count_h_only += 1
+      elif is_deuterium(atom):  self.count_d_only += 1
+    for atom_H, atom_D in sorted(self.hd_exchanged_sites.values(),
+                                 key=lambda x: x[1].i_seq):
+      new_name = atom_H.name.replace('H','D',1)
+      if atom_D.name != new_name:
+        self.renamed.append(
+          (atom_D.id_str(), new_name, atom_D.name, atom_D.xyz))
 
   def analyze_hd_sites(self):
     sites_different_xyz = []
     sites_different_b = []
     sites_sum_occ_not_1 = []
     sites_occ_sum_no_scattering = []
-    rotatable_hd_selection = self.model.rotatable_hd_selection()
+    # a set: `in` on the flex iselection scans it (1.7 s on 7TUR)
+    rotatable_hd_selection = set(self.model.rotatable_hd_selection())
     eps_xyz = 0.001
     eps_b = 0.01
-    delta_occ_sum = 0.001
+    # occupancies have two decimals (PDB): half of a parent at 0.67 is written
+    # 0.34 + 0.34. A difference of exactly 0.01 passes despite floating point.
+    delta_occ_sum = 0.01 + 1.e-6
     occ_h_zero_scattering = 0.64 # value for which sum occ H and D is zero
     eps_occ_zero_scatt = 0.05
     # For rotatable H, H and D may be at different positions
@@ -340,22 +308,28 @@ class validate_H(object):
                                  delta_b,
                                  atom_H.xyz,
                                  atom_D.xyz))
-      # H/D with sum of occupancies lt or gt 1
+      # H/D whose occupancy sum is neither 1 (what phenix.refine refines) nor
+      # the parent occupancy; entries carry the parent occupancy
       occupancy_sum = atom_H.occ + atom_D.occ
-      if (abs(1-occupancy_sum) >= delta_occ_sum):
+      parent_occ = self.hd_parent_occ[iseq]
+      if (abs(1-occupancy_sum) > delta_occ_sum and
+          abs(parent_occ-occupancy_sum) > delta_occ_sum):
         sites_sum_occ_not_1.append(
                                   (atom_H.id_str(),
                                    atom_D.id_str(),
                                    occupancy_sum,
+                                   parent_occ,
                                    atom_H.xyz,
                                    atom_D.xyz))
-      # rotatable H/D with zero scattering sum, if closer than cut off apart
+      # rotatable H/D with zero scattering sum, if closer than cut off apart:
+      # H at 0.64 of the pair's total (for a total of 1 the same as H 0.64,
+      # D 0.36)
       if ((atom_H.i_seq in rotatable_hd_selection) and
-          (atom_D.i_seq in rotatable_hd_selection)):
+          (atom_D.i_seq in rotatable_hd_selection) and
+          occupancy_sum > 0):
         if (atom_H.distance(atom_D) < max_distance_between_rotatable_H):
-          if ((abs(atom_H.occ-occ_h_zero_scattering) <= eps_occ_zero_scatt)
-              and
-              (abs(atom_D.occ-(1-occ_h_zero_scattering))<= eps_occ_zero_scatt)):
+          if (abs(atom_H.occ/occupancy_sum - occ_h_zero_scattering)
+              <= eps_occ_zero_scatt):
             sites_occ_sum_no_scattering.append(
                                               (atom_H.id_str(),
                                                atom_D.id_str(),
@@ -364,11 +338,15 @@ class validate_H(object):
                                                atom_H.xyz,
                                                atom_D.xyz))
 
+    # sites_sum_occ_not_1: occupancy sum neither 1 nor the parent occupancy
+    # (h_id, d_id, sum, parent occupancy, xyz H, xyz D)
     self.hd_sites_analysis = group_args(
       sites_different_xyz = sites_different_xyz,
       sites_different_b   = sites_different_b,
       sites_sum_occ_not_1 = sites_sum_occ_not_1,
-      sites_occ_sum_no_scattering = sites_occ_sum_no_scattering)
+      sites_occ_sum_no_scattering = sites_occ_sum_no_scattering,
+      count_h_only        = self.count_h_only,
+      count_d_only        = self.count_d_only)
 
   def get_overall_counts(self):
     xray_structure = self.model.get_xray_structure()
@@ -559,10 +537,9 @@ class validate_H(object):
     self.bond_angle_outliers()
     # Find missing H atoms
     self.missing_hydrogens()
-    # if H and D are both present, analyse and curate potential H/D states
+    # if H and D are both present, find the H/D exchanged sites
     if self.get_hd_state() == 'h_and_d':
-      self.get_exchanged_sites_and_curate_swapped(
-        pdb_hierarchy = self.pdb_hierarchy.deep_copy())
+      self.get_exchanged_sites()
     # If H/D sites are present, analyze for mismatches
     if self.hd_exchanged_sites:
       self.analyze_hd_sites()
@@ -579,11 +556,71 @@ class validate_H(object):
         missing_HD_atoms      = self.missing_HD_atoms,
         outliers_bonds        = self.outliers_bonds,
         outliers_angles       = self.outliers_angles,
-        bond_results          = self.bond_results
+        bond_results          = self.bond_results,
+        hd_pairing_note       = self.hd_pairing_note,
+        unresolved_hd         = self.unresolved_hd
         )
 
-  def get_curated_hierarchy(self):
-    return self.curated_hierarchy
+def unresolved_hd_entries(hierarchy, unresolved):
+  '''
+  One entry per residue and reason from find_hd_candidates().unresolved:
+  (residue id, reason, atom names, partner names, xyz of the first atom), in
+  hierarchy order. reason: 'floating' (no bonded atom in the restraints) or
+  'ambiguous' (several; their names are the partner names).
+  '''
+  if not unresolved: return []
+  atoms = hierarchy.atoms()
+  entries, order = {}, []
+  for u in sorted(unresolved, key=lambda u: u.i_seq):
+    atom = atoms[u.i_seq]
+    ag = atom.parent()
+    rg = ag.parent()
+    resid = '%s %s %s%s' % (ag.resname.strip(), rg.parent().id.strip(),
+      rg.resseq.strip(), rg.icode.strip())
+    key = (resid, u.status)
+    if key not in entries:
+      entries[key] = (resid, u.status, [], [], atom.xyz)
+      order.append(key)
+    entries[key][2].append(atom.name.strip())
+    for partner_id, origin, distance_ideal, sym_op in u.source:
+      name = partner_id[5:9].strip() # the atom name in its id_str
+      if name not in entries[key][3]: entries[key][3].append(name)
+  return [entries[k] for k in order]
+
+def unresolved_hd_text(entry, max_names=10):
+  '''
+  One line for an unresolved_hd entry, at most max_names atom names.
+  '''
+  resid, reason, names, partners, xyz = entry
+  shown = ', '.join(names[:max_names])
+  if len(names) > max_names: shown += ', ...'
+  n = '%d H/D atom%s' % (len(names), '' if len(names) == 1 else 's')
+  if reason == 'floating':
+    return '%s: %s with no bonded atom in the restraints (%s)' % (
+      resid, n, shown)
+  return '%s: %s bonded to several atoms in the restraints (%s): %s' % (
+    resid, n, shown, ', '.join(partners))
+
+def parent_occupancy(item):
+  '''
+  Parent occupancy of a sites_sum_occ_not_1 entry; None for entries saved by
+  older versions (h_id, d_id, sum, xyz H, xyz D).
+  '''
+  if len(item) == 6: return item[3]
+  return None
+
+def only_hd_counts(count_exchanged_sites, hd_sites_analysis,
+                   overall_counts_hd):
+  '''
+  Atoms modelled only as H and only as D: in non-water residues and in no
+  pair; for results saved by older versions, protein H (D) minus the pairs.
+  '''
+  h_only = getattr(hd_sites_analysis, 'count_h_only', None)
+  d_only = getattr(hd_sites_analysis, 'count_d_only', None)
+  if h_only is None:
+    h_only = overall_counts_hd.count_h_protein - count_exchanged_sites
+    d_only = overall_counts_hd.count_d_protein - count_exchanged_sites
+  return h_only, d_only
 
 class validate_H_results(object):
   '''
@@ -633,13 +670,40 @@ class validate_H_results(object):
     if (log is None):
       log = self.log
 
-    make_sub_header('The following atoms were renamed:', out=log)
+    make_sub_header('D atoms whose name does not match the H at the same '
+      'position:', out=log)
     for entry in renamed:
       id_str = entry[0]
       oldname = entry[2]
       newname = entry[1]
       print('%s%s atom %s --> %s' % (prefix, id_str, oldname, newname),
             file=log)
+
+  def print_hd_pairing_note(self, note, prefix='', log=None):
+    if (log is None):
+      log = self.log
+    make_sub_header('H/D pairs not analyzed', out=log)
+    print('%s%s' % (prefix, note), file=log)
+
+  def print_unresolved_hd(self, unresolved_hd, prefix='', log=None):
+    if (log is None):
+      log = self.log
+    make_sub_header('H/D atoms without a parent atom', out=log)
+    for entry in unresolved_hd:
+      print('%s%s' % (prefix, unresolved_hd_text(entry)), file=log)
+
+  def export_unresolved_hd_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    unresolved_hd = getattr(self.results, 'unresolved_hd', None)
+    if (unresolved_hd):
+      for resid, reason, names, partners, xyz in unresolved_hd:
+        if reason == 'floating':
+          text = 'no bonded atom in the restraints'
+        else:
+          text = 'bonded to %s' % ', '.join(partners)
+        table.append([resid, ' '.join(names), text, None, xyz])
+    return table
 
   def export_renamed_for_wxGUI(self):
     # last element should be xyz for residue/atom
@@ -682,7 +746,7 @@ class validate_H_results(object):
 
   def print_results_hd_sites(
       self, count_exchanged_sites, hd_sites_analysis, overall_counts_hd,
-      prefix='', log=None):
+      prefix='', log=None, unresolved_hd=None):
     if (log is None):
       log = self.log
 
@@ -692,13 +756,16 @@ class validate_H_results(object):
     sites_occ_sum_no_scattering = hd_sites_analysis.sites_occ_sum_no_scattering
 
     make_sub_header('H/D EXCHANGED SITES', out=log)
+    h_only, d_only = only_hd_counts(
+      count_exchanged_sites, hd_sites_analysis, overall_counts_hd)
     self.hd_exchange_values = [
       ('Number of H/D exchanged sites', count_exchanged_sites),
-      ('Number of atoms modelled only as H',
-       overall_counts_hd.count_h_protein - count_exchanged_sites),
-      ('Number of atoms modelled only as D',
-       overall_counts_hd.count_d_protein - count_exchanged_sites)
+      ('Number of atoms modelled only as H', h_only),
+      ('Number of atoms modelled only as D', d_only)
     ]
+    if unresolved_hd is not None:
+      self.hd_exchange_values.append(('H/D atoms without a parent atom',
+        sum(len(entry[2]) for entry in unresolved_hd)))
     self.formatted_print(prefix, self.hd_exchange_values, log)
 
     if sites_different_xyz:
@@ -714,10 +781,12 @@ class validate_H_results(object):
               file=log)
 
     if sites_sum_occ_not_1:
-      print('\n%sH/D pairs with occupancy sum != 1:' % prefix, file=log)
+      print('\n%sH/D pairs whose occupancy sum is neither 1 nor the parent '
+            'occupancy:' % prefix, file=log)
       for item in sites_sum_occ_not_1:
-        print('%s  %s  and %s with occupancy sum %s' %
-              (prefix, item[0][5:-1], item[1][5:-1], item[2]), file=log)
+        print('%s  %s  and %s with occupancy sum %s, parent occupancy %s' %
+              (prefix, item[0][5:-1], item[1][5:-1], item[2],
+               parent_occupancy(item)), file=log)
 
     if sites_occ_sum_no_scattering:
       print('\n%sRotatable H/D pairs with zero scattering occupancy sum:' %
@@ -757,7 +826,10 @@ class validate_H_results(object):
       result = self.results.hd_sites_analysis.sites_sum_occ_not_1
     if (result):
       for item in result:
-        table.append([item[0][5:-1], item[1][5:-1], item[2], None, item[-1]])
+        # results saved by older versions have no parent occupancy
+        p = parent_occupancy(item)
+        table.append([item[0][5:-1], item[1][5:-1], item[2],
+                      '' if p is None else p, None, item[-1]])
     return table
 
   def export_sites_occ_scattering_for_wxGUI(self):
@@ -851,15 +923,21 @@ class validate_H_results(object):
 
     if overall_counts_hd:
       self.print_overall_results(overall_counts_hd, prefix=prefix, log=log)
+    if getattr(results, 'hd_pairing_note', None):
+      self.print_hd_pairing_note(results.hd_pairing_note, prefix=prefix,
+        log=log)
     if renamed:
       self.print_renamed(renamed, prefix=prefix, log=log)
     if hd_atoms_with_occ_0 or single_hd_atoms_occ_lt_1:
       self.print_atoms_occ_lt_1(hd_atoms_with_occ_0, single_hd_atoms_occ_lt_1,
                                 prefix=prefix, log=log)
+    unresolved_hd = getattr(results, 'unresolved_hd', None)
     if count_exchanged_sites is not None:
       self.print_results_hd_sites(
         count_exchanged_sites, hd_sites_analysis, overall_counts_hd,
-        prefix=prefix, log=log)
+        prefix=prefix, log=log, unresolved_hd=unresolved_hd)
+    if unresolved_hd:
+      self.print_unresolved_hd(unresolved_hd, prefix=prefix, log=log)
     if missing_HD_atoms:
       self.print_missing_HD_atoms(missing_HD_atoms, prefix=prefix, log=log)
     if outliers_bonds or outliers_angles:

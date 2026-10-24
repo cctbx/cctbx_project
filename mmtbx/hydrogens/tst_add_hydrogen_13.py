@@ -8,6 +8,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 
 def run():
   test_001()
+  test_002()
 
 # ------------------------------------------------------------------------------
 
@@ -68,6 +69,40 @@ def test_001():
   for (altloc, name), value in occ.items():
     if name.startswith('H'):
       assert value > 0.0, (altloc, name, value)
+
+# ------------------------------------------------------------------------------
+
+def test_002():
+  '''
+    H names on CH2 give the reference chirality in every conformer. C1 is
+    shared, but its H11/H12 are placed per conformer: B's pair must be
+    checked too, not skipped because A's pair was named for the same parent.
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_001.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  model.process(make_restraints=True)
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model=model)
+  reduce_add_h_obj.run()
+  ph = reduce_add_h_obj.get_model().get_hierarchy()
+  refs = reduce_hydrogen._h_references('GOL',
+    reduce_add_h_obj.query_mon_lib_srv, {}, 2, 2)
+  checked = []
+  for conformer in ph.only_chain().conformers():
+    atoms = dict((a.name.strip(), a)
+                 for a in conformer.only_residue().atoms())
+    for p, hv, hs, sites in refs:
+      # first source only, as in name_prochiral_h
+      if p not in ('C1', 'C3') or (conformer.altloc, p) in checked: continue
+      ref = (hv[0], hv[1], hs[0])
+      v_ideal = reduce_hydrogen._chiral_volume(sites[p],
+        *[sites[n] for n in ref])
+      v_model = reduce_hydrogen._chiral_volume(atoms[p].xyz,
+        *[atoms[n].xyz for n in ref])
+      assert (v_ideal > 0) == (v_model > 0), (conformer.altloc, p,
+        v_model, v_ideal)
+      checked.append((conformer.altloc, p))
+  assert sorted(checked) == [('A', 'C1'), ('A', 'C3'), ('B', 'C1'),
+                             ('B', 'C3')], checked
 
 # ------------------------------------------------------------------------------
 

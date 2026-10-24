@@ -250,18 +250,19 @@ class glyco_link_class:
     else:
       value = "negativ"
     names = self.get_chiral_i_seqs(return_names=True)
-    loop.add_row((code,
-                  "2",
-                  names[0].strip(),
-                  "1",
-                  names[1].strip(),
-                  "2",
-                  names[2].strip(),
-                  "2",
-                  names[3].strip(),
-                  value,
-                  ))
-    cif_block.add_loop(loop)
+    if names is not None: # no ring carbon (3evj NAG A 2 has no C2)
+      loop.add_row((code,
+                    "2",
+                    names[0].strip(),
+                    "1",
+                    names[1].strip(),
+                    "2",
+                    names[2].strip(),
+                    "2",
+                    names[3].strip(),
+                    value,
+                    ))
+      cif_block.add_loop(loop)
     return cif_block
 
 def get_distance2(a1, a2):
@@ -652,6 +653,13 @@ anomeric carbon.
              gla.link_carbon.quote(),
              gla)
              )
+  # the anomeric H from the restraint bonds: get_anomeric_hydrogen takes the
+  # first H within link_carbon_dist, and H added by reduce2 all sit at one
+  # point (6b0k 9RN: H1 is on C2, the C1 H is H9)
+  c = gla.anomeric_carbon
+  hs = [a for a in c.parent().atoms() if a.element.strip() in ('H', 'D')
+        and bond_params_table.lookup(c.i_seq, a.i_seq) is not None]
+  gla.anomeric_hydrogen = hs[0] if len(hs) == 1 else None
   origin_id = origin_ids.get('link_%s' % gla.get_isomer(), None)
   if not origin_id: origin_id=origin_ids['glycosidic custom']
   i_seqs = [gla.anomeric_carbon.i_seq, gla.link_oxygen.i_seq]
@@ -668,23 +676,20 @@ anomeric carbon.
     if None in i_atoms: continue
     i_seqs = [atom.i_seq for atom in i_atoms]
     _add_angle(i_seqs, geometry_proxy_registries, value, esd, origin_id)
-  # chiral
+  # chiral; only the ring carbon can be missing here (is_correct checks the
+  # rest): 3evj NAG A 2 has no C2. Restrain the link without it.
+  note = None
   i_seqs = gla.get_chiral_i_seqs()
   if i_seqs is None:
-    raise Sorry("""Unable to determine the linking chiral atoms for atom groups
-    group 1
-%s
-    group 2
-%s
-    """ % (atom_group_output(atom_group1), atom_group_output(atom_group2)
-    )
-    )
-  value = get_chiral_sign(gla.anomeric_carbon.parent().resname)
-  if value:
-    esd = 0.02
-    _add_chiral(i_seqs, geometry_proxy_registries, value, esd, origin_id)
+    note = 'link chirality not restrained: ring carbon bonded to %s missing' % (
+      gla.anomeric_carbon.name.strip())
+  else:
+    value = get_chiral_sign(gla.anomeric_carbon.parent().resname)
+    if value:
+      esd = 0.02
+      _add_chiral(i_seqs, geometry_proxy_registries, value, esd, origin_id)
 
-  return gla.get_isomer(), gla.as_cif(), bond_i_seqs
+  return gla.get_isomer(), gla.as_cif(), bond_i_seqs, note
 
 def is_standard_glyco_link(key, link):
   if key.find("ALPHA")>-1 or key.find("BETA")>-1:

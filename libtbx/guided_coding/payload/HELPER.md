@@ -174,8 +174,8 @@ A **proof packet** is a frozen folder of evidence. Its identity is the
 hash of its manifest, and the manifest lists every file with that file's
 own hash, so a changed file is detected. The **checker** is a subagent
 that reads the packet against a checklist; its **evidence failures** send
-the packet back, and its **clerical** ones become **errata** written
-beside the packet in the **approvals record**. A **provisional decision** is
+the packet back, and its **clerical** ones become **errata** in the
+`ERRATA.md` companion beside the packet (WORKER.md defines them). A **provisional decision** is
 one a Worker took alone and recorded so it can be reversed. Recording it
 does not mean it was authorized: someone with the authority has to adopt
 or reject it before the work resting on it is accepted. A **grant** is a

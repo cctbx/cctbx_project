@@ -143,12 +143,11 @@ def exercise_expand_recalcs_collapsed_result_height():
   """set_expanded(True) must leave the inner result view at its real
   height for the width it opens at, not the height it was given while
   folded: before it was ever laid out, the plain-text view did not wrap
-  at all (its layout ignores the 100 px default width auto_height reads),
-  so each row counted as one line. Rows that wrap at the open width at
+  at all (its layout wraps at the width the view's first resize hands
+  it), so each row counted as one line. Rows that wrap at the open width at
   any font size make that folded height too short. (Short rows -- one
   line each, folded or open -- would leave the open height equal to the
-  folded one, re-measured or not.) The manual-click path defers this by
-  an event-loop tick."""
+  folded one, measured again or not.)"""
   app = _app()
   from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
   host = QtWidgets.QWidget()
@@ -171,14 +170,13 @@ def exercise_expand_recalcs_collapsed_result_height():
   assert d.body.isVisible()
 
 
-def exercise_expand_remeasures_a_view_that_opens_at_its_old_width():
-  """set_expanded(True) re-measures the inner views before it returns even
-  when the open does not change their width -- no resize event, so
-  auto_height's resize hook stays silent. A font change made while the
-  row was folded is such a case: without the synchronous refresh the view
-  keeps the height of the old font, and a caller reading geometry in the
-  same call (the thinking switch's re-anchoring) reads the stale one --
-  so the row's size hint must carry the re-measured height too."""
+def exercise_expand_carries_a_height_measured_while_folded():
+  """set_expanded(True) carries a height measured while the row was
+  folded into the row's size hint before it returns. A font change made
+  while it was folded queues a resize for the hidden view; the open
+  delivers it, measuring the view, and the body's and the row's layouts
+  are activated in the same call, for a caller reading geometry there
+  (the thinking switch's re-anchoring)."""
   app = _app()
   from qttbx.widgets.chat.message_bubble import _ThinkingCell
   saved = QtGui.QFont(app.font())
@@ -200,7 +198,8 @@ def exercise_expand_remeasures_a_view_that_opens_at_its_old_width():
     app.setFont(big)
     _pump(app)
     cell.set_expanded(True)
-    assert cell.view.width() == width            # no resize on this open
+    # The open changes no width.
+    assert cell.view.width() == width, (cell.view.width(), width)
     assert cell.view.height() > before, (cell.view.height(), before)
     assert cell.sizeHint().height() >= cell.view.height(), \
       (cell.sizeHint().height(), cell.view.height())
@@ -211,10 +210,8 @@ def exercise_expand_remeasures_a_view_that_opens_at_its_old_width():
 
 
 def exercise_expand_is_a_no_op_on_an_open_row():
-  """set_expanded(True) on a row that is already open returns at once,
-  without re-measuring: the thinking switch calls it on every cell, open
-  or not. (That an open re-measures before it returns is pinned by height
-  in exercise_expand_remeasures_a_view_that_opens_at_its_old_width.)"""
+  """set_expanded(True) on a row that is already open returns at once:
+  the thinking switch calls it on every cell, open or not."""
   app = _app()
   from qttbx.widgets.chat.tool_call_disclosure import ToolCallDisclosure
   host = QtWidgets.QWidget()
@@ -227,7 +224,7 @@ def exercise_expand_is_a_no_op_on_an_open_row():
   d.set_expanded(True)
   app.processEvents()
   calls = []
-  d._refresh_inner_heights = lambda: calls.append(1)
+  d._sync_body_to_header = lambda: calls.append(1)
   d.set_expanded(True)                     # already open -> no-op
   assert calls == [], calls
   assert d.body.isVisible() and d.is_expanded()
@@ -840,7 +837,7 @@ def exercise():
   exercise_ensure_visible_disengages_follow_and_holds()
   exercise_add_message_respects_autofollow_hold()
   exercise_expand_recalcs_collapsed_result_height()
-  exercise_expand_remeasures_a_view_that_opens_at_its_old_width()
+  exercise_expand_carries_a_height_measured_while_folded()
   exercise_expand_is_a_no_op_on_an_open_row()
   exercise_search_bar_signals_and_defaults()
   exercise_search_bar_count_states()

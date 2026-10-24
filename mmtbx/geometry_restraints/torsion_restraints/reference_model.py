@@ -182,7 +182,9 @@ reference_model
 reference_model_params = iotbx.phil.parse(
     reference_model_str)
 
-def _ensure_hydrogens_on_reference(ref_hierarchy, log=None):
+def _ensure_hydrogens_on_reference(ref_hierarchy, log=None,
+                                   restraint_objects=None,
+                                   monomer_parameters=None):
   """Return a hierarchy guaranteed to carry hydrogens.
 
   If the input hierarchy already passes mmtbx.model.manager.has_hd(), it is
@@ -196,6 +198,8 @@ def _ensure_hydrogens_on_reference(ref_hierarchy, log=None):
   ref_model = mmtbx.model.manager(
     model_input=None,
     pdb_hierarchy=ref_hierarchy.deep_copy(),
+    restraint_objects=restraint_objects,
+    monomer_parameters=monomer_parameters,
     log=log)
   if ref_model.has_hd():
     return ref_hierarchy
@@ -206,7 +210,9 @@ def _ensure_hydrogens_on_reference(ref_hierarchy, log=None):
   placer.run()
   return placer.get_model().get_hierarchy()
 
-def _detect_reference_hbonds(ref_hierarchy, log=None):
+def _detect_reference_hbonds(ref_hierarchy, log=None,
+                             restraint_objects=None,
+                             monomer_parameters=None):
   """Run mmtbx.nci.hbond.find on a model built from ref_hierarchy and return
   a list of (donor_iseq, h_iseq, acceptor_iseq, d_DA, d_HA, a_DHA) tuples.
 
@@ -220,6 +226,8 @@ def _detect_reference_hbonds(ref_hierarchy, log=None):
   ref_model = mmtbx.model.manager(
     model_input=None,
     pdb_hierarchy=ref_hierarchy.deep_copy(),
+    restraint_objects=restraint_objects,
+    monomer_parameters=monomer_parameters,
     log=log)
   ref_model.process(make_restraints=True)
   finder = mmtbx.nci.hbond.find(model=ref_model)
@@ -374,6 +382,8 @@ class reference_model(object):
     self.selection = selection
     self.mon_lib_srv = model.get_mon_lib_srv()
     self.ener_lib = model.get_ener_lib()
+    self.restraint_objects = model.get_restraint_objects()
+    self.monomer_parameters = model.get_monomer_parameters()
     self.pdb_hierarchy = model.get_hierarchy()
     self.pdb_hierarchy.reset_i_seq_if_necessary()
     sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
@@ -393,7 +403,9 @@ class reference_model(object):
     hb_p = getattr(self.params, 'hydrogen_bonds', None)
     if (hb_p is not None and hb_p.enabled and hb_p.add_hydrogens_if_missing):
       reference_hierarchy_list = [
-        _ensure_hydrogens_on_reference(h, log=log)
+        _ensure_hydrogens_on_reference(h, log=log,
+          restraint_objects=self.restraint_objects,
+          monomer_parameters=self.monomer_parameters)
         for h in reference_hierarchy_list]
     #
     # this takes 20% of constructor time.
@@ -402,8 +414,8 @@ class reference_model(object):
         reference_file_list=reference_file_list,
         mon_lib_srv=self.mon_lib_srv,
         ener_lib=self.ener_lib,
-        restraint_objects=model.get_restraint_objects(),
-        monomer_parameters=model.get_monomer_parameters(),
+        restraint_objects=self.restraint_objects,
+        monomer_parameters=self.monomer_parameters,
         log=log)
     self.i_seq_name_hash = utils.build_name_hash(
                              pdb_hierarchy=self.pdb_hierarchy)
@@ -979,7 +991,9 @@ class reference_model(object):
     work_h = self.pdb_hierarchy
     for fn in self.reference_file_list:
       ref_h = self.pdb_hierarchy_ref[fn]
-      detected = _detect_reference_hbonds(ref_h)
+      detected = _detect_reference_hbonds(ref_h,
+        restraint_objects=self.restraint_objects,
+        monomer_parameters=self.monomer_parameters)
       if not detected:
         continue
       # Inverse multimap: ref_iseq -> [model_iseq, ...]. One entry per ref

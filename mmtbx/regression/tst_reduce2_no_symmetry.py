@@ -1,4 +1,4 @@
-"""reduce2 and hydrogenate on a model without crystal symmetry.
+"""reduce2 on a model without crystal symmetry.
 
 A P1 box is made for the calculation only. It must not be written out, and
 the library path (place_hydrogens) must not move the coordinates. A cryo-EM
@@ -11,7 +11,7 @@ import mmtbx.model
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
-from mmtbx.programs import reduce2, hydrogenate
+from mmtbx.programs import reduce2
 from mmtbx.hydrogens import reduce_hydrogen
 
 # Far from the origin, as cryo-EM models usually are.
@@ -106,16 +106,28 @@ def run_cli(pdb_text, prefix, suffix, in_suffix=".pdb", extra_args=()):
     txt = f.read()
   return txt, results.model
 
-def run_hydrogenate(model_text, prefix, suffix, extra_args=()):
-  fn_in  = prefix + suffix
-  fn_out = prefix + "_hydrogenate" + suffix
-  with open(fn_in, "w") as f:
-    f.write(model_text)
-  if os.path.exists(fn_out): os.remove(fn_out)
-  run_program(program_class=hydrogenate.Program, logger=null_out(),
-    args=[fn_in, "output.prefix=" + prefix] + list(extra_args))
-  with open(fn_out) as f:
-    return f.read()
+def run_prog(prefix, pdb_text, extra_args=(), model=None):
+  """validate() and run() a reduce2.Program on pdb_text written to a file,
+  or on model in memory; returns the program"""
+  from iotbx.cli_parser import CCTBXParser
+  files = []
+  if model is None:
+    with open(prefix + ".pdb", "w") as f:
+      f.write(pdb_text)
+    files = [prefix + ".pdb"]
+  parser = CCTBXParser(program_class=reduce2.Program, logger=null_out())
+  parser.parse_args(files + ["overwrite=True",
+    "output.description_file=" + prefix + ".txt"] + list(extra_args))
+  if model is not None:
+    parser.data_manager.add_model(prefix, model)
+  prog = reduce2.Program(parser.data_manager, parser.working_phil.extract(),
+    logger=null_out())
+  prog.validate()
+  prog.run()
+  return prog
+
+def cryst1_records(txt):
+  return [l for l in txt.split("\n") if l.startswith("CRYST1")]
 
 def place_lib(pdb_text):
   inp = iotbx.pdb.input(lines=pdb_text.split("\n"), source_info=None)
@@ -153,43 +165,16 @@ def test_cli_keeps_real_cryst1():
   assert str(cs.space_group_info()) == "P 21 21 21"
 
 def test_cli_box_cushion():
-  # Working box = heavy-atom extent + 2*5 A.
-  _, model = run_cli(pdb_str, "tst_reduce2_no_symmetry_4", ".pdb")
+  # Working box = heavy-atom extent + 2*5 A (the program's model; the
+  # returned model has no symmetry).
+  prefix = "tst_reduce2_no_symmetry_4"
+  model = run_prog(prefix, pdb_str,
+    ["output.filename=" + prefix + "_out.pdb"]).model
   xyz = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None
     ).atoms().extract_xyz()
   extent = [mx - mn for mx, mn in zip(xyz.max(), xyz.min())]
   abc = model.crystal_symmetry().unit_cell().parameters()[:3]
   assert approx_equal(abc, [e + 10 for e in extent], eps=1.e-3), abc
-
-def test_hydrogenate_pdb_no_cryst1():
-  txt = run_hydrogenate(pdb_str, "tst_reduce2_no_symmetry_5", ".pdb")
-  assert "CRYST1" not in txt, txt[:200]
-  h = iotbx.pdb.input(lines=txt.split("\n"), source_info=None
-    ).construct_hierarchy()
-  assert n_h(h) > 0
-  ref = heavy_xyz(iotbx.pdb.input(lines=pdb_str.split("\n"),
-    source_info=None).construct_hierarchy())
-  out = heavy_xyz(h)
-  assert set(ref) == set(out)
-  for k in ref:
-    assert approx_equal(ref[k], out[k], eps=1.e-3), k
-
-def test_hydrogenate_cif_no_cell():
-  cif_str = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None
-    ).construct_hierarchy().as_mmcif_string()
-  txt = run_hydrogenate(cif_str, "tst_reduce2_no_symmetry_6", ".cif")
-  assert "_atom_site" in txt
-  assert "_cell.length_a" not in txt
-  assert "_symmetry.space_group_name_H-M" not in txt
-  assert "_space_group.name_H-M_alt" not in txt
-
-def test_hydrogenate_keeps_real_cryst1():
-  txt = run_hydrogenate(cryst1 + pdb_str, "tst_reduce2_no_symmetry_7", ".pdb")
-  cs = iotbx.pdb.input(lines=txt.split("\n"), source_info=None
-    ).crystal_symmetry()
-  assert cs is not None
-  assert approx_equal(cs.unit_cell().parameters(), (40, 50, 60, 90, 90, 90))
-  assert str(cs.space_group_info()) == "P 21 21 21"
 
 def test_cli_restraints_no_cryst1():
   fn_cif = act_cif()
@@ -202,16 +187,6 @@ def test_cli_restraints_no_cryst1():
   h = iotbx.pdb.input(lines=txt.split("\n"), source_info=None
     ).construct_hierarchy()
   assert "ACT" in h.overall_counts().resnames
-
-def test_hydrogenate_restraints_no_cryst1():
-  fn_cif = act_cif()
-  if fn_cif is None:
-    print("  skipping test_hydrogenate_restraints_no_cryst1: "
-          "geostd not available")
-    return
-  txt = run_hydrogenate(pdb_with_act(), "tst_reduce2_no_symmetry_9", ".pdb",
-    extra_args=[fn_cif])
-  assert "CRYST1" not in txt, txt[:200]
 
 def test_cli_keeps_placeholder_pdb():
   txt, _ = run_cli(cryst1_placeholder + pdb_str,
@@ -230,14 +205,6 @@ def test_cli_keeps_placeholder_cif():
     ".cif", in_suffix=".cif")
   assert_placeholder_cif(txt)
 
-def test_hydrogenate_keeps_placeholder():
-  txt = run_hydrogenate(cryst1_placeholder + pdb_str,
-    "tst_reduce2_no_symmetry_12", ".pdb")
-  assert_placeholder_pdb(txt)
-  txt = run_hydrogenate(placeholder_cif_str(),
-    "tst_reduce2_no_symmetry_13", ".cif")
-  assert_placeholder_cif(txt)
-
 def test_placeholder_with_restraints():
   # Both the placeholder and the restraint-file path at once.
   fn_cif = act_cif()
@@ -247,9 +214,163 @@ def test_placeholder_with_restraints():
   txt, _ = run_cli(cryst1_placeholder + pdb_with_act(),
     "tst_reduce2_no_symmetry_14", ".pdb", extra_args=[fn_cif])
   assert_placeholder_pdb(txt)
-  txt = run_hydrogenate(cryst1_placeholder + pdb_with_act(),
-    "tst_reduce2_no_symmetry_15", ".pdb", extra_args=[fn_cif])
-  assert_placeholder_pdb(txt)
+
+def test_returned_model_symmetry():
+  # get_results().model has the crystal symmetry of the written file, also
+  # with output.write_files=False, and can be processed again: none in ->
+  # none (not the working box), placeholder in -> 1 1 1 P 1 (unit cell
+  # symmetry; crystal_symmetry() is None, as for the file read back), real
+  # cell in -> that cell
+  cases = (("none", pdb_str, None),
+           ("placeholder", cryst1_placeholder + pdb_str, None),
+           ("real", cryst1 + pdb_str, (40, 50, 60, 90, 90, 90)))
+  for case, text, cell in cases:
+    for option in ("none", "hd_and_h"):
+      prefix = "tst_reduce2_no_symmetry_20_%s_%s" % (case, option)
+      fn_out = prefix + "_out.pdb"
+      if os.path.exists(fn_out): os.remove(fn_out)
+      args = ["output.filename=" + fn_out, "neutron_option=" + option]
+      model = run_prog(prefix, text, args).get_results().model
+      with open(fn_out) as f:
+        written = f.read()
+      if case == "none":
+        assert cryst1_records(written) == [], option
+      elif case == "placeholder":
+        assert_placeholder_pdb(written)
+      else:
+        assert cryst1_records(written)[0].split()[1:7] == \
+          cryst1.split()[1:7], option
+      os.remove(fn_out)
+      no_files = run_prog(prefix, text,
+        args + ["output.write_files=False"]).get_results().model
+      assert not os.path.exists(fn_out)
+      reread = mmtbx.model.manager(model_input=iotbx.pdb.input(
+        lines=written.split("\n"), source_info=None), log=null_out())
+      for m in (model, no_files):
+        assert [l[:65] for l in cryst1_records(m.model_as_pdb())] == \
+          [l[:65] for l in cryst1_records(written)], (case, option)
+        cs = m.crystal_symmetry()
+        if cell is None:
+          assert cs is None, (case, option, cs)
+          assert reread.crystal_symmetry() is None
+        else:
+          assert approx_equal(cs.unit_cell().parameters(), cell)
+          assert cs.is_similar_symmetry(reread.crystal_symmetry())
+        assert m.get_number_of_atoms() == reread.get_number_of_atoms()
+        m.process(make_restraints=True)
+        assert m.get_restraints_manager() is not None
+
+def test_rerun_after_process():
+  # A caller runs process(make_restraints=True) on the returned model, which
+  # boxes a model without working symmetry. A rerun on it in memory writes
+  # the CRYST1 of that model written to a file and read back: the input
+  # cell, the placeholder 1 1 1 P 1, or for no symmetry the box process()
+  # made (the writer writes it).
+  cases = (("none", pdb_str), ("placeholder", cryst1_placeholder + pdb_str),
+           ("real", cryst1 + pdb_str))
+  for case, text in cases:
+    prefix = "tst_reduce2_no_symmetry_21_%s" % case
+    model = run_prog(prefix, text,
+      ["output.filename=" + prefix + "_out.pdb"]).get_results().model
+    model.process(make_restraints=True)
+    written = model.model_as_pdb()
+    from_file = run_prog(prefix + "_file", written,
+      ["output.filename=" + prefix + "_file_out.pdb"])
+    in_memory = run_prog(prefix + "_mem", None,
+      ["output.filename=" + prefix + "_mem_out.pdb"], model=model)
+    with open(prefix + "_file_out.pdb") as f: file_out = f.read()
+    with open(prefix + "_mem_out.pdb") as f: mem_out = f.read()
+    assert cryst1_records(mem_out) == cryst1_records(file_out), (case,
+      cryst1_records(mem_out), cryst1_records(file_out))
+    assert cryst1_records(file_out) == cryst1_records(written), case
+    if case == "placeholder":
+      assert_placeholder_pdb(mem_out)
+    elif case == "real":
+      assert cryst1_records(mem_out)[0].split()[1:7] == cryst1.split()[1:7]
+    else:
+      cs = model.crystal_symmetry()
+      assert cryst1_records(mem_out)[0].split()[1:4] == \
+        ["%.3f" % x for x in cs.unit_cell().parameters()[:3]]
+
+def shifted_model(pdb_text):
+  """pdb_text (80 A P 21 21 21 cell) shifted by (10, 20, 30) into a 60 A
+  P 1 working box, as boxing with a map does it"""
+  from cctbx import crystal
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(
+    lines=pdb_text.split("\n"), source_info=None), log=null_out())
+  model.shift_model_and_set_crystal_symmetry(shift_cart=(10, 20, 30),
+    crystal_symmetry=crystal.symmetry((60, 60, 60, 90, 90, 90), "P 1"))
+  return model
+
+def same_symmetry(a, b):
+  return a.is_similar_symmetry(b) and \
+    a.unit_cell().parameters() == b.unit_cell().parameters()
+
+def test_shifted_model_in_memory():
+  # A model shifted and boxed in memory gives the file of the file route
+  # (the writer shifts back); the returned model stays in the caller's frame
+  h = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None
+    ).construct_hierarchy()
+  h.atoms().set_xyz(h.atoms().extract_xyz() + (-96, -90, -147))
+  heavy_text = ("CRYST1   80.000   80.000   80.000  90.00  90.00  90.00"
+    " P 21 21 21\n" + h.as_pdb_string())
+  prefix = "tst_reduce2_no_symmetry_22"
+  run_prog(prefix + "_h", heavy_text, ["output.filename=" + prefix + "_h.pdb"])
+  with open(prefix + "_h.pdb") as f: h_text = f.read()
+  cases = (("none", heavy_text, []),
+           ("hd_and_h", heavy_text, ["neutron_option=hd_and_h"]),
+           ("optimize", h_text, ["approach=optimize"]))
+  for case, text, args in cases:
+    for suffix in (".pdb", ".cif"):
+      p = "%s_%s_%s" % (prefix, case, suffix[1:])
+      model = shifted_model(text)
+      xyz = model.get_sites_cart().deep_copy()
+      cs, uc_cs = model.crystal_symmetry(), model.unit_cell_crystal_symmetry()
+      run_prog(p + "_file", model.model_as_pdb(),
+        args + ["output.filename=" + p + "_file" + suffix])
+      prog = run_prog(p + "_mem", None,
+        args + ["output.filename=" + p + "_mem" + suffix], model=model)
+      with open(p + "_file" + suffix) as f: file_out = f.read()
+      with open(p + "_mem" + suffix) as f: mem_out = f.read()
+      assert mem_out == file_out, (case, suffix)
+      # caller's model unchanged
+      assert model.shift_cart() == (10, 20, 30)
+      assert same_symmetry(model.crystal_symmetry(), cs)
+      assert same_symmetry(model.unit_cell_crystal_symmetry(), uc_cs)
+      assert approx_equal(model.get_sites_cart(), xyz, eps=1.e-6)
+      # returned model: caller's frame, written as the file
+      returned = prog.get_results().model
+      assert returned.shift_cart() == (10, 20, 30), (case, suffix)
+      assert same_symmetry(returned.crystal_symmetry(), cs)
+      assert same_symmetry(returned.unit_cell_crystal_symmetry(), uc_cs)
+      ref = heavy_xyz(model.get_hierarchy())
+      out = heavy_xyz(returned.get_hierarchy())
+      assert set(ref) == set(out)
+      for k in ref:
+        assert approx_equal(ref[k], out[k], eps=1.e-3), (case, suffix, k)
+      if suffix == ".pdb":
+        assert returned.model_as_pdb() == file_out, case
+      else:
+        assert returned.model_as_mmcif() == file_out, case
+      # in-memory rerun on the returned model
+      run_prog(p + "_rerun", None,
+        args + ["output.filename=" + p + "_rerun" + suffix], model=returned)
+      with open(p + "_rerun" + suffix) as f:
+        assert f.read() == file_out, (case, suffix)
+  # Round-off shift on a real-cell model (below shifted()'s 1e-3 A):
+  # set_unit_cell_crystal_symmetry() asserts exactly (0, 0, 0)
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(
+    lines=h_text.split("\n"), source_info=None), log=null_out())
+  model.shift_model_and_set_crystal_symmetry(shift_cart=(1.e-6, 0, 0))
+  p = prefix + "_tiny"
+  run_prog(p + "_file", model.model_as_pdb(),
+    ["approach=optimize", "output.filename=" + p + "_file.pdb"])
+  prog = run_prog(p + "_mem", None,
+    ["approach=optimize", "output.filename=" + p + "_mem.pdb"], model=model)
+  with open(p + "_file.pdb") as f: file_out = f.read()
+  with open(p + "_mem.pdb") as f: mem_out = f.read()
+  assert mem_out == file_out
+  assert prog.get_results().model.shift_cart() == (1.e-6, 0, 0)
 
 def test_place_hydrogens_does_not_move_model():
   model = place_lib(pdb_str)
@@ -284,15 +405,13 @@ if __name__ == "__main__":
   test_cli_cif_no_cell()
   test_cli_keeps_real_cryst1()
   test_cli_box_cushion()
-  test_hydrogenate_pdb_no_cryst1()
-  test_hydrogenate_cif_no_cell()
-  test_hydrogenate_keeps_real_cryst1()
   test_cli_restraints_no_cryst1()
-  test_hydrogenate_restraints_no_cryst1()
   test_cli_keeps_placeholder_pdb()
   test_cli_keeps_placeholder_cif()
-  test_hydrogenate_keeps_placeholder()
   test_placeholder_with_restraints()
+  test_returned_model_symmetry()
+  test_rerun_after_process()
+  test_shifted_model_in_memory()
   test_place_hydrogens_does_not_move_model()
   test_place_hydrogens_translation_invariant()
   print("OK")

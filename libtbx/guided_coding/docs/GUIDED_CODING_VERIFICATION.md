@@ -1,253 +1,445 @@
-# GuidedCoding verification and limits
+# Guided Coding verification and limits
 
-This file separates three kinds of evidence: what the supplied source
-implements, what earlier execution records report, and what remains
-unestablished. A successful checksum, test suite or client-loading check
-is not approval to integrate or publish.
+Guided Coding gives you checks and a record you can examine. To assess a result, you need to know what each check establishes and where its evidence stops.
 
-## Status and identities
+There are three different questions: What does the code check? What happened when it was run? What remains uncertain? Reading a test tells you what it is intended to check. A captured run tells you what happened for a particular source and environment. Neither alone proves that a later task will behave the same way.
 
-The published implementation baseline is r10 rev16
-`enumcheck-20261002T194333Z`, published on 2026-10-02 as the limited opt-in
-pilot. Its recorded identities are:
+This document starts with those practical limits, then gives the checking steps, a guide to the source and the detailed historical record. For everyday use, read the [User Guide](GUIDED_CODING_USER_GUIDE.md).
 
-| Item | Identity |
-| --- | --- |
-| Published commit | `c36887c7f489018af4f91773246ecde32d1b4e24` |
-| Source archive SHA-256 | `fce3627e46982f3b5fad1baaad7ada538984e9087a84b2147548b4564e844968` |
-| Source manifest SHA-256 | `b86d0490df59f854c214e6771ad8bb44f03069a38612be198edff4ebb11238e0` |
-| Contract version / SHA-256 | `2026-09-17` / `ab4586810ef683702c8648267d5475fb50659b9fada4b2409293e93a87e6876b` |
-| Publication review bundle SHA-256 | `0e4c112d3726026bd397a4e50ac2a3cff79b146883f8ceab269e3a069bc2c6ca` |
-| Publication packet identity | `9834e7a5bfdf6b8dd8401972265715f527432ba277b63c4ee5c50f130508f44b` |
+## What is checked
 
-The `docs-20261003` revision (published 2026-10-03 as commit
-`b0747a4a55f29db3abe04358480d5867e94cb792`, source manifest SHA-256
-`5edbec14fe45d3538da533fd995a5d59ddaa47df7629daf27321ab2a1134f1be`)
-changed documentation only and kept the literal label `r10 rev16 candidate`.
+The package checks its source files against a manifest—a list of files and checksums. A checksum is a fingerprint calculated from file contents. These checks detect a changed or incomplete kit; they do not establish who supplied it.
 
-This revision, r10 rev17 candidate `followups-20261004`, changes
-`screen_check.py` (the reading's `Scope:` line, `OUTGOING.txt` bindings and
-the `NOT RUN` waiver form), adds `publication_precheck.py` and
-`records_history.py` with their tests, and revises the skill entry,
-Worker, Guide, Setup, defaults, method template, screens, reviewer brief,
-transport, Helper and Roles texts. The contract, the adoption rule and the
-SETUP §5 recipe are unchanged. Its commit, archive, manifest, bundle and
-packet identities are recorded in its task and publication records
-(`phenix/.claude/records/2026-10-04-gc-followups-A/`), not in this file,
-which cannot carry its own hash. Earlier reviews and test runs apply to
-their recorded source; they do not approve this diff. The literal
-release-family check now expects `r10 rev17 candidate`; it does not
-establish an exact revision or approval.
+It can also freeze and verify task evidence, check decision-screen forms, prepare review bundles and compare publication records with Git. A frozen packet is evidence whose contents and inventory have been recorded for later comparison. The [architecture document](GUIDED_CODING_ARCHITECTURE.md) explains how those parts fit together.
 
-The October 2–3 publication, client and installation facts below come from
-the supplied controller and outside-review records. The documentation pass
-checked the uploaded baseline against its complete manifest and read the
-implementation and tests; it did not rerun those sessions, inspect live
-remote refs or act as an Outside Reviewer. Raw historical evidence is kept
-in the associated task/review records, not duplicated in the generic package.
+The checks have specific limits:
+
+| Check | What it establishes | What still needs examination |
+| --- | --- | --- |
+| Source verification | Listed files and the complete inventory match the supplied manifest, with a narrow exception for recognized Python cache files. | The supplier, correctness of the procedure and contents of permitted caches. |
+| Claude Code version | The relevant client meets the minimum version, or the app branch reports that the version could not be checked. | Which instructions were loaded and whether future clients use the same app marker. |
+| Result screen | Required information, recorded code identities and a passing recorded check are present and match. | Whether the test checks the right thing, actually ran and supports the claimed result. |
+| Outside-review record | The reply identifies the same packet, covers the required decision and says to proceed. | The reviewer's independence, authenticity of the reply and meaning of any condition. |
+| Review bundle | Required files were packaged with checksums in the permitted layout. | Privacy, completeness of the evidence and permission to send or publish it. |
+| Publication checks | The outgoing record passes the repository checks performed; the submitted push command has the permitted form. | Your decision to publish, a later change at the remote and commands run outside the validator. |
+| Task history | Saved summaries were listed without activating a task. | Truth of those summaries and any permission or resource reservation. |
+| Auto-mode queue | Jobs change state only in the permitted order; one worker is registered at a time; runs have time limits and, by default, no outside network; a ready packet carries a well-formed `SCREENING.txt` and still matches its frozen manifest at approval; the start notice and morning report have the required form. | Whether the chosen tests and screening are adequate, whether the approval summaries are true, and what the app does at a usage limit. |
+
+Setup's record, verify and apply sequence is an instruction Claude must follow. It is not a save operation enforced by the client. Verification must succeed before the apply call; a failure after a write can still leave the project partly updated.
+
+A successful check is not permission to apply a change, publish it or update an installation. Those decisions remain separate.
+
+## What the recorded trials support
+
+The records describe tests on disposable configurations and scratch projects, plus some sessions using the developer's normal Mac client. They include successful source checks, command loading and specific refusals. Two Mac Terminal setup trials stopped before applying changes when a recovery record was damaged or missing.
+
+Those observations are useful, but narrow. They do not establish all setup and recovery behavior across clients, operating systems or future sessions. The source-level tests and client observations answer different questions.
+
+The full PHENIX server test suite was **not run** for the earlier Guided Coding-only pilot publication, and its baseline/candidate test comparison was **not produced**. The developer explicitly waived that run for that publication. Local package tests do not replace it, and the waiver does not automatically apply to another change.
+
+We have not established that Guided Coding produces better fixes than ordinary AI coding, how often it fails, or whether every future Guide will follow the instructions reliably.
+
+## Important remaining uncertainty
+
+**Setup and recovery.** Earlier trials omitted complete proposals or approved recovery text. Later trials improved on those failures, but do not erase them. In one trial, the setup record was saved to a different place than proposed and did not match the displayed proposal word for word. The session disclosed this. The two damaged-record trials cover one Mac client, one mode and scratch targets; Claude still determines what happens next in other sessions.
+
+**New conversations.** Earlier clients wrote memory outside the target project. Later sessions using that configuration cannot be described as working only from project records without checking what else was loaded. A new conversation does not necessarily begin with no prior context.
+
+**Missing original log.** An untouched debug log from an earlier trial could not be found in the recorded locations. Transcripts and excerpts remained. The reviewer found no important behavior claim that depended solely on that missing log. We still cannot confirm the complete original or that removing private information was its only alteration. This limits how fully the record can be checked; it does not show another failure in Guided Coding’s behavior.
+
+**Clients and platforms.** A Terminal version check says nothing about the app engine. The app branch uses markers observed on October 6, 2026; their future stability is not established. Earlier interactive Terminal observations had continuation and permission-mode qualifications. Windows is not supported; native Windows use has not been tried. A real csh session and complete setup/recovery behavior across clients have not been established. Attended use on Linux (a real `/gc` session) has not been observed; the kit's tests run there, and an attended Linux trial is a listed follow-up. A Windows skip in a test wrapper is not evidence of Windows support (Windows is not supported).
+
+**Auto mode.** Auto-mode runs need macOS; elsewhere `run` refuses. Recovery after a usage limit is manual. Whether the app retries an interrupted turn, and what happens to a running worker then, is untested. The stop command cannot see a system program that a test starts in its own session from a parent that exits within about a second. The network block does not cover a request that a test hands to another system service. The screening record and the approval summaries are checked for form only.
+
+**Changes outside the project.** Observations about unchanged files and recorded tool calls apply only to what was examined. They do not establish that every file, operation or login state on the computer stayed the same.
+
+**Independence.** Separate test authorship is recorded, but is not by itself proof of independence. A repeatable test can still check the wrong claim. Records must say who chose the success criteria, wrote the test and ran it.
 
 ## Release and source checks
 
-First compare an archive with the independently supplied SHA-256 in its
-review/publication handoff. From a trusted extraction, replace the path
-below with the canonical source root and run this complete Bash block:
+Before extracting an archive, compare it with the SHA-256 checksum supplied independently in its review or publication handoff. Use a trusted extraction for the next steps.
+
+Replace the path below with the canonical source root—the absolute path after resolving symbolic links—and paste this complete block as one command. It works in bash, zsh, csh and tcsh; each line ends with `\`, which continues it on the next line:
 
 ```bash
-cd /absolute/path/to/libtbx/guided_coding &&
-shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
-GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
-cat payload/RELEASE &&
-grep -Fq 'r10 rev17 candidate' payload/RELEASE
+cd /absolute/path/to/libtbx/guided_coding && \
+shasum -a 256 -c SOURCE_MANIFEST.sha256 && \
+env GC_PAYLOAD_ROOT="`pwd -P`/payload" libtbx.python -I -B payload/tools/screen_check.py verify-source . && \
+cat payload/RELEASE && \
+grep -Eq '^guided_coding 2\.0 pilot r10 rev20 ' payload/RELEASE
 ```
 
-Every dependency uses `&&`. A failed directory change or listed checksum
-must stop before executing the checker; a failed inventory check must stop
-the later commands. Do not append unguarded preparation or registration.
-After a successful block, separately compare the manifest's SHA-256 and
-full release label with the expected handoff identity. Repeat the guarded
-source check before central tools and consequential work as the skill
-requires.
+Where `shasum` is missing (some Linux systems), replace `shasum -a 256 -c SOURCE_MANIFEST.sha256` with `sha256sum -c SOURCE_MANIFEST.sha256`; it reads the same manifest file.
 
-`verify-source` rejects missing/changed listed bytes, extra files, symlinks
-and multiply linked files. The accepted installer-bytecode pattern is an
-exception, not authentication of bytecode contents. `-I` isolates imports
-from the current directory and `PYTHONPATH`; `-B` suppresses writing caches.
-The tool invocation uses source rather than package caches. These controls
-establish consistency, not supplier identity or model compliance.
+Each `&&` makes the next command depend on the previous command succeeding. A failed directory change or checksum must stop the block before the kit's checker runs. A failed inventory check must stop the remaining commands. Do not append unguarded preparation or registration commands.
 
-## Trace a claim to the source
+After the block succeeds, separately compare the manifest's own SHA-256 and the full release label with the expected handoff. The final `grep` checks that the release line begins with the `r10 rev20` label (a later release that names rev20 only in its history is refused); it does not identify an exact revision or establish approval.
 
-For example: **registration refuses an existing destination instead of
-creating a nested link.**
+Repeat the complete source check before running central tools and before consequential work, as required by `SKILL.md`. If the source changes, stop dependent work until the difference has been resolved.
 
-1. Open [`register_skill` in `screen_check.py`](../payload/tools/screen_check.py).
-   It computes the single `skills/guided_coding` destination, checks
-   `exists()` or `is_symlink()`, and calls `fail` if occupied. The creation
-   is a direct `os.symlink`, not a recursive `ln -s` command.
-2. Read `SkillRegistrationChecks` in
-   [`tst_screen_check_v20.py`](../tests/tst_screen_check_v20.py). The fresh/
-   second-run case and the other-link/directory/dangling-link case assert
-   refusal and absence of a nested link. Other cases cover version and
-   parent-path refusals.
-3. To establish that those tests ran for a particular revision, inspect
-   its captured command, source identity, stdout/stderr and exit status.
-   Reading the test source alone establishes its intended assertion,
-   not an observed pass.
+The checker rejects missing or changed listed files, unexpected files, symbolic links and files with more than one hard link. It permits only a recognized installer-generated Python cache pattern. That exception checks the filename and header type, not the cached contents.
 
-Other important mappings:
+The calls use `libtbx.python -I -B` (revision 16; before, `python3 -I -B`); any Python 3.10 or newer serves in place of `libtbx.python` (revision 18). In a cctbx or Phenix build, `libtbx.python` is the build's conda Python. When `libtbx.python` is not on PATH, the build's `conda_base/bin/python3` serves. The `-I` option isolates imports from the current directory and `PYTHONPATH`; `-B` prevents writing caches. The documented tools run from source. These controls check consistency, not supplier identity or Claude's compliance.
 
-| Claim | Implementation / test source | What it does not establish |
-| --- | --- | --- |
-| Complete-source consistency | `verify_source`, `regular_files`; `SourceInventoryChecks` | Origin, semantic correctness or authenticated cache contents |
-| CLI minimum 2.1.281 | `MIN_CLAUDE_VERSION`, `check_claude_version`; `ClaudeVersionChecks` | Desktop runtime, actual instruction loading or trustworthy PATH executable |
-| Screen form and result identity | `blocks`, `developer_view`, `code_identity`, `check`; `ScreenChecks` | Correct criterion, true logs, complete tests or Developer authorization |
-| Matching outside reading | `reading_matches`; conditional/waiver/pending controls | Independence or authenticity of the reviewer, satisfaction of a semantic condition |
-| Two-domain review transport | `make_bundle` in `review_bundle.py`; `ReviewBundleChecks` | Privacy, evidence completeness or permission to publish |
-| Reading scope (exactly one `Scope:` line, counted before its value is checked), outgoing bindings (no repeated key within a block), waiver form | `reading_matches`, `parse_outgoing`, `suite_waiver` in `screen_check.py`; the scope, outgoing and waiver cases in `ScreenChecks` | Git state, the reviewer's independence, or that the quoted words authorize anything |
-| Pre-push destinations, settings, bindings, dry run (every Git query's exit checked before its output; a failed configuration or identity query refuses, while Git's no-match answer to the configuration query is accepted), command shape (whitelist of the documented form) | `publication_precheck.py`; `tst_publication_precheck_v20.py` on temporary repositories and with a fake Git on PATH | A decision to push, the remote's later state, settings outside the repository's Git config scopes, any Git command not submitted to the validator, or false acceptances other than the demonstrated ones |
-| Read-only task history | `records_history.py`; `tst_records_history_v20.py` | Truth of a record's contents, or any grant, reservation or scheduling |
-| Checked setup ordering | `SKILL.md`, `SETUP.md` §5 and its embedded recipe | Mechanical enforcement by Claude Code or reliable obedience by every Guide |
-| Test isolation in the repository | [`libtbx/tst_guided_coding.py`](../../tst_guided_coding.py) | Complete source verification of arbitrary unlisted files in the original installation |
+## Following a claim back to the code
 
-There are **108 test methods** in the four shipped package test files
-(53 for the checker, 13 for the review bundle, 27 for the pre-push
-checks, 15 for the history listing). Subtests exercise additional cases;
-a count of 108 is not 108 independent behavioral claims. The checker,
-pre-push and history tests of this revision were written by two separate
-test-writer sessions from the interface specification, without reading
-the implementation; the baseline control (`observations/baseline_control.txt`
-in the release's evidence packet: the final checker test file run against
-the previous published checker) shows which of them fail there; the
-pre-push and history tools have no earlier version to compare with. The setup
-shell recipe and native LLM scenarios are not covered by unit methods;
-their controls are in the task and review records.
+Consider this claim: **registration refuses an occupied destination rather than placing another link inside it.**
 
-## Recorded checks of the published implementation
+First read [`register_skill` in the checker](../payload/tools/screen_check.py). It constructs one `skills/guided_coding` destination, checks whether it exists or is a symbolic link, and refuses if it is occupied. It creates the link directly with `os.symlink`.
 
-| Evidence | Recorded result and reach |
+Next read `SkillRegistrationChecks` in [the checker tests](../tests/tst_screen_check_v20.py). The tests cover a second registration attempt and destinations that are directories, other links or dangling links. They check both refusal and the absence of a nested link. Other cases examine version and parent-path refusals.
+
+Finally, to establish that those tests ran for a particular revision, examine the captured command, source identity, output and exit status. The test's source shows its intended check; it is not a record of a passing run.
+
+### Running the package tests
+
+Once the source guard succeeds, the five shipped test files can be run on a trusted clean copy containing only the manifest-listed source. Use a resolved temporary directory without symbolic links. On macOS the default temporary directory is under `/var`, which is a symbolic link, so the command below uses `/tmp` resolved to its real path (`/private/tmp` on macOS):
+
+```bash
+env TMPDIR="`cd /tmp && pwd -P`" libtbx.python -I -B -m unittest discover -s tests -p 'tst_*.py' -v
+```
+
+It works in bash, zsh, csh and tcsh. Run it from the top folder of that clean copy (the folder that contains `tests`). On macOS the run took about nine minutes in the revision 14 runs (527 to 545 seconds); the revision 20 runs on the developer's Mac took 1827 and 2877 seconds (about 30 and 48 minutes; the cause of the difference was not investigated). It is a separate authorized checking step, not a command to continue after a failed source guard. Report every skipped case.
+
+The five files contain 454 test methods (revision 20; 438 in revision 19, 372 in revision 18): 178 for the checker, 178 for the auto-mode queue helper, 13 for the review bundle, 70 for publication checks and 15 for task history. Some methods contain additional cases. The number of methods is not a count of independent claims.
+
+The default run contacts no outside host: tests of the auto-mode network block use the documentation address 192.0.2.1, where no host exists. Three auto-mode tests would contact a real outside host or name if allowed, so they run only when the environment variable `GC_TEST_NETWORK` is set to `1`, and are otherwise reported as skipped with the reason. When enabled they contact `https://www.rcsb.org` (a DNS lookup and HTTPS), `1.1.1.1` (port 443) and the DNS resolver for `example.com`. A default run on a Mac therefore reports three skipped auto-mode cases. One control makes a single 5-second connection attempt to 192.0.2.1 outside the block, to show that the refusal inside comes from the block; if the surrounding environment already refuses it, the three block tests are skipped as well, with that reason. Other platforms can skip further cases, each with its reason.
+
+Auto-mode runs need macOS: the queue helper's network block uses `sandbox-exec` and its search for a run's processes uses the `ps -E` environment marker. On any other system `auto_queue.py run` refuses with exit 15 before anything starts, with or without a network grant; the helper has no option, environment variable or setting that switches that off. The tests are meant to run on Linux as well. There, and on a Mac with `GC_TEST_SIMULATE_NON_MACOS=1` (a variable only the tests read), they run the helper through the test-only launcher `tests/auto_queue_standin.py`, which accepts the platform and replaces `sandbox-exec` with a stand-in that runs the command unrestricted, inside its own process only; every command the tests run through it is local. The launcher runs commands without the sandbox and without the platform refusal on any system, so it acts only on queues the kit's tests created: before it starts or records anything it refuses with exit 16 unless every queue path the helper would open lies inside one directory directly under the temporary directory that holds the marker file `GC_KIT_TEST_QUEUE_ROOT`, which the tests write there. It resolves those paths as the helper does: the home from `--home` or `GC_AUTO_HOME` (the default home is refused), every `--queue`, the queue named by the home's `ACTIVE` file and, for `init`, the records root and the lock directory. An empty or blank `--home`, `--queue`, `--records`, `--lock-dir` or `GC_AUTO_HOME` is refused too, so that the paths the launcher checks are the ones the helper opens: the helper treats a blank value (for example `--home " "`) as a relative path, falls back to another home for an empty `--home` or `GC_AUTO_HOME` (and to the `ACTIVE` queue for an empty `--queue`), resolves an empty `--records` to the current directory, and refuses an empty `--lock-dir` itself. A real queue is therefore refused. The limits: a marker file written by hand into a directory under the temporary directory is accepted; and the check resolves the queue directory, not what is inside it, so a symlink planted by hand inside a marked test queue (for example its `runs/` pointing to a real queue's `runs/`) lets a run record land in the real queue. The check guards against mistaken use, not deliberate misuse. It checks only those queue paths: other paths, such as `--log`, `--cwd`, `--file`, `--packet`, `--script`, `--grant` and `--jobs`, are not checked, so a run started through it can write its log anywhere. The following is the Linux coverage, shown by a simulated non-macOS run on a Mac and by a real Linux run of the kit suite (anaconda, October 12, 2026: 269 tests, 261 passed, 8 skipped): the tests cover queue states and transitions, init and its refusals, runs, run records and time limits, the probe, approvals and readiness, frozen packets and screening records, the worker registry, the lock, stop, reconcile, cleanup and leftover processes found by group, session or parentage, the installation check, the morning report and the auto-mode screens. Off macOS (real, or simulated with `GC_TEST_SIMULATE_NON_MACOS=1`) these tests are skipped with their reason (revision 13 corrects the earlier count of four): `test_outside_network_blocked_by_default` and `test_probe_network_blocked_by_default` (the real sandbox-exec refusal of outside connections); `test_survivor_setsid_found_by_run_id_marker` and `test_probe_surviving_killed_wrapper_is_found` (the `ps -E` marker); `test_outside_name_lookup_blocked` (the real block of an outside name lookup; off macOS a failed lookup would only show that the host was offline); `test_network_allowed_job` and `test_outside_name_lookup_allowed_job` (the allowed-job companions of the block: off macOS the stand-in never blocks, so their success says nothing about the production control); and `test_probe_timeout_with_detached_child_holding_output` (a duplicate there: the P10 variant runs the same body with the real ps). The last three network tests are also opt-in (`GC_TEST_NETWORK=1`). Off a real Mac (not under the simulation) these are also skipped: `test_module_under_sandbox_exec_fails_once` (needs `/usr/bin/sandbox-exec`; revision 16: `test_helper_reads_table_inside_sandbox_exec_where_ps_is_refused`) and the macOS subtests of the `ps -E` snapshot tests (revision 16: of the marker snapshot tests), and, since revision 16, `test_marker_rule` and `test_marked_parent_chain_rule` (run-id markers are read on macOS only), `test_macos_group_from_kernel_record`, `test_kernel_record_layout_check_needs_parent_and_group_apart` and `test_start_time_unmoved_by_a_clock_step` (the macOS kernel record). (Until revision 14 the two Mach-O normalizer tests were skipped there too, for lack of `cc` producing Mach-O; since revision 15 they use bundles the test writes and run everywhere.) The tests of the refusal itself run the real helper, not the launcher, with the non-macOS platform set inside that helper's own process. A default Linux run therefore reports 10 skips (revision 16: 16, 15 of them in `tst_auto_queue_v20.py`, with the macOS-only `test_marker_rule`, `test_marked_parent_chain_rule`, `test_macos_group_from_kernel_record`, `test_kernel_record_layout_check_needs_parent_and_group_apart` and `test_start_time_unmoved_by_a_clock_step`): those eight, `test_module_under_sandbox_exec_fails_once` and `test_case_variant_of_packet_refused_on_case_insensitive_volume` (skipped where the filesystem is case-sensitive), plus the real-tool conformance tests that cannot run there: `test_real_tool_conformance_macho_bundle` (needs macOS and `cc`) always, and `test_real_tool_conformance_archive` where `ar` or `ranlib` is missing (revision 15, see below). Through revision 14 it reported 12, the two Mach-O normalizer tests (`test_normalizer_build_time_masks_date_and_derived_fields`, `test_normalizer_masks_code_signature_only_at_the_end`) included; the anaconda run of October 13, 2026 (checkpoint 3 source, 314 tests) reported exactly those 12. Further skips depend on the host on any platform: the three bytecode tests of the checker are skipped where a bytecode cache prefix is set. (`test_install_check_classifies_timestamp_only_archive_change` never skips for lack of tools: since revision 15 it writes its archives itself, in both the GNU/SysV and the BSD/macOS layout, and uses no `ar` or `ranlib`; since revision 16, inside `sandbox-exec`, its two subtests that start a run skip with the nested-sandbox reason.) A default Mac run reports 4 skips: the three opt-in tests and the Linux-only `test_multithreaded_process_with_exited_main_thread_is_alive` (revision 14). Default runs contact no outside service; the opt-in tests say what they would contact.
+
+Revision 13 adds three things to what the auto-mode helper checks. First, the process table fails closed: when `ps` cannot be read, the helper refuses with exit 17 and never prints Stopped, Cleaned or a released lock, never passes readiness and shows unknown in the report; tests replace the helper's `ps` with a missing, refused, empty or malformed stand-in in the helper's own process. Second, the kit's own suite checks `ps` first and, inside `sandbox-exec`, reports one failure naming the cause and the supported route (an attended run outside the queue's outer sandbox) instead of many unrelated failures. Third, `install check` can classify a difference as "timestamp-only differences: attended validation needed" from a `NORMALIZED` value (`payload/tools/fingerprint_normalize.py`), tested (in revision 13) with real `ar` and `ranlib` archives and, on macOS, a `cc`-built bundle (since revision 15 with archives and bundles the tests write themselves); the installation stays unavailable either way and only an attended validation records a new value. Some of the new tests need macOS; the complete off-macOS skip list is given above (it supersedes an earlier statement here of six macOS skips).
+
+Revision 13 also changes the tests and publication tools. Timing: the suite's wall time and its 20 slowest tests were measured before and after (records of the job). Tests that depended on how fast helper subprocesses start now synchronize instead of sleeping: the stop-during-probe test holds its probe (which ignores SIGTERM) until the stop command has returned Stopping while the starting wrapper is alive (a release file, at most 30 s), the cleanup-during-probe and queue-lock tests do the same, the reused-pid test waits for a later ps start second instead of 2.1 s, and the probe time-out test measures its bound from the run record (`probe_started` to `ended`, at least 5 s and at most 7 s for a 3 s limit) rather than from the wall clock around a helper start-up, and waits at most 5 s for the killed probe group to be reaped. These were each run 20 times in a row and 10 times under induced CPU load on the Mac. What remains a limit: the real timing tests (time limits, TERM/KILL escalation, whole-second run windows) still use wall-clock bounds with stated margins, so a heavily loaded host (the Linux timing sensitivity observed on anaconda) can still fail them; a Linux 20-run repeat is the Guide's later run. Portability: the probe time-out leftover check uses separate `-o pgid= -o command=` flags (procps reads `-o pgid=,command=` as one column). Logs: `libtbx/tst_guided_coding.py` prints the SHA-256 of `SOURCE_MANIFEST.sha256`, the RELEASE line and the Git HEAD when there is one, marked `(dirty: ...)` when the package has changes not in that commit. Publication: `publication_precheck.py outgoing` generates the one-commit OUTGOING.txt block on standard output (notes about push settings go to standard error) and checks it with the same parser; the final PUBLICATION check now applies check-draft's OUTGOING.txt line rule (the seven keys only), the `SERVER_SUITE: <outcome>` first-line form and the companion refusal; a misplaced verified file is accepted from a correction companion only when its bytes equal a file of the same name listed in the frozen manifest and the screen's LIMITS names `ERRATA.md`. The fingerprint normalizer masks a Mach-O code signature only at the end of `__LINKEDIT` and of the file; any other declared range makes it compare the file byte for byte. These rules guard against mistakes, not deliberate edits: the declared ranges come from the file's own load commands, so a file edited on purpose can be given the same normalized value. A normalized match only reports that attended validation is needed; an installation is available only when its exact recorded fingerprint matches, and a new fingerprint is recorded only by an attended validation. Reading fields written as Markdown headings or table rows are compared like other decorated lines. The auto-queue helper's stop now signals every run confirmed by `ps -p` before refusing for an unreadable table; stop, cleanup, lock release and transfer read the table even with no run record; and on macOS an empty or unparsable `ps -E` output refuses.
+
+The setup shell recipe and native Claude scenarios are not covered by those unit methods. Their controls and observations are in the task and review records.
+
+### Checking a later revision
+
+Keep earlier evidence unchanged and identify the new source separately. For a documentation-only change, compare the rewritten claims and command syntax with the implementation. Record which executable and contract files are unchanged. If an instruction or claim changes, assess that change; passing unit tests cannot establish its effect on Claude's behavior.
+
+For a native-client check, identify the exact source, client and runtime, selected skill path, loaded project instructions and persistent context. Examine the actual command expansion, operations and resulting files. A version string, registration link, model-reported path or simulated procedure alone is insufficient. Matching decoded transcript text also does not prove which file bytes loaded.
+
+Choose observations relevant to the changed behavior and intended support. Do not describe an earlier candidate's session as a fresh run of the new one.
+
+An Outside Reviewer examines the new source and its evidence. Accepting the work, applying it, starting to use it and publishing it remain separate decisions. A final decision screen must refer to an actual review that covers its exact frozen packet, or, for a full-path integration only, to the Developer's recorded waiver of that review (revision 17); a publication screen always needs the review. Any waiver must follow the existing contract and project rules; this document grants none.
+
+## Historical record
+
+The following account preserves the scope of the earlier records. It is not a new run of those sessions or a fresh inspection of live repositories.
+
+The original documentation pass checked the uploaded baseline against its complete manifest and read the implementation and tests. Publication, client and installation facts came from the records of the session that ran and recorded the work and from outside reviews. Raw historical evidence remains in the associated task and review records, rather than being copied into the general package.
+
+### Published pilot and setup corrections: October 2–3, 2026
+
+The published implementation baseline was rev16, identified as `enumcheck-20261002T194333Z`. A documentation-only update followed on October 3. Its label still said `r10 rev16 candidate`; the label alone did not establish publication.
+
+The setup correction checked the exit status of both `find` commands before using their file lists. Failures, including partial lists, stopped verification. Three test cases did not print `VERIFY_OK`; the script running the checks stopped before applying changes, and the protected files were unchanged. Seven earlier test cases retained their results, and the review finding about file listing was closed.
+
+The session that ran and recorded the work reported 45 package tests passing on the Mac. The publication reviewer ran the repository harness on Linux and reported successful unit tests, with one case-insensitive-filesystem skip and a skipped libtbx precompile branch. A skip is not a pass for that branch.
+
+A disposable Mac Terminal configuration using Claude Code 2.1.284 loaded help and status, ran the source guard and compared the command with its expansion. This established those loading/help/status observations, not setup or recovery.
+
+A live Terminal session also loaded help from the expected source and ran the guard. That successful attempt followed an authentication-expiry failure and the user's sign-in.
+
+A Claude app Code-tab session loaded help through the personal link and ran the source guard. Its transcript reported runtime 2.1.286. Its scope was loading and help, not app status or full setup/recovery.
+
+The final publication review said to proceed with the limited pilot. It closed its four findings; the earlier file-listing finding remained closed. A description of three test assertions was corrected outside the frozen packet. The genuine publication screen passed; the record contains the developer's PUBLISH decision and verified remote pushes.
+
+The session that ran and recorded the work reported clean Mac and shared Linux checkouts at the publication commit, matching source files and successful repository-harness checks on both. No Claude client was installed or run on that Linux installation. Matching kit files there did not establish native client support, and those checks were not a full PHENIX suite.
+
+On October 3, the session that ran and recorded the work reported the development tag absent from the remote and its local copy removed after preservation. The published commit remained in history. That removed tag is not an installation target.
+
+### Follow-up revision: October 4, 2026
+
+Rev17, `followups-20261004`, changes the checker to examine review scope, outgoing-commit records and the required form of a waived test suite. It adds publication and history tools and their tests, and updates the associated procedure texts. The contract, project-adoption rule and setup-save recipe are unchanged.
+
+The changes followed three problems in the development project: a development tag sent to a repository that reserves tags for releases, a publication based on an inferred suite waiver, and installation updates planned after the push. The tag was removed on October 3; the developer corrected the waiver on October 4. This revision adds no parallel-job coordinator.
+
+A public API read on October 4 reported successful GitHub Actions `quick` and `clutter_and_syntax` jobs for both published commits, and a successful mirror workflow after each. It was a read of recorded results, not a rerun or a PHENIX suite.
+
+#### Four Mac Terminal sessions
+
+Four non-interactive Claude Code 2.1.284 sessions used Auto mode and a project-level skill link in a scratch project. Each printed the source guard's success for the worktree path and the rev17 candidate label.
+
+In those sessions, status recovered the adoption declaration, method and records from files, and history listed one record without creating a file. A setup save with truncated approved text stopped at verification; another with no prior record or absence marker also stopped there. Apply was held, and the protected files' hashes were unchanged in every session.
+
+The Terminal title instruction was printed in three sessions and omitted in one. These observations cover one client, one mode and scratch targets. They used the developer's live login and wrote client bookkeeping outside the targets, so they do not establish recovery without any other persistent context.
+
+#### Claude app session titles
+
+The Guide is the session that plans and directs the work. In its own app session, the rename tool replaced an app-generated title without a prompt. That session had loaded the published rev16 skill, rather than the candidate. It showed that the client offered the tool, not how the candidate behaved.
+
+Two other app sessions used an exact copy of an earlier candidate, kept read-only in a scratch project. Its `SKILL.md` title instructions matched those in the recorded published revision, but later changes affected the tools, tests and some texts. These observations cover title behavior on that copy.
+
+Both transcripts showed the skill expansion and a passing source guard. One app-generated title became `GuidedCoding: help` through the rename tool without a prompt. A title set by the developer, `KEEP MY TITLE`, was left unchanged. That second case did not exercise an approval dialog. The developer reported both titles unchanged after closing the windows.
+
+Four earlier app sessions remain in the record but were not counted: two met a failed guard while the worktree was being edited, one renamed itself on the preceding candidate, and one met a failed guard and left a hand-set title untouched. A project-skill notice saying the name was not a command appeared each time; it establishes neither success nor failure.
+
+#### Project-specific test discovery
+
+A PHENIX test lookup found tests calling `run_autobuild`. Its default mode matched test names. A function newer than its May 6, 2026 static index produced no entry or explanatory message, and its changed-file mode considered only uncommitted modifications in three module directories. This was a project-specific tool, not a feature shipped in the general kit. The recorded command was `phenix.find_program search_type=tests search_text=<function> tests.search_tests_by=function_called`; the changed-file option was `git_affected_tests=True`.
+
+### App-aware version check: October 6, 2026
+
+This separately recorded change makes the version check use the app's own engine in a recognized app session. It updates the version tests and corresponding documentation. The release label, contract, adoption rule and setup recipe are unchanged.
+
+In the Guide's own Mac app Code-tab session, the separately installed Terminal command was removed from the search path for each checking command only. The checker read the app engine as version 2.1.288. With the engine-path variable unset, it printed one `NOT CHECKED` line and exited successfully.
+
+With the app marker unset and no Terminal `claude` available, it failed as a Terminal session. With the marker unset and the Terminal command available, it verified that command as version 2.1.284.
+
+One real non-interactive Terminal run used a scrubbed environment and a one-off session-start hook supplied with `--settings`. It reported `CLAUDE_CODE_ENTRYPOINT=sdk-cli`, so it selected the Terminal branch. An interactive Terminal session was not observed.
+
+These checks cover one Mac, one app session and one non-interactive Terminal run. Nothing was uninstalled and no settings were changed.
+
+### Auto mode: October 8–9, 2026
+
+The auto-mode release (release label `r10 rev18 candidate`) adds auto mode: `auto_queue.py`, `payload/AUTO.md`, the `auto_start` and `auto_report` screens and their `screen_check.py` rules, with tests, and routes the auto commands in the skill entry. Standard mode, the contract, roles and setup are unchanged. Revision 9 added the screening record required before a job is ready, the approval summaries in the morning report, manual recovery after a usage limit, a stop command for any shell, and stricter checks of job identifiers. The release-family check now expects `r10 rev18 candidate`. The checks, the hands-off runs and their limits are in the task record `phenix/.claude/records/2026-10-08-gc-auto-release-plan/`. The auto-mode tests were written from the written specification by separate test-writer subagents, which did not read the implementation; the Guide wrote the implementation and ran the checks; reviewer subagents of the same model family re-read each revision. That is separate authorship, not proof of independence.
+
+Revision 12 (October 11, 2026) makes `run` refuse on any system other than macOS, removes the default lock directory so that `init` needs `--lock-dir`, and adds the test-only launcher so that the kit's tests can run on Linux. It followed the shared Linux suite's failures of `libtbx/tst_guided_coding.py` after the auto-mode release; real Linux verification on the server is a separate step.
+
+### Revision 13: October 12–13, 2026
+
+Revision 13 builds on the published auto-mode release. Its release label is `r10 rev19` (the line in `payload/RELEASE`). The work and its checks are in the task record `phenix/.claude/records/2026-10-12-gc-next-revision/`.
+
+New commands and files:
+
+- `screen_check.py check-draft publication DIR` checks an unfrozen publication packet and names the checks it skipped. `payload/PUBLICATION_PACKET.md` lists every file of a publication packet and its format.
+- The **ACCEPT** screen (`accept`) records acceptance of an exact frozen candidate while its outside review is pending. Its DECISION must say that master and origin stay unchanged.
+- `screen_check.py check` and `present` take `--corrections DIR`: a verified file frozen in the wrong place is accepted from a correction companion only when its bytes equal the file's entry in the frozen manifest, that file has the same name, one frozen file serves one name, and the screen's LIMITS names `ERRATA.md`; `present` names the file read from the companion.
+- `publication_precheck.py outgoing` writes the one-commit `OUTGOING.txt` block from the live repository and checks it with the same parser.
+- `auto_queue.py transfer` hands jobs over to attended work; they become **Transferred**, a final state.
+- `payload/tools/fingerprint_normalize.py` and `install check --expect-normalized` recognize timestamp-only differences after a rebuild. The installation stays unavailable until an attended validation.
+- Procedure texts: one definition of a clerical correction (the `ERRATA.md` companion, in `WORKER.md`); when earlier test results carry over after a restage; a plain-words summary and a test table at the top of each report; an estimate of the next update; an optional per-job staging grant and pre-batch checks (`PRECHECK.txt`) in auto mode; the attended route for running the kit's own tests.
+- Documentation: separate steps for installing Claude Code, registering once and setting up a project; setup now covers the auto-mode settings; Terminal commands work in bash, zsh, csh and tcsh; `sha256sum` as an alternative to `shasum`, chosen automatically by the `/gc` source guard in `SKILL.md`; session coordination.
+
+Behaviour changes. Some of these refuse what an earlier revision accepted:
+
+- When the process table cannot be read, the auto-mode helper refuses with exit 17 and reports nothing as stopped, cleaned or released (`run`, `stop`, `cleanup`, `lock release`, Ready, Approved, `report` and `transfer`, also when no run record exists).
+- The final PUBLICATION check now applies the draft's rules: `OUTGOING.txt` holds only the seven key lines, `SERVER_SUITE.txt` starts with `SERVER_SUITE: <outcome>`, and no companion file may be inside the packet. A packet frozen earlier that passed can now be refused; correct it by freezing a corrected packet. Published packets are not checked again. The undocumented optional `companions:` key in `OUTGOING.txt` is no longer accepted.
+- In an outside reading, identical repeated `Packet identity:`, `Verdict:` and `Scope:` lines count as one. Repeats with a different value are refused, including indented, bulleted, quoted or bold ones and ones written as a Markdown heading (`## Verdict: ...`) or as a table row whose first cell is the field name, and so is a `Packet identity:` value that is not a hash.
+- `worker start` is refused for a job in a final state.
+- The release check (in `SKILL.md` and the documented source blocks) requires the release line to begin `guided_coding 2.0 pilot r10 rev19 `; a line that names `r10 rev19` only later, for example as a predecessor, is refused.
+- Inside `sandbox-exec`, the kit's auto-queue tests report one failure, `PROCESS TABLE UNREADABLE`, naming the supported route.
+
+### Revision 14: October 14, 2026
+
+Revision 14 builds on revision 13 and keeps its release label `r10 rev19`; the parenthesis of the line in `payload/RELEASE` now begins with revision 14. The work and its checks are in the task record `phenix/.claude/records/2026-10-14-gc-kit-zombie-fix/`; the problem was found in `phenix/.claude/records/2026-10-13-gc-linux-container/`.
+
+Behaviour change: the auto-mode helper counts a zombie as gone. A zombie is a process that has exited but whose parent has not yet collected it. The helper reads a `ps` state beginning with `Z`, and on Linux also requires the process to be single-threaded: there the leader of a multi-threaded process whose main thread has exited also shows `Z` (`ps` shows `Zl`) while its other threads run. For one process (`process_exists`) it reads the state and the thread count from `/proc/PID/stat` on Linux (state `Z`, `num_threads` 1), else `ps -o stat=` (and `nlwp` on Linux); the whole-table reading (`snapshot()`) and the group check use `ps -o stat=` and confirm each `Z` line in the same way. A `Z` with the `l` flag, or with a thread count that cannot be read on Linux, counts as alive. On macOS, whose `ps` has neither a thread count nor the `l` flag, a `Z` state is enough: there a process whose main thread has exited while another runs shows `S`. `snapshot()` keeps a zombie in its table with a flag, so that a recorded leader id now held by a zombie with another start time is still rejected as reused; only the liveness decisions leave flagged entries out. This applies everywhere the helper decides whether a process is alive: a run's wrapper and leader, a process group (a group whose only members are zombies is gone), the survivors of a run, the wait after a time limit, `run`'s check for an earlier run, `stop`, `cleanup`, `reconcile`, `lock release`, readiness and `report`. In a Linux container whose process 1 never collects orphaned processes (for example `sleep infinity`), such zombies remain for good; revision 13 counted them as alive, so `stop`, `cleanup` and `lock release` waited for, or refused because of, processes that had already ended. Nothing else changes: an unreadable process table still refuses with exit 17, a process whose state or (on Linux) thread count cannot be read counts as alive, and a process with a running thread is never counted as gone. On macOS only zombies are treated differently (macOS `ps` also shows them as `Z`; macOS answers the signal check for a group of only zombies with a permission error, which revision 13 read as alive).
+
+Tests: five new auto-mode tests. Three create real zombies (children of the test process that exit and are not waited for). One reads the helper's own view (`process_exists`, `group_alive`, `snapshot()`) of a lone zombie, a live process beside it, and a zombie group leader with and without a live member. One gives a `running` record a zombie leader and checks the report, a new run, `reconcile`, `stop`, `cleanup` and `lock release`, and that each of the last three still refuses with exit 17 when the helper's `ps` is refused. One keeps a zombie leader's live group member counted until it exits. Each fails against revision 13's `auto_queue.py`; the control log is in the task record. Two more followed the review of the first candidate (ae6e63ff) and fail against it: a record whose leader id is now held by a zombie with another start time claims neither the id nor that zombie's live group member, and stop does not signal the member (with the zombie's real start time it does: control); and, on Linux only, a live process whose main thread has exited while a worker thread runs (`/proc` state `Z` with 2 threads, `ps` `Zl`, a heartbeat still advancing) is alive in the helper's views, its `running` record stays running after `reconcile`, and `stop` prints Stopping. The tests' own liveness check and the probe time-out leftover check also count a zombie as gone, and the four tests that orphan a process accept any new parent other than the dead leader (process 1 on a Mac or in a container; another process under a child subreaper). Revision 14 also repairs a revision 13 test that failed GitHub's quick CI on macOS since revision 13 (Ubuntu failed too; its failing test was not shown) while passing on the Mac and on anaconda: `test_install_check_classifies_timestamp_only_archive_change` relied on the system `ar` and `ranlib` without checking what they produced. It now builds its four archives first (original; the same members with other dates; one member changed; one member changed without changing its size, which the normalized value must also detect) and checks their bytes: each holds exactly the intended members (macOS `ar`'s newline padding allowed), and the re-dated one differs from the original only in member header dates. All four use the same `ar` flags (`U` throughout when `ar` is deterministic by default), so such an `ar` stays on the real tools. With real tools that pass, the test uses them; otherwise it writes the archives itself (a GNU/SysV-style `!<arch>` writer in the test) and prints the reason. Reproduced on a Mac with two tool substitutes (record of the job): `llvm-ar`, deterministic by default like GNU `ar` on Ubuntu, whose `U` flag also writes the real uid, gid and mode, failed the old test at its re-dated check; an `ar` stand-in that keeps a member's first-seen content failed it exactly as the macOS CI log shows (the changed archive normalized like the original). The GitHub runners' own `ar` was not available, so which of these, or what else, happened there is not established; the macOS CI log matches the second symptom. The normalizer was not changed. In `test_child_of_tracked_pid_is_counted` the tracked parent now ignores SIGTERM: before, the parent killed by `stop` stayed counted only as a zombie child of the test process.
+
+What is and is not verified: the full package suite on the Mac and, on Linux (cci-gpu-00, October 14, 2026), inside an unprivileged user and process namespace on an EL7 kernel: the auto-mode tests with a launcher that never collects orphaned processes as process 1 of the namespace, so that orphans go to it as in a container, and the full kit suite in the namespace without it (counts in the task record). That is an emulation, not a real container image. Runs under a launcher that is a child subreaper but not process 1 (anaconda) fail where an orphan's attribution needs process 1 as its parent; they are recorded with their classification in the task record.
+
+Limits that remain. The helper attributes an orphan to a run by its parent only when that parent is process 1, the run's wrapper or a leader, so under a child subreaper (orphans adopted by a process other than 1) such an orphan can be missed unless it was tracked while the run ran. A related gap predates revision 14: when `stop` (or `cleanup`) ends a tracked process, a child of it that was never tracked and is outside the run's group and session (now an orphan of process 1) is no longer attributed to the run, so `stop` can print Stopped while that child lives. Wherever the ended process is collected promptly, which is the normal case, revision 13 behaves the same; on macOS such a child normally still carries the run marker and is found. Revision 14 makes it worse only under a parent that never collects: there revision 13 kept the ended process as a zombie and so printed Stopping indefinitely (wrong but safe), and revision 14 prints Stopped.
+
+### Revision 15: October 15, 2026
+
+Revision 15 builds on revision 14 and keeps its release label `r10 rev19`; the parenthesis of the line in `payload/RELEASE` now begins with revision 15. Only the kit's tests and these documents change: `auto_queue.py`, the tools in `payload/tools` and `SKILL.md` are byte for byte those of revision 14. The work and its checks are in the task record `phenix/.claude/records/2026-10-15-gc-rev15-test-helpers/` (two commits: the change, and the repairs after its review).
+
+The tests no longer need `/bin/sh`, `/bin/bash`, `sleep`, `true`, `cc`, `ar` or `ranlib`. Processes the tests need are Python children of the test's own interpreter (`sys.executable -c ...`): a run's long-lived command; the libtbx.easy_run pattern; the exited session leader whose orphan keeps its group and session (stdin from `/dev/null`, as for a shell's background job); the user's process whose child carries a run id only in its arguments (its own command line holds the id only inside a larger word, as the earlier bash command line did); the held probe (a Python child of the probe's shell, which ignores SIGTERM itself where the test needs that); and the probe whose detached child keeps the probe's output. The easy_run stand-in shell is started with `setsid` and, like a platform `/bin/sh` and `/bin/sleep` on macOS, whose environment `ps -E` does not show, carries no visible run-id marker: it re-executes itself with the marker moved to another variable and gives its long-lived child, standing in for `/bin/sleep`, no marker either, so the helper must find both through the wrapper's tracked descendants on macOS too (the review of the first commit found that the first stand-in carried a visible marker, which let a defect in the tracked-descendant rule pass unnoticed). It runs in two shapes: waiting for its last command (as macOS `/bin/sh`, bash 3.2, and bash 4.2 do) and replacing itself with its last command (as bash 5.1 and later and dash do); the survivor and cleanup tests run in both. The tests check the stand-in's session and group, its child's parentage (or, in the second shape, that the shell has become its last command) and, on macOS, that no marker is visible. The `ps`, `git` and `claude` stand-ins and the fingerprint scripts are Python scripts with the same output and exit status as the earlier shell scripts (compared directly in the record). Archives for the fingerprint normalizer are written by the tests in both real layouts: GNU/SysV (a `/` symbol table, a `//` long-name table, `name/` names, one padding byte after an odd-sized member) and BSD/macOS (a dated `__.SYMDEF SORTED` index; `#1/N` names NUL-padded so that N is 4 more than a multiple of 8, and member data padded with newlines to a multiple of 8, so that every member size is 4 more than a multiple of 8, as Apple `ar` writes it: the member bytes were compared with Apple `ar` output). Mach-O bundles are written by the tests with the 14 load commands of `cc -bundle` output on arm64 macOS (Apple clang 17), in the same order and with the same sizes: three segments, `LC_DYLD_CHAINED_FIXUPS`, `LC_DYLD_EXPORTS_TRIE`, `LC_SYMTAB`, `LC_DYSYMTAB`, `LC_UUID`, `LC_BUILD_VERSION`, `LC_SOURCE_VERSION`, `LC_LOAD_DYLIB`, `LC_FUNCTION_STARTS`, `LC_DATA_IN_CODE` and `LC_CODE_SIGNATURE`, the linkedit data at the same offsets, the signature range ending `__LINKEDIT` and the file (the first commit had only the segments, `LC_UUID` and `LC_CODE_SIGNATURE`; the review found that a normalizer that stopped at the first other command was then not detected). Their UUID and signature range are derived from the other bytes, so they change with the date as a linker's do; the signature range is a block of derived bytes, not a real code signature, and the fixups, tables and trie are bytes of the right sizes, not a working library.
+
+Real tools. Two tests use real tools where they exist and are otherwise skipped with the reason: `test_real_tool_conformance_archive` (`ar` and `ranlib` on PATH: the real archive parses, re-dating it keeps the normalized value and a changed byte changes it; whether its member name fields, sizes and contents equal the fixture of the same layout is reported on stderr for every `ar`, since valid tools differ, such as llvm-ar, which pads names differently; tools whose archive does not hold exactly the intended members, as on GitHub's macOS runner, where the first published form of this test failed, are reported as a skip naming the members found) and `test_real_tool_conformance_macho_bundle` (macOS with `cc`: the real bundle has one `LC_UUID` and a signature at the end of `__LINKEDIT` and of the file; two builds differing only in the date have the same build-time digest; a code change changes it; a load command sequence other than the fixture's is reported on stderr without failing). These are the only real-tool uses in the kit's tests; a conda-only environment without these tools skips them. A tool that fails or writes no archive is reported as a skip with its reason.
+
+Coverage. The two Mach-O normalizer tests now run on every platform. The archive classification test runs both layouts on every platform, where before each host tested only the layout its own `ar` wrote. New tests: `test_normalizer_archive_fields_and_corruption` (only member header dates are ignored: a changed member name, owner, index entry, member order or member content, also of the same size, changes the value; an archive cut inside its last member, with a short member header, bad header magic, a member size past the end, a size that is not a number or bad archive magic is compared byte for byte and so is never timestamp-only), `test_archive_step_without_output_never_ends_in_file_not_found` (the revision 14 review's finding 1: `ar` and `ranlib` stand-ins that exit 0 without writing ended the old test in `FileNotFoundError`; a fixture step that reports success without writing is now a test failure naming the file), the two exec-last easy_run tests and the two conformance tests. The Mach-O tests check that the UUID and signature really differ between the two dates and that a changed byte anywhere else (code, strings, unwind information, data, every other load command and every piece of `__LINKEDIT` data before the signature) changes the value. For each changed group of tests the record compares what the earlier tests established with what the new ones do, with positive controls (the process shapes, the fixtures' formats) and negative controls (deliberately wrong helpers, and mutated copies of the helper and of the normalizer). The new tests fail every mutant the old ones fail, including the reviewers' two controls (a helper that ignores its tracked-descendant list, and a normalizer that stops at the first unfamiliar load command); some mutants fail only the new tests, which is new coverage (archive member names, owner fields, truncation, header magic and the index member's contents); and mutants that switch off one of the helper's process-attribution rules while another rule still covers the case fail neither the old nor the new tests (recorded for revision 16). Skips: a default Linux run reports the 10 skips listed above plus the Mach-O conformance test (not macOS), and the archive conformance test where `ar` or `ranlib` is missing; a Mac run with `cc`, `ar` and `ranlib` on PATH reports the 4 listed.
+
+Limits. A fixture does not establish that another toolchain's real output has its layout; the conformance tests check the host's own tools where present. The stand-ins that must be executable files (the `ps` stand-ins the helper runs, the fake `git` and `claude` found on PATH) start with `#!` and the test interpreter's path, as the fingerprint scripts have since revision 13: on a Linux kernel before 5.1 a `#!` line longer than 127 bytes is cut, and an interpreter path containing a space breaks it; run the tests with an interpreter whose path is short and has no spaces. A change in the load-command sequence of the host's real `cc -bundle` output is only reported on stderr by the Mach-O conformance test, not failed, so the Mach-O fixture can fall behind a new toolchain without a red test. What the tests still use from the system: `git` (the publication precheck tests and the queue tests' repositories; revision 16: skipped without it), `/bin/ps` (the tests' process checks, and the `ps` stand-ins pass other calls to it; revision 16 replaces both with psutil), `/usr/bin/sandbox-exec` on macOS, `touch` and `echo` inside two probe strings, and the real-tool conformance tests above. The helper itself still runs every probe with `/bin/sh -c`; that is kit code, unchanged here. Rules of the helper's process attribution that are each backed up by another rule (group or session, probe window, marker, tracked list) are, one at a time, not detected by the old or the new tests; that is recorded for revision 16 (which adds one test per rule).
+
+### Revision 16: October 15, 2026
+
+Revision 16 builds on revision 15 and keeps its release label `r10 rev19`; the parenthesis of the line in `payload/RELEASE` now begins with revision 16. The work and its checks are in the task record `phenix/.claude/records/2026-10-15-gc-rev16-psutil/`.
+
+Process table. `auto_queue.py` reads the process table through psutil instead of `/bin/ps` (one process-table section: `proc_state`, `zombie_gone`, `read_entry`, `read_table`, `group_states`, `process_start`, `snapshot`). psutil reads the kernel records that `ps` read: on macOS `sysctl` (`KERN_PROC`, `KERN_PROCARGS2`), on Linux `/proc`. It gives no process-group or session id; those come from `os.getpgid` and `os.getsid` (the session id always did). macOS refuses `getpgid` for a process that is exiting or a zombie, so then the group id is read from its kernel process record (`kinfo_proc`, `e_pgid`), whose layout is first checked, once, against a process whose parent and group differ (the helper itself, or else a short-lived child it starts in its own session), so that the two fields cannot be confused; `sysctl` is called with declared argument and result types. If that check fails, such a process's group cannot be read and the table is unreadable. Start times are whole seconds, written as `ps lstart` wrote them (C `asctime`, UTC), so records written by earlier revisions compare equal. On macOS they are read from the kernel process record (`kinfo_proc`, `p_starttime`), through the same checked path as the group, not from psutil: psutil 7 on macOS shifts `create_time()` by whole seconds when the boot time differs from the one it read at import, which happens after a clock step, so two helper processes could read one process's start a second apart and a live tracked process could be taken for another (found by the second reading; five suite failures in its run). A start time that cannot be read there is unreadable (the table refuses, a single view says `unreadable`). On Linux psutil's value is used: start ticks plus the boot time read at each call, the formula `ps` used, so a clock step moves both alike. The refusals are unchanged: when psutil cannot list the processes, cannot read a field a decision needs (status, parent, group, start time) because of AccessDenied or ZombieProcess, or leaves out the helper's own process, the table is unreadable (exit 17, same message form). A process psutil reports gone (NoSuchProcess) counts as gone only when a re-check (`psutil.pid_exists`) also finds it gone; otherwise it is read once more, and if it still cannot be read the table is unreadable. On macOS `getpgid` also fails (ESRCH) for a process that is exiting, before it is a zombie, and for a zombie; the helper then reads the group from the process's kernel record, as `ps` did. (Two earlier commits of this revision refused there with exit 17, the first for any process that exited during a reading, the second for one that was still exiting at the second reading; the old-tests-against-new-helper control and a suite run found them as occasional exit 17 refusals. Three tests now cover it: `getpgid` failing so for every process, a fault on the first reading of every process, and 150 table readings while processes exit.) A status or (on Linux) thread count that cannot be read counts as alive. The revision 14 rule stays: on Linux a zombie counts as gone only with one thread; on macOS a zombie status is enough. A zombie whose start time cannot be read stays in the table with no start time, as before. Run-id markers are read on macOS only, as before (Linux `ps` had no `-E`): from the process's command line and environment, with the earlier pattern; the helper's own environment must be readable, whatever its command line shows, and must show the helper's own run-id marker when it has one (exit 17 otherwise; the first commit of this revision refused only when both the command line and the environment were unreadable, which the first reading found), and another process whose environment cannot be read shows no marker, as with `ps -E`. Any exception while reading counts as a failed reading, never a traceback: on the process list or a needed field of any process the table is unreadable (17); in a single-process view (state, thread count, start time) that field is unreadable, so the process counts as alive; on another process's environment its markers are dropped. Two differences, both of which can only count more processes as the run's or refuse more often: a marker after an environment value that contains a newline is now found (`ps -E` printed such a value over several lines, and the helper skipped the continuation lines), and the group check (`group_alive`) now refuses (keeps the group alive) when any needed field of any process cannot be read, where it skipped an unparsable `ps` line before. Process 0 (the macOS kernel task, never listed by `ps -ax`) is left out. Without psutil every helper command stops at once with exit 18 and `REFUSED: requires psutil: run with the cctbx conda Python (libtbx.python) or pip install psutil`. The refusal of runs off macOS keeps its message, which still names `ps -E`.
+
+Interpreter. The documented commands use `libtbx.python -I -B` instead of `python3 -I -B`: the cctbx conda Python, which has psutil (it is in cctbx's conda environment files, and libtbx already imports it). Without `libtbx.python` on PATH, the build's `conda_base/bin/python3` serves: the same conda Python installation, standard library and psutil (on macOS `libtbx.python` starts `conda_base/python.app/Contents/MacOS/python`, so `sys.executable` differs). The `auto_start` screen prints the interpreter's absolute path, resolved at start, so that its stop line works from any Terminal whatever PATH is: its STOP line must be `/ABS/libtbx.python -I -B <auto_queue.py> stop` or `/ABS/.../conda_base/bin/python3[.N] -I -B <auto_queue.py> stop`; a bare `libtbx.python` (first commit) and the earlier `python3` forms are refused, because a stop command run with a Python lacking psutil would stop with exit 18 instead of stopping the queue. `screen_check.py check auto_report` names the psutil requirement when the helper stops for it.
+
+git and sandbox-exec. Tests that need git (the auto-queue tests' repository and candidates, the screen tests that build a queue, the `check` and `outgoing` tests of the publication precheck) skip with the reason `git not on PATH: ...` when git is missing; the auto-queue tests skip at the first git use, so the tests that need no repository still run. `publication_precheck.py check` and `outgoing` refuse without git (exit 2, `ERROR: requires git on PATH: ...`; `vet` needs no git), and `auto_queue.py candidate` refuses with the cause (exit 2). The helper runs `/usr/bin/sandbox-exec` by that path, so PATH does not hide it; on macOS a test that runs it skips when that file is missing (the tests' own variable `GC_TEST_NO_SANDBOX_EXEC=1` simulates that). Without psutil in the test interpreter the auto-queue tests and the screen tests that build a queue are skipped with the reason, and one test checks the helper's exit 18. The suite now runs inside `sandbox-exec`, where `/bin/ps` is refused: the preflight now reads the table through psutil, and its test checks the helper's table inside `sandbox-exec -p '(version 1)(allow default)'` (with `/bin/ps` refused there as a control) instead of the single failure of revision 13. Inside `sandbox-exec` no second profile can be applied (`sandbox_apply: Operation not permitted`, exit 71), so there the tests that run the helper's `run` on macOS (its network block applies a profile), and the tests that build a queue for the screen checks, are skipped with that reason; the tests check this once by applying a profile to a trivial command. (A first run inside `sandbox-exec` without that check failed 111 tests, every one of them through the refused second profile; record of the job.)
+
+Tests. The `ps` stand-ins are replaced by psutil faults made inside the helper's own process (`FAULT_SETUP`: `psutil.pids()` refused, failing or empty; one Process field, or `os.getpgid`, raising AccessDenied, ZombieProcess or NoSuchProcess, with the re-check answering either way), used by the earlier tool-level tests of the unreadable table and by `PsutilFaultMatrix`, which covers each error type on each needed field and the single-process views. The tests' own process checks use psutil (on Linux `/proc` where they did before). `SurvivorsSingleRules` adds one test per attribution rule of `survivors()` (process group, session, run-id marker, the marked-parent chain, the tracked list, the probe window), each with a process that only that rule attributes to the run; switching off any one rule fails its test (task record, `CONTROLS.log`). The marker tests run on macOS only.
+
+Limits. The tests' process checks now use the same library as the helper, so a psutil error common to both would not be seen by them; the old-against-new comparison on real processes (task record) is the independent check. The kernel-record reads on macOS (group, start time) depend on the record layout, guarded by the check on a process whose parent and group differ (the helper itself, or a short-lived child in its own session: the helper's own Python running a one-line program that waits for the end of a pipe, so no outside program is needed; a child that has not ended 5 s after the pipe closes is killed and reaped, and the check fails). The result of that check is kept for the life of the helper process: a failed check (for example the child could not be started) leaves a long-lived wrapper unable to read those fields for the rest of its life, which costs availability (the table stays unreadable, exit 17), not safety. The auto_start STOP interpreter is checked to be an existing executable file when the screen is checked, not when the stop command is later run; a path containing a space cannot be written in that form (revision 17 removes this limit: such a path is accepted in quotes). The check is about usability, not trust: a file or link named `libtbx.python` or `python3` that is some other executable (for example `/bin/sh`) passes it although it cannot run the stop; the checker does not run the interpreter. On macOS a process's start time now comes from a second `sysctl` call, separate from the kernel record psutil reads for its status and parent; a process id reused between the two calls could mix fields of two processes in one table entry, which the record's process-id check cannot see. macOS assigns process ids in increasing order, so this needs the id space to wrap within that interval; it is accepted as negligible. The stricter group check has an availability cost: one process anywhere whose needed field cannot be read makes the table unreadable, and every process group then counts as alive (never as gone) until it can be read again.
+
+### Revision 17: October 16, 2026
+
+Revision 17 builds on revision 16 and keeps its release label `r10 rev19`; the parenthesis of the line in `payload/RELEASE` now begins with revision 17. The work and its checks are in the task record `phenix/.claude/records/2026-10-16-gc-rev17-listb/`. `auto_queue.py` is byte for byte that of revision 16.
+
+Reporting rule. `SKILL.md` gives one rule for every return of control, merged from the Developer's two passages of October 16, 2026 and the earlier rule that the complete next steps go in the final message without referring back (the same meaning as Guided Workflow's prompts); `GUIDE.md` and `WORKER.md` point to it. The STOP screen (in NEEDED) and the PUBLICATION screen (in DECISION) now need `Recommendation: ... because ...` and `Next: ...`, as PLAN, ACCEPT and RESULT do; a PUBLICATION recommends PUBLISH or HOLD. `SKILL.md` also says to read a step's procedure (`payload/SETUP.md`, `payload/screens/`) before describing what it shows or asks, and to say when a description is unverified, and gives the directions for opening a conversation: the Claude app on macOS (Code tab; Environment, Local, My computer; the folder selector at the bottom of the page) and Terminal on macOS and Linux. Windows is not supported, and every document now says so in those words.
+
+Outside-reading waiver. For a full-path integration the Developer may waive the outside reading in his own words: `OUTSIDE_WAIVER.md`, outside the frozen packet, names the packet identity and `Scope: integration` and quotes him; `screen_check.py check|present result ... --waiver FILE` (never with `--reading` or `--disposition`) requires the GATE lines `Reading: WAIVED by the Developer` and `Waiver SHA256: <sha256>` and `WAIVED` in LIMITS on a line naming the outside reading, and refuses another packet identity, another scope, a Verdict line, no quoted words, a waiver inside the packet, a light result and every other screen. A waiver never covers publication. This replaces the format exception disclosed for revisions 15 and 16. `GUIDE.md` §7 adds "Offer only choices the procedure can carry through."
+
+No-push publication. For a project whose rules forbid the agent any `git push` (for example the draft cctbx `AGENTS.md`: "in any form", read here as including dry runs), `WORKER.md` adds a variant: the agent runs `publication_precheck.py check` without `--dry-run`, vets the exact commands and hands them to the Developer, who runs them; the new `publication_precheck.py confirm` reads the remote branch and its tags with `git ls-remote` (with `GIT_TERMINAL_PROMPT=0`, against HTTPS user-name and password prompts, and ssh in `BatchMode`, against passphrase, password and host-key questions; it reads no other ref) before the push (`--before`, printing the tag state: the count and a SHA-256 of the tag lines) and after it (`--tags STATE`, required), and refuses unless the branch is at the outgoing commit and the tag state is unchanged. It never pushes or fetches. The agent-push path is unchanged. Adoption is documented as personal and untracked (never in a shared `CLAUDE.md` or `AGENTS.md`), and a method points to the project's `AGENTS.md` rather than copying it. The variant is exercised by tests against a local bare repository, not in a real project with an `AGENTS.md`.
+
+Interpreter paths with spaces. The auto_start stop line accepts either path in single or double quotes, which a path containing a space needs; an unquoted path may hold only letters, digits and `_ . / + @ % : , = -` (tighter than revision 16's any non-space, so a `$` or a backquote must be quoted); an unquoted path with a space, a quoted relative or bare name, a partly quoted path and a path containing `!` (csh history expansion) or a single quote (which `stop-command` cannot quote, so the checker refuses it in double quotes too) are refused. `screen_check.py stop-command INTERPRETER` prints the line in that form. A path containing a tab is accepted in quotes, but pasting it at an interactive bash 3.2 prompt can trigger completion (reviewer reading 1 pasted printed lines into csh, tcsh, bash 3.2 and zsh); keep tabs out of installation paths.
+
+Revision 15 follow-ups. Revision 15's mutants K_starting (a `starting` run whose wrapper lives is not live) and K_lock_term (a SIGTERM received while the wrapper waits for the queue lock after the probe is ignored until the command has started) were not caught by revision 16's tests. Two tests now catch them: `test_starting_run_with_live_wrapper_blocks_relaunch` and `test_sigterm_while_waiting_for_queue_lock_never_starts_cmd` (task record, `CONTROLS.log`). A third, `test_sigterm_before_start_never_starts_cmd`, covers the neighbouring "signal before start" block (a SIGTERM while a run without a probe waits for its first queue lock), which the first reviewer reading found no test caught. The exact text of K_lock_term was not kept in revision 15's records; the mutant used is reconstructed from its name and the test it targeted.
+
+Card handoff. The command reference defines the "verified local file" of the developer-card handoff: a file the handing-over conversation has itself opened and read in full and found to hold the complete card (an encoded copy the procedure produced, such as the HTML-escaped card in the generated developer page, qualifies when its decoded text is complete); the handoff names the file and its location and carries no hash, and the file's SHA-256 goes in the task record; otherwise the card text is included.
+
+**Manual verification step: a two-conversation setup trial.** Not an automated test. On a clean Claude Code configuration (a fresh `CLAUDE_CONFIG_DIR`), in a disposable Git project: (1) in a first conversation in the kit folder, send the registration message of the User Guide's section 2 (or a one-paste setup message that includes a card) and let Claude perform the registration step there; (2) follow the directions that conversation gives in its final message, word for word, to open a second conversation in the project, and send what it says to send; (3) record whether the second conversation received the complete card (included, or a verified local file whose SHA-256 matches the one in the task record), whether `/guided_coding setup` ran, whether the first conversation's final message held every step without referring back, and whether its descriptions of the approval box matched what appeared. Record the client and version, the operating system, both transcripts and the outcome in a task record. As of revision 17 this trial has not been run.
+
+Limits. The checker checks the form of the new lines and of the waiver, not their truth or the authority of the quoted words. The reporting rule and the read-the-step rule are instructions to Claude; no tool enforces them. The no-push variant depends on the Developer running exactly the vetted text; `confirm` sees only the remote branch and tags afterwards.
+
+### Revision 18: October 17, 2026
+
+Revision 18 builds on revision 17 and keeps its release label `r10 rev19`; the parenthesis of the line in `payload/RELEASE` now begins with revision 18. The work and its checks are in the task record `phenix/.claude/records/2026-10-17-gc-rev18-general-python/`. It lets the kit run under a general Python 3, as in the website download, while cctbx and PHENIX builds keep `libtbx.python`.
+
+Minimum Python. The tools people run directly (`screen_check.py`, `publication_precheck.py`, `review_bundle.py`, `records_history.py`, `fingerprint_normalize.py` and `auto_queue.py`) check `sys.version_info >= (3, 10)` before anything else and otherwise refuse with exit 19 and one line, `REFUSED: requires Python 3.10 or newer; this is Python X.Y.Z (<interpreter>)`. macOS's stock `/usr/bin/python3` (3.9) is therefore refused; `verify-source` ran under it before. The check needs the file to be parsed first, which Python 3.8 and 3.9 can do; an older Python may stop with a syntax error instead of this message.
+
+psutil. Only `auto_queue.py` needs psutil (no fallback to `/bin/ps`, which `sandbox-exec` refuses and which revision 16 removed). Its message no longer names cctbx: `requires psutil, which <sys.executable> does not have: make a venv and install it there (python3 -m venv DIR, then DIR/bin/python -m pip install psutil; not --user, which the kit's -I ignores), then run with DIR/bin/python; or use libtbx.python` (exit 18; the path single-quoted when a shell would treat a character in it specially). The venv is the documented route (repair 1, reading 1, finding 1): a plain `pip install` is refused by Pythons marked externally managed (PEP 668, current Homebrew and Debian/Ubuntu system Pythons), and a `--user` install lands in the user site directory, which `-I` ignores, so the helper would stop with exit 18 again. A test runs every other tool with psutil made unimportable in its own process.
+
+Interpreter rule. The auto_start stop line accepts any absolute path to an existing executable regular file named `python`, `python3`, `python3.N` or `libtbx.python` (symbolic links resolved for the existence check only, so a venv's `bin/python` keeps its own name), with revision 17's quoting and character rules; before, only `/.../libtbx.python` or `/.../conda_base/bin/python3[.N]`. Bare names and relative paths are still refused. The `INTERPRETER` pattern in `screen_check.py` changed from `/.+/libtbx\.python|/.+/conda_base/bin/python3(?:\.\d+)?` to `/.+/(?:python(?:3(?:\.\d+)?)?|libtbx\.python)`. `screen_check.py stop-command` without an argument prints the line for the Python running it (its absolute `sys.executable`, quoted as before) and refuses when that Python has no psutil, so the start screen names a Python that can run the stop. With `libtbx.python` on macOS that path is `conda_base/python.app/Contents/MacOS/python`.
+
+Documents. The command string stays `libtbx.python -I -B` everywhere; the cctbx and PHENIX explanation is in short separate sentences. The User Guide names no particular installation: it asks for Python 3.10 or newer and, for auto mode, a venv with psutil (`python3 -m venv DIR`, then `DIR/bin/python -m pip install psutil`, not `--user`); its cloud, cctbx_project and PHENIX notes moved to the overview (`GUIDED_CODING_README.md`, "Where Guided Coding is included").
+
+Tests and runs. New tests cover the stop line for venv, `python3`, `python3.N`, system-style and macOS `python.app` paths, with negative controls (existing executable files with other names such as `python2`, `pythonw`, `python3.10-config`, `libtbx.python3`; missing, non-executable, directory, dangling link, relative and bare forms); `stop-command` without an argument, with and without psutil; the version refusal of each tool (simulated by replacing `sys.version_info` in the tool's own process, with a 3.10 control) and the real refusal under `/usr/bin/python3` 3.9.6 (task record); the tools that need no psutil, run without it; and the psutil message. The suite was run with the cctbx conda Python, a Homebrew Python 3.10 venv with psutil, Homebrew Python 3.10 without psutil (the psutil tests skip and the helper stops with exit 18), inside `sandbox-exec`, and on Linux (task record, `RUN_LOG.txt`, `CONTROLS.log`).
+
+Quoted paths (repair 1, reading 1, finding 2; present since revision 17; repair 1b). Inside single or double quotes every character of the stop line's paths must be printable in Python's sense (`str.isprintable()`) apart from the characters already refused. Accented letters and other scripts (é, ü, CJK) are accepted, so a home folder with such a name works. A control character (Ctrl-U, which a terminal without bracketed paste reads as erasing the line typed so far and so ends the quote early; CR; ESC; DEL), a format character (the bidi overrides U+202E and U+2066, which can make a pasted line display differently from what runs, and U+200B), a line or paragraph separator, a non-breaking space or other non-space separator and a surrogate are refused. Tab is refused too, replacing revision 17's "accepted in quotes, but keep tabs out": bash 3.2 completes on a pasted tab. A first draft of this repair refused every non-ASCII character; it was relaxed so as not to refuse users whose home folder has an accented name. Shell metacharacters (semicolon, dollar sign, parentheses, backtick and backslash) stay accepted inside single quotes, where no supported shell treats them specially. A test also keeps the six tools' sources parseable at `ast.parse(feature_version=(3, 8))`, so that an older Python reaches the exit-19 message (best effort).
+
+Limits. The checker decides that a file is a Python 3 interpreter by its name, existence and execute permission; it does not run it, so a file named `python` that is Python 2 or another program passes the check (the stop it names would then fail, not act wrongly). A free-threaded build named `python3.13t` is refused by name; use its `python3` link. Windows remains not supported.
+
+### Revision 19: October 18, 2026
+
+Revision 19 builds on revision 18 and keeps its release label `r10 rev19`; the parenthesis of the line in `payload/RELEASE` now begins with revision 19. The work and its checks are in the task record `modules/.claude/records/2026-10-18-gc-rev19-carryover/` (the first job whose record is in the designated records location `modules/.claude/records/`). Its plan was revised after an outside reading of the plan (`readings/PLAN_READING_1.md` there). `auto_queue.py` is byte for byte that of revision 18.
+
+Reading carry-over. When a waiting commit is restaged only because the remote moved, a completed outside reading now carries over to the new commit with no reviewer round trip and no Developer decision, when a tool shows three facts for every repository block: every file the outgoing commit changes has the same blob and mode as in the commit the reader read, and the two commits change the same paths; `git diff base commit` is byte-identical (fixed options: no colour, external diff, text conversion or rename detection; full blob ids); and the old base is an ancestor of the new base and no commit between them touches a changed path (merges compared with each parent). `publication_precheck.py carry-over REPO... --reviewed OLD_OUTGOING --outgoing NEW_OUTGOING [--fetch] [--output FILE] [--expect FILE]` checks them read-only, each repository block on its own (`NAME=PATH` per block when there are several; the same repositories, remotes, destinations and branches in both records; a missing or extra repository refused; OK only when every block passes), and writes `CARRYOVER.txt` in a fixed form: the SHA-256 of both records, per repository a blob table, both diff hashes, every upstream commit with every file it touched, flags for compiled, test, configuration and data files (information only), a `repository NAME: OK` or `REFUSED` line, and the final `CARRYOVER OK reading` or `CARRYOVER REFUSED: <reason>` (exit 1).
+
+Screen check. `present publication` accepts a reading that names the earlier packet's identity only when the packet holds `CARRYOVER.txt` in that form with the OK line, no refusal and internally consistent sections (counts, blob rows, diff hashes, upstream rows and flags are rebuilt from the values the file states and must match it), `evidence/reviewed/MANIFEST.sha256` whose SHA-256 is the reading's identity, `evidence/reviewed/OUTGOING.txt` whose SHA-256 is that manifest's `OUTGOING.txt` entry, `CARRYOVER.txt` naming both OUTGOING.txt files by SHA-256 and each of their blocks, `reading_carried_over_from: <reviewed commit>` in `CODE_IDENTITY.txt`, and one LIMITS line that contains the Developer's sentence itself (whitespace and case normalized; repair 1: before, only its key words) and does not also claim that upstream changes cannot interact:
+
+`Reading carried over: the check shows the changed files are identical and untouched upstream; it does not show that upstream changes elsewhere cannot interact with them.`
+
+Such a reading never serves a RESULT. A carried `PROCEED IF` keeps its condition: the disposition is still required, and for each reviewed base, commit or tree, or the reviewed packet identity, that the condition names (in full or by a prefix of seven or more hex digits, in any case) it states `Mapping: <reviewed id> -> <outgoing id>`; it is never satisfied automatically. Both commit messages must be identical. `CARRYOVER.txt` and `ADDENDUM_WAIVER.md` are never supplied by a correction companion; a packet that holds a `CARRYOVER.txt` elsewhere, or `evidence/reviewed/` without one, is refused. `check-draft publication` applies the same carry-over checks.
+
+Imports and named files (plan revision 6). For each changed Python file the tool reads, with Python's `ast` and without running anything, the in-repository modules it imports (`import a.b`, `from a import b`, relative imports resolved from the file's package) and the repository files it names by a literal string path; upstream-touched files among them are listed as "imported by a changed file" or "named by a changed file". This is information, not a gate: dynamic imports (`importlib.import_module`, `__import__`, `exec`), computed paths and imports across repositories (a phenix file importing a cctbx_project module changed upstream there) are not seen, and modules outside the repository root layout are not resolved. Each flagged file must be stated in LIMITS.
+
+Refused carry-over (plan revision 6). When the check refuses, the Guide reports what differs, whether it is material and a recommendation, and the Developer chooses an addendum reading or waives it in his own words in `ADDENDUM_WAIVER.md` (fixed form: `Addendum: WAIVED`, the reviewed packet identity, an `Outgoing:` line per repository block, every refusal and `blob DIFFERS` line of the refused `CARRYOVER.txt` quoted, and `Developer decision: "..."`). Only content refusals can be waived (changed file content, the diff, an upstream commit touching a changed file, the commit message); a missing or invalid commit, an ancestry failure or a repository mismatch cannot. Refusals name repositories by NAME, never by path. The checker accepts the earlier reading then only with that file, matching identities, a consistent refused `CARRYOVER.txt` and a LIMITS line stating "addendum waived" with the reason ("because"); the recompute must reproduce the refused file. It checks the form, not the decision.
+
+Repair 2 (`REVIEW_2.md`). The checks that cannot be waived (remote, destination and branch; commits, trees and parents; ancestry; the same changed paths) run first and refuse at once; then every content comparison (blobs, the diff, upstream commits touching changed files, the commit message) is made and recorded, and all content differences end the section as `difference (NAME): ...` lines with `REFUSED: N content difference(s)`. A waiver must quote exactly those lines; `--expect` and `check --packet` check its form and identities. `check --packet DIR` verifies the packet manifest and recomputes every repository's carry-over (`--repos NAME=PATH` for every block); without `--packet`, `check` refuses an OUTGOING.txt whose directory holds carry-over evidence. Every LIMITS line of a carried reading was scanned with a wide pattern (repair 2); repair 3 narrowed it to explicit forms, below. The waivable kinds are one shared list (`WAIVABLE_REFUSALS` in `screen_check.py`, used by `publication_precheck.py` to write them). Every source line of a screen section is now its own paragraph in the display.
+
+Repair 3 (`REVIEW_3.md`, the Developer's choice A on `STOP_1.md`). `publication_precheck.py check` requires `--packet DIR --identity SHA256` for every publication and refuses unless the SHA-256 of DIR/MANIFEST.sha256 is the identity on the approved PUBLICATION screen, so a packet re-frozen without its carry-over evidence, or a copy of OUTGOING.txt elsewhere, is refused. The interaction-claim check is narrowed to explicit forms on any LIMITS line of a carried or waived reading ("cannot interact", "can not interact", "can't interact", "no interaction", "does not affect", "do not affect", "cannot affect", "will not affect", any case); it is a backstop only: the Developer's exact sentence is the real requirement, honest limit lines such as "possible interaction ... is not excluded" or "may interact" pass, a plain paraphrased claim ("upstream changes are irrelevant") also passes and is the reviewer's matter, and an honest line that happens to use an explicit form ("the t96 waiver does not affect the reading") is refused and must be reworded. Screens are written one sentence per line, since every source line is shown as its own paragraph.
+
+Recompute. `publication_precheck.py check` never skips the recompute silently: it refuses a packet that lists or holds a `CARRYOVER.txt` (or `evidence/reviewed/`) without one beside `OUTGOING.txt`. The screen checker has no repository, so the Git facts in `CARRYOVER.txt` rest on the tool. Whenever the packet holds `CARRYOVER.txt`, the PUBLISH precheck must run `carry-over --expect PACKET/CARRYOVER.txt`, which refuses when the recomputed file differs or cannot be computed, and `publication_precheck.py check` recomputes the checked repository's section when `CARRYOVER.txt` is beside `OUTGOING.txt` and refuses on any difference.
+
+Server suite. The server suite (t96) is never carried over (plan revision 5, after the outside plan reading): a run of the restaged commit, or a waiver in the Developer's own words that covers only what its wording covers. `SERVER_SUITE: CARRIED OVER` is refused. Earlier test evidence carries over only by `WORKER.md`'s restage rule.
+
+Plain-English review (item 0.2). `templates/APPROVAL_REPORT.md` replaces `## Summary` with `## Plain-English review`: per proposed commit, Purpose, Code (short before and after snippets), Tests (key assertions, whether they cover the fix, the gaps, or why none were added) and Assessment. The ACCEPT reply and the RESULT reply for integration show it once, then the screen, whose Recommendation line is the only recommendation. The checker requires the section and its four labels in the frozen report (form only), so a report frozen before revision 19, with `## Summary`, is refused at RESULT and ACCEPT; frozen records are not rewritten.
+
+Display (item 0.3). `screen_check.py present` prints the bold attention line and then the checked screen as a Markdown block quote instead of a fenced code block: **Kind** · id · level as the header, bold title-case section names, paragraphs joined so the window wraps them (a line that starts a field such as `Next:` starts a new one; table rows stay rows; a command line is shown as inline code), a blank quoted line between paragraphs and sections, **Your choice:** with the options in bold, and every other Markdown character escaped. The saved screen files keep their CAPITAL headings and every check reads them unchanged. Tests check that every decision word, option, consequence and field survives the display changes for each screen kind, with awkward characters and multi-line text, rather than literal equality.
+
+Reviewer formatting (item 2.2). A decorated or table row whose value is a pass word (`verified`, `matches`, `match`, `matched`, `pass`, `passed`, `ok`, `confirmed`, `identical`, `correct`, any case, decoration and a closing full stop ignored), or the plain value followed by one (`` - Packet identity: `<id>` — matches. ``), no longer counts as a conflicting value; the integrity row `| Packet identity | Matches |` that refused an October 17 reading now passes. Conflicting values still refuse. A prose `Scope: Restage of ...` line beside a valid `Scope:` line is still refused: the checker cannot tell a description from a narrower or wider scope.
+
+Transition. Revision 19 is installed only when no guided job is at RESULT or ACCEPT: a report frozen before it has `## Summary` and is refused there; the checker has no legacy acceptance (repair 1, review finding 5).
+
+Repair 1 (`REVIEW_1.md`). Also: flags for `.gitattributes` and `.gitmodules` (checkout) and `.pyx`, `.ipp`, `.cu` and `.so` (compiled); the display escapes `$`, and a line that does not continue the sentence before it (for example a warning) keeps its own paragraph.
+
+Records location (item 2.3). `WORKER.md` and `SKILL.md` use the records location that the project's adoption or method designates (for example `modules/.claude/records/`), as `SETUP.md` already did, also for the `INTRO_SHOWN` first-use marker, the job record and the `history` command.
+
+Tests and runs. New tests build temporary Git repositories for each carry-over outcome (identical content: OK; a changed blob or mode, other changed paths, a different diff with the same blobs, an upstream commit or merge touching a changed path, an old base that is not an ancestor, record binding errors, other remotes or branches: refused; two repositories, one failing; `--output`, `--expect` with a stale, a hand-edited and a differing file; `check` recomputing the section) and one end-to-end case from the tool's output to `present publication`. Screen tests cover each carry-over refusal, internally inconsistent files, the carried `PROCEED IF` disposition, the server-suite refusal, the Plain-English review form, the display, the formatting rules on field lines taken from real readings, and the records wording. Each new rule has a negative control (task record, `CONTROLS.log`). The suite was run on the Mac, inside `sandbox-exec`, and on Linux (task record, `RUN_LOG.txt`).
+
+Limits. The screen checker checks that the frozen carry-over files agree with one another, internally and with both OUTGOING.txt files; a hand edit that stays internally consistent is caught only by the required recompute before the push. The check shows the changed files are identical and untouched upstream; it does not show that upstream changes elsewhere cannot interact with them, which is why LIMITS says so. The flags in `CARRYOVER.txt` are by file name and location only.
+
+### Revision 20: October 19, 2026
+
+Revision 20 builds on revision 19. Its release label is `r10 rev20` (revisions 13 to 19 kept `r10 rev19`); the release check in `SKILL.md` and the documented source blocks now requires the line to begin `guided_coding 2.0 pilot r10 rev20 `. The work and its checks are in the task record `modules/.claude/records/2026-10-19-gc-rev20-readiness/`. It fixes an auto-mode readiness fault recorded on October 13 (`phenix/.claude/records/2026-10-13-gc-queue-readiness-followup/`): `set JOB "Ready for approval"` accepted a required check when any run of it had passed, even when a later run of the same check, for the same candidate and criterion, had failed.
+
+Latest run decides. For each required check, `readiness()` in `auto_queue.py` takes the check's runs that are not stale and carry the job's current candidate id and criterion; the one with the highest sequence number decides. It must have status `completed`, exit 0, no processes left running, no unreadable process table, tested paths inside the allowed roots, and be bound to the candidate (below). Any other latest run (a failure, `not started`, `interrupted`, `timed out`, `unknown`, a missing binding) refuses with `latest run RUN for required check LABEL did not pass (WHY)`; with no current run the message is unchanged (`no current passing run for required check LABEL`). A later passing run after a failure restores readiness; earlier runs stay in the records and the report. The same rule applies at Ready for approval, at Approved (re-check) and in the morning report, whose row then reads `results stale or incomplete (...)` with `rerun the affected checks`. The packet, `CODE_IDENTITY.txt` and `SCREENING.txt` checks are unchanged.
+
+Sequence. `run` writes `sequence`, one more than the highest sequence number among the queue's run records (1 for the first), under the queue lock when the record is first written. The run id (UTC second, job and process id) does not order runs started within one second, and file names sort the same way, so neither is used. A current run without an integer sequence number, or two current runs sharing the highest one, refuses (fail closed). A rerun does not clear a current record without a sequence number; the refusal says so and that a new criterion or candidate, which marks the earlier runs stale, does (repair 1, review finding 1).
+
+Binding. Just before the command starts (after the probe, under the queue lock) and again when it ends (completed, interrupted and timed-out runs), the helper runs git itself for the directory of each tested path: `git rev-parse --show-toplevel HEAD HEAD^{tree}` and `git --no-optional-locks status --porcelain --untracked-files=no` at the top level. Repair 1 (review findings 2 and 4): these calls run without `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_COMMON_DIR`, `GIT_NAMESPACE`, `GIT_CEILING_DIRECTORIES` and `GIT_DISCOVERY_ACROSS_FILESYSTEM`, so the binding reads the checkout that contains the path (before the repair, `GIT_DIR` and `GIT_WORK_TREE` set to the candidate made a path outside any repository count as bound); with `LC_ALL=C`, so that the "not a git repository" message is matched in English; and with a 60-second limit each, a time-out or any other failure to run git being recorded as a problem that binds nothing. It records per repository the top level, commit, tree and clean (no tracked changes) as `binding_start` and `binding_end`; a path outside a Git repository is recorded as `not in a Git repository`, and a git failure with its exit status and message, never guessed. A run is bound when, at both times, for every candidate repository it recorded a checkout of its own whose tree equals that repository's candidate tree and which was clean: for each tree, the number of candidate repositories with that tree must not exceed the number of distinct clean recorded checkouts (distinct top levels) at that tree, and a candidate repository whose own top level was recorded takes that checkout first, so a refusal names a repository left unbound (repair 3, outside reading 1: before, one checkout satisfied every candidate repository with the same tree). The tree is compared, not the path, because checks normally run in the test-only installation's clone of the candidate. The probe must therefore name at least one path in each candidate repository (`payload/AUTO.md`, "Which run decides").
+
+Older records. Run records written by revision 19 or earlier have no sequence number and no binding and never satisfy readiness; a queue started before installation needs a new criterion or candidate for its jobs (which marks the old runs stale) and its checks rerun. The plan records that no queue was active.
+
+Packet identity line. `screen_check.py verify DIR` prints `VERIFIED evidence` and then `packet identity: <SHA-256 of MANIFEST.sha256>`. `auto_queue.py` still computes the identity itself and ignores the output.
+
+Tests and runs. Fifteen new `test_rev20_` methods in `AutoQueueChecks` (pass then fail refused, the decisive test `test_rev20_pass_then_fail_refused`; fail then pass accepted; pass then `not started`, `interrupted` or `timed out` refused; a stale failure ignored; sequence order against file-name order with the same `started` second; two required checks, only the failed one named; binding refused for a dirty checkout, HEAD at another tree, a commit or an edit made during the run, and accepted when clean at the candidate; a probe naming no candidate repository and a two-repository candidate with only one named; records without sequence or binding; the report and Approved; added in repair 1: a record without a sequence number not cleared by a rerun, the binding ignoring `GIT_DIR` and `GIT_WORK_TREE`, a tie and non-integer sequence numbers; added in repair 3: two candidate repositories with identical trees refused with one checkout and accepted with two) and `VerifyIdentityChecks` in `tst_screen_check_v20.py`. Against the unchanged revision 19 code the first eleven failed, the decisive test because Ready was accepted; of the three repair tests, run against the code before the repair, the first two failed and the tie test passed (that behaviour was already there). Five controls, each on a scratch copy of the repaired code, are recorded in the task record: any good run counts again, the last record by file name decides, the latest run's status ignored, binding check removed, and the inherited Git environment restored; repair 3 adds a sixth, any matching checkout restored, and reruns the binding control. In the status control the `not started` case is still refused (a run that never started has no exit code) and fails only on its message. Existing tests: the fixture's candidate repository is now the allowed source directory, so the default probes name a path in it; the two-repository helper makes its second repository inside the allowed root and its run names both; the Approved re-check test adds a real third repository bound by the run instead of a fictitious one. No assertion of an existing test changed. Logs, controls and the full-suite counts are in the task record (`work/`).
+
+Limits. The binding shows that the tested checkouts were at the candidate's tree with no tracked changes at the start and end of the run, not that the command imported its code from them; that remains the probe's and the packet's job. Untracked files are not considered, and "clean" is what `git status` reports: tracked files marked skip-worktree or assume-unchanged (as in a sparse checkout) are not seen; counting them as changed would refuse every sparse worktree. The tree is compared, not the path: any clean checkout at the candidate tree that the probe names can satisfy a candidate repository (one checkout for one repository), and repositories the probe names that are not candidates are not checked. A command that changes the checkout and restores it before it ends passes. A build that changes tracked files in the test clone makes its runs fail the binding (fail closed; not observed). Apart from the removed repository-selecting variables and `LC_ALL`, the binding's git calls inherit the helper's environment and the repositories' configuration (for example a `core.fsmonitor` hook, which git may run outside the network block). No Linux run of the kit suite was made for this revision.
+
+## Technical reference
+
+### Source and test map
+
+| Claim or check | Implementation and test source |
 | --- | --- |
-| Enumeration correction and follow-up reading | The two `find` producers' failures, including partial listings, stop verification. A/B/B2 did not print VERIFY_OK; the tested driver held apply; protected files were unchanged. Seven earlier recipe controls retained their results. R-F1 was closed. |
-| Package and repository checks | Controller reported 45 package tests passing on the Mac. The publication reviewer ran the repository harness on Linux: unit success with one case-insensitive-filesystem skip and a libtbx precompile skip. Skips are not passes of those branches. |
-| C1, disposable CLI configuration | Exact enumcheck candidate, CLI 2.1.284: help and status, source guard and command-to-expansion comparison. Reach is CLI loading/help/status, not setup/recovery. |
-| 4b, live CLI | Help loaded the expected source and ran the guard. The successful attempt followed an expired-auth failure and user sign-in. |
-| D1, Desktop Code tab | Help loaded the personal central link and ran the source guard; transcript reported runtime 2.1.286. Reach is **loading/help only**, not Desktop status or full setup/recovery. |
-| Publication r2 | Outside reading: PROCEED for the limited pilot; P-F1/P-F2/P-F3/P-N1 closed, R-F1 retained closed. A clerical description of three test assertions was corrected externally. Genuine publication screen passed; Developer PUBLISH and verified remote pushes were recorded. |
-| Mac and shared Linux installation synchronization | Controller reported clean checkouts at the publication commit on the Mac and on one shared Linux installation, source equality between them and repository harness success on both. Synchronized GC files on that installation are not native Claude Code client validation: no Claude client was installed or run there. This was not a PHENIX full-suite run. |
-| Tag removal, October 3 | Controller reported the pilot tag absent remotely, its local copy removed after preservation, and the published commit still in upstream history. Repository tags are reserved for releases; use the commit/manifest, not the removed tag. |
-| CI for the two published commits (read 2026-10-04) | GitHub Actions `quick` and `clutter_and_syntax` completed with conclusion success for c36887c7 (2026-10-02) and b0747a4a (2026-10-03); the mirror workflow succeeded after each. Read through the public API without authentication; a read, not a rerun, and not a PHENIX suite. |
-| Native checks of this candidate, Mac CLI 2.1.284, `claude -p … --permission-mode auto`, candidate loaded through a project-level skill link in a scratch project (2026-10-04) | Four sessions, each printing the guard result (VERIFIED complete source, `r10 rev17 candidate`) for the worktree path: `status` recovered adoption, method and records from files alone; `history` listed the one record read-only and created no file; a setup save with a truncated approved record stopped at verify (FAIL: approved record does not match) and held apply; a setup save with no prior record or ABSENT marker stopped at verify and held apply; the protected files' hashes were unchanged in every session. The CLI title instruction (`/rename GuidedCoding: <task>`) was printed in three of the four sessions and omitted in one. Reach: one client, one mode, scratch targets; the sessions used the Developer's live login and wrote their own client bookkeeping outside the targets. |
-| Desktop session rename, Guide's own session (2026-10-04) | In the Guide's own Desktop session (which had loaded the published rev16 skill, not this candidate), the client's rename tool replaced an app-generated title without a prompt: the tool's availability, not this candidate's behaviour. |
-| Desktop session titles, pinned snapshot (2026-10-04) | Two Desktop sessions in a scratch project whose project-level skill directory was a byte-identical, read-only copy of an earlier revision of this package (candidate 3 of this release). The skill entry `SKILL.md`, whose session-title instructions these observations exercised, is byte-identical between that revision and the published one; the tools, tests and some texts changed in later revisions, so the observations are of the title behaviour only, not of the package as a whole. Each transcript shows the skill expansion and a passing guard on that snapshot. (a) An app-generated title was replaced by `GuidedCoding: help` through the client's rename tool without a prompt. (b) A title the Developer had set by hand (`KEEP MY TITLE`) was left unchanged: the skill read the session's title, judged it user-set and did not call the rename tool, so the app's approval dialog was not exercised. (d) The Developer reported both titles unchanged after closing the windows. Four earlier Desktop sessions are preserved in the task record and not counted: two met a failed guard because the Guide was editing the worktree, one renamed itself on the previous candidate, one met a failed guard and left a hand-set title untouched. The app's "isn't a command here" notice for a project-level skill appeared each time; it is not evidence either way. Reach: one Desktop client, one snapshot, two sessions. |
-| PHENIX test discovery (A7, 2026-10-04) | `phenix.find_program search_type=tests search_text=<function> tests.search_tests_by=function_called` traced `run_autobuild` to its calling tests; the default mode matched test names; a function newer than the static index (dated 2026-05-06) produced no entry and no message; `git_affected_tests=True` saw only uncommitted modifications in the three module directories. Project guidance, not a package feature. |
+| Complete source consistency | `verify_source`, `regular_files`; `SourceInventoryChecks`. |
+| Client version and app exception | `MIN_CLAUDE_VERSION`, `APP_ENTRYPOINT`, `claude_version`, `check_claude_version`, `check_app_engine_version`; `ClaudeVersionChecks`. |
+| Source and screen commands without a client on the search path | `VersionGateScopeChecks`. |
+| Screen form and result identity | `blocks`, `developer_view`, `code_identity`, `check`; `ScreenChecks`. |
+| Review identity, conditions and scope | `reading_matches` and the conditional, waived, pending and scope cases in `ScreenChecks`. |
+| Outgoing records and suite-waiver form | `parse_outgoing`, `suite_waiver` and their `ScreenChecks` cases. |
+| Reading carry-over after a restage (revision 19) | `carry-over`, `imports_and_names` and `check_carryover` in `publication_precheck.py` (`CarryOverCommand`); `carryover_evidence`, `consistent_section`, `carried_condition`, `carried_reading`, `addendum_waiver`, `upstream_flags` (`CarryOverScreenChecks`). |
+| Plain-English review and screen display (revision 19) | `plain_english_review`, `render`, `escape`; `PlainEnglishReviewChecks`, `DisplayChecks`. |
+| Reviewer pass words and records wording (revision 19) | `passing_note`; `ReviewerFormattingChecks`, `RecordsLocationWording`. |
+| Latest run decides readiness, run binding and packet identity line (revision 20) | `readiness`, `sequence_of`, `run_failure`, `binding_problem` and `git_binding` in `auto_queue.py` (the `test_rev20_` methods of `AutoQueueChecks`); `verify` in `screen_check.py` (`VerifyIdentityChecks`). |
+| Accept screen and publication draft check | `accept_screen`, `check_draft`; the accept cases in `ScreenChecks` and `DraftPublicationChecks`. |
+| Review-bundle layout | `make_bundle` in `review_bundle.py`; `ReviewBundleChecks`. |
+| Publication repository and command checks | `publication_precheck.py`; `tst_publication_precheck_v20.py`. |
+| Read-only history listing | `records_history.py`; `tst_records_history_v20.py`. |
+| Auto-mode queue, grant, worker registration, runs, stop and cleanup | `auto_queue.py`; `tst_auto_queue_v20.py` and its test-only launcher `auto_queue_standin.py`. |
+| Auto-mode start notice and morning report | The `auto_start` and `auto_report` rules in `screen_check.py`; `tst_screen_check_v20.py`. |
+| Required setup-save ordering | `SKILL.md` and `SETUP.md` section 5, including its shell example. |
 
-The full PHENIX server suite and a baseline/candidate roster were **NOT RUN /
-NOT PRODUCED for the GC-only pilot publication**, under the Developer's
-specific waiver. The publication record states this publicly. Local tests
-do not replace that suite, and the waiver does not apply automatically to
-a later change.
+The checker requires exactly one `Scope:` value before checking it; identical repeated `Packet identity:`, `Verdict:` and `Scope:` lines count as one and conflicting repeats are refused. An outgoing repository block may not repeat a key. When the suite is marked `NOT RUN`, its quoted waiver is checked for form, not interpreted as genuine permission.
 
-## Remaining qualifications
+Publication queries check Git's exit status before using its output. Failed configuration or identity queries refuse, even if their output looks right. Git's documented no-match answer to the configuration query is accepted. The `vet` command accepts only the documented push form; it does not intercept other Git commands. These tests cover the demonstrated cases, rather than every possible false acceptance or every setting outside the checked Git configuration.
 
-- **Native damaged-record branch:** two non-interactive CLI sessions of this
-  candidate held apply on a damaged and on a missing recovery record (table
-  above). That is one client and one mode on scratch targets; the
-  driver/Guide still determines what gets invoked next in any other session.
-- **Exact proposal and recovery history:** earlier cases omitted complete
-  proposals or approved recovery text. Assisted and later native cases
-  showed improvement; they do not erase those failures. A relocated setup
-  record was disclosed but not wholly literal to its displayed proposal.
-- **Fresh-session context:** disposable auto-memory was written outside the
-  target during earlier trials. Later sessions using that configuration
-  cannot be called memory-free or dependent only on target records without
-  checking those inputs. No broad fresh-recovery guarantee follows.
-- **A1 provenance:** an untouched pre-redaction debug log was not located
-  by the reported bounded search. Other transcripts and partial excerpts
-  remain; the reviewer found no material behavioral claim unsupported solely
-  by that loss. The complete original and “only alteration” claim remain
-  unverified. This is a provenance limit, not proof of another behavioral
-  failure.
-- **Client/platform scope:** a passing CLI version check is not a Desktop
-  version check. Earlier TUI observations had continuation/permission-mode
-  qualifications. Native Windows, real csh and all-client setup/recovery
-  behavior are not established by the final-candidate observations above.
-  The repository wrapper explicitly limits the tools to macOS and Linux;
-  its Windows skip is not evidence of Windows support.
-- **Isolation:** observed file equality and absence of recorded tool calls
-  have bounded reach. They do not establish whole-machine immutability,
-  all syscalls or unchanged live authentication state.
-- **General effectiveness:** this package does not establish a failure
-  rate, superiority to unstructured LLM use, or reliability for every future
-  Guide. Separate test authorship is recorded, not proof of independence.
+### Test authorship and controls
 
-## How to check a later documentation or source revision
+The rev17 checker, publication and history tests were written by two separate test-writer sessions from the interface specification, without reading the implementation. A control ran the final checker tests against the earlier published checker to show which tests failed there. Publication and history had no earlier tool versions for that comparison.
 
-Keep the previous evidence unchanged and bind the new source separately.
-For a docs-only revision, check the diff against the implementation,
-command syntax and preserved authority boundaries. Record unchanged
-executable/contract bytes explicitly. If instructions or claims change,
-assess those changes; a unit suite cannot establish their behavioral effect.
+The October 6 version tests were written from the developer's case list by a separate AI worker started within the same conversation as the implementation. It was allowed to read the implementation for exact strings. Its earlier-version control is stored separately.
 
-After the source guard succeeds, package tests can be run from a trusted
-clean, manifest-listed copy with a resolved, symlink-free temporary path:
+| Record | Location |
+| --- | --- |
+| Rev17 task and publication evidence | `phenix/.claude/records/2026-10-04-gc-followups-A/` |
+| Earlier-checker control | `observations/baseline_control.txt` in that release's evidence packet |
+| App-version change evidence | `phenix/.claude/records/2026-10-06-gc-app-version-check/` |
+| Earlier version-checker control | `evidence-work/base_control.txt` in that change's record |
 
-```bash
-python3 -I -B -m unittest discover -s tests -p 'tst_*.py' -v
-```
+These paths identify historical records. They are not additional files included in the general download.
 
-From an appropriate cctbx environment, the repository wrapper is:
+### Repository test wrapper
+
+The source repository has a wrapper, [`libtbx/tst_guided_coding.py`](../../tst_guided_coding.py), which is outside this kit. From a suitable cctbx environment it can be run separately:
 
 ```bash
 libtbx.python /absolute/path/to/cctbx_project/libtbx/tst_guided_coding.py
 ```
 
-These are separate authorized check steps, not commands to continue after
-a failed source guard. The wrapper copies listed files into scratch, uses
-a resolved temporary directory, runs the package tests, and checks that
-listed installed bytes did not change. When libtbx precompilation is
-available it exercises that branch on another copy. It skips Windows and
-Python 2; it can also skip the real precompile branch. Report each skip.
-The wrapper reports existing unlisted files rather than using them for the
-test copy, so retain the complete-source check as a separate requirement.
+It copies manifest-listed files into scratch, resolves the temporary directory, runs the package tests and checks that listed installed files did not change. When libtbx precompilation is available, it checks that branch on another copy.
 
-For native validation, identify the exact source, client/runtime, selected
-skill path, loaded project instructions and persistent context. Inspect
-recorded command-to-expansion linkage, actual operations and resulting
-files. A version string, registration link, model-reported path or procedural
-simulation alone is insufficient. Matching decoded transcript text is not
-proof of file-byte loading. Select observations for the changed behavior
-and intended support scope; do not label an earlier candidate's session as
-a fresh run of the new one.
+The wrapper skips Windows (not supported) and Python 2, and may skip real precompilation. Report each skip. It reports unlisted files in the original installation without copying them into the test source; that is why the complete-source check remains a separate requirement.
 
-The Outside Reviewer evaluates the new source and bound evidence; the
-Developer's acceptance, integration, activation and publication decisions
-remain distinct. A genuine final screen must cite a qualifying reading of
-its own frozen packet. Use the existing contract/project rules for any
-waiver; do not infer one from this document.
+Download users can run the five shipped test files as described above. They do not need a repository wrapper that their download does not contain.
 
-## Relevant history
+### Historical source identities
 
-Rev10–11 corrected exclusive registration and configuration-path handling.
-Rev12 corrected user guidance from the Mac trial. Rev13 added the narrow
-installer-bytecode exception and source-only tool loading. Rev14 introduced
-recoverable, relevant setup. Failed rev15 parallel-job work was excluded
-from the rev16 lineage.
+The baseline identities below identify the earlier publication, not this revision or these rewritten documents.
 
-Rev16 stabilized rev14, then corrected fail-fast checksum instructions,
-approved-text preservation, explicit comparison failure propagation and
-checked file enumeration. A failed `check && echo OK` inside a script was
-not a sufficient stopping rule; unchecked producer exits were also not
-sufficient. The final published implementation is enumcheck, not an earlier
-F1/checked-save/failprop candidate. Earlier reviews belong to those earlier
-identities; frozen packets and errata retain that history.
+| Item | Recorded identity |
+| --- | --- |
+| Pilot implementation (first publication) | r10 rev16, `enumcheck-20261002T194333Z`, October 2, 2026 |
+| Published commit | `c36887c7f489018af4f91773246ecde32d1b4e24` |
+| Source archive SHA-256 | `fce3627e46982f3b5fad1baaad7ada538984e9087a84b2147548b4564e844968` |
+| Source manifest SHA-256 | `b86d0490df59f854c214e6771ad8bb44f03069a38612be198edff4ebb11238e0` |
+| Contract version | `2026-09-17` |
+| Contract SHA-256 | `ab4586810ef683702c8648267d5475fb50659b9fada4b2409293e93a87e6876b` |
+| Publication review bundle SHA-256 | `0e4c112d3726026bd397a4e50ac2a3cff79b146883f8ceab269e3a069bc2c6ca` |
+| Publication packet identity | `9834e7a5bfdf6b8dd8401972265715f527432ba277b63c4ee5c50f130508f44b` |
+| Documentation-only revision | `docs-20261003`, October 3, 2026 |
+| Documentation commit | `b0747a4a55f29db3abe04358480d5867e94cb792` |
+| Documentation source manifest SHA-256 | `5edbec14fe45d3538da533fd995a5d59ddaa47df7629daf27321ab2a1134f1be` |
 
-Rev17 (`followups-20261004`) followed three corrections recorded in the
-PHENIX project during October 2026: a development tag pushed to a
-repository that reserves tags for releases (removed by its maintainer on
-2026-10-03), a publication that proceeded on an inferred suite waiver
-(corrected by the Developer on 2026-10-04), and installation updates that
-were planned after the push rather than with it. It adds no parallel-job
-coordination; that remains a separate planned release.
+The commit, archive, manifest, bundle and packet identities of rev17 and of later revisions belong in their own task and publication records. They cannot be derived from the family label, and this document cannot include its own checksum.
 
-Current client reference material: [skills](https://code.claude.com/docs/en/skills)
-and [instruction loading](https://code.claude.com/docs/en/memory).
-Vendor documentation describes the client; it is not a GC native test run.
+Earlier reviews and tests apply to the source they name. They do not approve a later difference. The October 6 app-version change likewise has its own record, despite keeping the release label.
+
+### Earlier development
+
+Revisions 10–11 corrected exclusive registration and configuration paths. Revision 12 improved the instructions after a Mac trial. Revision 13 added the limited installer-cache exception and source-only loading. Revision 14 introduced recoverable setup. Failed parallel-job work from revision 15 was excluded from the revision 16 lineage.
+
+Revision 16 corrected checksum failures that did not stop later commands, preservation of approved text, propagation of comparison failures and checked file enumeration. A failed `check && echo OK` inside a script was not enough to stop it, and unchecked file-listing commands were not sufficient. The published implementation is the final enumeration correction, not an earlier candidate. Frozen packets and errata preserve those distinctions.
+
+### Client reference material
+
+Anthropic's [skills documentation](https://code.claude.com/docs/en/skills) and [instruction-loading documentation](https://code.claude.com/docs/en/memory) describe the client. They are reference material, not a native Guided Coding test run.

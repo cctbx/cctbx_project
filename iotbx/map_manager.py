@@ -534,6 +534,9 @@ class map_manager(map_reader, write_ccp4_map):
 
     if gridding: # reset definition of full unit cell.  Keep grid spacing
 
+       # Compare and store as a tuple (a list never equals a tuple)
+       gridding = tuple(gridding)
+
        # If gridding does not match original, set space group always to P1
 
        current_unit_cell_parameters = self.unit_cell_crystal_symmetry(
@@ -575,6 +578,11 @@ class map_manager(map_reader, write_ccp4_map):
 
        if not self.is_full_size():
          self.set_wrapping(False)
+
+    # The map did not move, but its shift_cart may have changed. Relabel the
+    #  ncs object (if any) to match; do not move its operators
+    if self._ncs_object:
+      self.set_ncs_object_shift_cart_to_match_map(self._ncs_object)
 
   def is_dummy_map_manager(self):
     ''' Is this a dummy map manager'''

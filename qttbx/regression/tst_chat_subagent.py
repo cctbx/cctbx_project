@@ -2011,6 +2011,41 @@ def exercise_a_backend_side_denial_reaches_the_record():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
+def exercise_a_server_named_mcp_still_owns_its_renamed_tool():
+  """A tool the registry knows is placed by the registry, whatever its
+  name parses as.
+
+  A server named ``mcp`` had its colliding ``run__job`` renamed
+  ``mcp__run__job``, which read as the SDK's ``mcp__<server>__<bare>``
+  and put the tool on a server ``run``: a child that measured with it
+  was reported as measuring nothing.
+  """
+  from qttbx.widgets.chat.agent.subagent import _is_skill_tool, _tool_server
+  reg = ToolRegistry(log=null_out())
+  reg.register_skill_tool(
+    ToolSpec(name="load_skill", description="skill",
+             input_schema={"type": "object"}),
+    handler=lambda **kw: None)
+  for server in ("other", "mcp"):
+    for bare in ("run__job", "x__load_skill"):
+      reg.register_mcp_tool(
+        ToolSpec(name=bare, description=server,
+                 input_schema={"type": "object"}),
+        server_name=server, handler=lambda **kw: None)
+  assert reg.source_of("mcp__run__job") == "mcp:mcp", (
+    reg.tool_to_source_map())
+  assert _tool_server("mcp__run__job", reg) == "mcp", (
+    _tool_server("mcp__run__job", reg))
+  # Nor is its renamed tool a skill tool for ending in a skill tool's name.
+  assert _is_skill_tool("mcp__x__load_skill", reg) is False, (
+    _is_skill_tool("mcp__x__load_skill", reg))
+  # A name the registry does not know is still read the SDK's way.
+  assert _tool_server("mcp__phenix__phenix_get_status", reg) == "phenix", (
+    _tool_server("mcp__phenix__phenix_get_status", reg))
+  assert _is_skill_tool("mcp__phenix_skills__load_skill", reg) is True, (
+    _is_skill_tool("mcp__phenix_skills__load_skill", reg))
+
+
 def exercise_the_child_releases_its_agent_and_its_servers():
   """A child that SUCCEEDS must release what was opened for it.
 
@@ -2303,6 +2338,7 @@ def exercise():
   exercise_one_real_tool_result_is_still_a_measurement()
   exercise_an_equipped_child_that_measured_nothing_is_never_clean()
   exercise_a_backends_own_bookkeeping_server_is_not_a_measurement()
+  exercise_a_server_named_mcp_still_owns_its_renamed_tool()
   exercise_a_backend_side_denial_reaches_the_record()
   exercise_the_child_releases_its_agent_and_its_servers()
   exercise_a_build_notice_leads_the_final_text()

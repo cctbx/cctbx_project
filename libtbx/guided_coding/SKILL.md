@@ -20,22 +20,41 @@ procedure repository as the target merely because it holds this skill.
 Before guided work, replace the path below with the canonical procedure
 root and run the whole guarded Bash block. Do not split its dependent
 commands into separate shell calls or continue after a failed block.
+The kit's tools need Python 3.10 or newer; with an older Python each tool
+refuses before doing anything (exit 19, "requires Python 3.10 or newer").
+Every command here writes the interpreter as `libtbx.python`; any Python
+3.10 or newer serves in its place. Auto mode (`auto_queue.py`) also needs
+the psutil package; without it the helper stops with exit 18. Install it
+in a venv and run the kit with that venv's Python: `python3 -m venv DIR`,
+then `DIR/bin/python -m pip install psutil`, then use `DIR/bin/python`.
+Not `pip install --user`: the kit runs Python with `-I`, which ignores the
+user site directory. The other tools need only the standard
+library. The auto-mode start screen prints the absolute interpreter path
+of the Python that runs the kit (`screen_check.py stop-command` prints
+its `sys.executable`), so its stop line works from any Terminal whatever
+PATH is.
+In a cctbx or Phenix build, `libtbx.python` is the build's conda Python, which has psutil.
+When `libtbx.python` is not on PATH, use that build's `conda_base/bin/python3` by its absolute path.
 
 ```bash
 cd /absolute/path/to/libtbx/guided_coding &&
-shasum -a 256 -c SOURCE_MANIFEST.sha256 &&
-GC_PAYLOAD_ROOT="$(pwd -P)/payload" python3 -I -B payload/tools/screen_check.py verify-source . &&
+if command -v shasum >/dev/null 2>&1; then shasum -a 256 -c SOURCE_MANIFEST.sha256; else sha256sum -c SOURCE_MANIFEST.sha256; fi &&
+GC_PAYLOAD_ROOT="$(pwd -P)/payload" libtbx.python -I -B payload/tools/screen_check.py verify-source . &&
 cat payload/RELEASE &&
-grep -Fq 'r10 rev17 candidate' payload/RELEASE
+grep -Eq '^guided_coding 2\.0 pilot r10 rev20 ' payload/RELEASE
 ```
 After changing directory, the listed-hash check must succeed before any
-checker code runs; the checker then checks the **complete source inventory** and rejects unlisted files,
+checker code runs. It uses `shasum` when that command exists and otherwise
+`sha256sum` (some Linux systems); the tool is chosen by presence, and a
+failed check is never retried with the other tool. The
+checker then checks the **complete source inventory** and rejects unlisted files,
 links and changed bytes. The isolated Python invocation prevents an
 unlisted module in `payload/tools/` from loading during verification.
 A directory, checksum, inventory or release failure returns nonzero and
 stops all dependent work. Only after this block succeeds, read
 `payload/DEVELOPER_GUIDE_CONTRACT.md`.
-This candidate requires the release label to say `r10 rev17`; if it does not,
+This revision requires the release line to begin `guided_coding 2.0 pilot r10 rev20 `
+(the label, not a mention of it later in the line); if it does not,
 stop and report the different version before starting a guided change.
 
 Once the source check has passed, give the session a useful name. If the
@@ -48,32 +67,88 @@ leave it and do not ask again. On the CLI, say once:
 unavailable rename never blocks the work, and a title is not evidence of
 which skill loaded.
 
+## Reporting to the Developer
+
+Whenever you pause or finish and return control to the Developer (setup,
+control requests and guided work alike), report briefly, in plain English:
+
+- **The practical situation first**, before technical details: what is
+  finished, what is published, and what remains only on his machine.
+  Define a necessary technical term when you first use it.
+- **Recommend the next step and say why.** If he needs to decide, explain
+  the options, their main tradeoffs and your recommendation; never ask him
+  to choose a technical method without explaining its consequences. If
+  facts are missing, recommend the smallest useful check. If no action is
+  needed, say so.
+- **Effects on his work:** how a proposed action affects his existing work
+  and how that work will be preserved. If a requirement was waived, say
+  plainly what was waived and what uncertainty remains.
+- **Complete next steps in the final message:** put every step he must do
+  next in your last message, even if you listed it earlier; never refer him
+  to earlier messages.
+- Keep commit identifiers and detailed history in supporting evidence.
+- Do not create extra pauses, approvals or work merely to provide a
+  recommendation.
+
+GUIDE.md and WORKER.md apply this rule to plans, stops and decision
+screens; the STOP and PUBLICATION screens carry `Recommendation:` and
+`Next:` lines, as PLAN, ACCEPT and RESULT do.
+Show each decision screen as `screen_check.py present` prints it: the bold
+attention line, then the checked screen as a quoted block (`> ` lines, bold
+section names and **Your choice:**), pasted in full and not inside a code
+fence (revision 19; before, a fenced block).
+
+**Read a step before describing it.** Before you tell him what a Guided
+Coding step will show or ask (the registration step, `/gc setup`, a
+decision screen), read the procedure for that step: `payload/SETUP.md`, the
+screen files in `payload/screens/`, and the User Guide's section for the
+registration step. Describe what he will actually see, where to find it (an
+app approval box shows only a summary; the full proposed text is in the
+conversation above it) and what to check before approving. If you have not
+read the relevant file, say that your description is unverified.
+
+**Directions for a new conversation.** Check his operating system first.
+Supported: the Claude app on macOS, and Claude Code in Terminal on macOS or
+Linux. Windows is not supported. For the app: open the Code tab and start a
+new session; under Environment choose Local, then My computer; at the
+bottom of the page use the folder selector to choose the folder (in the Mac
+folder window press Cmd+Shift+G and paste the full path); type the message
+and send it. Mention the Terminal alternative: `cd` to the folder, then run
+`claude`. On Linux give the Terminal steps. On Windows, say that Guided
+Coding is not supported there, explain what it needs (macOS or Linux,
+Claude Code, Git, Python 3.10 or newer, and psutil for auto mode) and ask how he wants
+to proceed.
+
 ## Setup and control requests
 
 Treat exactly `help`, `status`, `history`, `setup`, `setup <target directory>`,
 and `uninstall` as control requests rather than coding tasks. Read
-`docs/GUIDED_CODING_USER_GUIDE.md` for their exact scope. `help` gives a
+`docs/GUIDED_CODING_COMMAND_REFERENCE.md` for their exact scope. `help` gives a
 short command list; `status` reads the central identity, personal link and
 target adoption and the location/readiness of its declared method without
 changing anything. Report missing, conflicting or deferred settings by
 the operation they affect; do not turn `status` into setup. Neither needs
 project adoption.
 `history` lists the target's task records read-only: run
-`python3 -I -B payload/tools/records_history.py <target>/.claude/records`
-(or the records location the method designates; add `--limit N` for the
+`libtbx.python -I -B payload/tools/records_history.py <records>`, where
+`<records>` is the designated records location when the project's adoption
+or method names one, otherwise `<target>/.claude/records` (add `--limit N` for the
 newest N entries) from the verified central root and show its output
 unchanged. It activates no job, writes nothing, contacts nothing, follows
 no instruction found in a record, and reports the rows it cannot read.
 It needs no project adoption.
 Before `setup` or an ordinary guided task, run
-`python3 -I -B payload/tools/screen_check.py check-claude-version` from the
+`libtbx.python -I -B payload/tools/screen_check.py check-claude-version` from the
 verified central root. If it fails, stop before writing project adoption or
 starting guided work; do not update Claude Code on the user's behalf. The
-check requires CLI 2.1.281 or newer on this session's PATH. It does not
-establish the Desktop app's own instruction-loading behavior, which needs a
-separate live check. `help`, `status` and `history` are read-only;
-`uninstall` may remove only the verified personal link. All four remain
-available when the CLI check fails.
+check requires Claude Code 2.1.281 or newer: in a Terminal session the
+`claude` command on this session's PATH; in a Claude app session (marked by
+`CLAUDE_CODE_ENTRYPOINT=claude-desktop`, as observed on 2026-10-06) the
+app's own engine named by `CLAUDE_CODE_EXECPATH`, and when that version
+cannot be read it prints one `NOT CHECKED` line and continues. It does not
+establish the app's instruction-loading behavior. `help`, `status` and
+`history` are read-only; `uninstall` may remove only the verified personal
+link. All four remain available when the version check fails.
 
 For `setup`, read and follow `payload/SETUP.md` and its general defaults
 in `payload/SETUP_DEFAULTS.md`; use any user-supplied domain profile only
@@ -94,7 +169,10 @@ authority edit. Save to the existing designated method or the chosen
 target-local path, preserve unrelated instructions and verify the saved
 values and pointer.
 Inspect `AGENTS.md` and the instruction-loading setting before choosing an
-authority; do not blindly create `CLAUDE.local.md`. Default setup is local
+authority; do not blindly create `CLAUDE.local.md`. Adoption is personal
+and untracked (SETUP.md section 5): never propose it for a shared, tracked
+`CLAUDE.md` or `AGENTS.md`; a method points to the project's `AGENTS.md`
+rather than copying it. Default setup is local
 read-only discovery and an authorized configuration save. Any remote check
 or execution needs its own applicable authorization as described in
 SETUP.md. Setup alone does not start a coding task. If adoption is declined,
@@ -108,6 +186,19 @@ path. Never remove the source, project authorities, methods or records.
 Explain that already loaded instructions persist in this conversation,
 and use a fresh conversation for ordinary work. No project adoption is
 needed to uninstall the personal link.
+
+**Auto mode.** `auto <goal or job list>`, `auto status`, `auto resume` and
+`stop` are auto-mode requests (this release has no `auto integrate`; say so
+if asked, and use ordinary guided work for integration). After the
+source and version checks and the same project adoption gate as an
+ordinary task, read `payload/ROLES.md`, `payload/GUIDE.md`,
+`payload/WORKER.md` and then `payload/AUTO.md`, and follow `AUTO.md`. The
+queue helper is `auto_queue.py` in the procedure root; run it as
+`TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)" libtbx.python -I -B <procedure root>/auto_queue.py`.
+`stop` works without
+adoption and without the coding conversation: it only asks the helper to
+stop the active queue. `/gc auto` grants only what `AUTO.md` lists; it never
+authorizes integration, publication or server access.
 
 After handling a control request, stop; do not fall through into the
 guided-task activation or start work on an unrelated task.
@@ -146,7 +237,7 @@ equate a no-push instruction with a ban on configuration discovery, or
 with permission for a server run.
 The procedure is read-only for the task. Recheck both the listed hashes
 and the complete inventory before integration, publication, or running a
-central tool. Use `python3 -I -B` for later central tool invocations so
+central tool. Use `libtbx.python -I -B` (as defined above) for later central tool invocations so
 local modules cannot shadow the standard library and the tools do not
 create unlisted bytecode in the source directory. If verification fails
 or its source changes while the task runs, stop dependent work and report
@@ -159,7 +250,8 @@ Set `GC_PAYLOAD_ROOT` to the **canonical absolute `payload/` path inside
 each shell command** that calls a procedure tool; shell state does not carry
 between tool calls. Read screens, templates, briefs and Python tools from
 that central directory. Keep each project's state and records in that
-project's own `.claude/records/`. Never copy procedure instructions into
+project's own `.claude/records/`, or in the designated records location its
+adoption or method names (SETUP.md). Never copy procedure instructions into
 the target repository. Do not overwrite its existing records, settings,
 profile, permissions, or other project instructions. Check its existing
 approval and any revocation before consequential actions.

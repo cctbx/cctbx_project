@@ -17,7 +17,7 @@ from iotbx.pdb import hy36encode, hy36decode, common_residue_names_get_class
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 from iotbx.pdb.modified_aa_names import lookup as aa_3_as_1_mod
 from iotbx.pdb.modified_rna_dna_names import lookup as na_3_as_1_mod
-from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
+from iotbx.pdb.utils import all_label_asym_ids
 import iotbx.cif.model
 from cctbx import crystal, adptbx, uctbx
 from cctbx.array_family import flex
@@ -1341,6 +1341,154 @@ class _():
     r.append_model(m)
     return r
 
+  def sym_equiv_residue_groups(self, crystal_symmetry, radius,
+        selection=None, min_distance_sym_equiv=None):
+    """Symmetry copies of the residue groups that come close to selected atoms.
+
+    Parameters
+    ----------
+    crystal_symmetry : cctbx.crystal.symmetry
+    radius : float
+        In Angstrom.  A residue group is copied under an operator that places
+        one of its atoms this close to a selected atom.
+    selection : flex.bool or flex.size_t, optional
+        The atoms to measure from; all of them by default.
+    min_distance_sym_equiv : float, optional
+        An atom closer than this to its own equivalent is considered on a
+        symmetry element.  A copied atom closer than this to an atom of the
+        same element, in this hierarchy or an earlier copy, is considered
+        that atom and left out.
+        Default: cctbx.crystal.super_cell.min_distance_sym_equiv_coincident.
+
+    Returns
+    -------
+    result : list of libtbx.group_args
+        One per operator, ordered by rt_mx.as_xyz(), each with ``rt_mx``, the
+        operator on denominators (1, 12); ``i_seqs``, a flex.size_t of the
+        atoms of this hierarchy copied; and ``hierarchy``, their copies in
+        i_seqs order, at the symmetry-equivalent positions and with the
+        original chain IDs.  The identity is not included.  In the copies,
+        anisotropic U is rotated and sigxyz and siguij are cleared.
+
+        ::
+
+          result[k]       one per operator
+          |-- .rt_mx      cctbx.sgtbx.rt_mx, on denominators (1, 12)
+          |-- .i_seqs     flex.size_t, indices into self.atoms()
+          `-- .hierarchy  iotbx.pdb.hierarchy.root, one model
+              `-- .chains()               original IDs
+                  `-- .residue_groups()
+                      `-- .atom_groups()
+                          `-- .atoms()    self.atoms().select(i_seqs),
+                                          moved by rt_mx
+
+    Raises
+    ------
+    Sorry
+        If the hierarchy has more than one model.
+    """
+    from cctbx.crystal import super_cell
+    if (self.models_size() > 1):
+      raise Sorry(
+        f"Symmetry copies need one model, not {self.models_size()}.")
+    if (min_distance_sym_equiv is None):
+      min_distance_sym_equiv = super_cell.min_distance_sym_equiv_coincident
+    atoms = self.atoms()
+    sites_cart = atoms.extract_xyz()
+    if (isinstance(selection, flex.bool)):
+      assert selection.size() == sites_cart.size(), (
+        f"selection covers {selection.size()} atoms, not {sites_cart.size()}")
+      selection = selection.iselection()
+    if (selection is None):
+      selected_sites = sites_cart
+    else:
+      selected_sites = sites_cart.select(selection)
+    if (selected_sites.size() == 0): return []
+    symmetry_tables = super_cell.get_sym_equiv_tables(
+      sites_cart             = sites_cart,
+      crystal_symmetry       = crystal_symmetry,
+      radius                 = radius,
+      min_distance_sym_equiv = min_distance_sym_equiv)
+    # siiu, "symmetry interacting indices unique": {j_seq: [rt_mx]}, the
+    # operators that place atom j_seq within radius of a selected atom.
+    siiu, _ = super_cell.get_siiu(
+      selection=selection, symmetry_tables=symmetry_tables,
+      keep_site_symmetry_ops=True)
+    # The atom range of each residue group, and the residue group of each
+    # atom, by position in atoms().
+    rg_ranges = []
+    rg_of_atom = flex.size_t()
+    for rg in self.residue_groups():
+      first = rg_of_atom.size()
+      rg_of_atom.extend(flex.size_t(rg.atoms_size(), len(rg_ranges)))
+      rg_ranges.append((first, rg_of_atom.size()))
+    site_symmetry_table = symmetry_tables.site_symmetry_table
+    # {rt_mx.as_xyz(): (rt_mx, residue groups it copies)}
+    rgs_by_op = {}
+    for j_seq, ops in siiu.items():
+      for op in ops:
+        key = op.as_xyz()
+        if (key not in rgs_by_op):
+          rgs_by_op[key] = (op, set())
+        rgs_by_op[key][1].add(rg_of_atom[j_seq])
+    # The atoms that may be copied onto another atom: those on a symmetry
+    # element, and those with an equivalent within twice the tolerance of
+    # another atom.
+    near_another_atom, _ = super_cell.get_siiu(
+      symmetry_tables=super_cell.get_sym_equiv_tables(
+        sites_cart             = sites_cart,
+        crystal_symmetry       = crystal_symmetry,
+        radius                 = 2 * min_distance_sym_equiv,
+        min_distance_sym_equiv = min_distance_sym_equiv,
+        site_symmetry_table    = site_symmetry_table))
+    may_coincide = flex.bool(sites_cart.size(), False)
+    may_coincide.set_selected(flex.size_t(list(near_another_atom)), True)
+    may_coincide.set_selected(
+      site_symmetry_table.special_position_indices(), True)
+    # Per element, the sites of the model and of the copies kept so far.
+    elements = atoms.extract_element(strip=True)
+    occupied = {}
+    def occupied_sites(element):
+      if (element not in occupied):
+        occupied[element] = sites_cart.select(elements == element)
+      return occupied[element]
+    unit_cell = crystal_symmetry.unit_cell()
+    has_siguij = ext.atom.has_siguij()
+    result = []
+    for key in sorted(rgs_by_op):
+      op, i_rgs = rgs_by_op[key]
+      i_seqs = flex.size_t()
+      for i_rg in sorted(i_rgs):
+        first, last = rg_ranges[i_rg]
+        i_seqs.extend(flex.size_t_range(first, last))
+      equiv = super_cell.sym_equiv_sites_cart(
+        sites_cart=sites_cart, unit_cell=unit_cell, rt_mx=op,
+        selection=i_seqs)
+      keep = flex.bool(i_seqs.size(), True)
+      for i in may_coincide.select(i_seqs).iselection():
+        sites = occupied_sites(elements[i_seqs[i]])
+        if (flex.min((sites - equiv[i]).dot()) < min_distance_sym_equiv**2):
+          keep[i] = False
+        else:
+          sites.append(equiv[i])
+      if (not keep.count(True)): continue
+      i_seqs = i_seqs.select(keep)
+      hierarchy = self.select(i_seqs, copy_atoms=True)
+      hierarchy.atoms().set_xyz(equiv.select(keep))
+      r_cart = unit_cell.matrix_cart(op.r())
+      for atom in hierarchy.atoms():
+        if (atom.uij_is_defined()):
+          atom.set_uij(adptbx.c_u_c_transpose(r_cart, atom.uij))
+      # sigxyz and siguij rotate only with their covariances, which the atoms
+      # do not hold.
+      hierarchy.atoms().set_sigxyz(
+        flex.vec3_double(hierarchy.atoms_size(), (0, 0, 0)))
+      if (has_siguij):
+        for atom in hierarchy.atoms():
+          atom.siguij_erase()
+      result.append(group_args(rt_mx=op, i_seqs=i_seqs, hierarchy=hierarchy))
+    return result
+
   def write_pdb_file(self,
         file_name,
         open_append=False,
@@ -1687,7 +1835,6 @@ class _():
     chem_comp_atom_ids = []
     struct_asym_ids = []
     #
-    chain_ids = all_chain_ids()
     for model in self.models():
       model_id = model.id
       is_first_in_chain = True
@@ -2437,6 +2584,38 @@ class _():
         else:
           residues[key] = ag
 
+  def reconcile_altlocs(self, crystal_symmetry, distance_cutoff=4.5,
+        clash_tolerance=0.5, include_hydrogens=False, check_only=False,
+        log=None):
+    """
+    Relabel altlocs of interacting residues so that the same label means the
+    same state (e.g. altloc A of a residue does not clash with altloc A of
+    its neighbor). Only labels change. Residues that cannot be made
+    consistent are reported and left unchanged. Restraints built before
+    this call must be rebuilt if labels change.
+
+    :param crystal_symmetry: used to find contacts between symmetry copies;
+      None for an isolated molecule
+    :param distance_cutoff: altloc atoms of two residues closer than this
+      make the residues interacting
+    :param clash_tolerance: van der Waals overlap (A) tolerated before
+      counting a clash
+    :param include_hydrogens: use hydrogens when scoring contacts
+    :param check_only: report changes without applying them
+    :returns: group_args with n_sites (residues with altlocs), n_components
+      (groups of interacting residues), swaps (list of (id_str, mapping))
+      and unresolved (list of lists of id_str)
+    """
+    from iotbx.pdb import altloc_reconciliation
+    return altloc_reconciliation.run(
+      hierarchy         = self,
+      crystal_symmetry  = crystal_symmetry,
+      distance_cutoff   = distance_cutoff,
+      clash_tolerance   = clash_tolerance,
+      include_hydrogens = include_hydrogens,
+      check_only        = check_only,
+      log               = log)
+
   def is_hierarchy_altloc_consistent(self, verbose=False):
     """Return True if altlocs are consistent"""
     altlocs = {}
@@ -2790,29 +2969,47 @@ class _():
     return n_removed
 
   def exchangeable_hd_selections(self):
+    """
+    Pairs of H and D atoms, as [[i_seq_H_or_D], [i_seq_D_or_H]].
+
+    Two atom groups of the same residue group are compared when their
+    altlocs differ and at least one of them has only H/D atoms; a blank
+    element counts as non-H/D. Each pair of groups is compared once, in
+    atom_groups() order. An atom pair is one H and one D (element after
+    strip(), case-sensitive) with equal name.strip()[1:]. There is no
+    distance check, and one atom can be in several pairs. Order: pair of
+    groups, then atom order in the first group, then in the second.
+    """
     result = []
+    elements = set(e.strip() for e in self.atoms().extract_element())
+    if 'H' not in elements or 'D' not in elements:
+      return result
     for model in self.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-          for i_gr1, atom_group_1 in enumerate(residue_group.atom_groups()):
-            elements_group1 = [
-              e.strip() for e in atom_group_1.atoms().extract_element()]
-            non_H_atoms_group1 = list(set(elements_group1) - set(['H','D']))
-            for i_gr2, atom_group_2 in enumerate(residue_group.atom_groups()):
-              elements_group2 = [
-                e.strip() for e in atom_group_2.atoms().extract_element()]
-              non_H_atoms_group2 = list(set(elements_group2) - set(['H','D']))
-              if non_H_atoms_group1 and non_H_atoms_group2: continue
-              if(atom_group_1.altloc != atom_group_2.altloc and i_gr2 > i_gr1):
-                for atom1 in atom_group_1.atoms():
-                  e1 = atom1.element.strip()
-                  n1 = atom1.name.strip()[1:]
-                  for atom2 in atom_group_2.atoms():
-                    e2 = atom2.element.strip()
-                    n2 = atom2.name.strip()[1:]
-                    if(e1 in ["H","D"] and e2 in ["H","D"] and e1 != e2 and
-                       n1 == n2):
-                      result.append([[int(atom1.i_seq)], [int(atom2.i_seq)]])
+          if residue_group.atom_groups_size() < 2: continue
+          groups = []
+          for atom_group in residue_group.atom_groups():
+            hd_atoms = []
+            hd_by_name = {}
+            heavy = False
+            for atom in atom_group.atoms():
+              e = atom.element.strip()
+              if e not in ('H', 'D'):
+                heavy = True
+                continue
+              x = (e, atom.name.strip()[1:], int(atom.i_seq))
+              hd_atoms.append(x)
+              hd_by_name.setdefault(x[1], []).append(x)
+            groups.append((atom_group.altloc, heavy, hd_atoms, hd_by_name))
+          for i_gr1, (altloc_1, heavy_1, hd_atoms_1, _) in enumerate(groups):
+            for altloc_2, heavy_2, _, hd_by_name_2 in groups[i_gr1+1:]:
+              if heavy_1 and heavy_2: continue
+              if altloc_1 == altloc_2: continue
+              for e1, n1, i1 in hd_atoms_1:
+                for e2, n2, i2 in hd_by_name_2.get(n1, ()):
+                  if e1 != e2:
+                    result.append([[i1], [i2]])
     return result
 
   def de_deuterate(self):
@@ -3370,6 +3567,16 @@ class _():
     if (chain is not None):
       chain_id = chain.id
     return "%2s%4s%1s" % (chain_id, self.resseq, self.icode)
+
+  def relabel_altlocs(self, mapping):
+    """Relabel altlocs of atom_groups in place. mapping is a permutation of
+    non-blank altloc labels, e.g. {"A":"B", "B":"A"}; labels not in mapping
+    are unchanged. Atom order is not changed, so arrays aligned with the
+    hierarchy (e.g. xray_structure scatterers) stay valid."""
+    assert "" not in [k.strip() for k in mapping]
+    assert sorted(mapping.keys()) == sorted(mapping.values())
+    for ag in self.atom_groups():
+      ag.altloc = mapping.get(ag.altloc, ag.altloc)
 
 bp.inject(ext.atom_group, __hash_eq_mixin)
 @bp.inject_into(ext.atom_group)

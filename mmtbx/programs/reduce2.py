@@ -1,6 +1,6 @@
 """Run reduce (add hydrogens). version 2"""
 ##################################################################################
-# Copyright(c) 2021-2023, Richardson Lab at Duke
+# Copyright(c) 2021-2026, Richardson Lab at Duke
 # Licensed under the Apache 2 license
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -21,11 +21,12 @@ from datetime import datetime
 from libtbx.program_template import ProgramTemplate
 from libtbx import group_args, phil
 from libtbx.str_utils import make_sub_header
-from libtbx.utils import Sorry, null_out
+from libtbx.utils import Sorry, null_out, peak_memory_usage, human_readable_size
 import mmtbx
 from mmtbx.probe import Helpers
 from iotbx import pdb, cli_parser
 from mmtbx.hydrogens import reduce_hydrogen
+from mmtbx.hydrogens import hd_exchange
 from mmtbx.reduce import Optimizers
 from scitbx.array_family import flex
 from iotbx.pdb import common_residue_names_get_class, amino_acid_codes, nucleic_acid_codes
@@ -34,21 +35,24 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.1.0"
+version = "3.5.0"
 
 master_phil_str = '''
-approach = *add remove optimize
+approach = *add remove optimize place
   .type = choice
-  .short_caption = Add (and optimize), remove, or optimize Hydrogens
-  .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model. Note: if using optimize and add_flip_movers=True, all possible hydrogens must be added to histidines (even ones making collision).
+  .short_caption = Add (and optimize), remove, optimize, or place Hydrogens
+  .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model, or place them without optimizing (place). Note: if using optimize and add_flip_movers=True, all possible hydrogens must be added to histidines (even ones making collision). remove removes all H and D atoms and renames DOD waters to HOH.
 keep_existing_H = False
   .type = bool
   .short_caption = Do not remove Hydrogens in the original model
-  .help = Keep existing H atoms in the model
-n_terminal_charge = *residue_one first_in_chain no_charge
+  .help = Keep existing H and D atoms in the model. Kept D need a neutron_option other than none.
+n_terminal_charge = *residue_one first_in_chain all_chain_starts no_charge
   .type = choice(multi=False)
   .short_caption = N terminal charge approach
-  .help = Mode for placing H3 at terminal nitrogen.
+  .help = Mode for placing H3 at terminal nitrogen: residue_one (resseq 1),\
+          first_in_chain (first residue of each chain), all_chain_starts\
+          (first residue of each chain and each residue after a chain\
+          break), no_charge.
 exclude_water = True
   .type = bool
   .short_caption = Add H to water if False
@@ -56,7 +60,18 @@ exclude_water = True
 use_neutron_distances = False
   .type = bool
   .short_caption = Use neutron distances
-  .help = Use neutron distances (-nuclear in reduce)
+  .help = Use neutron distances (-nuclear in reduce). Switched on by any neutron_option other than none and by qmready=True.
+neutron_option = *none all_h all_d hd_and_h hd_and_d all_hd
+  .type = choice(multi=False)
+  .short_caption = H/D model for neutron refinement
+  .help = none (default): no deuterium, distances follow use_neutron_distances \
+          and qmready as before. all_h: hydrogens only, neutron distances. \
+          all_d: all deuterium. hd_and_h: H/D pairs (altlocs) at exchangeable \
+          sites, H elsewhere. hd_and_d: H/D pairs at exchangeable sites, D \
+          elsewhere. all_hd: H/D pairs at all sites. Every option other than \
+          none uses neutron distances. Waters become DOD in all_d, hd_and_h, \
+          hd_and_d and all_hd, with all_h they stay HOH. H whose names do not \
+          start with H stay H in every option.
 preference_magnitude = 1.0
   .type = float
   .short_caption = Rotational-preference magnitude
@@ -68,7 +83,7 @@ alt_id = None
 model_id = None
   .type = int
   .short_caption = Model ID to optimize
-  .help = Model ID to optimize.  The default is to optimize all of them.  If one is selected, the others are removed from the output file.
+  .help = MODEL number to process (as in the file's MODEL records / pdbx_PDB_model_num). Default: all models. If one is selected, the others are removed from the output.
 add_flip_movers = False
   .type = bool
   .short_caption = Add flip movers
@@ -108,7 +123,15 @@ stop_on_any_missing_hydrogen = False
 ignore_missing_restraints = False
   .type = bool
   .short_caption = Don't stop if restraints for a residue are missing.
-  .help = Don't stop if restraints for a residue are missing.
+  .help = Don't stop if restraints for a residue are missing (otherwise every approach except remove stops). With approach=optimize such a residue is left exactly as in the input, also with a neutron_option (its H/D are not converted), and is listed in the log and the description file. With approach=add or place and keep_existing_H=True, its existing H/D are kept unchanged and it is listed in the log and the description file. With keep_existing_H=False it gets no H and is listed in the log.
+skip_optimizations_after_seconds = 0.0
+  .type = float
+  .short_caption = Skip optimizations after this many seconds
+  .help = Once the program has run for this many seconds, skip any further coarse optimizations.  Note that for many runs most of the time is spent on PDB interpretation and Mover placement, which will not be cut short. Fine optimizations are completed after coarse optimizations cease.  If this is 0.0, no time limit is imposed.
+qmready = False
+  .type = bool
+  .short_caption = Run with custom preset options suitable for QM
+  .help = Add H to water, use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks
 output
   .style = menu_item auto_align
 {
@@ -870,15 +893,42 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
 
   return ret
 
-def _RemoveModelsExceptIndex(model_manager, model_index):
-    hierarchy = model_manager.get_hierarchy()
-    models = hierarchy.models()
-    if model_index < len(models):
-        selected_model = models[model_index]
-        for model in models:
-            if model != selected_model:
-                hierarchy.remove_model(model=model)
-    return model_manager
+def _ModelNumbers(hierarchy):
+  '''MODEL number (model.id, PDB MODEL / mmCIF pdbx_PDB_model_num) of each
+  model, in order; None for an id that is not a number. A single model
+  without a number is MODEL 1.
+  '''
+  models = hierarchy.models()
+  if len(models) == 1 and models[0].id.strip() == '':
+    return [1]
+  result = []
+  for m in models:
+    try:
+      result.append(int(m.id))
+    except ValueError:
+      result.append(None)
+  return result
+
+def _PdbFormatProblems(hierarchy):
+  '''The reasons found in the hierarchy why fits_in_pdb_format() (hybrid-36)
+  is False, as text; empty if none of them is found.
+  '''
+  chains = sorted(set(c.id for c in hierarchy.chains() if len(c.id) > 2))
+  resnames = sorted(set(ag.resname for ag in hierarchy.atom_groups()
+    if len(ag.resname) > 3))
+  found = []
+  if resnames:
+    found.append('residue name%s longer than 3 characters: %s' % (
+      's' if len(resnames) > 1 else '', ', '.join(resnames)))
+  if chains:
+    found.append('chain ID%s longer than 2 characters: %s' % (
+      's' if len(chains) > 1 else '', ', '.join(chains)))
+  return '; '.join(found)
+
+def _SelectModelNumber(hierarchy, number):
+  '''The model of the hierarchy with MODEL number number (in _ModelNumbers()).
+  '''
+  return hierarchy.models()[_ModelNumbers(hierarchy).index(number)]
 
 # ------------------------------------------------------------------------------
 
@@ -894,10 +944,13 @@ Inputs:
 Output:
   PDB or mmCIF file with added hydrogens.  If output.filename is specified, then the
   type of file to write will be determined by its suffix (.pdb or .cif).
+  A .pdb request for a model that cannot be written in PDB format gives mmCIF
+  with the same base name (.cif), and the log says so.
   If output.filename is not specified, the output file will be
   written into the current working directory with the same base name and type as the
   original file and with FH or H added to the base name (FH when flips are requested);
   1xs0.pdb would be written to ./1xsoH.pdb and 1xso.cif to ./1xsoH.cif by default.
+  With neutron_option other than none, _<option> follows: ./1xsoH_all_d.pdb.
 
 NOTES:
   If multiple alternates are present in the file and a specific one is not specified on the
@@ -907,6 +960,30 @@ NOTES:
   for the final alternate tested.  This may leave other alternates in sub-optimal configurations.
   When a single alternate is selected using alt_id= on the command line, everything is
   optimized a single time and for that configuration.
+
+  neutron_option writes a model for neutron refinement. Every option other than none
+  switches on use_neutron_distances (qmready=True does too). Exchangeable H are H on a
+  non-carbon atom. A split site is written as two altlocs, H and D, each at half the
+  parent's occupancy. Per option: non-exchangeable H, exchangeable H, water:
+    all_h     H      H      HOH
+    all_d     D      D      DOD
+    hd_and_h  H      split  DOD
+    hd_and_d  D      split  DOD
+    all_hd    split  split  DOD
+  In an existing alternate conformer, exchangeable H are written as D (and in all_hd the
+  other H as H), not split, and are listed. H whose names do not start with H stay H.
+  Input D is used only when the H/D are kept (approach=optimize, or keep_existing_H=True).
+  It must be unambiguous: there is no repair, and anything else stops with a Sorry that
+  includes a hint. Kept D input with neutron_option=none stops. Refined occupancies and
+  B of input H/D pairs are kept where the output writes the same pair, new pairs get half
+  the parent occupancy each. The log and the description file have an H/D section.
+  Limitation: after refinement, H and D of a rotatable group (OH, SH, NH3+) can point in
+  different directions. If they are more than 0.2 A apart, the input is refused. Use
+  approach=add keep_existing_H=False instead. With ignore_missing_restraints=True,
+  approach=optimize leaves residues without restraints exactly as in the input (not
+  converted) and lists them. With approach=add or place and keep_existing_H=True, their
+  existing H/D are kept unchanged and they are listed. With keep_existing_H=False such a
+  residue gets no H. Cannot be combined with approach=remove or qmready=True.
 
   Note that the program also takes probe Phil arguments; run with --show_defaults to see
   all Phil arguments.
@@ -1042,23 +1119,47 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _AddHydrogens(self):
-    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
-      model = self.model,
-      use_neutron_distances=self.params.use_neutron_distances,
-      n_terminal_charge=self.params.n_terminal_charge,
-      exclude_water = self.params.exclude_water,
-      stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
-      keep_existing_H=self.params.keep_existing_H
-    )
+    # placement queries the server of the model it gets: run() starts it
+    # fresh and it holds the run's restraint objects, so it is not stale
+    if self.params.qmready:
+      reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+        model                 = self.model,
+        use_neutron_distances = self.params.use_neutron_distances,
+        n_terminal_charge     = "all_chain_starts",
+        exclude_water         = False,
+        stop_for_unknowns     = self.params.stop_on_any_missing_hydrogen,
+        keep_existing_H       = True,
+        mon_lib_srv           = self.model.get_mon_lib_srv(),
+      )
+    else:
+      reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+        model = self.model,
+        use_neutron_distances=self.params.use_neutron_distances,
+        n_terminal_charge=self.params.n_terminal_charge,
+        exclude_water = self.params.exclude_water,
+        stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
+        keep_existing_H=self.params.keep_existing_H,
+        mon_lib_srv=self.model.get_mon_lib_srv()
+      )
+    reduce_add_h_obj.supplied_h_hint = self._RebuildHint()
+    # the model is boxed for the calculation: contacts across its own symmetry
+    reduce_add_h_obj.input_crystal_symmetry = self._output_cs
     reduce_add_h_obj.run()
     reduce_add_h_obj.show(self.logger, verbose=self.params.verbosity > 2)
+    # its report of atom names not in the dictionary, for the description
+    self._unknown_atoms_note = ''
+    if reduce_add_h_obj.residues_unknown_atoms:
+      self._unknown_atoms_note = '\n' + reduce_add_h_obj.unknown_atoms_text(
+        verbose=self.params.verbosity > 2) + '\n'
+    # its report of thiols bound to metals, for the description
+    self._metal_thiol_note = ''
+    text = reduce_add_h_obj.metal_thiol_text()
+    if text:
+      self._metal_thiol_note = '\n' + text + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if not self.params.ignore_missing_restraints:
       if len(missed_residues) > 0:
-        bad = ""
-        for res in missed_residues:
-          bad += " " + res
-        raise Sorry("Restraints were not found for the following residues:"+bad)
+        raise self._MissingRestraintsSorry(missed_residues)
     insufficient_restraints = list(reduce_add_h_obj.site_labels_no_para)
     if self.params.stop_on_any_missing_hydrogen and len(insufficient_restraints) > 0:
       bad = insufficient_restraints[0]
@@ -1067,6 +1168,29 @@ NOTES:
       raise Sorry("Insufficient restraints were found for the following atoms:"+bad)
 
     self.model = reduce_add_h_obj.get_model()
+    # input pairs keep their values per site when placement renamed their H
+    self._hd_records = hd_exchange.rekey_records(self._hd_records,
+      reduce_add_h_obj.renamed_existing_h)
+
+    # Placement replaced the D of an input DOD water by H but kept the name
+    self._dod_renamed_note = ''
+    n_renamed = 0
+    for rg in self.model.get_hierarchy().residue_groups():
+      water = [ag for ag in rg.atom_groups()
+               if common_residue_names_get_class(name=ag.resname) ==
+                  'common_water']
+      elements = set(a.element.strip().upper() for ag in water
+                     for a in ag.atoms())
+      if 'H' not in elements or 'D' in elements: continue
+      dod = [ag for ag in water if ag.resname == 'DOD']
+      if not dod: continue
+      for ag in dod:
+        ag.resname = 'HOH'
+      n_renamed += 1
+    if n_renamed > 0:
+      self._dod_renamed_note = ('%d water(s) renamed DOD -> HOH (their D were '
+        'replaced by H)\n' % n_renamed)
+      print(self._dod_renamed_note, file=self.logger)
 
     if not self.model.has_hd():
       raise Sorry("It was not possible to place any H atoms. Is this a single atom model?")
@@ -1078,11 +1202,494 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _ReinterpretModel(self, make_restraints=True):
+  def _MissingRestraintsSorry(self, resnames):
+    return Sorry("Restraints were not found for the following residues:" +
+      "".join(" " + r.strip() for r in sorted(resnames)))
+
+# ------------------------------------------------------------------------------
+
+  def _PrepareRestraints(self):
+    # Once per run, before the flipkin snapshot: one mon_lib_query() per
+    # residue name. CCD-only residues get placement's CCD-generated restraint
+    # objects, kept for the whole run (main run, input check, placement,
+    # flipkin passes; a server returns them only the first time it sees a
+    # residue) and dropped with _DropAutoRestraints(). Residues without
+    # restraints (as placement's no_H_placed_mlq) stop the run unless
+    # ignore_missing_restraints=True; then all their atoms are left as in
+    # the input.
+    # :return: group_args(keys (atom keys of the residues left unchanged),
+    # labels).
+    # the objects are appended to the model's list: its own copy, so that
+    # the input's list stays as it is
+    ro = self.model.get_restraint_objects()
+    if ro is not None:
+      self.model.set_restraint_objects(list(ro))
+    r = reduce_hydrogen.add_ccd_restraint_objects(self.model)
+    self._auto_restraint_names = r.auto_restraint_names
+    if r.no_restraints and not self.params.ignore_missing_restraints:
+      raise self._MissingRestraintsSorry(r.no_restraints)
+    hierarchy = self.model.get_hierarchy()
+    n_models = len(hierarchy.models())
+    missing = set()   # (residue_group memory_id, resname)
+    labels = []
+    for model_index, m in enumerate(hierarchy.models()):
+      for chain in m.chains():
+        for rg in chain.residue_groups():
+          for resname in sorted(set(ag.resname for ag in rg.atom_groups())
+                                & r.no_restraints):
+            missing.add((rg.memory_id(), resname))
+            label = '%s %s %s%s' % (resname.strip(), chain.id,
+              rg.resseq.strip(), rg.icode.strip())
+            if n_models > 1: label += ' (model %d)' % (model_index + 1)
+            labels.append(label)
+    keys = set()
+    if missing:
+      for a, k in zip(hierarchy.atoms(), hd_exchange.atom_keys(hierarchy)):
+        if (a.parent().parent().memory_id(), a.parent().resname) in missing:
+          keys.add(k)
+    return group_args(keys=keys, labels=labels)
+
+# ------------------------------------------------------------------------------
+
+  def _UnchangedText(self):
+    # Residues without restraints (ignore_missing_restraints=True) that the
+    # run leaves as in the input: optimize, and placement keeping the input
+    # H/D (keep_existing_H, qmready). Printed here.
+    # :return: The description-file text ('' if none).
+    if not self._unrestrained.labels: return ''
+    if self.params.approach != 'optimize' and \
+       not (self.params.keep_existing_H or self.params.qmready):
+      return ''
+    text = ('\nResidues without restraints, left unchanged:\n' +
+      '\n'.join(self._unrestrained.labels) + '\n')
+    print(text, file=self.logger)
+    return text
+
+# ------------------------------------------------------------------------------
+
+  def _DropAutoRestraints(self, model):
+    # the CCD-generated restraint objects of _PrepareRestraints(), off a
+    # model that leaves the run (its restraints stay), so that output and
+    # downstream validation do not see them (92b7fa5beb)
+    reduce_hydrogen.remove_auto_restraint_objects(model,
+      self._auto_restraint_names)
+
+# ------------------------------------------------------------------------------
+
+  def _UnrestrainedKeys(self):
+    # (also before run(): the checks are called directly in tests)
+    unrestrained = getattr(self, '_unrestrained', None)
+    if unrestrained is None: return set()
+    return unrestrained.keys
+
+# ------------------------------------------------------------------------------
+
+  def _RemoveFloatingHD(self):
+    # Remove H/D atoms that have no covalent bond partner in the restraints,
+    # except in residues without restraints (left unchanged).
+    # :return: Tuple of the description-file text listing the removed atoms
+    # ('' if none) and their atom keys (hd_exchange.atom_keys()).
+    partners = hd_exchange.covalent_h_partners(self.model)
+    atoms = self.model.get_hierarchy().atoms()
+    skip = self._UnrestrainedKeys()
+    keys = hd_exchange.atom_keys(self.model.get_hierarchy()) if skip else None
+    sel = flex.bool(atoms.size(), False)
+    for i, a in enumerate(atoms):
+      if a.element.strip().upper() in ('H', 'D') and i not in partners and \
+         not (skip and keys[i] in skip):
+        sel[i] = True
+    if sel.count(True) == 0:
+      return '', []
+    if keys is None:
+      keys = hd_exchange.atom_keys(self.model.get_hierarchy())
+    removed = [keys[i] for i in sel.iselection()]
+    # in residues with atom names not in the dictionary: listed under that
+    # cause (_UnknownAtomsText())
+    unknown = set(r for r, names in getattr(self, '_unknown_atoms', []))
+    labels = []
+    for i in sel.iselection():
+      label = atoms[i].id_str().replace('pdb=', '').replace('"', '')
+      if reduce_hydrogen.residue_label(atoms[i]) in unknown:
+        self._unknown_atoms_removed.append(label)
+      else:
+        labels.append(label)
+    text = ''
+    if labels:
+      text = ('\nH/D without a covalent partner, removed before optimization:'
+              '\n' + '\n'.join(labels) + '\n')
+      print(text, file=self.logger)
+    self.model = self.model.select(~sel)
+    return text, removed
+
+# ------------------------------------------------------------------------------
+
+  def _UnknownAtomsText(self):
+    # optimize: placement's report of atom names not in the dictionary, with
+    # the H/D removed in those residues (at the input check and as floating)
+    # instead of in the floating lists. Printed here.
+    # :return: The description-file text ('' if none); in the log without
+    # its leading blank line (a sub-header or text with one precedes it).
+    if not self._unknown_atoms: return ''
+    resids = set(r for r, names in self._unknown_atoms)
+    moved = [l for l, r in zip(self._input_floating,
+             self._input_floating_resids) if r in resids]
+    kept = [(l, r) for l, r in zip(self._input_floating,
+            self._input_floating_resids) if r not in resids]
+    self._input_floating = [l for l, r in kept]
+    self._input_floating_resids = [r for l, r in kept]
+    labels = moved + self._unknown_atoms_removed
+    text = '\n' + reduce_hydrogen.atoms_not_in_dictionary_text(
+      self._unknown_atoms, len(labels), 'H/D on them were removed',
+      labels) + '\n'
+    print(text[1:], file=self.logger)
+    return text
+
+# ------------------------------------------------------------------------------
+
+  def _RemoveFromSnapshot(self, snapshot, removed):
+    # Remove the atoms with the given atom keys from an unprocessed snapshot
+    # of the model, keeping its atom order (keys, not indices: the processed
+    # model is re-sorted). Each key must occur exactly once.
+    # :return: The snapshot without those atoms.
+    keys = hd_exchange.atom_keys(snapshot.get_hierarchy())
+    index = dict((k, i) for i, k in enumerate(keys))
+    sel = flex.bool(len(keys), False)
+    for key in removed:
+      if key not in index:
+        raise Sorry("Internal error: removed atom not in the initial model: "
+          + str(key))
+      sel[index[key]] = True
+    return snapshot.select(~sel)
+
+# ------------------------------------------------------------------------------
+
+  def _CheckAmbiguousParents(self):
+    # neutron_option: an H/D with more than one covalent partner cannot be
+    # classified; stop before the Optimizer runs, naming the restraints.
+    partners = hd_exchange.covalent_h_partners(self.model)
+    atoms = self.model.get_hierarchy().atoms()
+    skip = self._UnrestrainedKeys()
+    keys = hd_exchange.atom_keys(self.model.get_hierarchy()) if skip else None
+    bad = []
+    for i in sorted(partners):
+      if len(partners[i]) < 2: continue
+      if skip and keys[i] in skip: continue
+      lines = [' ' + atoms[i].id_str()]
+      for j in sorted(partners[i]):
+        for info in partners[i][j]:
+          lines.append('    %s: %s, ideal %.3f A, %s' % (atoms[j].id_str(),
+            info.origin, info.distance_ideal, info.sym_op))
+      bad.append('\n'.join(lines))
+    if bad:
+      raise Sorry('neutron_option=%s: H/D with more than one covalent bond '
+        'partner (check the restraints):\n%s' % (self.params.neutron_option,
+        '\n'.join(bad)))
+
+# ------------------------------------------------------------------------------
+
+  def _CaptureParentTable(self):
+    # Parent of every H/D while the restraints match the hierarchy; the
+    # output step uses it after the restraints are gone.
+    self._h_parents = hd_exchange.h_parent_table(self.model)
+
+# ------------------------------------------------------------------------------
+
+  def _SuppliedThiolHText(self):
+    # approach=optimize keeps every input H: the H on thiols bound to metals,
+    # as placement lists them (nothing is deleted here).
+    # :return: The description-file text ('' if none); also in the log.
+    sites = reduce_hydrogen.thiol_metal_sites(self.model,
+      reduce_hydrogen.contact_symmetry(self._output_cs))
+    text = reduce_hydrogen.metal_thiol_text(
+      supplied = reduce_hydrogen.supplied_thiol_h(sites, lambda a: True),
+      hint = self._RebuildHint())
+    if not text: return ''
+    print('\n' + text, file=self.logger)
+    return '\n' + text + '\n'
+
+# ------------------------------------------------------------------------------
+
+  def _RebuildHint(self):
+    # The parameters that discard the input H/D for this run: qmready and
+    # optimize always keep them (add also optimizes), add/place keep them
+    # only on request.
+    if self.params.qmready:
+      return 'remove the H/D first (approach=remove), then run qmready=True'
+    if self.params.approach == 'optimize':
+      return 'approach=add keep_existing_H=False'
+    return 'keep_existing_H=False'
+
+# ------------------------------------------------------------------------------
+
+  def _MatchInputHD(self, model=None):
+    # Candidates and collapse check on an interpreted model (self.model if
+    # None).
+    # :return: Tuple (candidates, match).
+    if model is None: model = self.model
+    table = hd_exchange.h_parent_table(model)
+    candidates = hd_exchange.find_hd_candidates(model.get_hierarchy(),
+      table, model=model)
+    return candidates, hd_exchange.collapse_check(candidates)
+
+# ------------------------------------------------------------------------------
+
+  def _NormalizeInput(self):
+    # Input with D that the run keeps: every H/D must be a single or a
+    # collapsible pair (no repair). Floating H/D are dropped. Pairs are
+    # collapsed to H with their values recorded (self._hd_records), single D
+    # renamed to H, DOD -> HOH. Residues without restraints stop the run, or
+    # with ignore_missing_restraints=True are left as they are. self.model is
+    # rebuilt from the H-only hierarchy, with restraints for optimize (the
+    # branch uses them).
+    # :return: Unprocessed model of the H-only hierarchy, the snapshot for
+    # the flipkin passes.
+    make_sub_header('Checking input H/D', out=self.logger)
+    if self.params.neutron_option == 'none':
+      raise Sorry('input contains deuterium; set neutron_option, or rebuild '
+        'H: ' + self._RebuildHint())
+    self._ReinterpretModel(make_restraints=True)
+    skip = self._unrestrained.keys
+    def checked_part(full):
+      # the model without the residues left unchanged, and the full model's
+      # atom keys of its atoms (its own keys can differ: chain occurrence)
+      if not skip: return full, None
+      keys = hd_exchange.atom_keys(full.get_hierarchy())
+      sel = flex.bool([k not in skip for k in keys])
+      return full.select(sel), [k for k, x in zip(keys, sel) if x]
+    full = self.model
+    part, part_keys = checked_part(full)
+    candidates, match = self._MatchInputHD(part)
+    clean = lambda id_str: id_str.replace('pdb=', '').replace('"', '')
+    titles = {
+      'pair': 'H/D pairs that cannot be collapsed',
+      'different parents': 'Same-name H and D on different parents',
+      'same conformer': 'H and D of one site in one conformer',
+      'name collision': 'D whose H name already exists'}
+    categories = []
+    def add(title, line):
+      for t, lines in categories:
+        if t == title:
+          lines.append(line)
+          return
+      categories.append((title, [line]))
+    for x in match.problems:
+      ids = [clean(i) for i in (x.h_id, x.d_id) if i is not None]
+      reasons = '; '.join(x.reasons)
+      add(titles[x.kind], ' / '.join(ids) + ': ' + reasons if ids else reasons)
+    for u in match.unresolved:
+      if u.action != 'stop': continue
+      add('H/D with more than one covalent partner', clean(u.atom_id) + ': ' +
+        '; '.join('%s %s, ideal %.3f A, %s' % (clean(s[0]), s[1], s[2], s[3])
+                  for s in u.source))
+    if categories:
+      text = []
+      for title, lines in categories:
+        text.append('  %s (%d):' % (title, len(lines)))
+        text.extend('    ' + l for l in lines[:20])
+        if len(lines) > 20:
+          text.append('    (+%d more)' % (len(lines) - 20))
+      raise Sorry('The input H/D cannot be used with approach=%s (no repair):'
+        '\n%s\nRebuild H: %s' % (self.params.approach, '\n'.join(text),
+        self._RebuildHint()))
+    # floating: dropped (select() keeps the restraints), then matched again
+    floating = [u for u in candidates.unresolved if u.status == 'floating']
+    self._input_floating = [clean(u.atom_id) for u in floating]
+    # residue_label() from the atom key, for _UnknownAtomsText()
+    self._input_floating_resids = ['%s %s %s' % (u.atom_key[6].strip(),
+      u.atom_key[1].strip(), u.atom_key[3].strip()) for u in floating]
+    if floating:
+      drop = set(u.atom_key for u in floating)
+      if part_keys is not None:
+        drop = set(fk for k, fk in zip(
+          hd_exchange.atom_keys(part.get_hierarchy()), part_keys) if k in drop)
+      keys = hd_exchange.atom_keys(full.get_hierarchy())
+      full = full.select(flex.bool([k not in drop for k in keys]))
+      part, part_keys = checked_part(full)
+      candidates, match = self._MatchInputHD(part)
+    self.model = full
+    self._input_notes = [group_args(output=clean(n.h_id) + ' / ' +
+      clean(n.d_id), text=n.text) for n in match.notes]
+    h = self.model.get_hierarchy().deep_copy()
+    # atom_groups left unchanged are taken out while the matched part is
+    # normalized (its atom order is then the part's), and put back
+    detached = []
+    if skip:
+      key_of = dict((a.memory_id(), k) for a, k in
+                    zip(h.atoms(), hd_exchange.atom_keys(h)))
+      for rg in h.residue_groups():
+        for index, ag in enumerate(list(rg.atom_groups())):
+          if key_of[ag.atoms()[0].memory_id()] in skip:
+            detached.append((rg, index, ag))
+      for rg, index, ag in detached:
+        rg.remove_atom_group(ag)
+      assert h.atoms_size() == part.get_hierarchy().atoms_size()
+    normalized = hd_exchange.normalize_to_h(h, match)
+    for rg, index, ag in detached:
+      rg.insert_atom_group(min(index, rg.atom_groups_size()), ag)
+    if detached:
+      h.sort_atoms_in_place()
+      h.atoms().reset_serial()
+      h.atoms().reset_i_seq()
+    self._hd_records = normalized.records
+    c = normalized.counts
+    print('Input H/D: %d pairs collapsed to H, %d D renamed to H, %d DOD '
+      'renamed to HOH, %d floating dropped' % (c.n_pairs, c.n_d_renamed,
+      c.n_dod, len(floating)), file=self.logger)
+    snapshot = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = h.deep_copy(),
+      crystal_symmetry  = self.model.crystal_symmetry(),
+      restraint_objects = self.model.get_restraint_objects(),
+      stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
+      log               = null_out())
+    self._normalized_with_restraints = self.params.approach == 'optimize'
+    self.model = self._RebuildModel(h,
+      make_restraints=self._normalized_with_restraints)
+    return snapshot
+
+# ------------------------------------------------------------------------------
+
+  def _NeutronDescription(self):
+    # H/D section for the description file and the log: distances, counts
+    # and the listed sites with their reasons, by their written names. Lists
+    # are capped at 20 entries unless verbosity > 2.
+    r = self._neutron_result
+    cap = None if self.params.verbosity > 2 else 20
+    lines = ['', 'H/D model (neutron_option=%s):' % self.params.neutron_option,
+      '  Neutron distances used (%s)' % self._neutron_distance_reason,
+      '  Exchangeable H sites (not water): %d' % r.n_exchangeable,
+      '  Split into H/D pairs: %d (new, at 0.5 x parent occupancy: %d)' % (
+        r.n_split, r.n_split_new),
+      '  Converted to D: %d' % r.n_to_d,
+      '  Waters renamed DOD: %d, HOH: %d' % (r.n_water, r.n_water_to_hoh),
+      '  Values restored from the input: %d' % r.n_restored]
+    def section(title, entries, detail, remark=None):
+      if not entries: return
+      lines.append('  %s (%d):' % (title, len(entries)))
+      if remark: lines.append('    ' + remark)
+      shown = entries if cap is None else entries[:cap]
+      for e in shown:
+        lines.append(('    %s  %s' % (e.output, detail(e))).rstrip())
+      if len(shown) < len(entries):
+        lines.append('    (+%d more)' % (len(entries) - len(shown)))
+    by_reason = lambda entries, reason: [e for e in entries if e.reason == reason]
+    section('Conformer sites written as one isotope',
+      by_reason(r.conformer_sites, 'conformer'), lambda e: e.reason)
+    section('Not split, no free altloc letters',
+      by_reason(r.conformer_sites, 'no free altloc letters'), lambda e: e.reason)
+    section('Name not pairable by phenix.refine, kept as H',
+      r.unclassified_sites, lambda e: e.reason)
+    section('Conformer copies merged into one site', r.merged_sites,
+      lambda e: '%s (%d copies)' % (e.reason, len(e.copies)))
+    section('Split sites on a partially occupied parent',
+      r.partial_parent_sites, lambda e: 'parent occupancy %.2f' % e.parent_occ,
+      remark='New pairs get half the parent occupancy each, restored pairs '
+             'keep their input values; phenix.refine currently refines '
+             'H + D = 1.')
+    section('Occupancy notes', r.notes, lambda e: e.text)
+    section('Input H/D notes (values not changed)', self._input_notes,
+      lambda e: e.text)
+    section('H/D without a covalent partner, dropped at the input check',
+      [group_args(output=label) for label in self._input_floating],
+      lambda e: '')
+    def record_label(key):
+      # site key: residue part, parent altloc, name
+      model_index, chain_id, _, resseq, icode, _, resname, altloc, name = key
+      label = '%s %s %s %s%s' % (name.strip(), resname, chain_id,
+        resseq.strip(), icode.strip())
+      if altloc: label += ' (parent altloc %s)' % altloc
+      if model_index > 0: label += ' (model %d)' % (model_index + 1)
+      return label
+    section('Input values not used (site no longer in the model)',
+      [group_args(output=record_label(k)) for k in r.unused_records],
+      lambda e: '')
+    text = '\n'.join(lines) + '\n'
+    # the same section in the log, so it is not lost without files
+    print(text, file=self.logger)
+    return text
+
+# ------------------------------------------------------------------------------
+
+  def _CheckNeutronOutput(self):
+    # The written H/D model against the parent table: provenance is a
+    # bijection, every pair collapses, exchangeable_hd_selections() finds
+    # exactly the split pairs, no residue_group gained a resname, and water
+    # names match their H/D.
+    out_h = self._output_model.get_hierarchy()
+    provenance = self._neutron_result.provenance
+    atoms = out_h.atoms()
+    keys = hd_exchange.atom_keys(out_h)
+    hd = [k for k, a in zip(keys, atoms)
+          if a.element.strip().upper() in ('H', 'D')]
+    problems = []
+    for k, a in zip(keys, atoms):
+      if a.element.strip().upper() in ('H', 'D') and k not in provenance:
+        problems.append('no provenance: ' + a.id_str())
+    for k in sorted(set(provenance) - set(hd)):
+      problems.append('provenance names a missing atom: ' + str(k))
+    # residues without restraints: in the provenance, not paired (their
+    # atoms are taken out; the keys of the rest can change)
+    skip = self._UnrestrainedKeys()
+    pair_h, pair_provenance = out_h, provenance
+    if not problems and skip:
+      sel = flex.bool([k not in skip for k in keys])
+      pair_h = out_h.select(sel, copy_atoms=True)
+      pair_h.atoms().reset_i_seq()
+      pair_provenance = dict((k, provenance[fk]) for k, fk in zip(
+        hd_exchange.atom_keys(pair_h), [k for k, x in zip(keys, sel) if x])
+        if fk in provenance)
+    if not problems:
+      match = hd_exchange.collapse_check(hd_exchange.find_hd_candidates(
+        pair_h, self._h_parents, provenance=pair_provenance))
+      for x in match.problems:
+        problems.append('%s %s: %s' % (x.h_id, x.d_id, '; '.join(x.reasons)))
+      for x in match.unresolved:
+        problems.append('%s: %s' % (x.atom_id, x.status))
+      pairs = set(frozenset((c.i_h, c.i_d)) for c in match.pairs)
+      written = set(frozenset((s[0][0], s[1][0]))
+                    for s in pair_h.exchangeable_hd_selections())
+      if len(pairs) != self._neutron_result.n_split or pairs != written:
+        problems.append('split pairs: %d written, %d paired, %d found by '
+          'exchangeable_hd_selections()' % (self._neutron_result.n_split,
+          len(pairs), len(written)))
+    rgs_in = list(self.model.get_hierarchy().residue_groups())
+    rgs_out = list(out_h.residue_groups())
+    if len(rgs_in) != len(rgs_out):
+      problems.append('%d residue groups in, %d out' % (len(rgs_in),
+        len(rgs_out)))
+    else:
+      for rg_in, rg_out in zip(rgs_in, rgs_out):
+        n_in = len(set(ag.resname for ag in rg_in.atom_groups()))
+        n_out = len(set(ag.resname for ag in rg_out.atom_groups()))
+        if n_in != n_out:
+          problems.append('resnames changed in %s' %
+            rg_out.atoms()[0].id_str())
+    # water names follow the content: with D DOD, with H not DOD
+    for rg in rgs_out:
+      water = [ag for ag in rg.atom_groups()
+               if common_residue_names_get_class(name=ag.resname) ==
+                  'common_water']
+      elements = set(a.element.strip().upper() for ag in water
+                     for a in ag.atoms())
+      names = set(ag.resname for ag in water)
+      if ('D' in elements and names != set(['DOD'])) or \
+         ('H' in elements and 'DOD' in names):
+        problems.append('water name %s does not match its H/D: %s' % (
+          '/'.join(sorted(names)), rg.atoms()[0].id_str()))
+    if problems:
+      raise Sorry('Internal error: H/D output check failed:\n  ' +
+        '\n  '.join(problems))
+
+# ------------------------------------------------------------------------------
+
+  def _ReinterpretModel(self, make_restraints=True, model=None):
     # Reinterpret the model using the same approach that hydrogen-placement does.
     # :param make_restraints: Should we compute restraints during the interpretation?
-    self.model.get_hierarchy().sort_atoms_in_place()
-    self.model.get_hierarchy().atoms().reset_serial()
+    # :param model: The model to interpret; self.model if None.
+    if model is None:
+      model = self.model
+    model.get_hierarchy().sort_atoms_in_place()
+    model.get_hierarchy().atoms().reset_serial()
 
     p = reduce_hydrogen.get_reduce_pdb_interpretation_params(
       self.params.use_neutron_distances)
@@ -1092,8 +1699,115 @@ NOTES:
     # by Hydrogen placement will have flipped them, so we don't need to do it again.
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     #p.pdb_interpretation.sort_atoms=True
-    self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
-    self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p)
+    model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
+    # no ADP pair table, as in place_hydrogens
+    model.process(make_restraints=make_restraints, pdb_interpretation_params=p,
+      plain_pairs_radius=None)
+
+# ------------------------------------------------------------------------------
+
+  def _RebuildModel(self, hierarchy, make_restraints):
+    # Turn a modified hierarchy back into a model: working crystal symmetry,
+    # user restraint objects and stop_for_unknowns of self.model, interpreted
+    # with the same settings as _ReinterpretModel().
+    # :return: The new model.
+    model = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = hierarchy,
+      crystal_symmetry  = self.model.crystal_symmetry(),
+      restraint_objects = self.model.get_restraint_objects(),
+      stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
+      log               = null_out())
+    self._ReinterpretModel(make_restraints=make_restraints, model=model)
+    return model
+
+# ------------------------------------------------------------------------------
+
+  def _CheckQmreadyClashes(self):
+    # qmready=True: Sorry if the finished model has a non-bonded contact
+    # below 1.0 A. Checked on a copy with restraints (self.model has none);
+    # H included, as geometry_statistics() drops H with the X-ray table.
+    from cctbx import geometry_restraints
+    model = self._RebuildModel(self.model.get_hierarchy().deep_copy(),
+      make_restraints=True)
+    sites = model.get_sites_cart()
+    nb = model.get_restraints_manager().geometry.pair_proxies(
+      sites_cart=sites).nonbonded_proxies
+    # simple proxies first, then symmetry (asu) proxies
+    d = geometry_restraints.nonbonded_deltas(sites_cart=sites,
+      sorted_asu_proxies=nb)
+    if d.size() == 0 or flex.min(d) >= 1.0:
+      return
+    k = flex.min_index(d)
+    n = nb.simple.size()
+    if k < n:
+      i, j = nb.simple[k].i_seqs
+      where = ''
+    else:
+      i, j = nb.asu[k-n].i_seq, nb.asu[k-n].j_seq
+      where = ' (symmetry mate)'
+    atoms = model.get_hierarchy().atoms()
+    raise Sorry("Bad clash(es) prevents qmready=True: %s - %s%s %.3f A"
+      % (atoms[i].id_str(), atoms[j].id_str(), where, d[k]))
+
+# ------------------------------------------------------------------------------
+
+  def _ReturnedModel(self, model):
+    # The returned model gets the crystal symmetry of the written file, also
+    # with output.write_files=False: the input cell, the cryo-EM placeholder
+    # (unit cell symmetry only) or none. A model on reduce2's box is rebuilt
+    # unprocessed, as if read from that file: a processed model without
+    # symmetry fails in selection(). Shifted input: the returned model is put
+    # back into the caller's frame (shift, working box, unit cell symmetry).
+    # :return: The model to return.
+    cs = self._output_cs
+    if (cs is not None) and (not cs.is_nonsense()):
+      model.set_unit_cell_crystal_symmetry(cs)
+      new = model
+    else:
+      new = mmtbx.model.manager(
+        model_input       = None,
+        pdb_hierarchy     = model.get_hierarchy(),
+        crystal_symmetry  = None,
+        restraint_objects = model.get_restraint_objects(),
+        stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
+        log               = null_out())
+      if cs is not None:
+        new.set_unit_cell_crystal_symmetry(cs)
+    if self._input_shift is not None:
+      shift_cart, box_cs, unit_cell_cs = self._input_shift
+      new.shift_model_and_set_crystal_symmetry(shift_cart=shift_cart,
+        crystal_symmetry=box_cs, unit_cell_crystal_symmetry=unit_cell_cs)
+    return new
+
+# ------------------------------------------------------------------------------
+
+  def _CalculateTotalCharge(self):
+    # Calculate the total charge of the model (same as Q|R qr.finalise with
+    # calculate_charge=True) and, if the output file names were not specified,
+    # insert it into them: model.pdb -> modelH_charge-3.pdb
+    make_sub_header('Calculating total charge', out=self.logger)
+    from mmtbx.ligands import electrons
+    # user CIFs plus the CCD objects of _PrepareRestraints(), still attached:
+    # without them a CCD-only ligand is unknown there and the run stops
+    cif_objects = self.model.get_restraint_objects()
+    # As qrefine.charges.charges_class does; on a copy, the model is written out
+    hierarchy = self.model.get_hierarchy().deep_copy()
+    hierarchy.merge_atoms_at_end_to_residues()
+    self.total_charge = electrons.run(
+      pdb_hierarchy    = hierarchy,
+      crystal_symmetry = self.model.crystal_symmetry(),
+      cif_objects      = cif_objects,
+    )
+    print('Total charge:', self.total_charge, file=self.logger)
+    if self._default_output_filename:
+      base, suffix = os.path.splitext(self.params.output.filename)
+      self.params.output.filename = "%s_charge%s%s"%(
+        base, str(self.total_charge), suffix)
+      if self._default_description_file_name:
+        base = os.path.splitext(self.params.output.description_file_name)[0]
+        self.params.output.description_file_name = "%s_charge%s.txt"%(
+          base, str(self.total_charge))
 
 # ------------------------------------------------------------------------------
 
@@ -1112,6 +1826,9 @@ NOTES:
     hetatm_sel = self.model.selection("hetatm")
     mainchain_sel = self.model.selection("backbone")  # Will NOT include Hydrogen atoms on the main chain
     sidechain_sel = self.model.selection("sidechain") # Will include Hydrogen atoms on the side chain
+    # residues without restraints, left unchanged: their H have no bonds
+    skip = self._UnrestrainedKeys()
+    keys = None
     for a in self.model.get_atoms():
       inWater[a] = common_residue_names_get_class(name=a.parent().resname) == "common_water"
       inHet[a] = hetatm_sel[a.i_seq]
@@ -1120,11 +1837,35 @@ NOTES:
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
         if len(bondedNeighborLists[a]) < 1:
+          if skip:
+            if keys is None:
+              keys = hd_exchange.atom_keys(self.model.get_hierarchy())
+            if keys[a.i_seq] in skip:
+              # classified by its residue (het or water), not main chain
+              inMainChain[a] = False
+              inSideChain[a] = sidechain_sel[a.i_seq]
+              continue
           raise Sorry("Found Hydrogen with no neigbors.")
         else:
           inMainChain[a] = mainchain_sel[bondedNeighborLists[a][0].i_seq]
       inSideChain[a] = sidechain_sel[a.i_seq]
     return (inWater, inHet, inMainChain, inSideChain)
+
+# ------------------------------------------------------------------------------
+
+  def _ProbeModel(self):
+    # probe2 in the flipkin passes stops on H without a bonded neighbour and
+    # has no D radius: it gets a copy without the H/D of the residues left
+    # unchanged (placement dropped them up to this change).
+    # :return: self.model, or that copy.
+    skip = self._UnrestrainedKeys()
+    if not skip: return self.model
+    atoms = self.model.get_hierarchy().atoms()
+    keys = hd_exchange.atom_keys(self.model.get_hierarchy())
+    sel = flex.bool([not (a.element_is_hydrogen() and k in skip)
+                     for a, k in zip(atoms, keys)])
+    if sel.all_eq(True): return self.model
+    return self.model.select(sel)
 
 # ------------------------------------------------------------------------------
 
@@ -1179,7 +1920,51 @@ NOTES:
   # ------------------------------------------------------------------------------
 
   def validate(self):
+    p = self.params
+    # phil turns an explicit neutron_option=none into None
+    if p.neutron_option is None:
+      p.neutron_option = 'none'
+    if p.neutron_option != 'none':
+      if p.approach == 'remove':
+        raise Sorry('neutron_option=%s cannot be used with approach=remove.'
+          % p.neutron_option)
+      if p.qmready:
+        raise Sorry('neutron_option=%s cannot be used with qmready=True.'
+          % p.neutron_option)
+
+    # One distance flag for the whole run: qmready and neutron_option place H
+    # at neutron distances, so every later step must use them
+    self._neutron_distance_reason = None
+    if p.use_neutron_distances:
+      self._neutron_distance_reason = 'use_neutron_distances=True'
+    else:
+      reason = None
+      if p.qmready:
+        reason = 'qmready=True'
+      elif p.neutron_option != 'none':
+        reason = 'neutron_option=%s' % p.neutron_option
+      if reason is not None:
+        p.use_neutron_distances = True
+        self._neutron_distance_reason = reason
+        print('%s: use_neutron_distances set to True' % reason, file=self.logger)
+
+    # place: no optimizer, so nothing that needs it
+    if self.params.approach == 'place':
+      p = self.params
+      bad = [name for name, value in [
+        ('add_flip_movers', p.add_flip_movers),
+        ('output.flipkin_directory', p.output.flipkin_directory),
+        ('comparison_file', p.comparison_file),
+        ('qmready', p.qmready)] if value]
+      if bad:
+        raise Sorry('%s requires optimization; it cannot be used with '
+          'approach=place.' % ', '.join(bad))
+
     # Set the default output file name if one has not been given.
+    # With qmready=True the total charge is appended to the default name later.
+    self._default_output_filename = self.params.output.filename is None
+    self._default_description_file_name = \
+      self.params.output.description_file_name is None
     if self.params.output.filename is None:
       inName = self.data_manager.get_default_model_name()
       if inName is None: raise Sorry('model not found')
@@ -1188,15 +1973,14 @@ NOTES:
         pad = 'FH'
       else:
         pad = 'H'
+      if self.params.neutron_option != 'none':
+        pad += '_' + self.params.neutron_option
       base = os.path.splitext(os.path.basename(inName))[0] + pad
       self.params.output.filename = base + suffix
       print('Writing model output to', self.params.output.filename, file=self.logger)
 
     if os.environ.get('PHENIX_OVERWRITE_ALL', False):
       self.data_manager.set_overwrite(True)
-    if not self.params.output.overwrite:
-      if os.path.exists(self.params.output.filename):
-        print('\n\tOutput filename exists. Use overwrite=True to continue.')
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
@@ -1205,9 +1989,31 @@ NOTES:
       self.params.output.description_file_name=self.params.output.description_file_name.replace('.cif',
                                                                                    '.txt')
 
-    # Check the model ID to make sure they didn't set it to 0
-    if self.params.model_id == 0:
-      raise Sorry("Model ID must be >=1 if specified (None means all models)")
+    # Existing output files stop the run here, not after it. Names not known
+    # yet keep the Sorry from _write_text() at write time: the qmready default
+    # names (_charge<N> appended later) and the mmCIF written for a .pdb
+    # request that does not fit PDB format.
+    if self.params.output.write_files and not self.data_manager.get_overwrite():
+      charge_pending = (self.params.qmready and self.params.approach == 'add'
+        and self._default_output_filename)
+      names = []
+      if not charge_pending:
+        names.append(self.params.output.filename)
+      if not (charge_pending and self._default_description_file_name):
+        names.append(self.params.output.description_file_name)
+      existing = [n for n in names if os.path.exists(n)]
+      if existing:
+        raise Sorry('%s already exist%s; use overwrite=True to replace %s.' % (
+          ' and '.join(existing), 's' if len(existing) == 1 else '',
+          'it' if len(existing) == 1 else 'them'))
+
+    # model_id is a MODEL number of the input
+    if self.params.model_id is not None:
+      numbers = _ModelNumbers(self.data_manager.get_model().get_hierarchy())
+      if self.params.model_id <= 0 or self.params.model_id not in numbers:
+        raise Sorry("model_id=%d matches no model. Available MODEL numbers: %s"
+          % (self.params.model_id,
+             ", ".join(str(n) for n in numbers if n is not None) or "none"))
 
     # Turn on profiling if we've been asked to in the Phil parameters
     if self.params.profile:
@@ -1222,6 +2028,20 @@ NOTES:
     # Set our bonded-neighbor depth
     self._bondedNeighborDepth = self.params.bonded_neighbor_depth
 
+    # Input H/D check (neutron_option): records of collapsed pairs, notes and
+    # floating H/D dropped there
+    self._hd_records = {}
+    self._input_notes = []
+    self._input_floating = []
+    self._input_floating_resids = []
+    # optimize: atoms_not_in_dictionary() and the H/D removed on them
+    self._unknown_atoms = []
+    self._unknown_atoms_removed = []
+    self._normalized_with_restraints = False
+    # residues without restraints (optimize, D input): None until checked
+    self._unrestrained = None
+    self._auto_restraint_names = []
+
     # String describing the run that will be output to the specified file.
     outString = 'reduce2 v.{}, run {}\n'.format(version, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     for a in sys.argv:
@@ -1234,48 +2054,133 @@ NOTES:
     self.model = self.data_manager.get_model()
 
     self.model = self.model.select(~self.model.selection('element X'))
+    # A model shifted in memory (e.g. boxed with a map) is shifted back on
+    # this copy: placement builds a new model without the shift, so the run
+    # is the file run. _ReturnedModel() puts the shift back. Any non-zero
+    # shift, not shifted() (1e-3 A tolerance): set_unit_cell_crystal_symmetry()
+    # asserts exactly (0, 0, 0).
+    self._input_shift = None
+    shift_cart = self.model.shift_cart()
+    if shift_cart is not None and tuple(shift_cart) != (0, 0, 0):
+      self._input_shift = (shift_cart,
+        self.model.crystal_symmetry(), self.model.unit_cell_crystal_symmetry())
+      self.model.shift_model_back()
+    # CA and/or P trace; waters and ions do not count
+    names = set()
+    for ag in self.model.get_hierarchy().atom_groups():
+      if common_residue_names_get_class(name=ag.resname) in (
+          'common_water', 'common_element'): continue
+      names.update(n.strip() for n in ag.atoms().extract_name())
+      if not names <= {'CA', 'P'}: break
+    if names == {'CA'}:
+      raise Sorry("The model contains only CA atoms (CA trace); H atoms cannot be placed.")
+    if names == {'P'}:
+      raise Sorry("The model contains only P atoms (P trace); H atoms cannot be placed.")
+    if names == {'CA', 'P'}:
+      raise Sorry("The model contains only CA and P atoms (CA/P trace); H atoms cannot be placed.")
 
     # Use model function to set crystal symmetry if necessary 2025-03-19 TT
     # The box is for the calculation only and is not written out. Cushion 5:
     # H added later overhang the heavy-atom box; 3 left 4.4 A to the nonbonded
-    # cutoff of 3.4 A.
+    # cutoff of 3.4 A. Before add_terminal_oxt: a hierarchy change without
+    # symmetry leaves an xray_structure that boxing then asserts against.
     self._output_cs = reduce_hydrogen.get_output_crystal_symmetry(
       self.data_manager.get_model())
     self.model.add_crystal_symmetry_if_necessary(box_cushion=5)
+
+    # qmready=True
+    if self.params.qmready:
+      # add OXT
+      self.model.add_terminal_oxt()
+      # make sure model is atom-complete.
+      if not self.model.is_atom_complete():
+        missing = self.model.missing_atoms_by_residue()
+        print("Missing atoms found (this may or may not be an issue):", file=self.logger)
+        for k, v in missing.items():
+          print("  where: '%s' missing:"%k,v, file=self.logger)
+        raise Sorry(
+          "Model misses non-H atoms. Model must be atom-complete for qmready=true.")
+
     if self.data_manager.has_restraints():
       self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
       self.model.process(make_restraints=False)
 
-    # If we've been asked to only to a single model index from the file, strip the model down to
-    # only that index.
+    # If we've been asked to only to a single model from the file, strip the model down to
+    # only that one (checked in validate()); it keeps its MODEL number.
     if self.params.model_id is not None:
       make_sub_header('Selecting Model ID ' + str(self.params.model_id), out=self.logger)
 
-      # Select only the current submodel from the hierarchy
-      submodel = self.model.deep_copy()
-      _RemoveModelsExceptIndex(submodel, self.params.model_id)
-
-      # Construct a hierarchy for the current submodel
+      # Construct a hierarchy for the selected model
       r = pdb.hierarchy.root()
-      mdc = submodel.get_hierarchy().models()[0].detached_copy()
+      mdc = _SelectModelNumber(self.model.get_hierarchy(),
+        self.params.model_id).detached_copy()
       r.append_model(mdc)
 
-      # Make yet another model for the new hierarchy
+      # Make yet another model for the new hierarchy, with the user's
+      # restraint CIFs (a new list: _PrepareRestraints() appends to it)
       subset_model_manager = mmtbx.model.manager(
         model_input       = None,
         pdb_hierarchy     = r,
         stop_for_unknowns = False,
-        crystal_symmetry  = submodel.crystal_symmetry(),
-        restraint_objects = None,
+        crystal_symmetry  = self.model.crystal_symmetry(),
+        restraint_objects = list(self.model.get_restraint_objects() or []),
         log               = None)
 
       self.model = subset_model_manager
 
+    # CCD restraint objects attached once, for the whole run (also the
+    # flipkin passes, which restart from initialModel); residues without
+    # restraints stop the run here, or are left unchanged
+    if self.params.approach != 'remove':
+      # A model passed in memory (e.g. from an earlier run) gives the same
+      # result as read from a file. Its cached monomer library server returns
+      # no CCD object for a CCD-only residue it has seen (no setter in
+      # mmtbx.model.manager; get_mon_lib_srv() builds a new one), and its
+      # riding-H manager, which setup_riding_h_manager() keeps, has the
+      # earlier run's X-H lengths; a scattering table set on it (kept by
+      # process()) sets the water O-H length when use_neutron_distances is
+      # off; refinement flags restrict the riding-H idealization to their
+      # sites. A model read from a file has none of these.
+      self.model._mon_lib_srv = None
+      self.model.unset_riding_h_manager()
+      self.model.get_xray_structure(force=True)
+      self.model.set_refinement_flags(None)
+      self._unrestrained = self._PrepareRestraints()
+
+    # Input with D that the run keeps (never for remove; qmready forces
+    # keep_existing_H=True in _AddHydrogens()): checked and normalized to H;
+    # the H-only model is the snapshot for the flipkins
+    snapshot = None
+    if self.params.approach != 'remove' and \
+       (self.params.keep_existing_H or self.params.qmready or
+        self.params.approach == 'optimize') and \
+       any(e.strip().upper() == 'D'
+           for e in self.model.get_hierarchy().atoms().extract_element()):
+      snapshot = self._NormalizeInput()
+
     # Stores the initial coordinates for all of the atoms and the rest of the information
     # about the original model for use by Kinemages.
-    initialModel = self.model.deep_copy()
+    if snapshot is None:
+      initialModel = self.model.deep_copy()
+    else:
+      initialModel = snapshot
 
-    if self.params.approach == 'add' or self.params.approach == 'optimize':
+    neutron = self.params.neutron_option != 'none'
+    if self.params.approach == 'place':
+      make_sub_header('Adding Hydrogens', out=self.logger)
+      startAdd = time.time()
+      self._AddHydrogens()
+      outString += self._dod_renamed_note
+      outString += self._unknown_atoms_note
+      outString += self._metal_thiol_note
+      outString += self._UnchangedText()
+      if neutron:
+        self._CheckAmbiguousParents()
+        self._CaptureParentTable()
+      outString += 'Time to Add Hydrogen = {:.3f} sec'.format(
+        time.time()-startAdd)+'\n'
+
+    elif self.params.approach == 'add' or self.params.approach == 'optimize':
 
       if self.params.approach == 'add':
         # Add Hydrogens to the model
@@ -1283,32 +2188,86 @@ NOTES:
         startAdd = time.time()
         self._AddHydrogens()
         doneAdd = time.time()
+        outString += self._dod_renamed_note
+        outString += self._unknown_atoms_note
+        outString += self._metal_thiol_note
+        outString += self._UnchangedText()
+        if neutron:
+          self._CheckAmbiguousParents()
       else:
         # We need restraints on the model for optimization, so we interpret it to get them.
-        self._ReinterpretModel(make_restraints=True)
+        # (normalized input was rebuilt with them)
+        if not self._normalized_with_restraints:
+          self._ReinterpretModel(make_restraints=True)
+        outString += self._UnchangedText()
+        # atom names not in the dictionary, as placement reports them
+        self._unknown_atoms = reduce_hydrogen.atoms_not_in_dictionary(
+          self.model)
+        # H/D without a covalent partner are removed, as placement does; same
+        # rule as the H parent table. Also keeps them out of probe scoring.
+        text, removed = self._RemoveFloatingHD()
+        outString += text
+        outString += self._UnknownAtomsText()
+        # and from the snapshot the flipkin passes restart from
+        if removed:
+          initialModel = self._RemoveFromSnapshot(initialModel, removed)
+        # nothing to optimize: the Optimizer has no riding H manager then
+        if not self.model.has_hd():
+          raise Sorry('The model has no H or D atoms to optimize: '
+            'approach=optimize does not add H. Use approach=add to add and '
+            'optimize them.')
+        if neutron:
+          self._CheckAmbiguousParents()
+        outString += self._SuppliedThiolHText()
 
       # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
       # but the desired model ID structure from the model.
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.time()
+      stopTime = 0.0
+      if self.params.skip_optimizations_after_seconds > 0.0:
+        stopTime = startOpt + self.params.skip_optimizations_after_seconds
       opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
         self.model, altID=self.params.alt_id,
         preferenceMagnitude=self.params.preference_magnitude,
         bondedNeighborDepth = self._bondedNeighborDepth,
+        useNeutronDistances=self.params.use_neutron_distances,
         nonFlipPreference=self.params.non_flip_preference,
         skipBondFixup=self.params.skip_bond_fix_up,
         flipStates = self.params.set_flip_states,
         verbosity=self.params.verbosity,
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
-        fillAtomDump = self.params.output.print_atom_info)
+        fillAtomDump = self.params.output.print_atom_info,
+        stopOptimizingAt = stopTime)
       doneOpt = time.time()
       warnings = opt.getWarnings()
       # Find the lines from warnings that start with "Warning: " and
       # concatenate them into a single string.
-      warnings = '\n'.join([line for line in warnings.split('\n') if line.startswith('Warning:')])
+      lines = [line for line in warnings.split('\n') if line.startswith('Warning:')]
+      # one line, by residue, for the atoms without an energy type (7a5m: 39)
+      prefix = 'Warning: Could not find atom info for '
+      no_info = [l for l in lines if l.startswith(prefix) and ' (perhaps' in l]
+      if no_info:
+        lines = [l for l in lines if l not in no_info]
+        residues = []
+        for l in no_info:
+          tokens = l[len(prefix):l.index(' (perhaps')].split()[:-1]
+          if len(tokens) == 3: tokens = [tokens[1], tokens[0], tokens[2]]
+          if ' '.join(tokens) not in residues: residues.append(' '.join(tokens))
+        shown = ', '.join(residues[:12])
+        if len(residues) > 12: shown += ' (+%d more)' % (len(residues) - 12)
+        lines.append('Warning: %d atoms have no energy type (element radius used, '
+          'not H-bond acceptors) - %d residues: %s' % (
+          len(no_info), len(residues), shown))
+      warnings = '\n'.join(lines)
       if len(warnings) > 0:
         print('\nWarnings during optimization:\n'+warnings, file=self.logger)
       outString += opt.getInfo()
+
+      # the restraints still match the hierarchy here: before the deletions
+      # and before the final reinterpretation without restraints
+      if neutron:
+        self._CaptureParentTable()
 
       # Delete any hydrogens that we've been asked to delete, adding this to the info.
       hToDelete = opt.getHydrogensToDelete()
@@ -1335,17 +2294,60 @@ NOTES:
         print(opt.getAtomDump(), file=self.logger)
 
     else: # Removing Hydrogens from the model rather than adding them.
+      # Own path, independent of the isotope logic: any H/D layout, no
+      # matcher, keep_existing_H ignored
       make_sub_header('Removing Hydrogens', out=self.logger)
-      sel = self.model.selection("element H")
+      sel = self.model.selection("element H or element D")
       for a in self.model.get_atoms():
         if sel[a.i_seq]:
           a.parent().remove_atom(a)
+      # H/D-only atom_groups (and residue_groups, chains) are now empty;
+      # waters without D are HOH
+      for m in self.model.get_hierarchy().models():
+        for chain in list(m.chains()):
+          for rg in list(chain.residue_groups()):
+            for ag in list(rg.atom_groups()):
+              if ag.atoms_size() == 0:
+                rg.remove_atom_group(ag)
+              elif ag.resname == 'DOD':
+                ag.resname = 'HOH'
+            if rg.atom_groups_size() == 0:
+              chain.remove_residue_group(rg)
+          if chain.residue_groups_size() == 0:
+            m.remove_chain(chain)
 
     # Re-process the model because we have removed some atoms that were previously
     # bonded.  Don't make restraints during the reprocessing.
     # We had to do this to keep from crashing on a call to pair_proxies when generating
     # mmCIF files, so we always do it for safety.
     self._ReinterpretModel(False)
+
+    # qmready=True: the finished model must be clash-free (remove adds no H)
+    if self.params.qmready and self.params.approach != 'remove':
+      self._CheckQmreadyClashes()
+
+    # qmready=True: calculate the total charge, as qr.finalise does with
+    # calculate_charge=True, and add it to the default output file name.
+    self.total_charge = None
+    if self.params.qmready and self.params.approach == 'add':
+      self._CalculateTotalCharge()
+
+    # The model that is written and returned; self.model stays H-only for
+    # the comparison and the flipkins.
+    self._neutron_result = None
+    if not neutron:
+      self._output_model = self.model
+    else:
+      make_sub_header('Writing H/D model (neutron_option=%s)' %
+        self.params.neutron_option, out=self.logger)
+      h = self.model.get_hierarchy().deep_copy()
+      self._neutron_result = hd_exchange.apply_neutron_option(h,
+        self.params.neutron_option, parent_table=self._h_parents,
+        records=self._hd_records, unchanged_keys=self._UnrestrainedKeys())
+      self._output_model = self._RebuildModel(h, make_restraints=False)
+      self._DropAutoRestraints(self._output_model)
+      self._CheckNeutronOutput()
+      outString += self._NeutronDescription()
 
     make_sub_header('Writing output', out=self.logger)
 
@@ -1360,12 +2362,23 @@ NOTES:
       suffix = os.path.splitext(self.params.output.filename)[1]
       output_cs = self._output_cs is not None
       if output_cs:
-        self.model.set_unit_cell_crystal_symmetry(self._output_cs)
-      if suffix.lower() == ".pdb":
-        txt = self.model.model_as_pdb(output_cs=output_cs)
+        self._output_model.set_unit_cell_crystal_symmetry(self._output_cs)
+      if suffix.lower() == ".pdb" and not self._output_model.can_be_output_as_pdb():
+        # model_as_pdb() would return only header records; write mmCIF instead
+        requested = self.params.output.filename
+        self.params.output.filename = self.data_manager.write_model_file(
+          self._output_model, os.path.splitext(requested)[0] + '.cif',
+          format='cif', output_cs=output_cs)
+        cause = _PdbFormatProblems(self._output_model.get_hierarchy())
+        print('Model cannot be represented in PDB format%s; writing mmCIF to %s '
+          'instead of %s.' % (' (%s)' % cause if cause else '',
+          self.params.output.filename, requested), file=self.logger)
       else:
-        txt = self.model.model_as_mmcif(output_cs=output_cs)
-      self.data_manager._write_text("model", txt, self.params.output.filename)
+        if suffix.lower() == ".pdb":
+          txt = self._output_model.model_as_pdb(output_cs=output_cs)
+        else:
+          txt = self._output_model.model_as_mmcif(output_cs=output_cs)
+        self.data_manager._write_text("model", txt, self.params.output.filename)
 
       print('Wrote', self.params.output.filename,'and',
         self.params.output.description_file_name, file = self.logger)
@@ -1579,6 +2592,7 @@ NOTES:
           opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
             self.model, altID=self.params.alt_id,
             preferenceMagnitude=self.params.preference_magnitude,
+            useNeutronDistances=self.params.use_neutron_distances,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
@@ -1617,7 +2631,7 @@ NOTES:
           p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
                               master_phil=probeParser.master_phil, logger=self.logger)
 
-          p2.overrideModel(self.model)
+          p2.overrideModel(self._ProbeModel())
           dots, kinString = p2.run()
           flipkinText += kinString
 
@@ -1699,6 +2713,7 @@ NOTES:
           opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
             self.model, altID=self.params.alt_id,
             preferenceMagnitude=self.params.preference_magnitude,
+            useNeutronDistances=self.params.use_neutron_distances,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
@@ -1736,13 +2751,19 @@ NOTES:
           # the temporary file that it produced.
           p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
                               master_phil=probeParser.master_phil, logger=self.logger)
-          p2.overrideModel(self.model)
+          p2.overrideModel(self._ProbeModel())
           dots, kinString = p2.run()
           flipkinText += kinString
 
         # Write the accumulated Flipkin string to the output file.
         with open(flipkinBase+"-fliphis.kin", "w") as f:
           f.write(flipkinText)
+
+    # self.model kept them for the flipkin passes; with neutron_option=none
+    # the output model is the self.model of before the flipkin passes
+    self._DropAutoRestraints(self.model)
+    self._DropAutoRestraints(self._output_model)
+    self._output_model = self._ReturnedModel(self._output_model)
 
     # Report profiling info if we've been asked to in the Phil parameters
     if self.params.profile:
@@ -1753,10 +2774,16 @@ NOTES:
       ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
       ps.print_stats(profile_params['num_entries'])
 
+    print('', file=self.logger)
+    print('peak memory:', human_readable_size(peak_memory_usage()),
+      file=self.logger)
+
 # ------------------------------------------------------------------------------
 
   def get_results(self):
-    return group_args(model = self.model)
+    return group_args(
+      model        = getattr(self, '_output_model', self.model),
+      total_charge = getattr(self, 'total_charge', None))
 
 # ------------------------------------------------------------------------------
 

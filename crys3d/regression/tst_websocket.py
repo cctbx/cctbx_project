@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from crys3d.hklviewer import jsview_3d
 from crys3d.regression import tests_HKLviewer
-import asyncio, os.path, websockets, socket, subprocess, time, threading
+import asyncio, os.path, websockets, socket, time, threading
 
 
 global socket_connected
@@ -73,8 +73,7 @@ def write_and_run_websocktest_html(port):
   #os.system('"' + browserpath + '" ' + myurl + ' &')
   # ensure websockets server starts before the webbrowser loads page with javascript websocket client
   time.sleep(5)
-  subprocess.run('"' + browserpath + '" ' + myurl + ' &', shell=True,
-                 capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+  jsview_3d.start_headless_browser(browserpath, myurl) # no browser window popping up
 
 
 async def closing_time():
@@ -96,7 +95,9 @@ async def startserver(port):
     #await asyncio.Future()
     #await asyncio.sleep(10)
 
-if __name__ == '__main__':
+def run():
+  if tests_HKLviewer.skip_browser_test():
+    return
   port = find_free_port()
   thrd = threading.Thread(target = write_and_run_websocktest_html, args=(port,) )
   thrd.daemon = True
@@ -108,7 +109,14 @@ if __name__ == '__main__':
     closing_time()
   )
   evl = asyncio.get_event_loop()
-  evl.run_until_complete(tasks)
-  evl.run_forever()
+  try:
+    evl.run_until_complete(tasks)
+    evl.run_forever()
+  finally:
+    jsview_3d.stop_headless_browsers()
   assert socket_connected
   print("OK")
+
+
+if __name__ == '__main__':
+  run()

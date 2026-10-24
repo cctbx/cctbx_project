@@ -65,7 +65,15 @@ if "libtbx" not in sys.modules:
         WORKFLOW_STATE_DETECTED = "workflow_state_detected"
         VALID_PROGRAMS = "valid_programs"
         METRICS_TREND = "metrics_trend"
+        NOTICE = "notice"
     ev.EventType = _ET
+
+    # graph_nodes imports libtbx.langchain.utils.run_utils; alias it to
+    # the real utils.run_utils (langchain dir is on sys.path above).
+    import utils as _real_utils
+    import utils.run_utils as _real_run_utils
+    sys.modules["libtbx.langchain.utils"] = _real_utils
+    sys.modules["libtbx.langchain.utils.run_utils"] = _real_run_utils
 
     tb = sys.modules["libtbx.langchain.agent.template_builder"]
     class _TB: pass
@@ -93,9 +101,33 @@ if "libtbx" not in sys.modules:
 
 # Import the plan function from graph_nodes
 try:
-    from libtbx.langchain.agent.graph_nodes import plan as plan_node
+    from libtbx.langchain.agent.graph_nodes import plan as _real_plan_node
 except ImportError:
-    from agent.graph_nodes import plan as plan_node
+    from agent.graph_nodes import plan as _real_plan_node
+
+_graph_nodes = sys.modules[_real_plan_node.__module__]
+
+
+def plan_node(state):
+    """Call graph_nodes.plan with the LLM and RulesSelector stubbed out.
+
+    These tests cover only the AUTO-STOP suppression branch.  When the
+    stub block above is skipped (real libtbx already imported, e.g. via
+    run_all_tests.py), the real RulesSelector would stop with "No valid
+    program available" for the synthetic state, and a configured API key
+    would make a real LLM call.  Patch both on the module for the duration
+    of the call only, so other tests in the same process are unaffected.
+    """
+    saved = (_graph_nodes.select_action_by_rules,
+             _graph_nodes.get_planning_llm)
+    _graph_nodes.select_action_by_rules = lambda *a, **k: {"program": None}
+    _graph_nodes.get_planning_llm = lambda provider=None: (
+        None, "LLM disabled in tst_plan_autostop_validation_suppression")
+    try:
+        return _real_plan_node(state)
+    finally:
+        (_graph_nodes.select_action_by_rules,
+         _graph_nodes.get_planning_llm) = saved
 
 
 # =============================================================================
@@ -429,6 +461,10 @@ def run_all_tests():
             _standalone_runner()
             return
     run_tests_with_fail_fast()
+    # assert_eq / assert_true / assert_false count failures without raising.
+    if FAIL:
+        raise AssertionError("%d check(s) failed:\n%s"
+                             % (FAIL, "\n".join(FAILURES)))
 
 
 def _standalone_runner():

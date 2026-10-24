@@ -1563,7 +1563,13 @@ Wait for the command to finish, then try again.""" % vars())
     essentials.append((
       self.ld_library_path_var_name(),
       self.ld_library_path_additions()))
-    essentials.append(("PATH", [self.bin_path]))
+    bin_path = [self.bin_path]
+    if (self.build_options.use_conda):
+      # Put the conda environment's bin after the build bin, as in the
+      # conda-package dispatchers (and the Windows development dispatcher).
+      bin_path.append(
+        self.as_relocatable_path(get_conda_prefix()) / 'bin')
+    essentials.append(("PATH", bin_path))
 
     if (cert_file is not None):
       print('SSL_CERT_FILE="%s"' % cert_file.sh_value(), file=f)

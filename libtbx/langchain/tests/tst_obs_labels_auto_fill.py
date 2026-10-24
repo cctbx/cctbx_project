@@ -526,7 +526,7 @@ def test_yaml_invariant_config_for_all_targeted_programs():
         return
 
     yaml_path = os.path.join(_PARENT, "knowledge", "programs.yaml")
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     targeted = ["phenix.refine", "phenix.phaser"]
@@ -604,7 +604,7 @@ def test_obs_labels_invariant_does_not_block_single_array_builds():
         return
 
     yaml_path = os.path.join(_PARENT, "knowledge", "programs.yaml")
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     def simulate_build(program, initial_strategy, mtz_multi_array):

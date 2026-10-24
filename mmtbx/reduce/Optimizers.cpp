@@ -1,4 +1,4 @@
-// Copyright(c) 2023, Richardson Lab at Duke
+// Copyright(c) 2023-2026, Richardson Lab at Duke
 // Licensed under the Apache 2 license
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -19,6 +19,7 @@
 #include <map>
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <boost/graph/connected_components.hpp>
 #include <boost/graph/subgraph.hpp>
 
@@ -115,7 +116,7 @@ std::vector< std::vector<unsigned> > OptimizerC::generateAllStates(
   // Cycle the curStateValues[] list through all possible states for each element,
   // incremementing each until it rolls over and then jumping up to the next.
   // This is similar to doing + 1 arithmetic with carry on a multi - digit number.
-  // Increment the state.We do this by increasing the current element until it reaches its
+  // Increment the state.  We do this by increasing the current element until it reaches its
   // number of values, then we bump it and all of its neighbors to the right back to 0 and, if
   // we're not at the left end, bump the next one up.  If we are at the left end, we're done.
   // When done, return.
@@ -219,8 +220,17 @@ void OptimizerC::findVertexCut(CliqueGraph const& graph,
 {
   // Check all vertex cut sizes from 1 to 2 less than the number of vertices(we must
   // have at least 2 vertices left to have a disconnected graph).
+  // For each cut size, find the cut whose resulting components are most similar
+  // in size (smallest difference between the largest and smallest component).
+  // Return the best cut from the smallest cut size that disconnects the graph.
   size_t numVerts = boost::num_vertices(graph);
   for (size_t n = 0; n < numVerts; n++) {
+    bool found = false;
+    int bestSpread = std::numeric_limits<int>::max();
+    int bestLargest = std::numeric_limits<int>::max();
+    std::vector<int> bestVertexSet;
+    CliqueGraph bestGraph;
+
     // Iterate over all sets of vertices of size n that might be removed
     std::vector< std::vector<int> > vertexSets = nChooseM(numVerts, n);
     for (std::vector< std::vector<int> >::const_iterator it = vertexSets.begin(); it != vertexSets.end(); ++it) {
@@ -238,17 +248,42 @@ void OptimizerC::findVertexCut(CliqueGraph const& graph,
       CliqueGraph currentGraph = subsetGraph(graph, keepMovers);
 
       // Check if the graph is disconnected
-      std::vector<int> componentMap(boost::num_vertices(currentGraph));
+      size_t numKept = boost::num_vertices(currentGraph);
+      if (numKept < 2) {
+        continue;
+      }
+      std::vector<int> componentMap(numKept);
       int numComponents = boost::connected_components(currentGraph, &componentMap[0]);
       if (numComponents > 1) {
-        // The graph is disconnected, so we have found a vertex cut.
-        // Make a list of the movers that correspond to the vertices that were removed.
-        for (size_t i = 0; i < vertexSet.size(); i++) {
-          cutMovers.push_back(graph[vertexSet[i]]);
+        // Count the number of vertices in each component.
+        std::vector<int> componentSizes(numComponents, 0);
+        for (size_t i = 0; i < componentMap.size(); i++) {
+          componentSizes[componentMap[i]]++;
         }
-        cutGraph = currentGraph;
-        return;
+        int largest = *std::max_element(componentSizes.begin(), componentSizes.end());
+        int smallest = *std::min_element(componentSizes.begin(), componentSizes.end());
+        int spread = largest - smallest;
+
+        // Keep this cut if it is more balanced than the best so far, breaking ties
+        // by preferring the smaller largest component.
+        if (!found || spread < bestSpread ||
+            (spread == bestSpread && largest < bestLargest)) {
+          found = true;
+          bestSpread = spread;
+          bestLargest = largest;
+          bestVertexSet = vertexSet;
+          bestGraph = currentGraph;
+        }
       }
+    }
+
+    if (found) {
+      // Make a list of the movers that correspond to the vertices that were removed.
+      for (size_t i = 0; i < bestVertexSet.size(); i++) {
+        cutMovers.push_back(graph[bestVertexSet[i]]);
+      }
+      cutGraph = bestGraph;
+      return;
     }
   }
 
@@ -460,7 +495,7 @@ std::string OptimizerC::Initialize(scitbx::af::shared<boost::python::object> con
 
 std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
   std::map<boost::python::object*, molprobity::reduce::PositionReturn>& states,
-  CliqueGraph& clique)
+  CliqueGraph& clique, CliqueGraph& scoreButDoNotMove)
 {
   // Information to pass back about what we did, if verbosity is high enough.
   std::string infoString;
@@ -472,9 +507,15 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
     movers.push_back(clique[i]);
   }
 
+  // Get the list of scorers from the graph.
+  std::vector<boost::python::object*> scorers;
+  for (size_t i = 0; i < boost::num_vertices(scoreButDoNotMove); i++) {
+    scorers.push_back(scoreButDoNotMove[i]);
+  }
+
   if (m_verbosity >= 3) {
     std::ostringstream oss;
-    oss << "   Optimizing clique of size " << movers.size() << " using brute force\n";
+    oss << "   Optimizing clique of size " << movers.size() << " with " << scorers.size() << " static Movers using brute force\n";
     infoString = oss.str();
   }
 
@@ -511,15 +552,18 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
       }
     }
 
-    // Compute the score over all atoms in all Movers.
+    // Compute the score over all atoms in all scored Movers.
     double score = 0;
     for (size_t m = 0; m < movers.size(); m++) {
-
       score += m_preferenceMagnitude * states[movers[m]].preferenceEnergies[curStateValues[m]];
-
-      // Score all atoms that have not been marked for deletion, calling the Python object's
+      // Score all atoms that have not been marked for deletion, calling the
       // scoring function (which may or may not use caching to do the scoring).
       score += scorePosition(states[movers[m]], curStateValues[m], 0);
+    }
+    // Add the score for all of the atoms that are to be moved but not scored.
+    for (size_t s = 0; s < scorers.size(); s++) {
+      score += m_preferenceMagnitude * states[scorers[s]].preferenceEnergies[m_coarseLocations[scorers[s]->ptr()]];
+      score += scorePosition(states[scorers[s]], m_coarseLocations[scorers[s]->ptr()], 0);
     }
     if (m_verbosity >= 5) {
       std::ostringstream oss;
@@ -583,10 +627,33 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
   return std::pair<double, std::string>(ret, infoString);
 }
 
+static bool isTimeRemaining(double& remainingSeconds, std::chrono::steady_clock::time_point& startTime)
+{
+  // Adjust the time remaining and start time to account for the time spent so far.
+  auto currentTime = std::chrono::steady_clock::now();
+  std::chrono::duration<double> elapsed = currentTime - startTime;
+  remainingSeconds -= elapsed.count();
+  startTime = currentTime;
+
+  // If we've run out of time, return false. Otherwise, return true.
+  return remainingSeconds > 0;
+}
+
 std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
   std::map<boost::python::object*, molprobity::reduce::PositionReturn>& states,
-  CliqueGraph& clique)
+  CliqueGraph& clique, CliqueGraph& scoreButDoNotMove, double remainingSeconds)
 {
+  if (remainingSeconds <= 0.0) {
+    // No time remaining, so we leave the clique in its current state and return a score of 0.
+    std::ostringstream oss;
+    if (m_verbosity >= 1) {
+      oss << "   No time remaining, leaving clique of size " << boost::num_vertices(clique)
+        << " in its current state\n";
+    }
+    return std::pair<double, std::string>(0.0, oss.str());
+  }
+  auto startTime = std::chrono::steady_clock::now();
+
   // Information to pass back about what we did, if verbosity is high enough.
   std::string infoString;
 
@@ -595,6 +662,13 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
   std::vector<boost::python::object*> movers;
   for (size_t i = 0; i < boost::num_vertices(clique); i++) {
     movers.push_back(clique[i]);
+  }
+
+  // Add the movers from the scoreButDoNotMove graph to the list of movers, so that we can
+  // score all of them at once.
+  std::vector<boost::python::object*> allMovers = movers;
+  for (size_t i = 0; i < boost::num_vertices(scoreButDoNotMove); i++) {
+    allMovers.push_back(scoreButDoNotMove[i]);
   }
 
   if (m_verbosity >= 3) {
@@ -611,7 +685,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
       oss << "   Recursion terminated at clique of size " << movers.size() << "\n";
       infoString += oss.str();
     }
-    std::pair<double, std::string> ret = OptimizeCliqueCoarseBruteForce(states, clique);
+    std::pair<double, std::string> ret = OptimizeCliqueCoarseBruteForce(states, clique, scoreButDoNotMove);
     return std::pair<double, std::string>(ret.first, infoString + ret.second);
   }
 
@@ -626,7 +700,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
       oss << "   No vertex cut for clique of size " << movers.size() << ", calling parent\n";
       infoString += oss.str();
     }
-    std::pair<double, std::string> ret = OptimizeCliqueCoarseBruteForce(states, clique);
+    std::pair<double, std::string> ret = OptimizeCliqueCoarseBruteForce(states, clique, scoreButDoNotMove);
     return std::pair<double, std::string>(ret.first, infoString + ret.second);
   }
 
@@ -687,17 +761,38 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
       }
       CliqueGraph subGraph = subsetGraph(cutGraph, subMovers);
 
+      // See if we've run out of time.  If so, we break out of the loop and stop adjusting the score.
+      if (!isTimeRemaining(remainingSeconds, startTime)) {
+        if (m_verbosity >= 1) {
+          std::ostringstream oss;
+          oss << "   No time remaining, leaving clique of size " << boost::num_vertices(clique)
+            << " in its current state\n";
+          infoString += oss.str();
+        }
+        return std::pair<double, std::string>(0.0, infoString);
+      }
+
       // Recursively call this function to find the best score for this subgraph.
-      std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, subGraph);
+      // Hold steady all of our scoreButDoNotMove movers along with the cutMovers, which
+      // are now fixed in this state.
+      CliqueGraph newScoreButDoNotMove = scoreButDoNotMove;
+      for (std::vector<boost::python::object*>::iterator it = cutMovers.begin(); it != cutMovers.end(); ++it) {
+        boost::python::object* m = *it;
+        boost::add_vertex(m, newScoreButDoNotMove);
+      }
+      std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, subGraph, newScoreButDoNotMove,
+        remainingSeconds);
       score += ret.first;
       infoString += ret.second;
     }
 
-    // Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
-    // update the best.
-    for (size_t i = 0; i < cutMovers.size(); i++) {
-      score += m_preferenceMagnitude * states[cutMovers[i]].preferenceEnergies[curStateValues[i]];
-      score += scorePosition(states[cutMovers[i]], curStateValues[i], 0);
+    // We must recompute the score across all of the Movers in our clique and all of our
+    // scored Movers because we need to only score each Mover once, and we scored the cut graph Movers
+    // in all of the recursive calls above.
+    score = 0;
+    for (size_t m = 0; m < allMovers.size(); m++) {
+      score += m_preferenceMagnitude * states[allMovers[m]].preferenceEnergies[m_coarseLocations[allMovers[m]->ptr()]];
+      score += scorePosition(states[allMovers[m]], m_coarseLocations[allMovers[m]->ptr()], 0);
     }
     if (m_verbosity >= 5) {
       std::ostringstream oss;
@@ -891,7 +986,8 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
 
 boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
   scitbx::af::shared<boost::python::object> movers,
-  scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions)
+  scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions,
+  double remainingSeconds)
 {
   // Information to pass back about what we did, if verbosity is high enough.
   std::string infoString;
@@ -916,7 +1012,7 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
   size_t nInteractions = interactions.accessor().all()[0];
   size_t nIndices = interactions.accessor().all()[1];
   if ((nInteractions > 0) && (nIndices != 2)) {
-    infoString += "ERROR: OptimizeCliqueCoarseVertexCutC(): Internal error: invalid array size\n";
+    infoString += "ERROR: OptimizeCliqueCoarse(): Internal error: invalid array size\n";
     return boost::python::make_tuple(-1e100, infoString);
   }
   CliqueGraph clique;
@@ -930,8 +1026,10 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
 
   // Construct the ScoreCacheMap for the clique before calling and then remove it when done.
   // This will mean that we only use score caching, and only on our new map, for this clique.
+  // There are no other Movers touching the clique, so we pass an empty graph for the scoreButDoNotMove parameter.
   m_scoreCacheMap = new ScoreCacheMap();
-  std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, clique);
+  CliqueGraph empty;
+  std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, clique, empty, remainingSeconds);
   delete m_scoreCacheMap;
   m_scoreCacheMap = NULL;
   infoString += ret.second;
@@ -1155,7 +1253,7 @@ std::string OptimizerC::Test()
     }
   }
 
-  // OptimizeCliqueCoarseVertexCutC() is tested by the Python code.
+  // OptimizeCliqueCoarseVertexCut() is tested by the Python code when it calls OptimizeCliqueCoarse().
 
   /// @todo
 

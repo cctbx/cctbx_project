@@ -615,10 +615,13 @@ def _is_skill_tool(name, tools):
 
   Registered under the BARE name on both surfaces, so an SDK-prefixed
   ``mcp__<server>__<bare>`` is retried bare -- ``claude_code`` wraps the skill
-  tools into an in-process MCP server and reports them that way. A name the
-  registry does not know is NOT a skill tool: an MCP tool a claude_code child
-  ran inside its own subprocess never enters the registry at all, and calling
-  that "no measurement" would fire the flag on a child that measured plenty.
+  tools into an in-process MCP server and reports them that way. Only a name
+  the registry does not know: one it knows is what it says, so a server named
+  ``mcp`` whose renamed ``mcp__x__load_skill`` ends in a skill tool's name
+  keeps its measurement. A name the registry does not know is NOT a skill
+  tool either: an MCP tool a claude_code child ran inside its own subprocess
+  never enters the registry at all, and calling that "no measurement" would
+  fire the flag on a child that measured plenty.
 
   Parameters
   ----------
@@ -635,8 +638,9 @@ def _is_skill_tool(name, tools):
   source_of = getattr(tools, "source_of", None)
   if not callable(source_of) or not name:
     return False
-  if source_of(name) == "skill":
-    return True
+  source = source_of(name)
+  if source:
+    return source == "skill"
   if name.startswith("mcp__"):
     parts = name.split("__", 2)                # ['mcp', server, bare]
     if len(parts) > 2 and source_of(parts[2]) == "skill":
@@ -647,13 +651,18 @@ def _is_skill_tool(name, tools):
 def _tool_server(name, tools):
   """The MCP server a tool belongs to, or ``""`` when it belongs to none.
 
-  Two surfaces, one question. ``claude_code`` names every MCP tool
-  ``mcp__<server>__<bare>``, so the server is IN the name -- which is the only
-  route available for it, because a tool its SDK subprocess ran never enters
-  the registry. The API backends register theirs through
-  ``ToolRegistry.register_mcp_tool``, which stamps the source ``mcp:<server>``
-  (and renames a colliding tool ``<server>:<bare>``, leaving the source
-  untouched), so the registry answers there.
+  Two surfaces, one question. The API backends register their tools
+  through ``ToolRegistry.register_mcp_tool``, which stamps the source
+  ``mcp:<server>`` (and renames a colliding tool ``<server>__<bare>``,
+  leaving the source untouched), so the registry answers first.
+  ``claude_code`` names every MCP tool ``mcp__<server>__<bare>``, so the
+  server is IN the name -- which is the only route available for it,
+  because a tool its SDK subprocess ran never enters the registry. The
+  server there is spelled as that backend wired it (``coot_bridge`` for
+  a profile's ``coot bridge``), and so is the bundle's
+  ``measurement_servers`` for such a child. A name the registry knows is
+  never read that way: a server named ``mcp`` has its renamed
+  ``mcp__run__job`` parse as a server ``run``.
 
   A built-in, a skill tool and a name nothing knows all return ``""``: they
   belong to no server, which is a different answer from "a server nobody
@@ -672,15 +681,15 @@ def _tool_server(name, tools):
   """
   if not name:
     return ""
-  if name.startswith("mcp__"):
-    parts = name.split("__", 2)                  # ['mcp', server, bare]
-    if len(parts) > 2 and parts[1]:
-      return parts[1]
   source_of = getattr(tools, "source_of", None)
   if callable(source_of):
     source = source_of(name) or ""
     if source.startswith("mcp:"):
       return source[len("mcp:"):]
+  if name.startswith("mcp__"):
+    parts = name.split("__", 2)                  # ['mcp', server, bare]
+    if len(parts) > 2 and parts[1]:
+      return parts[1]
   return ""
 
 
@@ -721,7 +730,8 @@ def _is_measurement_tool(name, tools, servers):
       REQUIRED. The child's registry (``bundle.tools``).
   servers : set of str
       Names of the MCP servers the child's profile really gave it
-      (``bundle.measurement_servers``). REQUIRED. There is deliberately no
+      (``bundle.measurement_servers``), spelled as the child's transcript
+      spells them (see :func:`_tool_server`). REQUIRED. There is deliberately no
       "unknown" value: the two things this could do without an inventory are
       opposite -- count every tool as a measurement and never flag, or count
       none and flag every child -- so guessing is worse than refusing.

@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021-2023 Richardson Lab at Duke University
+#                Copyright 2021-2026 Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 
-import argparse, re
+import argparse, re, time
 
 from boost_adaptbx import graph
 from boost_adaptbx.graph import connected_component_algorithm as cca
@@ -74,6 +74,19 @@ def _ReportTiming(verbosity, message):
   diff = curTime - _lastTime
   _lastTime = curTime
   return _VerboseCheck(verbosity, 2,"Time to {}: {:0.3f}".format(message,diff)+"\n")
+
+class _InfoAccumulator(object):
+  """Collects the Optimizer's information string.  += appends a part in O(1),
+  str() joins once.  A plain str attribute is copied in full on every
+  self._infoString += ..., which is quadratic in the number of Movers."""
+  def __init__(self):
+    self._parts = []
+  def __iadd__(self, s):
+    if s:
+      self._parts.append(s)
+    return self
+  def __str__(self):
+    return "".join(self._parts)
 
 def AlternatesInModel(model):
   """Returns a set of altloc names of all conformers in all chains.
@@ -164,7 +177,7 @@ class FlippedMoverInfo(object):
 
 class Optimizer(object):
 
-  def __init__(self, probePhil, addFlipMovers, model, modelIndex = 0, altID = None,
+  def __init__(self, probePhil, addFlipMovers, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
@@ -174,7 +187,8 @@ class Optimizer(object):
                 flipStates = '',
                 verbosity = 1,
                 cliqueOutlineFileName = None,
-                fillAtomDump = True
+                fillAtomDump = True,
+                stopOptimizingAt = 0.0
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -234,6 +248,8 @@ class Optimizer(object):
     they are.
     :param fillAtomDump: If true, fill in the atomDump string with the atom information.
     This can take a long time to do, so the caller may want to turn it off if they don't need it.
+    :param stopOptimizingAt: If greater than 0, then we will stop coarse optimizations
+    at this time relative to time.time().
     """
 
     ################################################################################
@@ -253,7 +269,7 @@ class Optimizer(object):
 
     ################################################################################
     # Initialize internal variables.
-    self._infoString = ""
+    self._infoString = _InfoAccumulator()
     self._warningString = ""
     self._atomDump = ""
     self._waterOccCutoff = 0.66 # @todo Make this a parameter, -WaterOCCcutoff param in reduce
@@ -278,7 +294,8 @@ class Optimizer(object):
     ################################################################################
     # Get the bonded neighbor lists for all of the atoms in the model, so we don't get
     # failures when we look up an atom from another in Helpers.getExtraAtomInfo().
-    # We won't get bonds between atoms in different conformations.
+    # Only for that: a blank atom here has the neighbors of every conformer (an H copied
+    # into A and B counts twice), so each alternate pass below builds its own lists.
     bondedNeighborLists = Helpers.getBondedNeighborLists(model.get_atoms(), bondProxies, asuProxies)
     self._infoString += _ReportTiming(self._verbosity, "compute bonded neighbor lists")
 
@@ -304,7 +321,9 @@ class Optimizer(object):
     # None is specified and the specified one if it is specified.
 
     try:
-      model.setup_riding_h_manager()
+      # None, not False: callers outside reduce2 keep the scattering-table rule
+      model.setup_riding_h_manager(
+        use_neutron_distances=True if self._useNeutronDistances else None)
     except Exception:
       # If an optimized has already been run on the model, our riding H manager will
       # have already been set up.  When one has already been set up, this causes
@@ -389,6 +408,11 @@ class Optimizer(object):
         # pick the first available conformation for each atom group.
         self._atoms = GetAtomsForConformer(myModel, alt)
 
+        # The bonded neighbors within this conformer, for everything in this pass (the
+        # shared lists above mix conformers). A new dictionary each pass, so the Phantom
+        # Hydrogens added below stay in it.
+        passNeighborLists = Helpers.getBondedNeighborLists(self._atoms, bondProxies, asuProxies)
+
         ################################################################################
         # Reset the timer
         _ReportTiming(self._verbosity, None)
@@ -438,7 +462,7 @@ class Optimizer(object):
           if a.element == 'O' and common_residue_names_get_class(name=a.parent().resname) == "common_water":
             if a.occ >= self._waterOccCutoff and a.b < self._waterBCutoff:
               # If the Oxygen is bonded (presumably to hydrogens/deuteriums), then we just leave it alone.
-              if len(bondedNeighborLists[a]) > 0:
+              if len(passNeighborLists[a]) > 0:
                 self._infoString += _VerboseCheck(self._verbosity, 3,"Not adding phantom Hydrogens on {} due to bonded neighbors\n".format(_ResNameAndID(a)))
 
               # We're an acceptor and not a donor.
@@ -466,8 +490,11 @@ class Optimizer(object):
 
         if len(watersToDelete) > 0:
           self._infoString += _VerboseCheck(self._verbosity, 1,"Ignored "+str(len(watersToDelete))+" waters due to occupancy or B factor\n")
+          # One pass: list.remove() per water scans the whole list each time.
+          # Atom hashing and equality use memory_id(), as list.remove() does.
+          ignored = set(watersToDelete)
+          self._atoms[:] = [a for a in self._atoms if a not in ignored]
           for a in watersToDelete:
-            self._atoms.remove(a)
             self._spatialQuery.remove(a)
 
         if len(phantoms) > 0:
@@ -485,7 +512,7 @@ class Optimizer(object):
             self._spatialQuery.add(p[0])
             eai = probeExt.ExtraAtomInfo(phantomHydrogenRadius, False, True, True)
             self._extraAtomInfo.setMappingFor(p[0], eai)
-            bondedNeighborLists[p[0]] = [p[1]]
+            passNeighborLists[p[0]] = [p[1]]
 
           self._infoString += _VerboseCheck(self._verbosity, 1,"Added "+str(len(phantoms))+" phantom Hydrogens on waters")
           self._infoString += _VerboseCheck(self._verbosity, 1," (Old total "+str(origCount)+", new total "+str(len(self._atoms))+")\n")
@@ -494,7 +521,7 @@ class Optimizer(object):
         ################################################################################
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
-        Helpers.fixupExplicitDonors(self._atoms, bondedNeighborLists, self._extraAtomInfo)
+        Helpers.fixupExplicitDonors(self._atoms, passNeighborLists, self._extraAtomInfo)
         self._infoString += _ReportTiming(self._verbosity, "fixup explicit doners")
 
         ################################################################################
@@ -504,7 +531,7 @@ class Optimizer(object):
         # only includes those from the current model index.
         # NOTE: We must do this after fixupExplicitDonors() so that the Hydrogens are properly
         # marked as donors.
-        deleteAtoms = self._PlaceMovers(self._atoms, rotatableHydrogens, bondedNeighborLists, h_parameterization,
+        deleteAtoms = self._PlaceMovers(self._atoms, rotatableHydrogens, passNeighborLists, h_parameterization,
                            addFlipMovers, alt)
         self._infoString += _VerboseCheck(self._verbosity, 1,"Inserted "+str(len(self._movers))+" Movers\n")
         self._infoString += _VerboseCheck(self._verbosity, 1,'Marked '+str(len(deleteAtoms))+' atoms for deletion\n')
@@ -567,7 +594,7 @@ class Optimizer(object):
         self._excludeDict = {}
         for a in moverAtoms:
           self._excludeDict[a.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
-            bondedNeighborLists, self._extraAtomInfo, self._probeRadius, self._bondedNeighborDepth, 3)
+            passNeighborLists, self._extraAtomInfo, self._probeRadius, self._bondedNeighborDepth, 3)
         self._infoString += _ReportTiming(self._verbosity, "determine excluded atoms")
 
         ################################################################################
@@ -593,7 +620,10 @@ class Optimizer(object):
         # Compute and record the initial score for each Mover in its info
         optC.Initialize(self._movers)
         for m in self._movers:
-          self._moverInfo[m] += " Initial score: {:.2f}".format(optC.GetHighScore(m))
+          score = "{:.2f}".format(optC.GetHighScore(m))
+          self._moverInfo[m] += " Initial score: " + score
+          # Rounded as printed, so the clique totals below match the report.
+          self._initialScore[m] = float(score)
 
         ################################################################################
         # Call internal methods to optimize the single-element Cliques and then to optimize
@@ -606,34 +636,64 @@ class Optimizer(object):
         # Do coarse optimization on the singleton Movers.  Record the selected coarse
         # index.
         for s in singletonCliques:
+          if stopOptimizingAt > 0.0 and time.time() > stopOptimizingAt:
+            self._infoString += _VerboseCheck(self._verbosity, 1,
+                                              "Stopping singleton optimization due to time limit\n")
+            break
           mover = self._interactionGraph.vertex_label(s[0])
           (bestScore, infoString) = optC.OptimizeSingleMoverCoarse(mover)
           self._infoString += infoString
           ret = bestScore
-          self._infoString += _VerboseCheck(self._verbosity, 1,"Singleton optimized with score {:.2f}\n".format(ret))
+          self._infoString += _VerboseCheck(self._verbosity, 1, "Singleton optimized with score {:.2f}\n".format(ret))
         self._infoString += _ReportTiming(self._verbosity, "optimize singletons (coarse)")
 
         # Do coarse optimization on the multi-Mover Cliques.
-        for g in groupCliques:
-          movers = [self._interactionGraph.vertex_label(i) for i in g]
-          subset = _subsetGraph(self._interactionGraph, movers)
+        # Sort the interaction-graph edges into their Cliques in one pass, in graph
+        # order.  (Building each Clique's subgraph with _subsetGraph() scanned every
+        # vertex and edge of the whole graph once per Clique: quadratic in the
+        # number of Movers.)
+        cliqueOf = {}
+        for ci, g in enumerate(groupCliques):
+          for v in g:
+            cliqueOf[self._interactionGraph.vertex_label(v)] = ci
+        cliqueEdges = [[] for g in groupCliques]
+        for e in self._interactionGraph.edges():
+          source = self._interactionGraph.vertex_label(self._interactionGraph.source(e))
+          ci = cliqueOf.get(source)
+          if ci is not None:
+            cliqueEdges[ci].append((source,
+              self._interactionGraph.vertex_label(self._interactionGraph.target(e))))
+        for ci, g in enumerate(groupCliques):
+          startTime = time.time()
+          remainingSeconds = 1e12
+          if stopOptimizingAt > 0.0:
+            remainingSeconds = stopOptimizingAt - time.time()
+          if remainingSeconds <= 0:
+            self._infoString += _VerboseCheck(self._verbosity, 1,
+                                              "Stopping clique optimization due to time limit\n")
+            break
 
           # Find all of the Movers in the clique so that we know which ones to capture the state for.
-          movers = [self._interactionGraph.vertex_label(v) for v in subset.vertices()]
+          # connected_components() lists them in graph order, as _subsetGraph() did.
+          movers = [self._interactionGraph.vertex_label(i) for i in g]
+          index = dict((m, i) for i, m in enumerate(movers))
 
           # Turn the graph edges into a versa array that holds the edges. The first index is the
           # number of edge and the second is 2D, listing the index of each mover.
-          vertexList = list(subset.vertices())
-          edges = flex.int(flex.grid(len(list(subset.edges())), 2))
-          for i,e in enumerate(subset.edges()):
-            edges[(i,0)] = vertexList.index(subset.source(e))
-            edges[(i,1)] = vertexList.index(subset.target(e))
+          edges = flex.int(flex.grid(len(cliqueEdges[ci]), 2))
+          for i, (source, target) in enumerate(cliqueEdges[ci]):
+            edges[(i,0)] = index[source]
+            edges[(i,1)] = index[target]
 
-          (bestScore, infoString) = optC.OptimizeCliqueCoarse(movers, edges)
+          (bestScore, infoString) = optC.OptimizeCliqueCoarse(movers, edges, remainingSeconds)
           self._infoString += infoString
           ret = bestScore
 
-          self._infoString += _VerboseCheck(self._verbosity, 1,"Clique optimized with score {:.2f}\n".format(ret))
+          stopTime = time.time()
+
+          self._infoString += _VerboseCheck(self._verbosity, 1,
+            "Clique of size {:d} optimized with score {:.2f} in {:.2f} seconds\n".format(
+              len(movers), ret, stopTime - startTime))
         self._infoString += _ReportTiming(self._verbosity, "optimize cliques (coarse)")
 
         # Do fine optimization on the Movers.  This is done independently for
@@ -700,12 +760,11 @@ class Optimizer(object):
         for g in sortedGroups:
           self._infoString += _VerboseCheck(self._verbosity, 1," Set of "+str(len(g))+" Movers:")
           movers = [self._interactionGraph.vertex_label(i) for i in g]
-          # Parse the record for each mover and pull out the initial score.  Sum the initial and
-          # final scores across all Movers in the group and report this.
+          # Sum the initial and final scores across all Movers in the group and report this.
           initial = 0.0
           final = 0.0
           for m in movers:
-            initial += float(self._moverInfo[m].split()[9])
+            initial += self._initialScore[m]
             final += optC.GetHighScore(m)
           self._infoString += _VerboseCheck(self._verbosity, 1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
           for m in movers:
@@ -771,8 +830,8 @@ class Optimizer(object):
       If the object was constructed with fillAtomDump = False, then the atom dump will always be
       empty.
     """
-    ret = self._infoString
-    self._infoString = ""
+    ret = str(self._infoString)
+    self._infoString = _InfoAccumulator()
     return ret
 
   def getWarnings(self):
@@ -892,7 +951,8 @@ class Optimizer(object):
     and they are rotatable.
     :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
     structure that the atom from the first parameter interacts with that lists all of the
-    bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
+    bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists()
+    on the atoms of the first parameter, so that only bonds within this conformer count.
     :param hParameters: List indexed by sequence ID that stores the riding
     coefficients for hydrogens that have associated dihedral angles.  This can be
     obtained by calling model.setup_riding_h_manager() and then model.get_riding_h_manager().
@@ -915,6 +975,9 @@ class Optimizer(object):
     # Dictionary mapping from Mover to information about the Mover, so that we can keep track of
     # everything from its placement to its final state in the same string.
     self._moverInfo = {}
+
+    # Initial score of each Mover; the blank chain ID drops a token from its _moverInfo text.
+    self._initialScore = {}
 
     # The radius of a Polar Hydrogen (one that forms Hydrogen bonds)
     # @todo Can we look this up from inside CCTBX?
@@ -1184,6 +1247,15 @@ class Optimizer(object):
         except Exception as e:
           self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
 
+    # The Mover constructors above moved atoms after the spatial query was built
+    # (rotators turn their Hydrogens to a starting orientation; tetrahedral methyls are
+    # staggered; ion-bound Histidines are locked down).  SpatialQuery.remove() finds an
+    # atom by its current position, so these atoms stay listed in the bin of their old
+    # position, and whether a neighbor query finds them depends on the bin layout, which
+    # depends on the bounding box of all atoms, near or far.  Rebuild it from the current
+    # positions before the searches below and the optimization.
+    self._spatialQuery = Helpers.createSpatialQuery(atoms, self._probePhil)
+
     # Make a dictionary looked up up by i_seq that returns the relevant atom. We use this to
     # look up the single-hydrogen rotators. We only place atoms that are in our current model
     # index and alternate.
@@ -1264,9 +1336,18 @@ class Optimizer(object):
             if acceptor or flipPartner:
               potentialAcceptors.append(c)
 
+          oldXYZ = a.xyz
           self._movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, self._extraAtomInfo,
                                                                 hParameters, potentialAcceptors,
                                                                 potentialTouches))
+          # The constructor turned the Hydrogen to its starting orientation; move its
+          # spatial-query entry along with it.
+          newXYZ = a.xyz
+          if newXYZ != oldXYZ:
+            a.xyz = oldXYZ
+            self._spatialQuery.remove(a)
+            a.xyz = newXYZ
+            self._spatialQuery.add(a)
           self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverSingleHydrogenRotator "+str(len(self._movers))+" to "+resNameAndID+" "+aName+
             " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
           self._moverInfo[self._movers[-1]] = "SingleHydrogenRotator at "+resNameAndID+" "+aName;
@@ -1991,7 +2072,7 @@ END
   global _DoCliqueOptimizationInC
 
   print('Testing Optimizer')
-  opt = Optimizer(probePhil, True, model, modelIndex = 0, altID = None,
+  opt = Optimizer(probePhil, True, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
@@ -2089,7 +2170,7 @@ END
   # Optimization will place the movers. Make sure we got as many as we expected.
   # Make sure that the orientation for all of the movers is correct.
   probePhil = _philLike()
-  opt = Optimizer(probePhil, True, model, modelIndex = 0, altID = None,
+  opt = Optimizer(probePhil, True, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
@@ -2105,6 +2186,47 @@ END
   for r in res:
     if not 'pose Angle 90' in r:
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for B-factor test"
+
+  #========================================================================
+  # Several ignored waters (B factor or occupancy) between kept ones: they leave the
+  # Optimizer's atom list, the remaining atoms keep their order, and the model keeps them.
+  pdb_waters = (
+"""
+CRYST1   93.586  127.886  251.681  90.00  90.00  90.00 I 2 2 2
+HETATM    1  C   ACT A   1       6.494 -47.273 -37.006  1.00 16.65           C
+HETATM    2  O   ACT A   1       5.654 -47.981 -37.645  1.00 15.33           O
+HETATM    3  CH3 ACT A   1       6.790 -47.410 -35.548  1.00 17.13           C
+HETATM    4  OXT ACT A   1       7.110 -46.425 -37.699  1.00 17.05           O
+HETATM  200  O   HOH A 200      12.200 -48.610 -35.148  1.00 50.00           O
+HETATM  201  O   HOH A 201       1.800 -46.810 -34.548  1.00 20.00           O
+HETATM  202  O   HOH A 202      12.200 -42.610 -35.148  0.50 20.00           O
+HETATM  203  O   HOH A 203       1.800 -52.810 -34.548  1.00 20.00           O
+HETATM  204  O   HOH A 204       6.200 -52.610 -41.148  1.00 45.00           O
+END
+"""
+    )
+  dm = DataManager(['model'])
+  dm.process_model_str("pdb_waters.pdb", pdb_waters)
+  model = shift_and_box_model(model = dm.get_model())
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
+  model.process(make_restraints=True, pdb_interpretation_params=p)
+  expected = [a.memory_id() for a in GetAtomsForConformer(model.get_hierarchy().models()[0], "")
+    if a.parent().resname.strip() != 'HOH' or a.parent().parent().resseq_as_int() in (201, 203)]
+  def waterOxygens():
+    return [a.memory_id() for a in model.get_hierarchy().atoms()
+      if a.parent().resname.strip() == 'HOH' and a.element.strip().upper() == 'O']
+  watersBefore = waterOxygens()
+  opt = Optimizer(_philLike(), True, model, modelIndex = None, altID = None, verbosity = 1)
+  # Phantom Hydrogens are appended after the model's atoms
+  got = [a.memory_id() for a in opt._atoms if not a.name.strip().startswith('H?')]
+  if got != expected:
+    return "Optimizers.Test(): Wrong atoms or order after ignoring waters"
+  if not "Ignored 3 waters due to occupancy or B factor" in opt.getInfo():
+    return "Optimizers.Test(): Missing ignored-waters line"
+  if waterOxygens() != watersBefore:
+    return "Optimizers.Test(): Ignored waters were removed from the model"
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read

@@ -107,6 +107,9 @@ kokkos_env.Replace(SHCCFLAGS=ccflags)
 kokkos_env.Replace(CXX=os.environ['CXX'])
 kokkos_env.Replace(SHCXX=os.environ['CXX'])
 kokkos_env.Replace(SHLINK=os.environ['CXX'])
+if use_cuda:
+  # libkokkoscore.so uses the shared CUDA runtime; nvcc_wrapper defaults to static
+  kokkos_env.Append(SHLINKFLAGS=['-cudart', 'shared'])
 kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
@@ -185,6 +188,7 @@ if not env_etc.no_boost_python:
     "kokkoscontainers",
     "kokkoscore"]
   if 'Cuda' in os.getenv('KOKKOS_DEVICES'):
+    kokkos_ext_env.Append(SHLINKFLAGS=['-cudart', 'shared'])
     kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
     kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'compat')])
     kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64/stubs')])

@@ -22,6 +22,9 @@ def run():
   run_test25()
   run_test26()
   run_test27()
+  run_test39()
+  run_test40()
+  run_test41()
 
 # ------------------------------------------------------------------------------
 
@@ -437,6 +440,107 @@ def run_test27():
   assert snap1.alt_conf.flag == 'ok'
 
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
+def _altconf_manager_nproc(pdb_str, nproc):
+  from mmtbx.validation import validate_ligands as vlmod
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  model.process(make_restraints=True)
+  params = vlmod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  params.nproc = nproc
+  vl_manager = vlmod.manager(
+    model=model, fmodel=None, map_manager=None, params=params, log=null_out())
+  vl_manager.run()
+  return vl_manager
+
+def _getter_summary(vl):
+  out = []
+  for lr in vl:
+    r, a, o, ac = (lr.get_rmsds(), lr.get_adps(), lr.get_occupancies(),
+                   lr.get_alt_conf())
+    out.append((lr.id_str, lr.altloc, r.bond_rmsd, r.angle_rmsd, r.bond_n,
+                a.b_mean, a.b_mean_within, o.occ_mean, ac.state, ac.flag))
+  return out
+
+def run_test39():
+  """
+  nproc=1, and any nproc on Windows, runs the getters in process: Windows
+  multiprocessing (spawn) cannot pickle the target. Same results as nproc=2.
+  """
+  print('test39')
+  import os, pickle
+  from libtbx import easy_mp, group_args
+  from mmtbx.validation import validate_ligands as vlmod
+  pickle.dumps(vlmod._run_result_func)
+
+  def _no_mp(*args, **kwds):
+    raise AssertionError('easy_mp.multi_core_run called')
+  multi_core_run = easy_mp.multi_core_run
+  easy_mp.multi_core_run = _no_mp
+  try:
+    vl1 = _altconf_manager_nproc(_altconf_state_pdb_str, nproc=1)
+    vlmod.os = group_args(name='nt')
+    try:
+      vl_nt = _altconf_manager_nproc(_altconf_state_pdb_str, nproc=2)
+    finally:
+      vlmod.os = os
+  finally:
+    easy_mp.multi_core_run = multi_core_run
+
+  s1 = _getter_summary(vl1)
+  assert len(s1) == 8, len(s1)
+  assert _getter_summary(vl_nt) == s1
+  if os.name != 'nt':
+    vl2 = _altconf_manager_nproc(_altconf_state_pdb_str, nproc=2)
+    s2 = _getter_summary(vl2)
+    assert s2 == s1, (s1, s2)
+
+def run_test40():
+  """
+  A ligand with a blank chain id is selected ('chain " "'; unquoted, 'chain  and'
+  selects nothing). No quotes in the PNG file name stem.
+  """
+  print('test40')
+  pdb_str = _altconf_state_pdb_str.replace('GOL A   1', 'GOL     1')
+  vl = _altconf_manager(pdb_str)
+  lr = find_lr(vl, 'chain " " and resseq 1')
+  assert lr.sel_str.startswith('chain " " and resseq 1 '), lr.sel_str
+  assert lr.ligand_isel_noH.size() == 6, lr.ligand_isel_noH.size()
+  assert approx_equal(lr.get_occupancies().occ_mean, 1.0)
+  assert lr.get_rmsds().bond_n == 5, lr.get_rmsds().bond_n
+  for x in vl:
+    assert '"' not in x.fn_string, x.fn_string
+  lr2 = _altconf_lr(vl, 2, 'A')
+  assert lr2.sel_str.startswith('chain A and resseq 2 '), lr2.sel_str
+
+def run_test41():
+  """
+  A getter that raises on the in-process path (nproc=1): the error is printed
+  with the selection and getter, the result is None, the other getters run.
+  """
+  print('test41')
+  import io, contextlib
+  from mmtbx.validation import validate_ligands as vlmod
+  def _raise(self):
+    raise RuntimeError('getter failed on purpose')
+  get_adps = vlmod.ligand_result.get_adps
+  vlmod.ligand_result.get_adps = _raise
+  out = io.StringIO()
+  try:
+    with contextlib.redirect_stdout(out):
+      vl = _altconf_manager(_altconf_state_pdb_str)
+  finally:
+    vlmod.ligand_result.get_adps = get_adps
+  text = out.getvalue()
+  assert text.count('Error output from Selection : ') == len(vl), text
+  assert 'Func : get_adps' in text, text
+  assert 'getter failed on purpose' in text, text
+  for lr in vl:
+    assert lr._adps is None
+    assert lr._occupancies is not None
+
 
 if (__name__ == "__main__"):
   t0 = time.time()

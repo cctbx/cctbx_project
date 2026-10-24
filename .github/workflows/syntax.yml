@@ -12,6 +12,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           path: ./modules/cctbx_project
+          fetch-depth: 0
 
       - name: Update GitLab mirror
         continue-on-error: true
@@ -28,7 +29,7 @@ jobs:
           git pull origin master
           git remote add gitlab git@gitlab.com:cctbx/cctbx_project.git
           git fetch gitlab
-          git push -u gitlab master || true
+          git push -u gitlab master
 
       - uses: conda-incubator/setup-miniconda@v4
         with:
@@ -89,20 +90,20 @@ jobs:
           conda list
 
       - name: Create conda environment
-        if: ${{ matrix.python_version != '3.15' }}
+        # if: ${{ matrix.python_version != '3.15' }}
         run: |
           source ${CONDA}/etc/profile.d/conda.sh
           conda create -y -n syntax -c conda-forge python=${{ matrix.python_version }} six future scons setuptools
           conda activate syntax
           python --version
 
-      - name: Create conda environment (3.15)
-        if: ${{ matrix.python_version == '3.15' }}
-        run: |
-          source ${CONDA}/etc/profile.d/conda.sh
-          conda create -y -n syntax -c conda-forge -c conda-forge/label/python_rc python=${{ matrix.python_version }} six future scons setuptools
-          conda activate syntax
-          python --version
+      # - name: Create conda environment (3.15)
+      #   if: ${{ matrix.python_version == '3.15' }}
+      #   run: |
+      #     source ${CONDA}/etc/profile.d/conda.sh
+      #     conda create -y -n syntax -c conda-forge -c conda-forge/label/python_rc python=${{ matrix.python_version }} six future scons setuptools
+      #     conda activate syntax
+      #     python --version
 
       - name: Set up cctbx
         run: |

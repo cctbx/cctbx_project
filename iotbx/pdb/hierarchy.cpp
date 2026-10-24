@@ -1329,16 +1329,33 @@ namespace {
   }
 
 namespace {
-  int pos_in_vector(std::vector<str4> vec, str4 elem)
+  // Index of each name in an ordered list of names.
+  typedef std::map<str4, int> name_positions;
+
+  template <std::size_t N>
+  name_positions
+  make_name_positions(const str4 (&names)[N])
+  {
+    name_positions result;
+    for (int i = 0; i < static_cast<int>(N); i++) {
+      result[names[i]] = i;
+    }
+    IOTBX_ASSERT(result.size() == N); // names must be unique
+    return result;
+  }
+
+  // Index of elem in the list, or the list size if elem is not listed.
+  int pos_in_vector(name_positions const& positions, str4 elem)
   {
     str4 up_elem = elem;
     up_elem.upper_in_place();
-    int pos = std::find(
-      vec.begin(), vec.end(), up_elem)-vec.begin();
-    return pos;
+    name_positions::const_iterator it = positions.find(up_elem);
+    if (it == positions.end()) return static_cast<int>(positions.size());
+    return it->second;
   }
 
-  bool sorting_general(atom a1, atom a2, std::vector<str4> ordered_names) {
+  bool sorting_general(atom const& a1, atom const& a2,
+                       name_positions const& ordered_names) {
     str4 name1 = a1.data->name.strip();
     name1.replace_in_place('*', '\'');
     str4 name2 = a2.data->name.strip();
@@ -1366,7 +1383,7 @@ namespace {
     return pos1 < pos2;
   }
 
-  bool sorting_function_aa (atom a1, atom a2) {
+  bool sorting_function_aa (atom const& a1, atom const& a2) {
     // Not all these names necessarily exist
     static const str4 arr[] = {
         "N", "CA", "C", "O",
@@ -1375,7 +1392,7 @@ namespace {
         "CG", "NG", "OG", "SG", "CG1", "NG1", "OG1", "SG1", "CG2", "NG2", "OG2", "SG2", "CG3", "NG3", "OG3", "SG3",
         "CD", "ND", "OD", "SD", "CD1", "ND1", "OD1", "SD1", "CD2", "ND2", "OD2", "SD2", "CD3", "ND3", "OD3", "SD3",
         "SE",
-        "CE", "NE", "OE", "SE", "CE1", "NE1", "OE1", "SE1", "CE2", "NE2", "OE2", "SE2", "CE3", "NE3", "OE3", "SE3",
+        "CE", "NE", "OE", "CE1", "NE1", "OE1", "SE1", "CE2", "NE2", "OE2", "SE2", "CE3", "NE3", "OE3", "SE3",
         "CZ", "NZ", "OZ", "SZ", "CZ1", "NZ1", "OZ1", "SZ1", "CZ2", "NZ2", "OZ2", "SZ2", "CZ3", "NZ3", "OZ3", "SZ3",
         "CH", "NH", "OH", "SH", "CH1", "NH1", "OH1", "SH1", "CH2", "NH2", "OH2", "SH2", "CH3", "NH3", "OH3", "SH3",
         "OXT",
@@ -1411,11 +1428,11 @@ namespace {
         "HH3", "3HH", "HH31", "1HH3", "HH32", "2HH3", "HH33", "3HH3",
 
     };
-    std::vector<str4> ordered_names(arr, arr + sizeof(arr) / sizeof(arr[0]) );
+    static const name_positions ordered_names = make_name_positions(arr);
     return sorting_general(a1, a2, ordered_names);
   }
 
-  bool sorting_function_small_na (atom a1, atom a2) {
+  bool sorting_function_small_na (atom const& a1, atom const& a2) {
     static const str4 arr[] = {
         // Nucleic acids C, T
         // main chain
@@ -1432,11 +1449,11 @@ namespace {
         "H3", "H5M1", "H5M2", "H5M3", "H71", "H72", "H73",
         "H6", "H61", "H62", "H1", "H2", "H21", "H22", "HO5'", "H2'1", "H2'2",
     };
-    std::vector<str4> ordered_names(arr, arr + sizeof(arr) / sizeof(arr[0]) );
+    static const name_positions ordered_names = make_name_positions(arr);
     return sorting_general(a1, a2, ordered_names);
 
   }
-  bool sorting_function_big_na (atom a1, atom a2) {
+  bool sorting_function_big_na (atom const& a1, atom const& a2) {
     // Not all these names necessarily exist
     static const str4 arr[] = {
         // Nucleic acids A,G
@@ -1454,7 +1471,7 @@ namespace {
         "H5M1", "H5M2", "H5M3", "H71", "H72", "H73",
         "H6", "H61", "H62", "H1",  "H2", "H21", "H22", "HO5'", "H2'1","H2'2",
     };
-    std::vector<str4> ordered_names(arr, arr + sizeof(arr) / sizeof(arr[0]) );
+    static const name_positions ordered_names = make_name_positions(arr);
     return sorting_general(a1, a2, ordered_names);
   }
 

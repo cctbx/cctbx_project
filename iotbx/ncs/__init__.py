@@ -13,7 +13,7 @@ from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list,
     NCS_restraint_group, NCS_copy
 from scitbx import matrix
 import sys
-from iotbx.pdb.utils import all_chain_ids
+from iotbx.pdb.utils import chain_id_generator
 from time import time
 from six.moves import cStringIO as StringIO
 from six.moves import zip
@@ -378,12 +378,10 @@ class input(object):
         #
         combined_h = iotbx.pdb.hierarchy.root()
         combined_h.append_model(iotbx.pdb.hierarchy.model())
-        all_c_ids = all_chain_ids()
-        cur_ch_id_n = 0
+        new_chain_ids = chain_id_generator()
         master_chain = self.pdb_h_into_chain(pdb_h.select(
-            user_original_reference_iselection),ch_id=all_c_ids[cur_ch_id_n])
+            user_original_reference_iselection),ch_id=next(new_chain_ids))
         # print "tmp in master chain:", list(master_chain.atoms().extract_tmp_as_size_t())
-        cur_ch_id_n += 1
         combined_h.only_model().append_chain(master_chain)
 
         # combined_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(master_chain)
@@ -391,9 +389,8 @@ class input(object):
         for uocis in user_original_copies_iselections:
           # print "adding selection to combined:", s_string
           sel_chain = self.pdb_h_into_chain(pdb_h.select(
-            uocis),ch_id=all_c_ids[cur_ch_id_n])
+            uocis),ch_id=next(new_chain_ids))
           combined_h.only_model().append_chain(sel_chain)
-          cur_ch_id_n += 1
 
         combined_h.reset_atom_i_seqs()
         # combined_h.write_pdb_file("combined_in_validation.pdb")

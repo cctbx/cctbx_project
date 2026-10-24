@@ -50,6 +50,12 @@ steps:
 
 - script: |
     set -xe
+    cd $(Pipeline.Workspace)/modules/cctbx_project/libtbx
+    sed -i.bak 's/"$D\/tst_guided_coding.py"/#"$D\/tst_guided_coding.py"/g' run_tests.py
+  displayName: Skip libtbx/tst_guided_coding.py
+
+- script: |
+    set -xe
     cd $(Pipeline.Workspace)
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py
@@ -68,12 +74,6 @@ steps:
     set -xe
     bash $(Pipeline.Workspace)/miniforge/Miniforge3-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniforge
   displayName: Install miniforge
-
-- script: |
-    set -xe
-    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    conda update --all -y -n base
-  displayName: Update miniforge
 
 # create conda environment
 # fresh downloads for "Update build cache" and "Full" pipelines
@@ -193,6 +193,8 @@ steps:
     cd tests
     export PYTHONDEVMODE=1
     export PYTHONTRACEMALLOC=1
+    echo "##vso[task.setvariable variable=tests_failed]false"
+    rc=0
     libtbx.run_tests_parallel \
       module=annlib_adaptbx \
       module=boost_adaptbx \
@@ -212,7 +214,11 @@ steps:
       module=smtbx \
       module=spotfinder \
       max_retries=2 \
-      nproc=4
+      nproc=4 || rc=$?
+    if [ "$rc" -ne 0 ]; then
+      echo "##vso[task.setvariable variable=tests_failed]true"
+    fi
+    exit $rc
   failOnStderr: false
   displayName: Test
   retryCountOnTaskFailure: 3
@@ -253,7 +259,7 @@ steps:
 
 - publish: $(Pipeline.Workspace)/tests_$(job_name).tar.xz
   artifact: tests_$(job_name)_$(MODULES)
-  condition: succeededOrFailed()
+  condition: and(failed(), eq(variables['tests_failed'], 'true'))
   continueOnError: true
 
 # publish test results

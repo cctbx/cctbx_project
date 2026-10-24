@@ -10,6 +10,7 @@ except ImportError:
 import mmtbx.validation.ligands
 from mmtbx.validation import validate_ligands
 from mmtbx.hydrogens import place_and_optimize_hydrogens
+from mmtbx.hydrogens import reduce_hydrogen
 import iotbx.pdb
 from libtbx.utils import null_out, Sorry
 from libtbx.str_utils import make_sub_header
@@ -196,6 +197,8 @@ is then compared against an Fcalc map.
     # get model object from input file
     m = self.data_manager.get_model()
     m.set_log(log = null_out())
+    # before process() and reduce2, which box a model without symmetry
+    output_cs = reduce_hydrogen.get_output_crystal_symmetry(m)
     if self.data_manager.has_restraints():
       m.set_stop_for_unknowns(False)
       #m.set_log(log = null_out())
@@ -316,8 +319,16 @@ is then compared against an Fcalc map.
     basename = os.path.splitext(os.path.basename(model_fn))[0].split(".")[0]
     self.model_fn_reduce2 = "%s_newH.cif" % basename
     if self.params.save_reduce2_model:
+      # the reduce2 P1 box is not written; the map path keeps the map's cs
+      write_cs = True
+      if not has_map:
+        if output_cs is None:
+          write_cs = False
+        else:
+          self.working_model.set_unit_cell_crystal_symmetry(output_cs)
       self.data_manager.set_overwrite(True)
-      self.data_manager.write_model_file(self.working_model,filename=self.model_fn_reduce2, format='cif')
+      self.data_manager.write_model_file(self.working_model,
+        filename=self.model_fn_reduce2, format='cif', output_cs=write_cs)
 
     if self.params.save_map_coeffs:
       if fmodel is not None:

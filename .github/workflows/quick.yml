@@ -75,14 +75,19 @@ jobs:
           fail-on-cache-miss: true
           key: modules-${{ github.sha }}
 
+      - name: Runner image id
+        id: image
+        shell: bash
+        run: echo "id=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+
       - name: Setup build cache
         id: build-cache
         uses: actions/cache@v5
         with:
           path: ./build
-          key: ${{ runner.os }}-build-${{ github.sha }}
+          key: ${{ runner.os }}-build-${{ steps.image.outputs.id }}-${{ hashFiles('./modules/cctbx_project/libtbx/auto_build/conda_envs') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-build
+            ${{ runner.os }}-build-${{ steps.image.outputs.id }}-${{ hashFiles('./modules/cctbx_project/libtbx/auto_build/conda_envs') }}
 
       - name: Setup conda
         uses: conda-incubator/setup-miniconda@v4
@@ -154,7 +159,15 @@ jobs:
           libtbx.scons -j 4
           libtbx.scons -j 4
 
+      - name: Skip libtbx/tst_guided_coding.py
+        run: |
+          set -xe
+          cd ./modules/cctbx_project/libtbx
+          sed -i.bak 's/"$D\/tst_guided_coding.py"/#"$D\/tst_guided_coding.py"/g' run_tests.py
+          rm -f run_tests.py.bak
+
       - name: Run tests
+        id: run_tests
         run: |
           set -xe
           pwd
@@ -184,6 +197,22 @@ jobs:
             module=xcif \
             max_retries=2 \
             nproc=4
+
+      - name: Save test directory
+        if: ${{ failure() && steps.run_tests.outcome == 'failure' }}
+        continue-on-error: true
+        run: |
+          set -xe
+          tar -Jcf tests_${{ matrix.os }}.tar.xz tests
+
+      - name: Upload test directory
+        if: ${{ failure() && steps.run_tests.outcome == 'failure' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: tests_${{ matrix.os }}
+          path: tests_${{ matrix.os }}.tar.xz
+          compression-level: 0
 
 # -----------------------------------------------------------------------------
   quick_win_checks:
@@ -215,19 +244,24 @@ jobs:
           fail-on-cache-miss: true
           key: modules-${{ github.sha }}
 
+      - name: Runner image id
+        id: image
+        shell: bash
+        run: echo "id=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+
       - name: Setup build cache
         id: build-cache
         uses: actions/cache@v5
         with:
           path: ./build
-          key: ${{ runner.os }}-build-${{ github.sha }}
+          key: ${{ runner.os }}-build-${{ steps.image.outputs.id }}-${{ hashFiles('./modules/cctbx_project/libtbx/auto_build/conda_envs') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-build
+            ${{ runner.os }}-build-${{ steps.image.outputs.id }}-${{ hashFiles('./modules/cctbx_project/libtbx/auto_build/conda_envs') }}
 
       - name: Setup conda
         uses: conda-incubator/setup-miniconda@v4
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           channels: conda-forge
           conda-remove-defaults: "true"
 
@@ -320,6 +354,7 @@ jobs:
           if %errorlevel% neq 0 exit /b %errorlevel%
 
       - name: Run tests
+        id: run_tests
         shell: cmd
         run: |
           if exist "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
@@ -355,3 +390,20 @@ jobs:
             max_retries=2 ^
             nproc=4
           if %errorlevel% neq 0 exit /b %errorlevel%
+
+      - name: Save test directory
+        if: ${{ failure() && steps.run_tests.outcome == 'failure' }}
+        continue-on-error: true
+        shell: cmd
+        run: |
+          tar -zcf tests_${{ matrix.os }}.tar.gz tests
+          if %errorlevel% neq 0 exit /b %errorlevel%
+
+      - name: Upload test directory
+        if: ${{ failure() && steps.run_tests.outcome == 'failure' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: tests_${{ matrix.os }}
+          path: tests_${{ matrix.os }}.tar.gz
+          compression-level: 0

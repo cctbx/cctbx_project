@@ -39,6 +39,7 @@ def run():
   run_test35()
   run_test36()
   run_test37()
+  run_test38()
 
 # ------------------------------------------------------------------------------
 
@@ -386,6 +387,52 @@ def run_test37():
   from mmtbx.validation import ligand_interactions as LI
   o = LI.ligand_overlaps(model, sel, symmetry=False)
   assert [r for r in o.hbond_records + o.clash_records if r['symop'] not in ('', 'x,y,z')] == []
+
+def run_test38():
+  '''
+  Model-only run, save_reduce2_model=True: the reduce2 P1 box is not written to
+  <base>_newH.cif. No cell in, no cell out (also with a restraint file, which
+  makes run() process the model first); a 1 1 1 P 1 placeholder is written
+  back; a real cell is kept.
+  '''
+  print('test38')
+  import libtbx.load_env
+  from iotbx.cli_parser import run_program
+  from mmtbx.programs import validate_ligands as val_lig
+  real = 'CRYST1   30.000   40.000   30.000  90.00  90.00  90.00 P 1'
+  dummy = 'CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1'
+  gol_cif = libtbx.env.find_in_repositories(
+    relative_path='chem_data/geostd/g/data_GOL.cif', test=os.path.isfile)
+  cases = [('none',  _map_pdb_str.replace(real + '\n', ''), [],   None),
+           ('dummy', _map_pdb_str.replace(real, dummy),     [],   (1, 1, 1)),
+           ('real',  _map_pdb_str,                          [],   (30, 40, 30))]
+  if gol_cif is None:
+    print('  skipping restraint-file case: geostd not available')
+  else:
+    cases.append(('none_cif', cases[0][1], [gol_cif], None))
+  for label, pdb_str, extra, abc in cases:
+    pdb_fn = 'tst_validate_ligands_4e_%s.pdb' % label
+    out_fn = 'tst_validate_ligands_4e_%s_newH.cif' % label
+    with open(pdb_fn, 'w') as fh:
+      fh.write(pdb_str)
+    try:
+      run_program(
+        program_class = val_lig.Program,
+        args          = [pdb_fn, 'save_reduce2_model=True'] + extra,
+        logger        = null_out())
+      inp = iotbx.pdb.input(out_fn)
+      txt = open(out_fn).read()
+      assert [e for e in inp.atoms().extract_element() if e.strip() == 'H'], label
+      if abc is None:
+        assert '_cell.length_a' not in txt, label
+      else:
+        cell = [l.split() for l in txt.splitlines()
+                if l.startswith('_cell.length_')]
+        assert approx_equal([float(v) for k, v in cell], abc), (label, cell)
+    finally:
+      for fn in (pdb_fn, out_fn):
+        if os.path.isfile(fn):
+          os.remove(fn)
 
 # ------------------------------------------------------------------------------
 

@@ -689,6 +689,86 @@ def exercise_portkey_block_absent_defaults_none():
     shutil.rmtree(tmp)
 
 
+def exercise_portkey_tools_reasoning_effort_parsed():
+  """portkey.tools_reasoning_effort -> Profile.portkey_tools_reasoning_effort,
+  for every accepted value."""
+  tmp = tempfile.mkdtemp()
+  try:
+    for effort in ("none", "minimal", "low", "medium", "high"):
+      _write_profile(tmp, "p", {"name": "p", "model": "my-deploy",
+                                "backend": "portkey",
+                                "portkey": {"virtual_key": "vk",
+                                            "tools_reasoning_effort": effort}})
+      prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+      assert prof.portkey_tools_reasoning_effort == effort, (
+        effort, prof.portkey_tools_reasoning_effort)
+      assert prof.portkey_virtual_key == "vk", prof.portkey_virtual_key
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_portkey_tools_reasoning_effort_defaults_none():
+  """Absent (no portkey block, or a block without the key, or an explicit
+  null) -> None, so the backend decides from the model name."""
+  tmp = tempfile.mkdtemp()
+  try:
+    for body in ({}, {"portkey": {"virtual_key": "vk"}},
+                 {"portkey": {"tools_reasoning_effort": None}}):
+      data = {"name": "p", "model": "gpt-x", "backend": "portkey"}
+      data.update(body)
+      _write_profile(tmp, "p", data)
+      prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+      assert getattr(prof, "portkey_tools_reasoning_effort",
+                     "MISSING") is None, body
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_portkey_tools_reasoning_effort_bad_value_raises():
+  """A value OpenAI would reject fails at load time with a Sorry naming the
+  key, not as an HTTP 400 mid-turn."""
+  tmp = tempfile.mkdtemp()
+  try:
+    for bad in ("off", "None", "xhigh", 0, True):
+      _write_profile(tmp, "p", {"name": "p", "model": "gpt-x",
+                                "backend": "portkey",
+                                "portkey": {"tools_reasoning_effort": bad}})
+      loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+      try:
+        loader.load("p")
+      except Sorry as e:
+        assert "tools_reasoning_effort" in str(e), str(e)
+      else:
+        raise Exception_expected
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_portkey_tools_reasoning_effort_inherited_via_based_on():
+  """A child naming only based_on keeps the parent's value (round trip
+  through _profile_to_dict), alongside the other portkey keys; a child may
+  override it."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "parent", {
+      "name": "parent", "model": "my-deploy", "backend": "portkey",
+      "portkey": {"virtual_key": "vk", "tools_reasoning_effort": "none"}})
+    _write_profile(tmp, "child", {"name": "child", "based_on": "parent"})
+    _write_profile(tmp, "child2", {"name": "child2", "based_on": "parent",
+                                   "portkey": {"tools_reasoning_effort": "low"}})
+    loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
+    child = loader.load("child")
+    assert child.portkey_tools_reasoning_effort == "none", \
+      child.portkey_tools_reasoning_effort
+    assert child.portkey_virtual_key == "vk", child.portkey_virtual_key
+    child2 = loader.load("child2")
+    assert child2.portkey_tools_reasoning_effort == "low", \
+      child2.portkey_tools_reasoning_effort
+    assert child2.portkey_virtual_key == "vk", child2.portkey_virtual_key
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_profile_backend_unknown_raises():
   """Unknown backend values must fail at load time, not at runtime, so
   the user gets the error before they wait for the chat window."""
@@ -933,6 +1013,10 @@ def exercise():
   exercise_google_is_known_backend()
   exercise_portkey_block_parsed()
   exercise_portkey_block_absent_defaults_none()
+  exercise_portkey_tools_reasoning_effort_parsed()
+  exercise_portkey_tools_reasoning_effort_defaults_none()
+  exercise_portkey_tools_reasoning_effort_bad_value_raises()
+  exercise_portkey_tools_reasoning_effort_inherited_via_based_on()
   exercise_profile_backend_unknown_raises()
   exercise_server_tools_parsed_and_defaults_empty()
   exercise_server_tools_string_raises_clear_sorry()

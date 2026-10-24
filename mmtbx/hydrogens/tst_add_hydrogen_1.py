@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import sys, time
+import sys, time, math
 import mmtbx.model
 import iotbx.pdb
 from mmtbx.hydrogens import reduce_hydrogen, place_and_optimize_hydrogens
@@ -111,16 +111,21 @@ def compare_models(pdb_str,
     sel = model_h_added.selection(string = sel_str)
     assert sel.count(True)==0, [a.id_str() for a in ph_h_added.atoms().select(sel)]
 
-  sc_h_initial = model_initial.select(hd_sel_initial).get_sites_cart()
-  sc_h_added = model_h_added.select(hd_sel_h_added).get_sites_cart()
-
-  d1 = {h_names_initial[i]: sc_h_initial[i] for i in range(len(h_names_initial))}
-  d2 = {h_names_added[i]: sc_h_added[i] for i in range(len(h_names_added))}
+  # every H, keyed by id_str(): names repeat between residues
+  d1 = dict((a.id_str(), a.xyz) for a in h_atoms_initial)
+  d2 = dict((a.id_str(), a.xyz) for a in h_atoms_added)
+  assert len(d1) == len(h_atoms_initial) and len(d2) == len(h_atoms_added)
+  assert set(d1) == set(d2), 'only in answer: %s\nonly in output: %s' % (
+    sorted(set(d1) - set(d2)), sorted(set(d2) - set(d1)))
 
   # check if coordinates are correct
-  for name, sc in d2.items():
-    assert(name in d1)
-    assert approx_equal(sc, d1[name], 0.01), f'{name} {sc} {d1[name]}'
+  diffs = []
+  for label in sorted(d2):
+    if not approx_equal(d2[label], d1[label], 0.01, out=None):
+      d = math.sqrt(sum((x - y)**2 for x, y in zip(d2[label], d1[label])))
+      diffs.append('%s %.3f' % (label, d))
+  assert not diffs, '%d H differ from the answer (label, distance):\n%s' % (
+    len(diffs), '\n'.join(diffs))
 
 # ------------------------------------------------------------------------------
 
@@ -363,7 +368,7 @@ ATOM     20  O   CYS A   2     -50.987 -13.597 -15.382  1.00106.09           O
 ATOM     21  CB  CYS A   2     -52.861 -12.775 -13.466  1.00103.91           C
 ATOM     22  SG  CYS A   2     -54.064 -13.357 -14.680  1.00106.39           S
 ATOM     23  H   CYS A   2     -50.361 -12.536 -12.590  1.00 95.50           H
-ATOM     24  HA  CYS A   2     -52.147 -14.558 -12.653  1.00103.68           H
+ATOM     24  HA  CYS A   2     -52.194 -14.542 -12.667  1.00103.68           H
 ATOM     25  HB2 CYS A   2     -53.344 -12.553 -12.655  1.00103.91           H
 ATOM     26  HB3 CYS A   2     -52.438 -11.981 -13.828  1.00103.91           H
 ATOM     28  N   LYS A   3     -50.756 -15.600 -14.375  1.00105.98           N

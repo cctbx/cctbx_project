@@ -419,7 +419,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     # a single bonded neighbor that has a single other bonded partner that has 2-3 other bonded friends.
     # Find the friends bonded to the partner besides the neighbor, which will be used to
     # determine the initial orientation for the hydrogen.
-    if atom.element != "H":
+    if not atom.element_is_hydrogen():
       raise ValueError("MoverSingleHydrogenRotator(): Atom is not a hydrogen")
     neighbors = bondedNeighborLists[atom]
     if len(neighbors) != 1:
@@ -536,8 +536,11 @@ class MoverSingleHydrogenRotator(_MoverRotator):
           minGap = gap
       # Find the minimum gap distance that is closest to zero, either
       # above or below zero. This is the one with the best just-touch
-      # value.
-      if abs(minGap) < bestTouchGap:
+      # value.  Differences below 1e-6 A are ties, kept by the earlier angle:
+      # angles placed symmetrically about the starting orientation (such as
+      # +-120 degrees from a Hydrogen anti to the conventional friend) have the
+      # same gap, and rounding noise must not choose between them.
+      if abs(minGap) < bestTouchGap - 1e-6:
         bestTouchGap = abs(minGap)
         bestTouchAngle = ang
 

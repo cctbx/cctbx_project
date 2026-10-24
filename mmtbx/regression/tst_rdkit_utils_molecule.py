@@ -77,6 +77,78 @@ _chem_comp_bond.value_dist_esd
  ZAC  C2   HC23 single   1.094  0.020
 '''
 
+zso_cif = '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ZSO  ZSO  'ZSO' ligand 20 10 .
+
+data_comp_ZSO
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ ZSO  C1   C  CH3   0   0.000  -1.2656   1.0754  -1.0575
+ ZSO  S1   S  S3    1   0.000  -1.7896  -0.1536   0.1695
+ ZSO  C2   C  CH3   0   0.000  -2.2219  -1.4386  -1.0304
+ ZSO  C3   C  CH2  -1   0.000  -0.1122  -0.8150   0.5428
+ ZSO  C4   C  CH2   0   0.000   0.7073   0.1293   1.4183
+ ZSO  O1   O  O2    0   0.000   1.2832   1.1673   0.6433
+ ZSO  S2   S  S     0   0.000   2.8113   0.9731   0.1093
+ ZSO  O2   O  OS   -1   0.000   2.9565   2.0319  -0.8835
+ ZSO  O3   O  OS   -1   0.000   2.8264  -0.3794  -0.4423
+ ZSO  O4   O  OS   -1   0.000   3.6160   1.1435   1.3148
+ ZSO  H11  H  H     0   0.000  -0.8742   1.9531  -0.5389
+ ZSO  H12  H  H     0   0.000  -2.1402   1.3797  -1.6385
+ ZSO  H13  H  H     0   0.000  -0.5068   0.6712  -1.7317
+ ZSO  H21  H  H     0   0.000  -3.1480  -1.1502  -1.5339
+ ZSO  H22  H  H     0   0.000  -1.4327  -1.5746  -1.7738
+ ZSO  H23  H  H     0   0.000  -2.3852  -2.3778  -0.4960
+ ZSO  H31  H  H     0   0.000   0.3911  -1.0477  -0.3985
+ ZSO  H32  H  H     0   0.000  -0.2851  -1.7491   1.0875
+ ZSO  H41  H  H     0   0.000   0.0814   0.5945   2.1874
+ ZSO  H42  H  H     0   0.000   1.4883  -0.4332   1.9436
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ZSO  C1   S1   single   1.814  0.020
+ ZSO  S1   C2   single   1.810  0.020
+ ZSO  S1   C3   single   1.841  0.020
+ ZSO  C3   C4   single   1.526  0.020
+ ZSO  C4   O1   single   1.418  0.020
+ ZSO  O1   S2   single   1.630  0.020
+ ZSO  S2   O2   single   1.459  0.020
+ ZSO  S2   O3   single   1.461  0.020
+ ZSO  S2   O4   single   1.459  0.020
+ ZSO  C1   H11  single   1.092  0.020
+ ZSO  C1   H12  single   1.093  0.020
+ ZSO  C1   H13  single   1.093  0.020
+ ZSO  C2   H21  single   1.093  0.020
+ ZSO  C2   H22  single   1.093  0.020
+ ZSO  C2   H23  single   1.093  0.020
+ ZSO  C3   H31  single   1.092  0.020
+ ZSO  C3   H32  single   1.095  0.020
+ ZSO  C4   H41  single   1.095  0.020
+ ZSO  C4   H42  single   1.097  0.020
+'''
+
 zzw_cif = '''
 data_comp_list
 loop_
@@ -862,7 +934,7 @@ def exercise_triphosphate():
 
 def exercise_partial_charges():
   '''
-  Partial charges only, 'coval' bonds: no formal charges, so the totals -4..+4 are
+  Partial charges only, 'coval' bonds: no formal charges, so the totals -10..+10 are
   searched; -1 is the only plausible one (-3 charges a carbon), uncertain; a charge
   column of only '?' counts as missing.
   '''
@@ -871,7 +943,7 @@ def exercise_partial_charges():
   assert (r.total_charge, r.total_charge_source) == (-1, 'search'), r.total_charge_source
   assert r.charge_certain is False
   assert r.search['valid'] == [-3, -1] and r.search['set_aside'] == [-3], r.search
-  assert r.search['calls'] == 9
+  assert r.search['calls'] == 21
   assert smiles(r) == 'CC(=O)[O-]'
   assert [n for n in r.charge_notes if n.startswith('sum of partial charges -1.000')]
   zqm = zpc_cif.replace('ZPC', 'ZQM').replace(
@@ -1050,21 +1122,43 @@ def exercise_split_oxygen():
 
 def exercise_formal_total():
   '''
-  With formal charges the total is fixed (no search): ZAH (-1 on O2, the model has
-  the file's HO21) and ZNC (-1 on both O) fail with the reason, after the input,
-  canonical and 10 random atom orders (12 calls).
+  With formal charges the total is tried first: ZAH (-1 on O2, the model has the
+  file's HO21) and ZNC (-1 on both O) cannot be built at the formal total in the
+  input, canonical and 10 random atom orders (12 calls), so the total is searched
+  (21 calls) with a note: ZAH acetic acid 0, ZNC acetate -1, neither certain.
   '''
-  r = build(get_model(pdb_from_cif('ZAH', zah_cif), cifs=(('ZAH', zah_cif),)))
-  assert not r.ok and r.mol is None and r.fragment_mol is None
-  assert r.reason.startswith('DetermineBondOrders fails for ZAH with the formal total -1:'), \
-    r.reason
-  assert r.search['calls'] == 12 and r.total_charge is None and r.charge_certain is None
-  assert r.reason.endswith(' (also in the canonical and 10 random atom orders)'), r.reason
-  r = build(get_model(pdb_from_cif('ZNC', znc_cif), cifs=(('ZNC', znc_cif),)))
-  assert not r.ok
-  assert r.reason.startswith('DetermineBondOrders fails for ZNC with the formal total -2:'), \
-    r.reason
-  assert r.search['calls'] == 12 and r.search['order'] is None
+  note = 'restraint file formal charges inconsistent, total searched: '
+  tail = ' (also in the canonical and 10 random atom orders)'
+  for name, cif, formal, total, smi in (('ZAH', zah_cif, -1, 0, 'CC(=O)O'),
+      ('ZNC', znc_cif, -2, -1, 'CC(=O)[O-]')):
+    r = build(get_model(pdb_from_cif(name, cif), cifs=((name, cif),)))
+    assert r.ok, r.reason
+    assert r.total_charge == total and smiles(r) == smi, (r.total_charge, smiles(r))
+    assert r.total_charge_source == 'search' and r.charge_certain is False
+    assert r.search['calls'] == 12 + 21 and r.search['order'] is None
+    notes = [n for n in r.charge_notes if n.startswith(note)]
+    assert len(notes) == 1, r.charge_notes
+    assert notes[0][len(note):].startswith(
+      'DetermineBondOrders fails for %s with the formal total %d:' % (name, formal)), notes
+    assert notes[0].endswith(tail), notes
+
+def exercise_carbon_charge():
+  '''
+  A formal charge on a carbon with four bonds cannot be drawn: ZSO (GeoStd's SSD in
+  small: -1 on the CH2 C3 next to the sulfonium S1, the sulfate as in the CCD, S2
+  with three O-) fails at the file's total -3; without C3's charge the file's
+  molecule, -2, certain, noted; not the search's 0. The carbons on S1 differ.
+  '''
+  r = build(get_model(pdb_from_cif('ZSO', zso_cif), cifs=(('ZSO', zso_cif),)))
+  assert r.ok, r.reason
+  assert (r.total_charge, r.total_charge_source, r.charge_certain) == (
+    -2, 'restraint file', True), (r.total_charge, r.total_charge_source)
+  assert r.charge_notes == ['formal charge ignored on C3 (-1) (a carbon with four '
+    'bonds): total -2, not -3'], r.charge_notes
+  assert smiles(r) == 'C[S+](C)CCOS([O-])([O-])[O-]', smiles(r)
+  assert r.search['calls'] == 12 and r.search['valid'] == [], r.search
+  assert r.differences == {'bonds': [], 'charges': ['C1 C2 C3: restraint file -1, '
+    'RDKit +0']}, r.differences
 
 def exercise_file_first():
   '''
@@ -1124,7 +1218,7 @@ def exercise_peptide_ends():
 
 def exercise_search():
   '''
-  No formal charges: the totals -4..+4, one plausible total taken, uncertain. ZGU
+  No formal charges: the totals -10..+10, one plausible total taken, uncertain. ZGU
   (partial sum 1.548): +1 (-1 contradicts the file's C2=N2); ZNM: 0 (-2 as
   CN([O-])[O-] contradicts the file's N1=O1); ZNM with 'coval' bonds: -2 and 0 both
   valid, ambiguous.
@@ -1134,7 +1228,7 @@ def exercise_search():
   assert (r.total_charge, r.total_charge_source, r.charge_certain) == (1, 'search', False)
   assert 'sum of partial charges 1.548' in r.charge_notes, r.charge_notes
   assert smiles(r) in ('CNC(=[NH2+])N', 'CN=C([NH3+])N', 'C[NH+]=C(N)N', 'CNC(N)=[NH2+]'), smiles(r)
-  assert r.search['calls'] == 9 and r.search['valid'] == [1], r.search
+  assert r.search['calls'] == 21 and r.search['valid'] == [1], r.search
   assert r.search['disagree'] == {-1: ['C2-N2: restraint file 2, RDKit 1']}, r.search
   assert r.search['seconds'] >= 0
   r = build(get_model(pdb_from_cif('ZNM', znm_cif), cifs=(('ZNM', znm_cif),)))
@@ -1205,15 +1299,20 @@ def exercise_bond_order_agreement():
   '''
   A structure is accepted only if its bonds agree with the file's explicit orders:
   ZAC with C2-C1 'double' (the model's CH3 allows only a single bond): failure
-  listing the bond. Resonance partners apart (ZGU's C2=N3 against the file's C2=N2,
-  exercise_search).
+  listing the bond, at the formal total (noted) and at each searched total.
+  Resonance partners apart (ZGU's C2=N3 against the file's C2=N2, exercise_search).
   '''
   cc = zac_cif.replace(' ZAC  C2   C1   single ', ' ZAC  C2   C1   double ')
   assert cc != zac_cif
   r = build(get_model(pdb_from_cif('ZAC', cc), cifs=(('ZAC', cc),)))
-  assert not r.ok and r.reason == 'bond orders disagree with the restraint file for ZAC ' \
-    'at the formal total -1: C2-C1: restraint file 2, RDKit 1 (also in the canonical ' \
-    'and 10 random atom orders)', r.reason
+  assert not r.ok and r.reason == 'no valid structure for ZAC with total charges ' \
+    '-10..+10 (formal charges inconsistent): bond orders disagree with the restraint ' \
+    'file at -3 (C2-C1: restraint file 2, RDKit 1); -1 (C2-C1: restraint file 2, ' \
+    'RDKit 1)', r.reason
+  assert 'restraint file formal charges inconsistent, total searched: bond orders ' \
+    'disagree with the restraint file for ZAC at the formal total -1: C2-C1: restraint ' \
+    'file 2, RDKit 1 (also in the canonical and 10 random atom orders)' in \
+    r.charge_notes, r.charge_notes
 
 def exercise_metal_fragments():
   '''
@@ -1273,8 +1372,11 @@ def exercise_metal_fragments():
   rg = model.get_hierarchy().only_residue_group()
   with captured() as c:
     rc = rdkit_utils.residue_rigid_components(model, rg)
-  assert rc.approximate.startswith('approximate: DetermineBondOrders fails for OFO with '
-    'the formal total -1:'), rc.approximate
+  assert rc.approximate == 'approximate: no valid structure for OFO with total charges ' \
+    '-10..+10 (formal charges inconsistent)', rc.approximate
+  assert [n for n in rc.molecule.charge_notes if n.startswith('restraint file formal '
+    'charges inconsistent, total searched: DetermineBondOrders fails for OFO with the '
+    'formal total -1:')], rc.molecule.charge_notes
   assert [sorted([atoms[i].name.strip() for i in comp]) for comp in rc.components] == [
     ['FE1', 'FE2', 'HO', 'O', 'OH']], rc.components
   mol, rdkit_to_iseq = rdkit_utils.approximate_residue_molecule(model, rg)
@@ -1305,15 +1407,19 @@ def exercise_split_neighbour():
 def exercise_failure():
   '''
   A carbon with five bonds (ZC5): DetermineBondOrders fails at the formal total
-  (no search); failure with the reason, no molecule, nothing printed.
+  (noted) and at every searched total; failure with the reason, no molecule,
+  nothing printed.
   '''
   model = get_model(pdb_from_cif('ZC5', zc5_cif), cifs=(('ZC5', zc5_cif),))
   with captured() as c:
     r = build(model)
   assert not r.ok and r.mol is None and r.fragment_mol is None
-  assert r.reason.startswith('DetermineBondOrders fails for ZC5 with the formal total 0:'), \
-    r.reason
-  assert r.search['calls'] == 12 and r.search['valid'] == []
+  assert r.reason == 'no valid structure for ZC5 with total charges -10..+10 ' \
+    '(formal charges inconsistent)', r.reason
+  assert [n for n in r.charge_notes if n.startswith('restraint file formal charges '
+    'inconsistent, total searched: DetermineBondOrders fails for ZC5 with the formal '
+    'total 0:')], r.charge_notes
+  assert r.search['calls'] == 12 + 21 and r.search['valid'] == []
   assert c.text == '', repr(c.text)
 
 def exercise_rigid_components():
@@ -1344,8 +1450,8 @@ def exercise_rigid_components():
   rg = model.get_hierarchy().only_residue_group()
   with captured() as c:
     rc = rdkit_utils.residue_rigid_components(model, rg)
-  assert rc.approximate.startswith('approximate: DetermineBondOrders fails for ZC5'), \
-    rc.approximate
+  assert rc.approximate == 'approximate: no valid structure for ZC5 with total charges ' \
+    '-10..+10 (formal charges inconsistent)', rc.approximate
   assert sorted([i for comp in rc.components for i in comp]) == list(range(6))
   assert c.text == '', repr(c.text)
   png = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
@@ -1374,6 +1480,7 @@ def run():
   exercise_missing_heavy_atoms()
   exercise_split_oxygen()
   exercise_formal_total()
+  exercise_carbon_charge()
   exercise_file_first()
   exercise_peptide_ends()
   exercise_search()

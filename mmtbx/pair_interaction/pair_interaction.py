@@ -21,9 +21,6 @@ results=[]
 global mol_pair_has_interaction
 mol_pair_has_interaction=[]
 
-global wave_functions
-wave_functions = []
-
 def load_wfc(element):
   element = element.lower()
   folder = libtbx.env.find_in_repositories("mmtbx/pair_interaction")
@@ -111,12 +108,10 @@ def run(ph, core=None):
         if(ai.distance(aj)<15):
           non_core_atoms_filtered.append(aj)
     selection=flex.bool(len(atoms),False)
-    atom_list=list(atoms)
     for atom in set(core_atoms+non_core_atoms_filtered):
-      selection[atom_list.index(atom)-1]=True
+      selection[atom.i_seq]=True
     sub_ph=ph.select(selection)
     atom_in_residue_selected = list(flex.int(atom_in_residue).select(selection))
-    del atom_list
     #
     interactions=get_interactions(sub_ph,atom_in_residue_selected,silva_type='sedd',core=core)
     #print("interactions(sedd)(cpp)", interactions)
@@ -162,6 +157,8 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   element_flags = flex.int()
   for e in elements:
     element_flags.append(eldict[e.strip()])
+  # element_flags index into wave_functions, so build it for this call only
+  wave_functions = []
   for e in eldict:
     k = e.lower()
     if(len(k)==1): k+="_"

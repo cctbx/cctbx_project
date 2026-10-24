@@ -1502,6 +1502,58 @@ ATOM    305  CD1 ILE A  20      21.947   6.045   5.765  1.00 12.70           C
     assert str(e) == 'list index out of range', e
   else:
     assert 0
+  # select() must carry the SS annotation over (deep_copy() already does),
+  # otherwise HELIX/SHEET records silently disappear from the output of any
+  # procedure that re-selects the model, e.g. water picking.
+  sel = m1.selection("not name CD1")
+  assert sel.count(False) == 2 # LEU and ILE
+  m_sel = m1.select(sel)
+  assert m_sel.get_ss_annotation() is not None
+  n_h = m_sel.get_ss_annotation().get_n_helices()
+  assert n_h == 1, n_h
+  assert m_sel.model_as_pdb().count("HELIX") == 1, m_sel.model_as_pdb()
+  # the copy must not be shared with the source model
+  assert m_sel.get_ss_annotation() is not m1.get_ss_annotation()
+  # ... but an element that loses a whole residue (middle or end) must go,
+  # otherwise restraints re-created from the annotation pair wrong residues
+  for sel_str in ["not resid 19", "not resid 20", "resid 18"]:
+    m_sel = m1.select(m1.selection(sel_str))
+    n_h = m_sel.get_ss_annotation().get_n_helices()
+    assert n_h == 0, (sel_str, n_h)
+    assert m_sel.model_as_pdb().count("HELIX") == 0, m_sel.model_as_pdb()
+  n_h = m1.get_ss_annotation().get_n_helices()
+  assert n_h == 1, n_h # source untouched
+  # shift_and_box_model() builds a new manager from the hierarchy; it must
+  # keep the annotation too (e.g. atom selection on a model without CRYST1)
+  from cctbx.maptbx.box import shift_and_box_model
+  no_cs_str = good_h_str + pdb_str.replace(
+    "CRYST1   32.501   39.502   44.640  90.00  90.00  90.00 P 21 21 21    4", "")
+  m4 = mmtbx.model.manager(model_input = iotbx.pdb.input(
+    source_info=None, lines=no_cs_str))
+  assert m4.crystal_symmetry() is None or m4.crystal_symmetry().unit_cell() is None
+  m_box = shift_and_box_model(m4, shift_model=False)
+  assert m_box.get_ss_annotation() is not None
+  n_h = m_box.get_ss_annotation().get_n_helices()
+  assert n_h == 1, n_h
+  assert m_box.get_ss_annotation() is not m4.get_ss_annotation()
+  assert m_box.model_as_pdb().count("HELIX") == 1, m_box.model_as_pdb()
+  # remove_alternative_conformations() re-sorts atoms without resetting
+  # i_seqs; select() and the annotation pruning must stay purely positional
+  alt_str = pdb_str.replace(
+    "ATOM    266  CA  THR A  18      13.581   6.907   6.105  1.00  4.76           C",
+    "ATOM    266  CA ATHR A  18      13.581   6.907   6.105  0.50  4.76           C\n"
+    "ATOM    266  CA BTHR A  18      13.681   6.907   6.105  0.50  4.76           C")
+  m3 = mmtbx.model.manager(model_input = iotbx.pdb.input(
+    source_info=None, lines=good_h_str+alt_str))
+  m3.remove_alternative_conformations(always_keep_one_conformer=True)
+  i_seqs = list(m3.get_hierarchy().atoms().extract_i_seq())
+  assert i_seqs != sorted(i_seqs), i_seqs # precondition for this check
+  m_sel = m3.select(m3.selection("not name CB"))
+  n_h = m_sel.get_ss_annotation().get_n_helices()
+  assert n_h == 1, n_h
+  m_sel = m3.select(m3.selection("not resid 19"))
+  n_h = m_sel.get_ss_annotation().get_n_helices()
+  assert n_h == 0, n_h
 
 def exercise_12_as_pdb_or_mmcif_string():
   pdb_inp_lines = flex.split_lines("""\

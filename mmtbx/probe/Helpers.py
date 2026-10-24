@@ -292,34 +292,9 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, extraAtomInfo, probeRad, N, 
     :param nonHydrogenN: When neither the original atom nor the bonded atom is a Hydrogen,
     limit the depth to this value (if this value is less than N).
     :returns a list of all atoms that are bonded to atom within a depth of N.  The original
-    atom is never on the list.
+    atom is never on the list.  Implemented in C++ (atomsWithinNBonds() in ContactDB.h).
   """
-  aLoc = atom.xyz
-  aRad = extraAtomInfo.getMappingFor(atom).vdwRadius
-  atomIsHydrogen = atom.element_is_hydrogen()
-  if extraAtomInfo.getMappingFor(atom).isDummyHydrogen:
-    # Only ever allow a Phantom Hydrogen to be bonded to its parent Oxygen
-    N = 1
-  # Find all atoms to the specified depth
-  atoms = {atom}            # Initialize the set with the atom itself
-  for i in range(N):        # Repeat the recursion this many times
-    current = list(atoms)   # Make a copy so we're not modifying the list we are traversing
-    for a in current:       # Add all neighbors of all atoms in the current level
-      for n in bondedNeighborLists[a]:
-        # If we find a hydrogen, we no longer use the non-Hydrogen N limit.
-        if i < nonHydrogenN or atomIsHydrogen or n.element_is_hydrogen():
-          # Ensure that the new atom is in a compatible conformation with the original atom.
-          if compatibleConformations(atom, n):
-            # Ensure that the atom is not too far away from the original atom.
-            nLoc = n.xyz
-            nRad = extraAtomInfo.getMappingFor(n).vdwRadius
-            d = (rvec3(nLoc) - rvec3(aLoc)).length()
-            if d <= aRad + nRad + 2 * probeRad:
-              atoms.add(n)
-
-  # Remove the original atom from the result and turn the result into a list.
-  atoms.discard(atom)
-  return list(atoms)
+  return probeExt.getAtomsWithinNBonds(atom, bondedNeighborLists, extraAtomInfo, probeRad, N, nonHydrogenN)
 
 def isPolarHydrogen(atom, bondedNeighborLists):
   '''
@@ -714,7 +689,7 @@ def getPhantomHydrogensFor(largestISeq, atom, spatialQuery, extraAtomInfo, minOc
     # before we consider possible Hs.
     overlap = ( (rvec3(atom.xyz) - rvec3(a.xyz)).length()  -
                 (placedHydrogenRadius + extraAtomInfo.getMappingFor(a).vdwRadius + placedHydrogenDistance) )
-    if overlap <= -0.1 and a.occ >= minOccupancy and a.element != "H":
+    if overlap <= -0.1 and a.occ >= minOccupancy and not a.element_is_hydrogen():
       if not acceptorOnly or extraAtomInfo.getMappingFor(a).isAcceptor:
         # If we have multiple atoms in the same Aromatic ring (part of the same residue)
         # we only point at the closest one.  To ensure this, we check all current candidates

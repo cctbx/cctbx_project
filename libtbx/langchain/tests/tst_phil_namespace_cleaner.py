@@ -71,7 +71,7 @@ def _capture_log():
 
 def test_k_b1_preprocessor_prompt_forbids_namespaced_paths():
     """K_B1: preprocessor prompt contains the new B1 guidance."""
-    with open(ADVICE_PREPROCESSOR_PATH) as f:
+    with open(ADVICE_PREPROCESSOR_PATH, encoding="utf-8") as f:
         src = f.read()
 
     # Look for the explicit anti-namespace rule

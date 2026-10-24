@@ -48,6 +48,7 @@ from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
 import collections
+import hashlib
 
 from scitbx import matrix
 from iotbx.bioinformatics import sequence
@@ -107,39 +108,171 @@ def find_common_water_resseq_max(pdb_hierarchy):
             break
   return result
 
-def missing_atoms(acp, verbose=False):
-  rc={}
-  for mm in acp.all_monomer_mappings:
-    # assert mm.incomplete_info is None, 'incomplete_info %s' % mm.incomplete_info
-    atom=None
-    for atom in mm.expected_atoms: break
-    if atom is None: continue
-    if atom.parent() is None: continue
-    if mm.conf_altloc:
-      key=f'"{mm.conf_altloc}"{atom.parent().id_str()}'
-    else:
-      key=f'{atom.parent().id_str()}'
-    resname=atom.parent().resname
-    if mm.incomplete_info:
-      rc[key]={}
-      rc[key]['resname']=resname
-      rc[key]['class']=mm.classification
-      rc[key]['incomplete']=mm.incomplete_info
-    elif mm.missing_atoms_info:
-      rc[key]={}
-      rc[key]['resname']=resname
-      rc[key]['class']=mm.classification
-      rc[key]['missing']=mm.missing_atoms_info
-    if verbose:
-      for types in ['heavy', 'hydrogens']:
-        atoms=mm.missing_atoms_info.get(types, [])
-        if atoms:
-          print(f'  {types}')
-          for name, item in atoms.items():
-            print(name)
-            # item.show()
-  return rc
+def _hierarchy_fingerprint(hierarchy):
+  """
+  Cheap fingerprint of hierarchy content (not coordinates): changes if atoms
+  are added, removed, renamed, reordered, or residues/conformers change.
+  """
+  items = [str(hierarchy.atoms_size()), "".join(hierarchy.atoms().extract_name())]
+  for model in hierarchy.models():
+    items.append(model.id)
+    for chain in model.chains():
+      items.append(chain.id)
+      for rg in chain.residue_groups():
+        for ag in rg.atom_groups():
+          items.append("%s%s%s%s%d" % (
+            rg.resseq, rg.icode, ag.altloc, ag.resname, ag.atoms_size()))
+  return hashlib.sha1("|".join(items).encode()).hexdigest()
 
+def _link_bond_counts(geometry, atoms):
+  """
+  Link bonds: covalent bonds other than those of monomer library residues and
+  standard polymer links (peptide, nucleic acid backbone), i.e. disulfides,
+  metal coordination, monomer library links (e.g. isopeptide, glycosidic),
+  user edits and cif_links, etc.
+  Returns group_args:
+    links: number of link bonds per atom (i_seq);
+    standard_inter: number of standard bonds to other residues (e.g.
+      peptide), for atoms that have link bonds.
+  """
+  origin_ids = linking_class()
+  covalent = origin_ids.get_origin_id("covalent geometry")
+  not_links = set([covalent] + [origin_ids.get_origin_id(key) for key in [
+    "hydrogen bonds", "solvent network", "reference hydrogen bonds"]])
+  links = collections.Counter()
+  standard = []
+  for i, row in enumerate(geometry.bond_params_table):
+    for j, params in row.items():
+      if(params.origin_id == covalent):
+        standard.append((i, j))
+      elif(params.origin_id not in not_links):
+        links[i] += 1
+        links[j] += 1
+  standard_inter = collections.Counter()
+  for i, j in standard:
+    if(i not in links and j not in links): continue
+    if(atoms[i].parent().parent().memory_id() ==
+       atoms[j].parent().parent().memory_id()): continue
+    standard_inter[i] += 1
+    standard_inter[j] += 1
+  return group_args(links = links, standard_inter = standard_inter)
+
+# Atoms making standard polymer links; monomer library residue definitions
+# already account for these bonds.
+_polymer_link_atoms = {
+  "peptide": ["N", "C"],
+  "RNA":     ["P", "O3'", "O3*"],
+  "DNA":     ["P", "O3'", "O3*"]}
+
+def _missing_atoms_excused_by_links(residue_name, classification, expected,
+                                    missing, link_bond_counts, mon_lib_srv):
+  """
+  Names of missing atoms that are legitimately absent because their parent
+  atom makes link bonds (e.g. OD2 of ASP with CG linked to N of another
+  residue).
+  Link bond of polymer link atom (e.g. N of peptide) that does not make the
+  standard polymer bond (e.g. first residue in chain) replaces that bond and
+  does not remove atoms. Per other link bond of parent atom one missing non-H
+  atom bonded to it is excused. If parent atom has such link bonds, all
+  missing H atoms bonded to it are excused (their number depends on bond order
+  and protonation). Also missing atoms bonded to excused atoms are excused
+  (e.g. HO1 of lost O1 of a sugar).
+  """
+  result = set()
+  linked = {}
+  polymer_link_atoms = _polymer_link_atoms.get(classification, [])
+  for a in expected:
+    n = link_bond_counts.links.get(a.i_seq, 0)
+    if(n == 0): continue
+    name = a.name.strip()
+    if(name in polymer_link_atoms and
+       link_bond_counts.standard_inter.get(a.i_seq, 0) == 0):
+      n -= 1
+    if(n > 0): linked[name] = n
+  missing_names = set(missing.get("heavy", {}).keys()) | set(
+    missing.get("hydrogens", {}).keys())
+  if(len(linked) == 0 or len(missing_names) == 0): return result
+  comp = mon_lib_srv.get_comp_comp_id_direct(residue_name.split("%")[0])
+  if(comp is None): return result
+  is_h = {}
+  for a in comp.atom_list:
+    is_h[a.atom_id] = a.type_symbol.strip().upper() in ["H", "D"]
+  bonded = {}
+  for b in comp.bond_list:
+    bonded.setdefault(b.atom_id_1, set()).add(b.atom_id_2)
+    bonded.setdefault(b.atom_id_2, set()).add(b.atom_id_1)
+  for parent, n_links in linked.items():
+    neighbors = bonded.get(parent, set()) & missing_names
+    heavy = sorted([x for x in neighbors if not is_h.get(x)], reverse=True)
+    result.update(heavy[:n_links])
+    result.update([x for x in neighbors if is_h.get(x)])
+  while True:
+    more = set([x for x in missing_names - result
+                if bonded.get(x, set()) & result])
+    if(len(more) == 0): break
+    result.update(more)
+  return result
+
+def _missing_atoms_records(acp, mon_lib_srv=None, link_bond_counts=None):
+  """
+  Missing atoms per residue (conformer) from processed model: one record per
+  monomer mapping that has missing atoms or is incomplete.
+  If link_bond_counts (see _link_bond_counts()) are given, records have names
+  of missing atoms excused by links (excused), otherwise excused is None.
+  Returns None if residues are not mapped to hierarchy atoms; this happens if
+  NCS shortcut was used (use_ncs_to_build_restraints): only master copy is
+  interpreted, using temporary hierarchy.
+  """
+  atoms = acp.pdb_hierarchy.atoms()
+  sites_cart = atoms.extract_xyz()
+  def sg_is_bonded(sg):
+    d2 = (sites_cart - sg.xyz).dot()
+    for i in (d2 < 2.5**2).iselection():
+      a = atoms[i]
+      if(a.element.strip().upper() in ["H", "D"]): continue
+      if(a.parent().parent().memory_id() ==
+         sg.parent().parent().memory_id()): continue
+      return True
+    return False
+  result = []
+  for mm in acp.all_monomer_mappings:
+    expected = mm.expected_atoms
+    if(isinstance(expected, dict)): expected = list(expected.values())
+    if(len(expected) == 0): continue
+    ag = expected[0].parent()
+    if(ag is None): return None
+    if(not (mm.incomplete_info or mm.missing_atoms_info)): continue
+    missing = mm.missing_atoms_info or {}
+    sg_bonded = False
+    if(ag.resname == "CYS" and "HG" in missing.get("hydrogens", {})):
+      for a in expected:
+        if(a.name.strip() == "SG" and sg_is_bonded(a)): sg_bonded = True
+    excused = None
+    if(link_bond_counts is not None):
+      excused = _missing_atoms_excused_by_links(
+        residue_name     = mm.residue_name,
+        classification   = mm.classification,
+        expected         = expected,
+        missing          = missing,
+        link_bond_counts = link_bond_counts,
+        mon_lib_srv      = mon_lib_srv)
+    id_str = ag.id_str()
+    if(mm.conf_altloc):
+      key        = mm.conf_altloc + id_str[1:]
+      legacy_key = '"%s"%s' % (mm.conf_altloc, id_str)
+    else:
+      key        = id_str
+      legacy_key = id_str
+    result.append(group_args(
+      key            = key,
+      legacy_key     = legacy_key,
+      resname        = ag.resname,
+      classification = mm.classification,
+      incomplete     = mm.incomplete_info,
+      missing        = missing,  # {"heavy"/"hydrogens": {name: chem_comp_atom}}
+      excused        = excused,  # set of names or None (links unknown)
+      sg_bonded      = sg_bonded))
+  return result
 
 def cctbx_depreciation_warning(s):
   print('%s\n# cctbx depreciation warning: %s\n%s' %(
@@ -419,7 +552,9 @@ class manager(object):
 
     self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
     self._all_monomer_mappings = None
-    self._missing_atoms = None
+    self._missing_atoms_records = None # see _get_missing_atoms_records()
+    self._missing_atoms_fingerprint = None
+    self._missing_atoms_links_known = False
 
     # These are new
     self.xray_scattering_dict = None    # 2020: leave only one: self._scattering_dict
@@ -1716,6 +1851,9 @@ class manager(object):
     self.get_hierarchy().atoms().reset_i_seq() # redo the numbering
     self.unset_restraints_manager() # no longer applies
     self.unset_ncs_constraints_groups()
+    self._missing_atoms_records = None # no longer applies
+    self._missing_atoms_fingerprint = None
+    self._missing_atoms_links_known = False
 
   def adopt_xray_structure(self, xray_structure=None):
     if xray_structure is None:
@@ -2310,8 +2448,23 @@ class manager(object):
     if self._processed_pdb_file:
       self._clash_guard_msg = self._processed_pdb_file.clash_guard(
         new_sites_cart = self.get_sites_cart())
-      if self._missing_atoms is None:
-        self._missing_atoms=missing_atoms(self._processed_pdb_file.all_chain_proxies)
+      # Always recompute: hierarchy may have changed since last process().
+      # None if not usable (NCS shortcut), then computed when needed.
+      # Links are known only if restraints were made.
+      link_bond_counts = None
+      if(make_restraints and self.restraints_manager is not None):
+        link_bond_counts = _link_bond_counts(
+          geometry = self.restraints_manager.geometry,
+          atoms    = self._pdb_hierarchy.atoms())
+      self._missing_atoms_records = _missing_atoms_records(
+        acp              = self._processed_pdb_file.all_chain_proxies,
+        mon_lib_srv      = self.get_mon_lib_srv(),
+        link_bond_counts = link_bond_counts)
+      self._missing_atoms_fingerprint = None
+      self._missing_atoms_links_known = link_bond_counts is not None
+      if(self._missing_atoms_records is not None):
+        self._missing_atoms_fingerprint = _hierarchy_fingerprint(
+          self._pdb_hierarchy)
     # This must happen after process call.
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
@@ -2325,10 +2478,128 @@ class manager(object):
         scattering_table = SAVE_scatering_table,
         d_min            = SAVE_scatering_table_d_min)
 
+  def _get_missing_atoms_records(self, need_links=False):
+    """
+    Missing atoms records (see _missing_atoms_records()) for current
+    hierarchy. Records obtained at process() are used if hierarchy did not
+    change since (checked by fingerprint), otherwise current hierarchy is
+    processed (model itself is not changed) and records are stored for later
+    calls. If need_links, records must account for links: this requires
+    restraints, which are made for a copy of the model if necessary.
+    """
+    fingerprint = _hierarchy_fingerprint(self.get_hierarchy())
+    if(self._missing_atoms_records is None or
+       self._missing_atoms_fingerprint != fingerprint or
+       (need_links and not self._missing_atoms_links_known)):
+      pip = self._pdb_interpretation_params
+      if(pip is None): pip = self.get_default_pdb_interpretation_params()
+      # all residues must be interpreted, not only NCS master copy
+      pip = deepcopy(pip)
+      pip.pdb_interpretation.use_ncs_to_build_restraints = False
+      # bad geometry is irrelevant for completeness
+      pip.pdb_interpretation.proceed_with_excessive_length_bonds = True
+      srv = mmtbx.utils.process_pdb_file_srv(
+        crystal_symmetry          = self.crystal_symmetry(),
+        pdb_interpretation_params = pip.pdb_interpretation,
+        stop_for_unknowns         = False,
+        log                       = null_out(),
+        cif_objects               = self._restraint_objects,
+        cif_parameters            = self._monomer_parameters,
+        mon_lib_srv               = self.get_mon_lib_srv(),
+        ener_lib                  = self.get_ener_lib(),
+        use_neutron_distances     = pip.pdb_interpretation.use_neutron_distances)
+      processed_pdb_file, _ = srv.process_pdb_files(
+        hierarchy              = self.get_hierarchy().deep_copy(),
+        allow_missing_symmetry = True)
+      link_bond_counts = None
+      if(need_links):
+        geometry = processed_pdb_file.geometry_restraints_manager(
+          show_energies                = False,
+          params_edits                 = pip.geometry_restraints.edits,
+          params_remove                = pip.geometry_restraints.remove,
+          assume_hydrogens_all_missing = not self.has_hd())
+        link_bond_counts = _link_bond_counts(
+          geometry = geometry,
+          atoms    = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atoms())
+      self._missing_atoms_records = _missing_atoms_records(
+        acp              = processed_pdb_file.all_chain_proxies,
+        mon_lib_srv      = self.get_mon_lib_srv(),
+        link_bond_counts = link_bond_counts)
+      assert self._missing_atoms_records is not None
+      self._missing_atoms_fingerprint = fingerprint
+      self._missing_atoms_links_known = need_links
+    return self._missing_atoms_records
+
   def get_missing_atoms(self):
-    if self._missing_atoms is None:
-      self.process(make_restraints=True)
-    return self._missing_atoms
+    """
+    Residues with missing atoms or incomplete, as defined by monomer library
+    (no special treatment of hydrogen atoms, unlike missing_atoms_by_residue).
+
+    Returns dictionary: residue id (with altloc in quotes) ->
+      {'resname', 'class', and either
+       'incomplete': type of incompleteness (e.g. 'backbone_only') or
+       'missing': {'heavy'/'hydrogens': {atom name: chem_comp_atom}}}
+    """
+    result = {}
+    for r in self._get_missing_atoms_records():
+      item = {"resname": r.resname, "class": r.classification}
+      if(r.incomplete): item["incomplete"] = r.incomplete
+      elif(r.missing):  item["missing"] = dict(r.missing)
+      else: continue
+      result[r.legacy_key] = item
+    return result
+
+  def missing_atoms_by_residue(self, include_hydrogens=False):
+    """
+    Find residues with missing atoms. Expected atoms are those of monomer
+    library definitions after applying modifications (as for restraints).
+    Residues are checked per conformer. Residues not in monomer library are
+    not checked. Missing C-terminal OXT is not reported.
+
+    Atoms absent because of links are not reported (e.g. OD2 of ASP if CG is
+    linked to N of another residue), see _missing_atoms_excused_by_links().
+    Links are taken from restraints: if model was processed without restraints
+    (or changed since), restraints are made for a copy of the model.
+
+    If include_hydrogens:
+      - hydrogen atoms of water are not required;
+      - HG of CYS is not required if SG is bonded (disulfide, metal, etc);
+      - only one of HD1 and HE2 is required for HIS (tautomers).
+
+    Uses current hierarchy, model itself is not changed (see
+    _get_missing_atoms_records()).
+
+    Returns dictionary: residue id (with altloc) -> sorted list of missing
+    atom names (monomer library names).
+    """
+    get_class = iotbx.pdb.common_residue_names_get_class
+    def get_result(records):
+      result = collections.OrderedDict()
+      for r in records:
+        missing = list(r.missing.get("heavy", {}).keys())
+        if(include_hydrogens and get_class(name=r.resname) != "common_water"):
+          missing_h = set(r.missing.get("hydrogens", {}).keys())
+          if(r.resname == "HIS" and len(missing_h & {"HD1", "HE2"}) == 1):
+            missing_h -= {"HD1", "HE2"}
+          if(r.sg_bonded): missing_h.discard("HG")
+          missing.extend(missing_h)
+        if(r.excused is not None):
+          missing = [name for name in missing if name not in r.excused]
+        if(len(missing) == 0): continue
+        result[r.key] = sorted(set(result.get(r.key, []) + missing))
+      return result
+    # Links can only excuse missing atoms: if nothing is missing regardless of
+    # links, no need to find links (requires restraints, may be expensive).
+    result = get_result(self._get_missing_atoms_records())
+    if(len(result) == 0): return result
+    return get_result(self._get_missing_atoms_records(need_links = True))
+
+  def is_atom_complete(self, include_hydrogens=False):
+    """
+    True if no atoms are missing, see missing_atoms_by_residue() for details.
+    """
+    return len(self.missing_atoms_by_residue(
+      include_hydrogens = include_hydrogens)) == 0
 
   def scale_restraints(self, factor, bond_cutoff, angle_cutoff, one_time_scale):
     if self.rsm is None: return
@@ -3009,7 +3280,8 @@ class manager(object):
     self.riding_h_manager = None
 
   def setup_riding_h_manager(self, idealize=True, use_ideal_dihedral=False,
-                             ignore_h_with_dof = False):
+                             ignore_h_with_dof = False,
+                             use_neutron_distances = None):
     if self.riding_h_manager is not None: return
     if not self.has_hd(): return
     if(self.restraints_manager is None): return
@@ -3020,11 +3292,17 @@ class manager(object):
       ignore_h_with_dof   = ignore_h_with_dof,
       mon_lib_srv         = self.get_mon_lib_srv())
     if(idealize):
-      self.idealize_h_riding()
+      self.idealize_h_riding(use_neutron_distances = use_neutron_distances)
 
-  def idealize_h_riding(self):
+  def idealize_h_riding(self, use_neutron_distances=None):
+    """
+    use_neutron_distances: water O-H length. None: from the scattering table
+    (0.85, or 0.98 for neutron/electron); True: HOH restraint target (0.98 if
+    not found); False: 0.85.
+    """
     if self.riding_h_manager is None:
-      self.setup_riding_h_manager(idealize=True)
+      self.setup_riding_h_manager(idealize=True,
+        use_neutron_distances = use_neutron_distances)
     else:
       sites_cart = self.get_sites_cart()
       if self.refinement_flags:
@@ -3061,6 +3339,10 @@ class manager(object):
       new_H1 = O + new_v1
       new_H2 = O + new_v2
       return new_H1.elems, new_H2.elems
+    if use_neutron_distances is not None:
+      self._idealize_water_by_bonded_o(
+        use_neutron_distances, idealize_water_geometry)
+      return
     get_class = iotbx.pdb.common_residue_names_get_class
     for model in self.get_hierarchy().models():
       for chain in model.chains():
@@ -3082,6 +3364,83 @@ class manager(object):
               h_atoms[1].xyz = h2_new
     self.set_sites_cart( self.get_hierarchy().atoms().extract_xyz() )
     # AD HOC fix for the riding H issue for water END
+
+  def _idealize_water_by_bonded_o(self, use_neutron_distances,
+                                  idealize_water_geometry):
+    """
+    Water O-H/D length and H-O-H angle for idealize_h_riding() with
+    use_neutron_distances True or False. H/D are found through their bonded O,
+    so incomplete waters and blank-altloc O with altloc H/D are included.
+    True: bond restraint target (0.98 without restraints); False: 0.85.
+    """
+    atoms = self.get_hierarchy().atoms()
+    get_class = iotbx.pdb.common_residue_names_get_class
+    default = 0.98 if use_neutron_distances else 0.85
+    # (i_seq of O, i_seq of H/D) -> target length
+    pairs = {}
+    bpt = None
+    if self.restraints_manager is not None:
+      bpt = self.restraints_manager.geometry.bond_params_table
+      if bpt.size() != atoms.size(): bpt = None
+    if bpt is not None:
+      # O-H bonds are stored in the row of the lower i_seq; both are water atoms
+      water = set()
+      for i, a in enumerate(atoms):
+        if get_class(name=a.parent().resname) == "common_water":
+          water.add(i)
+      for i in sorted(water):
+        for j in bpt[i].keys():
+          if j not in water: continue
+          ei = atoms[i].element.strip().upper()
+          ej = atoms[j].element.strip().upper()
+          if ei == "O" and ej in ["H", "D"]:   o, h = i, j
+          elif ej == "O" and ei in ["H", "D"]: o, h = j, i
+          else: continue
+          d = default
+          if use_neutron_distances: d = bpt[i][j].distance_ideal
+          pairs[(o, h)] = d
+    else:
+      # conformer residues combine blank-altloc O with altloc H/D
+      index = dict((a.memory_id(), i) for i, a in enumerate(atoms))
+      for model in self.get_hierarchy().models():
+        for chain in model.chains():
+          for conformer in chain.conformers():
+            for residue in conformer.residues():
+              if get_class(name=residue.resname) != "common_water": continue
+              ra = residue.atoms()
+              os_ = [a for a in ra if a.element.strip().upper() == "O"]
+              hs = [a for a in ra if a.element.strip().upper() in ["H", "D"]]
+              if len(os_) != 1: continue
+              for h in hs:
+                pairs[(index[os_[0].memory_id()], index[h.memory_id()])] = \
+                  default
+    if len(pairs) == 0: return
+    # length: each H/D along its own O-H direction
+    h_of_o = {}
+    for (o, h), d in pairs.items():
+      O = matrix.col(atoms[o].xyz)
+      v = matrix.col(atoms[h].xyz) - O
+      if v.length() > 1e-6:
+        atoms[h].xyz = (O + v.normalize() * d).elems
+      h_of_o.setdefault(o, []).append(h)
+    # angle: per O and conformer with exactly two H/D; an H/D shared with a
+    # conformer already corrected keeps its length correction only
+    moved = set()
+    for o, hs in h_of_o.items():
+      altlocs = sorted(set(atoms[h].parent().altloc for h in hs) - set([""]))
+      for altloc in (altlocs or [""]):
+        hc = [h for h in hs if atoms[h].parent().altloc in ["", altloc]]
+        if len(hc) != 2 or moved.intersection(hc): continue
+        h1, h2 = sorted(hc)
+        h1_new, h2_new = idealize_water_geometry(
+          o_xyz      = atoms[o].xyz,
+          h1_xyz     = atoms[h1].xyz,
+          h2_xyz     = atoms[h2].xyz,
+          dist_ideal = pairs[(o, h1)])
+        atoms[h1].xyz = h1_new
+        atoms[h2].xyz = h2_new
+        moved.update(hc)
+    self.set_sites_cart(atoms.extract_xyz())
 
   def get_hierarchy(self):
     """
@@ -3868,9 +4227,7 @@ class manager(object):
       b_isos                      = bs)
 
   def deep_copy(self):
-    new_model = self.select(selection = flex.bool(self.size(), True))
-    new_model.set_ss_annotation(self.get_ss_annotation())
-    return new_model
+    return self.select(selection = flex.bool(self.size(), True))
 
   def add_ias(self, fmodel=None, ias_params=None, file_name=None,
                                                              build_only=False):
@@ -4247,6 +4604,12 @@ class manager(object):
     new._mon_lib_srv = self._mon_lib_srv
     new._ener_lib = self._ener_lib
     new._original_model_format = self._original_model_format
+    if self._ss_annotation is not None:
+      new_ss_annotation = self._ss_annotation.deep_copy()
+      if not selection.all_eq(True):
+        new_ss_annotation.remove_elements_losing_residues(
+          hierarchy=self._pdb_hierarchy, selection=selection)
+      new.set_ss_annotation(new_ss_annotation)
     if hasattr(self, '_type_h_bonds') and len(self._type_h_bonds)==len(selection):
       new._type_energies = self._type_energies.select(selection)
       new._type_h_bonds = self._type_h_bonds.select(selection)
@@ -4335,6 +4698,91 @@ class manager(object):
 
   def remove_solvent(self):
     return self.select(selection = ~self.solvent_selection())
+
+  def add_terminal_oxt(self, peptide_bond_cutoff=2.0, log=None):
+    """
+    Add C-terminal OXT atom to each protein chain end that does not have it.
+
+    Chain end is the last amino-acid residue of a chain, or the last residue
+    before a break in polypeptide chain: next residue is not an amino acid or
+    is not peptide-bonded (C(i)-N(i+1) distance >= peptide_bond_cutoff).
+    No OXT if C is already bonded to a heavy atom of another residue (within
+    peptide_bond_cutoff): caps (NH2, NME), cyclic peptides, links.
+
+    OXT is placed in CA-C-O plane at 1.231 A from C, symmetrically to O, and
+    inherits altloc, occupancy and B from O. Residues missing C, CA or O are
+    skipped. Alternative conformations are handled per conformer.
+    Hierarchy is changed: restraints are unset, call process() if needed.
+
+    Returns number of added atoms.
+    """
+    get_class = iotbx.pdb.common_residue_names_get_class
+    aa_classes = ["common_amino_acid", "modified_amino_acid", "d_amino_acid"]
+    def is_amino_acid(rg):
+      for ag in rg.atom_groups():
+        if get_class(name=ag.resname) in aa_classes: return True
+      return False
+    def is_peptide_bonded(rg1, rg2):
+      for c in rg1.atoms():
+        if c.name.strip() != "C": continue
+        for n in rg2.atoms():
+          if n.name.strip() != "N": continue
+          if c.distance(n) < peptide_bond_cutoff: return True
+      return False
+    # Find where to add, then add (do not change hierarchy while iterating)
+    to_add = []
+    for model in self._pdb_hierarchy.models():
+      # chain objects with same id that follow each other form one chain
+      rgs = []
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          rgs.append((chain.id, rg))
+      heavy = [a for a in model.atoms()
+               if a.element.strip().upper() not in ["H", "D"]]
+      heavy_xyz = flex.vec3_double([a.xyz for a in heavy])
+      def bonded_elsewhere(c, rg):
+        close = ((heavy_xyz - c.xyz).norms() < peptide_bond_cutoff).iselection()
+        return any(heavy[k].parent().parent().memory_id() != rg.memory_id()
+                   for k in close)
+      for i, (chain_id, rg) in enumerate(rgs):
+        if not is_amino_acid(rg): continue
+        if i+1 < len(rgs):
+          next_chain_id, next_rg = rgs[i+1]
+          if(next_chain_id == chain_id and is_amino_acid(next_rg) and
+             is_peptide_bonded(rg, next_rg)): continue
+        for conformer in rg.conformers():
+          atoms = {}
+          for a in conformer.only_residue().atoms():
+            atoms[a.name.strip()] = a
+          if "OXT" in atoms: continue
+          c, ca, o = [atoms.get(name) for name in ["C", "CA", "O"]]
+          if None in [c, ca, o]: continue
+          if bonded_elsewhere(c, rg): continue
+          c_xyz = matrix.col(c.xyz)
+          u_ca = (matrix.col(ca.xyz) - c_xyz).normalize()
+          u_o  = (matrix.col(o.xyz)  - c_xyz).normalize()
+          xyz = c_xyz - 1.231 * (u_ca + u_o).normalize()
+          to_add.append((o, xyz))
+    n_added = 0
+    for o, xyz in to_add:
+      ag = o.parent()
+      if ag.get_atom("OXT") is not None: continue # shared by conformers
+      oxt = iotbx.pdb.hierarchy.atom()
+      oxt.set_name(" OXT")
+      oxt.set_element(" O")
+      oxt.set_xyz(xyz)
+      oxt.set_occ(o.occ)
+      oxt.set_b(o.b)
+      oxt.set_segid(o.segid)
+      oxt.hetero = o.hetero
+      if o.uij_is_defined(): oxt.set_uij(o.uij)
+      ag.append_atom(oxt)
+      n_added += 1
+      if log is not None:
+        print("Added OXT to %s" % ag.id_str(), file=log)
+    if n_added > 0:
+      self.reset_after_changing_hierarchy()
+    return n_added
 
   def remove_hydrogens(self):
     if self.has_hd():
@@ -4837,9 +5285,8 @@ class manager(object):
     should be expanded have to be added here. e.g. TLS.
     LIMITATION: ANISOU records in resulting hierarchy will be invalid!!!
     """
-    from iotbx.pdb.utils import all_chain_ids
+    from iotbx.pdb.utils import chain_id_generator
     roots=[]
-    all_cids = all_chain_ids()
     duplicate_prevention = {}
     chain_ids_match_dict = {} # {'old chain id': [new ids]}
     for m in self.get_hierarchy().models():
@@ -4849,14 +5296,8 @@ class manager(object):
           continue
         duplicate_prevention[chain_id_key] = False
         chain_ids_match_dict[c.id] = []
-        cid = c.id
-        try:
-          ind = all_cids.index(cid)
-        except ValueError:
-          ind = -1
-        if ind >= 0:
-          del all_cids[ind]
-    cid_counter = 0
+    # 1- and 2-character ids first; longer ids (mmCIF only) when those run out
+    new_cids = chain_id_generator(used_ids=chain_ids_match_dict.keys())
     for r,t in zip(records_container.r, records_container.t):
       leave_chain_ids = False
       if r.is_r3_identity_matrix() and t.is_col_zero():
@@ -4875,8 +5316,7 @@ class manager(object):
               else:
                 new_cid = c.id
             else:
-              new_cid = all_cids[cid_counter]
-              cid_counter += 1
+              new_cid = next(new_cids)
               chain_ids_match_dict[c.id].append(new_cid)
               duplicate_prevention["%s%s" % (mm.id, c.id)] = True
             c.id = new_cid

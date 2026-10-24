@@ -158,7 +158,8 @@ class dictionary(model.cif):
       type_codes = master_block.get('_item_type_list.code')
       type_constructs = master_block.get('_item_type_list.construct')
       for code, construct in zip(type_codes, type_constructs):
-        self.item_type_list.setdefault(code, re.compile(construct))
+        # constructs given as semicolon text fields carry a trailing newline
+        self.item_type_list.setdefault(code, re.compile(construct.strip()))
       for key, save in six.iteritems(master_block.saves):
         master_block[key] = DDL2_definition(save)
         children = save.get('_item_linked.child_name')
@@ -303,9 +304,9 @@ class dictionary(model.cif):
         else:
           if enum_min is None and enum_max is None: return
           elif enum_min is None:
-            enum_min = '.'*len(enum_max)
+            enum_min = ['.'] * len(enum_max)
           elif enum_max is None:
-            enum_max = '.'*len(enum_min)
+            enum_max = ['.'] * len(enum_min)
           for min, max in zip(enum_min, enum_max):
             if ((min == '.' or v > float(min)) and
                 (max == '.' or v < float(max))):
@@ -313,7 +314,8 @@ class dictionary(model.cif):
             elif (min == max and v == float(min)):
               return # matched boundary value
           # else value out of range
-          self.report_error(2101, key=key, value=value, enum="%s:%s" %(min, max))
+          self.report_error(2101, key=key, value=value,
+            enum=", ".join("%s:%s" % mm for mm in zip(enum_min, enum_max)))
 
   def validate_related(self, key, block, definition):
     related_items = definition.related
@@ -338,7 +340,7 @@ class dictionary(model.cif):
               related_item not in block): # missing associated value
           self.report_error(2202, key=key, related_item=related_item)
 
-  def validate_loop(self, loop, block):
+  def validate_loop(self, loop, block, parent_value_sets=None):
     list_category = None
     for key, value in six.iteritems(loop):
       try:
@@ -361,7 +363,6 @@ class dictionary(model.cif):
       elif (isinstance(list_category, string_types)
             and definition_category is not None
             and list_category != definition_category):
-        print(list_category, list(definition_category))
         self.report_error(2502, key=key) # multiple categories in loop
       mandatory = definition.mandatory == 'yes'
       references = definition.get('_list_reference')
@@ -397,14 +398,38 @@ class dictionary(model.cif):
       link_parent = definition.get(
         '_list_link_parent', self.child_parent_relations.get(key))
       if link_parent is not None:
-        parent_values = loop.get(link_parent, block.get(link_parent))
+        parent_values = self._parent_value_set(
+          link_parent, loop, block, cache=parent_value_sets)
         if parent_values is not None:
           for v in loop[key]:
-            if v != '.' and v not in parent_values:
-              # missing parent value
+            if v not in ('.', '?') and v not in parent_values:
+              # missing parent value (null markers need no parent)
               self.report_error(2503, value=v, child=key, parent=link_parent)
         else:
           self.report_error(2504, child=key, parent=link_parent) # missing parent
+
+  def _parent_value_set(self, link_parent, loop, block, cache=None):
+    """Values of the parent item as a set, or None if the parent is absent.
+
+    Membership tests against a flex.std_string are linear scans, so testing
+    every child value directly made the child-parent check
+    O(n_child * n_parent) and dominated validation time for large atom_site
+    loops. The set is built once per parent item and, when a cache dict is
+    supplied (block_base.validate passes one per block), shared by every
+    loop in the block that links to the same parent.
+    """
+    if cache is not None and link_parent in cache:
+      return cache[link_parent]
+    parent_values = loop.get(link_parent, block.get(link_parent))
+    if parent_values is None:
+      result = None
+    elif isinstance(parent_values, string_types):
+      result = set([parent_values])
+    else:
+      result = set(parent_values)
+    if cache is not None:
+      cache[link_parent] = result
+    return result
 
   def update(self, other, mode="strict"):
     assert mode in ("strict", "replace", "overlay")
@@ -564,4 +589,11 @@ class DDL2_definition(model.save, definition_base):
       self.keys_lower = other.keys_lower
 
   def get_min_max(self):
-    return (self.get('_item_range.minimum'), self.get('_item_range.maximum'))
+    # A single range gives _item_range.minimum/maximum as plain strings,
+    # a looped one as arrays; validate_enumeration zips the two, so a
+    # string must not be iterated character by character.
+    enum_min = self.get('_item_range.minimum')
+    enum_max = self.get('_item_range.maximum')
+    if isinstance(enum_min, string_types): enum_min = [enum_min]
+    if isinstance(enum_max, string_types): enum_max = [enum_max]
+    return (enum_min, enum_max)

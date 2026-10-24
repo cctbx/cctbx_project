@@ -7,6 +7,7 @@ import iotbx
 from scitbx.array_family import flex
 from mmtbx.secondary_structure import sec_str_master_phil
 from libtbx.test_utils import assert_lines_in_text
+from six.moves import cStringIO as StringIO
 
 pdb_1ywf_cutted = """\
 HELIX    1   1 ALA A   16  THR A   18  5                                   3
@@ -2148,6 +2149,22 @@ SHEET    5   A 5 ASP B  74  LEU B  77  1  O  HIS B  74   N  VAL B  52
 """.strip())
 
 
+def exercise_cif_sheet_missing_first_strand():
+  """A sheet whose _struct_sheet_range has no row with id 1 is skipped with
+  a 'Bad sheet records.' message; the other sheets are still read."""
+  pdb_str = """\
+SHEET    1   X 2 ALA A  10  ALA A  14  0
+SHEET    2   X 2 VAL A  20  VAL A  24 -1  N  ALA A  11   O  VAL A  21
+SHEET    1   Y 2 ALA A  30  ALA A  34  0
+SHEET    2   Y 2 VAL A  40  VAL A  44  1  N  ALA A  31   O  VAL A  41"""
+  cif_block = ss.annotation.from_records(pdb_str.split("\n")).as_cif_block()
+  cif_block.get_loop("_struct_sheet_range").delete_row(0) # strand 1 of X
+  log = StringIO()
+  ann = ss.annotation.from_cif_block(cif_block, log=log)
+  assert "Bad sheet records." in log.getvalue(), log.getvalue()
+  assert [sh.sheet_id for sh in ann.sheets] == ["Y"], ann.as_pdb_str()
+  assert len(ann.sheets[0].strands) == 2, len(ann.sheets[0].strands)
+
 def exercise(args):
   exercise_single()
   tst_pdb_file()
@@ -2155,6 +2172,7 @@ def exercise(args):
   exercise_only_b_altloc()
   exercise_multiplication()
   exercise_change_residue_numbering()
+  exercise_cif_sheet_missing_first_strand()
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

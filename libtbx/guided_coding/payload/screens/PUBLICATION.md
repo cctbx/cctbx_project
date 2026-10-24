@@ -9,5 +9,7 @@ GATE
 Reading SHA256: <sha256-of-reading-file>
 Verdict: <PROCEED or PROCEED IF condition; if conditional add Disposition SHA256: <sha256> after this line>
 DECISION
-<Publish pushes this batch after the precheck, with the explicit refspec and tag following disabled; hold keeps it local. The reading above is scoped to publication or to both gates of this packet.>
+<Publish pushes this batch after the precheck, with the explicit refspec and tag following disabled (where the project forbids agent pushes: you run the vetted command and I confirm the remote); hold keeps it local. The reading above is scoped to publication or to both gates of this packet.>
+Recommendation: PUBLISH because <reason grounded in the suite, the reading and the remaining limits; or HOLD because ...>
+Next: <What you will do after the Developer chooses, including the remote check and record.>
 ACTION: PUBLISH / HOLD
