@@ -187,7 +187,6 @@ general_tests = [
   "$D/hydrogens/tst_add_hydrogen_19.py",
   "$D/hydrogens/tst_hd_exchange.py",
   #"$D/hydrogens/tst_add_hydrogen_time.py",
-  "$D/hydrogens/tst_water_protonation.py",
   "$D/hydrogens/tst_validate_H.py",
   "$D/hydrogens/tst_connectivity.py",
   "$D/hydrogens/tst_const_dihedral.py",
@@ -474,6 +473,7 @@ general_tests = [
   "$D/conformation_dependent_library/testing_utils.py",
   "$D/conformation_dependent_library/tst_poly_ca_multi_residue.py",
   "$D/conformation_dependent_library/tst_mutli_residue.py",
+  "$D/regression/tst_water_protonation.py",
   ]
 
 molprobity_tests = [
