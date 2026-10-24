@@ -5,12 +5,15 @@ from all atoms the parent counted both copies (and atoms that exist only in
 another conformer) and got no rotator, NH3 rotator or methyl stagger.
 Models: the Zn-Cys model of tst_add_hydrogen_1 with O split A/B and the Zn in
 altloc A (A4 B0 case c2); 1US0 Tyr A 189, Lys A 85 and Ile A 14 (backbone
-atoms split A/B, side chains blank).
+atoms split A/B, side chains blank); 3CP5 Thr A 46 (blank CB, OG1 and CG2
+split A/B: CB counted both conformers' substituents).
 """
 from __future__ import absolute_import, division, print_function
 import os, re
 from libtbx.utils import null_out
 from iotbx.cli_parser import run_program
+import iotbx.pdb
+import scitbx.math
 from mmtbx.programs import reduce2
 
 m_c2 = """\
@@ -96,6 +99,30 @@ ATOM      9  C  BILE A  14      14.843   5.050  33.236  0.35  3.74           C
 ATOM     10  O  BILE A  14      15.658   4.832  32.323  0.35  5.01           O
 """
 
+m_thr = """\
+CRYST1   39.592   32.644   42.064  90.00  94.56  90.00 P 1 21 1
+ATOM    283  N   CYS A  45      -0.599  20.876  36.277  1.00  7.63           N
+ATOM    284  CA  CYS A  45       0.525  20.659  35.381  1.00  7.94           C
+ATOM    285  C   CYS A  45       0.890  21.874  34.534  1.00  7.46           C
+ATOM    286  O   CYS A  45       2.101  22.043  34.206  1.00  8.28           O
+ATOM    287  CB  CYS A  45       0.229  19.487  34.422  1.00  7.87           C
+ATOM    288  SG  CYS A  45      -0.557  18.027  35.141  1.00  8.15           S
+ATOM    289  N   THR A  46      -0.035  22.735  34.171  1.00  8.39           N
+ATOM    290  CA  THR A  46       0.151  23.886  33.332  1.00  9.63           C
+ATOM    291  C   THR A  46       1.093  24.917  33.930  1.00 11.11           C
+ATOM    292  O   THR A  46       1.675  25.762  33.289  1.00 13.68           O
+ATOM    293  CB  THR A  46      -1.217  24.509  32.944  1.00 14.06           C
+ATOM    294  OG1ATHR A  46      -1.783  23.647  31.940  0.71 25.52           O
+ATOM    295  OG1BTHR A  46      -2.100  24.715  34.036  0.29 16.93           O
+ATOM    296  CG2ATHR A  46      -1.071  25.899  32.389  0.71 18.52           C
+ATOM    297  CG2BTHR A  46      -1.909  23.534  31.986  0.29  6.58           C
+ATOM    298  N   ALA A  47       1.305  24.909  35.232  1.00 10.58           N
+ATOM    299  CA  ALA A  47       2.252  25.818  35.845  1.00 12.13           C
+ATOM    300  C   ALA A  47       3.657  25.590  35.289  1.00 11.98           C
+ATOM    301  O   ALA A  47       4.468  26.498  35.305  1.00 21.55           O
+ATOM    302  CB  ALA A  47       2.251  25.606  37.352  1.00 14.76           C
+"""
+
 def run(model_text, prefix):
   fn_in = prefix + ".pdb"
   fn_out = prefix + "_out.pdb"
@@ -173,10 +200,40 @@ def test_ile_methyl():
       assert any(x[0] == alt and x[1].startswith('stagger chain A') and
                  x[1].endswith('ILE 14 ' + methyl) for x in m), (alt, methyl, m)
 
+def test_thr_split_branch():
+  '''3CP5 Thr A 46: CB blank, OG1 and CG2 in A and B; in each pass HG1 gets a
+  rotator and CG2 a stagger Mover, also with the labels swapped. Riding already
+  staggers CG2, so the HG2x torsions are only a secondary check.'''
+  for model, name in ((m_thr, 'thr'), (swap_ab(m_thr), 'thr_swap')):
+    prefix = 'tst_reduce2_optimizer_conformers_' + name
+    desc = run(model, prefix)
+    refused = [l for l in desc.split('\n')
+      if l.startswith('Could not add') and 'THR 46' in l]
+    assert not refused, (name, refused)
+    m = movers(desc)
+    h = iotbx.pdb.input(prefix + '_out.pdb').construct_hierarchy()
+    for alt in ('A', 'B'):
+      assert (alt, 'MoverSingleHydrogenRotator chain A %sTHR 46 HG1' % alt) \
+        in m, (name, alt, m)
+      assert any(x[0] == alt and x[1].startswith('stagger chain A') and
+                 x[1].endswith('THR 46 CG2') for x in m), (name, alt, m)
+      xyz = {}
+      for rg in h.residue_groups():
+        if rg.resseq_as_int() != 46: continue
+        for ag in rg.atom_groups():
+          if ag.altloc in ('', alt):
+            for a in ag.atoms():
+              xyz[a.name.strip()] = a.xyz
+      for hn in ('HG21', 'HG22', 'HG23'):
+        t = scitbx.math.dihedral_angle(
+          sites=[xyz['CA'], xyz['CB'], xyz['CG2'], xyz[hn]], deg=True)
+        assert abs((t % 120.0) - 60.0) < 5.0, (name, alt, hn, t)
+
 if __name__ == "__main__":
   test_c2()
   test_c2_after_ter()
   test_tyr_oh()
   test_lys_nh3()
   test_ile_methyl()
+  test_thr_split_branch()
   print("OK")
