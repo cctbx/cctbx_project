@@ -490,8 +490,11 @@ class Optimizer(object):
 
         if len(watersToDelete) > 0:
           self._infoString += _VerboseCheck(self._verbosity, 1,"Ignored "+str(len(watersToDelete))+" waters due to occupancy or B factor\n")
+          # One pass: list.remove() per water scans the whole list each time.
+          # Atom hashing and equality use memory_id(), as list.remove() does.
+          ignored = set(watersToDelete)
+          self._atoms[:] = [a for a in self._atoms if a not in ignored]
           for a in watersToDelete:
-            self._atoms.remove(a)
             self._spatialQuery.remove(a)
 
         if len(phantoms) > 0:
@@ -2183,6 +2186,43 @@ END
   for r in res:
     if not 'pose Angle 90' in r:
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for B-factor test"
+
+  #========================================================================
+  # Several ignored waters (B factor or occupancy) between kept ones: they leave the
+  # Optimizer's atom list, the remaining atoms keep their order, and the model keeps them.
+  pdb_waters = (
+"""
+CRYST1   93.586  127.886  251.681  90.00  90.00  90.00 I 2 2 2
+HETATM    1  C   ACT A   1       6.494 -47.273 -37.006  1.00 16.65           C
+HETATM    2  O   ACT A   1       5.654 -47.981 -37.645  1.00 15.33           O
+HETATM    3  CH3 ACT A   1       6.790 -47.410 -35.548  1.00 17.13           C
+HETATM    4  OXT ACT A   1       7.110 -46.425 -37.699  1.00 17.05           O
+HETATM  200  O   HOH A 200      12.200 -48.610 -35.148  1.00 50.00           O
+HETATM  201  O   HOH A 201       1.800 -46.810 -34.548  1.00 20.00           O
+HETATM  202  O   HOH A 202      12.200 -42.610 -35.148  0.50 20.00           O
+HETATM  203  O   HOH A 203       1.800 -52.810 -34.548  1.00 20.00           O
+HETATM  204  O   HOH A 204       6.200 -52.610 -41.148  1.00 45.00           O
+END
+"""
+    )
+  dm = DataManager(['model'])
+  dm.process_model_str("pdb_waters.pdb", pdb_waters)
+  model = shift_and_box_model(model = dm.get_model())
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
+  model.process(make_restraints=True, pdb_interpretation_params=p)
+  expected = [a.memory_id() for a in GetAtomsForConformer(model.get_hierarchy().models()[0], "")
+    if a.parent().resname.strip() != 'HOH' or a.parent().parent().resseq_as_int() in (201, 203)]
+  opt = Optimizer(_philLike(), True, model, modelIndex = None, altID = None, verbosity = 1)
+  # Phantom Hydrogens are appended after the model's atoms
+  got = [a.memory_id() for a in opt._atoms if not a.name.strip().startswith('H?')]
+  if got != expected:
+    return "Optimizers.Test(): Wrong atoms or order after ignoring waters"
+  if not "Ignored 3 waters due to occupancy or B factor" in opt.getInfo():
+    return "Optimizers.Test(): Missing ignored-waters line"
+  if sum(1 for ag in model.get_hierarchy().atom_groups() if ag.resname == 'HOH') != 5:
+    return "Optimizers.Test(): Ignored waters were removed from the model"
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
