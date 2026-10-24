@@ -93,8 +93,9 @@ Example:
       plot_deviation_histogram = False
         .type = bool
         .style = hidden
-        .help = Plot (matplotlib) a histogram of the C-beta deviations \
-                projected onto the dihedralNABB = 45 degree axis.
+        .help = Plot (matplotlib) a histogram of the C-beta deviations, \
+                after any phi/psi correction. With mahalanobis_z_score, \
+                plot the Mahalanobis distances d instead.
       exclude_d_peptides = False
         .type = bool
         .style = hidden

@@ -73,7 +73,8 @@ def print_stats(stats: dict, out=sys.stdout) -> None:
 import statistics as st
 
 
-def plot_histogram(data: list[float], bins: int | str = "auto", title: str = "Histogram") -> None:
+def plot_histogram(data: list[float], bins: int | str = "auto", title: str = "Histogram",
+                   xlabel: str = "Value") -> None:
     import matplotlib.pyplot as plt
     if not data:
         raise ValueError("data must not be empty")
@@ -88,7 +89,7 @@ def plot_histogram(data: list[float], bins: int | str = "auto", title: str = "Hi
     ax.axvline(median, color="green", linestyle="-.", linewidth=1.5, label=f"Median: {median:.2f}")
 
     ax.set_title(title)
-    ax.set_xlabel("Value")
+    ax.set_xlabel(xlabel)
     ax.set_ylabel("Frequency")
     ax.set_yscale("log")
     ax.legend()

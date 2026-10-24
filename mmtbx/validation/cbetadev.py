@@ -212,6 +212,7 @@ class cbetadev(validation):
     new_outliers=[]
     outliers_removed=[]
     self.deviations = []
+    histogram_deviations = []
     self.mahalanobis = None
     # [model id, chain id, resname, resid, altloc, chiral volume, kind, dev]
     self.ca_chirality = []
@@ -253,7 +254,7 @@ class cbetadev(validation):
                 dihedralNABB = result.dihedral
                 betaxyz = result.ideal
                 if (dev is None) : continue
-                if show_deviation_stats or plot_deviation_histogram:
+                if show_deviation_stats:
                   self.deviations.append(project_onto_x(dev, dihedralNABB-45, degrees=True))
                   assert abs(self.deviations[-1])<=dev, print(dev,dihedralNABB,self.deviations[-1])
                 resCB = relevant_atoms[" CB "]
@@ -304,6 +305,8 @@ class cbetadev(validation):
                       elif not start and finish:
                         if rg not in new_outliers:
                           new_outliers.append([rg.id_str(), phi_psi])
+                if plot_deviation_histogram and not (exclude_d_peptides and dev>=2.):
+                  histogram_deviations.append(dev)
                 if(exclude_d_peptides and dev>=2.):
                   pass
                 elif(dev >=0.25 or outliers_only==False or mahalanobis_z_score):
@@ -386,18 +389,31 @@ class cbetadev(validation):
     else:
       self.percent_outliers = None
 
-    if (show_deviation_stats or plot_deviation_histogram) and not self.deviations:
-      print('\n  No C-beta deviations for statistics or histogram\n', file=out)
-    elif show_deviation_stats or plot_deviation_histogram:
-      from mmtbx.validation.describe import describe, print_stats, plot_histogram
-      if show_deviation_stats:
-        print('\n  Projected C-beta deviation statistics (Angstrom)\n', file=out)
-        print_stats(describe(self.deviations), out=out)
-        print(f'\nAverage deviation : {sum(self.deviations)/len(self.deviations):0.3f}\n',
-              file=out)
-      if plot_deviation_histogram:
-        plot_histogram(self.deviations, bins=20,
-                       title="Projected C-beta deviations")
+    if show_deviation_stats and not self.deviations:
+      print('\n  No C-beta deviations for statistics\n', file=out)
+    elif show_deviation_stats:
+      from mmtbx.validation.describe import describe, print_stats
+      print('\n  Projected C-beta deviation statistics (Angstrom)\n', file=out)
+      print_stats(describe(self.deviations), out=out)
+      print(f'\nAverage deviation : {sum(self.deviations)/len(self.deviations):0.3f}\n',
+            file=out)
+    if plot_deviation_histogram:
+      # the deviations as reported (after any correction) or, if scored,
+      # the Mahalanobis distances
+      if mahalanobis_z_score:
+        values = [p[0].mahalanobis_d for p in mahalanobis_pending
+                  if p[0].mahalanobis_d is not None]
+        title = 'C-beta deviation Mahalanobis distances'
+        xlabel = 'd'
+      else:
+        values = histogram_deviations
+        title = 'C-beta deviations'
+        xlabel = 'Deviation (Angstrom)'
+      if not values:
+        print('\n  No values for the histogram\n', file=out)
+      else:
+        from mmtbx.validation.describe import plot_histogram
+        plot_histogram(values, bins=20, title=title, xlabel=xlabel)
 
   def show_old_output(self, out, verbose=False, prefix="pdb"):
     show_mahalanobis = (self.mahalanobis is not None)
