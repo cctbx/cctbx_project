@@ -8,7 +8,7 @@ import math
 def make_inputs(n_refl, centric, seed=0, teps=1.0):
   # Deterministic pseudo-random-ish inputs (no RNG dependency) covering a
   # spread of magnitudes, chosen so that dobs*sigmaa stays comfortably
-  # below sqrt(teps) (i.e. v_e = teps - (dobs*sigmaa)^2 > 0) for every
+  # below 1 (i.e. v_e = teps*(1 - (dobs*sigmaa)^2) > 0) for every
   # reflection, avoiding the negative-variance guard in the basic checks.
   f_eff = flex.double([0.3 + 0.17 * ((seed + i) % 7) for i in range(n_refl)])
   dobs = flex.double([0.4 + 0.05 * ((seed + i) % 6) for i in range(n_refl)])
@@ -99,16 +99,16 @@ def exercise_resn_scale_invariance():
   assert approx_equal(base, scaled_val, eps=1.e-9)
 
 def exercise_negative_variance_guard():
-  # When teps is small enough that v_e = teps - (dobs*sigmaa)^2
+  # When dobs*sigmaa >= 1, so that v_e = teps*(1 - (dobs*sigmaa)^2)
   # is <= 0, the target must contribute exactly zero for that reflection
   # rather than producing a NaN/inf or spurious gradient.
   n_refl = 3
   inputs = make_inputs(n_refl, centric=False, seed=5)
-  # Force (dobs*sigmaa)^2 to exceed teps for every reflection.
-  inputs["dobs"] = flex.double([0.95, 0.9, 0.97])
-  inputs["sigmaa"] = flex.double([0.9, 0.9, 0.9])
+  # Force (dobs*sigmaa)^2 to reach 1 for every reflection.
+  inputs["dobs"] = flex.double([1.0, 0.98, 1.0])
+  inputs["sigmaa"] = flex.double([1.0, 1.05, 1.1])
   inputs["scatfrac"] = flex.double([1.0, 1.0, 1.0])
-  inputs["teps"] = flex.double([0.5, 0.5, 0.5])
+  inputs["teps"] = flex.double([0.5, 1.0, 1.7])
   result = target_work(inputs, compute_gradients=True)
   for t in result.target_per_reflection():
     assert t == 0.0
@@ -183,43 +183,38 @@ def exercise_sigmaa_scatfrac_finite_difference_gradients(teps):
 
 def _reference_target_three_term_form(
       f_eff, f_calc, dobs, sigmaa, scatfrac, k, teps, resn, centric):
-  """ The LLGI target for one reflection in phasertng's three-term form:
-  the Wilson/null-hypothesis term wll = EOBS^2/teps = feff^2/(teps^2*
-  resn^2) added separately after subtracting feff^2/V, with V = TEPS -
-  (Dobs sigmaA)^2 and mean Dobs sigmaA Ecalc, Ecalc = k Fcalc/(sqrt(TEPS
-  ScatFrac) RESN). llgi.h combines the two feff terms into -(D^2/teps)*
-  feff^2/V, D = Dobs sigmaA; this independent implementation checks
-  that. """
+  """ The LLGI target for one reflection in phasertng's three-term form
+  (function.cc target_gradient_hessian) in phasertng's variables:
+  EOBS = FEFF/RESN (DagLikelihood), DobsSigaEcalc = sqrt(TEPS) D Ecalc
+  with Ecalc = k Fcalc/(sqrt(TEPS ScatFrac) RESN) and D = Dobs sigmaA,
+  V = TEPS - DobsSigaSqr with DobsSigaSqr = TEPS D^2, and the
+  Wilson/null-hypothesis term wll = EOBS^2/TEPS added separately.
+  llgi.h combines the two feff terms into -D^2 feff^2/V on the F scale;
+  this independent implementation checks that. """
   from scitbx.math import bessel_ln_of_i0
   big_d = dobs * sigmaa
-  d = big_d * k / math.sqrt(scatfrac)
-  resn_sq = resn * resn
-  v_e = teps - big_d * big_d
-  if(v_e <= 0.0):
+  eobs = f_eff / resn
+  ec = big_d * k * f_calc / (math.sqrt(scatfrac) * resn)
+  v = teps - teps * big_d * big_d
+  if(v <= 0.0):
     return 0.0
-  v = teps * resn_sq * v_e
-  teps_resn_sq = teps * resn_sq
-  feff_sq = f_eff * f_eff
-  ec_sq = (d * f_calc) ** 2
-  x = 2.0 * f_eff * (d * f_calc) / v
-  wll = feff_sq / (teps * teps_resn_sq)
+  eobs_sq = eobs * eobs
+  x = 2.0 * eobs * ec / v
+  wll = eobs_sq / teps
+  ll = -(math.log(v / teps) + (eobs_sq + ec * ec) / v)
   if(not centric):
-    ll = -(math.log(v / (teps * teps_resn_sq)) + (feff_sq + ec_sq) / v)
     ll += bessel_ln_of_i0(x)
     ll += wll
   else:
     wll /= 2.0
-    ll_core = -(math.log(v / (teps * teps_resn_sq)) + (feff_sq + ec_sq) / v)
     x_half = x / 2.0
     ln_cosh = x_half + math.log((1.0 + math.exp(-2.0 * x_half)) / 2.0)
-    ll = ll_core / 2.0 + ln_cosh + wll
+    ll = ll / 2.0 + ln_cosh + wll
   return -ll
 
 def exercise_target_matches_three_term_form():
-  # llgi.h's target_one_h (with the multiplier D^2/TEPS on feff^2)
-  # against phasertng's three-term form, including TEPS != 1, where
-  # D^2/TEPS and D^2 differ, and ScatFrac and k != 1, which enter the mean
-  # only.
+  # llgi.h's target_one_h against phasertng's three-term form, including
+  # TEPS != 1, and ScatFrac and k != 1, which enter the mean only.
   import random
   rnd = random.Random(7)
   n_checked = 0
@@ -230,7 +225,7 @@ def exercise_target_matches_three_term_form():
     sigmaa = rnd.uniform(0.05, 0.95)
     scatfrac = rnd.uniform(0.3, 1.4)
     k = rnd.uniform(0.5, 1.5)
-    teps = 1.0 if (trial % 2 == 0) else rnd.uniform(1.0, 3.0)
+    teps = 1.0 if (trial % 2 == 0) else rnd.uniform(0.3, 3.0)
     resn = rnd.uniform(0.5, 20.0)
     for centric in (False, True):
       expected = _reference_target_three_term_form(
@@ -256,7 +251,7 @@ def exercise_target_matches_three_term_form():
   assert n_checked == 800, n_checked  # 400 trials x {acentric, centric}
 
 def exercise_target_is_symmetric_in_feff_and_fc():
-  # The target depends on feff and fc through (D^2/teps)*feff^2,
+  # The target depends on feff and fc through D^2*feff^2,
   # (d*fc)^2 and the Bessel argument, so at teps == 1, scatfrac == 1 and
   # k == 1 (d == D) swapping feff and fc must leave it unchanged.
   import random
@@ -283,6 +278,51 @@ def exercise_target_is_symmetric_in_feff_and_fc():
       assert approx_equal(t(a, b), t(b, a), eps=1.e-10), (
         t(a, b), t(b, a), a, b, centric)
 
+def exercise_teps_matches_tncs_frame():
+  # TEPS is the tNCS modulation of both the expected intensity and the
+  # error variance, so the target and its gradient at TEPS must equal the
+  # tncs_frame path with u = t = TEPS and TEPS = 1
+  import random
+  rnd = random.Random(5)
+  n_refl = 40
+  inputs = make_inputs(n_refl, centric=False, seed=4)
+  inputs["teps"] = flex.double([rnd.uniform(0.3, 3.0) for i in range(n_refl)])
+  inputs["centric_flags"] = flex.bool([(i % 3 == 0) for i in range(n_refl)])
+  teps = target_work(inputs, compute_gradients=True)
+  frame = ext.llgi_target_and_gradients(
+    f_eff=inputs["f_eff"],
+    r_free_flags=inputs["r_free_flags"],
+    f_calc=inputs["f_calc"],
+    dobs=inputs["dobs"],
+    sigmaa=inputs["sigmaa"],
+    scatfrac=inputs["scatfrac"],
+    scale_factor=1.0,
+    teps=flex.double(n_refl, 1.0),
+    resn=inputs["resn"],
+    centric_flags=inputs["centric_flags"],
+    compute_gradients=True,
+    hybrid=None,
+    tncs_u=inputs["teps"],
+    tncs_t=inputs["teps"])
+  assert approx_equal(teps.target_per_reflection(),
+    frame.target_per_reflection(), eps=1.e-9)
+  assert approx_equal(teps.gradients_work(), frame.gradients_work(),
+    eps=1.e-9)
+  args = dict(f_eff=inputs["f_eff"], selection=~inputs["r_free_flags"],
+    f_calc=inputs["f_calc"], dobs=inputs["dobs"], sigmaa=inputs["sigmaa"],
+    scatfrac=inputs["scatfrac"], scale_factor=1.0, resn=inputs["resn"],
+    centric_flags=inputs["centric_flags"], hybrid=None)
+  s0 = ext.llgi_sigmaa_scatfrac_target_and_gradients(teps=inputs["teps"],
+    **args)
+  s1 = ext.llgi_sigmaa_scatfrac_target_and_gradients(
+    teps=flex.double(n_refl, 1.0), tncs_u=inputs["teps"],
+    tncs_t=inputs["teps"], **args)
+  assert approx_equal(s0.target(), s1.target(), eps=1.e-9)
+  assert approx_equal(s0.d_target_by_dsigmaa(), s1.d_target_by_dsigmaa(),
+    eps=1.e-9)
+  assert approx_equal(s0.d_target_by_dscatfrac(), s1.d_target_by_dscatfrac(),
+    eps=1.e-9)
+
 def exercise():
   for teps in (1.0, 1.7):
     exercise_finite_difference_gradients(centric=False, teps=teps)
@@ -292,6 +332,7 @@ def exercise():
   exercise_negative_variance_guard()
   exercise_scatfrac_sensitivity()
   exercise_target_matches_three_term_form()
+  exercise_teps_matches_tncs_frame()
   exercise_target_is_symmetric_in_feff_and_fc()
   print("OK")
 

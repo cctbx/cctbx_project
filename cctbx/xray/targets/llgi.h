@@ -22,18 +22,20 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
       (see class target_and_gradients docstring below).
 
       Change of variables (E-scale quantity -> F-scale quantity used here):
-        EOBS = FEFF/(sqrt(TEPS)*RESN)                 -> feff (unnormalized)
+        EOBS = FEFF/RESN                               -> feff (unnormalized)
         Ecalc = k*Fcalc/sqrt(TEPS*RESN^2*ScatFrac)     -> fc   (unnormalized,
                                                                  |Fcalc|)
-        D = Dobs*sigmaA (mean D*Ecalc)                 -> d = D*k/sqrt(
+        D = Dobs*sigmaA (mean sqrt(TEPS)*D*Ecalc)      -> d = D*k/sqrt(
                                                                  ScatFrac)
-        V_E = TEPS - D^2                               -> V_F = TEPS*RESN^2
-                                                                 *V_E
+        V_E = TEPS - TEPS*D^2                          -> V_F = RESN^2*V_E
       ScatFrac is the model's own normalisation: the mean of
       k^2|Fcalc|^2/(TEPS*RESN^2) as a function of resolution (the fraction
       of the expected intensity the model accounts for), so that Ecalc has
       unit mean square. It enters the mean only; the variance depends on
-      sigmaA alone, as in phasertng (V = TEPS - DobsSigaSqr).
+      sigmaA alone, as in phasertng (V = TEPS - DobsSigaSqr, DobsSigaSqr
+      the expected |DobsSigaEcalc|^2, here TEPS*D^2, so that the model's
+      <EOBS^2> is TEPS, as is the data's). This is tncs_frame with
+      u = t = TEPS.
 
       feff     = effective amplitude (Feff), NOT normalized to the E-value
                  scale. Supplied by phasertng.nacelle as the FEFF column.
@@ -86,14 +88,15 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
     double big_d = dobs * sigmaa;
     double d = big_d * k / std::sqrt(scatfrac);
     double resn_sq = resn * resn;
-    // v_e is the E-scale variance, function.cc's V = teps - DobsSigaSqr;
-    // v is v_e rescaled to the F-scale, v = teps*resn^2*v_e.
-    double v_e = teps - big_d * big_d;
+    // v_e is the E-scale variance, function.cc's V = teps - DobsSigaSqr
+    // with DobsSigaSqr = teps*D^2; v is v_e rescaled to the F-scale,
+    // v = resn^2*v_e.
+    double v_e = teps * (1. - big_d * big_d);
     if (v_e <= 0.0) {
       // function.cc: negative_variance() guard; no contribution.
       return 0.0;
     }
-    double v = teps * resn_sq * v_e;
+    double v = resn_sq * v_e;
     double teps_resn_sq = teps * resn_sq;
     double feff_sq = feff * feff;
     double ec = d * fc; // F-scale analog of EC = |DobsSigaEcalc|
@@ -101,27 +104,23 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
     double x = 2. * feff * ec / v; // function.cc: X (scale-invariant)
     // Symmetrised form (F-scale analog of the simplification in llgi_e.h).
     // phasertng's function.cc carries the Wilson/null-hypothesis baseline
-    // as a separate additive wll = EOBS^2/teps = feff^2/(teps^2*resn^2),
+    // as a separate additive wll = EOBS^2/teps = feff^2/(teps*resn^2),
     // added after subtracting feff^2/V. Those two feff terms collapse:
     //
-    //   -feff^2/V + feff^2/(teps^2*resn^2) = -(D^2/teps)*feff^2/V
+    //   -feff^2/V + feff^2/(teps*resn^2) = -D^2*feff^2/V
     //
-    // (using V = teps*resn^2*(teps - D^2)), so the gain follows directly
-    // by scaling feff^2 -- no separate baseline term to add and subtract.
-    //
-    // The multiplier is D^2/TEPS, not D^2: the two coincide only at
-    // TEPS == 1 (tst_llgi.py checks the TEPS != 1 case against the
-    // three-term form).
-    double ee_sq = (big_d * big_d / teps) * feff_sq;
+    // (using V = teps*resn^2*(1 - D^2)), so the gain follows directly
+    // by scaling feff^2 -- no separate baseline term to add and subtract
+    // (tst_llgi.py checks this against the three-term form, TEPS != 1).
+    double ee_sq = big_d * big_d * feff_sq;
     double ll;
     if(!centric) {
-      // function.cc: log(V_E/teps) = log(v/(teps*resn^2)/teps)
-      //                            = log(v/(teps^2*resn^2))
-      ll = -(std::log(v / (teps * teps_resn_sq)) + (ee_sq + ec_sq) / v);
+      // function.cc: log(V_E/teps) = log(v/(teps*resn^2))
+      ll = -(std::log(v / teps_resn_sq) + (ee_sq + ec_sq) / v);
       ll += scitbx::math::bessel::ln_of_i0(x); // function.cc: tbl_alogchI0
     }
     else {
-      double ll_core = -(std::log(v / (teps * teps_resn_sq))
+      double ll_core = -(std::log(v / teps_resn_sq)
                           + (ee_sq + ec_sq) / v);
       double x_half = x / 2.0;
       // function.cc: tbl_alogch(X) approximates log(cosh(X)).
@@ -168,11 +167,11 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
     }
     double big_d = dobs * sigmaa;
     double d = big_d * k / std::sqrt(scatfrac);
-    double v_e = teps - big_d * big_d;
+    double v_e = teps * (1. - big_d * big_d);
     if (v_e <= 0.0) {
       return d_target_over_fc;
     }
-    double v = teps * resn * resn * v_e;
+    double v = resn * resn * v_e;
     double ec = d * fc; // function.cc: EC
     double x = 2. * feff * ec / v; // function.cc: X
     double dll_by_dec; // function.cc: dLL_by_dEC
@@ -193,7 +192,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
   //! Gradient of the LLGI target for one Miller index w.r.t. sigmaA and
   //! ScatFrac, for the sigmaA/ScatFrac fits.
   /*! sigmaA enters the variance through D = dobs*sigmaa (V = teps*resn^2*
-      (teps - D^2), and the data term (D^2/teps)*feff^2) and the mean
+      (1 - D^2), and the data term D^2*feff^2) and the mean
       through d = D*k/sqrt(scatfrac) (EC = d*fc); ScatFrac enters the mean
       only. Returns (d target/d sigmaa, d target/d scatfrac), both with the
       sign flip of target_one_h's minimize-me convention (checked by
@@ -222,22 +221,22 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi {
     }
     double big_d = dobs * sigmaa;
     double d = big_d * k / std::sqrt(scatfrac);
-    double v_e = teps - big_d * big_d;
+    double v_e = teps * (1. - big_d * big_d);
     if (v_e <= 0.0) {
       return std::make_pair(0.0, 0.0);
     }
     double resn_sq = resn * resn;
-    double v = teps * resn_sq * v_e;
+    double v = resn_sq * v_e;
     double feff_sq = feff * feff;
     double ec = d * fc;
-    double ee_sq = (big_d * big_d / teps) * feff_sq;
+    double ee_sq = big_d * big_d * feff_sq;
     double ec_sq = ec * ec;
     double x = 2. * feff * ec / v;
-    // ll_core = -(log(v/(teps^2 resn^2)) + (ee_sq + ec_sq)/v), and the
+    // ll_core = -(log(v/(teps resn^2)) + (ee_sq + ec_sq)/v), and the
     // Bessel (acentric) or log cosh (centric, with ll_core/2) term in x.
     // Partial derivatives w.r.t. D (through v and ee_sq) and d (ec):
     double dv_by_dbig_d = -2. * big_d * teps * resn_sq;
-    double dee_by_dbig_d = 2. * big_d * feff_sq / teps;
+    double dee_by_dbig_d = 2. * big_d * feff_sq;
     double dcore_by_dbig_d = -dv_by_dbig_d / v
       - (dee_by_dbig_d * v - (ee_sq + ec_sq) * dv_by_dbig_d) / (v * v);
     double dx_by_dbig_d = -x * dv_by_dbig_d / v;
