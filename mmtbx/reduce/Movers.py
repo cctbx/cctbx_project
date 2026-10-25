@@ -1181,14 +1181,15 @@ class MoverHisFlip(object):
     ne2HNew = lvec3(ce1Atom.xyz) + ne2HVec.length() * ce1HVec.normalize()
 
     #########################
-    # There are eight possible states for the flipped Histidine.  The first four
-    # use the original orientation and the second four use the swapped or fixed-up
+    # There are six possible states for the flipped Histidine.  The first three
+    # use the original orientation and the second three use the swapped or fixed-up
     # orientation.  The swapped orientation is used for the coarse tests and if
     # one is accepted, then the fixed-up orienations are used in place of the swapped.
-    #   For each location, we have four cases of Hydrogen
-    # placement; both (as found), first N Hydrogen removed, second N Hydrogen
-    # removed, and both Hydrogens removed.  When a Hydrogen is removed, the associated
-    # N is turned into an Acceptor; when it is present, the N is not an acceptor.
+    #   For each location, we have three cases of Hydrogen
+    # placement; both (as found), first N Hydrogen removed, and second N Hydrogen
+    # removed.  A ring without either N Hydrogen is not offered.  When a Hydrogen is
+    # removed, the associated N is turned into an Acceptor; when it is present, the N
+    # is not an acceptor.
 
     #########################
     # Compute the list of positions for all of the atoms. This consists of the original
@@ -1212,11 +1213,11 @@ class MoverHisFlip(object):
 
     self._coarsePositions = []
     if self._enabledFlipStates & 1:
-      for i in range(4):
+      for i in range(3):
         # Only move the first 9 atoms when optimizing, the ones that move and the one they may shield.
         self._coarsePositions.append(startPos[:9])
     if self._enabledFlipStates & 2:
-      for i in range(4):
+      for i in range(3):
         # Only move the first 9 atoms when optimizing, the ones that move and the one they may shield.
         self._coarsePositions.append(newPos[:9])
 
@@ -1227,13 +1228,13 @@ class MoverHisFlip(object):
     secondDockIndex = 2
     fixedUp = _rotateHingeDock(self._atoms, hingeIndex, firstDockIndex, secondDockIndex, caAtom)
 
-    # No fix-up for coarse positions 0-3, do the above adjustment for position3 4-7
+    # No fix-up for coarse positions 0-2, do the above adjustment for positions 3-5
     self._fixUpPositions = [ ]
     if self._enabledFlipStates & 1:
-      for i in range(4):
+      for i in range(3):
         self._fixUpPositions.append([])
     if self._enabledFlipStates & 2:
-      for i in range(4):
+      for i in range(3):
         if enableFixup:
           self._fixUpPositions.append(fixedUp)
         else:
@@ -1241,8 +1242,8 @@ class MoverHisFlip(object):
 
     #########################
     # Compute the ExtraAtomInfo and deleteMe values.  They are all as provided and False
-    # for the initial configuration (0th and 4th).  The first Hydrogen and
-    # Nitrogen are removed and adjusted for cases 1&3, 5&7, the second for 2&3 and 6&7.
+    # for the initial configuration (0th and 3rd).  The first Hydrogen and
+    # Nitrogen are removed and adjusted for cases 1 and 4, the second for 2 and 5.
     # We make copies of each by constructing new ones so we can independently change them.
     self._extras = []
     self._deleteMes = []
@@ -1255,11 +1256,11 @@ class MoverHisFlip(object):
         deleteMes.append(False)
 
       # Replace any that need it for this configuration.
-      if i % 4 == 1 or i % 4 == 3: # Remove the Hydrogen from NE2
+      if i % 3 == 1: # Remove the Hydrogen from NE2
         extras[0].isAcceptor = True
         deleteMes[1] = True
 
-      if i % 4 == 2 or i % 4 == 3: # Remove the Hydrogen from ND1
+      if i % 3 == 2: # Remove the Hydrogen from ND1
         extras[4].isAcceptor = True
         deleteMes[5] = True
 
@@ -1270,19 +1271,17 @@ class MoverHisFlip(object):
     #########################
     # Compute the preference energies.
     # There is an energy penalty of -nonFlipPreference
-    # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens;
-    # The doubly-deprotenated case (both Hydrogens removed) has a penalty of -1.0.
+    # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens.
     # The -nonFlipPreference penalty is to prevent uncertain flips from happening -- unless the
     # score is this much better we leave it alone.
     self._preferenceEnergies = []
     if self._enabledFlipStates & 1:
-      self._preferenceEnergies.extend([ 0.0 - 0.05,  0.0,  0.0,  0.0 - 1.0])
+      self._preferenceEnergies.extend([ 0.0 - 0.05,  0.0,  0.0])
     if self._enabledFlipStates & 2:
       self._preferenceEnergies.extend([
         -self._nonFlipPreference - 0.05,
         -self._nonFlipPreference,
-        -self._nonFlipPreference,
-        -self._nonFlipPreference - 1.0])
+        -self._nonFlipPreference])
 
   def CoarsePositions(self):
     # returns: The potential coarse positions.
@@ -1298,12 +1297,16 @@ class MoverHisFlip(object):
     return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex],
       self._extras[coarseIndex], self._deleteMes[coarseIndex])
 
+  def EnabledFlipStates(self):
+    # returns: 1 unflipped only, 2 flipped only, 3 both.
+    return self._enabledFlipStates
+
   def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
     if self._enabledFlipStates == 3:
       if coarseIndex >= len(self.CoarsePositions().positions) or fineIndex is not None and (
           fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
         return "Unrecognized state . ."
-      elif coarseIndex < 4:
+      elif coarseIndex < 3:
         ret = "Unflipped"
       else:
         ret = "Flipped"
@@ -1314,11 +1317,11 @@ class MoverHisFlip(object):
     else:
       return "Unrecognized flip states ."
 
-    if coarseIndex % 4 == 0 or coarseIndex % 4 == 1:
+    if coarseIndex % 3 == 0 or coarseIndex % 3 == 1:
       ret += " HD1Placed"
     else:
       ret += " HD1NotPlaced"
-    if coarseIndex % 4 == 0 or coarseIndex % 4 == 2:
+    if coarseIndex % 3 == 0 or coarseIndex % 3 == 2:
       ret += " HE2Placed"
     else:
       ret += " HE2NotPlaced"
@@ -2667,20 +2670,21 @@ def Test():
 
     mover = MoverHisFlip(ne2, bondedNeighborLists, extrasMap, 0.5)
 
-    # Ensure that the coarse-flip results meet the expections (spot check 4th position):
+    # Ensure that the coarse-flip results meet the expections (spot check position 3, the first flipped):
     # 1) N and C atoms are flipped in pairs
     # 2) H remain at the same distance from the new locations.
 
     coarse = mover.CoarsePositions()
-    if len(coarse.positions) != 8:
-      return "Movers.Test() MoverHisFlip: Did not find 8 locations: found "+str(len(coarse.positions))
-    if coarse.preferenceEnergies[0] <= coarse.preferenceEnergies[4]:
+    if len(coarse.positions) != 6:
+      return "Movers.Test() MoverHisFlip: Did not find 6 locations: found "+str(len(coarse.positions))
+    if coarse.preferenceEnergies[0] <= coarse.preferenceEnergies[3]:
       return "Movers.Test() MoverHisFlip: Original orientation not preferred"
     if coarse.preferenceEnergies[0] >= coarse.preferenceEnergies[1]:
       return "Movers.Test() MoverHisFlip: Hydrogen removal not preferred"
-    if coarse.preferenceEnergies[3] >= coarse.preferenceEnergies[0]:
-      return "Movers.Test() MoverHisFlip: Both Hydrogen removal preferred"
-    newPos = coarse.positions[4]
+    for i in range(len(coarse.positions)):
+      if coarse.deleteMes[i][1] and coarse.deleteMes[i][5]:
+        return "Movers.Test() MoverHisFlip: Both Hydrogens removed, pos "+str(i)
+    newPos = coarse.positions[3]
     dist = (lvec3(newPos[0]) - lvec3(ce1.xyz)).length()
     if dist > 0.01:
       return "Movers.Test() MoverHisFlip: NE2 moved incorrectly: "+str(dist)
@@ -2714,14 +2718,14 @@ def Test():
     if abs(dHydrogen - oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHisFlip: Bad coarse ND1 hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-    # Ensure that the FixUp results meet the specifications (spot check 4th position):
+    # Ensure that the FixUp results meet the specifications (spot check position 3):
     # 1) New CE1 on the line from the alpha carbon to the old NE2
     # 2) The line from the new NE2 to the alpha carbon lies on the
     #    line from the original CE1 to the alpha carbon
     # 3) New plane of CE1, NE2, Alpha Carbon matches old plane, but flipped
     # 4) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
-    fixedUp = mover.FixUp(4).positions
+    fixedUp = mover.FixUp(3).positions
     newCE1Dir = (fixedUp[2] - lvec3(ca.xyz)).normalize()
     oldNE2Dir = (rvec3(ne2.xyz) - rvec3(ca.xyz)).normalize()
     if (newCE1Dir * oldNE2Dir)[0] < 0.9999:
@@ -2776,8 +2780,8 @@ def Test():
       return "Movers.Test() MoverHisFlip: Bad CD2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     # Ensure that the extraInfo and deleteMe information matches expectations:
-    # 1) First hydrogen removed and first N is an acceptor on % = 1
-    # 2) Second hydrogen removed and second N is an acceptor on % = 2
+    # 1) First hydrogen removed and first N is an acceptor on % 3 = 1
+    # 2) Second hydrogen removed and second N is an acceptor on % 3 = 2
     for i in range(6):
       coarseNE2Accept = coarse.extraInfos[i][0].isAcceptor
       coarseNE2HDelete = coarse.deleteMes[i][1]
@@ -2787,7 +2791,7 @@ def Test():
       coarseND1HDelete = coarse.deleteMes[i][5]
       fixedUpND1Accept = mover.FixUp(i).extraInfos[4].isAcceptor
       fixedUpND1HDelete = mover.FixUp(i).deleteMes[5]
-      if i % 4 == 1 or i % 4 == 3:
+      if i % 3 == 1:
         if not coarseNE2Accept:
           return "Movers.Test() MoverHisFlip: No NE2 acceptor, pos "+str(i)
         if not coarseNE2HDelete:
@@ -2805,7 +2809,7 @@ def Test():
           return "Movers.Test() MoverHisFlip: Unexpected fixup NE2 acceptor, pos "+str(i)
         if fixedUpNE2HDelete:
           return "Movers.Test() MoverHisFlip: Unexpected fixup NE2 hydrygen deletion, pos "+str(i)
-      if i % 4 == 2 or i % 4 == 3:
+      if i % 3 == 2:
         if not coarseND1Accept:
           return "Movers.Test() MoverHisFlip: No ND1 acceptor, pos "+str(i)
         if not coarseND1HDelete:
@@ -2829,10 +2833,12 @@ def Test():
       return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(1,0, False)
     if mover.PoseDescription(2,0, False) != "Unflipped HD1NotPlaced HE2Placed .":
       return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 2, got "+mover.PoseDescription(2,0, False)
-    if mover.PoseDescription(3,0, False) != "Unflipped HD1NotPlaced HE2NotPlaced .":
-      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 3, got "+mover.PoseDescription(3,0, False)
-    if mover.PoseDescription(4,0, True) != "Flipped HD1Placed HE2Placed AnglesAdjusted":
-      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 4, got "+mover.PoseDescription(4,0, True)
+    if mover.PoseDescription(3,0, True) != "Flipped HD1Placed HE2Placed AnglesAdjusted":
+      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 3, got "+mover.PoseDescription(3,0, True)
+    if mover.PoseDescription(5,0, False) != "Flipped HD1NotPlaced HE2Placed AnglesNotAdjusted":
+      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 5, got "+mover.PoseDescription(5,0, False)
+    if mover.PoseDescription(6,0, False) != "Unrecognized state . .":
+      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 6, got "+mover.PoseDescription(6,0, False)
 
     # Verify that the coarse and fine results don't change when the atom position is moved after
     # the Mover has been constructed.
@@ -2842,14 +2848,14 @@ def Test():
     # Try locking down the state to only non-flipped and then only flipped and make sure we get
     # the expected number of states and behavior.
     mover = MoverHisFlip(ne2, bondedNeighborLists, extrasMap, 0.5, 1, True)
-    if len(mover.CoarsePositions().positions) != 4:
+    if len(mover.CoarsePositions().positions) != 3:
       return "Movers.Test() MoverHisFlip: Unexpected position count for Unflipped, got "+len(mover.CoarsePositions().positions)
     if 'Unflipped' not in mover.PoseDescription(0, 0, False):
       return "Movers.Test() MoverHisFlip: Unexpected PoseDescription for Unflipped, got "+mover.PoseDescription(0, 0, False)
     if '.' != mover.PoseDescription(0, 0, True).split()[-1]:
       return "Movers.Test() MoverHisFlip: Unexpected angle description Unflipped, got "+mover.PoseDescription(0, 0, False)
     mover = MoverHisFlip(ne2, bondedNeighborLists, extrasMap, 0.5, 2, True)
-    if len(mover.CoarsePositions().positions) != 4:
+    if len(mover.CoarsePositions().positions) != 3:
       return "Movers.Test() MoverHisFlip: Unexpected position count for Flipped, got "+len(mover.CoarsePositions().positions)
     if 'Flipped' not in mover.PoseDescription(0, 0, True):
       return "Movers.Test() MoverHisFlip: Unexpected PoseDescription for Flipped, got "+mover.PoseDescription(0, 0, False)

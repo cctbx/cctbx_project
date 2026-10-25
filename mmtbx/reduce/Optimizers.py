@@ -803,7 +803,9 @@ class Optimizer(object):
             nitrogen = m.CoarsePositions().atoms[0]
             self._amideFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
 
-          elif isinstance(m, Movers.MoverHisFlip) and coarse_loc == 4:
+          # Locked (one-orientation) His were recorded when their Mover was added.
+          elif (isinstance(m, Movers.MoverHisFlip) and m.EnabledFlipStates() == 3 and
+                coarse_loc == len(m.CoarsePositions().positions)//2):
             nitrogen = m.CoarsePositions().atoms[0]
             self._hisFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
 
@@ -1115,11 +1117,13 @@ class Optimizer(object):
           # Find the four positions to check for Nitrogen ionic bonds
           # The two atoms are NE2 (0th atom with its Hydrogen at atom 1) and
           # ND1 (4th atom with its Hydrogen at atom 5).
+          # The first flipped configuration follows the unflipped ones.
           cp = hist.CoarsePositions()
+          flippedConfig = len(cp.positions)//2
           ne2Orig = cp.positions[0][0]
           nd1Orig = cp.positions[0][4]
-          ne2Flip = cp.positions[4][0]
-          nd1Flip = cp.positions[4][4]
+          ne2Flip = cp.positions[flippedConfig][0]
+          nd1Flip = cp.positions[flippedConfig][4]
 
           # See if any are close enough to a positive ion to be ionically bonded.
           # If any are, record whether it is the original or
@@ -1140,9 +1144,9 @@ class Optimizer(object):
                   ', '+n.name.strip()+' rad = '+str(self._extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
                 if dist >= (expected - 0.55) and dist <= (expected + 0.25):
                   # The first two elements in the enumeration come from Histidine configuration 0
-                  # and the second two from configuration 4, so we figure out which one we should
-                  # be in.
-                  bondedConfig = (i // 2) * 4
+                  # and the second two from configuration flippedConfig, so we figure out which one we
+                  # should be in.
+                  bondedConfig = (i // 2) * flippedConfig
                   self._infoString += _VerboseCheck(self._verbosity, 5,'Found ionic bond in coarse configuration '+str(bondedConfig)+'\n')
                   break
             if bondedConfig is not None:
@@ -1164,7 +1168,7 @@ class Optimizer(object):
 
             # If the bonded configuration is the flipped one, then we add it to the list of
             # flipped Histidine Movers so that we can report on it later.
-            if bondedConfig == 4:
+            if bondedConfig == flippedConfig:
               self._hisFlipsPerformed.append(FlippedMoverInfo(alt, a))
 
             # See if we should remove the Hydrogen from each of the two potentially-bonded
