@@ -6,6 +6,7 @@ try:
   import qttbx.qt  # noqa: F401
   tst_list_base.append("$D/regression/tst_phil_widgets.py")
   tst_list_base.append("$D/regression/tst_data_manager_widget.py")
+  tst_list_base.append("$D/regression/tst_svg_view.py")
 except ImportError:
   pass
 
