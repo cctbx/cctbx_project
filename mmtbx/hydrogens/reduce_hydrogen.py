@@ -1255,6 +1255,287 @@ class metal_nh_sites(metal_h_sites):
         candidates.append((i_n, i_h, kind in ('amide', 'N3')))
     return candidates
 
+PRIMARY_AMINE = 'primary amine'
+
+def _unsaturated_atoms(resname, mon_lib_srv, cache):
+  '''
+  Names of the atoms in a double, triple, aromatic or delocalized bond of the
+  restraint dictionary, and of the CCD where it describes the residue
+  (geostd amino acids give every bond as "coval").
+  '''
+  resname = resname.strip()
+  if resname in cache: return cache[resname]
+  names = set()
+  try: cc = mon_lib_srv.get_comp_comp_id_direct(resname)
+  except Exception: cc = None
+  if cc is not None:
+    for b in cc.bond_list:
+      if str(b.type).strip().lower() in ('double', 'triple', 'aromatic',
+                                         'deloc'):
+        names.update((b.atom_id_1.strip(), b.atom_id_2.strip()))
+  if _ccd_describes(cc, resname):
+    from mmtbx.chemical_components import get_cif_dictionary
+    try: cc_cif = get_cif_dictionary(resname)
+    except Exception: cc_cif = None
+    for b in (cc_cif or {}).get('_chem_comp_bond', []):
+      if (str(b.value_order).strip().upper() in ('DOUB', 'TRIP', 'AROM') or
+          str(getattr(b, 'pdbx_aromatic_flag', 'N')).strip().upper() == 'Y'):
+        names.update((b.atom_id_1.strip(), b.atom_id_2.strip()))
+  cache[resname] = names
+  return names
+
+# a placed NH2 is accepted within these of its targets (N-H in A, angles in
+# deg; 6 deg: C-N-M about 95-128 deg). h_h: distinct H; the H-N-H tolerance
+# sets their spacing (tetrahedral: 1.45 A at the X-ray N-H of 0.89 A)
+NH2_TOLERANCE = group_args(d = 0.02, angle = 6., h_h = 1.0)
+
+def place_metal_nh2(r_n, r_c, r_m, targets, fixed=None):
+  """
+  The two H of a metal-bound NH2, constructed from the frame C, N and the
+  metal (r_m: its Cartesian image, symmetry already applied), and accepted
+  only within NH2_TOLERANCE of each H's own targets (targets.d, targets.cnh:
+  N-H and C-N-H per H; targets.hnh: H-N-H, also the M-N-H target, the metal
+  in the place of the third H). A construction, not an exact solution of
+  every dictionary angle: each H lies at its N-H distance, half the H-N-H
+  target out of the C-N-M plane, on the in-plane direction that riding H's
+  2tetra would give for its C-N-H and M-N-H targets. The side is fixed, so
+  the names are: the first H on the side of (C-N) x (M-N), the second on
+  the other (convert_metal_bound_amines(): the first kept name in
+  dictionary order, e.g. HZ2, H2, takes the first side).
+  fixed: the coordinates of a first H that stays (one supplied H): the
+  second H then takes the remaining tetrahedral direction away from C, the
+  metal and that H.
+  Returns ([xyz, xyz], None) in the order of the targets, or (None, reason).
+  """
+  cnm = None
+  try:
+    u10, u20 = (r_c - r_n).normalize(), (r_m - r_n).normalize()
+    cnm = math.degrees(math.acos(max(-1., min(1., u10.dot(u20)))))
+    v0 = u10.cross(u20)
+    if v0.length() < 1.e-3:
+      return None, 'degenerate frame, C-N-M %.0f deg' % cnm
+    v0 = v0.normalize()
+    if fixed is not None:
+      u_f = (fixed - r_n).normalize()
+      w = -(u10 + u20 + u_f)
+      if w.length() < 1.e-3:
+        return None, 'degenerate frame with the supplied H'
+      hs = [fixed, r_n + w.normalize() * targets.d[1]]
+    else:
+      c0 = u10.dot(u20)
+      half = math.radians(targets.hnh) * 0.5
+      c2 = math.cos(math.radians(targets.hnh))
+      hs = []
+      for sign, d, cnh in zip((1, -1), targets.d, targets.cnh):
+        c1 = math.cos(math.radians(cnh))
+        a = (c1 - c0*c2) / (1 - c0*c0)
+        b = (c2 - c0*c1) / (1 - c0*c0)
+        d0 = a * u10 + b * u20
+        if d0.length() < 1.e-3:
+          return None, 'geometry not placeable, C-N-M %.0f deg' % cnm
+        d0 = d0.normalize()
+        hs.append(r_n + d * (math.cos(half) * d0 + sign * math.sin(half) * v0))
+  except (ArithmeticError, ValueError):
+    return None, 'geometry not placeable%s' % (
+      '' if cnm is None else ', C-N-M %.0f deg' % cnm)
+  problem = nh2_placement_problem(r_n, r_c, r_m, hs, targets,
+    check_d = (fixed is None, True))
+  if problem is not None: return None, problem
+  return hs, None
+
+def nh2_placement_problem(r_n, r_c, r_m, hs, targets, check_d=(True, True)):
+  """
+  None if the two H sites hs make an NH2 within NH2_TOLERANCE of targets,
+  else the reason. check_d: whether each H's N-H is checked (not for a
+  supplied H).
+  """
+  cnm = (r_c - r_n).angle(r_m - r_n, deg=True)
+  if len(hs) != 2 or not all(math.isfinite(x) for h in hs for x in h):
+    return 'geometry not placeable, C-N-M %.0f deg' % cnm
+  if (hs[0] - hs[1]).length() < NH2_TOLERANCE.h_h:
+    return 'geometry not placeable, C-N-M %.0f deg (H...H %.2f A)' % (cnm,
+      (hs[0] - hs[1]).length())
+  out = []
+  for h, d, cnh, with_d in zip(hs, targets.d, targets.cnh, check_d):
+    checks = [('C-N-H', (r_c - r_n).angle(h - r_n, deg=True), cnh,
+               NH2_TOLERANCE.angle),
+              ('M-N-H', (r_m - r_n).angle(h - r_n, deg=True), targets.hnh,
+               NH2_TOLERANCE.angle)]
+    if with_d:
+      checks.insert(0, ('N-H', (h - r_n).length(), d, NH2_TOLERANCE.d))
+    for what, value, target, tol in checks:
+      if abs(value - target) > tol:
+        out.append('%s %.1f (target %.1f)' % (what, value, target))
+  hnh = (hs[0] - r_n).angle(hs[1] - r_n, deg=True)
+  if abs(hnh - targets.hnh) > NH2_TOLERANCE.angle:
+    out.append('H-N-H %.1f (target %.1f)' % (hnh, targets.hnh))
+  if out:
+    return 'geometry not placeable, C-N-M %.0f deg: %s' % (cnm, ', '.join(out))
+  return None
+
+class metal_amine_sites(metal_h_sites):
+  '''
+  Primary amines bound to metals (A5 C1b). Primary amine: an N with exactly
+  one non-metal heavy neighbour, a C, in the H's conformer, in no planarity
+  restraint, with neither the N nor that neighbour in a double, triple,
+  aromatic or delocalized bond (amide, amidine, guanidinium, aromatic amine,
+  enamine). Each H on it is judged (covered: NH2). amine[i_h]: the branch
+  that decided (PRIMARY_AMINE or the reason it is not one) and the heavy
+  neighbour i_c (None unless it is one atom). Metals: NH_METAL_ELEMENTS.
+  '''
+  metals = NH_METAL_ELEMENTS
+  covered = 'NH2'
+  state = 'NH3+'
+
+  def __init__(self, model, crystal_symmetry=None, mon_lib_srv=None):
+    self._mon_lib_srv = mon_lib_srv or model.get_mon_lib_srv()
+    self._unsaturated = {}
+    grm = model.get_restraints_manager().geometry
+    self._planar = set(i for p in (grm.planarity_proxies or [])
+                       for i in p.i_seqs)
+    self.amine = {}
+    metal_h_sites.__init__(self, model, crystal_symmetry)
+
+  def amine_class(self, atoms, heavy, i_n, i_h):
+    n, h = atoms[i_n], atoms[i_h]
+    nb = sorted(set(j for j in heavy.get(i_n, []) if _compatible(atoms[j], h)))
+    names = set((atoms[j].parent().parent().memory_id(), atoms[j].name)
+                for j in nb)
+    if len(names) != 1:
+      return group_args(branch='%d heavy neighbours' % len(names), i_c=None)
+    if i_n in self._planar:
+      return group_args(branch='in a planarity restraint', i_c=None)
+    c = atoms[nb[0]]
+    if _atom_element(c) != 'C':
+      return group_args(branch='heavy neighbour %s is not C' % c.name.strip(),
+        i_c=None)
+    unsaturated = lambda a: a.name.strip() in _unsaturated_atoms(
+      a.parent().resname, self._mon_lib_srv, self._unsaturated)
+    if unsaturated(n):
+      branch = 'N in a multiple or aromatic bond'
+    elif unsaturated(c):
+      branch = '%s in a multiple or aromatic bond' % c.name.strip()
+    else:
+      branch = PRIMARY_AMINE
+    return group_args(branch=branch, i_c=nb[0] if len(nb) == 1 else None)
+
+  def _candidates(self, atoms, elements, heavy, h_on):
+    candidates = []
+    for i_n, hs in h_on.items():
+      if elements[i_n] != 'N': continue
+      for i_h in sorted(set(hs)):
+        self.amine[i_h] = self.amine_class(atoms, heavy, i_n, i_h)
+        if self.amine[i_h].branch == PRIMARY_AMINE:
+          candidates.append((i_n, i_h, True))
+    return candidates
+
+def _h_name(h):
+  # name with its altloc, as reported_metal_h()
+  altloc = h.parent().altloc.strip()
+  return h.name.strip() + (' altloc %s' % altloc if altloc else '')
+
+def conformer_groups(items, altloc):
+  '''
+  The H of one N per complete conformer, as _compatible() pairs them:
+  [(altloc, items, mixed)], for each altloc of the H the H of that altloc
+  plus the blank ones; one blank group if no H has an altloc. mixed: the
+  group has blank and alternate H.
+  '''
+  alts = sorted(set(altloc(x) for x in items) - set(['']))
+  if not alts: return [('', list(items), False)]
+  result = []
+  for alt in alts:
+    group = [x for x in items if altloc(x) in ('', alt)]
+    result.append((alt, group, any(altloc(x) == '' for x in group)))
+  return result
+
+def dictionary_nh3_plus(model, n, i_n, mon_lib_srv):
+  '''
+  Whether the dictionary makes N n (i_seq i_n) NH3+: energy type NT3 (also
+  from mod_NH3) or formal charge +1.
+  '''
+  types = getattr(model, '_type_energies', None)
+  if types is not None and i_n < len(types) and types[i_n].strip() == 'NT3':
+    return True
+  try:
+    cc = mon_lib_srv.get_comp_comp_id_direct(n.parent().resname.strip())
+  except Exception:
+    cc = None
+  if cc is None: return False
+  a = cc.atom_dict().get(n.name.strip())
+  return a is not None and a.formal_charge() == 1
+
+def protect_supplied_metal_amines(model, crystal_symmetry=None,
+                                  use_neutron_distances=None):
+  '''
+  approach=optimize with metal_bound_amines_as_nh2 (bypasses placement): a
+  primary amine that its dictionary makes NH3+ but that carries two H, with
+  a metal of NH_METAL_ELEMENTS in the window (any occupancy, alternates,
+  symmetry; as convert_metal_bound_amines()), keeps both H where they are:
+  they are taken out of the riding H manager before its first idealization
+  (all other H keep their parameterization, as the Optimizer would build
+  it). No H is added or deleted. H are counted per complete conformer
+  (conformer_groups()). Limit: a blank H shared with an NH3 conformer also
+  belongs to that conformer and may be moved by its rotator; its input
+  position is not guaranteed. The NH2 conformer's own alternate H keep
+  their input positions; such a site is listed as partly preserved.
+  :return: ([(label, contacts)] of the NH2 kept, [(label, contacts)] of
+    those partly preserved)
+  '''
+  elements = model.get_hierarchy().atoms().extract_element()
+  if not any(e.strip().upper() in NH_METAL_ELEMENTS for e in elements):
+    return [], []
+  sites = metal_amine_sites(model, crystal_symmetry)
+  in_window = {}
+  for c in sites.contacts:
+    in_window.setdefault(c.i_x, []).append(c)
+  atoms = sites.atoms
+  by_n = {}
+  for site in sites.h_sites:
+    by_n.setdefault(site.i_x, []).append(site.i_h)
+  mon_lib_srv = model.get_mon_lib_srv()
+  listed, partial, protected = [], [], []
+  for i_n in sorted(by_n):
+    if i_n not in in_window: continue
+    n = atoms[i_n]
+    if not dictionary_nh3_plus(model, n, i_n, mon_lib_srv): continue
+    # two H in a complete conformer (blank H counted in each)
+    conformers = conformer_groups(by_n[i_n], lambda i: atoms[i].parent().altloc)
+    groups = [(alt, hs) for alt, hs, mixed in conformers if len(hs) == 2]
+    if not groups: continue
+    kept = set(alt for alt, hs in groups)
+    others = [alt for alt, hs, mixed in conformers if alt not in kept]
+    contact = '; '.join(sites.contact_text(c) for c in in_window[i_n])
+    for alt, hs in groups:
+      protected.extend(hs)
+      shared = [atoms[i].name.strip() for i in hs
+                if atoms[i].parent().altloc == '']
+      if shared and others:
+        own = [atoms[i].name.strip() for i in hs
+               if atoms[i].parent().altloc != '']
+        partial.append(('%s conformer %s: supplied NH2 partly preserved (%s '
+          'kept; shared %s belongs to conformer %s\'s NH3 and may move)' % (
+          _atom_label(n), alt, ', '.join(own), ', '.join(shared),
+          ', '.join(others)), contact))
+      else:
+        listed.append(('%s (%s)' % (_atom_label(n), ', '.join(
+          _h_name(atoms[i]) for i in hs)), contact))
+  if not protected: return listed, partial
+  if model.riding_h_manager is None:
+    model.setup_riding_h_manager(idealize = False)
+    idealize = True
+  else:
+    idealize = False
+  rhm = model.riding_h_manager
+  if rhm is None: return listed, partial
+  for i in protected:
+    rhm.h_parameterization[i] = None
+  rhm.parameterization_cpp = rhm.get_parameterization_cpp(
+    h_parameterization = rhm.h_parameterization)
+  if idealize:
+    model.idealize_h_riding(use_neutron_distances = use_neutron_distances)
+  return listed, partial
+
 def supplied_metal_h(sites, is_supplied):
   '''
   [(H label, contacts, connectivity)] of the supplied H (is_supplied(atom))
@@ -1289,6 +1570,24 @@ def reported_metal_h(sites):
   return [('%s (%s)' % (_atom_label(sites.atoms[r.i_x]), ', '.join(names)),
     '; '.join(sites.contact_text(c) for c in r.contacts))
     for r, names in result]
+
+def reported_metal_h_rows(sites, key):
+  '''
+  reported_metal_h() before it is joined, for a list made at the end of
+  placement (its atoms may be gone by then): [(parent key, parent label,
+  [(H key, H name and altloc)], contacts)], keys from key(atom).
+  '''
+  rows, by_x = [], {}
+  for r in sites.reported:
+    x, h = sites.atoms[r.i_x], sites.atoms[r.i_h]
+    if r.i_x not in by_x:
+      by_x[r.i_x] = (key(x), _atom_label(x), [],
+        '; '.join(sites.contact_text(c) for c in r.contacts))
+      rows.append(by_x[r.i_x])
+    altloc = h.parent().altloc.strip()
+    by_x[r.i_x][2].append((key(h), h.name.strip() +
+      (' altloc %s' % altloc if altloc else '')))
+  return rows
 
 def _metal_h_text(titles, not_placed, unresolved, supplied, hint,
                   reported=()):
@@ -1340,6 +1639,33 @@ def metal_nh_text(not_placed=(), unresolved=(), supplied=(), reported=(),
     supplied = 'Supplied N-H at metal sites: %s' % METAL_NH_SUPPLIED_NOTE,
     reported = 'N-H next to a metal, not changed'),
     not_placed, unresolved, supplied, hint, reported)
+
+def metal_amine_text(converted=(), unresolved=(), supplied=(),
+                     chain_starts=(), supplied_nh2=(), supplied_nh2_partly=()):
+  '''
+  Report of metal_bound_amines_as_nh2: NH3+ placed as NH2 [(label, contacts)],
+  messages of sites left as NH3+, supplied NH3+ kept [(label, contacts)],
+  amino-acid chain starts on a metal not built as NH3 [(label, contacts)];
+  '' if there is nothing to report.
+  '''
+  lines = []
+  for title, entries in (
+      ('Coordinating NH3+ placed as NH2 (the metal takes the place of the H '
+       'not placed; the two H are not parameterized for riding)', converted),
+      ('Coordinating NH3+ left as NH3+ (unresolved)', unresolved),
+      ('Supplied NH3+ at metal sites: kept as supplied; coordinating primary '
+       'amines are usually NH2', supplied),
+      ('Supplied NH2 at metal sites: kept as supplied, not completed to NH3',
+       supplied_nh2),
+      ('Supplied NH2 at metal sites, partly preserved (not completed to NH3)',
+       supplied_nh2_partly),
+      ('Metal-bound chain start, terminus not confirmed (H as '
+       'n_terminal_charge places them)', chain_starts)):
+    if not entries: continue
+    lines.append(title)
+    for e in entries:
+      lines.append('  ' + (e if isinstance(e, str) else '%s  (%s)' % e))
+  return '\n'.join(lines)
 
 # ==============================================================================
 
@@ -1768,6 +2094,9 @@ class place_hydrogens():
     server for the dictionary queries; with None, a new one. The model's
     cached server is not used: it can know a CCD-only residue from an earlier
     placement whose placeholder the processed model no longer has.
+
+  metal_bound_amines_as_nh2 : bool
+    a coordinating NH3+ becomes NH2 (convert_metal_bound_amines())
   '''
 
 # ------------------------------------------------------------------------------
@@ -1783,7 +2112,8 @@ class place_hydrogens():
                validate_e            = False,
                print_time            = False,
                mon_lib_srv           = None,
-               na_terminal_h         = False):
+               na_terminal_h         = False,
+               metal_bound_amines_as_nh2 = False):
     self.model                 = model
     self.na_terminal_h         = na_terminal_h
     self.use_neutron_distances = use_neutron_distances
@@ -1795,6 +2125,7 @@ class place_hydrogens():
     self.validate_e            = validate_e
     self.print_time            = print_time
     self.mon_lib_srv           = mon_lib_srv
+    self.metal_bound_amines_as_nh2 = metal_bound_amines_as_nh2
     #
     self.no_H_placed_mlq        = list()
     self.site_labels_disulfides = list()
@@ -1832,6 +2163,26 @@ class place_hydrogens():
     self.metal_nh_unresolved    = list()
     self.metal_nh_supplied_kept = list()
     self.metal_nh_reported      = list()
+    # (target list, reported_metal_h_rows()) for metal_nh_reported,
+    # filled in _finish_metal_lists() from the H that are left
+    self._metal_nh_reported_src = list()
+    # metal_bound_amines_as_nh2: sites placed as NH2 (group_args, see
+    # convert_metal_bound_amines()), messages of sites left as NH3+,
+    # supplied NH3+ kept and chain starts not built as NH3, (label, contacts)
+    self._metal_amine_sites      = None
+    self.metal_amine_converted   = list()
+    self.metal_amine_converted_text = list()
+    self.metal_amine_unresolved  = list()
+    self.metal_amine_supplied    = list()
+    self.metal_amine_supplied_nh2 = list()
+    # H placed or kept as supplied by convert_metal_bound_amines() (keys),
+    # and the N it listed
+    self._protected_h            = set()
+    self._metal_amine_listed_n   = set()
+    self.metal_amine_chain_starts = list()
+    # H that riding H refused although their parent has all its heavy
+    # neighbours
+    self.site_labels_riding_refused = list()
     # how to drop the supplied H, for the report (set by reduce2)
     self.supplied_h_hint        = None
     # the input's own symmetry for contacts (contact_symmetry()); a caller
@@ -1883,6 +2234,10 @@ class place_hydrogens():
     '''
     Function that places H atoms
     '''
+    self._run()
+    self._finish_metal_lists()
+
+  def _run(self):
 
     # Create symmetry if necessary
     # ------------------------------
@@ -1968,6 +2323,8 @@ class place_hydrogens():
     self.remove_auto_restraint_objects()
     self.exclude_H_on_metal_thiolates()
     self.exclude_H_on_metal_bound_N()
+    if self.metal_bound_amines_as_nh2:
+      self.convert_metal_bound_amines()
     # before riding H: an H on an esterified O has no H-O-X angle to the second
     # heavy neighbour (2e4i BGM 14 -> BGM 15)
     self.exclude_H_on_esterified_O()
@@ -2000,7 +2357,7 @@ class place_hydrogens():
     # Setup riding H manager
     # ----------------------
     t0 = time.time()
-    self.model.setup_riding_h_manager(use_ideal_dihedral = True)
+    self.setup_riding_h_manager()
     riding_h_manager = self.model.riding_h_manager
     if riding_h_manager is None:
       return
@@ -2032,7 +2389,8 @@ class place_hydrogens():
       water_selection & ~water_without_o, False)
     # keep_existing_H: the H/D of residues without restraints stay as in the
     # input (lone H, not reported)
-    sel_kept = self.unrestrained_hd_selection()
+    sel_kept = self.unrestrained_hd_selection() | \
+      self._protected_h_selection()
     sel_h_not_in_para.set_selected(sel_kept, False)
     sel_lone_H = sel_lone_H & ~sel_kept
     # no need to display lone H atoms in the log, so remove from labels
@@ -2051,6 +2409,7 @@ class place_hydrogens():
     self.site_labels_missing_neighbor = list()
     self.residues_missing_neighbor = list()
     self.site_labels_unknown_atoms = list()
+    self.site_labels_riding_refused = list()
     unknown = set(r for r, names in self.residues_unknown_atoms)
     if not sel_h_not_in_para_but_not_lone.all_eq(False):
       grm = self.model.get_restraints_manager().geometry
@@ -2088,6 +2447,14 @@ class place_hydrogens():
         parents = _heavy_neighbors(atom.i_seq)
         # parent atom missing an expected heavy neighbour -> incomplete residue
         if len(parents) == 1 and len(_heavy_neighbors(parents[0])) < 2:
+          # unless it has all its dictionary neighbours: riding H refused the
+          # H (an NH2 with an ideal H-N-H of 107-111 deg)
+          expected = heavy_neighbors_in_restraints(atoms[parents[0]],
+            self.query_mon_lib_srv)
+          if (expected is not None and
+              len(expected) <= len(_heavy_neighbors(parents[0]))):
+            self.site_labels_riding_refused.append(label)
+            continue
           self.site_labels_missing_neighbor.append(label)
           if resid not in seen_residues:
             seen_residues.add(resid)
@@ -2529,21 +2896,246 @@ class place_hydrogens():
       self.site_labels_metal_nh, self.metal_nh_unresolved,
       self.metal_nh_supplied_kept, self.metal_nh_reported)
 
+  def _atom_key(self, parts, a):
+    return parts[a.parent().memory_id()] + (a.parent().altloc, a.name)
+
+  def _nh3_plus(self, n, i_n):
+    return dictionary_nh3_plus(self.model, n, i_n, self.query_mon_lib_srv)
+
+  def _h_order(self, n):
+    # dictionary order of the H on n; H1-H3 of an N-terminal propeller first
+    try:
+      cc = self.query_mon_lib_srv.get_comp_comp_id_direct(
+        n.parent().resname.strip())
+    except Exception:
+      cc = None
+    names = [a.atom_id.strip() for a in cc.atom_list] if cc is not None else []
+    def order(h):
+      name = h.name.strip()
+      if n.name.strip() == 'N' and name in ('H1', 'H2', 'H3'):
+        return (0, 0, name)
+      return (1, names.index(name) if name in names else len(names), name)
+    return order
+
+  def convert_metal_bound_amines(self):
+    """
+    metal_bound_amines_as_nh2 (A5 C1b): a primary amine (metal_amine_sites)
+    that the dictionary makes NH3+ (three H; energy type NT3 or formal charge
+    +1) and whose H sites are covered by one metal position (also through
+    symmetry: the contact's image) is placed as NH2. place_metal_nh2()
+    constructs and checks the two H first; only an accepted site loses the
+    first H in dictionary order (H1 of an N-terminal propeller) and gets the
+    coordinates; the two H keep their names and are left out of riding H
+    (setup_riding_h_manager()). Not accepted: unresolved, listed, no H
+    removed.
+    No supplied H (keep_existing_H) is deleted. H are counted per complete
+    conformer (conformer_groups()). Two supplied H with any metal in the
+    window keep their coordinates and names, are not completed to NH3 and
+    are not checked, whatever the coverage or frame (with approach=optimize:
+    protect_supplied_metal_amines()), except when the H of a conformer are
+    split over blank and alternate groups: such a conformer is unresolved
+    and completed as with the option off, the supplied H re-idealized. With
+    approach=optimize, a blank H shared with an NH3 conformer also belongs
+    to that conformer and may be moved by its rotator; its input position is
+    not guaranteed. The NH2 conformer's own alternate H keep their input
+    positions. With one supplied
+    H the second is constructed around it, the supplied H fixed; not
+    accepted: the supplied H is retained and re-idealized, the group
+    completed as with the option off. Three supplied H stay and are listed
+    (riding H idealizes them as without the option). Left as they are and
+    listed: alternate metal positions or alternate positions of the heavy
+    neighbour (no unique frame), sites with unresolved protonation; an
+    amino-acid N without a preceding residue that does not carry three H
+    (chain start, terminus not confirmed). A neutral NH2 keeps both H (step
+    B lists it).
+    """
+    elements = self.model.get_hierarchy().atoms().extract_element()
+    if not any(e.strip().upper() in NH_METAL_ELEMENTS for e in elements):
+      return
+    sites = metal_amine_sites(self.model, self._contact_cs,
+      mon_lib_srv = self.query_mon_lib_srv)
+    if not sites.h_sites: return
+    hierarchy = self.model.get_hierarchy()
+    atoms = hierarchy.atoms()
+    parts = residue_parts(hierarchy)
+    key = lambda a: self._atom_key(parts, a)
+    supplied = lambda a: self.keep_existing_H and key(a) in self._existing_h
+    in_window = {}
+    for c in sites.contacts:
+      in_window.setdefault(c.i_x, []).append(c)
+    by_n = {}
+    for site in sites.h_sites:
+      by_n.setdefault(site.i_x, []).append(site)
+    grm = self.model.get_restraints_manager().geometry
+    bond_ideal = {}
+    for p in grm.get_all_bond_proxies(sites_cart = self.model.get_sites_cart())[0]:
+      bond_ideal[tuple(sorted(p.i_seqs))] = p.distance_ideal
+    angle_ideal = {}
+    for p in grm.angle_proxies:
+      i, j, k = p.i_seqs
+      angle_ideal[(min(i, k), j, max(i, k))] = p.angle_ideal
+    remove, install = [], {}
+    for i_n in sorted(by_n):
+      n = atoms[i_n]
+      label = _atom_label(n)
+      # per complete conformer (blank H counted in each)
+      for alt, group, mixed in conformer_groups(by_n[i_n],
+          lambda s: atoms[s.i_h].parent().altloc):
+        hs = [atoms[s.i_h] for s in group]
+        own = [s for s in group if atoms[s.i_h].parent().altloc == alt] or group
+        contacts = list(own[0].contacts)
+        window = in_window.get(i_n, [])
+        if not window: continue
+        contact = '; '.join(sites.contact_text(c) for c in (contacts or window))
+        if len(hs) != 3 or not self._nh3_plus(n, i_n):
+          if (contacts and len(hs) < 3 and n.name.strip() == 'N' and
+              residue_is_amino_acid(n.parent().resname,
+                                    self.query_mon_lib_srv)):
+            self.metal_amine_chain_starts.append((label, contact))
+          continue
+        order = self._h_order(n)
+        sup = sorted([h for h in hs if supplied(h)], key=order)
+        new = sorted([h for h in hs if not supplied(h)], key=order)
+        if len(sup) == 3:
+          self.metal_amine_supplied.append(('%s (%s)' % (label,
+            ', '.join(_h_name(h) for h in sup)), contact))
+          continue
+        if mixed:
+          # one H shared by the conformers: no H removed or placed
+          self.metal_amine_unresolved.append('%s: H in blank and alternate '
+            'conformers: completed and re-idealized as with the option off'
+            % label)
+          continue
+        if len(sup) == 2:
+          # kept as supplied, never completed to NH3; not placed or checked
+          remove.extend(h.i_seq for h in new)
+          self._protected_h.update(key(h) for h in sup)
+          self._metal_amine_listed_n.add(key(n))
+          self.metal_amine_supplied_nh2.append(('%s (%s)' % (label,
+            ', '.join(_h_name(h) for h in sup)), contact))
+          continue
+        verdicts = set(s.verdict for s in group)
+        if verdicts == set(['not counted']): continue
+        reason, message, placed = None, None, None
+        if verdicts != set([sites.covered]):
+          s = [s for s in group if s.verdict != sites.covered][0]
+          # the message names the H: listed as it is
+          message = sites.unresolved_message(s)
+        elif len(contacts) != 1:
+          reason = 'no unique metal position (%s)' % contact
+        elif sites.amine[group[0].i_h].i_c is None:
+          reason = 'alternate positions of its heavy neighbour; no unique frame'
+        else:
+          i_c = sites.amine[group[0].i_h].i_c
+          # a supplied H first: it stays where it is
+          kept = sup + new[1:]
+          targets = group_args(
+            d = [bond_ideal.get(tuple(sorted((i_n, h.i_seq)))) for h in kept],
+            cnh = [angle_ideal.get((min(i_c, h.i_seq), i_n, max(i_c, h.i_seq)))
+                   for h in kept],
+            hnh = angle_ideal.get((min(kept[0].i_seq, kept[1].i_seq), i_n,
+                                   max(kept[0].i_seq, kept[1].i_seq)), 109.47))
+          if None in targets.d + targets.cnh:
+            reason = 'no ideal N-H or C-N-H for the H'
+          else:
+            placed, reason = place_metal_nh2(matrix.col(n.xyz),
+              matrix.col(atoms[i_c].xyz), matrix.col(contacts[0].image),
+              targets, fixed = matrix.col(sup[0].xyz) if sup else None)
+        if placed is None:
+          text = message or '%s: %s' % (label, reason)
+          if sup:
+            text += ('; %s retained and re-idealized (completed as with the '
+              'option off)' % sup[0].name.strip())
+          self.metal_amine_unresolved.append(text)
+          continue
+        drop = new[:1]
+        remove.extend(h.i_seq for h in drop)
+        for h, xyz in zip(kept, placed):
+          if not supplied(h): install[h.i_seq] = xyz.elems
+          self._protected_h.add(key(h))
+        self._metal_amine_listed_n.add(key(n))
+        text = '%s: %s not placed' % (label, ', '.join(h.name.strip()
+          for h in drop))
+        if sup:
+          text += '; %s kept as supplied, %s placed' % (sup[0].name.strip(),
+            kept[1].name.strip())
+        self.metal_amine_converted.append(group_args(label = label,
+          contact = contact, text = text, n = key(n),
+          kept = [key(h) for h in kept], xyz = [x.elems for x in placed]))
+    if install:
+      sites_cart = self.model.get_sites_cart()
+      for i, xyz in install.items():
+        sites_cart[i] = xyz
+      self.model.set_sites_cart(sites_cart)
+    if remove:
+      sel = flex.bool(atoms.size(), True).set_selected(
+        flex.size_t(sorted(remove)), False)
+      self.model = self.model.select(sel)
+
+  def _protected_h_selection(self):
+    # the H that convert_metal_bound_amines() placed or kept as supplied:
+    # riding H leaves them where they are
+    sel = flex.bool(self.model.size(), False)
+    if not self._protected_h: return sel
+    hierarchy = self.model.get_hierarchy()
+    parts = residue_parts(hierarchy)
+    for a in hierarchy.atoms():
+      if self._atom_key(parts, a) in self._protected_h:
+        sel[a.i_seq] = True
+    return sel
+
+  def setup_riding_h_manager(self):
+    """
+    Riding H manager, idealized at once (as model.setup_riding_h_manager()).
+    The H of convert_metal_bound_amines() are taken out of it before that
+    first idealization; all other H keep their parameterization.
+    """
+    protected = self._protected_h_selection()
+    if protected.count(True) == 0:
+      self.model.setup_riding_h_manager(use_ideal_dihedral = True)
+      return
+    self.model.setup_riding_h_manager(use_ideal_dihedral = True,
+      idealize = False)
+    rhm = self.model.riding_h_manager
+    if rhm is None: return
+    for i in protected.iselection():
+      rhm.h_parameterization[i] = None
+    rhm.parameterization_cpp = rhm.get_parameterization_cpp(
+      h_parameterization = rhm.h_parameterization)
+    self.model.idealize_h_riding()
+
+  def _finish_metal_lists(self):
+    # end of run(): the lists name what is left
+    hierarchy = self.model.get_hierarchy()
+    parts = residue_parts(hierarchy)
+    index = dict((self._atom_key(parts, a), a.i_seq) for a in hierarchy.atoms())
+    # by the identities when the list was made (prochiral naming only swaps
+    # names within a group)
+    for target, rows in self._metal_nh_reported_src:
+      for x_key, label, hs, contacts in rows:
+        names = [name for k, name in hs if k in index]
+        if names and x_key not in self._metal_amine_listed_n:
+          target.append(('%s (%s)' % (label, ', '.join(names)), contacts))
+    self._metal_nh_reported_src = []
+    self.metal_amine_converted_text = [(s.text, s.contact)
+      for s in self.metal_amine_converted]
+
   def _exclude_H_at_metal_sites(self, site_class, metals, not_placed,
                                 unresolved, supplied_kept, reported=None):
     # The H that reduce2 built at a covered site of site_class are removed and
     # listed (not_placed: label, contacts); unresolved sites keep the H, with
     # the message; supplied H are kept (supplied_kept); reported: the
-    # candidates site_class only reports.
+    # candidates site_class only reports, listed in _finish_metal_lists().
     elements = self.model.get_hierarchy().atoms().extract_element()
     if not any(e.strip().upper() in metals for e in elements): return
     sites = site_class(self.model, self._contact_cs)
-    if reported is not None:
-      reported.extend(reported_metal_h(sites))
-    if not sites.h_sites: return
     hierarchy = self.model.get_hierarchy()
     atoms = hierarchy.atoms()
     parts = residue_parts(hierarchy)
+    if reported is not None:
+      self._metal_nh_reported_src.append((reported, reported_metal_h_rows(
+        sites, lambda a: self._atom_key(parts, a))))
+    if not sites.h_sites: return
     def supplied(a):
       return (self.keep_existing_H and parts[a.parent().memory_id()] +
         (a.parent().altloc, a.name) in self._existing_h)
@@ -3283,6 +3875,17 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
+  def metal_amine_text(self):
+    '''
+    The report of metal_bound_amines_as_nh2 (show(), reduce2's description);
+    '' if there is none.
+    '''
+    return metal_amine_text(self.metal_amine_converted_text,
+      self.metal_amine_unresolved, self.metal_amine_supplied,
+      self.metal_amine_chain_starts, self.metal_amine_supplied_nh2)
+
+# ------------------------------------------------------------------------------
+
   def show(self, log, verbose=False):
     '''
     Informative output. With verbose=True the per-atom lists of H that were not
@@ -3334,7 +3937,8 @@ proline-type or N-substituted residue)'''
       print('', file=log)
       print(self.unknown_atoms_text(verbose), file=log)
     #
-    for text in (self.metal_thiol_text(), self.metal_nh_text()):
+    for text in (self.metal_thiol_text(), self.metal_nh_text(),
+                 self.metal_amine_text()):
       if text:
         print('', file=log)
         print(text, file=log)
@@ -3369,6 +3973,14 @@ proline-type or N-substituted residue)'''
       if verbose:
         for label in self.site_labels_missing_neighbor:
           print(label, file=log)
+    #
+    if self.site_labels_riding_refused:
+      msg = '''
+The following H atoms were not placed because riding H could not parameterize
+them (their parent atom has all its heavy neighbours)'''
+      print(msg, file=log)
+      for label in self.site_labels_riding_refused:
+        print(label, file=log)
     #
     if self.site_labels_no_para:
       msg = '''
@@ -3418,7 +4030,13 @@ The following H atoms were not placed because they could not be parameterized
       site_labels_metal_nh = self.site_labels_metal_nh,
       metal_nh_unresolved = self.metal_nh_unresolved,
       metal_nh_supplied_kept = self.metal_nh_supplied_kept,
-      metal_nh_reported = self.metal_nh_reported)
+      metal_nh_reported = self.metal_nh_reported,
+      metal_amine_converted = self.metal_amine_converted_text,
+      metal_amine_unresolved = self.metal_amine_unresolved,
+      metal_amine_supplied = self.metal_amine_supplied,
+      metal_amine_supplied_nh2 = self.metal_amine_supplied_nh2,
+      metal_amine_chain_starts = self.metal_amine_chain_starts,
+      site_labels_riding_refused = self.site_labels_riding_refused)
 
 # ------------------------------------------------------------------------------
 

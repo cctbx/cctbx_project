@@ -54,6 +54,30 @@ n_terminal_charge = *residue_one first_in_chain all_chain_starts no_charge
           first_in_chain (first residue of each chain), all_chain_starts\
           (first residue of each chain and each residue after a chain\
           break), no_charge.
+metal_bound_amines_as_nh2 = False
+  .type = bool
+  .short_caption = Place metal-bound primary amines as NH2
+  .help = In development. A primary amine that its dictionary makes NH3+ \
+          (Lys NZ, an N-terminal NH3 placed under n_terminal_charge, ligand \
+          amines) and that coordinates one metal position (not alkali or \
+          alkaline-earth) is placed as NH2: the first H in dictionary order \
+          is not placed, the other two are placed with the metal as the \
+          third substituent (also a metal in a symmetry mate), if they pass \
+          the geometry checks, otherwise the site is listed and keeps its H. \
+          They are not parameterized for riding in refinement. Neutral NH2 \
+          keep both H. Alternate metal positions are left unchanged and \
+          listed. No supplied H is deleted. A supplied NH2 at a metal keeps \
+          its coordinates and is not completed to NH3 (with \
+          keep_existing_H=True and with approach=optimize), except when its \
+          H are split over blank and alternate groups: placement then \
+          completes it as without the option and re-idealizes the supplied \
+          H. A blank H shared with an NH3 conformer also belongs to that \
+          conformer and may be moved by its rotator, its input position is \
+          not guaranteed. The NH2 conformer's own alternate H keep their \
+          input positions. With one supplied H the second \
+          is placed around it, or else the group is completed and \
+          re-idealized as without the option. Three supplied H stay. Reruns \
+          on reduce2's own output keep the NH2.
 exclude_water = True
   .type = bool
   .short_caption = Add H to water if False
@@ -1165,6 +1189,7 @@ NOTES:
         keep_existing_H       = True,
         mon_lib_srv           = self.model.get_mon_lib_srv(),
         na_terminal_h         = True,
+        metal_bound_amines_as_nh2 = self.params.metal_bound_amines_as_nh2,
       )
     else:
       reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
@@ -1174,7 +1199,8 @@ NOTES:
         exclude_water = self.params.exclude_water,
         stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
         keep_existing_H=self.params.keep_existing_H,
-        mon_lib_srv=self.model.get_mon_lib_srv()
+        mon_lib_srv=self.model.get_mon_lib_srv(),
+        metal_bound_amines_as_nh2=self.params.metal_bound_amines_as_nh2
       )
     reduce_add_h_obj.supplied_h_hint = self._RebuildHint()
     # the model is boxed for the calculation: contacts across its own symmetry
@@ -1189,7 +1215,8 @@ NOTES:
     # its report of thiols and N-H at metals, for the description
     self._metal_thiol_note = ''
     for text in (reduce_add_h_obj.metal_thiol_text(),
-                 reduce_add_h_obj.metal_nh_text()):
+                 reduce_add_h_obj.metal_nh_text(),
+                 reduce_add_h_obj.metal_amine_text()):
       if text:
         self._metal_thiol_note += '\n' + text + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
@@ -2424,6 +2451,18 @@ NOTES:
         if neutron:
           self._CheckAmbiguousParents()
         outString += self._SuppliedMetalHText()
+        # a supplied metal-bound NH2 stays as it is: out of riding H before
+        # the Optimizer builds and idealizes its manager
+        if self.params.metal_bound_amines_as_nh2:
+          kept, partly = reduce_hydrogen.protect_supplied_metal_amines(
+            self.model, reduce_hydrogen.contact_symmetry(self._output_cs),
+            use_neutron_distances = True if self.params.use_neutron_distances
+              else None)
+          text = reduce_hydrogen.metal_amine_text(supplied_nh2 = kept,
+            supplied_nh2_partly = partly)
+          if text:
+            print('\n' + text, file=self.logger)
+            outString += '\n' + text + '\n'
 
       # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
       # but the desired model ID structure from the model.
