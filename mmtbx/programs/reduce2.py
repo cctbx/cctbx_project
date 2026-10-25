@@ -58,7 +58,7 @@ metal_bound_amines_as_nh2 = True
   .type = bool
   .short_caption = Place metal-bound primary amines as NH2
   .help = A primary amine bound to a metal (Lys NZ, an N-terminal NH3, a \
-          ligand amine, not with alkali or alkaline-earth metals) is placed \
+          ligand amine, not with alkali metals or Ca, Sr, Ba, Ra) is placed \
           as NH2, with the metal as the third substituent. Metal-bound chain \
           starts get NH2 whatever n_terminal_charge says. Sites that fail the \
           geometry checks keep their H.
