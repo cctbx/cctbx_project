@@ -169,10 +169,13 @@ def exercise_llgi_sigmaa_is_current():
 def exercise_low_resolution_removal_keeps_llgi_target():
   # update_all_scales removes the lowest-resolution bin when R-work there
   # exceeds 0.7; the rebuilt manager keeps target llgi and llgi_data on the
-  # remaining reflections.
+  # remaining reflections, and its origin and data type.
   import random
   from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
   fmodel = build_llgi_fmodel(30, 2.0, seed=5)
+  origin = object()
+  fmodel._origin = origin
+  fmodel._data_type = "x_ray"
   sel = fmodel.bin_selections[0]
   f_obs = fmodel.f_obs()
   data = f_obs.data().deep_copy()
@@ -187,6 +190,8 @@ def exercise_low_resolution_removal_keeps_llgi_target():
   assert fmodel.f_obs().size() < n_before
   assert fmodel.target_name == "llgi" and fmodel.llgi_target_active()
   assert fmodel.llgi_data().dobs.indices().all_eq(fmodel.f_obs().indices())
+  assert fmodel.origin() is origin
+  assert fmodel.data_type() == "x_ray"
 
 def exercise_e_scale_sigmaa_phil_scope_parses():
   # The refinement.llgi_data.e_scale_sigmaa phil scope (phenix/phenix/
