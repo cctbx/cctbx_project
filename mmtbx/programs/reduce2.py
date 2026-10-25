@@ -1151,11 +1151,12 @@ NOTES:
     if reduce_add_h_obj.residues_unknown_atoms:
       self._unknown_atoms_note = '\n' + reduce_add_h_obj.unknown_atoms_text(
         verbose=self.params.verbosity > 2) + '\n'
-    # its report of thiols bound to metals, for the description
+    # its report of thiols and N-H at metals, for the description
     self._metal_thiol_note = ''
-    text = reduce_add_h_obj.metal_thiol_text()
-    if text:
-      self._metal_thiol_note = '\n' + text + '\n'
+    for text in (reduce_add_h_obj.metal_thiol_text(),
+                 reduce_add_h_obj.metal_nh_text()):
+      if text:
+        self._metal_thiol_note += '\n' + text + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if not self.params.ignore_missing_restraints:
       if len(missed_residues) > 0:
@@ -1421,18 +1422,27 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _SuppliedThiolHText(self):
-    # approach=optimize keeps every input H: the H on thiols bound to metals,
-    # as placement lists them (nothing is deleted here).
+  def _SuppliedMetalHText(self):
+    # approach=optimize keeps every input H: the H on thiols and N bound to
+    # metals, and the other N-H next to a metal, as placement lists them
+    # (nothing is deleted here).
     # :return: The description-file text ('' if none); also in the log.
-    sites = reduce_hydrogen.thiol_metal_sites(self.model,
-      reduce_hydrogen.contact_symmetry(self._output_cs))
-    text = reduce_hydrogen.metal_thiol_text(
-      supplied = reduce_hydrogen.supplied_thiol_h(sites, lambda a: True),
-      hint = self._RebuildHint())
-    if not text: return ''
-    print('\n' + text, file=self.logger)
-    return '\n' + text + '\n'
+    cs = reduce_hydrogen.contact_symmetry(self._output_cs)
+    thiols = reduce_hydrogen.thiol_metal_sites(self.model, cs)
+    nh = reduce_hydrogen.metal_nh_sites(self.model, cs)
+    result = ''
+    for text in (
+        reduce_hydrogen.metal_thiol_text(
+          supplied = reduce_hydrogen.supplied_metal_h(thiols, lambda a: True),
+          hint = self._RebuildHint()),
+        reduce_hydrogen.metal_nh_text(
+          supplied = reduce_hydrogen.supplied_metal_h(nh, lambda a: True),
+          reported = reduce_hydrogen.reported_metal_h(nh),
+          hint = self._RebuildHint())):
+      if not text: continue
+      print('\n' + text, file=self.logger)
+      result += '\n' + text + '\n'
+    return result
 
 # ------------------------------------------------------------------------------
 
@@ -2293,7 +2303,7 @@ NOTES:
             'optimize them.')
         if neutron:
           self._CheckAmbiguousParents()
-        outString += self._SuppliedThiolHText()
+        outString += self._SuppliedMetalHText()
 
       # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
       # but the desired model ID structure from the model.
