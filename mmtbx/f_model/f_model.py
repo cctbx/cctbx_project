@@ -2845,11 +2845,18 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     sin_f_model_phases = flex.sin(f_model_phases)
     cos_f_model_phases = flex.cos(f_model_phases)
     if([k_blur, b_blur].count(None) == 2):
-      t = maxlik.fo_fc_alpha_over_eps_beta(
-        f_obs   = mch.f_obs,
-        f_model = mch.f_model,
-        alpha   = mch.alpha,
-        beta    = mch.beta)
+      if(getattr(mch, "llgi", False)):
+        # llgi alpha is on the F scale and beta on the E scale, so use X,
+        # halved for centrics as in fo_fc_alpha_over_eps_beta
+        centric_flags = mch.f_obs.centric_flags().data()
+        t = mch.x.deep_copy()
+        t.set_selected(centric_flags, mch.x.select(centric_flags) * 0.5)
+      else:
+        t = maxlik.fo_fc_alpha_over_eps_beta(
+          f_obs   = mch.f_obs,
+          f_model = mch.f_model,
+          alpha   = mch.alpha,
+          beta    = mch.beta)
     else:
       assert [k_blur, b_blur].count(None) == 0
       t = 2*k_blur * flex.exp(-b_blur*self.ss)

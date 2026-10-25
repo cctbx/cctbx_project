@@ -389,6 +389,27 @@ def exercise_phase_errors_llgi_exact_posterior_mean():
       if(pher[i] > _von_mises_mean_abs_phase(x_m[0])): n_lower += 1
   assert n_lower > 0
 
+def exercise_zero_hl_keeps_llgi_fom():
+  # All-zero experimental HL coefficients add no phase information, so
+  # the combined fom and the maps equal those without HL, for Rice and
+  # exact reflections.
+  for rice_kappa in [None, 0.1]:
+    fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=45,
+      rice_kappa=rice_kappa)
+    no_hl = fmodel.map_coefficients_llgi(map_type="2mFo-DFc")
+    fmodel.update(abcd=fmodel.f_obs().array(
+      data=flex.hendrickson_lattman(fmodel.f_obs().size(), (0,0,0,0))))
+    mch = fmodel.map_calculation_helper_llgi()
+    fom = fmodel.combine_phases(map_calculation_helper=mch).fom()
+    # the exact X comes from an approximate inverse of I1/I0
+    diff = flex.max(flex.abs(fom - mch.fom))
+    assert diff < 1.e-2, (rice_kappa, diff)
+    with_hl = fmodel.map_coefficients_llgi(map_type="2mFo-DFc")
+    assert with_hl.indices().all_eq(no_hl.indices())
+    diff = flex.max(flex.abs(with_hl.data() - no_hl.data())) / \
+      flex.max(flex.abs(no_hl.data()))
+    assert diff < 1.e-2, (rice_kappa, diff)
+
 def exercise_outlier_selection_skips_model_based_test_for_llgi():
   # Model-based outlier rejection (its own Dobs-free sigmaA fit) must not
   # run under the llgi target; it still runs for ml.
@@ -465,6 +486,7 @@ def exercise():
   exercise_llgi_fill_is_d_fc()
   exercise_phase_errors_llgi_match_numerical_integration()
   exercise_phase_errors_llgi_exact_posterior_mean()
+  exercise_zero_hl_keeps_llgi_fom()
   exercise_outlier_selection_skips_model_based_test_for_llgi()
   exercise_map_coefficients_from_fmodel_ml_target_unaffected()
   exercise_compute_map_coefficients_mixed_dispatch()
