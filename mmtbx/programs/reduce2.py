@@ -27,6 +27,7 @@ from mmtbx.probe import Helpers
 from iotbx import pdb, cli_parser
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.hydrogens import hd_exchange
+from mmtbx.hydrogens import capping
 from mmtbx.reduce import Optimizers
 from scitbx.array_family import flex
 from iotbx.pdb import common_residue_names_get_class, amino_acid_codes, nucleic_acid_codes
@@ -131,7 +132,34 @@ skip_optimizations_after_seconds = 0.0
 qmready = False
   .type = bool
   .short_caption = Run with custom preset options suitable for QM
-  .help = Add H to water, use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks
+  .help = Add H to water, use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks, \
+          and the terminal hydroxyl H of nucleic acids (HO3-prime at a 3-prime end, HO5-prime at a \
+          5-prime OH end)
+capping = False
+  .type = bool
+  .short_caption = Cap dangling bonds with H
+  .help = Add capping H to every non-H atom whose valence is unsatisfied \
+          because a bonded non-H atom is missing (truncated side chains, \
+          incomplete ligands): as many H as the missing bonds need, never \
+          a non-H atom. A missing atom between two present atoms of a \
+          residue (a ring atom, CG of an ARG with CD) stops with a Sorry, \
+          as their caps would overlap: rebuild it. So does a P, or an S \
+          with three or more substituents, missing an atom, as an H there \
+          would change the chemistry: add the atom (OP3 at a 5-prime end). \
+          Done as the very last \
+          step. The caps have names unknown to the restraint libraries, so \
+          the capped model is for QM use and cannot be processed for \
+          restraints. Bond orders come from the CCD Kekule structure \
+          (DOUB and TRIP), all other bonds count as single. Requires \
+          qmready=True.
+capping_guess_for_unknowns = False
+  .type = bool
+  .short_caption = Guess the valence of residues without a dictionary
+  .help = With capping=True, residues without a dictionary (no monomer \
+          library, CCD or user CIF entry) cannot be checked. True: guess \
+          the valence of every atom from its element and formal charge, bonds \
+          from distances, and add H accordingly (reported as guessed). \
+          False: stop with a Sorry listing those residues.
 output
   .style = menu_item auto_align
 {
@@ -909,22 +937,6 @@ def _ModelNumbers(hierarchy):
       result.append(None)
   return result
 
-def _PdbFormatProblems(hierarchy):
-  '''The reasons found in the hierarchy why fits_in_pdb_format() (hybrid-36)
-  is False, as text; empty if none of them is found.
-  '''
-  chains = sorted(set(c.id for c in hierarchy.chains() if len(c.id) > 2))
-  resnames = sorted(set(ag.resname for ag in hierarchy.atom_groups()
-    if len(ag.resname) > 3))
-  found = []
-  if resnames:
-    found.append('residue name%s longer than 3 characters: %s' % (
-      's' if len(resnames) > 1 else '', ', '.join(resnames)))
-  if chains:
-    found.append('chain ID%s longer than 2 characters: %s' % (
-      's' if len(chains) > 1 else '', ', '.join(chains)))
-  return '; '.join(found)
-
 def _SelectModelNumber(hierarchy, number):
   '''The model of the hierarchy with MODEL number number (in _ModelNumbers()).
   '''
@@ -944,8 +956,6 @@ Inputs:
 Output:
   PDB or mmCIF file with added hydrogens.  If output.filename is specified, then the
   type of file to write will be determined by its suffix (.pdb or .cif).
-  A .pdb request for a model that cannot be written in PDB format gives mmCIF
-  with the same base name (.cif), and the log says so.
   If output.filename is not specified, the output file will be
   written into the current working directory with the same base name and type as the
   original file and with FH or H added to the base name (FH when flips are requested);
@@ -984,6 +994,12 @@ NOTES:
   converted) and lists them. With approach=add or place and keep_existing_H=True, their
   existing H/D are kept unchanged and they are listed. With keep_existing_H=False such a
   residue gets no H. Cannot be combined with approach=remove or qmready=True.
+
+  qmready=True prepares a model for QM: H on water, longer XH distances, OXT and NH3+ at
+  chain ends and breaks, HO3' and HO5' at nucleic-acid chain ends. Adding capping=True to it also puts H on every non-H atom left with
+  an unsatisfied valence by a missing non-H atom (truncated side chains, incomplete ligands),
+  as the very last step; the capped model is for QM use only, because the cap names are
+  unknown to the restraint libraries.
 
   Note that the program also takes probe Phil arguments; run with --show_defaults to see
   all Phil arguments.
@@ -1130,6 +1146,7 @@ NOTES:
         stop_for_unknowns     = self.params.stop_on_any_missing_hydrogen,
         keep_existing_H       = True,
         mon_lib_srv           = self.model.get_mon_lib_srv(),
+        na_terminal_h         = True,
       )
     else:
       reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
@@ -1151,12 +1168,11 @@ NOTES:
     if reduce_add_h_obj.residues_unknown_atoms:
       self._unknown_atoms_note = '\n' + reduce_add_h_obj.unknown_atoms_text(
         verbose=self.params.verbosity > 2) + '\n'
-    # its report of thiols and N-H at metals, for the description
+    # its report of thiols bound to metals, for the description
     self._metal_thiol_note = ''
-    for text in (reduce_add_h_obj.metal_thiol_text(),
-                 reduce_add_h_obj.metal_nh_text()):
-      if text:
-        self._metal_thiol_note += '\n' + text + '\n'
+    text = reduce_add_h_obj.metal_thiol_text()
+    if text:
+      self._metal_thiol_note = '\n' + text + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if not self.params.ignore_missing_restraints:
       if len(missed_residues) > 0:
@@ -1249,33 +1265,6 @@ NOTES:
         if (a.parent().parent().memory_id(), a.parent().resname) in missing:
           keys.add(k)
     return group_args(keys=keys, labels=labels)
-
-# ------------------------------------------------------------------------------
-
-  def _ElementXText(self, selection):
-    # Atoms with element X, removed at loading: one line, then the atoms,
-    # capped at 20 unless verbosity > 2. Printed here.
-    # :param selection: The element X atoms of self.model.
-    # :return: The description-file text.
-    atoms = list(self.model.get_hierarchy().atoms().select(selection))
-    cap = None if self.params.verbosity > 2 else 20
-    lines = ['', 'Removed %d atom(s) with element X: the element is unknown, so '
-      'H cannot be placed around them; they are not in the output.' %
-      len(atoms)]
-    shown = atoms if cap is None else atoms[:cap]
-    for a in shown:
-      ag = a.parent()
-      rg = ag.parent()
-      label = '%s %s %s%s %s' % (ag.resname.strip(), rg.parent().id.strip(),
-        rg.resseq.strip(), rg.icode.strip(), a.name.strip())
-      if ag.altloc.strip():
-        label += ' altloc %s' % ag.altloc
-      lines.append('  ' + label)
-    if len(shown) < len(atoms):
-      lines.append('  (+%d more)' % (len(atoms) - len(shown)))
-    text = '\n'.join(lines) + '\n'
-    print(text, file=self.logger)
-    return text
 
 # ------------------------------------------------------------------------------
 
@@ -1422,27 +1411,18 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _SuppliedMetalHText(self):
-    # approach=optimize keeps every input H: the H on thiols and N bound to
-    # metals, and the other N-H next to a metal, as placement lists them
-    # (nothing is deleted here).
+  def _SuppliedThiolHText(self):
+    # approach=optimize keeps every input H: the H on thiols bound to metals,
+    # as placement lists them (nothing is deleted here).
     # :return: The description-file text ('' if none); also in the log.
-    cs = reduce_hydrogen.contact_symmetry(self._output_cs)
-    thiols = reduce_hydrogen.thiol_metal_sites(self.model, cs)
-    nh = reduce_hydrogen.metal_nh_sites(self.model, cs)
-    result = ''
-    for text in (
-        reduce_hydrogen.metal_thiol_text(
-          supplied = reduce_hydrogen.supplied_metal_h(thiols, lambda a: True),
-          hint = self._RebuildHint()),
-        reduce_hydrogen.metal_nh_text(
-          supplied = reduce_hydrogen.supplied_metal_h(nh, lambda a: True),
-          reported = reduce_hydrogen.reported_metal_h(nh),
-          hint = self._RebuildHint())):
-      if not text: continue
-      print('\n' + text, file=self.logger)
-      result += '\n' + text + '\n'
-    return result
+    sites = reduce_hydrogen.thiol_metal_sites(self.model,
+      reduce_hydrogen.contact_symmetry(self._output_cs))
+    text = reduce_hydrogen.metal_thiol_text(
+      supplied = reduce_hydrogen.supplied_thiol_h(sites, lambda a: True),
+      hint = self._RebuildHint())
+    if not text: return ''
+    print('\n' + text, file=self.logger)
+    return '\n' + text + '\n'
 
 # ------------------------------------------------------------------------------
 
@@ -1760,58 +1740,12 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _FinalizeModel(self, hierarchy):
-    # The model that ends the run: a fresh, unprocessed manager built from the
-    # finished hierarchy (crystal symmetry, restraint objects and
-    # stop_for_unknowns as _RebuildModel()). Replaces a full re-interpretation
-    # with make_restraints=False; the steps below are the parts of it the
-    # output depends on. No restraints manager, as before: that was the guard
-    # against the crash in pair_proxies() when writing mmCIF after atoms were
-    # removed, and it leaves no links to write (C4). No monomer mappings:
-    # selection() uses the atom-selection cache.
-    # :param hierarchy: The finished hierarchy; changed in place.
-    # :return: The new model.
-    # the sort and serials of _ReinterpretModel()
-    hierarchy.sort_atoms_in_place()
-    hierarchy.atoms().reset_serial()
-    cs = self.model.crystal_symmetry()
-    if cs is not None:
-      # process() rounds coordinates and ADPs through an X-ray structure
-      # (pdb_interpretation.py ~4270), visible in the written bytes. Extracted
-      # here, after the sort: adopt_xray_structure() matches by order.
-      hierarchy.adopt_xray_structure(
-        hierarchy.extract_xray_structure(crystal_symmetry=cs))
-    # process()'s _check_for_capitalised_element(): adopt gives "Ca"
-    for a in hierarchy.atoms():
-      if a.element != a.element.upper():
-        a.element = a.element.upper()
-    model = mmtbx.model.manager(
-      model_input       = None,
-      pdb_hierarchy     = hierarchy,
-      crystal_symmetry  = cs,
-      restraint_objects = self.model.get_restraint_objects(),
-      stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
-      log               = null_out())
-    # the writer's symmetry choice and shift back (_figure_out_cs_to_output())
-    if self.model.shift_cart() is not None:
-      model.set_unit_cell_crystal_symmetry_and_shift_cart(
-        unit_cell_crystal_symmetry = self.model.unit_cell_crystal_symmetry(),
-        shift_cart = self.model.shift_cart())
-    # as select() does: info() (file names) and the input format, which
-    # write_model_file(format=Auto) follows
-    model.set_info(copy.deepcopy(self.model.info()))
-    model._original_model_format = self.model._original_model_format
-    return model
-
-# ------------------------------------------------------------------------------
-
-  def _CheckQmreadyClashes(self):
+  def _CheckQmreadyClashes(self, model):
     # qmready=True: Sorry if the finished model has a non-bonded contact
     # below 1.0 A. Checked on a copy with restraints (self.model has none);
     # H included, as geometry_statistics() drops H with the X-ray table.
+    # :param model: The rebuilt copy of self.model with restraints.
     from cctbx import geometry_restraints
-    model = self._RebuildModel(self.model.get_hierarchy().deep_copy(),
-      make_restraints=True)
     sites = model.get_sites_cart()
     nb = model.get_restraints_manager().geometry.pair_proxies(
       sites_cart=sites).nonbonded_proxies
@@ -1864,23 +1798,29 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _CalculateTotalCharge(self):
+  def _CalculateTotalCharge(self, model, extra_sigma_bonds=None,
+                            parity_i_seqs=()):
     # Calculate the total charge of the model (same as Q|R qr.finalise with
     # calculate_charge=True) and, if the output file names were not specified,
     # insert it into them: model.pdb -> modelH_charge-3.pdb
+    # :param model: The rebuilt copy of self.model with restraints (the
+    # clash-check copy); not changed.
+    # :param extra_sigma_bonds: {i_seq: n} of model, the capping H to come
+    # (capping=True): the charge is that of the capped model.
+    # :param parity_i_seqs: i_seqs of model to check for a leftover electron
+    # (every atom in extra_sigma_bonds).
+    # :return: Warning lines, one per atom in parity_i_seqs left open-shell.
     make_sub_header('Calculating total charge', out=self.logger)
     from mmtbx.ligands import electrons
-    # user CIFs plus the CCD objects of _PrepareRestraints(), still attached:
-    # without them a CCD-only ligand is unknown there and the run stops
-    cif_objects = self.model.get_restraint_objects()
-    # As qrefine.charges.charges_class does; on a copy, the model is written out
-    hierarchy = self.model.get_hierarchy().deep_copy()
-    hierarchy.merge_atoms_at_end_to_residues()
-    self.total_charge = electrons.run(
-      pdb_hierarchy    = hierarchy,
-      crystal_symmetry = self.model.crystal_symmetry(),
-      cif_objects      = cif_objects,
+    # On reduce2's own rebuilt copy (interpreted with the user CIFs and the
+    # CCD objects of _PrepareRestraints()), not a second process() inside
+    # electrons; values verified unchanged against that old path.
+    distribution = electrons.run(
+      model                 = model,
+      extra_sigma_bonds     = extra_sigma_bonds,
+      return_formal_charges = True,
     )
+    self.total_charge = distribution.get_total_charge()
     print('Total charge:', self.total_charge, file=self.logger)
     if self._default_output_filename:
       base, suffix = os.path.splitext(self.params.output.filename)
@@ -1890,6 +1830,67 @@ NOTES:
         base = os.path.splitext(self.params.output.description_file_name)[0]
         self.params.output.description_file_name = "%s_charge%s.txt"%(
           base, str(self.total_charge))
+    # a capped atom with an electron left over: the capped fragment is
+    # open-shell (an odd number of electrons)
+    atoms = model.get_hierarchy().atoms()
+    warnings = []
+    for i_seq in parity_i_seqs:
+      if distribution.get(i_seq, 0):
+        warnings.append('open-shell cap on %s' % atoms[i_seq].id_str())
+    return warnings
+
+# ------------------------------------------------------------------------------
+
+  def _CapDanglingAtoms(self, model, dangling, parity=()):
+    # capping=True: add the capping H of find_dangling_atoms() to model, the
+    # model the records come from, as the last change to the hierarchy (the
+    # caps have names no restraint library knows). Sorry if a cap clashes.
+    # The output model is an unprocessed manager on the capped hierarchy and
+    # nothing interprets it later.
+    # :param model: The rebuilt copy with restraints; its hierarchy is capped
+    # in place, its X-ray structure and restraints are stale afterwards.
+    # :param dangling: find_dangling_atoms(model).
+    # :param parity: Open-shell warning lines of _CalculateTotalCharge().
+    # :return: The Capping section of the description file (also printed to
+    # the log). Lists are capped at 20 entries unless verbosity > 2.
+    make_sub_header('Capping dangling bonds', out=self.logger)
+    result = capping.cap_dangling_atoms(model, dangling,
+      use_neutron_distances=self.params.use_neutron_distances)
+    self._output_model = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = model.get_hierarchy(),
+      crystal_symmetry  = self.model.crystal_symmetry(),
+      restraint_objects = self.model.get_restraint_objects(),
+      stop_for_unknowns = False,
+      log               = null_out())
+    cap = None if self.params.verbosity > 2 else 20
+    lines = ['', 'Capping']
+    def section(entries, title=None):
+      if not entries: return
+      indent = '  '
+      if title is not None:
+        lines.append('  ' + title)
+        indent = '    '
+      shown = entries if cap is None else entries[:cap]
+      for e in shown:
+        lines.append(indent + e)
+      if len(shown) < len(entries):
+        lines.append('%s(+%d more)' % (indent, len(entries) - len(shown)))
+    # cap_dangling_atoms() reports in record order
+    section([line for record, line in zip(dangling.records, result.lines)
+             if record.source != 'guess'])
+    section([line for record, line in zip(dangling.records, result.lines)
+             if record.source == 'guess'],
+      'Capped by element valence (no dictionary):')
+    section(['%s: %s' % (label, reason) for label, reason in dangling.skipped],
+      'Not capped:')
+    section(list(result.warnings) + list(parity))
+    lines.append('  Capped %d atoms in %d residues with %d H' % (
+      result.n_atoms, result.n_residues, result.n_added))
+    text = '\n'.join(lines) + '\n'
+    # the same section in the log, so it is not lost without files
+    print(text, file=self.logger)
+    return text
 
 # ------------------------------------------------------------------------------
 
@@ -2014,6 +2015,21 @@ NOTES:
         raise Sorry('neutron_option=%s cannot be used with qmready=True.'
           % p.neutron_option)
 
+    # capping: the last step of a qmready run that adds H
+    if p.capping:
+      if not p.qmready:
+        raise Sorry('capping=True requires qmready=True.')
+      if p.approach == 'remove':
+        raise Sorry('capping=True cannot be used with approach=remove.')
+      # residues without a dictionary reach the capping step, where
+      # capping_guess_for_unknowns decides
+      if not p.ignore_missing_restraints:
+        p.ignore_missing_restraints = True
+        print('capping=True: ignore_missing_restraints set to True (residues '
+          'without a dictionary are handled by capping)', file=self.logger)
+    elif p.capping_guess_for_unknowns:
+      raise Sorry('capping_guess_for_unknowns=True requires capping=True.')
+
     # One distance flag for the whole run: qmready and neutron_option place H
     # at neutron distances, so every later step must use them
     self._neutron_distance_reason = None
@@ -2063,6 +2079,9 @@ NOTES:
 
     if os.environ.get('PHENIX_OVERWRITE_ALL', False):
       self.data_manager.set_overwrite(True)
+    if not self.params.output.overwrite:
+      if os.path.exists(self.params.output.filename):
+        print('\n\tOutput filename exists. Use overwrite=True to continue.')
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
@@ -2070,24 +2089,6 @@ NOTES:
                                                                                    '.txt')
       self.params.output.description_file_name=self.params.output.description_file_name.replace('.cif',
                                                                                    '.txt')
-
-    # Existing output files stop the run here, not after it. Names not known
-    # yet keep the Sorry from _write_text() at write time: the qmready default
-    # names (_charge<N> appended later) and the mmCIF written for a .pdb
-    # request that does not fit PDB format.
-    if self.params.output.write_files and not self.data_manager.get_overwrite():
-      charge_pending = (self.params.qmready and self.params.approach == 'add'
-        and self._default_output_filename)
-      names = []
-      if not charge_pending:
-        names.append(self.params.output.filename)
-      if not (charge_pending and self._default_description_file_name):
-        names.append(self.params.output.description_file_name)
-      existing = [n for n in names if os.path.exists(n)]
-      if existing:
-        raise Sorry('%s already exist%s; use overwrite=True to replace %s.' % (
-          ' and '.join(existing), 's' if len(existing) == 1 else '',
-          'it' if len(existing) == 1 else 'them'))
 
     # model_id is a MODEL number of the input
     if self.params.model_id is not None:
@@ -2135,10 +2136,7 @@ NOTES:
     # Get our model.
     self.model = self.data_manager.get_model()
 
-    sel_x = self.model.selection('element X')
-    if sel_x.count(True) > 0:
-      outString += self._ElementXText(sel_x)
-    self.model = self.model.select(~sel_x)
+    self.model = self.model.select(~self.model.selection('element X'))
     # A model shifted in memory (e.g. boxed with a map) is shifted back on
     # this copy: placement builds a new model without the shift, so the run
     # is the file run. _ReturnedModel() puts the shift back. Any non-zero
@@ -2177,14 +2175,18 @@ NOTES:
     if self.params.qmready:
       # add OXT
       self.model.add_terminal_oxt()
-      # make sure model is atom-complete.
+      # make sure model is atom-complete. With capping=True a listing only:
+      # the atoms left with a dangling bond are capped at the end
       if not self.model.is_atom_complete():
         missing = self.model.missing_atoms_by_residue()
         print("Missing atoms found (this may or may not be an issue):", file=self.logger)
         for k, v in missing.items():
           print("  where: '%s' missing:"%k,v, file=self.logger)
-        raise Sorry(
-          "Model misses non-H atoms. Model must be atom-complete for qmready=true.")
+        if not self.params.capping:
+          raise Sorry(
+            "Model misses non-H atoms. Model must be atom-complete for qmready=true.")
+        print("capping=True: continuing, dangling bonds are capped with H at the end",
+          file=self.logger)
 
     if self.data_manager.has_restraints():
       self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
@@ -2303,7 +2305,7 @@ NOTES:
             'optimize them.')
         if neutron:
           self._CheckAmbiguousParents()
-        outString += self._SuppliedMetalHText()
+        outString += self._SuppliedThiolHText()
 
       # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
       # but the desired model ID structure from the model.
@@ -2401,38 +2403,62 @@ NOTES:
           if chain.residue_groups_size() == 0:
             m.remove_chain(chain)
 
-    # Rebuild the model without restraints because we have removed some atoms
-    # that were previously bonded. Like the re-interpretation without restraints
-    # this replaces, it keeps us from crashing on a call to pair_proxies when
-    # generating mmCIF files, so we always do it for safety.
-    self.model = self._FinalizeModel(self.model.get_hierarchy())
+    # Re-process the model because we have removed some atoms that were previously
+    # bonded.  Don't make restraints during the reprocessing.
+    # We had to do this to keep from crashing on a call to pair_proxies when generating
+    # mmCIF files, so we always do it for safety.
+    self._ReinterpretModel(False)
 
-    # qmready=True: the finished model must be clash-free (remove adds no H)
-    if self.params.qmready and self.params.approach != 'remove':
-      self._CheckQmreadyClashes()
-
-    # qmready=True: calculate the total charge, as qr.finalise does with
-    # calculate_charge=True, and add it to the default output file name.
+    # qmready=True (remove adds no H): one copy with restraints for the clash
+    # check (the finished model must be clash-free), the dangling atoms
+    # (capping=True) and the total charge, as qr.finalise does with
+    # calculate_charge=True, added to the default output file name
+    # (approach=add). With capping=True the caps go on that copy as the
+    # last change to the hierarchy and it is the output model.
     self.total_charge = None
-    if self.params.qmready and self.params.approach == 'add':
-      self._CalculateTotalCharge()
+    parity = []
+    if self.params.qmready and self.params.approach != 'remove':
+      qm_model = self._RebuildModel(self.model.get_hierarchy().deep_copy(),
+        make_restraints=True)
+      self._CheckQmreadyClashes(qm_model)
+      dangling = None
+      if self.params.capping:
+        dangling = capping.find_dangling_atoms(qm_model,
+          self.params.capping_guess_for_unknowns, log=self.logger)
+        if dangling.unknown_residues and \
+           not self.params.capping_guess_for_unknowns:
+          raise Sorry('capping=True: no dictionary for %s; set '
+            'capping_guess_for_unknowns=True to cap them by element valence'
+            % ', '.join(dangling.unknown_residues))
+      if self.params.approach == 'add':
+        extra = None
+        if dangling is not None:
+          # the caps, and the bonds guessing found by distance
+          extra = capping.extra_sigma_bonds(dangling)
+        parity = self._CalculateTotalCharge(qm_model, extra,
+          sorted(extra) if extra else ())
+      if self.params.capping:
+        outString += self._CapDanglingAtoms(qm_model, dangling, parity)
 
     # The model that is written and returned; self.model stays H-only for
     # the comparison and the flipkins.
+    # With capping=True it is set by _CapDanglingAtoms(), not interpreted
+    # again.
     self._neutron_result = None
-    if not neutron:
-      self._output_model = self.model
-    else:
-      make_sub_header('Writing H/D model (neutron_option=%s)' %
-        self.params.neutron_option, out=self.logger)
-      h = self.model.get_hierarchy().deep_copy()
-      self._neutron_result = hd_exchange.apply_neutron_option(h,
-        self.params.neutron_option, parent_table=self._h_parents,
-        records=self._hd_records, unchanged_keys=self._UnrestrainedKeys())
-      self._output_model = self._FinalizeModel(h)
-      self._DropAutoRestraints(self._output_model)
-      self._CheckNeutronOutput()
-      outString += self._NeutronDescription()
+    if not self.params.capping:
+      if not neutron:
+        self._output_model = self.model
+      else:
+        make_sub_header('Writing H/D model (neutron_option=%s)' %
+          self.params.neutron_option, out=self.logger)
+        h = self.model.get_hierarchy().deep_copy()
+        self._neutron_result = hd_exchange.apply_neutron_option(h,
+          self.params.neutron_option, parent_table=self._h_parents,
+          records=self._hd_records, unchanged_keys=self._UnrestrainedKeys())
+        self._output_model = self._RebuildModel(h, make_restraints=False)
+        self._DropAutoRestraints(self._output_model)
+        self._CheckNeutronOutput()
+        outString += self._NeutronDescription()
 
     make_sub_header('Writing output', out=self.logger)
 
@@ -2448,22 +2474,11 @@ NOTES:
       output_cs = self._output_cs is not None
       if output_cs:
         self._output_model.set_unit_cell_crystal_symmetry(self._output_cs)
-      if suffix.lower() == ".pdb" and not self._output_model.can_be_output_as_pdb():
-        # model_as_pdb() would return only header records; write mmCIF instead
-        requested = self.params.output.filename
-        self.params.output.filename = self.data_manager.write_model_file(
-          self._output_model, os.path.splitext(requested)[0] + '.cif',
-          format='cif', output_cs=output_cs)
-        cause = _PdbFormatProblems(self._output_model.get_hierarchy())
-        print('Model cannot be represented in PDB format%s; writing mmCIF to %s '
-          'instead of %s.' % (' (%s)' % cause if cause else '',
-          self.params.output.filename, requested), file=self.logger)
+      if suffix.lower() == ".pdb":
+        txt = self._output_model.model_as_pdb(output_cs=output_cs)
       else:
-        if suffix.lower() == ".pdb":
-          txt = self._output_model.model_as_pdb(output_cs=output_cs)
-        else:
-          txt = self._output_model.model_as_mmcif(output_cs=output_cs)
-        self.data_manager._write_text("model", txt, self.params.output.filename)
+        txt = self._output_model.model_as_mmcif(output_cs=output_cs)
+      self.data_manager._write_text("model", txt, self.params.output.filename)
 
       print('Wrote', self.params.output.filename,'and',
         self.params.output.description_file_name, file = self.logger)
@@ -2609,13 +2624,12 @@ NOTES:
       if len(amides) > 0:
         make_sub_header('Generating Amide Flipkin', out=self.logger)
 
-        # Interpret the model to fill in things we need for determining the neighbor list
-        # and for the sidechain selection of the views (the finished model is not interpreted).
-        self._ReinterpretModel()
-
         # Find the viewpoint locations for each Mover we're going to
         # look at.
         views = self._GetViews(amides)
+
+        # Interpret the model to fill in things we need for determining the neighbor list.
+        self._ReinterpretModel()
 
         carts = flex.vec3_double()
         for a in self.model.get_atoms():
@@ -2731,13 +2745,12 @@ NOTES:
       if len(hists) > 0:
         make_sub_header('Generating Histidine Flipkin', out=self.logger)
 
-        # Interpret the model to fill in things we need for determining the neighbor list
-        # and for the sidechain selection of the views (the finished model is not interpreted).
-        self._ReinterpretModel()
-
         # Find the viewpoint locations for each Mover we're going to
         # look at.
         views = self._GetViews(hists)
+
+        # Interpret the model to fill in things we need for determining the neighbor list.
+        self._ReinterpretModel()
 
         carts = flex.vec3_double()
         for a in self.model.get_atoms():
@@ -2868,13 +2881,6 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def get_results(self):
-    '''
-    :return: group_args with model (the output model) and total_charge (qmready
-    add, otherwise None). The returned model is not guaranteed to be
-    interpreted. Callers needing interpretation-dependent operations (e.g.
-    backbone or sidechain selections) should check processed() and call
-    process(make_restraints=False) if necessary.
-    '''
     return group_args(
       model        = getattr(self, '_output_model', self.model),
       total_charge = getattr(self, 'total_charge', None))
