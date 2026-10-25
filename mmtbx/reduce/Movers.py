@@ -384,7 +384,8 @@ class MoverSingleHydrogenRotator(_MoverRotator):
                 hParameters, potentialAcceptors = [],
                 potentialTouches = [],
                 coarseStepDegrees = 10.0,
-                fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
+                fineStepDegrees = 1.0, preferredOrientationScale = 1.0,
+                boundMetals = []):
     """ A Mover that rotates a single Hydrogen around an axis from its bonded partner
        to the single bonded partner of its partner.  This is designed for use with OH,
        SH, and SeH configurations.  For partner-partner atoms that are bonded to a
@@ -412,6 +413,11 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        :param fineStepDegrees: The fine step to take.
        :param preferredOrientationScale: How much to scale the preferred-orientation
        energy by before adding it to the total.
+       :param boundMetals: A list of metal atoms bound to the Hydrogen's
+       neighbor. Orientations that turn the Hydrogen towards one of them (a
+       metal-neighbor-Hydrogen angle below 90 degrees) are not tried as coarse
+       orientations and are not chosen as fine ones, unless no coarse
+       orientation is left.
     """
     # @todo All callers and tests
 
@@ -549,16 +555,44 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     # it to the list of coarse angles to try. This ensures that we try at least
     # sparsely in all directions.
 
+    def addSpacedAngles(sofar, angles):
+      # Append each of the angles that is at least 45 degrees from all in sofar.
+      for ang in angles:
+        minAng = 360
+        for a in sofar:
+          diff = abs(a - ang)
+          if diff < minAng:
+            minAng = diff
+        if minAng >= 45:
+          sofar.append(ang)
+
     sofar = [bestTouchAngle]
     sofar.extend(acceptorAngles)
-    for ang in self._coarseAngles:
-      minAng = 360
-      for a in sofar:
-        diff = abs(a - ang)
-        if diff < minAng:
-          minAng = diff
-      if minAng >= 45:
-        sofar.append(ang)
+    addSpacedAngles(sofar, self._coarseAngles)
+
+    # Drop the angles that turn the Hydrogen towards a bound metal (it is on the
+    # metal's side of the plane through the neighbor perpendicular to the metal
+    # bond) and fill the gaps with the other coarse angles, as above. If no
+    # coarse angle is away from the metals, keep them all.
+    if len(boundMetals) > 0:
+      x = rvec3(neighbor.xyz)
+      def awayFromMetals(ang):
+        h = rvec3(self._posesFor([ang])[0][0])
+        for m in boundMetals:
+          if (rvec3(m.xyz) - x).dot(h - x) > 0:
+            return False
+        return True
+      away = [ang for ang in self._coarseAngles if awayFromMetals(ang)]
+      if len(away) > 0:
+        sofar = [ang for ang in sofar if awayFromMetals(ang)]
+        addSpacedAngles(sofar, away)
+        # A fine step can still cross the plane; this large negative preference
+        # keeps the Optimizer from choosing it.
+        def metalSidePreference(degrees):
+          if awayFromMetals(degrees):
+            return 0.0
+          return -1000.0
+        self._preferenceFunction = metalSidePreference
 
     # Replace the coarse angles with the ones that we have found.
     self._coarseAngles = sofar

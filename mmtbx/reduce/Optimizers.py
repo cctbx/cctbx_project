@@ -1268,6 +1268,15 @@ class Optimizer(object):
     for a in atoms:
       atomDict[a.i_seq] = a
 
+    # Metals bound to the atoms that the rotatable Hydrogens are bound to, by
+    # the window that placement uses for thiols and amines. The rotators do not
+    # turn their Hydrogen towards these metals.
+    parents = []
+    for i in rotatableHydrogenIDs:
+      if i in atomDict:
+        parents.extend(bondedNeighborLists[atomDict[i]])
+    boundMetals = reduce_hydrogen.bound_metals(atoms, parents)
+
     # Insert all single-hydrogen rotators, which we have a list of. Do this after we've
     # done all of the other Movers so that any lock-down placements will have been done
     # before we check.
@@ -1341,10 +1350,11 @@ class Optimizer(object):
             if acceptor or flipPartner:
               potentialAcceptors.append(c)
 
+          neighborMetals = boundMetals.get(neighbor.i_seq, [])
           oldXYZ = a.xyz
           self._movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, self._extraAtomInfo,
                                                                 hParameters, potentialAcceptors,
-                                                                potentialTouches))
+                                                                potentialTouches, boundMetals = neighborMetals))
           # The constructor turned the Hydrogen to its starting orientation; move its
           # spatial-query entry along with it.
           newXYZ = a.xyz

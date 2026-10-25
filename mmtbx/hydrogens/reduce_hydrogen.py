@@ -985,6 +985,46 @@ def metal_contact_pairs(sites, elements, parents, metals, crystal_symmetry,
             result.append((i_x, i_m, rt))
   return result
 
+def bound_metals(atoms, parents):
+  """Return the metals within bonding distance of each requested atom.
+
+  The window is that of metal_h_sites: a metal of METAL_ELEMENTS within
+  THIOL_METAL_WINDOW of the summed cctbx covalent radii
+  (metal_contact_pairs()), without symmetry.
+
+  Parameters
+  ----------
+  atoms : list of iotbx.pdb.hierarchy.atom
+    The atoms to search, from one model.
+  parents : list of iotbx.pdb.hierarchy.atom
+    The atoms, among atoms, whose metals are wanted.
+
+  Returns
+  -------
+  dict
+    The i_seq of each atom of parents that has a metal, mapped to the list
+    of those metal atoms.
+  """
+  position = {}
+  for k, a in enumerate(atoms):
+    position[a.i_seq] = k
+  elements = [_atom_element(a) for a in atoms]
+  i_parents = set()
+  for a in parents:
+    i = position[a.i_seq]
+    if _covalent_radius(elements[i]) is not None:
+      i_parents.add(i)
+  metals = [i for i, e in enumerate(elements) if e in METAL_ELEMENTS
+            and _covalent_radius(e) is not None]
+  result = {}
+  for i_x, i_m, rt in metal_contact_pairs([a.xyz for a in atoms], elements,
+      sorted(i_parents), metals, None):
+    key = atoms[i_x].i_seq
+    if key not in result:
+      result[key] = []
+    result[key].append(atoms[i_m])
+  return result
+
 class metal_h_sites(object):
   '''
   X-metal contacts of the H-carrying atoms X that a subclass selects in a
