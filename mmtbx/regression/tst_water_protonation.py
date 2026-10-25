@@ -959,8 +959,9 @@ END
       (d_atom, None, "neutron"), (dod, None, "neutron"),
       (_TWO_ACCEPTOR_PDB, None, "xray")):
     pi = pdb_in(src)
-    assert wp._experiment_type(pi)[0] == name, (src.split("\n")[0], name)
-    got, _ = wp._detect_geometry(pi, pi.construct_hierarchy())
+    assert wp_program._experiment_type(pi)[0] == name, (
+      src.split("\n")[0], name)
+    got, _ = wp_program._detect_geometry(pi, pi.construct_hierarchy())
     assert got == want, (src.split("\n")[0], got, want)
 
 

@@ -84,6 +84,44 @@ output {
 '''
 
 
+def _experiment_type(pdb_in):
+  """The model's experiment type in plain words and the water geometry it
+  implies, ``(name, geometry)``.
+
+  Neutron for neutron, joint X-ray/neutron and electron (microscopy or
+  diffraction) data; X-ray for X-ray data. ``name`` is None when the model
+  records no experiment type, ``geometry`` None for one implying neither.
+  """
+  exp = pdb_in.get_experiment_type()
+  if exp.is_join_xn():
+    return "joint X-ray/neutron diffraction", "neutron"
+  if exp.is_neutron():
+    return "neutron diffraction", "neutron"
+  if exp.is_electron_microscopy():
+    return "electron microscopy", "neutron"
+  if any(line.startswith("ELECTRON") for line in exp.lines):
+    return "electron diffraction", "neutron"
+  if exp.is_xray():
+    return "X-ray diffraction", "xray"
+  return (None if exp.is_empty() else repr(exp)), None
+
+
+def _detect_geometry(pdb_in, hier):
+  """Pick the water geometry for a model, ``"neutron"`` or ``"xray"``.
+
+  The one its experiment type implies (:func:`_experiment_type`), else
+  neutron if it carries a D atom or DOD water. Returns ``(geometry, note)``,
+  ``note`` None when the experiment type decided, else a short phrase for
+  the log.
+  """
+  geometry = _experiment_type(pdb_in)[1]
+  if geometry is not None:
+    return geometry, None
+  if water_protonation._has_deuterium(hier):
+    return "neutron", "model has D"
+  return "xray", "no D"
+
+
 class Program(ProgramTemplate):
   description = '''
 mmtbx.development.naiad: H-bond-aware placement of hydrogens on water residues.
@@ -137,13 +175,13 @@ and existing_h=reorient strips all water H and re-places both.
     pdb_in = model.get_model_input()
     make_sub_header('Placing water hydrogens', out=self.logger)
 
-    experiment = water_protonation._experiment_type(pdb_in)[0]
+    experiment = _experiment_type(pdb_in)[0]
     print(f"Experiment type: {experiment or 'not given'}", file=self.logger)
 
     # Water geometry: the explicit choice, else from the structure.
     geometry = self.params.water_geometry
     if geometry == "auto":
-      geometry, note = water_protonation._detect_geometry(pdb_in, hier)
+      geometry, note = _detect_geometry(pdb_in, hier)
     else:
       note = f"water_geometry={geometry}"
     oh, hoh = water_protonation._WATER_GEOMETRY[geometry]
