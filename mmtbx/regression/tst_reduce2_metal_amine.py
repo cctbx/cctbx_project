@@ -175,7 +175,10 @@ CONVERTED = 'Coordinating NH3+ placed as NH2'
 UNRESOLVED = 'Coordinating NH3+ left as NH3+ (unresolved)'
 SUPPLIED = 'Supplied NH3+ at metal sites'
 SUPPLIED_NH2 = 'Supplied NH2 at metal sites'
-CHAIN_START = 'Metal-bound chain start, terminus not confirmed'
+CHAIN_START = 'Metal-bound chain starts'
+GLY288 = ('N GLY A 288: metal-bound chain start, placed as NH2 '
+  '(n_terminal_charge=%s would place 1 H, wrong for a terminus and for a '
+  'chain break)')
 REPORTED = 'N-H next to a metal, not changed'
 ON = 'metal_bound_amines_as_nh2=True'
 
@@ -272,14 +275,186 @@ def test_neutral_nh2_kept():
   assert [n for n, alt in h_on(h, 1, 'NAD')] == ['HAD1', 'HAD2']
   assert CONVERTED not in description
 
-def test_chain_start_not_confirmed():
-  # Gly 288 (not resseq 1): one H, as n_terminal_charge places it
-  h, description, log = run('tst_reduce2_metal_amine_gly', pdb_1xmk, [ON])
+def test_chain_start_settings():
+  # Gly 288 starts the chain in the model: NH2 whatever n_terminal_charge
+  # says (no sequence records are read)
+  for setting in ('residue_one', 'no_charge', 'all_chain_starts'):
+    h, description, log = run('tst_reduce2_metal_amine_gly_' + setting,
+      pdb_1xmk, [ON, 'n_terminal_charge=' + setting])
+    assert h_on(h, 288, 'N') == [('H2', ''), ('H3', '')], (setting,
+      h_on(h, 288, 'N'))
+    check_nh2(h, 288, 'N', 'CA', 398, 'NI', ['H2', 'H3'])
+    expected = (GLY288 % setting if setting != 'all_chain_starts' else
+      'N GLY A 288: metal-bound chain start, placed as NH2')
+    for text in (description, log):
+      assert section(text, CHAIN_START) == [expected], (setting, text)
+
+def test_chain_start_preceding_residue():
+  # a residue before Gly 288 with its C bonded to N: no chain start, an amide
+  # on the Ni (step B: no H). Passes without C1c.
+  pdb = pdb_1xmk.replace('ATOM      1  N   GLY A 288', """\
+ATOM     41  N   GLY A 287      11.272  25.005  34.136  1.00 20.00           N
+ATOM     42  CA  GLY A 287      11.618  24.171  32.989  1.00 20.00           C
+ATOM     43  C   GLY A 287      12.237  24.201  31.601  1.00 20.00           C
+ATOM     44  O   GLY A 287      12.648  25.262  31.134  1.00 20.00           O
+ATOM      1  N   GLY A 288""")
+  h, description, log = run('tst_reduce2_metal_amine_gly_prev', pdb, [ON])
+  assert h_on(h, 288, 'N') == [], h_on(h, 288, 'N')
+  assert 'metal-bound chain start' not in description
+  assert 'H   GLY A 288  (N   GLY A 288 - NI' in '\n'.join(
+    section(description, 'N-H not placed')), description
+
+def test_chain_start_refused():
+  # two Ni positions (A, B): no unique frame, NH3 kept with the reason
+  pdb = pdb_1xmk.replace(
+    'HETATM   21 NI    NI A 398      13.849  21.950  30.990  1.00',
+    'HETATM   21 NI  A NI A 398      13.849  21.950  30.990  0.50').replace(
+    'END\n', 'HETATM   22 NI  B NI A 398      13.849  22.450  30.990  0.50 20.00'
+    '          NI\nEND\n')
+  h, description, log = run('tst_reduce2_metal_amine_gly_alt', pdb, [ON])
+  assert [x for x, alt in h_on(h, 288, 'N')] == ['H1', 'H2', 'H3'], \
+    h_on(h, 288, 'N')
+  lines = section(description, CHAIN_START)
+  assert len(lines) == 1 and lines[0].startswith('N GLY A 288: metal-bound '
+    'chain start, NH3 kept: no unique metal position') and lines[0].endswith(
+    '(n_terminal_charge=residue_one would place 1 H)'), lines
+
+def test_chain_start_without_metal():
+  # no metal: as n_terminal_charge places it (passes without C1c)
+  pdb = '\n'.join(l for l in pdb_1xmk.splitlines() if ' NI ' not in l) + '\n'
+  for setting in ('residue_one', 'no_charge'):
+    h, description, log = run('tst_reduce2_metal_amine_gly_nometal', pdb,
+      [ON, 'n_terminal_charge=' + setting])
+    assert h_on(h, 288, 'N') == [('H', '')], (setting, h_on(h, 288, 'N'))
+    assert CHAIN_START not in description
+
+def test_chain_start_rerun():
+  # add -> optimize -> add keep_existing_H=True, and plain add on the output:
+  # NH2 every time, at the same positions
+  h0, d, l = run('tst_reduce2_metal_amine_gr0', pdb_1xmk, [ON])
+  previous = 'tst_reduce2_metal_amine_gr0_out.pdb'
+  for i, args in enumerate((['approach=optimize'], ['keep_existing_H=True'],
+                            [])):
+    with open(previous) as f:
+      text = f.read()
+    prefix = 'tst_reduce2_metal_amine_gr%d' % (i + 1)
+    h, d, l = run(prefix, text, [ON] + args)
+    assert h_on(h, 288, 'N') == [('H2', ''), ('H3', '')], (args,
+      h_on(h, 288, 'N'))
+    for name in ('H2', 'H3'):
+      dist = atom(h, 288, name).distance(atom(h0, 288, name))
+      assert dist < 1.e-3, (args, name, dist)
+    previous = prefix + '_out.pdb'
+
+def test_chain_start_supplied_nh2_all_chain_starts():
+  # converted Gly 288 rerun with keep_existing_H=True under all_chain_starts
+  # (the setting builds NH3): the supplied NH2 stays, one line, no fallback
+  h0, d, l = run('tst_reduce2_metal_amine_gacs0', pdb_1xmk, [ON])
+  with open('tst_reduce2_metal_amine_gacs0_out.pdb') as f:
+    text = f.read()
+  h, d, l = run('tst_reduce2_metal_amine_gacs1', text,
+    [ON, 'keep_existing_H=True', 'n_terminal_charge=all_chain_starts'])
+  assert h_on(h, 288, 'N') == [('H2', ''), ('H3', '')], h_on(h, 288, 'N')
+  for name in ('H2', 'H3'):
+    assert atom(h, 288, name).distance(atom(h0, 288, name)) < 1.e-3, name
+  assert section(d, CHAIN_START) == ['N GLY A 288: metal-bound chain start, '
+    'unchanged: supplied NH2 kept (H2, H3)'], d
+  assert 'not judged' not in d
+
+def test_chain_start_option_off():
+  # without the option: one H on Gly 288 (residue_one), as on master
+  h, description, log = run('tst_reduce2_metal_amine_gly_off', pdb_1xmk)
   assert h_on(h, 288, 'N') == [('H', '')]
-  assert section(description, CHAIN_START) == [
-    'N   GLY A 288  (N   GLY A 288 - NI    NI A 398 1.89 A (geometric))'
-    ], description
-  assert CONVERTED not in description
+  assert CHAIN_START not in description and CONVERTED not in description
+
+def gly288_conformers(metal_alt, split_n=True):
+  '''pdb_1xmk with Gly 288 in A and B (B 0.1 A away; with split_n False the
+  N stays blank) and the Ni only in altloc metal_alt, all at 0.5 (the Ni
+  blank and full if metal_alt is None).'''
+  lines = []
+  for l in pdb_1xmk.splitlines():
+    if l.startswith('ATOM') and l[17:26] == 'GLY A 288':
+      if l[12:16] == ' N  ' and not split_n:
+        lines.append(l)
+        continue
+      lines.append(l[:16] + 'A' + l[17:54] + '  0.50' + l[60:])
+      x = float(l[30:38]) + 0.1
+      lines.append(l[:16] + 'B' + l[17:30] + '%8.3f' % x + l[38:54] + '  0.50'
+        + l[60:])
+    elif ' NI ' in l and metal_alt is not None:
+      lines.append(l[:16] + metal_alt + l[17:54] + '  0.50' + l[60:])
+    else:
+      lines.append(l)
+  return '\n'.join(lines) + '\n'
+
+def test_chain_start_supplied_h():
+  # supplied H at a metal-bound chain start: the option builds no NH3 and
+  # deletes nothing; every supplied atom keeps its name and coordinates
+  run('tst_reduce2_metal_amine_gs0', pdb_1xmk)
+  with open('tst_reduce2_metal_amine_gs0_out.pdb') as f:
+    one_h = f.read()
+  run('tst_reduce2_metal_amine_gs1', pdb_1xmk, [ON])
+  with open('tst_reduce2_metal_amine_gs1_out.pdb') as f:
+    h2 = [l for l in f.read().splitlines() if l[12:16] == ' H2 '][0]
+  h1 = [l for l in one_h.splitlines() if l[12:26] == ' H   GLY A 288'][0]
+  two_h = one_h.replace(h1, h1 + '\n' + h2)
+  for tag, text, names in (('a', one_h, ['H']), ('b', two_h, ['H', 'H2'])):
+    h_in = iotbx.pdb.input(source_info=None, lines=text).construct_hierarchy()
+    h, d, l = run('tst_reduce2_metal_amine_gs_' + tag, text,
+      [ON, 'keep_existing_H=True'])
+    off, d_off, l_off = run('tst_reduce2_metal_amine_gs_off', text,
+      ['keep_existing_H=True'])
+    assert [x for x, alt in h_on(h, 288, 'N')] == names, (tag,
+      h_on(h, 288, 'N'))
+    for name in names:
+      dist = atom(h, 288, name).distance(atom(h_in, 288, name))
+      assert dist < 1.e-3, (tag, name, dist)
+    assert section(d, CHAIN_START) == ['N GLY A 288: metal-bound chain start, '
+      'unchanged: supplied H kept (%s)' % ', '.join(names)], (tag, d)
+    # every other H as without the option
+    a, b = h_xyz(h), h_xyz(off)
+    for k in a:
+      if ' GLY A 288' in k: continue
+      assert k in b, (tag, k)
+      dist = (matrix.col(a[k]) - matrix.col(b[k])).length()
+      assert dist < 1.e-3, (tag, k, dist)
+
+def test_chain_start_conformers():
+  # Gly 288 N in A and B, the Ni in one of them: that conformer NH2, the
+  # other one H (residue_one), the line names the conformer
+  for metal_alt, other in (('B', 'A'), ('A', 'B')):
+    h, d, l = run('tst_reduce2_metal_amine_gc' + metal_alt,
+      gly288_conformers(metal_alt), [ON])
+    n = dict((alt, atom(h, 288, 'N', alt)) for alt in ('A', 'B'))
+    on = lambda alt: sorted(x.name.strip() for x in h.atoms()
+      if x.element.strip() == 'H' and x.parent().altloc == alt
+      and x.distance(n[alt]) < 1.2)
+    assert on(metal_alt) == ['H2', 'H3'], (metal_alt, on(metal_alt))
+    assert on(other) == ['H'], (metal_alt, on(other))
+    assert section(d, CHAIN_START) == [GLY288.replace('N GLY A 288:',
+      'N GLY A 288 conformer %s:' % metal_alt) % 'residue_one'], d
+  # a blank N with the Ni only in B: no common frame, unchanged
+  h, d, l = run('tst_reduce2_metal_amine_gcn', gly288_conformers('B', False),
+    [ON])
+  assert [x for x, alt in h_on(h, 288, 'N')] == ['H', 'H'], h_on(h, 288, 'N')
+  assert section(d, CHAIN_START) == ['N GLY A 288: metal-bound chain start, '
+    'unchanged: metal only in conformer B (no common frame)'], d
+  # a blank N, CA/C/O in A and B, a blank Ni, a supplied H in A only: A keeps
+  # it, B gets what the option-off run places
+  run('tst_reduce2_metal_amine_gcs0', gly288_conformers(None, False))
+  with open('tst_reduce2_metal_amine_gcs0_out.pdb') as f:
+    text = '\n'.join(l for l in f.read().splitlines()
+      if l[12:26] != ' H  BGLY A 288') + '\n'
+  h_in = iotbx.pdb.input(source_info=None, lines=text).construct_hierarchy()
+  off, d_off, l_off = run('tst_reduce2_metal_amine_gcs_off', text,
+    ['keep_existing_H=True'])
+  h, d, l = run('tst_reduce2_metal_amine_gcs', text,
+    [ON, 'keep_existing_H=True'])
+  assert atom(h, 288, 'H', 'A').distance(atom(h_in, 288, 'H', 'A')) < 1.e-3
+  assert atom(h, 288, 'H', 'B').distance(atom(off, 288, 'H', 'B')) < 1.e-3
+  assert section(d, CHAIN_START) == ['N GLY A 288: metal-bound chain start, '
+    'unchanged: supplied H in conformer A kept (H); conformer B as '
+    'n_terminal_charge places it'], d
 
 def test_planar_nh2_guard():
   # Asn ND2 next to a Zn: an amide N, not an amine (passes without the option)
@@ -776,7 +951,15 @@ if __name__ == '__main__':
   test_option_off()
   test_terminus_cu()
   test_neutral_nh2_kept()
-  test_chain_start_not_confirmed()
+  test_chain_start_settings()
+  test_chain_start_preceding_residue()
+  test_chain_start_refused()
+  test_chain_start_without_metal()
+  test_chain_start_rerun()
+  test_chain_start_option_off()
+  test_chain_start_supplied_nh2_all_chain_starts()
+  test_chain_start_supplied_h()
+  test_chain_start_conformers()
   test_planar_nh2_guard()
   test_unresolved()
   test_supplied()

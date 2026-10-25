@@ -927,6 +927,58 @@ def _compatible(a, b):
   alt_a, alt_b = a.parent().altloc, b.parent().altloc
   return alt_a == '' or alt_b == '' or alt_a == alt_b
 
+def metal_contact_pairs(sites, elements, parents, metals, crystal_symmetry,
+                        model_index=None):
+  """
+  The geometric X-metal contacts of metal_h_sites, also used before the
+  model is processed (place_n_terminal_propeller()), so both agree: pairs
+  (i_x, i_m, rt) of a parent i_x and a metal i_m (indices into sites and
+  elements) within THIOL_METAL_WINDOW of the summed cctbx covalent radii,
+  across crystal_symmetry (None: no symmetry, rt the identity), in the same
+  MODEL (model_index; None: all in one).
+  """
+  result = []
+  if not parents or not metals: return result
+  subset = list(parents) + list(metals)
+  max_cut = max(_covalent_radius(elements[i]) for i in parents) + \
+    max(_covalent_radius(elements[i]) for i in metals) + \
+    THIOL_METAL_WINDOW[1]
+  xyz = flex.vec3_double([sites[i] for i in subset])
+  cs = crystal_symmetry
+  if cs is None:
+    lo, hi = xyz.min(), xyz.max()
+    size = max(hi[k] - lo[k] for k in range(3)) + 3 * max_cut + 10
+    cs = crystal.symmetry(unit_cell=(size, size, size, 90, 90, 90),
+      space_group_symbol='P1')
+    xyz = xyz - lo + (max_cut, max_cut, max_cut)
+  uc = cs.unit_cell()
+  frac = uc.fractionalize(xyz)
+  am = cs.special_position_settings().asu_mappings(
+    buffer_thickness=max_cut)
+  am.process_sites_frac(original_sites=frac)
+  pt = crystal.pair_asu_table(asu_mappings=am)
+  pt.add_all_pairs(distance_cutoff=max_cut)
+  n_parents = len(parents)
+  for i, js in enumerate(pt.table()):
+    for j, j_syms in js.items():
+      for group in j_syms:
+        for j_sym in group:
+          rt_ji = am.get_rt_mx(i_seq=i, i_sym=0).inverse().multiply(
+            am.get_rt_mx(i_seq=j, i_sym=j_sym))
+          for x, y, rt in ((i, j, rt_ji), (j, i, rt_ji.inverse())):
+            if x >= n_parents or y < n_parents: continue
+            i_x, i_m = subset[x], subset[y]
+            if (model_index is not None and
+                model_index[i_x] != model_index[i_m]): continue
+            d = uc.distance(frac[x], rt * frac[y])
+            r = _covalent_radius(elements[i_x]) + \
+              _covalent_radius(elements[i_m])
+            if not (r + THIOL_METAL_WINDOW[0] <= d <= r + THIOL_METAL_WINDOW[1]):
+              continue
+            if crystal_symmetry is None: rt = sgtbx.rt_mx()
+            result.append((i_x, i_m, rt))
+  return result
+
 class metal_h_sites(object):
   '''
   X-metal contacts of the H-carrying atoms X that a subclass selects in a
@@ -1023,44 +1075,9 @@ class metal_h_sites(object):
         record(i_x, i_m, rt, working_cs, 'metal coordination proxy')
     metals = [i for i, e in enumerate(elements) if e in self.metals
               and _covalent_radius(e) is not None]
-    if metals:
-      subset = parents + metals
-      max_cut = max(_covalent_radius(elements[i]) for i in parents) + \
-        max(_covalent_radius(elements[i]) for i in metals) + \
-        THIOL_METAL_WINDOW[1]
-      xyz = flex.vec3_double([atoms[i].xyz for i in subset])
-      cs = crystal_symmetry
-      if cs is None:
-        lo, hi = xyz.min(), xyz.max()
-        size = max(hi[k] - lo[k] for k in range(3)) + 3 * max_cut + 10
-        cs = crystal.symmetry(unit_cell=(size, size, size, 90, 90, 90),
-          space_group_symbol='P1')
-        xyz = xyz - lo + (max_cut, max_cut, max_cut)
-      uc = cs.unit_cell()
-      frac = uc.fractionalize(xyz)
-      am = cs.special_position_settings().asu_mappings(
-        buffer_thickness=max_cut)
-      am.process_sites_frac(original_sites=frac)
-      pt = crystal.pair_asu_table(asu_mappings=am)
-      pt.add_all_pairs(distance_cutoff=max_cut)
-      n_parents = len(parents)
-      for i, js in enumerate(pt.table()):
-        for j, j_syms in js.items():
-          for group in j_syms:
-            for j_sym in group:
-              rt_ji = am.get_rt_mx(i_seq=i, i_sym=0).inverse().multiply(
-                am.get_rt_mx(i_seq=j, i_sym=j_sym))
-              for x, y, rt in ((i, j, rt_ji), (j, i, rt_ji.inverse())):
-                if x >= n_parents or y < n_parents: continue
-                i_x, i_m = subset[x], subset[y]
-                if model_index[i_x] != model_index[i_m]: continue
-                d = uc.distance(frac[x], rt * frac[y])
-                r = _covalent_radius(elements[i_x]) + \
-                  _covalent_radius(elements[i_m])
-                if not (r + THIOL_METAL_WINDOW[0] <= d <= r + THIOL_METAL_WINDOW[1]):
-                  continue
-                if crystal_symmetry is None: rt = sgtbx.rt_mx()
-                record(i_x, i_m, rt, crystal_symmetry, 'geometric')
+    for i_x, i_m, rt in metal_contact_pairs([a.xyz for a in atoms], elements,
+        parents, metals, crystal_symmetry, model_index):
+      record(i_x, i_m, rt, crystal_symmetry, 'geometric')
     # verdicts
     for i_x, i_h, judged in candidates:
       h_atom, x_atom = atoms[i_h], atoms[i_x]
@@ -1425,6 +1442,7 @@ class metal_amine_sites(metal_h_sites):
       if elements[i_n] != 'N': continue
       for i_h in sorted(set(hs)):
         self.amine[i_h] = self.amine_class(atoms, heavy, i_n, i_h)
+        self.amine[i_h].i_n = i_n
         if self.amine[i_h].branch == PRIMARY_AMINE:
           candidates.append((i_n, i_h, True))
     return candidates
@@ -1645,7 +1663,7 @@ def metal_amine_text(converted=(), unresolved=(), supplied=(),
   '''
   Report of metal_bound_amines_as_nh2: NH3+ placed as NH2 [(label, contacts)],
   messages of sites left as NH3+, supplied NH3+ kept [(label, contacts)],
-  amino-acid chain starts on a metal not built as NH3 [(label, contacts)];
+  metal-bound chain starts, one line each (C1c);
   '' if there is nothing to report.
   '''
   lines = []
@@ -1659,8 +1677,8 @@ def metal_amine_text(converted=(), unresolved=(), supplied=(),
        supplied_nh2),
       ('Supplied NH2 at metal sites, partly preserved (not completed to NH3)',
        supplied_nh2_partly),
-      ('Metal-bound chain start, terminus not confirmed (H as '
-       'n_terminal_charge places them)', chain_starts)):
+      ('Metal-bound chain starts (a terminus or a break: NH2, never one H)',
+       chain_starts)):
     if not entries: continue
     lines.append(title)
     for e in entries:
@@ -2063,6 +2081,16 @@ def _bond_orders(resname, mon_lib_srv, cache):
   cache[resname] = orders
   return orders
 
+def residue_key(rg):
+  """(chain id, resseq, icode) of a residue group, stripped."""
+  return (rg.parent().id.strip(), rg.resseq.strip(), rg.icode.strip())
+
+def _residue_label(atom):
+  # "N GLY A 288"
+  rg = atom.parent().parent()
+  return '%s %s %s %s' % (atom.name.strip(), atom.parent().resname.strip(),
+    rg.parent().id.strip(), rg.resseq.strip() + rg.icode.strip())
+
 class place_hydrogens():
   '''
   Add H atoms to a model
@@ -2126,6 +2154,16 @@ class place_hydrogens():
     self.print_time            = print_time
     self.mon_lib_srv           = mon_lib_srv
     self.metal_bound_amines_as_nh2 = metal_bound_amines_as_nh2
+    # metal-bound chain starts (C1c), by residue_key(): what n_terminal_charge
+    # alone places ('NH3', '1 H') where the propeller built NH3; and those
+    # left unchanged (reason given)
+    self._chain_start_sites = dict()
+    self._chain_start_unchanged = set()
+    # their labels, those with a line from the conversion, and why one was
+    # not judged there
+    self._chain_start_label = dict()
+    self._chain_start_judged = set()
+    self._chain_start_why = dict()
     #
     self.no_H_placed_mlq        = list()
     self.site_labels_disulfides = list()
@@ -2285,8 +2323,9 @@ class place_hydrogens():
     # Place N-terminal propeller hydrogens
     # TODO double check N-terminal position for PRO residues
     # ------------------------------------
-    if self.n_terminal_charge in ['residue_one', 'first_in_chain',
-                                  'all_chain_starts']:
+    if (self.n_terminal_charge in ['residue_one', 'first_in_chain',
+                                   'all_chain_starts'] or
+        self.metal_bound_amines_as_nh2):
       t0 = time.time()
       self.place_n_terminal_propeller(pdb_hierarchy = pdb_hierarchy)
       self.time_terminal_propeller = round(time.time()-t0, 2)
@@ -2944,9 +2983,11 @@ class place_hydrogens():
     completed as with the option off. Three supplied H stay and are listed
     (riding H idealizes them as without the option). Left as they are and
     listed: alternate metal positions or alternate positions of the heavy
-    neighbour (no unique frame), sites with unresolved protonation; an
-    amino-acid N without a preceding residue that does not carry three H
-    (chain start, terminus not confirmed). A neutral NH2 keeps both H (step
+    neighbour (no unique frame), sites with unresolved protonation; a
+    metal-bound chain start that place_n_terminal_propeller() left
+    unchanged (C1c) or whose metal shows only through a metal-coordination
+    restraint. A metal-bound chain start with NH3 from the propeller gets
+    one line in metal_amine_chain_starts. A neutral NH2 keeps both H (step
     B lists it).
     """
     elements = self.model.get_hierarchy().atoms().extract_element()
@@ -2954,6 +2995,12 @@ class place_hydrogens():
       return
     sites = metal_amine_sites(self.model, self._contact_cs,
       mon_lib_srv = self.query_mon_lib_srv)
+    # why a chain start with NH3 from the option might not be judged below
+    for i_h, a in sites.amine.items():
+      if a.branch == PRIMARY_AMINE: continue
+      n = sites.atoms[a.i_n]
+      self._chain_start_why.setdefault(
+        (residue_key(n.parent().parent()), n.parent().altloc), a.branch)
     if not sites.h_sites: return
     hierarchy = self.model.get_hierarchy()
     atoms = hierarchy.atoms()
@@ -2978,9 +3025,23 @@ class place_hydrogens():
     for i_n in sorted(by_n):
       n = atoms[i_n]
       label = _atom_label(n)
+      # a metal-bound chain start with NH3 from the propeller (C1c): what
+      # n_terminal_charge alone places
+      start_key = (residue_key(n.parent().parent()), n.parent().altloc)
+      start = None
+      if n.name.strip() == 'N':
+        start = self._chain_start_sites.get(start_key)
+      conformers = conformer_groups(by_n[i_n],
+        lambda s: atoms[s.i_h].parent().altloc)
+      def start_line(outcome, alt):
+        self._chain_start_judged.add(start_key)
+        label = self._chain_start_label.get(start_key, _residue_label(n))
+        if len(conformers) > 1 and alt and 'conformer' not in label:
+          label += ' conformer %s' % alt
+        self._start_message('%s: metal-bound chain start, %s%s' % (label,
+          outcome, self._start_setting(start, outcome == 'placed as NH2')))
       # per complete conformer (blank H counted in each)
-      for alt, group, mixed in conformer_groups(by_n[i_n],
-          lambda s: atoms[s.i_h].parent().altloc):
+      for alt, group, mixed in conformers:
         hs = [atoms[s.i_h] for s in group]
         own = [s for s in group if atoms[s.i_h].parent().altloc == alt] or group
         contacts = list(own[0].contacts)
@@ -2988,10 +3049,20 @@ class place_hydrogens():
         if not window: continue
         contact = '; '.join(sites.contact_text(c) for c in (contacts or window))
         if len(hs) != 3 or not self._nh3_plus(n, i_n):
+          if start and len(hs) == 3:
+            self._chain_start_why.setdefault(start_key,
+              'its dictionary does not make it NH3+')
+          # an amino-acid N with fewer H that the propeller did not judge
           if (contacts and len(hs) < 3 and n.name.strip() == 'N' and
+              start_key not in self._chain_start_unchanged and
+              start_key not in self._chain_start_sites and
               residue_is_amino_acid(n.parent().resname,
                                     self.query_mon_lib_srv)):
-            self.metal_amine_chain_starts.append((label, contact))
+            how = ('the metal only through a metal-coordination restraint'
+              if all(c.evidence != 'geometric' for c in contacts) else
+              'not judged at the chain start')
+            self._start_message('%s: metal-bound chain start, unchanged: %s '
+              '(%s)' % (_residue_label(n), how, contact))
           continue
         order = self._h_order(n)
         sup = sorted([h for h in hs if supplied(h)], key=order)
@@ -2999,12 +3070,17 @@ class place_hydrogens():
         if len(sup) == 3:
           self.metal_amine_supplied.append(('%s (%s)' % (label,
             ', '.join(_h_name(h) for h in sup)), contact))
+          if start:
+            start_line('unchanged: three supplied H kept (%s)' % ', '.join(
+              h.name.strip() for h in sup), alt)
           continue
         if mixed:
           # one H shared by the conformers: no H removed or placed
           self.metal_amine_unresolved.append('%s: H in blank and alternate '
             'conformers: completed and re-idealized as with the option off'
             % label)
+          if start:
+            start_line('NH3 kept: H in blank and alternate conformers', alt)
           continue
         if len(sup) == 2:
           # kept as supplied, never completed to NH3; not placed or checked
@@ -3013,9 +3089,16 @@ class place_hydrogens():
           self._metal_amine_listed_n.add(key(n))
           self.metal_amine_supplied_nh2.append(('%s (%s)' % (label,
             ', '.join(_h_name(h) for h in sup)), contact))
+          if start:
+            start_line('unchanged: supplied NH2 kept (%s)' % ', '.join(
+              h.name.strip() for h in sup), alt)
           continue
         verdicts = set(s.verdict for s in group)
-        if verdicts == set(['not counted']): continue
+        if verdicts == set(['not counted']):
+          if start:
+            start_line('NH3 kept: no metal counted (%s)' % '; '.join(
+              s.reason for s in group[:1]), alt)
+          continue
         reason, message, placed = None, None, None
         if verdicts != set([sites.covered]):
           s = [s for s in group if s.verdict != sites.covered][0]
@@ -3042,6 +3125,8 @@ class place_hydrogens():
               matrix.col(atoms[i_c].xyz), matrix.col(contacts[0].image),
               targets, fixed = matrix.col(sup[0].xyz) if sup else None)
         if placed is None:
+          if start:
+            start_line('NH3 kept: %s' % (reason or message), alt)
           text = message or '%s: %s' % (label, reason)
           if sup:
             text += ('; %s retained and re-idealized (completed as with the '
@@ -3054,6 +3139,7 @@ class place_hydrogens():
           if not supplied(h): install[h.i_seq] = xyz.elems
           self._protected_h.add(key(h))
         self._metal_amine_listed_n.add(key(n))
+        if start: start_line('placed as NH2', alt)
         text = '%s: %s not placed' % (label, ', '.join(h.name.strip()
           for h in drop))
         if sup:
@@ -3105,7 +3191,26 @@ class place_hydrogens():
     self.model.idealize_h_riding()
 
   def _finish_metal_lists(self):
-    # end of run(): the lists name what is left
+    # end of run(): the lists name what is left. A chain start with NH3 from
+    # the option that the conversion did not judge keeps its NH3
+    left = [key for key in sorted(self._chain_start_sites)
+            if key not in self._chain_start_judged]
+    if left:
+      # the H on that N in the final model
+      on_n = {}
+      for a in self.model.get_hierarchy().atoms():
+        if a.name.strip() != 'N': continue
+        key = (residue_key(a.parent().parent()), a.parent().altloc)
+        if key not in left: continue
+        on_n[key] = [h.name.strip() for h in a.parent().parent().atoms()
+          if h.element.strip().upper() in ('H', 'D') and _compatible(h, a)
+          and h.distance(a) < 1.2]
+    for key in left:
+      self._start_message('%s: metal-bound chain start, %s kept: not judged '
+        'by the conversion (%s)%s' % (self._chain_start_label[key],
+        ', '.join(on_n.get(key, [])) or 'no H', self._chain_start_why.get(key,
+        'no metal-bound primary-amine H after processing'),
+        self._start_setting(self._chain_start_sites[key], False)))
     hierarchy = self.model.get_hierarchy()
     parts = residue_parts(hierarchy)
     index = dict((self._atom_key(parts, a), a.i_seq) for a in hierarchy.atoms())
@@ -3289,21 +3394,260 @@ class place_hydrogens():
 
   # ----------------------------------------------------------------------------
 
+  def _dictionary_primary_amine(self, n):
+    """
+    Whether N n is a primary amine by its dictionary, with the rules of
+    metal_amine_sites.amine_class() that need no processed model: one heavy
+    neighbour, neither N nor that neighbour in a double, triple, aromatic or
+    delocalized bond, N in no plane. :return: (bool, reason)
+    """
+    bonds = heavy_neighbors_in_restraints(n, self.query_mon_lib_srv)
+    if bonds is None: return False, 'no dictionary for the residue'
+    if len(bonds) != 1:
+      return False, 'not a primary amine (%s)' % ', '.join(bonds)
+    resname = n.parent().resname.strip()
+    if not hasattr(self, '_unsaturated_cache'): self._unsaturated_cache = {}
+    unsaturated = _unsaturated_atoms(resname, self.query_mon_lib_srv,
+      self._unsaturated_cache)
+    for name in (n.name.strip(), bonds[0].strip()):
+      if name in unsaturated:
+        return False, ('not a primary amine (%s in a multiple or aromatic '
+          'bond)' % name)
+    try:
+      cc = self.query_mon_lib_srv.get_comp_comp_id_direct(resname)
+    except Exception:
+      cc = None
+    if cc is not None:
+      for p in getattr(cc, 'plane_list', []):
+        if p.atom_id.strip() == n.name.strip():
+          return False, 'not a primary amine (N in a plane)'
+    return True, ''
+
+  def chain_start_metal_conformers(self, m):
+    """
+    The chain starts of model m (chain_start_residue_groups()) with a metal
+    of NH_METAL_ELEMENTS in the window of an N atom, with the contacts of
+    metal_h_sites (metal_contact_pairs(), the same symmetry) and the metals
+    it counts (an altloc compatible with that N, occupancy > 0).
+    :return: [(rg, [(N altloc, N atom, set of the counted metals' altlocs)])],
+      the N atoms with counted metals only
+    """
+    starts = chain_start_residue_groups(m)
+    if not starts: return []
+    atoms = m.atoms()
+    elements = [_atom_element(a) for a in atoms]
+    metals = [i for i, e in enumerate(elements) if e in NH_METAL_ELEMENTS
+              and _covalent_radius(e) is not None]
+    if not metals: return []
+    position = {}
+    for i, a in enumerate(atoms):
+      position[(a.parent().parent().memory_id(), a.parent().altloc,
+                a.name)] = i
+    parents, owner = [], {}
+    for rg in starts:
+      for ag in rg.atom_groups():
+        n = ag.get_atom('N')
+        if n is None: continue
+        i = position[(rg.memory_id(), ag.altloc, n.name)]
+        if _covalent_radius(elements[i]) is None: continue
+        parents.append(i)
+        owner[i] = rg
+    found = {}
+    for i_x, i_m, rt in metal_contact_pairs([a.xyz for a in atoms], elements,
+        parents, metals, self._contact_cs):
+      if atoms[i_m].occ > 0 and _compatible(atoms[i_m], atoms[i_x]):
+        found.setdefault(i_x, set()).add(atoms[i_m].parent().altloc)
+    result = []
+    for rg in starts:
+      ns = [(atoms[i].parent().altloc, atoms[i], found[i])
+            for i in parents if owner[i] is rg and i in found]
+      if ns: result.append((rg, ns))
+    return result
+
+  def _start_label(self, n, rg, alt=None):
+    # "N GLY A 288", with " conformer B" where the N has conformers
+    label = 'N %s %s %s' % (n.parent().resname.strip() if n is not None
+      else rg.atom_groups()[0].resname.strip(), rg.parent().id.strip(),
+      rg.resseq.strip() + rg.icode.strip())
+    if alt: label += ' conformer %s' % alt
+    return label
+
+  def _start_setting(self, start, placed):
+    # what n_terminal_charge alone places, where it is not NH3
+    if start in (None, 'NH3'): return ''
+    return ' (n_terminal_charge=%s would place %s%s)' % (self.n_terminal_charge,
+      start, ', wrong for a terminus and for a chain break' if placed else '')
+
+  def _start_message(self, text):
+    # one line per site and conformer, not repeated
+    if text not in self.metal_amine_chain_starts:
+      self.metal_amine_chain_starts.append(text)
+
+  def _supplied_h_on(self, n, rg, parts):
+    # supplied H/D (keep_existing_H) bonded to N n, in its conformer
+    if not (self.keep_existing_H and self._existing_h): return []
+    return [a for a in rg.atoms() if a.element.strip().upper() in ('H', 'D')
+            and a.distance(n) < 1.3 and _compatible(a, n) and
+            parts[a.parent().memory_id()] + (a.parent().altloc, a.name)
+              in self._existing_h]
+
+  def place_metal_bound_chain_starts(self, m, model_atoms, model_sites,
+                                     starts, places, parts):
+    """
+    metal_bound_amines_as_nh2 (A5 C1c): NH3 at the metal-bound chain starts
+    that n_terminal_charge leaves alone (starts: chain_start_metal_conformers(),
+    places: memory_ids of the residues the setting builds NH3 at), judged per
+    N conformer: an N in altlocs is eligible where its own counted metals
+    are; a blank N needs a metal common to all conformers of the residue.
+    Each needs a primary amine by the dictionary (_dictionary_primary_amine()),
+    no nonmetal of another residue within 1.75 A, and no supplied H on the
+    N (those keep their coordinates and names: left out of riding H). The NH3
+    goes into that conformer's atom group; convert_metal_bound_amines() then
+    places NH2 or keeps NH3 with the reason. Every N judged gets one line.
+    """
+    cutoff_sq = 1.75**2
+    for rg, ns in starts:
+      if rg.memory_id() in places: continue
+      alts = sorted(set(ag.altloc for ag in rg.atom_groups()) - set(['']))
+      split_n = any(alt for alt, n, metal_alts in ns)
+      todo = []
+      for alt, n, metal_alts in ns:
+        label = self._start_label(n, rg, alt if split_n else None)
+        key = (residue_key(rg), alt)
+        def unchanged(reason):
+          self._chain_start_unchanged.add(key)
+          self._start_message('%s: metal-bound chain start, unchanged: %s' % (
+            label, reason))
+        if (not split_n and alts and '' not in metal_alts and
+            not set(alts) <= metal_alts):
+          unchanged('metal only in conformer %s (no common frame)' %
+            ', '.join(sorted(metal_alts)))
+          continue
+        ok, why = self._dictionary_primary_amine(n)
+        if not ok:
+          unchanged(why)
+          continue
+        nb = ((model_sites - n.xyz).dot() < cutoff_sq).iselection()
+        if [i for i in nb
+            if model_atoms[i].element.strip().upper() in nonmetals
+            and model_atoms[i].parent().parent().memory_id() != rg.memory_id()]:
+          unchanged('a nonmetal of another residue within 1.75 A')
+          continue
+        hs = self._supplied_h_on(n, rg, parts)
+        if hs:
+          # the supplied H stay as they are, and no new H joins them (the
+          # dictionary's amide H that placement added)
+          self._protected_h.update(parts[h.parent().memory_id()] +
+            (h.parent().altloc, h.name) for h in hs)
+          # a blank N: per complete conformer (its own H plus the blank
+          # ones); a conformer without supplied H keeps what placement put
+          # there, as without the option
+          with_h, without = {'': hs}, []
+          if alt == '' and alts:
+            with_h = {}
+            for x in alts:
+              own = [h for h in hs if h.parent().altloc in ('', x)]
+              if own: with_h[x] = own
+            without = [x for x in alts if x not in with_h]
+          for ag_h in rg.atom_groups():
+            if not _compatible(ag_h.atoms()[0], n): continue
+            if ag_h.altloc == '' and without: continue
+            if ag_h.altloc != '' and alt == '' and ag_h.altloc not in with_h:
+              continue
+            h = ag_h.get_atom('H')
+            if (h is not None and
+                parts[ag_h.memory_id()] + (ag_h.altloc, h.name)
+                  not in self._existing_h and
+                _dictionary_h_on_n(ag_h, self.query_mon_lib_srv)):
+              ag_h.remove_atom(h)
+          if list(with_h) == ['']:
+            unchanged('supplied H kept (%s)' % ', '.join(_h_name(h)
+              for h in hs))
+          else:
+            text = ['supplied H in conformer %s kept (%s)' % (x, ', '.join(
+              h.name.strip() for h in with_h[x])) for x in sorted(with_h)]
+            if without:
+              text.append('conformer %s as n_terminal_charge places it' %
+                ', '.join(without))
+            unchanged('; '.join(text))
+          continue
+        todo.append((alt, n, key))
+      for alt, n, key in todo:
+        self._chain_start_sites[key] = '1 H'
+        self._chain_start_label[key] = self._start_label(n, rg,
+          alt if split_n else None)
+        if alt == '':
+          # as the propeller for the whole residue
+          for ag_h in rg.atom_groups():
+            h = ag_h.get_atom('H')
+            if h and _dictionary_h_on_n(ag_h, self.query_mon_lib_srv):
+              ag_h.remove_atom(h)
+          split_ca = _split_ca_groups(rg, n)
+          for ag_ca in split_ca:
+            c = ag_ca.get_atom('C')
+            if c is None:
+              c = ([x.get_atom('C') for x in rg.atom_groups()
+                    if x.altloc == '' and x.get_atom('C')] or [None])[0]
+            if c is None: continue
+            add_n_terminal_hydrogens_to_atom_group(ag_ca,
+              n_ca_c=(n, ag_ca.get_atom('CA'), c))
+          if not split_ca:
+            add_n_terminal_hydrogens_to_residue_group(rg)
+        else:
+          # only this N conformer's atom group
+          ag = n.parent()
+          blank = [x for x in rg.atom_groups() if x.altloc == '']
+          pick = lambda name: ag.get_atom(name) or ([x.get_atom(name)
+            for x in blank if x.get_atom(name)] or [None])[0]
+          h = ag.get_atom('H')
+          if h and _dictionary_h_on_n(ag, self.query_mon_lib_srv):
+            ag.remove_atom(h)
+          ca, c = pick('CA'), pick('C')
+          if ca is None or c is None: continue
+          add_n_terminal_hydrogens_to_atom_group(ag, n_ca_c=(n, ca, c))
+
   def place_n_terminal_propeller(self, pdb_hierarchy):
     '''
     Place NH3 at residue #1, at first residue in chain, or at all chain starts
     (first residue in chain and first residue after a chain break)
     Changes hierarchy in place
+    metal_bound_amines_as_nh2 (A5 C1c): a chain start (no preceding C within
+    2.0 A) whose N has a metal (chain_start_metal_conformers()) also gets NH3
+    where n_terminal_charge places none (place_metal_bound_chain_starts(),
+    per N conformer); where the setting builds NH3 it does so as without the
+    option. Each such N is listed.
     '''
     # an N bonded to another residue is no terminus (cyclic peptide: 1evd ACB 1
     # N - MDH 5 C)
+    parts = None
+    if self.metal_bound_amines_as_nh2:
+      parts = residue_parts(pdb_hierarchy)
     for m in pdb_hierarchy.models():
       model_atoms = m.atoms()
       model_sites = model_atoms.extract_xyz()
       if self.n_terminal_charge == 'all_chain_starts':
         rgs_list = chain_start_residue_groups(m)
+      elif self.n_terminal_charge == 'no_charge':
+        rgs_list = []
       else:
         rgs_list = [chain.residue_groups()[0] for chain in m.chains()]
+      metal_starts = set()
+      if self.metal_bound_amines_as_nh2:
+        starts = self.chain_start_metal_conformers(m)
+        metal_starts = set(rg.memory_id() for rg, ns in starts)
+        places = set(rg.memory_id() for rg in rgs_list
+          if not (self.n_terminal_charge == 'residue_one' and
+                  rg.resseq_as_int() != 1))
+        self.place_metal_bound_chain_starts(m, model_atoms, model_sites,
+          starts, places, parts)
+      def unchanged(n, rg, reason):
+        # a metal-bound chain start that the setting builds NH3 at
+        if rg.memory_id() not in metal_starts: return
+        key = (residue_key(rg), n.parent().altloc if n else '')
+        self._chain_start_unchanged.add(key)
+        self._start_message('%s: metal-bound chain start, unchanged: %s' % (
+          self._start_label(n, rg), reason))
+      forced = {}
       candidates = []
       for rgs in rgs_list:
         # by default, place NH3 only at residue with resseq 1
@@ -3314,13 +3658,24 @@ class place_hydrogens():
         for ag in rgs.atom_groups():
           n = ag.get_atom('N') # assumes atom name "N"
           if n: break
-        if not n: continue
+        if not n:
+          unchanged(None, rgs, 'no N')
+          continue
         bonds = heavy_neighbors_in_restraints(n, self.query_mon_lib_srv)
-        if bonds is None: continue
+        if bonds is None:
+          unchanged(n, rgs, 'no dictionary for the residue')
+          continue
         heavies = 2
         if ag.resname in ['PRO']: # needs a PRO child lookup
           heavies = 3
-        if len(bonds) >= heavies: continue
+        if len(bonds) >= heavies:
+          unchanged(n, rgs, 'more heavy neighbours in the dictionary (%s)' %
+            ', '.join(bonds))
+          continue
+        if rgs.memory_id() in metal_starts:
+          ok, why = self._dictionary_primary_amine(n)
+          if ok: forced[rgs.memory_id()] = True
+          else: unchanged(n, rgs, why)
         candidates.append((rgs, ag, n))
       if not candidates: continue
       # Atoms within 1.75 A of candidate N. Few candidates: scan all atoms per
@@ -3347,7 +3702,13 @@ class place_hydrogens():
         if [i for i in nb
             if model_atoms[i].element.strip().upper() in nonmetals
             and model_atoms[i].parent().parent().memory_id() != rgs.memory_id()]:
+          if rgs.memory_id() in forced:
+            unchanged(n, rgs, 'a nonmetal of another residue within 1.75 A')
           continue
+        if rgs.memory_id() in forced:
+          key = (residue_key(rgs), n.parent().altloc)
+          self._chain_start_sites[key] = 'NH3'
+          self._chain_start_label[key] = self._start_label(n, rgs)
         # remove the amide H also for peptide-like residues of class 'other'
         # (UNK, ACB): add_n_terminal_hydrogens keeps an existing H in place of
         # H1, and H, H2, H3 do not match mod_NH3

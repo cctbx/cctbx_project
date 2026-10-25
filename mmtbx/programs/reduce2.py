@@ -77,7 +77,11 @@ metal_bound_amines_as_nh2 = False
           input positions. With one supplied H the second \
           is placed around it, or else the group is completed and \
           re-idealized as without the option. Three supplied H stay. Reruns \
-          on reduce2's own output keep the NH2.
+          on reduce2's own output keep the NH2. A metal-bound chain start \
+          (no preceding residue in the model, a terminus or a break) becomes \
+          NH2 whatever n_terminal_charge says, judged per N conformer, no \
+          sequence records are used. A supplied H at such a chain start is \
+          never removed by the option.
 exclude_water = True
   .type = bool
   .short_caption = Add H to water if False
