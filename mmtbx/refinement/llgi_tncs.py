@@ -126,12 +126,15 @@ class tncs_groups(object):
   angles (degrees, relative to the reference copy)); .skipped: group_args(
   chain_ids, n_common) for the connected chains with fewer than 3 atoms
   common to all, which are not used; .n_atoms: the number of atoms in the
-  model, which the i_seqs index.
+  model, which the i_seqs index; .fingerprint: of the model's atoms
+  (mmtbx.model.model._hierarchy_fingerprint).
   """
   def __init__(self, pdb_hierarchy, crystal_symmetry, angle_max=10.,
                min_identity=0.9, min_overlap=0.5, min_atoms=50):
+    from mmtbx.model.model import _hierarchy_fingerprint
     self.crystal_symmetry = crystal_symmetry
     self.n_atoms = pdb_hierarchy.atoms().size()
+    self.fingerprint = _hierarchy_fingerprint(pdb_hierarchy)
     sites_frac = crystal_symmetry.unit_cell().fractionalize(
       pdb_hierarchy.atoms().extract_xyz())
     chains = []
@@ -1187,12 +1190,15 @@ def show_monitor(result, log):
 
 def _current_groups(state, crystal_symmetry, xray_structure, pdb_hierarchy):
   """ (groups, note): state.groups, or, if the model has gained or lost
-  atoms since they were found (e.g. waters, ions), the groups found again
-  in pdb_hierarchy, which must match xray_structure, and a note saying so
-  (None otherwise) """
+  atoms since they were found (e.g. waters, ions), or pdb_hierarchy's atoms
+  differ from those they were found in (e.g. reordered), the groups found
+  again in pdb_hierarchy, which must match xray_structure, and a note
+  saying so (None otherwise) """
   from libtbx.utils import Sorry
+  from mmtbx.model.model import _hierarchy_fingerprint
   n_atoms = xray_structure.scatterers().size()
-  if(state.groups.n_atoms == n_atoms):
+  if(state.groups.n_atoms == n_atoms and (pdb_hierarchy is None or
+     _hierarchy_fingerprint(pdb_hierarchy) == state.groups.fingerprint)):
     return state.groups, None
   if(pdb_hierarchy is None or pdb_hierarchy.atoms().size() != n_atoms):
     raise Sorry("tNCS: the model now has %d atoms, not the %d for which the "
@@ -1203,6 +1209,8 @@ def _current_groups(state, crystal_symmetry, xray_structure, pdb_hierarchy):
     raise Sorry("tNCS: no groups of chains related by tNCS in the model with "
       "%d atoms (they were found in the model with %d atoms)." % (n_atoms,
       state.groups.n_atoms))
+  if(n_atoms == state.groups.n_atoms):
+    return groups, "groups found again for the model's changed atoms"
   return groups, "groups found again for the model's %d atoms (previously " \
     "%d)" % (n_atoms, state.groups.n_atoms)
 

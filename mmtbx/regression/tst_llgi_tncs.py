@@ -93,6 +93,26 @@ def exercise_split_copy(h):
   groups.show(log)
   assert "chains A B E not used" in log.getvalue(), log.getvalue()
 
+def exercise_reordered(h, groups):
+  """ the same atoms with the chains reordered: the groups found for h
+  index the wrong atoms and are found again """
+  from libtbx import group_args
+  state = group_args(groups=groups, params=llgi_tncs.llgi_tncs_params.extract())
+  xrs = h.extract_xray_structure(crystal_symmetry=CS)
+  for ph in (None, h):
+    g, note = llgi_tncs._current_groups(state, CS, xrs, ph)
+    assert g is groups and note is None
+  lines = [a.format_atom_record() for c in "CABD" for a in h.atoms()
+           if a.chain().id == c]
+  h_r = iotbx.pdb.input(source_info=None,
+    lines=flex.split_lines("\n".join(lines))).construct_hierarchy()
+  xrs_r = h_r.extract_xray_structure(crystal_symmetry=CS)
+  g, note = llgi_tncs._current_groups(state, CS, xrs_r, h_r)
+  assert g is not groups and "groups found again" in note, note
+  atoms = h_r.atoms()
+  for cid, sel in zip(g.groups[0].chain_ids, g.groups[0].i_seqs):
+    assert set(atoms[i].chain().id for i in sel) == set([cid])
+
 def direct_pair_term(ms, sites_m, sites_n, z_sq, b_sum):
   """ (1/Nsym) sum_k sum_j w_j exp(2 pi i (T_k^T h).d_j) / sum_j w_j over
   all the space group's operators (inversion and centring included) """
@@ -1184,6 +1204,7 @@ def run():
   h, xrs = build_model()
   groups = exercise_groups(h)
   exercise_split_copy(h)
+  exercise_reordered(h, groups)
   exercise_pair_term(groups, xrs)
   exercise_pair_term_centrosymmetric()
   exercise_renormalise()
