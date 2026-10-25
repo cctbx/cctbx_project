@@ -199,6 +199,7 @@ GLY288 = ('N GLY A 288: metal-bound chain start, placed as NH2 '
   'chain break)')
 REPORTED = 'N-H next to a metal, not changed'
 ON = 'metal_bound_amines_as_nh2=True'
+OFF = 'metal_bound_amines_as_nh2=False'
 
 def run(prefix, pdb_str, args=(), result=False):
   '''reduce2 on pdb_str. :return: (output hierarchy, description, log
@@ -274,7 +275,7 @@ def test_lys_cd():
     assert REPORTED not in text
 
 def test_option_off():
-  h, description, log = run('tst_reduce2_metal_amine_off', pdb_lys_cd)
+  h, description, log = run('tst_reduce2_metal_amine_off', pdb_lys_cd, [OFF])
   assert [n for n, alt in h_on(h, 359, 'NZ')] == ['HZ1', 'HZ2', 'HZ3']
   assert CONVERTED not in description and CONVERTED not in log
   assert section(description, REPORTED)[-1].startswith(
@@ -381,7 +382,8 @@ def test_chain_start_supplied_nh2_all_chain_starts():
 
 def test_chain_start_option_off():
   # without the option: one H on Gly 288 (residue_one), as on master
-  h, description, log = run('tst_reduce2_metal_amine_gly_off', pdb_1xmk)
+  h, description, log = run('tst_reduce2_metal_amine_gly_off', pdb_1xmk,
+    [OFF])
   assert h_on(h, 288, 'N') == [('H', '')]
   assert CHAIN_START not in description and CONVERTED not in description
 
@@ -408,7 +410,7 @@ def gly288_conformers(metal_alt, split_n=True):
 def test_chain_start_supplied_h():
   # supplied H at a metal-bound chain start: the option builds no NH3 and
   # deletes nothing; every supplied atom keeps its name and coordinates
-  run('tst_reduce2_metal_amine_gs0', pdb_1xmk)
+  run('tst_reduce2_metal_amine_gs0', pdb_1xmk, [OFF])
   with open('tst_reduce2_metal_amine_gs0_out.pdb') as f:
     one_h = f.read()
   run('tst_reduce2_metal_amine_gs1', pdb_1xmk, [ON])
@@ -421,7 +423,7 @@ def test_chain_start_supplied_h():
     h, d, l = run('tst_reduce2_metal_amine_gs_' + tag, text,
       [ON, 'keep_existing_H=True'])
     off, d_off, l_off = run('tst_reduce2_metal_amine_gs_off', text,
-      ['keep_existing_H=True'])
+      [OFF, 'keep_existing_H=True'])
     assert [x for x, alt in h_on(h, 288, 'N')] == names, (tag,
       h_on(h, 288, 'N'))
     for name in names:
@@ -459,13 +461,13 @@ def test_chain_start_conformers():
     'unchanged: metal only in conformer B (no common frame)'], d
   # a blank N, CA/C/O in A and B, a blank Ni, a supplied H in A only: A keeps
   # it, B gets what the option-off run places
-  run('tst_reduce2_metal_amine_gcs0', gly288_conformers(None, False))
+  run('tst_reduce2_metal_amine_gcs0', gly288_conformers(None, False), [OFF])
   with open('tst_reduce2_metal_amine_gcs0_out.pdb') as f:
     text = '\n'.join(l for l in f.read().splitlines()
       if l[12:26] != ' H  BGLY A 288') + '\n'
   h_in = iotbx.pdb.input(source_info=None, lines=text).construct_hierarchy()
   off, d_off, l_off = run('tst_reduce2_metal_amine_gcs_off', text,
-    ['keep_existing_H=True'])
+    [OFF, 'keep_existing_H=True'])
   h, d, l = run('tst_reduce2_metal_amine_gcs', text,
     [ON, 'keep_existing_H=True'])
   assert atom(h, 288, 'H', 'A').distance(atom(h_in, 288, 'H', 'A')) < 1.e-3
@@ -497,7 +499,7 @@ def test_unresolved():
 
 def test_supplied():
   # supplied NH3 (reduce2's own output without the option): kept, reported
-  run('tst_reduce2_metal_amine_nh3', pdb_lys_cd)
+  run('tst_reduce2_metal_amine_nh3', pdb_lys_cd, [OFF])
   with open('tst_reduce2_metal_amine_nh3_out.pdb') as f:
     nh3 = f.read()
   h, description, log = run('tst_reduce2_metal_amine_nh3_keep', nh3,
@@ -516,7 +518,7 @@ def test_rerun_stable():
     with open('tst_reduce2_metal_amine_rr%d_out.pdb' % i) as f:
       text = f.read()
     h, description, log = run(prefix, text, [ON] + args)
-    off, d_off, l_off = run(prefix + '_off', text, args)
+    off, d_off, l_off = run(prefix + '_off', text, [OFF] + args)
     check_nh2(h, 359, 'NZ', 'CE', 396, 'CD', ['HZ2', 'HZ3'])
     # the NH2 where it was; every other H as without the option
     for name in ('HZ2', 'HZ3'):
@@ -555,7 +557,7 @@ def test_qmready_charge():
   # one converted site: total charge one lower
   pdb = pdb_lys_cd.replace('          CD\n', '          CD2+\n')
   charges = []
-  for args in ([], [ON]):
+  for args in ([OFF], [ON]):
     h, description, log, r = run('tst_reduce2_metal_amine_qm', pdb,
       ['qmready=True'] + args, result=True)
     charges.append(r.total_charge)
@@ -593,7 +595,8 @@ def test_geometry_not_placeable():
     nh2 = f.read()
   for angle in (140, 145):
     pdb = lys_cd_at(pdb_lys_cd, angle)
-    off, d_off, l_off = run('tst_reduce2_metal_amine_g%d_off' % angle, pdb)
+    off, d_off, l_off = run('tst_reduce2_metal_amine_g%d_off' % angle, pdb,
+      [OFF])
     h, description, log = run('tst_reduce2_metal_amine_g%d' % angle, pdb, [ON])
     assert CONVERTED not in description
     lines = section(description, UNRESOLVED)
@@ -685,7 +688,7 @@ def test_lists_after_gc():
     return finish(self)
   reduce_hydrogen.place_hydrogens._finish_metal_lists = collected_first
   try:
-    h, description, log = run('tst_reduce2_metal_amine_gc', pdb_1xmk)
+    h, description, log = run('tst_reduce2_metal_amine_gc', pdb_1xmk, [OFF])
   finally:
     reduce_hydrogen.place_hydrogens._finish_metal_lists = finish
   assert section(description, REPORTED) == [
@@ -695,7 +698,8 @@ def test_lists_after_gc():
 def test_other_h_unchanged():
   # with a converted amine, every H away from it as without the option
   # (placement's riding H manager is kept; a new one moved the glycan H)
-  off, d, l = run('tst_reduce2_metal_amine_gly_off', pdb_his_cu_glycan)
+  off, d, l = run('tst_reduce2_metal_amine_gly_off', pdb_his_cu_glycan,
+    [OFF])
   on, d, l = run('tst_reduce2_metal_amine_gly_on', pdb_his_cu_glycan, [ON])
   assert section(d, CONVERTED)[0].startswith('N   HIS A   1: H1 not placed')
   n = atom(on, 1, 'N')
@@ -832,7 +836,7 @@ def test_one_supplied_h():
   bad_one = one.replace(hz2, hz2[:30] + '%8.3f%8.3f%8.3f' % bad.elems +
     hz2[54:])
   off, d_off, l_off = run('tst_reduce2_metal_amine_bad_off', bad_one,
-    ['keep_existing_H=True'])
+    [OFF, 'keep_existing_H=True'])
   h, description, log = run('tst_reduce2_metal_amine_bad', bad_one,
     [ON, 'keep_existing_H=True'])
   lines = section(description, UNRESOLVED)
@@ -874,7 +878,7 @@ def test_names():
 def test_nh3_across_conformers():
   # HZ1 blank, HZ2/HZ3 in A and in B (B moved 0.1 A): three H in each
   # conformer, an NH3: handled as without the option
-  run('tst_reduce2_metal_amine_cf0', pdb_lys_cd)
+  run('tst_reduce2_metal_amine_cf0', pdb_lys_cd, [OFF])
   with open('tst_reduce2_metal_amine_cf0_out.pdb') as f:
     nh3 = f.read()
   lines = []
@@ -888,7 +892,8 @@ def test_nh3_across_conformers():
       lines.append(l)
   text = '\n'.join(lines) + '\n'
   for args in (['approach=optimize'], ['keep_existing_H=True']):
-    off, d_off, l_off = run('tst_reduce2_metal_amine_cf_off', text, args)
+    off, d_off, l_off = run('tst_reduce2_metal_amine_cf_off', text,
+      [OFF] + args)
     on, d_on, l_on = run('tst_reduce2_metal_amine_cf_on', text, [ON] + args)
     assert SUPPLIED_NH2 not in d_on and CONVERTED not in d_on, (args, d_on)
     a = dict((x.id_str(), x.xyz) for x in off.atoms())
@@ -934,7 +939,7 @@ def test_nh3_across_conformers():
     '(geometric))', 'NZ  LYS A 359 (HZ1, HZ2 altloc B)  (NZ  LYS A 359 - CD    '
     'CD A 396 2.21 A (geometric))'], d
   off, d_off, l_off = run('tst_reduce2_metal_amine_cf1_off', text,
-    ['keep_existing_H=True'])
+    [OFF, 'keep_existing_H=True'])
   h, d, l = run('tst_reduce2_metal_amine_cf1_keep', text,
     [ON, 'keep_existing_H=True'])
   assert sorted((x.name.strip(), x.parent().altloc) for x in h.atoms()

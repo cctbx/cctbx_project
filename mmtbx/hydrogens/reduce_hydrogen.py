@@ -2125,7 +2125,8 @@ class place_hydrogens():
     placement whose placeholder the processed model no longer has.
 
   metal_bound_amines_as_nh2 : bool
-    a coordinating NH3+ becomes NH2 (convert_metal_bound_amines())
+    a coordinating NH3+ becomes NH2 (convert_metal_bound_amines()); False
+    here, reduce2 passes its option (on by default)
   '''
 
 # ------------------------------------------------------------------------------

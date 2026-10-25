@@ -54,7 +54,7 @@ n_terminal_charge = *residue_one first_in_chain all_chain_starts no_charge
           first_in_chain (first residue of each chain), all_chain_starts\
           (first residue of each chain and each residue after a chain\
           break), no_charge.
-metal_bound_amines_as_nh2 = False
+metal_bound_amines_as_nh2 = True
   .type = bool
   .short_caption = Place metal-bound primary amines as NH2
   .help = A primary amine bound to a metal (Lys NZ, an N-terminal NH3, a \

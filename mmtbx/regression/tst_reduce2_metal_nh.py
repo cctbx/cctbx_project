@@ -224,15 +224,18 @@ def section(text, title):
 def test_1xmk():
   h, description, log = run('tst_reduce2_metal_nh_1xmk', pdb_1xmk)
   assert h_on(h, 289, 'N') == [] and h_on(h, 290, 'N') == []
-  # chain start (not resseq 1): one H as today, listed
-  assert h_on(h, 288, 'N') == ['H']
+  # metal-bound chain start (metal_bound_amines_as_nh2, on by default): NH2,
+  # listed there, no longer in the "not changed" list
+  assert h_on(h, 288, 'N') == ['H2', 'H3']
   assert h_on(h, 290, 'ND1') == []
   for text in (description, log):
     assert section(text, NOT_PLACED) == [
       'H   SER A 289  (N   SER A 289 - NI    NI A 398 1.80 A (geometric))',
       'H   HIS A 290  (N   HIS A 290 - NI    NI A 398 1.84 A (geometric))'], text
-    assert section(text, REPORTED) == [
-      'N   GLY A 288 (H)  (N   GLY A 288 - NI    NI A 398 1.89 A (geometric))'], text
+    assert ('  N GLY A 288: metal-bound chain start, placed as NH2 '
+      '(n_terminal_charge=residue_one would place 1 H, wrong for a terminus '
+      'and for a chain break)') in text.splitlines(), text
+    assert REPORTED not in text, text
 
 def test_thymine_hg():
   h, description, log = run('tst_reduce2_metal_nh_5gsk', pdb_5gsk)
