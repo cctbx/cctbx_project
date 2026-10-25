@@ -21,6 +21,7 @@ import math
 import random
 
 import iotbx.pdb
+from cctbx import crystal
 from cctbx.crystal import super_cell
 from iotbx.pdb.utils import check_for_missing_elements
 from libtbx import group_args
@@ -255,6 +256,12 @@ def _split_dirs(a1, a2, cos_half, sin_half):
   w = (w[0] / wn, w[1] / wn, w[2] / wn)
   return (tuple(b[c] * cos_half + w[c] * sin_half for c in range(3)),
           tuple(b[c] * cos_half - w[c] * sin_half for c in range(3)))
+
+
+def _turn_two_fold(d, a):
+  """Direction ``d`` turned 180 deg about the unit axis ``a``."""
+  t = 2.0 * (d[0] * a[0] + d[1] * a[1] + d[2] * a[2])
+  return (t * a[0] - d[0], t * a[1] - d[1], t * a[2] - d[2])
 
 
 def _rand_unit(rng):
@@ -878,6 +885,46 @@ class _WaterHydrogenPlacer(object):
         best = (el, d)
     return best
 
+  def _site_symmetry(self, o_pts):
+    """Site symmetry of the water O ``o_pts``, for the waters on a special
+    position.
+
+    Fills ``w_site_ops`` with the cartesian (rotation, translation) of each
+    such water's non-identity site-symmetry operators and, on a two-fold,
+    ``w_axis`` with the unit axis direction. Under these operators the
+    water's own atoms map onto the water itself (a symmetric water's other
+    H) or onto its other orientation, never onto a neighbour.
+    """
+    sps = crystal.special_position_settings(
+      self.crystal_symmetry,
+      min_distance_sym_equiv=self.min_distance_sym_equiv)
+    uc = self.crystal_symmetry.unit_cell()
+    table = sps.site_symmetry_table(sites_cart=o_pts)
+    for wi in table.special_position_indices():
+      ops = [m for m in table.get(wi).matrices() if not m.is_unit_mx()]
+      self.w_site_ops[wi] = tuple(
+        (matrix.sqr(uc.matrix_cart(m.r())),
+         matrix.col(uc.orthogonalize(m.t().as_double()))) for m in ops)
+      info = ops[0].r().info()
+      if len(ops) == 1 and info.type() == 2:
+        axis = matrix.col(uc.orthogonalize(info.ev())).normalize()
+        self.w_axis[wi] = axis.elems
+
+  def _own_equiv(self, wi, j):
+    """Whether static atom ``j`` is the equivalent of one of water ``wi``'s
+    own atoms under the water's site symmetry."""
+    if j < self.n_model_atoms:
+      return False
+    src = self.sym_src[j - self.n_model_atoms]
+    if src not in self.w_own[wi]:
+      return False
+    x = matrix.col(self.static_xyz[src])
+    y = matrix.col(self.static_xyz[j])
+    for rot, trn in self.w_site_ops[wi]:
+      if (rot * x + trn - y).length() < 0.01:
+        return True
+    return False
+
   def _water_geom(self, wi):
     """Fixed per-water geometry, computed once.
 
@@ -954,16 +1001,78 @@ class _WaterHydrogenPlacer(object):
     self.w_geom[wi] = g
     return g
 
+  def _place_symmetric(self, wi, nbr_slots, fixed_d1):
+    """The two H of a water on a two-fold, each other's equivalents.
+
+    H2 is H1 turned 180 deg about the axis through the O, so both lie on the
+    cone of half the H-O-H angle about the axis, at either end. A given H1
+    fixes H2; otherwise the pair is chosen over sampled azimuths, plus the
+    azimuth of each acceptor, ranked (both away from cations, both
+    clash-free, summed alignment of each H with its best acceptor, the
+    smaller of the two clearances).
+
+    Returns ``(h1_xyz, h2_xyz)``.
+    """
+    g = self._water_geom(wi)
+    o = g["o"]
+    a = self.w_axis[wi]
+    oh = self.oh_length
+
+    def at(d):
+      return (o[0] + oh * d[0], o[1] + oh * d[1], o[2] + oh * d[2])
+
+    if fixed_d1 is not None:
+      return at(fixed_d1), at(_turn_two_fold(fixed_d1, a))
+    p, q = _ortho_frame(a)
+    ch, sh = self.cos_half_hoh, self.sin_half_hoh
+    acc_dirs = g["acc_dirs"]
+    psis = [math.pi * k / _WATER_CONE_SAMPLES
+            for k in range(2 * _WATER_CONE_SAMPLES)]
+    for u in acc_dirs:
+      psis.append(math.atan2(u[0] * q[0] + u[1] * q[1] + u[2] * q[2],
+                             u[0] * p[0] + u[1] * p[1] + u[2] * p[2]))
+    d1s = []
+    for s in (1.0, -1.0):
+      for psi in psis:
+        cp, sp = math.cos(psi), math.sin(psi)
+        d1s.append(tuple(s * ch * a[c] + sh * (cp * p[c] + sp * q[c])
+                         for c in range(3)))
+    d2s = [_turn_two_fold(d, a) for d in d1s]
+    pts1 = flex.vec3_double([at(d) for d in d1s])
+    pts2 = flex.vec3_double([at(d) for d in d2s])
+    cl1 = self._clear(wi, pts1, nbr_slots)
+    cl2 = self._clear(wi, pts2, nbr_slots)
+    cat = g["cat"]
+    top, rank = _rank_top(_cat_ok(cat, pts1, o) & _cat_ok(cat, pts2, o),
+                          cl1.ok & cl2.ok)
+    if rank == 3 and acc_dirs:
+      align = flex.double()
+      for d1, d2 in zip(d1s, d2s):
+        align.append(
+          max(u[0] * d1[0] + u[1] * d1[1] + u[2] * d1[2] for u in acc_dirs)
+          + max(u[0] * d2[0] + u[1] * d2[1] + u[2] * d2[2] for u in acc_dirs))
+      top = top & (align == flex.max(align.select(top)))
+    rows = top.iselection()
+    clear = cl1.best_at(rows)
+    c2 = cl2.best_at(rows)
+    lower = c2 < clear
+    clear.set_selected(lower, c2.select(lower))
+    j = int(rows[flex.max_index(clear)])
+    return pts1[j], pts2[j]
+
   def _place_one(self, wi, nbr_slots, fixed_d1=None):
     """The two H positions for one water O, clash-aware.
 
     ``nbr_slots`` are the pool slots that may lie near this water, its own
     excluded. ``fixed_d1`` holds the unit O-H1 direction fixed instead of
     searching for one, for a water that already carries a proton: the returned
-    ``h1_xyz`` then only restates it and just ``h2_xyz`` is new.
+    ``h1_xyz`` then only restates it and just ``h2_xyz`` is new. A water on a
+    two-fold goes to :meth:`_place_symmetric`.
 
     Returns ``(h1_xyz, h2_xyz)``.
     """
+    if self.w_axis[wi] is not None:
+      return self._place_symmetric(wi, nbr_slots, fixed_d1)
     g = self._water_geom(wi)
     o = g["o"]
     acceptors = g["acceptors"]
@@ -1199,15 +1308,30 @@ class _WaterHydrogenPlacer(object):
 
     H1 goes along a random axis and H2 to a random azimuth on the H-O-H cone.
     A water being completed has a fixed O-H1, so only the azimuth is random.
+    On a two-fold, H1 goes to a random azimuth on the cone about either end
+    of the axis (unless given) and H2 to its equivalent.
     """
     wi, slots, fixed_d1 = self.records[ri]
     o = self._water_geom(wi)["o"]
-    d1 = fixed_d1 if fixed_d1 is not None else _rand_unit(rng)
-    p, q = _ortho_frame(d1)
-    theta = rng.uniform(0.0, 2.0 * math.pi)
-    ct, st = math.cos(theta), math.sin(theta)
-    d2 = tuple(self.cos_hoh * d1[c] + self.sin_hoh * (ct * p[c] + st * q[c])
-               for c in range(3))
+    a = self.w_axis[wi]
+    if a is None:
+      d1 = fixed_d1 if fixed_d1 is not None else _rand_unit(rng)
+      p, q = _ortho_frame(d1)
+      theta = rng.uniform(0.0, 2.0 * math.pi)
+      ct, st = math.cos(theta), math.sin(theta)
+      d2 = tuple(self.cos_hoh * d1[c] + self.sin_hoh * (ct * p[c] + st * q[c])
+                 for c in range(3))
+    else:
+      d1 = fixed_d1
+      if d1 is None:
+        p, q = _ortho_frame(a)
+        s = rng.choice((1.0, -1.0))
+        theta = rng.uniform(0.0, 2.0 * math.pi)
+        ct, st = math.cos(theta), math.sin(theta)
+        d1 = tuple(s * self.cos_half_hoh * a[c]
+                   + self.sin_half_hoh * (ct * p[c] + st * q[c])
+                   for c in range(3))
+      d2 = _turn_two_fold(d1, a)
     self.tick += 1
     if self._store(wi, slots,
                    tuple(o[c] + self.oh_length * d1[c] for c in range(3)),
@@ -1358,6 +1482,8 @@ class _WaterHydrogenPlacer(object):
         hier, self.crystal_symmetry,
         max(self.oh_length + _WATER_CLEARANCE_RADIUS + 0.01,
             _WATER_ACCEPTOR_RADIUS), self.min_distance_sym_equiv)
+    self.n_model_atoms = len(atoms)
+    self.sym_src = sym_src
     atoms = atoms + sym_atoms
     self.atoms = atoms
     # A copy keeps its source's altloc.
@@ -1417,6 +1543,10 @@ class _WaterHydrogenPlacer(object):
     # Cartesian (rotation, translation) per operator that brings the water's
     # own equivalent into range.
     self.w_self_ops = [()] * n
+    # Per water on a special position (see _site_symmetry): its site
+    # symmetry's operators and, on a two-fold, the axis.
+    self.w_site_ops = [()] * n
+    self.w_axis = [None] * n
     self.slot_wid = flex.size_t(2 * n, 0)
     self.slot_conf = flex.size_t(2 * n, 0)
     # The O site each placed H is bound to, for the clash statistics.
@@ -1455,6 +1585,8 @@ class _WaterHydrogenPlacer(object):
       o_np = o_pts.as_numpy_array()
       self.w_own = [w[2] for w in waters]
       self.w_o_col = [matrix.col(w[1].xyz) for w in waters]
+      if self.crystal_symmetry is not None:
+        self._site_symmetry(o_pts)
       # query_ball_point sorts a batch's indices but not a single point's, and
       # the acceptor order is that sort's tie-break: the batch must not sort.
       self.w_acc_raw = self.static_tree.query_ball_point(
@@ -1484,7 +1616,12 @@ class _WaterHydrogenPlacer(object):
           o_np, self.oh_length + _WATER_CLEARANCE_RADIUS + 0.01,
           return_sorted=False)):
         own = self.w_own[wi]
-        idx = flex.size_t([int(j) for j in nb if j not in own])
+        if self.w_site_ops[wi]:
+          # The water's own equivalents are the water itself.
+          idx = flex.size_t([int(j) for j in nb if j not in own
+                             and not self._own_equiv(wi, j)])
+        else:
+          idx = flex.size_t([int(j) for j in nb if j not in own])
         c = self.w_conf[wi]
         if c:
           cj = self.conf.select(idx)

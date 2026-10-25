@@ -338,6 +338,34 @@ HETATM    2  H1  HOH W   1       0.757   5.586   0.000  1.00 10.00           H
 END
 """
 
+# The same water without H, and a ligand O 2.8 A away at 40 deg from the
+# axis; the two-fold makes its equivalent at 40 deg on the other side, so
+# the two acceptors are 80 deg apart, short of the H-O-H angle.
+_TWO_FOLD_ACCEPTOR_PDB = """\
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1 2 1
+HETATM    1  O   HOH W   1       0.000   5.000   0.000  1.00 10.00           O
+HETATM    2  O   EOH L   1       1.800   7.145   0.000  1.00 10.00           O
+END
+"""
+
+_TWO_FOLD_BARE_PDB = """\
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1 2 1
+HETATM    1  O   HOH W   1       0.000   5.000   0.000  1.00 10.00           O
+END
+"""
+
+# A water on an inversion centre of P-1, carrying one H along +x, and a
+# ligand O 2.8 A away at 104.5 deg from it, on H2's cone at 60 deg azimuth
+# from +y. Inversion maps the H onto -x, the other orientation of a water
+# that cannot keep one ordered H-O-H on that site.
+_ON_INVERSION_PDB = """\
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P -1
+HETATM    1  O   HOH W   1       5.000   5.000   5.000  1.00 10.00           O
+HETATM    2  H1  HOH W   1       5.957   5.000   5.000  1.00 10.00           H
+HETATM    3  O   EOH L   1       4.299   6.356   7.348  1.00 10.00           O
+END
+"""
+
 
 # A water split between altlocs A and B, 1.39 A apart, and a blank acceptor
 # 2.8 A from conformer A along +x. Conformer B's O sits 1.23 A from the H
@@ -1075,6 +1103,51 @@ def exercise_sym_equiv_on_symmetry_element():
   assert list(source) == [1], list(source)
 
 
+def exercise_water_on_special_position():
+  """A water on a special position is placed with its site symmetry.
+
+  The two-fold of ``_ON_TWO_FOLD_PDB`` (along b through x = z = 0) maps
+  (x, y, z) onto (-x, y, -z). Completing the water must put H2 along H1's
+  equivalent. A bare water on that axis, with ``_TWO_FOLD_ACCEPTOR_PDB``'s
+  acceptor or none, must get two H that are each other's equivalents and no
+  contact with its own equivalents; with the acceptor, each H must aim
+  within 13 deg (half the H-O-H angle less 40 deg) of it or its
+  equivalent. On the inversion centre of ``_ON_INVERSION_PDB``, H1's
+  equivalent is the water's other orientation, not a neighbour, so H2 must
+  still aim at the acceptor on its cone.
+  """
+  hier, cs = _hierarchy_and_symmetry(_ON_TWO_FOLD_PDB)
+  wp.place_water_hydrogens(hier, existing_h="complete", crystal_symmetry=cs)
+  o, hs = _water_atoms(hier)
+  x, y, z = hs["H1"].xyz
+  off = math.degrees(_unit(hs["H2"], o).angle(_unit((-x, y, -z), o)))
+  assert off < 1e-4, f"H2 is {off:.3f} deg off H1's two-fold equivalent"
+
+  acc = (1.800, 7.145, 0.000)
+  acc_equiv = (-1.800, 7.145, 0.000)
+  for pdb_str in (_TWO_FOLD_ACCEPTOR_PDB, _TWO_FOLD_BARE_PDB):
+    hier, cs = _hierarchy_and_symmetry(pdb_str)
+    wp.place_water_hydrogens(hier, crystal_symmetry=cs)
+    o, hs = _water_atoms(hier)
+    x, y, z = hs["H1"].xyz
+    gap = (matrix.col(hs["H2"].xyz) - matrix.col((-x, y, -z))).length()
+    assert gap < 1e-6, f"H2 is {gap:.3f} A from H1's two-fold equivalent"
+    stats = wp._water_clash_stats(hier, crystal_symmetry=cs)
+    assert stats[1] == 0, f"contacts with own equivalents: {stats}"
+    if pdb_str is _TWO_FOLD_ACCEPTOR_PDB:
+      for name, h in sorted(hs.items()):
+        off = min(math.degrees(_unit(h, o).angle(_unit(a, o)))
+                  for a in (acc, acc_equiv))
+        assert off < 13.0, f"{name} is {off:.1f} deg off the acceptors"
+
+  hier, cs = _hierarchy_and_symmetry(_ON_INVERSION_PDB)
+  wp.place_water_hydrogens(hier, existing_h="complete", crystal_symmetry=cs)
+  o, hs = _water_atoms(hier)
+  off = math.degrees(_unit(hs["H2"], o).angle(
+    _unit((4.299, 6.356, 7.348), o)))
+  assert off < 1.0, f"H2 is {off:.2f} deg off the acceptor"
+
+
 def exercise_water_conformers():
   """A water split between altlocs is placed per conformer, its blank atoms
   plus one altloc's.
@@ -1372,6 +1445,7 @@ def run():
   exercise_sym_equiv_protons()
   exercise_sym_equiv_contacts_counted()
   exercise_sym_equiv_on_symmetry_element()
+  exercise_water_on_special_position()
   exercise_water_conformers()
   exercise_altloc_environment()
   exercise_improper_altloc_rejected()
