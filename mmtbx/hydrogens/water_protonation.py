@@ -933,7 +933,11 @@ class _WaterHydrogenPlacer(object):
     the H positions built from them), ``cat`` (O->cation unit directions),
     ``sph`` (the lazily built fallback-sphere H positions) and
     ``acc_static``/``sph_static`` (the cached static half of the clearance test
-    for those two candidate sets, see :meth:`_static_clear`).
+    for those two candidate sets, see :meth:`_static_clear`). :meth:`_place_one`
+    adds, per acceptor pair ``(k1, k2)``, the even split's ``("split", k1, k2)``
+    (its two H positions and whether both are away from cations, None when
+    the acceptors are collinear) and ``("split_static", k1, k2)`` (the cached
+    static half of its clearance test).
     """
     g = self.w_geom[wi]
     if g is not None:
@@ -1372,8 +1376,10 @@ class _WaterHydrogenPlacer(object):
     altloc_index = dict(ci.index_altloc_mapping)
 
     # The waters to protonate, one per water conformer (see
-    # _water_conformers); every water H is also listed once for the clash
-    # statistics.
+    # _water_conformers), as (target atom group, O, own atom indices,
+    # fixed_d1, existing H, atom names, water id, conformer index, occupancy,
+    # elements of the H a reorient stripped); every water H is also listed
+    # once for the clash statistics.
     waters = []
     # Single-H waters to report, once per such H, annotated once the tree
     # exists.

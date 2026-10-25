@@ -683,8 +683,9 @@ class _WaterHydrogenPlacer(object):
     block (a ball of ``oh_length + _WATER_CLEARANCE_RADIUS`` about the O, own
     atoms dropped) and its neighbouring protons.
 
-    ``nbr_slots`` are the placed-H slots that may lie near this water, its own
-    excluded. ``static_key`` names the geometry-dict slot holding the cached
+    ``nbr_slots`` are the pool slots that may lie near this water, its own
+    excluded; they index symmetry equivalents as readily as placed protons.
+    ``static_key`` names the geometry-dict slot holding the cached
     static half, for a candidate set that does not move; None for the cone,
     which is rebuilt around each pass's O-H1 axis. ``own_fixed`` are this
     water's protons already settled this pass, which only matter to a water
@@ -835,7 +836,11 @@ class _WaterHydrogenPlacer(object):
     positions built from them), ``cat`` (O->cation unit directions), ``sph``
     (the lazily built fallback-sphere H positions) and
     ``acc_static``/``sph_static`` (the cached static half of the clearance test
-    for those two candidate sets, see :meth:`_static_clear`).
+    for those two candidate sets, see :meth:`_static_clear`). :meth:`_place_one`
+    adds, per acceptor pair ``(k1, k2)``, the even split's ``("split", k1, k2)``
+    (its two H positions and whether both are away from cations, None when
+    the acceptors are collinear) and ``("split_static", k1, k2)`` (the cached
+    static half of its clearance test).
     """
     g = self.w_geom[wi]
     if g is not None:
@@ -959,7 +964,7 @@ class _WaterHydrogenPlacer(object):
   def _place_one(self, wi, nbr_slots, fixed_d1=None):
     """The two H positions for one water O, clash-aware.
 
-    ``nbr_slots`` are the placed-H slots that may lie near this water, its own
+    ``nbr_slots`` are the pool slots that may lie near this water, its own
     excluded. ``fixed_d1`` holds the unit O-H1 direction fixed instead of
     searching for one, for a water that already carries a proton: the returned
     ``h1_xyz`` then only restates it and just ``h2_xyz`` is new. A water on a
@@ -1247,8 +1252,10 @@ class _WaterHydrogenPlacer(object):
     altloc_index = dict(ci.index_altloc_mapping)
 
     # The waters to protonate, one per water conformer (see
-    # _water_conformers); every water H is also listed once for the clash
-    # statistics.
+    # _water_conformers), as (target atom group, O, own atom indices,
+    # fixed_d1, existing H, atom names, water id, conformer index, occupancy,
+    # elements of the H a reorient stripped); every water H is also listed
+    # once for the clash statistics.
     waters = []
     # Single-H waters to report, once per such H, annotated once the tree
     # exists.
