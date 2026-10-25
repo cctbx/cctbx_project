@@ -695,7 +695,7 @@ class run(object):
       recs = [by_key[tuple(k)] for k in g if tuple(k) in by_key]
       if(len(recs) < 2): continue
       names = [r.sc.resname for r in recs]
-      main = max(set(names), key=names.count)
+      main = max(sorted(set(names)), key=names.count)
       recs = [r for r in recs if r.sc.resname == main]
       if(len(recs) >= 2): groups.append(recs)
     if(not groups): return
