@@ -937,6 +937,22 @@ def _ModelNumbers(hierarchy):
       result.append(None)
   return result
 
+def _PdbFormatProblems(hierarchy):
+  '''The reasons found in the hierarchy why fits_in_pdb_format() (hybrid-36)
+  is False, as text; empty if none of them is found.
+  '''
+  chains = sorted(set(c.id for c in hierarchy.chains() if len(c.id) > 2))
+  resnames = sorted(set(ag.resname for ag in hierarchy.atom_groups()
+    if len(ag.resname) > 3))
+  found = []
+  if resnames:
+    found.append('residue name%s longer than 3 characters: %s' % (
+      's' if len(resnames) > 1 else '', ', '.join(resnames)))
+  if chains:
+    found.append('chain ID%s longer than 2 characters: %s' % (
+      's' if len(chains) > 1 else '', ', '.join(chains)))
+  return '; '.join(found)
+
 def _SelectModelNumber(hierarchy, number):
   '''The model of the hierarchy with MODEL number number (in _ModelNumbers()).
   '''
@@ -956,6 +972,8 @@ Inputs:
 Output:
   PDB or mmCIF file with added hydrogens.  If output.filename is specified, then the
   type of file to write will be determined by its suffix (.pdb or .cif).
+  A .pdb request for a model that cannot be written in PDB format gives mmCIF
+  with the same base name (.cif), and the log says so.
   If output.filename is not specified, the output file will be
   written into the current working directory with the same base name and type as the
   original file and with FH or H added to the base name (FH when flips are requested);
@@ -1168,11 +1186,12 @@ NOTES:
     if reduce_add_h_obj.residues_unknown_atoms:
       self._unknown_atoms_note = '\n' + reduce_add_h_obj.unknown_atoms_text(
         verbose=self.params.verbosity > 2) + '\n'
-    # its report of thiols bound to metals, for the description
+    # its report of thiols and N-H at metals, for the description
     self._metal_thiol_note = ''
-    text = reduce_add_h_obj.metal_thiol_text()
-    if text:
-      self._metal_thiol_note = '\n' + text + '\n'
+    for text in (reduce_add_h_obj.metal_thiol_text(),
+                 reduce_add_h_obj.metal_nh_text()):
+      if text:
+        self._metal_thiol_note += '\n' + text + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if not self.params.ignore_missing_restraints:
       if len(missed_residues) > 0:
@@ -1265,6 +1284,33 @@ NOTES:
         if (a.parent().parent().memory_id(), a.parent().resname) in missing:
           keys.add(k)
     return group_args(keys=keys, labels=labels)
+
+# ------------------------------------------------------------------------------
+
+  def _ElementXText(self, selection):
+    # Atoms with element X, removed at loading: one line, then the atoms,
+    # capped at 20 unless verbosity > 2. Printed here.
+    # :param selection: The element X atoms of self.model.
+    # :return: The description-file text.
+    atoms = list(self.model.get_hierarchy().atoms().select(selection))
+    cap = None if self.params.verbosity > 2 else 20
+    lines = ['', 'Removed %d atom(s) with element X: the element is unknown, so '
+      'H cannot be placed around them; they are not in the output.' %
+      len(atoms)]
+    shown = atoms if cap is None else atoms[:cap]
+    for a in shown:
+      ag = a.parent()
+      rg = ag.parent()
+      label = '%s %s %s%s %s' % (ag.resname.strip(), rg.parent().id.strip(),
+        rg.resseq.strip(), rg.icode.strip(), a.name.strip())
+      if ag.altloc.strip():
+        label += ' altloc %s' % ag.altloc
+      lines.append('  ' + label)
+    if len(shown) < len(atoms):
+      lines.append('  (+%d more)' % (len(atoms) - len(shown)))
+    text = '\n'.join(lines) + '\n'
+    print(text, file=self.logger)
+    return text
 
 # ------------------------------------------------------------------------------
 
@@ -1411,18 +1457,27 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _SuppliedThiolHText(self):
-    # approach=optimize keeps every input H: the H on thiols bound to metals,
-    # as placement lists them (nothing is deleted here).
+  def _SuppliedMetalHText(self):
+    # approach=optimize keeps every input H: the H on thiols and N bound to
+    # metals, and the other N-H next to a metal, as placement lists them
+    # (nothing is deleted here).
     # :return: The description-file text ('' if none); also in the log.
-    sites = reduce_hydrogen.thiol_metal_sites(self.model,
-      reduce_hydrogen.contact_symmetry(self._output_cs))
-    text = reduce_hydrogen.metal_thiol_text(
-      supplied = reduce_hydrogen.supplied_thiol_h(sites, lambda a: True),
-      hint = self._RebuildHint())
-    if not text: return ''
-    print('\n' + text, file=self.logger)
-    return '\n' + text + '\n'
+    cs = reduce_hydrogen.contact_symmetry(self._output_cs)
+    thiols = reduce_hydrogen.thiol_metal_sites(self.model, cs)
+    nh = reduce_hydrogen.metal_nh_sites(self.model, cs)
+    result = ''
+    for text in (
+        reduce_hydrogen.metal_thiol_text(
+          supplied = reduce_hydrogen.supplied_metal_h(thiols, lambda a: True),
+          hint = self._RebuildHint()),
+        reduce_hydrogen.metal_nh_text(
+          supplied = reduce_hydrogen.supplied_metal_h(nh, lambda a: True),
+          reported = reduce_hydrogen.reported_metal_h(nh),
+          hint = self._RebuildHint())):
+      if not text: continue
+      print('\n' + text, file=self.logger)
+      result += '\n' + text + '\n'
+    return result
 
 # ------------------------------------------------------------------------------
 
@@ -1736,6 +1791,51 @@ NOTES:
       stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
       log               = null_out())
     self._ReinterpretModel(make_restraints=make_restraints, model=model)
+    return model
+
+# ------------------------------------------------------------------------------
+
+  def _FinalizeModel(self, hierarchy):
+    # The model that ends the run: a fresh, unprocessed manager built from the
+    # finished hierarchy (crystal symmetry, restraint objects and
+    # stop_for_unknowns as _RebuildModel()). Replaces a full re-interpretation
+    # with make_restraints=False; the steps below are the parts of it the
+    # output depends on. No restraints manager, as before: that was the guard
+    # against the crash in pair_proxies() when writing mmCIF after atoms were
+    # removed, and it leaves no links to write (C4). No monomer mappings:
+    # selection() uses the atom-selection cache.
+    # :param hierarchy: The finished hierarchy; changed in place.
+    # :return: The new model.
+    # the sort and serials of _ReinterpretModel()
+    hierarchy.sort_atoms_in_place()
+    hierarchy.atoms().reset_serial()
+    cs = self.model.crystal_symmetry()
+    if cs is not None:
+      # process() rounds coordinates and ADPs through an X-ray structure
+      # (pdb_interpretation.py ~4270), visible in the written bytes. Extracted
+      # here, after the sort: adopt_xray_structure() matches by order.
+      hierarchy.adopt_xray_structure(
+        hierarchy.extract_xray_structure(crystal_symmetry=cs))
+    # process()'s _check_for_capitalised_element(): adopt gives "Ca"
+    for a in hierarchy.atoms():
+      if a.element != a.element.upper():
+        a.element = a.element.upper()
+    model = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = hierarchy,
+      crystal_symmetry  = cs,
+      restraint_objects = self.model.get_restraint_objects(),
+      stop_for_unknowns = self.params.stop_on_any_missing_hydrogen,
+      log               = null_out())
+    # the writer's symmetry choice and shift back (_figure_out_cs_to_output())
+    if self.model.shift_cart() is not None:
+      model.set_unit_cell_crystal_symmetry_and_shift_cart(
+        unit_cell_crystal_symmetry = self.model.unit_cell_crystal_symmetry(),
+        shift_cart = self.model.shift_cart())
+    # as select() does: info() (file names) and the input format, which
+    # write_model_file(format=Auto) follows
+    model.set_info(copy.deepcopy(self.model.info()))
+    model._original_model_format = self.model._original_model_format
     return model
 
 # ------------------------------------------------------------------------------
@@ -2079,9 +2179,6 @@ NOTES:
 
     if os.environ.get('PHENIX_OVERWRITE_ALL', False):
       self.data_manager.set_overwrite(True)
-    if not self.params.output.overwrite:
-      if os.path.exists(self.params.output.filename):
-        print('\n\tOutput filename exists. Use overwrite=True to continue.')
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
@@ -2089,6 +2186,24 @@ NOTES:
                                                                                    '.txt')
       self.params.output.description_file_name=self.params.output.description_file_name.replace('.cif',
                                                                                    '.txt')
+
+    # Existing output files stop the run here, not after it. Names not known
+    # yet keep the Sorry from _write_text() at write time: the qmready default
+    # names (_charge<N> appended later) and the mmCIF written for a .pdb
+    # request that does not fit PDB format.
+    if self.params.output.write_files and not self.data_manager.get_overwrite():
+      charge_pending = (self.params.qmready and self.params.approach == 'add'
+        and self._default_output_filename)
+      names = []
+      if not charge_pending:
+        names.append(self.params.output.filename)
+      if not (charge_pending and self._default_description_file_name):
+        names.append(self.params.output.description_file_name)
+      existing = [n for n in names if os.path.exists(n)]
+      if existing:
+        raise Sorry('%s already exist%s; use overwrite=True to replace %s.' % (
+          ' and '.join(existing), 's' if len(existing) == 1 else '',
+          'it' if len(existing) == 1 else 'them'))
 
     # model_id is a MODEL number of the input
     if self.params.model_id is not None:
@@ -2136,7 +2251,10 @@ NOTES:
     # Get our model.
     self.model = self.data_manager.get_model()
 
-    self.model = self.model.select(~self.model.selection('element X'))
+    sel_x = self.model.selection('element X')
+    if sel_x.count(True) > 0:
+      outString += self._ElementXText(sel_x)
+    self.model = self.model.select(~sel_x)
     # A model shifted in memory (e.g. boxed with a map) is shifted back on
     # this copy: placement builds a new model without the shift, so the run
     # is the file run. _ReturnedModel() puts the shift back. Any non-zero
@@ -2305,7 +2423,7 @@ NOTES:
             'optimize them.')
         if neutron:
           self._CheckAmbiguousParents()
-        outString += self._SuppliedThiolHText()
+        outString += self._SuppliedMetalHText()
 
       # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
       # but the desired model ID structure from the model.
@@ -2403,11 +2521,11 @@ NOTES:
           if chain.residue_groups_size() == 0:
             m.remove_chain(chain)
 
-    # Re-process the model because we have removed some atoms that were previously
-    # bonded.  Don't make restraints during the reprocessing.
-    # We had to do this to keep from crashing on a call to pair_proxies when generating
-    # mmCIF files, so we always do it for safety.
-    self._ReinterpretModel(False)
+    # Rebuild the model without restraints because we have removed some atoms
+    # that were previously bonded. Like the re-interpretation without restraints
+    # this replaces, it keeps us from crashing on a call to pair_proxies when
+    # generating mmCIF files, so we always do it for safety.
+    self.model = self._FinalizeModel(self.model.get_hierarchy())
 
     # qmready=True (remove adds no H): one copy with restraints for the clash
     # check (the finished model must be clash-free), the dangling atoms
@@ -2455,7 +2573,7 @@ NOTES:
         self._neutron_result = hd_exchange.apply_neutron_option(h,
           self.params.neutron_option, parent_table=self._h_parents,
           records=self._hd_records, unchanged_keys=self._UnrestrainedKeys())
-        self._output_model = self._RebuildModel(h, make_restraints=False)
+        self._output_model = self._FinalizeModel(h)
         self._DropAutoRestraints(self._output_model)
         self._CheckNeutronOutput()
         outString += self._NeutronDescription()
@@ -2474,11 +2592,22 @@ NOTES:
       output_cs = self._output_cs is not None
       if output_cs:
         self._output_model.set_unit_cell_crystal_symmetry(self._output_cs)
-      if suffix.lower() == ".pdb":
-        txt = self._output_model.model_as_pdb(output_cs=output_cs)
+      if suffix.lower() == ".pdb" and not self._output_model.can_be_output_as_pdb():
+        # model_as_pdb() would return only header records; write mmCIF instead
+        requested = self.params.output.filename
+        self.params.output.filename = self.data_manager.write_model_file(
+          self._output_model, os.path.splitext(requested)[0] + '.cif',
+          format='cif', output_cs=output_cs)
+        cause = _PdbFormatProblems(self._output_model.get_hierarchy())
+        print('Model cannot be represented in PDB format%s; writing mmCIF to %s '
+          'instead of %s.' % (' (%s)' % cause if cause else '',
+          self.params.output.filename, requested), file=self.logger)
       else:
-        txt = self._output_model.model_as_mmcif(output_cs=output_cs)
-      self.data_manager._write_text("model", txt, self.params.output.filename)
+        if suffix.lower() == ".pdb":
+          txt = self._output_model.model_as_pdb(output_cs=output_cs)
+        else:
+          txt = self._output_model.model_as_mmcif(output_cs=output_cs)
+        self.data_manager._write_text("model", txt, self.params.output.filename)
 
       print('Wrote', self.params.output.filename,'and',
         self.params.output.description_file_name, file = self.logger)
@@ -2624,12 +2753,13 @@ NOTES:
       if len(amides) > 0:
         make_sub_header('Generating Amide Flipkin', out=self.logger)
 
+        # Interpret the model to fill in things we need for determining the neighbor list
+        # and for the sidechain selection of the views (the finished model is not interpreted).
+        self._ReinterpretModel()
+
         # Find the viewpoint locations for each Mover we're going to
         # look at.
         views = self._GetViews(amides)
-
-        # Interpret the model to fill in things we need for determining the neighbor list.
-        self._ReinterpretModel()
 
         carts = flex.vec3_double()
         for a in self.model.get_atoms():
@@ -2745,12 +2875,13 @@ NOTES:
       if len(hists) > 0:
         make_sub_header('Generating Histidine Flipkin', out=self.logger)
 
+        # Interpret the model to fill in things we need for determining the neighbor list
+        # and for the sidechain selection of the views (the finished model is not interpreted).
+        self._ReinterpretModel()
+
         # Find the viewpoint locations for each Mover we're going to
         # look at.
         views = self._GetViews(hists)
-
-        # Interpret the model to fill in things we need for determining the neighbor list.
-        self._ReinterpretModel()
 
         carts = flex.vec3_double()
         for a in self.model.get_atoms():
@@ -2881,6 +3012,13 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def get_results(self):
+    '''
+    :return: group_args with model (the output model) and total_charge (qmready
+    add, otherwise None). The returned model is not guaranteed to be
+    interpreted. Callers needing interpretation-dependent operations (e.g.
+    backbone or sidechain selections) should check processed() and call
+    process(make_restraints=False) if necessary.
+    '''
     return group_args(
       model        = getattr(self, '_output_model', self.model),
       total_charge = getattr(self, 'total_charge', None))

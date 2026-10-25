@@ -499,7 +499,11 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_peak_memory.py",
   "$D/regression/tst_reduce2_place.py",
   "$D/regression/tst_reduce2_metal_thiol.py",
+  "$D/regression/tst_reduce2_metal_nh.py",
   "$D/regression/tst_reduce2_optimizer_conformers.py",
+  "$D/regression/tst_reduce2_output_files.py",
+  "$D/regression/tst_reduce2_returned_model.py",
+  "$D/regression/tst_reduce2_element_x.py",
   "$D/regression/tst_reduce2_neutron_distances.py",
   "$D/regression/tst_reduce2_neutron_water.py",
   "$D/regression/tst_reduce2_neutron_optimizer.py",
@@ -515,6 +519,7 @@ molprobity_tests = [
   "$D/validation/regression/tst_cbetadev.py",
   "$D/validation/regression/tst_cbetadev_02.py",
   "$D/validation/regression/tst_cbetadev_03.py",
+  "$D/validation/regression/tst_cbetadev_04.py",
   "$D/validation/regression/tst_cbetadev_mahalanobis.py",
   "$D/validation/regression/tst_undowser.py",
   "$D/regression/tst_statistics_output.py",
@@ -584,8 +589,8 @@ tst_list_expected_failures = [
   "$D/monomer_library/tst_pdb_interpretation_2.py",
   "$D/monomer_library/tst_pdb_interpretation_4.py",
   # known reduce2 bugs; each file says what fixes it and where to move it
-  "$D/regression/tst_reduce2_altloc_charge.py",
-  "$D/regression/tst_reduce2_symmetry_optimizer.py",
+  #"$D/regression/tst_reduce2_altloc_charge.py",
+  #"$D/regression/tst_reduce2_symmetry_optimizer.py",
   ]
 
 def run():
