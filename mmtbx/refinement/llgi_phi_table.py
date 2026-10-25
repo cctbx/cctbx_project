@@ -16,10 +16,11 @@ Tabulated by deterministic quadrature (llgi_phi_table_generate.py) on the
 grid below, for acentric and centric reflections. phi -> 0 as sigma -> inf
 like k*sigmaA^2*(1 - sigmaA^2)/sigma^2 (k = 1 acentric, 4 centric); the
 table's last column matches this to <1%, and beyond it phi is extrapolated
-as (SIGMA[-1]/sigma)^2. Interpolation is bilinear in log(phi/sigmaA^2)
-over sigmaA and asinh(sigma/0.02): median relative error 7e-4, worst ~3%
-on the grid's interior (an absolute error below 0.002, which changes the
-bias correction (1 - phi)*sigmaA by less than 0.002).
+as (SIGMA[-1]/sigma)^2. Interpolation is bicubic (four point Lagrange)
+in log(phi/sigmaA^2) over -log(1 - sigmaA^2) and asinh(sigma/0.02). Against
+the generator at about 1400 off-grid points with sigmaA up to 0.995 the worst
+error is 6e-4 absolute and 0.2% relative, which changes the bias
+correction (1 - phi)*sigmaA by less than 6e-4.
 """
 
 SIGMAA = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.97, 0.98, 0.99, 0.995]
@@ -79,14 +80,19 @@ PHI_CENTRIC = [
 
 _X0 = 0.02
 
+def _ordinate(sigmaa):
+  # phi/sigmaA^2 goes as 1 - sigmaA^2 at large sigma, curved in sigmaA
+  return -math.log(1 - sigmaa*sigmaa)
+
 def _tables():
   if(not hasattr(_tables, "cache")):
+    ys = [_ordinate(a) for a in SIGMAA]
     xs = [math.asinh(s/_X0) for s in SIGMA]
     g = {}
     for centric, tab in [(False, PHI_ACENTRIC), (True, PHI_CENTRIC)]:
       g[centric] = [[math.log(tab[i][j]/SIGMAA[i]**2)
         for j in range(len(SIGMA))] for i in range(len(SIGMAA))]
-    _tables.cache = (xs, g)
+    _tables.cache = (ys, xs, g)
   return _tables.cache
 
 def _bracket(grid, x):
@@ -99,18 +105,33 @@ def _bracket(grid, x):
     else: hi = mid - 1
   return lo, (x - grid[lo])/(grid[lo+1] - grid[lo])
 
+def _stencil(grid, x):
+  i = _bracket(grid, x)[0]
+  x = min(max(x, grid[0]), grid[-1])
+  k = min(max(i - 1, 0), len(grid) - 4)
+  w = []
+  for a in range(k, k+4):
+    p = 1.0
+    for b in range(k, k+4):
+      if(b != a): p *= (x - grid[b])/(grid[a] - grid[b])
+    w.append(p)
+  return k, w
+
 def phi_one(sigmaa, sigma, centric):
   """ phi for one reflection; sigmaa is clamped to the table range
   [0, SIGMAA[-1]], sigma < 0 is treated as 0. """
   if(sigmaa <= 0): return 0.0
-  xs, g = _tables()
+  ys, xs, g = _tables()
   sa = min(sigmaa, SIGMAA[-1])
   sig = max(sigma, 0.0)
-  i, ti = _bracket(SIGMAA, max(sa, SIGMAA[0]))
-  j, tj = _bracket(xs, math.asinh(min(sig, SIGMA[-1])/_X0))
+  i, wi = _stencil(ys, _ordinate(max(sa, SIGMAA[0])))
+  j, wj = _stencil(xs, math.asinh(min(sig, SIGMA[-1])/_X0))
   t = g[bool(centric)]
-  v = ((1-ti)*(1-tj)*t[i][j] + ti*(1-tj)*t[i+1][j]
-       + (1-ti)*tj*t[i][j+1] + ti*tj*t[i+1][j+1])
+  v = 0.0
+  for a in range(4):
+    row = t[i+a]
+    v += wi[a]*(wj[0]*row[j] + wj[1]*row[j+1] + wj[2]*row[j+2]
+      + wj[3]*row[j+3])
   result = math.exp(v)*sa*sa
   if(sig > SIGMA[-1]): result *= (SIGMA[-1]/sig)**2
   return min(max(result, 0.0), 1.0)
