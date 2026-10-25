@@ -564,7 +564,9 @@ class refine_adp(object):
         iso_restraints           = self.adp_restraints_params.iso,
         verbose                  = 0,
         target_weights           = self.target_weights,
-        h_params                 = self.h_params)
+        h_params                 = self.h_params,
+        adaptive_params          = minimization.adaptive_lbfgs_params(
+          self.all_params))
     elif(self.all_params.ncs.constraints.apply_to_coordinates):
       fmodel = self.fmodels.fmodel_xray()
       # update NCS groups
