@@ -57,31 +57,11 @@ n_terminal_charge = *residue_one first_in_chain all_chain_starts no_charge
 metal_bound_amines_as_nh2 = False
   .type = bool
   .short_caption = Place metal-bound primary amines as NH2
-  .help = In development. A primary amine that its dictionary makes NH3+ \
-          (Lys NZ, an N-terminal NH3 placed under n_terminal_charge, ligand \
-          amines) and that coordinates one metal position (not alkali or \
-          alkaline-earth) is placed as NH2: the first H in dictionary order \
-          is not placed, the other two are placed with the metal as the \
-          third substituent (also a metal in a symmetry mate), if they pass \
-          the geometry checks, otherwise the site is listed and keeps its H. \
-          They are not parameterized for riding in refinement. Neutral NH2 \
-          keep both H. Alternate metal positions are left unchanged and \
-          listed. No supplied H is deleted. A supplied NH2 at a metal keeps \
-          its coordinates and is not completed to NH3 (with \
-          keep_existing_H=True and with approach=optimize), except when its \
-          H are split over blank and alternate groups: placement then \
-          completes it as without the option and re-idealizes the supplied \
-          H. A blank H shared with an NH3 conformer also belongs to that \
-          conformer and may be moved by its rotator, its input position is \
-          not guaranteed. The NH2 conformer's own alternate H keep their \
-          input positions. With one supplied H the second \
-          is placed around it, or else the group is completed and \
-          re-idealized as without the option. Three supplied H stay. Reruns \
-          on reduce2's own output keep the NH2. A metal-bound chain start \
-          (no preceding residue in the model, a terminus or a break) becomes \
-          NH2 whatever n_terminal_charge says, judged per N conformer, no \
-          sequence records are used. A supplied H at such a chain start is \
-          never removed by the option.
+  .help = A primary amine bound to a metal (Lys NZ, an N-terminal NH3, a \
+          ligand amine, not with alkali or alkaline-earth metals) is placed \
+          as NH2, with the metal as the third substituent. Metal-bound chain \
+          starts get NH2 whatever n_terminal_charge says. Sites that fail the \
+          geometry checks keep their H.
 exclude_water = True
   .type = bool
   .short_caption = Add H to water if False

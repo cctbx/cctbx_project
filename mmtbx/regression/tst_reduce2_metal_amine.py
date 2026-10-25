@@ -171,6 +171,24 @@ HETATM   23 ZN    ZN A   2      27.085  20.582  18.049  1.00 20.00          ZN
 END
 """
 
+# the Lys-Cd fixture turned so that the Cd lies on the 2-fold of P 1 2 1
+# (x = 0, z = 0) with NZ-Cd perpendicular to the axis
+pdb_lys_cd_2fold = """\
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1 2 1
+ATOM      1  N   LYS A 359       8.812  19.431   0.327  1.00  8.43           N
+ATOM      2  CA  LYS A 359       7.392  19.240   0.029  1.00  7.92           C
+ATOM      3  C   LYS A 359       7.051  17.779  -0.346  1.00  7.33           C
+ATOM      4  O   LYS A 359       6.310  17.521  -1.331  1.00  7.65           O
+ATOM      5  CB  LYS A 359       6.567  19.740   1.222  1.00  8.93           C
+ATOM      6  CG  LYS A 359       5.074  19.480   0.992  1.00 11.26           C
+ATOM      7  CD  LYS A 359       4.149  20.438   1.657  1.00 16.15           C
+ATOM      8  CE  LYS A 359       2.693  20.000   1.437  1.00 18.69           C
+ATOM      9  NZ  LYS A 359       2.214  20.000   0.000  1.00 18.51           N
+TER
+HETATM   10 CD    CD A 396       0.000  20.000   0.000  1.00 10.07          CD
+END
+"""
+
 CONVERTED = 'Coordinating NH3+ placed as NH2'
 UNRESOLVED = 'Coordinating NH3+ left as NH3+ (unresolved)'
 SUPPLIED = 'Supplied NH3+ at metal sites'
@@ -946,6 +964,52 @@ def test_nh3_across_conformers():
     "shared HZ1 belongs to conformer A's NH3 and may move)  (NZ  LYS A 359 - "
     "CD    CD A 396 2.21 A (geometric))"], d
 
+def lys_cd_alternates(names):
+  '''pdb_lys_cd with the atoms names and the Cd in A and B at 0.5, B moved
+  0.3 A.'''
+  out = []
+  for l in pdb_lys_cd.splitlines():
+    if ((l.startswith('ATOM') and l[12:16].strip() in names) or
+        (l.startswith('HETATM') and ' CD ' in l)):
+      out.append(l[:16] + 'A' + l[17:54] + '  0.50' + l[60:])
+      out.append(l[:16] + 'B' + l[17:30] + '%8.3f' % (float(l[30:38]) + 0.3) +
+        l[38:54] + '  0.50' + l[60:])
+    else:
+      out.append(l)
+  return '\n'.join(out) + '\n'
+
+def test_alternate_metals_per_conformer():
+  # NZ (or only CE) and the Cd in A and B: each conformer NH2, oriented to
+  # its own Cd (a guard: passes without C1d)
+  for tag, names in (('nz', ('CE', 'NZ')), ('ce', ('CE',))):
+    h, d, l = run('tst_reduce2_metal_amine_alt_' + tag, lys_cd_alternates(
+      names), [ON])
+    assert len(section(d, CONVERTED)) == 2, (tag, d)
+    a = dict(((x.name.strip(), x.parent().altloc), x) for x in h.atoms())
+    for alt in 'AB':
+      n = a.get(('NZ', alt)) or a[('NZ', '')]
+      ce, cd = a[('CE', alt)], a[('CD', alt)]
+      hs = [a[(x, alt)] for x in ('HZ2', 'HZ3')]
+      assert not ('HZ1', alt) in a, (tag, alt)
+      for x in hs:
+        assert 104 < angle(cd, n, x) < 115, (tag, alt, angle(cd, n, x))
+        assert 104 < angle(ce, n, x) < 115, (tag, alt, angle(ce, n, x))
+        assert x.distance(cd) > 2.3, (tag, alt, x.distance(cd))
+      assert 104 < angle(hs[0], n, hs[1]) < 115, (tag, alt)
+
+def test_special_position():
+  # a Cd on a 2-fold (and 0.04 A off it): one metal position, one contact
+  # (a guard: cctbx merges symmetry-equivalent images closer than 0.5 A,
+  # min_distance_sym_equiv; for a 2-fold that is 0.25 A from the axis)
+  for tag, pdb in (('on', pdb_lys_cd_2fold), ('off', pdb_lys_cd_2fold.replace(
+      'CD A 396       0.000', 'CD A 396       0.040'))):
+    h, d, l = run('tst_reduce2_metal_amine_2fold_' + tag, pdb, [ON])
+    lines = section(d, CONVERTED)
+    assert len(lines) == 1 and lines[0].startswith('NZ  LYS A 359: HZ1 not '
+      'placed  (NZ  LYS A 359 - CD    CD A 396 2.') and ';' not in lines[0], \
+      (tag, lines)
+    check_nh2(h, 359, 'NZ', 'CE', 396, 'CD', ['HZ2', 'HZ3'])
+
 if __name__ == '__main__':
   test_lys_cd()
   test_option_off()
@@ -978,4 +1042,6 @@ if __name__ == '__main__':
   test_one_supplied_h()
   test_names()
   test_nh3_across_conformers()
+  test_alternate_metals_per_conformer()
+  test_special_position()
   print('OK')

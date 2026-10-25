@@ -1486,17 +1486,18 @@ def dictionary_nh3_plus(model, n, i_n, mon_lib_srv):
 def protect_supplied_metal_amines(model, crystal_symmetry=None,
                                   use_neutron_distances=None):
   '''
-  approach=optimize with metal_bound_amines_as_nh2 (bypasses placement): a
-  primary amine that its dictionary makes NH3+ but that carries two H, with
-  a metal of NH_METAL_ELEMENTS in the window (any occupancy, alternates,
-  symmetry; as convert_metal_bound_amines()), keeps both H where they are:
-  they are taken out of the riding H manager before its first idealization
-  (all other H keep their parameterization, as the Optimizer would build
-  it). No H is added or deleted. H are counted per complete conformer
-  (conformer_groups()). Limit: a blank H shared with an NH3 conformer also
-  belongs to that conformer and may be moved by its rotator; its input
-  position is not guaranteed. The NH2 conformer's own alternate H keep
-  their input positions; such a site is listed as partly preserved.
+  approach=optimize with metal_bound_amines_as_nh2 (placement is not run):
+  a primary amine that its dictionary makes NH3+ but that carries two H,
+  with a metal of NH_METAL_ELEMENTS in the window (any occupancy,
+  alternates, symmetry), keeps both H where they are. They are taken out of
+  the riding H manager before its first idealization; all other H keep
+  their parameterization, as the Optimizer would build it. The H counts are
+  kept: no H is added or deleted. H are counted per complete conformer
+  (conformer_groups()).
+  Limit: a blank H shared with an NH3 conformer also belongs to that
+  conformer and may be moved by its rotator; its input position is not
+  guaranteed. The NH2 conformer's own alternate H keep their input
+  positions; such a site is listed as partly preserved.
   :return: ([(label, contacts)] of the NH2 kept, [(label, contacts)] of
     those partly preserved)
   '''
@@ -2958,37 +2959,33 @@ class place_hydrogens():
 
   def convert_metal_bound_amines(self):
     """
-    metal_bound_amines_as_nh2 (A5 C1b): a primary amine (metal_amine_sites)
-    that the dictionary makes NH3+ (three H; energy type NT3 or formal charge
-    +1) and whose H sites are covered by one metal position (also through
-    symmetry: the contact's image) is placed as NH2. place_metal_nh2()
-    constructs and checks the two H first; only an accepted site loses the
-    first H in dictionary order (H1 of an N-terminal propeller) and gets the
-    coordinates; the two H keep their names and are left out of riding H
-    (setup_riding_h_manager()). Not accepted: unresolved, listed, no H
-    removed.
-    No supplied H (keep_existing_H) is deleted. H are counted per complete
-    conformer (conformer_groups()). Two supplied H with any metal in the
-    window keep their coordinates and names, are not completed to NH3 and
-    are not checked, whatever the coverage or frame (with approach=optimize:
-    protect_supplied_metal_amines()), except when the H of a conformer are
-    split over blank and alternate groups: such a conformer is unresolved
-    and completed as with the option off, the supplied H re-idealized. With
-    approach=optimize, a blank H shared with an NH3 conformer also belongs
-    to that conformer and may be moved by its rotator; its input position is
-    not guaranteed. The NH2 conformer's own alternate H keep their input
-    positions. With one supplied
-    H the second is constructed around it, the supplied H fixed; not
-    accepted: the supplied H is retained and re-idealized, the group
-    completed as with the option off. Three supplied H stay and are listed
-    (riding H idealizes them as without the option). Left as they are and
-    listed: alternate metal positions or alternate positions of the heavy
-    neighbour (no unique frame), sites with unresolved protonation; a
-    metal-bound chain start that place_n_terminal_propeller() left
-    unchanged (C1c) or whose metal shows only through a metal-coordination
-    restraint. A metal-bound chain start with NH3 from the propeller gets
-    one line in metal_amine_chain_starts. A neutral NH2 keeps both H (step
-    B lists it).
+    metal_bound_amines_as_nh2 (A5 C1b): place a coordinating NH3+ as NH2.
+    Which N: a primary amine by metal_amine_sites() (one heavy neighbour, a
+    C without a multiple bond, N in no plane) that the dictionary makes NH3+
+    (three H, energy type NT3 or formal charge +1). Neutral NH2 keep both H.
+    Metal: one position of NH_METAL_ELEMENTS covering the H sites (step B's
+    window, coverage and altloc rules), also through symmetry (the
+    contact's image). Each complete conformer (conformer_groups()) is
+    judged with its own metals.
+    Placement: place_metal_nh2() builds and checks the two H first. Only an
+    accepted site loses the first H in dictionary order (H1 of a propeller)
+    and gets the coordinates. The two H keep their names and are left out of
+    riding H (setup_riding_h_manager()), so they are not parameterized for
+    riding in refinement. Not accepted: listed with the reason, no H removed.
+    Unresolved and listed: metal positions without one frame, alternate
+    positions of the heavy neighbour, coverage below the population, H
+    split over blank and alternate groups (completed as with the option
+    off).
+    Supplied H (approach=add or place, keep_existing_H): the conversion
+    deletes no supplied H. Two supplied H with a metal in the window keep
+    their coordinates and are not completed to NH3. One supplied H stays and
+    the second is built around it; if that fails, the group is completed and
+    re-idealized as with the option off. Three supplied H stay. Limit: a
+    supplied NH2 whose H are split over blank and alternate groups is
+    completed and re-idealized as with the option off. approach=optimize
+    does not run placement: protect_supplied_metal_amines().
+    Chain starts (C1c): place_n_terminal_propeller() builds their NH3; each
+    one judged gets one line in metal_amine_chain_starts.
     """
     elements = self.model.get_hierarchy().atoms().extract_element()
     if not any(e.strip().upper() in NH_METAL_ELEMENTS for e in elements):
@@ -3495,15 +3492,22 @@ class place_hydrogens():
                                      starts, places, parts):
     """
     metal_bound_amines_as_nh2 (A5 C1c): NH3 at the metal-bound chain starts
-    that n_terminal_charge leaves alone (starts: chain_start_metal_conformers(),
-    places: memory_ids of the residues the setting builds NH3 at), judged per
-    N conformer: an N in altlocs is eligible where its own counted metals
-    are; a blank N needs a metal common to all conformers of the residue.
-    Each needs a primary amine by the dictionary (_dictionary_primary_amine()),
-    no nonmetal of another residue within 1.75 A, and no supplied H on the
-    N (those keep their coordinates and names: left out of riding H). The NH3
-    goes into that conformer's atom group; convert_metal_bound_amines() then
-    places NH2 or keeps NH3 with the reason. Every N judged gets one line.
+    that n_terminal_charge leaves alone, for convert_metal_bound_amines().
+    starts: chain_start_metal_conformers(); places: memory_ids of the
+    residues where the setting builds NH3 (left to it). No sequence records.
+    Per N conformer: an N in altlocs is eligible through its own counted
+    metals; a blank N needs a metal common to all conformers of the residue.
+    Each needs a primary amine by the dictionary (_dictionary_primary_amine())
+    and no nonmetal of another residue within 1.75 A.
+    Supplied H: the option removes none here. A conformer with supplied H,
+    even a single one, gets no NH3; they keep their coordinates and names
+    (left out of riding H). For a blank N, supplied H are judged per
+    complete conformer: if any conformer has them, the site is unchanged,
+    and the conformers without supplied H keep what placement put there, as
+    with the option off. Where the setting builds NH3 itself (places), that
+    NH3 can replace a supplied amide H, as without the option.
+    The NH3 goes into that conformer's atom group. Every N judged gets one
+    line.
     """
     cutoff_sq = 1.75**2
     for rg, ns in starts:
