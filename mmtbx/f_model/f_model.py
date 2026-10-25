@@ -1601,7 +1601,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
              abcd                         = abcd,
              epsilons                     = None,
              sf_and_grads_accuracy_params = self.sfg_params,
-             target_name                  = "ml",
+             target_name                  = self.target_name,
              alpha_beta_params            = self.alpha_beta_params ,
              xray_structure               = self.xray_structure    ,
              mask_params                  = self.mask_params       ,
@@ -1611,7 +1611,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
              max_number_of_bins           = self.max_number_of_bins,
              bin_selections               = None    ,
              n_resolution_bins_output     = self.n_resolution_bins_output,
-             scale_method                 = self.scale_method)
+             scale_method                 = self.scale_method,
+             origin                       = self.origin(),
+             data_type                    = self.data_type())
           o = f_model_all_scales.run(
             fmodel=self, apply_back_trace = apply_back_trace,
             remove_outliers = remove_outliers, fast = fast,
