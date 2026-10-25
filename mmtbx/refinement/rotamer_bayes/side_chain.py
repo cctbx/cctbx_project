@@ -8,6 +8,7 @@ residue's environment under the crystal symmetry for clash checks.
 from __future__ import absolute_import, division, print_function
 import math
 import numpy as np
+from cctbx.eltbx import covalent_radii
 
 def dihedral(p):
   """ Dihedral angle (degrees) of four points, as scitbx.math.dihedral_angle """
@@ -51,10 +52,19 @@ def rotation_matrix(axis, angle_deg):
     [y*x*(1-c) + z*s, c + y*y*(1-c), y*z*(1-c) - x*s],
     [z*x*(1-c) - y*s, z*y*(1-c) + x*s, c + z*z*(1-c)]])
 
+def _covalent_radius(element):
+  try:
+    return covalent_radii.table(element).radius()
+  except (RuntimeError, ValueError):
+    return 0.
+
 def _bonded(names, elements, xyz):
   is_h = np.array([e in ("H", "D") for e in elements])
   d = np.sqrt(((xyz[:, None, :] - xyz[None, :, :]) ** 2).sum(axis=2))
-  cut = np.where(is_h[:, None] | is_h[None, :], 1.3, 2.0)
+  # longer than 2 A where the covalent radii need it (Se-C 1.95 A ideal)
+  r = np.array([_covalent_radius(e) for e in elements])
+  heavy = np.maximum(2.0, r[:, None] + r[None, :] + 0.4)
+  cut = np.where(is_h[:, None] | is_h[None, :], 1.3, heavy)
   b = (d < cut) & (d > 0.1)
   return b
 
