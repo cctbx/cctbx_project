@@ -95,7 +95,9 @@ def data_curvatures(fmodel, xray_structure, n_bins=40):
   for t in reg.type_index_pairs_as_dict().keys():
     g = reg.gaussian_not_optional(scattering_type=t)
     f_sq[t] = [g.at_d_star_sq(s2) ** 2 for s2, _ in bins]
-  n_sym = xray_structure.space_group().order_z()
+  # centring copies add in phase for allowed reflections
+  sg = xray_structure.space_group()
+  n_sym = sg.order_z() * sg.n_ltr()
   c = 4 * math.pi ** 2 / 3 * n_sym / n_work
   b_iso = xray_structure.extract_u_iso_or_u_equiv() * (8 * math.pi ** 2)
   result = flex.double()

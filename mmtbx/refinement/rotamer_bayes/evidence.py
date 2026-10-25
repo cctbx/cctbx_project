@@ -54,7 +54,9 @@ class evidence(object):
     self.g_calc = g_model * flex.complex_double(k_work,
       flex.double(k_work.size(), 0))
     self.f_obs_work = fmodel.f_obs_work()
-    self.n_sym = self.xrs.space_group().order_z()
+    # centring copies add in phase for allowed reflections
+    sg = self.xrs.space_group()
+    self.n_sym = sg.order_z() * sg.n_ltr()
     self._curvatures(g_model, eps, n_shells)
     self._registry = self.xrs.scattering_type_registry()
     self._maps = {}
