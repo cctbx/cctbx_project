@@ -2304,7 +2304,7 @@ def Test():
         degrees -= 360
     while degrees <= -180:
         degrees += 360
-    if abs(degrees) > 1e-5 and abs(180 - degrees) > 1e-5:
+    if abs(degrees) > 1e-5 and abs(180 - abs(degrees)) > 1e-5:
       return "Movers.Test() MoverAmideFlip: h1 dihedral not 0 or 180: {:.2f}".format(degrees)
     sites = [ h2.xyz, n.xyz, p.xyz, o.xyz ]
     degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
@@ -2312,7 +2312,7 @@ def Test():
         degrees -= 360
     while degrees <= -180:
         degrees += 360
-    if abs(degrees) > 1e-5 and abs(180 - degrees) > 1e-5:
+    if abs(degrees) > 1e-5 and abs(180 - abs(degrees)) > 1e-5:
       return "Movers.Test() MoverAmideFlip: h2 dihedral not 0 or 180: {:.2f}".format(degrees)
 
     # Ensure that the coarse-flip results meet the expections:
