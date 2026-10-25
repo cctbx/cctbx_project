@@ -123,8 +123,10 @@ class tncs_groups(object):
   .groups: list of group_args(chain_ids, i_seqs (one flex.size_t per copy,
   aligned: the common atoms), chain_i_seqs (one flex.size_t per copy: all
   its polymer atoms, for the scattering fractions), ops (rt_mx per copy),
-  angles (degrees, relative to the reference copy)); .n_atoms: the number
-  of atoms in the model, which the i_seqs index.
+  angles (degrees, relative to the reference copy)); .skipped: group_args(
+  chain_ids, n_common) for the connected chains with fewer than 3 atoms
+  common to all, which are not used; .n_atoms: the number of atoms in the
+  model, which the i_seqs index.
   """
   def __init__(self, pdb_hierarchy, crystal_symmetry, angle_max=10.,
                min_identity=0.9, min_overlap=0.5, min_atoms=50):
@@ -163,6 +165,7 @@ class tncs_groups(object):
     for i in range(n):
       components.setdefault(root(i), []).append(i)
     self.groups = []
+    self.skipped = []
     for members in sorted(components.values()):
       if len(members) < 2: continue
       common = set(chains[members[0]].atoms)
@@ -171,6 +174,10 @@ class tncs_groups(object):
       ref = chains[members[0]]
       common = sorted(k for k in common
         if all(chains[i].atoms[k][1] == ref.atoms[k][1] for i in members))
+      if len(common) < 3:   # too few to fit the operators
+        self.skipped.append(group_args(
+          chain_ids=[chains[i].id for i in members], n_common=len(common)))
+        continue
       i_seqs = [flex.size_t([chains[i].atoms[k][0] for k in common])
                 for i in members]
       ops, angles = [sgtbx.rt_mx()], [0.]
@@ -256,6 +263,9 @@ class tncs_groups(object):
     return len(self.groups)
 
   def show(self, log):
+    for g in self.skipped:
+      print("tNCS: chains %s not used as a group, %d atoms common to all "
+        "copies" % (" ".join(g.chain_ids), g.n_common), file=log)
     if not self.groups:
       print("tNCS: no groups of chains related by tNCS", file=log)
       return
