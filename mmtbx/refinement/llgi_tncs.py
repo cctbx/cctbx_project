@@ -61,11 +61,12 @@ from scitbx.math import superpose
 import iotbx.pdb
 import iotbx.phil
 
-def _polymer_atoms(chain):
+def _polymer_atoms(chain, selection=None, out=None):
   """ {(resseq, icode, atom name): (i_seq, resname)} for the first
   conformer of the amino-acid and nucleotide residues of a chain, without
-  hydrogens """
-  out = {}
+  hydrogens; only the atoms with selection[i_seq] if selection (a flex.bool)
+  is given; added to out if given """
+  if(out is None): out = {}
   for rg in chain.residue_groups():
     ag = rg.atom_groups()[0]
     cls = iotbx.pdb.common_residue_names_get_class(ag.resname)
@@ -73,6 +74,8 @@ def _polymer_atoms(chain):
       continue
     for a in ag.atoms():
       if a.element.strip().upper() in ("H", "D"):
+        continue
+      if(selection is not None and not selection[a.i_seq]):
         continue
       out.setdefault((rg.resseq_as_int(), rg.icode, a.name.strip()),
                      (a.i_seq, ag.resname))
@@ -181,6 +184,73 @@ class tncs_groups(object):
                       for i in members],
         ops=ops, angles=angles))
 
+  @classmethod
+  def from_selections(cls, pdb_hierarchy, crystal_symmetry, groups,
+                      angle_max=10.):
+    """ Groups from atom selections instead of whole chains (domain-level
+    tNCS). groups: a list of groups, each a list of atom-selection strings,
+    one per copy (the first is the reference copy). The copies' polymer
+    atoms are matched by residue number, insertion code and atom name; each
+    copy's operator is the symmetry operator that brings it closest to a
+    pure translation of the reference copy, and a copy related to the
+    reference by more than angle_max degrees is an error. The result has the
+    attributes of tncs_groups, with the selection strings as chain_ids and
+    i_seqs indexing the atoms of pdb_hierarchy (counted from 0, whatever
+    their i_seq values: those are reset on a copy of pdb_hierarchy, which is
+    left unchanged, if they are not 0..n-1). """
+    from libtbx.utils import Sorry
+    n_atoms = pdb_hierarchy.atoms().size()
+    if(list(pdb_hierarchy.atoms().extract_i_seq()) != list(range(n_atoms))):
+      pdb_hierarchy = pdb_hierarchy.deep_copy()
+      pdb_hierarchy.atoms().reset_i_seq()
+    cache = pdb_hierarchy.atom_selection_cache()
+    sites_frac = crystal_symmetry.unit_cell().fractionalize(
+      pdb_hierarchy.atoms().extract_xyz())
+    self = cls.__new__(cls)
+    self.crystal_symmetry = crystal_symmetry
+    self.n_atoms = n_atoms
+    self.groups = []
+    for i_group, selections in enumerate(groups):
+      selections = list(selections)
+      if(len(selections) < 2):
+        raise Sorry("tNCS group %d: at least two copies are needed, not %d"
+          % (i_group + 1, len(selections)))
+      copies = []
+      for sel_str in selections:
+        sel = cache.selection(sel_str)
+        atoms = {}
+        for ch in pdb_hierarchy.models()[0].chains():
+          _polymer_atoms(ch, selection=sel, out=atoms)
+        if(len(atoms) == 0):
+          raise Sorry("tNCS group %d: copy '%s' selects no polymer atoms"
+            % (i_group + 1, sel_str))
+        copies.append(atoms)
+      common = set(copies[0])
+      for atoms in copies[1:]:
+        common &= set(atoms)
+      common = sorted(k for k in common
+        if all(atoms[k][1] == copies[0][k][1] for atoms in copies))
+      if(len(common) < 3):
+        raise Sorry("tNCS group %d: the copies have only %d atoms in common"
+          % (i_group + 1, len(common)))
+      i_seqs = [flex.size_t([atoms[k][0] for k in common]) for atoms in copies]
+      ops, angles = [sgtbx.rt_mx()], [0.]
+      ref_sites = sites_frac.select(i_seqs[0])
+      for sel_str, sel in zip(selections[1:], i_seqs[1:]):
+        angle, op = _best_op(ref_sites, sites_frac.select(sel),
+                             crystal_symmetry)
+        if(angle > angle_max):
+          raise Sorry("tNCS group %d: copy '%s' is related to '%s' by %.1f "
+            "degrees, more than angle_max" % (i_group + 1, sel_str,
+            selections[0], angle))
+        ops.append(op); angles.append(angle)
+      self.groups.append(group_args(
+        chain_ids=selections, i_seqs=i_seqs,
+        chain_i_seqs=[flex.size_t(sorted(v[0] for v in atoms.values()))
+                      for atoms in copies],
+        ops=ops, angles=angles))
+    return self
+
   def __len__(self):
     return len(self.groups)
 
@@ -188,12 +258,28 @@ class tncs_groups(object):
     if not self.groups:
       print("tNCS: no groups of chains related by tNCS", file=log)
       return
+    def q(cid):   # selections with blanks in quotes
+      return "'%s'" % cid if " " in cid else cid
     for g in self.groups:
       print("tNCS group: chains %s, %d common atoms" % (
-        " ".join(g.chain_ids), g.i_seqs[0].size()), file=log)
+        " ".join(q(c) for c in g.chain_ids), g.i_seqs[0].size()), file=log)
       for cid, op, angle in zip(g.chain_ids[1:], g.ops[1:], g.angles[1:]):
         print("  %s -> %s by %s: rotation %.2f degrees" % (
-          cid, g.chain_ids[0], op.as_xyz(), angle), file=log)
+          q(cid), q(g.chain_ids[0]), op.as_xyz(), angle), file=log)
+
+def groups_from_params(pdb_hierarchy, crystal_symmetry, params):
+  """ The model's tNCS groups: from the atom selections of params.group
+  (llgi_tncs_params; tncs_groups.from_selections) if any is given,
+  otherwise found automatically from the chains (tncs_groups, with
+  params.angle_max). """
+  selected = [[c for c in g.copy if c is not None]
+              for g in (getattr(params, "group", None) or [])]
+  selected = [g for g in selected if g]
+  if(selected):
+    return tncs_groups.from_selections(pdb_hierarchy, crystal_symmetry,
+      selected, angle_max=params.angle_max)
+  return tncs_groups(pdb_hierarchy, crystal_symmetry,
+    angle_max=params.angle_max)
 
 def _atomic_weight_sq(xray_structure):
   """ (f0 at s = 0)^2 * occupancy per scatterer """
@@ -590,6 +676,23 @@ llgi_tncs_params = iotbx.phil.parse("""\
   angle_max = 10.
     .type = float
     .short_caption = Largest rotation between tNCS-related copies (degrees)
+  group
+    .multiple = True
+    .short_caption = tNCS group of domain copies
+    .help = "A group of copies related by tNCS, given by atom selections " \\
+            "(domain-level tNCS, e.g. for domains that have moved " \\
+            "relative to each other between the copies). Each copy is a " \\
+            "selection of the same residues (matched by residue number, " \\
+            "insertion code and atom name); the first is the reference " \\
+            "copy. If any group is given, the groups of chains are not " \\
+            "searched for."
+  {
+    copy = None
+      .type = atom_selection
+      .multiple = True
+      .short_caption = Atom selection of one copy
+      .help = "Atoms of one copy of the group; give at least two."
+  }
   ncs_restraints = False
     .type = bool
     .short_caption = NCS restraints for tNCS-related copies
@@ -716,8 +819,7 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
     from libtbx.utils import Sorry
     raise Sorry("The LLGI treatment of translational NCS needs the "
       "intensities (I, SIGI); the LLGI data have none.")
-  groups = tncs_groups(pdb_hierarchy, f_obs.crystal_symmetry(),
-    angle_max=params.angle_max)
+  groups = groups_from_params(pdb_hierarchy, f_obs.crystal_symmetry(), params)
   if(log is not None): groups.show(log)
   if(len(groups) == 0):
     return None
@@ -1003,8 +1105,7 @@ def _current_groups(state, crystal_symmetry, xray_structure, pdb_hierarchy):
     raise Sorry("tNCS: the model now has %d atoms, not the %d for which the "
       "tNCS groups were found, and no model with the current atoms was "
       "given to find them again." % (n_atoms, state.groups.n_atoms))
-  groups = tncs_groups(pdb_hierarchy, crystal_symmetry,
-    angle_max=state.params.angle_max)
+  groups = groups_from_params(pdb_hierarchy, crystal_symmetry, state.params)
   if(len(groups) == 0):
     raise Sorry("tNCS: no groups of chains related by tNCS in the model with "
       "%d atoms (they were found in the model with %d atoms)." % (n_atoms,

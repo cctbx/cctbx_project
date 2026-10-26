@@ -9,6 +9,8 @@ from cctbx.array_family import flex
 from libtbx import group_args
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
+from scitbx.math import superpose
+import iotbx.phil
 import mmtbx.refinement.llgi_tncs as llgi_tncs
 import mmtbx.refinement.llgi_hybrid as llgi_hybrid
 
@@ -830,6 +832,130 @@ def exercise_monitor_in_fit_and_renormalise(fmodel):
   assert (gap2 - gap1 > 0.002) == bool(
     [w for w in r2.warnings if "free-set gap" in w]), (gap1, gap2)
 
+def build_two_domain(rot2_deg, seed=3):
+  """ chain A (domain 1: residues 1-40, domain 2: residues 41-80, poly-ALA)
+  and chain B, a copy translated, with domain 1 rotated by 2 degrees and
+  domain 2 by rot2_deg about its own centre. """
+  rnd = random.Random(seed)
+  def random_sites(n):
+    out = []
+    while len(out) < n:
+      v = [rnd.uniform(-10, 10) for k in range(3)]
+      if sum(x * x for x in v) < 100: out.append(matrix.col(v))
+    return out
+  names = ["N", "CA", "C", "O", "CB"]
+  uc = CS.unit_cell()
+  centres = [matrix.col(uc.orthogonalize(f))
+             for f in ((0.2, 0.2, 0.25), (0.2, 0.2, 0.6))]
+  t_b = matrix.col(uc.orthogonalize((0.5, 0.45, 0.02)))
+  axis = matrix.col((1, 2, 0.5)).normalize()
+  lines = []
+  def add(chain, i_res, name, xyz):
+    lines.append("ATOM  %5d  %-3s ALA %s%4d    %8.3f%8.3f%8.3f  1.00%6.2f"
+      "           %s" % (len(lines) + 1, name, chain, i_res, xyz[0], xyz[1],
+      xyz[2], 20., name[0]))
+  domains = [random_sites(200), random_sites(200)]
+  for chain in "AB":
+    for i_dom, (sites, c) in enumerate(zip(domains, centres)):
+      if chain == "B":
+        r = axis.axis_and_angle_as_r3_rotation_matrix(
+          (2., rot2_deg)[i_dom], deg=True)
+        sites = [r * s for s in sites]
+      for k, s in enumerate(sites):
+        add(chain, 40 * i_dom + k // 5 + 1, names[k % 5],
+            s + c + (t_b if chain == "B" else matrix.col((0, 0, 0))))
+  pdb_inp = iotbx.pdb.input(source_info=None,
+    lines=flex.split_lines("\n".join(lines)))
+  return pdb_inp.construct_hierarchy()
+
+DOMAIN_SELECTIONS = [
+  ["chain A and resseq 1:40", "chain B and resseq 1:40"],
+  ["chain A and resseq 41:80", "chain B and resseq 41:80"]]
+
+def exercise_domain_groups():
+  h = build_two_domain(20.)
+  groups = llgi_tncs.tncs_groups.from_selections(h, CS, DOMAIN_SELECTIONS,
+    angle_max=30.)
+  assert len(groups) == 2 and groups.n_atoms == h.atoms().size()
+  uc = CS.unit_cell()
+  sites_frac = uc.fractionalize(h.atoms().extract_xyz())
+  for g, applied, sels in zip(groups.groups, (2., 20.), DOMAIN_SELECTIONS):
+    assert g.chain_ids == sels
+    assert len(g.i_seqs) == 2 and len(g.chain_i_seqs) == 2
+    assert g.i_seqs[0].size() == g.i_seqs[1].size() == 200
+    assert g.chain_i_seqs[0].size() == 200
+    assert g.ops[0].is_unit_mx() and g.ops[1].is_unit_mx()
+    assert g.angles[0] == 0.
+    assert approx_equal(g.angles[1], applied, eps=0.01)
+    # the superposition of copy 2 on copy 1 leaves less than 0.01 A
+    lsq = superpose.least_squares_fit(
+      reference_sites=uc.orthogonalize(
+        llgi_tncs.apply_op(g.ops[1], sites_frac.select(g.i_seqs[1]))),
+      other_sites=uc.orthogonalize(sites_frac.select(g.i_seqs[0])))
+    assert approx_equal(lsq.r.rotation_angle(), applied, eps=0.01)
+    moved = lsq.other_sites_best_fit()
+    ref = uc.orthogonalize(
+      llgi_tncs.apply_op(g.ops[1], sites_frac.select(g.i_seqs[1])))
+    assert approx_equal(flex.mean((moved - ref).dot()) ** 0.5, 0., eps=0.01)
+  # the same through the phil parameters
+  params = llgi_tncs.llgi_tncs_params.fetch(iotbx.phil.parse(
+    "group { copy = 'chain A and resseq 1:40'\n copy = 'chain B and resseq 1:40' }\n"
+    "group { copy = 'chain A and resseq 41:80'\n copy = 'chain B and resseq 41:80' }\n"
+    "angle_max = 30\n")).extract()
+  g2 = llgi_tncs.groups_from_params(h, CS, params)
+  assert len(g2) == 2
+  assert [list(g.i_seqs[1]) for g in g2.groups] == \
+         [list(g.i_seqs[1]) for g in groups.groups]
+  from six.moves import cStringIO as StringIO
+  log = StringIO()
+  g2.show(log)
+  assert "'chain A and resseq 1:40'" in log.getvalue()
+  # no group given: automatic, from whole chains
+  auto = llgi_tncs.groups_from_params(h, CS,
+    llgi_tncs.llgi_tncs_params.extract())
+  assert len(auto) == 1 and auto.groups[0].chain_ids == ["A", "B"]
+
+def exercise_domain_group_angle_error():
+  from libtbx.utils import Sorry
+  h = build_two_domain(20.)
+  try:
+    llgi_tncs.tncs_groups.from_selections(h, CS, DOMAIN_SELECTIONS,
+      angle_max=10.)
+  except Sorry as e:
+    assert str(e) == ("tNCS group 2: copy 'chain B and resseq 41:80' is "
+      "related to 'chain A and resseq 41:80' by 20.0 degrees, more than "
+      "angle_max"), str(e)
+  else:
+    raise AssertionError("Sorry expected")
+
+def exercise_selected_hierarchy():
+  h = build_two_domain(20.)
+  full = llgi_tncs.tncs_groups.from_selections(h, CS, DOMAIN_SELECTIONS,
+    angle_max=30.)
+  # drop the first 10 atoms of chain A: i_seq values of the rest are stale
+  sel = flex.bool(h.atoms().size(), True)
+  for i in range(10): sel[i] = False
+  sub = h.select(sel)
+  stale = list(sub.atoms().extract_i_seq())
+  assert stale[0] == 10
+  groups = llgi_tncs.tncs_groups.from_selections(sub, CS, [
+    ["chain A and resseq 3:40", "chain B and resseq 3:40"],
+    DOMAIN_SELECTIONS[1]], angle_max=30.)
+  assert list(sub.atoms().extract_i_seq()) == stale   # input unchanged
+  assert groups.n_atoms == sub.atoms().size() == h.atoms().size() - 10
+  xyz_full, xyz_sub = h.atoms().extract_xyz(), sub.atoms().extract_xyz()
+  g_full, g = full.groups[1], groups.groups[1]
+  for a, b in zip(g_full.i_seqs, g.i_seqs):
+    assert approx_equal(list(xyz_full.select(a).as_double()),
+                        list(xyz_sub.select(b).as_double()))
+  assert approx_equal(g.angles[1], g_full.angles[1], eps=1e-6)
+  assert [list(v) for v in g.chain_i_seqs] == \
+         [[i - 10 for i in v] for v in g_full.chain_i_seqs]
+  # group 1: residues 3:40 keep their atoms (residues 1-2 hold the 10 dropped
+  # atoms of chain A and are not in the selections)
+  assert groups.groups[0].i_seqs[0].size() == 190
+  assert approx_equal(groups.groups[0].angles[1], 2., eps=0.01)
+
 def run():
   h, xrs = build_model()
   groups = exercise_groups(h)
@@ -848,6 +974,9 @@ def run():
   exercise_monitor_group_stands_out()
   exercise_monitor_gap_growth()
   exercise_monitor_in_fit_and_renormalise(cctbx_fmodel(h, xrs))
+  exercise_domain_groups()
+  exercise_domain_group_angle_error()
+  exercise_selected_hierarchy()
   print("OK")
 
 if __name__ == "__main__":
