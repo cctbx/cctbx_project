@@ -8,6 +8,10 @@ A His locked by set_flip_states (one orientation, 3 states) is recorded as
 flipped when its Mover is added, never from its final state. Models: 6VW1
 His B505 (locked Unflipped) and 3J4P His A428 (locked Flipped), both ending
 with HD1 only, the state at index len//2 of a one-orientation Mover.
+
+An unlocked His counts as flipped in any flipped state, also with one ring H
+(only the both-H state counted before): 3J4P His A428 unlocked ends Flipped
+with HD1 only; 4KW8 His181 unlocked ends Unflipped with HE2 only.
 """
 from __future__ import absolute_import, division, print_function
 import os
@@ -176,8 +180,9 @@ ATOM   4185  OXT LEU A 737       9.810  19.576  98.824  1.00 24.22           O
 END
 """
 
-def locked(pdb, flip_state):
-  """getFlippedHistidines() and the HisPlace pose for a His locked by flip_state"""
+def his_flips(pdb, flip_state=""):
+  """getFlippedHistidines() and the pose of the one His Mover (HisPlace when
+  locked by flip_state, HisFlip otherwise)"""
   from mmtbx.hydrogens import reduce_hydrogen, default_probe_phil
   from mmtbx.reduce import Optimizers
   m = mmtbx.model.manager(model_input=iotbx.pdb.input(source_info=None, lines=pdb),
@@ -186,22 +191,35 @@ def locked(pdb, flip_state):
   p.run()
   opt = Optimizers.Optimizer(default_probe_phil(), True, p.get_model(),
     flipStates=flip_state, fillAtomDump=False)
-  poses = [l for l in opt.getInfo().splitlines() if "HisPlace at" in l and " pose " in l]
+  mover = "HisPlace at" if flip_state else "HisFlip at"
+  poses = [l for l in opt.getInfo().splitlines() if mover in l and " pose " in l]
   assert len(poses) == 1, poses
   return opt.getFlippedHistidines(), poses[0]
 
 def test_locked_unflipped_hd1_only():
-  flipped, pose = locked(pdb_6vw1_his505, "1 . B HIS 505 Unflipped")
+  flipped, pose = his_flips(pdb_6vw1_his505, "1 . B HIS 505 Unflipped")
   assert "pose Unflipped HD1Placed HE2NotPlaced" in pose, pose
   assert len(flipped) == 0, pose
 
 def test_locked_flipped_hd1_only():
-  flipped, pose = locked(pdb_3j4p_his428, "1 . A HIS 428 Flipped AnglesAdjusted")
+  flipped, pose = his_flips(pdb_3j4p_his428, "1 . A HIS 428 Flipped AnglesAdjusted")
   assert "pose Flipped HD1Placed HE2NotPlaced" in pose, pose
   assert len(flipped) == 1, pose
+
+def test_unlocked_flipped_hd1_only():
+  flipped, pose = his_flips(pdb_3j4p_his428)
+  assert "pose Flipped HD1Placed HE2NotPlaced" in pose, pose
+  assert len(flipped) == 1, pose
+
+def test_unlocked_unflipped_he2_only():
+  flipped, pose = his_flips(pdb_str)
+  assert "pose Unflipped HD1NotPlaced HE2Placed" in pose, pose
+  assert len(flipped) == 0, pose
 
 if __name__ == "__main__":
   test_his181_keeps_ring_h()
   test_locked_unflipped_hd1_only()
   test_locked_flipped_hd1_only()
+  test_unlocked_flipped_hd1_only()
+  test_unlocked_unflipped_he2_only()
   print("OK")

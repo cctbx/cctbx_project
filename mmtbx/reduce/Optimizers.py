@@ -803,9 +803,10 @@ class Optimizer(object):
             nitrogen = m.CoarsePositions().atoms[0]
             self._amideFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
 
+          # The upper half of the coarse states is flipped (both H, HD1 only, HE2 only).
           # Locked (one-orientation) His were recorded when their Mover was added.
           elif (isinstance(m, Movers.MoverHisFlip) and m.EnabledFlipStates() == 3 and
-                coarse_loc == len(m.CoarsePositions().positions)//2):
+                coarse_loc >= len(m.CoarsePositions().positions)//2):
             nitrogen = m.CoarsePositions().atoms[0]
             self._hisFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
 
