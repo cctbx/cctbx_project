@@ -189,6 +189,22 @@ class CheckCommand(PrecheckFixture):
                 self.assertEqual(lines[lines.index(ok_line) + 1], command)
                 self.assertNotIn("ERROR", result.stderr)
 
+    def test_record_remote_cannot_be_a_git_option(self):
+        """2026-10-26: the record's remote name and URL reach `git fetch` and `git ls-remote`,
+        so a value starting with "-" (here --upload-pack, which runs a command) is refused
+        before any git call, with and without --fetch."""
+        marker = self.root / "MARKER"
+        payload = f"--upload-pack=touch {marker}"
+        for fields, reason in (({"remote": payload}, "remote must be a configured remote name"),
+                               ({"remote_url": payload}, "remote_url is not a plain URL")):
+            for fetch in (False, True):
+                with self.subTest(fields=fields, fetch=fetch):
+                    self.outgoing.write_text(self.block(**fields))
+                    result = self.check(*(("--fetch",) if fetch else ()), fetch=fetch)
+                    self.assertEqual(result.returncode, 2, result.stdout)
+                    self.assertIn(reason, result.stderr)
+                    self.assertFalse(marker.exists(), "the record's value ran a command")
+
     def test_record_parse_refusals_match_screen_check(self):
         """SPEC_A 2.1 step 1: OUTGOING is parsed as in 1.2 with the same refusals."""
         for label, text, reason in (

@@ -76,11 +76,23 @@ def select_block(blocks, name):
     if name is None:
         if len(blocks) != 1:
             fail("several repositories; name one with --repository")
-        return blocks[0]
+        return check_record_remote(blocks[0])
     for block in blocks:
         if block["repository"] == name:
-            return block
+            return check_record_remote(block)
     fail(f"repository not in outgoing record: {name}")
+
+
+def check_record_remote(block):
+    """The record's remote name and URL are passed to git (`fetch`, `ls-remote`), so a value
+    starting with "-" would be read as a git option (for example --upload-pack, which runs a
+    command). Hold them to the rule `outgoing` applies when it writes the record."""
+    remote, url = block["remote"], block["remote_url"]
+    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9._-]*", remote) or remote in (".", ".."):
+        fail(f"the outgoing record's remote must be a configured remote name: {remote}")
+    if url.startswith("-") or any(c.isspace() for c in url):
+        fail(f"the outgoing record's remote_url is not a plain URL: {url}")
+    return block
 
 
 def check_destinations(repo, block, notes=None):
