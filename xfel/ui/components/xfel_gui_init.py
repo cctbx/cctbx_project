@@ -152,9 +152,21 @@ class RunSentinel(Thread):
 tp_EVT_ENERGY_DONE = wx.NewEventType()
 EVT_ENERGY_DONE = wx.PyEventBinder(tp_EVT_ENERGY_DONE, 1)
 
+# Requests handed from the Energy tab (main thread) to the CalibWorker. Each is
+# an immutable snapshot of the inputs, appended to the tab's calib_requests
+# list by the button handlers and popped by the worker, so neither side reads
+# the other's mutable state.
+FeeCalibRequest = collections.namedtuple('FeeCalibRequest',
+                                         ['experiment', 'runs', 'energies', 'max_events'])
+EbeamCalibRequest = collections.namedtuple('EbeamCalibRequest',
+                                           ['experiment', 'runs', 'max_events', 'fee_eV_offset', 'fee_eV_per_pixel'])
+
 class CalibWorker(Thread):
   ''' Worker thread to execute calibrations in the background without locking
-      up the GUI'''
+      up the GUI. Data is read on this thread; only the drawing of results is
+      handed to the main thread. Exceptions are reported with a message and the
+      red light rather than raised, as this is production software; raise them
+      here temporarily when debugging.'''
 
   def __init__(self,
                parent,
@@ -167,40 +179,63 @@ class CalibWorker(Thread):
     evt = RefreshRuns(tp_EVT_ENERGY_DONE, -1)
     wx.PostEvent(self.energy_tab, evt)
 
+  def set_light(self, status):
+    wx.CallAfter(self.parent.run_window.calib_light.change_status, status)
+
+  def draw_on_main(self, name, draw):
+    ''' Run a drawing closure on the main thread and set the light from its
+        outcome: green when drawn, red with a message when it fails. '''
+    light = self.parent.run_window.calib_light
+    def _draw():
+      try:
+        draw()
+        light.change_status('on')
+      except Exception as e:
+        print(f'{name} failed while plotting the results: {e}')
+        light.change_status('alert')
+    wx.CallAfter(_draw)
+
   def run(self):
     # one time setup
-    self.energy_tab = self.parent.run_window.energy_tab
-    self.db = xfel_db_application(self.parent.params)
+    try:
+      self.energy_tab = self.parent.run_window.energy_tab
+      self.db = xfel_db_application(self.parent.params)
 
-    from serialtbx.util.energy_scan_notch_finder import notch_phil_string
-    from xfel.command_line.fee_calibration import fee_phil_string
-    from libtbx.phil import parse
-    self.fee_params = parse(notch_phil_string + fee_phil_string).extract()
-    wx.CallAfter(self.energy_tab.refresh_runs)
+      from serialtbx.util.energy_scan_notch_finder import notch_phil_string
+      from xfel.command_line.fee_calibration import fee_phil_string
+      from libtbx.phil import parse
+      self.fee_params = parse(notch_phil_string + fee_phil_string).extract()
+      wx.CallAfter(self.energy_tab.refresh_runs)
+    except Exception as e:
+      print(f'Calibration worker could not start: {e}')
+      self.set_light('alert')
+      self.active = False
+      return
 
     while self.active:
-      wx.CallAfter(self.parent.run_window.calib_light.change_status, 'idle') # yellow -- actually means working
-      try:
-        if self.energy_tab.fee_calib_stale:
-          self.run_fee_calib()
+      # list.pop is atomic, so the tab can append a request at any time
+      while self.active and self.energy_tab.calib_requests:
+        request = self.energy_tab.calib_requests.pop(0)
+        name = 'FEE calibration' if isinstance(request, FeeCalibRequest) else 'Ebeam calibration'
+        self.set_light('idle') # yellow: working
+        try:
+          if isinstance(request, FeeCalibRequest):
+            self.run_fee_calib(request)
+          else:
+            self.run_ebeam_calib(request)
           self.post_refresh_energy()
-        if self.energy_tab.ebeam_calib_stale:
-          self.run_ebeam_calib()
-          self.post_refresh_energy()
-        wx.CallAfter(self.parent.run_window.calib_light.change_status, 'on') # green-- actually means idle
-        time.sleep(1)
-      except Exception as e:
-        print(e)
-        wx.CallAfter(self.parent.run_window.calib_light.change_status, 'alert') # red -- means crashed
-        break
+        except Exception as e:
+          print(f'{name} failed: {e}')
+          self.set_light('alert') # red: see the message above
+      time.sleep(1)
 
-  def run_fee_calib(self):
+  def run_fee_calib(self, request):
     from serialtbx.util.energy_scan_notch_finder import find_notch, plot_notches, calibrate_energy
     from xfel.command_line.fee_calibration import tally_fee_data
 
-    runs = self.energy_tab.fee_runs
-    energies = self.energy_tab.fee_energies
-    rundata = tally_fee_data(self.energy_tab.experiment, runs, plot=False, verbose=True, max_events=self.energy_tab.max_events)
+    runs = request.runs
+    energies = request.energies
+    rundata = tally_fee_data(request.experiment, runs, plot=False, verbose=True, max_events=request.max_events)
     notches = [find_notch(range(len(data)),
                           data,
                           self.fee_params.kernel_size,
@@ -212,6 +247,8 @@ class CalibWorker(Thread):
     trendline_fig = self.energy_tab.trendline_figure
     energy_tab = self.energy_tab
     def _draw_fee():
+      trendline_fig.clear()
+      spectra_fig.clear()
       offset, per_px = calibrate_energy(notches,
                                         energies,
                                         use_figure=trendline_fig)
@@ -226,41 +263,27 @@ class CalibWorker(Thread):
       energy_tab.fee_eV_per_pixel = per_px
       energy_tab.eV_offset_text.SetLabel(f'{offset:.4f} eV')
       energy_tab.eV_per_px_text.SetLabel(f'{per_px:.4f} eV')
-      energy_tab.fee_calib_stale = False
-    wx.CallAfter(_draw_fee)
+    self.draw_on_main('FEE calibration', _draw_fee)
 
-  def run_ebeam_calib(self, source='loc'):
-    from xfel.ui.components.ebeam_plotter import compare_ebeams_with_fees
-
-    run_strings = self.energy_tab.selected_runs
+  def run_ebeam_calib(self, request):
+    from xfel.ui.components.ebeam_plotter import gather_ebeam_fee_data, ebeam_fee_offsets, plot_ebeam_fee_comparison
 
     if not hasattr(self, 'loc_dir'):
       results_dir = self.parent.params.output_folder
       energy_dir = os.path.join(results_dir, '..', 'energy')
-      if os.path.exists(energy_dir):
+      try:
+        os.makedirs(energy_dir, exist_ok=True)
         self.loc_dir = energy_dir
-      else:
-        try:
-          os.mkdir(energy_dir)
-          self.loc_dir = energy_dir
-        except Exception:
-          loc_dir = os.path.join(results_dir, 'locs')
-          os.mkdir(loc_dir)
-          self.loc_dir = loc_dir
+      except Exception:
+        loc_dir = os.path.join(results_dir, 'locs')
+        os.makedirs(loc_dir, exist_ok=True)
+        self.loc_dir = loc_dir
 
-    loc_parts = []
-    if self.energy_tab.experiment is None:
-      print("Experiment not set")
-      return
-    loc_parts.append(f'experiment={self.energy_tab.experiment}')
-    if self.energy_tab.fee_eV_offset is None:
-      print("Calibrate spectrometer first")
-      return
+    loc_parts = [f'experiment={request.experiment}',
+                 f'spectrum_eV_offset={request.fee_eV_offset:.2f}',
+                 f'spectrum_eV_per_pixel={request.fee_eV_per_pixel:.2f}']
 
-    loc_parts.append(f'spectrum_eV_offset={self.energy_tab.fee_eV_offset:.2f}')
-    loc_parts.append(f'spectrum_eV_per_pixel={self.energy_tab.fee_eV_per_pixel:.2f}')
-
-    runs = [run for run in self.db.get_all_runs() if str(run.run) in run_strings]
+    runs = [run for run in self.db.get_all_runs() if str(run.run) in request.runs]
     locfiles = []
     reordered_run_strings = []
     for run in runs:
@@ -282,7 +305,7 @@ class CalibWorker(Thread):
         locfiles.append(loc_path)
         reordered_run_strings.append(str(run.run))
       except Exception as e:
-        print('Failed to load ebeam for run {run.run}')
+        print(f'Failed to load ebeam for run {run.run}')
         print(e)
         continue
 
@@ -290,31 +313,24 @@ class CalibWorker(Thread):
       print('No runs to compare.')
       return
 
+    # the slow part: every event of every run is read here, on the worker
+    rundata = gather_ebeam_fee_data(locfiles, runs=reordered_run_strings, max_events=request.max_events)
+    ebeam_eV_offset, ebeam_wavelength_offset = ebeam_fee_offsets(rundata)
+    if ebeam_eV_offset is None:
+      print('No events found with both FEE and eBeam in any run.')
+
     ebeam_fig = self.energy_tab.ebeam_figure
     energy_tab = self.energy_tab
-    _locfiles = locfiles
-    _runs = reordered_run_strings
     def _draw_ebeam():
       ebeam_fig.clear()
-      ebeam_eV_offset, ebeam_wavelength_offset = compare_ebeams_with_fees(
-        _locfiles,
-        runs=_runs,
-        plot=True,
-        use_figure=ebeam_fig,
-        max_events=energy_tab.max_events)
+      plot_ebeam_fee_comparison(rundata, ebeam_fig)
       ebeam_fig.canvas.draw_idle()
       if ebeam_eV_offset is not None:
         energy_tab.ebeam_eV_offset = ebeam_eV_offset
         energy_tab.ebeam_wavelength_offset = ebeam_wavelength_offset
-        ang = u'\u212b' # Angstrom
+        ang = u'Å' # Angstrom
         energy_tab.ebeam_offset_text.SetLabel(f'{ebeam_eV_offset:.2f} eV ({ebeam_wavelength_offset:.6f} {ang})')
-        energy_tab.ebeam_calib_stale = False
-    wx.CallAfter(_draw_ebeam)
-
-    #try:
-    #  locfile = os.path.join(db.params.output_folder, f'r{run.run:04d}', f'{trial.trial:03d}_rg{rg.rungroup_id:03d', 'data.loc')
-    #except ValueError: # in case of non-numeric run names
-    #  locfile = os.path.join(db.params.output_folder, f'r{run.run}', f'{trial.trial:03d}_rg{rg.rungroup_id:03d', 'data.loc')
+    self.draw_on_main('Ebeam calibration', _draw_ebeam)
 
 # ------------------------------- Job Monitor ------------------------------- #
 
@@ -2000,8 +2016,7 @@ class EnergyTab(BaseTab):
     self.ebeam_eV_offset = None
     self.ebeam_wavelength_offset = None
 
-    self.fee_calib_stale = False
-    self.ebeam_calib_stale = False
+    self.calib_requests = [] # FeeCalibRequest / EbeamCalibRequest, consumed by the CalibWorker
     self.size_stale = False
     self.experiment = main.params.facility.lcls.experiment
 
@@ -2263,14 +2278,24 @@ class EnergyTab(BaseTab):
         dlg.ShowModal()
         return
       self.fee_energies.append(energy)
-    self.fee_calib_stale = True
+    self.calib_requests.append(FeeCalibRequest(self.experiment, list(self.fee_runs),
+                                               list(self.fee_energies), self.max_events))
     e.Skip()
 
   def onRunEbeamCalib(self, e):
-    #self.ebeam_offset_text.SetLabel('')
     self.selected_runs = self.ebeam_runs_selection.ctr.GetCheckedStrings()
     self.max_events = int(self.max_evts.GetValue())
-    self.ebeam_calib_stale = True
+    message = None
+    if self.experiment is None:
+      message = 'Experiment not set.'
+    elif self.fee_eV_offset is None:
+      message = 'Calibrate the spectrometer first.'
+    if message is not None:
+      dlg = wx.MessageDialog(self, message=message, caption='Error', style=wx.OK | wx.ICON_ERROR)
+      dlg.ShowModal()
+      return
+    self.calib_requests.append(EbeamCalibRequest(self.experiment, list(self.selected_runs), self.max_events,
+                                                 self.fee_eV_offset, self.fee_eV_per_pixel))
     e.Skip()
 
   def onRunsRefresh(self, e):
