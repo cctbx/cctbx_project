@@ -2482,7 +2482,7 @@ NOTES:
           m = singleModel.models()[0]
           chainSet = set()
           ids = iotbx.pdb.utils.chain_id_generator(used_ids=singleModel.chain_ids())
-          for entry in singleModel.sym_equiv_residue_groups(self.model.crystal_symmetry(), 3.0):
+          for entry in singleModel.sym_equiv_residue_groups(self.model.crystal_symmetry(), 3.6):
             for chain in entry.hierarchy.models()[0].chains():
               chain.id = next(ids)
               chainSet.add(chain.id)
