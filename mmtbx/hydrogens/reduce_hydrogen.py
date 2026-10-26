@@ -885,6 +885,11 @@ NH_METAL_ELEMENTS = METAL_ELEMENTS - frozenset(
 # bind amine N, and their windows reach N-H...O hydrogen-bond distances (A5)
 AMINE_METAL_ELEMENTS = NH_METAL_ELEMENTS | frozenset(('BE', 'MG'))
 
+# phenols (also enols, carboxylic acids) bound to these lose their H: aqua
+# pK11 of Fe(III) 2.2, Ga 2.6, Al 5.0, and Tyr on Fe is tyrosinate in the
+# proteins known (Fe taken as Fe(III)); on Zn, Cu or Mn(II) a phenol keeps it
+PHENOLATE_METAL_ELEMENTS = frozenset(('FE', 'GA', 'AL'))
+
 # images of one metal atom closer than this are one metal site
 METAL_SITE_IMAGE_DISTANCE = 2.0
 
@@ -895,6 +900,9 @@ THIOL_METAL_WINDOW = (-0.55, 0.25)
 
 THIOL_H_SUPPLIED_NOTE = ('kept as supplied; thiols bound to metals are usually '
   'deprotonated')
+
+PHENOL_H_SUPPLIED_NOTE = ('kept as supplied; phenols bound to Fe(III), Ga or '
+  'Al are usually deprotonated')
 
 METAL_NH_SUPPLIED_NOTE = ('kept as supplied; backbone amide N and '
   'thymine/uracil N3 bound to metals are usually deprotonated')
@@ -1248,6 +1256,39 @@ class thiol_metal_sites(metal_h_sites):
                  for j in heavy.get(i_s, [])
                  if _compatible(atoms[j], atoms[i_h]))
         if len(nb) == 1: candidates.append((i_s, i_h, True))
+    return candidates
+
+class phenol_metal_sites(metal_h_sites):
+  '''
+  Phenols bound to Fe, Ga or Al. Phenol: an O with exactly one non-metal
+  heavy neighbour (counted by residue and atom name), a C in a double,
+  triple, aromatic or delocalized bond (_unsaturated_atoms(); also enols and
+  carboxylic acids), in the bond restraints of the H site's conformer,
+  carrying that H. Covered: phenolate. Metals: PHENOLATE_METAL_ELEMENTS.
+  '''
+  metals = PHENOLATE_METAL_ELEMENTS
+  covered = 'phenolate'
+  state = 'phenol'
+
+  def __init__(self, model, crystal_symmetry=None):
+    self._mon_lib_srv = model.get_mon_lib_srv()
+    self._unsaturated = {}
+    metal_h_sites.__init__(self, model, crystal_symmetry)
+
+  def _candidates(self, atoms, elements, heavy, h_on):
+    candidates = []
+    for i_o, hs in h_on.items():
+      if elements[i_o] != 'O': continue
+      for i_h in hs:
+        nb = [j for j in heavy.get(i_o, [])
+              if _compatible(atoms[j], atoms[i_h])]
+        names = set((atoms[j].parent().parent().memory_id(), atoms[j].name)
+                    for j in nb)
+        if len(names) != 1 or elements[nb[0]] != 'C': continue
+        c = atoms[nb[0]]
+        if c.name.strip() in _unsaturated_atoms(c.parent().resname,
+            self._mon_lib_srv, self._unsaturated):
+          candidates.append((i_o, i_h, True))
     return candidates
 
 def residue_is_amino_acid(resname, mon_lib_srv):
@@ -1696,6 +1737,18 @@ def metal_thiol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
       'thiolate',
     unresolved = 'Thiol H placed at metal sites with unresolved protonation',
     supplied = 'Supplied thiol H at metal sites: %s' % THIOL_H_SUPPLIED_NOTE),
+    not_placed, unresolved, supplied, hint)
+
+def metal_phenol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
+  '''
+  Report of phenols bound to Fe, Ga or Al (phenol_metal_sites), as
+  metal_thiol_text().
+  '''
+  return _metal_h_text(group_args(
+    not_placed = 'Phenol H not placed: the O is bound to Fe, Ga or Al, taken '
+      'as phenolate (Fe as Fe(III))',
+    unresolved = 'Phenol H placed at metal sites with unresolved protonation',
+    supplied = 'Supplied phenol H at metal sites: %s' % PHENOL_H_SUPPLIED_NOTE),
     not_placed, unresolved, supplied, hint)
 
 def metal_nh_text(not_placed=(), unresolved=(), supplied=(), reported=(),
@@ -2251,6 +2304,9 @@ class place_hydrogens():
     self.site_labels_thiolate   = list()
     self.thiol_h_unresolved     = list()
     self.thiol_h_supplied_kept  = list()
+    self.site_labels_phenolate  = list()
+    self.phenol_h_unresolved    = list()
+    self.phenol_h_supplied_kept = list()
     # the same for backbone amide N and T/U N3 bound to metals
     # (metal_nh_sites), and the other N-H next to a metal, kept
     self.site_labels_metal_nh   = list()
@@ -2417,6 +2473,7 @@ class place_hydrogens():
     # re-interpretation.
     self.remove_auto_restraint_objects()
     self.exclude_H_on_metal_thiolates()
+    self.exclude_H_on_metal_phenolates()
     self.exclude_H_on_metal_bound_N()
     if self.metal_bound_amines_as_nh2:
       self.convert_metal_bound_amines()
@@ -2979,6 +3036,16 @@ class place_hydrogens():
     self._exclude_H_at_metal_sites(thiol_metal_sites, METAL_ELEMENTS,
       self.site_labels_thiolate, self.thiol_h_unresolved,
       self.thiol_h_supplied_kept)
+
+  def exclude_H_on_metal_phenolates(self):
+    '''
+    A phenol (phenol_metal_sites(), also an enol or a carboxylic acid) bound
+    to Fe, Ga or Al is taken as a phenolate: as
+    exclude_H_on_metal_thiolates().
+    '''
+    self._exclude_H_at_metal_sites(phenol_metal_sites,
+      PHENOLATE_METAL_ELEMENTS, self.site_labels_phenolate,
+      self.phenol_h_unresolved, self.phenol_h_supplied_kept)
 
   def exclude_H_on_metal_bound_N(self):
     '''
@@ -4285,6 +4352,16 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
+  def metal_phenol_text(self):
+    '''
+    The report of phenols bound to Fe, Ga or Al, as metal_thiol_text().
+    '''
+    return metal_phenol_text(self.site_labels_phenolate,
+      self.phenol_h_unresolved, self.phenol_h_supplied_kept,
+      self.supplied_h_hint)
+
+# ------------------------------------------------------------------------------
+
   def metal_nh_text(self):
     '''
     The report of N-H at metals (show(), reduce2's description); '' if
@@ -4357,8 +4434,8 @@ proline-type or N-substituted residue)'''
       print('', file=log)
       print(self.unknown_atoms_text(verbose), file=log)
     #
-    for text in (self.metal_thiol_text(), self.metal_nh_text(),
-                 self.metal_amine_text()):
+    for text in (self.metal_thiol_text(), self.metal_phenol_text(),
+                 self.metal_nh_text(), self.metal_amine_text()):
       if text:
         print('', file=log)
         print(text, file=log)
