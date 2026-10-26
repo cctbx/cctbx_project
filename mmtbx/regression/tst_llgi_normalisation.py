@@ -519,6 +519,82 @@ def exercise_fit_speed():
   dt = time.time() - t0
   assert dt < 10, dt
 
+def patterson_test_intensities(copies, symbol="P 21 21 21",
+      cell=(60, 70, 120, 90, 90, 90), translation=(0.01, 0.01, 0.5),
+      n_atoms=60, seed=5, d_min=2.5):
+  """ I = |f_calc|^2 of a random structure of n_atoms carbons in the
+  asymmetric unit, with, for copies = 2, a second copy shifted by
+  translation: tNCS, whose Patterson peak at about the translation is above
+  the 16% of the phasertng test when the symmetry mates are shifted alike
+  (a translation (0.03, 0.02, 0.5) is shifted differently, by 3.6 and 2.8
+  A in x and y, by the symmetry operators, which splits and so lowers
+  the peak, to 12%). """
+  import random
+  from cctbx import xray
+  rnd = random.Random(seed)
+  cs = crystal.symmetry(unit_cell=cell, space_group_symbol=symbol)
+  scatterers = []
+  for i in range(n_atoms):
+    x = (rnd.random(), rnd.random(), rnd.random() * 0.5)
+    scatterers.append(xray.scatterer("C%d" % i, site=x, u=0.02))
+    if(copies == 2):
+      scatterers.append(xray.scatterer("D%d" % i, u=0.02, site=tuple(
+        a + b for a, b in zip(x, translation))))
+  xrs = xray.structure(crystal_symmetry=cs,
+    scatterers=flex.xray_scatterer(scatterers))
+  xrs.scattering_type_registry(table="n_gaussian")
+  return xrs.structure_factors(d_min=d_min).f_calc().as_intensity_array()
+
+def exercise_patterson_tncs_check():
+  # two copies related by a translation of 60 A: tNCS, with a peak at 60 A
+  # of at least 16% (the peak search is of the Patterson map of the
+  # intensities between 15 and 5 A)
+  two = patterson_test_intensities(copies=2)
+  r = ln.patterson_tncs_check(two)
+  assert r.tncs is True, r.reason
+  assert len(r.peaks) >= 1
+  height, distance, site = r.peaks[0]
+  assert height >= 16 and abs(distance - 60) < 1.5, r.peaks
+  assert abs(abs(site[2]) - 0.5) < 0.02 and abs(site[0]) < 0.03
+  assert all(p[0] >= 16 and p[1] >= 15 for p in r.peaks)
+  assert [p[0] for p in r.peaks] == sorted([p[0] for p in r.peaks])[::-1]
+  assert approx_equal(r.top[0], height) and r.top[1] == distance
+  assert approx_equal(r.d_min, 5.0, eps=0.2) and approx_equal(r.d_max, 15.0,
+    eps=0.5)
+  assert "Patterson peak" in r.reason
+  # the thresholds are the arguments
+  assert ln.patterson_tncs_check(two, percent=90.).tncs is False
+  rl = ln.patterson_tncs_check(two, origin_distance=70.)
+  assert rl.tncs is None and "cell edge" in rl.reason, rl.reason
+  # a selection of reflections is used as such (no 5-15 A reflections left)
+  none = flex.bool(two.size(), False)
+  assert ln.patterson_tncs_check(two, selection=none).tncs is None
+  every_second = flex.bool([i % 2 == 0 for i in range(two.size())])
+  assert ln.patterson_tncs_check(two, selection=every_second).tncs is True
+  # one copy: no peak over 16% beyond 15 A
+  one = patterson_test_intensities(copies=1)
+  r1 = ln.patterson_tncs_check(one)
+  assert r1.tncs is False and r1.peaks == [], (r1.reason, r1.peaks)
+  assert r1.top is not None and r1.top[0] < 16
+  # the same data cut to 9 A: the Patterson is too coarse to decide
+  cut = two.resolution_filter(d_min=9.0)
+  rc = ln.patterson_tncs_check(cut)
+  assert rc.tncs is None and rc.peaks == [], rc.reason
+  assert "worse than" in rc.reason and rc.d_min > 8.2
+  # too few reflections
+  few = two.select(flex.size_t(range(two.size())).select(
+    (two.d_spacings().data() < 15) & (two.d_spacings().data() > 5)
+    ).select(flex.size_t(range(40))))
+  rf = ln.patterson_tncs_check(few)
+  assert rf.tncs is None and "reflections" in rf.reason
+  # a centred lattice (its centring translation is not tNCS)
+  centred = patterson_test_intensities(copies=1, symbol="C 2",
+    cell=(80, 50, 70, 90, 100, 90), seed=2)
+  assert ln.patterson_tncs_check(centred).tncs is False
+  # anomalous intensities are averaged
+  anomalous = two.generate_bijvoet_mates()
+  assert ln.patterson_tncs_check(anomalous).tncs is True
+
 def run():
   exercise_best_curve_matches_phasertng()
   exercise_bin_restraint_sigmas()
@@ -542,6 +618,7 @@ def run():
   exercise_hierarchical()
   exercise_resolution_dependent_anisotropy()
   exercise_fit_speed()
+  exercise_patterson_tncs_check()
   print("OK")
 
 if __name__ == "__main__":

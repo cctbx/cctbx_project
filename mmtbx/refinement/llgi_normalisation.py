@@ -969,3 +969,125 @@ def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None):
       n_floored, U_MIN), file=log)
   for w in warnings: print("  Warning: " + w, file=log)
   return result
+
+# ---------------------------------------------------------------------------
+# Patterson test for translational NCS
+
+def _origin_distance_of(unit_cell, patterson_ops, translations, site):
+  """ (distance, site) of the position closest to the origin among the
+  symmetry equivalents of site (the operators of the Patterson group), with
+  the lattice translations of the space group (those of its centring) and
+  of the unit cell added """
+  best = None
+  for op in patterson_ops:
+    s0 = op * site
+    for lt in translations:
+      for i in (-1, 0, 1):
+        for j in (-1, 0, 1):
+          for k in (-1, 0, 1):
+            s = (s0[0] + lt[0] + i, s0[1] + lt[1] + j, s0[2] + lt[2] + k)
+            d = unit_cell.length(s)
+            if(best is None or d < best[0]): best = (d, s)
+  return best
+
+def patterson_tncs_check(i_obs, selection=None, resolution=(5.0, 15.0),
+      percent=16., origin_distance=15., minimum_resolution=8.,
+      minimum_reflections=50):
+  """ Whether the intensities have translational NCS, by the peak test of
+  phasertng's tncso (run/runTNCSO.cc, io/PattersonFunction.cc): the
+  Patterson function of the positive intensities (in the symmetry of the
+  Patterson group of the space group with the screw and glide translations
+  removed and the centring kept, build_derived_group(False, False) as
+  phasertng) of
+  the selected reflections with d between max(d_min, resolution[0]) and
+  min(d_max, resolution[1]) (all the selected ones if none are), and a peak
+  search of it (maptbx.peak_search, level 3, interpolated). tNCS is
+  indicated if a peak has a height of at least percent (% of the origin
+  peak) at a distance of at least origin_distance (A) from the origin and
+  from the lattice points equivalent to the origin (symmetry equivalents
+  considered, with the cell and centring translations).
+  No decision (tncs = None) if there are fewer than minimum_reflections
+  reflections, the Patterson has a resolution worse than minimum_resolution
+  + 0.2 (as phasertng, for the sampling of Miller indices), or a cell edge
+  is shorter than origin_distance.
+
+  i_obs: intensities (anomalous ones are averaged); selection: flex.bool
+  on its indices, or None.
+  Returns group_args(tncs (True, False or None), peaks (list of
+  (height_percent, distance_A, site_frac) of the non-origin peaks above
+  the threshold, highest first, the site the equivalent closest to the
+  origin), d_min, d_max (of the Patterson coefficients; None if there are
+  none), top ((height_percent, distance_A, site_frac) of the highest
+  non-origin peak beyond origin_distance, or None), reason (str)). """
+  from cctbx import crystal, miller, maptbx
+  if(i_obs.anomalous_flag()):
+    i_obs = i_obs.average_bijvoet_mates()
+  if(selection is not None):
+    i_obs = i_obs.select(selection)
+  i_obs = i_obs.map_to_asu()
+  def result(tncs, reason, peaks=(), d_min=None, d_max=None, top=None):
+    return group_args(tncs=tncs, peaks=list(peaks), d_min=d_min,
+      d_max=d_max, reason=reason, top=top)
+  if(i_obs.size() == 0):
+    return result(None, "no reflections")
+  unit_cell = i_obs.unit_cell()
+  d = i_obs.d_spacings().data()
+  data = i_obs.data()
+  hires = max(flex.min(d), resolution[0])
+  lores = min(flex.max(d), resolution[1])
+  use = (data > 0) & (d >= hires - 1e-6) & (d <= lores + 1e-6)
+  if(use.count(True) == 0):
+    use = data > 0 # as phasertng: if none, all the reflections
+  n = use.count(True)
+  if(n < minimum_reflections):
+    return result(None, "only %d reflections for the Patterson (at least "
+      "%d needed)" % (n, minimum_reflections))
+  coefficients = i_obs.select(use)
+  d_max, d_min = coefficients.d_max_min()
+  if(d_min > minimum_resolution + 0.2):
+    return result(None, "the resolution of the Patterson, %.1f A, is worse "
+      "than %.1f A" % (d_min, minimum_resolution), d_min=d_min, d_max=d_max)
+  if(min(unit_cell.parameters()[:3]) < origin_distance):
+    return result(None, "a cell edge is shorter than %.1f A" %
+      origin_distance, d_min=d_min, d_max=d_max)
+  space_group = i_obs.space_group()
+  derived = space_group.build_derived_group(False, False)
+  derived_symmetry = crystal.symmetry(unit_cell=unit_cell,
+    space_group=derived)
+  f_patt = miller.array(
+    miller.set(derived_symmetry, coefficients.indices(),
+      anomalous_flag=False),
+    data=flex.sqrt(coefficients.data())).map_to_asu()
+  patterson_map = f_patt.patterson_map(d_min=d_min,
+    symmetry_flags=maptbx.use_space_group_symmetry)
+  peak_list = patterson_map.peak_search(
+    maptbx.peak_search_parameters(peak_search_level=3, max_peaks=0,
+      interpolate=True), verify_symmetry=False)
+  heights = peak_list.heights()
+  if(heights.size() == 0):
+    return result(False, "no peaks in the Patterson", d_min=d_min,
+      d_max=d_max)
+  origin_height = flex.max(heights)
+  patterson_ops = list(derived.build_derived_patterson_group().all_ops())
+  translations = [tuple(lt.as_double()) for lt in space_group.ltr()]
+  peaks = []
+  top = None
+  for height, site in zip(heights, peak_list.sites()):
+    height_percent = 100. * height / origin_height
+    if(top is not None and height_percent < percent):
+      break # the peak list is sorted by height; top is known
+    closest = _origin_distance_of(unit_cell, patterson_ops, translations,
+      site)
+    if(closest[0] < origin_distance): continue
+    peak = (height_percent, closest[0], closest[1])
+    if(top is None or height_percent > top[0]): top = peak
+    if(height_percent >= percent): peaks.append(peak)
+  peaks.sort(key=lambda p: -p[0])
+  if(len(peaks) > 0):
+    reason = ("a Patterson peak of %.1f%% of the origin peak at %.1f A "
+      "(at least %.1f%% beyond %.1f A needed)" % (peaks[0][0], peaks[0][1],
+        percent, origin_distance))
+  else:
+    reason = "no Patterson peak of %.1f%% or more of the origin peak " \
+      "beyond %.1f A" % (percent, origin_distance)
+  return result(len(peaks) > 0, reason, peaks, d_min, d_max, top)
