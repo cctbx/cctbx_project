@@ -745,7 +745,7 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
     tncs_state=group_args(groups=groups, tau=rho,
       coherence=coherence_curve(min(max(rho.p0, 0.), 0.99), 0.2),
       f_total=mod.f_total, params=params, teps_data=None, t_model=None,
-      normalisation=None, normalisation_params=None))
+      normalisation=None, normalisation_params=None, monitor=None))
 
 def _setup_cctbx(llgi_data, f_obs, groups, xray_structure, params,
       normalisation_params, log):
@@ -782,7 +782,7 @@ def _setup_cctbx(llgi_data, f_obs, groups, xray_structure, params,
       tau=linear_in_d_star_sq(flex.max(dss), min(max(gamma, 0.), 0.99)),
       coherence=fit.coherence, f_total=pm.f_total, params=params,
       teps_data=teps_data, t_model=None, normalisation=fit,
-      normalisation_params=normalisation_params))
+      normalisation_params=normalisation_params, monitor=None))
 
 def _rice_kappa(llgi_data):
   return llgi_data.hybrid_params.rice_kappa \
@@ -862,6 +862,133 @@ def refit_sigmaa_scatfrac(fmodel, scatfrac_params=None, e_params=None):
     scatfrac_inf=scatfrac_result.scatfrac_inf,
     b_scatfrac=scatfrac_result.b_scatfrac, warnings=warnings, tau=None,
     coherence=None, tncs_summary=None)
+
+# ---------------------------------------------------------------------------
+# Monitor of the data-based against the model-based TEPS
+
+MONITOR_GAP_GROWTH = 0.002   # nats/reflection
+MONITOR_STANDS_OUT = 3.      # times the median absolute coefficient
+MONITOR_MIN_COEFFICIENT = 0.05
+MONITOR_N_BINS = 5
+MONITOR_MIN_CELL = 10        # reflections for a meaningful correlation
+
+GAP_WARNING = ("tNCS monitor: free-set gap grew from %.4f to %.4f "
+  "nats/reflection")
+STANDS_OUT_WARNING = "tNCS monitor: group %d stands out (coefficient %.3f)"
+
+def _teps_class(teps):
+  """ "weak" (TEPS < 0.5), "neutral" (0.5-1.5) or "strong" (> 1.5) """
+  return ["weak" if t < 0.5 else ("strong" if t > 1.5 else "neutral")
+    for t in teps]
+
+def _correlation(x, y):
+  """ Pearson correlation; 1 if x and y are both constant and equal, 0 if
+  either is constant otherwise """
+  import numpy
+  sx, sy = numpy.std(x), numpy.std(y)
+  if(sx < 1e-12 or sy < 1e-12):
+    return 1. if (sx < 1e-12 and sy < 1e-12 and
+      abs(numpy.mean(x) - numpy.mean(y)) < 1e-9) else 0.
+  return float(numpy.corrcoef(x, y)[0, 1])
+
+def _monitor_table(teps_data, t_model, d_spacings):
+  """ rows (d_max, d_min, class, n, corr_ln, mean_ratio, rms_ln_ratio) for
+  MONITOR_N_BINS resolution bins of equal numbers of reflections, each split
+  by the class of TEPS_data; corr_ln: correlation of ln TEPS_data with
+  ln t_model, mean_ratio: mean of TEPS_data/t_model, rms_ln_ratio: rms of
+  ln(TEPS_data/t_model) """
+  import numpy
+  teps = teps_data.as_numpy_array()
+  t = t_model.as_numpy_array()
+  d = d_spacings.as_numpy_array()
+  classes = numpy.array(_teps_class(teps))
+  order = numpy.argsort(-d)    # low resolution first
+  rows = []
+  for chunk in numpy.array_split(order, MONITOR_N_BINS):
+    if(chunk.size == 0): continue
+    d_max, d_min = float(d[chunk].max()), float(d[chunk].min())
+    for c in ("weak", "neutral", "strong"):
+      sel = chunk[classes[chunk] == c]
+      if(sel.size == 0): continue
+      ln_ratio = numpy.log(teps[sel] / t[sel])
+      rows.append((d_max, d_min, c, int(sel.size),
+        _correlation(numpy.log(teps[sel]), numpy.log(t[sel])),
+        float(numpy.mean(teps[sel] / t[sel])),
+        float(numpy.sqrt(numpy.mean(ln_ratio ** 2)))))
+  return rows
+
+def _group_coefficients(teps_data, t_model, a_groups):
+  """ least-squares coefficients of ln(TEPS_data/t_model) on each A_g """
+  import numpy
+  y = numpy.log(teps_data.as_numpy_array() / t_model.as_numpy_array())
+  x = numpy.array([a.as_numpy_array() for a in a_groups]).T
+  return [float(c) for c in numpy.linalg.lstsq(x, y, rcond=None)[0]]
+
+def _free_log_likelihood(i_obs, resn, t, free_flags):
+  """ mean over the free reflections with SIGI > 0 (all such, if there are
+  no free ones) of the Wilson log-likelihood of the intensities with
+  Sigma = RESN^2 t (nats per reflection) """
+  sig = i_obs.sigmas()
+  sel = (sig > 0) & free_flags
+  if(sel.count(True) == 0): sel = sig > 0
+  isel = sel.iselection()
+  r = xray_ext.wilson_intensity(i_obs=i_obs.data().select(isel),
+    sig_i_obs=sig.select(isel), sigma=(flex.pow2(resn) * t).select(isel),
+    centric_flags=i_obs.centric_flags().data().select(isel))
+  return flex.mean(r.log_likelihood)
+
+def monitor(teps_data, t_model, f_obs, free_flags, a_groups, i_obs, resn,
+      coherence_data, coherence_fc, previous=None):
+  """ Compares the data-only TEPS (teps_data) with the model-based
+  modulation t_model: group_args(table, ll_free_data, ll_free_model,
+  group_coefficients, coherence_data, coherence_fc, warnings).
+  table: rows (d_max, d_min, class, n, corr_ln, mean_ratio, rms_ln_ratio)
+  (_monitor_table); ll_free_data and ll_free_model: nats per free
+  reflection of the intensities i_obs (miller array with sigmas, on the
+  scale of resn: Sigma = resn^2 t) with t = teps_data and t_model;
+  group_coefficients: least-squares coefficients of ln(TEPS_data/t_model)
+  on the A_g in a_groups (list of flex.double, one per group, f_obs's
+  order); coherence_data and coherence_fc: the data-only and the phased
+  coherence_curve. previous: the monitor result of the last macrocycle.
+  Warnings: the gap ll_free_data - ll_free_model grew by more than
+  MONITOR_GAP_GROWTH since previous; a group's coefficient exceeds
+  MONITOR_STANDS_OUT times the median absolute coefficient (the lower
+  median, so that a single stand-out among two groups can be seen) and
+  MONITOR_MIN_COEFFICIENT. """
+  warnings = []
+  ll_data = _free_log_likelihood(i_obs, resn, teps_data, free_flags)
+  ll_model = _free_log_likelihood(i_obs, resn, t_model, free_flags)
+  if(previous is not None):
+    gap_before = previous.ll_free_data - previous.ll_free_model
+    gap = ll_data - ll_model
+    if(gap - gap_before > MONITOR_GAP_GROWTH):
+      warnings.append(GAP_WARNING % (gap_before, gap))
+  coefficients = _group_coefficients(teps_data, t_model, a_groups)
+  magnitudes = sorted(abs(c) for c in coefficients)
+  median = magnitudes[(len(magnitudes) - 1) // 2]
+  for i, c in enumerate(coefficients):
+    if(abs(c) > MONITOR_STANDS_OUT * median and abs(c) > MONITOR_MIN_COEFFICIENT):
+      warnings.append(STANDS_OUT_WARNING % (i + 1, c))
+  return group_args(
+    table=_monitor_table(teps_data, t_model, f_obs.d_spacings().data()),
+    ll_free_data=ll_data, ll_free_model=ll_model,
+    group_coefficients=coefficients, coherence_data=coherence_data,
+    coherence_fc=coherence_fc, warnings=warnings)
+
+def show_monitor(result, log):
+  """ prints the coherence curves (gamma, v) and the table of monitor's
+  result """
+  print("tNCS monitor: data-only %s; phased %s" % (
+    result.coherence_data.summary(), result.coherence_fc.summary()), file=log)
+  print("  free-set log-likelihood per reflection: data-based TEPS %.4f, "
+    "model-based %.4f (gap %.4f)" % (result.ll_free_data, result.ll_free_model,
+    result.ll_free_data - result.ll_free_model), file=log)
+  print("  group coefficients: %s" % " ".join("%.3f" % c
+    for c in result.group_coefficients), file=log)
+  print("  %7s %7s %-8s %7s %8s %10s %12s" % ("d_max", "d_min", "class", "n",
+    "corr_ln", "mean_ratio", "rms_ln_ratio"), file=log)
+  for row in result.table:
+    print("  %7.2f %7.2f %-8s %7d %8.3f %10.3f %12.3f" % row, file=log)
 
 def _current_groups(state, crystal_symmetry, xray_structure, pdb_hierarchy):
   """ (groups, note): state.groups, or, if the model has gained or lost
@@ -985,7 +1112,7 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
   scatfrac = scatfrac_result.scatfrac
   t_model = expected_intensity_modulation(sigmaa, a, u)
   t = t_model
-  teps_data = n_clamped = None
+  teps_data = n_clamped = monitor_result = None
   changes = {}
   if(cctbx_source):
     teps_data = normalisation.teps.data()
@@ -994,6 +1121,11 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
     u, n_clamped = clamp_u_to_frame(sigmaa, u, t)
     if(n_clamped > 0):
       warnings.append(U_CLAMP_WARNING % n_clamped)
+    monitor_result = monitor(teps_data, t_model, f_obs,
+      fmodel.r_free_flags().data(), pm.a_groups["consensus"], i_obs,
+      normalisation.resn.data(), normalisation.coherence, coherence,
+      previous=getattr(state, "monitor", None))
+    warnings.extend(monitor_result.warnings)
     changes = dict(resn=f_obs.array(data=resn),
       e_obs_sq_base=f_obs.array(data=e_base),
       sig_e_obs_sq_base=f_obs.array(data=sig_base))
@@ -1005,7 +1137,8 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
     tncs_state=group_args(groups=groups, tau=tau,
       coherence=coherence, f_total=f_total, params=params,
       teps_data=teps_data, t_model=t_model, normalisation=normalisation,
-      normalisation_params=getattr(state, "normalisation_params", None)),
+      normalisation_params=getattr(state, "normalisation_params", None),
+      monitor=monitor_result),
     _sigmaa_f_model=fmodel.f_model().data().deep_copy(), **changes)
   fmodel.set_llgi_data(new)
   fmodel.update(f_obs=f_obs.customized_copy(data=d.feff))

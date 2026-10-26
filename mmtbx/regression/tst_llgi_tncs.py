@@ -6,6 +6,7 @@ import math, random
 import iotbx.pdb
 from cctbx import crystal, miller, sgtbx
 from cctbx.array_family import flex
+from libtbx import group_args
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 import mmtbx.refinement.llgi_tncs as llgi_tncs
@@ -722,6 +723,113 @@ def exercise_u_clamp_reported(fmodel):
   assert flex.max(flex.abs(ratio - 0.5)) < 1e-9
   _check_cctbx_base(ls)
 
+def monitor_inputs(seed=11, d_min=3.0, sig_frac=0.1):
+  """ (f_obs, free flags, i_obs, resn, A_1, A_2) on random P 21 21 21 data """
+  ms = miller.build_set(CS, anomalous_flag=False, d_min=d_min)
+  n = ms.size()
+  flex.set_random_seed(seed)
+  a1 = flex.random_double(n) * 0.8
+  a2 = flex.random_double(n) * 0.8
+  resn = flex.random_double(n) + 0.5
+  i_data = -flex.log(flex.random_double(n) + 1e-3) * resn * resn
+  sigmas = i_data * sig_frac + 0.05
+  i_obs = ms.array(data=i_data, sigmas=sigmas).set_observation_type_xray_intensity()
+  free = flex.random_double(n) < 0.1
+  return ms.array(data=flex.double(n, 1.)), free, i_obs, resn, a1, a2
+
+def exercise_monitor_identical():
+  f_obs, free, i_obs, resn, a1, a2 = monitor_inputs()
+  t = 1 + a1 + a2
+  c = llgi_tncs.coherence_curve(0.9, 0.3)
+  r = llgi_tncs.monitor(t, t.deep_copy(), f_obs, free, [a1, a2], i_obs, resn,
+    c, c)
+  assert len(r.table) > 0
+  assert sum(row[3] for row in r.table) == f_obs.size()
+  n_big = 0
+  for d_max, d_min, cls, n, corr, mean_ratio, rms in r.table:
+    assert d_max >= d_min
+    assert approx_equal(mean_ratio, 1.) and approx_equal(rms, 0.)
+    if(n >= 10):
+      n_big += 1
+      assert approx_equal(corr, 1.), (n, corr)
+  assert n_big > 0
+  assert r.ll_free_data == r.ll_free_model
+  assert approx_equal(r.ll_free_data - r.ll_free_model, 0.)
+  assert r.warnings == [], r.warnings
+  assert max(abs(x) for x in r.group_coefficients) < 1e-12
+  assert set(row[2] for row in r.table) <= set(["weak", "neutral", "strong"])
+  from six.moves import cStringIO as StringIO
+  out = StringIO()
+  llgi_tncs.show_monitor(r, out)
+  assert "gamma = 0.900" in out.getvalue() and "corr_ln" in out.getvalue()
+
+def exercise_monitor_classes():
+  f_obs, free, i_obs, resn, a1, a2 = monitor_inputs()
+  t_model = flex.double(f_obs.size(), 1.)
+  teps = flex.double(f_obs.size(), 1.)
+  teps.set_selected(flex.size_t_range(0, 100), 0.4)
+  teps.set_selected(flex.size_t_range(100, 200), 2.0)
+  c = llgi_tncs.coherence_curve(0.9, 0.3)
+  r = llgi_tncs.monitor(teps, t_model, f_obs, free, [a1], i_obs, resn, c, c)
+  count = dict((k, sum(row[3] for row in r.table if row[2] == k))
+    for k in ("weak", "neutral", "strong"))
+  assert count == dict(weak=100, strong=100,
+    neutral=f_obs.size() - 200), count
+  for row in r.table:
+    if(row[2] == "weak"): assert approx_equal(row[5], 0.4)
+    if(row[2] == "strong"): assert approx_equal(row[5], 2.0)
+
+def exercise_monitor_group_stands_out():
+  f_obs, free, i_obs, resn, a1, a2 = monitor_inputs()
+  t_model = 1 + a1 + a2
+  teps = 1 + a1 + 1.3 * a2
+  c = llgi_tncs.coherence_curve(0.9, 0.3)
+  r = llgi_tncs.monitor(teps, t_model, f_obs, free, [a1, a2], i_obs, resn,
+    c, c)
+  assert abs(r.group_coefficients[1]) > 0.05, r.group_coefficients
+  assert [w for w in r.warnings if w.startswith("tNCS monitor: group 2 "
+    "stands out (coefficient ")], (r.warnings, r.group_coefficients)
+  assert not [w for w in r.warnings if "group 1 " in w], r.warnings
+  assert ("tNCS monitor: group %d stands out (coefficient %.3f)" % (
+    2, r.group_coefficients[1])) in r.warnings
+
+def exercise_monitor_gap_growth():
+  f_obs, free, i_obs, resn, a1, a2 = monitor_inputs()
+  t_model = 1 + a1 + a2
+  teps = 1 + a1 + 1.3 * a2
+  c = llgi_tncs.coherence_curve(0.9, 0.3)
+  first = llgi_tncs.monitor(teps, t_model, f_obs, free, [a1, a2], i_obs,
+    resn, c, c)
+  gap = first.ll_free_data - first.ll_free_model
+  assert abs(gap) > 1e-6
+  prev = group_args(ll_free_data=gap - 0.01, ll_free_model=0.)
+  r = llgi_tncs.monitor(teps, t_model, f_obs, free, [a1, a2], i_obs, resn,
+    c, c, previous=prev)
+  assert ("tNCS monitor: free-set gap grew from %.4f to %.4f nats/reflection"
+    % (gap - 0.01, gap)) in r.warnings, r.warnings
+  prev = group_args(ll_free_data=gap - 0.001, ll_free_model=0.)
+  r = llgi_tncs.monitor(teps, t_model, f_obs, free, [a1, a2], i_obs, resn,
+    c, c, previous=prev)
+  assert not [w for w in r.warnings if "free-set gap" in w], r.warnings
+
+def exercise_monitor_in_fit_and_renormalise(fmodel):
+  """ the cctbx source stores the monitor, passes it on as previous, and
+  reports its warnings """
+  f = fmodel.deep_copy()
+  r1 = f.update_llgi_sigmaa_scatfrac()
+  m1 = f.llgi_data().tncs_state.monitor
+  assert m1 is not None and len(m1.table) > 0
+  assert len(m1.group_coefficients) == len(f.llgi_data().tncs_state.groups)
+  assert [w for w in r1.warnings if w.startswith("tNCS monitor")] == \
+    m1.warnings
+  r2 = f.update_llgi_sigmaa_scatfrac()
+  m2 = f.llgi_data().tncs_state.monitor
+  assert m2 is not m1
+  gap1 = m1.ll_free_data - m1.ll_free_model
+  gap2 = m2.ll_free_data - m2.ll_free_model
+  assert (gap2 - gap1 > 0.002) == bool(
+    [w for w in r2.warnings if "free-set gap" in w]), (gap1, gap2)
+
 def run():
   h, xrs = build_model()
   groups = exercise_groups(h)
@@ -735,6 +843,11 @@ def run():
   exercise_frame_data_vs_model(cctbx_fmodel(h, xrs))
   exercise_u_clamp_reported(cctbx_fmodel(h, xrs, sigma_common=1.0,
     sigma_indep=0.5))
+  exercise_monitor_identical()
+  exercise_monitor_classes()
+  exercise_monitor_group_stands_out()
+  exercise_monitor_gap_growth()
+  exercise_monitor_in_fit_and_renormalise(cctbx_fmodel(h, xrs))
   print("OK")
 
 if __name__ == "__main__":
