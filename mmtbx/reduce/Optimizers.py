@@ -188,7 +188,8 @@ class Optimizer(object):
                 verbosity = 1,
                 cliqueOutlineFileName = None,
                 fillAtomDump = True,
-                stopOptimizingAt = 0.0
+                stopOptimizingAt = 0.0,
+                crystalSymmetry = None
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -250,6 +251,9 @@ class Optimizer(object):
     This can take a long time to do, so the caller may want to turn it off if they don't need it.
     :param stopOptimizingAt: If greater than 0, then we will stop coarse optimizations
     at this time relative to time.time().
+    :param crystalSymmetry: cctbx.crystal.symmetry whose symmetry mates are
+    searched for metals bound to Histidine ring Nitrogens and to the atoms that
+    rotatable Hydrogens are bound to. None searches the model only.
     """
 
     ################################################################################
@@ -266,6 +270,7 @@ class Optimizer(object):
     self._flipStates = flipStates
     self._verbosity = verbosity
     self._cliqueOutlineFileName = cliqueOutlineFileName
+    self._crystalSymmetry = crystalSymmetry
 
     ################################################################################
     # Initialize internal variables.
@@ -992,6 +997,14 @@ class Optimizer(object):
     # Mover to the list of those to return.  When they fail, add the output to the information
     # string. We check single-hydrogen rotators later.
 
+    # Positive ions in symmetry mates near the Histidine ring atoms, which the
+    # ionic-bond check below tests as it does the ions in the model.  The
+    # flipped ring puts the Nitrogens near CD2 and CE1.
+    ringAtoms = [a for a in atoms if a.parent().resname.strip().upper() == 'HIS'
+                 and a.name.strip().upper() in ('ND1', 'NE2', 'CD2', 'CE1')]
+    ionImages = _IonImages(atoms, self._crystalSymmetry, ringAtoms,
+                           0.25 + 2 * self._maximumVDWRadius)
+
     for a in atoms:
       # Find the stripped upper-case atom and residue names and the residue ID,
       # and an identifier string
@@ -1136,20 +1149,21 @@ class Optimizer(object):
           bondedConfig = None
           for i,pos in enumerate([ne2Orig, nd1Orig, ne2Flip, nd1Flip]):
             neighbors = self._spatialQuery.neighbors(pos, minDist, maxDist)
-            for n in neighbors:
-              if n.element_is_positive_ion():
-                dist = (Helpers.rvec3(pos) - Helpers.rvec3(n.xyz)).length()
-                expected = myRad + self._extraAtomInfo.getMappingFor(n).vdwRadius
-                self._infoString += _VerboseCheck(self._verbosity, 5,'Checking Histidine '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
-                  ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
-                  ', '+n.name.strip()+' rad = '+str(self._extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
-                if dist >= (expected - 0.55) and dist <= (expected + 0.25):
-                  # The first two elements in the enumeration come from Histidine configuration 0
-                  # and the second two from configuration flippedConfig, so we figure out which one we
-                  # should be in.
-                  bondedConfig = (i // 2) * flippedConfig
-                  self._infoString += _VerboseCheck(self._verbosity, 5,'Found ionic bond in coarse configuration '+str(bondedConfig)+'\n')
-                  break
+            ions = [(n, n.xyz) for n in neighbors
+                    if n.element_is_positive_ion()]
+            for n, nxyz in ions + ionImages:
+              dist = (Helpers.rvec3(pos) - Helpers.rvec3(nxyz)).length()
+              expected = myRad + self._extraAtomInfo.getMappingFor(n).vdwRadius
+              self._infoString += _VerboseCheck(self._verbosity, 5,'Checking Histidine '+str(i)+' against '+n.name.strip()+' at '+str(nxyz)+' from '+str(pos)+
+                ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
+                ', '+n.name.strip()+' rad = '+str(self._extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
+              if dist >= (expected - 0.55) and dist <= (expected + 0.25):
+                # The first two elements in the enumeration come from Histidine configuration 0
+                # and the second two from configuration flippedConfig, so we figure out which one we
+                # should be in.
+                bondedConfig = (i // 2) * flippedConfig
+                self._infoString += _VerboseCheck(self._verbosity, 5,'Found ionic bond in coarse configuration '+str(bondedConfig)+'\n')
+                break
             if bondedConfig is not None:
               # We want the first configuration that is found, so we don't flip if we don't need to.
               break
@@ -1186,18 +1200,19 @@ class Optimizer(object):
               minDist = myRad
               maxDist = 0.25 + myRad + self._maximumVDWRadius
               neighbors = self._spatialQuery.neighbors(coarseNitroPos, minDist, maxDist)
-              for n in neighbors:
-                if n.element_is_positive_ion():
-                  dist = (Helpers.rvec3(coarseNitroPos) - Helpers.rvec3(n.xyz)).length()
-                  expected = myRad + self._extraAtomInfo.getMappingFor(n).vdwRadius
-                  if dist >= (expected - 0.55) and dist <= (expected + 0.25):
-                    result += _VerboseCheck(self._verbosity, 1,'Not adding Hydrogen to '+resNameAndID+nitro.name+' and marking as an acceptor '+
-                      '(ionic bond to '+n.name.strip()+')\n')
-                    extra = self._extraAtomInfo.getMappingFor(nitro)
-                    extra.isAcceptor = True
-                    self._extraAtomInfo.setMappingFor(nitro, extra)
-                    deleteAtoms.append(hydro)
-                    break
+              ions = [(n, n.xyz) for n in neighbors
+                      if n.element_is_positive_ion()]
+              for n, nxyz in ions + ionImages:
+                dist = (Helpers.rvec3(coarseNitroPos) - Helpers.rvec3(nxyz)).length()
+                expected = myRad + self._extraAtomInfo.getMappingFor(n).vdwRadius
+                if dist >= (expected - 0.55) and dist <= (expected + 0.25):
+                  result += _VerboseCheck(self._verbosity, 1,'Not adding Hydrogen to '+resNameAndID+nitro.name+' and marking as an acceptor '+
+                    '(ionic bond to '+n.name.strip()+')\n')
+                  extra = self._extraAtomInfo.getMappingFor(nitro)
+                  extra.isAcceptor = True
+                  self._extraAtomInfo.setMappingFor(nitro, extra)
+                  deleteAtoms.append(hydro)
+                  break
               return result
 
             self._infoString += _modifyIfNeeded(fixUp.atoms[0], coarsePositions[0], fixUp.atoms[1])
@@ -1269,13 +1284,14 @@ class Optimizer(object):
       atomDict[a.i_seq] = a
 
     # Metals bound to the atoms that the rotatable Hydrogens are bound to, by
-    # the window that placement uses for thiols and amines. The rotators do not
-    # turn their Hydrogen towards these metals.
+    # the window that placement uses for thiols and amines, also in symmetry
+    # mates. The rotators do not turn their Hydrogen towards these metals.
     parents = []
     for i in rotatableHydrogenIDs:
       if i in atomDict:
         parents.extend(bondedNeighborLists[atomDict[i]])
-    boundMetals = reduce_hydrogen.bound_metals(atoms, parents)
+    boundMetals = reduce_hydrogen.bound_metals(atoms, parents,
+                                               self._crystalSymmetry)
 
     # Insert all single-hydrogen rotators, which we have a list of. Do this after we've
     # done all of the other Movers so that any lock-down placements will have been done
@@ -1494,6 +1510,34 @@ def _HisRingNitrogensWithNonstandardBond(ne2Atom, bondedNeighborLists):
         nonstandard = True
     if nonstandard:
       ret.append((atom, hydrogen))
+  return ret
+
+def _IonImages(atoms, crystalSymmetry, near, radius):
+  '''Find the positive ions in symmetry mates near some atoms.
+  :param atoms: flex array of atoms to search for positive ions.
+  :param crystalSymmetry: cctbx.crystal.symmetry of the model, or None.
+  :param near: list of atoms to search around.
+  :param radius: Distance in Angstroms from an atom of near within which to
+  report an ion; the search goes 1 Angstrom further (the get_siiu() buffer).
+  :return: list of (ion, image) tuples, the image being the Cartesian position
+  of the ion in a symmetry mate. Empty when crystalSymmetry is None.
+  '''
+  ions = [a for a in atoms if a.element_is_positive_ion()]
+  if crystalSymmetry is None or len(ions) == 0 or len(near) == 0:
+    return []
+  from cctbx.crystal import super_cell
+  sites = flex.vec3_double([a.xyz for a in near] + [a.xyz for a in ions])
+  siiu, ops = super_cell.get_siiu(crystal_symmetry = crystalSymmetry,
+    select_within_radius = radius, sites_cart = sites,
+    selection = range(len(near)))
+  uc = crystalSymmetry.unit_cell()
+  ret = []
+  for j, rts in siiu.items():
+    if j < len(near):
+      continue
+    for rt in rts:
+      image = uc.orthogonalize(rt * uc.fractionalize(sites[j]))
+      ret.append((ions[j - len(near)], image))
   return ret
 
 def _FindFlipState(a, flipStates):

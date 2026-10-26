@@ -182,6 +182,22 @@ def test_1mnz_tris_o2():
     angle = metal_angle(h, 'TRS', 'O2', 'HO2', 'MG')
     assert angle >= 90, (args, angle)
 
+def test_1mnz_mg_symmetry_mate():
+  '''The metal can be in a symmetry mate: with Mg 389 moved to its equivalent
+  under -x,-y,z, reduce2 places HO2 with at least 90 degrees between O2-HO2
+  and O2 to the Mg image bound to O2'''
+  moved = pdb_1mnz.replace('MG A 389      34.719  35.310  59.621',
+                           'MG A 389     -34.719 -35.310  59.621')
+  assert moved != pdb_1mnz
+  h = run('tst_reduce2_metal_hydroxyl_1mnz_sym', moved)
+  # put the Mg at its image bound to O2, where it was in 1MNZ
+  for a in h.atoms():
+    if a.name.strip() == 'MG':
+      a.set_xyz((34.719, 35.310, 59.621))
+  angle = metal_angle(h, 'TRS', 'O2', 'HO2', 'MG')
+  assert angle >= 90, angle
+
 if __name__ == '__main__':
   test_1mnz_tris_o2()
+  test_1mnz_mg_symmetry_mate()
   print('OK')

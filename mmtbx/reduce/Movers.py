@@ -413,10 +413,10 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        :param fineStepDegrees: The fine step to take.
        :param preferredOrientationScale: How much to scale the preferred-orientation
        energy by before adding it to the total.
-       :param boundMetals: A list of metal atoms bound to the Hydrogen's
-       neighbor. Orientations that turn the Hydrogen towards one of them (a
-       metal-neighbor-Hydrogen angle below 90 degrees) are not tried as coarse
-       orientations and are not chosen as fine ones, unless no coarse
+       :param boundMetals: A list of the positions of metals bound to the
+       Hydrogen's neighbor. Orientations that turn the Hydrogen towards one of
+       them (a metal-neighbor-Hydrogen angle below 90 degrees) are not tried as
+       coarse orientations and are not chosen as fine ones, unless no coarse
        orientation is left.
     """
     # @todo All callers and tests
@@ -579,7 +579,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       def awayFromMetals(ang):
         h = rvec3(self._posesFor([ang])[0][0])
         for m in boundMetals:
-          if (rvec3(m.xyz) - x).dot(h - x) > 0:
+          if (rvec3(m) - x).dot(h - x) > 0:
             return False
         return True
       away = [ang for ang in self._coarseAngles if awayFromMetals(ang)]

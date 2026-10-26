@@ -2466,7 +2466,8 @@ NOTES:
         verbosity=self.params.verbosity,
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
         fillAtomDump = self.params.output.print_atom_info,
-        stopOptimizingAt = stopTime)
+        stopOptimizingAt = stopTime,
+        crystalSymmetry = reduce_hydrogen.contact_symmetry(self._output_cs))
       doneOpt = time.time()
       warnings = opt.getWarnings()
       # Find the lines from warnings that start with "Warning: " and
@@ -2849,7 +2850,8 @@ NOTES:
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
-            verbosity=3)
+            verbosity=3,
+            crystalSymmetry = reduce_hydrogen.contact_symmetry(self._output_cs))
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
@@ -2971,7 +2973,8 @@ NOTES:
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
-            verbosity=3)
+            verbosity=3,
+            crystalSymmetry = reduce_hydrogen.contact_symmetry(self._output_cs))
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()

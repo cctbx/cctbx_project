@@ -985,12 +985,12 @@ def metal_contact_pairs(sites, elements, parents, metals, crystal_symmetry,
             result.append((i_x, i_m, rt))
   return result
 
-def bound_metals(atoms, parents):
+def bound_metals(atoms, parents, crystal_symmetry=None):
   """Return the metals within bonding distance of each requested atom.
 
   The window is that of metal_h_sites: a metal of METAL_ELEMENTS within
   THIOL_METAL_WINDOW of the summed cctbx covalent radii
-  (metal_contact_pairs()), without symmetry.
+  (metal_contact_pairs()).
 
   Parameters
   ----------
@@ -998,12 +998,16 @@ def bound_metals(atoms, parents):
     The atoms to search, from one model.
   parents : list of iotbx.pdb.hierarchy.atom
     The atoms, among atoms, whose metals are wanted.
+  crystal_symmetry : cctbx.crystal.symmetry or None
+    Symmetry whose mates are searched too (contact_symmetry()); None
+    searches atoms only.
 
   Returns
   -------
   dict
     The i_seq of each atom of parents that has a metal, mapped to the list
-    of those metal atoms.
+    of the Cartesian positions of those metals (in a symmetry mate: of the
+    image).
   """
   position = {}
   for k, a in enumerate(atoms):
@@ -1018,11 +1022,15 @@ def bound_metals(atoms, parents):
             and _covalent_radius(e) is not None]
   result = {}
   for i_x, i_m, rt in metal_contact_pairs([a.xyz for a in atoms], elements,
-      sorted(i_parents), metals, None):
+      sorted(i_parents), metals, crystal_symmetry):
     key = atoms[i_x].i_seq
     if key not in result:
       result[key] = []
-    result[key].append(atoms[i_m])
+    xyz = atoms[i_m].xyz
+    if not rt.is_unit_mx():
+      uc = crystal_symmetry.unit_cell()
+      xyz = uc.orthogonalize(rt * uc.fractionalize(xyz))
+    result[key].append(xyz)
   return result
 
 class metal_h_sites(object):
