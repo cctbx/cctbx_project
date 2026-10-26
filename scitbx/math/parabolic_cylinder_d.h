@@ -105,13 +105,19 @@ inline double dvsa(double va, double x)
       double a0 = std::pow(2,-0.5*va-1.)*ep/boost::math::tgamma(-va);
       double vt = -0.5*va;
       pd = boost::math::tgamma(vt);
+      // Gamma(0.5*(m-va)) for the latest even and odd m: the argument rises
+      // by 1 every second term, so Gamma(z+1) = z Gamma(z) gives each from
+      // the one two terms back (calling tgamma for every term is slow).
+      double g_even(pd), g_odd(boost::math::tgamma(va0));
       double r(1.),r1(pd);
       int m(1);
       while (m<=250 && std::abs(r1)>=std::abs(pd)*EPS)
       {
         double vm = 0.5*(m-va);
+        double& g = (m % 2) ? g_odd : g_even;
+        if (m >= 2) g *= vm - 1.;
         r = -r*SQRT2*x/m;
-        r1 = boost::math::tgamma(vm)*r;
+        r1 = g*r;
         pd += r1;
         m++;
       }

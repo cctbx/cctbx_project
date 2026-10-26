@@ -5,6 +5,7 @@
 #include <cmath>
 #include <scitbx/constants.h>
 #include <boost/math/special_functions/bessel.hpp>
+#include <boost/math/tools/toms748_solve.hpp>
 #include <scitbx/math/parabolic_cylinder_d.h>
 #include <scitbx/math/erf.h>
 #include <cctbx/error.h>
@@ -319,7 +320,7 @@ french_wilson_sqrt_u_moments(double h, bool centric, double& mean, double& sd)
     (centric), so F = <sqrt(u)> sqrt(SIGI) and SIGF = sd(sqrt(u)) sqrt(SIGI).
     SIGF/F depends on h alone, decreasing monotonically from sqrt(4/pi - 1)
     (acentric) or sqrt(pi/2 - 1) (centric) as h -> -infinity to 1/(2h) for
-    large h, so h follows from SIGF/F by bisection; then
+    large h, so h follows from SIGF/F by a bracketed root search; then
     SIGI = (F/<sqrt(u)>)^2 and I = SIGI*(h + c*SIGI/<I>), c = 1 (acentric)
     or 1/2 (centric). mean_intensity only enters the last, weak-data term.
     Where SIGF/F is at or above its value at h = h_min, h is set to h_min
@@ -340,19 +341,33 @@ invert_french_wilson(double F, double SIGF, double mean_intensity,
   h = h_min;
   prior_dominated = !(r < sd / mean);
   if (!prior_dominated) {
+    const double flo = sd / mean - r;
     double lo = h_min, hi = std::max(10.0, 2.0 / r);
     for (int it = 0; it < 60; it++) {
       french_wilson_sqrt_u_moments(hi, centric, mean, sd);
       if (sd / mean < r) break;
       hi *= 2;
     }
-    for (int it = 0; it < 80; it++) {
-      double mid = 0.5 * (lo + hi);
-      french_wilson_sqrt_u_moments(mid, centric, mean, sd);
-      if (sd / mean > r) lo = mid; else hi = mid;
-      if (hi - lo < 1e-10 * std::max(1.0, std::abs(hi))) break;
+    // Bracketed root of SIGF/F(h) - r by TOMS 748, which needs far fewer
+    // moment evaluations than bisection
+    auto f = [&](double hh) {
+      double m, s;
+      french_wilson_sqrt_u_moments(hh, centric, m, s);
+      return s / m - r;
+    };
+    const double fhi = sd / mean - r;
+    if (fhi >= 0) {
+      h = hi;
     }
-    h = 0.5 * (lo + hi);
+    else {
+      boost::uintmax_t max_iter = 80;
+      std::pair<double, double> bracket = boost::math::tools::toms748_solve(
+        f, lo, hi, flo, fhi,
+        [](double a, double b) {
+          return std::abs(b - a) < 1e-10 * std::max(1.0, std::abs(b)); },
+        max_iter);
+      h = 0.5 * (bracket.first + bracket.second);
+    }
   }
   french_wilson_sqrt_u_moments(h, centric, mean, sd);
   const double sqrt_sigi = F / mean;
