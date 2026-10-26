@@ -1196,12 +1196,13 @@ NOTES:
     if reduce_add_h_obj.residues_unknown_atoms:
       self._unknown_atoms_note = '\n' + reduce_add_h_obj.unknown_atoms_text(
         verbose=self.params.verbosity > 2) + '\n'
-    # its report of thiols, acids, phenols and N-H at metals, for the
-    # description
+    # its report of thiols, acids, phenols, alcohols and N-H at metals, for
+    # the description
     self._metal_thiol_note = ''
     for text in (reduce_add_h_obj.metal_thiol_text(),
                  reduce_add_h_obj.metal_acid_text(),
                  reduce_add_h_obj.metal_phenol_text(),
+                 reduce_add_h_obj.metal_alkoxide_text(),
                  reduce_add_h_obj.metal_nh_text(),
                  reduce_add_h_obj.metal_amine_text()):
       if text:
@@ -1472,14 +1473,15 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _SuppliedMetalHText(self):
-    # approach=optimize keeps every input H: the H on thiols, acids, phenols
-    # and N bound to metals, and the other N-H next to a metal, as placement
-    # lists them (nothing is deleted here).
+    # approach=optimize keeps every input H: the H on thiols, acids, phenols,
+    # alcohols and N bound to metals, and the other N-H next to a metal, as
+    # placement lists them (nothing is deleted here).
     # :return: The description-file text ('' if none); also in the log.
     cs = reduce_hydrogen.contact_symmetry(self._output_cs)
     thiols = reduce_hydrogen.thiol_metal_sites(self.model, cs)
     acids = reduce_hydrogen.acid_metal_sites(self.model, cs)
     phenols = reduce_hydrogen.phenol_metal_sites(self.model, cs)
+    alcohols = reduce_hydrogen.alkoxide_metal_sites(self.model, cs)
     nh = reduce_hydrogen.metal_nh_sites(self.model, cs)
     result = ''
     for text in (
@@ -1491,6 +1493,10 @@ NOTES:
           hint = self._RebuildHint()),
         reduce_hydrogen.metal_phenol_text(
           supplied = reduce_hydrogen.supplied_metal_h(phenols, lambda a: True),
+          hint = self._RebuildHint()),
+        reduce_hydrogen.metal_alkoxide_text(
+          supplied = reduce_hydrogen.supplied_metal_h(alcohols,
+            lambda a: True),
           hint = self._RebuildHint()),
         reduce_hydrogen.metal_nh_text(
           supplied = reduce_hydrogen.supplied_metal_h(nh, lambda a: True),
