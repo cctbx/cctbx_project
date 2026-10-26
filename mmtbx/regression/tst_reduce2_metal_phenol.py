@@ -1,11 +1,15 @@
-"""reduce2 placement at phenols bound to Fe, Ga or Al: an O-H whose O has one
-heavy neighbour, a C in a double, triple, aromatic or delocalized bond
-(phenol, enol; acids: tst_reduce2_metal_acid.py), bound to one of these
-metals is taken as deprotonated (Fe as Fe(III)), and reduce2 does not build
-its H. At other metals the H stays (a phenol bound to Zn has a pKa of about
-8.5). Supplied H are kept with a note.
-Model: 8RK1 (FutA with Fe(III), neutron), Tyr 13, 143, 199 and 200 on
+"""reduce2 placement at phenols bound to metal ions of charge +3 or more: an
+O-H whose O has one heavy neighbour, a C in a double, triple, aromatic or
+delocalized bond (phenol, enol; acids: tst_reduce2_metal_acid.py) or an N
+that is in such a bond or bonded to such an atom (hydroxamic acid, N-hydroxy
+heterocycle), bound to a metal of PHENOLATE_METAL_ELEMENTS is taken as
+deprotonated (Fe as Fe(III)), and reduce2 does not build its H. At other
+metals the H stays (a phenol bound to Zn has a pKa of about 8.5). Supplied H
+are kept with a note.
+Models: 8RK1 (FutA with Fe(III), neutron), Tyr 13, 143, 199 and 200 on
 Fe 401 (1.93-2.19 A); none of the four OH carries D in the neutron model.
+4X1D, Tyr 426 and 517 on Yb 701 (2.37 and 2.40 A). 1Y93, acetohydroxamate on
+Zn 264 (O 2.07 A), and the same with Fe in place of Zn.
 """
 pdb_8rk1 = """\
 CRYST1   39.542   78.316   47.893  90.00  97.36  90.00 P 1 21 1
@@ -58,6 +62,47 @@ ATOM   3566  CE2 TYR A 200      14.757  -6.532  16.146  1.00 14.12           C
 ATOM   3567  CZ  TYR A 200      16.083  -6.558  15.757  1.00 14.09           C
 ATOM   3568  OH  TYR A 200      16.825  -5.413  15.775  1.00 14.13           O
 HETATM 5556 FE    FE A 401      16.613  -4.028  14.445  1.00 11.87          FE
+END
+"""
+
+pdb_4x1d = """\
+CRYST1  156.502  136.863  107.843  90.00  90.41  90.00 C 1 2 1
+ATOM   3166  N   TYR A 426     -55.552 -31.359 110.039  1.00 67.28           N
+ATOM   3167  CA  TYR A 426     -56.245 -30.745 108.890  1.00 64.66           C
+ATOM   3168  C   TYR A 426     -56.964 -31.817 108.022  1.00 62.14           C
+ATOM   3169  O   TYR A 426     -56.929 -33.011 108.339  1.00 59.75           O
+ATOM   3170  CB  TYR A 426     -55.307 -29.789 108.076  1.00 67.78           C
+ATOM   3171  CG  TYR A 426     -54.161 -30.438 107.295  1.00 71.45           C
+ATOM   3172  CD1 TYR A 426     -54.415 -31.137 106.136  1.00 73.02           C
+ATOM   3173  CD2 TYR A 426     -52.825 -30.327 107.706  1.00 72.96           C
+ATOM   3174  CE1 TYR A 426     -53.404 -31.743 105.420  1.00 74.39           C
+ATOM   3175  CE2 TYR A 426     -51.797 -30.929 106.985  1.00 70.57           C
+ATOM   3176  CZ  TYR A 426     -52.100 -31.646 105.834  1.00 73.64           C
+ATOM   3177  OH  TYR A 426     -51.166 -32.304 105.047  1.00 62.65           O
+ATOM   3862  N   TYR A 517     -50.433 -27.097  97.158  1.00 49.74           N
+ATOM   3863  CA  TYR A 517     -51.879 -27.263  97.296  1.00 47.71           C
+ATOM   3864  C   TYR A 517     -52.563 -26.381  96.267  1.00 43.89           C
+ATOM   3865  O   TYR A 517     -53.418 -26.841  95.511  1.00 44.24           O
+ATOM   3866  CB  TYR A 517     -52.408 -26.858  98.659  1.00 47.66           C
+ATOM   3867  CG  TYR A 517     -51.804 -27.462  99.891  1.00 45.06           C
+ATOM   3868  CD1 TYR A 517     -52.279 -28.677 100.418  1.00 44.74           C
+ATOM   3869  CD2 TYR A 517     -50.830 -26.764 100.592  1.00 43.23           C
+ATOM   3870  CE1 TYR A 517     -51.761 -29.194 101.598  1.00 43.94           C
+ATOM   3871  CE2 TYR A 517     -50.300 -27.264 101.749  1.00 44.30           C
+ATOM   3872  CZ  TYR A 517     -50.766 -28.469 102.257  1.00 48.05           C
+ATOM   3873  OH  TYR A 517     -50.203 -28.910 103.436  1.00 56.79           O
+HETATM10223 YB    YB A 701     -49.426 -31.118 103.955  1.00 49.88          YB
+END
+"""
+
+pdb_1y93 = """\
+CRYST1   50.913   59.552   53.497  90.00 115.14  90.00 C 1 2 1
+HETATM 2416 ZN    ZN A 264       4.199  -1.587   4.821  1.00  6.40          ZN
+HETATM 2421  N   HAE A 301       1.361  -2.059   5.185  1.00  8.42           N
+HETATM 2422  O   HAE A 301       2.508  -1.997   5.938  1.00 11.90           O
+HETATM 2423  C1  HAE A 301       0.171  -1.388   3.191  1.00 14.58           C
+HETATM 2424  C2  HAE A 301       1.448  -1.511   3.991  1.00 12.17           C
+HETATM 2425  O2  HAE A 301       2.529  -1.084   3.591  1.00 12.21           O
 END
 """
 
@@ -164,8 +209,28 @@ def test_8rk1_supplied():
   assert len([l for l in section(description, SUPPLIED)
               if l.startswith('HH')]) == 4, description
 
+def test_4x1d_yb():
+  '''Two Tyr on Yb: reduce2 places no HH and lists both'''
+  h, description = run('tst_reduce2_metal_phenol_yb', pdb_4x1d)
+  assert phenol_h(h) == [], phenol_h(h)
+  assert len(section(description, NOT_PLACED)) == 2, description
+
+def test_1y93_hydroxamate():
+  '''Acetohydroxamate on Fe loses HO and keeps HN; on Zn it keeps both'''
+  pdb_fe = pdb_1y93.replace('ZN    ZN A 264', 'FE    FE A 264').replace(
+    '          ZN\n', '          FE\n')
+  assert ' ZN' not in pdb_fe
+  for pdb_str, metal, expected in ((pdb_fe, 'fe', ['HN']),
+                                   (pdb_1y93, 'zn', ['HN', 'HO'])):
+    h, description = run('tst_reduce2_metal_phenol_hae_' + metal, pdb_str)
+    names = sorted(a.name.strip() for a in h.atoms()
+                   if a.name.strip() in ('HN', 'HO'))
+    assert names == expected, (metal, names)
+
 if __name__ == '__main__':
   test_8rk1_fe()
   test_8rk1_zn()
   test_8rk1_supplied()
+  test_4x1d_yb()
+  test_1y93_hydroxamate()
   print('OK')
