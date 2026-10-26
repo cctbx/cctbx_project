@@ -148,10 +148,6 @@ class RunSentinel(Thread):
 
 # ------------------------------ Calib Worker ------------------------------ #
 
-# Set up events for updating calibration results
-tp_EVT_ENERGY_DONE = wx.NewEventType()
-EVT_ENERGY_DONE = wx.PyEventBinder(tp_EVT_ENERGY_DONE, 1)
-
 # Requests handed from the Energy tab (main thread) to the CalibWorker. Each is
 # an immutable snapshot of the inputs, appended to the tab's calib_requests
 # list by the button handlers and popped by the worker, so neither side reads
@@ -174,10 +170,6 @@ class CalibWorker(Thread):
     Thread.__init__(self)
     self.parent = parent
     self.active = active
-
-  def post_refresh_energy(self):
-    evt = RefreshRuns(tp_EVT_ENERGY_DONE, -1)
-    wx.PostEvent(self.energy_tab, evt)
 
   def set_light(self, status):
     wx.CallAfter(self.parent.run_window.calib_light.change_status, status)
@@ -223,7 +215,6 @@ class CalibWorker(Thread):
             self.run_fee_calib(request)
           else:
             self.run_ebeam_calib(request)
-          self.post_refresh_energy()
         except Exception as e:
           print(f'{name} failed: {e}')
           self.set_light('alert') # red: see the message above
@@ -259,10 +250,7 @@ class CalibWorker(Thread):
                    use_figure=spectra_fig)
       spectra_fig.canvas.draw_idle()
       trendline_fig.canvas.draw_idle()
-      energy_tab.fee_eV_offset = offset
-      energy_tab.fee_eV_per_pixel = per_px
-      energy_tab.eV_offset_text.SetLabel(f'{offset:.4f} eV')
-      energy_tab.eV_per_px_text.SetLabel(f'{per_px:.4f} eV')
+      energy_tab.show_FEE_calib(offset, per_px)
     self.draw_on_main('FEE calibration', _draw_fee)
 
   def run_ebeam_calib(self, request):
@@ -326,10 +314,7 @@ class CalibWorker(Thread):
       plot_ebeam_fee_comparison(rundata, ebeam_fig)
       ebeam_fig.canvas.draw_idle()
       if ebeam_eV_offset is not None:
-        energy_tab.ebeam_eV_offset = ebeam_eV_offset
-        energy_tab.ebeam_wavelength_offset = ebeam_wavelength_offset
-        ang = u'Å' # Angstrom
-        energy_tab.ebeam_offset_text.SetLabel(f'{ebeam_eV_offset:.2f} eV ({ebeam_wavelength_offset:.6f} {ang})')
+        energy_tab.show_ebeam_calib(ebeam_eV_offset, ebeam_wavelength_offset)
     self.draw_on_main('Ebeam calibration', _draw_ebeam)
 
 # ------------------------------- Job Monitor ------------------------------- #
@@ -1811,10 +1796,20 @@ class RunWindow(wx.Panel):
       self.job_light.Show()
       self.jmn_light.Show()
 
-    if self.parent.params.facility.name == "lcls" and not self.parent.params.monitoring_mode:
-      self.energy_tab.Show()
-    else:
-      self.energy_tab.Hide()
+    show_energy = self.parent.params.facility.name == "lcls" and not self.parent.params.monitoring_mode
+    self.set_page_shown(self.energy_tab, show_energy, after=self.runs_tab)
+    self.calib_light.Show(show_energy)
+    self.main_panel.Layout()
+
+  def set_page_shown(self, tab, shown, after):
+    ''' Add or remove a notebook page: hiding the page window alone leaves
+        its tab in the notebook '''
+    index = self.main_nbook.FindPage(tab)
+    if shown and index == wx.NOT_FOUND:
+      self.main_nbook.InsertPage(self.main_nbook.FindPage(after) + 1, tab, tab.name)
+    elif not shown and index != wx.NOT_FOUND:
+      self.main_nbook.RemovePage(index)
+      tab.Hide()
 
 # --------------------------------- UI Tabs ---------------------------------- #
 
@@ -2010,19 +2005,20 @@ class EnergyTab(BaseTab):
     self.all_runs = []
     self.fee_runs = []
     self.fee_energies = []
-    self.ebeam_runs = []
     self.fee_eV_per_pixel = None
     self.fee_eV_offset = None
     self.ebeam_eV_offset = None
     self.ebeam_wavelength_offset = None
+    self.max_events = None
 
     self.calib_requests = [] # FeeCalibRequest / EbeamCalibRequest, consumed by the CalibWorker
-    self.size_stale = False
     self.experiment = main.params.facility.lcls.experiment
 
     self.calib_panel = ScrolledPanel(self)
     self.calib_sizer = wx.BoxSizer(wx.VERTICAL)
     self.calib_panel.SetSizer(self.calib_sizer)
+    # Three columns: the inputs at their natural width, then two plot columns
+    # that share whatever space is left. Both rows grow with the window.
     self.calib_grid_sizer = wx.GridBagSizer(vgap=10, hgap=10)
 
     import matplotlib as mpl
@@ -2030,190 +2026,142 @@ class EnergyTab(BaseTab):
       FigureCanvasWxAgg as FigureCanvas,
       NavigationToolbar2WxAgg as NavigationToolbar)
 
+    def plot_panel(figure):
+      panel = wx.Panel(self.calib_panel)
+      sizer = wx.BoxSizer(wx.HORIZONTAL)
+      panel.SetSizer(sizer)
+      canvas = FigureCanvas(panel, -1, figure)
+      canvas.SetMinSize((300, 200)) # the figure size is only the starting size
+      toolbar = NavigationToolbar(canvas)
+      toolbar.SetWindowStyle(wx.TB_VERTICAL)
+      toolbar.Realize()
+      sizer.Add(canvas, 1, flag=wx.EXPAND)
+      sizer.Add(toolbar, 0)
+      return panel, canvas, toolbar
+
     # FEE scan section
-    self.scan_runs_panel = ScrolledPanel(self.calib_panel, size=(220, 325))
+    self.scan_runs_panel = wx.Panel(self.calib_panel)
     self.scan_runs_sizer = wx.BoxSizer(wx.VERTICAL)
     self.scan_runs_panel.SetSizer(self.scan_runs_sizer)
 
-    self.scan_runs_panel_label = wx.StaticText(self.scan_runs_panel, label='FEE Energy Scan Description', size=(420, 20))
+    self.scan_runs_panel_label = wx.StaticText(self.scan_runs_panel, label='FEE Energy Scan Description')
     self.scan_runs_sizer.Add(self.scan_runs_panel_label, border=10, flag=wx.BOTTOM)
 
-    self.expt_id_panel = wx.Panel(self.scan_runs_panel)
-    self.expt_id_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.scan_runs_experiment_label = wx.StaticText(self.expt_id_panel, label='Experiment:', size=(80, -1))
-    self.scan_runs_experiment = wx.TextCtrl(self.expt_id_panel, size=(118, -1))
-    self.expt_id_sizer.Add(self.scan_runs_experiment_label)
-    self.expt_id_sizer.Add(self.scan_runs_experiment)
+    self.scan_inputs_sizer = wx.FlexGridSizer(2, 2, 5, 5)
+    self.scan_inputs_sizer.AddGrowableCol(1, 1)
+    self.scan_runs_experiment_label = wx.StaticText(self.scan_runs_panel, label='Experiment:')
+    self.scan_runs_experiment = wx.TextCtrl(self.scan_runs_panel)
     self.scan_runs_experiment.SetValue(self.experiment)
-    self.expt_id_panel.SetSizer(self.expt_id_sizer)
-    self.scan_runs_sizer.Add(self.expt_id_panel)
-
-    self.max_evts_panel = wx.Panel(self.scan_runs_panel)
-    self.max_evts_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.max_evts_label = wx.StaticText(self.max_evts_panel, label='Max events:', size=(80, -1))
-    self.max_evts = wx.TextCtrl(self.max_evts_panel, size=(118, -1))
-    self.max_evts_sizer.Add(self.max_evts_label)
-    self.max_evts_sizer.Add(self.max_evts)
+    self.max_evts_label = wx.StaticText(self.scan_runs_panel, label='Max events:')
+    self.max_evts = wx.TextCtrl(self.scan_runs_panel)
     self.max_evts.SetValue("200")
-    self.max_evts_panel.SetSizer(self.max_evts_sizer)
-    self.scan_runs_sizer.Add(self.max_evts_panel)
+    self.scan_inputs_sizer.Add(self.scan_runs_experiment_label, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.scan_inputs_sizer.Add(self.scan_runs_experiment, flag=wx.EXPAND)
+    self.scan_inputs_sizer.Add(self.max_evts_label, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.scan_inputs_sizer.Add(self.max_evts, flag=wx.EXPAND)
+    self.scan_runs_sizer.Add(self.scan_inputs_sizer, flag=wx.EXPAND | wx.BOTTOM, border=5)
 
     self.scan_runs_list = dlg.EdListCtrl(self.scan_runs_panel,
-                                         style=wx.LC_EDIT_LABELS | wx.LC_REPORT,
-                                         size=(200,165))
-
+                                         style=wx.LC_EDIT_LABELS | wx.LC_REPORT)
+    self.scan_runs_list.SetMinSize((200, 120))
     self.scan_runs_list.InsertColumn(0, 'Run', width=60)
     self.scan_runs_list.InsertColumn(1, 'Notch Energy (eV)', width=140)
-    self.scan_runs_list.integer_columns = {0}
     self.scan_runs_list.InsertItem(0, 0)
     self.scan_runs_list.Select(0)
+    self.scan_runs_sizer.Add(self.scan_runs_list, 1, flag=wx.EXPAND)
 
-    self.scan_runs_sizer.Add(self.scan_runs_list, 1)
-
-    self.scan_runs_button_panel = wx.Panel(self.scan_runs_panel)
-    self.scan_runs_button_sizer = wx.GridBagSizer(0,0)
-    self.scan_runs_button_add   = wx.Button(self.scan_runs_button_panel,
-                                            size=(94, -1),
-                                            label='Add Row')
-    self.scan_runs_button_clear = wx.Button(self.scan_runs_button_panel,
-                                            size=(94, -1),
-                                            label='Clear All')
-    self.scan_runs_button_run   = wx.Button(self.scan_runs_button_panel,
-                                            size=(194, -1),
-                                            label='Run Calibration')
+    self.scan_runs_button_sizer = wx.GridBagSizer(0, 0)
+    self.scan_runs_button_add   = wx.Button(self.scan_runs_panel, label='Add Row')
+    self.scan_runs_button_clear = wx.Button(self.scan_runs_panel, label='Clear All')
+    self.scan_runs_button_run   = wx.Button(self.scan_runs_panel, label='Run Calibration')
     self.scan_runs_button_sizer.Add(self.scan_runs_button_add,
-                                    pos=(0,0), border=3, flag=wx.ALL)
+                                    pos=(0,0), border=3, flag=wx.ALL | wx.EXPAND)
     self.scan_runs_button_sizer.Add(self.scan_runs_button_clear,
-                                    pos=(0,1), border=3, flag=wx.ALL)
+                                    pos=(0,1), border=3, flag=wx.ALL | wx.EXPAND)
     self.scan_runs_button_sizer.Add(self.scan_runs_button_run,
                                     pos=(1,0), span=(1,2), border=3, flag=wx.ALL | wx.EXPAND)
-    self.scan_runs_button_panel.SetSizer(self.scan_runs_button_sizer)
-
-    self.scan_runs_sizer.Add(self.scan_runs_button_panel, 1)
-    self.calib_grid_sizer.Add(self.scan_runs_panel, pos=(0, 0))
+    self.scan_runs_button_sizer.AddGrowableCol(0, 1)
+    self.scan_runs_button_sizer.AddGrowableCol(1, 1)
+    self.scan_runs_sizer.Add(self.scan_runs_button_sizer, flag=wx.EXPAND | wx.TOP, border=5)
+    self.calib_grid_sizer.Add(self.scan_runs_panel, pos=(0, 0), flag=wx.EXPAND)
 
     # FEE scan trendline
-    self.trendline_panel = wx.Panel(self.calib_panel)
-    self.trendline_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.trendline_panel.SetSizer(self.trendline_sizer)
-
     self.trendline_figure = mpl.figure.Figure(figsize=(4,2.3))
-    self.trendline_canvas = FigureCanvas(self.trendline_panel, -1, self.trendline_figure)
-    self.trendline_toolbar = NavigationToolbar(self.trendline_canvas)
-    self.trendline_toolbar.SetWindowStyle(wx.TB_VERTICAL)
-    self.trendline_toolbar.Realize()
-
-    self.trendline_sizer.Add(self.trendline_canvas, 1, flag=wx.EXPAND | wx.ALL)
-    self.trendline_sizer.Add(self.trendline_toolbar, 0)
-
-    self.calib_grid_sizer.Add(self.trendline_panel, pos=(0, 1), flag=wx.EXPAND | wx.ALL)
+    self.trendline_panel, self.trendline_canvas, self.trendline_toolbar = plot_panel(self.trendline_figure)
+    self.calib_grid_sizer.Add(self.trendline_panel, pos=(0, 1), flag=wx.EXPAND)
 
     # FEE scan spectra
-    self.spectra_panel = wx.Panel(self.calib_panel)
-    self.spectra_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.spectra_panel.SetSizer(self.spectra_sizer)
-
     self.spectra_figure = mpl.figure.Figure(figsize=(4,2.3))
-    self.spectra_canvas = FigureCanvas(self.spectra_panel, -1, self.spectra_figure)
-    self.spectra_toolbar = NavigationToolbar(self.spectra_canvas)
-    self.spectra_toolbar.SetWindowStyle(wx.TB_VERTICAL)
-    self.spectra_toolbar.Realize()
-
-    self.spectra_sizer.Add(self.spectra_canvas, 1, flag=wx.EXPAND | wx.ALL)
-    self.spectra_sizer.Add(self.spectra_toolbar, 0)
-
-    self.calib_grid_sizer.Add(self.spectra_panel, pos=(0, 2), flag=wx.EXPAND | wx.ALL)
+    self.spectra_panel, self.spectra_canvas, self.spectra_toolbar = plot_panel(self.spectra_figure)
+    self.calib_grid_sizer.Add(self.spectra_panel, pos=(0, 2), flag=wx.EXPAND)
 
     # Ebeam calibration section
-    self.ebeam_runs_panel = ScrolledPanel(self.calib_panel, size=(220, 270))
+    self.ebeam_runs_panel = wx.Panel(self.calib_panel)
     self.ebeam_runs_sizer = wx.BoxSizer(wx.VERTICAL)
     self.ebeam_runs_panel.SetSizer(self.ebeam_runs_sizer)
 
     self.ebeam_runs_selection = gctr.CheckListCtrl(self.ebeam_runs_panel,
                                                    label='Runs for Ebeam Calibration',
-                                                   label_size=(200, -1),
+                                                   label_size=wx.DefaultSize,
                                                    label_style='normal',
-                                                   ctrl_size=(200, 160),
+                                                   ctrl_size=(200, 120),
                                                    direction='vertical',
                                                    choices=[])
-
     self.ebeam_runs_sizer.Add(self.ebeam_runs_selection, 1, flag=wx.EXPAND)
 
-    self.ebeam_runs_button_panel = wx.Panel(self.ebeam_runs_panel)
-    self.ebeam_runs_button_sizer = wx.GridBagSizer(0,0)
-    self.ebeam_runs_refresh_button = wx.Button(self.ebeam_runs_button_panel,
-                                               label='Refresh',
-                                               size=(94, -1))
-    self.ebeam_runs_clear_button = wx.Button(self.ebeam_runs_button_panel,
-                                             label='Clear',
-                                             size=(94, -1))
-    self.ebeam_runs_launch_button = wx.Button(self.ebeam_runs_button_panel,
-                                              label='Run Calibration',
-                                              size=(194, -1))
+    self.ebeam_runs_button_sizer = wx.GridBagSizer(0, 0)
+    self.ebeam_runs_refresh_button = wx.Button(self.ebeam_runs_panel, label='Refresh')
+    self.ebeam_runs_clear_button = wx.Button(self.ebeam_runs_panel, label='Clear')
+    self.ebeam_runs_launch_button = wx.Button(self.ebeam_runs_panel, label='Run Calibration')
     self.ebeam_runs_button_sizer.Add(self.ebeam_runs_refresh_button,
-                                     pos=(0,0), border=3, flag=wx.ALL)
+                                     pos=(0,0), border=3, flag=wx.ALL | wx.EXPAND)
     self.ebeam_runs_button_sizer.Add(self.ebeam_runs_clear_button,
-                                     pos=(0,1), border=3, flag=wx.ALL)
+                                     pos=(0,1), border=3, flag=wx.ALL | wx.EXPAND)
     self.ebeam_runs_button_sizer.Add(self.ebeam_runs_launch_button,
-                                     pos=(1,0), span=(1,2), border=3, flag=wx.ALL)
-    self.ebeam_runs_button_panel.SetSizer(self.ebeam_runs_button_sizer)
-
-    self.ebeam_runs_sizer.Add(self.ebeam_runs_button_panel, 0)
-
-    self.calib_grid_sizer.Add(self.ebeam_runs_panel, pos=(1, 0))
+                                     pos=(1,0), span=(1,2), border=3, flag=wx.ALL | wx.EXPAND)
+    self.ebeam_runs_button_sizer.AddGrowableCol(0, 1)
+    self.ebeam_runs_button_sizer.AddGrowableCol(1, 1)
+    self.ebeam_runs_sizer.Add(self.ebeam_runs_button_sizer, flag=wx.EXPAND | wx.TOP, border=5)
+    self.calib_grid_sizer.Add(self.ebeam_runs_panel, pos=(1, 0), flag=wx.EXPAND)
 
     # Ebeam vs calibrated FEE spectra overlay
-    self.ebeam_panel = wx.Panel(self.calib_panel)
-    self.ebeam_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.ebeam_panel.SetSizer(self.ebeam_sizer)
-
     self.ebeam_figure = mpl.figure.Figure(figsize=(4,2.3))
-    self.ebeam_canvas = FigureCanvas(self.ebeam_panel, -1, self.ebeam_figure)
-    self.ebeam_toolbar = NavigationToolbar(self.ebeam_canvas)
-    self.ebeam_toolbar.SetWindowStyle(wx.TB_VERTICAL)
-    self.ebeam_toolbar.Realize()
-
-    self.ebeam_sizer.Add(self.ebeam_canvas, 1, flag=wx.EXPAND | wx.ALL)
-    self.ebeam_sizer.Add(self.ebeam_toolbar, 0)
-
-    self.calib_grid_sizer.Add(self.ebeam_panel, pos=(1, 1), flag=wx.EXPAND | wx.ALL)
+    self.ebeam_panel, self.ebeam_canvas, self.ebeam_toolbar = plot_panel(self.ebeam_figure)
+    self.calib_grid_sizer.Add(self.ebeam_panel, pos=(1, 1), flag=wx.EXPAND)
 
     # Display and export calibrated values
     self.results_panel = wx.Panel(self.calib_panel)
-    self.results_box = wx.StaticBox(self.results_panel, label='Calibration Results', size=(300, 200))
+    self.results_box = wx.StaticBox(self.results_panel, label='Calibration Results')
     self.results_sizer = wx.StaticBoxSizer(self.results_box, wx.VERTICAL)
     self.results_panel.SetSizer(self.results_sizer)
-    self.results_text_sizer = wx.GridBagSizer(3, 3)
+    self.results_text_sizer = wx.FlexGridSizer(3, 2, 5, 10)
 
-    self.results_text_sizer.Add(
-        wx.StaticText(self.results_box, label='FEE eV per pixel:', size=(120, -1)),
-                                                     pos=(0,0), border=5, flag=wx.TOP)
-    self.eV_per_px_text = wx.StaticText(self.results_box, label='', size=(180, -1))
-    self.results_text_sizer.Add(self.eV_per_px_text, pos=(0,1), border=5, flag=wx.TOP)
+    # The contents are children of the panel, not the box: on GTK a box's
+    # best size follows its children's current size, so a box that once
+    # grew with the window never shrinks back
+    self.eV_per_px_text = wx.StaticText(self.results_panel, label='')
+    self.eV_offset_text = wx.StaticText(self.results_panel, label='')
+    self.ebeam_offset_text = wx.StaticText(self.results_panel, label='')
+    for label, text in (('FEE eV per pixel:', self.eV_per_px_text),
+                        ('FEE eV offset:', self.eV_offset_text),
+                        ('Ebeam offset:', self.ebeam_offset_text)):
+      self.results_text_sizer.Add(wx.StaticText(self.results_panel, label=label))
+      self.results_text_sizer.Add(text)
+    self.results_sizer.Add(self.results_text_sizer, flag=wx.ALL, border=5)
 
-    self.results_text_sizer.Add(
-        wx.StaticText(self.results_box, label='FEE eV offset:', size=(120, -1)),
-                                                     pos=(1,0), border=5, flag=wx.TOP)
-    self.eV_offset_text = wx.StaticText(self.results_box, label='', size=(180, -1))
-    self.results_text_sizer.Add(self.eV_offset_text, pos=(1,1), border=5, flag=wx.TOP)
+    self.export_button = wx.Button(self.results_panel, label='Save calibration')
+    self.results_sizer.Add(self.export_button, flag=wx.EXPAND | wx.ALL, border=5)
 
-    self.results_text_sizer.Add(
-        wx.StaticText(self.results_box, label='Ebeam offset:', size=(120, -1)),
-                                                        pos=(2,0), border=5, flag=wx.TOP)
-    self.ebeam_offset_text = wx.StaticText(self.results_box, label='', size=(180, -1))
-    self.results_text_sizer.Add(self.ebeam_offset_text, pos=(2,1), border=5, flag=wx.TOP)
+    self.save_notif_text = wx.StaticText(self.results_panel, label='')
+    self.results_sizer.Add(self.save_notif_text, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=5)
 
-    self.results_sizer.Add(self.results_text_sizer)
+    self.calib_grid_sizer.Add(self.results_panel, pos=(1, 2), flag=wx.EXPAND)
 
-    self.export_button = wx.Button(self.results_box, label='Save calibration', size=(300, -1))
-    self.results_sizer.Add(self.export_button)
-
-    self.save_notif_text = wx.StaticText(self.results_box, label='')
-    self.results_text_sizer.Add(self.save_notif_text, pos=(3,0))
-
-    self.calib_grid_sizer.Add(self.results_panel, pos=(1,2), flag=wx.ALIGN_CENTER)
-
-    self.calib_sizer.Add(self.calib_grid_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.calib_grid_sizer.AddGrowableCol(1, 1)
+    self.calib_grid_sizer.AddGrowableCol(2, 1)
+    self.calib_grid_sizer.AddGrowableRow(0, 1)
+    self.calib_grid_sizer.AddGrowableRow(1, 1)
+    self.calib_sizer.Add(self.calib_grid_sizer, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.calib_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Bindings
@@ -2225,8 +2173,26 @@ class EnergyTab(BaseTab):
     self.Bind(wx.EVT_BUTTON, self.onRunEbeamCalib, self.ebeam_runs_launch_button)
     self.Bind(wx.EVT_BUTTON, self.onSaveCalib, self.export_button)
 
+    self.update_export_button()
+    self.calib_panel.SetupScrolling(scrollToTop=False)
     self.Layout()
-    self.Fit()
+
+  def show_error(self, message):
+    error = wx.MessageDialog(self, message=message, caption='Error', style=wx.OK | wx.ICON_ERROR)
+    error.ShowModal()
+    error.Destroy()
+
+  def read_max_events(self):
+    ''' The Max events entry as a positive integer, or None after an error dialog '''
+    text = self.max_evts.GetValue().strip()
+    try:
+      max_events = int(text)
+      if max_events <= 0:
+        raise ValueError(text)
+    except ValueError:
+      self.show_error(f'Max events must be a positive integer, not "{text}".')
+      return None
+    return max_events
 
   def onAddScanRuns(self, e):
     n_rows = self.scan_runs_list.GetItemCount()
@@ -2234,67 +2200,60 @@ class EnergyTab(BaseTab):
     self.scan_runs_list.Select(n_rows)
 
   def onClearScanRuns(self, e):
-    n_rows = self.scan_runs_list.GetItemCount()
     self.scan_runs_list.DeleteAllItems()
     self.scan_runs_list.InsertItem(0, 0)
     self.scan_runs_list.Select(0)
     e.Skip()
 
   def onRunFEECalib(self, e):
-    self.clear_FEE_calib()
     self.refresh_runs()
+
+    experiment = self.scan_runs_experiment.GetValue().strip() or self.main.params.facility.lcls.experiment
+    if not experiment:
+      self.show_error('Experiment not set.')
+      return
+    max_events = self.read_max_events()
+    if max_events is None:
+      return
+
     fee_runs = []
     fee_energies = []
-
-    self.experiment = self.scan_runs_experiment.GetValue()
-    if self.experiment.strip() == '':
-      if self.main.params.facility.name == 'lcls':
-        self.experiment = self.main.params.facility.lcls.experiment
-      else:
-        self.experiment = None
-    self.max_events = int(self.max_evts.GetValue())
-
-    #TODO: validation during input instead?
-    self.fee_runs = []
-    self.fee_energies = []
     for row in range(self.scan_runs_list.GetItemCount()):
       run = self.scan_runs_list.GetItem(itemIdx=row, col=0).GetText()
       if not run in self.all_runs:
-        dlg = wx.MessageDialog(self,
-                               message=f'Run {run} not recognized.',
-                               caption='Error',
-                               style=wx.OK | wx.ICON_ERROR)
-        dlg.ShowModal()
+        self.show_error(f'Run {run} not recognized.')
         return
-      self.fee_runs.append(int(run))
-
+      energy_text = self.scan_runs_list.GetItem(itemIdx=row, col=1).GetText()
       try:
-        energy = float(self.scan_runs_list.GetItem(itemIdx=row, col=1).GetText())
+        energy = float(energy_text)
       except ValueError:
-        dlg = wx.MessageDialog(self,
-                               message=f'Energy {energy} for run {run} not a float.',
-                               caption='Error',
-                               style=wx.OK | wx.ICON_ERROR)
-        dlg.ShowModal()
+        self.show_error(f'Energy "{energy_text}" for run {run} is not a number.')
         return
-      self.fee_energies.append(energy)
-    self.calib_requests.append(FeeCalibRequest(self.experiment, list(self.fee_runs),
-                                               list(self.fee_energies), self.max_events))
+      fee_runs.append(int(run)) # psana runs are always integers
+      fee_energies.append(energy)
+
+    self.experiment = experiment
+    self.max_events = max_events
+    self.fee_runs = fee_runs
+    self.fee_energies = fee_energies
+    self.clear_FEE_calib()
+    self.calib_requests.append(FeeCalibRequest(experiment, list(fee_runs), list(fee_energies), max_events))
     e.Skip()
 
   def onRunEbeamCalib(self, e):
-    self.selected_runs = self.ebeam_runs_selection.ctr.GetCheckedStrings()
-    self.max_events = int(self.max_evts.GetValue())
-    message = None
-    if self.experiment is None:
-      message = 'Experiment not set.'
-    elif self.fee_eV_offset is None:
-      message = 'Calibrate the spectrometer first.'
-    if message is not None:
-      dlg = wx.MessageDialog(self, message=message, caption='Error', style=wx.OK | wx.ICON_ERROR)
-      dlg.ShowModal()
+    selected_runs = self.ebeam_runs_selection.ctr.GetCheckedStrings()
+    if len(selected_runs) == 0:
+      self.show_error('Select the runs to compare first.')
       return
-    self.calib_requests.append(EbeamCalibRequest(self.experiment, list(self.selected_runs), self.max_events,
+    if self.fee_eV_offset is None:
+      self.show_error('Calibrate the spectrometer first.')
+      return
+    max_events = self.read_max_events()
+    if max_events is None:
+      return
+    self.max_events = max_events
+    self.clear_ebeam_calib()
+    self.calib_requests.append(EbeamCalibRequest(self.experiment, list(selected_runs), max_events,
                                                  self.fee_eV_offset, self.fee_eV_per_pixel))
     e.Skip()
 
@@ -2304,9 +2263,7 @@ class EnergyTab(BaseTab):
 
   def onRunsClear(self, e):
     self.ebeam_runs_selection.ctr.SetCheckedItems([])
-    self.ebeam_figure.clear()
-    self.ebeam_offset_text.SetLabel('')
-    self.save_notif_text.SetLabel('')
+    self.clear_ebeam_calib()
     e.Skip()
 
   def onSaveCalib(self, e):
@@ -2330,11 +2287,46 @@ class EnergyTab(BaseTab):
     except AttributeError:
       print('Unable to find runs')
 
+  def update_export_button(self):
+    self.export_button.Enable(self.fee_eV_offset is not None or self.ebeam_eV_offset is not None)
+
   def clear_FEE_calib(self):
-    for figure in (self.trendline_figure, self.spectra_figure, self.ebeam_figure):
+    ''' Forget both calibrations: the ebeam offset is measured against the
+        FEE calibration, so it cannot outlive it '''
+    for figure in (self.trendline_figure, self.spectra_figure):
       figure.clear()
-    for text in (self.eV_per_px_text, self.eV_offset_text, self.ebeam_offset_text, self.save_notif_text):
+      figure.canvas.draw_idle()
+    self.fee_eV_offset = None
+    self.fee_eV_per_pixel = None
+    for text in (self.eV_per_px_text, self.eV_offset_text):
       text.SetLabel('')
+    self.clear_ebeam_calib()
+
+  def clear_ebeam_calib(self):
+    self.ebeam_figure.clear()
+    self.ebeam_figure.canvas.draw_idle()
+    self.ebeam_eV_offset = None
+    self.ebeam_wavelength_offset = None
+    self.ebeam_offset_text.SetLabel('')
+    self.save_notif_text.SetLabel('')
+    self.update_export_button()
+
+  def show_FEE_calib(self, eV_offset, eV_per_pixel):
+    ''' Called on the main thread by the CalibWorker once the figures are drawn '''
+    self.fee_eV_offset = eV_offset
+    self.fee_eV_per_pixel = eV_per_pixel
+    self.eV_offset_text.SetLabel(f'{eV_offset:.4f} eV')
+    self.eV_per_px_text.SetLabel(f'{eV_per_pixel:.4f} eV')
+    self.update_export_button()
+    self.calib_panel.Layout()
+
+  def show_ebeam_calib(self, eV_offset, wavelength_offset):
+    self.ebeam_eV_offset = eV_offset
+    self.ebeam_wavelength_offset = wavelength_offset
+    ang = u'Å' # Angstrom
+    self.ebeam_offset_text.SetLabel(f'{eV_offset:.2f} eV ({wavelength_offset:.6f} {ang})')
+    self.update_export_button()
+    self.calib_panel.Layout()
 
   def write_calib_phil(self, path):
     lines = []
@@ -2346,10 +2338,15 @@ class EnergyTab(BaseTab):
       lines.append(f'ebeam_eV_offset={self.ebeam_eV_offset}\n')
     if self.ebeam_wavelength_offset is not None:
       lines.append(f'wavelength_offset={self.ebeam_wavelength_offset}\n')
+    if len(lines) == 0:
+      self.show_error('Nothing to save: run a calibration first.')
+      return
     with open(path, 'w') as outfile:
       for line in lines:
         outfile.write(line)
     print(f'Wrote calibrated values to {path}')
+    self.save_notif_text.SetLabel(f'Saved {os.path.basename(path)}')
+    self.calib_panel.Layout()
 
 class TrialsTab(BaseTab):
   def __init__(self, parent, main):
