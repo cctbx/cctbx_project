@@ -359,6 +359,44 @@ def exercise_zero_sigma_excluded():
   assert r.n_zero_sigma == 5
   for k in zero: assert not r.selection[k]
 
+def exercise_resolution_dependent_restraint_factor():
+  # the factor multiplies the sigma of the beta1 sphericity restraint
+  # (phasertng macaniso.resolution_dependent_restraint, default 10)
+  assert ln.normalisation_params.extract().resolution_dependent_restraint == 10.
+  ms = make_set("P 21 21 21", (50, 60, 70, 90, 90, 90), 2.5)
+  bins = ln.resolution_bins(ms.d_star_sq().data())
+  m_def = ln.sigman_model(ms, bins, resolution_dependent=True)
+  m_1 = ln.sigman_model(ms, bins, resolution_dependent=True,
+    resolution_dependent_restraint=1.)
+  m_10 = ln.sigman_model(ms, bins, resolution_dependent=True,
+    resolution_dependent_restraint=10.)
+  m_none = ln.sigman_model(ms, bins, resolution_dependent=True,
+    resolution_dependent_restraint=1e100)  # beta1 term removed
+  x = numpy.zeros(m_1.n_parameters())
+  x[m_1.beta1_index():m_1.beta1_index() + 3] = [0.01, -0.02, 0.005]
+  v1, v10, v0 = [m.restraint(x)[0] for m in (m_1, m_10, m_none)]
+  # beta = 0: the (beta + P beta1) term is the same, the beta1 term scales
+  assert approx_equal(v10 - v0, (v1 - v0) / 100., eps=1e-10), (v1, v10, v0)
+  assert v1 - v0 > 0
+  assert m_def.restraint(x)[0] == v10
+
+def exercise_zero_intensity_missing():
+  i_obs, a = _simulate(P212121[0], P212121[1], 2.0, B_ANISO, 0.9, 0.4,
+    0.1, seed=6)
+  i = i_obs.data().deep_copy()
+  zero = [5, 50, 500, 5000, 15000]
+  for k in zero:
+    assert i_obs.sigmas()[k] > 0
+    i[k] = 0
+  r = ln.fit(i_obs.customized_copy(data=i), tncs_a_groups=a)
+  assert r.n_zero_intensity == 5, r.n_zero_intensity
+  assert r.n_zero_sigma == 0
+  for k in zero: assert not r.selection[k]
+  sel = flex.bool(i_obs.size(), True)
+  r = ln.fit(i_obs.customized_copy(data=i), tncs_a_groups=a, selection=sel)
+  assert r.n_zero_intensity == 5
+  for k in zero: assert not r.selection[k]
+
 def exercise_epsilon():
   i_obs, a = _simulate("P 61 2 2", (50, 50, 90, 90, 90, 120), 2.5,
     (0, 0, 0, 0, 0, 0), 0., 0., 0.1, seed=7)
@@ -614,6 +652,8 @@ def run():
   exercise_weak_shells()
   exercise_zero_sigma_excluded()
   exercise_epsilon()
+  exercise_resolution_dependent_restraint_factor()
+  exercise_zero_intensity_missing()
   exercise_fixed_selection()
   exercise_hierarchical()
   exercise_resolution_dependent_anisotropy()

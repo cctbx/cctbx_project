@@ -105,8 +105,6 @@ BEST_TABLE = (
   7002.648, 6981.484, 6899.487, 6920.931, 6939.107
 )
 
-# phasertng RefineANISO: RESOLUTION_DEPENDENT_SIGMA_FACTOR
-RESOLUTION_DEPENDENT_SIGMA_FACTOR = 1.
 # phasertng RefineANISO: LOG_WILSON_SIGMA_CONSTANT, LOG_WILSON_SIGMA_FACTOR
 LOG_WILSON_SIGMA_CONSTANT = 0.15
 LOG_WILSON_SIGMA_FACTOR = 0.001
@@ -187,9 +185,11 @@ class sigman_model(object):
   d_ln_sigman_dx(x).x + ln BEST. Anisotropy (beta, beta1) is constrained by
   the symmetry of the space group """
 
-  def __init__(self, miller_set, bins, resolution_dependent=False):
+  def __init__(self, miller_set, bins, resolution_dependent=False,
+      resolution_dependent_restraint=10.):
     self.n_bins = bins.n_bins
     self.resolution_dependent = bool(resolution_dependent)
+    self.resolution_dependent_restraint = float(resolution_dependent_restraint)
     self._bin_index = _as_numpy(bins.index, dtype=int)
     self._eps = _as_numpy(miller_set.epsilons().data())
     self._sigma_bin = _as_numpy(bin_restraint_sigmas(bins.d_mid))
@@ -358,7 +358,7 @@ class sigman_model(object):
       j = self._P.dot(e0 + e1)
       h += j.T.dot(w[:, None] * j)
       j1 = self._P.dot(e1)
-      h += j1.T.dot(w[:, None] * j1) / RESOLUTION_DEPENDENT_SIGMA_FACTOR ** 2
+      h += j1.T.dot(w[:, None] * j1) / self.resolution_dependent_restraint ** 2
     else:
       j = self._P.dot(e0)
       h += j.T.dot(w[:, None] * j)
@@ -391,6 +391,13 @@ normalisation_params = iotbx.phil.parse("""\
     .short_caption = Wilson outlier probability
     .help = "Reflections whose Wilson tail probability (including the " \\
             "measurement error) is below this are excluded from the fit."
+  resolution_dependent_restraint = 10.0
+    .type = float
+    .short_caption = Restraint factor of the resolution-dependent anisotropy
+    .help = "Factor multiplying the sigma of the sphericity restraint on " \\
+            "the resolution-dependent anisotropy term (beta1), relative " \\
+            "to that of the anisotropy at the resolution limit; as " \\
+            "phasertng macaniso.resolution_dependent_restraint."
   resolution_dependent_anisotropy = off on *auto
     .type = choice
     .short_caption = Resolution-dependent anisotropy
@@ -501,14 +508,17 @@ def _fit_data(i_obs, tncs_a_groups, params):
   sig = _as_numpy(i_obs.sigmas())
   d_star_sq = i_obs.d_star_sq().data()
   dss = _as_numpy(d_star_sq)
-  valid = numpy.isfinite(i) & numpy.isfinite(sig) & (sig > 0)
+  present = numpy.isfinite(i) & numpy.isfinite(sig) & (sig > 0)
+  # I == 0 exactly is missing (as in nacelle)
+  zero_i = present & (i == 0)
+  valid = present & ~zero_i
   bins = resolution_bins(d_star_sq, width=params.bins.width,
     n_min=params.bins.range[0], n_max=params.bins.range[1])
   a = None
   if tncs_a_groups:
     a = numpy.vstack([_as_numpy(g) for g in tncs_a_groups])
     assert a.shape[1] == i.size
-  return group_args(i=i, sig=sig, valid=valid, bins=bins, a=a,
+  return group_args(i=i, sig=sig, valid=valid, zero_i=zero_i, bins=bins, a=a,
     eps=_as_numpy(i_obs.epsilons().data()),
     centric=_as_numpy(i_obs.centric_flags().data(), dtype=bool),
     c=2 * math.pi ** 2 * dss)
@@ -819,7 +829,8 @@ def _fit_model(i_obs, data, params, resolution_dependent, selection=None,
   outlier rounds unless selection is given. start: p of a fit (its q
   extended with zeros for beta1) """
   model = sigman_model(i_obs, data.bins,
-    resolution_dependent=resolution_dependent)
+    resolution_dependent=resolution_dependent,
+    resolution_dependent_restraint=params.resolution_dependent_restraint)
   fixed = selection is not None
   if fixed:
     sel = _as_numpy(selection, dtype=bool) & data.valid
@@ -870,7 +881,7 @@ def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None):
   measurement errors. Newton steps (exact Hessian, the Fisher form where
   that is not definite) with a backtracking line search, 0 <= gamma <=
   gamma_max and v >= 0, starting at gamma = 1, v = 0. Reflections with
-  SIGI <= 0 are excluded; outliers (Wilson tail probability below
+  SIGI <= 0, and with I == 0 exactly (as nacelle), are excluded; outliers (Wilson tail probability below
   outlier_probability) are excluded and the fit repeated, at most 3 times,
   unless selection (flex.bool) is given, which is used as is (n_would_change
   then counts the reflections whose outlier status would differ).
@@ -883,14 +894,15 @@ def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None):
   selection (flex.bool, True = used), coherence (coherence_curve or None),
   gamma_groups (hierarchical_coherence: gamma_g per group, else None), x
   (sigman_model parameters), model, log_likelihood (Wilson, selected, no
-  restraints), n_outliers, n_zero_sigma, n_teps_floored, n_would_change,
+  restraints), n_outliers, n_zero_sigma, n_zero_intensity, n_teps_floored, n_would_change,
   n_outlier_rounds, resolution_dependent (bool) with its gain and
   threshold, delta_b_aniso (A^2, of beta), converged, warnings. """
   if params is None: params = normalisation_params.extract()
   if log is None: log = null_out()
   if not tncs_a_groups: tncs_a_groups = None
   data = _fit_data(i_obs, tncs_a_groups, params)
-  n_zero_sigma = int((~data.valid).sum())
+  n_zero_intensity = int(data.zero_i.sum())
+  n_zero_sigma = int((~data.valid).sum()) - n_zero_intensity
   mode = params.resolution_dependent_anisotropy
   r = _fit_model(i_obs, data, params, resolution_dependent=(mode == "on"),
     selection=selection)
@@ -945,6 +957,7 @@ def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None):
     log_likelihood=r.log_likelihood,
     n_outliers=n_outliers,
     n_zero_sigma=n_zero_sigma,
+    n_zero_intensity=n_zero_intensity,
     n_teps_floored=n_floored,
     n_would_change=r.n_would_change,
     n_outlier_rounds=r.n_outlier_rounds,
@@ -956,7 +969,8 @@ def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None):
     converged=r.converged,
     warnings=warnings)
   print("LLGI data normalisation: %d reflections used, %d outliers, %d "
-    "with SIGI <= 0" % (sel.sum(), n_outliers, n_zero_sigma), file=log)
+    "with SIGI <= 0, %d with I = 0" % (sel.sum(), n_outliers,
+    n_zero_sigma, n_zero_intensity), file=log)
   print("  Wilson log-likelihood %.2f, %d Newton iterations, %d outlier "
     "round(s), anisotropy delta B %.2f A^2%s" % (r.log_likelihood,
     r.n_iterations, r.n_outlier_rounds, result.delta_b_aniso,
