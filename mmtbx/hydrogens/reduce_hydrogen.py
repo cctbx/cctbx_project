@@ -885,9 +885,9 @@ NH_METAL_ELEMENTS = METAL_ELEMENTS - frozenset(
 # bind amine N, and their windows reach N-H...O hydrogen-bond distances (A5)
 AMINE_METAL_ELEMENTS = NH_METAL_ELEMENTS | frozenset(('BE', 'MG'))
 
-# phenols (also enols, carboxylic acids) bound to these lose their H: aqua
-# pK11 of Fe(III) 2.2, Ga 2.6, Al 5.0, and Tyr on Fe is tyrosinate in the
-# proteins known (Fe taken as Fe(III)); on Zn, Cu or Mn(II) a phenol keeps it
+# phenols (also enols) bound to these lose their H: aqua pK11 of Fe(III)
+# 2.2, Ga 2.6, Al 5.0, and Tyr on Fe is tyrosinate in the proteins known (Fe
+# taken as Fe(III)); on Zn, Cu or Mn(II) a phenol keeps it
 PHENOLATE_METAL_ELEMENTS = frozenset(('FE', 'GA', 'AL'))
 
 # images of one metal atom closer than this are one metal site
@@ -903,6 +903,9 @@ THIOL_H_SUPPLIED_NOTE = ('kept as supplied; thiols bound to metals are usually '
 
 PHENOL_H_SUPPLIED_NOTE = ('kept as supplied; phenols bound to Fe(III), Ga or '
   'Al are usually deprotonated')
+
+ACID_H_SUPPLIED_NOTE = ('kept as supplied; acids bound to metals are '
+  'deprotonated')
 
 METAL_NH_SUPPLIED_NOTE = ('kept as supplied; backbone amide N, '
   'thymine/uracil N3 and sulfonamide N bound to metals are usually '
@@ -1259,13 +1262,70 @@ class thiol_metal_sites(metal_h_sites):
         if len(nb) == 1: candidates.append((i_s, i_h, True))
     return candidates
 
+def _one_heavy_neighbour(atoms, heavy, i_x, h):
+  '''
+  The non-metal heavy neighbour of atom i_x in the conformer of H h if there
+  is exactly one (counted by residue and atom name), else None.
+  '''
+  nb = [j for j in heavy.get(i_x, []) if _compatible(atoms[j], h)]
+  names = set((atoms[j].parent().parent().memory_id(), atoms[j].name)
+              for j in nb)
+  if len(names) != 1: return None
+  return nb[0]
+
+def _oxoacid_centre(atoms, elements, heavy, h_on, i_x, i_o, h):
+  '''
+  Whether atom i_x, the heavy neighbour of O i_o that carries H h, is the
+  centre of an acid group: a C, P, S or As bonded to another O that has no
+  other heavy neighbour and no H, in the conformer of h. A C must have three
+  neighbours (H counted), not three O: carbonic acid and bicarbonate are
+  left out.
+  '''
+  if elements[i_x] not in ('C', 'P', 'S', 'AS'): return False
+  key = lambda j: (atoms[j].parent().parent().memory_id(), atoms[j].name)
+  nb = {}
+  for j in heavy.get(i_x, []) + h_on.get(i_x, []):
+    if _compatible(atoms[j], h): nb[key(j)] = j
+  if elements[i_x] == 'C':
+    if len(nb) != 3 or all(elements[j] == 'O' for j in nb.values()):
+      return False
+  for j in nb.values():
+    if elements[j] != 'O' or key(j) == key(i_o): continue
+    others = set(key(l) for l in heavy.get(j, []) if _compatible(atoms[l], h))
+    hs = [l for l in h_on.get(j, []) if _compatible(atoms[l], h)]
+    if len(others) == 1 and not hs:
+      return True
+  return False
+
+class acid_metal_sites(metal_h_sites):
+  '''
+  Acids bound to metals: an O carrying H whose one non-metal heavy
+  neighbour is an acid centre (_oxoacid_centre(): carboxylic, phosphoric,
+  phosphonic, sulfonic or arsenic acid) in the bond restraints of the H
+  site's conformer. Covered: deprotonated. Metals: METAL_ELEMENTS.
+  '''
+  covered = 'deprotonated'
+  state = 'acid'
+
+  def _candidates(self, atoms, elements, heavy, h_on):
+    candidates = []
+    for i_o, hs in h_on.items():
+      if elements[i_o] != 'O': continue
+      for i_h in hs:
+        i_x = _one_heavy_neighbour(atoms, heavy, i_o, atoms[i_h])
+        if i_x is not None and _oxoacid_centre(atoms, elements, heavy, h_on,
+            i_x, i_o, atoms[i_h]):
+          candidates.append((i_o, i_h, True))
+    return candidates
+
 class phenol_metal_sites(metal_h_sites):
   '''
   Phenols bound to Fe, Ga or Al. Phenol: an O with exactly one non-metal
   heavy neighbour (counted by residue and atom name), a C in a double,
-  triple, aromatic or delocalized bond (_unsaturated_atoms(); also enols and
-  carboxylic acids), in the bond restraints of the H site's conformer,
-  carrying that H. Covered: phenolate. Metals: PHENOLATE_METAL_ELEMENTS.
+  triple, aromatic or delocalized bond (_unsaturated_atoms(); also enols;
+  acids are left to acid_metal_sites), in the bond restraints of the H
+  site's conformer, carrying that H. Covered: phenolate. Metals:
+  PHENOLATE_METAL_ELEMENTS.
   '''
   metals = PHENOLATE_METAL_ELEMENTS
   covered = 'phenolate'
@@ -1281,12 +1341,11 @@ class phenol_metal_sites(metal_h_sites):
     for i_o, hs in h_on.items():
       if elements[i_o] != 'O': continue
       for i_h in hs:
-        nb = [j for j in heavy.get(i_o, [])
-              if _compatible(atoms[j], atoms[i_h])]
-        names = set((atoms[j].parent().parent().memory_id(), atoms[j].name)
-                    for j in nb)
-        if len(names) != 1 or elements[nb[0]] != 'C': continue
-        c = atoms[nb[0]]
+        i_c = _one_heavy_neighbour(atoms, heavy, i_o, atoms[i_h])
+        if i_c is None or elements[i_c] != 'C': continue
+        if _oxoacid_centre(atoms, elements, heavy, h_on, i_c, i_o,
+            atoms[i_h]): continue
+        c = atoms[i_c]
         if c.name.strip() in _unsaturated_atoms(c.parent().resname,
             self._mon_lib_srv, self._unsaturated):
           candidates.append((i_o, i_h, True))
@@ -1754,6 +1813,17 @@ def metal_thiol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
       'thiolate',
     unresolved = 'Thiol H placed at metal sites with unresolved protonation',
     supplied = 'Supplied thiol H at metal sites: %s' % THIOL_H_SUPPLIED_NOTE),
+    not_placed, unresolved, supplied, hint)
+
+def metal_acid_text(not_placed=(), unresolved=(), supplied=(), hint=None):
+  '''
+  Report of acids bound to metals (acid_metal_sites), as metal_thiol_text().
+  '''
+  return _metal_h_text(group_args(
+    not_placed = 'Acid H not placed: the O is bound to a metal, taken as '
+      'deprotonated',
+    unresolved = 'Acid H placed at metal sites with unresolved protonation',
+    supplied = 'Supplied acid H at metal sites: %s' % ACID_H_SUPPLIED_NOTE),
     not_placed, unresolved, supplied, hint)
 
 def metal_phenol_text(not_placed=(), unresolved=(), supplied=(), hint=None):
@@ -2321,6 +2391,9 @@ class place_hydrogens():
     self.site_labels_thiolate   = list()
     self.thiol_h_unresolved     = list()
     self.thiol_h_supplied_kept  = list()
+    self.site_labels_acid       = list()
+    self.acid_h_unresolved      = list()
+    self.acid_h_supplied_kept   = list()
     self.site_labels_phenolate  = list()
     self.phenol_h_unresolved    = list()
     self.phenol_h_supplied_kept = list()
@@ -2490,6 +2563,7 @@ class place_hydrogens():
     # re-interpretation.
     self.remove_auto_restraint_objects()
     self.exclude_H_on_metal_thiolates()
+    self.exclude_H_on_metal_acids()
     self.exclude_H_on_metal_phenolates()
     self.exclude_H_on_metal_bound_N()
     if self.metal_bound_amines_as_nh2:
@@ -3054,11 +3128,20 @@ class place_hydrogens():
       self.site_labels_thiolate, self.thiol_h_unresolved,
       self.thiol_h_supplied_kept)
 
+  def exclude_H_on_metal_acids(self):
+    '''
+    An acid (acid_metal_sites(): carboxylic, phosphoric, phosphonic,
+    sulfonic or arsenic acid) bound to a metal is taken as deprotonated: as
+    exclude_H_on_metal_thiolates().
+    '''
+    self._exclude_H_at_metal_sites(acid_metal_sites, METAL_ELEMENTS,
+      self.site_labels_acid, self.acid_h_unresolved,
+      self.acid_h_supplied_kept)
+
   def exclude_H_on_metal_phenolates(self):
     '''
-    A phenol (phenol_metal_sites(), also an enol or a carboxylic acid) bound
-    to Fe, Ga or Al is taken as a phenolate: as
-    exclude_H_on_metal_thiolates().
+    A phenol (phenol_metal_sites(), also an enol) bound to Fe, Ga or Al is
+    taken as a phenolate: as exclude_H_on_metal_thiolates().
     '''
     self._exclude_H_at_metal_sites(phenol_metal_sites,
       PHENOLATE_METAL_ELEMENTS, self.site_labels_phenolate,
@@ -4370,6 +4453,15 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
+  def metal_acid_text(self):
+    '''
+    The report of acids bound to metals, as metal_thiol_text().
+    '''
+    return metal_acid_text(self.site_labels_acid, self.acid_h_unresolved,
+      self.acid_h_supplied_kept, self.supplied_h_hint)
+
+# ------------------------------------------------------------------------------
+
   def metal_phenol_text(self):
     '''
     The report of phenols bound to Fe, Ga or Al, as metal_thiol_text().
@@ -4452,8 +4544,9 @@ proline-type or N-substituted residue)'''
       print('', file=log)
       print(self.unknown_atoms_text(verbose), file=log)
     #
-    for text in (self.metal_thiol_text(), self.metal_phenol_text(),
-                 self.metal_nh_text(), self.metal_amine_text()):
+    for text in (self.metal_thiol_text(), self.metal_acid_text(),
+                 self.metal_phenol_text(), self.metal_nh_text(),
+                 self.metal_amine_text()):
       if text:
         print('', file=log)
         print(text, file=log)

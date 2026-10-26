@@ -1,9 +1,9 @@
 """reduce2 placement at phenols bound to Fe, Ga or Al: an O-H whose O has one
 heavy neighbour, a C in a double, triple, aromatic or delocalized bond
-(phenol, enol, carboxylic acid), bound to one of these metals is taken as
-deprotonated (Fe as Fe(III)), and reduce2 does not build its H. At other
-metals the H stays (a phenol bound to Zn has a pKa of about 8.5). Supplied H
-are kept with a note.
+(phenol, enol; acids: tst_reduce2_metal_acid.py), bound to one of these
+metals is taken as deprotonated (Fe as Fe(III)), and reduce2 does not build
+its H. At other metals the H stays (a phenol bound to Zn has a pKa of about
+8.5). Supplied H are kept with a note.
 Model: 8RK1 (FutA with Fe(III), neutron), Tyr 13, 143, 199 and 200 on
 Fe 401 (1.93-2.19 A); none of the four OH carries D in the neutron model.
 """
