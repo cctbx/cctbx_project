@@ -34,11 +34,11 @@ def skip_browser_test():
 
 def skip_QtGUI_test():
   # The Qt GUI tests open the HKLviewer window as WebGL in QWebEngineView needs a display.
-  # On macOS only run them if requested with HKLVIEWER_RUN_GUI_TESTS=1 to avoid windows popping
-  # up when running regression tests on a laptop. On linux only run them on a local machine
-  # with a connected monitor
-  if sys.platform == "darwin" and os.environ.get("HKLVIEWER_RUN_GUI_TESTS", "") != "1":
-    print("Skipping test. Set HKLVIEWER_RUN_GUI_TESTS=1 to run it on macOS")
+  # Set HKLVIEWER_SKIP_GUI_TESTS=1 to skip them, e.g. to avoid windows popping up when running
+  # regression tests on a laptop. On linux only run them on a local machine with a connected
+  # monitor
+  if os.environ.get("HKLVIEWER_SKIP_GUI_TESTS", "") == "1":
+    print("Skipping test as HKLVIEWER_SKIP_GUI_TESTS=1")
     return True
   if 'linux' in sys.platform and os.environ.get("DISPLAY", None) != "0:0":
     return True
