@@ -42,6 +42,13 @@ instead. The LLGI functors take u and t per reflection (cctbx/xray/targets/llgi.
 by t (renormalise). Parameter fits use the u-frame (t = u), in which the
 frame is valid for any sigmaA and which, with the exact likelihood, gives
 the same result as any other frame.
+
+With the cctbx normalisation (llgi_data.normalisation_source = "cctbx",
+mmtbx.refinement.llgi_normalisation), RESN and TEPS_data = 1 +
+Gamma_data(s) A_cons(h) are refitted to the intensities alone at each
+stage (the data-only stage), and the frame t is TEPS_data or t_model
+(params.frame), with u clamped where t <= (1 - sigmaA^2) u (setup,
+fit_and_renormalise).
 """
 import math
 import itertools
@@ -271,9 +278,12 @@ def pair_modulation(miller_set, groups, xray_structure, basis="model"):
     f_total=result.f_total)
 
 def pair_modulations(miller_set, groups, xray_structure,
-      bases=("model", "consensus")):
+      bases=("model", "consensus"), per_group=False):
   """ pair_modulation for several bases at once (the weights are computed
-  once): group_args(a ({basis: flex.double}), fractions, f_total) """
+  once): group_args(a ({basis: flex.double}), fractions, f_total,
+  a_groups). With per_group, a_groups is {basis: list of flex.double}, the
+  pair modulation of each group (in groups.groups' order; a is their sum),
+  otherwise None. """
   assert all(basis in ("model", "consensus") for basis in bases)
   assert xray_structure.scatterers().size() == groups.n_atoms, (
     "tNCS groups were found for a model with %d atoms; this structure has %d"
@@ -287,6 +297,7 @@ def pair_modulations(miller_set, groups, xray_structure,
     return _weight_sums(dss, w_sq.select(sel), 2 * b_iso.select(sel))
   w_total_s = _weight_sums(dss, w_sq, 2 * b_iso)
   a = dict((basis, flex.double(dss.size(), 0)) for basis in bases)
+  a_groups = dict((basis, []) for basis in bases) if per_group else None
   f_in_groups = flex.double(dss.size(), 0)
   fractions = []
   for g in groups.groups:
@@ -303,15 +314,21 @@ def pair_modulations(miller_set, groups, xray_structure,
         placed[basis] = [apply_op(op, sites_frac.select(sel))
                          for op, sel in zip(g.ops, g.i_seqs)]
     z_sq = w_sq.select(g.i_seqs[0])
+    if(per_group):
+      for basis in bases:
+        a_groups[basis].append(flex.double(dss.size(), 0))
     for m, n in itertools.combinations(range(len(g.i_seqs)), 2):
       b_sum = b_iso.select(g.i_seqs[m]) + b_iso.select(g.i_seqs[n])
       weight = 2 * flex.sqrt(f_s[m] * f_s[n]) * _weight_sums(dss, z_sq, b_sum) \
         / flex.sqrt(w_common[m] * w_common[n])   # including the coherence
       for basis in bases:
-        a[basis] += weight * pair_term(miller_set, placed[basis][m],
+        term = weight * pair_term(miller_set, placed[basis][m],
           placed[basis][n], z_sq, b_sum)
+        a[basis] += term
+        if(per_group): a_groups[basis][-1] += term
   return group_args(a=a, fractions=fractions,
-    f_total=max(flex.max(f_in_groups), sum(sum(f) for f in fractions)))
+    f_total=max(flex.max(f_in_groups), sum(sum(f) for f in fractions)),
+    a_groups=a_groups)
 
 # ---------------------------------------------------------------------------
 # Data in a tNCS frame, and the fits
@@ -511,6 +528,22 @@ def expected_intensity_modulation(sigmaa, a, u):
   sigmaA sqrt(M/t). """
   return sigmaa * sigmaa * (1 + a) + (1 - sigmaa * sigmaa) * u
 
+U_CLAMP_WARNING = ("tNCS: u clamped for %d reflections where TEPS_data <= "
+  "(1 - sigmaA^2) u")
+
+def clamp_u_to_frame(sigmaa, u, t):
+  """ u lowered to (1 - U_MIN) t/(1 - sigmaA^2) where t <= (1 - sigmaA^2) u,
+  so that the frame of the LLGI functors (tncs_frame: a'^2 = 1 - (1 -
+  sigmaA^2) u/t) is valid, a'^2 >= U_MIN there; only where 0 < sigmaA < 1
+  (elsewhere the frame is invalid whatever u is). Returns (u, a new
+  array; the number of reflections clamped). """
+  sa2 = flex.pow2(sigmaa)
+  clamp = (sigmaa > 0) & (sigmaa < 1) & (t <= (1 - sa2) * u)
+  u = u.deep_copy()
+  isel = clamp.iselection()
+  u.set_selected(isel, (1 - U_MIN) * t.select(isel) / (1 - sa2.select(isel)))
+  return u, isel.size()
+
 # ---------------------------------------------------------------------------
 # Functor calls with or without tNCS
 
@@ -584,6 +617,17 @@ llgi_tncs_params = iotbx.phil.parse("""\
     .help = "free: the R-free set, as for sigmaA; all: every reflection " \\
             "(more precise, but refinement fits the working set, which can " \\
             "inflate the coherence)."
+  frame = *model data
+    .type = choice
+    .short_caption = Expected-intensity modulation t of the tNCS frame
+    .help = "The modulation t by which the data are normalised (the frame " \\
+            "of the LLGI target), with the cctbx normalisation only " \\
+            "(llgi_data.normalisation = cctbx). model: t = sigmaA^2 M + " \\
+            "(1 - sigmaA^2) u from the model's pair terms and the fitted " \\
+            "coherence; data: t = TEPS_data from the data-only " \\
+            "normalisation fit, with u lowered where t <= (1 - sigmaA^2) u " \\
+            "(reported). The exact likelihood does not depend on t; t " \\
+            "affects the Rice/hybrid approximation and Feff."
 """)
 
 def renormalise_e(e_obs_sq_base, sig_e_obs_sq_base, resn, t, centric_flags):
@@ -615,15 +659,54 @@ def replace_llgi_data(llgi_data, **changes):
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
   return llgi_hybrid.replace_llgi_data(llgi_data, **changes)
 
+def is_cctbx_source(llgi_data):
+  """ llgi_data is from the cctbx normalisation (phenix.refinement.
+  llgi_data.get_llgi_data_cctbx: .normalisation_source = "cctbx", with the
+  intensities .i_obs_base) """
+  return (getattr(llgi_data, "normalisation_source", None) == "cctbx" and
+    getattr(llgi_data, "i_obs_base", None) is not None)
+
+def _normalisation_fit(i_obs_base, a_groups, normalisation_params,
+      selection=None, log=None):
+  """ the data-only stage: mmtbx.refinement.llgi_normalisation.fit of the
+  intensities with the consensus pair terms of the tNCS groups """
+  import mmtbx.refinement.llgi_normalisation as llgi_normalisation
+  return llgi_normalisation.fit(i_obs=i_obs_base, tncs_a_groups=a_groups,
+    params=normalisation_params, log=log, selection=selection)
+
+def _resn_scale(resn, sig_i_obs, sig_e_obs_sq):
+  """ k in resn = k RESN_fit: llgi_data's RESN (which mmtbx.f_model.manager.
+  apply_scale_k1_to_f_obs puts on the model's scale) over the RESN of the
+  normalisation that gave sig_e_obs_sq = SIGI/RESN_fit^2, the median of the
+  ratios """
+  import numpy
+  ratio = resn / flex.sqrt(sig_i_obs / sig_e_obs_sq)
+  return float(numpy.median(ratio.as_numpy_array()))
+
+def _base_from_fit(i_obs_base, fit, resn_scale):
+  """ (RESN on llgi_data's scale, E_obs^2 and sigma(E_obs^2) without tNCS,
+  I/RESN^2 with the fit's RESN) """
+  resn = fit.resn.data()
+  resn_sq = flex.pow2(resn)
+  return (resn * resn_scale, i_obs_base.data() / resn_sq,
+    i_obs_base.sigmas() / resn_sq)
+
 def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
-      log=None):
+      log=None, normalisation_params=None):
   """ The tNCS treatment for llgi_data (on f_obs's index set), if the model
   has groups of chains related by tNCS: the observations are kept on the E
   scale without tNCS (nacelle's TEPS is not used), and renormalised by
   t0 = 1 + rho A, rho fitted to the data alone, until sigmaA and the
-  coherence (or tau) are first fitted (fit_and_renormalise). Returns the
-  new llgi_data (Feff in it is the new f_obs), or None if there are no tNCS
-  groups or the treatment is switched off. """
+  coherence (or tau) are first fitted (fit_and_renormalise). With the
+  cctbx normalisation (is_cctbx_source), the data-only stage instead:
+  llgi_normalisation.fit of llgi_data.i_obs_base with the consensus pair
+  terms of the groups (normalisation_params: extracted
+  llgi_normalisation.normalisation_params, or None for defaults; kept for
+  fit_and_renormalise), RESN from it, the observations on the E scale
+  I/RESN^2, and the frame started at u = t = TEPS_data; the fit's
+  selection is kept for later stages. Returns the new llgi_data (Feff in
+  it is the new f_obs), or None if there are no tNCS groups or the
+  treatment is switched off. """
   if(params is None):
     params = llgi_tncs_params.extract()
   if(params.enabled is False):
@@ -638,6 +721,9 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
   if(log is not None): groups.show(log)
   if(len(groups) == 0):
     return None
+  if(is_cctbx_source(llgi_data)):
+    return _setup_cctbx(llgi_data, f_obs, groups, xray_structure, params,
+      normalisation_params, log)
   centric = f_obs.centric_flags().data()
   dss = f_obs.d_star_sq().data()
   teps = llgi_data.teps.data()
@@ -658,7 +744,45 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
     sig_e_obs_sq_base=f_obs.array(data=sig_base),
     tncs_state=group_args(groups=groups, tau=rho,
       coherence=coherence_curve(min(max(rho.p0, 0.), 0.99), 0.2),
-      f_total=mod.f_total, params=params))
+      f_total=mod.f_total, params=params, teps_data=None, t_model=None,
+      normalisation=None, normalisation_params=None))
+
+def _setup_cctbx(llgi_data, f_obs, groups, xray_structure, params,
+      normalisation_params, log):
+  """ setup with the cctbx normalisation """
+  if(normalisation_params is None):
+    import mmtbx.refinement.llgi_normalisation as llgi_normalisation
+    normalisation_params = llgi_normalisation.normalisation_params.extract()
+  i_obs = llgi_data.i_obs_base
+  assert i_obs.indices().all_eq(f_obs.indices())
+  centric = f_obs.centric_flags().data()
+  dss = f_obs.d_star_sq().data()
+  pm = pair_modulations(f_obs, groups, xray_structure, per_group=True)
+  if(log is not None):
+    print("tNCS: cctbx normalisation with the consensus pair terms of the "
+      "tNCS groups (data-only stage)", file=log)
+  fit = _normalisation_fit(i_obs, pm.a_groups["consensus"],
+    normalisation_params, log=log)
+  scale = _resn_scale(llgi_data.resn.data(), i_obs.sigmas(),
+    llgi_data.sig_e_obs_sq.data() * llgi_data.teps.data())
+  resn, e_base, sig_base = _base_from_fit(i_obs, fit, scale)
+  teps_data = fit.teps.data()
+  d = renormalise_e(e_base, sig_base, resn, teps_data, centric)
+  gamma = fit.coherence.gamma
+  if(log is not None):
+    print("tNCS: %.3f of the model's scattering in tNCS groups; data-only "
+      "%s; frame %s" % (pm.f_total, fit.coherence.summary(), params.frame),
+      file=log)
+  return _framed_llgi_data(llgi_data, f_obs, d, u=teps_data.deep_copy(),
+    t=teps_data.deep_copy(), resn=f_obs.array(data=resn),
+    e_obs_sq_base=f_obs.array(data=e_base),
+    sig_e_obs_sq_base=f_obs.array(data=sig_base),
+    normalisation_selection=f_obs.array(data=fit.selection),
+    tncs_state=group_args(groups=groups,
+      tau=linear_in_d_star_sq(flex.max(dss), min(max(gamma, 0.), 0.99)),
+      coherence=fit.coherence, f_total=pm.f_total, params=params,
+      teps_data=teps_data, t_model=None, normalisation=fit,
+      normalisation_params=normalisation_params))
 
 def _rice_kappa(llgi_data):
   return llgi_data.hybrid_params.rice_kappa \
@@ -674,9 +798,10 @@ def _model_anisotropy(e_params, llgi_data):
     getattr(e_params, "model_anisotropy", "off"), llgi_data)
 
 def _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params, rice_kappa,
-      warnings, model_anisotropy="off"):
+      warnings, model_anisotropy="off", resn=None):
   """ ScatFrac (F scale, working set) in the u-frame, for the data d
-  (renormalise_e by u); model_anisotropy as llgi_e_sigmaa's """
+  (renormalise_e by u); model_anisotropy as llgi_e_sigmaa's; resn: RESN
+  of d (None: llgi_data's) """
   import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
   import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
   if(scatfrac_params is None):
@@ -686,10 +811,12 @@ def _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params, rice_kappa,
     if(w not in warnings): warnings.append(w)
   f_obs = fmodel.f_obs()
   centric = f_obs.centric_flags().data()
+  if(resn is None):
+    resn = fmodel.llgi_data().resn.data()
   result = llgi_scatfrac.estimate_llgi_scatfrac(
     f_eff=d.feff, working_selection=~fmodel.r_free_flags().data(),
     f_calc=fmodel.f_model().data(), dobs=d.dobs, sigmaa=sigmaa,
-    teps=flex.double(f_obs.size(), 1.), resn=fmodel.llgi_data().resn.data(),
+    teps=flex.double(f_obs.size(), 1.), resn=resn,
     centric_flags=centric, d_star_sq=f_obs.d_star_sq().data(),
     scale_factor=fmodel.scale_ml_wrapper(), params=scatfrac_params,
     hybrid=_hybrid(d, centric, rice_kappa), tncs_u=u, miller_set=f_obs,
@@ -769,7 +896,17 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
   estimate_sigmaa_e_then_scatfrac_f's, plus .tau or .coherence and
   .tncs_summary. pdb_hierarchy: the model, matching fmodel's
   xray_structure, in which the tNCS groups are found again if the number of
-  atoms has changed. """
+  atoms has changed.
+
+  With the cctbx normalisation (setup), first the data-only stage:
+  llgi_normalisation.fit with the current consensus pair terms, on the
+  reflections selected at setup (n_would_change is reported), and RESN
+  and the observations on the E scale (I/RESN^2) from it; then the fits as
+  above; then t = TEPS_data (params.frame = data) or t_model = sigmaA^2
+  (1 + A) + (1 - sigmaA^2) u (model), u clamped where t <= (1 - sigmaA^2) u
+  (clamp_u_to_frame, reported), and the data renormalised by t.
+  tncs_state then has .teps_data, .t_model and .normalisation (the fit),
+  and the result .n_would_change and .n_u_clamped (None otherwise). """
   import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
   llgi_data = fmodel.llgi_data()
   state = llgi_data.tncs_state
@@ -786,9 +923,22 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
   sig_base = llgi_data.sig_e_obs_sq_base.data()
   rice_kappa = _rice_kappa(llgi_data)
   physical = params.coherence == "physical"
+  cctbx_source = getattr(state, "normalisation", None) is not None
   pm = pair_modulations(f_obs, groups, fmodel.xray_structure,
-    ("model", "consensus") if physical else ("model",))
+    ("model", "consensus") if (physical or cctbx_source) else ("model",),
+    per_group=cctbx_source)
   a, a_cons = pm.a["model"], pm.a.get("consensus")
+  normalisation = None
+  if(cctbx_source):
+    # the data-only stage at the current geometry, on the reflections
+    # selected at setup
+    i_obs = llgi_data.i_obs_base
+    normalisation = _normalisation_fit(i_obs, pm.a_groups["consensus"],
+      state.normalisation_params,
+      selection=llgi_data.normalisation_selection.data())
+    resn, e_base, sig_base = _base_from_fit(i_obs, normalisation,
+      _resn_scale(resn, i_obs.sigmas(), sig_base))
+    warnings.extend(normalisation.warnings)
   tau, coherence = state.tau, state.coherence
   f_total = state.f_total if groups is state.groups else pm.f_total
   fit_selection = flex.bool(n, True)
@@ -831,17 +981,32 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
   d = renormalise_e(e_base, sig_base, resn, u, centric)
   scatfrac_result = _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params,
     rice_kappa, warnings, model_anisotropy=_model_anisotropy(e_params,
-      fmodel.llgi_data()))
+      fmodel.llgi_data()), resn=resn)
   scatfrac = scatfrac_result.scatfrac
-  t = expected_intensity_modulation(sigmaa, a, u)
+  t_model = expected_intensity_modulation(sigmaa, a, u)
+  t = t_model
+  teps_data = n_clamped = None
+  changes = {}
+  if(cctbx_source):
+    teps_data = normalisation.teps.data()
+    if(params.frame == "data"):
+      t = teps_data
+    u, n_clamped = clamp_u_to_frame(sigmaa, u, t)
+    if(n_clamped > 0):
+      warnings.append(U_CLAMP_WARNING % n_clamped)
+    changes = dict(resn=f_obs.array(data=resn),
+      e_obs_sq_base=f_obs.array(data=e_base),
+      sig_e_obs_sq_base=f_obs.array(data=sig_base))
   d = renormalise_e(e_base, sig_base, resn, t, centric)
   new = _framed_llgi_data(llgi_data, f_obs, d, u=u, t=t,
     sigmaa=f_obs.array(data=sigmaa),
     sigmaa_curve=sigmaa_result.evaluate_at,
     scatfrac=f_obs.array(data=scatfrac),
     tncs_state=group_args(groups=groups, tau=tau,
-      coherence=coherence, f_total=f_total, params=params),
-    _sigmaa_f_model=fmodel.f_model().data().deep_copy())
+      coherence=coherence, f_total=f_total, params=params,
+      teps_data=teps_data, t_model=t_model, normalisation=normalisation,
+      normalisation_params=getattr(state, "normalisation_params", None)),
+    _sigmaa_f_model=fmodel.f_model().data().deep_copy(), **changes)
   fmodel.set_llgi_data(new)
   fmodel.update(f_obs=f_obs.customized_copy(data=d.feff))
   return group_args(
@@ -851,6 +1016,13 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
     b_scatfrac=scatfrac_result.b_scatfrac,
     warnings=warnings, tau=None if physical else tau,
     coherence=coherence if physical else None,
+    n_would_change=None if normalisation is None else
+      normalisation.n_would_change,
+    n_u_clamped=n_clamped,
     tncs_summary=(coherence.summary() if physical else "tau = %.3f%s" % (
       tau.p0, "" if tau.p1 == 0 else " + %.3f d*^2/d*^2_max" % tau.p1)) +
+      ("" if normalisation is None else "; data-only %s, %d reflection(s) "
+        "would change outlier status (selection kept); frame %s" % (
+        normalisation.coherence.summary(), normalisation.n_would_change,
+        params.frame)) +
       ("" if regrouped is None else "; " + regrouped))

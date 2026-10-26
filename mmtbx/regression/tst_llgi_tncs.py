@@ -261,13 +261,16 @@ def exercise_fits(groups, xrs):
   assert n_low == 0 and flex.min(u) > 0
 
 def synthetic_fmodel(h, xrs, sigma_common=0.6, sigma_indep=0.15, d_min=3.5,
-      seed=11):
+      seed=11, source="nacelle"):
   """ fmodel (target llgi) for the model xrs, with intensities from a
   "true" structure whose coordinate errors are shared by chains A and B
   (sigma_common; B's error is A's moved by the inverse of the symmetry
   operator that relates the copies, as in build_model) plus independent
   errors (sigma_indep); nacelle-like LLGI data with TEPS = 1 (RESN from
-  binned mean intensities, Dobs/Feff by moment matching). """
+  binned mean intensities, Dobs/Feff by moment matching). source="cctbx":
+  as phenix.refinement.llgi_data.get_llgi_data_cctbx without tNCS groups
+  (RESN from llgi_normalisation.fit, TEPS = 1), with .i_obs_base and
+  .normalisation_source = "cctbx". """
   import mmtbx.f_model
   rnd = random.Random(seed)
   uc = CS.unit_cell()
@@ -306,7 +309,15 @@ def synthetic_fmodel(h, xrs, sigma_common=0.6, sigma_indep=0.15, d_min=3.5,
     sigma_n.set_selected(sel, flex.mean((i_true / eps).select(sel)))
   sig = 0.05 * sigma_n * eps + 0.02 * i_true
   i_obs = i_true + sig * flex.double([rnd.gauss(0, 1) for i in range(f_obs.size())])
-  resn = flex.sqrt(eps * sigma_n)
+  extra = {}
+  if source == "cctbx":
+    import mmtbx.refinement.llgi_normalisation as llgi_normalisation
+    i_obs_base = f_obs.array(data=i_obs, sigmas=sig
+      ).set_observation_type_xray_intensity()
+    resn = llgi_normalisation.fit(i_obs_base).resn.data()
+    extra = dict(i_obs_base=i_obs_base, normalisation_source="cctbx")
+  else:
+    resn = flex.sqrt(eps * sigma_n)
   centric = f_obs.centric_flags().data()
   n = f_obs.size()
   d = llgi_tncs.renormalise(i_obs, sig, resn, flex.double(n, 1.), centric)
@@ -316,7 +327,8 @@ def synthetic_fmodel(h, xrs, sigma_common=0.6, sigma_indep=0.15, d_min=3.5,
     feff=f_obs.array(data=d.feff), teps=f_obs.array(data=flex.double(n, 1.)),
     resn=f_obs.array(data=resn), e_obs_sq=f_obs.array(data=d.e_obs_sq),
     sig_e_obs_sq=f_obs.array(data=d.sig_e_obs_sq),
-    force_exact=f_obs.array(data=d.force_exact), hybrid_params=params)
+    force_exact=f_obs.array(data=d.force_exact), hybrid_params=params,
+    **extra)
   fmodel.set_llgi_data(llgi_data)
   fmodel.update(f_obs=llgi_data.feff)
   fmodel.set_target_name("llgi")
@@ -458,6 +470,258 @@ def exercise_atoms_added(fmodel, h):
   assert "groups found again" not in result.tncs_summary
   assert fw.llgi_data().tncs_state.groups is groups
 
+# _nacelle_run with the code before the cctbx normalisation source was
+# added (exercise_nacelle_source_unchanged; the new code reproduces them
+# exactly on the machine that made them)
+NACELLE_REFERENCE = (
+  ("rho", 0.787717865840551),
+  ("t0_sum", 4893.009102968329),
+  ("feff0_sum", 1320034.8770827255),
+  ("gamma", 0.9234579433313356),
+  ("v", 0.06352455863934453),
+  ("u_sum", 4892.299866536325),
+  ("t_sum", 4891.697380813912),
+  ("sigmaa_mean", 0.8913667084591672),
+  ("feff_sum", 1320005.7731420046))
+
+def _nacelle_run(h, xrs, frame):
+  # the R-free flags use the global random state
+  flex.set_random_seed(0)
+  random.seed(0)
+  fmodel = synthetic_fmodel(h, xrs)
+  p = llgi_tncs.llgi_tncs_params.extract()
+  p.frame = frame
+  new = llgi_tncs.setup(fmodel.llgi_data(), fmodel.f_obs(), h, xrs, params=p)
+  fmodel.set_llgi_data(new)
+  fmodel.update(f_obs=new.feff)
+  fmodel.update_all_scales()
+  values = [("rho", new.tncs_state.tau.p0),
+    ("t0_sum", flex.sum(new.tncs_t.data())),
+    ("feff0_sum", flex.sum(new.feff.data()))]
+  r = fmodel.update_llgi_sigmaa_scatfrac()
+  ld = fmodel.llgi_data()
+  values += [("gamma", r.coherence.gamma), ("v", r.coherence.v),
+    ("u_sum", flex.sum(ld.tncs_u.data())),
+    ("t_sum", flex.sum(ld.tncs_t.data())),
+    ("sigmaa_mean", flex.mean(ld.sigmaa.data())),
+    ("feff_sum", flex.sum(fmodel.f_obs().data()))]
+  return fmodel, r, values
+
+def exercise_nacelle_source_unchanged(h, xrs):
+  """ the nacelle source (llgi_data without normalisation_source) gives
+  the results of the code before the cctbx source was added, and the
+  frame option does not apply to it """
+  fm, rm, values = _nacelle_run(h, xrs, "model")
+  for (name, v), (ref_name, ref) in zip(values, NACELLE_REFERENCE):
+    assert name == ref_name
+    # tolerance for other platforms and library versions (the fits stop
+    # at xatol = 1e-4)
+    assert abs(v - ref) <= 1e-5 * abs(ref), (name, v, ref)
+  s = fm.llgi_data().tncs_state
+  assert s.teps_data is None and s.normalisation is None
+  assert s.t_model.all_eq(fm.llgi_data().tncs_t.data())
+  assert not [w for w in rm.warnings if "u clamped" in w]
+  assert "would change" not in rm.tncs_summary
+  fd, rd, values_d = _nacelle_run(h, xrs, "data")
+  assert values_d == values
+  for name in ["tncs_u", "tncs_t", "sigmaa", "feff", "resn"]:
+    assert getattr(fd.llgi_data(), name).data().all_eq(
+      getattr(fm.llgi_data(), name).data()), name
+  assert fd.f_obs().data().all_eq(fm.f_obs().data())
+
+def _max_rel(a, b):
+  """ largest difference relative to the largest value """
+  return flex.max(flex.abs(a - b)) / flex.max(flex.abs(b))
+
+def _check_cctbx_base(llgi_data):
+  """ RESN, E_obs^2 base and sigma base from the normalisation fit kept
+  in tncs_state: E^2 = I/RESN^2 """
+  s = llgi_data.tncs_state
+  i = llgi_data.i_obs_base
+  resn = s.normalisation.resn.data()
+  assert _max_rel(llgi_data.e_obs_sq_base.data(),
+    i.data() / flex.pow2(resn)) < 1e-12
+  assert _max_rel(llgi_data.sig_e_obs_sq_base.data(),
+    i.sigmas() / flex.pow2(resn)) < 1e-12
+  assert s.teps_data.all_eq(s.normalisation.teps.data())
+
+def exercise_cctbx_setup_frame(h, xrs):
+  """ the cctbx source: setup refits the normalisation with the consensus
+  pair terms of the tNCS groups and starts the frame at u = t = TEPS_data,
+  with E_obs^2 base = I/RESN^2 from the new RESN """
+  from six.moves import cStringIO as StringIO
+  import mmtbx.refinement.llgi_normalisation as llgi_normalisation
+  fmodel = synthetic_fmodel(h, xrs, source="cctbx")
+  ld = fmodel.llgi_data()
+  f_obs = fmodel.f_obs()
+  # no tNCS treatment without tNCS groups, as for the nacelle source
+  no_b = h.atom_selection_cache().selection("not chain B")
+  h_no_b = h.select(no_b)
+  h_no_b.atoms().reset_i_seq()
+  assert llgi_tncs.setup(ld, f_obs, h_no_b, xrs.select(no_b)) is None
+  log = StringIO()
+  n_params = llgi_normalisation.normalisation_params.extract()
+  new = llgi_tncs.setup(ld, f_obs, h, xrs, log=log,
+    normalisation_params=n_params)
+  assert "tNCS group: chains A B" in log.getvalue()
+  assert "cctbx normalisation" in log.getvalue(), log.getvalue()
+  s = new.tncs_state
+  assert s.normalisation_params is n_params
+  assert s.t_model is None
+  # the per-group consensus pair terms (one group: their sum, exactly)
+  pm = llgi_tncs.pair_modulations(f_obs, s.groups, xrs, per_group=True)
+  a_groups = pm.a_groups["consensus"]
+  assert len(a_groups) == 1 and len(pm.a_groups["model"]) == 1
+  assert a_groups[0].all_eq(pm.a["consensus"])
+  assert pm.a_groups["model"][0].all_eq(pm.a["model"])
+  plain = llgi_tncs.pair_modulations(f_obs, s.groups, xrs)
+  assert plain.a_groups is None and plain.a["model"].all_eq(pm.a["model"])
+  fit = llgi_normalisation.fit(ld.i_obs_base, tncs_a_groups=a_groups,
+    params=n_params)
+  t = new.tncs_t.data()
+  assert flex.max(flex.abs(t - fit.teps.data())) < 1e-12
+  assert new.tncs_u.data().all_eq(t)
+  assert flex.max(flex.abs(t - 1)) > 0.1   # the data are modulated
+  assert fit.coherence.gamma > 0.3, fit.coherence.gamma
+  resn = fit.resn.data()
+  i = ld.i_obs_base
+  assert _max_rel(new.e_obs_sq_base.data(), i.data() / flex.pow2(resn)) < 1e-12
+  assert _max_rel(new.resn.data(), resn) < 1e-12
+  assert _max_rel(new.e_obs_sq.data(), i.data() / (flex.pow2(resn) * t)) < 1e-12
+  _check_cctbx_base(new)
+  assert new.normalisation_selection.data().all_eq(fit.selection)
+  return new
+
+def cctbx_fmodel(h, xrs, **kwds):
+  """ fmodel with the cctbx source after setup and scaling (kwds:
+  synthetic_fmodel's) """
+  flex.set_random_seed(0)
+  random.seed(0)
+  fmodel = synthetic_fmodel(h, xrs, source="cctbx", **kwds)
+  new = llgi_tncs.setup(fmodel.llgi_data(), fmodel.f_obs(), h, xrs)
+  fmodel.set_llgi_data(new)
+  fmodel.update(f_obs=new.feff)
+  fmodel.update_all_scales()
+  return fmodel
+
+def _refit(fmodel, frame):
+  """ fit_and_renormalise on a copy of fmodel (the copies share the
+  tNCS parameters) """
+  f = fmodel.deep_copy()
+  f.llgi_data().tncs_state.params.frame = frame
+  return f, f.update_llgi_sigmaa_scatfrac()
+
+def _frame_valid(llgi_data):
+  sa = llgi_data.sigmaa.data()
+  sel = sa > 0
+  assert flex.max(sa) < 1
+  a_p = llgi_tncs.frame(sa, llgi_data.tncs_u.data(),
+    llgi_data.tncs_t.data())[0]
+  return flex.min(a_p.select(sel)) > 0
+
+def exercise_frame_data_vs_model(fmodel):
+  """ after one fit_and_renormalise on the cctbx source, frame = data
+  gives t = TEPS_data and frame = model t = t_model; the fits of the
+  macrocycle do not depend on the frame """
+  runs = dict((frame, _refit(fmodel, frame)) for frame in ("data", "model"))
+  for frame, (f, r) in runs.items():
+    ld = f.llgi_data()
+    s = ld.tncs_state
+    assert ("frame %s" % frame) in r.tncs_summary, r.tncs_summary
+    _check_cctbx_base(ld)
+    assert ld.resn.data().all_eq(s.normalisation.resn.data())
+    assert approx_equal(f.f_obs().data(), ld.feff.data())
+    assert "would change" in r.tncs_summary, r.tncs_summary
+    assert _frame_valid(ld)
+    assert math.isfinite(f.target_functor()(
+      compute_gradients=False).target_work())
+  ld_d, ld_m = runs["data"][0].llgi_data(), runs["model"][0].llgi_data()
+  s_d, s_m = ld_d.tncs_state, ld_m.tncs_state
+  assert ld_d.tncs_t.data().all_eq(s_d.teps_data)
+  assert ld_m.tncs_t.data().all_eq(s_m.t_model)
+  assert flex.max(flex.abs(s_d.t_model - s_m.t_model)) < 1e-10
+  assert flex.max(flex.abs(ld_d.sigmaa.data() - ld_m.sigmaa.data())) < 1e-10
+  assert flex.max(flex.abs(s_m.teps_data - s_m.t_model)) > 0.01
+  # frame = model: t_model exceeds (1 - sigmaA^2) u, nothing clamped
+  assert not [w for w in runs["model"][1].warnings if "u clamped" in w]
+  assert runs["model"][1].n_u_clamped == 0
+  # a selection keeps the normalisation's intensities and fit selection
+  # aligned
+  f = runs["data"][0]
+  f.llgi_data().tncs_state.params.frame = "data"
+  sel = f.f_obs().d_spacings().data() > 4.0
+  fs = f.select(sel)
+  r = fs.update_llgi_sigmaa_scatfrac()
+  ls = fs.llgi_data()
+  assert ls.i_obs_base.size() == sel.count(True)
+  assert ls.normalisation_selection.size() == sel.count(True)
+  assert ls.tncs_t.data().all_eq(ls.tncs_state.teps_data)
+  _check_cctbx_base(ls)
+  return runs
+
+def exercise_u_clamp_reported(fmodel):
+  """ the frame-validity clamp u = (1 - U_MIN) t/(1 - sigmaA^2) where
+  t <= (1 - sigmaA^2) u: on arrays, and in fit_and_renormalise with
+  TEPS_data forced to 0.5 t_model (fmodel: with sigmaA low enough, below
+  about 0.7, for that to need the clamp) """
+  import mmtbx.refinement.llgi_normalisation as llgi_normalisation
+  k = 1 - llgi_tncs.U_MIN
+  sa = flex.double([0., 0.5, 0.5, 0.5, 0.9, 1.0])
+  u = flex.double([1., 1., 1., 1., 2., 1.])
+  t = flex.double([1., 1., 0.75, 0.7, 0.1, 0.5])
+  u2, n = llgi_tncs.clamp_u_to_frame(sa, u, t)
+  assert n == 3
+  assert approx_equal(u2, [1., 1., k * 0.75 / 0.75, k * 0.7 / 0.75,
+    k * 0.1 / 0.19, 1.])
+  assert u.all_eq(flex.double([1., 1., 1., 1., 2., 1.]))   # not in place
+  a_p = llgi_tncs.frame(sa, u2, t)[0]
+  assert flex.min(a_p[1:5]) > 0
+  # fit_and_renormalise
+  fm, rm = _refit(fmodel, "model")
+  t_model = fm.llgi_data().tncs_state.t_model
+  u_model = fm.llgi_data().tncs_u.data()
+  real_fit = llgi_normalisation.fit
+  def forced_fit(*args, **kwds):
+    r = real_fit(*args, **kwds)
+    r.teps = r.teps.customized_copy(data=0.5 * t_model)
+    return r
+  llgi_normalisation.fit = forced_fit
+  try:
+    fc, rc = _refit(fmodel, "data")
+  finally:
+    llgi_normalisation.fit = real_fit
+  ld = fc.llgi_data()
+  s = ld.tncs_state
+  assert flex.max(flex.abs(s.t_model - t_model)) < 1e-10
+  sa, u, t = ld.sigmaa.data(), ld.tncs_u.data(), ld.tncs_t.data()
+  assert flex.max(flex.abs(t - 0.5 * t_model)) < 1e-12
+  expected = (sa > 0) & (sa < 1) & (t <= (1 - sa * sa) * u_model)
+  n = expected.count(True)
+  assert 0 < n < sa.size(), n
+  assert (llgi_tncs.U_CLAMP_WARNING % n) in rc.warnings, rc.warnings
+  assert "tNCS: u clamped for %d reflections where TEPS_data <= " \
+    "(1 - sigmaA^2) u" % n in rc.warnings
+  assert _frame_valid(ld)
+  sel = expected.iselection()
+  assert approx_equal(u.select(sel),
+    k * t.select(sel) / (1 - flex.pow2(sa.select(sel))))
+  assert flex.max(flex.abs(u.select(~expected) - u_model.select(~expected))) \
+    < 1e-10
+  # the scale of RESN (put on the model's scale by mmtbx.f_model.manager.
+  # apply_scale_k1_to_f_obs) is kept when RESN is refitted
+  fs = fmodel.deep_copy()
+  ld0 = fs.llgi_data()
+  ld0.tncs_state.params.frame = "data"
+  fs.update(f_obs=fs.f_obs().customized_copy(data=fs.f_obs().data() / 2))
+  fs.set_llgi_data(llgi_hybrid.replace_llgi_data(ld0,
+    feff=ld0.feff.customized_copy(data=ld0.feff.data() / 2),
+    resn=ld0.resn.customized_copy(data=ld0.resn.data() / 2)))
+  fs.update_llgi_sigmaa_scatfrac()
+  ls = fs.llgi_data()
+  ratio = ls.resn.data() / ls.tncs_state.normalisation.resn.data()
+  assert flex.max(flex.abs(ratio - 0.5)) < 1e-9
+  _check_cctbx_base(ls)
+
 def run():
   h, xrs = build_model()
   groups = exercise_groups(h)
@@ -466,6 +730,11 @@ def run():
   exercise_renormalise()
   exercise_fits(groups, xrs)
   exercise_fmodel_integration(h, xrs)
+  exercise_nacelle_source_unchanged(h, xrs)
+  exercise_cctbx_setup_frame(h, xrs)
+  exercise_frame_data_vs_model(cctbx_fmodel(h, xrs))
+  exercise_u_clamp_reported(cctbx_fmodel(h, xrs, sigma_common=1.0,
+    sigma_indep=0.5))
   print("OK")
 
 if __name__ == "__main__":
