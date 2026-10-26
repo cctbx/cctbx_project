@@ -86,8 +86,8 @@ def select_block(blocks, name):
 def record_remote_problem(block):
     """The record's remote name and URL are passed to git (`fetch`, `ls-remote`), so a value
     starting with "-" would be read as a git option (for example --upload-pack, which runs a
-    command). They are held to the rule `outgoing` applies when it writes the record; the
-    reason a block fails it, or None."""
+    command). The name is held to the rule `outgoing` applies to it; the URL may not look like
+    an option, contain whitespace, or name a remote helper. The reason a block fails, or None."""
     remote, url = block["remote"], block["remote_url"]
     if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9._-]*", remote) or remote in (".", ".."):
         return f"the outgoing record's remote must be a configured remote name: {remote}"

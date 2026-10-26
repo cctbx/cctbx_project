@@ -4,6 +4,10 @@ description: Run GuidedCoding for an explicitly chosen coding task, or guide pro
 disable-model-invocation: true
 ---
 
+> **Retired (2026-10-23).** This is the earlier GuidedCoding kit, kept only for reference. The current
+> GuidedCoding is at https://github.com/cctbx/guided_coding (branch `master`); its README says how to move to it.
+> When this skill is invoked, first tell the user this, and continue with the earlier kit only if they ask you to.
+
 # GuidedCoding, by explicit request
 
 The user's task is: $ARGUMENTS
