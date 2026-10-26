@@ -79,6 +79,12 @@ multiple_zones_params_str = """\
 """
 
 master_params = iotbx.phil.parse("""\
+    llgi_resolution_zones = False
+      .type = bool
+      .help = "With the LLGI target, refine in one zone at the full \
+              resolution limit (False, the default), because sigmaA weights \
+              the resolutions smoothly; True uses number_of_zones and \
+              high_resolution as for the other targets."
     mode = *first_macro_cycle_only every_macro_cycle
       .type = choice
       .help = Defines how many times the rigid body refinement is performed \
@@ -88,7 +94,9 @@ master_params = iotbx.phil.parse("""\
     target = ls_wunit_k1 ml *auto
       .type = choice
       .help = Rigid body refinement target function: least-squares or \
-              maximum-likelihood
+              maximum-likelihood. auto: least-squares at low resolution \
+              (target_auto_switch_resolution), otherwise maximum-likelihood \
+              (llgi if that is the refinement target, else ml).
     target_auto_switch_resolution = 6.0
       .type = float
       .help = Used if target=auto, use optimal target for given working \
@@ -133,7 +141,8 @@ def split_resolution_range(
       d_high,
       number_of_zones,
       zone_exponent,
-      log = None):
+      log = None,
+      ml_target_name = "ml"):
   assert n_bodies > 0
   assert target_auto_switch_resolution > 0
   assert multi_body_factor_n_ref_first is None or multi_body_factor_n_ref_first > 0
@@ -214,7 +223,7 @@ def split_resolution_range(
       if (d_min > target_auto_switch_resolution):
         target_names.append("ls_wunit_k1")
       else:
-        target_names.append("ml")
+        target_names.append(ml_target_name)
     else:
       target_names.append(target)
   if (len(d_mins) > 1):
@@ -229,6 +238,29 @@ def split_resolution_range(
       " %d + %.6g * (zone-1)**%.6g" % (
         final_n_ref_first, zone_factor, zone_exponent), file=log)
   return d_mins, target_names
+
+def zone_setup(d_spacings, n_bodies, params, original_target_name, log=None):
+  """ Resolution zones and targets for rigid-body refinement. With the llgi
+  target (and llgi_resolution_zones False) there is a single zone at the full
+  resolution limit, refined with llgi whatever target_auto_switch_resolution
+  says: sigmaA weights the resolutions smoothly. """
+  llgi = (original_target_name == "llgi")
+  single = llgi and not params.llgi_resolution_zones
+  target = params.target
+  if(single and target == "auto"): target = "llgi"
+  return split_resolution_range(
+    d_spacings                    = d_spacings,
+    n_bodies                      = n_bodies,
+    target                        = target,
+    target_auto_switch_resolution = params.target_auto_switch_resolution,
+    n_ref_first                   = params.min_number_of_reflections,
+    multi_body_factor_n_ref_first = params.multi_body_factor,
+    d_low                         = params.max_low_high_res_limit,
+    d_high                        = None if single else params.high_resolution,
+    number_of_zones               = 1 if single else params.number_of_zones,
+    zone_exponent                 = params.zone_exponent,
+    log                           = log,
+    ml_target_name                = "llgi" if llgi else "ml")
 
 class manager(object):
   def __init__(self, fmodel,
@@ -273,18 +305,12 @@ class manager(object):
        for item in selections:
            t_initial.append(flex.double(3,0))
     fmodel_copy = fmodel.deep_copy()
-    d_mins, target_names = split_resolution_range(
-      d_spacings                    = fmodel_copy.f_obs_work().d_spacings().data(),
-      n_bodies                      = len(selections),
-      target                        = params.target,
-      target_auto_switch_resolution = params.target_auto_switch_resolution,
-      n_ref_first                   = params.min_number_of_reflections,
-      multi_body_factor_n_ref_first = params.multi_body_factor,
-      d_low                         = params.max_low_high_res_limit,
-      d_high                        = params.high_resolution,
-      number_of_zones               = params.number_of_zones,
-      zone_exponent                 = params.zone_exponent,
-      log                           = log)
+    d_mins, target_names = zone_setup(
+      d_spacings           = fmodel_copy.f_obs_work().d_spacings().data(),
+      n_bodies             = len(selections),
+      params               = params,
+      original_target_name = save_original_target_name,
+      log                  = log)
     print(file=log)
     if (fmodel.target_name != target_names[0]):
       fmodel.update(target_name=target_names[0])
