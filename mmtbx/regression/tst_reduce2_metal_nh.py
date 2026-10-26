@@ -1,6 +1,6 @@
 """reduce2: no H on a backbone amide N (with a preceding residue), a
-thymine/uracil N3 or a sulfonamide N bound to a metal (A5; a primary
-sulfonamide keeps one H). Alkali and alkaline-earth metals do not count;
+thymine/uracil N3, a sulfonamide N or an azolium N bound to a metal (A5; a
+primary sulfonamide keeps one H). Alkali and alkaline-earth metals do not count;
 other N-H next to a metal are kept and listed; His ring N are left to the
 Optimizer. Same machinery as thiols (tst_reduce2_metal_thiol.py): window,
 symmetry, occupancy coverage, supplied H kept.
@@ -221,6 +221,52 @@ HETATM 4670  SBA 3QR A 302      -2.201   2.296  87.335  1.00  4.88           S
 END
 """
 
+# 4PE3: imidazole A 402 N1 on Zn 407 (2.02 A; Zn occupancy 0.96 in 4PE3,
+# set to 1.00)
+pdb_4pe3 = """\
+CRYST1   79.072   97.938   35.788  90.00  90.00  90.00 P 21 21 2
+HETATM 4915  C2  IMD A 402       5.879  90.895  49.538  1.00 12.43           C
+HETATM 4916  C4  IMD A 402       8.044  91.155  49.329  1.00 14.02           C
+HETATM 4917  C5  IMD A 402       7.529  90.793  48.091  1.00 12.30           C
+HETATM 4918  N1  IMD A 402       6.185  90.618  48.249  1.00 11.41           N
+HETATM 4919  N3  IMD A 402       7.022  91.225  50.200  1.00 14.77           N
+HETATM 4943 ZN    ZN A 407       4.830  90.129  46.839  1.00 10.75          ZN
+END
+"""
+
+# 6MFL: OPV A 402 NAM on Fe 401 (2.14 A), a neutral imidazole with H2 on
+# NAM and none on NAO
+pdb_6mfl = """\
+CRYST1   37.762  137.055   56.208  90.00  90.02  90.00 P 1 21 1
+HETATM 8826 FE    FE A 401      -1.011  -6.350 -10.509  1.00 14.46          FE
+HETATM 8827  N   OPV A 402       1.335  -2.597 -10.595  1.00 15.78           N
+HETATM 8828  CA  OPV A 402       0.907  -1.218 -10.699  1.00 16.68           C
+HETATM 8829  C   OPV A 402      -0.504  -1.058 -10.087  1.00 13.05           C
+HETATM 8830  O   OPV A 402      -0.892  -1.690  -9.083  1.00 15.83           O
+HETATM 8831  CB  OPV A 402       0.517  -0.678 -12.125  1.00 19.64           C
+HETATM 8832  OG1 OPV A 402      -0.486   0.294 -11.814  1.00 18.45           O
+HETATM 8833  CG2 OPV A 402       1.659  -0.033 -12.954  1.00 16.15           C
+HETATM 8834  CAF OPV A 402       4.189  -6.615  -9.638  1.00 16.56           C
+HETATM 8835  CAG OPV A 402       3.113  -7.498  -9.853  1.00 14.03           C
+HETATM 8836  CAH OPV A 402       4.032  -5.221  -9.762  1.00 19.27           C
+HETATM 8837  CAI OPV A 402      -3.447  -4.494 -10.052  1.00 16.73           C
+HETATM 8838  CAJ OPV A 402      -2.195  -3.635 -11.659  1.00 17.79           C
+HETATM 8839  CAK OPV A 402      -3.309  -1.232 -12.004  1.00 12.10           C
+HETATM 8840  CAL OPV A 402      -2.824  -0.154 -10.995  1.00 14.39           C
+HETATM 8841  CAQ OPV A 402       2.562  -3.174 -10.208  1.00 14.72           C
+HETATM 8842  CAS OPV A 402       1.836  -6.991 -10.167  1.00 13.34           C
+HETATM 8843  CAT OPV A 402      -3.148  -2.639 -11.376  1.00 17.67           C
+HETATM 8844  CAU OPV A 402       1.669  -5.580 -10.293  1.00 13.11           C
+HETATM 8845  CAV OPV A 402       2.779  -4.676 -10.110  1.00 15.06           C
+HETATM 8846  NAM OPV A 402      -2.395  -4.759 -10.851  1.00 13.91           N
+HETATM 8847  NAO OPV A 402      -3.913  -3.204 -10.335  1.00 11.35           N
+HETATM 8848  NAY OPV A 402      -1.301  -0.128 -10.770  1.00 13.65           N
+HETATM 8849  OAB OPV A 402       3.454  -2.378  -9.858  1.00 17.85           O
+HETATM 8850  OAD OPV A 402       0.751  -7.789 -10.367  1.00 12.77           O
+HETATM 8851  OAE OPV A 402       0.459  -5.040 -10.656  1.00 10.90           O
+END
+"""
+
 # Trp (from 1r27) with a Zn 2.10 A from NE1 along the N-H direction
 pdb_trp = """\
 ATOM      1  N   TRP A   1       3.153 138.508 109.939  1.00 20.00           N
@@ -242,8 +288,8 @@ HETATM   15 ZN    ZN B 101       7.624 136.117 113.420  1.00 20.00          ZN
 END
 """
 
-NOT_PLACED = ('N-H not placed: backbone amide N, thymine/uracil N3 or '
-  'sulfonamide N bound to a metal, taken as deprotonated')
+NOT_PLACED = ('N-H not placed: backbone amide N, thymine/uracil N3, '
+  'sulfonamide or azolium N bound to a metal, taken as deprotonated')
 UNRESOLVED = 'N-H placed at metal sites with unresolved protonation'
 SUPPLIED = 'Supplied N-H at metal sites'
 REPORTED = 'N-H next to a metal, not changed'
@@ -332,8 +378,8 @@ def test_supplied_kept():
     lines = description.splitlines()
     title = [l for l in lines if l.startswith(SUPPLIED)]
     assert title == [SUPPLIED + ': kept as supplied; backbone amide N, '
-      'thymine/uracil N3 and sulfonamide N bound to metals are usually '
-      'deprotonated'], lines
+      'thymine/uracil N3, sulfonamide and azolium N bound to metals are '
+      'usually deprotonated'], lines
     entries = section(description, title[0])
     assert entries[0].startswith('H   SER A 289  (N   SER A 289 - NI'), entries
     assert entries[1].startswith('H   HIS A 290  (N   HIS A 290 - NI'), entries
@@ -374,6 +420,18 @@ def test_sulfonamide():
     '- ZN    ZN A 301 1.99 A (geometric))'], description
   h, description, log = run('tst_reduce2_metal_nh_6gcy', pdb_6gcy)
   assert h_on(h, 302, 'NAZ') == [], h_on(h, 302, 'NAZ')
+
+def test_azolium():
+  '''Imidazolium on Zn (4PE3) loses HN1 on the bound N1 and keeps HN3; the
+  neutral imidazole of OPV on Fe (6MFL) keeps H2 on the bound NAM'''
+  h, description, log = run('tst_reduce2_metal_nh_4pe3', pdb_4pe3)
+  assert h_on(h, 402, 'N1') == [] and h_on(h, 402, 'N3') == ['HN3'], (
+    h_on(h, 402, 'N1'), h_on(h, 402, 'N3'))
+  assert section(description, NOT_PLACED) == ['HN1 IMD A 402  (N1  IMD A 402 '
+    '- ZN    ZN A 407 2.02 A (geometric))'], description
+  h, description, log = run('tst_reduce2_metal_nh_6mfl', pdb_6mfl)
+  assert h_on(h, 402, 'NAM') == ['H2'], h_on(h, 402, 'NAM')
+  assert NOT_PLACED not in description, description
 
 def test_conformer_without_peptide_c():
   # Ser 289 H/A: Gly 288 C(A) and CA(A), an amide; H/B: no C of its
@@ -428,6 +486,7 @@ if __name__ == '__main__':
   test_partial_metal()
   test_ligand_n_kept()
   test_sulfonamide()
+  test_azolium()
   test_conformer_without_peptide_c()
   test_amino_acid_classification()
   test_peptide_without_o()

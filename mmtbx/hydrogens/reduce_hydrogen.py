@@ -918,7 +918,7 @@ ALKOXIDE_H_SUPPLIED_NOTE = ('kept as supplied; alcohols bound to Ti, Zr, Hf, '
   'V, Mo or W are usually deprotonated')
 
 METAL_NH_SUPPLIED_NOTE = ('kept as supplied; backbone amide N, '
-  'thymine/uracil N3 and sulfonamide N bound to metals are usually '
+  'thymine/uracil N3, sulfonamide and azolium N bound to metals are usually '
   'deprotonated')
 
 # thymine/uracil residues whose N3 carries H3
@@ -1430,11 +1430,11 @@ def residue_is_amino_acid(resname, mon_lib_srv):
 class metal_nh_sites(metal_h_sites):
   '''
   N-H bound to metals (A5): backbone amide N with a preceding residue,
-  thymine/uracil N3 and sulfonamide N are judged (covered: deprotonated);
-  of a sulfonamide N only the first H of each conformer, so a primary
-  sulfonamide keeps the second (R-SO2-NH-). Other N with H, not His ring N,
-  are reported only. Metals: NH_METAL_ELEMENTS. Each H is classified with
-  the heavy neighbours of its own conformer.
+  thymine/uracil N3, sulfonamide N and azolium N are judged (covered:
+  deprotonated); of a sulfonamide N only the first H of each conformer, so a
+  primary sulfonamide keeps the second (R-SO2-NH-). Other N with H, not His
+  ring N, are reported only. Metals: NH_METAL_ELEMENTS. Each H is classified
+  with the heavy neighbours of its own conformer.
   '''
   metals = NH_METAL_ELEMENTS
   covered = 'deprotonated'
@@ -1443,6 +1443,7 @@ class metal_nh_sites(metal_h_sites):
   def __init__(self, model, crystal_symmetry=None):
     self._mon_lib_srv = model.get_mon_lib_srv()
     self._amino_acid = {}
+    self._unsaturated = {}
     metal_h_sites.__init__(self, model, crystal_symmetry)
 
   def is_amino_acid(self, resname):
@@ -1453,14 +1454,47 @@ class metal_nh_sites(metal_h_sites):
         self._mon_lib_srv)
     return self._amino_acid[resname]
 
-  def n_class(self, atoms, heavy, i_n, i_h):
+  def is_azolium_n(self, atoms, heavy, h_on, i_n, h):
+    '''
+    Whether N i_n, carrying H h, is an azolium N: in a double, triple,
+    aromatic or delocalized bond (_unsaturated_atoms()), with two heavy
+    neighbours joined by a path of at most four bonds that avoids it (a five-
+    or six-membered ring) through another N that carries H, all in the
+    conformer of h.
+    '''
+    n = atoms[i_n]
+    if n.name.strip() not in _unsaturated_atoms(n.parent().resname,
+        self._mon_lib_srv, self._unsaturated): return False
+    nb = {}
+    for j in heavy.get(i_n, []):
+      if _compatible(atoms[j], h):
+        nb[(atoms[j].parent().parent().memory_id(), atoms[j].name)] = j
+    if len(nb) != 2: return False
+    start, end = list(nb.values())
+    paths = [[start]]
+    while paths:
+      path = paths.pop()
+      if path[-1] == end:
+        for k in path:
+          if (_atom_element(atoms[k]) == 'N' and
+              any(_compatible(atoms[l], h) for l in h_on.get(k, []))):
+            return True
+        continue
+      if len(path) == 5: continue
+      for k in heavy.get(path[-1], []):
+        if k != i_n and k not in path and _compatible(atoms[k], h):
+          paths.append(path + [k])
+    return False
+
+  def n_class(self, atoms, heavy, h_on, i_n, i_h):
     '''
     The class of the N-H site (N i_n, H i_h): 'amide' (a peptide bond: N and
     the other residue amino acids, N bonded to the CA of its own residue and
     to the atom C of the other; no observed O needed), 'N3' (thymine/uracil
     N3), 'sulfonamide' (N bonded to an S that has two O bonded to nothing
-    else), 'his' (His ring N, left to the Optimizer) or 'other'. Neighbours:
-    only those compatible with the H's conformer.
+    else), 'his' (His ring N, left to the Optimizer), 'azolium'
+    (is_azolium_n()) or 'other'. Neighbours: only those compatible with the
+    H's conformer.
     '''
     n, h = atoms[i_n], atoms[i_h]
     ag = n.parent()
@@ -1477,6 +1511,8 @@ class metal_nh_sites(metal_h_sites):
         len(set(atoms[l].name for l in heavy.get(k, []))) == 1)
       if len(terminal_o) >= 2:
         return 'sulfonamide'
+    if self.is_azolium_n(atoms, heavy, h_on, i_n, h):
+      return 'azolium'
     if name != 'N' or not self.is_amino_acid(resname):
       return 'other'
     own = ag.parent().memory_id()
@@ -1495,9 +1531,9 @@ class metal_nh_sites(metal_h_sites):
     for i_n, hs in h_on.items():
       if elements[i_n] != 'N': continue
       for i_h in hs:
-        kind = self.n_class(atoms, heavy, i_n, i_h)
+        kind = self.n_class(atoms, heavy, h_on, i_n, i_h)
         if kind == 'his': continue
-        judged = kind in ('amide', 'N3')
+        judged = kind in ('amide', 'N3', 'azolium')
         if kind == 'sulfonamide':
           # one H per conformer, the first: an NH2 keeps the second
           judged = not any(j < i_h and _compatible(atoms[j], atoms[i_h])
@@ -1921,8 +1957,8 @@ def metal_nh_text(not_placed=(), unresolved=(), supplied=(), reported=(),
   [(label, contacts)]; '' if there is nothing to report.
   '''
   return _metal_h_text(group_args(
-    not_placed = 'N-H not placed: backbone amide N, thymine/uracil N3 or '
-      'sulfonamide N bound to a metal, taken as deprotonated',
+    not_placed = 'N-H not placed: backbone amide N, thymine/uracil N3, '
+      'sulfonamide or azolium N bound to a metal, taken as deprotonated',
     unresolved = 'N-H placed at metal sites with unresolved protonation',
     supplied = 'Supplied N-H at metal sites: %s' % METAL_NH_SUPPLIED_NOTE,
     reported = 'N-H next to a metal, not changed'),
@@ -3239,9 +3275,9 @@ class place_hydrogens():
 
   def exclude_H_on_metal_bound_N(self):
     '''
-    A backbone amide N (with a preceding residue), a thymine/uracil N3 or a
-    sulfonamide N bound to a metal of NH_METAL_ELEMENTS is taken as
-    deprotonated (A5; a primary sulfonamide keeps one H): as
+    A backbone amide N (with a preceding residue), a thymine/uracil N3, a
+    sulfonamide N or an azolium N bound to a metal of NH_METAL_ELEMENTS is
+    taken as deprotonated (A5; a primary sulfonamide keeps one H): as
     exclude_H_on_metal_thiolates(), with metal_nh_sites(). Other N-H next to
     such a metal (not His ring N) are kept and listed.
     '''
