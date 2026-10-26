@@ -188,10 +188,19 @@ class MoverNull(object):
       return "Original location . ."
 
 ##################################################################################
+def NominalXHBondLength(heavyAtom):
+  """Nominal X-H bond length that Reduce uses to find potential acceptors of a
+     rotatable Hydrogen (RotDonor.cpp): 1.3 A for S-H, 1.0 A otherwise.
+     :param heavyAtom: The atom that the Hydrogen is bonded to.
+  """
+  return 1.3 if heavyAtom.element == "S" else 1.0
+
+##################################################################################
 class _MoverRotator(object):
   def __init__(self, atoms, axis, dihedral, offset, coarseRange, coarseStepDegrees = 15.0,
                 doFineRotations = True, fineStepDegrees = 1.0,
-                preferenceFunction = None, preferredOrientationScale = 1.0):
+                preferenceFunction = None, preferredOrientationScale = 1.0,
+                fineRange = None):
     """Constructs a Rotator, to be called by a derived class or test program but
        not usually user code.
        A base class for types of Movers that rotate one or more atoms around a single
@@ -237,6 +246,8 @@ class _MoverRotator(object):
        For the default value of None, no addition is performed.
        :param preferredOrientationScale: How much to scale the preferred-orientation
        energy by before adding it to the total.
+       :param fineRange: Range in degrees of the fine rotations around each coarse
+       rotation, [-fineRange..fineRange). The default of None uses half the coarse step.
     """
     self._atoms = atoms
     self._axis = axis
@@ -271,12 +282,14 @@ class _MoverRotator(object):
         self._coarseAngles.append(curStep)
       curStep += self._coarseStepDegrees
 
-    # Make a list of fine angles to try to cover half the coarse step size (inclusive
-    # for negative and exclusive for positive) using the fine step size.  We never
-    # try +0 degrees because that is the location of the coarse rotation.
+    # Make a list of fine angles to try to cover the fine range, by default half the
+    # coarse step size (inclusive for negative and exclusive for positive) using the
+    # fine step size.  We never try +0 degrees because that is the location of the
+    # coarse rotation.
     self._fineAngles = []
     curStep = self._fineStepDegrees
-    fineRange = self._coarseStepDegrees / 2
+    if fineRange is None:
+      fineRange = self._coarseStepDegrees / 2
     while curStep <= fineRange:
       # The interval is closed on the left, so we place
       self._fineAngles.append(-curStep)
@@ -412,6 +425,9 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        :param fineStepDegrees: The fine step to take.
        :param preferredOrientationScale: How much to scale the preferred-orientation
        energy by before adding it to the total.
+       Near a potential acceptor, coarse orientations 15 and 30 degrees to either side
+       of it are added (after the others) and the fine search covers -10..+9 degrees,
+       as in Reduce (RotDonor.cpp).
     """
     # @todo All callers and tests
 
@@ -474,9 +490,11 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     offset = 180
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
+    # Reduce's fine search around a coarse orientation is -9..+10 degrees (RotDonor.cpp,
+    # FINE_STEP 1 over a 10 degree range); this is the _MoverRotator form of it.
     _MoverRotator.__init__(self, atoms, axis, dihedral, offset, 180, coarseStepDegrees = coarseStepDegrees,
       fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction,
-      preferredOrientationScale = preferredOrientationScale)
+      preferredOrientationScale = preferredOrientationScale, fineRange = 10.0)
 
     # Now add orientations that point in the direction of the potential acceptors.
     # Then select from the original angles the one that has the best contact with
@@ -560,12 +578,43 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       if minAng >= 45:
         sofar.append(ang)
 
+    # These are the primary coarse angles; the Optimizer may also refine the best of
+    # them when one of the angles added below wins (NumPrimaryCoarsePositions()).
+    self._numPrimaryCoarse = len(sofar)
+
+    # Add Reduce's near-acceptor angles (RotDonor.cpp): 15 degrees to either side of an
+    # acceptor direction when its H-bond overlap is below -0.7 A, 30 degrees below -0.9 A.
+    # The overlap is Reduce's approximate criterion for adding these candidates, from
+    # nominal lengths and radii (polar H radius 1.05 A), not the overlap of an actual pose.
+    # A new angle within 5 degrees of one already present is dropped.
+    xhBondLength = NominalXHBondLength(neighbor)
+    offsets = []
+    for a in sorted(potentialAcceptors, key=lambda x:atomID(x)):
+      sites = [ atom.xyz, partner.xyz, neighbor.xyz, a.xyz ]
+      degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
+      if degrees is None:
+        continue
+      overlap = (rvec3(neighbor.xyz) - rvec3(a.xyz)).length() - (
+        1.05 + extraAtomInfoMap.getMappingFor(a).vdwRadius + xhBondLength)
+      if overlap < -0.7:
+        offsets.extend([degrees - 15, degrees + 15])
+      if overlap < -0.9:
+        offsets.extend([degrees - 30, degrees + 30])
+    for ang in offsets:
+      if all(abs((ang - m + 180) % 360 - 180) > 5 for m in sofar):
+        sofar.append(ang)
+
     # Replace the coarse angles with the ones that we have found.
     self._coarseAngles = sofar
 
     # Recompute the coarse and fine positions given the new angles we want to test
     self._coarsePositions = self._computeCoarsePositions()
     self._finePositions = self._computeFinePositions()
+
+  def NumPrimaryCoarsePositions(self):
+    # returns: The number of leading coarse positions that are primary candidates; the
+    # rest are near-acceptor angles.
+    return self._numPrimaryCoarse
 
 ##################################################################################
 class MoverNH3Rotator(_MoverRotator):

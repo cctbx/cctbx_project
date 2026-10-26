@@ -1313,9 +1313,7 @@ class Optimizer(object):
           # a polar Hydrogen, and the radius of the nearby atom, indicating potential
           # overlap.
           # O-H & N-H bond len == 1.0, S-H bond len == 1.3
-          XHbondlen = 1.0
-          if neighbor.element == "S":
-            XHbondlen = 1.3
+          XHbondlen = Movers.NominalXHBondLength(neighbor)
           candidates = []
           for n in nearby:
             # We don't count bonded atoms.
