@@ -865,9 +865,10 @@ class Optimizer(object):
       Returns a list of the Hydrogens that were marked for deletion during the processing.
       The caller should delete these form the optimized structure to produce a model that
       has the best contacts and fewest clashes.
-      :return: a list of the Hydrogens that were marked for deletion during the processing.
+      :return: a list of the Hydrogens that were marked for deletion during the processing,
+      in model order (i_seq), so that the deletions are reported in the same order on every run.
     """
-    return list(self._deleteMes)
+    return sorted(self._deleteMes, key=lambda a: a.i_seq)
 
   def getFlippedAmides(self):
     """
