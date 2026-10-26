@@ -1,8 +1,9 @@
-"""reduce2: no H on a backbone amide N (with a preceding residue) or a
-thymine/uracil N3 bound to a metal (A5). Alkali and alkaline-earth metals do
-not count; other N-H next to a metal are kept and listed; His ring N are left
-to the Optimizer. Same machinery as thiols (tst_reduce2_metal_thiol.py):
-window, symmetry, occupancy coverage, supplied H kept.
+"""reduce2: no H on a backbone amide N (with a preceding residue), a
+thymine/uracil N3 or a sulfonamide N bound to a metal (A5; a primary
+sulfonamide keeps one H). Alkali and alkaline-earth metals do not count;
+other N-H next to a metal are kept and listed; His ring N are left to the
+Optimizer. Same machinery as thiols (tst_reduce2_metal_thiol.py): window,
+symmetry, occupancy coverage, supplied H kept.
 """
 from __future__ import absolute_import, division, print_function
 import os
@@ -158,6 +159,68 @@ HETATM   11 NI    NI A 101      10.580  10.620   5.000  1.00 20.00          NI
 END
 """
 
+# 6BCC (neutron, carbonic anhydrase II): ethoxzolamide N1, a primary
+# sulfonamide, on Zn 301 (1.99 A); one D on N1
+pdb_6bcc = """\
+CRYST1   42.800   41.700   72.900  90.00 104.60  90.00 P 1 21 1
+HETATM 5202 ZN    ZN A 301      -6.880  -1.575  15.379  1.00 15.07          ZN
+HETATM 5203  C1  EZL A 302      -5.300   2.313  16.112  1.00 15.81           C
+HETATM 5204  C2  EZL A 302      -3.701   3.574  15.345  1.00 14.28           C
+HETATM 5205  C3  EZL A 302      -4.808   4.300  14.866  1.00 16.55           C
+HETATM 5206  C4  EZL A 302      -4.670   5.465  14.149  1.00 17.59           C
+HETATM 5207  C5  EZL A 302      -3.421   5.946  13.861  1.00 20.50           C
+HETATM 5208  C6  EZL A 302      -2.315   5.246  14.318  1.00 17.78           C
+HETATM 5209  C7  EZL A 302      -2.425   4.065  15.050  1.00 17.32           C
+HETATM 5210  C8  EZL A 302      -2.065   7.833  13.190  1.00 29.65           C
+HETATM 5211  C9  EZL A 302      -1.991   8.420  14.582  1.00 30.59           C
+HETATM 5213  N1  EZL A 302      -5.523  -0.404  16.246  1.00 15.25           N
+HETATM 5214  N2  EZL A 302      -3.990   2.451  16.038  1.00 15.10           N
+HETATM 5215  O1  EZL A 302      -7.553   1.144  16.775  1.00 16.21           O
+HETATM 5216  O2  EZL A 302      -5.653   1.000  18.390  1.00 14.69           O
+HETATM 5217  O3  EZL A 302      -3.284   7.129  13.109  1.00 24.39           O
+HETATM 5218  S1  EZL A 302      -6.072   0.956  16.948  1.00 15.13           S
+HETATM 5219  S2  EZL A 302      -6.250   3.503  15.347  1.00 16.10           S
+END
+"""
+
+# 6GCY (neutron): 3QR NAZ, an N between C=O and SO2, on Zn 301 (2.02 A);
+# no D on NAZ
+pdb_6gcy = """\
+CRYST1   42.610   41.940   72.770  90.00 104.01  90.00 P 1 21 1
+HETATM 4636 ZN    ZN A 301      -2.779  -0.535  85.951  1.00  5.96          ZN2+
+HETATM 4637  C1  3QR A 302      -0.792  11.401  81.717  1.00 62.07           C
+HETATM 4638  C2  3QR A 302      -1.791  12.513  81.356  1.00 74.03           C
+HETATM 4639  C3  3QR A 302      -1.028  13.642  80.752  1.00 85.79           C
+HETATM 4640  C4  3QR A 302      -0.211  14.376  81.807  1.00 84.41           C
+HETATM 4641  C5  3QR A 302       0.849  13.346  82.141  1.00 78.66           C
+HETATM 4642  C6  3QR A 302       1.483  13.568  83.446  1.00 38.53           C
+HETATM 4643  CAB 3QR A 302      -1.104   5.661  85.259  1.00  9.65           C
+HETATM 4644  CAC 3QR A 302      -0.815   7.816  84.385  1.00 29.16           C
+HETATM 4645  CAD 3QR A 302      -1.292   9.075  84.724  1.00 20.49           C
+HETATM 4646  CAG 3QR A 302      -1.010  10.407  83.995  1.00 21.67           C
+HETATM 4647  CAT 3QR A 302      -0.357   5.058  84.241  1.00  8.99           C
+HETATM 4648  CAU 3QR A 302      -0.184   3.743  84.213  1.00 11.84           C
+HETATM 4649  CAV 3QR A 302      -0.792   3.085  85.168  1.00  8.15           C
+HETATM 4650  CAW 3QR A 302      -1.594   3.623  86.240  1.00  8.21           C
+HETATM 4651  CAX 3QR A 302      -1.752   4.982  86.239  1.00  7.01           C
+HETATM 4652  CAY 3QR A 302      -0.756   1.491  85.307  1.00  8.10           C
+HETATM 4657  NAA 3QR A 302      -1.296   7.049  85.266  1.00 13.55           N
+HETATM 4658  NAE 3QR A 302      -2.061   8.998  85.731  1.00 50.17           N
+HETATM 4659  NAF 3QR A 302      -2.115   7.676  86.078  1.00 15.46           N
+HETATM 4660  NAZ 3QR A 302      -1.621   1.064  86.382  1.00  5.14           N
+HETATM 4661  O1  3QR A 302      -1.097  10.291  82.561  1.00 66.97           O
+HETATM 4662  O2  3QR A 302      -2.753  12.282  80.314  1.00 68.22           O
+HETATM 4663  O3  3QR A 302      -2.062  14.438  80.053  1.00 78.63           O
+HETATM 4664  O4  3QR A 302       0.527  15.586  81.518  1.00 77.65           O
+HETATM 4665  O5  3QR A 302       0.354  11.982  82.368  1.00 70.10           O
+HETATM 4666  O6  3QR A 302       1.628  12.210  83.813  1.00 52.51           O
+HETATM 4667  OBB 3QR A 302      -3.761   2.243  87.332  1.00  5.60           O
+HETATM 4668  OBC 3QR A 302      -1.452   2.450  88.667  1.00  5.30           O
+HETATM 4669  OBD 3QR A 302      -0.300   0.714  84.636  1.00  8.68           O
+HETATM 4670  SBA 3QR A 302      -2.201   2.296  87.335  1.00  4.88           S
+END
+"""
+
 # Trp (from 1r27) with a Zn 2.10 A from NE1 along the N-H direction
 pdb_trp = """\
 ATOM      1  N   TRP A   1       3.153 138.508 109.939  1.00 20.00           N
@@ -179,8 +242,8 @@ HETATM   15 ZN    ZN B 101       7.624 136.117 113.420  1.00 20.00          ZN
 END
 """
 
-NOT_PLACED = ('N-H not placed: backbone amide N or thymine/uracil N3 bound to '
-  'a metal, taken as deprotonated')
+NOT_PLACED = ('N-H not placed: backbone amide N, thymine/uracil N3 or '
+  'sulfonamide N bound to a metal, taken as deprotonated')
 UNRESOLVED = 'N-H placed at metal sites with unresolved protonation'
 SUPPLIED = 'Supplied N-H at metal sites'
 REPORTED = 'N-H next to a metal, not changed'
@@ -268,8 +331,9 @@ def test_supplied_kept():
     assert h_on(h, 289, 'N') == ['H'] and h_on(h, 290, 'N') == ['H'], args
     lines = description.splitlines()
     title = [l for l in lines if l.startswith(SUPPLIED)]
-    assert title == [SUPPLIED + ': kept as supplied; backbone amide N and '
-      'thymine/uracil N3 bound to metals are usually deprotonated'], lines
+    assert title == [SUPPLIED + ': kept as supplied; backbone amide N, '
+      'thymine/uracil N3 and sulfonamide N bound to metals are usually '
+      'deprotonated'], lines
     entries = section(description, title[0])
     assert entries[0].startswith('H   SER A 289  (N   SER A 289 - NI'), entries
     assert entries[1].startswith('H   HIS A 290  (N   HIS A 290 - NI'), entries
@@ -295,6 +359,21 @@ def test_ligand_n_kept():
   assert section(description, REPORTED) == [
     'N   NH2 A   3 (HN1, HN2)  (N   NH2 A   3 - NI    NI A 101 1.82 A '
     '(geometric))'], description
+
+def test_sulfonamide():
+  '''Sulfonamide N on Zn: ethoxzolamide keeps HN1A, which the Optimizer turns
+  off the Zn (Zn-N1-HN1A at least 90 degrees); 3QR NAZ keeps no H'''
+  from scitbx import matrix
+  h, description, log = run('tst_reduce2_metal_nh_6bcc', pdb_6bcc)
+  assert h_on(h, 302, 'N1') == ['HN1A'], h_on(h, 302, 'N1')
+  sites = dict((a.name.strip(), matrix.col(a.xyz)) for a in h.atoms())
+  angle = (sites['ZN'] - sites['N1']).angle(sites['HN1A'] - sites['N1'],
+    deg=True)
+  assert angle >= 90, angle
+  assert section(description, NOT_PLACED) == ['HN1 EZL A 302  (N1  EZL A 302 '
+    '- ZN    ZN A 301 1.99 A (geometric))'], description
+  h, description, log = run('tst_reduce2_metal_nh_6gcy', pdb_6gcy)
+  assert h_on(h, 302, 'NAZ') == [], h_on(h, 302, 'NAZ')
 
 def test_conformer_without_peptide_c():
   # Ser 289 H/A: Gly 288 C(A) and CA(A), an amide; H/B: no C of its
@@ -348,6 +427,7 @@ if __name__ == '__main__':
   test_supplied_kept()
   test_partial_metal()
   test_ligand_n_kept()
+  test_sulfonamide()
   test_conformer_without_peptide_c()
   test_amino_acid_classification()
   test_peptide_without_o()

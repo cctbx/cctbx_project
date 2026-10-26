@@ -904,8 +904,9 @@ THIOL_H_SUPPLIED_NOTE = ('kept as supplied; thiols bound to metals are usually '
 PHENOL_H_SUPPLIED_NOTE = ('kept as supplied; phenols bound to Fe(III), Ga or '
   'Al are usually deprotonated')
 
-METAL_NH_SUPPLIED_NOTE = ('kept as supplied; backbone amide N and '
-  'thymine/uracil N3 bound to metals are usually deprotonated')
+METAL_NH_SUPPLIED_NOTE = ('kept as supplied; backbone amide N, '
+  'thymine/uracil N3 and sulfonamide N bound to metals are usually '
+  'deprotonated')
 
 # thymine/uracil residues whose N3 carries H3
 THYMINE_URACIL = frozenset(('DT', 'T', 'U', 'DU'))
@@ -1307,10 +1308,12 @@ def residue_is_amino_acid(resname, mon_lib_srv):
 
 class metal_nh_sites(metal_h_sites):
   '''
-  N-H bound to metals (A5): backbone amide N with a preceding residue and
-  thymine/uracil N3 are judged (covered: deprotonated); other N with H, not
-  His ring N, are reported only. Metals: NH_METAL_ELEMENTS. Each H is
-  classified with the heavy neighbours of its own conformer.
+  N-H bound to metals (A5): backbone amide N with a preceding residue,
+  thymine/uracil N3 and sulfonamide N are judged (covered: deprotonated);
+  of a sulfonamide N only the first H of each conformer, so a primary
+  sulfonamide keeps the second (R-SO2-NH-). Other N with H, not His ring N,
+  are reported only. Metals: NH_METAL_ELEMENTS. Each H is classified with
+  the heavy neighbours of its own conformer.
   '''
   metals = NH_METAL_ELEMENTS
   covered = 'deprotonated'
@@ -1334,7 +1337,8 @@ class metal_nh_sites(metal_h_sites):
     The class of the N-H site (N i_n, H i_h): 'amide' (a peptide bond: N and
     the other residue amino acids, N bonded to the CA of its own residue and
     to the atom C of the other; no observed O needed), 'N3' (thymine/uracil
-    N3), 'his' (His ring N, left to the Optimizer) or 'other'. Neighbours:
+    N3), 'sulfonamide' (N bonded to an S that has two O bonded to nothing
+    else), 'his' (His ring N, left to the Optimizer) or 'other'. Neighbours:
     only those compatible with the H's conformer.
     '''
     n, h = atoms[i_n], atoms[i_h]
@@ -1344,6 +1348,14 @@ class metal_nh_sites(metal_h_sites):
       return 'his'
     if name == 'N3' and resname in THYMINE_URACIL:
       return 'N3'
+    for j in heavy.get(i_n, []):
+      if _atom_element(atoms[j]) != 'S' or not _compatible(atoms[j], h):
+        continue
+      terminal_o = set(atoms[k].name for k in heavy.get(j, [])
+        if _atom_element(atoms[k]) == 'O' and
+        len(set(atoms[l].name for l in heavy.get(k, []))) == 1)
+      if len(terminal_o) >= 2:
+        return 'sulfonamide'
     if name != 'N' or not self.is_amino_acid(resname):
       return 'other'
     own = ag.parent().memory_id()
@@ -1364,7 +1376,12 @@ class metal_nh_sites(metal_h_sites):
       for i_h in hs:
         kind = self.n_class(atoms, heavy, i_n, i_h)
         if kind == 'his': continue
-        candidates.append((i_n, i_h, kind in ('amide', 'N3')))
+        judged = kind in ('amide', 'N3')
+        if kind == 'sulfonamide':
+          # one H per conformer, the first: an NH2 keeps the second
+          judged = not any(j < i_h and _compatible(atoms[j], atoms[i_h])
+                           for j in hs)
+        candidates.append((i_n, i_h, judged))
     return candidates
 
 PRIMARY_AMINE = 'primary amine'
@@ -1759,8 +1776,8 @@ def metal_nh_text(not_placed=(), unresolved=(), supplied=(), reported=(),
   [(label, contacts)]; '' if there is nothing to report.
   '''
   return _metal_h_text(group_args(
-    not_placed = 'N-H not placed: backbone amide N or thymine/uracil N3 bound '
-      'to a metal, taken as deprotonated',
+    not_placed = 'N-H not placed: backbone amide N, thymine/uracil N3 or '
+      'sulfonamide N bound to a metal, taken as deprotonated',
     unresolved = 'N-H placed at metal sites with unresolved protonation',
     supplied = 'Supplied N-H at metal sites: %s' % METAL_NH_SUPPLIED_NOTE,
     reported = 'N-H next to a metal, not changed'),
@@ -3049,8 +3066,9 @@ class place_hydrogens():
 
   def exclude_H_on_metal_bound_N(self):
     '''
-    A backbone amide N (with a preceding residue) or a thymine/uracil N3 bound
-    to a metal of NH_METAL_ELEMENTS is taken as deprotonated (A5): as
+    A backbone amide N (with a preceding residue), a thymine/uracil N3 or a
+    sulfonamide N bound to a metal of NH_METAL_ELEMENTS is taken as
+    deprotonated (A5; a primary sulfonamide keeps one H): as
     exclude_H_on_metal_thiolates(), with metal_nh_sites(). Other N-H next to
     such a metal (not His ring N) are kept and listed.
     '''
