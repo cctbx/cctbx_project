@@ -106,6 +106,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
   {
     double log_z;   // ln of the integral
     double e_j;     // <J>
+    double e_j2;    // <J^2>
     double e_sr;    // <sqrt(J) R(kappa sqrt J)>, R = B'/B
     double e_s;     // <sqrt(J)>, the posterior mean amplitude
     double s_mode, s_lo, s_hi; // quadrature interval in s = sqrt(J/sig)
@@ -223,7 +224,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         lw[i] = std::log(gl.w[i] * half * 2.) + psi(s[i]);
         lw_max = std::max(lw_max, lw[i]);
       }
-      double z = 0, sj = 0, ssr = 0, ss = 0;
+      double z = 0, sj = 0, sj2 = 0, ssr = 0, ss = 0;
       for (std::size_t i = 0; i < n; i++) {
         double wi = std::exp(lw[i] - lw_max);
         double jj = sig * s[i] * s[i];
@@ -232,6 +233,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         double r = ratio_b(x, centric);
         z += wi;
         sj += wi * jj;
+        sj2 += wi * jj * jj;
         ssr += wi * rj * r;
         ss += wi * rj;
       }
@@ -240,6 +242,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
             - 0.5 * (eo_sq / sig) * (eo_sq / sig)
             + (1. + p) * std::log(sig);
       e_j = sj / z;
+      e_j2 = sj2 / z;
       e_sr = ssr / z;
       e_s = ss / z;
     }
