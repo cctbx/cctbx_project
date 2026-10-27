@@ -1225,6 +1225,13 @@ def exercise_anisotrop_b_tensors():
     adptbx.b_as_u((8.0, 8.0, 8.0, 0.0, 0.0, 0.0)))
   assert atoms[1].uij == (-1.0,) * 6
 
+def exercise_no_model_num_column():
+  """No _atom_site.pdbx_PDB_model_num: one model with id ""."""
+  h = _build(drop_column(atom_site_header + input_two_atoms,
+    "_atom_site.pdbx_PDB_model_num"))
+  assert h.models_size() == 1 and h.models()[0].id == ""
+  assert h.atoms_size() == 2
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1241,6 +1248,7 @@ def run():
   exercise_resolution()
   exercise_null_occupancy_and_b_iso()
   exercise_anisotrop_b_tensors()
+  exercise_no_model_num_column()
 
 if __name__ == '__main__':
   run()

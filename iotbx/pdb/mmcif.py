@@ -126,7 +126,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     for i_atom in range(atom_labels.size()):
       # model(s)
       last_model_id = current_model_id
-      current_model_id = model_ids[i_atom]
+      if model_ids is None:
+        current_model_id = "" # no pdbx_PDB_model_num column: one model, id ""
+      else:
+        current_model_id = model_ids[i_atom]
       assert current_model_id is not None
       if current_model_id != last_model_id:
         model = hierarchy.model(id=current_model_id)
