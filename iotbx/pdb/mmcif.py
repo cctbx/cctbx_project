@@ -275,8 +275,12 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         fdp = atom_site_fdp[i_atom]
         if fdp not in ("?", "."):
           atom.set_fdp(new_fdp=float(fdp))
-      if anisotrop_id is not None and adps is not None:
-        py_u_ij = py_adps.get(atom.serial.strip(), None)
+      if py_adps:
+        py_u_ij = py_adps.get(atom_site_id[i_atom], None)
+        if py_u_ij is None:
+          # mmCIF written by cctbx from February 2013 to January 2015 has
+          # the hybrid-36 serial as the anisotrop id
+          py_u_ij = py_adps.get(atom.serial.strip(), None)
         if py_u_ij is not None:
           atom.set_uij(py_u_ij)
     if len(self.hierarchy.models()) == 1:

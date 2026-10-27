@@ -1316,6 +1316,22 @@ def exercise_single_item_atom_site():
   assert (a.fp, a.fdp) == (0.5, 1.5)
   assert a.parent().parent().icode == "B"
 
+def exercise_anisotrop_join_by_id_string():
+  """The anisotrop tensors are joined on the _atom_site.id string as written,
+  so ids above 99999 or with leading zeros keep their tensors; the hybrid-36
+  serial is tried second, for mmCIF that cctbx wrote with the serial as the
+  anisotrop id (February 2013 to January 2015)."""
+  joined = (0.1, 0.2, 0.3, 0.01, 0.02, 0.03)
+  unset = (-1.0,) * 6
+  row = "ATOM %s C C . ALA A 1 1 ? 1.0 2.0 3.0 1.00 10.00 1 ALA A C 1\n"
+  for atom_id, aniso_id, uij in (("123456", "123456", joined),
+                                 ("00001", "00001", joined),
+                                 ("100000", "A0000", joined),
+                                 ("01", "1", joined), ("1", "01", unset)):
+    text = atom_site_header + row % atom_id + \
+      aniso_u_loop + "%s 0.1 0.2 0.3 0.01 0.02 0.03\n" % aniso_id
+    assert _build(text).atoms()[0].uij == uij, (atom_id, aniso_id)
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1338,6 +1354,7 @@ def run():
   exercise_non_integer_seq_id()
   exercise_label_asym_id_break_same_seq_id()
   exercise_single_item_atom_site()
+  exercise_anisotrop_join_by_id_string()
 
 if __name__ == '__main__':
   run()
