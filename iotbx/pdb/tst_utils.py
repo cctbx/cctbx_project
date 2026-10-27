@@ -168,6 +168,30 @@ ATOM     31  CD2BLEU     5       6.719   2.499   4.611  1.00 13.84           C
   assert not new_h1.is_similar_hierarchy(h2)
   assert not new_h2.is_similar_hierarchy(h1)
 
+def exercise_try_to_get_hierarchy():
+  import iotbx.pdb
+  from libtbx.utils import Sorry
+  from libtbx.test_utils import Exception_expected
+  from iotbx.pdb.tst_mmcif_hierarchy import atom_site_header, input_two_atoms, \
+    drop_column
+  # no atom labels: the "something is not present" assertion of the mmCIF
+  # builder gives an empty hierarchy
+  text = drop_column(atom_site_header + input_two_atoms,
+    "_atom_site.label_alt_id")
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=text)
+  assert iotbx.pdb.utils.try_to_get_hierarchy(pdb_inp).atoms_size() == 0
+  # any other failure is a Sorry that carries the original message
+  text = (atom_site_header + input_two_atoms).replace(
+    "1.5 2.0 3.0", "x 2.0 3.0")
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=text)
+  try:
+    iotbx.pdb.utils.try_to_get_hierarchy(pdb_inp)
+  except Sorry as e:
+    assert "could not be read" in str(e), str(e)
+    assert 'Invalid floating-point value: "x"' in str(e), str(e)
+  else:
+    raise Exception_expected
+
 def run():
   exercise_add_models_and_hierarchies()
   exercise_set_element_ignoring_spacings()
@@ -175,6 +199,7 @@ def run():
   exercise_get_pdb_info()
   exercise_all_chain_ids()
   exercise_interleave_alt_confs()
+  exercise_try_to_get_hierarchy()
   print("OK")
 
 if __name__ == '__main__':
