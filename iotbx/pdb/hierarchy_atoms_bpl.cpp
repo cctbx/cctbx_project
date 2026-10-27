@@ -79,8 +79,8 @@ namespace {
     af::const_ref<atom> const& atoms,
     scitbx::mat3<double> const& r_cart)
   {
+    if ((r_cart - scitbx::mat3<double>(1)).max_abs() <= 1e-4) return;
     for (unsigned i = 0; i < atoms.size(); i++) {
-      // Atoms without U hold all -1, which rotation would turn into a bogus U.
       if (atoms[i].uij_is_defined()) {
         atoms[i].data->uij = cctbx::adptbx::c_u_c_transpose(
           r_cart, atoms[i].data->uij);
@@ -159,17 +159,7 @@ namespace {
         arg("scatterers"),
         arg("unit_cell")))
       .def("rotate_uij_and_clear_sigmas", rotate_uij_and_clear_sigmas, (
-        arg("r_cart")),
-        "Rotate the anisotropic U of moved atoms and clear sigxyz and siguij.\n"
-        "\n"
-        "sigxyz and siguij rotate only with their covariances, which the\n"
-        "atoms do not hold.  A pure translation leaves U, sigxyz and siguij\n"
-        "valid; do not call this for one.\n"
-        "\n"
-        "Parameters\n"
-        "----------\n"
-        "r_cart : tuple of 9 floats\n"
-        "    Cartesian rotation part of the operator that moved the atoms.\n");
+        arg("r_cart")));
     ;
   }
 

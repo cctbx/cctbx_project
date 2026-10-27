@@ -5321,8 +5321,7 @@ class manager(object):
           xyz = c.atoms().extract_xyz()
           new_xyz = r.elems*xyz+t
           c.atoms().set_xyz(new_xyz)
-          if (not r.is_r3_identity_matrix()):
-            c.atoms().rotate_uij_and_clear_sigmas(r_cart=r.elems)
+          c.atoms().rotate_uij_and_clear_sigmas(r_cart=r.elems)
           m.append_chain(c)
         root.append_model(m)
         roots.append(root)

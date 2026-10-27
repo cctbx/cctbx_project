@@ -6947,6 +6947,48 @@ END
   assert not atoms[3].uij_is_defined()
   assert list(atoms[2:].extract_sigxyz()) == [sigxyz] * 2
 
+def exercise_rotate_uij_and_clear_sigmas():
+  """
+  Two atoms, one with ANISOU: under a rotation the U is rotated, sigxyz and
+  siguij are cleared, and the atom without ANISOU stays without; under the
+  identity, exact or as the Cartesian identity of a monoclinic cell, which
+  carries rounding error, both atoms are left unchanged.
+  """
+  from cctbx import adptbx, sgtbx, uctbx
+  pdb_str = """
+ATOM      1  N   ASP L   1      52.015   9.560  31.693  1.00 25.58           N
+ANISOU    1  N   ASP L   1     3442   3176   3100   -128    630    -84       N
+ATOM      2  CA  ASP L   1      51.012  10.524  32.152  1.00 24.11           C
+END
+"""
+  ph = pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
+  sigxyz = (0.01, 0.02, 0.03)
+  siguij = (.001, .002, .003, .0004, .0005, .0006)
+  has_siguij = pdb.hierarchy.atom.has_siguij()
+  ph.atoms().set_sigxyz(flex.vec3_double(2, sigxyz))
+  if (has_siguij):
+    ph.atoms()[0].set_siguij(new_siguij=siguij)
+  u = ph.atoms()[0].uij
+  r = (0.500000, -0.809017,  0.309017,
+       0.809017,  0.309017, -0.500000,
+       0.309017,  0.500000,  0.809017)
+  atoms = ph.deep_copy().atoms()
+  atoms.rotate_uij_and_clear_sigmas(r_cart=r)
+  assert approx_equal(atoms[0].uij, adptbx.c_u_c_transpose(r, u))
+  assert not atoms[1].uij_is_defined()
+  assert list(atoms.extract_sigxyz()) == [(0, 0, 0)] * 2
+  assert not atoms[0].siguij_is_defined()
+  monoclinic = uctbx.unit_cell((194.707, 61.015, 92.246, 90, 116.65, 90))
+  for identity in [(1, 0, 0, 0, 1, 0, 0, 0, 1),
+                   monoclinic.matrix_cart(sgtbx.rot_mx())]:
+    atoms = ph.deep_copy().atoms()
+    atoms.rotate_uij_and_clear_sigmas(r_cart=identity)
+    assert atoms[0].uij == u, identity
+    assert not atoms[1].uij_is_defined(), identity
+    assert list(atoms.extract_sigxyz()) == [sigxyz] * 2, identity
+    if (has_siguij):
+      assert atoms[0].siguij == siguij, identity
+
 def exercise_convert_met_to_semet():
   pdb_str_met1 = """
 ATOM      1  N   MET B  37       7.525   5.296   6.399  1.00 10.00           N
@@ -7485,6 +7527,7 @@ def exercise(args):
     exercise_remove_atoms()
     exercise_expand_to_p1()
     exercise_apply_rotation_translation()
+    exercise_rotate_uij_and_clear_sigmas()
     exercise_chunk_selections()
     exercise_set_i_seq()
     exercise_get_peptide_c_alpha_selection()

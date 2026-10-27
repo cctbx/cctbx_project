@@ -1251,8 +1251,7 @@ class _():
           xyz = c.atoms().extract_xyz()
           new_xyz = r.elems*xyz+t
           c.atoms().set_xyz(new_xyz)
-          if (not r.is_r3_identity_matrix()):
-            c.atoms().rotate_uij_and_clear_sigmas(r_cart=r.elems)
+          c.atoms().rotate_uij_and_clear_sigmas(r_cart=r.elems)
           m.append_chain(c)
         root.append_model(m)
         roots.append(root)
@@ -1361,8 +1360,7 @@ class _():
           xyz = crystal_symmetry.unit_cell().fractionalize(xyz)
           new_xyz = crystal_symmetry.unit_cell().orthogonalize(m3.elems*xyz+t)
           c_.atoms().set_xyz(new_xyz)
-          if (not smx.r().is_unit_mx()):
-            c_.atoms().rotate_uij_and_clear_sigmas(r_cart=r_cart)
+          c_.atoms().rotate_uij_and_clear_sigmas(r_cart=r_cart)
           #
           if(not (smx.r().is_unit_mx() and smx.t().is_zero())):
             found = False
@@ -1514,9 +1512,8 @@ class _():
       i_seqs = i_seqs.select(keep)
       hierarchy = self.select(i_seqs, copy_atoms=True)
       hierarchy.atoms().set_xyz(equiv.select(keep))
-      if (not op.r().is_unit_mx()):
-        hierarchy.atoms().rotate_uij_and_clear_sigmas(
-          r_cart=unit_cell.matrix_cart(op.r()))
+      hierarchy.atoms().rotate_uij_and_clear_sigmas(
+        r_cart=unit_cell.matrix_cart(op.r()))
       result.append(group_args(rt_mx=op, i_seqs=i_seqs, hierarchy=hierarchy))
     return result
 
