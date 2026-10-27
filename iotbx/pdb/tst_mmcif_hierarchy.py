@@ -7,6 +7,7 @@ from libtbx.test_utils import approx_equal, Exception_expected, \
 from libtbx.utils import null_out
 import iotbx.cif
 from iotbx.pdb.mmcif import pdb_hierarchy_builder
+from iotbx.cif.builders import CifBuilderError
 import mmtbx.model
 import libtbx.load_env
 from six.moves import range
@@ -1232,6 +1233,18 @@ def exercise_no_model_num_column():
   assert h.models_size() == 1 and h.models()[0].id == ""
   assert h.atoms_size() == 2
 
+def exercise_no_atom_id_column():
+  """No _atom_site.id: serials from the row order. With _atom_site_anisotrop
+  rows the join has nothing to go on and the builder raises."""
+  text = drop_column(atom_site_header + input_two_atoms, "_atom_site.id")
+  assert [a.serial for a in _build(text).atoms()] == ["    1", "    2"]
+  try:
+    _build(text + aniso_u_loop + "1 0.1 0.2 0.3 0.01 0.02 0.03\n")
+  except CifBuilderError as e:
+    assert "_atom_site.id" in str(e), str(e)
+  else:
+    raise Exception_expected
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1249,6 +1262,7 @@ def run():
   exercise_null_occupancy_and_b_iso()
   exercise_anisotrop_b_tensors()
   exercise_no_model_num_column()
+  exercise_no_atom_id_column()
 
 if __name__ == '__main__':
   run()

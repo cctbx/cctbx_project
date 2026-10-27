@@ -117,6 +117,9 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     if anisotrop_id is not None and adps is not None:
       for an_id, adp in zip(list(anisotrop_id), list(adps)):
         py_adps[an_id] = adp
+    if atom_site_id is None and len(py_adps) > 0 and atom_labels.size() > 0:
+      raise CifBuilderError(
+        "_atom_site_anisotrop present but _atom_site.id missing")
     current_model_id = None
     current_label_asym_id = None
     current_auth_asym_id = None
@@ -211,8 +214,12 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       atom.set_occ(occu[i_atom])
       # hy36encode should go once the pdb.hierarchy has been
       # modified to no longer store fixed-width strings
-      atom.set_serial(
-        hy36encode(width=5, value=int(atom_site_id[i_atom])))
+      if atom_site_id is None:
+        # no _atom_site.id: the row order
+        atom.set_serial(hy36encode(width=5, value=i_atom+1))
+      else:
+        atom.set_serial(
+          hy36encode(width=5, value=int(atom_site_id[i_atom])))
       # some code relies on an empty segid being 4 spaces
       if auth_segid:
         atom.set_segid(auth_segid[i_atom][:4]+(4-len(auth_segid[i_atom]))*" ")
