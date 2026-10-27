@@ -124,7 +124,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     current_label_asym_id = None
     current_auth_asym_id = None
     current_residue_id = None
-    current_ins_code = None
+    if pdb_ins_code is None:
+      current_ins_code = " " # no pdbx_PDB_ins_code column: blank, as for "?"
+    else:
+      current_ins_code = None
 
     for i_atom in range(atom_labels.size()):
       # model(s)

@@ -1245,6 +1245,18 @@ def exercise_no_atom_id_column():
   else:
     raise Exception_expected
 
+def exercise_no_ins_code_column():
+  """No _atom_site.pdbx_PDB_ins_code: icode " ", as when the column holds "?",
+  so the two hierarchies are the same."""
+  with_column = _build(atom_site_header + input_two_atoms)
+  without = _build(drop_column(atom_site_header + input_two_atoms,
+    "_atom_site.pdbx_PDB_ins_code"))
+  for h in (with_column, without):
+    assert [rg.icode for rg in h.residue_groups()] == [" "]
+    assert [rg.resid() for rg in h.residue_groups()] == ["   1 "]
+  assert without.is_similar_hierarchy(with_column)
+  assert not show_diff(without.as_pdb_string(), with_column.as_pdb_string())
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1263,6 +1275,7 @@ def run():
   exercise_anisotrop_b_tensors()
   exercise_no_model_num_column()
   exercise_no_atom_id_column()
+  exercise_no_ins_code_column()
 
 if __name__ == '__main__':
   run()
