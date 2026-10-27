@@ -1257,6 +1257,28 @@ def exercise_no_ins_code_column():
   assert without.is_similar_hierarchy(with_column)
   assert not show_diff(without.as_pdb_string(), with_column.as_pdb_string())
 
+def exercise_non_integer_seq_id():
+  """A sequence id that is not an integer is accepted only as a four-character
+  hybrid-36 resseq, which cctbx wrote into auth_seq_id until June 2023. Any
+  other non-integer id, and an integer that does not fit the four-character
+  resseq, is a CifBuilderError naming the row."""
+  row = "ATOM 1 C C . ALA A 1 %s ? 1.0 2.0 3.0 1.00 10.00 %s ALA A C 1\n"
+  for seq_id, resseq in (("10000", "A000"), ("-999", "-999"),
+                         ("2436111", "zzzz"), ("A000", "A000"),
+                         ("zzzz", "zzzz")):
+    h = _build(atom_site_header + row % (seq_id, seq_id))
+    rg = h.only_model().only_chain().residue_groups()[0]
+    assert rg.resseq == resseq, (seq_id, rg.resseq)
+  for seq_id in ("1A", "100A", "12AB", ".", "?", "''", "' '", "'    '",
+                 "'12 3'", "ABCDE", "2436112", "-1000",
+                 "99999999999999999999"):
+    try:
+      _build(atom_site_header + row % (seq_id, seq_id))
+    except CifBuilderError as e:
+      assert "row 1" in str(e), str(e)
+    else:
+      raise Exception_expected
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1276,6 +1298,7 @@ def run():
   exercise_no_model_num_column()
   exercise_no_atom_id_column()
   exercise_no_ins_code_column()
+  exercise_non_integer_seq_id()
 
 if __name__ == '__main__':
   run()

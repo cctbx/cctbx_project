@@ -10,7 +10,7 @@ import iotbx.pdb
 import cctbx.crystal
 from cctbx import adptbx
 from iotbx.pdb import hierarchy
-from iotbx.pdb import hy36encode
+from iotbx.pdb import hy36encode, hy36decode
 from iotbx.pdb import cryst1_interpretation
 from iotbx.pdb.experiment_type import experiment_type
 from iotbx.pdb.remark_3_interpretation import \
@@ -176,9 +176,23 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
           or current_model_id != last_model_id):
         try:
           resseq = hy36encode(width=4, value=int(current_residue_id))
-        except ValueError as e:
+        except (ValueError, OverflowError):
           resseq = current_residue_id
-          assert len(resseq)==4
+          where = "_atom_site.auth_seq_id (or label_seq_id) row %d" % (i_atom+1)
+          try:
+            int(resseq)
+          except ValueError:
+            pass
+          else:
+            raise CifBuilderError("%s: residue number does not fit the "
+              "four-character resseq (-999 to 2436111): %r" % (where, resseq))
+          # a four-character hybrid-36 resseq, as cctbx wrote until June 2023
+          try:
+            if len(resseq) != 4 or " " in resseq: raise ValueError
+            hy36decode(width=4, s=resseq)
+          except ValueError:
+            raise CifBuilderError("%s: not an integer nor a four-character "
+              "hybrid-36 resseq: %r" % (where, resseq))
         residue_group = hierarchy.residue_group(
           resseq=resseq,
           icode=current_ins_code)
