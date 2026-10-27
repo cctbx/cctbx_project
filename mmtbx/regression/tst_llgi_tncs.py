@@ -725,6 +725,124 @@ def exercise_u_clamp_reported(fmodel):
   assert flex.max(flex.abs(ratio - 0.5)) < 1e-9
   _check_cctbx_base(ls)
 
+def exercise_precomputed_pair_terms(h, xrs):
+  """ setup with the consensus pair terms given (pair_terms=) gives the
+  same llgi_data as without, and evaluates none; select_pair_terms maps
+  pair terms onto a reordered subset of indices, None if one is missing """
+  fmodel = synthetic_fmodel(h, xrs, source="cctbx")
+  ld = fmodel.llgi_data()
+  f_obs = fmodel.f_obs()
+  base = llgi_tncs.setup(ld, f_obs, h, xrs)
+  groups = base.tncs_state.groups
+  # only the consensus basis is computed without pair_terms
+  real = llgi_tncs.pair_modulations
+  bases = []
+  def spy(*args, **kwds):
+    bases.append(args[3] if len(args) > 3 else kwds.get("bases"))
+    return real(*args, **kwds)
+  llgi_tncs.pair_modulations = spy
+  try:
+    llgi_tncs.setup(ld, f_obs, h, xrs)
+  finally:
+    llgi_tncs.pair_modulations = real
+  assert bases == [("consensus",)], bases
+  # given: nothing is evaluated, and the numbers are the same
+  pm = real(f_obs, groups, xrs, ("consensus",), per_group=True)
+  calls = []
+  def fail(*args, **kwds):
+    calls.append(1)
+    return real(*args, **kwds)
+  llgi_tncs.pair_modulations = fail
+  real_pair_term = llgi_tncs.pair_term
+  llgi_tncs.pair_term = fail
+  try:
+    given = llgi_tncs.setup(ld, f_obs, h, xrs, pair_terms=pm)
+  finally:
+    llgi_tncs.pair_modulations = real
+    llgi_tncs.pair_term = real_pair_term
+  assert not calls
+  for name in ("tncs_u", "tncs_t", "resn", "feff", "e_obs_sq_base",
+      "sig_e_obs_sq_base", "e_obs_sq", "dobs"):
+    assert flex.max(flex.abs(getattr(given, name).data() -
+      getattr(base, name).data())) < 1e-12, name
+  assert abs(given.tncs_state.coherence.gamma -
+    base.tncs_state.coherence.gamma) < 1e-12
+  assert abs(given.tncs_state.f_total - base.tncs_state.f_total) < 1e-12
+  # wrong size
+  try:
+    llgi_tncs.setup(ld, f_obs, h, xrs, pair_terms=llgi_tncs.select_pair_terms(
+      pm, f_obs, f_obs.select(f_obs.d_spacings().data() > 4.0)))
+  except AssertionError:
+    pass
+  else:
+    raise RuntimeError("expected the size check")
+  # the mapping
+  sub = f_obs.select(f_obs.d_spacings().data() > 4.0)
+  perm = flex.size_t(list(reversed(range(sub.size()))))
+  sub = sub.select(perm)
+  mapped = llgi_tncs.select_pair_terms(pm, f_obs, sub)
+  assert mapped.a["consensus"].size() == sub.size()
+  assert mapped.f_total == pm.f_total and mapped.fractions is pm.fractions
+  # the values are those of pm at the reordered indices ...
+  lookup = dict((h_, i) for i, h_ in enumerate(f_obs.indices()))
+  isel = flex.size_t([lookup[h_] for h_ in sub.indices()])
+  assert mapped.a["consensus"].all_eq(pm.a["consensus"].select(isel))
+  assert len(mapped.a_groups["consensus"]) == len(pm.a_groups["consensus"])
+  for m, g in zip(mapped.a_groups["consensus"], pm.a_groups["consensus"]):
+    assert m.all_eq(g.select(isel))
+  # ... which agree with the terms computed on sub itself to the accuracy of
+  # the FFT (quality_factor 1e5: ~0.001; the grid depends on the set)
+  direct = real(sub, groups, xrs, ("consensus",), per_group=True)
+  assert flex.max(flex.abs(mapped.a["consensus"] - direct.a["consensus"])) \
+    < 0.01
+  # without a_groups
+  plain = real(f_obs, groups, xrs, ("consensus",))
+  assert llgi_tncs.select_pair_terms(plain, f_obs, sub).a_groups is None
+  # an index of the target missing from the source
+  src = f_obs.select(f_obs.d_spacings().data() > 4.0)
+  src_pm = llgi_tncs.select_pair_terms(pm, f_obs, src)
+  assert llgi_tncs.select_pair_terms(src_pm, src, f_obs) is None
+
+def exercise_refit_clamps_u(fmodel):
+  """ refit_sigmaa_scatfrac (refit_tncs=False, as adp_gradients) with
+  sigmaA lowered so that the stored (u, t) would be frame-invalid: u is
+  clamped, stored, counted and reported; t and the data are kept """
+  import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
+  f, _ = _refit(fmodel, "data")
+  ld0 = f.llgi_data()
+  t0, u0 = ld0.tncs_t.data().deep_copy(), ld0.tncs_u.data().deep_copy()
+  e0 = ld0.e_obs_sq.data().deep_copy()
+  real = llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel
+  def lowered(*args, **kwds):
+    r = real(*args, **kwds)
+    r.sigmaa = 0.6 * r.sigmaa
+    return r
+  llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel = lowered
+  try:
+    r = llgi_tncs.refit_sigmaa_scatfrac(f)
+  finally:
+    llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel = real
+  ld = f.llgi_data()
+  sa, u, t = ld.sigmaa.data(), ld.tncs_u.data(), ld.tncs_t.data()
+  expected = (sa > 0) & (sa < 1) & (t <= (1 - sa * sa) * u0)
+  n = expected.count(True)
+  assert n > 0
+  assert r.n_u_clamped == n
+  assert (llgi_tncs.U_CLAMP_WARNING % n) in r.warnings, r.warnings
+  assert t.all_eq(t0) and ld.e_obs_sq.data().all_eq(e0)
+  assert _frame_valid(ld)
+  sel = (sa > 0) & (sa < 1)
+  a_p = llgi_tncs.frame(sa, u, t)[0]
+  assert flex.min(a_p.select(sel)) > 0
+  assert u.select(~expected).all_eq(u0.select(~expected))
+  # no clamp needed: nothing changes
+  f2, _ = _refit(fmodel, "model")
+  u2 = f2.llgi_data().tncs_u.data().deep_copy()
+  r2 = llgi_tncs.refit_sigmaa_scatfrac(f2)
+  assert r2.n_u_clamped == 0
+  assert not [w for w in r2.warnings if "u clamped" in w]
+  assert f2.llgi_data().tncs_u.data().all_eq(u2)
+
 def monitor_inputs(seed=11, d_min=3.0, sig_frac=0.1):
   """ (f_obs, free flags, i_obs, resn, A_1, A_2) on random P 21 21 21 data """
   ms = miller.build_set(CS, anomalous_flag=False, d_min=d_min)
@@ -968,6 +1086,9 @@ def run():
   exercise_cctbx_setup_frame(h, xrs)
   exercise_frame_data_vs_model(cctbx_fmodel(h, xrs))
   exercise_u_clamp_reported(cctbx_fmodel(h, xrs, sigma_common=1.0,
+    sigma_indep=0.5))
+  exercise_precomputed_pair_terms(h, xrs)
+  exercise_refit_clamps_u(cctbx_fmodel(h, xrs, sigma_common=1.0,
     sigma_indep=0.5))
   exercise_monitor_identical()
   exercise_monitor_classes()
