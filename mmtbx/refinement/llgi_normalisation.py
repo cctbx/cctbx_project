@@ -23,9 +23,10 @@ Parameters are [ln_scale, ln_b_bin[0..n-1], beta_ind[...], beta1_ind[...]].
 fit() refines this model jointly with a shared tNCS coherence against the
 intensities alone, with the Wilson likelihood including the measurement
 error (cctbx.xray.ext.wilson_intensity): the expected intensity is
-epsilon SigmaN TEPS, TEPS = max(1 + Gamma(s) sum_g A_g, U_MIN) with A_g the
-consensus pair terms of the model's tNCS groups and Gamma(s) =
-gamma exp(-2 pi^2 v^2 s^2) (llgi_tncs.coherence_curve).
+epsilon SigmaN TEPS, TEPS = max(1 + Gamma(s) sum_g A_g, TEPS_FLOOR) with
+A_g the consensus pair terms of the model's tNCS groups and Gamma(s) =
+gamma exp(-2 pi^2 v^2 s^2) (llgi_tncs.coherence_curve). The TEPS returned
+is floored at U_MIN instead, as it is the frame used downstream.
 """
 import math
 import numpy
@@ -36,6 +37,10 @@ from cctbx import adptbx, sgtbx
 from cctbx.array_family import flex
 from cctbx.xray import ext as xray_ext
 from mmtbx.refinement.llgi_tncs import coherence_curve, U_MIN
+
+# numerical guard only, because the measurement error already removes the
+# influence of reflections with Sigma << sigma_I
+TEPS_FLOOR = 1e-4
 
 # phasertng io/data/best_curve_at_ssqr.h (X-ray BEST table), verbatim:
 # intensity at ssqr = BEST_SSQR0 + i*BEST_STEP, to be multiplied by BEST_K
@@ -530,7 +535,7 @@ class _target(object):
   that change SigmaN (beta1_effective_basis), w = v^2 (so that the
   coherence is smooth at v = 0), and eta_g = ln(gamma_g/gamma) with
   hierarchical coherence. The expected intensity is
-  Sigma = epsilon SigmaN TEPS, TEPS = max(1 + gamma exp(-c w) Z, U_MIN),
+  Sigma = epsilon SigmaN TEPS, TEPS = max(1 + gamma exp(-c w) Z, TEPS_FLOOR),
   c = 2 pi^2 s^2, Z = sum_g exp(eta_g) A_g. Derivatives are by the chain
   rule over the per-reflection derivatives in ln Sigma """
 
@@ -631,21 +636,24 @@ class _target(object):
       eg, z = None, a_sum
     return 1 + gamma * g * z, g, z, eg
 
-  def teps_all(self, p):
-    """ TEPS for all reflections (numpy) and the number floored """
+  def teps_all(self, p, floor=None):
+    """ TEPS for all reflections (numpy) and the number floored, at U_MIN
+    (as reported) or at floor """
     d = self.data
+    if floor is None: floor = U_MIN
     if not self.tncs: return numpy.ones(d.i.size), 0
     t = self._teps_raw(p, d.a, d.a.sum(axis=0), d.c)[0]
-    low = t < U_MIN
-    return numpy.where(low, U_MIN, t), int(low.sum())
+    low = t < floor
+    return numpy.where(low, floor, t), int(low.sum())
 
   def ln_sigman_all(self, p):
     return _as_numpy(self.model.ln_sigman(self.expand(p)))
 
   def sigma_all(self, p):
-    """ epsilon SigmaN TEPS for all reflections (numpy) """
+    """ epsilon SigmaN TEPS for all reflections (numpy), with TEPS floored
+    at TEPS_FLOOR as in the target """
     return self.data.eps * numpy.exp(self.ln_sigman_all(p)) * \
-      self.teps_all(p)[0]
+      self.teps_all(p, TEPS_FLOOR)[0]
 
   # -- target
   def _restraint(self, p):
@@ -672,8 +680,9 @@ class _target(object):
     tn = None
     if self.tncs:
       t, g, z, eg = self._teps_raw(p, self.a, self.a_sum, self.c)
-      low = t < U_MIN
-      tn = group_args(t=numpy.where(low, U_MIN, t), g=g, z=z, eg=eg, low=low)
+      low = t < TEPS_FLOOR
+      tn = group_args(t=numpy.where(low, TEPS_FLOOR, t), g=g, z=z, eg=eg,
+        low=low)
       ln_sigma = ln_sigma + numpy.log(tn.t)
     return ln_sigma, tn
 
@@ -890,7 +899,8 @@ def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None):
   tncs_a_groups: None, or a list of flex.double, the consensus pair term
     A_g of each tNCS group on the indices of i_obs.
   Returns group_args with resn (sqrt(epsilon SigmaN)), teps
-  (max(1 + Gamma sum_g A_g, U_MIN), or 1), anisotropy (miller.arrays),
+  (max(1 + Gamma sum_g A_g, U_MIN), or 1; the fit itself floors TEPS at
+  TEPS_FLOOR), anisotropy (miller.arrays),
   selection (flex.bool, True = used), coherence (coherence_curve or None),
   gamma_groups (hierarchical_coherence: gamma_g per group, else None), x
   (sigman_model parameters), model, log_likelihood (Wilson, selected, no

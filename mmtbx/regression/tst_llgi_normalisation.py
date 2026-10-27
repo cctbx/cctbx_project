@@ -227,34 +227,40 @@ def _true_sigman(ms, beta_aniso_b):
   wiggle = 1 + 0.05 * numpy.cos(2.3 * b)
   return SCALE_TRUE * best * aniso * wiggle
 
-def _a_group(ms, t, amplitude=1.):
+def _a_group(ms, t, amplitude=1., decay=10.):
   """ consensus pair term of two copies related by the translation t """
   hkl = ms.indices().as_vec3_double().as_numpy_array()
   dss = ms.d_star_sq().data().as_numpy_array()
   return amplitude * numpy.cos(2 * math.pi * hkl.dot(numpy.array(t))) * \
-    numpy.exp(-10 * dss / 4)
+    numpy.exp(-decay * dss / 4)
 
 def _simulate(space_group, cell, d_min, beta_aniso_b, gamma, v,
-    sigma_fraction, seed, n_groups=1):
+    sigma_fraction, seed, n_groups=1, floor=U_MIN, decay=10.,
+    absolute_error=False, translations=TNCS_T):
   """ intensities following Wilson statistics with SigmaN_true (BEST, an
   anisotropic B, a fixed +-5% bin pattern), tNCS modulation
-  max(1 + gamma exp(-2 pi^2 v^2 s^2) sum A_g, U_MIN) and Gaussian errors of
-  sigma_fraction Sigma (a number, or one per reflection). Returns (i_obs,
-  a_groups) """
+  max(1 + gamma exp(-2 pi^2 v^2 s^2) sum A_g, floor) and Gaussian errors of
+  sigma_fraction Sigma (a number, or one per reflection). floor replaces
+  U_MIN in the true modulation, decay is the damping of the pair term, and
+  translations are those of the groups, and with absolute_error the errors
+  are sigma_fraction epsilon SigmaN_true,
+  without the modulation. Returns (i_obs, a_groups) """
   rs = numpy.random.RandomState(seed)
   ms = make_set(space_group, cell, d_min)
   dss = ms.d_star_sq().data().as_numpy_array()
   eps = ms.epsilons().data().as_numpy_array().astype(float)
   cen = ms.centric_flags().data().as_numpy_array()
   amplitude = 2 * 0.5 if n_groups == 1 else 0.5
-  a = [_a_group(ms, TNCS_T[g], amplitude) for g in range(n_groups)]
+  a = [_a_group(ms, translations[g], amplitude, decay)
+       for g in range(n_groups)]
   t = 1 + gamma * numpy.exp(-2 * math.pi ** 2 * v ** 2 * dss) * sum(a)
-  t = numpy.maximum(t, U_MIN)
+  t = numpy.maximum(t, floor)
   sigma = eps * _true_sigman(ms, beta_aniso_b) * t
   n = ms.size()
   j = numpy.where(cen, sigma * rs.normal(size=n) ** 2,
     sigma * rs.exponential(size=n))
-  sig = numpy.asarray(sigma_fraction) * sigma
+  sig = numpy.asarray(sigma_fraction) * (
+    eps * _true_sigman(ms, beta_aniso_b) if absolute_error else sigma)
   i = j + rs.normal(size=n) * sig
   i_obs = ms.array(data=flex.double(i), sigmas=flex.double(sig))
   i_obs.set_observation_type_xray_intensity()
@@ -302,7 +308,7 @@ def exercise_no_tncs():
 
 def exercise_gamma_bound():
   i_obs, a = _simulate(P212121[0], P212121[1], 2.0, B_ANISO, 1.2, 0.4,
-    0.1, seed=3)
+    0.1, seed=3, floor=ln.TEPS_FLOOR)
   r = ln.fit(i_obs, tncs_a_groups=a)
   assert r.coherence.gamma == 1.05, r.coherence.gamma
   w = ("tNCS coherence gamma = 1.050 exceeds 1: the data are more strongly "
@@ -313,6 +319,35 @@ def exercise_gamma_bound():
   p.gamma_max = 0.8
   r = ln.fit(i_obs, tncs_a_groups=a, params=p)
   assert r.coherence.gamma == 0.8 and r.warnings == []
+
+def exercise_low_teps_floor():
+  # true TEPS below U_MIN for many reflections (A = -1 at odd l, gamma = 1),
+  # measurement errors present: the fit's own floor is 1e-4, so gamma is
+  # unbiased; with U_MIN as the floor of the fit it is pushed up (to the cap)
+  assert ln.TEPS_FLOOR == 1e-4
+  tol, errs = 0.025, {}
+  for floor in (ln.TEPS_FLOOR, U_MIN):
+    errs[floor] = []
+    for seed in range(1, 7):
+      i_obs, a = _simulate(P212121[0], P212121[1], 2.2, B_ANISO, 1., 0.1,
+        0.3, seed, floor=ln.TEPS_FLOOR, decay=0., absolute_error=True,
+        translations=[(0, 0, 0.5)])
+      if floor == ln.TEPS_FLOOR:
+        t = 1 + numpy.exp(-2 * math.pi ** 2 * 0.1 ** 2 *
+          i_obs.d_star_sq().data().as_numpy_array()) * a[0].as_numpy_array()
+        assert (t < U_MIN).sum() > 0.03 * t.size
+        r = ln.fit(i_obs, tncs_a_groups=a)
+        # the reported TEPS is still floored at U_MIN
+        assert flex.min(r.teps.data()) >= U_MIN
+        assert r.n_teps_floored > 0.03 * t.size
+      else:
+        ln.TEPS_FLOOR = U_MIN
+        try: r = ln.fit(i_obs, tncs_a_groups=a)
+        finally: ln.TEPS_FLOOR = 1e-4
+      errs[floor].append(r.coherence.gamma - 1.)
+  assert max(abs(e) for e in errs[ln.TEPS_FLOOR]) < tol, errs[ln.TEPS_FLOOR]
+  assert max(errs[U_MIN]) > tol, errs[U_MIN]
+  assert sum(errs[U_MIN]) / 6 > 0.01, errs[U_MIN]
 
 def exercise_outlier_rejected():
   i_obs, a = _simulate(P212121[0], P212121[1], 2.0, B_ANISO, 0.9, 0.4,
@@ -648,6 +683,7 @@ def run():
   exercise_fit_recovers_truth()
   exercise_no_tncs()
   exercise_gamma_bound()
+  exercise_low_teps_floor()
   exercise_outlier_rejected()
   exercise_weak_shells()
   exercise_zero_sigma_excluded()

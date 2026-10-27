@@ -32,7 +32,8 @@ Gamma(s) A_cons(h): A_cons is the pair modulation of the group consensus
 (the model's copies superposed, averaged and placed back by each copy's
 operator, so that the model's own differences between copies do not
 weaken it), and Gamma(s) = gamma exp(-2 pi^2 v^2 s^2) is the coherence
-of the true copies relative to the consensus (gamma <= 1; v the rms
+of the true copies relative to the consensus (gamma <= 1, or the
+cctbx normalisation's gamma_max; v the rms
 difference per direction; one curve shared by all groups). The error
 variance is then modulated by u(h) = (T - sigmaA^2 M)/(1 - sigmaA^2), and
 the expected intensity by t(h) = sigmaA^2 M(h) + (1 - sigmaA^2) u(h) = T,
@@ -597,10 +598,13 @@ def error_variance_modulation(sigmaa, a_model, a_cons, gamma):
   return u, low.count(True)
 
 def fit_coherence(e_obs_sq, sig_e_obs_sq, centric_flags, e_model, sigmaa,
-      a_model, a_cons, d_star_sq, selection, start=None):
+      a_model, a_cons, d_star_sq, selection, start=None, gamma_max=1.0):
   """ Gamma(s) (coherence_curve) by the exact E-scale likelihood over the
   selected reflections, with sigmaA fixed, as fit_tau but with u from
-  error_variance_modulation; 0 <= gamma <= 1, 0 <= v <= 3 A. """
+  error_variance_modulation; 0 <= gamma <= gamma_max (1 for identical
+  copies; the cctbx normalisation allows a little more, its gamma_max),
+  0 <= v <= 3 A. The default start is gamma = 0.95, or start's gamma
+  at most gamma_max - 0.01. """
   from scipy.optimize import minimize
   isel = selection.iselection()
   io, si = e_obs_sq.select(isel), sig_e_obs_sq.select(isel)
@@ -610,7 +614,7 @@ def fit_coherence(e_obs_sq, sig_e_obs_sq, centric_flags, e_model, sigmaa,
   n = isel.size()
   one = flex.double(n, 1.)
   def f(x):
-    if not (0 <= x[0] <= 1 and 0 <= x[1] <= 3): return 1e10
+    if not (0 <= x[0] <= gamma_max and 0 <= x[1] <= 3): return 1e10
     u = error_variance_modulation(sa, am, ac,
       coherence_curve(x[0], x[1]).at(ss))[0]
     d = renormalise(io, si, one, u, cen)
@@ -621,8 +625,8 @@ def fit_coherence(e_obs_sq, sig_e_obs_sq, centric_flags, e_model, sigmaa,
       selection=flex.bool(n, True), e_model=em, dobs=d.dobs, sigmaa=sa,
       centric_flags=cen, hybrid=hybrid, tncs_u=u, tncs_t=u)
     return r.target() - flex.mean(hybrid.null_log_z)
-  x0 = [0.95, 0.2] if start is None else [min(start.gamma, 0.99),
-    max(start.v, 0.05)]
+  x0 = [0.95, 0.2] if start is None else [min(start.gamma,
+    gamma_max - 0.01), max(start.v, 0.05)]
   r = minimize(f, x0, method="Nelder-Mead", options=dict(xatol=1e-4,
     fatol=1e-9, maxiter=400, maxfev=400, initial_simplex=[x0,
     [x0[0] - 0.05, x0[1]], [x0[0], x0[1] + 0.1]]))
@@ -1209,6 +1213,9 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
       _resn_scale(resn, i_obs.sigmas(), sig_base))
     warnings.extend(normalisation.warnings)
   tau, coherence = state.tau, state.coherence
+  # the bound of the coherence: the normalisation's gamma_max with the cctbx
+  # source (state.normalisation_params, kept by _setup_cctbx), 1 with nacelle's
+  gamma_max = state.normalisation_params.gamma_max if cctbx_source else 1.0
   f_total = state.f_total if groups is state.groups else pm.f_total
   fit_selection = flex.bool(n, True)
   if(params.fit_reflections == "free"):
@@ -1230,7 +1237,7 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
     e_model = sigmaa_result.e_model
     if(physical):
       coherence = fit_coherence(e_base, sig_base, centric, e_model, sigmaa,
-        a, a_cons, dss, fit_selection, start=coherence)
+        a, a_cons, dss, fit_selection, start=coherence, gamma_max=gamma_max)
       u, n_low = error_variance_modulation(sigmaa, a, a_cons,
         coherence.at(dss))
     else:

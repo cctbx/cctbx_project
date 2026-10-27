@@ -262,6 +262,19 @@ def exercise_fits(groups, xrs):
   u, n_low = llgi_tncs.error_variance_modulation(flex.double(n, 0.5), a, a,
     coherence.at(dss))
   assert n_low == 0 and flex.min(u) > 0
+  # the upper bound: data whose optimum is above 1 (gamma_true = 1.15)
+  tau_eq = (1.15 - 0.25) / 0.75
+  e2, sig, em = synthetic_e_data(a, tau_eq, sigmaa=0.5, seed=8)
+  args = (e2, sig, cen, em, flex.double(n, 0.5), a, a, dss,
+    flex.bool(n, True))
+  default = llgi_tncs.fit_coherence(*args)
+  assert 0.95 < default.gamma <= 1., default.gamma
+  wide = llgi_tncs.fit_coherence(*args, gamma_max=1.05)
+  assert 1. < wide.gamma <= 1.05, wide.gamma
+  # the start is below the bound
+  start = llgi_tncs.coherence_curve(1.05, 0.2)
+  wide = llgi_tncs.fit_coherence(*args, start=start, gamma_max=1.05)
+  assert 1. < wide.gamma <= 1.05, wide.gamma
 
 def synthetic_fmodel(h, xrs, sigma_common=0.6, sigma_indep=0.15, d_min=3.5,
       seed=11, source="nacelle"):
@@ -531,6 +544,30 @@ def exercise_nacelle_source_unchanged(h, xrs):
     assert getattr(fd.llgi_data(), name).data().all_eq(
       getattr(fm.llgi_data(), name).data()), name
   assert fd.f_obs().data().all_eq(fm.f_obs().data())
+
+def exercise_gamma_max_passed(h, xrs):
+  """ fit_and_renormalise bounds the coherence by gamma_max of the
+  normalisation parameters with the cctbx source and by 1 with nacelle's """
+  seen = []
+  original = llgi_tncs.fit_coherence
+  def recorder(*args, **kwds):
+    seen.append(kwds.get("gamma_max"))
+    return original(*args, **kwds)
+  llgi_tncs.fit_coherence = recorder
+  try:
+    _nacelle_run(h, xrs, "model")
+    assert seen and set(seen) == set([1.0]), seen
+    del seen[:]
+    fmodel = cctbx_fmodel(h, xrs)
+    fmodel.update_llgi_sigmaa_scatfrac()
+    assert seen and set(seen) == set([1.05]), seen
+    state = fmodel.llgi_data().tncs_state
+    state.normalisation_params.gamma_max = 1.2
+    del seen[:]
+    fmodel.update_llgi_sigmaa_scatfrac()
+    assert seen and set(seen) == set([1.2]), seen
+  finally:
+    llgi_tncs.fit_coherence = original
 
 def _max_rel(a, b):
   """ largest difference relative to the largest value """
@@ -1083,6 +1120,7 @@ def run():
   exercise_fits(groups, xrs)
   exercise_fmodel_integration(h, xrs)
   exercise_nacelle_source_unchanged(h, xrs)
+  exercise_gamma_max_passed(h, xrs)
   exercise_cctbx_setup_frame(h, xrs)
   exercise_frame_data_vs_model(cctbx_fmodel(h, xrs))
   exercise_u_clamp_reported(cctbx_fmodel(h, xrs, sigma_common=1.0,
