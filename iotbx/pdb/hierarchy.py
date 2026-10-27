@@ -1226,7 +1226,8 @@ class _():
     Copy the hierarchy once per rotation-translation pair.
 
     Copies under a rotation have anisotropic U rotated and sigxyz and siguij
-    cleared; copies under a translation keep them.
+    cleared; copies under a translation keep them.  Chain IDs must be one
+    character, and pairs times models at most 61.
 
     Parameters
     ----------
@@ -1238,8 +1239,8 @@ class _():
     Returns
     -------
     iotbx.pdb.hierarchy.root
-        The copies, with a suffix 1, 2, ... per pair appended to the
-        one-character chain IDs.
+        One model holding the copies, with a suffix 1-9, A-Z, a-z appended
+        to the chain IDs, one suffix per pair and model.
     """
     roots=[]
     for r,t in zip(rot_matrices, trans_vectors):
