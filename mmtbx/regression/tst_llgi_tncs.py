@@ -950,6 +950,49 @@ def exercise_monitor_group_stands_out():
   assert ("tNCS monitor: group %d stands out (coefficient %.3f)" % (
     2, r.group_coefficients[1])) in r.warnings
 
+def exercise_monitor_reports_once():
+  f_obs, free, i_obs, resn, a1, a2 = monitor_inputs()
+  t_model = 1 + a1 + a2
+  teps = 1 + a1 + 1.3 * a2
+  c = llgi_tncs.coherence_curve(0.9, 0.3)
+  def run(teps, previous=None):
+    return llgi_tncs.monitor(teps, t_model, f_obs, free, [a1, a2], i_obs,
+      resn, c, c, previous=previous)
+  def stands_out(r):
+    return [w for w in r.warnings if "stands out" in w]
+  first = run(teps)
+  assert len(stands_out(first)) == 1, first.warnings
+  assert list(first.reported.keys()) == [1], first.reported
+  assert first.reported[1] == first.group_coefficients[1]
+  # the same inputs again: not reported again
+  second = run(teps, first)
+  assert not stands_out(second), second.warnings
+  assert second.reported == first.reported
+  assert len(second.group_coefficients) == 2
+  # a coefficient that moved by more than MONITOR_REPORT_CHANGE is reported
+  # again; the reported value is updated
+  def with_reported(reported):
+    return group_args(ll_free_data=first.ll_free_data,
+      ll_free_model=first.ll_free_model, reported=reported)
+  moved = with_reported({
+    1: first.group_coefficients[1] - 2 * llgi_tncs.MONITOR_REPORT_CHANGE})
+  third = run(teps, moved)
+  assert len(stands_out(third)) == 1, third.warnings
+  assert third.reported == first.reported, third.reported
+  # a change below the threshold is not reported and the old value is kept
+  near = with_reported({
+    1: first.group_coefficients[1] - 0.5 * llgi_tncs.MONITOR_REPORT_CHANGE})
+  fourth = run(teps, near)
+  assert not stands_out(fourth), fourth.warnings
+  assert fourth.reported == near.reported, fourth.reported
+  # a group that no longer stands out is dropped, and reported when it
+  # stands out again
+  quiet = run(1 + a1 + a2, second)
+  assert not stands_out(quiet) and quiet.reported == {}, quiet.reported
+  again = run(teps, quiet)
+  assert len(stands_out(again)) == 1, again.warnings
+  assert again.reported == first.reported
+
 def exercise_monitor_gap_growth():
   f_obs, free, i_obs, resn, a1, a2 = monitor_inputs()
   t_model = 1 + a1 + a2
@@ -1131,6 +1174,7 @@ def run():
   exercise_monitor_identical()
   exercise_monitor_classes()
   exercise_monitor_group_stands_out()
+  exercise_monitor_reports_once()
   exercise_monitor_gap_growth()
   exercise_monitor_in_fit_and_renormalise(cctbx_fmodel(h, xrs))
   exercise_domain_groups()

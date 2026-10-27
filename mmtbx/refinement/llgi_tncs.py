@@ -1018,6 +1018,8 @@ MONITOR_STANDS_OUT = 3.      # times the median absolute coefficient
 MONITOR_MIN_COEFFICIENT = 0.05
 MONITOR_N_BINS = 5
 MONITOR_MIN_CELL = 10        # reflections for a meaningful correlation
+MONITOR_REPORT_CHANGE = 0.1  # coefficient change that reports a stand-out
+                             # group again
 
 GAP_WARNING = ("tNCS monitor: free-set gap grew from %.4f to %.4f "
   "nats/reflection")
@@ -1088,7 +1090,7 @@ def monitor(teps_data, t_model, f_obs, free_flags, a_groups, i_obs, resn,
       coherence_data, coherence_fc, previous=None):
   """ Compares the data-only TEPS (teps_data) with the model-based
   modulation t_model: group_args(table, ll_free_data, ll_free_model,
-  group_coefficients, coherence_data, coherence_fc, warnings).
+  group_coefficients, coherence_data, coherence_fc, reported, warnings).
   table: rows (d_max, d_min, class, n, corr_ln, mean_ratio, rms_ln_ratio)
   (_monitor_table); ll_free_data and ll_free_model: nats per free
   reflection of the intensities i_obs (miller array with sigmas, on the
@@ -1101,7 +1103,14 @@ def monitor(teps_data, t_model, f_obs, free_flags, a_groups, i_obs, resn,
   MONITOR_GAP_GROWTH since previous; a group's coefficient exceeds
   MONITOR_STANDS_OUT times the median absolute coefficient (the lower
   median, so that a single stand-out among two groups can be seen) and
-  MONITOR_MIN_COEFFICIENT. """
+  MONITOR_MIN_COEFFICIENT. A stand-out group is warned about once:
+  reported is a dict {group index (0-based): coefficient at its last
+  report} of the groups that stand out now. A group is warned about if it
+  is not in previous.reported (a previous without reported counts as
+  empty), or if its coefficient differs from the reported one by more than
+  MONITOR_REPORT_CHANGE; otherwise its reported coefficient is kept. A group
+  that no longer stands out is dropped from reported, so that it is
+  reported again if it stands out later. """
   warnings = []
   ll_data = _free_log_likelihood(i_obs, resn, teps_data, free_flags)
   ll_model = _free_log_likelihood(i_obs, resn, t_model, free_flags)
@@ -1113,14 +1122,20 @@ def monitor(teps_data, t_model, f_obs, free_flags, a_groups, i_obs, resn,
   coefficients = _group_coefficients(teps_data, t_model, a_groups)
   magnitudes = sorted(abs(c) for c in coefficients)
   median = magnitudes[(len(magnitudes) - 1) // 2]
+  before = getattr(previous, "reported", None) or {}
+  reported = {}
   for i, c in enumerate(coefficients):
     if(abs(c) > MONITOR_STANDS_OUT * median and abs(c) > MONITOR_MIN_COEFFICIENT):
-      warnings.append(STANDS_OUT_WARNING % (i + 1, c))
+      if(i not in before or abs(c - before[i]) > MONITOR_REPORT_CHANGE):
+        warnings.append(STANDS_OUT_WARNING % (i + 1, c))
+        reported[i] = c
+      else:
+        reported[i] = before[i]
   return group_args(
     table=_monitor_table(teps_data, t_model, f_obs.d_spacings().data()),
     ll_free_data=ll_data, ll_free_model=ll_model,
     group_coefficients=coefficients, coherence_data=coherence_data,
-    coherence_fc=coherence_fc, warnings=warnings)
+    coherence_fc=coherence_fc, reported=reported, warnings=warnings)
 
 def show_monitor(result, log):
   """ prints the coherence curves (gamma, v) and the table of monitor's
