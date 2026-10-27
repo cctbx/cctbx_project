@@ -819,7 +819,8 @@ class ResidualsPlotter(object):
     if params.residuals.recompute_outliers:
       print("Performing outlier rejection on %d reflections"%len(reflections))
       from dials.algorithms.refinement.outlier_detection.sauter_poon import SauterPoon
-      outlier = SauterPoon(px_sz=experiments[0].detector[0].get_pixel_size(), separate_panels=False)
+      # one pixel size per panel: panels may have different pixel sizes
+      outlier = SauterPoon(px_sz=[p.get_pixel_size() for p in experiments[0].detector], separate_panels=False)
       rejection_occured = outlier(reflections)
       if rejection_occured:
         reflections = reflections.select(~reflections.get_flags(reflections.flags.centroid_outlier))
