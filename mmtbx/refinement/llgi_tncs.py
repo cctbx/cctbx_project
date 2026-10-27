@@ -933,6 +933,14 @@ def _model_anisotropy(e_params, llgi_data):
   return llgi_model_anisotropy.resolve(
     getattr(e_params, "model_anisotropy", "off"), llgi_data)
 
+def _moments_n_bins(scatfrac_params):
+  """ the bins of the moments ScatFrac (the normalisation of the model's
+  E in the sigmaA fit, llgi_e_sigmaa.build_e_model) """
+  if(scatfrac_params is None):
+    import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
+    scatfrac_params = llgi_scatfrac.llgi_scatfrac_params.extract()
+  return scatfrac_params.moments_n_bins
+
 def _fit_scatfrac(fmodel, d, u, sigmaa, scatfrac_params, rice_kappa,
       warnings, model_anisotropy="off", resn=None):
   """ ScatFrac (F scale, working set) in the u-frame, for the data d
@@ -984,7 +992,8 @@ def refit_sigmaa_scatfrac(fmodel, scatfrac_params=None, e_params=None):
   warnings = []
   sigmaa_result = llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel(fmodel,
     dobs=d.dobs, feff=d.eeff * resn, resn=resn, params=e_params,
-    hybrid=_hybrid(d, centric, rice_kappa), tncs_u=u)
+    hybrid=_hybrid(d, centric, rice_kappa), tncs_u=u,
+    moments_n_bins=_moments_n_bins(scatfrac_params))
   if(sigmaa_result.lbfgs_error is not None):
     warnings.append("sigmaA fit: L-BFGS stopped early: %s" %
       sigmaa_result.lbfgs_error)
@@ -1181,7 +1190,7 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
   u-frame; ScatFrac (F scale, working set) in the u-frame; then the data
   renormalised by t = sigmaA^2 (1 + A) + (1 - sigmaA^2) u, with Feff the
   new f_obs. Returns a group_args like llgi_e_sigmaa.
-  estimate_sigmaa_e_then_scatfrac_f's, plus .tau or .coherence and
+  estimate_sigmaa_and_scatfrac's, plus .tau or .coherence and
   .tncs_summary. pdb_hierarchy: the model, matching fmodel's
   xray_structure, in which the tNCS groups are found again if the number of
   atoms has changed.
@@ -1247,7 +1256,8 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
     hybrid_u = _hybrid(d, centric, rice_kappa)
     sigmaa_result = llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel(fmodel,
       dobs=d.dobs, feff=d.eeff * resn, resn=resn, params=e_params,
-      hybrid=hybrid_u, tncs_u=u)
+      hybrid=hybrid_u, tncs_u=u,
+      moments_n_bins=_moments_n_bins(scatfrac_params))
     sigmaa = sigmaa_result.sigmaa
     e_model = sigmaa_result.e_model
     if(physical):

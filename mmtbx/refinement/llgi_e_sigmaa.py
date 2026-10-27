@@ -1,12 +1,10 @@
 """ E-scale quantities for the LLGI target (Eeff, Emodel) and the fit of
-sigmaA(resolution) against the E-scale LLGI on the R-free set, followed
-by the F-scale ScatFrac fit (estimate_sigmaa_e_then_scatfrac_f). """
+sigmaA(resolution) against the LLGI on the R-free set, with the model's E
+normalised as in the F-scale target (Ecalc, from the moments ScatFrac),
+followed by ScatFrac (estimate_sigmaa_and_scatfrac). """
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import mmtbx.refinement.llgi_tncs as llgi_tncs
-from mmtbx import scaling
-from scitbx.math import chebyshev_polynome
-from scitbx.math import chebyshev_lsq_fit
 import scitbx.lbfgs
 from libtbx import group_args
 import iotbx.phil
@@ -29,9 +27,9 @@ llgi_e_sigmaa_params = iotbx.phil.parse("""\
   model_anisotropy = off ellipsoid resolution_dependent *auto
     .type = choice
     .short_caption = Anisotropic normalisation of the model (LLGI)
-    .help = "Normalisation of the model's E (for the sigmaA fit and the "\
-            "LLGI maps) and of ScatFrac (for the target): off, isotropic "\
-            "(SigmaP(d*^2), and ScatFrac in resolution bins); ellipsoid, "\
+    .help = "Normalisation of the model's E by ScatFrac, for the target, "\
+            "the sigmaA fit and the LLGI maps: off, isotropic (ScatFrac in "\
+            "resolution bins); ellipsoid, "\
             "also an anisotropic factor exp(-q^T B q/4) with B trace-free "\
             "and invariant under the point group; resolution_dependent, "\
             "with B changing linearly with d*^2 as nacelle's anisotropy "\
@@ -41,17 +39,6 @@ llgi_e_sigmaa_params = iotbx.phil.parse("""\
             "dependent if its ANISOBETA changes with resolution, otherwise "\
             "ellipsoid). ScatFrac is anisotropic only in its moments form "\
             "(llgi_scatfrac method=moments, the default)."
-  n_sigmap_nodes = 15
-    .type = int
-    .expert_level = 3
-    .help = "Number of Chebyshev nodes (and terms) for the smoothed "\
-            "SigmaP(d*^2) trend of |F_model|^2 used to normalise Emodel."
-  auto_kernel_number = 50
-    .type = int
-    .expert_level = 3
-    .help = "Number of sorted reflections spanned by the auto-tuned "\
-            "SigmaP kernel width (as kernel_normalisation's "\
-            "number_of_sorted_reflections_for_auto_kernel)."
   n_sigmaa_coeffs = 8
     .type = int
     .short_caption = Number of sigmaA spline coefficients (E-scale)
@@ -136,137 +123,55 @@ def spline_curvature_penalty_and_gradient(coeffs, weight):
   grad[2:]   += 2.0 * weight * d2
   return penalty, grad
 
-def _auto_kernel_width(d_star_sq, number=50):
-  """ Kernel width as chosen by kernel_normalisation(auto_kernel=True):
-  the d*^2 span of the lowest `number` reflections, widened while that
-  is zero. Reimplemented here because the kernel_normalisation class
-  divides by epsilon (see build_sigma_p). Falls back to the full d*^2
-  range, or to 1 if d*^2 is constant, rather than failing.
-  """
-  n = d_star_sq.size()
-  assert n > 1
-  d_star_sq_low = flex.min(d_star_sq)
-  d_star_sq_high = flex.max(d_star_sq)
-  if(d_star_sq_high - d_star_sq_low < 1.e-12):
-    return 1.0
-  d_sorted = d_star_sq.select(flex.sort_permutation(d_star_sq))
-  number = min(number, n - 1)
-  kernel_width = d_sorted[number] - d_star_sq_low
-  if(kernel_width == 0):
-    original_number = number
-    while number < n / 2:
-      number = min(number + original_number, n - 1)
-      kernel_width = d_sorted[number] - d_star_sq_low
-      if(kernel_width > 0):
-        break
-  if(kernel_width <= 0):
-    kernel_width = d_star_sq_high - d_star_sq_low
-  return kernel_width
+def build_e_model(f_model, k_anisotropic, miller_set, resn, teps,
+      scale_factor=1.0, model_anisotropy="off", n_bins=20):
+  """ The model's E as the F-scale target's Ecalc: Emodel = k F_model/(RESN
+  sqrt(TEPS ScatFrac)), ScatFrac = llgi_scatfrac.scatfrac_moments(F_model,
+  TEPS, RESN, ...) (n_bins, model_anisotropy), with F_model including
+  k_anisotropic, on the reflections of miller_set. With tNCS, TEPS = 1 (the
+  frame of the target).
 
-def build_sigma_p(f_model_no_aniso_scale, d_star_sq, n_nodes=15,
-      auto_kernel_number=50, d_star_sq_eval=None):
-  """ SigmaP(d*^2): smooth resolution trend of |f_model_no_aniso_scale|^2,
-  without epsilon (build_e_model applies epsilon per reflection). Follows
-  kernel_normalisation: Gaussian-kernel average at Chebyshev nodes in
-  d*^2, Chebyshev fit to the log of those averages. Calls the
-  kernel_normalisation extension directly with epsilon = 1, because the
-  Python class divides by each reflection's epsilon before averaging.
-
-  Returns a flex.double of SigmaP at each reflection's d*^2, or at
-  d_star_sq_eval if given (e.g. reflections without data). d_star_sq_eval
-  is clamped to the fitted range, since the polynomial is not constrained
-  outside it.
-  """
-  d_star_sq_low = flex.min(d_star_sq)
-  d_star_sq_high = flex.max(d_star_sq)
-  intensity = flex.norm(f_model_no_aniso_scale)
-  kernel_width = _auto_kernel_width(d_star_sq, number=auto_kernel_number)
-  nodes = chebyshev_lsq_fit.chebyshev_nodes(
-    n=n_nodes, low=d_star_sq_low, high=d_star_sq_high, include_limits=True)
-  mean_intensity_at_nodes = scaling.kernel_normalisation(
-    d_star_sq_hkl=d_star_sq,
-    I_hkl=intensity,
-    epsilon=flex.double(intensity.size(), 1.0),
-    d_star_sq_array=nodes,
-    kernel_width=kernel_width)
-  floor = 1.e-16
-  mean_intensity_at_nodes.set_selected(mean_intensity_at_nodes < floor, floor)
-  fit = chebyshev_lsq_fit.chebyshev_lsq_fit(
-    n_nodes, nodes, flex.log(mean_intensity_at_nodes))
-  poly = chebyshev_polynome(
-    n_nodes, d_star_sq_low, d_star_sq_high, fit.coefs)
-  if(d_star_sq_eval is None):
-    eval_at = d_star_sq
-  else:
-    eval_at = d_star_sq_eval.deep_copy()
-    eval_at.set_selected(eval_at < d_star_sq_low, d_star_sq_low)
-    eval_at.set_selected(eval_at > d_star_sq_high, d_star_sq_high)
-  return flex.exp(poly.f(eval_at))
-
-def build_e_model(f_model_no_aniso_scale, epsilons, d_star_sq,
-      n_sigmap_nodes=15, auto_kernel_number=50, miller_set=None,
-      model_anisotropy="off"):
-  """ Emodel = f_model_no_aniso_scale / sqrt(EPS * SigmaP * A), with SigmaP
-  from build_sigma_p and A = 1, or with model_anisotropy ("ellipsoid" or
-  "resolution_dependent", which need miller_set, the reflections of
-  f_model_no_aniso_scale) the anisotropic factor fitted with SigmaP to
-  |F|^2/EPS (mmtbx.refinement.llgi_model_anisotropy.fit); SigmaP is then
-  the trend of |F|^2/A.
-
-  epsilons: per-reflection epsilon factors, as flex.double.
-
-  Returns a group_args with .e_model (flex.complex_double), .sigma_p
-  (flex.double), .anisotropy (A, flex.double), .factor
-  (llgi_model_anisotropy.anisotropic_factor or None) and
-  .sigma_p_at(d_star_sq_eval), SigmaP at other resolutions (as
-  build_sigma_p's d_star_sq_eval).
-  """
+  Returns a group_args with .e_model (flex.complex_double, along the phase
+  of F_model), .e_per_f (|Emodel|/|F_model/k_anisotropic|, i.e. k
+  k_anisotropic/(RESN sqrt(TEPS ScatFrac))), .scatfrac and
+  .e_abs_for(other_set, f_model_no_aniso_scale, resn, teps, k_anisotropic):
+  |Emodel| for other reflections (e.g. those without data), from ScatFrac
+  at those reflections. Reflections with RESN, TEPS or ScatFrac <= 0 have
+  Emodel = 0. """
+  import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
   llgi_model_anisotropy.check_mode(model_anisotropy)
-  n = f_model_no_aniso_scale.size()
-  assert epsilons.size() == n
-  assert d_star_sq.size() == n
-  def sigma_p_of(f, d_star_sq_eval=None):
-    return build_sigma_p(f, d_star_sq, n_nodes=n_sigmap_nodes,
-      auto_kernel_number=auto_kernel_number, d_star_sq_eval=d_star_sq_eval)
-  if(model_anisotropy == "off" or miller_set is None):
-    sigma_p = sigma_p_of(f_model_no_aniso_scale)
-    a = flex.double(n, 1)
-    factor = None
-  else:
-    assert miller_set.size() == n
-    # A is fitted to |F|^2/EPS against the trend of |F|^2/A (SigmaP excludes
-    # epsilon, as above); A is trace-free, so the 1/<EPS> this leaves in
-    # shells with EPS > 1 reflections hardly affects it
-    def iso_fn(i_over_a):  # SigmaP of |F|^2/A (without epsilon, as above)
-      return sigma_p_of(flex.complex_double(flex.sqrt(i_over_a * epsilons),
-        flex.double(n, 0)))
-    r = llgi_model_anisotropy.fit(
-      intensity=flex.norm(f_model_no_aniso_scale) / epsilons,
-      indices=miller_set.indices(),
-      centric_flags=miller_set.centric_flags().data(),
-      unit_cell=miller_set.unit_cell(), space_group=miller_set.space_group(),
-      iso_fn=iso_fn, mode=model_anisotropy)
-    sigma_p, a, factor = r.sigma_iso, r.a, r.factor
-  e_model = f_model_no_aniso_scale * (1.0 / flex.sqrt(epsilons * sigma_p * a))
-  f_over_root_a = f_model_no_aniso_scale * (1.0 / flex.sqrt(a))
-  return group_args(e_model=e_model, sigma_p=sigma_p, anisotropy=a,
-    factor=factor,
-    sigma_p_at=lambda d_star_sq_eval: sigma_p_of(f_over_root_a, d_star_sq_eval))
+  k = scale_factor if scale_factor > 0 else 1.0
+  m = llgi_scatfrac.scatfrac_moments_model(f_model, teps, resn,
+    miller_set.d_star_sq().data(), n_bins=n_bins, scale_factor=k,
+    miller_set=miller_set, model_anisotropy=model_anisotropy)
+  def e_per_f(resn, teps, scatfrac, k_aniso):
+    """ k k_aniso/(RESN sqrt(TEPS ScatFrac)), 0 where not defined """
+    d = resn * flex.sqrt(teps.deep_copy().set_selected(teps < 0, 0) *
+      scatfrac.deep_copy().set_selected(scatfrac < 0, 0))
+    ok = (d > 0)
+    result = flex.double(d.size(), 0)
+    result.set_selected(ok, (k * k_aniso).select(ok) / d.select(ok))
+    return result
+  scale = e_per_f(resn, teps, m.scatfrac, k_anisotropic)
+  def e_abs_for(other, f_model_no_aniso_scale, resn, teps, k_aniso):
+    return flex.abs(f_model_no_aniso_scale) * e_per_f(resn, teps,
+      m.at(other), k_aniso)
+  return group_args(e_model=f_model * (scale / k_anisotropic),
+    e_per_f=scale, scatfrac=m.scatfrac, e_abs_for=e_abs_for)
 
-def build_e_model_as_fitted(llgi_data, f_model_no_aniso_scale, miller_set):
-  """ build_e_model for the reflections of miller_set with the settings of
-  the sigmaA fit that made llgi_data's sigmaA (llgi_data.fit_params.
-  e_scale, or the defaults; the model anisotropy as llgi_model_anisotropy.
-  mode_for), for the maps """
+def build_e_model_as_fitted(fmodel):
+  """ build_e_model for fmodel (its f_obs, F_model, k_anisotropic and
+  llgi_data's RESN and TEPS) with the settings of the fit that made
+  llgi_data's sigmaA (llgi_data.fit_params: the model anisotropy as
+  llgi_model_anisotropy.mode_for, the ScatFrac bins), for the maps """
+  llgi_data = fmodel.llgi_data()
   fp = getattr(llgi_data, "fit_params", None)
-  e_params = getattr(fp, "e_scale", None) if fp is not None else None
-  if(e_params is None):
-    e_params = llgi_e_sigmaa_params.extract()
-  return build_e_model(f_model_no_aniso_scale,
-    miller_set.epsilons().data().as_double(), miller_set.d_star_sq().data(),
-    n_sigmap_nodes=e_params.n_sigmap_nodes,
-    auto_kernel_number=e_params.auto_kernel_number, miller_set=miller_set,
-    model_anisotropy=llgi_model_anisotropy.mode_for(llgi_data))
+  sp = getattr(fp, "scatfrac", None) if fp is not None else None
+  return build_e_model(fmodel.f_model().data(), fmodel.k_anisotropic(),
+    fmodel.f_obs(), llgi_data.resn.data(), llgi_data.teps.data(),
+    scale_factor=fmodel.scale_ml_wrapper(),
+    model_anisotropy=llgi_model_anisotropy.mode_for(llgi_data),
+    n_bins=getattr(sp, "moments_n_bins", 20))
 
 def isotropic_scatfrac_warnings(scatfrac_params, model_anisotropy):
   """ A warning (list of messages) if ScatFrac stays isotropic although the
@@ -445,7 +350,7 @@ def estimate_e_sigmaa(e_eff, r_free_flags, e_model, dobs, centric_flags,
     lbfgs_error=evaluator.minimizer.error)
 
 def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None,
-      hybrid=None, tncs_u=None):
+      hybrid=None, tncs_u=None, moments_n_bins=20):
   """ Fit sigmaA(resolution) on the E scale against fmodel's current model,
   with bulk solvent as bss left it (fmodel is not modified).
 
@@ -462,6 +367,9 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None,
   tncs_u: the tNCS error-variance modulation (the fit is in the u-frame:
   feff/resn and the hybrid's observations normalised by u), or None.
 
+  moments_n_bins: the bins of the moments ScatFrac that normalises the
+  model's E (llgi_scatfrac's moments_n_bins; build_e_model).
+
   Returns a group_args with .sigmaa (flex.double, every reflection),
   .target (final mean target on the R-free set), .evaluate_at (the fitted
   curve at other d*^2 values), .k_sol/.b_sol (bss_k_sol_b_sol; b_sol
@@ -473,19 +381,24 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None,
   f_obs = fmodel.f_obs()
   r_free_flags = fmodel.r_free_flags().data()
   centric_flags = f_obs.centric_flags().data()
-  epsilons = f_obs.epsilons().data().as_double()
   d_star_sq = f_obs.d_star_sq().data()
   e_eff = build_e_eff(feff, resn)
-  e_model = flex.abs(build_e_model(
-    fmodel.f_model_no_aniso_scale().data(), epsilons, d_star_sq,
-    n_sigmap_nodes=params.n_sigmap_nodes,
-    auto_kernel_number=params.auto_kernel_number, miller_set=f_obs,
+  # the target's Ecalc (TEPS = 1 in the tNCS frame, as llgi_tncs's
+  # ScatFrac, and without llgi_data)
+  llgi_data = fmodel.llgi_data()
+  if(tncs_u is not None or llgi_data is None):
+    teps = flex.double(f_obs.size(), 1.)
+  else:
+    teps = llgi_data.teps.data()
+  e_model = flex.abs(build_e_model(fmodel.f_model().data(),
+    fmodel.k_anisotropic(), f_obs, resn, teps,
+    scale_factor=fmodel.scale_ml_wrapper(),
     model_anisotropy=llgi_model_anisotropy.resolve(params.model_anisotropy,
-      fmodel.llgi_data())).e_model)
+      llgi_data), n_bins=moments_n_bins).e_model)
   k_sol, b_sol = bss_k_sol_b_sol(fmodel)
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
   if(hybrid is None):
-    hybrid = llgi_hybrid.get_hybrid(fmodel.llgi_data())
+    hybrid = llgi_hybrid.get_hybrid(llgi_data)
   if(hybrid is not None):
     # Exact likelihood wherever possible: a sigmaA-dependent switch would
     # make the fitted objective discontinuous (see llgi_exact.h, hybrid).
@@ -516,16 +429,16 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None,
     e_model=e_model,
     lbfgs_error=result.lbfgs_error)
 
-def estimate_sigmaa_e_then_scatfrac_f(
+def estimate_sigmaa_and_scatfrac(
       fmodel, dobs, feff, resn, e_params=None, scatfrac_params=None):
-  """ Fit sigmaA on the E scale, then ScatFrac (the F-scale model's
-  normalisation, which the E-scale target does not need) with sigmaA
-  fixed.
+  """ Fit sigmaA, then ScatFrac with sigmaA fixed.
 
-  Step 1: estimate_e_sigmaa_for_fmodel (R-free set).
+  Step 1: estimate_e_sigmaa_for_fmodel (R-free set), with the model's E
+  normalised by the moments ScatFrac as in the target (build_e_model).
   Step 2: llgi_scatfrac.estimate_llgi_scatfrac (working set), against
   fmodel.f_model(), which includes k_isotropic as Feff does: the
-  moments ScatFrac or the likelihood fit (scatfrac_params.method).
+  moments ScatFrac (the normalisation of step 1) or the likelihood fit
+  (scatfrac_params.method).
 
   fmodel: an mmtbx.f_model.manager, already scaled.
 
@@ -548,7 +461,8 @@ def estimate_sigmaa_e_then_scatfrac_f(
   if(scatfrac_params is None):
     scatfrac_params = llgi_scatfrac.llgi_scatfrac_params.extract()
   sigmaa_result = estimate_e_sigmaa_for_fmodel(
-    fmodel, dobs=dobs, feff=feff, resn=resn, params=e_params)
+    fmodel, dobs=dobs, feff=feff, resn=resn, params=e_params,
+    moments_n_bins=scatfrac_params.moments_n_bins)
   sigmaa = sigmaa_result.sigmaa
   f_obs = fmodel.f_obs()
   llgi_data = fmodel.llgi_data()

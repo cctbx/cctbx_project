@@ -289,7 +289,7 @@ def compute(fmodel, params=None, log=None):
   f_obs = fmodel.f_obs()
   centric = f_obs.centric_flags().data()
   fmnas = fmodel.f_model_no_aniso_scale()
-  em = llgi_e_sigmaa.build_e_model_as_fitted(llgi_data, fmnas.data(), f_obs)
+  em = llgi_e_sigmaa.build_e_model_as_fitted(fmodel)
   e_calc = flex.abs(em.e_model)
   phase = _unit_phase(fmnas.data())
   sigmaa = llgi_data.sigmaa.data().deep_copy()

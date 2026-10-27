@@ -1850,7 +1850,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
   def update_llgi_sigmaa_scatfrac(self, params=None, e_params=None,
         refit_tncs=True, pdb_hierarchy=None):
     """ Fit sigmaA and ScatFrac against the current model
-    (mmtbx.refinement.llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f) and
+    (mmtbx.refinement.llgi_e_sigmaa.estimate_sigmaa_and_scatfrac) and
     attach .sigmaa, .sigmaa_curve and .scatfrac to llgi_data. Called by
     the refinement driver once per macrocycle, like update_all_scales(),
     and before the final statistics and maps if llgi_sigmaa_is_current()
@@ -1894,7 +1894,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       return llgi_tncs.fit_and_renormalise(self, scatfrac_params=params,
         e_params=e_params, pdb_hierarchy=pdb_hierarchy)
     f_obs = self.f_obs()
-    result = llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f(
+    result = llgi_e_sigmaa.estimate_sigmaa_and_scatfrac(
       self,
       dobs = llgi_data.dobs.data(),
       feff = llgi_data.feff.data(),
@@ -2646,18 +2646,18 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
   def map_calculation_helper_llgi(self):
     """ The LLGI counterpart of map_calculation_helper(): .f_obs, .f_model,
     .alpha, .beta and .fom for mmtbx.map_tools.combine, from the LLGI
-    quantities instead of an ML alpha/beta fit. On the E scale, without
-    nacelle's anisotropy or ScatFrac, as for the sigmaA fit:
+    quantities instead of an ML alpha/beta fit. On the E scale, with the
+    model's E as in the target and the sigmaA fit (llgi_e_sigmaa.
+    build_e_model):
       Eeff   = Feff/(sqrt(TEPS)*RESN)
-      Emodel = f_model_no_aniso_scale/sqrt(EPS*SigmaP*A)
-    (A the model's anisotropic factor, llgi_e_sigmaa's model_anisotropy;
-    1 if off)
+      Emodel = k*F_model/(RESN*sqrt(TEPS*ScatFrac))
       D      = Dobs*sigmaA,  V = TEPS - D^2
     combine() forms fo_scale*fom*f_obs + fc_scale*alpha*f_model, with
       .f_model  f_model_no_aniso_scale (the phase of f_model, without
                 k_anisotropic)
-      .alpha    the model coefficient times sqrt(TEPS)*RESN/sqrt(EPS*SigmaP*A),
-                so that alpha*f_model is on the F scale.
+      .alpha    the model coefficient times sqrt(TEPS)*RESN*|Emodel|/
+                |f_model_no_aniso_scale|, so that alpha*f_model is on the
+                F scale.
     For reflections with measured intensities (llgi_data.e_obs_sq), the
     exact posterior is used whether or not the hybrid target is enabled:
       .f_obs    <|E|>*sqrt(TEPS)*RESN,  .fom = <E>/<|E|>,  coefficient sigmaA
@@ -2695,13 +2695,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       def __init__(self, fmodel):
         feff = llgi_data.feff
         f_obs = fmodel.f_obs()
-        epsilons = f_obs.epsilons().data().as_double()
         fmnas = fmodel.f_model_no_aniso_scale()
-        e_model_result = llgi_e_sigmaa.build_e_model_as_fitted(llgi_data,
-          fmnas.data(), f_obs)
+        e_model_result = llgi_e_sigmaa.build_e_model_as_fitted(fmodel)
         e_model_abs = flex.abs(e_model_result.e_model)
-        # the model's normalisation, with its anisotropy (A = 1 if off)
-        sigma_p = e_model_result.sigma_p * e_model_result.anisotropy
         eeff = llgi_e_sigmaa.build_e_eff(
           feff.data(), llgi_data.resn.data())
         self.f_obs = feff
@@ -2728,8 +2724,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         valid = (sa > 0) & (dobs > 0)
         d = flex.double(n, 0.0)
         d.set_selected(valid, dobs * sa)
-        inv_sqrt_eps_sigmap = s_frame / flex.sqrt(epsilons * sigma_p)
-        alpha_data = d * sqrt_teps * resn * inv_sqrt_eps_sigmap
+        # |Emodel| per |f_model_no_aniso_scale| (in the tNCS frame)
+        e_per_f = s_frame * e_model_result.e_per_f
+        alpha_data = d * sqrt_teps * resn * e_per_f
         v = teps - d * d
         valid = valid & (v > 0)
         valid = valid & (e_model_abs > 0) & (eeff > 0)
@@ -2772,7 +2769,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
             fom.set_selected(isel, m_exact)
             sa_exact = sa.select(isel)
             alpha_data.set_selected(isel,
-              sa_exact * (sqrt_teps * resn * inv_sqrt_eps_sigmap).select(isel))
+              sa_exact * (sqrt_teps * resn * e_per_f).select(isel))
             # X equivalent to m (for phase_errors_llgi)
             c_ex = centric_flags.select(isel)
             x_ex = flex.double(isel.size(), 0.0)

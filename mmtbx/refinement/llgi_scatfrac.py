@@ -4,7 +4,9 @@ that Ecalc = k Fcalc/(sqrt(TEPS ScatFrac) RESN) has unit mean square. It
 enters the target's mean only (the variance is TEPS - (Dobs sigmaA)^2, as
 in phasertng). Estimated from the model's moments (default) or fitted
 against the F-scale target with sigmaA fixed (see mmtbx.refinement.
-llgi_e_sigmaa.estimate_sigmaa_e_then_scatfrac_f). """
+llgi_e_sigmaa.estimate_sigmaa_and_scatfrac); the moments ScatFrac also
+normalises the model's E in the sigmaA fit and the LLGI maps
+(llgi_e_sigmaa.build_e_model). """
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 import scitbx.lbfgs
@@ -164,6 +166,15 @@ def scatfrac_moments(f_calc, teps, resn, d_star_sq, n_bins=20,
   x/A times an anisotropic factor A(h) fitted to x = k^2 |F_calc|^2/(TEPS
   RESN^2) (mmtbx.refinement.llgi_model_anisotropy.fit), so that the model's
   E in the target has unit mean square by direction as well. """
+  return scatfrac_moments_model(f_calc, teps, resn, d_star_sq, n_bins=n_bins,
+    scale_factor=scale_factor, miller_set=miller_set,
+    model_anisotropy=model_anisotropy).scatfrac
+
+def scatfrac_moments_model(f_calc, teps, resn, d_star_sq, n_bins=20,
+      scale_factor=1.0, miller_set=None, model_anisotropy="off"):
+  """ scatfrac_moments, as group_args(scatfrac (flex.double, the reflections
+  of f_calc), at(miller_set): the same function of d*^2 (and, with
+  model_anisotropy, the direction) for other reflections) """
   import numpy as np
   import mmtbx.refinement.llgi_model_anisotropy as llgi_model_anisotropy
   llgi_model_anisotropy.check_mode(model_anisotropy)
@@ -177,16 +188,29 @@ def scatfrac_moments(f_calc, teps, resn, d_star_sq, n_bins=20,
   bins = [c for c in np.array_split(order, max(1, min(n_bins, order.size)))
           if c.size > 0]
   d_mean = np.array([dss[c].mean() for c in bins])
+  last = {}   # the bin means of the last call (the final isotropic part)
   def iso_fn(values):
     v = values.as_numpy_array()
-    return flex.double(np.interp(dss, d_mean, np.array([v[c].mean() for c in bins])))
+    last["means"] = np.array([v[c].mean() for c in bins])
+    return flex.double(np.interp(dss, d_mean, last["means"]))
+  factor = None
   if(model_anisotropy == "off" or miller_set is None):
-    return iso_fn(flex.double(x))
-  r = llgi_model_anisotropy.fit(intensity=flex.double(x),
-    indices=miller_set.indices(), centric_flags=miller_set.centric_flags().data(),
-    unit_cell=miller_set.unit_cell(), space_group=miller_set.space_group(),
-    iso_fn=iso_fn, mode=model_anisotropy, selection=ok)
-  return r.sigma
+    scatfrac = iso_fn(flex.double(x))
+  else:
+    r = llgi_model_anisotropy.fit(intensity=flex.double(x),
+      indices=miller_set.indices(),
+      centric_flags=miller_set.centric_flags().data(),
+      unit_cell=miller_set.unit_cell(), space_group=miller_set.space_group(),
+      iso_fn=iso_fn, mode=model_anisotropy, selection=ok)
+    scatfrac, factor = r.sigma, r.factor
+  means = last["means"]
+  def at(other):
+    result = flex.double(np.interp(other.d_star_sq().data().as_numpy_array(),
+      d_mean, means))
+    if(factor is not None):
+      result = result * factor.evaluate(other.indices())
+    return result
+  return group_args(scatfrac=scatfrac, at=at)
 
 def estimate_llgi_scatfrac_moments(
       f_eff,

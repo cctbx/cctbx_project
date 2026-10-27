@@ -541,10 +541,11 @@ class model_missing_reflections_llgi(object):
                   structure and mask, with fmodel's k_isotropic and k_mask
                   (functions of resolution) at the nearest observed
                   reflection in d*^2
-    Emodel        F_model/sqrt(epsilon*SigmaP*A), SigmaP (and, with
-                  llgi_e_sigmaa's model_anisotropy, the anisotropic factor A)
-                  fitted to the observed reflections (llgi_e_sigmaa.
-                  build_e_model), as for the sigmaA fit
+    Emodel        k*F_model/(RESN*sqrt(TEPS*ScatFrac)), as in the target
+                  and the sigmaA fit (llgi_e_sigmaa.build_e_model), with
+                  ScatFrac (as a function of d*^2 and, with
+                  llgi_e_sigmaa's model_anisotropy, the direction) from the
+                  observed reflections and k_anisotropic as fitted below
     sigmaA        the fitted curve (llgi_data.sigmaa_curve)
     RESN          nacelle's value or its model (llgi_maps.resn_model)
     TEPS          llgi_data.teps for the reflections refined, otherwise 1
@@ -599,25 +600,25 @@ class model_missing_reflections_llgi(object):
     # the model's normalisation as for the sigmaA fit (fitted to the
     # observed reflections, evaluated for all), anisotropic with
     # llgi_e_sigmaa's model_anisotropy
-    em_obs = llgi_e_sigmaa.build_e_model_as_fitted(self.llgi_data,
-      fmodel.f_model_no_aniso_scale().data(), f_obs)
-    sigma_p = em_obs.sigma_p_at(d_star_sq)
-    if(em_obs.factor is not None):
-      sigma_p = sigma_p * em_obs.factor.evaluate(cs.indices())
-    e_model_abs = flex.abs(fmnas) / flex.sqrt(
-      cs.epsilons().data().as_double() * sigma_p)
+    em_obs = llgi_e_sigmaa.build_e_model_as_fitted(fmodel)
     sigmaa = self.llgi_data.sigmaa_curve(d_star_sq)
     resn, _ = llgi_maps.get_resn_model(self.llgi_data).resn_for(cs)
-    self.e_scale_missing = group_args(miller_set=cs, sigmaa=sigmaa,
-      e_model_abs=e_model_abs, f_model_no_aniso=fmnas, resn=resn)
     teps = flex.double(cs.size(), 1)
     pairs = miller.match_indices(cs.indices(), f_obs.indices()).pairs()
     teps.set_selected(pairs.column(0),
       self.llgi_data.teps.data().select(pairs.column(1)))
+    k_aniso = llgi_maps.fit_k_anisotropic(f_obs.array(
+      data=fmodel.k_anisotropic())).evaluate(cs)
+    # the model's E with fmodel's own k_anisotropic where it has one (so
+    # that it is the target's Ecalc there), the fitted form elsewhere
+    k_aniso_e = k_aniso.deep_copy()
+    k_aniso_e.set_selected(pairs.column(0),
+      fmodel.k_anisotropic().select(pairs.column(1)))
+    e_model_abs = em_obs.e_abs_for(cs, fmnas, resn, teps, k_aniso_e)
+    self.e_scale_missing = group_args(miller_set=cs, sigmaa=sigmaa,
+      e_model_abs=e_model_abs, f_model_no_aniso=fmnas, resn=resn)
     fill = sigmaa * e_model_abs * flex.sqrt(teps) * resn
     if(isotropize):
-      k_aniso = llgi_maps.fit_k_anisotropic(f_obs.array(
-        data=fmodel.k_anisotropic())).evaluate(cs)
       fill = fill / (k_iso * k_aniso)
     return cs.array(data=flex.complex_double(fill, flex.double(fill.size(), 0))
       * llgi_maps._unit_phase(fmnas))

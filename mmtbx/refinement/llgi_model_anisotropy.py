@@ -4,12 +4,12 @@ The LLGI likelihood compares the data and the model on the E scale, and
 assumes both have unit mean square everywhere in reciprocal space. The data
 are normalised by nacelle's RESN, which includes its anisotropy correction,
 an ellipsoid that may change with resolution (phasertng.macaniso.
-resolution_dependent). An isotropic normalisation of the model (SigmaP for
-the sigmaA fit, ScatFrac for the target) leaves the model's E with the wrong
-mean square by direction wherever the model's own intensities fall off
-differently with direction, for instance because TLS or anisotropic ADPs
-carry part of the anisotropy, or because the anisotropic scale in F_model
-and nacelle's correction differ; sigmaA cannot repair that.
+resolution_dependent). An isotropic normalisation of the model (ScatFrac,
+for the target, the sigmaA fit and the maps) leaves the model's E with the
+wrong mean square by direction wherever the model's own intensities fall
+off differently with direction, for instance because TLS or anisotropic
+ADPs carry part of the anisotropy, or because the anisotropic scale in
+F_model and nacelle's correction differ; sigmaA cannot repair that.
 
 Here the model normalisation is
 

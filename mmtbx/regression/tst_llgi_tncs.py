@@ -488,17 +488,19 @@ def exercise_atoms_added(fmodel, h):
 
 # _nacelle_run with the code before the cctbx normalisation source was
 # added (exercise_nacelle_source_unchanged; the new code reproduces them
-# exactly on the machine that made them)
+# exactly on the machine that made them); the values from gamma on, which
+# follow the sigmaA fit, since the model's E there is normalised by the
+# moments ScatFrac (llgi_e_sigmaa.build_e_model)
 NACELLE_REFERENCE = (
   ("rho", 0.787717865840551),
   ("t0_sum", 4893.009102968329),
   ("feff0_sum", 1320034.8770827255),
-  ("gamma", 0.9234579433313356),
-  ("v", 0.06352455863934453),
-  ("u_sum", 4892.299866536325),
-  ("t_sum", 4891.697380813912),
-  ("sigmaa_mean", 0.8913667084591672),
-  ("feff_sum", 1320005.7731420046))
+  ("gamma", 0.923527482773334),
+  ("v", 0.15150228930869325),
+  ("u_sum", 4891.683615049821),
+  ("t_sum", 4891.996110755512),
+  ("sigmaa_mean", 0.8972941943236018),
+  ("feff_sum", 1320008.6653574002))
 
 def _nacelle_run(h, xrs, frame):
   # the R-free flags use the global random state

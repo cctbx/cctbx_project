@@ -22,71 +22,47 @@ def exercise_f_model_no_aniso_scale():
   diff = flex.max(flex.abs(recovered - fmodel.f_model().data()))
   assert diff < 1.e-10, diff
 
-def exercise_sigma_p_constant_intensity_recovers_constant():
-  # Constant |f_model_no_aniso_scale|^2 gives that constant everywhere.
-  n = 300
-  rnd = random.Random(3)
-  d_star_sq = flex.double(sorted(
-    rnd.uniform(0.01, 0.3) for i in range(n)))
-  const_amplitude = 5.0
-  fmnas = flex.complex_double([complex(const_amplitude, 0.0)] * n)
-  sigma_p = llgi_e_sigmaa.build_sigma_p(fmnas, d_star_sq, n_nodes=10)
-  expected = const_amplitude ** 2
-  for v in sigma_p:
-    assert approx_equal(v, expected, eps=1.e-6), (v, expected)
+def _e_model_unit_resn(fmodel, model_anisotropy="off"):
+  # build_e_model for fmodel with RESN = sqrt(EPS) and TEPS = 1
+  f_obs = fmodel.f_obs()
+  return llgi_e_sigmaa.build_e_model(fmodel.f_model().data(),
+    fmodel.k_anisotropic(), f_obs,
+    flex.sqrt(f_obs.epsilons().data().as_double()),
+    flex.double(f_obs.size(), 1), model_anisotropy=model_anisotropy)
 
-def exercise_sigma_p_is_epsilon_free():
-  # SigmaP does not depend on epsilon; only Emodel does, by 1/sqrt(eps).
-  n = 200
-  rnd_x = random.Random(4)
-  d_star_sq = flex.double(sorted(
-    rnd_x.uniform(0.01, 0.3) for i in range(n)))
-  rnd = random.Random(5)
-  fmnas = flex.complex_double(
-    [complex(rnd.uniform(1.0, 10.0), rnd.uniform(-2.0, 2.0))
-     for i in range(n)])
-  eps_one = flex.double(n, 1.0)
-  eps_two = flex.double(n, 2.0)
-  r1 = llgi_e_sigmaa.build_e_model(fmnas, eps_one, d_star_sq)
-  r2 = llgi_e_sigmaa.build_e_model(fmnas, eps_two, d_star_sq)
-  diff_sigma_p = flex.max(flex.abs(r1.sigma_p - r2.sigma_p))
-  assert diff_sigma_p < 1.e-10, diff_sigma_p
-  ratio = flex.abs(r1.e_model) / flex.abs(r2.e_model)
-  for v in ratio:
-    assert approx_equal(v, 2.0 ** 0.5, eps=1.e-6), v
-
-def exercise_e_model_mean_square_near_one_on_real_fmodel():
-  # mean |Emodel|^2 is close to 1 in every resolution shell (loose
-  # tolerance: a statistical property of a small structure).
+def exercise_e_model_mean_square_one_by_resolution():
+  # with RESN = sqrt(EPS), mean |Emodel|^2 EPS is 1 in each of the moments
+  # bins (to the linear interpolation between bin means), and Emodel goes
+  # as 1/sqrt(EPS)
   fmodel = build_fmodel(n_atoms=60, d_min=1.6, seed=6)
-  fmnas = fmodel.f_model_no_aniso_scale()
-  d_star_sq = fmodel.f_obs().d_star_sq().data()
-  epsilons = fmodel.f_obs().epsilons().data().as_double()
-  result = llgi_e_sigmaa.build_e_model(fmnas.data(), epsilons, d_star_sq)
-  e_model_sq = flex.norm(result.e_model)
-
+  f_obs = fmodel.f_obs()
+  eps = f_obs.epsilons().data().as_double()
+  em = _e_model_unit_resn(fmodel)
   import numpy as np
-  order = np.argsort(d_star_sq.as_numpy_array())
-  bins = np.array_split(order, 6)
-  e_sq_np = e_model_sq.as_numpy_array()
-  for b in bins:
-    if(len(b) == 0):
-      continue
-    mean_e_sq = e_sq_np[b].mean()
-    assert 0.7 < mean_e_sq < 1.3, mean_e_sq
+  x = (flex.norm(em.e_model) * eps).as_numpy_array()
+  for b in np.array_split(np.argsort(f_obs.d_star_sq().data().as_numpy_array()),
+                          6):
+    assert 0.9 < x[b].mean() < 1.1, x[b].mean()
+  ratio = flex.abs(em.e_model) * flex.sqrt(eps) / flex.abs(
+    fmodel.f_model().data())
+  assert approx_equal(ratio * flex.sqrt(em.scatfrac), flex.double(
+    ratio.size(), 1), eps=1.e-9)
+  assert approx_equal(em.e_per_f, flex.abs(em.e_model) / flex.abs(
+    fmodel.f_model_no_aniso_scale().data()), eps=1.e-9)
 
-def exercise_degenerate_resolution_range_does_not_crash():
-  # All reflections at the same d*^2: _auto_kernel_width returns a
-  # nominal width instead of failing as kernel_normalisation's does.
-  n = 50
-  d_star_sq = flex.double([0.1] * n)
-  rnd = random.Random(8)
-  fmnas = flex.complex_double(
-    [complex(rnd.uniform(1.0, 5.0), 0.0) for i in range(n)])
-  sigma_p = llgi_e_sigmaa.build_sigma_p(fmnas, d_star_sq, n_nodes=8)
-  assert sigma_p.size() == n
-  for v in sigma_p:
-    assert v > 0
+def exercise_e_model_zero_where_undefined():
+  # RESN or TEPS <= 0: Emodel = 0, no failure
+  fmodel = build_fmodel(n_atoms=30, d_min=2.5, seed=8)
+  f_obs = fmodel.f_obs()
+  n = f_obs.size()
+  resn = flex.double(n, 1)
+  teps = flex.double(n, 1)
+  resn[0] = 0
+  teps[1] = -1
+  em = llgi_e_sigmaa.build_e_model(fmodel.f_model().data(),
+    fmodel.k_anisotropic(), f_obs, resn, teps)
+  assert abs(em.e_model[0]) == 0 and abs(em.e_model[1]) == 0
+  assert flex.min(flex.abs(em.e_model).select(flex.size_t(range(2, n)))) > 0
 
 def _synthetic_llgi_inputs(fmodel, seed=10):
   # (dobs, feff, resn) as flex.double on fmodel.f_obs()'s index set.
@@ -189,9 +165,9 @@ def exercise_e_sigmaa_curvature_penalty_gradient_finite_difference():
   d_star_sq = f_obs.d_star_sq().data()
   centric_flags = f_obs.centric_flags().data()
 
-  fmnas = fmodel.f_model_no_aniso_scale().data()
-  e_model = flex.abs(llgi_e_sigmaa.build_e_model(
-    fmnas, epsilons, d_star_sq).e_model)
+  e_model = flex.abs(llgi_e_sigmaa.build_e_model(fmodel.f_model().data(),
+    fmodel.k_anisotropic(), f_obs, resn, flex.double(f_obs.size(), 1)
+    ).e_model)
   e_eff = llgi_e_sigmaa.build_e_eff(feff, resn)
   evaluator = llgi_e_sigmaa.e_sigmaa_target_evaluator(
     e_eff=e_eff, test_selection=fmodel.r_free_flags().data(),
@@ -223,12 +199,39 @@ def exercise_d_model_sigmaa_is_the_default():
   assert params.sigmaa_model == "d_model"
   assert params.d_model_params.include_constant_term is True
 
+def exercise_e_model_is_the_target_ecalc():
+  # the sigmaA fit and the maps use the F-scale target's Ecalc = k F_model/
+  # (RESN sqrt(TEPS ScatFrac)), ScatFrac the moments ScatFrac the fit
+  # attaches; e_abs_for gives the same values on the observed reflections
+  from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
+  import mmtbx.refinement.llgi_scatfrac as llgi_scatfrac
+  fmodel = build_llgi_fmodel(40, 2.0, seed=4)
+  ld = fmodel.llgi_data()
+  f_obs = fmodel.f_obs()
+  e_calc = flex.abs(fmodel.f_model().data()) * fmodel.scale_ml_wrapper() / (
+    ld.resn.data() * flex.sqrt(ld.teps.data() * ld.scatfrac.data()))
+  em = llgi_e_sigmaa.build_e_model_as_fitted(fmodel)
+  assert approx_equal(flex.abs(em.e_model), e_calc, eps=1.e-9)
+  assert approx_equal(em.scatfrac, ld.scatfrac.data(), eps=1.e-12)
+  assert approx_equal(em.e_abs_for(f_obs, fmodel.f_model_no_aniso_scale(
+    ).data(), ld.resn.data(), ld.teps.data(), fmodel.k_anisotropic()),
+    e_calc, eps=1.e-9)
+  # the sigmaA fit used e_calc: refitting reproduces it
+  r = llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel(fmodel,
+    dobs=ld.dobs.data(), feff=ld.feff.data(), resn=ld.resn.data())
+  assert approx_equal(r.e_model, e_calc, eps=1.e-9)
+  assert approx_equal(r.sigmaa, ld.sigmaa.data(), eps=1.e-9)
+  # scatfrac_moments_model.at reproduces the moments on the same set
+  m = llgi_scatfrac.scatfrac_moments_model(fmodel.f_model().data(),
+    ld.teps.data(), ld.resn.data(), f_obs.d_star_sq().data(),
+    miller_set=f_obs, model_anisotropy="ellipsoid")
+  assert approx_equal(m.at(f_obs), m.scatfrac, eps=1.e-9)
+
 def run():
   exercise_f_model_no_aniso_scale()
-  exercise_sigma_p_constant_intensity_recovers_constant()
-  exercise_sigma_p_is_epsilon_free()
-  exercise_e_model_mean_square_near_one_on_real_fmodel()
-  exercise_degenerate_resolution_range_does_not_crash()
+  exercise_e_model_mean_square_one_by_resolution()
+  exercise_e_model_zero_where_undefined()
+  exercise_e_model_is_the_target_ecalc()
   exercise_bss_k_sol_b_sol_recovers_known_values()
   exercise_bss_k_sol_b_sol_stays_in_bounds()
   exercise_spline_curvature_penalty_finite_difference()

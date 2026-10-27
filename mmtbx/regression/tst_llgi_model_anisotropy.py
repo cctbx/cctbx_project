@@ -96,9 +96,9 @@ def exercise_fit_recovers_factor():
   assert r.factor.n_parameters() == 0 and r.a.all_eq(1)
 
 def exercise_build_e_model_and_scatfrac():
-  # off is the isotropic normalisation as before; with model_anisotropy the
-  # model's E (and the ScatFrac-normalised intensities) have unit mean
-  # square in each direction
+  # off is the isotropic normalisation; with model_anisotropy the model's E
+  # (and the ScatFrac-normalised intensities) have unit mean square in each
+  # direction
   ms = miller_set((41, 47, 283, 90, 90, 90), "P 2 2 21", 2.5)
   true = llgi_model_anisotropy.anisotropic_factor(ms.unit_cell(), ms.space_group(),
     "ellipsoid", d_star_sq_max=flex.max(ms.d_star_sq().data()), b=[60, -35])
@@ -108,23 +108,22 @@ def exercise_build_e_model_and_scatfrac():
   f = flex.polar(flex.double(np.sqrt(i * np.array(eps))),
     flex.double(rng.uniform(0, 2 * math.pi, ms.size())))
   dss = ms.d_star_sq().data()
-  old = llgi_e_sigmaa.build_sigma_p(f, dss)
-  em0 = llgi_e_sigmaa.build_e_model(f, eps, dss)
-  assert approx_equal(em0.sigma_p, old, eps=0) and em0.factor is None
-  em1 = llgi_e_sigmaa.build_e_model(f, eps, dss, miller_set=ms,
-    model_anisotropy="off")
-  assert approx_equal(em1.e_model, em0.e_model, eps=0)
-  em = llgi_e_sigmaa.build_e_model(f, eps, dss, miller_set=ms,
-    model_anisotropy="ellipsoid")
+  one = flex.double(ms.size(), 1)
+  def e_model(mode):   # RESN = sqrt(EPS), TEPS = k_anisotropic = 1
+    return llgi_e_sigmaa.build_e_model(f, one, ms, flex.sqrt(eps), one,
+      model_anisotropy=mode)
+  em0 = e_model("off")
+  em = e_model("ellipsoid")
   a_true = np.array(true.evaluate(ms.indices()))
   e2 = np.abs(np.array(em.e_model)) ** 2
   e2_iso = np.abs(np.array(em0.e_model)) ** 2
   weak, strong = a_true < np.percentile(a_true, 20), a_true > np.percentile(a_true, 80)
   assert abs(e2[weak].mean() - 1) < 0.05 and abs(e2[strong].mean() - 1) < 0.05
   assert e2_iso[weak].mean() < 0.8 and e2_iso[strong].mean() > 1.2
-  # sigma_p_at evaluates the isotropic part elsewhere; the factor too
-  assert approx_equal(em.sigma_p_at(dss), em.sigma_p, eps=1e-10)
-  assert approx_equal(em.factor.evaluate(ms.indices()), em.anisotropy, eps=1e-10)
+  # e_abs_for evaluates the normalisation for other reflections (here the
+  # same ones)
+  assert approx_equal(em.e_abs_for(ms, f, flex.sqrt(eps), one, one),
+    flex.abs(em.e_model), eps=1e-10)
   # ScatFrac: off as before; anisotropic, x/ScatFrac has unit mean by direction
   teps, resn = flex.double(ms.size(), 1), flex.double(ms.size(), 1)
   s0 = llgi_scatfrac.scatfrac_moments(f, teps, resn, dss)
@@ -146,8 +145,9 @@ def exercise_safeguards():
   assert r.a.all_eq(1) and np.all(r.factor.b == 0)
   f = flex.complex_double(ms.size(), 1)
   for call in (
-      lambda: llgi_e_sigmaa.build_e_model(f, ms.epsilons().data().as_double(),
-        ms.d_star_sq().data(), miller_set=ms, model_anisotropy="auto"),
+      lambda: llgi_e_sigmaa.build_e_model(f, flex.double(ms.size(), 1), ms,
+        flex.double(ms.size(), 1), flex.double(ms.size(), 1),
+        model_anisotropy="auto"),
       lambda: llgi_scatfrac.scatfrac_moments(f, flex.double(ms.size(), 1),
         flex.double(ms.size(), 1), ms.d_star_sq().data(), miller_set=ms,
         model_anisotropy="auto")):
@@ -174,9 +174,7 @@ def exercise_missing_reflections():
   mro.get_missing()
   m = mro.e_scale_missing
   f_obs = fmodel.f_obs()
-  em = llgi_e_sigmaa.build_e_model_as_fitted(llgi_data,
-    fmodel.f_model_no_aniso_scale().data(), f_obs)
-  assert em.factor is not None
+  em = llgi_e_sigmaa.build_e_model_as_fitted(fmodel)
   from cctbx import miller as cmiller
   pairs = cmiller.match_indices(m.miller_set.indices(), f_obs.indices()).pairs()
   assert pairs.size() == f_obs.size()

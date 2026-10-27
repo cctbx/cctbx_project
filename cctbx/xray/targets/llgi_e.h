@@ -21,9 +21,9 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_e {
       (mmtbx.refinement.llgi_e_sigmaa.build_e_model).
 
       eeff     = Feff/RESN.
-      emodel   = |f_model_no_aniso_scale|/sqrt(EPS*SigmaP*A), A the
-                 model's anisotropic factor (1 without it; mmtbx.refinement.
-                 llgi_model_anisotropy).
+      emodel   = |Ecalc| of llgi.h, k*|F_model|/(RESN*sqrt(TEPS*ScatFrac))
+                 with the moments ScatFrac (mmtbx.refinement.llgi_e_sigmaa.
+                 build_e_model).
       dobs     = Dobs (nacelle DOBS column).
       sigmaa   = sigmaA(resolution).
       centric  = flag (false for acentric, true for centric).
