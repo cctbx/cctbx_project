@@ -10,6 +10,7 @@ from iotbx.pdb.mmcif import pdb_hierarchy_builder
 import mmtbx.model
 import libtbx.load_env
 from six.moves import range
+import re
 
 input_1ab1 = """\
 data_1AB1
@@ -1145,6 +1146,85 @@ def exercise_null_occupancy_and_b_iso():
   assert approx_equal(list(atoms.extract_occ()), [0.0, 0.0, 0.5])
   assert approx_equal(list(atoms.extract_b()), [0.0, 0.0, 20.0])
 
+atom_site_header = """\
+data_test
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+"""
+# column order of the rows below:
+# group id elem name alt comp lasym ent lseq icode x y z occ b
+# aseq acomp aasym aname model
+
+input_two_atoms = """\
+ATOM 1 N N . ALA A 1 1 ? 1.0 2.0 3.0 1.00 10.00 1 ALA A N 1
+ATOM 2 C CA . ALA A 1 1 ? 1.5 2.0 3.0 1.00 11.00 1 ALA A CA 1
+"""
+
+aniso_u_loop = """\
+loop_
+_atom_site_anisotrop.id
+_atom_site_anisotrop.U[1][1]
+_atom_site_anisotrop.U[2][2]
+_atom_site_anisotrop.U[3][3]
+_atom_site_anisotrop.U[1][2]
+_atom_site_anisotrop.U[1][3]
+_atom_site_anisotrop.U[2][3]
+"""
+
+_cif_token = re.compile(r"""'(?:[^']|'(?=\S))*'|"(?:[^"]|"(?=\S))*"|\S+""")
+
+def drop_column(text, tag):
+  """text without the _atom_site item tag: its tag line and its field in every
+  ATOM/HETATM row. Quoted fields count as one token."""
+  lines = text.splitlines()
+  tags = [l for l in lines if l.startswith("_atom_site.")]
+  index = tags.index(tag)
+  out = []
+  for l in lines:
+    if l == tag:
+      continue
+    if l.startswith("ATOM") or l.startswith("HETATM"):
+      fields = _cif_token.findall(l)
+      del fields[index]
+      l = " ".join(fields)
+    out.append(l)
+  return "\n".join(out) + "\n"
+
+def _first_block(text):
+  return list(iotbx.cif.reader(input_string=text).model().values())[0]
+
+def _build(text):
+  return pdb_hierarchy_builder(_first_block(text)).hierarchy
+
+def exercise_anisotrop_b_tensors():
+  """An _atom_site_anisotrop loop with B[i][j] items is converted to U."""
+  from cctbx import adptbx
+  text = atom_site_header + input_two_atoms + \
+    aniso_u_loop.replace("U[", "B[") + "1 8.0 8.0 8.0 0.0 0.0 0.0\n"
+  atoms = _build(text).atoms()
+  assert approx_equal(atoms[0].uij,
+    adptbx.b_as_u((8.0, 8.0, 8.0, 0.0, 0.0, 0.0)))
+  assert atoms[1].uij == (-1.0,) * 6
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1160,6 +1240,7 @@ def run():
     print('chem_data not present, skipping exercise_struct_conn')
   exercise_resolution()
   exercise_null_occupancy_and_b_iso()
+  exercise_anisotrop_b_tensors()
 
 if __name__ == '__main__':
   run()

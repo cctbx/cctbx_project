@@ -8,6 +8,7 @@ from libtbx.utils import Sorry
 from libtbx.str_utils import format_value
 import iotbx.pdb
 import cctbx.crystal
+from cctbx import adptbx
 from iotbx.pdb import hierarchy
 from iotbx.pdb import hy36encode
 from iotbx.pdb import cryst1_interpretation
@@ -15,7 +16,7 @@ from iotbx.pdb.experiment_type import experiment_type
 from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
 import iotbx.cif
-from iotbx.cif.builders import crystal_symmetry_builder
+from iotbx.cif.builders import crystal_symmetry_builder, CifBuilderError
 import iotbx.mtrix_biomt
 from six import string_types
 from six.moves import range, zip
@@ -102,13 +103,15 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
                 for ij in ("11", "22", "33", "12", "13", "23")]
         assert b_ij.count(None) in (0, 6)
         if b_ij.count(None) == 0:
-          adps = adptbx.b_as_u(b_ij)
+          adps = b_ij
         assert not (u_ij.count(None) and b_ij.count(None)) # illegal for both to be present
       if adps is not None:
         try:
           adps = [flex.double(adp) for adp in adps]
         except ValueError as e:
           raise CifBuilderError("Error interpreting ADPs: " + str(e))
+        if u_ij.count(None) == 6: # B[i][j] tensors: scaled to U
+          adps = [adp * adptbx.b_as_u(1.0) for adp in adps]
         adps = flex.sym_mat3_double(*adps)
     py_adps = {}
     if anisotrop_id is not None and adps is not None:
