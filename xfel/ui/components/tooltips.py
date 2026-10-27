@@ -97,7 +97,8 @@ tooltips = {
   'rg_wavelength_offset': 'Offset applied to wavelength of each image (Å)',
   'rg_spectrum_calibration': get_help('spectrum_eV_per_pixel', locator_scope) if locator_scope else '',
   'rg_energy_ctr': 'Energy override for all images (eV)',
-  'rg_two_thetas': 'Two 2θ values (deg). The ratio of high/low is used to check for presence of solvent on each image. ' + \
+  'rg_two_thetas': 'Solvent finder: two 2θ values (deg). The ratio of the radial average at the high and low angles ' + \
+                   'is used to check for presence of solvent on each image. ' + \
                    'Defaults are the water ring and a low resolution ring',
   # StartDBDialog / DBCredentialsDialog
   'basedir': 'Directory where the MySQL server data files will be stored. '

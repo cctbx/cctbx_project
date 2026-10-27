@@ -2570,7 +2570,7 @@ class RunBlockDialog(BaseDialog):
     self.runblocks_start = gctr.SpinCtrl(self.runblock_panel,
                                    label='Start run:',
                                    label_style='bold',
-                                   label_size=(100, -1),
+                                   label_size=(120, -1),
                                    ctrl_value=(self.first_run or self.last_avail),
                                    ctrl_min=self.first_avail,
                                    ctrl_max=self.last_avail,
@@ -2579,14 +2579,14 @@ class RunBlockDialog(BaseDialog):
                                    name='rg_end_type',
                                    label='',
                                    label_style='normal',
-                                   label_size=(100, -1),
+                                   label_size=(120, -1),
                                    direction='vertical',
                                    items={'auto':'Auto add runs',
                                           'specify':'Specify end run'})
     self.runblocks_end = gctr.SpinCtrl(self.runblock_panel,
                                    label='End run:',
                                    label_style='bold',
-                                   label_size=(100, -1),
+                                   label_size=(120, -1),
                                    ctrl_value=(self.last_run or self.last_avail),
                                    ctrl_min=self.first_avail,
                                    ctrl_max=self.last_avail,
@@ -2605,7 +2605,7 @@ class RunBlockDialog(BaseDialog):
                                         name='rg_address',
                                         label='Detector:',
                                         label_style='bold',
-                                        label_size=(100, -1),
+                                        label_size=(120, -1),
                                         choices=DETECTOR_ALIASES,
                                         value=str(block.detector_address))
       self.runblock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
@@ -2616,7 +2616,7 @@ class RunBlockDialog(BaseDialog):
                                       name='rg_beam_xyz',
                                       label='Beam:',
                                       label_style='bold',
-                                      label_size=(100, -1),
+                                      label_size=(120, -1),
                                       ctrl_size=(60, -1),
                                       items=[('X', block.beamx),
                                              ('Y', block.beamy),
@@ -2631,7 +2631,7 @@ class RunBlockDialog(BaseDialog):
                                           name='rg_bin_nrg_gain',
                                           label='Overrides:',
                                           label_style='bold',
-                                          label_size=(100, -1),
+                                          label_size=(120, -1),
                                           ctrl_size=(110, -1),
                                           items=items,
                                           sub_labels=('Rayonix binning', 'Energy (eV)'))
@@ -2640,7 +2640,7 @@ class RunBlockDialog(BaseDialog):
                                                name='rg_wavelength_offset',
                                                label='Wavelength:',
                                                label_style='bold',
-                                               label_size=(100, -1),
+                                               label_size=(120, -1),
                                                ctrl_size=(110, -1),
                                                items=[('wavelength_offset', block.wavelength_offset)],
                                                sub_labels=(u'Offset (\u212b)',))
@@ -2649,7 +2649,7 @@ class RunBlockDialog(BaseDialog):
                                                   name='rg_spectrum_calibration',
                                                   label='Spectrum:',
                                                   label_style='bold',
-                                                  label_size=(100, -1),
+                                                  label_size=(120, -1),
                                                   ctrl_size=(110, -1),
                                                   items=[('spectrum_eV_per_pixel', block.spectrum_eV_per_pixel),
                                                          ('spectrum_eV_offset', block.spectrum_eV_offset)],
@@ -2663,7 +2663,7 @@ class RunBlockDialog(BaseDialog):
       self.btn_load_calibration = gctr.Button(self.runblock_panel, name='rg_load_calibration',
                                               label='Load calibration file...')
       calibration_sizer = wx.BoxSizer(wx.HORIZONTAL)
-      calibration_sizer.Add((110, -1)) # past the row labels
+      calibration_sizer.Add((130, -1)) # past the row labels
       calibration_sizer.Add(self.btn_use_calibration, flag=wx.RIGHT, border=10)
       calibration_sizer.Add(self.btn_load_calibration)
       self.runblock_sizer.Add(calibration_sizer, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=10)
@@ -2677,12 +2677,16 @@ class RunBlockDialog(BaseDialog):
       self.energy.ctr.SetValue(str(block.energy))
       self.runblock_sizer.Add(self.energy, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # Two theta values for droplet hit finding
+    # Two theta values for the solvent finder (droplet hit finding)
     self.two_thetas = gctr.OptionCtrl(self.runblock_panel,
                                       name='rg_two_thetas',
-                                      ctrl_size=(80, -1),
+                                      label='Solvent finder:',
+                                      label_style='bold',
+                                      label_size=(120, -1),
+                                      ctrl_size=(110, -1),
                                       items=[('two_theta_low', block.two_theta_low),
-                                             ('two_theta_high', block.two_theta_high)])
+                                             ('two_theta_high', block.two_theta_high)],
+                                      sub_labels=(u'Low 2\u03b8 (deg)', u'High 2\u03b8 (deg)'))
     self.runblock_sizer.Add(self.two_thetas, flag=wx.EXPAND | wx.ALL, border=10)
 
 
