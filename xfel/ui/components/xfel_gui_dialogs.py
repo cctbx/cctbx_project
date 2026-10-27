@@ -2530,10 +2530,10 @@ class RunBlockDialog(BaseDialog):
     self.orig_first_run = self.first_run
     self.orig_last_run = self.last_run
 
+    kwargs.setdefault('style', wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 600),
                         *args, **kwargs)
 
     # Load dispatcher phil scope and initialise working scope from stored extra_phil_str
@@ -2550,7 +2550,7 @@ class RunBlockDialog(BaseDialog):
 
     runblock_box = wx.StaticBox(self, label='Options')
     self.runblock_box_sizer = wx.StaticBoxSizer(runblock_box, wx.VERTICAL)
-    self.runblock_panel = ScrolledPanel(self, size=(550, 225))
+    self.runblock_panel = ScrolledPanel(self)
     self.runblock_sizer = wx.BoxSizer(wx.VERTICAL)
     self.runblock_panel.SetSizer(self.runblock_sizer)
 
@@ -2723,8 +2723,8 @@ class RunBlockDialog(BaseDialog):
 
     if self.is_lcls:
       self.main_sizer.Add(self.format_panel, flag=wx.EXPAND | wx.ALL, border=10)
-    self.runblock_box_sizer.Add(self.runblock_panel)
-    self.main_sizer.Add(self.runblock_box_sizer, flag=wx.EXPAND | wx.ALL,
+    self.runblock_box_sizer.Add(self.runblock_panel, 1, flag=wx.EXPAND)
+    self.main_sizer.Add(self.runblock_box_sizer, 1, flag=wx.EXPAND | wx.ALL,
                         border=10)
 
     # Edit PHIL button
@@ -2754,8 +2754,15 @@ class RunBlockDialog(BaseDialog):
     self.fill_in_fields()
     self.sync_controls()
     self.configure_controls()
-    self.Layout()
+    # The options panel takes the dialog's spare height (BaseDialog adds
+    # main_sizer to its envelope at proportion 0, so stretch it first). The
+    # panel's minimum size is what its content wants, so fit_to_screen opens
+    # the dialog at its natural size; when the dialog is smaller the panel
+    # scrolls.
+    self.envelope.GetItem(self.main_sizer).SetProportion(1)
+    self.runblock_panel.SetMinSize(self.runblock_sizer.CalcMin())
     self.runblock_panel.SetupScrolling()
+    self.Layout()
     self.SetTitle('Run Block Settings')
 
   def apply_calibration(self, calibration):
@@ -4611,17 +4618,17 @@ class DatasetDialog(BaseDialog):
     self.dataset = dataset
     self.stages = []
 
+    kwargs.setdefault('style', wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(800, 780),
                         *args, **kwargs)
 
     self.all_trials = db.get_all_trials()
     self.all_trial_numbers = [str(t.trial) for t in self.all_trials]
 
     # Scrolling body (the pipeline stack can get tall)
-    self.scroll = ScrolledPanel(self, size=(760, 640))
+    self.scroll = ScrolledPanel(self)
     self.scroll_sizer = wx.BoxSizer(wx.VERTICAL)
     self.scroll.SetSizer(self.scroll_sizer)
 
@@ -4779,6 +4786,12 @@ class DatasetDialog(BaseDialog):
     self.sync_shared_controls()
     self._rebuild_pipeline()
 
+    # The body takes the dialog's spare height (BaseDialog adds main_sizer to
+    # its envelope at proportion 0, so stretch it first). Its minimum size is
+    # its natural size for fit_to_screen; the body scrolls when the dialog is
+    # smaller than that.
+    self.envelope.GetItem(self.main_sizer).SetProportion(1)
+    self.scroll.SetMinSize(self.scroll_sizer.CalcMin())
     self.scroll.SetupScrolling(scrollToTop=True)
     self.Layout()
 

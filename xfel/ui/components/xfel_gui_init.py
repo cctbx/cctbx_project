@@ -4069,7 +4069,7 @@ class TrialPanel(wx.Panel):
     rblock_dlg = dlg.RunBlockDialog(self, trial=self.trial,
                                     db=self.db,
                                     calibration=self.energy_calibration())
-    rblock_dlg.Fit()
+    rblock_dlg.fit_to_screen()
 
     if (rblock_dlg.ShowModal() == wx.ID_OK):
       self.refresh_trial()
@@ -4106,7 +4106,7 @@ class TrialPanel(wx.Panel):
     rblock_dlg = dlg.RunBlockDialog(self, block=run_block,
                                     db=self.db,
                                     calibration=self.energy_calibration())
-    rblock_dlg.Fit()
+    rblock_dlg.fit_to_screen()
 
     if (rblock_dlg.ShowModal() == wx.ID_OK):
       wx.CallAfter(self.refresh_trial)
