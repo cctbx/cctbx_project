@@ -173,7 +173,8 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       if (current_residue_id != last_residue_id
           or current_ins_code != last_ins_code
           or current_auth_asym_id != last_auth_asym_id
-          or current_model_id != last_model_id):
+          or current_model_id != last_model_id
+          or is_first_in_chain is None): # a new chain has no residue group yet
         try:
           resseq = hy36encode(width=4, value=int(current_residue_id))
         except (ValueError, OverflowError):

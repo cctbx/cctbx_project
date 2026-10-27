@@ -1279,6 +1279,23 @@ def exercise_non_integer_seq_id():
     else:
       raise Exception_expected
 
+def exercise_label_asym_id_break_same_seq_id():
+  """A label_asym_id change after a polymer residue starts a new chain. With
+  the sequence id and insertion code unchanged the new chain still gets its
+  own residue group; the atoms used to land in the previous chain."""
+  text = atom_site_header + """\
+ATOM 1 N N . ALA A 1 5 ? 0.0 0.0 0.0 1.00 10.00 5 ALA A N 1
+ATOM 2 C CA . ALA A 1 5 ? 1.0 0.0 0.0 1.00 10.00 5 ALA A CA 1
+ATOM 3 N N . GLY B 2 5 ? 2.0 0.0 0.0 1.00 10.00 5 GLY A N 1
+ATOM 4 C CA . GLY B 2 5 ? 3.0 0.0 0.0 1.00 10.00 5 GLY A CA 1
+"""
+  chains = _build(text).only_model().chains()
+  assert [c.id for c in chains] == ["A", "A"]
+  assert [len(c.residue_groups()) for c in chains] == [1, 1]
+  assert [c.atoms_size() for c in chains] == [2, 2]
+  assert [[ag.resname for ag in c.residue_groups()[0].atom_groups()]
+          for c in chains] == [["ALA"], ["GLY"]]
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1299,6 +1316,7 @@ def run():
   exercise_no_atom_id_column()
   exercise_no_ins_code_column()
   exercise_non_integer_seq_id()
+  exercise_label_asym_id_break_same_seq_id()
 
 if __name__ == '__main__':
   run()
