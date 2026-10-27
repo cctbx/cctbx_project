@@ -2,7 +2,8 @@
 neighbour, a C or N, and is bound to two metals that coexist (blank or the
 same altloc), neither alkali nor alkaline-earth, is taken as deprotonated, and
 reduce2 does not build its H. Ca does not count, nor do alternate positions
-of one metal. The bridge decides before the phenol and alcohol rules.
+of one metal. The bridge decides before the phenol and alcohol rules, and an
+H that more than one rule judges is listed once.
 Models: 8U7C, bis-tris D 207 with Tb D 202 (O4 2.21 A) and Er D 203 (O4
 2.45 A, also O3 and O6); the same with Ca in place of Tb, and with Er in
 altlocs A and B at the Er and Tb positions; 6LZB, hydroxamate EYF A 403 with
@@ -60,8 +61,8 @@ END
 
 NOT_PLACED = 'Hydroxyl H not placed'
 
-def run(prefix, pdb_str):
-  """Run reduce2 with its defaults on a model string in the current directory.
+def run(prefix, pdb_str, args=()):
+  """Run reduce2 on a model string in the current directory.
 
   Parameters
   ----------
@@ -69,6 +70,8 @@ def run(prefix, pdb_str):
     Prefix of the input, output and description files written.
   pdb_str : str
     The input model in PDB format.
+  args : sequence of str
+    Further reduce2 arguments.
 
   Returns
   -------
@@ -84,7 +87,7 @@ def run(prefix, pdb_str):
     f.write(pdb_str)
   result = run_program(program_class=reduce2.Program, logger=null_out(),
     args=[fn, 'output.filename=' + prefix + '_out.pdb',
-          'output.description_file_name=' + txt, '--overwrite'])
+          'output.description_file_name=' + txt, '--overwrite'] + list(args))
   with open(txt) as f:
     description = f.read()
   names = set()
@@ -140,8 +143,53 @@ def test_6lzb_hydroxamate():
     assert NOT_PLACED in description, description
     assert 'Phenol H' not in description, description
 
+def test_6lzb_listed_once():
+  '''H9, judged by the bridge and by the phenol rule, is listed once. Ga at
+  occupancy 0.50 at both Co sites: H9 stays, unresolved at the bridge. Co at
+  0.50 and Ga: Ga makes the phenolate, and the unresolved bridge is not
+  listed. Ga at both sites, H9 supplied: listed at the bridge, with
+  approach=optimize and with keep_existing_H=True'''
+  lines = pdb_6lzb.splitlines(True)
+  assert [l[17:26] for l in lines[1:3]] == [' CO A 401', ' CO A 402']
+  def metals(m401, occ401, m402, occ402):
+    # the model with element m and occupancy occ at Co A 401 and A 402
+    out = list(lines)
+    for k, m, occ in ((1, m401, occ401), (2, m402, occ402)):
+      l = out[k]
+      out[k] = '%s%s%s%s%s%6.2f%s%s\n' % (l[:12], m, l[14:18], m, l[20:54],
+        occ, l[60:76], m)
+    return ''.join(out)
+  h9 = '  H9  EYF A 403'
+  names, description = run('tst_reduce2_metal_bridging_once_ga',
+    metals('GA', 0.5, 'GA', 0.5))
+  assert 'H9' in names, sorted(names)
+  assert description.count(h9) == 1, description
+  assert ('Hydroxyl H placed at bridging metal sites with unresolved '
+    'protonation\n' + h9) in description, description
+  names, description = run('tst_reduce2_metal_bridging_once_coga',
+    metals('CO', 0.5, 'GA', 1.))
+  assert 'H9' not in names, sorted(names)
+  assert description.count(h9) == 1, description
+  assert 'Phenol H not placed' in description, description
+  names, description = run('tst_reduce2_metal_bridging_once_ca',
+    metals('CA', 1., 'CA', 1.))
+  assert 'H9' in names, sorted(names)
+  with open('tst_reduce2_metal_bridging_once_ca_out.pdb') as f:
+    with_h = f.read()
+  assert with_h.count('CA    CA A 40') == 2
+  with_h = with_h.replace('CA    CA A 40', 'GA    GA A 40').replace(
+    '          CA\n', '          GA\n')
+  for args in (['approach=optimize'], ['keep_existing_H=True']):
+    names, description = run('tst_reduce2_metal_bridging_once_supplied',
+      with_h, args)
+    assert 'H9' in names, (args, sorted(names))
+    assert description.count(h9) == 1, (args, description)
+    assert 'Supplied hydroxyl H at bridging metal sites' in description, (
+      args, description)
+
 if __name__ == '__main__':
   test_8u7c_bis_tris()
   test_8u7c_controls()
   test_6lzb_hydroxamate()
+  test_6lzb_listed_once()
   print('OK')

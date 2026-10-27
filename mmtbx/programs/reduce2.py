@@ -1476,7 +1476,8 @@ NOTES:
   def _SuppliedMetalHText(self):
     # approach=optimize keeps every input H: the H on thiols, acids, phenols,
     # alcohols, bridging O-H and N bound to metals, and the other N-H next to
-    # a metal, as placement lists them (nothing is deleted here).
+    # a metal, as placement lists them (nothing is deleted here; an H at a
+    # bridge is listed there only).
     # :return: The description-file text ('' if none); also in the log.
     cs = reduce_hydrogen.contact_symmetry(self._output_cs)
     thiols = reduce_hydrogen.thiol_metal_sites(self.model, cs)
@@ -1485,6 +1486,8 @@ NOTES:
     alcohols = reduce_hydrogen.alkoxide_metal_sites(self.model, cs)
     bridges = reduce_hydrogen.bridging_metal_sites(self.model, cs)
     nh = reduce_hydrogen.metal_nh_sites(self.model, cs)
+    bridged = set(s.i_h for s in bridges.h_sites if s.verdict != 'not counted')
+    not_bridged = lambda a: a.i_seq not in bridged
     result = ''
     for text in (
         reduce_hydrogen.metal_thiol_text(
@@ -1494,11 +1497,10 @@ NOTES:
           supplied = reduce_hydrogen.supplied_metal_h(acids, lambda a: True),
           hint = self._RebuildHint()),
         reduce_hydrogen.metal_phenol_text(
-          supplied = reduce_hydrogen.supplied_metal_h(phenols, lambda a: True),
+          supplied = reduce_hydrogen.supplied_metal_h(phenols, not_bridged),
           hint = self._RebuildHint()),
         reduce_hydrogen.metal_alkoxide_text(
-          supplied = reduce_hydrogen.supplied_metal_h(alcohols,
-            lambda a: True),
+          supplied = reduce_hydrogen.supplied_metal_h(alcohols, not_bridged),
           hint = self._RebuildHint()),
         reduce_hydrogen.metal_bridging_text(
           supplied = reduce_hydrogen.supplied_metal_h(bridges,

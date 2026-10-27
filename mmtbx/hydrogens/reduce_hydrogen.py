@@ -2603,6 +2603,10 @@ class place_hydrogens():
     self.site_labels_phenolate  = list()
     self.phenol_h_unresolved    = list()
     self.phenol_h_supplied_kept = list()
+    # H listed by an earlier metal step (_exclude_H_at_metal_sites()):
+    # unresolved, key: (list, message), and supplied, keys
+    self._metal_h_unresolved    = dict()
+    self._metal_h_supplied      = set()
     # the same for backbone amide N and T/U N3 bound to metals
     # (metal_nh_sites), and the other N-H next to a metal, kept
     self.site_labels_metal_nh   = list()
@@ -3681,6 +3685,8 @@ class place_hydrogens():
     # listed (not_placed: label, contacts); unresolved sites keep the H, with
     # the message; supplied H are kept (supplied_kept); reported: the
     # candidates site_class only reports, listed in _finish_metal_lists().
+    # An H that an earlier step listed is not listed again; one that this
+    # step removes loses the earlier unresolved message.
     elements = self.model.get_hierarchy().atoms().extract_element()
     if not any(e.strip().upper() in metals for e in elements): return
     sites = site_class(self.model, self._contact_cs)
@@ -3694,20 +3700,27 @@ class place_hydrogens():
     def supplied(a):
       return (self.keep_existing_H and parts[a.parent().memory_id()] +
         (a.parent().altloc, a.name) in self._existing_h)
-    supplied_kept.extend(supplied_metal_h(sites, supplied))
+    supplied_kept.extend(supplied_metal_h(sites, lambda a: supplied(a) and
+      self._atom_key(parts, a) not in self._metal_h_supplied))
     remove = []
     for site in sites.h_sites:
       if site.verdict == 'not counted': continue
       h = atoms[site.i_h]
+      key = self._atom_key(parts, h)
       label = _atom_label(h)
       contact = '; '.join(sites.contact_text(c) for c in site.contacts)
       if supplied(h):
-        continue
+        self._metal_h_supplied.add(key)
       elif site.verdict == sites.covered:
         remove.append(site.i_h)
         not_placed.append((label, contact))
-      else:
-        unresolved.append(sites.unresolved_message(site))
+        if key in self._metal_h_unresolved:
+          listed, message = self._metal_h_unresolved.pop(key)
+          listed.remove(message)
+      elif key not in self._metal_h_unresolved:
+        message = sites.unresolved_message(site)
+        unresolved.append(message)
+        self._metal_h_unresolved[key] = (unresolved, message)
     if remove:
       sel = flex.bool(atoms.size(), True).set_selected(
         flex.size_t(sorted(remove)), False)
