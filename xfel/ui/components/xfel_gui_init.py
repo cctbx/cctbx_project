@@ -2290,6 +2290,13 @@ class EnergyTab(BaseTab):
   def update_export_button(self):
     self.export_button.Enable(self.fee_eV_offset is not None or self.ebeam_eV_offset is not None)
 
+  def current_calibration(self):
+    ''' The latest results as an immutable record for the run group dialog,
+        or None before the FEE calibration has run '''
+    if self.fee_eV_offset is None:
+      return None
+    return dlg.EnergyCalibration(self.fee_eV_per_pixel, self.fee_eV_offset, self.ebeam_wavelength_offset)
+
   def clear_FEE_calib(self):
     ''' Forget both calibrations: the ebeam offset is measured against the
         FEE calibration, so it cannot outlive it '''
@@ -4051,9 +4058,17 @@ class TrialPanel(wx.Panel):
     else:
       self.trial.active = False
 
+  def energy_calibration(self):
+    ''' The Energy tab's current results, handed to the run group dialog '''
+    try:
+      return self.parent.GetParent().main.run_window.energy_tab.current_calibration()
+    except AttributeError:
+      return None
+
   def onAddBlock(self, e):
     rblock_dlg = dlg.RunBlockDialog(self, trial=self.trial,
-                                    db=self.db)
+                                    db=self.db,
+                                    calibration=self.energy_calibration())
     rblock_dlg.Fit()
 
     if (rblock_dlg.ShowModal() == wx.ID_OK):
@@ -4089,7 +4104,8 @@ class TrialPanel(wx.Panel):
     ''' Open dialog and change run_block options '''
     run_block = e.GetEventObject().block
     rblock_dlg = dlg.RunBlockDialog(self, block=run_block,
-                                    db=self.db)
+                                    db=self.db,
+                                    calibration=self.energy_calibration())
     rblock_dlg.Fit()
 
     if (rblock_dlg.ShowModal() == wx.ID_OK):

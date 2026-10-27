@@ -88,7 +88,9 @@ tooltips = {
   'trial_d_min_ctr': 'Used for logging only', # XXX doesn't appear
   # Run group dialog
   'rg_end_type': 'Auto add runs: new data will be added to this block as it arrives\nSpecify end run: set the last run for this block explicitly.',
-  'rg_address_ctr': 'Detector address in XTC stream (use detnames to list available detectors)',
+  'rg_address_ctr': 'Detector address in XTC stream: pick a psana alias or type any address (use detnames to list available detectors)',
+  'rg_use_calibration': 'Fill in the spectrometer constants from the calibration on the Energy tab',
+  'rg_load_calibration': 'Fill in the spectrometer constants from a file saved on the Energy tab',
   'rg_beam_xyz': 'Beam center in pixels, and detector distance in mm (overridden by the phil parameter input.reference_geometry)',
   'rg_bin_nrg_gain_binning': 'Rayonix binning (2, 3, 4, etc.)',
   'rg_bin_nrg_gain_energy': 'Energy override for all images (eV)',

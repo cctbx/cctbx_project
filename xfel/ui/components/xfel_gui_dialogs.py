@@ -2419,12 +2419,42 @@ class TagDialog(BaseDialog):
     e.Skip()
 
 
+# The Energy tab's results, handed to the run group dialog as an immutable
+# record when it opens. wavelength_offset is None until the ebeam comparison
+# has run.
+EnergyCalibration = collections.namedtuple('EnergyCalibration',
+                                           ['spectrum_eV_per_pixel', 'spectrum_eV_offset', 'wavelength_offset'])
+
+def read_calibration_phil(path):
+  ''' Read a file written by the Energy tab's Save calibration button: one
+      key=value per line. Returns an EnergyCalibration; raises ValueError if
+      the spectrometer constants are missing or not numbers. '''
+  values = {}
+  with open(path) as f:
+    for line in f:
+      if '=' not in line:
+        continue
+      key, value = line.split('=', 1)
+      values[key.strip()] = value.strip()
+  try:
+    per_pixel = float(values['spectrum_eV_per_pixel'])
+    offset = float(values['spectrum_eV_offset'])
+    wavelength_offset = float(values['wavelength_offset']) if 'wavelength_offset' in values else None
+  except (KeyError, ValueError) as e:
+    raise ValueError('%s does not hold a spectrometer calibration (%s)' % (path, e))
+  return EnergyCalibration(per_pixel, offset, wavelength_offset)
+
+# psana aliases offered for the detector address; any of them selects the
+# matching dxtbx FormatXTC class, which looks for these names in the address
+DETECTOR_ALIASES = ['Jungfrau', 'Rayonix', 'ePix', 'CSPAD']
+
 class RunBlockDialog(BaseDialog):
   ''' Comes up when individual run block button is clicked; allows for run
   block settings to be manipulated by user '''
 
   def __init__(self, parent, db,
                block=None, trial=None,
+               calibration=None,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
@@ -2433,6 +2463,7 @@ class RunBlockDialog(BaseDialog):
     self.block = block
     self.all_blocks = []
     self.db = db
+    self.calibration = calibration # EnergyCalibration from the Energy tab, or None
     self.use_ids = db.params.facility.name not in ['lcls']
     self.is_lcls = db.params.facility.name == 'lcls'
 
@@ -2568,13 +2599,15 @@ class RunBlockDialog(BaseDialog):
     self.runblock_sizer.Add(self.start_stop_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     if self.is_lcls:
-      # Detector address
-      self.address = gctr.TextButtonCtrl(self.runblock_panel,
-                                         name='rg_address',
-                                         label='Detector Address:',
-                                         label_style='bold',
-                                         label_size=(100, -1),
-                                         value=block.detector_address)
+      # Detector address: an alias from the list, or anything else typed in.
+      # A stored address that is not in the list is shown as it is.
+      self.address = gctr.ComboTextCtrl(self.runblock_panel,
+                                        name='rg_address',
+                                        label='Detector:',
+                                        label_style='bold',
+                                        label_size=(100, -1),
+                                        choices=DETECTOR_ALIASES,
+                                        value=str(block.detector_address))
       self.runblock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
 
 
@@ -2596,20 +2629,46 @@ class RunBlockDialog(BaseDialog):
                ('energy', block.energy)]
       self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
                                           name='rg_bin_nrg_gain',
-                                          ctrl_size=(80, -1),
-                                          items=items)
+                                          label='Overrides:',
+                                          label_style='bold',
+                                          label_size=(100, -1),
+                                          ctrl_size=(110, -1),
+                                          items=items,
+                                          sub_labels=('Rayonix binning', 'Energy (eV)'))
       self.runblock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
       self.wavelength_offset = gctr.OptionCtrl(self.runblock_panel,
                                                name='rg_wavelength_offset',
-                                               ctrl_size=(80, -1),
-                                               items=[('wavelength_offset', block.wavelength_offset)])
+                                               label='Wavelength:',
+                                               label_style='bold',
+                                               label_size=(100, -1),
+                                               ctrl_size=(110, -1),
+                                               items=[('wavelength_offset', block.wavelength_offset)],
+                                               sub_labels=(u'Offset (\u212b)',))
       self.runblock_sizer.Add(self.wavelength_offset, flag=wx.EXPAND | wx.ALL, border=10)
       self.spectrum_calibration = gctr.OptionCtrl(self.runblock_panel,
                                                   name='rg_spectrum_calibration',
-                                                  ctrl_size=(80, -1),
+                                                  label='Spectrum:',
+                                                  label_style='bold',
+                                                  label_size=(100, -1),
+                                                  ctrl_size=(110, -1),
                                                   items=[('spectrum_eV_per_pixel', block.spectrum_eV_per_pixel),
-                                                         ('spectrum_eV_offset', block.spectrum_eV_offset)])
+                                                         ('spectrum_eV_offset', block.spectrum_eV_offset)],
+                                                  sub_labels=('eV per pixel', 'eV offset'))
       self.runblock_sizer.Add(self.spectrum_calibration, flag=wx.EXPAND | wx.ALL, border=10)
+
+      # Fill the spectrometer fields from the Energy tab or from a file it saved
+      self.btn_use_calibration = gctr.Button(self.runblock_panel, name='rg_use_calibration',
+                                             label='Use Energy tab calibration')
+      self.btn_use_calibration.Enable(self.calibration is not None)
+      self.btn_load_calibration = gctr.Button(self.runblock_panel, name='rg_load_calibration',
+                                              label='Load calibration file...')
+      calibration_sizer = wx.BoxSizer(wx.HORIZONTAL)
+      calibration_sizer.Add((110, -1)) # past the row labels
+      calibration_sizer.Add(self.btn_use_calibration, flag=wx.RIGHT, border=10)
+      calibration_sizer.Add(self.btn_load_calibration)
+      self.runblock_sizer.Add(calibration_sizer, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=10)
+      setup_tooltip(self.btn_use_calibration)
+      setup_tooltip(self.btn_load_calibration)
     else:
       self.energy = gctr.TextButtonCtrl(self.runblock_panel,
                                         name='rg_energy',
@@ -2680,6 +2739,8 @@ class RunBlockDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onEditPhil, self.btn_edit_phil)
     if self.is_lcls:
       self.Bind(wx.EVT_BUTTON, self.onImportFormat, self.format.btn_import)
+      self.Bind(wx.EVT_BUTTON, self.onUseCalibration, self.btn_use_calibration)
+      self.Bind(wx.EVT_BUTTON, self.onLoadCalibration, self.btn_load_calibration)
     self.Bind(wx.EVT_BUTTON, self.onUntrustedBrowse,
               id=self.untrusted_path.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onReferenceGeometryBrowse,
@@ -2692,6 +2753,34 @@ class RunBlockDialog(BaseDialog):
     self.Layout()
     self.runblock_panel.SetupScrolling()
     self.SetTitle('Run Block Settings')
+
+  def apply_calibration(self, calibration):
+    ''' Copy an EnergyCalibration into the spectrometer fields. The wavelength
+        offset is left alone when the calibration has none. '''
+    self.spectrum_calibration.spectrum_eV_per_pixel.SetValue('%.6f' % calibration.spectrum_eV_per_pixel)
+    self.spectrum_calibration.spectrum_eV_offset.SetValue('%.4f' % calibration.spectrum_eV_offset)
+    if calibration.wavelength_offset is not None:
+      self.wavelength_offset.wavelength_offset.SetValue('%.6f' % calibration.wavelength_offset)
+
+  def onUseCalibration(self, e):
+    if self.calibration is not None:
+      self.apply_calibration(self.calibration)
+
+  def onLoadCalibration(self, e):
+    load_dlg = wx.FileDialog(self,
+                             message='Load FEE calibration',
+                             defaultDir=os.path.join(str(self.db.params.output_folder), '..', 'fee'),
+                             defaultFile='fee_calib.phil',
+                             wildcard='*.phil',
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    if load_dlg.ShowModal() == wx.ID_OK:
+      try:
+        calibration = read_calibration_phil(load_dlg.GetPath())
+      except Exception as err:
+        wx.MessageBox(str(err), 'Error', wx.OK | wx.ICON_ERROR)
+      else:
+        self.apply_calibration(calibration)
+    load_dlg.Destroy()
 
   def onAutoEnd(self, e):
     self.last_run = None
@@ -2762,6 +2851,13 @@ class RunBlockDialog(BaseDialog):
 
     if self.is_lcls:
       # Validation
+      address = self.address.ctr.GetValue()
+      if not any(alias.lower() in address.lower() for alias in DETECTOR_ALIASES):
+        answer = wx.MessageBox("Detector address '%s' does not name a %s detector, so no dxtbx "
+                               "XTC format will read it. Save anyway?" % (address, ', '.join(DETECTOR_ALIASES)),
+                               'Warning!', wx.YES_NO | wx.ICON_EXCLAMATION)
+        if answer != wx.YES:
+          return
       if 'rayonix' in self.address.ctr.GetValue().lower():
         def is_none(string):
           return string is None or string in ['', 'None']
