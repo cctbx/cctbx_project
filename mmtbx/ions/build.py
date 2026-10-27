@@ -221,7 +221,6 @@ def find_and_build_ions(
         residue_name=final_choice.element,
         initial_occupancy=params.initial_occupancy,
         initial_b_iso=initial_b_iso,
-        chain_id=params.ion_chain_id,
         segid="ION",
         refine_adp=refine_adp,
         refine_occupancies=False) #params.refine_ion_occupancies)
@@ -344,6 +343,9 @@ def clean_up_ions(fmodel, model, params, log=None, verbose=True):
   if (log is None):
     log = null_out()
   import mmtbx.ions.utils
+  from mmtbx.solvent import ordered_solvent
+  from scitbx.array_family import flex
+  from libtbx import group_args
   ion_selection = model.selection(
     "segid ION")
   ion_iselection = ion_selection.iselection()
@@ -353,27 +355,38 @@ def clean_up_ions(fmodel, model, params, log=None, verbose=True):
   n_sites_start = model.get_number_of_atoms()
   new_model = model.select(~ion_selection)
   ion_model = model.select(ion_selection)
-  ion_pdb_hierarchy = ion_model.get_hierarchy()
-  ion_atoms = ion_pdb_hierarchy.atoms()
   ion_xrs = ion_model.get_xray_structure()
+  ion_model.set_xray_structure(ion_xrs) # sync hierarchy
+  ion_atoms = ion_model.get_hierarchy().atoms()
   perm = mmtbx.ions.utils.sort_atoms_permutation(
-    pdb_atoms=ion_pdb_hierarchy.atoms(),
-    xray_structure=ion_model.get_xray_structure())
-  nonbonded_types = ion_model.restraints_manager.geometry.nonbonded_types
-  nonbonded_charges = ion_model.restraints_manager.geometry.nonbonded_charges
-  ion_atoms = ion_atoms.select(perm)
-  new_model.append_single_atoms(
-    new_xray_structure=ion_xrs.select(perm),
-    atom_names=[ atom.name for atom in ion_atoms ],
-    residue_names=[ atom.fetch_labels().resname for atom in ion_atoms ],
-    nonbonded_types=nonbonded_types.select(perm),
-    nonbonded_charges=nonbonded_charges.select(perm),
+    pdb_atoms=ion_atoms,
+    xray_structure=ion_xrs)
+  # keep residue groups (e.g. altlocs) whole, in sorted order
+  ion_rgs, rg_ids = [], set()
+  for i_seq in perm:
+    rg = ion_atoms[i_seq].parent().parent()
+    if rg.memory_id() not in rg_ids:
+      rg_ids.add(rg.memory_id())
+      ion_rgs.append(rg)
+  perm = flex.size_t([atom.i_seq for rg in ion_rgs for atom in rg.atoms()])
+  geometry = ion_model.restraints_manager.geometry
+  conformer_indices = None
+  if (geometry.conformer_indices is not None):
+    conformer_indices = group_args(
+      conformer_indices=geometry.conformer_indices.select(perm))
+  os_params = ordered_solvent.master_params().extract()
+  os_params.refine_occupancies = params.refine_ion_occupancies
+  ordered_solvent.add_solvent_to_model_inplace(
+    model=new_model,
+    params=os_params,
+    water_residue_groups=ion_rgs,
     chain_id=params.ion_chain_id,
-    segids=[ "ION" for atom in ion_atoms ],
-    refine_occupancies=params.refine_ion_occupancies,
-    refine_adp="isotropic",
-    reset_labels=True,
-    conformer_indices=None)
+    conformer_indices=conformer_indices,
+    nonbonded_types=geometry.nonbonded_types.select(perm),
+    nonbonded_charges=geometry.nonbonded_charges.select(perm),
+    solvent_xray_structure=ion_xrs.select(perm))
+  new_model._sync_xrs_labels()
+  new_model._restore_scattering_dictionaries()
   n_sites_end = new_model.get_number_of_atoms()
   new_hierarchy = new_model.get_hierarchy()
   n_sites_pdb = new_hierarchy.atoms_size()

@@ -278,7 +278,10 @@ def add_solvent_to_model_inplace(
       sites=None,
       water_residue_groups=None, # come together
       chain_id=None,             # come together
-      conformer_indices=None):
+      conformer_indices=None,
+      nonbonded_types=None,
+      nonbonded_charges=None,
+      solvent_xray_structure=None):
   """
   A series of very specialzied manipulations on the model to add new solvent
   without re-creating the new model.
@@ -315,8 +318,10 @@ def add_solvent_to_model_inplace(
   model.unset_processed_pdb_file()
   # Force-update xray_structure
   # This is done THIS WAY to keep scattering_table
-  solvent_xray_structure = new_solvent_chain.as_new_hierarchy(
-    ).extract_xray_structure(crystal_symmetry=model.crystal_symmetry())
+  if solvent_xray_structure is None:
+    solvent_xray_structure = new_solvent_chain.as_new_hierarchy(
+      ).extract_xray_structure(crystal_symmetry=model.crystal_symmetry())
+  assert solvent_xray_structure.scatterers().size() == n_new_solvent
   model._xray_structure = model._xray_structure.concatenate(
     solvent_xray_structure)
   sst = model.get_xray_structure().select(
@@ -358,10 +363,13 @@ def add_solvent_to_model_inplace(
           if iso is not None: iso.append(False)
           if ani is not None: ani.append(True)
   #
-  nonbonded_types = flex.std_string()
-  for atom in new_solvent_chain.atoms():
-    if(atom.element_is_hydrogen()): nonbonded_types.append('HOH2')
-    else:                           nonbonded_types.append('OH2')
+  if nonbonded_types is None:
+    nonbonded_types = flex.std_string()
+    for atom in new_solvent_chain.atoms():
+      if(atom.element_is_hydrogen()): nonbonded_types.append('HOH2')
+      else:                           nonbonded_types.append('OH2')
+  if nonbonded_charges is None:
+    nonbonded_charges = flex.int(n_new_solvent, 0)
   #
   # Finally, add new atoms to restraints manager
   #
@@ -397,7 +405,7 @@ def add_solvent_to_model_inplace(
       donor_acceptor_excl_groups = donor_acceptor_excl_groups,
       site_symmetry_table        = sst,
       nonbonded_types            = nonbonded_types,
-      nonbonded_charges          = flex.int(n_new_solvent, 0))
+      nonbonded_charges          = nonbonded_charges)
     model.restraints_manager = mmtbx.restraints.manager(
       geometry              = geometry,
       cartesian_ncs_manager = rm.cartesian_ncs_manager,
