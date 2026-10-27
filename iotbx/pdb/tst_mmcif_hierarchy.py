@@ -1296,6 +1296,26 @@ ATOM 4 C CA . GLY B 2 5 ? 3.0 0.0 0.0 1.00 10.00 5 GLY A CA 1
   assert [[ag.resname for ag in c.residue_groups()[0].atom_groups()]
           for c in chains] == [["ALA"], ["GLY"]]
 
+def exercise_single_item_atom_site():
+  """A one-atom _atom_site given as items rather than a loop: every item is
+  read whole (group_PDB, id, fp and fdp used to be read by their first
+  character)."""
+  text = "data_test\n"
+  tags = [l for l in atom_site_header.splitlines()
+          if l.startswith("_atom_site.")]
+  values = ("HETATM 15 C C . ALA A 1 1 B 1.0 2.0 3.0 1.00 10.00 "
+            "1 ALA A C 1").split()
+  for tag, value in zip(tags, values):
+    text += "%s %s\n" % (tag, value)
+  text += "_atom_site.phenix_scat_dispersion_real 0.5\n"
+  text += "_atom_site.phenix_scat_dispersion_imag 1.5\n"
+  h = _build(text)
+  assert h.atoms_size() == 1
+  a = h.atoms()[0]
+  assert a.serial == "   15" and a.hetero
+  assert (a.fp, a.fdp) == (0.5, 1.5)
+  assert a.parent().parent().icode == "B"
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1317,6 +1337,7 @@ def run():
   exercise_no_ins_code_column()
   exercise_non_integer_seq_id()
   exercise_label_asym_id_break_same_seq_id()
+  exercise_single_item_atom_site()
 
 if __name__ == '__main__':
   run()

@@ -64,14 +64,18 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0, error_message
     assert type_symbol is not None
 
-    atom_site_fp = cif_block.get('_atom_site.phenix_scat_dispersion_real')
-    atom_site_fdp = cif_block.get('_atom_site.phenix_scat_dispersion_imag')
+    atom_site_fp = self._wrap_loop_if_needed(
+      cif_block, '_atom_site.phenix_scat_dispersion_real')
+    atom_site_fdp = self._wrap_loop_if_needed(
+      cif_block, '_atom_site.phenix_scat_dispersion_imag')
 
-    pdb_ins_code = cif_block.get("_atom_site.pdbx_PDB_ins_code") # insertion code
-    model_ids = cif_block.get("_atom_site.pdbx_PDB_model_num")
-    atom_site_id = cif_block.get("_atom_site.id")
+    pdb_ins_code = self._wrap_loop_if_needed(
+      cif_block, "_atom_site.pdbx_PDB_ins_code") # insertion code
+    model_ids = self._wrap_loop_if_needed(
+      cif_block, "_atom_site.pdbx_PDB_model_num")
+    atom_site_id = self._wrap_loop_if_needed(cif_block, "_atom_site.id")
     # only permitted values are ATOM or HETATM
-    group_PDB = cif_block.get("_atom_site.group_PDB")
+    group_PDB = self._wrap_loop_if_needed(cif_block, "_atom_site.group_PDB")
     # TODO: read esds
     # Integrative (IHM) models deposited in the PDB give occupancy and
     # B_iso_or_equiv as the mmCIF null values "." or "?" on every atom.
