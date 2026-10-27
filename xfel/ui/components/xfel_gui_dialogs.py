@@ -2757,10 +2757,10 @@ class RunBlockDialog(BaseDialog):
   def apply_calibration(self, calibration):
     ''' Copy an EnergyCalibration into the spectrometer fields. The wavelength
         offset is left alone when the calibration has none. '''
-    self.spectrum_calibration.spectrum_eV_per_pixel.SetValue('%.6f' % calibration.spectrum_eV_per_pixel)
-    self.spectrum_calibration.spectrum_eV_offset.SetValue('%.4f' % calibration.spectrum_eV_offset)
+    self.spectrum_calibration.spectrum_eV_per_pixel.SetValue(str(calibration.spectrum_eV_per_pixel))
+    self.spectrum_calibration.spectrum_eV_offset.SetValue(str(calibration.spectrum_eV_offset))
     if calibration.wavelength_offset is not None:
-      self.wavelength_offset.wavelength_offset.SetValue('%.6f' % calibration.wavelength_offset)
+      self.wavelength_offset.wavelength_offset.SetValue(str(calibration.wavelength_offset))
 
   def onUseCalibration(self, e):
     if self.calibration is not None:

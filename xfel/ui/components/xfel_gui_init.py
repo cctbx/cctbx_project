@@ -268,8 +268,8 @@ class CalibWorker(Thread):
         self.loc_dir = loc_dir
 
     loc_parts = [f'experiment={request.experiment}',
-                 f'spectrum_eV_offset={request.fee_eV_offset:.2f}',
-                 f'spectrum_eV_per_pixel={request.fee_eV_per_pixel:.2f}']
+                 f'spectrum_eV_offset={request.fee_eV_offset}',
+                 f'spectrum_eV_per_pixel={request.fee_eV_per_pixel}']
 
     runs = [run for run in self.db.get_all_runs() if str(run.run) in request.runs]
     locfiles = []
