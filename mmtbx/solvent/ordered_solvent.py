@@ -345,6 +345,8 @@ def add_solvent_to_model_inplace(
       # sites
       if(rfs.individual_sites):
         rfs.sites_individual.append(True)
+      if(rfs.sites_torsion_angles is not None):
+        rfs.sites_torsion_angles.append(True)
       # ADP
       if(rfs.individual_adp): # H?
         iso = rfs.adp_individual_iso
