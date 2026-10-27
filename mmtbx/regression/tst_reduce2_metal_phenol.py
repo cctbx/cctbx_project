@@ -1,15 +1,16 @@
-"""reduce2 placement at phenols bound to metal ions of charge +3 or more: an
-O-H whose O has one heavy neighbour, a C in a double, triple, aromatic or
-delocalized bond (phenol, enol; acids: tst_reduce2_metal_acid.py) or an N
-that is in such a bond or bonded to such an atom (hydroxamic acid, N-hydroxy
-heterocycle), bound to a metal of PHENOLATE_METAL_ELEMENTS is taken as
-deprotonated (Fe as Fe(III)), and reduce2 does not build its H. At other
-metals the H stays (a phenol bound to Zn has a pKa of about 8.5). Supplied H
-are kept with a note.
+"""reduce2 placement at phenols bound to metal ions usually of charge +3 or
+more: an O-H whose O has one heavy neighbour, a C in a double, triple,
+aromatic or delocalized bond (phenol, enol; acids: tst_reduce2_metal_acid.py)
+or an N that is in such a bond or bonded to such an atom (hydroxamic acid,
+N-hydroxy heterocycle), bound to a metal of PHENOLATE_METAL_ELEMENTS is taken
+as deprotonated, and reduce2 does not build its H. Fe is taken as Fe(III) at
+the phenol of an amino acid (Tyr); at other phenols the H stays, listed as
+unresolved. At other metals the H stays (a phenol bound to Zn has a pKa of
+about 8.5). Supplied H are kept with a note.
 Models: 8RK1 (FutA with Fe(III), neutron), Tyr 13, 143, 199 and 200 on
 Fe 401 (1.93-2.19 A); none of the four OH carries D in the neutron model.
 4X1D, Tyr 426 and 517 on Yb 701 (2.37 and 2.40 A). 1Y93, acetohydroxamate on
-Zn 264 (O 2.07 A), and the same with Fe in place of Zn.
+Zn 264 (O 2.07 A), and the same with Ga and with Fe in place of Zn.
 """
 pdb_8rk1 = """\
 CRYST1   39.542   78.316   47.893  90.00  97.36  90.00 P 1 21 1
@@ -107,6 +108,7 @@ END
 """
 
 NOT_PLACED = 'Phenol H not placed'
+UNRESOLVED = 'Phenol H placed at metal sites with unresolved protonation'
 SUPPLIED = 'Supplied phenol H at metal sites'
 
 def run(prefix, pdb_str, args=()):
@@ -216,16 +218,29 @@ def test_4x1d_yb():
   assert len(section(description, NOT_PLACED)) == 2, description
 
 def test_1y93_hydroxamate():
-  '''Acetohydroxamate on Fe loses HO and keeps HN; on Zn it keeps both'''
-  pdb_fe = pdb_1y93.replace('ZN    ZN A 264', 'FE    FE A 264').replace(
-    '          ZN\n', '          FE\n')
-  assert ' ZN' not in pdb_fe
-  for pdb_str, metal, expected in ((pdb_fe, 'fe', ['HN']),
-                                   (pdb_1y93, 'zn', ['HN', 'HO'])):
-    h, description = run('tst_reduce2_metal_phenol_hae_' + metal, pdb_str)
+  '''Acetohydroxamate on Ga loses HO and keeps HN; on Zn it keeps both; on
+  Fe, whose oxidation state is unknown at a ligand, it keeps both and is
+  listed as unresolved'''
+  for metal, expected in (('GA', ['HN']), ('FE', ['HN', 'HO']),
+                          ('ZN', ['HN', 'HO'])):
+    pdb_str = pdb_1y93.replace('ZN    ZN A 264', '%s    %s A 264' % (metal,
+      metal)).replace('          ZN\n', '          %s\n' % metal)
+    assert pdb_str.count(metal) == 3
+    h, description = run('tst_reduce2_metal_phenol_hae_' + metal.lower(),
+      pdb_str)
     names = sorted(a.name.strip() for a in h.atoms()
                    if a.name.strip() in ('HN', 'HO'))
     assert names == expected, (metal, names)
+    if metal == 'FE':
+      lines = section(description, UNRESOLVED)
+      assert len(lines) == 1, lines
+      assert lines[0].startswith('HO  HAE A 301: the oxidation state of FE is '
+        'unknown'), lines
+    else:
+      assert UNRESOLVED not in description, description
+    if metal == 'GA':
+      lines = section(description, NOT_PLACED)
+      assert len(lines) == 1 and lines[0].startswith('HO  HAE A 301 '), lines
 
 if __name__ == '__main__':
   test_8rk1_fe()

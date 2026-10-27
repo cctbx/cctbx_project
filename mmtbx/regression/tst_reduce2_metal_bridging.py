@@ -2,11 +2,11 @@
 neighbour, a C or N, and is bound to two metals that coexist (blank or the
 same altloc), neither alkali nor alkaline-earth, is taken as deprotonated, and
 reduce2 does not build its H. Ca does not count, nor do alternate positions
-of one metal.
+of one metal. The bridge decides before the phenol and alcohol rules.
 Models: 8U7C, bis-tris D 207 with Tb D 202 (O4 2.21 A) and Er D 203 (O4
 2.45 A, also O3 and O6); the same with Ca in place of Tb, and with Er in
 altlocs A and B at the Er and Tb positions; 6LZB, hydroxamate EYF A 403 with
-Co A 401 and A 402 (O1 1.91 and 1.99 A).
+Co A 401 and A 402 (O1 1.91 and 1.99 A), and the same with Fe.
 """
 pdb_8u7c = """\
 CRYST1   37.514   40.892   50.150  92.62 106.14  98.87 P 1
@@ -129,10 +129,16 @@ def test_8u7c_controls():
 
 def test_6lzb_hydroxamate():
   '''The N-O oxygen of the hydroxamate, between two Co, loses H9; the N keeps
-  H8'''
-  names, description = run('tst_reduce2_metal_bridging_eyf', pdb_6lzb)
-  assert 'H9' not in names and 'H8' in names, sorted(names)
-  assert NOT_PLACED in description, description
+  H8. Between two Fe the same: the bridge decides, not the phenol rule'''
+  pdb_fe = pdb_6lzb.replace('CO    CO A 40', 'FE    FE A 40').replace(
+    '          CO\n', '          FE\n')
+  assert pdb_fe.count('FE') == 6
+  for metal, pdb_str in (('co', pdb_6lzb), ('fe', pdb_fe)):
+    names, description = run('tst_reduce2_metal_bridging_eyf_' + metal,
+      pdb_str)
+    assert 'H9' not in names and 'H8' in names, (metal, sorted(names))
+    assert NOT_PLACED in description, description
+    assert 'Phenol H' not in description, description
 
 if __name__ == '__main__':
   test_8u7c_bis_tris()
