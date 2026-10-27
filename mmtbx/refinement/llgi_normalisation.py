@@ -41,6 +41,8 @@ from mmtbx.refinement.llgi_tncs import coherence_curve, U_MIN
 # numerical guard only, because the measurement error already removes the
 # influence of reflections with Sigma << sigma_I
 TEPS_FLOOR = 1e-4
+# the fewest reflections with SIGI > 0 (and I != 0) that fit accepts
+MINIMUM_VALID = 10
 
 # phasertng io/data/best_curve_at_ssqr.h (X-ray BEST table), verbatim:
 # intensity at ssqr = BEST_SSQR0 + i*BEST_STEP, to be multiplied by BEST_K
@@ -561,12 +563,9 @@ class _target(object):
     self.n_q = e.shape[1]
     self.n_bins = model.n_bins
     # dense rows in q (all parameters but the bins)
-    rows_x = numpy.zeros((n_x, d.bin_index.size))
-    rows_x[d.index] = d.rows
     dense_q = [0] + list(range(1 + self.n_bins, self.n_q))
     self.dense_index = numpy.array(dense_q, dtype=int)
-    self.rows = e.T[self.dense_index].dot(rows_x)[:, isel]
-    del rows_x
+    self.rows = e.T[self.dense_index][:, d.index].dot(d.rows[:, isel])
     self.bin = d.bin_index[isel]
     self.h_q = e.T.dot(model.restraint(numpy.zeros(n_x))[2]).dot(e)
     self.ln_base = (numpy.log(data.eps) + model.ln_best())[isel]
@@ -890,10 +889,12 @@ def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None):
   measurement errors. Newton steps (exact Hessian, the Fisher form where
   that is not definite) with a backtracking line search, 0 <= gamma <=
   gamma_max and v >= 0, starting at gamma = 1, v = 0. Reflections with
-  SIGI <= 0, and with I == 0 exactly (as nacelle), are excluded; outliers (Wilson tail probability below
-  outlier_probability) are excluded and the fit repeated, at most 3 times,
-  unless selection (flex.bool) is given, which is used as is (n_would_change
-  then counts the reflections whose outlier status would differ).
+  SIGI <= 0, and with I == 0 exactly (as nacelle), are excluded; outliers
+  (Wilson tail probability below outlier_probability) are excluded and the
+  fit repeated, at most 3 times, unless selection (flex.bool) is given, which
+  is used as is (n_would_change then counts the reflections whose outlier
+  status would differ). Raises RuntimeError if fewer than MINIMUM_VALID
+  reflections have SIGI > 0 (and I != 0).
 
   i_obs: non-anomalous intensities with sigmas, in the asu.
   tncs_a_groups: None, or a list of flex.double, the consensus pair term
@@ -904,13 +905,18 @@ def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None):
   selection (flex.bool, True = used), coherence (coherence_curve or None),
   gamma_groups (hierarchical_coherence: gamma_g per group, else None), x
   (sigman_model parameters), model, log_likelihood (Wilson, selected, no
-  restraints), n_outliers, n_zero_sigma, n_zero_intensity, n_teps_floored, n_would_change,
-  n_outlier_rounds, resolution_dependent (bool) with its gain and
-  threshold, delta_b_aniso (A^2, of beta), converged, warnings. """
+  restraints), n_outliers, n_zero_sigma, n_zero_intensity, n_teps_floored,
+  n_would_change, n_outlier_rounds, resolution_dependent (bool) with its gain
+  and threshold, delta_b_aniso (A^2, of beta), converged, warnings. """
   if params is None: params = normalisation_params.extract()
   if log is None: log = null_out()
   if not tncs_a_groups: tncs_a_groups = None
   data = _fit_data(i_obs, tncs_a_groups, params)
+  n_valid = int(data.valid.sum())
+  if n_valid < MINIMUM_VALID:
+    raise RuntimeError("llgi_normalisation.fit: only %d reflection(s) with "
+      "SIGI > 0 and I != 0 (at least %d are needed)" % (n_valid,
+      MINIMUM_VALID))
   n_zero_intensity = int(data.zero_i.sum())
   n_zero_sigma = int((~data.valid).sum()) - n_zero_intensity
   mode = params.resolution_dependent_anisotropy

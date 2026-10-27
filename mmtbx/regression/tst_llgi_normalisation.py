@@ -8,7 +8,7 @@ import numpy
 from cctbx import adptbx, crystal, miller
 from cctbx.array_family import flex
 from cctbx.xray import ext as xray_ext
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, Exception_expected
 from six.moves import cStringIO as StringIO
 import mmtbx.refinement.llgi_normalisation as ln
 from mmtbx.refinement.llgi_tncs import U_MIN
@@ -394,6 +394,22 @@ def exercise_zero_sigma_excluded():
   assert r.n_zero_sigma == 5
   for k in zero: assert not r.selection[k]
 
+def exercise_no_usable_sigmas():
+  # all SIGI <= 0, or too few SIGI > 0: a clear error, not a numpy one
+  i_obs, a = _simulate(P212121[0], P212121[1], 3.0, B_ANISO, 0.9, 0.4,
+    0.1, seed=6)
+  for sig in (flex.double(i_obs.size(), 0.), flex.double(i_obs.size(), -1.)):
+    try: ln.fit(i_obs.customized_copy(sigmas=sig))
+    except RuntimeError as e:
+      assert "only 0 reflection(s) with SIGI > 0" in str(e), str(e)
+    else: raise Exception_expected
+  sig = flex.double(i_obs.size(), 0.)
+  for k in range(ln.MINIMUM_VALID - 1): sig[k] = 1.
+  try: ln.fit(i_obs.customized_copy(sigmas=sig))
+  except RuntimeError as e:
+    assert "only %d reflection(s)" % (ln.MINIMUM_VALID - 1) in str(e), str(e)
+  else: raise Exception_expected
+
 def exercise_resolution_dependent_restraint_factor():
   # the factor multiplies the sigma of the beta1 sphericity restraint
   # (phasertng macaniso.resolution_dependent_restraint, default 10)
@@ -687,6 +703,7 @@ def run():
   exercise_outlier_rejected()
   exercise_weak_shells()
   exercise_zero_sigma_excluded()
+  exercise_no_usable_sigmas()
   exercise_epsilon()
   exercise_resolution_dependent_restraint_factor()
   exercise_zero_intensity_missing()

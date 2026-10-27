@@ -258,7 +258,7 @@ namespace cctbx { namespace xray { namespace targets { namespace wilson_intensit
     return (1. / eo - eo / 2.) / detail::sqrt_2pi;
   }
 
-  //! P(E^2 observed < eosq), eosq <= 0 (sigesq > 0): 50-point Simpson rule.
+  //! P(E^2 observed < eosq), eosq <= 0 (sigesq > 0): 51-point Simpson rule.
   inline
   double
   p_smaller_eosq_cen(double eosq, double sigesq)

@@ -739,7 +739,7 @@ def exercise_u_clamp_reported(fmodel):
   n = expected.count(True)
   assert 0 < n < sa.size(), n
   assert (llgi_tncs.U_CLAMP_WARNING % n) in rc.warnings, rc.warnings
-  assert "tNCS: u clamped for %d reflections where TEPS_data <= " \
+  assert "tNCS: u clamped for %d reflections where t <= " \
     "(1 - sigmaA^2) u" % n in rc.warnings
   assert _frame_valid(ld)
   sel = expected.iselection()

@@ -640,7 +640,7 @@ def expected_intensity_modulation(sigmaa, a, u):
   sigmaA sqrt(M/t). """
   return sigmaa * sigmaa * (1 + a) + (1 - sigmaa * sigmaa) * u
 
-U_CLAMP_WARNING = ("tNCS: u clamped for %d reflections where TEPS_data <= "
+U_CLAMP_WARNING = ("tNCS: u clamped for %d reflections where t <= "
   "(1 - sigmaA^2) u")
 
 def clamp_u_to_frame(sigmaa, u, t):

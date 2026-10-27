@@ -3,8 +3,10 @@ from cctbx.xray import ext as xray_ext
 from cctbx.array_family import flex
 import math
 import random
-from scipy import integrate
-from scipy.special import erfc
+try:
+  from scipy import integrate
+except ImportError:
+  integrate = None
 
 # Oracle: ln of int_0^inf p(J) N(e; J, s^2) dJ, J = I/Sigma.
 def ln_quad(e, s, centric):
@@ -49,9 +51,15 @@ def check_against_quadrature(centric, tol):
           centric, e, s, sigma, r.log_likelihood[0], ref)
 
 def exercise_acentric_matches_quadrature():
+  if(integrate is None):
+    print("Skipped: scipy is not available (acentric quadrature check)")
+    return
   check_against_quadrature(False, 1e-8)
 
 def exercise_centric_matches_quadrature():
+  if(integrate is None):
+    print("Skipped: scipy is not available (centric quadrature check)")
+    return
   check_against_quadrature(True, 1e-6)
 
 def exercise_derivatives_fd():
@@ -77,7 +85,7 @@ def exercise_tail_probability():
   s = 1e-4
   for e in (1., 5., 20.):
     for centric, expected in ((False, math.exp(-e)),
-                              (True, erfc(math.sqrt(e / 2.)))):
+                              (True, math.erfc(math.sqrt(e / 2.)))):
       p = xray_ext.wilson_intensity_tail_probability(
         i_obs=flex.double([e]), sig_i_obs=flex.double([s]),
         sigma=flex.double([1.]), centric_flags=flex.bool([centric]))[0]
