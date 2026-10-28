@@ -312,22 +312,21 @@ def exercise_phase_errors_llgi_match_numerical_integration():
   pher = np.array(fmodel.phase_errors_llgi(mch))
   x = np.array(mch.x)
   centric = np.array(mch.f_obs.centric_flags().data())
-  phi = np.linspace(0.0, np.pi, 20001)
-  errors = []
   for i in np.linspace(0, x.size - 1, 60).astype(int):
     if(centric[i]):
       expected = 180.0 * np.exp(-x[i]) / (1.0 + np.exp(-x[i]))
     else:
-      w = np.exp(x[i] * (np.cos(phi) - 1.0))
-      expected = np.degrees(
-        np.trapezoid(phi * w, phi) / np.trapezoid(w, phi))
-    errors.append(abs(pher[i] - expected))
-  # max_lik's adaptive Simpson integration (simp) stops early at isolated X
-  # (e.g. 0.767, 3.43), with errors up to about 0.3 degrees; a wrong p(X)
-  # would be wrong everywhere
-  errors = np.array(errors)
-  assert (errors < 0.05).mean() >= 0.95, errors
-  assert errors.max() < 0.5, errors.max()
+      expected = _von_mises_mean_abs_phase(x[i])
+    assert abs(pher[i] - expected) < 1.e-6, (i, x[i], pher[i], expected)
+
+def _von_mises_mean_abs_phase(x):
+  """ <|phi|> in degrees for p(phi) ~ exp(x cos(phi)) on [-pi, pi], by the
+  trapezoid rule on a fine grid over the peak """
+  import numpy as np
+  upper = min(np.pi, 40. / np.sqrt(x)) if x > 0 else np.pi
+  phi = np.linspace(0.0, upper, 200001)
+  w = np.exp(x * (np.cos(phi) - 1.0))
+  return np.degrees(np.trapezoid(phi * w, phi) / np.trapezoid(w, phi))
 
 def exercise_outlier_selection_skips_model_based_test_for_llgi():
   # Model-based outlier rejection (its own Dobs-free sigmaA fit) must not

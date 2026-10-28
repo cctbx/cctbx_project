@@ -12,6 +12,7 @@
 #include <mmtbx/error.h>
 #include <cctbx/sgtbx/space_group.h>
 #include <scitbx/math/bessel.h>
+#include <scitbx/math/quadrature.h>
 #include <math.h>
 #include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/array_family/shared_reductions.h>
@@ -504,13 +505,15 @@ public:
   //! formula 7 and 10 in Lunin & Skovoroda (Acta Cryst. (1995). A51, 880-887)
   af::shared<double> phase_error()
      {
-       double mp = 180./(scitbx::constants::pi*scitbx::constants::pi);
+       scitbx::math::quadrature::gauss_legendre_engine<double> gle(64);
+       af::shared<double> t = gle.x();
+       af::shared<double> w = gle.w();
        phase_error_ = af::shared<double> (fo_.size());
        for(std::size_t i=0; i < fo_.size(); i++) {
          if(beta_[i] > 0.0 && alpha_[i] >= 0.0) {
             double p = alpha_[i] * fo_[i] * fm_[i] / (eps_[i] * beta_[i]);
             if (cf_[i] == 0) {
-                phase_error_[i] = mp * simp(2.*p) / pseudo_i0(2.*p);
+                phase_error_[i] = mean_abs_phase(2.*p, t, w);
             }
             else {
                 phase_error_[i] = 180.0 * std::exp(-2.*p) / (1.0 + std::exp(-2.*p));
@@ -523,104 +526,29 @@ public:
        return phase_error_;
      }
 
+  //! <|phi|> in degrees for p(phi) ~ exp(x cos(phi)) on [-pi, pi], x >= 0:
+  //! the Gauss-Legendre rule with nodes t and weights w on [-1, 1], mapped
+  //! to [0, min(pi, 15/sqrt(x))]; beyond that the weight is below exp(-45),
+  //! since 1 - cos(phi) >= 2 phi^2/pi^2. (An adaptive Simpson rule over
+  //! [0, pi], used before, starts from phi = 0, pi/2, pi and misses the
+  //! peak for x above about 50.)
   static
-  double fint(double phi, double tau)
+  double mean_abs_phase(double x,
+                        af::shared<double> const& t,
+                        af::shared<double> const& w)
      {
-      if (tau <= 3.75) return phi*std::exp(tau*std::cos(phi));
-      else             return phi*std::exp(tau*(std::cos(phi)-1.));
-     }
-
-  //! calculate I0(x): very specific to this task. Avoids overflow problem.
-  //! return I0(x) if |x| < 3.75
-  //! return exp(-x)*I0(x) if x >= 3.75 (*** not I0(x) ***)
-  //! "missing" exponent appears in fint() function
-  static
-  double pseudo_i0(double const& x)
-     {
-       double abs_x = x;
-       if (abs_x < 0) abs_x = -abs_x;
-       double bessel_i0;
-       if (abs_x/3.75 < 1.0) {
-          double y = x/3.75;
-          y *= y;
-          bessel_i0=1.0+y*(3.5156229+y*(3.0899424+y*(1.2067492+
-                    y*(0.2659732+y*(0.0360768+y*0.0045813)))));
+       double pi = scitbx::constants::pi;
+       double upper = pi;
+       if (x*pi*pi > 225.) upper = 15./std::sqrt(x);
+       if (!(upper > 0.)) return 0.;
+       double num = 0., den = 0.;
+       for(std::size_t k=0; k < t.size(); k++) {
+         double phi = 0.5 * upper * (t[k] + 1.);
+         double wk = w[k] * std::exp(x * (std::cos(phi) - 1.));
+         num += wk * phi;
+         den += wk;
        }
-       else {
-          double y = 3.75/abs_x;
-          y=0.39894228+y*(0.01328592+y*(0.00225319+y*(-0.00157565+
-            y*(0.00916281+y*(-0.02057706+y*(0.02635537+
-            y*(-0.01647633+y*0.00392377)))))));
-          bessel_i0=y/std::sqrt(abs_x);
-       }
-       return bessel_i0;
-     }
-
-  //! integral by Simpson method
-  static
-  double simp(double tau)
-     {
-       double hhh,hhhh,x4,x5,f4,f5,q2,q3,qqq;
-       af::shared<double> q(30),f2s(30),f5s(30),x2s(30),x5s(30);
-       double a = 0.0, b = 3.1415926, t = 0.0001, t1 = 0.00001;
-       double tt=t*t;
-       double h=(b-a)/2.;
-       int i=0;
-       double qq=0.;
-       double x1=a;
-       double x2=b;
-       double f1 = fint(x1,tau);
-       double f2 = fint(x2,tau);
-       double x3 = x1+h;
-       double f3 = fint(x3,tau);
-       double q1 = (f1+f2+4.*f3)*h;
-       double eps=t*std::abs(q1);
-       if(std::abs(q1)<=t) eps=tt;
-       lbl_2:;
-       h=h/2.;
-       hhh=std::abs(x1);
-       hhhh=std::abs(x2);
-       if(hhhh>hhh) hhh=hhhh;
-       if(std::abs(h)/hhh<=t1) goto lbl_4;
-       x4=x1+h;
-       x5=x3+h;
-       f4 = fint(x4,tau);
-       f5 = fint(x5,tau);
-       q2=(f1+f3+4.*f4)*h;
-       q3=(f3+f2+4.*f5)*h;
-       qqq=q2+q3;
-       if(std::abs(qqq-q1)<=eps) goto lbl_1;
-       if(i>=30) goto lbl_1;
-       i=i+1;
-       f2s[i]=f2;
-       x2s[i]=x2;
-       f5s[i]=f5;
-       x5s[i]=x5;
-       q[i]=q3;
-       f2=f3;
-       x2=x3;
-       f3=f4;
-       x3=x4;
-       q1=q2;
-       goto lbl_2;
-       lbl_1:;
-       qq=qq+qqq;
-       eps=t*std::abs(qq);
-       if(std::abs(qq)<=t) eps=tt;
-       lbl_4:;
-       if(i==0) goto lbl_3;
-       x1=x2;
-       f1=f2;
-       x2=x2s[i];
-       f2=f2s[i];
-       x3=x5s[i];
-       f3=f5s[i];
-       q1=q[i];
-       i=i-1;
-       h=(x2-x1)/2.;
-       goto lbl_2;
-       lbl_3:;
-       return qq/3.;
+       return num / den * 180. / pi;
      }
 
 protected:

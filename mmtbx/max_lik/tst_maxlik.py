@@ -439,16 +439,55 @@ def test_4():
    fom = obj.fom()
    assert approx_equal(flex.max(per) ,  89.9325000127     , 1.e-4)
    assert approx_equal(flex.min(per) ,  5.37565067746e-05 , 1.e-4)
-   assert approx_equal(flex.mean(per),  20.7942460698     , 1.e-4)
+   assert approx_equal(flex.mean(per),  20.7941263089     , 1.e-4)
    assert approx_equal(flex.max(fom) ,  0.999999402705    , 1.e-4)
    assert approx_equal(flex.min(fom) ,  0.000749999859375 , 1.e-4)
    assert approx_equal(flex.mean(fom),  0.858269037582    , 1.e-4)
+
+def mean_abs_phase(x):
+  # <|phi|> in degrees for p(phi) ~ exp(x cos(phi)), by the trapezoid rule
+  # on a fine grid over the peak
+  upper = min(math.pi, 40. / math.sqrt(x)) if x > 0 else math.pi
+  n = 200000
+  phi = flex.double(range(n + 1)) * (upper / n)
+  w = flex.exp(x * (flex.cos(phi) - 1.))
+  w[0] *= 0.5
+  w[n] *= 0.5
+  return math.degrees(flex.sum(w * phi) / flex.sum(w))
+
+def test_5():
+  # phase_error against the integral where the adaptive Simpson rule used
+  # before failed: up to 0.3 degrees off at isolated x = 2p (0.767, 3.43),
+  # up to 5.6 degrees too small for x above about 50, 0 from x = 115
+  xs = [0., 1.e-6, 0.1, 0.7666, 3.4264, 20., 70.17, 115., 1.e3, 1.e5, 1.e12]
+  one = flex.double(len(xs), 1.)
+  per = max_lik.fom_and_phase_error(
+    f_obs          = flex.double(xs) * 0.5,
+    f_model        = one,
+    alpha          = one,
+    beta           = one,
+    epsilons       = one,
+    centric_flags  = flex.bool(len(xs), False)).phase_error()
+  for x, v in zip(xs, per):
+    assert abs(v - mean_abs_phase(x)) < 1.e-6, (x, v)
+  assert approx_equal(per[0], 90., 1.e-12)
+  # centric: 180 P(pi), P(pi) = exp(-2p)/(1 + exp(-2p))
+  one = flex.double(3, 1.)
+  per = max_lik.fom_and_phase_error(
+    f_obs          = flex.double([0., 0.5, 400.]),
+    f_model        = one,
+    alpha          = one,
+    beta           = one,
+    epsilons       = one,
+    centric_flags  = flex.bool(3, True)).phase_error()
+  assert approx_equal(per, [90., 180. / (1. + math.exp(1.)), 0.], 1.e-12)
 
 def run():
   test_1()
   test_2()
   test_3()
   test_4()
+  test_5()
   print(format_cpu_times())
 
 if (__name__ == "__main__"):
