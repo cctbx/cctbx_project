@@ -10,6 +10,18 @@ from scitbx.lbfgs import run,termination_parameters,exception_handling_parameter
 from six.moves import cPickle as pickle
 from six.moves import range
 
+def softplus(a):
+  return max(a, 0.) + math.log1p(exp(-abs(a)))
+
+def logistic(a):
+  if a >= 0.:
+    return 1. / (1. + exp(-a))
+  e = exp(a)
+  return e / (1. + e)
+
+def logaddexp(a, b):
+  return max(a, b) + math.log1p(exp(-abs(a - b)))
+
 class minimizer:
   def __init__(self, d_i, psi_i, eta_rad, Deff):
     self.safelog = -1. + math.log(sys.float_info.max)
@@ -90,100 +102,21 @@ class minimizer:
             <code>n</code>-long vector with the values of the
             gradients at the current position
     """
-    if self.x[0] > self.safelog or self.x[1] > self.safelog:
-      raise ValueError("max likelihood current parameters outside of math domain %f %f"%(self.x))
-    alpha = exp(self.x[0])
-    eta = exp(self.x[1])
-    #print "alpha",alpha, "eta",eta
-    allobs = range(self.Nobs)
+    # Evaluated in log alpha and log eta, with log(1+e^a) and e^a/(1+e^a) in forms that cannot overflow
+    log_expnu = math.log1p(exp(self.escalate))
     f = 0.
     partf_partP0 = 0.
     partf_partP1 = 0.
-
-    f = self.functional_only(alpha,eta)
-
-    for i in allobs:
-      psi_model = (self.d_i[i]*alpha + eta)/2.
-      part_psi_model_partP0 = 0.5 * self.d_i[i] * alpha
-      part_psi_model_partP1 = 0.5 * eta
-
-      psi_i = self.psi_i[i]
-      B = self.escalate / psi_model
-
-      if psi_model > 1e100 or part_psi_model_partP0 > 1e100:
-        from libtbx.utils import Sorry
-        raise Sorry("Model has diverged, cannot continue")
-
-      expB = exp( B * (psi_i + psi_model) )
-      expBneg = exp( -B * (psi_i - psi_model) )
-
-      if expB > 1e100 or expBneg < -1e100 or expBneg > 1e100:
-        from libtbx.utils import Sorry
-        raise Sorry("Model has diverged, cannot continue")
-
-      Spos = 1. + expB
-      Sneg = 1. + expBneg
-      expnu = 1. + exp(self.escalate)
-
-      sign_error_27Feb2014_through_15Feb2017 = True
-      if sign_error_27Feb2014_through_15Feb2017:
-        partB_partP0 = (-self.escalate/(psi_model*psi_model))*part_psi_model_partP0
-        partB_partP1 = (-self.escalate/(psi_model*psi_model))*part_psi_model_partP1
-
-        partSpos_partP0 = expB * ((psi_i+psi_model)*partB_partP0 + B*part_psi_model_partP0)
-        partSpos_partP1 = expB * ((psi_i+psi_model)*partB_partP1 + B*part_psi_model_partP1)
-
-        partSneg_partP0 = expBneg * ((-psi_i+psi_model)*partB_partP0 + B*part_psi_model_partP0)
-        partSneg_partP1 = expBneg * ((-psi_i+psi_model)*partB_partP1 + B*part_psi_model_partP1)
-
-        partG_partP0 = -expnu*pow(Sneg,-2)*partSneg_partP0
-        partG_partP1 = -expnu*pow(Sneg,-2)*partSneg_partP1
-
-        Sfac = 2.*psi_model*Spos
-        partF_partP0 = -expnu*pow(Sfac,-2)*2*(psi_model*partSpos_partP0 + Spos*part_psi_model_partP0)
-        partF_partP1 = -expnu*pow(Sfac,-2)*2*(psi_model*partSpos_partP1 + Spos*part_psi_model_partP1)
-
-        fx = (0.5/psi_model)/(Spos) * expnu
-        gx = (1./Sneg) * expnu
-        prob = fx * gx
-        part_prob_partP0 = fx*partG_partP0 + gx*partF_partP0
-        part_prob_partP1 = fx*partG_partP1 + gx*partF_partP1
-      else:
-        # AD14 eqn B.7 (AD14 = Sauter et al (2014) Acta Cryst D70: 3299-3309)
-        temp = (psi_i/(psi_model*psi_model))
-        part_zed_partP0 = temp * part_psi_model_partP0
-        part_zed_partP1 = temp * part_psi_model_partP1
-
-        # AD14 eqn B.8
-        fx = expnu / Sneg
-        part_f_partP0 = self.escalate * fx * (expBneg / Sneg) * part_zed_partP0
-        part_f_partP1 = self.escalate * fx * (expBneg / Sneg) * part_zed_partP1
-
-        # AD14 eqn B.9
-        gx = expnu / Spos
-        part_g_partP0 = -self.escalate * gx * (expB / Spos) * part_zed_partP0
-        part_g_partP1 = -self.escalate * gx * (expB / Spos) * part_zed_partP1
-
-        # AD14 eqn B.10
-        part_fg_partP0 = fx * part_g_partP0 + gx * part_f_partP0
-        part_fg_partP1 = fx * part_g_partP1 + gx * part_f_partP1
-
-        # AD14 eqn B.11
-        prefactor = 0.5/psi_model
-        prob = prefactor * fx * gx
-        temp = 0.5 / (psi_model*psi_model)
-        part_prob_partP0 = temp * (part_fg_partP0 * psi_model - fx * gx * part_psi_model_partP0)
-        part_prob_partP1 = temp * (part_fg_partP1 * psi_model - fx * gx * part_psi_model_partP1)
-
-
-      partf_partP0 -= (1./prob) * part_prob_partP0
-      partf_partP1 -= (1./prob) * part_prob_partP1
-
-
-    #print f, [partf_partP0,partf_partP1],"analytical"
-    #self.fd_compute_functional_and_gradients()
-
-
+    for i in range(self.Nobs):
+      log_d_alpha = log(self.d_i[i]) + self.x[0]
+      log_psi_model = logaddexp(log_d_alpha, self.x[1]) - log(2.)
+      ratio = self.psi_i[i] * exp(-log_psi_model)
+      expBarg = self.escalate * (1. + ratio)
+      expBnegarg = self.escalate * (1. - ratio)
+      f += log(2.) + log_psi_model + softplus(expBarg) + softplus(expBnegarg) - 2 * log_expnu
+      partf_partlog_psi_model = 1. - self.escalate * ratio * (logistic(expBarg) - logistic(expBnegarg))
+      partf_partP0 += partf_partlog_psi_model * logistic(log_d_alpha - self.x[1])
+      partf_partP1 += partf_partlog_psi_model * logistic(self.x[1] - log_d_alpha)
     return (f, flex.double([partf_partP0,partf_partP1]))
 
 
