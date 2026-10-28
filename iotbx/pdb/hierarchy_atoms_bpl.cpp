@@ -81,6 +81,7 @@ namespace {
   {
     if ((r_cart - scitbx::mat3<double>(1)).max_abs() <= 1e-4) return;
     for (unsigned i = 0; i < atoms.size(); i++) {
+      // Atoms without U hold all -1, which rotation would turn into a bogus U.
       if (atoms[i].uij_is_defined()) {
         atoms[i].data->uij = cctbx::adptbx::c_u_c_transpose(
           r_cart, atoms[i].data->uij);
