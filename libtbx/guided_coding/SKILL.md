@@ -6,7 +6,8 @@ disable-model-invocation: true
 
 > **Retired (2026-10-23).** This is the earlier GuidedCoding kit, kept only for reference. The current
 > GuidedCoding is at https://github.com/cctbx/guided_coding (branch `master`). When this skill is invoked, start no
-> job. Tell the user this kit is retired, and offer to move them to the current GuidedCoding in one step. To do it:
+> job. Before reading or running anything, first tell the user in one sentence that this kit is retired and that you
+> can move them to the current GuidedCoding in one step. To do it:
 > read the reviewed README at https://raw.githubusercontent.com/cctbx/guided_coding/22dcdc035feefe0f4330e2905aaf40d5a2a3a430/README.md (that
 > fixed commit, not `master`) and take its "PHENIX developers" install block. That block installs the latest
 > GuidedCoding from `master` into the installation's `modules/guided_coding`, checks that it is version 1.4, and
