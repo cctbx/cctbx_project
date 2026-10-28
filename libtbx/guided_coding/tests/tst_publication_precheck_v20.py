@@ -189,6 +189,24 @@ class CheckCommand(PrecheckFixture):
                 self.assertEqual(lines[lines.index(ok_line) + 1], command)
                 self.assertNotIn("ERROR", result.stderr)
 
+    def test_record_remote_cannot_be_a_git_option(self):
+        """2026-10-26: the record's remote name and URL reach `git fetch` and `git ls-remote`,
+        so a value starting with "-" (here --upload-pack, which runs a command) is refused
+        before any git call, with and without --fetch."""
+        marker = self.root / "MARKER"
+        payload = f"--upload-pack=touch {marker}"
+        for fields, reason in (({"remote": payload}, "remote must be a configured remote name"),
+                               ({"remote_url": payload}, "remote_url is not a plain URL"),
+                               ({"remote_url": "ext::/usr/bin/true"}, "names a remote helper"),
+                               ({"remote_url": "fd::3"}, "names a remote helper")):
+            for fetch in (False, True):
+                with self.subTest(fields=fields, fetch=fetch):
+                    self.outgoing.write_text(self.block(**fields))
+                    result = self.check(*(("--fetch",) if fetch else ()), fetch=fetch)
+                    self.assertEqual(result.returncode, 2, result.stdout)
+                    self.assertIn(reason, result.stderr)
+                    self.assertFalse(marker.exists(), "the record's value ran a command")
+
     def test_record_parse_refusals_match_screen_check(self):
         """SPEC_A 2.1 step 1: OUTGOING is parsed as in 1.2 with the same refusals."""
         for label, text, reason in (
@@ -669,6 +687,23 @@ class NoPushVariant(PrecheckFixture):
 
     def confirm(self, *options, env=None):
         return self.tool("confirm", str(self.repo), str(self.outgoing), *options, env=env)
+
+    def test_confirm_refuses_a_record_remote_that_could_be_a_git_option(self):
+        """2026-10-26: confirm passes the record's remote_url to git ls-remote; a value that could
+        be read as a git option is refused before any git call, with and without --before."""
+        marker = self.root / "MARKER"
+        payload = f"--upload-pack=touch {marker}"
+        for fields, reason in (({"remote": payload}, "remote must be a configured remote name"),
+                               ({"remote_url": payload}, "remote_url is not a plain URL"),
+                               ({"remote_url": "ext::/usr/bin/true"}, "names a remote helper"),
+                               ({"remote_url": "fd::3"}, "names a remote helper")):
+            for options in (("--before",), ("--tags", "none")):
+                with self.subTest(fields=fields, options=options):
+                    self.outgoing.write_text(self.block(**fields))
+                    result = self.confirm(*options)
+                    self.assertEqual(result.returncode, 2, result.stdout)
+                    self.assertIn(reason, result.stderr)
+                    self.assertFalse(marker.exists(), "the record's value ran a command")
 
     def push_as_developer(self, line):
         """The Developer runs the printed command himself (here: the test, outside the tool)."""
@@ -1356,6 +1391,25 @@ class CarryOverCommand(unittest.TestCase):
         self.assertTrue(any(reason in line for line in found), found)
         self.assertEqual(sum(line.startswith("CARRYOVER ") for line in result.stdout.splitlines()
                              if not line.startswith("CARRYOVER (")), 1)
+
+    def test_record_remote_cannot_be_a_git_option(self):
+        """2026-10-26: as in check and confirm, a record whose remote name or URL could be read as
+        a git option is refused before any git call, with and without --fetch, in either record."""
+        marker = self.root / "MARKER"
+        payload = f"--upload-pack=touch {marker}"
+        b0, c1, b1, c2 = self.scenario()
+        for which in ("reviewed", "outgoing"):
+            for field, reason in (("remote: origin", "remote must be a configured remote name"),
+                                  ("remote_url: ssh://git@example.invalid/x.git", "remote_url is not a plain URL")):
+                for fetch in (False, True):
+                    with self.subTest(which=which, field=field, fetch=fetch):
+                        old, new = self.records(b0, c1, b1, c2)
+                        target = old if which == "reviewed" else new
+                        key = field.split(":")[0]
+                        target.write_text(target.read_text().replace(field, f"{key}: {payload}"))
+                        result = self.carry(old, new, extra=("--fetch",) if fetch else ())
+                        self.assert_refused(result, reason)
+                        self.assertFalse(marker.exists(), "the record's value ran a command")
 
     def test_identical_content_untouched_files_is_ok_and_lists_upstream(self):
         b0, c1, b1, c2 = self.scenario()

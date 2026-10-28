@@ -2133,8 +2133,8 @@ class AtomProperties(object):
       print("  f'' ratio:     %s" % format_value("%6.2f",
         self.fpp_ratios.get(identity)), file=out)
     if self.nearby_atoms is not None:
-      angstrom = u"\N{ANGSTROM SIGN}".encode("utf-8", "strict")
-      degree = u"\N{DEGREE SIGN}".encode("utf-8", "strict")
+      angstrom = "A"
+      degree = " deg"
 
       print("  Nearby atoms: (%d within 3.0 %s)" % \
         (len([i for i in self.nearby_atoms if i.distance() < 3]), angstrom), file=out)
@@ -2202,7 +2202,7 @@ class AtomProperties(object):
     if inaccuracies.intersection(bad_coord):
       print("    Bad coordinating atom%s:" % \
          ("s" if len(self.bad_coords[identity]) != 1 else ""), file=out)
-      angstrom = u"\u00C5".encode("utf-8", "strict").strip()
+      angstrom = "A"
       for atom, vector in self.bad_coords[identity]:
         print("    %s (%5.3f %s) !!!" % \
           (atom.id_str(), abs(vector), angstrom), file=out)

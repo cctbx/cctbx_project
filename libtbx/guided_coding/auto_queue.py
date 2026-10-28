@@ -14,6 +14,11 @@ Revision 16: the process table is read through psutil instead of /bin/ps, with t
 refusals; without psutil every command stops (exit 18).
 Revision 18: any Python 3.10 or newer that has psutil runs it (an older Python refuses, exit 19),
 for example a venv's bin/python with psutil installed there, or libtbx.python.
+Revision 20: each run record gets a sequence number under the queue lock, and records the Git
+checkout of each tested path (top level, commit, tree, whether tracked files are unchanged),
+read by the helper itself just before the command starts and when it ends. For each required
+check, the latest current run (highest sequence) decides readiness: it must have passed and be
+bound to every candidate repository's tree, clean, at both times.
 
 Stop from any Terminal, without the coding conversation, with both paths absolute, exactly as the
 auto-mode start screen prints them (`screen_check.py stop-command` gives the interpreter that
@@ -839,17 +844,30 @@ class Queue:
         roots = [os.path.realpath(r) for r in self.data.get("allowed_roots", [])]
         runs = [r for _, r in self.runs(job["id"])]
         for label in job.get("requires", []):
-            good = [r for r in runs
-                    if r.get("label") == label and r.get("status") == "completed"
-                    and r.get("exit_code") == 0 and not r.get("stale")
-                    and not r.get("group_left_running")
-                    and not r.get("process_table_unreadable")
-                    and r.get("candidate_id") == job["candidate_id"]
-                    and r.get("criterion_sha256") == job["criterion_sha256"]
-                    and r.get("tested_paths")
-                    and all(under(p, roots) for p in r["tested_paths"])]
-            if not good:
+            # Revision 20: the latest current run of the check decides, not any good run.
+            current = [r for r in runs
+                       if r.get("label") == label and not r.get("stale")
+                       and r.get("candidate_id") == job["candidate_id"]
+                       and r.get("criterion_sha256") == job["criterion_sha256"]]
+            if not current:
                 return "no current passing run for required check %s" % label
+            unordered = [r for r in current if sequence_of(r) is None]
+            if unordered:
+                # Repair 1 (review finding 1): such a record refuses even after newer runs, so
+                # a rerun does not clear it; a new criterion or candidate makes it stale.
+                return ("run %s for required check %s has no sequence number (recorded before "
+                        "revision 20); a rerun does not clear it: record a new criterion or "
+                        "candidate, which marks the earlier runs stale"
+                        % (unordered[0].get("run_id"), label))
+            top = max(sequence_of(r) for r in current)
+            latest = [r for r in current if sequence_of(r) == top]
+            if len(latest) > 1:
+                return ("runs %s for required check %s share sequence number %d"
+                        % (", ".join(sorted(str(r.get("run_id")) for r in latest)), label, top))
+            why = run_failure(latest[0], job, roots)
+            if why:
+                return ("latest run %s for required check %s did not pass (%s)"
+                        % (latest[0].get("run_id"), label, why))
         if packet is None:
             packet = job.get("packet")
         if not packet:
@@ -875,6 +893,139 @@ class Queue:
         if not trees or not trees <= named:
             return "packet CODE_IDENTITY.txt does not name the tested tree of every candidate repository"
         return screening_problem(packet / "SCREENING.txt", job)
+
+
+def sequence_of(record):
+    """Revision 20: the run's sequence number (an int), or None when it has none."""
+    value = record.get("sequence")
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def run_failure(record, job, roots):
+    """Revision 20: None if the run passed and is bound to the candidate, else why not."""
+    status = record.get("status")
+    if status != "completed":
+        reason = record.get("reason")
+        return "status %s%s" % (status, (": %s" % reason) if reason else "")
+    if record.get("exit_code") != 0:
+        return "exit %s" % record.get("exit_code")
+    if record.get("group_left_running"):
+        return "processes were left running"
+    if record.get("process_table_unreadable"):
+        return "the process table could not be read during the run"
+    if not record.get("tested_paths"):
+        return "no tested paths"
+    outside = [p for p in record["tested_paths"] if not under(p, roots)]
+    if outside:
+        return "tested path outside the allowed roots: %s" % outside[0]
+    return binding_problem(record, job)
+
+
+def binding_problem(record, job):
+    """Revision 20: None if, at the start and at the end of the run, the helper recorded for
+    every candidate repository a checkout of its own at that repository's tree with no
+    tracked changes. The tree is compared, not the path: tests may run in another clone of
+    the candidate. Repair 3 (outside reading 1): one checkout binds one candidate repository
+    only, so for each tree T the number of candidate repositories with tree T must not exceed
+    the number of distinct clean recorded checkouts (distinct top level) with tree T. A
+    candidate repository whose own top level was recorded takes that checkout first, so a
+    refusal names a candidate repository left unbound."""
+    for when in ("start", "end"):
+        binding = record.get("binding_" + when)
+        if not isinstance(binding, dict) or not isinstance(binding.get("repositories"), list):
+            return "not bound to the candidate: no Git checkout recorded at the %s" % when
+        free = {}  # tree -> distinct top levels of clean recorded checkouts at that tree
+        for r in binding["repositories"]:
+            if (isinstance(r, dict) and r.get("clean") is True and isinstance(r.get("tree"), str)
+                    and isinstance(r.get("toplevel"), str)):
+                free.setdefault(r["tree"], set()).add(os.path.realpath(r["toplevel"]))
+        waiting = []
+        for part in job.get("candidate", []):
+            own = os.path.realpath(str(part.get("repo")))
+            pool = free.get(part.get("tree"), set())
+            if own in pool:
+                pool.discard(own)
+            else:
+                waiting.append(part)
+        for part in waiting:
+            pool = free.get(part.get("tree"), set())
+            if not pool:
+                return ("not bound to the candidate: no clean checkout of its own at tree %s "
+                        "(candidate repository %s) recorded at the %s"
+                        % (part.get("tree"), part.get("repo"), when))
+            pool.discard(sorted(pool)[0])
+    return None
+
+
+# Repair 1 (review finding 2): variables that make git read another repository than the one
+# containing the path; removed for the binding's git calls.
+GIT_REPOSITORY_VARIABLES = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+                            "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_COMMON_DIR", "GIT_NAMESPACE",
+                            "GIT_CEILING_DIRECTORIES", "GIT_DISCOVERY_ACROSS_FILESYSTEM")
+GIT_BINDING_TIMEOUT = 60  # seconds per git call (repair 1, review finding 4)
+
+
+def binding_git(arguments):
+    """Repair 1: one git call of the binding: without the repository-selecting variables, with
+    LC_ALL=C (English messages), at most GIT_BINDING_TIMEOUT seconds. Returns
+    (CompletedProcess, None) or (None, problem) when git could not be run, timed out or failed
+    in any other way."""
+    env = {k: v for k, v in os.environ.items() if k not in GIT_REPOSITORY_VARIABLES}
+    env["LC_ALL"] = "C"
+    try:
+        return subprocess.run(["git"] + arguments, capture_output=True, text=True, env=env,
+                              stdin=subprocess.DEVNULL, timeout=GIT_BINDING_TIMEOUT), None
+    except subprocess.TimeoutExpired:
+        return None, "git timed out after %d s" % GIT_BINDING_TIMEOUT
+    except OSError as error:
+        return None, "git could not be run: %s" % (error.strerror or error)
+    except Exception as error:
+        return None, "git failed: %s: %s" % (type(error).__name__, error)
+
+
+def git_binding(paths):
+    """Revision 20: the Git checkout of each tested path, read by running git here: for the
+    path's directory (the path itself when it is a directory), its top level, HEAD commit,
+    HEAD tree, and clean (no tracked changes: `git status --porcelain --untracked-files=no`
+    prints nothing). One entry per distinct repository; a path outside a Git repository or a
+    git failure is recorded as such for that path, never guessed. Repair 1: git runs through
+    binding_git (no repository-selecting variables, LC_ALL=C, a time limit). "Clean" is what
+    git status reports: files marked skip-worktree or assume-unchanged are not seen."""
+    repositories, entries, seen = [], [], set()
+    for directory in sorted({p if os.path.isdir(p) else os.path.dirname(p) for p in paths}):
+        entry = {"path": directory}
+        entries.append(entry)
+        out, problem = binding_git(["-C", directory, "rev-parse", "--show-toplevel", "HEAD",
+                                    "HEAD^{tree}"])
+        if problem:
+            entry["problem"] = problem
+            continue
+        lines = out.stdout.splitlines()
+        if out.returncode != 0 or len(lines) != 3:
+            if "not a git repository" in out.stderr.lower():
+                entry["problem"] = "not in a Git repository"
+            else:
+                entry["problem"] = "git rev-parse failed (exit %d): %s" % (
+                    out.returncode, " ".join(out.stderr.split())[:200] or "no message")
+            continue
+        top, commit, tree = lines
+        entry["toplevel"] = top
+        if top in seen:
+            continue
+        seen.add(top)
+        repository = {"toplevel": top, "commit": commit, "tree": tree}
+        status, problem = binding_git(["--no-optional-locks", "-C", top, "status", "--porcelain",
+                                       "--untracked-files=no"])
+        if problem:
+            repository.update(clean=None, problem=problem)
+        else:
+            if status.returncode != 0:
+                repository.update(clean=None, problem="git status failed (exit %d): %s" % (
+                    status.returncode, " ".join(status.stderr.split())[:200] or "no message"))
+            else:
+                repository["clean"] = status.stdout.strip() == ""
+        repositories.append(repository)
+    return {"time": now(), "repositories": repositories, "paths": entries}
 
 
 SCREEN_LINE = re.compile(r"test: (\S.*?) \| outside: (\S.*?) \| (included|excluded)")
@@ -1269,8 +1420,12 @@ def cmd_run(args):
         network = "allowed" if job.get("network") else "blocked"
         if network == "blocked" and not os.path.exists(SANDBOX):
             raise Refused(14, "outside network must be blocked but %s is not available" % SANDBOX)
+        # Revision 20: one more than the highest sequence number in this queue's run records.
+        sequence = 1 + max((sequence_of(r) for _, r in queue.runs()
+                            if sequence_of(r) is not None), default=0)
         record = {
-            "run_id": run_id, "job": args.job, "label": args.label, "status": "starting",
+            "run_id": run_id, "sequence": sequence, "job": args.job, "label": args.label,
+            "status": "starting",
             "candidate_id": job["candidate_id"], "criterion_sha256": job["criterion_sha256"],
             "command": command, "cwd": cwd, "log": str(Path(args.log).resolve()),
             "tested_paths": [], "wrapper_pid": os.getpid(),
@@ -1379,6 +1534,8 @@ def cmd_run(args):
             write_json(record_path, current)
             queue.event("run %s not started (stop requested)" % run_id)
             raise Refused(3, "stop requested")
+        # Revision 20: the checkouts of the tested paths, read just before the command starts.
+        binding_start = git_binding(tested)
         try:
             with open(log, "ab") as out:
                 launch = ([SANDBOX, "-p", NO_NETWORK] + command) if network == "blocked" else command
@@ -1394,7 +1551,8 @@ def cmd_run(args):
             raise Refused(2, "could not start the command: %s" % error)
         current = read_json(record_path)
         current.update({"status": "running", "tested_paths": tested, "pid": proc.pid,
-                        "pgid": proc.pid, "process_start": process_start(proc.pid)})
+                        "pgid": proc.pid, "process_start": process_start(proc.pid),
+                        "binding_start": binding_start})
         write_json(record_path, current)
         queue.event("run %s running pid %d" % (run_id, proc.pid))
 
@@ -1492,6 +1650,7 @@ def cmd_run(args):
         if left is None:
             left = UNKNOWN_LEFT
         finish("timed out", exit_code=124, left_after_timeout=left, signals=received,
+               binding_end=git_binding(tested),
                **({"process_table_unreadable": gaps} if gaps else {}))
         queue.event("run %s timed out after %d s%s" % (run_id, timeout,
                                                        (", still alive: %s" % left) if left else ""))
@@ -1506,8 +1665,9 @@ def cmd_run(args):
     # the gaps are recorded with the run, and readiness never accepts such a run.
     left = group_alive(proc.pid) or bool(remaining)
     interrupted = bool(received) or queue.stop_requested()
+    # Revision 20: the checkouts of the tested paths again, now that the command has ended.
     finish("interrupted" if interrupted else "completed", exit_code=exit_code,
-           group_left_running=left, signals=received,
+           group_left_running=left, signals=received, binding_end=git_binding(tested),
            **({"process_table_unreadable": gaps} if gaps else {}))
     raise SystemExit(exit_code)
 

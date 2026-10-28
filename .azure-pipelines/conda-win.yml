@@ -252,6 +252,7 @@ jobs:
       rmdir /S /Q tests
       mkdir tests
       cd tests
+      echo ##vso[task.setvariable variable=tests_failed]false
       call libtbx.run_tests_parallel ^
         module=boost_adaptbx ^
         module=cctbx ^
@@ -272,6 +273,9 @@ jobs:
         module=qttbx ^
         max_retries=2 ^
         nproc=4
+      set rc=%errorlevel%
+      if not "%rc%"=="0" echo ##vso[task.setvariable variable=tests_failed]true
+      exit /b %rc%
     failOnStderr: false
     displayName: Test
     retryCountOnTaskFailure: 3
@@ -301,7 +305,7 @@ jobs:
 
   - publish: $(Pipeline.Workspace)/tests_$(job_name).tar.gz
     artifact: tests_$(job_name)_$(MODULES)
-    condition: succeededOrFailed()
+    condition: and(failed(), eq(variables['tests_failed'], 'true'))
     continueOnError: true
 
   # publish test results

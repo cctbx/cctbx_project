@@ -1833,8 +1833,10 @@ def main():
         if args.command == "freeze":
             freeze(args.evidence)
         elif args.command == "verify":
-            verify(args.evidence)
+            identity = verify(args.evidence)
             print("VERIFIED evidence")
+            # Revision 20: the packet identity, the SHA-256 of MANIFEST.sha256.
+            print(f"packet identity: {identity}")
         elif args.command == "verify-source":
             verify_source(args.source)
             print("VERIFIED complete source")

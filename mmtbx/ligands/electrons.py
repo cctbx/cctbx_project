@@ -165,6 +165,7 @@ class electron_distribution(dict):
                alternative_location_index=None,
                log=None,
                verbose=False,
+               extra_sigma_bonds=None, # {i_seq: n} bonds to atoms not present
                ):
     alternative_location_id='A'
     self.properties = atom_property()
@@ -203,6 +204,14 @@ class electron_distribution(dict):
           # assert 0, ' charge not found for %s' % atom.quote()
       else:
         self[atom.i_seq] = e
+    if extra_sigma_bonds:
+      # each extra bond consumes one electron of the atom; dict.__setitem__
+      # avoids the lone pair adjustment
+      for i_seq, n in extra_sigma_bonds.items():
+        if not dict.__contains__(self, i_seq):
+          raise Sorry('extra_sigma_bonds: no atom with i_seq %s in the '
+            'electron distribution (%d atoms)' % (i_seq, len(self.atoms)))
+        dict.__setitem__(self, i_seq, self[i_seq] - n)
     self.set_charges() # place for selections
     self.validate_metals()
     self.form_bonds()
@@ -834,9 +843,7 @@ class electron_distribution(dict):
       done_cycles.append(tmp)
       tries=10
       cycle_charge_count=self.get_cycle_charge_count(cycle)
-      import itertools
       # random.shuffle(cycle)
-      perms = list(itertools.permutations(cycle))
 
       subtract=[]
       while cycle_charge_count and tries:
@@ -861,10 +868,7 @@ class electron_distribution(dict):
                                                        self))
         cycle_charge_count=self.get_cycle_charge_count(cycle)
         import random
-        if 1:
-          random.shuffle(cycle)
-        else:
-          cycle=list(perms[tries])
+        random.shuffle(cycle)
         # assert 0
     if verbose: print('  Double & rings : %0.1fs' % (time.time()-t0))
     #
@@ -1357,7 +1361,13 @@ def run(pdb_filename=None,
         return_formal_charges=False,
         verbose=False,
         cif_objects=None,
+        model=None,
+        extra_sigma_bonds=None,
         ):
+  # model: an already processed model manager with restraints
+  if model is not None:
+    return _run_electrons(model, return_formal_charges, verbose,
+      extra_sigma_bonds)
   # legacy from Q|R...
   if pdb_filename:
     # Read file into pdb_input class
@@ -1388,10 +1398,15 @@ def run(pdb_filename=None,
   xrs = model.get_xray_structure()
   grm = model.get_restraints_manager()
   t0=time.time()
+  return _run_electrons(model, return_formal_charges, verbose,
+    extra_sigma_bonds)
+
+def _run_electrons(model, return_formal_charges, verbose, extra_sigma_bonds):
   atom_valences = electron_distribution(
     model.get_hierarchy(), # needs to be altloc free
     model.get_restraints_manager().geometry,
     verbose=verbose,
+    extra_sigma_bonds=extra_sigma_bonds,
   )
   if verbose: print(atom_valences)
   total_charge = atom_valences.get_total_charge()

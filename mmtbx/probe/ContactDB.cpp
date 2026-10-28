@@ -12,9 +12,11 @@
 
 #include "ContactDB.h"
 #include <boost/python.hpp>
+#include <boost/python/stl_iterator.hpp>
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 
 namespace molprobity {
   namespace probe {
@@ -29,6 +31,62 @@ namespace molprobity {
         for (size_t k = 0; k < v.size(); k++) { if (v[k].data->i_seq == i_seq) { return true; } }
         return false;
       }
+
+      // Bonds as ContactDB::set_bonds() stores them, indexed by i_seq.
+      struct TableNeighbors {
+        std::vector<int> const& offsets;
+        std::vector<atom> const& targets;
+        TableNeighbors(std::vector<int> const& o, std::vector<atom> const& t) : offsets(o), targets(t) {}
+        void operator()(atom const& x, std::vector<atom>& out) const {
+          unsigned s = x.data->i_seq;
+          if (s + 1 >= offsets.size()) { throw std::out_of_range("ContactDB: bond offsets too short"); }
+          out.insert(out.end(), targets.begin() + offsets[s], targets.begin() + offsets[s + 1]);
+        }
+      };
+
+      struct TableCompatible {
+        std::vector<int> const& altloc;
+        explicit TableCompatible(std::vector<int> const& a) : altloc(a) {}
+        bool operator()(atom const& a, atom const& b) const {
+          if (a.data->i_seq >= altloc.size() || b.data->i_seq >= altloc.size()) {
+            throw std::out_of_range("ContactDB: atom i_seq beyond per-atom arrays");
+          }
+          int x = altloc[a.data->i_seq], y = altloc[b.data->i_seq];
+          return x == 0 || y == 0 || x == y;
+        }
+      };
+
+      struct MappingNeighbors {
+        boost::python::object const& lists;
+        explicit MappingNeighbors(boost::python::object const& l) : lists(l) {}
+        void operator()(atom const& x, std::vector<atom>& out) const {
+          boost::python::object nbrs = lists[boost::python::object(x)];
+          out.insert(out.end(), boost::python::stl_input_iterator<atom>(nbrs),
+                     boost::python::stl_input_iterator<atom>());
+        }
+      };
+
+      // Helpers.compatibleConformations
+      struct AltlocCompatible {
+        static bool blank(atom const& a) {
+          boost::shared_ptr<iotbx::pdb::hierarchy::atom_group_data> p = a.parent_ptr();
+          return !p || p->altloc.empty() || p->altloc == " ";
+        }
+        bool operator()(atom const& a, atom const& b) const {
+          return blank(a) || blank(b) || a.parent_ptr()->altloc == b.parent_ptr()->altloc;
+        }
+      };
+    }
+
+    boost::python::list getAtomsWithinNBonds(atom const& a, boost::python::object const& bondedNeighborLists,
+                                             ExtraAtomInfoMap const& info, double probeRad, int N,
+                                             double nonHydrogenN)
+    {
+      std::vector<atom> found = atomsWithinNBonds(a, MappingNeighbors(bondedNeighborLists),
+                                                  AltlocCompatible(), info, probeRad, N, nonHydrogenN);
+      boost::python::list ret;
+      for (size_t i = 0; i < found.size(); i++) { ret.append(found[i]); }
+      return ret;
     }
 
     ContactDB::ContactDB(ExtraAtomInfoMap const& info, DotScorer const& scorer, SpatialQuery& grid,
@@ -37,7 +95,7 @@ namespace molprobity {
       , m_probeRadius(0.25), m_maxRadius(0), m_minOccupancy(0), m_overlapScale(0.5)
       , m_excludedBondChainLength(4), m_includeMainchainMainchain(true), m_includeWaterWater(false)
       , m_separateWorseClashes(false), m_reportHBonds(true), m_reportClashes(true)
-      , m_reportVdws(true), m_onlyBadClashes(false)
+      , m_reportVdws(true), m_onlyBadClashes(false), m_keepDots(false)
     {}
 
     void ContactDB::set_atom_data(af::shared<int> flags, af::shared<int> model, af::shared<int> chain,
@@ -73,6 +131,7 @@ namespace molprobity {
     {
       m_sources.assign(sources.begin(), sources.end());
       m_records.assign(m_sources.size(), std::vector<PairRecord>());
+      m_dots.clear();
       for (size_t i = 0; i < m_sources.size(); i++) {
         score_atom(m_sources[i], m_records[i]);
       }
@@ -87,7 +146,7 @@ namespace molprobity {
       for (size_t i = 0; i < m_sources.size(); i++) {
         for (size_t j = 0; j < m_records[i].size(); j++) {
           PairRecord const& r = m_records[i][j];
-          src.push_back(static_cast<int>(i));
+          src.push_back(static_cast<int>(idx(m_sources[i])));
           cause.push_back(static_cast<int>(r.cause));
           gap.push_back(r.minGap);
           for (int t = 0; t < N_TYPES; t++) {
@@ -102,6 +161,55 @@ namespace molprobity {
       return boost::python::make_tuple(src, cause, gap, counts, hasBump, bumpGap, bumpLoc, typeGap);
     }
 
+    boost::python::tuple ContactDB::dots() const
+    {
+      af::shared<int> src, cause, itype, overlapType;
+      af::shared<double> gap;
+      af::shared<Point> loc, spike;
+      std::string ptmaster;
+      ptmaster.reserve(m_dots.size());
+      for (size_t i = 0; i < m_dots.size(); i++) {
+        DotRecord const& d = m_dots[i];
+        src.push_back(static_cast<int>(d.src));
+        cause.push_back(static_cast<int>(d.cause));
+        itype.push_back(d.itype);
+        overlapType.push_back(d.overlapType);
+        gap.push_back(d.gap);
+        loc.push_back(d.loc);
+        spike.push_back(d.spike);
+        ptmaster.push_back(d.ptmaster);
+      }
+      return boost::python::make_tuple(src, cause, itype, overlapType, gap, loc, spike, ptmaster);
+    }
+
+    void ContactDB::keep_dot(unsigned si, int sf, unsigned ci, Point const& sXYZ, double srcVdw,
+                             int itype, DotScorer::CheckDotResult const& res)
+    {
+      // Main/side chain class of the pair, then the dot and spike-end locations.
+      int cf = m_flags[ci];
+      bool srcMC = sf & MAINCHAIN, srcSC = sf & SIDECHAIN, causeMC = cf & MAINCHAIN,
+           causeSC = cf & SIDECHAIN, noHet = !(sf & HET) && !(cf & HET);
+      char ptmaster = ' ';
+      if (srcMC && causeMC) { if (noHet) { ptmaster = 'M'; } }
+      else if (srcSC && causeSC) { if (noHet) { ptmaster = 'S'; } }
+      else if ((srcMC && causeSC) || (srcSC && causeMC)) { if (noHet) { ptmaster = 'P'; } }
+      else { ptmaster = 'O'; }
+
+      Point const& d = res.dotOffset;
+      DotRecord rec;
+      rec.src = si; rec.cause = ci; rec.itype = itype;
+      rec.overlapType = res.overlapType; rec.ptmaster = ptmaster; rec.gap = res.gap;
+      rec.loc = Point(sXYZ[0] + d[0], sXYZ[1] + d[1], sXYZ[2] + d[2]);
+      double dvLen = std::sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]);
+      if (dvLen > 0) {
+        double spikeScale = (srcVdw - res.overlap) / dvLen;
+        rec.spike = Point(sXYZ[0] + d[0]*spikeScale, sXYZ[1] + d[1]*spikeScale, sXYZ[2] + d[2]*spikeScale);
+      } else {
+        rec.spike = rec.loc;
+      }
+      m_dots.push_back(rec);
+    }
+
     unsigned ContactDB::idx(atom const& a) const
     {
       unsigned i = a.data->i_seq;
@@ -111,45 +219,15 @@ namespace molprobity {
 
     bool ContactDB::compatible(atom const& a, atom const& b) const
     {
-      int x = m_altloc[idx(a)], y = m_altloc[idx(b)];
-      return x == 0 || y == 0 || x == y;
+      return TableCompatible(m_altloc)(a, b);
     }
 
-    // Port of mmtbx.probe.Helpers.getAtomsWithinNBonds.
     std::vector<atom> ContactDB::excluded_for(atom const& a, unsigned N, unsigned nonHydrogenN) const
     {
-      Point const& aLoc = a.data->xyz;
-      double aRad = m_info.getMappingFor(a).getVdwRadius();
-      bool atomIsHydrogen = a.element_is_hydrogen();
-      if (m_info.getMappingFor(a).getIsDummyHydrogen()) { N = 1; }
-      std::vector<atom> found(1, a);   // a handful of atoms, so linear membership tests
-      for (unsigned i = 0; i < N; i++) {
-        size_t levelSize = found.size();
-        for (size_t k = 0; k < levelSize; k++) {
-          unsigned s = idx(found[k]);
-          if (s + 1 >= m_bondOffsets.size()) { throw std::out_of_range("ContactDB: bond offsets too short"); }
-          for (int b = m_bondOffsets[s]; b < m_bondOffsets[s + 1]; b++) {
-            atom const& n = m_bondTargets[b];
-            if (contains(found, n.data->i_seq)) { continue; }
-            if (i < nonHydrogenN || atomIsHydrogen || n.element_is_hydrogen()) {
-              if (compatible(a, n)) {
-                Point const& nLoc = n.data->xyz;
-                double nRad = m_info.getMappingFor(n).getVdwRadius();
-                double dx = nLoc[0] - aLoc[0], dy = nLoc[1] - aLoc[1], dz = nLoc[2] - aLoc[2];
-                double d = std::sqrt(dx*dx + dy*dy + dz*dz);
-                if (d <= aRad + nRad + 2 * m_probeRadius) {
-                  found.push_back(n);
-                }
-              }
-            }
-          }
-        }
-      }
-      found.erase(found.begin());
-      return found;
+      return atomsWithinNBonds(a, TableNeighbors(m_bondOffsets, m_bondTargets), TableCompatible(m_altloc),
+                               m_info, m_probeRadius, static_cast<int>(N), nonHydrogenN);
     }
 
-    // Port of probe2.Program._generate_interaction_dots for one source atom.
     void ContactDB::score_atom(atom const& src, std::vector<PairRecord>& out)
     {
       unsigned si = idx(src);
@@ -225,6 +303,7 @@ namespace molprobity {
           show = m_reportClashes && (itype == DotScorer::Bump || itype == DotScorer::BadBump);
         }
         if (!show) { continue; }
+        if (m_keepDots) { keep_dot(si, sf, ci, sXYZ, srcVdw, itype, res); }
         PairRecord* rec = 0;
         for (size_t r = 0; r < out.size(); r++) {
           if (out[r].cause == ci) { rec = &out[r]; break; }
@@ -243,7 +322,7 @@ namespace molprobity {
         if (itype == DotScorer::Bump && (!rec->hasBump || res.gap < rec->bumpGap)) {
           rec->hasBump = true;
           rec->bumpGap = res.gap;
-          // Same arithmetic as probe2.py: loc = srcXYZ + dotOffset, per component.
+          // Placed as keep_dot() places dots.
           rec->bumpLoc = Point(sXYZ[0] + res.dotOffset[0], sXYZ[1] + res.dotOffset[1],
                                sXYZ[2] + res.dotOffset[2]);
         }

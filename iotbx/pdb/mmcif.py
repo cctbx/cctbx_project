@@ -8,14 +8,15 @@ from libtbx.utils import Sorry
 from libtbx.str_utils import format_value
 import iotbx.pdb
 import cctbx.crystal
+from cctbx import adptbx
 from iotbx.pdb import hierarchy
-from iotbx.pdb import hy36encode
+from iotbx.pdb import hy36encode, hy36decode
 from iotbx.pdb import cryst1_interpretation
 from iotbx.pdb.experiment_type import experiment_type
 from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
 import iotbx.cif
-from iotbx.cif.builders import crystal_symmetry_builder
+from iotbx.cif.builders import crystal_symmetry_builder, CifBuilderError
 import iotbx.mtrix_biomt
 from six import string_types
 from six.moves import range, zip
@@ -63,14 +64,18 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0, error_message
     assert type_symbol is not None
 
-    atom_site_fp = cif_block.get('_atom_site.phenix_scat_dispersion_real')
-    atom_site_fdp = cif_block.get('_atom_site.phenix_scat_dispersion_imag')
+    atom_site_fp = self._wrap_loop_if_needed(
+      cif_block, '_atom_site.phenix_scat_dispersion_real')
+    atom_site_fdp = self._wrap_loop_if_needed(
+      cif_block, '_atom_site.phenix_scat_dispersion_imag')
 
-    pdb_ins_code = cif_block.get("_atom_site.pdbx_PDB_ins_code") # insertion code
-    model_ids = cif_block.get("_atom_site.pdbx_PDB_model_num")
-    atom_site_id = cif_block.get("_atom_site.id")
+    pdb_ins_code = self._wrap_loop_if_needed(
+      cif_block, "_atom_site.pdbx_PDB_ins_code") # insertion code
+    model_ids = self._wrap_loop_if_needed(
+      cif_block, "_atom_site.pdbx_PDB_model_num")
+    atom_site_id = self._wrap_loop_if_needed(cif_block, "_atom_site.id")
     # only permitted values are ATOM or HETATM
-    group_PDB = cif_block.get("_atom_site.group_PDB")
+    group_PDB = self._wrap_loop_if_needed(cif_block, "_atom_site.group_PDB")
     # TODO: read esds
     # Integrative (IHM) models deposited in the PDB give occupancy and
     # B_iso_or_equiv as the mmCIF null values "." or "?" on every atom.
@@ -102,28 +107,39 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
                 for ij in ("11", "22", "33", "12", "13", "23")]
         assert b_ij.count(None) in (0, 6)
         if b_ij.count(None) == 0:
-          adps = adptbx.b_as_u(b_ij)
+          adps = b_ij
         assert not (u_ij.count(None) and b_ij.count(None)) # illegal for both to be present
       if adps is not None:
         try:
           adps = [flex.double(adp) for adp in adps]
         except ValueError as e:
           raise CifBuilderError("Error interpreting ADPs: " + str(e))
+        if u_ij.count(None) == 6: # B[i][j] tensors: scaled to U
+          adps = [adp * adptbx.b_as_u(1.0) for adp in adps]
         adps = flex.sym_mat3_double(*adps)
     py_adps = {}
     if anisotrop_id is not None and adps is not None:
       for an_id, adp in zip(list(anisotrop_id), list(adps)):
         py_adps[an_id] = adp
+    if atom_site_id is None and len(py_adps) > 0 and atom_labels.size() > 0:
+      raise CifBuilderError(
+        "_atom_site_anisotrop present but _atom_site.id missing")
     current_model_id = None
     current_label_asym_id = None
     current_auth_asym_id = None
     current_residue_id = None
-    current_ins_code = None
+    if pdb_ins_code is None:
+      current_ins_code = " " # no pdbx_PDB_ins_code column: blank, as for "?"
+    else:
+      current_ins_code = None
 
     for i_atom in range(atom_labels.size()):
       # model(s)
       last_model_id = current_model_id
-      current_model_id = model_ids[i_atom]
+      if model_ids is None:
+        current_model_id = "" # no pdbx_PDB_model_num column: one model, id ""
+      else:
+        current_model_id = model_ids[i_atom]
       assert current_model_id is not None
       if current_model_id != last_model_id:
         model = hierarchy.model(id=current_model_id)
@@ -161,12 +177,27 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       if (current_residue_id != last_residue_id
           or current_ins_code != last_ins_code
           or current_auth_asym_id != last_auth_asym_id
-          or current_model_id != last_model_id):
+          or current_model_id != last_model_id
+          or is_first_in_chain is None): # a new chain has no residue group yet
         try:
           resseq = hy36encode(width=4, value=int(current_residue_id))
-        except ValueError as e:
+        except (ValueError, OverflowError):
           resseq = current_residue_id
-          assert len(resseq)==4
+          where = "_atom_site.auth_seq_id (or label_seq_id) row %d" % (i_atom+1)
+          try:
+            int(resseq)
+          except ValueError:
+            pass
+          else:
+            raise CifBuilderError("%s: residue number does not fit the "
+              "four-character resseq (-999 to 2436111): %r" % (where, resseq))
+          # a four-character hybrid-36 resseq, as cctbx wrote until June 2023
+          try:
+            if len(resseq) != 4 or " " in resseq: raise ValueError
+            hy36decode(width=4, s=resseq)
+          except ValueError:
+            raise CifBuilderError("%s: not an integer nor a four-character "
+              "hybrid-36 resseq: %r" % (where, resseq))
         residue_group = hierarchy.residue_group(
           resseq=resseq,
           icode=current_ins_code)
@@ -205,8 +236,12 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       atom.set_occ(occu[i_atom])
       # hy36encode should go once the pdb.hierarchy has been
       # modified to no longer store fixed-width strings
-      atom.set_serial(
-        hy36encode(width=5, value=int(atom_site_id[i_atom])))
+      if atom_site_id is None:
+        # no _atom_site.id: the row order
+        atom.set_serial(hy36encode(width=5, value=i_atom+1))
+      else:
+        atom.set_serial(
+          hy36encode(width=5, value=int(atom_site_id[i_atom])))
       # some code relies on an empty segid being 4 spaces
       if auth_segid:
         atom.set_segid(auth_segid[i_atom][:4]+(4-len(auth_segid[i_atom]))*" ")
@@ -240,8 +275,12 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         fdp = atom_site_fdp[i_atom]
         if fdp not in ("?", "."):
           atom.set_fdp(new_fdp=float(fdp))
-      if anisotrop_id is not None and adps is not None:
-        py_u_ij = py_adps.get(atom.serial.strip(), None)
+      if py_adps:
+        py_u_ij = py_adps.get(atom_site_id[i_atom], None)
+        if py_u_ij is None:
+          # mmCIF written by cctbx from February 2013 to January 2015 has
+          # the hybrid-36 serial as the anisotrop id
+          py_u_ij = py_adps.get(atom.serial.strip(), None)
         if py_u_ij is not None:
           atom.set_uij(py_u_ij)
     if len(self.hierarchy.models()) == 1:

@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import time, sys
+import os
 import re
+import traceback
 import iotbx.pdb
 from mmtbx import map_tools
 from cctbx import maptbx
@@ -314,6 +316,17 @@ _LIGAND_EXCLUDE_CLASSES = ["common_amino_acid", "modified_amino_acid",
   "common_rna_dna", "modified_rna_dna", "ccp4_mon_lib_rna_dna",
   "common_water", "common_element"]
 
+def _run_result_func(lr, func):
+  # module level: a multiprocessing target must be picklable
+  return getattr(lr, func)()
+
+def _run_serial(lr, func):
+  """In-process _run_result_func: (args, result, err_str), as easy_mp.multi_core_run yields."""
+  try:
+    return [lr, func], _run_result_func(lr, func), None
+  except Exception as e:
+    return [lr, func], None, str(e) + "\n" + traceback.format_exc()
+
 # =============================================================================
 
 class manager(list):
@@ -349,10 +362,8 @@ class manager(list):
 
   def parallel_populate(self, args):
     from libtbx import easy_mp
-    def _run(lr, func):
-      func = getattr(lr, func)
-      rc = func()
-      return rc
+    # Windows has no fork: spawn would pickle each ligand_result (model, fmodel)
+    nproc = 1 if os.name == "nt" else self.params.nproc
     funcs = []
     ligand_results = []
     inputs = []
@@ -371,18 +382,22 @@ class manager(list):
 
     results = []
     t0=time.time()
-    for i, (args, res, err_str) in enumerate(easy_mp.multi_core_run(
-      _run,
-      funcs,
-      self.params.nproc,
-      keep_input_order=True,
-      )):
+    if nproc == 1:
+      calls = (_run_serial(lr, func) for lr, func in funcs)
+    else:
+      calls = easy_mp.multi_core_run(
+        _run_result_func,
+        funcs,
+        nproc,
+        keep_input_order=True,
+        )
+    for i, (args, res, err_str) in enumerate(calls):
       results.append([args, res, err_str])
-      if self.params.nproc>1:
+      if nproc>1:
         print('\n  Returning Selection : %s AltLoc : %s Func : %s' % tuple(inputs[i]))
         print('  Cumulative time: %6.2f (s)' % (time.time()-t0))
       if err_str:
-        print('Error output from %s' % args)
+        print('Error output from Selection : %s AltLoc : %s Func : %s' % tuple(inputs[i]))
         print(err_str)
         print('_'*80)
 
@@ -422,7 +437,10 @@ class manager(list):
                 continue
             if (not get_class(name=resname) in _LIGAND_EXCLUDE_CLASSES):
               iselection = residue.atoms().extract_i_seq()
-              sel_str = 'chain %s and resseq %s and resname %s ' % (chain.id,
+              # blank chain id: unquoted, 'chain  and' selects nothing
+              chain_id = chain.id if chain.id.strip() == chain.id and chain.id \
+                else '"%s"' % chain.id
+              sel_str = 'chain %s and resseq %s and resname %s ' % (chain_id,
                 rg.resseq_as_int(), resname)
               if conformer.altloc:
                 sel_str = sel_str + ' and (altloc %s or altloc " ")' % conformer.altloc
@@ -1296,7 +1314,8 @@ class ligand_result(object):
     #  self.model.select(self.ligand_isel_noH).get_xray_structure()
     self._atoms_ligand_noH = self._ph.select(self.ligand_isel_noH).atoms()
 
-    new_s = re.sub(r"\band\b", "", self.sel_str)
+    # no quotes in file names (Windows)
+    new_s = re.sub(r"\band\b", "", self.sel_str).replace('"', '')
     self.fn_string = re.sub(r"\s+", "_", new_s.strip())  # strip + collapse spaces
 
     # ------ sites ------

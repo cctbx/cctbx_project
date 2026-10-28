@@ -206,7 +206,8 @@ def test_single_altloc_side_chain_placed():
 
 def test_two_altlocs_unchanged():
   # (b) water with a blank O and H1/H2 in A and in B, (d) Ser with OG in A
-  # and B: blank-parent H go into each altloc, as before the fix
+  # and B: blank-parent H go into each altloc, as before the fix, except the
+  # amide H (blank N, CA and Ala 1 C: one H, blank)
   pdb_str = """\
 HETATM    1  O   HOH A   1       5.000  10.000  10.000  1.00 20.00           O
 HETATM    2  H1 AHOH A   1       5.900  10.100  10.000  0.50 20.00           H
@@ -226,10 +227,11 @@ HETATM    5  H2 BHOH A   1       5.000   9.100  10.000  0.50 20.00           H
   no_hg = "\n".join(l for l in h_input.splitlines()
                     if not (l[12:16] == " HG " and l[17:20] == "SER"))
   assert h_input.count(" HG ") == 2 and no_hg.count(" HG ") == 0
-  conformer_h = ["H", "HA", "HB2", "HB3", "HG"]
+  conformer_h = ["HA", "HB2", "HB3", "HG"]
   for pdb_str, keep in ((h_input, True), (no_hg, True), (heavy, False)):
     obj, h, report = place(pdb_str, keep_existing_H=keep)
-    assert ser_h(h) == {"": [], "A": conformer_h, "B": conformer_h}, ser_h(h)
+    assert ser_h(h) == {"": ["H"], "A": conformer_h, "B": conformer_h}, \
+      ser_h(h)
     check_hg(h, "A", "A")
     check_hg(h, "B", "B")
     assert obj.site_labels_no_para == []

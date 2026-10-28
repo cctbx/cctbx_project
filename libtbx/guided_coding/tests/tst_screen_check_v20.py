@@ -2,6 +2,7 @@
 
 import compileall
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -4675,3 +4676,36 @@ class LimitsScanChecks(unittest.TestCase):
             self.assertIn(f"_checker.{name}", tool)
         self.assertEqual(checker.WAIVABLE_REFUSALS, (checker.DIFF_BLOBS, checker.DIFF_DIFF,
                                                      checker.DIFF_TOUCH, checker.DIFF_MESSAGE))
+
+
+class VerifyIdentityChecks(unittest.TestCase):
+    """Revision 20: `screen_check.py verify DIR` prints `VERIFIED evidence` and then
+    `packet identity: <SHA-256 of DIR/MANIFEST.sha256>`, the identity a ready packet is
+    recorded and approved by; a packet that does not verify prints neither."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.evidence = Path(self.temporary.name) / "evidence"
+        self.evidence.mkdir()
+        (self.evidence / "RUN_LOG.txt").write_text("unit: exit 0\n")
+        (self.evidence / "CODE_IDENTITY.txt").write_text("tested_tree: %s\n" % TREE)
+
+    def screen_check(self, *arguments):
+        return subprocess.run([sys.executable, "-I", "-B", checker.__file__, *map(str, arguments)],
+                              capture_output=True, text=True)
+
+    def test_rev20_verify_prints_packet_identity(self):
+        frozen = self.screen_check("freeze", self.evidence)
+        self.assertEqual(frozen.returncode, 0, frozen.stdout + frozen.stderr)
+        result = self.screen_check("verify", self.evidence)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        identity = hashlib.sha256((self.evidence / "MANIFEST.sha256").read_bytes()).hexdigest()
+        self.assertEqual(result.stdout.splitlines(),
+                         ["VERIFIED evidence", "packet identity: %s" % identity])
+        # control: a changed evidence file does not verify and prints no identity
+        (self.evidence / "RUN_LOG.txt").write_text("unit: exit 1\n")
+        result = self.screen_check("verify", self.evidence)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("packet identity", result.stdout + result.stderr)
+        self.assertNotIn("VERIFIED", result.stdout)

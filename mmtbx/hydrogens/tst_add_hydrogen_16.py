@@ -3,7 +3,7 @@ import iotbx.pdb, iotbx.cif
 import mmtbx.model
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 from mmtbx.monomer_library import server
 from mmtbx.hydrogens import reduce_hydrogen
 from six.moves import cStringIO as StringIO
@@ -35,6 +35,10 @@ def run():
   test_024()
   test_025()
   test_026()
+  test_027()
+  test_028()
+  test_029()
+  test_030()
 
 # ------------------------------------------------------------------------------
 
@@ -557,6 +561,79 @@ def hand(atoms, resname, resseq, parent, first, second, third):
   p = a[parent]
   return 1 if ((a[first]-p).cross(a[second]-p)).dot(a[third]-p) > 0 else -1
 
+def test_027():
+  '''
+  6bhe VAL A 274: N and CA have no altloc, the side chain is in A and B, GLN
+  A 273 is in A only (CA, C, O). The amide H went into A and B; H/B had no
+  C, and riding H stopped: "angle restraints involving an H atom are
+  missing ... N VAL A 274 / C AGLN A 273". Its position depends on no split
+  atom: one H without altloc, in the amide plane. With the previous C in A
+  and B, each altloc keeps its own H.
+  '''
+  def amide_h(pdb_str):
+    atoms = place_atoms(pdb_str)
+    a = dict(((x.parent().parent().resseq.strip(), x.parent().altloc,
+      x.name.strip()), matrix.col(x.xyz)) for x in atoms)
+    return a, sorted(k[1] for k in a if k[0] == '274' and k[2] == 'H')
+  a, alts = amide_h(pdb_str_027)
+  assert alts == [''], alts
+  n, h = a[('274', '', 'N')], a[('274', '', 'H')]
+  c, ca = a[('273', 'A', 'C')], a[('274', '', 'CA')]
+  angle = lambda x, z: (x-n).angle(z-n, deg=True)
+  assert approx_equal(angle(c, h) + angle(ca, h) + angle(c, ca), 360, eps=1)
+  # GLN A 273 also in B (shifted 0.15 A): H/A and H/B
+  lines = pdb_str_027.splitlines()
+  b = [l[:16] + 'B' + l[17:30] + '%8.3f' % (float(l[30:38]) + 0.15) + l[38:]
+       for l in lines if l[16:17] == 'A' and l[22:26] == ' 273']
+  _, alts = amide_h('\n'.join(lines + b) + '\n')
+  assert alts == ['A', 'B'], alts
+
+def test_028():
+  '''
+  9grf ALA M 1: N, C and O have no altloc, CA and CB are in A and B. H1/H2/H3
+  went into the blank group, built from CA A only, and riding H stopped:
+  "angle restraints involving an H atom are missing ... N ALA M 1 / CA BALA
+  M 1". They depend on the split CA: each altloc gets its own, tetrahedral
+  with its CA. Placing again (keep_existing_H) adds none.
+  '''
+  def placed(pdb_str, keep):
+    pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+    model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+    obj = reduce_hydrogen.place_hydrogens(model=model, keep_existing_H=keep)
+    obj.run()
+    return obj.get_model()
+  model = placed(pdb_str_028, False)
+  a = dict(((x.parent().altloc, x.name.strip()), matrix.col(x.xyz))
+    for x in model.get_hierarchy().atoms())
+  hs = sorted(k for k in a if k[1] in ('H', 'H1', 'H2', 'H3'))
+  assert hs == [(alt, h) for alt in 'AB' for h in ('H1', 'H2', 'H3')], hs
+  n = a[('', 'N')]
+  for alt in 'AB':
+    for h in ('H1', 'H2', 'H3'):
+      angle = (a[(alt, h)]-n).angle(a[(alt, 'CA')]-n, deg=True)
+      assert approx_equal(angle, 109.5, eps=0.5), (alt, h, angle)
+  again = placed(model.model_as_pdb(), True)
+  assert again.get_hierarchy().atoms_size() == model.get_hierarchy().atoms_size()
+
+def test_029():
+  '''
+  3ilz ARG A 228: NE has no altloc, CZ is in A only, NH1/NH2 are in A and B
+  (B has no CZ: model error). HE goes into A and B, and riding H stops. The
+  Sorry now names the atoms of B that have no CZ to bond to.
+  '''
+  try:
+    place_atoms(pdb_str_029)
+  except Sorry as e:
+    msg = str(e)
+  else:
+    assert 0, 'expected a Sorry'
+  assert msg.startswith('It looks like angle restraints involving an H atom '
+    'are missing.\n  Check H atoms bound to pdb=" NE  ARG A 228 " and with '
+    'second neighbor pdb=" CZ AARG A 228 "'), msg
+  assert msg.endswith('\n  Conformer B of ARG A 228 has NH1, NH2 but no CZ '
+    'to bond them to (CZ is in conformer A). Complete or remove conformer '
+    'B.'), msg
+
 def test_010():
   '''
     LEU HB2/HB3 came out swapped (7IT7 fragment). The CH2 reference read the
@@ -610,6 +687,35 @@ def test_012():
   atoms = place_atoms(pdb_str_012_linked)
   assert h_on(atoms, '5GP', '1', "O3'") == [], h_on(atoms, '5GP', '1', "O3'")
   assert h_on(atoms, '5GP', '1', "O2'") == ["HO2'"]
+
+# ------------------------------------------------------------------------------
+
+def test_030():
+  '''
+  9eor HT7: the CCD names the CA pair HA/HC2, GeoStd (used for placement)
+  HB1/HC2, and the model's HA sits on CB, 2.1 A from CA. The CCD group must
+  not match that HA: the CA pair gets the GeoStd reference chirality, and HA
+  on CB keeps its name.
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_014_ht7.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  obj = reduce_hydrogen.place_hydrogens(model=model)
+  obj.run()
+  atoms = list(obj.get_model().get_hierarchy().atoms())
+  assert h_on(atoms, 'HT7', '3', 'CA') == ['HB1', 'HC2'], h_on(atoms, 'HT7', '3', 'CA')
+  assert h_on(atoms, 'HT7', '3', 'CB') == ['HA'], h_on(atoms, 'HT7', '3', 'CB')
+  ref = [g for g in reduce_hydrogen._h_references('HT7',
+           obj.query_mon_lib_srv, {}, 2, 2)
+         if g[0] == 'CA' and g[2] == ('HB1', 'HC2')]
+  assert len(ref) == 1, ref
+  p, hv, hs, sites = ref[0]
+  ht7 = dict((a.name.strip(), a) for a in atoms
+             if a.parent().resname == 'HT7')
+  names = (hv[0], hv[1], hs[0])
+  v_ideal = reduce_hydrogen._chiral_volume(sites[p], *[sites[n] for n in names])
+  v_model = reduce_hydrogen._chiral_volume(ht7[p].xyz,
+    *[ht7[n].xyz for n in names])
+  assert (v_ideal > 0) == (v_model > 0), (v_model, v_ideal)
 
 # ------------------------------------------------------------------------------
 
@@ -1544,6 +1650,51 @@ HETATM 2905  C13 TPT A 480      76.825  40.413  30.196  0.90 19.26           C
 HETATM 2906  C14 TPT A 480      76.289  40.309  28.936  0.90100.00           C
 HETATM 2907  C15 TPT A 480      76.635  41.239  28.023  0.90 40.27           C
 END
+"""
+
+pdb_str_027 = """
+CRYST1   37.051   71.372   52.055  90.00 104.23  90.00 P 1 21 1      2
+ATOM    644  CA AGLN A 273      52.491  -7.131  75.612  0.50 33.81           C
+ATOM    645  C  AGLN A 273      53.782  -6.727  74.879  0.50 37.55           C
+ATOM    646  O  AGLN A 273      53.756  -6.002  73.875  0.50 41.05           O
+ATOM    647  N   VAL A 274      54.908  -7.184  75.416  1.00 35.80           N
+ATOM    648  CA  VAL A 274      56.176  -7.155  74.698  1.00 34.21           C
+ATOM    649  C   VAL A 274      56.588  -8.604  74.297  1.00 31.10           C
+ATOM    650  O   VAL A 274      56.558  -9.509  75.137  1.00 35.64           O
+ATOM    651  CB AVAL A 274      57.307  -6.441  75.483  0.50 41.64           C
+ATOM    652  CB BVAL A 274      57.282  -6.463  75.524  0.50 39.72           C
+ATOM    653  CG1AVAL A 274      57.804  -7.268  76.669  0.50 42.93           C
+ATOM    654  CG1BVAL A 274      58.632  -6.525  74.811  0.50 38.98           C
+ATOM    655  CG2AVAL A 274      58.468  -6.118  74.550  0.50 41.13           C
+ATOM    656  CG2BVAL A 274      56.900  -5.014  75.809  0.50 40.98           C
+"""
+
+pdb_str_028 = """
+CRYST1   63.696   76.050   27.858  90.00  90.00  90.00 P 21 21 2
+ATOM    831  N   ALA M   1     -17.004  33.237  -4.450  1.00 25.69           N
+ATOM    832  CA AALA M   1     -16.112  33.766  -3.388  0.50 22.64           C
+ATOM    833  CA BALA M   1     -15.894  33.921  -3.834  0.50 24.57           C
+ATOM    834  C   ALA M   1     -14.743  32.990  -3.351  1.00 20.22           C
+ATOM    835  O   ALA M   1     -13.653  33.617  -3.248  1.00 27.19           O
+ATOM    836  CB AALA M   1     -16.833  33.680  -2.046  0.50 25.23           C
+ATOM    837  CB BALA M   1     -16.336  35.015  -2.865  0.50 25.08           C
+"""
+
+pdb_str_029 = """
+CRYST1   59.914   80.351  102.886  90.00  90.00  90.00 P 21 21 21
+ATOM    690  N   ARG A 228      29.920  37.704  43.277  1.00 25.85           N
+ATOM    691  CA  ARG A 228      29.044  36.717  43.883  1.00 26.06           C
+ATOM    692  C   ARG A 228      29.481  35.267  43.613  1.00 23.80           C
+ATOM    693  O   ARG A 228      29.247  34.387  44.436  1.00 23.15           O
+ATOM    694  CB  ARG A 228      27.602  36.968  43.456  1.00 26.79           C
+ATOM    695  CG  ARG A 228      27.040  38.213  44.145  1.00 29.74           C
+ATOM    696  CD  ARG A 228      25.555  38.333  43.966  1.00 35.72           C
+ATOM    697  NE  ARG A 228      25.230  38.860  42.654  1.00 41.04           N
+ATOM    698  CZ AARG A 228      24.974  40.147  42.428  0.71 35.39           C
+ATOM    699  NH1AARG A 228      25.036  41.018  43.424  0.71 38.22           N
+ATOM    700  NH1BARG A 228      24.697  39.952  40.254  0.29 34.47           N
+ATOM    701  NH2AARG A 228      24.669  40.567  41.213  0.71 35.40           N
+ATOM    702  NH2BARG A 228      24.587  36.280  42.025  0.29 32.49           N
 """
 
 if __name__ == '__main__':

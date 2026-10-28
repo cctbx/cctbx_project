@@ -196,6 +196,19 @@ def test_hd_pair_keys():
   assert hd_exchange.site_key(atoms["HG"], "") == \
          hd_exchange.site_key(atoms["DG"], "")
 
+def test_rekey_records():
+  # records follow placement's renames of input H, in order: a swap of two
+  # recorded names swaps the records, one recorded name moves to the other
+  part = (0, "A", 0, "  37", " ", 0, "SER")
+  hb2, hb3, h1, h = [part + ("", n) for n in (" HB2", " HB3", " H1 ", " H  ")]
+  records = {hb2: "x", hb3: "y", h1: "z", part + ("A", " HB2"): "w"}
+  renames = [(part, "", " HB2", " HB3"), (part, "", " H1 ", " H  ")]
+  result = hd_exchange.rekey_records(records, renames)
+  assert result == {hb2: "y", hb3: "x", h: "z", part + ("A", " HB2"): "w"}
+  assert records[hb2] == "x"   # input unchanged
+  # renamed twice: back where it was
+  assert hd_exchange.rekey_records(records, renames[:1] * 2) == records
+
 def test_name_normalization():
   # 18c: only D atoms are renamed, first D only
   h = iotbx.pdb.input(source_info=None, lines="""\
@@ -321,9 +334,22 @@ ATOM     12 DD22BASN A   2      12.141  13.050   9.648  0.50 15.00           D
 END
 """
 
+def check_indices(hierarchy, c):
+  """each index field names the atom of its label"""
+  atoms = hierarchy.atoms()
+  for p in c.pairs:
+    assert atoms[p.i_h].id_str() == p.h_id and atoms[p.i_d].id_str() == p.d_id
+    if p.geometric_partner is None:
+      assert p.i_geometric_partner is None
+    else:
+      assert atoms[p.i_geometric_partner].id_str() == p.geometric_partner
+  for x in c.singles + c.unresolved + c.same_conformer:
+    assert atoms[x.i_seq].id_str() == x.atom_id
+
 def candidates_of(model, xyz_tolerance=0.2):
   table = hd_exchange.h_parent_table(model)
   c = hd_exchange.find_hd_candidates(model.get_hierarchy(), table, model=model)
+  check_indices(model.get_hierarchy(), c)
   return c, hd_exchange.collapse_check(c, xyz_tolerance=xyz_tolerance)
 
 def names(atom_id):
@@ -366,9 +392,13 @@ def test_swapped_names():
     assert p.name_mismatch and p.geometric_partner is not None
     other = {"HD21": "DD22", "HD22": "DD21"}[names(p.h_id)]
     assert names(p.geometric_partner) == other, p.geometric_partner
+    assert p.i_geometric_partner not in (None, p.i_h, p.i_d)
   assert r.pairs == [] and len(r.problems) == 2
   for prob in r.problems:
     assert any(x.startswith("names swapped") for x in prob.reasons)
+  # control: no name mismatch, no geometric partner
+  c, r = candidates_of(make_model(pdb_asn_hd))
+  assert [p.i_geometric_partner for p in c.pairs] == [None, None]
 
 def test_one_h_two_d():
   # 2: one H with two D candidates
@@ -423,6 +453,7 @@ def test_pair_in_one_conformer():
     c, r = candidates_of(make_model(pdb))
     assert c.pairs == [] and r.pairs == [] and r.unresolved == []
     assert [names(x.atom_id) for x in c.same_conformer] == [floating]
+    assert c.same_conformer[0].i_seq is not None
     assert [p.kind for p in r.problems] == ["same conformer"]
     assert "H/D pair in one conformer not supported" in \
       r.problems[0].reasons[0]
@@ -434,6 +465,8 @@ def test_pair_in_one_conformer():
   assert c.same_conformer == [] and r.problems == []
   assert sorted((names(u.atom_id), u.action) for u in r.unresolved) == [
     ("HX", "remove"), ("HY", "remove")]
+  assert sorted(names(u.atom_id) for u in c.unresolved
+                if u.i_seq is not None) == ["HX", "HY"]
 
 def test_layout_needs_two_atom_groups():
   # layout_ok: H and D in different atom_groups. Real restraints cannot give
@@ -561,6 +594,8 @@ END
   c, r = candidates_of(make_model(asn_close))
   assert pair_names(c.pairs) == [("HD21", "DD22")]
   assert c.pairs[0].name_mismatch and abs(c.pairs[0].distance - 0.2) < 1e-3
+  # matched by position: the geometric partner is the pair's own D
+  assert c.pairs[0].i_geometric_partner == c.pairs[0].i_d
   assert r.pairs == [] and len(r.problems) == 1
   assert any("names" in x for x in r.problems[0].reasons)
 
@@ -581,6 +616,8 @@ def test_ambiguous_is_unresolved():
     ("HX", "ambiguous", "stop")]
   assert sorted(x[1] for x in r.unresolved[0].source) == ["edits", "edits"]
   assert sorted(x[2] for x in r.unresolved[0].source) == [1.3, 1.444]
+  assert [names(u.atom_id) for u in c.unresolved] == ["HX"]
+  assert c.unresolved[0].i_seq is not None
 
 def test_symmetry_parent():
   # 8a (symmetry part): H and D both bonded to Se across the boundary
@@ -856,19 +893,20 @@ def ser_h_d(h):
     if a.element.strip() in ("H", "D"))) for ag in rg.atom_groups())
 
 def test_merge_conformer_copies():
-  # placement copies every H of Ser into A and B; H and HA (blank parents,
-  # coincident copies) are merged into the blank group, HB2/HB3/HG differ
+  # placement puts the amide H once into the blank group (blank N, CA and
+  # Ala 1 C) and the other Ser H into A and B; HA (blank parent, coincident
+  # copies) is merged into the blank group, HB2/HB3/HG differ
   model = placed(pdb_pep_og_ab)
   hd = ser_h_d(model.get_hierarchy())
-  assert hd[""] == [] and hd["A"] == hd["B"] == ["H", "HA", "HB2", "HB3", "HG"]
+  assert hd[""] == ["H"] and hd["A"] == hd["B"] == ["HA", "HB2", "HB3", "HG"]
   h, r = run_option(model, "hd_and_h")
   hd = ser_h_d(h)
   assert hd[""] == ["HA"], hd                      # merged, not exchangeable
   assert hd["C"] == ["H"] and hd["D"] == ["D"], hd # merged and split
   assert hd["A"] == hd["B"] == ["DG", "HB2", "HB3"], hd
-  assert sorted(names(x.site) for x in r.merged_sites) == ["H", "HA"]
-  # exchangeable output sites (not water): Ala H1 H2 H3, Ser H once (merged
-  # from two copies), HG in A and in B, Lys H HZ1 HZ2 HZ3
+  assert sorted(names(x.site) for x in r.merged_sites) == ["HA"]
+  # exchangeable output sites (not water): Ala H1 H2 H3, Ser H once, HG in A
+  # and in B, Lys H HZ1 HZ2 HZ3
   assert r.n_exchangeable == 10, r.n_exchangeable
   assert all(x.reason == "merged conformer copies" for x in r.merged_sites)
   assert all(len(x.copies) == 2 for x in r.merged_sites)
@@ -877,14 +915,20 @@ def test_merge_conformer_copies():
   # merged H at the parent occupancy; the split pair 0.5 each
   assert find(h, "SER", "HA").occ == 1.0
   assert find(h, "SER", "H").occ == 0.5 and find(h, "SER", "D").occ == 0.5
-  # the split pair maps to the first (A) copy
+  # the split pair maps to the blank H
   src = [r.provenance[hd_exchange.atom_key(find(h, "SER", n))]
          for n in ("H", "D")]
-  assert src[0] == src[1] and src[0][-3:] == ("A", " H  ", "H"), src
+  assert src[0] == src[1] and src[0][-3:] == ("", " H  ", "H"), src
 
 def test_conformer_copies_differ():
   # a backbone H whose copies are 0.1 A apart is not merged: conformer site
-  model = placed(pdb_pep_og_ab)
+  # placement gives one blank amide H here: copy it into A and B
+  lines = placed(pdb_pep_og_ab).model_as_pdb().splitlines()
+  h = [l for l in lines if l[12:20] == " H   SER"]
+  assert len(h) == 1, h
+  lines = sum([[l[:16] + alt + l[17:54] + "  0.50" + l[60:]
+                for alt in "AB"] if l == h[0] else [l] for l in lines], [])
+  model = make_model("\n".join(lines))
   copies = [a for a in model.get_hierarchy().atoms()
             if a.parent().resname == "SER" and a.name == " H  "]
   assert sorted(a.parent().altloc for a in copies) == ["A", "B"]
@@ -1410,4 +1454,5 @@ if __name__ == "__main__":
   test_repeated_labels_restore()
   test_water_names_follow_content()
   test_conformer_copy_occupancy_note()
+  test_rekey_records()
   print("OK")

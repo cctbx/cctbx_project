@@ -2894,7 +2894,8 @@ class manager(object):
         out.extend([(key, conf, v) for conf, v in sorted(per_conf.items())])
     out = [x for x in out if self._in_conformation(x[1])]
     for (ma, mb, op), conf, pairs in sorted(out, key=lambda x: (x[0], x[1])):
-      pairs = sorted(pairs, key=lambda q: (q["centroid_distance"], q["a"], q["b"]))
+      # rounded: equal distances (identical stacked systems) tie on every platform
+      pairs = sorted(pairs, key=lambda q: (round(q["centroid_distance"], 6), q["a"], q["b"]))
       head = pairs[0]
       lig_seqs, part_seqs = [], []
       for q in pairs:

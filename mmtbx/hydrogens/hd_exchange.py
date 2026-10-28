@@ -37,7 +37,9 @@ def _index_by_memory_id(objects, target):
       return i
   raise RuntimeError("internal error: object not found in its parent")
 
-def _residue_part(ag):
+def residue_part(ag):
+  """(model index, chain id, chain occurrence, resseq, icode, residue_group
+  occurrence, canonical resname): the residue part of atom_key()/site_key()"""
   rg = ag.parent()
   chain = rg.parent()
   model = chain.parent()
@@ -54,7 +56,7 @@ def _residue_part(ag):
   return (model_index, chain.id, chain_occurrence, rg.resseq, rg.icode,
           rg_occurrence, canonical_resname(ag.resname))
 
-def _residue_parts(hierarchy):
+def residue_parts(hierarchy):
   """residue part of every atom_group in one pass: {memory_id: tuple}"""
   result = {}
   for model_index, model in enumerate(hierarchy.models()):
@@ -72,9 +74,12 @@ def _residue_parts(hierarchy):
             rg.resseq, rg.icode, rg_occurrence, canonical_resname(ag.resname))
   return result
 
+# the keyword residue_part of atom_key()/site_key() shadows the function there
+_residue_part, _residue_parts = residue_part, residue_parts
+
 def atom_key(atom, residue_part=None):
   """residue part + own altloc + name as written + element; residue_part
-  (from _residue_parts()) saves the scan of preceding residues"""
+  (from residue_parts()) saves the scan of preceding residues"""
   ag = atom.parent()
   if residue_part is None: residue_part = _residue_part(ag)
   return residue_part + (ag.altloc, atom.name, atom.element.strip().upper())
@@ -84,6 +89,20 @@ def site_key(atom, parent_altloc, residue_part=None):
   validated pair (both give the same key) or a single"""
   if residue_part is None: residue_part = _residue_part(atom.parent())
   return residue_part + (parent_altloc, normalized_name(atom))
+
+def rekey_records(records, renames):
+  """records (site_key -> values) after placement renamed input H.
+  renames: (residue part, parent altloc, old name, new name) in the order
+  made (place_hydrogens.renamed_existing_h). Each exchanges the two names:
+  both recorded -> the records swap; one recorded -> it moves to the other
+  name. Returns a new dict."""
+  result = dict(records)
+  for part, parent_altloc, old, new in renames:
+    key_old, key_new = part + (parent_altloc, old), part + (parent_altloc, new)
+    value_old, value_new = result.pop(key_old, None), result.pop(key_new, None)
+    if value_old is not None: result[key_new] = value_old
+    if value_new is not None: result[key_old] = value_new
+  return result
 
 def atom_keys(hierarchy):
   """atom_key() of every atom in one pass, in hierarchy.atoms() order; a
@@ -228,7 +247,10 @@ def _distance(a, b):
   return (matrix.col(a.xyz) - matrix.col(b.xyz)).length()
 
 def _hd_only(ag):
-  return all(_is_hd(a) for a in ag.atoms())
+  # by index: af_shared_atom has no __iter__ (each loop would end in a C++
+  # IndexError)
+  atoms = ag.atoms()
+  return all(_is_hd(atoms[k]) for k in range(atoms.size()))
 
 def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
   """Every H/D as a candidate pair, a single or unresolved, plus same-name H/D
@@ -242,7 +264,11 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
   opposite isotope within 0.5 A and > 0.1 A closer than the name partner).
   Leftovers within 0.5 A of each other are matched by position; farther apart
   they are singles (one isotope per site on a multi-H parent). Both kinds of
-  geometric match are flagged name_mismatch."""
+  geometric match are flagged name_mismatch.
+  Atoms are given by label (h_id, d_id, geometric_partner, atom_id) and by
+  index into hierarchy.atoms() (i_h, i_d, i_geometric_partner, i_seq):
+  geometric_partner is the near D, the near H, or for a leftover matched by
+  position the pair's own D (both None without a name mismatch)."""
   atoms = hierarchy.atoms()
   keys = atom_keys(hierarchy)
   rotatable = None
@@ -280,7 +306,24 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
     by_name.setdefault((residue, normalized_name(atom)), []).append(i)
   pairs = []
   singles = []
-  def candidate(ih, id_, name_mismatch, geometric_partner, n_competing):
+  # per atom_group, once: H/D only, and its atom names with their counts
+  hd_only = {}
+  def ag_hd_only(ag):
+    k = ag.memory_id()
+    if k not in hd_only: hd_only[k] = _hd_only(ag)
+    return hd_only[k]
+  ag_names = {}
+  def ag_name_count(ag, name):
+    k = ag.memory_id()
+    if k not in ag_names:
+      counts = {}
+      ag_atoms = ag.atoms()
+      for j in range(ag_atoms.size()):
+        n = ag_atoms[j].name
+        counts[n] = counts.get(n, 0) + 1
+      ag_names[k] = counts
+    return ag_names[k].get(name, 0)
+  def candidate(ih, id_, name_mismatch, i_geometric, n_competing):
     h, d = atoms[ih], atoms[id_]
     e = info[ih][1]
     occ_sum = h.occ + d.occ
@@ -299,12 +342,16 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
       parent_altloc     = e.parent_altloc,
       distance          = _distance(h, d),
       name_mismatch     = name_mismatch,
-      geometric_partner = geometric_partner,
+      geometric_partner = (None if i_geometric is None else
+                           atoms[i_geometric].id_str()),
+      i_geometric_partner = i_geometric,
       n_competing       = n_competing,
       layout_ok         = (e.parent_altloc == "" and
                            h.parent().memory_id() != d.parent().memory_id() and
-                           h.parent().altloc != "" and _hd_only(h.parent()) and
-                           d.parent().altloc != "" and _hd_only(d.parent())),
+                           h.parent().altloc != "" and
+                           ag_hd_only(h.parent()) and
+                           d.parent().altloc != "" and
+                           ag_hd_only(d.parent())),
       occ_sum           = occ_sum,
       b_diff            = h.b - d.b,
       uij_diff          = uij_diff,
@@ -337,10 +384,10 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
         d_near_h = _distance(atoms[near_h], atoms[id_])
         if near_d != id_ and d_near_d <= _SAME_SITE_RADIUS and \
            d_near_d < d_name - _NAME_MISMATCH_MARGIN:
-          geometric = atoms[near_d].id_str()
+          geometric = near_d
         elif near_h != ih and d_near_h <= _SAME_SITE_RADIUS and \
            d_near_h < d_name - _NAME_MISMATCH_MARGIN:
-          geometric = atoms[near_h].id_str()
+          geometric = near_h
         pairs.append(candidate(ih, id_, geometric is not None, geometric,
                                n_competing))
     # leftovers by position, same site only: one isotope per site on a
@@ -351,7 +398,7 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
       ih, id_ = min(((a, b) for a in lh for b in ld),
                     key=lambda p: _distance(atoms[p[0]], atoms[p[1]]))
       if _distance(atoms[ih], atoms[id_]) > _SAME_SITE_RADIUS: break
-      pairs.append(candidate(ih, id_, True, atoms[id_].id_str(), 0))
+      pairs.append(candidate(ih, id_, True, id_, 0))
       lh.remove(ih)
       ld.remove(id_)
     for i in lh + ld:
@@ -359,8 +406,9 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
       collision = False
       if atom.element.strip().upper() == "D":
         nn = normalized_name(atom)
-        collision = any(a.name == nn for a in atom.parent().atoms()
-                        if a.memory_id() != atom.memory_id())
+        # another atom of its atom_group has that name
+        collision = ag_name_count(atom.parent(), nn) - \
+          (1 if atom.name == nn else 0) > 0
       singles.append(group_args(atom_key=info[i][0], atom_id=atom.id_str(),
         element=atom.element.strip().upper(), i_seq=i,
         parent_id=info[i][1].parent_id, name_collision=collision))
@@ -401,7 +449,9 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
         if not (other_ag.altloc == ag.altloc or other_ag.altloc == "" or
                 ag.altloc == ""):
           continue
-        for other in other_ag.atoms():
+        other_atoms = other_ag.atoms()
+        for k in range(other_atoms.size()):
+          other = other_atoms[k]
           j = index[other.memory_id()]
           if (j != i and j in info and info[j][1].status == "ok" and
               other.element.strip().upper() != element and
@@ -411,10 +461,10 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
         if partner is not None: break
     if partner is not None:
       same_conformer.append(group_args(atom_key=key, atom_id=atom.id_str(),
-        partner_id=partner.id_str()))
+        i_seq=i, partner_id=partner.id_str()))
     else:
       unresolved.append(group_args(atom_key=key, atom_id=atom.id_str(),
-        status=e.status, source=e.source))
+        i_seq=i, status=e.status, source=e.source))
   return group_args(pairs=pairs, singles=singles, unresolved=unresolved,
     different_parents=different_parents, same_conformer=same_conformer)
 

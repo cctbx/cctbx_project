@@ -60,15 +60,22 @@ def placed_by_library():
   o.run()
   return xyz_by_name(o.get_model().get_hierarchy())
 
+_placed = []
+def placed_by_reduce2():
+  """the approach=place run, shared by the first two tests (read only)"""
+  if not _placed:
+    _placed.append(run_reduce2("tst_reduce2_place_1", ["approach=place"]))
+  return _placed[0]
+
 def test_place_is_place_hydrogens():
-  placed = run_reduce2("tst_reduce2_place_1", ["approach=place"])
+  placed = placed_by_reduce2()
   ref = placed_by_library()
   assert sorted(placed.keys()) == sorted(ref.keys())
   for key in ref:
     assert approx_equal(placed[key], ref[key], eps=2e-3), key
 
 def test_add_optimizes():
-  placed = run_reduce2("tst_reduce2_place_2", ["approach=place"])
+  placed = placed_by_reduce2()
   added = run_reduce2("tst_reduce2_place_3", ["approach=add"])
   moved = [key for key in placed if key in added and
     max(abs(a-b) for a, b in zip(placed[key], added[key])) > 0.01]

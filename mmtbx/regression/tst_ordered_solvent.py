@@ -168,6 +168,30 @@ def exercise_water_maps_from_working_reflections():
     assert approx_equal(m._get_real_map(map_type=map_type),
       ref.real_map_unpadded())
 
+def exercise_added_solvent_extends_torsion_flags():
+  """
+  New solvent must extend the torsion-angle refinement flags (present with
+  simulated_annealing_torsion) like the other per-atom flags, otherwise the
+  next model.select() fails on the short array.
+  """
+  from mmtbx.refinement import refinement_flags
+  model = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(source_info=None, lines=pdb_str.splitlines()))
+  model.setup_scattering_dictionaries(scattering_table="wk1995")
+  n = model.size()
+  model.set_refinement_flags(refinement_flags.manager(
+    individual_sites     = True,
+    torsion_angles       = True,
+    sites_individual     = flex.bool(n, True),
+    sites_torsion_angles = flex.bool(n, True)))
+  sites_frac = flex.vec3_double([(0.40, 0.40, 0.40), (0.60, 0.60, 0.60)])
+  params = ordered_solvent.master_params().extract()
+  ordered_solvent.add_solvent_to_model_inplace(
+    sites=sites_frac, model=model, params=params)
+  sta = model.refinement_flags.sites_torsion_angles
+  assert list(sta) == [True]*model.size(), (list(sta), model.size())
+  model.select(flex.bool(model.size(), True))
+
 # Gln-Asn-Tyr with H atoms
 peptide_h_str = """\
 ATOM      1  N   GLN A   1      17.191   7.640  11.852  1.00 10.38           N
@@ -430,6 +454,7 @@ def run():
   exercise_added_solvent_merges_into_existing_chain()
   exercise_added_solvent_water_chain_not_last()
   exercise_water_maps_from_working_reflections()
+  exercise_added_solvent_extends_torsion_flags()
   exercise_filter_by_distance_h()
   exercise_no_duplicate_water_h_restraints()
   exercise_build_h()

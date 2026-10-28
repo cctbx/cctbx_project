@@ -9,25 +9,26 @@ from iotbx.cli_parser import run_program
 from mmtbx.programs import reduce2
 
 # Asp-Glu: Asp -1, Glu -1, N-terminal NH3+ +1, C-terminal COO- -1 -> -2
+# 1ywf A 128-129, centred in the box
 pdb_str_neg = """\
 CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
-ATOM      1  N   ASP A   1       5.000   5.000   5.000  1.00 10.00           N
-ATOM      2  CA  ASP A   1       6.458   5.000   5.000  1.00 10.00           C
-ATOM      3  C   ASP A   1       7.009   6.420   5.000  1.00 10.00           C
-ATOM      4  O   ASP A   1       6.251   7.390   5.000  1.00 10.00           O
-ATOM      5  CB  ASP A   1       6.994   4.250   3.780  1.00 10.00           C
-ATOM      6  CG  ASP A   1       8.510   4.250   3.780  1.00 10.00           C
-ATOM      7  OD1 ASP A   1       9.120   4.900   4.650  1.00 10.00           O
-ATOM      8  OD2 ASP A   1       9.080   3.580   2.890  1.00 10.00           O
-ATOM      9  N   GLU A   2       8.330   6.540   5.000  1.00 10.00           N
-ATOM     10  CA  GLU A   2       8.960   7.850   5.000  1.00 10.00           C
-ATOM     11  C   GLU A   2      10.470   7.700   5.000  1.00 10.00           C
-ATOM     12  O   GLU A   2      11.000   6.600   5.000  1.00 10.00           O
-ATOM     13  CB  GLU A   2       8.520   8.640   6.240  1.00 10.00           C
-ATOM     14  CG  GLU A   2       8.950  10.100   6.250  1.00 10.00           C
-ATOM     15  CD  GLU A   2       8.500  10.850   7.490  1.00 10.00           C
-ATOM     16  OE1 GLU A   2       7.910  10.220   8.390  1.00 10.00           O
-ATOM     17  OE2 GLU A   2       8.740  12.070   7.560  1.00 10.00           O
+ATOM      1  N   ASP A   1       9.580   7.432   8.699  1.00 37.74           N
+ATOM      2  CA  ASP A   1      10.692   8.369   8.630  1.00 38.33           C
+ATOM      3  C   ASP A   1      10.828   9.231   9.884  1.00 37.17           C
+ATOM      4  O   ASP A   1      11.938   9.511  10.322  1.00 36.50           O
+ATOM      5  CB  ASP A   1      10.625   9.197   7.354  1.00 39.43           C
+ATOM      6  CG  ASP A   1      11.281   8.467   6.194  1.00 43.72           C
+ATOM      7  OD1 ASP A   1      10.549   7.831   5.406  1.00 49.92           O
+ATOM      8  OD2 ASP A   1      12.531   8.382   6.067  1.00 51.10           O
+ATOM      9  N   GLU A   2       9.691   9.552  10.506  1.00 36.16           N
+ATOM     10  CA  GLU A   2       9.668  10.262  11.762  1.00 35.61           C
+ATOM     11  C   GLU A   2      10.374   9.397  12.850  1.00 34.61           C
+ATOM     12  O   GLU A   2      11.228   9.895  13.566  1.00 33.43           O
+ATOM     13  CB  GLU A   2       8.215  10.575  12.185  1.00 35.86           C
+ATOM     14  CG  GLU A   2       7.535  11.724  11.472  1.00 39.43           C
+ATOM     15  CD  GLU A   2       8.237  13.046  11.659  1.00 43.81           C
+ATOM     16  OE1 GLU A   2       8.519  13.430  12.812  1.00 45.30           O
+ATOM     17  OE2 GLU A   2       8.508  13.706  10.637  1.00 49.24           O
 END
 """
 
@@ -215,6 +216,57 @@ def test_qmready_no_cryst1():
   names = [a.name.strip() for a in inp.construct_hierarchy().atoms()]
   assert 'OXT' in names
 
+def ccd_ligand_pdb(code, center):
+  """heavy atoms of a CCD entry, ideal coordinates centred at center, chain C"""
+  from mmtbx.chemical_components import get_cif_dictionary
+  atoms = [a for a in get_cif_dictionary(code)["_chem_comp_atom"]
+           if a.type_symbol != "H"]
+  sites = [[float(v) for v in (a.pdbx_model_Cartn_x_ideal,
+    a.pdbx_model_Cartn_y_ideal, a.pdbx_model_Cartn_z_ideal)] for a in atoms]
+  mean = [sum(s[k] for s in sites) / len(sites) for k in range(3)]
+  lines = []
+  for i, (a, s) in enumerate(zip(atoms, sites)):
+    xyz = [v - m + c for v, m, c in zip(s, mean, center)]
+    name = a.atom_id if len(a.atom_id) == 4 else " " + a.atom_id
+    lines.append("HETATM%5d %-4s %3s C   1    %8.3f%8.3f%8.3f  1.00 20.00"
+      "          %2s" % (900 + i, name, code, xyz[0], xyz[1], xyz[2],
+      a.type_symbol))
+  return "\n".join(lines) + "\n"
+
+def pdb_1yjp_with_ccd_ligand(code, box=30.0):
+  """
+  1yjp (protein and water) and a CCD ligand side by side in a P1 box: in 1yjp's
+  cell (b = 4.9 A) the ligand overlaps its own copies and the protein. Closest
+  ligand-protein contact 11 A, closest copies 8.7 A (BGM, 6EM).
+  """
+  from mmtbx.regression.reduce2_neutron_utils import pdb_1yjp
+  lines = [l for l in pdb_1yjp.splitlines() if l.startswith(("ATOM", "HETATM"))]
+  sites = [[float(l[30:38]), float(l[38:46]), float(l[46:54])] for l in lines]
+  mean = [sum(s[k] for s in sites) / len(sites) for k in range(3)]
+  shift = [c - m for c, m in zip((box/2, box/4, box/2), mean)]
+  out = ["CRYST1%9.3f%9.3f%9.3f  90.00  90.00  90.00 P 1" % (box, box, box)]
+  for l, s in zip(lines, sites):
+    out.append("%s%8.3f%8.3f%8.3f%s" % (l[:30],
+      s[0] + shift[0], s[1] + shift[1], s[2] + shift[2], l[54:]))
+  return ("\n".join(out) + "\n" + ccd_ligand_pdb(code,
+    center=(box/2, 3*box/4, box/2)) + "END\n")
+
+def test_qmready_ccd_only_ligand():
+  # BGM and 6EM: in neither the monomer library nor GeoStd. The charge step
+  # had only the user CIFs, not reduce2's CCD objects, and stopped: "Number
+  # of atoms with unknown nonbonded energy type symbols". 1yjp is neutral
+  # (NH3+, COO-); BGM: 0, all 13 CCD H incl. HOP2/HOP3; 6EM: +1 on N4
+  for i, code, n_h, charge in ((8, "BGM", 13, 0), (9, "6EM", 17, 1)):
+    prefix = "tst_reduce2_qmready_charge_%d" % i
+    model_text = pdb_1yjp_with_ccd_ligand(code)
+    r = run(model_text, prefix, expected_files=[
+      prefix + "H_charge%d.pdb" % charge, prefix + "H_charge%d.txt" % charge],
+      extra_args=["qmready=True"])
+    assert r.total_charge == charge, (code, r.total_charge)
+    h = [a for a in r.model.get_hierarchy().atoms()
+         if a.parent().resname.strip() == code and a.element_is_hydrogen()]
+    assert len(h) == n_h, (code, len(h))
+
 if __name__ == "__main__":
   test_qmready_negative_charge()
   test_qmready_positive_charge()
@@ -223,4 +275,5 @@ if __name__ == "__main__":
   test_no_qmready_no_charge()
   test_qmready_chain_breaks()
   test_qmready_no_cryst1()
+  test_qmready_ccd_only_ligand()
   print("OK")

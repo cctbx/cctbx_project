@@ -385,6 +385,24 @@ double OptimizerC::scoreAtomCached(iotbx::pdb::hierarchy::atom const& a, unsigne
   }
 }
 
+boost::python::tuple OptimizerC::GetExcludedDotsSize() const
+{
+  size_t dots = 0;
+  std::map< std::pair<unsigned, unsigned>, scitbx::af::shared<molprobity::probe::Point> >::const_iterator it;
+  for (it = m_excludedDots.begin(); it != m_excludedDots.end(); ++it) {
+    dots += it->second.size();
+  }
+  return boost::python::make_tuple(m_excludedDots.size(), dots);
+}
+
+double OptimizerC::scorePose(molprobity::reduce::PositionReturn& states, unsigned index,
+  unsigned dotCacheOffset)
+{
+  setMoverState(states, index);
+  return m_preferenceMagnitude * states.preferenceEnergies[index]
+    + scorePosition(states, index, dotCacheOffset);
+}
+
 double OptimizerC::scorePosition(molprobity::reduce::PositionReturn& states, unsigned index,
   unsigned dotCacheOffset)
 {
@@ -933,9 +951,9 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
 
     for (size_t i = 0; i < fine.positions.size(); i++) {
       infoString += setMoverState(fine, i);
-      // Add a 1000 offset to the index to distinguish fine scores from coarse scores.
-      // No coarse object should have more than 100 orientations, so this should be safe.
-      scores[i] += scorePosition(fine, i, 100000);
+      // Offset the index to distinguish fine poses from coarse ones and from the fine
+      // poses around other coarse positions.
+      scores[i] += scorePosition(fine, i, fineDotCacheOffset(coarseLoc));
       if (m_verbosity >= 5) {
         std::ostringstream oss;
         oss << "     Mover score at fine orientation " << i << " = " << roundToTwoDigits(scores[i]) << "\n";
@@ -980,8 +998,94 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
     }
   }
 
+  // A Mover may report how many of its leading coarse positions are primary; the others
+  // (near-acceptor angles of a single-Hydrogen rotator) can win the coarse step although a
+  // primary position would have ended higher after its own fine search.
+  if (PyObject_HasAttrString(mover.ptr(), "NumPrimaryCoarsePositions")) {
+    unsigned numPrimary = boost::python::extract<unsigned>(mover.attr("NumPrimaryCoarsePositions")());
+    if (coarseLoc >= numPrimary) {
+      infoString += refineBestPrimary(mover, coarse, numPrimary);
+      maxScore = m_highScores[mover.ptr()];
+    }
+  }
+
   // Return the result
   return boost::python::make_tuple(maxScore, infoString);
+}
+
+std::string OptimizerC::refineBestPrimary(boost::python::object const& mover,
+  molprobity::reduce::PositionReturn& coarse, unsigned numPrimary)
+{
+  std::string infoString;
+  unsigned coarseLoc = m_coarseLocations[mover.ptr()];
+  int fineLoc = m_fineLocations[mover.ptr()];
+
+  // The best primary coarse position, on fresh full objectives.
+  unsigned primary = 0;
+  double primaryScore = 0;
+  for (unsigned i = 0; i < numPrimary; i++) {
+    double score = scorePose(coarse, i, 0);
+    if ((i == 0) || (score > primaryScore)) {
+      primary = i;
+      primaryScore = score;
+    }
+  }
+
+  // Both anchors and all of their fine poses, the current anchor first. A fine index
+  // of -1 is the anchor itself.
+  std::vector<unsigned> anchors;
+  std::vector<int> fineIndices;
+  std::vector<double> scores;
+  unsigned anchorList[2] = { coarseLoc, primary };
+  for (unsigned k = 0; k < 2; k++) {
+    unsigned anchor = anchorList[k];
+    anchors.push_back(anchor);
+    fineIndices.push_back(-1);
+    scores.push_back((k == 0) ? scorePose(coarse, anchor, 0) : primaryScore);
+    molprobity::reduce::PositionReturn fine =
+      boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("FinePositions")(anchor));
+    for (unsigned i = 0; i < fine.positions.size(); i++) {
+      anchors.push_back(anchor);
+      fineIndices.push_back(static_cast<int>(i));
+      scores.push_back(scorePose(fine, i, fineDotCacheOffset(anchor)));
+    }
+  }
+
+  // The pose the Mover is in and the best one; a switch needs a strictly higher score.
+  size_t current = 0;
+  size_t best = 0;
+  for (size_t i = 0; i < scores.size(); i++) {
+    if ((anchors[i] == coarseLoc) && (fineIndices[i] == fineLoc)) {
+      current = i;
+    }
+    if (scores[i] > scores[best]) {
+      best = i;
+    }
+  }
+  size_t chosen = (scores[best] > scores[current]) ? best : current;
+
+  // Put the Mover into the chosen pose through the usual state-setting path.
+  if (fineIndices[chosen] < 0) {
+    setMoverState(coarse, anchors[chosen]);
+  } else {
+    molprobity::reduce::PositionReturn fine =
+      boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("FinePositions")(anchors[chosen]));
+    setMoverState(fine, fineIndices[chosen]);
+  }
+  if (chosen != current) {
+    m_coarseLocations[mover.ptr()] = anchors[chosen];
+    m_fineLocations[mover.ptr()] = fineIndices[chosen];
+    m_highScores[mover.ptr()] = scores[chosen];
+  }
+  if (m_verbosity >= 3) {
+    std::ostringstream oss;
+    oss << "   Refined best primary coarse orientation " << primary
+      << ": best score " << roundToTwoDigits(scores[best])
+      << " vs " << roundToTwoDigits(scores[current]) << " at the current pose; "
+      << ((chosen != current) ? "switching" : "keeping current") << "\n";
+    infoString += oss.str();
+  }
+  return infoString;
 }
 
 boost::python::tuple OptimizerC::OptimizeCliqueCoarse(

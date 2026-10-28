@@ -1061,8 +1061,7 @@ def exercise_convert_atom():
     element="MG",
     charge=2,
     residue_name="MG",
-    initial_occupancy=0.99,
-    chain_id='X')
+    initial_occupancy=0.99)
   mol.set_anomalous_scatterer_groups(
       [anomalous_scatterer_group(
           iselection=flex.size_t([4]),
@@ -1089,6 +1088,85 @@ def exercise_convert_atom():
   # assert mol.update_anomalous_groups(out=null_out()) # not needed because select() processed groups correctly
   isel = mol.get_anomalous_scatterer_groups()[0].iselection
   assert list(isel) == [3]
+
+def exercise_convert_atom_and_clean_up_ions():
+  """
+  Waters converted to ions stay in their chain without renaming the chain,
+  and clean_up_ions then moves only the ions to ion_chain_id, keeping their
+  site symmetry, altlocs and restraints.
+  """
+  import mmtbx.f_model
+  from mmtbx.ions.build import clean_up_ions
+  from libtbx import group_args
+  pdb_str = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1 2 1
+ATOM      1  N   GLY A   1       5.000   5.000   5.000  1.00 10.00           N
+ATOM      2  CA  GLY A   1       6.450   5.000   5.000  1.00 10.00           C
+ATOM      3  C   GLY A   1       6.950   6.400   5.000  1.00 10.00           C
+ATOM      4  O   GLY A   1       6.200   7.370   5.000  1.00 10.00           O
+HETATM    5  O   HOH A   2       0.000  12.000   0.000  1.00 10.00           O
+HETATM    6  O  AHOH A   3      12.000  12.000  12.000  0.50 10.00           O
+HETATM    7  O  BHOH A   3      15.000  15.000  15.000  0.50 10.00           O
+HETATM    8  O   HOH A   4      10.000  16.000  15.000  1.00 10.00           O
+END
+"""
+  mol = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(lines=pdb_str, source_info=None),
+    log = null_out())
+  mol.process(make_restraints=True)
+  mol.setup_scattering_dictionaries(scattering_table="n_gaussian", d_min=2.5)
+  n_ions = mol.selection("segid ION").count(True)
+  assert n_ions == 0, n_ions
+  for i_seq in [4, 5, 6]:
+    mol.convert_atom(i_seq=i_seq, scattering_type="Ca2+", atom_name="CA",
+      element="CA", charge=2, residue_name="CA", segid="ION",
+      refine_adp="isotropic", refine_occupancies=False)
+  mol._restore_scattering_dictionaries()
+  ca_gaussian = mol.get_xray_structure().scattering_type_registry(
+    ).gaussian("Ca2+").parameters()
+  chain_ids = [c.id for c in mol.get_hierarchy().chains()]
+  assert chain_ids == ["A"], chain_ids
+  n_ions = mol.selection("segid ION").count(True)
+  assert n_ions == 3, n_ions
+  ci = mol.get_restraints_manager().geometry.conformer_indices
+  ci_altlocs = list(ci.select(flex.size_t([5, 6])))
+  # refinement changes the ions in the xray structure only
+  xrs = mol.get_xray_structure()
+  assert xrs.site_symmetry_table().is_special_position(4)
+  xrs.scatterers()[4].occupancy = 0.8
+  sites_cart = xrs.sites_cart()
+  sites_cart[5] = (12.5, 12, 12)
+  xrs.set_sites_cart(sites_cart)
+  xrs.scatterers()[5].fdp = 1.5
+  fmodel = mmtbx.f_model.manager(
+    f_obs          = abs(xrs.structure_factors(d_min=2.5).f_calc()),
+    xray_structure = xrs)
+  mol = clean_up_ions(fmodel=fmodel, model=mol,
+    params=group_args(ion_chain_id="X", refine_ion_occupancies=False))
+  residues = [(c.id, rg.resseq.strip(), rg.atom_groups()[0].resname)
+    for c in mol.get_hierarchy().chains() for rg in c.residue_groups()]
+  assert residues == [("A","1","GLY"), ("A","4","HOH"), ("X","1","CA"),
+    ("X","2","CA")], residues
+  atoms = mol.get_hierarchy().atoms()
+  altlocs = [atoms[i].parent().altloc for i in [5, 6, 7]]
+  assert altlocs == ["", "A", "B"], altlocs
+  xrs = mol.get_xray_structure()
+  assert xrs.site_symmetry_table().is_special_position(5)
+  assert approx_equal(xrs.scatterers()[5].weight(), 0.4)
+  sc = xrs.scatterers()[6]
+  assert sc.scattering_type == "Ca2+", sc.scattering_type
+  assert sc.label == atoms[6].id_str(), (sc.label, atoms[6].id_str())
+  assert approx_equal(sc.fdp, 1.5)
+  assert approx_equal(xrs.scattering_type_registry().gaussian("Ca2+"
+    ).parameters(), ca_gaussian)
+  assert approx_equal(atoms[6].xyz, (12.5, 12, 12))
+  geometry = mol.get_restraints_manager().geometry
+  ci = list(geometry.conformer_indices.select(flex.size_t([6, 7])))
+  assert ci == ci_altlocs, (ci, ci_altlocs)
+  nb_types = list(geometry.nonbonded_types[5:])
+  assert nb_types == ["CA"]*3, nb_types
+  nb_charges = list(geometry.nonbonded_charges[5:])
+  assert nb_charges == [2]*3, nb_charges
 
 pdb_file_exercise_h_counts="""
 CRYST1    8.228   11.366   10.991  90.00  90.00  90.00 P 1
@@ -1611,6 +1689,7 @@ def run():
   exercise_3()
   exercise_4()
   exercise_convert_atom()
+  exercise_convert_atom_and_clean_up_ions()
   exercise_h_counts()
   exercise_5()
   exercise_6()

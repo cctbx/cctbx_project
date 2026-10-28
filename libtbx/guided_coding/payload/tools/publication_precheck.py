@@ -76,11 +76,35 @@ def select_block(blocks, name):
     if name is None:
         if len(blocks) != 1:
             fail("several repositories; name one with --repository")
-        return blocks[0]
+        return check_record_remote(blocks[0])
     for block in blocks:
         if block["repository"] == name:
-            return block
+            return check_record_remote(block)
     fail(f"repository not in outgoing record: {name}")
+
+
+def record_remote_problem(block):
+    """The record's remote name and URL are passed to git (`fetch`, `ls-remote`), so a value
+    starting with "-" would be read as a git option (for example --upload-pack, which runs a
+    command). The name is held to the rule `outgoing` applies to it; the URL may not look like
+    an option, contain whitespace, or name a remote helper. The reason a block fails, or None."""
+    remote, url = block["remote"], block["remote_url"]
+    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9._-]*", remote) or remote in (".", ".."):
+        return f"the outgoing record's remote must be a configured remote name: {remote}"
+    if url.startswith("-") or any(c.isspace() for c in url):
+        return f"the outgoing record's remote_url is not a plain URL: {url}"
+    # A remote-helper URL (<transport>::<address>) runs a helper program; ext:: runs any
+    # command when git allows it. A publication remote never needs one.
+    if re.match(r"[A-Za-z][A-Za-z0-9+.-]*::", url):
+        return f"the outgoing record's remote_url names a remote helper (<transport>::), not a plain URL: {url}"
+    return None
+
+
+def check_record_remote(block):
+    problem = record_remote_problem(block)
+    if problem:
+        fail(problem)
+    return block
 
 
 def check_destinations(repo, block, notes=None):
@@ -665,6 +689,10 @@ def carry_over_lines(repos_words, reviewed, outgoing, fetch=False):
         return lines + [f"CARRYOVER REFUSED: {refusal}"], False
     except (ValueError, OSError) as error:
         return lines + [f"CARRYOVER REFUSED: {error}"], False
+    problems = [problem for block in list(old_blocks.values()) + list(new_blocks.values())
+                for problem in [record_remote_problem(block)] if problem]
+    if problems:   # before any git call, as in check and confirm
+        return lines + [f"CARRYOVER REFUSED: {problems[0]}"], False
     refusals = []
     for name in sorted(new_blocks):
         try:

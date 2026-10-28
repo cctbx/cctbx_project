@@ -1137,8 +1137,10 @@ class AutoQueueChecks(unittest.TestCase):
         self.jobs.write_text(json.dumps(JOBS))
         self.criterion = self.tmp / "criterion.txt"
         self.criterion.write_text("Criterion one: the tool exits 0.\n")
-        self.repo = self.tmp / "repo"
-        self.repo.mkdir()
+        # Revision 20: the candidate repository is the allowed source directory itself, so
+        # that the default probes (self.src, self.src / "build") name a path inside it and a
+        # run binds the candidate checkout (readiness needs that binding).
+        self.repo = self.src
         if GIT:  # Revision 16: without git, a test skips when it first needs the repository
             self.git("init", "-q")
             self.git("config", "user.name", "Test Writer")
@@ -4126,25 +4128,41 @@ class AutoQueueChecks(unittest.TestCase):
 
     # ---- Revision 11: every repository in the packet, queue id ------------------
 
-    def two_repository_beta(self):
-        """BETA Testing with a passing current run on a candidate of two repositories;
-        returns (candidate id as printed by `candidate`, tree 1, tree 2)."""
+    def other_repository(self, name):
+        """A git repository `name` with one commit, inside the allowed root (Revision 20: so
+        that a probe may name it); returns (path, commit, tree)."""
         if not GIT:
             self.skipTest(GIT_SKIP)  # Revision 16
-        second = self.tmp / "repo2"
-        second.mkdir()
+        other = self.src.parent / name
+        other.mkdir()
         for args in (("init", "-q"), ("config", "user.name", "Test Writer"),
                      ("config", "user.email", "test@example.invalid"),
                      ("config", "commit.gpgsign", "false")):
-            subprocess.run(["git", "-C", str(second), *args], env=self.env, check=True,
+            subprocess.run(["git", "-C", str(other), *args], env=self.env, check=True,
                            capture_output=True)
-        (second / "other.txt").write_text("other\n")
+        (other / "other.txt").write_text(name + "\n")
         for args in (("add", "other.txt"), ("commit", "-q", "-m", "other")):
-            subprocess.run(["git", "-C", str(second), *args], env=self.env, check=True,
+            subprocess.run(["git", "-C", str(other), *args], env=self.env, check=True,
                            capture_output=True)
-        tree2 = subprocess.run(["git", "-C", str(second), "rev-parse", "HEAD^{tree}"],
-                               env=self.env, check=True, text=True,
-                               capture_output=True).stdout.strip()
+        commit, tree = subprocess.run(["git", "-C", str(other), "rev-parse", "HEAD",
+                                       "HEAD^{tree}"], env=self.env, check=True, text=True,
+                                      capture_output=True).stdout.split()
+        return other, commit, tree
+
+    def two_repository_beta(self, third=None):
+        """BETA Testing with a passing current run on a candidate of two repositories;
+        returns (candidate id as printed by `candidate`, tree 1, tree 2).
+        Revision 20: the run's probe names a path in each repository (readiness needs the
+        run bound to every candidate repository); with `third` (a list), a third repository
+        is made, its (path, commit, tree) appended to `third`, and the probe names it too,
+        but it is not part of the recorded candidate."""
+        if not GIT:
+            self.skipTest(GIT_SKIP)  # Revision 16
+        second, _, tree2 = self.other_repository("repo2")
+        named = [self.src / "build", second]
+        if third is not None:
+            third.append(self.other_repository("repo3"))
+            named.append(third[-1][0])
         self.ok(self.tool("lock", "take"))
         self.ok(self.tool("criterion", BETA, "--file", self.criterion))
         printed = self.ok(self.tool("candidate", BETA, "--repo", self.repo, "--commit", "HEAD",
@@ -4156,7 +4174,8 @@ class AutoQueueChecks(unittest.TestCase):
         self.ok(self.set(BETA, "Preparing"))
         self.start_worker(BETA)
         self.ok(self.set(BETA, "Testing"))
-        self.ok(self.run_cmd(BETA, "unit"))
+        self.ok(self.run_cmd(BETA, "unit", probe="; ".join("echo " + shlex.quote(str(path))
+                                                          for path in named)))
         return entry["candidate_id"], self.tree(), tree2
 
     def identity_refused(self, packet, reason):
@@ -4214,15 +4233,16 @@ class AutoQueueChecks(unittest.TestCase):
         hand (same candidate id, so runs stay current): the row is no longer passed
         and Approved is refused (8) with the every-repository reason; with the record
         restored, Approved is accepted."""
-        identity, tree1, tree2 = self.two_repository_beta()
+        third = []  # Revision 20: a real third repository, bound by the run
+        identity, tree1, tree2 = self.two_repository_beta(third=third)
         self.ok(self.ready(BETA, "--packet", self.packet(tree1, candidate_id=identity,
                                                          trees=[tree1, tree2])))
         path = self.queue / "QUEUE.json"
         original = path.read_text()
         data = json.loads(original)
         entry = job_entry(data, BETA)
-        entry["candidate"].append({"repo": str(self.tmp / "repo3"), "commit": "c" * 40,
-                                   "tree": "a" * 40})
+        (repo3, commit3, tree3), = third
+        entry["candidate"].append({"repo": str(repo3), "commit": commit3, "tree": tree3})
         temp = path.with_name("QUEUE.json.hand")
         temp.write_text(json.dumps(data))
         os.replace(temp, path)
@@ -5770,6 +5790,417 @@ print("NORMALIZED " + out.stdout.split()[0])
                 self.assertNotEqual(first, second, "a widened signature range hid a code change")
                 self.assertIn("LC_CODE_SIGNATURE not masked", note)
                 self.assertEqual(first, sha256_file(one))  # compared byte for byte
+
+
+    # ---- Revision 20: the latest current run of each required check decides ------
+
+    def new_run(self, before):
+        """The id (file stem) of the one run record not in `before`."""
+        (stem,) = set(self.runs()) - set(before)
+        return stem
+
+    def latest_refused(self, job, stem, label, why=None, packet=None):
+        """Ready for approval is refused (8) naming the latest run `stem` of `label` (and
+        `why` when given); the job stays Testing."""
+        result = self.ready(job, "--packet", packet or self.packet(self.tree()))
+        self.refused(result, 8)
+        self.assertIn(f"latest run {stem} for required check {label} did not pass", result.stderr)
+        if why:
+            self.assertIn(why, result.stderr)
+        self.assertEqual(self.state(job), "Testing")
+        return result
+
+    def craft_run(self, record, name, **fields):
+        """A run record written by the test: a copy of `record` (same `started` second)
+        under the run id and file name `name`, with `fields` changed."""
+        crafted = dict(record, run_id=name, **fields)
+        path = self.queue / "runs" / f"{name}.json"
+        path.write_text(json.dumps(crafted))
+        return path
+
+    def test_rev20_pass_then_fail_refused(self):
+        """Revision 20 (decisive): a passing run and then a failing run of the same check,
+        same candidate and criterion: Ready for approval is refused (8) and the refusal
+        names the check and the later run (`latest run RUN for required check unit did
+        not pass (exit 1)`). Before revision 20 any earlier passing run was enough."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        self.ok(self.run_cmd(BETA, "unit"))
+        before = self.runs()
+        self.assertEqual(self.run_cmd(BETA, "unit", code=1).returncode, 1)
+        failed = self.new_run(before)
+        result = self.latest_refused(BETA, failed, "unit")
+        self.assertIn(f"latest run {failed} for required check unit did not pass (exit 1)",
+                      result.stderr)
+
+    def test_rev20_fail_then_pass_accepted(self):
+        """Revision 20: a failing run and then a passing run of the same check: the later
+        pass decides and Ready for approval is accepted (rerun recovery); the earlier
+        failure stays in the run records."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        self.assertEqual(self.run_cmd(BETA, "unit", code=1).returncode, 1)
+        failed = self.new_run({})
+        self.latest_refused(BETA, failed, "unit", "(exit 1)")
+        self.ok(self.run_cmd(BETA, "unit"))
+        self.ok(self.ready(BETA, "--packet", self.packet(self.tree())))
+        self.assertIn("local checks passed", self.result_cell(self.report(), BETA))
+        self.assertEqual(self.runs()[failed]["exit_code"], 1)
+
+    def test_rev20_pass_then_not_started_interrupted_or_timed_out_refused(self):
+        """Revision 20: after a passing run, a later run of the same check that did not
+        complete decides and refuses Ready for approval, naming it: `not started` (a
+        failing probe), `interrupted` (the wrapper got SIGTERM; CMD exits 0) and `timed
+        out` (the time limit). Each time a passing rerun comes first."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        with self.subTest(status="not started"):
+            self.ok(self.run_cmd(BETA, "unit"))
+            before = self.runs()
+            probe = "echo " + shlex.quote(str(self.src)) + "; exit 4"
+            self.refused(self.run_cmd(BETA, "unit", probe=probe), 7)
+            stem = self.new_run(before)
+            self.assertEqual(self.runs()[stem]["status"], "not started")
+            self.latest_refused(BETA, stem, "unit", "not started")
+        with self.subTest(status="interrupted"):
+            self.ok(self.run_cmd(BETA, "unit"))
+            before = self.runs()
+            cmd, ready, _ = self.wait_cmd("exit0")
+            proc = self.popen_run(BETA, cmd)
+            stem, _ = self.wait_record(set(before))
+            self.wait_for(ready.exists, "the trap to be installed")
+            os.kill(proc.pid, signal.SIGTERM)
+            proc.wait(TIMEOUT)
+            self.assertEqual(self.runs()[stem]["status"], "interrupted")
+            self.latest_refused(BETA, stem, "unit", "interrupted")
+        with self.subTest(status="timed out"):
+            self.ok(self.run_cmd(BETA, "unit"))
+            before = self.runs()
+            result = self.run_cmd(BETA, "unit", cmd=sleep_cmd(30), extra=("--timeout", "2"))
+            self.assertEqual(result.returncode, 124, result.stdout + result.stderr)
+            stem = self.new_run(before)
+            self.assertEqual(self.runs()[stem]["status"], "timed out")
+            self.latest_refused(BETA, stem, "unit", "timed out")
+        self.ok(self.run_cmd(BETA, "unit"))  # control: a passing rerun restores readiness
+        self.ok(self.ready(BETA, "--packet", self.packet(self.tree())))
+
+    def test_rev20_stale_failure_does_not_decide(self):
+        """Revision 20: a pass, then a failure (refused); the criterion changes, which
+        makes both stale; a passing rerun under the new criterion is the only current
+        run and Ready for approval is accepted."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        self.ok(self.run_cmd(BETA, "unit"))
+        before = self.runs()
+        self.assertEqual(self.run_cmd(BETA, "unit", code=1).returncode, 1)
+        self.latest_refused(BETA, self.new_run(before), "unit", "(exit 1)")
+        self.criterion.write_text("Criterion two: the tool exits 0 and says so.\n")
+        self.ok(self.tool("criterion", BETA, "--file", self.criterion))
+        self.assertTrue(all(r["stale"] is True for r in self.runs().values()))
+        self.ok(self.run_cmd(BETA, "unit"))
+        self.ok(self.ready(BETA, "--packet", self.packet(self.tree())))
+
+    def test_rev20_sequence_orders_runs_not_file_names(self):
+        """Revision 20: each run record gets a sequence number under the queue lock, one
+        more than the highest in the queue; the highest sequence decides, not the file
+        name or `started`. Two passing runs, then a failing record written by the test
+        (same `started` second): with a file name that sorts first but the highest
+        sequence it is refused, naming it; with a file name that sorts last but a lower
+        sequence than the latest pass it is accepted."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        self.ok(self.run_cmd(BETA, "unit"))
+        self.ok(self.run_cmd(BETA, "unit"))
+        runs = self.runs()
+        first, second = sorted(runs.values(), key=lambda record: record["sequence"])
+        self.assertIsInstance(first["sequence"], int)
+        self.assertEqual(second["sequence"], first["sequence"] + 1)
+        early = self.craft_run(second, f"00000000T000000Z-{BETA}-1",
+                               sequence=second["sequence"] + 1, exit_code=1)
+        self.assertLess(early.stem, min(runs))
+        self.latest_refused(BETA, early.stem, "unit", "(exit 1)")
+        early.unlink()
+        late = self.craft_run(second, f"99999999T999999Z-{BETA}-1",
+                              sequence=first["sequence"], exit_code=1)
+        self.assertGreater(late.stem, max(runs))
+        self.ok(self.ready(BETA, "--packet", self.packet(self.tree())))
+
+    def test_rev20_two_checks_only_the_failed_one_named(self):
+        """Revision 20: ALPHA requires unit and build. With unit passing and build's latest
+        run failed, Ready for approval is refused naming build and its run, not unit;
+        the other way round it names unit; with both latest runs passing it is accepted."""
+        self.prepare(ALPHA)
+        self.ok(self.set(ALPHA, "Testing"))
+        self.ok(self.run_cmd(ALPHA, "unit"))
+        self.ok(self.run_cmd(ALPHA, "build"))
+        before = self.runs()
+        self.assertEqual(self.run_cmd(ALPHA, "build", code=2).returncode, 2)
+        result = self.latest_refused(ALPHA, self.new_run(before), "build", "(exit 2)")
+        self.assertNotIn("required check unit", result.stderr)
+        self.ok(self.run_cmd(ALPHA, "build"))
+        before = self.runs()
+        self.assertEqual(self.run_cmd(ALPHA, "unit", code=3).returncode, 3)
+        result = self.latest_refused(ALPHA, self.new_run(before), "unit", "(exit 3)")
+        self.assertNotIn("required check build", result.stderr)
+        self.ok(self.run_cmd(ALPHA, "unit"))
+        self.ok(self.ready(ALPHA, "--packet", self.packet(self.tree())))
+
+    def test_rev20_binding_dirty_moved_or_other_tree_refused(self):
+        """Revision 20: the run must be bound to the candidate: the helper reads, itself,
+        the Git checkout of each tested path just before CMD starts and when it ends.
+        Refused, each naming the run: a tracked file changed at the start; HEAD at
+        another tree than the candidate's; CMD committing a change during the run (HEAD
+        moved, end check); CMD changing a tracked file during the run. Control: clean
+        and at the candidate tree, accepted."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        candidate = self.git("rev-parse", "HEAD")
+        edit = ("import subprocess, sys\n"
+                "open(sys.argv[1] + '/file.txt', 'w').write('changed during the run\\n')\n"
+                "if sys.argv[2] == 'commit':\n"
+                "    subprocess.run(['git', '-C', sys.argv[1], 'commit', '-q', '-am', 'moved'],"
+                " check=True)\n")
+        with self.subTest(case="dirty at the start"):
+            (self.repo / "file.txt").write_text("local edit\n")
+            before = self.runs()
+            self.ok(self.run_cmd(BETA, "unit"))
+            self.latest_refused(BETA, self.new_run(before), "unit", "not bound to the candidate")
+            self.git("checkout", "--", "file.txt")
+        with self.subTest(case="HEAD at another tree"):
+            self.commit("second")
+            before = self.runs()
+            self.ok(self.run_cmd(BETA, "unit"))
+            self.latest_refused(BETA, self.new_run(before), "unit", "not bound to the candidate")
+            self.git("reset", "-q", "--hard", candidate)
+        for mode in ("commit", "edit"):
+            with self.subTest(case="changed during the run", mode=mode):
+                before = self.runs()
+                self.ok(self.run_cmd(BETA, "unit", cmd=[sys.executable, "-c", edit,
+                                                        str(self.repo), mode]))
+                if mode == "commit":
+                    self.assertNotEqual(self.git("rev-parse", "HEAD"), candidate)
+                else:
+                    self.assertTrue(self.git("status", "--porcelain", "--untracked-files=no"))
+                self.latest_refused(BETA, self.new_run(before), "unit",
+                                    "not bound to the candidate")
+                self.git("reset", "-q", "--hard", candidate)
+        self.assertEqual(self.git("rev-parse", "HEAD"), candidate)
+        self.ok(self.run_cmd(BETA, "unit"))  # control
+        self.ok(self.ready(BETA, "--packet", self.packet(self.tree())))
+
+    def test_rev20_binding_needs_a_path_in_every_candidate_repository(self):
+        """Revision 20: a probe naming only a directory outside any Git repository (inside
+        the allowed roots) gives a run that cannot be bound: refused, and the record says
+        that path is not in a Git repository. With a candidate of two repositories, a run
+        naming a path in only one is refused; naming both, accepted."""
+        plain = self.src.parent / "plain"
+        plain.mkdir()
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        before = self.runs()
+        self.ok(self.run_cmd(BETA, "unit", probe="echo " + shlex.quote(str(plain))))
+        stem = self.new_run(before)
+        self.latest_refused(BETA, stem, "unit", "not bound to the candidate")
+        for when in ("binding_start", "binding_end"):
+            binding = self.runs()[stem][when]
+            self.assertEqual(binding["repositories"], [])
+            self.assertIn({"path": str(plain), "problem": "not in a Git repository"},
+                          binding["paths"])
+        self.end_worker()
+        identity, tree1, tree2 = self.two_repository_beta()
+        packet = self.packet(tree1, candidate_id=identity, trees=[tree1, tree2])
+        before = self.runs()
+        self.ok(self.run_cmd(BETA, "unit"))  # names a path in the first repository only
+        self.latest_refused(BETA, self.new_run(before), "unit", "not bound to the candidate",
+                            packet=packet)
+        both = "; ".join("echo " + shlex.quote(str(path))
+                         for path in (self.src / "build", self.src.parent / "repo2"))
+        self.ok(self.run_cmd(BETA, "unit", probe=both))
+        self.ok(self.ready(BETA, "--packet", packet))
+
+    def identical_tree_beta(self):
+        """Revision 20, repair 3 (outside reading 1): BETA Testing with a candidate of two
+        repositories whose trees are identical: the fixture's repository and `twin`, a second
+        repository inside the allowed root whose only file has the same name and content.
+        Returns (candidate id, the common tree, twin's path)."""
+        if not GIT:
+            self.skipTest(GIT_SKIP)
+        twin = self.src.parent / "twin"
+        twin.mkdir()
+        for args in (("init", "-q"), ("config", "user.name", "Test Writer"),
+                     ("config", "user.email", "test@example.invalid"),
+                     ("config", "commit.gpgsign", "false")):
+            subprocess.run(["git", "-C", str(twin), *args], env=self.env, check=True,
+                           capture_output=True)
+        (twin / "file.txt").write_bytes((self.repo / "file.txt").read_bytes())
+        for args in (("add", "file.txt"), ("commit", "-q", "-m", "twin")):
+            subprocess.run(["git", "-C", str(twin), *args], env=self.env, check=True,
+                           capture_output=True)
+        self.ok(self.tool("lock", "take"))
+        self.ok(self.tool("criterion", BETA, "--file", self.criterion))
+        printed = self.ok(self.tool("candidate", BETA, "--repo", self.repo, "--commit", "HEAD",
+                                    "--repo", twin, "--commit", "HEAD")).stdout
+        entry = job_entry(self.status(), BETA)
+        trees = [part["tree"] for part in entry["candidate"]]
+        self.assertEqual(trees, [self.tree(), self.tree()])  # identical trees, two repositories
+        self.assertEqual(len({part["repo"] for part in entry["candidate"]}), 2)
+        self.assertIn(entry["candidate_id"], printed)
+        self.ok(self.set(BETA, "Preparing"))
+        self.start_worker(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        return entry["candidate_id"], self.tree(), twin
+
+    def test_rev20_identical_trees_one_checkout_refused(self):
+        """Revision 20, repair 3 (outside reading 1, blocking finding): two candidate
+        repositories with identical trees and a probe naming a path in only one of them.
+        The one clean checkout must not count for both: Ready for approval is refused, naming
+        the run and the candidate repository left unbound (twin). Before the repair one
+        checkout at the tree satisfied every candidate repository with that tree."""
+        identity, tree, twin = self.identical_tree_beta()
+        packet = self.packet(tree, candidate_id=identity, trees=[tree])
+        before = self.runs()
+        self.ok(self.run_cmd(BETA, "unit"))  # names self.src / "build" only
+        stem = self.new_run(before)
+        result = self.latest_refused(BETA, stem, "unit", "not bound to the candidate",
+                                     packet=packet)
+        self.assertIn(f"candidate repository {twin}", result.stderr)
+
+    def test_rev20_identical_trees_two_checkouts_accepted(self):
+        """Revision 20, repair 3 (outside reading 1): two candidate repositories with
+        identical trees and a probe naming a path in each: two distinct clean checkouts at
+        the tree, one for each candidate repository, so Ready for approval is accepted."""
+        identity, tree, twin = self.identical_tree_beta()
+        packet = self.packet(tree, candidate_id=identity, trees=[tree])
+        both = "; ".join("echo " + shlex.quote(str(path)) for path in (self.src / "build", twin))
+        self.ok(self.run_cmd(BETA, "unit", probe=both))
+        (record,) = self.runs().values()
+        for when in ("binding_start", "binding_end"):
+            self.assertEqual(len({r["toplevel"] for r in record[when]["repositories"]}), 2)
+        self.ok(self.ready(BETA, "--packet", packet))
+
+    def test_rev20_records_without_sequence_or_binding_refused(self):
+        """Revision 20: a run record without a sequence number or without either binding
+        (as revision 19 and earlier wrote them) cannot make a job ready; the refusal
+        names the run. Control: the record as written is accepted."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        self.ok(self.run_cmd(BETA, "unit"))
+        (stem, record), = self.runs().items()
+        path = self.queue / "runs" / f"{stem}.json"
+        original = path.read_text()
+        for key in ("sequence", "binding_start", "binding_end"):
+            with self.subTest(missing=key):
+                path.write_text(json.dumps({k: v for k, v in record.items() if k != key}))
+                result = self.ready(BETA, "--packet", self.packet(self.tree()))
+                self.refused(result, 8)
+                self.assertIn(stem, result.stderr)
+                self.assertEqual(self.state(BETA), "Testing")
+        path.write_text(original)
+        self.ok(self.ready(BETA, "--packet", self.packet(self.tree())))
+
+    UNSEQUENCED = ("a rerun does not clear it: record a new criterion or candidate, which marks "
+                   "the earlier runs stale")
+
+    def test_rev20_unsequenced_record_not_cleared_by_rerun(self):
+        """Revision 20, repair 1 (review finding 1): a current run record without a sequence
+        number (as revision 19 wrote them) keeps refusing after a passing rerun, and the
+        refusal names it and says that a rerun does not clear it but a new criterion or
+        candidate does. Control: after a criterion change (the old runs stale) a passing
+        run is accepted."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        self.ok(self.run_cmd(BETA, "unit"))
+        (stem, record), = self.runs().items()
+        path = self.queue / "runs" / f"{stem}.json"
+        path.write_text(json.dumps({k: v for k, v in record.items() if k != "sequence"}))
+        self.ok(self.run_cmd(BETA, "unit"))
+        result = self.ready(BETA, "--packet", self.packet(self.tree()))
+        self.refused(result, 8)
+        self.assertIn(f"run {stem} for required check unit has no sequence number", result.stderr)
+        self.assertIn(self.UNSEQUENCED, result.stderr)
+        self.criterion.write_text("Criterion two: the tool exits 0 after the change.\n")
+        self.ok(self.tool("criterion", BETA, "--file", self.criterion))
+        self.ok(self.run_cmd(BETA, "unit"))
+        self.ok(self.ready(BETA, "--packet", self.packet(self.tree())))
+
+    def test_rev20_binding_ignores_git_repository_variables(self):
+        """Revision 20, repair 1 (review finding 2): `run` started with GIT_DIR and
+        GIT_WORK_TREE naming the candidate repository, and a probe naming a directory
+        outside any Git repository: the binding reads the checkout that contains the path,
+        so the path is recorded as not in a Git repository, no repository is bound and Ready
+        is refused. Control: the same variables with a probe naming a path in the candidate
+        repository are accepted."""
+        plain = self.src.parent / "plain"
+        plain.mkdir()
+        env = {"GIT_DIR": str(self.repo / ".git"), "GIT_WORK_TREE": str(self.repo)}
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        before = self.runs()
+        self.ok(self.run_cmd(BETA, "unit", probe="echo " + shlex.quote(str(plain)), env=env))
+        stem = self.new_run(before)
+        for when in ("binding_start", "binding_end"):
+            binding = self.runs()[stem][when]
+            self.assertEqual(binding["repositories"], [], binding)
+            self.assertIn({"path": str(plain), "problem": "not in a Git repository"},
+                          binding["paths"])
+        self.latest_refused(BETA, stem, "unit", "not bound to the candidate")
+        self.ok(self.run_cmd(BETA, "unit", env=env))  # control
+        self.ok(self.ready(BETA, "--packet", self.packet(self.tree())))
+
+    def test_rev20_tie_or_non_integer_sequence_refused(self):
+        """Revision 20, repair 1 (review finding 6): records written by the test. Two
+        current runs sharing the highest sequence number refuse (`share sequence number`);
+        a current run whose sequence is not an integer (a float, a string, a boolean, null)
+        refuses as having no sequence number. Each refusal names the record. Control: with
+        the crafted record removed, accepted."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        self.ok(self.run_cmd(BETA, "unit"))
+        (stem, record), = self.runs().items()
+        packet = self.packet(self.tree())
+        name = f"99999999T999999Z-{BETA}-1"
+        tie = self.craft_run(record, name)
+        result = self.ready(BETA, "--packet", packet)
+        self.refused(result, 8)
+        self.assertIn(f"runs {stem}, {name} for required check unit share sequence number "
+                      f"{record['sequence']}", result.stderr)
+        tie.unlink()
+        for value in (record["sequence"] + 0.5, str(record["sequence"] + 1), True, None):
+            with self.subTest(sequence=value):
+                crafted = self.craft_run(record, name, sequence=value)
+                result = self.ready(BETA, "--packet", packet)
+                self.refused(result, 8)
+                self.assertIn(f"run {name} for required check unit has no sequence number",
+                              result.stderr)
+                crafted.unlink()
+        self.ok(self.ready(BETA, "--packet", packet))
+
+    def test_rev20_report_and_approved_use_the_latest_run(self):
+        """Revision 20: a Ready job whose latest run (a failing record written by the test,
+        with a higher sequence) did not pass shows `results stale or incomplete` naming
+        that run, with `rerun the affected checks`; Approved is refused (8, `no longer
+        ready`) naming it. Control: with the record removed, Approved is accepted."""
+        self.prepare(BETA)
+        self.ok(self.set(BETA, "Testing"))
+        self.ok(self.run_cmd(BETA, "unit"))
+        self.ok(self.ready(BETA, "--packet", self.packet(self.tree())))
+        (record,) = self.runs().values()
+        crafted = self.craft_run(record, f"99999999T999999Z-{BETA}-1",
+                                 sequence=record["sequence"] + 1, exit_code=1)
+        reason = f"latest run {crafted.stem} for required check unit did not pass (exit 1)"
+        report = self.report()
+        cell = self.result_cell(report, BETA)
+        self.assertIn("results stale or incomplete", cell)
+        self.assertIn(reason, cell)
+        self.assertEqual(self.result_cell(report, BETA, column=2), "rerun the affected checks")
+        quote = f"approve {BETA}"
+        result = self.approve(BETA, quote)
+        self.refused(result, 8)
+        self.assertIn("no longer ready: " + reason, result.stderr)
+        self.assertEqual(self.state(BETA), "Ready for approval")
+        crafted.unlink()
+        self.assertIn("local checks passed", self.result_cell(self.report(), BETA))
+        self.ok(self.approve(BETA, quote))
 
 
 ISO = "%Y-%m-%dT%H:%M:%SZ"

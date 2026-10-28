@@ -638,6 +638,14 @@ class structure_base(object):
     return False
 
 
+def _index_rows(loop, key_list):
+  """Rows of loop (as iterrows yields them) keyed by the tuple of their
+  key_list values; the first row with a given key wins."""
+  index = {}
+  for row in loop.iterrows():
+    index.setdefault(tuple([row[k] for k in key_list]), row)
+  return index
+
 
 class annotation(structure_base):
   def __init__(self, helices=None, sheets=None):
@@ -719,14 +727,24 @@ class annotation(structure_base):
       if len(error_msg_list) > 0:
         msg = "Error in sheet definitions:\n  " + "\n  ".join(error_msg_list)
         raise Sorry(msg)
+      # Index each loop by its key once. find_row scans the whole loop per
+      # call, which made reading an annotation quadratic in its size.
+      range_index = _index_rows(struct_sheet_range_loop,
+          ["_struct_sheet_range.sheet_id", "_struct_sheet_range.id"])
+      order_index = _index_rows(struct_sheet_order_loop,
+          ["_struct_sheet_order.sheet_id", "_struct_sheet_order.range_id_1",
+           "_struct_sheet_order.range_id_2"])
+      hbond_index = _index_rows(struct_sheet_hbond_loop,
+          ["_pdbx_struct_sheet_hbond.sheet_id",
+           "_pdbx_struct_sheet_hbond.range_id_1",
+           "_pdbx_struct_sheet_hbond.range_id_2"])
       for sheet_row in struct_sheet_loop.iterrows():
         sheet_id = sheet_row['_struct_sheet.id']
         # we will count number_of_strands in from_cif_rows
         # number_of_strands = int(sheet_row['_struct_sheet.number_strands'])
         try:
-          sh = pdb_sheet.from_cif_rows(sheet_id,
-              struct_sheet_order_loop, struct_sheet_range_loop,
-              struct_sheet_hbond_loop)
+          sh = pdb_sheet.from_cif_rows(sheet_id, struct_sheet_range_loop,
+              range_index, order_index, hbond_index)
         except ValueError as e:
           print("Bad sheet records.\n", file=log)
         else:
@@ -2690,9 +2708,8 @@ class pdb_sheet(structure_base):
                registrations=registrations)
 
   @classmethod
-  def from_cif_rows(cls, sheet_id,
-            struct_sheet_order_loop, struct_sheet_range_loop,
-            struct_sheet_hbond_loop):
+  def from_cif_rows(cls, sheet_id, struct_sheet_range_loop,
+            range_index, order_index, hbond_index):
     strands = []
     registrations = []
     number_of_strands = 0
@@ -2700,40 +2717,26 @@ class pdb_sheet(structure_base):
     number_of_strands = struct_sheet_range_loop['_struct_sheet_range.sheet_id'].\
         count(sheet_id)
     for i in range(1, number_of_strands+1):
-      f_rows = struct_sheet_range_loop.find_row(kv_dict={
-          '_struct_sheet_range.sheet_id' : sheet_id,
-          '_struct_sheet_range.id' : str(i),
-        })
+      res_range = range_index.get((sheet_id, str(i)))
       if i == 1:
         # the first strand, no sense, no hbond
-        strands.append(pdb_strand.from_cif_dict(f_rows[0], 0))
+        if res_range is None:
+          raise ValueError(
+              "sheet %s: no _struct_sheet_range row with id 1" % sheet_id)
+        strands.append(pdb_strand.from_cif_dict(res_range, 0))
         registrations.append(None)
       else:
         # all the rest
-        res_range = None
-        registration = None
         sense = None
-        if len(f_rows) == 1:
-          res_range = f_rows[0]
-        sense_rows = struct_sheet_order_loop.find_row(kv_dict = {
-            '_struct_sheet_order.sheet_id':sheet_id,
-            '_struct_sheet_order.range_id_1':str(i-1),
-            '_struct_sheet_order.range_id_2':str(i)
-          })
-        if len(sense_rows) >= 1:
+        sense_row = order_index.get((sheet_id, str(i-1), str(i)))
+        if sense_row is not None:
           sense = 0
-          str_sense = sense_rows[0].get('_struct_sheet_order.sense', '.')
+          str_sense = sense_row.get('_struct_sheet_order.sense', '.')
           if str_sense == 'parallel':
             sense = 1
           elif str_sense == 'anti-parallel':
             sense = -1
-        registration_rows = struct_sheet_hbond_loop.find_row(kv_dict = {
-              '_pdbx_struct_sheet_hbond.sheet_id':sheet_id,
-              '_pdbx_struct_sheet_hbond.range_id_1':str(i-1),
-              '_pdbx_struct_sheet_hbond.range_id_2':str(i)
-          })
-        if len(registration_rows) >= 1:
-          registration = registration_rows[0]
+        registration = hbond_index.get((sheet_id, str(i-1), str(i)))
         if (res_range is not None and
             registration is not None and sense is not None):
           strands.append(pdb_strand.from_cif_dict(res_range, sense))

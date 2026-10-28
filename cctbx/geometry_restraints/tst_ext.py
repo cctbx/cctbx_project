@@ -14,7 +14,7 @@ import sys
 from six.moves import range
 from six.moves import zip
 
-def finite_difference_gradients(restraint_type, sites_cart, proxy, unit_cell=None, eps=1.e-8):
+def finite_difference_gradients(restraint_type, sites_cart, proxy, unit_cell=None, eps=1.e-5):
   def residual(restraint_type, sites_cart, proxy, unit_cell):
     if unit_cell is None:
       return restraint_type(
@@ -28,14 +28,16 @@ def finite_difference_gradients(restraint_type, sites_cart, proxy, unit_cell=Non
   result = []
   for i in range(len(sites_cart)):
     result_i = []
+    site = matrix.col(sites_cart[i])
     for j in range(3):
       h = [0,0,0]
       h[j] = eps
       h = matrix.col(h)
-      sites_cart[i]=matrix.col(sites_cart[i]) + h
+      sites_cart[i] = site + h
       qp = residual(restraint_type,sites_cart,proxy,unit_cell)
-      sites_cart[i]=matrix.col(sites_cart[i]) - 2*h
+      sites_cart[i] = site - h
       qm = residual(restraint_type,sites_cart,proxy,unit_cell)
+      sites_cart[i] = site
       dq = (qp-qm)/2.0
       result_i.append(dq/(eps))
     result.append(result_i)

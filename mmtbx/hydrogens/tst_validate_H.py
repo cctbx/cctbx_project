@@ -669,7 +669,7 @@ ATOM     93  H62   A A   3      17.091  -2.744  -3.464  1.00 26.84           H
 ATOM     94  H2    A A   3      16.073  -7.585  -3.310  1.00 27.93           H
 """
 
-def get_results_from_validate_H(neutron_distances, pdb_str):
+def get_validate_H(neutron_distances, pdb_str):
   pdb_interpretation_phil = iotbx.phil.parse(
     input_string = grand_master_phil_str, process_includes = True)
   pi_params = pdb_interpretation_phil.extract()
@@ -688,8 +688,10 @@ def get_results_from_validate_H(neutron_distances, pdb_str):
                  use_neutron_distances = neutron_distances)
   r = c.validate_inputs()
   c.run()
-  results = c.get_results()
-  return results
+  return c
+
+def get_results_from_validate_H(neutron_distances, pdb_str):
+  return get_validate_H(neutron_distances, pdb_str).get_results()
 
 def test_output(results):
   out = validate_H_results(results)
@@ -736,36 +738,45 @@ def exercise():
   for item, answer in zip(hd_atoms_with_occ_0, answer):
     assert(item[0][5:-1] == answer)
 
-  renamed_answer = [('DB2', 'DB3'), ('DB3', 'DB2'),('DB2', 'DB3'),
-    ('DB3', 'DB2'),('DB2', 'DB3'), ('DB3', 'DB2')]
+  # D names that do not match their H partner (report only): (name, name of
+  # the H partner with D)
+  renamed_answer = [('DB2', 'DB3')] * 3 + [('DB3', 'DB2')] * 3
   renamed = results.renamed
-  for entry, answer in zip(renamed, renamed_answer):
-    oldname = entry[2].strip()
-    newname = entry[1].strip()
-    assert(oldname == answer[0])
-    assert(newname == answer[1])
+  assert (len(renamed) == len(renamed_answer))
+  assert (sorted((entry[2].strip(), entry[1].strip()) for entry in renamed)
+          == sorted(renamed_answer))
+  for entry in renamed:
     assert (entry[3] is not None)
 
   assert (results.count_exchanged_sites == 22)
 
+  # H/D without a parent atom: D1 on a water named HOH, D3 on a DOD
+  assert ([e[:4] for e in results.unresolved_hd] == [
+    ('HOH B 5', 'floating', ['D1'], []),
+    ('DOD B 6', 'floating', ['D3'], [])])
+
   hd_sites_analysis  = results.hd_sites_analysis
   sites_different_xyz = hd_sites_analysis.sites_different_xyz
   xyz_answer = [0.0712]
+  assert (len(sites_different_xyz) == len(xyz_answer))
   for item, answer in zip(sites_different_xyz, xyz_answer):
     assert approx_equal(item[2],answer, 1.e-2)
 
   sites_different_b   = hd_sites_analysis.sites_different_b
   b_answer = [-2]
+  assert (len(sites_different_b) == len(b_answer))
   for item, answer in zip(sites_different_b, b_answer):
     assert approx_equal(item[2],answer, 1.e-1)
 
   sites_sum_occ_not_1 = hd_sites_analysis.sites_sum_occ_not_1
   sum_occ_answer=[0.58, 0.9]
+  assert (len(sites_sum_occ_not_1) == len(sum_occ_answer))
   for item, answer in zip(sites_sum_occ_not_1, sum_occ_answer):
     assert approx_equal(item[2], answer, 1.e-2)
 
   sites_occ_sum_no_scattering = hd_sites_analysis.sites_occ_sum_no_scattering
   sum_scatt_answer=[0.4, 0.36]
+  assert (len(sites_occ_sum_no_scattering) == len(sum_scatt_answer))
   for item, answer in zip(sites_occ_sum_no_scattering, sum_scatt_answer):
     assert approx_equal(item[3], answer, 1.e-2)
 
@@ -781,31 +792,27 @@ def exercise():
 # b) The C beta HB2 and HB3 atoms are swapped
 # ------------------------------------------------------------------------------
 def exercise1():
-  renamed_answer = [('DB2', 'DB3')]
+  # both cases list the two D, each with the name of its H partner
+  renamed_answer = [('pdb=" DB2BTYR A 139 "', 'DB2', 'DB3'),
+                    ('pdb=" DB3BTYR A 139 "', 'DB3', 'DB2')]
 
   # DB2 and DB3 swapped
   results1 = get_results_from_validate_H(
     neutron_distances = True,
     pdb_str = pdb_str1a)
 
-  for entry, answer in zip(results1.renamed, renamed_answer):
-    oldname = entry[2].strip()
-    newname = entry[1].strip()
-    assert(oldname == answer[0])
-    assert(newname == answer[1])
-    assert (entry[3] is not None)
-
-  # HB2 and HB3 swapped --> D atoms are renamed
+  # HB2 and HB3 swapped --> the D names are reported
   results2 = get_results_from_validate_H(
     neutron_distances = True,
     pdb_str = pdb_str1b)
 
-  for entry, answer in zip(results1.renamed, renamed_answer):
-    oldname = entry[2].strip()
-    newname = entry[1].strip()
-    assert(oldname == answer[0])
-    assert(newname == answer[1])
-    assert (entry[3] is not None)
+  for results in (results1, results2):
+    assert (len(results.renamed) == len(renamed_answer))
+    for entry, answer in zip(results.renamed, renamed_answer):
+      assert (entry[0] == answer[0])
+      assert (entry[2].strip() == answer[1])
+      assert (entry[1].strip() == answer[2])
+      assert (entry[3] is not None)
 
   test_output(results1)
   test_output(results2)
@@ -829,6 +836,7 @@ def exercise2():
   xyz_answer = [
     ('pdb=" HA ATYR A 139 "', 'pdb=" DA BTYR A 139 "', 0.141),
     ('pdb=" HH ATYR A 139 "', 'pdb=" DH BTYR A 139 "', 0.704)]
+  assert (len(sites_different_xyz) == len(xyz_answer))
   for item, answer in zip(sites_different_xyz, xyz_answer):
     assert approx_equal(item[2],answer[2], 1.e-2)
     assert (item[3] is not None and item[4] is not None) # make sure xyz exist
@@ -837,6 +845,7 @@ def exercise2():
 
   sites_different_b   = hd_sites_analysis.sites_different_b
   b_answer = [('pdb=" HD1ATYR A 139 "', 'pdb=" DD1BTYR A 139 "', -2)]
+  assert (len(sites_different_b) == len(b_answer))
   for item, answer in zip(sites_different_b, b_answer):
     assert approx_equal(item[2],answer[2], 1.e-1)
     assert (item[3] is not None and item[4] is not None) # make sure xyz exist
@@ -845,6 +854,7 @@ def exercise2():
 
   sites_occ_sum_no_scattering = hd_sites_analysis.sites_occ_sum_no_scattering
   sum_scatt_answer=[('pdb=" HH ATYR A 139 "', 'pdb=" DH BTYR A 139 "', 0.6, 0.4)]
+  assert (len(sites_occ_sum_no_scattering) == len(sum_scatt_answer))
   for item, answer in zip(sites_occ_sum_no_scattering, sum_scatt_answer):
     assert approx_equal(item[3], answer[3], 1.e-2)
     assert (item[3] is not None and item[4] is not None) # make sure xyz exist
@@ -871,6 +881,7 @@ def exercise3():
   sum_occ_answer=[
     ('pdb=" HD2ATYR A 139 "', 'pdb=" DD2BTYR A 139 "', 0.9),
     ('pdb=" HE2ATYR A 139 "', 'pdb=" DE2BTYR A 139 "', 1.1)]
+  assert (len(sites_sum_occ_not_1) == len(sum_occ_answer))
   for item, answer in zip(sites_sum_occ_not_1, sum_occ_answer):
     assert approx_equal(item[2], answer[2], 1.e-2)
     assert (item[3] is not None and item[4] is not None) # make sure xyz exist
@@ -1182,6 +1193,398 @@ def exercise_missing_h_nonunique_segid():
 
   test_output(results)
 
+# ------------------------------------------------------------------------------
+# Lys NZ refined as two rotamers (9G98 Lys A 64): HZ1-3 in altloc A, DZ1-3 in
+# altloc B, rotated against each other (same-name H-D about 1.45 A apart).
+# Pairs are positional; each D is listed once in renamed (three entries for
+# the three-atom cycle); the analysis lists use the D's own name.
+# ------------------------------------------------------------------------------
+pdb_str_lys_cycle = """
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+ATOM    772  N   LYS A  64     -38.982   1.161  -6.670  1.00 16.07           N
+ATOM    773  CA  LYS A  64     -38.293   0.988  -7.964  1.00 17.07           C
+ATOM    774  C   LYS A  64     -36.773   1.303  -7.911  1.00 19.32           C
+ATOM    775  O   LYS A  64     -35.974   0.642  -8.565  1.00 16.00           O
+ATOM    776  CB  LYS A  64     -38.982   1.930  -8.958  1.00 15.25           C
+ATOM    777  CG  LYS A  64     -38.907   1.611 -10.369  1.00 26.71           C
+ATOM    778  CD  LYS A  64     -39.577   2.748 -11.212  1.00 31.06           C
+ATOM    779  CE  LYS A  64     -39.754   2.429 -12.727  1.00 37.36           C
+ATOM    780  NZ  LYS A  64     -38.627   1.629 -13.338  1.00 51.33           N
+ATOM    781  D   LYS A  64     -38.761   1.863  -6.241  1.00 18.00           D
+ATOM    782  HA  LYS A  64     -38.416   0.073  -8.274  1.00 17.52           H
+ATOM    783  HB2 LYS A  64     -39.925   1.981  -8.759  1.00 18.09           H
+ATOM    784  HB3 LYS A  64     -38.579   2.808  -8.888  1.00 17.66           H
+ATOM    785  HG2 LYS A  64     -37.975   1.498 -10.599  1.00 20.92           H
+ATOM    786  HG3 LYS A  64     -39.405   0.793 -10.500  1.00 26.26           H
+ATOM    787  HD2 LYS A  64     -40.467   2.915 -10.845  1.00 24.05           H
+ATOM    788  HD3 LYS A  64     -39.024   3.550 -11.146  1.00 26.90           H
+ATOM    789  HE2 LYS A  64     -40.590   1.946 -12.825  1.00 34.55           H
+ATOM    790  HE3 LYS A  64     -39.812   3.268 -13.219  1.00 35.77           H
+ATOM    791  HZ1ALYS A  64     -38.176   2.136 -13.917  0.43 35.11           H
+ATOM    792  HZ2ALYS A  64     -38.064   1.351 -12.706  0.26 31.37           H
+ATOM    793  HZ3ALYS A  64     -38.953   0.921 -13.768  0.13 34.71           H
+ATOM    794  DZ1BLYS A  64     -38.059   1.323 -12.724  0.57 31.52           D
+ATOM    795  DZ2BLYS A  64     -38.983   0.940 -13.764  0.74 34.84           D
+ATOM    796  DZ3BLYS A  64     -38.179   2.135 -13.923  0.87 35.82           D
+"""
+
+def exercise_lys_cycle():
+  c = get_validate_H(neutron_distances = True, pdb_str = pdb_str_lys_cycle)
+  results = c.get_results()
+  # exchanged sites: the positional pairs, not the same-name pairs
+  pairs = sorted((h.id_str(), d.id_str(), h.distance(d))
+                 for h, d in c.hd_exchanged_sites.values())
+  pairs_answer = [
+    ('pdb=" HZ1ALYS A  64 "', 'pdb=" DZ3BLYS A  64 "', 0.007),
+    ('pdb=" HZ2ALYS A  64 "', 'pdb=" DZ1BLYS A  64 "', 0.034),
+    ('pdb=" HZ3ALYS A  64 "', 'pdb=" DZ2BLYS A  64 "', 0.036)]
+  assert (results.count_exchanged_sites == 3)
+  assert (len(pairs) == len(pairs_answer))
+  for item, answer in zip(pairs, pairs_answer):
+    assert (item[:2] == answer[:2])
+    assert approx_equal(item[2], answer[2], 1.e-3)
+    assert (item[2] < 0.5)
+  # each D once: (D, its name, name of its H partner with D)
+  renamed_answer = [
+    ('pdb=" DZ1BLYS A  64 "', 'DZ1', 'DZ2'),
+    ('pdb=" DZ2BLYS A  64 "', 'DZ2', 'DZ3'),
+    ('pdb=" DZ3BLYS A  64 "', 'DZ3', 'DZ1')]
+  assert (len(results.renamed) == len(renamed_answer))
+  for entry, answer in zip(results.renamed, renamed_answer):
+    assert (entry[0] == answer[0])
+    assert (entry[2].strip() == answer[1])
+    assert (entry[1].strip() == answer[2])
+  # different xyz: the positional distances, with the D's own name
+  sites_different_xyz = results.hd_sites_analysis.sites_different_xyz
+  assert (len(sites_different_xyz) == len(pairs_answer))
+  for item, answer in zip(sites_different_xyz, pairs_answer):
+    assert (item[:2] == answer[:2])
+    assert approx_equal(item[2], answer[2], 1.e-3)
+
+  test_output(results)
+
+# ------------------------------------------------------------------------------
+# As above with a D without altloc (9G98 Lys A 185): DZ1 (blank, occupancy
+# 1.0) coincides with HZ3 A; DZ2 B has no H partner and is not listed.
+# ------------------------------------------------------------------------------
+pdb_str_lys_blank_d = """
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+ATOM   2727  N   LYS A 185     -11.197  -3.534 -21.830  1.00 14.60           N
+ATOM   2728  CA  LYS A 185     -10.599  -4.718 -22.471  1.00 19.72           C
+ATOM   2729  C   LYS A 185      -9.245  -4.329 -23.020  1.00 12.75           C
+ATOM   2730  O   LYS A 185      -9.142  -3.321 -23.731  1.00 12.75           O
+ATOM   2731  CB  LYS A 185     -11.442  -5.259 -23.644  1.00 16.58           C
+ATOM   2732  CG  LYS A 185     -10.905  -6.653 -24.110  1.00 33.46           C
+ATOM   2733  CD  LYS A 185     -11.628  -7.287 -25.322  1.00 50.62           C
+ATOM   2734  CE  LYS A 185     -11.586  -8.874 -25.326  1.00 49.19           C
+ATOM   2735  NZ  LYS A 185     -10.225  -9.431 -25.255  1.00 57.80           N
+ATOM   2736  DZ1 LYS A 185      -9.961  -9.650 -26.080  1.00 46.26           D
+ATOM   2737  HA  LYS A 185     -10.437  -5.440 -21.836  1.00 18.55           H
+ATOM   2738  HB2 LYS A 185     -12.358  -5.363 -23.359  1.00 20.57           H
+ATOM   2739  HB3 LYS A 185     -11.410  -4.639 -24.391  1.00 20.33           H
+ATOM   2740  HG2 LYS A 185      -9.980  -6.538 -24.365  1.00 27.02           H
+ATOM   2741  HG3 LYS A 185     -10.963  -7.275 -23.361  1.00 26.66           H
+ATOM   2742  HD2 LYS A 185     -12.557  -6.983 -25.331  1.00 35.07           H
+ATOM   2743  HD3 LYS A 185     -11.182  -6.976 -26.129  1.00 39.51           H
+ATOM   2744  HE2 LYS A 185     -12.066  -9.233 -24.555  1.00 35.09           H
+ATOM   2745  HE3 LYS A 185     -11.973  -9.199 -26.159  1.00 42.44           H
+ATOM   2746  H  ALYS A 185     -11.030  -2.797 -22.244  0.60 16.07           H
+ATOM   2747  HZ2ALYS A 185     -10.184 -10.102 -24.672  0.72 41.66           H
+ATOM   2748  HZ3ALYS A 185      -9.968  -9.728 -26.055  0.41 45.75           H
+ATOM   2749  D  BLYS A 185     -11.016  -2.787 -22.216  0.40 16.20           D
+ATOM   2750  DZ2BLYS A 185      -9.665  -8.828 -24.919  0.28 40.43           D
+ATOM   2751  DZ3BLYS A 185     -10.221 -10.148 -24.721  0.59 41.82           D
+"""
+
+def exercise_lys_blank_d():
+  c = get_validate_H(neutron_distances = True, pdb_str = pdb_str_lys_blank_d)
+  results = c.get_results()
+  pairs = sorted((h.id_str(), d.id_str(), h.distance(d))
+                 for h, d in c.hd_exchanged_sites.values())
+  pairs_answer = [
+    ('pdb=" H  ALYS A 185 "', 'pdb=" D  BLYS A 185 "', 0.033),
+    ('pdb=" HZ2ALYS A 185 "', 'pdb=" DZ3BLYS A 185 "', 0.077),
+    ('pdb=" HZ3ALYS A 185 "', 'pdb=" DZ1 LYS A 185 "', 0.082)]
+  assert (results.count_exchanged_sites == 3)
+  assert (len(pairs) == len(pairs_answer))
+  for item, answer in zip(pairs, pairs_answer):
+    assert (item[:2] == answer[:2])
+    assert approx_equal(item[2], answer[2], 1.e-3)
+  renamed_answer = [
+    ('pdb=" DZ1 LYS A 185 "', 'DZ1', 'DZ3'),
+    ('pdb=" DZ3BLYS A 185 "', 'DZ3', 'DZ2')]
+  assert (len(results.renamed) == len(renamed_answer))
+  for entry, answer in zip(results.renamed, renamed_answer):
+    assert (entry[0] == answer[0])
+    assert (entry[2].strip() == answer[1])
+    assert (entry[1].strip() == answer[2])
+  sites_different_xyz = results.hd_sites_analysis.sites_different_xyz
+  assert (len(sites_different_xyz) == len(pairs_answer))
+  for item, answer in zip(sites_different_xyz, pairs_answer):
+    assert (item[:2] == answer[:2])
+    assert approx_equal(item[2], answer[2], 1.e-3)
+
+  test_output(results)
+
+# ------------------------------------------------------------------------------
+# The shared H/D matcher raises a Sorry: validation does not stop, the H/D
+# pairs are not analyzed and the note says why
+# ------------------------------------------------------------------------------
+def exercise_pairing_sorry():
+  from libtbx.utils import Sorry
+  from mmtbx.hydrogens import hd_exchange
+  def broken(*args, **kwargs):
+    raise Sorry("broken matcher")
+  original = hd_exchange.find_hd_candidates
+  hd_exchange.find_hd_candidates = broken
+  try:
+    results = get_results_from_validate_H(
+      neutron_distances = True,
+      pdb_str = pdb_str)
+  finally:
+    hd_exchange.find_hd_candidates = original
+  assert (results.hd_pairing_note == "broken matcher")
+  assert (results.count_exchanged_sites is None)
+  assert (results.hd_sites_analysis is None)
+  assert (results.renamed == [])
+  # the rest of the validation ran
+  assert (results.overall_counts_hd.count_h == 42)
+  out = validate_H_results(results)
+  from six.moves import cStringIO as StringIO
+  log = StringIO()
+  out.print_results(prefix='  ', log=log)
+  assert ("broken matcher" in log.getvalue())
+  # default
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str)
+  assert (results.hd_pairing_note is None)
+
+# ------------------------------------------------------------------------------
+# Analyses (V3): Lys and Ser (reduce2 hd_and_h), the HC4 ligand, a water with
+# an H/D pair.
+# Occupancy: Lys NZ at 0.6 with HZ1/DZ1 0.3 + 0.3 (sum = parent), HZ2/DZ2
+# 0.3 + 0.7 (sum 1), HZ3/DZ3 0.2 + 0.2 (flagged); backbone H/D 0.5 + 0.4 on a
+# full parent (flagged). Two-decimal occupancies (tolerance 0.01): HC4 O4' at
+# 0.67 with HO4'/DO4' 0.34 + 0.34, Ser N (full) with H/D 0.37 + 0.64 (not
+# flagged).
+# Cancellation: Ser OG at 0.5, HG 0.32 and DG 0.18 at one position: H is 0.64
+# of the pair's total (flagged; not by the old absolute rule).
+# Scope: the HC4 pair is analysed, the water pair is not.
+# ------------------------------------------------------------------------------
+pdb_str_v3 = """
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+ATOM      1  N   LYS A  11       8.858   8.273   7.062  1.00  6.20           N
+ATOM      2  CA  LYS A  11      10.223   8.199   7.494  1.00  6.13           C
+ATOM      3  C   LYS A  11      10.782   6.775   7.278  1.00  5.87           C
+ATOM      4  O   LYS A  11      10.098   5.780   7.511  1.00  7.52           O
+ATOM      5  CB  LYS A  11      10.324   8.551   8.974  1.00  8.59           C
+ATOM      6  CG  LYS A  11      10.032  10.045   9.174  1.00 13.51           C
+ATOM      7  CD  LYS A  11      10.125  10.356  10.654  1.00 23.56           C
+ATOM      8  CE  LYS A  11      10.068  11.852  10.892  1.00 30.54           C
+ATOM      9  NZ  LYS A  11      10.150  11.965  12.433  0.60 40.48           N
+ATOM     10  HA  LYS A  11      10.820   8.907   6.920  1.00  6.13           H
+ATOM     11  HB2 LYS A  11       9.595   7.971   9.540  1.00  8.59           H
+ATOM     12  HB3 LYS A  11      11.330   8.338   9.335  1.00  8.59           H
+ATOM     13  HG2 LYS A  11      10.766  10.645   8.636  1.00 13.51           H
+ATOM     14  HG3 LYS A  11       9.028  10.281   8.822  1.00 13.51           H
+ATOM     15  HD2 LYS A  11       9.290   9.890  11.177  1.00 23.56           H
+ATOM     16  HD3 LYS A  11      11.069   9.979  11.047  1.00 23.56           H
+ATOM     17  HE2 LYS A  11      10.913  12.360  10.427  1.00 30.54           H
+ATOM     18  HE3 LYS A  11       9.132  12.276  10.528  1.00 30.54           H
+ATOM     19  H  ALYS A  11       8.196   7.811   7.685  0.50  6.20           H
+ATOM     20  HZ1ALYS A  11      11.038  11.544  12.774  0.30 40.48           H
+ATOM     21  HZ2ALYS A  11      10.119  12.965  12.719  0.30 40.48           H
+ATOM     22  HZ3ALYS A  11       9.350  11.464  12.869  0.20 40.48           H
+ATOM     23  D  BLYS A  11       8.196   7.811   7.685  0.40  6.20           D
+ATOM     24  DZ1BLYS A  11      11.038  11.544  12.774  0.30 40.48           D
+ATOM     25  DZ2BLYS A  11      10.119  12.965  12.719  0.70 40.48           D
+ATOM     26  DZ3BLYS A  11       9.350  11.464  12.869  0.20 40.48           D
+ATOM     27  N   SER B   2      25.751  11.412  10.135  1.00 12.44           N
+ATOM     28  CA  SER B   2      25.691  10.109   9.559  1.00 11.44           C
+ATOM     29  C   SER B   2      24.919  10.064   8.248  1.00  6.38           C
+ATOM     30  O   SER B   2      25.072   9.064   7.551  1.00  6.10           O
+ATOM     31  CB  SER B   2      25.081   9.088  10.495  1.00 16.20           C
+ATOM     32  OG  SER B   2      23.794   9.422  10.779  0.50 20.92           O
+ATOM     33  HA  SER B   2      26.728   9.836   9.363  1.00 11.44           H
+ATOM     34  HB2 SER B   2      25.099   8.109  10.017  1.00 16.20           H
+ATOM     35  HB3 SER B   2      25.656   9.062  11.420  1.00 16.20           H
+ATOM     36  H  ASER B   2      25.026  11.618  10.822  0.37 12.44           H
+ATOM     37  HG ASER B   2      23.581  10.297  10.392  0.32 20.92           H
+ATOM     38  D  BSER B   2      25.026  11.618  10.822  0.64 12.44           D
+ATOM     39  DG BSER B   2      23.581  10.297  10.392  0.18 20.92           D
+HETATM   40  C1  HC4 C 169       6.826  22.215  11.120  1.00  2.51           C
+HETATM   41  C1' HC4 C 169       9.516  24.709  10.292  1.00  3.50           C
+HETATM   42  C2  HC4 C 169       7.629  23.097  10.332  1.00  3.66           C
+HETATM   43  C2' HC4 C 169      10.290  25.581  11.072  1.00  7.24           C
+HETATM   44  C3  HC4 C 169       8.504  23.951  10.910  1.00  4.10           C
+HETATM   45  C3' HC4 C 169      11.352  26.317  10.535  1.00  7.06           C
+HETATM   46  C4' HC4 C 169      11.649  26.156   9.173  1.00  6.80           C
+HETATM   47  C5' HC4 C 169      10.873  25.298   8.377  1.00  7.54           C
+HETATM   48  C6' HC4 C 169       9.811  24.592   8.938  1.00  4.60           C
+HETATM   49  O1  HC4 C 169       6.968  22.015  12.345  1.00  5.58           O
+HETATM   50  O4' HC4 C 169      12.653  26.814   8.596  0.67  7.92           O
+HETATM   51  H2  HC4 C 169       7.509  23.054   9.260  1.00  3.66           H
+HETATM   52  H3  HC4 C 169       8.430  24.079  11.980  1.00  4.10           H
+HETATM   53  H2' HC4 C 169      10.063  25.692  12.122  1.00  7.24           H
+HETATM   54  H3' HC4 C 169      11.925  26.990  11.156  1.00  7.06           H
+HETATM   55  H5' HC4 C 169      11.105  25.189   7.328  1.00  7.54           H
+HETATM   56  H6' HC4 C 169       9.218  23.950   8.304  1.00  4.60           H
+HETATM   57 HO4'AHC4 C 169      12.838  27.647   9.078  0.34  7.92           H
+HETATM   58 DO4'BHC4 C 169      12.838  27.647   9.078  0.34  7.92           D
+HETATM   59  O   HOH D   1      25.000  25.000  25.000  1.00 20.00           O
+HETATM   60  H2  HOH D   1      24.760  25.927  25.000  1.00 20.00           H
+HETATM   61  H1 AHOH D   1      25.957  25.000  25.000  0.50 20.00           H
+HETATM   62  D1 BHOH D   1      25.957  25.000  25.000  0.50 20.00           D
+END
+"""
+
+def exercise_v3_analyses():
+  c = get_validate_H(neutron_distances = True, pdb_str = pdb_str_v3)
+  results = c.get_results()
+  a = results.hd_sites_analysis
+  # scope: protein and ligand pairs, no water pair
+  pairs = sorted((h.id_str(), d.id_str()) for h, d in
+                 c.hd_exchanged_sites.values())
+  assert (results.count_exchanged_sites == 7)
+  assert ('pdb="HO4\'AHC4 C 169 "', 'pdb="DO4\'BHC4 C 169 "') in pairs
+  assert not [p for p in pairs if 'HOH' in p[0]]
+  # occupancy: neither 1 nor the parent occupancy; entries carry the parent
+  # occupancy, xyz last
+  occ_answer = [
+    ('pdb=" H  ALYS A  11 "', 'pdb=" D  BLYS A  11 "', 0.9, 1.0),
+    ('pdb=" HZ3ALYS A  11 "', 'pdb=" DZ3BLYS A  11 "', 0.4, 0.6)]
+  sites_sum_occ_not_1 = a.sites_sum_occ_not_1
+  assert (len(sites_sum_occ_not_1) == len(occ_answer))
+  for item, answer in zip(sites_sum_occ_not_1, occ_answer):
+    assert (len(item) == 6)
+    assert (item[:2] == answer[:2])
+    assert approx_equal(item[2], answer[2], 1.e-3)
+    assert approx_equal(item[3], answer[3], 1.e-3)
+    assert (item[4] is not None and item[5] is not None)
+  # every analysed pair has its parent occupancy
+  parent_occ = dict((c.hd_exchanged_sites[i][0].id_str(), p)
+                    for i, p in c.hd_parent_occ.items())
+  assert (sorted(parent_occ) == sorted(p[0] for p in pairs))
+  assert approx_equal(parent_occ['pdb=" HZ1ALYS A  11 "'], 0.6)
+  assert approx_equal(parent_occ['pdb=" HG ASER B   2 "'], 0.5)
+  assert approx_equal(parent_occ['pdb="HO4\'AHC4 C 169 "'], 0.67)
+  assert approx_equal(parent_occ['pdb=" H  ASER B   2 "'], 1.0)
+  # cancellation: fraction of the pair's total
+  scatt = a.sites_occ_sum_no_scattering
+  assert (len(scatt) == 1)
+  assert (scatt[0][:2] == ('pdb=" HG ASER B   2 "', 'pdb=" DG BSER B   2 "'))
+  assert approx_equal(scatt[0][2:4], (0.32, 0.18))
+  # (the old rule, absolute 0.64 / 0.36, does not flag it)
+  assert (abs(0.32 - 0.64) > 0.05)
+  # modelled only as H (D): non-water H (D) in no pair
+  atoms = c.pdb_hierarchy.atoms()
+  paired = set()
+  for h, d in c.hd_exchanged_sites.values(): paired.update([h.i_seq, d.i_seq])
+  def only(element):
+    return len([x for x in atoms if x.element.strip() == element and
+      x.parent().resname != 'HOH' and x.i_seq not in paired])
+  assert (a.count_h_only == only('H') == 18)
+  assert (a.count_d_only == only('D') == 0)
+  # GUI table: parent occupancy column before the None
+  out = validate_H_results(results)
+  table = out.export_sites_sum_occ_for_wxGUI()
+  assert ([row[2:5] for row in table] == [[0.9, 1.0, None], [0.4, 0.6, None]])
+  # results saved by older versions: no parent occupancy, counts from protein
+  from libtbx import group_args
+  old = group_args(**results.__dict__)
+  old.hd_sites_analysis = group_args(
+    sites_different_xyz = a.sites_different_xyz,
+    sites_different_b = a.sites_different_b,
+    sites_sum_occ_not_1 = [x[:3] + x[4:] for x in a.sites_sum_occ_not_1],
+    sites_occ_sum_no_scattering = a.sites_occ_sum_no_scattering)
+  out_old = validate_H_results(old)
+  assert ([row[3] for row in out_old.export_sites_sum_occ_for_wxGUI()] ==
+          ['', ''])
+  test_output(old)
+  test_output(results)
+
+# ------------------------------------------------------------------------------
+# H/D without a parent atom (V4): a ligand without restraints (code 01, not
+# in the monomer library or the CCD) with H and D: one entry for the residue
+# ------------------------------------------------------------------------------
+pdb_str_unresolved = """
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1  C1   01 A   1      10.000  10.000  10.000  1.00 20.00           C
+HETATM    2  O1   01 A   1      11.432  10.000  10.000  1.00 20.00           O
+HETATM    3  H11  01 A   1       9.640  11.020  10.000  1.00 20.00           H
+HETATM    4  H12  01 A   1       9.640   9.490  10.880  1.00 20.00           H
+HETATM    5  H13  01 A   1       9.640   9.490   9.120  1.00 20.00           H
+HETATM    6  DO1  01 A   1      11.750  10.900  10.000  1.00 20.00           D
+END
+"""
+
+def exercise_v4_unresolved():
+  from libtbx import group_args
+  from mmtbx.hydrogens.validate_H import unresolved_hd_entries, \
+    unresolved_hd_text
+  from six.moves import cStringIO as StringIO
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str_unresolved)
+  assert (len(results.unresolved_hd) == 1)
+  resid, reason, names, partners, xyz = results.unresolved_hd[0]
+  assert ((resid, reason, partners) == ('01 A 1', 'floating', []))
+  # in the processed model's order
+  assert (names == ['DO1', 'H11', 'H12', 'H13'])
+  assert approx_equal(xyz, (11.750, 10.900, 10.000))
+  assert (unresolved_hd_text(results.unresolved_hd[0]) ==
+    '01 A 1: 4 H/D atoms with no bonded atom in the restraints '
+    '(DO1, H11, H12, H13)')
+  out = validate_H_results(results)
+  assert (out.export_unresolved_hd_for_wxGUI() == [['01 A 1',
+    'DO1 H11 H12 H13', 'no bonded atom in the restraints', None, xyz]])
+  log = StringIO()
+  out.print_results(prefix='', log=log)
+  assert ('01 A 1: 4 H/D atoms with no bonded atom' in log.getvalue())
+  test_output(results)
+  # grouping (per residue and reason) and an ambiguous parent, on
+  # constructed entries; at most 10 names per line
+  h = iotbx.pdb.input(source_info=None,
+    lines=pdb_str_unresolved).construct_hierarchy()
+  from mmtbx.hydrogens import hd_exchange
+  keys = dict((a.name.strip(), k) for a, k in
+              zip(h.atoms(), hd_exchange.atom_keys(h)))
+  ids = dict((a.name.strip(), a.id_str()) for a in h.atoms())
+  index = dict((a.name.strip(), i) for i, a in enumerate(h.atoms()))
+  unresolved = [
+    group_args(atom_key=keys['DO1'], atom_id=ids['DO1'], i_seq=index['DO1'],
+      status='ambiguous', source=[
+        (ids['O1'], 'covalent geometry', 0.98, None),
+        (ids['C1'], 'edits', 1.1, None)]),
+    group_args(atom_key=keys['H11'], atom_id=ids['H11'], i_seq=index['H11'],
+      status='floating', source=[]),
+    group_args(atom_key=keys['H12'], atom_id=ids['H12'], i_seq=index['H12'],
+      status='floating', source=[])]
+  entries = unresolved_hd_entries(h, unresolved)
+  # in hierarchy order of the first atom of each entry
+  order = [a.name.strip() for a in h.atoms()]
+  expected = sorted([('01 A 1', 'floating', ['H11', 'H12'], []),
+    ('01 A 1', 'ambiguous', ['DO1'], ['O1', 'C1'])],
+    key=lambda e: order.index(e[2][0]))
+  assert ([e[:4] for e in entries] == expected)
+  ambiguous = [e for e in entries if e[1] == 'ambiguous'][0]
+  assert (unresolved_hd_text(ambiguous) == '01 A 1: 1 H/D atom bonded to '
+    'several atoms in the restraints (DO1): O1, C1')
+  many = ('X A 2', 'floating', ['H%d' % i for i in range(12)], [], None)
+  assert unresolved_hd_text(many).endswith('(H0, H1, H2, H3, H4, H5, H6, '
+    'H7, H8, H9, ...)')
+  # results saved by older versions: no unresolved_hd
+  old = group_args(**results.__dict__)
+  del old.__dict__['unresolved_hd']
+  assert (validate_H_results(old).export_unresolved_hd_for_wxGUI() == [])
+  test_output(old)
+  # matcher not run (H only): None
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str4)
+  assert (results.unresolved_hd is None)
+
 def run():
   exercise()
   exercise1()
@@ -1198,6 +1601,11 @@ def run():
   exercise12()
   exercise_hd_state()
   exercise_missing_h_nonunique_segid()
+  exercise_lys_cycle()
+  exercise_lys_blank_d()
+  exercise_pairing_sorry()
+  exercise_v3_analyses()
+  exercise_v4_unresolved()
 
 if (__name__ == "__main__"):
   t0 = time.time()

@@ -15,6 +15,7 @@ try:
   tst_list.append("$D/regression/tst_b_plot.py")
   _gui_tst_list = [
     "$D/regression/tst_headless_construct.py",
+    "$D/regression/tst_heavy_atoms.py",
     "$D/regression/tst_process_control.py",
   ]
   if sys.platform in ("darwin", "win32"):

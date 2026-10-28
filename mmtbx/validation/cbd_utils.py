@@ -65,19 +65,73 @@ class radial_deviation:
   def __ge__(self, other):
     return self.r >= other.r
 
+def get_table_resname(resname, use_parent_for_modified_residues=False):
+  """Residue name used to choose the phi/psi table: the name itself for
+  standard amino acids and, if use_parent_for_modified_residues, the parent
+  amino acid from iotbx.pdb.modified_aa_names for other residues. None if
+  the residue isn't corrected, which includes the D-amino acids."""
+  from iotbx.pdb import common_residue_names_get_class
+  if common_residue_names_get_class(resname) == 'common_amino_acid':
+    return resname
+  if not use_parent_for_modified_residues: return None
+  from iotbx.pdb.aa_utils import get_aa_parent
+  return get_aa_parent(resname)
+
+min_neighbours_for_fill = 3
+
+def _wrap(angle):
+  return (angle + 180) % 360 - 180
+
+def get_neighbour_correction(table, key, min_neighbours=min_neighbours_for_fill):
+  """Mean correction vector of the populated bins among the 8 neighbours of
+  a (phi, psi) bin, as (r, t in radians) like the table values. None if
+  fewer than min_neighbours are populated. 180 and -180 are the same angle
+  and the tables can have either key."""
+  sx = sy = 0.
+  n = 0
+  for dphi in (-10, 0, 10):
+    for dpsi in (-10, 0, 10):
+      if dphi == dpsi == 0: continue
+      phi = _wrap(key[0]+dphi)
+      psi = _wrap(key[1]+dpsi)
+      for k in [(phi, psi),
+                (180 if phi==-180 else phi, psi),
+                (phi, 180 if psi==-180 else psi),
+                (180 if phi==-180 else phi, 180 if psi==-180 else psi)]:
+        entry = table.get(k, None)
+        if entry: break
+      if not entry: continue
+      sx += entry[0]*cos(entry[1])
+      sy += entry[0]*sin(entry[1])
+      n += 1
+  if n < min_neighbours: return None
+  sx /= n
+  sy /= n
+  return (sqrt(sx*sx + sy*sy), atan2(sy, sx))
+
 def get_phi_psi_correction(result,
                            residue,
                            phi_psi,
                            display_phi_psi_correction=False,
+                           use_parent_for_modified_residues=False,
+                           fill_empty_phi_psi_bins=False,
                            verbose=False):
   rc = None
+  resname = get_table_resname(residue.resname,
+    use_parent_for_modified_residues=use_parent_for_modified_residues)
+  if resname is None: return rc
   key = (round_to_ten(phi_psi[0]), round_to_ten(phi_psi[1]))
-  if residue.resname=='PRO':
-    correction = PRO_phi_psi.get(key, None)
-  elif residue.resname in ['VAL', 'THR', 'ILE']:
-    correction = VAL_THR_ILE_phi_psi.get(key, None)
+  if resname=='PRO':
+    table = PRO_phi_psi
+  elif resname in ['VAL', 'THR', 'ILE']:
+    table = VAL_THR_ILE_phi_psi
   else:
-    correction = others_phi_psi.get(key, None)
+    table = others_phi_psi
+  correction = table.get(key, None)
+  # filling only helps residues with positive phi; elsewhere the neighbour
+  # estimate makes the deviations slightly worse on average
+  if not correction and fill_empty_phi_psi_bins and 0 < phi_psi[0] < 150:
+    correction = get_neighbour_correction(table, key)
   if correction:
     correction = radial_deviation(*tuple(correction), input_in_radians=True)
     current = radial_deviation(result.deviation, result.dihedral)

@@ -327,9 +327,9 @@ class ncs_aware_refinement(object):
         mmtbx.refinement.utils.two_group_selections_per_residue(model)
     else:
       assert self.group_mode is None
+    b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
     if self.group_mode is not None:
       #
-      b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
       if(flex.max(b_isos)<1.e-2):
         b_isos = flex.random_double(model.size())*10
         model.set_b_iso(values = b_isos)
@@ -360,9 +360,14 @@ class ncs_aware_refinement(object):
         print("r_work (start): %6.4f rms_B_bonded: %s"%(fmodel.r_work(),
           rmsb), file=log)
       rw = self.restraints_weight
-      if(rw is not None):
+      if(rw is not None and rw > 0): # None, 0 or negative: no restraints
+        b_start = b_isos # start of every tightening pass, never the result
         flipped = False
         for it in range(1,20):
+          # after a tightening pass restart from b_start (tg normalizes there)
+          if(flipped):
+            fmodel.xray_structure.set_b_iso(values = b_start)
+            fmodel.update_xray_structure(update_f_calc = True)
           x = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
           lower = flex.double(x.size(), 0)
           upper = flex.double(x.size(), flex.max(x)*2)
@@ -373,32 +378,33 @@ class ncs_aware_refinement(object):
             bound_flags       = flex.int(x.size(), 2),
             lower_bound       = lower,
             upper_bound       = upper)
-          rw_prev = rw
           b_isos_prev = b_isos
           rms_b_prev = model.rms_b_iso_or_b_equiv()
-          m = scitbx.minimizers.lbfgs(
+          scitbx.minimizers.lbfgs(
             mode='lbfgsb', max_iterations=100, calculator=calculator)
           b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
           model.set_b_iso(values = b_isos)
           if(rms_b_prev is not None):
             rms_b = model.rms_b_iso_or_b_equiv()
+            if(log is not None):
+              print(
+                "r_work: %6.4f rms_B_bonded: %4.2f restraints_weight: %6.4f"%(
+                fmodel.r_work(), rms_b, rw), file=log)
             if(rms_b<5):
               rw = rw/2
-              if(flipped):
-                b_isos = b_isos_prev
-                model.set_b_iso(values = b_isos)
+              if(flipped): # bracketed: keep the result closer to rms_B=5
+                if(abs(rms_b_prev-5) < abs(rms_b-5)):
+                  b_isos = b_isos_prev
+                  model.set_b_iso(values = b_isos)
                 break
             else:
-              if(rms_b > rms_b_prev):
+              # it=1: b_isos_prev is the group result, do not fall back to it
+              if(rms_b > rms_b_prev and it > 1):
                 b_isos = b_isos_prev
                 model.set_b_iso(values = b_isos)
                 break
               rw = rw*2
               flipped = True
-            if(log is not None):
-              print(
-                "r_work: %6.4f rms_B_bonded: %4.2f restraints_weight: %6.4f"%(
-                fmodel.r_work(), rms_b, rw), file=log)
           if(rms_b_prev is None): break
       else:
         for it in range(1,2):

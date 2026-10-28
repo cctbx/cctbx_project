@@ -56,9 +56,6 @@ class _ThinkingCell(DisclosureRow):
     """
     return [("thinking", self.view)]
 
-  def _inner_views(self):
-    return (self.view,)
-
   def _header_label(self):
     return "Thinking", None
 

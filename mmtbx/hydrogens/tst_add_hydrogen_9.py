@@ -4,6 +4,7 @@ import iotbx.pdb
 import mmtbx.model
 from scitbx import matrix
 from libtbx.utils import null_out
+from scitbx.array_family import flex
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.hydrogens.tst_add_hydrogen_1 import compare_models
 
@@ -15,6 +16,15 @@ def run():
   test_005()
   test_006()
   test_007()
+
+# ------------------------------------------------------------------------------
+
+def assert_xrs_in_step(model):
+  '''exclude_H_on_links moves kept H by direct xyz edits'''
+  d = flex.sqrt((model.get_sites_cart() -
+                 model.get_xray_structure().sites_cart()).dot())
+  assert flex.max(d) <= 1e-6, \
+    'hierarchy and X-ray structure differ by %.3f A' % flex.max(d)
 
 # ------------------------------------------------------------------------------
 
@@ -110,6 +120,7 @@ def test_005():
   assert 'H62' in chx_names, "CHX H62 should survive (opposite face of C6-NZ link)"
   assert 'H51' not in chx_names, "CHX H51 should be removed (C5-SG link)"
   assert 'H61' not in chx_names, "CHX H61 should be removed (C6-NZ link)"
+  assert_xrs_in_step(add_h.get_model())
 
 # ------------------------------------------------------------------------------
 
@@ -130,6 +141,7 @@ def test_006():
   add_h = reduce_hydrogen.place_hydrogens(model=model, stop_for_unknowns=False)
   add_h.run()
   mh = add_h.get_model()
+  assert_xrs_in_step(mh)
   atoms = mh.get_hierarchy().atoms()
   grm = mh.get_restraints_manager().geometry
   bond_proxies, asu = grm.get_all_bond_proxies(sites_cart=mh.get_sites_cart())

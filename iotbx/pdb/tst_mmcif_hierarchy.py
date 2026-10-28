@@ -7,9 +7,11 @@ from libtbx.test_utils import approx_equal, Exception_expected, \
 from libtbx.utils import null_out
 import iotbx.cif
 from iotbx.pdb.mmcif import pdb_hierarchy_builder
+from iotbx.cif.builders import CifBuilderError
 import mmtbx.model
 import libtbx.load_env
 from six.moves import range
+import re
 
 input_1ab1 = """\
 data_1AB1
@@ -1145,6 +1147,191 @@ def exercise_null_occupancy_and_b_iso():
   assert approx_equal(list(atoms.extract_occ()), [0.0, 0.0, 0.5])
   assert approx_equal(list(atoms.extract_b()), [0.0, 0.0, 20.0])
 
+atom_site_header = """\
+data_test
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+"""
+# column order of the rows below:
+# group id elem name alt comp lasym ent lseq icode x y z occ b
+# aseq acomp aasym aname model
+
+input_two_atoms = """\
+ATOM 1 N N . ALA A 1 1 ? 1.0 2.0 3.0 1.00 10.00 1 ALA A N 1
+ATOM 2 C CA . ALA A 1 1 ? 1.5 2.0 3.0 1.00 11.00 1 ALA A CA 1
+"""
+
+aniso_u_loop = """\
+loop_
+_atom_site_anisotrop.id
+_atom_site_anisotrop.U[1][1]
+_atom_site_anisotrop.U[2][2]
+_atom_site_anisotrop.U[3][3]
+_atom_site_anisotrop.U[1][2]
+_atom_site_anisotrop.U[1][3]
+_atom_site_anisotrop.U[2][3]
+"""
+
+_cif_token = re.compile(r"""'(?:[^']|'(?=\S))*'|"(?:[^"]|"(?=\S))*"|\S+""")
+
+def drop_column(text, tag):
+  """text without the _atom_site item tag: its tag line and its field in every
+  ATOM/HETATM row. Quoted fields count as one token."""
+  lines = text.splitlines()
+  tags = [l for l in lines if l.startswith("_atom_site.")]
+  index = tags.index(tag)
+  out = []
+  for l in lines:
+    if l == tag:
+      continue
+    if l.startswith("ATOM") or l.startswith("HETATM"):
+      fields = _cif_token.findall(l)
+      del fields[index]
+      l = " ".join(fields)
+    out.append(l)
+  return "\n".join(out) + "\n"
+
+def _first_block(text):
+  return list(iotbx.cif.reader(input_string=text).model().values())[0]
+
+def _build(text):
+  return pdb_hierarchy_builder(_first_block(text)).hierarchy
+
+def exercise_anisotrop_b_tensors():
+  """An _atom_site_anisotrop loop with B[i][j] items is converted to U."""
+  from cctbx import adptbx
+  text = atom_site_header + input_two_atoms + \
+    aniso_u_loop.replace("U[", "B[") + "1 8.0 8.0 8.0 0.0 0.0 0.0\n"
+  atoms = _build(text).atoms()
+  assert approx_equal(atoms[0].uij,
+    adptbx.b_as_u((8.0, 8.0, 8.0, 0.0, 0.0, 0.0)))
+  assert atoms[1].uij == (-1.0,) * 6
+
+def exercise_no_model_num_column():
+  """No _atom_site.pdbx_PDB_model_num: one model with id ""."""
+  h = _build(drop_column(atom_site_header + input_two_atoms,
+    "_atom_site.pdbx_PDB_model_num"))
+  assert h.models_size() == 1 and h.models()[0].id == ""
+  assert h.atoms_size() == 2
+
+def exercise_no_atom_id_column():
+  """No _atom_site.id: serials from the row order. With _atom_site_anisotrop
+  rows the join has nothing to go on and the builder raises."""
+  text = drop_column(atom_site_header + input_two_atoms, "_atom_site.id")
+  assert [a.serial for a in _build(text).atoms()] == ["    1", "    2"]
+  try:
+    _build(text + aniso_u_loop + "1 0.1 0.2 0.3 0.01 0.02 0.03\n")
+  except CifBuilderError as e:
+    assert "_atom_site.id" in str(e), str(e)
+  else:
+    raise Exception_expected
+
+def exercise_no_ins_code_column():
+  """No _atom_site.pdbx_PDB_ins_code: icode " ", as when the column holds "?",
+  so the two hierarchies are the same."""
+  with_column = _build(atom_site_header + input_two_atoms)
+  without = _build(drop_column(atom_site_header + input_two_atoms,
+    "_atom_site.pdbx_PDB_ins_code"))
+  for h in (with_column, without):
+    assert [rg.icode for rg in h.residue_groups()] == [" "]
+    assert [rg.resid() for rg in h.residue_groups()] == ["   1 "]
+  assert without.is_similar_hierarchy(with_column)
+  assert not show_diff(without.as_pdb_string(), with_column.as_pdb_string())
+
+def exercise_non_integer_seq_id():
+  """A sequence id that is not an integer is accepted only as a four-character
+  hybrid-36 resseq, which cctbx wrote into auth_seq_id until June 2023. Any
+  other non-integer id, and an integer that does not fit the four-character
+  resseq, is a CifBuilderError naming the row."""
+  row = "ATOM 1 C C . ALA A 1 %s ? 1.0 2.0 3.0 1.00 10.00 %s ALA A C 1\n"
+  for seq_id, resseq in (("10000", "A000"), ("-999", "-999"),
+                         ("2436111", "zzzz"), ("A000", "A000"),
+                         ("zzzz", "zzzz")):
+    h = _build(atom_site_header + row % (seq_id, seq_id))
+    rg = h.only_model().only_chain().residue_groups()[0]
+    assert rg.resseq == resseq, (seq_id, rg.resseq)
+  for seq_id in ("1A", "100A", "12AB", ".", "?", "''", "' '", "'    '",
+                 "'12 3'", "ABCDE", "2436112", "-1000",
+                 "99999999999999999999"):
+    try:
+      _build(atom_site_header + row % (seq_id, seq_id))
+    except CifBuilderError as e:
+      assert "row 1" in str(e), str(e)
+    else:
+      raise Exception_expected
+
+def exercise_label_asym_id_break_same_seq_id():
+  """A label_asym_id change after a polymer residue starts a new chain. With
+  the sequence id and insertion code unchanged the new chain still gets its
+  own residue group; the atoms used to land in the previous chain."""
+  text = atom_site_header + """\
+ATOM 1 N N . ALA A 1 5 ? 0.0 0.0 0.0 1.00 10.00 5 ALA A N 1
+ATOM 2 C CA . ALA A 1 5 ? 1.0 0.0 0.0 1.00 10.00 5 ALA A CA 1
+ATOM 3 N N . GLY B 2 5 ? 2.0 0.0 0.0 1.00 10.00 5 GLY A N 1
+ATOM 4 C CA . GLY B 2 5 ? 3.0 0.0 0.0 1.00 10.00 5 GLY A CA 1
+"""
+  chains = _build(text).only_model().chains()
+  assert [c.id for c in chains] == ["A", "A"]
+  assert [len(c.residue_groups()) for c in chains] == [1, 1]
+  assert [c.atoms_size() for c in chains] == [2, 2]
+  assert [[ag.resname for ag in c.residue_groups()[0].atom_groups()]
+          for c in chains] == [["ALA"], ["GLY"]]
+
+def exercise_single_item_atom_site():
+  """A one-atom _atom_site given as items rather than a loop: every item is
+  read whole (group_PDB, id, fp and fdp used to be read by their first
+  character)."""
+  text = "data_test\n"
+  tags = [l for l in atom_site_header.splitlines()
+          if l.startswith("_atom_site.")]
+  values = ("HETATM 15 C C . ALA A 1 1 B 1.0 2.0 3.0 1.00 10.00 "
+            "1 ALA A C 1").split()
+  for tag, value in zip(tags, values):
+    text += "%s %s\n" % (tag, value)
+  text += "_atom_site.phenix_scat_dispersion_real 0.5\n"
+  text += "_atom_site.phenix_scat_dispersion_imag 1.5\n"
+  h = _build(text)
+  assert h.atoms_size() == 1
+  a = h.atoms()[0]
+  assert a.serial == "   15" and a.hetero
+  assert (a.fp, a.fdp) == (0.5, 1.5)
+  assert a.parent().parent().icode == "B"
+
+def exercise_anisotrop_join_by_id_string():
+  """The anisotrop tensors are joined on the _atom_site.id string as written,
+  so ids above 99999 or with leading zeros keep their tensors; the hybrid-36
+  serial is tried second, for mmCIF that cctbx wrote with the serial as the
+  anisotrop id (February 2013 to January 2015)."""
+  joined = (0.1, 0.2, 0.3, 0.01, 0.02, 0.03)
+  unset = (-1.0,) * 6
+  row = "ATOM %s C C . ALA A 1 1 ? 1.0 2.0 3.0 1.00 10.00 1 ALA A C 1\n"
+  for atom_id, aniso_id, uij in (("123456", "123456", joined),
+                                 ("00001", "00001", joined),
+                                 ("100000", "A0000", joined),
+                                 ("01", "1", joined), ("1", "01", unset)):
+    text = atom_site_header + row % atom_id + \
+      aniso_u_loop + "%s 0.1 0.2 0.3 0.01 0.02 0.03\n" % aniso_id
+    assert _build(text).atoms()[0].uij == uij, (atom_id, aniso_id)
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1160,6 +1347,14 @@ def run():
     print('chem_data not present, skipping exercise_struct_conn')
   exercise_resolution()
   exercise_null_occupancy_and_b_iso()
+  exercise_anisotrop_b_tensors()
+  exercise_no_model_num_column()
+  exercise_no_atom_id_column()
+  exercise_no_ins_code_column()
+  exercise_non_integer_seq_id()
+  exercise_label_asym_id_break_same_seq_id()
+  exercise_single_item_atom_site()
+  exercise_anisotrop_join_by_id_string()
 
 if __name__ == '__main__':
   run()

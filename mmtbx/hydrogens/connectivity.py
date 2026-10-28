@@ -229,25 +229,49 @@ class determine_connectivity(object):
             i_parent = ix
             i_third = iz
           elif (i_third == None):
-            raise  Sorry(
-  "It looks like angle restraints involving an H atom are missing.\n\
-  Check H atoms bound to %s and with second neighbor %s" % \
-    (self.atoms[ix].id_str(), self.atoms[iy].id_str()))
+            raise Sorry(self._missing_angle_message(ix, iy))
         elif (iz in self.parents and iz in self.a0a1_dict):
           if (iy in self.a0a1_dict[iz] and not is_hd_ix):
             i_parent = iz
             i_third = ix
           elif (i_third == None):
-            raise  Sorry(
-  "It looks like angle restraints involving an H atom are missing.\n\
-  Check H atoms bound to %s and with second neighbor %s" % \
-    (self.atoms[iz].id_str(), self.atoms[iy].id_str()))
+            raise Sorry(self._missing_angle_message(iz, iy))
         else:
           continue
         if (i_third not in self.third_neighbors_raw[i_parent]):
           self.third_neighbors_raw[i_parent].append(i_third)
           if (i_third in self.parents):
             self.third_neighbors_raw[i_third].append(i_parent)
+
+  def _missing_angle_message(self, i_parent, i_second):
+    '''
+    Text of the Sorry for H on i_parent without the angle to i_second. If
+    another conformer lacks i_second but has atoms bonded to it, they are not
+    bonded there: name them (3ilz ARG A 228: NH1/NH2 in A and B, CZ in A
+    only).
+    '''
+    parent, second = self.atoms[i_parent], self.atoms[i_second]
+    msg = ("It looks like angle restraints involving an H atom are missing.\n"
+      "  Check H atoms bound to %s and with second neighbor %s" % (
+      parent.id_str(), second.id_str()))
+    ag = second.parent()
+    if not ag.altloc: return msg
+    rg = ag.parent()
+    # bonded by distance: the restraints of other conformers lack these bonds
+    bonded = [a.name.strip() for a in ag.atoms() if a is not second and
+              not a.element_is_hydrogen() and a.distance(second) < 2.0]
+    for other in rg.atom_groups():
+      if other.altloc in ('', ag.altloc): continue
+      if other.get_atom(second.name.strip()) is not None: continue
+      found = [n for n in bonded if other.get_atom(n) is not None]
+      if not found: continue
+      msg += ("\n  Conformer %s of %s %s %s%s has %s but no %s to bond %s to "
+        "(%s is in conformer %s). Complete or remove conformer %s." % (
+        other.altloc, ag.resname.strip(), rg.parent().id, rg.resseq.strip(),
+        rg.icode.strip(), ", ".join(found), second.name.strip(),
+        "them" if len(found) > 1 else "it", second.name.strip(), ag.altloc,
+        other.altloc))
+    return msg
 
   def process_a0_angles_and_third_neighbors_without_dihedral(self):
     """For solo-H atoms whose cif provides no torsion proxy, populate

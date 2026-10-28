@@ -4,6 +4,18 @@ from qttbx.widgets.chat.agent.tools import (
   ToolPolicy, ToolRegistry, ToolApprovalRequest, ToolApprovalResponse)
 
 
+def _registry_with(*server_tool):
+  """A registry holding ``bare`` from ``server`` for each pair given,
+  registered in that order, so later same-named tools are renamed."""
+  reg = ToolRegistry(log=null_out())
+  for server, bare in server_tool:
+    reg.register_mcp_tool(
+      ToolSpec(name=bare, description=server,
+               input_schema={"type": "object"}),
+      server_name=server, handler=lambda **kw: None)
+  return reg
+
+
 def exercise_policy_resolve_default():
   p = ToolPolicy(default="ask")
   assert p.resolve("any_tool") == "ask"
@@ -38,7 +50,7 @@ def exercise_policy_per_server_entry_resolves_mcp_tool():
 def exercise_policy_per_tool_survives_mcp_collision_rename():
   """[Minor, security] Per-tool policy is per-server. When two servers expose
   the same tool name the registry keeps the first under the bare name and
-  renames the later one to '<server>:<tool>'. resolve() must apply each
+  renames the later one to '<server>__<tool>'. resolve() must apply each
   server's own per-tool decision to the right tool -- keyed by (server, bare
   tool), not the registered name -- so a renamed tool's policy isn't bypassed
   and the bare-named tool gets ITS server's decision, not the other's
@@ -51,26 +63,34 @@ def exercise_policy_per_tool_survives_mcp_collision_rename():
 
   cfgs = [_Cfg("srvA", {"phenix_get_status": "allow"}),
           _Cfg("srvB", {"phenix_get_status": "deny"})]
-  # Registry state after the collision: srvA keeps the bare name, srvB renamed.
-  tool_to_source = {
-    "phenix_get_status": "mcp:srvA",
-    "srvB:phenix_get_status": "mcp:srvB",
-  }
-  p = ToolPolicy.from_server_configs(cfgs, tool_to_source=tool_to_source)
+  # After the collision srvA keeps the bare name and srvB is renamed.
+  reg = _registry_with(("srvA", "phenix_get_status"),
+                       ("srvB", "phenix_get_status"))
+  assert reg.renamed_tool_map() == {
+    "srvB__phenix_get_status": "phenix_get_status"}, reg.renamed_tool_map()
+  p = ToolPolicy.from_server_configs(cfgs, registry=reg)
   assert p.resolve("phenix_get_status") == "allow", p.__dict__
-  assert p.resolve("srvB:phenix_get_status") == "deny", p.__dict__
+  assert p.resolve("srvB__phenix_get_status") == "deny", p.__dict__
   # A server-level '*' entry still applies to a tool with no per-tool entry.
   cfgs2 = [_Cfg("srvC", {"*": "allow", "danger": "deny"})]
-  src2 = {"look": "mcp:srvC", "danger": "mcp:srvC"}
-  p2 = ToolPolicy.from_server_configs(cfgs2, tool_to_source=src2)
+  p2 = ToolPolicy.from_server_configs(
+    cfgs2, registry=_registry_with(("srvC", "look"), ("srvC", "danger")))
   assert p2.resolve("look") == "allow", p2.__dict__       # via '*'
   assert p2.resolve("danger") == "deny", p2.__dict__      # per-tool wins
+  # The maps come from the registry or not at all: one without the
+  # other let a renamed tool's deny fall to its server's allow.
+  try:
+    ToolPolicy.from_server_configs(cfgs, tool_to_source={})
+  except TypeError:
+    pass
+  else:
+    raise AssertionError("a source map was taken without the rename map")
 
 
 def exercise_policy_session_allow_does_not_leak_across_collision():
   """[Major, security] A session-remembered allow on server A's bare-named
   tool must NOT leak to a DIFFERENT server B's same-named (collision-renamed
-  '<B>:<tool>') tool and override B's '*':'deny'. resolve() must not fall back
+  '<B>__<tool>') tool and override B's '*':'deny'. resolve() must not fall back
   to a bare per_tool entry for a renamed tool -- that is a cross-server
   deny->allow downgrade that auto-runs a globally-denied tool with no prompt."""
   class _Cfg:
@@ -79,15 +99,15 @@ def exercise_policy_session_allow_does_not_leak_across_collision():
       self.tool_policy = tp
 
   cfgs = [_Cfg("srvA", {}), _Cfg("srvB", {"*": "deny"})]
-  src = {"phenix_get_status": "mcp:srvA",
-         "srvB:phenix_get_status": "mcp:srvB"}
-  p = ToolPolicy.from_server_configs(cfgs, tool_to_source=src)
-  assert p.resolve("srvB:phenix_get_status") == "deny", p.__dict__
+  p = ToolPolicy.from_server_configs(
+    cfgs, registry=_registry_with(("srvA", "phenix_get_status"),
+                                  ("srvB", "phenix_get_status")))
+  assert p.resolve("srvB__phenix_get_status") == "deny", p.__dict__
   # User remember-allows srvA's bare tool (keyed by its registered name).
   p.allow_tool_for_session("phenix_get_status")
   assert p.resolve("phenix_get_status") == "allow"           # srvA's own tool
   # srvB's collision-renamed tool must STILL be denied -- no cross-server leak.
-  assert p.resolve("srvB:phenix_get_status") == "deny", p.__dict__
+  assert p.resolve("srvB__phenix_get_status") == "deny", p.__dict__
 
 
 def exercise_registry_register_builtin():
@@ -264,6 +284,155 @@ def exercise_record_tool_remember():
                                    remember="tool")) == []
 
 
+def exercise_collision_rename_is_a_name_the_model_apis_take():
+  """A tool the registry renames for a collision gets a name the model
+  APIs take: letters, digits, underscore and hyphen, at most 64 of
+  them, and one no other tool holds.
+
+  A ``<server>:<tool>`` was refused by the request that offered it, so
+  a colliding tool could not be offered at all; a server is named by
+  its profile, in anything. The per-server policy finds the renamed
+  tool's server and bare name through the registry's record."""
+  import re
+  reg = ToolRegistry(log=null_out())
+  servers = ("coot", "phenix", "coot.local", "coot_local", "coot local",
+             "my server", "s" * 70, "s" * 69 + "t", "3dmol")
+  for server in servers:
+    reg.register_mcp_tool(
+      ToolSpec(name="list_files", description=server,
+               input_schema={"type": "object"}),
+      server_name=server, handler=lambda **kw: None)
+  names = [s.name for s in reg.specs()]
+  assert len(set(names)) == len(servers), names
+  for name in names:
+    assert re.match(r"^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$", name), name
+    # The server's name gives way, never the tool's: a counter settling
+    # two long servers cut alike still follows a whole bare name.
+    assert name == "list_files" or re.search(
+      r"__list_files(_\d+)?$", name), name
+  assert "phenix__list_files" in names and "my_server__list_files" in names, (
+    names)
+  assert "_3dmol__list_files" in names, names
+  assert reg.source_of("phenix__list_files") == "mcp:phenix", (
+    reg.source_of("phenix__list_files"))
+  renamed = reg.renamed_tool_map()
+  assert renamed["phenix__list_files"] == "list_files", renamed
+  assert "list_files" not in renamed, renamed
+  assert set(renamed.values()) == {"list_files"}, renamed
+  policy = ToolPolicy(per_server_tool={("phenix", "list_files"): "deny",
+                                       ("coot", "list_files"): "allow"},
+                      tool_to_source=reg.tool_to_source_map(),
+                      renamed=renamed)
+  assert policy.resolve("phenix__list_files") == "deny", (
+    policy.resolve("phenix__list_files"))
+  assert policy.resolve("list_files") == "allow", policy.resolve("list_files")
+
+
+def exercise_collision_rename_cuts_the_server_before_the_tool():
+  """What the limit cuts is the server's name, then a counter's room,
+  and the tool's own name only when nothing else is left.
+
+  Three 61-character servers alike but for their last character,
+  serving phenix_get_results, gave the third a tool that does not
+  exist, phenix_get_resul_2."""
+  bare = "phenix_get_results"
+  room = 64 - len("__" + bare)
+  reg = ToolRegistry(log=null_out())
+  for server in ("s" * 61, "s" * 60 + "t", "s" * 60 + "u"):
+    reg.register_mcp_tool(
+      ToolSpec(name=bare, description=server,
+               input_schema={"type": "object"}),
+      server_name=server, handler=lambda **kw: None)
+  names = [s.name for s in reg.specs()]
+  assert names == [bare, "s" * room + "__" + bare,
+                   "s" * (room - 2) + "__" + bare + "_2"], names
+  assert [len(name) for name in names[1:]] == [64, 64], names
+  assert reg.renamed_tool_map() == {names[1]: bare, names[2]: bare}, (
+    reg.renamed_tool_map())
+  # A bare name that leaves the limit no room for a server keeps whole
+  # with its counter; one that leaves none for the counter loses its
+  # tail to it, which nothing else can give.
+  for length in (62, 64):
+    long_bare = "t" * length
+    reg = ToolRegistry(log=null_out())
+    for server in ("a", "b"):
+      reg.register_mcp_tool(
+        ToolSpec(name=long_bare, description=server,
+                 input_schema={"type": "object"}),
+        server_name=server, handler=lambda **kw: None)
+    names = [s.name for s in reg.specs()]
+    assert names == [long_bare, "t" * min(length, 62) + "_2"], (length, names)
+    assert reg.renamed_tool_map() == {names[1]: long_bare}, (
+      reg.renamed_tool_map())
+
+
+def exercise_a_servers_colliding_tool_registered_twice_is_one_tool():
+  """A server registering its colliding tool again adds nothing: the
+  rename it already has is its name, and a duplicate is skipped as a
+  bare duplicate is.
+
+  A second registration made a B__foo_2 beside B__foo: two tools for
+  one, where a server listed by the profile and appended by a switch
+  registers its tools twice."""
+  reg = ToolRegistry(log=null_out())
+  for server in ("A", "B", "B"):
+    reg.register_mcp_tool(
+      ToolSpec(name="foo", description=server,
+               input_schema={"type": "object"}),
+      server_name=server, handler=lambda **kw: None)
+  names = [s.name for s in reg.specs()]
+  assert names == ["foo", "B__foo"], names
+  assert reg.renamed_tool_map() == {"B__foo": "foo"}, reg.renamed_tool_map()
+
+
+def exercise_a_tool_named_like_a_rename_is_its_own():
+  """A server's tool named as another of its tools was renamed is a
+  tool of its own, whichever is registered first.
+
+  github's own github__create_issue was skipped as a duplicate of the
+  rename its create_issue got beside gitlab's, and the profile's deny
+  for it applied to nothing."""
+  for order in (("create_issue", "github__create_issue"),
+                ("github__create_issue", "create_issue")):
+    reg = ToolRegistry(log=null_out())
+    reg.register_mcp_tool(
+      ToolSpec(name="create_issue", description="gitlab",
+               input_schema={"type": "object"}),
+      server_name="gitlab", handler=lambda **kw: None)
+    for bare in order:
+      reg.register_mcp_tool(
+        ToolSpec(name=bare, description="github",
+                 input_schema={"type": "object"}),
+        server_name="github", handler=lambda **kw: None)
+    names = [s.name for s in reg.specs()]
+    assert len(names) == 3, (order, names)
+    renamed = reg.renamed_tool_map()
+    policy = ToolPolicy(
+      per_server_tool={("github", "create_issue"): "allow",
+                       ("github", "github__create_issue"): "deny"},
+      tool_to_source=reg.tool_to_source_map(), renamed=renamed)
+    decisions = {}
+    for name in names:
+      if reg.source_of(name) == "mcp:github":
+        decisions[renamed.get(name, name)] = policy.resolve(name)
+    assert decisions == {"create_issue": "allow",
+                         "github__create_issue": "deny"}, (order, decisions)
+
+
+def exercise_policy_cuts_no_prefix_off_a_tool_named_so():
+  """A tool whose own name starts with its server's name is its own,
+  not a renamed one: cutting the prefix off any such name let a deny
+  keyed by the name fall through to an allow keyed by the rest."""
+  src = {"github__create_issue": "mcp:github"}
+  per = {("github", "github__create_issue"): "deny",
+         ("github", "create_issue"): "allow"}
+  p = ToolPolicy(per_server_tool=per, tool_to_source=src)
+  assert p.resolve("github__create_issue") == "deny", p.__dict__
+  p = ToolPolicy(per_server_tool=per, tool_to_source=src,
+                 renamed={"github__create_issue": "create_issue"})
+  assert p.resolve("github__create_issue") == "allow", p.__dict__
+
+
 def exercise():
   exercise_policy_resolve_default()
   exercise_policy_explicit_tool_beats_default()
@@ -282,6 +451,11 @@ def exercise():
   exercise_approval_request_is_agent_event()
   exercise_allow_remember_of()
   exercise_record_tool_remember()
+  exercise_collision_rename_is_a_name_the_model_apis_take()
+  exercise_collision_rename_cuts_the_server_before_the_tool()
+  exercise_a_servers_colliding_tool_registered_twice_is_one_tool()
+  exercise_a_tool_named_like_a_rename_is_its_own()
+  exercise_policy_cuts_no_prefix_off_a_tool_named_so()
 
 
 if __name__ == "__main__":

@@ -24,6 +24,9 @@ Tests:
   genuinely bonded to a nearby Zn must still be locked in place by the ion
   lock-down, not skipped.  This fails if the bonded-neighbour check is placed
   before the lock-down instead of after it.
+- test_deleted_h_in_model_order: getHydrogensToDelete() returns the H in model
+  order. It returned a set's order, which follows memory addresses, so
+  reduce2's "Deleting ..." lines changed order from run to run.
 """
 from __future__ import absolute_import, division, print_function
 from iotbx.data_manager import DataManager
@@ -180,8 +183,87 @@ def test_metal_coordinated_his_stays_locked():
   assert "Added MoverHisFlip" not in info, info
   print("test_metal_coordinated_his_stays_locked OK")
 
+# 4KW9 His 139, 147, 169, 202, 204 (Thr 203) and Zn 301-304: the ion
+# lock-down removes one ring H from each His (5 H in 5 residues, no scoring).
+his_zn4_pdb = """\
+CRYST1   72.798   72.798  114.942  90.00  90.00  90.00 P 41 21 2     8
+ATOM   2047  N   HIS A 139      12.238 -10.703  -4.125  1.00 45.45           N
+ATOM   2048  CA  HIS A 139      13.628 -11.030  -4.461  1.00 43.59           C
+ATOM   2049  C   HIS A 139      13.827 -11.172  -5.971  1.00 49.65           C
+ATOM   2050  O   HIS A 139      13.993 -12.279  -6.486  1.00 53.96           O
+ATOM   2051  CB  HIS A 139      14.042 -12.345  -3.792  1.00 46.80           C
+ATOM   2052  CG  HIS A 139      14.837 -12.177  -2.536  1.00 46.84           C
+ATOM   2053  ND1 HIS A 139      16.212 -12.046  -2.537  1.00 45.73           N
+ATOM   2054  CD2 HIS A 139      14.455 -12.164  -1.236  1.00 45.15           C
+ATOM   2055  CE1 HIS A 139      16.639 -11.937  -1.291  1.00 49.67           C
+ATOM   2056  NE2 HIS A 139      15.593 -12.004  -0.483  1.00 47.69           N
+ATOM   2176  N   HIS A 147      26.829   2.625 -10.023  1.00 15.30           N
+ATOM   2177  CA  HIS A 147      27.480   3.904  -9.776  1.00 14.14           C
+ATOM   2178  C   HIS A 147      26.421   4.969  -9.582  1.00 13.47           C
+ATOM   2179  O   HIS A 147      25.523   5.118 -10.417  1.00 14.09           O
+ATOM   2180  CB  HIS A 147      28.419   4.273 -10.938  1.00 14.62           C
+ATOM   2181  CG  HIS A 147      27.774   4.175 -12.266  1.00 15.69           C
+ATOM   2182  ND1 HIS A 147      27.251   5.269 -12.918  1.00 17.34           N
+ATOM   2183  CD2 HIS A 147      27.531   3.106 -13.060  1.00 17.15           C
+ATOM   2184  CE1 HIS A 147      26.715   4.876 -14.056  1.00 16.84           C
+ATOM   2185  NE2 HIS A 147      26.881   3.570 -14.165  1.00 17.85           N
+ATOM   2508  N   HIS A 169      18.101  -0.488  -9.449  1.00 35.45           N
+ATOM   2509  CA  HIS A 169      18.572  -1.866  -9.572  1.00 35.70           C
+ATOM   2510  C   HIS A 169      17.760  -2.552 -10.637  1.00 35.59           C
+ATOM   2511  O   HIS A 169      16.546  -2.375 -10.711  1.00 35.81           O
+ATOM   2512  CB  HIS A 169      18.477  -2.626  -8.236  1.00 33.64           C
+ATOM   2513  CG  HIS A 169      19.486  -2.178  -7.226  1.00 33.72           C
+ATOM   2514  ND1 HIS A 169      19.147  -1.456  -6.100  1.00 36.24           N
+ATOM   2515  CD2 HIS A 169      20.833  -2.326  -7.187  1.00 36.16           C
+ATOM   2516  CE1 HIS A 169      20.240  -1.185  -5.407  1.00 36.38           C
+ATOM   2517  NE2 HIS A 169      21.278  -1.702  -6.042  1.00 34.35           N
+ATOM   2951  N   HIS A 202      31.151  10.385  -5.909  1.00 12.17           N
+ATOM   2952  CA  HIS A 202      31.040   9.189  -6.766  1.00 11.65           C
+ATOM   2953  C   HIS A 202      31.046   7.970  -5.873  1.00 11.68           C
+ATOM   2954  O   HIS A 202      31.973   7.779  -5.079  1.00 12.62           O
+ATOM   2955  CB  HIS A 202      32.243   9.035  -7.699  1.00 13.00           C
+ATOM   2956  CG  HIS A 202      32.300  10.055  -8.784  1.00 12.37           C
+ATOM   2957  ND1 HIS A 202      31.710   9.866 -10.022  1.00 12.23           N
+ATOM   2958  CD2 HIS A 202      32.900  11.270  -8.824  1.00 14.43           C
+ATOM   2959  CE1 HIS A 202      31.910  10.953 -10.756  1.00 12.94           C
+ATOM   2960  NE2 HIS A 202      32.638  11.808 -10.057  1.00 14.43           N
+ATOM   2968  N   THR A 203      30.024   7.141  -5.990  1.00 11.93           N
+ATOM   2969  CA  THR A 203      30.007   5.897  -5.233  1.00 11.18           C
+ATOM   2970  C   THR A 203      29.849   4.756  -6.237  1.00 12.68           C
+ATOM   2971  O   THR A 203      28.786   4.594  -6.845  1.00 12.31           O
+ATOM   2972  CB  THR A 203      28.873   5.891  -4.205  1.00 17.21           C
+ATOM   2973  OG1 THR A 203      28.972   7.055  -3.357  1.00 19.29           O
+ATOM   2974  CG2 THR A 203      28.967   4.647  -3.328  1.00 16.95           C
+ATOM   2982  N   HIS A 204      30.921   3.994  -6.412  1.00 12.55           N
+ATOM   2983  CA  HIS A 204      30.984   2.935  -7.400  1.00 13.68           C
+ATOM   2984  C   HIS A 204      31.145   1.619  -6.668  1.00 18.40           C
+ATOM   2985  O   HIS A 204      32.121   1.428  -5.921  1.00 18.45           O
+ATOM   2986  CB  HIS A 204      32.183   3.128  -8.320  1.00 14.32           C
+ATOM   2987  CG  HIS A 204      32.186   4.437  -9.051  1.00 13.89           C
+ATOM   2988  ND1 HIS A 204      33.288   4.902  -9.734  1.00 14.75           N
+ATOM   2989  CD2 HIS A 204      31.227   5.380  -9.205  1.00 13.80           C
+ATOM   2990  CE1 HIS A 204      33.009   6.071 -10.287  1.00 14.01           C
+ATOM   2991  NE2 HIS A 204      31.759   6.377  -9.994  1.00 13.29           N
+HETATM 3384 ZN    ZN A 301      30.927   8.097 -10.572  0.91 15.37          ZN
+HETATM 3385 ZN    ZN A 302      25.968   2.617 -15.780  0.70 40.90          ZN
+HETATM 3386 ZN    ZN A 303      17.515  -0.626  -5.210  0.64 32.42          ZN
+HETATM 3387 ZN    ZN A 304      17.894 -11.737  -3.667  0.58 46.77          ZN
+END
+"""
+
+def test_deleted_h_in_model_order():
+  opt, model = _optimizer_for(his_zn4_pdb)
+  deleted = opt.getHydrogensToDelete()
+  names = [(h.parent().parent().resseq.strip(), h.name.strip()) for h in deleted]
+  assert names == [("139", "HD1"), ("147", "HE2"), ("169", "HD1"), ("202", "HD1"),
+    ("204", "HE2")], names
+  i_seqs = [h.i_seq for h in deleted]
+  assert i_seqs == sorted(i_seqs), i_seqs
+  print("test_deleted_h_in_model_order OK")
+
 if __name__ == "__main__":
   test_his_is_flippable_without_custom_bond()
   test_custom_bond_on_his_ring_n_suppresses_flip()
   test_metal_coordinated_his_stays_locked()
+  test_deleted_h_in_model_order()
   print("OK")

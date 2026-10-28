@@ -1563,6 +1563,13 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         verbose=None,
         log = None):
     self.alpha_beta_cache = None
+    # Auto-shutoff refine_hd_scattering if number of H is too small.
+    if refine_hd_scattering:
+      if self.xray_structure is not None:
+        hd_sel = self.xray_structure.hd_selection()
+        h_fraction = hd_sel.count(True)*100./hd_sel.size()
+        if h_fraction < 25.: refine_hd_scattering = False
+    #
     if(apply_scale_k1_to_f_obs):
       self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
