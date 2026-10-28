@@ -3818,6 +3818,54 @@ def exercise_numpy_conversions():
       for i in range(l):
         assert(approx_equal(n[i], f[i]))
 
+def exercise_numpy_byte_order():
+  try:
+    import numpy as np
+  except ImportError:
+    print("Skipping exercise_numpy_byte_order (numpy not available)")
+    return
+
+  # A numpy array can carry a non-native byte order, e.g. a map file written
+  # on a little-endian machine and memory-mapped on a big-endian one
+  # (cctbx_project issue #1216). The flex constructors must honor the byte
+  # order instead of copying the raw bytes.
+  values = [0, 1, 2, 3, 100, 127]
+  for flex_type_name, npy_code in [
+      ('int', 'i4'), ('long', 'i8'), ('size_t', 'u8'),
+      ('int16', 'i2'), ('uint16', 'u2'), ('uint32', 'u4'),
+      ('float', 'f4'), ('double', 'f8')]:
+    flex_type = getattr(flex, flex_type_name)
+    for byte_order in ['<', '>']:
+      n = np.array(values, dtype=np.dtype(byte_order + npy_code))
+      f = flex_type(n)
+      assert list(f) == values, (flex_type_name, byte_order, list(f))
+  cvalues = [1+2j, -3.5+0.25j, 0j]
+  for byte_order in ['<', '>']:
+    n = np.array(cvalues, dtype=np.dtype(byte_order + 'c16'))
+    f = flex.complex_double(n)
+    assert list(f) == cvalues, (byte_order, list(f))
+  # multi-dimensional, with a NaN that must survive as a NaN
+  n = np.arange(24, dtype=np.float32).reshape(2, 3, 4)
+  for byte_order in ['<', '>']:
+    for flex_type, npy_code in [(flex.float, 'f4'), (flex.double, 'f8')]:
+      f = flex_type(n.astype(np.dtype(byte_order + npy_code)))
+      assert f.all() == (2, 3, 4), (byte_order, npy_code, f.all())
+      assert list(f.as_1d()) == list(range(24)), (
+        byte_order, npy_code, list(f.as_1d()))
+  n = np.array([1.0, float("nan"), 3.0])
+  for byte_order in ['<', '>']:
+    f = flex.double(n.astype(np.dtype(byte_order + 'f8')))
+    assert f[0] == 1.0 and f[2] == 3.0 and f[1] != f[1], (byte_order, list(f))
+  # C-contiguous but unaligned, e.g. a buffer read at a 1-byte offset or a
+  # memory-mapped map whose extended header is not a multiple of 4 bytes.
+  # numpy's aligned flag is independent of contiguity.
+  for byte_order in ['<', '>']:
+    raw = bytearray(1) + np.array(values, dtype=byte_order + 'f4').tobytes()
+    n = np.frombuffer(raw, dtype=byte_order + 'f4', offset=1)
+    assert n.flags.c_contiguous and not n.flags.aligned, n.flags
+    f = flex.float(n)
+    assert list(f) == values, (byte_order, list(f))
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -3884,6 +3932,7 @@ def run(iterations):
     exercise_vec3_double_as_numpy_array()
     exercise_fixed_width_int_types()
     exercise_numpy_conversions()
+    exercise_numpy_byte_order()
     i += 1
 
 if (__name__ == "__main__"):

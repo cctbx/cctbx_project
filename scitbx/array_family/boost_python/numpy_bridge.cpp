@@ -127,6 +127,18 @@ namespace scitbx { namespace af { namespace boost_python {
       throw std::invalid_argument(
         "numpy.ndarray instance is not contiguous");
     }
+    // The raw bytes are copied below, so first obtain a C-contiguous,
+    // aligned, native-byte-order base-class ndarray. numpy returns the
+    // input itself (no copy) when it already qualifies. Otherwise, e.g. for
+    // a little-endian map file memory-mapped on a big-endian host, a
+    // converted copy is made here and copied again into the result, so the
+    // peak memory on that path is two copies of the data.
+    PyObject* converted = PyArray_FROM_OF(obj_ptr,
+      NPY_ARRAY_CARRAY_RO | NPY_ARRAY_NOTSWAPPED | NPY_ARRAY_ENSUREARRAY);
+    if (converted == 0) bp::throw_error_already_set();
+    bp::object native_arr = bp::object(bp::handle<>(converted));
+    obj_ptr = native_arr.ptr();
+    arr_ptr = reinterpret_cast<PyArrayObject*>(obj_ptr);
     typedef typename flex_grid<>::index_type fgit;
     typedef typename fgit::value_type fgivt;
     fgit all;
