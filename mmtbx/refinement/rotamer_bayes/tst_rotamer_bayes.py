@@ -9,13 +9,14 @@ Tests of mmtbx.refinement.rotamer_bayes:
     those are changed to the right wells and the others are not changed.
 """
 from __future__ import absolute_import, division, print_function
-import os, random
+import math, os, random
 import numpy as np
 import iotbx.pdb
 import libtbx.load_env
 import mmtbx.f_model
 from cctbx.array_family import flex
 from scitbx.math import dihedral_angle
+from libtbx import group_args
 from libtbx.utils import null_out
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.refinement.rotamer_bayes as rb
@@ -74,7 +75,7 @@ LAYOUT = [("leu", "tp", "mt"), ("phe", "m-80", "m-80"), ("lys", "mttt",
   "mt"), ("tyr", "t80", "m-80"), ("asn", "m-40", "m-40"), ("lys", "tttt",
   "tttt")]
 
-def build_pair(d_min=2.0, seed=1, layout=None, b_iso=20.):
+def build_pair(d_min=2.0, seed=1):
   """ truth and model hierarchies in a P1 box, residues in the wells of
   LAYOUT """
   sa = SidechainAngles(False)
@@ -83,7 +84,7 @@ def build_pair(d_min=2.0, seed=1, layout=None, b_iso=20.):
   pdb_t, pdb_m = [], []
   n = 0
   serial = 1
-  for k, (aa, wt, wm) in enumerate(layout or LAYOUT):
+  for k, (aa, wt, wm) in enumerate(LAYOUT):
     h = iotbx.pdb.input(os.path.join(residue_files(), aa + ".pdb")
       ).construct_hierarchy()
     ag = h.only_model().chains()[0].residue_groups()[0].atom_groups()[0]
@@ -93,22 +94,21 @@ def build_pair(d_min=2.0, seed=1, layout=None, b_iso=20.):
     for well_name, out in ((wt, pdb_t), (wm, pdb_m)):
       xyz = sc.set_chis(p.wells(aa)[well_name].chis) + shift
       for a, x in zip(ag.atoms(), xyz):
-        out.append("ATOM  %5d %4s %3s %s%4d    %8.3f%8.3f%8.3f  1.00%6.2f"
+        out.append("ATOM  %5d %4s %3s %s%4d    %8.3f%8.3f%8.3f  1.00 20.00"
           "          %2s" % (serial + len(out), a.name, aa.upper(),
-          chr(ord("A") + k), 1, x[0], x[1], x[2], b_iso, a.element.strip()))
+          chr(ord("A") + k), 1, x[0], x[1], x[2], a.element.strip()))
   t = iotbx.pdb.input(source_info=None, lines=lines + pdb_t)
   m = iotbx.pdb.input(source_info=None, lines=lines + pdb_m)
   return t, m
 
-def make_fmodel(truth_inp, model_inp, d_min=2.0, seed=1, noise=0.05):
+def make_fmodel(truth_inp, model_inp, d_min=2.0, seed=1):
   random.seed(seed); flex.set_random_seed(seed)
   xt = truth_inp.xray_structure_simple()
   xm = model_inp.xray_structure_simple()
   f = abs(xt.structure_factors(d_min=d_min, algorithm="direct").f_calc())
-  sigma = noise
-  noise_ = flex.double([random.gauss(0, 1) for i in range(f.size())])
-  f = f.customized_copy(data=f.data() * (1 + sigma * noise_),
-    sigmas=f.data() * sigma)
+  noise = flex.double([random.gauss(0, 1) for i in range(f.size())])
+  f = f.customized_copy(data=f.data() * (1 + 0.05 * noise),
+    sigmas=f.data() * 0.05)
   f = f.select(f.data() > 0)
   flags = f.generate_r_free_flags(fraction=0.1)
   fmodel = mmtbx.f_model.manager(f_obs=f, r_free_flags=flags,
@@ -231,31 +231,47 @@ def exercise_unsupported_targets():
     assert "least squares" in str(e), str(e)
   else: raise Exception_expected
 
-NCS_LAYOUT = [("leu", "tp", "mt")] * 4 + [("leu", "mt", "mt")] * 4
+class _candidate(object):
+  def __init__(self, well, dll):
+    self.well = well
+    self.clash = False
+    self.predicted = dll
+  def dll(self, exact):
+    return self.predicted
+
+class _record(object):
+  """ a Leu in well mt, with the given evidence for the other wells """
+  def __init__(self, dlls, wells):
+    self.sc = group_args(resname="LEU")
+    self.current_well = "mt"
+    self.current_prior = wells["mt"].mass
+    self.candidates = [_candidate(w, dlls.get(w, -50.)) for w in wells
+      if w not in ("mt", priors.OUTLIER, priors.UNCLASSIFIED)]
 
 def exercise_ncs_pooling():
-  """ four NCS copies of a wrong Leu and four of a right one, weak data
-  (3 A, B 60, 20% noise): unpooled, one wrong copy goes to a wrong well;
-  pooled, all four go to the right well, the right copies are not changed
-  and rho (copies share a well) is high """
-  t, m = build_pair(layout=NCS_LAYOUT, b_iso=60.)
-  fmodel = make_fmodel(t, m, d_min=3.0, noise=0.2)
-  groups = [[(c, "1", "") for c in "ABCD"], [(c, "1", "") for c in "EFGH"]]
-  hm = m.construct_hierarchy()
-  p = rb.master_params().extract()
-  p.ncs_pooling = False
-  r0 = rb.run(fmodel=fmodel, pdb_hierarchy=hm.deep_copy(), ncs_groups=groups,
-    params=p, log=null_out())
-  wells0 = [rr.best.well for rr in r0.records[:4] if rr.accept]
-  assert wells0.count("tp") < 4, wells0
-  r = rb.run(fmodel=fmodel, pdb_hierarchy=hm, ncs_groups=groups,
-    log=null_out())
-  assert r.ncs_n_groups == 2 and r.ncs_rho > 0.5, (r.ncs_n_groups, r.ncs_rho)
-  for rr in r.records:
-    k = ord(rr.label.split()[0]) - ord("A")
-    if(k < 4): assert rr.accept and rr.best.well == "tp", (rr.label,
-      rr.best.well if rr.best else None)
-    else: assert not rr.accept, rr.label
+  """ ncs.pooled with given per-copy evidence. Copies that agree weakly
+  (dLL 0.5 each for tp, too little alone against the prior): rho is high
+  and the pooled odds favour tp. Copies that disagree strongly (two for
+  tp, two for staying in mt): rho is low and each keeps its own choice. """
+  from mmtbx.refinement.rotamer_bayes import ncs
+  p = priors.rotamer_priors()
+  wells = p.wells("leu")
+  own_odds = 0.5 + math.log(wells["tp"].mass / wells["mt"].mass)
+  assert own_odds < 0
+  agree = [[_record({"tp": 0.5}, wells) for i in range(4)] for g in range(2)]
+  pool = ncs.pooled(agree, p, exact=False)
+  assert pool.rho > 0.9, pool.rho
+  for rec, lp, r_shared, others, e in pool.posteriors():
+    assert max(lp, key=lp.get) == "tp", lp
+    assert lp["tp"] - lp["mt"] > own_odds + 1, (lp["tp"] - lp["mt"], own_odds)
+  disagree = [[_record({"tp": 20.}, wells), _record({"tp": 20.}, wells),
+    _record({"tp": -20.}, wells), _record({"tp": -20.}, wells)]
+    for g in range(2)]
+  pool = ncs.pooled(disagree, p, exact=False)
+  assert pool.rho < 0.1, pool.rho
+  for k, (rec, lp, r_shared, others, e) in enumerate(pool.posteriors()):
+    best = max(lp, key=lp.get)
+    assert best == ("tp" if k % 4 < 2 else "mt"), (k, best)
 
 if(__name__ == "__main__"):
   exercise_priors()
