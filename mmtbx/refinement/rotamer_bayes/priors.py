@@ -94,7 +94,7 @@ class rotamer_priors(object):
     names[values < OUTLIER_THRESHOLD] = OUTLIER
     total = {}
     peak = {}
-    for name in set(names.tolist()):
+    for name in sorted(set(names.tolist())):   # sorted: reproducible order
       sel = names == name
       total[name] = float(mass[sel].sum())
       i = np.nonzero(sel)[0][np.argmax(values[sel])]
