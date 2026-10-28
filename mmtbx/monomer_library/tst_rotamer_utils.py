@@ -274,7 +274,7 @@ ATOM    118  HB2 PRO A 263       2.210 -22.664 -40.664  1.00 63.96           H
 ATOM    119  HB3 PRO A 263       1.066 -22.318 -41.718  1.00 63.96           H
 ATOM    120  HG2 PRO A 263       2.980 -20.669 -41.043  1.00 68.45           H
 ATOM    121  HG3 PRO A 263       1.645 -20.229 -41.786  1.00 68.45           H
-ATOM    122  HD2 PRO A 263       1.267 -19.021 -40.049  1.00 64.14           H
+ATOM    122  HD3 PRO A 263       1.267 -19.021 -40.049  1.00 64.14           H
 """)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   residue = pdb_hierarchy.only_residue()
@@ -284,7 +284,7 @@ ATOM    122  HD2 PRO A 263       1.267 -19.021 -40.049  1.00 64.14           H
     sites_cart=residue.atoms().extract_xyz())
   assert not show_diff(
     rotamer_iterator.problem_message,
-    'resname=PRO: missing atom "HD1" for tor_id "hh3"')
+    'resname=PRO: missing atom "HD2" for tor_id "hh3"')
 
 def run(args):
   verbose = False

@@ -13,7 +13,7 @@ def exercise():
   assert not show_diff(s.getvalue(), """\
 >unexpected atom names: "X"
 >multiple matches: expected pattern=C  names="C", "C"
->mutually exclusive: 1hB 3hB
+>mutually exclusive: 3hB 1hB
 """)
 
   ala_names = ["N", "CA", "C", "O", "CB"]
