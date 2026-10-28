@@ -40,8 +40,9 @@ rebuilds. It takes the same verbs as `bootstrap.py`:
 
 ```bash
 mk-cctbx build                  # Recompile only
-mk-cctbx hot update base build  # Re-fetch sources, remake conda env, build
+mk-cctbx hot update build       # Re-fetch sources, build
 mk-cctbx                        # Recompile only. Equivalent to mk-cctbx build
 ```
 
-
+The conda environment is created only by `build.sh`; `mk-cctbx` never touches
+it, so to rebuild it you need to start the build over.

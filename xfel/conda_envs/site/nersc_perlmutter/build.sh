@@ -22,6 +22,7 @@ esac
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 BUILD_PREFIX=$(cd "$SCRIPT_DIR/../../../../../.." && pwd)
 MINIFORGE_PREFIX=$BUILD_PREFIX/mc3
+[[ ! -e $MINIFORGE_PREFIX ]] || { echo "$BUILD_PREFIX already has a build; use mk-cctbx, or delete mc3/ and conda_base/ to start over" >&2; exit 1; }
 ENV_PREFIX=$BUILD_PREFIX/conda_base
 NPROC=32
 
@@ -62,7 +63,7 @@ cp modules/cctbx_project/libtbx/auto_build/bootstrap.py bootstrap.py
 wget -O "opt/$MINIFORGE" "$MINIFORGE_URL"
 
 step "install Miniforge3 into $MINIFORGE_PREFIX"
-bash "opt/$MINIFORGE" -b -u -p "$MINIFORGE_PREFIX"   # -b: no prompts, no conda init.  -u: re-runnable.
+bash "opt/$MINIFORGE" -b -p "$MINIFORGE_PREFIX"   # -b: no prompts, no conda init.
 
 step "module load PrgEnv-gnu cudatoolkit cpe-cuda"
 module load PrgEnv-gnu cudatoolkit cpe-cuda
@@ -82,7 +83,7 @@ sed -e "s/__PSANA_CHANNEL__/$PSANA_CHANNEL/" -e "s/__PSANA__/$PSANA_SPEC/" \
     "$SCRIPT_DIR/perlmutter_environment.yml" > "$BUILD_PREFIX/opt/environment.yml"
 grep -q '__PSANA' "$BUILD_PREFIX/opt/environment.yml" \
     && { echo "placeholder substitution into opt/environment.yml did not fully apply" >&2; exit 1; }
-conda env create -f "$BUILD_PREFIX/opt/environment.yml" -p "$ENV_PREFIX" --yes -v
+conda env create -f "$BUILD_PREFIX/opt/environment.yml" -p "$ENV_PREFIX" -v
 
 conda activate "$ENV_PREFIX"
 
@@ -98,12 +99,6 @@ step "rebuild mpi4py against Cray MPICH"
 conda remove --force mpi4py mpi openmpi mpich --yes || true
 MPICC="$native_cc -shared -target-accel=nvidia80 -lmpi -lgdrapi" \
     pip install -v --no-binary mpi4py --no-cache-dir mpi4py mpi4py
-
-step "bootstrap.py hot update"
-python bootstrap.py "${BOOTSTRAP_FLAGS[@]}" --use-conda "$ENV_PREFIX" hot update
-
-step "bootstrap.py build"
-python bootstrap.py "${BOOTSTRAP_FLAGS[@]}" --use-conda "$ENV_PREFIX" build
 
 step "write activate.sh"
 cat > activate.sh << EOF
@@ -133,5 +128,11 @@ mk-cctbx () {
     (cd \$BUILD_PREFIX && python bootstrap.py ${BOOTSTRAP_FLAGS[*]} --use-conda \$CONDA_PREFIX "\${@:-build}")
 }
 EOF
+
+step "bootstrap.py hot update"
+python bootstrap.py "${BOOTSTRAP_FLAGS[@]}" --use-conda "$ENV_PREFIX" hot update
+
+step "bootstrap.py build"
+python bootstrap.py "${BOOTSTRAP_FLAGS[@]}" --use-conda "$ENV_PREFIX" build
 
 printf '\nDone.  Source %s/activate.sh to use this installation.\n' "$BUILD_PREFIX"
