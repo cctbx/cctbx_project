@@ -25,15 +25,6 @@ MINIFORGE_PREFIX=$BUILD_PREFIX/mc3
 ENV_PREFIX=$BUILD_PREFIX/conda_base
 NPROC=32
 
-SKIP_CONDA=
-if [[ -e $ENV_PREFIX ]]; then
-    case "${CCTBX_RECREATE_CONDA:-}" in
-        1) ;;
-        0) SKIP_CONDA=1 ;;
-        *) echo "$ENV_PREFIX exists; set CCTBX_RECREATE_CONDA=1 (recreate) or 0 (reuse)" >&2; exit 1 ;;
-    esac
-fi
-
 MINIFORGE_VERSION=26.3.2-3
 MINIFORGE=Miniforge3-$MINIFORGE_VERSION-Linux-x86_64.sh
 MINIFORGE_URL=https://github.com/conda-forge/miniforge/releases/download/$MINIFORGE_VERSION/$MINIFORGE
@@ -78,39 +69,35 @@ module load PrgEnv-gnu cudatoolkit cpe-cuda
 
 source "$MINIFORGE_PREFIX/etc/profile.d/conda.sh"
 
-if [[ -z $SKIP_CONDA ]]; then
-    # Capture the Cray wrapper BEFORE `conda activate`: the env's c-compiler package
-    # shadows `cc` with a conda shim, and mpi4py then links against the wrong MPI.
-    native_cc=$(which cc)
+# Capture the Cray wrapper BEFORE `conda activate`: the env's c-compiler package
+# shadows `cc` with a conda shim, and mpi4py then links against the wrong MPI.
+native_cc=$(which cc)
 
-    step "conda env create (5-10 min)"
-    case "$PSANA_CHANNEL" in
-        lcls-i)  PSANA_SPEC='psana=4.0.66' ;;
-        lcls-ii) PSANA_SPEC='psana' ;;
-    esac
-    sed -e "s/__PSANA_CHANNEL__/$PSANA_CHANNEL/" -e "s/__PSANA__/$PSANA_SPEC/" \
-        "$SCRIPT_DIR/perlmutter_environment.yml" > "$BUILD_PREFIX/opt/environment.yml"
-    grep -q '__PSANA' "$BUILD_PREFIX/opt/environment.yml" \
-        && { echo "placeholder substitution into opt/environment.yml did not fully apply" >&2; exit 1; }
-    conda env create -f "$BUILD_PREFIX/opt/environment.yml" -p "$ENV_PREFIX" --yes -v
-fi
+step "conda env create (5-10 min)"
+case "$PSANA_CHANNEL" in
+    lcls-i)  PSANA_SPEC='psana=4.0.66' ;;
+    lcls-ii) PSANA_SPEC='psana' ;;
+esac
+sed -e "s/__PSANA_CHANNEL__/$PSANA_CHANNEL/" -e "s/__PSANA__/$PSANA_SPEC/" \
+    "$SCRIPT_DIR/perlmutter_environment.yml" > "$BUILD_PREFIX/opt/environment.yml"
+grep -q '__PSANA' "$BUILD_PREFIX/opt/environment.yml" \
+    && { echo "placeholder substitution into opt/environment.yml did not fully apply" >&2; exit 1; }
+conda env create -f "$BUILD_PREFIX/opt/environment.yml" -p "$ENV_PREFIX" --yes -v
 
 conda activate "$ENV_PREFIX"
 
-if [[ -z $SKIP_CONDA ]]; then
-    # gemmi is deliberately not in the yml -- it makes the solve pathological.  It is
-    # a pure runtime dependency (dials.export/dials.merge), nothing in the build
-    # needs it, and it must go in before the MPI strip leaves the prefix inconsistent.
-    step "install gemmi"
-    conda install -y -p "$ENV_PREFIX" -c conda-forge --override-channels --no-deps -v gemmi
+# gemmi is deliberately not in the yml -- it makes the solve pathological.  It is
+# a pure runtime dependency (dials.export/dials.merge), nothing in the build
+# needs it, and it must go in before the MPI strip leaves the prefix inconsistent.
+step "install gemmi"
+conda install -y -p "$ENV_PREFIX" -c conda-forge --override-channels --no-deps -v gemmi
 
-    # psana pulls in openmpi, which is incompatible with Cray MPICH.  The remove
-    # routinely fails partially, hence `|| true`.
-    step "rebuild mpi4py against Cray MPICH"
-    conda remove --force mpi4py mpi openmpi mpich --yes || true
-    MPICC="$native_cc -shared -target-accel=nvidia80 -lmpi -lgdrapi" \
-        pip install -v --no-binary mpi4py --no-cache-dir mpi4py mpi4py
-fi
+# psana pulls in openmpi, which is incompatible with Cray MPICH.  The remove
+# routinely fails partially, hence `|| true`.
+step "rebuild mpi4py against Cray MPICH"
+conda remove --force mpi4py mpi openmpi mpich --yes || true
+MPICC="$native_cc -shared -target-accel=nvidia80 -lmpi -lgdrapi" \
+    pip install -v --no-binary mpi4py --no-cache-dir mpi4py mpi4py
 
 step "bootstrap.py hot update"
 python bootstrap.py "${BOOTSTRAP_FLAGS[@]}" --use-conda "$ENV_PREFIX" hot update
@@ -138,10 +125,12 @@ export SIT_DATA=/global/common/software/lcls/psdm/data:\$SIT_DATA
 export SIT_PSDM_DATA=/pscratch/sd/p/psdatmgr/psdm/
 export SIT_ROOT=/reg/g/psdm
 
-# Incremental rebuild:  mk-cctbx build         (recompile only)
-#                       mk-cctbx build hot update  (re-fetch sources first)
+# Incremental rebuild (same verbs as bootstrap.py):
+#   mk-cctbx build                  # Recompile only
+#   mk-cctbx hot update base build  # Re-fetch sources, remake conda env, build
+#   mk-cctbx                        # Recompile only. Equivalent to mk-cctbx build
 mk-cctbx () {
-    (cd \$BUILD_PREFIX && python bootstrap.py ${BOOTSTRAP_FLAGS[*]} --use-conda \$CONDA_PREFIX "\$@")
+    (cd \$BUILD_PREFIX && python bootstrap.py ${BOOTSTRAP_FLAGS[*]} --use-conda \$CONDA_PREFIX "\${@:-build}")
 }
 EOF
 
