@@ -169,7 +169,7 @@ capping_guess_for_unknowns = False
           the valence of every atom from its element and formal charge, bonds \
           from distances, and add H accordingly (reported as guessed). \
           False: stop with a Sorry listing those residues.
-include_symmetric_copies = True
+include_symmetric_copies = False
   .type = bool
   .short_caption = Include symmetry copies of atoms and Movers in the optimization
   .help = This uses the super_cell class to construct symmetry copiees of atoms that are near the boundary so that Movers can interact with them.
