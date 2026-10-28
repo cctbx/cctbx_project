@@ -98,6 +98,13 @@ class d_model_target_evaluator(object):
   otherwise it is fitted. Free, it trades off against coordinate-error
   terms with a similar decay (e.g. a_1 = 233, b = 232), and the result
   depends on the start.
+
+  The minimiser sees the total target over the R-free set (target();
+  mean_target() is the mean), so that L-BFGS-B's projected-gradient
+  tolerance (1e-5) is in nats whatever the size of the set. With the
+  mean, it stopped on flat directions (an amplitude whose term saturates
+  tanh at low resolution) far from the optimum, at points that changed
+  with rounding-level changes of the input.
   """
 
   b_defect_min = 0.1
@@ -183,9 +190,13 @@ class d_model_target_evaluator(object):
       self.theta(), self.s2, self.e_eff, self.e_model, self.dobs,
       self.centric_flags, self.b_k_grid, hybrid=self.hybrid,
       tncs_u=self.tncs_u)
-    self._g = g[:self.n_fit]
+    self._g = g[:self.n_fit] * self.s2.size
 
   def target(self):
+    """ the total target over the R-free set (for the minimiser) """
+    return self._f * self.s2.size
+
+  def mean_target(self):
     return self._f
 
   def gradients(self):
@@ -234,6 +245,6 @@ def estimate_d_model_sigmaa(e_eff, r_free_flags, e_model, dobs,
     sigmaa=curve(d_star_sq),
     theta=flex.double(curve.theta),
     b_k_grid=flex.double(curve.b_k_grid),
-    target=evaluator.target(),
+    target=evaluator.mean_target(),
     evaluate_at=curve,
     lbfgs_error=evaluator.lbfgs_error())

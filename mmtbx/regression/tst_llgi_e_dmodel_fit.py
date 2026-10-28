@@ -226,7 +226,33 @@ def exercise_b_defect_fixed_to_anchor():
   assert free.theta.size() == 2 + 2
   assert abs(free.theta[-1] - start[-1]) > 1.e-3, (free.theta[-1], start[-1])
 
+def exercise_fit_is_stable_to_rounding():
+  # On this case the steepest rung's amplitude saturates tanh at low
+  # resolution, a flat direction: with the mean target the fit stopped at
+  # a2 = 5.4 or at the bound 100 depending on rounding of Emodel (sigmaA up
+  # to 0.08 apart, 0.15 nats). With the total it converges to the same
+  # point.
+  import mmtbx.refinement.llgi_e_sigmaa as es
+  from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
+  fm = build_llgi_fmodel(60, 1.9, seed=13)
+  ld = fm.llgi_data()
+  em = es.build_e_model_as_fitted(fm)
+  # the same Emodel, rounded two ways (relative differences up to 5e-16)
+  e_pair = (flex.abs(em.e_model), flex.abs(
+    (fm.f_model().data() * (1. / fm.k_anisotropic())) * em.e_per_f))
+  assert flex.max(flex.abs(e_pair[0] - e_pair[1]) / e_pair[0]) < 1.e-15
+  common = dict(e_eff=es.build_e_eff(ld.feff.data(), ld.resn.data()),
+    r_free_flags=fm.r_free_flags().data(), dobs=ld.dobs.data(),
+    centric_flags=fm.f_obs().centric_flags().data(),
+    d_star_sq=fm.f_obs().d_star_sq().data(), b_sol_anchor=40.)
+  results = [fit.estimate_d_model_sigmaa(e_model=e_model, **common)
+    for e_model in e_pair]
+  assert flex.max(flex.abs(results[0].sigmaa - results[1].sigmaa)) < 1.e-6
+  assert approx_equal(results[0].target, results[1].target, eps=1.e-9)
+  assert results[0].lbfgs_error is None
+
 def run():
+  exercise_fit_is_stable_to_rounding()
   exercise_default_b_k_grid_spans_data_resolution_range()
   exercise_default_b_k_grid_falls_back_for_degenerate_s2()
   exercise_default_b_k_grid_k_zero_and_one()
