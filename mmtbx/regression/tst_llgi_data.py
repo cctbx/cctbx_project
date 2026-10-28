@@ -221,7 +221,8 @@ def exercise_site_gradients_refit_sigmaa():
   fmodel.update_llgi_sigmaa_scatfrac()
   shaken = shaken.deep_copy_scatterers()
   shaken.shake_sites_in_place(mean_distance=0.5)
-  fmodel.update_xray_structure(xray_structure=shaken, update_f_calc=True)
+  fmodel.update_xray_structure(xray_structure=shaken, update_f_calc=True,
+    update_f_mask=True)
   model.set_xray_structure(shaken)
   sel = flex.bool(model.size(), True)
   model.set_refinement_flags(flags=mmtbx.refinement.refinement_flags.manager(
