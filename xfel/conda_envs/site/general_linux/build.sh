@@ -78,7 +78,7 @@ source $BUILD_PREFIX/build/conda_setpaths.sh
 
 # Incremental rebuild (same verbs as bootstrap.py):
 #   mk-cctbx build                  # Recompile only
-#   mk-cctbx hot update base build  # Re-fetch sources, remake conda env, build
+#   mk-cctbx hot update build       # Re-fetch sources, build
 #   mk-cctbx                        # Recompile only. Equivalent to mk-cctbx build
 mk-cctbx () {
     (cd \$BUILD_PREFIX && python bootstrap.py ${BOOTSTRAP_FLAGS[*]} --use-conda \$CONDA_PREFIX "\${@:-build}")
