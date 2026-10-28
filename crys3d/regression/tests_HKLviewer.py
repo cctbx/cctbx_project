@@ -263,11 +263,17 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
 
 
 def exerciseQtGUI(philstr, refl2match, prefix=""):
-  # These flags enables QWebEngine, Qt5.15 to work on VMs used on Azure
+  # These flags enables QWebEngine, Qt5.15 to work on VMs used on Azure.
+  # The logging flags put Chromium's GL and renderer messages in the log.
+  # --no-sandbox: on GitHub's Windows Server 2025 runners the sandboxed
+  # renderer process never connects back to the frame.
   os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " --disable-web-security" \
             + " --enable-webgl-software-rendering --disable-gpu-compositing" \
             + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
-            + " --swiftshader --swiftshader-webgl --ignore-gpu-blocklist"
+            + " --swiftshader --swiftshader-webgl --ignore-gpu-blocklist" \
+            + " --enable-logging=stderr --v=1 --no-sandbox"
+  # On Windows Qt warnings go to the debugger, not stderr, without this.
+  os.environ["QT_LOGGING_TO_CONSOLE"] = "1"
   with open(prefix + "environ.txt","w") as mfile:
     # print environment variables to log file
     for k,v in os.environ.items():
