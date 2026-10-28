@@ -12,6 +12,7 @@
 #include <mmtbx/error.h>
 #include <cctbx/sgtbx/space_group.h>
 #include <scitbx/math/bessel.h>
+#include <scitbx/math/von_mises.h>
 #include <math.h>
 #include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/array_family/shared_reductions.h>
@@ -502,15 +503,21 @@ public:
 
   //! calculate absolute phase error <|phi - phi_model|>
   //! formula 7 and 10 in Lunin & Skovoroda (Acta Cryst. (1995). A51, 880-887)
+  //! (acentric: scitbx::math::von_mises_mean_abs_angle, by Gauss-Legendre
+  //! quadrature; an adaptive Simpson rule over [0, pi], used before,
+  //! started from phi = 0, pi/2, pi and missed the peak for 2p above about
+  //! 50)
   af::shared<double> phase_error()
      {
-       double mp = 180./(scitbx::constants::pi*scitbx::constants::pi);
+       scitbx::math::von_mises_mean_abs_angle const& mean_abs_angle =
+         scitbx::math::von_mises_mean_abs_angle::get();
+       double deg = 180. / scitbx::constants::pi;
        phase_error_ = af::shared<double> (fo_.size());
        for(std::size_t i=0; i < fo_.size(); i++) {
          if(beta_[i] > 0.0 && alpha_[i] >= 0.0) {
             double p = alpha_[i] * fo_[i] * fm_[i] / (eps_[i] * beta_[i]);
             if (cf_[i] == 0) {
-                phase_error_[i] = mp * simp(2.*p) / pseudo_i0(2.*p);
+                phase_error_[i] = mean_abs_angle(2.*p) * deg;
             }
             else {
                 phase_error_[i] = 180.0 * std::exp(-2.*p) / (1.0 + std::exp(-2.*p));
@@ -521,106 +528,6 @@ public:
          }
        }
        return phase_error_;
-     }
-
-  static
-  double fint(double phi, double tau)
-     {
-      if (tau <= 3.75) return phi*std::exp(tau*std::cos(phi));
-      else             return phi*std::exp(tau*(std::cos(phi)-1.));
-     }
-
-  //! calculate I0(x): very specific to this task. Avoids overflow problem.
-  //! return I0(x) if |x| < 3.75
-  //! return exp(-x)*I0(x) if x >= 3.75 (*** not I0(x) ***)
-  //! "missing" exponent appears in fint() function
-  static
-  double pseudo_i0(double const& x)
-     {
-       double abs_x = x;
-       if (abs_x < 0) abs_x = -abs_x;
-       double bessel_i0;
-       if (abs_x/3.75 < 1.0) {
-          double y = x/3.75;
-          y *= y;
-          bessel_i0=1.0+y*(3.5156229+y*(3.0899424+y*(1.2067492+
-                    y*(0.2659732+y*(0.0360768+y*0.0045813)))));
-       }
-       else {
-          double y = 3.75/abs_x;
-          y=0.39894228+y*(0.01328592+y*(0.00225319+y*(-0.00157565+
-            y*(0.00916281+y*(-0.02057706+y*(0.02635537+
-            y*(-0.01647633+y*0.00392377)))))));
-          bessel_i0=y/std::sqrt(abs_x);
-       }
-       return bessel_i0;
-     }
-
-  //! integral by Simpson method
-  static
-  double simp(double tau)
-     {
-       double hhh,hhhh,x4,x5,f4,f5,q2,q3,qqq;
-       af::shared<double> q(30),f2s(30),f5s(30),x2s(30),x5s(30);
-       double a = 0.0, b = 3.1415926, t = 0.0001, t1 = 0.00001;
-       double tt=t*t;
-       double h=(b-a)/2.;
-       int i=0;
-       double qq=0.;
-       double x1=a;
-       double x2=b;
-       double f1 = fint(x1,tau);
-       double f2 = fint(x2,tau);
-       double x3 = x1+h;
-       double f3 = fint(x3,tau);
-       double q1 = (f1+f2+4.*f3)*h;
-       double eps=t*std::abs(q1);
-       if(std::abs(q1)<=t) eps=tt;
-       lbl_2:;
-       h=h/2.;
-       hhh=std::abs(x1);
-       hhhh=std::abs(x2);
-       if(hhhh>hhh) hhh=hhhh;
-       if(std::abs(h)/hhh<=t1) goto lbl_4;
-       x4=x1+h;
-       x5=x3+h;
-       f4 = fint(x4,tau);
-       f5 = fint(x5,tau);
-       q2=(f1+f3+4.*f4)*h;
-       q3=(f3+f2+4.*f5)*h;
-       qqq=q2+q3;
-       if(std::abs(qqq-q1)<=eps) goto lbl_1;
-       if(i>=30) goto lbl_1;
-       i=i+1;
-       f2s[i]=f2;
-       x2s[i]=x2;
-       f5s[i]=f5;
-       x5s[i]=x5;
-       q[i]=q3;
-       f2=f3;
-       x2=x3;
-       f3=f4;
-       x3=x4;
-       q1=q2;
-       goto lbl_2;
-       lbl_1:;
-       qq=qq+qqq;
-       eps=t*std::abs(qq);
-       if(std::abs(qq)<=t) eps=tt;
-       lbl_4:;
-       if(i==0) goto lbl_3;
-       x1=x2;
-       f1=f2;
-       x2=x2s[i];
-       f2=f2s[i];
-       x3=x5s[i];
-       f3=f5s[i];
-       q1=q[i];
-       i=i-1;
-       h=(x2-x1)/2.;
-       goto lbl_2;
-       lbl_3:;
-       return qq/3.;
      }
 
 protected:
