@@ -142,7 +142,7 @@ class info(object):
     # coordinate error, distribution parameters) come from the LLGI fit
     # itself; ML alpha/beta are neither needed nor computed.
     if(self._llgi):
-      mch = fmodel.map_calculation_helper_llgi()
+      mch = fmodel.map_calculation_helper_llgi(phase_errors=True)
       pher = fmodel.phase_errors_llgi(mch)
       if(fmodel.r_free_flags().data().count(True) > 0):
         work_sel, free_sel = fmodel.arrays.work_sel, fmodel.arrays.free_sel

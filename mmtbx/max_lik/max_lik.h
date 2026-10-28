@@ -12,7 +12,7 @@
 #include <mmtbx/error.h>
 #include <cctbx/sgtbx/space_group.h>
 #include <scitbx/math/bessel.h>
-#include <scitbx/math/quadrature.h>
+#include <scitbx/math/von_mises.h>
 #include <math.h>
 #include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/array_family/shared_reductions.h>
@@ -503,17 +503,21 @@ public:
 
   //! calculate absolute phase error <|phi - phi_model|>
   //! formula 7 and 10 in Lunin & Skovoroda (Acta Cryst. (1995). A51, 880-887)
+  //! (acentric: scitbx::math::von_mises_mean_abs_angle, by Gauss-Legendre
+  //! quadrature; an adaptive Simpson rule over [0, pi], used before,
+  //! started from phi = 0, pi/2, pi and missed the peak for 2p above about
+  //! 50)
   af::shared<double> phase_error()
      {
-       scitbx::math::quadrature::gauss_legendre_engine<double> gle(64);
-       af::shared<double> t = gle.x();
-       af::shared<double> w = gle.w();
+       scitbx::math::von_mises_mean_abs_angle const& mean_abs_angle =
+         scitbx::math::von_mises_mean_abs_angle::get();
+       double deg = 180. / scitbx::constants::pi;
        phase_error_ = af::shared<double> (fo_.size());
        for(std::size_t i=0; i < fo_.size(); i++) {
          if(beta_[i] > 0.0 && alpha_[i] >= 0.0) {
             double p = alpha_[i] * fo_[i] * fm_[i] / (eps_[i] * beta_[i]);
             if (cf_[i] == 0) {
-                phase_error_[i] = mean_abs_phase(2.*p, t, w);
+                phase_error_[i] = mean_abs_angle(2.*p) * deg;
             }
             else {
                 phase_error_[i] = 180.0 * std::exp(-2.*p) / (1.0 + std::exp(-2.*p));
@@ -524,31 +528,6 @@ public:
          }
        }
        return phase_error_;
-     }
-
-  //! <|phi|> in degrees for p(phi) ~ exp(x cos(phi)) on [-pi, pi], x >= 0:
-  //! the Gauss-Legendre rule with nodes t and weights w on [-1, 1], mapped
-  //! to [0, min(pi, 15/sqrt(x))]; beyond that the weight is below exp(-45),
-  //! since 1 - cos(phi) >= 2 phi^2/pi^2. (An adaptive Simpson rule over
-  //! [0, pi], used before, starts from phi = 0, pi/2, pi and misses the
-  //! peak for x above about 50.)
-  static
-  double mean_abs_phase(double x,
-                        af::shared<double> const& t,
-                        af::shared<double> const& w)
-     {
-       double pi = scitbx::constants::pi;
-       double upper = pi;
-       if (x*pi*pi > 225.) upper = 15./std::sqrt(x);
-       if (!(upper > 0.)) return 0.;
-       double num = 0., den = 0.;
-       for(std::size_t k=0; k < t.size(); k++) {
-         double phi = 0.5 * upper * (t[k] + 1.);
-         double wk = w[k] * std::exp(x * (std::cos(phi) - 1.));
-         num += wk * phi;
-         den += wk;
-       }
-       return num / den * 180. / pi;
      }
 
 protected:

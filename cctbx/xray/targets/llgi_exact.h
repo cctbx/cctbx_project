@@ -7,6 +7,7 @@
 #include <limits>
 #include <scitbx/constants.h>
 #include <scitbx/math/quadrature.h>
+#include <scitbx/math/von_mises.h>
 #include <cctbx/french_wilson.h>
 #include <boost/math/special_functions/bessel.hpp>
 #include <algorithm>
@@ -109,11 +110,17 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
     double e_j2;    // <J^2>
     double e_sr;    // <sqrt(J) R(kappa sqrt J)>, R = B'/B
     double e_s;     // <sqrt(J)>, the posterior mean amplitude
+    double e_phase_error; // <|phase error|> (radians), if requested, else 0
     double s_mode, s_lo, s_hi; // quadrature interval in s = sqrt(J/sig)
 
+    //! phase_error: also <|phase error|>. Given J the phase relative to the
+    //! model is von Mises with x = kappa sqrt(J) (acentric), or 0 or pi
+    //! with P(pi) = 1/(1 + exp(2 kappa sqrt(J))) (centric).
     integral(
       double eo_sq, double sig, double lambda, double kappa, bool centric,
-      double drop = 36.)
+      double drop = 36., bool phase_error = false)
+    :
+      e_phase_error(0)
     {
       CCTBX_ASSERT(sig > 0);
       const double p = centric ? -0.5 : 0.;
@@ -224,7 +231,9 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         lw[i] = std::log(gl.w[i] * half * 2.) + psi(s[i]);
         lw_max = std::max(lw_max, lw[i]);
       }
-      double z = 0, sj = 0, sj2 = 0, ssr = 0, ss = 0;
+      double z = 0, sj = 0, sj2 = 0, ssr = 0, ss = 0, spe = 0;
+      scitbx::math::von_mises_mean_abs_angle const& mean_abs_angle =
+        scitbx::math::von_mises_mean_abs_angle::get();
       for (std::size_t i = 0; i < n; i++) {
         double wi = std::exp(lw[i] - lw_max);
         double jj = sig * s[i] * s[i];
@@ -236,6 +245,11 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         sj2 += wi * jj * jj;
         ssr += wi * rj * r;
         ss += wi * rj;
+        if (phase_error) {
+          spe += wi * (centric
+            ? scitbx::constants::pi / (1. + std::exp(std::min(2. * x, 700.)))
+            : mean_abs_angle(x));
+        }
       }
       // -mu^2/2 - lambda eo_sq + lambda^2 sig^2/2 = -eo_sq^2/(2 sig^2)
       log_z = lw_max + std::log(z)
@@ -245,6 +259,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       e_j2 = sj2 / z;
       e_sr = ssr / z;
       e_s = ss / z;
+      e_phase_error = spe / z;
     }
   };
 
@@ -255,17 +270,20 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
     double d_ll_d_a;    // d LLGI / d a
     double e_expected;  // posterior <E> along the model phase
     double e_abs_expected; // posterior <|E|>
+    double phase_error; // posterior <|phase error|> (degrees), if requested
   };
 
   //! Exact LLGI and derivatives for one reflection. eo_sq, sig: observed
   //! E^2 and its standard deviation (sig > 0); ec >= 0; 0 <= a < 1.
   //! null_log_z, if supplied (not NaN), is M(0, b) for this reflection,
   //! which does not depend on ec or a and can be computed once.
+  //! phase_error: also the posterior mean |phase error| (else 0).
   inline
   result
   evaluate(
     double eo_sq, double sig, double ec, double a, bool centric,
-    double null_log_z = std::numeric_limits<double>::quiet_NaN())
+    double null_log_z = std::numeric_limits<double>::quiet_NaN(),
+    bool phase_error = false)
   {
     CCTBX_ASSERT(sig > 0);
     CCTBX_ASSERT(a >= 0 && a < 1);
@@ -274,7 +292,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
     const double s = 1. - a * a;
     const double lambda = b / s;
     const double kappa = 2. * b * a * ec / s;
-    integral m(eo_sq, sig, lambda, kappa, centric);
+    integral m(eo_sq, sig, lambda, kappa, centric, 36., phase_error);
     if (null_log_z != null_log_z) {
       null_log_z = integral(eo_sq, sig, b, 0., centric).log_z;
     }
@@ -293,6 +311,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
     r.d_ll_d_a = p_a + m_k * k_a + m_l * l_a;
     r.e_expected = m_k;
     r.e_abs_expected = m.e_s;
+    r.phase_error = m.e_phase_error * 180. / scitbx::constants::pi;
     return r;
   }
 
@@ -306,11 +325,12 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
 
   //! evaluate() over arrays (for Python-side fits and tests). null_log_z
   //! may be empty (computed here) or one value per reflection.
+  //! phase_error: also fill phase_error (else empty).
   class evaluate_many
   {
     public:
       af::shared<double> ll, d_ll_d_ec, d_ll_d_a, e_expected;
-      af::shared<double> e_abs_expected;
+      af::shared<double> e_abs_expected, phase_error;
 
       evaluate_many(
         af::const_ref<double> const& eo_sq,
@@ -318,7 +338,8 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         af::const_ref<double> const& ec,
         af::const_ref<double> const& a,
         af::const_ref<bool> const& centric,
-        af::const_ref<double> const& null_log_z_ = af::const_ref<double>(0,0))
+        af::const_ref<double> const& null_log_z_ = af::const_ref<double>(0,0),
+        bool phase_error_ = false)
       {
         std::size_t n = eo_sq.size();
         CCTBX_ASSERT(sig.size() == n && ec.size() == n);
@@ -329,12 +350,14 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         for (std::size_t i = 0; i < n; i++) {
           result r = evaluate(eo_sq[i], sig[i], ec[i], a[i], centric[i],
             null_log_z_.size() ? null_log_z_[i]
-                               : std::numeric_limits<double>::quiet_NaN());
+                               : std::numeric_limits<double>::quiet_NaN(),
+            phase_error_);
           ll.push_back(r.ll);
           d_ll_d_ec.push_back(r.d_ll_d_ec);
           d_ll_d_a.push_back(r.d_ll_d_a);
           e_expected.push_back(r.e_expected);
           e_abs_expected.push_back(r.e_abs_expected);
+          if (phase_error_) phase_error.push_back(r.phase_error);
         }
       }
   };

@@ -2643,7 +2643,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       free_reflections_per_bin = free_reflections_per_bin,
       interpolation            = interpolation)
 
-  def map_calculation_helper_llgi(self):
+  def map_calculation_helper_llgi(self, phase_errors=False):
     """ The LLGI counterpart of map_calculation_helper(): .f_obs, .f_model,
     .alpha, .beta and .fom for mmtbx.map_tools.combine, from the LLGI
     quantities instead of an ML alpha/beta fit. On the E scale, with the
@@ -2667,9 +2667,13 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
                 (centric), X = 2*D*Eeff*Emodel/V,  coefficient D
     (fom and alpha 0 where D, V, Eeff or Emodel is not positive).
     Also: .beta = V and .d = D for every reflection (the statistics table),
-    .x, X or its equivalent for the exact fom (phase_errors_llgi()), and
-    .n_exact; .llgi marks the helper for electron_density_map's fill of
-    missing reflections.
+    .x, the Rice form's X, and .n_exact; .llgi marks the helper for
+    electron_density_map's fill of missing reflections. With phase_errors,
+    .phase_error is the expected |phi - phi_model| (degrees) per reflection
+    (else None): the mean over the exact posterior, which, unlike the
+    phase probability implied by its fom (a mean cosine weighted by |E|),
+    includes the uncertainty of |E|, or for the Rice form that of the
+    fom's phase probability.
     With tNCS (llgi_data.tncs_u/tncs_t, TEPS = 1) everything above is in the
     t-normalised frame of mmtbx.refinement.llgi_tncs.frame: sigmaA -> a',
     Emodel -> s*Emodel, and sqrt(t) in place of sqrt(TEPS).
@@ -2692,7 +2696,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
     class result(object):
       llgi = True  # tells electron_density_map to fill missing the LLGI way
-      def __init__(self, fmodel):
+      def __init__(self, fmodel, phase_errors):
         feff = llgi_data.feff
         f_obs = fmodel.f_obs()
         fmnas = fmodel.f_model_no_aniso_scale()
@@ -2740,6 +2744,18 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         fom.set_selected(valid & ~centric_flags, acentric_fom)
         fom.set_selected(valid & centric_flags, centric_fom)
         x = x.set_selected(~valid, 0.0)
+        self.phase_error = None
+        if(phase_errors):
+          # Rice form: the phase probability of the fom, the ML forms of
+          # max_lik with p = X/2
+          one = flex.double(n, 1.0)
+          self.phase_error = max_lik.fom_and_phase_error(
+            f_obs         = x * 0.5,
+            f_model       = one,
+            alpha         = one,
+            beta          = one,
+            epsilons      = one,
+            centric_flags = centric_flags).phase_error()
         # Exact posterior for every measured reflection (see the
         # docstring): one evaluation per reflection, and the Rice figure of
         # merit gives worse maps where the Rice approximation is poor.
@@ -2758,7 +2774,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
               e_calc=e_model_abs.select(isel),
               sigmaa=sa.select(isel),
               centric_flags=centric_flags.select(isel),
-              null_log_z=hybrid.null_log_z.select(isel))
+              null_log_z=hybrid.null_log_z.select(isel),
+              phase_error=bool(phase_errors))
             e_abs = r.e_abs_expected
             m_exact = r.e_expected / e_abs.deep_copy().set_selected(
               e_abs <= 0, 1.0)
@@ -2770,14 +2787,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
             sa_exact = sa.select(isel)
             alpha_data.set_selected(isel,
               sa_exact * (sqrt_teps * resn * e_per_f).select(isel))
-            # X equivalent to m (for phase_errors_llgi)
-            c_ex = centric_flags.select(isel)
-            x_ex = flex.double(isel.size(), 0.0)
-            x_ex.set_selected(~c_ex,
-              scitbx.math.inverse_bessel_i1_over_i0(m_exact.select(~c_ex)))
-            mc = m_exact.select(c_ex)
-            x_ex.set_selected(c_ex, flex.log((1 + mc) / (1 - mc)))
-            x.set_selected(isel, x_ex)
+            if(phase_errors):
+              self.phase_error.set_selected(isel, r.phase_error)
             self.n_exact = isel.size()
         self.f_obs = feff.customized_copy(data=f_obs_data)
         self.alpha = feff.array(data=alpha_data)
@@ -2785,29 +2796,20 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         self.fom = fom
         self.d = d
         self.x = x
-    return result(fmodel=self)
+    return result(fmodel=self, phase_errors=phase_errors)
 
   def phase_errors_llgi(self, map_calculation_helper_llgi=None):
     """ Expected absolute phase error <|phi - phi_model|> per reflection
-    (degrees), implied by the LLGI (E-scale) figure of merit that the
-    LLGI map coefficients use -- the counterpart of phase_errors(),
-    without the ML alpha/beta fit. Reuses the same Lunin & Skovoroda
-    (1995) formulas: those depend only on p = alpha*Fo*Fm/(eps*beta), and
-    the LLGI fom is I1(X)/I0(X) (acentric) or tanh(X/2) (centric), i.e.
-    the ML forms with p = X/2.
+    (degrees) from the LLGI quantities -- the counterpart of
+    phase_errors(), without the ML alpha/beta fit: the mean over the exact
+    posterior where the LLGI maps use it, otherwise over the phase
+    probability of the Rice fom (map_calculation_helper_llgi with
+    phase_errors; a helper given without them is not reused).
     """
     mch = map_calculation_helper_llgi
-    if(mch is None):
-      mch = self.map_calculation_helper_llgi()
-    p = mch.x * 0.5
-    one = flex.double(p.size(), 1.0)
-    return max_lik.fom_and_phase_error(
-      f_obs         = p,
-      f_model       = one,
-      alpha         = one,
-      beta          = one,
-      epsilons      = one,
-      centric_flags = mch.f_obs.centric_flags().data()).phase_error()
+    if(mch is None or getattr(mch, "phase_error", None) is None):
+      mch = self.map_calculation_helper_llgi(phase_errors=True)
+    return mch.phase_error
 
   def model_error_llgi(self):
     """ Coordinate error (A) from the LLGI sigmaA curve attached to

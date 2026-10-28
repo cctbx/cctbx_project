@@ -302,13 +302,14 @@ def exercise_llgi_fill_is_d_fc():
   assert flex.max(flex.abs(f.data() - d.data()) / flex.abs(d.data())) < 0.01
 
 def exercise_phase_errors_llgi_match_numerical_integration():
-  # Expected |phase error| implied by the LLGI fom, checked against direct
-  # numerical integration of the phase distributions: von Mises
+  # Rice form (no intensities): expected |phase error| of the fom's phase
+  # distribution, checked against direct numerical integration: von Mises
   # exp(X*cos(phi)) (acentric) and the two-point 0/pi distribution with
   # P(pi) = exp(-X)/(1+exp(-X)) (centric).
   import numpy as np
   fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=41)
   mch = fmodel.map_calculation_helper_llgi()
+  assert mch.phase_error is None and mch.n_exact == 0
   pher = np.array(fmodel.phase_errors_llgi(mch))
   x = np.array(mch.x)
   centric = np.array(mch.f_obs.centric_flags().data())
@@ -327,6 +328,66 @@ def _von_mises_mean_abs_phase(x):
   phi = np.linspace(0.0, upper, 200001)
   w = np.exp(x * (np.cos(phi) - 1.0))
   return np.degrees(np.trapezoid(phi * w, phi) / np.trapezoid(w, phi))
+
+def exercise_phase_errors_llgi_exact_posterior_mean():
+  # With intensities, the exact posterior: the expected |phase error| is
+  # the mean over the posterior of J = |E|^2 of the phase error given J
+  # (von Mises with x = kappa sqrt(J), or P(pi) = 1/(1 + exp(2 kappa
+  # sqrt(J))) centric), here by the trapezoid rule in s = sqrt(J) and
+  # max_lik's von Mises mean (checked in tst_maxlik); larger than the
+  # phase error implied by the fom (an |E|-weighted mean cosine).
+  import numpy as np
+  import scitbx.math
+  import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+  import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
+  from mmtbx import max_lik
+  fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=41, rice_kappa=0.0)
+  mch = fmodel.map_calculation_helper_llgi(phase_errors=True)
+  assert mch.n_exact > 0
+  pher = np.array(fmodel.phase_errors_llgi(mch))
+  assert np.all(pher == np.array(mch.phase_error))
+  ld = fmodel.llgi_data()
+  h = llgi_hybrid.get_exact_data(ld)
+  eo, sig = np.array(h.e_obs_sq), np.array(h.sig_e_obs_sq)
+  ec = np.array(flex.abs(
+    llgi_e_sigmaa.build_e_model_as_fitted(fmodel).e_model))
+  sa = np.array(ld.sigmaa.data())
+  centric = np.array(mch.f_obs.centric_flags().data())
+  fom = np.array(mch.fom)
+  exact = np.flatnonzero((sig > 0) & (sa > 0) & (sa < 0.999))
+  assert exact.size == mch.n_exact
+  n_lower = 0
+  for i in exact[np.linspace(0, exact.size - 1, 40).astype(int)]:
+    S = 1. - sa[i] ** 2
+    b = 0.5 if centric[i] else 1.
+    kappa = 2. * b * sa[i] * ec[i] / S
+    j_hi = max(eo[i] + 12. * sig[i], 0.)
+    j_hi = min(j_hi, (sa[i] * ec[i] + 9. * math.sqrt(S)) ** 2) or j_hi
+    s = np.linspace(math.sqrt(max(eo[i] - 12. * sig[i], 0.)),
+      math.sqrt(j_hi), 20001)
+    j = s * s
+    x = kappa * s
+    lw = -(j - eo[i]) ** 2 / (2. * sig[i] ** 2) - b * j / S
+    if(centric[i]):
+      lw += np.logaddexp(x, -x)       # ln cosh, J^(-1/2) dJ = 2 ds
+      pe = 180. / (1. + np.exp(np.minimum(2. * x, 700.)))
+    else:
+      big = x >= 500.
+      ln_i0 = np.where(big, x - 0.5 * np.log(2. * np.pi * np.maximum(x, 1.))
+        + 1. / (8. * np.maximum(x, 1.)), np.log(np.i0(np.minimum(x, 500.))))
+      lw += ln_i0 + np.log(np.maximum(s, 1.e-300))   # dJ = 2 s ds
+      one = flex.double(x.size, 1.)
+      pe = np.array(max_lik.fom_and_phase_error(f_obs=flex.double(x * 0.5),
+        f_model=one, alpha=one, beta=one, epsilons=one,
+        centric_flags=flex.bool(x.size, False)).phase_error())
+    w = np.exp(lw - lw.max())
+    expected = np.trapezoid(w * pe, s) / np.trapezoid(w, s)
+    assert abs(pher[i] - expected) < 1.e-5, (i, pher[i], expected)
+    # the phase error the fom alone would imply
+    if(not centric[i] and fom[i] < 0.999999):
+      x_m = scitbx.math.inverse_bessel_i1_over_i0(flex.double([fom[i]]))
+      if(pher[i] > _von_mises_mean_abs_phase(x_m[0])): n_lower += 1
+  assert n_lower > 0
 
 def exercise_outlier_selection_skips_model_based_test_for_llgi():
   # Model-based outlier rejection (its own Dobs-free sigmaA fit) must not
@@ -403,6 +464,7 @@ def exercise():
   exercise_fill_missing_uses_fitted_sigmaa_curve()
   exercise_llgi_fill_is_d_fc()
   exercise_phase_errors_llgi_match_numerical_integration()
+  exercise_phase_errors_llgi_exact_posterior_mean()
   exercise_outlier_selection_skips_model_based_test_for_llgi()
   exercise_map_coefficients_from_fmodel_ml_target_unaffected()
   exercise_compute_map_coefficients_mixed_dispatch()

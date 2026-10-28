@@ -520,11 +520,27 @@ namespace {
               arg("sigmaa"),
               arg("centric_flags"),
               arg("null_log_z"))))
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&,
+            af::const_ref<double> const&,
+            bool>((
+              arg("e_obs_sq"),
+              arg("sig_e_obs_sq"),
+              arg("e_calc"),
+              arg("sigmaa"),
+              arg("centric_flags"),
+              arg("null_log_z"),
+              arg("phase_error"))))
           .add_property("ll", make_getter(&w_t::ll, return_value_policy<return_by_value>()))
           .add_property("d_ll_d_ec", make_getter(&w_t::d_ll_d_ec, return_value_policy<return_by_value>()))
           .add_property("d_ll_d_a", make_getter(&w_t::d_ll_d_a, return_value_policy<return_by_value>()))
           .add_property("e_expected", make_getter(&w_t::e_expected, return_value_policy<return_by_value>()))
           .add_property("e_abs_expected", make_getter(&w_t::e_abs_expected, return_value_policy<return_by_value>()))
+          .add_property("phase_error", make_getter(&w_t::phase_error, return_value_policy<return_by_value>()))
         ;
       }
       {
