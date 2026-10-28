@@ -756,6 +756,66 @@ def test_sulfate_refused():
 
 # ------------------------------------------------------------------------------
 
+def test_cut_bonds_by_distance_conformers():
+  '''
+  Conformer A of pdb_ser_altloc selected (with the blank atoms): the
+  unselected B atoms sit at bonding distance of the blank backbone but are
+  conformers of selected residue groups, not cut partners.
+  '''
+  model = model_with_h(pdb_ser_altloc)
+  h = model.get_hierarchy()
+  sel = h.atom_selection_cache().selection("altloc A or altloc ' '")
+  assert sel.count(False) > 0
+  assert capping.cut_bonds_by_distance(h, sel) == {}, \
+    capping.cut_bonds_by_distance(h, sel)
+
+def test_cap_model_matches_two_step():
+  '''
+  cap_model on pdb_arg (ARG 3 at CB): same caps and charge as find +
+  extra_sigma_bonds + electrons + cap_dangling_atoms by hand.
+  '''
+  a, b = model_with_h(pdb_arg), model_with_h(pdb_arg)
+  dangling = capping.find_dangling_atoms(a)
+  charge = electrons.run(model=a,
+    extra_sigma_bonds=capping.extra_sigma_bonds(dangling))
+  capping.cap_dangling_atoms(a, dangling)
+  r = capping.cap_model(b)
+  assert r.total_charge == charge, (r.total_charge, charge)
+  assert r.capped.n_added == 3 and r.warnings == [], \
+    (r.capped.n_added, r.warnings)
+  assert [x.name for x in a.get_hierarchy().atoms()] == \
+    [x.name for x in b.get_hierarchy().atoms()]
+  assert a.get_hierarchy().atoms().extract_xyz().max_distance(
+    b.get_hierarchy().atoms().extract_xyz()) < 1.e-6
+
+def test_cap_model_cached_dangling_unprocessed():
+  '''
+  The records of a processed model placed on an unprocessed manager of a
+  copy of its hierarchy (no restraints): identical caps, no charge.
+  '''
+  model = model_with_h(pdb_arg)
+  dangling = capping.find_dangling_atoms(model)
+  copy = mmtbx.model.manager(model_input=None,
+    pdb_hierarchy=model.get_hierarchy().deep_copy(),
+    crystal_symmetry=model.crystal_symmetry(), log=null_out())
+  r = capping.cap_model(copy, dangling=dangling, calculate_charge=False,
+    mon_lib_srv=model.get_mon_lib_srv())
+  ref = capping.cap_dangling_atoms(model, dangling)
+  assert r.total_charge is None and r.formal_charges is None
+  assert r.capped.lines == ref.lines, (r.capped.lines, ref.lines)
+  a, b = model.get_hierarchy().atoms(), copy.get_hierarchy().atoms()
+  assert list(a.extract_name()) == list(b.extract_name())
+  assert a.extract_xyz().max_distance(b.extract_xyz()) < 1.e-6
+
+def test_cap_model_unknown_residue_sorry():
+  try:
+    capping.cap_model(model_with_h(pdb_unl))
+  except Sorry as e:
+    assert 'capping=True: no dictionary for' in str(e), str(e)
+  else:
+    raise AssertionError('no Sorry')
+
+
 # ------------------------------------------------------------------------------
 # Geometry
 
@@ -909,6 +969,90 @@ def test_no_known_raises():
   except ValueError:
     return
   raise AssertionError('no ValueError for an empty known list')
+
+# ------------------------------------------------------------------------------
+# cut bonds (rule 9): a fragment cut out of a larger model
+
+def i_seq_of(model, resseq, name):
+  for a in model.get_hierarchy().atoms():
+    if (a.parent().parent().resseq.strip() == str(resseq) and
+        a.name.strip() == name):
+      return a.i_seq
+  raise AssertionError((resseq, name))
+
+def test_cut_bonds_backbone_n():
+  '''
+  ALA 2 of pdb_ala_ala cut from ALA 1: N 2 (CA, H) lost its peptide C.
+  cut_bonds gives it one H, named H2 (its free dictionary H); without
+  cut_bonds it is not examined (no heavy dictionary partner missing).
+  '''
+  model = model_with_h(pdb_ala_ala)
+  model = model.select(model.selection('resseq 2'))
+  n = i_seq_of(model, 2, 'N')
+  assert ('ALA', '2', '', 'N') not in records_by_name(
+    capping.find_dangling_atoms(model))
+  result = capping.find_dangling_atoms(model, cut_bonds={n: 1})
+  r = records_by_name(result)[('ALA', '2', '', 'N')]
+  assert (r.n_fill, r.coordination, r.missing_names, r.h_names) == \
+    (1, 3, [], ['H2']), (r.n_fill, r.coordination, r.missing_names, r.h_names)
+  assert capping.extra_sigma_bonds(result)[n] == 1
+  capping.cap_dangling_atoms(model, result)
+  atoms = model.get_hierarchy().atoms()
+  n_atom = atoms[i_seq_of(model, 2, 'N')]
+  near = sorted(a.name.strip() for a in atoms
+                if a.element_is_hydrogen() and a.distance(n_atom) < 1.2)
+  assert near == ['H', 'H2'], near
+
+def test_cut_bonds_keeps_dictionary_record():
+  '''
+  ALA 1 cut from ALA 2: C 1 (no O in this fixture) misses O and OXT
+  (leaving, nothing replaces it now): n_fill 3 already counts the absent N;
+  a cut bond on it changes nothing and adds no record.
+  '''
+  model = model_with_h(pdb_ala_ala)
+  model = model.select(model.selection('resseq 1'))
+  c = i_seq_of(model, 1, 'C')
+  plain = records_by_name(capping.find_dangling_atoms(model))[
+    ('ALA', '1', '', 'C')]
+  result = capping.find_dangling_atoms(model, cut_bonds={c: 1})
+  assert len([r for r in result.records if r.i_seq == c]) == 1
+  assert records_by_name(result)[('ALA', '1', '', 'C')].n_fill == \
+    plain.n_fill == 3
+
+def test_cut_bonds_ignored_on_h_and_metal():
+  model = model_with_h(pdb_cys_zn)
+  atoms = model.get_hierarchy().atoms()
+  zn = [a.i_seq for a in atoms if a.element.strip().upper() == 'ZN'][0]
+  h = [a.i_seq for a in atoms if a.element_is_hydrogen()][0]
+  result = capping.find_dangling_atoms(model, cut_bonds={zn: 1, h: 1})
+  assert not [r for r in result.records if r.i_seq in (zn, h)], \
+    records_by_name(result)
+
+def test_cut_bonds_by_distance_disulfide():
+  '''
+  CYS 232 of pdb_disulfide selected alone: its SG lost SG 128.
+  '''
+  model = model_with_h(pdb_disulfide)
+  h = model.get_hierarchy()
+  sel = h.atom_selection_cache().selection('resseq 232')
+  cut = capping.cut_bonds_by_distance(h, sel)
+  frag = h.select(sel)
+  frag.atoms().reset_i_seq()
+  sg = [a.i_seq for a in frag.atoms() if a.name.strip() == 'SG'][0]
+  assert cut == {sg: 1}, cut
+  # the whole model: nothing is cut
+  assert capping.cut_bonds_by_distance(
+    h, flex.bool(h.atoms().size(), True)) == {}
+
+def test_cut_bonds_by_distance_metal():
+  '''
+  pdb_cys_zn without its ZN: the coordination bond is no cut bond.
+  '''
+  model = model_with_h(pdb_cys_zn)
+  h = model.get_hierarchy()
+  sel = ~h.atom_selection_cache().selection('element ZN')
+  assert capping.cut_bonds_by_distance(h, sel) == {}
+
 
 # ------------------------------------------------------------------------------
 # Building the caps
@@ -1541,6 +1685,15 @@ def run():
   test_water_and_ions_untouched()
   test_lone_atom_sorry()
   test_skipped_coordination()
+  test_cut_bonds_backbone_n()
+  test_cut_bonds_keeps_dictionary_record()
+  test_cut_bonds_ignored_on_h_and_metal()
+  test_cut_bonds_by_distance_disulfide()
+  test_cut_bonds_by_distance_metal()
+  test_cut_bonds_by_distance_conformers()
+  test_cap_model_matches_two_step()
+  test_cap_model_cached_dangling_unprocessed()
+  test_cap_model_unknown_residue_sorry()
   test_steric_number()
   test_tetra_three_known()
   test_tetra_two_known()

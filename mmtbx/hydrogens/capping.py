@@ -75,6 +75,17 @@ Detection (find_dangling_atoms), on a model with a restraints manager:
    Nucleic-acid chain ends are not dangling: qmready places HO3' and HO5'
    there (reduce_hydrogen na_terminal_h); a 5' phosphate keeps its charge.
 
+9. Cut bonds (cut_bonds, {i_seq: n}): bonds of the model's atoms to atoms
+   that are not in the model, a fragment cut out of a larger model (QM
+   fragments of qrefine; cut_bonds_by_distance finds them in the parent).
+   An atom without a record gets one with n_fill n, coordination its bonded
+   neighbours + n, and its free dictionary H names (H2 on a backbone N, H
+   on a PRO N, HG on a cut SG, HO3' on a cut O3'); an atom with a record
+   keeps it, its n_fill already counts the absent partner (a cut backbone
+   C: V 4, used CA + O double = 3, fill 1). An atom the dictionary pass
+   found saturated (n_fill <= 0), H and metals are ignored. In guess mode
+   n is added to the guessed n_fill.
+
 Dictionary and bond orders. Atom and bond lists, and the atom names, are the
 CCD's wherever reduce_hydrogen._ccd_describes() holds, else the restraint
 dictionary's (a user CIF, or a residue the CCD does not have): geostd amino
@@ -177,6 +188,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import group_args
 from libtbx.utils import Sorry
 from cctbx.geometry_restraints.linking_class import linking_class
+from cctbx import crystal, uctbx
 from mmtbx.ligands.electrons import atom_property
 from mmtbx.hydrogens import reduce_hydrogen
 import iotbx.pdb.hierarchy
@@ -402,11 +414,14 @@ def _record(atom, n_fill, neighbours, missing_names, h_names, source,
     h_names       = h_names,
     source        = source))
 
-def find_dangling_atoms(model, guess_for_unknowns=False, log=None):
+def find_dangling_atoms(model, guess_for_unknowns=False, log=None,
+                        cut_bonds=None):
   '''
   Non-H atoms with a dangling bond (see the module docstring), in model
   order. model: mmtbx.model.manager with a restraints manager. log: where to
   say that a residue's CCD entry could not be read (None: silent).
+  cut_bonds: {i_seq: n}, bonds of the model's atoms to atoms not in the
+  model (rule 9); an atom without a record gets one with n_fill n.
   Returns group_args(records, unknown_residues, skipped, guessed_bonds,
   internal_gaps, bond_table):
     records: group_args(key, i_seq, n_fill, coordination, missing_names,
@@ -435,6 +450,7 @@ def find_dangling_atoms(model, guess_for_unknowns=False, log=None):
   partners_cache, orders_cache = {}, {}
   records, unknown_residues, skipped = [], [], []
   guessed_bonds = set()
+  saturated = set() # examined by the dictionary pass, n_fill <= 0
   for rg in hierarchy.residue_groups():
     names_by_altloc = None
     for ag in rg.atom_groups():
@@ -446,7 +462,7 @@ def find_dangling_atoms(model, guess_for_unknowns=False, log=None):
         if label not in unknown_residues: unknown_residues.append(label)
         if guess_for_unknowns:
           _guess_atom_group(ag, table, atoms, sites, is_metal, records,
-                            skipped, guessed_bonds)
+                            skipped, guessed_bonds, cut_bonds=cut_bonds)
         continue
       orders = reduce_hydrogen._bond_orders(resname, mon_lib_srv, orders_cache)
       order = lambda a, b: orders.get(frozenset((a, b)), 1)
@@ -475,7 +491,9 @@ def find_dangling_atoms(model, guess_for_unknowns=False, log=None):
             n_link += 1
         used += n_link
         n_fill = valence - used
-        if n_fill <= 0: continue
+        if n_fill <= 0:
+          saturated.add(atom.i_seq)
+          continue
         # the leaving atoms the links replace are not missing (C without O,
         # peptide-bonded: O, not OXT)
         for p, is_h, is_leaving in own:
@@ -485,6 +503,23 @@ def find_dangling_atoms(model, guess_for_unknowns=False, log=None):
         h_names = [p for p, is_h, l in own if is_h and p not in present]
         _record(atom, n_fill, neighbours, missing, h_names, 'dictionary',
                 records, skipped)
+      if cut_bonds:
+        # rule 9: atoms that lost a bond to an atom outside the model
+        recorded = set(r.i_seq for r in records)
+        for atom in ag.atoms():
+          n_cut = cut_bonds.get(atom.i_seq, 0)
+          if n_cut <= 0: continue
+          if atom.element_is_hydrogen(): continue
+          if is_metal(reduce_hydrogen._atom_element(atom)): continue
+          if atom.i_seq in recorded or atom.i_seq in saturated: continue
+          own = partners.get(atom.name.strip(), [])
+          if names_by_altloc is None: names_by_altloc = _conformer_names(rg)
+          present = _present_names(atom, names_by_altloc)
+          h_names = [p for p, is_h, l in own if is_h and p not in present]
+          neighbours = _conformer_neighbours(atom, table.get(atom.i_seq, ()),
+                                             atoms, is_metal)
+          _record(atom, n_cut, neighbours, [], h_names, 'dictionary',
+                  records, skipped)
   return group_args(
     records          = records,
     unknown_residues = unknown_residues,
@@ -604,6 +639,55 @@ def extra_sigma_bonds(result):
     extra[j_seq] = extra.get(j_seq, 0) + 1
   return extra
 
+def cut_bonds_by_distance(hierarchy, selection):
+  '''
+  {i_seq: n} for find_dangling_atoms(cut_bonds=...) on
+  hierarchy.select(selection): the bonds, by covalent distance (rule 6:
+  sum of the covalent radii + GUESS_BOND_TOLERANCE), between a selected and
+  an unselected heavy non-metal atom, counted per selected atom. The keys
+  are the positions of the selected atoms in selection.iselection(), the
+  i_seqs of hierarchy.select(selection) after reset_i_seq(). No symmetry:
+  the hierarchy is put in a P1 box larger than the cutoff. An unselected atom
+  of a residue group that has selected atoms is an alternate conformer of
+  the selection (fragments are residue-group complete), not a cut partner.
+  '''
+  atoms = hierarchy.atoms()
+  sites = atoms.extract_xyz()
+  selected_groups = set()
+  for i in selection.iselection():
+    selected_groups.add(atoms[i].parent().parent().memory_id())
+  box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+    sites_cart=sites, buffer_layer=5)
+  cs = crystal.symmetry(unit_cell=box.unit_cell, space_group_symbol='P1')
+  xrs = hierarchy.extract_xray_structure(crystal_symmetry=cs)
+  xrs.set_sites_cart(box.sites_cart)
+  pst = xrs.pair_asu_table(distance_cutoff=GUESS_BOND_CUTOFF
+    ).extract_pair_sym_table()
+  properties = atom_property()
+  position = {}
+  for k, i_seq in enumerate(selection.iselection()): position[i_seq] = k
+  result = {}
+  for i, pair_sym_dict in enumerate(pst):
+    for j in pair_sym_dict.keys():
+      if selection[i] == selection[j]: continue
+      outside = atoms[j if selection[i] else i]
+      if outside.parent().parent().memory_id() in selected_groups: continue
+      pair = []
+      for a in (atoms[i], atoms[j]):
+        if a.element_is_hydrogen(): break
+        e = reduce_hydrogen._atom_element(a)
+        if properties.is_metal(e): break
+        r = reduce_hydrogen._covalent_radius(e)
+        if r is None: break
+        pair.append(r)
+      if len(pair) != 2: continue
+      d = (matrix.col(sites[i]) - matrix.col(sites[j])).length()
+      if d >= pair[0] + pair[1] + GUESS_BOND_TOLERANCE: continue
+      inside = i if selection[i] else j
+      k = position[inside]
+      result[k] = result.get(k, 0) + 1
+  return result
+
 def _has_internal_bonds(rg, table):
   '''
   True if the bond table bonds any two atoms of residue group rg.
@@ -612,7 +696,7 @@ def _has_internal_bonds(rg, table):
   return any(table.get(i, set()) & i_seqs for i in i_seqs)
 
 def _guess_atom_group(ag, table, atoms, sites, is_metal, records, skipped,
-                      guessed_bonds):
+                      guessed_bonds, cut_bonds=None):
   '''
   Valence budget by element and formal charge for an atom group without a
   dictionary (rule 6). The bonds found by distance that the bond table does
@@ -639,6 +723,7 @@ def _guess_atom_group(ag, table, atoms, sites, is_metal, records, skipped,
       if other.i_seq not in bonded:
         guessed_bonds.add(tuple(sorted((atom.i_seq, other.i_seq))))
     n_fill = valence - len(neighbours)
+    if cut_bonds: n_fill += cut_bonds.get(atom.i_seq, 0)
     if n_fill <= 0: continue
     _record(atom, n_fill, neighbours, [], [], 'guess', records, skipped)
 
@@ -920,7 +1005,8 @@ def _check_clashes(model, caps):
   raise Sorry('Capping H %s clashes with %s (%.2f A)' % (
     atoms[i].id_str(), other, d))
 
-def cap_dangling_atoms(model, result, use_neutron_distances=True):
+def cap_dangling_atoms(model, result, use_neutron_distances=True,
+                       mon_lib_srv=None):
   '''
   Add the capping H of find_dangling_atoms() records to the hierarchy of
   model, the model the records come from (their i_seqs are used). Each H
@@ -939,7 +1025,10 @@ def cap_dangling_atoms(model, result, use_neutron_distances=True):
   linear; free rotations sampled in 10 degree steps against the atoms of the
   parent's MODEL within ENVIRONMENT_RADIUS but the parent and its bonded
   neighbours (no symmetry mates; the clash check is symmetry-aware).
-  The bond table is result.bond_table when there, else built.
+  The bond table is result.bond_table when there, else built. mon_lib_srv:
+  the monomer library server for the dictionary lookups of the report
+  (default model.get_mon_lib_srv(); give the server of the processed model
+  the records came from when model is an unprocessed copy).
   Names: free dictionary H names, then 'H' + the parent's name for an O, N
   or S parent, then 'H' + missing heavy atom name, then HC1, HC2 ... The
   result cannot be processed by pdb_interpretation (invented
@@ -963,7 +1052,7 @@ def cap_dangling_atoms(model, result, use_neutron_distances=True):
   table = getattr(result, 'bond_table', None)
   if table is None: table = bond_table(model)
   model_index = _model_index(hierarchy)
-  mon_lib_srv = model.get_mon_lib_srv()
+  if mon_lib_srv is None: mon_lib_srv = model.get_mon_lib_srv()
   properties = atom_property()
   is_metal = lambda element: properties.is_metal(element.strip().upper())
   # leaving atoms missed by a dangling atom, per residue group
@@ -1034,3 +1123,49 @@ def cap_dangling_atoms(model, result, use_neutron_distances=True):
     n_residues = len(residues),
     lines      = lines,
     warnings   = [])
+
+def cap_model(model, guess_for_unknowns=False, cut_bonds=None,
+              use_neutron_distances=True, calculate_charge=True,
+              dangling=None, mon_lib_srv=None, log=None):
+  '''
+  The capping sequence of reduce2 capping=True on model: find_dangling_atoms
+  (unless dangling, a result for a model with the same atoms, is given: then
+  model may be unprocessed), Sorry on residues without a dictionary unless
+  guess_for_unknowns, the total charge of the capped molecule from
+  electrons.run(model=, extra_sigma_bonds=) before anything is placed
+  (calculate_charge; needs a processed model) with the open-shell warnings,
+  then cap_dangling_atoms on the model's hierarchy in place.
+  Returns group_args(dangling, capped, total_charge, formal_charges,
+  warnings): dangling the find_dangling_atoms result used, capped the
+  cap_dangling_atoms result, total_charge and formal_charges (the electrons
+  distribution) None when not calculated, warnings the
+  'open-shell cap on <atom>' lines.
+  '''
+  from mmtbx.ligands import electrons
+  if dangling is None:
+    dangling = find_dangling_atoms(model, guess_for_unknowns=guess_for_unknowns,
+                                   log=log, cut_bonds=cut_bonds)
+  if dangling.unknown_residues and not guess_for_unknowns:
+    raise Sorry('capping=True: no dictionary for %s; set '
+      'capping_guess_for_unknowns=True to cap them by element valence'
+      % ', '.join(dangling.unknown_residues))
+  total_charge, formal_charges, warnings = None, None, []
+  if calculate_charge:
+    extra = extra_sigma_bonds(dangling)
+    formal_charges = electrons.run(
+      model                 = model,
+      extra_sigma_bonds     = extra,
+      return_formal_charges = True)
+    total_charge = formal_charges.get_total_charge()
+    atoms = model.get_hierarchy().atoms()
+    for i_seq in sorted(extra):
+      if formal_charges.get(i_seq, 0):
+        warnings.append('open-shell cap on %s' % atoms[i_seq].id_str())
+  capped = cap_dangling_atoms(model, dangling,
+    use_neutron_distances=use_neutron_distances, mon_lib_srv=mon_lib_srv)
+  return group_args(
+    dangling       = dangling,
+    capped         = capped,
+    total_charge   = total_charge,
+    formal_charges = formal_charges,
+    warnings       = warnings)

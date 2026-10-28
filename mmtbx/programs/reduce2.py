@@ -1909,29 +1909,28 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _CalculateTotalCharge(self, model, extra_sigma_bonds=None,
-                            parity_i_seqs=()):
-    # Calculate the total charge of the model (same as Q|R qr.finalise with
-    # calculate_charge=True) and, if the output file names were not specified,
-    # insert it into them: model.pdb -> modelH_charge-3.pdb
+  def _CalculateTotalCharge(self, model):
+    # qmready without capping: the total charge of the finished model (same
+    # as Q|R qr.finalise with calculate_charge=True).
     # :param model: The rebuilt copy of self.model with restraints (the
     # clash-check copy); not changed.
-    # :param extra_sigma_bonds: {i_seq: n} of model, the capping H to come
-    # (capping=True): the charge is that of the capped model.
-    # :param parity_i_seqs: i_seqs of model to check for a leftover electron
-    # (every atom in extra_sigma_bonds).
-    # :return: Warning lines, one per atom in parity_i_seqs left open-shell.
-    make_sub_header('Calculating total charge', out=self.logger)
     from mmtbx.ligands import electrons
     # On reduce2's own rebuilt copy (interpreted with the user CIFs and the
     # CCD objects of _PrepareRestraints()), not a second process() inside
     # electrons; values verified unchanged against that old path.
     distribution = electrons.run(
       model                 = model,
-      extra_sigma_bonds     = extra_sigma_bonds,
       return_formal_charges = True,
     )
-    self.total_charge = distribution.get_total_charge()
+    self._ApplyTotalCharge(distribution.get_total_charge())
+
+# ------------------------------------------------------------------------------
+
+  def _ApplyTotalCharge(self, total_charge):
+    # Report the total charge and, if the output file names were not
+    # specified, insert it into them: model.pdb -> modelH_charge-3.pdb
+    make_sub_header('Calculating total charge', out=self.logger)
+    self.total_charge = total_charge
     print('Total charge:', self.total_charge, file=self.logger)
     if self._default_output_filename:
       base, suffix = os.path.splitext(self.params.output.filename)
@@ -1941,32 +1940,22 @@ NOTES:
         base = os.path.splitext(self.params.output.description_file_name)[0]
         self.params.output.description_file_name = "%s_charge%s.txt"%(
           base, str(self.total_charge))
-    # a capped atom with an electron left over: the capped fragment is
-    # open-shell (an odd number of electrons)
-    atoms = model.get_hierarchy().atoms()
-    warnings = []
-    for i_seq in parity_i_seqs:
-      if distribution.get(i_seq, 0):
-        warnings.append('open-shell cap on %s' % atoms[i_seq].id_str())
-    return warnings
 
 # ------------------------------------------------------------------------------
 
-  def _CapDanglingAtoms(self, model, dangling, parity=()):
-    # capping=True: add the capping H of find_dangling_atoms() to model, the
-    # model the records come from, as the last change to the hierarchy (the
-    # caps have names no restraint library knows). Sorry if a cap clashes.
-    # The output model is an unprocessed manager on the capped hierarchy and
-    # nothing interprets it later.
-    # :param model: The rebuilt copy with restraints; its hierarchy is capped
-    # in place, its X-ray structure and restraints are stale afterwards.
-    # :param dangling: find_dangling_atoms(model).
-    # :param parity: Open-shell warning lines of _CalculateTotalCharge().
+  def _CapDanglingAtoms(self, model, r):
+    # capping=True: the output model and the Capping report after
+    # capping.cap_model() capped model's hierarchy in place, as the last
+    # change to the hierarchy (the caps have names no restraint library
+    # knows). The output model is an unprocessed manager on the capped
+    # hierarchy and nothing interprets it later.
+    # :param model: The rebuilt copy with restraints, capped; its X-ray
+    # structure and restraints are stale.
+    # :param r: The cap_model() result (dangling, capped, warnings).
     # :return: The Capping section of the description file (also printed to
     # the log). Lists are capped at 20 entries unless verbosity > 2.
     make_sub_header('Capping dangling bonds', out=self.logger)
-    result = capping.cap_dangling_atoms(model, dangling,
-      use_neutron_distances=self.params.use_neutron_distances)
+    dangling, result, parity = r.dangling, r.capped, r.warnings
     self._output_model = mmtbx.model.manager(
       model_input       = None,
       pdb_hierarchy     = model.get_hierarchy(),
@@ -2557,29 +2546,23 @@ NOTES:
     # (approach=add). With capping=True the caps go on that copy as the
     # last change to the hierarchy and it is the output model.
     self.total_charge = None
-    parity = []
     if self.params.qmready and self.params.approach != 'remove':
       qm_model = self._RebuildModel(self.model.get_hierarchy().deep_copy(),
         make_restraints=True)
       self._CheckQmreadyClashes(qm_model)
-      dangling = None
       if self.params.capping:
-        dangling = capping.find_dangling_atoms(qm_model,
-          self.params.capping_guess_for_unknowns, log=self.logger)
-        if dangling.unknown_residues and \
-           not self.params.capping_guess_for_unknowns:
-          raise Sorry('capping=True: no dictionary for %s; set '
-            'capping_guess_for_unknowns=True to cap them by element valence'
-            % ', '.join(dangling.unknown_residues))
-      if self.params.approach == 'add':
-        extra = None
-        if dangling is not None:
-          # the caps, and the bonds guessing found by distance
-          extra = capping.extra_sigma_bonds(dangling)
-        parity = self._CalculateTotalCharge(qm_model, extra,
-          sorted(extra) if extra else ())
-      if self.params.capping:
-        outString += self._CapDanglingAtoms(qm_model, dangling, parity)
+        # capping.cap_model: the records, the charge of the capped model
+        # (the caps as sigma bonds) and the caps, shared with qrefine
+        r = capping.cap_model(qm_model,
+          guess_for_unknowns    = self.params.capping_guess_for_unknowns,
+          use_neutron_distances = self.params.use_neutron_distances,
+          calculate_charge      = self.params.approach == 'add',
+          log                   = self.logger)
+        if self.params.approach == 'add':
+          self._ApplyTotalCharge(r.total_charge)
+        outString += self._CapDanglingAtoms(qm_model, r)
+      elif self.params.approach == 'add':
+        self._CalculateTotalCharge(qm_model)
 
     # The model that is written and returned; self.model stays H-only for
     # the comparison and the flipkins.
