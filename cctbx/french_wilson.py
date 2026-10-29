@@ -479,3 +479,125 @@ def show_rejected_summary(rejected, log=None):
       print("%s    %.3f      %.3f    %.3f" % \
                     (str(rej[0]),rej[1],rej[2],rej[3]), file=log)
     print("-----------------------------------------------------------------", file=log)
+
+def is_french_wilson_amplitudes(f_obs, max_violation_fraction=0.005):
+  """
+  Whether amplitudes look like the output of a French-Wilson calculation.
+
+  French-Wilson amplitudes are all positive with SIGF/F below its
+  large-sigma limits, sqrt(4/pi - 1) = 0.523 (acentric) and
+  sqrt(pi/2 - 1) = 0.756 (centric), apart from a few (the test of
+  phasertng's is_FrenchWilsonF).
+
+  Parameters
+  ----------
+  f_obs : cctbx.miller.array
+    Amplitudes with sigmas
+  max_violation_fraction : float
+    Largest fraction of reflections allowed above the limits
+
+  Returns
+  -------
+  bool
+  """
+  import boost_adaptbx.boost.python as bp
+  assert f_obs.sigmas() is not None
+  if(f_obs.size() == 0): return False
+  return bp.import_ext("cctbx_french_wilson_ext").is_FrenchWilson(
+    F=f_obs.data(), SIGF=f_obs.sigmas(),
+    is_centric=f_obs.centric_flags().data(), eps=max_violation_fraction)
+
+def prior_mean_intensity(f_obs, n_per_bin=200, max_bins=60):
+  """
+  Estimate of the prior mean intensity a French-Wilson calculation used.
+
+  The binned mean of F^2 + SIGF^2 (the posterior <J>, whose average is the
+  prior mean) in bins of equal numbers of reflections by d*^2, interpolated
+  linearly in d*^2 between the bin means and constant beyond them, as in
+  phasertng's reconstruction of intensities from French-Wilson amplitudes.
+
+  Parameters
+  ----------
+  f_obs : cctbx.miller.array
+    Amplitudes with sigmas
+  n_per_bin : int
+    Reflections per bin, at least (unless there is one bin)
+  max_bins : int
+    Largest number of bins
+
+  Returns
+  -------
+  scitbx.array_family.flex.double
+    The prior mean intensity of each reflection
+  """
+  import numpy as np
+  from cctbx.array_family import flex
+  d = f_obs.d_star_sq().data().as_numpy_array()
+  y = (flex.pow2(f_obs.data()) + flex.pow2(f_obs.sigmas())).as_numpy_array()
+  order = np.argsort(d, kind="stable")
+  n = len(d)
+  n_bins = max(1, min(max_bins, n // n_per_bin))
+  x_bin, y_bin = [], []
+  for b in range(n_bins):
+    lo, hi = (b * n) // n_bins, ((b + 1) * n) // n_bins
+    if(hi > lo):
+      x_bin.append(d[order[lo:hi]].mean())
+      y_bin.append(y[order[lo:hi]].mean())
+  return flex.double(np.interp(d, x_bin, y_bin))
+
+def intensities_from_amplitudes(f_obs, max_violation_fraction=0.005):
+  """
+  Approximate intensities with sigmas reconstructed from amplitudes.
+
+  As phasertng does for amplitude data: French-Wilson amplitudes
+  (is_french_wilson_amplitudes) are inverted given the prior mean intensity
+  (prior_mean_intensity) by cctbx_french_wilson_ext.invert_french_wilson,
+  falling back to I = F^2 + SIGF^2 with SIGI = 0 where that is not
+  possible. Other amplitudes are taken to come from the simple
+  transformation of truncate and f_sq_as_f_xtal_3_7, which is reversed as
+  I = F^2, SIGI = 2 F SIGF + SIGF^2 (exact where the original I was
+  positive).
+
+  Parameters
+  ----------
+  f_obs : cctbx.miller.array
+    Amplitudes with sigmas
+  max_violation_fraction : float
+    As is_french_wilson_amplitudes
+
+  Returns
+  -------
+  group_args
+    i_obs (cctbx.miller.array of intensities on the indices of f_obs),
+    french_wilson (bool) and n_prior_dominated (the number of French-Wilson
+    amplitudes that carry essentially no information about I)
+  """
+  from libtbx import group_args
+  from cctbx.array_family import flex
+  f = f_obs.data()
+  sigf = f_obs.sigmas()
+  assert sigf is not None
+  fw = is_french_wilson_amplitudes(f_obs,
+    max_violation_fraction=max_violation_fraction)
+  n_prior_dominated = 0
+  if(fw):
+    import boost_adaptbx.boost.python as bp
+    invert = bp.import_ext("cctbx_french_wilson_ext").invert_french_wilson
+    mean_intensity = prior_mean_intensity(f_obs)
+    centric = f_obs.centric_flags().data()
+    i_data = flex.pow2(f) + flex.pow2(sigf)
+    sig_data = flex.double(f.size(), 0)
+    for k in range(f.size()):
+      valid, i, sig_i, h, prior_dominated = invert(F=f[k], SIGF=sigf[k],
+        mean_intensity=mean_intensity[k], centric=centric[k])
+      if(valid):
+        i_data[k] = i
+        sig_data[k] = sig_i
+        if(prior_dominated): n_prior_dominated += 1
+  else:
+    i_data = flex.pow2(f)
+    sig_data = 2 * f * sigf + flex.pow2(sigf)
+  i_obs = f_obs.customized_copy(data=i_data, sigmas=sig_data)
+  i_obs.set_observation_type_xray_intensity()
+  return group_args(i_obs=i_obs, french_wilson=fw,
+    n_prior_dominated=n_prior_dominated)

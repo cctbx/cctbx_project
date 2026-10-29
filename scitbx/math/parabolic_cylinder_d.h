@@ -1,5 +1,9 @@
+#ifndef SCITBX_MATH_PARABOLIC_CYLINDER_D_H
+#define SCITBX_MATH_PARABOLIC_CYLINDER_D_H
+
 #include <scitbx/constants.h>
 #include <boost/math/special_functions/bessel.hpp>
+#include <boost/math/special_functions/erf.hpp>
 
 /*
   Adopted from Randy Read's code by Pavel Afonine, 12-MAR-2014
@@ -8,11 +12,51 @@
 namespace scitbx { namespace math {
 namespace parabolic_cylinder_d {
 
-double dvsa(double,double);
-double dvla(double,double);
-double vvla(double,double);
+inline double dvsa(double,double);
+inline double dvla(double,double);
+inline double vvla(double,double);
 
-double dv(double va, double x)
+//! Dv(x) from modified Bessel functions or erfc, for va = -1/2, -1, -3/2
+//! (x > 0) and va = -1/2 (x < 0); returns false for other cases.
+/*! Used where the series (dvsa) and asymptotic (dvla) expansions both lose
+    accuracy, near their crossover at |x| = 5.8 (relative error up to 2e-7
+    for va = -3/2). With z = x^2/4:
+      D_{-1/2}(x) = sqrt(x/(2 pi)) K_{1/4}(z)
+      D_{1/2}(x)  = x^{3/2}/(2 sqrt(2 pi)) (K_{1/4}(z) + K_{3/4}(z))
+      D_{-3/2}(x) = 2 (D_{1/2}(x) - x D_{-1/2}(x))   (recurrence)
+      D_{-1}(x)   = sqrt(pi/2) exp(z) erfc(x/sqrt(2))
+      D_{-1/2}(-x) = sqrt(pi x)/2 (I_{-1/4}(z) + I_{1/4}(z))
+ */
+inline bool dv_closed_form(double va, double x, double& pd)
+{
+  const double pi = scitbx::constants::pi;
+  const double z = x * x / 4.;
+  if (x > 0.) {
+    if (va == -0.5 || va == -1.5) {
+      const double k14 = boost::math::cyl_bessel_k(0.25, z);
+      const double dm05 = std::sqrt(x / (2. * pi)) * k14;
+      if (va == -0.5) { pd = dm05; return true; }
+      const double dp05 = std::pow(x, 1.5) / (2. * std::sqrt(2. * pi))
+                        * (k14 + boost::math::cyl_bessel_k(0.75, z));
+      pd = 2. * (dp05 - x * dm05);
+      return true;
+    }
+    if (va == -1.) {
+      pd = std::sqrt(pi / 2.) * std::exp(z)
+         * boost::math::erfc(x / std::sqrt(2.));
+      return true;
+    }
+  }
+  else if (x < 0. && va == -0.5) {
+    const double y = -x;
+    pd = std::sqrt(pi * y) / 2.
+       * (boost::math::cyl_bessel_i(-0.25, z) + boost::math::cyl_bessel_i(0.25, z));
+    return true;
+  }
+  return false;
+}
+
+inline double dv(double va, double x)
 {
 /* Compute parabolic cylinder function Dv(x)
    Equivalent to Mathematica ParabolicCylinderD[va,x]
@@ -28,6 +72,8 @@ double dv(double va, double x)
 */
   double ax(std::abs(x));
   double pd;
+  if (ax > 3.5 && ax < 9. && dv_closed_form(va, x, pd))
+    return pd;
   if (ax <= 5.8)
     pd = dvsa(va,x);
   else
@@ -35,7 +81,7 @@ double dv(double va, double x)
   return pd;
 }
 
-double dvsa(double va, double x)
+inline double dvsa(double va, double x)
 {
 // Compute parabolic cylinder function Dv(x) for small values of |x| (<=5.8)
   static double EPS(std::pow(10.,-15));
@@ -59,13 +105,19 @@ double dvsa(double va, double x)
       double a0 = std::pow(2,-0.5*va-1.)*ep/boost::math::tgamma(-va);
       double vt = -0.5*va;
       pd = boost::math::tgamma(vt);
+      // Gamma(0.5*(m-va)) for the latest even and odd m: the argument rises
+      // by 1 every second term, so Gamma(z+1) = z Gamma(z) gives each from
+      // the one two terms back (calling tgamma for every term is slow).
+      double g_even(pd), g_odd(boost::math::tgamma(va0));
       double r(1.),r1(pd);
       int m(1);
       while (m<=250 && std::abs(r1)>=std::abs(pd)*EPS)
       {
         double vm = 0.5*(m-va);
+        double& g = (m % 2) ? g_odd : g_even;
+        if (m >= 2) g *= vm - 1.;
         r = -r*SQRT2*x/m;
-        r1 = boost::math::tgamma(vm)*r;
+        r1 = g*r;
         pd += r1;
         m++;
       }
@@ -75,7 +127,7 @@ double dvsa(double va, double x)
   return pd;
 }
 
-double dvla(double va,double x)
+inline double dvla(double va,double x)
 {
 // Compute parabolic cylinder function Dv(x) for large values of |x| (>5.8)
   static double EPS(std::pow(10.,-12));
@@ -102,7 +154,7 @@ double dvla(double va,double x)
   return pd;
 }
 
-double vvla(double va,double x)
+inline double vvla(double va,double x)
 {
 // Compute parabolic cylinder function Vv(x) for large argument
   static double EPS(std::pow(10.,-12));
@@ -132,3 +184,5 @@ double vvla(double va,double x)
 }
 
 }}}
+
+#endif // SCITBX_MATH_PARABOLIC_CYLINDER_D_H
