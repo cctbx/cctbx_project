@@ -570,6 +570,9 @@ class Optimizer(object):
             str(len(singletonCliques))+" are singletons); largest Clique size = "+
             str(maxLen)+"\n")
         self._infoString += _ReportTiming(self._verbosity, "compute interaction graph")
+        # Sort the cliques by size, smallest first, so that if we run out of time we will
+        # have optimized as many as possible.
+        groupCliques = sorted(groupCliques, key=len, reverse=False)
 
         # If we've been asked to write an interaction graph file, do so.
         if self._cliqueOutlineFileName:
