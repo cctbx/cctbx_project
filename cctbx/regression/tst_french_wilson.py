@@ -6,7 +6,7 @@ import boost_adaptbx.boost.python as bp
 from six.moves import zip
 fw_ext = bp.import_ext("cctbx_french_wilson_ext")
 from libtbx.utils import null_out, Sorry
-from libtbx.test_utils import Exception_expected
+from libtbx.test_utils import Exception_expected, approx_equal
 import random
 
 def exercise_00():
@@ -111,8 +111,45 @@ def exercise_invert_french_wilson():
       centric=c)
     assert r[4], (sigf, c)
 
+def exercise_intensities_from_amplitudes():
+  """ French-Wilson amplitudes are recognised and inverted back to close to
+  the original intensities; other amplitudes give I = F^2,
+  SIGI = 2 F SIGF + SIGF^2. """
+  flex.set_random_seed(5)
+  rnd = random.Random(5)
+  xrs = random_structure.xray_structure(
+    space_group_symbol="P212121", elements=["C"]*200,
+    unit_cell=(30, 35, 40, 90, 90, 90))
+  f_calc = abs(xrs.structure_factors(d_min=1.8).f_calc())
+  i_true = flex.pow2(f_calc.data())
+  sig = 0.05 * i_true + 0.02 * flex.mean(i_true) * (
+    1 + flex.random_double(i_true.size()))
+  i_obs = f_calc.customized_copy(
+    data=i_true + sig * flex.double([rnd.gauss(0, 1) for x in i_true]),
+    sigmas=sig).set_observation_type_xray_intensity()
+  f_fw = french_wilson.french_wilson_scale(miller_array=i_obs, log=null_out())
+  assert french_wilson.is_french_wilson_amplitudes(f_fw)
+  result = french_wilson.intensities_from_amplitudes(f_fw)
+  assert result.french_wilson
+  assert result.i_obs.is_xray_intensity_array()
+  i_c, rec = i_obs.common_sets(result.i_obs)
+  z = sorted(flex.abs(rec.data() - i_c.data()) / i_c.sigmas())
+  assert z[len(z)//2] < 0.05, z[len(z)//2]
+  assert z[int(0.95*len(z))] < 0.2, z[int(0.95*len(z))]
+  ratio = sorted(rec.sigmas() / i_c.sigmas())
+  assert abs(ratio[len(ratio)//2] - 1) < 0.01, ratio[len(ratio)//2]
+  # not French-Wilson: SIGF/F above the large-sigma limit for many
+  f_plain = f_fw.customized_copy(sigmas=f_fw.data() * 0.9)
+  assert not french_wilson.is_french_wilson_amplitudes(f_plain)
+  result = french_wilson.intensities_from_amplitudes(f_plain)
+  assert not result.french_wilson and result.n_prior_dominated == 0
+  f, s = f_plain.data(), f_plain.sigmas()
+  assert approx_equal(result.i_obs.data(), flex.pow2(f))
+  assert approx_equal(result.i_obs.sigmas(), 2 * f * s + flex.pow2(s))
+
 if (__name__ == "__main__"):
   exercise_00()
   exercise_01()
   exercise_invert_french_wilson()
+  exercise_intensities_from_amplitudes()
   print("OK")
