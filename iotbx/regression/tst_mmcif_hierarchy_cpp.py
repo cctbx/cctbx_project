@@ -417,6 +417,53 @@ def exercise_non_ascii_cells():
   build_mmcif_hierarchy(cols)   # restored: builds
 
 
+def exercise_writer_round_trip():
+  """
+  What the writer emits reads back through the C++ builder as on master,
+  pickle and deepcopy of a hierarchy that does not fit PDB format included
+  (root.__getstate__ writes mmCIF then), with one documented exception:
+  non-ASCII text in a std::string field, which is not CIF 1.1 and which
+  only a non-standard file or a direct assignment puts into a hierarchy.
+  """
+  import copy
+  import pickle
+  import iotbx.pdb
+  # a PDB atom with blank name and element columns: the writer emits '' for
+  # both, read back as four blanks and a blank element
+  h = iotbx.pdb.input(source_info=None, lines=[
+    "ATOM      1      ALA A   1       1.000   2.000   3.000  1.00 10.00"
+    ]).construct_hierarchy()
+  h.only_model().only_chain().id = "LONG"
+  assert not h.fits_in_pdb_format()
+  new = _same(h.as_mmcif_string())
+  assert new.atoms()[0].name == "    " and new.atoms()[0].element == ""
+  for again in (copy.deepcopy(h), pickle.loads(pickle.dumps(h))):
+    assert again.only_model().only_chain().id == "LONG"
+    a = again.atoms()[0]
+    assert a.name == "    " and a.element == "", (a.name, a.element)
+  # non-ASCII text in a std::string field: the Python builder reads it
+  # back, the C++ builder rejects it, and so do pickle and deepcopy of a
+  # hierarchy that does not fit PDB format
+  h = iotbx.pdb.input(source_info=None, lines=[
+    "ATOM      1  CA  ALA A   1       1.000   2.000   3.000  1.00 10.00"
+    "           C"]).construct_hierarchy()
+  h.only_model().only_chain().id = "αβ"
+  assert not h.fits_in_pdb_format()
+  text = h.as_mmcif_string()
+  assert [c.id for c in _python(first_block(text)).only_model().chains()] == [
+    "αβ"]
+  for build in (lambda: mmcif.hierarchy_from_atom_site(first_block(text)),
+                lambda: copy.deepcopy(h),
+                lambda: pickle.loads(pickle.dumps(h))):
+    try:
+      build()
+    except CifBuilderError as e:
+      assert "auth_asym_id" in str(e) and "byte 1" in str(e), str(e)
+    else:
+      raise AssertionError("non-ASCII chain id accepted; update the "
+        "error-reporting note in iotbx/pdb/mmcif_hierarchy.h")
+
+
 def exercise_column_fallbacks():
   """
   The column fallbacks of atom_site_columns_from_block, through both
@@ -734,6 +781,47 @@ def exercise_cell_grammar():
     raise Exception_expected
 
 
+def exercise_reader_uses_cpp():
+  """cif_input, iotbx.pdb.input and pdb_hierarchy_builder go through the C++
+  builder, and its errors arrive as CifBuilderError, a Sorry."""
+  import iotbx.pdb
+  header = atom_site_header.replace("_atom_site.pdbx_PDB_model_num\n",
+    "_atom_site.pdbx_PDB_model_num\n_atom_site.phenix_scat_dispersion_real\n")
+  # only the C++ grammar reads the esd bracket
+  text = header + \
+    "ATOM 1 C C . ALA A 1 1 ? 1.0 2.0 3.0 1.00 10.00 1 ALA A C 1 1.5(3)\n"
+  pdb_inp = iotbx.pdb.input(lines=text.splitlines(), source_info=None)
+  assert pdb_inp.construct_hierarchy().atoms()[0].fp == 1.5
+  h = mmcif.pdb_hierarchy_builder(first_block(text)).hierarchy
+  assert h.atoms()[0].fp == 1.5
+  try:
+    _python(first_block(text))
+  except ValueError:
+    pass
+  else:
+    raise AssertionError("the reference builder reads the esd bracket now")
+  # a bad cell is a CifBuilderError with the location
+  text = atom_site_header + \
+    "ATOM 1 C C . ALA A 1 1 ? x 2.0 3.0 1.00 10.00 1 ALA A C 1\n"
+  try:
+    mmcif.pdb_hierarchy_builder(first_block(text))
+  except CifBuilderError as e:
+    assert str(e) == \
+      '_atom_site.Cartn_x row 1: Invalid floating-point value: "x"', str(e)
+  else:
+    raise Exception_expected
+  # a null chain id: the C++ check, as a CifBuilderError
+  text = atom_site_header + \
+    "ATOM 1 C C . ALA A 1 1 ? 1.0 2.0 3.0 1.00 10.00 1 ALA . C 1\n"
+  try:
+    mmcif.pdb_hierarchy_builder(first_block(text))
+  except CifBuilderError as e:
+    assert "auth_asym_id" in str(e) and "row 1" in str(e), str(e)
+    assert "null" in str(e), str(e)
+  else:
+    raise Exception_expected
+
+
 def run():
   exercise_cpp_columns_skeleton()
   exercise_cpp_cell_parsing()
@@ -744,6 +832,7 @@ def run():
   exercise_null_chain_id()
   exercise_atom_name_and_element()
   exercise_non_ascii_cells()
+  exercise_writer_round_trip()
   exercise_column_fallbacks()
   exercise_charge()
   exercise_segid_and_serial()
@@ -754,6 +843,7 @@ def run():
   exercise_fp_fdp_resolution_cpp()
   exercise_single_item_atom_site()
   exercise_cell_grammar()
+  exercise_reader_uses_cpp()
 
 
 if __name__ == "__main__":

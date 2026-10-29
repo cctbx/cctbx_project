@@ -310,9 +310,13 @@ class _pdb_hierarchy_builder_python(crystal_symmetry_builder):
 class pdb_hierarchy_builder(crystal_symmetry_builder):
   """
   Crystal symmetry and pdb hierarchy of an mmCIF model block. The hierarchy
-  comes from hierarchy_from_atom_site(); _pdb_hierarchy_builder_python above
-  is the per-atom Python builder, the reference for
-  tst_mmcif_hierarchy_parity.py.
+  comes from hierarchy_from_atom_site(), which builds it in C++.
+  _pdb_hierarchy_builder_python above is the per-atom Python builder it
+  replaced, kept as the reference for tst_mmcif_hierarchy_parity.py and
+  tst_mmcif_hierarchy_cpp.py (the two differences are listed in
+  iotbx/pdb/mmcif_hierarchy.h). Retirement: remove it after the first Phenix
+  release that ships the C++ builder if no parity failure has been reported;
+  the parity test then becomes a fixture regression test.
   """
 
   def __init__(self, cif_block):
@@ -321,8 +325,38 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
 
 
 def hierarchy_from_atom_site(cif_block):
-  """Build a hierarchy.root from the _atom_site loop of cif_block."""
-  return _pdb_hierarchy_builder_python(cif_block).hierarchy
+  """
+  Build the hierarchy of the _atom_site loop of a model mmCIF block: Python
+  resolves the columns (atom_site_columns_from_block), C++ builds the
+  hierarchy (iotbx.pdb.build_mmcif_hierarchy, iotbx/pdb/mmcif_hierarchy.cpp).
+
+  Parameters
+  ----------
+  cif_block : iotbx.cif.model.block
+    A data block with an _atom_site loop.
+
+  Returns
+  -------
+  iotbx.pdb.hierarchy.root
+    The hierarchy, unsorted, in the order of the rows.
+
+  Raises
+  ------
+  iotbx.cif.builders.CifBuilderError
+    A missing type_symbol, coordinate, B or occupancy column, or a cell the
+    builder rejects, named by tag, row and value.
+  AssertionError
+    A missing label column, as from the Python builder (iotbx.pdb.utils
+    matches the message).
+  """
+  from iotbx.pdb import build_mmcif_hierarchy
+  columns = atom_site_columns_from_block(cif_block)
+  try:
+    return build_mmcif_hierarchy(columns)
+  except ValueError as e:
+    # std::invalid_argument from the C++ builder: a bad cell, named by tag,
+    # row and value
+    raise CifBuilderError(str(e))
 
 
 def atom_site_columns_from_block(cif_block):
