@@ -76,6 +76,15 @@ min_information = 10.
           hypotheses, I_eff = 4 alpha^2/beta I (alpha, beta from the \
           self-check, 1/2 and 1 if not estimated), is at least this. \
           Residues whose side chains the data cannot define are left alone.
+backrub = False
+  .type = bool
+  .help = Experimental. For candidates whose side chain clashes, also try \
+          backrubs of the residue (rotation about CA(i-1)-CA(i+1) with \
+          peptide counter-rotations), judged by the dLL of all the atoms \
+          moved. Not used when the backrub evidence fails its own \
+          self-check.
+backrub_angles = -20 -10 10 20
+  .type = floats
 mask_correction = True
   .type = bool
 mask_predict_spacing = 0.5
@@ -287,6 +296,8 @@ class run(object):
           if(w.name == name or w.mass < params.p_min): continue
           rec.candidates.append(candidate(w, sc.set_chis(w.chis)))
         self.records.append(rec)
+    self._neighbours = self._find_neighbours(pdb_hierarchy) if \
+      params.backrub else {}
     self.time_setup = time.time() - t0
     t0 = time.time()
     self._fit_search_scale()
@@ -297,6 +308,12 @@ class run(object):
     self._predict()
     self.time_predict = time.time() - t0
     self._self_check()
+    self.n_backrub = 0
+    self.backrub_alpha = self.backrub_beta = None
+    self.backrub_check_passed = None
+    if(params.backrub and not (params.self_check and
+       self.self_check_passed is False)):
+      self._backrub()
     t0 = time.time()
     self._exact_and_decide()
     self.time_exact = time.time() - t0
@@ -317,20 +334,29 @@ class run(object):
       if(rec.stub): continue
       for c in rec.candidates:
         if(c.clash or c.information is None or c.information <= 0): continue
+        if(getattr(c, "backrub", None) is not None): continue
         d.append(c.predicted); inf.append(c.information)
     self.alpha = self.beta = None
     self.self_check_passed = None
-    if(len(d) < p.self_check_min_candidates): return
-    d, inf = np.array(d), np.array(inf)
-    self.alpha = float(-np.median(d / inf))
-    z = (d + self.alpha * inf) / np.sqrt(inf)
-    self.beta = float((np.median(np.abs(z - np.median(z))) * 1.4826) ** 2)
-    lo, hi = p.self_check_alpha
     self.beta_max = p.self_check_beta_max
     if(self.beta_max is None or self.beta_max is Auto):
       self.beta_max = 1.5 if self.target_name == "llgi" else 3.
-    self.self_check_passed = (lo <= self.alpha <= hi and
-      self.beta <= self.beta_max)
+    if(len(d) < p.self_check_min_candidates): return
+    self.alpha, self.beta = self._robust_alpha_beta(np.array(d),
+      np.array(inf))
+    self.self_check_passed = self._check_limits(self.alpha, self.beta)
+
+  def _robust_alpha_beta(self, d, inf):
+    """ alpha, beta of dLL ~ N(-alpha I, beta I): median of dLL/I and the
+    MAD of the standardised residuals """
+    alpha = float(-np.median(d / inf))
+    z = (d + alpha * inf) / np.sqrt(inf)
+    beta = float((np.median(np.abs(z - np.median(z))) * 1.4826) ** 2)
+    return alpha, beta
+
+  def _check_limits(self, alpha, beta):
+    lo, hi = self.params.self_check_alpha
+    return lo <= alpha <= hi and beta <= self.beta_max
 
   def _information_scale(self):
     """ I_eff / I = 4 alpha^2 / beta (theory 1) """
@@ -554,6 +580,7 @@ class run(object):
         c.log_odds = c.predicted + math.log(c.prior) - lp_a
       f_old = None
       for c in live:
+        if(getattr(c, "backrub", None) is not None): continue
         if((p.exact and c.log_odds > -p.screen) or id(c) in self._sample):
           if(f_old is None): f_old = self.ev.f_calc_of(i_seqs,
             sc.xyz[sc.moving])
@@ -573,9 +600,11 @@ class run(object):
     """ Put the candidates without an exact dLL on the scale of those with
     one (median exact - predicted in the residue), so that they are not
     compared on the prediction's scale with exact values """
-    d = [c.exact - c.predicted for c in live if c.exact is not None]
+    d = [c.exact - c.predicted for c in live if c.exact is not None
+      and getattr(c, "backrub", None) is None]
     off = float(np.median(d)) if d else 0.
-    for c in live: c.offset = off
+    for c in live:
+      c.offset = 0. if getattr(c, "backrub", None) is not None else off
 
   def _decide_stub(self, rec, live, i_seqs):
     """ Posterior over wells for building a stub: P(b) ~ prior_b exp(dLL_add)
@@ -651,6 +680,147 @@ class run(object):
       rec.accept = (lo > p.threshold and d > p.min_dll and
         c.dll(p.exact) > p.min_dll and scale * info >= p.min_information)
 
+  # --- backrub ----------------------------------------------------------------
+  def _find_neighbours(self, pdb_hierarchy):
+    """ residue key -> (previous, next) residues as {atom name: i_seq},
+    where both peptide bonds are there """
+    from scitbx.matrix import col
+    out = {}
+    names = lambda rg: dict((a.name.strip(), a.i_seq) for a in
+      rg.atom_groups()[0].atoms())
+    xyz = pdb_hierarchy.atoms().extract_xyz()
+    def bonded(a, b):
+      return abs(col(xyz[a]) - col(xyz[b])) < 2.
+    for chain in pdb_hierarchy.only_model().chains():
+      rgs = list(chain.residue_groups())
+      for k in range(1, len(rgs) - 1):
+        if(any(len(rgs[j].atom_groups()) != 1 for j in (k - 1, k, k + 1))):
+          continue
+        a, b, c = names(rgs[k - 1]), names(rgs[k]), names(rgs[k + 1])
+        if(not all(n in a for n in ("CA", "C", "O"))): continue
+        if(not all(n in b for n in ("N", "CA", "C", "O"))): continue
+        if(not all(n in c for n in ("N", "CA"))): continue
+        if(not (bonded(a["C"], b["N"]) and bonded(b["C"], c["N"]))): continue
+        key = (chain.id, rgs[k].resseq.strip(), rgs[k].icode.strip())
+        out[key] = (a, c, [x.i_seq for j in (k - 1, k, k + 1)
+          for x in rgs[j].atoms()])
+    return out
+
+  def _backrub(self):
+    """ For each candidate that clashes: the best backrub angle that removes
+    the clash, by the predicted dLL of all the atoms moved (residue and the
+    neighbouring peptide atoms): angles compared without the mask term (one
+    batched gradient calculation), the mask term added for the best angle
+    (a second one); exact dLL only if params.exact. The candidate then
+    carries the backrub and its evidence. """
+    p = self.params
+    ev = self.ev
+    sites = ev.xrs.sites_cart()
+    sc_types = ev.xrs.scatterers()
+    trials = []      # clash-free (rec, candidate, theta, ii, old, new, extra)
+    for rec in self.records:
+      if(rec.stub or rec.key not in self._neighbours): continue
+      cands = [c for c in rec.candidates if c.clash]
+      if(not cands): continue
+      sc = rec.sc
+      prev_i, next_i, region = self._neighbours[rec.key]
+      prev = dict((n, np.array(sites[i])) for n, i in prev_i.items())
+      nxt = dict((n, np.array(sites[i])) for n, i in next_i.items())
+      res = dict((n, x) for n, x in zip(sc.names, sc.xyz))
+      near = self.env.near(sc.xyz[sc.names.index("CA")], 15., region)
+      for c in cands:
+        for theta in p.backrub_angles:
+          p1, r1, n1 = side_chain_module.backrub(prev, res, nxt, theta)
+          frame = np.array([r1[n] for n in sc.names])
+          xyz = sc.set_chis(c.chis, xyz=frame)
+          extra_i = [prev_i[n] for n in p1] + [next_i[n] for n in n1]
+          ii = np.array(list(sc.i_seqs) + extra_i)
+          old = np.concatenate([sc.xyz, np.array([prev[n] for n in p1] +
+            [nxt[n] for n in n1])])
+          new = np.concatenate([xyz, np.array([p1[n] for n in p1] +
+            [n1[n] for n in n1])])
+          heavy = np.array([sc_types[int(i)].scattering_type not in
+            ("H", "D") for i in ii])
+          if(len(near)):
+            d2 = ((new[heavy][:, None, :] - near[None, :, :]) ** 2).sum(
+              axis=2)
+            if(math.sqrt(d2.min()) < p.clash_distance): continue
+          trials.append((rec, c, theta, ii, old, new, xyz, extra_i,
+            new[len(sc.names):], region))
+    if(not trials): return
+    # predicted dLL without the mask term, all trials
+    old_sets = {}
+    i_list, x_list = [], []
+    for t in trials:
+      if(id(t[0]) not in old_sets):
+        old_sets[id(t[0])] = len(i_list)
+        i_list.append(t[3]); x_list.append(t[4])
+    first_new = len(i_list)
+    for t in trials:
+      i_list.append(t[3]); x_list.append(t[5])
+    grads = ev.occupancy_gradients(i_list, x_list)
+    best = {}
+    for k, t in enumerate(trials):
+      rec, c, theta, ii, old, new = t[:6]
+      types, b, occ = ev.atom_params(ii)
+      occ = np.array(occ)
+      ff = ev.form_factors(types, b, occ)
+      lin = float((occ * (grads[first_new + k] - grads[old_sets[id(rec)]])
+        ).sum())
+      quad = ev.quadratic(np.concatenate([old, new]), np.concatenate([-ff,
+        ff]))
+      d = -ev.n_work * (lin + quad)
+      if(id(c) not in best or d > best[id(c)][0]):
+        best[id(c)] = (d, t, lin, ff, quad)
+    # the mask term for each candidate's best angle
+    chosen = list(best.values())
+    masks = []
+    if(p.mask_correction):
+      for d, t, lin, ff, quad in chosen:
+        rec, c, theta, ii, old, new = t[:6]
+        occ = np.ones(len(ii))
+        ctx = ev.mask_context(ii, [old, new], occ, t[9],
+          spacing=p.mask_predict_spacing)
+        if(ctx is None):
+          masks.append((np.zeros((0, 3)), np.zeros(0))); continue
+        masks.append(ev.mask_cells(ctx, ev.mask_solvent(ctx, old, occ),
+          ev.mask_solvent(ctx, new, occ)))
+      mask_g = ev.mask_gradients([m[0] for m in masks])
+    results = []
+    for k, (d, t, lin, ff, quad) in enumerate(chosen):
+      if(p.mask_correction and len(masks[k][1])):
+        old, new = t[4], t[5]
+        pos, w = masks[k]
+        lin_m = lin + float((w * mask_g[k]).sum())
+        quad_m = ev.quadratic(np.concatenate([old, new, pos]),
+          np.concatenate([-ff, ff, ev.mask_form_factors(w)]))
+        d = -ev.n_work * (lin_m + quad_m)
+      results.append((d, 2 * ev.n_work * quad, t))
+    # the calibration of the backrub evidence on its own (most of these
+    # candidates are wrong): a backbone move can make the evidence much
+    # noisier than its curvature predicts
+    dd = np.array([r[0] for r in results]); ii_ = np.array([r[1] for r in
+      results])
+    ok = ii_ > 0
+    if(p.self_check and ok.sum() >= p.self_check_min_candidates):
+      self.backrub_alpha, self.backrub_beta = self._robust_alpha_beta(
+        dd[ok], ii_[ok])
+      self.backrub_check_passed = self._check_limits(self.backrub_alpha,
+        self.backrub_beta)
+      if(not self.backrub_check_passed): return
+    for d, information, t in results:
+      rec, c, theta, ii, old, new, xyz, extra_i, extra_new, region = t
+      c.information = information
+      c.clash = False
+      c.xyz = xyz
+      c.predicted = d
+      c.offset = 0.
+      if(p.exact):
+        c.exact = ev.exact(ii, old, new, mask_exclude=flex.size_t(
+          [int(i) for i in region]) if p.mask_correction else None)
+      c.backrub = (theta, extra_i, extra_new)
+      self.n_backrub += 1
+
   # --- output -----------------------------------------------------------------
   def accepted(self):
     """ Accepted records, without conflicts: of two accepted changes whose
@@ -678,6 +848,10 @@ class run(object):
     for r in kept:
       for i, x in zip(r.sc.i_seqs, r.best.xyz):
         sites[int(i)] = tuple(x)
+      br = getattr(r.best, "backrub", None)
+      if(br is not None):     # the neighbours' peptide atoms
+        for i, x in zip(br[1], br[2]):
+          sites[int(i)] = tuple(x)
       if(r.stub):   # built: the moving atoms get their occupancy
         for i, o in zip(r.sc.i_seqs[r.sc.moving], r.occ_new):
           atoms[int(i)].set_occ(float(o))
@@ -706,6 +880,14 @@ class run(object):
         or not self.params.self_check else " -- no changes made"), file=out)
     else:
       print("  evidence self-check: too few candidates", file=out)
+    if(self.params.backrub):
+      check = ""
+      if(self.backrub_alpha is not None):
+        check = ("; self-check of the backrub evidence: alpha %.2f beta "
+          "%.2f %s" % (self.backrub_alpha, self.backrub_beta, "passed" if
+          self.backrub_check_passed else "FAILED -- no backrubs"))
+      print("  backrub: %d clashing candidates made clash-free%s" % (
+        self.n_backrub, check), file=out)
     if(self.ncs_rho is not None):
       print("  NCS pooling: %d groups, rho (copies share a well) %.3f" % (
         self.ncs_n_groups, self.ncs_rho), file=out)

@@ -183,3 +183,42 @@ class environment(object):
     if(return_i_seqs):
       return xyz, (np.concatenate(idx) if idx else np.zeros(0, dtype=int))
     return xyz
+
+def _turn_to(p, origin, axis, target):
+  """ angle (degrees) about axis through origin that brings p closest to
+  target """
+  k = axis / np.linalg.norm(axis)
+  v = p - origin; w = target - origin
+  v = v - v.dot(k) * k; w = w - w.dot(k) * k
+  return math.degrees(math.atan2(np.cross(k, v).dot(w), v.dot(w)))
+
+def backrub(prev, res, nxt, theta):
+  """ Backrub of residue i by theta (degrees): rotation of C, O (and H of
+  N) of the peptides on both sides and of the residue about the
+  CA(i-1)-CA(i+1) axis, then counter-rotations of the two peptides (about
+  CA(i-1)-CA(i) and CA(i)-CA(i+1)) that bring both carbonyl O back as close
+  as possible to where they were (Davis et al., Structure 14, 265, 2006).
+  prev, res, nxt: dicts atom name -> site (numpy) of residues i-1, i, i+1;
+  returns new dicts for the atoms that move (prev C, O; all of res; nxt N,
+  H). """
+  ca_p, ca_n = prev["CA"], nxt["CA"]
+  axis = ca_n - ca_p
+  m = rotation_matrix(axis, theta)
+  turn = lambda x: (x - ca_p).dot(m.T) + ca_p
+  p1 = dict((n, turn(prev[n])) for n in ("C", "O"))
+  r1 = dict((n, turn(x)) for n, x in res.items())
+  n1 = dict((n, turn(nxt[n])) for n in ("N", "H") if n in nxt)
+  # peptide i-1: C(i-1), O(i-1), N(i) and its H, about CA(i-1)-CA(i)
+  ca_i = r1["CA"]
+  t1 = _turn_to(p1["O"], ca_p, ca_i - ca_p, prev["O"])
+  m1 = rotation_matrix(ca_i - ca_p, t1)
+  for d, names in ((p1, ("C", "O")), (r1, ("N", "H"))):
+    for n in names:
+      if(n in d): d[n] = (d[n] - ca_p).dot(m1.T) + ca_p
+  # peptide i: C(i), O(i), N(i+1) and its H, about CA(i)-CA(i+1)
+  t2 = _turn_to(r1["O"], ca_i, ca_n - ca_i, res["O"])
+  m2 = rotation_matrix(ca_n - ca_i, t2)
+  for d, names in ((r1, ("C", "O")), (n1, ("N", "H"))):
+    for n in names:
+      if(n in d): d[n] = (d[n] - ca_i).dot(m2.T) + ca_i
+  return p1, r1, n1
