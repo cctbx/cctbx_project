@@ -25,8 +25,16 @@ def exercise_angle_wrapping():
         z = x+y if op=='add' else x-y
         assert -pi-1e-12 <= z.t <= pi+1e-12, (t1, t2, op, z.t/pi*180)
 
+def exercise_input_in_cartesian():
+  # (r, t) are read as (x, y); all four quadrants and the axes
+  for x, y in [(3, 4), (-3, 4), (-3, -4), (3, -4), (0, 2), (-2, 0), (2, 0)]:
+    v = radial_deviation(x, y, input_in_cartesian=True)
+    assert approx_equal(v.r, (x*x+y*y)**0.5, eps=1e-9), (x, y, v.r)
+    assert approx_equal(as_xy(v), (x, y), eps=1e-9), (x, y, as_xy(v))
+
 def run():
   exercise_angle_wrapping()
+  exercise_input_in_cartesian()
   print('OK')
 
 if __name__ == '__main__':
