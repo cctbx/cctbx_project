@@ -76,7 +76,7 @@ namespace molprobity {
 
       /** @brief Function to perform coarse optimization on a singleton Mover.
           @param [in] mover: The Mover to optimize.
-          @return A tuple, where the first is the score at the best position for all movers
+          @return A tuple, where the first is the score at the best position the mover
                   and the second is a string describing what was done, which may be empty
                   if verbosity is too small.
           side effect: Changes the value of GetHighScore(mover) to the score at the coarse position
