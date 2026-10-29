@@ -325,6 +325,112 @@ def hierarchy_from_atom_site(cif_block):
   return _pdb_hierarchy_builder_python(cif_block).hierarchy
 
 
+def atom_site_columns_from_block(cif_block):
+  """
+  Resolve the _atom_site (and _atom_site_anisotrop) columns of a model mmCIF
+  block for build_mmcif_hierarchy: the same tags, fallbacks and assertions
+  as the Python builder, except the null auth_asym_id check, which the C++
+  builder makes.
+
+  Parameters
+  ----------
+  cif_block : iotbx.cif.model.block
+    A data block with an _atom_site loop; a single-item _atom_site is read
+    as a one-row loop.
+
+  Returns
+  -------
+  iotbx.pdb.atom_site_columns
+    The resolved columns as flex.std_string; an optional column is empty
+    when absent, the anisotrop columns when there is no
+    _atom_site_anisotrop.id.
+
+  Raises
+  ------
+  AssertionError
+    A missing label column (the message iotbx.pdb.utils matches) or an
+    anisotrop loop with neither U nor B tensors, as from the Python builder.
+  iotbx.cif.builders.CifBuilderError
+    type_symbol or a coordinate, B or occupancy column is missing.
+  """
+  from iotbx.pdb import atom_site_columns
+  def looped(tag):
+    return cif_block.get_looped_item(tag, key_error=None)
+  type_symbol = looped("_atom_site.type_symbol")
+  atom_labels = looped("_atom_site.label_atom_id")
+  if atom_labels is None:
+    atom_labels = looped("_atom_site.auth_atom_id")
+  alt_id = looped("_atom_site.label_alt_id")
+  label_asym_id = looped("_atom_site.label_asym_id")
+  auth_asym_id = looped("_atom_site.auth_asym_id")
+  if label_asym_id is None: label_asym_id = auth_asym_id
+  if auth_asym_id is None: auth_asym_id = label_asym_id
+  comp_id = looped("_atom_site.auth_comp_id")
+  if comp_id is None:
+    comp_id = looped("_atom_site.label_comp_id")
+  entity_id = looped("_atom_site.label_entity_id")
+  seq_id = looped("_atom_site.auth_seq_id")
+  if seq_id is None:
+    seq_id = looped("_atom_site.label_seq_id")
+  error_message = """something is not present - not enough information
+    to make a hierarcy out of this CIF file.
+    It could be because this is restraints or component cif or a corrupted model cif."""
+  assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id,
+          seq_id].count(None) == 0, error_message
+  if type_symbol is None:
+    raise CifBuilderError("_atom_site.type_symbol is missing")
+  cols = atom_site_columns()
+  cols.type_symbol = type_symbol
+  cols.atom_name = atom_labels
+  cols.alt_id = alt_id
+  cols.label_asym_id = label_asym_id
+  cols.auth_asym_id = auth_asym_id
+  cols.comp_id = comp_id
+  cols.seq_id = seq_id
+  for member, tag in (("cartn_x", "_atom_site.Cartn_x"),
+                      ("cartn_y", "_atom_site.Cartn_y"),
+                      ("cartn_z", "_atom_site.Cartn_z"),
+                      ("b_iso", "_atom_site.B_iso_or_equiv"),
+                      ("occupancy", "_atom_site.occupancy")):
+    column = looped(tag)
+    if column is None:
+      raise CifBuilderError("%s is missing" % tag)
+    setattr(cols, member, column)
+  for member, tag in (("model_num", "_atom_site.pdbx_PDB_model_num"),
+                      ("atom_id", "_atom_site.id"),
+                      ("ins_code", "_atom_site.pdbx_PDB_ins_code"),
+                      ("group_pdb", "_atom_site.group_PDB"),
+                      ("segid", "_atom_site.auth_segid"),
+                      ("auth_break", "_atom_site.auth_break"),
+                      ("formal_charge", "_atom_site.pdbx_formal_charge"),
+                      ("resolution", "_atom_site.phenix_resolution"),
+                      ("fp", "_atom_site.phenix_scat_dispersion_real"),
+                      ("fdp", "_atom_site.phenix_scat_dispersion_imag")):
+    column = looped(tag)
+    if column is not None:
+      setattr(cols, member, column)
+  anisotrop_id = looped("_atom_site_anisotrop.id")
+  if anisotrop_id is not None:
+    u_ij = [looped("_atom_site_anisotrop.U[%s][%s]" % (ij[0], ij[1]))
+            for ij in ("11", "22", "33", "12", "13", "23")]
+    assert u_ij.count(None) in (0, 6)
+    if u_ij.count(None) == 0:
+      adps = u_ij
+      cols.aniso_is_b = False
+    else:
+      b_ij = [looped("_atom_site_anisotrop.B[%s][%s]" % (ij[0], ij[1]))
+              for ij in ("11", "22", "33", "12", "13", "23")]
+      # as in the Python builder: an anisotrop loop with neither U nor B
+      # tensors is an error
+      assert b_ij.count(None) == 0
+      adps = b_ij
+      cols.aniso_is_b = True
+    cols.aniso_id = anisotrop_id
+    (cols.aniso_11, cols.aniso_22, cols.aniso_33,
+     cols.aniso_12, cols.aniso_13, cols.aniso_23) = adps
+  return cols
+
+
 def is_aa_or_rna_dna(resname):
    from iotbx.pdb import common_residue_names_get_class
    resname = resname.strip()

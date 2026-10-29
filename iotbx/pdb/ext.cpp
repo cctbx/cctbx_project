@@ -11,6 +11,7 @@ namespace iotbx { namespace pdb { namespace boost_python {
   void wrap_rna_dna_atom_names();
   void wrap_input();
   void wrap_xray_structure();
+  void wrap_mmcif_hierarchy();
 
 namespace {
 
@@ -24,6 +25,7 @@ namespace {
     wrap_rna_dna_atom_names();
     wrap_input();
     wrap_xray_structure();
+    wrap_mmcif_hierarchy();
   }
 
 }}}} // namespace iotbx::pdb::boost_python::<anonymous>
