@@ -168,6 +168,15 @@ capping_guess_for_unknowns = False
           the valence of every atom from its element and formal charge, bonds \
           from distances, and add H accordingly (reported as guessed). \
           False: stop with a Sorry listing those residues.
+include_symmetric_copies = False
+  .type = bool
+  .short_caption = Score Movers against symmetry mates
+  .help = Copies of the symmetry mates within 3.6 A of the model, from the \
+          input's own crystal symmetry (none for a placeholder cell such as \
+          CRYST1 1 1 1, or without symmetry), are a fixed environment for the \
+          optimization: scored, not moved, and refreshed until they agree \
+          with their originals. The flipkin and comparison passes run without \
+          copies.
 output
   .style = menu_item auto_align
 {
@@ -1765,6 +1774,34 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _SymmetryCopies(self):
+    '''
+    Symmetry copies of the residue groups within 3.6 A of each model, under the
+    input's crystal symmetry, for the Optimizer's symmetryCopies (None without a
+    cell or with the CRYST1 1 1 1 placeholder).
+    '''
+    cs = reduce_hydrogen.contact_symmetry(self._output_cs)
+    if cs is None:
+      return None
+    hierarchy = self.model.get_hierarchy()
+    models = {}
+    hierarchies = []
+    for mi, myModel in enumerate(hierarchy.models()):
+      # sym_equiv_residue_groups() takes one model
+      if hierarchy.models_size() == 1:
+        single = hierarchy
+      else:
+        single = pdb.hierarchy.root()
+        single.append_model(myModel.detached_copy())
+      originals = myModel.atoms()
+      models[mi] = []
+      for entry in single.sym_equiv_residue_groups(cs, 3.6):
+        hierarchies.append(entry.hierarchy)
+        for k, c in zip(entry.i_seqs, entry.hierarchy.atoms()):
+          models[mi].append((c, originals[k], entry.rt_mx))
+    # hierarchies: the copies' atoms belong to them
+    return group_args(crystal_symmetry=cs, models=models, hierarchies=hierarchies)
+
   def _ReinterpretModel(self, make_restraints=True, model=None):
     # Reinterpret the model using the same approach that hydrogen-placement does.
     # :param make_restraints: Should we compute restraints during the interpretation?
@@ -2437,6 +2474,10 @@ NOTES:
             print('\n' + text, file=self.logger)
             outString += '\n' + text + '\n'
 
+      symmetryCopies = None
+      if self.params.include_symmetric_copies:
+        symmetryCopies = self._SymmetryCopies()
+
       # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
       # but the desired model ID structure from the model.
       make_sub_header('Optimizing', out=self.logger)
@@ -2454,8 +2495,11 @@ NOTES:
         verbosity=self.params.verbosity,
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
         fillAtomDump = self.params.output.print_atom_info,
-        stopOptimizingAt = stopTime)
+        stopOptimizingAt = stopTime,
+        symmetryCopies = symmetryCopies)
       doneOpt = time.time()
+      if opt.getSymmetryCopiesSummary():
+        print(opt.getSymmetryCopiesSummary(), file=self.logger)
       warnings = opt.getWarnings()
       # Find the lines from warnings that start with "Warning: " and
       # concatenate them into a single string.
