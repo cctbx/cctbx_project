@@ -148,6 +148,12 @@ self_check_beta_max = Auto
           predicts even for a correct model (beta ~1.1-1.3 in tests)
 self_check_min_candidates = 200
   .type = int
+early_self_check = True
+  .type = bool
+  .help = Estimate the self-check first from a random sample of residues \
+          (about twice self_check_min_candidates candidates) and stop there \
+          if it clearly fails (alpha more than 0.1 outside its range or \
+          beta above 1.25 beta_max), saving the search for the rest
 n_shells = 40
   .type = int
 """
@@ -299,38 +305,57 @@ class run(object):
     self._neighbours = self._find_neighbours(pdb_hierarchy) if \
       params.backrub else {}
     self.time_setup = time.time() - t0
-    t0 = time.time()
-    self._fit_search_scale()
-    for rec in self.records:
-      self._tune(rec)
-    self.time_search = time.time() - t0
-    t0 = time.time()
-    self._predict()
-    self.time_predict = time.time() - t0
-    self._self_check()
     self.n_backrub = 0
     self.backrub_alpha = self.backrub_beta = None
     self.backrub_check_passed = None
+    self.ncs_rho = None
+    self.ncs_n_groups = 0
+    self.early_check = None     # (alpha, beta) from the sample
+    self.early_stop = False
+    self.time_exact = 0.
+    t0 = time.time()
+    self._fit_search_scale()
+    rest = self.records
+    if(params.self_check and params.early_self_check):
+      sample = self._early_sample()
+      if(sample is not None):
+        for rec in sample: self._tune(rec)
+        self._predict(sample)
+        self._self_check(sample)
+        self.early_check = (self.alpha, self.beta)
+        if(self._clearly_fails(self.alpha, self.beta)):
+          self.early_stop = True
+          self.time_search = time.time() - t0
+          self.time_predict = 0.
+          return
+        rest = [r for r in self.records if not hasattr(r, "_search")]
+    t1 = time.time()
+    for rec in rest:
+      self._tune(rec)
+    self.time_search = time.time() - t1 + (t1 - t0)
+    t0 = time.time()
+    self._predict(rest)
+    self.time_predict = time.time() - t0
+    self._self_check()
     if(params.backrub and not (params.self_check and
        self.self_check_passed is False)):
       self._backrub()
     t0 = time.time()
     self._exact_and_decide()
     self.time_exact = time.time() - t0
-    self.ncs_rho = None
-    self.ncs_n_groups = 0
     if(params.ncs_pooling):
       self._ncs_decide(pdb_hierarchy, ncs_groups)
     if(params.self_check and self.self_check_passed is False):
       for rec in self.records:
         if(not rec.stub): rec.accept = False
 
-  def _self_check(self):
+  def _self_check(self, records=None):
     """ Robust alpha, beta of dLL ~ N(-alpha I, beta I) over all candidates
     (median of dLL/I; MAD of the standardised residuals). """
+    if(records is None): records = self.records
     p = self.params
     d, inf = [], []
-    for rec in self.records:
+    for rec in records:
       if(rec.stub): continue
       for c in rec.candidates:
         if(c.clash or c.information is None or c.information <= 0): continue
@@ -345,6 +370,32 @@ class run(object):
     self.alpha, self.beta = self._robust_alpha_beta(np.array(d),
       np.array(inf))
     self.self_check_passed = self._check_limits(self.alpha, self.beta)
+
+  def _early_sample(self):
+    """ residues at random (non-stubs) with at least twice
+    self_check_min_candidates candidates; None if that is not much less
+    than all of them """
+    p = self.params
+    want = 2 * p.self_check_min_candidates
+    pool = [r for r in self.records if not r.stub]
+    if(sum(len(r.candidates) for r in pool) < 2 * want): return None
+    rng = np.random.RandomState(p.random_seed)
+    sample, n = [], 0
+    for i in rng.permutation(len(pool)):
+      sample.append(pool[i]); n += len(pool[i].candidates)
+      if(n >= want): break
+    return sample
+
+  def _clearly_fails(self, alpha, beta):
+    if(alpha is None): return False
+    lo, hi = self.params.self_check_alpha
+    # margins: the sample's alpha was within 0.1 of the full estimate in
+    # tests except where both clearly failed
+    if(alpha < lo - 0.1 or alpha > hi + 0.1 or
+       beta > 1.25 * self.beta_max):
+      self.self_check_passed = False
+      return True
+    return False
 
   def _robust_alpha_beta(self, d, inf):
     """ alpha, beta of dLL ~ N(-alpha I, beta I): median of dLL/I and the
@@ -488,9 +539,10 @@ class run(object):
       cand.clash = best <= -1.e29
 
   # --- prediction and exact evidence ------------------------------------------
-  def _predict(self):
+  def _predict(self, records=None):
+    if(records is None): records = self.records
     i_list, x_list = [], []
-    for rec in self.records:
+    for rec in records:
       sc = rec.sc
       i_list.append(sc.i_seqs[sc.moving]); x_list.append(sc.xyz[sc.moving])
       for cand in rec.candidates:
@@ -498,9 +550,9 @@ class run(object):
         i_list.append(sc.i_seqs[sc.moving])
         x_list.append(cand.xyz[sc.moving])
     grads = self.ev.occupancy_gradients(i_list, x_list)
-    if(self.params.mask_correction): self._predict_mask()
+    if(self.params.mask_correction): self._predict_mask(records)
     k = 0
-    for rec in self.records:
+    for rec in records:
       sc = rec.sc
       i_seqs = sc.i_seqs[sc.moving]
       lin_old = grads[k]; k += 1
@@ -539,13 +591,14 @@ class run(object):
         cand.information_size = 2 * self.llg_total * \
           rec.moving_scattering / self.model_scattering
 
-  def _predict_mask(self):
+  def _predict_mask(self, records=None):
     """ The change of the bulk-solvent mask for every candidate (local grid,
     once per residue for the atoms that stay): pseudo-atoms of solvent and
     their linear term, from one FFT gradient calculation. """
+    if(records is None): records = self.records
     ev = self.ev
     pos_list, cands = [], []
-    for rec in self.records:
+    for rec in records:
       sc = rec.sc; mv = sc.moving; ii = sc.i_seqs[mv]
       live = [c for c in rec.candidates if not c.clash]
       if(not live): continue
@@ -872,7 +925,11 @@ class run(object):
       print("  skipped (%s): %d" % (k, v), file=out)
     print("  LLG of the model %.1f; scattering power %.0f" % (
       self.llg_total, self.model_scattering), file=out)
-    if(self.alpha is not None):
+    if(self.early_stop):
+      print("  evidence self-check from a sample of residues: alpha %.2f "
+        "beta %.2f, clearly outside the limits -- no changes made, the "
+        "rest not searched" % self.early_check, file=out)
+    elif(self.alpha is not None):
       print("  evidence self-check (%s target): alpha %.2f beta %.2f "
         "(expected ~0.5, <= %.1f): %s%s" % (self.target_name, self.alpha,
         self.beta, self.beta_max, "passed" if
