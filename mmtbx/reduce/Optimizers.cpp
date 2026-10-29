@@ -662,13 +662,27 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
   CliqueGraph& clique, CliqueGraph& scoreButDoNotMove, double remainingSeconds)
 {
   if (remainingSeconds <= 0.0) {
-    // No time remaining, so we leave the clique in its current state and return a score of 0.
+    // No time remaining, so we adjust each Mover as a singleton and sum their final scores
+    // along with the score for the ones to score but not move..
     std::ostringstream oss;
     if (m_verbosity >= 1) {
-      oss << "   No time remaining, leaving clique of size " << boost::num_vertices(clique)
-        << " in its current state\n";
+      oss << "   No time remaining, treating (sub)clique of size " << boost::num_vertices(clique)
+        << " as singletons\n";
     }
-    return std::pair<double, std::string>(0.0, oss.str());
+    double totalScore = 0.0;
+    for (size_t i = 0; i < boost::num_vertices(clique); i++) {
+      boost::python::object* mover = clique[i];
+      boost::python::tuple ret = OptimizeSingleMoverCoarse(*mover);
+      // Read the first element of the tuple as a double and add it to the current score.
+      totalScore += boost::python::extract<double>(ret[0]);
+      totalScore += m_preferenceMagnitude * states[mover].preferenceEnergies[m_coarseLocations[mover->ptr()]];
+    }
+    for (size_t i = 0; i < boost::num_vertices(scoreButDoNotMove); i++) {
+      boost::python::object* mover = scoreButDoNotMove[i];
+      totalScore += scorePosition(states[mover], m_coarseLocations[mover->ptr()], 0);
+      totalScore += m_preferenceMagnitude * states[mover].preferenceEnergies[m_coarseLocations[mover->ptr()]];
+    }
+    return std::pair<double, std::string>(totalScore, oss.str());
   }
   auto startTime = std::chrono::steady_clock::now();
 
@@ -779,15 +793,29 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
       }
       CliqueGraph subGraph = subsetGraph(cutGraph, subMovers);
 
-      // See if we've run out of time.  If so, we break out of the loop and stop adjusting the score.
+      // See if we've run out of time.  If so, we treat the entire clique as singletons.
       if (!isTimeRemaining(remainingSeconds, startTime)) {
+        // No time remaining, so we adjust each Mover as a singleton and sum their final scores
+        // along with the score for the ones to score but not move..
+        std::ostringstream oss;
         if (m_verbosity >= 1) {
-          std::ostringstream oss;
-          oss << "   No time remaining, leaving clique of size " << boost::num_vertices(clique)
-            << " in its current state\n";
-          infoString += oss.str();
+          oss << "   Out of time, treating (sub)clique of size " << boost::num_vertices(clique)
+            << " as singletons\n";
         }
-        return std::pair<double, std::string>(0.0, infoString);
+        double totalScore = 0.0;
+        for (size_t i = 0; i < boost::num_vertices(clique); i++) {
+          boost::python::object* mover = clique[i];
+          boost::python::tuple ret = OptimizeSingleMoverCoarse(*mover);
+          // Read the first element of the tuple as a double and add it to the current score.
+          totalScore += boost::python::extract<double>(ret[0]);
+          totalScore += m_preferenceMagnitude * states[mover].preferenceEnergies[m_coarseLocations[mover->ptr()]];
+        }
+        for (size_t i = 0; i < boost::num_vertices(scoreButDoNotMove); i++) {
+          boost::python::object* mover = scoreButDoNotMove[i];
+          totalScore += scorePosition(states[mover], m_coarseLocations[mover->ptr()], 0);
+          totalScore += m_preferenceMagnitude * states[mover].preferenceEnergies[m_coarseLocations[mover->ptr()]];
+        }
+        return std::pair<double, std::string>(totalScore, oss.str());
       }
 
       // Recursively call this function to find the best score for this subgraph.

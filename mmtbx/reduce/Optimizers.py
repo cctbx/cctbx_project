@@ -188,7 +188,7 @@ class Optimizer(object):
                 verbosity = 1,
                 cliqueOutlineFileName = None,
                 fillAtomDump = True,
-                stopOptimizingAt = 0.0
+                stopOptimizingAt = time.time() + 1.0e10
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -248,8 +248,7 @@ class Optimizer(object):
     they are.
     :param fillAtomDump: If true, fill in the atomDump string with the atom information.
     This can take a long time to do, so the caller may want to turn it off if they don't need it.
-    :param stopOptimizingAt: If greater than 0, then we will stop coarse optimizations
-    at this time relative to time.time().
+    :param stopOptimizingAt: Start treating cliques as singletons at this time relative to time.time().
     """
 
     ################################################################################
@@ -637,12 +636,9 @@ class Optimizer(object):
         # subclasses.
 
         # Do coarse optimization on the singleton Movers.  Record the selected coarse
-        # index.
+        # index.  We do not check for the time limit here because singleton optimization
+        # is very fast.
         for s in singletonCliques:
-          if stopOptimizingAt > 0.0 and time.time() > stopOptimizingAt:
-            self._infoString += _VerboseCheck(self._verbosity, 1,
-                                              "Stopping singleton optimization due to time limit\n")
-            break
           mover = self._interactionGraph.vertex_label(s[0])
           (bestScore, infoString) = optC.OptimizeSingleMoverCoarse(mover)
           self._infoString += infoString
@@ -668,13 +664,7 @@ class Optimizer(object):
               self._interactionGraph.vertex_label(self._interactionGraph.target(e))))
         for ci, g in enumerate(groupCliques):
           startTime = time.time()
-          remainingSeconds = 1e12
-          if stopOptimizingAt > 0.0:
-            remainingSeconds = stopOptimizingAt - time.time()
-          if remainingSeconds <= 0:
-            self._infoString += _VerboseCheck(self._verbosity, 1,
-                                              "Stopping clique optimization due to time limit\n")
-            break
+          remainingSeconds = stopOptimizingAt - time.time()
 
           # Find all of the Movers in the clique so that we know which ones to capture the state for.
           # connected_components() lists them in graph order, as _subsetGraph() did.
