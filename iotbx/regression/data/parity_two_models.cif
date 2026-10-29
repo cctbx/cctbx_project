@@ -1,0 +1,54 @@
+# parity test model: two models with the same atom ids, altlocs
+data_phenix
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.pdbx_PDB_model_num
+  _atom_site.auth_segid
+  ATOM    1  N    .  CYS  AXLONG   1  ?  -2.50200  -9.25000   1.01400  1.000  19.22000  N  ?  A  ?   1  1  '    '
+  ATOM    2  CA   .  CYS  AXLONG   1  ?  -2.21300  -7.80100   0.65500  1.000  17.06000  C  ?  A  ?   1  1  '    '
+  ATOM    3  C    .  CYS  AXLONG   1  ?  -3.20500  -6.72400   1.02600  1.000  17.12000  C  ?  A  ?   1  1  '    '
+  ATOM    4  O    .  CYS  AXLONG   1  ?  -4.37900  -6.96800   1.09300  1.000  18.19000  O  ?  A  ?   1  1  '    '
+  ATOM    5  CB   .  CYS  AXLONG   1  ?  -2.00300  -7.75200  -0.87400  1.000  15.26000  C  ?  A  ?   1  1  '    '
+  ATOM    6  SG   .  CYS  AXLONG   1  ?  -0.88500  -8.99600  -1.45600  1.000  16.95000  S  ?  A  ?   1  1  '    '
+  ATOM    7  N    .  TYR  AXLONG   2  ?  -2.71000  -5.50600   1.27000  1.000  15.58000  N  ?  A  ?   2  1  '    '
+  ATOM    8  CA   .  TYR  AXLONG   2  ?  -3.58700  -4.39800   1.56700  1.000  18.08000  C  ?  A  ?   2  1  '    '
+  ATOM    9  C    .  TYR  AXLONG   2  ?  -3.02500  -3.09200   0.98600  1.000  15.79000  C  ?  A  ?   2  1  '    '
+  ATOM   10  O    .  TYR  AXLONG   2  ?  -1.82900  -2.97400   0.78500  1.000  15.61000  O  ?  A  ?   2  1  '    '
+  ATOM   11  CB   .  TYR  AXLONG   2  ?  -3.80600  -4.31800   3.09000  1.000  22.18000  C  ?  A  ?   2  1  '    '
+  ATOM   12  CG   .  TYR  AXLONG   2  ?  -2.72700  -3.70500   3.73900  1.000  25.68000  C  ?  A  ?   2  1  '    '
+  ATOM  102  N    .  THR  AXLONG  17  ?   1.54100  -0.13800  -6.01800  1.000  13.59000  N  ?  A  ?  17  1  '    '
+  ATOM  103  CA   .  THR  AXLONG  17  ?   0.74200   1.00600  -5.58600  1.000  14.74000  C  ?  A  ?  17  1  '    '
+  ATOM  104  C    .  THR  AXLONG  17  ?  -0.72900   0.73400  -5.79900  1.000  13.10000  C  ?  A  ?  17  1  '    '
+  ATOM  105  O    .  THR  AXLONG  17  ?  -1.11100  -0.16600  -6.56000  1.000  11.70000  O  ?  A  ?  17  1  '    '
+  ATOM  106  CB   A  THR  AXLONG  17  ?   1.16400   2.27000  -6.30300  0.500  18.37000  C  ?  A  ?  17  1  '    '
+  ATOM  107  OG1  A  THR  AXLONG  17  ?   0.40900   2.48000  -7.57600  0.500  20.62000  O  ?  A  ?  17  1  '    '
+  ATOM    1  N    .  CYS  AXLONG   1  ?  -2.50200  -9.25000   1.01400  1.000  19.22000  N  ?  C  ?   1  2  '    '
+  ATOM    2  CA   .  CYS  AXLONG   1  ?  -2.21300  -7.80100   0.65500  1.000  17.06000  C  ?  C  ?   1  2  '    '
+  ATOM    3  C    .  CYS  AXLONG   1  ?  -3.20500  -6.72400   1.02600  1.000  17.12000  C  ?  C  ?   1  2  '    '
+  ATOM    4  O    .  CYS  AXLONG   1  ?  -4.37900  -6.96800   1.09300  1.000  18.19000  O  ?  C  ?   1  2  '    '
+  ATOM    5  CB   .  CYS  AXLONG   1  ?  -2.00300  -7.75200  -0.87400  1.000  15.26000  C  ?  C  ?   1  2  '    '
+  ATOM    6  SG   .  CYS  AXLONG   1  ?  -0.88500  -8.99600  -1.45600  1.000  16.95000  S  ?  C  ?   1  2  '    '
+  ATOM    7  N    .  TYR  AXLONG   2  ?  -2.71000  -5.50600   1.27000  1.000  15.58000  N  ?  C  ?   2  2  '    '
+  ATOM    8  CA   .  TYR  AXLONG   2  ?  -3.58700  -4.39800   1.56700  1.000  18.08000  C  ?  C  ?   2  2  '    '
+  ATOM    9  C    .  TYR  AXLONG   2  ?  -3.02500  -3.09200   0.98600  1.000  15.79000  C  ?  C  ?   2  2  '    '
+  ATOM   10  O    .  TYR  AXLONG   2  ?  -1.82900  -2.97400   0.78500  1.000  15.61000  O  ?  C  ?   2  2  '    '
+  ATOM   11  CB   .  TYR  AXLONG   2  ?  -3.80600  -4.31800   3.09000  1.000  22.18000  C  ?  C  ?   2  2  '    '
+  ATOM   12  CG   .  TYR  AXLONG   2  ?  -2.72700  -3.70500   3.73900  1.000  25.68000  C  ?  C  ?   2  2  '    '
+

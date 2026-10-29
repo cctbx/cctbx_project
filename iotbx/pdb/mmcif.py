@@ -21,7 +21,7 @@ import iotbx.mtrix_biomt
 from six import string_types
 from six.moves import range, zip
 
-class pdb_hierarchy_builder(crystal_symmetry_builder):
+class _pdb_hierarchy_builder_python(crystal_symmetry_builder):
 
   # The recommended translation for ATOM records can be found at:
   #   http://mmcif.rcsb.org/dictionaries/pdb-correspondence/pdb2mmcif-2010.html#ATOM
@@ -305,6 +305,24 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       data = data.deep_copy()
       data.set_selected(null_sel, str(default))
     return flex.double(data)
+
+
+class pdb_hierarchy_builder(crystal_symmetry_builder):
+  """
+  Crystal symmetry and pdb hierarchy of an mmCIF model block. The hierarchy
+  comes from hierarchy_from_atom_site(); _pdb_hierarchy_builder_python above
+  is the per-atom Python builder, the reference for
+  tst_mmcif_hierarchy_parity.py.
+  """
+
+  def __init__(self, cif_block):
+    crystal_symmetry_builder.__init__(self, cif_block)
+    self.hierarchy = hierarchy_from_atom_site(cif_block)
+
+
+def hierarchy_from_atom_site(cif_block):
+  """Build a hierarchy.root from the _atom_site loop of cif_block."""
+  return _pdb_hierarchy_builder_python(cif_block).hierarchy
 
 
 def is_aa_or_rna_dna(resname):
