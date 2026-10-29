@@ -64,73 +64,7 @@ HETATM 683 O O    A EOH B 2 . 15.378 1.984  12.104 0.60 12.07 66 EOH B O    1
 HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH B O    1
 """
 
-def exercise_cif_show():
-  cif_model = iotbx.cif.reader(input_string=input_1ab1).model()
-  builder = pdb_hierarchy_builder(cif_model["1AB1"])
-  hierarchy = builder.hierarchy
-  h_cif = hierarchy.as_cif_block()
-  builder = pdb_hierarchy_builder(h_cif) # this runs OK, why?
-  # output h_cif:
-  s = StringIO()
-  h_cif.show(out=s, align_columns=False)
-  builder = pdb_hierarchy_builder(h_cif) # Now it fails.
-
-def exercise_pdb_hierachy_builder():
-  cif_model = iotbx.cif.reader(input_string=input_1ab1).model()
-  builder = pdb_hierarchy_builder(cif_model["1AB1"])
-  #assert builder.crystal_symmetry is None
-  hierarchy = builder.hierarchy
-  atoms = hierarchy.atoms()
-  assert atoms[0].segid == "    " # some code relies on this
-  s = StringIO()
-  hierarchy.show(out=s)
-  assert not show_diff(s.getvalue(), """\
-model id="" #chains=2
-  chain id="A" #residue_groups=1
-    resid="   2 " #atom_groups=3
-      altloc="" resname="THR" #atoms=4
-        " C  "
-        " O  "
-        " H  "
-        " HA "
-      altloc="A" resname="THR" #atoms=8
-        " CA "
-        " CB "
-        " OG1"
-        " CG2"
-        " HB "
-        "HG21"
-        "HG22"
-        "HG23"
-      altloc="B" resname="THR" #atoms=8
-        " CA "
-        " CB "
-        " OG1"
-        " CG2"
-        " HB "
-        "HG21"
-        "HG22"
-        "HG23"
-  chain id="B" #residue_groups=1
-    resid="  66 " #atom_groups=2
-      altloc="A" resname="EOH" #atoms=3
-        " C1 "
-        " C2 "
-        " O  "
-      altloc="B" resname="EOH" #atoms=3
-        " C1 "
-        " C2 "
-        " O  "
-""")
-
-  cif_block = hierarchy.as_cif_block()
-  builder = pdb_hierarchy_builder(cif_block)
-  hierarchy_recycled = builder.hierarchy
-  s1 = StringIO()
-  hierarchy_recycled.show(out=s1)
-  assert not show_diff(s.getvalue(), s1.getvalue())
-  #
-  input_missing_mandatory_items = """\
+input_missing_mandatory_items = """\
 data_1AB1
 loop_
 _atom_site.group_PDB
@@ -148,14 +82,8 @@ ATOM   18  C B THR A 1 2 0.30 5.01
 ATOM   19  C . THR A 1 2 1.00 2.92
 ATOM   20  O . THR A 1 2 1.00 3.70
 """
-  cif_model = iotbx.cif.reader(input_string=input_missing_mandatory_items).model()
-  try: pdb_hierarchy_builder(cif_model["1AB1"])
-  except AssertionError as e: pass
-  else:
-    # TODO: raise a better error here
-    raise Exception_expected
 
-  input_4edr = """\
+input_4edr = """\
 data_4EDR
 _cell.length_a           150.582
 _cell.length_b           150.582
@@ -216,64 +144,7 @@ _atom_site_anisotrop.U[2][3]
 6    O OG  . SER A 1   0.4276 0.2843 0.1998 0.1252  0.0273  0.0344
 """
 
-  cif_model = iotbx.cif.reader(input_string=input_4edr).model()
-  cif_block = cif_model["4EDR"]
-  builder = pdb_hierarchy_builder(cif_block)
-  assert approx_equal(builder.crystal_symmetry.unit_cell().parameters(),
-                      (150.582, 150.582, 38.633, 90, 90, 120))
-  assert builder.crystal_symmetry.space_group_info().symbol_and_number() == \
-         'P 61 (No. 169)'
-  hierarchy = builder.hierarchy
-  s = StringIO()
-  hierarchy.show(out=s)
-  assert not show_diff(s.getvalue(), """\
-model id="" #chains=2
-  chain id="A" #residue_groups=1
-    resid=" 108 " #atom_groups=1
-      altloc="" resname="SER" #atoms=6
-        " N  "
-        " CA "
-        " C  "
-        " O  "
-        " CB "
-        " OG "
-  chain id="B" #residue_groups=1
-    resid=" 505 " #atom_groups=1
-      altloc="" resname=" MN" #atoms=1
-        "MN  "
-""")
-  cif_block = hierarchy.as_cif_block(crystal_symmetry=builder.crystal_symmetry)
-  assert "_space_group_symop.operation_xyz" in cif_block
-  assert "_cell.length_a" in cif_block
-  builder = pdb_hierarchy_builder(cif_block)
-  hierarchy_recycled = builder.hierarchy
-  s1 = StringIO()
-  hierarchy_recycled.show(out=s1)
-  assert not show_diff(s.getvalue(), s1.getvalue())
-  for hierarchy in (hierarchy, hierarchy_recycled):
-    residue_group = next(hierarchy.residue_groups())
-    assert residue_group.resseq == ' 108'
-    assert residue_group.resseq_as_int() == 108
-    atoms = hierarchy.atoms()
-    assert atoms[0].serial == '    1'
-    assert atoms[0].name == ' N  '
-    assert atoms[0].b == 23.68
-    assert atoms[0].uij_is_defined()
-    assert approx_equal(
-      atoms[0].uij, (0.4097, 0.2916, 0.1984, 0.113, 0.0328, 0.0375))
-    assert atoms[1].serial == '    2'
-    assert atoms[1].name == ' CA '
-    assert atoms[1].b == 22.98
-    assert atoms[1].uij_is_defined()
-    assert approx_equal(
-      atoms[1].uij, (0.4035, 0.2848, 0.1847, 0.1242, 0.0297, 0.0347))
-    assert not atoms[6].uij_is_defined()
-    assert atoms[6].serial == ' 2650'
-    assert atoms[6].name == 'MN  '
-    assert atoms[6].b == 44.18
-    assert approx_equal(atoms[6].uij, (-1, -1, -1, -1, -1, -1))
-  #
-  input_1ezu = """\
+input_1ezu = """\
 data_1EZU
 #
 loop_
@@ -313,46 +184,8 @@ ATOM   3434 C  CE1 . PHE C 2 165 A -31.203 -10.572 42.458  1.00 35.08 584 PHE C 
 ATOM   3435 C  CE2 . PHE C 2 165 A -31.271 -12.924 41.904  1.00 32.57 584 PHE C CE2 1
 ATOM   3436 C  CZ  . PHE C 2 165 A -31.379 -11.898 42.850  1.00 32.97 584 PHE C CZ  1
 """
-  cif_model = iotbx.cif.reader(input_string=input_1ezu).model()
-  cif_block = cif_model["1EZU"]
-  builder = pdb_hierarchy_builder(cif_block)
-  hierarchy = builder.hierarchy
-  residue_groups = list(hierarchy.residue_groups())
-  assert residue_groups[0].icode == " "
-  assert residue_groups[1].icode == "A"
-  s = StringIO()
-  hierarchy.show(out=s)
-  assert not show_diff(s.getvalue(), """\
-model id="" #chains=1
-  chain id="C" #residue_groups=2
-    resid=" 584 " #atom_groups=1
-      altloc="" resname="GLY" #atoms=4
-        " N  "
-        " CA "
-        " C  "
-        " O  "
-    resid=" 584A" #atom_groups=1
-      altloc="" resname="PHE" #atoms=11
-        " N  "
-        " CA "
-        " C  "
-        " O  "
-        " CB "
-        " CG "
-        " CD1"
-        " CD2"
-        " CE1"
-        " CE2"
-        " CZ "
-""")
-  cif_block = hierarchy.as_cif_block()
-  builder = pdb_hierarchy_builder(cif_block)
-  hierarchy_recycled = builder.hierarchy
-  s1 = StringIO()
-  hierarchy_recycled.show(out=s1)
-  assert not show_diff(s.getvalue(), s1.getvalue())
 
-  input_charges = """\
+input_charges = """\
 data_charges
 loop_
 _atom_site.group_PDB
@@ -385,40 +218,8 @@ _atom_site.pdbx_PDB_model_num
   HETATM 2996 O  O1S . MES D 4 .   ? 47.470 -6.157  23.319 1.00 13.84 ? ? ? ? ? -1 1653 MES F O1S 1
   HETATM 2997 O  O2S . MES D 4 .   ? 47.327 -5.296  20.939 1.00 15.26 ? ? ? ? ? 1-  1653 MES F O2S 1
 """
-  hierarchy = iotbx.pdb.input(
-    lines=input_charges.splitlines(),
-    source_info=None).construct_hierarchy()
-  atoms = hierarchy.atoms()
-  assert atoms[0].charge == "2+"
-  assert atoms[1].charge == "1-"
-  assert atoms[2].charge == "1-"
-  s = StringIO()
-  hierarchy.show(out=s)
-  assert not show_diff(s.getvalue(), """\
-model id="" #chains=2
-  chain id="C" #residue_groups=1
-    resid="1123 " #atom_groups=1
-      altloc="" resname=" CA" #atoms=1
-        "CA  "
-  chain id="F" #residue_groups=1
-    resid="1653 " #atom_groups=1
-      altloc="" resname="MES" #atoms=2
-        " O1S"
-        " O2S"
-""")
-  cif_block = hierarchy.as_cif_block()
-  builder = pdb_hierarchy_builder(cif_block)
-  hierarchy_recycled = builder.hierarchy
-  s1 = StringIO()
-  hierarchy_recycled.show(out=s1)
-  assert not show_diff(s.getvalue(), s1.getvalue())
-  atoms = hierarchy.atoms()
-  assert atoms[0].charge == "2+"
-  assert atoms[1].charge == "1-"
-  assert atoms[2].charge == "1-"
 
-def exercise_pdb_hierarchy_sequence_as_cif_block():
-  pdb_atom_site_loop_header = """\
+pdb_atom_site_loop_header = """\
 data_mmcif
   loop_
 _atom_site.group_PDB
@@ -449,8 +250,7 @@ _atom_site.auth_atom_id
 _atom_site.pdbx_PDB_model_num
 """
 
-  # simple example with multiple copies of chain
-  input_4ehz = """\
+input_4ehz = """\
 ATOM   2    C CA  . GLU A 1 6   ? -35.647 65.380  -11.775 1.00 65.78  ? ? ? ? ? ? 858  GLU A CA  1
 ATOM   11   C CA  . LYS A 1 7   ? -34.996 68.963  -10.712 1.00 89.52  ? ? ? ? ? ? 859  LYS A CA  1
 ATOM   20   C CA  . LYS A 1 8   ? -31.415 68.325  -9.529  1.00 98.54  ? ? ? ? ? ? 860  LYS A CA  1
@@ -483,27 +283,8 @@ ATOM   2444 C CA  . PHE B 1 22  ? 28.294  -0.647  -13.791 1.00 38.39  ? ? ? ? ? 
 ATOM   2455 C CA  . LEU B 1 23  ? 25.763  1.275   -11.703 1.00 32.87  ? ? ? ? ? ? 875  LEU B CA  1
 ATOM   2463 C CA  . LYS B 1 24  ? 22.588  1.723   -13.713 1.00 30.22  ? ? ? ? ? ? 876  LYS B CA  1
 """
-  import iotbx.bioinformatics
-  from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
-  from cctbx.array_family import flex
-  sequence_4ehz = iotbx.bioinformatics.sequence("GDIVSEKKPATEVDPTHFEKRFLK")#RIRDLGEGHF"
-  pdb_in = iotbx.pdb.input(
-    lines=(pdb_atom_site_loop_header+input_4ehz).splitlines(),
-    source_info=None)
-  model = mmtbx.model.manager(pdb_in)
-  model.set_sequences([sequence_4ehz])
-  cif_block = model._sequence_validation.sequence_as_cif_block()
-  sequence = ';' + sequence_4ehz.sequence + '\n;'
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence
-  assert cif_block['_entity_poly.pdbx_strand_id'] == 'A,B'
-  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), list(range(1, 25)))
-  assert cif_block['_entity_poly_seq.entity_id'].all_eq('1')
-  assert list(cif_block['_entity_poly_seq.mon_id']) == [
-    three_letter_given_one_letter.get(i) for i in sequence_4ehz.sequence]
-  #
-  # example with modified amino acid - PTR
-  input_3zdi = """\
+
+input_3zdi = """\
 ATOM   1422 C  CA  . ASN A 1 179 ? -11.025 -26.833 -3.747  1.00 86.68  ? ? ? ? ? ? 213  ASN A CA  1
 ATOM   1430 C  CA  . VAL A 1 180 ? -7.831  -26.493 -1.696  1.00 82.40  ? ? ? ? ? ? 214  VAL A CA  1
 ATOM   1437 C  CA  . SER A 1 181 ? -8.142  -28.602 1.444   1.00 89.69  ? ? ? ? ? ? 215  SER A CA  1
@@ -512,22 +293,8 @@ ATOM   1459 C  CA  . ILE A 1 183 ? -7.514  -23.621 4.117   1.00 83.90  ? ? ? ? ?
 ATOM   1467 C  CA  . CYS A 1 184 ? -8.907  -21.533 7.009   1.00 86.39  ? ? ? ? ? ? 218  CYS A CA  1
 ATOM   1473 C  CA  . SER A 1 185 ? -6.795  -21.356 10.148  1.00 91.03  ? ? ? ? ? ? 219  SER A CA  1
 """
-  sequence_3zdi = iotbx.bioinformatics.sequence("NVSYICSR")
-  pdb_in = iotbx.pdb.input(
-    lines=(pdb_atom_site_loop_header+input_3zdi).splitlines(),
-    source_info=None)
-  model = mmtbx.model.manager(pdb_in)
-  model.set_sequences([sequence_3zdi])
-  cif_block = model._sequence_validation.sequence_as_cif_block()
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == \
-    ';NVS(PTR)ICSR\n;'
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == \
-    ';' + sequence_3zdi.sequence + '\n;'
-  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), list(range(1, 9)))
-  assert list(cif_block['_entity_poly_seq.mon_id']) == [
-    'ASN', 'VAL', 'SER', 'PTR', 'ILE', 'CYS', 'SER', 'ARG']
-  #
-  input_4gln = """\
+
+input_4gln = """\
 ATOM   2    C CA  . DTH A 1 1   ? -2.916  5.861  2.629   1.00 16.39 ? ? ? ? ? ? 1   DTH D CA  1
 ATOM   9    C CA  . DTY A 1 2   ? 0.533   4.844  3.866   1.00 10.74 ? ? ? ? ? ? 2   DTY D CA  1
 ATOM   21   C CA  . DLY A 1 3   ? 3.161   3.111  1.736   1.00 8.24  ? ? ? ? ? ? 3   DLY D CA  1
@@ -552,28 +319,8 @@ HETATM 2664 O O   . HOH F 3 .   ? 0.790   8.695  30.909  1.00 17.06 ? ? ? ? ? ? 
 HETATM 2795 O O   . HOH G 3 .   ? 11.265  2.914  43.878  1.00 13.92 ? ? ? ? ? ? 201 HOH F O   1
 HETATM 2796 O O   . HOH G 3 .   ? 11.197  11.667 36.108  1.00 17.00 ? ? ? ? ? ? 202 HOH F O   1
 """
-  sequence_4gln = [iotbx.bioinformatics.sequence("TYKLILNGKT"),
-                   iotbx.bioinformatics.sequence("GQNHHEVVK")]
-  pdb_in = iotbx.pdb.input(
-    lines=(pdb_atom_site_loop_header+input_4gln).splitlines(),
-    source_info=None)
-  model = mmtbx.model.manager(pdb_in)
-  model.set_sequences(sequence_4gln)
-  cif_block = model._sequence_validation.sequence_as_cif_block()
-  assert list(cif_block['_entity.id']) == ['1', '2']
-  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']),
-                     list(range(1, 11))+list(range(1, 10)))
-  assert list(cif_block['_entity_poly_seq.mon_id']) == [
-    'DTH', 'DTY', 'DLY', 'DLE', 'DIL', 'DLE', 'DSG', 'GLY', 'DLY', 'DTH',
-    'GLY', 'GLN', 'ASN', 'HIS', 'HIS', 'GLU', 'VAL', 'VAL', 'LYS']
-  assert list(cif_block['_entity_poly.pdbx_seq_one_letter_code']) == [
-    ';(DTH)(DTY)(DLY)(DLE)(DIL)(DLE)(DSG)G(DLY)(DTH)\n;',
-    ';' + sequence_4gln[1].sequence + '\n;']
-  assert list(cif_block['_entity_poly.pdbx_seq_one_letter_code_can']) == [
-    ';' + sequence_4gln[0].sequence + '\n;',
-    ';' + sequence_4gln[1].sequence + '\n;']
-  #
-  input_1ezu = """\
+
+input_1ezu_loop = """\
 ATOM   3971 C  CA  . VAL D 2 16  ? 24.971  -4.493  -3.652  1.00 33.12  ? ? ? ? ? ? 731 VAL D CA  1
 ATOM   3978 C  CA  . SER D 2 17  ? 27.194  -3.056  -0.946  1.00 35.47  ? ? ? ? ? ? 732 SER D CA  1
 ATOM   3984 C  CA  . LEU D 2 18  ? 26.541  0.123   0.961   1.00 45.29  ? ? ? ? ? ? 733 LEU D CA  1
@@ -582,21 +329,8 @@ ATOM   4000 C  CA  . SER D 2 20  ? 30.737  4.963   3.775   1.00 61.92  ? ? ? ? ?
 ATOM   4006 C  CA  . GLY D 2 21  ? 34.478  4.622   4.207   1.00 62.21  ? ? ? ? ? ? 738 GLY D CA  1
 ATOM   4010 C  CA  . TYR D 2 22  ? 33.903  0.885   4.483   1.00 54.81  ? ? ? ? ? ? 739 TYR D CA  1
 """
-  sequence_1ezu = iotbx.bioinformatics.sequence('VSLNSGY')
-  pdb_in = iotbx.pdb.input(
-    lines=(pdb_atom_site_loop_header+input_1ezu).splitlines(),
-    source_info=None)
-  model = mmtbx.model.manager(pdb_in)
-  model.set_sequences([sequence_1ezu])
-  cif_block = model._sequence_validation.sequence_as_cif_block()
-  assert list(cif_block['_entity_poly_seq.mon_id']) == [
-    'VAL', 'SER', 'LEU', 'ASN', 'SER', 'GLY', 'TYR']
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == \
-    ';' + sequence_1ezu.sequence + '\n;'
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == \
-    ';' + sequence_1ezu.sequence + '\n;'
 
-  input_2hok = """\
+input_2hok = """\
 ATOM   301  P  P     . C   A 1 15 ? 15.802 44.045 80.094 1.00 59.36 ? ? ? ? ? ? 23  C   A P     1
 ATOM   321  P  P     . C   A 1 16 ? 12.286 47.301 82.617 1.00 68.27 ? ? ? ? ? ? 24  C   A P     1
 ATOM   341  P  P     . U   A 1 17 ? 6.815  51.648 82.739 1.00 78.03 ? ? ? ? ? ? 25  U   A P     1
@@ -604,79 +338,8 @@ ATOM   361  P  P     . G   A 1 21 ? 7.042  52.289 91.645 1.00 96.25 ? ? ? ? ? ? 
 ATOM   384  P  P     . C   A 1 22 ? 7.024  46.751 90.841 1.00 84.69 ? ? ? ? ? ? 30  C   A P     1
 ATOM   404  P  P     . G   A 1 23 ? 7.477  40.933 88.377 1.00 81.65 ? ? ? ? ? ? 31  G   A P     1
 """
-  sequence_2hok = iotbx.bioinformatics.sequence("CCUUCUGCG")
-  pdb_in = iotbx.pdb.input(
-    lines=(pdb_atom_site_loop_header+input_2hok).splitlines(),
-    source_info=None)
-  model = mmtbx.model.manager(pdb_in)
-  model.set_sequences([sequence_2hok])
-  cif_block = model._sequence_validation.sequence_as_cif_block()
-  assert list(cif_block['_entity_poly_seq.mon_id']) == [
-    'C', 'C', 'U', 'U', 'C', 'U', 'G', 'C', 'G']
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == \
-    ';' + sequence_2hok.sequence + '\n;'
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == \
-    ';' + sequence_2hok.sequence + '\n;'
-  #
-  input_3tpy = """\
-ATOM      2  CA  GLN A  24       2.586  40.220  34.036  1.00 41.54           C
-ATOM      8  CA  LYS A  25       1.265  43.698  34.904  1.00 25.47           C
-ATOM     17  CA  GLN A  26       3.834  45.984  36.538  1.00 22.91           C
-ATOM     26  CA  PRO A  27       2.835  48.614  39.135  1.00 19.20           C
-ATOM     33  CA  ILE A  28       3.972  52.206  39.293  1.00 18.70           C
-ATOM     41  CA  SER A  29       6.403  51.332  42.097  1.00 22.63           C
-TER
-HETATM  852 MG    MG A 999     -12.415  61.451  32.421  0.70 28.10          MG
-HETATM  853  C   TRS A 153      -0.078  70.151  24.773  0.33 24.86           C
-HETATM  877  PA BDUP A 777      -9.339  60.563  31.137  0.70 19.64           P
-HETATM  881  PB BDUP A 777     -11.768  59.969  29.491  0.70 27.76           P
-HETATM  885  PG BDUP A 777     -13.098  58.529  31.620  0.70 33.91           P
-HETATM  905  P  AUMP A 154      -9.010  60.358  31.334  0.30 11.42           P
-HETATM  909  O   HOH A 155      -0.197  60.723  27.343  1.00 17.17           O
-HETATM  910  O   HOH A 156     -10.293  62.567  35.648  1.00 19.43           O
-"""
-  sequence_3tpy = iotbx.bioinformatics.sequence("QKQPIS")
-  pdb_in = iotbx.pdb.input(lines=(input_3tpy).splitlines(), source_info=None)
-  model = mmtbx.model.manager(pdb_in)
-  model.set_sequences([sequence_3tpy])
-  cif_block = model.get_hierarchy().as_cif_block()
-  assert list(cif_block["_atom_site.label_seq_id"]) == [
-    '1', '2', '3', '4', '5', '6', '.', '.', '.', '.', '.', '.', '.', '.']
-  #
-  input_3tgr = """\
-ATOM   2449  CA  GLY A 459     -17.536  10.137  41.979  1.00181.52           C
-ATOM   2453  CA  GLN A 460     -15.862  12.780  44.128  1.00192.51           C
-ATOM   2462  CA  ASN A 463     -19.198   8.054  50.455  1.00180.96           C
-ATOM   2470  CA  ASP A 464     -19.235   4.661  52.197  1.00143.07           C
-ATOM   2478  CA  THR A 465     -20.893   2.988  49.198  1.00 91.96           C
-"""
-  sequence_3tgr = iotbx.bioinformatics.sequence("DGGQSNETNDTET")
-  pdb_in = iotbx.pdb.input(lines=(input_3tgr).splitlines(), source_info=None)
-  model = mmtbx.model.manager(pdb_in)
-  model.set_sequences([sequence_3tgr])
-  cif_block = model._sequence_validation.sequence_as_cif_block()
-  assert cif_block["_entity_poly.pdbx_seq_one_letter_code"][0] == \
-    ';DGGQSNETNDNET\n;'
-  input_2im9 = """\
-ATOM   2423  CA  PRO A 345       2.114  16.158   0.161  1.00 29.14           C
-ATOM   2430  CA  VAL A 346      -1.223  17.837   0.938  1.00 31.05           C
-ATOM   2437  CA  CYS A 349      -4.081  15.852   7.014  0.50 28.57           C
-ATOM   2443  CA  GLN A 350      -6.176  14.041   9.639  0.50 30.62           C
-ATOM   2452  CA  LEU A 351      -6.631  10.729   7.797  0.50 31.53           C
-ATOM   2460  CA  PHE A 352      -5.220   9.172   4.620  0.50 31.95           C
-"""
-  sequence_2im9 = iotbx.bioinformatics.sequence("SSPTIKGINIQVVLPEKPVSNGCQLFDIR")
-  pdb_in = iotbx.pdb.input(lines=(input_2im9).splitlines(), source_info=None)
-  model = mmtbx.model.manager(pdb_in)
-  model.set_sequences([sequence_2im9])
-  cif_block = model._sequence_validation.sequence_as_cif_block()
-  assert list(cif_block["_entity_poly_seq.mon_id"]) == [
-    'SER', 'SER', 'PRO', 'THR', 'ILE', 'LYS', 'GLY', 'ILE', 'ASN', 'ILE', 'GLN',
-    'VAL', 'VAL', 'LEU', 'PRO', 'GLU', 'LYS', 'PRO', 'VAL', 'SER', 'ASN', 'GLY',
-    'CYS', 'CYS', 'GLN', 'LEU', 'ASP', 'ILE', 'ARG']
 
-def exercise_fp_fdp():
-  input_anom = """\
+input_anom = """\
 data_anom
 loop_
   _atom_site.group_PDB
@@ -707,31 +370,8 @@ loop_
   HETATM  78  CD   .  CD   X    2  ?  -14.09500  16.40900  -0.84100  1.000   5.03844  CD  2+  -0.1491  2.6871  G  ?  26  1
   HETATM  79  CL   .  CL   Y    3  ?  -16.37400  16.89900  -0.28500  1.000   9.96655  CL  1-   0.1114  0.3776  H  ?  27  1
 """
-  pdb_in = iotbx.pdb.input(lines=(input_anom).splitlines(), source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  pdb_atoms = pdb_hierarchy.atoms()
-  assert approx_equal(pdb_atoms.extract_fp(), [0, 0, 0, 0, -0.1491, 0.1114])
-  assert approx_equal(pdb_atoms.extract_fdp(), [0, 0, 0, 0, 2.6871, 0.3776])
-  pdb_atoms[-1].fp = 0
-  pdb_atoms[-1].fdp = 0
-  cif_block = pdb_hierarchy.as_cif_block(
-    crystal_symmetry=pdb_in.crystal_symmetry())
-  assert "_atom_site.phenix_scat_dispersion_real" in cif_block
-  assert "_atom_site.phenix_scat_dispersion_imag" in cif_block
-  assert list(cif_block["_atom_site.phenix_scat_dispersion_real"]) == \
-         ['.', '.', '.', '.', '-0.1491', '.']
-  assert list(cif_block["_atom_site.phenix_scat_dispersion_imag"]) == \
-         ['.', '.', '.', '.', '2.6871', '.']
-  builder = pdb_hierarchy_builder(cif_block)
-  pdb_hierarchy_recycled = builder.hierarchy
-  pdb_atoms_recycled = pdb_hierarchy_recycled.atoms()
-  assert approx_equal(
-    pdb_atoms_recycled.extract_fp(), [0, 0, 0, 0, -0.1491, 0])
-  assert approx_equal(
-    pdb_atoms_recycled.extract_fdp(), [0, 0, 0, 0, 2.6871, 0])
 
-def exercise_multi_model_single_chain():
-  inp_txt = """
+input_multi_model_single_chain = """
 data_5UZL
 loop_
 _atom_site.group_PDB
@@ -804,23 +444,8 @@ ATOM 2170  C CG   . ASN A 1 1  ? 0.810   -0.243  -4.007  1.00 71.20 ? 1  ASN A C
 ATOM 2171  O OD1  . ASN A 1 1  ? 1.124   -1.314  -4.528  1.00 12.34 ? 1  ASN A OD1  5
 ATOM 2172  N ND2  . ASN A 1 1  ? 0.682   0.881   -4.702  1.00 14.44 ? 1  ASN A ND2  5
 """
-  pdb_in = iotbx.pdb.input(lines=(inp_txt).splitlines(), source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  # pdb_hierarchy.show()
-  assert len(pdb_hierarchy.models()) == 5
-  assert pdb_hierarchy.atoms_size() == 48, pdb_hierarchy.atoms_size()
-  for m_i, model in enumerate(pdb_hierarchy.models()):
-    if m_i == 0:
-      assert model.atoms_size() == 16, "%d, %s" % (model.atoms_size(), model.id)
-      assert len(model.chains()) == 2
-      for c in model.chains():
-        assert c.atoms_size() == 8, "%d, %s" % (model.atoms_size(), model.id)
-    else:
-      assert model.atoms_size() == 8, "%d, %s" % (model.atoms_size(), model.id)
-      assert model.only_chain().atoms_size() == 8, "%d, %s" % (model.only_chain().atoms_size(), model.id)
 
-def exercise_question_mark_for_altloc():
-  inp_txt = """\
+input_question_mark_altloc = """\
 data_myblock
 #
 loop_
@@ -862,7 +487,394 @@ A SD  1
 ATOM   8    C  CE  ? MET A 1 1   ? 32.261 -24.545 -27.108 1.00 50.23 ? 0   MET
 A CE  1
   """
-  pdb_in = iotbx.pdb.input(lines=(inp_txt).splitlines(), source_info=None)
+
+def exercise_cif_show():
+  cif_model = iotbx.cif.reader(input_string=input_1ab1).model()
+  builder = pdb_hierarchy_builder(cif_model["1AB1"])
+  hierarchy = builder.hierarchy
+  h_cif = hierarchy.as_cif_block()
+  builder = pdb_hierarchy_builder(h_cif) # this runs OK, why?
+  # output h_cif:
+  s = StringIO()
+  h_cif.show(out=s, align_columns=False)
+  builder = pdb_hierarchy_builder(h_cif) # Now it fails.
+
+def exercise_pdb_hierachy_builder():
+  cif_model = iotbx.cif.reader(input_string=input_1ab1).model()
+  builder = pdb_hierarchy_builder(cif_model["1AB1"])
+  #assert builder.crystal_symmetry is None
+  hierarchy = builder.hierarchy
+  atoms = hierarchy.atoms()
+  assert atoms[0].segid == "    " # some code relies on this
+  s = StringIO()
+  hierarchy.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+model id="" #chains=2
+  chain id="A" #residue_groups=1
+    resid="   2 " #atom_groups=3
+      altloc="" resname="THR" #atoms=4
+        " C  "
+        " O  "
+        " H  "
+        " HA "
+      altloc="A" resname="THR" #atoms=8
+        " CA "
+        " CB "
+        " OG1"
+        " CG2"
+        " HB "
+        "HG21"
+        "HG22"
+        "HG23"
+      altloc="B" resname="THR" #atoms=8
+        " CA "
+        " CB "
+        " OG1"
+        " CG2"
+        " HB "
+        "HG21"
+        "HG22"
+        "HG23"
+  chain id="B" #residue_groups=1
+    resid="  66 " #atom_groups=2
+      altloc="A" resname="EOH" #atoms=3
+        " C1 "
+        " C2 "
+        " O  "
+      altloc="B" resname="EOH" #atoms=3
+        " C1 "
+        " C2 "
+        " O  "
+""")
+
+  cif_block = hierarchy.as_cif_block()
+  builder = pdb_hierarchy_builder(cif_block)
+  hierarchy_recycled = builder.hierarchy
+  s1 = StringIO()
+  hierarchy_recycled.show(out=s1)
+  assert not show_diff(s.getvalue(), s1.getvalue())
+  #
+  cif_model = iotbx.cif.reader(input_string=input_missing_mandatory_items).model()
+  try: pdb_hierarchy_builder(cif_model["1AB1"])
+  except AssertionError as e: pass
+  else:
+    # TODO: raise a better error here
+    raise Exception_expected
+
+  cif_model = iotbx.cif.reader(input_string=input_4edr).model()
+  cif_block = cif_model["4EDR"]
+  builder = pdb_hierarchy_builder(cif_block)
+  assert approx_equal(builder.crystal_symmetry.unit_cell().parameters(),
+                      (150.582, 150.582, 38.633, 90, 90, 120))
+  assert builder.crystal_symmetry.space_group_info().symbol_and_number() == \
+         'P 61 (No. 169)'
+  hierarchy = builder.hierarchy
+  s = StringIO()
+  hierarchy.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+model id="" #chains=2
+  chain id="A" #residue_groups=1
+    resid=" 108 " #atom_groups=1
+      altloc="" resname="SER" #atoms=6
+        " N  "
+        " CA "
+        " C  "
+        " O  "
+        " CB "
+        " OG "
+  chain id="B" #residue_groups=1
+    resid=" 505 " #atom_groups=1
+      altloc="" resname=" MN" #atoms=1
+        "MN  "
+""")
+  cif_block = hierarchy.as_cif_block(crystal_symmetry=builder.crystal_symmetry)
+  assert "_space_group_symop.operation_xyz" in cif_block
+  assert "_cell.length_a" in cif_block
+  builder = pdb_hierarchy_builder(cif_block)
+  hierarchy_recycled = builder.hierarchy
+  s1 = StringIO()
+  hierarchy_recycled.show(out=s1)
+  assert not show_diff(s.getvalue(), s1.getvalue())
+  for hierarchy in (hierarchy, hierarchy_recycled):
+    residue_group = next(hierarchy.residue_groups())
+    assert residue_group.resseq == ' 108'
+    assert residue_group.resseq_as_int() == 108
+    atoms = hierarchy.atoms()
+    assert atoms[0].serial == '    1'
+    assert atoms[0].name == ' N  '
+    assert atoms[0].b == 23.68
+    assert atoms[0].uij_is_defined()
+    assert approx_equal(
+      atoms[0].uij, (0.4097, 0.2916, 0.1984, 0.113, 0.0328, 0.0375))
+    assert atoms[1].serial == '    2'
+    assert atoms[1].name == ' CA '
+    assert atoms[1].b == 22.98
+    assert atoms[1].uij_is_defined()
+    assert approx_equal(
+      atoms[1].uij, (0.4035, 0.2848, 0.1847, 0.1242, 0.0297, 0.0347))
+    assert not atoms[6].uij_is_defined()
+    assert atoms[6].serial == ' 2650'
+    assert atoms[6].name == 'MN  '
+    assert atoms[6].b == 44.18
+    assert approx_equal(atoms[6].uij, (-1, -1, -1, -1, -1, -1))
+  #
+  cif_model = iotbx.cif.reader(input_string=input_1ezu).model()
+  cif_block = cif_model["1EZU"]
+  builder = pdb_hierarchy_builder(cif_block)
+  hierarchy = builder.hierarchy
+  residue_groups = list(hierarchy.residue_groups())
+  assert residue_groups[0].icode == " "
+  assert residue_groups[1].icode == "A"
+  s = StringIO()
+  hierarchy.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+model id="" #chains=1
+  chain id="C" #residue_groups=2
+    resid=" 584 " #atom_groups=1
+      altloc="" resname="GLY" #atoms=4
+        " N  "
+        " CA "
+        " C  "
+        " O  "
+    resid=" 584A" #atom_groups=1
+      altloc="" resname="PHE" #atoms=11
+        " N  "
+        " CA "
+        " C  "
+        " O  "
+        " CB "
+        " CG "
+        " CD1"
+        " CD2"
+        " CE1"
+        " CE2"
+        " CZ "
+""")
+  cif_block = hierarchy.as_cif_block()
+  builder = pdb_hierarchy_builder(cif_block)
+  hierarchy_recycled = builder.hierarchy
+  s1 = StringIO()
+  hierarchy_recycled.show(out=s1)
+  assert not show_diff(s.getvalue(), s1.getvalue())
+
+  hierarchy = iotbx.pdb.input(
+    lines=input_charges.splitlines(),
+    source_info=None).construct_hierarchy()
+  atoms = hierarchy.atoms()
+  assert atoms[0].charge == "2+"
+  assert atoms[1].charge == "1-"
+  assert atoms[2].charge == "1-"
+  s = StringIO()
+  hierarchy.show(out=s)
+  assert not show_diff(s.getvalue(), """\
+model id="" #chains=2
+  chain id="C" #residue_groups=1
+    resid="1123 " #atom_groups=1
+      altloc="" resname=" CA" #atoms=1
+        "CA  "
+  chain id="F" #residue_groups=1
+    resid="1653 " #atom_groups=1
+      altloc="" resname="MES" #atoms=2
+        " O1S"
+        " O2S"
+""")
+  cif_block = hierarchy.as_cif_block()
+  builder = pdb_hierarchy_builder(cif_block)
+  hierarchy_recycled = builder.hierarchy
+  s1 = StringIO()
+  hierarchy_recycled.show(out=s1)
+  assert not show_diff(s.getvalue(), s1.getvalue())
+  atoms = hierarchy.atoms()
+  assert atoms[0].charge == "2+"
+  assert atoms[1].charge == "1-"
+  assert atoms[2].charge == "1-"
+
+def exercise_pdb_hierarchy_sequence_as_cif_block():
+
+  # simple example with multiple copies of chain
+  import iotbx.bioinformatics
+  from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
+  from cctbx.array_family import flex
+  sequence_4ehz = iotbx.bioinformatics.sequence("GDIVSEKKPATEVDPTHFEKRFLK")#RIRDLGEGHF"
+  pdb_in = iotbx.pdb.input(
+    lines=(pdb_atom_site_loop_header+input_4ehz).splitlines(),
+    source_info=None)
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_4ehz])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
+  sequence = ';' + sequence_4ehz.sequence + '\n;'
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence
+  assert cif_block['_entity_poly.pdbx_strand_id'] == 'A,B'
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), list(range(1, 25)))
+  assert cif_block['_entity_poly_seq.entity_id'].all_eq('1')
+  assert list(cif_block['_entity_poly_seq.mon_id']) == [
+    three_letter_given_one_letter.get(i) for i in sequence_4ehz.sequence]
+  #
+  # example with modified amino acid - PTR
+  sequence_3zdi = iotbx.bioinformatics.sequence("NVSYICSR")
+  pdb_in = iotbx.pdb.input(
+    lines=(pdb_atom_site_loop_header+input_3zdi).splitlines(),
+    source_info=None)
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_3zdi])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == \
+    ';NVS(PTR)ICSR\n;'
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == \
+    ';' + sequence_3zdi.sequence + '\n;'
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), list(range(1, 9)))
+  assert list(cif_block['_entity_poly_seq.mon_id']) == [
+    'ASN', 'VAL', 'SER', 'PTR', 'ILE', 'CYS', 'SER', 'ARG']
+  #
+  sequence_4gln = [iotbx.bioinformatics.sequence("TYKLILNGKT"),
+                   iotbx.bioinformatics.sequence("GQNHHEVVK")]
+  pdb_in = iotbx.pdb.input(
+    lines=(pdb_atom_site_loop_header+input_4gln).splitlines(),
+    source_info=None)
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences(sequence_4gln)
+  cif_block = model._sequence_validation.sequence_as_cif_block()
+  assert list(cif_block['_entity.id']) == ['1', '2']
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']),
+                     list(range(1, 11))+list(range(1, 10)))
+  assert list(cif_block['_entity_poly_seq.mon_id']) == [
+    'DTH', 'DTY', 'DLY', 'DLE', 'DIL', 'DLE', 'DSG', 'GLY', 'DLY', 'DTH',
+    'GLY', 'GLN', 'ASN', 'HIS', 'HIS', 'GLU', 'VAL', 'VAL', 'LYS']
+  assert list(cif_block['_entity_poly.pdbx_seq_one_letter_code']) == [
+    ';(DTH)(DTY)(DLY)(DLE)(DIL)(DLE)(DSG)G(DLY)(DTH)\n;',
+    ';' + sequence_4gln[1].sequence + '\n;']
+  assert list(cif_block['_entity_poly.pdbx_seq_one_letter_code_can']) == [
+    ';' + sequence_4gln[0].sequence + '\n;',
+    ';' + sequence_4gln[1].sequence + '\n;']
+  #
+  sequence_1ezu = iotbx.bioinformatics.sequence('VSLNSGY')
+  pdb_in = iotbx.pdb.input(
+    lines=(pdb_atom_site_loop_header+input_1ezu_loop).splitlines(),
+    source_info=None)
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_1ezu])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
+  assert list(cif_block['_entity_poly_seq.mon_id']) == [
+    'VAL', 'SER', 'LEU', 'ASN', 'SER', 'GLY', 'TYR']
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == \
+    ';' + sequence_1ezu.sequence + '\n;'
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == \
+    ';' + sequence_1ezu.sequence + '\n;'
+
+  sequence_2hok = iotbx.bioinformatics.sequence("CCUUCUGCG")
+  pdb_in = iotbx.pdb.input(
+    lines=(pdb_atom_site_loop_header+input_2hok).splitlines(),
+    source_info=None)
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_2hok])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
+  assert list(cif_block['_entity_poly_seq.mon_id']) == [
+    'C', 'C', 'U', 'U', 'C', 'U', 'G', 'C', 'G']
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == \
+    ';' + sequence_2hok.sequence + '\n;'
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == \
+    ';' + sequence_2hok.sequence + '\n;'
+  #
+  input_3tpy = """\
+ATOM      2  CA  GLN A  24       2.586  40.220  34.036  1.00 41.54           C
+ATOM      8  CA  LYS A  25       1.265  43.698  34.904  1.00 25.47           C
+ATOM     17  CA  GLN A  26       3.834  45.984  36.538  1.00 22.91           C
+ATOM     26  CA  PRO A  27       2.835  48.614  39.135  1.00 19.20           C
+ATOM     33  CA  ILE A  28       3.972  52.206  39.293  1.00 18.70           C
+ATOM     41  CA  SER A  29       6.403  51.332  42.097  1.00 22.63           C
+TER
+HETATM  852 MG    MG A 999     -12.415  61.451  32.421  0.70 28.10          MG
+HETATM  853  C   TRS A 153      -0.078  70.151  24.773  0.33 24.86           C
+HETATM  877  PA BDUP A 777      -9.339  60.563  31.137  0.70 19.64           P
+HETATM  881  PB BDUP A 777     -11.768  59.969  29.491  0.70 27.76           P
+HETATM  885  PG BDUP A 777     -13.098  58.529  31.620  0.70 33.91           P
+HETATM  905  P  AUMP A 154      -9.010  60.358  31.334  0.30 11.42           P
+HETATM  909  O   HOH A 155      -0.197  60.723  27.343  1.00 17.17           O
+HETATM  910  O   HOH A 156     -10.293  62.567  35.648  1.00 19.43           O
+"""
+  sequence_3tpy = iotbx.bioinformatics.sequence("QKQPIS")
+  pdb_in = iotbx.pdb.input(lines=(input_3tpy).splitlines(), source_info=None)
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_3tpy])
+  cif_block = model.get_hierarchy().as_cif_block()
+  assert list(cif_block["_atom_site.label_seq_id"]) == [
+    '1', '2', '3', '4', '5', '6', '.', '.', '.', '.', '.', '.', '.', '.']
+  #
+  input_3tgr = """\
+ATOM   2449  CA  GLY A 459     -17.536  10.137  41.979  1.00181.52           C
+ATOM   2453  CA  GLN A 460     -15.862  12.780  44.128  1.00192.51           C
+ATOM   2462  CA  ASN A 463     -19.198   8.054  50.455  1.00180.96           C
+ATOM   2470  CA  ASP A 464     -19.235   4.661  52.197  1.00143.07           C
+ATOM   2478  CA  THR A 465     -20.893   2.988  49.198  1.00 91.96           C
+"""
+  sequence_3tgr = iotbx.bioinformatics.sequence("DGGQSNETNDTET")
+  pdb_in = iotbx.pdb.input(lines=(input_3tgr).splitlines(), source_info=None)
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_3tgr])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
+  assert cif_block["_entity_poly.pdbx_seq_one_letter_code"][0] == \
+    ';DGGQSNETNDNET\n;'
+  input_2im9 = """\
+ATOM   2423  CA  PRO A 345       2.114  16.158   0.161  1.00 29.14           C
+ATOM   2430  CA  VAL A 346      -1.223  17.837   0.938  1.00 31.05           C
+ATOM   2437  CA  CYS A 349      -4.081  15.852   7.014  0.50 28.57           C
+ATOM   2443  CA  GLN A 350      -6.176  14.041   9.639  0.50 30.62           C
+ATOM   2452  CA  LEU A 351      -6.631  10.729   7.797  0.50 31.53           C
+ATOM   2460  CA  PHE A 352      -5.220   9.172   4.620  0.50 31.95           C
+"""
+  sequence_2im9 = iotbx.bioinformatics.sequence("SSPTIKGINIQVVLPEKPVSNGCQLFDIR")
+  pdb_in = iotbx.pdb.input(lines=(input_2im9).splitlines(), source_info=None)
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_2im9])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
+  assert list(cif_block["_entity_poly_seq.mon_id"]) == [
+    'SER', 'SER', 'PRO', 'THR', 'ILE', 'LYS', 'GLY', 'ILE', 'ASN', 'ILE', 'GLN',
+    'VAL', 'VAL', 'LEU', 'PRO', 'GLU', 'LYS', 'PRO', 'VAL', 'SER', 'ASN', 'GLY',
+    'CYS', 'CYS', 'GLN', 'LEU', 'ASP', 'ILE', 'ARG']
+
+def exercise_fp_fdp():
+  pdb_in = iotbx.pdb.input(lines=(input_anom).splitlines(), source_info=None)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  pdb_atoms = pdb_hierarchy.atoms()
+  assert approx_equal(pdb_atoms.extract_fp(), [0, 0, 0, 0, -0.1491, 0.1114])
+  assert approx_equal(pdb_atoms.extract_fdp(), [0, 0, 0, 0, 2.6871, 0.3776])
+  pdb_atoms[-1].fp = 0
+  pdb_atoms[-1].fdp = 0
+  cif_block = pdb_hierarchy.as_cif_block(
+    crystal_symmetry=pdb_in.crystal_symmetry())
+  assert "_atom_site.phenix_scat_dispersion_real" in cif_block
+  assert "_atom_site.phenix_scat_dispersion_imag" in cif_block
+  assert list(cif_block["_atom_site.phenix_scat_dispersion_real"]) == \
+         ['.', '.', '.', '.', '-0.1491', '.']
+  assert list(cif_block["_atom_site.phenix_scat_dispersion_imag"]) == \
+         ['.', '.', '.', '.', '2.6871', '.']
+  builder = pdb_hierarchy_builder(cif_block)
+  pdb_hierarchy_recycled = builder.hierarchy
+  pdb_atoms_recycled = pdb_hierarchy_recycled.atoms()
+  assert approx_equal(
+    pdb_atoms_recycled.extract_fp(), [0, 0, 0, 0, -0.1491, 0])
+  assert approx_equal(
+    pdb_atoms_recycled.extract_fdp(), [0, 0, 0, 0, 2.6871, 0])
+
+def exercise_multi_model_single_chain():
+  pdb_in = iotbx.pdb.input(lines=(input_multi_model_single_chain).splitlines(), source_info=None)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  # pdb_hierarchy.show()
+  assert len(pdb_hierarchy.models()) == 5
+  assert pdb_hierarchy.atoms_size() == 48, pdb_hierarchy.atoms_size()
+  for m_i, model in enumerate(pdb_hierarchy.models()):
+    if m_i == 0:
+      assert model.atoms_size() == 16, "%d, %s" % (model.atoms_size(), model.id)
+      assert len(model.chains()) == 2
+      for c in model.chains():
+        assert c.atoms_size() == 8, "%d, %s" % (model.atoms_size(), model.id)
+    else:
+      assert model.atoms_size() == 8, "%d, %s" % (model.atoms_size(), model.id)
+      assert model.only_chain().atoms_size() == 8, "%d, %s" % (model.only_chain().atoms_size(), model.id)
+
+def exercise_question_mark_for_altloc():
+  pdb_in = iotbx.pdb.input(lines=(input_question_mark_altloc).splitlines(), source_info=None)
   pdb_hierarchy = pdb_in.construct_hierarchy()
   for atom in pdb_hierarchy.atoms():
     assert atom.parent().altloc == "", atom.parent().altloc
@@ -1191,11 +1203,77 @@ _atom_site_anisotrop.U[1][3]
 _atom_site_anisotrop.U[2][3]
 """
 
+# sequence ids and the resseq they are read as: an integer encoded into the
+# four characters (hybrid-36 above 9999), a four-character hybrid-36 resseq
+# as cctbx wrote until June 2023
+seq_id_resseq = (("10000", "A000"), ("-999", "-999"), ("' 12 '", "  12"),
+                 ("2436111", "zzzz"), ("A000", "A000"), ("zzzz", "zzzz"),
+                 ("XYZQ", "XYZQ"))
+# rejected sequence ids, with a fragment of the message
+seq_id_rejected = (("1A", "hybrid-36"), ("100A", "hybrid-36"),
+                   ("12AB", "hybrid-36"), (".", "hybrid-36"),
+                   ("?", "hybrid-36"), ("''", "hybrid-36"),
+                   ("' '", "hybrid-36"), ("'    '", "hybrid-36"),
+                   ("'12 3'", "hybrid-36"), ("ABCDE", "hybrid-36"),
+                   ("2436112", "does not fit"), ("-1000", "does not fit"),
+                   ("99999999999999999999", "does not fit"))
+
+# the anisotrop join: (atom id, anisotrop id, joined). On the _atom_site.id
+# string as written, then on the hybrid-36 serial (mmCIF that cctbx wrote
+# from February 2013 to January 2015 has the serial as the anisotrop id)
+aniso_join_row = "%s 0.1 0.2 0.3 0.01 0.02 0.03\n"
+aniso_join_uij = (0.1, 0.2, 0.3, 0.01, 0.02, 0.03)
+aniso_join_cases = (("123456", "123456", True), ("00001", "00001", True),
+                    ("100000", "A0000", True), ("01", "1", True),
+                    ("1", "01", False))
+
+# a one-atom _atom_site given as items rather than a loop
+input_single_item_atom_site = """\
+data_test
+_atom_site.group_PDB HETATM
+_atom_site.id 15
+_atom_site.type_symbol C
+_atom_site.label_atom_id C
+_atom_site.label_alt_id .
+_atom_site.label_comp_id ALA
+_atom_site.label_asym_id A
+_atom_site.label_entity_id 1
+_atom_site.label_seq_id 1
+_atom_site.pdbx_PDB_ins_code B
+_atom_site.Cartn_x 1.0
+_atom_site.Cartn_y 2.0
+_atom_site.Cartn_z 3.0
+_atom_site.occupancy 1.00
+_atom_site.B_iso_or_equiv 10.00
+_atom_site.auth_seq_id 1
+_atom_site.auth_comp_id ALA
+_atom_site.auth_asym_id A
+_atom_site.auth_atom_id C
+_atom_site.pdbx_PDB_model_num 1
+_atom_site.phenix_scat_dispersion_real 0.5
+_atom_site.phenix_scat_dispersion_imag 1.5
+"""
+
 _cif_token = re.compile(r"""'(?:[^']|'(?=\S))*'|"(?:[^"]|"(?=\S))*"|\S+""")
 
 def drop_column(text, tag):
-  """text without the _atom_site item tag: its tag line and its field in every
-  ATOM/HETATM row. Quoted fields count as one token."""
+  """
+  The mmCIF text without one _atom_site item.
+
+  Parameters
+  ----------
+  text : str
+    A data block whose _atom_site loop lists one tag per line, with
+    ATOM/HETATM rows of blank-separated fields (a quoted field counts as
+    one).
+  tag : str
+    The _atom_site tag to drop.
+
+  Returns
+  -------
+  str
+    text without the tag line and without that field in every row.
+  """
   lines = text.splitlines()
   tags = [l for l in lines if l.startswith("_atom_site.")]
   index = tags.index(tag)
@@ -1210,11 +1288,11 @@ def drop_column(text, tag):
     out.append(l)
   return "\n".join(out) + "\n"
 
-def _first_block(text):
+def first_block(text):
   return list(iotbx.cif.reader(input_string=text).model().values())[0]
 
 def _build(text):
-  return pdb_hierarchy_builder(_first_block(text)).hierarchy
+  return pdb_hierarchy_builder(first_block(text)).hierarchy
 
 def exercise_anisotrop_b_tensors():
   """An _atom_site_anisotrop loop with B[i][j] items is converted to U."""
@@ -1263,19 +1341,15 @@ def exercise_non_integer_seq_id():
   other non-integer id, and an integer that does not fit the four-character
   resseq, is a CifBuilderError naming the row."""
   row = "ATOM 1 C C . ALA A 1 %s ? 1.0 2.0 3.0 1.00 10.00 %s ALA A C 1\n"
-  for seq_id, resseq in (("10000", "A000"), ("-999", "-999"),
-                         ("2436111", "zzzz"), ("A000", "A000"),
-                         ("zzzz", "zzzz")):
+  for seq_id, resseq in seq_id_resseq:
     h = _build(atom_site_header + row % (seq_id, seq_id))
     rg = h.only_model().only_chain().residue_groups()[0]
     assert rg.resseq == resseq, (seq_id, rg.resseq)
-  for seq_id in ("1A", "100A", "12AB", ".", "?", "''", "' '", "'    '",
-                 "'12 3'", "ABCDE", "2436112", "-1000",
-                 "99999999999999999999"):
+  for seq_id, reason in seq_id_rejected:
     try:
       _build(atom_site_header + row % (seq_id, seq_id))
     except CifBuilderError as e:
-      assert "row 1" in str(e), str(e)
+      assert "row 1" in str(e) and reason in str(e), str(e)
     else:
       raise Exception_expected
 
@@ -1300,16 +1374,7 @@ def exercise_single_item_atom_site():
   """A one-atom _atom_site given as items rather than a loop: every item is
   read whole (group_PDB, id, fp and fdp used to be read by their first
   character)."""
-  text = "data_test\n"
-  tags = [l for l in atom_site_header.splitlines()
-          if l.startswith("_atom_site.")]
-  values = ("HETATM 15 C C . ALA A 1 1 B 1.0 2.0 3.0 1.00 10.00 "
-            "1 ALA A C 1").split()
-  for tag, value in zip(tags, values):
-    text += "%s %s\n" % (tag, value)
-  text += "_atom_site.phenix_scat_dispersion_real 0.5\n"
-  text += "_atom_site.phenix_scat_dispersion_imag 1.5\n"
-  h = _build(text)
+  h = _build(input_single_item_atom_site)
   assert h.atoms_size() == 1
   a = h.atoms()[0]
   assert a.serial == "   15" and a.hetero
@@ -1321,16 +1386,12 @@ def exercise_anisotrop_join_by_id_string():
   so ids above 99999 or with leading zeros keep their tensors; the hybrid-36
   serial is tried second, for mmCIF that cctbx wrote with the serial as the
   anisotrop id (February 2013 to January 2015)."""
-  joined = (0.1, 0.2, 0.3, 0.01, 0.02, 0.03)
-  unset = (-1.0,) * 6
   row = "ATOM %s C C . ALA A 1 1 ? 1.0 2.0 3.0 1.00 10.00 1 ALA A C 1\n"
-  for atom_id, aniso_id, uij in (("123456", "123456", joined),
-                                 ("00001", "00001", joined),
-                                 ("100000", "A0000", joined),
-                                 ("01", "1", joined), ("1", "01", unset)):
+  for atom_id, aniso_id, joined in aniso_join_cases:
     text = atom_site_header + row % atom_id + \
-      aniso_u_loop + "%s 0.1 0.2 0.3 0.01 0.02 0.03\n" % aniso_id
-    assert _build(text).atoms()[0].uij == uij, (atom_id, aniso_id)
+      aniso_u_loop + aniso_join_row % aniso_id
+    expected = aniso_join_uij if joined else (-1.0,) * 6
+    assert _build(text).atoms()[0].uij == expected, (atom_id, aniso_id)
 
 def run():
   exercise_cif_show()
