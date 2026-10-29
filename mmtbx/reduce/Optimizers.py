@@ -188,7 +188,7 @@ class Optimizer(object):
                 verbosity = 1,
                 cliqueOutlineFileName = None,
                 fillAtomDump = True,
-                stopOptimizingAt = 0.0
+                stopOptimizingAt = time.time() + 1.0e10
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
