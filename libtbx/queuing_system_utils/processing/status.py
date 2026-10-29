@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import shlex
 import subprocess
 import time
 
@@ -359,7 +360,8 @@ class Asynchronous(JobStatus):
   @classmethod
   def script(cls, include, executable, script, cwd = "."):
 
-    return cls.SCRIPT % ( cwd, include, executable, script )
+    return cls.SCRIPT % (
+      shlex.quote( cwd ), shlex.quote( include ), executable, script )
 
 
 class StdStreamStrategy(Asynchronous):
@@ -370,7 +372,7 @@ class StdStreamStrategy(Asynchronous):
   SCRIPT = \
 """\
 cd %s
-source %s
+. %s
 %s 2>&1 << EOF
 %s
 EOF
@@ -411,7 +413,7 @@ class SlurmStdStreamStrategy(StdStreamStrategy):
 """\
 #!/bin/sh
 cd %s
-source %s
+. %s
 srun %s 2>&1 << EOF
 %s
 EOF
@@ -428,7 +430,7 @@ class AccountingStrategy(Asynchronous):
   SCRIPT = \
 """\
 cd %s
-source %s
+. %s
 %s << EOF
 %s
 EOF
@@ -441,7 +443,9 @@ EOF
       process = subprocess.Popen(
         [ "qacct", "-j", self.jobid ],
         stdout = subprocess.PIPE,
-        stderr = subprocess.PIPE
+        stderr = subprocess.PIPE,
+        encoding = "utf-8",
+        errors = "replace",
         )
 
     except OSError as e:
@@ -482,9 +486,9 @@ class LogfileStrategy(Asynchronous):
 
   SCRIPT = \
 """\
-cd %s
 #!/bin/sh
-source %s
+cd %s
+. %s
 %s << EOF
 %s
 EOF
