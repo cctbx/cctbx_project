@@ -293,9 +293,13 @@ target( *args, **kwargs )
 
 
 def get_libtbx_env_setpaths():
+  """
+  Shell script the job sources to set up its environment: phenix_env.sh in a
+  Phenix installation, otherwise the cctbx setpaths.sh
+  """
 
-  import libtbx.load_env
-  return libtbx.env.under_build( "setpaths.sh" )
+  from libtbx.runtime_utils import get_environment_script
+  return get_environment_script()
 
 
 def SGE(
