@@ -298,6 +298,8 @@ class cbetadev(validation):
                       )
                     if rc:
                       dev, dihedralNABB, start, finish = rc
+                      betaxyz = corrected_ideal_xyz(relevant_atoms, betaxyz,
+                        result.deviation, result.dihedral, dev, dihedralNABB)
                       # if start or finish: print(id_str,dev,dihedralNABB,start,finish)
                       if start and not finish:
                         if rg not in outliers_removed:
@@ -341,16 +343,16 @@ class cbetadev(validation):
                   key = result.id_str()
                   if (collect_ideal):
                     self.beta_ideal[key] = betaxyz
-      if use_phi_psi:
-        outln = '  '
-        for rg_id_str, phi_psi in new_outliers:
-          # print(rg.id_str(), len(rg.atom_groups()), len(new_outliers), phi_psi)
-          outln += '%s, ' % rg_id_str.strip()
-        outlo = '  '
-        for rg_id_str, phi_psi in outliers_removed:
-          # print(rg.id_str(), len(rg.atom_groups()), len(outliers_removed), phi_psi)
-          outlo += '%s, ' % rg_id_str.strip()
-        print('''
+    if use_phi_psi and not quiet:
+      outln = '  '
+      for rg_id_str, phi_psi in new_outliers:
+        # print(rg.id_str(), len(rg.atom_groups()), len(new_outliers), phi_psi)
+        outln += '%s, ' % rg_id_str.strip()
+      outlo = '  '
+      for rg_id_str, phi_psi in outliers_removed:
+        # print(rg.id_str(), len(rg.atom_groups()), len(outliers_removed), phi_psi)
+        outlo += '%s, ' % rg_id_str.strip()
+      print('''
   Outliers removed : %5d %s
   New outliers     : %5d %s
   Num. of outliers : %5d
@@ -359,7 +361,7 @@ class cbetadev(validation):
          len(new_outliers), outln[:-2],
          self.n_outliers,
          total_residues,
-        ))
+        ), file=out)
     if mahalanobis_z_score:
       self.mahalanobis = group_args(cutoff=mahalanobis_cutoff,
                                     model_error_by_model={},
@@ -627,6 +629,34 @@ class calculate_ideal_and_deviation(object):
         self.dihedral = dihedral_angle(
           sites=[resN.xyz,resCA.xyz,betaxyz.elems,resCB.xyz], deg=True)
         self.ideal = betaxyz.elems
+
+def deviation_frame(N, CA, ideal):
+  """Unit vectors (e1, e2) of the plane perpendicular to CA->ideal in which
+  the (deviation, dihedral_NABB) polar coordinates are measured: a point at
+  angle t in this plane is at dihedral N-CA-ideal-point t."""
+  u = (ideal - CA).normalize()
+  n = N - CA
+  e1 = (n - u*n.dot(u)).normalize()
+  return e1, u.cross(e1)
+
+def corrected_ideal_xyz(relevant_atoms, ideal, deviation, dihedral,
+                        corrected_deviation, corrected_dihedral):
+  """Ideal CB moved by the phi/psi correction vector, the difference between
+  the uncorrected and corrected (deviation, dihedral) in the polar plane,
+  then placed so the modelled CB is corrected_deviation from it."""
+  N  = col(relevant_atoms[" N  "].xyz)
+  CA = col(relevant_atoms[" CA "].xyz)
+  CB = col(relevant_atoms[" CB "].xyz)
+  ideal = col(ideal)
+  e1, e2 = deviation_frame(N, CA, ideal)
+  def in_plane(r, t):
+    t = math.radians(t)
+    return (e1*math.cos(t) + e2*math.sin(t))*r
+  correction = in_plane(deviation, dihedral) - in_plane(corrected_deviation,
+                                                        corrected_dihedral)
+  offset = CB - (ideal + correction)
+  if abs(offset) == 0: return CB.elems
+  return (CB - offset*(corrected_deviation/abs(offset))).elems
 
 def idealized_calpha_angles(resname, chiral_volume=None):
   from iotbx.pdb import common_residue_names_get_class
