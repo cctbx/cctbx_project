@@ -662,6 +662,25 @@ ATOM 3 N N . ALA A 1 1 ? 1.0 2.0 3.0 1.00 10.00 1 ALA A N 1
     "1 0.1 0.2 x 0.01 0.02 0.03\n"
   _both_raise(textbad, ("_atom_site_anisotrop.U[3][3]", "row 1", '"x"'),
     python_error=CifBuilderError)
+  # a tensor column shorter than the id column, which a file can only do as
+  # two loops: the Python builder zips and leaves the extra id without a
+  # tensor, the C++ builder raises with the tag and both counts
+  text5 = atom_site_header + rows[:rows.index("ATOM 3")] + """\
+loop_
+_atom_site_anisotrop.id
+1
+2
+""" + aniso_u_loop.replace("_atom_site_anisotrop.id\n", "") + \
+    "0.1 0.2 0.3 0.01 0.02 0.03\n"
+  ref = _python(first_block(text5))
+  assert [a.uij[0] for a in ref.atoms()] == [0.1, -1.0]
+  try:
+    _cpp(text5)
+  except ValueError as e:
+    assert "_atom_site_anisotrop.U[1][1]" in str(e), str(e)
+    assert "has 1 rows, expected 2" in str(e), str(e)
+  else:
+    raise Exception_expected
 
 
 def exercise_fp_fdp_resolution_cpp():

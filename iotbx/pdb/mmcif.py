@@ -309,14 +309,27 @@ class _pdb_hierarchy_builder_python(crystal_symmetry_builder):
 
 class pdb_hierarchy_builder(crystal_symmetry_builder):
   """
-  Crystal symmetry and pdb hierarchy of an mmCIF model block. The hierarchy
-  comes from hierarchy_from_atom_site(), which builds it in C++.
-  _pdb_hierarchy_builder_python above is the per-atom Python builder it
-  replaced, kept as the reference for tst_mmcif_hierarchy_parity.py and
+  Crystal symmetry and pdb hierarchy of an mmCIF model block.
+
+  The hierarchy comes from hierarchy_from_atom_site(), which builds it in
+  C++. _pdb_hierarchy_builder_python above is the per-atom Python builder
+  it replaced, kept as the reference for tst_mmcif_hierarchy_parity.py and
   tst_mmcif_hierarchy_cpp.py (the two differences are listed in
   iotbx/pdb/mmcif_hierarchy.h). Retirement: remove it after the first Phenix
   release that ships the C++ builder if no parity failure has been reported;
   the parity test then becomes a fixture regression test.
+
+  Parameters
+  ----------
+  cif_block : iotbx.cif.model.block
+    A data block with an _atom_site loop.
+
+  Attributes
+  ----------
+  crystal_symmetry : cctbx.crystal.symmetry
+    From crystal_symmetry_builder.
+  hierarchy : iotbx.pdb.hierarchy.root
+    The hierarchy, unsorted, in the order of the rows.
   """
 
   def __init__(self, cif_block):
@@ -362,9 +375,10 @@ def hierarchy_from_atom_site(cif_block):
 def atom_site_columns_from_block(cif_block):
   """
   Resolve the _atom_site (and _atom_site_anisotrop) columns of a model mmCIF
-  block for build_mmcif_hierarchy: the same tags, fallbacks and assertions
-  as the Python builder, except the null auth_asym_id check, which the C++
-  builder makes.
+  block for build_mmcif_hierarchy: the same tags and fallbacks as the Python
+  builder and its label-column assertion; a missing type_symbol or numeric
+  column is a CifBuilderError naming the tag; the null auth_asym_id check
+  is the C++ builder's.
 
   Parameters
   ----------
@@ -447,7 +461,8 @@ def atom_site_columns_from_block(cif_block):
   if anisotrop_id is not None:
     u_ij = [looped("_atom_site_anisotrop.U[%s][%s]" % (ij[0], ij[1]))
             for ij in ("11", "22", "33", "12", "13", "23")]
-    assert u_ij.count(None) in (0, 6)
+    assert u_ij.count(None) in (0, 6), \
+      "_atom_site_anisotrop: some but not all six U[i][j] columns"
     if u_ij.count(None) == 0:
       adps = u_ij
       cols.aniso_is_b = False
@@ -456,7 +471,8 @@ def atom_site_columns_from_block(cif_block):
               for ij in ("11", "22", "33", "12", "13", "23")]
       # as in the Python builder: an anisotrop loop with neither U nor B
       # tensors is an error
-      assert b_ij.count(None) == 0
+      assert b_ij.count(None) == 0, \
+        "_atom_site_anisotrop: neither six U[i][j] nor six B[i][j] columns"
       adps = b_ij
       cols.aniso_is_b = True
     cols.aniso_id = anisotrop_id
