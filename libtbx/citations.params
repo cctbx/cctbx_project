@@ -1621,6 +1621,111 @@ citation {
 }
 
 citation {
+  article_id = phasertng
+  authors = McCoy AJ, Stockwell DH, Sammito MD, Oeffner RD, Hatti KS, Croll TI, Read RJ
+  title = Phasertng: directed acyclic graphs for crystallographic phasing
+  journal = Acta Cryst. D
+  volume = 77
+  pages = 1-10
+  year = 2021
+  pmid = 33404520
+  doi_id = 10.1107/S2059798320014746
+}
+
+citation {
+  article_id = xtricorder
+  authors = McCoy AJ, Read RJ
+  title = Xtricorder: a likelihood-enhanced self-rotation function and application to a machine learning-enhanced Matthews prediction of asymmetric unit copy number
+  journal = Acta Cryst. D
+  volume = 81
+  pages = 678-692
+  year = 2025
+  pmid = 41295967
+  doi_id = 10.1107/S2059798325009647
+}
+
+citation {
+  article_id = scotty
+  authors = McCoy AJ, Andrews LC, Bernstein HJ, Read RJ
+  title = Scotty: lattice coincidences in the Protein Data Bank
+  journal = Acta Cryst. D
+  volume = 82
+  pages = 824-835
+  year = 2026
+  pmid = 42339564
+  doi_id = 10.1107/S2059798326005723
+}
+
+citation {
+  article_id = scotty_phasing
+  authors = McCoy AJ, Andrews LC, Bernstein HJ, Read RJ
+  title = Scotty: lattice coincidences for macromolecular crystallographic phasing
+  journal = Acta Cryst. D
+  volume = 82
+  pages = 813-823
+  year = 2026
+  pmid = 42339563
+  doi_id = 10.1107/S2059798326005711
+}
+
+citation {
+  article_id = ellg
+  authors = Oeffner RD, Afonine PV, Millán C, Sammito M, Usón I, Read RJ, McCoy AJ
+  title = On the application of the expected log-likelihood gain to decision making in molecular replacement
+  journal = Acta Cryst. D
+  volume = 74
+  pages = 245-255
+  year = 2018
+  doi_id = 10.1107/S2059798318004357
+}
+
+citation {
+  article_id = llgi
+  authors = Read RJ, McCoy AJ
+  title = A log-likelihood-gain intensity target for crystallographic phasing that accounts for experimental error
+  journal = Acta Cryst. D
+  volume = 72
+  pages = 375-387
+  year = 2016
+  doi_id = 10.1107/S2059798315013236
+}
+
+citation {
+  article_id = tncs_patterson
+  authors = Caballero I, Sammito MD, Afonine PV, Usón I, Read RJ, McCoy AJ
+  title = Detection of translational noncrystallographic symmetry in Patterson functions
+  journal = Acta Cryst. D
+  volume = 77
+  pages = 131-141
+  year = 2021
+  doi_id = 10.1107/S2059798320016836
+}
+
+citation {
+  article_id = phaser_sad
+  authors = Read RJ, McCoy AJ
+  title = Using SAD data in Phaser
+  journal = Acta Cryst. D
+  volume = 67
+  pages = 338-344
+  year = 2011
+  pmid = 21460452
+  doi_id = 10.1107/S0907444910051371
+}
+
+citation {
+  article_id = single_atom_mr
+  authors = McCoy AJ, Oeffner RD, Wrobel AG, Ojala JRM, Tryggvason K, Lohkamp B, Read RJ
+  title = Ab initio solution of macromolecular crystal structures without direct methods
+  journal = PNAS
+  volume = 114
+  pages = 3637-3641
+  year = 2017
+  pmid = 28325875
+  doi_id = 10.1073/pnas.1701640114
+}
+
+citation {
   article_id = lddt
   authors = Mariani V, Biasini M, Barbato A, Schwede T.
   title = lDDT: a local superposition-free score for comparing protein structures and models using distance difference tests
