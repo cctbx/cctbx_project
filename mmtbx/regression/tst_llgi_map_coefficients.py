@@ -431,7 +431,7 @@ def exercise_compute_map_coefficients_mixed_dispatch():
   params = [
     _mcp("2mFo-DFc", fill_missing_f_obs=True),
     _mcp("mFo-DFc", fill_missing_f_obs=False),
-    _mcp("anom", fill_missing_f_obs=False),
+    _mcp("anomalous", fill_missing_f_obs=False),
   ]
   for p in params:
     p.format = ["mtz"]
