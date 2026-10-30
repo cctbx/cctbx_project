@@ -1864,6 +1864,12 @@ class _():
     chem_comp_atom_ids = []
     struct_asym_ids = []
     #
+    # _atom_site.id is the key of the loop. The serial restarts in every
+    # model (atoms_reset_serial, the PDB reader), so in a multi-model
+    # hierarchy the id is the row number instead; the anisotrop id is the
+    # same value, since the reader joins the two loops by id alone.
+    multi_model = self.models_size() > 1
+    i_row = 0
     for model in self.models():
       model_id = model.id
       is_first_in_chain = True
@@ -1905,8 +1911,13 @@ class _():
               else:
                 fp = "%.4f" %fp
                 fdp = "%.4f" %fdp
+              i_row += 1
+              if multi_model:
+                atom_id = str(i_row)
+              else:
+                atom_id = str(hy36decode(width=5, s=atom.serial))
               atom_site_group_PDB.append(group_pdb)
-              atom_site_id.append(str(hy36decode(width=5, s=atom.serial)))
+              atom_site_id.append(atom_id)
               atom_site_label_atom_id.append(atom.name.strip())
               atom_site_auth_atom_id.append(atom.name.strip())
               if atom.name.strip() not in chem_comp_atom_ids:
@@ -1942,8 +1953,7 @@ class _():
               if atom.uij_is_defined():
                 u11, u22, u33, u12, u13, u23 = [
                   u_aniso_fmt_str %i for i in atom.uij]
-                atom_site_anisotrop_id.append(
-                  str(hy36decode(width=5, s=atom.serial)))
+                atom_site_anisotrop_id.append(atom_id)
                 atom_site_anisotrop_pdbx_auth_atom_id.append(atom.name.strip())
                 atom_site_anisotrop_pdbx_label_alt_id.append(self.get_label_alt_id_atom(atom))
                 atom_site_anisotrop_pdbx_auth_comp_id.append(comp_id)
