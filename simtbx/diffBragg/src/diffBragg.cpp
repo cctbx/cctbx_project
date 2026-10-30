@@ -1886,7 +1886,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             db_flags.refine_panel_rot[i_pan] = panels[i_pan_rot]->refine_me;
             db_cu_flags.update_refine_flags=true;
         }
-        if (panels[i_pan_orig]-> refine_me != db_flags.refine_panel_origin[i_pan_orig]){
+        if (panels[i_pan_orig]-> refine_me != db_flags.refine_panel_origin[i_pan]){
             db_flags.refine_panel_origin[i_pan] = panels[i_pan_orig]->refine_me;
             db_cu_flags.update_refine_flags=true;
         }

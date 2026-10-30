@@ -188,7 +188,7 @@ class Optimizer(object):
                 verbosity = 1,
                 cliqueOutlineFileName = None,
                 fillAtomDump = True,
-                stopOptimizingAt = 0.0
+                stopOptimizingAt = time.time() + 1.0e10
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -248,8 +248,7 @@ class Optimizer(object):
     they are.
     :param fillAtomDump: If true, fill in the atomDump string with the atom information.
     This can take a long time to do, so the caller may want to turn it off if they don't need it.
-    :param stopOptimizingAt: If greater than 0, then we will stop coarse optimizations
-    at this time relative to time.time().
+    :param stopOptimizingAt: Start treating cliques as singletons at this time relative to time.time().
     """
 
     ################################################################################
@@ -570,6 +569,9 @@ class Optimizer(object):
             str(len(singletonCliques))+" are singletons); largest Clique size = "+
             str(maxLen)+"\n")
         self._infoString += _ReportTiming(self._verbosity, "compute interaction graph")
+        # Sort the cliques by size, smallest first, so that if we run out of time we will
+        # have optimized as many as possible.
+        groupCliques = sorted(groupCliques, key=len, reverse=False)
 
         # If we've been asked to write an interaction graph file, do so.
         if self._cliqueOutlineFileName:
@@ -634,12 +636,9 @@ class Optimizer(object):
         # subclasses.
 
         # Do coarse optimization on the singleton Movers.  Record the selected coarse
-        # index.
+        # index.  We do not check for the time limit here because singleton optimization
+        # is very fast.
         for s in singletonCliques:
-          if stopOptimizingAt > 0.0 and time.time() > stopOptimizingAt:
-            self._infoString += _VerboseCheck(self._verbosity, 1,
-                                              "Stopping singleton optimization due to time limit\n")
-            break
           mover = self._interactionGraph.vertex_label(s[0])
           (bestScore, infoString) = optC.OptimizeSingleMoverCoarse(mover)
           self._infoString += infoString
@@ -665,13 +664,7 @@ class Optimizer(object):
               self._interactionGraph.vertex_label(self._interactionGraph.target(e))))
         for ci, g in enumerate(groupCliques):
           startTime = time.time()
-          remainingSeconds = 1e12
-          if stopOptimizingAt > 0.0:
-            remainingSeconds = stopOptimizingAt - time.time()
-          if remainingSeconds <= 0:
-            self._infoString += _VerboseCheck(self._verbosity, 1,
-                                              "Stopping clique optimization due to time limit\n")
-            break
+          remainingSeconds = stopOptimizingAt - time.time()
 
           # Find all of the Movers in the clique so that we know which ones to capture the state for.
           # connected_components() lists them in graph order, as _subsetGraph() did.
@@ -803,7 +796,10 @@ class Optimizer(object):
             nitrogen = m.CoarsePositions().atoms[0]
             self._amideFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
 
-          elif isinstance(m, Movers.MoverHisFlip) and coarse_loc == 4:
+          # The upper half of the coarse states is flipped (both H, HD1 only, HE2 only).
+          # Locked (one-orientation) His were recorded when their Mover was added.
+          elif (isinstance(m, Movers.MoverHisFlip) and m.EnabledFlipStates() == 3 and
+                coarse_loc >= len(m.CoarsePositions().positions)//2):
             nitrogen = m.CoarsePositions().atoms[0]
             self._hisFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
 
@@ -862,9 +858,10 @@ class Optimizer(object):
       Returns a list of the Hydrogens that were marked for deletion during the processing.
       The caller should delete these form the optimized structure to produce a model that
       has the best contacts and fewest clashes.
-      :return: a list of the Hydrogens that were marked for deletion during the processing.
+      :return: a list of the Hydrogens that were marked for deletion during the processing,
+      in model order (i_seq), so that the deletions are reported in the same order on every run.
     """
-    return list(self._deleteMes)
+    return sorted(self._deleteMes, key=lambda a: a.i_seq)
 
   def getFlippedAmides(self):
     """
@@ -1115,11 +1112,13 @@ class Optimizer(object):
           # Find the four positions to check for Nitrogen ionic bonds
           # The two atoms are NE2 (0th atom with its Hydrogen at atom 1) and
           # ND1 (4th atom with its Hydrogen at atom 5).
+          # The first flipped configuration follows the unflipped ones.
           cp = hist.CoarsePositions()
+          flippedConfig = len(cp.positions)//2
           ne2Orig = cp.positions[0][0]
           nd1Orig = cp.positions[0][4]
-          ne2Flip = cp.positions[4][0]
-          nd1Flip = cp.positions[4][4]
+          ne2Flip = cp.positions[flippedConfig][0]
+          nd1Flip = cp.positions[flippedConfig][4]
 
           # See if any are close enough to a positive ion to be ionically bonded.
           # If any are, record whether it is the original or
@@ -1140,9 +1139,9 @@ class Optimizer(object):
                   ', '+n.name.strip()+' rad = '+str(self._extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
                 if dist >= (expected - 0.55) and dist <= (expected + 0.25):
                   # The first two elements in the enumeration come from Histidine configuration 0
-                  # and the second two from configuration 4, so we figure out which one we should
-                  # be in.
-                  bondedConfig = (i // 2) * 4
+                  # and the second two from configuration flippedConfig, so we figure out which one we
+                  # should be in.
+                  bondedConfig = (i // 2) * flippedConfig
                   self._infoString += _VerboseCheck(self._verbosity, 5,'Found ionic bond in coarse configuration '+str(bondedConfig)+'\n')
                   break
             if bondedConfig is not None:
@@ -1164,7 +1163,7 @@ class Optimizer(object):
 
             # If the bonded configuration is the flipped one, then we add it to the list of
             # flipped Histidine Movers so that we can report on it later.
-            if bondedConfig == 4:
+            if bondedConfig == flippedConfig:
               self._hisFlipsPerformed.append(FlippedMoverInfo(alt, a))
 
             # See if we should remove the Hydrogen from each of the two potentially-bonded
@@ -1307,9 +1306,7 @@ class Optimizer(object):
           # a polar Hydrogen, and the radius of the nearby atom, indicating potential
           # overlap.
           # O-H & N-H bond len == 1.0, S-H bond len == 1.3
-          XHbondlen = 1.0
-          if neighbor.element == "S":
-            XHbondlen = 1.3
+          XHbondlen = Movers.NominalXHBondLength(neighbor)
           candidates = []
           for n in nearby:
             # We don't count bonded atoms.

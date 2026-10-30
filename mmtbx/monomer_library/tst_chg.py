@@ -321,7 +321,8 @@ def run():
 
   cmd = 'phenix.geometry_minimization'
   cmd += " l1r.pdb l1r.cif use_neutron_distances=False"
-  cmd += ' selection="element H or element D" write_geo_file=False'
+  cmd += ' selection="element H or element D" riding_h=False'
+  cmd += ' write_geo_file=False'
   cmd += ' correct_hydrogens=True'
   print(cmd)
   ero = easy_run.fully_buffered(command=cmd)

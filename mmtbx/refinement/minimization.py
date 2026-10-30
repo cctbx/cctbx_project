@@ -72,8 +72,11 @@ class lbfgs(object):
         refine_occ     = False)
     if(self.collect_monitor): self.monitor.collect()
     self.neutron_refinement = (self.fmodels.fmodel_n is not None)
-    self.x = flex.double(self.xray_structure.n_parameters(), 0)
     self.riding_h_manager = self.model.riding_h_manager
+    self.riding_h = self.riding_h_manager is not None and self.refine_xyz
+    if(self.riding_h):
+      self.setup_riding_h()
+    self.x = flex.double(self.xray_structure.n_parameters(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
     #lbfgs_core_params = scitbx.lbfgs.core_parameters(
     #  stpmin = 1.e-9,
@@ -89,6 +92,8 @@ class lbfgs(object):
     self.apply_shifts()
     del self._scatterers_start
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
+    if(self.riding_h):
+      self.restore_riding_h_flags()
     if(self.refine_adp and self.fmodels.fmodel_neutron() is None):
       self.xray_structure.tidy_us()
       self.fmodels.update_xray_structure(
@@ -104,36 +109,76 @@ class lbfgs(object):
        print(file=self.qblib_params.qblib_log)
 # QBLIB END
 
+  def setup_riding_h(self):
+    """
+    Prepare the riding H model for coordinate refinement.
+
+    Riding H atoms are not parameters: apply_shifts ignores their shifts and
+    places them on their parents, and compute_target transfers their
+    gradients onto the parents. The X-ray gradients of the H atoms are needed
+    for that transfer, so every H atom carries a site gradient flag for the
+    duration of the minimization; restore_riding_h_flags undoes that.
+    """
+    scatterers = self.xray_structure.scatterers()
+    hd_selection = self.riding_h_manager.hd_selection
+    assert hd_selection.size() == scatterers.size()
+    grad_site = flex.bool([sc.flags.grad_site() for sc in scatterers])
+    self.riding_h_flags_added = (hd_selection & ~grad_site).iselection()
+    scatterers.flags_set_grad_site(iselection = self.riding_h_flags_added)
+    # The parameters are the sites of these atoms, three per atom.
+    self.sites_in_x = grad_site | hd_selection
+    assert self.xray_structure.n_parameters() == 3*self.sites_in_x.count(True)
+    self.h_in_x = hd_selection.select(self.sites_in_x)
+
+  def restore_riding_h_flags(self):
+    scatterers = self.xray_structure.scatterers()
+    for i_seq in self.riding_h_flags_added:
+      scatterers[i_seq].flags.set_grad_site(False)
+
+  def riding_h_gradients(self, gradients):
+    """
+    Transfer the gradients of the riding H atoms onto their parents.
+
+    Parameters
+    ----------
+    gradients : flex.double
+        The gradients packed as self.g: three per atom with a site gradient
+        flag, in atom order.
+
+    Returns
+    -------
+    flex.double
+        The gradients packed the same way, with the H gradients transferred
+        onto the parents and the H entries set to zero: the derivative of the
+        target with the H atoms following their parents.
+    """
+    n = self.xray_structure.scatterers().size()
+    site_gradients = flex.vec3_double(n, [0,0,0])
+    site_gradients.set_selected(self.sites_in_x, flex.vec3_double(gradients))
+    reduced = self.riding_h_manager.gradients_reduced_cpp(
+      gradients    = site_gradients,
+      sites_cart   = self.xray_structure.sites_cart(),
+      hd_selection = self.riding_h_manager.hd_selection)
+    site_gradients = flex.vec3_double(n, [0,0,0])
+    site_gradients.set_selected(self.riding_h_manager.not_hd_selection, reduced)
+    return site_gradients.select(self.sites_in_x).as_double()
+
   def apply_shifts(self):
     if(self.refine_adp):
       xray.ext.truncate_shifts(
         shifts    = self.x,
         min_value = self.u_min,
         max_value = self.u_max)
-    if(self.riding_h_manager is not None and self.refine_xyz):
-      # temporary array with zero shifts for all atoms
-      tmp = flex.vec3_double(self._scatterers_start.size(), [0,0,0])
-      # Set shifts according to self.x
-      tmp = tmp.set_selected(self.model.refinement_flags.sites_individual,
-        flex.vec3_double(self.x))
-      # Set shifts of H atoms to zero (they will be idealized later anyway)
-      shifts_h = flex.vec3_double(self.riding_h_manager.hd_selection.count(True),
-        [0,0,0])
-      tmp = tmp.set_selected(self.riding_h_manager.hd_selection, shifts_h)
-      # Select entries for shifted atoms only (e.g. if there is xyz selection)
-      tmp_x = tmp.select(self.model.refinement_flags.sites_individual)
-      # orig
-      #tmp = tmp.set_selected(self.riding_h_manager.not_hd_selection,
-      #  flex.vec3_double(self.x))
-      # Set entries in self.x corresponding to H atoms to 0
-      self.x.set_selected(flex.bool(self.x.size()), tmp_x.as_double())
-      # orig
-      #self.x.set_selected(flex.bool(self.x.size()), tmp.as_double())
-
+    shifts = self.x
+    if(self.riding_h):
+      # The H atoms are not parameters: their shifts are ignored.
+      shifts = flex.vec3_double(self.x)
+      shifts.set_selected(self.h_in_x, [0,0,0])
+      shifts = shifts.as_double()
     apply_shifts_result = xray.ext.minimization_apply_shifts(
       unit_cell      = self.xray_structure.unit_cell(),
       scatterers     = self._scatterers_start,
-      shifts         = self.x)
+      shifts         = shifts)
     scatterers_shifted = apply_shifts_result.shifted_scatterers
     if(self.refine_xyz):
       site_symmetry_table = self.xray_structure.site_symmetry_table()
@@ -149,11 +194,9 @@ class lbfgs(object):
           print(str(e), file=self.log)
     self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
     #
-    if(self.riding_h_manager is not None and self.refine_xyz):
+    if(self.riding_h):
       sites_cart = self.xray_structure.sites_cart()
-      self.riding_h_manager.idealize_riding_h_positions(
-        sites_cart = sites_cart,
-        selection_bool = self.model.refinement_flags.sites_individual)
+      self.riding_h_manager.idealize_riding_h_positions(sites_cart=sites_cart)
       self.xray_structure.set_sites_cart(sites_cart=sites_cart)
     #
     if(self.refine_adp):
@@ -231,6 +274,8 @@ class lbfgs(object):
           scatterers     = self.xray_structure.scatterers(),
           xray_gradients = self.g,
           site_gradients = sgc*self.weights.w)
+    if(self.riding_h and compute_gradients):
+      self.g = self.riding_h_gradients(gradients = self.g)
     if(self.refine_adp and self.restraints_manager is not None and
        self.restraints_manager.geometry is not None
        and self.weights.w > 0.0 and self.iso_restraints is not None):

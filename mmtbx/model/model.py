@@ -4914,7 +4914,6 @@ class manager(object):
       residue_name,
       initial_occupancy=None,
       initial_b_iso=None,
-      chain_id=None,
       segid=None,
       refine_occupancies=True,
       refine_adp = None):
@@ -4933,9 +4932,6 @@ class manager(object):
     else :
       atom.charge = ""
     atom.parent().resname = residue_name
-    if (chain_id is not None):
-      assert (len(chain_id) <= 2)
-      atom.parent().parent().parent().id = chain_id
     if (segid is not None):
       assert (len(segid) <= 4)
       atom.segid = segid
@@ -5000,6 +4996,7 @@ class manager(object):
     self._sync_xrs_labels()
     self.set_xray_structure(self._xray_structure)
     self.get_hierarchy().atoms().reset_i_seq()
+    self._update_atom_selection_cache()
     return atom
 
   def scale_adp(self, scale_max, scale_min):
@@ -5283,7 +5280,8 @@ class manager(object):
     """
     This will expand hierarchy and ss annotations. In future anything else that
     should be expanded have to be added here. e.g. TLS.
-    LIMITATION: ANISOU records in resulting hierarchy will be invalid!!!
+    Copies under a rotation have anisotropic U rotated and sigxyz and siguij
+    cleared; copies under a translation keep them.
     """
     from iotbx.pdb.utils import chain_id_generator
     roots=[]
@@ -5323,6 +5321,7 @@ class manager(object):
           xyz = c.atoms().extract_xyz()
           new_xyz = r.elems*xyz+t
           c.atoms().set_xyz(new_xyz)
+          c.atoms().rotate_uij_and_clear_sigmas(r_cart=r.elems)
           m.append_chain(c)
         root.append_model(m)
         roots.append(root)

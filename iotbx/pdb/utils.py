@@ -4,6 +4,7 @@ import string
 from itertools import product
 from six.moves import range
 import sys
+from libtbx.utils import Sorry
 
 class generate_n_char_string:
   r""" Iterator to generate strings of length n_chars, using upper-case,
@@ -532,14 +533,13 @@ def try_to_get_hierarchy(pdb_inp):
         ph = hierarchy.root()
         return ph
       else:  # Stop and ask developers to check code
-        ph_text = "\n".join(lines)
-        text = """The above hierarchy could not be read. If it is just empty,
+        text = """The hierarchy from %s could not be read. If it is just empty,
          please ask developers to check that the
          text "something is not present" is used in
          modules/cctbx_project/iotbx/pdb/mmcif.py as part of the assertion that
          atoms are present.  Modify this text to match the assertion if
-         necessary"""
-        raise Sorry(ph_text+"\n"+text+"\n"+str(e))
+         necessary""" % pdb_inp.source_info()
+        raise Sorry(text+"\n"+str(e))
 def add_hierarchies(hierarchy_list, create_new_chain_ids_if_necessary = True):
   """Append all hierarchies on to the first one"""
   if not hierarchy_list:

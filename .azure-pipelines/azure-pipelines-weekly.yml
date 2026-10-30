@@ -67,3 +67,5 @@ stages:
     - template: ./full-build.yml
       parameters:
         modules: modules0
+        # unoptimized tests need more than the default 180 minutes
+        timeoutInMinutes: 360

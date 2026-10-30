@@ -86,13 +86,19 @@ def test_pdb_request_does_not_fit():
 
   # The mmCIF already present, no .pdb, overwrite=False: Sorry at write time
   remove(txt)
+  # reduce2 turns overwrite on when this is set (test servers set it)
+  overwrite_all = os.environ.pop('PHENIX_OVERWRITE_ALL', None)
   try:
-    run([fn_in, 'approach=add', 'output.filename=' + pdb,
-      'output.description_file_name=' + txt])
-  except Sorry as e:
-    assert cif in str(e), str(e)
-  else:
-    assert False, 'no Sorry for existing ' + cif
+    try:
+      run([fn_in, 'approach=add', 'output.filename=' + pdb,
+        'output.description_file_name=' + txt])
+    except Sorry as e:
+      assert cif in str(e), str(e)
+    else:
+      assert False, 'no Sorry for existing ' + cif
+  finally:
+    if overwrite_all is not None:
+      os.environ['PHENIX_OVERWRITE_ALL'] = overwrite_all
   assert not os.path.exists(pdb), pdb
 
 if __name__ == '__main__':

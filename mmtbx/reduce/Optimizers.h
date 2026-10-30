@@ -76,7 +76,7 @@ namespace molprobity {
 
       /** @brief Function to perform coarse optimization on a singleton Mover.
           @param [in] mover: The Mover to optimize.
-          @return A tuple, where the first is the score at the best position for all movers
+          @return A tuple, where the first is the score at the best position the mover
                   and the second is a string describing what was done, which may be empty
                   if verbosity is too small.
           side effect: Changes the value of GetHighScore(mover) to the score at the coarse position
@@ -96,6 +96,9 @@ namespace molprobity {
                   if verbosity is too small.
           side effect: Changes the value of GetHighScore(mover) to the score at the fine position
           selected if one is selected.
+          If the Mover has a NumPrimaryCoarsePositions() method and its coarse position is
+          not one of those primary ones, the best primary coarse position is refined as well
+          (see refineBestPrimary()).
       */
       boost::python::tuple OptimizeSingleMoverFine(boost::python::object const& mover);
 
@@ -142,6 +145,10 @@ namespace molprobity {
 
       /// @brief Returns the number of calculated atom scores within cliques
       size_t GetNumCalculatedAtoms() const { return m_calculatedScores; }
+
+      /// @brief Returns the number of entries in the cache of trimmed dots and the
+      /// total number of dots that they hold.
+      boost::python::tuple GetExcludedDotsSize() const;
 
       /// @brief Returns the number of cached atom scores within cliques
       size_t GetNumCachedAtoms() const { return m_cachedScores; }
@@ -239,6 +246,29 @@ namespace molprobity {
       ///         separate ranges for the coarse and fine scoring.
       double scorePosition(molprobity::reduce::PositionReturn& states, unsigned index,
         unsigned dotCacheOffset);
+
+      /// @brief Dot-cache offset for the fine positions around a coarse position, so that
+      /// every fine pose of a Mover has its own identity: fine position i around coarse
+      /// position anchor uses 100000 + 1000 * anchor + i (coarse positions use their index).
+      /// Assumes fewer than 1000 fine positions per coarse position.
+      static unsigned fineDotCacheOffset(unsigned anchor) { return 100000 + 1000 * anchor; }
+
+      /// @brief Move the Mover to a pose and return its full objective there: the Probe
+      /// score plus the preference energy times the preference magnitude.
+      double scorePose(molprobity::reduce::PositionReturn& states, unsigned index,
+        unsigned dotCacheOffset);
+
+      /// @brief Safeguard for a Mover whose coarse position is not one of its primary
+      /// ones: also refine the best primary coarse position. Both coarse positions and
+      /// all their fine positions are scored on fresh full objectives in the current
+      /// environment; the Mover switches only to a strictly higher score than the pose
+      /// it is in, updating its coarse and fine location and its high score.
+      /// @param [in] mover: The Mover, after its own fine optimization.
+      /// @param [in] coarse: The Mover's coarse positions.
+      /// @param [in] numPrimary: The number of leading primary coarse positions.
+      /// @return A string describing what was done, which may be empty if verbosity is too small.
+      std::string refineBestPrimary(boost::python::object const& mover,
+        molprobity::reduce::PositionReturn& coarse, unsigned numPrimary);
 
       //=========================================================================
       // Section dealing with optimization of a clique

@@ -7,12 +7,13 @@
 #   vmImage: windows-2022
 #   vs: 2022
 #   modules: <modules artifact name>
+#   timeoutInMinutes: <job timeout, default 180>
 
 jobs:
 - job: vs${{ parameters.vs }}
   pool:
     vmImage: ${{ parameters.vmImage }}
-  timeoutInMinutes: 180
+  timeoutInMinutes: ${{ coalesce(parameters.timeoutInMinutes, 180) }}
   strategy:
     maxParallel: 2
     matrix:

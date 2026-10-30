@@ -74,6 +74,23 @@ namespace {
     }
   }
 
+  void
+  rotate_uij_and_clear_sigmas(
+    af::const_ref<atom> const& atoms,
+    scitbx::mat3<double> const& r_cart)
+  {
+    if ((r_cart - scitbx::mat3<double>(1)).max_abs() <= 1e-4) return;
+    for (unsigned i = 0; i < atoms.size(); i++) {
+      // Atoms without U hold all -1, which rotation would turn into a bogus U.
+      if (atoms[i].uij_is_defined()) {
+        atoms[i].data->uij = cctbx::adptbx::c_u_c_transpose(
+          r_cart, atoms[i].data->uij);
+      }
+      atoms[i].data->sigxyz = vec3(0, 0, 0);
+      atoms[i].siguij_erase();
+    }
+  }
+
 } // namespace <anonymous>
 
   void
@@ -141,7 +158,9 @@ namespace {
         arg("throw_runtime_error_if_duplicate_keys")=true))
       .def("set_adps_from_scatterers", set_adps_from_scatterers, (
         arg("scatterers"),
-        arg("unit_cell")));
+        arg("unit_cell")))
+      .def("rotate_uij_and_clear_sigmas", rotate_uij_and_clear_sigmas, (
+        arg("r_cart")));
     ;
   }
 

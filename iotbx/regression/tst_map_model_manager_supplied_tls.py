@@ -1070,6 +1070,7 @@ def tst_no_tls_unchanged():
     sample, EXPECTED_SAMPLE)
 
 def run(args = None):
+  # Each case is listed separately in iotbx/run_tests.py; add new ones there
   all_tests = [
      ('options_passed_on', tst_options_passed_on),
      ('all_tls_entries_updated', tst_all_tls_entries_updated),
@@ -1092,6 +1093,9 @@ def run(args = None):
      ('no_tls_unchanged', tst_no_tls_unchanged),
     ]
   if args:
+    unknown = set(args) - set([name for name, f in all_tests])
+    assert not unknown, "Unknown test name(s): %s" %(
+      " ".join(sorted(unknown)))
     tests = [(name, f) for name, f in all_tests if name in args]
   else:
     tests = all_tests
