@@ -24,12 +24,16 @@ namespace{
       using namespace boost::python;
 
       class_<w_t>("lookup_tensor", no_init)
-        .def(init< scitbx::af::const_ref< cctbx::miller::index<> >  const&,
-                   cctbx::sgtbx::space_group const&,
+        .def(init<cctbx::sgtbx::space_group const&,
                    bool const&
-                 >((arg("miller_indices"),
-                    arg("space_group"),
+                 >((arg("space_group"),
                     arg("anomalous_flag") )))
+        .def(init< scitbx::af::const_ref< cctbx::miller::index<> >  const&,
+          cctbx::sgtbx::space_group const&,
+          bool const&
+        >((arg("miller_indices"),
+          arg("space_group"),
+          arg("anomalous_flag"))))
         .def("n_duplicates", &w_t::n_duplicates)
         .def("find_hkl", (long(w_t::*)(cctbx::miller::index<> const&) const)
              &w_t::find_hkl)
@@ -37,6 +41,7 @@ namespace{
                           (scitbx::af::const_ref< cctbx::miller::index<> >
                            const&) const)
              &w_t::find_hkl)
+        .def("add_hkl", &w_t::add_hkl)
         ;
     }
 

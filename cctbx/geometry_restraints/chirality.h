@@ -220,9 +220,16 @@ namespace cctbx { namespace geometry_restraints {
         chirality_proxy const& proxy) const
       {
         chirality_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
-        af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         std::size_t row_i = linearised_eqns.next_row();
-        double f = 1.0 /( 2.0 * delta * weight );
+        /* d(volume)/d(sites), signed. Scaling gradients() by the reciprocal of
+        the 2*delta*weight it carries is 0/0 for exactly coplanar sites - a
+        mirror makes them so, and a FLAT arrives here as zero volume chirality
+        */
+        af::tiny<scitbx::vec3<double>, 4> grads;
+        grads[1] = delta_sign * d_02_cross_d_03;
+        grads[2] = delta_sign * d_03.cross(d_01);
+        grads[3] = delta_sign * d_01.cross(d_02);
+        grads[0] = -grads[1]-grads[2]-grads[3];
         for(int i=0;i<4;i++) {
           grads[i] = unit_cell.fractionalize_gradient(grads[i]);
           if ( sym_ops.get() != 0 && !sym_ops[i].is_unit_mx() ) {
@@ -234,7 +241,7 @@ namespace cctbx { namespace geometry_restraints {
             parameter_map[i_seqs[i]];
           if (ids_i.site == -1) continue;
           for (int j=0;j<3;j++) {
-            linearised_eqns.design_matrix(row_i, ids_i.site+j) += f * grads[i][j];
+            linearised_eqns.design_matrix(row_i, ids_i.site+j) += grads[i][j];
           }
 
           linearised_eqns.weights[row_i] = proxy.weight;

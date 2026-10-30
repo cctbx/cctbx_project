@@ -1,0 +1,25 @@
+import libtbx.load_env
+import os
+Import("env_smtbx_boost_python_ext")
+
+# The sources stay where they are, in mmtbx/max_lik; only the build target
+# moves here. Duplicating them into smtbx would be a second copy of cctbx code
+# to keep in step, which is exactly what this arrangement avoids.
+#
+# The path is derived from smtbx's own dist rather than from
+# libtbx.env.dist_path("mmtbx"), because mmtbx is deliberately not a configured
+# module in the build this exists for, and dist_path would raise.
+max_lik_dir = os.path.join(
+  os.path.dirname(str(libtbx.env.dist_path("smtbx"))), "mmtbx", "max_lik")
+
+env = env_smtbx_boost_python_ext.Clone()
+env.Prepend(LIBS=["scitbx_boost_python"])
+# The name is fixed, not chosen: max_lik_ext.cpp declares
+# BOOST_PYTHON_MODULE(mmtbx_max_lik_ext), so the library has to be called that
+# to be importable - and mmtbx/max_lik/__init__.py looks it up under that name.
+env.SharedLibrary(
+  target="#lib/mmtbx_max_lik_ext",
+  source=[
+    os.path.join(max_lik_dir, "max_lik_ext.cpp"),
+    os.path.join(max_lik_dir, "max_lik.cpp"),
+  ])

@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 
 import libtbx
 import scitbx.math
+from scitbx.matrix import col
 from cctbx.array_family import flex
 from cctbx import crystal
 from cctbx import xray
@@ -177,6 +178,15 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
         kwds['xray_structure'] = self.structure
       self.adp_restraint_types[restraint_type](**kwds)
     else:
+      # special negative value DFIX - applied only if current distance is smaller than ideal
+      if restraint_type == 'bond' and kwds['distance_ideal'] < 0:
+        _length_value = self.structure.unit_cell().distance(
+          col(self.structure.scatterers()[kwds['i_seqs'][0]].site),
+          col(self.structure.scatterers()[kwds['i_seqs'][1]].site))
+        if _length_value >= abs(kwds['distance_ideal']):
+          return
+        else:
+          kwds['distance_ideal'] = abs(kwds['distance_ideal'])
       proxy_type = self.geometry_restraint_types[restraint_type]
       proxy=proxy_type(**kwds)
       self._proxies[restraint_type].append(proxy)

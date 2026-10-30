@@ -1594,7 +1594,7 @@ static double bddist(double gvec[6],int bdnum) {
             case(P_C): if (gvec[5]>gvec[0]) bdin = -1; break;
             case(P_D): if (gvec[5]>gvec[0]) bdin = -1; break;
             case(P_E): if (-gvec[5]>gvec[0]) bdin = -1; break;
-            case(P_F): if (gvec[0]+gvec[1]+gvec[3]+gvec[4]+gvec[5]< 0.) bdin = -1; break;;
+            case(P_F): if (gvec[0]+gvec[1]+gvec[3]+gvec[4]+gvec[5]< 0.) bdin = -1; break;
 
             default: bdin = 1.; break;
         }
