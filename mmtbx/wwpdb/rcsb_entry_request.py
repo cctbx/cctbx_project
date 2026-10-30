@@ -537,6 +537,9 @@ class rcsb_entry_info(object):
     return self._get_value(['rcsb_comp_model_provenance', 'source_pae_url'])
 
 
+# RCSB GraphQL rejects entries(entry_ids:) requests with more ids than this
+max_ids_per_request = 1000
+
 def get_info(pdb_ids):
   """Get information about entries. Accepts both experimental and computational ids.
 
@@ -546,26 +549,26 @@ def get_info(pdb_ids):
   Returns:
       list of rcsb_entry_info: list of objects - one object for one id.
   """
-  pdb_ids_string = "%s" % pdb_ids
-  pdb_ids_string = pdb_ids_string.replace("'", '"')
   s = requests.Session()
   retries = Retry(
       total=5,
       backoff_factor=0.1,
       status_forcelist=[ 500, 502, 503, 504 ])
   s.mount('https://', HTTPAdapter(max_retries=retries))
-  r = s.post(report_base_url, json={"query":full_page_request % pdb_ids_string})
-  data_entries = r.json()['data']['entries']
-  # print(json.dumps(r.json(), indent=4))
-
   # API request is not guaranteed to return results in the order we submit them!!!
   # Therefore need to make sure we put them into results list in correct order of
   # pdb_ids
   # Create info objects and map by pdb_id to preserve input order
   info_dict = {}
-  for entry in data_entries:
-    info = rcsb_entry_info(entry)
-    info_dict[info.get_pdb_id()] = info
+  for start in range(0, len(pdb_ids), max_ids_per_request):
+    pdb_ids_string = "%s" % pdb_ids[start:start+max_ids_per_request]
+    pdb_ids_string = pdb_ids_string.replace("'", '"')
+    r = s.post(report_base_url, json={"query":full_page_request % pdb_ids_string})
+    data_entries = r.json()['data']['entries']
+    # print(json.dumps(r.json(), indent=4))
+    for entry in data_entries:
+      info = rcsb_entry_info(entry)
+      info_dict[info.get_pdb_id()] = info
   # Return results in the same order as input pdb_ids
   result = []
   # print('info_dict.keys()', info_dict.keys())

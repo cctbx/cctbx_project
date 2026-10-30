@@ -109,6 +109,18 @@ def exercise_12():
   assert not info[1].is_xray()
   assert info[2].is_xray()
 
+def exercise_6():
+  """
+  Exercise 6, live: more ids than the RCSB GraphQL limit of 1000 per request.
+  """
+  pdb_ids = ['1ucs', 'AF_AFP12102F1'] * 501
+  info = rcsb_entry_request.get_info(pdb_ids=pdb_ids)
+  assert len(info) == len(pdb_ids), (len(info), len(pdb_ids))
+  assert info[0].get_pdb_id() == '1UCS', info[0].get_pdb_id()
+  assert info[1001].get_pdb_id() == 'AF_AFP12102F1', info[1001].get_pdb_id()
+  assert info[1000].get_rwork() == 0.133, info[1000].get_rwork()
+  assert info[1001].is_computational()
+
 if (__name__ == "__main__"):
   # thorough_exercise()
   exercise_5()
@@ -126,6 +138,7 @@ if (__name__ == "__main__"):
     exercise_2()
     exercise_3()
     exercise_4()
+    exercise_6()
     print("OK")
   else:
     print("OK but skipped.")
