@@ -193,6 +193,7 @@ general_tests = [
   "$D/hydrogens/tst_const_dihedral.py",
   "$D/hydrogens/tst_riding_coefficients.py",
   "$D/hydrogens/tst_riding_manager.py",
+  "$D/hydrogens/tst_riding_minimization.py",
   "$D/hydrogens/tst_parameterization_1.py",
   "$D/hydrogens/tst_parameterization_2.py",
   "$D/hydrogens/tst_parameterization_3.py",
