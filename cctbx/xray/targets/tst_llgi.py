@@ -1,0 +1,340 @@
+from __future__ import absolute_import, division, print_function
+from cctbx.xray import ext
+from cctbx.array_family import flex
+from libtbx.test_utils import approx_equal
+from six.moves import range
+import math
+
+def make_inputs(n_refl, centric, seed=0, teps=1.0):
+  # Deterministic pseudo-random-ish inputs (no RNG dependency) covering a
+  # spread of magnitudes, chosen so that dobs*sigmaa stays comfortably
+  # below 1 (i.e. v_e = teps*(1 - (dobs*sigmaa)^2) > 0) for every
+  # reflection, avoiding the negative-variance guard in the basic checks.
+  f_eff = flex.double([0.3 + 0.17 * ((seed + i) % 7) for i in range(n_refl)])
+  dobs = flex.double([0.4 + 0.05 * ((seed + i) % 6) for i in range(n_refl)])
+  sigmaa = flex.double([0.5 + 0.03 * ((seed + i) % 5) for i in range(n_refl)])
+  scatfrac = flex.double([0.8 + 0.02 * ((seed + i) % 4) for i in range(n_refl)])
+  teps = flex.double([teps for i in range(n_refl)])
+  resn = flex.double([1.0 + 0.1 * ((seed + i) % 3) for i in range(n_refl)])
+  centric_flags = flex.bool([centric for i in range(n_refl)])
+  r_free_flags = flex.bool([(i % 4 == 0) for i in range(n_refl)])
+  f_calc = flex.complex_double([
+    complex(
+      (0.6 + 0.11 * ((seed + i) % 5)) * math.cos(0.37 * i + 0.1 * seed),
+      (0.6 + 0.11 * ((seed + i) % 5)) * math.sin(0.37 * i + 0.1 * seed))
+    for i in range(n_refl)])
+  return dict(
+    f_eff=f_eff, r_free_flags=r_free_flags, f_calc=f_calc, dobs=dobs,
+    sigmaa=sigmaa, scatfrac=scatfrac, teps=teps, resn=resn,
+    centric_flags=centric_flags)
+
+def target_work(inputs, scale_factor=1.0, compute_gradients=False):
+  return ext.llgi_target_and_gradients(
+    f_eff=inputs["f_eff"],
+    r_free_flags=inputs["r_free_flags"],
+    f_calc=inputs["f_calc"],
+    dobs=inputs["dobs"],
+    sigmaa=inputs["sigmaa"],
+    scatfrac=inputs["scatfrac"],
+    scale_factor=scale_factor,
+    teps=inputs["teps"],
+    resn=inputs["resn"],
+    centric_flags=inputs["centric_flags"],
+    compute_gradients=compute_gradients)
+
+def exercise_finite_difference_gradients(centric, teps):
+  n_refl = 12
+  inputs = make_inputs(n_refl, centric=centric, seed=3, teps=teps)
+  result = target_work(inputs, compute_gradients=True)
+  ana_grads = result.gradients_work()
+  # gradients_work() only covers work reflections (r_free_flags == False);
+  # map back to full-array indices to perturb the matching f_calc entry.
+  work_indices = [i for i in range(n_refl) if not inputs["r_free_flags"][i]]
+  assert len(work_indices) == len(ana_grads)
+  eps = 1.e-6
+  for k, ih in enumerate(work_indices):
+    fin_grads = []
+    for part in ("re", "im"):
+      vals = []
+      for signed_eps in (eps, -eps):
+        f_calc_pert = inputs["f_calc"].deep_copy()
+        c0 = f_calc_pert[ih]
+        if part == "re":
+          f_calc_pert[ih] = complex(c0.real + signed_eps, c0.imag)
+        else:
+          f_calc_pert[ih] = complex(c0.real, c0.imag + signed_eps)
+        inputs_pert = dict(inputs)
+        inputs_pert["f_calc"] = f_calc_pert
+        t_pert = target_work(inputs_pert, compute_gradients=False)
+        vals.append(t_pert.target_work())
+      fin_grads.append((vals[0] - vals[1]) / (2 * eps))
+    # gradients_work() values are already divided by n_work (see
+    # target_and_gradients in llgi.h), matching target_work() which is
+    # itself target_sum/n_work -- so no additional rescaling is needed.
+    # The double conj() applied in llgi.h (once in d_target_one_h_over_fc
+    # via conj(fc_complex), once again in target_and_gradients'
+    # std::conj(...) wrapper) cancels, so gradients_work()'s real and
+    # imaginary parts equal d(target_work)/d(Re fc) and d(target_work)/
+    # d(Im fc) directly, confirmed empirically below.
+    g = ana_grads[k]
+    d_by_dre_ana = g.real
+    d_by_dim_ana = g.imag
+    assert approx_equal(d_by_dre_ana, fin_grads[0], eps=5.e-5), (
+      centric, teps, ih, d_by_dre_ana, fin_grads[0])
+    assert approx_equal(d_by_dim_ana, fin_grads[1], eps=5.e-5), (
+      centric, teps, ih, d_by_dim_ana, fin_grads[1])
+
+def exercise_resn_scale_invariance():
+  # Scaling f_eff, f_calc and resn all by the same positive factor should
+  # leave the target value exactly unchanged (RESN is a pure change-of-
+  # variables normalization, see llgi.h docstring).
+  inputs = make_inputs(8, centric=False, seed=1)
+  base = target_work(inputs).target_work()
+  scaled = dict(inputs)
+  factor = 2.3
+  scaled["f_eff"] = inputs["f_eff"] * factor
+  scaled["f_calc"] = inputs["f_calc"] * factor
+  scaled["resn"] = inputs["resn"] * factor
+  scaled_val = target_work(scaled).target_work()
+  assert approx_equal(base, scaled_val, eps=1.e-9)
+
+def exercise_negative_variance_guard():
+  # When dobs*sigmaa >= 1, so that v_e = teps*(1 - (dobs*sigmaa)^2)
+  # is <= 0, the target must contribute exactly zero for that reflection
+  # rather than producing a NaN/inf or spurious gradient.
+  n_refl = 3
+  inputs = make_inputs(n_refl, centric=False, seed=5)
+  # Force (dobs*sigmaa)^2 to reach 1 for every reflection.
+  inputs["dobs"] = flex.double([1.0, 0.98, 1.0])
+  inputs["sigmaa"] = flex.double([1.0, 1.05, 1.1])
+  inputs["scatfrac"] = flex.double([1.0, 1.0, 1.0])
+  inputs["teps"] = flex.double([0.5, 1.0, 1.7])
+  result = target_work(inputs, compute_gradients=True)
+  for t in result.target_per_reflection():
+    assert t == 0.0
+  # No work reflections should contribute a nonzero gradient either.
+  for g in result.gradients_work():
+    assert g == 0j
+
+def exercise_scatfrac_sensitivity():
+  # Construct f_calc tuned so that d*fc == feff exactly (d = dobs*sigmaa/
+  # sqrt(scatfrac), the mean's coefficient), i.e. the best possible fit
+  # for this scatfrac. Moving scatfrac away from that tuned value should
+  # make the fit worse (target_work, a minimize-me quantity, increases),
+  # since fc no longer matches the (now different) d.
+  n_refl = 6
+  inputs = make_inputs(n_refl, centric=False, seed=2)
+  tuned = dict(inputs)
+  fc_mag = flex.double([
+    inputs["f_eff"][i]
+    / (inputs["dobs"][i] * inputs["sigmaa"][i]
+       / math.sqrt(inputs["scatfrac"][i]))
+    for i in range(n_refl)])
+  tuned["f_calc"] = flex.complex_double([
+    complex(fc_mag[i] * math.cos(0.2 * i), fc_mag[i] * math.sin(0.2 * i))
+    for i in range(n_refl)])
+  base = target_work(tuned).target_work()
+  mismatched = dict(tuned)
+  mismatched["scatfrac"] = inputs["scatfrac"] * 0.3
+  mismatched_val = target_work(mismatched).target_work()
+  assert mismatched_val > base, (base, mismatched_val)
+
+def exercise_sigmaa_scatfrac_finite_difference_gradients(teps):
+  # llgi.h's d_target_one_h_over_sigmaa_scatfrac (used by the sigmaA and
+  # ScatFrac fits) against central finite differences of
+  # llgi_sigmaa_scatfrac_target_and_gradients' target, mixing centric and
+  # acentric reflections in one call.
+  n_refl = 8
+  inputs = make_inputs(n_refl, centric=False, seed=7, teps=teps)
+  inputs["centric_flags"] = flex.bool(
+    [(i % 3 == 0) for i in range(n_refl)])
+  selection = flex.bool([True] * n_refl)
+
+  def run(sigmaa, scatfrac):
+    return ext.llgi_sigmaa_scatfrac_target_and_gradients(
+      f_eff=inputs["f_eff"],
+      selection=selection,
+      f_calc=inputs["f_calc"],
+      dobs=inputs["dobs"],
+      sigmaa=sigmaa,
+      scatfrac=scatfrac,
+      scale_factor=1.0,
+      teps=inputs["teps"],
+      resn=inputs["resn"],
+      centric_flags=inputs["centric_flags"])
+
+  result = run(inputs["sigmaa"], inputs["scatfrac"])
+  ana_dsigmaa = result.d_target_by_dsigmaa()
+  ana_dscatfrac = result.d_target_by_dscatfrac()
+  eps = 1.e-6
+  for i in range(n_refl):
+    sa_p = inputs["sigmaa"].deep_copy(); sa_p[i] += eps
+    sa_m = inputs["sigmaa"].deep_copy(); sa_m[i] -= eps
+    fd_dsigmaa = (run(sa_p, inputs["scatfrac"]).target()
+                  - run(sa_m, inputs["scatfrac"]).target()) / (2 * eps)
+    assert approx_equal(ana_dsigmaa[i], fd_dsigmaa, eps=5.e-5), (
+      i, ana_dsigmaa[i], fd_dsigmaa)
+    sf_p = inputs["scatfrac"].deep_copy(); sf_p[i] += eps
+    sf_m = inputs["scatfrac"].deep_copy(); sf_m[i] -= eps
+    fd_dscatfrac = (run(inputs["sigmaa"], sf_p).target()
+                    - run(inputs["sigmaa"], sf_m).target()) / (2 * eps)
+    assert approx_equal(ana_dscatfrac[i], fd_dscatfrac, eps=5.e-5), (
+      i, ana_dscatfrac[i], fd_dscatfrac)
+
+def _reference_target_three_term_form(
+      f_eff, f_calc, dobs, sigmaa, scatfrac, k, teps, resn, centric):
+  """ The LLGI target for one reflection in phasertng's three-term form
+  (function.cc target_gradient_hessian) in phasertng's variables:
+  EOBS = FEFF/RESN (DagLikelihood), DobsSigaEcalc = sqrt(TEPS) D Ecalc
+  with Ecalc = k Fcalc/(sqrt(TEPS ScatFrac) RESN) and D = Dobs sigmaA,
+  V = TEPS - DobsSigaSqr with DobsSigaSqr = TEPS D^2, and the
+  Wilson/null-hypothesis term wll = EOBS^2/TEPS added separately.
+  llgi.h combines the two feff terms into -D^2 feff^2/V on the F scale;
+  this independent implementation checks that. """
+  from scitbx.math import bessel_ln_of_i0
+  big_d = dobs * sigmaa
+  eobs = f_eff / resn
+  ec = big_d * k * f_calc / (math.sqrt(scatfrac) * resn)
+  v = teps - teps * big_d * big_d
+  if(v <= 0.0):
+    return 0.0
+  eobs_sq = eobs * eobs
+  x = 2.0 * eobs * ec / v
+  wll = eobs_sq / teps
+  ll = -(math.log(v / teps) + (eobs_sq + ec * ec) / v)
+  if(not centric):
+    ll += bessel_ln_of_i0(x)
+    ll += wll
+  else:
+    wll /= 2.0
+    x_half = x / 2.0
+    ln_cosh = x_half + math.log((1.0 + math.exp(-2.0 * x_half)) / 2.0)
+    ll = ll / 2.0 + ln_cosh + wll
+  return -ll
+
+def exercise_target_matches_three_term_form():
+  # llgi.h's target_one_h against phasertng's three-term form, including
+  # TEPS != 1, and ScatFrac and k != 1, which enter the mean only.
+  import random
+  rnd = random.Random(7)
+  n_checked = 0
+  for trial in range(400):
+    f_eff = rnd.uniform(0.05, 30.0)
+    fc_mag = rnd.uniform(0.05, 30.0)
+    dobs = rnd.uniform(0.4, 0.99)
+    sigmaa = rnd.uniform(0.05, 0.95)
+    scatfrac = rnd.uniform(0.3, 1.4)
+    k = rnd.uniform(0.5, 1.5)
+    teps = 1.0 if (trial % 2 == 0) else rnd.uniform(0.3, 3.0)
+    resn = rnd.uniform(0.5, 20.0)
+    for centric in (False, True):
+      expected = _reference_target_three_term_form(
+        f_eff, fc_mag, dobs, sigmaa, scatfrac, k, teps, resn, centric)
+      phase = 0.37 * trial
+      result = ext.llgi_target_and_gradients(
+        f_eff         = flex.double([f_eff]),
+        r_free_flags  = flex.bool([False]),
+        f_calc        = flex.complex_double([complex(
+          fc_mag * math.cos(phase), fc_mag * math.sin(phase))]),
+        dobs          = flex.double([dobs]),
+        sigmaa        = flex.double([sigmaa]),
+        scatfrac      = flex.double([scatfrac]),
+        scale_factor  = k,
+        teps          = flex.double([teps]),
+        resn          = flex.double([resn]),
+        centric_flags = flex.bool([centric]),
+        compute_gradients = False)
+      # target() is the sum over the work set (one reflection here).
+      assert approx_equal(result.target(), expected, eps=1.e-9), (
+        result.target(), expected, teps, centric)
+      n_checked += 1
+  assert n_checked == 800, n_checked  # 400 trials x {acentric, centric}
+
+def exercise_target_is_symmetric_in_feff_and_fc():
+  # The target depends on feff and fc through D^2*feff^2,
+  # (d*fc)^2 and the Bessel argument, so at teps == 1, scatfrac == 1 and
+  # k == 1 (d == D) swapping feff and fc must leave it unchanged.
+  import random
+  rnd = random.Random(13)
+  for trial in range(200):
+    a = rnd.uniform(0.05, 20.0)
+    b = rnd.uniform(0.05, 20.0)
+    dobs = rnd.uniform(0.4, 0.99)
+    sigmaa = rnd.uniform(0.05, 0.9)
+    for centric in (False, True):
+      def t(f_eff, fc_mag):
+        return ext.llgi_target_and_gradients(
+          f_eff         = flex.double([f_eff]),
+          r_free_flags  = flex.bool([False]),
+          f_calc        = flex.complex_double([complex(fc_mag, 0.0)]),
+          dobs          = flex.double([dobs]),
+          sigmaa        = flex.double([sigmaa]),
+          scatfrac      = flex.double([1.0]),
+          scale_factor  = 1.0,
+          teps          = flex.double([1.0]),
+          resn          = flex.double([1.0]),
+          centric_flags = flex.bool([centric]),
+          compute_gradients = False).target()
+      assert approx_equal(t(a, b), t(b, a), eps=1.e-10), (
+        t(a, b), t(b, a), a, b, centric)
+
+def exercise_teps_matches_tncs_frame():
+  # TEPS is the tNCS modulation of both the expected intensity and the
+  # error variance, so the target and its gradient at TEPS must equal the
+  # tncs_frame path with u = t = TEPS and TEPS = 1
+  import random
+  rnd = random.Random(5)
+  n_refl = 40
+  inputs = make_inputs(n_refl, centric=False, seed=4)
+  inputs["teps"] = flex.double([rnd.uniform(0.3, 3.0) for i in range(n_refl)])
+  inputs["centric_flags"] = flex.bool([(i % 3 == 0) for i in range(n_refl)])
+  teps = target_work(inputs, compute_gradients=True)
+  frame = ext.llgi_target_and_gradients(
+    f_eff=inputs["f_eff"],
+    r_free_flags=inputs["r_free_flags"],
+    f_calc=inputs["f_calc"],
+    dobs=inputs["dobs"],
+    sigmaa=inputs["sigmaa"],
+    scatfrac=inputs["scatfrac"],
+    scale_factor=1.0,
+    teps=flex.double(n_refl, 1.0),
+    resn=inputs["resn"],
+    centric_flags=inputs["centric_flags"],
+    compute_gradients=True,
+    hybrid=None,
+    tncs_u=inputs["teps"],
+    tncs_t=inputs["teps"])
+  assert approx_equal(teps.target_per_reflection(),
+    frame.target_per_reflection(), eps=1.e-9)
+  assert approx_equal(teps.gradients_work(), frame.gradients_work(),
+    eps=1.e-9)
+  args = dict(f_eff=inputs["f_eff"], selection=~inputs["r_free_flags"],
+    f_calc=inputs["f_calc"], dobs=inputs["dobs"], sigmaa=inputs["sigmaa"],
+    scatfrac=inputs["scatfrac"], scale_factor=1.0, resn=inputs["resn"],
+    centric_flags=inputs["centric_flags"], hybrid=None)
+  s0 = ext.llgi_sigmaa_scatfrac_target_and_gradients(teps=inputs["teps"],
+    **args)
+  s1 = ext.llgi_sigmaa_scatfrac_target_and_gradients(
+    teps=flex.double(n_refl, 1.0), tncs_u=inputs["teps"],
+    tncs_t=inputs["teps"], **args)
+  assert approx_equal(s0.target(), s1.target(), eps=1.e-9)
+  assert approx_equal(s0.d_target_by_dsigmaa(), s1.d_target_by_dsigmaa(),
+    eps=1.e-9)
+  assert approx_equal(s0.d_target_by_dscatfrac(), s1.d_target_by_dscatfrac(),
+    eps=1.e-9)
+
+def exercise():
+  for teps in (1.0, 1.7):
+    exercise_finite_difference_gradients(centric=False, teps=teps)
+    exercise_finite_difference_gradients(centric=True, teps=teps)
+    exercise_sigmaa_scatfrac_finite_difference_gradients(teps=teps)
+  exercise_resn_scale_invariance()
+  exercise_negative_variance_guard()
+  exercise_scatfrac_sensitivity()
+  exercise_target_matches_three_term_form()
+  exercise_teps_matches_tncs_frame()
+  exercise_target_is_symmetric_in_feff_and_fc()
+  print("OK")
+
+if (__name__ == "__main__"):
+  exercise()

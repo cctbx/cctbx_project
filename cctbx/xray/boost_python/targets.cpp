@@ -6,11 +6,17 @@
 #include <cctbx/xray/targets/mlf.h>
 #include <cctbx/xray/targets/mli.h>
 #include <cctbx/xray/targets/mlhl.h>
+#include <cctbx/xray/targets/llgi.h>
+#include <cctbx/xray/targets/llgi_e.h>
+#include <cctbx/xray/targets/llgi_exact.h>
+#include <cctbx/xray/targets/wilson_intensity.h>
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/docstring_options.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/return_by_value.hpp>
 
 namespace cctbx { namespace xray { namespace targets { namespace boost_python {
 
@@ -250,6 +256,354 @@ namespace {
     }
   };
 
+  struct llgi_wrappers
+  {
+    typedef llgi::target_and_gradients w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t, bases<common_results> >(
+          "llgi_target_and_gradients", no_init)
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          bool,
+          optional<llgi_exact::hybrid const*> >((
+            arg("f_eff"),
+            arg("r_free_flags"),
+            arg("f_calc"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("scatfrac"),
+            arg("scale_factor"),
+            arg("teps"),
+            arg("resn"),
+            arg("centric_flags"),
+            arg("compute_gradients"),
+            arg("hybrid")=object())))
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          bool,
+          llgi_exact::hybrid const*,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&>((
+            arg("f_eff"),
+            arg("r_free_flags"),
+            arg("f_calc"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("scatfrac"),
+            arg("scale_factor"),
+            arg("teps"),
+            arg("resn"),
+            arg("centric_flags"),
+            arg("compute_gradients"),
+            arg("hybrid"),
+            arg("tncs_u"),
+            arg("tncs_t"))))
+        .def("n_exact", &w_t::n_exact)
+      ;
+    }
+  };
+
+  struct llgi_sigmaa_scatfrac_wrappers
+  {
+    typedef llgi::sigmaa_scatfrac_target_and_gradients w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
+      class_<w_t>(
+          "llgi_sigmaa_scatfrac_target_and_gradients", no_init)
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          optional<llgi_exact::hybrid const*> >((
+            arg("f_eff"),
+            arg("selection"),
+            arg("f_calc"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("scatfrac"),
+            arg("scale_factor"),
+            arg("teps"),
+            arg("resn"),
+            arg("centric_flags"),
+            arg("hybrid")=object())))
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          llgi_exact::hybrid const*,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&>((
+            arg("f_eff"),
+            arg("selection"),
+            arg("f_calc"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("scatfrac"),
+            arg("scale_factor"),
+            arg("teps"),
+            arg("resn"),
+            arg("centric_flags"),
+            arg("hybrid"),
+            arg("tncs_u"),
+            arg("tncs_t"))))
+        .def("target", &w_t::target)
+        .def("n_exact", &w_t::n_exact)
+        .def("d_target_by_dsigmaa", &w_t::d_target_by_dsigmaa, ccr())
+        .def("d_target_by_dscatfrac", &w_t::d_target_by_dscatfrac, ccr())
+      ;
+    }
+  };
+
+  struct llgi_e_sigmaa_wrappers
+  {
+    typedef llgi_e::sigmaa_target_and_gradients w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
+      class_<w_t>(
+          "llgi_e_sigmaa_target_and_gradients", no_init)
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          optional<llgi_exact::hybrid const*> >((
+            arg("e_eff"),
+            arg("selection"),
+            arg("e_model"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("centric_flags"),
+            arg("hybrid")=object())))
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          llgi_exact::hybrid const*,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&>((
+            arg("e_eff"),
+            arg("selection"),
+            arg("e_model"),
+            arg("dobs"),
+            arg("sigmaa"),
+            arg("centric_flags"),
+            arg("hybrid"),
+            arg("tncs_u"),
+            arg("tncs_t"))))
+        .def("target", &w_t::target)
+        .def("n_exact", &w_t::n_exact)
+        .def("d_target_by_dsigmaa", &w_t::d_target_by_dsigmaa, ccr())
+      ;
+    }
+  };
+
+  struct wilson_intensity_wrappers
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      {
+        typedef wilson_intensity::evaluate_many w_t;
+        class_<w_t>("wilson_intensity", no_init)
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&>((
+              arg("i_obs"),
+              arg("sig_i_obs"),
+              arg("sigma"),
+              arg("centric_flags"))))
+          .add_property("log_likelihood", make_getter(&w_t::log_likelihood, return_value_policy<return_by_value>()))
+          .add_property("d_ll_d_ln_sigma", make_getter(&w_t::d_ll_d_ln_sigma, return_value_policy<return_by_value>()))
+          .add_property("d2_ll_d_ln_sigma2", make_getter(&w_t::d2_ll_d_ln_sigma2, return_value_policy<return_by_value>()))
+        ;
+      }
+      {
+        def("wilson_intensity_tail_probability", &tail_probability,
+          (arg("i_obs"), arg("sig_i_obs"), arg("sigma"), arg("centric_flags")));
+      }
+    }
+
+    static af::shared<double>
+    tail_probability(
+      af::const_ref<double> const& i_obs,
+      af::const_ref<double> const& sig_i_obs,
+      af::const_ref<double> const& sigma,
+      af::const_ref<bool> const& centric_flags)
+    {
+      return wilson_intensity::tail_probability_many(
+        i_obs, sig_i_obs, sigma, centric_flags).probability;
+    }
+  };
+
+  struct llgi_exact_wrappers
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      {
+        typedef llgi_exact::evaluate_many w_t;
+        class_<w_t>("llgi_exact_evaluate", no_init)
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&>((
+              arg("e_obs_sq"),
+              arg("sig_e_obs_sq"),
+              arg("e_calc"),
+              arg("sigmaa"),
+              arg("centric_flags"))))
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&,
+            af::const_ref<double> const&>((
+              arg("e_obs_sq"),
+              arg("sig_e_obs_sq"),
+              arg("e_calc"),
+              arg("sigmaa"),
+              arg("centric_flags"),
+              arg("null_log_z"))))
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&,
+            af::const_ref<double> const&,
+            bool>((
+              arg("e_obs_sq"),
+              arg("sig_e_obs_sq"),
+              arg("e_calc"),
+              arg("sigmaa"),
+              arg("centric_flags"),
+              arg("null_log_z"),
+              arg("phase_error"))))
+          .add_property("ll", make_getter(&w_t::ll, return_value_policy<return_by_value>()))
+          .add_property("d_ll_d_ec", make_getter(&w_t::d_ll_d_ec, return_value_policy<return_by_value>()))
+          .add_property("d_ll_d_a", make_getter(&w_t::d_ll_d_a, return_value_policy<return_by_value>()))
+          .add_property("e_expected", make_getter(&w_t::e_expected, return_value_policy<return_by_value>()))
+          .add_property("e_abs_expected", make_getter(&w_t::e_abs_expected, return_value_policy<return_by_value>()))
+          .add_property("phase_error", make_getter(&w_t::phase_error, return_value_policy<return_by_value>()))
+        ;
+      }
+      {
+        typedef llgi::tncs_frame_many w_t;
+        class_<w_t>("llgi_tncs_frame", no_init)
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<double> const&>((
+              arg("a"),
+              arg("u"),
+              arg("t"))))
+          .add_property("a_p", make_getter(&w_t::a_p, return_value_policy<return_by_value>()))
+          .add_property("s", make_getter(&w_t::s, return_value_policy<return_by_value>()))
+          .add_property("valid", make_getter(&w_t::valid, return_value_policy<return_by_value>()))
+        ;
+      }
+      {
+        typedef llgi_exact::hybrid w_t;
+        class_<w_t>("llgi_hybrid", no_init)
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&,
+            af::const_ref<bool> const&,
+            double>((
+              arg("e_obs_sq"),
+              arg("sig_e_obs_sq"),
+              arg("force_exact"),
+              arg("centric_flags"),
+              arg("rice_kappa"))))
+          .def("size", &w_t::size)
+          .def("select", &w_t::select, (arg("selection")))
+          .def("with_rice_kappa", &w_t::with_rice_kappa, (arg("t")))
+          .def("exact_selection", &w_t::exact_selection, (arg("sigmaa")))
+          .add_property("e_obs_sq", make_getter(&w_t::e_obs_sq, return_value_policy<return_by_value>()))
+          .add_property("sig_e_obs_sq", make_getter(&w_t::sig_e_obs_sq, return_value_policy<return_by_value>()))
+          .add_property("null_log_z", make_getter(&w_t::null_log_z, return_value_policy<return_by_value>()))
+          .add_property("force_exact", make_getter(&w_t::force_exact, return_value_policy<return_by_value>()))
+          .add_property("dsqr", make_getter(&w_t::dsqr, return_value_policy<return_by_value>()))
+          .def_readonly("rice_kappa", &w_t::rice_kappa)
+        ;
+      }
+      {
+        typedef llgi_exact::rice_moments_many w_t;
+        class_<w_t>("llgi_rice_moments", no_init)
+          .def(init<
+            af::const_ref<double> const&,
+            af::const_ref<double> const&,
+            af::const_ref<bool> const&>((
+              arg("e_obs_sq"),
+              arg("sig_e_obs_sq"),
+              arg("centric_flags"))))
+          .add_property("valid", make_getter(&w_t::valid, return_value_policy<return_by_value>()))
+          .add_property("mu2", make_getter(&w_t::mu2, return_value_policy<return_by_value>()))
+          .add_property("mu4", make_getter(&w_t::mu4, return_value_policy<return_by_value>()))
+          .add_property("dsqr", make_getter(&w_t::dsqr, return_value_policy<return_by_value>()))
+          .add_property("eeff", make_getter(&w_t::eeff, return_value_policy<return_by_value>()))
+        ;
+      }
+    }
+  };
+
   struct r_factor_wrappers
   {
     //typedef r_factor w_t;
@@ -290,6 +644,11 @@ namespace boost_python {
     targets::boost_python::mlf_wrappers::wrap();
     targets::boost_python::mli_wrappers::wrap();
     targets::boost_python::mlhl_wrappers::wrap();
+    targets::boost_python::llgi_wrappers::wrap();
+    targets::boost_python::llgi_sigmaa_scatfrac_wrappers::wrap();
+    targets::boost_python::llgi_e_sigmaa_wrappers::wrap();
+    targets::boost_python::llgi_exact_wrappers::wrap();
+    targets::boost_python::wilson_intensity_wrappers::wrap();
     targets::boost_python::r_factor_wrappers::wrap();
   }
 
