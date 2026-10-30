@@ -730,13 +730,10 @@ def check_tl_calls(rec, n_calls = None):
 
 def external_setup():
   '''external_sharpen of get_mmm() (with its model 'model') against an
-     'external_map' that is an identical deep copy of the map.  A differing
-     (for example noisy) external map hits a separate, older crash in
-     cctbx/maptbx/refine_sharpening.py: for external-map sharpening the
-     overall cc is fixed at 1, so the overall ssqr is zero and bb_values are
-     infinite (deepcopy in _average_scale_factor_info_over_xyz then fails).
-     So this case tests the TLS conversion and group rules only, not
-     realistic external sharpening.  TLS groups: get_groups split A.'''
+     'external_map' that is an identical deep copy of the map, so this
+     case tests the TLS conversion and group rules only, not realistic
+     external sharpening (see external_differing_map for a differing
+     external map without TLS).  TLS groups: get_groups split A.'''
   mmm = get_mmm()
   groups = get_groups(mmm, SPLIT_A)
   mmm.add_map_manager_by_id(map_manager = mmm.map_manager().deep_copy(),
@@ -757,6 +754,88 @@ def tst_external_tls():
   rec = run_tls_groups(('external',), external_setup)
   check_tl_calls(rec, n_calls = 1)
   check_with_model(rec)
+
+def check_uncertainty_info(sfi_list):
+  '''Scaling information from external-map sharpening: the overall cc is
+     fixed at 1, so the overall ssqr is zero and the anisotropy of the
+     uncertainties (si.bb_values) is undefined.  Each si has bb_values None;
+     every flex.double in each si and overall_si is finite and is the same
+     in a copy (deepcopy and pickle; non-finite values do not survive)'''
+  import copy, math, pickle
+  assert sfi_list, "analyze_anisotropy not called"
+  for sfi in sfi_list:
+    for x in sfi.bb_b_cart_as_u_cart:
+      assert math.isfinite(x), "bb_b_cart_as_u_cart not finite"
+    for si in sfi.scaling_info_list + [sfi.overall_si]:
+      copies = (copy.deepcopy(si), pickle.loads(pickle.dumps(si)))
+      for key in si.keys():
+        values = si.get(key)
+        if not isinstance(values, flex.double):
+          continue
+        for c in copies:
+          assert list(c.get(key)) == list(values), (
+            "%s changed by copy: %s -> %s" %(key, list(values)[:3],
+            list(c.get(key))[:3]))
+        for x in values:
+          assert math.isfinite(x), "%s not finite" %(key)
+    for si in sfi.scaling_info_list:
+      assert si.bb_values is None, "bb_values defined"
+
+def run_external_no_tls(noise_scale = 0., glg = False):
+  '''external_sharpen, local anisotropic, no TLS, against an
+     'external_map' that is a copy of the map plus uniform noise of
+     noise_scale times its rms (fixed seed); glg: global-local-global.
+     Checks that the sharpened map is finite and the scaling information
+     of each analyze_anisotropy call (check_uncertainty_info)'''
+  import math, random
+  from cctbx.maptbx import refine_sharpening
+  mmm = get_mmm()
+  ext = mmm.map_manager().deep_copy()
+  if noise_scale:
+    d = ext.map_data()
+    rms = d.as_1d().standard_deviation_of_the_sample()
+    g = random.Random(11)
+    noise = (flex.double([g.random() for j in range(d.size())]) - 0.5) * (
+       noise_scale * rms)
+    noise.reshape(d.accessor())
+    ext.set_map_data(d + noise)
+  mmm.add_map_manager_by_id(map_manager = ext, map_id = 'external_map')
+  sfi_list = []
+  original = refine_sharpening.analyze_anisotropy
+  def wrapped(*args, **kw):
+    sfi = original(*args, **kw)
+    sfi_list.append(sfi)
+    return sfi
+  def sharpen():
+    mmm.external_sharpen(local_sharpen = True, anisotropic_sharpen = True,
+      overall_sharpen_before_and_after_local = glg, n_boxes = 8, nproc = 1)
+  refine_sharpening.analyze_anisotropy = wrapped
+  try:
+    run_in_temp_dir(sharpen)
+  finally:
+    refine_sharpening.analyze_anisotropy = original
+  data = mmm.get_map_manager_by_id('map_manager_scaled').map_data().as_1d()
+  for x in data:
+    assert math.isfinite(x), "sharpened map has non-finite values"
+  check_uncertainty_info(sfi_list)
+
+def tst_external_identical_map():
+  '''external_sharpen, local anisotropic, against an identical copy of
+     the map: the undefined uncertainty anisotropy is None and the scaling
+     information survives copying (it was nan, and copying changed it)'''
+  run_external_no_tls()
+
+def tst_external_differing_map():
+  '''external_sharpen, local anisotropic, against an external map that
+     differs from the map (noisy copy) runs (it crashed with
+     SCITBX_ASSERT(d < 256) on infinite uncertainty-anisotropy values)'''
+  run_external_no_tls(noise_scale = 0.3)
+
+def tst_external_global_local_global():
+  '''external_sharpen global-local-global, local anisotropic, against an
+     identical copy of the map runs (the local pass sees a map that the
+     overall pass has changed; it crashed like external_differing_map)'''
+  run_external_no_tls(glg = True)
 
 HALF_MAP_N_BOXES = 8
 HALF_MAP_SPLIT = SPLIT_A
@@ -1119,6 +1198,9 @@ def run(args = None):
      ('global_local_global_half_map', tst_global_local_global_half_map),
      ('other_model_id', tst_other_model_id),
      ('external_tls', tst_external_tls),
+     ('external_identical_map', tst_external_identical_map),
+     ('external_differing_map', tst_external_differing_map),
+     ('external_global_local_global', tst_external_global_local_global),
      ('average_overall_scale_stored', tst_average_overall_scale_stored),
      ('mixed_overall_si', tst_mixed_overall_si),
      ('averaged_ssqr', tst_averaged_ssqr),
