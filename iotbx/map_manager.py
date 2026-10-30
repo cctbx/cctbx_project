@@ -1228,6 +1228,11 @@ class map_manager(map_reader, write_ccp4_map):
     origin of the map (normally set to (0,0,0) before working with the map,
     see sites_cart_to_sites_cart_absolute and
     sites_cart_absolute_to_sites_cart.)
+    If wrapping is False, sites outside the map get a density of zero. For a
+    boxed map (not full size) that means beyond the first or last grid point
+    on any axis (grid units 0 to n-1, with a tolerance of 1.e-6 grid units
+    for round-off). For a full-size map it means fractional coordinates
+    below 0 or above 1.
     '''
     assert isinstance(sites_cart, flex.vec3_double)
 
@@ -1240,15 +1245,25 @@ class map_manager(map_reader, write_ccp4_map):
     # Cross off anything outside the box if wrapping is false
     if not self.wrapping():
       sites_frac = self.crystal_symmetry().unit_cell().fractionalize(sites_cart)
-      x,y,z = sites_frac.parts()
-      s = (
-         (x < 0) |
-         (y < 0) |
-         (z < 0) |
-         (x > 1) |
-         (y > 1) |
-         (z > 1)
-         )
+      if self.is_full_size():
+        x,y,z = sites_frac.parts()
+        s = (
+           (x < 0) |
+           (y < 0) |
+           (z < 0) |
+           (x > 1) |
+           (y > 1) |
+           (z > 1)
+           )
+      else:
+        # Interpolation is periodic, so in a boxed map a site past the last
+        #  grid point would otherwise blend with the opposite face of the box.
+        n_grid = self.map_data().all()
+        tolerance = 1.e-6
+        s = flex.bool(sites_cart.size(), False)
+        for x_frac, n in zip(sites_frac.parts(), n_grid):
+          x_grid = x_frac * n
+          s = s | (x_grid < -tolerance) | (x_grid > n - 1 + tolerance)
       density_values.set_selected(s,0)
     return density_values
 

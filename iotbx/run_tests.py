@@ -21,6 +21,7 @@ tst_list_base = [
   "$D/regression/tst_map_manager_wrapping.py",
   "$D/regression/tst_map_manager.py",
   "$D/regression/tst_map_manager_2.py",
+  "$D/regression/tst_map_manager_density_at_edges.py",
   "$D/regression/tst_map_model_manager.py",
   "$D/regression/tst_map_model_manager_2.py",
   "$D/regression/tst_map_model_manager_3.py",
