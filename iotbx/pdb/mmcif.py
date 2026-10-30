@@ -361,6 +361,11 @@ def hierarchy_from_atom_site(cif_block):
   AssertionError
     A missing label column, as from the Python builder (iotbx.pdb.utils
     matches the message).
+
+  Notes
+  -----
+  The C++ build runs with the GIL released (tst_mmcif_hierarchy_gil.py);
+  the columns are not shared with any other thread.
   """
   from iotbx.pdb import build_mmcif_hierarchy
   columns = atom_site_columns_from_block(cif_block)

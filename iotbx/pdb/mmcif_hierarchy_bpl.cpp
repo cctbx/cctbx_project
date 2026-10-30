@@ -9,6 +9,30 @@
 
 namespace iotbx { namespace pdb { namespace boost_python {
 
+  namespace {
+
+    // build_hierarchy touches no Python object: the columns are af::shared
+    // handles and the result is a C++ root, converted once the GIL is
+    // back. So the build runs with the GIL released and another thread (a
+    // GUI, say) keeps running; that thread must not modify the columns
+    // meanwhile. The guard restores the GIL on the way out, on an
+    // exception too, before Boost.Python translates it.
+    struct gil_release
+    {
+      PyThreadState* save;
+      gil_release() : save(PyEval_SaveThread()) {}
+      ~gil_release() { PyEval_RestoreThread(save); }
+    };
+
+    hierarchy::root
+    build_hierarchy_without_gil(mmcif::atom_site_columns const& columns)
+    {
+      gil_release guard;
+      return mmcif::build_hierarchy(columns);
+    }
+
+  } // namespace <anonymous>
+
   void wrap_mmcif_hierarchy()
   {
     using namespace boost::python;
@@ -53,7 +77,8 @@ namespace iotbx { namespace pdb { namespace boost_python {
       .def_readwrite("aniso_is_b", &w_t::aniso_is_b)
     ;
 #undef IOTBX_PDB_MMCIF_COLUMN
-    def("build_mmcif_hierarchy", mmcif::build_hierarchy, (arg("columns")));
+    def("build_mmcif_hierarchy", build_hierarchy_without_gil,
+      (arg("columns")));
     def("mmcif_parse_cell_double", mmcif::parse_cell_double, (arg("cell")));
     def("mmcif_parse_cell_int", mmcif::parse_cell_int, (arg("cell")));
   }
