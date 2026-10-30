@@ -84,6 +84,7 @@ general_tests = [
   "$D/refinement/tst_rigid_body.py",
   "$D/refinement/tst_rigid_body_groups_from_pdb_chains.py",
   "$D/refinement/tst_refinement_flags.py",
+  "$D/refinement/tst_minimization_riding_h.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_model.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_model_ligands.py",
   "$D/geometry_restraints/torsion_restraints/tst_ter_records.py",
