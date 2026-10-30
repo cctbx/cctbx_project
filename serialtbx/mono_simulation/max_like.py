@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import math
-from math import exp,pi,log,pow
+from math import exp,pi,log
 import sys
 import copy
 
