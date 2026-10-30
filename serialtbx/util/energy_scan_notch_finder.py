@@ -78,12 +78,12 @@ def plot_notches(runs, rundata, notches, per_run_plots=False, use_figure=None):
   ax = fig.subplots()
   for run, data, notch in zip(runs, rundata, notches):
     (notch_x, notch_y), notch_shape, smoothed_y, flattened_y = notch
-    ax.plot(range(len(data)), data, '-', label=f"run {run}: notch at {int(notch_x)} pixels".format())
-    ax.plot([notch_x], [notch_y], 'k+', label="_nolegend_")
-  # repeat last one to add legend
-  ax.plot([notch_x], [notch_y], 'k+', label="identified notches")
-
-  ax.legend()
+    ax.plot(range(len(data)), data, '-', label=str(run))
+    ax.plot([notch_x], [notch_y], 'k+')
+  # Entries are just the run numbers so the legend stays narrow, and it can be
+  # dragged off whatever it covers.
+  legend = ax.legend(title="Run")
+  legend.set_draggable(True)
   ax.set_title("Energy scan")
   ax.set_xlabel("FEE spectrometer pixels")
   ax.set_ylabel("Mean counts")
