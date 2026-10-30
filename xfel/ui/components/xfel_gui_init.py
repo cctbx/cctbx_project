@@ -2032,7 +2032,10 @@ class EnergyTab(BaseTab):
       panel.SetSizer(sizer)
       canvas = FigureCanvas(panel, -1, figure)
       canvas.SetMinSize((300, 200)) # the figure size is only the starting size
-      toolbar = NavigationToolbar(canvas)
+      # No x,y readout: on a vertical toolbar its text adds to the toolbar's
+      # width, so the toolbar widened and the plot narrowed whenever the
+      # pointer was over the plot.
+      toolbar = NavigationToolbar(canvas, coordinates=False)
       toolbar.SetWindowStyle(wx.TB_VERTICAL)
       toolbar.Realize()
       sizer.Add(canvas, 1, flag=wx.EXPAND)
