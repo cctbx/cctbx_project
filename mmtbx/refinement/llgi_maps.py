@@ -27,21 +27,24 @@ multiples of M0 (checked by Monte Carlo).
 F scale: sqrt(TEPS)*RESN/sqrt(ANISOBETA), the data's own normalisation with
 nacelle's anisotropic factor divided out (the overall isotropic falloff of
 the data kept), or, for the _aniso maps (only with anisotropic_maps=True),
-sqrt(TEPS)*RESN with the anisotropy left in. Maps (labels in LABELS):
+sqrt(TEPS)*RESN with the anisotropy left in. Maps (labels in LABELS; the
+labels that Coot opens automatically, so that LLGI runs need no other
+settings there):
 
-  IWT            bias-reduced            IWT_aniso       (anisotropy left in)
-  IWT_fill       fill                    IWT_fill_aniso
-  dIWT           difference              dIWT_aniso
+  2FOFCWT        bias-reduced        2FOFCWT_aniso       (anisotropy left in)
+  2FOFCWT_fill   fill                2FOFCWT_fill_aniso
+  FOFCWT         difference          FOFCWT_aniso
 
 The anisotropy-removed maps correlate better with the true map and the true
 difference map, most clearly for anisotropic data. Without an ANISOBETA
 column the anisotropy cannot be removed, and the maps without suffix keep it.
 
-IWT and dIWT have the reflections used by the LLGI target. IWT_fill adds
-every other reflection to the resolution limit (unmeasured, or measured but
-left out of the target as uninformative) with sigmaA*Ec, i.e. the value the
-fill coefficient tends to; there the F scale is RESN/sqrt(ANISOBETA)
-(RESN for IWT_fill_aniso), with nacelle's RESN for every reflection in the
+2FOFCWT and FOFCWT have the reflections used by the LLGI target.
+2FOFCWT_fill adds every other reflection to the resolution limit
+(unmeasured, or measured but left out of the target as uninformative) with
+sigmaA*Ec, i.e. the value the fill coefficient tends to; there the F scale
+is RESN/sqrt(ANISOBETA) (RESN for 2FOFCWT_fill_aniso), with nacelle's RESN
+for every reflection in the
 nacelle file and nacelle's model of it for the others (resn_model), and
 ANISOBETA(h) = exp(h^T B0 h + d*^2 h^T B1 h) fitted to nacelle's ANISOBETA
 (exact for nacelle's anisotropy model, with or without its resolution
@@ -54,21 +57,23 @@ llgi_map_params = iotbx.phil.parse("""\
   enabled = True
     .type = bool
     .short_caption = Write LLGI map coefficients
-    .help = "Write the LLGI map coefficients (IWT, IWT_fill, dIWT; see " \
-            "mmtbx.refinement.llgi_maps) to the output MTZ file when " \
-            "target=llgi, in place of the usual ones."
+    .help = "Write the LLGI map coefficients (2FOFCWT, bias-reduced; " \
+            "2FOFCWT_fill, posterior with the left-out reflections filled; " \
+            "FOFCWT, difference; see mmtbx.refinement.llgi_maps) to the " \
+            "output MTZ file when target=llgi, in place of the usual ones."
   anisotropic_maps = False
     .type = bool
     .short_caption = Also write the LLGI maps with the anisotropy left in
-    .help = "Also write IWT_aniso, IWT_fill_aniso and dIWT_aniso: the LLGI " \
-            "maps on the data's anisotropic scale (sqrt(TEPS)*RESN), without " \
-            "nacelle's anisotropy (ANISOBETA) divided out."
+    .help = "Also write 2FOFCWT_aniso, 2FOFCWT_fill_aniso and FOFCWT_aniso: " \
+            "the LLGI maps on the data's anisotropic scale " \
+            "(sqrt(TEPS)*RESN), without nacelle's anisotropy (ANISOBETA) " \
+            "divided out."
 """)
 
 LABELS = group_args(
-  bias_reduced="IWT", fill="IWT_fill", difference="dIWT",
-  bias_reduced_aniso="IWT_aniso", fill_aniso="IWT_fill_aniso",
-  difference_aniso="dIWT_aniso")
+  bias_reduced="2FOFCWT", fill="2FOFCWT_fill", difference="FOFCWT",
+  bias_reduced_aniso="2FOFCWT_aniso", fill_aniso="2FOFCWT_fill_aniso",
+  difference_aniso="FOFCWT_aniso")
 
 def posterior_mean_e(e_obs_sq, sig_e_obs_sq, e_calc, sigmaa, centric_flags):
   """ Exact <E> along the model phase. sig_e_obs_sq <= 0 (no measurement
@@ -424,8 +429,9 @@ class bias_reduced_map_server(object):
   """ Stands in for the electron_density_map object emap of the LLGI helper
   (fmodel.electron_density_map_for_model_building): the 2mFo-DFc-type maps
   (mmtbx.map_names k = 2, n = -1, ML weights) are the bias-reduced map
-  IWT (missing reflections 0, whatever fill_missing; the free reflections
-  too with exclude_free_r_reflections=True, or use_all_data=False in
+  (LABELS.bias_reduced; missing reflections 0, whatever fill_missing; the
+  free reflections too with exclude_free_r_reflections=True, or
+  use_all_data=False in
   fft_map, as in mmtbx.map_tools); everything else comes from emap, whose
   mFo-DFc form <E> - sigmaA*Ec is the LLGI difference map. """
 
