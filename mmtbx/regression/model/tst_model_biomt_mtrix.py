@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.model
+from libtbx.test_utils import approx_equal
+from scitbx import matrix
 import time
 
 """
@@ -50,10 +52,12 @@ SHEET    2   E 2 GLN A 311  GLU A 314 -1  O  ARG A 313   N  PHE A 306
 
 """
 
-# 300 atoms
+# 300 atoms; the first has SIGATM and ANISOU records.
 atoms_txt = """
 CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1
 ATOM   2065  N   GLY A 304       3.950 -35.449 102.015  1.00 21.30           N
+SIGATM 2065  N   GLY A 304       0.010   0.020   0.030  0.00  0.00           N
+ANISOU 2065  N   GLY A 304     2953   2512   2625   -261    412   -197       N
 ATOM   2066  CA  GLY A 304       4.631 -35.764 103.257  1.00 19.87           C
 ATOM   2067  C   GLY A 304       6.074 -36.196 103.097  1.00 19.37           C
 ATOM   2068  O   GLY A 304       6.642 -36.823 103.994  1.00 18.69           O
@@ -355,6 +359,26 @@ ATOM   2363  O   ALA A 342      14.703 -12.618 103.392  1.00 14.49           O
 ATOM   2364  CB  ALA A 342      11.782 -12.143 104.511  1.00 12.29           C
 """
 
+def assert_copies_of_first_atom(inp, model, operators):
+  """
+  The copies of the one atom with ANISOU and SIGATM, in operator order,
+  carry its U rotated by each operator, and keep its sigxyz only under the
+  identity.
+  """
+  original = inp.atoms()[0]
+  u = matrix.sym(sym_mat3=original.uij)
+  copies = []
+  for atom in model.get_hierarchy().atoms():
+    if (atom.uij_is_defined()):
+      copies.append(atom)
+  assert len(copies) == len(operators.r)
+  for r, copy in zip(operators.r, copies):
+    assert approx_equal(copy.uij, (r * u * r.transpose()).as_sym_mat3())
+    if (r.is_r3_identity_matrix()):
+      assert copy.sigxyz == original.sigxyz
+    else:
+      assert copy.sigxyz == (0, 0, 0)
+
 def exercise_single_mtrix():
   inp = iotbx.pdb.input(lines=single_mtrix_txt+ss_txt+atoms_txt, source_info=None)
   model = mmtbx.model.manager(
@@ -369,6 +393,11 @@ def exercise_single_mtrix():
   assert ss_ann.get_n_sheets() == 2
 
 def exercise_mtrix():
+  """
+  MTRIX records of two operators besides the given identity triple the
+  model and its secondary structure, and the rotated copies of the atom
+  with ANISOU and SIGATM have its U rotated and its sigxyz cleared.
+  """
   inp = iotbx.pdb.input(lines=mtrix_txt+ss_txt+atoms_txt, source_info=None)
   model = mmtbx.model.manager(
     model_input = inp)
@@ -379,9 +408,15 @@ def exercise_mtrix():
   # print ss_ann.as_pdb_str()
   assert ss_ann.get_n_helices() == 6
   assert ss_ann.get_n_sheets() == 3
+  assert_copies_of_first_atom(inp, model, inp.process_MTRIX_records())
 
 
 def exercise_biomt():
+  """
+  Expanding with BIOMT records of the identity and two rotations triples
+  the model and its secondary structure, and the rotated copies of the
+  atom with ANISOU and SIGATM have its U rotated and its sigxyz cleared.
+  """
   inp = iotbx.pdb.input(lines=biomt_txt+ss_txt+atoms_txt, source_info=None)
   model = mmtbx.model.manager(
     model_input = inp)
@@ -398,6 +433,7 @@ def exercise_biomt():
   ss_ann = model.get_ss_annotation()
   assert ss_ann.get_n_helices() == 6
   assert ss_ann.get_n_sheets() == 3
+  assert_copies_of_first_atom(inp, model, inp.process_BIOMT_records())
 
 def exercise_both():
   inp = iotbx.pdb.input(lines=mtrix_txt+biomt_txt+ss_txt+atoms_txt, source_info=None)

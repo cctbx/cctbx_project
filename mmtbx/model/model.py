@@ -5280,7 +5280,8 @@ class manager(object):
     """
     This will expand hierarchy and ss annotations. In future anything else that
     should be expanded have to be added here. e.g. TLS.
-    LIMITATION: ANISOU records in resulting hierarchy will be invalid!!!
+    Copies under a rotation have anisotropic U rotated and sigxyz and siguij
+    cleared; copies under a translation keep them.
     """
     from iotbx.pdb.utils import chain_id_generator
     roots=[]
@@ -5320,6 +5321,7 @@ class manager(object):
           xyz = c.atoms().extract_xyz()
           new_xyz = r.elems*xyz+t
           c.atoms().set_xyz(new_xyz)
+          c.atoms().rotate_uij_and_clear_sigmas(r_cart=r.elems)
           m.append_chain(c)
         root.append_model(m)
         roots.append(root)

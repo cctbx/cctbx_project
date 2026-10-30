@@ -96,8 +96,9 @@ TER
 
 def exercise_match_brute_force(space_group_info):
   """A residue group with an atom whose equivalent is in range is copied
-  whole under that operator, with its anisotropic U rotated and its sigxyz
-  and siguij cleared, and nothing else is copied.
+  whole under that operator, and nothing else is copied.  Under a rotation
+  its anisotropic U is rotated and its sigxyz and siguij cleared; under a
+  lattice translation they are kept.
 
   The sites are in general positions, so no copied atom lands on the model.
   Every third atom is isotropic.
@@ -116,11 +117,13 @@ def exercise_match_brute_force(space_group_info):
     else:
       uijs.append((0.30, 0.20, 0.25, 0.05 + 0.01 * i_seq, -0.04, 0.03))
   hierarchy.atoms().set_uij(uijs)
-  hierarchy.atoms().set_sigxyz(
-    flex.vec3_double(sites_cart.size(), (0.01, 0.02, 0.03)))
-  if (iotbx.pdb.hierarchy.atom.has_siguij()):
+  sigxyz = (0.01, 0.02, 0.03)
+  siguij = (.001, .002, .003, .0004, .0005, .0006)
+  has_siguij = iotbx.pdb.hierarchy.atom.has_siguij()
+  hierarchy.atoms().set_sigxyz(flex.vec3_double(sites_cart.size(), sigxyz))
+  if (has_siguij):
     for atom in hierarchy.atoms():
-      atom.set_siguij(new_siguij=(.001, .002, .003, .0004, .0005, .0006))
+      atom.set_siguij(new_siguij=siguij)
   copies = hierarchy.sym_equiv_residue_groups(cs, radius,
     selection=flex.size_t(primary_selection))
   obtained = set()
@@ -137,8 +140,13 @@ def exercise_match_brute_force(space_group_info):
       out=None), (space_group_symbol, copy.rt_mx.as_xyz())
     for i_seq, atom in zip(copy.i_seqs, copy.hierarchy.atoms()):
       info = (space_group_symbol, copy.rt_mx.as_xyz(), i_seq)
-      assert atom.sigxyz == (0, 0, 0), info
-      assert not atom.siguij_is_defined(), info
+      if (copy.rt_mx.r().is_unit_mx()):
+        assert atom.sigxyz == sigxyz, info
+        if (has_siguij):
+          assert atom.siguij == siguij, info
+      else:
+        assert atom.sigxyz == (0, 0, 0), info
+        assert not atom.siguij_is_defined(), info
       if (i_seq % 3 == 2):
         assert not atom.uij_is_defined(), info
       else:
