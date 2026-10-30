@@ -110,6 +110,7 @@ general_tests = [
   "$D/regression/model/tst_model_utils_merge_models.py",
   "$D/regression/model/tst_model_pairs_within.py",
   "$D/regression/model/tst_restrain_selection_to_self_or_neighbors.py",
+  "$D/regression/model/tst_model_mmcif_precision.py",
   #
   "$D/regression/tst_fmodel.py",
   "$D/regression/tst_utils.py",

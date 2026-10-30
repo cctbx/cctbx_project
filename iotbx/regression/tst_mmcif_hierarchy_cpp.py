@@ -420,10 +420,12 @@ def exercise_non_ascii_cells():
 def exercise_writer_round_trip():
   """
   What the writer emits reads back through the C++ builder as on master,
-  pickle and deepcopy of a hierarchy that does not fit PDB format included
+  pickle of a hierarchy that does not fit PDB format included
   (root.__getstate__ writes mmCIF then), with one documented exception:
   non-ASCII text in a std::string field, which is not CIF 1.1 and which
   only a non-standard file or a direct assignment puts into a hierarchy.
+  copy.deepcopy is root.deep_copy() and involves no text, so it neither
+  normalizes nor rejects anything.
   """
   import copy
   import pickle
@@ -437,13 +439,16 @@ def exercise_writer_round_trip():
   assert not h.fits_in_pdb_format()
   new = _same(h.as_mmcif_string())
   assert new.atoms()[0].name == "    " and new.atoms()[0].element == ""
-  for again in (copy.deepcopy(h), pickle.loads(pickle.dumps(h))):
-    assert again.only_model().only_chain().id == "LONG"
-    a = again.atoms()[0]
-    assert a.name == "    " and a.element == "", (a.name, a.element)
+  again = pickle.loads(pickle.dumps(h))
+  assert again.only_model().only_chain().id == "LONG"
+  a = again.atoms()[0]
+  assert a.name == "    " and a.element == "", (a.name, a.element)
+  # no text in copy.deepcopy: the two blank element columns come back verbatim
+  a = copy.deepcopy(h).atoms()[0]
+  assert a.name == "    " and a.element == "  ", (a.name, a.element)
   # non-ASCII text in a std::string field: the Python builder reads it
-  # back, the C++ builder rejects it, and so do pickle and deepcopy of a
-  # hierarchy that does not fit PDB format
+  # back, the C++ builder rejects it, and so does pickle of a hierarchy
+  # that does not fit PDB format
   h = iotbx.pdb.input(source_info=None, lines=[
     "ATOM      1  CA  ALA A   1       1.000   2.000   3.000  1.00 10.00"
     "           C"]).construct_hierarchy()
@@ -453,7 +458,6 @@ def exercise_writer_round_trip():
   assert [c.id for c in _python(first_block(text)).only_model().chains()] == [
     "αβ"]
   for build in (lambda: mmcif.hierarchy_from_atom_site(first_block(text)),
-                lambda: copy.deepcopy(h),
                 lambda: pickle.loads(pickle.dumps(h))):
     try:
       build()
@@ -462,6 +466,7 @@ def exercise_writer_round_trip():
     else:
       raise AssertionError("non-ASCII chain id accepted; update the "
         "error-reporting note in iotbx/pdb/mmcif_hierarchy.h")
+  assert copy.deepcopy(h).only_model().only_chain().id == "αβ"
 
 
 def exercise_column_fallbacks():

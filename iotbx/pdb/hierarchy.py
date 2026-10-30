@@ -390,8 +390,9 @@ class _():
   created programatically.  Note that it does not contain any reference to
   crystal symmetry or source scattering information, meaning that in practice
   it must often be tracked alongside an equivalent cctbx.xray.structure object.
-  Pickling is supported, simply by writing out and reading back the PDB-format
-  representation of the hierarchy.
+  Pickling is supported: the PDB-format text (mmCIF if the model does not fit
+  the PDB format) carries the topology and labels, and the atom numeric values
+  travel alongside it exactly, since the text rounds them.
 
   Examples
   --------
@@ -400,16 +401,25 @@ class _():
 
   __getstate_manages_dict__ = True
 
-  def __getstate__(self):
+  def _assert_no_unknown_attributes(self):
     # check that the only possible attributes that are set are
     #   _lai_lookup
     #   _label_seq_id_dict
-    # these are not pickled and are not restored when unpickling
+    # these are not pickled or deep-copied and are not restored
     # if more attributes are added to the hierarchy class in Python,
     # the pickling code needs to be updated.
     attribute_check = set(self.__dict__.keys()) - set(['_lai_lookup', '_label_seq_id_dict'])
     assert len(attribute_check) == 0, attribute_check
-    version = 2
+
+  def __deepcopy__(self, memo):
+    # Without this, copy.deepcopy goes through __getstate__/__setstate__,
+    # i.e. a text round trip. deep_copy() is exact and much faster.
+    self._assert_no_unknown_attributes()
+    return self.deep_copy()
+
+  def __getstate__(self):
+    self._assert_no_unknown_attributes()
+    version = 3
     pdb_string = StringIO()
     if self.fits_in_pdb_format():
       py3out = self._as_pdb_string_cstringio(  # NOTE py3out will be None in py2
@@ -427,7 +437,19 @@ class _():
       cif_object = iotbx.cif.model.cif()
       cif_object['pickled'] = self.as_cif_block()
       cif_object.show(out=pdb_string)
-    return (version, pickle_import_trigger(), self.info, pdb_string.getvalue())
+    # The text carries the topology and labels only. Both formats round the
+    # numeric values (PDB: xyz to 1e-3, occupancy and B to 1e-2, U to 1e-4,
+    # no fp/fdp/resolution at all; mmCIF: 5 decimals for xyz, B and U, 3 for
+    # occupancy, 4 for fp/fdp, 2 for resolution), so these are stored exactly.
+    atoms = self.atoms()
+    atom_values = (
+      atoms.extract_xyz(), atoms.extract_sigxyz(),
+      atoms.extract_occ(), atoms.extract_sigocc(),
+      atoms.extract_b(), atoms.extract_sigb(),
+      atoms.extract_uij(),
+      atoms.extract_fp(), atoms.extract_fdp(), atoms.extract_resolution())
+    return (version, pickle_import_trigger(), self.info, pdb_string.getvalue(),
+            atom_values)
 
   def __setstate__(self, state):
     assert len(state) >= 3
@@ -437,16 +459,37 @@ class _():
     version = state[0]
     if   (version == 1): assert len(state) == 3
     elif (version == 2): assert len(state) == 4
+    elif (version == 3): assert len(state) == 5
     else: raise RuntimeError("Unknown version of pickled state.")
-    self.info = state[-2]
+    if (version == 3):
+      self.info, pdb_string, atom_values = state[2], state[3], state[4]
+    else:
+      self.info, pdb_string, atom_values = state[-2], state[-1], None
     import iotbx.pdb
     ph = iotbx.pdb.input(
       source_info="string",
-      lines=flex.split_lines(state[-1])).construct_hierarchy(sort_atoms=False)
+      lines=flex.split_lines(pdb_string)).construct_hierarchy(sort_atoms=False)
 
     self.pre_allocate_models(number_of_additional_models=len(ph.models()))
     for model in ph.models():
       self.append_model(model=model.detached_copy())
+    if (atom_values is not None):
+      atoms = self.atoms()
+      xyz, sigxyz, occ, sigocc, b, sigb, uij, fp, fdp, resolution = atom_values
+      assert xyz.size() == atoms.size()
+      # Text and arrays were written in the same atom order and the text is
+      # the rounded form of the arrays, so they must agree to text precision.
+      assert flex.max_default((atoms.extract_xyz() - xyz).norms(), 0) < 2e-3
+      atoms.set_xyz(xyz)
+      atoms.set_sigxyz(sigxyz)
+      atoms.set_occ(occ)
+      atoms.set_sigocc(sigocc)
+      atoms.set_b(b)
+      atoms.set_sigb(sigb)
+      atoms.set_uij(uij)
+      atoms.set_fp(fp)
+      atoms.set_fdp(fdp)
+      atoms.set_resolution(resolution)
 
   def get_unique_resnames(self):
     """Returns a list of all unique residue names in the hierarchy."""

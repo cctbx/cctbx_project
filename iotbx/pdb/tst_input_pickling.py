@@ -17,6 +17,14 @@ is pure Python today, so it pickles its ``__dict__`` natively and the test
 passes trivially. It is planned to move to C++; when it does it will hit the
 same Boost.Python limitation, and whoever makes that move must add equivalent
 dict-managing pickle support so this test keeps passing.
+
+The ``*_lossless`` tests are a regression for mmCIF coordinates being rounded
+to PDB precision by ``copy.deepcopy`` / ``pickle`` of a hierarchy (GitHub
+issue #1269). ``root.__getstate__`` serialised through PDB text whenever the
+model fit the PDB format, which rounds xyz to 1e-3 A, occupancy and B to 1e-2,
+U to 1e-4 and drops fp/fdp entirely. ``mmtbx.model.manager`` deepcopies its
+``model_input`` to obtain its hierarchy, so every mmCIF model loaded through
+it carried PDB-precision atoms.
 """
 
 import pickle
@@ -24,6 +32,7 @@ from copy import deepcopy
 
 import iotbx.pdb
 import iotbx.pdb.mmcif
+from iotbx.pdb import hierarchy
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 
@@ -84,6 +93,166 @@ _atom_site.pdbx_PDB_model_num
 ATOM 1 N  N  . GLY A 1 1 1.000 2.000 3.000 1.00 20.00 1 A 1
 ATOM 2 C  CA . GLY A 1 1 2.000 3.000 4.000 1.00 20.00 1 A 1
 """
+
+# Two atoms whose values PDB text cannot represent: 5-decimal coordinates,
+# 3-decimal occupancy, 4-decimal B, 5-decimal anisotropic U. Every one of
+# them is deposited like this in the PDB archive today.
+_CIF_PRECISE = """\
+data_precise
+_cell.length_a      10.000
+_cell.length_b      10.000
+_cell.length_c      10.000
+_cell.angle_alpha   90.000
+_cell.angle_beta    90.000
+_cell.angle_gamma   90.000
+_symmetry.space_group_name_H-M   'P 1'
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_seq_id
+_atom_site.auth_asym_id
+_atom_site.pdbx_PDB_model_num
+ATOM 1 N  N  . GLY A 1 1 1.12345 2.23456 3.34567 0.987 20.1234 1 A 1
+ATOM 2 C  CA . GLY A 1 1 2.00001 3.00002 4.00003 0.5   21.5555 1 A 1
+loop_
+_atom_site_anisotrop.id
+_atom_site_anisotrop.type_symbol
+_atom_site_anisotrop.pdbx_label_atom_id
+_atom_site_anisotrop.pdbx_label_alt_id
+_atom_site_anisotrop.pdbx_label_comp_id
+_atom_site_anisotrop.pdbx_label_asym_id
+_atom_site_anisotrop.pdbx_label_seq_id
+_atom_site_anisotrop.U[1][1]
+_atom_site_anisotrop.U[2][2]
+_atom_site_anisotrop.U[3][3]
+_atom_site_anisotrop.U[1][2]
+_atom_site_anisotrop.U[1][3]
+_atom_site_anisotrop.U[2][3]
+1 N N . GLY A 1 0.12345 0.23456 0.34567 0.01234 -0.02345 0.03456
+"""
+
+
+def _make_precise_cif():
+  return iotbx.pdb.mmcif.cif_input(lines=_CIF_PRECISE)
+
+
+def _precise_hierarchy():
+  """Hierarchy of _CIF_PRECISE with the fields that have no mmCIF _atom_site
+  home (fp, fdp, resolution, the sigmas) set in code on the first atom, so
+  that every numeric field holds a value the text would round or drop, after
+  checking that the fixture really carries values PDB text cannot hold."""
+  h = _make_precise_cif().construct_hierarchy()
+  atoms = h.atoms()
+  atoms[0].fp = 0.12345
+  atoms[0].fdp = 0.6789
+  atoms[0].resolution = 2.567
+  atoms[0].sigxyz = (0.011, 0.022, 0.033)
+  atoms[0].sigocc = 0.044
+  atoms[0].sigb = 0.055
+  assert atoms[0].xyz == (1.12345, 2.23456, 3.34567), atoms[0].xyz
+  assert atoms[0].occ == 0.987, atoms[0].occ
+  assert atoms[0].b == 20.1234, atoms[0].b
+  assert atoms[0].uij_is_defined() and atoms[0].uij[0] == 0.12345, atoms[0].uij
+  assert not atoms[1].uij_is_defined()
+  return h
+
+
+def _atom_state(h):
+  """Everything per atom that a copy must reproduce: labels and the exact
+  numeric values (compared with ==, no tolerance)."""
+  return [
+    (a.id_str(), a.xyz, a.sigxyz, a.occ, a.sigocc, a.b, a.sigb, a.uij,
+     a.fp, a.fdp, a.resolution)
+    for a in h.atoms()]
+
+
+def _assert_same_hierarchy(ref, clone, label):
+  assert clone.is_similar_hierarchy(ref), label
+  assert list(clone.info) == list(ref.info), label
+  assert _atom_state(clone) == _atom_state(ref), (label, _atom_state(clone))
+
+
+def exercise_hierarchy_deepcopy_is_lossless():
+  """copy.deepcopy(root) must reproduce every numeric value exactly instead of
+  rounding to PDB text precision."""
+  ref = _precise_hierarchy()
+  _assert_same_hierarchy(ref, deepcopy(ref), "deepcopy")
+
+
+def exercise_hierarchy_pickle_is_lossless():
+  """pickle of root must reproduce every numeric value exactly, at every
+  protocol in use (tst_hierarchy pickles with protocol 1)."""
+  ref = _precise_hierarchy()
+  for protocol in (1, pickle.HIGHEST_PROTOCOL):
+    clone = pickle.loads(pickle.dumps(ref, protocol))
+    _assert_same_hierarchy(ref, clone, "pickle protocol %d" % protocol)
+
+
+def exercise_hierarchy_pickle_is_lossless_outside_pdb_format():
+  """The mmCIF text branch of __getstate__ (model does not fit PDB format)
+  must be exact too, not merely 5-decimal."""
+  ref = _precise_hierarchy()
+  ref.only_model().only_chain().id = "LONGID"
+  assert not ref.fits_in_pdb_format()
+  _assert_same_hierarchy(ref, pickle.loads(pickle.dumps(ref)), "pickle")
+
+
+def exercise_cif_input_deepcopy_keeps_hierarchy_precision():
+  """deepcopy(cif_input).construct_hierarchy() is how mmtbx.model.manager gets
+  its hierarchy. With the hierarchy already cached on the input, the copy went
+  through root.__getstate__ and lost precision."""
+  inp = _make_precise_cif()
+  ref = inp.construct_hierarchy()                 # populate the cache
+  clone = deepcopy(inp).construct_hierarchy()
+  _assert_same_hierarchy(ref, clone, "deepcopy(cif_input)")
+  # The copy must be independent of the original's cached hierarchy.
+  clone.atoms()[0].set_xyz((9, 9, 9))
+  assert ref.atoms()[0].xyz == (1.12345, 2.23456, 3.34567)
+
+
+def exercise_hierarchy_copy_refuses_stray_attributes():
+  """Existing contract (used to make forward-compatible hierarchies
+  unpicklable): a root carrying a Python attribute other than the known
+  caches refuses to pickle. The same must hold for copy.deepcopy, which is now
+  a separate code path."""
+  h = _precise_hierarchy()
+  h._not_a_known_cache = 1
+  for label, copier in (
+      ("pickle", lambda x: pickle.dumps(x)),
+      ("deepcopy", lambda x: deepcopy(x))):
+    try:
+      copier(h)
+    except AssertionError:
+      pass
+    else:
+      raise AssertionError(
+        "%s of a root with a stray attribute succeeded" % label)
+
+
+def exercise_hierarchy_setstate_accepts_older_pickle_versions():
+  """Pickles written before the exact numeric state was added (versions 1 and
+  2) must still load; they carry text only."""
+  ref = _make_pdb().construct_hierarchy()
+  pdb_text = ref.as_pdb_string()
+  for state in (
+      (1, ref.info, pdb_text),
+      (2, hierarchy.pickle_import_trigger(), ref.info, pdb_text)):
+    clone = hierarchy.root()
+    clone.__setstate__(state)
+    assert clone.is_similar_hierarchy(ref), state[0]
+    assert clone.as_pdb_string() == pdb_text, state[0]
 
 
 def _make_pdb():
@@ -168,6 +337,12 @@ def exercise():
   exercise_pdb_input_pickling_after_scale_matrix_cache()
   exercise_cif_input_pickling_after_scale_matrix_cache()
   exercise_pdb_input_pickling_preserves_suppressed_scale_matrix()
+  exercise_hierarchy_deepcopy_is_lossless()
+  exercise_hierarchy_pickle_is_lossless()
+  exercise_hierarchy_pickle_is_lossless_outside_pdb_format()
+  exercise_cif_input_deepcopy_keeps_hierarchy_precision()
+  exercise_hierarchy_copy_refuses_stray_attributes()
+  exercise_hierarchy_setstate_accepts_older_pickle_versions()
 
 
 if __name__ == "__main__":
