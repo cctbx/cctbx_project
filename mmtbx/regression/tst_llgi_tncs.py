@@ -605,11 +605,14 @@ def exercise_cctbx_setup_frame(h, xrs):
   log = StringIO()
   n_params = llgi_normalisation.normalisation_params.extract()
   new = llgi_tncs.setup(ld, f_obs, h, xrs, log=log,
-    normalisation_params=n_params)
+    normalisation_params=n_params, resolution_dependent_anisotropy="off")
   assert "tNCS group: chains A B" in log.getvalue()
   assert "cctbx normalisation" in log.getvalue(), log.getvalue()
   s = new.tncs_state
   assert s.normalisation_params is n_params
+  # the data's resolution-dependent anisotropy mode, kept for later stages
+  assert s.resolution_dependent_anisotropy == "off"
+  assert not s.normalisation.resolution_dependent
   assert s.t_model is None
   # the per-group consensus pair terms (one group: their sum, exactly)
   pm = llgi_tncs.pair_modulations(f_obs, s.groups, xrs, per_group=True)
@@ -620,7 +623,7 @@ def exercise_cctbx_setup_frame(h, xrs):
   plain = llgi_tncs.pair_modulations(f_obs, s.groups, xrs)
   assert plain.a_groups is None and plain.a["model"].all_eq(pm.a["model"])
   fit = llgi_normalisation.fit(ld.i_obs_base, tncs_a_groups=a_groups,
-    params=n_params)
+    params=n_params, resolution_dependent_anisotropy="off")
   t = new.tncs_t.data()
   assert flex.max(flex.abs(t - fit.teps.data())) < 1e-12
   assert new.tncs_u.data().all_eq(t)

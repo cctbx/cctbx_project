@@ -768,6 +768,8 @@ def renormalise_e(e_obs_sq_base, sig_e_obs_sq_base, resn, t, centric_flags):
   return d
 
 def _hybrid(d, centric_flags, rice_kappa):
+  # None (the Rice form) when rice_kappa is None (_rice_kappa: form=rice)
+  if(rice_kappa is None): return None
   return xray_ext.llgi_hybrid(e_obs_sq=d.e_obs_sq,
     sig_e_obs_sq=d.sig_e_obs_sq, force_exact=d.force_exact,
     centric_flags=centric_flags, rice_kappa=rice_kappa)
@@ -796,12 +798,13 @@ def is_cctbx_source(llgi_data):
     getattr(llgi_data, "i_obs_base", None) is not None)
 
 def _normalisation_fit(i_obs_base, a_groups, normalisation_params,
-      selection=None, log=None):
+      resolution_dependent_anisotropy, selection=None, log=None):
   """ the data-only stage: mmtbx.refinement.llgi_normalisation.fit of the
   intensities with the consensus pair terms of the tNCS groups """
   import mmtbx.refinement.llgi_normalisation as llgi_normalisation
   return llgi_normalisation.fit(i_obs=i_obs_base, tncs_a_groups=a_groups,
-    params=normalisation_params, log=log, selection=selection)
+    params=normalisation_params, log=log, selection=selection,
+    resolution_dependent_anisotropy=resolution_dependent_anisotropy)
 
 def _resn_scale(resn, sig_i_obs, sig_e_obs_sq):
   """ k in resn = k RESN_fit: llgi_data's RESN (which mmtbx.f_model.manager.
@@ -821,7 +824,8 @@ def _base_from_fit(i_obs_base, fit, resn_scale):
     i_obs_base.sigmas() / resn_sq)
 
 def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
-      log=None, normalisation_params=None, pair_terms=None):
+      log=None, normalisation_params=None, pair_terms=None,
+      resolution_dependent_anisotropy="auto"):
   """ The tNCS treatment for llgi_data (on f_obs's index set), if the model
   has groups of chains related by tNCS: the observations are kept on the E
   scale without tNCS (nacelle's TEPS is not used), and renormalised by
@@ -830,8 +834,9 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
   cctbx normalisation (is_cctbx_source), the data-only stage instead:
   llgi_normalisation.fit of llgi_data.i_obs_base with the consensus pair
   terms of the groups (normalisation_params: extracted
-  llgi_normalisation.normalisation_params, or None for defaults; kept for
-  fit_and_renormalise), RESN from it, the observations on the E scale
+  llgi_normalisation.normalisation_params, or None for defaults, and
+  resolution_dependent_anisotropy, the mode of the data's anisotropy; both
+  kept for fit_and_renormalise), RESN from it, the observations on the E scale
   I/RESN^2, and the frame started at u = t = TEPS_data; the fit's
   selection is kept for later stages. pair_terms (cctbx source only): the
   pair_modulations result (with "consensus", per_group=True) on f_obs's
@@ -853,7 +858,8 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
     return None
   if(is_cctbx_source(llgi_data)):
     return _setup_cctbx(llgi_data, f_obs, groups, xray_structure, params,
-      normalisation_params, log, pair_terms)
+      normalisation_params, log, pair_terms,
+      resolution_dependent_anisotropy=resolution_dependent_anisotropy)
   centric = f_obs.centric_flags().data()
   dss = f_obs.d_star_sq().data()
   teps = llgi_data.teps.data()
@@ -878,7 +884,8 @@ def setup(llgi_data, f_obs, pdb_hierarchy, xray_structure, params=None,
       normalisation=None, normalisation_params=None, monitor=None))
 
 def _setup_cctbx(llgi_data, f_obs, groups, xray_structure, params,
-      normalisation_params, log, pair_terms=None):
+      normalisation_params, log, pair_terms=None,
+      resolution_dependent_anisotropy="auto"):
   """ setup with the cctbx normalisation (only the consensus pair terms
   are needed, and not computed if pair_terms is given) """
   if(normalisation_params is None):
@@ -898,7 +905,7 @@ def _setup_cctbx(llgi_data, f_obs, groups, xray_structure, params,
     print("tNCS: cctbx normalisation with the consensus pair terms of the "
       "tNCS groups (data-only stage)", file=log)
   fit = _normalisation_fit(i_obs, pm.a_groups["consensus"],
-    normalisation_params, log=log)
+    normalisation_params, resolution_dependent_anisotropy, log=log)
   scale = _resn_scale(llgi_data.resn.data(), i_obs.sigmas(),
     llgi_data.sig_e_obs_sq.data() * llgi_data.teps.data())
   resn, e_base, sig_base = _base_from_fit(i_obs, fit, scale)
@@ -918,11 +925,18 @@ def _setup_cctbx(llgi_data, f_obs, groups, xray_structure, params,
       tau=linear_in_d_star_sq(flex.max(dss), min(max(gamma, 0.), 0.99)),
       coherence=fit.coherence, f_total=pm.f_total, params=params,
       teps_data=teps_data, t_model=None, normalisation=fit,
-      normalisation_params=normalisation_params, monitor=None))
+      normalisation_params=normalisation_params,
+      resolution_dependent_anisotropy=resolution_dependent_anisotropy,
+      monitor=None))
 
 def _rice_kappa(llgi_data):
-  return llgi_data.hybrid_params.rice_kappa \
-    if getattr(llgi_data, "hybrid_params", None) is not None else 0.1
+  # rice_kappa of the likelihood form for the sigmaA and ScatFrac fits, or
+  # None for form=rice (no hybrid object)
+  import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+  params = getattr(llgi_data, "hybrid_params", None)
+  if(params is None): return 0.1
+  if(params.form == "rice"): return None
+  return llgi_hybrid.effective_rice_kappa(params)
 
 def _model_anisotropy(e_params, llgi_data):
   # llgi_e_sigmaa's model_anisotropy (resolved), as in the sigmaA fit
@@ -1232,6 +1246,7 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
     i_obs = llgi_data.i_obs_base
     normalisation = _normalisation_fit(i_obs, pm.a_groups["consensus"],
       state.normalisation_params,
+      getattr(state, "resolution_dependent_anisotropy", "auto"),
       selection=llgi_data.normalisation_selection.data())
     resn, e_base, sig_base = _base_from_fit(i_obs, normalisation,
       _resn_scale(resn, i_obs.sigmas(), sig_base))
@@ -1312,6 +1327,8 @@ def fit_and_renormalise(fmodel, scatfrac_params=None, e_params=None,
       coherence=coherence, f_total=f_total, params=params,
       teps_data=teps_data, t_model=t_model, normalisation=normalisation,
       normalisation_params=getattr(state, "normalisation_params", None),
+      resolution_dependent_anisotropy=getattr(state,
+        "resolution_dependent_anisotropy", "auto"),
       monitor=monitor_result),
     _sigmaa_f_model=fmodel.f_model().data().deep_copy(), **changes)
   fmodel.set_llgi_data(new)

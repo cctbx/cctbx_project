@@ -169,7 +169,7 @@ class manager_mixin(object):
     maps of the working reflections: posterior_filled, the LLGI posterior
     map with D*Fc for every other reflection (mmtbx.refinement.llgi_maps.
     filled_posterior_map_server); bias_reduced, the LLGI bias-reduced map
-    (bias_reduced_map_server); posterior_2mfo_dfc (or none), the LLGI
+    (bias_reduced_map_server); posterior (or none), the LLGI
     posterior map without them. """
     emap = self.electron_density_map_for_target()
     if(self.llgi_target_active()):

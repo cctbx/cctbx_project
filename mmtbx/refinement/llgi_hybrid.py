@@ -27,34 +27,40 @@ the llgi_data instance.
 """
 
 llgi_hybrid_params = iotbx.phil.parse("""\
-  enabled = True
-    .type = bool
-    .short_caption = Hybrid exact/Rice LLGI
-    .help = "Evaluate the exact LLGI (numerical integration over the " \
-            "observed intensity's error) instead of the Rice " \
-            "approximation for reflections where the approximation is " \
-            "not accurate enough (see rice_kappa, and reflections with no " \
-            "2nd/4th-moment Rice solution). Needs the intensities and sigmas in the LLGI data " \
-            "file."
+  form = rice *hybrid exact
+    .type = choice
+    .short_caption = Form of the LLGI likelihood
+    .help = "rice: the Rice approximation with moment-matched (Dobs, Feff) " \
+            "for every reflection, in the target and in the sigmaA and " \
+            "ScatFrac fits. hybrid: the exact likelihood (numerical " \
+            "integration over the observed intensity's error) where the " \
+            "Rice approximation is not accurate enough (see rice_kappa, " \
+            "and reflections with no 2nd/4th-moment Rice solution), Rice " \
+            "elsewhere; the sigmaA and ScatFrac fits use the exact form " \
+            "throughout. exact: the exact likelihood for every reflection " \
+            "(slower). hybrid and exact need intensities with sigmas; " \
+            "without them the Rice form is used. The map coefficients use " \
+            "the exact posterior whatever the form."
   rice_kappa = 0.1
     .type = float
-    .short_caption = Exact LLGI unless the measurement error is small
-    .help = "The Rice approximation has variance 1 - D^2 sigmaA^2, of which " \
-            "1 - D^2 comes from the measurement error and D^2 (1 - sigmaA^2) " \
-            "from the model error. It is exact as the measurement error " \
-            "vanishes, and its worst case (a calculated E far from what the " \
-            "observation implies) grows as the model error shrinks, so the " \
-            "exact likelihood is used where 1 - D^2 > rice_kappa*(1 - " \
-            "sigmaA^2)^2. With 0.1 the worst-case Rice error is about 0.15 " \
-            "in the LLGI of a reflection, at any sigmaA; 0 evaluates every " \
-            "reflection exactly."
-  sigma_e_obs_sq_cutoff = 8.5
-    .type = float
-    .short_caption = Exclude reflections with sigma(E_obs^2) above
-    .help = "Reflections with sigma(E_obs^2) above this carry less " \
-            "than ~0.01 bits of information and are excluded from " \
-            "refinement altogether."
+    .short_caption = Hybrid: exact LLGI unless the measurement error is small
+    .help = "For form=hybrid. The Rice approximation has variance 1 - D^2 " \
+            "sigmaA^2, of which 1 - D^2 comes from the measurement error " \
+            "and D^2 (1 - sigmaA^2) from the model error. It is exact as " \
+            "the measurement error vanishes, and its worst case (a " \
+            "calculated E far from what the observation implies) grows as " \
+            "the model error shrinks, so the exact likelihood is used where " \
+            "1 - D^2 > rice_kappa*(1 - sigmaA^2)^2. With 0.1 the worst-case " \
+            "Rice error is about 0.15 in the LLGI of a reflection, at any " \
+            "sigmaA."
 """)
+
+def effective_rice_kappa(params):
+  """ The rice_kappa of the cctbx.xray.llgi_hybrid object for the likelihood
+  form of params (extracted llgi_hybrid_params): 0 (every reflection
+  exact) for form=exact, params.rice_kappa otherwise. """
+  if(params.form == "exact"): return 0.0
+  return params.rice_kappa
 
 def e_obs_sq_and_sigma(i_obs, sig_i_obs, resn, teps):
   """ E_obs^2 and sigma(E_obs^2) from intensities and nacelle's RESN/TEPS
@@ -112,16 +118,16 @@ def get_exact_data(llgi_data):
       sig_e_obs_sq=llgi_data.sig_e_obs_sq.data(),
       force_exact=llgi_data.force_exact.data(),
       centric_flags=e_obs_sq.centric_flags().data(),
-      rice_kappa=params.rice_kappa)
+      rice_kappa=effective_rice_kappa(params))
     llgi_data._hybrid_object = result
   return result
 
 def get_hybrid(llgi_data):
   """ The cctbx.xray.llgi_hybrid object for this llgi_data, or None if the
-  hybrid is disabled or the intensities are not available. """
+  likelihood form is rice or the intensities are not available. """
   if(llgi_data is None): return None
   params = getattr(llgi_data, "hybrid_params", None)
-  if(params is None or not params.enabled): return None
+  if(params is None or params.form == "rice"): return None
   return get_exact_data(llgi_data)
 
 def map_llgi_data(llgi_data, op):

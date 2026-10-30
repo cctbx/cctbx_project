@@ -405,14 +405,6 @@ normalisation_params = iotbx.phil.parse("""\
             "the resolution-dependent anisotropy term (beta1), relative " \\
             "to that of the anisotropy at the resolution limit; as " \\
             "phasertng macaniso.resolution_dependent_restraint."
-  resolution_dependent_anisotropy = off on *auto
-    .type = choice
-    .short_caption = Resolution-dependent anisotropy
-    .help = "Anisotropy that changes linearly with d*^2 (phasertng " \\
-            "macaniso.resolution_dependent). auto: refined after the fit " \\
-            "without it and kept if the Wilson log-likelihood gain exceeds " \\
-            "half the 99.9% point of chi-squared for its parameters, as " \\
-            "phasertng runANISO."
   bins
     .short_caption = Resolution bins of the SigmaN correction
     .help = "Bins of equal width in d*^2, as phasertng Bin::setup: the " \\
@@ -882,7 +874,8 @@ def _fit_model(i_obs, data, params, resolution_dependent, selection=None,
     n_iterations=n_iterations, n_fisher=n_fisher, converged=converged,
     log_likelihood=t.log_likelihood(p))
 
-def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None):
+def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None,
+      resolution_dependent_anisotropy="auto"):
   """ SigmaN (sigman_model: BEST, bin corrections, anisotropy) and, with
   tNCS, the coherence Gamma(s) = gamma exp(-2 pi^2 v^2 s^2) shared by the
   groups, by the exact Wilson likelihood of the intensities with their
@@ -899,6 +892,12 @@ def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None):
   i_obs: non-anomalous intensities with sigmas, in the asu.
   tncs_a_groups: None, or a list of flex.double, the consensus pair term
     A_g of each tNCS group on the indices of i_obs.
+  resolution_dependent_anisotropy: off, on or auto, anisotropy that changes
+    linearly with d*^2 (phasertng macaniso.resolution_dependent); auto:
+    refined after the fit without it and kept if the Wilson log-likelihood
+    gain exceeds half the 99.9% point of chi-squared for its parameters, as
+    phasertng runANISO. (phenix.refine: llgi_data.
+    data_resolution_dependent_anisotropy, which also sets nacelle's.)
   Returns group_args with resn (sqrt(epsilon SigmaN)), teps
   (max(1 + Gamma sum_g A_g, U_MIN), or 1; the fit itself floors TEPS at
   TEPS_FLOOR), anisotropy (miller.arrays),
@@ -919,7 +918,8 @@ def fit(i_obs, tncs_a_groups=None, params=None, log=None, selection=None):
       MINIMUM_VALID))
   n_zero_intensity = int(data.zero_i.sum())
   n_zero_sigma = int((~data.valid).sum()) - n_zero_intensity
-  mode = params.resolution_dependent_anisotropy
+  mode = resolution_dependent_anisotropy
+  assert mode in ("off", "on", "auto"), mode
   r = _fit_model(i_obs, data, params, resolution_dependent=(mode == "on"),
     selection=selection)
   gain = threshold = None

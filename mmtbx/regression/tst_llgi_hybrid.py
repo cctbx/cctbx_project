@@ -23,12 +23,20 @@ def exercise_helpers_and_select():
   assert hs.size() == sel.count(True)
   assert approx_equal(hs.e_obs_sq, h.e_obs_sq.select(sel))
   assert approx_equal(hs.null_log_z, h.null_log_z.select(sel))
-  # disabled hybrid
+  # the likelihood form: rice (no hybrid), hybrid (rice_kappa), exact
+  # (every reflection with an intensity error, rice_kappa 0)
   p = llgi_data.hybrid_params
-  p.enabled = False
-  assert llgi_hybrid.get_hybrid(
-    llgi_hybrid.replace_llgi_data(llgi_data, hybrid_params=p)) is None
-  p.enabled = True
+  assert not hasattr(p, "enabled") and not hasattr(p, "sigma_e_obs_sq_cutoff")
+  assert p.form == "hybrid"
+  p.rice_kappa = 0.1
+  for form, kappa in [("rice", None), ("hybrid", 0.1), ("exact", 0.0)]:
+    p.form = form
+    hf = llgi_hybrid.get_hybrid(
+      llgi_hybrid.replace_llgi_data(llgi_data, hybrid_params=p,
+        _hybrid_object=None))
+    if(kappa is None): assert hf is None, form
+    else: assert hf.rice_kappa == kappa, (form, hf.rice_kappa)
+  p.form = "hybrid"
 
 def exercise_map_coefficients_exact_branch():
   """ With every reflection exact, the map's <E> along the model phase
@@ -73,12 +81,12 @@ def exercise_map_coefficients_exact_without_hybrid():
   m_on = fmodel.map_calculation_helper_llgi()
   llgi_data = fmodel.llgi_data()
   p = llgi_data.hybrid_params
-  p.enabled = False
+  p.form = "rice"
   fmodel.set_llgi_data(llgi_hybrid.replace_llgi_data(llgi_data,
     hybrid_params=p))
   assert llgi_hybrid.get_hybrid(fmodel.llgi_data()) is None
   m_off = fmodel.map_calculation_helper_llgi()
-  p.enabled = True
+  p.form = "hybrid"
   assert m_off.n_exact > 0 and m_off.n_exact == m_on.n_exact
   assert approx_equal(m_off.fom, m_on.fom)
   assert approx_equal(m_off.f_obs.data(), m_on.f_obs.data())

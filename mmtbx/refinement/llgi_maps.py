@@ -452,8 +452,8 @@ class bias_reduced_map_server(object):
       if(result is None):
         raise Sorry("LLGI bias-reduced map not available "
           "(llgi_data.real_space_map=bias_reduced); "
-          "llgi_data.real_space_map=posterior_2mfo_dfc uses the LLGI "
-          "2mFo-DFc map instead.")
+          "llgi_data.real_space_map=posterior uses the LLGI posterior "
+          "map instead.")
       self._coeffs = dict(result.arrays)[LABELS.bias_reduced]
     return self._coeffs
 

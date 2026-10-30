@@ -495,12 +495,13 @@ def exercise_hierarchical():
 def exercise_resolution_dependent_anisotropy():
   i_obs, a = _simulate(P212121[0], P212121[1], 2.0, B_ANISO, 0.9, 0.4,
     0.1, seed=10)
-  p = ln.normalisation_params.extract()
-  p.resolution_dependent_anisotropy = "off"
-  r_off = ln.fit(i_obs, tncs_a_groups=a, params=p)
+  # the mode is fit's argument (phenix.refine: llgi_data.
+  # data_resolution_dependent_anisotropy, for both normalisation paths)
+  assert not hasattr(ln.normalisation_params.extract(),
+    "resolution_dependent_anisotropy")
+  r_off = ln.fit(i_obs, tncs_a_groups=a, resolution_dependent_anisotropy="off")
   assert not r_off.resolution_dependent
-  p.resolution_dependent_anisotropy = "on"
-  r_on = ln.fit(i_obs, tncs_a_groups=a, params=p)
+  r_on = ln.fit(i_obs, tncs_a_groups=a, resolution_dependent_anisotropy="on")
   assert r_on.resolution_dependent
   assert r_on.model.n_parameters() == r_off.model.n_parameters() + 3
   r_auto = ln.fit(i_obs, tncs_a_groups=a)

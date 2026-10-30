@@ -276,7 +276,7 @@ def exercise_model_building_maps():
   # bias-reduced map,
   # from the working reflections when asked (exclude_free_r_reflections,
   # use_all_data=False); other maps come from the LLGI helper; with
-  # posterior_2mfo_dfc, or another target, the helper itself
+  # posterior, or another target, the helper itself
   from cctbx import miller
   import mmtbx.refinement.llgi_hybrid as llgi_hybrid
   from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
@@ -355,9 +355,9 @@ def exercise_model_building_maps():
   ref = miller.fft_map(crystal_gridding=m_all, fourier_coefficients=
     helper.map_coefficients(map_type="mFo-DFc").select(work))
   assert approx_equal(md.real_map_unpadded(), ref.real_map_unpadded())
-  # posterior_2mfo_dfc: the LLGI helper; target ml: the ordinary map
+  # posterior: the LLGI helper; target ml: the ordinary map
   fmodel.set_llgi_data(llgi_hybrid.replace_llgi_data(ld,
-    real_space_map="posterior_2mfo_dfc"))
+    real_space_map="posterior"))
   emap = fmodel.electron_density_map_for_model_building()
   assert not isinstance(emap, llgi_maps.bias_reduced_map_server)
   assert approx_equal(emap.map_coefficients(map_type="2mFo-DFc").data(),
