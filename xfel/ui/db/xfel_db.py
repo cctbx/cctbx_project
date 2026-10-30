@@ -293,6 +293,83 @@ class initialize(initialize_base):
         query = "ALTER TABLE `%s_experiment` MODIFY COLUMN crystal_cell_id INT"%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility: add sequence column to dataset_task
+      query = "SHOW columns FROM `%s_dataset_task`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'sequence' not in column_names:
+        print("Upgrading to version 5.6 of mysql database schema")
+        query = """
+          ALTER TABLE `%s_dataset_task`
+          ADD COLUMN sequence INT NULL
+        """%self.params.experiment_tag
+        cursor.execute(query)
+
+      # Maintain backwards compatibility with SQL tables v5.8: 10/22/26
+      # A dataset's merging schedule: when a new version, and its merging job,
+      # is cut as runs finish (see submit_all_jobs). Existing datasets keep the
+      # behaviour they always had, 'incremental'.
+      query = "SHOW columns FROM `%s_dataset`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'merge_mode' not in column_names:
+        print("Upgrading to version 5.8 of mysql database schema")
+        query = "ALTER TABLE `%s_dataset` ADD COLUMN merge_mode VARCHAR(45) NOT NULL DEFAULT 'incremental'"%self.params.experiment_tag
+        cursor.execute(query)
+        self.dbobj.commit()
+
+      # Maintain backwards compatibility with SQL tables v5.7: 10/12/26
+      # Tasks are content-addressed (see find_or_create_task): part of a task's
+      # identity is the task that feeds it, stored as parent_task_id.
+      query = "SHOW columns FROM `%s_task`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'parent_task_id' not in column_names:
+        print("Upgrading to version 5.7 of mysql database schema")
+        query = "ALTER TABLE `%s_task` ADD COLUMN parent_task_id INT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_task` ADD INDEX `fk_task_task1_idx` (`parent_task_id` ASC)"%self.params.experiment_tag
+        cursor.execute(query)
+        query = """
+        ALTER TABLE `%s_task`
+          ADD CONSTRAINT `fk_task_task1`
+            FOREIGN KEY (`parent_task_id`)
+            REFERENCES `%s`.`%s_task` (`id`)
+            ON DELETE NO ACTION
+            ON UPDATE NO ACTION
+        """%(self.params.experiment_tag, self.params.db.name, self.params.experiment_tag)
+        cursor.execute(query)
+        # Backfill from the existing pipelines: each task's parent is the task
+        # before it in its dataset. A task that different datasets feed from
+        # different predecessors has no single parent; it is left NULL, so it
+        # never matches a resolved pipeline and the next save of each of those
+        # datasets creates a clean task in its place.
+        query = """SELECT dataset_id, task_id FROM `%s_dataset_task`
+                   ORDER BY dataset_id, sequence IS NULL, sequence, task_id"""%self.params.experiment_tag
+        cursor.execute(query)
+        conflict = object()
+        parents = {}
+        previous = (None, None) # dataset_id, task_id
+        for dataset_id, task_id in cursor.fetchall():
+          parent_id = previous[1] if previous[0] == dataset_id else None
+          if task_id in parents and parents[task_id] != parent_id:
+            parents[task_id] = conflict
+          elif task_id not in parents:
+            parents[task_id] = parent_id
+          previous = (dataset_id, task_id)
+        for task_id, parent_id in parents.items():
+          if parent_id is None or parent_id is conflict: continue
+          query = "UPDATE `%s_task` SET parent_task_id = %d WHERE id = %d"%(
+            self.params.experiment_tag, parent_id, task_id)
+          cursor.execute(query)
+        self.dbobj.commit()
+
     return tables_ok
 
   def set_up_columns_dict(self, app):
@@ -777,13 +854,16 @@ class xfel_db_application(db_application):
     tagids = [t.id for t in tags]
     if mode == "union":
       # Union is done by using a series of OR statements testing the tag ids
-      return self.get_all_x(Run, 'run', where = """
+      runs = self.get_all_x(Run, 'run', where = """
         JOIN `%s_rungroup_run` rg_r ON rg_r.run_id = run.id
         JOIN `%s_rungroup` rg ON rg.id = rg_r.rungroup_id
         JOIN `%s_run_tag` rt ON rt.run_id = run.id
         JOIN `%s_tag` tag ON tag.id = rt.tag_id
         WHERE rg.id = %d AND (%s)
          """%(tag, tag, tag, tag, rungroup.id, " OR ".join(["tag.id = %d"%i for i in tagids])))
+      # The join on run_tag returns a run once per matching tag; keep each run once
+      seen = set()
+      return [r for r in runs if r.id not in seen and not seen.add(r.id)]
     elif mode == "intersection":
       # Intersection is done using a series of INNER JOINS, one full set for each tag
       return self.get_all_x(Run, 'run', where = """
@@ -951,12 +1031,27 @@ class xfel_db_application(db_application):
   def get_dataset_tasks(self, dataset_id):
     tag = self.params.experiment_tag
     query = """SELECT d_t.task_id FROM `%s_dataset_task` d_t
-               WHERE d_t.dataset_id = %d""" % (tag, dataset_id)
+               WHERE d_t.dataset_id = %d
+               ORDER BY d_t.sequence IS NULL, d_t.sequence, d_t.task_id""" % (tag, dataset_id)
     cursor = self.execute_query(query)
     task_ids = ["%d"%i[0] for i in cursor.fetchall()]
     if len(task_ids) == 0:
       return []
-    return self.get_all_x(Task, "task", where = "WHERE task.id IN (%s)"%",".join(task_ids))
+    tasks = self.get_all_x(Task, "task", where = "WHERE task.id IN (%s)"%",".join(task_ids))
+    # Reorder tasks to match the sequence order from the database
+    by_id = {task.id: task for task in tasks}
+    return [by_id[int(tid)] for tid in task_ids if int(tid) in by_id]
+
+  def get_datasets_for_task(self, task_id):
+    ''' Return all Dataset objects that include task_id in their pipeline. '''
+    tag = self.params.experiment_tag
+    query = "SELECT dataset_id FROM `%s_dataset_task` WHERE task_id = %d" % (tag, task_id)
+    cursor = self.execute_query(query)
+    ids = [row[0] for row in cursor.fetchall()]
+    if not ids:
+      return []
+    return self.get_all_x(Dataset, "dataset",
+                          where="WHERE dataset.id IN (%s)" % ",".join(str(i) for i in ids))
 
   def create_dataset_version(self, **kwargs):
     return DatasetVersion(self, **kwargs)
@@ -1020,6 +1115,45 @@ class xfel_db_application(db_application):
 
   def get_all_tasks(self):
     return self.get_all_x(Task, "task")
+
+  def find_or_create_task(self, type, trial_id, parameters, parent_task_id = None, phil_scope = None):
+    """ Tasks are content-addressed: a task is identified by its type, trial,
+        parameters and the task that feeds it (parent_task_id, None for the
+        first task of a pipeline). Return the existing task with this identity
+        if there is one, so datasets with the same pipeline up to this stage
+        share its work, and otherwise create it. Task rows are never updated in
+        place; a change of parameters resolves to a different task.
+        @param phil_scope: the type's dispatcher scope, if the caller has it
+        loaded; parameters are compared after normalization through it. """
+    from xfel.ui.db.task import canonical_parameters
+    tag = self.params.experiment_tag
+    where = "WHERE task.type = '%s' AND task.trial_id <=> %s AND task.parent_task_id <=> %s" % (
+      type, 'NULL' if trial_id is None else int(trial_id),
+      'NULL' if parent_task_id is None else int(parent_task_id))
+    candidates = self.get_all_x(Task, "task", where = where)
+    if candidates and phil_scope is None:
+      _, phil_scope = Task.get_phil_scope(self, type)
+    wanted = canonical_parameters(type, parameters, phil_scope)
+    for task in candidates:
+      if canonical_parameters(type, task.parameters, phil_scope) == wanted:
+        return task
+    return self.create_task(type = type, trial_id = trial_id, parameters = parameters,
+                            parent_task_id = parent_task_id)
+
+  def delete_orphan_tasks(self):
+    """ Delete tasks no dataset uses, provided no job ran them (their output
+        folders are named after the task id) and no other task is fed by them.
+        Repeats until nothing is deleted, so an unused chain goes in one call. """
+    tag = self.params.experiment_tag
+    query = """DELETE task FROM `%s_task` task
+               LEFT JOIN `%s_dataset_task` d_t ON d_t.task_id = task.id
+               LEFT JOIN `%s_job` job ON job.task_id = task.id
+               LEFT JOIN `%s_task` child ON child.parent_task_id = task.id
+               WHERE d_t.task_id IS NULL AND job.id IS NULL AND child.id IS NULL""" % (tag, tag, tag, tag)
+    while True:
+      cursor = self.execute_query(query, commit = True)
+      if cursor is None or not cursor.rowcount:
+        break
 
 # Deprecated, but preserved here in case it proves useful later
 """

@@ -325,6 +325,34 @@ class TextButtonCtrl(CtrlBase):
 
     output_box.AddGrowableCol(1, 1)
     self.SetSizer(output_box)
+    setup_tooltip(self)
+
+class ComboTextCtrl(CtrlBase):
+  ''' Generic panel that will place an editable combo box with a label: the
+      user picks one of the choices or types any other value '''
+
+  def __init__(self, parent,
+               label='', label_size=(100, -1),
+               label_style='normal',
+               ctrl_size=(200, -1),
+               choices=(),
+               value='', **kwargs):
+
+    CtrlBase.__init__(self, parent=parent, label_style=label_style, **kwargs)
+
+    output_box = wx.FlexGridSizer(1, 2, 0, 10)
+    self.txt = wx.StaticText(self, label=label, size=label_size)
+    self.txt.SetFont(self.font)
+    output_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
+
+    self.ctr = wx.ComboBox(self, name=self.Name + "_ctr", size=ctrl_size,
+                           choices=list(choices), style=wx.CB_DROPDOWN)
+    self.ctr.SetValue(value)
+    output_box.Add(self.ctr, flag=wx.EXPAND)
+
+    output_box.AddGrowableCol(1, 1)
+    self.SetSizer(output_box)
+    setup_tooltip(self)
 
 class TwoButtonCtrl(CtrlBase):
   ''' Generic panel that will place a text control, with a label and an
@@ -363,6 +391,7 @@ class TwoButtonCtrl(CtrlBase):
 
     output_box.AddGrowableCol(1, 1)
     self.SetSizer(output_box)
+    setup_tooltip(self)
 
 class OptionCtrl(CtrlBase):
   ''' Generic panel will place a text control w/ label '''
@@ -480,6 +509,7 @@ class SpinCtrl(CtrlBase):
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
     self.SetSizer(ctr_box)
+    setup_tooltip(self)
 
 class ChoiceCtrl(CtrlBase):
   ''' Generic panel will place a choice control w/ label '''
@@ -510,6 +540,7 @@ class ChoiceCtrl(CtrlBase):
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
     self.SetSizer(ctr_box)
+    setup_tooltip(self)
 
 class CheckListCtrl(CtrlBase):
   def __init__(self, parent,
@@ -531,12 +562,16 @@ class CheckListCtrl(CtrlBase):
     else:
       if direction == 'horizontal':
         ctr_box = wx.FlexGridSizer(1, 2, 0, 10)
+        ctr_box.AddGrowableRow(0)
+        ctr_box.AddGrowableCol(1)
       elif direction == 'vertical':
         ctr_box = wx.FlexGridSizer(2, 1, 10, 0)
+        ctr_box.AddGrowableRow(1)
+        ctr_box.AddGrowableCol(0)
       ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
 
-    ctr_box.Add(self.ctr, proportion=1,
-                flag=wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
+    # The list takes whatever room the parent gives the control
+    ctr_box.Add(self.ctr, proportion=1, flag=wx.EXPAND)
 
     self.SetSizer(ctr_box)
 
