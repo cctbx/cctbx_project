@@ -886,6 +886,37 @@ def tst_global_local_global_half_map():
   check_tl_calls(rec)
   check_with_model(rec, n_calls = rec.replace_calls)
 
+def other_model_id_setup():
+  '''model_sharpen (as model_sharpen_setup, split A) with the model of
+     get_mmm() stored as 'other' and used as model_id = 'other'.  The
+     manager also has a model 'model' with only the first group's residues,
+     which the TLS step must not use.'''
+  mmm = get_mmm()
+  groups = get_groups(mmm, SPLIT_A)
+  model = mmm.model()
+  mmm.add_model_by_id(model = model.deep_copy(), model_id = 'other')
+  mmm.add_model_by_id(model = model.apply_selection_string(
+     groups[0].selection), model_id = 'model')
+  def sharpen(tlso_group_info):
+    mmm.model_sharpen(model_id = 'other', local_sharpen = True,
+      anisotropic_sharpen = True,
+      tlso_group_info = tlso_group_info,
+      replace_aniso_with_tls_equiv = True,
+      n_boxes = 8, nproc = 1)
+  return mmm, groups, sharpen
+
+def tst_other_model_id():
+  '''model_sharpen(model_id = 'other') with supplied TLS: the TLS step uses
+     the model 'other' (group masks, nearest-atom rule and model points for
+     both groups), not the model 'model' and not the no-model fallback'''
+  rec = run_tls_groups(('other_model_id',), other_model_id_setup)
+  print("TLS step: model_id %s, model found %s, original entries %s, "
+     "entries after the TLS step %s" %(rec.kw.get('model_id'),
+     rec.has_model, rec.n_original, len(rec.entries)))
+  check_tl_calls(rec, n_calls = 1)
+  check_with_model(rec)
+  assert rec.kw.get('model_id') == 'other', rec.kw.get('model_id')
+
 # ---------------------------------------------------------------------------
 # Synthetic averaging over locations
 
@@ -1086,6 +1117,7 @@ def run(args = None):
      ('tls_reused', tst_tls_reused),
      ('global_local_global_model', tst_global_local_global_model),
      ('global_local_global_half_map', tst_global_local_global_half_map),
+     ('other_model_id', tst_other_model_id),
      ('external_tls', tst_external_tls),
      ('average_overall_scale_stored', tst_average_overall_scale_stored),
      ('mixed_overall_si', tst_mixed_overall_si),

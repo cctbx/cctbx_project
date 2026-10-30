@@ -4487,6 +4487,9 @@ class map_model_manager(object):
       map_id_external_map
      Changes the working map_manager
 
+     Supplied TLS (tlso_group_info, used in local anisotropic sharpening)
+      uses the model 'model', if present, for group masks and model points
+
      resolution is nominal resolution of map
      d_min is minimum resolution to use in calculation of Fourier coefficients
     '''
@@ -4571,6 +4574,9 @@ class map_model_manager(object):
     '''
      Scale map_id with scale factors identified from map_id_1 vs map_id_2
      Changes the working map_manager unless map_id_scaled_list is set.
+
+     Supplied TLS (tlso_group_info, used in local anisotropic sharpening)
+      uses the model 'model', if present, for group masks and model points
 
      max_abs_b applies if get_scale_as_aniso_u and anisotropic_sharpen and
         local_sharpen are set. It limits range of anisotropic B.  Default is
@@ -4675,6 +4681,9 @@ class map_model_manager(object):
      Scale map_id with scale factors identified from map_id vs model
      Changes the working map_manager unless map_id_scaled is set.
 
+     Supplied TLS (tlso_group_info, used in local anisotropic sharpening)
+      uses the model model_id for group masks and model points
+
      max_abs_b applies if get_scale_as_aniso_u and anisotropic_sharpen and
         local_sharpen are set. It limits range of anisotropic B.  Default is
         100 at 4 A, proportional to resolution squared
@@ -4755,6 +4764,7 @@ class map_model_manager(object):
     del kw['find_tls_from_model']  # REQUIRED
     del kw['overall_sharpen_before_and_after_local']  # REQUIRED
     del kw['save_model_map']  # REQUIRED
+    kw['model_id_for_tls'] = model_id # supplied TLS uses this model
 
 
     # Make a copy of this map_model manager so we can modify it without
@@ -4920,6 +4930,7 @@ class map_model_manager(object):
       sharpen_all_maps = False,
       model_map_ids_to_leave_as_is = None,
       remove_overall_anisotropy = None,
+      model_id_for_tls = None,
     ):
     '''
      Scale map_id with scale factors identified from map_id_1 and map_id_2
@@ -4933,6 +4944,10 @@ class map_model_manager(object):
 
      If is_model_based, assume that the map_id_2 is based on a model
      If is_external_based, assume map_id_2 is external
+
+     Supplied TLS (tlso_group_info, used in local anisotropic sharpening)
+      uses the model model_id_for_tls (default 'model') for group masks
+      and model points
 
      If anisotropic sharpening, identify resolution dependence along
       principal axes of anisotropy and apply based on position in reciprocal
@@ -4982,12 +4997,14 @@ class map_model_manager(object):
 
     # remove any extra models and maps to speed up boxing and not modify orig
     map_id_list = [map_id,map_id_1,map_id_2]+kw['map_id_to_be_scaled_list']
+    model_id_list = []
     if is_model_based and self.get_model_by_id(model_id_for_rms_fc):
-      model_id_list = [model_id_for_rms_fc]
-    elif tlso_group_info and self.get_model_by_id('model'):
-      # Supplied TLS uses the model 'model' for group masks and model points
-      model_id_list = ['model']
-    else:
+      model_id_list.append(model_id_for_rms_fc)
+    tls_model_id = model_id_for_tls or 'model'
+    if tlso_group_info and self.get_model_by_id(tls_model_id):
+      # Supplied TLS uses this model for group masks and model points
+      model_id_list.append(tls_model_id)
+    if not model_id_list:
       model_id_list = None
     working_mmm = self.get_map_model_manager_with_selected(
       map_id_list = map_id_list,
@@ -6245,7 +6262,7 @@ class map_model_manager(object):
      everything_is_inside = False,
      aniso_b_cart = None,
      b_iso = None,
-
+     model_id = None,
     ):
 
     '''
@@ -6265,6 +6282,7 @@ class map_model_manager(object):
        result = self._analyze_aniso_replace_with_supplied(
          scale_factor_info,
          map_id = map_id,
+         model_id = model_id,
          tlso_group_info = tlso_group_info,
          get_tls_from_u = get_tls_from_u,
          aniso_b_cart = aniso_b_cart,
@@ -7038,6 +7056,7 @@ class map_model_manager(object):
       temp_dir = 'TEMP_ANISO_LOCAL',
       aniso_b_cart = None,
       b_iso = None,
+      model_id_for_tls = None,
      ):
     '''
     Run local sharpening in groups with focus on reflections along
@@ -7072,6 +7091,7 @@ class map_model_manager(object):
     del kw['adopt_init_args'] # REQUIRED
     del kw['kw_obj'] # REQUIRED
     del kw['temp_dir'] # REQUIRED
+    del kw['model_id_for_tls'] # REQUIRED
 
     assert n_bins is not None
 
@@ -7140,6 +7160,7 @@ class map_model_manager(object):
     tls_info = self._analyze_aniso(scale_factor_info,
       tlso_group_info = tlso_group_info,
       get_tls_from_u = get_tls_from_u,
+      model_id = model_id_for_tls,
       map_id=map_id,
       mask_id=mask_id,  # can supply mask_id
       replace_inside = replace_inside,
@@ -7263,6 +7284,7 @@ class map_model_manager(object):
       sharpen_all_maps = None,
       aniso_b_cart = None,
       b_iso = None,
+      model_id_for_tls = None,
      ):
 
     '''
@@ -7303,6 +7325,7 @@ class map_model_manager(object):
 
     del kw['aniso_b_cart']  # REQUIRED
     del kw['b_iso']  # REQUIRED
+    del kw['model_id_for_tls']  # REQUIRED
 
 
     # Get scale factors vs resolution and location
