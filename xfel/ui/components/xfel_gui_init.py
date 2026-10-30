@@ -2061,8 +2061,7 @@ class EnergyTab(BaseTab):
     self.scan_inputs_sizer.Add(self.max_evts, flag=wx.EXPAND)
     self.scan_runs_sizer.Add(self.scan_inputs_sizer, flag=wx.EXPAND | wx.BOTTOM, border=5)
 
-    self.scan_runs_list = dlg.EdListCtrl(self.scan_runs_panel,
-                                         style=wx.LC_EDIT_LABELS | wx.LC_REPORT)
+    self.scan_runs_list = dlg.EdListCtrl(self.scan_runs_panel, style=wx.LC_REPORT)
     self.scan_runs_list.SetMinSize((200, 120))
     self.scan_runs_list.InsertColumn(0, 'Run', width=60)
     self.scan_runs_list.InsertColumn(1, 'Notch Energy (eV)', width=140)

@@ -52,6 +52,12 @@ class EdListCtrl(wx.ListCtrl, TextEditMixin):
   def __init__(self, parent, ID=wx.ID_ANY, pos=wx.DefaultPosition,
                size=wx.DefaultSize, style=0):
     """Constructor"""
+    # The mixin tracks a single current row and swallows clicks on it, so with
+    # multiple selection the list's own selection drifts from the mixin's and
+    # clicks on other rows stop opening the editor. Single selection keeps the
+    # two in step. The list's built-in label editor would compete with the
+    # mixin's editor on the first column, so it stays off.
+    style = (style | wx.LC_SINGLE_SEL) & ~wx.LC_EDIT_LABELS
     wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
     TextEditMixin.__init__(self)
     self.curRow = -1
