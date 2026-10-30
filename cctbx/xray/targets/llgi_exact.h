@@ -53,12 +53,15 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
   //! 32-point Gauss-Legendre nodes and weights on [-1,1], computed once.
   struct gauss_legendre_32
   {
-    af::shared<double> x, w;
+    af::shared<double> x, w, log_w;
     gauss_legendre_32()
     {
       scitbx::math::quadrature::gauss_legendre_engine<double> engine(32);
       x = engine.x();
       w = engine.w();
+      for (std::size_t i = 0; i < w.size(); i++) {
+        log_w.push_back(std::log(w[i]));
+      }
     }
     static gauss_legendre_32 const& get()
     {
@@ -67,38 +70,149 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
     }
   };
 
+  //! ln I0(x) and R(x) = I1(x)/I0(x) for 0 <= x < x_max, by cubic Hermite
+  //! interpolation on a grid of spacing 1/128 with the exact derivatives
+  //! (ln I0)' = R and R' = 1 - R/x - R^2 (1/2 at 0): error < 1e-11 in
+  //! both. Above x_max the asymptotic expansion (asymptotic_i0) is used.
+  struct bessel_i0_table
+  {
+    static const int n_per_unit = 128;
+    static double x_max() { return 32.; }
+    std::vector<double> f, r, dr;
+    bessel_i0_table()
+    {
+      std::size_t n = static_cast<std::size_t>(x_max() * n_per_unit) + 1;
+      f.resize(n); r.resize(n); dr.resize(n);
+      for (std::size_t i = 0; i < n; i++) {
+        double x = static_cast<double>(i) / n_per_unit;
+        double i0 = boost::math::cyl_bessel_i(0, x);
+        f[i] = std::log(i0);
+        r[i] = boost::math::cyl_bessel_i(1, x) / i0;
+        dr[i] = (i == 0) ? 0.5 : 1. - r[i] / x - r[i] * r[i];
+      }
+    }
+    static bessel_i0_table const& get()
+    {
+      static const bessel_i0_table table;
+      return table;
+    }
+    //! Hermite basis at x < x_max: grid index i and the weights of y[i],
+    //! dy[i], y[i+1], dy[i+1].
+    static std::size_t basis(double x, double* c)
+    {
+      double u = x * n_per_unit;
+      std::size_t i = static_cast<std::size_t>(u);
+      double t = u - static_cast<double>(i);
+      double h = 1. / n_per_unit;
+      double t1 = 1. - t;
+      c[0] = (1. + 2. * t) * t1 * t1;
+      c[1] = t * t1 * t1 * h;
+      c[2] = t * t * (3. - 2. * t);
+      c[3] = -t * t * t1 * h;
+      return i;
+    }
+    static double interpolate(
+      std::vector<double> const& y, std::vector<double> const& dy,
+      std::size_t i, double const* c)
+    {
+      return c[0] * y[i] + c[1] * dy[i] + c[2] * y[i + 1] + c[3] * dy[i + 1];
+    }
+    double ln_i0(double x) const
+    {
+      double c[4];
+      std::size_t i = basis(x, c);
+      return interpolate(f, r, i, c);
+    }
+    double ratio(double x) const
+    {
+      double c[4];
+      std::size_t i = basis(x, c);
+      return interpolate(r, dr, i, c);
+    }
+    void ln_i0_and_ratio(double x, double& ln_i0_x, double& ratio_x) const
+    {
+      double c[4];
+      std::size_t i = basis(x, c);
+      ln_i0_x = interpolate(f, r, i, c);
+      ratio_x = interpolate(r, dr, i, c);
+    }
+  };
+
+  //! Asymptotic expansions of I0(x) exp(-x) sqrt(2 pi x) (s0) and
+  //! I1(x) exp(-x) sqrt(2 pi x) (s1); 12 terms are accurate to 1e-13 for
+  //! x >= bessel_i0_table::x_max().
+  struct asymptotic_i0
+  {
+    static const int n_terms = 12;
+    double a0[n_terms], a1[n_terms];
+    asymptotic_i0()
+    {
+      for (int k = 1; k <= n_terms; k++) {
+        double c = (2. * k - 1.);
+        a0[k - 1] = c * c / (8. * k);
+        a1[k - 1] = -(4. - c * c) / (8. * k);
+      }
+    }
+    static asymptotic_i0 const& get()
+    {
+      static const asymptotic_i0 series;
+      return series;
+    }
+    void sums(double x, double& s0, double& s1) const
+    {
+      double t = 1. / x, term0 = 1., term1 = 1.;
+      s0 = 1.;
+      s1 = 1.;
+      for (int k = 0; k < n_terms; k++) {
+        term0 *= a0[k] * t;
+        term1 *= a1[k] * t;
+        s0 += term0;
+        s1 += term1;
+      }
+    }
+  };
+
   //! ln B(x), x >= 0: ln I0(x) (acentric) or ln cosh(x) (centric).
   inline double ln_b(double x, bool centric)
   {
     if (centric) return x + std::log1p(std::exp(-2. * x)) - std::log(2.);
-    if (x < 500.) return std::log(boost::math::cyl_bessel_i(0, x));
-    // Asymptotic expansion of I0(x) exp(-x) sqrt(2 pi x); 6 terms are
-    // exact to double precision for x >= 500.
-    double t = 1. / (8. * x), s = 1., term = 1.;
-    for (int k = 1; k <= 6; k++) {
-      double c = (2. * k - 1.);
-      term *= c * c * t / k;
-      s += term;
+    if (x < bessel_i0_table::x_max()) {
+      return bessel_i0_table::get().ln_i0(x);
     }
-    return x - 0.5 * std::log(2. * scitbx::constants::pi * x) + std::log(s);
+    double s0, s1;
+    asymptotic_i0::get().sums(x, s0, s1);
+    return x - 0.5 * std::log(2. * scitbx::constants::pi * x) + std::log(s0);
   }
 
   //! B'(x)/B(x), x >= 0: I1(x)/I0(x) (acentric) or tanh(x) (centric).
   inline double ratio_b(double x, bool centric)
   {
     if (centric) return std::tanh(x);
-    if (x < 500.) {
-      return boost::math::cyl_bessel_i(1, x) / boost::math::cyl_bessel_i(0, x);
+    if (x < bessel_i0_table::x_max()) {
+      return bessel_i0_table::get().ratio(x);
     }
-    double t = 1. / (8. * x), s0 = 1., s1 = 1., term0 = 1., term1 = 1.;
-    for (int k = 1; k <= 6; k++) {
-      double c = (2. * k - 1.);
-      term0 *= c * c * t / k;
-      term1 *= -(4. - c * c) * t / k;
-      s0 += term0;
-      s1 += term1;
-    }
+    double s0, s1;
+    asymptotic_i0::get().sums(x, s0, s1);
     return s1 / s0;
+  }
+
+  //! ln_b(x, centric) and ratio_b(x, centric) together.
+  inline void ln_b_and_ratio(double x, bool centric, double& lnb, double& r)
+  {
+    if (centric) {
+      double e = std::exp(-2. * x);
+      lnb = x + std::log1p(e) - std::log(2.);
+      r = (1. - e) / (1. + e);
+      return;
+    }
+    if (x < bessel_i0_table::x_max()) {
+      bessel_i0_table::get().ln_i0_and_ratio(x, lnb, r);
+      return;
+    }
+    double s0, s1;
+    asymptotic_i0::get().sums(x, s0, s1);
+    lnb = x - 0.5 * std::log(2. * scitbx::constants::pi * x) + std::log(s0);
+    r = s1 / s0;
   }
 
   //! Log-integral and tilted-posterior moments of
@@ -146,6 +260,25 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
           if (q != 0) v += q / s;
           return v;
         }
+        //! psi(s) and psi'(s) (one evaluation of B and B'/B)
+        void value_and_d(double s, double& v, double& d1) const {
+          double s2 = s * s, lnb, r;
+          ln_b_and_ratio(k * s, centric, lnb, r);
+          v = s2 * (mu - 0.5 * s2) + lnb;
+          d1 = -2. * s * (s2 - mu) + k * r;
+          if (q != 0) { v += q * std::log(s); d1 += q / s; }
+        }
+        //! psi'(s) and psi''(s): (B'/B)' = 1 - tanh^2 (centric) or
+        //! 1 - R/x - R^2 (acentric, R = I1/I0; 1/2 - 3x^2/16 near 0).
+        void d_and_d2(double s, double& d1, double& d2) const {
+          double x = k * s, r = ratio_b(x, centric), dr;
+          if (centric) dr = 1. - r * r;
+          else if (x < 1e-4) dr = 0.5 - 3. * x * x / 16.;
+          else dr = 1. - r / x - r * r;
+          d1 = -2. * s * (s * s - mu) + k * r;
+          d2 = -6. * s * s + 2. * mu + k * k * dr;
+          if (q != 0) { d1 += q / s; d2 -= q / (s * s); }
+        }
       } psi = {mu, k, q, centric};
       // Mode of psi. psi' crosses zero at most once on (0, inf); for the
       // centric case psi'(0) = 0 and the mode is at 0 unless
@@ -161,45 +294,51 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
           // psi'(s) ~ s (2 mu + k^2) near 0: start just above 0
           lo = std::min(1e-8, hi * 1e-8);
         }
-        // Illinois (regula falsi) on psi'
-        double flo = psi.d(lo), fhi = psi.d(hi);
-        int side = 0;
+        // Newton on psi', kept inside the bracket [lo, hi] (bisection
+        // where the step leaves it or psi'' >= 0), from the root of the
+        // large-s approximation of psi'
+        double s = std::sqrt(std::max(mu, 0.) + a0 * k * k);
+        if (!(s > lo && s < hi)) s = 0.5 * (lo + hi);
         for (int it = 0; it < 100; it++) {
-          double s = (lo * fhi - hi * flo) / (fhi - flo);
-          if (!(s > lo && s < hi)) s = 0.5 * (lo + hi);
-          double fs = psi.d(s);
-          if (fs > 0) {
-            lo = s; flo = fs;
-            if (side == 1) fhi *= 0.5;
-            side = 1;
-          }
-          else {
-            hi = s; fhi = fs;
-            if (side == -1) flo *= 0.5;
-            side = -1;
-          }
-          if (hi - lo < 1e-9 * hi) break;
+          double d1, d2;
+          psi.d_and_d2(s, d1, d2);
+          if (d1 > 0) lo = s; else hi = s;
+          double s_new = (d2 < 0) ? s - d1 / d2 : 0.5 * (lo + hi);
+          if (!(s_new > lo && s_new < hi)) s_new = 0.5 * (lo + hi);
+          bool done = std::abs(s_new - s) < 1e-10 * s_new
+                   || hi - lo < 1e-9 * hi;
+          s = s_new;
+          if (done) break;
         }
-        s_mode = 0.5 * (lo + hi);
+        s_mode = s;
       }
       double psi_max = interior ? psi(s_mode) : psi(0.);
       double target = psi_max - drop;
       // Curvature at the mode sets the first guess of the interval.
-      double h = 1e-6 * std::max(s_mode, 1e-3);
-      double curv = -(psi.d(s_mode + h) - psi.d(std::max(s_mode - h, 0.)))
-                    / (s_mode + h - std::max(s_mode - h, 0.));
+      double d1_mode, d2_mode;
+      psi.d_and_d2(s_mode, d1_mode, d2_mode);
+      double curv = -d2_mode;
       double delta = (curv > 1e-12) ? std::sqrt(2. * drop / curv)
                                     : std::pow(2. * drop, 0.25);
-      // Upper end: bracket, then a few bisections.
+      // Upper end: bracket, then Newton on psi - target inside the bracket
+      // (bisection where the step leaves it), until psi is within 1e-3 of
+      // target (the end is the next Newton estimate) or the bracket is
+      // 1e-4 of its first width. Likewise the lower end.
       s_hi = s_mode + delta;
       while (psi(s_hi) > target) s_hi = s_mode + 2. * (s_hi - s_mode);
       {
-        double lo = s_mode, hi = s_hi;
-        for (int it = 0; it < 12; it++) {
-          double m = 0.5 * (lo + hi);
-          if (psi(m) > target) lo = m; else hi = m;
+        double lo = s_mode, hi = s_hi, s = s_hi;
+        double tol = 1e-4 * (s_hi - s_mode);
+        for (int it = 0; it < 50; it++) {
+          double v, d1;
+          psi.value_and_d(s, v, d1);
+          if (v > target) lo = s; else hi = s;
+          double s_new = (d1 < 0) ? s - (v - target) / d1 : 0.5 * (lo + hi);
+          if (!(s_new > lo && s_new < hi)) s_new = 0.5 * (lo + hi);
+          s = s_new;
+          if (std::abs(v - target) < 1e-3 || hi - lo < tol) break;
         }
-        s_hi = hi;
+        s_hi = s;
       }
       // Lower end.
       s_lo = 0.;
@@ -212,11 +351,19 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         cand = std::max(cand, 0.);
         if (cand > 0 || q != 0 || psi(0.) <= target) {
           double lo = cand, hi = s_mode;
-          for (int it = 0; it < 12; it++) {
-            double m = 0.5 * (lo + hi);
-            if (psi(m) > target) hi = m; else lo = m;
+          double tol = 1e-4 * (s_mode - cand);
+          double s = (cand > 0) ? cand : 0.5 * (lo + hi);
+          for (int it = 0; it < 50; it++) {
+            double v, d1;
+            psi.value_and_d(s, v, d1);
+            if (v > target) hi = s; else lo = s;
+            double s_new = (d1 > 0) ? s - (v - target) / d1
+                                    : 0.5 * (lo + hi);
+            if (!(s_new > lo && s_new < hi)) s_new = 0.5 * (lo + hi);
+            s = s_new;
+            if (std::abs(v - target) < 1e-3 || hi - lo < tol) break;
           }
-          s_lo = lo;
+          s_lo = s;
         }
       }
       // Gauss-Legendre on [s_lo, s_hi]; J = sig s^2,
@@ -224,11 +371,17 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
       gauss_legendre_32 const& gl = gauss_legendre_32::get();
       std::size_t n = gl.x.size();
       double half = 0.5 * (s_hi - s_lo);
-      std::vector<double> lw(n), s(n);
+      std::vector<double> lw(n), s(n), rb(n);
       double lw_max = -1e300;
+      double log_2half = std::log(half * 2.);
       for (std::size_t i = 0; i < n; i++) {
         s[i] = s_lo + half * (gl.x[i] + 1.);
-        lw[i] = std::log(gl.w[i] * half * 2.) + psi(s[i]);
+        // psi(s[i]), sharing the evaluation of B with B'/B at k s = x
+        double s2 = s[i] * s[i], lnb;
+        ln_b_and_ratio(k * s[i], centric, lnb, rb[i]);
+        double psi_i = s2 * (mu - 0.5 * s2) + lnb;
+        if (q != 0) psi_i += q * std::log(s[i]);
+        lw[i] = gl.log_w[i] + log_2half + psi_i;
         lw_max = std::max(lw_max, lw[i]);
       }
       double z = 0, sj = 0, sj2 = 0, ssr = 0, ss = 0, spe = 0;
@@ -239,7 +392,7 @@ namespace cctbx { namespace xray { namespace targets { namespace llgi_exact {
         double jj = sig * s[i] * s[i];
         double rj = std::sqrt(jj);
         double x = kappa * rj;
-        double r = ratio_b(x, centric);
+        double r = rb[i];
         z += wi;
         sj += wi * jj;
         sj2 += wi * jj * jj;
