@@ -33,7 +33,7 @@ def compare_ebeams_with_fees(locfiles, runs=None, plot=True, use_figure=None, ma
     for j in range(n_img):
       if not img.get_spectrum(j):
         continue # no FEE
-      ewav = cspad_tbx.evt_wavelength(img._get_event(j))
+      ewav = cspad_tbx.evt_wavelength(img._get_event(j), run=img.get_run_from_index(j))
       if not ewav:
         continue # no ebeam
       fee_coms_wav.append(fwav:=img.get_beam(j).get_wavelength())
