@@ -77,6 +77,30 @@ def exercise_env_override_reaches_the_child():
     manager.stop()
 
 
+def exercise_children_do_not_inherit_the_managers_stdin():
+  """The manager may be an MCP server whose stdin is the JSON-RPC pipe. A
+  child that reads stdin would swallow protocol messages, so children get
+  the null device."""
+  tmp = tempfile.mkdtemp()
+  manager, backend = _manager()
+  r, w = os.pipe()
+  os.write(w, b"a JSON-RPC message\n")
+  os.close(w)
+  saved = os.dup(0)
+  os.dup2(r, 0)
+  os.close(r)
+  try:
+    job = manager.submit(_py_spec(
+      tmp, "import sys; print('STDIN=%r' % sys.stdin.read())"))
+    _await(manager, job, ("finished",))
+    log = _read(os.path.join(tmp, "job.log"))
+    assert "STDIN=''" in log, log
+  finally:
+    os.dup2(saved, 0)
+    os.close(saved)
+    manager.stop()
+
+
 def exercise_sigterm_cancel_is_reported_cancelled():
   tmp = tempfile.mkdtemp()
   manager, backend = _manager()
@@ -193,6 +217,7 @@ def run():
     return
   exercise_exit_codes_and_log_capture()
   exercise_env_override_reaches_the_child()
+  exercise_children_do_not_inherit_the_managers_stdin()
   exercise_sigterm_cancel_is_reported_cancelled()
   exercise_sigkill_escalation_for_a_child_ignoring_sigterm()
   exercise_natural_end_before_cancel_is_finished()

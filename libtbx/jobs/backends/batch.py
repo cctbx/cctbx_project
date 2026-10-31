@@ -302,6 +302,8 @@ class BatchBackend(Backend):
     kwargs.setdefault("capture_output", True)
     kwargs.setdefault("text", True)
     kwargs.setdefault("timeout", self.command_timeout)
+    # not the manager's stdin (under an MCP server, the JSON-RPC pipe)
+    kwargs.setdefault("stdin", subprocess.DEVNULL)
     try:
       return subprocess.run(cmd, **kwargs)
     except subprocess.TimeoutExpired:

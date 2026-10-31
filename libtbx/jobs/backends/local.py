@@ -65,6 +65,9 @@ class LocalBackend(Backend):
         list(spec.argv),
         cwd=spec.cwd,
         env=env,
+        # not the manager's stdin: under an MCP server it is the JSON-RPC
+        # pipe, which a child reading stdin would drain
+        stdin=subprocess.DEVNULL,
         stdout=out if out is not None else subprocess.DEVNULL,
         stderr=subprocess.STDOUT if out is not None else subprocess.DEVNULL,
         start_new_session=True,
