@@ -281,6 +281,32 @@ def exercise_environment_script():
       # a Phenix 2.x installation: phenix_env.sh is all there is
       assert runtime_utils.get_environment_script() == env_script
       assert processing.get_libtbx_env_setpaths() == env_script
+      # an installation is found from the interpreter's prefix too, with
+      # no PHENIX exported (a job started from Claude Desktop or a bare
+      # phenix.mcp_server, or from the Windows GUI where PHENIX is wrong)
+      from libtbx import env_config
+      saved_installed = libtbx.env.installed
+      saved_prefix = env_config.get_conda_prefix
+      saved_phenix = os.environ["PHENIX"]
+      # as under the Windows GUI: PHENIX points somewhere wrong
+      os.environ["PHENIX"] = os.path.join(box.dir, "no_such_dir")
+      try:
+        libtbx.env.installed = True
+        env_config.get_conda_prefix = lambda: box.dir
+        assert runtime_utils.get_environment_script() == env_script
+        del os.environ["PHENIX"]
+        assert runtime_utils.get_environment_script() == env_script
+        # and it wins over a $PHENIX that does have a script
+        other = os.path.join(box.dir, "other")
+        os.mkdir(other)
+        with open(os.path.join(other, "phenix_env.sh"), "w") as f:
+          f.write("")
+        os.environ["PHENIX"] = other
+        assert runtime_utils.get_environment_script() == env_script
+      finally:
+        libtbx.env.installed = saved_installed
+        env_config.get_conda_prefix = saved_prefix
+        os.environ["PHENIX"] = saved_phenix
       job = processing.qsub(
         target=get_target("marker"),
         platform="sge",

@@ -488,9 +488,9 @@ def get_environment_script():
 
   The submitting build's own setpaths.sh comes first, so that jobs run the
   build that submitted them.  A Phenix 2.x installation ships no
-  setpaths.sh; its $PHENIX/phenix_env.sh is used instead.  PHENIX_CUSTOM_ENV
-  means the user manages the environment, so phenix_env.sh is not
-  considered.
+  setpaths.sh; the phenix_env.sh of the installation this interpreter
+  belongs to is used, or $PHENIX/phenix_env.sh.  PHENIX_CUSTOM_ENV means the
+  user manages the environment, so phenix_env.sh is not considered.
 
   Returns
   -------
@@ -504,8 +504,15 @@ def get_environment_script():
     submission instead of the job dying on the cluster with a shell error.
   """
   candidates = [libtbx.env.under_build("setpaths.sh")]
-  if "PHENIX" in os.environ and not "PHENIX_CUSTOM_ENV" in os.environ :
-    candidates.append(os.path.join(os.environ["PHENIX"], "phenix_env.sh"))
+  if not "PHENIX_CUSTOM_ENV" in os.environ:
+    if libtbx.env.installed:
+      # the installation this interpreter belongs to; PHENIX may be unset
+      # (Claude Desktop, a bare phenix.mcp_server) or wrong (the Windows GUI)
+      from libtbx import env_config
+      candidates.append(os.path.join(env_config.get_conda_prefix(),
+                                     "phenix_env.sh"))
+    if "PHENIX" in os.environ:
+      candidates.append(os.path.join(os.environ["PHENIX"], "phenix_env.sh"))
   for path in candidates:
     if os.path.isfile(path):
       return path
