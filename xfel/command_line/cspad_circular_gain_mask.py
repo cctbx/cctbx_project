@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cspad.circular_gain_mask
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 # $Id
 #
 

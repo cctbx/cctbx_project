@@ -90,25 +90,17 @@ def run(args, prologue=None, epilogue=None, out=sys.stdout):
       f.write("%s\n" % options.prologue)
     else:
       f.write(open(options.prologue).read() + "\n")
+  # The environment guard comes from the dispatcher writers in
+  # libtbx.env_config, so every build gets it; the include carries only
+  # the GUI library settings of a base/ build and the DivCon paths.
   if sys.platform != "win32" and not options.use_conda:
     print("""\
-# include at start
-if [ "$LIBTBX_DISPATCHER_NAME" != "libtbx.scons" ] && \
-   [ -z "$PHENIX_TRUST_OTHER_ENV" ]; then
-  # work around broken library environments
-  LD_LIBRARY_PATH=""
-  PYTHONPATH=""
-fi
 # include before command
 #
 # GUI dependencies
 CCTBX_BUILD_BASE="%s"
 LIBTBX_OS_NAME=`uname -s`
 if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
-  if [ -z "$DISABLE_PHENIX_GUI" ]; then
-    export BOOST_ADAPTBX_FPE_DEFAULT=1
-    export BOOST_ADAPTBX_SIGNALS_DEFAULT=1
-  fi
   # echo $LIBTBX_OS_NAME
   if [ "$LIBTBX_OS_NAME" = "Linux" ]; then
     export OLD_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
@@ -148,19 +140,8 @@ if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
   fi
 fi
 """ % (base_path, ":".join(ld_library_paths), ":".join(ld_library_paths), options.gtk_version), file=f)
-  # restore some variables for conda
   if sys.platform != "win32" and options.use_conda:
-    # The environment guard itself comes from the dispatcher writers in
-    # libtbx.env_config, so every build gets it; only GUI settings stay here.
-    print("""
-# include before command
-if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
-  if [ -z "$DISABLE_PHENIX_GUI" ]; then
-    export BOOST_ADAPTBX_FPE_DEFAULT=1
-    export BOOST_ADAPTBX_SIGNALS_DEFAULT=1
-  fi
-fi
-""", file=f)
+    print("# include before command", file=f)
   # QBio DivCon paths
   if sys.platform != "win32":
     print("", file=f)

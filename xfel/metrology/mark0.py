@@ -97,8 +97,6 @@ def consistency_controls(DATA,params,annotate=False):#DATA is an instance of cor
       print("cv%7.3f"%rmsd_cv)
 
       if params.show_plots is True:
-        import os
-        os.environ["BOOST_ADAPTBX_FPE_DEFAULT"]="1"
         from matplotlib import pyplot as plt
         plt.figure(figsize=(9,9))
         plt.plot(spotcx,spotcy,

@@ -232,10 +232,33 @@ def exercise_generated_dispatchers():
       with open(os.path.join(build_dir, "dispatcher_include_tst.sh")) as f:
         text = f.read()
       # The guard comes from the dispatcher writers now, so the include
-      # keeps only the GUI settings and the DivCon paths.
+      # keeps only the DivCon paths; the BOOST_ADAPTBX_*_DEFAULT exports
+      # went with it (nothing has read them since 2019).
       assert "PYTHONNOUSERSITE" not in text, text
       assert "libtbx.scons" not in text, text
       assert "# include before command" in text, text
+      assert "QB_PYTHONPATH" in text, text
+      assert "BOOST_ADAPTBX" not in text, text
+      assert "include at start" not in text, text
+
+      # The non-conda include (legacy base/ builds) must not carry its own
+      # copy of the guard either: it would run again, after the writers'
+      # guard and after the site includes, and it ignored one opt-out.
+      if sys.platform == "darwin":
+        os.makedirs(os.path.join(base_dir, "Python.framework", "Versions",
+                                 "Current", "lib"))
+      write_gui_dispatcher_include.run([
+        "--build_dir=%s" % build_dir,
+        "--base_dir=%s" % base_dir,
+        "--suffix=tst_base",
+        "--ignore_missing_dirs",
+        "--quiet",
+      ])
+      with open(os.path.join(build_dir, "dispatcher_include_tst_base.sh")) as f:
+        text = f.read()
+      assert "include at start" not in text, text
+      assert "PHENIX_TRUST_OTHER_ENV" not in text, text
+      assert "BOOST_ADAPTBX" not in text, text
       assert "QB_PYTHONPATH" in text, text
   finally:
     shutil.rmtree(tmp, ignore_errors=True)

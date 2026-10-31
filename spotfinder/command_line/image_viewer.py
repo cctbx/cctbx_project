@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME distl.image_viewer
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 import sys,os
 from spotfinder.command_line.signal_strength import master_params
 from libtbx.utils import Sorry
