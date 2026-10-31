@@ -1114,7 +1114,8 @@ def analyze_anisotropy(
     a_zero_values = overall_si.a_zero_values,
     fo_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.fo_b_cart),
     aa_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.aa_b_cart),
-    bb_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.bb_b_cart),
+    bb_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.bb_b_cart) if
+      aniso_info.bb_b_cart is not None else None,
     ss_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.ss_b_cart),
     uu_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.uu_b_cart),
     overall_scale = overall_si.target_scale_factors,
@@ -1162,12 +1163,20 @@ def estimate_s_matrix(aniso_info):
     aniso_info.ss_sd_values,  # using sigmas for ss_b_cart
   )
 
-  # Repeat for B matrix
-  aniso_info.bb_b_cart = get_aniso_from_scale_values(
-    aniso_info,
-    aniso_info.bb_scale_values,
-    aniso_info.ss_sd_values,  # using sigmas for ss_b_cart
-  )
+  # Repeat for B matrix. B is undefined where any value is nan or inf
+  #   (external map: no uncertainty estimates), and so is bb_b_cart
+  bb_defined = True
+  for x in aniso_info.bb_scale_values:
+    if not math.isfinite(x):
+      bb_defined = False
+      break
+  aniso_info.bb_b_cart = None
+  if bb_defined:
+    aniso_info.bb_b_cart = get_aniso_from_scale_values(
+      aniso_info,
+      aniso_info.bb_scale_values,
+      aniso_info.ss_sd_values,  # using sigmas for ss_b_cart
+    )
 
   # Repeat for D matrix
   aniso_info.dd_b_cart = get_aniso_from_scale_values(

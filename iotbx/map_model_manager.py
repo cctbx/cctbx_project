@@ -6532,11 +6532,12 @@ class map_model_manager(object):
         'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart',
         ):
 
+        if not scaling_group_info.get(key):
+          continue # not defined here (bb for an external map)
         if not average_scaling_group_info.get(key):
           average_scaling_group_info.add(key=key,value=flex.double(
             scaling_group_info.get(key)))
-
-        elif scaling_group_info.get(key):
+        else:
           xx = average_scaling_group_info.get(key)
           xx += flex.double(scaling_group_info.get(key))
 
@@ -6802,6 +6803,9 @@ class map_model_manager(object):
        "(  X,      Y,      Z,    XY,    XZ,    YZ)\n"+
        "(%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
        tuple(bb_b_cart_as_u_cart)), file = self.log)
+    elif aa_b_cart_as_u_cart:
+      print("\n Anisotropy of the uncertainties: not defined (no uncertainty "+
+        "estimates, as with an external map)", file = self.log)
 
     if ss_b_cart_as_u_cart:
       print("\n Anisotropy of the scale factors\n"+
@@ -6812,6 +6816,14 @@ class map_model_manager(object):
 
   def _print_aniso_by_xyz(self, text, kw, scale_factor_info, n_use):
       """Summary anisotropy by region"""
+
+      n_defined = 0
+      for scaling_group_info in scale_factor_info.value_list[:n_use]:
+        if scaling_group_info.get(kw):
+          n_defined += 1
+      if n_defined == 0: # bb for an external map
+        print("\n    %s by position: not defined" %(text), file = self.log)
+        return
 
       print("\n    %s by position" %(text), file = self.log)
       print("\n      Box center                       U values","\n",

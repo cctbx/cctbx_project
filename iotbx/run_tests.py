@@ -81,6 +81,8 @@ tst_list_base = [
   ["$D/regression/tst_map_model_manager_supplied_tls.py",
     "external_global_local_global"],
   ["$D/regression/tst_map_model_manager_supplied_tls.py",
+    "external_global"],
+  ["$D/regression/tst_map_model_manager_supplied_tls.py",
     "average_overall_scale_stored"],
   ["$D/regression/tst_map_model_manager_supplied_tls.py",
     "mixed_overall_si"],
