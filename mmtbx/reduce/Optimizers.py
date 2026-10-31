@@ -383,6 +383,7 @@ class Optimizer(object):
     self._numCached = 0
     self._amideFlipsPerformed = []  # List of amide flips performed, whether by Mover or locking in place.
     self._hisFlipsPerformed = []    # List of histidine flips performed, whether by Mover or locking in place.
+    self._hydrogensToDelete = []    # Each as decided by the last alternate pass that contained it.
     self._environmentAtoms = []     # Symmetry copies and their Phantom Hydrogens in this pass.
     self._passCopies = []           # (copy, original, rt_mx) for the originals in this pass
     self._absentCopies = set()      # copies of deleted originals, not in the spatial query
@@ -507,9 +508,11 @@ class Optimizer(object):
       if altID is not None:
         alts = [altID]
 
-      # Clear the Movers list for each model.  It will be retained from one alternate to the next.
+      # Clear the Movers list for each model.  _PlaceMovers() makes a new one for each alternate.
       self._movers = []
       self._copyPassNotes = []
+      # i_seq: (atom, [(alt, deleted)]) for the H of each pass; _deleteMes is reset per pass.
+      passDeletions = {}
       firstAlt = True
       for alt in alts:
         # If we are doing the second or later alternate, place all atoms that are in a compatible alternate
@@ -537,7 +540,8 @@ class Optimizer(object):
         # Get the atoms from the specified conformer in the model (the empty string is the name
         # of the first conformation in the model; if there is no empty conformation, then it will
         # pick the first available conformation for each atom group.
-        self._atoms = GetAtomsForConformer(myModel, alt)
+        passAtoms = GetAtomsForConformer(myModel, alt)
+        self._atoms = list(passAtoms)
 
         # The bonded neighbors within this conformer, for everything in this pass (the
         # shared lists above mix conformers). A new dictionary each pass, so the Phantom
@@ -875,6 +879,15 @@ class Optimizer(object):
             self._doFixup(m.FixUp(loc))
           self._infoString += _ReportTiming(self._verbosity, "fix up Movers")
 
+        ################################################################################
+        # Record this pass's deletions. Only H are deleted (Movers and placement).
+        for a in passAtoms:
+          deleted = a in self._deleteMes
+          if deleted or a.element_is_hydrogen():
+            if a.i_seq not in passDeletions:
+              passDeletions[a.i_seq] = (a, [])
+            passDeletions[a.i_seq][1].append((alt, deleted))
+
         #################################################################################
         # Record the fraction of atoms that were calculated and the fraction that were cached.
         for optC in set(self._optimizerOf.values()):
@@ -896,6 +909,21 @@ class Optimizer(object):
                 coarse_loc >= len(m.CoarsePositions().positions)//2):
             nitrogen = m.CoarsePositions().atoms[0]
             self._hisFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
+
+      #################################################################################
+      # Each atom's deletion is decided by the last pass that contained it: an
+      # altloc-specific H by its own pass, a blank H by the last pass.
+      for i in sorted(passDeletions):
+        a, decisions = passDeletions[i]
+        if decisions[-1][1]:
+          self._hydrogensToDelete.append(a)
+        if len(set(d for alt, d in decisions)) > 1:
+          self._infoString += _VerboseCheck(self._verbosity, 1,
+            "Passes disagree about deleting {} {} (deleted in {}; kept in {}); the last pass decides: {}\n".format(
+            _ResNameAndID(a), a.name.strip(),
+            " ".join("'{}'".format(alt) for alt, d in decisions if d),
+            " ".join("'{}'".format(alt) for alt, d in decisions if not d),
+            "deleted" if decisions[-1][1] else "kept"))
 
       if symmetryCopies is not None:
         self._SummarizeCopies(mi)
@@ -1372,10 +1400,11 @@ class Optimizer(object):
       Returns a list of the Hydrogens that were marked for deletion during the processing.
       The caller should delete these form the optimized structure to produce a model that
       has the best contacts and fewest clashes.
+      Each atom's deletion is decided by the last alternate pass that contained it.
       :return: a list of the Hydrogens that were marked for deletion during the processing,
       in model order (i_seq), so that the deletions are reported in the same order on every run.
     """
-    return sorted(self._deleteMes, key=lambda a: a.i_seq)
+    return sorted(self._hydrogensToDelete, key=lambda a: a.i_seq)
 
   def getFlippedAmides(self):
     """
