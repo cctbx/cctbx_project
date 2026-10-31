@@ -509,6 +509,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_metal_amine_supplied.py",
   "$D/regression/tst_reduce2_optimizer_conformers.py",
   "$D/regression/tst_reduce2_altloc_deletions.py",
+  "$D/regression/tst_reduce2_his_acceptor.py",
   "$D/regression/tst_reduce2_output_files.py",
   "$D/regression/tst_reduce2_returned_model.py",
   "$D/regression/tst_reduce2_element_x.py",

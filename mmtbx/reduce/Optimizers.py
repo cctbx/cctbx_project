@@ -123,6 +123,17 @@ def GetAtomsForConformer(model, conf):
     ret += confs[which].atoms()
   return ret
 
+def _HisAcceptorsInAnyState(mover):
+  """i_seq of the ring Nitrogens (NE2, ND1) of a MoverHisFlip that are acceptors in at
+  least one of its coarse states."""
+  coarse = mover.CoarsePositions()
+  ret = set()
+  for extras in coarse.extraInfos:
+    for i in (0, 4):
+      if extras[i].isAcceptor:
+        ret.add(coarse.atoms[i].i_seq)
+  return ret
+
 def _ResNameAndID(a):
   """Make a string describing the residue and chain for the specfied atom.
   """
@@ -660,6 +671,24 @@ class Optimizer(object):
         self._infoString += _ReportTiming(self._verbosity, "fixup explicit doners")
 
         ################################################################################
+        # A Histidine ring Nitrogen is an acceptor if and only if it carries no H or D in
+        # this conformer (probe typing marks both as acceptors). Before the symmetry copies
+        # take their atom info and before placement reads the flags for rotator candidates;
+        # placement marks a Nitrogen whose H it deletes as an acceptor, and the His flip
+        # Movers set both Nitrogens for each of their states.
+        for a in self._atoms:
+          if (a.parent().resname.strip().upper() == 'HIS' and
+              a.name.strip().upper() in ('ND1', 'NE2')):
+            protonated = False
+            for n in passNeighborLists[a]:
+              if n.element_is_hydrogen():
+                protonated = True
+            e = self._extraAtomInfo.getMappingFor(a)
+            if e.isAcceptor == protonated:
+              e.isAcceptor = not protonated
+              self._extraAtomInfo.setMappingFor(a, e)
+
+        ################################################################################
         # Symmetry copies as a fixed environment, in the spatial query before Mover
         # placement (ions, candidate acceptors) but not in the atoms it places Movers on.
         if symmetryCopies is not None:
@@ -1122,7 +1151,6 @@ class Optimizer(object):
     passNotes = []
     lastRedo = []
     lastChanged = []
-    self._keepAlive = []            # OptimizerC keeps references to its dot scorer
     lastSearch = [1] * len(cliques) # pass of each Clique's last search; 1 is the main one
     changed = self._UpdateCopies()
     moved = [(1, self._ChangedSites(changed))]  # (pass after which copies moved, sites)
@@ -1138,8 +1166,6 @@ class Optimizer(object):
       if len(movers) > 0:
         for m in movers:
           self._setMoverState(m.CoarsePositions(), 0)
-        self._keepAlive.append(self._dotScorer)
-        self._dotScorer = Helpers.createDotScorer(self._extraAtomInfo, self._probePhil)
         optC = OptimizerC(self._verbosity, self._preferenceMagnitude,
                           self._maximumVDWRadius, self._minOccupancy, self._probeRadius, self._probeDensity,
                           self._atoms,
@@ -1177,8 +1203,6 @@ class Optimizer(object):
     if len(changed) > 0 and len(lastChanged) > 0:
       unsettled, sites = self._ResolveUnsettled(lastChanged, lastRedo, poses, cliques)
       moved.append((len(poses) + 1, sites))
-    self._keepAlive.append(self._dotScorer)
-    self._dotScorer = Helpers.createDotScorer(self._extraAtomInfo, self._probePhil)
 
     # Fresh scores, at the final poses with the final copies, for the Cliques a pass
     # searched and those near a copy that moved after their last search.
@@ -1248,10 +1272,9 @@ class Optimizer(object):
       for m, pose in zip(unsettled, combo):
         self._SetPose(m, pose)
       sites.extend(self._ChangedSites(self._UpdateCopies()))
-      dotScorer = Helpers.createDotScorer(self._extraAtomInfo, self._probePhil)
       total = 0.0
       for m in scored:
-        total += self._ScoreMover(m, dotScorer)
+        total += self._ScoreMover(m, self._dotScorer)
       if best is None or total > best[0]:
         best = (total, combo)
     for m, pose in zip(unsettled, best[1]):
@@ -1511,6 +1534,10 @@ class Optimizer(object):
 
     # List of atoms to delete
     deleteAtoms = []
+
+    # i_seq of the His ring Nitrogens that a coarse state of their His flip Mover makes an
+    # acceptor; candidate acceptors for the single-hydrogen rotators below.
+    hisStateAcceptors = set()
 
     # Dictionary mapping from Mover to information about the Mover, so that we can keep track of
     # everything from its placement to its final state in the same string.
@@ -1776,6 +1803,7 @@ class Optimizer(object):
               hist = Movers.MoverHisFlip(a, bondedNeighborLists, self._extraAtomInfo, self._nonFlipPreference,
                 enabledFlips, s.fixedUp)
               self._movers.append(hist)
+              hisStateAcceptors.update(_HisAcceptorsInAnyState(hist))
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisPlace "+str(len(self._movers))+" to "+resNameAndID+"\n")
               # Name is HisPlace rather than HisFlip, so we don't try and report uncertain or clash for it.
               self._moverInfo[self._movers[-1]] = "HisPlace at "+resNameAndID+" "+aName;
@@ -1784,6 +1812,7 @@ class Optimizer(object):
               self._setMoverState(coarse, 0)
             else:
               self._movers.append(hist)
+              hisStateAcceptors.update(_HisAcceptorsInAnyState(hist))
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
               self._moverInfo[self._movers[-1]] = "HisFlip at "+resNameAndID+" "+aName;
         except Exception as e:
@@ -1805,6 +1834,12 @@ class Optimizer(object):
     atomDict = {}
     for a in atoms:
       atomDict[a.i_seq] = a
+
+    # A symmetry copy is a candidate acceptor as its original is now: the copies took
+    # their atom info before placement (ion lock) and have no His states of their own.
+    originalOf = {}
+    for c, o, rt in self._passCopies:
+      originalOf[c.i_seq] = o
 
     # Insert all single-hydrogen rotators, which we have a list of. Do this after we've
     # done all of the other Movers so that any lock-down placements will have been done
@@ -1873,7 +1908,9 @@ class Optimizer(object):
               (cName == 'ND2' and resName == 'ASN') or
               (cName == 'NE2' and resName == 'GLN') or
               (cName == 'CE1' and resName == 'HIS') or (cName == 'CD2' and resName == 'HIS') )
-            acceptor = self._extraAtomInfo.getMappingFor(c).isAcceptor
+            orig = originalOf.get(c.i_seq, c)
+            acceptor = (self._extraAtomInfo.getMappingFor(orig).isAcceptor or
+              orig.i_seq in hisStateAcceptors)
             if acceptor or flipPartner:
               potentialAcceptors.append(c)
 

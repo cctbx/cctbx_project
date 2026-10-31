@@ -620,7 +620,8 @@ std::string DotScorer::test()
     infos.push_back(se);
 
     // Construct the scorer to be used with the specified bond gaps.
-    DotScorer as(ExtraAtomInfoMap(atoms, infos));
+    ExtraAtomInfoMap asMap(atoms, infos);
+    DotScorer as(asMap);
 
     // Construct an exclusion list and add the target atom.
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
@@ -734,7 +735,8 @@ std::string DotScorer::test()
         infos.push_back(se);
 
         // Construct the scorer with updated information.
-        DotScorer as(ExtraAtomInfoMap(atoms, infos));
+        ExtraAtomInfoMap asMap(atoms, infos);
+        DotScorer as(asMap);
 
         res = as.score_dots(source, 1, sq, sourceRad + targetRad,
           probeRad, exclude, ds.dots(), ds.density(), false);
@@ -781,7 +783,8 @@ std::string DotScorer::test()
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
 
     // Construct the scorer to be used.
-    DotScorer as(ExtraAtomInfoMap(atoms, infos));
+    ExtraAtomInfoMap asMap(atoms, infos);
+    DotScorer as(asMap);
 
     // Check a dot that is to -X of the source atom by its radius against the
     // target for various positions of the source atom.
@@ -935,7 +938,8 @@ std::string DotScorer::test()
                 infos.push_back(se);
 
                 // Construct the scorer to be used.
-                DotScorer as(ExtraAtomInfoMap(atoms, infos), 0.25, 10.0, 4.0, 0.6, 0.8, 0.4, 0.5, 0.25, false,
+                ExtraAtomInfoMap asMap(atoms, infos);
+                DotScorer as(asMap, 0.25, 10.0, 4.0, 0.6, 0.8, 0.4, 0.5, 0.25, false,
                   *ignoreIons);
 
                 // Determine our hydrogen-bond state
@@ -958,7 +962,8 @@ std::string DotScorer::test()
                   exclude.push_back(ea);
 
                   // We added an atom, so we need a new DotScorer
-                  DotScorer as2(ExtraAtomInfoMap(atoms, infos));
+                  ExtraAtomInfoMap as2Map(atoms, infos);
+                  DotScorer as2(as2Map);
 
                   // Even when we have a close clash, we should get no response.
                   source.set_xyz(vec3( sourceRad,0,0 ));
@@ -1122,7 +1127,8 @@ std::string DotScorer::test()
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
 
         // Construct the scorer to be used.
-        DotScorer as(ExtraAtomInfoMap(atoms, infos), 0.25, 10.0, 4.0, 0.6, 0.8, 0.4, 0.5, 0.25, *weakHBonds);
+        ExtraAtomInfoMap asMap(atoms, infos);
+        DotScorer as(asMap, 0.25, 10.0, 4.0, 0.6, 0.8, 0.4, 0.5, 0.25, *weakHBonds);
 
         // Set the atoms to be slightly separated and then score the dots.
         source.set_xyz(vec3( sourceRad + targetRad + 0.1,0,0 ));
@@ -1177,7 +1183,8 @@ std::string DotScorer::test()
       scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
 
       // Construct the scorer to be used.
-      DotScorer as(ExtraAtomInfoMap(atoms, infos));
+      ExtraAtomInfoMap asMap(atoms, infos);
+      DotScorer as(asMap);
 
       // Test the source atom with an overlap of magnitude 0.3.
       double gap = -0.3;
@@ -1226,7 +1233,8 @@ std::string DotScorer::test()
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
 
     // Construct the scorer to be used.
-    DotScorer as(ExtraAtomInfoMap(atoms, infos));
+    ExtraAtomInfoMap asMap(atoms, infos);
+    DotScorer as(asMap);
 
     // Sweep the source atom
     double lastAttract = 1e10;
@@ -1313,7 +1321,8 @@ std::string DotScorer::test()
         for (double wBond = 0.25; wBond < 10; wBond += 3) {
 
           // Construct the scorer to be used.
-          DotScorer as(ExtraAtomInfoMap(atoms, infos),wGap, wBump, wBond);
+          ExtraAtomInfoMap asMap(atoms, infos);
+          DotScorer as(asMap,wGap, wBump, wBond);
 
           // Get the dot results and store all of the params and results in a vector
           ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
@@ -1402,7 +1411,8 @@ std::string DotScorer::test()
       ScoreDotsResult res;
 
       // Construct the scorer to be used with the specified bond gaps.
-      DotScorer as(ExtraAtomInfoMap(atoms, infos), 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
+      ExtraAtomInfoMap asMap(atoms, infos);
+      DotScorer as(asMap, 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
         maxChargedHydrogenOverlap, bumpOverlap, badOverlap);
 
       // Check the source atom against outside and inside the gap
@@ -1442,7 +1452,8 @@ std::string DotScorer::test()
       ScoreDotsResult res;
 
       // Construct the scorer to be used with the specified bond gaps.
-      DotScorer as(ExtraAtomInfoMap(atoms, infos), 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
+      ExtraAtomInfoMap asMap(atoms, infos);
+      DotScorer as(asMap, 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
         maxChargedHydrogenOverlap, bumpOverlap, badOverlap);
 
       // Check the source atom against outside and inside the gap
@@ -1503,7 +1514,8 @@ std::string DotScorer::test()
       ScoreDotsResult res;
 
       // Construct the scorer to be used with the specified bond gaps.
-      DotScorer as(ExtraAtomInfoMap(atoms, infos), 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
+      ExtraAtomInfoMap asMap(atoms, infos);
+      DotScorer as(asMap, 0.25, 10.0, 4.0, maxRegularHydrogenOverlap,
         maxChargedHydrogenOverlap, bumpOverlap, badOverlap);
 
       // Check the source atom against outside and inside the gap
@@ -1564,7 +1576,8 @@ std::string DotScorer::test()
     ScoreDotsResult res;
 
     // Construct the scorer to be used with the specified bond gaps.
-    DotScorer as(ExtraAtomInfoMap(atoms, infos));
+    ExtraAtomInfoMap asMap(atoms, infos);
+    DotScorer as(asMap);
 
     // Check the source atom just overlapping with the target.
     source.set_xyz(vec3( targetRad + sourceRad - 0.1, 0, 0 ));
@@ -1624,7 +1637,8 @@ std::string DotScorer::test()
     ScoreDotsResult res;
 
     // Construct the scorer to be used with the specified bond gaps.
-    DotScorer as(ExtraAtomInfoMap(atoms, infos));
+    ExtraAtomInfoMap asMap(atoms, infos);
+    DotScorer as(asMap);
 
     // Check the source atom just overlapping with the target.
     source.set_xyz(vec3( targetRad + sourceRad - 0.1, 0, 0 ));
@@ -1670,7 +1684,8 @@ std::string DotScorer::test()
     infos.push_back(se);
 
     // Construct the scorer to be used with the specified bond gaps.
-    DotScorer as(ExtraAtomInfoMap(atoms, infos));
+    ExtraAtomInfoMap asMap(atoms, infos);
+    DotScorer as(asMap);
 
     // Construct an exclusion list and add the target atom.
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;

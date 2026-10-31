@@ -194,16 +194,17 @@ def test_d_input_qmready():
     raise AssertionError("D input with qmready ran")
 
 def test_unused_records():
-  # an input pair on His HE2: the Optimizer flips the His and deletes HE2,
-  # so its recorded values are not used and listed by site
+  # input pairs on His HD1 and HE2: the Optimizer flips the His and deletes
+  # HD1 (the ring N that keeps its H is not an acceptor), so the recorded
+  # values for HD1 are not used and listed by site
   src = cached_run(his_no_h, neutron_option="hd_and_h").text
   fn, log, description = run_reduce2("tst_r2n_d_input_unused", src,
     ["approach=optimize", "neutron_option=hd_and_h", "add_flip_movers=True"])
-  assert "Deleting chain A HIS 45 HE2" in description, description
+  assert "Deleting chain A HIS 45 HD1" in description, description
   unused = description.split(
     "Input values not used (site no longer in the model) (1):")[1]
-  assert unused.splitlines()[1].strip() == "HE2 HIS A 45", unused
-  assert not [k for k in hd_values(fn) if k[1] in ("HE2", "DE2")]
+  assert unused.splitlines()[1].strip() == "HD1 HIS A 45", unused
+  assert not [k for k in hd_values(fn) if k[1] in ("HD1", "DD1")]
   assert "Values restored from the input: 2" in description
 
 def test_remove_d_input():
