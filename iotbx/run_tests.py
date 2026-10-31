@@ -28,6 +28,7 @@ tst_list_base = [
   "$D/regression/tst_map_model_manager_4.py",
   "$D/regression/tst_map_model_manager_model_sharpening_5.py",
   "$D/regression/tst_map_model_manager_model_sharpening_5_cif.py",
+  "$D/regression/tst_map_model_manager_model_sharpen_model_id.py",
   "$D/regression/tst_map_model_manager_call_consistency.py",
   "$D/regression/tst_map_model_manager_get_any_map_manager.py",
   "$D/regression/tst_map_model_manager_external_sharpening_7.py",

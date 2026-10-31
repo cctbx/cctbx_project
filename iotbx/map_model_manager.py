@@ -4797,14 +4797,18 @@ class map_model_manager(object):
     model.neutralize_scatterers() # Get rid of atoms like O1-
 
     if find_k_sol_b_sol and (k_sol is None) and (b_sol is None):
-      # Find k_sol and b_sol
-      local_mmm = working_mmm.extract_all_maps_around_model(
+      # Find k_sol and b_sol. Box around model_id: extract_all_maps_around_model
+      #   boxes around the model 'model', so use a copy with model_id as
+      #   'model' (a new map_dict with the same maps: boxing makes new ones)
+      box_mmm = working_mmm.customized_copy(model_dict = {'model': model},
+        map_dict = dict(working_mmm.map_dict()))
+      local_mmm = box_mmm.extract_all_maps_around_model(
         stay_inside_current_map = True)
       local_mmm.mask_all_maps_around_atoms(
          mask_atoms_atom_radius = 2.* d_min,
          soft_mask =True)
       d_min_for_k_sol_b_sol = max(d_min, d_min_for_k_sol_b_sol)
-      kb_info = local_mmm.find_k_sol_b_sol(local_mmm.get_model_by_id(model_id),
+      kb_info = local_mmm.find_k_sol_b_sol(local_mmm.model(),
         d_min = d_min_for_k_sol_b_sol,
         model_map_id = map_id_model_map,
         comparison_map_id = map_id)
@@ -4836,7 +4840,7 @@ class map_model_manager(object):
       # Mask maps around the model
       print("Masking all maps in '%s' around model, saving original as '%s'" %(
         self.name,str(unmasked_map_id_list)), file = self.log)
-      working_mmm.mask_all_maps_around_atoms(
+      working_mmm.mask_all_maps_around_atoms(model = model,
        soft_mask=True, mask_atoms_atom_radius = 2.* working_mmm.resolution())
 
     # Put in unmasked map to be scaled
