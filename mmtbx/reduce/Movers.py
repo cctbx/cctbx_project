@@ -1304,13 +1304,14 @@ class MoverHisFlip(object):
         extras.append(probe.ExtraAtomInfo(extraAtomInfoMap.getMappingFor(a)))
         deleteMes.append(False)
 
-      # Replace any that need it for this configuration.
+      # Replace any that need it for this configuration.  Each ring Nitrogen is an
+      # acceptor if and only if its Hydrogen is removed in this configuration.
+      extras[0].isAcceptor = (i % 3 == 1)
+      extras[4].isAcceptor = (i % 3 == 2)
       if i % 3 == 1: # Remove the Hydrogen from NE2
-        extras[0].isAcceptor = True
         deleteMes[1] = True
 
       if i % 3 == 2: # Remove the Hydrogen from ND1
-        extras[4].isAcceptor = True
         deleteMes[5] = True
 
       # Append to the lists.

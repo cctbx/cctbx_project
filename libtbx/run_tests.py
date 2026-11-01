@@ -13,6 +13,7 @@ tst_list_base = [
   "$D/test_utils/__init__.py",
   "$D/queuing_system_utils/pbs_utils.py",
   "$D/queuing_system_utils/sge_utils.py",
+  "$D/queuing_system_utils/tst_processing.py",
   "$D/introspection.py",
   "$D/tst_thread_utils.py",
   "$D/tst_easy_mp.py",

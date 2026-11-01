@@ -1,5 +1,6 @@
 # Parameters:
 #   modules: <modules artifact name>
+#   timeoutInMinutes: <job timeout, default 180>
 
 jobs:
   - template: ./conda-win.yml
@@ -7,50 +8,59 @@ jobs:
       vmImage: windows-2022
       vs: 2022
       modules: ${{ parameters.modules }}
+      timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
   - template: ./conda-win.yml
     parameters:
       vmImage: windows-2025-vs2026
       vs: 18
       modules: ${{ parameters.modules }}
+      timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
   - template: ./conda-linux.yml
     parameters:
       distribution: cctbx/rockylinux
       version: [9]
       modules: ${{ parameters.modules }}
+      timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
       template: ./unix-conda-build.yml
   # - template: ./conda-linux.yml
   #   parameters:
   #     distribution: cctbx/rockylinux
   #     version: [10]
   #     modules: ${{ parameters.modules }}
+  #     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
   #     template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
       distribution: cctbx/ubuntu
       version: ['26', '04']
       modules: ${{ parameters.modules }}
+      timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
       template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
       distribution: cctbx/ubuntu
       version: ['24', '04']
       modules: ${{ parameters.modules }}
+      timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
       vmImage: [15]
       xcode_version: [26, 3]
       modules: ${{ parameters.modules }}
+      timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
       vmImage: [15]
       xcode_version: [16, 4]
       modules: ${{ parameters.modules }}
+      timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
       template: ./unix-conda-build.yml
   # - template: ./conda-osx.yml
   #   parameters:
   #     vmImage: [26]
   #     xcode_version: [26, 6]
   #     modules: ${{ parameters.modules }}
+  #     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
   #     template: ./unix-conda-build.yml

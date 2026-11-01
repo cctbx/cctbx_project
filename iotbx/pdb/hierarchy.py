@@ -390,8 +390,9 @@ class _():
   created programatically.  Note that it does not contain any reference to
   crystal symmetry or source scattering information, meaning that in practice
   it must often be tracked alongside an equivalent cctbx.xray.structure object.
-  Pickling is supported, simply by writing out and reading back the PDB-format
-  representation of the hierarchy.
+  Pickling is supported: the PDB-format text (mmCIF if the model does not fit
+  the PDB format) carries the topology and labels, and the atom numeric values
+  travel alongside it exactly, since the text rounds them.
 
   Examples
   --------
@@ -400,16 +401,25 @@ class _():
 
   __getstate_manages_dict__ = True
 
-  def __getstate__(self):
+  def _assert_no_unknown_attributes(self):
     # check that the only possible attributes that are set are
     #   _lai_lookup
     #   _label_seq_id_dict
-    # these are not pickled and are not restored when unpickling
+    # these are not pickled or deep-copied and are not restored
     # if more attributes are added to the hierarchy class in Python,
     # the pickling code needs to be updated.
     attribute_check = set(self.__dict__.keys()) - set(['_lai_lookup', '_label_seq_id_dict'])
     assert len(attribute_check) == 0, attribute_check
-    version = 2
+
+  def __deepcopy__(self, memo):
+    # Without this, copy.deepcopy goes through __getstate__/__setstate__,
+    # i.e. a text round trip. deep_copy() is exact and much faster.
+    self._assert_no_unknown_attributes()
+    return self.deep_copy()
+
+  def __getstate__(self):
+    self._assert_no_unknown_attributes()
+    version = 3
     pdb_string = StringIO()
     if self.fits_in_pdb_format():
       py3out = self._as_pdb_string_cstringio(  # NOTE py3out will be None in py2
@@ -427,7 +437,19 @@ class _():
       cif_object = iotbx.cif.model.cif()
       cif_object['pickled'] = self.as_cif_block()
       cif_object.show(out=pdb_string)
-    return (version, pickle_import_trigger(), self.info, pdb_string.getvalue())
+    # The text carries the topology and labels only. Both formats round the
+    # numeric values (PDB: xyz to 1e-3, occupancy and B to 1e-2, U to 1e-4,
+    # no fp/fdp/resolution at all; mmCIF: 5 decimals for xyz, B and U, 3 for
+    # occupancy, 4 for fp/fdp, 2 for resolution), so these are stored exactly.
+    atoms = self.atoms()
+    atom_values = (
+      atoms.extract_xyz(), atoms.extract_sigxyz(),
+      atoms.extract_occ(), atoms.extract_sigocc(),
+      atoms.extract_b(), atoms.extract_sigb(),
+      atoms.extract_uij(),
+      atoms.extract_fp(), atoms.extract_fdp(), atoms.extract_resolution())
+    return (version, pickle_import_trigger(), self.info, pdb_string.getvalue(),
+            atom_values)
 
   def __setstate__(self, state):
     assert len(state) >= 3
@@ -437,16 +459,37 @@ class _():
     version = state[0]
     if   (version == 1): assert len(state) == 3
     elif (version == 2): assert len(state) == 4
+    elif (version == 3): assert len(state) == 5
     else: raise RuntimeError("Unknown version of pickled state.")
-    self.info = state[-2]
+    if (version == 3):
+      self.info, pdb_string, atom_values = state[2], state[3], state[4]
+    else:
+      self.info, pdb_string, atom_values = state[-2], state[-1], None
     import iotbx.pdb
     ph = iotbx.pdb.input(
       source_info="string",
-      lines=flex.split_lines(state[-1])).construct_hierarchy(sort_atoms=False)
+      lines=flex.split_lines(pdb_string)).construct_hierarchy(sort_atoms=False)
 
     self.pre_allocate_models(number_of_additional_models=len(ph.models()))
     for model in ph.models():
       self.append_model(model=model.detached_copy())
+    if (atom_values is not None):
+      atoms = self.atoms()
+      xyz, sigxyz, occ, sigocc, b, sigb, uij, fp, fdp, resolution = atom_values
+      assert xyz.size() == atoms.size()
+      # Text and arrays were written in the same atom order and the text is
+      # the rounded form of the arrays, so they must agree to text precision.
+      assert flex.max_default((atoms.extract_xyz() - xyz).norms(), 0) < 2e-3
+      atoms.set_xyz(xyz)
+      atoms.set_sigxyz(sigxyz)
+      atoms.set_occ(occ)
+      atoms.set_sigocc(sigocc)
+      atoms.set_b(b)
+      atoms.set_sigb(sigb)
+      atoms.set_uij(uij)
+      atoms.set_fp(fp)
+      atoms.set_fdp(fdp)
+      atoms.set_resolution(resolution)
 
   def get_unique_resnames(self):
     """Returns a list of all unique residue names in the hierarchy."""
@@ -1223,8 +1266,24 @@ class _():
 
   def apply_rotation_translation(self, rot_matrices, trans_vectors):
     """
-    Apply rotation-translation to coordinates in the hierarchy
-    LIMITATION: ANISOU records in resulting hierarchy will be invalid!!!
+    Copy the hierarchy once per rotation-translation pair.
+
+    Copies under a rotation have anisotropic U rotated and sigxyz and siguij
+    cleared; copies under a translation keep them.  Chain IDs must be one
+    character, and pairs times models at most 61.
+
+    Parameters
+    ----------
+    rot_matrices : list of scitbx.matrix.sqr
+        Cartesian rotations.
+    trans_vectors : list of scitbx.matrix.col
+        Cartesian translations, one per rotation.
+
+    Returns
+    -------
+    iotbx.pdb.hierarchy.root
+        One model holding the copies, with a suffix 1-9, A-Z, a-z appended
+        to the chain IDs, one suffix per pair and model.
     """
     roots=[]
     for r,t in zip(rot_matrices, trans_vectors):
@@ -1236,6 +1295,7 @@ class _():
           xyz = c.atoms().extract_xyz()
           new_xyz = r.elems*xyz+t
           c.atoms().set_xyz(new_xyz)
+          c.atoms().rotate_uij_and_clear_sigmas(r_cart=r.elems)
           m.append_chain(c)
         root.append_model(m)
         roots.append(root)
@@ -1300,7 +1360,26 @@ class _():
     self.atoms().set_xyz(uc.orthogonalize(sites_frac+shift_best))
 
   def expand_to_p1(self, crystal_symmetry, exclude_self=False):
-    """ Expand model to P1.  ANISOU will be invalid"""
+    """
+    Expand the model to P1.
+
+    Copies under a rotation have anisotropic U rotated and sigxyz and siguij
+    cleared; copies under a translation keep them.
+
+    Parameters
+    ----------
+    crystal_symmetry : cctbx.crystal.symmetry
+        Symmetry whose operators generate the copies.
+    exclude_self : bool, optional
+        Leave out the copies under operators without a rotation: the
+        identity and any centring translations.
+
+    Returns
+    -------
+    iotbx.pdb.hierarchy.root
+        One model, with one chain per operator and chain.  The identity's
+        copies keep their chain IDs; the others get new two-letter IDs.
+    """
     import string
     import scitbx.matrix
     r = root()
@@ -1316,6 +1395,7 @@ class _():
         if(exclude_self and m3.is_r3_identity_matrix()): continue
         t = smx.t().as_double()
         t = scitbx.matrix.col((t[0],t[1],t[2]))
+        r_cart = crystal_symmetry.unit_cell().matrix_cart(smx.r())
         for c_ in m_.chains():
           n_at = len(c_.atoms())
           if(not n_at in n_atoms): n_atoms.append(n_at)
@@ -1324,6 +1404,7 @@ class _():
           xyz = crystal_symmetry.unit_cell().fractionalize(xyz)
           new_xyz = crystal_symmetry.unit_cell().orthogonalize(m3.elems*xyz+t)
           c_.atoms().set_xyz(new_xyz)
+          c_.atoms().rotate_uij_and_clear_sigmas(r_cart=r_cart)
           #
           if(not (smx.r().is_unit_mx() and smx.t().is_zero())):
             found = False
@@ -1367,8 +1448,9 @@ class _():
         operator on denominators (1, 12); ``i_seqs``, a flex.size_t of the
         atoms of this hierarchy copied; and ``hierarchy``, their copies in
         i_seqs order, at the symmetry-equivalent positions and with the
-        original chain IDs.  The identity is not included.  In the copies,
-        anisotropic U is rotated and sigxyz and siguij are cleared.
+        original chain IDs.  The identity is not included.  Copies under a
+        rotation have anisotropic U rotated and sigxyz and siguij cleared;
+        copies under a lattice translation keep them.
 
         ::
 
@@ -1453,7 +1535,6 @@ class _():
         occupied[element] = sites_cart.select(elements == element)
       return occupied[element]
     unit_cell = crystal_symmetry.unit_cell()
-    has_siguij = ext.atom.has_siguij()
     result = []
     for key in sorted(rgs_by_op):
       op, i_rgs = rgs_by_op[key]
@@ -1475,17 +1556,8 @@ class _():
       i_seqs = i_seqs.select(keep)
       hierarchy = self.select(i_seqs, copy_atoms=True)
       hierarchy.atoms().set_xyz(equiv.select(keep))
-      r_cart = unit_cell.matrix_cart(op.r())
-      for atom in hierarchy.atoms():
-        if (atom.uij_is_defined()):
-          atom.set_uij(adptbx.c_u_c_transpose(r_cart, atom.uij))
-      # sigxyz and siguij rotate only with their covariances, which the atoms
-      # do not hold.
-      hierarchy.atoms().set_sigxyz(
-        flex.vec3_double(hierarchy.atoms_size(), (0, 0, 0)))
-      if (has_siguij):
-        for atom in hierarchy.atoms():
-          atom.siguij_erase()
+      hierarchy.atoms().rotate_uij_and_clear_sigmas(
+        r_cart=unit_cell.matrix_cart(op.r()))
       result.append(group_args(rt_mx=op, i_seqs=i_seqs, hierarchy=hierarchy))
     return result
 
@@ -1835,6 +1907,12 @@ class _():
     chem_comp_atom_ids = []
     struct_asym_ids = []
     #
+    # _atom_site.id is the key of the loop. The serial restarts in every
+    # model (atoms_reset_serial, the PDB reader), so in a multi-model
+    # hierarchy the id is the row number instead; the anisotrop id is the
+    # same value, since the reader joins the two loops by id alone.
+    multi_model = self.models_size() > 1
+    i_row = 0
     for model in self.models():
       model_id = model.id
       is_first_in_chain = True
@@ -1876,8 +1954,13 @@ class _():
               else:
                 fp = "%.4f" %fp
                 fdp = "%.4f" %fdp
+              i_row += 1
+              if multi_model:
+                atom_id = str(i_row)
+              else:
+                atom_id = str(hy36decode(width=5, s=atom.serial))
               atom_site_group_PDB.append(group_pdb)
-              atom_site_id.append(str(hy36decode(width=5, s=atom.serial)))
+              atom_site_id.append(atom_id)
               atom_site_label_atom_id.append(atom.name.strip())
               atom_site_auth_atom_id.append(atom.name.strip())
               if atom.name.strip() not in chem_comp_atom_ids:
@@ -1913,8 +1996,7 @@ class _():
               if atom.uij_is_defined():
                 u11, u22, u33, u12, u13, u23 = [
                   u_aniso_fmt_str %i for i in atom.uij]
-                atom_site_anisotrop_id.append(
-                  str(hy36decode(width=5, s=atom.serial)))
+                atom_site_anisotrop_id.append(atom_id)
                 atom_site_anisotrop_pdbx_auth_atom_id.append(atom.name.strip())
                 atom_site_anisotrop_pdbx_label_alt_id.append(self.get_label_alt_id_atom(atom))
                 atom_site_anisotrop_pdbx_auth_comp_id.append(comp_id)

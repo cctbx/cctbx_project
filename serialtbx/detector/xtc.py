@@ -73,7 +73,10 @@ def address_split(address, env=None):
 
   return (None, None, None, None)
 
-def get_ebeam(evt):
+def get_ebeam(evt, run=None):
+  """Return the ebeam record for @p evt. Under psana2 the ebeam is a run-level
+  Detector; since psana 4.2.1 an Event only carries a RunCtx that cannot create
+  Detectors, so psana2 callers should pass the full Run object as @p run."""
   try:
     # pyana
     ebeam = evt.getEBeam()
@@ -98,13 +101,16 @@ def get_ebeam(evt):
         ebeam = evt.get(Bld.BldDataEBeam, src) # recent version of psana will return a V7 event or higher if this type is asked for
     except ImportError:
       # psana2
+      if run is None:
+        # psana2 < 4.2.1: the event still holds the full Run
+        run = evt.run()
       try:
-        ebeam = evt.run().Detector('ebeamh')
+        ebeam = run.Detector('ebeamh')
       except KeyError: # UED has no ebeam
         return None
   return ebeam
 
-def evt_wavelength(evt, delta_k=0):
+def evt_wavelength(evt, delta_k=0, run=None):
   """The evt_wavelength() function returns the wavelength in Ångström
   of the event pointed to by @p evt.  From Margaritondo & Rebernik
   Ribic (2011): the dimensionless relativistic γ-factor is derived
@@ -115,10 +121,11 @@ def evt_wavelength(evt, delta_k=0):
 
   @param evt     Event data object, a configure object
   @param delta_k Optional K-value correction
+  @param run     psana2 Run object owning @p evt (required for psana >= 4.2.1)
   @return        Wavelength, in Ångström
   """
   if evt is not None:
-    ebeam = get_ebeam(evt)
+    ebeam = get_ebeam(evt, run=run)
 
     if hasattr(ebeam, 'fEbeamPhotonEnergy') and ebeam.fEbeamPhotonEnergy > 0:
       # pyana

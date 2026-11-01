@@ -36,7 +36,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.5.0"
+version = "3.6.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -133,10 +133,10 @@ ignore_missing_restraints = False
   .type = bool
   .short_caption = Don't stop if restraints for a residue are missing.
   .help = Don't stop if restraints for a residue are missing (otherwise every approach except remove stops). With approach=optimize such a residue is left exactly as in the input, also with a neutron_option (its H/D are not converted), and is listed in the log and the description file. With approach=add or place and keep_existing_H=True, its existing H/D are kept unchanged and it is listed in the log and the description file. With keep_existing_H=False it gets no H and is listed in the log.
-skip_optimizations_after_seconds = 0.0
+treat_cliques_as_singletons_after_seconds = 1.0e10
   .type = float
-  .short_caption = Skip optimizations after this many seconds
-  .help = Once the program has run for this many seconds, skip any further coarse optimizations.  Note that for many runs most of the time is spent on PDB interpretation and Mover placement, which will not be cut short. Fine optimizations are completed after coarse optimizations cease.  If this is 0.0, no time limit is imposed.
+  .short_caption = Treat cliques as singletons after this many seconds
+  .help = Once the program has run for this many seconds, handle any ongoing or new cliques as singletons.  Note that for many runs most of the time is spent on PDB interpretation and Mover placement, which will not be cut short. Fine optimizations are completed after coarse optimizations cease.
 qmready = False
   .type = bool
   .short_caption = Run with custom preset options suitable for QM
@@ -168,6 +168,15 @@ capping_guess_for_unknowns = False
           the valence of every atom from its element and formal charge, bonds \
           from distances, and add H accordingly (reported as guessed). \
           False: stop with a Sorry listing those residues.
+include_symmetric_copies = False
+  .type = bool
+  .short_caption = Score Movers against symmetry mates
+  .help = Copies of the symmetry mates within 3.6 A of the model, from the \
+          input's own crystal symmetry (none for a placeholder cell such as \
+          CRYST1 1 1 1, or without symmetry), are a fixed environment for the \
+          optimization: scored, not moved, and refreshed until they agree \
+          with their originals. The flipkin and comparison passes run without \
+          copies.
 output
   .style = menu_item auto_align
 {
@@ -1765,6 +1774,34 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _SymmetryCopies(self):
+    '''
+    Symmetry copies of the residue groups within 3.6 A of each model, under the
+    input's crystal symmetry, for the Optimizer's symmetryCopies (None without a
+    cell or with the CRYST1 1 1 1 placeholder).
+    '''
+    cs = reduce_hydrogen.contact_symmetry(self._output_cs)
+    if cs is None:
+      return None
+    hierarchy = self.model.get_hierarchy()
+    models = {}
+    hierarchies = []
+    for mi, myModel in enumerate(hierarchy.models()):
+      # sym_equiv_residue_groups() takes one model
+      if hierarchy.models_size() == 1:
+        single = hierarchy
+      else:
+        single = pdb.hierarchy.root()
+        single.append_model(myModel.detached_copy())
+      originals = myModel.atoms()
+      models[mi] = []
+      for entry in single.sym_equiv_residue_groups(cs, 3.6):
+        hierarchies.append(entry.hierarchy)
+        for k, c in zip(entry.i_seqs, entry.hierarchy.atoms()):
+          models[mi].append((c, originals[k], entry.rt_mx))
+    # hierarchies: the copies' atoms belong to them
+    return group_args(crystal_symmetry=cs, models=models, hierarchies=hierarchies)
+
   def _ReinterpretModel(self, make_restraints=True, model=None):
     # Reinterpret the model using the same approach that hydrogen-placement does.
     # :param make_restraints: Should we compute restraints during the interpretation?
@@ -2437,13 +2474,16 @@ NOTES:
             print('\n' + text, file=self.logger)
             outString += '\n' + text + '\n'
 
+      symmetryCopies = None
+      if self.params.include_symmetric_copies:
+        symmetryCopies = self._SymmetryCopies()
+
       # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
       # but the desired model ID structure from the model.
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.time()
       stopTime = 0.0
-      if self.params.skip_optimizations_after_seconds > 0.0:
-        stopTime = startOpt + self.params.skip_optimizations_after_seconds
+      stopTime = startOpt + self.params.treat_cliques_as_singletons_after_seconds
       opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
         self.model, altID=self.params.alt_id,
         preferenceMagnitude=self.params.preference_magnitude,
@@ -2455,8 +2495,11 @@ NOTES:
         verbosity=self.params.verbosity,
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
         fillAtomDump = self.params.output.print_atom_info,
-        stopOptimizingAt = stopTime)
+        stopOptimizingAt = stopTime,
+        symmetryCopies = symmetryCopies)
       doneOpt = time.time()
+      if opt.getSymmetryCopiesSummary():
+        print(opt.getSymmetryCopiesSummary(), file=self.logger)
       warnings = opt.getWarnings()
       # Find the lines from warnings that start with "Warning: " and
       # concatenate them into a single string.

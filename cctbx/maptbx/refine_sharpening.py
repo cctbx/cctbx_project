@@ -1354,8 +1354,16 @@ def get_aniso_info(
       overall_si.rms_fo_list * overall_si.dd_values )
 
     # Anisotropy of the errors: B
-    si.bb_values = si.aa_values * flex.sqrt(
+    bb_values = si.aa_values * flex.sqrt(
        si.ssqr_values/overall_si.ssqr_values)
+    # B is undefined (nan or inf) where the overall ssqr is zero (external
+    #   map, cc set to 1): si.bb_values is then None, as si is pickled
+    #   and pickling flex.double needs finite values
+    si.bb_values = bb_values
+    for x in bb_values:
+      if not math.isfinite(x):
+        si.bb_values = None
+        break
 
     # Anisotropy of scale factors S:
     #     S = ratio of target scale factors to overall values
@@ -1383,8 +1391,8 @@ def get_aniso_info(
     fo_scale_values.extend(si.rms_fo_list)
     aa_values_by_dv.append(si.aa_values)
     aa_scale_values.extend(si.aa_values)
-    bb_values_by_dv.append(si.bb_values)
-    bb_scale_values.extend(si.bb_values)
+    bb_values_by_dv.append(bb_values)
+    bb_scale_values.extend(bb_values)
     dd_values_by_dv.append(si.dd_values)
     dd_scale_values.extend(si.dd_values)
     ss_values_by_dv.append(si.ss_values)
