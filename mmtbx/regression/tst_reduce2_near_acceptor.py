@@ -15,7 +15,9 @@ Tests:
 - 1R27 Tyr C 1201 HH (no metal): out of the too-short contact with Asp C 1047 OD1;
 - 1R27 Tyr D 415 HH (hd_and_h, singleton): an added angle wins the coarse step,
   the primary candidate's better pose is kept; the stored score and pose match a
-  fresh rescoring of the final coordinates.
+  fresh rescoring of the final coordinates. Run without the conjugated O-H
+  preference and in-plane candidates (Movers.ConjugatedHydrogenScope off): with
+  them a primary in-plane candidate wins the coarse step outright.
 """
 from __future__ import absolute_import, division, print_function
 import math, os, re
@@ -225,10 +227,13 @@ def test_fallback_state_cache():
           pose=m.PoseDescription(c, f, True)))
       return ret
   Optimizers.OptimizerC = Capture
+  scope = Movers.ConjugatedHydrogenScope
+  Movers.ConjugatedHydrogenScope = lambda atom, bondedNeighborLists: (False, None)
   try:
     h, desc = run('tst_reduce2_near_acceptor_tyr415_cache', pdb_1r27_tyr415, ['neutron_option=hd_and_h'])
   finally:
     Optimizers.OptimizerC = real
+    Movers.ConjugatedHydrogenScope = scope
   assert len(seen) == 1, seen
   s = seen[0]
   # the coarse winner was an added angle; the kept pose is around a primary one

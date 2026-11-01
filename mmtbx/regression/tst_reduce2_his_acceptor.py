@@ -631,11 +631,12 @@ def test_4kw8_his169():
 def test_rotator_candidate_from_his_state():
   '''Tyr F 453 HH: His B 34 ND1 carries HD1 in the His Mover's starting
   state, so it is not an acceptor then, but is one in the states without HD1;
-  it stays a candidate and HH takes the angle aimed at it (without: 3
-  candidates, 0.1 deg)'''
+  it stays a candidate and HH takes the angle aimed at it, 11.7 deg with the
+  conjugated O-H in-plane preference, 14.7 without (without the candidate: 3
+  candidates, 0.1 deg before the preference)'''
   desc, atoms = run(m_6vw1, 'tst_reduce2_his_acceptor_candidate')
   n, a = rotator(desc, 'chain F TYR 453 HH')
-  assert n == 4 and abs(a - 14.7) < 3, (n, a)
+  assert n == 4 and abs(a - 11.7) < 3, (n, a)
 
 def zinc_on_copy(model_text):
   '''chain F one cell along a, so His B 34 meets Tyr F 453 through a copy; a Zn
@@ -663,13 +664,13 @@ def zinc_on_copy(model_text):
 def test_symmetry_copy_candidate():
   '''The ion lock makes His B 34 ND1 an acceptor after its copies took their
   atom info; Tyr F 453 HH, next to the copy, still takes the angle aimed at it
-  (judged by the copy's flags: 0.1 deg)'''
+  (11.7 deg; judged by the copy's flags: 0.1 deg before the preference)'''
   desc, atoms = run(zinc_on_copy(m_6vw1), 'tst_reduce2_his_acceptor_copy',
     ["include_symmetric_copies=True"])
   assert ("Not adding Hydrogen to chain B HIS 34 ND1 and marking as an "
     "acceptor (ionic bond to ZN)") in desc, desc
   n, a = rotator(desc, 'chain F TYR 453 HH')
-  assert abs(a - 14.7) < 3, (n, a)
+  assert abs(a - 11.7) < 3, (n, a)
 
 if __name__ == "__main__":
   test_scorer_follows_map()

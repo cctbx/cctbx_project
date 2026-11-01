@@ -6,8 +6,9 @@ without OD1/OD2) and HOH 419, the water Thr62 HG1 can reach.
 
 A His locked by set_flip_states (one orientation, 3 states) is recorded as
 flipped when its Mover is added, never from its final state. Models: 6VW1
-His B505 (locked Unflipped) and 3J4P His A428 (locked Flipped), both ending
-with HD1 only, the state at index len//2 of a one-orientation Mover.
+His B505 (locked Unflipped, ending with HE2 only since Tyr B515 HH prefers the
+ring plane) and 3J4P His A428 (locked Flipped, ending with HD1 only), both in
+the upper half of the states of a one-orientation Mover (index len//2 or more).
 
 An unlocked His counts as flipped in any flipped state, also with one ring H
 (only the both-H state counted before): 3J4P His A428 unlocked ends Flipped
@@ -196,9 +197,9 @@ def his_flips(pdb, flip_state=""):
   assert len(poses) == 1, poses
   return opt.getFlippedHistidines(), poses[0]
 
-def test_locked_unflipped_hd1_only():
+def test_locked_unflipped_he2_only():
   flipped, pose = his_flips(pdb_6vw1_his505, "1 . B HIS 505 Unflipped")
-  assert "pose Unflipped HD1Placed HE2NotPlaced" in pose, pose
+  assert "pose Unflipped HD1NotPlaced HE2Placed" in pose, pose
   assert len(flipped) == 0, pose
 
 def test_locked_flipped_hd1_only():
@@ -218,7 +219,7 @@ def test_unlocked_unflipped_he2_only():
 
 if __name__ == "__main__":
   test_his181_keeps_ring_h()
-  test_locked_unflipped_hd1_only()
+  test_locked_unflipped_he2_only()
   test_locked_flipped_hd1_only()
   test_unlocked_flipped_hd1_only()
   test_unlocked_unflipped_he2_only()
