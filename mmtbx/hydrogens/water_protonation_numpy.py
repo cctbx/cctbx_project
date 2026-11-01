@@ -832,7 +832,8 @@ class _WaterHydrogenPlacer(object):
     """Fixed per-water geometry, computed once.
 
     Returns the dict of ``o`` (O coordinates), ``acceptors`` (atom indices,
-    nearest first), ``acc_dirs``/``acc_pts`` (O-H unit directions and the H
+    nearest first), ``acc_water`` (whether each is a water atom),
+    ``acc_dirs``/``acc_pts`` (O-H unit directions and the H
     positions built from them), ``cat`` (O->cation unit directions), ``sph``
     (the lazily built fallback-sphere H positions) and
     ``acc_static``/``sph_static`` (the cached static half of the clearance test
@@ -899,6 +900,7 @@ class _WaterHydrogenPlacer(object):
     acc_dirs = _as_np([accept_dir(i) for i in acceptors])
     g = {"o": o,
          "acceptors": acceptors,
+         "acc_water": [_is_water(atoms[i].parent().resname) for i in acceptors],
          "acc_dirs": acc_dirs,
          "acc_pts": o + self.oh_length * acc_dirs,
          "cat": _as_np(cation_dirs),
@@ -1043,17 +1045,28 @@ class _WaterHydrogenPlacer(object):
                                own_fixed=(h1_xyz,))
     c_cat = self._cat_ok(cat, cone_pts, o)
 
-    if na - (h1_k >= 0):
+    rank = c_cat.astype(np.int8) * 2 + c_ok
+    top = rank == rank.max()
+    use = [k for k in range(na) if k != h1_k]
+    if use:
       dots = (cone_dirs[:, 0, None] * acc_dirs[None, :, 0]
               + cone_dirs[:, 1, None] * acc_dirs[None, :, 1]
               + cone_dirs[:, 2, None] * acc_dirs[None, :, 2])
       if h1_k >= 0:
         dots[:, h1_k] = -np.inf
+      if rank.max() == 3:
+        # Of the acceptors H2 can reach (within the donation limit at a
+        # cation-ok, clash-free cone angle), only those outside the waters
+        # count when it can reach both kinds.
+        reach = [k for k in use
+                 if dots[top, k].max() >= _WATER_H1_ACC_ALIGN]
+        keep = [k for k in reach if not g["acc_water"][k]]
+        if keep and len(keep) < len(reach):
+          dots[:, [k for k in use if k not in keep]] = -np.inf
+          use = keep
       align = dots.max(axis=1)
     else:
       align = np.zeros(_WATER_CONE_SAMPLES)
-    rank = c_cat.astype(np.int8) * 2 + c_ok
-    top = rank == rank.max()
     a3 = np.where(c_cat & c_ok, align, 0.0)
     top &= a3 == np.where(top, a3, -np.inf).max()
     j = int(np.argmax(np.where(top, c_best, -np.inf)))
@@ -1062,7 +1075,6 @@ class _WaterHydrogenPlacer(object):
     # Both protons on acceptors: turn the water so each is equally far off its
     # acceptor, if that stays clash-free and away from cations. Not for a given
     # H1, nor for lone-pair aiming.
-    use = [k for k in range(na) if k != h1_k]
     if (fixed_d1 is not None or self.lone_pair_directed or h1_k < 0
         or rank.max() != 3 or not use):
       return h1_xyz, h2_xyz
@@ -1672,7 +1684,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
   (``_WATER_ACCEPTOR_RADIUS``, ``_WATER_ACCEPTOR_ELEMENTS``, N carrying an H
   excluded as donors), else the max-clearance direction over a dense sphere;
   H2 on the H-O-H cone about O-H1, at a clash-free angle toward
-  a second acceptor when there is one, else the clearest; with both on
+  a second acceptor when there is one (outside the waters if it can reach
+  both kinds), else the clearest; with both on
   acceptors, the water turns so each is equally far off its acceptor, where
   that stays clash-free. Candidates are
   scored against every other atom and every other water's placed H; waters go

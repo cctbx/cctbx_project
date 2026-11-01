@@ -143,6 +143,21 @@ HETATM    4  O   ACC F   1      -0.725  -2.807   0.000  1.00 10.00           O
 END
 """
 
+# A bare water whose H1 takes ACA (+x). On H2's cone (103.91 deg from +x) lie
+# a protonated water, exactly on the cone, and ACB, 16 deg off it: H2 can
+# reach both. The FAR copy moves ACB out of H2's reach.
+_WATER_OR_LIGAND_ACCEPTOR_PDB = """\
+HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
+HETATM    2  O   ACA D   1       2.600   0.000   0.000  1.00 10.00           O
+HETATM    3  O   ACB E   1      -1.450   0.000   2.511  1.00 10.00           O
+HETATM    4  O   HOH W   2      -0.661   2.669   0.000  1.00 10.00           O
+HETATM    5  H1  HOH W   2       0.095   3.260   0.000  1.00 10.00           H
+HETATM    6  H2  HOH W   2      -1.417   3.260   0.000  1.00 10.00           H
+END
+"""
+_WATER_OR_FAR_LIGAND_ACCEPTOR_PDB = _WATER_OR_LIGAND_ACCEPTOR_PDB.replace(
+  "-1.450   0.000   2.511", "-2.856   0.000   0.504")
+
 # Six bare waters on a tight 2.6 A grid with no other acceptors: the greedy
 # pass leaves close H-H contacts that refinement relaxes.
 _WATER_CLUSTER_PDB = """\
@@ -686,7 +701,9 @@ def exercise_heavy_cation_repulsion():
 
 def exercise_h2_reachable_acceptor():
   """H2 aims at an acceptor it can actually reach on the H-O-H cone, not at
-  the nearest free one when that lies off the cone."""
+  the nearest free one when that lies off the cone. Of the acceptors it can
+  reach, H2 takes one outside the waters, and a water only when nothing
+  else is in reach."""
   hier = _hierarchy(_UNREACHABLE_ACCEPTOR_PDB)
   wp.place_water_hydrogens(hier, n_refine=0)
   o, hs = _water_atoms(hier)
@@ -700,6 +717,21 @@ def exercise_h2_reachable_acceptor():
   assert d2.dot(acc) > 0.9, (
     f"H2 should aim at the reachable acceptor on the cone; "
     f"alignment {d2.dot(acc):.3f}")
+
+  for pdb_str, want in ((_WATER_OR_LIGAND_ACCEPTOR_PDB, "ACB"),
+                        (_WATER_OR_FAR_LIGAND_ACCEPTOR_PDB, "HOH")):
+    hier = _hierarchy(pdb_str)
+    wp.place_water_hydrogens(hier, n_refine=0)
+    bare = next(rg for rg in hier.residue_groups() if rg.resseq.strip() == "1"
+                and rg.parent().id == "W")
+    o = next(a for a in bare.atoms() if a.element.strip() == "O")
+    hs = [a for a in bare.atoms() if a.element.strip() == "H"]
+    assert len(hs) == 2, len(hs)
+    target = next(a for a in hier.atoms() if a.parent().resname == want
+                  and a.element.strip() == "O" and a.distance(o) > 0.1)
+    align = max(_unit(h, o).dot(_unit(target, o)) for h in hs)
+    assert align > 0.95, (
+      f"a proton should aim at {want}; best alignment {align:.3f}")
 
 
 def exercise_h2_after_acceptor_fallback():

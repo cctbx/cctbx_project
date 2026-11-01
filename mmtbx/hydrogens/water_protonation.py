@@ -929,7 +929,8 @@ class _WaterHydrogenPlacer(object):
     """Fixed per-water geometry, computed once.
 
     Returns the dict of ``o`` (O coordinates), ``acceptors`` (atom indices,
-    nearest first), ``acc_dirs``/``acc_pts`` (O-H unit directions as tuples and
+    nearest first), ``acc_water`` (whether each is a water atom),
+    ``acc_dirs``/``acc_pts`` (O-H unit directions as tuples and
     the H positions built from them), ``cat`` (O->cation unit directions),
     ``sph`` (the lazily built fallback-sphere H positions) and
     ``acc_static``/``sph_static`` (the cached static half of the clearance test
@@ -996,6 +997,7 @@ class _WaterHydrogenPlacer(object):
     acc_dirs = [accept_dir(i).elems for i in acceptors]
     g = {"o": o,
          "acceptors": acceptors,
+         "acc_water": [_is_water(atoms[i].parent().resname) for i in acceptors],
          "acc_dirs": acc_dirs,
          "acc_pts": _as_vec3(acc_dirs) * self.oh_length + o,
          "cat": [c.elems for c in cation_dirs],
@@ -1164,15 +1166,23 @@ class _WaterHydrogenPlacer(object):
     use = [k for k in range(na) if k != h1_k]
     if rank == 3 and use:
       dx, dy, dz = cone_dirs.parts()
-      align = None
+      dots = []
       for k in use:
         a = acc_dirs[k]
-        dot = dx * a[0] + dy * a[1] + dz * a[2]
-        if align is None:
-          align = dot
-        else:
-          s = dot > align
-          align.set_selected(s, dot.select(s))
+        dots.append(dx * a[0] + dy * a[1] + dz * a[2])
+      # Of the acceptors H2 can reach (within the donation limit at a
+      # cation-ok, clash-free cone angle), only those outside the waters
+      # count when it can reach both kinds.
+      reach = [i for i in range(len(use))
+               if flex.max(dots[i].select(top)) >= _WATER_H1_ACC_ALIGN]
+      keep = [i for i in reach if not g["acc_water"][use[i]]]
+      if keep and len(keep) < len(reach):
+        use = [use[i] for i in keep]
+        dots = [dots[i] for i in keep]
+      align = dots[0]
+      for dot in dots[1:]:
+        s = dot > align
+        align.set_selected(s, dot.select(s))
       top = top & (align == flex.max(align.select(top)))
     rows = top.iselection()
     j = int(rows[flex.max_index(c_cl.best_at(rows))])
@@ -1799,7 +1809,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
   (``_WATER_ACCEPTOR_RADIUS``, ``_WATER_ACCEPTOR_ELEMENTS``, N carrying an H
   excluded as donors), else the max-clearance direction over a dense sphere;
   H2 on the H-O-H cone about O-H1, at a clash-free angle toward
-  a second acceptor when there is one, else the clearest; with both on
+  a second acceptor when there is one (outside the waters if it can reach
+  both kinds), else the clearest; with both on
   acceptors, the water turns so each is equally far off its acceptor, where
   that stays clash-free. Candidates are
   scored against every other atom and every other water's placed H; waters go
