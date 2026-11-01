@@ -86,18 +86,13 @@ class manager(object):
     if (current_path is not None) and (current_path != ""):
       default_path = current_path
     default_path = to_unicode(default_path)
-    if wx.version().startswith('3'):
-      new_path = wx.DirSelector(
-        message=message,
-        defaultPath=default_path,
-        style=style|wx.DD_NEW_DIR_BUTTON,
-        parent=parent)
-    else:
-      new_path = wx.DirSelector(
-        message=message,
-        default_path=default_path,
-        style=style|wx.DD_NEW_DIR_BUTTON,
-        parent=parent)
+    # message and default path positional: the keyword for the latter is
+    # defaultPath or default_path depending on the wxPython version
+    new_path = wx.DirSelector(
+      message,
+      default_path,
+      style=style|wx.DD_NEW_DIR_BUTTON,
+      parent=parent)
     if (new_path != ""):
       return new_path
     return None
