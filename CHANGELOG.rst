@@ -1,3 +1,22 @@
+2026.10
+=======
+
+* mmtbx.reduce2 gained neutron_option for writing H/D models for neutron
+  refinement, approach=place for adding hydrogens without optimization
+  (replacing mmtbx.hydrogenate), a qmready preset for QM-ready models,
+  and NH2 placement for metal-bound amines; it now runs on all models by
+  default
+* Faster mmCIF model reading with a C++ hierarchy builder, exact pickling
+  and deep copies of hierarchies, and reader fixes for null occupancies,
+  missing atom ids and model numbers, and anisotropic tensors; faster
+  reflection CIF writing and dictionary validation
+* Faster, leaner probe2 with all interaction dots generated in C++;
+  cbetadev reports Mahalanobis distances and applies phi/psi corrections
+  to modified residues
+* Fixed riding hydrogens in geometry minimization, real-space ADP
+  refinement falling back to group ADPs, disulfides lost in NCS copies,
+  and queue submission under Python 3; fetch_pdb downloads EMDB masks
+
 2026.9
 ======
 
