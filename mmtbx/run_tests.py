@@ -525,6 +525,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_symmetry_copies.py",
   "$D/regression/tst_reduce2_conjugated_oh.py",
   "$D/regression/tst_reduce2_exclusions.py",
+  "$D/regression/tst_reduce2_fresh_scores.py",
   "$D/regression/tst_altloc_chain_break.py",
   "$D/regression/ncs/tst_geometry_minimization_ncs_constraints.py",
   "$D/regression/tst_clashes.py",

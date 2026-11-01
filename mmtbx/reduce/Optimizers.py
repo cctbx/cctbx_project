@@ -815,7 +815,6 @@ class Optimizer(object):
         self._OptimizeCliques(optC, singletonCliques, groupCliques, stopOptimizingAt)
         self._OptimizeFine(optC, singletonCliques + groupCliques)
         self._optimizerOf = dict((m, optC) for m in self._movers)
-        self._reportedScore = {}       # scores that replace GetHighScore() in the report
 
         ################################################################################
         # Symmetry copies follow their originals; the Cliques near copies that changed
@@ -823,6 +822,11 @@ class Optimizer(object):
         if symmetryCopies is not None:
           self._RefreshSymmetryCopies(singletonCliques, groupCliques, dotSphereCache,
             stopOptimizingAt, alt)
+
+        ################################################################################
+        # Final scores at the final poses: a stored search score is stale when a Clique
+        # partner moved after it was set.
+        self._finalScore = dict((m, self._ScoreMover(m, self._dotScorer)) for m in self._movers)
 
         ################################################################################
         # Print the final state and score for all Movers
@@ -874,7 +878,7 @@ class Optimizer(object):
             description += " ."
 
           self._infoString += _VerboseCheck(self._verbosity, 1,"  {} final score: {:.2f} pose {}\n".format(
-            self._moverInfo[m], self._reportedScore.get(m, optC.GetHighScore(m)), description))
+            self._moverInfo[m], self._finalScore[m], description))
 
         self._infoString += _VerboseCheck(self._verbosity, 1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+alt+"':\n")
         sortedGroups = sorted(groupCliques, key=len, reverse=True)
@@ -886,7 +890,7 @@ class Optimizer(object):
           final = 0.0
           for m in movers:
             initial += self._initialScore[m]
-            final += self._reportedScore.get(m, self._optimizerOf[m].GetHighScore(m))
+            final += self._finalScore[m]
           self._infoString += _VerboseCheck(self._verbosity, 1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
           for m in movers:
             _printPose(self, m)
@@ -1146,14 +1150,12 @@ class Optimizer(object):
     again, in a new OptimizerC, at most 3 passes in all. Movers still changing after the
     last pass keep the combination of their states that scores best with matching copies;
     so do the Movers a pass changed when the time limit overtook it, between their previous
-    and new states, and the refresh stops. The Movers whose OptimizerC scored them with
-    other copies get fresh reported scores."""
+    and new states, and the refresh stops."""
     cliques = singletonCliques + groupCliques
     poses = [self._Poses()]
     passNotes = []
     lastRedo = []
     lastChanged = []
-    lastSearch = [1] * len(cliques) # pass of each Clique's last search; 1 is the main one
     changed = self._UpdateCopies()
     moved = [(1, self._ChangedSites(changed))]  # (pass after which copies moved, sites)
     while len(changed) > 0 and len(poses) < 3:
@@ -1179,9 +1181,6 @@ class Optimizer(object):
         self._OptimizeFine(optC, redo)
         for m in movers:
           self._optimizerOf[m] = optC
-      for i, c in enumerate(cliques):
-        if c in redo:
-          lastSearch[i] = len(poses) + 1
       poses.append(self._Poses())
       lastChanged = [m for m in movers if poses[-1][m][1:] != poses[-2][m][1:]]
       lastRedo = redo
@@ -1193,8 +1192,7 @@ class Optimizer(object):
         # The time limit overtook the pass, which may have solved Cliques as singletons:
         # the Movers it changed keep the best of their previous and new states.
         if len(lastChanged) > 0:
-          text, sites = self._ResolveUnsettled(lastChanged, lastRedo, poses[-2:], cliques)
-          moved.append((len(poses) + 1, sites))
+          text = self._ResolveUnsettled(lastChanged, lastRedo, poses[-2:], cliques)
           passNotes[-1] += ", time limit reached: best of previous and new states of " + text
         changed = []
         break
@@ -1203,26 +1201,8 @@ class Optimizer(object):
 
     unsettled = ""
     if len(changed) > 0 and len(lastChanged) > 0:
-      unsettled, sites = self._ResolveUnsettled(lastChanged, lastRedo, poses, cliques)
-      moved.append((len(poses) + 1, sites))
+      unsettled = self._ResolveUnsettled(lastChanged, lastRedo, poses, cliques)
 
-    # Fresh scores, at the final poses with the final copies, for the Cliques a pass
-    # searched and those near a copy that moved after their last search.
-    fresh = set(i for i in range(len(cliques)) if lastSearch[i] > 1)
-    for searchPass in sorted(set(lastSearch)):
-      sites = []
-      for p, passSites in moved:
-        if p >= searchPass:
-          sites.extend(passSites)
-      group = [c for i, c in enumerate(cliques) if lastSearch[i] == searchPass and i not in fresh]
-      near = self._CliquesNear(group, sites)
-      for i, c in enumerate(cliques):
-        if lastSearch[i] == searchPass and c in near:
-          fresh.add(i)
-    for i in sorted(fresh):
-      for v in cliques[i]:
-        m = self._interactionGraph.vertex_label(v)
-        self._reportedScore[m] = self._ScoreMover(m, self._dotScorer)
     text = "{} passes".format(len(poses)) if len(poses) > 1 else "1 pass"
     if len(passNotes) > 0:
       text += " (" + "; ".join(passNotes) + ")"
@@ -1244,8 +1224,7 @@ class Optimizer(object):
     states they had in the passes of poses (or the passes' combinations if there are more
     than 64), each with copies rebuilt to match, and keep the one with the best summed score
     of the Cliques involved.
-    :return: (description of the unsettled Movers, sites of the copies moved)."""
-    sites = []
+    :return: description of the unsettled Movers."""
     options = []
     for m in unsettled:
       seen = []
@@ -1273,7 +1252,7 @@ class Optimizer(object):
     for combo in combos:
       for m, pose in zip(unsettled, combo):
         self._SetPose(m, pose)
-      sites.extend(self._ChangedSites(self._UpdateCopies()))
+      self._UpdateCopies()
       total = 0.0
       for m in scored:
         total += self._ScoreMover(m, self._dotScorer)
@@ -1281,9 +1260,9 @@ class Optimizer(object):
         best = (total, combo)
     for m, pose in zip(unsettled, best[1]):
       self._SetPose(m, pose)
-    sites.extend(self._ChangedSites(self._UpdateCopies()))
+    self._UpdateCopies()
     return "{} (best of {} combinations, score {:.2f})".format(
-      "; ".join(self._MoverName(m) for m in unsettled), len(combos), best[0]), sites
+      "; ".join(self._MoverName(m) for m in unsettled), len(combos), best[0])
 
   def _SummarizeCopies(self, mi):
     n = len(self._symmetryCopies.models.get(mi, []))
