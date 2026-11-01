@@ -8,7 +8,8 @@ from iotbx.map_model_manager import map_model_manager
 
 # Averaging of local anisotropic scaling information over locations
 #  (map_model_manager._average_scale_factor_info_over_xyz) and the
-#  "most anisotropy" section of _summarize_scale_factor_info.
+#  "most anisotropy" section and the reporting of the anisotropy of the
+#  uncertainties of _summarize_scale_factor_info.
 # Each case can be run alone:
 #  libtbx.python tst_map_model_manager_aniso_averaging.py complete_unchanged
 
@@ -147,6 +148,61 @@ def tst_missing_values_per_quantity():
     assert approx_equal(list(avg.get(key)), list(u_cart(factor * 3.))), (
       key, list(avg.get(key)))
 
+UNCERTAINTY_HEADING = "Anisotropy of the uncertainties"
+
+def numbers(line):
+  """The numbers in a line of the log, or None if any word is not one"""
+  values = []
+  for word in line.replace("(", " ").replace(")", " ").replace(",", " "
+      ).split():
+    try:
+      values.append(float(word))
+    except ValueError:
+      return None
+  return values
+
+def tst_uncertainty_defined_at_some_locations():
+  '''The anisotropy of the uncertainties (bb) is defined at two of three
+     locations; the middle one has none, as for an external map.  The
+     summary reports the two defined values and their average (scales 1
+     and 6 -> 3.5), never zeros or "not defined", and the table by
+     position lists the two locations that have bb and leaves the middle
+     one out'''
+  mmm, log = get_mmm()
+  sfi = make_scale_factor_info([make_location(scale = 1.),
+     make_location(scale = 2., missing = ('bb_b_cart_as_u_cart',)),
+     make_location(scale = 6.)])
+  mmm._summarize_scale_factor_info(sfi)
+  lines = log.getvalue().splitlines()
+  assert not [x for x in lines if UNCERTAINTY_HEADING in x and
+    "not defined" in x], "bb reported as not defined"
+  # Summary sections: the heading, two lines of explanation, the values
+  reported = []
+  for i, line in enumerate(lines):
+    if line.strip() == UNCERTAINTY_HEADING:
+      reported.append(tuple(numbers(lines[i + 3])))
+  print("bb reported in the summary:", reported)
+  expected = [u_cart(2. * scale) for scale in (1., 6., 3.5)]
+  for values in reported:
+    assert [x for x in values if x != 0], "bb reported as zeros"
+    assert [e for e in expected if approx_equal(values, e, eps = 1.e-3,
+      out = None)], (values, expected)
+  assert [r for r in reported if approx_equal(r, u_cart(2. * 3.5),
+    eps = 1.e-3, out = None)], "average over the two locations missing"
+  # Table by position: rows of box center and U values
+  start = lines.index("    %s by position" %(UNCERTAINTY_HEADING))
+  rows = []
+  for line in lines[start + 1:]:
+    if "by position" in line:
+      break
+    values = numbers(line)
+    if values and len(values) == 9:
+      rows.append(values)
+  print("bb table by position:", rows)
+  assert [tuple(r[:3]) for r in rows] == [XYZ[0], XYZ[2]], rows
+  for r, scale in zip(rows, (1., 6.)):
+    assert approx_equal(r[3:], u_cart(2. * scale), eps = 0.06), (r, scale)
+
 def tst_complete_unchanged():
   '''All locations complete: averages are plain means
      (scales 1, 2, 6 -> 3)'''
@@ -211,6 +267,8 @@ def run(args = None):
      ('overall_si_partial_skip', tst_overall_si_partial_skip),
      ('empty_location_skipped', tst_empty_location_skipped),
      ('missing_values_per_quantity', tst_missing_values_per_quantity),
+     ('uncertainty_defined_at_some_locations',
+       tst_uncertainty_defined_at_some_locations),
      ('complete_unchanged', tst_complete_unchanged),
      ('most_anisotropy_section', tst_most_anisotropy_section),
      ('overall_si_none', tst_overall_si_none),
