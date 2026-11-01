@@ -6092,16 +6092,21 @@ class map_model_manager(object):
       xyz_list = working_scale_factor_info.xyz_list
       print("\nAdding info from tls for %s" %(selection), file = self.log)
 
+      # TLS is in the frame with shift_cart other_shift_cart: to evaluate
+      #   it at a site here, subtract the shift_cart of this map and add
+      #   other_shift_cart
+      if other_shift_cart:
+        tls_frame_shift = tuple([other_sc - sc for sc,other_sc in zip(
+          self.shift_cart(), other_shift_cart)])
+      else:
+        tls_frame_shift = (0, 0, 0)
+
       if xyz_list.size() >= 1:
         print("Total of %s grid points inside this selection" %(
           xyz_list.size()), file = self.log)
 
         value_list = working_scale_factor_info.value_list
-        if other_shift_cart:
-          xyz_list_use = xyz_list + tuple([sc - other_sc for sc,other_sc in zip(
-            self.shift_cart(), other_shift_cart)]) # XXX CHECK
-        else:
-          xyz_list_use = xyz_list
+        xyz_list_use = xyz_list + tls_frame_shift
 
         print("Using TLS information from tlso_group_info", file = self.log)
 
@@ -6165,7 +6170,7 @@ class map_model_manager(object):
            new_xyz_list.size()), file = self.log)
         new_anisos_from_tls = uaniso_from_tls_one_group(
            tlso = tlso_value,
-           sites_cart = new_xyz_list,
+           sites_cart = new_xyz_list + tls_frame_shift,
            zeroize_trace=False)
         for xyz,aniso in zip(new_xyz_list,new_anisos_from_tls):
 

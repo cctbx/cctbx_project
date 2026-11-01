@@ -73,6 +73,8 @@ tst_list_base = [
   ["$D/regression/tst_map_model_manager_supplied_tls.py",
     "other_model_id"],
   ["$D/regression/tst_map_model_manager_supplied_tls.py",
+    "tls_in_other_frame"],
+  ["$D/regression/tst_map_model_manager_supplied_tls.py",
     "external_tls"],
   ["$D/regression/tst_map_model_manager_supplied_tls.py",
     "external_identical_map"],
