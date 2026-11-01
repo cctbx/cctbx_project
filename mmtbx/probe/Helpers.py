@@ -296,6 +296,50 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, extraAtomInfo, probeRad, N, 
   """
   return probeExt.getAtomsWithinNBonds(atom, bondedNeighborLists, extraAtomInfo, probeRad, N, nonHydrogenN)
 
+def getAtomsWithinNBondsAtAnyDistance(atom, bondedNeighborLists, extraAtomInfo, N, nonHydrogenN = 1e10):
+  """
+    getAtomsWithinNBonds() without its distance condition: the atoms within N bonds of
+    the specified atom, in compatible conformations, wherever they are.
+    getAtomsWithinNBonds() keeps a bonded atom only if it is close enough to touch at the
+    current coordinates, which holds for atoms that do not move. For an atom that moves
+    after the list is made (an atom of a Mover), the distance at the current pose does not
+    hold for its other poses, so the list must not depend on it; an atom that never comes
+    close enough to touch is never scored against, so excluding it changes no score.
+    :param atom: The atom to be tested.
+    :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
+    each atom in a set of atoms, as for getAtomsWithinNBonds().
+    :param extraAtomInfo: mmtbx_probe_ext.ExtraAtomInfo mapper; used only to find Phantom
+    Hydrogens, which are bonded to their parent Oxygen only (a depth of one).
+    :param N: Depth of recursion, as for getAtomsWithinNBonds().
+    :param nonHydrogenN: When neither the original atom nor the bonded atom is a Hydrogen,
+    limit the depth to this value (if this value is less than N).
+    :returns a list of all atoms that are bonded to atom within a depth of N, in the order
+    getAtomsWithinNBonds() would list them without its distance condition.  The original
+    atom is never on the list.
+  """
+  def blank(a):
+    ag = a.parent()
+    return ag is None or ag.altloc in ['', ' ']
+  if extraAtomInfo.getMappingFor(atom).isDummyHydrogen:
+    N = 1
+  atomIsHydrogen = atom.element_is_hydrogen()
+  # The same walk as atomsWithinNBonds() in ContactDB.h: each level expands every atom
+  # found so far, so the result has the same order.
+  # Atoms hash and compare by memory_id(), as the C++ compares atom data.
+  found = [atom]
+  seen = set([atom])
+  for i in range(N):
+    levelSize = len(found)
+    for k in range(levelSize):
+      for n in bondedNeighborLists[found[k]]:
+        if n in seen:
+          continue
+        if ((i < nonHydrogenN or atomIsHydrogen or n.element_is_hydrogen()) and
+            (blank(atom) or blank(n) or atom.parent().altloc == n.parent().altloc)):
+          found.append(n)
+          seen.add(n)
+  return found[1:]
+
 def isPolarHydrogen(atom, bondedNeighborLists):
   '''
     Returns True if the atom is a polar hydrogen, False if not.
@@ -1234,6 +1278,18 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, extraInfo, smallRadius, N))
     assert count == nestedNeighborsForN4Small[N], ("Helpers.Test(): Nested small-radius count for "+N4.name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN4Small[N]))
+
+  # getAtomsWithinNBondsAtAnyDistance() lists what getAtomsWithinNBonds() lists when no
+  # atom is too far, in the same order, whatever the distances.
+  for a in (N4, H41):
+    for N in range(1,7):
+      for nonHydrogenN in (3, 1e10):
+        expected = [x.i_seq for x in getAtomsWithinNBonds(a, bondedNeighborLists, extraInfo,
+          hugeRadius, N, nonHydrogenN)]
+        found = [x.i_seq for x in getAtomsWithinNBondsAtAnyDistance(a, bondedNeighborLists,
+          extraInfo, N, nonHydrogenN)]
+        assert found == expected, ("Helpers.Test(): getAtomsWithinNBondsAtAnyDistance() for "+
+          a.name.strip()+" for N = "+str(N)+" gave "+str(found)+", expected "+str(expected))
 
   # Test with Phantom Hydrogens to ensure we don't see more than just the nearest atom.
   # @todo

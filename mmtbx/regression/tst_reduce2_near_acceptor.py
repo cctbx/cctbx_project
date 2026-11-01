@@ -13,11 +13,13 @@ Tests:
 - 7PRG FUC A 203 O3, bridging two Ca, hd_and_h: H-bond to Asp99 OD2, away from
   both Ca; the same excerpt in X-ray mode as a guard (unchanged there);
 - 1R27 Tyr C 1201 HH (no metal): out of the too-short contact with Asp C 1047 OD1;
-- 1R27 Tyr D 415 HH (hd_and_h, singleton): an added angle wins the coarse step,
-  the primary candidate's better pose is kept; the stored score and pose match a
-  fresh rescoring of the final coordinates. Run without the conjugated O-H
-  preference and in-plane candidates (Movers.ConjugatedHydrogenScope off): with
-  them a primary in-plane candidate wins the coarse step outright.
+- 1R27 Thr C 334 HG1 (X-ray, singleton, with its neighbours within 4 A): an
+  added angle wins the coarse step, the primary candidate's better pose is kept;
+- 1R27 Ser B 170 HG (X-ray, singleton, with its neighbours within 4 A): after that
+  switch the coordinates, the pose and the stored score match a fresh rescoring of
+  the final coordinates.
+Both are Ser/Thr, so the conjugated O-H scope does not apply; both take this path
+with or without the excluded atoms of A37 in placement.
 """
 from __future__ import absolute_import, division, print_function
 import math, os, re
@@ -186,18 +188,20 @@ def test_tyr_short_contact():
   print("test_tyr_short_contact OK")
 
 def test_safeguard_singleton():
-  # an added angle (38 degrees, coarse 12.50) wins the coarse step but ends at
-  # 28.2 degrees (13.16) after its fine search; the best primary candidate
-  # (-0.1 degrees) ends at -5.1 degrees (14.49), which is kept
-  h, desc = run('tst_reduce2_near_acceptor_tyr415', pdb_1r27_tyr415, ['neutron_option=hd_and_h'])
-  score, ang = pose(desc, 'chain D TYR 415 HH')
-  assert abs(ang - (-5.1)) < 3.0, ang
-  assert score >= 14.49 - 0.005, score
+  # an added angle (coarse state 8; states 0-6 are primary) wins the coarse step and
+  # would end at -54.8 degrees (15.70) after its fine search; the best primary
+  # candidate ends at -75.8 degrees (16.67), which is kept
+  h, desc = run('tst_reduce2_near_acceptor_thr334', pdb_1r27_thr334, [])
+  score, ang = pose(desc, 'chain C THR 334 HG1')
+  assert abs(ang - (-75.8)) < 3.0, ang
+  assert score >= 16.67 - 0.005, score
   print("test_safeguard_singleton OK")
 
 def test_fallback_state_cache():
   # after the switch to the primary candidate's pose, the coordinates, the pose and
-  # the stored score match a fresh rescoring of the final coordinates
+  # the stored score match a fresh rescoring of the final coordinates. The kept pose
+  # (fine 8) is not the last one scored, so the atoms must be put there, and the fine
+  # poses of the two anchors need their own dots.
   real = Optimizers.OptimizerC
   seen = []
   class Capture(object):
@@ -211,7 +215,8 @@ def test_fallback_state_cache():
       before = self._r.GetCoarseLocation(m)
       ret = self._r.OptimizeSingleMoverFine(m)
       coarse = m.CoarsePositions()
-      if coarse.atoms[0].parent().resname == 'TYR' and coarse.atoms[0].name.strip() == 'HH':
+      h0 = coarse.atoms[0]
+      if h0.parent().parent().resseq.strip() == '170' and h0.name.strip() == 'HG':
         c, f = self._r.GetCoarseLocation(m), self._r.GetFineLocation(m)
         poses = m.FinePositions(c) if f >= 0 else coarse
         i = f if f >= 0 else c
@@ -227,20 +232,17 @@ def test_fallback_state_cache():
           pose=m.PoseDescription(c, f, True)))
       return ret
   Optimizers.OptimizerC = Capture
-  scope = Movers.ConjugatedHydrogenScope
-  Movers.ConjugatedHydrogenScope = lambda atom, bondedNeighborLists: (False, None)
   try:
-    h, desc = run('tst_reduce2_near_acceptor_tyr415_cache', pdb_1r27_tyr415, ['neutron_option=hd_and_h'])
+    h, desc = run('tst_reduce2_near_acceptor_ser170_cache', pdb_1r27_ser170, [])
   finally:
     Optimizers.OptimizerC = real
-    Movers.ConjugatedHydrogenScope = scope
   assert len(seen) == 1, seen
   s = seen[0]
   # the coarse winner was an added angle; the kept pose is around a primary one
   assert s['before'] >= s['primary'] and s['coarse'] < s['primary'], s
   assert s['moved'] < 1e-6, s
   assert abs(s['stored'] - s['fresh']) < 1e-6, s
-  score, ang = pose(desc, 'chain D TYR 415 HH')
+  score, ang = pose(desc, 'chain B SER 170 HG')
   assert abs(score - s['stored']) < 0.005 and s['pose'] == 'Angle %.1f deg .' % ang, (score, ang, s)
   print("test_fallback_state_cache OK")
 
@@ -397,32 +399,69 @@ HETATM28714  O   HOH C8320       9.280  63.671  18.743  1.00 59.06           O
 END
 """
 
-pdb_1r27_tyr415 = """\
+pdb_1r27_ser170 = """\
 CRYST1  127.401  298.300  296.853  90.00  90.00  90.00 I 2 2 2
-ATOM  26327  N   TYR D 415      14.965  40.320  64.778  1.00 27.53           N
-ATOM  26328  CA  TYR D 415      15.673  41.262  65.631  1.00 27.06           C
-ATOM  26329  C   TYR D 415      16.469  42.274  64.797  1.00 28.08           C
-ATOM  26330  O   TYR D 415      16.404  43.484  65.040  1.00 28.08           O
-ATOM  26331  CB  TYR D 415      16.596  40.474  66.563  1.00 26.98           C
-ATOM  26332  CG  TYR D 415      17.589  41.298  67.342  1.00 29.66           C
-ATOM  26333  CD1 TYR D 415      17.170  42.218  68.306  1.00 29.06           C
-ATOM  26334  CD2 TYR D 415      18.958  41.142  67.132  1.00 29.85           C
-ATOM  26335  CE1 TYR D 415      18.095  42.960  69.043  1.00 30.10           C
-ATOM  26336  CE2 TYR D 415      19.891  41.878  67.861  1.00 32.39           C
-ATOM  26337  CZ  TYR D 415      19.453  42.785  68.815  1.00 31.26           C
-ATOM  26338  OH  TYR D 415      20.379  43.509  69.530  1.00 33.01           O
-ATOM  26498  N   GLU D 437      20.460  39.379  73.511  1.00 32.61           N
-ATOM  26499  CA  GLU D 437      20.860  40.274  72.434  1.00 32.89           C
-ATOM  26500  C   GLU D 437      22.306  40.052  72.036  1.00 32.64           C
-ATOM  26501  O   GLU D 437      22.642  40.083  70.852  1.00 31.37           O
-ATOM  26502  CB  GLU D 437      20.702  41.735  72.840  1.00 34.39           C
-ATOM  26503  CG  GLU D 437      19.310  42.293  72.697  1.00 36.51           C
-ATOM  26504  CD  GLU D 437      19.301  43.808  72.811  1.00 38.76           C
-ATOM  26505  OE1 GLU D 437      19.730  44.491  71.847  1.00 38.38           O
-ATOM  26506  OE2 GLU D 437      18.879  44.312  73.874  1.00 38.44           O
-TER
-HETATM29064  O   HOH D7887      18.656  46.536  68.336  1.00 40.54           O
-HETATM29153  O   HOH D7976      22.116  44.147  67.400  1.00 61.89           O
+ATOM   8910  N   GLN A1152      33.468 104.253  92.452  1.00 29.06           N
+ATOM   8911  CA  GLN A1152      34.120 103.076  92.990  1.00 30.89           C
+ATOM   8912  C   GLN A1152      33.132 101.915  93.067  1.00 30.46           C
+ATOM   8913  O   GLN A1152      33.527 100.758  92.992  1.00 32.21           O
+ATOM   8914  CB  GLN A1152      34.665 103.381  94.388  1.00 30.84           C
+ATOM   8915  CG  GLN A1152      35.173 102.162  95.145  1.00 32.22           C
+ATOM   8916  CD  GLN A1152      35.707 102.512  96.517  1.00 33.96           C
+ATOM   8917  OE1 GLN A1152      36.601 103.350  96.651  1.00 36.07           O
+ATOM   8918  NE2 GLN A1152      35.167 101.870  97.549  1.00 32.71           N
+ATOM  10879  N   ASP B 153      38.461 109.206  96.510  1.00 44.26           N
+ATOM  10880  CA  ASP B 153      39.371 110.090  97.226  1.00 45.38           C
+ATOM  10881  C   ASP B 153      38.834 111.516  97.308  1.00 44.64           C
+ATOM  10882  O   ASP B 153      39.244 112.292  98.173  1.00 44.99           O
+ATOM  10883  CB  ASP B 153      40.764 110.065  96.584  1.00 48.20           C
+ATOM  10884  CG  ASP B 153      41.405 108.681  96.643  1.00 51.74           C
+ATOM  10885  OD1 ASP B 153      41.099 107.915  97.588  1.00 52.71           O
+ATOM  10886  OD2 ASP B 153      42.222 108.361  95.754  1.00 54.58           O
+ATOM  11021  N   SER B 170      38.908 102.756 100.199  1.00 38.57           N
+ATOM  11022  CA  SER B 170      39.042 103.168  98.811  1.00 40.03           C
+ATOM  11023  C   SER B 170      39.191 101.924  97.942  1.00 40.57           C
+ATOM  11024  O   SER B 170      39.721 101.987  96.835  1.00 42.97           O
+ATOM  11025  CB  SER B 170      40.253 104.078  98.631  1.00 40.43           C
+ATOM  11026  OG  SER B 170      40.355 104.510  97.284  1.00 44.20           O
+HETATM27517  O   HOH A6314      39.002 103.869  95.091  1.00 40.10           O
+HETATM28051  O   HOH B6034      41.514 102.321  94.379  1.00 45.96           O
+HETATM28106  O   HOH B6089      41.609 105.451  94.943  1.00 43.61           O
+END
+"""
+
+pdb_1r27_thr334 = """\
+CRYST1  127.401  298.300  296.853  90.00  90.00  90.00 I 2 2 2
+ATOM  15801  N   VAL C 330       9.659  61.782  42.497  1.00 29.33           N
+ATOM  15802  CA  VAL C 330       9.150  61.805  41.129  1.00 30.79           C
+ATOM  15803  C   VAL C 330       9.031  63.209  40.553  1.00 30.96           C
+ATOM  15804  O   VAL C 330       9.074  63.395  39.336  1.00 31.01           O
+ATOM  15805  CB  VAL C 330       7.778  61.102  41.018  1.00 31.38           C
+ATOM  15806  CG1 VAL C 330       7.958  59.600  41.167  1.00 30.00           C
+ATOM  15807  CG2 VAL C 330       6.829  61.630  42.083  1.00 31.61           C
+ATOM  15842  N   THR C 334      11.901  62.703  37.631  1.00 32.09           N
+ATOM  15843  CA  THR C 334      11.229  62.065  36.496  1.00 32.85           C
+ATOM  15844  C   THR C 334      10.645  63.120  35.564  1.00 34.04           C
+ATOM  15845  O   THR C 334      10.670  64.313  35.867  1.00 34.06           O
+ATOM  15846  CB  THR C 334      10.084  61.129  36.931  1.00 31.45           C
+ATOM  15847  OG1 THR C 334       8.911  61.902  37.192  1.00 31.76           O
+ATOM  15848  CG2 THR C 334      10.464  60.360  38.181  1.00 30.68           C
+ATOM  15849  N   ASP C 335      10.116  62.677  34.429  1.00 34.83           N
+ATOM  15850  CA  ASP C 335       9.536  63.592  33.454  1.00 35.86           C
+ATOM  15851  C   ASP C 335       8.024  63.699  33.620  1.00 36.39           C
+ATOM  15852  O   ASP C 335       7.331  64.191  32.729  1.00 37.92           O
+ATOM  15853  CB  ASP C 335       9.868  63.117  32.037  1.00 36.53           C
+ATOM  15854  CG  ASP C 335       9.254  61.762  31.712  1.00 37.77           C
+ATOM  15855  OD1 ASP C 335       8.988  60.984  32.655  1.00 38.64           O
+ATOM  15856  OD2 ASP C 335       9.048  61.466  30.513  1.00 39.44           O
+ATOM  15857  N   MET C 336       7.516  63.242  34.758  1.00 35.98           N
+ATOM  15858  CA  MET C 336       6.082  63.284  35.017  1.00 38.85           C
+ATOM  15859  C   MET C 336       5.482  64.699  34.979  1.00 39.52           C
+ATOM  15860  O   MET C 336       4.349  64.881  34.536  1.00 39.34           O
+ATOM  15861  CB  MET C 336       5.775  62.573  36.339  1.00 38.22           C
+ATOM  15862  CG  MET C 336       5.995  61.060  36.237  1.00 40.09           C
+ATOM  15863  SD  MET C 336       5.718  60.131  37.759  1.00 43.34           S
+ATOM  15864  CE  MET C 336       4.143  59.361  37.432  1.00 42.73           C
 END
 """
 

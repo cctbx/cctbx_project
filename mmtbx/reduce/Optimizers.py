@@ -768,10 +768,12 @@ class Optimizer(object):
         # Get the excluded list for each atom in the set, making a dictionary.
         # We go at most 3 hops unless one end of the chain has a hydrogen.
         # Look up excluded atoms by i_seq.
+        # By bond count only: the lists serve every pose, so a distance taken with the
+        # Movers at state 0 does not hold for them.
         self._excludeDict = {}
         for a in moverAtoms:
-          self._excludeDict[a.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
-            passNeighborLists, self._extraAtomInfo, self._probeRadius, self._bondedNeighborDepth, 3)
+          self._excludeDict[a.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBondsAtAnyDistance(a,
+            passNeighborLists, self._extraAtomInfo, self._bondedNeighborDepth, 3)
         self._infoString += _ReportTiming(self._verbosity, "determine excluded atoms")
 
         ################################################################################
@@ -1863,8 +1865,9 @@ class Optimizer(object):
 
           # Get the list of atoms that are bonded in a chain to the hydrogen. They
           # cannot be either hydrogen-bond acceptors nor touches/clashes with this atom.
-          bonded = Helpers.getAtomsWithinNBonds(a, bondedNeighborLists, self._extraAtomInfo,
-                                                self._probeRadius, self._bondedNeighborDepth, 3)
+          # By bond count only, as the Optimizer's exclusions: the H rotates.
+          bonded = Helpers.getAtomsWithinNBondsAtAnyDistance(a, bondedNeighborLists,
+                                                self._extraAtomInfo, self._bondedNeighborDepth, 3)
 
           # Construct a list of nearby atoms that are potential acceptors and potential touches.
           # The potential acceptors are also potential touches.
@@ -2321,7 +2324,9 @@ END
     return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator clash test: " + str(len(movers))
 
   # See what the pose angle is on the Mover. It is reported after 'pose Angle '.
-  expected = -64
+  # HG touches VAL B 2 C (2.62 A). It was -64, touching its own C (2.67 A, 4 bonds
+  # away), which the excluded atoms missed when they depended on the first pose.
+  expected = -163
   angle = int(re.findall(r'(?<=pose Angle )[-+]?\d+', opt.getInfo())[1])
   if angle != expected:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator clash, expected "+str(expected)+", found "+str(angle)
