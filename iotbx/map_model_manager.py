@@ -6500,8 +6500,16 @@ class map_model_manager(object):
 
 
     average_overall_scale = None
+    aniso_keys = ('aa_b_cart_as_u_cart', 'fo_b_cart_as_u_cart',
+      'uu_b_cart_as_u_cart', 'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart')
 
     n_used = 0
+    # Locations with each value (a location may lack overall_scale or an
+    #   anisotropy, such as bb for an external map)
+    n_overall_scale = 0
+    n_by_key = {}
+    for key in aniso_keys:
+      n_by_key[key] = 0
     for scaling_group_info in scaling_group_info_list:
       # Catch case with missing values and skip it
       ok = True
@@ -6522,18 +6530,16 @@ class map_model_manager(object):
           average_overall_scale = flex.double(
             scaling_group_info.overall_scale.size(),0)
         average_overall_scale += scaling_group_info.overall_scale
+        n_overall_scale += 1
 
       if not average_scaling_group_info.direction_vectors:
         average_scaling_group_info.direction_vectors = \
            scaling_group_info.direction_vectors
 
-      for key in ('aa_b_cart_as_u_cart',
-        'fo_b_cart_as_u_cart','uu_b_cart_as_u_cart',
-        'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart',
-        ):
-
+      for key in aniso_keys:
         if not scaling_group_info.get(key):
           continue # not defined here (bb for an external map)
+        n_by_key[key] += 1
         if not average_scaling_group_info.get(key):
           average_scaling_group_info.add(key=key,value=flex.double(
             scaling_group_info.get(key)))
@@ -6578,16 +6584,13 @@ class map_model_manager(object):
           si.ssqr_values = 2. * ( -1 + 1./cc_list)  # cc* is in cc_list
       if average_overall_scale:
         average_scaling_group_info.overall_scale = \
-          average_overall_scale/max(1, n_used)
+          average_overall_scale/n_overall_scale
 
 
-      for key in ('aa_b_cart_as_u_cart','fo_b_cart_as_u_cart',
-        'uu_b_cart_as_u_cart',
-        'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart',
-        ):
+      for key in aniso_keys:
         xx = average_scaling_group_info.get(key)
         if xx:
-          xx /= max(1, n_used)
+          xx /= n_by_key[key]
 
     avg = group_args(
       group_args_type = 'average scale_factor_info (averaged over xyz)',
