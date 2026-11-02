@@ -556,10 +556,44 @@ def test_gridding_as_list():
     results.append((mm.is_full_size(), mm.wrapping()))
   assert results[0] == results[1]
 
+def test_new_gridding_of_full_map_not_p1():
+  # set_original_origin_and_gridding: a full-cell map that is not in P1 put
+  # into a bigger unit cell is no longer full size, so the map that is
+  # present keeps its cell and values and becomes P1
+  from cctbx import crystal
+  from scitbx.array_family import flex
+  cs = crystal.symmetry((30,40,50,90,90,90), 19)
+  map_data = flex.double(range(30*40*50))
+  map_data.reshape(flex.grid((30,40,50)))
+
+  # Same gridding: still full size, space group kept
+  mm = map_manager(map_data=map_data.deep_copy(),
+    unit_cell_grid=(30,40,50), unit_cell_crystal_symmetry=cs, wrapping=True)
+  mm.set_original_origin_and_gridding(gridding=(30,40,50))
+  assert mm.crystal_symmetry().space_group() == cs.space_group()
+  assert mm.is_full_size() and mm.wrapping()
+
+  for gridding in ((40,50,60), (30,40,60)):
+    mm = map_manager(map_data=map_data.deep_copy(),
+      unit_cell_grid=(30,40,50), unit_cell_crystal_symmetry=cs, wrapping=True)
+    mm.set_original_origin_and_gridding(original_origin=(0,0,0),
+      gridding=gridding)
+    assert mm.map_data().all_eq(map_data)
+    assert mm.crystal_symmetry().space_group_number() == 1
+    assert approx_equal(mm.crystal_symmetry().unit_cell().parameters()[:3],
+      (30,40,50))
+    assert mm.unit_cell_crystal_symmetry().space_group_number() == 1
+    assert approx_equal(
+      mm.unit_cell_crystal_symmetry().unit_cell().parameters()[:3], gridding)
+    assert tuple(mm.unit_cell_grid) == gridding
+    assert not mm.is_full_size()
+    assert not mm.wrapping()
+
 if (__name__  ==  '__main__'):
   test_01()
   test_add_shifted_model_to_unshifted_map()
   test_02()
   test_03()
   test_gridding_as_list()
+  test_new_gridding_of_full_map_not_p1()
   print ("OK")

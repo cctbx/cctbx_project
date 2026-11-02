@@ -569,14 +569,18 @@ class map_manager(map_reader, write_ccp4_map):
             str(new_unit_cell_parameters)))
 
        # Always run after setting unit_cell_grid or _unit_cell_crystal_symmetry
-       # This time it should not change anything
+       # This time it should not change the cell of the map that is present.
+       # Its space group becomes P1 if it is no longer the full unit cell
        original_crystal_symmetry = self.crystal_symmetry()
        self.set_crystal_symmetry_of_partial_map()
        new_crystal_symmetry = self.crystal_symmetry()
-       assert original_crystal_symmetry.is_similar_symmetry(
-         new_crystal_symmetry)
-
-       if not self.is_full_size():
+       assert original_crystal_symmetry.unit_cell().is_similar_to(
+         new_crystal_symmetry.unit_cell())
+       if self.is_full_size():
+         assert new_crystal_symmetry.space_group() == \
+           original_crystal_symmetry.space_group()
+       else:
+         assert new_crystal_symmetry.space_group_number() == 1
          self.set_wrapping(False)
 
     # The map did not move, but its shift_cart may have changed. Relabel the
