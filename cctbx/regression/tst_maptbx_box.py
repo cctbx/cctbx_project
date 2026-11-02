@@ -300,7 +300,33 @@ def exercise_around_model():
 
   print ("OK")
 
+def exercise_box_overlapping_map_by_one_plane():
+  # A box that shares only one grid plane with the map keeps that plane
+  from cctbx import crystal
+  map_data = flex.double(flex.grid(10, 10, 10), 1.)
+  mm = map_manager(
+    unit_cell_grid             = map_data.all(),
+    unit_cell_crystal_symmetry = crystal.symmetry(
+      unit_cell = (10, 10, 10, 90, 90, 90), space_group_symbol = "P1"),
+    origin_shift_grid_units    = (0, 0, 0),
+    map_data                   = map_data,
+    wrapping                   = False)
+  # 1 x 4 x 4 points of the first two boxes are inside the map
+  for lower_bounds, upper_bounds, n_inside in (
+      ((9, 2, 2), (14, 5, 5), 16),   # last plane in x
+      ((-5, 2, 2), (0, 5, 5), 16),   # first plane in x
+      ((10, 2, 2), (14, 5, 5), 0)):  # just past the last plane
+    box = cctbx.maptbx.box.with_bounds(
+      map_manager  = mm.deep_copy(),
+      lower_bounds = lower_bounds,
+      upper_bounds = upper_bounds,
+      wrapping     = False)
+    assert box.map_manager().map_data().as_1d().count(1) == n_inside, \
+      (lower_bounds, upper_bounds)
+  print ("OK")
+
 if (__name__  ==  "__main__"):
+  exercise_box_overlapping_map_by_one_plane()
   if libtbx.env.has_module('phenix'):
     exercise_around_model()
   else:

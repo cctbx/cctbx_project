@@ -1251,7 +1251,7 @@ def get_bounds_of_valid_region(map_data,
     upper_allowed_bounds.append(last_valid)
     if f < o or l >=  a+o:
       inside_allowed_bounds = False
-    if last_valid <=  first_valid:
+    if last_valid <  first_valid:
       some_valid_points = False
 
   return group_args(
