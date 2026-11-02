@@ -623,9 +623,7 @@ class modify(object):
 
   def _process_sites(self):
     if(self.params.flip_symmetric_amino_acids):
-      self.pdb_hierarchy.flip_symmetric_amino_acids()
-      self.xray_structure.set_sites_cart(
-        sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
+      self._flip_symmetric_amino_acids()
     for sites in self.params.sites:
       if (sites.atom_selection is None):
         selection = self.top_selection
@@ -642,6 +640,24 @@ class modify(object):
         translate=sites.translate,
         rotate=sites.rotate,
         euler_angle_convention=sites.euler_angle_convention)
+
+  def _flip_symmetric_amino_acids(self):
+    # Scatterers hold edits the hierarchy lacks (_rotate_about_axis,
+    # _process_adp): same swaps there, every other value stays.
+    atoms = self.pdb_hierarchy.atoms()
+    atoms.set_xyz(self.xray_structure.sites_cart())
+    atoms.reset_i_seq()
+    swapped_pairs = []
+    self.pdb_hierarchy.flip_symmetric_amino_acids(swapped_pairs=swapped_pairs)
+    scatterers = self.xray_structure.scatterers()
+    for atom1, atom2 in swapped_pairs:
+      sc1 = scatterers[atom1.i_seq]
+      sc2 = scatterers[atom2.i_seq]
+      old = sc1.customized_copy()
+      for attr in ["site", "occupancy", "u_iso", "u_star", "flags", "fp",
+                   "fdp"]:
+        setattr(sc1, attr, getattr(sc2, attr))
+        setattr(sc2, attr, getattr(old, attr))
 
   def _switch_rotamers(self, selection, mode):
     if(mode is None): return

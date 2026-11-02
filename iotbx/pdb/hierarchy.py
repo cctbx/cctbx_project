@@ -2751,7 +2751,7 @@ class _():
             atom.name=' %-3s' % atom.name.strip()
             if verbose: print('corrected PDB format of %s' % atom.quote())
 
-  def flip_symmetric_amino_acids(self):
+  def flip_symmetric_amino_acids(self, swapped_pairs=None):
     """
     Rename symmetric atoms of Arg, Asp, Glu, Phe, Tyr, Val and Leu to the IUPAC
     convention by exchanging the sites of each pair.
@@ -2762,6 +2762,16 @@ class _():
     agrees; otherwise the residue is not flipped and named in the result. So an acid with one H and residues whose conformers disagree
     stay non-IUPAC. A residue where no conformer has all test atoms is left
     silently.
+
+    All values of a site go with it: xyz, sigxyz, occ, sigocc, b, sigb, uij, fp,
+    fdp, resolution, and siguij where stored. What names the atom stays: name,
+    serial, element, charge, segid, hetero, i_seq, tmp.
+
+    Parameters
+    ----------
+    swapped_pairs : list, optional
+        Receives (atom1, atom2) of every swap, for values kept outside the
+        hierarchy, such as scatterers.
 
     Returns
     -------
@@ -2879,6 +2889,9 @@ class _():
         if blank1 != blank2: spans = True
       return group_args(altloc=groups[0].altloc, flip_it=flip_it, pairs=pairs,
         incomplete=incomplete, has_blank=has_blank, spans=spans)
+    site_values = ['xyz', 'sigxyz', 'occ', 'sigocc', 'b', 'sigb', 'uij', 'fp',
+                   'fdp', 'resolution']
+    if ext.atom.has_siguij(): site_values.append('siguij')
     t0=time.time()
     info = ""
     flips=0
@@ -2945,10 +2958,12 @@ class _():
           for atom1, atom2 in row.pairs:
             if atom1.memory_id() in done: continue # blank: in each conformer
             done.append(atom1.memory_id())
-            for attr in ['xyz', 'b']:
+            for attr in site_values:
               tmp = getattr(atom1, attr)
               setattr(atom1, attr, getattr(atom2, attr))
               setattr(atom2, attr, tmp)
+            if swapped_pairs is not None:
+              swapped_pairs.append((atom1, atom2))
         if done: flips+=1
     if flips or info:
       info += '  Time to flip %d residue(s): %0.2fs\n' % (flips, time.time()-t0)

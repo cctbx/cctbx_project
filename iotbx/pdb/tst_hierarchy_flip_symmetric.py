@@ -664,6 +664,46 @@ def exercise_selected_hierarchy_and_residue_identity():
   info = selected.flip_symmetric_amino_acids()
   assert '"A GLU   11X": conformers disagree - not flipped' in info, info
 
+def exercise_site_values_follow_the_site():
+  # all values of a site go with it; what names the atom stays
+  site = ["xyz", "sigxyz", "occ", "sigocc", "b", "sigb", "uij", "fp", "fdp",
+          "resolution"]
+  name = ["name", "serial", "element", "charge", "segid", "hetero", "i_seq",
+          "tmp"]
+  if iotbx.pdb.hierarchy.atom.has_siguij(): site.append("siguij")
+  def distinct(i):
+    return {"sigxyz": (0.01 * i, 0.02, 0.03), "occ": 0.7 - 0.4 * i,
+      "sigocc": 0.01 + 0.01 * i, "b": 20. + i, "sigb": 1. + i,
+      "uij": (0.1 + i, 0.2, 0.3, 0.01, 0.02, 0.03),
+      "fp": -1. - i, "fdp": 2. + i, "resolution": 1.5 + i,
+      "siguij": (0.001 * (i + 1), 0.002, 0.003, 0.004, 0.005, 0.006),
+      "charge": "%d-" % (i + 1), "segid": "S%d  " % i, "tmp": 7 + i,
+      "hetero": bool(i)}
+  hierarchy = make("GLU", split(rows_of("GLU"), ["OE1", "OE2"]))
+  hierarchy.atoms().reset_i_seq()
+  for ag in hierarchy.only_residue_group().atom_groups():
+    if ag.altloc == "": continue
+    for i, atom_name in enumerate(("OE1", "OE2")):
+      atom = ag.get_atom(atom_name)
+      for attr, value in distinct(i).items():
+        if attr == "siguij" and "siguij" not in site: continue
+        setattr(atom, attr, value)
+  def values(ag, atom_name, attrs):
+    atom = ag.get_atom(atom_name)
+    return [getattr(atom, attr) for attr in attrs]
+  before = {}
+  for ag in hierarchy.only_residue_group().atom_groups():
+    if ag.altloc == "": continue
+    for atom_name in ("OE1", "OE2"):
+      before[ag.altloc, atom_name] = (values(ag, atom_name, site),
+                                      values(ag, atom_name, name))
+  assert hierarchy.flip_symmetric_amino_acids() != ""
+  for ag in hierarchy.only_residue_group().atom_groups():
+    if ag.altloc == "": continue
+    for atom_name, partner in (("OE1", "OE2"), ("OE2", "OE1")):
+      assert values(ag, atom_name, site) == before[ag.altloc, partner][0]
+      assert values(ag, atom_name, name) == before[ag.altloc, atom_name][1]
+
 def run_in_process():
   exercise_acid_h()
   exercise_blank_o_acid_h_in_altlocs()
@@ -677,6 +717,7 @@ def run_in_process():
   exercise_conformer_in_several_atom_groups_no_acid_h()
   exercise_model_id_in_info()
   exercise_selected_hierarchy_and_residue_identity()
+  exercise_site_values_follow_the_site()
 
 if __name__=="__main__":
   import libtbx.load_env
