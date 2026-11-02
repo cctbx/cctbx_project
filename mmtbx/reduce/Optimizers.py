@@ -813,7 +813,7 @@ class Optimizer(object):
         # subclasses.
 
         self._OptimizeCliques(optC, singletonCliques, groupCliques, stopOptimizingAt)
-        self._OptimizeFine(optC, singletonCliques + groupCliques)
+        self._OptimizeFine(optC, singletonCliques + groupCliques, stopOptimizingAt)
         self._optimizerOf = dict((m, optC) for m in self._movers)
 
         ################################################################################
@@ -1178,7 +1178,7 @@ class Optimizer(object):
         optC.Initialize(movers)
         self._OptimizeCliques(optC, [c for c in redo if len(c) == 1],
           [c for c in redo if len(c) > 1], stopOptimizingAt)
-        self._OptimizeFine(optC, redo)
+        self._OptimizeFine(optC, redo, stopOptimizingAt)
         for m in movers:
           self._optimizerOf[m] = optC
       poses.append(self._Poses())
@@ -1350,18 +1350,52 @@ class Optimizer(object):
           len(movers), ret, stopTime - startTime))
     self._infoString += _ReportTiming(self._verbosity, "optimize cliques (coarse)")
 
-  def _OptimizeFine(self, optC, cliques):
-    """Fine optimization of the Movers of the Cliques."""
-    # Do fine optimization on the Movers.  This is done independently for
-    # each of them, whether they are part of a multi-Mover Clique or not.
+  def _OptimizeFine(self, optC, cliques, stopOptimizingAt):
+    """Fine optimization of the Movers of the Cliques, then the polish of each
+    multi-Mover Clique, skipped after the time limit."""
+    # Do fine optimization on the Movers, one at a time.  A move of a member of
+    # a multi-Mover Clique must also raise the scores of its neighbours.
     self._infoString += _VerboseCheck(self._verbosity, 1,"Fine optimization on all Movers\n")
     inCliques = set(self._interactionGraph.vertex_label(v) for c in cliques for v in c)
+    neighbours = dict((m, []) for m in inCliques)
+    for e in self._interactionGraph.edges():
+      source = self._interactionGraph.vertex_label(self._interactionGraph.source(e))
+      target = self._interactionGraph.vertex_label(self._interactionGraph.target(e))
+      if source in neighbours and target in neighbours:
+        neighbours[source].append(target)
+        neighbours[target].append(source)
     for m in self._movers:
       if m not in inCliques:
         continue
-      (bestScore, infoString) = optC.OptimizeSingleMoverFine(m)
+      (bestScore, infoString) = optC.OptimizeSingleMoverFine(m, neighbours[m])
       self._infoString += infoString
     self._infoString += _ReportTiming(self._verbosity, "optimize all Movers (fine)")
+
+    # Polish each multi-Mover Clique: every coarse state of each member with its
+    # own fine search, the other members fixed.
+    skipped = 0
+    stopped = 0
+    for c in cliques:
+      if len(c) < 2:
+        continue
+      movers = [self._interactionGraph.vertex_label(v) for v in c]
+      (sweeps, moves, capped, stop, infoString) = optC.PolishClique(movers,
+        [neighbours[m] for m in movers], stopOptimizingAt - time.time())
+      self._infoString += infoString
+      if stop:
+        if sweeps == 0:
+          skipped += 1
+        else:
+          stopped += 1
+      if capped:
+        self._infoString += _VerboseCheck(self._verbosity, 1,
+          "Polish of a Clique of size {:d} stopped at the limit of {:d} sweeps\n".format(
+            len(movers), sweeps))
+    if skipped + stopped > 0:
+      self._infoString += _VerboseCheck(self._verbosity, 1,
+        "Polish skipped for {:d} and stopped for {:d} Cliques due to time limit\n".format(
+          skipped, stopped))
+    self._infoString += _ReportTiming(self._verbosity, "polish Cliques")
 
   def getInfo(self):
     """

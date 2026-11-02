@@ -211,9 +211,9 @@ def test_fallback_state_cache():
        self.excl, self.scorer, self.cache, self.aml, self.sq, self.extra, self.dele) = args
     def __getattr__(self, n):
       return getattr(self._r, n)
-    def OptimizeSingleMoverFine(self, m):
+    def OptimizeSingleMoverFine(self, m, neighbours):
       before = self._r.GetCoarseLocation(m)
-      ret = self._r.OptimizeSingleMoverFine(m)
+      ret = self._r.OptimizeSingleMoverFine(m, neighbours)
       coarse = m.CoarsePositions()
       h0 = coarse.atoms[0]
       if h0.parent().parent().resseq.strip() == '170' and h0.name.strip() == 'HG':

@@ -112,8 +112,8 @@ class Recorder(_Optimizer):
     atoms = [pr.atoms[i] for i in range(len(pr.positions[index]))]
     return atoms, self._preferenceMagnitude * pr.preferenceEnergies[index]
 
-  def _OptimizeFine(self, optC, cliques):
-    _Optimizer._OptimizeFine(self, optC, cliques)
+  def _OptimizeFine(self, optC, cliques, stopOptimizingAt):
+    _Optimizer._OptimizeFine(self, optC, cliques, stopOptimizingAt)
     searched = lambda a: self._excludeDict[a.i_seq]
     here = lambda a: Helpers.getAtomsWithinNBonds(a, self._recNeighbors,
       self._extraAtomInfo, self._probeRadius, self._bondedNeighborDepth, 3)

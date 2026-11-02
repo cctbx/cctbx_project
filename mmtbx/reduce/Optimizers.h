@@ -84,23 +84,56 @@ namespace molprobity {
       */
       boost::python::tuple OptimizeSingleMoverCoarse(boost::python::object const &mover);
 
-      /** @brief Function to perform fine optimization on a singleton Mover.
+      /** @brief Function to perform fine optimization on a Mover.
 
           Find the score for the Mover in all fine orientations by moving each atom into the
           specified position and summing the scores over all of them.  Determine the best
           orientation by selecting the highest scorer.
           Add the preference energy to the sum for each orientation scaled by our preference
+          A singleton moves to the best fine orientation if it scores higher than its coarse
+          orientation does now. A member of a multi-Mover Clique moves there only if this also
+          raises the sum of its own score and its neighbours' scores, with the neighbours at
+          their current poses, by more than cliqueGain.
           @param [in] mover: The Mover to optimize.
-          @return A tuple, where the first is the score at the best position for all movers
+          @param [in] neighbours: The Movers that share an interaction-graph edge with this
+                  one; empty for a singleton.
+          @return A tuple, where the first is the Mover's score at the pose it is left in
                   and the second is a string describing what was done, which may be empty
                   if verbosity is too small.
-          side effect: Changes the value of GetHighScore(mover) to the score at the fine position
-          selected if one is selected.
+          side effect: Sets GetHighScore(mover) to the Mover's score at the pose it is left in.
           If the Mover has a NumPrimaryCoarsePositions() method and its coarse position is
           not one of those primary ones, the best primary coarse position is refined as well
           (see refineBestPrimary()).
       */
-      boost::python::tuple OptimizeSingleMoverFine(boost::python::object const& mover);
+      boost::python::tuple OptimizeSingleMoverFine(boost::python::object const& mover,
+        scitbx::af::shared<boost::python::object> const& neighbours);
+
+      /** @brief Polish the poses of a multi-Mover Clique after the fine step.
+
+          Members in turn, the others fixed: for every coarse position of the member, including
+          the current one, the best of the coarse position and its fine positions by the
+          member's own score; the member moves to the candidate (other than its current pose)
+          that raises the sum of its own and its neighbours' scores the most, if by more than
+          cliqueGain. Sweeps over the members repeat until none moves, at most maxPolishSweeps.
+          No sweep starts after the time limit.
+          @param [in] movers: The Movers of the Clique.
+          @param [in] neighbours: A list with, for each Mover, the list of its neighbours.
+          @param [in] remainingSeconds: Seconds left before the time limit.
+          @return A tuple (sweeps, moves, capped, stopped, infoString): the sweeps run, the
+                  Movers moved, whether the last sweep still moved one at maxPolishSweeps,
+                  whether the time limit stopped the polish (with sweeps == 0 it was skipped),
+                  and a string describing what was done, which may be empty if verbosity is
+                  too small.
+          side effect: Sets GetHighScore() of every moved Mover to its score at its new pose.
+      */
+      boost::python::tuple PolishClique(scitbx::af::shared<boost::python::object> const& movers,
+        boost::python::list const& neighbours, double remainingSeconds);
+
+      /// Gain in a Clique's score that a fine or polish move must exceed.
+      static double cliqueGain() { return 1e-6; }
+
+      /// Sweeps over the members of a Clique in PolishClique().
+      static unsigned maxPolishSweeps() { return 10; }
 
       /** @brief Function to perform fast optimization on a clique of Movers.
       *
@@ -262,13 +295,38 @@ namespace molprobity {
       /// ones: also refine the best primary coarse position. Both coarse positions and
       /// all their fine positions are scored on fresh full objectives in the current
       /// environment; the Mover switches only to a strictly higher score than the pose
-      /// it is in, updating its coarse and fine location and its high score.
+      /// it is in, updating its coarse and fine location and its high score. A member of
+      /// a multi-Mover Clique switches only if the sum of its own and its neighbours'
+      /// scores also rises by more than cliqueGain.
       /// @param [in] mover: The Mover, after its own fine optimization.
       /// @param [in] coarse: The Mover's coarse positions.
       /// @param [in] numPrimary: The number of leading primary coarse positions.
+      /// @param [in] neighbours: The Mover's neighbours; empty for a singleton.
       /// @return A string describing what was done, which may be empty if verbosity is too small.
       std::string refineBestPrimary(boost::python::object const& mover,
-        molprobity::reduce::PositionReturn& coarse, unsigned numPrimary);
+        molprobity::reduce::PositionReturn& coarse, unsigned numPrimary,
+        scitbx::af::shared<boost::python::object> const& neighbours);
+
+      //=========================================================================
+      // Section dealing with the scores of a Mover's neighbours in the fine step and polish
+
+      /// Poses of Movers fetched from Python, looked up by Mover and anchor: -1 for the
+      /// coarse positions, c for the fine positions around coarse position c.
+      typedef std::map< std::pair<PyObject*, int>, molprobity::reduce::PositionReturn > PoseCache;
+
+      /// @brief The coarse positions (anchor -1) or the fine positions around coarse position
+      /// anchor of a Mover, fetched once per cache.
+      molprobity::reduce::PositionReturn& cachedPoses(PoseCache& cache,
+        boost::python::object const& mover, int anchor);
+
+      /// @brief Move the Mover to coarse position coarse (fine < 0) or to fine position fine
+      /// around it and return its full objective there.
+      double scorePoseAt(PoseCache& cache, boost::python::object const& mover,
+        unsigned coarse, int fine);
+
+      /// @brief The sum of the full objectives of the Movers at their current poses; they
+      /// are not moved.
+      double scoreInPlace(PoseCache& cache, scitbx::af::shared<boost::python::object> const& movers);
 
       //=========================================================================
       // Section dealing with optimization of a clique
