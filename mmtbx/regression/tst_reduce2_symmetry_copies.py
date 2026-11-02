@@ -287,14 +287,16 @@ def test_unsettled_pair():
   # only the two Cliques facing the other's copy are optimized again
   assert ("3 passes (pass 2: 2 of 3 Cliques re-optimized, 2 Movers changed; "
     "pass 3: 2 of 3 Cliques re-optimized, 2 Movers changed)") in lines[0], lines
+  # 3.54: the Clique's fine step and polish judge a move by the Clique total
   assert lines[0].endswith("unsettled: NH3Rotator at chain A LYS 43 NZ; "
-    "AmideFlip at chain D GLN 255 NE2 (best of 4 combinations, score 4.34)"
+    "AmideFlip at chain D GLN 255 NE2 (best of 4 combinations, score 3.54)"
     ), lines
   assert summary_lines(desc) == lines
   # Reported scores are fresh scores at the chosen poses with matching
-  # copies; the OptimizerC of the Gln's pose had 1.79.
+  # copies (here equal to the Gln's stored score; the time-limit test below
+  # has them apart).
   states = FreshScores.last
-  assert approx_equal(states["AmideFlip at chain D GLN 255 NE2"][1], 1.7445,
+  assert approx_equal(states["AmideFlip at chain D GLN 255 NE2"][1], 1.4152,
     eps=1.e-3), states
   assert_fresh_scores(desc, states)
 
@@ -306,13 +308,17 @@ class DeadlineBeforeRefresh(FreshScores):
 
 class LateDeadline(FreshScores):
   """The time limit expires after the first coarse optimization (in a
-  refresh pass, after Initialize())."""
+  refresh pass, after Initialize()), for its fine step's polish too."""
   def _OptimizeCliques(self, optC, singletons, groups, stopOptimizingAt):
     self.searches = getattr(self, "searches", 0) + 1
     if self.searches > 1:
       stopOptimizingAt = 1.0
     return Optimizer._OptimizeCliques(self, optC, singletons,
       groups, stopOptimizingAt)
+  def _OptimizeFine(self, optC, cliques, stopOptimizingAt):
+    if self.searches > 1:
+      stopOptimizingAt = 1.0
+    return FreshScores._OptimizeFine(self, optC, cliques, stopOptimizingAt)
 
 class ExpiredClock(object):
   """time for Optimizers: past every time limit."""
@@ -333,7 +339,7 @@ class ExpiresInRefresh(FreshScores):
 def test_time_limit_in_refresh():
   # The main search leaves Lys 43 NZ in coarse state 7 and Gln 255 flipped.
   # Past the time limit no refresh pass starts: both keep those states, and
-  # their scores, from before the copies followed them (Lys 1.55, Gln 1.79),
+  # their scores, from before the copies followed them (Lys 1.49, Gln 1.46),
   # are reported fresh.
   _, desc, log = run("tst_reduce2_symmetry_copies_13", lys_gln_str,
     ["include_symmetric_copies=True", "add_flip_movers=True"],
@@ -346,8 +352,8 @@ def test_time_limit_in_refresh():
   assert len(lines) == 1, lines
   assert lines[0].endswith("1 pass (stopped at pass 2 due to time limit); "
     "unsettled: none"), lines
-  assert approx_equal(states[lys][1], 0.4229, eps=1.e-3), states
-  assert approx_equal(states[gln][1], 0.7241, eps=1.e-3), states
+  assert approx_equal(states[lys][1], 0.3612, eps=1.e-3), states
+  assert approx_equal(states[gln][1], 0.3947, eps=1.e-3), states
   assert_fresh_scores(desc, states)
   # The time limit expires in the refresh, after Initialize(): its Cliques
   # are solved as singletons, not left in their first state.
@@ -359,17 +365,19 @@ def test_time_limit_in_refresh():
     "singletons") == 2, desc
   lines = summary_lines(log)
   assert len(lines) == 1, lines
+  # Pass 2 also moves Gln 255's backbone H, whose fine pose is judged with the
+  # flip's score (Clique-total gate; the polish is skipped past the limit).
   assert ("3 passes (pass 2: 2 of 3 Cliques re-optimized, 3 Movers changed; "
     "pass 3: 2 of 3 Cliques re-optimized, 1 Movers changed); unsettled: "
-    "NH3Rotator at chain A LYS 43 NZ (best of 2 combinations, score 3.37)"
+    "NH3Rotator at chain A LYS 43 NZ (best of 2 combinations, score 3.31)"
     ) in lines[0], lines
   assert_fresh_scores(desc, states)
   # The time limit passes after Initialize() of the first refresh pass and
   # stays passed: the pass solves its Cliques as singletons (Lys 0, Gln
-  # unflipped: -14.83 in all with matching copies, the main search's states
-  # 2.47). The best combination of the previous and new states of the three
-  # Movers it changed is kept (Lys 0, Gln flipped, as the unsettled pair
-  # without a time limit), and no further pass starts.
+  # unflipped: -15.25 for the scored Movers with matching copies, the main
+  # search's states 1.15). The best combination of the previous and new
+  # states of the two Movers it changed is kept (Lys 0, Gln flipped, as the
+  # unsettled pair without a time limit), and no further pass starts.
   try:
     _, desc, log = run("tst_reduce2_symmetry_copies_15", lys_gln_str,
       ["include_symmetric_copies=True", "add_flip_movers=True"],
@@ -380,15 +388,18 @@ def test_time_limit_in_refresh():
   assert desc.count("No time remaining, treating (sub)clique of size 2 as "
     "singletons") == 1, desc
   assert states[lys][0] == 0 and states[gln][0] == 1, states
-  assert approx_equal(sum(v[1] for v in states.values()), 4.7688, eps=1.e-3
+  # 4.0863: the main search's polish (before the time limit) moves Gln 255's
+  # backbone H to another coarse state (0.39 -> 0.42)
+  assert approx_equal(sum(v[1] for v in states.values()), 4.0863, eps=1.e-3
     ), states
   lines = summary_lines(log)
   assert len(lines) == 1, lines
+  # Gln 255's backbone H (moved by the main search's polish) changes too.
   assert lines[0].endswith("2 passes (pass 2: 2 of 3 Cliques re-optimized, "
     "3 Movers changed, time limit reached: best of previous and new states "
     "of NH3Rotator at chain A LYS 43 NZ; AmideFlip at chain D GLN 255 NE2; "
-    "SingleHydrogenRotator at chain D GLN 255 H (best of 8 combinations, "
-    "score 4.34)); unsettled: none"), lines
+    "SingleHydrogenRotator at chain D GLN 255 H "
+    "(best of 8 combinations, score 3.54)); unsettled: none"), lines
   assert_fresh_scores(desc, states)
 
 def copies_of(pdb_text, cs):

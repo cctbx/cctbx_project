@@ -118,7 +118,8 @@ def run_test01():
   # Number of clashes and clashscore
   clashes_result = lr.get_overlaps()
   assert(clashes_result.n_clashes == 5)
-  assert approx_equal(clashes_result.clashscore, 27.5, eps=0.5)
+  # 5/172; 5/182 if a methyl pose brings Val A46 (10 atoms) within 3 A
+  assert approx_equal(clashes_result.clashscore, 29.07, eps=0.5)
   #
   # Geometry deviations
   rmsd_result = lr.get_rmsds()
@@ -337,8 +338,9 @@ def run_test03():
   # the amide Mover that optimize_his_protonation brings in.
   assert approx_equal(adps.b_mean_within, 23.49, eps=0.02)
   assert overlaps.n_clashes == 4
-  # 2 as donor (HN1, HN2) + 3 as acceptor (Ser73 HG, Ala39 H, Thr40 H)
-  assert overlaps.n_hbonds == 5
+  # 2 as donor (HN1, HN2) + 4 as acceptor (Ser16 HG, Ser73 HG, Ala39 H, Thr40 H)
+  # Ser16 HG...O3 D-H...A is 122.5 deg, cutoff 120
+  assert overlaps.n_hbonds == 6
   assert approx_equal(overlaps.clashscore, 12.46, eps=0.5)
   assert rmsd_result.bond_n == 17
   assert approx_equal(rmsd_result.bond_rmsd, 0.033, eps=0.005)
@@ -373,8 +375,9 @@ def run_test03():
   assert approx_equal(adps.b_max_within, 75.42, eps=0.01)
   assert approx_equal(adps.b_mean_within, 28.20, eps=0.02)
   assert overlaps.n_clashes == 6
-  # 2 as donor (HN1, HN2) + 5 as acceptor (Asn12, Ser16, Ala39, Thr40, Ser73)
-  assert overlaps.n_hbonds == 7
+  # 2 as donor (HN1, HN2) + 6 as acceptor (Asn12, Ser16, Tyr33, Ala39, Thr40,
+  # Ser73)
+  assert overlaps.n_hbonds == 8
   assert approx_equal(overlaps.clashscore, 19.3, eps=0.5)
 
 # ------------------------------------------------------------------------------

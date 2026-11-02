@@ -196,6 +196,49 @@ def NominalXHBondLength(heavyAtom):
   return 1.3 if heavyAtom.element == "S" else 1.0
 
 ##################################################################################
+# Scale of the in-plane preference of a conjugated O-H (and of the syn preference of a
+# carboxylic acid H), calibrated with preference_magnitude 1.0: 90 degrees out of plane
+# costs 0.2 * 12.5 = 2.5, about one weak H-bond (checked on Tyr HH of neutron models).
+ConjugatedHydrogenPreferenceScale = 12.5
+
+def ConjugatedHydrogenScope(atom, bondedNeighborLists, planeTolerance = 0.10):
+  """Whether a single rotatable Hydrogen is a conjugated O-H: its parent is O, the
+     parent's other heavy neighbor X has exactly two further neighbors, and X lies
+     within planeTolerance of the plane through its three neighbors (Tyr HH, phenols,
+     enols, carboxylic acids; not Ser, Thr, Cys, sugars, RNA HO2' or any S-H).
+     :param atom: The Hydrogen.
+     :param bondedNeighborLists: Bonded-neighbor lists of the structure.
+     :param planeTolerance: Largest distance of X from the plane of its neighbors (A).
+     :returns (inScope, otherOxygen): otherOxygen is the other O on X when X is a C
+     with exactly one other O (carboxylic acid), else None (also for bicarbonate,
+     whose syn would depend on which of its two O is taken).
+  """
+  neighbors = bondedNeighborLists.get(atom, [])
+  if len(neighbors) != 1:
+    return False, None
+  parent = neighbors[0]
+  if parent.element.strip().upper() != 'O':
+    return False, None
+  others = [a for a in bondedNeighborLists.get(parent, []) if a.i_seq != atom.i_seq]
+  if len(others) != 1:
+    return False, None
+  x = others[0]
+  friends = [a for a in bondedNeighborLists.get(x, []) if a.i_seq != parent.i_seq]
+  if len(friends) != 2:
+    return False, None
+  p0, p1, p2 = [rvec3(a.xyz) for a in (parent, friends[0], friends[1])]
+  normal = (p1 - p0).cross(p2 - p0)
+  if normal.length() < 1e-8:
+    return False, None
+  if abs((rvec3(x.xyz) - p0).dot(normal.normalize())) > planeTolerance:
+    return False, None
+  otherOxygen = None
+  oxygens = [f for f in friends if f.element.strip().upper() == 'O']
+  if x.element.strip().upper() == 'C' and len(oxygens) == 1:
+    otherOxygen = oxygens[0]
+  return True, otherOxygen
+
+##################################################################################
 class _MoverRotator(object):
   def __init__(self, atoms, axis, dihedral, offset, coarseRange, coarseStepDegrees = 15.0,
                 doFineRotations = True, fineStepDegrees = 1.0,
@@ -467,8 +510,11 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     else:
       raise ValueError("MoverSingleHydrogenRotator(): Atom's bonded neighbor's neighbor does not have 2-3 other bonds "+
       "it has "+str(len(friends)))
-    # Original Reduce did not have a preference, so we remove that here.
+    # Original Reduce did not have a preference, so we remove that here; a conjugated O-H
+    # (ConjugatedHydrogenScope()) gets the 180-degree one below.
+    inPlaneFunction = preferenceFunction
     preferenceFunction = None
+    conjugated, otherOxygen = ConjugatedHydrogenScope(atom, bondedNeighborLists)
 
     # Determine the axis to rotate around, which starts at the partner atom and points at the neighbor.
     normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
@@ -495,6 +541,25 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     _MoverRotator.__init__(self, atoms, axis, dihedral, offset, 180, coarseStepDegrees = coarseStepDegrees,
       fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction,
       preferredOrientationScale = preferredOrientationScale, fineRange = 10.0)
+
+    # A conjugated O-H prefers the plane of X's neighbors (angles 0 and 180 from the
+    # starting orientation). A carboxylic acid H also prefers syn, H-O-C-O' = 0 (GeoStd
+    # CB-CG-OD2-HD2 = 180 for Asp), at the same scale: anti costs 0.2 * scale, 90 degrees
+    # 0.3 * scale. The angle passed to the function is the rotation from the start, so
+    # the syn term maps it to H-O-C-O' from the poses at 0 and 30 degrees.
+    if conjugated:
+      self._preferredOrientationScale = ConjugatedHydrogenPreferenceScale * preferredOrientationScale
+      if otherOxygen is None:
+        self._preferenceFunction = inPlaneFunction
+      else:
+        def synDihedral(xyz):
+          return scitbx.math.dihedral_angle(sites=[xyz, neighbor.xyz, partner.xyz, otherOxygen.xyz], deg=True)
+        phi0 = synDihedral(atom.xyz)
+        phi30 = synDihedral(self._posesFor([30.0])[0][0])
+        sign = 1.0 if abs((phi30 - phi0 - 30.0 + 180) % 360 - 180) < 1.0 else -1.0
+        def acidFunction(degrees):
+          return inPlaneFunction(degrees) + 0.1 + 0.1 * math.cos((phi0 + sign * degrees) * (math.pi/180))
+        self._preferenceFunction = acidFunction
 
     # Now add orientations that point in the direction of the potential acceptors.
     # Then select from the original angles the one that has the best contact with
@@ -577,6 +642,13 @@ class MoverSingleHydrogenRotator(_MoverRotator):
           minAng = diff
       if minAng >= 45:
         sofar.append(ang)
+
+    # A conjugated O-H always tries both in-plane orientations, so that the preferred pose
+    # is evaluated even when other candidates crowd it out of the list above.
+    if conjugated:
+      for ang in (0.0, 180.0):
+        if all(abs((ang - m + 180) % 360 - 180) > 5 for m in sofar):
+          sofar.append(ang)
 
     # These are the primary coarse angles; the Optimizer may also refine the best of
     # them when one of the angles added below wins (NumPrimaryCoarsePositions()).
