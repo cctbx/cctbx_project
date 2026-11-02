@@ -154,7 +154,7 @@ def exercise_around_model():
   assert cs_orig.is_similar_symmetry(
     box.map_manager().unit_cell_crystal_symmetry())
 
-  assert box.map_manager().map_data().as_1d().count(0) == 81264
+  assert box.map_manager().map_data().as_1d().count(0) == 77925
 
   # Now specify bounds directly
   new_box = cctbx.maptbx.box.with_bounds(
@@ -175,7 +175,7 @@ def exercise_around_model():
   assert cs_orig.is_similar_symmetry(
     box.map_manager().unit_cell_crystal_symmetry())
 
-  assert box.map_manager().map_data().as_1d().count(0) == 81264
+  assert box.map_manager().map_data().as_1d().count(0) == 77925
 
   # Now specify bounds directly and init with model
   box = cctbx.maptbx.box.with_bounds(
@@ -197,7 +197,7 @@ def exercise_around_model():
   assert cs_orig.is_similar_symmetry(
     box.map_manager().unit_cell_crystal_symmetry())
 
-  assert box.map_manager().map_data().as_1d().count(0) == 81264
+  assert box.map_manager().map_data().as_1d().count(0) == 77925
 
   # Extract using around_unique
 

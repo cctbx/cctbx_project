@@ -1292,6 +1292,8 @@ def copy_and_zero_map_outside_bounds(map_data, bounds_info):
   assert tuple(map_copy.origin()) == tuple(bounds_info.gridding_first)
 
   # We are going to shift the origin in this copy, so shift the bounds to match
+  # The upper allowed bounds are inclusive; set_box_copy_inside wants the
+  # end one past the last grid point to copy.
 
   lower_bounds_after_shift = []
   upper_bounds_after_shift = []
@@ -1299,7 +1301,7 @@ def copy_and_zero_map_outside_bounds(map_data, bounds_info):
       bounds_info.upper_allowed_bounds,
       bounds_info.gridding_first):
     lower_bounds_after_shift.append(l-f)
-    upper_bounds_after_shift.append(u-f)
+    upper_bounds_after_shift.append(u-f+1)
 
   acc = map_copy.accessor() # save where the origin is
 
