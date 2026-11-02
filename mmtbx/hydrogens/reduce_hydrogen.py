@@ -9,7 +9,6 @@ import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
 from libtbx import group_args
 from scitbx import matrix
-import scitbx.cubicle_neighbors
 from cctbx.array_family import flex
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_atom_group
@@ -1007,39 +1006,17 @@ def metal_contact_pairs(sites, elements, parents, metals, crystal_symmetry,
     max(_covalent_radius(elements[i]) for i in metals) + \
     THIOL_METAL_WINDOW[1]
   xyz = flex.vec3_double([sites[i] for i in subset])
-  cs = crystal_symmetry
-  if cs is None:
-    lo, hi = xyz.min(), xyz.max()
-    size = max(hi[k] - lo[k] for k in range(3)) + 3 * max_cut + 10
-    cs = crystal.symmetry(unit_cell=(size, size, size, 90, 90, 90),
-      space_group_symbol='P1')
-    xyz = xyz - lo + (max_cut, max_cut, max_cut)
-  uc = cs.unit_cell()
-  frac = uc.fractionalize(xyz)
-  am = cs.special_position_settings().asu_mappings(
-    buffer_thickness=max_cut)
-  am.process_sites_frac(original_sites=frac)
-  pt = crystal.pair_asu_table(asu_mappings=am)
-  pt.add_all_pairs(distance_cutoff=max_cut)
   n_parents = len(parents)
-  for i, js in enumerate(pt.table()):
-    for j, j_syms in js.items():
-      for group in j_syms:
-        for j_sym in group:
-          rt_ji = am.get_rt_mx(i_seq=i, i_sym=0).inverse().multiply(
-            am.get_rt_mx(i_seq=j, i_sym=j_sym))
-          for x, y, rt in ((i, j, rt_ji), (j, i, rt_ji.inverse())):
-            if x >= n_parents or y < n_parents: continue
-            i_x, i_m = subset[x], subset[y]
-            if (model_index is not None and
-                model_index[i_x] != model_index[i_m]): continue
-            d = uc.distance(frac[x], rt * frac[y])
-            r = _covalent_radius(elements[i_x]) + \
-              _covalent_radius(elements[i_m])
-            if not (r + THIOL_METAL_WINDOW[0] <= d <= r + THIOL_METAL_WINDOW[1]):
-              continue
-            if crystal_symmetry is None: rt = sgtbx.rt_mx()
-            result.append((i_x, i_m, rt))
+  for x, y, rt, d in crystal.pairs_within(xyz, max_cut, crystal_symmetry,
+      i_seqs=range(n_parents)):
+    if y < n_parents: continue
+    i_x, i_m = subset[x], subset[y]
+    if (model_index is not None and
+        model_index[i_x] != model_index[i_m]): continue
+    r = _covalent_radius(elements[i_x]) + _covalent_radius(elements[i_m])
+    if not (r + THIOL_METAL_WINDOW[0] <= d <= r + THIOL_METAL_WINDOW[1]):
+      continue
+    result.append((i_x, i_m, rt))
   return result
 
 class metal_h_sites(object):
@@ -3751,30 +3728,25 @@ class place_hydrogens():
           else: unchanged(n, rgs, why)
         candidates.append((rgs, ag, n))
       if not candidates: continue
-      # Atoms within 1.75 A of candidate N. Few candidates: scan all atoms per
-      # N. Many (all_chain_starts, models can have very many chain starts):
-      # one spatial lookup for all N, as scan is O(N_atoms) per N. Crossover
-      # is at ~15 candidates.
-      cutoff_sq = 1.75**2
-      neighbors = None
-      if len(candidates) > 10:
-        n_sites = flex.vec3_double([n.xyz for rgs, ag, n in candidates])
-        neighbors = scitbx.cubicle_neighbors.cubicle_neighbors(
-          main_sites_cart = model_sites,
-          cubicle_edge    = 5).neighbors_of(
-            other_sites_cart   = n_sites,
-            distance_cutoff_sq = cutoff_sq)
-      for i_n, (rgs, ag, n) in enumerate(candidates):
-        if neighbors is None:
-          nb = ((model_sites - n.xyz).dot() < cutoff_sq).iselection()
-        elif i_n in neighbors:
-          nb = flex.size_t(list(neighbors[i_n]))
-          nb = nb.select((model_sites.select(nb) - n.xyz).dot() < cutoff_sq)
+      # a nonmetal within 1.75 A of a candidate N, of another residue or of
+      # a symmetry mate (a peptide closed across symmetry): the N is bonded
+      i_nonmetals = flex.size_t([i for i, a in enumerate(model_atoms)
+        if a.element.strip().upper() in nonmetals])
+      sites = flex.vec3_double([n.xyz for rgs, ag, n in candidates])
+      sites.extend(model_sites.select(i_nonmetals))
+      bonded = set()
+      for i_n, j, rt, d in crystal.pairs_within(sites, 1.75,
+          self._contact_cs, i_seqs=range(len(candidates))):
+        if j < len(candidates):
+          atom = candidates[j][2]
         else:
-          nb = []
-        if [i for i in nb
-            if model_atoms[i].element.strip().upper() in nonmetals
-            and model_atoms[i].parent().parent().memory_id() != rgs.memory_id()]:
+          atom = model_atoms[i_nonmetals[j - len(candidates)]]
+        rgs = candidates[i_n][0]
+        if (not rt.is_unit_mx() or
+            atom.parent().parent().memory_id() != rgs.memory_id()):
+          bonded.add(i_n)
+      for i_n, (rgs, ag, n) in enumerate(candidates):
+        if i_n in bonded:
           if rgs.memory_id() in forced:
             unchanged(n, rgs, 'a nonmetal of another residue within 1.75 A')
           continue

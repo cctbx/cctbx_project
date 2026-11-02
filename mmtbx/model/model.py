@@ -4717,7 +4717,8 @@ class manager(object):
     Chain end is the last amino-acid residue of a chain, or the last residue
     before a break in polypeptide chain: next residue is not an amino acid or
     is not peptide-bonded (C(i)-N(i+1) distance >= peptide_bond_cutoff).
-    No OXT if C is already bonded to a heavy atom of another residue (within
+    No OXT if C is already bonded to a heavy atom of another residue, or of
+    a symmetry mate when the model has a unit cell (within
     peptide_bond_cutoff): caps (NH2, NME), cyclic peptides, links.
 
     OXT is placed in CA-C-O plane at 1.231 A from C, symmetrically to O, and
@@ -4750,11 +4751,7 @@ class manager(object):
           rgs.append((chain.id, rg))
       heavy = [a for a in model.atoms()
                if a.element.strip().upper() not in ["H", "D"]]
-      heavy_xyz = flex.vec3_double([a.xyz for a in heavy])
-      def bonded_elsewhere(c, rg):
-        close = ((heavy_xyz - c.xyz).norms() < peptide_bond_cutoff).iselection()
-        return any(heavy[k].parent().parent().memory_id() != rg.memory_id()
-                   for k in close)
+      ends = []
       for i, (chain_id, rg) in enumerate(rgs):
         if not is_amino_acid(rg): continue
         if i+1 < len(rgs):
@@ -4768,12 +4765,26 @@ class manager(object):
           if "OXT" in atoms: continue
           c, ca, o = [atoms.get(name) for name in ["C", "CA", "O"]]
           if None in [c, ca, o]: continue
-          if bonded_elsewhere(c, rg): continue
-          c_xyz = matrix.col(c.xyz)
-          u_ca = (matrix.col(ca.xyz) - c_xyz).normalize()
-          u_o  = (matrix.col(o.xyz)  - c_xyz).normalize()
-          xyz = c_xyz - 1.231 * (u_ca + u_o).normalize()
-          to_add.append((o, xyz))
+          ends.append((rg, c, ca, o))
+      # C bonded to a heavy atom of another residue, or of a symmetry mate
+      # (a peptide closed across symmetry): not a chain end
+      sites = flex.vec3_double([c.xyz for rg, c, ca, o in ends])
+      sites.extend(flex.vec3_double([a.xyz for a in heavy]))
+      bonded = set()
+      for k, j, rt, d in crystal.pairs_within(sites, peptide_bond_cutoff,
+          self.crystal_symmetry(), i_seqs=range(len(ends))):
+        if j < len(ends): continue
+        a = heavy[j - len(ends)]
+        if (not rt.is_unit_mx() or
+            a.parent().parent().memory_id() != ends[k][0].memory_id()):
+          bonded.add(k)
+      for k, (rg, c, ca, o) in enumerate(ends):
+        if k in bonded: continue
+        c_xyz = matrix.col(c.xyz)
+        u_ca = (matrix.col(ca.xyz) - c_xyz).normalize()
+        u_o  = (matrix.col(o.xyz)  - c_xyz).normalize()
+        xyz = c_xyz - 1.231 * (u_ca + u_o).normalize()
+        to_add.append((o, xyz))
     n_added = 0
     for o, xyz in to_add:
       ag = o.parent()

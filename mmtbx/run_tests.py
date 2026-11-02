@@ -523,6 +523,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_neutron_in_memory.py",
   "$D/regression/tst_reduce2_neutron_flipkins.py",
   "$D/regression/tst_reduce2_symmetry_copies.py",
+  "$D/regression/tst_reduce2_symmetry_link.py",
   "$D/regression/tst_reduce2_conjugated_oh.py",
   "$D/regression/tst_reduce2_exclusions.py",
   "$D/regression/tst_reduce2_fresh_scores.py",

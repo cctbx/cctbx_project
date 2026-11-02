@@ -2004,3 +2004,64 @@ def unit_crystal_symmetry():
 
 bp.inject(ext.neighbors_simple_pair_generator, bp.py3_make_iterator)
 bp.inject_into(ext.neighbors_fast_pair_generator, bp.py3_make_iterator)
+
+def pairs_within(sites_cart, distance_cutoff, crystal_symmetry=None,
+                 i_seqs=None):
+  """
+  Pairs of sites closer than distance_cutoff, in the asymmetric unit and
+  with symmetry mates.
+
+  Parameters
+  ----------
+  sites_cart : flex.vec3_double
+    Cartesian coordinates of the sites.
+  distance_cutoff : float
+    Largest distance of a pair (A).
+  crystal_symmetry : cctbx.crystal.symmetry, optional
+    None, or without a unit cell: no symmetry mates, pairs of the sites
+    themselves only.
+  i_seqs : iterable of int, optional
+    Indices of the first sites of the pairs wanted. None: all sites.
+
+  Returns
+  -------
+  list of tuple
+    (i, j, rt_mx, distance): sites_cart[i] is distance (A) from the mate
+    rt_mx * sites_cart[j] of sites_cart[j], rt_mx a sgtbx.rt_mx acting on
+    fractional coordinates, the identity for a pair in the asymmetric unit.
+    A pair of distinct sites is listed with either site first, (j, i,
+    rt_mx.inverse(), distance) with (i, j, rt_mx, distance), unless i_seqs
+    leaves one out. A site near a special position is listed with its own
+    mates.
+  """
+  if i_seqs is None:
+    order = list(range(sites_cart.size()))
+    n_first = len(order)
+  else:
+    order = list(i_seqs)
+    n_first = len(order)
+    first = set(order)
+    for i in range(sites_cart.size()):
+      if i not in first: order.append(i)
+  if n_first == 0: return []
+  sites = sites_cart.select(flex.size_t(order))
+  cs = crystal_symmetry
+  if cs is None or cs.unit_cell() is None:
+    box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+      sites_cart=sites, buffer_layer=distance_cutoff)
+    cs = symmetry(unit_cell=box.unit_cell, space_group_symbol="P 1")
+    sites = box.sites_cart
+  pair_sym_table = cs.special_position_settings().pair_asu_table(
+    distance_cutoff=distance_cutoff, sites_cart=sites).extract_pair_sym_table()
+  uc = cs.unit_cell()
+  sites_frac = uc.fractionalize(sites)
+  result = []
+  # the table lists each pair once, with the lower index first
+  for i in range(n_first):
+    for j, rt_mxs in pair_sym_table[i].items():
+      for rt_mx in rt_mxs:
+        distance = uc.distance(sites_frac[i], rt_mx * sites_frac[j])
+        result.append((order[i], order[j], rt_mx, distance))
+        if j < n_first and j != i:
+          result.append((order[j], order[i], rt_mx.inverse(), distance))
+  return result
