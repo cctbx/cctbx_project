@@ -188,7 +188,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import group_args
 from libtbx.utils import Sorry
 from cctbx.geometry_restraints.linking_class import linking_class
-from cctbx import crystal, uctbx
+from cctbx import crystal
 from mmtbx.ligands.electrons import atom_property
 from mmtbx.hydrogens import reduce_hydrogen
 import iotbx.pdb.hierarchy
@@ -656,36 +656,26 @@ def cut_bonds_by_distance(hierarchy, selection):
   selected_groups = set()
   for i in selection.iselection():
     selected_groups.add(atoms[i].parent().parent().memory_id())
-  box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
-    sites_cart=sites, buffer_layer=5)
-  cs = crystal.symmetry(unit_cell=box.unit_cell, space_group_symbol='P1')
-  xrs = hierarchy.extract_xray_structure(crystal_symmetry=cs)
-  xrs.set_sites_cart(box.sites_cart)
-  pst = xrs.pair_asu_table(distance_cutoff=GUESS_BOND_CUTOFF
-    ).extract_pair_sym_table()
   properties = atom_property()
   position = {}
   for k, i_seq in enumerate(selection.iselection()): position[i_seq] = k
   result = {}
-  for i, pair_sym_dict in enumerate(pst):
-    for j in pair_sym_dict.keys():
-      if selection[i] == selection[j]: continue
-      outside = atoms[j if selection[i] else i]
-      if outside.parent().parent().memory_id() in selected_groups: continue
-      pair = []
-      for a in (atoms[i], atoms[j]):
-        if a.element_is_hydrogen(): break
-        e = reduce_hydrogen._atom_element(a)
-        if properties.is_metal(e): break
-        r = reduce_hydrogen._covalent_radius(e)
-        if r is None: break
-        pair.append(r)
-      if len(pair) != 2: continue
-      d = (matrix.col(sites[i]) - matrix.col(sites[j])).length()
-      if d >= pair[0] + pair[1] + GUESS_BOND_TOLERANCE: continue
-      inside = i if selection[i] else j
-      k = position[inside]
-      result[k] = result.get(k, 0) + 1
+  for i, j, rt_mx, d in crystal.pairs_within(sites, GUESS_BOND_CUTOFF,
+      i_seqs=selection.iselection()):
+    if selection[j]: continue
+    if atoms[j].parent().parent().memory_id() in selected_groups: continue
+    pair = []
+    for a in (atoms[i], atoms[j]):
+      if a.element_is_hydrogen(): break
+      e = reduce_hydrogen._atom_element(a)
+      if properties.is_metal(e): break
+      r = reduce_hydrogen._covalent_radius(e)
+      if r is None: break
+      pair.append(r)
+    if len(pair) != 2: continue
+    if d >= pair[0] + pair[1] + GUESS_BOND_TOLERANCE: continue
+    k = position[i]
+    result[k] = result.get(k, 0) + 1
   return result
 
 def _has_internal_bonds(rg, table):
@@ -978,28 +968,17 @@ def _check_clashes(model, caps):
   hierarchy = model.get_hierarchy()
   atoms = hierarchy.atoms()
   model_index = _model_index(hierarchy)
-  xrs = hierarchy.extract_xray_structure(
-    crystal_symmetry=reduce_hydrogen.contact_symmetry(
-      model.crystal_symmetry()))
-  pst = xrs.pair_asu_table(distance_cutoff=CLASH_DISTANCE
-    ).extract_pair_sym_table()
   parent_of = dict((h.i_seq, parent.i_seq) for h, parent in caps)
-  uc = xrs.unit_cell()
-  frac = xrs.sites_frac()
   worst = None
-  for i, pair_sym_dict in enumerate(pst):
-    for j, sym_ops in pair_sym_dict.items():
-      if i not in parent_of and j not in parent_of: continue
-      if parent_of.get(i) == j or parent_of.get(j) == i: continue
-      if model_index[i] != model_index[j]: continue
-      if not reduce_hydrogen._compatible(atoms[i], atoms[j]): continue
-      for rt_mx in sym_ops:
-        d = uc.distance(frac[i], rt_mx * frac[j])
-        if worst is None or d < worst[0]: worst = (d, i, j, rt_mx)
+  for i, j, rt_mx, d in crystal.pairs_within(atoms.extract_xyz(),
+      CLASH_DISTANCE, reduce_hydrogen.contact_symmetry(
+        model.crystal_symmetry()), i_seqs=parent_of.keys()):
+    if parent_of[i] == j: continue
+    if model_index[i] != model_index[j]: continue
+    if not reduce_hydrogen._compatible(atoms[i], atoms[j]): continue
+    if worst is None or d < worst[0]: worst = (d, i, j, rt_mx)
   if worst is None: return
   d, i, j, rt_mx = worst
-  # the cap first; rt_mx maps j next to i, so swapping inverts it
-  if i not in parent_of: i, j, rt_mx = j, i, rt_mx.inverse()
   other = atoms[j].id_str()
   if not rt_mx.is_unit_mx(): other += ' (symmetry mate %s)' % str(rt_mx)
   raise Sorry('Capping H %s clashes with %s (%.2f A)' % (

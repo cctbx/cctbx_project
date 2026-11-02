@@ -4119,27 +4119,12 @@ class manager(object):
 
   def pairs_within(self, radius, as_dict=False):
     """
-    Find pairs of atoms within radius.
+    Pairs of atoms within radius, in the asymmetric unit and across symmetry
+    mates (cctbx.crystal.pairs_within): [i, j, rt_mx, distance], each pair
+    with either atom first. as_dict: i -> list of [j, rt_mx, distance].
     """
-    cs = self.crystal_symmetry()
-    asu_mappings = crystal.symmetry.asu_mappings(cs, buffer_thickness = radius)
-    special_position_settings = crystal.special_position_settings(
-      crystal_symmetry = cs)
-    site_symmetry_table = special_position_settings.site_symmetry_table(
-      sites_cart = self.get_sites_cart())
-    asu_mappings.process_sites_frac(
-      original_sites      = self.get_sites_frac(),
-      site_symmetry_table = site_symmetry_table)
-    pair_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
-    pair_asu_table.add_all_pairs(distance_cutoff = radius)
-    pst = pair_asu_table.extract_pair_sym_table()
-    pairs = []
-    sites_frac = self.get_sites_frac()
-    uc = self.crystal_symmetry().unit_cell()
-    for p in pst.full_connectivity().iterator():
-      i, j, m = p.i_seq, p.j_seq, p.rt_mx_ji
-      dist = uc.distance(sites_frac[i], m*sites_frac[j])
-      pairs.append([i, j, m, dist])
+    pairs = [list(p) for p in crystal.pairs_within(
+      self.get_sites_cart(), radius, self.crystal_symmetry())]
     if as_dict:
       result = defaultdict(list)
       for first, second, third, fourth in pairs:

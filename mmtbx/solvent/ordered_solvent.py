@@ -784,30 +784,15 @@ def get_water_neighbors(model, distance_cutoff):
       if(not a.element_is_hydrogen()): water_i_seqs.append(a.i_seq)
   result = {}
   if(len(water_i_seqs) == 0): return result
-  sps = model.crystal_symmetry().special_position_settings()
-  sites_cart = model.get_sites_cart()
-  asu_mappings = sps.asu_mappings(
-    buffer_thickness = distance_cutoff,
-    sites_cart       = sites_cart)
-  pair_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
-  pair_asu_table.add_all_pairs(distance_cutoff = distance_cutoff)
-  table = pair_asu_table.table()
-  uc = model.crystal_symmetry().unit_cell()
-  sites_frac = uc.fractionalize(sites_cart)
+  closest = {}
+  for i in water_i_seqs: closest[i] = {}
+  for i, j, rt_mx, d in crystal.pairs_within(model.get_sites_cart(),
+      distance_cutoff, model.crystal_symmetry(), i_seqs=water_i_seqs):
+    if(atoms[j].parent().parent().memory_id() ==
+       atoms[i].parent().parent().memory_id()): continue
+    if(j not in closest[i] or d < closest[i][j]): closest[i][j] = d
   for i in water_i_seqs:
-    rg_i = atoms[i].parent().parent().memory_id()
-    rt_mx_i_inv = asu_mappings.get_rt_mx(i, 0).inverse()
-    neighbors = []
-    for j, j_sym_groups in table[i].items():
-      if(atoms[j].parent().parent().memory_id() == rg_i): continue
-      d = None
-      for j_syms in j_sym_groups:
-        for j_sym in j_syms:
-          rt_mx = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j, j_sym))
-          d_ = uc.distance(sites_frac[i], rt_mx * sites_frac[j])
-          if(d is None or d_ < d): d = d_
-      neighbors.append((j, d))
-    result[i] = neighbors
+    result[i] = sorted(closest[i].items())
   return result
 
 def is_polar_h(atom):
