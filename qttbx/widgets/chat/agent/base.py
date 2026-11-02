@@ -9,6 +9,8 @@ Provider-agnostic. The concrete backends all live in ``phenix.gui.chat``
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from qttbx.widgets.chat.agent.profile import DEFAULT_EFFORT
+
 
 @dataclass
 class ToolSpec:
@@ -114,6 +116,13 @@ class Agent(AttachmentScope, ABC):
   #: whole-turn total that sums every iteration of a backend's internal tool
   #: loop: that overstates the context by the number of calls in the turn.
   last_context_tokens = 0
+
+  #: Reasoning depth this agent runs at, one of ``profile.EFFORT_LEVELS``.
+  #: A contract on the ABC, not a per-backend convention: the chat window
+  #: seeds its effort combo from this and relays changes through
+  #: :meth:`set_effort`, so every agent, scripted test agents included,
+  #: carries both. Backends map it onto their own request field.
+  effort = DEFAULT_EFFORT
 
   @abstractmethod
   def stream_turn(self, conversation, tools, cancel):
@@ -274,6 +283,17 @@ class Agent(AttachmentScope, ABC):
         ``True`` for env/flag-delivered key auth, else ``False``.
     """
     return False
+
+  def set_effort(self, level):
+    """Change the reasoning depth for the turns that follow.
+
+    Default: store ``level`` on :attr:`effort`; the backends that build a
+    request per turn read it there. A backend that must push the change
+    into a live process (claude_code) overrides this. Returns ``True``
+    when the change is in force for the next turn.
+    """
+    self.effort = level
+    return True
 
   def close(self):
     """Release any resources the agent holds (HTTP client connection

@@ -24,11 +24,16 @@ _KNOWN_KEYS = {
   "skills", "mcp_servers", "tool_policy_default",
   "subagents", "max_turns",
   "server_tools",
+  "effort",
   "backend", "claude", "portkey",
 }
 
-# Values accepted for portkey.tools_reasoning_effort (OpenAI reasoning_effort).
-_TOOLS_REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high")
+# The one reasoning-depth vocabulary every backend maps onto its own control
+# (Anthropic output_config.effort, the Claude Code CLI --effort, OpenAI
+# reasoning.effort, Gemini thinking_level). Defined once here; the launcher
+# flag, the agents and the composer combo import it.
+EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
+DEFAULT_EFFORT = "high"
 
 # Backends supported by the agent factory. Validated at load time so
 # typos surface before the chat window opens.
@@ -205,6 +210,12 @@ class Profile:
   # here carries a filled-in dataclass default, so None is the only value that
   # can distinguish "the author wrote a cap" from "the author wrote nothing".
   max_turns: int = None
+  # Reasoning depth this profile asks for, one of EFFORT_LEVELS. None means
+  # "not declared" (the max_turns convention): the launcher then falls back to
+  # the user's saved default and finally DEFAULT_EFFORT, and a child built
+  # from this profile runs at its parent's level. A filled-in default here
+  # would outrank both.
+  effort: str = None
   backend: str = "claude_code"  # anthropic|claude_code|openai|portkey|google
   claude: ClaudeProfileOptions = field(default_factory=ClaudeProfileOptions)
   # Backend-specific knobs for the "portkey" backend; only consulted when
@@ -212,11 +223,6 @@ class Profile:
   # read them unconditionally (the launcher falls back to these).
   portkey_virtual_key: str = None
   portkey_config: str = None
-  # reasoning_effort sent on Portkey tool turns, for deployments whose model
-  # name hides the underlying GPT version (e.g. an Azure deployment named
-  # "my-gpt"): "none" makes gpt-5.6+ accept function tools on Chat
-  # Completions.  None (default) lets the backend decide from the model name.
-  portkey_tools_reasoning_effort: str = None
   source_path: Path = None                             # which file this came from
 
 
@@ -503,11 +509,25 @@ def _build_profile(data, source_path):
   # portkey backend will consult it; for other backends it just yields
   # None defaults so attribute access on the Profile is always safe.
   portkey_data = data.get("portkey", {}) or {}
-  tools_effort = portkey_data.get("tools_reasoning_effort")
-  if tools_effort is not None and tools_effort not in _TOOLS_REASONING_EFFORTS:
-    raise Sorry("Profile %s: portkey.tools_reasoning_effort must be one of "
-                "%s; got %r" % (source_path, ", ".join(_TOOLS_REASONING_EFFORTS),
-                                tools_effort))
+
+  # Effort: absent or null is "not declared"; anything else must be a level.
+  effort = data.get("effort")
+  if effort is not None and effort not in EFFORT_LEVELS:
+    raise Sorry("Profile %s: effort must be one of %s; got %r"
+                % (source_path, ", ".join(EFFORT_LEVELS), effort))
+  # The claude CLI takes an effort by three more routes; a profile using any
+  # of them would silently outrank (or, for the env var, override) the one
+  # canonical key, so each is refused by name.
+  sdk_options = claude_opts.sdk_options
+  for path, present in (
+      ("claude.sdk_options.effort", "effort" in sdk_options),
+      ("claude.sdk_options.extra_args.effort",
+       "effort" in (sdk_options.get("extra_args") or {})),
+      ("claude.sdk_options.env.CLAUDE_CODE_EFFORT_LEVEL",
+       "CLAUDE_CODE_EFFORT_LEVEL" in (sdk_options.get("env") or {}))):
+    if present:
+      raise Sorry("Profile %s: %s is not accepted; set the top-level effort "
+                  "key instead" % (source_path, path))
 
   # System prompt: inline xor file (file content inlined here if present).
   system_prompt = data.get("system_prompt", "") or ""
@@ -580,11 +600,11 @@ def _build_profile(data, source_path):
     # authored cap and would outrank every spawning caller's number.
     max_turns=(None if data.get("max_turns") is None else
                _coerce_int(data.get("max_turns"), "max_turns", source_path)),
+    effort=effort,
     backend=data.get("backend", "claude_code"),
     claude=claude_opts,
     portkey_virtual_key=portkey_data.get("virtual_key"),
     portkey_config=portkey_data.get("config"),
-    portkey_tools_reasoning_effort=tools_effort,
     source_path=source_path,
   )
 
@@ -624,6 +644,7 @@ def _profile_to_dict(p):
       "default_profile": p.subagents_default_profile,
     },
     "max_turns": p.max_turns,
+    "effort": p.effort,
     "backend": p.backend,
     "claude": {
       "cli_path": p.claude.cli_path,
@@ -632,7 +653,6 @@ def _profile_to_dict(p):
     "portkey": {
       "virtual_key": p.portkey_virtual_key,
       "config": p.portkey_config,
-      "tools_reasoning_effort": p.portkey_tools_reasoning_effort,
     },
   }
 

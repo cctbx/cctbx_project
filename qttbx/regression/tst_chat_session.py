@@ -15,7 +15,7 @@ from qttbx.widgets.chat.agent.errors import CancelToken, TurnCancelled
 from qttbx.widgets.chat.agent.events import CANCELLED
 from qttbx.widgets.chat.agent.events import (
   AskUserQuestionRequested, ServerToolResult, ServerToolUsed, TextDelta,
-  ToolResultObserved, ToolUseRequested, TurnDone,
+  Thinking, ToolResultObserved, ToolUseRequested, TurnDone,
   TokenUsage as TokenUsageEvent)
 from qttbx.widgets.chat.agent.profile import Profile
 from qttbx.widgets.chat.agent.session import AgentSession
@@ -143,6 +143,37 @@ def exercise_simple_text_turn():
     assert assistant.stop_reason == "end_turn"
     assert assistant.content[0].type == "text"
     assert "Hello, world." in assistant.content[0].data["text"]
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_signed_thinking_block_is_closed_to_later_thinking():
+  """A thinking block's signature arrives last and signs exactly its text;
+  thinking that streams after it is a NEW block (anthropic emits adjacent
+  thinking blocks under interleaved thinking, and the CLI's AssistantMessage
+  can carry two). Merging them would send one block whose text no longer
+  matches its signature, which the API rejects. Unsigned thinking still
+  accumulates into the open block."""
+  session, tmp = _new_test_session([
+    [Thinking(text="first "), Thinking(text="half"),
+     Thinking(text="", signature="sig-1"),
+     Thinking(text="second"), Thinking(text="", signature="sig-2"),
+     TextDelta(text="done"),
+     TurnDone(stop_reason="end_turn")],
+  ])
+  try:
+    user_msg = Message(role="user",
+                       content=[ContentBlock(type="text", data={"text": "hi"})],
+                       timestamp=now())
+    assistant = session.run_turn(user_msg, CancelToken())
+    kinds = [b.type for b in assistant.content]
+    assert kinds == ["thinking", "thinking", "text"], kinds
+    assert assistant.content[0].data == {"text": "first half",
+                                         "signature": "sig-1"}, \
+      assistant.content[0].data
+    assert assistant.content[1].data == {"text": "second",
+                                         "signature": "sig-2"}, \
+      assistant.content[1].data
   finally:
     shutil.rmtree(tmp)
 
@@ -2205,6 +2236,7 @@ def exercise_streaming_cancel_synthesizes_no_second_terminal():
 
 def exercise():
   exercise_simple_text_turn()
+  exercise_signed_thinking_block_is_closed_to_later_thinking()
   exercise_assistant_messages_stamped_with_model_and_backend()
   exercise_assistant_messages_stamped_with_verbose()
   exercise_session_verbose_is_normalized_at_construction()

@@ -854,10 +854,21 @@ def _append_text(msg, text):
 
 
 def _append_thinking(msg, text, signature):
-  if msg.content and msg.content[-1].type == "thinking":
-    msg.content[-1].data["text"] += text
+  """Accumulate thinking into the open block, or start a new one.
+
+  A block is OPEN while it has no signature: text appends to it, and a
+  signature-only event signs it. A signed block is closed -- the signature
+  arrives last and signs exactly that text, so thinking that streams after
+  it (anthropic's adjacent blocks under interleaved thinking; two blocks in
+  one CLI AssistantMessage) starts a new block. Merging across a signature
+  would replay one block whose text no longer matches it, a 400.
+  """
+  last = msg.content[-1] if msg.content else None
+  if last is not None and last.type == "thinking" \
+     and not last.data.get("signature"):
+    last.data["text"] += text
     if signature:
-      msg.content[-1].data["signature"] = signature
+      last.data["signature"] = signature
   else:
     msg.content.append(ContentBlock(type="thinking", data={
       "text": text, "signature": signature or ""}))
