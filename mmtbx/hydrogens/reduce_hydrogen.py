@@ -3729,7 +3729,9 @@ class place_hydrogens():
         candidates.append((rgs, ag, n))
       if not candidates: continue
       # a nonmetal within 1.75 A of a candidate N, of another residue or of
-      # a symmetry mate (a peptide closed across symmetry): the N is bonded
+      # a symmetry mate (a peptide closed across symmetry): the N is bonded.
+      # Not a mate of the N itself (disorder across an axis). The candidates
+      # are also among the nonmetals, so by atom, not by index.
       i_nonmetals = flex.size_t([i for i, a in enumerate(model_atoms)
         if a.element.strip().upper() in nonmetals])
       sites = flex.vec3_double([n.xyz for rgs, ag, n in candidates])
@@ -3741,7 +3743,8 @@ class place_hydrogens():
           atom = candidates[j][2]
         else:
           atom = model_atoms[i_nonmetals[j - len(candidates)]]
-        rgs = candidates[i_n][0]
+        rgs, n = candidates[i_n][0], candidates[i_n][2]
+        if atom.memory_id() == n.memory_id(): continue
         if (not rt.is_unit_mx() or
             atom.parent().parent().memory_id() != rgs.memory_id()):
           bonded.add(i_n)

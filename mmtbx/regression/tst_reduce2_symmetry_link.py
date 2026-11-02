@@ -118,10 +118,10 @@ HETATM   96  H2  HOH A 103       7.531   8.084   9.627  1.00  4.51           H
 END
 """
 
-def run(prefix, extra_args=()):
-  """reduce2 on pdb_str; returns the output hierarchy."""
+def run(prefix, extra_args=(), pdb=pdb_str):
+  """reduce2 on pdb; returns the output hierarchy."""
   with open(prefix + ".pdb", "w") as f:
-    f.write(pdb_str)
+    f.write(pdb)
   fn_out = prefix + "_out.pdb"
   run_program(program_class=reduce2.Program, logger=StringIO(), args=[
     prefix + ".pdb", "output.filename=" + fn_out,
@@ -156,8 +156,25 @@ def test_add():
 def test_qmready():
   check(run("tst_reduce2_symmetry_link_2", ["qmready=True"]))
 
+def test_own_mate_is_no_bond():
+  # half-occupied Gly, N 0.6 A from a 2-fold: its own mate is 1.2 A from the
+  # N (disorder across the axis), a terminus with NH3 all the same
+  h = run("tst_reduce2_symmetry_link_3", pdb="""\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1 2 1
+ATOM      1  N   GLY A   1       0.600  10.000   0.000  0.50 20.00           N
+ATOM      2  CA  GLY A   1       2.058  10.000   0.000  0.50 20.00           C
+ATOM      3  C   GLY A   1       2.580  11.433   0.000  0.50 20.00           C
+ATOM      4  O   GLY A   1       1.797  12.383   0.000  0.50 20.00           O
+END
+""")
+  gly = names(h, 1)
+  assert "H" not in gly, gly
+  for name in ("H1", "H2", "H3"):
+    assert gly.count(name) == 1, gly
+
 if __name__ == "__main__":
   test_add_terminal_oxt()
   test_add()
   test_qmready()
+  test_own_mate_is_no_bond()
   print("OK")
