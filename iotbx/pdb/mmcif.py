@@ -685,9 +685,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       force=not weak_symmetry)
 
   def crystal_symmetry_from_cryst1(self):
-    if self.hierarchy is None:
-      self.construct_hierarchy()
-    builder_cs = self.builder.crystal_symmetry
+    if self.builder is not None:
+      builder_cs = self.builder.crystal_symmetry
+    else:
+      builder_cs = crystal_symmetry_builder(self.cif_block).crystal_symmetry
     # check for dummy one
     if (builder_cs.unit_cell() is not None and
         cryst1_interpretation.dummy_unit_cell(
