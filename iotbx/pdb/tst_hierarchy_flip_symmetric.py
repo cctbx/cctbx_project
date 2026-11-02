@@ -4,6 +4,7 @@ import sys
 from six.moves import cStringIO as StringIO
 from libtbx import easy_run
 import iotbx.pdb
+import iotbx.pdb.hierarchy
 
 pdbs = {
   "ASP" : """
@@ -351,9 +352,337 @@ def run():
       print('delta',d)
       assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
 
+def rows_of(code, keep=()):
+  """Heavy atoms of pdbs[code] plus the H named in keep:
+  [[name, altloc, xyz], ...]"""
+  rows = []
+  for line in pdbs[code].splitlines():
+    if line[:6] not in ("ATOM  ", "HETATM"): continue
+    name = line[12:16].strip()
+    if line[76:78].strip() == "H" and name not in keep: continue
+    xyz = (float(line[30:38]), float(line[38:46]), float(line[46:54]))
+    rows.append([name, "", xyz])
+  return rows
+
+def split(rows, names):
+  """The atoms in names become conformers A and B, B 0.1 A away."""
+  result = []
+  for name, altloc, xyz in rows:
+    if name in names:
+      result.append([name, "A", xyz])
+      result.append([name, "B", (xyz[0] + 0.1, xyz[1], xyz[2])])
+    else:
+      result.append([name, altloc, xyz])
+  return result
+
+def exchange(rows, altloc, name1, name2):
+  """Exchange two names in one conformer: that turns its test around."""
+  for row in rows:
+    if row[1] != altloc: continue
+    if row[0] == name1: row[0] = name2
+    elif row[0] == name2: row[0] = name1
+
+def turn(rows, altloc, name, axis1, axis2):
+  """Turn one atom of a conformer 180 deg about axis1-axis2; the dihedral
+  through that axis changes by 180 deg."""
+  from scitbx import matrix
+  sites = {}
+  for row in rows:
+    if row[1] in ("", altloc): sites[row[0]] = matrix.col(row[2])
+  origin = sites[axis1]
+  axis = (sites[axis2] - origin).normalize()
+  r = axis.axis_and_angle_as_r3_rotation_matrix(180, deg=True)
+  for row in rows:
+    if row[0] == name and row[1] == altloc:
+      row[2] = (r * (sites[name] - origin) + origin).elems
+
+def add_h(rows, name, altloc, parent):
+  """An H or D 1 A from parent, in that conformer."""
+  for row in rows:
+    if row[0] == parent:
+      rows.append([name, altloc, (row[2][0], row[2][1], row[2][2] + 1)])
+      return
+  assert 0, parent
+
+def make(code, rows, resname=None):
+  """Hierarchy of one residue."""
+  resname = resname or code
+  lines = []
+  for i, (name, altloc, xyz) in enumerate(rows):
+    label = name if len(name) == 4 else " %-3s" % name
+    occ = 1.0 if altloc == "" else 0.5
+    lines.append(
+      "ATOM  %5d %s%1s%3s A  11    %8.3f%8.3f%8.3f%6.2f%6.2f          %2s" % (
+      i + 1, label, altloc or " ", resname, xyz[0], xyz[1], xyz[2], occ,
+      20 + i, name[0]))
+  return iotbx.pdb.input(source_info=None,
+    lines="\n".join(lines)).construct_hierarchy()
+
+def flip(hierarchy):
+  """Sites by (altloc, name) before and after, and the returned info."""
+  def sites():
+    result = {}
+    for ag in hierarchy.only_residue_group().atom_groups():
+      for atom in ag.atoms():
+        result[ag.altloc.strip(), atom.name.strip()] = atom.xyz
+    return result
+  before = sites()
+  info = hierarchy.flip_symmetric_amino_acids()
+  return before, sites(), info
+
+def assert_swapped(before, after, altloc, name1, name2):
+  assert before[altloc, name1] == after[altloc, name2], (altloc, name1, name2)
+  assert before[altloc, name2] == after[altloc, name1], (altloc, name1, name2)
+
+def assert_only_swapped(before, after, swapped):
+  """swapped: [(altloc, name1, name2), ...]; every other atom stays."""
+  moved = set()
+  for altloc, name1, name2 in swapped:
+    assert_swapped(before, after, altloc, name1, name2)
+    moved.add((altloc, name1))
+    moved.add((altloc, name2))
+  for key in before:
+    if key not in moved:
+      assert before[key] == after[key], key
+
+def exercise_acid_h():
+  # one H on an acid: the O must not swap away from it
+  for code, parent, h, d, pair in (
+      ("GLU", "OE2", "HE2", "DE2", ("OE1", "OE2")),
+      ("ASP", "OD2", "HD2", "DD2", ("OD1", "OD2"))):
+    for name in (h, d):
+      rows = rows_of(code)
+      add_h(rows, name, "", parent)
+      before, after, info = flip(make(code, rows))
+      assert_only_swapped(before, after, [])
+      assert '"A %s   11": not complete - not flipped' % code in info, info
+    # both H: a complete pair goes with the O
+    other = h[:-1] + "1"
+    rows = rows_of(code)
+    add_h(rows, h, "", parent)
+    add_h(rows, other, "", pair[0])
+    before, after, info = flip(make(code, rows))
+    assert_only_swapped(before, after,
+      [("",) + pair, ("", other, h)])
+    assert "Time to flip 1 residue(s)" in info
+
+def exercise_blank_o_acid_h_in_altlocs():
+  # 6KK8 Glu A 167: O without altloc, HE2 in A, DE2 in B
+  rows = rows_of("GLU")
+  add_h(rows, "HE2", "A", "OE2")
+  add_h(rows, "DE2", "B", "OE2")
+  before, after, info = flip(make("GLU", rows))
+  assert_only_swapped(before, after, [])
+  assert '"A GLU   11": not complete - not flipped' in info, info
+
+def exercise_a_flips_b_not():
+  # each conformer on its own test; one residue in the count
+  rows = split(rows_of("GLU"), ["CB", "CG", "CD", "OE1", "OE2"])
+  exchange(rows, "B", "OE1", "OE2")
+  hierarchy = make("GLU", rows)
+  before, after, info = flip(hierarchy)
+  assert_only_swapped(before, after, [("A", "OE1", "OE2")])
+  assert "Time to flip 1 residue(s)" in info, info
+  # the same with a ring and two swapped pairs
+  ring = ["CA", "CB", "CG", "CD1", "CD2", "CE1", "CE2", "CZ"]
+  rows = split(rows_of("PHE"), ring)
+  exchange(rows, "B", "CD1", "CD2")
+  exchange(rows, "B", "CE1", "CE2")
+  before, after, info = flip(make("PHE", rows))
+  assert_only_swapped(before, after,
+    [("A", "CD1", "CD2"), ("A", "CE1", "CE2")])
+  assert "Time to flip 1 residue(s)" in info, info
+
+def exercise_disagree_on_blank_pair():
+  # a blank O belongs to both conformers: A says no, B says yes
+  rows = split(rows_of("GLU"), ["CB"])
+  turn(rows, "A", "CB", "CG", "CD")
+  before, after, info = flip(make("GLU", rows))
+  assert_only_swapped(before, after, [])
+  assert '"A GLU   11": conformers disagree - not flipped' in info, info
+  # the other way around: the report does not depend on the conformer order
+  rows = split(rows_of("GLU"), ["CB"])
+  turn(rows, "B", "CB", "CG", "CD")
+  before, after, info = flip(make("GLU", rows))
+  assert_only_swapped(before, after, [])
+  assert '"A GLU   11": conformers disagree - not flipped' in info, info
+  # both agree: the blank pair swaps once
+  rows = split(rows_of("GLU"), ["CB"])
+  before, after, info = flip(make("GLU", rows))
+  assert_only_swapped(before, after, [("", "OE1", "OE2")])
+  assert "Time to flip 1 residue(s)" in info, info
+
+def exercise_test_spans_blank_and_altloc():
+  names = ["CB", "CG", "OD1", "OD2"]
+  # complete: CA blank, the rest in A and B
+  before, after, info = flip(make("ASP", split(rows_of("ASP"), names)))
+  assert_only_swapped(before, after,
+    [("A", "OD1", "OD2"), ("B", "OD1", "OD2")])
+  assert "Time to flip 1 residue(s)" in info, info
+  # the same for a chiral test
+  rows = split(rows_of("VAL"), ["CB", "CG1", "CG2"])
+  before, after, info = flip(make("VAL", rows))
+  assert_only_swapped(before, after,
+    [("A", "CG1", "CG2"), ("B", "CG1", "CG2")])
+  # an atom of the test missing in B: B cannot be tested, A flips
+  rows = [r for r in split(rows_of("ASP"), names) if r[:2] != ["CG", "B"]]
+  before, after, info = flip(make("ASP", rows))
+  assert_only_swapped(before, after, [("A", "OD1", "OD2")])
+  assert '"A ASP   11": test atom missing in altloc B - not flipped' in info, info
+  # A has all of its test atoms in its own group, B has no CA: master renamed B
+  # on A's decision
+  rows = split(rows_of("ASP"), names)
+  for row in rows:
+    if row[0] == "CA": row[1] = "A"
+  before, after, info = flip(make("ASP", rows))
+  assert_only_swapped(before, after, [("A", "OD1", "OD2")])
+  assert '"A ASP   11": test atom missing in altloc B - not flipped' in info, info
+  # missing for every conformer: no decision, nothing to report
+  rows = [r for r in split(rows_of("ASP"), names) if r[0] != "CG"]
+  before, after, info = flip(make("ASP", rows))
+  assert_only_swapped(before, after, [])
+  assert info == "", info
+  # a blank atom of the test missing with a blank pair: B not tested, none flips
+  rows = split(rows_of("GLU"), ["CB", "CG"])
+  rows = [r for r in rows if r[:2] != ["CB", "B"]]
+  before, after, info = flip(make("GLU", rows))
+  assert_only_swapped(before, after, [])
+  assert '"A GLU   11": test atom missing in altloc B - not flipped' in info, info
+
+def exercise_pair_spans_blank_and_altloc():
+  # 8EYP Tyr A 102: the two atoms of a pair cannot be exchanged
+  rows = split(rows_of("TYR"), ["CD2"])
+  before, after, info = flip(make("TYR", rows))
+  assert_only_swapped(before, after, [])
+  assert '"A TYR   11": pair spans blank and altloc - not flipped' in info, info
+
+def exercise_incomplete_h_in_altloc():
+  # 7KCU Arg A 69: blank NH, HH22 missing in A
+  names = ["HH11", "HH12", "HH21", "HH22"]
+  rows = [r for r in split(rows_of("ARG", keep=names), names)
+    if r[:2] != ["HH22", "A"]]
+  before, after, info = flip(make("ARG", rows))
+  assert_only_swapped(before, after, [])
+  assert '"A ARG   11": not complete - not flipped' in info, info
+  # the H in altlocs only, nothing blank in a pair: only B swaps
+  rows = [r for r in split(rows_of("ARG", keep=names),
+    names + ["NH1", "NH2"]) if r[:2] != ["HH22", "A"]]
+  before, after, info = flip(make("ARG", rows))
+  assert_only_swapped(before, after, [("B", "NH1", "NH2"),
+    ("B", "HH11", "HH21"), ("B", "HH12", "HH22")])
+  assert '"A ARG   11": not complete in altloc A - not flipped' in info, info
+
+def exercise_d_ring():
+  # Tyr shared Phe's pair list: the D pairs were listed twice and swapped back
+  for code in ("PHE", "TYR"):
+    names = ["HD1", "HD2", "HE1", "HE2"]
+    rows = rows_of(code, keep=names)
+    for row in rows:
+      if row[0] in names: row[0] = "D" + row[0][1:]
+    before, after, info = flip(make(code, rows))
+    assert_only_swapped(before, after, [("", "CD1", "CD2"), ("", "CE1", "CE2"),
+      ("", "DD1", "DD2"), ("", "DE1", "DE2")])
+    rows = rows_of(code, keep=names)
+    before, after, info = flip(make(code, rows))
+    assert_only_swapped(before, after, [("", "CD1", "CD2"), ("", "CE1", "CE2"),
+      ("", "HD1", "HD2"), ("", "HE1", "HE2")])
+
+def second_group(hierarchy, altloc, names):
+  """Move the atoms in names to a second atom group of that altloc."""
+  rg = hierarchy.only_residue_group()
+  first = [ag for ag in rg.atom_groups() if ag.altloc == altloc][0]
+  group = iotbx.pdb.hierarchy.atom_group(altloc=altloc, resname=first.resname)
+  for name in names:
+    atom = first.get_atom(name)
+    first.remove_atom(atom)
+    group.append_atom(atom)
+  rg.append_atom_group(group)
+  assert len([c for c in rg.conformers() if c.altloc == altloc]) == 1
+  return hierarchy
+
+def glu_with_he2_in_second_group():
+  rows = rows_of("GLU")
+  add_h(rows, "HE2", "", "OE2")
+  for row in rows: row[1] = "A"
+  return second_group(make("GLU", rows), "A", ["HE2"])
+
+def distance(atoms, name1, name2):
+  sites = dict([(atom.name.strip(), atom) for atom in atoms])
+  return sites[name1].distance(sites[name2])
+
+def exercise_conformer_in_several_atom_groups():
+  # The reader merges an altloc; code that builds a hierarchy may not.
+  hierarchy = glu_with_he2_in_second_group()
+  before, after, info = flip(hierarchy)
+  assert_only_swapped(before, after, [])
+  assert '"A GLU   11": not complete in altloc A - not flipped' in info, info
+  assert abs(distance(hierarchy.atoms(), "OE2", "HE2") - 1) < 1.e-3
+
+def exercise_conformer_in_several_atom_groups_no_acid_h():
+  # flipped completely: a pair across the groups, and a pair in the second group
+  for code, names, swapped in (
+      ("GLU", ["OE2"], [("A", "OE1", "OE2")]),
+      ("PHE", ["CE1", "CE2"], [("A", "CD1", "CD2"), ("A", "CE1", "CE2")])):
+    rows = rows_of(code)
+    for row in rows: row[1] = "A"
+    before, after, info = flip(second_group(make(code, rows), "A", names))
+    assert_only_swapped(before, after, swapped)
+    assert "not flipped" not in info, info
+    assert "Time to flip 1 residue(s)" in info
+
+def exercise_conformer_in_several_atom_groups_process():
+  import mmtbx.model
+  from libtbx.utils import null_out
+  model = mmtbx.model.manager(model_input=None,
+    pdb_hierarchy=glu_with_he2_in_second_group(), log=null_out())
+  params = model.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.sort_atoms = False
+  params.pdb_interpretation.flip_symmetric_amino_acids = True
+  model.process(pdb_interpretation_params=params)
+  atoms = model.get_hierarchy().atoms()
+  assert abs(distance(atoms, "OE2", "HE2") - 1) < 1.e-3
+
+def exercise_model_id_in_info():
+  rows = rows_of("GLU")
+  add_h(rows, "HE2", "", "OE2")
+  text = make("GLU", rows).as_pdb_string()
+  hierarchy = iotbx.pdb.input(source_info=None, lines=(
+    "MODEL        1\n%sENDMDL\nMODEL        2\n%sENDMDL\n" % (text, text)
+    ).splitlines()).construct_hierarchy()
+  info = hierarchy.flip_symmetric_amino_acids()
+  for model_id in ("1", "2"):
+    assert '"MODEL %s A GLU   11": not complete - not flipped' % model_id in info, info
+
+def exercise_selected_hierarchy_and_residue_identity():
+  # select() shares atoms: their parent can be gone. The report has the icode.
+  rows = split(rows_of("GLU"), ["CB"])
+  turn(rows, "A", "CB", "CG", "CD")
+  hierarchy = make("GLU", rows)
+  hierarchy.only_residue_group().icode = "X"
+  selected = hierarchy.select(hierarchy.atom_selection_cache().selection("all"))
+  del hierarchy
+  info = selected.flip_symmetric_amino_acids()
+  assert '"A GLU   11X": conformers disagree - not flipped' in info, info
+
+def run_in_process():
+  exercise_acid_h()
+  exercise_blank_o_acid_h_in_altlocs()
+  exercise_a_flips_b_not()
+  exercise_disagree_on_blank_pair()
+  exercise_test_spans_blank_and_altloc()
+  exercise_pair_spans_blank_and_altloc()
+  exercise_incomplete_h_in_altloc()
+  exercise_d_ring()
+  exercise_conformer_in_several_atom_groups()
+  exercise_conformer_in_several_atom_groups_no_acid_h()
+  exercise_model_id_in_info()
+  exercise_selected_hierarchy_and_residue_identity()
+
 if __name__=="__main__":
   import libtbx.load_env
+  run_in_process()
   if libtbx.env.find_in_repositories('chem_data') is not None:
+    exercise_conformer_in_several_atom_groups_process()
     args = sys.argv[1:]
     del sys.argv[1:]
     run(*tuple(args))

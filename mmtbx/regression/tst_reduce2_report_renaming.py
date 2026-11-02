@@ -122,6 +122,25 @@ def distance(a, b):
 
 GLU_PHE = {"GLU A 11": "OE1/OE2", "PHE A 51": "CD1/CD2, CE1/CE2"}
 
+def without_acid_h(root):
+  for ag in root.atom_groups():
+    for name in ("HD2", "HE2"):
+      atom = ag.get_atom(name)
+      if atom is not None and ag.resname in ("ASP", "GLU"):
+        ag.remove_atom(atom)
+  root.atoms().reset_serial()
+  return root
+
+def swapped_resseqs(renames):
+  """resseq of each OD1/OD2 or OE1/OE2 swap in a list of rename records"""
+  result = []
+  for r in renames:
+    if ("OD1", "OD2") in r.pairs or ("OD2", "OD1") in r.pairs:
+      result.append(r.label.split()[-1])
+    if ("OE1", "OE2") in r.pairs or ("OE2", "OE1") in r.pairs:
+      result.append(r.label.split()[-1])
+  return result
+
 def test_add_and_place():
   # exactly the renamed ones, with the atom pairs; the atoms stay where they
   # were, under the partner's name
@@ -150,12 +169,12 @@ def test_add_nothing_renamed():
   assert "%s: none" % HEADER in description
   assert "%s: none" % HEADER in log
 
-# all H supplied. Renamed: Glu 11, Tyr 31, Arg 40, Phe 50
+# all H supplied. Renamed: Tyr 31, Arg 40, Phe 50. Glu 11 would be, but its HE2
+# has no partner: an acid with one H stays
 SUPPLIED = [("glu_h", 10, True), ("glu_h", 11, False), ("tyr_h", 30, True),
             ("tyr_h", 31, False), ("arg_h", 40, True), ("arg_h", 41, False),
             ("phe_h", 50, True), ("phe_h", 51, False)]
-SUPPLIED_LIST = {"GLU A 11": "OE1/OE2",
-  "TYR A 31": "CD1/CD2, CE1/CE2, HD1/HD2, HE1/HE2",
+SUPPLIED_LIST = {"TYR A 31": "CD1/CD2, CE1/CE2, HD1/HD2, HE1/HE2",
   "ARG A 40": "NH1/NH2, HH11/HH21, HH12/HH22",
   "PHE A 50": "CD1/CD2, CE1/CE2, HD1/HD2, HE1/HE2"}
 
@@ -163,7 +182,7 @@ def test_optimize():
   # the input stays as it is: no renaming, and the description says so
   prefix = "tst_reduce2_report_renaming_opt"
   root = build(SUPPLIED)
-  assert expected_renamed(root) == set(["11", "31", "40", "50"])
+  assert expected_renamed(root) == set(["31", "40", "50"])
   fn = write(prefix, root)
   task, description, log = run(prefix, fn, ["approach=optimize"])
   assert listed(description) == {}, description
@@ -184,10 +203,7 @@ def test_restraint_file():
   assert before["40", "", "NH1"] == after["40", "", "NH2"]
   out = prefix + "_remove"
   task, description, log = run(out, fn, ["approach=remove"], extra=[cif])
-  assert listed(description) == {"GLU A 11": "OE1/OE2",
-    "TYR A 31": "CD1/CD2, CE1/CE2, HD1/HD2, HE1/HE2",
-    "ARG A 40": "NH1/NH2, HH11/HH21, HH12/HH22",
-    "PHE A 50": "CD1/CD2, CE1/CE2, HD1/HD2, HE1/HE2"}, description
+  assert listed(description) == SUPPLIED_LIST, description
   # without a restraint file remove does not mention it
   out = prefix + "_remove_no_cif"
   task, description, log = run(out, fn, ["approach=remove"])
@@ -195,14 +211,19 @@ def test_restraint_file():
 
 def test_two_renamings_cancel():
   # Asp from idealized_aa has chi2 near 90: the second call of
-  # flip_symmetric_amino_acids() swaps back; the output has the input names
+  # flip_symmetric_amino_acids() swaps back; the output has the input names.
+  # No acid H, or there would be no swap to cancel.
   prefix = "tst_reduce2_report_renaming_cancel"
-  fn = write(prefix, build([("asp_h", 21, False), ("glu_h", 11, False)]))
-  assert expected_renamed(build([("asp_h", 21, False)])) == set(["21"])
+  root = without_acid_h(build([("asp_h", 21, False), ("glu_h", 11, False)]))
+  fn = write(prefix, root)
+  assert expected_renamed(root) == set(["11", "21"])
   cif = prefix + ".cif"
   with open(cif, "w") as f: f.write(zq4_cif)
   task, description, log = run(prefix, fn,
     ["approach=place", "keep_existing_H=True"], extra=[cif])
+  # both swaps happened
+  assert swapped_resseqs(task._input_renames).count("21") == 1
+  assert swapped_resseqs(task._placement_renames).count("21") == 1
   assert listed(description) == {"GLU A 11": "OE1/OE2"}, description
   before, after = sites(fn), sites(prefix + ".pdb")
   assert before["21", "", "OD1"] == after["21", "", "OD1"]
@@ -304,7 +325,7 @@ def test_model_number():
   # the input's rename and placement's second swap of Asp 22 net to nothing,
   # though selection moved the model from the second place to the first
   out = prefix + "_cancel"
-  root = build([("asp_h", 21, False), ("glu_h", 11, False)])
+  root = without_acid_h(build([("asp_h", 21, False), ("glu_h", 11, False)]))
   second = root.only_model().detached_copy()
   root.only_model().id = "1"
   second.id = "0002"
@@ -314,6 +335,8 @@ def test_model_number():
   fn = write(out, root)
   task, description, log = run(out, fn,
     ["approach=place", "keep_existing_H=True", "model_id=2"], extra=[cif])
+  assert swapped_resseqs(task._input_renames).count("22") == 1
+  assert swapped_resseqs(task._placement_renames).count("22") == 1
   assert listed(description) == {"GLU A 12": "OE1/OE2"}, description
 
 def test_log_cap():
@@ -333,8 +356,8 @@ def test_log_cap():
 
 def test_supplied_h():
   # keep_existing_H: H named in a pair go with their heavy atom: same site,
-  # partner's name, bonded to the atom of that name. The renaming has no pair
-  # for the acid H: the H keeps its name and ends on the O of that name.
+  # partner's name, bonded to the atom of that name. Glu 11, whose test asks for
+  # the renaming, has one acid H: not renamed, the H stays on its O.
   prefix = "tst_reduce2_report_renaming_supplied"
   fn = write(prefix, build(SUPPLIED))
   task, description, log = run(prefix, fn,
@@ -346,6 +369,9 @@ def test_supplied_h():
                          ("31", "HD1", "HD2"), ("31", "HE1", "HE2")):
     assert distance(before[resseq, "", h1], after[resseq, "", h2]) < 0.1
     assert distance(before[resseq, "", h2], after[resseq, "", h1]) < 0.1
+  assert before["11", "", "OE1"] == after["11", "", "OE1"]
+  assert before["11", "", "OE2"] == after["11", "", "OE2"]
+  assert distance(before["11", "", "HE2"], after["11", "", "HE2"]) < 0.1
   for resseq, h, parent, ideal in (("40", "HH11", "NH1", 0.86),
       ("40", "HH22", "NH2", 0.86), ("50", "HD1", "CD1", 0.93),
       ("31", "HE2", "CE2", 0.93), ("31", "HH", "OH", 0.84),
