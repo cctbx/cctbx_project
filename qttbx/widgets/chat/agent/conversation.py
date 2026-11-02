@@ -40,37 +40,50 @@ def _new_id():
   return uuid.uuid4().hex
 
 
-# A truthy ``data`` entry under this key marks a content block as EPHEMERAL:
-# it is sent to the model as part of the live conversation, but is never
-# written to disk (``storage.save`` drops it via ``is_ephemeral_block``). Used
-# for transient injections that must reach the model exactly for the turn they
-# ride on and neither persist nor replay -- e.g. the context-pressure handoff
-# note. Filtering at the serialization choke point (rather than at one caller's
-# turn-end) is what makes "never on disk" hold across every save path: mid-turn
-# autosave, turn-end, errored-turn, and close saves alike.
-EPHEMERAL_BLOCK_KEY = "ephemeral"
+# A context-pressure note: a text block the host appended to a message to
+# tell the model how full the window is. Tagged in ``data`` with
+# ``NOTE_BLOCK_KEY: NOTE_VALUE`` and its stage under ``NOTE_STAGE_KEY``. It
+# is part of the conversation from then on -- persisted, replayed where it
+# first went, never stripped (editing history behind a thinking block the
+# model produced invalidates that block) -- and the stage tag is how the
+# host reads back which notes the history already holds. Readers that show
+# or export the user's own words skip note blocks (``is_note_block``).
+NOTE_BLOCK_KEY = "note"
+NOTE_VALUE = "context_pressure"
+NOTE_STAGE_KEY = "stage"
+NOTE_STAGES = ("offer", "urgent")
 
 
-def is_ephemeral_block(b):
-  """True when content block ``b`` is tagged ephemeral (see
-  ``EPHEMERAL_BLOCK_KEY``) and so must not be persisted."""
-  return bool(getattr(b, "data", None)) and bool(b.data.get(EPHEMERAL_BLOCK_KEY))
+def is_note_block(b):
+  """True when content block ``b`` is a context-pressure note."""
+  return bool(getattr(b, "data", None)) and \
+    b.data.get(NOTE_BLOCK_KEY) == NOTE_VALUE
+
+
+def note_stage(b):
+  """The note's stage (one of ``NOTE_STAGES``), or ``None`` for a non-note
+  block and for a stray stage value, so a reader indexing it never raises."""
+  if not is_note_block(b):
+    return None
+  stage = b.data.get(NOTE_STAGE_KEY)
+  return stage if stage in NOTE_STAGES else None
 
 
 def is_tool_result_answer(message):
-  """True for a user message whose persisted blocks are ALL tool_result -- the
-  answering message the session appends after an assistant tool_use turn (a
-  dispatched batch, or claude_code's observed results). It carries the user
-  role only because that is the Messages API shape for tool results; the user
-  did not write it. Ephemeral blocks (a transient context-pressure note riding
-  the round's tool-result message) are ignored, since they are never persisted
-  or exported. A text or mixed user message (the user's own input, the
-  turn-cap marker) and an empty message are not answers.
+  """True for a user message whose blocks, note blocks aside, are ALL
+  tool_result -- the answering message the session appends after an
+  assistant tool_use turn (a dispatched batch, or claude_code's observed
+  results). It carries the user role only because that is the Messages API
+  shape for tool results; the user did not write it. Note blocks (the
+  context-pressure note riding the round's tool-result message, persisted
+  with it) are ignored: they are the model's scaffolding, not the user's
+  words. A text or mixed user message (the user's own input, the turn-cap
+  marker) and an empty message are not answers.
   """
   if getattr(message, "role", None) != "user":
     return False
   blocks = [b for b in (getattr(message, "content", None) or [])
-            if not is_ephemeral_block(b)]
+            if not is_note_block(b)]
   return bool(blocks) and all(
     getattr(b, "type", None) == "tool_result" for b in blocks)
 

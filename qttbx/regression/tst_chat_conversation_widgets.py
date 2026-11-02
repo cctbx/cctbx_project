@@ -266,31 +266,29 @@ def exercise_reload_folds_tool_results_into_matching_tool_cells():
   assert v2.bubbles()[0]._tool_cells_by_id["t3"].is_running()
 
 
-def exercise_reload_fold_ignores_ephemeral_note_on_the_answer():
-  """A tool-result answer that also carries an ephemeral block (the mid-turn
-  context-pressure note the session pins to the round's tool-result message)
-  is still a tool-result answer on a fold-enabled render: it folds into the
-  preceding bubble and the note is dropped, not rendered as a bubble of its
-  own. Reloads never see ephemeral blocks (they are never persisted), so this
-  pins the shared ``is_tool_result_answer`` contract rather than a live path.
-  A typed text block on the same message still disqualifies the fold."""
+def exercise_reload_fold_ignores_note_on_the_answer():
+  """A tool-result answer that also carries a context-pressure note (the
+  mid-turn note the session pins to the round's tool-result message, which
+  is persisted and so IS seen on reload) is still a tool-result answer on a
+  fold-enabled render: it folds into the preceding bubble and the note is
+  not rendered as a bubble of its own. A typed text block on the same
+  message still disqualifies the fold."""
   from qttbx.widgets.chat.conversation_view import ConversationView
-  from qttbx.widgets.chat.agent.conversation import EPHEMERAL_BLOCK_KEY
+  from qttbx.widgets.chat.agent.conversation import (
+    NOTE_BLOCK_KEY, NOTE_VALUE, NOTE_STAGE_KEY)
   _qapp()
-
   def _assistant_with_tool(tid):
     return Message(role="assistant", timestamp=now(), content=[
       ContentBlock(type="tool_use", data={
         "id": tid, "name": "phenix_tail_log", "input": {}})])
-
   def _result(tid, text):
     return ContentBlock(type="tool_result", data={
       "tool_use_id": tid,
       "content": [ContentBlock(type="text", data={"text": text})],
       "is_error": False})
-
   note = ContentBlock(type="text", data={
-    "text": "[system note] 80% of context used", EPHEMERAL_BLOCK_KEY: True})
+    "text": "[system note] 80% of context used", NOTE_BLOCK_KEY: NOTE_VALUE,
+    NOTE_STAGE_KEY: "offer"})
   v = ConversationView()
   v.add_message(_assistant_with_tool("t1"), fold_tool_results=True)
   cell = v.bubbles()[-1]._tool_cells_by_id["t1"]
@@ -298,17 +296,43 @@ def exercise_reload_fold_ignores_ephemeral_note_on_the_answer():
                         content=[_result("t1", "tail: done"), note]),
                 fold_tool_results=True)
   assert v.bubble_count() == 1, \
-    "an ephemeral note must not stop the answer folding into the call bubble"
+    "a note must not stop the answer folding into the call bubble"
   assert not cell.is_running(), "folded result must finish the tool cell"
   assert "finished" in cell.header_button.text(), cell.header_button.text()
 
-  # A typed text block (not ephemeral) on the answer keeps it a bubble.
+  # A typed text block (not a note) on the answer keeps it a bubble.
   typed = ContentBlock(type="text", data={"text": "also, look at chain B"})
   v.add_message(_assistant_with_tool("t2"), fold_tool_results=True)
   v.add_message(Message(role="user", timestamp=now(),
                         content=[_result("t2", "done"), typed]),
                 fold_tool_results=True)
   assert v.bubble_count() == 3, v.bubble_count()
+
+def exercise_reloaded_user_bubble_hides_the_note():
+  """A persisted send-time note rides the user's own message; the reloaded
+  bubble shows the user's words and neither paints nor reports the note.
+  (The in-turn note is already safe: its whole tool-result message folds.)"""
+  from qttbx.widgets.chat.conversation_view import ConversationView
+  from qttbx.widgets.chat.agent.conversation import (
+    NOTE_BLOCK_KEY, NOTE_VALUE, NOTE_STAGE_KEY)
+  _qapp()
+  v = ConversationView()
+  msg = Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="text", data={"text": "fix the loop"}),
+    ContentBlock(type="text", data={"text": "[system note] 80% used",
+                                    NOTE_BLOCK_KEY: NOTE_VALUE,
+                                    NOTE_STAGE_KEY: "offer"})])
+  v.add_message(msg, fold_tool_results=True)
+  bubble = v.bubbles()[-1]
+  # What is PAINTED, not combined_text (which filters notes on its own):
+  # the one text cell holds the user's words and nothing of the note.
+  html = bubble.first_text_cell_html()
+  assert "fix the loop" in html and "system note" not in html, html
+  texts = [w.toPlainText() for kind, w in bubble.searchable_cells()
+           if kind == "text"]
+  assert len(texts) == 1 and "system note" not in texts[0], texts
+  assert bubble.combined_text() == "fix the loop", bubble.combined_text()
+
 
 
 def exercise_finish_tool_cell_error_marks_cell_failed():
@@ -1660,7 +1684,8 @@ def exercise():
   exercise_observed_result_finishes_cell_so_cancel_sweep_skips_it()
   exercise_finish_tool_cell_is_a_no_op_without_in_progress_bubble()
   exercise_reload_folds_tool_results_into_matching_tool_cells()
-  exercise_reload_fold_ignores_ephemeral_note_on_the_answer()
+  exercise_reload_fold_ignores_note_on_the_answer()
+  exercise_reloaded_user_bubble_hides_the_note()
   exercise_finish_tool_cell_error_marks_cell_failed()
   exercise_failed_tool_cell_does_not_floor_the_view_width()
   exercise_pending_approval_card_does_not_floor_the_view_width()
