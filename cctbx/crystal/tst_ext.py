@@ -1685,6 +1685,38 @@ def exercise_pairs_within():
     (0, 0, "-x,-y,-z", 0.6)]
   sites = flex.vec3_double([(0, 0, 0)])
   assert crystal.pairs_within(sites, 1.5, cs) == []
+  # a 2-fold along b through the origin. Site 0 on or close to the axis, site 1
+  # 2.32 A away: both mates of site 1, 4.64 A apart, are neighbours of site 0
+  cs = crystal.symmetry(unit_cell=(30, 30, 30, 90, 90, 90),
+                        space_group_symbol="P 1 2 1")
+  for off, d1, d2 in ((0, 2.32, 2.32), (0.1, 2.22, 2.42), (0.2, 2.12, 2.52)):
+    sites = flex.vec3_double([(off, 5, 0), (2.32, 5, 0)])
+    pairs = [p for p in listed(crystal.pairs_within(sites, 2.6, cs, i_seqs=[0]))
+             if p[1] == 1]
+    assert pairs == [(0, 1, "-x,y,-z", round(d2, 6)),
+                     (0, 1, "x,y,z", round(d1, 6))], (off, pairs)
+    # off the axis, both mates of site 0 are neighbours of site 1 too
+    if off > 0:
+      pairs = listed(crystal.pairs_within(sites, 2.6, cs, i_seqs=[1]))
+      assert pairs == [(1, 0, "-x,y,-z", round(d2, 6)),
+                       (1, 0, "x,y,z", round(d1, 6))], (off, pairs)
+  # a site on the axis: its mates coincide and are listed once, with the
+  # identity; from it, both mates of the other site
+  sites = flex.vec3_double([(2.32, 5, 0), (0, 5, 0)])
+  assert listed(crystal.pairs_within(sites, 2.6, cs)) == [
+    (0, 1, "x,y,z", 2.32),
+    (1, 0, "-x,y,-z", 2.32), (1, 0, "x,y,z", 2.32)]
+  # close to the axis, not on it: two positions
+  sites = flex.vec3_double([(2.32, 5, 0), (0.1, 5, 0)])
+  assert listed(crystal.pairs_within(sites, 2.6, cs, i_seqs=[0])) == [
+    (0, 1, "-x,y,-z", 2.42), (0, 1, "x,y,z", 2.22)]
+  # a site's own mates on either side, a 2_1 screw: rt_mx and its inverse
+  cs = crystal.symmetry(unit_cell=(10, 8, 10, 90, 90, 90),
+                        space_group_symbol="P 1 21 1")
+  sites = flex.vec3_double([(0.5, 0, 0)])
+  pairs = crystal.pairs_within(sites, 4.5, cs)
+  assert sorted(p[2].as_xyz() for p in pairs) == [
+    "-x,y+1/2,-z", "-x,y-1/2,-z"], pairs
 
 def exercise_pair_sym_table_pickling():
   # Test pickling of pair_asu_table in cctbx_project\cctbx\crystal\pair_tables_bpl.cpp
