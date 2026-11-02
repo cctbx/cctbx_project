@@ -62,13 +62,31 @@ def eval_parallel(
     assert mp_results[size][0].find("IndexError: ") > 0
     assert mp_results[size][1] is None
 
+def _identity(x):
+  return x
+
+def exercise_simple_parallel_keeps_falsy_results(nproc, **kw):
+  from libtbx.easy_mp import simple_parallel
+  # with nproc=2 in batches, the first batch returns only 0, False and None
+  result_list = simple_parallel(
+    function=_identity,
+    iteration_list=[0, False, None, [], "", 7],
+    nproc=nproc,
+    log=StringIO(),
+    **kw)
+  assert result_list == [0, False, [], "", 7], result_list
+  assert result_list[1] is False
+
 def exercise(exercise_fail):
   exercise_func_wrapper_sub_directories()
+  exercise_simple_parallel_keeps_falsy_results(nproc=1)
   from libtbx import easy_mp
   mp_problem = easy_mp.detect_problem()
   if (mp_problem is not None):
     print("Skipping tst_easy_mp.py: %s" % mp_problem)
     return
+  exercise_simple_parallel_keeps_falsy_results(nproc=2)
+  exercise_simple_parallel_keeps_falsy_results(nproc=2, run_in_batches=False)
   check_if_stacktrace_is_propagated_properly(method='threading', nproc=2)
   check_if_stacktrace_is_propagated_properly(method='multiprocessing', nproc=2)
   check_if_stacktrace_is_propagated_properly(method='threading', nproc=1)
