@@ -786,6 +786,69 @@ def residue_label(atom):
   return '%s %s %s' % (atom.parent().resname.strip(),
     rg.parent().id.strip(), rg.resseq.strip())
 
+def atom_group_sites(hierarchy):
+  '''
+  Before processing, for symmetric_renames().
+  :return: {residue_part + altloc: (names, sites)} of every atom_group.
+  '''
+  parts = residue_parts(hierarchy)
+  result = {}
+  for ag in hierarchy.atom_groups():
+    atoms = ag.atoms()
+    result[parts[ag.memory_id()] + (ag.altloc,)] = (
+      list(atoms.extract_name()), atoms.extract_xyz())
+  return result
+
+def symmetric_renames(sites_before, hierarchy):
+  '''
+  What flip_symmetric_amino_acids() did in a processing (it returns only a
+  count): the pairs of atoms of an atom_group that exchanged their sites,
+  within 0.001 A (processing changes sites by ~1e-14 A; partners are > 1 A
+  apart). New H of a residue are superposed, so they do not count.
+  :param sites_before: atom_group_sites() of the hierarchy before processing.
+  :return: [group_args(model, residue, label, altloc, pairs)], in model order.
+  residue: residue_parts() with the model's id for its index, which selecting
+  a model changes. label: 'resname chain resseqicode'. pairs: (name, partner
+  name), stripped.
+  '''
+  tolerance_sq = 1.e-6
+  def same(a, b):
+    return sum((x - y)**2 for x, y in zip(a, b)) < tolerance_sq
+  parts = residue_parts(hierarchy)
+  result = []
+  for ag in hierarchy.atom_groups():
+    part = parts[ag.memory_id()]
+    before = sites_before.get(part + (ag.altloc,))
+    if before is None: continue
+    atoms = ag.atoms()
+    sites = atoms.extract_xyz()
+    if (before[1].size() == sites.size() and
+        flex.max((sites - before[1]).dot()) < tolerance_sq):
+      continue
+    old = dict(zip(before[0], before[1]))
+    new = dict(zip(atoms.extract_name(), sites))
+    pairs = []
+    done = set()
+    for name, site in new.items():
+      if name in done or name not in old or same(old[name], site): continue
+      for other in new:
+        if (other != name and other not in done and other in old and
+            same(old[other], site) and same(new[other], old[name])):
+          pairs.append((name.strip(), other.strip()))
+          done.update((name, other))
+          break
+    if pairs:
+      rg = ag.parent()
+      model_id = rg.parent().parent().id.strip()
+      result.append(group_args(
+        model   = model_id,
+        residue = (model_id,) + part[1:],
+        label   = '%s %s %s%s' % (ag.resname.strip(), rg.parent().id.strip(),
+          rg.resseq.strip(), rg.icode.strip()),
+        altloc  = ag.altloc,
+        pairs   = pairs))
+  return result
+
 def atoms_not_in_dictionary(model):
   '''
   Heavy atoms whose name is not in their residue's dictionary, in a processed
@@ -2189,6 +2252,8 @@ class place_hydrogens():
     self.residue_keys_new_h     = set()
     # (model, chain, resseq, icode, resname) of no_H_placed_mlq
     self.residue_keys_no_restraints = set()
+    # flip_symmetric_amino_acids() in this run's processing (symmetric_renames())
+    self.renamed_symmetric_atoms = list()
     #self.charged_atoms          = list()
     self.sl_removed             = list()
     # thiols bound to metals (thiol_metal_sites): H not placed, with the
@@ -2339,6 +2404,7 @@ class place_hydrogens():
     p = get_reduce_pdb_interpretation_params(self.use_neutron_distances)
     ro = self.restraint_objects
     t0 = time.time()
+    sites_before = atom_group_sites(pdb_hierarchy)
     self.model = mmtbx.model.manager(
       model_input       = None,
       pdb_hierarchy     = pdb_hierarchy,
@@ -2353,6 +2419,8 @@ class place_hydrogens():
                        plain_pairs_radius=None,
                        # retain_zero_dihedrals=True,
                        )
+    self.renamed_symmetric_atoms = symmetric_renames(sites_before,
+      self.model.get_hierarchy())
 
     self.time_make_grm = round(time.time()-t0, 2)
     self.find_atoms_not_in_dictionary()

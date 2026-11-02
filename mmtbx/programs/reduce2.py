@@ -1224,6 +1224,7 @@ NOTES:
       raise Sorry("Insufficient restraints were found for the following atoms:"+bad)
 
     self.model = reduce_add_h_obj.get_model()
+    self._placement_renames = reduce_add_h_obj.renamed_symmetric_atoms
     # input pairs keep their values per site when placement renamed their H
     self._hd_records = hd_exchange.rekey_records(self._hd_records,
       reduce_add_h_obj.renamed_existing_h)
@@ -1331,6 +1332,55 @@ NOTES:
     text = '\n'.join(lines) + '\n'
     print(text, file=self.logger)
     return text
+
+# ------------------------------------------------------------------------------
+
+  def _RenamesText(self, renames):
+    # IUPAC renaming of symmetric side-chain atoms; 'none' if renames is
+    # empty. Printed here, the list capped at 20 unless verbosity > 2.
+    # :param renames: As reduce_hydrogen.symmetric_renames().
+    # :return: The description-file text, with the full list.
+    n_models = len(self.model.get_hierarchy().models())
+    residues = set(r.residue for r in renames)
+    lines = []
+    for r in renames:
+      label = r.label
+      if r.altloc.strip():
+        label += ' altloc %s' % r.altloc
+      if n_models > 1:
+        label += ' (model %s)' % r.model
+      lines.append('  %s: %s' % (label, ', '.join('%s/%s' % p for p in r.pairs)))
+    title = 'IUPAC renaming of symmetric side-chain atoms: '
+    if not renames:
+      text = '\n' + title + 'none\n\n'
+      print(text, file=self.logger)
+      return text
+    title += ('%d residue(s) (the names of equivalent atoms are exchanged)'
+      % len(residues))
+    shown = lines
+    if self.params.verbosity <= 2 and len(lines) > 20:
+      shown = lines[:20] + ['  (+%d more)' % (len(lines) - 20)]
+    print('\n' + '\n'.join([title] + shown) + '\n', file=self.logger)
+    return '\n' + '\n'.join([title] + lines) + '\n\n'
+
+# ------------------------------------------------------------------------------
+
+  def _NetRenames(self):
+    # Input to output: renames of the input's processing (restraint files)
+    # followed by placement's; a second swap of a pair undoes the first
+    # (flip_symmetric_amino_acids() can do that near chi +-90).
+    net = {}
+    for r in self._input_renames + self._placement_renames:
+      key = (r.residue, r.altloc)
+      if key not in net:
+        net[key] = group_args(model=r.model, residue=r.residue, label=r.label,
+          altloc=r.altloc, pairs=[])
+      for p in r.pairs:
+        if p in net[key].pairs:
+          net[key].pairs.remove(p)
+        else:
+          net[key].pairs.append(p)
+    return [r for r in net.values() if r.pairs]
 
 # ------------------------------------------------------------------------------
 
@@ -2343,9 +2393,20 @@ NOTES:
         print("capping=True: continuing, dangling bonds are capped with H at the end",
           file=self.logger)
 
+    self._input_renames = []
+    self._placement_renames = []
     if self.data_manager.has_restraints():
       self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
+      # default interpretation parameters: renames symmetric side-chain atoms
+      sites_before = reduce_hydrogen.atom_group_sites(self.model.get_hierarchy())
       self.model.process(make_restraints=False)
+      self._input_renames = reduce_hydrogen.symmetric_renames(sites_before,
+        self.model.get_hierarchy())
+      if self.params.model_id is not None:
+        selected = _SelectModelNumber(self.model.get_hierarchy(),
+          self.params.model_id).id.strip()
+        self._input_renames = [r for r in self._input_renames
+          if r.model == selected]
 
     # If we've been asked to only to a single model from the file, strip the model down to
     # only that one (checked in validate()); it keeps its MODEL number.
@@ -2412,6 +2473,7 @@ NOTES:
       make_sub_header('Adding Hydrogens', out=self.logger)
       startAdd = time.time()
       self._AddHydrogens()
+      outString += self._RenamesText(self._NetRenames())
       outString += self._dod_renamed_note
       outString += self._unknown_atoms_note
       outString += self._metal_thiol_note
@@ -2430,6 +2492,7 @@ NOTES:
         startAdd = time.time()
         self._AddHydrogens()
         doneAdd = time.time()
+        outString += self._RenamesText(self._NetRenames())
         outString += self._dod_renamed_note
         outString += self._unknown_atoms_note
         outString += self._metal_thiol_note
@@ -2441,6 +2504,7 @@ NOTES:
         # (normalized input was rebuilt with them)
         if not self._normalized_with_restraints:
           self._ReinterpretModel(make_restraints=True)
+        outString += self._RenamesText(self._NetRenames())
         outString += self._UnchangedText()
         # atom names not in the dictionary, as placement reports them
         self._unknown_atoms = reduce_hydrogen.atoms_not_in_dictionary(
@@ -2557,6 +2621,8 @@ NOTES:
       # Own path, independent of the isotope logic: any H/D layout, no
       # matcher, keep_existing_H ignored
       make_sub_header('Removing Hydrogens', out=self.logger)
+      if self._input_renames:
+        outString += self._RenamesText(self._input_renames)
       sel = self.model.selection("element H or element D")
       for a in self.model.get_atoms():
         if sel[a.i_seq]:
@@ -2840,6 +2906,7 @@ NOTES:
 
           # Rerun hydrogen placement.
           self._AddHydrogens()
+          self._RenamesText(self._placement_renames)
 
           # Run optimization, locking the specified Amides into each configuration.
           # Don't do fixup on the ones that are locked down.  Make sure that we can
@@ -2962,6 +3029,7 @@ NOTES:
 
           # Rerun hydrogen placement.
           self._AddHydrogens()
+          self._RenamesText(self._placement_renames)
 
           # Run optimization, locking the specified Histidines into each configuration.
           # Don't do fixup on the ones that are locked down.  Make sure that we can
