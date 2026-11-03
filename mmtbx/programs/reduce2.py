@@ -2517,8 +2517,8 @@ NOTES:
     if self.params.approach != 'remove':
       # A model passed in memory (e.g. from an earlier run) gives the same
       # result as read from a file. Its cached monomer library server returns
-      # no CCD object for a CCD-only residue it has seen (no setter in
-      # mmtbx.model.manager; get_mon_lib_srv() builds a new one), and its
+      # no CCD object for a CCD-only residue it has seen (get_mon_lib_srv()
+      # then builds a new one), and its
       # riding-H manager, which setup_riding_h_manager() keeps, has the
       # earlier run's X-H lengths; a scattering table set on it (kept by
       # process()) sets the water O-H length when use_neutron_distances is
