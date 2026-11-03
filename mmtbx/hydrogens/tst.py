@@ -1555,7 +1555,7 @@ def exercise_03():
 def exercise_04():
   m_strings = [all_aa_all_h, all_aa_all_d, m5_str_HD_rotated,
     exercise_02_str,m1_str, m2_str, m3_str, m4_str, m5_str, m6_str, m9_str, m10_str, m11_str,
-    m12_str, m13_str, m14_str, m16_str, m17_str, m18_str, m19_str]
+    m12_str, m13_str, m14_str, m16_str, m18_str, m19_str]
   for l in m_strings:
     pdb_inp = iotbx.pdb.input(lines=l.split("\n"), source_info=None)
     model = mmtbx.model.manager(

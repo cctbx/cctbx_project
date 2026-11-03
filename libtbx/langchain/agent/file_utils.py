@@ -33,10 +33,15 @@ def classify_mtz_type(filepath):
 
     Classification rules:
     1. refine_NNN.mtz or refine_NNN_NNN.mtz -> map_coeffs_mtz (refine map output)
-    2. *_001.mtz pattern -> map_coeffs_mtz (other numbered map outputs)
-    3. Contains 'map_coeffs', 'denmod', 'density_mod' -> map_coeffs_mtz
-    4. Contains '_data.mtz' or 'refinement_data' -> data_mtz
-    5. Default -> data_mtz
+    2. Contains 'map_coeffs', 'denmod', 'density_mod' -> map_coeffs_mtz
+    3. Contains '_data.mtz' or 'refinement_data' -> data_mtz
+    4. Default -> data_mtz
+
+    Note: classification is filename-based only (this module imports os+re and
+    must work server-side where the MTZ is not on local disk).  A file ending
+    in '_001.mtz' is NOT treated as map coefficients on the suffix alone — that
+    suffix is common on user input data files (e.g. a phenix.refine output fed
+    back in, which carries Fobs + R-free flags and is valid refinement data).
 
     Args:
         filepath: Path to MTZ file (string)
@@ -64,9 +69,16 @@ def classify_mtz_type(filepath):
     if re.match(r'(?:.*_)?refine_\d{3}(?:_\d{3})?\.mtz$', basename):
         return "map_coeffs_mtz"
 
-    # Pattern 2: Other numbered outputs like model_refine_001.mtz
-    if re.match(r'.*_001\.mtz$', basename):
-        return "map_coeffs_mtz"
+    # NOTE: a former "Pattern 2" matched any '*_001.mtz' and returned
+    # map_coeffs_mtz.  It was removed: '_001' is a common user suffix on INPUT
+    # data files (e.g. beta_blip_001.mtz, a phenix.refine output the user feeds
+    # back in, which carries Fobs + R-free flags and IS valid refinement data).
+    # Matching it as map coefficients dropped the file from data_mtz, set
+    # has_data_mtz=False, and stripped phenix.xtriage from valid_programs ->
+    # the agent stalled at [STOP] with nothing to run.  Genuine PHENIX
+    # map-coefficient outputs are already covered: '*refine_NNN(.mtz)' by
+    # Pattern 1 (its only legitimate example, model_refine_001.mtz, matches
+    # Pattern 1), and 'map_coeffs'/'denmod'/'density_mod' by Pattern 3.
 
     # Pattern 3: Explicit map coefficients or density-modified
     for pattern in MAP_COEFFS_PATTERNS:
@@ -223,3 +235,84 @@ def matches_exclude_pattern(basename, patterns):
             stem):
             return True
     return False
+
+
+# =============================================================================
+# v119.H18: Experiment-type inference from file extensions
+# =============================================================================
+#
+# Used by directive_extractor._apply_experiment_type_program_reprints
+# to correct LLM-emitted after_program when the LLM picks a program
+# canonical for the wrong experiment type (e.g. autobuild_denmod for
+# cryo-EM data).
+#
+# This is the smallest step toward ARCHITECTURE.md §3.3 (infer
+# experiment type from file extensions at session creation time).
+# It does NOT change session-locking semantics — Session.set_experiment_type()
+# still locks after the first program returns.  This helper is an
+# advisory used at directive-extraction time, before any program runs.
+
+_XRAY_DATA_EXTS  = (".mtz", ".sca", ".hkl")
+_CRYOEM_MAP_EXTS = (".mrc", ".ccp4", ".map")
+
+
+def infer_experiment_type_from_files(files):
+    """Infer experiment type from file extensions.
+
+    Returns a tuple (experiment_type, evidence_dict):
+        experiment_type: "xray" | "cryoem" | None
+        evidence_dict:
+            {"xray_exts": sorted list of unique xray extensions seen,
+             "cryoem_exts": sorted list of unique cryo-EM extensions seen,
+             "is_mixed": True iff both types are present}
+
+    The asymmetric semantics (xray ∧ ¬cryoem; cryoem ∧ ¬xray) match
+    `_detect_experiment_type_signals` in directive_extractor: returns
+    None for genuinely ambiguous inputs (both types present, or
+    neither).
+
+    Telemetry: callers inspect evidence_dict to log which extensions
+    drove the decision, and detect "mixed-input drift" (Pitfall 1
+    from Gemini's H18 review) — long-running sessions that
+    accumulate both data types in original_files.
+
+    Args:
+        files: iterable of file paths or basenames.  Non-strings
+            and None are silently ignored.
+
+    Examples:
+        >>> infer_experiment_type_from_files(["data.mtz", "model.pdb"])
+        ('xray', {'xray_exts': ['.mtz'], 'cryoem_exts': [], 'is_mixed': False})
+
+        >>> infer_experiment_type_from_files(["map1.ccp4", "map2.mrc"])
+        ('cryoem', {'xray_exts': [], 'cryoem_exts': ['.ccp4', '.mrc'], 'is_mixed': False})
+
+        >>> infer_experiment_type_from_files(["model.pdb"])
+        (None, {'xray_exts': [], 'cryoem_exts': [], 'is_mixed': False})
+
+        >>> infer_experiment_type_from_files(["data.mtz", "map.ccp4"])
+        (None, {'xray_exts': ['.mtz'], 'cryoem_exts': ['.ccp4'], 'is_mixed': True})
+
+        >>> infer_experiment_type_from_files([])
+        (None, {'xray_exts': [], 'cryoem_exts': [], 'is_mixed': False})
+    """
+    xray_exts = []
+    cryoem_exts = []
+    for f in (files or []):
+        if not isinstance(f, str):
+            continue
+        ext = os.path.splitext(f)[1].lower()
+        if ext in _XRAY_DATA_EXTS:
+            xray_exts.append(ext)
+        elif ext in _CRYOEM_MAP_EXTS:
+            cryoem_exts.append(ext)
+    evidence = {
+        "xray_exts":   sorted(set(xray_exts)),
+        "cryoem_exts": sorted(set(cryoem_exts)),
+        "is_mixed":    bool(xray_exts and cryoem_exts),
+    }
+    if xray_exts and not cryoem_exts:
+        return ("xray", evidence)
+    if cryoem_exts and not xray_exts:
+        return ("cryoem", evidence)
+    return (None, evidence)

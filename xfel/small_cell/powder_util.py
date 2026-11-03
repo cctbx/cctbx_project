@@ -223,10 +223,6 @@ class Spotfinder_radial_average:
       plt.savefig(params.output.plot_file)
 
     if params.plot.interactive and params.output.peak_file:
-      backend_list = ["TkAgg","QtAgg"]
-      assert (plt.get_backend() in backend_list), """Matplotlib backend not compatible with interactive peak picking.
-You can set the MPLBACKEND environment variable to change this.
-Currently supported options: %s""" %backend_list
       #If a peak list output file is specified, do interactive peak picking:
       with open(params.output.peak_file, 'w') as f:
         vertical_line = ax.axvline(color='r', lw=0.8, ls='--', x=xvalues[1])
@@ -234,7 +230,7 @@ Currently supported options: %s""" %backend_list
         def onmove(event):
           if fig.canvas.toolbar.mode: return
           x = event.xdata
-          vertical_line.set_xdata(x)
+          vertical_line.set_xdata([x])
           if plt.getp(vertical_line, 'visible'):
             ax.figure.canvas.draw()
         def onclick(event):

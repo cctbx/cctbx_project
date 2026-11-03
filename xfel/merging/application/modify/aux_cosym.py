@@ -3,7 +3,7 @@ import os
 from scitbx.array_family import flex
 from cctbx.array_family import flex as cctbx_flex
 from cctbx import sgtbx, miller
-from libtbx import easy_mp, Auto
+from libtbx import Auto
 from scipy import sparse
 import numpy as np
 from ordered_set import OrderedSet

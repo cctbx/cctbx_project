@@ -1,34 +1,128 @@
 from __future__ import absolute_import, division, print_function
-import time
+import time, os, sys, json, platform
+import libtbx.load_env
 import mmtbx.model
 import iotbx.pdb
 from mmtbx.hydrogens import reduce_hydrogen
 from libtbx.utils import null_out
 
+'''
+Timings of reduce_hydrogen.place_hydrogens, compared to a baseline recorded on
+this machine. Absolute numbers depend on the machine and on its load, so this
+test is NOT in mmtbx/run_tests.py - run it by hand to check that a change does
+not alter the runtime drastically.
+
+  libtbx.python tst_add_hydrogen_time.py            compare to the baseline
+  libtbx.python tst_add_hydrogen_time.py --update   record a new baseline
+  --tolerance=2.0   fail above this ratio     --case=biomt   run one case only
+  baseline=<path>   use another baseline file
+
+Without a baseline, the first run records one and passes. A step fails only if
+it is both TOLERANCE times slower and DELTA_FLOOR seconds slower: several steps
+take a few hundredths of a second, where the ratio is dominated by noise.
+'''
+
+TOLERANCE   = 2.0   # ratio now/baseline that fails the test
+DELTA_FLOOR = 0.3   # [s] a step must lose at least this much to fail
+
 # ------------------------------------------------------------------------------
 
-def run():
+def baseline_filename():
+  return os.path.join(os.path.expanduser('~'), '.cctbx_reduce2_timings',
+    '%s.json' % platform.node().split('.')[0])
+
+def model_biomt():
+  '''Protein assembled with BIOMT records (~100 000 atoms).'''
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
-  #print(model.get_number_of_atoms())
   model.expand_with_BIOMT_records()
-  #print(model.get_number_of_atoms())
+  return model
 
-  hydro_obj = reduce_hydrogen.place_hydrogens(model = model, print_time=True)
+def model_ligands_links():
+  '''1nm9: sugars, metals and PCA, 12 LINK records - the link and ligand paths.
+  Needs phenix_regression; the case is skipped when it is not installed.'''
+  fn = libtbx.env.find_in_repositories(
+    relative_path = 'phenix_regression/mmtbx/bulk_sol_and_scaling_fast/1nm9.pdb',
+    test = os.path.isfile)
+  if fn is None: return None
+  return mmtbx.model.manager(model_input = iotbx.pdb.input(fn), log = null_out())
+
+CASES = [('biomt', model_biomt), ('ligands_links', model_ligands_links)]
+
+# ------------------------------------------------------------------------------
+
+def time_case(build_model):
+  '''Times one model; returns {step: seconds} or None if the model is missing.'''
+  model = build_model()
+  if model is None: return None
+  t0 = time.time()
+  hydro_obj = reduce_hydrogen.place_hydrogens(model = model)
   hydro_obj.run()
+  total = time.time() - t0
+  times = dict((k, v) for k, v in hydro_obj.get_times().__dict__.items()
+               if k.startswith('time_'))
+  times['total'] = round(total, 2)
+  return times
+
+def compare(name, now, before, tolerance):
+  '''Prints a table for one case; returns the steps that got too slow.'''
+  print('\n%s' % name)
+  print('  %-26s %9s %9s %7s' % ('step', 'baseline', 'now', 'ratio'))
+  too_slow = []
+  for step in sorted(now):
+    t_now = now[step]
+    t_before = before.get(step) if before else None
+    if t_before is None:
+      print('  %-26s %9s %9.2f %7s  (new)' % (step, '-', t_now, '-'))
+      continue
+    ratio = t_now / t_before if t_before > 0 else 1.0
+    delta = t_now - t_before
+    slow = (ratio > tolerance and delta >= DELTA_FLOOR)
+    if slow: too_slow.append('%s %s: %.2f -> %.2f s (%.1fx)' %
+                             (name, step, t_before, t_now, ratio))
+    print('  %-26s %9.2f %9.2f %7.1f %s' % (step, t_before, t_now, ratio,
+      'SLOWER' if slow else ('noise' if ratio > tolerance else '')))
+  return too_slow
+
+def run(args = ()):
+  update = '--update' in args
+  tolerance = TOLERANCE
+  only, fn = None, baseline_filename()
+  for arg in args:
+    if arg.startswith('--tolerance='): tolerance = float(arg.split('=')[1])
+    elif arg.startswith('--case='): only = arg.split('=')[1]
+    elif arg.startswith('baseline='): fn = arg.split('=', 1)[1]
+  baseline = {}
+  if os.path.isfile(fn):
+    with open(fn) as f: baseline = json.load(f)
+  elif not update:
+    print('No baseline on this machine yet - recording one.')
+    update = True
   #
-  model_h_added = hydro_obj.get_model()
-  #print(model_h_added.get_number_of_atoms())
-  t = hydro_obj.get_times()
-  assert (t.time_rebox_model < 0.06)
-  assert (t.time_add_missing_H < 2.70)
-  assert (t.time_terminal_propeller < 0.01)
-  assert (t.time_make_grm < 160)
-  assert (t.time_remove_isolated < 0.27)
-  assert (t.time_riding_manager < 6.5)
-  assert (t.time_remove_H_nopara < 11.5)
-  assert (t.time_reset_idealize < 5)
-  assert (t.time_remove_H_on_links < 2)
+  results, too_slow = {}, []
+  for name, build_model in CASES:
+    if only is not None and name != only: continue
+    now = time_case(build_model)
+    if now is None:
+      print('\n%s: skipped (model not found)' % name)
+      continue
+    results[name] = now
+    too_slow.extend(compare(name, now, baseline.get(name), tolerance))
+  if not results:
+    raise RuntimeError('No case was run.')
+  #
+  if update:
+    baseline.update(results)
+    if not os.path.isdir(os.path.dirname(fn)): os.makedirs(os.path.dirname(fn))
+    with open(fn, 'w') as f: json.dump(baseline, f, indent=2, sort_keys=True)
+    print('\nBaseline written: %s' % fn)
+    return
+  print('\nBaseline: %s (fails above %.1fx and +%.2f s)' %
+        (fn, tolerance, DELTA_FLOOR))
+  if too_slow:
+    print('\n'.join(too_slow))
+    raise AssertionError('%d step(s) got slower than %.1fx' %
+                         (len(too_slow), tolerance))
 
 pdb_str = '''
 REMARK 350 MOLECULE CAN BE GENERATED BY APPLYING BIOMT TRANSFORMATIONS
@@ -2601,5 +2695,5 @@ END
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  run()
+  run(args = sys.argv[1:])
   print("OK. Time: %8.3f"%(time.time()-t0))

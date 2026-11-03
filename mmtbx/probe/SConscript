@@ -23,7 +23,8 @@ if (not env_etc.no_boost_python):
     source=[
       "Scoring.cpp",
       "DotSpheres.cpp",
-      "SpatialQuery.cpp"])
+      "SpatialQuery.cpp",
+      "ContactDB.cpp"])
 
   env_bpl.Append(LIBPATH=["#probe/lib"])
   env_bpl.Prepend(LIBS=["probelib", "iotbx_pdb", "cctbx", "scitbx_boost_python"])

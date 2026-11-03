@@ -3,6 +3,7 @@ import time
 from iotbx.pdb.secondary_structure import annotation, pdb_helix, pdb_strand
 import iotbx
 import iotbx.cif
+from scitbx.array_family import flex
 from libtbx.test_utils import show_diff
 from six.moves import cStringIO as StringIO
 import libtbx.load_env
@@ -1279,6 +1280,92 @@ def tst_remove_empty_annotations():
   assert ann.get_n_helices() == 2
   assert ann.get_n_sheets() == 0
 
+def tst_remove_elements_losing_residues():
+  """ Keep annotation consistent with hierarchy.select(selection): an element
+  that would lose a whole residue goes, one that only loses atoms stays."""
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="cctbx_project/iotbx/regression/secondary_structure/1ubf_cutted.pdb",
+    test=os.path.isfile)
+  if (file_path is None):
+    print('WARNING: Skipping tst_remove_elements_losing_residues("%s"): input file not available' % file_path)
+    return
+  inp = iotbx.pdb.input(file_name=file_path)
+  h = inp.construct_hierarchy()
+  asc = h.atom_selection_cache()
+  orig = inp.extract_secondary_structure()
+  assert orig.get_n_helices() == 11
+  assert orig.get_n_sheets() == 2
+  # helix 1 is ASP 7 - GLY 24, helix 2 is SER 46 - VAL 51,
+  # sheet A has strand LEU 117 - SER 119
+  for sel_str, n_h, n_sh in [
+      ("all",                                                  11, 2),
+      ("not (resid 15 and not (name N or name CA or name C or name O))", 11, 2),
+      ("not element H",                                        11, 2),
+      ("not resid 15",                                         10, 2),
+      ("not resid 51",                                         10, 2),
+      ("not resid 118",                                        11, 1),
+      ("not (resid 15 or resid 118)",                          10, 1),
+      ("name CA",                                              11, 2),
+      ("resid 100:200",                                         4, 0),
+      ]:
+    ann = orig.deep_copy()
+    removed = ann.remove_elements_losing_residues(
+        hierarchy=h, selection=asc.selection(sel_str))
+    assert ann.get_n_helices() == n_h, (sel_str, ann.get_n_helices())
+    assert ann.get_n_sheets() == n_sh, (sel_str, ann.get_n_sheets())
+    assert removed.get_n_helices() == 11 - n_h, (sel_str, removed.get_n_helices())
+    assert removed.get_n_sheets() == 2 - n_sh, (sel_str, removed.get_n_sheets())
+    # what is left is fully present in the selected hierarchy
+    h_sel = h.select(asc.selection(sel_str))
+    gone = ann.remove_empty_annotations(hierarchy=h_sel)
+    assert gone.is_empty(), (sel_str, gone.as_pdb_str())
+  # Two chain objects with the same id (split by chain B) and overlapping
+  # numbering: the helix must be resolved in the segment that holds its
+  # residues (protein, which comes last), not in the first segment with
+  # matching numbers.
+  pdb_str = """\
+HELIX    1   1 THR A   18  ILE A   20  5                                   3
+HETATM    1  O   HOH A  18      30.000  30.000  30.000  1.00 10.00           O
+HETATM    2  O   HOH A  19      33.000  30.000  30.000  1.00 10.00           O
+HETATM    3  O   HOH A  20      36.000  30.000  30.000  1.00 10.00           O
+HETATM    4  O   HOH B   1      39.000  30.000  30.000  1.00 10.00           O
+ATOM     11  N   THR A  18      13.114   7.968   6.956  1.00  4.57           N
+ATOM     12  CA  THR A  18      13.581   6.907   6.105  1.00  4.76           C
+ATOM     13  C   THR A  18      14.273   5.867   7.003  1.00  4.60           C
+ATOM     14  O   THR A  18      14.631   6.110   8.149  1.00  4.40           O
+ATOM     15  N   LEU A  19      14.528   4.681   6.410  1.00  5.15           N
+ATOM     16  CA  LEU A  19      15.074   3.599   7.202  1.00  4.83           C
+ATOM     17  C   LEU A  19      16.437   3.919   7.781  1.00  4.82           C
+ATOM     18  O   LEU A  19      16.736   3.482   8.909  1.00  5.18           O
+ATOM     19  N   ILE A  20      17.306   4.658   7.066  1.00  5.11           N
+ATOM     20  CA  ILE A  20      18.645   4.933   7.588  1.00  5.24           C
+ATOM     21  C   ILE A  20      18.601   5.767   8.844  1.00  4.94           C
+ATOM     22  O   ILE A  20      19.565   5.822   9.609  1.00  5.92           O
+END
+"""
+  inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  h = inp.construct_hierarchy()
+  assert len(h.only_model().chains()) == 3, len(h.only_model().chains())
+  asc = h.atom_selection_cache()
+  orig = inp.extract_secondary_structure()
+  for sel_str, n_h in [
+      ("all",                       1),
+      ("not water",                 1),
+      ("not (water and resid 19)",  1),
+      ("not (resname LEU)",         0),
+      ("not resid 19",              0),
+      ]:
+    ann = orig.deep_copy()
+    ann.remove_elements_losing_residues(
+        hierarchy=h, selection=asc.selection(sel_str))
+    assert ann.get_n_helices() == n_h, (sel_str, ann.get_n_helices())
+  # empty hierarchy: nothing is present, so everything goes (no IndexError)
+  ann = orig.deep_copy()
+  removed = ann.remove_elements_losing_residues(
+      hierarchy=iotbx.pdb.hierarchy.root(), selection=flex.bool())
+  assert ann.is_empty(), ann.as_pdb_str()
+  assert removed.get_n_helices() == 1, removed.get_n_helices()
+
 def tst_split_helices_with_prolines():
   ann = annotation.from_records(pdb_records_2.split("\n"))
   pdb_h = iotbx.pdb.input(source_info=None, lines=pdb_string_2.split('\n')).\
@@ -2092,6 +2179,7 @@ if (__name__ == "__main__"):
   tst_to_cif_sheet()
   tst_to_cif_annotation()
   tst_remove_empty_annotations()
+  tst_remove_elements_losing_residues()
   tst_split_helices_with_prolines()
   tst_split_helices_with_prolines_2()
   tst_split_helices_with_prolines_3()

@@ -98,9 +98,10 @@ def generate_master_phil_with_inputs(
     "twin_law" : "",
     "pdb_interpretation" : "",
   }
-  # for legacy, keep the 2 paramters for twin laws
-  # one for enabling automatic detection
-  # another for specifying a twin law
+  # For legacy reasons, twin handling uses two separate parameters:
+  # enable_automatic_twin_detection adds skip_twin_detection = False;
+  # enable_twin_law adds twin_law = Auto, where a known twin law can be
+  # given instead.
   if (enable_automatic_twin_detection):
     phil_extra_dict["automatic_twin_detection"] = """
       skip_twin_detection = False

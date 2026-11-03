@@ -482,8 +482,13 @@ def predict_ion(chem_env, scatter_env, elements=None, svm_name=None):
 
   vector = vector[features]
 
+  # libsvm 3.36 moved the kernel constants into the kernel_names IntEnum
+  if hasattr(svm, "kernel_names"):
+    precomputed = svm.kernel_names.PRECOMPUTED
+  else:
+    precomputed = svm.PRECOMPUTED
   xi = svm.gen_svm_nodearray(
-    list(vector), isKernel=classifier.param.kernel_type == svm.PRECOMPUTED,
+    list(vector), isKernel=classifier.param.kernel_type == precomputed,
     )[0]
 
   nr_class = classifier.get_nr_class()

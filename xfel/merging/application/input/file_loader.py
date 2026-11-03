@@ -188,7 +188,13 @@ class simple_file_loader(worker):
             raise KeyError(m.format(experiment.identifier, experiments_filename,
                                     refls_identifier, reflections_filename))
 
-          if not self.params.input.keep_imagesets:
+          if self.params.input.keep_imagesets:
+            if 'integration' not in self.params.dispatch.step_list:
+              # Save memory by zeroing out lookup data
+              from dxtbx.format.image import ImageDouble
+              experiment.imageset.external_lookup.gain.data = ImageDouble()
+              experiment.imageset.external_lookup.gain.filename = ""
+          else:
             experiment.imageset = None
           all_experiments.append(experiment)
 

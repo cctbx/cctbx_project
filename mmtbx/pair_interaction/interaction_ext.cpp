@@ -102,7 +102,8 @@ namespace {
                      af::shared<int> const&,
                      af::shared<int> const&,
                      boost::python::list const&,
-                     std::string const & silva_type)) points_and_pairs, (
+                     std::string const &,
+                     af::shared<bool> const&)) points_and_pairs, (
        arg("ngrid"),
        arg("step_size"),
        arg("xyz"),
@@ -110,7 +111,8 @@ namespace {
        arg("atom_in_residue"),
        arg("element_flags"),
        arg("wfc_obj"),
-       arg("silva_type")
+       arg("silva_type"),
+       arg("residue_in_core")=af::shared<bool>()
        ))
    ;
 

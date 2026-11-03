@@ -53,11 +53,32 @@ def test_perceive_builds_metrics():
 
 
 def test_auto_stop_on_plateau():
-    """Test that plan node auto-stops on detected plateau."""
-    print("Test: auto_stop_on_plateau")
+    """R-free plateau is detected, but PLAN suppresses auto-stop when validation pending.
+
+    v116.13 behavior: the metric_evaluator / metrics_analyzer plateau
+    detection itself is UNCHANGED.  After perceive, state["metrics_trend"]
+    still has should_stop=True with reason "PLATEAU: R-free improvement
+    stalled".  The new gate is in PLAN's auto-stop decision: when
+    metrics_trend.should_stop is True AND the workflow is at the validate
+    step AND validation has NOT been done, PLAN suppresses the auto-stop
+    and lets the LLM choose a validation program from valid_programs
+    instead.  state["stop"] ends up False; validation programs appear
+    in valid_programs.
+
+    Diagnostic output from v116.16 captured this in the wild: the
+    PLAN-stage dump shows metrics_trend.should_stop=False with reason
+    "Suppressed: validation step pending" because PLAN modifies its
+    local metrics_trend before calling get_planning_prompt.  But
+    state["metrics_trend"] itself (read after perceive) still has the
+    raw plateau result.
+
+    See test_auto_stop_on_plateau_validation_done for the case where
+    validation has been done.
+    """
+    print("Test: auto_stop_on_plateau (v116.13+ — validation-aware)")
 
     # History with 6 refine cycles showing clear plateau (last 3 improvements < 0.3%)
-    # New threshold: need 4+ values to detect plateau over last 3 improvements
+    # NO validation in history — the v116.13 PLAN-stage gate will fire.
     history = [
         {"program": "phenix.refine", "analysis": {"r_free": 0.300}},
         {"program": "phenix.refine", "analysis": {"r_free": 0.295}},
@@ -87,18 +108,97 @@ Final R-work = 0.2450, R-free = 0.2934
     print("    should_stop:", state["metrics_trend"]["should_stop"])
     print("    reason:", state["metrics_trend"].get("reason"))
 
-    # Check plateau was detected
-    # Last 3 improvements in history are all < 0.3%
+    # Plateau detection itself is UNCHANGED — metric_evaluator still
+    # returns should_stop=True with reason "PLATEAU: ..." for this
+    # trend.  The validation_done gate lives in PLAN, not in the
+    # analyzer.  This assertion matches the pre-v116.13 behavior of
+    # the analyzer (which was also the original test's first
+    # assertion).
     assert state["metrics_trend"]["should_stop"] == True, \
         "Expected plateau detection. trend=%s" % state["metrics_trend"]
     assert "PLATEAU" in state["metrics_trend"]["reason"], \
         "Expected PLATEAU in reason. Got: %s" % state["metrics_trend"]["reason"]
 
-    # Plan should auto-stop
+    # NEW v116.13+ behavior at PLAN: auto-stop is suppressed because
+    # validation is pending (no validation program in history).
     state = plan(state)
 
-    assert state["stop"] == True
-    assert "PLATEAU" in str(state["stop_reason"]) or "plateau" in str(state["intent"].get("reasoning", "")).lower()
+    assert state["stop"] == False, \
+        "PLAN should suppress auto-stop when validation is pending " \
+        "(v116.13). state=%r" % state
+
+    # Validation programs should be in valid_programs at the validate step.
+    workflow_state = state.get("workflow_state", {})
+    valid = workflow_state.get("valid_programs", [])
+    has_validation_program = any(
+        p in valid for p in
+        ("phenix.molprobity", "phenix.model_vs_data",
+         "phenix.map_correlations", "phenix.validation_cryoem"))
+    assert has_validation_program, \
+        "Validation programs should be in valid_programs when " \
+        "auto-stop is suppressed. Got valid_programs=%r" % valid
+
+    print("  PASSED")
+
+
+def test_auto_stop_on_plateau_validation_done():
+    """R-free plateau DOES auto-stop when validation has been run.
+
+    Complement to test_auto_stop_on_plateau.  Same plateau scenario but
+    with phenix.molprobity in history — the validation_done gate in
+    PLAN is satisfied, so the plateau auto-stop fires and
+    state["stop"] becomes True.
+    """
+    print("Test: auto_stop_on_plateau_validation_done")
+
+    # Same plateau as test_auto_stop_on_plateau, but with validation
+    # interleaved after the refine cycles.  The plateau detector
+    # operates on the r_free sequence (unchanged), and PLAN now sees
+    # that validation has been done, so it proceeds with auto-stop.
+    history = [
+        {"program": "phenix.refine", "analysis": {"r_free": 0.300}},
+        {"program": "phenix.refine", "analysis": {"r_free": 0.295}},
+        {"program": "phenix.refine", "analysis": {"r_free": 0.2945}},
+        {"program": "phenix.refine", "analysis": {"r_free": 0.2941}},
+        {"program": "phenix.refine", "analysis": {"r_free": 0.2938}},
+        {"program": "phenix.refine", "analysis": {"r_free": 0.2936}},
+        # The key difference: validation has been done.
+        {"program": "phenix.molprobity",
+         "analysis": {"clashscore": 7.4}},
+    ]
+
+    log_text = """
+Final R-work = 0.2450, R-free = 0.2934
+"""
+
+    state = create_initial_state(
+        available_files=["data.mtz", "model.pdb"],
+        log_text=log_text,
+        history=history
+    )
+
+    state = perceive(state)
+
+    print("    metrics_history length:", len(state["metrics_history"]))
+    print("    should_stop:", state["metrics_trend"]["should_stop"])
+    print("    reason:", state["metrics_trend"].get("reason"))
+
+    # Plateau detection unchanged — should_stop=True with PLATEAU reason.
+    assert state["metrics_trend"]["should_stop"] == True, \
+        "Expected plateau detection. trend=%s" % state["metrics_trend"]
+    assert "PLATEAU" in state["metrics_trend"]["reason"], \
+        "Expected PLATEAU in reason. Got: %s" % \
+        state["metrics_trend"]["reason"]
+
+    # With validation done, PLAN does not suppress; auto-stop fires.
+    state = plan(state)
+
+    assert state["stop"] == True, \
+        "Auto-stop should fire on plateau when validation done. " \
+        "state=%r" % state
+    assert ("PLATEAU" in str(state["stop_reason"]) or
+            "plateau" in str(state.get("intent", {})
+                                  .get("reasoning", "")).lower())
 
     print("  PASSED")
 

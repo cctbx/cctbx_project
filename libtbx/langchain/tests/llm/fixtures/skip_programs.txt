@@ -1,0 +1,20 @@
+1. **Input Files Found**: data.mtz, model.pdb
+
+2. **Experiment Type**: X-ray crystallography
+
+3. **Primary Goal**: Run refinement on this model. Don't run phenix.mtriage — the map analysis is not needed for this structure.
+
+4. **Key Parameters**:
+   - Wavelength: 1.0
+   - Resolution limit: 2.0
+   - Number of expected sites: N/A
+   - Heavy atom type: N/A
+   - Space group: P 1
+
+5. **Program Parameters**: None
+
+6. **Special Instructions**:
+- Skip phenix.mtriage entirely.
+- Proceed with refinement and validation.
+
+7. **Stop Condition**: None

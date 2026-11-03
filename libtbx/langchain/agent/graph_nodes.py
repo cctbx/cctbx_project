@@ -9,7 +9,7 @@ Nodes:
 - fallback: Mechanical auto-selection when LLM fails
 - output_node: Prepare response for client
 
-NEW: Set USE_NEW_COMMAND_BUILDER = True to use unified CommandBuilder.
+The unified CommandBuilder is the single build/fallback command path.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -35,6 +35,7 @@ from libtbx.langchain.agent.metrics_analyzer import (
     analyze_metrics_trend,
     get_latest_resolution,
 )
+from libtbx.langchain.utils.run_utils import _coerce_resolution
 
 from libtbx.langchain.agent.workflow_state import (
     detect_workflow_state,
@@ -45,7 +46,9 @@ from libtbx.langchain.knowledge.prompts_hybrid import get_planning_prompt
 
 from libtbx.langchain.agent.rules_selector import select_action_by_rules
 
-# Feature flag: Set to True to use new CommandBuilder
+# Retained for backward compatibility: the build/fallback nodes no longer
+# branch on this flag (the unified CommandBuilder is the only path).  Kept
+# defined and True so any out-of-module importer still resolves it.
 USE_NEW_COMMAND_BUILDER = True
 
 def _get_command_builder():
@@ -142,8 +145,12 @@ builder = TemplateBuilder()
 _llm = None
 _llm_provider = None
 
-# Supported providers
-SUPPORTED_PROVIDERS = ["google", "openai", "ollama"]
+# Supported providers -- imported from the single source of truth in
+# core/llm.py so this layer can never drift from ai_agent.py's view.
+try:
+    from libtbx.langchain.core.llm import SUPPORTED_PROVIDERS
+except ImportError:
+    from core.llm import SUPPORTED_PROVIDERS
 
 
 # =============================================================================
@@ -191,6 +198,24 @@ def validate_provider(provider):
                 "  2. Set OLLAMA_BASE_URL to point to your server\n"
                 "  3. Use a different provider: provider='google' or provider='openai'"
             ) % ollama_url
+    elif provider == "anthropic":
+        if not os.getenv("ANTHROPIC_API_KEY"):
+            return False, (
+                "Provider 'anthropic' requires ANTHROPIC_API_KEY environment variable.\n"
+                "Set it with: export ANTHROPIC_API_KEY='your-key-here'"
+            )
+    elif provider == "portkey":
+        # portkey fronts Azure OpenAI via the Portkey gateway; both the
+        # gateway key and base URL are required (checked here at validation
+        # time, friendly message -- not a bare KeyError at call time).
+        _missing = [n for n in ("PORTKEY_AZURE_API_KEY", "PORTKEY_BASE_URL")
+                    if not os.getenv(n)]
+        if _missing:
+            return False, (
+                "Provider 'portkey' requires environment variable(s): %s.\n"
+                "Set them with: export PORTKEY_AZURE_API_KEY='...' "
+                "PORTKEY_BASE_URL='...'"
+            ) % ", ".join(_missing)
 
     return True, None
 
@@ -382,6 +407,78 @@ except ImportError:
 
 
 # =============================================================================
+# Shared resolution resolver
+# =============================================================================
+
+def resolve_session_resolution(state, workflow_state=None, metrics_history=None):
+    """Single source of resolution truth for graph nodes.
+
+    Both perceive() and build() need "the data resolution" to drive
+    resolution-dependent decisions (the R-free stop target; auto-filled program
+    parameters).  They used to resolve it differently -- perceive() looked at
+    session_resolution then metrics history; build()'s nested find_resolution()
+    looked at session_resolution then workflow_state, log_analysis, and a
+    history-command regex.  Two chains on the same state can disagree (e.g.
+    perceive() stops on a loose default while build() prepares parameters from a
+    different value).  This unifies them.
+
+    Priority (first hit wins):
+      1. state["session_resolution"]  -- the per-cycle graph alias of
+         session.data["resolution"] (see ARCHITECTURE section 48).
+      2. workflow_state["resolution"] -- extracted from history analysis.
+      3. state["log_analysis"]["resolution"] -- current cycle's log analysis.
+      4. get_latest_resolution(metrics_history) -- most recent per-cycle metric
+         resolution (structured; this is the source perceive() relied on).
+      5. resolution=NN from a previous command string in history (last resort).
+
+    Every candidate is passed through _coerce_resolution (shared with
+    CommandContext.from_state): coerced via _safe_float so a stringized value
+    cannot crash the downstream band lookup `lo <= resolution < hi` or the
+    `round()`/`%.1f` auto-fill, and range-guarded 0.5 < res < 20 so a stray parse
+    is rejected rather than propagated.  `workflow_state` and
+    `metrics_history` are optional: a caller passes whatever it has in scope
+    (perceive() has metrics_history; build() has workflow_state); a missing
+    source is simply skipped.
+
+    Returns (resolution_or_None, source_label).
+    """
+    # 1. Authoritative session value (the single source of truth's graph alias).
+    sess = _coerce_resolution(state.get("session_resolution"))
+    if sess is not None:
+        return sess, "session"
+
+    # 2. workflow_state (extracted from history analysis).
+    if workflow_state is None:
+        workflow_state = state.get("workflow_state", {}) or {}
+    ws = _coerce_resolution(workflow_state.get("resolution"))
+    if ws is not None:
+        return ws, "workflow_state"
+
+    # 3. Current log_analysis.
+    analysis = state.get("log_analysis", {}) or {}
+    la = _coerce_resolution(analysis.get("resolution"))
+    if la is not None:
+        return la, "log_analysis"
+
+    # 4. Most recent per-cycle metric resolution (perceive()'s historical source).
+    if metrics_history:
+        mh = _coerce_resolution(get_latest_resolution(metrics_history))
+        if mh is not None:
+            return mh, "metrics_history"
+
+    # 5. resolution=NN in a previous command string (last resort).
+    for entry in reversed(state.get("history", []) or []):
+        cmd = entry.get("command", "") if isinstance(entry, dict) else ""
+        m = re.search(r'resolution[=\s]+([\d.]+)', cmd, re.IGNORECASE)
+        if m:
+            val = _coerce_resolution(m.group(1))
+            if val is not None:
+                return val, "previous_command"
+
+    return None, None
+
+
+# =============================================================================
 # NODE: PERCEIVE
 # =============================================================================
 
@@ -454,20 +551,76 @@ def perceive(state):
     metrics_history = derive_metrics_from_history(history)
 
     # 2. Extract metrics from current log
+    #
+    # The dispatching client knows which program produced log_text and
+    # sends it as session_info["log_program"] (contract v9).  Use it.
+    # Content matching is wrong on 10 of 19 real logs, and the label is
+    # not cosmetic: analyze_metrics_trend gates its success stop on
+    #     any(m["program"] in ("phenix.molprobity", "phenix.model_vs_data"))
+    # so a mislabelled cycle can satisfy the guard that exists to prevent
+    # declaring success before validation has run.  Observed: a
+    # phenix.refine log labelled phenix.molprobity.
+    #
+    # None when the client is older, or cannot confirm the program; then
+    # extract_all_metrics infers as before.
+    _log_program = session_info.get("log_program")
     try:
         from phenix.phenix_ai.log_parsers import extract_all_metrics
-        analysis = extract_all_metrics(log_text)
+        if _log_program:
+            analysis = extract_all_metrics(log_text, program=_log_program)
+        else:
+            analysis = extract_all_metrics(log_text)
     except ImportError:
         # Fallback if log_parsers not available
         analysis = _fallback_extract_metrics(log_text)
+
+    # The client's program is authoritative for the label.
+    #
+    # extract_all_metrics already sets metrics["program"] = program when
+    # the argument is supplied, so this is a no-op on that path.  It
+    # matters for _fallback_extract_metrics below, which ignores the
+    # argument entirely and labels from its own detection -- and that
+    # name would otherwise reach metrics_history and the validation
+    # gate.
+    if _log_program and isinstance(analysis, dict):
+        _detected = analysis.get("program")
+        if _detected and _detected != _log_program:
+            _msg = ("cycle %s: log identified as %s by content matching, "
+                    "but the client ran %s -- using the client's program"
+                    % (state.get("cycle_number"), _detected, _log_program))
+            state = _log(state, "PERCEIVE: %s" % _msg)
+            # debug_log is not echoed at normal verbosity and is not
+            # persisted in agent_session.json, so an override would leave
+            # no trace an operator can see.  warnings IS surfaced by the
+            # client (ai_agent.py prints it via vlog.quiet) and travels
+            # the same response path for local and remote alike.
+            #
+            # One line per affected cycle, not per run: server state is
+            # rebuilt from the request each cycle, so there is nowhere to
+            # accumulate a per-run total.
+            state = {**state,
+                     "warnings": list(state.get("warnings", []))
+                                 + ["[IDENTITY] %s" % _msg]}
+        analysis["program"] = _log_program
 
     # 2b. CRITICAL: Ensure we have the LAST r_free/r_work values
     # Refinement logs contain multiple R-free values (one per macro cycle).
     # Some extractors return the FIRST match, but we need the FINAL value.
     # Always re-extract using our robust last-match method to be safe.
     if log_text:
-        last_r_free = patterns.extract_last_float("metrics.r_free", log_text, flags=re.IGNORECASE)
-        last_r_work = patterns.extract_last_float("metrics.r_work", log_text, flags=re.IGNORECASE)
+        # Use the shared r_factors helper, NOT patterns.extract_last_float.
+        #
+        # The generic pattern locates the LABEL and takes the first
+        # number after it.  In every paired form Phenix emits --
+        # R/Rfree=0.21/0.27, R and R-free: 0.20 0.26, R/R-free: 0.5/0.54
+        # -- that number is the R-WORK column.  The value drove stop
+        # decisions: at 2.5 A the success threshold is 0.23, so a
+        # misread 0.21 stopped a run that a correct 0.27 would have
+        # continued.  Seen in production as "R-free: 0.2000 (was
+        # 0.2617)".  It also passed 999.90 through as an R-free.
+        from libtbx.langchain.agent.r_factors import (
+            extract_last_r_factors, r_factors_are_consistent)
+        last_r_free, last_r_work = extract_last_r_factors(log_text)
 
         if last_r_free is not None:
             # Only override if we found a value and it differs
@@ -475,6 +628,19 @@ def perceive(state):
             if analysis is None:
                 analysis = {}
             analysis["r_free"] = last_r_free
+
+        # R-free is computed on reflections held out of refinement, so it
+        # cannot be below R-work.  An inversion means a column was
+        # misread.  Report it rather than acting on it silently; the
+        # tolerance allows for two legitimately close values rounded
+        # differently (a run recorded 0.21 against 0.2107).
+        if not r_factors_are_consistent(last_r_free, last_r_work):
+            state = _log(state,
+                "PERCEIVE: WARNING r_free (%s) is below r_work (%s) -- at "
+                "least one was read from the wrong column; not using them"
+                % (last_r_free, last_r_work))
+            last_r_free = None
+            last_r_work = None
 
         if last_r_work is not None:
             if analysis is None:
@@ -496,7 +662,16 @@ def perceive(state):
         metrics_history.append(current_metrics)
 
     # 4. Analyze metrics trend
-    resolution = get_latest_resolution(metrics_history)
+    # Resolve the data resolution through the shared resolver (see
+    # resolve_session_resolution / ARCHITECTURE section 48), so perceive() and
+    # build() agree on the same value.  Prefers the authoritative
+    # session_resolution; falls back through workflow_state, log_analysis, the
+    # most recent per-cycle metric resolution, and finally a history command.
+    # Getting this wrong made the stop evaluator use the resolution-INDEPENDENT
+    # R-free target (0.28) instead of the banded target -- a premature
+    # "TARGET REACHED" at sub-2A (see section 47).
+    resolution, _resolution_source = resolve_session_resolution(
+        state, metrics_history=metrics_history)
 
     # Get available_files first (needed for both experiment type detection and workflow state)
     available_files = state.get("available_files", [])
@@ -642,6 +817,37 @@ def perceive(state):
         files_local=files_local,
     )
 
+    # v116.16 DIAG: dump workflow_state right after detect_workflow_state
+    # returns, BEFORE any PERCEIVE post-processing.  Gated on env var so
+    # it's a no-op for normal runs.  Enabled with PHENIX_AGENT_DIAG_PLAN=1.
+    if os.environ.get("PHENIX_AGENT_DIAG_PLAN"):
+        import json as _diag_json
+        print("=" * 70)
+        print("[DIAG_PLAN] AFTER detect_workflow_state (PERCEIVE node)")
+        print("=" * 70)
+        print("[DIAG_PLAN]   state         = %r"
+              % workflow_state.get("state"))
+        print("[DIAG_PLAN]   step_info     = %r"
+              % workflow_state.get("step_info"))
+        print("[DIAG_PLAN]   valid_programs= %r"
+              % workflow_state.get("valid_programs"))
+        print("[DIAG_PLAN]   reason        = %r"
+              % (workflow_state.get("reason") or "")[:200])
+        try:
+            print("[DIAG_PLAN]   directives    = %s"
+                  % _diag_json.dumps(state.get("directives", {}), indent=2))
+        except Exception:
+            print("[DIAG_PLAN]   directives    = %r"
+                  % state.get("directives", {}))
+        _si = state.get("session_info", {}) or {}
+        print("[DIAG_PLAN]   plan_has_pending_stages   = %r"
+              % _si.get("plan_has_pending_stages", False))
+        print("[DIAG_PLAN]   plan_next_stage_programs  = %r"
+              % _si.get("plan_next_stage_programs", None))
+        print("[DIAG_PLAN]   advice_changed            = %r"
+              % _si.get("advice_changed", False))
+        print("=" * 70, flush=True)
+
     # Q1: When the user provides new advice on resume and the workflow is
     # already in the 'complete' phase, the valid_programs list is just
     # ["STOP"], which means the LLM never gets to act on the new advice.
@@ -751,6 +957,24 @@ def perceive(state):
                     "PERCEIVE: Injected plan-stage programs "
                     "(plan has pending stages): %s"
                     % _plan_progs)
+
+    # Option 2a: offer the current ACTIVE stage's un-run lead program (e.g.
+    # phenix.autobuild) even when the workflow engine ALSO offers other non-STOP
+    # programs.  Without this, after a reactive deviation holds model_rebuilding
+    # active, the engine keeps offering only its default next program (e.g.
+    # molprobity) and the rebuild's lead program is never presented — so the
+    # agent never runs it.  Unlike the STOP-only injection above, this fires
+    # regardless of what else is valid, because the plan explicitly wants this
+    # program run now.
+    _lead = session_info.get("plan_current_unrun_lead_program", "")
+    if _lead:
+        _valid = workflow_state.get("valid_programs", [])
+        if _lead not in _valid:
+            _valid.append(_lead)
+            workflow_state["valid_programs"] = _valid
+            state = _log(state,
+                "PERCEIVE: Injected plan lead program %s "
+                "(current stage active and un-run)" % _lead)
 
     # J5: Log zombie state corrections so users know why a previously-run
     # program is being offered again (helps debug crash/restart scenarios).
@@ -997,10 +1221,17 @@ def perceive(state):
     # Log metrics trend details for debugging
     consecutive_rsr = metrics_trend.get("consecutive_rsr", 0)
     consecutive_refines = metrics_trend.get("consecutive_refines", 0)
+    # The cap that actually stops a repeated program is
+    # check_consecutive_program_cap (below, ~line 1461), which fires at 3
+    # for ANY program.  metrics_analyzer's EXCESSIVE_REFINEMENT rule at 5
+    # is shadowed by it and never fires, so "stop at 5" misinformed
+    # anyone reading the log.
     if consecutive_rsr > 0:
-        state = _log(state, "PERCEIVE: Consecutive RSR cycles: %d (stop at 5)" % consecutive_rsr)
+        state = _log(state, "PERCEIVE: Consecutive RSR cycles: %d (cap 3)"
+                     % consecutive_rsr)
     if consecutive_refines > 0:
-        state = _log(state, "PERCEIVE: Consecutive refine cycles: %d (stop at 5)" % consecutive_refines)
+        state = _log(state, "PERCEIVE: Consecutive refine cycles: %d (cap 3)"
+                     % consecutive_refines)
 
     trend_summary = metrics_trend.get("trend_summary", "")
     if trend_summary:
@@ -1123,7 +1354,19 @@ def perceive(state):
         )
 
         # === EMIT SANITY_CHECK EVENT ===
-        red_flags = [i.message for i in sanity_result.issues if i.severity == "red_flag"]
+        # SanityChecker assigns severity "critical" or "warning" -- never
+        # "red_flag".  Filtering on "red_flag" here made this list ALWAYS
+        # empty, so the structured event reported no red flags on exactly
+        # the runs that had them.  The abort itself was unaffected
+        # (should_abort comes from the critical count) and abort_message
+        # was correct, which is why nothing surfaced the mismatch.
+        #
+        # "red_flag" is the name this pipeline uses for a critical sanity
+        # issue -- see abort_on_red_flags and stop_reason="red_flag" --
+        # so the EVENT keeps that name and the SEVERITY it filters on is
+        # corrected to the one the checker actually emits.
+        red_flags = [i.message for i in sanity_result.issues
+                     if i.severity == "critical"]
         warnings = [i.message for i in sanity_result.issues if i.severity == "warning"]
         state = _emit(state, EventType.SANITY_CHECK,
             passed=not sanity_result.should_abort,
@@ -1293,11 +1536,12 @@ def _fallback_extract_metrics(log_text):
 
     # R-free and R-work: Use extract_last_float because refinement logs
     # contain multiple values (one per macro cycle) and we want the FINAL one
-    r_free = patterns.extract_last_float("metrics.r_free", log_text, flags=re.IGNORECASE)
+    # Shared helper -- see the note at the other call site.  This
+    # fallback had the same column defect.
+    from libtbx.langchain.agent.r_factors import extract_last_r_factors
+    r_free, r_work = extract_last_r_factors(log_text)
     if r_free is not None:
         analysis["r_free"] = r_free
-
-    r_work = patterns.extract_last_float("metrics.r_work", log_text, flags=re.IGNORECASE)
     if r_work is not None:
         analysis["r_work"] = r_work
 
@@ -1523,6 +1767,17 @@ def plan(state):
                 # refinement — this means the agent is stuck in a loop (e.g.,
                 # fallback keeps picking refine because ligandfit can't be built).
                 # Indefinite suppression would burn cycles without progress.
+                # NOTE (2026-08): this carve-out is currently unreachable.
+                # It keys on metrics_analyzer's EXCESSIVE_REFINEMENT reason,
+                # which requires 5 consecutive refines -- but
+                # check_consecutive_program_cap stops the run at 3 and
+                # returns from perceive long before this point.  The loop
+                # it describes ("fallback keeps picking refine because
+                # ligandfit can't be built") is therefore already caught
+                # upstream, by a cap that applies to every program rather
+                # than refinement alone.  Kept, not deleted: if the cap is
+                # ever raised or made program-specific, this becomes live
+                # again and is the right behaviour.
                 if "EXCESSIVE" in reason:
                     state = _log(state,
                         "PLAN: AUTO-STOP triggered despite after_program=%s — "
@@ -1635,8 +1890,50 @@ def plan(state):
             state = {**state,
                      "metrics_trend": metrics_trend}
 
+        # v116.12 Fix #2 (defense-in-depth): Suppress AUTO-STOP when
+        # workflow_engine.detect_step returned step="validate", which
+        # means validation_done=False AND we've reached refinement
+        # targets.  Without this, an upstream metrics_trend.should_stop
+        # (e.g. cryo-EM CC>0.70 — see metrics_analyzer.py Fix #1) would
+        # bypass the validation stage.  This is a second line of
+        # defense in case plan_has_pending_stages is unset (no expert
+        # plan, or the flag wasn't propagated through session_info).
+        # Together with Fix #1 in metrics_analyzer.py, this ensures
+        # validation runs before the workflow auto-stops.
+        elif (state.get("workflow_state", {}).get("step_info", {}).get("step") == "validate"
+              and not _ws_context.get("validation_done", False)):
+            state = _log(state,
+                "PLAN: Suppressing AUTO-STOP — "
+                "workflow_engine says validate next, "
+                "validation_done=False (%s)" % reason)
+            metrics_trend = dict(metrics_trend)
+            metrics_trend["should_stop"] = False
+            metrics_trend["reason"] = (
+                "Suppressed: validation step pending")
+            state = {**state,
+                     "metrics_trend": metrics_trend}
+
         else:
             # No after_program directive and no pending ligandfit, allow auto-stop
+            # v116.12: Diagnostic dump before stopping — helps debug
+            # cases where a stop fired despite a pending validation
+            # stage. Captures the values that gated the elif chain.
+            _step_info = state.get("workflow_state", {}).get("step_info", {})
+            state = _log(state,
+                "PLAN: AUTO-STOP context: "
+                "plan_has_pending_stages=%r, "
+                "step=%r, "
+                "validation_done=%r, "
+                "after_program=%r, "
+                "experiment_type=%r" % (
+                    session_info.get("plan_has_pending_stages", False),
+                    _step_info.get("step"),
+                    _ws_context.get("validation_done"),
+                    state.get("directives", {})
+                         .get("stop_conditions", {})
+                         .get("after_program"),
+                    state.get("workflow_state", {}).get("experiment_type"),
+                ))
             state = _log(state, "PLAN: AUTO-STOP triggered: %s" % reason)
             # Emit STOP_DECISION event
             state = _emit(state, EventType.STOP_DECISION,
@@ -1879,6 +2176,43 @@ def plan(state):
             "PLAN: Injected error context for "
             "self-correction (%s)" % _err_cat)
 
+    # v116.16 DIAG: dump exactly what's being given to get_planning_prompt
+    # — i.e. what the LLM will see for valid_programs and directives.
+    # Gated on env var so it's a no-op for normal runs.
+    # Enabled with PHENIX_AGENT_DIAG_PLAN=1.
+    if os.environ.get("PHENIX_AGENT_DIAG_PLAN"):
+        import json as _diag_json
+        print("=" * 70)
+        print("[DIAG_PLAN] BEFORE get_planning_prompt (PLAN node, LLM call)")
+        print("=" * 70)
+        print("[DIAG_PLAN]   state         = %r"
+              % workflow_state.get("state"))
+        print("[DIAG_PLAN]   step_info     = %r"
+              % workflow_state.get("step_info"))
+        print("[DIAG_PLAN]   valid_programs= %r"
+              % workflow_state.get("valid_programs"))
+        print("[DIAG_PLAN]   reason        = %r"
+              % (workflow_state.get("reason") or "")[:200])
+        try:
+            print("[DIAG_PLAN]   directives    = %s"
+                  % _diag_json.dumps(directives, indent=2))
+        except Exception:
+            print("[DIAG_PLAN]   directives    = %r" % directives)
+        print("[DIAG_PLAN]   metrics_trend.should_stop = %r"
+              % metrics_trend.get("should_stop"))
+        print("[DIAG_PLAN]   metrics_trend.reason      = %r"
+              % metrics_trend.get("reason"))
+        print("[DIAG_PLAN]   metrics_trend.trend_summary = %r"
+              % metrics_trend.get("trend_summary"))
+        _si2 = state.get("session_info", {}) or {}
+        print("[DIAG_PLAN]   plan_has_pending_stages   = %r"
+              % _si2.get("plan_has_pending_stages", False))
+        print("[DIAG_PLAN]   plan_next_stage_programs  = %r"
+              % _si2.get("plan_next_stage_programs", None))
+        print("[DIAG_PLAN]   user_advice (first 200ch) = %r"
+              % (user_advice or "")[:200])
+        print("=" * 70, flush=True)
+
     system_msg, user_msg = get_planning_prompt(
         history=state.get("history", []),
         analysis=state.get("log_analysis", {}),
@@ -1890,6 +2224,15 @@ def plan(state):
         directives=directives,
         best_files=best_files
     )
+
+    # v116.16 DIAG: dump the assembled user_msg so we see literally what
+    # the LLM reads (VALID PROGRAMS line, Stop Conditions block, etc.).
+    if os.environ.get("PHENIX_AGENT_DIAG_PLAN"):
+        print("=" * 70)
+        print("[DIAG_PLAN] ASSEMBLED PROMPT (user_msg, first 4000 chars)")
+        print("=" * 70)
+        print(user_msg[:4000] if user_msg else "<empty>")
+        print("=" * 70, flush=True)
 
     # 4. Get LLM (with validation)
     llm, error = get_planning_llm(provider)
@@ -1913,7 +2256,8 @@ def plan(state):
         handler = None
         try:
             from libtbx.langchain.agent.rate_limit_handler import (
-                get_google_handler, get_openai_handler, get_anthropic_handler
+                get_google_handler, get_openai_handler, get_anthropic_handler,
+                get_portkey_handler
             )
             if provider == "google":
                 handler = get_google_handler()
@@ -1921,11 +2265,14 @@ def plan(state):
                 handler = get_openai_handler()
             elif provider == "anthropic":
                 handler = get_anthropic_handler()
+            elif provider == "portkey":
+                handler = get_portkey_handler()
         except ImportError:
             try:
                 # Try relative import for standalone testing
                 from agent.rate_limit_handler import (
-                    get_google_handler, get_openai_handler, get_anthropic_handler
+                    get_google_handler, get_openai_handler, get_anthropic_handler,
+                    get_portkey_handler
                 )
                 if provider == "google":
                     handler = get_google_handler()
@@ -1933,6 +2280,8 @@ def plan(state):
                     handler = get_openai_handler()
                 elif provider == "anthropic":
                     handler = get_anthropic_handler()
+                elif provider == "portkey":
+                    handler = get_portkey_handler()
             except ImportError:
                 pass  # No rate limit handler available
 
@@ -1954,7 +2303,11 @@ def plan(state):
             # No rate limit handler available, call directly
             response = llm.invoke(messages)
 
-        content = response.content
+        try:
+          from libtbx.langchain.core.llm import response_text
+        except ImportError:
+          from core.llm import response_text
+        content = response_text(response)
 
         state = _log(state, "PLAN: LLM response received (%d chars)" % len(content))
 
@@ -2209,33 +2562,66 @@ def plan(state):
         if chosen_program is None or chosen_program not in valid_programs:
             if valid_programs:
                 # If the LLM chose the after_program target but it's not yet in
-                # valid_programs, do NOT fall through to an arbitrary program —
-                # that would silently skip the user-requested sequence step.
-                # Instead, log a clear warning and stop so the configuration
-                # problem surfaces rather than the workflow running off-script.
+                # valid_programs, the right response depends on whether the plan
+                # can drive the workflow there via prerequisites:
+                #
+                # - Plan has pending stages → fall through to override (pick a
+                #   valid program).  The workflow will progress through the
+                #   prerequisite states until after_program becomes valid.
+                #   This matches the architecture's intent for `after_program`
+                #   as a "minimum-run guarantee" (per OVERVIEW.md §327,
+                #   ARCHITECTURE.md §546–551, v112.78).
+                #
+                # - No plan / no pending stages → STOP with a clear error.
+                #   Without a plan to drive the workflow, falling through to an
+                #   arbitrary program would silently skip the user-requested
+                #   sequence step.  This is the original v115 safety check
+                #   (genuine config error or typo'd program name).
+                #
+                # v116.10: bug fix — previously, this STOP fired unconditionally
+                # whenever the LLM picked the after_program target while it was
+                # out of valid_programs.  On a fresh "predict and stop" request
+                # at xray_initial, the LLM picks predict_and_build (the user's
+                # target) but valid_programs=[xtriage] because xtriage hasn't
+                # run yet.  The STOP fired at cycle 1 before xtriage could run,
+                # producing the "not available at the current workflow step"
+                # error.  The plan WAS pending — the fix is to let it drive.
                 after_prog = (state.get("directives", {})
                               .get("stop_conditions", {})
                               .get("after_program"))
                 if chosen_program and after_prog and chosen_program == after_prog:
-                    _apna_msg = (
-                        "Agent stopped: the program '%s' requested by the "
-                        "stop_after directive is not available at the current "
-                        "workflow step. Check that the program name is spelled "
-                        "correctly and that the required input files are present."
-                        % chosen_program
-                    )
-                    state = _log(state, "PLAN: LLM chose after_program '%s' but it is not in "
-                        "valid_programs %s — stopping to avoid running off-script. "
-                        "Check step/workflow YAML to ensure %s is listed for this workflow state." % (
-                        chosen_program, valid_programs, chosen_program))
-                    return {
-                        **state,
-                        "command": "STOP",
-                        "stop": True,
-                        "stop_reason": "after_program_not_available",
-                        "abort_message": _apna_msg,
-                        "validation_error": None,
-                    }
+                    if not session_info.get(
+                            "plan_has_pending_stages", False):
+                        # No plan-driven path to the target — genuine config
+                        # error.  Surface it rather than running off-script.
+                        _apna_msg = (
+                            "Agent stopped: the program '%s' requested by the "
+                            "stop_after directive is not available at the current "
+                            "workflow step. Check that the program name is spelled "
+                            "correctly and that the required input files are present."
+                            % chosen_program
+                        )
+                        state = _log(state, "PLAN: LLM chose after_program '%s' but it is not in "
+                            "valid_programs %s — stopping to avoid running off-script. "
+                            "Check step/workflow YAML to ensure %s is listed for this workflow state." % (
+                            chosen_program, valid_programs, chosen_program))
+                        return {
+                            **state,
+                            "command": "STOP",
+                            "stop": True,
+                            "stop_reason": "after_program_not_available",
+                            "abort_message": _apna_msg,
+                            "validation_error": None,
+                        }
+                    # Plan has pending stages: log the situation but fall
+                    # through to the override below.  The workflow will reach
+                    # after_program via prerequisites — no need to STOP here.
+                    state = _log(state,
+                        "PLAN: LLM chose after_program '%s' but it is not in "
+                        "valid_programs %s — plan has pending stages, falling "
+                        "through to override (workflow will progress through "
+                        "prerequisites until %s becomes valid)" % (
+                            chosen_program, valid_programs, chosen_program))
 
                 # Override to first valid program (or first non-STOP if available)
                 override_program = next((p for p in valid_programs if p != "STOP"), valid_programs[0])
@@ -2425,6 +2811,13 @@ def _handle_llm_failure(state, error_msg):
     """
     MAX_LLM_FAILURES = 3  # Stop after this many consecutive failures
 
+    # Defensive: this is a failure handler and must never itself raise.
+    # Callers pass str(e) or a string error today, but normalize here so a
+    # None/non-string error can't turn a handled LLM failure into a crash
+    # (which would abort the whole run -- worse than the degradation we report).
+    if not isinstance(error_msg, str):
+        error_msg = "unknown error" if error_msg is None else str(error_msg)
+
     # Check for FATAL errors that won't resolve by retrying
     provider = state.get("provider", "google")
     fatal_error = _check_fatal_llm_error(error_msg, provider=provider)
@@ -2438,6 +2831,40 @@ def _handle_llm_failure(state, error_msg):
     state = {**state, "llm_consecutive_failures": failures}
 
     state = _log(state, "PLAN: LLM failure %d/%d" % (failures, MAX_LLM_FAILURES))
+
+    # LLM-unavailable observability.  Graph state is per-cycle (each cycle is a
+    # fresh graph.invoke), so this CANNOT be a run-level flag here -- the
+    # run-level aggregation lives on the driver (ai_agent.py via session.data).
+    # What we do here, once per invoke, is:
+    #   (1) emit a structured EventType.NOTICE event carrying a machine-readable
+    #       discriminator (notice_kind="llm_unavailable").  This rides the
+    #       `events` list, which is preserved by every downstream node and
+    #       crosses the REST boundary identically for local and server runs;
+    #       the driver detects it to set its run-level session.data flag.
+    #   (2) log a human-readable line to debug_log (formatter-independent, shown
+    #       at every verbosity), so the per-cycle notice is always user-visible.
+    # The guard key is scoped to THIS invoke (route_after_validate can loop
+    # validate->plan, calling this handler more than once per cycle); it is
+    # deliberately NOT named like the driver's run-level key to avoid scope
+    # confusion.
+    if not state.get("llm_notice_emitted_this_invoke"):
+        _prov = state.get("provider", "unknown")
+        _human = (
+            "LLM PROVIDER UNAVAILABLE -- provider '%s' could not be "
+            "reached. This cycle is using RULES-BASED program selection (no "
+            "LLM); decisions come from deterministic workflow rules, not the "
+            "LLM, so results may differ from an LLM-driven run. Last error: %s"
+        ) % (_prov, error_msg[:160])
+        # (1) structured event for machine detection by the driver
+        state = _emit(
+            state, EventType.NOTICE,
+            notice_kind="llm_unavailable",
+            provider=_prov,
+            message=_human,
+        )
+        # (2) human-readable line (debug_log; shown at all verbosities)
+        state = _log(state, _human)
+        state = {**state, "llm_notice_emitted_this_invoke": True}
 
     # Check if we should stop gracefully
     if failures >= MAX_LLM_FAILURES:
@@ -2743,7 +3170,7 @@ def _read_sequence(filepath):
     no whitespace), or empty string on failure.
     """
     try:
-        with open(filepath, "r") as f:
+        with open(filepath, "r", encoding='utf-8') as f:
             lines = f.readlines()
         seq_lines = []
         for line in lines:
@@ -3017,7 +3444,9 @@ def _build_with_new_builder(state):
         # poor to salvage by adjustment.
         _last_rfree = None
         for h in reversed(state.get("history", [])):
-            _m = h.get("metrics", {})
+            # "analysis" is the declared HISTORY_ENTRY_FIELDS key; this
+            # was the single site reading the old "metrics" spelling.
+            _m = h.get("analysis", {})
             if "r_free" in _m:
                 try:
                     _last_rfree = float(_m["r_free"])
@@ -3573,9 +4002,17 @@ def _build_with_new_builder(state):
             pre_postprocess = command
             directives = state.get("directives", {})
             user_advice = state.get("user_advice", "")
-            # bad_inject_params is {program: [param_names]} — extract set for this program
-            all_bad = state.get("bad_inject_params", {})
-            bad_set = set(all_bad.get(program, []))
+            # bad_inject_params is {program: [param_names]} — extract set for
+            # this program.  Be defensive about types: after a JSON round-trip
+            # across the REST boundary the value could arrive as None (missing
+            # key deserialized to null) or a per-program value could be null;
+            # json.loads never produces tuples, but None is a real possibility.
+            # Coerce so .get()/set() can never raise.
+            all_bad = state.get("bad_inject_params") or {}
+            if not isinstance(all_bad, dict):
+                all_bad = {}
+            _prog_bad = all_bad.get(program) or []
+            bad_set = set(_prog_bad)
 
             # Collect postprocess log messages for graph debug log
             _pp_logs = []
@@ -3680,614 +4117,17 @@ def build(state):
 
     Applies Tier 2 defaults from workflow_state and logs any overrides.
 
-    NEW: If USE_NEW_COMMAND_BUILDER is True, delegates to _build_with_new_builder.
+    Delegates to _build_with_new_builder() (the unified CommandBuilder).
     """
     # Early exit: upstream node already decided to stop
     if state.get("stop"):
         return state
 
-    # Optionally use new unified builder
-    if USE_NEW_COMMAND_BUILDER:
-        return _build_with_new_builder(state)
-
-    intent = state.get("intent", {})
-
-    if intent.get("stop") or intent.get("program") == "STOP":
-        state = _log(state, "BUILD: Stop requested, no command needed")
-        return {**state, "command": "STOP"}
-
-    program = intent.get("program", "phenix.refine")
-
-    # Handle special strategy for stepwise cryo-EM
-    # IMPORTANT: Safely handle case where LLM returns non-dict for strategy
-    raw_strategy = intent.get("strategy", {})
-    if not isinstance(raw_strategy, dict):
-        state = _log(state, "BUILD: LLM returned invalid strategy type (%s), using empty dict" % type(raw_strategy).__name__)
-        raw_strategy = {}
-    strategy = dict(raw_strategy)
-
-    workflow_state = state.get("workflow_state", {})
-
-    # Handle stepwise mode (maximum_automation=False)
-    # Forces stop_after_predict=True for predict_and_build in both cryo-EM and X-ray
-    if (workflow_state.get("automation_path") == "stepwise" and
-        program == "phenix.predict_and_build"):
-        current_state = workflow_state.get("state", "")
-        stepwise_states = ["cryoem_analyzed", "xray_initial", "xray_analyzed", "xray_placed"]
-        if current_state in stepwise_states:
-            strategy["stop_after_predict"] = True
-            state = _log(state, "BUILD: Forcing stop_after_predict=True for stepwise mode")
-
-    # === APPLY TIER 2 DEFAULTS AND LOG OVERRIDES ===
-    recommended_strategy = workflow_state.get("recommended_strategy", {})
-
-    if recommended_strategy and program == "phenix.refine":
-        for key, info in recommended_strategy.items():
-            recommended_value = info.get("value")
-            reason = info.get("reason", "")
-            override_warning = info.get("override_warning", "")
-
-            if key in strategy:
-                # LLM specified a value - check if it differs from recommendation
-                llm_value = strategy[key]
-                if llm_value != recommended_value:
-                    # Log the override with warning
-                    state = _log(state, "BUILD: OVERRIDE - %s=%s (recommended: %s)" % (
-                        key, llm_value, recommended_value))
-                    if override_warning:
-                        state = _log(state, "BUILD: Warning - %s" % override_warning)
-                else:
-                    state = _log(state, "BUILD: %s=%s (matches recommendation)" % (key, llm_value))
-            else:
-                # LLM didn't specify - apply the default
-                if recommended_value is not None:
-                    strategy[key] = recommended_value
-                    state = _log(state, "BUILD: Applying default %s=%s (%s)" % (
-                        key, recommended_value, reason[:60] if reason else "recommended"))
-
-    # === LEGACY: APPLY REFINE_HINTS (backward compatibility) ===
-    # NOTE: This block only runs when USE_NEW_COMMAND_BUILDER is False.
-    # With USE_NEW_COMMAND_BUILDER=True (default), the build() function
-    # delegates to _build_with_new_builder() and this code is not reached.
-    # R-free flag logic for the new path is in command_builder.py.
-    if program == "phenix.refine" and not recommended_strategy:
-        refine_hints = workflow_state.get("refine_hints", [])
-
-        # R-free flags: only generate on first refinement
-        if "generate_rfree_flags" in refine_hints:
-            if "generate_rfree_flags" not in strategy:
-                strategy["generate_rfree_flags"] = True
-                state = _log(state, "BUILD: First refinement - will generate R-free flags")
-        elif "use_existing_rfree_flags" in refine_hints:
-            if strategy.get("generate_rfree_flags"):
-                state = _log(state, "BUILD: Warning - LLM requested new R-free flags but this is not first refinement")
-
-        # Water building
-        if "add_waters" in refine_hints:
-            if "add_waters" not in strategy:
-                strategy["add_waters"] = True
-                state = _log(state, "BUILD: Adding waters (model ready, resolution ok)")
-
-    # === TWINNING (always check, even with new structure) ===
-    if program == "phenix.refine":
-        if workflow_state.get("has_twinning") and workflow_state.get("twin_law"):
-            if "twin_law" not in strategy:
-                strategy["twin_law"] = workflow_state["twin_law"]
-                state = _log(state, "BUILD: Adding twin law %s (twinning detected)" % workflow_state["twin_law"])
-
-    # === OUTPUT PREFIX (prevent long filename accumulation) ===
-    # Use descriptive prefixes: refine_001, refine_002 for X-ray; rsr_001, rsr_002 for cryo-EM
-    # This makes output progression clear: refine_001_001.pdb → refine_002_001.pdb
-    if program in ("phenix.refine", "phenix.real_space_refine"):
-        if "output_prefix" not in strategy:
-            history = state.get("history", [])
-
-            # Count successful runs of THIS specific program
-            if program == "phenix.refine":
-                prefix_base = "refine"
-                matching_runs = [h for h in history
-                               if isinstance(h, dict) and
-                               h.get("program") == "phenix.refine" and
-                               str(h.get("result", "")).startswith("SUCCESS")]
-            else:  # phenix.real_space_refine
-                prefix_base = "rsr"
-                matching_runs = [h for h in history
-                               if isinstance(h, dict) and
-                               h.get("program") == "phenix.real_space_refine" and
-                               str(h.get("result", "")).startswith("SUCCESS")]
-
-            run_count = len(matching_runs)
-
-            # Debug: show which cycles were counted
-            if matching_runs:
-                cycle_nums = [str(h.get("cycle_number", "?")) for h in matching_runs]
-                state = _log(state, "BUILD: Found %d previous %s runs in cycles: %s" % (
-                    run_count, program, ", ".join(cycle_nums)))
-
-            next_number = run_count + 1
-            strategy["output_prefix"] = "%s_%03d" % (prefix_base, next_number)
-            state = _log(state, "BUILD: output_prefix=%s_%03d" % (prefix_base, next_number))
-
-    # === HIGH RESOLUTION SUGGESTIONS (just log, don't auto-apply) ===
-    if program == "phenix.refine" and workflow_state.get("high_res_suggestions"):
-        for suggestion in workflow_state["high_res_suggestions"]:
-            if suggestion == "consider_anisotropic_adp":
-                state = _log(state, "BUILD: Note - high resolution data, consider anisotropic_adp=true")
-            elif suggestion == "consider_riding_hydrogens":
-                state = _log(state, "BUILD: Note - very high resolution, consider adding hydrogens")
-
-    # === APPLY AUTOBUILD RESOLUTION LIMIT ===
-    if program == "phenix.autobuild":
-        resolution = workflow_state.get(
-            "resolution")  # from xtriage/mtriage
-        if resolution and resolution < 2.0:
-            if "resolution" not in strategy:
-                strategy["resolution"] = 2.0
-                state = _log(state, "BUILD: Limiting autobuild resolution to 2.0Å (data is %.1fÅ)" % resolution)
-
-        # === AUTOBUILD REBUILD_IN_PLACE ===
-        # When autobuild is invoked after a model exists
-        # (from autosol, previous autobuild, or refinement),
-        # set rebuild_in_place=False so autobuild builds a
-        # new model from density.
-        if "rebuild_in_place" not in strategy:
-            history = state.get("history", [])
-            has_model = any(
-                any(kw in str(h.get("program", "")).lower()
-                    for kw in ("refine", "autosol",
-                               "autobuild"))
-                for h in history
-            )
-            if has_model:
-                strategy["rebuild_in_place"] = False
-                state = _log(state,
-                    "BUILD: Set rebuild_in_place=False"
-                    " (model already exists)")
-
-        # Fix: use_hl_if_present=False after autosol
-        if "use_hl_if_present" not in strategy:
-            history = state.get("history", [])
-            _after_autosol = any(
-                "autosol" in str(
-                    h.get("program", "")).lower()
-                for h in history
-            )
-            if _after_autosol:
-                strategy["use_hl_if_present"] = False
-                state = _log(state,
-                    "BUILD: Set use_hl_if_present=False"
-                    " (autosol MTZ lacks PHIB/FOM)")
-
-    # === APPLY RESOLUTION FOR PROGRAMS THAT NEED IT ===
-    # Helper to find resolution from various sources (priority order)
-
-    # === PHIL STRATEGY VALIDATION (Fix 4, v115) ===
-    # Also apply to old build path for when flag is toggled.
-    strategy, state = _validate_phil_strategy(
-        program, strategy, state)
-
-    def find_resolution():
-        # 1. From session_resolution (single source of truth - set by xtriage/mtriage)
-        session_res = state.get("session_resolution")
-        if session_res:
-            return session_res, "session"
-
-        # 2. From workflow_state (extracted from history analysis)
-        res = workflow_state.get(
-            "resolution")
-        if res:
-            return res, "workflow_state"
-
-        # 3. From current log_analysis
-        analysis = state.get("log_analysis", {})
-        if analysis.get("resolution"):
-            return analysis["resolution"], "log_analysis"
-
-        # 4. From previous commands in history (last resort)
-        history = state.get("history", [])
-        import re
-        for entry in reversed(history):
-            cmd = entry.get("command", "") if isinstance(entry, dict) else ""
-            res_match = re.search(r'resolution[=\s]+([\d\.]+)', cmd, re.IGNORECASE)
-            if res_match:
-                try:
-                    res = float(res_match.group(1))
-                    if 0.5 < res < 20:  # Sanity check
-                        return res, "previous_command"
-                except ValueError:
-                    pass
-
-        return None, None
-
-    # NOTE: Resolution requirements for predict_and_build, real_space_refine,
-    # and dock_in_map are now handled by invariants in programs.yaml.
-    # The validate_and_fix() call below will auto-fill resolution from context.
-
-    # Correct file paths from LLM - map basenames to actual paths
-    available_files = state.get("available_files", [])
-    basename_to_path = {os.path.basename(f): f for f in available_files}
-    available_set = set(available_files) | set(basename_to_path.keys())
-
-    llm_files = intent.get("files", {})
-    corrected_files = {}
-    rejected_files = []
-
-    # DEBUG: Log what the LLM actually returned in its files dict
-    if llm_files:
-        llm_files_summary = ", ".join("%s=%s" % (k, os.path.basename(str(v)) if v else "None")
-                                       for k, v in llm_files.items())
-        state = _log(state, "BUILD: LLM requested files: {%s}" % llm_files_summary)
-    else:
-        state = _log(state, "BUILD: LLM returned empty files dict - will auto-select")
-
-    if llm_files:
-        for slot, filepath in llm_files.items():
-            if filepath:
-                # Handle case where LLM returns a list (e.g., for half_map)
-                if isinstance(filepath, list):
-                    # Preserve list - correct each path in the list
-                    corrected_list = []
-                    for fp in filepath:
-                        if fp:
-                            basename = os.path.basename(fp)
-                            if basename in basename_to_path:
-                                corrected_list.append(basename_to_path[basename])
-                            elif fp in available_set:
-                                corrected_list.append(fp)
-                            else:
-                                # File not in available_files - REJECT
-                                rejected_files.append("%s=%s" % (slot, basename))
-                    if corrected_list:
-                        corrected_files[slot] = corrected_list
-                else:
-                    # Single file
-                    basename = os.path.basename(filepath)
-                    if basename in basename_to_path:
-                        # Use the correct path from available_files
-                        corrected_files[slot] = basename_to_path[basename]
-                    elif filepath in available_set:
-                        corrected_files[slot] = filepath
-                    elif slot == "ligand":
-                        # phenix.ligandfit accepts either a file path
-                        # or a 3-letter residue code (ATP, HEM, NAG).
-                        fp_str = str(filepath).strip()
-                        is_code = (
-                            len(fp_str) <= 4
-                            and fp_str.replace("_", "").isalnum()
-                            and os.sep not in fp_str
-                            and "/" not in fp_str
-                            and "." not in fp_str
-                        )
-                        if is_code:
-                            corrected_files[slot] = fp_str
-                            state = _log(state,
-                                "BUILD: Accepted ligand residue"
-                                " code: %s" % fp_str)
-                        elif os.path.isfile(fp_str):
-                            corrected_files[slot] = fp_str
-                            state = _log(state,
-                                "BUILD: Accepted ligand file"
-                                " (on disk): %s" % basename)
-                        else:
-                            rejected_files.append(
-                                "%s=%s" % (slot, basename))
-                    else:
-                        # File not in available_files - REJECT
-                        rejected_files.append("%s=%s" % (slot, basename))
-
-    # If LLM tried to use files not in available_files, log and reject
-    if rejected_files:
-        error_msg = "LLM selected files not in available_files: %s" % ", ".join(rejected_files)
-        state = _log(state, "BUILD: FILE REJECTION - %s" % error_msg)
-        # Don't fail completely - let auto-fill try to find alternatives
-        state = _log(state, "BUILD: Will attempt to auto-fill valid files instead")
-
-    # NOTE: Half-map vs full-map categorization is handled by _categorize_files()
-    # in workflow_state.py. If a single map was promoted to full_map, trust that decision.
-
-    # === AUTO-FILL MODEL FOR AUTOBUILD ===
-    # If LLM selected autobuild but didn't include model, find the best refined model
-    if program == "phenix.autobuild" and "model" not in corrected_files:
-        # Find refined PDB files (prefer most recent by cycle number)
-        import re
-        refined_pdbs = []
-        for f in available_files:
-            basename = os.path.basename(f).lower()
-            if f.lower().endswith('.pdb') and 'refine' in basename:
-                # Extract cycle number if present
-                cycle_match = re.search(r'refine[_.]?(\d+)', basename)
-                cycle_num = int(cycle_match.group(1)) if cycle_match else 0
-                refined_pdbs.append((f, cycle_num))
-
-        if refined_pdbs:
-            # Sort by cycle number descending, take the most recent
-            refined_pdbs.sort(key=lambda x: x[1], reverse=True)
-            best_model = refined_pdbs[0][0]
-            corrected_files["model"] = best_model
-            state = _log(state, "BUILD: Auto-added model=%s for autobuild" % os.path.basename(best_model))
-        else:
-            # Try phaser output
-            for f in available_files:
-                basename = os.path.basename(f).lower()
-                if f.lower().endswith('.pdb') and 'phaser' in basename:
-                    corrected_files["model"] = f
-                    state = _log(state, "BUILD: Auto-added model=%s for autobuild" % os.path.basename(f))
-                    break
-
-    # === OVERRIDE MODEL FOR REFINEMENT PROGRAMS ===
-    # For refine/real_space_refine, ensure we use the MOST RECENT refined model
-    # The LLM often picks older models incorrectly
-    # Priority order is now defined in programs.yaml input_priorities
-    if program in ("phenix.refine", "phenix.real_space_refine"):
-        workflow_state = state.get("workflow_state", {})
-        categorized_files = workflow_state.get("categorized_files", {})
-
-        # Get input priorities from YAML
-        priorities = builder._registry.get_input_priorities(program, "model")
-        priority_categories = priorities.get("categories", [])
-        exclude_categories = priorities.get("exclude_categories", [])
-
-        # Find best model from categories (priority order from YAML)
-        best_model = None
-        best_source = None
-
-        if priority_categories:
-            for cat in priority_categories:
-                cat_files = categorized_files.get(cat, [])
-                if cat_files:
-                    # Check exclusions
-                    for f in cat_files:
-                        excluded = False
-                        for excl_cat in exclude_categories:
-                            if f in categorized_files.get(excl_cat, []):
-                                excluded = True
-                                break
-                        if not excluded:
-                            best_model = f
-                            best_source = cat.replace("_", " ")
-                            break
-                if best_model:
-                    break
-        else:
-            # Fallback: use hardcoded priorities if YAML not defined
-            if program == "phenix.real_space_refine":
-                # Cryo-EM: prefer rsr_output > docked > with_ligand
-                for cat, label in [("rsr_output", "RSR output"),
-                                   ("docked", "docked model"),
-                                   ("with_ligand", "model with ligand")]:
-                    if categorized_files.get(cat):
-                        best_model = categorized_files[cat][0]
-                        best_source = label
-                        break
-            else:
-                # X-ray: prefer refined > phaser_output > with_ligand
-                for cat, label in [("refined", "refined model"),
-                                   ("phaser_output", "Phaser output"),
-                                   ("with_ligand", "model with ligand")]:
-                    if categorized_files.get(cat):
-                        best_model = categorized_files[cat][0]
-                        best_source = label
-                        break
-
-        # Override LLM's choice if we found a better model
-        if best_model:
-            llm_model = corrected_files.get("model")
-            if llm_model != best_model:
-                corrected_files["model"] = best_model
-                if llm_model:
-                    state = _log(state, "BUILD: Overriding LLM model choice with %s (%s)" % (
-                        os.path.basename(best_model), best_source))
-                else:
-                    state = _log(state, "BUILD: Auto-filled model=%s (%s)" % (
-                        os.path.basename(best_model), best_source))
-
-    try:
-        if not corrected_files:
-            # LLM didn't pick files, use auto-select with categorized files
-            workflow_state = state.get("workflow_state", {})
-            categorized_files = workflow_state.get("categorized_files", {})
-            # Get best_files and rfree_mtz from session_info
-            session_info = state.get("session_info", {})
-            best_files = session_info.get("best_files", {})
-            rfree_mtz = session_info.get("rfree_mtz")
-            command = builder.build_command_for_program(
-                program,
-                available_files,
-                categorized_files=categorized_files,
-                best_files=best_files,
-                rfree_mtz=rfree_mtz
-            )
-            state = _log(state, "BUILD: Auto-selected files for %s" % program)
-        else:
-            # LLM picked some files - auto-fill any missing required files
-            workflow_state = state.get("workflow_state", {})
-            categorized_files = workflow_state.get("categorized_files", {})
-            # Get best_files and rfree_mtz from session_info
-            session_info = state.get("session_info", {})
-            best_files = session_info.get("best_files", {})
-            rfree_mtz = session_info.get("rfree_mtz")
-
-            # Get required inputs for this program
-            try:
-                required_inputs = builder._registry.get_required_inputs(program)
-            except Exception:
-                required_inputs = []
-
-            # Map input names to best_files categories
-            input_to_best_category = {
-                "model": "model",
-                "pdb_file": "model",
-                "map": "map",
-                "full_map": "map",
-                "data_mtz": "data_mtz",
-                "map_coeffs_mtz": "map_coeffs_mtz",
-                "hkl_file": "data_mtz",
-                "sequence": "sequence",
-                "seq_file": "sequence",
-            }
-
-            # Auto-fill missing required files
-            # PRIORITY 0: Locked R-free data_mtz (for data_mtz input, X-ray refinement)
-            # PRIORITY 1: Check best_files first
-            # PRIORITY 2: Use YAML input_priorities
-            # PRIORITY 3: Simple fallback
-            for input_name in required_inputs:
-                if input_name not in corrected_files:
-                    file_found = None
-
-                    # Helper: check file availability by basename (works on server
-                    # where os.path.exists returns False for client paths)
-                    _avail_basenames = {os.path.basename(f) for f in available_files if f}
-
-                    # PRIORITY 0: Locked R-free data_mtz
-                    if input_name in ("data_mtz", "hkl_file") and rfree_mtz:
-                        if os.path.basename(rfree_mtz) in _avail_basenames or os.path.exists(rfree_mtz):
-                            file_found = rfree_mtz
-                            state = _log(state, "BUILD: Using LOCKED R-free data_mtz for %s: %s" % (
-                                input_name, os.path.basename(rfree_mtz)))
-
-                    # PRIORITY 1: Check best_files
-                    if not file_found:
-                        best_category = input_to_best_category.get(input_name, input_name)
-                        best_path = best_files.get(best_category)
-                        if best_path and (os.path.basename(best_path) in _avail_basenames or os.path.exists(best_path)):
-                            file_found = best_path
-                            state = _log(state, "BUILD: Using best_%s for %s: %s" % (
-                                best_category, input_name, os.path.basename(best_path)))
-
-                    # PRIORITY 2: Try to get priorities from YAML
-                    if not file_found:
-                        priorities = builder._registry.get_input_priorities(program, input_name)
-                        priority_categories = priorities.get("categories", [])
-                        exclude_categories = priorities.get("exclude_categories", [])
-
-                        if priority_categories:
-                            # Use YAML-defined priorities
-                            for cat in priority_categories:
-                                cat_files = categorized_files.get(cat, [])
-                                for f in cat_files:
-                                    # Check exclusions
-                                    excluded = False
-                                    for excl_cat in exclude_categories:
-                                        if f in categorized_files.get(excl_cat, []):
-                                            excluded = True
-                                            break
-                                    if not excluded:
-                                        file_found = f
-                                        break
-                                if file_found:
-                                    break
-
-                    # PRIORITY 3: Simple fallback for common input types
-                    # Use _get_most_recent_file to prefer the latest file when multiple match
-                    if not file_found:
-                        if input_name == "data_mtz":
-                            if categorized_files.get("original_data_mtz"):
-                                file_found = _get_most_recent_file(categorized_files["original_data_mtz"])
-                            elif categorized_files.get("data_mtz"):
-                                file_found = _get_most_recent_file(categorized_files["data_mtz"])
-                        elif input_name == "map_coeffs_mtz":
-                            if categorized_files.get("refine_map_coeffs"):
-                                file_found = _get_most_recent_file(categorized_files["refine_map_coeffs"])
-                            elif categorized_files.get("map_coeffs_mtz"):
-                                file_found = _get_most_recent_file(categorized_files["map_coeffs_mtz"])
-                        elif input_name == "model":
-                            for cat in ["refined", "rsr_output", "phaser_output",
-                                       "processed_predicted", "pdb"]:
-                                if categorized_files.get(cat):
-                                    file_found = _get_most_recent_file(categorized_files[cat])
-                                    break
-                        elif input_name == "sequence" and categorized_files.get("sequence"):
-                            file_found = _get_most_recent_file(categorized_files["sequence"])
-                        elif input_name == "map" and categorized_files.get("full_map"):
-                            file_found = _get_most_recent_file(categorized_files["full_map"])
-
-                    if file_found:
-                        corrected_files[input_name] = file_found
-                        state = _log(state, "BUILD: Auto-filled %s=%s" % (
-                            input_name, os.path.basename(file_found)))
-
-            # Validate invariants and apply fixes (single place for all program constraints)
-            # Build context for auto-fills (resolution, etc.)
-            # Use find_resolution() to get resolution from all possible sources
-            found_resolution, res_source = find_resolution()
-            invariant_context = {
-                "session_resolution": state.get("session_resolution"),
-                "resolution": found_resolution,  # From find_resolution() priority order
-                "resolution_source": res_source,
-                "workflow_state": workflow_state,
-            }
-            corrected_files, strategy, warnings = builder.validate_and_fix(
-                program, corrected_files, strategy,
-                log=lambda msg: None,  # Could log to state if needed
-                context=invariant_context
-            )
-            for warning in warnings:
-                state = _log(state, "BUILD: %s" % warning)
-
-            # DEBUG: Log final file selection before building command
-            if corrected_files:
-                final_files_summary = ", ".join("%s=%s" % (k, os.path.basename(str(v)) if v else "None")
-                                                 for k, v in corrected_files.items())
-                state = _log(state, "BUILD: Final files for command: {%s}" % final_files_summary)
-
-            command = builder.build_command(
-                program,
-                corrected_files,
-                strategy
-            )
-            state = _log(state, "BUILD: Used LLM-selected files (paths corrected)")
-
-        if not command:
-            error_msg = "Builder returned empty command for %s" % program
-            state = _log(state, "BUILD: Failed - %s" % error_msg)
-            state = _emit(state, EventType.ERROR, message=error_msg)
-            return {**state, "command": "", "validation_error": error_msg}
-
-    except Exception as e:
-        state = _log(state, "BUILD: Exception - %s" % str(e))
-        state = _emit(state, EventType.ERROR, message="Build exception", details=str(e))
-        return {**state, "command": "", "validation_error": str(e)}
-
-    state = _log(state, "BUILD: Command = %s" % command[:80])
-
-    # === LAST-RESORT LIGAND CODE INJECTION (old path) ===
-    if (program == "phenix.ligandfit"
-        and command
-        and "ligand=" not in command):
-      import re as _re_lig3
-      _advice = state.get("user_advice", "")
-      _lig_code = None
-      if _advice:
-        _lig_pats = [
-          r'\bligand\s+(?:is|to\s+be\s+fit\s+is|code'
-            r'|type|=)\s*[:\s]*([A-Z][A-Z0-9]{2})\b',
-          r'(?:fit|place|dock)\s+(?:the\s+)?'
-            r'(?:ligand\s+)?([A-Z][A-Z0-9]{2})\b',
-        ]
-        _SKIP3 = frozenset({
-          "THE", "AND", "FOR", "FIT", "RUN", "USE",
-          "ADD", "ALL", "NOT", "PDB", "MTZ", "CIF"})
-        for _pat in _lig_pats:
-          _m = _re_lig3.search(_pat, _advice,
-                               _re_lig3.IGNORECASE)
-          if _m:
-            _candidate = _m.group(1).upper()
-            if _candidate not in _SKIP3:
-              _lig_code = _candidate
-              break
-      if _lig_code:
-        command = command + " ligand=%s" % _lig_code
-        state = _log(state,
-          "BUILD: Appended ligand=%s (last-resort)"
-          % _lig_code)
-
-    # === EMIT COMMAND_BUILT EVENT ===
-    state = _emit(state, EventType.COMMAND_BUILT,
-        command=command,
-        program=program)
-
-    return {**state, "command": command, "validation_error": None}
+    # Unified builder is the only build path.  The legacy
+    # USE_NEW_COMMAND_BUILDER=False scaffolding — including its parallel
+    # generate_rfree_flags injection — has been removed; the R-free generate
+    # decision now lives solely in command_builder._input_mtz_rfree_state.
+    return _build_with_new_builder(state)
 
 
 # =============================================================================
@@ -4776,197 +4616,15 @@ def fallback(state):
     3. Trying alternative programs if first choice would duplicate
     4. For refine, preferring output files from previous cycles
 
-    NEW: If USE_NEW_COMMAND_BUILDER is True, delegates to _fallback_with_new_builder.
+    Delegates to _fallback_with_new_builder() (the unified CommandBuilder).
     """
     # Early exit: upstream node already decided to stop
     if state.get("stop"):
         return state
 
-    # Optionally use new unified builder
-    if USE_NEW_COMMAND_BUILDER:
-        return _fallback_with_new_builder(state)
-
-    state = _log(state, "FALLBACK: Using mechanical auto-selection")
-
-    # Get previous commands to avoid duplicates
-    previous_commands = set()
-    recent_programs = []  # Track recently run programs (last 3)
-    for hist in state.get("history", []):
-        if isinstance(hist, dict):
-            if hist.get("command"):
-                previous_commands.add(hist["command"])
-            if hist.get("program"):
-                recent_programs.append(hist["program"])
-
-    # Get last 3 programs to avoid immediate repeats
-    recent_programs = recent_programs[-3:] if recent_programs else []
-
-    # Use workflow state to get valid programs
-    workflow_state = state.get("workflow_state", {})
-    valid_programs = workflow_state.get("valid_programs", [])
-
-    # Filter out STOP unless it's the only option
-    runnable = [p for p in valid_programs if p != "STOP"]
-
-    # Deprioritize recently run programs (move to end of list)
-    if recent_programs:
-        # Sort: programs not recently run first
-        runnable_prioritized = []
-        runnable_deprioritized = []
-        for p in runnable:
-            if p in recent_programs:
-                runnable_deprioritized.append(p)
-            else:
-                runnable_prioritized.append(p)
-        runnable = runnable_prioritized + runnable_deprioritized
-
-        if runnable_deprioritized:
-            state = _log(state, "FALLBACK: Deprioritized recently run: %s" % runnable_deprioritized)
-
-    # Respect start_with_program directive - prioritize it (overrides recent program logic)
-    directives = state.get("directives", {})
-    stop_cond = directives.get("stop_conditions", {})
-    start_with = stop_cond.get("start_with_program")
-    if start_with and start_with in runnable:
-        # Move start_with_program to front of list
-        runnable = [start_with] + [p for p in runnable if p != start_with]
-        state = _log(state, "FALLBACK: Prioritizing start_with_program: %s" % start_with)
-
-    if not runnable:
-        state = _log(state, "FALLBACK: No valid programs, stopping")
-        return {
-            **state,
-            "command": "STOP",
-            "stop": True,
-            "stop_reason": "no_valid_programs",
-            "validation_error": None,
-            "fallback_used": True
-        }
-
-    # Get available files, prioritizing recent outputs
-    available_files = list(state.get("available_files", []))
-
-    # Find output files from history (most recent first)
-    output_files = []
-    for hist in reversed(state.get("history", [])):
-        if isinstance(hist, dict):
-            hist_outputs = hist.get("output_files", [])
-            for f in hist_outputs:
-                if f and f not in output_files:
-                    output_files.append(f)
-
-    # Prioritize output files for refinement (use most recent refined model)
-    prioritized_files = available_files[:]
-    for f in output_files:
-        if f not in prioritized_files:
-            prioritized_files.insert(0, f)  # Add at front for priority
-
-    # Build context for invariant validation (resolution, etc.)
-    # This ensures programs like real_space_refine get resolution auto-filled
-    fallback_context = {
-        "session_resolution": state.get("session_resolution"),
-        "resolution": state.get("session_resolution"),  # Use session resolution
-        "workflow_state": workflow_state,
-    }
-
-    # Get best_files and rfree_mtz from session_info
-    session_info = state.get("session_info", {})
-    best_files = session_info.get("best_files", {})
-    rfree_mtz = session_info.get("rfree_mtz")
-
-    # Pass categorized_files so multi-file slots (e.g. half_map for mtriage)
-    # are filled correctly via the higher-priority categorized-files path.
-    # Without this, the extension-only fallback only picks one half_map file.
-    categorized_files = workflow_state.get("categorized_files", {})
-
-    # Try each valid program until one works without duplicating
-    for program in runnable:
-        # Use prioritized files (which include history outputs) for ALL programs.
-        # Previously this was only done for "refine" programs, but other programs
-        # like ligandfit also need output files from earlier cycles (e.g.,
-        # map_coeffs_mtz produced by refinement).
-        cmd = builder.build_command_for_program(program, prioritized_files,
-                                                categorized_files=categorized_files,
-                                                context=fallback_context,
-                                                best_files=best_files,
-                                                rfree_mtz=rfree_mtz)
-
-        if cmd and cmd not in previous_commands:
-            state = _log(state, "FALLBACK: Built command for %s" % program)
-            return {
-                **state,
-                "command": cmd,
-                "program": program,  # Important: track which program fallback chose
-                "validation_error": None,
-                "fallback_used": True
-            }
-        elif cmd:
-            state = _log(state, "FALLBACK: %s would duplicate, trying next" % program)
-        else:
-            state = _log(state, "FALLBACK: %s failed to build, trying next" % program)
-
-    # If all valid programs would duplicate, try autobuild ONLY if it's valid for this state
-    sequence_files = [f for f in available_files if f.endswith(('.fa', '.fasta', '.seq'))]
-    if sequence_files and "phenix.autobuild" in valid_programs and "phenix.autobuild" not in runnable:
-        cmd = builder.build_command_for_program("phenix.autobuild", available_files,
-                                                context=fallback_context,
-                                                best_files=best_files,
-                                                rfree_mtz=rfree_mtz)
-        if cmd and cmd not in previous_commands:
-            state = _log(state, "FALLBACK: Trying autobuild as alternative")
-            return {
-                **state,
-                "command": cmd,
-                "program": "phenix.autobuild",  # Important: track which program fallback chose
-                "validation_error": None,
-                "fallback_used": True
-            }
-
-    # If validation is required, run molprobity
-    if "phenix.molprobity" in valid_programs:
-        # Find a recent PDB file for molprobity
-        pdb_files = [f for f in prioritized_files if f.endswith('.pdb')]
-        if pdb_files:
-            cmd = "phenix.molprobity %s" % pdb_files[0]
-            if cmd not in previous_commands:
-                state = _log(state, "FALLBACK: Running validation (molprobity)")
-                return {
-                    **state,
-                    "command": cmd,
-                    "program": "phenix.molprobity",  # Important: track which program fallback chose
-                    "validation_error": None,
-                    "fallback_used": True
-                }
-
-    # Last resort: try basic refine with output files
-    state = _log(state, "FALLBACK: All options exhausted, trying phenix.refine with outputs")
-
-    # Find refined PDBs from history outputs
-    refined_pdbs = [f for f in output_files if f.endswith('.pdb') and 'refine' in f.lower()]
-    if refined_pdbs:
-        mtz_files = [f for f in available_files if f.endswith(".mtz")]
-        if mtz_files:
-            cmd = "phenix.refine %s %s" % (refined_pdbs[0], mtz_files[0])
-            if cmd not in previous_commands:
-                state = _log(state, "FALLBACK: Using refined output from previous cycle")
-                return {
-                    **state,
-                    "command": cmd,
-                    "program": "phenix.refine",  # Important: track which program fallback chose
-                    "validation_error": None,
-                    "fallback_used": True
-                }
-
-    # Absolute last resort - stop
-    state = _log(state, "FALLBACK: Cannot find non-duplicate command, stopping")
-    return {
-        **state,
-        "command": "STOP",
-        "stop": True,
-        "stop_reason": "all_commands_duplicate",
-        "validation_error": None,
-        "fallback_used": True
-    }
+    # Unified builder is the only fallback path; the legacy
+    # USE_NEW_COMMAND_BUILDER=False mechanical-selection body has been removed.
+    return _fallback_with_new_builder(state)
 
 
 # =============================================================================

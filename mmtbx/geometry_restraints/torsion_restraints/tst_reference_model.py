@@ -96,6 +96,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   log = StringIO()
   work_params = reference_model_params.extract()
   work_params.reference_model.enabled = True
+  work_params.reference_model.side_chain = True
   work_params.reference_model.fix_outliers = False
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=flex.split_lines(model_raw_records),
@@ -209,6 +210,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   pars = iotbx.phil.parse(master_phil_str_overrides)
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
+  all_pars.reference_model.side_chain = True
   rm = reference_model(
          model = model,
          reference_hierarchy_list=reference_hierarchy_list_alt_seq,
@@ -234,6 +236,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   work_pars = reference_model_params.extract()
   work_pars.reference_model.fix_outliers = False
   work_pars.reference_model.enabled = True
+  work_pars.reference_model.side_chain = True
 
   rm = reference_model(
          model=model,
@@ -252,6 +255,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     work_pars = reference_model_params.extract()
     work_pars.reference_model.secondary_structure_only = True
     work_pars.reference_model.enabled = True
+    work_pars.reference_model.side_chain = True
     rm.params = work_pars.reference_model
     rm.get_reference_dihedral_proxies(model=model)
     reference_dihedral_proxies = rm.reference_dihedral_proxies
@@ -616,6 +620,7 @@ TER
   pars = iotbx.phil.parse(params_text)
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
+  all_pars.reference_model.side_chain = True
 
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
@@ -677,6 +682,7 @@ TER
   pars = iotbx.phil.parse(params_text)
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
+  all_pars.reference_model.side_chain = True
   rm = reference_model(
          model=model,
          reference_file_list=['ref_0.pdb', 'ref_1.pdb', 'ref_2.pdb', 'ref_3.pdb'],
@@ -704,6 +710,7 @@ TER
   pars = iotbx.phil.parse(params_text)
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
+  all_pars.reference_model.side_chain = True
   rm = reference_model(
          model=model,
          reference_file_list=['ref_0.pdb'],
@@ -732,6 +739,7 @@ TER
   # just throw all in without specifying:
   all_pars = def_pars.fetch().extract()
   all_pars.reference_model.enabled = True
+  all_pars.reference_model.side_chain = True
   all_pars.reference_model.file = 'ref_0.pdb'
   rm = reference_model(
          model=model,
@@ -747,6 +755,7 @@ TER
   def_pars = reference_model_params
   all_pars = def_pars.fetch().extract()
   all_pars.reference_model.enabled = True
+  all_pars.reference_model.side_chain = True
   all_pars.reference_model.use_starting_model_as_reference = True
   rm = reference_model(
       model=model,
@@ -948,6 +957,7 @@ TER
   all_pars = def_pars.fetch().extract()
   all_pars.reference_model.file = 'ref.pdb'
   all_pars.reference_model.enabled = True
+  all_pars.reference_model.side_chain = True
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
                                     source_info=None))
@@ -1029,6 +1039,7 @@ ATOM     20  OG  SER G 334      -5.954  69.950  50.396  1.00170.98           O
   pars = iotbx.phil.parse(params_text)
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
+  all_pars.reference_model.side_chain = True
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
                                     source_info=None))
@@ -1526,6 +1537,7 @@ END
   all_pars = def_pars.fetch().extract()
   all_pars.reference_model.use_starting_model_as_reference=True
   all_pars.reference_model.enabled = True
+  all_pars.reference_model.side_chain = True
   rm = reference_model(
          model=model,
          reference_hierarchy_list=\

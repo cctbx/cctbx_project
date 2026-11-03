@@ -24,8 +24,8 @@ bootstrap.py step you should adjust nproc to suit your environment.
 $ mkdir cctbx; cd cctbx
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
-$ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-$ bash Miniconda3-latest-Linux-x86_64.sh -b -p $PWD/mc3
+$ wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+$ bash Miniforge3-Linux-x86_64.sh -b -p $PWD/mc3
 $ source mc3/etc/profile.d/conda.sh
 $ conda env create -f psana_environment.yml -p $PWD/conda_base
 $ conda install -c conda-forge --no-deps -p $PWD/conda_base gemmi

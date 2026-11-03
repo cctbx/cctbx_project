@@ -196,7 +196,12 @@ class cache(slots_getstate_setstate):
     "hetero",
     "backbone",
     "sidechain",
-    "special_position_settings"]
+    "special_position_settings",
+    #
+    'small_molecule',
+    'ion',
+    'carbohydrate',
+    ]
 
   def __init__(self, root, wildcard_escape_char='\\',
       special_position_settings=None):
@@ -213,6 +218,10 @@ class cache(slots_getstate_setstate):
     self.backbone = None
     self.sidechain = None
     self.special_position_settings = special_position_settings
+    #
+    self.small_molecule = None
+    self.ion = None
+    self.carbohydrate = None
 
   def get_name(self, pattern):
     return _get_map_string(
@@ -326,23 +335,26 @@ class cache(slots_getstate_setstate):
   def get_anisou(self):
     return [self.anisou]
 
+  def _get_one_class(self, gc):
+    import iotbx.pdb
+    get_class = iotbx.pdb.common_residue_names_get_class
+    atoms = self.root.atoms()
+    sentinel = atoms.reset_tmp(first_value=0, increment=0)
+    for model in self.root.models():
+      for chain in model.chains():
+        for conformer in chain.conformers():
+          for residue in conformer.residues():
+            if(get_class(name = residue.resname) == gc):
+              for atom in residue.atoms():
+                atom.tmp = 1
+    return (atoms.extract_tmp_as_size_t() == 1).iselection()
+
   def get_water(self):
     if (self.water is None):
-      import iotbx.pdb
-      get_class = iotbx.pdb.common_residue_names_get_class
-      atoms = self.root.atoms()
-      sentinel = atoms.reset_tmp(first_value=0, increment=0)
-      for model in self.root.models():
-        for chain in model.chains():
-          for conformer in chain.conformers():
-            for residue in conformer.residues():
-              if(get_class(name = residue.resname) == "common_water"):
-                for atom in residue.atoms():
-                  atom.tmp = 1
-      self.water = (atoms.extract_tmp_as_size_t() == 1).iselection()
+      self.water = self._get_one_class('common_water')
     return [self.water]
 
-  def get_ion(self):
+  def get_ion_ad_hoc(self):
     from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
     if self.ion is None:
       atoms = self.root.atoms()
@@ -352,6 +364,24 @@ class cache(slots_getstate_setstate):
           atom.tmp=1
       self.ion = (atoms.extract_tmp_as_size_t() == 1).iselection()
     return [self.ion]
+
+  def get_carbohydrate(self):
+    if (self.carbohydrate is None):
+      self.carbohydrate = self._get_one_class('common_saccharide')
+    return [self.carbohydrate]
+
+  def get_ion_get_class(self):
+    if (self.ion is None):
+      self.ion = self._get_one_class('common_element')
+    return [self.ion]
+
+  def get_ion(self):
+    return self.get_ion_get_class()
+
+  def get_small_molecule(self):
+    if (self.small_molecule is None):
+      self.small_molecule = self._get_one_class('common_small_molecule')
+    return [self.small_molecule]
 
   def get_protein(self):
     if self.protein is None:
@@ -537,8 +567,14 @@ class cache(slots_getstate_setstate):
   def sel_water(self):
     return self.union(iselections=self.get_water())
 
+  def sel_carbohydrate(self):
+    return self.union(iselections=self.get_carbohydrate())
+
   def sel_ion(self):
     return self.union(iselections=self.get_ion())
+
+  def sel_small_molecule(self):
+    return self.union(iselections=self.get_small_molecule())
 
   def sel_hetero(self):
     return self.union(iselections=self.get_hetero())
@@ -727,8 +763,12 @@ class cache(slots_getstate_setstate):
           result_stack.append(self.sel_single_atom_residue())
         elif (lword == "water"):
           result_stack.append(self.sel_water())
+        elif (lword == "carbohydrate"):
+          result_stack.append(self.sel_carbohydrate())
         elif (lword == "ion"):
           result_stack.append(self.sel_ion())
+        elif (lword == "small_molecule") or (lword == 'small'):
+          result_stack.append(self.sel_small_molecule())
         elif (lword == "hetero") or (lword == "hetatm"):
           result_stack.append(self.sel_hetero())
         elif (lword == "bfactor") or (lword == "occupancy"):

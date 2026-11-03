@@ -5,7 +5,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.program_template import ProgramTemplate
 from libtbx import easy_run
 from libtbx.utils import Sorry
-from iotbx.pdb.fetch import valid_pdb_id, fetch_and_write
+from iotbx.pdb.fetch import valid_pdb_id, fetch_and_write, fetch_and_write_masks
 from mmtbx.wwpdb import rcsb_web_services
 import os
 
@@ -25,9 +25,9 @@ fetch
     .short_caption = PDB ID(s)
     .input_size = 400
     .style = bold
-  action = *model data sequence half_maps all
+  action = *model data sequence half_maps masks all
     .type = choice(multi=True)
-    .caption = model_file(s) data_file(s) sequence half_maps
+    .caption = model_file(s) data_file(s) sequence half_maps masks
   convert_to_mtz = False
     .type = bool
     .caption = Try to convert X-ray data to mtz format
@@ -47,6 +47,8 @@ class Program(ProgramTemplate):
     iotbx.fetch_pdb 1yjp
   Get model and data(xray or cryo-em):
     iotbx.fetch_pdb 1yjp action=model+data
+  Get model, map, half maps and masks for cryo-em entry:
+    iotbx.fetch_pdb 6yvd action=model+data+half_maps+masks
   Get everything:
     iotbx.fetch_pdb 1yjp action=all
 """
@@ -66,7 +68,7 @@ class Program(ProgramTemplate):
       if not valid_pdb_id(pdb_id):
         raise Sorry("Invalid PDB code: %s" % pdb_id)
     for a in self.params.fetch.action:
-      if a not in ['model', 'data', 'sequence', 'half_maps', 'all']:
+      if a not in ['model', 'data', 'sequence', 'half_maps', 'masks', 'all']:
         raise Sorry("Unsupported action %s" % a)
 
   def define_entities_to_fetch(self, emdb_number):
@@ -82,11 +84,13 @@ class Program(ProgramTemplate):
       entities_to_fetch += ['sequence']
     if 'half_maps' in self.params.fetch.action and emdb_number:
       entities_to_fetch += ['em_half_map_1', 'em_half_map_2']
+    if 'masks' in self.params.fetch.action and emdb_number:
+      entities_to_fetch += ['em_mask']
 
     if 'all' in self.params.fetch.action:
       entities_to_fetch = ['model_pdb', 'model_cif', 'sequence']
       if emdb_number is not None:
-        entities_to_fetch += ['em_map','em_half_map_1', 'em_half_map_2']
+        entities_to_fetch += ['em_map','em_half_map_1', 'em_half_map_2', 'em_mask']
       else:
         entities_to_fetch += ['sf']
     return entities_to_fetch
@@ -100,6 +104,14 @@ class Program(ProgramTemplate):
       print("Fetching: PDB ID: %s, EMDB ID: %s" % (pdb_id, emdb_number), file=self.logger)
       entities_to_fetch = self.define_entities_to_fetch(emdb_number)
       for e in entities_to_fetch:
+        if e == 'em_mask':
+          # number of masks is not known in advance
+          self.output_filenames += fetch_and_write_masks(
+              id=pdb_id,
+              mirror=self.params.fetch.mirror,
+              emdb_number=emdb_number,
+              log=self.logger)
+          continue
         fn = fetch_and_write(
             id=pdb_id,
             entity=e,

@@ -35,7 +35,19 @@ HOW TO ADD A NEW RESPONSE FIELD
 
 # Bump CURRENT when the client adds new session_info fields.
 # Bump MIN_SUPPORTED only after a deprecation period (see BACKWARD_COMPATIBILITY.md).
-CURRENT_PROTOCOL_VERSION = 3
+#
+# Invariant: CURRENT_PROTOCOL_VERSION must be >= the highest version
+# in SESSION_INFO_FIELDS.  The validate_contract() function below
+# checks this; tst_contract_compliance.py (and tst_protocol_version.py)
+# fail if the invariant is violated, so drift is caught in CI.
+#
+# v116.10 Phase 2: bumped from 3 to 5 to match the v4 and v5 fields
+# (plan_has_pending_stages, asu_copies) that were registered without
+# updating this constant.
+# v120: bumped 5 -> 6 for plan_current_unrun_lead_program (Option 2a), then
+# 6 -> 7 for input_mtz_has_rfree (client-extracted R-free presence), then
+# 7 -> 8 for mtz_rfree_map (per-file R-free map, v120.2 parity fix).
+CURRENT_PROTOCOL_VERSION = 9
 MIN_SUPPORTED_PROTOCOL_VERSION = 1
 
 
@@ -53,6 +65,57 @@ MIN_SUPPORTED_PROTOCOL_VERSION = 1
 #
 # NOTE on mutable defaults: The _normalize function below calls copy() on
 # dict/list defaults, so registering {} or [] here is safe.
+#
+# ---------------------------------------------------------------------------
+# REGISTERING A FIELD HERE DOES NOT MAKE IT CROSS THE BOUNDARY.
+#
+# session_info is not transported as a whole.  It passes through TWO
+# EXPLICIT ALLOW-LISTS, and a field absent from either is dropped
+# silently -- normalize_session_info then supplies the default and
+# nothing looks wrong:
+#
+#     ai_agent.py        session_info["x"] = ...            (produce)
+#     api_client.build_session_state                        (COPY: allow-list 1)
+#     api_client.build_request_v2                           (passes session_state
+#                                                            through unchanged)
+#     run_ai_agent.run   session_info["x"] = session_state["x"]
+#                                                           (COPY: allow-list 2)
+#     perceive / consumers  session_info.get("x", default)  (consume)
+#
+# THERE USED TO BE A THIRD.  build_request_v2 rebuilt session_state
+# field by field -- a second allow-list twenty lines after
+# build_session_state built the dict, adding nothing and sanitizing
+# nothing.  ELEVEN declared-and-consumed fields were lost there across
+# two audits, including two fixes that had been made and marked
+# verified: client_protocol_version ("the server saw v1 for every
+# client") and log_program (the entire purpose of protocol v9, which
+# had therefore never once worked).  Both were applied at allow-list 1
+# and discarded at the second, while a check that searched
+# api_client.py for the field name passed.
+#
+# That block now passes session_state through, applying only coercions
+# and derived flags.  Do not reintroduce an enumeration there.
+#
+# So this list is neither necessary nor sufficient for transport:
+#
+#   - Some declared fields travel as TOP-LEVEL request arguments instead,
+#     not via session_state: experiment_type, directives, best_files,
+#     rfree_mtz, force_retry_program, recovery_strategies,
+#     plan_has_pending_stages.
+#   - build_session_state also carries fields NOT declared here, e.g.
+#     structure_model, strategy_memory, validation_history, user_advice.
+#
+# Eleven defects of exactly this shape have been found across two audits.
+#
+# WHEN ADDING A FIELD: add ALL THREE copies, then run
+#     phenix_regression/ai_tools/tst_session_state_round_trip.py
+# which asserts that every field build_session_state produces arrives in
+# the request.  It is the only check here that tests the VALUE crossing
+# rather than the NAME appearing -- a source scan is satisfied by a line
+# in the wrong function.
+#
+# Also run tests/tst_transport_surfaces.py.
+# ---------------------------------------------------------------------------
 
 SESSION_INFO_FIELDS = [
     # --- v1: original fields ------------------------------------------------
@@ -69,6 +132,11 @@ SESSION_INFO_FIELDS = [
      "Parsed user directives dict (stop conditions, preferences, etc.)"),
 
     # --- v2: error recovery & user interaction ------------------------------
+
+    # NOT TRANSPORTED (audit, 2026-08): set by the client, carried by
+    # neither allow-list, read by nothing on the server.  Left declared
+    # so that removing it is a deliberate decision rather than a silent
+    # one -- wire it or drop it.
     ("rfree_resolution",       None,  2,
      "Resolution limit of R-free flags in Angstroms (float or None)"),
 
@@ -91,8 +159,11 @@ SESSION_INFO_FIELDS = [
     ("unplaced_model_cell",    None,  3,
      "Pre-extracted CRYST1 unit cell as [a, b, c, alpha, beta, gamma] or None"),
 
+    # NOT TRANSPORTED (audit, 2026-08): same as rfree_resolution --
+    # produced client-side, no carrier, no consumer.
     ("model_hetatm_residues",  None,  3,
      "Pre-extracted HETATM residues as [[chain, resseq, resname], ...] or None"),
+
 
     ("client_protocol_version", 1,    3,
      "Protocol version of the sending client (int). "
@@ -108,6 +179,58 @@ SESSION_INFO_FIELDS = [
     ("asu_copies",              None,  5,
      "Number of copies in the ASU (int or None). "
      "From user directives or xtriage log analysis."),
+
+    # --- v6: Option 2a reactive-deviation hold (v120) --------------------
+    ("plan_current_unrun_lead_program", "", 6,
+     "Lead program (programs[0], e.g. phenix.autobuild) of the current "
+     "ACTIVE plan stage when that stage has not run yet.  PERCEIVE injects "
+     "it into valid_programs so a stage held active by a reactive deviation "
+     "gets its lead program offered next cycle.  Empty string when there is "
+     "no such program."),
+
+    # --- v7: client-extracted input-MTZ R-free presence (v120) -----------
+    ("input_mtz_has_rfree", None, 7,
+     "Tri-state bool: whether the INPUT data MTZ already contains an R-free "
+     "flag array (True), confirmed lacks one (False), or is undetermined "
+     "(None).  Extracted CLIENT-side by ai_agent.py (inspect_mtz on the "
+     "original data MTZ) because the server cannot read client file paths.  "
+     "command_builder._input_mtz_rfree_state consumes it to decide the "
+     "phenix.refine generate-flags invariant: generate ONLY on confirmed "
+     "False, never overwrite an existing test set, and treat None "
+     "conservatively (do not generate).  None for old clients that predate "
+     "this field."),
+
+    # --- v8: per-file R-free map (v120.2) --------------------------------
+    ("mtz_rfree_map", None, 8,
+     "Dict {mtz_basename: bool} giving, for every LOCAL MTZ the client could "
+     "inspect (original inputs AND intermediate outputs like PHASER.1.mtz), "
+     "whether it contains an R-free flag array.  Extracted CLIENT-side by "
+     "ai_agent.py each cycle (the server cannot read client paths, so this is "
+     "how server and local builds stay identical).  command_builder's R-free "
+     "guard looks up the SELECTED data MTZ's basename here for a per-file, "
+     "parity-safe answer; this supersedes the original-input-only scalar "
+     "input_mtz_has_rfree for the actually-refined file.  None/absent when no "
+     "local MTZ was inspectable."),
+
+    # --- v9: the client tells the server what it ran ------------------------
+    # log_content is "Log text from previous command".  The dispatching
+    # client knows exactly which program produced it -- _execute_command
+    # writes the log as "%s_%s.log" % (program, cycle) -- yet the server
+    # re-derives it by matching markers against the log text, which is
+    # wrong on 10 of 19 real logs.  Observed consequence: a phenix.refine
+    # log labelled phenix.molprobity satisfied the validation_done guard
+    # in analyze_metrics_trend, which exists to stop the agent declaring
+    # success before validation has run.
+    #
+    # Both default to None: a client that does not send them (an older
+    # client, or a GUI-invoked analysis) leaves the server to infer as
+    # before.  Nothing requires a client to send a registered field.
+    ("log_program",            None,  9,
+     "Program that produced log_content, from the dispatching client "
+     "(str or None)"),
+
+    ("log_cycle",              None,  9,
+     "Cycle number that produced log_content (int or None)"),
 ]
 
 # Convenience lookup: field_name -> (default, version, description)
@@ -160,7 +283,7 @@ NEXT_MOVE_FIELDS = [
     "command",             # str: the phenix command to run
     "program",             # str: program name (e.g. "phenix.refine")
     "explanation",         # str: LLM reasoning text
-    "process_log",         # str: detailed agent thought-process log
+    "strategy",            # dict: the strategy block the server chose
 ]
 
 
@@ -247,7 +370,6 @@ def check_client_version(session_info):
             "command": "STOP",
             "program": "STOP",
             "explanation": message,
-            "process_log": "",
         }
         return ("unsupported_client", message, next_move)
 
@@ -272,3 +394,53 @@ def get_deprecation_warnings(session_info):
         )
 
     return warnings
+
+
+def validate_contract():
+    """Check that contract.py's protocol-version constants are internally consistent.
+
+    Catches drift between CURRENT_PROTOCOL_VERSION and the highest version
+    registered in SESSION_INFO_FIELDS.  Returns (ok, errors) so callers
+    can decide how to handle violations — tests assert on the result,
+    runtime code can log and proceed.
+
+    Returns:
+        (bool, list[str]):  (True, []) if all invariants hold.
+                            (False, [...]) with one message per violation.
+
+    Invariants checked:
+      1. CURRENT_PROTOCOL_VERSION >= max version in SESSION_INFO_FIELDS
+         (otherwise old clients comparing against CURRENT get wrong warnings,
+         and the documented protocol-version contract is broken)
+      2. MIN_SUPPORTED_PROTOCOL_VERSION <= CURRENT_PROTOCOL_VERSION
+         (otherwise no client can ever satisfy MIN at the current protocol)
+      3. MIN_SUPPORTED_PROTOCOL_VERSION >= 1
+         (versions start at 1; 0 or negative is undefined)
+    """
+    errors = []
+
+    if SESSION_INFO_FIELDS:
+        max_field_version = max(
+            ver for _, _, ver, _ in SESSION_INFO_FIELDS)
+        if CURRENT_PROTOCOL_VERSION < max_field_version:
+            errors.append(
+                "CURRENT_PROTOCOL_VERSION (%d) is less than the highest "
+                "registered field version (%d). Bump "
+                "CURRENT_PROTOCOL_VERSION to at least %d when adding "
+                "new fields." % (CURRENT_PROTOCOL_VERSION,
+                                 max_field_version, max_field_version))
+
+    if MIN_SUPPORTED_PROTOCOL_VERSION > CURRENT_PROTOCOL_VERSION:
+        errors.append(
+            "MIN_SUPPORTED_PROTOCOL_VERSION (%d) is greater than "
+            "CURRENT_PROTOCOL_VERSION (%d). No client could ever "
+            "satisfy this." % (MIN_SUPPORTED_PROTOCOL_VERSION,
+                               CURRENT_PROTOCOL_VERSION))
+
+    if MIN_SUPPORTED_PROTOCOL_VERSION < 1:
+        errors.append(
+            "MIN_SUPPORTED_PROTOCOL_VERSION (%d) is less than 1. "
+            "Protocol versions start at 1."
+            % MIN_SUPPORTED_PROTOCOL_VERSION)
+
+    return (len(errors) == 0, errors)

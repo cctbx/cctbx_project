@@ -67,6 +67,7 @@ class manager(object):
           par_initial.append(val)
         constrained_groups_selections.append(ss)
       minimized = None
+      n_iterations_total, n_fun_total = 0, 0
       for macro_cycle in range(number_of_macro_cycles):
         if(minimized is not None): par_initial = minimized.par_min
         minimized = minimizer(
@@ -75,6 +76,10 @@ class manager(object):
           constrained_groups_selections = constrained_groups_selections,
           par_initial                   = par_initial,
           max_number_of_iterations      = max_number_of_iterations)
+        mm = getattr(minimized, "minimizer", None)
+        if(mm is not None):
+          n_iterations_total += mm.iter()
+          n_fun_total        += mm.nfun()
         if(minimized is not None): par_initial = minimized.par_min
         set_refinable_parameters(
           xray_structure     = fmodels.fmodel_xray().xray_structure,
@@ -94,6 +99,9 @@ class manager(object):
       assert flex.min(refined_occ) >= occupancy_min
       assert flex.max(refined_occ) <= occupancy_max
       self.show(fmodels= fmodels, log = log, message="occupancy refinement: end")
+      import mmtbx.refinement
+      mmtbx.refinement.show_number_of_minimizer_iterations(
+        n_iterations = n_iterations_total, n_fun = n_fun_total, log = log)
 
   def show(self, fmodels, message, log):
     if(log is not None):
@@ -281,6 +289,29 @@ def extract_partial_occupancy_selections(hierarchy):
             result.append([i_seqs])
   return result
 
+def occupancy_selections_wrapper(
+      model,
+      add_water                          = False,
+      other_individual_selection_strings = None,
+      other_constrained_groups           = None,
+      remove_selection                   = None,
+      as_flex_arrays                     = True,
+      constrain_correlated_3d_groups     = False,
+      log                                = None,
+      ungrouped                          = False):
+  result = occupancy_selections(
+    model                              = model,
+    add_water                          = add_water,
+    other_individual_selection_strings = other_individual_selection_strings,
+    other_constrained_groups           = other_constrained_groups,
+    remove_selection                   = remove_selection,
+    as_flex_arrays                     = as_flex_arrays,
+    constrain_correlated_3d_groups     = constrain_correlated_3d_groups,
+    log                                = log)
+  if ungrouped:
+    result = [[v] for sub in result for v in sub]
+  return result
+
 def occupancy_selections(
       model,
       add_water                          = False,
@@ -464,11 +495,12 @@ def occupancy_selections(
       water_selection = list(water_selection)
       wocc = model.get_hierarchy().atoms().extract_occ()
       wsel = model.solvent_selection().iselection()
-      wremove = []
       for i in wsel:
-         if wocc[i]<1.e-6:
-           water_selection.remove(i)
-         if i in occ_groups_of_more_than_one:
+         # Drop zero-occupancy and multi-conformer solvent atoms.
+         # Single IF so no chance to call water_seelction.remove(i)
+         # twice on the same water.
+         if i in water_selection and (
+              wocc[i]<1.e-6 or i in occ_groups_of_more_than_one):
            water_selection.remove(i)
       result = add_occupancy_selection(
         result     = result,

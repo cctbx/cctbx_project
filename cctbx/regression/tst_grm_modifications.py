@@ -782,6 +782,119 @@ bond pdb="ZN    ZN A 510 "
   """)
 
 
+raw_records_screw = """\
+CRYST1   46.950   60.690   82.990  90.00  89.98  90.00 P 1 21 1
+ATOM   2302  N   HIS C  31      18.364   5.184   1.936  1.00 16.14           N
+ATOM   2303  CA  HIS C  31      17.653   5.078   0.633  1.00 17.75           C
+ATOM   2304  C   HIS C  31      16.166   4.758   0.813  1.00 16.73           C
+ATOM   2305  O   HIS C  31      15.834   3.861   1.577  1.00 14.16           O
+ATOM   2306  CB  HIS C  31      18.228   3.969  -0.260  1.00 17.75           C
+ATOM   2307  CG  HIS C  31      19.700   4.102  -0.561  1.00 20.52           C
+ATOM   2308  ND1 HIS C  31      20.197   4.598  -1.758  1.00 21.19           N
+ATOM   2309  CD2 HIS C  31      20.780   3.746   0.172  1.00 22.84           C
+ATOM   2310  CE1 HIS C  31      21.524   4.565  -1.724  1.00 19.86           C
+ATOM   2311  NE2 HIS C  31      21.904   4.077  -0.557  1.00 23.46           N
+HETATM 4278 ZN    ZN D 130      23.497 -27.648  -0.694  1.00 18.12          ZN
+END
+"""
+
+raw_records_long_bond = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1  O   HOH A   1      19.000  10.000  10.000  1.00 20.00           O
+HETATM    2  H1  HOH A   1      27.000  10.000  10.000  1.00 20.00           H
+HETATM    3  H2  HOH A   1      19.240  10.930  10.000  1.00 20.00           H
+HETATM    4 ZN    ZN B   1       5.000   5.000   5.000  1.00 20.00          ZN
+HETATM    5  O   HOH C   1       5.000   5.000   7.100  1.00 20.00           O
+END
+"""
+
+raw_records_long_bond_inside_cell = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+HETATM    1  O   HOH A   1      10.000  10.000  10.000  1.00 20.00           O
+HETATM    2  H1  HOH A   1      18.000  10.000  10.000  1.00 20.00           H
+HETATM    3  H2  HOH A   1      10.240  10.930  10.000  1.00 20.00           H
+HETATM    4 ZN    ZN B   1      10.000  10.000   3.000  1.00 20.00          ZN
+HETATM    5  O   HOH C   1      10.000  10.000   0.900  1.00 20.00           O
+END
+"""
+
+def _model_without_mcl(records):
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.restraints_library.mcl=False
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(source_info=None, lines=records),
+      log=null_out())
+  model.process(pdb_interpretation_params=params, make_restraints=True)
+  return model
+
+def _bond_distances(model, i_seq, j_seq):
+  grm = model.get_restraints_manager().geometry
+  uc = model.crystal_symmetry().unit_cell()
+  sites_frac = uc.fractionalize(model.get_sites_cart())
+  result = []
+  for i, row in enumerate(grm.shell_sym_tables[0]):
+    for j, ops in row.items():
+      if set((i, j)) != set((i_seq, j_seq)): continue
+      for op in ops:
+        result.append(uc.distance(sites_frac[i], op*sites_frac[j]))
+  return result
+
+def exercise_bond_over_screw_axis_reversed_pair(mon_lib_srv, ener_lib):
+  """
+  3dgd ZN D 130 - NE2 HIS C 31 across the 2-fold screw axis. The pair
+  generator may return the pair as (j, i); its rt_mx_ji was used without
+  inversion, the bond went to a symmetry mate 62 A away and the pair table
+  asserted (j_sym >= 0). Both orders of i_seqs must give the 2.42 A bond.
+  """
+  for i_seqs in [(10, 9), (9, 10)]:
+    model = _model_without_mcl(raw_records_screw)
+    grm = model.get_restraints_manager().geometry
+    proxy = geometry_restraints.bond_simple_proxy(
+        i_seqs=i_seqs, distance_ideal=2.1, weight=400)
+    grm.add_new_bond_restraints_in_place(
+        proxies=[proxy], sites_cart=model.get_sites_cart())
+    d = _bond_distances(model, 9, 10)
+    assert len(d) == 1 and approx_equal(d[0], 2.42, eps=0.01), (i_seqs, d)
+
+def exercise_add_bond_with_long_existing_bond(mon_lib_srv, ener_lib):
+  """
+  The asu buffer took the longest distance of the last shell table (1-4) only.
+  An existing bond longer than that and than 5 A (an H not yet placed, here
+  HOH H1 8 A from O and across the cell edge) asserted (j_sym >= 0) when any
+  new bond was added.
+  """
+  model = _model_without_mcl(raw_records_long_bond)
+  grm = model.get_restraints_manager().geometry
+  proxy = geometry_restraints.bond_simple_proxy(
+      i_seqs=(3, 4), distance_ideal=2.1, weight=400)
+  grm.add_new_bond_restraints_in_place(
+      proxies=[proxy], sites_cart=model.get_sites_cart())
+  assert grm.is_bonded_atoms(3, 4)
+  assert grm.is_bonded_atoms(0, 1)
+
+def exercise_long_existing_bond_keeps_max_distance(mon_lib_srv, ener_lib):
+  """
+  An existing bond longer than max_distance_between_connecting_atoms (HOH H1
+  8 A from O) must widen only the asu buffer, not the distance limit for new
+  bonds: a 7 A ZN-O proxy is still rejected at the default 5 A while a 2.1 A
+  ZN-O proxy in the same call is added.
+  """
+  model = _model_without_mcl(raw_records_long_bond_inside_cell)
+  grm = model.get_restraints_manager().geometry
+  assert grm.is_bonded_atoms(0, 1)
+  assert not grm.is_bonded_atoms(0, 3)
+  proxies = [
+      geometry_restraints.bond_simple_proxy(
+          i_seqs=(3, 0), distance_ideal=2.1, weight=400),
+      geometry_restraints.bond_simple_proxy(
+          i_seqs=(3, 4), distance_ideal=2.1, weight=400)]
+  grm.add_new_bond_restraints_in_place(
+      proxies=proxies, sites_cart=model.get_sites_cart(),
+      max_distance_between_connecting_atoms=5)
+  assert not grm.is_bonded_atoms(0, 3)
+  assert grm.is_bonded_atoms(3, 4)
+  assert grm.is_bonded_atoms(0, 1)
+
 def exercise():
   mon_lib_srv = None
   ener_lib = None
@@ -803,6 +916,9 @@ def exercise():
     exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib)
     exercise_add_new_bond_when_long_bond_across_ASU(mon_lib_srv, ener_lib)
     exercise_add_new_bond_between_same_atoms(mon_lib_srv, ener_lib)
+    exercise_bond_over_screw_axis_reversed_pair(mon_lib_srv, ener_lib)
+    exercise_add_bond_with_long_existing_bond(mon_lib_srv, ener_lib)
+    exercise_long_existing_bond_keeps_max_distance(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()

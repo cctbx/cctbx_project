@@ -11,6 +11,11 @@ __pycache__/
 # Claude
 .claude
 
+# Superpowers plugin: specs/plans, brainstorm and SDD workspaces, worktrees
+/docs
+.superpowers
+.worktrees
+
 # Text editor files
 *~
 *.swp
@@ -76,5 +81,4 @@ mmtbx/suitename/*.show.txt
 *sublime*
 
 # Local Claude AI guidance files (not for shared use)
-CLAUDE.md
 */CLAUDE.md

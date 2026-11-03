@@ -75,6 +75,15 @@ class ErrorRecovery:
         all_choices: All available options
         selected_label: The main label extracted (e.g., "FTOXD3")
         selected_label_pair: The full label pair (e.g., "FTOXD3,SIGFTOXD3")
+        strip_flags: List of flag-name prefixes to REMOVE from the
+            retry command (v119.H17).  Used by ``strip_parameter``-
+            resolution errors (e.g., missing_phib_input_map_file,
+            rfree_flags_mismatch).  Each entry is a parameter name
+            like "map_file" or "xray_data.r_free_flags.generate";
+            the executor matches "<name>=<value>" in the retry
+            command and removes it.  See PATCH_NOTES_H17 for the
+            executor-side regex contract (must handle quoted values
+            with spaces AND PHIL-style spacing around the equals).
     """
     error_type: str
     affected_file: str
@@ -85,6 +94,7 @@ class ErrorRecovery:
     all_choices: List[str] = field(default_factory=list)
     selected_label: str = ""
     selected_label_pair: str = ""
+    strip_flags: List[str] = field(default_factory=list)
 
 
 # =============================================================================
@@ -134,7 +144,7 @@ class ErrorAnalyzer:
             return {}
 
         try:
-            with open(yaml_path, 'r') as f:
+            with open(yaml_path, 'r', encoding='utf-8') as f:
                 return yaml.safe_load(f) or {}
         except Exception as e:
             print(f"Warning: Could not load recoverable_errors.yaml: {e}")
@@ -145,7 +155,8 @@ class ErrorAnalyzer:
     # =========================================================================
 
     def analyze(self, log_text: str, program: str,
-                context: Dict[str, Any], session) -> Optional[ErrorRecovery]:
+                context: Dict[str, Any], session,
+                full_log: Optional[str] = None) -> Optional[ErrorRecovery]:
         """
         Analyze log text for recoverable errors.
 
@@ -183,7 +194,32 @@ class ErrorAnalyzer:
             return None
 
         # 3. Extract structured information
-        error_info = self._extract_error_info(log_text, error_type)
+        #
+        # DETECT on log_text, EXTRACT from full_log.  They differ:
+        # ai_agent passes result_text -- the error truncated to 500
+        # characters -- as log_text, and some extractions need a line
+        # that sits OUTSIDE that window.
+        #
+        # autobuild_hl_without_phib is file-keyed and reads the offending
+        # MTZ from "Getting column labels from <X> for input data file".
+        # On a real run that line sat 182 characters BEFORE the error
+        # block begins, so it was never inside the 500-character window;
+        # _resolve_add_parameters then correctly declined (it will not
+        # fire a recovery whose flag would key to "") and the recovery
+        # could never run at all.
+        #
+        # Why not simply pass the whole log as log_text: detection would
+        # see it too, and rfree_flags_missing's pattern "No array of
+        # R-free flags found" appears as an INFORMATIONAL line in polder
+        # logs that SUCCEED.  A polder failure for an unrelated reason
+        # would then be offered force_retry phenix.refine -- a wrong
+        # recovery that this split avoids.  Detection keeps the error
+        # text; only extraction gets the wider context.
+        #
+        # full_log defaults to log_text, so existing callers are
+        # unaffected.
+        error_info = self._extract_error_info(
+            log_text, error_type, full_log=full_log)
         if not error_info:
             return None
 
@@ -273,7 +309,8 @@ class ErrorAnalyzer:
     # =========================================================================
 
     def _extract_error_info(self, log_text: str,
-                            error_type: str) -> Optional[Dict[str, Any]]:
+                            error_type: str,
+                            full_log: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Extract structured information from error message.
 
@@ -286,7 +323,55 @@ class ErrorAnalyzer:
         elif error_type == "ambiguous_experimental_phases":
             return self._extract_ambiguous_labels_info(log_text, error_def, error_type)
 
-        # Future error types would be handled here
+        # v119.H17: strip_parameter resolutions don't need extracted
+        # info (no choices to parse, no labels to classify — the YAML
+        # `strip_parameters` list is the entire recovery payload).
+        # Return a non-empty marker dict so analyze() doesn't bail at
+        # the "if not error_info" check.
+        if error_def.get("resolution") == "strip_parameter":
+            return {"resolution": "strip_parameter"}
+
+        # force_retry resolutions need no extracted info either — the retry is
+        # rebuilt downstream by the BUILD node.  Return a non-empty marker so
+        # analyze() doesn't bail at the "if not error_info" check (line ~197).
+        if error_def.get("resolution") == "force_retry":
+            return {"resolution": "force_retry"}
+
+        # add_parameters resolutions (e.g. autobuild_hl_without_phib) add a fixed
+        # flag (use_hl_if_present=False) on retry.  The flag is FILE-KEYED, so we
+        # must extract the offending data MTZ from the log here — without it the
+        # recovery keys to "" , matches no selected file, and the flag is
+        # silently dropped.
+        #
+        # Use the LAST match, not the first: autobuild prints "Getting column
+        # labels from <X> for input data file" for several MTZs earlier in the
+        # same log buffer (e.g. an AutoSol internal data file), and the file that
+        # actually triggered THIS abort is the most recent one before it.  A
+        # first-match grab keys the recovery to the wrong file -> the flag never
+        # reaches the reselected data MTZ -> silent no-op.  Fall back to the
+        # "Using ... for refinement" line (also last-match).
+        if error_def.get("resolution") == "add_parameters":
+            # ONLY this branch reads full_log.  The file line lives
+            # outside the 500-character error window ai_agent passes, so
+            # without it the recovery keys to "" and declines -- which is
+            # why autobuild_hl_without_phib had never once fired.
+            #
+            # Deliberately NOT applied to the other branches.
+            # ambiguous_data_labels extracts its label CHOICES from text
+            # printed INSIDE the error block; given the whole log it
+            # picks up an earlier, unrelated "Possible choices" section
+            # and selects a label from a previous failure.  Measured:
+            # IMEAN (correct) becomes FP (from a prior block).
+            search_text = full_log or log_text
+            ms = re.findall(
+                r"Getting column labels from (\S+\.mtz) for input data file",
+                search_text)
+            if not ms:
+                ms = re.findall(
+                    r"Using (\S+\.mtz) for refinement", search_text)
+            return {"resolution": "add_parameters",
+                    "affected_file": ms[-1] if ms else ""}
+
         return None
 
     def _extract_ambiguous_labels_info(self, log_text: str,
@@ -379,8 +464,158 @@ class ErrorAnalyzer:
         elif error_type == "ambiguous_experimental_phases":
             return self._resolve_ambiguous_phases(error_info, program, context)
 
-        # Future error types would be handled here
+        # v119.H17: generic strip_parameter resolution.  Any error
+        # whose YAML declares `resolution: strip_parameter` and
+        # provides a `strip_parameters` list is dispatched here.
+        # Used by:
+        #   - missing_phib_input_map_file (the H17 trigger)
+        #   - rfree_flags_mismatch (retroactive — the resolution was
+        #     declared in YAML but had no code wiring before H17)
+        error_def = self._config.get("errors", {}).get(error_type, {})
+        if error_def.get("resolution") == "strip_parameter":
+            return self._resolve_strip_parameter(error_type, error_def, program)
+
+        # rfree_flags_missing (and any future force_retry error): the fix is
+        # not a flag edit but a retry — the server-side BUILD node rebuilds the
+        # command with empty files={}, re-selecting the locked R-free MTZ (or
+        # falling back to generate=True).  See _resolve_force_retry.
+        if error_def.get("resolution") == "force_retry":
+            return self._resolve_force_retry(error_type, error_def, program)
+
+        # add_parameters (e.g. autobuild_hl_without_phib): retry with a fixed
+        # flag added, keyed to the affected data MTZ so command_builder merges it
+        # when that file is reselected.  Passes error_info for the affected_file.
+        if error_def.get("resolution") == "add_parameters":
+            return self._resolve_add_parameters(
+                error_type, error_def, program, error_info)
+
         return None
+
+    def _resolve_strip_parameter(self, error_type: str,
+                                 error_def: Dict[str, Any],
+                                 program: str) -> Optional[ErrorRecovery]:
+        """
+        Build a recovery that strips one or more parameters from the
+        retry command.
+
+        Generic — works for any error whose YAML declares
+        ``resolution: strip_parameter`` and a non-empty
+        ``strip_parameters`` list.  Examples:
+
+        - ``missing_phib_input_map_file``: strip ``map_file=``,
+          ``input_map_file=``, etc.  Used when autobuild is given a
+          map_file MTZ lacking PHIB phase columns.
+        - ``rfree_flags_mismatch``: strip
+          ``xray_data.r_free_flags.generate=True``.  Used when the
+          input MTZ already has R-free flags.
+
+        The actual stripping happens in the executor (see
+        PATCH_NOTES_H17 for the contract regex).  This handler just
+        emits the list of flag-name prefixes to remove.
+
+        Args:
+            error_type: The YAML error key (e.g.
+                "missing_phib_input_map_file").
+            error_def: The full YAML entry for this error.
+            program: The program that produced the error (for
+                retry_program).
+
+        Returns:
+            ErrorRecovery with non-empty ``strip_flags``, or None if
+            the YAML is malformed (e.g. empty strip_parameters list).
+        """
+        strip_list = error_def.get("strip_parameters", [])
+        if not strip_list:
+            return None
+
+        description = error_def.get("description", error_type)
+        return ErrorRecovery(
+            error_type=error_type,
+            affected_file="",      # not specific to a single file
+            flags={},              # nothing to ADD
+            strip_flags=list(strip_list),
+            reason=("Stripping parameter(s) %s from %s retry: %s"
+                    % (strip_list, program, description)),
+            retry_program=program,
+            selected_choice="",
+        )
+
+    def _resolve_force_retry(self, error_type: str,
+                             error_def: Dict[str, Any],
+                             program: str) -> Optional[ErrorRecovery]:
+        """
+        Build a recovery that simply forces a retry of the program — with
+        NO flag additions and NO flag strips.
+
+        Mirror of _resolve_strip_parameter, but for errors whose YAML declares
+        ``resolution: force_retry``.  The fix lives downstream: the forced
+        retry is rebuilt by the server-side BUILD node / command_builder, which
+        re-selects files with empty ``files={}`` — substituting the locked
+        R-free MTZ (``context.rfree_mtz``) for the data slot when one is locked
+        (preserving R-free flag continuity), or falling back to
+        ``generate=True`` when no MTZ is locked.  This handler therefore emits
+        an ErrorRecovery with empty ``flags`` AND empty ``strip_flags``; the
+        only payload is the force-retry signal (``retry_program``), which
+        _handle_recovery turns into ``set_force_retry_program``.
+
+        Used by:
+        - ``rfree_flags_missing``: "No array of R-free flags found" — retry so
+          the builder re-selects the locked R-free MTZ.
+
+        Args:
+            error_type: The YAML error key (e.g. "rfree_flags_missing").
+            error_def: The full YAML entry for this error.
+            program: The program that produced the error (fallback retry target
+                if the YAML omits ``retry_program``).
+
+        Returns:
+            ErrorRecovery with empty flags and empty strip_flags, carrying the
+            retry_program signal.
+        """
+        retry_program = error_def.get("retry_program", program)
+        description = error_def.get("description", error_type)
+        return ErrorRecovery(
+            error_type=error_type,
+            affected_file="",      # not specific to a single file
+            flags={},              # nothing to ADD
+            strip_flags=[],        # nothing to STRIP
+            reason=("Forcing retry of %s; builder re-selects files "
+                    "(incl. locked R-free MTZ): %s"
+                    % (retry_program, description)),
+            retry_program=retry_program,
+            selected_choice="",
+        )
+
+    def _resolve_add_parameters(self, error_type: str, error_def: dict,
+                                program: str,
+                                error_info: Dict[str, Any]) -> Optional[ErrorRecovery]:
+        """Add fixed parameters on retry (e.g. use_hl_if_present=False).
+
+        The parameters in the YAML ``add_parameters`` map are returned as a
+        FILE-KEYED recovery (keyed to ``error_info['affected_file']``) so
+        command_builder merges them — and the post-assembly injection appends
+        them to the command string — when that file is reselected on retry.
+        Modelled on the file-keyed obs_labels recovery; NOT a global flag.
+
+        If no affected_file could be extracted, decline recovery (return None)
+        rather than fire a recovery whose flag would key to "" and silently
+        never reach the command.
+        """
+        add = dict(error_def.get("add_parameters", {}))
+        affected_file = error_info.get("affected_file", "")
+        retry_program = error_def.get("retry_program", program)
+        if not affected_file or not add:
+            return None
+        return ErrorRecovery(
+            error_type=error_type,
+            affected_file=affected_file,
+            flags=add,
+            strip_flags=[],
+            reason=("Adding %s on retry of %s (%s)"
+                    % (add, retry_program, error_type)),
+            retry_program=retry_program,
+            selected_choice="",
+        )
 
     def _resolve_ambiguous_labels(self, error_info: Dict[str, Any],
                                   program: str,
@@ -790,7 +1025,7 @@ class DiagnosisDetector:
             return {}
 
         try:
-            with open(yaml_path, 'r') as f:
+            with open(yaml_path, 'r', encoding='utf-8') as f:
                 return yaml.safe_load(f) or {}
         except Exception as e:
             print(f"Warning: Could not load diagnosable_errors.yaml: {e}")

@@ -59,7 +59,7 @@ standard_file_extensions = {
   'sdf' : ['sdf'],
   'rosetta' : ['gz'],
 }
-compression_extensions = ["gz", "Z", "bz2", "zip"] # gz and bz2 work with maps... gz, Z and bz2 work with models
+compression_extensions = ["gz", "Z", "bz2", "zip", "xz", "lzma", "zst", "zstd"] # gz and bz2 work with maps... gz, Z and bz2 work with models
 
 standard_file_descriptions = {
   'pdb'  : "Model",
@@ -566,7 +566,6 @@ class any_file_input(object):
     Extract the crystal symmetry (if any).  Only valid for model (PDB/mmCIF)
     and reflection files.
     """
-    from cctbx import crystal
     if(self._file_type == "pdb"):
       return self._file_object.input.crystal_symmetry()
     elif(self._file_type == "hkl"):

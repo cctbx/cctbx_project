@@ -290,3 +290,20 @@ def get_anthropic_handler():
         max_delay=120.0,  # Up to 2 minutes
         decay_time=300.0
     )
+
+
+def get_portkey_handler():
+    """Get handler configured for the Portkey (Azure-OpenAI) gateway.
+
+    v120: Portkey is its own provider with its own handler so that
+    rate-limit metrics, retry state, and failure logging stay separate from
+    the direct-OpenAI handler (they share OpenAI-compatible payloads but are
+    operationally distinct backends).  Config mirrors the OpenAI handler.
+    """
+    return RateLimitHandler.get_handler(
+        "portkey_api",
+        max_retries=5,
+        base_delay=1.0,
+        max_delay=120.0,  # Up to 2 minutes
+        decay_time=300.0
+    )

@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 import mmtbx.programs.fmodel
 import mmtbx.utils
 import iotbx.pdb
-import libtbx.phil.command_line
 import sys
 import math
 

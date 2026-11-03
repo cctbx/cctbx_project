@@ -69,12 +69,12 @@ def test_with_setup_and_teardown():
     try:
         # Test logic
         test_file = os.path.join(temp_dir, "test.txt")
-        with open(test_file, 'w') as f:
+        with open(test_file, 'w', encoding='utf-8') as f:
             f.write("test content")
 
         assert os.path.exists(test_file), "File should exist"
 
-        with open(test_file, 'r') as f:
+        with open(test_file, 'r', encoding='utf-8') as f:
             content = f.read()
         assert content == "test content", "Content should match"
 

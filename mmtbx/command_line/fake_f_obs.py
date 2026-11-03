@@ -17,7 +17,6 @@ from mmtbx.utils import run_reduce_with_timeout
 import mmtbx.tls.tools
 import mmtbx.f_model
 import iotbx.phil
-import mmtbx.masks
 from libtbx.utils import Sorry
 from six.moves import range
 import mmtbx.model

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.geometry_restraints
-from mmtbx.validation import rotalyze
+from mmtbx.validation import ramalyze, rotalyze
 from mmtbx.utils import rotatable_bonds
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.monomer_library
@@ -12,6 +12,7 @@ from mmtbx import secondary_structure
 from scitbx.matrix import rotate_point_around_axis
 from libtbx.str_utils import make_sub_header
 from mmtbx.geometry_restraints.torsion_restraints import utils
+import math
 import sys
 import time
 import iotbx
@@ -71,10 +72,10 @@ reference_model
   main_chain = True
     .type = bool
     .help = Include dihedrals formed by main chain atoms
-  side_chain = True
+  side_chain = False
     .type = bool
     .help = Include dihedrals formed by side chain atoms
-  fix_outliers = True
+  fix_outliers = False
     .type = bool
     .help = Try to fix rotamer outliers in refined model
   strict_rotamer_matching = False
@@ -104,10 +105,75 @@ reference_model
       .type=path
       .optional=True
       .short_caption = Reference model for this restraint group
-      .style = bold hidden
+      .style = bold
       .help = this is to used internally to disambiguate cases where multiple \
               reference models contain the same chain ID. This normally does \
               not need to be set by the user
+  }
+  ramachandran_targets
+    .short_caption = Reference-derived Ramachandran targets
+    .style = box auto_align
+  {
+    enabled = False
+      .type = bool
+      .help = "If oldfield Ramachandran restraints are active, override the \
+               tabulated phi/psi targets with the angles measured from this \
+               reference model for every residue with a matched reference. \
+               The standard reference_model dihedral restraints on phi/psi \
+               (when params.enabled is also True) are not removed; both \
+               families of restraints apply concurrently. Only reference \
+               residues in a favored Ramachandran region are used as targets; \
+               allowed and outlier reference residues keep the default target."
+  }
+  hydrogen_bonds
+    .short_caption = Reference H-bond restraints
+    .style = box auto_align
+  {
+    enabled = False
+      .type = bool
+      .help = Detect H-bonds in the reference model and restrain matching \
+              pairs in the working model
+    target = *ideal as_found
+      .type = choice
+      .help = Restrain to the D-A distance measured in the reference or to \
+              ideal_distance
+    add_hydrogens_if_missing = True
+      .type = bool
+      .help = If the reference model has no hydrogens add them before \
+              H-bond detection
+    restrain_angles = False
+      .type = bool
+      .help = Also restrain D-H-A angles when working-model hydrogens are \
+              present
+    ideal_distance = 2.9
+      .type = float
+    sigma_bond = 0.05
+      .type = float(value_min=0.001)
+    slack_bond = 0.0
+      .type = float
+    ideal_angle = 180.0
+      .type = float
+    sigma_angle = 5.0
+      .type = float(value_min=0.001)
+    partner_distance_cutoff = 5.0
+      .type = float
+      .help = Reject a candidate partner in the working model if it is \
+              farther than this from the donor atom
+    remove_outliers = True
+      .type = bool
+      .short_caption = Filter out H-bond outliers
+      .help = If true, a candidate whose working-model D-A distance exceeds \
+              distance_cut_n_o is not restrained at all. Mirrors the \
+              secondary_structure hydrogen bond behaviour.
+    distance_cut_n_o = 3.5
+      .type = float
+      .short_caption = D-A distance cutoff
+      .help = Candidates longer than this in the working model are dropped \
+              when remove_outliers=True
+    top_out = False
+      .type = bool
+      .help = Use a top-out potential for the bond restraints, capping each \
+              residual at the value it would reach at distance_cut_n_o
   }
   %s
 }
@@ -116,13 +182,127 @@ reference_model
 reference_model_params = iotbx.phil.parse(
     reference_model_str)
 
-def add_reference_dihedral_restraints_if_requested(
+def _ensure_hydrogens_on_reference(ref_hierarchy, log=None,
+                                   restraint_objects=None,
+                                   monomer_parameters=None):
+  """Return a hierarchy guaranteed to carry hydrogens.
+
+  If the input hierarchy already passes mmtbx.model.manager.has_hd(), it is
+  returned unchanged. Otherwise hydrogens are placed via
+  mmtbx.hydrogens.reduce_hydrogen and the augmented hierarchy is returned.
+  This pre-processing is needed because mmtbx.nci.hbond.find looks for
+  D-H...A geometry.
+  """
+  import mmtbx.model
+  from mmtbx.hydrogens import reduce_hydrogen
+  ref_model = mmtbx.model.manager(
+    model_input=None,
+    pdb_hierarchy=ref_hierarchy.deep_copy(),
+    restraint_objects=restraint_objects,
+    monomer_parameters=monomer_parameters,
+    log=log)
+  if ref_model.has_hd():
+    return ref_hierarchy
+  placer = reduce_hydrogen.place_hydrogens(
+    model=ref_model,
+    stop_for_unknowns=False,
+    n_terminal_charge='no_charge')
+  placer.run()
+  return placer.get_model().get_hierarchy()
+
+def _detect_reference_hbonds(ref_hierarchy, log=None,
+                             restraint_objects=None,
+                             monomer_parameters=None):
+  """Run mmtbx.nci.hbond.find on a model built from ref_hierarchy and return
+  a list of (donor_iseq, h_iseq, acceptor_iseq, d_DA, d_HA, a_DHA) tuples.
+
+  The reference hierarchy is expected to carry hydrogens (use
+  _ensure_hydrogens_on_reference upstream). A temporary mmtbx.model.manager
+  is constructed and processed with restraints so the H-bond finder can
+  enumerate bond proxies internally.
+  """
+  import mmtbx.model
+  import mmtbx.nci.hbond
+  ref_model = mmtbx.model.manager(
+    model_input=None,
+    pdb_hierarchy=ref_hierarchy.deep_copy(),
+    restraint_objects=restraint_objects,
+    monomer_parameters=monomer_parameters,
+    log=log)
+  ref_model.process(make_restraints=True)
+  finder = mmtbx.nci.hbond.find(model=ref_model)
+  out = []
+  for hb in finder.result:
+    # hb.atom_D / atom_H / atom_A are group_args (see mmtbx.nci.hbond.make_atom_id)
+    # carrying the originating atom's i_seq in the 'index' field.
+    out.append((
+      hb.atom_D.index,
+      hb.atom_H.index,
+      hb.atom_A.index,
+      hb.d_AD,
+      hb.d_HA,
+      hb.a_DHA,
+      ))
+  return out
+
+def _lookup_working_h_iseq(work_hierarchy, ref_hierarchy, m_donor_iseq,
+                            r_h_iseq):
+  """Return the working-model i_seq for the H atom of an H-bond donor, or
+  None if not present.
+
+  Looks up the reference H atom by name and finds the working-model atom
+  with the same name inside the residue of the working donor. Returns None
+  when the working model lacks that H atom (caller should skip the angle
+  restraint).
+  """
+  ref_h_name = ref_hierarchy.atoms()[r_h_iseq].name
+  work_donor = work_hierarchy.atoms()[m_donor_iseq]
+  parent_ag = work_donor.parent()
+  if parent_ag is None:
+    return None
+  for atom in parent_ag.atoms():
+    if atom.name == ref_h_name:
+      return atom.i_seq
+  return None
+
+def _phi_psi_from_iseqs(sites_cart, i_seqs):
+  """Compute (phi, psi) in degrees from the 5 i_seqs of an oldfield rama proxy.
+
+  Phi uses i_seqs[0..3], psi uses i_seqs[1..4] — see ramachandran.h
+  target_phi_psi template (the C++ code that this function reproduces in
+  Python so we can compute angles from arbitrary site arrays)."""
+  phi_sites = tuple(tuple(sites_cart[j]) for j in i_seqs[0:4])
+  psi_sites = tuple(tuple(sites_cart[j]) for j in i_seqs[1:5])
+  phi = cctbx.geometry_restraints.dihedral(
+    sites=phi_sites, angle_ideal=0, weight=1).angle_model
+  psi = cctbx.geometry_restraints.dihedral(
+    sites=psi_sites, angle_ideal=0, weight=1).angle_model
+  return phi, psi
+
+def add_reference_model_restraints_if_requested(
     model,
     geometry,
     params=None,
     selection=None,
     log=None):
-  if not params.enabled:
+  """Build a reference_model and apply requested reference-derived restraints.
+
+  Dispatches independently on params.enabled (torsion restraints),
+  params.hydrogen_bonds.enabled (H-bond bond and angle restraints), and
+  params.ramachandran_targets.enabled (oldfield phi/psi target override).
+  Any subset (or none) may be active. The reference_model object is
+  constructed once regardless and attached to the geometry via
+  adopt_reference_dihedral_manager so downstream code paths can reach it.
+
+  Returns the number of Ramachandran targets overridden, or 0 if the rama
+  path was not requested.
+  """
+  want_dihedrals = bool(params.enabled)
+  want_hbonds = bool(getattr(params, 'hydrogen_bonds', None) and
+                     params.hydrogen_bonds.enabled)
+  want_rama = bool(getattr(params, 'ramachandran_targets', None) and
+                   params.ramachandran_targets.enabled)
+  if not (want_dihedrals or want_hbonds or want_rama):
     return 0
   if (params.use_starting_model_as_reference and
     (len(params.file) > 0) and params.file[0] is not None):
@@ -140,7 +320,7 @@ def add_reference_dihedral_restraints_if_requested(
     for rg in params.reference_group:
       if rg.file_name is not None:
         reference_file_list.add(rg.file_name)
-  print("*** Adding Reference Model Restraints (torsion) ***", file=log)
+  print("*** Adding Reference Model Restraints ***", file=log)
   #test for inserted TER cards in working model
   ter_indices = model._ter_indices
   if ter_indices is not None:
@@ -158,6 +338,30 @@ def add_reference_dihedral_restraints_if_requested(
     log=log)
   rm.show_reference_summary(log=log)
   geometry.adopt_reference_dihedral_manager(rm)
+  if want_hbonds:
+    sites_cart = model.get_sites_cart()
+    bond_proxies, angle_proxies = rm.get_hbond_proxies(
+      geometry=geometry, sites_cart=sites_cart)
+    if bond_proxies:
+      geometry.add_new_bond_restraints_in_place(
+        proxies=bond_proxies, sites_cart=sites_cart)
+    if angle_proxies:
+      geometry.add_angles_in_place(additional_angle_proxies=angle_proxies)
+    print("*** %d reference H-bond bond proxies, %d angle proxies ***" % (
+      len(bond_proxies), len(angle_proxies)), file=log)
+    if (params.hydrogen_bonds.restrain_angles
+        and bond_proxies and not angle_proxies
+        and not model.has_hd()):
+      print("*** WARNING: restrain_angles=True was requested but the "
+            "working model has no hydrogen atoms; all D-H-A angle "
+            "restraints were skipped. ***",
+            file=log)
+  n_rama_changed = 0
+  if want_rama:
+    n_rama_changed = rm.apply_ramachandran_targets(geometry.ramachandran_manager)
+    print("*** %d Ramachandran targets replaced from reference model ***"
+          % n_rama_changed, file=log)
+  return n_rama_changed
 
 class reference_model(object):
 
@@ -178,6 +382,8 @@ class reference_model(object):
     self.selection = selection
     self.mon_lib_srv = model.get_mon_lib_srv()
     self.ener_lib = model.get_ener_lib()
+    self.restraint_objects = model.get_restraint_objects()
+    self.monomer_parameters = model.get_monomer_parameters()
     self.pdb_hierarchy = model.get_hierarchy()
     self.pdb_hierarchy.reset_i_seq_if_necessary()
     sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
@@ -191,6 +397,16 @@ class reference_model(object):
     if reference_file_list is None:
       reference_file_list = \
           ["ref%d" % x for x in range(len(reference_hierarchy_list))]
+    # If H-bond restraints are requested, ensure each reference hierarchy has
+    # hydrogens before downstream hashes and the match map are built so that
+    # all i_seqs stay consistent with the H-augmented references.
+    hb_p = getattr(self.params, 'hydrogen_bonds', None)
+    if (hb_p is not None and hb_p.enabled and hb_p.add_hydrogens_if_missing):
+      reference_hierarchy_list = [
+        _ensure_hydrogens_on_reference(h, log=log,
+          restraint_objects=self.restraint_objects,
+          monomer_parameters=self.monomer_parameters)
+        for h in reference_hierarchy_list]
     #
     # this takes 20% of constructor time.
     self.dihedral_proxies_ref = utils.get_reference_dihedral_proxies(
@@ -198,8 +414,8 @@ class reference_model(object):
         reference_file_list=reference_file_list,
         mon_lib_srv=self.mon_lib_srv,
         ener_lib=self.ener_lib,
-        restraint_objects=model.get_restraint_objects(),
-        monomer_parameters=model.get_monomer_parameters(),
+        restraint_objects=self.restraint_objects,
+        monomer_parameters=self.monomer_parameters,
         log=log)
     self.i_seq_name_hash = utils.build_name_hash(
                              pdb_hierarchy=self.pdb_hierarchy)
@@ -232,6 +448,11 @@ class reference_model(object):
     # This takes 80% of constructor time!!!
     self.residue_match_hash = {} # {key_model: ('file_name', key_ref)}
     self.match_map = {} # {'file_name':{i_seq_model:i_seq_ref}}
+    # {'file_name':{i_seq_model: copy_key}}. Several working atoms map to the
+    # same reference atom when the reference chain was matched to N NCS
+    # copies; copy_key says which copy each one came from, so that a
+    # reference interaction is only ever reproduced within a single copy.
+    self.match_copy_id = {}
     if params.use_starting_model_as_reference:
       self.get_matching_from_self()
     else:
@@ -247,6 +468,7 @@ class reference_model(object):
     """ Shortcut for the case when restraining on starting model """
     if self.reference_file_list[0] not in self.match_map.keys():
       self.match_map[self.reference_file_list[0]] = {}
+    self.match_copy_id.setdefault(self.reference_file_list[0], {})
     for chain in self.pdb_hierarchy.only_model().chains():
       for rg in chain.residue_groups():
         # Filling out self.residue_match_hash
@@ -256,6 +478,8 @@ class reference_model(object):
         # Filling out self.match_map
         for atom in rg.atoms():
           self.match_map[self.reference_file_list[0]][atom.i_seq] = atom.i_seq
+          # The model is its own reference: a single copy.
+          self.match_copy_id[self.reference_file_list[0]][atom.i_seq] = 0
 
 
 
@@ -292,7 +516,7 @@ class reference_model(object):
         log = self.log)
     # For each found NCS group we going to do matching procedure between
     # copies
-    for group_list in ncs_obj.get_ncs_restraints_group_list():
+    for g_i, group_list in enumerate(ncs_obj.get_ncs_restraints_group_list()):
       # combine selections from master and copies into one list...
       n_total_selections = len(group_list.copies) + 1
       ncs_iselections = [group_list.master_iselection]
@@ -316,6 +540,7 @@ class reference_model(object):
         assert len(ncs_rg) == len_ncs_rg
       if fn not in self.match_map.keys():
         self.match_map[fn] = {}
+      self.match_copy_id.setdefault(fn, {})
       ref_indeces = []
       for i in range(n_total_ncs_residue_groups):
         if (len(ncs_residue_groups[i][0].parent().id) > 2 and
@@ -367,9 +592,13 @@ class reference_model(object):
               info_rgs[1][0], info_rgs[1][2], info_rgs[1][3])
           m_sel = m_cache.selection(m_str)
           ref_sel = ref_cache.selection(ref_str)
+          # This reference_group selection, NCS group and NCS copy together
+          # identify one copy of the reference in the working model.
+          copy_key = (model_selection_str, g_i, i)
           for m_atom, ref_atom in zip(self.pdb_hierarchy.select(m_sel).atoms(),
               self.pdb_hierarchy_ref[fn].select(ref_sel).atoms()):
             self.match_map[fn][m_atom.i_seq] = ref_atom.i_seq
+            self.match_copy_id[fn][m_atom.i_seq] = copy_key
 
   def is_reference_groups_provided(self):
     if hasattr(self.params, "reference_group"):
@@ -464,6 +693,72 @@ class reference_model(object):
       return self.reference_dihedral_proxies.size()
     return 0
 
+  def apply_ramachandran_targets(self, ramachandran_manager):
+    """Override the oldfield phi/psi targets in `ramachandran_manager` with
+    angles measured from this reference_model's reference hierarchies.
+
+    For each oldfield proxy, attempts to map all 5 i_seqs through
+    self.match_map[file]; on success, computes phi (i_seqs[0:4]) and psi
+    (i_seqs[1:5]) from self.sites_cart_ref[file] and writes
+        (phi_ref, psi_ref, distance)
+    into ramachandran_manager.target_phi_psi[i]. The third element is the
+    angular distance sqrt(dphi^2 + dpsi^2) between the refined and reference
+    phi/psi at the time of this call, computed with wrapped angle deltas; it
+    is read by the C++ residual function when params.oldfield.weight is None.
+
+    Proxies that do not fully map are left untouched (they keep the tabulated
+    target produced at ramachandran_manager construction).
+
+    Returns the number of overridden proxies.
+    """
+    rt_params = getattr(self.params, 'ramachandran_targets', None)
+    if rt_params is None or not rt_params.enabled:
+      return 0
+    if ramachandran_manager is None:
+      raise Sorry(
+        "reference_model.ramachandran_targets.enabled=True requires an "
+        "active Ramachandran restraints manager. Also set "
+        "pdb_interpretation.ramachandran_plot_restraints.enabled=True.")
+    if ramachandran_manager.params.inject_emsley8k_into_oldfield_favored:
+      raise Sorry(
+        "reference_model.ramachandran_targets.enabled=True requires "
+        "pdb_interpretation.ramachandran_plot_restraints."
+        "inject_emsley8k_into_oldfield_favored=False; otherwise favored "
+        "residues are silently restrained with emsley8k and the "
+        "reference-derived targets are not applied to them.")
+    if ramachandran_manager.get_n_oldfield_proxies() == 0:
+      return 0
+    refined_sites = self.pdb_hierarchy.atoms().extract_xyz()
+    n_changed = 0
+    for i, proxy in enumerate(ramachandran_manager._oldfield_proxies):
+      i_seqs = tuple(proxy.get_i_seqs())
+      mapped = None
+      for fn in self.reference_file_list:
+        mm = self.match_map.get(fn)
+        if mm is None: continue
+        ref_iseqs = tuple(mm.get(j) for j in i_seqs)
+        if None in ref_iseqs: continue
+        mapped = (fn, ref_iseqs)
+        break
+      if mapped is None: continue
+      fn, ref_iseqs = mapped
+      ref_sites = self.sites_cart_ref[fn]
+      phi_ref, psi_ref = _phi_psi_from_iseqs(ref_sites, ref_iseqs)
+      # Only favored reference residues may serve as a target.
+      # Allowed and outlier are skipped so default targets remain.
+      rama_key = ramalyze.res_types_dict.get(proxy.residue_type)
+      if rama_key is not None:
+        rama_score = ramachandran_manager.rama_eval.get_score(rama_key, phi_ref, psi_ref)
+        if ramachandran_manager.rama_eval.evaluate_score(rama_key, rama_score) != ramalyze.RAMALYZE_FAVORED:
+          continue
+      phi_refined, psi_refined = _phi_psi_from_iseqs(refined_sites, i_seqs)
+      dphi = cctbx.geometry_restraints.angle_delta_deg(phi_ref, phi_refined)
+      dpsi = cctbx.geometry_restraints.angle_delta_deg(psi_ref, psi_refined)
+      distance = math.sqrt(dphi * dphi + dpsi * dpsi)
+      ramachandran_manager.target_phi_psi[i] = (phi_ref, psi_ref, distance)
+      n_changed += 1
+    return n_changed
+
   def top_out_function(self, x, weight, top):
     return top*(1-exp(-weight*x**2/top))
 
@@ -494,6 +789,10 @@ class reference_model(object):
     if not include_hydrogens:
       i_seq_element_hash = \
         utils.build_element_hash(pdb_hierarchy=pdb_hierarchy)
+    i_seq_amino_acid_hash = None
+    if not include_main_chain or not include_side_chain:
+      i_seq_amino_acid_hash = \
+        utils.build_amino_acid_hash(pdb_hierarchy=pdb_hierarchy)
     i_seq_name_hash = \
       utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
     dihedral_hash = dict()
@@ -505,8 +804,18 @@ class reference_model(object):
           for i_seq in dp.i_seqs:
             if i_seq_element_hash[i_seq] == " H":
               raise StopIteration()
+        # main_chain and side_chain are expressed in terms of the protein
+        # backbone atom names, so they can only be applied to dihedrals lying
+        # entirely within amino acid residues. Ligands and nucleic acids have
+        # no such atoms and would otherwise all count as side chain.
+        is_protein = True
+        if i_seq_amino_acid_hash is not None:
+          for i_seq in dp.i_seqs:
+            if not i_seq_amino_acid_hash.get(i_seq, False):
+              is_protein = False
+              break
         #ignore backbone dihedrals
-        if not include_main_chain:
+        if is_protein and not include_main_chain:
           sc_atoms = False
           for i_seq in dp.i_seqs:
             if i_seq_name_hash[i_seq][0:4] not in [' CA ',' N  ',' C  ',' O  ']:
@@ -514,7 +823,7 @@ class reference_model(object):
               break
           if not sc_atoms:
             raise StopIteration()
-        if not include_side_chain:
+        if is_protein and not include_side_chain:
           sc_atoms = False
           for i_seq in dp.i_seqs:
             if i_seq_name_hash[i_seq][0:4] \
@@ -642,6 +951,110 @@ class reference_model(object):
         # if not self._is_proxy_already_present(generated_reference_dihedral_proxies,dp_add):
         generated_reference_dihedral_proxies.append(dp_add)
     self.reference_dihedral_proxies = generated_reference_dihedral_proxies
+
+  def get_hbond_proxies(self, geometry, sites_cart):
+    """Build and return (bond_proxies, angle_proxies) for reference-model
+    H-bonds, tagged with origin_id 'reference hydrogen bonds'.
+
+    Walks the chain
+      target_donor -> ref_donor -> ref_acceptor -> target_acceptor
+    via match_map (heavy-atom map established at construction) and the
+    inverse multimap built here on demand. Pairs already restrained as
+    secondary-structure H-bonds (origin_id 'hydrogen bonds', via
+    geometry.get_hbond_proxies_iseqs()) or as user-defined custom bonds
+    (origin_id 'edits', via geometry.get_edits_bond_proxies_iseqs()) are
+    skipped. The working-model partner distance cutoff discriminates
+    within-NCS-copy pairings (kept) from cross-NCS-copy pairings (rejected).
+
+    Returns ([], []) when params.hydrogen_bonds.enabled is False.
+    """
+    import cctbx.geometry_restraints
+    from cctbx.geometry_restraints.linking_class import linking_class
+    from scitbx.matrix import col
+    hb_p = getattr(self.params, 'hydrogen_bonds', None)
+    if hb_p is None or not hb_p.enabled:
+      return [], []
+    ref_hb_oid = linking_class().get_origin_id('reference hydrogen bonds')
+    # Skip pairs that are already restrained, so a reference H-bond is not
+    # stacked on top of an existing bond restraint: secondary-structure
+    # H-bonds (origin_id 'hydrogen bonds') and user-defined custom bonds
+    # (geometry_restraints.edits, origin_id 'edits').
+    skip_pairs = set(frozenset(p)
+                     for p in (geometry.get_hbond_proxies_iseqs() or []))
+    skip_pairs |= set(frozenset(p)
+                      for p in (geometry.get_edits_bond_proxies_iseqs() or []))
+    weight_bond  = 1.0 / hb_p.sigma_bond**2
+    weight_angle = 1.0 / hb_p.sigma_angle**2
+    bond_proxies = []
+    angle_proxies = []
+    n_rejected_outliers = 0
+    work_h = self.pdb_hierarchy
+    for fn in self.reference_file_list:
+      ref_h = self.pdb_hierarchy_ref[fn]
+      detected = _detect_reference_hbonds(ref_h,
+        restraint_objects=self.restraint_objects,
+        monomer_parameters=self.monomer_parameters)
+      if not detected:
+        continue
+      # Inverse multimap: ref_iseq -> [model_iseq, ...]. One entry per ref
+      # iseq in the non-NCS case; K entries when K working chains were
+      # matched to one reference chain.
+      inv = {}
+      for m_iseq, r_iseq in self.match_map[fn].items():
+        inv.setdefault(r_iseq, []).append(m_iseq)
+      copy_of = self.match_copy_id.get(fn, {})
+      emitted = set()
+      for r_d, r_h, r_a, d_DA, d_HA, a_DHA in detected:
+        for m_d in inv.get(r_d, []):
+          for m_a in inv.get(r_a, []):
+            if m_d == m_a:
+              continue
+            # A reference H-bond lives inside one copy of the reference, so
+            # only reproduce it inside one copy of the working model. The
+            # K*K candidate pairs from K NCS copies would otherwise include
+            # K*K-K cross-copy pairings, which distance filters alone cannot
+            # reject once the copies are in contact.
+            if copy_of.get(m_d) != copy_of.get(m_a):
+              continue
+            d_work = (col(sites_cart[m_d]) - col(sites_cart[m_a])).length()
+            if d_work > hb_p.partner_distance_cutoff:
+              continue
+            if hb_p.remove_outliers and d_work > hb_p.distance_cut_n_o:
+              n_rejected_outliers += 1
+              continue
+            pair = (min(m_d, m_a), max(m_d, m_a))
+            if pair in emitted or frozenset(pair) in skip_pairs:
+              continue
+            emitted.add(pair)
+            d_target = d_DA if hb_p.target == 'as_found' else hb_p.ideal_distance
+            limit = -1
+            if hb_p.top_out:
+              limit = (hb_p.distance_cut_n_o - d_target)**2 * weight_bond
+            bond_proxies.append(cctbx.geometry_restraints.bond_simple_proxy(
+              i_seqs=[m_d, m_a],
+              distance_ideal=d_target,
+              weight=weight_bond,
+              slack=hb_p.slack_bond,
+              top_out=hb_p.top_out,
+              limit=limit,
+              origin_id=ref_hb_oid))
+            if hb_p.restrain_angles:
+              h_iseq = _lookup_working_h_iseq(work_h, ref_h, m_d, r_h)
+              if h_iseq is None:
+                continue
+              a_target = a_DHA if hb_p.target == 'as_found' else hb_p.ideal_angle
+              angle_proxies.append(cctbx.geometry_restraints.angle_proxy(
+                i_seqs=[m_d, h_iseq, m_a],
+                angle_ideal=a_target,
+                weight=weight_angle,
+                origin_id=ref_hb_oid))
+    if n_rejected_outliers > 0:
+      print("*** %d reference H-bond candidate%s rejected: working-model D-A "
+            "distance > distance_cut_n_o=%.2f A ***" % (
+              n_rejected_outliers, "s"[:n_rejected_outliers != 1],
+              hb_p.distance_cut_n_o),
+            file=self.log)
+    return bond_proxies, angle_proxies
 
   def show_reference_summary(self, log=None):
     if log is None:

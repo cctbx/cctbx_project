@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 from scitbx.source_generators.utils import join_open
 from scitbx.source_generators.utils import write_this_is_auto_generated
 import libtbx.load_env
-import string
 from six.moves import range
 
 this = "cctbx.source_generators.eltbx.generate_sasaki_cpp"

@@ -127,7 +127,7 @@ def test_find_readme_file():
     try:
         # Test 1: Standard README
         readme_path = os.path.join(temp_dir, "README")
-        with open(readme_path, 'w') as f:
+        with open(readme_path, 'w', encoding='utf-8') as f:
             f.write("Test content")
 
         found = find_readme_file(temp_dir)
@@ -139,7 +139,7 @@ def test_find_readme_file():
 
         # Test 2: README.txt
         readme_path = os.path.join(temp_dir, "README.txt")
-        with open(readme_path, 'w') as f:
+        with open(readme_path, 'w', encoding='utf-8') as f:
             f.write("Test content")
 
         found = find_readme_file(temp_dir)
@@ -149,7 +149,7 @@ def test_find_readme_file():
 
         # Test 3: readme.md (lowercase)
         readme_path = os.path.join(temp_dir, "readme.md")
-        with open(readme_path, 'w') as f:
+        with open(readme_path, 'w', encoding='utf-8') as f:
             f.write("Test content")
 
         found = find_readme_file(temp_dir)
@@ -166,7 +166,7 @@ def test_find_readme_file():
 
         # Test 6: Custom patterns
         notes_path = os.path.join(temp_dir, "notes.txt")
-        with open(notes_path, 'w') as f:
+        with open(notes_path, 'w', encoding='utf-8') as f:
             f.write("Notes content")
 
         found = find_readme_file(temp_dir, patterns=["notes.txt"])
@@ -192,7 +192,7 @@ def test_read_readme_file():
         # Test 1: Normal file
         readme_path = os.path.join(temp_dir, "README.txt")
         content = "This is a test README file.\nWith multiple lines.\n"
-        with open(readme_path, 'w') as f:
+        with open(readme_path, 'w', encoding='utf-8') as f:
             f.write(content)
 
         result = read_readme_file(readme_path)
@@ -202,7 +202,7 @@ def test_read_readme_file():
         long_content = "Line " + "x" * 100 + "\n"
         long_content = long_content * 100  # ~10000 chars
 
-        with open(readme_path, 'w') as f:
+        with open(readme_path, 'w', encoding='utf-8') as f:
             f.write(long_content)
 
         result = read_readme_file(readme_path, max_chars=500)
@@ -214,7 +214,7 @@ def test_read_readme_file():
         assert result is None, "Should return None for non-existent file"
 
         # Test 4: Empty file
-        with open(readme_path, 'w') as f:
+        with open(readme_path, 'w', encoding='utf-8') as f:
             f.write("")
 
         result = read_readme_file(readme_path)
@@ -281,7 +281,7 @@ def test_gather_raw_advice():
     try:
         # Create README
         readme_path = os.path.join(temp_dir, "README.txt")
-        with open(readme_path, 'w') as f:
+        with open(readme_path, 'w', encoding='utf-8') as f:
             f.write("Instructions from README")
 
         # Test 1: Both sources

@@ -90,11 +90,11 @@ class atom_name_analysis(slots_getstate_setstate):
     else:
       return
     if (tab_offs == 2 and O.c2_o2 == "C2* O2*"):
-      O.sub_classification = ""
+      O.sub_classification = "v2"
     elif (tab_offs == 2 and O.c2_o2 == "C2' O2'"):
       O.sub_classification = '_mixed'
     elif (tab_offs == 0 and O.c2_o2 == "C2' O2'"):
-      O.sub_classification = "v3"
+      O.sub_classification = ""
     else:
       return
     for required_atom in O.required_atoms:
@@ -102,9 +102,9 @@ class atom_name_analysis(slots_getstate_setstate):
     O.have_all_required_atoms = True
 
   def bond_distance_ideal_by_bond_atom_names(O):
-    if (O.sub_classification == "v3"):
-      return bond_distance_ideal_by_bond_atom_names_v3
-    return bond_distance_ideal_by_bond_atom_names_v2
+    if (O.sub_classification == "v2"):
+      return bond_distance_ideal_by_bond_atom_names_v2
+    return bond_distance_ideal_by_bond_atom_names_v3
 
 def classification(atom_dict, bond_list):
   O = atom_name_analysis(atom_dict=atom_dict)

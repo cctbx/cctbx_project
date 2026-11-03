@@ -4,6 +4,7 @@ import string
 from itertools import product
 from six.moves import range
 import sys
+from libtbx.utils import Sorry
 
 class generate_n_char_string:
   r""" Iterator to generate strings of length n_chars, using upper-case,
@@ -123,6 +124,25 @@ def all_chain_ids():
          ["".join(p) for p in first_char_lower]+\
          ["".join(p) for p in both_char_lower]
   return result
+
+def chain_id_generator(used_ids=()):
+  """
+  Yield chain ids not present in used_ids, without end.
+  First all ids from all_chain_ids() (1 and 2 characters, valid for PDB
+  format), then 3, 4, ... character ids which fit only in mmCIF.
+  """
+  used = set(used_ids)
+  for cid in all_chain_ids():
+    if cid not in used:
+      yield cid
+  chars = string.ascii_uppercase+string.digits+string.ascii_lowercase
+  length = 3
+  while True:
+    for p in product(chars, repeat=length):
+      cid = "".join(p)
+      if cid not in used:
+        yield cid
+    length += 1
 
 def all_label_asym_ids(maximum_length=4):
   """Return a list of possible label_asym_ids"""
@@ -316,7 +336,7 @@ def get_lines(text = None, file_name = None, lines = None):
     elif lines:
       text = "\n".join(lines)
     elif file_name and os.path.isfile(file_name):
-      with open(file_name) as f:
+      with open(file_name, encoding="utf-8") as f:
         text = f.read()
     if not text:
       text = ""
@@ -513,14 +533,13 @@ def try_to_get_hierarchy(pdb_inp):
         ph = hierarchy.root()
         return ph
       else:  # Stop and ask developers to check code
-        ph_text = "\n".join(lines)
-        text = """The above hierarchy could not be read. If it is just empty,
+        text = """The hierarchy from %s could not be read. If it is just empty,
          please ask developers to check that the
          text "something is not present" is used in
          modules/cctbx_project/iotbx/pdb/mmcif.py as part of the assertion that
          atoms are present.  Modify this text to match the assertion if
-         necessary"""
-        raise Sorry(ph_text+"\n"+text+"\n"+str(e))
+         necessary""" % pdb_inp.source_info()
+        raise Sorry(text+"\n"+str(e))
 def add_hierarchies(hierarchy_list, create_new_chain_ids_if_necessary = True):
   """Append all hierarchies on to the first one"""
   if not hierarchy_list:

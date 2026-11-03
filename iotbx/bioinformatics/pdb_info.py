@@ -171,7 +171,7 @@ def tst_pdb_info_local():
   except requests.exceptions.ReadTimeout:
     print("Skipped test: transient read timeout, can't run test right now")
     return
-  assert rlist == ans_list_2, rlist
+  assert sorted(rlist) == sorted(ans_list_2), rlist
   assert rdict == ans_dict_2, rdict
 
 

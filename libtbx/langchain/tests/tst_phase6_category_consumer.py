@@ -113,7 +113,7 @@ def create_tutorial_files(tmpdir, file_list):
     for name in file_list:
         path = os.path.join(tmpdir, name)
         ext = os.path.splitext(name)[1].lower()
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8') as f:
             if ext == '.pdb':
                 for i in range(800):
                     f.write(
@@ -152,7 +152,7 @@ def test_all_categories_exist():
     print("Test: all_categories_exist")
 
     with open(os.path.join(BASE_DIR,
-                           'knowledge', 'programs.yaml')) as f:
+                           'knowledge', 'programs.yaml'), encoding='utf-8') as f:
         progs = yaml.safe_load(f)
 
     # Get a representative categorizer output
@@ -163,7 +163,7 @@ def test_all_categories_exist():
         for name in ['test.mtz', 'test.pdb', 'test.seq',
                      'test.ccp4', 'test.hkl', 'test.sca']:
             path = os.path.join(tmpdir, name)
-            with open(path, 'w') as f:
+            with open(path, 'w', encoding='utf-8') as f:
                 if name.endswith('.pdb'):
                     for i in range(800):
                         f.write("ATOM  %5d  CA  ALA A%4d"
@@ -214,7 +214,7 @@ def test_tutorial_programs_have_inputs():
     print("Test: tutorial_programs_have_inputs")
 
     with open(os.path.join(BASE_DIR,
-                           'knowledge', 'programs.yaml')) as f:
+                           'knowledge', 'programs.yaml'), encoding='utf-8') as f:
         progs = yaml.safe_load(f)
 
     orig_check = ws._mtz_has_phase_columns
@@ -337,7 +337,7 @@ def test_phased_data_mtz_not_in_refine():
     print("Test: phased_data_mtz_not_in_refine")
 
     with open(os.path.join(BASE_DIR,
-                           'knowledge', 'programs.yaml')) as f:
+                           'knowledge', 'programs.yaml'), encoding='utf-8') as f:
         progs = yaml.safe_load(f)
 
     refine = progs.get('phenix.refine', {})
@@ -399,7 +399,7 @@ def run_all_tests():
     os.makedirs(FINDINGS_DIR, exist_ok=True)
     path = os.path.join(FINDINGS_DIR,
                         'phase_6_missing_inputs.yaml')
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         f.write("# Phase 6: Category-Consumer Findings\n")
         f.write("phase: 6\n")
         f.write("name: category_consumer\n")

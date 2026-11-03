@@ -365,17 +365,33 @@ namespace {
     return matrix::norm_1(self);
   }
 
-  /* For allowed syntax for the optional format_string argument see:
+  /* format_string is one printf directive for a floating-point value:
+     optional flags, width and precision, conversion e, E, f, g or G.  The
+     default "%d" prints as a stream does, six significant digits, which is
+     "%.6g".  Any other format_string goes through boost::format as before:
        http://www.boost.org/libs/format/doc/format.html#syntax
    */
   af::shared<std::string>
   as_string(af::const_ref<double, af::flex_grid<> > const& O,
             std::string format_string="%d")
   {
-    af::shared<std::string> result((reserve(O.size())));
     std::size_t n = O.accessor().size_1d();
-    for(std::size_t i=0;i<n;i++) {
-      result.push_back((boost::format(format_string) %O[i]).str());
+    af::shared<std::string> result((reserve(n)));
+    std::string directive;
+    if (format_string == "%d") directive = "%.6g";
+    else if (boost_python::is_printf_directive(format_string, "eEfgG")) {
+      directive = format_string;
+    }
+    if (directive.empty()) {
+      for(std::size_t i=0;i<n;i++) {
+        result.push_back((boost::format(format_string) %O[i]).str());
+      }
+    }
+    else {
+      for(std::size_t i=0;i<n;i++) {
+        result.push_back(
+          boost_python::snprintf_string(directive.c_str(), O[i]));
+      }
     }
     return result;
   }

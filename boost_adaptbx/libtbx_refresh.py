@@ -7,8 +7,8 @@ import sys
 try:
   self.env.boost_version = -1
   boost_root = self.env.find_in_repositories('boost')
-  # boost directory in cctbx_project is picked up by find_in_repositories
-  if not os.path.isdir(boost_root) or 'cctbx_project' in boost_root:
+  # no Boost source checkout (e.g. conda builds): use standard locations
+  if boost_root is None or not os.path.isdir(boost_root):
     boost_root = os.path.join(sys.prefix, 'include')
     if sys.platform == 'darwin' and 'python.app' in boost_root:
       boost_root = os.path.join(boost_root.split('python.app')[0], 'include')

@@ -41,6 +41,7 @@ terminii = [
   'L-PEPTIDE NH3 AMINO TERMINUS',
   'L-PEPTIDE COOH CARBOXY TERMINUS',
   'D-PEPTIDE NH3 AMINO TERMINUS',
+  'D-PEPTIDE COOH CARBOXY TERMINUS',
 ]
 non_polymer = [
   "NON-POLYMER",
@@ -65,14 +66,42 @@ def find_data_dir():
 
 data_dir = find_data_dir()
 
+# test-only codes (the CCD never uses '_') for CCD entries that must stay
+# absent from GeoStd; see mmtbx/hydrogens/tst_add_hydrogen_5.py
+_test_aliases = {'I_S' : 'IAS',
+                 '1_G' : '1MG'}
+_test_alias_files = {}
+
+def _test_alias_filename(code):
+  '''One temp file per alias per process, removed at exit.'''
+  if code not in _test_alias_files:
+    import atexit, tempfile
+    ccd_code = _test_aliases[code]
+    with open(os.path.join(data_dir, "%s" % ccd_code[0].lower(),
+                           "data_%s.cif" % ccd_code), 'r') as f:
+      lines = f.read().replace(ccd_code, code)
+    with tempfile.NamedTemporaryFile(mode='w+t', suffix='_%s.cif' % code,
+                                     delete=False) as temp_file:
+      temp_file.write(lines)
+    _test_alias_files[code] = temp_file.name
+    atexit.register(_remove_file, temp_file.name)
+  return _test_alias_files[code]
+
+def _remove_file(file_name):
+  try: os.remove(file_name)
+  except OSError: pass
+
 def get_cif_filename(code):
   if (data_dir is None): return ""
   if (not code): return ""
   code=code.strip()
   if (len(code) == 0):
     raise Sorry("Residue code is blank.")
-  return os.path.join(
-    data_dir, "%s" % code[0].lower(), "data_%s.cif" % code.upper())
+  elif code in _test_aliases:
+    return _test_alias_filename(code)
+  else:
+    return os.path.join(
+      data_dir, "%s" % code[0].lower(), "data_%s.cif" % code.upper())
 
 def is_chemical_components_file(filename):
   try:
@@ -142,6 +171,30 @@ def get_field_simple(code, loop, field):
   if not cif: return cif
   desc = cif.get(loop, {})[0]
   return getattr(desc, field, "")
+
+def get_field(code, field, loop_desc="_pdbx_chem_comp_descriptor"):
+  cif = get_cif_dictionary(code)
+  if not cif: return cif
+  desc = cif.get(loop_desc, {})
+  rc=[]
+  for item in desc:
+    for attr in item.__dict__:
+      if attr.strip().lower() == field.lower():
+        rc.append(getattr(item, attr))
+  # rc = {}
+  # for item in desc:
+  #   if item.type.strip().lower().find(field.lower())>-1:
+  #     rc[item.type]=item.descriptor
+  #     break
+  # if not rc:
+  #   for item in desc:
+  #     for name, value in item.__dict__.items():
+  #       if name==field:
+  #         return value
+  if loop_desc in ['_chem_comp']:
+    return rc[0]
+  else:
+    return rc
 
 def get_cif_loop(code, loop):
   filename=get_cif_filename(code)
@@ -296,7 +349,7 @@ def get_group(code, split_rna_dna=False, split_l_d=False, verbose=False):
         return 'amino_acid'
     return 'amino_acid'
   elif t in non_alpha_peptide:
-    assert not split_l_d
+    # assert not split_l_d
     return 'non-alpha peptide'
   elif t in terminii:
     # assert not split_l_d
@@ -332,6 +385,7 @@ def get_restraints_group(code, split_rna_dna=True, split_l_d=True):
   return {'amino_acid'          : 'peptide',
           'amino_acid_terminal' : 'peptide',
           'non-polymer'         : 'ligand',
+          'non-alpha peptide'   : 'peptide',
           # 'saccharide' : 'pyranose',
           }[g]
   assert 0

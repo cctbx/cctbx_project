@@ -1,3 +1,80 @@
+2026.10
+=======
+
+* mmtbx.reduce2 gained neutron_option for writing H/D models for neutron
+  refinement, approach=place for adding hydrogens without optimization
+  (replacing mmtbx.hydrogenate), a qmready preset for QM-ready models,
+  and NH2 placement for metal-bound amines; it now runs on all models by
+  default
+* Faster mmCIF model reading with a C++ hierarchy builder, exact pickling
+  and deep copies of hierarchies, and reader fixes for null occupancies,
+  missing atom ids and model numbers, and anisotropic tensors; faster
+  reflection CIF writing and dictionary validation
+* Faster, leaner probe2 with all interaction dots generated in C++;
+  cbetadev reports Mahalanobis distances and applies phi/psi corrections
+  to modified residues
+* Fixed riding hydrogens in geometry minimization, real-space ADP
+  refinement falling back to group ADPs, disulfides lost in NCS copies,
+  and queue submission under Python 3; fetch_pdb downloads EMDB masks
+
+2026.9
+======
+
+* Added ligand interaction analysis (mmtbx.validation.ligand_interactions)
+  covering hydrogen bonds, clashes, vdW contacts, and salt bridges,
+  including symmetry partners and a cross-check against probe2
+* Faster reflection file reading (MTZ complex arrays, reflection CIFs,
+  compressed CIFs) and faster probe2 and clashscore2 on multi-model
+  files, with flat memory use
+* Fixed mmtbx.reduce2 hydrogen placement on linked residues and free
+  nucleotides, corrected CH2 and CH3 hydrogen naming, and gave
+  user-supplied restraint files priority, including multi-CIF input
+* Removed the deprecated top-level boost module; use boost_adaptbx instead
+
+2026.8
+======
+
+* Added NumPy 2 support for flex arrays and plotting code
+* Graded MolProbity geometry, peptide, and RNA outliers by severity,
+  and added per-model animated kinemages for multi-model files
+* Fixed mmCIF output splitting chains at residues with unrecognized
+  names, and let iotbx.file_io read CIFs with mixed content
+* Added building of water hydrogens from difference maps and fixed
+  mmtbx.reduce2 hydrogen placement for several ligand cases
+
+2026.7
+======
+
+* Ligand validation rolled out as mmtbx.validate_ligands, with alternate
+  conformation handling, more granular fragment analysis, and map
+  coefficient output
+* Added ribbon rendering to MolProbity kinemage output, along with
+  disulfide bonds and suitealyze markup
+* Fixes to reference model restraints: exclude reference hydrogen bonds
+  from covalent geometry statistics, never pair atoms across NCS copies,
+  and apply Ramachandran targets only to favored reference residues
+* Switched the default nucleic acid atom naming to v3 (C2', OP1, OP2),
+  keeping v2 names (C2*, O1P, O2P) as a recognized variant with explicit
+  conversion between the two
+
+2026.6
+======
+
+* Added difference map calculation for cryoEM (as implemented in Servalcat)
+* Added a GFN-xTB engine (xtb_manager) for quantum-mechanical restraints
+* Improvements to reduce2 hydrogen placement (with a reduce1/reduce2
+  switch) and speedups to probe2 and clashscore2
+* Added iotbx.file_io for single-parse file reading, with xz/lzma/zstd
+  compression support
+
+2026.5
+======
+
+* Added qttbx PySide2 and PySide6 widgets for editing PHIL parameters with validation
+* Migrated wxtbx and gltbx to wxPython 4.2 and dropped wxPython 3 support
+* Added reference-model hydrogen-bond restraints and a Ramachandran target override
+* Added CONST dihedral restraints and parameterization of riding hydrogens when a torsion is missing
+
 2026.4
 ======
 

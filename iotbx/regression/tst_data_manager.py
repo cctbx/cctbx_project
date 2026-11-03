@@ -535,6 +535,200 @@ YTGDHYATFSLIDQTC
   os.remove(seq_filename)
 
 # -----------------------------------------------------------------------------
+def test_json_datatype():
+  """Exercise the JSON DataManager datatype: in-memory CRUD, file round-trip,
+  flexible write (object or pre-formatted string), and error handling."""
+  import json
+
+  filename = 'test_dm.json'
+  data = {'name': 'cctbx', 'values': [1, 2, 3], 'nested': {'a': True}}
+
+  # in-memory: add / get / names / default / has / remove
+  dm = DataManager(['json'])
+  dm.add_json(filename, data)
+  assert filename in dm.get_json_names()
+  assert dm.get_default_json_name() == filename
+  assert dm.get_json() == data            # no-arg returns the default
+  assert dm.get_json(filename) == data
+  assert dm.has_jsons()
+  assert dm.has_jsons(expected_n=1, exact_count=True)
+  dm.remove_json(filename)
+  assert filename not in dm.get_json_names()
+  assert not dm.has_jsons()
+
+  # output-filename helper appends .json
+  dm = DataManager(['json'])
+  dm.set_default_output_filename('myout')
+  assert dm.get_default_output_json_filename() == 'myout.json'
+
+  # process a real file -> parsed object round-trips
+  with open(filename, 'w') as f:
+    json.dump(data, f)
+  dm = DataManager(['json'])
+  assert dm.process_json_file(filename) == filename
+  assert dm.get_json(filename) == data
+  os.remove(filename)
+
+  # write a Python object -> read back equal
+  out = 'test_dm_out.json'
+  dm = DataManager(['json'])
+  dm.write_json_file(data, filename=out, overwrite=True)
+  with open(out) as f:
+    assert json.load(f) == data
+  os.remove(out)
+
+  # write a pre-formatted string -> written verbatim
+  pre = '{"x": 1}'
+  dm.write_json_file(pre, filename=out, overwrite=True)
+  with open(out) as f:
+    assert f.read() == pre
+  os.remove(out)
+
+  # invalid JSON content -> Sorry
+  bad = 'test_dm_bad.json'
+  with open(bad, 'w') as f:
+    f.write('{bad')
+  dm = DataManager(['json'])
+  got_sorry = False
+  try:
+    dm.process_json_file(bad)
+  except Sorry:
+    got_sorry = True
+  assert got_sorry
+  os.remove(bad)
+
+  # missing file -> Sorry (NOT a raw FileNotFoundError)
+  dm = DataManager(['json'])
+  got_sorry = False
+  try:
+    dm.process_json_file('does_not_exist_zzz.json')
+  except Sorry:
+    got_sorry = True
+  assert got_sorry
+
+# -----------------------------------------------------------------------------
+def test_yaml_datatype():
+  """Exercise the YAML DataManager datatype. Skips if PyYAML is unavailable
+  (mirrors the monomer_library skip in test_model_datatype)."""
+  try:
+    import yaml
+  except ImportError:
+    print('Skipping test_yaml_datatype, PyYAML not available')
+    return
+
+  filename = 'test_dm.yaml'
+  data = {'name': 'cctbx', 'values': [1, 2, 3], 'nested': {'a': True}}
+
+  # in-memory: add / get / names / default / has / remove
+  dm = DataManager(['yaml'])
+  dm.add_yaml(filename, data)
+  assert filename in dm.get_yaml_names()
+  assert dm.get_default_yaml_name() == filename
+  assert dm.get_yaml() == data            # no-arg returns the default
+  assert dm.get_yaml(filename) == data
+  assert dm.has_yamls()
+  assert dm.has_yamls(expected_n=1, exact_count=True)
+  dm.remove_yaml(filename)
+  assert filename not in dm.get_yaml_names()
+  assert not dm.has_yamls()
+
+  # output-filename helper appends .yaml
+  dm = DataManager(['yaml'])
+  dm.set_default_output_filename('myout')
+  assert dm.get_default_output_yaml_filename() == 'myout.yaml'
+
+  # process a real file -> parsed object round-trips
+  with open(filename, 'w') as f:
+    yaml.safe_dump(data, f)
+  dm = DataManager(['yaml'])
+  assert dm.process_yaml_file(filename) == filename
+  assert dm.get_yaml(filename) == data
+  os.remove(filename)
+
+  # write a Python object -> read back equal
+  out = 'test_dm_out.yaml'
+  dm = DataManager(['yaml'])
+  dm.write_yaml_file(data, filename=out, overwrite=True)
+  with open(out) as f:
+    assert yaml.safe_load(f) == data
+  os.remove(out)
+
+  # write a pre-formatted string -> written verbatim
+  pre = 'x: 1\n'
+  dm.write_yaml_file(pre, filename=out, overwrite=True)
+  with open(out) as f:
+    assert f.read() == pre
+  os.remove(out)
+
+  # GENUINELY malformed YAML -> Sorry. NOTE: arbitrary text like 'not yaml'
+  # is VALID YAML (parses to the string), so it would NOT raise. Use an
+  # unbalanced flow collection to force a yaml.YAMLError.
+  bad = 'test_dm_bad.yaml'
+  with open(bad, 'w') as f:
+    f.write('[1, 2')
+  dm = DataManager(['yaml'])
+  got_sorry = False
+  try:
+    dm.process_yaml_file(bad)
+  except Sorry:
+    got_sorry = True
+  assert got_sorry
+  os.remove(bad)
+
+  # empty file parses to None (the one behavioral asymmetry with JSON)
+  empty = 'test_dm_empty.yaml'
+  with open(empty, 'w') as f:
+    f.write('')
+  dm = DataManager(['yaml'])
+  assert dm.process_yaml_file(empty) == empty
+  assert dm.get_yaml(empty) is None
+  os.remove(empty)
+
+# -----------------------------------------------------------------------------
+def test_yaml_without_pyyaml():
+  """Guard the lazy PyYAML import in iotbx/data_manager/yaml.py: a DataManager
+  with the yaml datatype must still construct when PyYAML is absent, and YAML
+  use must raise a user-facing Sorry (not ImportError). Runs regardless of
+  whether PyYAML is installed."""
+  import sys
+
+  fn = 'test_dm_nopyyaml.yaml'
+  _missing = object()
+  saved = sys.modules.get('yaml', _missing)
+  sys.modules['yaml'] = None   # makes "import yaml" raise ImportError
+  try:
+    # construction must succeed without PyYAML (the import is lazy)
+    dm = DataManager(['yaml'])
+    assert dm.supports('yaml')
+
+    # reading a real YAML file must surface the install-guidance Sorry
+    with open(fn, 'w') as f:
+      f.write('a: 1\n')
+    got_sorry = False
+    try:
+      dm.process_yaml_file(fn)
+    except Sorry as e:
+      got_sorry = True
+      assert 'PyYAML' in str(e)
+    assert got_sorry
+
+    # writing a Python object must surface the same Sorry
+    got_sorry = False
+    try:
+      dm.write_yaml_file({'a': 1}, filename='wont_write.yaml', overwrite=True)
+    except Sorry as e:
+      got_sorry = True
+      assert 'PyYAML' in str(e)
+    assert got_sorry
+  finally:
+    if saved is _missing:
+      sys.modules.pop('yaml', None)
+    else:
+      sys.modules['yaml'] = saved
+    if os.path.isfile(fn):
+      os.remove(fn)
+
+# -----------------------------------------------------------------------------
 def test_miller_array_datatype():
 
   data_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1122,6 +1316,52 @@ data_manager {
   assert answer == test
 
 # -----------------------------------------------------------------------------
+def test_duplicate_user_selected_labels():
+  '''
+  Two user_selected_labels matching the same array are rejected whichever
+  datatype they are given under. Both the order in which the datatypes are
+  loaded and the order of the class-level child list follow set iteration
+  order (PYTHONHASHSEED), so every combination is checked explicitly.
+  '''
+  from iotbx.data_manager.miller_array import MillerArrayDataManager
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_mtz = os.path.join(data_dir, 'data', 'phaser_1.mtz')
+  phil = iotbx.phil.parse('''
+data_manager {
+  miller_array {
+    file = %s
+    user_selected_labels = PHIF
+  }
+  map_coefficients {
+    file = %s
+    user_selected_labels = WT
+  }
+}
+''' % (data_mtz, data_mtz))
+
+  datatypes = ['miller_array', 'map_coefficients']
+  children = MillerArrayDataManager.miller_array_child_datatypes
+  original_children = list(children)
+  try:
+    for child_order in (datatypes, datatypes[::-1]):
+      for load_order in (datatypes, datatypes[::-1]):
+        dm = DataManager(datatypes + ['phil'])
+        children[:] = child_order
+        phil_extract = dm.master_phil.fetch(phil).extract()
+        try:
+          for datatype in load_order:
+            getattr(dm, 'load_%s_phil_extract' % datatype)(phil_extract)
+        except Sorry as s:
+          assert 'duplicate user_selected_labels' in str(s), \
+            (child_order, load_order, str(s))
+        else:
+          raise AssertionError('Sorry expected: child_order=%s load_order=%s'
+                               % (child_order, load_order))
+  finally:
+    children[:] = original_children
+
+# -----------------------------------------------------------------------------
 def test_scattering_table_mixins():
   for datatype in ['model', 'miller_array']:
     dm = DataManager([datatype])
@@ -1146,12 +1386,73 @@ def test_scattering_table_mixins():
   for scattering_table in ['wk1995', 'it1992', 'n_gaussian']:
     assert dm.map_scattering_table_type(scattering_table) == 'x_ray'
 
+def test_miller_array_single_build():
+  '''
+  A reflection file is built into miller arrays once per DataManager, whatever
+  the number of miller_array child datatypes and of DataManagers constructed
+  in the process. as_miller_arrays() runs the full builder (seconds on large
+  cifs); the parent filter and the map_coefficients filter used to run it
+  three times per file, and the class-level child list grew on every
+  DataManager() so the k-th one ran it 3k times.
+  '''
+  from cctbx import crystal, miller
+  from cctbx.array_family import flex
+  import iotbx.mtz
+  from iotbx.reflection_file_reader import any_reflection_file
+  from iotbx.data_manager.miller_array import MillerArrayDataManager
+
+  cs = crystal.symmetry(unit_cell=(10, 20, 30, 90, 90, 90),
+                        space_group_symbol='P 21 21 21')
+  ms = miller.build_set(cs, anomalous_flag=False, d_min=3.0)
+  f = ms.array(data=flex.double(ms.size(), 10.0), sigmas=flex.double(ms.size(), 1.0))
+  f.set_observation_type_xray_amplitude()
+  fwt = ms.array(data=flex.complex_double(ms.size(), complex(1.0, 2.0)))
+  mtz_dataset = f.as_mtz_dataset(column_root_label='FOBS')
+  mtz_dataset.add_miller_array(fwt, column_root_label='FWT',
+                               label_decorator=iotbx.mtz.ccp4_label_decorator())
+  data_mtz = 'tst_data_manager_single_build.mtz'
+  mtz_dataset.mtz_object().write(data_mtz)
+
+  n_builds = [0]
+  orig = any_reflection_file.as_miller_arrays
+  def counting(self, *args, **kwds):
+    n_builds[0] += 1
+    return orig(self, *args, **kwds)
+  any_reflection_file.as_miller_arrays = counting
+  try:
+    for datatypes, custom_options in (
+        (['miller_array', 'map_coefficients'], None),
+        (['miller_array', 'map_coefficients'], None),
+        (['miller_array'], None),
+        (['miller_array', 'map_coefficients'], ['miller_array_skip_merge'])):
+      n_builds[0] = 0
+      dm = DataManager(datatypes=datatypes, custom_options=custom_options)
+      dm.process_miller_array_file(data_mtz)
+      arrays = dm.get_miller_arrays()
+      assert n_builds[0] == 1, (datatypes, custom_options, n_builds[0])
+      labels = sorted(a.info().label_string() for a in arrays)
+      assert labels == ['FOBS,SIGFOBS', 'FWT,PHWT'], labels
+      if 'map_coefficients' in datatypes:
+        assert dm.get_map_coefficients_labels() == ['FWT,PHWT'], \
+          dm.get_map_coefficients_labels()
+        mc = dm.get_map_coefficients_arrays(labels=['FWT,PHWT'])
+        assert len(mc) == 1 and mc[0].is_complex_array()
+      children = MillerArrayDataManager.miller_array_child_datatypes
+      assert len(children) == len(set(children)), children
+  finally:
+    any_reflection_file.as_miller_arrays = orig
+  os.remove(data_mtz)
+
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
 
   test_data_manager()
+  test_miller_array_single_build()
   test_model_datatype()
   test_sequence_datatype()
+  test_json_datatype()
+  test_yaml_datatype()
+  test_yaml_without_pyyaml()
   test_miller_array_datatype()
   test_real_map_datatype()
   test_map_mixins()
@@ -1160,6 +1461,7 @@ if __name__ == '__main__':
   test_model_skip_ss_annotations()
   test_fmodel_params()
   test_user_selected_labels()
+  test_duplicate_user_selected_labels()
   test_scattering_table_mixins()
 
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:

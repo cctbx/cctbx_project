@@ -57,10 +57,8 @@ def _is_favorable_halide_environment(
   binds_amide_hydrogen = False
   near_cation = False
   near_lys = False
-  near_hydroxyl = False
   xyz = col(atom.xyz)
   min_distance_to_cation = None
-  min_distance_to_hydroxyl = min_distance_to_cation
   for contact in chem_env.contacts:
     other = contact.atom
     resname = contact.resname()
@@ -102,14 +100,9 @@ def _is_favorable_halide_environment(
           min_distance_to_cation is None or
           distance < min_distance_to_cation):
         min_distance_to_cation = distance
-    # hydroxyl groups - note that the orientation of the hydrogen is usually
-    # arbitrary and we can't determine precise bonding
-    elif ((atom_name in ["OG1", "OG2", "OH1"]) and
-          (resname in ["SER", "THR", "TYR"]) and
-          (distance <= 3.5)):
-      near_hydroxyl = True
-      if distance < min_distance_to_hydroxyl:
-        min_distance_to_hydroxyl = distance
+    # Hydroxyl groups (SER/THR/TYR) are deliberately not counted: the
+    # orientation of the hydrogen is usually arbitrary, so we can't determine
+    # precise bonding.
     # Backbone amide, implicit H
     elif atom_name in ["N"] and assume_hydrogens_all_missing:
       binds_amide_hydrogen = True

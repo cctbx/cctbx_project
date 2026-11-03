@@ -34,15 +34,6 @@ jobs:
   - checkout: self
     path: ./modules/cctbx_project
 
-  # add conda to path
-  # https://docs.microsoft.com/en-us/azure/devops/pipelines/ecosystems/anaconda?view=azure-devops&tabs=ubuntu-16-04#add-conda-to-your-system-path
-  - bash: echo "##vso[task.prependpath]$CONDA/bin"
-    displayName: Add conda to PATH
-
-  # accept conda tos
-  - script: conda config --set plugins.auto_accept_tos yes
-    displayName: Accept conda TOS
-
   - script: |
       cd $(Pipeline.Workspace)
       ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
@@ -50,7 +41,6 @@ jobs:
 
   - script: |
       set -xe
-      source $(CONDA)/etc/profile.d/conda.sh
       cd $(Pipeline.Workspace)
       python bootstrap.py hot update --builder=xfel --no-boost-src
       cd modules

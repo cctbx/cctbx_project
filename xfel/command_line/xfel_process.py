@@ -78,6 +78,7 @@ class Script(DialsScript):
 
     self.tag = None
     self.reference_detector = None
+    self._lookup_cache: dict = {}
 
     # Create the parser
     self.parser = ArgumentParser(

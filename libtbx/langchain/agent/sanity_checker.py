@@ -23,6 +23,9 @@ from __future__ import absolute_import, division, print_function
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Dict, Any
 
+# _safe_float is shared; see libtbx/langchain/utils/run_utils.py
+from libtbx.langchain.utils.run_utils import _safe_float
+
 
 # =============================================================================
 # DATA CLASSES
@@ -494,9 +497,9 @@ class SanityChecker:
         curr = metrics_history[-1]
 
         # R-free spike (X-ray)
-        prev_rfree = prev.get("r_free")
-        curr_rfree = curr.get("r_free")
-        if prev_rfree and curr_rfree:
+        prev_rfree = _safe_float(prev.get("r_free"))
+        curr_rfree = _safe_float(curr.get("r_free"))
+        if prev_rfree is not None and curr_rfree is not None:
             change = curr_rfree - prev_rfree
             if change > 0.15:
                 issues.append(SanityIssue(
@@ -510,9 +513,9 @@ class SanityChecker:
                 ))
 
         # Map CC drop (cryo-EM)
-        prev_cc = prev.get("map_cc")
-        curr_cc = curr.get("map_cc")
-        if prev_cc and curr_cc:
+        prev_cc = _safe_float(prev.get("map_cc"))
+        curr_cc = _safe_float(curr.get("map_cc"))
+        if prev_cc is not None and curr_cc is not None:
             drop = prev_cc - curr_cc
             if drop > 0.3:
                 issues.append(SanityIssue(

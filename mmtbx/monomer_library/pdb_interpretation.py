@@ -853,6 +853,20 @@ def involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs):
         return True
   return False
 
+def link_h_bonded_elsewhere(m_x, atom_id, partner_ids):
+  '''
+  True if the dictionary of m_x bonds H atom_id to an atom not in partner_ids.
+  Links name the H (TRANS C-N-H); in geostd ASJ "H" is on C (4dco).
+  '''
+  if m_x.monomer_atom_dict[atom_id].type_symbol not in ("H", "D"):
+    return False
+  for bond in m_x.monomer.bond_list:
+    if   bond.atom_id_1 == atom_id: other = bond.atom_id_2
+    elif bond.atom_id_2 == atom_id: other = bond.atom_id_1
+    else: continue
+    if other not in partner_ids: return True
+  return False
+
 class source_info_server(object):
 
   def __init__(self, m_i, m_j):
@@ -2008,6 +2022,7 @@ def get_restraints_loading_flags(params):
   return rc
 
 def special_dispensation(proxy_label, m_i, m_j, i_seqs):
+  if m_i is None or m_j is None: return False
   atoms=[]
   for afs in [m_i.pdb_atoms, m_j.pdb_atoms]:
     for atom in afs:
@@ -2062,6 +2077,27 @@ def evaluate_registry_process_result(
       i_seqs=i_seqs,
       base_message="Duplicate %s restraints:" % proxy_label,
       lines=lines))
+
+def __convert_v(s, matches):
+  for s1, s2 in matches:
+    s=s.replace(s1,s2)
+  return s
+
+def convert_v2_to_v3(s):
+  m=[['*', "'"],
+     ['O1P', 'OP1'],
+     ['O2P', 'OP2'],
+     # ['O3P', 'OP3'],
+     ]
+  return __convert_v(s, m)
+
+def convert_v3_to_v2(s):
+  m=[["'", '*'],
+     ['OP1', 'O1P'],
+     ['OP2', 'O2P'],
+     # ['OP3', 'O3P'],
+     ]
+  return __convert_v(s, m)
 
 class add_bond_proxies(object):
 
@@ -2166,21 +2202,28 @@ class add_angle_proxies(object):
       if (   angle.atom_id_1 not in m_1.monomer_atom_dict
           or angle.atom_id_2 not in m_2.monomer_atom_dict
           or angle.atom_id_3 not in m_3.monomer_atom_dict):
-        if (    angle.atom_id_1.replace("'", "*") in m_1.monomer_atom_dict
-            and angle.atom_id_2.replace("'", "*") in m_2.monomer_atom_dict
-            and angle.atom_id_3.replace("'", "*") in m_3.monomer_atom_dict):
-          angle.atom_id_1 = angle.atom_id_1.replace("'", "*")
-          angle.atom_id_2 = angle.atom_id_2.replace("'", "*")
-          angle.atom_id_3 = angle.atom_id_3.replace("'", "*")
-        elif (    angle.atom_id_1.replace("*", "'") in m_1.monomer_atom_dict
-              and angle.atom_id_2.replace("*", "'") in m_2.monomer_atom_dict
-              and angle.atom_id_3.replace("*", "'") in m_3.monomer_atom_dict):
-          angle.atom_id_1 = angle.atom_id_1.replace("*", "'")
-          angle.atom_id_2 = angle.atom_id_2.replace("*", "'")
-          angle.atom_id_3 = angle.atom_id_3.replace("*", "'")
+        if (    convert_v3_to_v2(angle.atom_id_1) in m_1.monomer_atom_dict
+            and convert_v3_to_v2(angle.atom_id_2) in m_2.monomer_atom_dict
+            and convert_v3_to_v2(angle.atom_id_3) in m_3.monomer_atom_dict):
+          angle.atom_id_1 = convert_v3_to_v2(angle.atom_id_1)
+          angle.atom_id_2 = convert_v3_to_v2(angle.atom_id_2)
+          angle.atom_id_3 = convert_v3_to_v2(angle.atom_id_3)
+        elif (    convert_v2_to_v3(angle.atom_id_1) in m_1.monomer_atom_dict
+              and convert_v2_to_v3(angle.atom_id_2) in m_2.monomer_atom_dict
+              and convert_v2_to_v3(angle.atom_id_3) in m_3.monomer_atom_dict):
+          angle.atom_id_1 = convert_v2_to_v3(angle.atom_id_1)
+          angle.atom_id_2 = convert_v2_to_v3(angle.atom_id_2)
+          angle.atom_id_3 = convert_v2_to_v3(angle.atom_id_3)
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue
+      if (m_j is not None and
+          ((m_1 is m_2 and link_h_bonded_elsewhere(
+             m_1, angle.atom_id_1, [angle.atom_id_2])) or
+           (m_3 is m_2 and link_h_bonded_elsewhere(
+             m_3, angle.atom_id_3, [angle.atom_id_2])))):
+        counters.unresolved_hydrogen += 1
+        continue
       atoms = (m_1.expected_atoms.get(angle.atom_id_1, None),
                m_2.expected_atoms.get(angle.atom_id_2, None),
                m_3.expected_atoms.get(angle.atom_id_3, None))
@@ -2212,9 +2255,10 @@ class add_angle_proxies(object):
               origin_id=origin_id,
               ),
             replace_in_place=replace_in_place)
-          evaluate_registry_process_result(
-            proxy_label="angle", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
-            registry_process_result=registry_process_result)
+          if not replace_in_place:
+            evaluate_registry_process_result(
+              proxy_label="angle", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
+              registry_process_result=registry_process_result)
 
 class add_dihedral_proxies(object):
 
@@ -2526,6 +2570,11 @@ class add_planarity_proxies(object):
           else:
             counters.corrupt_monomer_library_definitions += 1
             continue
+        if (m_j is not None and link_h_bonded_elsewhere(m_x, plane_atom.atom_id,
+              [p.atom_id for p in plane.plane_atoms
+               if p.atom_comp_id == plane_atom.atom_comp_id])):
+          counters.unresolved_hydrogen += 1
+          continue
         atom = m_x.expected_atoms.get(plane_atom.atom_id, None)
         if (atom is None):
           if (m_x.monomer_atom_dict[plane_atom.atom_id].type_symbol == "H"):
@@ -3919,52 +3968,6 @@ class build_all_chain_proxies(linking_mixins):
           print("%sRestraints for '%s'" % (' '*6, item[0]), file=log)
           print('%swere not modified by "%s"' % (' '*8,item[1]), file=log)
       #
-      # Identify disulfide bond exclusions BEGIN
-      self.disulfide_bond_exclusions_selection = flex.size_t()
-      if(self.cystein_sulphur_i_seqs.size()>0):
-        if(params.disulfide_bond_exclusions_selection_string is not None):
-          self.disulfide_bond_exclusions_selection = \
-            self.pdb_hierarchy.atom_selection_cache().selection(
-              params.disulfide_bond_exclusions_selection_string).iselection()
-        else:
-          exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
-          cystein_sulphur_atoms_exclude = []
-          for atom in self.pdb_atoms:
-            e_ = atom.element.strip().upper()
-            e = atom.determine_chemical_element_simple()
-            if(e is not None):
-              e = e.strip().upper()
-              if(e_.strip() != ""):
-                if(e_!=e):
-                  raise Sorry("Bad element type: '%s', '%s'."%(e,e_))
-              if(not e in exclusion_list):
-                for cs_i_seq in self.cystein_sulphur_i_seqs:
-                  csa = self.pdb_atoms[cs_i_seq]
-                  if(csa.distance(atom) < params.exclusion_distance_cutoff):
-                    cystein_sulphur_atoms_exclude.append(csa)
-                    self.disulfide_bond_exclusions_selection.append(csa.i_seq)
-      if(self.disulfide_bond_exclusions_selection.size()>0):
-        if log is not None:
-          print(file=log)
-          print("List of CYS excluded from plausible disulfide bonds:", file=log)
-          print("  (reason: may participate in coordination)", file=log)
-        for i_seq in self.disulfide_bond_exclusions_selection:
-          a = self.pdb_atoms[i_seq]
-          if log is not None: print("  %s"%a.format_atom_record(), file=log)
-          dces = a.determine_chemical_element_simple()
-          if dces is None:
-            raise Sorry("Atom '%s' has unknown chemical element symbol" % a.format_atom_record())
-          e = dces.strip().upper()
-          if(e!="S"):
-            raise Sorry("disulfide_bond_exclusions_selection_string must select CYS sulfur.")
-        if log is not None: print(file=log)
-      tmp = flex.size_t()
-      for i_seq in self.cystein_sulphur_i_seqs:
-        if(not i_seq in self.disulfide_bond_exclusions_selection):
-          tmp.append(i_seq)
-      self.cystein_sulphur_i_seqs = tmp
-      # Identify disulfide bond exclusions END
-      #
       n_unresolved_apply_cif_link_bonds = 0
       n_unresolved_apply_cif_link_angles = 0
       n_unresolved_apply_cif_link_dihedrals = 0
@@ -4147,17 +4150,70 @@ class build_all_chain_proxies(linking_mixins):
       self.geometry_proxy_registries.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.type_energies.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.type_h_bonds.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
-      # Expand cystein_sulphur_i_seqs
-      new_cystein_sulphur_i_seqs = list(self.cystein_sulphur_i_seqs)
-      for master_c_iseq in self.cystein_sulphur_i_seqs:
+      # Expand cystein_sulphur_i_seqs. They were collected on the reduced
+      # (masters and rest) hierarchy, so translate them to the full
+      # hierarchy before looking up NCS copies.
+      master_and_rest_iselection = master_and_rest_bool_selection.iselection()
+      new_cystein_sulphur_i_seqs = []
+      for reduced_c_iseq in self.cystein_sulphur_i_seqs:
+        master_c_iseq = master_and_rest_iselection[reduced_c_iseq]
+        new_cystein_sulphur_i_seqs.append(master_c_iseq)
         copy_iseqs = nrgl.get_copy_iseqs([master_c_iseq])
         flatten_copies = [item for sublist in copy_iseqs for item in sublist]
         new_cystein_sulphur_i_seqs.extend(flatten_copies)
-      self.cystein_sulphur_i_seqs = flex.size_t(new_cystein_sulphur_i_seqs)
+      self.cystein_sulphur_i_seqs = flex.size_t(
+        sorted(new_cystein_sulphur_i_seqs))
 
       # self.scattering_type_registry._show()
     # STOP()
 
+    # Runs after the NCS expansion so that exclusions are evaluated on the full hierarchy:
+    # Identify disulfide bond exclusions BEGIN
+    self.disulfide_bond_exclusions_selection = flex.size_t()
+    if(self.cystein_sulphur_i_seqs.size()>0):
+      if(params.disulfide_bond_exclusions_selection_string is not None):
+        self.disulfide_bond_exclusions_selection = \
+          self.pdb_hierarchy.atom_selection_cache().selection(
+            params.disulfide_bond_exclusions_selection_string).iselection()
+      else:
+        exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
+        cystein_sulphur_atoms_exclude = []
+        for atom in self.pdb_atoms:
+          e_ = atom.element.strip().upper()
+          e = atom.determine_chemical_element_simple()
+          if(e is not None):
+            e = e.strip().upper()
+            if(e_.strip() != ""):
+              if(e_!=e):
+                raise Sorry("Bad element type: '%s', '%s'."%(e,e_))
+            if(not e in exclusion_list):
+              for cs_i_seq in self.cystein_sulphur_i_seqs:
+                csa = self.pdb_atoms[cs_i_seq]
+                if(csa.distance(atom) < params.exclusion_distance_cutoff):
+                  cystein_sulphur_atoms_exclude.append(csa)
+                  self.disulfide_bond_exclusions_selection.append(csa.i_seq)
+    if(self.disulfide_bond_exclusions_selection.size()>0):
+      if log is not None:
+        print(file=log)
+        print("List of CYS excluded from plausible disulfide bonds:", file=log)
+        print("  (reason: may participate in coordination)", file=log)
+      for i_seq in self.disulfide_bond_exclusions_selection:
+        a = self.pdb_atoms[i_seq]
+        if log is not None: print("  %s"%a.format_atom_record(), file=log)
+        dces = a.determine_chemical_element_simple()
+        if dces is None:
+          raise Sorry("Atom '%s' has unknown chemical element symbol" % a.format_atom_record())
+        e = dces.strip().upper()
+        if(e!="S"):
+          raise Sorry("disulfide_bond_exclusions_selection_string must select CYS sulfur.")
+      if log is not None: print(file=log)
+    tmp = flex.size_t()
+    for i_seq in self.cystein_sulphur_i_seqs:
+      if(not i_seq in self.disulfide_bond_exclusions_selection):
+        tmp.append(i_seq)
+    self.cystein_sulphur_i_seqs = tmp
+    # Identify disulfide bond exclusions END
+    #
     for apply in self.apply_cif_links:
       if (not apply.was_used):
         raise RuntimeError(

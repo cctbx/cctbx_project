@@ -78,7 +78,7 @@ def test_load_yaml_file_invalid():
     temp_dir = tempfile.mkdtemp()
     try:
         invalid_yaml = os.path.join(temp_dir, "invalid.yaml")
-        with open(invalid_yaml, 'w') as f:
+        with open(invalid_yaml, 'w', encoding='utf-8') as f:
             f.write("invalid: yaml: content: [")  # Invalid YAML
 
         data, error = load_yaml_file(invalid_yaml)

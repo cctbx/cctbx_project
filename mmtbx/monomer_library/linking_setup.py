@@ -59,6 +59,13 @@ maximum_per_atom_links = {
   "common_amino_acid" : 1,
   "other"             : 1,
   }
+# an atom past maximum_per_atom_links may take another covalent-range link
+# while covalent heavy neighbours + links stay below this. Nitrogen only: an
+# amine can be alkylated twice (2b5z LYS NZ), a sugar C1 between two ASN ND2
+# keeps one (tst_linking 38). O and S are full after one link anyway.
+neutral_valence = {
+  "N" : 3,
+  }
 #
 skip_if_both = [
   ["common_water",      "common_water"],

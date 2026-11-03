@@ -29,7 +29,7 @@ def load_decision_config():
     """Load decision_config.json."""
     path = os.path.join(SCRIPT_DIR, "decision_config.json")
     try:
-        with open(path) as f:
+        with open(path, encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
         return None
@@ -38,14 +38,14 @@ def load_decision_config():
 def load_command_templates():
     """Load and parse command_templates.json."""
     path = os.path.join(SCRIPT_DIR, "command_templates.json")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         return json.load(f)
 
 
 def extract_workflow_states():
     """Extract workflow states and transitions from workflow_state.py."""
     path = os.path.join(SCRIPT_DIR, "workflow_state.py")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         content = f.read()
 
     states = []
@@ -101,7 +101,7 @@ def extract_workflow_states():
 def extract_stop_conditions():
     """Extract stop conditions from metrics_analyzer.py."""
     path = os.path.join(SCRIPT_DIR, "metrics_analyzer.py")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         content = f.read()
 
     conditions = []
@@ -144,7 +144,7 @@ def extract_stop_conditions():
 def extract_file_categorization():
     """Extract file categorization rules from workflow_state.py."""
     path = os.path.join(SCRIPT_DIR, "workflow_state.py")
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         content = f.read()
 
     rules = []
@@ -247,7 +247,7 @@ def extract_key_thresholds():
 
     # Fallback to code extraction
     ws_path = os.path.join(SCRIPT_DIR, "workflow_state.py")
-    with open(ws_path) as f:
+    with open(ws_path, encoding='utf-8') as f:
         ws_content = f.read()
 
     if "0.35" in ws_content:
@@ -589,7 +589,7 @@ def main():
 
     # Output
     if args.output:
-        with open(args.output, "w") as f:
+        with open(args.output, "w", encoding='utf-8') as f:
             f.write(doc)
         print(f"Documentation written to {args.output}", file=sys.stderr)
     else:

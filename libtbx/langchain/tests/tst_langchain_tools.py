@@ -5,7 +5,6 @@ Tests cover:
 - Core module (LLM setup, types)
 - Analysis module (summarization, state extraction)
 - RAG module (document loading, retrieval)
-- Validation module (command validation)
 - Knowledge module (programs, prompts)
 - Agent module (memory, planning)
 - Utils module (text processing)
@@ -27,7 +26,10 @@ _SKIP_REASON = None
 try:
     from langchain_core.documents import Document
     from langchain_core.prompts import PromptTemplate
-except ImportError as e:
+except Exception as e:
+    # v118.G3: widened from ImportError to Exception — version conflicts
+    # in transitive deps surface as TypeError, RuntimeError, etc.
+    # (See docs/DEVELOPER_GUIDE.md "Optional dependency handling".)
     _SKIP_REASON = "langchain_core not available: %s" % e
     Document = None
     PromptTemplate = None
@@ -38,8 +40,33 @@ try:
     # Also verify libtbx.langchain is a proper package (not shadowed)
     import libtbx.langchain.core  # noqa: F401
     assert libtbx.langchain.core is not None
-except (ImportError, ModuleNotFoundError) as e:
+except Exception as e:
+    # v118.G3: widened from (ImportError, ModuleNotFoundError) to Exception
     _SKIP_REASON = "libtbx.langchain not available: %s" % e
+
+
+# v118.G3: separate probe for the chromadb / RAG stack.  Catch Exception
+# (not just ImportError) because protobuf version conflicts in chromadb's
+# transitive deps raise TypeError at import time.  Tests that genuinely
+# require chromadb (e.g., actually instantiating a vector store) can use
+# the @_skip_if_rag_missing decorator.  After v118 G1/G1b/G2/G2b the
+# chromadb-dependent modules import cleanly even when chromadb is broken,
+# so none of the existing tests need the decorator — it's provided here
+# as a documented pattern for future tests.
+_RAG_SKIP_REASON = None
+try:
+    import langchain_chroma
+    import chromadb
+    # Reference the imported names so libtbx.find_unused_imports recognizes
+    # these as used.  The actual purpose of these imports is the side
+    # effect: if either raises during import (including TypeError from
+    # protobuf version conflicts), _RAG_SKIP_REASON is populated by the
+    # except clause below.
+    _RAG_PROBED = (langchain_chroma.__name__, chromadb.__name__)
+except Exception as e:
+    _RAG_SKIP_REASON = (
+        "langchain RAG stack (chromadb) not usable: %s: %s"
+        % (type(e).__name__, e))
 
 
 def _skip_if_deps_missing(cls):
@@ -48,6 +75,23 @@ def _skip_if_deps_missing(cls):
         for attr_name in list(dir(cls)):
             if attr_name.startswith("test_"):
                 setattr(cls, attr_name, unittest.skip(_SKIP_REASON)(getattr(cls, attr_name)))
+    return cls
+
+
+def _skip_if_rag_missing(cls):
+    """Class decorator: skip RAG-using tests when chromadb is unavailable.
+
+    v118.G3: pattern for future test classes that genuinely instantiate
+    a Chroma vector store or otherwise need the chromadb stack at runtime.
+    Currently NO test class uses this decorator because G1/G1b/G2/G2b
+    make the affected modules importable in any env.
+    """
+    if _RAG_SKIP_REASON:
+        for attr_name in list(dir(cls)):
+            if attr_name.startswith("test_"):
+                setattr(cls, attr_name,
+                        unittest.skip(_RAG_SKIP_REASON)(
+                            getattr(cls, attr_name)))
     return cls
 
 
@@ -195,47 +239,6 @@ class TestRAGModule(unittest.TestCase):
         # Each chunk should have context header
         for chunk in chunks:
             self.assertIn("** DOCUMENT:", chunk.page_content)
-
-
-@_skip_if_deps_missing
-class TestValidationModule(unittest.TestCase):
-    """Tests for libtbx.langchain.validation"""
-
-    def test_imports(self):
-        """Test that validation module imports work."""
-        from libtbx.langchain.validation.core_validator import validate_phenix_command
-        from libtbx.langchain.validation.registry import get_validator
-        self.assertIsNotNone(validate_phenix_command)
-        self.assertIsNotNone(get_validator)
-
-    def test_get_validator_refine(self):
-        """Test getting validator for phenix.refine."""
-        from libtbx.langchain.validation.registry import get_validator
-        validator = get_validator('phenix.refine')
-        self.assertIsNotNone(validator)
-        self.assertEqual(validator.program_name, 'phenix.refine')
-
-    def test_get_validator_unknown(self):
-        """Test getting validator for unknown program returns None."""
-        from libtbx.langchain.validation.registry import get_validator
-        validator = get_validator('phenix.nonexistent')
-        self.assertIsNone(validator)
-
-    def test_get_all_validators(self):
-        """Test getting all registered validators."""
-        from libtbx.langchain.validation.registry import get_all_validators
-        validators = get_all_validators()
-        self.assertIsInstance(validators, dict)
-        self.assertIn('phenix.refine', validators)
-
-    def test_refine_validator_common_errors(self):
-        """Test RefineValidator has common error patterns."""
-        from libtbx.langchain.validation.phenix_refine import RefineValidator
-        validator = RefineValidator()
-        errors = validator.get_common_errors()
-        self.assertIsInstance(errors, dict)
-        # Should have twin_law error pattern
-        self.assertTrue(any('twin_law' in key for key in errors.keys()))
 
 
 @_skip_if_deps_missing
@@ -457,7 +460,7 @@ def run_all_tests():
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
     for cls in [TestCoreModule, TestAnalysisModule, TestRAGModule,
-                TestValidationModule, TestKnowledgeModule, TestAgentModule,
+                TestKnowledgeModule, TestAgentModule,
                 TestUtilsModule, TestIntegration]:
         suite.addTests(loader.loadTestsFromTestCase(cls))
     runner = unittest.TextTestRunner(verbosity=2)

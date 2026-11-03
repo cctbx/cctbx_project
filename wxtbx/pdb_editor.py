@@ -141,8 +141,6 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     if (set_changes_flag):
       self._changes_made = True
     self._i_state = len(self._hierarchy_stack) - 1
-    if wx.VERSION < (4,0):
-      self.frame.EnableUndo(True)
     #print self._hierarchy_stack
     #print self._hierarchy_actions
     #print self._i_state
@@ -241,7 +239,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
   def PropagateAtomChanges(self, node):
     child, cookie = self.GetFirstChild(node)
     if (child is None):
-      pdb_object = self.GetItemPyData(node)
+      pdb_object = self.GetItemData(node)
       if (type(pdb_object).__name__ == 'atom'):
         self.SetItemText(node, format_atom(pdb_object))
         if (pdb_object.uij == (-1,-1,-1,-1,-1,-1)):
@@ -262,11 +260,11 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
   def _FindItem(self, node, pdb_object):
     child, cookie = self.GetFirstChild(node)
     if (child is None):
-      if (self.GetItemPyData(node) == pdb_object):
+      if (self.GetItemData(node) == pdb_object):
         return child
       return None
     while (child is not None):
-      if (self.GetItemPyData(child) == pdb_object):
+      if (self.GetItemData(child) == pdb_object):
         return child
       item = self._FindItem(child, pdb_object)
       if (item is not None):
@@ -286,7 +284,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
 
   def GetSelectedObject(self, object_type=None):
     item = self.GetSelection()
-    pdb_object = self.GetItemPyData(item)
+    pdb_object = self.GetItemData(item)
     if (object_type is not None):
       assert (type(pdb_object).__name__ == object_type)
     return item, pdb_object
@@ -296,7 +294,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     selection = flex.bool(self._hierarchy.atoms_size(), False)
     object_types = set([])
     for item in self.GetSelections():
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       pdb_type = type(pdb_object).__name__
       object_types.add(pdb_type)
       if (pdb_type == 'atom'):
@@ -467,7 +465,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
       self.ShowMenu(labels_and_actions, source_window)
     else :
       sel = self.GetSelection()
-      pdb_object = self.GetItemPyData(sel)
+      pdb_object = self.GetItemData(sel)
       if (pdb_object is not None):
         pdb_type = type(pdb_object).__name__
         if (pdb_type == "atom"):
@@ -769,7 +767,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     resseq_shift = self.GetResseqShift()
     if (resseq_shift is not None) and (resseq_shift != 0):
       for item in items :
-        residue_group = self.GetItemPyData(item)
+        residue_group = self.GetItemData(item)
         assert (type(residue_group).__name__ == 'residue_group')
         resseq = residue_group.resseq_as_int()
         new_resseq = resseq + resseq_shift
@@ -799,7 +797,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     if (resseq_shift is not None) and (resseq_shift != 0):
       child, cookie = self.GetFirstChild(item)
       while (child is not None):
-        residue_group = self.GetItemPyData(child)
+        residue_group = self.GetItemData(child)
         assert (type(residue_group).__name__ == 'residue_group')
         resseq = residue_group.resseq_as_int()
         new_resseq = resseq + resseq_shift
@@ -821,7 +819,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
       i_res = 1
       child, cookie = self.GetFirstChild(item)
       while (child is not None):
-        residue_group = self.GetItemPyData(child)
+        residue_group = self.GetItemData(child)
         assert (type(residue_group).__name__ == 'residue_group')
         residue_group.resseq = "%4d" % i_res
         i_res += 1
@@ -838,7 +836,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     items = self.GetSelections()
     new_occ = None
     for item in items :
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       pdb_type = type(pdb_object).__name__
       occ = None
       if (pdb_type == 'atom'):
@@ -858,7 +856,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     items = self.GetSelections()
     new_b = None
     for item in items :
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       pdb_type = type(pdb_object).__name__
       b_iso = None
       if (pdb_type == 'atom'):
@@ -877,7 +875,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
   def OnSetIsotropic(self, event):
     items = self.GetSelections()
     for item in items :
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       def set_isotropic(atom):
         atom.set_uij(new_uij=(-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
       self._ApplyToAtoms(item, pdb_object, set_isotropic)
@@ -887,7 +885,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     items = self.GetSelections()
     new_segid = None
     for item in items :
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       pdb_type = type(pdb_object).__name__
       segid = None
       if (pdb_type == 'atom'):
@@ -914,7 +912,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     items = self.GetSelections()
     new_altloc = None
     for item in items :
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       if (type(pdb_object).__name__ in ["residue_group", "chain"]):
         if (len(pdb_object.conformers()) > 1):
           raise Sorry("One or more residues in the selection contain "+
@@ -931,7 +929,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     new_altloc = self.GetNewAltloc("")
     modified = []
     for item in items :
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       if (type(pdb_object) == 'atom_group'):
         pdb_object.altloc = new_altloc
         modified.append(pdb_object.memory_id())
@@ -1005,14 +1003,14 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
       assert (unit_cell is not None)
     # FIXME
     for item in items :
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       if has_aniso_atoms(pdb_object):
         confirm_action("This action will invalidate any ANISOU records "+
           "present in the selected atoms, which will automatically be "+
           "converted to isotropic.  Are you sure you want to continue?")
         break
     for item in items :
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       pdb_type = type(pdb_object).__name__
       if (pdb_type == 'atom'):
         from scitbx.array_family import flex
@@ -1045,7 +1043,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     items = self.GetSelections()
     n_changed = n_unassigned = 0
     for item in items :
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       pdb_type = type(pdb_object).__name__
       if (pdb_type == 'atom'):
         pdb_object.element = ''
@@ -1076,7 +1074,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     items = self.GetSelections()
     n_hetatm = n_atom = 0
     for item in items :
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       pdb_type = type(pdb_object).__name__
       if (pdb_type == 'atom'):
         if (pdb_object.hetero):
@@ -1094,7 +1092,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
       atom_type = "HETATM"
     new_type = self.GetAtomType(atom_type)
     for item in items :
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       pdb_type = type(pdb_object).__name__
       if (pdb_type == 'atom'):
         if (new_type == "HETATM"):
@@ -1123,7 +1121,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     confirm_action("Are you sure you want to delete the selected %d atom(s)?"
       % n_atoms)
     for item in self.GetSelections():
-      pdb_object = self.GetItemPyData(item)
+      pdb_object = self.GetItemData(item)
       self._DeleteObject(item, pdb_object)
     self._hierarchy.atoms().reset_i_seq()
     self.PushState("deleted %d atoms" % n_atoms)
@@ -1160,7 +1158,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     # TODO more control over what happens to remaining atom_groups
     child, cookie = self.GetFirstChild(item)
     while (child is not None):
-      residue_group = self.GetItemPyData(child)
+      residue_group = self.GetItemData(child)
       assert (type(residue_group).__name__ == 'residue_group')
       atom_groups = residue_group.atom_groups()
       if (len(atom_groups) > 1):
@@ -1278,7 +1276,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     self.PropagateAtomChanges(item)
     child, cookie = self.GetFirstChild(item)
     while (child is not None):
-      atom_group = self.GetItemPyData(child)
+      atom_group = self.GetItemData(child)
       assert (type(atom_group).__name__ == 'atom_group')
       self.SetItemText(child, format_atom_group(atom_group))
       child, cookie = self.GetNextChild(item, cookie)
@@ -1360,7 +1358,7 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     child, cookie = self.GetFirstChild(root_node)
     i_model = 1
     while (child is not None):
-      other_model = self.GetItemPyData(child)
+      other_model = self.GetItemData(child)
       assert (type(other_model).__name__ == 'model')
       other_model.id = str(i_model)
       self.SetItemText(child, format_model(other_model))
@@ -1904,8 +1902,6 @@ class PDBTreeFrame(wx.Frame):
     pszr.Add(self._tree, 1, wx.EXPAND, 2)
     # toolbar setup
     self.toolbar = self.CreateToolBar(style=wx.TB_TEXT)
-    if wx.VERSION < (4,0):
-      self.toolbar.AddTool = self.toolbar.AddLabelTool
     bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("phenix.pdbtools")
     btn = self.toolbar.AddTool(-1, "Load file", bmp,
       shortHelp="Load file", kind=wx.ITEM_NORMAL)

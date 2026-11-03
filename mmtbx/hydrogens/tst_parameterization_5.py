@@ -368,7 +368,7 @@ ATOM      0 HH22 ARG A  71      -0.120  24.738  21.602  1.00 62.26           H
 """
 
 type_list_known3 = ['3neigbs', '2tetra', '2tetra', '2tetra', '2tetra',
- '2tetra', '2tetra', 'flat_2neigbs', 'alg1a', 'alg1a']
+ '2tetra', '2tetra', 'flat_2neigbs', 'alg1a', 'alg1a', 'alg1b']
 
 def exercise3(pdb_str, type_list_known):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
@@ -396,7 +396,9 @@ def exercise3(pdb_str, type_list_known):
   number_h = model.get_hd_selection().count(True)
   number_h_para = len(h_para) - h_para.count(None)
 
-  assert (number_h_para == number_h-2), 'Not all H atoms are parameterized'
+  # HH22 sits on a crystallographic special position and has no angle
+  # proxies; it cannot be parameterized. HH21 is correctly placed as alg1b.
+  assert (number_h_para == number_h-1), 'Not all H atoms are parameterized'
 
   for ih in h_distances:
     labels = atoms[ih].fetch_labels()

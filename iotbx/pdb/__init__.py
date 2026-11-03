@@ -73,16 +73,6 @@ def is_pdb_file(file_name):
           return True
   return False
 
-def is_pdb_mmcif_file(file_name):
-  """Return True if this is an mmCIF file"""
-  try:
-    cif_model = iotbx.cif.reader(file_path=file_name).model()
-    cif_block = cif_model.values()[0]
-    if "_atom_site" in cif_block:
-      return True
-  except Exception as e:
-    return False
-
 def systematic_chain_ids():
   """Return a list of possible 2-character chain IDS"""
   import string
@@ -1087,6 +1077,27 @@ class _():
     for section in input_sections[-2:]:
       lines.extend(getattr(self, section)())
     return ("pickle", lines)
+
+  # The C++ input value is fully reconstructed from __getinitargs__ (the source
+  # lines above).  Boost.Python's enable_pickling() additionally refuses to
+  # pickle or deepcopy an instance whose __dict__ is non-empty unless the class
+  # declares that it manages its own dict -- methods such as scale_matrix()
+  # cache values (e.g. _scale_matrix) on the instance, so without these hooks
+  # any pickle/deepcopy after such a call raises "Incomplete pickle support
+  # (__getstate_manages_dict__ not set)".  Round-trip the __dict__ explicitly
+  # rather than dropping it: scale_matrix()'s cache can be a deliberate None
+  # (xray_structure_simple(crystal_symmetry=...) sets _scale_matrix = None to
+  # ignore the file's SCALE records), a decision NOT recoverable from the
+  # source lines -- dropping it would let a clone silently recompute a
+  # different matrix (and turn a suppressed-on-the-original malformed SCALE set
+  # into a ValueError on the clone).
+  __getstate_manages_dict__ = True
+
+  def __getstate__(self):
+    return dict(self.__dict__)
+
+  def __setstate__(self, state):
+    self.__dict__.update(state)
 
   def file_type(self):
     return "pdb"

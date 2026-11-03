@@ -551,6 +551,10 @@ class model_idealization():
     # set SS restratins
     self.set_ss_restraints(self.ann)
 
+    # Whole-model idealization keeps NCS copies identical, so the groups have
+    # to be found here. cablam_idealization used to do this search as a side
+    # effect; it no longer touches the NCS state of the model it is given.
+    self.model.search_for_ncs(log=null_out())
     self.model.setup_ncs_constraints_groups()
 
     self.init_model_statistics = self.get_statistics(self.model)
@@ -886,6 +890,8 @@ class model_idealization():
               value = getattr(sub_class, val_subname, None)
             else:
               value = sub_class
+          if value is None:
+            value = 99999
           l += val_format.format(value)
         else:
           l += val_format.format(0)

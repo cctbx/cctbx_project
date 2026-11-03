@@ -95,7 +95,6 @@ class crystal_model(worker):
       model_ext = os.path.splitext(model_file_path)[-1].lower()
       assert model_ext in [".pdb", ".cif"]
       if model_ext == ".pdb":
-        import iotbx.pdb
         pdb_in = iotbx.pdb.input(model_file_path)
         xray_structure = pdb_in.xray_structure_simple()
       elif model_ext == ".cif":

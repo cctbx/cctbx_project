@@ -629,10 +629,12 @@ class mask_and_regions(object):
     #
     tmp  = flex.double(flex.grid(self.mask_p1.all()), 1)
     if(modifier is not None):
-      modifier = modifier * self.mask_p1
-      sel = modifier <  -2.0 # XXX Depending on this, results can vary a lot
+      modifier = modifier * self.mask_p1 # bulk solvent only
+      # modifier becomes a mask defining very negative regions
+      sel = modifier <  -2.0
       modifier = modifier.set_selected(sel, 1)
       modifier = modifier.set_selected(~sel, 0)
+      #
       co = maptbx.connectivity(
         map_data                   = modifier,
         threshold                  = 0.01,
@@ -653,6 +655,10 @@ class mask_and_regions(object):
         if(volume_cutoff is not None and volume < volume_cutoff):
           break
     modifier = tmp
+    #write_map_file(
+    #    crystal_symmetry = self.crystal_symmetry,
+    #    map_data         = modifier,
+    #    file_name        = "modifier.mrc")
     #
     #
     # Solvent fraction
@@ -824,9 +830,8 @@ class f_masks(object):
     # END OF LOOP OVER REGIONS
 
 
-
+    ############################################################################
     """
-
     #self.FV          = OrderedDict()
     #self.FV[f_obs.customized_copy(data = f_mask_data_main)] = 0
 
@@ -846,10 +851,10 @@ class f_masks(object):
     fft_map = mc.fft_map(
       symmetry_flags   = maptbx.use_space_group_symmetry,
       crystal_gridding = self.crystal_gridding)
-    fft_map.apply_volume_scaling()
+    fft_map.apply_sigma_scaling()
     map_data = fft_map.real_map_unpadded() #* mask_
 
-    map_data = map_data.set_selected(map_data<0,0)
+    map_data = map_data.set_selected(map_data<2.5,0)
 
     #sgt = self.f_obs.space_group().type()
     #asu_map = asu_map_ext.asymmetric_map(sgt, map_data)
@@ -876,9 +881,9 @@ class f_masks(object):
 
     OFFSET = region.i_seq+1
     print("<><><><><><><><><><>")
-    dmd = modify(fofc=self.mFoDFc_main, R=2, cutoff=0.3, #0.1/10,
-       crystal_gridding=self.crystal_gridding,
-       mask = self.mask_and_regions.mask_p1)
+    #dmd = modify(fofc=self.mFoDFc_main, R=2, cutoff=0.3, #0.1/10,
+    #   crystal_gridding=self.crystal_gridding,
+    #   mask = self.mask_and_regions.mask_p1)
     #dmd = map_data
     #STOP()
 
@@ -895,9 +900,11 @@ class f_masks(object):
     #maptbx.unpad_in_place(map=mask_)
     #dmd = dmd * mask_
 
+    dmd = map_data
+
     co = maptbx.connectivity(
       map_data                   = dmd,
-      threshold                  = 0.04, #0.001/10,
+      threshold                  = 2.5, #0.001/10,
       preprocess_against_shallow = False,
       wrapping                   = True)
     if(xray_structure.space_group().type().number() != 1): # not P1
@@ -913,9 +920,9 @@ class f_masks(object):
       #if(i==0 or i==1): continue
       if i==0: continue
 
-      step=0.6
+      step=0.3
       volume = v*step**3
-      volume_cutoff = 2500
+      volume_cutoff = 50
       if(volume_cutoff is not None and volume < volume_cutoff): continue
       uc_fraction = v*100./conn.size()
       print(i, "%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
@@ -962,8 +969,9 @@ class f_masks(object):
     mtz_dataset = mc.as_mtz_dataset(column_root_label = "F")
     mtz_object = mtz_dataset.mtz_object()
     mtz_object.write(file_name = "map2.mtz")
-    """
 
+    """
+    ############################################################################
 
     #
     # Determine number of secondary regions. Must happen here!

@@ -31,14 +31,19 @@ class lbfgs(object):
     self.rmsd_bonds, self.rmsd_angles = None, None
     if sites_cart_selection:
       self.sites_cart_selection = flex.bool(sites_cart_selection)
-      self.tmp.reduced_sites_cart=sites_cart.select(self.sites_cart_selection)
-      self.x = flex.double(self.tmp.reduced_sites_cart.size()*3, 0)
     else:
       self.sites_cart_selection = None
-      if(self.riding_h_manager is not None):
-        self.x = self.riding_h_manager.refinable_parameters_init()
-      else:
-        self.x = flex.double(sites_cart.size()*3, 0)
+    # The refinable coordinates: the selected atoms, less the H atoms when
+    # they ride on their parents.
+    self.tmp.refinable = flex.bool(sites_cart.size(), True)
+    if(self.sites_cart_selection is not None):
+      self.tmp.refinable = self.tmp.refinable & self.sites_cart_selection
+    if(self.riding_h_manager is not None):
+      self.tmp.refinable = \
+        self.tmp.refinable & self.riding_h_manager.not_hd_selection
+      self.tmp.refinable_not_hd = \
+        self.tmp.refinable.select(self.riding_h_manager.not_hd_selection)
+    self.x = flex.double(self.tmp.refinable.count(True)*3, 0)
     self.tmp.geometry_restraints_manager = geometry_restraints_manager
     self.tmp.geometry_restraints_flags = geometry_restraints_flags
     self.tmp.disable_asu_cache = disable_asu_cache
@@ -61,19 +66,13 @@ class lbfgs(object):
     self.final_target_value = self.final_target_result.target
 
   def apply_shifts(self):
-    if self.sites_cart_selection:
-      shifted = self.tmp.reduced_sites_cart + flex.vec3_double(self.x)
-      self.tmp.sites_shifted = self.tmp.sites_cart.deep_copy()
-      self.tmp.sites_shifted.set_selected(self.sites_cart_selection, shifted)
-    else:
-      if(self.riding_h_manager is None):
-        self.tmp.sites_shifted = self.tmp.sites_cart + flex.vec3_double(self.x)
-      else:
-        new_sites = self.tmp.sites_cart.select(
-          self.riding_h_manager.not_hd_selection) + flex.vec3_double(self.x)
-        self.tmp.sites_shifted.set_selected(
-          self.riding_h_manager.not_hd_selection, new_sites)
-        self.riding_h_manager.idealize_riding_h_positions(sites_cart = self.tmp.sites_shifted)
+    shifted = self.tmp.sites_cart.select(self.tmp.refinable) + \
+      flex.vec3_double(self.x)
+    self.tmp.sites_shifted = self.tmp.sites_cart.deep_copy()
+    self.tmp.sites_shifted.set_selected(self.tmp.refinable, shifted)
+    if(self.riding_h_manager is not None):
+      self.riding_h_manager.idealize_riding_h_positions(
+        sites_cart = self.tmp.sites_shifted)
     if(self.states_collector is not None):
       self.states_collector.add(sites_cart = self.tmp.sites_shifted)
     if (self.tmp.geometry_restraints_manager.crystal_symmetry is not None):
@@ -106,15 +105,16 @@ class lbfgs(object):
     self.f = self.tmp.target_result.target
     if (self.first_target_result is None):
       self.first_target_result = self.tmp.target_result
-    if self.sites_cart_selection:
-      ptr = self.tmp.target_result.gradients
-      self.g = ptr.select(self.sites_cart_selection).as_double()
+    gradients = self.tmp.target_result.gradients
+    if(self.riding_h_manager is None):
+      gradients = gradients.select(self.tmp.refinable)
     else:
-      if(self.riding_h_manager is None):
-        self.g = self.tmp.target_result.gradients.as_double()
-      else:
-        self.g = self.riding_h_manager.gradients_reduced_cpp(
-          gradients    = self.tmp.target_result.gradients,
-          sites_cart   = self.tmp.sites_shifted,
-          hd_selection = self.riding_h_manager.hd_selection)
+      # The gradients on the riding H atoms are transferred to their parents;
+      # the result holds the non-H atoms only.
+      gradients = self.riding_h_manager.gradients_reduced_cpp(
+        gradients    = gradients,
+        sites_cart   = self.tmp.sites_shifted,
+        hd_selection = self.riding_h_manager.hd_selection)
+      gradients = gradients.select(self.tmp.refinable_not_hd)
+    self.g = gradients.as_double()
     return self.f, self.g

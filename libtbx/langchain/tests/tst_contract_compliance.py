@@ -90,7 +90,7 @@ def test_no_bare_session_info_bracket_reads():
     for filepath in SERVER_FILES:
         if not os.path.exists(filepath):
             continue
-        with open(filepath) as f:
+        with open(filepath, encoding='utf-8') as f:
             for lineno, line in enumerate(f, 1):
                 stripped = line.strip()
                 if stripped.startswith("#"):
@@ -134,7 +134,7 @@ def test_all_accessed_fields_in_contract():
     for filepath in SERVER_FILES:
         if not os.path.exists(filepath):
             continue
-        with open(filepath) as f:
+        with open(filepath, encoding='utf-8') as f:
             content = f.read()
         # .get() calls
         for m in re.finditer(r'session_info\.get\("(\w+?)"', content):
@@ -172,7 +172,7 @@ def test_contract_defaults_consistency():
     for filepath in SERVER_FILES:
         if not os.path.exists(filepath):
             continue
-        with open(filepath) as f:
+        with open(filepath, encoding='utf-8') as f:
             for lineno, line in enumerate(f, 1):
                 if line.strip().startswith("#"):
                     continue
@@ -249,7 +249,7 @@ def test_get_without_default_on_non_none_fields():
     for filepath in SERVER_FILES:
         if not os.path.exists(filepath):
             continue
-        with open(filepath) as f:
+        with open(filepath, encoding='utf-8') as f:
             for lineno, line in enumerate(f, 1):
                 if line.strip().startswith("#"):
                     continue
@@ -294,7 +294,7 @@ def test_protocol_version_consistency():
         print("  SKIP (ai_agent.py not found)")
         return
 
-    with open(client_file) as f:
+    with open(client_file, encoding='utf-8') as f:
         content = f.read()
 
     # Check that the client imports from contract (not hardcoded)
@@ -342,6 +342,45 @@ def test_version_bounds():
 
 
 # ---------------------------------------------------------------------------
+# Test: validate_contract() reports no violations (drift detection)
+# ---------------------------------------------------------------------------
+
+def test_contract_validate_passes():
+    """
+    The contract's internal invariants must hold.
+
+    contract.validate_contract() is the canonical drift detector.  It
+    checks:
+      - CURRENT_PROTOCOL_VERSION >= max field version (no drift)
+      - MIN <= CURRENT (test_version_bounds also checks this)
+      - MIN >= 1 (test_version_bounds also checks this)
+
+    The drift check is the one this file did not cover before:
+    if someone adds a v6 field but forgets to bump CURRENT, this
+    test catches it with a clear message.
+    """
+    if not CONTRACT_AVAILABLE:
+        print("  SKIP (contract.py not importable)")
+        return
+
+    try:
+        from agent.contract import validate_contract
+    except ImportError:
+        # Pre-v116.10-Phase-2 contract.py: validate_contract() doesn't exist.
+        # Skip rather than fail so we don't break older codebases that
+        # vendor older contract.py.
+        print("  SKIP (validate_contract not yet in contract.py)")
+        return
+
+    ok, errors = validate_contract()
+    assert_true(
+        ok,
+        "Contract invariant violations:\n  %s" % "\n  ".join(errors)
+    )
+    print("  PASSED: Contract internal invariants hold (validate_contract)")
+
+
+# ---------------------------------------------------------------------------
 # Test: warnings in response contract
 # ---------------------------------------------------------------------------
 
@@ -367,7 +406,7 @@ def test_client_handles_warnings():
         print("  SKIP (ai_agent.py not found)")
         return
 
-    with open(client_file) as f:
+    with open(client_file, encoding='utf-8') as f:
         content = f.read()
 
     assert_true(

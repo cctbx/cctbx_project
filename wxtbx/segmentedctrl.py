@@ -54,7 +54,7 @@ class SegmentedControl(wx.Control):
     self._style = style
     self._border_color = (0, 0, 0)
     if wx.Platform == '__WXGTK__' :
-      self.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.NORMAL))
+      self.SetFont(wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
 
     # Event Handlers
     self.Bind(wx.EVT_PAINT, lambda evt: self.__DrawButtons())
@@ -264,7 +264,7 @@ class SegmentedControl(wx.Control):
     pass
 
   def HitTest(self, event):
-    x, y = event.GetPositionTuple()
+    x, y = event.GetPosition()
     dc = wx.ClientDC(self)
     n_seg = len(self.segments)
     buf = 1
@@ -328,8 +328,8 @@ class SegmentedControl(wx.Control):
     return
     if not self.IsEnabled():
       return
-    x,y = event.GetPositionTuple()
-    w,h = self.GetClientSizeTuple()
+    x,y = event.GetPosition()
+    w,h = self.GetClientSize()
     if (x<0 or y<0 or x>=w or y>=h) and self.HasCapture():
       #self._clicked_segment = None
       print(-3)
@@ -487,7 +487,7 @@ if __name__ == "__main__" :
       btn5.AddSegment(label="Home", bitmap=bmp2)
       btn5.AddSegment(label="Search", bitmap=bmp3)
       btn5.AddSegment(label="Next", bitmap=bmp4)
-      btn5.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.NORMAL))
+      btn5.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
       v_sizer.Add(wx.StaticText(panel, -1, "Bitmaps and text"), 0, wx.ALL, 5)
       v_sizer.Add(btn5, 0, wx.ALL, 5)
       frame.Bind(wx.EVT_BUTTON, OnButton, btn5)

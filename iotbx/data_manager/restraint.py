@@ -1,11 +1,8 @@
-from __future__ import absolute_import, division, print_function
 '''
 '''
 
-from iotbx.file_reader import any_file
 from iotbx.data_manager import DataManagerBase
 from libtbx import Auto
-from libtbx.utils import Sorry
 
 # =============================================================================
 class RestraintDataManager(DataManagerBase):
@@ -36,13 +33,20 @@ class RestraintDataManager(DataManagerBase):
     return self._has_data(RestraintDataManager.datatype, expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
-  def process_restraint_file(self, filename):
+  def process_restraint_file(self, filename, cif_engine='xcif'):
     if (filename not in self.get_restraint_names()):
-      a = any_file(filename)
-      if (a.file_type != 'cif'):
-        raise Sorry('%s is not a recognized restraints file' % filename)
-      else:
-        self.add_restraint(filename, a.file_object.model())
+      from iotbx.file_io import read_file
+      from iotbx.file_io.detection import _cif_block_datatypes
+      result = read_file(filename, file_type='restraint', cif_engine=cif_engine)
+      cif_model = result.file_object.model()
+      # keep what a restraint consumer (mon_lib_srv, ener_lib) reads: drop the
+      # model / reflection blocks of a combined CIF, typically the bulk of the
+      # file (the atom table), unless a block is also a restraint block
+      for block_name in list(cif_model.keys()):
+        types = _cif_block_datatypes(block_name, cif_model[block_name])
+        if ('restraint' not in types) and (types & {'model', 'miller_array'}):
+          del cif_model[block_name]
+      self.add_restraint(filename, cif_model)
     return filename
 
   def get_default_output_restraint_filename(self):

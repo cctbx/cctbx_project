@@ -16,6 +16,29 @@ This module provides two types of validation:
 All program and parameter information is loaded dynamically from the
 programs.yaml file, so this validator stays in sync automatically.
 
+NOTE ON STOP CONDITIONS (audit, 2026-08)
+----------------------------------------
+`get_stop_reason_from_directives` and the two helpers it calls,
+`_check_stop_conditions` and `_check_max_program_cycles`, have NO
+CALLERS anywhere in modules/.  The live implementation of the
+r_free_target / map_cc_target hard stops is
+
+    agent/perceive_checks.py :: check_directive_stop
+
+which `graph_nodes.perceive()` calls each cycle.
+
+The two are not duplicates and that is why this copy was kept:
+
+  * perceive_checks reads `current_metrics` -- the dict returned by
+    extract_all_metrics for the cycle just finished;
+  * the code here reads the metrics out of HISTORY ENTRIES, which is a
+    different source and a different failure mode.
+
+`tests/tst_directives_integration.py` is the only test that exercises
+the history-reading path, so deleting this would remove that coverage.
+If you are changing stop behaviour, change perceive_checks -- this file
+will not affect a running agent.
+
 Pre-validation usage:
     from agent.directive_validator import validate_directives
 
@@ -149,7 +172,8 @@ def _load_programs_from_yaml_directly():
     if not yaml_path:
         raise FileNotFoundError("Could not find programs.yaml")
 
-    with open(yaml_path, 'r') as f:
+    # v116.10: Force UTF-8 (see yaml_loader.py).
+    with open(yaml_path, 'r', encoding='utf-8') as f:
         data = yaml.safe_load(f)
 
     programs = {}
@@ -596,13 +620,26 @@ def validate_directives(
             if normalized not in available_set:
                 if normalized not in unavailable_programs:
                     unavailable_programs.append(normalized)
+                    # v116.10: add "did you mean?" suggestions for typos,
+                    # matching the user-advice-text branch above.  The
+                    # after_program directive is BLOCKING (an issue, not a
+                    # warning) so users especially benefit from a hint.
+                    suggestions = _suggest_similar_programs(
+                        normalized, available_set)
+                    suggestion_text = (
+                        f" Did you mean: {', '.join(suggestions)}?"
+                        if suggestions else ""
+                    )
                     if normalized in all_phenix:
                         issues.append(
-                            f"Requested stop program '{after_prog}' is not available in the agent workflow."
+                            f"Requested stop program '{after_prog}' is not "
+                            f"available in the agent workflow."
+                            f"{suggestion_text}"
                         )
                     else:
                         issues.append(
-                            f"Requested stop program '{after_prog}' is not recognized."
+                            f"Requested stop program '{after_prog}' is not "
+                            f"recognized.{suggestion_text}"
                         )
 
         # Check workflow_preferences
@@ -697,19 +734,29 @@ def validate_directives(
 def _suggest_similar_programs(prog: str, available: Set[str]) -> List[str]:
     """
     Suggest similar program names for typos.
+
+    Uses difflib.SequenceMatcher (ratio-based string similarity) with a
+    moderate cutoff to detect close matches.  This replaces the older
+    substring+character-overlap heuristic, which produced too many false
+    positives on programs with long names (e.g. typing
+    'phenix.predict_and_buld' suggested 'phenix.real_space_refine' because
+    they share many characters by chance).
+
+    Returns up to 3 suggestions ranked by similarity, in full
+    'phenix.NAME' form.  Returns empty list when no candidate is similar
+    enough — better to suggest nothing than to suggest noise.
     """
+    import difflib
     prog_lower = prog.lower().replace("phenix.", "")
-    suggestions = []
-
-    for avail in available:
-        avail_short = avail.replace("phenix.", "")
-        # Simple similarity: shared prefix or substring
-        if prog_lower in avail_short or avail_short in prog_lower:
-            suggestions.append(avail)
-        elif len(set(prog_lower) & set(avail_short)) > len(prog_lower) * 0.5:
-            suggestions.append(avail)
-
-    return suggestions[:3]
+    # Map short-name → full-name so we can match on the short form
+    # (which avoids the "phenix." prefix inflating similarity scores)
+    # but return the canonical 'phenix.NAME'.
+    candidates = {
+        avail.replace("phenix.", ""): avail for avail in available
+    }
+    matches = difflib.get_close_matches(
+        prog_lower, candidates.keys(), n=3, cutoff=0.6)
+    return [candidates[m] for m in matches]
 
 
 # =============================================================================
@@ -951,6 +998,9 @@ def augment_intent_with_directives(intent, directives):
 
 
 def get_stop_reason_from_directives(directives, cycle_number, last_program, history=None):
+    # UNREFERENCED as of 2026-08: nothing in modules/ calls this.  The
+    # live hard-stop check is perceive_checks.check_directive_stop.  See
+    # the note in the module docstring before changing or deleting it.
     """
     Check if stop conditions are met and return reason.
 
@@ -1010,10 +1060,17 @@ def _check_stop_conditions(directives, cycle_number=None, last_program=None, his
         return True, f"Completed {after_program} (stop after this program)"
 
     # Check R-free target
+    #
+    # Accept both spellings.  HISTORY_ENTRY_FIELDS declares "analysis",
+    # and since v121.1 build_request_v2 emits that name; older payloads
+    # and session records carry "metrics".  Reading only "metrics" here
+    # would silently yield {} on any current transported history, so the
+    # target would never be reached and the stop would never fire.
+    # Same pattern as agent/workflow_state.py.
     r_free_target = stop_conditions.get("r_free_target")
     if r_free_target is not None and history:
         for entry in reversed(history):
-            metrics = entry.get("metrics", {})
+            metrics = entry.get("analysis", entry.get("metrics", {}))
             r_free = metrics.get("r_free")
             if r_free is not None and r_free <= r_free_target:
                 return True, f"R-free {r_free:.3f} reached target {r_free_target}"
@@ -1022,7 +1079,7 @@ def _check_stop_conditions(directives, cycle_number=None, last_program=None, his
     map_cc_target = stop_conditions.get("map_cc_target")
     if map_cc_target is not None and history:
         for entry in reversed(history):
-            metrics = entry.get("metrics", {})
+            metrics = entry.get("analysis", entry.get("metrics", {}))
             map_cc = metrics.get("map_cc") or metrics.get("cc_mask")
             if map_cc is not None and map_cc >= map_cc_target:
                 return True, f"Map CC {map_cc:.3f} reached target {map_cc_target}"

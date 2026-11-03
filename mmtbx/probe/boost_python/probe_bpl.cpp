@@ -19,6 +19,7 @@
 #include <mmtbx/probe/DotSpheres.h>
 #include <mmtbx/probe/SpatialQuery.h>
 #include <mmtbx/probe/Scoring.h>
+#include <mmtbx/probe/ContactDB.h>
 
 using namespace boost::python;
 using namespace molprobity::probe;
@@ -40,7 +41,14 @@ void set_atom_i_seq(iotbx::pdb::hierarchy::atom& atom, int i_seq) {
   atom.data->i_seq = i_seq;
 }
 
+/// @brief Helper function to expose CheckDotResult::dotOffset as a Python tuple
+/// (there is no to-Python converter registered for the Point type itself).
+boost::python::tuple check_dot_result_dot_offset(DotScorer::CheckDotResult const& r) {
+  return boost::python::make_tuple(r.dotOffset[0], r.dotOffset[1], r.dotOffset[2]);
+}
+
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(check_dot_overloads, DotScorer::check_dot, 5, 6)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(check_dots_overloads, DotScorer::check_dots, 5, 6)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(interaction_type_overloads, DotScorer::interaction_type, 2, 3)
 
 BOOST_PYTHON_MODULE(mmtbx_probe_ext)
@@ -101,7 +109,12 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .add_property("overlap", &DotScorer::CheckDotResult::overlap)
     .add_property("gap", &DotScorer::CheckDotResult::gap)
     .add_property("annular", &DotScorer::CheckDotResult::annular)
+    .add_property("dotOffset", make_function(check_dot_result_dot_offset))
     ;
+  // Define the flex array wrapping for this class because check_dots() returns
+  // a vector of them.
+  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
+    scitbx::af::shared<DotScorer::CheckDotResult> >();
 
   class_<DotScorer::ScoreDotsResult>("ScoreDotsResult", init<>())
     .add_property("valid", &DotScorer::ScoreDotsResult::valid)
@@ -134,12 +147,15 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .def("test", &SpatialQuery::test)
   ;
 
+  // The ExtraAtomInfoMap is referenced, so keep it alive with the DotScorer.
   class_<DotScorer>("DotScorer",
-        init< ExtraAtomInfoMap,
-        optional<double, double, double, double, double, double, double, double,bool,bool> >())
+        init< ExtraAtomInfoMap const &,
+        optional<double, double, double, double, double, double, double, double,bool,bool> >()
+        [with_custodian_and_ward<1, 2>()])
     .def("point_inside_atoms", &DotScorer::point_inside_atoms)
     .def("trim_dots", &DotScorer::trim_dots)
     .def("check_dot", &DotScorer::check_dot, check_dot_overloads())
+    .def("check_dots", &DotScorer::check_dots, check_dots_overloads())
     .def("count_surface_dots", &DotScorer::count_surface_dots)
     .def("score_dots", &DotScorer::score_dots)
     .def("interaction_type", &DotScorer::interaction_type, interaction_type_overloads())
@@ -169,4 +185,31 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
 
   // Export the helper functions
   def("set_atom_i_seq", set_atom_i_seq, "Set the i_seq on an atom, required for Phantom Hydrogen processing.");
+
+  def("getAtomsWithinNBonds", getAtomsWithinNBonds,
+      (arg("atom"), arg("bondedNeighborLists"), arg("extraAtomInfo"), arg("probeRad"), arg("N"),
+       arg("nonHydrogenN") = 1e10),
+      "C++ implementation of mmtbx.probe.Helpers.getAtomsWithinNBonds.");
+
+  // The two SpatialQuery arguments are referenced, so keep them alive with the ContactDB;
+  // so is the DotScorer's ExtraAtomInfoMap, kept alive by the DotScorer.
+  class_<ContactDB>("ContactDB", init<ExtraAtomInfoMap const&, DotScorer const&, SpatialQuery&,
+                                      SpatialQuery&, DotSphereCache const&>()
+                    [with_custodian_and_ward<1, 3, with_custodian_and_ward<1, 4,
+                      with_custodian_and_ward<1, 5> > >()])
+    .def("set_atom_data", &ContactDB::set_atom_data)
+    .def("set_bonds", &ContactDB::set_bonds)
+    .def("set_params", &ContactDB::set_params)
+    .def("build", &ContactDB::build)
+    .def("pairs", &ContactDB::pairs)
+    .def("set_keep_dots", &ContactDB::set_keep_dots)
+    .def("dots", &ContactDB::dots)
+    ;
+  scope().attr("ContactDB_IGNORE") = int(ContactDB::IGNORE);
+  scope().attr("ContactDB_MAINCHAIN") = int(ContactDB::MAINCHAIN);
+  scope().attr("ContactDB_HET") = int(ContactDB::HET);
+  scope().attr("ContactDB_WATER") = int(ContactDB::WATER);
+  scope().attr("ContactDB_TARGET") = int(ContactDB::TARGET);
+  scope().attr("ContactDB_SIDECHAIN") = int(ContactDB::SIDECHAIN);
+  scope().attr("ContactDB_N_TYPES") = int(ContactDB::N_TYPES);
 }

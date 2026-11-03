@@ -1,0 +1,616 @@
+"""Agent ABC and supporting types.
+
+Provider-agnostic. The concrete backends all live in ``phenix.gui.chat``
+(``AnthropicAgent``, ``ClaudeCodeAgent``, ``OpenAIAgent``, ``PortkeyAgent``,
+``GeminiAgent``); each is selected by
+``phenix.gui.chat.agent_factory.build_agent``.
+"""
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+from qttbx.widgets.chat.agent.profile import DEFAULT_EFFORT
+
+
+@dataclass
+class ToolSpec:
+  """Provider-agnostic tool specification.
+
+  Agents convert to and from their provider's tool shape at the API
+  boundary.
+  """
+  name: str
+  description: str
+  input_schema: dict           # JSON Schema
+  risk: str = "read"           # 'read' | 'write' | 'destructive' (claude_code card)
+  allow_remember: bool = True  # False -> approval card omits "Always allow this tool"
+
+
+class AttachmentScope:
+  """Where an agent's transcript files -- and therefore reads -- its images.
+
+  A mixin rather than an ``Agent`` method because the backends do not share one
+  base: ``ClaudeCodeAgent`` is duck-typed and inherits from nothing, while the
+  HTTP backends come through :class:`Agent`. Both re-send image blocks, so both
+  need the same answer, and a second copy of the rule would drift.
+
+  The pair exists because the write and the read had drifted apart already.
+  ``AgentSession`` writes an emitted image under its ``attachment_conv_id``,
+  which for a SUBAGENT is the PARENT's conversation -- a child conversation is
+  never saved, so its bytes and its record both live under the parent. The
+  agents meanwhile resolved image blocks against ``conversation.meta.id``, the
+  CHILD's. Writing to one id and reading from another means a child handed an
+  image by a tool cannot send it back on its next round: the load raises,
+  mid-turn, on an attachment that was on disk the whole time.
+  """
+
+  def set_attachment_conv_id(self, conv_id):
+    """Note which conversation this session FILES attachments under.
+
+    ``AgentSession`` calls this once, at construction, duck-typed. For a
+    top-level session the answer is the conversation the agent is driving and
+    this changes nothing.
+
+    Parameters
+    ----------
+    conv_id : str
+        The conversation id whose ``attachments/`` directory holds this
+        transcript's bytes.
+    """
+    self._attachment_conv_id = conv_id
+
+  def attachment_conv_id_for(self, conversation):
+    """The id to LOAD this transcript's attachments from.
+
+    What :meth:`set_attachment_conv_id` was told, when a session told it;
+    otherwise the conversation's own id, which is the right answer for an agent
+    driven without a session (tests, direct callers) and the behavior that
+    predates the hook.
+
+    Parameters
+    ----------
+    conversation : Conversation
+        The conversation being streamed.
+
+    Returns
+    -------
+    str
+    """
+    return (getattr(self, "_attachment_conv_id", None)
+            or conversation.meta.id)
+
+
+class Agent(AttachmentScope, ABC):
+  """Provider-agnostic chat agent.
+
+  Implementations live in ``phenix.gui.chat``. ``AgentSession``
+  (``session.py``) wraps any ``Agent`` to orchestrate the multi-turn
+  tool dispatch loop.
+  """
+
+  # Subclasses set these as class attributes (or instance attributes in
+  # __init__).
+  name: str
+  model: str                    # the model REQUESTED for this agent
+
+  #: Optional. The model that actually produced the most recent response,
+  #: when the backend reports one. Distinct from ``model`` because they can
+  #: differ: a backend able to switch models inside a conversation
+  #: (claude_code's ``/model``) answers with something other than what was
+  #: configured, and a provider resolving an alias answers with a dated id.
+  #: ``AgentSession`` stamps the message and the conversation meta from this
+  #: when set, and NEVER writes it back into ``model`` -- doing so would pin
+  #: the version an alias exists to keep current. Reset at ``stream_turn``
+  #: entry so a stale reading cannot outlive the turn that observed it.
+  observed_model = None
+
+  #: Peak per-API-CALL prompt size seen so far, for the context-pressure
+  #: monitor. Maintained by :func:`note_context_tokens`; the window zeroes it
+  #: on a conversation switch, so it is effectively a per-conversation
+  #: high-water mark. ``0`` means "nothing measured yet", never "context
+  #: empty".
+  #:
+  #: A HIGH-WATER MARK rather than the latest reading, because the prompt
+  #: usually grows across a turn's tool loop while ``cache_read`` can dip on a
+  #: miss, and the monitor wants the worst case. It must never be taken from a
+  #: whole-turn total that sums every iteration of a backend's internal tool
+  #: loop: that overstates the context by the number of calls in the turn.
+  last_context_tokens = 0
+
+  #: Reasoning depth this agent runs at, one of ``profile.EFFORT_LEVELS``.
+  #: A contract on the ABC, not a per-backend convention: the chat window
+  #: seeds its effort combo from this and relays changes through
+  #: :meth:`set_effort`, so every agent, scripted test agents included,
+  #: carries both. Backends map it onto their own request field.
+  effort = DEFAULT_EFFORT
+
+  @abstractmethod
+  def stream_turn(self, conversation, tools, cancel):
+    """Yield ``AgentEvent`` instances as the agent processes one API call.
+
+    Tool execution is performed by ``AgentSession``, not by the agent.
+    The agent yields ``ToolUseRequested`` events; the session collects
+    them after ``TurnDone`` and runs the tool dispatch loop separately.
+
+    Parameters
+    ----------
+    conversation : Conversation
+        Full conversation so far. The latest message is the user input
+        for this turn.
+    tools : list of ToolSpec
+        Tools the registry has surfaced for this turn.
+    cancel : CancelToken
+        Polled between events; honor it to abort cleanly.
+    """
+
+  @abstractmethod
+  def resolve_credentials(self, cli_override=None):
+    """Resolve credentials for this provider.
+
+    Parameters
+    ----------
+    cli_override : object, optional
+        A credential value the launcher accepted on the command line.
+        Implementations may use it verbatim or normalize first.
+
+    Returns
+    -------
+    object or None
+        A value (string or dict) suitable for the provider's SDK
+        constructor, or ``None`` when user input is still needed.
+    """
+
+  def resolve_api_key(self, api_key, missing_message):
+    """Return an explicit ``api_key`` else the resolved credential.
+
+    The shared constructor credential guard for the API backends (Anthropic /
+    OpenAI-compatible / Gemini), each of which previously inlined the identical
+    ``api_key if api_key is not None else self.resolve_credentials()`` lookup
+    and ``Sorry`` raise. Raises ``Sorry(missing_message)`` when neither yields a
+    usable key.
+
+    Parameters
+    ----------
+    api_key : object or None
+        An explicit key passed to the constructor (wins when not ``None``).
+    missing_message : str
+        The provider-specific message for the ``Sorry`` raised when no key is
+        available.
+    """
+    key = api_key if api_key is not None else self.resolve_credentials()
+    if not key:
+      from libtbx.utils import Sorry
+      raise Sorry(missing_message)
+    return key
+
+  @abstractmethod
+  def credentials_dialog_class(self):
+    """Return the Qt dialog class to prompt for this provider's credentials.
+
+    Each provider gets its own dialog matching its auth model.
+    """
+
+  def submit_approval(self, response):
+    """Forward a user approval decision to the agent if it owns the request.
+
+    The default implementation returns ``False`` -- the agent didn't
+    originate the request, so the runner resolves it through the
+    session's ApprovalCoordinator instead.
+
+    Backends that gate tool execution via a provider-side callback
+    (e.g. the Claude Code SDK's ``can_use_tool``) override this to
+    persist any remember choice before the coordinator resolves the
+    future. Returning ``True`` would tell the runner the request was
+    fully handled here; the claude_code override returns ``False`` so
+    the decision still flows through the shared coordinator.
+
+    Parameters
+    ----------
+    response : ToolApprovalResponse
+        The user's decision delivered from the GUI.
+
+    Returns
+    -------
+    bool
+        ``True`` if the agent owned ``response.request_id``, else
+        ``False``.
+    """
+    return False
+
+  def submit_question_answer(self, request_id, answers):
+    """Forward the user's answers to a question asked by the agent.
+
+    The question was asked via ``AskUserQuestionRequested``. The default
+    returns ``False`` -- the agent never asks structured questions.
+
+    Backends that expose an "ask the user" MCP tool override this to
+    fulfill the pending future when ``request_id`` matches one they
+    emitted.
+
+    Parameters
+    ----------
+    request_id : str
+        The same id the agent put on the ``AskUserQuestionRequested``.
+    answers : dict
+        ``{question_text: label}`` (single-select; ``label`` is the
+        chosen option or the user's free-form "Other" text) or
+        ``{question_text: [labels...]}`` (multi-select; any "Other"
+        text is appended to the list).
+
+    Returns
+    -------
+    bool
+        ``True`` if the agent owned ``request_id``, else ``False``.
+    """
+    return False
+
+  def reload_credentials(self):
+    """Refresh this agent's credentials in place ahead of an auth retry.
+
+    The default returns ``False`` -- API-key backends hold nothing that can
+    be reloaded in place; they recover through the credentials dialog
+    (``credentials_dialog_class`` + ``set_api_key``), so the caller falls
+    through to that prompt. A backend whose credentials live outside the
+    process (e.g. claude_code's CLI OAuth login, re-read from disk when its
+    subprocess respawns) overrides this to refresh them and return ``True``.
+
+    Declared on the ABC so the capability is protocol, not duck-typing: a
+    GUI probing ``callable(getattr(agent, "reload_credentials"))`` would
+    silently misroute any future backend that grows a same-named method.
+
+    Returns
+    -------
+    bool
+        ``True`` when credentials were reloaded and the failed turn is
+        worth retrying; ``False`` to recover via the key prompt instead.
+    """
+    return False
+
+  def uses_env_api_key(self):
+    """True when this agent's auth is an API key injected via its process
+    environment / launch flags rather than a key the agent holds (or an
+    external login). The default is ``False``.
+
+    The GUI uses this to pick the auth-failure recovery and banner: an
+    env-delivered key can only be replaced interactively (``set_api_key``)
+    -- a live process never sees a later parent-shell export -- so
+    ``True`` routes to the key prompt even when the backend also supports
+    ``reload_credentials``.
+
+    Returns
+    -------
+    bool
+        ``True`` for env/flag-delivered key auth, else ``False``.
+    """
+    return False
+
+  def set_effort(self, level):
+    """Change the reasoning depth for the turns that follow.
+
+    Default: store ``level`` on :attr:`effort`; the backends that build a
+    request per turn read it there. A backend that must push the change
+    into a live process (claude_code) overrides this. Returns ``True``
+    when the change is in force for the next turn.
+    """
+    self.effort = level
+    return True
+
+  def close(self):
+    """Release any resources the agent holds (HTTP client connection
+    pools, a subprocess, an asyncio loop).
+
+    Default: best-effort close of ``self.client`` -- the HTTP/SDK client
+    every API backend stores there -- via ``close_client``; a no-op for
+    agents without one. Backends holding more than a client (subprocess,
+    asyncio loop) override. Called once at window teardown
+    (``ChatWindow.closeEvent``); it must be safe to call even if the agent
+    never opened anything, and safe to call more than once.
+    """
+    close_client(getattr(self, "client", None))
+
+  def _write_debug_request_record(self, label, count, tool_names):
+    """One-line redacted request record to ``self._debug_log``, if set.
+
+    Logs only the backend name, model, item count, and tool names --
+    never api keys, never message content (which can carry image bytes).
+    Shared by the API backends' ``_write_debug_request`` wrappers so the
+    redaction policy lives in one place; must never break a turn.
+    """
+    log = getattr(self, "_debug_log", None)
+    if log is None:
+      return
+    try:
+      log.write("[%s] request model=%s %s=%d tools=[%s]\n" % (
+        self.name, self.model, label, count, ",".join(tool_names)))
+      log.flush()
+    except Exception:
+      pass
+
+
+def flatten_tool_result_text(blocks):
+  """Flatten a canonical ``tool_result`` block list into a single text string.
+
+  ``text`` blocks contribute their text verbatim; ``image`` blocks contribute
+  a placeholder (the OpenAI and Gemini tool_result wire formats are text-only,
+  so an image can't ride inside one). Shared by the OpenAI-compatible and
+  Gemini backends, whose tool_result flattening is byte-identical. Returns
+  ``""`` for an empty or imageless list.
+
+  Parameters
+  ----------
+  blocks : iterable
+      Canonical content blocks (each with ``.type`` and ``.data``).
+
+  Returns
+  -------
+  str
+      The flattened text, newline-joined.
+  """
+  chunks = []
+  for b in blocks:
+    if b.type == "text":
+      chunks.append(b.data.get("text", ""))
+    elif b.type == "image":
+      chunks.append("[image omitted from tool result]")
+  return "\n".join(chunks)
+
+
+def anthropic_image_block(mime, data):
+  """Build an Anthropic-API base64 image content block from raw bytes.
+
+  Returns the ``{"type": "image", "source": {"type": "base64", ...}}`` dict
+  the Anthropic messages API expects. Shared by the Anthropic backend (its
+  canonical->wire image conversion) and the Claude Code backend (its outbound
+  image envelope), which both speak the Anthropic wire image shape.
+
+  Parameters
+  ----------
+  mime : str
+      The image MIME type (e.g. ``"image/png"``) -> ``source.media_type``.
+  data : bytes
+      The raw image bytes; base64-encoded into ``source.data``.
+
+  Returns
+  -------
+  dict
+      The Anthropic image content block.
+  """
+  import base64
+  return {
+    "type": "image",
+    "source": {
+      "type": "base64",
+      "media_type": mime,
+      "data": base64.b64encode(data).decode("ascii"),
+    },
+  }
+
+
+# Shared exception-text classifier signals. The Gemini and Claude Code backends
+# both sniff a code-less provider/SDK error's message for auth vs. rate/quota
+# signals; their phrase lists had DRIFTED, so they live here ONCE (the union of
+# what each had) to stay in lockstep. Match whole signal phrases, NOT bare
+# "auth"/"rate" substrings -- a plain `"rate" in text` false-matches the "rate"
+# inside "generate"/"moderate" and `"auth" in text` matches "author".
+_AUTH_SIGNALS = ("authentication", "authenticated", "unauthorized",
+                 "authorization", "permission", "api key", "api_key",
+                 "oauth", "login",
+                 # A mid-session credential expiry/revoke -- the target of the
+                 # claude_code auth-reload path -- often reads "token expired" /
+                 # "session expired" / "token has been revoked" with none of
+                 # the words above. WHOLE phrases only (with their has/been
+                 # variants), per the rule above: a bare "expired"/"revoked"
+                 # would classify a TLS "certificate has expired" or a
+                 # provider's expired uploaded file as an auth failure.
+                 "token expired", "token has expired",
+                 "session expired", "session has expired",
+                 "token revoked", "token has been revoked")
+_RATE_SIGNALS = ("rate limit", "rate-limit", "rate_limit", "ratelimit",
+                 "429", "quota", "resource_exhausted", "resource exhausted")
+
+
+def classify_error_text(text):
+  """Classify a provider/SDK error message as ``"auth"``, ``"rate_limited"``,
+  or ``None`` (no recognized signal).
+
+  ``text`` is matched case-insensitively against whole signal phrases. Rate is
+  checked first: a subscription/quota rate-limit is recoverable (the user just
+  waits), so a message carrying both signals favors the retryable read. Shared
+  by the Gemini and Claude Code backends so their phrase lists can't drift apart
+  again; each caller maps the returned category to its own ``AgentError`` kind +
+  recoverable policy (Gemini: ``"auth"`` / ``"rate_limited"``; Claude Code:
+  ``"auth_failed"`` / ``"rate_limited"`` / ``"sdk_error"``).
+
+  Parameters
+  ----------
+  text : str
+      The raw exception text (need not be pre-lowercased).
+
+  Returns
+  -------
+  str or None
+      ``"rate_limited"`` / ``"auth"`` when a signal matches, else ``None``.
+  """
+  t = (text or "").lower()
+  if any(s in t for s in _RATE_SIGNALS):
+    return "rate_limited"
+  if any(s in t for s in _AUTH_SIGNALS):
+    return "auth"
+  return None
+
+
+def load_image_attachment(storage, conv_id, block, error_cls):
+  """Load + validate a canonical ``image`` block's bytes from a
+  ``ConversationStorage``.
+
+  Shared by the OpenAI-compatible and Gemini backends, whose image
+  load+validate step was identical apart from the exception type and what they
+  do with the bytes afterward. Returns ``(mime, data)``; raises ``error_cls``
+  when there is no storage, or the attachment is missing/empty, or its MIME is
+  not an image. The caller turns the bytes into its provider's image shape (a
+  base64 data URI for OpenAI; raw bytes for Gemini).
+
+  Parameters
+  ----------
+  storage : ConversationStorage or None
+      The store to load the attachment from; ``None`` means image blocks can't
+      be sent.
+  conv_id : str or None
+      Conversation id the attachment belongs to.
+  block : object
+      The canonical ``image`` block (``block.data['attachment_sha256']`` and
+      ``block.data.get('mime')``).
+  error_cls : type
+      Exception class raised on any failure; each backend passes its own
+      (OpenAI's ``_Unsendable`` marker, Gemini's ``Sorry``).
+
+  Returns
+  -------
+  tuple
+      ``(mime, data)`` -- the MIME string and the raw image bytes.
+  """
+  if storage is None:
+    raise error_cls("cannot send image blocks without a ConversationStorage")
+  data = storage.load_attachment(conv_id, block.data["attachment_sha256"])
+  mime = block.data.get("mime", "")
+  if not (mime.startswith("image/") and data):
+    raise error_cls("invalid or empty image attachment (mime=%r)" % mime)
+  return mime, data
+
+
+def drop_null_tool_args(args):
+  """Drop null-valued keys from a tool-call argument dict.
+
+  Both the OpenAI-compatible and Gemini models emit an explicit ``null`` for an
+  optional parameter they chose to skip, and MCP servers reject ``null`` against
+  a bare-type annotation -- ``null`` means 'omitted' at this boundary. A
+  non-dict ``args`` is returned unchanged (only dicts are stripped), preserving
+  the OpenAI path where a non-object tool argument passes through verbatim.
+  Shared so both backends strip nulls identically.
+
+  Parameters
+  ----------
+  args : object
+      The parsed tool-call arguments (typically a dict).
+
+  Returns
+  -------
+  object
+      ``args`` with null-valued keys removed when it is a dict, else ``args``
+      unchanged.
+  """
+  if not isinstance(args, dict):
+    return args
+  return {k: v for k, v in args.items() if v is not None}
+
+
+def close_client(client):
+  """Best-effort close of an HTTP/SDK client, releasing its connection pool.
+
+  Safe to pass ``None`` or a client without a ``close()`` method, and
+  swallows any error ``close()`` raises -- teardown and key-rotation paths
+  must never fail on cleanup. Shared by the HTTP-client agents' ``close()``
+  and ``set_api_key`` methods.
+
+  Parameters
+  ----------
+  client : object or None
+      The provider client to close.
+  """
+  closer = getattr(client, "close", None)
+  if callable(closer):
+    try:
+      closer()
+    except Exception:
+      pass
+
+
+class HttpClientAgent(Agent):
+  """Shared base for the HTTP/SDK-client API backends (Anthropic, OpenAI-
+  compatible, Portkey, Gemini).
+
+  Codifies the api-key rotation dance -- build a fresh client for the new key
+  (re-applying ``base_url`` + any subclass kwargs) and release the old client's
+  connection pool -- so each backend doesn't re-implement ``set_api_key``. The
+  subprocess-shaped ``claude_code`` backend is a plain ``Agent`` (no HTTP client
+  to rotate), which is why this refinement lives one level below the ABC rather
+  than on ``Agent`` itself. Subclasses store the client on ``self.client`` and a
+  0-arg-per-key factory on ``self._client_factory``; they vary only in how the
+  client is built (``_rebuild_client``) and what extra kwargs it takes
+  (``_client_extra_kwargs``).
+  """
+
+  def set_api_key(self, key):
+    """Rebuild the provider client with a new API key (runtime re-auth) and
+    release the old client's connection pool.
+
+    Called by ChatWindow when the user supplies a new key via the credentials
+    dialog. The next ``stream_turn`` uses the new client. Shared by every
+    HTTP-client backend; subclasses vary only in ``_rebuild_client``.
+    """
+    old = getattr(self, "client", None)
+    self.client = self._rebuild_client(key)
+    close_client(old)               # release the prior client's pool
+
+  def _rebuild_client(self, key):
+    """Construct a fresh provider client for ``key``.
+
+    Default: call the stored ``self._client_factory`` with ``_client_kwargs``.
+    Gemini overrides this because its google-genai client isn't
+    ``factory(**kwargs)``-shaped.
+    """
+    return self._client_factory(**self._client_kwargs(key))
+
+  def _client_kwargs(self, key):
+    """Build the provider client constructor kwargs.
+
+    ``api_key`` always; ``base_url`` only when set (so the SDK default endpoint
+    isn't overridden with an explicit ``None``); plus any subclass extras from
+    ``_client_extra_kwargs`` (e.g. Portkey's ``virtual_key`` / ``config``).
+    Shared by ``__init__`` and ``set_api_key`` so construction and key rotation
+    can't diverge.
+    """
+    kwargs = {"api_key": key}
+    if getattr(self, "base_url", None):
+      kwargs["base_url"] = self.base_url
+    kwargs.update(self._client_extra_kwargs())
+    return kwargs
+
+  def _client_extra_kwargs(self):
+    """Extra client-constructor kwargs folded into ``_client_kwargs``.
+
+    Base returns none; subclasses (e.g. ``PortkeyAgent``) override to inject
+    provider-specific client kwargs such as ``virtual_key`` / ``config``.
+    """
+    return {}
+
+
+def note_context_tokens(agent, measured):
+  """Fold one per-call prompt-size reading into *agent*'s high-water mark.
+
+  A free function, not a method: ``ClaudeCodeAgent`` DUCK-TYPES the agent
+  contract rather than deriving from :class:`Agent`, so a method here would
+  reach three of the four backends and raise ``AttributeError`` on the fourth.
+
+  Shared because it was four separate copies of the same two lines whose
+  COMMENTS had already drifted: two of the four documented what happens when a
+  response carries no usage payload and two did not, leaving the invariant that
+  matters -- a missing reading leaves the peak STANDING, since lowering it
+  would discard a crossed threshold -- written down in half the places it
+  holds.
+
+  Parameters
+  ----------
+  agent : object
+      Anything carrying ``last_context_tokens``.
+  measured : int or None
+      Prompt size for one API call; ``0`` / ``None`` when unreported.
+
+  Returns
+  -------
+  int
+      The peak after folding in *measured*.
+  """
+  if measured and measured > agent.last_context_tokens:
+    agent.last_context_tokens = measured
+  return agent.last_context_tokens

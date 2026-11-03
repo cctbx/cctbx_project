@@ -424,6 +424,8 @@ def test_reference_model(mon_lib_srv, ener_lib, prefix="tst_reference_model"):
   work_params.reference_model.enabled = True
   work_params.reference_model.use_starting_model_as_reference = True
   work_params.reference_model.fix_outliers = False
+  # Keep side-chain dihedrals so the pickled manager holds more than one proxy.
+  work_params.reference_model.side_chain = True
   pdb_inp = iotbx.pdb.input(lines=model_raw_records.split('\n'), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
   model.process(pdb_interpretation_params=work_params,

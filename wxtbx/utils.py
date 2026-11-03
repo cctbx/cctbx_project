@@ -141,18 +141,18 @@ class LogViewer(wx.TextCtrl):
 
   def Clear(self):
     wx.TextCtrl.Clear(self)
-    self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
+    self.SetFont(wx.Font(self.font_size, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
 
   def WriteText(self, text):
     if UNICODE_BUILD :
       text = to_unicode(text)
-    self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
+    self.SetFont(wx.Font(self.font_size, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
     wx.TextCtrl.WriteText(self, text)
 
   def AppendText(self, text):
     if UNICODE_BUILD :
       text = to_unicode(text)
-    self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
+    self.SetFont(wx.Font(self.font_size, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
     wx.TextCtrl.AppendText(self, text)
     # keep text to be a certain size for performance
     if (self.GetLastPosition() > self.character_limit):

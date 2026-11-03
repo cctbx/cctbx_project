@@ -1,0 +1,64 @@
+# parity test model: a ligand alone, HETATM
+data_default
+_cell.length_a                    30.000
+_cell.length_b                    25.000
+_cell.length_c                    30.000
+_cell.angle_alpha                 90.000
+_cell.angle_beta                  90.000
+_cell.angle_gamma                 90.000
+_cell.volume                      22500.000
+_symmetry.space_group_name_H-M    'P 1'
+_symmetry.space_group_name_Hall   ' P 1'
+_symmetry.Int_Tables_number       1
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.pdbx_PDB_model_num
+  HETATM   1  C1*  .  ATP  A  1  ?  25.17500  20.09500  20.69400  1.000  30.00000  C  ?  A  ?  .  1
+  HETATM   2  C2   .  ATP  A  1  ?  27.15400  24.07800  19.90800  1.000  30.00000  C  ?  A  ?  .  1
+  HETATM   3  C2*  .  ATP  A  1  ?  26.53400  19.46100  20.92900  1.000  30.00000  C  ?  A  ?  .  1
+  HETATM   4  C3*  .  ATP  A  1  ?  26.23000  17.97800  20.93800  1.000  30.00000  C  ?  A  ?  .  1
+  HETATM   5  C4   .  ATP  A  1  ?  25.69400  22.54800  20.92800  1.000  30.00000  C  ?  A  ?  .  1
+  HETATM   6  C4*  .  ATP  A  1  ?  24.74600  17.86900  21.24500  1.000  30.00000  C  ?  A  ?  .  1
+  HETATM   7  C5   .  ATP  A  1  ?  25.18800  23.63600  21.77900  1.000  30.00000  C  ?  A  ?  .  1
+  HETATM   8  C5*  .  ATP  A  1  ?  24.48400  17.13800  22.55900  1.000  30.00000  C  ?  A  ?  .  1
+  HETATM   9  C6   .  ATP  A  1  ?  25.77800  24.98400  21.59100  1.000  30.00000  C  ?  A  ?  .  1
+  HETATM  10  C8   .  ATP  A  1  ?  24.16000  21.77500  22.25800  1.000  30.00000  C  ?  A  ?  .  1
+  HETATM  11  N1   .  ATP  A  1  ?  26.74100  25.12000  20.65200  1.000  30.00000  N  ?  A  ?  .  1
+  HETATM  12  N3   .  ATP  A  1  ?  26.66400  22.83100  20.02500  1.000  30.00000  N  ?  A  ?  .  1
+  HETATM  13  N6   .  ATP  A  1  ?  25.37200  26.04200  22.33200  1.000  30.00000  N  ?  A  ?  .  1
+  HETATM  14  N7   .  ATP  A  1  ?  24.24800  23.09200  22.57100  1.000  30.00000  N  ?  A  ?  .  1
+  HETATM  15  N9   .  ATP  A  1  ?  25.02900  21.44600  21.29000  1.000  30.00000  N  ?  A  ?  .  1
+  HETATM  16  O1A  .  ATP  A  1  ?  22.36000  18.53500  25.44000  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  17  O1B  .  ATP  A  1  ?  19.72100  16.22700  24.40400  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  18  O1G  .  ATP  A  1  ?  21.09700  13.63500  23.29600  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  19  O2*  .  ATP  A  1  ?  27.45400  19.77700  19.88100  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  20  O2A  .  ATP  A  1  ?  24.47000  17.01400  25.46500  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  21  O2B  .  ATP  A  1  ?  20.86100  16.57200  26.73500  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  22  O2G  .  ATP  A  1  ?  20.68700  11.92300  25.12000  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  23  O3*  .  ATP  A  1  ?  26.47000  17.43100  19.63800  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  24  O3A  .  ATP  A  1  ?  22.25000  16.11800  24.64700  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  25  O3B  .  ATP  A  1  ?  20.85500  14.30900  25.62600  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  26  O3G  .  ATP  A  1  ?  18.83100  13.50400  24.45300  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  27  O4*  .  ATP  A  1  ?  24.23100  19.20200  21.28000  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  28  O5*  .  ATP  A  1  ?  23.49400  17.83400  23.30500  1.000  30.00000  O  ?  A  ?  .  1
+  HETATM  29  PA   .  ATP  A  1  ?  23.17200  17.42700  24.82100  1.000  30.00000  P  ?  A  ?  .  1
+  HETATM  30  PB   .  ATP  A  1  ?  20.82700  15.90100  25.38000  1.000  30.00000  P  ?  A  ?  .  1
+  HETATM  31  PG   .  ATP  A  1  ?  20.31800  13.26200  24.53300  1.000  30.00000  P  ?  A  ?  .  1
+

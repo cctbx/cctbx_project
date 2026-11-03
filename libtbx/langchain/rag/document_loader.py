@@ -20,14 +20,51 @@ assert List is not None
 
 from bs4 import BeautifulSoup
 from langchain_core.documents import Document
-from langchain_community.document_loaders import TextLoader, PyPDFLoader, UnstructuredHTMLLoader
-from langchain_community.document_loaders.base import BaseLoader
+from langchain_core.document_loaders import BaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 # =============================================================================
 # Custom Loaders
 # =============================================================================
+
+class TextLoader(BaseLoader):
+    """Local plain-text loader (replaces the langchain-community TextLoader).
+
+    Same __init__(file_path) + load() -> List[Document] contract as the other
+    loaders here, so the loader dicts below use it unchanged.
+    """
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+
+    def load(self) -> List[Document]:
+        with open(self.file_path, "r", encoding="utf-8", errors="ignore") as f:
+            text = f.read()
+        return [Document(page_content=text, metadata={"source": self.file_path})]
+
+
+class PyPDFLoader(BaseLoader):
+    """Local PDF loader via pypdf (replaces the langchain-community PyPDFLoader).
+
+    One Document per page, with 0-based 'page' in metadata -- matching the
+    page-wise behaviour the community loader provided.  (_custom_chunker only
+    reads 'source'; 'page' is additive.)
+    """
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+
+    def load(self) -> List[Document]:
+        from pypdf import PdfReader
+        reader = PdfReader(self.file_path)
+        docs = []
+        for i, page in enumerate(reader.pages):
+            text = page.extract_text() or ""
+            docs.append(Document(
+                page_content=text,
+                metadata={"source": self.file_path, "page": i},
+            ))
+        return docs
+
 
 class PhenixHTMLLoader(BaseLoader):
     """
@@ -188,7 +225,7 @@ def load_specific_docs(file_path_list: List[str]) -> List[Document]:
     loaders = {
         '.txt': TextLoader,
         '.pdf': PyPDFLoader,
-        '.html': UnstructuredHTMLLoader
+        '.html': PhenixHTMLLoader
     }
 
     print(f"Loading {len(file_path_list)} specific files...")

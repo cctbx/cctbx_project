@@ -9,6 +9,11 @@ produce code that integrates cleanly.
 
 ## 1. Process
 
+**When GuidedCoding is installed in the repository, it governs this
+whole Process section,** including its planning, review and audit
+steps. Without GuidedCoding, this section applies. The coding guidance
+in the remaining sections still applies where relevant.
+
 ### Before writing code
 
 - Ask enough questions to fully understand the goal. If the
@@ -377,37 +382,18 @@ When adding new data to GUI callbacks:
 
 ### Prompt templates
 
-All LLM prompt templates — system prompts, extraction prompts, planning
-prompts — must be stored as plain text files in `agent/prompts/`. Do not
-hardcode prompt strings in Python source.
+**Current practice:** LLM prompt templates — system prompts,
+extraction prompts, planning prompts — are Python code in the
+`knowledge/` prompt modules: `knowledge/prompts.py`,
+`knowledge/thinking_prompts.py`, `knowledge/explanation_prompts.py`
+and `knowledge/prompts_hybrid.py`. Put a new template in the module
+that holds related prompts rather than inline in other code.
 
-**Rationale:** Prompts are the agent's "personality." Keeping them in
-text files makes diffs readable, enables direct editing without touching
-Python, and allows a future eval harness to test prompt variants
-independently of code changes.
-
-**Naming convention:** `<purpose>_<role>.txt`, e.g.
-`directive_extraction_user.txt`, `thinking_system.txt`. When a prompt
-has both a system and a user part, use separate files.
-
-**Loading pattern:**
-
-```python
-import os
-_PROMPT_DIR = os.path.join(os.path.dirname(__file__), "prompts")
-
-def _load_prompt(name):
-    path = os.path.join(_PROMPT_DIR, name)
-    with open(path) as f:
-        return f.read()
-
-DIRECTIVE_EXTRACTION_PROMPT = _load_prompt(
-    "directive_extraction_user.txt")
-```
-
-**Migration:** Prompts already extracted to `agent/prompts/` but still
-hardcoded in Python will be updated on first substantive edit.
-New prompts must use `_load_prompt()` immediately.
+**Future work (not in place):** storing templates as plain text files
+would make diffs readable, allow editing without touching Python, and
+let an eval harness test prompt variants independently of code. No
+prompt-file directory or loader exists yet; do not write code that
+expects one.
 
 ## 4. Common Pitfalls
 
@@ -637,7 +623,9 @@ except Exception as e:
 
 - [ ] All changed files parse cleanly (`ast.parse()` or equivalent)
 - [ ] All relevant test suites pass
-- [ ] New test functions registered in `run_all_tests()` in `tst_utils.py`
+- [ ] New tests registered with the relevant module's test runner, where
+      the module has one (AI Agent tests: see
+      `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md`)
 - [ ] No bare `except:` blocks added
 - [ ] Exception swallowing has an explanatory comment
 - [ ] No hardcoded path separators — use `os.path.join()`
@@ -645,7 +633,8 @@ except Exception as e:
 - [ ] Any new YAML files validated with `agent/yaml_tools.py validate`
 - [ ] Import fallbacks present for all `libtbx.langchain` imports
 - [ ] New `session_info` fields have safe defaults in contract.py
-- [ ] New LLM prompt template stored in `agent/prompts/`, not hardcoded
+- [ ] New LLM prompt template placed in the related `knowledge/` prompt
+      module, not inline in other code (§3)
 - [ ] R-free comparisons use fractions, not percentages
 - [ ] If a new AgentState field was added, update `create_initial_state()`
       and the field-count test in `tst_thinking_defense.py`

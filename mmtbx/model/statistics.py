@@ -188,12 +188,25 @@ class geometry(object):
       )
 
   def clash(self):
+    from mmtbx import hydrogens  # function-local: avoids mmtbx.model import cycle
+    keep_hydrogens = self.use_hydrogens
+    if not hydrogens.use_old_reduce():
+      # reduce2 regime: clash() is a NON-ADDING observer. We never force-add H
+      # here (that would re-introduce the reduce1 dependency); Probe itself is
+      # reduce-version-independent. With H present -> score on the existing H;
+      # with no H -> skip (score=None), so all callers must tolerate None.
+      elements = self.pdb_hierarchy.atoms().extract_element()
+      has_h = (elements.count('H') + elements.count(' H') +
+               elements.count('D') + elements.count(' D')) > 0
+      if not has_h:
+        return group_args(score = None, clashes = None)
+      keep_hydrogens = True  # H present => clashscore() will not invoke reduce
     if self.cached_clash is None:
       self.cached_clash = clashscore(
         pdb_hierarchy   = self.pdb_hierarchy,
         fast            = self.fast_clash,
         condensed_probe = self.condensed_probe,
-        keep_hydrogens  = self.use_hydrogens,
+        keep_hydrogens  = keep_hydrogens,
         nuclear         = self.model.is_neutron())
     return group_args(
       score   = self.cached_clash.get_clashscore(),
@@ -246,8 +259,11 @@ class geometry(object):
       )
 
   def mp_score(self):
+    clashscore = self.clash().score
+    if clashscore is None:  # reduce2 non-adding observer skipped (no H)
+      return None
     return molprobity_score(
-      clashscore = self.clash().score,
+      clashscore = clashscore,
       rota_out   = self.rotamer().outliers,
       rama_fav   = self.ramachandran().favored)
 

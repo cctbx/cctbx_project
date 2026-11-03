@@ -39,8 +39,11 @@ def test_002():
 
 def test_003():
   '''
-  GLY1 linked to the sidechain of ASP9. Make sure only one H of the propeller
-  remains and that it has correct geometry (planar).
+  Cyclic peptide (3njw): the N-terminal GLY 1 is linked (lactam) to the CG of
+  ASP 9, so its N is a secondary amide, not a free N-terminus. It must get a
+  single backbone H, not an N-terminal H1/H2/H3 propeller; the surviving H is
+  renamed to the peptide H and must have correct geometry (planar).
+  (Without the link to ASP 9 the same GLY would get the full propeller.)
   '''
   compare_models(pdb_str = pdb_str_003)
 
@@ -65,11 +68,11 @@ HETATM   11  HB2 DLE E  12     -46.356 -10.078  13.509  1.00 43.98           H
 HETATM   12  HB3 DLE E  12     -46.844 -10.969  12.287  1.00 43.98           H
 HETATM   13  HG  DLE E  12     -44.493 -11.511  13.739  1.00 46.65           H
 HETATM   14 HD11 DLE E  12     -43.996 -13.021  12.046  1.00 46.88           H
-HETATM   15 HD12 DLE E  12     -45.386 -12.696  11.349  1.00 46.88           H
-HETATM   16 HD13 DLE E  12     -45.356 -13.420  12.763  1.00 46.88           H
+HETATM   15 HD12 DLE E  12     -45.356 -13.420  12.763  1.00 46.88           H
+HETATM   16 HD13 DLE E  12     -45.386 -12.696  11.349  1.00 46.88           H
 HETATM   17 HD21 DLE E  12     -44.646 -10.236  11.234  1.00 48.25           H
-HETATM   18 HD22 DLE E  12     -43.289 -10.668  11.938  1.00 48.25           H
-HETATM   19 HD23 DLE E  12     -44.192  -9.530  12.582  1.00 48.25           H
+HETATM   18 HD22 DLE E  12     -44.192  -9.530  12.582  1.00 48.25           H
+HETATM   19 HD23 DLE E  12     -43.289 -10.668  11.938  1.00 48.25           H
 HETATM   20  N   NH2 E 202     -49.193 -10.809  15.033  1.00 40.90           N
 HETATM   21  HN1 NH2 E 202     -48.680 -10.596  15.728  1.00 40.90           H
 HETATM   22  HN2 NH2 E 202     -50.051 -10.572  15.024  1.00 40.90           H
@@ -101,11 +104,11 @@ HETATM   17  H2  NAG A   1       9.004   8.727   8.246  1.00 20.00      A    H
 HETATM   18  H3  NAG A   1       9.042   7.013  10.404  1.00 20.00      A    H
 HETATM   19  H4  NAG A   1       9.054   9.784  10.505  1.00 20.00      A    H
 HETATM   20  H5  NAG A   1       6.893   8.131  11.334  1.00 20.00      A    H
-HETATM   21  H61 NAG A   1       7.154  10.946  11.330  1.00 20.00      A    H
-HETATM   22  H62 NAG A   1       7.018  10.077  12.612  1.00 20.00      A    H
+HETATM   21  H61 NAG A   1       7.018  10.077  12.612  1.00 20.00      A    H
+HETATM   22  H62 NAG A   1       7.154  10.946  11.330  1.00 20.00      A    H
 HETATM   23  H81 NAG A   1      10.095   4.828   6.305  1.00 20.00      A    H
-HETATM   24  H82 NAG A   1      11.359   5.638   5.795  1.00 20.00      A    H
-HETATM   25  H83 NAG A   1      10.013   5.661   4.958  1.00 20.00      A    H
+HETATM   24  H82 NAG A   1      10.013   5.661   4.958  1.00 20.00      A    H
+HETATM   25  H83 NAG A   1      11.359   5.638   5.795  1.00 20.00      A    H
 HETATM   26  HN2 NAG A   1       9.068   5.908   8.238  1.00 20.00      A    H
 HETATM   27  HO1 NAG A   1       6.806   8.885   7.217  1.00 20.00      A    H
 HETATM   28  HO3 NAG A   1      10.879   8.808   9.599  1.00 20.00      A    H
@@ -138,20 +141,20 @@ HETATM   15  C7  ADM B 101       3.789  -7.091  -3.424  1.00 35.16           C
 HETATM   16  C8  ADM B 101       3.171  -8.301  -2.730  1.00 32.12           C
 HETATM   17  C9  ADM B 101       5.021  -9.747  -3.503  1.00 25.37           C
 HETATM   19  H3  ADM B 101       3.336  -8.190  -6.524  1.00 30.02           H
-HETATM   20  H21 ADM B 101       2.033  -9.347  -4.917  1.00 37.40           H
-HETATM   21  H22 ADM B 101       3.189 -10.264  -5.413  1.00 37.40           H
-HETATM   22  H41 ADM B 101       5.585  -7.701  -6.065  1.00 40.96           H
-HETATM   23  H42 ADM B 101       5.397  -9.245  -6.103  1.00 40.96           H
+HETATM   20  H21 ADM B 101       3.189 -10.264  -5.413  1.00 37.40           H
+HETATM   21  H22 ADM B 101       2.033  -9.347  -4.917  1.00 37.40           H
+HETATM   22  H41 ADM B 101       5.397  -9.245  -6.103  1.00 40.96           H
+HETATM   23  H42 ADM B 101       5.585  -7.701  -6.065  1.00 40.96           H
 HETATM   24  H5  ADM B 101       6.631  -8.660  -4.160  1.00 34.29           H
-HETATM   25  H61 ADM B 101       5.655  -7.268  -2.554  1.00 29.01           H
-HETATM   26  H62 ADM B 101       5.709  -6.495  -3.902  1.00 29.01           H
+HETATM   25  H61 ADM B 101       5.709  -6.495  -3.902  1.00 29.01           H
+HETATM   26  H62 ADM B 101       5.655  -7.268  -2.554  1.00 29.01           H
 HETATM   27  H7  ADM B 101       3.551  -6.285  -2.940  1.00 35.16           H
-HETATM   28  H81 ADM B 101       3.497  -8.358  -1.818  1.00 32.12           H
-HETATM   29  H82 ADM B 101       2.209  -8.191  -2.674  1.00 32.12           H
+HETATM   28  H81 ADM B 101       2.209  -8.191  -2.674  1.00 32.12           H
+HETATM   29  H82 ADM B 101       3.497  -8.358  -1.818  1.00 32.12           H
 HETATM   30  H91 ADM B 101       5.357  -9.839  -2.598  1.00 25.37           H
 HETATM   31  H92 ADM B 101       5.263 -10.560  -3.972  1.00 25.37           H
-HETATM   32 H101 ADM B 101       3.648  -6.216  -5.294  1.00 33.86           H
-HETATM   33 H102 ADM B 101       2.309  -6.875  -4.854  1.00 33.86           H
+HETATM   32 H101 ADM B 101       2.309  -6.875  -4.854  1.00 33.86           H
+HETATM   33 H102 ADM B 101       3.648  -6.216  -5.294  1.00 33.86           H
 END
 '''
 
@@ -162,9 +165,9 @@ ATOM      1  N   GLY A   1       6.011  23.726   5.538  1.00  4.36           N
 ATOM      2  CA  GLY A   1       7.279  24.418   5.504  1.00  4.79           C
 ATOM      3  C   GLY A   1       8.370  23.751   6.291  1.00  4.66           C
 ATOM      4  O   GLY A   1       9.449  24.344   6.484  1.00  5.69           O
-ATOM      5  H1  GLY A   1       5.585  23.650   6.316  1.00  4.36           H
-ATOM      8  HA2 GLY A   1       7.158  25.311   5.862  1.00  4.79           H
-ATOM      9  HA3 GLY A   1       7.575  24.484   4.583  1.00  4.79           H
+ATOM      5  H   GLY A   1       5.599  23.653   6.289  1.00  4.36           H
+ATOM      8  HA2 GLY A   1       7.575  24.484   4.583  1.00  4.79           H
+ATOM      9  HA3 GLY A   1       7.158  25.311   5.862  1.00  4.79           H
 ATOM     10  N   ASP A   9       3.861  20.962   2.856  1.00  4.41           N
 ATOM     11  CA  ASP A   9       3.324  22.217   3.387  1.00  4.26           C
 ATOM     12  C   ASP A   9       3.240  23.233   2.275  1.00  4.25           C

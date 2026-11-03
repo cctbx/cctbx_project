@@ -5,7 +5,6 @@ Utility script to process bulk (model,data) pairs
 from __future__ import absolute_import, division, print_function
 import os, sys
 from scitbx.array_family import flex
-import mmtbx.model
 from libtbx import easy_mp
 from collections import OrderedDict
 import iotbx.cif

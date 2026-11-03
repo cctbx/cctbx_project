@@ -217,18 +217,18 @@ class comp_comp_id(slots_getstate_setstate):
   def normalize_atom_ids_in_place(self):
     atom_ids_mod = []
     atom_ids_mod_set = set()
-    is_rna_dna = (self.get_classification() in ["RNA", "RNAv3", "DNA", "DNAv3"])
+    is_rna_dna = (self.get_classification() in ["RNA", "RNAv2", "DNA", "DNAv2"])
     normalized = False
     for atom in self.atom_list:
       atom_id = atom.atom_id
-      if is_rna_dna:
-        atom_id = atom.atom_id.replace("'", "*")
-        if atom_id == "OP1":
-          normalized = True
-          atom_id = "O1P"
-        elif atom_id == "OP2":
-          normalized = True
-          atom_id = "O2P"
+      # if is_rna_dna:
+      #   atom_id = atom.atom_id.replace("'", "*")
+      #   if atom_id == "OP1":
+      #     normalized = True
+      #     atom_id = "O1P"
+      #   elif atom_id == "OP2":
+      #     normalized = True
+      #     atom_id = "O2P"
       if (atom_id in atom_ids_mod_set):
         return False # changing ids results in ambiguity
       atom_ids_mod.append(atom_id)
@@ -427,6 +427,14 @@ class comp_comp_id(slots_getstate_setstate):
     result = copy.copy(self)
     for mod_atom in mod.atom_list:
       if (mod_atom.function == "add"):
+        # an H the residue already has is replaced, not added twice: CCD-style
+        # entries have H2 on N and NH3 adds H2 again, with another H2-N-CA
+        # (3d5k SCY). Heavy atoms (OXT, mod_COO) are left as before.
+        i_old = result.i_atom_by_id(mod_atom.new_atom_id)
+        if (i_old is not None
+            and str(result.atom_list[i_old].type_symbol).strip().upper()
+              in ("H", "D")):
+          result.delete_atom_in_place(mod_atom.new_atom_id)
         result.atom_list.append(mod_atom.as_chem_comp())
       elif (mod_atom.function == "delete"):
         try:
@@ -508,7 +516,7 @@ class comp_comp_id(slots_getstate_setstate):
     return self.get_classification() == "DNA"
 
   def is_rna_dna(self):
-    return self.get_classification() in ("RNA", "DNA")
+    return self.get_classification() in ("RNA", "DNA", 'RNAv2', 'DNAv2')
 
   def is_water(self):
     return self.get_classification() == "water"
@@ -639,13 +647,39 @@ _chem_comp.number_atoms_nh:int
 _chem_comp.desc_level
   """
 
+def formal_charge_and_problem(value):
+  """
+  (formal charge as int, None) from a _chem_comp_atom.charge value (e.g. -1, 0,
+  1, +1, 1+, 1.0); (None, reason) for None (no column), '?', '.', '' or a
+  non-integral value.
+  """
+  if value is None:
+    return None, "no charge column"
+  s = str(value).strip()
+  if s in ("", ".", "?"):
+    return None, "charge %r" % (s or ".")
+  if len(s) > 1 and s[-1] in "+-" and s[0] not in "+-":
+    s = s[-1] + s[:-1]
+  try:
+    f = float(s)
+  except ValueError:
+    return None, "charge %r not a number" % str(value)
+  if f != int(f):
+    return None, "charge %r not integral" % str(value)
+  return int(f), None
+
 class chem_comp_atom(looped_data):
   """
 _chem_comp_atom.atom_id
 _chem_comp_atom.type_symbol
 _chem_comp_atom.type_energy
 _chem_comp_atom.partial_charge:float
+_chem_comp_atom.charge
   """
+
+  def formal_charge(self):
+    """The formal charge as int, None if absent, '?', '.' or not integral."""
+    return formal_charge_and_problem(getattr(self, "charge", None))[0]
 
 class chem_comp_tree(looped_data):
   """

@@ -401,6 +401,57 @@ def exercise_round2():
 def exercise_guess_total_memory():
   assert(utils.guess_total_memory() > 0)
 
+def exercise_peak_memory_usage():
+  p0 = utils.peak_memory_usage()
+  assert p0 is not None and p0 > 0, p0
+  data = b'x' * (300 * 1024**2) # written, so pages are resident
+  p1 = utils.peak_memory_usage()
+  assert p1 - p0 > 200 * 1024**2, (p0, p1)
+  del data
+  assert utils.peak_memory_usage() >= p1 # peak, not current
+  assert utils.human_readable_size(0) == "0.0 MB"
+  assert utils.human_readable_size(512 * 1024**2) == "512.0 MB"
+  assert utils.human_readable_size(1023.94 * 1024**2) == "1023.9 MB"
+  assert utils.human_readable_size(1024**3) == "1.00 GB"
+  assert utils.human_readable_size(2.5 * 1024**3) == "2.50 GB"
+  assert utils.human_readable_size(None) == "unknown"
+
+def exercise_kill_process_tree():
+  """A shell child's orphaned grandchild no longer blocks communicate()."""
+  import subprocess
+  import sys
+  # The child starts a grandchild that inherits the stdout pipe, reports
+  # its pid, then sleeps. Only the grandchild's exit would close the pipe.
+  child = ("import subprocess, sys, time; "
+           "g = subprocess.Popen([sys.executable, '-c', "
+           "'import time; time.sleep(60)']); "
+           "print(g.pid, flush=True); time.sleep(60)")
+  p = subprocess.Popen('"%s" -c "%s"' % (sys.executable, child),
+                       shell=True, stdout=subprocess.PIPE,
+                       stderr=subprocess.STDOUT)
+  import psutil
+  grandchild = None
+  try:
+    # look the grandchild up while it is alive, so psutil can later refuse
+    # to signal a reused pid
+    grandchild = psutil.Process(int(p.stdout.readline()))
+    utils.kill_process_tree(p.pid)
+    # with p.kill() alone this would block for the grandchild's full 60 s
+    p.communicate(timeout=30)
+    try:
+      status = grandchild.status()
+    except psutil.NoSuchProcess:
+      status = "gone"
+    assert status in ("gone", psutil.STATUS_ZOMBIE), status
+  finally:
+    if p.poll() is None:
+      utils.kill_process_tree(p.pid)
+    if grandchild is not None:
+      try:
+        grandchild.kill()
+      except psutil.NoSuchProcess:
+        pass
+
 def exercise_display_context():
   text = """
    line with word1
@@ -456,6 +507,8 @@ def run(args):
   exercise_group_args()
   exercise_round2()
   exercise_display_context()
+  exercise_peak_memory_usage()
+  exercise_kill_process_tree()
   print(utils.format_cpu_times())
 
 if (__name__ == "__main__"):

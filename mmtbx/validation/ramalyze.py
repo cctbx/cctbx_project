@@ -193,8 +193,8 @@ class ramalyze(validation):
       hierarchy=pdb_hierarchy)
     analysis = ""
     output_list = []
-    count_keys = []
-    uniqueness_keys = []
+    count_keys = set()
+    uniqueness_keys = set()
     r = ramachandran_eval.RamachandranEval()
     ##if use_segids:
     ##      chain_id = utils.get_segid_as_chainid(chain=chain)
@@ -269,7 +269,7 @@ class ramalyze(validation):
           self.n_type[res_type] += 1
           self.n_total_by_model[model_id] += 1
           self.add_to_validation_counts(ramaType, model_id)
-          count_keys.append(result_key)
+          count_keys.add(result_key)
         if (not outliers_only or is_outlier):
           if (result.altloc != '' or
             result_key not in uniqueness_keys):
@@ -278,7 +278,7 @@ class ramalyze(validation):
             #  uniqueness_keys list prevents redundant results being added to
             #  the final list
             self.results.append(result)
-            uniqueness_keys.append(result_key)
+            uniqueness_keys.add(result_key)
         if is_outlier :
           i_seqs = main_residue.atoms().extract_i_seq()
           assert (not i_seqs.all_eq(0))
@@ -493,20 +493,26 @@ class ramalyze(validation):
     #atom.id_str() returns 'pdb=" CA  LYS    16 "'
     #The [9:-1] slice gives ' LYS    16 '
     if None in c_alphas: return ''
+    # Draw from midpoint(prev_CA, central_CA) -> central_CA ->
+    # midpoint(central_CA, next_CA) so the markup spans only the region
+    # around the central residue, matching the old MolProbity/prekin style.
+    mid_01 = tuple((a + b) / 2.0 for a, b in zip(c_alphas[0].xyz, c_alphas[1].xyz))
+    mid_12 = tuple((a + b) / 2.0 for a, b in zip(c_alphas[1].xyz, c_alphas[2].xyz))
     ram_out = "{%s CA}P %s\n" % (c_alphas[0].id_str()[9:-1], "%.3f %.3f %.3f" %
-      c_alphas[0].xyz)
+      mid_01)
     ram_out += "{%s CA} %s\n" % (c_alphas[1].id_str()[9:-1], "%.3f %.3f %.3f" %
       c_alphas[1].xyz)
     ram_out += "{%s CA} %s\n" % (c_alphas[2].id_str()[9:-1], "%.3f %.3f %.3f" %
-      c_alphas[2].xyz)
+      mid_12)
     return ram_out
 
-  def as_kinemage(self):
+  def as_kinemage(self, chain_id=None):
     ram_out = "@subgroup {Rama outliers} master= {Rama outliers}\n"
     ram_out += "@vectorlist {bad Rama Ca} width= 4 color= green\n"
     for rama in self.results :
       if rama.is_outlier():
-        ram_out += rama.as_kinemage()
+        if chain_id is None or rama.chain_id == chain_id:
+          ram_out += rama.as_kinemage()
     return ram_out
 
   def as_coot_data(self):

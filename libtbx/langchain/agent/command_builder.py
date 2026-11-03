@@ -28,6 +28,11 @@ try:
 except ImportError:
   from agent.file_utils import matches_exclude_pattern
 
+try:
+  from libtbx.langchain.utils.run_utils import _coerce_resolution
+except ImportError:
+  from utils.run_utils import _coerce_resolution
+
 # Centralized pattern utilities
 from libtbx.langchain.agent.pattern_manager import extract_cycle_number, extract_all_numbers
 
@@ -36,6 +41,51 @@ assert Tuple is not None
 
 # Import registry for YAML access
 from libtbx.langchain.agent.program_registry import ProgramRegistry
+
+
+# =============================================================================
+# EXCLUDE PATTERNS HELPER (v119.H12 — consolidation of H10's closure)
+# =============================================================================
+# H10 introduced a closure `_matches_exclude_patterns_h10` defined inside
+# `_find_file_for_slot` and applied at 7 sites there, plus a direct call
+# in `_select_files` (line 698) using `matches_exclude_pattern` because
+# the closure wasn't in scope.  H12 consolidates these into a single
+# module-level helper for consistency and DRY.
+#
+# Design choice (per Gemini's H12 plan review): the helper accepts the
+# raw exclude_patterns list, not the input_def dict.  This decouples
+# the helper from the program-registry schema and seamlessly handles
+# `_select_files`'s call site (which has the list, not a wrapping dict
+# in scope).  Within `_find_file_for_slot` the list is extracted once
+# at the top of the function, restoring the closure's micro-perf
+# property (one dict lookup, not seven).
+#
+# Sense-inversion: the closure returned True if the file MATCHED the
+# patterns (i.e., should be rejected).  This helper returns True if
+# the file PASSES (i.e., is NOT rejected).  Call-site reads more
+# naturally as `if not _file_passes_exclude_patterns(f, excl): continue`.
+
+def _file_passes_exclude_patterns(file_path, exclude_patterns):
+  """Return True if file_path is NOT rejected by exclude_patterns.
+
+  An empty patterns list always returns True (nothing to reject).
+  Patterns are matched against the basename via the word-boundary
+  semantics in agent/file_utils.py::matches_exclude_pattern; see
+  tests/tst_autosol_bugs.py::test_bug11_matches_exclude_pattern_semantics
+  for the pinned behavior of that function.
+
+  Args:
+    file_path: path or basename of the candidate file
+    exclude_patterns: list of pattern strings (may be empty)
+
+  Returns:
+    bool: True if the file passes (should NOT be rejected),
+      False if any pattern matches the basename.
+  """
+  if not exclude_patterns:
+    return True
+  return not matches_exclude_pattern(
+    os.path.basename(file_path), exclude_patterns)
 
 
 # =============================================================================
@@ -93,6 +143,45 @@ class CommandContext:
   # Logging callback
   log: Any = None  # Callable for logging, or None
 
+  # v119.H16.2: MTZ column structure for the currently-selected data MTZ.
+  # Populated by inspect_mtz() (see agent/mtz_inspector.py).  Consumed
+  # by the auto_fill_obs_labels invariant branch in _apply_invariants().
+  # Shape: {"merged_intensities": [...], "merged_amplitudes": [...],
+  #         "anomalous_intensities": [...], "anomalous_amplitudes": [...],
+  #         "rfree_label": str|None, "is_multi_array": bool}
+  # None when cctbx is unavailable, MTZ isn't readable, or the data MTZ
+  # hasn't been selected yet.
+  #
+  # IMPORTANT: this field is appended at the END of the dataclass field
+  # list to preserve POSITIONAL construction compatibility for any code
+  # that builds CommandContext with positional args.  Inserting in the
+  # middle of the field list breaks such callers — see the H16 → H16.2
+  # bug-fix history.
+  mtz_inspection: Optional[Dict[str, Any]] = None
+
+  # v120: client-extracted R-free presence for the INPUT data MTZ, shipped in
+  # session_info (see ai_agent.py + the api_client/run_ai_agent plumbing).  The
+  # server cannot read client file paths (files_local=False), so it cannot inspect
+  # the MTZ itself; the client inspects it where the file is local and ships this
+  # fact.  Tri-state:
+  #   True  -> input data MTZ confirmed to contain an R-free array
+  #   False -> input data MTZ confirmed to have NO R-free array
+  #   None  -> undetermined (old client that doesn't ship it, non-X-ray, or an
+  #            inspection failure).  Consumed by _input_mtz_rfree_state(); the
+  #            generate decision treats None CONSERVATIVELY (does not generate).
+  # Appended at the END of the field list to preserve positional-construction
+  # compatibility (same rule as mtz_inspection above).
+  input_mtz_has_rfree: Optional[bool] = None
+
+  # v120.2: per-file R-free map {mtz_basename: bool}, client-extracted for every
+  # local MTZ (original inputs AND intermediate outputs, e.g. PHASER.1.mtz).
+  # The generate guard looks up the SELECTED data MTZ's basename here, giving a
+  # per-file answer that is identical server- and client-side (the map travels in
+  # session_info).  This supersedes the original-input-only input_mtz_has_rfree
+  # scalar for the actually-refined file.  None/absent -> fall back to the scalar
+  # / lock.  Appended at the END for positional-construction compatibility.
+  mtz_rfree_map: Optional[Dict[str, Any]] = None
+
   def file_preferences(self) -> Dict[str, Any]:
     """Return directives.file_preferences dict (empty dict if not set)."""
     return self.directives.get("file_preferences", {}) if self.directives else {}
@@ -115,16 +204,64 @@ class CommandContext:
     session_info = state.get("session_info", {})
     workflow_state = state.get("workflow_state", {})
 
-    # Get resolution from multiple sources
+    # Get resolution from multiple sources, coercing each to a sane float so a
+    # stringized value (e.g. from JSON round-trip or history parsing) cannot
+    # crash the downstream auto-fill `round(context.resolution, 1)` /
+    # `"%.1f" % context.resolution` in _apply_invariants.  _coerce_resolution is
+    # the shared coercion+range-guard primitive (see utils/run_utils.py); it
+    # returns None for None/0.0/non-numeric/out-of-range, so the `or` chain skips
+    # to the next source exactly as before.
     resolution = (
-      state.get("session_resolution") or
-      state.get("resolution") or
-      workflow_state.get("resolution")
+      _coerce_resolution(state.get("session_resolution")) or
+      _coerce_resolution(state.get("resolution")) or
+      _coerce_resolution(workflow_state.get("resolution"))
     )
+
+    # v118.F1: prefer session-locked experiment_type (set after first
+    # successful program; see programs/ai_agent.py:5009).  Fall back
+    # to the workflow-state-inferred value, which is populated for
+    # cycle 1 based on input file extensions and workflow context.
+    # Without this fallback, cycle-1 BUILD sees experiment_type=""
+    # and downstream guards like the R-free auto-fill (line ~2144)
+    # would silently skip.  Mirrors the resolution-fallback pattern
+    # immediately above.
+    experiment_type = (
+      session_info.get("experiment_type", "")
+      or workflow_state.get("experiment_type", "")
+    )
+
+    # v119.H16: Inspect the selected data MTZ for column structure.
+    # When the MTZ contains multiple suitable observation arrays, the
+    # auto_fill_obs_labels invariant uses this info to inject the
+    # correct obs_labels= flag.  A precomputed value cached on `state`
+    # (same-request memoization) takes precedence; otherwise we run
+    # cctbx inspection lazily from the selected data MTZ.
+    # All failure paths return None (no inspection → no injection).
+    #
+    # Note: mtz_inspection is SERVER-COMPUTED data, derived here from
+    # the selected data MTZ.  It is intentionally NOT read from the
+    # client session_info dict and is therefore NOT a registered field
+    # in the client/server contract (agent/contract.py).  The only
+    # cache source is `state` (set by a prior call within the same
+    # request); absent that, we compute it fresh below.
+    mtz_inspection = state.get("mtz_inspection")
+    if mtz_inspection is None:
+      try:
+        data_mtz = (session_info.get("best_files", {})
+                    .get("data_mtz"))
+        if data_mtz:
+          try:
+            from libtbx.langchain.agent.mtz_inspector \
+              import inspect_mtz
+          except ImportError:
+            from agent.mtz_inspector import inspect_mtz
+          mtz_inspection = inspect_mtz(data_mtz)
+      except Exception:
+        mtz_inspection = None
 
     return cls(
       cycle_number=state.get("cycle_number", 1),
-      experiment_type=session_info.get("experiment_type", ""),
+      experiment_type=experiment_type,
       resolution=resolution,
       best_files=session_info.get("best_files", {}),
       rfree_mtz=session_info.get("rfree_mtz"),
@@ -138,6 +275,12 @@ class CommandContext:
       directives=state.get("directives", {}),
       model_hetatm_residues=session_info.get("model_hetatm_residues"),
       files_local=state.get("files_local", True),
+      mtz_inspection=mtz_inspection,
+      # v120: client-extracted R-free presence for the input data MTZ (tri-state).
+      # Same plumbing pattern as model_hetatm_residues / unplaced_model_cell.
+      input_mtz_has_rfree=session_info.get("input_mtz_has_rfree"),
+      # v120.2: per-file R-free map for the actually-selected data MTZ.
+      mtz_rfree_map=session_info.get("mtz_rfree_map"),
     )
 
   def _log(self, msg: str):
@@ -398,6 +541,43 @@ class CommandBuilder:
     if files is None:
       self._log(context, "BUILD: Failed to select required files")
       return None
+
+    # 1.5 R-free lock reconciliation (v120.3; v120.4 widened to undetermined).
+    # If an R-free MTZ is locked and available but the data slot holds a file that
+    # is NOT confirmed to carry R-free flags, prefer the locked flag-carrying file
+    # to preserve R-free continuity.  "Not confirmed flagged" means the probe is
+    # False (flagless) OR None (unverifiable — e.g. a raw scalepack input that
+    # inspect_mtz, being ccp4_mtz-only by design, cannot read; p9-sad AIAgent_95).
+    # Runs BEFORE _apply_invariants so the generate decision (F1, below) sees the
+    # reconciled file.  Keeps the selected file ONLY on positive evidence it is
+    # flagged (probe is True), so a genuinely flagged alternative is never
+    # overridden; everything else falls back to the known-flagged lock.  This is
+    # fail-safe: you never lose R-free flags — worst case you refine against the
+    # locked dataset instead of an unverifiable one (accepted trade-off vs a
+    # transient probe glitch on a real flagged file).  abspath (not basename)
+    # guards "same file" and is checked BEFORE the probe, so the lock is never
+    # reconciled to itself — two different files can share a basename across cycle
+    # dirs.  The probe is normalized to the "data_mtz" key because
+    # _input_mtz_rfree_state only reads data_mtz/hkl_file (a raw "data" key would
+    # read as undetermined).
+    if (program == "phenix.refine" and context.rfree_mtz
+            and self._file_is_available(context.rfree_mtz)):
+      _lock_abs = os.path.abspath(str(context.rfree_mtz))
+      for _slot in ("data_mtz", "hkl_file", "data"):
+        _sel = files.get(_slot)
+        if not _sel or isinstance(_sel, (list, tuple)):
+          continue
+        if os.path.abspath(str(_sel)) == _lock_abs:
+          continue
+        _state = self._input_mtz_rfree_state({"data_mtz": _sel}, context)
+        if _state is not True:
+          files[_slot] = context.rfree_mtz
+          self._record_selection(_slot, context.rfree_mtz,
+                                 "rfree_lock_reconcile")
+          self._log(context,
+              "BUILD: reconciled %s -> locked R-free MTZ (%s was %s)"
+              % (_slot, os.path.basename(str(_sel)),
+                 "flagless" if _state is False else "unverified"))
 
     # 2. Build strategy (and track sources)
     strategy = self._build_strategy(program, context)
@@ -681,6 +861,22 @@ class CommandBuilder:
                   best_bn, cat))
                 best_model_excluded = True
                 break
+
+        # v119.H10/H12: also honor exclude_patterns from the model slot definition.
+        # The model slot in phenix.refine has exclude_patterns
+        # ['ligand', 'lig.pdb', 'ligand_fit'] specifically to prevent
+        # promoted ligand-fit outputs from being injected here.  Without
+        # this check, a stale best_files['model'] pointing at e.g.
+        # `something_ligand_fit.pdb` would override correct selection.
+        if not best_model_excluded:
+          _model_def = inputs.get("required", {}).get("model",
+              inputs.get("optional", {}).get("model", {}))
+          _model_excl = _model_def.get("exclude_patterns", [])
+          if not _file_passes_exclude_patterns(best_model_path, _model_excl):
+            self._log(context,
+              "BUILD: best_model %s matches model slot exclude_patterns, skipping" % (
+                os.path.basename(best_model_path)))
+            best_model_excluded = True
 
         if not best_model_excluded:
           for slot in ["model", "pdb", "pdb_file"]:
@@ -1047,6 +1243,26 @@ class CommandBuilder:
         selected_files["ligand"] = selected_files.pop(
           "ligand_cif")
         missing.remove("ligand")
+    # Special case: phenix.autobuild can rebuild a model "in place" and derive
+    # the sequence from that input model, so a sequence file is not required
+    # when a model is available.  We do NOT set rebuild_in_place here —
+    # autobuild decides in-place vs. not on its own; we only stop REQUIRING the
+    # sequence in this case.  Sequence stays required when no model is available
+    # (nothing to derive from) and for all other programs.  The model slot is
+    # OPTIONAL and auto-filled later (below), so it is not yet in selected_files
+    # here — probe availability with the same helper the optional loop uses.
+    if missing == ["sequence"] and program == "phenix.autobuild":
+      _model_def = inputs.get("optional", {}).get("model")
+      _model_avail = bool(_model_def) and bool(
+        self._find_file_for_slot(
+          program, "model", _model_def,
+          available_files, context, basename_to_path))
+      if _model_avail:
+        self._log(context,
+          "BUILD: waiving required 'sequence' for phenix.autobuild — a "
+          "model is available; autobuild can rebuild in place and derive "
+          "the sequence from the model")
+        missing.remove("sequence")
     if missing:
       self._log(context, "BUILD: Missing required inputs: %s" % ", ".join(missing))
       self._last_missing_slots = missing
@@ -1244,6 +1460,22 @@ class CommandBuilder:
     extensions = input_def.get("extensions", [])
     is_multiple = input_def.get("multiple", False)
 
+    # v119.H10/H12: honor exclude_patterns from input_def at every
+    # selection path inside _find_file_for_slot.
+    # Pre-H10, exclude_patterns was only consulted at PRIORITY 4
+    # (extension fallback).  PRIORITY 2 (best_files), PRIORITY 2.5
+    # (recovery strategies), PRIORITY 3 (category-based), and
+    # PRIORITY 3.5 (fallback best_files) all bypassed it.
+    # The AIAgent_62 cycle-7 crash ("wrong number of models" when
+    # refine_001_001.cif was passed as a positional second model
+    # to phenix.refine) was caused by PRIORITY 3 category-match
+    # picking a model mmCIF for the ligand_cif slot, even though
+    # the slot's exclude_patterns explicitly listed "refine_".
+    # H12: consolidated H10's closure into a module-level helper
+    # (_file_passes_exclude_patterns).  We extract the list once
+    # here so the per-site checks below are a single function call.
+    _exclude_patterns = input_def.get("exclude_patterns", [])
+
     # PRIORITY 1: Locked R-free data_mtz (X-ray refinement only)
     # Some programs (e.g., autosol) need original data, not rfree-locked MTZ
     priorities = self._registry.get_input_priorities(program, input_name)
@@ -1278,6 +1510,11 @@ class CommandBuilder:
           excluded = self._should_exclude(
             best_path, exclude_categories, priority_categories,
             context.categorized_files)
+          # v119.H10/H12: also honor exclude_patterns from input_def
+          if not excluded and not _file_passes_exclude_patterns(best_path, _exclude_patterns):
+            self._log(context, "BUILD: Skipping best_%s (matches exclude_patterns: %s)" %
+                (best_category, os.path.basename(best_path)))
+            excluded = True
           if not excluded:
             self._log(context, "BUILD: Using best_%s for %s" % (best_category, input_name))
             self._record_selection(input_name, best_path, "best_files")
@@ -1299,6 +1536,11 @@ class CommandBuilder:
         for avail in available_files:
           if (os.path.basename(avail) == recovery_base and
               any(avail.lower().endswith(ext) for ext in extensions)):
+            # v119.H10/H12: honor exclude_patterns even for recovery files
+            if not _file_passes_exclude_patterns(avail, _exclude_patterns):
+              self._log(context, "BUILD: Recovery file rejected (matches exclude_patterns): %s" %
+                  recovery_base)
+              continue
             self._log(context, "BUILD: Using file with recovery strategy for %s: %s" %
                 (input_name, recovery_base))
             self._record_selection(input_name, avail, "recovery_preferred")
@@ -1341,7 +1583,8 @@ class CommandBuilder:
           subcat_files = context.categorized_files.get(subcat, [])
           valid_files = [f for f in subcat_files
                  if not is_excluded(f)
-                 and any(f.lower().endswith(ext) for ext in extensions)]
+                 and any(f.lower().endswith(ext) for ext in extensions)
+                 and _file_passes_exclude_patterns(f, _exclude_patterns)]  # v119.H10/H12
           if valid_files:
             self._log(context, "BUILD: Found file in preferred subcategory '%s'" % subcat)
             return self._get_most_recent_file(valid_files)
@@ -1351,7 +1594,8 @@ class CommandBuilder:
         cat_files = context.categorized_files.get(cat, [])
         valid_files = [f for f in cat_files
                if not is_excluded(f)
-               and any(f.lower().endswith(ext) for ext in extensions)]
+               and any(f.lower().endswith(ext) for ext in extensions)
+               and _file_passes_exclude_patterns(f, _exclude_patterns)]  # v119.H10/H12
         if valid_files:
           self._log(context, "BUILD: Found file in category '%s'" % cat)
           return self._get_most_recent_file(valid_files)
@@ -1369,7 +1613,9 @@ class CommandBuilder:
         for cat in priority_categories:
           cat_files = context.categorized_files.get(cat, [])
           for f in cat_files:
-            if f not in seen and not is_excluded(f) and                                 any(f.lower().endswith(ext) for ext in extensions):
+            if (f not in seen and not is_excluded(f)
+                and any(f.lower().endswith(ext) for ext in extensions)
+                and _file_passes_exclude_patterns(f, _exclude_patterns)):  # v119.H10/H12
               all_valid.append(f)
               seen.add(f)
         if all_valid:
@@ -1403,6 +1649,11 @@ class CommandBuilder:
       best_path = self._best_path(context.best_files.get(best_category))
       if best_path and self._file_is_available(best_path):
         if any(best_path.lower().endswith(ext) for ext in extensions):
+          # v119.H10/H12: honor exclude_patterns even on require_best_files_only path
+          if not _file_passes_exclude_patterns(best_path, _exclude_patterns):
+            self._log(context, "BUILD: require_best_files_only: best_%s rejected "
+                "(matches exclude_patterns): %s" % (best_category, os.path.basename(best_path)))
+            return None
           self._log(context, "BUILD: require_best_files_only: using best_%s for %s" %
               (best_category, input_name))
           self._record_selection(input_name, best_path, "best_files_required")
@@ -1439,6 +1690,11 @@ class CommandBuilder:
           excluded = self._should_exclude(
             best_path, exclude_categories_check, priority_categories,
             context.categorized_files)
+          # v119.H10/H12: also honor exclude_patterns at the fallback best_files path
+          if not excluded and not _file_passes_exclude_patterns(best_path, _exclude_patterns):
+            self._log(context, "BUILD: best_%s fallback rejected (matches exclude_patterns): %s" %
+                (best_category, os.path.basename(best_path)))
+            excluded = True
           if not excluded:
             self._log(context, "BUILD: Using best_%s as fallback for %s "
                 "(category lookup found no files)" % (best_category, input_name))
@@ -2017,6 +2273,65 @@ class CommandBuilder:
   # STEP 3: APPLY INVARIANTS
   # =========================================================================
 
+  def _input_mtz_rfree_state(self, files, context):
+    """Return whether the data MTZ that will be REFINED contains an R-free flag
+    array, as a TRI-STATE:
+
+      True  -> positive evidence flags EXIST.
+      False -> positive evidence flags ABSENT.
+      None  -> undetermined (could not be established).
+
+    Used by the phenix.refine generate-flags invariant so we never regenerate
+    (overwrite) an existing test set, while ALSO not omitting generate on a
+    genuine first refinement of flagless data.
+
+    PARITY (server == local): every source below travels in session_info, so the
+    answer is IDENTICAL whether the build runs on the server or the client.  The
+    builder does NOT read the filesystem here — a client-only inspect would make
+    the local build diverge from the server build, which is not allowed.  The
+    client does all inspection up front (ai_agent.py) and ships the results.
+
+    Detection sources, in order:
+      0. context.mtz_rfree_map[basename(selected data_mtz)] — the PER-FILE answer
+         for the file actually being refined (covers intermediate outputs like
+         PHASER.1.mtz, which the original-input scalar does not).  Authoritative.
+      1. context.input_mtz_has_rfree — the original-input scalar (tri-state).
+         Used only as a fallback when the selected file is not in the map.
+      2. context.mtz_inspection — precomputed inspection, POSITIVE ONLY (a
+         present rfree_label -> True; absence is not taken as False).
+
+    Returns None when nothing can establish the answer (the decision then treats
+    an UNLOCKED refinement as a first refinement that needs flags)."""
+    # Identify the selected data MTZ (may be a list for multiple:true slots).
+    data_mtz = None
+    if isinstance(files, dict):
+      data_mtz = files.get("data_mtz") or files.get("hkl_file")
+    if isinstance(data_mtz, (list, tuple)):
+      data_mtz = data_mtz[0] if data_mtz else None
+
+    # Source 0: per-file map lookup for the file actually being refined.
+    rfree_map = getattr(context, "mtz_rfree_map", None)
+    if isinstance(rfree_map, dict) and data_mtz:
+      import os as _os
+      entry = rfree_map.get(_os.path.basename(str(data_mtz)))
+      if entry is not None:
+        return bool(entry)
+
+    # Source 1: original-input scalar fallback (when the selected file is not in
+    # the map — e.g. an old client, or a file the client could not inspect).
+    flagged = getattr(context, "input_mtz_has_rfree", None)
+    if flagged is not None:
+      return bool(flagged)
+
+    # Source 2: precomputed inspection, POSITIVE ONLY.  A present rfree_label ->
+    # True; absence is NOT inferred as False (mtz_inspection is keyed off
+    # best_files["data_mtz"], which may be empty or a different file).
+    insp = getattr(context, "mtz_inspection", None)
+    if isinstance(insp, dict) and insp.get("rfree_label"):
+      return True
+
+    return None
+
   def _apply_invariants(self, program: str, files: Dict[str, Any],
              strategy: Dict[str, Any],
              context: CommandContext) -> Tuple[Dict, Dict]:
@@ -2096,6 +2411,72 @@ class CommandBuilder:
         if isinstance(prefix, str):
           strategy["output_prefix"] = self._generate_output_prefix(program, context)
 
+      # v119.H16: Auto-fill obs_labels for multi-array MTZ.
+      #
+      # When the data MTZ contains multiple equally-suitable observation
+      # arrays (typical for MRSAD / SAD tutorials carrying both anomalous
+      # pairs and merged intensities), PHENIX refuses to guess and
+      # aborts with "Multiple equally suitable arrays of observed xray
+      # data found".  This branch injects a deterministic per-program
+      # choice based on the MTZ structure inspected by cctbx.
+      #
+      # See agent/mtz_inspector.py for:
+      #   - inspect_mtz(): MTZ → structured label dict
+      #   - select_obs_labels_for(): per-program preference policy
+      #
+      # The injection fires only when ALL of:
+      #   1. invariant declares auto_fill_obs_labels: true (YAML)
+      #   2. obs_labels NOT already in strategy (user/LLM didn't set it)
+      #   3. context.mtz_inspection populated with is_multi_array=True
+      #   4. the policy returns a non-None label string for this program
+      #
+      # All four gates must pass.  Single-array MTZs skip silently.
+      # Missing inspection context (pre-H16 resume, or cctbx
+      # unavailable) skips silently.  Telemetry logs both injection
+      # firing AND fall-through so production can monitor coverage.
+      if fix.get("auto_fill_obs_labels") and "obs_labels" not in strategy:
+        try:
+          try:
+            from libtbx.langchain.agent.mtz_inspector import (
+              select_obs_labels_for, has_ambiguous_arrays,
+            )
+          except ImportError:
+            from agent.mtz_inspector import (
+              select_obs_labels_for, has_ambiguous_arrays,
+            )
+          mtz_info = getattr(context, "mtz_inspection", None)
+          if has_ambiguous_arrays(mtz_info):
+            labels = select_obs_labels_for(program, mtz_info)
+            if labels:
+              strategy["obs_labels"] = labels
+              self._log(
+                context,
+                "[OBS_LABELS] injected: %s '%s' "
+                "(from multi-array MTZ inspection)"
+                % (program, labels),
+              )
+            else:
+              self._log(
+                context,
+                "[OBS_LABELS] no suitable labels for %s "
+                "(available categories: %s)"
+                % (program,
+                   [k for k, v in mtz_info.items()
+                    if isinstance(v, list) and v]),
+              )
+          # else: single-array or no inspection — silent no-op.
+          # PHENIX picks the only option unambiguously when there's
+          # only one suitable array set, so no injection needed.
+        except ImportError:
+          # mtz_inspector not deployed (pre-H16 server) — skip silently.
+          pass
+        except Exception as _e:
+          self._log(
+            context,
+            "[OBS_LABELS] auto-fill raised %s — proceeding "
+            "without injection" % _e,
+          )
+
     # Check for programs that need R-free resolution matching
     # If R-free flags were generated at a limited resolution, certain programs
     # (like polder) MUST use the same resolution limit or they will crash
@@ -2141,21 +2522,84 @@ class CommandBuilder:
     #      (AF_POMGNT2) → rfree_mtz is locked after cycle 1, skipped
     # When rfree_mtz is NOT set, this is either the first refinement
     # or all previous refinements failed — generate=True is correct.
-    if program == "phenix.refine" and context.experiment_type == "xray":
-      if not context.rfree_mtz:
-        if "generate_rfree_flags" not in strategy:
-          strategy["generate_rfree_flags"] = True
-          self._log(context,
-              "BUILD: First refinement - will generate "
-              "R-free flags (no rfree_mtz locked)")
+    #
+    # v118.F2: removed `context.experiment_type == "xray"` guard.
+    # phenix.refine is intrinsically an xray-only program; no cryoem
+    # code path invokes it.  The previous guard combined with cycle-1
+    # timing (experiment_type empty until first program returns)
+    # caused production failure AIAgent_245: OpenAI's planner picked
+    # phenix.refine directly in cycle 1 with no prior xtriage, the
+    # guard skipped the auto-fill, the command was emitted without
+    # generate_rfree_flags=True, and refinement failed on the missing
+    # R-free flags.  F1 also addresses the root cycle-1 threading
+    # issue; F2 removes this redundant guard as defense-in-depth.
+    if program == "phenix.refine":
+      # R-free generate decision (v120.1, three-valued — see _input_mtz_rfree_state).
+      # phenix.refine treats generate=True as "create a NEW random R-free
+      # partition", which OVERWRITES any flags already present and silently
+      # invalidates cross-validation (observed on beta_blip_001, whose input
+      # carries an "R-free-flags" column).  So we must NOT generate when flags
+      # already exist.  But we ALSO must not OMIT generate on a genuine first
+      # refinement of flagless data (e.g. an MR/phaser output, beta_blip_P3221) —
+      # phenix.refine then aborts on "No array of R-free flags found".
+      #
+      # The decision keys off the lock state AND the tri-state file probe:
+      #   rfree_mtz locked            -> strip   (flags exist, locked from output)
+      #   state is True               -> strip   (positive evidence flags in file)
+      #   state is False              -> generate (positive evidence: no flags)
+      #   state is None (UNDETERMINED) and nothing locked -> GENERATE
+      #     This is the safe default for an unlocked (first) refinement: when we
+      #     cannot prove flags exist and none are locked, treat it as a first
+      #     refinement that needs a fresh test set.  Worst case is a freshly
+      #     generated set (correct for genuine first-refine); the alternative
+      #     (omitting generate) is an immediate hard refinement abort.  This
+      #     restores the robust pre-fix default ("not rfree_mtz -> generate")
+      #     while still stripping on POSITIVE evidence of existing flags, which is
+      #     what prevents the overwrite.
+      #
+      # rfree_mtz locked short-circuits the probe (avoids a per-cycle inspection).
+      # F1 (v120.3): base the decision on the ACTUALLY-SELECTED data file, not on
+      # whether a lock merely exists.  The old "lock short-circuits the probe"
+      # optimization stripped generate for a flagless file selected OVER the lock
+      # (file_preference overriding the lock — beta_blip AIAgent_55 refine_003).
+      # In the live refine path F2 (above) reconciles such a not-confirmed-flagged
+      # slot (flagless or unverified) back to the flagged lock before we get here,
+      # so this normally sees the flag file and strips.  F1 is the per-file-correct
+      # decision and defense-in-depth: for any path where a flagless file still
+      # reaches the slot it ADDS generate instead of aborting.  mtz_rfree_map makes
+      # the probe a free dict lookup; the lock is consulted only as the
+      # undetermined-case fallback below.
+      rfree_state = self._input_mtz_rfree_state(files, context)
+      if rfree_state is None and context.rfree_mtz:
+        # Undetermined (old client / no per-file map) AND a lock exists: keep the
+        # historical safe assumption that the locked file carries flags.
+        rfree_state = True
+        _why = ("rfree_mtz locked (no per-file map): %s"
+                % os.path.basename(str(context.rfree_mtz)))
+      elif rfree_state is True:
+        _why = "selected data MTZ has R-free flags"
       else:
-        # R-free MTZ already locked — strip generate if LLM set it
+        _why = "selected data MTZ confirmed/assumed flagless"
+
+      if rfree_state is True:
+        # Positive evidence flags already exist (locked, or detected in the
+        # selected data MTZ) — never generate; strip any the LLM/hints set.
         if strategy.get("generate_rfree_flags"):
           del strategy["generate_rfree_flags"]
           self._log(context,
-              "BUILD: Stripped generate_rfree_flags "
-              "(rfree_mtz locked: %s)"
-              % os.path.basename(str(context.rfree_mtz)))
+              "BUILD: Stripped generate_rfree_flags (%s)" % _why)
+      else:
+        # rfree_state is False (confirmed no flags) OR None (undetermined, and
+        # nothing locked): this is a first refinement that needs a test set, so
+        # generate.  Add the flag if the LLM/hints didn't.
+        if "generate_rfree_flags" not in strategy:
+          strategy["generate_rfree_flags"] = True
+          _detail = ("input confirmed to have no R-free flags"
+                     if rfree_state is False
+                     else "R-free status undetermined and no rfree_mtz locked")
+          self._log(context,
+              "BUILD: First refinement - will generate "
+              "R-free flags (no rfree_mtz locked, %s)" % _detail)
 
     # predict_and_build: resolution is required for building (stop_after_predict=False)
     # If no resolution available, must use stop_after_predict=True (prediction only)
@@ -2266,7 +2710,7 @@ class CommandBuilder:
     # Primary: read from file (works on client where files are on disk)
     if model_path and context.files_local and self._file_is_available(model_path):
       try:
-        with open(str(model_path), 'r', errors='replace') as fh:
+        with open(str(model_path), 'r', errors='replace', encoding='utf-8') as fh:
           for line in fh:
             if not line.startswith("HETATM"):
               continue

@@ -147,6 +147,72 @@ ATOM    672  C5    C B 118      24.316  86.326  84.289  1.00103.70           C
 ATOM    673  C6    C B 118      23.387  85.879  83.432  1.00104.01           C
 """
 
+def exercise_altloc_hierarchy():
+  """
+  Results that span atoms with different altlocs must be filed in the
+  hierarchical JSON under the altloc they actually belong to.  In pdb_str_1 the
+  ASP 10 CB has a blank altloc while CG/OD1/OD2 have A and B conformers, so the
+  CB-CG bond and the CB-CG-OD angles each mix a blank atom with an alternate
+  one.  Keying those on the first atom alone filed both conformers under the
+  blank altloc, collapsing the A and B results into one bucket.
+  """
+  dm = DataManager()
+  dm.process_model_str("1",pdb_str_1)
+  model = dm.get_model("1")
+  model.set_stop_for_unknowns(False)
+  hierarchy = model.get_hierarchy()
+  p = manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.flip_symmetric_amino_acids=False
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+  model.set_log(log = null_out())
+  model.process(make_restraints=True, pdb_interpretation_params=p)
+  geometry = model.get_restraints_manager().geometry
+  atoms = hierarchy.atoms()
+  bonds = mp_bonds(
+    pdb_hierarchy=hierarchy,
+    pdb_atoms=atoms,
+    geometry_restraints_manager=geometry,
+    outliers_only=False)
+  angles = mp_angles(
+    pdb_hierarchy=hierarchy,
+    pdb_atoms=atoms,
+    geometry_restraints_manager=geometry,
+    outliers_only=False)
+  # every result must sit under the altloc shared by its atoms, where atoms with
+  # a blank altloc are compatible with any conformer
+  for label, results in [("bonds", bonds), ("angles", angles)]:
+    hier = json.loads(results.as_JSON())['hierarchical_results']
+    for model_id, chains in hier.items():
+      for chain_id, resids in chains.items():
+        for resid, altlocs in resids.items():
+          for altloc, entries in altlocs.items():
+            for entry in entries:
+              present = set([a.strip() for a in entry['atoms_altloc']])
+              present.discard('')
+              if len(present) == 1:
+                expected = present.pop()
+              else:
+                expected = ''
+              assert altloc == expected, \
+                "tst_mp_validate_bonds "+label+" result "+ \
+                str(entry['atoms_name'])+" with altlocs "+ \
+                str(entry['atoms_altloc'])+" is filed under altloc '"+ \
+                altloc+"', expected '"+expected+"'"
+  # ASP 10 mixes a blank CB with A/B conformers, so all three buckets exist
+  asp10_bonds = json.loads(bonds.as_JSON())['hierarchical_results']['']['A']['  10 ']
+  assert sorted(asp10_bonds.keys()) == ['', 'A', 'B'], \
+    "tst_mp_validate_bonds ASP 10 bond altloc keys changed, now: "+str(sorted(asp10_bonds.keys()))
+  assert len(asp10_bonds['']) == 4, "tst_mp_validate_bonds ASP 10 blank altloc bond count changed, now: "+str(len(asp10_bonds['']))
+  assert len(asp10_bonds['A']) == 3, "tst_mp_validate_bonds ASP 10 altloc A bond count changed, now: "+str(len(asp10_bonds['A']))
+  assert len(asp10_bonds['B']) == 3, "tst_mp_validate_bonds ASP 10 altloc B bond count changed, now: "+str(len(asp10_bonds['B']))
+  asp10_angles = json.loads(angles.as_JSON())['hierarchical_results']['']['A']['  10 ']
+  assert sorted(asp10_angles.keys()) == ['', 'A', 'B'], \
+    "tst_mp_validate_bonds ASP 10 angle altloc keys changed, now: "+str(sorted(asp10_angles.keys()))
+  assert len(asp10_angles['']) == 4, "tst_mp_validate_bonds ASP 10 blank altloc angle count changed, now: "+str(len(asp10_angles['']))
+  assert len(asp10_angles['A']) == 4, "tst_mp_validate_bonds ASP 10 altloc A angle count changed, now: "+str(len(asp10_angles['A']))
+  assert len(asp10_angles['B']) == 4, "tst_mp_validate_bonds ASP 10 altloc B angle count changed, now: "+str(len(asp10_angles['B']))
+
 def exercise_mp_validate_bonds():
   dm = DataManager()
   #print(help(dm))
@@ -195,6 +261,8 @@ def exercise_mp_validate_bonds():
 if (__name__ == "__main__"):
   t0 = time.time()
   bonds_dict, angles_dict = exercise_mp_validate_bonds()
+  # must run before the cif conversion below renames the chain
+  exercise_altloc_hierarchy()
   convert_pdb_to_cif_for_pdb_str(locals(), chain_addition="LONGCHAIN", hetatm_name_addition = "", key_str="pdb_", print_new_string = False)
   bonds_dict_cif, angles_dict_cif = exercise_mp_validate_bonds()
   assert bonds_dict['summary_results'] == bonds_dict_cif['summary_results'], "tst_mp_validate_bonds summary results changed between pdb and cif version"

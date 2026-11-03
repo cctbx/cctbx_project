@@ -77,7 +77,7 @@ class DryRunManager:
         "Scenario file not found: %s" % yaml_path
       )
 
-    with open(yaml_path, 'r') as f:
+    with open(yaml_path, 'r', encoding='utf-8') as f:
       return yaml.safe_load(f)
 
   def get_initial_files(self):
@@ -133,7 +133,7 @@ class DryRunManager:
     if not os.path.isfile(log_path):
       raise ValueError("Log file not found: %s" % log_path)
 
-    with open(log_path, 'r') as f:
+    with open(log_path, 'r', encoding='utf-8') as f:
       log_text = f.read()
 
     # Get error text if specified
@@ -141,7 +141,7 @@ class DryRunManager:
     if 'error' in step:
       error_path = os.path.join(self.scenario_dir, step['error'])
       if os.path.isfile(error_path):
-        with open(error_path, 'r') as f:
+        with open(error_path, 'r', encoding='utf-8') as f:
           error_text = f.read()
 
     # Copy output files to working directory

@@ -93,12 +93,46 @@ def exercise_omegalyze_json(test_mmcif=False):
   assert omjson_dict['summary_results'][""]['num_cis_proline']==3, "tst_omegalyze json summary results num cis prolines changed to: " + str(omjson_dict['summary_results'][""]['num_cis_proline'])
   return omjson_dict
 
+def exercise_omegalyze_pdb_vs_cif():
+  """PDB and mmCIF input must give the same answer.
+
+  Deliberately does NOT use phenix_regression. The absolute counts in the json exercise
+  are properties of that specific structure and still need that repository, but "do the
+  two input formats agree" can be answered by any model, so this uses a cctbx-owned one
+  and therefore runs in a cctbx-only build.
+
+  That matters because the old form of this check crashed rather than skipped: the
+  phenix_regression guard did a bare `return`, and the caller then subscripted the None
+  it got back, reporting a TypeError instead of a missing input file.
+  """
+  model_file = libtbx.env.find_in_repositories(
+    relative_path="mmtbx/regression/pdbs/p9.pdb",
+    test=os.path.isfile)
+  if (model_file is None):
+    print("Skipping exercise_omegalyze_pdb_vs_cif(): p9.pdb not available")
+    return
+  with open(model_file) as f:
+    pdb_str = f.read()
+  dm = DataManager()
+  dm.process_model_str("pdb", pdb_str)
+  from_pdb = json.loads(omegalyze.omegalyze(pdb_hierarchy=dm.get_model("pdb").get_hierarchy(), nontrans_only=False).as_JSON())
+  dm.process_model_str("cif", convert_string_to_cif_long(
+    pdb_str, chain_addition="LONGCHAIN"))
+  from_cif = json.loads(omegalyze.omegalyze(pdb_hierarchy=dm.get_model("cif").get_hierarchy(), nontrans_only=False).as_JSON())
+  assert len(from_pdb['flat_results']) > 0, \
+    "omegalyze produced nothing for p9.pdb, so the comparison below is vacuous"
+  assert from_pdb['summary_results'] == from_cif['summary_results'], \
+    "omegalyze summary results differ between pdb and cif input"
+
 def run():
   t0 = time.time()
   exercise_omegalyze()
+  exercise_omegalyze_pdb_vs_cif()
   om_dict = exercise_omegalyze_json()
   om_dict_cif = exercise_omegalyze_json(test_mmcif=True)
-  assert om_dict['summary_results'] == om_dict_cif['summary_results'], "tst_omegalyze summary results changed between pdb and cif version"
+  # Both are None without phenix_regression; the check above covers that case.
+  if om_dict is not None and om_dict_cif is not None:
+    assert om_dict['summary_results'] == om_dict_cif['summary_results'], "tst_omegalyze summary results changed between pdb and cif version"
   print("OK. Time: %8.3f"%(time.time()-t0))
 
 if (__name__ == "__main__"):

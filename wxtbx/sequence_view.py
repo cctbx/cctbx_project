@@ -14,7 +14,6 @@ import wx
 import wx.lib.scrolledpanel
 import math, sys, os
 from six.moves import range
-from wxtbx.wx4_compatibility import create_measuring_context # XXX PYTHON 3 FIX
 
 WXTBX_SEQ_SELECT_NONE = 1
 WXTBX_SEQ_SELECT_SINGLE = 2
@@ -65,7 +64,7 @@ multiple residues."
     self._last_y = None
     self.resseq_offset = 0
     self._style = WXTBX_SEQ_DEFAULT_STYLE | WXTBX_SEQ_SELECT_ANY
-    self.txt_font = wx.Font(14, wx.MODERN, wx.NORMAL, wx.NORMAL)
+    self.txt_font = wx.Font(14, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
     self.Bind(wx.EVT_PAINT, self.OnPaint)
     self.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleClick)
     self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
@@ -163,8 +162,8 @@ multiple residues."
 
   def DoGetBestSize(self):
     #dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
-    dc = create_measuring_context()
-    if hasattr(dc,'SetFont'): dc.SetFont(self.txt_font) #  #  XXX Python 3 fix
+    dc = wx.GraphicsContext.Create()
+    dc.SetFont(self.txt_font, (0,0,0))
     i = 0
     (panel_w, panel_h) = (32, 32)
     char_w, char_h = self.get_char_size(dc)
@@ -180,7 +179,7 @@ multiple residues."
     panel_w += line_w
     n_lines = int(math.ceil(self.sequence_length() / self.line_width))
     panel_h += n_lines * self.get_line_spacing()
-    return (max(480, panel_w), max(240, panel_h))
+    return (int(max(480, panel_w)), int(max(240, panel_h)))
 
   def set_sequence(self, seq, resseq_offset=0):
     self.set_sequences([seq])
@@ -249,8 +248,8 @@ multiple residues."
   def get_char_size(self, dc=None):
     if dc is None :
       #dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
-      dc = create_measuring_context()
-      if hasattr(dc,'SetFont'): dc.SetFont(self.txt_font) #  #  XXX Python 3 fix
+      dc = wx.GraphicsContext.Create()
+      dc.SetFont(self.txt_font, (0,0,0))
     if hasattr(dc, 'GetTextExtent'): #  XXX Python 3 fix
       line_w, char_h = dc.GetTextExtent("X" * 50)
     else:
@@ -268,8 +267,8 @@ multiple residues."
 
   def build_boxes(self):
     #dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
-    dc = create_measuring_context()
-    if hasattr(dc,'SetFont'): dc.SetFont(self.txt_font) #  #  XXX Python 3 fix
+    dc = wx.GraphicsContext.Create()
+    dc.SetFont(self.txt_font, (0,0,0))
     char_w, char_h = self.get_char_size(dc)
     x_start = 16
     x_start += self.get_label_width(dc)

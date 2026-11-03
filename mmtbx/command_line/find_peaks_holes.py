@@ -11,9 +11,9 @@ from scitbx.array_family import flex
 from libtbx.str_utils import make_header, format_value
 from libtbx import runtime_utils
 from libtbx.utils import Sorry
-import libtbx.phil
 from libtbx import adopt_init_args, group_args
 from iotbx.pdb.hybrid_36 import hy36encode
+import libtbx.load_env
 import operator
 import os
 import sys

@@ -329,6 +329,10 @@ def minimize_wrapper_for_ramachandran(
       rm_params.reference_model.enabled=True
       rm_params.reference_model.strict_rotamer_matching=False
       rm_params.reference_model.main_chain=False
+      # side_chain is off by default, and main_chain=False alone would leave
+      # both filters off, which generates no proxies at all. Here we want
+      # exactly the side chains.
+      rm_params.reference_model.side_chain=True
       rm = reference_model(
         processed_pdb_file=processed_pdb_file,
         reference_file_list=None,
@@ -404,3 +408,312 @@ def minimize_wrapper_for_ramachandran(
       fix_rotamer_outliers     = True,
       log                      = log)
   grm.geometry.reference_dihedral_manager=None
+
+def geometry_violations(geometry_restraints_manager, sites_cart,
+                        bond_z_max=4.0, clash_overlap_max=0.4):
+  """
+  Covalent bond outliers and clashes of the geometry restraints.
+
+  Parameters
+  ----------
+  geometry_restraints_manager : cctbx.geometry_restraints.manager.manager
+    Restraints to evaluate.
+  sites_cart : flex.vec3_double
+    Cartesian coordinates of all atoms of the restraints.
+  bond_z_max : float
+    A covalent bond is an outlier when its deviation from the ideal length
+    exceeds this many sigmas.
+  clash_overlap_max : float
+    A nonbonded pair is a clash when its distance is more than this (A)
+    below the van der Waals distance of the restraint.
+
+  Returns
+  -------
+  libtbx.group_args
+    bonds: list of (i_seq, j_seq, z). clashes: list of (i_seq, j_seq,
+    overlap, rt_mx), rt_mx None for a pair in the asymmetric unit and the
+    symmetry operation of the mate of j_seq otherwise.
+  """
+  from libtbx import group_args
+  from cctbx.geometry_restraints.linking_class import linking_class
+  covalent = linking_class().get_origin_id('covalent geometry')
+  pair_proxies = geometry_restraints_manager.pair_proxies(
+    sites_cart=sites_cart)
+  bonds = []
+  bp = pair_proxies.bond_proxies
+  if(bp is not None and bp.n_total() > 0):
+    deltas = geometry_restraints.bond_deltas(
+      sites_cart=sites_cart, sorted_asu_proxies=bp)
+    n_simple = bp.simple.size()
+    for k in range(bp.n_total()):
+      if(k < n_simple):
+        proxy = bp.simple[k]
+        i_seq, j_seq = proxy.i_seqs
+      else:
+        proxy = bp.asu[k-n_simple]
+        i_seq, j_seq = proxy.i_seq, proxy.j_seq
+      if(proxy.origin_id != covalent or proxy.weight <= 0): continue
+      z = abs(deltas[k]) / geometry_restraints.weight_as_sigma(proxy.weight)
+      if(z > bond_z_max):
+        bonds.append((i_seq, j_seq, z))
+  clashes = []
+  nbp = pair_proxies.nonbonded_proxies
+  if(nbp is not None and nbp.n_total() > 0):
+    deltas = geometry_restraints.nonbonded_deltas(
+      sites_cart=sites_cart, sorted_asu_proxies=nbp)
+    # Only pairs closer than this can overlap by more than clash_overlap_max.
+    candidates = (deltas < nbp.max_vdw_distance - clash_overlap_max)
+    n_simple = nbp.simple.size()
+    asu_mappings = None
+    if(nbp.asu.size() > 0): asu_mappings = nbp.asu_mappings()
+    for k in candidates.iselection():
+      rt_mx = None
+      if(k < n_simple):
+        proxy = nbp.simple[k]
+        i_seq, j_seq = proxy.i_seqs
+      else:
+        proxy = nbp.asu[k-n_simple]
+        i_seq, j_seq = proxy.i_seq, proxy.j_seq
+        rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
+      overlap = proxy.vdw_distance - deltas[k]
+      if(overlap > clash_overlap_max):
+        clashes.append((i_seq, j_seq, overlap, rt_mx))
+  return group_args(bonds=bonds, clashes=clashes)
+
+def mean_and_max_shift(sites_cart, sites_cart_start, selection):
+  """
+  Mean and maximum distance (A) of the selected sites from their start.
+  """
+  d = (sites_cart - sites_cart_start).norms().select(selection)
+  return flex.mean_default(d, 0.0), flex.max_default(d, 0.0)
+
+class regularizing_lbfgs(geometry_restraints.lbfgs.lbfgs):
+  """
+  Geometry minimization that stops at the first step without bond outliers
+  and clashes (geometry_violations), or at the first step where the mean or
+  the maximum shift of the selected atoms from their start exceeds its
+  budget.
+
+  Parameters
+  ----------
+  sites_cart : flex.vec3_double
+    Starting coordinates, replaced in place by the final ones.
+  sites_cart_start : flex.vec3_double
+    Coordinates the shifts are measured from.
+  shift_selection : flex.bool
+    Atoms the shifts are measured over (the moving non-H atoms).
+  geometry_restraints_manager : cctbx.geometry_restraints.manager.manager
+  geometry_restraints_flags : cctbx.geometry_restraints.flags.flags
+  riding_h_manager : mmtbx.hydrogens.riding.manager, optional
+  sites_cart_selection : flex.bool, optional
+    Atoms allowed to move. None: all.
+  max_iterations : int
+  bond_z_max, clash_overlap_max : float
+    As for geometry_violations.
+  mean_shift_max, max_shift_max : float or None
+    Shift budget (A). None: no limit.
+  stop_when_regular : bool
+    False: the violations do not stop the minimization.
+
+  Attributes
+  ----------
+  n_iterations : int
+  violations : libtbx.group_args or None
+    geometry_violations at the last step.
+  mean_shift, max_shift : float
+    Shifts at the last step.
+  stopped : str or None
+    "regular" (no violations left), "shift" (budget exceeded), or None
+    (converged or max_iterations reached).
+  """
+
+  def __init__(self, sites_cart, sites_cart_start, shift_selection,
+               geometry_restraints_manager, geometry_restraints_flags,
+               riding_h_manager=None, sites_cart_selection=None,
+               max_iterations=500, bond_z_max=4.0, clash_overlap_max=0.4,
+               mean_shift_max=0.3, max_shift_max=1.0,
+               stop_when_regular=True):
+    self.sites_cart_start = sites_cart_start
+    self.shift_selection = shift_selection
+    self.bond_z_max = bond_z_max
+    self.clash_overlap_max = clash_overlap_max
+    self.mean_shift_max = mean_shift_max
+    self.max_shift_max = max_shift_max
+    self.stop_when_regular = stop_when_regular
+    self.n_iterations = 0
+    self.violations = None
+    self.mean_shift = 0.0
+    self.max_shift = 0.0
+    self.stopped = None
+    geometry_restraints.lbfgs.lbfgs.__init__(self,
+      sites_cart                  = sites_cart,
+      geometry_restraints_manager = geometry_restraints_manager,
+      riding_h_manager            = riding_h_manager,
+      geometry_restraints_flags   = geometry_restraints_flags,
+      lbfgs_termination_params    = scitbx.lbfgs.termination_parameters(
+        max_iterations = max_iterations),
+      lbfgs_exception_handling_params = \
+        scitbx.lbfgs.exception_handling_parameters(
+          ignore_line_search_failed_step_at_lower_bound = True),
+      sites_cart_selection        = sites_cart_selection)
+
+  def callback_after_step(self, minimizer):
+    self.apply_shifts()
+    self.n_iterations += 1
+    sites_cart = self.tmp.sites_shifted
+    self.violations = geometry_violations(
+      geometry_restraints_manager = self.tmp.geometry_restraints_manager,
+      sites_cart                  = sites_cart,
+      bond_z_max                  = self.bond_z_max,
+      clash_overlap_max           = self.clash_overlap_max)
+    self.mean_shift, self.max_shift = mean_and_max_shift(
+      sites_cart, self.sites_cart_start, self.shift_selection)
+    n = len(self.violations.bonds) + len(self.violations.clashes)
+    if(self.stop_when_regular and n == 0):
+      self.stopped = "regular"
+      return True
+    if((self.mean_shift_max is not None and
+        self.mean_shift > self.mean_shift_max) or
+       (self.max_shift_max is not None and
+        self.max_shift > self.max_shift_max)):
+      self.stopped = "shift"
+      return True
+    return False
+
+def regularize(geometry_restraints_manager, sites_cart, selection=None,
+               hd_selection=None, riding_h_manager=None, bond_z_max=4.0,
+               clash_overlap_max=0.4, mean_shift_max=0.3, max_shift_max=1.0,
+               max_iterations=500,
+               reference_sigmas=(0.05, 0.1, 0.2, 0.5, None),
+               stop_when_regular=True):
+  """
+  Minimize the geometry with the smallest shift that removes the bond
+  outliers and clashes.
+
+  The selected atoms move under all restraints of the manager plus
+  Cartesian reference restraints to their starting positions. The
+  minimization stops at the first step without violations
+  (geometry_violations). If it converges with violations left, the
+  reference restraints are loosened (next sigma of reference_sigmas; None:
+  no reference restraints) and the minimization continues. It also stops
+  when the mean or the maximum shift of the moving non-H atoms exceeds its
+  budget. Reference coordinate restraints already in the manager are
+  replaced, and none remain at the end.
+
+  Parameters
+  ----------
+  geometry_restraints_manager : cctbx.geometry_restraints.manager.manager
+  sites_cart : flex.vec3_double
+    Starting coordinates, not changed.
+  selection : flex.bool, optional
+    Atoms allowed to move. None: all.
+  hd_selection : flex.bool, optional
+    H and D atoms: excluded from the shifts and the reference restraints.
+    None: there are none.
+  riding_h_manager : mmtbx.hydrogens.riding.manager, optional
+    The H it does not parameterize (water) move as free atoms; the manager
+    itself is not changed.
+  bond_z_max, clash_overlap_max : float
+    As for geometry_violations.
+  mean_shift_max, max_shift_max : float or None
+    Shift budget (A) of the moving non-H atoms. None: no limit.
+  max_iterations : int
+    LBFGS iterations in total. Each round gets an equal share of what the
+    rounds before it have left (a tight round converges slowly and must not
+    use them all), so the loose rounds are always reached.
+  reference_sigmas : sequence of float or None
+    Sigma (A) of the reference restraints of each round.
+  stop_when_regular : bool
+    False: the violations do not stop the minimization, and there is one
+    round only.
+
+  Returns
+  -------
+  libtbx.group_args
+    sites_cart (final), violations_start, violations_end
+    (geometry_violations results), n_iterations, mean_shift, max_shift
+    (A, moving non-H atoms).
+  """
+  from libtbx import group_args
+  from mmtbx.geometry_restraints import reference
+  grm = geometry_restraints_manager
+  n_atoms = sites_cart.size()
+  if(selection is None): selection = flex.bool(n_atoms, True)
+  shift_selection = selection.deep_copy()
+  if(hd_selection is not None): shift_selection &= ~hd_selection
+  sites_cart_start = sites_cart.deep_copy()
+  sites_cart = sites_cart.deep_copy()
+  if(riding_h_manager is not None):
+    # The LBFGS driver freezes every H of the manager's hd_selection and
+    # drops its gradient; an H without parameterization would stay behind
+    # its moving parent. A shallow copy of the manager selects the riding H
+    # only, so the others are refined as free atoms.
+    import copy
+    riding = flex.bool(n_atoms, False)
+    for rc in riding_h_manager.parameterization_cpp:
+      riding[rc.ih] = True
+    riding_h_manager = copy.copy(riding_h_manager)
+    riding_h_manager.hd_selection = riding
+    riding_h_manager.not_hd_selection = ~riding
+  flags = geometry_restraints.flags.flags(
+    bond                    = True,
+    nonbonded               = True,
+    angle                   = True,
+    dihedral                = True,
+    chirality               = True,
+    planarity               = True,
+    parallelity             = True,
+    reference_coordinate    = True,
+    reference_dihedral      = True,
+    bond_similarity         = True,
+    ramachandran_restraints = True)
+  violations_start = geometry_violations(
+    geometry_restraints_manager = grm,
+    sites_cart                  = sites_cart,
+    bond_z_max                  = bond_z_max,
+    clash_overlap_max           = clash_overlap_max)
+  n_iterations = 0
+  for i_round, sigma in enumerate(reference_sigmas):
+    n_rounds_left = len(reference_sigmas) - i_round
+    round_iterations = (max_iterations - n_iterations) // n_rounds_left
+    if(round_iterations < 1): break
+    grm.remove_reference_coordinate_restraints_in_place()
+    if(sigma is not None):
+      grm.append_reference_coordinate_restraints_in_place(
+        reference.add_coordinate_restraints(
+          sites_cart = sites_cart_start.select(shift_selection),
+          selection  = shift_selection,
+          sigma      = sigma))
+    minimized = regularizing_lbfgs(
+      sites_cart                  = sites_cart,
+      sites_cart_start            = sites_cart_start,
+      shift_selection             = shift_selection,
+      geometry_restraints_manager = grm,
+      geometry_restraints_flags   = flags,
+      riding_h_manager            = riding_h_manager,
+      sites_cart_selection        = selection,
+      max_iterations              = round_iterations,
+      bond_z_max                  = bond_z_max,
+      clash_overlap_max           = clash_overlap_max,
+      mean_shift_max              = mean_shift_max,
+      max_shift_max               = max_shift_max,
+      stop_when_regular           = stop_when_regular)
+    n_iterations += minimized.n_iterations
+    if(minimized.stopped is not None or n_iterations >= max_iterations or
+       not stop_when_regular):
+      break
+  grm.remove_reference_coordinate_restraints_in_place()
+  violations_end = geometry_violations(
+    geometry_restraints_manager = grm,
+    sites_cart                  = sites_cart,
+    bond_z_max                  = bond_z_max,
+    clash_overlap_max           = clash_overlap_max)
+  mean_shift, max_shift = mean_and_max_shift(
+    sites_cart, sites_cart_start, shift_selection)
+  return group_args(
+    sites_cart       = sites_cart,
+    violations_start = violations_start,
+    violations_end   = violations_end,
+    n_iterations     = n_iterations,
+    mean_shift       = mean_shift,
+    max_shift        = max_shift)

@@ -1,0 +1,645 @@
+"""MCP client types, content converters, and ``McpServerConnection``.
+
+The dataclasses live here (not in ``session.py``) so a session that
+doesn't use MCP doesn't pull ``fastmcp`` into its import graph; only
+the function-scope ``fastmcp`` imports inside ``McpServerConnection``
+touch the SDK.
+"""
+
+import asyncio
+import shutil
+import sys
+import threading
+from dataclasses import dataclass, field
+
+from libtbx.utils import Sorry
+
+from qttbx.widgets.chat.agent.base import ToolSpec
+from qttbx.widgets.chat.agent.conversation import ContentBlock
+
+
+def phenix_server_env(project_dir):
+  """The PHENIX_* env a phenix-aware MCP server subprocess should receive.
+
+  Centralizes the project/chat-home env so the launcher's claude_code SDK
+  loop and McpServerConnection inject identical values.
+
+  Parameters
+  ----------
+  project_dir : str or pathlib.Path
+      The active project directory.
+
+  Returns
+  -------
+  dict
+      ``{"PHENIX_PROJECT_DIR": ..., "PHENIX_AGENT_HOME": ...}``.
+  """
+  from qttbx.widgets.chat.agent.paths import chat_root_for
+  return {
+    "PHENIX_PROJECT_DIR": str(project_dir),
+    "PHENIX_AGENT_HOME": str(chat_root_for(project_dir)),
+  }
+
+
+@dataclass
+class McpToolItem:
+  """One content item from an MCP tool result.
+
+  Which fields are populated depends on ``type``: ``text`` uses ``text``;
+  ``image`` uses ``sha256``, ``mime``, and optional ``caption``;
+  ``resource`` uses ``uri`` and optional ``text_excerpt``.
+  """
+  type: str                        # "text" | "image" | "resource"
+  text: str = None                 # for text and resource excerpts
+  uri: str = None                  # for resource
+  sha256: str = None               # for image: populated by the client
+                                   # after storing the bytes via storage
+  mime: str = None                 # for image
+  caption: str = None              # for image (optional)
+  text_excerpt: str = None         # for resource (optional short snippet)
+
+
+@dataclass
+class McpToolResult:
+  """Result of an MCP tool call: content items plus an error flag."""
+  content: list = field(default_factory=list)         # list[McpToolItem]
+  is_error: bool = False
+
+
+def error_result(message):
+  """Construct an ``McpToolResult`` flagged as an error.
+
+  The dispatch loop surfaces it as ``tool_result`` content with
+  ``is_error=True``.
+
+  Parameters
+  ----------
+  message : str
+      Error text to wrap as the single text item of the result.
+
+  Returns
+  -------
+  McpToolResult
+      A result with ``is_error=True`` carrying ``message``.
+  """
+  return McpToolResult(
+    content=[McpToolItem(type="text", text=message)],
+    is_error=True)
+
+
+_BLOCKING_TIMEOUT_MARGIN = 30.0
+# Ceiling on a wait_s-derived timeout. The running-jobs skill never drives
+# wait_s above ~900; capping keeps an absurd/adversarial value from producing
+# a non-finite or astronomical timeout that overflows
+# concurrent.futures.Future.result and orphans the in-flight poll task.
+_MAX_BLOCKING_WAIT_S = 3600.0
+
+
+def _effective_timeout(input, base_timeout):
+  """Per-call transport timeout, widened for blocking long-poll tools.
+
+  ``phenix_get_status(wait_s=N)`` blocks server-side for up to ``N`` seconds
+  on the job's completion event, and the phenix-running-jobs skill drives it
+  with ``wait_s`` as high as 900. A fixed ``base_timeout`` (60s) would abort
+  that long-poll spuriously -- the call errors out while the job keeps
+  running and the model, following its own skill's guidance, just gets a
+  failure. So when the input carries a positive finite numeric ``wait_s`` the
+  timeout is widened to ``min(wait_s, _MAX_BLOCKING_WAIT_S) + margin``;
+  everything else (no/zero/negative/non-finite/non-numeric ``wait_s``) keeps
+  the base. The cap keeps an absurd value from producing an astronomical
+  timeout downstream.
+
+  Parameters
+  ----------
+  input : dict or None
+      The tool arguments. Only a positive finite numeric ``wait_s`` matters.
+  base_timeout : float
+      The caller's default per-call timeout.
+
+  Returns
+  -------
+  float
+      ``max(base_timeout, min(wait_s, _MAX_BLOCKING_WAIT_S) + margin)`` for a
+      positive finite numeric ``wait_s``; ``base_timeout`` otherwise.
+  """
+  wait_s = input.get("wait_s") if isinstance(input, dict) else None
+  try:
+    wait_s = float(wait_s)
+  except (TypeError, ValueError):
+    return base_timeout
+  import math
+  if not math.isfinite(wait_s) or wait_s <= 0:
+    return base_timeout
+  # Cap before adding the margin so 'inf' / an astronomical wait_s can't
+  # overflow the downstream future.result(timeout=...) (see _MAX_BLOCKING_WAIT_S).
+  return max(base_timeout,
+             min(wait_s, _MAX_BLOCKING_WAIT_S) + _BLOCKING_TIMEOUT_MARGIN)
+
+
+def _derive_risk(raw):
+  ann = getattr(raw, "annotations", None) or {}
+  # Pydantic models vs plain dicts both supported.
+  if not isinstance(ann, dict):
+    ann = getattr(ann, "model_dump", lambda: {})() or {}
+  if ann.get("destructiveHint"):
+    return "destructive"
+  if ann.get("readOnlyHint"):
+    return "read"
+  return "write"
+
+
+def _mcp_item_to_block(item):
+  """Translate one MCP content item into a canonical ``ContentBlock``.
+
+  Image bytes were already stored by
+  ``McpServerConnection._convert_result``, which populated ``item.sha256``
+  -- we just reference it here.
+
+  Parameters
+  ----------
+  item : McpToolItem
+      The MCP content item to translate.
+
+  Returns
+  -------
+  ContentBlock
+      The canonical block; a text block describing the type for
+      unsupported content types.
+  """
+  if item.type == "text":
+    return ContentBlock(type="text", data={"text": item.text or ""})
+  if item.type == "image":
+    return ContentBlock(type="image", data={
+      "attachment_sha256": item.sha256,
+      "mime": item.mime,
+      "caption": item.caption,
+    })
+  if item.type == "resource":
+    excerpt = item.text_excerpt or ""
+    return ContentBlock(type="text", data={
+      "text": "Resource %s\n%s" % (item.uri, excerpt)})
+  return ContentBlock(type="text", data={
+    "text": "Unsupported MCP content type: %s" % item.type})
+
+
+class McpServerConnection:
+  """One MCP server subprocess and its tools.
+
+  Lifecycle: ``STOPPED`` -> ``STARTING`` -> ``READY`` -> (``STOPPED`` |
+  ``FAILED``). Public surface: ``start()``,
+  ``stop()``, ``call_tool(name, input, cancel)``. Tools are exposed as
+  ``ToolSpec`` instances after ``start()`` so the ``ToolRegistry`` can
+  register them with ``register_mcp_tool``.
+
+  Async-sync bridge: ``fastmcp``'s ``Client`` is async but
+  ``AgentSession`` (which calls ``call_tool``) is sync. A dedicated
+  daemon thread runs an asyncio event loop; calls are dispatched via
+  ``asyncio.run_coroutine_threadsafe``.
+
+  Parameters
+  ----------
+  config : McpServerConfig
+      Server entry (name, command, args, env) from the profile.
+  project_dir : str or pathlib.Path
+      Project directory. Exported to the subprocess as
+      ``PHENIX_PROJECT_DIR`` only for phenix-aware servers
+      (``config.inject_phenix_env`` True); foreign servers do not see it.
+  storage : object
+      Attachment store used to persist image content from tool results.
+  conv_id : str
+      Conversation id under which attachments are stored.
+  log : file-like, optional
+      Destination for status messages. Defaults to ``sys.stdout``.
+  """
+
+  STATE_STOPPED = "stopped"
+  STATE_STARTING = "starting"
+  STATE_READY = "ready"
+  STATE_FAILED = "failed"
+
+  def __init__(self, config, project_dir, storage, conv_id, log=None):
+    self.config = config
+    self.project_dir = project_dir
+    self.storage = storage
+    self.conv_id = conv_id
+    self.log = log if log is not None else sys.stdout
+    self.state = self.STATE_STOPPED
+    self.tools = []
+    self._risk_by_name = {}
+    self._client = None
+    self._loop = None
+    self._loop_thread = None
+    self._in_process_app = None
+    self._client_cm = None                            # async context mgr
+
+  # ---- public API ----------------------------------------------------------
+
+  def start(self):
+    """Spawn the subprocess, list tools, and mark the server ready.
+
+    Uses the injected in-process app instead of a subprocess when one was
+    set via ``_inject_in_process_app`` (tests).
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        On hard start failures (e.g. missing command, connection error).
+    """
+    self.state = self.STATE_STARTING
+    self._start_loop()
+    try:
+      self._run_async(self._async_start())
+      self.state = self.STATE_READY
+      print("MCP %s: ready (%d tools)" %
+            (self.config.name, len(self.tools)), file=self.log)
+    except Sorry:
+      self.state = self.STATE_FAILED
+      # Close the client BEFORE tearing down the loop. A partial start --
+      # __aenter__ connected (spawning the subprocess) but list_tools() then
+      # raised -- leaves a live subprocess; _close_client awaits __aexit__ to
+      # tell it to exit, and that needs the loop still running. Then tear down
+      # the loop thread so a failed start (incl. a _run_async timeout) doesn't
+      # leak it; the guarded _stop_loop won't raise even if the thread wedged.
+      self._close_client()
+      self._stop_loop()
+      raise
+    except Exception as exc:
+      self.state = self.STATE_FAILED
+      self._close_client()
+      self._stop_loop()
+      raise Sorry("MCP %s: start failed: %s" %
+                  (self.config.name, exc))
+
+  def stop(self):
+    """Close the client, stop the event loop, and mark the server stopped.
+
+    Best-effort: a subprocess that has already exited does not raise.
+    """
+    self._close_client()
+    self._stop_loop()
+    self.state = self.STATE_STOPPED
+
+  def _close_client(self):
+    """Close the MCP client connection, best-effort.
+
+    Awaits the client's ``__aexit__`` so a spawned subprocess is told to
+    exit. Must run BEFORE :meth:`_stop_loop`, which tears down the event
+    loop the ``__aexit__`` coroutine runs on. A no-op when no client was
+    opened. Never raises: a subprocess that already exited, or a close that
+    times out, is swallowed -- the loop teardown reclaims resources either
+    way.
+    """
+    if self._client_cm is None:
+      return
+    try:
+      self._run_async(self._client_cm.__aexit__(None, None, None),
+                      timeout=30.0)
+    except Exception:
+      pass
+    self._client_cm = None
+    self._client = None
+
+  def call_tool(self, name, input, cancel, timeout=60.0):
+    """Invoke an MCP tool and return its converted result.
+
+    On failure (server down, tool raised, cancel) the result has
+    ``is_error=True`` so the dispatch loop in ``AgentSession`` surfaces it
+    to the model rather than aborting the turn.
+
+    Parameters
+    ----------
+    name : str
+        Tool name as exposed by the server.
+    input : dict
+        Tool arguments matching the tool's input schema.
+    cancel : CancelToken
+        Polled while the call is in flight; cancels the task when set.
+    timeout : float, optional
+        Base per-call timeout in seconds (default ``60.0``). Widened
+        automatically for blocking long-poll tools -- see
+        :func:`_effective_timeout`.
+
+    Returns
+    -------
+    McpToolResult
+        The converted result, possibly flagged ``is_error=True``.
+    """
+    if self.state != self.STATE_READY:
+      return error_result("MCP server '%s' not ready" % self.config.name)
+    try:
+      # Blocking long-poll tools (phenix_get_status with a large wait_s) need
+      # the transport timeout widened to cover the server-side wait, or the
+      # call aborts at 60s while the job runs on (the running-jobs skill drives
+      # wait_s up to 900). _effective_timeout is a no-op for ordinary calls.
+      eff_timeout = _effective_timeout(input, timeout)
+      # The inner _async_call already bounds the call by `eff_timeout` (and
+      # polls `cancel`); give the outer wait a slightly larger bound so the
+      # inner timeout/cancel produces the error in the common case and this is
+      # only a last-resort guard against a fully wedged loop.
+      raw = self._run_async(
+        self._async_call(name, input, timeout=eff_timeout, cancel=cancel),
+        timeout=eff_timeout + 30.0)
+      # _convert_result stays inside the try: persisting an image item can
+      # raise (e.g. an attachment-store OSError on a full disk), and that must
+      # become an error result -- not escape call_tool's never-raise contract.
+      return self._convert_result(raw)
+    except Exception as exc:
+      return error_result("Tool call failed: %s" % exc)
+
+  # ---- test hooks ----------------------------------------------------------
+
+  def _inject_in_process_app(self, app):
+    """Swap in a FastMCP app served via ``FastMCPTransport`` (test seam).
+
+    Avoids spawning a subprocess. Used by unit tests only.
+
+    Parameters
+    ----------
+    app : object
+        A FastMCP app instance to serve in-process.
+    """
+    self._in_process_app = app
+
+  # ---- async surface -------------------------------------------------------
+
+  def _subprocess_env(self):
+    """Build the subprocess environment for this server.
+
+    Starts from os.environ, merges the server's own sanitized env, then --
+    only when the server opts in via inject_phenix_env (default True) --
+    overlays the authoritative PHENIX_PROJECT_DIR / PHENIX_AGENT_HOME.
+
+    Returns
+    -------
+    dict
+        The environment to hand to the spawned MCP-server subprocess.
+    """
+    import os
+    env = dict(os.environ)
+    if getattr(self.config, "env", None):
+      from qttbx.widgets.chat.agent.profile import sanitize_server_env
+      env.update(sanitize_server_env(self.config.env))
+    if getattr(self.config, "inject_phenix_env", True):
+      env.update(phenix_server_env(self.project_dir))
+    else:
+      # A foreign server (inject_phenix_env=False, e.g. Coot) must not see the
+      # Phenix scoping vars. The flag skips the overlay above, but they can
+      # still leak in from os.environ if the user exported them -- strip those
+      # so scoping never reaches a non-Phenix subprocess.
+      for k in phenix_server_env(self.project_dir):
+        env.pop(k, None)
+    return env
+
+  async def _async_start(self):
+    """Open the client connection and populate ``self.tools``.
+
+    Validates the resolved command and raises before connecting.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        When the command is empty or not found on ``PATH``.
+    """
+    from fastmcp import Client
+    if self._in_process_app is not None:
+      from fastmcp.client.transports import FastMCPTransport
+      transport = FastMCPTransport(self._in_process_app)
+    else:
+      from fastmcp.client.transports import StdioTransport
+      cmd = self._expanded_command()
+      if not cmd or not cmd[0]:
+        raise Sorry(
+          "MCP server '%s': empty command. The profile's `command` field "
+          "resolved to an empty string — check the profile JSON for an "
+          "unset variable expansion or a missing command entry."
+          % self.config.name)
+      if not shutil.which(cmd[0]):
+        raise Sorry("MCP server '%s': command not found: %s" %
+                    (self.config.name, cmd[0]))
+      env = self._subprocess_env()
+      transport = StdioTransport(command=cmd[0], args=cmd[1:], env=env)
+    self._client_cm = Client(transport)
+    self._client = await self._client_cm.__aenter__()
+    raw_tools = await self._client.list_tools()
+    self.tools = [self._tool_to_spec(t) for t in raw_tools]
+
+  async def _async_call(self, name, input, timeout, cancel):
+    """Run the tool call as a cancellable asyncio task.
+
+    Runs the call as a ``Task`` so it can be cancelled when the chat
+    cancels. ``raise_on_error=False`` makes fastmcp return a
+    ``CallToolResult`` with ``is_error=True`` instead of raising
+    ``ToolError`` on tool-raised exceptions.
+
+    Parameters
+    ----------
+    name : str
+        Tool name.
+    input : dict
+        Tool arguments.
+    timeout : float
+        Per-call timeout in seconds.
+    cancel : CancelToken
+        Polled while the task runs; cancels it when set.
+
+    Returns
+    -------
+    object
+        The raw ``CallToolResult`` from fastmcp.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        When ``cancel`` is set before the call completes.
+    """
+    coro = self._client.call_tool(
+      name, input, timeout=timeout, raise_on_error=False)
+    task = asyncio.ensure_future(coro)
+    while not task.done():
+      if cancel.is_set():
+        task.cancel()
+        try:
+          await task
+        except asyncio.CancelledError:
+          # The cancellation we just requested. Since py3.8 CancelledError is a
+          # BaseException, so a bare `except Exception` misses it -- without this
+          # branch it would escape past the `raise Sorry("Cancelled")` below
+          # (leaving it dead) and surface as an empty 'Tool call failed: '.
+          pass
+        except Exception:
+          pass            # task raised something else while unwinding -- ignore
+        # KeyboardInterrupt / SystemExit are neither caught above; they propagate.
+        raise Sorry("Cancelled")
+      try:
+        return await asyncio.wait_for(asyncio.shield(task), timeout=0.1)
+      except asyncio.TimeoutError:
+        continue
+    return task.result()
+
+  # ---- conversion ----------------------------------------------------------
+
+  def _expanded_command(self):
+    """Build the command vector, preserving a possibly-empty command slot.
+
+    The leading element is kept even when empty so callers can detect the
+    "command unset" case; ``_async_start`` validates it.
+
+    Returns
+    -------
+    list of str
+        ``[command] + args`` with ``command`` coerced to ``""`` if unset.
+    """
+    # An empty leading element guards against a previous filter dropping it
+    # and silently promoting args[0] to the command slot.
+    cmd = [self.config.command or ""] + list(getattr(self.config, "args", []))
+    return cmd
+
+  def _tool_to_spec(self, raw):
+    """Build a ``ToolSpec`` from a raw MCP tool and record its risk."""
+    name = raw.name
+    self._risk_by_name[name] = _derive_risk(raw)
+    return ToolSpec(
+      name=name,
+      description=getattr(raw, "description", "") or "",
+      input_schema=getattr(raw, "inputSchema", None)
+        or getattr(raw, "input_schema", {}) or {})
+
+  def risk_for(self, name):
+    """Return the risk class for ``name`` (``"write"`` if unknown)."""
+    return self._risk_by_name.get(name, "write")
+
+  def _convert_result(self, raw):
+    """Convert a raw fastmcp result into an ``McpToolResult``.
+
+    Text and resource items are copied through; image items are
+    base64-decoded and persisted via ``self.storage``, with the resulting
+    sha256 referenced on the item.
+
+    Returns
+    -------
+    McpToolResult
+        The converted result, preserving the raw ``is_error`` flag.
+    """
+    items = []
+    is_error = bool(getattr(raw, "is_error", False))
+    content = getattr(raw, "content", None) or []
+    for entry in content:
+      t = getattr(entry, "type", None)
+      if t == "text":
+        items.append(McpToolItem(type="text",
+                                 text=getattr(entry, "text", "")))
+      elif t == "image":
+        import base64
+        data_b64 = getattr(entry, "data", "")
+        mime = getattr(entry, "mimeType", None) or \
+               getattr(entry, "mime_type", "image/png")
+        try:
+          data = base64.b64decode(data_b64)
+        except Exception as exc:
+          # Surface the failure instead of silently storing a 0-byte image the
+          # model can't see / interpret.
+          items.append(McpToolItem(
+            type="text",
+            text="[image dropped: invalid base64 (%s)]" % exc))
+          continue
+        att = self.storage.store_attachment(
+          self.conv_id, data, mime)
+        items.append(McpToolItem(type="image",
+                                 sha256=att.sha256, mime=mime))
+      elif t == "resource":
+        # An EmbeddedResource nests its uri/text under entry.resource (a
+        # TextResourceContents / BlobResourceContents), not on the entry
+        # itself; reading them off the entry yields empty strings and the
+        # resource content is silently dropped.
+        resource = getattr(entry, "resource", None)
+        uri = getattr(resource, "uri", "") or ""
+        text_excerpt = getattr(resource, "text", None) or ""
+        if not text_excerpt:
+          # A BlobResourceContents carries base64 binary in .blob, not .text.
+          # We can't inline binary as text, but note it (mime + size) rather
+          # than silently dropping it to a bare "Resource <uri>".
+          blob = getattr(resource, "blob", None)
+          if blob:
+            mime = getattr(resource, "mimeType", None) or \
+                   getattr(resource, "mime_type", None)
+            # Decoded size from the base64 LENGTH -- don't materialize a
+            # possibly-large payload just to count it. Approximate (ignores
+            # any wrapping whitespace) but fine for a human-readable note.
+            try:
+              b64 = "".join(str(blob).split())
+              nbytes = max(0, (len(b64) // 4) * 3 - b64.count("="))
+            except Exception:
+              nbytes = None
+            text_excerpt = "[binary resource%s%s]" % (
+              " %s" % mime if mime else "",
+              " %d bytes" % nbytes if nbytes is not None else "")
+        items.append(McpToolItem(type="resource",
+                                 uri=str(uri),
+                                 text_excerpt=text_excerpt))
+    return McpToolResult(content=items, is_error=is_error)
+
+  # ---- event loop helpers --------------------------------------------------
+
+  def _start_loop(self):
+    if self._loop is not None:
+      return
+    self._loop = asyncio.new_event_loop()
+    self._loop_thread = threading.Thread(
+      target=self._loop.run_forever,
+      name="mcp-loop-%s" % self.config.name, daemon=True)
+    self._loop_thread.start()
+
+  def _stop_loop(self):
+    if self._loop is None:
+      return
+    loop = self._loop
+    thread = self._loop_thread
+    loop.call_soon_threadsafe(loop.stop)
+    if thread is not None:
+      thread.join(timeout=2.0)
+    # Only close once the loop thread has actually exited. If the join timed
+    # out (a coroutine wedged the loop so run_forever never returned) the
+    # loop is still running, and loop.close() would raise "Cannot close a
+    # running event loop". Skip the close in that case and let the daemon
+    # thread die with the process; null out the handles either way.
+    thread_stopped = thread is None or not thread.is_alive()
+    if thread_stopped and not loop.is_running():
+      loop.close()
+    self._loop = None
+    self._loop_thread = None
+
+  def _run_async(self, coro, timeout=60.0):
+    """Submit ``coro`` to the loop thread and block for its result.
+
+    Bounded so a wedged MCP server (a tool that never returns, a subprocess
+    stuck on startup) can't block the caller forever: ``start`` and ``stop``
+    run on the GUI thread, where an unbounded wait would freeze the chat.
+
+    Parameters
+    ----------
+    coro : coroutine
+        Coroutine scheduled on the connection's event loop.
+    timeout : float, optional
+        Maximum seconds to block. Defaults to ``60.0`` (matching the
+        per-call default in :meth:`call_tool`).
+
+    Returns
+    -------
+    object
+        Whatever ``coro`` returns.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        When ``coro`` does not finish within ``timeout`` seconds; the
+        pending task is cancelled before raising.
+    """
+    import concurrent.futures
+    future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+    try:
+      return future.result(timeout=timeout)
+    except concurrent.futures.TimeoutError:
+      future.cancel()
+      raise Sorry(
+        "MCP server '%s': async operation timed out after %.0fs"
+        % (self.config.name, timeout))

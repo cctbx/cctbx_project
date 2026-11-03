@@ -46,11 +46,22 @@ def test_classify_mtz_refine_map_coeffs():
 
 
 def test_classify_mtz_numbered_output():
-    """Other _001.mtz outputs are classified as map_coeffs_mtz."""
+    """A '*refine_NNN.mtz' output is map_coeffs_mtz; a bare '*_001.mtz' with no
+    refine/map marker is treated as DATA, not map coefficients.
+
+    The latter changed deliberately: the old over-broad rule classified any
+    '*_001.mtz' as map_coeffs_mtz, which mis-categorized user-supplied data
+    files like 'beta_blip_001.mtz' (a phenix.refine output fed back in, carrying
+    Fobs + R-free flags).  That dropped them from data_mtz and stalled the
+    workflow at STOP.  Genuine map outputs still match via 'refine_NNN'
+    (Pattern 1) or 'map_coeffs'/'denmod' (Pattern 3)."""
     print("Test: classify_mtz_numbered_output")
 
+    # 'model_refine_001.mtz' matches the refine_NNN pattern -> map coefficients.
     assert_equal(classify_mtz_type("/path/to/model_refine_001.mtz"), "map_coeffs_mtz")
-    assert_equal(classify_mtz_type("/path/to/output_001.mtz"), "map_coeffs_mtz")
+    # 'output_001.mtz' has no refine/map marker -> treated as data (NOT map
+    # coeffs).  A bare '_001' suffix alone no longer implies map coefficients.
+    assert_equal(classify_mtz_type("/path/to/output_001.mtz"), "data_mtz")
 
     print("  PASSED")
 

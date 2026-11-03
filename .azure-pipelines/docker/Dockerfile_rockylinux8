@@ -2,5 +2,5 @@
 
 FROM rockylinux:8
 
-RUN yum install -y sudo \
+RUN yum install -y procps-ng sudo \
     && yum clean all

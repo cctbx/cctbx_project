@@ -7,8 +7,6 @@ external reduce and probe programs.
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation.clashscore import clash
-from mmtbx.hydrogens import reduce_hydrogen
-from mmtbx.reduce import Optimizers
 from mmtbx.programs import probe2
 from mmtbx.validation import validation, atoms, atom_info
 from libtbx.utils import Sorry, null_out
@@ -16,10 +14,10 @@ import iotbx.pdb
 import iotbx.cli_parser
 import mmtbx
 import os
-import re
 import sys
 import six
 import json
+import collections
 import copy
 import tempfile
 
@@ -33,6 +31,120 @@ def remove_models_except_index(model_manager, model_index):
                 hierarchy.remove_model(model=model)
     return model_manager
 
+# Parsed probe2 phil keyed by argument strings.  The per-run output file
+# name is patched into each freshly extracted params object rather than
+# parsed, so all models of an ensemble share one parse.
+_probe2_phil_cache = {}
+
+def _probe2_params_from_args(args, output_filename):
+  """Return (master_phil, params) for the given probe2 arguments, parsing
+  at most once per distinct argument list.  Each call extracts a fresh params
+  object with params.output.filename set to output_filename."""
+  key = tuple(args)
+  cached = _probe2_phil_cache.get(key)
+  if cached is None:
+    parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program,
+      logger=null_out())
+    parser.parse_args(list(args))
+    cached = (parser.master_phil, parser.working_phil)
+    _probe2_phil_cache[key] = cached
+  master_phil, working_phil = cached
+  params = working_phil.extract()
+  params.output.filename = output_filename
+  return master_phil, params
+
+def _submodel_atom_key(atom):
+  """Identity key for an atom that is stable across the models of an ensemble
+  (all models in a multi-model file are required to share composition)."""
+  ag = atom.parent()
+  rg = ag.parent()
+  chain = rg.parent()
+  return (chain.id, rg.resseq, rg.icode, ag.altloc, ag.resname, atom.name)
+
+def _atom_index_by_key(hierarchy):
+  """Map each atom's identity key to its index in hierarchy.atoms() order.
+  Returns None if any two atoms share a key, since the mapping would then be
+  ambiguous."""
+  ret = {}
+  for i, a in enumerate(hierarchy.atoms()):
+    key = _submodel_atom_key(a)
+    if key in ret:
+      return None
+    ret[key] = i
+  return ret
+
+def _deep_copy_with_selection_support(model):
+  """Deep-copy a processed model manager, keeping model.selection() working:
+  deep_copy() drops the monomer mappings that selection keywords like
+  "backbone" need, and the copy's identical atom layout keeps the original's
+  valid."""
+  work = model.deep_copy()
+  work._all_monomer_mappings = model._all_monomer_mappings
+  work.get_atom_selection_cache()
+  return work
+
+def _gather_atom_parameters(key_to_index, hierarchy):
+  """Collect the coordinates, occupancies, and B factors of the atoms in the
+  given single-model hierarchy, ordered by the master's atom indices.  Returns
+  (sites, occs, bs) or None when the hierarchy's atoms do not correspond
+  one-to-one with the master's (for example a malformed ensemble whose models
+  differ in composition)."""
+  from scitbx.array_family import flex
+  if key_to_index is None:
+    return None
+  atoms = hierarchy.atoms()
+  n = len(key_to_index)
+  if len(atoms) != n:
+    return None
+  sites = flex.vec3_double(n)
+  occs = flex.double(n)
+  bs = flex.double(n)
+  assigned = [False] * n
+  for a in atoms:
+    idx = key_to_index.get(_submodel_atom_key(a))
+    if idx is None or assigned[idx]:
+      return None
+    assigned[idx] = True
+    sites[idx] = a.xyz
+    occs[idx] = a.occ
+    bs[idx] = a.b
+  return (sites, occs, bs)
+
+def _apply_atom_parameters(manager, sites, occs, bs):
+  """Write the given per-atom parameters onto the manager's atoms in index
+  order, keeping the hierarchy and xray structure coordinates in sync."""
+  for i, wa in enumerate(manager.get_hierarchy().atoms()):
+    wa.set_occ(occs[i])
+    wa.set_b(bs[i])
+  manager.set_sites_cart(sites)
+
+def _copy_of_master_with_atoms_from(processed_master, key_to_index, hierarchy):
+  """Return a deep copy of the processed master model manager whose atoms carry
+  the coordinates, occupancies, and B factors of the matching atoms in the given
+  single-model hierarchy.  The copy keeps the master's restraints and atom-type
+  information, so probe2 does not need to process it again.  Returns None when
+  the hierarchy's atoms do not correspond one-to-one with the master's, in
+  which case the caller should fall back to processing the model.
+  """
+  data = _gather_atom_parameters(key_to_index, hierarchy)
+  if data is None:
+    return None
+  work = _deep_copy_with_selection_support(processed_master)
+  _apply_atom_parameters(work, *data)
+  return work
+
+def _hierarchy_contains_waters(hierarchy):
+  """True if any residue in the hierarchy is a water.  probe2's run() adds
+  Phantom Hydrogens to the hierarchy of the model it is given when waters lack
+  explicit Hydrogens, so a model manager may only be reused across probe2 runs
+  when it contains no waters at all."""
+  import iotbx.pdb
+  for ag in hierarchy.atom_groups():
+    if iotbx.pdb.common_residue_names_get_class(
+        name=ag.resname) == "common_water":
+      return True
+  return False
+
 class clashscore2(validation):
   __slots__ = validation.__slots__ + [
     "clashscore",
@@ -44,7 +156,10 @@ class clashscore2(validation):
     "fast",
     "condensed_probe",
     "probe_file",
-    "probe_clashscore_manager"
+    "probe_clashscore_manager",
+    "hydrogenated_model",
+    "processed_model",
+    "processed_master",
   ]
   program_description = "Analyze clashscore for protein model"
   gui_list_headers = ["Atom 1", "Atom 2", "Overlap"]
@@ -65,6 +180,9 @@ class clashscore2(validation):
       b_factor_cutoff=None,
       verbose=False,
       do_flips=False,
+      save_probe_output=False,
+      ignore_missing_restraints=False,
+      keep_processed_model=False,
       out=sys.stdout):
     validation.__init__(self)
     self.b_factor_cutoff = b_factor_cutoff
@@ -76,6 +194,16 @@ class clashscore2(validation):
     self.clash_dict_b_cutoff = {}
     self.list_dict = {}
     self.probe_file = None
+    self.hydrogenated_model = None
+    # Set only with keep_processed_model=True, as each holds a whole model with restraints.
+    # Single-model input: the H-added model processed with probe2's interpretation
+    # parameters and restraints, so later stages need not process it again. It stays
+    # pristine (with waters probe2 runs on a copy). None otherwise.
+    self.processed_model = None
+    # Any input: the first model so processed. On an ensemble without waters it is
+    # reused in place, so it holds the last model's coordinates; a caller writes in
+    # the model it wants (see mmtbx.kinemage.validation._master_with_atoms_of).
+    self.processed_master = None
     if verbose:
       if not nuclear:
         print("\nUsing electron cloud x-H distances and vdW radii")
@@ -98,45 +226,114 @@ class clashscore2(validation):
       verbose=verbose,
       keep_hydrogens=keep_hydrogens,
       do_flips = do_flips,
+      ignore_missing_restraints=ignore_missing_restraints,
       log=out)
+
+    # Save the hydrogenated model for downstream use (e.g. kinemage generation)
+    self.hydrogenated_model = data_manager_model
 
     # First we must rebuild the model from the new hierarchy so that the copy can succeed.
     # Make a copy of the original model to use for submodel processing, we'll trim atoms out
     # of it for each submodel.
+    ro = data_manager_model.get_restraint_objects()
     data_manager_model = mmtbx.model.manager(
       model_input       = None,
       pdb_hierarchy     = data_manager_model.get_hierarchy(),
       stop_for_unknowns = False,
       crystal_symmetry  = data_manager_model.crystal_symmetry(),
-      restraint_objects = None,
+      restraint_objects = ro,
       log               = None)
-    original_model = data_manager_model.deep_copy()
-
     pdb_hierarchy = data_manager_model.get_hierarchy()
     n_models = len(pdb_hierarchy.models())
     use_segids = utils.use_segids_in_place_of_chainids(
                    hierarchy=pdb_hierarchy)
-    for i_mod, model in enumerate(pdb_hierarchy.models()):
 
-      # Select only the current submodel from the hierarchy
-      submodel = original_model.deep_copy()
-      remove_models_except_index(submodel, i_mod)
+    # Ensemble models share composition, so restraints are made once on a
+    # master model and reused.  With no waters probe2 cannot modify the model
+    # (its only mutation is adding Phantom Hydrogens to waters), so the master
+    # itself is reused with each model's atom parameters written in place;
+    # with waters each probe2 run gets a deep copy.  Any atom mismatch falls
+    # back to per-model processing.
+    original_hierarchy = pdb_hierarchy
+    processed_master = None
+    master_key_to_index = None
+    master_reusable = False   # no waters: reuse the master manager in place
+    for i_mod, model in enumerate(pdb_hierarchy.models()):
 
       # Construct a hierarchy for the current submodel
       r = iotbx.pdb.hierarchy.root()
-      mdc = submodel.get_hierarchy().models()[0].detached_copy()
+      mdc = original_hierarchy.models()[i_mod].detached_copy()
       r.append_model(mdc)
 
       occ_max = flex.max(r.atoms().extract_occ())
 
-      # Make yet another model for the new hierarchy
-      subset_model_manager = mmtbx.model.manager(
-        model_input       = None,
-        pdb_hierarchy     = r,
-        stop_for_unknowns = False,
-        crystal_symmetry  = submodel.crystal_symmetry(),
-        restraint_objects = None,
-        log               = None)
+      work_model_manager = None
+      model_is_processed = False
+      if processed_master is None:
+        # Build a model manager for this submodel and try to process it into
+        # the master whose restraints later models will reuse.
+        master = mmtbx.model.manager(
+          model_input       = None,
+          pdb_hierarchy     = r,
+          stop_for_unknowns = False,
+          crystal_symmetry  = data_manager_model.crystal_symmetry(),
+          restraint_objects = ro,
+          log               = None)
+        try:
+          try:
+            master.process(make_restraints=True,
+              pdb_interpretation_params=probe2.getPdbInterpretationParams(nuclear),
+              plain_pairs_radius=probe2.PLAIN_PAIRS_RADIUS)
+          except Exception:
+            # Fix up bogus unit cell when it occurs by checking crystal
+            # symmetry, the same way probe2's run() does, then retry.
+            master.add_crystal_symmetry_if_necessary()
+            master.process(make_restraints=True,
+              pdb_interpretation_params=probe2.getPdbInterpretationParams(nuclear),
+              plain_pairs_radius=probe2.PLAIN_PAIRS_RADIUS)
+          if master.get_restraints_manager() is not None:
+            processed_master = master
+            if keep_processed_model:
+              self.processed_master = master
+              if n_models == 1:
+                self.processed_model = processed_master
+            master_key_to_index = _atom_index_by_key(master.get_hierarchy())
+            master_reusable = not _hierarchy_contains_waters(
+              master.get_hierarchy())
+            if master_reusable:
+              work_model_manager = processed_master
+              model_is_processed = True
+            else:
+              # Identity transfer, keeping the master pristine.
+              work_model_manager = _copy_of_master_with_atoms_from(
+                processed_master, master_key_to_index, r)
+              model_is_processed = work_model_manager is not None
+        except Exception:
+          # Leave processed_master unset; probe2 will process (and report
+          # errors for) this model itself below.
+          pass
+      elif master_reusable:
+        # Write this model's atom parameters onto the shared master in place.
+        data = _gather_atom_parameters(master_key_to_index, r)
+        if data is not None:
+          _apply_atom_parameters(processed_master, *data)
+          work_model_manager = processed_master
+          model_is_processed = True
+      else:
+        work_model_manager = _copy_of_master_with_atoms_from(
+          processed_master, master_key_to_index, r)
+        model_is_processed = work_model_manager is not None
+
+      if work_model_manager is None:
+        # Fall back to the unprocessed per-model manager; probe2 processes it.
+        work_model_manager = mmtbx.model.manager(
+          model_input       = None,
+          pdb_hierarchy     = r,
+          stop_for_unknowns = False,
+          crystal_symmetry  = data_manager_model.crystal_symmetry(),
+          restraint_objects = ro,
+          log               = None)
+        model_is_processed = False
 
       if verbose:
         print("\nFinding clashes with mmtbx.probe2...\n")
@@ -148,8 +345,10 @@ class clashscore2(validation):
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
         verbose=verbose,
-        model_id=model.id)
-      self.probe_clashscore_manager.run_probe_clashscore(data_manager, subset_model_manager)
+        model_id=model.id,
+        save_probe_output=save_probe_output)
+      self.probe_clashscore_manager.run_probe_clashscore(data_manager,
+        work_model_manager, processed=model_is_processed)
 
       self.clash_dict[model.id] = self.probe_clashscore_manager.clashscore
       self.clash_dict_b_cutoff[model.id] = self.probe_clashscore_manager.\
@@ -248,6 +447,37 @@ class clashscore2(validation):
           result.atoms_info[1].id_str(), result.overlap, result.xyz))
     return data
 
+def contact_record_runs(p2):
+  """
+  The runs of dots probe2's raw and JSON writers emit, rebuilt from its per-atom-pair
+  records (output.contact_records=True): one entry per (source, target, interaction
+  type), in writer order (atom class, then interaction type, then source atom, then
+  target name), which is the order _condense() leaves a source's dots in.
+  Yields (atomClass, interaction type, source atom, target atom, dot count, smallest
+  dot gap, location of the smallest-gap Bump dot or None).
+  """
+  import mmtbx_probe_ext as probeExt
+  n_types = probeExt.ContactDB_N_TYPES
+  bump = int(probeExt.InteractionType.Bump)
+  name = probe2.DotInfo._cachedName
+  atoms = {a.i_seq: a for a in p2._atomClasses}
+  runs = collections.defaultdict(list)
+  for call, (db, sources) in enumerate(p2._contactRecords):
+    src, cause, gap, counts, hasBump, bumpGap, bumpLoc, typeGap = db.pairs()
+    order = {a.i_seq: n for n, a in enumerate(sources)}
+    for k in range(len(src)):
+      s, t = atoms[src[k]], atoms[cause[k]]
+      for itype in range(n_types):
+        count = counts[k * n_types + itype]
+        if count:
+          g = typeGap[k * n_types + itype]
+          runs[(p2._atomClasses[s], itype)].append(
+            ((call, order[src[k]], name(s) + name(t), g), s, t, count, g, bumpLoc[k] if itype == bump else None))
+  for atomClass in probe2._allAtomClasses:   # probe2 lists 'Se' twice and writes it twice
+    for itype in probe2._interactionTypes:
+      for _, s, t, count, g, loc in sorted(runs.get((atomClass, int(itype)), []), key=lambda r: r[0]):
+        yield atomClass, itype, s, t, count, g, loc
+
 class probe_line_info(object): # this is parent
   def __init__(self, line, model_id=""):
     self.overlap_value = None
@@ -323,6 +553,9 @@ class json_probe_line_info(probe_line_info):
       self.overlap_value = self.gap
 
 class probe_clashscore_manager(object):
+  # False restores the per-dot JSON path for the default mode (for comparisons).
+  use_contact_records = True
+
   def __init__(self,
                fast = False,
                condensed_probe=False,
@@ -331,7 +564,8 @@ class probe_clashscore_manager(object):
                b_factor_cutoff=None,
                use_segids=False,
                verbose=False,
-               model_id=""):
+               model_id="",
+               save_probe_output=False):
     """
     Calculate probe (MolProbity) clashscore
 
@@ -343,6 +577,9 @@ class probe_clashscore_manager(object):
       use_segids (bool)
       verbose (bool): verbosity of printout
       model_id (str): model ID number, used in json output
+      save_probe_output (bool): When True, run probe2 a second time to
+        generate full non-condensed output with VDW contacts (for Coot).
+        Roughly doubles runtime.
     """
     if fast and not condensed_probe:
       raise Sorry("Incompatible parameters: fast=True and condensed=False:\n"+\
@@ -351,6 +588,7 @@ class probe_clashscore_manager(object):
     self.b_factor_cutoff = b_factor_cutoff
     self.fast = fast
     self.condensed_probe = condensed_probe
+    self.save_probe_output = save_probe_output
     self.use_segids=use_segids
     self.model_id = model_id
     self.occupancy_frac = 0.1
@@ -426,6 +664,52 @@ class probe_clashscore_manager(object):
         self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
     return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
+  def process_contact_records(self, p2):
+    """
+    The clash list process_json_probe_output() builds from probe2's per-dot JSON, built
+    instead from probe2's per-atom-pair records (output.contact_records=True).
+
+    That parse merges consecutive lines with the same atom pair, so the line stream is
+    rebuilt at the level of those runs, in the order probe2 writes them: atom class, then
+    interaction type, then source atom, then target name.  Each run's line carries the
+    values of its smallest-gap dot, formatted as the JSON writer formats them, and goes
+    through the same merging, put_group_into_dict() and filter_dicts().
+    """
+    import mmtbx_probe_ext as probeExt
+
+    def atom_json(a):
+      ag = a.parent()
+      rg = ag.parent()
+      return {"chainID": rg.parent().id, "resID": rg.resseq_as_int(), "iCode": rg.icode.strip(),
+              "resName": ag.resname.strip().upper(), "atomName": a.name, "alt": ag.altloc.strip()}
+
+    def r3(v):
+      return float("{:.3f}".format(v))
+
+    new_clash_hash = {}
+    new_hbond_hash = {}
+    previous_line = None
+    for atomClass, itype, s, t, count, g, loc in contact_record_runs(p2):
+      loc = loc if loc is not None else (0.0, 0.0, 0.0)
+      line = json_probe_line_info({
+        "master": "", "group": "", "type": probeExt.DotScorer.interaction_type_short_name(itype),
+        "srcClass": atomClass, "targetClass": p2._atomClasses.get(t, ""),
+        "srcBFactor": float("{:.2f}".format(s.b)), "targetBFactor": float("{:.2f}".format(t.b)),
+        "src": atom_json(s), "target": atom_json(t), "gap": 0.0, "dotGap": r3(g),
+        "spike": [0.0, 0.0, 0.0], "spikeLen": 0.0, "scoreOverDensity": 0.0,
+        "loc": [r3(loc[0]), r3(loc[1]), r3(loc[2])]}, self.model_id)
+      if previous_line is not None:
+        if line.is_similar(previous_line):
+          previous_line.overlap_value = min(previous_line.overlap_value, line.overlap_value)
+        else:
+          self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
+          previous_line = line
+      else:
+        previous_line = line
+    if previous_line is not None:
+      self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
+    return self.filter_dicts(new_clash_hash, new_hbond_hash)
+
   def get_condensed_clashes(self, probe_json):
     clashes = set() # [(src, targ), (src, targ)]
     hbonds = [] # (src, targ), (targ, src)
@@ -461,7 +745,11 @@ class probe_clashscore_manager(object):
   # We have to take both the original data manager, which is from the model
   # without hydrogens, and the hydrogenated modified model because we need one
   # to construct a Probe2 program and the other to replace its model to run on.
-  def run_probe_clashscore(self, data_manager, hydrogenated_model):
+  # When processed is True, the hydrogenated model has already had restraints
+  # made on it with probe2's interpretation parameters (see
+  # probe2.getPdbInterpretationParams()) and probe2 will reuse them rather than
+  # processing the model again.
+  def run_probe_clashscore(self, data_manager, hydrogenated_model, processed=False):
     self.n_clashes = 0
     self.n_clashes_b_cutoff = 0
     self.clashscore_b_cutoff = None
@@ -470,28 +758,39 @@ class probe_clashscore_manager(object):
     self.n_atoms = 0
     self.natoms_b_cutoff = 0
 
+    # probe2 can add Phantom Hydrogens to the model it runs on; keep a
+    # pristine copy for the second (save_probe_output) run.
+    pristine_model = None
+    if self.save_probe_output and processed:
+      pristine_model = _deep_copy_with_selection_support(hydrogenated_model)
+
     # Construct override parameters and then run probe2 using them and delete the resulting
-    # temporary file.
+    # temporary file.  The parse is cached, so all models of an ensemble share it.
     tempName = tempfile.mktemp()
-    parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
     args = [
       "source_selection='(occupancy > {}) and not water'".format(self.occupancy_frac),
       "target_selection='occupancy > {}'".format(self.occupancy_frac),
       "use_neutron_distances={}".format(self.nuclear),
       "approach=once",
-      "output.filename='{}'".format(tempName),
       "output.format=json",
       "output.condensed={}".format(self.condensed_probe),
       "output.report_vdws=False",
       "ignore_lack_of_explicit_hydrogens=True",
     ]
-    parser.parse_args(args)
-    p2 = probe2.Program(data_manager, parser.working_phil.extract(),
-                       master_phil=parser.master_phil, logger=null_out())
-    p2.overrideModel(hydrogenated_model)
+    # The default (non-condensed, non-fast) path takes probe2's per-pair contact records
+    # rather than per-dot JSON: same clash list, without storing and re-parsing every dot.
+    use_records = (not self.fast) and (not self.condensed_probe) and self.use_contact_records
+    if use_records:
+      args += ["output.contact_records=True", "output.write_files=False"]
+    master_phil, probe2_params = _probe2_params_from_args(args, tempName)
+    p2 = probe2.Program(data_manager, probe2_params,
+                       master_phil=master_phil, logger=null_out())
+    p2.overrideModel(hydrogenated_model, processed=processed)
     dots, output = p2.run()
     probe_json = output
-    os.unlink(tempName)
+    del dots
+    if not use_records:
+      os.unlink(tempName)
 
     # Debugging facility, do not remove!
     # import random
@@ -507,41 +806,56 @@ class probe_clashscore_manager(object):
     #   f.write('\n'.join(probe_json))
 
     if not self.fast:
-      temp = self.process_json_probe_output(probe_json)
+      if use_records:
+        temp = self.process_contact_records(p2)
+      else:
+        temp = self.process_json_probe_output(probe_json)
+      del p2, probe_json
       self.n_clashes = len(temp)
 
-      # If we're not running fast, call probe2 again to get non-condensed output
-      # including VDW contacts.  We make another temporary file for the output and
-      # then delete it.  This option is for printing to file for coot usage.  The
-      # no-VDWOUT option is used to speed up the parsing of the output.
-      tempName = tempfile.mktemp()
-      parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
-      args = [
-        "source_selection='(occupancy > {}) and not water'".format(self.occupancy_frac),
-        "target_selection='occupancy > {}'".format(self.occupancy_frac),
-        "use_neutron_distances={}".format(self.nuclear),
-        "approach=once",
-        "output.filename='{}'".format(tempName),
-        "output.format=json",
-        "ignore_lack_of_explicit_hydrogens=True",
-      ]
-      parser.parse_args(args)
-      p2 = probe2.Program(data_manager, parser.working_phil.extract(),
-                         master_phil=parser.master_phil, logger=null_out())
-      p2.overrideModel(hydrogenated_model)
-      dots, output = p2.run()
-      self.probe_json = output
-      os.unlink(tempName)
+      # Optionally call probe2 again to get non-condensed output including VDW
+      # contacts for external tools like Coot.  Skipped by default because it
+      # roughly doubles the total runtime.
+      if self.save_probe_output:
+        tempName = tempfile.mktemp()
+        args = [
+          "source_selection='(occupancy > {}) and not water'".format(self.occupancy_frac),
+          "target_selection='occupancy > {}'".format(self.occupancy_frac),
+          "use_neutron_distances={}".format(self.nuclear),
+          "approach=once",
+          "output.format=json",
+          "ignore_lack_of_explicit_hydrogens=True",
+        ]
+        master_phil, probe2_params = _probe2_params_from_args(args, tempName)
+        p2 = probe2.Program(data_manager, probe2_params,
+                           master_phil=master_phil, logger=null_out())
+        if pristine_model is not None:
+          p2.overrideModel(pristine_model, processed=True)
+        else:
+          p2.overrideModel(hydrogenated_model, processed=processed)
+        dots, output = p2.run()
+        self.probe_json = output
+        os.unlink(tempName)
     else:
       self.n_clashes = self.get_condensed_clashes(probe_json)
 
     # Find the number of non-water atoms that pass the occupancy test
-    # and then use it to compute the clashscore.
+    # and then use it to compute the clashscore.  Iterate by residue group
+    # so we only check water classification once per residue, not per atom.
     self.n_atoms = 0
-    for a in hydrogenated_model.get_hierarchy().atoms():
-      isWater = iotbx.pdb.common_residue_names_get_class(name=a.parent().resname) == "common_water"
-      if a.occ > self.occupancy_frac and not isWater:
-        self.n_atoms += 1
+    self.natoms_b_cutoff = 0
+    has_b_cutoff = (not self.fast) and (self.b_factor_cutoff is not None)
+    for rg in hydrogenated_model.get_hierarchy().residue_groups():
+      for ag in rg.atom_groups():
+        isWater = iotbx.pdb.common_residue_names_get_class(
+          name=ag.resname) == "common_water"
+        if isWater:
+          continue
+        for a in ag.atoms():
+          if a.occ > self.occupancy_frac:
+            self.n_atoms += 1
+            if has_b_cutoff and a.b < self.b_factor_cutoff:
+              self.natoms_b_cutoff += 1
     if self.n_atoms == 0:
       self.clashscore = 0.0
     else:
@@ -555,28 +869,21 @@ class probe_clashscore_manager(object):
           if clash_obj.max_b_factor < self.b_factor_cutoff:
             clashes_b_cutoff += 1
         self.n_clashes_b_cutoff = clashes_b_cutoff
-      used = []
+      used = set()
 
       for clash_obj in sorted(temp):
-        test_key = clash_obj.id_str_no_atom_name()
         test_key = clash_obj.id_str()
         if test_key not in used:
-          used.append(test_key)
+          used.add(test_key)
           self.bad_clashes.append(clash_obj)
 
-      if self.b_factor_cutoff is not None:
-        # Find the number of non-water atoms who pass the B factor test and the occupancy test
-        self.natoms_b_cutoff = 0
-        for a in hydrogenated_model.get_hierarchy().atoms():
-          isWater = iotbx.pdb.common_residue_names_get_class(name=a.parent().resname) == "common_water"
-          if  (a.b < self.b_factor_cutoff) and (a.occ > self.occupancy_frac) and not isWater:
-            self.natoms_b_cutoff += 1
       self.clashscore_b_cutoff = None
-      if self.natoms_b_cutoff == 0:
-        self.clashscore_b_cutoff = 0.0
-      else :
-        self.clashscore_b_cutoff = \
-          (self.n_clashes_b_cutoff*1000) / self.natoms_b_cutoff
+      if has_b_cutoff:
+        if self.natoms_b_cutoff == 0:
+          self.clashscore_b_cutoff = 0.0
+        else:
+          self.clashscore_b_cutoff = \
+            (self.n_clashes_b_cutoff*1000) / self.natoms_b_cutoff
 
 def check_and_add_hydrogen(
         probe_parameters=None,
@@ -586,6 +893,7 @@ def check_and_add_hydrogen(
         verbose=False,
         n_hydrogen_cut_off=0,
         do_flips=False,
+        ignore_missing_restraints=False,
         log=None,
         stop_for_unknowns=True):
   """
@@ -600,6 +908,12 @@ def check_and_add_hydrogen(
     verbose (bool): verbosity of printout
     n_hydrogen_cut_off (int): when number of hydrogen atoms < n_hydrogen_cut_off
       force keep_hydrogens tp True
+    ignore_missing_restraints (bool): when False (default), raise a Sorry if
+      restraints were not found for some residues (e.g. unknown ligands). When
+      True, continue on a best-effort basis: those residues simply get no
+      hydrogens added, and the rest of the model is still analyzed. This also
+      relaxes stop_for_unknowns for the re-process step, since a residue with no
+      restraints necessarily leaves atoms with unknown energy types.
 
   Returns:
     (model): Model with hydrogens added
@@ -627,53 +941,27 @@ def check_and_add_hydrogen(
 
   # add hydrogen if needed
   if not keep_hydrogens:
-    # Remove hydrogens and add them back in
+    # Delegate to the central reduce2 engine
+    # (mmtbx.hydrogens.place_and_optimize_hydrogens): the same place_hydrogens +
+    # Optimizer + reprocess sequence, now in one place so the reduce1/reduce2 switch
+    # and refinement can share it. (Imported lazily to avoid an import cycle.)
+    from mmtbx.hydrogens import place_and_optimize_hydrogens
     if verbose:
-      print("\nTrimming and adding hydrogens...\n")
-    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
-      model = data_manager_model,
-      use_neutron_distances=nuclear,
-      n_terminal_charge="residue_one",
-      exclude_water=True,
-      stop_for_unknowns=False,
-      keep_existing_H=False
-    )
-    reduce_add_h_obj.run()
-    reduce_add_h_obj.show(log)
-    missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
-    if len(missed_residues) > 0:
-      bad = ""
-      for res in missed_residues:
-        bad += " " + res
-      raise Sorry("Restraints were not found for the following residues:"+bad)
-    data_manager_model = reduce_add_h_obj.get_model()
-
-    # Optimize H atoms with mmtbx.reduce
-    if verbose:
-      print("\nOptimizing H atoms with mmtbx.reduce2:Optimizer...\n")
-    opt = Optimizers.Optimizer(probe_parameters, do_flips, data_manager_model, modelIndex=None,
-      fillAtomDump = False)
-
-    # Re-process the model because we have removed some atoms that were previously
-    # bonded.  Don't make restraints during the reprocessing.
-    # We had to do this to keep from crashing on a call to pair_proxies when generating
-    # mmCIF files, so we always do it for safety.
-    data_manager_model.get_hierarchy().sort_atoms_in_place()
-    data_manager_model.get_hierarchy().atoms().reset_serial()
-    #data_manager_model.update_xrs(data_manager_model.get_hierarchy())
-    p = reduce_hydrogen.get_reduce_pdb_interpretation_params(nuclear)
-    # We need to turn this on because without it 1zz0.txt kept flipping the ring
-    # in A TYR 214 every time we re-interpreted. The original interpretation done
-    # by Hydrogen placement will have flipped them, so we don't need to do it again.
-    p.pdb_interpretation.flip_symmetric_amino_acids=False
-    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
-    p.pdb_interpretation.allow_polymer_cross_special_position=True
-    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
-    #p.pdb_interpretation.sort_atoms=True
-    data_manager_model.set_stop_for_unknowns(stop_for_unknowns)
-    data_manager_model.process(make_restraints=False, pdb_interpretation_params=p)
-
+      print("\nTrimming and adding hydrogens with mmtbx.reduce2...\n")
+    data_manager_model = place_and_optimize_hydrogens(
+      model           = data_manager_model,
+      do_flips        = do_flips,
+      nuclear         = nuclear,
+      keep_existing_H = False,
+      probe_phil      = probe_parameters,
+      # Best-effort mode has to open both gates: raise_on_missing covers the
+      # "no restraints for this residue" check, and stop_for_unknowns covers the
+      # unknown-atom-type check in the re-process that follows. Relaxing only the
+      # first still aborts the run on the second. Mirrors the pairing already used
+      # by mmtbx/programs/validate_ligands.py.
+      stop_for_unknowns = stop_for_unknowns and not ignore_missing_restraints,
+      raise_on_missing = not ignore_missing_restraints,
+      log             = log)
     return data_manager_model, True
   else:
     if verbose:

@@ -1,6 +1,4 @@
 from __future__ import absolute_import, division, print_function
-import platform
-import sys
 import time
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
@@ -41,16 +39,13 @@ class rosenbrock(object):
 
 
 def run():
-  tolerance = 1.e-16
-  if sys.platform == 'win32':
-    tolerance = 1.e-9
-  # same tolerance for Intel and Apple Silicon in case Intel is run in Apple Silicon
-  # running Intel natively should match x86-64 linux tolerance
-  elif sys.platform == 'darwin':
-    tolerance = 1.e-6
-  # lower tolerance for non x86-64 platforms on linux
-  elif sys.platform.startswith('linux') and platform.machine() != 'x86_64':
-    tolerance = 1.e-6
+  # Compared with the exact minima. The unbound runs keep going past the
+  # gradient test (min_iterations) until the line search cannot improve
+  # the function, which lands within ~1e-10 of the minimum; L-BFGS-B stops
+  # on its own test ~1e-8 away. Stored endpoints at 1e-16 only matched the
+  # compiler that produced them.
+  tolerance = 1.e-8
+  tolerance_bound = 1.e-5
 
   # Run L-BFGS (no boundaries)
   calculator = rosenbrock(a = 20, b = 10, x = flex.double([0,0]),
@@ -59,9 +54,10 @@ def run():
     upper_bound  = flex.double([10000,10000]),
     initial_values = flex.double([0,0]))
   m_unbound = scitbx.minimizers.lbfgs(
-    mode='lbfgs', max_iterations=100, calculator=calculator)
+    mode='lbfgs', max_iterations=1000, min_iterations=200,
+    calculator=calculator)
   #print('\tMinimum: ', list(m_unbound.x))
-  res = (19.99999855596629, 399.99994289914525)
+  res = (20, 400)
   assert approx_equal(m_unbound.x[0]-res[0],0, tolerance), (m_unbound.x[0], res[0], m_unbound.x[0]-res[0])
   assert approx_equal(m_unbound.x[1]-res[1],0, tolerance), (m_unbound.x[1], res[1], m_unbound.x[1]-res[1])
 
@@ -74,16 +70,17 @@ def run():
   m_bound = scitbx.minimizers.lbfgs(
     mode='lbfgsb', calculator=calculator)
   #print('\tMinimum: ', list(m_bound.x))
-  res = (19.999999988074844, 399.99999950735986)
-  assert approx_equal(m_bound.x[0]-res[0],0, tolerance), (m_bound.x[0], res[0], m_bound.x[0]-res[0])
-  assert approx_equal(m_bound.x[1]-res[1],0, tolerance), (m_bound.x[1], res[1], m_bound.x[1]-res[1])
+  res = (20, 400)
+  assert approx_equal(m_bound.x[0]-res[0],0, tolerance_bound), (m_bound.x[0], res[0], m_bound.x[0]-res[0])
+  assert approx_equal(m_bound.x[1]-res[1],0, tolerance_bound), (m_bound.x[1], res[1], m_bound.x[1]-res[1])
 
   # Run L-BFGS (no curvatures)
   calculator = rosenbrock(a = 1, b = 100, x = flex.double([-3,-4]))
   m_unbound = scitbx.minimizers.lbfgs(
-    mode='lbfgs', calculator=calculator)
+    mode='lbfgs', max_iterations=1000, min_iterations=200,
+    calculator=calculator)
   #print('\tMinimum: ', list(m_unbound.x))
-  res = (0.9999998308201578, 0.9999996829964546)
+  res = (1, 1)
   assert approx_equal(m_unbound.x[0]-res[0],0, tolerance), (m_unbound.x[0], res[0], m_unbound.x[0]-res[0])
   assert approx_equal(m_unbound.x[1]-res[1],0, tolerance), (m_unbound.x[1], res[1], m_unbound.x[1]-res[1])
 
@@ -91,9 +88,10 @@ def run():
   # Run L-BFGS (with curvatures)
   calculator = rosenbrock(a = 1, b = 100, x = flex.double([-3,-4]))
   m_unbound2 = scitbx.minimizers.lbfgs(
-    mode='lbfgs', calculator=calculator, diag_mode='always')
+    mode='lbfgs', max_iterations=1000, min_iterations=200,
+    calculator=calculator, diag_mode='always')
   #print('\tMinimum: ', list(m_unbound2.x))
-  res = (1.0000002135019004, 1.000000406037043)
+  res = (1, 1)
   assert approx_equal(m_unbound2.x[0]-res[0],0, tolerance), (m_unbound2.x[0], res[0], m_unbound2.x[0]-res[0])
   assert approx_equal(m_unbound2.x[1]-res[1],0, tolerance), (m_unbound2.x[1], res[1], m_unbound2.x[1]-res[1])
 

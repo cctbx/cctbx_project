@@ -6,6 +6,8 @@ from libtbx.path import relocatable_path, absolute_path
 from libtbx.str_utils import show_string
 from libtbx.utils import detect_binary_file, to_str
 from libtbx import adopt_init_args
+from libtbx.dispatcher_env import environment_guard_lines, \
+  external_path_lines, unconditional_lines
 import platform
 import shutil
 from six.moves import zip, map
@@ -276,6 +278,116 @@ def write_do_not_edit(f, win_bat=False):
   else:         s = "#"
   print(s+' THIS IS AN AUTOMATICALLY GENERATED FILE.', file=f)
   print(s+' DO NOT EDIT! CHANGES WILL BE LOST.', file=f)
+
+def conda_activation_lines(shell, conda_prefix=None):
+  """Lines that run a conda environment's activate.d hooks without requiring
+  "conda activate".
+
+  The hooks in <prefix>/etc/conda/activate.d set environment variables some
+  packages need at runtime (e.g. COOT_DATA_DIR, GSETTINGS_SCHEMA_DIR,
+  XML_CATALOG_FILES). They reference CONDA_PREFIX, so it is pointed at the
+  target prefix only while they run and then restored to its prior value, so a
+  different active environment is left untouched. They are skipped when that
+  environment is already active (CONDA_PREFIX already equals the prefix).
+
+  The dispatchers run these hooks per command, in a subshell that exits, so
+  nothing persists into the user's shell. Two dispatcher kinds share this,
+  differing only in how the prefix is found:
+
+  - **conda-package dispatchers** (``conda_prefix=None``): the prefix is
+    resolved at runtime from LIBTBX_PREFIX (for "sh" it is the prefix; for
+    "bat" it is <prefix>\\Library, so the prefix is its parent), because
+    there the build directory is the conda prefix.
+  - **development-build dispatchers** (``conda_prefix=<path>``): the prefix
+    is baked in as a literal, because there the build directory is not the
+    conda prefix.
+
+  Parameters
+  ----------
+  shell : str
+      "sh" or "bat".
+  conda_prefix : str or None
+      Literal prefix baked into the script, or None to resolve from
+      LIBTBX_PREFIX at runtime.
+
+  Returns
+  -------
+  list of str
+      The script lines that source the activate.d hooks.
+
+  Raises
+  ------
+  ValueError
+      If shell is not one of "sh", "bat".
+  """
+  resolve_at_runtime = conda_prefix is None
+  if (shell == "sh"):
+    # Expression that yields the prefix inside double quotes.
+    prefix = "${LIBTBX_PREFIX}" if resolve_at_runtime else conda_prefix
+    guard = ('[ "${CONDA_PREFIX}" != "%s" ] && [ -d "%s/etc/conda/activate.d" ]'
+             % (prefix, prefix))
+    return [
+      '# Run the conda environment activate.d scripts so packages that rely on',
+      '# activation-time environment variables work without "conda activate".',
+      '# CONDA_PREFIX is set only while the scripts run, then restored, so',
+      '# only the variables they change persist.',
+      'if %s; then' % guard,
+      '  libtbx_conda_prefix_was_set="${CONDA_PREFIX+set}"',
+      '  libtbx_conda_prefix_backup="${CONDA_PREFIX}"',
+      '  CONDA_PREFIX="%s"' % prefix,
+      '  export CONDA_PREFIX',
+      '  for libtbx_activate_script in "%s"/etc/conda/activate.d/*.sh; do' % prefix,
+      '    if [ -r "${libtbx_activate_script}" ]; then',
+      '      . "${libtbx_activate_script}"',
+      '    fi',
+      '  done',
+      '  if [ "${libtbx_conda_prefix_was_set}" = "set" ]; then',
+      '    CONDA_PREFIX="${libtbx_conda_prefix_backup}"',
+      '    export CONDA_PREFIX',
+      '  else',
+      '    unset CONDA_PREFIX',
+      '  fi',
+      '  unset libtbx_activate_script libtbx_conda_prefix_backup libtbx_conda_prefix_was_set',
+      'fi',
+    ]
+  if (shell == "bat"):
+    # Build these lines by concatenation: %-formatting would collide with the
+    # literal %VAR% batch references.
+    if (resolve_at_runtime):
+      set_prefix = r'@for %%F in ("%LIBTBX_PREFIX%\..") do @set "LIBTBX_CONDA_PREFIX=%%~fF"'
+    else:
+      set_prefix = r'@set "LIBTBX_CONDA_PREFIX=' + conda_prefix + r'"'
+    hookdir = r'%LIBTBX_CONDA_PREFIX%\etc\conda\activate.d'
+    exist = '@if exist "' + hookdir + '\\" @set LIBTBX_RUN_ACTIVATE=1'
+    exist = r'@if /i not "%CONDA_PREFIX%"=="%LIBTBX_CONDA_PREFIX%" ' + exist
+    loop = ('@if "%LIBTBX_RUN_ACTIVATE%"=="1" @for %%S in ("'
+            + hookdir + '\\*.bat") do @call "%%S"')
+    return [
+      r'@rem Run the conda environment activate.d scripts so packages that',
+      r'@rem rely on activation-time environment variables work without',
+      r'@rem "conda activate". CONDA_PREFIX is set only while the scripts run,',
+      r'@rem then restored, so only the variables they change persist.',
+      r'@set "LIBTBX_CONDA_PREFIX_BACKUP=%CONDA_PREFIX%"',
+      set_prefix,
+      r'@set LIBTBX_RUN_ACTIVATE=0',
+      exist,
+      r'@if "%LIBTBX_RUN_ACTIVATE%"=="1" @set "CONDA_PREFIX=%LIBTBX_CONDA_PREFIX%"',
+      loop,
+      r'@if "%LIBTBX_RUN_ACTIVATE%"=="1" @set "CONDA_PREFIX=%LIBTBX_CONDA_PREFIX_BACKUP%"',
+      r'@set "LIBTBX_CONDA_PREFIX="',
+      r'@set "LIBTBX_CONDA_PREFIX_BACKUP="',
+      r'@set "LIBTBX_RUN_ACTIVATE="',
+    ]
+  raise ValueError("shell must be 'sh' or 'bat', not %r" % (shell,))
+
+def _is_scons_dispatcher(target_file):
+  """libtbx.scons builds against the caller's compiler environment, so its
+  development-build dispatcher is the one left without the environment
+  guard (libtbx.dispatcher_env)."""
+  name = target_file.basename()
+  if name.lower().endswith(".bat"):
+    name = name[:-len(".bat")]
+  return name == "libtbx.scons"
 
 def open_info(path, mode="w", info="   "):
   print(info, path.basename())
@@ -1210,13 +1322,21 @@ Wait for the command to finish, then try again.""" % vars())
         print('@set LIBTBX_PREFIX=%LIBTBX_PREFIX:~0,-1%', file=f)
         print('@set LIBTBX_BUILD=%LIBTBX_PREFIX%\\..\\Library\\share\\cctbx', file=f)
         print('@set LIBTBX_DISPATCHER_NAME=%~nx0', file=f)
-        print('@set PATH=%LIBTBX_PREFIX%\\..;%LIBTBX_PREFIX%\\..\\mingw-w64\\bin;%LIBTBX_PREFIX%\\..\\bin;%LIBTBX_PREFIX%\\..\\..\\Scripts;%PATH%', file=f)
+        # LIBTBX_PREFIX is <prefix>\Library here (the .bat lives in
+        # Library\bin), so the conda layout is: the prefix root (python.exe),
+        # Library\mingw-w64\bin, Library\usr\bin, Library\bin (dispatchers
+        # and DLLs), then Scripts and bin under the prefix.
+        print('@set PATH=%LIBTBX_PREFIX%\\..;%LIBTBX_PREFIX%\\mingw-w64\\bin;%LIBTBX_PREFIX%\\usr\\bin;%LIBTBX_PREFIX%\\bin;%LIBTBX_PREFIX%\\..\\Scripts;%LIBTBX_PREFIX%\\..\\bin;%PATH%', file=f)
         def write_dispatcher_include(where):
           for line in self.dispatcher_include(where=where):
             if (line.startswith("@")):
               print(line, file=f)
             else :
               print("@" + line, file=f)
+        for line in unconditional_lines("bat") + environment_guard_lines("bat"):
+          print(line, file=f)
+        for line in conda_activation_lines(shell="bat"):
+          print(line, file=f)
         write_dispatcher_include(where="at_start")
         print('@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value(anchor_var='LIBTBX_PREFIX'), file=f)
         write_dispatcher_include(where="before_command")
@@ -1267,17 +1387,18 @@ Wait for the command to finish, then try again.""" % vars())
         print('export LIBTBX_BUILD', file=f)
         print('LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename(), file=f)
         print('export LIBTBX_PYEXE_BASENAME', file=f)
-        print('# Set the CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES environment variable', file=f)
-        print('# if you want python to use the following environment variables.', file=f)
-        print('# Otherwise, this environment takes priority at runtime.', file=f)
-        print('if [ -z "${CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES}" ]; then', file=f)
-        print('  unset PYTHONHOME', file=f)
-        print('  unset PYTHONPATH', file=f)
-        print('  unset LD_LIBRARY_PATH', file=f)
-        print('  unset DYLD_LIBRARY_PATH', file=f)
-        print('  unset DYLD_FALLBACK_LIBRARY_PATH', file=f)
-        print('  export PATH="${LIBTBX_PREFIX}/bin:${PATH}"', file=f)
-        print('fi', file=f)
+        # Always: the interpreter's own standard library, and this prefix's
+        # bin directory first on PATH. The guard after it is skipped when a
+        # caller opts out (see libtbx.dispatcher_env).
+        for line in unconditional_lines("sh"):
+          print(line, file=f)
+        print('export PATH="${LIBTBX_PREFIX}/bin:${PATH}"', file=f)
+        for line in environment_guard_lines("sh"):
+          print(line, file=f)
+        for line in external_path_lines("sh"):
+          print(line, file=f)
+        for line in conda_activation_lines(shell="sh"):
+          print(line, file=f)
         source_is_py = False
         if (source_file is not None):
           dispatcher_name = target_file.basename()
@@ -1428,7 +1549,8 @@ Wait for the command to finish, then try again.""" % vars())
       % show_string(self.under_build("dispatcher_include_template.sh")), file=f)
     print('#', file=f)
     print(_SHELLREALPATH_CODE, file=f)
-    print('unset PYTHONHOME', file=f)
+    for line in unconditional_lines("sh"):
+      print(line, file=f)
     print('LC_ALL=' + LC_ALL, file=f)
     print('export LC_ALL', file=f)
     print('LIBTBX_BUILD="$(shellrealpath "$0" && cd "$(dirname "$RESULT")/.." && pwd)"', file=f)
@@ -1452,16 +1574,29 @@ Wait for the command to finish, then try again.""" % vars())
           first_line = fh.readline()
         if first_line.startswith(b'#!') and b'python' in first_line.lower():
           source_is_py = True
+    # The guard runs before the site include files and this dispatcher's own
+    # paths, for every builder, so neither is undone by it.
+    if (not _is_scons_dispatcher(target_file)):
+      for line in environment_guard_lines("sh"):
+        print(line, file=f)
     for line in self.dispatcher_include(where="at_start"):
       print(line, file=f)
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((
       self.ld_library_path_var_name(),
       self.ld_library_path_additions()))
-    essentials.append(("PATH", [self.bin_path]))
+    bin_path = [self.bin_path]
+    if (self.build_options.use_conda):
+      # Put the conda environment's bin after the build bin, as in the
+      # conda-package dispatchers (and the Windows development dispatcher).
+      bin_path.append(
+        self.as_relocatable_path(get_conda_prefix()) / 'bin')
+    essentials.append(("PATH", bin_path))
 
     if (cert_file is not None):
-      print('SSL_CERT_FILE="%s"' % cert_file.sh_value(), file=f)
+      # certifi's bundle unless the caller set one (a corporate CA bundle)
+      print('SSL_CERT_FILE="${SSL_CERT_FILE:-%s}"' % cert_file.sh_value(),
+            file=f)
       print('export SSL_CERT_FILE', file=f)
 
     print('OPENBLAS_NUM_THREADS="%s"' % openblas_num_threads, file=f)
@@ -1509,6 +1644,13 @@ Wait for the command to finish, then try again.""" % vars())
       print('  %s="%s"' % (n, v), file=f)
       print('  export %s' % n, file=f)
       print('fi', file=f)
+    if (self.build_options.use_conda):
+      # Run the conda activate.d hooks here -- like the conda-package
+      # dispatchers -- instead of from setpaths. The build directory is not
+      # the conda prefix in a development build, so the prefix is baked in as
+      # a literal rather than resolved from LIBTBX_PREFIX at runtime.
+      for line in conda_activation_lines("sh", get_conda_prefix()):
+        print(line, file=f)
     precall_commands = self.dispatcher_precall_commands()
     if (precall_commands is not None):
       for line in precall_commands:
@@ -1615,6 +1757,12 @@ Wait for the command to finish, then try again.""" % vars())
     print(r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_BUILD=%%~dpF', file=f)
     print('@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%', file=f)
     print('@set LIBTBX_DISPATCHER_NAME=%~nx0', file=f)
+    # As in write_bin_sh_dispatcher: guard first, then includes and paths.
+    for line in unconditional_lines("bat"):
+      print(line, file=f)
+    if (not _is_scons_dispatcher(target_file)):
+      for line in environment_guard_lines("bat"):
+        print(line, file=f)
     def write_dispatcher_include(where):
       for line in self.dispatcher_include(where=where):
         if (line.startswith("@")):
@@ -1632,7 +1780,18 @@ Wait for the command to finish, then try again.""" % vars())
     for n,v in essentials:
       if (len(v) == 0): continue
       v = ';'.join([ op.join('%LIBTBX_BUILD%', p.relocatable) for p in v ])
-      print('@set %s=%s;%%%s%%' % (n, v, n), file=f)
+      # cmd expands an undefined variable to nothing, which would leave a
+      # trailing ';' (an empty PYTHONPATH entry is the working directory),
+      # so the separator is added only when the variable is defined.
+      print('@if defined %s @set "%s=;%%%s%%"' % (n, n, n), file=f)
+      print('@set "%s=%s%%%s%%"' % (n, v, n), file=f)
+    if self.build_options.use_conda:
+      # Run the conda activate.d hooks here -- like the conda-package
+      # dispatchers -- instead of from setpaths. The build directory is not
+      # the conda prefix in a development build, so the prefix is baked in as
+      # a literal rather than resolved from LIBTBX_PREFIX at runtime.
+      for line in conda_activation_lines("bat", get_conda_prefix()):
+        print(line, file=f)
     print('@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value(), file=f)
     write_dispatcher_include(where="before_command")
     qnew_tmp = qnew

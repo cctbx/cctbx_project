@@ -1,0 +1,785 @@
+"""``MessageBubble`` — one ``Message`` rendered as a Qt widget.
+
+Renders text, thinking, tool-use (via ``ToolCallDisclosure``),
+tool-result, and image cells. Flattened layout: no frame border, role
+bold-prefixed onto the first text cell.
+"""
+
+import json
+
+from qttbx.qt import QtCore, QtGui, QtWidgets
+
+from qttbx.widgets.chat.agent.conversation import ContentBlock, Message, now, is_note_block
+from qttbx.widgets.chat.markdown_view import MarkdownView
+from qttbx.widgets.chat.tool_call_disclosure import (
+  DisclosureRow, ToolCallDisclosure)
+
+
+class _ThinkingCell(DisclosureRow):
+  """Collapsible ``▾ Thinking`` row holding a thinking block.
+
+  The body is the same ``MarkdownView`` a reply cell uses -- same font,
+  markdown rendered, raw HTML kept literal, local resources never loaded
+  -- with no role prefix, so a summary reads like a reply under its own
+  header. It starts OPEN: the summaries are the only account of an
+  autonomous run between tool calls, and the view-level toggle folds
+  them all when wanted.
+
+  Parameters
+  ----------
+  text : str
+      Initial thinking text (may be empty for a streaming cell).
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  expanded : bool, optional
+      Start with the body shown (the default). The view-level expand-all /
+      collapse-all switch passes its current state here so new cells
+      follow it.
+  """
+
+  def __init__(self, text, parent=None, expanded=True):
+    super().__init__(parent, expanded=expanded)
+    self.view = MarkdownView(self.body)
+    self.view.append_markdown(text or "")
+    self.body_layout.addWidget(self.view)
+
+  def append(self, text):
+    """Append a streamed delta; the markdown re-renders like a reply's."""
+    if text:
+      self.view.append_markdown(text)
+
+  def searchable_cells(self):
+    """This cell's searchable text: the inner view, kind ``"thinking"``.
+
+    Reported even while folded -- hidden thinking text is searchable, and
+    navigation reveals it via ``ensure_revealed``.
+    """
+    return [("thinking", self.view)]
+
+  def _header_label(self):
+    return "Thinking", None
+
+
+class _ImageCell(QtWidgets.QFrame):
+  """Inline image cell rendering a QPixmap as a thumbnail.
+
+  Holds a QPixmap, renders it as a height-capped thumbnail
+  (aspect-preserved), and opens ImageLightbox on click. The caption is
+  rendered below the image when present; hidden when absent.
+
+  ``clicked(conv_id, sha256)`` is the only public signal -- it
+  propagates up through MessageBubble.image_clicked and
+  ConversationView.image_clicked to the application's image-click handler,
+  which uses the two strings to look up the artifact in the side panel.
+
+  Parameters
+  ----------
+  pixmap : QtGui.QPixmap
+      The full-resolution image; thumbnailed for display and shown
+      at full size in the lightbox.
+  caption : str, optional
+      Text rendered below the thumbnail; the caption is hidden when
+      absent.
+  sha256 : str, optional
+      Attachment hash; travels with the ``clicked`` signal.
+  conv_id : str, optional
+      Conversation id; travels with the ``clicked`` signal.
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  """
+
+  MAX_HEIGHT = 240
+
+  clicked = QtCore.Signal(str, str)                # conv_id, sha256
+
+  def __init__(self, pixmap, caption=None, sha256=None,
+               conv_id=None, parent=None):
+    super().__init__(parent)
+    self._pixmap = pixmap
+    self._last_lightbox = None
+    # Metadata travels with the clicked signal so the chat window can
+    # focus / fetch the corresponding attachment.
+    self.sha256 = sha256 or ""
+    self.conv_id = conv_id or ""
+    self.setFrameShape(QtWidgets.QFrame.NoFrame)
+    layout = QtWidgets.QVBoxLayout(self)
+    layout.setContentsMargins(0, 4, 0, 4)
+    layout.setSpacing(2)
+    if pixmap.height() > self.MAX_HEIGHT:
+      scaled = pixmap.scaledToHeight(
+        self.MAX_HEIGHT, QtCore.Qt.SmoothTransformation)
+    else:
+      scaled = pixmap
+    self.thumbnail = QtWidgets.QLabel(self)
+    self.thumbnail.setPixmap(scaled)
+    self.thumbnail.setCursor(QtCore.Qt.PointingHandCursor)
+    # Click-to-open. Override mousePressEvent rather than installing an
+    # event filter -- simpler and the label has no other use for the
+    # mouse press.
+    self.thumbnail.mousePressEvent = self._thumb_clicked
+    layout.addWidget(self.thumbnail)
+    self.caption_label = QtWidgets.QLabel(caption or "", self)
+    # Caption text is model/tool-controlled: render literally.
+    self.caption_label.setTextFormat(QtCore.Qt.PlainText)
+    self.caption_label.setStyleSheet(
+      "color: palette(mid); font-style: italic;")
+    self.caption_label.setWordWrap(True)
+    layout.addWidget(self.caption_label)
+    if not caption:
+      self.caption_label.hide()
+
+  def click(self):
+    """Fire ``clicked`` programmatically without opening the lightbox.
+
+    Used by tests so the assertion can run synchronously.
+    """
+    self.clicked.emit(self.conv_id or "", self.sha256 or "")
+
+  def _thumb_clicked(self, _event):
+    self.clicked.emit(self.conv_id or "", self.sha256 or "")
+    self._open_lightbox()
+
+  def _open_lightbox(self):
+    from qttbx.widgets.chat.image_lightbox import ImageLightbox
+    dlg = ImageLightbox(pixmap=self._pixmap, parent=self.window())
+    # Record before showing so tests can introspect even if the dialog
+    # is closed asynchronously.
+    self._last_lightbox = dlg
+    # `.open()` is non-blocking (vs `.exec()` which spins the modal
+    # event loop). The dialog still acts modally and closes on click
+    # via its own mousePressEvent. Using .open() keeps the call
+    # testable under QT_QPA_PLATFORM=offscreen.
+    dlg.open()
+
+
+_ROLE_LABELS = {"user": "You"}
+
+
+class MessageBubble(QtWidgets.QFrame):
+  """One chat turn (user or assistant) rendered as a widget.
+
+  The bubble accumulates child cells in vertical order matching
+  ``message.content``.
+
+  Flattened layout: no QFrame border / background; the role word is
+  bold-prefixed onto the first text cell (e.g. ``<b>You:</b> refine
+  1yjp``) rather than rendered as a separate header label. Turn
+  separation comes from the 12 px top margin.
+
+  The bubble has two construction modes: pass ``message`` (the legacy
+  ConversationView path, with content blocks rendered immediately), or
+  pass ``role`` (the lightweight path for tests and future direct
+  callers, with no Message wired in until needed). Exactly one of the
+  two must be supplied.
+
+  Parameters
+  ----------
+  message : Message, optional
+      The message to render. Mutually exclusive with ``role``.
+  parent : QtWidgets.QWidget, optional
+      Parent widget.
+  storage : object, optional
+      Attachment store used to decode image blocks; without it image
+      cells fall back to a placeholder pixmap.
+  conv_id : str, optional
+      Conversation id used to resolve image attachments.
+  role : str, optional
+      ``"user"`` or ``"assistant"`` to build an empty bubble. Mutually
+      exclusive with ``message``.
+  assistant_label : str, optional
+      Display name for an assistant message that carries no per-turn
+      backend stamp (a live streaming bubble, legacy data); the
+      ConversationView supplies the current backend's name.
+  thinking_expanded : bool, optional
+      Fold state for the thinking cells this bubble creates -- at
+      construction, on a streamed delta, or via ``append_block``. The
+      ConversationView passes its expand-all / collapse-all switch;
+      ``set_thinking_expanded`` updates it. Shown by default.
+
+  Raises
+  ------
+  TypeError
+      If neither ``message`` nor ``role`` is supplied.
+  """
+
+  image_clicked = QtCore.Signal(str, str)        # conv_id, sha256
+
+  def __init__(self, message=None, parent=None, storage=None, conv_id=None,
+               role=None, assistant_label=None, thinking_expanded=True):
+    super().__init__(parent)
+    # Two construction modes:
+    #   * legacy: MessageBubble(message=<Message>) -- ConversationView path,
+    #     content blocks rendered immediately.
+    #   * lightweight: MessageBubble(role="user"|"assistant") -- tests and
+    #     future direct callers; no Message wired in until needed.
+    if message is None:
+      if role is None:
+        raise TypeError(
+          "MessageBubble requires either `message` or `role`")
+      message = Message(role=role, timestamp=now(), content=[])
+    self.message = message
+    self.storage = storage
+    self.conv_id = conv_id
+    self._role = message.role
+    # Fallback assistant name (the current backend's display name, supplied
+    # by ConversationView) used when the message carries no per-turn backend
+    # stamp -- e.g. a live streaming bubble, or a legacy unstamped message.
+    self._assistant_label = assistant_label
+    # Default fold state for thinking cells this bubble creates -- at
+    # construction, on a streamed delta, or via append_block. Mirrors the
+    # ConversationView's expand-all / collapse-all switch at the time the
+    # bubble was built (shown, by default); set_thinking_expanded() updates it.
+    self._thinking_expanded = thinking_expanded
+    # Flattened: no frame styling, no background.
+    self.setFrameStyle(QtWidgets.QFrame.NoFrame)
+    self._layout = QtWidgets.QVBoxLayout(self)
+    # 12 px top margin per bubble separates turns; no padding on sides
+    # (the ConversationView owns the horizontal margins).
+    self._layout.setContentsMargins(0, 12, 0, 0)
+    self._layout.setSpacing(4)
+
+    self._text_view = None
+    self._first_text_cell = None
+    self._first_text_cell_added = False
+    # tool_id -> ToolCallDisclosure. Populated by both add_tool_use_cell()
+    # (runner-driven, live tool calls) and by _add_block() when replaying
+    # a stored conversation -- so set_tool_use_finished() can fold a later
+    # tool_result block into the right disclosure widget regardless of
+    # whether the bubble was built live or loaded from storage.
+    self._tool_cells_by_id = {}
+
+    for block in message.content:
+      self._add_block(block)
+
+  # ---- block rendering -----------------------------------------------------
+
+  def _add_block(self, block):
+    # A persisted context-pressure note rides the user's own message; it is
+    # the model's scaffolding, not the user's words, so the bubble neither
+    # paints it nor reports it (combined_text) -- the twin of the Markdown
+    # export's rule (markdown_export).
+    if is_note_block(block):
+      return
+    if block.type == "text":
+      self._append_text_markdown(block.data.get("text", ""))
+    elif block.type == "thinking":
+      if (block.data.get("text") or "").strip():
+        self._add_thinking_cell(block.data["text"])
+      else:
+        # A signature-only (or whitespace-only) block has nothing to show
+        # -- the export and the transcript drop it too -- but is still a
+        # non-text block, so the text after it starts a fresh view.
+        self._text_view = None
+    elif block.type == "tool_use":
+      # Route legacy message-replay tool_use blocks through the same
+      # ToolCallDisclosure widget the runner-driven path uses, so the UI
+      # is consistent whether the bubble was loaded from storage or built
+      # live by streaming.
+      self.add_tool_use_cell(
+        tool_id=block.data.get("id", ""),
+        name=block.data.get("name", "?"),
+        args=block.data.get("input", {}))
+    elif block.type == "tool_result":
+      # If the matching tool_use cell is in this bubble, fold the result
+      # into it; otherwise (orphan tool_result -- e.g. result block that
+      # arrived in a follow-up message) fall back to the legacy cell.
+      tool_use_id = block.data.get("tool_use_id", "")
+      is_error = bool(block.data.get("is_error", False))
+      result_text = _flatten_result_text(block.data.get("content", []))
+      if tool_use_id and tool_use_id in self._tool_cells_by_id:
+        if is_error:
+          self.set_tool_use_finished(
+            tool_id=tool_use_id, error=result_text or "error")
+        else:
+          self.set_tool_use_finished(
+            tool_id=tool_use_id, result=result_text)
+      else:
+        # Orphan: the matching tool_use cell is not in this bubble (the
+        # usual shape on reload -- the tool_use is in the assistant
+        # message, this tool_result in the following user message). Render
+        # it through the same collapsed ToolCallDisclosure the live path
+        # uses so bulk Phenix output (phenix_get_phil can exceed 50K
+        # chars) stays hidden behind a click rather than dumped in full.
+        status = "error" if is_error else "finished"
+        cell = ToolCallDisclosure(name="result", status=status, parent=self)
+        cell.set_status(status, color="error" if is_error else "muted")
+        cell.set_result(result_text)
+        self._text_view = None
+        self._layout.addWidget(cell)
+    elif block.type == "server_tool_use":
+      # API-executed tool call (e.g., web_search, web_fetch,
+      # code_execution). Reuse ToolCallDisclosure; the result lands
+      # later in the same turn as a server_tool_result block and folds
+      # into this cell via set_tool_use_finished.
+      self.add_tool_use_cell(
+        tool_id=block.data.get("id", ""),
+        name="server: " + (block.data.get("name", "?") or "?"),
+        args=block.data.get("input", {}))
+    elif block.type == "server_tool_result":
+      tool_use_id = block.data.get("tool_use_id", "")
+      result_text = _format_server_tool_result(block.data.get("content", {}))
+      if tool_use_id and tool_use_id in self._tool_cells_by_id:
+        self.set_tool_use_finished(
+          tool_id=tool_use_id, result=result_text)
+      else:
+        # Orphan (no matching use cell in this bubble): render as a
+        # plain text cell so the result still appears.
+        self._append_text_markdown(
+          "*server tool result:* `" + tool_use_id + "`\n\n```\n"
+          + result_text + "\n```")
+    elif block.type == "image":
+      # Load the attachment into a QPixmap via image_cache (decoded once
+      # per session) and render as an inline thumbnail. Falls back to a
+      # placeholder pixmap when storage/sha256 are missing.
+      sha256 = block.data.get("attachment_sha256", "")
+      caption = block.data.get("caption")
+      if self.storage is not None and self.conv_id is not None and sha256:
+        from qttbx.widgets.chat.image_cache import get_image
+        img = get_image(self.storage, self.conv_id, sha256)
+        pixmap = QtGui.QPixmap.fromImage(img)
+      else:
+        # No storage context (legacy/tests). A 1x1 placeholder keeps the
+        # cell renderable.
+        pixmap = QtGui.QPixmap(1, 1)
+        pixmap.fill(QtCore.Qt.lightGray)
+      cell = self.add_image_cell(
+        pixmap=pixmap, caption=caption,
+        sha256=sha256, conv_id=self.conv_id)
+      cell.clicked.connect(self.image_clicked)
+    # Unknown block types are silently dropped - they shouldn't reach the
+    # bubble in normal operation (storage rejects unknown types on load).
+
+  def _ensure_text_view(self):
+    if self._text_view is None:
+      self._text_view = MarkdownView(self)
+      self._layout.addWidget(self._text_view)
+      if self._first_text_cell is None:
+        self._first_text_cell = self._text_view
+
+  def _role_label_text(self):
+    if self._role == "assistant":
+      # Prefer this message's own backend stamp (so a reloaded conversation
+      # shows what produced each turn); else the supplied fallback name; else
+      # the generic "Assistant".
+      backend = getattr(self.message, "backend", None)
+      if backend:
+        from qttbx.widgets.chat.agent.profile import backend_display_name
+        return backend_display_name(backend)
+      return self._assistant_label or "Assistant"
+    return _ROLE_LABELS.get(self._role, self._role.title())
+
+  def _append_text_markdown(self, text):
+    """Append markdown to the shared text view.
+
+    Prepends the bold role marker on the first text cell.
+    """
+    self._ensure_text_view()
+    if not self._first_text_cell_added:
+      prefix = "**%s:** " % self._role_label_text()
+      self._text_view.append_markdown(prefix + (text or ""))
+      self._first_text_cell_added = True
+    else:
+      self._text_view.append_markdown(text or "")
+
+  def first_text_cell_html(self):
+    """Return the HTML of the first text cell.
+
+    Used by tests and any future inline assertions.
+
+    Returns
+    -------
+    str
+        The first text cell's HTML, or an empty string if no text yet.
+    """
+    if self._first_text_cell is None:
+      return ""
+    if hasattr(self._first_text_cell, "toHtml"):
+      return self._first_text_cell.toHtml()
+    return self._first_text_cell.text()
+
+  def searchable_cells(self):
+    """Ordered ``(kind, widget)`` pairs of this bubble's searchable text.
+
+    Each cell class reports its own pairs through the duck-typed
+    ``searchable_cells()`` protocol (MarkdownView -> ``"text"``, a
+    thinking cell -> ``"thinking"``, a tool disclosure -> its ``"tool"``
+    args/result views); the bubble just concatenates them, walking the
+    layout so every cell appears, in display order.
+
+    Returns
+    -------
+    list of (str, QtWidgets.QWidget)
+        Scope-key / text-widget pairs in display order.
+    """
+    cells = []
+    for w in self.cells():
+      report = getattr(w, "searchable_cells", None)
+      if report is not None:
+        cells.extend(report())
+    return cells
+
+  def cells(self):
+    """This bubble's cell widgets in display order (the layout's items).
+
+    ConversationView's viewport anchoring walks these for each bubble it
+    tracks (it checks ``isinstance(w, MessageBubble)``; approval and
+    question cards are anchored whole), and ``searchable_cells`` /
+    ``thinking_cells`` filter them.
+
+    Yields
+    ------
+    QtWidgets.QWidget
+        Text views, thinking cells, tool rows and image cells.
+    """
+    for i in range(self._layout.count()):
+      w = self._layout.itemAt(i).widget()
+      if w is not None:
+        yield w
+
+  def _last_cell(self):
+    """The bottom-most cell, or ``None`` for an empty bubble."""
+    count = self._layout.count()
+    return self._layout.itemAt(count - 1).widget() if count else None
+
+  # ---- thinking fold ------------------------------------------------------
+
+  def thinking_cells(self):
+    """Every thinking cell in this bubble, in display order.
+
+    Walks the layout so all of them are reported.
+
+    Returns
+    -------
+    list of _ThinkingCell
+    """
+    return [w for w in self.cells() if isinstance(w, _ThinkingCell)]
+
+  def _add_thinking_cell(self, text):
+    """Append a thinking cell holding ``text`` (empty for a streaming one).
+
+    A non-text cell: ``_text_view`` is dropped so the text that follows
+    starts a fresh MarkdownView below it, instead of merging into the
+    view above and breaking the visual order.
+    """
+    cell = _ThinkingCell(text, self, expanded=self._thinking_expanded)
+    self._text_view = None
+    self._layout.addWidget(cell)
+    return cell
+
+  def set_thinking_expanded(self, on):
+    """Expand (``True``) or collapse (``False``) every thinking cell.
+
+    Also becomes the default for thinking cells created afterwards, so a
+    streaming bubble keeps following the switch. Per-cell hand edits are
+    simply overridden -- this is expand-all / collapse-all, not a memory.
+
+    Parameters
+    ----------
+    on : bool
+        Desired fold state for all thinking cells.
+    """
+    self._thinking_expanded = on
+    for cell in self.thinking_cells():
+      cell.set_expanded(on)
+
+  # ---- image cells --------------------------------------------------------
+
+  def add_image_cell(self, pixmap, caption=None, sha256=None,
+                     conv_id=None):
+    """Insert an inline image cell.
+
+    The cell renders a height-capped thumbnail and opens ImageLightbox
+    on click. The ``sha256`` / ``conv_id`` kwargs travel with the cell's
+    ``clicked(conv_id, sha256)`` signal so the ConversationView can
+    re-emit them to the chat window's artifact-focus handler.
+
+    Parameters
+    ----------
+    pixmap : QtGui.QPixmap
+        The image to render as a thumbnail.
+    caption : str, optional
+        Text rendered below the thumbnail.
+    sha256 : str, optional
+        Attachment hash; travels with the cell's ``clicked`` signal.
+    conv_id : str, optional
+        Conversation id; travels with the cell's ``clicked`` signal.
+
+    Returns
+    -------
+    _ImageCell
+        The inserted image cell.
+    """
+    cell = _ImageCell(
+      pixmap=pixmap, caption=caption,
+      sha256=sha256, conv_id=conv_id, parent=self)
+    # Reset _text_view so the next text append lands in a fresh MarkdownView
+    # -- same invariant as add_tool_use_cell. In production that next append
+    # arrives via append_text_delta (streaming) or _add_block (replay); without
+    # the reset it would merge into the pre-image view.
+    self._text_view = None
+    self._layout.addWidget(cell)
+    return cell
+
+  # ---- tool cells ---------------------------------------------------------
+
+  def add_tool_use_cell(self, tool_id, name, args):
+    """Insert a collapsed ToolCallDisclosure row keyed by ``tool_id``.
+
+    The runner calls ``set_tool_use_finished(tool_id, ...)`` to
+    transition the cell to a terminal state once the tool returns.
+
+    Parameters
+    ----------
+    tool_id : str
+        Identifier the cell is keyed by for later finishing.
+    name : str
+        Tool name shown in the disclosure header.
+    args : dict
+        Tool input arguments; shown in the disclosure when non-empty.
+
+    Returns
+    -------
+    ToolCallDisclosure
+        The inserted disclosure row.
+    """
+    cell = ToolCallDisclosure(name=name, status="running", parent=self)
+    if args:
+      cell.set_args(args)
+    if tool_id:
+      self._tool_cells_by_id[tool_id] = cell
+    # Reset _text_view so the next text append lands in a fresh MarkdownView.
+    # Without this, text-after-tool would merge into the pre-tool view
+    # (out-of-order visual rendering). In production that next append arrives
+    # via append_text_delta (streaming) or _add_block (replay).
+    self._text_view = None
+    self._layout.addWidget(cell)
+    return cell
+
+  def set_tool_use_finished(self, tool_id, elapsed=None, result=None,
+                            error=None, cancelled=False):
+    """Transition a previously-added tool cell to a terminal state.
+
+    No-op for an unknown ``tool_id`` (so the runner can call this
+    safely even if it never added the cell).
+
+    Parameters
+    ----------
+    tool_id : str
+        Identifier of the cell to finish.
+    elapsed : optional
+        Elapsed-time suffix appended to the finished status when set.
+    result : optional
+        Result payload rendered into the cell body when set.
+    error : optional
+        Error message; transitions the cell to a failed state when set and
+        is rendered into the cell body. Independent of ``result`` -- pass
+        both and the body shows the partial output followed by the error.
+    cancelled : bool, optional
+        When true, transitions the cell to a cancelled state.
+    """
+    cell = self._tool_cells_by_id.get(tool_id)
+    if cell is None:
+      return
+    if cancelled:
+      cell.set_status("cancelled", color="cancelled")
+    elif error is not None:
+      # The error text goes in the BODY, never inlined into the header: the
+      # header renders a one-line '<name> (<status>)' summary, and a
+      # force-killed Coot bridge yields a ~230-char MCP connection error.
+      # Bulk tool output belongs in the body's result view, which wraps and
+      # auto-heights. The header still says 'failed', so a collapsed cell
+      # still reads as failed.
+      cell.set_status("failed", color="error")
+      # Never drop the error. Both parameters are documented and independent,
+      # so a caller with partial output *and* a failure passes both -- the old
+      # header inlined the error unconditionally, and showing only the result
+      # would leave nothing in the UI to say what went wrong. Chronological
+      # order: what the tool managed to emit, then why it died.
+      result = error if result is None else "%s\n\n%s" % (result, error)
+    else:
+      suffix = ", %s" % elapsed if elapsed else ""
+      cell.set_status("finished%s" % suffix, color="default")
+    if result is not None:
+      cell.set_result(result)
+
+  def cancel_running_tools(self):
+    """Mark every still-running tool cell on this bubble as cancelled.
+
+    Called when the turn is cancelled (the user hit Stop): the runner never
+    delivers a tool_result for an aborted tool, so without this its
+    disclosure would stay stuck in the ``running`` state forever. Cells that
+    already reached a terminal state (finished / failed) are left untouched.
+    """
+    for tool_id, cell in self._tool_cells_by_id.items():
+      if cell.is_running():
+        self.set_tool_use_finished(tool_id, cancelled=True)
+
+  def fold_tool_results(self, blocks):
+    """Fold a following message's tool_result blocks into THIS bubble.
+
+    Used on reload to attach each answering tool_result to the tool_use cell it
+    matches (by tool_use_id) in this bubble -- transitioning that cell out of
+    'running' and rendering its result (or error) inline -- so a reloaded turn
+    shows one cell per tool instead of separate 'running' call cells and a
+    detached bank of 'result' cells. Reuses ``_add_block``, so a result whose
+    tool_use is NOT in this bubble still falls back to its own cell and nothing
+    is dropped.
+
+    Parameters
+    ----------
+    blocks : list of ContentBlock
+        The answering message's content; only tool_result blocks are folded.
+    """
+    for block in blocks or []:
+      if getattr(block, "type", None) == "tool_result":
+        self._add_block(block)
+
+  # ---- streaming -----------------------------------------------------------
+
+  def _mirror_text_block(self, block_type, text):
+    """Mirror a streamed delta into ``message.content``: extend the last block
+    when it is already ``block_type``, else append a new one -- the rule the
+    session applies to what it persists, so the live bubble holds the blocks
+    a reload draws from. ``append_thinking_delta`` reads the last block to
+    decide whether a delta extends the bottom cell, and mirrors even a
+    signature-only delta it does not show. Shared by ``append_text_delta``
+    ('text') and ``append_thinking_delta`` ('thinking')."""
+    last = self.message.content[-1] if self.message.content else None
+    if last is not None and last.type == block_type:
+      last.data["text"] = (last.data.get("text", "") or "") + (text or "")
+    else:
+      self.message.content.append(
+        ContentBlock(type=block_type, data={"text": text or ""}))
+
+  def append_text_delta(self, text):
+    """Append a streamed text delta to the bubble and message content."""
+    self._append_text_markdown(text)
+    self._mirror_text_block("text", text)
+
+  def append_thinking_delta(self, text):
+    """Append a streamed thinking delta to the bubble and message content.
+
+    Extends the bottom-most cell while it is a thinking cell AND the last
+    content block is its thinking block (one with visible text: a
+    signature-only or whitespace-only block has no cell); once text, a tool
+    row or any other block has landed after it, the delta starts a new cell
+    below them, so the on-screen order matches the turn's and a reload's. An
+    empty (signature-only or whitespace-only) delta that would start a cell
+    adds none: it mirrors its block, which a reload skips too while it stays
+    blank, and the text after it starts a fresh view; the first delta with
+    visible text that extends that block seeds its new cell with the block's
+    whitespace, so live and reload render alike.
+    """
+    cell = self._last_cell()
+    last = self.message.content[-1] if self.message.content else None
+    if (not isinstance(cell, _ThinkingCell)
+        or last is None or last.type != "thinking"
+        or not (last.data.get("text") or "").strip()):
+      if not (text or "").strip():
+        self._text_view = None
+        self._mirror_text_block("thinking", text)
+        return
+      # A new cell whenever the delta lands in a block other than the
+      # bottom cell's -- a new one (after a server_tool_result folded into
+      # an earlier row) or a signature-only one that has no cell -- so the
+      # live bubble cannot merge what a reload draws as two cells. A
+      # whitespace-only block is the one this delta EXTENDS (the mirror
+      # below appends to it), so the new cell is seeded with that
+      # whitespace: a leading tab or indent then renders live exactly as
+      # the stored block renders on reload.
+      seed = ""
+      if (last is not None and last.type == "thinking"
+          and not (last.data.get("text") or "").strip()):
+        seed = last.data.get("text") or ""
+      cell = self._add_thinking_cell(seed)
+    cell.append(text)
+    self._mirror_text_block("thinking", text)
+
+  def append_block(self, block):
+    """Append a new ContentBlock to the in-progress bubble.
+
+    Post-stream tool_use and tool_result blocks land here.
+
+    Parameters
+    ----------
+    block : ContentBlock
+        The content block to render and mirror into ``message.content``.
+    """
+    self.message.content.append(block)
+    self._add_block(block)
+
+  # ---- introspection (for tests) ------------------------------------------
+
+  def combined_text(self):
+    """Return a flat-text representation of the bubble's content.
+
+    The bubble is the source of truth for the on-screen content.
+
+    Returns
+    -------
+    str
+        The content blocks flattened to newline-joined text.
+    """
+    # Shared with ToolApprovalCard's tool-input preview -- one definition
+    # (in tool_approval) rather than a byte-identical copy here. Function
+    # scope mirrors this module's other sibling-widget imports.
+    from qttbx.widgets.chat.tool_approval import _short_json
+    parts = []
+    for block in self.message.content:
+      if is_note_block(block):
+        continue
+      if block.type == "text":
+        parts.append(block.data.get("text", ""))
+      elif block.type == "thinking":
+        parts.append("[thinking] " + block.data.get("text", ""))
+      elif block.type == "tool_use":
+        parts.append("[tool_use %s %s]" % (
+          block.data.get("name", ""),
+          _short_json(block.data.get("input", {}))))
+      elif block.type == "tool_result":
+        parts.append("[tool_result]")
+      elif block.type == "image":
+        parts.append("[image %s %s]" % (
+          (block.data.get("attachment_sha256", "") or "")[:8],
+          block.data.get("mime", "")))
+    return "\n".join(parts)
+
+
+def _flatten_result_text(blocks):
+  out = []
+  for b in blocks or []:
+    if isinstance(b, dict):
+      t = b.get("type")
+      data = b.get("data", {})
+    else:
+      t = getattr(b, "type", None)
+      data = getattr(b, "data", {})
+    if t == "text":
+      out.append(data.get("text", ""))
+  return "\n".join(out)
+
+
+def _format_server_tool_result(content):
+  """Render a server-tool result payload for the disclosure body.
+
+  The Anthropic API returns an opaque dict per server tool. Pretty-print
+  it as JSON; for ``web_search`` specifically, extract the result list
+  into a more readable bullet list so the disclosure isn't a wall of
+  JSON for the most common case.
+  """
+  if not isinstance(content, dict):
+    return str(content)
+  # web_search: content has "content": [{"type":"web_search_result", ...}, ...]
+  inner = content.get("content")
+  if isinstance(inner, list) and inner and isinstance(inner[0], dict) \
+      and inner[0].get("type") == "web_search_result":
+    lines = []
+    for r in inner:
+      title = r.get("title", "(no title)")
+      url = r.get("url", "")
+      lines.append("- %s\n  %s" % (title, url))
+    return "\n".join(lines)
+  try:
+    return json.dumps(content, indent=2, default=str)
+  except Exception:
+    return repr(content)

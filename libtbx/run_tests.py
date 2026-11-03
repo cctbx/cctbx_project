@@ -6,12 +6,14 @@ import libtbx.load_env
 
 
 tst_list_base = [
+  "$D/tst_citation_encoding.py",
   "$D/metric_prefixes.py",
   "$D/tst_utils.py",
   "$D/tst_word_index_generator.py",
   "$D/test_utils/__init__.py",
   "$D/queuing_system_utils/pbs_utils.py",
   "$D/queuing_system_utils/sge_utils.py",
+  "$D/queuing_system_utils/tst_processing.py",
   "$D/introspection.py",
   "$D/tst_thread_utils.py",
   "$D/tst_easy_mp.py",
@@ -20,6 +22,10 @@ tst_list_base = [
   "$D/tst_fully_buffered_timeout.py",
   "$D/tst_add_docstrings_with_ai.py",
   "$D/tst_scheduling.py",
+  "$D/jobs/tst_manager.py",
+  "$D/jobs/tst_local.py",
+  "$D/jobs/tst_batch.py",
+  "$D/jobs/tst_slurm.py",
   "$D/easy_run.py",
   "$D/tst_containers.py",
   "$D/tst_path.py",
@@ -46,6 +52,12 @@ tst_list_base = [
   '$D/tst_easy_mp_multicore.py',
   "$D/tst_run_tests_parallel_unique_dirs.py",
   "$D/tst_run_tests_parallel_retry.py",
+  "$D/tst_t96_roster.py",
+  "$D/tst_guided_coding.py",
+  "$D/tst_conda_dispatcher.py",
+  "$D/tst_dispatcher_environment.py",
+  "$D/auto_build/conda_build/tst_write_env_files.py",
+  "$D/auto_build/conda_build/tst_create_custom_bin.py",
   ]
 
 try:

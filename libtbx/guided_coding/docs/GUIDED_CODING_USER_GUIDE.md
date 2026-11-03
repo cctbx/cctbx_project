@@ -1,0 +1,262 @@
+# Guided Coding User Guide
+
+Guided Coding helps you make a software change with Claude and understand the result. You say what you want done. Claude investigates the problem, proposes a plan, makes the change and shows you how it was tested. You decide whether to keep it.
+
+Start with a small task in a project you know. This guide tells you how to install Guided Coding and set up your project so Claude knows which commands to use to build and test your program. It then takes you through your first task.
+
+## Before you begin
+
+These instructions use the [Guided Coding download](https://www.thomasterwilliger.org/guided_coding/). Use Claude Code on your computer and a project managed with Git. You also need Python 3.10 or newer, and `shasum` or `sha256sum` to check the download. Auto mode (running several jobs while you are away) also needs the psutil package. Install it in a virtual environment and use that environment's Python for Guided Coding: `python3 -m venv ~/guided_coding_venv`, then `~/guided_coding_venv/bin/python -m pip install psutil`, then use `~/guided_coding_venv/bin/python`. Do not use `pip install --user`: Guided Coding runs Python with `-I`, which ignores packages installed that way, and many systems refuse a plain `pip install` outside a virtual environment. The Terminal commands in this guide work in bash, zsh, csh and tcsh. In Terminal, `git --version` and `python3 --version` show which versions of Git and Python you have.
+
+**Supported systems.** Guided Coding supports the Claude app on macOS, and Claude Code in Terminal on macOS and Linux. On Linux its tests run, but a real `/gc` session there has not yet been observed (see [Clients and platforms](GUIDED_CODING_VERIFICATION.md#important-remaining-uncertainty)). Auto mode (running several jobs while you are away) runs only on macOS; on other systems its runs are refused. Windows is not supported.
+
+Getting started has three separate steps: (a) install Claude Code, described below; (b) register Guided Coding once, so that Claude Code knows the `/guided_coding` command (section 2); and (c) set up each project in which you want to use it (section 3).
+
+**(a) Install Claude Code.** On a Mac, open the Claude app and choose the **Code** tab. The app includes Claude Code. If you need the app, follow Anthropic’s [desktop setup instructions](https://code.claude.com/docs/en/desktop-quickstart). Update the app if needed and sign in with an account that includes Claude Code.
+
+You can also use Claude Code in Terminal on macOS or Linux. Follow Anthropic’s [Terminal installation](https://code.claude.com/docs/en/setup) and [sign-in and API key](https://code.claude.com/docs/en/authentication) instructions. If you use an API key, keep using the Terminal window where you set it.
+
+Guided Coding checks for Claude Code 2.1.281 or newer. In the app, it checks the copy of Claude Code built into the app. If it cannot read that version, it prints **NOT CHECKED** and continues. You can continue, but the required version has not been confirmed. In Terminal, it checks the `claude` program that runs when you type that command.
+
+## Using Guided Coding in the cloud or inside other software
+
+A cloud session cannot use the link on your computer; this guide does not cover cloud setup. Some software packages include Guided Coding; the [overview](GUIDED_CODING_README.md#where-guided-coding-is-included) says which, and how to use their copies.
+
+## 1. Download and check the kit
+
+Download [guided_coding.zip](https://www.thomasterwilliger.org/guided_coding/guided_coding.zip) and its [checksum file](https://www.thomasterwilliger.org/guided_coding/guided_coding.zip.sha256) into Downloads. The checksum file contains a fingerprint of the ZIP. The command below checks whether your downloaded ZIP has that fingerprint.
+
+These instructions use the exact filenames shown above. If your browser changes a filename or unzips the ZIP automatically, save an unopened copy named `guided_coding.zip` before continuing.
+
+In Terminal, run this complete command:
+
+```bash
+cd ~/Downloads && shasum -a 256 -c guided_coding.zip.sha256
+```
+
+If your system has no `shasum` (some Linux systems), use this command instead; it reads the same checksum file:
+
+```bash
+cd ~/Downloads && sha256sum -c guided_coding.zip.sha256
+```
+
+The result should end with `guided_coding.zip: OK`. If it does not, stop and find out why before using the download. This checks the file against the checksum; it does not tell you who supplied the files.
+
+Unzip `guided_coding.zip` in Downloads. It creates a folder called `GuidedCoding`. Keep that folder there. If you prefer another permanent location, change the path in the message in the next section. If a `GuidedCoding` folder is already there, follow “Updates and removal” below.
+
+Keep the files inside `GuidedCoding/guided_coding` as they came in the download. Guided Coding checks them for changes, so editing them or adding files can make the check fail. Keep your project settings and task records in your project.
+
+## 2. Register Guided Coding once (making the /guided_coding command available)
+
+This is step (b). You do it once, not once per project.
+
+Open a Claude Code conversation in the kit folder you just unzipped, `GuidedCoding` in Downloads (the folder that contains `guided_coding`). Do not choose your home folder: the folder you choose is the folder Claude may work in, and your home folder would give it all of your files.
+
+In the Claude app, the environment and the folder are two separate controls:
+
+1. Open the **Code** tab and start a new session.
+2. Under **Environment**, choose **Local**, then **My computer**.
+3. At the bottom of the page, use the folder selector to choose `GuidedCoding` inside Downloads. In the Mac folder window, you can press Cmd+Shift+G and paste the full path, `~/Downloads/GuidedCoding`.
+4. Type your message and send it.
+
+In Terminal (on a Mac or on Linux), run these two commands:
+
+```bash
+cd ~/Downloads/GuidedCoding
+```
+
+```bash
+claude
+```
+
+Copy and send the whole message below. It gives Claude the exact setup instructions:
+
+```text
+Please set up GuidedCoding from ~/Downloads/GuidedCoding/guided_coding for this Claude Code configuration. Read docs/GUIDED_CODING_COMMAND_REFERENCE.md there. Verify the source and release, check the Claude Code version for this session, and inspect the existing personal skill. If a working shared Guided Coding registration already exists, keep it and show its resolved source. Otherwise register the central link only if the destination is unoccupied. Show what changed. Do not connect to servers, change permission settings, or start a coding task.
+```
+
+If Claude Code is already helping you install Guided Coding, it can perform this registration step in the same conversation. Open a new conversation only afterward, to use `/guided_coding`.
+
+Claude checks the kit and creates a link to it. This step is called **registration**. The link lets Claude Code find the `/guided_coding` command. If a working link already exists, Claude should keep it and show you where it points. If something else is in the way, Claude should inspect it before proposing a change.
+
+**Access requests.** The link is created in Claude Code's own settings folder (normally `~/.claude/skills`), which is outside the kit folder, so Claude Code may ask before running that command. On a Mac the system may also ask whether the Claude app or Terminal may open files in Downloads. Read each request. Allow only what this step needs, as narrowly as the dialog offers: the one command, once or for this conversation, and access to the Downloads folder if asked. Do not grant access to your whole home folder or add a permanent rule for broad command patterns.
+
+Register once for each Claude Code configuration you use. For the usual setup, that means once on your computer. Registration does not start work on a project. When it is finished, open a new conversation and enter:
+
+```text
+/guided_coding help
+```
+
+If the command is missing, see “If something goes wrong” below.
+
+## 3. Set up your project
+
+This is step (c), activating Guided Coding in one project. Open a new Claude Code conversation in the folder for the Git project you want to change (its top folder, the one that contains `.git`). In the app, follow the four steps in section 2 and choose that folder with the folder selector. In Terminal, use `cd` to enter the folder before running `claude`. Claude Code may again ask before reading or running something outside that folder, such as the kit; allow the specific request, not a broad rule.
+
+The download includes an optional [general setup card](https://www.thomasterwilliger.org/guided_coding/GENERAL_DEVELOPER_CARD.md). You can attach it in the app, or tell Claude in Terminal to read `~/Downloads/GuidedCoding/GENERAL_DEVELOPER_CARD.md`.
+
+Type and send exactly the line below. When you type `/`, Claude Code shows a command menu; you can pick `/guided_coding` there and then add `setup`.
+
+```text
+/guided_coding setup
+```
+
+Claude reads your project’s documentation and saved settings. It looks for the commands to build and test your program, the folders where those commands should run, and places to keep temporary files and task records. It should ask you only for information it cannot find. Server settings are needed only if your project uses a server.
+
+Read the proposed settings before approving them. The approval box shows only a summary; the full proposed files, including the build and test commands, are in the conversation text above it. Check that the build and test commands are right and that Claude will run them in the right folders. Claude may also propose a few lines in your project’s instructions saying that Guided Coding’s rules apply there. Read those too. It can keep an existing correct setup.
+
+After you approve, let Claude finish saving and checking the files. It should save the old settings and the text you approved before changing the project’s instructions. If saving fails, some files may already have changed. Ask what was saved and what needs to be put back before continuing.
+
+Setup records how to work on your project. By itself, it does not start a coding task, connect to a server or push changes. Each project has its own settings and uses the same Guided Coding kit. If you use a second copy of the same project, run setup there too.
+
+## 4. Start your first task
+
+Open a new Claude Code conversation in the project you just set up. Put `/guided_coding`, your task and any bug report in one message. Here is an example:
+
+```text
+/guided_coding My program crashes when it reads an empty file. Change it so that it prints "The file is empty" and stops. When the file contains data, it should work as before. Add tests for both cases.
+
+[Add details about the program and the crash.]
+```
+
+Use your own task and details before sending the message. Keep the command and bug report together. If you send only a bug report, Claude may start ordinary coding work without loading Guided Coding.
+
+If you want to keep the changes on your computer, include `Do not publish` in the task. Start each guided conversation with `/guided_coding`; you do not need it before every reply. `/gc` is a shorter spelling of the same command.
+
+## 5. Read the plan and choose
+
+The plan should explain the problem, what Claude will change, how it will check the result and what is still uncertain. Read it before letting Claude make the change.
+
+Choose **APPROVE** when the plan describes the work you want and a useful way to check it. Choose **REVISE** to ask for a different plan. Choose **STOP** to end the attempt.
+
+Approving the plan lets Claude do that work. Pushing changes to your remote Git repository needs a separate decision later. Claude Code may also ask permission to use a tool. Those prompts are separate from your plan and result decisions. In the app, Claude may suggest Auto mode to reduce routine tool prompts when it is available. You still decide whether to accept the plan, keep the change and publish it.
+
+## 6. Ask for outside review when requested
+
+Claude prepares two files for the reviewer: a message and a package containing the work to review. Use a separate chat, preferably with a different AI assistant. The assistant needs to accept file uploads, open a `.tgz` package and review code. Attach both files, then write:
+
+```text
+Please review this package.
+```
+
+Copy the reviewer’s complete response back into the Guided Coding conversation. Claude should explain what was fixed in response and what still needs your decision. If the proposed change or review package changes after review, Claude should ask the reviewer to check the changed version and rerun the relevant tests unless a recorded comparison shows they are unaffected. A short follow-up review may be enough. Clerical slips, such as a typo, a wrong heading or label, or a checked file saved in the wrong place, are recorded in a separate errata file and need no new review or approval.
+
+Outside review may wait until publication only if the change cannot affect behavior, requirements, interfaces or an important claim, and you accept the worst possible effect described in the plan. Correcting formatting without changing meaning can qualify. The reviewer recommends what to do; you decide whether to accept the work.
+
+You can also waive the outside review before putting a change into your project, by saying so in your own words for that change. Claude records your words; the result screen then says the review was waived, and its limits say what remains uncertain. A waiver covers only that exact tested change and never publication: the outside review before publication is still required.
+
+## 7. Decide whether to keep the result
+
+Read what changed, which tests ran and what remains uncertain. The report starts with a short summary in plain words and a table of test results with their times; a copy you can open is kept up to date, and older copies are marked `SUPERSEDED`. It should show all the file changes and the full code for any new tests. If no tests were added, it should explain how the result was checked.
+
+Try to explain the change in your own words. Check one important statement in the report. For example, if it says a test passed, look at the test and its recorded result. If you are unsure what the report means, ask for an explanation. You can also give it to a [Guided Workflow Helper](https://www.thomasterwilliger.org/guided_workflow/index.html#panel-explain) in a separate chat.
+
+If the outside review is still pending, Claude may show an **ACCEPT** screen: accepting records that you accept this exact tested candidate; it changes and publishes nothing, and the result decision follows the review.
+
+Choose **INTEGRATE** to put the tested change into your project. Choose **REVISE** to ask for more work. Choose **DISCARD** to abandon the proposed change. The change you accept must be the one that was tested.
+
+Before publication, the procedure calls for a full test suite and an outside review of exactly the changes to be sent. You can choose to skip the test suite by saying so explicitly for that set of changes. In this version, the outside review before publication cannot be skipped. Claude should record your choice and which checks were not done. A **PUBLISH** decision alone does not skip those checks.
+
+The choices are **PUBLISH** and **HOLD**. Check which commits will be sent, to which branch and to which repository. A commit is Git’s saved record of a set of changes. If your project’s rules forbid Claude to push (for example its `AGENTS.md`), Claude still runs the checks, then gives you the exact command to run yourself in Terminal, and afterwards confirms what reached the remote repository and records it. Updating copies of your program on other computers or servers needs a separate update plan.
+
+## Good to know
+
+**Local tests and the full test suite.** While Claude works on a change, it runs the tests that check that change on your own computer (local tests). They are quick and focused. Many projects also have a full test suite, often run on a server, that checks the whole program; a project may have its own name for it (for example `t96`). The procedure asks for that full suite before publication, because a change can break something the local tests do not cover. Your project's settings say which tests are which.
+
+**Branches and worktrees.** Claude makes each change on its own Git branch, usually in a separate worktree: a second working folder of the same repository. This keeps the change apart from your own uncommitted work and from your main branch until you decide to keep it. It does not isolate everything. Installed copies of your program, servers and shared data folders are the same for every branch and worktree; if two tasks use the same installation or server at the same time, they can disturb each other. Files Git does not track stay in their folder: a branch switched in the same folder still sees them, and a new worktree does not have them, so a test that relies on such a file can behave differently there.
+
+**What approving does and does not do.** Approving a plan lets Claude do that work; it changes nothing else. Accepting a tested candidate on an **ACCEPT** screen, or approving a job in auto mode, records that you accept that exact change; it merges nothing into your main branch and publishes nothing. Putting the change into your project (**INTEGRATE**) and sending it to a remote repository (**PUBLISH**) are separate decisions.
+
+**The Helper is optional.** You do not need a Helper. If you want a second opinion in plain words, open a separate chat (not the Guided Coding conversation), paste the report and ask, for example:
+
+```text
+Please explain in plain words what this change does, what the tests show and what is still uncertain. Here is the report:
+```
+
+The Helper explains; it does not decide and does not change the work.
+
+**Doing it by hand.** You can also skip the procedure: ask Claude in an ordinary conversation for a proposed change, download or copy it, read and edit it yourself, and apply it with your own tools. That is your choice to make, but it has none of the procedure's safeguards: no agreed plan, no recorded tests, no outside review and no checked record of what was sent.
+
+**Several sessions at once.** If you run more than one Claude session on related work, the sessions must agree who owns which files, in which order changes are published and who uses a shared installation when. See [session coordination](GUIDED_CODING_COMMAND_REFERENCE.md#coordinating-several-sessions).
+
+## Returning to a project
+
+Open a new Claude Code conversation in your project and send `/guided_coding` with the next task. Claude should read the saved settings instead of asking you for them again. If you change computers, shells or project folders, or a saved command fails, it may need to check the relevant settings.
+
+These commands can help:
+
+| Command | What it does |
+| --- | --- |
+| `/guided_coding help` | Explains the commands. |
+| `/guided_coding status` | Shows which kit is loaded and whether it and your project are set up. |
+| `/guided_coding history` | Lists the project’s recorded tasks without starting work. |
+| `/guided_coding setup` | Reads saved settings and proposes any setup changes you need. |
+| `/guided_coding uninstall` | Removes the link that makes this kit available to Claude Code. |
+| `/guided_coding auto` and a job list | Works through several jobs one at a time while you are away and saves each for your approval. |
+| `/guided_coding auto status` | Shows the report on those jobs and how to approve them. |
+
+For ordinary Claude Code work, open a new conversation without `/guided_coding`. The project’s instructions and Claude’s saved memory may still be loaded.
+
+## Stopping work
+
+You can ask Claude to change direction or stop at any time. To ask it to undo this task, say:
+
+```text
+Stop this task and restore the project to its state before this task started. Preserve any work that was already present.
+```
+
+Read Claude’s report to see what it restored and what remains unfinished. Do not assume that sending the request was enough to undo the work.
+
+## Running several jobs unattended (auto mode)
+
+Auto mode works through a list of tasks one at a time while you are away. It is new and has had limited use. Auto mode runs only on macOS; on other systems its runs are refused.
+
+Before your first run, send `/guided_coding setup` in your project and say that you want to use auto mode. Your project needs a separate test copy of your software, used only for testing, and saved settings for it: where that copy is, the script that checks it has not changed, the folder used to reserve it, where queues are kept and how much free disk space must remain. Setup proposes these settings for your approval. Without them, tasks that need the test copy are blocked.
+
+Type `/gc auto` yourself, choosing it from the command menu, and paste the task list after it in the same message before sending. A pasted message that merely begins with the command does not start auto mode. Say when the run should end; otherwise it ends at 8 a.m. the next morning.
+
+Claude shows one start notice and works without asking questions. Each task has its own branch and is tested in the separate copy. Your main branch and working installation stay unchanged. Each task is saved as **Ready for approval**, or as **Blocked** with a reason. Tests that contact outside services are left out unless you allow them for that task in your list.
+
+Claude decides how to test each change and what counts as passing; your project’s required checks still apply. Claude records that choice before testing and identifies it in the report. Auto mode skips each task’s plan approval and outside review before saving it. Claude’s reviewer and checker assistants still examine the work. You can ask for an outside review before approving a saved change.
+
+When you return, send `/gc auto status`. The report calls each task a job. It summarizes each ready job’s problem, change, checks, expected result and remaining uncertainty. If Claude did something outside a task’s instructions, the report asks you about it separately. That task cannot be approved until you answer. Approving a task accepts that exact saved change; it merges nothing. You can approve several tasks in one message. Adding them to your main branch and publishing them require your later instructions and the standard procedure, including its required outside review. Publishing also needs your **PUBLISH** decision.
+
+To stop, send `/gc stop`, or run the stop command shown in the start notice from any Terminal window. Claude reports **Stopped** only if its checks find that the active task, builds and tests have stopped. Otherwise it reports **Stopping** and what remains. These checks can miss some programs; see the [auto-mode limits](GUIDED_CODING_VERIFICATION.md#important-remaining-uncertainty).
+
+If a usage limit interrupts the session, resume it yourself with `/gc auto resume` after the limit resets. Do not rely on automatic continuation. The app’s behavior at a real usage limit, including what happens to a running task, has not been tested in this release. In a new conversation, Claude waits until you confirm that the earlier session has ended. Resume does not restart a run that has finished, passed its end time or been stopped.
+
+Keep the computer powered and awake. On a laptop, keep the lid open; closing it can put the computer to sleep.
+
+The [registration and command reference](GUIDED_CODING_COMMAND_REFERENCE.md#auto-mode) gives further details.
+
+## Updates and removal
+
+Finish active Guided Coding tasks before updating the kit. Download and check the new ZIP, then unzip it into a new, permanent folder. Keep the old folder in place.
+
+1. Ask Claude to check the new kit before changing the working link.
+
+2. In a conversation using the old kit, send `/guided_coding uninstall` to remove its registration link.
+
+3. Open a new conversation in the new kit folder (the folder that contains the new `guided_coding`). Send the whole registration message from section 2, replacing `~/Downloads/GuidedCoding/guided_coding` with the actual path to the new `guided_coding` folder.
+
+4. Open another new conversation and send `/guided_coding help` to check that the new kit is available.
+
+Keep the old folder until the new registration works.
+
+To remove the link, use `/guided_coding uninstall`. Claude should confirm that the link points to this kit before removing it. It keeps the kit’s files, your project settings and your task records. Open a new conversation afterward.
+
+## If something goes wrong
+
+**The command is missing, or Claude finds the wrong kit.** Open a new conversation after registration. Ask Claude which folder the registration link points to and whether another project skill uses the same name. It should check those before changing anything.
+
+**Claude Code is too old, or the check says NOT CHECKED.** Update the app or Terminal program you are using, then restart it. The Claude Code version inside the app is different from the app version shown in About Claude. NOT CHECKED means Guided Coding could not read the Claude Code version.
+
+**Claude cannot find a build or test command.** Ask it to read the project’s saved settings and documentation. It should also check the shell in which the command is supposed to run. A command can work in one shell and be unavailable in another. Supply only the missing information.
+
+**Setup fails while saving.** Stop work that uses the new settings. Keep the backup records. Ask Claude which files changed and which ones still need to be restored.
+
+## Further details
+
+The [documentation index](https://www.thomasterwilliger.org/guided_coding/documentation.html) links to explanations of the process, the checking tools and the checks that have been run. The [registration and command reference](https://www.thomasterwilliger.org/guided_coding/user-guide.html#one-time-registration) gives the manual registration instructions, including how to use a different configuration folder.
+
+Guided Coding is still being developed. Tests and outside review can miss mistakes. Claude must still follow the procedure. We have not established that Guided Coding produces better fixes than other approaches.

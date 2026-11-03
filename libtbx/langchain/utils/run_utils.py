@@ -40,6 +40,53 @@ def normalize_none_string(value):
   return value
 
 
+def _safe_float(val):
+  """Convert val to float, or return None if it cannot be converted.
+
+  JSON round-tripping (and parsing program output) can turn float values into
+  strings, e.g. 0.385 -> "0.385".  All numeric metrics from history dicts must
+  be coerced before arithmetic or formatting, or expressions like
+  ``curr - prev`` and ``f"{x:.3f}"`` raise TypeError on the string form.
+
+  Returns None for None, non-numeric strings, or any non-convertible type
+  (never raises).  Single shared definition for the whole langchain package
+  (previously duplicated across several agent modules).
+  """
+  if val is None:
+    return None
+  try:
+    return float(val)
+  except (ValueError, TypeError):
+    return None
+
+
+# Plausible macromolecular resolution bounds (Angstroms).  Below ~0.5 or above
+# ~20 is almost certainly a parse error rather than a real data resolution.
+_RESOLUTION_MIN = 0.5
+_RESOLUTION_MAX = 20.0
+
+
+def _coerce_resolution(val):
+  """Coerce a candidate resolution to a sane float, or return None.
+
+  Single shared definition of "what counts as a usable resolution value", used
+  by every place that resolves the data resolution (the graph stop-evaluation
+  resolver and CommandContext.from_state).  It:
+    - coerces via _safe_float (so a JSON/parse stringized "1.74" becomes 1.74,
+      which matters because consumers do `round(resolution, 1)` and
+      `"%.1f" % resolution` -- both raise TypeError on a str), and
+    - range-guards 0.5 < res < 20 so a stray parse (0.0, a negative, or a wildly
+      out-of-range number) is rejected rather than propagated.
+
+  Returns a float in (0.5, 20.0) or None.  Note 0.0 returns None, matching the
+  falsy-skip behavior of the historical `a or b or c` resolver chains.
+  """
+  v = _safe_float(val)
+  if v is not None and _RESOLUTION_MIN < v < _RESOLUTION_MAX:
+    return v
+  return None
+
+
 def load_log_text(file_name, debug_log=None, out=sys.stdout):
   """
   Load log text from a file.
@@ -115,6 +162,17 @@ def validate_api_keys(provider, debug_log=None):
   elif provider == 'openai':
     if not os.getenv("OPENAI_API_KEY"):
       return "OPENAI_API_KEY environment variable not set."
+  elif provider == 'anthropic':
+    if not os.getenv("ANTHROPIC_API_KEY"):
+      return "ANTHROPIC_API_KEY environment variable not set."
+  elif provider == 'portkey':
+    # portkey fronts Azure OpenAI via the Portkey gateway; both the gateway
+    # key and base URL are required.  Reported here (clear message) rather
+    # than failing late at the API call.
+    missing = [n for n in ("PORTKEY_AZURE_API_KEY", "PORTKEY_BASE_URL")
+               if not os.getenv(n)]
+    if missing:
+      return "%s environment variable(s) not set." % ", ".join(missing)
 
   return None
 
@@ -146,6 +204,9 @@ def get_db_dir_for_provider(provider, db_dir=None, debug_log=None):
     'google': "./docs_db_google",
     'openai': "./docs_db_openai",
     'ollama': "./docs_db_ollama",
+    # portkey fronts Azure OpenAI; its embeddings DB is distinct from the
+    # direct-openai one (different deployment/keying), so give it its own dir.
+    'portkey': "./docs_db_portkey",
   }
 
   db_dir = defaults.get(provider, "./docs_db_ollama")
@@ -301,6 +362,11 @@ def create_log_info_object(existing_summary=None, existing_analysis=None, debug_
     next_move=None,
     history_record=None,
     debug_log=debug_log,
+    # Single-call path.  Both are read in run_ai_analysis.run() before
+    # they are written -- group_args raises on an unknown attribute, so
+    # they must be declared here or the first read fails.
+    analysis_payload=None,
+    program_identity=None,
   )
 
 # =============================================================================
@@ -330,7 +396,7 @@ def save_history_to_json(history_record, log_directory, job_id=None, debug_log=N
     json_path = os.path.join(log_directory, json_filename)
 
     import json
-    with open(json_path, 'w') as f:
+    with open(json_path, 'w', encoding='utf-8') as f:
       json.dump(history_record, f, indent=2)
 
     debug_log.append(f"Saved run history to: {json_path}")

@@ -1,7 +1,7 @@
 from __future__ import absolute_import,division, print_function
 from io import StringIO
 import time
-import os
+import os, sys
 
 from libtbx import Auto
 from libtbx.str_utils import make_header
@@ -14,6 +14,7 @@ from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints import qm_manager
 from mmtbx.geometry_restraints import mopac_manager
 from mmtbx.geometry_restraints import orca_manager
+from mmtbx.geometry_restraints import xtb_manager
 
 from mmtbx.model.restraints import get_restraints_from_model_via_grm
 
@@ -417,13 +418,19 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=N
   if write_steps: write_pdb_file(buffer_model, 'post_super_cell.pdb', None)
   validate_super_cell_cluster(buffer_model, qmr.selection)
   buffer_model.unset_restraints_manager()
-  buffer_model.log=null_out()
+  if not debug:
+    buffer_model.log=null_out()
+  else:
+    buffer_model.log=sys.stdout
   if write_steps: write_pdb_file(buffer_model, 'pre_add_terminii.pdb', None)
   buffer_model.process(make_restraints=True)
   add_additional_hydrogen_atoms_to_model(buffer_model,
                                          use_capping_hydrogens=qmr.capping_groups)
   buffer_model.unset_restraints_manager()
-  buffer_model.log=null_out()
+  if not debug:
+    buffer_model.log=null_out()
+  else:
+    buffer_model.log=sys.stdout
   if write_steps: write_pdb_file(buffer_model, 'post_add_terminii.pdb', None)
   buffer_model.process(make_restraints=True)
   ligand_atoms = ligand_model.get_atoms()
@@ -504,6 +511,9 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   elif program=='mopac':
     qmm = mopac_manager.mopac_manager
     default_solvent_model='EPS=78.4'
+  elif program=='xtb':
+    qmm = xtb_manager.xtb_manager
+    default_solvent_model='ALPB=ether'
   else:
     assert 0
   qmr = quantum_interface.populate_qmr_defaults(qmr)

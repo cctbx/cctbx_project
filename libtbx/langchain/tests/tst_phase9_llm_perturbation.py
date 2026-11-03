@@ -78,14 +78,14 @@ def make_xray_fixture():
     try:
         pdb = os.path.join(tmpdir, 'model.pdb')
         mtz = os.path.join(tmpdir, 'data.mtz')
-        with open(pdb, 'w') as f:
+        with open(pdb, 'w', encoding='utf-8') as f:
             for i in range(800):
                 f.write(
                     "ATOM  %5d  CA  ALA A%4d"
                     "       %7.3f  %7.3f  %7.3f"
                     "  1.00 20.00\n"
                     % (i+1, i+1, i*1.0, 0.0, 0.0))
-        with open(mtz, 'w') as f:
+        with open(mtz, 'w', encoding='utf-8') as f:
             f.write("MTZ_DUMMY\n" * 100)
 
         orig = ws._mtz_has_phase_columns
@@ -481,7 +481,7 @@ def run_all_tests():
     os.makedirs(FINDINGS_DIR, exist_ok=True)
     path = os.path.join(FINDINGS_DIR,
                         'phase_9_llm_perturbation.yaml')
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         f.write("# Phase 9: LLM Perturbation Findings\n")
         f.write("phase: 9\n")
         f.write("name: llm_perturbation\n")

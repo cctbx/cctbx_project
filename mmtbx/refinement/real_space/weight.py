@@ -59,7 +59,7 @@ of individual sites.
           rc = random.choice(range(len(result)))
           if rc not in random_chunks:
             random_chunks.append(rc)
-    self.msg_strings.append("random chunks:"%random_chunks)
+    self.msg_strings.append("random chunks: %s"%str(random_chunks))
     # setup refinery
     xrs_dc = xray_structure.deep_copy_scatterers()
     sel_all = flex.bool(xrs_dc.scatterers().size(), True)
@@ -81,19 +81,35 @@ of individual sites.
       else:
         sel = result[chunk]
         sel = flex.bool(xrs_dc.scatterers().size(), sel)
-      ro.refine(
-        selection        = sel,
-        rms_bonds_limit  = rms_bonds_limit,
-        rms_angles_limit = rms_angles_limit)
+      try:
+        ro.refine(
+          selection        = sel,
+          rms_bonds_limit  = rms_bonds_limit,
+          rms_angles_limit = rms_angles_limit)
+      except RuntimeError as e:
+        # A trial refinement of a chunk can blow up (e.g. with very strong
+        # Ramachandran or custom geometry restraints) so that bonded atoms end up
+        # implausibly far apart, tripping the max_reasonable_bond_distance check in
+        # the geometry restraints manager. This is a throwaway computation used only
+        # to estimate the optimal data/restraints weight, so skip this chunk and
+        # carry on instead of aborting the whole refinement. Intercept
+        # ONLY this specific blow-up; re-raise anything else.
+        if("max_reasonable_bond_distance" not in str(e)):
+          raise
+        self.msg_strings.append(
+          "chunk %s skipped: trial refinement blew up (%s)"%(
+            str(chunk), str(e).splitlines()[0]))
+        continue
       self.msg_strings.append("chunk %s optimal weight: %9.4f"%(
           str(chunk), ro.weight_optimal))
       if(ro.weight_optimal is not None):
         optimal_weights.append(ro.weight_optimal)
-    # select overall best weight
+    # select overall best weight: mean of the lower half of the estimates.
     sel = flex.sort_permutation(optimal_weights)
     optimal_weights = optimal_weights.select(sel)
+    n_lowest = max(1, optimal_weights.size()//2)
     self.weight = flex.mean_default(
-      optimal_weights[:optimal_weights.size()//2], default_weight)
+      optimal_weights[:n_lowest], default_weight)
     #mean = flex.mean(optimal_weights)
     #sel  = optimal_weights < mean*3
     #sel &= optimal_weights > mean/3

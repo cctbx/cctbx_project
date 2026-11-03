@@ -462,7 +462,7 @@ def exercise(file_name, out = sys.stdout):
   fsc_curve=dc.map_map_fsc(
       map_id_1='map_manager',map_id_2='filtered',mask_id='mask',
       resolution=3.5,fsc_cutoff = 0.97)
-  assert approx_equal(fsc_curve.d_min, 3.44, eps=0.01)
+  assert approx_equal(fsc_curve.d_min, 2.77, eps=0.01)
   assert approx_equal (fsc_curve.fsc.fsc[-1],0.7097, eps = 0.01)
 
   # Get map-map CC

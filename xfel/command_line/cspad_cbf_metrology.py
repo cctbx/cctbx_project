@@ -4,7 +4,7 @@
 #
 from __future__ import absolute_import, division, print_function
 from six.moves import range
-import os, sys, random
+import os, sys
 from iotbx.phil import parse
 from libtbx import easy_run
 from libtbx.utils import Sorry

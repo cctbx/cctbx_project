@@ -557,6 +557,24 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
         4.38 -     5.48: 4
   Bond angle restraints: 130''',
   ]
+  identical_portions = [
+  '''\
+  Histogram of bond lengths:
+        1.23 -     1.31: 5
+        1.31 -     1.39: 25
+        1.39 -     1.46: 27
+        1.46 -     1.54: 25
+        1.54 -     1.61: 5
+  Bond restraints: 87''',
+  '''\
+  Histogram of bond angle deviations from ideal:
+        0.01 -     1.23: 77
+        1.23 -     2.45: 33
+        2.45 -     3.68: 9
+        3.68 -     4.90: 7
+        4.90 -     6.13: 4
+  Bond angle restraints: 130''',
+  ]
   with open("tst_cctbx_geometry_restraints_2_na.pdb", "w") as f:
     f.write(pdb_str_1dpl_cutted)
   out1 = StringIO()

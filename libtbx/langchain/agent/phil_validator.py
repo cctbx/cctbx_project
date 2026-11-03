@@ -99,7 +99,7 @@ def _load_strategy_flags(program):
       _dir, "..", "knowledge", "programs.yaml")
     _yaml_path = os.path.normpath(_yaml_path)
     if os.path.isfile(_yaml_path):
-      with open(_yaml_path) as f:
+      with open(_yaml_path, encoding='utf-8') as f:
         data = yaml.safe_load(f)
       pdef = data.get(program)
       if pdef and isinstance(pdef, dict):
@@ -151,7 +151,7 @@ def _load_allowed_prefixes(program):
       _dir, "..", "knowledge", "programs.yaml")
     _yaml_path = os.path.normpath(_yaml_path)
     if os.path.isfile(_yaml_path):
-      with open(_yaml_path) as f:
+      with open(_yaml_path, encoding='utf-8') as f:
         data = yaml.safe_load(f)
       pdef = data.get(program)
       if pdef and isinstance(pdef, dict):

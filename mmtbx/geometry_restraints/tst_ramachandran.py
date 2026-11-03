@@ -448,48 +448,64 @@ phi-psi angles formed by             residual
     pdb=" CA  ALA     6 "
     pdb=" C   ALA     6 "
     pdb=" N   ALA     7 "
+    phi= -70.07  target= -71.00  delta= -0.93
+    psi= -31.93  target= -31.00  delta=  0.93
 phi-psi angles formed by             residual
     pdb=" C   ALA     6 "            2.86e-02
     pdb=" N   ALA     7 "
     pdb=" CA  ALA     7 "
     pdb=" C   ALA     7 "
     pdb=" N   ALA     8 "
+    phi= -77.71  target= -77.00  delta=  0.71
+    psi= -27.96  target= -27.00  delta=  0.96
 phi-psi angles formed by             residual
     pdb=" C   ALA     2 "            2.54e-02
     pdb=" N   ALA     3 "
     pdb=" CA  ALA     3 "
     pdb=" C   ALA     3 "
     pdb=" N   ALA     4 "
+    phi= -67.72  target= -67.00  delta=  0.72
+    psi= -39.87  target= -39.00  delta=  0.87
 phi-psi angles formed by             residual
     pdb=" C   ALA     8 "            2.00e-02
     pdb=" N   ALA     9 "
     pdb=" CA  ALA     9 "
     pdb=" C   ALA     9 "
     pdb=" N   ALA    10 "
+    phi= -74.00  target= -75.00  delta= -1.00
+    psi= -30.91  target= -31.00  delta= -0.09
 phi-psi angles formed by             residual
     pdb=" C   ALA     1 "            1.21e-02
     pdb=" N   ALA     2 "
     pdb=" CA  ALA     2 "
     pdb=" C   ALA     2 "
     pdb=" N   ALA     3 "
+    phi= -79.70  target= -79.00  delta=  0.70
+    psi= -35.34  target= -35.00  delta=  0.34
 phi-psi angles formed by             residual
     pdb=" C   ALA     4 "            1.00e-02
     pdb=" N   ALA     5 "
     pdb=" CA  ALA     5 "
     pdb=" C   ALA     5 "
     pdb=" N   ALA     6 "
+    phi= -68.95  target= -69.00  delta= -0.05
+    psi= -37.71  target= -37.00  delta=  0.71
 phi-psi angles formed by             residual
     pdb=" C   ALA     3 "            9.28e-03
     pdb=" N   ALA     4 "
     pdb=" CA  ALA     4 "
     pdb=" C   ALA     4 "
     pdb=" N   ALA     5 "
+    phi= -67.56  target= -67.00  delta=  0.56
+    psi= -38.61  target= -39.00  delta= -0.39
 phi-psi angles formed by             residual
     pdb=" C   ALA     7 "            3.90e-03
     pdb=" N   ALA     8 "
     pdb=" CA  ALA     8 "
     pdb=" C   ALA     8 "
     pdb=" N   ALA     9 "
+    phi= -81.08  target= -81.00  delta=  0.08
+    psi= -33.43  target= -33.00  delta=  0.43
 
 Ramachandran plot restraints (Emsley): 0
 Sorted by residual:

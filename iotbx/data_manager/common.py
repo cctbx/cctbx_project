@@ -1,7 +1,6 @@
 '''
 Extra functions for DataManager
 '''
-from __future__ import absolute_import, division, print_function
 from iotbx.data_manager.map_coefficients import MapCoefficientsDataManager
 from iotbx.data_manager.real_map import RealMapDataManager
 from iotbx.map_model_manager import map_model_manager

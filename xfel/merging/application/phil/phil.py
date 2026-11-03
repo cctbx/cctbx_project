@@ -133,7 +133,7 @@ filter
   .help = or to modify the entire experiment by a reindexing operator
   .help = refer to the select section for filtering of individual reflections
   {
-  algorithm = n_obs resolution unit_cell energy bootstrap
+  algorithm = n_obs resolution unit_cell energy bootstrap experiment_prefix
     .type = choice(multi=True)
   n_obs {
     min = None
@@ -236,6 +236,11 @@ filter
       .type = int
       .help = seed for the bootstrap filtering algorithm (random selection with replacement)
   }
+  experiment_prefix {
+    prefix = None
+      .type = str
+      .help = Only accept experiments with this string as the prefix for their identifier
+  }
 }
 """
 
@@ -316,7 +321,16 @@ modify
       }
     }
   reindex_to_abc
-    .help = Apply a reindexing operator
+    .help = Apply a reindexing operator, with mandatory change_of_basis_op \
+            and space_group. Supports the case of reindexing with space group \
+            change, e.g. photosystem I with change_of_basis_op=a,-c-a,b and \
+            monoclinic input P21 changing to space_group=P6. Merging is in \
+            two steps with dispatch.step_list=input,balance, \
+            model_scaling[old model],modify,filter,modify_reindex_to_abc \
+            followed by step_list=input,balance,model_scaling[new model], \
+            modify_cosym,scale,postrefine,statistics_unitcell,statistics_beam,\
+            model_statistics,statistics_resolution,group,errors_merge, \
+            statistics_intensity,merge,statistics_intensity_cxi
     {
       include scope dials.command_line.reindex.phil_scope
     }

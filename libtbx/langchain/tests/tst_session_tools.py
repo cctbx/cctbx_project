@@ -55,7 +55,7 @@ def create_test_session(session_dir):
         "experiment_type": "xray"
     }
 
-    with open(session_file, 'w') as f:
+    with open(session_file, 'w', encoding='utf-8') as f:
         json.dump(session_data, f, indent=2)
 
     return session_file, session_data

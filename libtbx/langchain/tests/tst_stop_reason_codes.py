@@ -130,7 +130,7 @@ def test_parse_assessment_file_overrides_default_empty():
 _TA_PATH = os.path.join(_ROOT, "agent", "thinking_agent.py")
 
 def _ta_src():
-    with open(_TA_PATH) as f:
+    with open(_TA_PATH, encoding='utf-8') as f:
         return f.read()
 
 
@@ -171,7 +171,7 @@ _GN_PATH = os.path.join(_ROOT, "agent", "graph_nodes.py")
 
 def _gn_build_src():
     """Extract just the _build_with_new_builder function text."""
-    with open(_GN_PATH) as f:
+    with open(_GN_PATH, encoding='utf-8') as f:
         content = f.read()
     start = content.find("def _build_with_new_builder(")
     # next top-level def

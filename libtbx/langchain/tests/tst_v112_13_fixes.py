@@ -29,17 +29,17 @@ KNOWLEDGE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "knowle
 
 
 def _load_categories():
-    with open(os.path.join(KNOWLEDGE_DIR, "file_categories.yaml")) as f:
+    with open(os.path.join(KNOWLEDGE_DIR, "file_categories.yaml"), encoding='utf-8') as f:
         return yaml.safe_load(f)
 
 
 def _load_programs():
-    with open(os.path.join(KNOWLEDGE_DIR, "programs.yaml")) as f:
+    with open(os.path.join(KNOWLEDGE_DIR, "programs.yaml"), encoding='utf-8') as f:
         return yaml.safe_load(f)
 
 
 def _load_workflows():
-    with open(os.path.join(KNOWLEDGE_DIR, "workflows.yaml")) as f:
+    with open(os.path.join(KNOWLEDGE_DIR, "workflows.yaml"), encoding='utf-8') as f:
         return yaml.safe_load(f)
 
 
@@ -96,13 +96,13 @@ def test_perceive_no_input_dir_scanning():
 
     # User-supplied file
     data_mtz = os.path.join(user_dir, "data.mtz")
-    with open(data_mtz, "w") as f:
+    with open(data_mtz, "w", encoding='utf-8') as f:
       f.write("test")
 
     # Extra files in the same directory — NOT supplied by user
     for extra in ["mask.ccp4", "old_model.pdb",
                   "refine_001.mtz", "refine_001_data.mtz"]:
-      with open(os.path.join(user_dir, extra), "w") as f:
+      with open(os.path.join(user_dir, extra), "w", encoding='utf-8') as f:
         f.write("test")
 
     # Simulate what perceive does: start with available_files,

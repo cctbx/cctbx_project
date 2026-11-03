@@ -153,6 +153,35 @@ _browser_path = None
 _browser_name = None
 
 
+def _encode_path_for_url(url):
+    """Percent-encode a filesystem path for use in a file:// URL.
+
+    Returns `url` unchanged if it already carries a scheme, so callers
+    that pass a real URL are unaffected.  An "#anchor" fragment is
+    preserved, since phenix.doc appends one.
+    """
+    if not url:
+        return url
+    if "://" in url:
+        return url
+
+    try:
+        from urllib.parse import quote
+    except ImportError:                      # pragma: no cover  (py2)
+        from urllib import quote
+
+    anchor = ""
+    if "#" in url:
+        url, _, anchor = url.partition("#")
+        anchor = "#" + anchor
+
+    # Keep path separators and the drive colon intact; encode everything
+    # else, including non-ASCII and spaces.  The backslash MUST be safe:
+    # the Windows branch passes the result to `explorer`, and encoding
+    # C:\Users\... to C:%5CUsers%5C... makes it unopenable there.
+    return quote(url, safe="/\\:") + anchor
+
+
 def load_url(url, reset_ld_library_path=True):
     """Open a URL in the system's default browser.
 
@@ -166,6 +195,20 @@ def load_url(url, reset_ld_library_path=True):
         RuntimeError: If no suitable browser can be found on Linux.
     """
     global _browser_path, _browser_name
+
+    # Percent-encode the path before it becomes a file:// URL.
+    #
+    # Every branch below interpolates `url` straight into "file://%s".
+    # A path containing non-ASCII characters therefore produces a URL
+    # macOS `open` cannot resolve, and the run reports
+    #     0:111: execution error: File some object wasn't found. (-43)
+    # while the file exists and is readable.  Observed on a real job
+    # directory containing Thai characters.
+    #
+    # phenix.doc passes URLs carrying an "#anchor" fragment, so the
+    # fragment is split off, the path encoded, and the fragment restored.
+    # Anything that already looks like a URL is left untouched.
+    url = _encode_path_for_url(url)
 
     # Try to import easy_run from libtbx
     try:

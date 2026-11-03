@@ -49,19 +49,22 @@ class browser_frame(wx.Frame):
 
     # create keyboard shortcuts for zoom functions in toolbar
     if (wx.Platform == '__WXMAC__'):
-      zoomInId = wx.NewId()
-      zoomOutId = wx.NewId()
-      zoomDefaultId = wx.NewId()
-      self.Bind(wx.EVT_MENU, self.OnZoomIn, id=zoomInId)
-      self.Bind(wx.EVT_MENU, self.OnZoomOut, id=zoomOutId)
-      self.Bind(wx.EVT_MENU, self.OnZoomDefault, id=zoomDefaultId)
+      # keep the id refs alive on self: wx.NewIdRef() releases its reserved id
+      # when the last reference is dropped, and the AcceleratorTable/Bind retain
+      # only the integer, so a local would unreserve the id when __init__ returns
+      self.zoomInId = wx.NewIdRef()
+      self.zoomOutId = wx.NewIdRef()
+      self.zoomDefaultId = wx.NewIdRef()
+      self.Bind(wx.EVT_MENU, self.OnZoomIn, id=self.zoomInId)
+      self.Bind(wx.EVT_MENU, self.OnZoomOut, id=self.zoomOutId)
+      self.Bind(wx.EVT_MENU, self.OnZoomDefault, id=self.zoomDefaultId)
       self.accelerator_table = wx.AcceleratorTable(
-        [ (wx.ACCEL_CTRL, ord('='), zoomInId),
-          (wx.ACCEL_CTRL, wx.WXK_NUMPAD_ADD, zoomInId),
-          (wx.ACCEL_CTRL, ord('-'), zoomOutId),
-          (wx.ACCEL_CTRL, wx.WXK_NUMPAD_SUBTRACT, zoomOutId),
-          (wx.ACCEL_CTRL, ord('0'), zoomDefaultId),
-          (wx.ACCEL_CTRL, wx.WXK_NUMPAD0, zoomDefaultId) ])
+        [ (wx.ACCEL_CTRL, ord('='), self.zoomInId),
+          (wx.ACCEL_CTRL, wx.WXK_NUMPAD_ADD, self.zoomInId),
+          (wx.ACCEL_CTRL, ord('-'), self.zoomOutId),
+          (wx.ACCEL_CTRL, wx.WXK_NUMPAD_SUBTRACT, self.zoomOutId),
+          (wx.ACCEL_CTRL, ord('0'), self.zoomDefaultId),
+          (wx.ACCEL_CTRL, wx.WXK_NUMPAD0, self.zoomDefaultId) ])
       self.SetAcceleratorTable(self.accelerator_table)
       self.zoom_counter = 0
 
@@ -82,7 +85,7 @@ class browser_frame(wx.Frame):
       commands.append(("actions", "reload", "OnReload", "Reload"))
     for (icon_class, icon_name, fname, label) in commands :
       bmp = wxtbx.bitmaps.fetch_icon_bitmap(icon_class, icon_name, 32)
-      tool_button = self.toolbar.AddLabelTool(-1, label, bmp,
+      tool_button = self.toolbar.AddTool(-1, label, bmp,
         shortHelp=label, kind=wx.ITEM_NORMAL)
       self.Bind(wx.EVT_MENU, getattr(self, fname), tool_button)
     self.toolbar.AddSeparator()
@@ -96,14 +99,14 @@ class browser_frame(wx.Frame):
       ]
       for (icon_class, icon_name, label, shortHelp, fname) in commands:
         bmp = wxtbx.bitmaps.fetch_icon_bitmap(icon_class, icon_name, 128)
-        tool_button = self.toolbar.AddLabelTool(
+        tool_button = self.toolbar.AddTool(
           -1, label, bmp, shortHelp=shortHelp, kind=wx.ITEM_NORMAL)
         self.Bind(wx.EVT_MENU, getattr(self, fname), tool_button)
       self.toolbar.AddSeparator()
 
     if (not self._is_default_viewer):
       phenix_bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("phenix.refine")
-      phenix_btn = self.toolbar.AddLabelTool(-1, "PHENIX homepage", phenix_bmp,
+      phenix_btn = self.toolbar.AddTool(-1, "PHENIX homepage", phenix_bmp,
         shortHelp="PHENIX homepage", kind=wx.ITEM_NORMAL)
       self.Bind(wx.EVT_MENU, self.OnPhenixWeb, phenix_btn)
     self.toolbar.Realize()
@@ -203,12 +206,18 @@ class HtmlPanel(wx.html.HtmlWindow):
     base_url = fields[0]
     self.LoadPage(base_url)
     if (len(fields) > 1):
-      anchor = fields[1]
-      if (self.HasAnchor(anchor)):
-        # XXX calling self.ScrollToAnchor() directly doesn't work!
-        wx.CallAfter(self.ScrollToAnchor, anchor)
-      else :
-        print("Missing anchor %s" % anchor)
+      # XXX calling self.ScrollToAnchor() directly doesn't work!
+      wx.CallAfter(self._scroll_to_anchor, fields[1])
+
+  def _scroll_to_anchor(self, anchor):
+    # wx.html.HtmlWindow.HasAnchor() existed only in wxPython Classic, and
+    # the HtmlCell.Find() call it wrapped crashes under Phoenix, so let
+    # ScrollToAnchor() do the existence check, muting its warning popup
+    no_log = wx.LogNull()
+    found = self.ScrollToAnchor(anchor)
+    del no_log
+    if (not found):
+      print("Missing anchor %s" % anchor)
 
 if __name__ == "__main__" :
   app = wx.App(0)

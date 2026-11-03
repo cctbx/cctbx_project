@@ -118,18 +118,18 @@ class analyze(object):
           if (last_resseq is not None):
             if (residue.resseq > (last_resseq + 1)):
               gap_size = residue.resseq - last_resseq
-              chain_vals = numpy.append(chain_vals,[numpy.NaN]* gap_size)
-              is_altconf = numpy.append(is_altconf,[numpy.NaN] * gap_size)
-              is_partocc = numpy.append(is_partocc,[numpy.NaN] * gap_size)
+              chain_vals = numpy.append(chain_vals,[numpy.nan]* gap_size)
+              is_altconf = numpy.append(is_altconf,[numpy.nan] * gap_size)
+              is_partocc = numpy.append(is_partocc,[numpy.nan] * gap_size)
               labels.extend([None] * gap_size)
           if (residue.has_altconf):
             is_altconf = numpy.append(is_altconf, altconf_val)
           else :
-            is_altconf = numpy.append(is_altconf, numpy.NaN)
+            is_altconf = numpy.append(is_altconf, numpy.nan)
           if (residue.has_partocc):
             is_partocc = numpy.append(is_partocc, altconf_val)
           else :
-            is_partocc = numpy.append(is_partocc, numpy.NaN)
+            is_partocc = numpy.append(is_partocc, numpy.nan)
           chain_vals = numpy.append(chain_vals,residue.avg_b)
           labels.append(("%d%s" % (residue.resseq, residue.icode)).strip())
           last_resseq = residue.resseq
@@ -260,10 +260,10 @@ class b_plot_panel(plots.plot_container):
     p.set_ylim(self._ymin, self._ymax)
     p.set_xlim(0, len(plot[4]))
     plot_labels = ["B(iso)"]
-    if (set(is_alt) != set([numpy.NaN])):
+    if (set(is_alt) != set([numpy.nan])):
       p.plot(x, is_alt, "d", color='m')
       plot_labels.append("Alt. conf.")
-    if (set(is_partial) != set([numpy.NaN])):
+    if (set(is_partial) != set([numpy.nan])):
       p.plot(x, is_partial, "^", color='c')
       plot_labels.append("Partial occupancy")
     self.figure.legend(p.collections + p.lines, plot_labels, prop=self.get_font("legend"))

@@ -21,6 +21,55 @@ import libtbx.load_env
 from six.moves import zip
 boost_version = libtbx.env.boost_version
 
+def exercise_split_lines_unicode():
+  samples = [
+    "",
+    "abc",
+    "abc\n",
+    "alpha = α\nlast = final_value\n",
+    "name = résumé\ntrailing_keyword = ok\n",
+    "日本語\nlast line\n",
+    "emoji = 😀\nlast = complete\n",
+    "α",
+    "α\n",
+    "aαb\ntrailing\n",
+    "one\r\ntwo\r\n",
+    "one\rtwo\r",
+  ]
+
+  for count_lines_first in (False, True):
+    for s in samples:
+      result = list(flex.split_lines(
+        s,
+        keep_ends=True,
+        count_lines_first=count_lines_first))
+      assert "".join(result) == s, (
+        repr(s),
+        result,
+        count_lines_first)
+
+  assert list(flex.split_lines("α\nβ\n")) == ["α", "β"]
+  assert list(flex.split_lines("α\r\nβ\rγ\n")) == ["α", "β", "γ"]
+
+def exercise_from_byte_str_unicode():
+  # flex.*_from_byte_str re-encodes a unicode argument as UTF-8, so the result
+  # must equal passing the UTF-8 bytes directly. Regression for a code-point
+  # vs byte-count mismatch in the unicode branch of shared_from_byte_str:
+  # for non-ASCII input the code-point count is smaller than the byte buffer,
+  # which truncated the array. uint8 has element size 1, so any byte length
+  # is valid.
+  for u in ["", "abc", "aα本", "résumé", "α😀z"]:
+    utf8 = u.encode("utf-8")
+    from_bytes = list(flex.uint8_from_byte_str(utf8))
+    from_str = list(flex.uint8_from_byte_str(u))
+    assert from_str == from_bytes, (repr(u), from_str, from_bytes)
+    assert len(from_str) == len(utf8), (repr(u), len(from_str), len(utf8))
+  # element size > 1: "αβγδ" is 8 UTF-8 bytes, i.e. exactly one double.
+  u = "αβγδ"
+  assert len(u.encode("utf-8")) == 8
+  assert (list(flex.double_from_byte_str(u))
+          == list(flex.double_from_byte_str(u.encode("utf-8"))))
+
 def exercise_flex_grid():
   g = flex.grid()
   assert g.nd() == 0
@@ -334,6 +383,36 @@ def exercise_numbers_from_string():
   assert tuple(f.as_string("%+.3e")) in [
     ('+1.000e-001', '-2.340e-005'),
     ('+1.000e-01',  '-2.340e-05')]
+  # the default prints six significant digits, as a stream does; the format
+  # string picks the digits
+  f = flex.double([1/3., 2/3., 1e20, 1.5e-7, 1234567.0, 0.1 + 0.2, 100000.0,
+                   1000000.0, -0.0])
+  assert tuple(f.as_string()) == (
+    '0.333333', '0.666667', '1e+20', '1.5e-07', '1.23457e+06', '0.3', '100000',
+    '1e+06', '-0')
+  assert tuple(f.as_string("%.8g")) == (
+    '0.33333333', '0.66666667', '1e+20', '1.5e-07', '1234567', '0.3', '100000',
+    '1000000', '-0')
+  assert tuple(f.as_string("%.3f")[:2]) == ('0.333', '0.667')
+  assert tuple(f.as_string("%10.2e")[:2]) == ('  3.33e-01', '  6.67e-01')
+  assert tuple(f.as_string("%-8.1f|")[:2]) == ('0.3     |', '0.7     |')
+  f = flex.double([float("nan"), float("inf"), -float("inf")])
+  assert tuple(f.as_string()) == ('nan', 'inf', '-inf')
+  assert tuple(f.as_string("%.8g")) == ('nan', 'inf', '-inf')
+  # a result longer than any fixed buffer
+  s = flex.double([1e300]).as_string("%.0f")
+  assert len(s[0]) == 301 and s[0].startswith("1000000000000000")
+  # formats that are more than one printf directive
+  assert tuple(flex.double([1.5, -2]).as_string("(%g)")) == ('(1.5)', '(-2)')
+  assert tuple(flex.double([1.5]).as_string("%10d")) == ('       1.5',)
+  i = flex.int([255, -1, 7])
+  assert tuple(i.as_string("%5d")) == ('  255', '   -1', '    7')
+  assert tuple(i.as_string("%-4i|")) == ('255 |', '-1  |', '7   |')
+  assert tuple(i.as_string("%x")) == ('ff', 'ffffffff', '7')
+  assert tuple(flex.int64([2**62, -1, -2**63]).as_string()) == (
+    '4611686018427387904', '-1', '-9223372036854775808')
+  assert tuple(flex.int16([32767, -32768]).as_string()) == ('32767', '-32768')
+  assert tuple(flex.int8([65, -1, 7]).as_string()) == ('65', '-1', '7')
   f = flex.double(flex.std_string([".34+05", "+6-2", "-7+4(1)"]))
   assert approx_equal(f, [34000.0, 0.06, -70000.0])
   #
@@ -3742,6 +3821,8 @@ def exercise_numpy_conversions():
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_split_lines_unicode()
+    exercise_from_byte_str_unicode()
     exercise_flex_sum_axis()
     exercise_nd_slicing()
     exercise_set_nd_slicing()

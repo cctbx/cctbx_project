@@ -8,19 +8,20 @@ from libtbx.utils import Sorry
 from libtbx.str_utils import format_value
 import iotbx.pdb
 import cctbx.crystal
+from cctbx import adptbx
 from iotbx.pdb import hierarchy
-from iotbx.pdb import hy36encode
+from iotbx.pdb import hy36encode, hy36decode
 from iotbx.pdb import cryst1_interpretation
 from iotbx.pdb.experiment_type import experiment_type
 from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
 import iotbx.cif
-from iotbx.cif.builders import crystal_symmetry_builder
+from iotbx.cif.builders import crystal_symmetry_builder, CifBuilderError
 import iotbx.mtrix_biomt
 from six import string_types
 from six.moves import range, zip
 
-class pdb_hierarchy_builder(crystal_symmetry_builder):
+class _pdb_hierarchy_builder_python(crystal_symmetry_builder):
 
   # The recommended translation for ATOM records can be found at:
   #   http://mmcif.rcsb.org/dictionaries/pdb-correspondence/pdb2mmcif-2010.html#ATOM
@@ -63,20 +64,31 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0, error_message
     assert type_symbol is not None
 
-    atom_site_fp = cif_block.get('_atom_site.phenix_scat_dispersion_real')
-    atom_site_fdp = cif_block.get('_atom_site.phenix_scat_dispersion_imag')
+    atom_site_fp = self._wrap_loop_if_needed(
+      cif_block, '_atom_site.phenix_scat_dispersion_real')
+    atom_site_fdp = self._wrap_loop_if_needed(
+      cif_block, '_atom_site.phenix_scat_dispersion_imag')
 
-    pdb_ins_code = cif_block.get("_atom_site.pdbx_PDB_ins_code") # insertion code
-    model_ids = cif_block.get("_atom_site.pdbx_PDB_model_num")
-    atom_site_id = cif_block.get("_atom_site.id")
+    pdb_ins_code = self._wrap_loop_if_needed(
+      cif_block, "_atom_site.pdbx_PDB_ins_code") # insertion code
+    model_ids = self._wrap_loop_if_needed(
+      cif_block, "_atom_site.pdbx_PDB_model_num")
+    atom_site_id = self._wrap_loop_if_needed(cif_block, "_atom_site.id")
     # only permitted values are ATOM or HETATM
-    group_PDB = cif_block.get("_atom_site.group_PDB")
+    group_PDB = self._wrap_loop_if_needed(cif_block, "_atom_site.group_PDB")
     # TODO: read esds
-    B_iso_or_equiv = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.B_iso_or_equiv"))
+    # Integrative (IHM) models deposited in the PDB give occupancy and
+    # B_iso_or_equiv as the mmCIF null values "." or "?" on every atom.
+    # Both default to 0.0, same as blank columns in the PDB-format reader.
+    B_iso_or_equiv = self._flex_double_with_null_default(
+      self._wrap_loop_if_needed(cif_block, "_atom_site.B_iso_or_equiv"),
+      default=0.0)
     cart_x = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.Cartn_x"))
     cart_y = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.Cartn_y"))
     cart_z = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.Cartn_z"))
-    occu =   flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.occupancy"))
+    occu = self._flex_double_with_null_default(
+      self._wrap_loop_if_needed(cif_block, "_atom_site.occupancy"),
+      default=0.0)
     formal_charge = self._wrap_loop_if_needed(cif_block, "_atom_site.pdbx_formal_charge")
     resolution = self._wrap_loop_if_needed(cif_block, "_atom_site.phenix_resolution")
     # anisotropic b-factors
@@ -95,28 +107,39 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
                 for ij in ("11", "22", "33", "12", "13", "23")]
         assert b_ij.count(None) in (0, 6)
         if b_ij.count(None) == 0:
-          adps = adptbx.b_as_u(b_ij)
+          adps = b_ij
         assert not (u_ij.count(None) and b_ij.count(None)) # illegal for both to be present
       if adps is not None:
         try:
           adps = [flex.double(adp) for adp in adps]
         except ValueError as e:
           raise CifBuilderError("Error interpreting ADPs: " + str(e))
+        if u_ij.count(None) == 6: # B[i][j] tensors: scaled to U
+          adps = [adp * adptbx.b_as_u(1.0) for adp in adps]
         adps = flex.sym_mat3_double(*adps)
     py_adps = {}
     if anisotrop_id is not None and adps is not None:
       for an_id, adp in zip(list(anisotrop_id), list(adps)):
         py_adps[an_id] = adp
+    if atom_site_id is None and len(py_adps) > 0 and atom_labels.size() > 0:
+      raise CifBuilderError(
+        "_atom_site_anisotrop present but _atom_site.id missing")
     current_model_id = None
     current_label_asym_id = None
     current_auth_asym_id = None
     current_residue_id = None
-    current_ins_code = None
+    if pdb_ins_code is None:
+      current_ins_code = " " # no pdbx_PDB_ins_code column: blank, as for "?"
+    else:
+      current_ins_code = None
 
     for i_atom in range(atom_labels.size()):
       # model(s)
       last_model_id = current_model_id
-      current_model_id = model_ids[i_atom]
+      if model_ids is None:
+        current_model_id = "" # no pdbx_PDB_model_num column: one model, id ""
+      else:
+        current_model_id = model_ids[i_atom]
       assert current_model_id is not None
       if current_model_id != last_model_id:
         model = hierarchy.model(id=current_model_id)
@@ -154,12 +177,27 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       if (current_residue_id != last_residue_id
           or current_ins_code != last_ins_code
           or current_auth_asym_id != last_auth_asym_id
-          or current_model_id != last_model_id):
+          or current_model_id != last_model_id
+          or is_first_in_chain is None): # a new chain has no residue group yet
         try:
           resseq = hy36encode(width=4, value=int(current_residue_id))
-        except ValueError as e:
+        except (ValueError, OverflowError):
           resseq = current_residue_id
-          assert len(resseq)==4
+          where = "_atom_site.auth_seq_id (or label_seq_id) row %d" % (i_atom+1)
+          try:
+            int(resseq)
+          except ValueError:
+            pass
+          else:
+            raise CifBuilderError("%s: residue number does not fit the "
+              "four-character resseq (-999 to 2436111): %r" % (where, resseq))
+          # a four-character hybrid-36 resseq, as cctbx wrote until June 2023
+          try:
+            if len(resseq) != 4 or " " in resseq: raise ValueError
+            hy36decode(width=4, s=resseq)
+          except ValueError:
+            raise CifBuilderError("%s: not an integer nor a four-character "
+              "hybrid-36 resseq: %r" % (where, resseq))
         residue_group = hierarchy.residue_group(
           resseq=resseq,
           icode=current_ins_code)
@@ -198,8 +236,12 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       atom.set_occ(occu[i_atom])
       # hy36encode should go once the pdb.hierarchy has been
       # modified to no longer store fixed-width strings
-      atom.set_serial(
-        hy36encode(width=5, value=int(atom_site_id[i_atom])))
+      if atom_site_id is None:
+        # no _atom_site.id: the row order
+        atom.set_serial(hy36encode(width=5, value=i_atom+1))
+      else:
+        atom.set_serial(
+          hy36encode(width=5, value=int(atom_site_id[i_atom])))
       # some code relies on an empty segid being 4 spaces
       if auth_segid:
         atom.set_segid(auth_segid[i_atom][:4]+(4-len(auth_segid[i_atom]))*" ")
@@ -233,8 +275,12 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         fdp = atom_site_fdp[i_atom]
         if fdp not in ("?", "."):
           atom.set_fdp(new_fdp=float(fdp))
-      if anisotrop_id is not None and adps is not None:
-        py_u_ij = py_adps.get(atom.serial.strip(), None)
+      if py_adps:
+        py_u_ij = py_adps.get(atom_site_id[i_atom], None)
+        if py_u_ij is None:
+          # mmCIF written by cctbx from February 2013 to January 2015 has
+          # the hybrid-36 serial as the anisotrop id
+          py_u_ij = py_adps.get(atom.serial.strip(), None)
         if py_u_ij is not None:
           atom.set_uij(py_u_ij)
     if len(self.hierarchy.models()) == 1:
@@ -248,6 +294,196 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     if isinstance(data, string_types):
       data = flex.std_string([data])
     return data
+
+  def _flex_double_with_null_default(self, data, default):
+    """
+    Convert a numeric _atom_site column to flex.double, replacing the mmCIF
+    null values "." (not applicable) and "?" (unknown) with default.
+    """
+    null_sel = (data == ".") | (data == "?")
+    if null_sel.count(True) > 0:
+      data = data.deep_copy()
+      data.set_selected(null_sel, str(default))
+    return flex.double(data)
+
+
+class pdb_hierarchy_builder(crystal_symmetry_builder):
+  """
+  Crystal symmetry and pdb hierarchy of an mmCIF model block.
+
+  The hierarchy comes from hierarchy_from_atom_site(), which builds it in
+  C++. _pdb_hierarchy_builder_python above is the per-atom Python builder
+  it replaced, kept as the reference for tst_mmcif_hierarchy_parity.py and
+  tst_mmcif_hierarchy_cpp.py (the two differences are listed in
+  iotbx/pdb/mmcif_hierarchy.h). Retirement: remove it after the first Phenix
+  release that ships the C++ builder if no parity failure has been reported;
+  the parity test then becomes a fixture regression test.
+
+  Parameters
+  ----------
+  cif_block : iotbx.cif.model.block
+    A data block with an _atom_site loop.
+
+  Attributes
+  ----------
+  crystal_symmetry : cctbx.crystal.symmetry
+    From crystal_symmetry_builder.
+  hierarchy : iotbx.pdb.hierarchy.root
+    The hierarchy, unsorted, in the order of the rows.
+  """
+
+  def __init__(self, cif_block):
+    crystal_symmetry_builder.__init__(self, cif_block)
+    self.hierarchy = hierarchy_from_atom_site(cif_block)
+
+
+def hierarchy_from_atom_site(cif_block):
+  """
+  Build the hierarchy of the _atom_site loop of a model mmCIF block: Python
+  resolves the columns (atom_site_columns_from_block), C++ builds the
+  hierarchy (iotbx.pdb.build_mmcif_hierarchy, iotbx/pdb/mmcif_hierarchy.cpp).
+
+  Parameters
+  ----------
+  cif_block : iotbx.cif.model.block
+    A data block with an _atom_site loop.
+
+  Returns
+  -------
+  iotbx.pdb.hierarchy.root
+    The hierarchy, unsorted, in the order of the rows.
+
+  Raises
+  ------
+  iotbx.cif.builders.CifBuilderError
+    A missing type_symbol, coordinate, B or occupancy column, or a cell the
+    builder rejects, named by tag, row and value.
+  AssertionError
+    A missing label column, as from the Python builder (iotbx.pdb.utils
+    matches the message).
+
+  Notes
+  -----
+  The C++ build runs with the GIL released (tst_mmcif_hierarchy_gil.py);
+  the columns are not shared with any other thread.
+  """
+  from iotbx.pdb import build_mmcif_hierarchy
+  columns = atom_site_columns_from_block(cif_block)
+  try:
+    return build_mmcif_hierarchy(columns)
+  except ValueError as e:
+    # std::invalid_argument from the C++ builder: a bad cell, named by tag,
+    # row and value
+    raise CifBuilderError(str(e))
+
+
+def atom_site_columns_from_block(cif_block):
+  """
+  Resolve the _atom_site (and _atom_site_anisotrop) columns of a model mmCIF
+  block for build_mmcif_hierarchy: the same tags and fallbacks as the Python
+  builder and its label-column assertion; a missing type_symbol or numeric
+  column is a CifBuilderError naming the tag; the null auth_asym_id check
+  is the C++ builder's.
+
+  Parameters
+  ----------
+  cif_block : iotbx.cif.model.block
+    A data block with an _atom_site loop; a single-item _atom_site is read
+    as a one-row loop.
+
+  Returns
+  -------
+  iotbx.pdb.atom_site_columns
+    The resolved columns as flex.std_string; an optional column is empty
+    when absent, the anisotrop columns when there is no
+    _atom_site_anisotrop.id.
+
+  Raises
+  ------
+  AssertionError
+    A missing label column (the message iotbx.pdb.utils matches) or an
+    anisotrop loop with neither U nor B tensors, as from the Python builder.
+  iotbx.cif.builders.CifBuilderError
+    type_symbol or a coordinate, B or occupancy column is missing.
+  """
+  from iotbx.pdb import atom_site_columns
+  def looped(tag):
+    return cif_block.get_looped_item(tag, key_error=None)
+  type_symbol = looped("_atom_site.type_symbol")
+  atom_labels = looped("_atom_site.label_atom_id")
+  if atom_labels is None:
+    atom_labels = looped("_atom_site.auth_atom_id")
+  alt_id = looped("_atom_site.label_alt_id")
+  label_asym_id = looped("_atom_site.label_asym_id")
+  auth_asym_id = looped("_atom_site.auth_asym_id")
+  if label_asym_id is None: label_asym_id = auth_asym_id
+  if auth_asym_id is None: auth_asym_id = label_asym_id
+  comp_id = looped("_atom_site.auth_comp_id")
+  if comp_id is None:
+    comp_id = looped("_atom_site.label_comp_id")
+  entity_id = looped("_atom_site.label_entity_id")
+  seq_id = looped("_atom_site.auth_seq_id")
+  if seq_id is None:
+    seq_id = looped("_atom_site.label_seq_id")
+  error_message = """something is not present - not enough information
+    to make a hierarcy out of this CIF file.
+    It could be because this is restraints or component cif or a corrupted model cif."""
+  assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id,
+          seq_id].count(None) == 0, error_message
+  if type_symbol is None:
+    raise CifBuilderError("_atom_site.type_symbol is missing")
+  cols = atom_site_columns()
+  cols.type_symbol = type_symbol
+  cols.atom_name = atom_labels
+  cols.alt_id = alt_id
+  cols.label_asym_id = label_asym_id
+  cols.auth_asym_id = auth_asym_id
+  cols.comp_id = comp_id
+  cols.seq_id = seq_id
+  for member, tag in (("cartn_x", "_atom_site.Cartn_x"),
+                      ("cartn_y", "_atom_site.Cartn_y"),
+                      ("cartn_z", "_atom_site.Cartn_z"),
+                      ("b_iso", "_atom_site.B_iso_or_equiv"),
+                      ("occupancy", "_atom_site.occupancy")):
+    column = looped(tag)
+    if column is None:
+      raise CifBuilderError("%s is missing" % tag)
+    setattr(cols, member, column)
+  for member, tag in (("model_num", "_atom_site.pdbx_PDB_model_num"),
+                      ("atom_id", "_atom_site.id"),
+                      ("ins_code", "_atom_site.pdbx_PDB_ins_code"),
+                      ("group_pdb", "_atom_site.group_PDB"),
+                      ("segid", "_atom_site.auth_segid"),
+                      ("auth_break", "_atom_site.auth_break"),
+                      ("formal_charge", "_atom_site.pdbx_formal_charge"),
+                      ("resolution", "_atom_site.phenix_resolution"),
+                      ("fp", "_atom_site.phenix_scat_dispersion_real"),
+                      ("fdp", "_atom_site.phenix_scat_dispersion_imag")):
+    column = looped(tag)
+    if column is not None:
+      setattr(cols, member, column)
+  anisotrop_id = looped("_atom_site_anisotrop.id")
+  if anisotrop_id is not None:
+    u_ij = [looped("_atom_site_anisotrop.U[%s][%s]" % (ij[0], ij[1]))
+            for ij in ("11", "22", "33", "12", "13", "23")]
+    assert u_ij.count(None) in (0, 6), \
+      "_atom_site_anisotrop: some but not all six U[i][j] columns"
+    if u_ij.count(None) == 0:
+      adps = u_ij
+      cols.aniso_is_b = False
+    else:
+      b_ij = [looped("_atom_site_anisotrop.B[%s][%s]" % (ij[0], ij[1]))
+              for ij in ("11", "22", "33", "12", "13", "23")]
+      # as in the Python builder: an anisotrop loop with neither U nor B
+      # tensors is an error
+      assert b_ij.count(None) == 0, \
+        "_atom_site_anisotrop: neither six U[i][j] nor six B[i][j] columns"
+      adps = b_ij
+      cols.aniso_is_b = True
+    cols.aniso_id = anisotrop_id
+    (cols.aniso_11, cols.aniso_22, cols.aniso_33,
+     cols.aniso_12, cols.aniso_13, cols.aniso_23) = adps
+  return cols
 
 
 def is_aa_or_rna_dna(resname):
@@ -449,9 +685,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       force=not weak_symmetry)
 
   def crystal_symmetry_from_cryst1(self):
-    if self.hierarchy is None:
-      self.construct_hierarchy()
-    builder_cs = self.builder.crystal_symmetry
+    if self.builder is not None:
+      builder_cs = self.builder.crystal_symmetry
+    else:
+      builder_cs = crystal_symmetry_builder(self.cif_block).crystal_symmetry
     # check for dummy one
     if (builder_cs.unit_cell() is not None and
         cryst1_interpretation.dummy_unit_cell(
@@ -661,6 +898,12 @@ class _cif_get_r_rfree_sigma_object(object):
   def __init__(self, cif_block, file_name):
     self.file_name = file_name
     self.r_work = _float_or_None(cif_block.get('_refine.ls_R_factor_R_work'))
+    # Older entries (e.g. 1ab1) store the working-set R as ls_R_factor_obs or
+    # ls_R_factor_all instead of ls_R_factor_R_work.
+    if self.r_work is None:
+      self.r_work = _float_or_None(cif_block.get('_refine.ls_R_factor_obs'))
+    if self.r_work is None:
+      self.r_work = _float_or_None(cif_block.get('_refine.ls_R_factor_all'))
     self.r_free = _float_or_None(cif_block.get('_refine.ls_R_factor_R_free'))
     self.sigma = _float_or_None(cif_block.get('_refine.pdbx_ls_sigma_F'))
     self.high = _float_or_None(cif_block.get('_refine.ls_d_res_high'))

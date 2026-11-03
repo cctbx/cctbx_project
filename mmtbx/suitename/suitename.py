@@ -73,7 +73,7 @@ The various operations of Suitename are also provided as a library, suites.py,
 for use by other CCTBX programs.
 
 """
-from suitenamedefs import Cluster, Issue, failMessages
+from suitenamedefs import Issue, failMessages
 from suitenamedefs import Holder, globals
 # suitenamedefs must come first!
 import suiteninit

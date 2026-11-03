@@ -356,9 +356,12 @@ master_phil = libtbx.phil.parse("""
     .help = Ignore unit cell from model if it conflicts with the map.
     .short_caption = Ignore symmetry conflicts
 
-  wrapping = False
+  wrapping = None
     .type = bool
-    .help = If wrapping, map wraps around at map boundaries.
+    .style = tribool
+    .help = If wrapping is set to True, map wraps around at map boundaries.\
+            Wrapping will default to True if the input map allows wrapping.,\
+            and False if the input map does not allow wrapping.
     .short_caption = Wrapping
 
   check_wrapping = False
@@ -457,15 +460,20 @@ def get_map_manager_objects(
   input_map_labels = None
   map_or_map_coeffs_prefix = None
 
+  # NOTE: wrapping has to be defined by the end of this if block.
+
   if map_data and not ccp4_map:  # convert to map_manager
     # Called with map_data.  We do not know for sure if map_data is
     #  wrapped or not. Require wrapping to be set to define it.
-
+    #  This block is normally for calling map_box from another program. That
+    #  program must define wrapping.
     assert isinstance(params.wrapping, bool)
+
     ccp4_map = map_manager(map_data = map_data,
       unit_cell_grid = map_data.all(),
       unit_cell_crystal_symmetry = crystal_symmetry,
       wrapping = params.wrapping)
+
   elif (not ccp4_map):
 
     # read first mtz file
@@ -475,6 +483,7 @@ def get_map_manager_objects(
       if not isinstance(params.wrapping, bool):
         params.wrapping = True
       # file in phil takes precedent
+
       if (params.map_coefficients_file is not None):
         if (len(inputs.reflection_file_names)  ==  0):
           inputs.reflection_file_names.append(params.map_coefficients_file)
@@ -501,14 +510,20 @@ def get_map_manager_objects(
     # or read CCP4 map
     elif ( (inputs.ccp4_map is not None) or
            (params.ccp4_map_file is not None) ):
-      # Here wrapping comes from map file; no need to set default. If not
-      #  specified in map labels, wrapping will be False for map file.
-
       if (params.ccp4_map_file is not None):
         inputs.ccp4_map = read_map_file_with_data_manager(params.ccp4_map_file)
         inputs.ccp4_map_file_name = params.ccp4_map_file
       print_statistics.make_sub_header("CCP4 map", out = log)
       ccp4_map = inputs.ccp4_map
+
+      # Here wrapping comes from map file; no need to set default. If not
+      #  specified in map labels, wrapping will be False for map file.
+      # Set wrapping if not already defined
+      if (not isinstance(params.wrapping, bool)):
+        params.wrapping = ccp4_map.wrapping()
+        print("\nWrapping set to '%s' based on input map.\n" %(params.wrapping),
+           file = log)
+
       ccp4_map.show_summary(prefix = "  ", out = log)
       if not crystal_symmetry: crystal_symmetry = ccp4_map.crystal_symmetry()
       map_data = ccp4_map.map_data()
@@ -522,6 +537,34 @@ def get_map_manager_objects(
       else:
         map_or_map_coeffs_prefix = os.path.basename(
           inputs.ccp4_map_file_name[:-4])
+    else:  # no ccp4_map and no map file and no mtz file
+      raise Sorry("Map or mtz file is needed")
+
+  else:  # came in with ccp4_map. define wrapping based on map
+    if (not isinstance(params.wrapping, bool)):
+      params.wrapping = ccp4_map.wrapping()
+      print("\nWrapping set to '%s' based on input map.\n" %(params.wrapping),
+           file = log)
+
+  # Check and warn if wrapping is not compatible with map
+  if ccp4_map and (ccp4_map.wrapping() == False) and (params.wrapping == True):
+    wrapping_warning = (
+      "Warning: map does not support wrapping but wrapping "
+      "was applied because wrapping was set to True.")
+    print("\n%s\n" % wrapping_warning, file = log)
+    # Surface this warning live in the PHENIX GUI's run-tab "Warnings" panel.
+    # libtbx.call_back(message="warn", data=<str>) is dispatched by the GUI
+    # framework (RunPanel.warn / ProcessNotebook.warn) to a red warning
+    # banner; it is a harmless no-op when run from the command line.
+    # Wrapped so that a callback failure can never break the run.
+    # (The GUI Results panel cannot read this directly because the map_box
+    # GUI result object is an int; the Results panel instead reads this same
+    # warning back from the job .log -- see wxGUI2/Programs/MapBox.py.)
+    try:
+      from libtbx import call_back
+      call_back(message = "warn", data = wrapping_warning)
+    except Exception:
+      pass
 
   if mask_data and (not mask_as_map_manager):
     mask_as_map_manager = map_manager(map_data = mask_data.as_double(),

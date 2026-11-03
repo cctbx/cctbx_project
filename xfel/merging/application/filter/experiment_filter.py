@@ -17,6 +17,7 @@ class experiment_filter(worker):
     filter_by_n_obs = 'n_obs' in self.params.filter.algorithm
     filter_by_resolution = 'resolution' in self.params.filter.algorithm
     filter_by_energy = 'energy' in self.params.filter.algorithm
+    filter_by_experiment_prefix = 'experiment_prefix' in self.params.filter.algorithm
     if filter_by_unit_cell:
       assert self.params.filter.unit_cell.value.target_space_group is not None, \
         'Space group is required for unit cell filtering'
@@ -35,6 +36,9 @@ class experiment_filter(worker):
       assert self.params.filter.energy.min_eV is not None or \
         self.params.filter.energy.max_eV is not None, \
         'Specify either min_eV or max_eV for energy filtering'
+    if filter_by_experiment_prefix:
+      assert self.params.filter.experiment_prefix.prefix is not None, \
+        'Specify prefix'
 
   def __repr__(self):
     return 'Filter experiments'
@@ -92,8 +96,9 @@ class experiment_filter(worker):
     filter_by_resolution = 'resolution' in self.params.filter.algorithm
     filter_by_energy = 'energy' in self.params.filter.algorithm
     filter_by_bootstrap = 'bootstrap' in self.params.filter.algorithm
-    # only unit_cell, n_obs, resolution, and energy algorithms are supported
-    if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution) and (not filter_by_energy) and not (filter_by_bootstrap):
+    filter_by_experiment_prefix = 'experiment_prefix' in self.params.filter.algorithm
+    # only unit_cell, n_obs, resolution, energy, and experiment_prefix algorithms are supported
+    if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution) and (not filter_by_energy) and not (filter_by_bootstrap) and not (filter_by_experiment_prefix):
       return experiments, reflections
     self.logger.log_step_time("FILTER_EXPERIMENTS")
 
@@ -120,6 +125,11 @@ class experiment_filter(worker):
       experiment_ids_to_remove += experiment_ids_to_remove_energy
     else:
       removed_for_energy = 0
+    if filter_by_experiment_prefix:
+      experiment_ids_to_remove_experiment_prefix, removed_for_experiment_prefix = self.run_filter_by_experiment_prefix(experiments, reflections)
+      experiment_ids_to_remove += experiment_ids_to_remove_experiment_prefix
+    else:
+      removed_for_experiment_prefix = 0
     experiment_ids_to_remove = list(set(experiment_ids_to_remove))
 
     input_len_expts = len(experiments)
@@ -135,6 +145,7 @@ class experiment_filter(worker):
     self.logger.log("Experiments rejected because of n_obs %d"%removed_for_n_obs)
     self.logger.log("Experiments rejected because of resolution %d"%removed_for_resolution)
     self.logger.log("Experiments rejected because of energy %d"%removed_for_energy)
+    self.logger.log("Experiments rejected because of experiment_prefix %d"%removed_for_experiment_prefix)
     self.logger.log("Reflections rejected because of rejected experiments: %d"%removed_reflections)
 
     # MPI-reduce total counts
@@ -145,6 +156,7 @@ class experiment_filter(worker):
     total_removed_for_n_obs = comm.reduce(removed_for_n_obs, MPI.SUM, 0)
     total_removed_for_resolution = comm.reduce(removed_for_resolution, MPI.SUM, 0)
     total_removed_for_energy = comm.reduce(removed_for_energy, MPI.SUM, 0)
+    total_removed_for_experiment_prefix = comm.reduce(removed_for_experiment_prefix, MPI.SUM, 0)
     total_reflections_removed = comm.reduce(removed_reflections, MPI.SUM, 0)
 
     # rank 0: log total counts
@@ -154,6 +166,7 @@ class experiment_filter(worker):
       self.logger.main_log("Total experiments rejected because of n_obs %d"%total_removed_for_n_obs)
       self.logger.main_log("Total experiments rejected because of resolution %d"%total_removed_for_resolution)
       self.logger.main_log("Total experiments rejected because of energy %d"%total_removed_for_energy)
+      self.logger.main_log("Total experiments rejected because of experiment_prefix %d"%total_removed_for_experiment_prefix)
       self.logger.main_log("Total reflections rejected because of rejected experiments %d"%total_reflections_removed)
 
     if filter_by_bootstrap:
@@ -315,6 +328,15 @@ class experiment_filter(worker):
         experiment_ids_to_remove.append(expt.identifier)
         removed_for_energy += 1
     return experiment_ids_to_remove, removed_for_energy
+
+  def run_filter_by_experiment_prefix(self, experiments, reflections):
+    experiment_ids_to_remove = []
+    removed_for_experiment_prefix = 0
+    for expt_index, expt in enumerate(experiments):
+      if not expt.identifier.startswith(self.params.filter.experiment_prefix.prefix):
+        experiment_ids_to_remove.append(expt.identifier)
+        removed_for_experiment_prefix += 1
+    return experiment_ids_to_remove, removed_for_experiment_prefix
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker

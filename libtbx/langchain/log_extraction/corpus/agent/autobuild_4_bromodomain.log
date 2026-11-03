@@ -1,0 +1,960 @@
+WORKING DIRECTORY: /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_
+COMMAND THAT WAS RUN: phenix.autobuild data=/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz seq_file=/Users/terwill/Documents/AF_bromodomain_ligand/7qz0.fa model=/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb maps_only=True nproc=4
+LOG TEXT: Starting AutoBuild
+on Tue Jun 23 18:33:59 2026 by terwill
+===============================================================================
+
+Processing files:
+-------------------------------------------------------------------------------
+
+  No files found
+
+Processing PHIL parameters:
+-------------------------------------------------------------------------------
+
+  Adding command-line PHIL:
+  -------------------------
+    data=/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz
+    seq_file=/Users/terwill/Documents/AF_bromodomain_ligand/7qz0.fa
+    model=/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb
+    maps_only=True
+    nproc=4
+
+Processing files from PHIL:
+-------------------------------------------------------------------------------
+
+  Found sequence, /Users/terwill/Documents/AF_bromodomain_ligand/7qz0.fa
+  Found model, /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb
+  Found miller_array, /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz
+
+Final processed PHIL parameters:
+-------------------------------------------------------------------------------
+  data_manager {
+    model {
+      file = "/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb"
+    }
+    default_model = "/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb"
+    sequence_files = "/Users/terwill/Documents/AF_bromodomain_ligand/7qz0.fa"
+    default_sequence = "/Users/terwill/Documents/AF_bromodomain_ligand/7qz0.fa"
+    miller_array {
+      file = "/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz"
+    }
+    default_miller_array = "/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz"
+  }
+  autobuild {
+    data = /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz
+    model = /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb
+    seq_file = /Users/terwill/Documents/AF_bromodomain_ligand/7qz0.fa
+    maps {
+      maps_only = True
+    }
+    general {
+      nproc = 4
+    }
+  }
+
+
+Starting job
+===============================================================================
+
+*******************************************************************************
+Detected PHENIX_OVERWRITE_ALL environment variable
+Setting output.overwrite to True
+Unset PHENIX_OVERWRITE_ALL if overwriting is not desired
+*******************************************************************************
+
+
+************************************************************
+          PHENIX AutoBuild  Tue Jun 23 18:34:05 2026
+************************************************************
+
+Working directory:  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild 
+
+PHENIX VERSION:  dev-svn 
+
+Assigned miller_array 'autobuild.data' to /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz
+Assigned model 'autobuild.model' to /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb
+Assigned sequence 'autobuild.seq_file' to /Users/terwill/Documents/AF_bromodomain_ligand/7qz0.fa
+Validating inputs
+Splitting output to  AutoBuild_run_1_/AutoBuild_run_1_1.log
+
+
+               PHENIX autobuild  Tue Jun 23 18:34:05 2026
+ 
+ 
+Phenix developers include:
+
+  Paul Adams, Pavel Afonine, Vincent Chen, Ian Davis, Nathaniel Echols,
+  Kreshna Gopal, Ralf Grosse-Kunstleve, Jeff Headd, Li-Wei Hung,
+  Robert Immormino, Tom Ioerger, Airlie McCoy, Erik McKee, Nigel Moriarty,
+  Reetal Pai, Randy Read, Jane Richardson, David Richardson, Tod Romo,
+  Jim Sacchettini, Nicholas Sauter, Jacob Smith, Laurent Storoni,
+  Tom Terwilliger, Peter Zwart
+
+Phenix home page:
+  http://www.phenix-online.org/
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+Phenix components are copyrighted by:
+  - Lawrence Berkeley National Laboratory
+  - Los Alamos National Laboratory
+  - University of Cambridge
+  - Duke University
+  - Texas Agricultural Experiment Station &
+    Texas Engineering Experiment Station
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+Major third-party components of Phenix include:
+    Python, wxwidgets, wxPython, Boost, SCons, Clipper, PULCHRA,
+    CCP4 Monomer Library, CCP4 I/O libraries, PyCifRW, FFTPACK, L-BFGS
+  Enter phenix.acknowledgments for details.
+
+               If you use PHENIX please cite:
+
+Adams, P.D., Afonine, P.V., Chen, V., Echols, N., Headd, J. J., Hung, L.-W.,
+Grosse-Kunstleve, R.W., McCoy, A.J., Moriarty, N.W., Read, R.J.,
+Richardson, D.C., Richardson, J.S., Terwilliger, T.C. and Zwart, P. H. (2010)
+PHENIX - A Comprehensive Python-based System for Macromolecular Structure
+Solution. Acta Cryst. D66, 213-221.
+
+
+For help type:
+phenix.doc
+
+      
+ 
+For access to full documentation please type: phenix.doc
+
+
+------------------------------------------------------------ 
+Starting AutoBuild with the command:
+
+phenix.autobuild 
+
+autobuild {
+  data = "/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz"
+  model = "/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb"
+  seq_file = "/Users/terwill/Documents/AF_bromodomain_ligand/7qz0.fa"
+  map_file = Auto
+  refinement_file = Auto
+  hires_file = Auto
+  crystal_info {
+    unit_cell = None
+    space_group = None
+    solvent_fraction = None
+    chain_type = *Auto PROTEIN DNA RNA
+    resolution = 0
+    dmax = 500
+    overall_resolution = 0
+    sequence = None
+  }
+  output_files {
+    target_output_format = *None pdb mmcif
+  }
+  input_files {
+    input_labels = None
+    input_hires_labels = None
+    input_map_labels = None
+    input_refinement_labels = None
+    input_ha_file = None
+    force_input_ha = False
+    include_ha_in_model = True
+    cif_def_file_list = None
+    input_lig_file_list = None
+    keep_input_ligands = True
+    keep_input_waters = False
+    keep_pdb_atoms = True
+    remove_residues_on_special_positions = False
+    refine_eff_file_list = None
+    map_file_is_density_modified = True
+    map_file_fom = None
+    use_constant_input_map = False
+    use_map_file_as_hklstart = None
+    use_map_in_resolve_with_model = False
+    identity_from_remark = True
+    input_data_type = None
+  }
+  aniso {
+    remove_aniso = True
+    b_iso = None
+    max_b_iso = 40
+    target_b_ratio = 10
+  }
+  decision_making {
+    acceptable_r = 0.25
+    r_switch = 0.4
+    semi_acceptable_r = 0.3
+    reject_weak = False
+    min_weak_z = 0.2
+    min_cc_res_rebuild = 0.4
+    min_seq_identity_percent = 50
+    dist_close = None
+    dist_close_overlap = 1.5
+    loop_cc_min = 0.4
+    group_ca_length = 4
+    group_length = 2
+    include_molprobity = False
+    ok_molp_score = None
+    scale_molp_score = None
+  }
+  density_modification {
+    add_classic_denmod = None
+    skip_classic_if_worse_fom = True
+    skip_ncs_in_add_classic = True
+    thorough_denmod = *Auto True False
+    hl = False
+    mask_type = *histograms probability wang classic
+    mask_from_pdb = None
+    mask_type_extreme_dm = histograms probability *wang classic
+    mask_cycles_extreme_dm = 1
+    minor_cycles_extreme_dm = 4
+    wang_radius_extreme_dm = 20
+    precondition = False
+    minimum_ncs_cc = 0.3
+    extreme_dm = False
+    fom_for_extreme_dm_rebuild = 0.1
+    fom_for_extreme_dm = 0.35
+    rad_mask_from_pdb = 2
+    modify_outside_delta_solvent = 0.05
+    modify_outside_model = False
+    truncate_ha_sites_in_resolve = *Auto True False
+    rad_mask = None
+    s_step = None
+    res_start = None
+    map_dmin_start = None
+    map_dmin_incr = 0.25
+    use_resolve_fragments = True
+    use_resolve_pattern = True
+    use_hl_anom_in_denmod = False
+    use_hl_anom_in_denmod_with_model = False
+    mask_as_mtz = False
+    protein_output_mask_file = None
+    ncs_output_mask_file = None
+    omit_output_mask_file = None
+  }
+  maps {
+    maps_only = True
+    n_xyz_list = None
+  }
+  model_building {
+    build_type = *RESOLVE RESOLVE_AND_BUCCANEER
+    allow_negative_residues = False
+    highest_resno = None
+    semet = False
+    use_met_in_align = *Auto True False
+    base_model = None
+    consider_main_chain_list = None
+    dist_connect_max_helices = None
+    edit_pdb = True
+    helices_strands_only = False
+    resolution_helices_strands = 3.1
+    helices_strands_start = False
+    cc_helix_min = None
+    cc_strand_min = None
+    trim_ends_if_needed = True
+    loop_backup_residues = None
+    split_by_gap = True
+    loop_lib = False
+    standard_loops = True
+    trace_loops = False
+    refine_trace_loops = True
+    density_of_points = None
+    a_cut_min = None
+    max_density_of_points = None
+    cutout_model_radius = None
+    max_cutout_model_radius = 20
+    padding = 1
+    cut_out_density = True
+    max_span = 30
+    max_c_ca_dist = None
+    max_overlap_rmsd = 2
+    max_overlap = None
+    min_overlap = None
+    include_input_model = True
+    input_compare_file = None
+    merge_models = False
+    morph = False
+    morph_main = False
+    dist_cut_base = 3
+    morph_cycles = 2
+    morph_rad = 7
+    n_ca_enough_helices = None
+    delta_phi = 20
+    offsets_list = 53 7 23
+    all_maps_in_rebuild = False
+    ps_in_rebuild = False
+    use_ncs_in_ps = False
+    remove_outlier_segments_z_cut = 3
+    refine = True
+    refine_final_model_vs_orig_data = True
+    reference_model = None
+    resolution_build = None
+    restart_cycle_after_morph = 5
+    retrace_before_build = False
+    reuse_chain_prev_cycle = True
+    richardson_rotamers = *Auto True False
+    rms_random_frag = None
+    rms_random_loop = None
+    start_chains_list = None
+    trace_as_lig = False
+    track_libs = False
+    two_fofc_denmod_in_rebuild = False
+    rebuild_from_fragments = False
+    two_fofc_in_rebuild = False
+    refine_map_coeff_labels = "2FOFCWT PH2FOFCWT"
+    filled_2fofc_maps = True
+    map_phasing = False
+    use_any_side = True
+    truncate_missing_side_chains = None
+    use_cc_in_combine_extend = False
+    sort_hetatms = False
+    map_to_object = None
+  }
+  multiple_models {
+    combine_only = False
+    multiple_models = False
+    multiple_models_first = 1
+    multiple_models_group_number = 5
+    multiple_models_last = 20
+    multiple_models_number = 20
+    multiple_models_starting = True
+    multiple_models_starting_resolution = 4
+    place_waters_in_combine = None
+  }
+  ncs {
+    find_ncs = *Auto True False
+    input_ncs_file = None
+    ncs_copies = None
+    ncs_refine_coord_sigma_from_rmsd = False
+    ncs_refine_coord_sigma_from_rmsd_ratio = 1
+    no_merge_ncs_copies = False
+    optimize_ncs = True
+    use_ncs_in_build = True
+    ncs_in_refinement = *torsion cartesian None
+  }
+  omit {
+    composite_omit_type = *None simple_omit refine_omit sa_omit \
+                          iterative_build_omit
+    n_box_target = None
+    n_cycle_image_min = 3
+    n_cycle_rebuild_omit = 10
+    offset_boundary = 2
+    omit_boundary = 2
+    omit_box_start = 0
+    omit_box_end = 0
+    omit_box_pdb_list = None
+    omit_chain_list = None
+    omit_offset_list = 0 0 0 0 0 0
+    omit_on_rebuild = False
+    omit_selection = None
+    omit_region_specification = *composite_omit omit_around_pdb \
+                                omit_selection
+    omit_res_start_list = None
+    omit_res_end_list = None
+  }
+  rebuild_in_place {
+    min_seq_identity_percent_rebuild_in_place = 95
+    n_cycle_rebuild_in_place = None
+    n_rebuild_in_place = 1
+    rebuild_chain_list = None
+    rebuild_in_place = *Auto True False
+    rebuild_near_chain = None
+    rebuild_near_dist = 7.5
+    rebuild_near_res = None
+    rebuild_res_end_list = None
+    rebuild_res_start_list = None
+    rebuild_side_chains = False
+    redo_side_chains = True
+    replace_existing = True
+    delete_bad_residues_only = False
+    touch_up = False
+    touch_up_extra_residues = None
+    worst_percent_res_rebuild = 2
+    smooth_range = None
+    smooth_minimum_length = None
+  }
+  refinement {
+    refine_b = True
+    refine_se_occ = True
+    skip_clash_guard = True
+    correct_special_position_tolerance = None
+    use_mlhl = True
+    generate_hl_if_missing = False
+    place_waters = True
+    refinement_resolution = 0
+    ordered_solvent_low_resolution = None
+    link_distance_cutoff = 3
+    r_free_flags_fraction = 0.1
+    r_free_flags_max_free = 2000
+    r_free_flags_use_lattice_symmetry = True
+    r_free_flags_lattice_symmetry_max_delta = 5
+    allow_overlapping = None
+    fix_ligand_occupancy = None
+    remove_outlier_segments = True
+    twin_law = None
+    max_occ = None
+    refine_before_rebuild = True
+    refine_with_ncs = True
+    refine_xyz = True
+    s_annealing = False
+    skip_hexdigest = False
+    use_hl_anom_in_refinement = False
+    use_hl_if_present = True
+  }
+  thoroughness {
+    build_outside = True
+    connect = True
+    extensive_build = False
+    fit_loops = True
+    insert_helices = True
+    n_cycle_build = None
+    n_cycle_build_max = 6
+    n_cycle_build_min = 1
+    n_cycle_rebuild_max = 15
+    n_cycle_rebuild_min = 1
+    n_mini = 10
+    n_random_frag = 0
+    n_random_loop = 3
+    n_try_rebuild = 2
+    ncycle_refine = 3
+    number_of_models = None
+    number_of_parallel_models = 0
+    skip_combine_extend = False
+    fully_skip_combine_extend = False
+    thorough_loop_fit = True
+  }
+  general {
+    coot_name = "coot"
+    i_ran_seed = 72432
+    raise_sorry = False
+    background = True
+    check_wait_time = 1
+    max_wait_time = 1
+    wait_between_submit_time = 1
+    cache_resolve_libs = True
+    resolve_size = "12"
+    check_run_command = False
+    run_command = "sh "
+    queue_commands = None
+    condor_universe = "vanilla"
+    add_double_quotes_in_condor = True
+    condor = None
+    last_process_is_local = True
+    skip_r_factor = False
+    test_flag_value = Auto
+    skip_xtriage = False
+    base_path = None
+    temp_dir = None
+    local_temp_directory = None
+    clean_up = None
+    print_citations = True
+    solution_output_pickle_file = None
+    job_title = None
+    top_output_dir = None
+    wizard_directory_number = None
+    verbose = False
+    extra_verbose = False
+    debug = False
+    require_nonzero = True
+    remove_path_word_list = None
+    fill = False
+    res_fill = None
+    check_only = False
+    keep_files = "overall_best*" "AutoBuild_run_*.log"
+    after_autosol = False
+    nbatch = 3
+    nproc = 4
+    quick = False
+    resolve_command_list = None
+    resolve_pattern_command_list = None
+    ignore_errors_in_subprocess = False
+    send_notification = False
+    notify_email = None
+  }
+  special_keywords {
+    write_run_directory_to_file = None
+  }
+  run_control {
+    coot = None
+    ignore_blanks = None
+    stop = None
+    display_facts = None
+    display_summary = None
+    carry_on = None
+    run = None
+    copy_run = None
+    display_runs = None
+    delete_runs = None
+    display_labels = None
+    dry_run = False
+    params_only = False
+    display_all = False
+  }
+  non_user_parameters {
+    gui_output_dir = None
+    background_map = None
+    boundary_background_map = None
+    extend_try_list = True
+    force_combine_extend = False
+    model_list = None
+    oasis_cnos = None
+    offset_boundary_background_map = None
+    skip_refine = False
+    sg = None
+    input_data_file = None
+    input_map_file = Auto
+    input_refinement_file = Auto
+    input_pdb_file = None
+    input_seq_file = Auto
+    super_quick = None
+    require_test_set = False
+  }
+}
+job_title = None
+Sending output to  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/None 
+
+
+Working directory:  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_ 
+
+HOST = MacBook-Air-3.local
+HOSTTYPE = unknown
+MACHTYPE = unknown
+OSTYPE = darwin
+VENDOR = apple
+USER = terwill
+PID = 35003
+
+
+************************************************************
+          PHENIX AutoBuild  Tue Jun 23 18:34:05 2026
+************************************************************
+
+Working directory:  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild 
+
+
+AutoBuild_start  AutoBuild  Run 1 Tue Jun 23 18:34:05 2026
+
+Setting default value of  True  for  thorough_denmod
+Setting default value of  True  for  find_ncs
+Setting default value of  False  for  use_met_in_align
+Setting default value of  True  for  truncate_ha_sites_in_resolve
+Guessing chain type from  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb
+Setting chain type to  PROTEIN
+
+Using /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz for refinement
+
+
+SG: P 31 2 1 
+Cell: [94.627, 94.627, 33.008, 90.0, 90.0, 119.99999999999999]
+Inverse hand of space group:  P 32 2 1
+Inverse hand of space group:  P 32 2 1
+
+Getting column labels from /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz for input data file
+Resolution from datafile: 2.100005105578666
+SG: P 31 2 1
+Cell: [94.627, 94.627, 33.008, 90.0, 90.0, 119.99999999999999]
+Inverse hand of space group:  P 32 2 1
+Input labels: ['F-obs', 'SIGF-obs', 'None', 'None', 'None', 'None', 'None', 'None']
+
+Getting column labels from /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz for refinement data file
+SG: P 31 2 1
+Cell: [94.627, 94.627, 33.008, 90.0, 90.0, 119.99999999999999]
+Inverse hand of space group:  P 32 2 1
+
+
+Refinement file program labels: ['FP', 'SIGFP', 'FreeR_flag']
+
+
+Refinement file input labels: ['F-obs', 'SIGF-obs', 'R-free-flags']
+
+
+Refinement file all input labels: ['F-obs', 'SIGF-obs', 'R-free-flags', 'F-obs-filtered', 'SIGF-obs-filtered', 'F-model', 'PHIF-model', '2FOFCWT', 'PH2FOFCWT', '2FOFCWT_no_fill', 'PH2FOFCWT_no_fill', 'FOFCWT', 'PHFOFCWT', 'None']
+
+Input sequence file is  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/seq_from_file.dat
+Copied  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/seq_from_file.dat to /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/sequence_autobuild.dat
+
+AutoBuild_set_overall_params  AutoBuild  Run 1 Tue Jun 23 18:34:06 2026
+
+Setting rebuild_in_place=False as maps_only=True
+Saving all but water and ligands in  AutoBuild_run_1_/TEMP0/NO_LIG_NO_WAT_refine_001_001.pdb
+model id="" #chains=2
+  chain id="A" #conformers=1
+  chain id="S" #conformers=1
+
+Getting NCS copies from chains used...
+Copies of chain  1 : 1 : ['A']
+NOTE: The following residues (and similar residues) from  
+/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb are not PROTEIN or do not 
+match the sequence  and will not be part of the building process :
+HOH S1, 
+
+Using model without ligands or waters as work_pdb_file.
+Ligands will be added back just before refinement
+
+AutoBuild_datafile_info_inputs  AutoBuild  Run 1 Tue Jun 23 18:34:06 2026
+
+Number of residues in unique chains in seq file: 105
+Cell volume: 255964.65
+Equivalent positions:6
+
+Maximum number of NCS copies based on cell contents:  2
+Best guess of number of NCS copies: 2
+Estimate of solvent fraction: 0.33
+
+Merging refinement file  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz  with data file  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz  to create  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/refinement_PHX.mtz
+Selecting arrays from /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz : FILE  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz  LABELS:  [['F-obs', 'SIGF-obs', 'R-free-flags']]
+Keep match F-obs ['F-obs', 'SIGF-obs']
+Keep match SIGF-obs ['F-obs', 'SIGF-obs']
+['F-obs', 'SIGF-obs'] Keep match R-free-flags ['R-free-flags']
+['R-free-flags'] 
+Selecting arrays from /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz : FILE  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz  LABELS:  [['F-obs', 'SIGF-obs', 'None', 'None', 'None', 'None', 'None', 'None']]
+Keep match F-obs ['F-obs', 'SIGF-obs']
+Keep match SIGF-obs ['F-obs', 'SIGF-obs']
+The label  ['F-obs']  is already used...skipping ['F-obs', 'SIGF-obs']
+
+Output space group: P 31 2 1 (No. 152)
+Columns of data in /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/refinement_PHX.mtz:
+H K L F-obs SIGF-obs R-free-flags 
+H H H F Q I 
+Unit cell: (94.627, 94.627, 33.008, 90, 90, 120)
+Space group: P 31 2 1 (No. 152)
+Using /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/refinement_PHX.mtz for refinement
+
+Correcting data file /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz 
+for anisotropy and sharpening and writing to /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/aniso_data_PHX.mtz
+
+
+Getting overall aniso B from datafile...
+
+Aniso-corrected data to be written to /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/aniso_data_PHX.mtz
+
+Max b_iso target allowed is   40.00 A**2
+
+Min B aniso from datafiles is   28.21 A**2
+Target aniso B set based on resolution to   21.00 A**2
+
+Removing anisotropy from data file now
+
+
+
+#                       remove_aniso
+#
+# Correct columns in MTZ file for anisotropy
+
+
+# Type phenix.doc for help
+Values of all params:
+remove_aniso {
+  input_files {
+    mtz_in = "/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz"
+    obs_labels = None
+  }
+  output_files {
+    mtz_out = "/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/aniso_data_PHX.mtz"
+    log = "remove_aniso.log"
+    extension = None
+    params_out = "remove_aniso_params.eff"
+  }
+  directories {
+    temp_dir = "AutoBuild_run_1_/TEMP0"
+    output_dir = "AutoBuild_run_1_"
+  }
+  crystal_info {
+    resolution = None
+  }
+  aniso {
+    b_iso = 21.00005106
+  }
+  control {
+    verbose = False
+    raise_sorry = False
+    debug = False
+    dry_run = False
+    resolve_command_list = None
+  }
+}
+
+Correction for anisotropy
+
+Arrays in input file /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz:
+FILE  dummy  LABELS:  ['ALL']
+['F-obs', 'SIGF-obs'] ['R-free-flags'] ['F-obs-filtered', 'SIGF-obs-filtered'] ['F-model', 'PHIF-model'] ['2FOFCWT', 'PH2FOFCWT'] ['2FOFCWT_no_fill', 'PH2FOFCWT_no_fill'] ['FOFCWT', 'PHFOFCWT'] 
+Columns for anisotropy correction:  F-obs,SIGF-obs
+
+Trace of aniso B:   45.20    45.20    28.21 A**2. 
+Minimum:   28.21    Mean:   39.54
+
+Applying aniso correction now with target B set with b_iso=  21.00
+Offset in B will be:   -18.54 (negative is sharpening)
+
+Aniso-corrected data to be written to /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/aniso_data_PHX.mtz
+
+Intermediate data file (for everything but refinement): /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/aniso_data_PHX.mtz
+Intermediate data file (for refinement): /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/refinement_PHX.mtz
+
+AutoBuild_general_params  AutoBuild  Run 1 Tue Jun 23 18:34:06 2026
+
+Set target_output_format to pdb based on /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb
+Set model_ext to .pdb based on target_output_format of pdb
+Setting truncate_missing_side_chains=True as rebuild_in_place is False
+Resolution for model-building: 2.1  A
+Setting n_cycle_build=1 as nbatch >1 (nbatch =3)
+Setting number_of_models=1 as nbatch >1 (nbatch =3)
+
+AutoBuild_uncommon_inputs  AutoBuild  Run 1 Tue Jun 23 18:34:06 2026
+
+
+AutoBuild_check_params  AutoBuild  Run 1 Tue Jun 23 18:34:06 2026
+
+Resolution for model-building set to  2.1
+
+AutoBuild_set_up_build  AutoBuild  Run 1 Tue Jun 23 18:34:06 2026
+
+
+Using data from  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/aniso_data_PHX.mtz  for density modification as:  exptl_phases_for_dm_aniso.mtz
+Columns used:  FP=F-obs SIGFP=SIGF-obs 
+Running xtriage on  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/refinement_PHX.mtz . Output:  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/refinement_PHX.mtz_xtriage.log
+Copying  refinement_PHX.mtz  to  exptl_fobs_phases_freeR_flags.mtz
+Columns used:  FP=F-obs SIGFP=SIGF-obs FreeR_flag=R-free-flags 
+
+Removing columns of data with all zeroes (if any)
+Removing 2 columns of data that are all zero: FOMM FWT,PHWT
+Selecting arrays from AutoBuild_run_1_/TEMP0/exptl_fobs_phases_freeR_flags.mtz : FILE  AutoBuild_run_1_/TEMP0/exptl_fobs_phases_freeR_flags.mtz  LABELS:  [['FP', 'SIGFP'], ['PHIM'], ['FreeR_flag']]
+Keep match FP ['FP', 'SIGFP']
+Keep match SIGFP ['FP', 'SIGFP']
+['FP', 'SIGFP'] Keep match PHIM ['PHIM']
+['PHIM'] Keep match FreeR_flag ['FreeR_flag']
+['FreeR_flag'] 
+Output space group: P 31 2 1 (No. 152)
+Columns of data in AutoBuild_run_1_/TEMP0/exptl_fobs_phases_freeR_flags.mtz:
+H K L FP SIGFP PHIM FreeR_flag 
+H H H F Q P I 
+Wrote mtz file AutoBuild_run_1_/TEMP0/exptl_fobs_phases_freeR_flags.mtz with columns of data FP,SIGFP PHIM FreeR_flag
+Columns removed from AutoBuild_run_1_/TEMP0/exptl_fobs_phases_freeR_flags.mtz: FOMM FWT,PHWT
+
+Refinement file with freeR flags is in  AutoBuild_run_1_/TEMP0/exptl_fobs_phases_freeR_flags.mtz
+Using default test_flag_value of 1 from 
+AutoBuild_run_1_/TEMP0/exptl_fobs_phases_freeR_flags.mtz
+
+Removing anisotropy and sharpening refinement file 
+(AutoBuild_run_1_/TEMP0/exptl_fobs_phases_freeR_flags.mtz)  to b_iso=  21.00...
+yielding AutoBuild_run_1_/TEMP0/aniso_refinement_data_PHX.mtz
+Aniso-corrected data to be written to AutoBuild_run_1_/TEMP0/aniso_refinement_data_PHX.mtz
+Aniso B offset for refinement file:  -18.54
+
+NOTE: Not using phase information from input files in refinement and 
+density modification
+
+
+Refinement file with free R flags (not aniso corrected): /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/exptl_fobs_phases_freeR_flags.mtz
+
+
+AutoBuild_build_cycle  AutoBuild  Run 1 Tue Jun 23 18:34:08 2026
+
+Build cycle 1 of 2   method:rebuild
+Initial rebuild cycle: just combining previous models or copying 
+over initial PDB file
+
+Using NO_LIG_NO_WAT_refine_001_001.pdb for rebuild, copied to unrefined.pdb_1
+Refining model:  unrefined.pdb_1
+Using test_flag_value of 1 in refinement 
+phenix.refine 'AutoBuild_run_1_/TEMP0/map_coeffs.eff' 'AutoBuild_run_1_/TEMP0/aniso_refinement_data_PHX.mtz' 'stop_for_unknowns=False' 'pdb_interpretation.restraints_library.cdl=False' 'refinement.pdb_interpretation.link_distance_cutoff=3.0' 'refinement.pdb_interpretation.ncs_search.enabled=True' 'refinement.ncs.torsion.silence_warnings=True' 'refinement.ncs.type=torsion' 'refinement.ncs.special_position_warnings_only=True' 'refinement.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None' 'refinement.pdb_interpretation.allow_polymer_cross_special_position=True' 'refinement.pdb_interpretation.max_reasonable_bond_distance=50' 'refinement.pdb_interpretation.proceed_with_excessive_length_bonds=True' 'refinement.geometry_restraints.edits.excessive_bond_distance_limit=None' 'AutoBuild_run_1_/TEMP0/EDITED_unrefined.pdb' 'refinement.main.number_of_macro_cycles=3' 'xray_data.r_free_flags.test_flag_value=1' 'xray_data.high_resolution=2.1' 'xray_data.low_resolution=500.0' 'refinement.main.ordered_solvent=True' 'refinement.ordered_solvent.low_resolution=3.0' 'refinement.main.use_experimental_phases=False' 'refinement.main.random_seed=184085' 'refinement.mask.ignore_zero_occupancy_atoms=False' 'refinement.refine.strategy=*individual_sites  *individual_sites_real_space  *individual_adp  *occupancies ' 'refinement.output.write_eff_file=True' 'refinement.output.write_geo_file=False' 'refinement.output.write_def_file=True' 'refinement.output.write_maps=False' 'refinement.output.write_map_coefficients=True' 'refinement.output.export_final_f_model=True'
+Model: refine.pdb_1  R/Rfree=0.22/0.26
+
+Made copy of refined model: /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/TEMP0/refine.pdb_1  to  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/TEMP0/refined_pdb_in.pdb
+Checking for  AutoBuild_run_1_/TEMP0/refine_000_f_model.mtz False _000_f_model.mtz AutoBuild_run_1_/TEMP0/refine_pdb_in.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_000_f_model.mtz False _000.mtz AutoBuild_run_1_/TEMP0/refine_f_model.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_000_f_model.mtz False _000.eff AutoBuild_run_1_/TEMP0/refine_pdb_in.eff
+Checking for  AutoBuild_run_1_/TEMP0/refine_000.mtz False _000_f_model.mtz AutoBuild_run_1_/TEMP0/refine_pdb_in.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_000.mtz False _000.mtz AutoBuild_run_1_/TEMP0/refine_f_model.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_000.mtz False _000.eff AutoBuild_run_1_/TEMP0/refine_pdb_in.eff
+Checking for  AutoBuild_run_1_/TEMP0/refine_000.eff False _000_f_model.mtz AutoBuild_run_1_/TEMP0/refine_pdb_in.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_000.eff False _000.mtz AutoBuild_run_1_/TEMP0/refine_f_model.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_000.eff False _000.eff AutoBuild_run_1_/TEMP0/refine_pdb_in.eff
+Checking for  AutoBuild_run_1_/TEMP0/refine_001_f_model.mtz True _001_f_model.mtz AutoBuild_run_1_/TEMP0/refine_pdb_in.mtz
+Moving refinement file AutoBuild_run_1_/TEMP0/refine_001_f_model.mtz to AutoBuild_run_1_/TEMP0/refine_pdb_in.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_001_f_model.mtz True _001.mtz AutoBuild_run_1_/TEMP0/refine_f_model.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_001_f_model.mtz True _001.eff AutoBuild_run_1_/TEMP0/refine_pdb_in.eff
+Checking for  AutoBuild_run_1_/TEMP0/refine_001.mtz True _001_f_model.mtz AutoBuild_run_1_/TEMP0/refine_pdb_in.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_001.mtz True _001.mtz AutoBuild_run_1_/TEMP0/refine_f_model.mtz
+Moving refinement file AutoBuild_run_1_/TEMP0/refine_001.mtz to AutoBuild_run_1_/TEMP0/refine_f_model.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_001.mtz True _001.eff AutoBuild_run_1_/TEMP0/refine_pdb_in.eff
+Checking for  AutoBuild_run_1_/TEMP0/refine_001.eff True _001_f_model.mtz AutoBuild_run_1_/TEMP0/refine_pdb_in.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_001.eff True _001.mtz AutoBuild_run_1_/TEMP0/refine_f_model.mtz
+Checking for  AutoBuild_run_1_/TEMP0/refine_001.eff True _001.eff AutoBuild_run_1_/TEMP0/refine_pdb_in.eff
+Moving refinement file AutoBuild_run_1_/TEMP0/refine_001.eff to AutoBuild_run_1_/TEMP0/refine_pdb_in.eff
+Copying refine map file  AutoBuild_run_1_/TEMP0/refine_f_model.mtz  to  map_coeffs.mtz
+Maps from refinement will be filled (2FOFCWT PH2FOFCWT)
+
+AutoBuild_build_cycle  AutoBuild  Run 1 Tue Jun 23 18:38:39 2026
+
+Build cycle 2 of 2   method:rebuild
+Trying density after ha as ncs copies may be more than 1
+No NCS found  
+KEY hklin_exp exptl_phases_for_dm_aniso.mtz AutoBuild_run_1_/TEMP0/exptl_phases_for_dm_aniso.mtz
+KEY hklin_map  
+KEY two_fofc_denmod_map None 
+KEY mapfile_refine_orig_labels AutoBuild_run_1_/TEMP0/refine_f_model.mtz AutoBuild_run_1_/TEMP0/AutoBuild_run_1_/TEMP0/refine_f_model.mtz
+KEY refine_map_coeffs None 
+KEY best_mapfile_refine map_coeffs.mtz AutoBuild_run_1_/TEMP0/map_coeffs.mtz
+KEY ps_map None 
+KEY refine_file AutoBuild_run_1_/TEMP0/refine_pdb_in.mtz AutoBuild_run_1_/TEMP0/AutoBuild_run_1_/TEMP0/refine_pdb_in.mtz
+Re-using input PDB coordinates in build this cycle
+Checking to make sure that FOMM are present in AutoBuild_run_1_/TEMP0/exptl_phases_for_dm_aniso.mtz 
+Density modifying image of refine.pdb_1 - refine.pdb_1 ->resolve_denmod_2.log
+Unit cell: (94.627, 94.627, 33.008, 90, 90, 120)
+Space group: P 31 2 1 (No. 152)
+Checking to make sure that FOMM are present in AutoBuild_run_1_/TEMP0/image.mtz 
+Unit cell: (94.627, 94.627, 33.008, 90, 90, 120)
+Space group: P 31 2 1 (No. 152)
+Skipping model-building as 'maps_only' is set
+Recovering fact  n_cycle_build  of  1
+Recovering fact  number_of_models  of  1
+NOTE: Nothing to score...
+Format for model files: pdb
+
+Cycle 2  R/Rfree=999.90/999.90  Built=0  Placed=0 Resolution=2.1 A
+Format for model files: pdb
+Copied  cycle_best_denmod_map_coeffs.mtz to working_best_denmod_map_coeffs.mtz
+Copied  cycle_best.log_denmod to working_best.log_denmod
+
+Creating overall_best files ...
+
+
+Copying files to overall_best
+
+
+Copying /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/exptl_fobs_phases_freeR_flags.mtz to /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/overall_best_refine_data.mtz
+
+Copying /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/cycle_best_2.log_denmod to /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/overall_best.log_denmod
+
+Copying /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/cycle_best_2.mtz to /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/overall_best_denmod_map_coeffs.mtz
+
+Summary of output files for Solution 1 from rebuild cycle 2
+
+---  Data for refinement FP SIGFP PHIM FOMM HLAM HLBM HLCM HLDM FreeR_flag ---
+refine_data: /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/overall_best_refine_data.mtz
+
+---  Density-modification log file ---
+log_denmod: /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/overall_best.log_denmod
+
+---  Density-modified map coefficients FWT PHWT ---
+denmod_map_coeffs: /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/overall_best_denmod_map_coeffs.mtz
+
+
+AutoBuild_build_cycle  AutoBuild  Run 1 Tue Jun 23 18:38:56 2026
+
+
+Ending these rebuild cycles as the limit is reached
+All done with build cycles in this region
+
+AutoBuild_set_up_build  AutoBuild  Run 1 Tue Jun 23 18:38:56 2026
+
+Trying density after ha as ncs copies may be more than 1
+No NCS found  
+All omit/non-omit regions completed
+
+finished  AutoBuild  Run 1 Tue Jun 23 18:38:57 2026
+
+Finishing  AutoBuild Run 1
+Facts written to AutoBuild_run_1_/AutoBuild_Facts.dat
+
+Warnings:
+
+NOTE: The following residues (and similar residues) from  
+/Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.pdb are not PROTEIN or do not 
+match the sequence  and will not be part of the building process :
+HOH S1, 
+
+
+
+AutoBuild Run 1
+
+Summary of model-building for run 1  Tue Jun 23 18:38:57 2026
+Files are in the directory:  /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/
+
+
+Starting mtz file: /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_03_refine/refine_001_001.mtz
+Sequence file: /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/seq_from_file.dat
+
+Summary of output files for Solution 1 from rebuild cycle 2
+
+---  Data for refinement FP SIGFP PHIM FOMM HLAM HLBM HLCM HLDM FreeR_flag ---
+refine_data: /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/overall_best_refine_data.mtz
+
+---  Density-modification log file ---
+log_denmod: /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/overall_best.log_denmod
+
+---  Density-modified map coefficients FWT PHWT ---
+denmod_map_coeffs: /Users/terwill/Documents/AF_bromodomain_ligand/AIAgent_128/ai_agent_directory/sub_04_autobuild/AutoBuild_run_1_/overall_best_denmod_map_coeffs.mtz
+
+
+Citations for AutoBuild:
+
+Afonine PV, Grosse-Kunstleve RW, Echols N, Headd JJ, Moriarty NW, Mustyakimov
+M, Terwilliger TC, Urzhumtsev A, Zwart PH, Adams PD. (2012) Towards automated
+crystallographic structure refinement with phenix.refine. Acta Crystallogr D
+Biol Crystallogr 68:352-67.
+
+Jumper J, Evans R, Pritzel A, Green T, Figurnov M, Ronneberger O,
+Tunyasuvunakool K, Bates R, Žídek A, Potapenko A, Bridgland A, Meyer C, Kohl
+SAA, Ballard AJ, Cowie A, Romera-Paredes B, Nikolov S, Jain R, Adler J, Back T,
+Petersen S, Reiman D, Clancy E, Zielinski M, Steinegger M, Pacholska M,
+Berghammer T, Bodenstein S, Silver D, Vinyals O, Senior AW, Kavukcuoglu K,
+Kohli P, Hassabis D. (2021) Highly accurate protein structure prediction with
+AlphaFold. Nature 596:583-589.
+
+Liebschner D, Afonine PV, Baker ML, Bunkóczi G, Chen VB, Croll TI, Hintze B,
+Hung LW, Jain S, McCoy AJ, Moriarty NW, Oeffner RD, Poon BK, Prisant MG, Read
+RJ, Richardson JS, Richardson DC, Sammito MD, Sobolev OV, Stockwell DH,
+Terwilliger TC, Urzhumtsev AG, Videau LL, Williams CJ, Adams PD. (2019)
+Macromolecular structure determination using X-rays, neutrons and electrons:
+recent developments in Phenix. Acta Cryst. D75:861-877.
+
+Mirdita M, Schütze K, Moriwaki Y, Heo L, Ovchinnikov S, Steinegger M. (2022)
+Making protein folding accessible to all. Nature Methods 19:679–682.
+
+Mirdita M, Steinegger M, Söding J. (2019) MMseqs2 desktop and local web server
+app for fast interactive sequence searches. Bioinformatics 35:2856-2858.
+
+Steinegger M, Söding J. (2017) MMseqs2 enables sensitive protein sequence
+searching for the analysis of massive data sets. Nature biotechnology
+35:1026-1028.
+
+Terwilliger T. (2003) SOLVE and RESOLVE: automated structure solution, density
+modification and model building. J Synchrotron Radiat 11:49-52.
+
+Terwilliger TC, Grosse-Kunstleve RW, Afonine PV, Moriarty NW, Zwart PH, Hung
+L-W, Read RJ, Adams PD. (2008) Iterative model building, structure refinement
+and density modification with the PHENIX AutoBuild wizard. Acta Cryst.
+D64:61-69.
+
+Terwilliger TC, Poon BK, Afonine PV, Schlicksup CJ, Croll TI, Millán C,
+Richardson JS, Read RJ, Adams PD. (2022) Improved AlphaFold modeling with
+implicit experimental information. Nature Methods 19:1376-1382.
+
+Zwart PH, Grosse-Kunstleve RW, Adams PD. (2005) Xtriage and Fest: automatic
+assessment of X-ray data and substructure structure factor estimation. CCP4
+Newsletter Winter:Contribution 7.
+
+
+
+
+Finished 
+
+===============================================================================
+Job complete
+usr+sys time: 3886.35 seconds
+wall clock time: 64 minutes 53.86 seconds (3893.86 seconds total)
+
+
+
+
+**************************************************
+FINAL QUALITY METRICS REPORT:
+--------------------------------------------------
+Resolution: 2.10
+**************************************************
+

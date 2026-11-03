@@ -5,7 +5,7 @@ from __future__ import absolute_import, division, print_function
 #
 # Usage:
 #   libtbx.python xcif/benchmarks/run_benchmarks.py <file.cif> [file2.cif ...] \
-#       [--repeat N] [--warmup N] [--level1]
+#       [--repeat N] [--warmup N] [--level1] [--no-ucif]
 #
 # Each parser runs in a subprocess so ru_maxrss is isolated per parser.
 
@@ -21,13 +21,6 @@ import platform
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _median(v):
-  s = sorted(v)
-  n = len(s)
-  if n % 2 == 1:
-    return s[n // 2]
-  return (s[n // 2 - 1] + s[n // 2]) / 2.0
 
 def _stddev(v, mean):
   return math.sqrt(sum((x - mean) ** 2 for x in v) / len(v))
@@ -72,9 +65,12 @@ if parser_name == "ucif":
 elif parser_name == "gemmi":
   import gemmi
   parse_fn = lambda: gemmi.cif.read(cif_path)
-elif parser_name == "xcif":
+elif parser_name == "xcif_native":
   import xcif
   parse_fn = lambda: xcif.reader(file_path=cif_path)
+elif parser_name == "xcif_compat":
+  from iotbx.cif import reader as cif_reader
+  parse_fn = lambda: cif_reader(file_path=cif_path, engine="xcif")
 else:
   sys.exit("unknown parser: " + parser_name)
 
@@ -103,7 +99,7 @@ def _run_parser_subprocess(parser_name, cif_path, repeat, warmup, python_exe):
   try:
     proc = subprocess.Popen(
       cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = proc.communicate(timeout=600)
+    stdout, stderr = proc.communicate(timeout=12000)
   except Exception as e:
     return None, str(e)
 
@@ -136,7 +132,7 @@ def _run_level1(cif_path, repeat, warmup):
   try:
     proc = subprocess.Popen(
       cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = proc.communicate(timeout=600)
+    stdout, stderr = proc.communicate(timeout=12000)
   except Exception as e:
     return None, str(e)
 
@@ -167,6 +163,7 @@ def main():
   repeat = 5
   warmup = 3
   run_level1 = False
+  skip_ucif = False
   i = 0
   while i < len(args):
     if args[i] == "--repeat":
@@ -178,13 +175,16 @@ def main():
     elif args[i] == "--level1":
       run_level1 = True
       i += 1
+    elif args[i] == "--no-ucif":
+      skip_ucif = True
+      i += 1
     else:
       cif_paths.append(args[i])
       i += 1
 
   if not cif_paths:
     print("Usage: libtbx.python run_benchmarks.py <file.cif> [file2.cif ...]")
-    print("       [--repeat N] [--warmup N] [--level1]")
+    print("       [--repeat N] [--warmup N] [--level1] [--no-ucif]")
     sys.exit(1)
 
   # Validate files
@@ -196,7 +196,9 @@ def main():
   # Determine Python executable
   python_exe = sys.executable
 
-  parsers = ["ucif", "gemmi", "xcif"]
+  parsers = ["ucif", "xcif_compat", "xcif_native", "gemmi" ]
+  if skip_ucif:
+    parsers = [p for p in parsers if p != "ucif"]
 
   for cif_path in cif_paths:
     size_mb = os.path.getsize(cif_path) / (1024.0 * 1024.0)
@@ -220,35 +222,45 @@ def main():
 
       times = data["times_ms"]
       rss = data["peak_rss_kb"]
-      med = _median(times)
       mn = min(times)
       mx = max(times)
       avg = sum(times) / len(times)
       sd = _stddev(times, avg)
 
       results[name] = {
-        "median_ms": med, "min_ms": mn, "max_ms": mx,
+        "average_ms": avg, "min_ms": mn, "max_ms": mx,
         "stddev_ms": sd, "peak_rss_kb": rss,
       }
-      print("median=%s  min=%s  max=%s  sd=%s  RSS=%.0f MB" % (
-        _format_ms(med), _format_ms(mn), _format_ms(mx),
+      print("avg=%s  min=%s  max=%s  sd=%s  RSS=%.0f MB" % (
+        _format_ms(avg), _format_ms(mn), _format_ms(mx),
         _format_ms(sd), rss / 1024.0))
 
-    # Summary table
+    # Summary table.
+    # Each xcif variant is paired with the parser it is comparable to at the
+    # same level of work: xcif_compat ↔ ucif (both build iotbx.cif.model.cif),
+    # xcif_native ↔ gemmi (both return a native C++ document via Python proxy).
     if len(results) >= 2:
-      gemmi_med = results.get("gemmi", {}).get("median_ms")
-      gemmi_rss = results.get("gemmi", {}).get("peak_rss_kb")
-      print("\n  %-12s %10s %10s %10s" % ("Parser", "Median", "vs gemmi", "RSS MB"))
-      print("  " + "-" * 46)
-      for name in sorted(results, key=lambda k: results[k]["median_ms"]):
+      ucif_avg  = results.get("ucif",  {}).get("average_ms")
+      gemmi_avg = results.get("gemmi", {}).get("average_ms")
+      baselines = {
+        "xcif_compat": ("ucif",  ucif_avg),
+        "xcif_native": ("gemmi", gemmi_avg),
+      }
+      print("\n  %-12s %10s %8s %18s" % (
+        "Parser", "Average", "RSS MB", "speedup"))
+      print("  " + "-" * 52)
+      for name in parsers:
+        if name not in results:
+          continue
         r = results[name]
-        ratio_str = ""
-        if gemmi_med:
-          ratio = r["median_ms"] / gemmi_med
-          ratio_str = "%.2fx" % ratio
-        print("  %-12s %10s %10s %10.0f" % (
-          name, _format_ms(r["median_ms"]), ratio_str,
-          r["peak_rss_kb"] / 1024.0))
+        baseline_name, baseline_avg = baselines.get(name, (None, None))
+        cmp_str = "-"
+        if baseline_avg:
+          speedup = r["average_ms"] / baseline_avg
+          cmp_str = "%.2f of %s" % (speedup, baseline_name)
+        print("  %-12s %10s %8.0f %18s" % (
+          name, _format_ms(r["average_ms"]),
+          r["peak_rss_kb"] / 1024.0, cmp_str))
 
     # ── Level 1 (pure C++) ─────────────────────────────────────────
     if run_level1:
@@ -262,8 +274,11 @@ def main():
           _format_ms(l1["min_ms"]),
           _format_ms(l1["max_ms"]),
           _format_ms(l1["stddev_ms"])))
-        # Compare Level 1 vs Level 2
-        xcif_l2 = results.get("xcif", {}).get("median_ms")
+        # Compare Level 1 vs Level 2 (Python avg vs bench_xcif median — the
+        # C++ binary's RESULT line still emits median; mismatch is tolerable
+        # for this rough overhead diagnostic). Pair against xcif_native since
+        # that path is closest to the raw C++ parse the binary measures.
+        xcif_l2 = results.get("xcif_native", {}).get("average_ms")
         if xcif_l2:
           overhead = xcif_l2 - l1["median_ms"]
           print("  Python boundary overhead: %s (%.0f%%)" % (

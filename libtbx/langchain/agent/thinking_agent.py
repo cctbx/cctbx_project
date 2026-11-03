@@ -108,7 +108,7 @@ def _get_strategic_programs():
       "..", "knowledge", "programs.yaml",
     )
     if os.path.isfile(yaml_path):
-      with open(yaml_path) as f:
+      with open(yaml_path, encoding='utf-8') as f:
         data = yaml.safe_load(f)
       if isinstance(data, dict):
         names = set()
@@ -1620,7 +1620,11 @@ def _call_thinking_llm(state, system_msg, user_msg):
     else:
       response = llm.invoke(messages)
 
-    return response.content
+    try:
+      from libtbx.langchain.core.llm import response_text
+    except ImportError:
+      from core.llm import response_text
+    return response_text(response)
 
   except ImportError:
     # Missing packages (standalone testing) — degrade silently
@@ -1632,10 +1636,12 @@ def _get_rate_handler(provider):
   try:
     try:
       from libtbx.langchain.agent.rate_limit_handler import (
-        get_google_handler, get_openai_handler, get_anthropic_handler)
+        get_google_handler, get_openai_handler, get_anthropic_handler,
+        get_portkey_handler)
     except ImportError:
       from agent.rate_limit_handler import (
-        get_google_handler, get_openai_handler, get_anthropic_handler)
+        get_google_handler, get_openai_handler, get_anthropic_handler,
+        get_portkey_handler)
 
     if provider == "google":
       return get_google_handler()
@@ -1643,6 +1649,8 @@ def _get_rate_handler(provider):
       return get_openai_handler()
     elif provider == "anthropic":
       return get_anthropic_handler()
+    elif provider == "portkey":
+      return get_portkey_handler()
   except ImportError:
     pass
   return None

@@ -3,6 +3,7 @@ import os
 from libtbx import Auto
 
 from mmtbx.geometry_restraints import mopac_manager
+from mmtbx.geometry_restraints import xtb_manager
 
 def env_exists_exists(env, var, check=True):
   if check:
@@ -24,12 +25,19 @@ def is_mopac_installed(env, var, verbose=False):
   else:
     return env_exists_exists(env, var)
 
+def is_xtb_installed(env, var, verbose=False):
+  if xtb_manager.get_exe(verbose=verbose):
+    return True
+  else:
+    return env_exists_exists(env, var)
+
 def is_qm_test_installed(env, var):
   return True #env_exists_exists(env, var, check=False)
 
 program_options = {
   'orca' : (is_orca_installed, 'PHENIX_ORCA'),
   'mopac' : (is_mopac_installed, 'PHENIX_MOPAC'),
+  'xtb' : (is_xtb_installed, 'PHENIX_XTB'),
   'test' : (is_qm_test_installed, 'PHENIX_QM_TEST'),
   }
 
@@ -104,20 +112,25 @@ qm_selection_specs = '''
     .type = choice
 '''
 
-def get_qm_package_scope(validate=True, verbose=False):
+def get_qm_package_scope(default_package=None, package_auto=False, validate=True, verbose=False):
+  if default_package is None: default_package='mopac'
   programs = ''
-  for package, (func, var) in program_options.items():
-    if func(os.environ, var):
-      if package=='mopac':
-        programs += ' *%s' % package
-      else:
-        programs += ' %s' % package
-  if verbose: print(programs)
+  if package_auto:
+    programs=' auto_set_from_action.optimise'
+  else:
+    for package, (func, var) in program_options.items():
+      if func(os.environ, var):
+        if package==default_package:
+          programs += ' *%s' % package
+        else:
+          programs += ' %s' % package
+  if verbose:
+    print(programs)
   if validate:
     assert programs, 'Need to set some parameters for QM programs %s' % program_options
   return qm_package_scope % programs
 
-def get_qm_restraints_scope(validate=True, verbose=False):
+def get_qm_restraints_scope(default_package=None, validate=True, verbose=False):
   qm_restraints_scope = '''
 qm_restraints
   .multiple = True
@@ -196,12 +209,14 @@ gradients
   %s
 }
 '''
-  qm_package_scope_filled = get_qm_package_scope(validate=validate ,verbose=verbose)
+  qm_package_scope_filled = get_qm_package_scope(default_package=default_package,
+                                                 validate=validate,
+                                                 verbose=verbose)
   qm_restraints_scope = qm_restraints_scope % (qm_selection_specs % ('*',''),
                                                qm_package_scope_filled)
   return qm_restraints_scope
 
-def get_qm_gradients_scope(validate=True, verbose=False):
+def get_qm_gradients_scope(default_package=None, validate=True, verbose=False):
   qm_gradients_scope = '''
 qm_gradients
   .multiple = True
@@ -210,7 +225,9 @@ qm_gradients
   %s
 }
 '''
-  qm_package_scope_filled = get_qm_package_scope(validate=validate, verbose=verbose)
+  qm_package_scope_filled = get_qm_package_scope(default_package=default_package,
+                                                 validate=validate,
+                                                 verbose=verbose)
   qm_gradients_scope = qm_gradients_scope % (qm_selection_specs % ('','*'),
                                                qm_package_scope_filled)
   return qm_gradients_scope
@@ -223,6 +240,9 @@ def electrons(model,
               specific_atom_multiplicities=None,
               return_atom_valences=False,
               log=None):
+  #
+  # needs to be updated to new electrons NWM
+  #
   from libtbx.utils import Sorry
   from mmtbx.ligands import electrons
   atom_valences = electrons.electron_distribution(
@@ -305,6 +325,10 @@ def populate_qmr_defaults(qmr):
     if qmr.package.method is Auto:
       qmr.package.method='PM7'
       qmr.package.method='PM6-D3H4'
+  elif program=='xtb':
+    default_defaults(qmr)
+    if qmr.package.method is Auto:
+      qmr.package.method='GFN2-xTB'
   else:
     assert 0
   return qmr

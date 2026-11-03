@@ -109,6 +109,15 @@ def derive_metrics_from_history(history):
                 metrics["tfz"] = _extract_float(result_text, r"TFZ[=:\s]+([0-9.]+)")
             if not metrics["llg"]:
                 metrics["llg"] = _extract_float(result_text, r"LLG[=:\s]+([0-9.]+)")
+            # Resolution text-fallback: the structured "analysis" dict often
+            # omits resolution even though it appears in the refine/xtriage
+            # result text.  Without this, metrics_history carries resolution=None
+            # and the stop evaluator loses the resolution-banded R-free target.
+            # (Defense-in-depth; perceive() also prefers state["session_resolution"].)
+            # Uses _extract_resolution (not _extract_float) to avoid mis-reading
+            # "Anomalous Resolution" / "Resolution range: lo - hi" forms.
+            if not metrics["resolution"]:
+                metrics["resolution"] = _extract_resolution(result_text)
             if not metrics["map_cc"]:
                 # Try multiple patterns for map_cc extraction
                 # Pattern 1: CC_mask (the actual format from real_space_refine)
@@ -143,19 +152,51 @@ def _extract_float(text, pattern):
     return None
 
 
-def _safe_float(val):
-    """Convert to float or return None.
+def _extract_resolution(text):
+    r"""Extract the data (high-resolution) limit from program result text.
 
-    JSON round-tripping can turn float values into strings
-    (e.g. 0.385 → "0.385").  All numeric metrics from history
-    dicts must be coerced before arithmetic or formatting.
+    This is NOT a plain `_extract_float` with a "resolution" pattern, because a
+    naive first-match regex mis-reads real PHENIX output.  Hazards handled:
+
+      - ``Anomalous Resolution: 2.10`` appears (in xtriage output) BEFORE the
+        data ``Resolution: 1.74``; a first-match grabs 2.10.  The anomalous span
+        is stripped from each line first (so a real resolution sharing the line
+        is still found).
+      - ``Resolution range: 20.0 - 1.74`` -> take the high-resolution limit
+        (the second number, 1.74), not the low-resolution 20.0.  A first-match
+        ``[0-9.]+`` grabs 20.0 (or, anchored after a colon, fails entirely).
+      - Multiple ``Resolution:`` lines -> the LAST one wins, since program
+        summaries / final tables appear near the bottom of the log.
+      - A decimal point is REQUIRED (``[0-9]+\.[0-9]+``); this avoids matching
+        integer headers such as ``Completeness in resolution range: 1`` as a
+        1.0 Angstrom resolution.  PHENIX prints resolutions with decimals.
+
+    A sanity bound (0.5 < res < 20) mirrors find_resolution()'s history branch
+    so a stray parse can't feed a nonsense value to the resolution-banded target
+    lookup.  Returns a float, or None.
     """
-    if val is None:
+    if not text:
         return None
-    try:
-        return float(val)
-    except (ValueError, TypeError):
-        return None
+    best = None
+    for raw in text.splitlines():
+        # Strip an "anomalous resolution: NN.NN" span so it can't be taken as the
+        # data resolution, while preserving any real resolution on the same line.
+        line = re.sub(r'anomalous\s+resolution[:\s=]*[0-9]+(?:\.[0-9]+)?',
+                      ' ', raw, flags=re.IGNORECASE)
+        # "resolution" then a decimal float, optionally a "- float" range.
+        m = re.search(
+            r'resolution\b[^0-9\n]*?([0-9]+\.[0-9]+)'
+            r'(?:\s*[-\u2013]\s*([0-9]+\.[0-9]+))?',
+            line, re.IGNORECASE)
+        if m:
+            val = float(m.group(2)) if m.group(2) else float(m.group(1))
+            if 0.5 < val < 20.0:  # plausible macromolecular resolution
+                best = val  # last match wins (final summary near bottom)
+    return best
+
+
+# _safe_float is shared; see libtbx/langchain/utils/run_utils.py
+from libtbx.langchain.utils.run_utils import _safe_float
 
 
 def _extract_autobuild_rfree(text):
@@ -440,6 +481,22 @@ def _analyze_xray_trend(metrics_history, resolution, result):
             return result
 
     # 3. EXCESSIVE REFINEMENT: 5+ consecutive refines
+    # SHADOWED (2026-08): unreachable in the running agent.
+    #
+    # check_consecutive_program_cap (perceive_checks) stops ANY program
+    # repeated 3 times in a SUCCESS tail.  graph_nodes calls it
+    # unconditionally with the default cap and returns from perceive on
+    # trigger, so a 4th consecutive refine cannot occur and a 5th is
+    # unreachable.
+    #
+    # Kept rather than deleted because the scopes differ: this counts
+    # refinement specifically, the cap counts any program.  If the cap is
+    # ever raised or made program-specific, this becomes live again.
+    #
+    # The threshold of 5 is NOT the intended behaviour today: on the
+    # p9-sad run, three refine cycles was judged correct and five too
+    # many.  Anyone reviving this rule should re-set the threshold rather
+    # than assume 5.
     if consecutive >= 5:
         result["should_stop"] = True
         result["reason"] = "EXCESSIVE: %d consecutive refinement cycles" % consecutive
@@ -504,11 +561,33 @@ def _analyze_cryoem_trend(metrics_history, result):
     # === STOP CONDITIONS ===
 
     # 1. SUCCESS: CC above target (was 0.75, now 0.70)
+    #
+    # v116.12: Mirror the X-ray validation_done check so we don't auto-stop
+    # before running validation (phenix.molprobity / phenix.validation_cryoem).
+    # Pre-v116.12, this auto-stopped immediately when CC > 0.70, skipping
+    # the validation stage even when the plan had one pending.  See the
+    # X-ray path above (line ~365) for the symmetric pattern.
     if latest_cc > 0.70:
-        result["should_stop"] = True
-        result["reason"] = "SUCCESS: Map-model CC (%.3f) above 0.70 target" % latest_cc
-        result["recommendation"] = "stop"
-        return result
+        # Check if validation has been done - don't auto-stop without validation
+        validation_done = any(
+            m.get("program") in ("phenix.molprobity", "phenix.validation_cryoem")
+            for m in metrics_history
+        )
+
+        if validation_done:
+            result["should_stop"] = True
+            result["reason"] = "SUCCESS: Map-model CC (%.3f) above 0.70 target" % latest_cc
+            result["recommendation"] = "stop"
+            result["trend_summary"] = "Map-model CC: %.3f - ABOVE TARGET" % latest_cc
+            return result
+        else:
+            # Success reached but validation not done - recommend validation, not stop
+            result["should_stop"] = False
+            result["reason"] = "Map-model CC (%.3f) above target - recommend validation before stopping" % latest_cc
+            result["recommendation"] = "validate"
+            result["trend_summary"] = "Map-model CC: %.3f - TARGET REACHED, VALIDATE BEFORE STOPPING" % latest_cc
+            result["suggest_validation"] = True
+            return result
 
     # 2. PLATEAU: Less than 0.3% improvement for 3+ cycles (more patience)
     if len(cc_values) >= 4:
@@ -525,6 +604,22 @@ def _analyze_cryoem_trend(metrics_history, result):
             return result
 
     # 3. EXCESSIVE: 5+ consecutive real_space_refine
+    # SHADOWED (2026-08): unreachable in the running agent.
+    #
+    # check_consecutive_program_cap (perceive_checks) stops ANY program
+    # repeated 3 times in a SUCCESS tail.  graph_nodes calls it
+    # unconditionally with the default cap and returns from perceive on
+    # trigger, so a 4th consecutive real_space_refine cannot occur and a 5th is
+    # unreachable.
+    #
+    # Kept rather than deleted because the scopes differ: this counts
+    # refinement specifically, the cap counts any program.  If the cap is
+    # ever raised or made program-specific, this becomes live again.
+    #
+    # The threshold of 5 is NOT the intended behaviour today: on the
+    # p9-sad run, three refine cycles was judged correct and five too
+    # many.  Anyone reviving this rule should re-set the threshold rather
+    # than assume 5.
     if consecutive >= 5:
         result["should_stop"] = True
         result["reason"] = "EXCESSIVE: %d consecutive refinement cycles" % consecutive

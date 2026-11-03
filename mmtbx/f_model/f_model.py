@@ -1512,6 +1512,13 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         verbose=None,
         log = None):
     self.alpha_beta_cache = None
+    # Auto-shutoff refine_hd_scattering if number of H is too small.
+    if refine_hd_scattering:
+      if self.xray_structure is not None:
+        hd_sel = self.xray_structure.hd_selection()
+        h_fraction = hd_sel.count(True)*100./hd_sel.size()
+        if h_fraction < 25.: refine_hd_scattering = False
+    #
     if(apply_scale_k1_to_f_obs):
       self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
@@ -2260,8 +2267,10 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       f.f_obs_work().data(), f.f_model_work().data())
 
   def completeness_high(self):
-    return self.f_obs().select(
-      self.bin_selections[len(self.bin_selections)-1]).completeness()
+    sel = self.bin_selections[len(self.bin_selections)-1]
+    ds = self.f_obs().d_spacings().data()
+    d_max = flex.max(ds.select(sel))
+    return self.f_obs().select(sel).completeness(d_max=d_max)
 
   def completeness_low(self):
     return self.f_obs().select(self.bin_selections[0]).completeness()
@@ -2379,6 +2388,18 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
 
   def twinned(self):
     return self.arrays.core_twin is not None
+
+  def vector_diff_map(self, fo_phase_source, isotropize):
+    mch = self.map_calculation_helper()
+    fo = self.f_obs().phase_transfer(phase_source = fo_phase_source)
+    fo = fo.array(data = fo.data()*mch.fom)
+    fc = self.f_model()
+    fc = fc.array(data = fc.data()*mch.alpha.data())
+    diff = fo.data() - fc.data()
+    if isotropize:
+      scale = 1. / (self.k_isotropic()*self.k_anisotropic())
+      diff = diff * scale
+    return fo.array(data = diff)
 
   def map_calculation_helper(self,
                              free_reflections_per_bin = 100,

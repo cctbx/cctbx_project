@@ -6,8 +6,6 @@ https://www.cgl.ucsf.edu/chimerax/docs/user/commands/remotecontrol.html
 
 """
 
-from __future__ import absolute_import, division, print_function
-
 import glob
 import os
 import random

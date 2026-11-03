@@ -27,7 +27,7 @@ class SizerContainer(object):
     self._current_panel = None
     self.main_sizer = None
     self._label_font = wx.Font(self._label_size, wx.FONTFAMILY_DEFAULT,
-      wx.NORMAL, wx.BOLD)
+      wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
 
   def get_panel(self):
     return self._current_panel

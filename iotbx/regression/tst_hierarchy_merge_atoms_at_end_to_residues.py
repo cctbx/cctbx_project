@@ -60,6 +60,52 @@ TER
   print (atoms_in_chains2)
   assert atoms_in_chains2 == [('1', 22), ('3', 18), ('1', 1)], atoms_in_chains
 
+pdb_str_altlocs = """\
+ATOM      1  N   SER A   1      -1.000   0.000   0.000  1.00 10.00           N
+ATOM      2  CA  SER A   1       0.000   0.000   0.000  1.00 10.00           C
+ATOM      3  C   SER A   1       1.000   0.000   0.000  1.00 10.00           C
+ATOM      4  O   SER A   1       2.000   0.000   0.000  1.00 10.00           O
+ATOM      5  CB ASER A   1       0.000   1.000   0.000  0.50 10.00           C
+ATOM      6  OG ASER A   1       0.000   2.000   0.000  0.50 10.00           O
+ATOM      7  CB BSER A   1       0.000  -1.000   0.000  0.50 10.00           C
+ATOM      8  OG BSER A   1       0.000  -2.000   0.000  0.50 10.00           O
+TER
+ATOM      9  HG ASER A   1       0.000   2.500   0.000  0.50 10.00           H
+ATOM     10  HG BSER A   1       0.000  -2.500   0.000  0.50 10.00           H
+TER
+"""
+
+def exercise_2():
+  """Trailing residue group with two alternate-conformer H atoms, named chain.
+  Both atom groups must be merged into the original residue; nothing is lost."""
+  h = iotbx.pdb.input(lines=pdb_str_altlocs, source_info=None).construct_hierarchy()
+  assert h.atoms_size() == 10, h.atoms_size()
+  h.merge_atoms_at_end_to_residues()
+  atoms_in_chains = [(c.id, c.atoms_size()) for c in h.only_model().chains()]
+  print (atoms_in_chains)
+  assert atoms_in_chains == [('A', 10)], atoms_in_chains
+  rg = h.only_model().only_chain().only_residue_group()
+  ag_sizes = sorted([(ag.altloc, ag.atoms_size()) for ag in rg.atom_groups()])
+  assert ag_sizes == [('', 4), ('A', 3), ('B', 3)], ag_sizes
+
+def exercise_3():
+  """Same as exercise_2 but with a blank chain id. This used to raise
+  AttributeError: 'NoneType' object has no attribute 'remove_residue_group'
+  because the residue group was detached from the chain after the first
+  atom group and rg.parent() returned None for the second one."""
+  pdb_str = pdb_str_altlocs.replace("SER A   1", "SER     1")
+  h = iotbx.pdb.input(lines=pdb_str, source_info=None).construct_hierarchy()
+  assert h.atoms_size() == 10, h.atoms_size()
+  h.merge_atoms_at_end_to_residues()
+  atoms_in_chains = [(c.id, c.atoms_size()) for c in h.only_model().chains()]
+  print (atoms_in_chains)
+  assert atoms_in_chains == [(' ', 10)], atoms_in_chains
+  rg = h.only_model().only_chain().only_residue_group()
+  ag_sizes = sorted([(ag.altloc, ag.atoms_size()) for ag in rg.atom_groups()])
+  assert ag_sizes == [('', 4), ('A', 3), ('B', 3)], ag_sizes
+
 if (__name__ == "__main__"):
   exercise_1()
+  exercise_2()
+  exercise_3()
   print("OK")

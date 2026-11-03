@@ -135,6 +135,25 @@ HETATM 8099 MG    MG   584      69.634   3.963 -22.036  1.00 45.86          MG
 HETATM 8100 MG    MG   585      72.985 -30.470 -21.424  1.00 39.36          MG
 HETATM 8101  O   HOH   501      50.104 -12.783 -34.164  1.00 76.32           O
 HETATM 8102  O   HOH   502      50.327  -5.724 -17.983  1.00 53.54           O
+HETATM  614  S   SO4 B 101      14.994  20.601  10.862  0.00  7.02           S
+HETATM  615  O1  SO4 B 101      14.234  20.194  12.077  0.00  7.69           O
+HETATM  616  O2  SO4 B 101      14.048  21.062   9.850  0.00  9.28           O
+HETATM  617  O3  SO4 B 101      15.905  21.686  11.261  0.00  8.01           O
+HETATM  618  O4  SO4 B 101      15.772  19.454  10.371  0.00  8.18           O
+HETATM   17  C1  NAG C 751     -23.531  13.728  37.133  1.00 88.86           C
+HETATM   18  C2  NAG C 751     -23.454  12.846  38.388  1.00 88.86           C
+HETATM   19  C3  NAG C 751     -24.137  13.553  39.556  1.00 88.86           C
+HETATM   20  C4  NAG C 751     -23.575  14.960  39.732  1.00 88.86           C
+HETATM   21  C5  NAG C 751     -23.671  15.715  38.402  1.00 88.86           C
+HETATM   22  C6  NAG C 751     -23.123  17.124  38.456  1.00 88.86           C
+HETATM   23  C7  NAG C 751     -23.474  10.369  38.378  1.00 88.86           C
+HETATM   24  C8  NAG C 751     -22.072  10.425  38.936  1.00 88.86           C
+HETATM   25  N2  NAG C 751     -24.059  11.561  38.149  1.00 88.86           N
+HETATM   26  O3  NAG C 751     -23.955  12.768  40.704  1.00 88.86           O
+HETATM   27  O4  NAG C 751     -24.327  15.588  40.744  1.00 88.86           O
+HETATM   28  O5  NAG C 751     -22.970  14.992  37.410  1.00 88.86           O
+HETATM   29  O6  NAG C 751     -23.166  17.701  37.173  1.00 88.86           O
+HETATM   30  O7  NAG C 751     -24.026   9.301  38.160  1.00 88.86           O
 END
 """
 
@@ -186,6 +205,10 @@ def exercise_atom_selections():
   assert list(isel("within(2.5, backbone resname glu)")) \
       == [1, 2, 3, 6, 7, 8, 9, 10, 15, 16, 38, 39, 40, 43, 44, 45, 46, 47]
   assert list(isel("resname ser sidechain")) == [4, 5, 19, 20, 41, 42]
+  assert list(isel('small_molecule'))==[126, 127, 128, 129, 130]
+  assert list(isel('small'))==[126, 127, 128, 129, 130]
+  assert list(isel('ion'))==[122, 123]
+  assert list(isel('carbohydrate'))==[131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144]
 
 def exercise():
   exercise_atom_selections()

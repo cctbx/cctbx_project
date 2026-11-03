@@ -150,7 +150,9 @@ class rsr_model(object):
     self.update_statistics(prefix = prefix, log = log)
 
   def update_statistics(self, prefix = None, log = None):
-    gs = self.model.geometry_statistics()
+    from mmtbx import hydrogens # reduce2: keep H so clash() is not skipped
+    gs = self.model.geometry_statistics(
+      use_hydrogens = None if hydrogens.use_old_reduce() else True)
     result = None
     if(gs is not None):
       if (log):

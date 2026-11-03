@@ -1,0 +1,765 @@
+"""Profile loader and Profile dataclass.
+
+JSON files; cascading override (project > user > built-in); one level
+of ``based_on`` inheritance with cycle detection; ``${VAR}`` and
+``${env:NAME}`` expansion in ``mcp_servers`` strings.
+"""
+
+import json
+import os
+import re
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from libtbx.utils import Sorry
+
+
+# Set of keys we know about at the top level. Unknown keys → warning only
+# (forward compatibility).
+_KNOWN_KEYS = {
+  "name", "description", "based_on",
+  "model",
+  "system_prompt", "system_prompt_file",
+  "skills", "mcp_servers", "tool_policy_default",
+  "subagents", "max_turns",
+  "server_tools",
+  "effort",
+  "backend", "claude", "portkey",
+}
+
+# The one reasoning-depth vocabulary every backend maps onto its own control
+# (Anthropic output_config.effort, the Claude Code CLI --effort, OpenAI
+# reasoning.effort, Gemini thinking_level). Defined once here; the launcher
+# flag, the agents and the composer combo import it.
+EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
+DEFAULT_EFFORT = "high"
+
+# Backends supported by the agent factory. Validated at load time so
+# typos surface before the chat window opens.
+_KNOWN_BACKENDS = ("anthropic", "claude_code", "openai", "portkey", "google")
+
+# There is deliberately NO `subagents.default_model`. A child that names no
+# model runs on the PARENT's pair (see `subagent_factory._resolve_pair`), which
+# is what makes same-model review the config-free default and cross-model an
+# opt-in the spawn call states. A profile-level default model would invert
+# that: every child would silently become cross-model on whatever literal this
+# module carried, and a user on gpt/gemini/portkey who never ran `claude login`
+# would get a hard auth failure instead of a review on their own model. The
+# field existed, defaulted to a Claude model, and was read by nothing; it was
+# removed rather than wired.
+
+# User-facing assistant name per backend, for the chat UI (response label,
+# input placeholder, question card). Portkey is a gateway whose underlying
+# model varies, so it -- and anything unmapped -- gets the generic "Assistant".
+_BACKEND_DISPLAY_NAMES = {
+  "claude_code": "Claude",
+  "anthropic": "Claude",
+  "openai": "GPT",
+  "google": "Gemini",
+  "portkey": "Assistant",
+}
+
+
+def backend_display_name(backend):
+  """Return the user-facing assistant name for a backend id.
+
+  Parameters
+  ----------
+  backend : str or None
+      A backend id (e.g. ``"openai"``). Unknown / empty / ``None`` map to
+      ``"Assistant"``.
+
+  Returns
+  -------
+  str
+      The display name (``"Claude"``, ``"GPT"``, ``"Gemini"``, or
+      ``"Assistant"``).
+  """
+  return _BACKEND_DISPLAY_NAMES.get(backend or "", "Assistant")
+
+# Environment keys a profile-supplied MCP-server ``env`` block must not be
+# able to set. A profile can be project-scoped (and therefore untrusted),
+# so it must not control which binary or libraries load into the spawned
+# subprocess (code execution) or override Phenix's own scoping. Two layers:
+#   * the exact keys below -- executable lookup (PATH), shell startup-code
+#     injection, and the per-interpreter module/loader hijacks for
+#     python / node / perl / ruby; and
+#   * the prefix families in _BLOCKED_SERVER_ENV_PREFIXES.
+# Anything else (per-server API tokens, PYTHONUNBUFFERED, ...) passes
+# through untouched -- this is a blocklist, not an allowlist, so that
+# legitimate per-server configuration still works.
+_BLOCKED_SERVER_ENV = frozenset([
+  "PATH",                                        # which binary / helpers resolve
+  "BASH_ENV", "ENV", "IFS",                      # shell startup-code injection
+  "PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP",   # python module / loader hijack
+  "NODE_OPTIONS", "NODE_PATH",                   # node --require / module hijack
+  "PERL5LIB", "PERL5OPT",                        # perl module path / -M code
+  "RUBYLIB", "RUBYOPT",                          # ruby load path / -r code
+  # switches off the dispatcher's environment guard, like
+  # PHENIX_TRUST_OTHER_ENV (covered by the PHENIX_ prefix below)
+  "CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES",
+  # the dispatchers exec the interpreter under this wrapper command
+  "LIBTBX_VALGRIND",
+])
+
+# Prefix families stripped wholesale -- no legitimate per-server env sets
+# these: every dynamic-loader control (LD_PRELOAD, LD_AUDIT, LD_LIBRARY_PATH,
+# DYLD_INSERT_LIBRARIES, DYLD_*_PATH, ...), exported shell functions
+# (BASH_FUNC_*), Phenix's own namespace (PHENIX_*, which includes
+# PHENIX_PROJECT_DIR -- the project sandbox -- and PHENIX_TRUST_OTHER_ENV,
+# which would otherwise switch off the dispatcher's inherited-env scrub),
+# and the DivCon QB_* paths, which the dispatchers append after their guard.
+_BLOCKED_SERVER_ENV_PREFIXES = ("LD_", "DYLD_", "BASH_FUNC_", "PHENIX_", "QB_")
+
+
+def sanitize_server_env(env):
+  """Strip security-sensitive keys from an MCP-server ``env`` dict.
+
+  Removes keys that would let an untrusted profile control which binary or
+  libraries load into the spawned MCP-server subprocess (code execution)
+  or override Phenix's own scoping. See ``_BLOCKED_SERVER_ENV`` and
+  ``_BLOCKED_SERVER_ENV_PREFIXES`` for the exact set.
+
+  Parameters
+  ----------
+  env : dict or None
+      Raw per-server environment from a profile.
+
+  Returns
+  -------
+  dict
+      A new dict with the blocked keys removed; all other entries
+      preserved.
+  """
+  if not env:
+    return {}
+  out = {}
+  for k, v in env.items():
+    # Windows environment names are case-insensitive, so "path" is PATH
+    name = k.upper()
+    if name in _BLOCKED_SERVER_ENV:
+      continue
+    if name.startswith(_BLOCKED_SERVER_ENV_PREFIXES):
+      continue
+    out[k] = v
+  return out
+
+
+@dataclass
+class McpServerConfig:
+  """One MCP server entry from a profile's ``mcp_servers`` list.
+
+  Built by ``_build_profile`` from the raw JSON dict so downstream
+  consumers (``ChatWindow``, ``McpServerConnection``) can use attribute
+  access rather than hunting through nested dicts. Optional fields default
+  to safe values so shorter JSON declarations still work.
+  """
+  name: str
+  command: str = None
+  args: list = field(default_factory=list)
+  env: dict = field(default_factory=dict)
+  tool_policy: dict = field(default_factory=dict)
+  auto_start: bool = True
+  # Phenix-aware servers (default) receive PHENIX_PROJECT_DIR /
+  # PHENIX_AGENT_HOME in their subprocess env; foreign servers (e.g. the
+  # Coot bridge) set this False so no Phenix scoping leaks into them.
+  inject_phenix_env: bool = True
+
+
+@dataclass
+class ClaudeProfileOptions:
+  """Backend-specific knobs for the ``claude_code`` backend.
+
+  Only consulted when ``Profile.backend == 'claude_code'``. Exposed with
+  safe defaults on every ``Profile`` so call sites can read attributes
+  unconditionally without ``hasattr``/``getattr`` guards.
+  """
+  cli_path: str = None              # Override PATH lookup of `claude`
+  sdk_options: dict = field(default_factory=dict)  # ClaudeAgentOptions kwargs
+
+
+@dataclass
+class Profile:
+  """A fully resolved agent profile.
+
+  Produced by ``ProfileLoader.load`` after cascading override, one level
+  of ``based_on`` inheritance, and ``${VAR}`` expansion. File-backed
+  fields (e.g. ``system_prompt``) are inlined as resolved content.
+  """
+  name: str
+  model: str
+  description: str = ""
+  system_prompt: str = ""                              # resolved (file content inlined)
+  skills_additional: list = field(default_factory=list)
+  skills_disabled: set = field(default_factory=set)
+  mcp_servers: list = field(default_factory=list)      # list[McpServerConfig]; expanded
+  tool_policy_default: str = "ask"
+  # Provider-side tools the user opts into (canonical names, e.g.
+  # "web_search", "web_fetch", "code_execution"). Empty by default so an
+  # existing profile that omits the key gets pure-passthrough behavior --
+  # the backend declares nothing extra. The anthropic and google backends
+  # consult this; other backends carry the default empty list.
+  server_tools: list = field(default_factory=list)
+  # The `subagents.*` block is, without exception, about the children THIS
+  # profile spawns -- never about this profile's own run. `max_turns` below is
+  # the other direction and has its own top-level key for exactly that reason;
+  # see its comment.
+  subagents_enabled: bool = True
+  subagents_max_depth: int = 1
+  subagents_default_max_turns: int = 25
+  subagents_default_profile: str = None
+  # This profile's OWN turn cap, whoever runs it -- the number that governs
+  # when this profile is used AS a child. Distinct from
+  # `subagents_default_max_turns`, which is the default this profile hands the
+  # children IT spawns; one key cannot mean both, since a profile in the middle
+  # of a chain is both a child and a parent. None means "not declared", which
+  # is what leaves the spawning caller's default in force; every other field
+  # here carries a filled-in dataclass default, so None is the only value that
+  # can distinguish "the author wrote a cap" from "the author wrote nothing".
+  max_turns: int = None
+  # Reasoning depth this profile asks for, one of EFFORT_LEVELS. None means
+  # "not declared" (the max_turns convention): the launcher then falls back to
+  # the user's saved default and finally DEFAULT_EFFORT, and a child built
+  # from this profile runs at its parent's level. A filled-in default here
+  # would outrank both.
+  effort: str = None
+  backend: str = "claude_code"  # anthropic|claude_code|openai|portkey|google
+  claude: ClaudeProfileOptions = field(default_factory=ClaudeProfileOptions)
+  # Backend-specific knobs for the "portkey" backend; only consulted when
+  # backend == "portkey". Default None on every Profile so call sites can
+  # read them unconditionally (the launcher falls back to these).
+  portkey_virtual_key: str = None
+  portkey_config: str = None
+  source_path: Path = None                             # which file this came from
+
+
+class ProfileLoader:
+  """Resolve and load profiles with cascading override and inheritance.
+
+  Directories are searched in the order project > user > built-in, so a
+  same-named profile in an earlier directory overrides a later one.
+
+  Parameters
+  ----------
+  builtin_dir : str or pathlib.Path
+      Directory of profiles shipped with the application.
+  user_dir : str or pathlib.Path, optional
+      User-level profile directory; overrides ``builtin_dir``.
+  project_dir : str or pathlib.Path, optional
+      Project-level profile directory; overrides ``user_dir``.
+  log : file-like, optional
+      Destination for warnings. Defaults to ``sys.stdout``.
+  """
+
+  def __init__(self, builtin_dir, user_dir=None, project_dir=None, log=None):
+    # Search order: project > user > built-in.
+    self.search_dirs = [d for d in (project_dir, user_dir, builtin_dir) if d]
+    self.log = log if log is not None else sys.stdout
+
+  def load(self, name):
+    """Resolve, parse, validate, and expand a profile by name.
+
+    Parameters
+    ----------
+    name : str
+        Profile name (without the ``.json`` extension).
+
+    Returns
+    -------
+    Profile
+        The fully resolved profile.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        On critical errors: profile not found, parse error, inheritance
+        cycle, missing required field, or unknown backend.
+    """
+    return self._load_with_chain(name, _seen=())
+
+  def load_file(self, path):
+    """Resolve, parse, validate, and expand a profile from an explicit file.
+
+    Like :meth:`load`, but the root profile is read from ``path`` directly
+    instead of by name. The file's own directory is searched first for its
+    ``based_on`` parents (so it can reference sibling profiles, mirroring how
+    ``${PROFILE_DIR}`` lets ``system_prompt_file`` reference siblings); names
+    not found there fall through to the loader's configured search dirs, so an
+    external file can still inherit from a shipped profile such as
+    ``phenix_base``. The extra directory is scoped to this call -- the loader
+    is not mutated, so a later :meth:`load` on the same instance is unaffected.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Path to a profile ``.json`` file.
+
+    Returns
+    -------
+    Profile
+        The fully resolved profile.
+
+    Raises
+    ------
+    libtbx.utils.Sorry
+        When ``path`` is not a file, or on any error :meth:`load` can raise
+        (parse error, inheritance cycle, missing field, unknown backend).
+    """
+    p = Path(path)
+    if not p.is_file():
+      raise Sorry("Profile file not found: %s" % path)
+    p = p.resolve()
+    # Search the file's own directory first (so based_on can reach siblings),
+    # threaded through resolution rather than mutating self.search_dirs.
+    return self._load_path(p, _seen=(), extra_dirs=(p.parent,))
+
+  def _load_with_chain(self, name, _seen, extra_dirs=()):
+    """Resolve ``name`` to a path, then load it via :meth:`_load_path`.
+
+    ``_seen`` carries the chain of already-visited names so an inheritance
+    cycle raises rather than recursing forever. ``extra_dirs`` are searched
+    ahead of ``self.search_dirs`` (threaded from :meth:`load_file`).
+    """
+    if name in _seen:
+      raise Sorry("Profile inheritance cycle: %s -> %s"
+                  % (" -> ".join(_seen), name))
+    path = self._resolve_path(name, extra_dirs)
+    if path is None:
+      raise Sorry("Profile not found: %s" % name)
+    return self._load_path(path, _seen + (name,), extra_dirs)
+
+  def _load_path(self, path, _seen, extra_dirs=()):
+    """Parse the profile at ``path``, resolve ``based_on``, validate, build.
+
+    The shared body of :meth:`_load_with_chain` (name-resolved) and
+    :meth:`load_file` (path-given). ``_seen`` is the inheritance chain so far;
+    ``extra_dirs`` are forwarded to ``based_on`` resolution.
+    """
+    try:
+      # Pin UTF-8 so a human-authored profile carrying literal non-ASCII
+      # (an accented description, an em-dash in a prompt) loads under a
+      # C/POSIX locale too -- same fix as the system_prompt_file read below
+      # and skills._parse_skill_md.
+      with open(path, encoding="utf-8") as fh:
+        data = json.load(fh)
+    except Exception as e:
+      raise Sorry("Profile %s parse error: %s" % (path, e))
+
+    # A well-formed JSON file whose top-level value is not an object (a bare
+    # list / number / string / bool / null) parses fine but has no fields to
+    # read. Guard here -- OUTSIDE the parse try/except so this Sorry is not
+    # re-wrapped as a parse error -- so the data.get() calls below raise a
+    # clear Sorry rather than a raw AttributeError, honoring load()'s contract.
+    if not isinstance(data, dict):
+      raise Sorry("Profile %s: top-level JSON must be an object" % path)
+
+    # Inheritance: parent first, child overrides.
+    based_on = data.get("based_on")
+    if based_on:
+      parent = self._load_with_chain(based_on, _seen, extra_dirs)
+      merged = _profile_to_dict(parent)
+      # system_prompt and system_prompt_file are mutually exclusive (enforced
+      # in _build_profile). _profile_to_dict only ever emits the parent's
+      # resolved system_prompt (a parent's system_prompt_file is already inlined
+      # into system_prompt), so a child overriding the prompt via
+      # system_prompt_file must evict that inherited system_prompt -- otherwise
+      # the merged dict carries both and the mutual-exclusivity gate raises,
+      # leaving the window unable to open. The reverse eviction is unnecessary:
+      # merged never contains a system_prompt_file key.
+      if data.get("system_prompt_file") is not None:
+        merged.pop("system_prompt", None)
+      merged = _deep_merge(
+        merged, {k: v for k, v in data.items() if k != "based_on"})
+      data = merged
+
+    # Warn on unknown keys (forward compatibility).
+    for k in data.keys():
+      if k not in _KNOWN_KEYS:
+        print("profile %s: unknown key '%s' (ignored)"
+              % (path, k), file=self.log)
+
+    # Required fields.
+    if "name" not in data:
+      raise Sorry("Profile %s: missing required field 'name'" % path)
+    if "model" not in data:
+      raise Sorry("Profile %s: missing required field 'model'" % path)
+
+    # Validate backend at load time so typos fail before the chat window
+    # opens, not after the user has been waiting for a streaming response.
+    backend = data.get("backend", "claude_code")
+    if backend not in _KNOWN_BACKENDS:
+      raise Sorry(
+        "Profile %s: unknown backend %r (expected one of: %s)"
+        % (path, backend, ", ".join(repr(b) for b in _KNOWN_BACKENDS)))
+
+    return _build_profile(data, source_path=path)
+
+  def _resolve_path(self, name, extra_dirs=()):
+    """Return the first ``<dir>/<name>.json`` that exists, else ``None``.
+
+    ``extra_dirs`` are searched before ``self.search_dirs`` (used by
+    :meth:`load_file` so an external file's siblings resolve first), which
+    keeps the loader itself stateless.
+    """
+    for d in tuple(extra_dirs) + tuple(self.search_dirs):
+      candidate = Path(d) / ("%s.json" % name)
+      if candidate.exists():
+        return candidate
+    return None
+
+
+# ---- helpers ---------------------------------------------------------------
+
+def _deep_merge(base, override):
+  """Recursively overlay ``override`` onto ``base``, returning a new dict.
+
+  Used by ``based_on`` inheritance: ``base`` is the parent profile
+  serialized by :func:`_profile_to_dict` and ``override`` is the child's
+  raw JSON. A nested dict section (``skills``, ``subagents``,
+  ``claude``, ...) is merged key-by-key so a child overriding ONE sub-key
+  keeps the parent's other sub-keys; scalars and lists replace wholesale.
+  An ``override`` value of ``None`` is skipped so an explicit null in the
+  child never evicts an inherited value (preserving the prior shallow
+  merge's ``v is not None`` filter).
+
+  Parameters
+  ----------
+  base : dict
+      The parent data to overlay onto (not mutated).
+  override : dict
+      The child data taking precedence.
+
+  Returns
+  -------
+  dict
+      A new merged dict.
+  """
+  out = dict(base)
+  for k, v in override.items():
+    if v is None:
+      continue
+    if isinstance(v, dict) and isinstance(out.get(k), dict):
+      out[k] = _deep_merge(out[k], v)
+    else:
+      out[k] = v
+  return out
+
+
+def _server_tools_list(value, source_path):
+  """Validate a profile's ``server_tools`` field as a list of tool names.
+
+  A bare string (e.g. ``"web_search"``) is a common mistake that plain
+  ``list()`` would silently split into single characters -- yielding ~10 bogus
+  tool names that each warn as unknown and enable nothing. Raise a clear Sorry
+  instead.
+  """
+  if value is None:
+    return []
+  if not isinstance(value, list):
+    raise Sorry("Profile %s: server_tools must be a list of tool names "
+                "(e.g. [\"web_search\"]), not %r" % (source_path, value))
+  return list(value)
+
+
+def _coerce_int(value, field, source_path):
+  """Coerce a numeric profile field to int, raising a clear Sorry on bad input.
+
+  A malformed value in an otherwise well-formed profile (e.g.
+  ``subagents.max_depth: "deep"`` or ``[1]``) would otherwise raise a raw
+  ValueError/TypeError from ``int()`` at build time, contradicting the
+  loader's Sorry contract. ``field`` names the offending key for the message.
+  """
+  try:
+    return int(value)
+  except (ValueError, TypeError):
+    raise Sorry("Profile %s: %s must be an integer, not %r"
+                % (source_path, field, value))
+
+
+def _build_profile(data, source_path):
+  """Construct a ``Profile`` from a merged, validated profile dict.
+
+  Flattens nested subtrees (``skills``, ``subagents``,
+  ``claude``) into ``Profile`` fields and inlines ``system_prompt_file``
+  content with ``${VAR}`` expansion.
+
+  Parameters
+  ----------
+  data : dict
+      Merged profile data (parent overlaid by child for inheritance).
+  source_path : str or pathlib.Path
+      File the data came from; used for ``${PROFILE_DIR}`` expansion and
+      error messages.
+
+  Returns
+  -------
+  Profile
+      The constructed profile.
+
+  Raises
+  ------
+  libtbx.utils.Sorry
+      When ``system_prompt`` and ``system_prompt_file`` are both set, or
+      when ``system_prompt_file`` cannot be found.
+  """
+  skills = data.get("skills", {}) or {}
+  subagents = data.get("subagents", {}) or {}
+  # The claude subtree is parsed on every load (cheap), but only the
+  # claude_code backend will consult it; for anthropic profiles it just
+  # carries default values so attribute access is always safe.
+  claude_data = data.get("claude", {}) or {}
+  claude_opts = ClaudeProfileOptions(
+    cli_path=claude_data.get("cli_path"),
+    sdk_options=dict(claude_data.get("sdk_options") or {}))
+
+  # The portkey subtree is parsed on every load (cheap), but only the
+  # portkey backend will consult it; for other backends it just yields
+  # None defaults so attribute access on the Profile is always safe.
+  portkey_data = data.get("portkey", {}) or {}
+
+  # Effort: absent or null is "not declared"; anything else must be a level.
+  effort = data.get("effort")
+  if effort is not None and effort not in EFFORT_LEVELS:
+    raise Sorry("Profile %s: effort must be one of %s; got %r"
+                % (source_path, ", ".join(EFFORT_LEVELS), effort))
+  # The claude CLI takes an effort by three more routes; a profile using any
+  # of them would silently outrank (or, for the env var, override) the one
+  # canonical key, so each is refused by name.
+  sdk_options = claude_opts.sdk_options
+  for path, present in (
+      ("claude.sdk_options.effort", "effort" in sdk_options),
+      ("claude.sdk_options.extra_args.effort",
+       "effort" in (sdk_options.get("extra_args") or {})),
+      ("claude.sdk_options.env.CLAUDE_CODE_EFFORT_LEVEL",
+       "CLAUDE_CODE_EFFORT_LEVEL" in (sdk_options.get("env") or {}))):
+    if present:
+      raise Sorry("Profile %s: %s is not accepted; set the top-level effort "
+                  "key instead" % (source_path, path))
+
+  # System prompt: inline xor file (file content inlined here if present).
+  system_prompt = data.get("system_prompt", "") or ""
+  system_prompt_file = data.get("system_prompt_file")
+  if system_prompt and system_prompt_file:
+    raise Sorry("Profile %s: system_prompt and system_prompt_file are mutually exclusive" % source_path)
+  if system_prompt_file:
+    # system_prompt_file goes through the same ${VAR} expansion as
+    # mcp_servers fields. E.g., "${PROFILE_DIR}/prompt.md".
+    expanded = _expand_str(system_prompt_file, source_path)
+    base = Path(source_path).parent.resolve()
+    file_path = (base / expanded).resolve()
+    # Containment: a profile may be project-supplied (untrusted), so an
+    # absolute path or ".." escape in system_prompt_file could inline an
+    # arbitrary file (e.g. ~/.ssh/id_rsa) into the system prompt. Require
+    # the resolved path to stay within the profile's own directory.
+    if base not in file_path.parents:
+      raise Sorry(
+        "Profile %s: system_prompt_file escapes the profile directory: %s"
+        % (source_path, system_prompt_file))
+    if not file_path.exists():
+      raise Sorry("Profile %s: system_prompt_file not found: %s"
+                  % (source_path, file_path))
+    system_prompt = file_path.read_text(encoding="utf-8")
+
+  # A scalar `skills.additional: myskill` (or `disabled: bad`) parses as a
+  # bare string; list()/set() would explode it into ['m','y',...] / a char-set,
+  # silently dropping the real skill (and disabling phantom one-char ids).
+  # Coerce a scalar to a single-element container first -- the same forgiving
+  # coercion applied to a skill's `requires` frontmatter. (server_tools keeps
+  # its stricter Sorry-on-non-list: that field is opt-in and a typo there
+  # should fail loudly.)
+  skills_additional = skills.get("additional", [])
+  if isinstance(skills_additional, str):
+    skills_additional = [skills_additional]
+  try:
+    skills_additional = list(skills_additional)
+  except TypeError:
+    raise Sorry("Profile %s: skills.additional must be a list of skill "
+                "names, not %r" % (source_path, skills_additional))
+  skills_disabled = skills.get("disabled", [])
+  if isinstance(skills_disabled, str):
+    skills_disabled = [skills_disabled]
+  try:
+    skills_disabled = set(skills_disabled)
+  except TypeError:
+    raise Sorry("Profile %s: skills.disabled must be a list of skill "
+                "names, not %r" % (source_path, skills_disabled))
+
+  return Profile(
+    name=data["name"],
+    model=data["model"],
+    description=data.get("description", ""),
+    system_prompt=system_prompt,
+    skills_additional=skills_additional,
+    skills_disabled=skills_disabled,
+    mcp_servers=_expand_mcp_servers(
+      data.get("mcp_servers", []), source_path=source_path),
+    tool_policy_default=data.get("tool_policy_default", "ask"),
+    server_tools=_server_tools_list(data.get("server_tools"), source_path),
+    subagents_enabled=bool(subagents.get("enabled", True)),
+    subagents_max_depth=_coerce_int(
+      subagents.get("max_depth", 1), "subagents.max_depth", source_path),
+    subagents_default_max_turns=_coerce_int(
+      subagents.get("default_max_turns", 25),
+      "subagents.default_max_turns", source_path),
+    subagents_default_profile=subagents.get("default_profile"),
+    # Absent stays None -- "not declared" -- and is NOT coerced: int(None)
+    # raises, and a filled-in default here would be indistinguishable from an
+    # authored cap and would outrank every spawning caller's number.
+    max_turns=(None if data.get("max_turns") is None else
+               _coerce_int(data.get("max_turns"), "max_turns", source_path)),
+    effort=effort,
+    backend=data.get("backend", "claude_code"),
+    claude=claude_opts,
+    portkey_virtual_key=portkey_data.get("virtual_key"),
+    portkey_config=portkey_data.get("config"),
+    source_path=source_path,
+  )
+
+
+def _profile_to_dict(p):
+  """Serialize a ``Profile`` back to a dict for inheritance merging.
+
+  The inverse of ``_build_profile``. Only emits the fields we expose;
+  helper state and resolved file content stay inlined.
+
+  Parameters
+  ----------
+  p : Profile
+      The parent profile being merged into a child.
+
+  Returns
+  -------
+  dict
+      Nested profile data suitable for overlaying with child values.
+  """
+  return {
+    "name": p.name,
+    "description": p.description,
+    "model": p.model,
+    "system_prompt": p.system_prompt,
+    "skills": {
+      "additional": list(p.skills_additional),
+      "disabled": sorted(p.skills_disabled),
+    },
+    "mcp_servers": list(p.mcp_servers),
+    "tool_policy_default": p.tool_policy_default,
+    "server_tools": list(p.server_tools),
+    "subagents": {
+      "enabled": p.subagents_enabled,
+      "max_depth": p.subagents_max_depth,
+      "default_max_turns": p.subagents_default_max_turns,
+      "default_profile": p.subagents_default_profile,
+    },
+    "max_turns": p.max_turns,
+    "effort": p.effort,
+    "backend": p.backend,
+    "claude": {
+      "cli_path": p.claude.cli_path,
+      "sdk_options": dict(p.claude.sdk_options),
+    },
+    "portkey": {
+      "virtual_key": p.portkey_virtual_key,
+      "config": p.portkey_config,
+    },
+  }
+
+
+_VAR_RE = re.compile(r"\$\{([^}]+)\}")
+
+
+def _expand_str(value, source_path):
+  """Expand ``${VAR}`` tokens in a single string.
+
+  Recognized tokens: ``${env:NAME}`` (environment variable, empty if
+  unset), ``${PROFILE_DIR}`` (the profile file's directory),
+  ``${PROJECT_DIR}`` (``PHENIX_PROJECT_DIR``), and ``${AGENT_ROOT}``
+  (``PHENIX_AGENT_HOME``). Unknown tokens are left untouched.
+
+  Parameters
+  ----------
+  value : str
+      The string to expand.
+  source_path : str or pathlib.Path
+      Profile file path, used to resolve ``${PROFILE_DIR}``.
+
+  Returns
+  -------
+  str
+      The expanded string.
+  """
+  def _sub(m):
+    token = m.group(1)
+    if token.startswith("env:"):
+      return os.environ.get(token[4:], "")
+    if token == "PROFILE_DIR":
+      return str(Path(source_path).parent.resolve())
+    if token == "PROJECT_DIR":
+      return os.environ.get("PHENIX_PROJECT_DIR", "")
+    if token == "AGENT_ROOT":
+      return os.environ.get("PHENIX_AGENT_HOME", "")
+    return m.group(0)                  # leave unknown tokens as-is
+  return _VAR_RE.sub(_sub, value)
+
+
+def _expand_in_obj(obj, source_path):
+  """Recursively expand ``${VAR}`` tokens in all strings within ``obj``.
+
+  Walks strings, lists, and dicts; other types are returned unchanged.
+  """
+  if isinstance(obj, str):
+    return _expand_str(obj, source_path)
+  if isinstance(obj, list):
+    return [_expand_in_obj(v, source_path) for v in obj]
+  if isinstance(obj, dict):
+    return {k: _expand_in_obj(v, source_path) for k, v in obj.items()}
+  return obj
+
+
+def _expand_mcp_servers(servers, source_path):
+  """Expand ``${VAR}`` tokens and normalize entries to ``McpServerConfig``.
+
+  Entries already of type ``McpServerConfig`` (e.g. carried through
+  inheritance) pass through unchanged.
+
+  Parameters
+  ----------
+  servers : list
+      Raw ``mcp_servers`` entries (dicts or ``McpServerConfig``).
+  source_path : str or pathlib.Path
+      Profile file path, used for expansion and error messages.
+
+  Returns
+  -------
+  list of McpServerConfig
+      The normalized server configs.
+
+  Raises
+  ------
+  libtbx.utils.Sorry
+      When an entry is not an object or is missing a ``name``.
+  """
+  out = []
+  for raw in servers:
+    expanded = _expand_in_obj(raw, source_path)
+    if isinstance(expanded, McpServerConfig):
+      out.append(expanded)
+      continue
+    if not isinstance(expanded, dict):
+      raise Sorry(
+        "Profile %s: mcp_servers entries must be objects, got: %r"
+        % (source_path, expanded))
+    name = expanded.get("name")
+    if not name:
+      raise Sorry(
+        "Profile %s: every mcp_servers entry needs a 'name'" % source_path)
+    out.append(McpServerConfig(
+      name=name,
+      command=expanded.get("command"),
+      args=list(expanded.get("args") or []),
+      env=sanitize_server_env(expanded.get("env")),
+      tool_policy=dict(expanded.get("tool_policy") or {}),
+      auto_start=bool(expanded.get("auto_start", True)),
+      inject_phenix_env=bool(expanded.get("inject_phenix_env", True)),
+    ))
+  return out

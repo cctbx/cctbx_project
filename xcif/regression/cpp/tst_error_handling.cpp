@@ -208,6 +208,21 @@ void test_unclosed_semicolon_field_raises() {
   CHECK(parse_throws("data_t\n_a\n;line one\nline two\n", "semicolon"));
 }
 
+void test_nul_in_loop_raises() {
+  // NUL is outside the CIF character set and ucif rejects it. xcif
+  // used to return an empty value for it without advancing, so the
+  // loop-value scan never ended.
+  const char src[] = "data_x\nloop_\n_a.b\n_a.c\n1 2\n1\0 2\n";
+  try {
+    parse(src, sizeof(src) - 1);
+    CHECK(false /* expected CifError */);
+  } catch (const CifError& e) {
+    CHECK(std::string(e.what()).find("NUL") != std::string::npos);
+    CHECK_EQ(e.line(), 6);
+    CHECK_EQ(e.col(), 2);
+  }
+}
+
 // ─── run_all_tests ─────────────────────────────────────────────────
 
 void run_all_tests() {
@@ -241,6 +256,7 @@ void run_all_tests() {
   test_dos_eof_marker_accepted_at_end();
   test_dos_eof_marker_mid_stream_is_eof();
   test_unclosed_semicolon_field_raises();
+  test_nul_in_loop_raises();
 }
 
 XCIF_TEST_MAIN()

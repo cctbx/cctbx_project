@@ -1061,8 +1061,7 @@ def exercise_convert_atom():
     element="MG",
     charge=2,
     residue_name="MG",
-    initial_occupancy=0.99,
-    chain_id='X')
+    initial_occupancy=0.99)
   mol.set_anomalous_scatterer_groups(
       [anomalous_scatterer_group(
           iselection=flex.size_t([4]),
@@ -1089,6 +1088,85 @@ def exercise_convert_atom():
   # assert mol.update_anomalous_groups(out=null_out()) # not needed because select() processed groups correctly
   isel = mol.get_anomalous_scatterer_groups()[0].iselection
   assert list(isel) == [3]
+
+def exercise_convert_atom_and_clean_up_ions():
+  """
+  Waters converted to ions stay in their chain without renaming the chain,
+  and clean_up_ions then moves only the ions to ion_chain_id, keeping their
+  site symmetry, altlocs and restraints.
+  """
+  import mmtbx.f_model
+  from mmtbx.ions.build import clean_up_ions
+  from libtbx import group_args
+  pdb_str = """\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1 2 1
+ATOM      1  N   GLY A   1       5.000   5.000   5.000  1.00 10.00           N
+ATOM      2  CA  GLY A   1       6.450   5.000   5.000  1.00 10.00           C
+ATOM      3  C   GLY A   1       6.950   6.400   5.000  1.00 10.00           C
+ATOM      4  O   GLY A   1       6.200   7.370   5.000  1.00 10.00           O
+HETATM    5  O   HOH A   2       0.000  12.000   0.000  1.00 10.00           O
+HETATM    6  O  AHOH A   3      12.000  12.000  12.000  0.50 10.00           O
+HETATM    7  O  BHOH A   3      15.000  15.000  15.000  0.50 10.00           O
+HETATM    8  O   HOH A   4      10.000  16.000  15.000  1.00 10.00           O
+END
+"""
+  mol = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(lines=pdb_str, source_info=None),
+    log = null_out())
+  mol.process(make_restraints=True)
+  mol.setup_scattering_dictionaries(scattering_table="n_gaussian", d_min=2.5)
+  n_ions = mol.selection("segid ION").count(True)
+  assert n_ions == 0, n_ions
+  for i_seq in [4, 5, 6]:
+    mol.convert_atom(i_seq=i_seq, scattering_type="Ca2+", atom_name="CA",
+      element="CA", charge=2, residue_name="CA", segid="ION",
+      refine_adp="isotropic", refine_occupancies=False)
+  mol._restore_scattering_dictionaries()
+  ca_gaussian = mol.get_xray_structure().scattering_type_registry(
+    ).gaussian("Ca2+").parameters()
+  chain_ids = [c.id for c in mol.get_hierarchy().chains()]
+  assert chain_ids == ["A"], chain_ids
+  n_ions = mol.selection("segid ION").count(True)
+  assert n_ions == 3, n_ions
+  ci = mol.get_restraints_manager().geometry.conformer_indices
+  ci_altlocs = list(ci.select(flex.size_t([5, 6])))
+  # refinement changes the ions in the xray structure only
+  xrs = mol.get_xray_structure()
+  assert xrs.site_symmetry_table().is_special_position(4)
+  xrs.scatterers()[4].occupancy = 0.8
+  sites_cart = xrs.sites_cart()
+  sites_cart[5] = (12.5, 12, 12)
+  xrs.set_sites_cart(sites_cart)
+  xrs.scatterers()[5].fdp = 1.5
+  fmodel = mmtbx.f_model.manager(
+    f_obs          = abs(xrs.structure_factors(d_min=2.5).f_calc()),
+    xray_structure = xrs)
+  mol = clean_up_ions(fmodel=fmodel, model=mol,
+    params=group_args(ion_chain_id="X", refine_ion_occupancies=False))
+  residues = [(c.id, rg.resseq.strip(), rg.atom_groups()[0].resname)
+    for c in mol.get_hierarchy().chains() for rg in c.residue_groups()]
+  assert residues == [("A","1","GLY"), ("A","4","HOH"), ("X","1","CA"),
+    ("X","2","CA")], residues
+  atoms = mol.get_hierarchy().atoms()
+  altlocs = [atoms[i].parent().altloc for i in [5, 6, 7]]
+  assert altlocs == ["", "A", "B"], altlocs
+  xrs = mol.get_xray_structure()
+  assert xrs.site_symmetry_table().is_special_position(5)
+  assert approx_equal(xrs.scatterers()[5].weight(), 0.4)
+  sc = xrs.scatterers()[6]
+  assert sc.scattering_type == "Ca2+", sc.scattering_type
+  assert sc.label == atoms[6].id_str(), (sc.label, atoms[6].id_str())
+  assert approx_equal(sc.fdp, 1.5)
+  assert approx_equal(xrs.scattering_type_registry().gaussian("Ca2+"
+    ).parameters(), ca_gaussian)
+  assert approx_equal(atoms[6].xyz, (12.5, 12, 12))
+  geometry = mol.get_restraints_manager().geometry
+  ci = list(geometry.conformer_indices.select(flex.size_t([6, 7])))
+  assert ci == ci_altlocs, (ci, ci_altlocs)
+  nb_types = list(geometry.nonbonded_types[5:])
+  assert nb_types == ["CA"]*3, nb_types
+  nb_charges = list(geometry.nonbonded_charges[5:])
+  assert nb_charges == [2]*3, nb_charges
 
 pdb_file_exercise_h_counts="""
 CRYST1    8.228   11.366   10.991  90.00  90.00  90.00 P 1
@@ -1502,6 +1580,58 @@ ATOM    305  CD1 ILE A  20      21.947   6.045   5.765  1.00 12.70           C
     assert str(e) == 'list index out of range', e
   else:
     assert 0
+  # select() must carry the SS annotation over (deep_copy() already does),
+  # otherwise HELIX/SHEET records silently disappear from the output of any
+  # procedure that re-selects the model, e.g. water picking.
+  sel = m1.selection("not name CD1")
+  assert sel.count(False) == 2 # LEU and ILE
+  m_sel = m1.select(sel)
+  assert m_sel.get_ss_annotation() is not None
+  n_h = m_sel.get_ss_annotation().get_n_helices()
+  assert n_h == 1, n_h
+  assert m_sel.model_as_pdb().count("HELIX") == 1, m_sel.model_as_pdb()
+  # the copy must not be shared with the source model
+  assert m_sel.get_ss_annotation() is not m1.get_ss_annotation()
+  # ... but an element that loses a whole residue (middle or end) must go,
+  # otherwise restraints re-created from the annotation pair wrong residues
+  for sel_str in ["not resid 19", "not resid 20", "resid 18"]:
+    m_sel = m1.select(m1.selection(sel_str))
+    n_h = m_sel.get_ss_annotation().get_n_helices()
+    assert n_h == 0, (sel_str, n_h)
+    assert m_sel.model_as_pdb().count("HELIX") == 0, m_sel.model_as_pdb()
+  n_h = m1.get_ss_annotation().get_n_helices()
+  assert n_h == 1, n_h # source untouched
+  # shift_and_box_model() builds a new manager from the hierarchy; it must
+  # keep the annotation too (e.g. atom selection on a model without CRYST1)
+  from cctbx.maptbx.box import shift_and_box_model
+  no_cs_str = good_h_str + pdb_str.replace(
+    "CRYST1   32.501   39.502   44.640  90.00  90.00  90.00 P 21 21 21    4", "")
+  m4 = mmtbx.model.manager(model_input = iotbx.pdb.input(
+    source_info=None, lines=no_cs_str))
+  assert m4.crystal_symmetry() is None or m4.crystal_symmetry().unit_cell() is None
+  m_box = shift_and_box_model(m4, shift_model=False)
+  assert m_box.get_ss_annotation() is not None
+  n_h = m_box.get_ss_annotation().get_n_helices()
+  assert n_h == 1, n_h
+  assert m_box.get_ss_annotation() is not m4.get_ss_annotation()
+  assert m_box.model_as_pdb().count("HELIX") == 1, m_box.model_as_pdb()
+  # remove_alternative_conformations() re-sorts atoms without resetting
+  # i_seqs; select() and the annotation pruning must stay purely positional
+  alt_str = pdb_str.replace(
+    "ATOM    266  CA  THR A  18      13.581   6.907   6.105  1.00  4.76           C",
+    "ATOM    266  CA ATHR A  18      13.581   6.907   6.105  0.50  4.76           C\n"
+    "ATOM    266  CA BTHR A  18      13.681   6.907   6.105  0.50  4.76           C")
+  m3 = mmtbx.model.manager(model_input = iotbx.pdb.input(
+    source_info=None, lines=good_h_str+alt_str))
+  m3.remove_alternative_conformations(always_keep_one_conformer=True)
+  i_seqs = list(m3.get_hierarchy().atoms().extract_i_seq())
+  assert i_seqs != sorted(i_seqs), i_seqs # precondition for this check
+  m_sel = m3.select(m3.selection("not name CB"))
+  n_h = m_sel.get_ss_annotation().get_n_helices()
+  assert n_h == 1, n_h
+  m_sel = m3.select(m3.selection("not resid 19"))
+  n_h = m_sel.get_ss_annotation().get_n_helices()
+  assert n_h == 0, n_h
 
 def exercise_12_as_pdb_or_mmcif_string():
   pdb_inp_lines = flex.split_lines("""\
@@ -1559,6 +1689,7 @@ def run():
   exercise_3()
   exercise_4()
   exercise_convert_atom()
+  exercise_convert_atom_and_clean_up_ions()
   exercise_h_counts()
   exercise_5()
   exercise_6()

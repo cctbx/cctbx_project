@@ -1,0 +1,41 @@
+{
+ "autobuild_4_bromodomain.log": {
+  "Resolution": "2.10"
+ },
+ "autosol_2_p9.log": {
+  "Bayes Cc": "17.60",
+  "Completeness": "99.85",
+  "Resolution": "2.50"
+ },
+ "molprobity_4_esterase.log": {
+  "Clashscore": "0.3600",
+  "Molprobity Score": "0.8600",
+  "Ramachandran Outliers": "0.8000",
+  "Rotamer Outliers": "0.0000"
+ },
+ "predict_and_build_2_7mjs.log": {
+  "Map Cc": "0.6500",
+  "Plddt": "89.96"
+ },
+ "refine_5_beta_blip.log": {
+  "Angles Rmsd": "1.28",
+  "Bonds Rmsd": "0.0100",
+  "Clashscore": "13.30",
+  "R Free": "0.4942",
+  "R Work": "0.3966",
+  "Resolution": "3.00"
+ },
+ "xtriage_1_p9.log": {
+  "Anomalous Measurability": "0.1980",
+  "Anomalous Measurability Avg": "0.1723",
+  "Anomalous Resolution": "2.10",
+  "Completeness": "98.36",
+  "Has Anomalous": "True",
+  "No Twinning Suspected": "True",
+  "Resolution": "1.74",
+  "Space Group": "I 4 (No. 79)",
+  "Twin Fraction": "0.0080",
+  "Twin Law": "-k,-h,-l",
+  "Twinning": "None detected"
+ }
+}

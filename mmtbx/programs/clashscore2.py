@@ -36,6 +36,7 @@ Options:
   verbose=True              verbose text output
   b_factor_cutoff=40        B factor cutoff for clash analysis
   do_flips=False            Do flips when adding Hs, overides keep_hydrogens
+  ignore_missing_restraints=False  Continue if restraints for a residue are missing
 
 Example:
 
@@ -79,6 +80,18 @@ Example:
     .type = int
     .help = '''B factor cutoff for use with MolProbity'''
 
+  save_probe_output = False
+    .type = bool
+    .help = '''Save full non-condensed probe output with VDW contacts \
+               (for Coot). Roughly doubles runtime.'''
+
+  ignore_missing_restraints = False
+    .type = bool
+    .short_caption = Don't stop if restraints for a residue are missing.
+    .help = Don't stop if restraints for a residue are missing. Those residues \
+            get no hydrogens added, but their heavy atoms still take part in \
+            the contact analysis.
+
   clash_cutoff = -0.4
     .type = float
     .help = '''dummy variable for MolProbity, will be removed after MP update'''
@@ -118,7 +131,9 @@ Example:
       out=self.logger,
       verbose=self.params.verbose and not quiet,
       b_factor_cutoff=self.params.b_factor_cutoff,
-      do_flips=self.params.do_flips)
+      do_flips=self.params.do_flips,
+      save_probe_output=self.params.save_probe_output,
+      ignore_missing_restraints=self.params.ignore_missing_restraints)
     if self.params.json:
       print(self.results.as_JSON(self.info_json))
     elif self.params.verbose:

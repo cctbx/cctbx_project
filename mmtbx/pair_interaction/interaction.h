@@ -18,12 +18,11 @@
 #include <cctbx/xray/targets.h>
 #include <scitbx/matrix/outer_product.h>
 #include <boost/python/list.hpp>
-
-#include <boost/python/list.hpp>
 #include <boost/python/extract.hpp>
 
 #include <numeric>
 #include <vector>
+#include <algorithm>
 
 #include <scitbx/array_family/accessors/c_grid.h>
 
@@ -244,7 +243,8 @@ class wfc
     double fac1  = prefactor_of_first_derivative;
     double fac2  = prefactor_of_second_derivative;
     double PI = scitbx::constants::pi;
-    af::shared<vec3<double> > rr_array = af::shared<vec3<double> >(ngrid);
+    af::shared<vec3<double> > rr_array = af::shared<vec3<double> >(
+      ngrid, vec3<double>(0,0,0));
     for(std::size_t i=0; i < ngrid; i++) {
        af::shared<double> wfcin_array_flex_i = wfcin_array_flex[i];
        af::shared<double> wfcin_array_flex_i_sq =
@@ -348,41 +348,109 @@ density_props<double> atom_density_props(
 }
 
 density_props<double> build_density_props_obj(
-  vec3<double> const&              p,
+  vec3<double> const&                 p,
   af::const_ref<vec3<double> > const& a_xyz,
   af::const_ref<int> const&           element_flags,
-  boost::python::list const& wfc_obj)
+  std::vector<wfc> const&             wfcs,
+  std::vector<int> const&             candidates)
 {
+  // candidates: atoms in ascending order, a superset of those within 10 Bohr
   density_props<double> density_props_obj = density_props<double>();
-  for(std::size_t i=0; i < a_xyz.size(); i++) {
+  for(std::size_t c=0; c < candidates.size(); c++) {
+    int i = candidates[c];
     vec3<double> diff = a_xyz[i] - p;
     double dist_sq = diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2];
     if(dist_sq<100) {
-      wfc tmp = boost::python::extract<wfc>(wfc_obj[element_flags[i]])();
-      density_props_obj.add(atom_density_props(p, a_xyz[i], tmp));
+      density_props_obj.add(
+        atom_density_props(p, a_xyz[i], wfcs[element_flags[i]]));
     }
   }
   density_props_obj.density  = std::max(density_props_obj.density,1.0E-30);
   return density_props_obj;
 }
 
-//template <typename FloatType=double>
-//class point_and_pair
-//{
-//  public:
-//    vec3<double> point;
-//    int i;
-//    int j;
-//
-//    point_and_pair() {}
-//
-//    point_and_pair(vec3<double> const& point_, int const& i_, int const& j_)
-//    :
-//      point(point_), i(i_), j(j_)
-//    {}
-//    //string const & silva_type
-//};
+/*
+  Atoms binned in cubic cells of the cutoff length: for a point, the atoms
+  of its cell and the 26 neighbouring cells are all the atoms within the
+  cutoff of it. The candidates of a cell are those atoms, in ascending order,
+  so that a loop over them visits the atoms in the same order as a loop over
+  all atoms.
+*/
+class cell_list
+{
+  public:
+    vec3<int> n_cells;
+    double cell_size;
+    vec3<double> origin;
+    std::vector<std::vector<int> > atoms_in_cell;
+    std::vector<std::vector<int> > candidates_of_cell;
 
+    cell_list(
+      af::const_ref<vec3<double> > const& xyz,
+      vec3<double> const& origin_,
+      double const& cell_size_)
+    :
+      cell_size(cell_size_), origin(origin_)
+    {
+      vec3<double> xyz_max = origin;
+      for(std::size_t j=0; j < xyz.size(); j++) {
+        for(std::size_t k=0; k < 3; k++) xyz_max[k] = std::max(xyz_max[k], xyz[j][k]);
+      }
+      for(std::size_t k=0; k < 3; k++) {
+        n_cells[k] = int(std::floor((xyz_max[k]-origin[k])/cell_size))+1;
+      }
+      atoms_in_cell.resize(n_cells[0]*n_cells[1]*n_cells[2]);
+      for(std::size_t j=0; j < xyz.size(); j++) {
+        atoms_in_cell[cell_index(cell_of(xyz[j]))].push_back(j);
+      }
+      candidates_of_cell.resize(atoms_in_cell.size());
+      for(int ix=0; ix < n_cells[0]; ix++) {
+      for(int iy=0; iy < n_cells[1]; iy++) {
+      for(int iz=0; iz < n_cells[2]; iz++) {
+        std::vector<int>& c = candidates_of_cell[cell_index(vec3<int>(ix,iy,iz))];
+        for(int jx=std::max(ix-1,0); jx <= std::min(ix+1,n_cells[0]-1); jx++) {
+        for(int jy=std::max(iy-1,0); jy <= std::min(iy+1,n_cells[1]-1); jy++) {
+        for(int jz=std::max(iz-1,0); jz <= std::min(iz+1,n_cells[2]-1); jz++) {
+          std::vector<int> const& a = atoms_in_cell[cell_index(vec3<int>(jx,jy,jz))];
+          c.insert(c.end(), a.begin(), a.end());
+        }}}
+        std::sort(c.begin(), c.end());
+      }}}
+    }
+
+    vec3<int> cell_of(vec3<double> const& p) const
+    {
+      vec3<int> c;
+      for(std::size_t k=0; k < 3; k++) {
+        c[k] = int(std::floor((p[k]-origin[k])/cell_size));
+        c[k] = std::min(std::max(c[k], 0), n_cells[k]-1);
+      }
+      return c;
+    }
+
+    int cell_index(vec3<int> const& c) const
+    {
+      return (c[0]*n_cells[1] + c[1])*n_cells[2] + c[2];
+    }
+
+    std::vector<int> const& candidates(vec3<double> const& p) const
+    {
+      return candidates_of_cell[cell_index(cell_of(p))];
+    }
+};
+
+/*
+  Residue pairs (1-based residue indices, as atom_in_residue) having a
+  density interaction of type silva_type. Grid points step_size apart from
+  xyz_min: a point is assigned to the pair of residues of its two nearest
+  atoms (within 10 Bohr), and the pair interacts if the density at any of its
+  points does.
+  residue_in_core: indexed by residue index; when not empty, only pairs with
+  at least one residue in the core are examined. The other pairs are never
+  used by the callers, and a point farther than 10 Bohr from every core atom
+  cannot have a core atom among its nearest two, so the grid is restricted
+  to the core region (the grid points themselves do not move).
+*/
 af::shared<vec3<int> > points_and_pairs(
   vec3<int> const& ngrid,
   double const& step_size,
@@ -391,32 +459,67 @@ af::shared<vec3<int> > points_and_pairs(
   af::shared<int> const& atom_in_residue,
   af::shared<int> const& element_flags,
   boost::python::list const& wfc_obj,
-  std::string const & silva_type
+  std::string const & silva_type,
+  af::shared<bool> const& residue_in_core
   )
 {
+  const double cutoff = 10.0;
   // Create 2x2 bool map with lengths being max residue number, init with false
   int max_air = af::max(atom_in_residue.const_ref());
   af::versa<bool, af::c_grid<2> > pairs;
   pairs.resize(af::c_grid<2>(max_air+1, max_air+1), false);
+  bool use_core = residue_in_core.size() > 0;
+  if(use_core) MMTBX_ASSERT(residue_in_core.size() > max_air);
+  std::vector<wfc> wfcs;
+  for(std::size_t i=0; i < boost::python::len(wfc_obj); i++) {
+    wfcs.push_back(boost::python::extract<wfc>(wfc_obj[i])());
+  }
+  // Grid index ranges: the whole grid, or the core region
+  vec3<int> lo(0,0,0);
+  vec3<int> hi(ngrid[0]-1, ngrid[1]-1, ngrid[2]-1);
+  if(use_core) {
+    bool any = false;
+    vec3<double> cmin(0,0,0), cmax(0,0,0);
+    for(std::size_t j=0; j < xyz.size(); j++) {
+      if(!residue_in_core[atom_in_residue[j]]) continue;
+      if(!any) { cmin = xyz[j]; cmax = xyz[j]; any = true; }
+      for(std::size_t k=0; k < 3; k++) {
+        cmin[k] = std::min(cmin[k], xyz[j][k]);
+        cmax[k] = std::max(cmax[k], xyz[j][k]);
+      }
+    }
+    if(!any) return af::shared<vec3<int> >();
+    for(std::size_t k=0; k < 3; k++) {
+      lo[k] = std::max(lo[k],
+        int(std::floor((cmin[k]-cutoff-xyz_min[k])/step_size)));
+      hi[k] = std::min(hi[k],
+        int(std::ceil((cmax[k]+cutoff-xyz_min[k])/step_size)));
+    }
+  }
 
+  cell_list cells(xyz.const_ref(), xyz_min, cutoff);
   af::shared<vec3<int> > interacting_pairs;
-  for(std::size_t ix=0; ix < ngrid[0]; ix++) {
+  for(int ix=lo[0]; ix <= hi[0]; ix++) {
     double stx = xyz_min[0]+ix*step_size;
-    for(std::size_t iy=0; iy < ngrid[1]; iy++) {
+    for(int iy=lo[1]; iy <= hi[1]; iy++) {
       double sty = xyz_min[1]+iy*step_size;
-      for(std::size_t iz=0; iz < ngrid[2]; iz++) {
+      for(int iz=lo[2]; iz <= hi[2]; iz++) {
         vec3<double> point = vec3<double>(
           stx,
           sty,
           xyz_min[2]+iz*step_size);
+        // int: the distances are compared truncated to whole Bohr^2 (atoms
+        // closer than that count as equally near; kept as it always was)
         int first  = 999999;
         int second = 999999;
         int atom_id_1 = -1;
         int atom_id_2 = -1;
-        for(std::size_t j=0; j < xyz.size(); j++) {
+        std::vector<int> const& candidates = cells.candidates(point);
+        for(std::size_t c=0; c < candidates.size(); c++) {
+          int j = candidates[c];
           vec3<double> diff = xyz[j] - point;
           double dist_sq = diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2];
-          if(dist_sq >= 100) continue;
+          if(dist_sq >= cutoff*cutoff) continue;
           if(dist_sq < first) {
             second = first;
             first = dist_sq;
@@ -435,6 +538,7 @@ af::shared<vec3<int> > points_and_pairs(
         if(atom_in_residue[atom_id_1] == atom_in_residue[atom_id_2]) continue;
         int ia1 = atom_in_residue[atom_id_1];
         int ia2 = atom_in_residue[atom_id_2];
+        if(use_core && !residue_in_core[ia1] && !residue_in_core[ia2]) continue;
 
         vec3<int> pair;
         if(ia1<ia2) pair = vec3<int>(ia1, ia2, 0);
@@ -442,7 +546,7 @@ af::shared<vec3<int> > points_and_pairs(
         if(pairs(pair[0], pair[1]) == true) continue;
 
         density_props<double> density_props_obj = build_density_props_obj(
-          point, xyz.const_ref(), element_flags.const_ref(), wfc_obj);
+          point, xyz.const_ref(), element_flags.const_ref(), wfcs, candidates);
         bool has_interaction = density_props_obj.has_silva_interaction(silva_type);
 
         if(has_interaction) {

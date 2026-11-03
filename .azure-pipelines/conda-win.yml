@@ -7,12 +7,13 @@
 #   vmImage: windows-2022
 #   vs: 2022
 #   modules: <modules artifact name>
+#   timeoutInMinutes: <job timeout, default 180>
 
 jobs:
 - job: vs${{ parameters.vs }}
   pool:
     vmImage: ${{ parameters.vmImage }}
-  timeoutInMinutes: 180
+  timeoutInMinutes: ${{ coalesce(parameters.timeoutInMinutes, 180) }}
   strategy:
     maxParallel: 2
     matrix:
@@ -211,6 +212,7 @@ jobs:
       call libtbx.configure ^
         cma_es ^
         fable ^
+        qttbx ^
         rstbx ^
         spotfinder ^
         cbflib_adaptbx ^
@@ -251,6 +253,7 @@ jobs:
       rmdir /S /Q tests
       mkdir tests
       cd tests
+      echo ##vso[task.setvariable variable=tests_failed]false
       call libtbx.run_tests_parallel ^
         module=boost_adaptbx ^
         module=cctbx ^
@@ -268,8 +271,12 @@ jobs:
         module=annlib_adaptbx ^
         module=cbflib_adaptbx ^
         module=crys3d ^
+        module=qttbx ^
         max_retries=2 ^
         nproc=4
+      set rc=%errorlevel%
+      if not "%rc%"=="0" echo ##vso[task.setvariable variable=tests_failed]true
+      exit /b %rc%
     failOnStderr: false
     displayName: Test
     retryCountOnTaskFailure: 3
@@ -299,7 +306,7 @@ jobs:
 
   - publish: $(Pipeline.Workspace)/tests_$(job_name).tar.gz
     artifact: tests_$(job_name)_$(MODULES)
-    condition: succeededOrFailed()
+    condition: and(failed(), eq(variables['tests_failed'], 'true'))
     continueOnError: true
 
   # publish test results

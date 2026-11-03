@@ -1,5 +1,6 @@
 """Validate ligands in a model"""
 from __future__ import absolute_import, division, print_function
+import json
 import os
 import traceback
 try:
@@ -8,14 +9,12 @@ except ImportError:
   from libtbx.program_template import ProgramTemplate
 import mmtbx.validation.ligands
 from mmtbx.validation import validate_ligands
-from mmtbx.validation.clashscore2 import check_and_add_hydrogen
+from mmtbx.hydrogens import place_and_optimize_hydrogens
 from mmtbx.hydrogens import reduce_hydrogen
 import iotbx.pdb
 from libtbx.utils import null_out, Sorry
-from iotbx import crystal_symmetry_from_any
 from libtbx.str_utils import make_sub_header
 from libtbx import group_args
-#from cctbx.array_family import flex
 
 
 master_phil_str = """
@@ -29,6 +28,10 @@ run_reduce2 = True
   .type = bool
 save_reduce2_model = False
   .type = bool
+save_map_coeffs = False
+  .type = bool
+  .short_caption = Save map coefficients (MTZ)
+  .help = "Write 2mFo-DFc and mFo-DFc map coefficients (from fmodel) to <basename>_map_coeffs.mtz. Requires reflection data."
 verbose = False
   .type = bool
 gui
@@ -55,11 +58,25 @@ gui
 class Program(ProgramTemplate):
 
   description = '''
-mmtbx.development.validate_ligands model.pdb data.mtz
-mmtbx.development.validate_ligands model.pdb
+phenix.validate_ligands model.pdb data.mtz
+phenix.validate_ligands model.pdb map.mrc [resolution=3.0]
+phenix.validate_ligands model.pdb
+phenix.validate_ligands model.pdb data.mtz interactions=True
 
 Print out basic statistics for residue(s) with the given code(s), including
 RSCC.
+
+interactions=True adds the ligand interaction profile (experimental): H-bonds,
+salt bridges, clashes and vdW contacts per ligand, in the log and in
+<basename>_ligand_interactions.json. Its settings are
+validate_ligands.ligand_interactions (e.g.
+ligand_interactions.salt_bridge.criterion=charge_centre); its probe2 settings are
+validate_ligands.ligand_interactions.probe, separate from the probe scope that
+reduce2 uses.
+
+To validate against X-ray data, pass the reflection file, so that omit maps can
+be computed. To validate against a cryo-EM map, supply a map file. The ligand
+is then compared against an Fcalc map.
 '''
 
   datatypes = ['model', 'phil', 'restraint', 'miller_array', 'real_map']
@@ -79,59 +96,11 @@ RSCC.
       expected_n  = 1,
       exact_count = True)
 
-    has_miller = self.data_manager.has_miller_arrays()
-    has_map = self.data_manager.has_real_maps()
-
-  # ---------------------------------------------------------------------------
-
-  def get_crystal_symmetry(self, model_fn, data_fn):
-    crystal_symmetries = []
-    for f in [model_fn, data_fn]:
-      if f is None: continue
-      cs = crystal_symmetry_from_any.extract_from(f)
-      if (cs is not None):
-        crystal_symmetries.append(cs)
-    if (len(crystal_symmetries) == 0):
-     raise Sorry("No crystal symmetry found.")
-    elif (len(crystal_symmetries) > 1):
-      if (not crystal_symmetries[0].is_similar_symmetry(crystal_symmetries[1])):
-        raise Sorry("Crystal symmetry mismatch between different files.")
-    crystal_symmetry = crystal_symmetries[0]
-    return crystal_symmetry
-
-  # ---------------------------------------------------------------------------
-
-#  def add_hydrogens_old(self, model_fn):
-#    '''
-#    Place H atoms with reduce2
-#    '''
-#    make_sub_header(' Placing H with reduce2 ', out=self.logger)
-#    model_reduce2 = None
-#    basename = os.path.splitext(os.path.basename(model_fn))[0]
-#    model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
-#    from iotbx.cli_parser import run_program
-#    from mmtbx.programs import reduce2 as reduce2
-#    args=["overwrite=True",
-#          "%s" % model_fn,
-#          "ignore_missing_restraints=True",
-#          #"use_neutron_distances=True",
-#          "output.filename=%s" % model_fn_reduce2]
-#    print("mmtbx.reduce2 %s" %(" ".join(args)), file=self.logger)
-#    try:
-#      result = run_program(program_class=reduce2.Program,args=args,
-#       logger = null_out())
-#      #model_reduce2 = self.data_manager.get_model(model_fn_reduce2)
-#      model_reduce2 = result.model
-#      model_reduce2.unset_riding_h_manager()
-#    except Exception as e:
-#      msg = traceback.format_exc()
-#      print('Reduce2 failed.\n' + msg, file=self.logger)
-#      return
-#
-#    self.data_manager.add_model(model_fn_reduce2, model_reduce2)
-#    self.working_model_fn = model_fn_reduce2
-#    self.params.validate_ligands.model_fn_reduce2 = model_fn_reduce2
-#    self.working_model = model_reduce2
+    if (self.data_manager.get_default_miller_array_name() is not None and
+        self.data_manager.get_default_real_map_name() is not None):
+      raise Sorry(
+        'Please supply either reflection data (for X-ray) \n'
+        'or a map (for cryo-EM), not both.')
 
   # ---------------------------------------------------------------------------
 
@@ -141,20 +110,49 @@ RSCC.
     '''
     make_sub_header('Placing hydrogen atoms with reduce2', out=self.logger)
     try:
-      self.working_model,_ = check_and_add_hydrogen(
-        probe_parameters=self.params.probe,
-        data_manager_model=model,
+      self.working_model = place_and_optimize_hydrogens(
+        model           = model,
+        keep_existing_H = False,
+        optimize_his_protonation = True,
+        probe_phil      = self.params.probe,
         stop_for_unknowns = False,
-        #nuclear=False,
-        #verbose=verbose,
-        keep_hydrogens=False,
-        #do_flips = do_flips,
-        log=self.logger)
+        raise_on_missing = False,
+        log             = self.logger)
       self.working_model.unset_riding_h_manager()
-    except Exception as e:
+    except Exception:
       msg = traceback.format_exc()
       print('Reduce2 failed.\n' + msg, file=self.logger)
+      raise Sorry('Hydrogen placement (reduce2) failed; '
+                  'see log for details.')
+
+  # ---------------------------------------------------------------------------
+
+  @staticmethod
+  def _remove_element_x(model):
+    '''Drop pseudo-atoms with element "X"; they choke pdb_interpretation.'''
+    return model.select(~model.selection('element X'))
+
+  # ---------------------------------------------------------------------------
+
+  def set_map_resolution(self, mmm):
+    '''
+    Settle the resolution used to compute the cryo-EM Fcalc map.
+    '''
+    d_min = self.params.validate_ligands.resolution
+    if d_min is not None:
+      print('Using supplied map resolution: %.2f A' % d_min, file=self.logger)
       return
+    try:
+      d_min = mmm.resolution()
+    except Exception:
+      d_min = None
+    if d_min is None:
+      raise Sorry('Could not determine the resolution of the input map. '
+                  'Please supply it with validate_ligands.resolution=<d_min>.')
+    print('Map resolution estimated from the map: %.2f A '
+          '(override with validate_ligands.resolution=)' % d_min,
+          file=self.logger)
+    self.params.validate_ligands.resolution = d_min
 
   # ---------------------------------------------------------------------------
 
@@ -165,33 +163,24 @@ RSCC.
                "modified_rna_dna", "ccp4_mon_lib_rna_dna", "common_water",
                 "common_element"]
     self.has_ligands = False
-    model = model.select(~model.selection('element X'))
+    model = self._remove_element_x(model)
     for chain in model.chains():
       for rg in chain.residue_groups():
         for ag in rg.atom_groups():
           if (get_class(name=ag.resname) in exclude): continue
           print('Found ligand: ', ag.resname, file=self.logger)
           self.has_ligands = True
-          mlq, cif_object = reduce_hydrogen.mon_lib_query(
-                              residue     = ag,
-                              mon_lib_srv = model.get_mon_lib_srv(),
-                              raise_sorry = False)
 
   # ---------------------------------------------------------------------------
 
   def run(self):
     has_miller = False
     has_map = False
-    #
     fmodel = None
     map_manager = None
-    #
-    self.additional_ro = []
-    self.working_model_fn = None
     self.ligand_manager = None
-    #
     self.model_fn_reduce2 = None
-    #
+    self.interactions_fn = None
     model_fn = self.data_manager.get_default_model_name()
     self._original_model_fn = model_fn
     data_fn = self.data_manager.get_default_miller_array_name()
@@ -208,6 +197,8 @@ RSCC.
     # get model object from input file
     m = self.data_manager.get_model()
     m.set_log(log = null_out())
+    # before process() and reduce2, which box a model without symmetry
+    output_cs = reduce_hydrogen.get_output_crystal_symmetry(m)
     if self.data_manager.has_restraints():
       m.set_stop_for_unknowns(False)
       #m.set_log(log = null_out())
@@ -231,13 +222,16 @@ RSCC.
     if ' X' in m.get_hierarchy().atoms().extract_element():
       print('\nFound atoms with element "X" in model. Removing...',
         file=self.logger)
-      m = m.select(~m.selection('element X'))
-      #basename = os.path.splitext(os.path.basename(model_fn))[0]
-      #model_fn = "%s_noX.cif" % basename
-      #self.data_manager.write_model_file(
-      #  model_str = m.model_as_mmcif(),
-      #  filename  = model_fn,
-      #  overwrite = True)
+      m = self._remove_element_x(m)
+
+    if has_map:
+      # Adopt the map's crystal symmetry before anything else touches the model.
+      # A cryo-EM model usually carries only a dummy CRYST1 (1 1 1 P 1), and
+      # with no real symmetry reduce2 puts a P1 box around the model and moves
+      # the coordinates into it. map_model_manager later relabels the model with
+      # the map's symmetry but does not move it back.
+      m.set_crystal_symmetry(
+        self.data_manager.get_real_map(map_fn).crystal_symmetry())
 
     self.working_model = None
 
@@ -249,16 +243,31 @@ RSCC.
     if self.working_model is None:
       raise Sorry('Could not create model object.')
 
+    # Register the working model (with reduce2 H placed and element-X atoms
+    # removed) so downstream managers use it instead of the original input
+    # model. This does not change the DataManager default model.
+    # In-memory DataManager key for the working model; never written to disk.
+    _model_fn = '%s_validate_ligands_working.pdb' % os.path.splitext(
+      os.path.basename(model_fn))[0]
+    self.data_manager.add_model(_model_fn, self.working_model)
+
     if has_map:
       mmm = self.data_manager.get_map_model_manager(
-        model_file = self.working_model_fn)
+        model_file = _model_fn)
       map_manager = mmm.map_manager()
       self.working_model = mmm.model()
+      # Map inputs are cryo-EM; electron scattering is physically correct here
+      # regardless of the phil default (scattering_table only applies to the
+      # fmodel/reflection path).
+      print('Map input: treating as a cryo-EM map, using electron scattering '
+            'factors.', file=self.logger)
       self.working_model.setup_scattering_dictionaries(scattering_table='electron')
-
-    _model_fn = 'bla.pdb'
-    #self.data_manager.write_model_file(self.working_model,filename=_model_fn)
-    self.data_manager.add_model(_model_fn, self.working_model)
+      # keep the registered model in sync with the boxed map model
+      self.data_manager.add_model(_model_fn, self.working_model)
+      self.set_map_resolution(mmm = mmm)
+      # the map's box is not a lattice
+      if self.params.validate_ligands.interactions:
+        self.params.validate_ligands.ligand_interactions.symmetry = False
 
     ro = self.working_model.get_restraint_objects()
     if ro is None: ro=[]
@@ -270,13 +279,7 @@ RSCC.
           ro_no_duplicates.append((name, _ro))
           seen.add(name)
 
-    #for _ro in ro_no_duplicates:
-    #  print(_ro[0])
     #  print(_ro[1]['comp_list']['_chem_comp.three_letter_code'][0])
-
-
-
-    #_m = self.working_model.deep_copy() # get_fmodel unsets restraints manager
 
     # get fmodel object if reflection data were provided
     if has_miller:
@@ -311,13 +314,34 @@ RSCC.
       return
 
 
-    basename = os.path.splitext(os.path.basename(model_fn))[0]
-    self.model_fn_reduce2 = "%s_newH.cif" % basename.split(".")[0]
+    # split(".")[0] strips any remaining extension after splitext, e.g. the
+    # ".ent" left over from a compound extension like "pdb1avd.ent.gz".
+    basename = os.path.splitext(os.path.basename(model_fn))[0].split(".")[0]
+    self.model_fn_reduce2 = "%s_newH.cif" % basename
     if self.params.save_reduce2_model:
+      # the reduce2 P1 box is not written; the map path keeps the map's cs
+      write_cs = True
+      if not has_map:
+        if output_cs is None:
+          write_cs = False
+        else:
+          self.working_model.set_unit_cell_crystal_symmetry(output_cs)
       self.data_manager.set_overwrite(True)
-      self.data_manager.write_model_file(self.working_model,filename=self.model_fn_reduce2, format='cif')
+      self.data_manager.write_model_file(self.working_model,
+        filename=self.model_fn_reduce2, format='cif', output_cs=write_cs)
 
-    #t0 = time.time()
+    if self.params.save_map_coeffs:
+      if fmodel is not None:
+        map_coeffs_fn = "%s_map_coeffs.mtz" % basename
+        mtz_object = validate_ligands.map_coefficients_as_mtz_object(fmodel)
+        self.data_manager.set_overwrite(True)
+        self.data_manager.write_miller_array_file(
+          mtz_object, filename=map_coeffs_fn)
+        print('Wrote map coefficients:', map_coeffs_fn, file=self.logger)
+      else:
+        print('save_map_coeffs requested but no reflection data were provided; '
+              'skipping map output.', file=self.logger)
+
     ligand_manager = validate_ligands.manager(
       model = self.working_model,
       fmodel = fmodel,
@@ -328,10 +352,16 @@ RSCC.
     ligand_manager.show_ligand_counts()
     ligand_manager.show_fragmentation()
     ligand_manager.show_sites_within()
+    ligand_manager.show_nonbonded_overlaps()
     ligand_manager.show_table(out=self.logger)
+    if self.params.validate_ligands.interactions:
+      ligand_manager.show_interactions(out=self.logger)
+      self.interactions_fn = "%s_ligand_interactions.json" % basename
+      with open(self.interactions_fn, "w") as fh:
+        json.dump(ligand_manager.interactions_as_dict(), fh, indent=1, sort_keys=True)
+      print('\nWrote ligand interactions: %s' % self.interactions_fn, file=self.logger)
 
     self.ligand_manager = ligand_manager
-    #print('time running manager: ', time.time()-t0)
 
   # ---------------------------------------------------------------------------
 
@@ -346,7 +376,11 @@ RSCC.
     if self.ligand_manager is not None:
       ligand_results = [lr.as_picklable_snapshot()
                         for lr in self.ligand_manager]
+    extra = {}
+    if self.params.validate_ligands.interactions:
+      extra['interactions_fn'] = getattr(self, 'interactions_fn', None)
     return group_args(
       working_model_fn = model_to_open,
       ligand_manager   = self.ligand_manager,
-      ligand_results   = ligand_results)
+      ligand_results   = ligand_results,
+      **extra)

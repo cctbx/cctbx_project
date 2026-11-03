@@ -2,7 +2,6 @@
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.mask
 from libtbx.program_template import ProgramTemplate
-import iotbx.pdb
 from cctbx import maptbx
 from mmtbx.maps import fem
 from mmtbx import masks

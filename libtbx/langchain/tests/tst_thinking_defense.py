@@ -603,7 +603,7 @@ def test_G01_graph_py_has_route_after_perceive():
   graph_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph.py")
-  with open(graph_path) as f:
+  with open(graph_path, encoding='utf-8') as f:
     source = f.read()
   assert_in("def route_after_perceive", source)
   print("  PASSED")
@@ -615,7 +615,7 @@ def test_G02_graph_py_perceive_routes_to_think():
   graph_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph.py")
-  with open(graph_path) as f:
+  with open(graph_path, encoding='utf-8') as f:
     source = f.read()
   assert_in('return "think"', source,
     "route_after_perceive should return 'think'")
@@ -628,7 +628,7 @@ def test_G03_graph_py_has_all_nodes():
   graph_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph.py")
-  with open(graph_path) as f:
+  with open(graph_path, encoding='utf-8') as f:
     source = f.read()
   for node in ["perceive", "think", "plan", "build", "validate",
                 "fallback", "output"]:
@@ -643,7 +643,7 @@ def test_G04_graph_py_has_think_node():
   graph_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph.py")
-  with open(graph_path) as f:
+  with open(graph_path, encoding='utf-8') as f:
     source = f.read()
   assert_in('add_node("think"', source,
     "think node should exist after Phase A3")
@@ -658,7 +658,7 @@ def test_G05_graph_py_edge_topology():
   graph_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph.py")
-  with open(graph_path) as f:
+  with open(graph_path, encoding='utf-8') as f:
     source = f.read()
   # Key edges that must exist
   assert_in('add_edge("think", "plan")', source)
@@ -678,7 +678,7 @@ def test_H01_graph_state_has_thinking_fields():
   state_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph_state.py")
-  with open(state_path) as f:
+  with open(state_path, encoding='utf-8') as f:
     source = f.read()
   assert_in("thinking_level", source)
   assert_in("expert_assessment", source)
@@ -726,7 +726,7 @@ def test_I01_graph_nodes_has_think_function():
   nodes_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph_nodes.py")
-  with open(nodes_path, errors='ignore') as f:
+  with open(nodes_path, encoding='utf-8', errors='ignore') as f:
     source = f.read()
   assert_in("def think(state)", source,
     "think() should exist after Phase A2")
@@ -741,7 +741,7 @@ def test_I02_graph_nodes_plan_has_rules_only():
   nodes_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph_nodes.py")
-  with open(nodes_path) as f:
+  with open(nodes_path, encoding='utf-8') as f:
     source = f.read()
   assert_in("use_rules_only", source)
   assert_in("_mock_plan", source)
@@ -754,7 +754,7 @@ def test_I03_graph_nodes_plan_has_directive_validation():
   nodes_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph_nodes.py")
-  with open(nodes_path) as f:
+  with open(nodes_path, encoding='utf-8') as f:
     source = f.read()
   assert_in("VALIDATE INTENT AGAINST USER DIRECTIVES", source)
   assert_in("validate_intent", source)
@@ -767,7 +767,7 @@ def test_I04_graph_nodes_plan_has_forced_program():
   nodes_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph_nodes.py")
-  with open(nodes_path) as f:
+  with open(nodes_path, encoding='utf-8') as f:
     source = f.read()
   assert_in("ENFORCE FORCED PROGRAM", source)
   assert_in("forced_program", source)
@@ -780,7 +780,7 @@ def test_I05_graph_nodes_exports_expected_functions():
   graph_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "agent", "graph.py")
-  with open(graph_path) as f:
+  with open(graph_path, encoding='utf-8') as f:
     source = f.read()
   for fn in ["perceive", "think", "plan", "build", "validate",
              "fallback", "output_node"]:
@@ -802,7 +802,7 @@ def test_J01_ai_agent_has_agent_cycle_callback():
   if not os.path.isfile(agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(agent_path, errors='ignore') as f:
+  with open(agent_path, encoding='utf-8', errors='ignore') as f:
     source = f.read()
   assert_in("agent_cycle", source)
   assert_in('phase="decision"', source)
@@ -819,7 +819,7 @@ def test_J02_ai_agent_has_thinking_plumbing():
   if not os.path.isfile(agent_path):
     print("  SKIP (ai_agent.py not found)")
     return
-  with open(agent_path, errors='ignore') as f:
+  with open(agent_path, encoding='utf-8', errors='ignore') as f:
     source = f.read()
   assert_in("strategy_memory", source,
     "strategy_memory should be in ai_agent.py after Phase A5")
@@ -841,7 +841,7 @@ def test_K01_gui_has_thinking_checkbox():
   if not os.path.isfile(gui_path):
     print("  SKIP (AIAgent.py not found)")
     return
-  with open(gui_path, errors='ignore') as f:
+  with open(gui_path, encoding='utf-8', errors='ignore') as f:
     source = f.read()
   assert_in("thinking_level", source,
     "thinking_level should be in GUI settings")
@@ -857,7 +857,7 @@ def test_K02_gui_has_agent_cycle_handler():
   if not os.path.isfile(gui_path):
     print("  SKIP (AIAgent.py not found)")
     return
-  with open(gui_path, errors='ignore') as f:
+  with open(gui_path, encoding='utf-8', errors='ignore') as f:
     source = f.read()
   assert_in("_on_agent_cycle", source)
   assert_in("agent_cycle", source)
@@ -873,7 +873,7 @@ def test_K03_gui_has_expert_display():
   if not os.path.isfile(gui_path):
     print("  SKIP (AIAgent.py not found)")
     return
-  with open(gui_path, errors='ignore') as f:
+  with open(gui_path, encoding='utf-8', errors='ignore') as f:
     source = f.read()
   assert_in("expert_assessment", source,
     "expert_assessment should be in GUI after Phase A6")

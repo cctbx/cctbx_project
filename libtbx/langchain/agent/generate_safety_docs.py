@@ -74,7 +74,7 @@ def find_safety_checks(base_dir):
                 relative_path = os.path.relpath(filepath, base_dir)
 
                 try:
-                    with open(filepath, 'r') as f:
+                    with open(filepath, 'r', encoding='utf-8') as f:
                         content = f.read()
                         lines = content.split('\n')
                 except Exception:
@@ -256,7 +256,7 @@ def generate_sanity_checks_table(base_dir):
     if not os.path.exists(sanity_file):
         return ""
 
-    with open(sanity_file, 'r') as f:
+    with open(sanity_file, 'r', encoding='utf-8') as f:
         content = f.read()
 
     # Find all SanityIssue creations

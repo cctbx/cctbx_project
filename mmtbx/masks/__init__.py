@@ -182,6 +182,9 @@ class asu_mask(object):
     assert [mask_params.step, mask_params.n_real].count(None) in [1,2]
     assert mask_params.step is not None or mask_params.n_real is not None or \
            [d_min, mask_params.grid_step_factor].count(None)==0
+    if self.mask_params.ignore_hydrogens:
+      hd_sel = self.xray_structure.hd_selection()
+      self.xray_structure = self.xray_structure.select(~hd_sel)
     if(atom_radius is None):
       self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
         self.xray_structure)

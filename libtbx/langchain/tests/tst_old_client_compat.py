@@ -56,7 +56,7 @@ def _load_fixtures():
     pattern = os.path.join(_FIXTURES_DIR, "client_v*", "*.json")
     fixtures = []
     for path in sorted(glob.glob(pattern)):
-        with open(path) as f:
+        with open(path, encoding='utf-8') as f:
             data = json.load(f)
         data["_fixture_path"] = path
         fixtures.append(data)

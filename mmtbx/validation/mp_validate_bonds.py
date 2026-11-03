@@ -11,6 +11,7 @@ from mmtbx.validation import atoms
 from mmtbx.validation import get_atoms_info
 from scitbx.array_family import flex
 from cctbx import geometry_restraints
+from cctbx.geometry_restraints.linking_class import linking_class
 from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
 from math import sqrt
@@ -96,6 +97,26 @@ class mp_angle(atoms):
              self.atoms_info[2].name, self.score ]
 
 # analysis objects
+# Metal coordination, hydrogen bonds, basepairs, edits and cif_links share these proxy
+# arrays but their sigmas are observed population spreads, not covalent-library sigmas,
+# so sigma scores do not mean the same thing. restraints.py (mp.geo) has always filtered
+# this way. SS BOND is kept: disulfides are covalent, sigma 0.020 A vs N-CA at 0.019.
+def _scoreable_origin_ids():
+  origin_ids = linking_class()
+  return set([origin_ids.get_origin_id('covalent geometry'),
+              origin_ids.get_origin_id('SS BOND')])
+
+
+# Riding or generated H are not refined targets, and counting X-H inflates n_total and so
+# deflates the outlier rate. restraints.py drops them by default (ignore_hd=True).
+def _drop_hydrogens(pdb_atoms, geometry_restraints_manager):
+  hd_selection = flex.bool([a.element_is_hydrogen() for a in pdb_atoms])
+  if hd_selection.count(True) == 0:
+    return pdb_atoms, geometry_restraints_manager
+  keep = ~hd_selection
+  return pdb_atoms.select(keep), geometry_restraints_manager.select(keep)
+
+
 class mp_bonds(validation):
   output_header = "#residue:atom_1:atom_2:num_sigmas"
   label = "Bond lengths"
@@ -103,8 +124,11 @@ class mp_bonds(validation):
   gui_formats = ["%s", "%s", "%s", "%.2f"]
   wx_column_widths = [160] * 4
   def __init__(self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager,
-                outliers_only=True):
+                outliers_only=True, ignore_hd=True):
     validation.__init__(self)
+    if ignore_hd:
+      pdb_atoms, geometry_restraints_manager = _drop_hydrogens(
+        pdb_atoms, geometry_restraints_manager)
     self.n_outliers_large_by_model = {}
     self.n_outliers_small_by_model = {}
     self.n_outliers_protein_by_model = {}
@@ -131,18 +155,33 @@ class mp_bonds(validation):
       flags=flags,
       sites_cart=sites_cart)
     bond_proxies = pair_proxies.bond_proxies
-    for proxy in bond_proxies.simple:
-      restraint = geometry_restraints.bond(
-        sites_cart=sites_cart,
-        proxy=proxy)
-      atom1 = pdb_atoms[proxy.i_seqs[0]].name
-      atom2 = pdb_atoms[proxy.i_seqs[1]].name
-      labels = pdb_atoms[proxy.i_seqs[0]].fetch_labels()
+    scoreable = _scoreable_origin_ids()
+    # Symmetry-related bonds live in .asu, not .simple, and need the asu mappings.
+    asu_mappings = bond_proxies.asu_mappings()
+    all_bond_proxies = [(pr, False) for pr in bond_proxies.simple]
+    all_bond_proxies += [(pr, True) for pr in bond_proxies.asu]
+    for proxy, is_asu in all_bond_proxies:
+      if proxy.origin_id not in scoreable:
+        continue
+      if is_asu:
+        restraint = geometry_restraints.bond(
+          sites_cart=sites_cart,
+          asu_mappings=asu_mappings,
+          proxy=proxy)
+        i_seqs = (proxy.i_seq, proxy.j_seq)
+      else:
+        restraint = geometry_restraints.bond(
+          sites_cart=sites_cart,
+          proxy=proxy)
+        i_seqs = tuple(proxy.i_seqs)
+      atom1 = pdb_atoms[i_seqs[0]].name
+      atom2 = pdb_atoms[i_seqs[1]].name
+      labels = pdb_atoms[i_seqs[0]].fetch_labels()
       model_id = labels.model_id
       self.n_total += 1
       #iotbx.pdb.common_residue_names_get_class
       self.n_total_by_model[model_id] += 1
-      mm_type = utils.get_mmtype_from_resname(pdb_atoms[proxy.i_seqs[0]].parent().resname)
+      mm_type = utils.get_mmtype_from_resname(pdb_atoms[i_seqs[0]].parent().resname)
       if mm_type=="PROTEIN":
         self.n_total_protein_by_model[model_id] += 1
       elif mm_type=="NA":
@@ -167,13 +206,13 @@ class mp_bonds(validation):
           self.n_outliers_large_by_model[model_id] += 1
       if (is_outlier or not outliers_only):
         self.results.append(mp_bond(
-          atoms_info=get_atoms_info(pdb_atoms, proxy.i_seqs),
+          atoms_info=get_atoms_info(pdb_atoms, flex.size_t(i_seqs)),
           target=restraint.distance_ideal,
           distance_value=restraint.distance_model,
           sigma=sigma,
           score=num_sigmas,
           delta=restraint.delta,
-          xyz=flex.vec3_double([pdb_atoms[proxy.i_seqs[0]].xyz, pdb_atoms[proxy.i_seqs[1]].xyz]).mean(),
+          xyz=flex.vec3_double([pdb_atoms[i_seqs[0]].xyz, pdb_atoms[i_seqs[1]].xyz]).mean(),
           outlier=is_outlier,
           macromolecule_type=mm_type))
 
@@ -224,8 +263,11 @@ class mp_angles(validation):
   gui_formats = ["%s", "%s", "%s", "%s", "%.2f"]
   wx_column_widths = [160] * 5
   def __init__(self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager,
-                outliers_only=True):
+                outliers_only=True, ignore_hd=True):
     validation.__init__(self)
+    if ignore_hd:
+      pdb_atoms, geometry_restraints_manager = _drop_hydrogens(
+        pdb_atoms, geometry_restraints_manager)
     self.n_outliers_large_by_model = {}
     self.n_outliers_small_by_model = {}
     self.n_outliers_protein_by_model = {}
@@ -248,8 +290,10 @@ class mp_angles(validation):
     cutoff = 4
     sites_cart = pdb_atoms.extract_xyz()
     flags = geometry_restraints.flags.flags(default=True)
-    i_seq_name_hash = utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
+    scoreable = _scoreable_origin_ids()
     for proxy in geometry_restraints_manager.angle_proxies:
+      if proxy.origin_id not in scoreable:
+        continue
       restraint = geometry_restraints.angle(
         sites_cart=sites_cart,
         proxy=proxy)

@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from six.moves import range
 from cctbx.array_family import flex
 from cctbx.miller import match_multi_indices
 from cctbx.miller import set as mset

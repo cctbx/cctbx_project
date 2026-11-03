@@ -1316,6 +1316,26 @@ x,y,z
     assert str(e).splitlines() == expected.splitlines()
   assert exception_happened
 
+def exercise_miller_indices_as_cif_loop():
+  indices = flex.miller_index(((1, -2, 3), (-4, 5, -6), (0, 0, 0)))
+  loop = cif.miller_indices_as_cif_loop(indices)
+  assert list(loop.keys()) == [
+    "_refln_index_h", "_refln_index_k", "_refln_index_l"]
+  assert list(loop["_refln_index_h"]) == ["1", "-4", "0"]
+  assert list(loop["_refln_index_k"]) == ["-2", "5", "0"]
+  assert list(loop["_refln_index_l"]) == ["3", "-6", "0"]
+  assert loop.n_rows() == 3
+  loop.add_column("_refln_F_meas", flex.double((1, 2, 3)))
+  assert list(loop["_refln_F_meas"]) == ["1", "2", "3"]
+  loop = cif.miller_indices_as_cif_loop(indices, prefix="_diffrn_refln.")
+  assert list(loop.keys()) == [
+    "_diffrn_refln.index_h", "_diffrn_refln.index_k", "_diffrn_refln.index_l"]
+  assert list(loop["_diffrn_refln.index_l"]) == ["3", "-6", "0"]
+  loop = cif.miller_indices_as_cif_loop(flex.miller_index())
+  assert list(loop.keys()) == [
+    "_refln_index_h", "_refln_index_k", "_refln_index_l"]
+  assert loop.n_rows() == 0
+
 def exercise():
   exercise_inconsistent_symmetry()
   exercise_missing_atom_site_type_symbol()
@@ -1323,6 +1343,7 @@ def exercise():
   exercise_detect_binary()
   exercise_crystal_symmetry()
   exercise_miller_arrays_as_cif_block()
+  exercise_miller_indices_as_cif_loop()
   exercise_lex_parse_build()
   exercise_partial_crystal_symmetry()
   exercise_mmcif_structure_factors()

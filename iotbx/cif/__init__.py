@@ -48,11 +48,8 @@ class CifParserError(Sorry):
 # Callers can override per-instance via the engine= kwarg on
 # reader.__init__. DEFAULT_ENGINE is read at construction time; changing
 # it at runtime affects only subsequent reader() calls.
-DEFAULT_ENGINE = "ucif"
+DEFAULT_ENGINE = "xcif"
 _VALID_ENGINES = ("ucif", "xcif")
-
-
-_XCIF_COMPRESSED_SUFFIXES = (".gz", ".Z", ".bz2")
 
 
 def _xcif_can_use_parse_file(file_path):
@@ -61,7 +58,7 @@ def _xcif_can_use_parse_file(file_path):
   parse_file does not."""
   if file_path is None:
     return False
-  return not file_path.endswith(_XCIF_COMPRESSED_SUFFIXES)
+  return not file_path.endswith(smart_open.compressed_suffixes)
 
 
 def _walk_xcif_doc(builder, doc):
@@ -261,7 +258,6 @@ class reader(object):
       builder = builders.cif_model_builder(cif_object)
     else: assert cif_object is None
     self.builder = builder
-    self.original_arrays = None
     self._xcif_errors = []
     self.parser = None
     # Fast path: xcif + plain uncompressed file_path -> memory-mapped
@@ -345,8 +341,6 @@ class reader(object):
       data_block_name=data_block_name,
       data_structure_builder=builders.miller_array_builder,
       base_array_info=base_array_info)
-
-    self.original_arrays = cctbxdat.original_arrays
     if data_block_name is not None:
       return cctbxdat.miller_arrays[data_block_name]
     else:
@@ -382,9 +376,6 @@ class reader(object):
         arrays[i] = arrays[i].customized_copy(
           anomalous_flag=anomalous, info=arrays[i].info())
     return arrays
-
-  def as_original_arrays(self):
-    return self.original_arrays
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
@@ -461,11 +452,10 @@ Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."
 
 
 def miller_indices_as_cif_loop(indices, prefix='_refln_'):
-    refln_loop = model.loop(header=(
-      '%sindex_h' %prefix, '%sindex_k' %prefix, '%sindex_l' %prefix))
-    for hkl in indices:
-      refln_loop.add_row(hkl)
-    return refln_loop
+  columns = OrderedDict()
+  for name, part in zip("hkl", indices.as_vec3_double().parts()):
+    columns['%sindex_%s' % (prefix, name)] = part.iround().as_string()
+  return model.loop(data=columns)
 
 
 class miller_arrays_as_cif_block():
@@ -612,7 +602,6 @@ class cctbx_data_structures_from_cif(object):
 
     self.xray_structures = OrderedDict()
     self.miller_arrays = OrderedDict()
-    self.original_arrays = OrderedDict()
     if cif_model is None:
       cif_model = reader(file_path=file_path, file_object=file_object).model()
     if not len(cif_model):
@@ -644,7 +633,6 @@ class cctbx_data_structures_from_cif(object):
             b = builder(block, base_array_info=base_array_info,
                 wavelengths=wavelengths)
             self.miller_arrays.setdefault( key, b.arrays())
-            self.original_arrays.setdefault( key, b.origarrays())
 
 
 # This defines the order that categories will appear in the CIF file

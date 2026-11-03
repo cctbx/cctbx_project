@@ -161,6 +161,21 @@ class WorkflowEngine:
             # Last program that ran (for after_program directive check)
             "last_program": history_info.get("last_program"),
 
+            # Bug 3 fix: set of programs with at least one SUCCESSFUL entry
+            # in history (NOT just any attempt).  Used by _apply_directives
+            # to verify that an after_program directive's named program
+            # actually completed before wiping valid_programs to [STOP].
+            #
+            # If history_info doesn't include this field (e.g. older callers
+            # that pass a minimal dict like {"xtriage_done": True}), the
+            # default is an empty set.  An empty set means "no programs
+            # observed to succeed", which makes the override fire on any
+            # after_program directive — the safe behavior for unknown
+            # history.  Callers that DO know the history (workflow_state.py
+            # _analyze_history) populate this from real entries.
+            "successful_programs": history_info.get(
+                "successful_programs", set()),
+
             # Metrics
             "r_free": self._get_metric(analysis, history_info, "r_free", "last_r_free"),
             "r_work": self._get_metric(analysis, history_info, "r_work", "last_r_work"),
@@ -1012,8 +1027,79 @@ class WorkflowEngine:
     def _detect_xray_step(self, steps, context):
         """Detect step in X-ray workflow."""
 
+        # v116.10 Phase 6b: Sequence-only sessions skip the analyze step.
+        #
+        # When there's no diffraction data (no .mtz), xtriage cannot run,
+        # so staying at the "analyze" step would block the workflow.  If
+        # a sequence is present, we route directly to obtain_model where
+        # predict_and_build is available (it has condition `has: sequence`
+        # in the YAML).
+        #
+        # This is the cleaner equivalent of the v116.10 prediction-only
+        # allowance in _check_program_prerequisites: that path adds
+        # predict_and_build to valid_programs while leaving state at
+        # "analyze"; this path moves state to "obtain_model" so the YAML
+        # naturally yields predict_and_build with the correct strategy.
+        # The allowance in _check_program_prerequisites is retained as
+        # defense in depth — it covers paths where Phase 6b doesn't fire
+        # but the user explicitly requested predict_and_build via
+        # after_program.
+        if (not context.get("xtriage_done") and
+                context.get("has_sequence") and
+                not context.get("has_data_mtz") and
+                not context.get("has_phased_data_mtz")):
+            return self._make_step_result(steps, "obtain_model",
+                "Sequence-only session (no diffraction data) — "
+                "skipping analyze, routing to obtain_model for prediction")
+
         # Step 1: Need analysis
-        if not context.get("xtriage_done"):
+        # v116.10 Phase 6c: xtriage-aware "past analysis" check.
+        #
+        # Previously this returned "analyze" any time xtriage hadn't run,
+        # which is wrong for the many paths that legitimately skip xtriage:
+        #
+        #   - User supplies a pre-refined model + start_with_program=
+        #     phenix.refine (the ligand-fitting tutorial)
+        #   - The plan explicitly skips analyze (PLAN: "Skipped 1 prerequisite
+        #     stage(s) — user requested phenix.refine")
+        #   - Refinement, ligand fitting, or other downstream programs have
+        #     run successfully but xtriage_done flag remained False
+        #
+        # In those cases the workflow was getting stuck reporting STATE=
+        # xray_initial / "Need to analyze data quality first" at every cycle,
+        # even after multiple successful refinements and a ligand fit.  The
+        # LLM, given that worldview, reasonably concluded "this is the first
+        # refinement step" and re-applied initial-cycle directives (e.g.
+        # generate_r_free_flags=true) at cycles 3, 4, 5 — see the
+        # nsf-d2-ligand tutorial restart bug.
+        #
+        # This mirrors the equivalent check in _detect_cryoem_step at the
+        # top of that function.  The logic is: if ANY downstream program
+        # has done work, we are demonstrably past the analyze step.
+        # Done flags reflect history; file-presence flags reflect on-disk
+        # evidence (covers session resumption where history was lost).
+        past_analysis = (
+            context.get("xtriage_done") or
+            # Downstream programs whose completion proves analysis is past
+            context.get("refine_done", False) or
+            context.get("phaser_done", False) or
+            context.get("autobuild_done", False) or
+            context.get("autosol_done", False) or
+            context.get("autosol_attempted", False) or
+            context.get("ligandfit_done", False) or
+            context.get("rsr_done", False) or
+            context.get("dock_done", False) or
+            context.get("predict_done", False) or
+            context.get("predict_full_done", False) or
+            # File-presence fallback: a positioned model on disk proves
+            # placement happened (covers session resumption)
+            context.get("has_placed_model_from_history", False) or
+            context.get("has_refined_model", False) or
+            context.get("has_ligand_fit", False) or
+            # Probe ran (placement was definitively assessed)
+            context.get("placement_probed", False)
+        )
+        if not past_analysis:
             return self._make_step_result(steps, "analyze",
                 "Need to analyze data quality first")
 
@@ -1521,6 +1607,18 @@ class WorkflowEngine:
         if _diag:
             print("  [DIAG] after run_once/done filter: %s" % valid)
 
+        # v116.10 Phase 4b: Remove programs whose data inputs are absent.
+        # xtriage/mtriage are added unconditionally by the analyze step
+        # but cannot run without their respective data files.  Filtering
+        # them out here prevents wasted LLM cycles where xtriage gets
+        # picked, the command builds, and execution fails at runtime.
+        # See _filter_programs_missing_data_inputs for details.
+        valid = self._filter_programs_missing_data_inputs(
+            valid, context, _diag=_diag)
+
+        if _diag:
+            print("  [DIAG] after data-input filter: %s" % valid)
+
         # MR-SAD guard: When we have BOTH a search model AND anomalous data,
         # phaser must run first to place the model. AutoSol will be available
         # later in the experimental_phasing phase (after phaser completes).
@@ -1924,6 +2022,40 @@ class WorkflowEngine:
                             "Overrode after_program_done "
                             "(CC=%.3f < 0.70)" % _cc)
 
+                # Bug 3 fix: failure override.  The metric-quality
+                # override above only fires when metrics are PRESENT
+                # but bad.  When a program crashes BEFORE writing
+                # any metrics (e.g. parameter-parse failure in
+                # phenix.refine), refine_count is incremented but
+                # r_free stays None, so the R-free check above is
+                # skipped and after_program_done stays True.  This
+                # produced the lock-in bug where one failed refine
+                # made the agent declare the workflow complete and
+                # wipe valid_programs to [STOP].
+                #
+                # The fix: if after_program is not in the set of
+                # programs that have SUCCESSFULLY completed at
+                # least once, override after_program_done to False.
+                # This forces the workflow to continue (LLM can
+                # retry the failed program, the consecutive-failure
+                # guard at graph_nodes.py ~1844 caps retries at 2).
+                #
+                # Note: context.successful_programs is populated by
+                # workflow_state._analyze_history from real history
+                # entries; it defaults to an empty set for callers
+                # that don't pass real history (e.g. the test
+                # entry points at the bottom of this file).
+                if after_program_done and context:
+                    _succeeded = context.get(
+                        "successful_programs") or set()
+                    if after_program not in _succeeded:
+                        after_program_done = False
+                        modifications.append(
+                            "Overrode after_program_done "
+                            "(%s was attempted but never "
+                            "completed successfully; allowing "
+                            "retry)" % after_program)
+
             # v115.09b: Post-ligandfit exemption.
             # When the ligand-fitting workflow has mandatory
             # pending steps (combine with pdbtools, then
@@ -1977,18 +2109,82 @@ class WorkflowEngine:
                             result.remove(rp)
                             result.insert(0, rp)
             elif after_program_done:
-                # User's workflow is complete — replace the entire valid_programs
-                # list with just STOP.  Simply appending STOP is not enough: the
-                # step detector may have already added programs like
-                # predict_and_build to 'result', and the LLM (or fallback) will
-                # pick those instead of stopping.
-                non_stop = [p for p in result if p != "STOP"]
-                if non_stop:
+                # v116.x: stop_after_requested gates the stop analysis.
+                #
+                # `after_program` carries two distinct kinds of intent
+                # which used to be indistinguishable here:
+                #
+                #   (a) USER/README explicit stop ("refine and stop")
+                #       — the user wants the workflow to stop after
+                #       this program completes.  Set by the directive
+                #       extractor when explicit stop phrasing is
+                #       detected in the raw advice text.
+                #
+                #   (b) PLAN progression hint (per-stage after_program
+                #       from plan_to_directives) — the plan wants to
+                #       make sure THIS stage's program runs.  No user
+                #       intent to stop is implied.
+                #
+                # The directive extractor flags case (a) by setting
+                # `stop_conditions.stop_after_requested = True` (see
+                # `_is_stop_after_requested` and the resolver in
+                # `agent/directive_extractor.py`).  Plan progression
+                # does NOT set this flag.
+                #
+                # Under v116.x we gate the stop analysis on the flag:
+                #
+                #   - stop_after_requested = True
+                #     → user said stop; wipe valid_programs to [STOP]
+                #       to enforce it structurally.  No more "LLM
+                #       might pick a different program" worries — we
+                #       know the user wants stop.
+                #
+                #   - stop_after_requested = False
+                #     → after_program is a plan progression hint only.
+                #       The target program has run; do NOTHING here
+                #       and let the workflow advance naturally to the
+                #       next plan stage / step.
+                #
+                # This replaces the previous v112.78-restored
+                # "append STOP" behavior, which was the right answer
+                # under the old model where we could not distinguish
+                # the two cases.  With the flag, we can wipe safely
+                # for user stops (no more lockouts of multi-goal
+                # workflows) and skip stop analysis entirely for plan
+                # progression (no more "Stop after refine" prompts in
+                # the middle of a 6-stage plan).
+                #
+                # `skip_validation` is no longer needed as a carve-out
+                # here.  It is set by the extractor on every user
+                # stop, but we no longer act on it in this branch —
+                # the wipe enforces the user's explicit stop intent
+                # whether or not validation programs are in the YAML
+                # step.
+                stop_after_requested = bool(
+                    stop_cond.get("stop_after_requested"))
+
+                if stop_after_requested:
+                    non_stop = [p for p in result if p != "STOP"]
+                    if non_stop:
+                        modifications.append(
+                            "Cleared programs %s "
+                            "(stop_after_requested + "
+                            "after_program %s completed)"
+                            % (non_stop, after_program))
+                    result[:] = ["STOP"]
                     modifications.append(
-                        "Cleared programs %s (after_program %s completed, workflow done)" % (
-                        non_stop, after_program))
-                result[:] = ["STOP"]
-                modifications.append("Set valid_programs=[STOP] (after_program %s completed)" % after_program)
+                        "Set valid_programs=[STOP] "
+                        "(user-explicit stop after %s)"
+                        % after_program)
+                else:
+                    # No user stop — after_program is a plan
+                    # progression hint.  The program has run; let
+                    # the workflow advance naturally.
+                    modifications.append(
+                        "after_program %s min-run satisfied "
+                        "(plan progression hint, no user stop) "
+                        "— leaving valid_programs intact"
+                        % after_program)
             else:
                 # after_program not yet run - add it to valid programs
                 should_add = self._check_program_prerequisites(after_program, context, step_name)
@@ -2215,6 +2411,243 @@ class WorkflowEngine:
 
         return False
 
+    def _filter_programs_missing_data_inputs(self, valid_programs, context,
+                                             _diag=False):
+        """Remove programs that cannot run because required data inputs are missing.
+
+        Some programs are added unconditionally by the YAML step definition
+        (e.g., phenix.xtriage at the X-ray analyze step) but cannot actually
+        execute without their data inputs:
+
+        - phenix.xtriage needs X-ray diffraction data (has_data_mtz or
+          has_phased_data_mtz)
+        - phenix.mtriage needs a cryo-EM map (has_full_map or has_half_map)
+
+        Without this filter, the LLM may pick xtriage/mtriage in a session
+        that lacks the data, the command builder generates a command, and
+        the program fails at runtime (one wasted cycle).  Filtering here
+        means the LLM is presented only with programs that can actually
+        run, so a sequence-only session sees [predict_and_build, STOP]
+        instead of [xtriage, predict_and_build, STOP].
+
+        This is the upstream complement to the prediction-only allowance
+        in _check_program_prerequisites: that path keeps predict_and_build
+        runnable for sequence-only sessions; this path removes the xtriage
+        distraction.
+
+        Args:
+            valid_programs: List of program names from YAML/condition filtering
+            context: Workflow context dict (must have data-presence flags)
+            _diag: When True, print diagnostic lines for each removal
+
+        Returns:
+            list: Copy of valid_programs with data-missing programs removed
+        """
+        result = list(valid_programs)
+
+        # X-ray: xtriage needs intensity data (raw or phased)
+        if "phenix.xtriage" in result:
+            has_xray_data = bool(
+                context.get("has_data_mtz") or
+                context.get("has_phased_data_mtz"))
+            if not has_xray_data:
+                result.remove("phenix.xtriage")
+                if _diag:
+                    print("  [DIAG] phenix.xtriage removed: no .mtz data "
+                          "(has_data_mtz=%s, has_phased_data_mtz=%s)"
+                          % (context.get("has_data_mtz"),
+                             context.get("has_phased_data_mtz")))
+
+        # Cryo-EM: mtriage needs a map (full or half)
+        if "phenix.mtriage" in result:
+            has_cryoem_map = bool(
+                context.get("has_full_map") or
+                context.get("has_half_map"))
+            if not has_cryoem_map:
+                result.remove("phenix.mtriage")
+                if _diag:
+                    print("  [DIAG] phenix.mtriage removed: no map data "
+                          "(has_full_map=%s, has_half_map=%s)"
+                          % (context.get("has_full_map"),
+                             context.get("has_half_map")))
+
+        # v116.10 Tier 2.1: Declarative requirements pass.
+        #
+        # Programs with a `requirements:` block in programs.yaml are
+        # evaluated here.  Programs without the block are unaffected
+        # — this pass is purely additive.
+        #
+        # The check is boolean-only: it reads only context flags and
+        # does NO file I/O.  See PATH_Y_DESIGN.md and the
+        # "Declarative requirements" section of ARCHITECTURE.md.
+        try:
+            from libtbx.langchain.knowledge.yaml_loader import (
+                get_program as _get_program)
+        except ImportError:
+            _get_program = None
+
+        if _get_program is not None:
+            for program in list(result):
+                prog_def = _get_program(program)
+                if prog_def and "requirements" in prog_def:
+                    req_block = prog_def["requirements"]
+                    if not self._check_requirements(req_block, context):
+                        result.remove(program)
+                        if _diag:
+                            print("  [DIAG] %s removed by declarative "
+                                  "requirements: %s"
+                                  % (program, req_block))
+
+        return result
+
+    # v116.10 Tier 2.1: declarative requirements clause keywords.
+    #
+    # Any keyword in a `requirements:` block NOT in this set is a
+    # bug — the A6-style guard in _check_requirements raises in
+    # PHENIX_AGENT_STRICT mode and prints a loud warning otherwise.
+    _KNOWN_REQUIREMENT_CLAUSES = frozenset([
+        "has",        # {"has": "sequence"}      → context["has_sequence"]
+        "has_any",    # {"has_any": [...]}       → any of context["has_<x>"]
+        "not_has",    # {"not_has": "model"}     → not context["has_model"]
+        "done",       # {"done": "xtriage"}      → context["xtriage_done"]
+        "not_done",   # {"not_done": "autobuild"} → not context["autobuild_done"]
+        "any_of",     # {"any_of": [<clause>, ...]} → at least one sub-clause passes
+    ])
+
+    def _check_requirements(self, req_block, context):
+        """Evaluate a `requirements:` block against the workflow context.
+
+        Boolean-only — no file I/O.  Reads only the context dictionary.
+        Any "semantic" check (e.g., "MTZ has FOM columns") must be
+        expressed as a context flag set elsewhere, NOT by reading
+        files here.  See Pitfall 16 in PATH_Y_DESIGN.md.
+
+        Grammar (v2):
+
+            requirements:
+              requires:
+                - has: <name>          # context["has_<name>"] truthy
+                - has_any: [<name>, ...]  # any context["has_<n>"] truthy
+                - not_has: <name>      # not context["has_<name>"]
+                - done: <name>         # context["<name>_done"] truthy
+                - not_done: <name>     # not context["<name>_done"]
+                - any_of:              # any sub-clause passes (v2 addition)
+                  - <clause>
+                  - <clause>
+
+        The grammar is closed.  Adding new keywords requires
+        documented justification — see Pitfall 10 in PATH_Y_DESIGN.md.
+        If a requirement needs if/then logic, it does NOT belong here;
+        put it in Python (Mechanism 3 or 4).
+
+        Implementation note: context-key construction uses intermediate
+        variables (e.g., `key = "has_" + name; context.get(key)`) rather
+        than inline string concatenation, so the static flag scanner
+        (tst_phase4_history_flags.py) doesn't trip on a phantom "has_"
+        literal.  This matches the pattern in _check_conditions().
+
+        Args:
+            req_block: dict with a `requires:` key (list of clauses)
+            context: workflow context dict
+
+        Returns:
+            bool: True if all clauses in `requires:` pass, False
+                  otherwise.  Returns True if req_block is malformed
+                  (defensive — never filter on bad input; rely on tests
+                  and the audit checklist to catch bad YAML).
+        """
+        if not isinstance(req_block, dict):
+            return True
+
+        requires = req_block.get("requires", [])
+        if not isinstance(requires, list):
+            return True
+
+        for clause in requires:
+            if not isinstance(clause, dict):
+                continue
+
+            # ── A6-style guard: catch unknown keywords ─────────────
+            unknown = set(clause.keys()) - self._KNOWN_REQUIREMENT_CLAUSES
+            if unknown:
+                msg = (
+                    "Unknown clause keyword(s) %s in requirements: "
+                    "block — add a handler to _check_requirements() "
+                    "or fix the YAML.  Clause is being SKIPPED "
+                    "(treated as satisfied)." % sorted(unknown))
+                if os.environ.get("PHENIX_AGENT_STRICT"):
+                    raise ValueError(msg)
+                else:
+                    print("ERROR: " + msg)
+                # Skip the unknown keys but continue with known ones.
+
+            # ── has ────────────────────────────────────────────────
+            # {"has": "sequence"} → context["has_sequence"] must be truthy
+            if "has" in clause:
+                key = "has_" + clause["has"]
+                if not context.get(key):
+                    return False
+
+            # ── has_any ────────────────────────────────────────────
+            # {"has_any": ["data_mtz", "phased_data_mtz"]}
+            # → at least one of context["has_data_mtz"] /
+            #                  context["has_phased_data_mtz"]
+            if "has_any" in clause:
+                names = clause["has_any"]
+                if not isinstance(names, list):
+                    continue
+                keys = ["has_" + n for n in names]
+                if not any(context.get(k) for k in keys):
+                    return False
+
+            # ── not_has ────────────────────────────────────────────
+            # {"not_has": "model"} → context["has_model"] must be falsy
+            if "not_has" in clause:
+                key = "has_" + clause["not_has"]
+                if context.get(key):
+                    return False
+
+            # ── done ───────────────────────────────────────────────
+            # {"done": "xtriage"} → context["xtriage_done"] must be truthy
+            if "done" in clause:
+                key = clause["done"] + "_done"
+                if not context.get(key):
+                    return False
+
+            # ── not_done ───────────────────────────────────────────
+            # {"not_done": "autobuild"} → context["autobuild_done"] falsy
+            if "not_done" in clause:
+                key = clause["not_done"] + "_done"
+                if context.get(key):
+                    return False
+
+            # ── any_of ─────────────────────────────────────────────
+            # {"any_of": [<clause>, <clause>, ...]}
+            # → at least one sub-clause passes.  Sub-clauses use the
+            # same grammar as top-level clauses (has/has_any/not_has/
+            # done/not_done/any_of), enabling disjunction over mixed
+            # flag types (e.g., "has_phases OR done_autosol").
+            #
+            # Why this is needed (Pitfall 10 justification):
+            # autobuild's real semantic is "data + (phases OR model OR
+            # phaser_done OR autosol_done)" — mixes has_ and _done flag
+            # families.  Existing has_any can't express this because
+            # it auto-prefixes "has_" to every name.
+            if "any_of" in clause:
+                sub_clauses = clause["any_of"]
+                if not isinstance(sub_clauses, list):
+                    continue
+                matched = False
+                for sub in sub_clauses:
+                    if isinstance(sub, dict) and self._check_requirements(
+                            {"requires": [sub]}, context):
+                        matched = True
+                        break
+                if not matched:
+                    return False
+
+        return True
+
     def _check_program_prerequisites(self, program, context, step_name):
         """
         Check if a program's prerequisites are met.
@@ -2229,6 +2662,30 @@ class WorkflowEngine:
         """
         if not context:
             return True  # No context to check against
+
+        # v116.10 Phase 4b: xtriage needs X-ray intensity data (raw or phased).
+        # Without .mtz, xtriage cannot run.  This gate is the directive-side
+        # complement to _filter_programs_missing_data_inputs (which removes
+        # xtriage from the YAML-derived valid_programs).  Both paths must
+        # enforce the same requirement so that user advice like "analyze
+        # and stop" on a sequence-only session doesn't re-add xtriage
+        # after the YAML filter already removed it.
+        if program == "phenix.xtriage":
+            has_xray_data = (
+                context.get("has_data_mtz") or
+                context.get("has_phased_data_mtz")
+            )
+            if not has_xray_data:
+                return False
+
+        # v116.10 Phase 4b: mtriage needs a cryo-EM map (full or half).
+        if program == "phenix.mtriage":
+            has_cryoem_map = (
+                context.get("has_full_map") or
+                context.get("has_half_map")
+            )
+            if not has_cryoem_map:
+                return False
 
         # Don't add refinement programs if we're in an early step without a model
         if program in ("phenix.refine", "phenix.real_space_refine"):
@@ -2275,6 +2732,24 @@ class WorkflowEngine:
             # For X-ray, require xtriage to be done (to get resolution for building)
             # For cryo-EM, require mtriage to be done
             if context.get("xtriage_done") or context.get("mtriage_done"):
+                return True
+
+            # v116.10: Prediction-only mode (AlphaFold-only).
+            # When the user has uploaded a sequence file but no diffraction
+            # data (no .mtz), xtriage cannot run and the workflow would
+            # otherwise stall at xray_initial.  predict_and_build CAN run
+            # with just a sequence — it produces an AlphaFold prediction
+            # without needing data, MR, or refinement.  This is the
+            # "explicit request" case the comment below alludes to.
+            #
+            # The command builder forces stop_after_predict=True when
+            # data is absent, so the resulting workflow is a pure
+            # prediction run.  The user's after_program directive
+            # (handled upstream in _apply_directives) typically pairs
+            # with stop_after_predict=True for this case.
+            if (context.get("has_sequence") and
+                    not context.get("has_data_mtz") and
+                    not context.get("has_phased_data_mtz")):
                 return True
 
             # Allow prediction-only if explicitly requested, but warn

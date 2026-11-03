@@ -10,7 +10,7 @@ from cctbx import maptbx
 from libtbx import adopt_init_args
 from libtbx.utils import user_plus_sys_time
 from cctbx import crystal, maptbx, xray, adptbx
-from iotbx.pdb.utils import all_chain_ids
+from iotbx.pdb.utils import chain_id_generator
 import scitbx.math
 from libtbx.utils import Sorry
 
@@ -678,9 +678,7 @@ class run_one(object):
     if(len(unique_taken)==1):
       solvent_chain = unique_taken[0]
     else:
-      for solvent_chain in all_chain_ids():
-        if(not solvent_chain in chain_ids_taken):
-          break
+      solvent_chain = next(chain_id_generator(used_ids=chain_ids_taken))
     self.ma.add("  new water chain ID: '%s'"%solvent_chain)
     bisos = self.xrs_water.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1)
     if bisos.size()>0:

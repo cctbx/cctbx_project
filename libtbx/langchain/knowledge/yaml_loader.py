@@ -73,7 +73,12 @@ def _load_yaml_file(filename):
         print(f"Warning: {filename} not found at {filepath}")
         return {}
 
-    with open(filepath, 'r') as f:
+    # v116.10: Force UTF-8 encoding.  YAML files are UTF-8 by
+    # spec.  Python's open() without encoding= uses the system
+    # default — UTF-8 on Linux/macOS but the system code page
+    # on Windows (cp1252, gbk for Chinese-locale, cp932 for
+    # Japanese, etc.), which crashes on any non-ASCII content.
+    with open(filepath, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f) or {}
 
 

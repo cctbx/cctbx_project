@@ -11,7 +11,6 @@ import shutil
 import os
 from iotbx.ncs import ncs_group_master_phil
 import mmtbx.ncs.ncs
-import mmtbx.model
 from libtbx.test_utils import approx_equal
 from six.moves import range
 from six.moves import map

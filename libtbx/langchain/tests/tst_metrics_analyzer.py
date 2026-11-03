@@ -298,9 +298,19 @@ def test_trend_mixed_programs():
     print("  PASSED")
 
 
-def test_trend_cryoem():
-    """Test cryo-EM trend analysis (CC-based)."""
-    print("Test: trend_cryoem")
+def test_trend_cryoem_target_no_validation():
+    """Cryo-EM CC > target WITHOUT validation: don't stop yet.
+
+    v116.12 / v116.13 behavior: the cryo-EM SUCCESS branch defers
+    auto-stop until validation has been run, mirroring the X-ray
+    branch (see test_trend_success).  When the trend would otherwise
+    fire stop, the analyzer instead returns should_stop=False with a
+    reason that recommends validation.
+
+    See ARCHITECTURE.md "Cryo-EM Validation Symmetry Completion
+    (v116.13)" for the full rationale.
+    """
+    print("Test: trend_cryoem_target_no_validation")
 
     metrics = [
         {"cycle": 1, "program": "phenix.mtriage", "resolution": 3.0},
@@ -311,7 +321,45 @@ def test_trend_cryoem():
 
     trend = analyze_metrics_trend(metrics, experiment_type="cryoem")
 
-    assert trend["should_stop"] == True
+    assert trend["should_stop"] == False, \
+        "Cryo-EM CC > target without validation MUST NOT auto-stop " \
+        "(v116.12/v116.13). Got should_stop=%r reason=%r" % \
+        (trend["should_stop"], trend.get("reason"))
+    # The reason should mention validation.  Phrasing may vary between
+    # metric_evaluator (live YAML path) and metrics_analyzer (hardcoded
+    # fallback); we accept any reason that contains "validation".
+    reason = (trend.get("reason") or "").lower()
+    assert "validation" in reason, \
+        "Reason should mention validation; got %r" % trend.get("reason")
+
+    print("  PASSED")
+
+
+def test_trend_cryoem_target_with_validation():
+    """Cryo-EM CC > target WITH validation done: stop.
+
+    Inverse of test_trend_cryoem_target_no_validation.  Once
+    phenix.molprobity (or phenix.validation_cryoem) has been run,
+    the cryo-EM SUCCESS branch is allowed to fire and should_stop
+    becomes True.  This matches the X-ray behavior in test_trend_success.
+    """
+    print("Test: trend_cryoem_target_with_validation")
+
+    metrics = [
+        {"cycle": 1, "program": "phenix.mtriage", "resolution": 3.0},
+        {"cycle": 2, "program": "phenix.real_space_refine", "map_cc": 0.65},
+        {"cycle": 3, "program": "phenix.real_space_refine", "map_cc": 0.72},
+        {"cycle": 4, "program": "phenix.real_space_refine", "map_cc": 0.78},
+        # Validation HAS been run — this is what flips the gate.
+        {"cycle": 5, "program": "phenix.molprobity"},
+    ]
+
+    trend = analyze_metrics_trend(metrics, experiment_type="cryoem")
+
+    assert trend["should_stop"] == True, \
+        "Cryo-EM CC > target WITH validation done should stop. " \
+        "Got should_stop=%r reason=%r" % \
+        (trend["should_stop"], trend.get("reason"))
     assert "SUCCESS" in trend["reason"]
     assert "0.75" in trend["reason"] or "CC" in trend["reason"]
 

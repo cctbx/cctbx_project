@@ -27,6 +27,12 @@ test_cases_to_ignore = [
     "import x # noqa: F401",
     "import x, y, z # noqa: F401",
     "import x, y, z # noqa - all of these are essential",
+    # Lines inside docstrings/string literals must not be parsed as imports.
+    '"""\nfrom x import y\n"""',
+    '"""docstring\nfrom x import y\n"""',
+    "'''\nimport x\n'''",
+    'def foo():\n    """\n    from x import y\n    """\n    return 1',
+    '"""module docstring\n\n    from a.b.c import d, e\n    from f.g import h\n"""\nimport os\nprint(os.path)',
 ]
 
 

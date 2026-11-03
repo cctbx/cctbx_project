@@ -40,7 +40,7 @@ from mmtbx.refinement import print_statistics
 from mmtbx.twinning import twin_f_model
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import mmtbx.f_model
-import mmtbx.restraints
+import mmtbx.restraints # import dependency
 import mmtbx.tls.tools
 from mmtbx.scaling import outlier_rejection
 import mmtbx.command_line.fmodel
@@ -593,6 +593,8 @@ def setup_scattering_dictionaries(scattering_table,
         "Neutron scattering dictionary", out = log)
       xray_structure.scattering_type_registry().show(out = log)
     xray_structure.scattering_type_registry_params.table = "neutron"
+  # Record d_min as well as the "n_gaussian" table depends d_min.
+  xray_structure.set_scattering_table(scattering_table, d_min = d_min)
   if(all_chain_proxies is not None):
     scattering_type_registry = all_chain_proxies.scattering_type_registry
     if(scattering_type_registry.n_unknown_type_symbols() > 0):

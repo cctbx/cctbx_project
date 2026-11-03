@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import mmtbx.model
+from mmtbx.rotamer import nqh
 import libtbx.load_env
 import iotbx.pdb
 import os
@@ -415,7 +416,7 @@ END
 """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   m = mmtbx.model.manager(model_input = pdb_inp)
-  m.flip_nqh()
+  nqh.flip(model = m, log = m.log)
   sc_flipped = m.get_sites_cart()
   sc_orig    = iotbx.pdb.input(source_info=None, lines=pdb_str).atoms().extract_xyz()
   sc_answer  = iotbx.pdb.input(source_info=None, lines=pdb_str_answer).atoms().extract_xyz()
@@ -627,8 +628,32 @@ END
   assert not m4.altlocs_present_only_hd()
 
 
+def exercise_select_preserves_stop_for_unknowns():
+  # model.manager.select() must carry stop_for_unknowns onto the selected
+  # model. Otherwise a model built with stop_for_unknowns=False silently
+  # reverts to the constructor default (True) after any selection, which breaks
+  # pipelines (e.g. reduce2/clashscore2 with custom ligands) that deliberately
+  # tolerate unknown residues.
+  # Default (True) is preserved across select().
+  inp = iotbx.pdb.input(lines=pdb_str_1, source_info=None)
+  m_default = mmtbx.model.manager(model_input=inp)
+  assert m_default.get_stop_for_unknowns() is True
+  m_default_sel = m_default.select(m_default.selection("all"))
+  assert m_default_sel.get_stop_for_unknowns() is True
+  # Explicit False is preserved across select() (the behavior being fixed).
+  inp2 = iotbx.pdb.input(lines=pdb_str_1, source_info=None)
+  m_false = mmtbx.model.manager(model_input=inp2, stop_for_unknowns=False)
+  assert m_false.get_stop_for_unknowns() is False
+  m_false_sel = m_false.select(m_false.selection("all"))
+  assert m_false_sel.get_stop_for_unknowns() is False, \
+    "select() must preserve stop_for_unknowns=False onto the selected model"
+  # deep_copy() is built on select(), so it must preserve the flag too
+  assert m_false.deep_copy().get_stop_for_unknowns() is False, \
+    "deep_copy() must preserve stop_for_unknowns=False onto the copied model"
+
 if (__name__ == "__main__"):
   t0 = time.time()
+  exercise_select_preserves_stop_for_unknowns()
   exercise_altlocs_present()
   exercise_macromolecule_plus_hetatms_by_chain_selections()
   exercise_ss_creation_crash()

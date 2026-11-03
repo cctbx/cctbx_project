@@ -242,6 +242,15 @@ class site_gradients(object):
                      log=None):
     fmodel_dc = fmodel.deep_copy()
     xray_structure = fmodel_dc.xray_structure
+    # Exclude H from weight calculation (not for neutron data: H/D are major
+    # scatterers there and Fcalc without them is a different model)
+    hd_sel = xray_structure.hd_selection()
+    if hd_sel.count(True) > 0 and not model.is_neutron():
+      xray_structure = xray_structure.select(~hd_sel)
+      fmodel_dc.update_xray_structure(xray_structure=xray_structure,
+        update_f_calc=True)
+      model = model.select(~hd_sel)
+    #
     sel_si  = model.refinement_flags.sites_individual
     sel_sta = model.refinement_flags.sites_torsion_angles
     sel_count = [sel_si, sel_sta].count(None)

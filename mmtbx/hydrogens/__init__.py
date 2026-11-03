@@ -17,8 +17,9 @@ refine = individual riding *Auto
           other atoms, useful at very high resolutions only)
   .short_caption = Hydrogen refinement model
   .expert_level=1
-force_riding_adp = None
+refine_occupancy = True
   .type = bool
+  .help = Refine occupancy of all H individually
 optimize_scattering_contribution = True
   .type = bool
 contribute_to_f_calc = True
@@ -408,8 +409,8 @@ def fit_rotatable2(model, fmodel):
   model.set_hydrogen_bond_length(use_neutron_distances = use_neutron_distances)
   model.idealize_h_riding()
   #
+  fmodel.xray_structure.set_sites_cart(model.get_sites_cart())
   fmodel.update_xray_structure(
-    xray_structure = model.get_xray_structure(),
     update_f_calc  = True,
     update_f_mask  = True)
   fmodel.update_all_scales()
@@ -559,3 +560,227 @@ def run_fit_rotatable(
   if(log is not None):
     print("  final:  r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(),
       fmodel.r_free()), file=log)
+
+# =============================================================================
+# reduce1 <-> reduce2 switch.
+# mmtbx.hydrogens is imported very widely, so reduce2's heavy dependencies
+# (reduce_hydrogen, mmtbx.reduce.Optimizers, mmtbx.programs.reduce2) are imported
+# LAZILY inside the functions below -- never at module top -- to avoid an import
+# cycle (reduce_hydrogen -> mmtbx.model / mmtbx.ligands.ready_set_utils) and the
+# import-time cost.
+# =============================================================================
+import sys
+
+USE_OLD_REDUCE = True # SINGLE flip for switching to reduce2.
+                      # Flip to False to run reduce2 everywhere.
+
+def use_old_reduce():
+  return USE_OLD_REDUCE
+
+USE_REDUCE2_FLIPS = True # under reduce2, accept reduce2's optimized H
+                          # positions and flips (atom-preserving). No-op unless reduce2 is on.
+
+def use_reduce2_flips():
+  return (not use_old_reduce()) and USE_REDUCE2_FLIPS
+
+def default_probe_phil():
+  """The probe Phil scope reduce2 uses, so our defaults match reduce2 exactly."""
+  import iotbx.phil
+  from mmtbx.programs import reduce2
+  return iotbx.phil.parse(
+    reduce2.master_phil_str, process_includes=True).extract().probe
+
+def _place_and_optimize_core(model, do_flips, nuclear, keep_existing_H,
+      probe_phil, raise_on_missing, log, optimize_his_protonation=False):
+  """Placement + orientation/flip optimization, without the final
+  interpretation-only re-process.  Raises Sorry after placement (before
+  optimizing) when restraints are missing and raise_on_missing is set."""
+  from mmtbx.hydrogens import reduce_hydrogen
+  from mmtbx.reduce import Optimizers
+  o = reduce_hydrogen.place_hydrogens(
+    model                 = model,
+    use_neutron_distances = nuclear,
+    n_terminal_charge     = "residue_one",
+    exclude_water         = True,
+    stop_for_unknowns     = False,  # match clashscore2: place what we can, then
+                                    # raise below on missed residues; the param
+                                    # applies to the post-optimization reprocess.
+    keep_existing_H       = keep_existing_H)
+  o.run()
+  o.show(log)
+  missed = set(o.no_H_placed_mlq)
+  if len(missed) > 0 and raise_on_missing:
+    raise Sorry("Restraints were not found for the following residues:" +
+                "".join(" " + r for r in missed))
+  model = o.get_model()
+  # Optimize H orientations (and flips if do_flips) on the freshly placed model:
+  # it already carries restraints from place_hydrogens. ORDER MATTERS -- the
+  # re-process afterwards drops restraints, so it must come AFTER the Optimizer
+  # (this mirrors clashscore2.check_and_add_hydrogen).
+  # MoverHisFlip, which also chooses the His protonation, exists only with the
+  # flip Movers; without do_flips a 9999 bias toward the input orientation
+  # keeps every His ring and Asn/Gln amide unflipped.
+  kwargs = {}
+  if optimize_his_protonation and not do_flips:
+    kwargs["nonFlipPreference"] = 9999
+  opt = Optimizers.Optimizer(
+    probe_phil, do_flips or optimize_his_protonation, model, modelIndex=None,
+    useNeutronDistances=nuclear, fillAtomDump=False, **kwargs)
+
+  # Delete any hydrogens that we've been asked to delete.
+  for a in opt.getHydrogensToDelete():
+    a.parent().remove_atom(a)
+  return model
+
+def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
+      keep_existing_H=False, probe_phil=None, stop_for_unknowns=False,
+      raise_on_missing=True, log=None, optimize_his_protonation=False):
+  """Add H with reduce2 in-process: place_hydrogens then Optimizers.Optimizer.
+  Mirrors mmtbx.validation.clashscore2.check_and_add_hydrogen.
+
+  :param raise_on_missing: When True (default), raise Sorry if restraints were
+    not found for some residues (no H placed there). Set False for best-effort
+    callers (e.g. the MolProbity kinemage view) that prefer to produce results
+    for the rest of the structure rather than fail on a few problem residues.
+  :param optimize_his_protonation: With do_flips=False, still choose each His
+    ring protonation (HD1, HE2 or both) without flipping any His ring or Asn/Gln
+    amide. When False (default), every His keeps H on both ring N except those
+    bound to an ion. No effect when do_flips=True."""
+  from mmtbx.hydrogens import reduce_hydrogen
+  if log is None: log = sys.stdout
+  if probe_phil is None: probe_phil = default_probe_phil()
+
+  hierarchy = model.get_hierarchy()
+  if len(hierarchy.models()) > 1:
+    # One model at a time: superimposed ensemble models make whole-file
+    # restraints quadratic in the model count, and placement and flip
+    # optimization are per-model operations anyway.
+    cs = model.crystal_symmetry()
+    ro = model.get_restraint_objects()
+    combined = iotbx.pdb.hierarchy.root()
+    for m in hierarchy.models():
+      r = iotbx.pdb.hierarchy.root()
+      r.append_model(m.detached_copy())
+      sub = mmtbx.model.manager(
+        model_input       = None,
+        pdb_hierarchy     = r,
+        stop_for_unknowns = False,
+        crystal_symmetry  = cs,
+        restraint_objects = ro,
+        log               = None)
+      sub = _place_and_optimize_core(
+        sub, do_flips, nuclear, keep_existing_H, probe_phil,
+        raise_on_missing, log, optimize_his_protonation)
+      sub_model = sub.get_hierarchy().models()[0].detached_copy()
+      sub_model.id = m.id
+      combined.append_model(sub_model)
+    model = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = combined,
+      stop_for_unknowns = False,
+      crystal_symmetry  = cs,
+      restraint_objects = ro,
+      log               = None)
+  else:
+    model = _place_and_optimize_core(
+      model, do_flips, nuclear, keep_existing_H, probe_phil,
+      raise_on_missing, log, optimize_his_protonation)
+
+  # Re-process for output safety (avoids a pair_proxies crash when writing
+  # mmCIF).  Interpretation-only, which stays linear in the model count.
+  model.get_hierarchy().sort_atoms_in_place()
+  model.get_hierarchy().atoms().reset_serial()
+  p = reduce_hydrogen.get_reduce_pdb_interpretation_params(nuclear)
+  p.pdb_interpretation.flip_symmetric_amino_acids               = False
+  p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check       = True
+  p.pdb_interpretation.allow_polymer_cross_special_position     = True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds      = True
+  model.set_stop_for_unknowns(stop_for_unknowns)
+  model.process(make_restraints=False, pdb_interpretation_params=p)
+  return model
+
+def add_hydrogens(model, old=None, do_flips=False, nuclear=False,
+                  keep_existing_H=False, probe_phil=None, log=None):
+  """Central reduce1/reduce2 switch. old=None -> use_old_reduce().
+  Returns a model with hydrogens either way."""
+  if old is None: old = use_old_reduce()
+  if not old:
+    return place_and_optimize_hydrogens(
+      model=model, do_flips=do_flips, nuclear=nuclear,
+      keep_existing_H=keep_existing_H, probe_phil=probe_phil, log=log)
+  return _add_hydrogens_reduce1(
+    model=model, do_flips=do_flips, nuclear=nuclear, log=log)
+
+def _add_hydrogens_reduce1(model, do_flips=False, nuclear=False, log=None):
+  """Legacy reduce1 path (molprobity.reduce) wrapped at the model level"""
+  import iotbx.pdb
+  import mmtbx.model
+  from mmtbx.utils import run_reduce_with_timeout
+  from mmtbx.validation.clashscore import check_and_report_reduce_failure
+  cryst_sym = model.crystal_symmetry()
+  build = "-oh -his -flip -keep -allalt -limit120"
+  if not do_flips: build += " -pen9999"
+  build += " -nuc -" if nuclear else " -"
+  pdb_in = model.get_hierarchy().as_pdb_string(crystal_symmetry=cryst_sym)
+  clean = run_reduce_with_timeout(parameters=" -quiet -trim -", stdin_lines=pdb_in)
+  check_and_report_reduce_failure(clean, pdb_in, "reduce_fail.pdb")
+  built = run_reduce_with_timeout(
+    parameters=build, stdin_lines="\n".join(clean.stdout_lines))
+  check_and_report_reduce_failure(built, pdb_in, "reduce_fail.pdb")
+  return mmtbx.model.manager(
+    model_input      = iotbx.pdb.input(
+      source_info="reduce1", lines="\n".join(built.stdout_lines)),
+    crystal_symmetry = cryst_sym,
+    log              = log)
+
+def get_nqh_flips_reduce2(model, probe_phil=None):
+  """Decision-only NQH flip detector via reduce2's Optimizer.
+
+  PRECONDITION: `model` already has hydrogens and has had PDB interpretation run
+  (restraints present). This does NOT add hydrogens. Returns
+  (user_mods, atom_notes, score_dict) matching mmtbx.rotamer.nqh.get_nqh_flips so
+  flip_selected() can apply it unchanged (atom-preserving via flip_residue)
+  """
+  from mmtbx.reduce import Optimizers
+  assert model.get_hd_selection().count(True) > 0, \
+    "get_nqh_flips_reduce2 requires a model that already has hydrogens"
+  if probe_phil is None: probe_phil = default_probe_phil()
+  work = model.deep_copy()
+  opt = Optimizers.Optimizer(
+    probe_phil, True, work, modelIndex=None, altID="")
+  user_mods = []
+  for fm in opt.getFlippedAmides() + opt.getFlippedHistidines():
+    ag    = fm.baseAtom.parent()   # atom_group    -> resname
+    rg    = ag.parent()            # residue_group -> resid()
+    chain = rg.parent()            # chain         -> id
+    user_mods.append(
+      (chain.id + rg.resid() + ag.resname + "    " + fm.alt).strip())
+  return user_mods, [], {}
+
+def accept_reduce2_flips(work_model, probe_phil=None, log=None):
+  """Compute reduce2's N/Q/H flips AND optimized H for work_model via the reduce2
+  Optimizer (addFlipMovers=True) and return the resulting sites_cart; the caller
+  pushes them onto the live model via model.set_sites_cart. The Optimizer is run on a
+  PRIVATE deep copy (see below), so the caller's model is not mutated here.
+  Atom-preserving: getHydrogensToDelete is never called, so the atom content is
+  unchanged. PRECONDITION: work_model already has hydrogens and restraints (PDB
+  interpretation run)."""
+  from mmtbx.reduce import Optimizers
+  if log is None: log = sys.stdout
+  if probe_phil is None: probe_phil = default_probe_phil()
+  assert work_model.get_hd_selection().count(True) > 0, \
+    "accept_reduce2_flips requires a model that already has hydrogens"
+  # Run the Optimizer on a private deep copy, never the caller's live model.
+  # Optimizer.__init__ calls model.setup_riding_h_manager() (Optimizers.py), which
+  # CREATES a riding_h_manager on whatever model it is given. In reciprocal
+  # phenix.refine the per-macro-cycle "Setup riding H model" step is the designated
+  # creator and asserts riding_h_manager is None; it runs only in some macro cycles
+  # while the N/Q/H flip runs every cycle, so optimizing the live model in place
+  # would leave a stray manager that crashes that later assert. (The decision-only
+  # path, get_nqh_flips_reduce2, deep-copies for the same reason.)
+  reduce_model = work_model.deep_copy()
+  opt = Optimizers.Optimizer(probe_phil, True, reduce_model, modelIndex=None, altID="")
+  print("Total number of N/Q/H flips: %d" % (
+    len(opt.getFlippedAmides()) + len(opt.getFlippedHistidines())), file=log)
+  return reduce_model.get_sites_cart()

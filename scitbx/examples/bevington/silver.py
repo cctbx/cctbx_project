@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from six.moves import range
 import scitbx.lbfgs
 from scitbx.array_family import flex
-from math import exp,sqrt
+from math import sqrt
 from scitbx.matrix import sqr
 
 data = """

@@ -42,7 +42,7 @@ Test Suites (require PHENIX environment):
   31. Integration - End-to-end workflow tests
   32. Directives Integration - End-to-end directive system tests
 
-  33. Langchain Tools - Legacy module tests (core, analysis, RAG, validation, prompts, memory)
+  33. Langchain Tools - Legacy module tests (core, analysis, RAG, prompts, memory)
   34. Hardcoded Cleanup - Conformance guards for YAML-driven architecture (v112.10)
   35. v112.13        - Companion files, intermediate filtering, file categorisation
   36. Audit Fix Regressions - Categories I/J/E/G/H: max_refine_cycles landing, zombie
@@ -77,6 +77,7 @@ Test Suites (require PHENIX environment):
   56. v115 N-Bugs    - N1 event_formatter TypeError, N3 file_categories refined exclude
   57. v115 Fix 2     - fabricated stop-condition lines stripped before directive extraction
   58. v115 F1+F3     - abort_message for all stops; max-cycles explicit message
+  59. Ligandfit Patterns - programs.yaml log_parsing regexes for phenix.ligandfit
   59. v115 F2+F4+F7  - API key errors; blocked-program naming; empty command stop
   60. v115 F5        - workflow_complete stop reason on rules-only success
   61. v115 F6        - diagnosed_failure stop reason for terminal diagnosis
@@ -84,6 +85,10 @@ Test Suites (require PHENIX environment):
   63. P1B            - STOP_REASON_CODES, think_stop_override, think_file_overrides
   64. P1B Prompt     - stop_reason table injection, guard, graceful degradation
   65. P1B Action 1   - validate() think_file_overrides existence check
+  66. Log Structure Extractor - deterministic Phenix log reader: sections, phases,
+      stages, cycles, decisions, skips/exclusions, labeled values,
+      completion records, measurements, identification, and the unparsed
+      ledger. Corpus invariants gate on PHENIX_LOG_CORPUS (130 tests)
 
 Systematic Testing Framework (v115.08):
   S0. Phase 0: Static Audit - automated gate (parse, bare except, import fallbacks)
@@ -97,6 +102,92 @@ Systematic Testing Framework (v115.08):
   S8. Phase 5: Error Classification - 3 classifiers, 30+ patterns, consistency checks
   S9. Phase 9: LLM Perturbation - filename/program/parameter/truncation/empty (17 tests)
   S10. General Resolver - ACTION_TABLE, _detect_actions, _resolve_after_program (20 tests, 91 assertions)
+  S11. Skip to Program - StructurePlan.skip_to_program() + format_plan_header display (30 tests, v116.10)
+  S12. Directive Validator Typo Hints - difflib-based suggestion algorithm and
+       'Did you mean?' hints in after_program issues (13 tests, v116.10 Phase 4a)
+  S13. User Advice Filter - 'X and stop' / 'X then stop' / 'X, stop' phrasings no longer
+       truncate valid_programs to [STOP] (16 tests, v116.10 Phase 1)
+  S14. After-Program Prompt Alignment - target-not-now framing replaces
+       'CRITICAL: You MUST run X / Do NOT...run X instead!' (12 tests, v116.10 Phase 6a)
+  S15. Data-Input Filter - xtriage removed when no .mtz, mtriage removed
+       when no map (16 tests, v116.10 Phase 4b)
+  S16. Protocol Version Invariants - CURRENT_PROTOCOL_VERSION drift detection
+       and validate_contract() function (15 tests, v116.10 Phase 2)
+  S17. Sequence-Only Routing - _detect_xray_step routes to obtain_model when
+       no .mtz data is present and has_sequence=True (10 tests, v116.10 Phase 6b)
+  S18. Standalone Programs Consistency - _STANDALONE_PROGRAMS / _NEEDS_PLAN_PROGRAMS
+       de-duplication + drift detection against _ACTION_TABLE
+       (8 tests, v116.10 Phase 3a/3b)
+  S19. Dock-and-Stop Behavior Change - phenix.map_symmetry and phenix.dock_in_map
+       reclassified as standalone (5 tests, v116.10 Phase 3d)
+  S20. CC Key Extraction - _generate_structure_report success-detection logic
+       recognizes the canonical "model_map_cc" key, fixing misleading
+       "SESSION STOPPED - INCOMPLETE" banner on successful cryo-EM runs
+       (11 tests, v116.10)
+  S21. File Encoding - text-mode open() calls specify encoding='utf-8',
+       preventing UnicodeDecodeError crashes on non-UTF-8 system locales
+       (Chinese/Japanese Windows in particular) (5 tests, v116.10)
+  S22. Ligand Workflow Restart - _detect_xray_step advances past "analyze"
+       when downstream programs have run; best_files_tracker treats
+       ligand_fit_output as new best by inheriting metrics from prior
+       refined model. Fixes nsf-d2-ligand tutorial restarting at cycle 3
+       (14 tests, v116.10 Phase 6c)
+  S23. Initialize Plan Smoke - behavioral tests for _initialize_plan_inner
+       decision tree. Verifies side effects (intent rewrite, stop_after
+       clearing, plan-generation gating) for each branch of the function.
+       Complements tst_dock_and_stop.py's decision-tree traces with actual
+       behavioral assertions (9 tests, v116.10 Tier 1 follow-up)
+  S24. Phase 3d Motivating Tutorial - integration-level verification of the
+       Phase 3d dock-and-stop fix. Skip-aware against an optional session
+       fixture; runs decision-tree + YAML format checks unconditionally.
+       Closes the highest-priority verification gap from the v116.10 review
+       (3 tests, v116.10 Tier 1 follow-up)
+  S25. Program Requirements - declarative `requirements:` schema for
+       programs.yaml. Verifies the _check_requirements parser, the filter
+       integration (autobuild scenarios), and backward-compat (programs
+       without the block are unaffected). Plugs the autobuild gap where
+       the program could be picked and crash at runtime
+       (40 tests, v116.10 Tier 2.1 + 2.1.1)
+
+  S26. Stop Condition False Positive - v116.11 fix for AF_7mjs regression.
+       The preprocessor-inserted "**Stop Condition**: None" header was
+       interpreted as a real stop signal by _resolve_after_program,
+       causing the planner to skip prerequisite stages.  Tests the
+       strengthened _strip_preprocessor_stop_condition regex, the
+       defense-in-depth strip in the resolver, and the start_with_program
+       suppression for preprocessed advice
+       (15 tests, v116.11)
+
+  S27. Cryo-EM Stop Validation - v116.12 Fix #1 for AF_7mjs Stage 5 skip.
+       The cryo-EM auto-stop condition (CC > 0.70) lacked the
+       validation_done check that the X-ray path has.  This caused
+       the agent to stop after refinement without running validation
+       (phenix.molprobity).  Tests verify the validation_done check
+       in _analyze_cryoem_trend, accept both phenix.molprobity and
+       phenix.validation_cryoem as cryo-EM validation, and confirm
+       the X-ray path is unaffected
+       (16 tests, v116.12 Fix #1)
+
+  S28. PLAN AUTO-STOP Suppression - v116.12 Fix #2 defense-in-depth.
+       New elif suppresses AUTO-STOP when workflow_engine reports
+       step="validate" with validation_done=False.  Diagnostic context
+       dump in the AUTO-STOP path records plan_has_pending_stages,
+       step, validation_done, after_program, experiment_type to aid
+       future debugging.  Defense-in-depth for cases where
+       plan_has_pending_stages doesn't fire
+       (11 tests, v116.12 Fix #2)
+
+  S29. Cryo-EM Metric Evaluator Validation - v116.13 actual fix.
+       v116.12 patched metrics_analyzer.py but graph_nodes.py sets
+       USE_YAML_METRICS=True (default), which delegates trend
+       analysis to MetricEvaluator.analyze_trend() in
+       metric_evaluator.py — the actual production path.  v116.12's
+       fix was in dead code.  v116.13 adds the validation_done check
+       to MetricEvaluator's cryo-EM SUCCESS branch, mirroring the
+       X-ray pattern (which already had it).  Tests verify the fix
+       at the class level, X-ray path unchanged, and validation
+       program recognition (phenix.molprobity, phenix.validation_cryoem)
+       (15 tests, v116.13)
 """
 
 from __future__ import absolute_import, division, print_function
@@ -109,6 +200,60 @@ import traceback
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _result_failed(result):
+    """True if a test module's run function reported failure by its return value.
+
+    The modules use several conventions: None or True (success, failures
+    raise), False, a unittest-style exit code (0 = success), or a dict with
+    'status' and/or 'failed'.  Status FAIL, FAILED or ERROR is a failure;
+    PARTIAL is a success (expected, whitelisted divergences only, which
+    tst_phase2_path_consistency also counts in 'failed'); any other status
+    (PASS, OK) with a nonzero 'failed' count is a failure, since the count
+    contradicts the status.  Before this check the runner counted only
+    raised exceptions, so modules that report failures by return value were
+    listed as PASSED.
+    """
+    if result is None or result is True:
+        return False
+    if result is False:
+        return True
+    if isinstance(result, int):
+        return result != 0
+    if isinstance(result, dict):
+        status = str(result.get("status", "")).upper()
+        if status in ("FAIL", "FAILED", "ERROR"):
+            return True
+        if status == "PARTIAL":
+            return False
+        return bool(result.get("failed"))
+    return False
+
+
+# Module globals some test files use to count failed checks without raising.
+_FAILURE_COUNTER_NAMES = ("FAIL", "_fail", "FAILED", "_FAIL", "_failed",
+                          "FAILURES", "_failures", "failures", "_FAILURES")
+
+
+def _module_failure_counters(run_func):
+    """Nonzero failure counters left in the run function's module.
+
+    Some test files count failed checks in a module global (an int, or a
+    list of messages) and never raise, so neither an exception nor the
+    return value shows the failure.  Returns {name: value} for every such
+    global that is a positive int or a non-empty list.
+    """
+    module = sys.modules.get(getattr(run_func, "__module__", None) or "")
+    found = {}
+    for name in _FAILURE_COUNTER_NAMES:
+        value = getattr(module, name, None)
+        if isinstance(value, bool):
+            continue
+        if (isinstance(value, int) and value > 0) or (
+                isinstance(value, list) and value):
+            found[name] = value if isinstance(value, int) else len(value)
+    return found
 
 
 def run_test_module(module_name, run_func, verbose=False):
@@ -130,10 +275,37 @@ def run_test_module(module_name, run_func, verbose=False):
     start_time = time.time()
 
     try:
-        run_func()
+        result = run_func()
         elapsed = time.time() - start_time
+        if _result_failed(result):
+            print(f"\n❌ {module_name} FAILED ({elapsed:.2f}s)")
+            print(f"   Reported failure: {result!r}")
+            return False, elapsed
+        counters = _module_failure_counters(run_func)
+        if counters:
+            print(f"\n❌ {module_name} FAILED ({elapsed:.2f}s)")
+            print(f"   Failed checks counted in module globals: {counters}")
+            return False, elapsed
         print(f"\n✅ {module_name} PASSED ({elapsed:.2f}s)")
         return True, elapsed
+    except SystemExit as e:
+        # Eight run functions call sys.exit(1) when checks fail; count that
+        # as this module's result instead of letting it end the whole run
+        # without a summary.  A zero/None exit counts as a pass unless the
+        # module's failure counters say otherwise.
+        elapsed = time.time() - start_time
+        code = e.code
+        counters = {}
+        if code is None or code == 0:
+            counters = _module_failure_counters(run_func)
+            if not counters:
+                print(f"\n✅ {module_name} PASSED ({elapsed:.2f}s)")
+                return True, elapsed
+        print(f"\n❌ {module_name} FAILED ({elapsed:.2f}s)")
+        print(f"   Exited with sys.exit({code!r})")
+        if counters:
+            print(f"   Failed checks counted in module globals: {counters}")
+        return False, elapsed
     except Exception as e:
         elapsed = time.time() - start_time
         print(f"\n❌ {module_name} FAILED ({elapsed:.2f}s)")
@@ -169,6 +341,108 @@ def main():
         print(f"⚠️  Could not import tst_api_schema: {e}")
         results.append(("API Schema", "tst_api_schema", False, 0))
 
+    # --- FORCE_NO_AI_SERVER Tests (v120 Task 1) ---
+    try:
+        from tests.tst_force_no_ai_server import run_all_tests as run_force_no_ai_server_tests
+        success, elapsed = run_test_module(
+            "tst_force_no_ai_server", run_force_no_ai_server_tests, args.verbose)
+        results.append(("FORCE_NO_AI_SERVER", "tst_force_no_ai_server", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_force_no_ai_server: {e}")
+        results.append(("FORCE_NO_AI_SERVER", "tst_force_no_ai_server", False, 0))
+
+    # --- SUPPORTED_PROVIDERS Single Source Tests (v120 Phase 2) ---
+    try:
+        from tests.tst_supported_providers_single_source import run_all_tests as run_supported_providers_tests
+        success, elapsed = run_test_module(
+            "tst_supported_providers_single_source", run_supported_providers_tests, args.verbose)
+        results.append(("SUPPORTED_PROVIDERS Single Source", "tst_supported_providers_single_source", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_supported_providers_single_source: {e}")
+        results.append(("SUPPORTED_PROVIDERS Single Source", "tst_supported_providers_single_source", False, 0))
+
+    # --- Portkey + Anthropic Provider Wiring Tests (v120 Phase 3) ---
+    try:
+        from tests.tst_v120_providers import run_all_tests as run_v120_providers_tests
+        success, elapsed = run_test_module(
+            "tst_v120_providers", run_v120_providers_tests, args.verbose)
+        results.append(("v120 Providers (Portkey/Anthropic)", "tst_v120_providers", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_v120_providers: {e}")
+        results.append(("v120 Providers (Portkey/Anthropic)", "tst_v120_providers", False, 0))
+
+    for _mod, _label in (("tst_claude5_readiness", "Claude 5.x readiness"),
+                         ("tst_provider_reasoning_models", "Provider reasoning models"),
+                         ("tst_runner_and_encoding", "Runner failure counting and encodings"),
+                         ("tst_provider_cutoff_signals", "Provider cut-off signals and summary coverage"),
+                         ("tst_provider_refusal_signals", "Provider refusal and safety-block signals")):
+        try:
+            _run = __import__("tests." + _mod, fromlist=["run_all_tests"]).run_all_tests
+            success, elapsed = run_test_module(_mod, _run, args.verbose)
+            results.append((_label, _mod, success, elapsed))
+        except (ImportError, AttributeError) as e:
+            print(f"⚠️  Could not import {_mod}: {e}")
+            results.append((_label, _mod, False, 0))
+
+    try:
+        from tests.tst_llm_unavailable_notice import run_all_tests as run_llm_unavailable_tests
+        success, elapsed = run_test_module(
+            "tst_llm_unavailable_notice", run_llm_unavailable_tests, args.verbose)
+        results.append(("LLM-unavailable notice", "tst_llm_unavailable_notice", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_llm_unavailable_notice: {e}")
+        results.append(("LLM-unavailable notice", "tst_llm_unavailable_notice", False, 0))
+
+    # --- resolve_cryo_em ncs_file never-inject ---
+    try:
+        from tests.tst_resolve_cryo_em_ncs_inject import run_all_tests as run_resolve_ncs_tests
+        success, elapsed = run_test_module(
+            "tst_resolve_cryo_em_ncs_inject", run_resolve_ncs_tests, args.verbose)
+        results.append(("resolve_cryo_em ncs_file", "tst_resolve_cryo_em_ncs_inject", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_resolve_cryo_em_ncs_inject: {e}")
+        results.append(("resolve_cryo_em ncs_file", "tst_resolve_cryo_em_ncs_inject", False, 0))
+
+    # --- portkey embedding model name + silent-fallback guard ---
+    try:
+        from tests.tst_portkey_embedding_model import run_all_tests as run_portkey_embed_tests
+        success, elapsed = run_test_module(
+            "tst_portkey_embedding_model", run_portkey_embed_tests, args.verbose)
+        results.append(("portkey embedding model", "tst_portkey_embedding_model", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_portkey_embedding_model: {e}")
+        results.append(("portkey embedding model", "tst_portkey_embedding_model", False, 0))
+
+    # --- provider lock (provider-specific install) ---
+    try:
+        from tests.tst_provider_lock import run_all_tests as run_provider_lock_tests
+        success, elapsed = run_test_module(
+            "tst_provider_lock", run_provider_lock_tests, args.verbose)
+        results.append(("provider lock", "tst_provider_lock", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_provider_lock: {e}")
+        results.append(("provider lock", "tst_provider_lock", False, 0))
+
+    # --- _safe_float consolidation + sanity_checker metric coercion ---
+    try:
+        from tests.tst_safe_float_consolidation import run_all_tests as run_safe_float_tests
+        success, elapsed = run_test_module(
+            "tst_safe_float_consolidation", run_safe_float_tests, args.verbose)
+        results.append(("safe_float consolidation", "tst_safe_float_consolidation", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_safe_float_consolidation: {e}")
+        results.append(("safe_float consolidation", "tst_safe_float_consolidation", False, 0))
+
+    # --- dropped-resolution premature-stop (rfree target) ---
+    try:
+        from tests.tst_rfree_resolution_stop import run_all_tests as run_rfree_res_tests
+        success, elapsed = run_test_module(
+            "tst_rfree_resolution_stop", run_rfree_res_tests, args.verbose)
+        results.append(("rfree resolution stop", "tst_rfree_resolution_stop", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_rfree_resolution_stop: {e}")
+        results.append(("rfree resolution stop", "tst_rfree_resolution_stop", False, 0))
+
     # --- Best Files Tracker Tests ---
     try:
         from tests.tst_best_files_tracker import run_all_tests as run_best_files_tests
@@ -198,6 +472,16 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import tst_yaml_config: {e}")
         results.append(("YAML Config", "tst_yaml_config", False, 0))
+
+    # --- Ligandfit Pattern Tests ---
+    try:
+        from tests.tst_ligandfit_patterns import run_all_tests as run_ligandfit_tests
+        success, elapsed = run_test_module(
+            "tst_ligandfit_patterns", run_ligandfit_tests, args.verbose)
+        results.append(("Ligandfit Patterns", "tst_ligandfit_patterns", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_ligandfit_patterns: {e}")
+        results.append(("Ligandfit Patterns", "tst_ligandfit_patterns", False, 0))
 
     # --- Sanity Checker Tests ---
     try:
@@ -272,6 +556,16 @@ def main():
         print(f"⚠️  Could not import tst_command_builder: {e}")
         results.append(("Command Builder", "tst_command_builder", False, 0))
 
+    # --- R-free generate guard (never regenerate an existing test set) ---
+    try:
+        from tests.tst_rfree_generate_guard import run_all_tests as run_rfree_generate_guard_tests
+        success, elapsed = run_test_module(
+            "tst_rfree_generate_guard", run_rfree_generate_guard_tests, args.verbose)
+        results.append(("R-free generate guard", "tst_rfree_generate_guard", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_rfree_generate_guard: {e}")
+        results.append(("R-free generate guard", "tst_rfree_generate_guard", False, 0))
+
     # --- File Categorization Tests ---
     try:
         from tests.tst_file_categorization import run_all_tests as run_file_categorization_tests
@@ -311,6 +605,16 @@ def main():
     except ImportError as e:
         print(f"⚠️  Could not import tst_directive_extractor: {e}")
         results.append(("Directive Extractor", "tst_directive_extractor", False, 0))
+
+    # --- Raw-Advice Authoritative Extraction Tests (Step 1) ---
+    try:
+        from tests.tst_extract_raw_advice import run_all_tests as run_extract_raw_advice_tests
+        success, elapsed = run_test_module(
+            "tst_extract_raw_advice", run_extract_raw_advice_tests, args.verbose)
+        results.append(("Raw-Advice Authoritative Extraction", "tst_extract_raw_advice", success, elapsed))
+    except ImportError as e:
+        print(f"⚠️  Could not import tst_extract_raw_advice: {e}")
+        results.append(("Raw-Advice Authoritative Extraction", "tst_extract_raw_advice", False, 0))
 
     # --- Directive Validator Tests ---
     try:
@@ -1085,6 +1389,1155 @@ def main():
     except ImportError as e:
         print(f"\u26a0\ufe0f  Could not import tst_general_resolver: {e}")
         results.append(("General Resolver", "tst_general_resolver", False, 0))
+
+    # --- Skip-to-Program Tests (v116.10) ---
+    try:
+        from tests.tst_skip_to_program import run_all_tests as run_skip_to_program_tests
+        success, elapsed = run_test_module(
+            "tst_skip_to_program", run_skip_to_program_tests, args.verbose)
+        results.append(("Skip to Program", "tst_skip_to_program", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_skip_to_program: {e}")
+        results.append(("Skip to Program", "tst_skip_to_program", False, 0))
+
+    # --- Directive Validator Typo Hints (v116.10 Phase 4a) ---
+    try:
+        from tests.tst_directive_validator_typo_hints import (
+            run_all_tests as run_directive_validator_typo_hints_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_validator_typo_hints",
+            run_directive_validator_typo_hints_tests, args.verbose)
+        results.append(("Directive Validator Typo Hints",
+                       "tst_directive_validator_typo_hints",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_directive_validator_typo_hints: {e}")
+        results.append(("Directive Validator Typo Hints",
+                       "tst_directive_validator_typo_hints", False, 0))
+
+    # --- User Advice Filter (v116.10 Phase 1) ---
+    try:
+        from tests.tst_user_advice_filter import (
+            run_all_tests as run_user_advice_filter_tests)
+        success, elapsed = run_test_module(
+            "tst_user_advice_filter",
+            run_user_advice_filter_tests, args.verbose)
+        results.append(("User Advice Filter",
+                       "tst_user_advice_filter",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_user_advice_filter: {e}")
+        results.append(("User Advice Filter",
+                       "tst_user_advice_filter", False, 0))
+
+    # --- After-Program Prompt Alignment (v116.10 Phase 6a) ---
+    try:
+        from tests.tst_after_program_prompt import (
+            run_all_tests as run_after_program_prompt_tests)
+        success, elapsed = run_test_module(
+            "tst_after_program_prompt",
+            run_after_program_prompt_tests, args.verbose)
+        results.append(("After-Program Prompt Alignment",
+                       "tst_after_program_prompt",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_after_program_prompt: {e}")
+        results.append(("After-Program Prompt Alignment",
+                       "tst_after_program_prompt", False, 0))
+
+    # --- Data-Input Filter (v116.10 Phase 4b) ---
+    try:
+        from tests.tst_data_input_filter import (
+            run_all_tests as run_data_input_filter_tests)
+        success, elapsed = run_test_module(
+            "tst_data_input_filter",
+            run_data_input_filter_tests, args.verbose)
+        results.append(("Data-Input Filter",
+                       "tst_data_input_filter",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_data_input_filter: {e}")
+        results.append(("Data-Input Filter",
+                       "tst_data_input_filter", False, 0))
+
+    # --- Protocol Version Invariants (v116.10 Phase 2) ---
+    try:
+        from tests.tst_protocol_version import (
+            run_all_tests as run_protocol_version_tests)
+        success, elapsed = run_test_module(
+            "tst_protocol_version",
+            run_protocol_version_tests, args.verbose)
+        results.append(("Protocol Version Invariants",
+                       "tst_protocol_version",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_protocol_version: {e}")
+        results.append(("Protocol Version Invariants",
+                       "tst_protocol_version", False, 0))
+
+    # --- Sequence-Only Routing (v116.10 Phase 6b) ---
+    try:
+        from tests.tst_sequence_only_routing import (
+            run_all_tests as run_sequence_only_routing_tests)
+        success, elapsed = run_test_module(
+            "tst_sequence_only_routing",
+            run_sequence_only_routing_tests, args.verbose)
+        results.append(("Sequence-Only Routing",
+                       "tst_sequence_only_routing",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_sequence_only_routing: {e}")
+        results.append(("Sequence-Only Routing",
+                       "tst_sequence_only_routing", False, 0))
+
+    # --- Standalone Programs Consistency (v116.10 Phase 3a/3b) ---
+    try:
+        from tests.tst_standalone_consistency import (
+            run_all_tests as run_standalone_consistency_tests)
+        success, elapsed = run_test_module(
+            "tst_standalone_consistency",
+            run_standalone_consistency_tests, args.verbose)
+        results.append(("Standalone Programs Consistency",
+                       "tst_standalone_consistency",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_standalone_consistency: {e}")
+        results.append(("Standalone Programs Consistency",
+                       "tst_standalone_consistency", False, 0))
+
+    # --- Dock-and-Stop Behavior Change (v116.10 Phase 3d) ---
+    try:
+        from tests.tst_dock_and_stop import (
+            run_all_tests as run_dock_and_stop_tests)
+        success, elapsed = run_test_module(
+            "tst_dock_and_stop",
+            run_dock_and_stop_tests, args.verbose)
+        results.append(("Dock-and-Stop Behavior Change",
+                       "tst_dock_and_stop",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_dock_and_stop: {e}")
+        results.append(("Dock-and-Stop Behavior Change",
+                       "tst_dock_and_stop", False, 0))
+
+    # --- CC Key Extraction (v116.10) ---
+    try:
+        from tests.tst_cc_key_extraction import (
+            run_all_tests as run_cc_key_extraction_tests)
+        success, elapsed = run_test_module(
+            "tst_cc_key_extraction",
+            run_cc_key_extraction_tests, args.verbose)
+        results.append(("CC Key Extraction",
+                       "tst_cc_key_extraction",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_cc_key_extraction: {e}")
+        results.append(("CC Key Extraction",
+                       "tst_cc_key_extraction", False, 0))
+
+    # --- File Encoding (v116.10) ---
+    try:
+        from tests.tst_file_encoding import (
+            run_all_tests as run_file_encoding_tests)
+        success, elapsed = run_test_module(
+            "tst_file_encoding",
+            run_file_encoding_tests, args.verbose)
+        results.append(("File Encoding",
+                       "tst_file_encoding",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_file_encoding: {e}")
+        results.append(("File Encoding",
+                       "tst_file_encoding", False, 0))
+
+    # --- Ligand Workflow Restart (v116.10 Phase 6c) ---
+    try:
+        from tests.tst_ligand_workflow_restart import (
+            run_all_tests as run_ligand_workflow_restart_tests)
+        success, elapsed = run_test_module(
+            "tst_ligand_workflow_restart",
+            run_ligand_workflow_restart_tests, args.verbose)
+        results.append(("Ligand Workflow Restart",
+                       "tst_ligand_workflow_restart",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_ligand_workflow_restart: {e}")
+        results.append(("Ligand Workflow Restart",
+                       "tst_ligand_workflow_restart", False, 0))
+
+    # --- Initialize Plan Smoke (v116.10 Tier 1 follow-up) ---
+    try:
+        from tests.tst_initialize_plan_smoke import (
+            run_all_tests as run_initialize_plan_smoke_tests)
+        success, elapsed = run_test_module(
+            "tst_initialize_plan_smoke",
+            run_initialize_plan_smoke_tests, args.verbose)
+        results.append(("Initialize Plan Smoke",
+                       "tst_initialize_plan_smoke",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_initialize_plan_smoke: {e}")
+        results.append(("Initialize Plan Smoke",
+                       "tst_initialize_plan_smoke", False, 0))
+
+    # --- Phase 3d Motivating Tutorial (v116.10 Tier 1 follow-up) ---
+    try:
+        from tests.tst_phase3d_motivating_tutorial import (
+            run_all_tests as run_phase3d_motivating_tutorial_tests)
+        success, elapsed = run_test_module(
+            "tst_phase3d_motivating_tutorial",
+            run_phase3d_motivating_tutorial_tests, args.verbose)
+        results.append(("Phase 3d Motivating Tutorial",
+                       "tst_phase3d_motivating_tutorial",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_phase3d_motivating_tutorial: {e}")
+        results.append(("Phase 3d Motivating Tutorial",
+                       "tst_phase3d_motivating_tutorial", False, 0))
+
+    # --- Program Requirements (v116.10 Tier 2.1 — declarative schema) ---
+    try:
+        from tests.tst_program_requirements import (
+            run_all_tests as run_program_requirements_tests)
+        success, elapsed = run_test_module(
+            "tst_program_requirements",
+            run_program_requirements_tests, args.verbose)
+        results.append(("Program Requirements",
+                       "tst_program_requirements",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_program_requirements: {e}")
+        results.append(("Program Requirements",
+                       "tst_program_requirements", False, 0))
+
+    # --- Stop Condition False Positive (v116.11) ---
+    try:
+        from tests.tst_stop_condition_false_positive import (
+            run_all_tests as run_stop_condition_tests)
+        success, elapsed = run_test_module(
+            "tst_stop_condition_false_positive",
+            run_stop_condition_tests, args.verbose)
+        results.append(("Stop Condition False Positive",
+                       "tst_stop_condition_false_positive",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_stop_condition_false_positive: {e}")
+        results.append(("Stop Condition False Positive",
+                       "tst_stop_condition_false_positive", False, 0))
+
+    # --- Cryo-EM Stop Validation (v116.12 Fix #1) ---
+    try:
+        from tests.tst_cryoem_stop_validation import (
+            run_all_tests as run_cryoem_stop_tests)
+        success, elapsed = run_test_module(
+            "tst_cryoem_stop_validation",
+            run_cryoem_stop_tests, args.verbose)
+        results.append(("Cryo-EM Stop Validation",
+                       "tst_cryoem_stop_validation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_cryoem_stop_validation: {e}")
+        results.append(("Cryo-EM Stop Validation",
+                       "tst_cryoem_stop_validation", False, 0))
+
+    # --- PLAN AUTO-STOP Suppression (v116.12 Fix #2) ---
+    try:
+        from tests.tst_plan_autostop_validation_suppression import (
+            run_all_tests as run_plan_autostop_tests)
+        success, elapsed = run_test_module(
+            "tst_plan_autostop_validation_suppression",
+            run_plan_autostop_tests, args.verbose)
+        results.append(("PLAN AUTO-STOP Suppression",
+                       "tst_plan_autostop_validation_suppression",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_plan_autostop_validation_suppression: {e}")
+        results.append(("PLAN AUTO-STOP Suppression",
+                       "tst_plan_autostop_validation_suppression", False, 0))
+
+    # --- Cryo-EM Metric Evaluator Validation (v116.13) ---
+    try:
+        from tests.tst_cryoem_metric_evaluator_validation import (
+            run_all_tests as run_cryoem_metric_eval_tests)
+        success, elapsed = run_test_module(
+            "tst_cryoem_metric_evaluator_validation",
+            run_cryoem_metric_eval_tests, args.verbose)
+        results.append(("Cryo-EM Metric Evaluator Validation",
+                       "tst_cryoem_metric_evaluator_validation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_cryoem_metric_evaluator_validation: {e}")
+        results.append(("Cryo-EM Metric Evaluator Validation",
+                       "tst_cryoem_metric_evaluator_validation", False, 0))
+
+    # --- Directive Extractor Sentinel Space Group (v116.15) ---
+    try:
+        from tests.tst_directive_extractor_sentinel_space_group import (
+            run_all_tests as run_sentinel_sg_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_extractor_sentinel_space_group",
+            run_sentinel_sg_tests, args.verbose)
+        results.append(("Directive Extractor Sentinel Space Group",
+                       "tst_directive_extractor_sentinel_space_group",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_directive_extractor_sentinel_space_group: {e}")
+        results.append(("Directive Extractor Sentinel Space Group",
+                       "tst_directive_extractor_sentinel_space_group",
+                       False, 0))
+
+    # --- Directive Extractor Behavior Regression (v116.15) ---
+    try:
+        from tests.tst_directive_extractor_behavior_regression import (
+            run_all_tests as run_dx_regression_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_extractor_behavior_regression",
+            run_dx_regression_tests, args.verbose)
+        results.append(("Directive Extractor Behavior Regression",
+                       "tst_directive_extractor_behavior_regression",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_directive_extractor_behavior_regression: {e}")
+        results.append(("Directive Extractor Behavior Regression",
+                       "tst_directive_extractor_behavior_regression",
+                       False, 0))
+
+    # --- Validate-Step After-Program Guard (v116.17) ---
+    try:
+        from tests.tst_validate_step_after_program_guard import (
+            run_all_tests as run_validate_guard_tests)
+        success, elapsed = run_test_module(
+            "tst_validate_step_after_program_guard",
+            run_validate_guard_tests, args.verbose)
+        results.append(("Validate-Step After-Program Guard",
+                       "tst_validate_step_after_program_guard",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_validate_step_after_program_guard: {e}")
+        results.append(("Validate-Step After-Program Guard",
+                       "tst_validate_step_after_program_guard",
+                       False, 0))
+
+    # --- Directive Extractor Grounding Guardrail (v116.19) ---
+    try:
+        from tests.tst_directive_extractor_grounding import (
+            run_all_tests as run_grounding_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_extractor_grounding",
+            run_grounding_tests, args.verbose)
+        results.append(("Directive Extractor Grounding Guardrail",
+                       "tst_directive_extractor_grounding",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_directive_extractor_grounding: {e}")
+        results.append(("Directive Extractor Grounding Guardrail",
+                       "tst_directive_extractor_grounding",
+                       False, 0))
+
+    # --- Grounding + stop_after_requested Interaction (v117.1) ---
+    try:
+        from tests.tst_grounding_stop_after_requested import (
+            run_all_tests as run_grounding_flag_tests)
+        success, elapsed = run_test_module(
+            "tst_grounding_stop_after_requested",
+            run_grounding_flag_tests, args.verbose)
+        results.append(("Grounding + stop_after_requested Interaction",
+                       "tst_grounding_stop_after_requested",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_grounding_stop_after_requested: {e}")
+        results.append(("Grounding + stop_after_requested Interaction",
+                       "tst_grounding_stop_after_requested",
+                       False, 0))
+
+    # --- After-Program Fill-In from Raw Advice (v117.2) ---
+    try:
+        from tests.tst_after_program_fill_from_raw import (
+            run_all_tests as run_after_program_fill_tests)
+        success, elapsed = run_test_module(
+            "tst_after_program_fill_from_raw",
+            run_after_program_fill_tests, args.verbose)
+        results.append(("After-Program Fill-In from Raw Advice",
+                       "tst_after_program_fill_from_raw",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_after_program_fill_from_raw: {e}")
+        results.append(("After-Program Fill-In from Raw Advice",
+                       "tst_after_program_fill_from_raw",
+                       False, 0))
+
+    # --- Extended Stop-Intent Phrasings (v117.3) ---
+    try:
+        from tests.tst_extended_stop_phrasings import (
+            run_all_tests as run_extended_stop_tests)
+        success, elapsed = run_test_module(
+            "tst_extended_stop_phrasings",
+            run_extended_stop_tests, args.verbose)
+        results.append(("Extended Stop-Intent Phrasings",
+                       "tst_extended_stop_phrasings",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_extended_stop_phrasings: {e}")
+        results.append(("Extended Stop-Intent Phrasings",
+                       "tst_extended_stop_phrasings",
+                       False, 0))
+
+    # --- Preprocessor File Override (v118.A2) ---
+    try:
+        from tests.tst_preprocessor_file_override import (
+            run_all_tests as run_preprocessor_file_override_tests)
+        success, elapsed = run_test_module(
+            "tst_preprocessor_file_override",
+            run_preprocessor_file_override_tests, args.verbose)
+        results.append(("Preprocessor File Override",
+                       "tst_preprocessor_file_override",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_preprocessor_file_override: {e}")
+        results.append(("Preprocessor File Override",
+                       "tst_preprocessor_file_override",
+                       False, 0))
+
+    # --- Directive Layer Diagnostics (v118.C-prime) ---
+    try:
+        from tests.tst_directive_layer_diagnostics import (
+            run_all_tests as run_directive_layer_diagnostics_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_layer_diagnostics",
+            run_directive_layer_diagnostics_tests, args.verbose)
+        results.append(("Directive Layer Diagnostics",
+                       "tst_directive_layer_diagnostics",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_directive_layer_diagnostics: {e}")
+        results.append(("Directive Layer Diagnostics",
+                       "tst_directive_layer_diagnostics",
+                       False, 0))
+
+    # --- PHIL Namespace Cleaner (v118.B) ---
+    try:
+        from tests.tst_phil_namespace_cleaner import (
+            run_all_tests as run_phil_namespace_cleaner_tests)
+        success, elapsed = run_test_module(
+            "tst_phil_namespace_cleaner",
+            run_phil_namespace_cleaner_tests, args.verbose)
+        results.append(("PHIL Namespace Cleaner",
+                       "tst_phil_namespace_cleaner",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_phil_namespace_cleaner: {e}")
+        results.append(("PHIL Namespace Cleaner",
+                       "tst_phil_namespace_cleaner",
+                       False, 0))
+
+    # --- Extraction-Failure Visibility (v118.E) ---
+    try:
+        from tests.tst_extraction_failure_visibility import (
+            run_all_tests as run_extraction_failure_visibility_tests)
+        success, elapsed = run_test_module(
+            "tst_extraction_failure_visibility",
+            run_extraction_failure_visibility_tests, args.verbose)
+        results.append(("Extraction-Failure Visibility",
+                       "tst_extraction_failure_visibility",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_extraction_failure_visibility: {e}")
+        results.append(("Extraction-Failure Visibility",
+                       "tst_extraction_failure_visibility",
+                       False, 0))
+
+    # --- BUILD experiment_type + R-free Auto-fill (v118.F) ---
+    try:
+        from tests.tst_build_experiment_type_and_rfree import (
+            run_all_tests as run_build_experiment_type_and_rfree_tests)
+        success, elapsed = run_test_module(
+            "tst_build_experiment_type_and_rfree",
+            run_build_experiment_type_and_rfree_tests, args.verbose)
+        results.append(("BUILD experiment_type + R-free Auto-fill",
+                       "tst_build_experiment_type_and_rfree",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_build_experiment_type_and_rfree: {e}")
+        results.append(("BUILD experiment_type + R-free Auto-fill",
+                       "tst_build_experiment_type_and_rfree",
+                       False, 0))
+
+    # --- Optional Dependency Resilience (v118.G) ---
+    try:
+        from tests.tst_optional_dep_resilience import (
+            run_all_tests as run_optional_dep_resilience_tests)
+        success, elapsed = run_test_module(
+            "tst_optional_dep_resilience",
+            run_optional_dep_resilience_tests, args.verbose)
+        results.append(("Optional Dependency Resilience",
+                       "tst_optional_dep_resilience",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_optional_dep_resilience: {e}")
+        results.append(("Optional Dependency Resilience",
+                       "tst_optional_dep_resilience",
+                       False, 0))
+
+    # --- Density Modification Experiment-Type Reprints (v118.9) ---
+    try:
+        from tests.tst_density_modify_experiment_type import (
+            run_all_tests as run_denmod_reprints_tests)
+        success, elapsed = run_test_module(
+            "tst_density_modify_experiment_type",
+            run_denmod_reprints_tests, args.verbose)
+        results.append(("Density Modify Experiment Type Reprints",
+                       "tst_density_modify_experiment_type",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_density_modify_experiment_type: {e}")
+        results.append(("Density Modify Experiment Type Reprints",
+                       "tst_density_modify_experiment_type",
+                       False, 0))
+
+    # --- H18.1 PHIL round-trip for original_files_for_directives ---
+    # Catches the deploy gap where master_params in ai_agent.py is
+    # missing a PHIL definition that an assignment site assumes
+    # exists.  See tst_h18_1_phil_roundtrip.py module docstring.
+    try:
+        from tests.tst_h18_1_phil_roundtrip import (
+            run_all_tests as run_h18_1_phil_tests)
+        success, elapsed = run_test_module(
+            "tst_h18_1_phil_roundtrip",
+            run_h18_1_phil_tests, args.verbose)
+        results.append(("H18.1 PHIL Round-Trip",
+                       "tst_h18_1_phil_roundtrip",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_h18_1_phil_roundtrip: {e}")
+        results.append(("H18.1 PHIL Round-Trip",
+                       "tst_h18_1_phil_roundtrip",
+                       False, 0))
+
+    # --- Settings List Coercion (v118.10) ---
+    try:
+        from tests.tst_settings_list_coercion import (
+            run_all_tests as run_list_coercion_tests)
+        success, elapsed = run_test_module(
+            "tst_settings_list_coercion",
+            run_list_coercion_tests, args.verbose)
+        results.append(("Settings List Coercion",
+                       "tst_settings_list_coercion",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import "
+              f"tst_settings_list_coercion: {e}")
+        results.append(("Settings List Coercion",
+                       "tst_settings_list_coercion",
+                       False, 0))
+
+    # --- Environment Dependency Check (v118.6.7) ---
+    # Note: this checks the PYTHON ENVIRONMENT, not code behavior.  It
+    # will FAIL on any environment that doesn't have the full ai_agent
+    # dependency set installed.  Mark it as optional in the registry so
+    # contributors with partial envs aren't blocked.
+    try:
+        from tests.tst_dependencies import (
+            run_all_tests as run_dependencies_tests)
+        success, elapsed = run_test_module(
+            "tst_dependencies",
+            run_dependencies_tests, args.verbose)
+        results.append(("Environment Dependency Check",
+                       "tst_dependencies",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_dependencies: {e}")
+        results.append(("Environment Dependency Check",
+                       "tst_dependencies",
+                       False, 0))
+
+    # --- Default Model Centralization (v119.H1) ---
+    # Regression suite for the centralized model-default tables in
+    # core/llm.py.  Asserts that every call-site reads via
+    # default_model_for_provider() and that no orphan model strings
+    # appear in agent/ runtime code (AST scan).  Also baseline-
+    # fingerprints the H1 table values so accidental drift surfaces
+    # immediately.
+    try:
+        from tests.tst_default_models import (
+            run_all_tests as run_default_models_tests)
+        success, elapsed = run_test_module(
+            "tst_default_models",
+            run_default_models_tests, args.verbose)
+        results.append(("Default Model Centralization",
+                       "tst_default_models",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_default_models: {e}")
+        results.append(("Default Model Centralization",
+                       "tst_default_models",
+                       False, 0))
+
+    # --- Agent Build Info (v119.H2) ---
+    # Verifies the v119.H2 server build metadata channel: VERSION
+    # file, defaults fingerprint, agent_build response field, and
+    # the single injection point in _build_group_args_response.
+    # Includes backwards-compat assertions that existing fields are
+    # unchanged.
+    try:
+        from tests.tst_agent_build_info import (
+            run_all_tests as run_agent_build_info_tests)
+        success, elapsed = run_test_module(
+            "tst_agent_build_info",
+            run_agent_build_info_tests, args.verbose)
+        results.append(("Agent Build Info",
+                       "tst_agent_build_info",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_agent_build_info: {e}")
+        results.append(("Agent Build Info",
+                       "tst_agent_build_info",
+                       False, 0))
+
+    # --- skip_programs Promotion (v119.H2.1) ---
+    # Verifies the v119.H2.1 promotion of LLM-emitted
+    # program_settings[X].skip=true to
+    # workflow_preferences.skip_programs[X], wired into the top
+    # of validate_directives in agent/directive_extractor.py.
+    # Includes side-effect correctness, idempotency, defensive
+    # bail behavior, and an end-to-end assertion that fixes the
+    # skip_programs scenario in tests/llm/tst_directive_extraction.py.
+    try:
+        from tests.tst_skip_promotion import (
+            run_all_tests as run_skip_promotion_tests)
+        success, elapsed = run_test_module(
+            "tst_skip_promotion",
+            run_skip_promotion_tests, args.verbose)
+        results.append(("skip_programs Promotion",
+                       "tst_skip_promotion",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_skip_promotion: {e}")
+        results.append(("skip_programs Promotion",
+                       "tst_skip_promotion",
+                       False, 0))
+
+    # --- Startup Canary (v119.H3a) ---
+    # Verifies the deployed server's agent_build matches what
+    # canary_expected.json pins.  Catches wrong-build deploys
+    # (built from wrong branch), tables in core/llm.py edited
+    # without a VERSION bump (fingerprint drift), and operator
+    # drift between VERSION and canary_expected.json.
+    try:
+        from tests.tst_canary import (
+            run_all_tests as run_canary_tests)
+        success, elapsed = run_test_module(
+            "tst_canary",
+            run_canary_tests, args.verbose)
+        results.append(("Startup Canary",
+                       "tst_canary",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_canary: {e}")
+        results.append(("Startup Canary",
+                       "tst_canary",
+                       False, 0))
+
+    # --- Preprocessor Metrics Logger / Step 1F (v119.H4) ---
+    # Tests the regex-based file detector module used by the
+    # Step 1F metric block in run_advice_preprocessing.
+    # Telemetry-gathering for Phase 2B trigger evaluation:
+    # records (llm_files, regex_files) tuples in production
+    # logs to measure regex_recall = |LLM \u2229 regex|/|LLM|.
+    # Scanner is stdlib-only — all 16 tests run in sandbox.
+    try:
+        from tests.tst_raw_advice_scanner import (
+            run_all_tests as run_h4_tests)
+        success, elapsed = run_test_module(
+            "tst_raw_advice_scanner",
+            run_h4_tests, args.verbose)
+        results.append(("Preprocessor Metrics",
+                       "tst_raw_advice_scanner",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_raw_advice_scanner: {e}")
+        results.append(("Preprocessor Metrics",
+                       "tst_raw_advice_scanner",
+                       False, 0))
+
+    # --- Diagnostic Messages / Relay Channel (v119.H5 + H5.1) ---
+    # Verifies the _emit_marker helper and the diagnostic_messages
+    # field in run_advice_preprocessing's result.  Closes the
+    # "server-side stderr markers invisible to client" gap that
+    # was diagnosed during H4 deployment.
+    #
+    # 26 tests organized into 6 sections:
+    #   §A helper unit tests (sandbox + PHENIX)
+    #   §B field-in-return tests (PHENIX only)
+    #   §C backward compatibility, including corrupted payloads
+    #      (sandbox + PHENIX)
+    #   §D uniform client re-emit (sandbox + PHENIX, paraphrased ref impl)
+    #   §E production encode/decode roundtrip (PHENIX only — exercises
+    #      get_results_from_all (Total Init seed) and
+    #      Program.get_results_as_JSON directly against the same JSON
+    #      wire format _process_server_success decodes)
+    #   §F extended markers (v119.H5.1, PHENIX only — verifies
+    #      [ADVICE_PREPROCESSING_FAILED], [DIRECTIVE_EXTRACTION_FAILED],
+    #      and [FAILURE_DIAGNOSIS_FAILED] markers via deterministic
+    #      monkey-patching; also pins Total Init for the new
+    #      run_directive_extraction and run_failure_diagnosis paths)
+    try:
+        from tests.tst_diagnostic_messages import (
+            run_all_tests as run_h5_tests)
+        success, elapsed = run_test_module(
+            "tst_diagnostic_messages",
+            run_h5_tests, args.verbose)
+        results.append(("Diagnostic Messages",
+                       "tst_diagnostic_messages",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_diagnostic_messages: {e}")
+        results.append(("Diagnostic Messages",
+                       "tst_diagnostic_messages",
+                       False, 0))
+
+    # 56. Directive Validation (K_H5_1_1, v119.H5.1.1) -- merge_directives
+    #     _corrected_from sidecar protection (Item 3) and validate_directives
+    #     boolean list-wrap defense (Item 4).  §2.1 v118.9 leftovers cleanup.
+    try:
+        from tests.tst_directive_validation import (
+            run_all_tests as run_h5_1_1_tests)
+        success, elapsed = run_test_module(
+            "tst_directive_validation",
+            run_h5_1_1_tests, args.verbose)
+        results.append(("Directive Validation",
+                       "tst_directive_validation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_directive_validation: {e}")
+        results.append(("Directive Validation",
+                       "tst_directive_validation",
+                       False, 0))
+
+    # 57. Planning Framework (K_H6, v119.H6) -- Phase 2A planning suite
+    #     framework infrastructure: is_stop_intent, validate_planning_state,
+    #     make_planning_run_fn factory, and call_planning_llm raw_output
+    #     preservation on parse_intent_json failures.
+    try:
+        from tests.tst_planning_framework import (
+            run_all_tests as run_h6_tests)
+        success, elapsed = run_test_module(
+            "tst_planning_framework",
+            run_h6_tests, args.verbose)
+        results.append(("Planning Framework",
+                       "tst_planning_framework",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_planning_framework: {e}")
+        results.append(("Planning Framework",
+                       "tst_planning_framework",
+                       False, 0))
+
+    # 58. Phase 2B Activation (K_H7, v119.H7) -- scanner-first file
+    #     extraction.  Tests the building blocks composed by
+    #     run_advice_preprocessing post-H7: scanner contract
+    #     (type/sorting/dedup invariants), scanner-first-with-fallback
+    #     decision matrix, recall metrics with zero-division guards,
+    #     and [STEP_1F] telemetry format regression.
+    try:
+        from tests.tst_phase2b_activation import (
+            run_all_tests as run_h7_tests)
+        success, elapsed = run_test_module(
+            "tst_phase2b_activation",
+            run_h7_tests, args.verbose)
+        results.append(("Phase 2B Activation",
+                       "tst_phase2b_activation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_phase2b_activation: {e}")
+        results.append(("Phase 2B Activation",
+                       "tst_phase2b_activation",
+                       False, 0))
+
+    # 59. Solve action keyword cleanup (K_H14_ITEM_1, v119.H14) --
+    #     Phaser false-positive surfaced by run_39_openai batch
+    #     analysis.  _ACTION_TABLE["solve"] entry treated the goal
+    #     phrase "solve the structure" as a synonym for "do MR with
+    #     phaser".  When combined with another action + stop, this
+    #     forced phaser into the workflow on SAD/MAD datasets where
+    #     autosol is the correct method.
+    try:
+        from tests.tst_solve_action_keywords import (
+            run_all_tests as run_h14_item1_tests)
+        success, elapsed = run_test_module(
+            "tst_solve_action_keywords",
+            run_h14_item1_tests, args.verbose)
+        results.append(("Solve Action Keywords (H14)",
+                       "tst_solve_action_keywords",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_solve_action_keywords: {e}")
+        results.append(("Solve Action Keywords (H14)",
+                       "tst_solve_action_keywords",
+                       False, 0))
+
+    # 60. STEP_1F single-emit (K_H14_ITEM_2, v119.H14) --
+    #     Duplicate diagnostic_messages relay surfaced by
+    #     run_39_openai batch analysis: 60.6% of runs showed adjacent
+    #     duplicate [STEP_1F] preprocessing_metrics lines.  Two relay
+    #     sites both wrote to stderr; the client-side duplicate
+    #     (programs/ai_agent.py:8087-8103) was removed; the dispatcher
+    #     (programs/ai_analysis.py) is the single uniform site.
+    try:
+        from tests.tst_step1f_single_emit import (
+            run_all_tests as run_h14_item2_tests)
+        success, elapsed = run_test_module(
+            "tst_step1f_single_emit",
+            run_h14_item2_tests, args.verbose)
+        results.append(("STEP_1F Single-Emit (H14)",
+                       "tst_step1f_single_emit",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_step1f_single_emit: {e}")
+        results.append(("STEP_1F Single-Emit (H14)",
+                       "tst_step1f_single_emit",
+                       False, 0))
+
+    # 61. Space-group validation extensions (K_H14_ITEM_3, v119.H14) --
+    #     Extends _SYMMETRY_SENTINELS with the "Not explicitly
+    #     mentioned" family (including truncated LLM-output forms
+    #     like "Not explicitly mentio").  Adds a positive
+    #     Hermann-Mauguin shape check (_looks_like_space_group) that
+    #     catches prose phrases ("Solve the structure") that the
+    #     pre-H14 negative checks let through.
+    try:
+        from tests.tst_space_group_validation import (
+            run_all_tests as run_h14_item3_tests)
+        success, elapsed = run_test_module(
+            "tst_space_group_validation",
+            run_h14_item3_tests, args.verbose)
+        results.append(("Space-Group Validation (H14)",
+                       "tst_space_group_validation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_space_group_validation: {e}")
+        results.append(("Space-Group Validation (H14)",
+                       "tst_space_group_validation",
+                       False, 0))
+
+    # --- Simple-Extractor Validation Closure Tests (v119.H14.1) ---
+    # v119.H14.1: extract_directives_simple now ends with
+    # validate_directives, closing the ollama-fallback bypass that
+    # Tom's 2026-05-26 xtriage run surfaced (space_group="Not
+    # explicitly mentio" reached the directives despite H14 Item 3
+    # being installed).  Also fixes a latent VALID_STOP_CONDITIONS
+    # gap (start_with_program was set by _resolve_after_program and
+    # consumed downstream but wasn't in VALID_STOP_CONDITIONS).
+    try:
+        from tests.tst_simple_extractor_validation import (
+            run_all_tests as run_h14_1_tests)
+        success, elapsed = run_test_module(
+            "tst_simple_extractor_validation",
+            run_h14_1_tests, args.verbose)
+        results.append(("Simple Extractor Validation (H14.1)",
+                       "tst_simple_extractor_validation",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_simple_extractor_validation: {e}")
+        results.append(("Simple Extractor Validation (H14.1)",
+                       "tst_simple_extractor_validation",
+                       False, 0))
+
+    # --- predict_and_build no-NCS-input config fix (v119.H14.2) ---
+    # v119.H14.2: programs.yaml fix — predict_and_build does not
+    # accept an NCS-file PHIL parameter.  Pre-H14.2 the yaml
+    # declared `flag: "map_model.ncs_file="` for predict_and_build,
+    # which the agent dutifully emitted, and the command failed with
+    # "Some PHIL parameters are not recognized."  H14.2 removes the
+    # entry (Tom's 2026-05-26 1029B-sad ollama-no-PDB run surfaced).
+    try:
+        from tests.tst_predict_and_build_no_ncs import (
+            run_all_tests as run_h14_2_tests)
+        success, elapsed = run_test_module(
+            "tst_predict_and_build_no_ncs",
+            run_h14_2_tests, args.verbose)
+        results.append(("predict_and_build no-NCS (H14.2)",
+                       "tst_predict_and_build_no_ncs",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_predict_and_build_no_ncs: {e}")
+        results.append(("predict_and_build no-NCS (H14.2)",
+                       "tst_predict_and_build_no_ncs",
+                       False, 0))
+
+    # --- Plan catch-up failure semantics (v119.H15 Item 1) ---
+    # H15 Item 1: StructurePlan.advance() now distinguishes
+    # criteria-met-COMPLETE vs criteria-unmet-FAILED when called
+    # from record_stage_cycle's catch-up path.  Catches Tom's
+    # bromodomain bug where final_refinement was silently marked
+    # complete despite R-free=0.272 > target=0.25.
+    try:
+        from tests.tst_plan_catchup_failure_semantics import (
+            run_all_tests as run_h15_1_tests)
+        success, elapsed = run_test_module(
+            "tst_plan_catchup_failure_semantics",
+            run_h15_1_tests, args.verbose)
+        results.append(("Plan catch-up failure semantics (H15 Item 1)",
+                       "tst_plan_catchup_failure_semantics",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_plan_catchup_failure_semantics: {e}")
+        results.append(("Plan catch-up failure semantics (H15 Item 1)",
+                       "tst_plan_catchup_failure_semantics",
+                       False, 0))
+
+    # --- Resume reopen targeted stages (v119.H15 Item 2) ---
+    # H15 Item 2: reopen_stages_for_directives() — when the user
+    # resumes with new advice, walk directives.program_settings and
+    # reopen ONLY the LATEST completed stage matching each program.
+    # Single-stage targeted reopen (per Gemini critique of cascade).
+    try:
+        from tests.tst_resume_reopen_stages import (
+            run_all_tests as run_h15_2_tests)
+        success, elapsed = run_test_module(
+            "tst_resume_reopen_stages",
+            run_h15_2_tests, args.verbose)
+        results.append(("Resume reopen stages (H15 Item 2)",
+                       "tst_resume_reopen_stages",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_resume_reopen_stages: {e}")
+        results.append(("Resume reopen stages (H15 Item 2)",
+                       "tst_resume_reopen_stages",
+                       False, 0))
+
+    # --- Reasoning/command divergence detection (v119.H15 Item 3) ---
+    # H15 Item 3: cross_check_reasoning_vs_command() — detect-only
+    # telemetry that fires when the LLM's reasoning paragraph
+    # references a categorical file ("MTZ from last refinement")
+    # but the command uses a different file.  Blocks ONLY when the
+    # divergent file doesn't exist on disk (FileNotFoundError).
+    try:
+        from tests.tst_reasoning_command_divergence import (
+            run_all_tests as run_h15_3_tests)
+        success, elapsed = run_test_module(
+            "tst_reasoning_command_divergence",
+            run_h15_3_tests, args.verbose)
+        results.append(("Reasoning/command divergence (H15 Item 3)",
+                       "tst_reasoning_command_divergence",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_reasoning_command_divergence: {e}")
+        results.append(("Reasoning/command divergence (H15 Item 3)",
+                       "tst_reasoning_command_divergence",
+                       False, 0))
+
+    # --- obs_labels auto-fill for multi-array MTZ (v119.H16) ---
+    # H16: cctbx-based MTZ inspection + per-program label-selection
+    # policy + auto_fill_obs_labels invariant.  Targets 88 TIER-1
+    # "Multiple equally suitable arrays" failures in AF_exoV_MRSAD
+    # and lysozyme-MRSAD tutorials.  Three programs covered:
+    # refine, phaser, autosol.
+    try:
+        from tests.tst_obs_labels_auto_fill import (
+            run_all_tests as run_h16_tests)
+        success, elapsed = run_test_module(
+            "tst_obs_labels_auto_fill",
+            run_h16_tests, args.verbose)
+        results.append(("obs_labels auto-fill (H16)",
+                       "tst_obs_labels_auto_fill",
+                       success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_obs_labels_auto_fill: {e}")
+        results.append(("obs_labels auto-fill (H16)",
+                       "tst_obs_labels_auto_fill",
+                       False, 0))
+
+    # --- R-free-flags-missing auto-recovery (force_retry) ---
+    try:
+        from tests.tst_rfree_flags_missing import run_all_tests as run_rfree_missing_tests
+        success, elapsed = run_test_module(
+            "tst_rfree_flags_missing", run_rfree_missing_tests, args.verbose)
+        results.append(("rfree flags missing recovery", "tst_rfree_flags_missing", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_rfree_flags_missing: {e}")
+        results.append(("rfree flags missing recovery", "tst_rfree_flags_missing", False, 0))
+
+    # --- classify_mtz_type _001 suffix fix (bare *_001.mtz is data, not map) ---
+    try:
+        from tests.tst_classify_mtz_type_001 import run_all_tests as run_classify_001_tests
+        success, elapsed = run_test_module(
+            "tst_classify_mtz_type_001", run_classify_001_tests, args.verbose)
+        results.append(("classify_mtz_type _001 fix", "tst_classify_mtz_type_001", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_classify_mtz_type_001: {e}")
+        results.append(("classify_mtz_type _001 fix", "tst_classify_mtz_type_001", False, 0))
+
+    # --- phenix.refine Final-vs-Start R-free extraction fix ---
+    try:
+        from tests.tst_refine_final_rfree import run_all_tests as run_refine_final_rfree_tests
+        success, elapsed = run_test_module(
+            "tst_refine_final_rfree", run_refine_final_rfree_tests, args.verbose)
+        results.append(("refine final rfree", "tst_refine_final_rfree", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_refine_final_rfree: {e}")
+        results.append(("refine final rfree", "tst_refine_final_rfree", False, 0))
+
+    # --- spurious stop_after_requested strip (open-ended advice != stop) ---
+    try:
+        from tests.tst_spurious_stop_after_requested import run_all_tests as run_spurious_stop_tests
+        success, elapsed = run_test_module(
+            "tst_spurious_stop_after_requested", run_spurious_stop_tests, args.verbose)
+        results.append(("spurious stop strip", "tst_spurious_stop_after_requested", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_spurious_stop_after_requested: {e}")
+        results.append(("spurious stop strip", "tst_spurious_stop_after_requested", False, 0))
+
+    # --- advice-driven rebuild template selection ---
+    try:
+        from tests.tst_rebuild_template_selection import run_all_tests as run_rebuild_template_tests
+        success, elapsed = run_test_module(
+            "tst_rebuild_template_selection", run_rebuild_template_tests, args.verbose)
+        results.append(("rebuild template selection", "tst_rebuild_template_selection", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_rebuild_template_selection: {e}")
+        results.append(("rebuild template selection", "tst_rebuild_template_selection", False, 0))
+
+    # --- placement-skip preserves explicit rebuild ---
+    try:
+        from tests.tst_placement_skip_rebuild import run_all_tests as run_placement_skip_tests
+        success, elapsed = run_test_module(
+            "tst_placement_skip_rebuild", run_placement_skip_tests, args.verbose)
+        results.append(("placement-skip rebuild", "tst_placement_skip_rebuild", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_placement_skip_rebuild: {e}")
+        results.append(("placement-skip rebuild", "tst_placement_skip_rebuild", False, 0))
+
+    # --- autobuild sequence waiver ---
+    try:
+        from tests.tst_autobuild_sequence_waiver import run_all_tests as run_autobuild_seq_tests
+        success, elapsed = run_test_module(
+            "tst_autobuild_sequence_waiver", run_autobuild_seq_tests, args.verbose)
+        results.append(("autobuild sequence waiver", "tst_autobuild_sequence_waiver", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_autobuild_sequence_waiver: {e}")
+        results.append(("autobuild sequence waiver", "tst_autobuild_sequence_waiver", False, 0))
+
+    # --- Option 2a: reactive-deviation hold ---
+    try:
+        from tests.tst_reactive_deviation_hold import run_all_tests as run_reactive_hold_tests
+        success, elapsed = run_test_module(
+            "tst_reactive_deviation_hold", run_reactive_hold_tests, args.verbose)
+        results.append(("reactive deviation hold", "tst_reactive_deviation_hold", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_reactive_deviation_hold: {e}")
+        results.append(("reactive deviation hold", "tst_reactive_deviation_hold", False, 0))
+
+    # --- Option 2a: plan lead-program offer ---
+    try:
+        from tests.tst_plan_lead_program_offer import run_all_tests as run_lead_offer_tests
+        success, elapsed = run_test_module(
+            "tst_plan_lead_program_offer", run_lead_offer_tests, args.verbose)
+        results.append(("plan lead program offer", "tst_plan_lead_program_offer", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_plan_lead_program_offer: {e}")
+        results.append(("plan lead program offer", "tst_plan_lead_program_offer", False, 0))
+
+    # --- autobuild HL-without-PHIB recovery (use_hl_if_present=False retry) ---
+    try:
+        from tests.tst_autobuild_hl_recovery import run_all_tests as run_autobuild_hl_tests
+        success, elapsed = run_test_module(
+            "tst_autobuild_hl_recovery", run_autobuild_hl_tests, args.verbose)
+        results.append(("autobuild HL recovery", "tst_autobuild_hl_recovery", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_autobuild_hl_recovery: {e}")
+        results.append(("autobuild HL recovery", "tst_autobuild_hl_recovery", False, 0))
+
+    # --- R-free lock reconciliation + selected-file generate decision (F1+F2) ---
+    try:
+        from tests.tst_rfree_lock_reconciliation import run_all_tests as run_rfree_lock_reconcile_tests
+        success, elapsed = run_test_module(
+            "tst_rfree_lock_reconciliation", run_rfree_lock_reconcile_tests, args.verbose)
+        results.append(("R-free lock reconciliation", "tst_rfree_lock_reconciliation", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_rfree_lock_reconciliation: {e}")
+        results.append(("R-free lock reconciliation", "tst_rfree_lock_reconciliation", False, 0))
+
+    # --- Phenix log structure extractor (libtbx/langchain/log_structure_extractor.py) ---
+    # Deterministic reader for Phenix log files: text in, structure out, every
+    # item carrying the line it came from. NOTE the module is NOT called
+    # tst_log_extractor: that name is already taken by the v113 suite
+    # registered above, and two modules of one name silently shadow each other
+    # on sys.path. 130 tests, including corpus-level invariants that SKIP when
+    # PHENIX_LOG_CORPUS is unset and FAIL LOUDLY when it is set but wrong.
+    try:
+        from tests.tst_log_structure_extractor import (
+            run_all_tests as run_log_structure_extractor_tests)
+        success, elapsed = run_test_module(
+            "tst_log_structure_extractor",
+            run_log_structure_extractor_tests, args.verbose)
+        results.append(("Log Structure Extractor",
+                        "tst_log_structure_extractor", success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_log_structure_extractor: {e}")
+        results.append(("Log Structure Extractor",
+                        "tst_log_structure_extractor", False, 0))
+
+    # --- Transport surfaces ---------------------------------------------
+    # Checks that every field contract.py declares is produced, carried
+    # by each allow-list hop, and consumed -- and that no key is renamed
+    # in flight.  Reads the sources as TEXT rather than importing them,
+    # so it runs without a full PHENIX environment; it FAILS rather than
+    # skips when a source is unreadable, because a skip here would
+    # silently disarm every check.
+    try:
+        _imported = __import__("tests.tst_transport_surfaces", fromlist=["x"])
+        success, elapsed = run_test_module(
+            "tst_transport_surfaces", _imported.run_all_tests, args.verbose)
+        results.append(("Transport surfaces", "tst_transport_surfaces",
+                        success, elapsed))
+    except ImportError as e:
+        print(f"\u26a0\ufe0f  Could not import tst_transport_surfaces: {e}")
+        results.append(("Transport surfaces", "tst_transport_surfaces",
+                        False, 0))
+
+    # --- Log analysis replacement (Steps 1-3) ---------------------------
+    # Each of these SKIPS rather than fails when its data directory is
+    # absent, and says so on its own last line.  A skip is not a pass:
+    # set PHIL_CORPUS_DIR, PHIL_REPORTS_DIR, PHIL_CAPTURED_DIR and
+    # PHENIX_SOURCE_DIR to run them for real.
+    for _label, _module in (
+            ("Program identity", "tst_program_identity"),
+            ("Analysis request", "tst_analysis_request"),
+            ("Report verifier", "tst_report_verifier"),
+            ("Mode isolation", "tst_mode_isolation"),
+            ("Summary file", "tst_summary_file"),
+    ):
+        try:
+            _imported = __import__("tests.%s" % _module, fromlist=["x"])
+            success, elapsed = run_test_module(
+                _module, _imported.run_all_tests, args.verbose)
+            results.append((_label, _module, success, elapsed))
+        except ImportError as e:
+            print("\u26a0\ufe0f  Could not import %s: %s" % (_module, e))
+            results.append((_label, _module, False, 0))
 
     # --- Summary ---
     total_elapsed = time.time() - total_start

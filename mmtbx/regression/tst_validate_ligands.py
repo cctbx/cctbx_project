@@ -1,12 +1,16 @@
 from __future__ import absolute_import, division, print_function
 import time, os, traceback
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 import mmtbx.model
 import iotbx.pdb
+import iotbx.phil
+from cctbx.array_family import flex
 import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from iotbx.cli_parser import run_program
 from mmtbx.programs import validate_ligands as val_lig
+from mmtbx.validation import validate_ligands as val_lig_mod
+import mmtbx.ligands.rdkit_utils as rdkit_utils
 
 from rdkit import RDLogger
 lg = RDLogger.logger()
@@ -51,6 +55,27 @@ def run():
   run_test06()
   run_test08()
   run_test09()
+  run_test10()
+  run_test11()
+  run_test12()
+  run_test_has_restraints()
+  run_test13()
+  run_test14()
+  run_test15()
+  run_test16()
+  run_test17()
+  run_test18()
+  run_test19()
+  run_test20()
+  run_test21()
+  run_test22()
+  run_test23()
+  run_test24()
+  run_test25()
+  run_test26()
+  run_test27()
+  run_test28()
+  run_test29()
 
 # ------------------------------------------------------------------------------
 
@@ -67,7 +92,7 @@ def run_test01():
     test=os.path.isfile)
 
   args=[pdb_fname, 'save_reduce2_model=True']
-  #print("mmtbx.development.validate_ligands %s" %(" ".join(args)))
+  #print("phenix.validate_ligands %s" %(" ".join(args)))
   try:
     result = run_program(program_class=val_lig.Program,args=args,
      logger = null_out())
@@ -93,7 +118,8 @@ def run_test01():
   # Number of clashes and clashscore
   clashes_result = lr.get_overlaps()
   assert(clashes_result.n_clashes == 5)
-  assert approx_equal(clashes_result.clashscore, 25.6, eps=0.5)
+  # 5/172; 5/182 if a methyl pose brings Val A46 (10 atoms) within 3 A
+  assert approx_equal(clashes_result.clashscore, 29.07, eps=0.5)
   #
   # Geometry deviations
   rmsd_result = lr.get_rmsds()
@@ -121,7 +147,7 @@ def run_test02():
     relative_path="mmtbx/regression/pdbs/two_chains_ligand_water.pdb",
     test=os.path.isfile)
   args=[pdb_fname]
-  #print("mmtbx.development.validate_ligands %s" %(" ".join(args)))
+  #print("phenix.validate_ligands %s" %(" ".join(args)))
   try:
     result = run_program(program_class=val_lig.Program,args=args,
      logger = null_out())
@@ -308,10 +334,14 @@ def run_test03():
   assert approx_equal(adps.b_mean, 31.19, eps=0.05)
   assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
   assert approx_equal(adps.b_max_within, 54.65, eps=0.01)
-  assert approx_equal(adps.b_mean_within, 23.23, eps=0.02)
+  # Asn A12 is within 3 A only through HD21 (2.96 A from O3), as re-placed by
+  # the amide Mover that optimize_his_protonation brings in.
+  assert approx_equal(adps.b_mean_within, 23.49, eps=0.02)
   assert overlaps.n_clashes == 4
-  assert overlaps.n_hbonds == 2
-  assert approx_equal(overlaps.clashscore, 13.0, eps=0.5)
+  # 2 as donor (HN1, HN2) + 4 as acceptor (Ser16 HG, Ser73 HG, Ala39 H, Thr40 H)
+  # Ser16 HG...O3 D-H...A is 122.5 deg, cutoff 120
+  assert overlaps.n_hbonds == 6
+  assert approx_equal(overlaps.clashscore, 12.46, eps=0.5)
   assert rmsd_result.bond_n == 17
   assert approx_equal(rmsd_result.bond_rmsd, 0.033, eps=0.005)
   assert approx_equal(rmsd_result.bond_rmsz, 1.639, eps=0.005)
@@ -345,7 +375,9 @@ def run_test03():
   assert approx_equal(adps.b_max_within, 75.42, eps=0.01)
   assert approx_equal(adps.b_mean_within, 28.20, eps=0.02)
   assert overlaps.n_clashes == 6
-  assert overlaps.n_hbonds == 2
+  # 2 as donor (HN1, HN2) + 6 as acceptor (Asn12, Ser16, Tyr33, Ala39, Thr40,
+  # Ser73)
+  assert overlaps.n_hbonds == 8
   assert approx_equal(overlaps.clashscore, 19.3, eps=0.5)
 
 # ------------------------------------------------------------------------------
@@ -360,7 +392,7 @@ def run_test04():
   with open(model_fn, "w") as f:
     f.write(cif_str_tst_4)
   args = [model_fn]
-  #print("mmtbx.development.validate_ligands %s run_reduce2=False" % model_fn)
+  #print("phenix.validate_ligands %s run_reduce2=False" % model_fn)
   try:
     result = run_program(program_class=val_lig.Program,args=args,
      logger = null_out())
@@ -575,12 +607,454 @@ def run_test09():
       assert ccs is not None
       assert hasattr(ccs, 'rscc')
       assert -1 <= ccs.rscc <= 1
-      assert ccs.rscc_sites is None   # map path never computes sites RSCC
-    # Well-fitted ligand: CC with its own model map should be positive
-    assert find_lr(vl_manager2, 'chain A and resseq 400 and resname BTN').get_ccs().rscc > 0.5
+      # a ligand with nothing inside within_radius still has no sites RSCC
+      assert ccs.rscc_sites is None or -1 <= ccs.rscc_sites <= 1
+    # Well-fitted ligand: CC with its own model map should be positive.
+    ccs_btn = find_lr(
+      vl_manager2, 'chain A and resseq 400 and resname BTN').get_ccs()
+    # eps is deliberately tighter than in run_test04: an all-atom mask gives
+    # 0.934 here, so anything looser would not notice hydrogen re-entering the
+    # mask.
+    assert approx_equal(ccs_btn.rscc, 0.918, eps=0.01), ccs_btn.rscc
+    # Biotin is buried in avidin, so it has an environment
+    assert approx_equal(ccs_btn.rscc_sites, 0.937, eps=0.01), ccs_btn.rscc_sites
+    assert ccs_btn.frag_ccs
   finally:
     if os.path.isfile(map_fn):
       os.remove(map_fn)
+
+# ------------------------------------------------------------------------------
+
+# Two glycerol (GOL) ligands. Chain A resseq 1 is missing the O3 heavy atom;
+# chain A resseq 2 is heavy-complete (no H atoms are modelled in either).
+_gol_missing_atom_pdb_str = '''
+CRYST1   30.000   20.000   20.000  90.00  90.00  90.00 P 1
+SCALE1      0.033333  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.050000  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.050000        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  C3  GOL A   1       7.100   6.400   5.000  1.00 20.00           C
+HETATM    4  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    5  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    6  C1  GOL A   2      15.000   5.000   5.000  1.00 20.00           C
+HETATM    7  C2  GOL A   2      16.520   5.000   5.000  1.00 20.00           C
+HETATM    8  C3  GOL A   2      17.100   6.400   5.000  1.00 20.00           C
+HETATM    9  O1  GOL A   2      14.300   3.850   5.400  1.00 20.00           O
+HETATM   10  O2  GOL A   2      17.220   4.050   5.700  1.00 20.00           O
+HETATM   11  O3  GOL A   2      18.500   6.350   4.700  1.00 20.00           O
+'''
+
+def _gol_missing_atom_model():
+  pdb_inp = iotbx.pdb.input(
+    lines=_gol_missing_atom_pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  model.process(make_restraints=True)
+  return model
+
+def run_test10():
+  print('test10')
+  model = _gol_missing_atom_model()
+  missing = model.get_missing_atoms()
+  atoms = model.get_hierarchy().atoms()
+
+  def ag_key(sel_str):
+    isel = model.iselection(sel_str)
+    return atoms[isel[0]].parent().id_str()
+
+  key1 = ag_key('resname GOL and chain A and resseq 1')
+  key2 = ag_key('resname GOL and chain A and resseq 2')
+
+  assert key1 in missing, missing
+  heavy1 = missing[key1].get('missing', {}).get('heavy', {})
+  assert 'O3' in heavy1, list(heavy1)
+
+  heavy2 = missing.get(key2, {}).get('missing', {}).get('heavy', {})
+  assert len(heavy2) == 0, list(heavy2)
+
+  # Lazy path: a fresh, un-processed model must auto-process on access.
+  pdb_inp2 = iotbx.pdb.input(
+    lines=_gol_missing_atom_pdb_str.split("\n"), source_info=None)
+  model_lazy = mmtbx.model.manager(model_input=pdb_inp2, log=null_out())
+  missing_lazy = model_lazy.get_missing_atoms()
+  assert missing_lazy is not None
+  assert any('O3' in v.get('missing', {}).get('heavy', {})
+             for v in missing_lazy.values()), missing_lazy
+
+# ------------------------------------------------------------------------------
+
+def _gol_missing_atom_manager():
+  from mmtbx.validation import validate_ligands as vlmod
+  model = _gol_missing_atom_model()
+  params = vlmod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  vl_manager = vlmod.manager(
+    model       = model,
+    fmodel      = None,
+    map_manager = None,
+    params      = params,
+    log         = null_out())
+  vl_manager.run()
+  return vl_manager
+
+def run_test11():
+  print('test11')
+  vl_manager = _gol_missing_atom_manager()
+  lr1 = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  ma1 = lr1.get_missing_atoms()
+  assert ma1.missing_heavy == ['O3'], ma1.missing_heavy
+  assert ma1.n_missing_heavy == 1, ma1.n_missing_heavy
+  #
+  lr2 = find_lr(vl_manager, 'resname GOL and chain A and resseq 2')
+  ma2 = lr2.get_missing_atoms()
+  assert ma2.missing_heavy == [], ma2.missing_heavy
+  assert ma2.n_missing_heavy == 0, ma2.n_missing_heavy
+
+# ------------------------------------------------------------------------------
+
+def run_test12():
+  print('test12')
+  from six.moves import cStringIO as StringIO
+  vl_manager = _gol_missing_atom_manager()
+  sio = StringIO()
+  vl_manager.show_table(out=sio)
+  text = sio.getvalue()
+  assert 'missing' in text, text
+  assert 'O3' in text, text
+
+# ------------------------------------------------------------------------------
+
+def run_test13():
+  print('test13')
+  vl_manager = _gol_missing_atom_manager()
+  snap1 = find_lr(vl_manager, 'resname GOL and chain A and resseq 1').as_picklable_snapshot()
+  assert snap1.missing_atoms is not None
+  assert snap1.missing_atoms.missing_heavy == ['O3'], snap1.missing_atoms.missing_heavy
+  assert snap1.missing_atoms.n_missing_heavy == 1, snap1.missing_atoms.n_missing_heavy
+  #
+  snap2 = find_lr(vl_manager, 'resname GOL and chain A and resseq 2').as_picklable_snapshot()
+  assert snap2.missing_atoms is not None
+  assert snap2.missing_atoms.missing_heavy == [], snap2.missing_atoms.missing_heavy
+  assert snap2.missing_atoms.n_missing_heavy == 0, snap2.missing_atoms.n_missing_heavy
+
+# ------------------------------------------------------------------------------
+
+def _gol_frag_mol_and_cif(vl_manager, resseq):
+  lr = find_lr(vl_manager, 'resname GOL and chain A and resseq %d' % resseq)
+  ag = lr._atoms_ligand[0].parent()
+  srv = lr.model.get_mon_lib_srv()
+  cif_object, _ani = srv.get_comp_comp_id_and_atom_name_interpretation(
+    residue_name=ag.resname, atom_names=ag.atoms().extract_name())
+  return lr._frag_mol, cif_object, lr
+
+def run_test14():
+  print('test14')
+  vl = _gol_missing_atom_manager()
+  frag_mol, cif_object, lr = _gol_frag_mol_and_cif(vl, 1)
+  draw_mol, missing_idxs = rdkit_utils.build_drawing_mol_with_missing(
+    frag_mol, cif_object, ['O3'])
+  assert draw_mol.GetNumAtoms() == frag_mol.GetNumAtoms() + 1, draw_mol.GetNumAtoms()
+  assert len(missing_idxs) == 1, missing_idxs
+  idx = list(missing_idxs)[0]
+  assert idx == frag_mol.GetNumAtoms(), idx
+  assert draw_mol.GetAtomWithIdx(idx).GetProp('_Name').strip() == 'O3'
+  assert draw_mol.GetAtomWithIdx(idx).GetProp('atomLabel') == 'O3'
+  draw_mol2, mi2 = rdkit_utils.build_drawing_mol_with_missing(frag_mol, cif_object, [])
+  assert len(mi2) == 0
+  assert draw_mol2.GetNumAtoms() == frag_mol.GetNumAtoms()
+  draw_mol3, mi3 = rdkit_utils.build_drawing_mol_with_missing(frag_mol, cif_object, None)
+  assert len(mi3) == 0
+  assert draw_mol3.GetNumAtoms() == frag_mol.GetNumAtoms()
+
+# ------------------------------------------------------------------------------
+
+def run_test15():
+  print('test15')
+  import tempfile, os
+  vl = _gol_missing_atom_manager()
+  frag_mol, cif_object, lr = _gol_frag_mol_and_cif(vl, 1)
+  draw_mol, missing_idxs = rdkit_utils.build_drawing_mol_with_missing(
+    frag_mol, cif_object, ['O3'])
+  tf = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+  tf.close()
+  try:
+    rdkit_utils.draw_colored_fragments(
+      draw_mol, lr._rdkit_frags, filename=tf.name, missing_atom_idxs=missing_idxs)
+    assert os.path.getsize(tf.name) > 0
+    rdkit_utils.draw_colored_fragments(
+      draw_mol, lr._rdkit_frags, filename=tf.name,
+      missing_atom_idxs=missing_idxs, frag_ccs=None)
+    assert os.path.getsize(tf.name) > 0
+  finally:
+    os.unlink(tf.name)
+
+# ------------------------------------------------------------------------------
+
+def run_test16():
+  print('test16')
+  vl = _gol_missing_atom_manager()
+  lr1 = find_lr(vl, 'resname GOL and chain A and resseq 1')
+  assert len(lr1._draw_missing_idxs) == 1, lr1._draw_missing_idxs
+  lr2 = find_lr(vl, 'resname GOL and chain A and resseq 2')
+  assert len(lr2._draw_missing_idxs) == 0, lr2._draw_missing_idxs
+  snap = lr1.as_picklable_snapshot()
+  assert snap.fragment_png_bytes is not None
+
+def run_test18():
+  from mmtbx.validation.validate_ligands import fragment_consistency as fc
+  # consistent: balances ~equal, no weak fragment
+  r = fc(0.90, [0.88, 0.91, 0.89], [0.60, 0.70, 0.65], [0.90, 1.00, 0.95])
+  assert r.flag == 'consistent', r.flag
+  # (A) localized weak fragment (STI-like): frag 6 RSCC 0.19 << overall 0.86
+  r = fc(0.86, [0.78, 0.93, 0.88, 0.84, 0.73, 0.19],
+              [0.49, 0.60, 0.37, 0.18, 0.24, -0.22],
+              [0.77, 0.95, 0.96, 0.83, 0.96, 0.02])
+  assert r.flag == 'inspect', r.flag
+  assert '(A)' in r.reason and 'fragment 6' in r.reason, r.reason
+  # (B) inconsistent balance (EPE-like): sulfonate mod/obs 2.46 vs ring 1.46
+  r = fc(0.78, [0.83, 0.82, 0.77], [0.505, 0.681, 0.520], [1.244, 0.992, 1.096])
+  assert r.flag == 'inspect', r.flag
+  assert '(B)' in r.reason, r.reason
+  # obs_floor guard: a near-zero-obs fragment is excluded from (B), not a div blow-up
+  r = fc(0.90, [0.90, 0.90], [0.05, 0.60], [1.00, 0.90])
+  assert r.flag == 'consistent', r.flag   # only 1 fragment clears obs_floor -> (B) skipped
+  # overall already bad -> localized-weak (A) suppressed (redundant when whole ligand is poor)
+  r = fc(0.60, [0.20, 0.50], [0.50, 0.50], [0.50, 0.50])
+  assert r.flag == 'consistent', (r.flag, r.reason)
+  # boundary: overall at the floor (0.70) still raises (A)
+  r = fc(0.70, [0.20, 0.50], [0.50, 0.50], [0.50, 0.50])
+  assert r.flag == 'inspect' and '(A)' in r.reason, (r.flag, r.reason)
+  # just below the floor -> suppressed
+  r = fc(0.69, [0.20, 0.50], [0.50, 0.50], [0.50, 0.50])
+  assert r.flag == 'consistent', (r.flag, r.reason)
+  print('OK run_test18')
+
+# ------------------------------------------------------------------------------
+
+def run_test19():
+  print('test19')
+  # Reuse the cached real 1avd fmodel; skip if phenix_regression is absent.
+  vl = _load_1avd_manager()
+  if vl is None:
+    print('Skipping run_test19 (no phenix_regression)')
+    return
+  fmodel = vl[0].fmodel
+  mtz_object = val_lig_mod.map_coefficients_as_mtz_object(fmodel)
+  labels = list(mtz_object.column_labels())
+  for lbl in ['2FOFCWT', 'PH2FOFCWT', 'FOFCWT', 'PHFOFCWT']:
+    assert lbl in labels, (lbl, labels)
+  n_complex = sum(1 for ma in mtz_object.as_miller_arrays()
+                  if ma.is_complex_array())
+  assert n_complex == 2, n_complex
+
+# ------------------------------------------------------------------------------
+
+def run_test20():
+  print('test20')
+  # End-to-end: run the Program on 1avd with save_map_coeffs=True and confirm
+  # the MTZ is written with the expected columns. Skip if data unavailable.
+  import os
+  mtz_fname = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/1avd.mtz",
+    test=os.path.isfile)
+  pdb_fname = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb1avd.ent.gz",
+    test=os.path.isfile)
+  if mtz_fname is None or pdb_fname is None:
+    print('Skipping run_test20 (no phenix_regression)')
+    return
+  out_fn = 'pdb1avd_map_coeffs.mtz'
+  if os.path.isfile(out_fn):
+    os.remove(out_fn)
+  run_program(
+    program_class=val_lig.Program,
+    args=[pdb_fname, mtz_fname, 'save_map_coeffs=True', 'run_reduce2=False'],
+    logger=null_out())
+  try:
+    assert os.path.isfile(out_fn), out_fn
+    from iotbx import mtz
+    labels = list(mtz.object(out_fn).column_labels())
+    for lbl in ['2FOFCWT', 'PH2FOFCWT', 'FOFCWT', 'PHFOFCWT']:
+      assert lbl in labels, (lbl, labels)
+  finally:
+    if os.path.isfile(out_fn):
+      os.remove(out_fn)
+
+# ------------------------------------------------------------------------------
+
+# One glycerol (GOL, has restraints) and one genuinely-unknown ligand J99 (no
+# monomer entry -> no restraints). Atoms of J99 are >2 A apart so no automatic
+# bonds form; processed with stop_for_unknowns=False (as the Program does), it
+# yields bond_n = angle_n = dihedral_n = 0 -- the "no restraints" case.
+_gol_and_unknown_ligand_pdb_str = '''
+CRYST1   40.000   30.000   30.000  90.00  90.00  90.00 P 1
+SCALE1      0.025000  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.033333  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.033333        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  C3  GOL A   1       7.100   6.400   5.000  1.00 20.00           C
+HETATM    4  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    5  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    6  O3  GOL A   1       8.500   6.350   4.700  1.00 20.00           O
+HETATM    7  C1  J99 A   2      20.000   5.000   5.000  1.00 20.00           C
+HETATM    8  C2  J99 A   2      23.000   8.000   5.000  1.00 20.00           C
+HETATM    9  N1  J99 A   2      20.000  10.000  10.000  1.00 20.00           N
+'''
+
+def _gol_and_unknown_ligand_manager():
+  model = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(
+      lines=_gol_and_unknown_ligand_pdb_str.split("\n"), source_info=None),
+    log = null_out())
+  model.set_stop_for_unknowns(False)
+  model.process(make_restraints=True)
+  params = val_lig_mod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  vl_manager = val_lig_mod.manager(
+    model=model, fmodel=None, map_manager=None, params=params, log=null_out())
+  vl_manager.run()
+  return vl_manager
+
+def run_test_has_restraints():
+  '''
+  get_missing_atoms().has_restraints says whether restraints were applied to
+  this ligand; without them the geometry rmsZ values are vacuous. J99 IS in the
+  monomer library, but the three atoms modelled here do not match its atom
+  names, so no restraints are built - a library lookup would say "known".
+  Missing atoms come from the library entry and are reported either way.
+  '''
+  print('test_has_restraints')
+  vl_manager = _gol_and_unknown_ligand_manager()
+
+  lr_gol = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  assert lr_gol.get_missing_atoms().has_restraints is True
+  assert lr_gol.get_rmsds().bond_n > 0
+
+  lr_unknown = find_lr(vl_manager, 'resname J99 and chain A and resseq 2')
+  assert lr_unknown.get_missing_atoms().has_restraints is False
+  assert lr_unknown.get_rmsds().bond_n == 0
+  assert lr_unknown.get_missing_atoms().n_missing_heavy > 0
+
+
+def run_test21():
+  print('test21')
+  from six.moves import cStringIO as StringIO
+  vl_manager = _gol_and_unknown_ligand_manager()
+
+  # The unknown ligand has no restraints of any kind.
+  lr_unknown = find_lr(vl_manager, 'resname J99 and chain A and resseq 2')
+  rmsds = lr_unknown.get_rmsds()
+  assert rmsds.bond_n == 0, rmsds.bond_n
+  assert rmsds.angle_n == 0, rmsds.angle_n
+  assert rmsds.dihedral_n == 0, rmsds.dihedral_n
+
+  # GOL still has restraints.
+  lr_gol = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  assert lr_gol.get_rmsds().bond_n > 0
+
+  sio = StringIO()
+  vl_manager.show_table(out=sio)
+  lines = sio.getvalue().splitlines()
+  j99_line = [l for l in lines if 'J99 A   2' in l]
+  gol_line = [l for l in lines if 'GOL A   1' in l]
+  assert len(j99_line) == 1, j99_line
+  assert len(gol_line) == 1, gol_line
+  j99_line, gol_line = j99_line[0], gol_line[0]
+
+  # No-restraints ligand: geometry cells must show '-', never a spurious 0(0).
+  assert '0(0)' not in j99_line, j99_line
+  assert '0.00' not in j99_line, j99_line
+  # GOL keeps its real geometry numbers.
+  assert '(5)' in gol_line, gol_line
+
+# ------------------------------------------------------------------------------
+
+# One glycerol (GOL, has restraints -> bonded rdkit mol) and one ligand 7Q8
+# with no monomer entry (cif_object is None -> rdkit mol has NO bonds). A
+# bond-less molecule fragments into one atom per fragment and its figure is a
+# meaningless grid of disconnected atoms -> no figure should be produced.
+_gol_and_norestraints_pdb_str = '''
+CRYST1   40.000   30.000   30.000  90.00  90.00  90.00 P 1
+SCALE1      0.025000  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.033333  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.033333        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  C3  GOL A   1       7.100   6.400   5.000  1.00 20.00           C
+HETATM    4  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    5  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    6  O3  GOL A   1       8.500   6.350   4.700  1.00 20.00           O
+HETATM    7  C1  7Q8 A   2      20.000   5.000   5.000  1.00 20.00           C
+HETATM    8  C2  7Q8 A   2      21.500   5.000   5.000  1.00 20.00           C
+HETATM    9  N1  7Q8 A   2      23.000   5.000   5.000  1.00 20.00           N
+HETATM   10  O1  7Q8 A   2      24.500   5.000   5.000  1.00 20.00           O
+'''
+
+def _gol_and_norestraints_manager():
+  model = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(
+      lines=_gol_and_norestraints_pdb_str.split("\n"), source_info=None),
+    log = null_out())
+  model.set_stop_for_unknowns(False)
+  model.process(make_restraints=True)
+  params = val_lig_mod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  vl_manager = val_lig_mod.manager(
+    model=model, fmodel=None, map_manager=None, params=params, log=null_out())
+  vl_manager.run()
+  return vl_manager
+
+def run_test22():
+  print('test22')
+  vl_manager = _gol_and_norestraints_manager()
+
+  # No-restraints ligand: rdkit mol has no bonds -> no figure.
+  lr_nr = find_lr(vl_manager, 'resname 7Q8 and chain A and resseq 2')
+  assert lr_nr._frag_mol.GetNumBonds() == 0, lr_nr._frag_mol.GetNumBonds()
+  assert lr_nr.as_picklable_snapshot().fragment_png_bytes is None
+
+  # GOL is bonded -> a figure is produced as usual.
+  lr_gol = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  assert lr_gol._frag_mol.GetNumBonds() > 0
+  assert lr_gol.as_picklable_snapshot().fragment_png_bytes is not None
+
+# ------------------------------------------------------------------------------
+
+def run_test17():
+  print('test17')
+  import os, tempfile
+  from mmtbx.monomer_library import server
+  gol_cif = libtbx.env.find_in_repositories(
+    relative_path='chem_data/geostd/g/data_GOL.cif', test=os.path.isfile)
+  if gol_cif is None:
+    print('  skipping: geostd not available')
+    return
+  lines = [ln for ln in open(gol_cif).read().splitlines()
+           if not (ln.strip().startswith('GOL') and
+                   (' O3 ' in ln or ' HO3 ' in ln or ln.rstrip().endswith(' O3')
+                    or ln.rstrip().endswith(' HO3')))]
+  tf = tempfile.NamedTemporaryFile(suffix='.cif', delete=False, mode='w')
+  tf.write('\n'.join(lines) + '\n')
+  tf.close()
+  try:
+    from mmtbx.validation import validate_ligands as vlmod
+    pdb_inp = iotbx.pdb.input(
+      lines=_gol_missing_atom_pdb_str.split('\n'), source_info=None)
+    model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+    model.set_restraint_objects([(tf.name, server.read_cif(tf.name))])
+    model.set_stop_for_unknowns(False)
+    model.process(make_restraints=True)
+    params = vlmod.master_params().extract().validate_ligands
+    params.ligand_code = []
+    vl = vlmod.manager(model=model, fmodel=None, map_manager=None,
+                       params=params, log=null_out())
+    vl.run()
+    lr1 = find_lr(vl, 'resname GOL and chain A and resseq 1')
+    assert lr1.get_missing_atoms().missing_heavy == [], lr1.get_missing_atoms().missing_heavy
+    assert len(lr1._draw_missing_idxs) == 0, lr1._draw_missing_idxs
+  finally:
+    os.unlink(tf.name)
 
 # ------------------------------------------------------------------------------
 
@@ -878,6 +1352,341 @@ HETATM  171  O   HOH A 612      55.669  18.124  20.272  1.00 30.96           O
 HETATM  172  O   HOH A 628      52.150   8.845  12.227  0.50  9.11           O
 END
 '''
+
+# ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+
+_gol_and_protein_shells_pdb_str = '''
+CRYST1   60.000   40.000   40.000  90.00  90.00  90.00 P 1
+SCALE1      0.016667  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.025000  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.025000        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  C3  GOL A   1       7.100   6.400   5.000  1.00 20.00           C
+HETATM    4  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    5  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    6  O3  GOL A   1       8.500   6.350   4.700  1.00 20.00           O
+ATOM      7  N   ALA B   1       7.220   4.050   8.500  1.00 30.00           N
+ATOM      8  CA  ALA B   1       8.678   4.050   8.500  1.00 30.00           C
+ATOM      9  C   ALA B   1       9.229   5.470   8.500  1.00 30.00           C
+ATOM     10  O   ALA B   1       8.471   6.440   8.500  1.00 30.00           O
+ATOM     11  CB  ALA B   1       9.508   2.750   8.500  1.00 30.00           C
+ATOM     12  N   ALA B   2       8.500   6.350   0.700  1.00 40.00           N
+ATOM     13  CA  ALA B   2       9.958   6.350   0.700  1.00 40.00           C
+ATOM     14  C   ALA B   2      10.509   7.770   0.700  1.00 40.00           C
+ATOM     15  O   ALA B   2       9.751   8.740   0.700  1.00 40.00           O
+ATOM     16  CB  ALA B   2      10.788   5.050   0.700  1.00 40.00           C
+ATOM     17  N   ALA B   3      22.000   5.000   5.000  1.00 50.00           N
+ATOM     18  CA  ALA B   3      23.458   5.000   5.000  1.00 50.00           C
+ATOM     19  C   ALA B   3      24.009   6.420   5.000  1.00 50.00           C
+ATOM     20  O   ALA B   3      23.251   7.390   5.000  1.00 50.00           O
+ATOM     21  CB  ALA B   3      24.288   3.700   5.000  1.00 50.00           C
+END
+'''
+
+def _gol_and_protein_shells_manager(within_radius=None, ala_b=None):
+  """Manager for a GOL with three ALA residues at controlled distances.
+
+  Closest approach of each ALA to the GOL: B/1 ~2.8 A (inside the 3 A
+  default), B/2 ~4.0 A (outside 3 A, inside 5 A), B/3 >7 A (outside both).
+  """
+  pdb_str = _gol_and_protein_shells_pdb_str
+  if ala_b is not None:
+    # overwrite the B-factor column (61-66) of every ALA atom
+    pdb_str = "\n".join(
+      (ln[:60] + '%6.2f' % ala_b + ln[66:])
+      if (ln.startswith('ATOM') and ' ALA ' in ln) else ln
+      for ln in pdb_str.split("\n"))
+  model = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(
+      lines=pdb_str.split("\n"), source_info=None),
+    log = null_out())
+  model.set_stop_for_unknowns(False)
+  model.process(make_restraints=True)
+  params = val_lig_mod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  if within_radius is not None:
+    params.within_radius = within_radius
+  vl_manager = val_lig_mod.manager(
+    model=model, fmodel=None, map_manager=None, params=params, log=null_out())
+  vl_manager.run()
+  return vl_manager
+
+def _within_resids(vl_manager):
+  """resseq of the residues selected as the ligand environment."""
+  lr = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  ph_within = lr._ph.select(lr.get_adps().isel_within_noH)
+  return sorted(rg.resseq_as_int() for rg in ph_within.residue_groups())
+
+def run_test23():
+  print('test23')
+  # default radius is 3 A: only the ALA at ~2.8 A is part of the environment
+  vl_default = _gol_and_protein_shells_manager()
+  assert vl_default.params.within_radius == 3.0, vl_default.params.within_radius
+  assert _within_resids(vl_default) == [1], _within_resids(vl_default)
+
+  # widening to 5 A pulls in the ALA at ~4.0 A, but not the one beyond 7 A
+  vl_wide = _gol_and_protein_shells_manager(within_radius=5.0)
+  assert _within_resids(vl_wide) == [1, 2], _within_resids(vl_wide)
+
+  # the mean B of the environment follows the selection (B = 30 vs 40)
+  adps_default = find_lr(
+    vl_default, 'resname GOL and chain A and resseq 1').get_adps()
+  adps_wide = find_lr(
+    vl_wide, 'resname GOL and chain A and resseq 1').get_adps()
+  assert approx_equal(adps_default.b_mean_within, 30.0, eps=0.01)
+  assert approx_equal(adps_wide.b_mean_within, 35.0, eps=0.01)
+
+  # narrowing to 2 A leaves the environment empty
+  vl_narrow = _gol_and_protein_shells_manager(within_radius=2.0)
+  assert _within_resids(vl_narrow) == [], _within_resids(vl_narrow)
+
+# ------------------------------------------------------------------------------
+
+def run_test24():
+  print('test24')
+  # the 2-5 A bounds are enforced for library callers, not only through phil
+  for bad_radius in [0.0, 1.9, 5.1]:
+    try:
+      _gol_and_protein_shells_manager(within_radius=bad_radius)
+    except Sorry as e:
+      assert 'within_radius' in str(e), str(e)
+    else:
+      raise AssertionError(
+        'no Sorry raised for within_radius=%s' % bad_radius)
+
+  # the bounds themselves are accepted
+  for good_radius in [2.0, 5.0]:
+    _gol_and_protein_shells_manager(within_radius=good_radius)
+
+  # the phil bounds and the library-level bounds must not drift apart
+  obj = val_lig_mod.master_params().get(
+    'validate_ligands.within_radius').objects[0]
+  assert obj.type.value_min == val_lig_mod.WITHIN_RADIUS_MIN, obj.type.value_min
+  assert obj.type.value_max == val_lig_mod.WITHIN_RADIUS_MAX, obj.type.value_max
+
+  # and phil itself rejects an out-of-range value on the command line
+  try:
+    val_lig_mod.master_params().fetch(
+      source=iotbx.phil.parse('validate_ligands.within_radius=7')).extract()
+  except RuntimeError as e:
+    assert 'maximum allowed value' in str(e), str(e)
+  else:
+    raise AssertionError('phil accepted within_radius=7')
+
+# ------------------------------------------------------------------------------
+
+def run_test25():
+  print('test25')
+  # 3 atoms beyond +-3 sigma out of 47 is 6.4%. Rounding the fraction to two
+  # decimals before scaling quantised this to whole percent and reported 6.0.
+  values = flex.double([0.0]*44 + [3.5, -4.0, 7.0])
+  assert values.size() == 47
+  pb = val_lig_mod.percent_bad_at_atom_centers(values)
+  assert approx_equal(pb, 100.0*3/47, eps=1.e-9), pb
+  assert round(pb, 1) == 6.4, pb
+
+  # the cutoff is inclusive at exactly +-3 sigma, on both signs
+  assert val_lig_mod.percent_bad_at_atom_centers(
+    flex.double([3.0, 0.0, 0.0, 0.0])) == 25.0
+  assert val_lig_mod.percent_bad_at_atom_centers(
+    flex.double([-3.0, 0.0, 0.0, 0.0])) == 25.0
+  assert val_lig_mod.percent_bad_at_atom_centers(
+    flex.double([2.999, -2.999, 0.0, 0.0])) == 0.0
+
+  # a ligand with no non-H atoms gives no percentage, not ZeroDivisionError
+  assert val_lig_mod.percent_bad_at_atom_centers(flex.double()) == 0.0
+
+  # the +-3 sigma cutoff is one named constant
+  assert val_lig_mod.FOFC_SIGMA_CUTOFF == 3.0, val_lig_mod.FOFC_SIGMA_CUTOFF
+
+  # an explicit cutoff overrides it
+  assert val_lig_mod.percent_bad_at_atom_centers(
+    flex.double([3.5, 0.0, 0.0, 0.0]), cutoff=4.0) == 0.0
+
+# ------------------------------------------------------------------------------
+
+def run_test26():
+  print('test26')
+  # GOL has B = 20 throughout; the ALA at ~2.8 A has B = 30, the one at
+  # ~4.0 A has B = 40. b_ratio is ligand B over environment B.
+  def _adps(vl):
+    return find_lr(vl, 'resname GOL and chain A and resseq 1').get_adps()
+
+  adps = _adps(_gol_and_protein_shells_manager())
+  assert approx_equal(adps.b_mean, 20.0, eps=0.01), adps.b_mean
+  assert approx_equal(adps.b_mean_within, 30.0, eps=0.01), adps.b_mean_within
+  assert approx_equal(adps.b_ratio, 20.0/30.0, eps=1.e-6), adps.b_ratio
+
+  # the ratio follows the environment selection
+  adps_wide = _adps(_gol_and_protein_shells_manager(within_radius=5.0))
+  assert approx_equal(adps_wide.b_ratio, 20.0/35.0, eps=1.e-6), adps_wide.b_ratio
+
+  # empty environment -> no ratio, rather than TypeError on None
+  adps_narrow = _adps(_gol_and_protein_shells_manager(within_radius=2.0))
+  assert adps_narrow.b_mean_within is None
+  assert adps_narrow.b_ratio is None, adps_narrow.b_ratio
+
+  # zero environment B -> no ratio, rather than ZeroDivisionError
+  adps_zero = _adps(_gol_and_protein_shells_manager(ala_b=0.0))
+  assert approx_equal(adps_zero.b_mean_within, 0.0, eps=0.01)
+  assert adps_zero.b_ratio is None, adps_zero.b_ratio
+
+  # it reaches the snapshot the GUI and CSV are built from
+  vl = _gol_and_protein_shells_manager()
+  snap = find_lr(vl, 'resname GOL and chain A and resseq 1').as_picklable_snapshot()
+  assert approx_equal(snap.adps.b_ratio, 20.0/30.0, eps=1.e-6), snap.adps.b_ratio
+
+  # and it is shown in the log table
+  from six.moves import cStringIO as StringIO
+  sio = StringIO()
+  vl.show_table(out=sio)
+  text = sio.getvalue()
+  assert 'B ratio' in text, text
+  assert '0.67' in text, text
+
+# ------------------------------------------------------------------------------
+
+def run_test27():
+  print('test27')
+  vl_manager = _load_1avd_manager()
+  if vl_manager is None:
+    print('  skipping: phenix_regression not available')
+    return
+
+  # biotin has three chiral centres, the NAG sugar four; none is an outlier
+  btn_a = find_lr(vl_manager, 'chain A and resseq 400 and resname BTN').get_rmsds()
+  assert btn_a.chirality_n == 3, btn_a.chirality_n
+  assert btn_a.chirality_n_outliers == 0, btn_a.chirality_n_outliers
+  assert approx_equal(btn_a.chirality_rmsd, 0.2318, eps=0.005), btn_a.chirality_rmsd
+
+  btn_b = find_lr(vl_manager, 'chain B and resseq 401 and resname BTN').get_rmsds()
+  assert btn_b.chirality_n == 3, btn_b.chirality_n
+  assert approx_equal(btn_b.chirality_rmsd, 0.4550, eps=0.005), btn_b.chirality_rmsd
+
+  nag = find_lr(vl_manager, 'chain A and resseq 600 and resname NAG').get_rmsds()
+  assert nag.chirality_n == 4, nag.chirality_n
+  assert approx_equal(nag.chirality_rmsd, 0.1913, eps=0.005), nag.chirality_rmsd
+
+  # it reaches the snapshot the GUI and CSV are built from
+  snap = find_lr(vl_manager,
+    'chain A and resseq 400 and resname BTN').as_picklable_snapshot()
+  assert snap.rmsds.chirality_n == 3, snap.rmsds.chirality_n
+  assert approx_equal(snap.rmsds.chirality_rmsd, 0.2318, eps=0.005)
+
+  # a ligand with no chiral centre reports zero rather than failing
+  gol = find_lr(_gol_and_protein_shells_manager(),
+                'resname GOL and chain A and resseq 1').get_rmsds()
+  assert gol.chirality_n == 0, gol.chirality_n
+  assert gol.chirality_rmsd == 0.0, gol.chirality_rmsd
+
+  # a ligand without restraints does not raise
+  nr = find_lr(_gol_and_norestraints_manager(),
+               'resname 7Q8 and chain A and resseq 2').get_rmsds()
+  assert nr.chirality_n == 0, nr.chirality_n
+
+  # and it is shown in the log table
+  from six.moves import cStringIO as StringIO
+  sio = StringIO()
+  vl_manager.show_table(out=sio)
+  text = sio.getvalue()
+  assert 'chirality' in text, text
+  assert '0(3)' in text, text
+
+# ------------------------------------------------------------------------------
+
+_gol_bad_h_occupancy_pdb_str = '''
+CRYST1   40.000   30.000   30.000  90.00  90.00  90.00 P 1
+SCALE1      0.025000  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.033333  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.033333        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    4  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    5  C3 AGOL A   1       7.100   6.400   5.000  0.60 20.00           C
+HETATM    6  O3 AGOL A   1       8.500   6.350   4.700  0.60 20.00           O
+HETATM    7  H31AGOL A   1       6.700   7.000   5.700  1.00 20.00           H
+HETATM    8  HO3AGOL A   1       8.900   7.100   4.900  1.00 20.00           H
+HETATM    9  C3 BGOL A   1       7.000   6.500   5.200  0.40 20.00           C
+HETATM   10  O3 BGOL A   1       8.400   6.500   4.900  0.40 20.00           O
+HETATM   11  H31BGOL A   1       6.600   7.100   5.900  1.00 20.00           H
+HETATM   12  HO3BGOL A   1       8.800   7.200   5.100  1.00 20.00           H
+END
+'''
+
+def run_test28():
+  print('test28')
+  # A DELIBERATELY MALFORMED model: only part of the ligand is split - C1, C2,
+  # O1 and O2 are shared (blank altloc, occupancy 1.00) while C3/O3 are alt
+  # confs A (0.60) and B (0.40) - and the hydrogens on the split atoms carry
+  # occupancy 1.00 instead of following their parents.
+  #
+  # The protonation here is incomplete, which does not matter: the point
+  # is that _conformer_occ must derive a conformer's occupancy from its HEAVY
+  # atoms and so be unaffected by whatever the H occupancies happen to be.
+  #
+  # Without that, averaging the H in gives conformers of 0.80/0.70 summing to
+  # 1.50, and a correctly modelled ligand is flagged.
+  model = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(
+      lines=_gol_bad_h_occupancy_pdb_str.split("\n"), source_info=None),
+    log = null_out())
+  model.set_stop_for_unknowns(False)
+  model.process(make_restraints=True)
+  params = val_lig_mod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  vl = val_lig_mod.manager(model=model, fmodel=None, map_manager=None,
+                           params=params, log=null_out())
+  vl.run()
+
+  seen = 0
+  for lr in vl:
+    ac = lr.get_alt_conf()
+    assert ac.state == 'alt_conf', ac.state
+    assert sorted(ac.altlocs) == ['A', 'B'], ac.altlocs
+    occ = ac.occupancy
+    assert occ is not None
+    # the conformers themselves, from the heavy atoms alone
+    expected_self = 0.60 if lr.altloc.strip() == 'A' else 0.40
+    assert approx_equal(occ.self_occ, expected_self, eps=1.e-6), (
+      lr.altloc, occ.self_occ)
+    assert approx_equal(occ.occ_sum, 1.0, eps=1.e-6), occ.occ_sum
+    assert occ.sum_ok is True, occ.occ_sum
+    assert ac.flag == 'ok', (ac.flag, ac.reason)
+    seen += 1
+  assert seen == 2, seen
+
+# ------------------------------------------------------------------------------
+
+def run_test29():
+  print('test29')
+  # get_map_values must report positive and negative difference blobs
+  # separately.
+  vl_manager = _load_1avd_manager()
+  if vl_manager is None:
+    print('  skipping: phenix_regression not available')
+    return
+
+  seen = 0
+  for lr in vl_manager:
+    mv = lr.get_map_values()
+    if mv is None: continue
+    seen += 1
+    # the split fields exist and are non-negative
+    for attr in ('n_blobs_pos', 'n_blobs_neg',
+                 'percent_blobs_pos', 'percent_blobs_neg'):
+      assert hasattr(mv, attr), attr
+      assert getattr(mv, attr) >= 0, (attr, getattr(mv, attr))
+    # and they reconstruct the pooled values that were reported before
+    assert mv.n_blobs_pos + mv.n_blobs_neg == mv.n_bad_blobs, (
+      mv.n_blobs_pos, mv.n_blobs_neg, mv.n_bad_blobs)
+    assert approx_equal(mv.percent_blobs_pos + mv.percent_blobs_neg,
+                        mv.percent_bad_blobs, eps=1.e-6), (
+      mv.percent_blobs_pos, mv.percent_blobs_neg, mv.percent_bad_blobs)
+  assert seen > 0, 'no ligand had map values'
 
 # ------------------------------------------------------------------------------
 

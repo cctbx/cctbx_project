@@ -874,6 +874,24 @@ class xfel_db_application(db_application):
                                                                                   (Task, 'task', False),
                                                                                   (Dataset, 'dataset', False)], where = where)
 
+  def update_job_statuses(self, job_status_pairs):
+    """Persist new statuses for several jobs in a single UPDATE and sync the
+    in-memory Job objects. job_status_pairs is a list of (Job, new_status).
+    Avoids one committed UPDATE round-trip per changed job."""
+    job_status_pairs = [(job, status) for job, status in job_status_pairs
+                        if job.status != status]
+    if not job_status_pairs:
+      return
+    table_name = job_status_pairs[0][0].table_name
+    cases = " ".join("WHEN %d THEN '%s'" % (job.id, status)
+                     for job, status in job_status_pairs)
+    ids = ",".join("%d" % job.id for job, _ in job_status_pairs)
+    query = "UPDATE `%s` SET status = CASE id %s END WHERE id IN (%s)" % (
+      table_name, cases, ids)
+    self.execute_query(query, commit=True)
+    for job, status in job_status_pairs:
+      job._db_dict['status'] = status
+
   def delete_job(self, job = None, job_id = None):
     assert [job, job_id].count(None) == 1
     if job_id is None:

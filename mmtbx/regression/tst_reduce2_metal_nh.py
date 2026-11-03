@@ -1,0 +1,355 @@
+"""reduce2: no H on a backbone amide N (with a preceding residue) or a
+thymine/uracil N3 bound to a metal (A5). Alkali and alkaline-earth metals do
+not count; other N-H next to a metal are kept and listed; His ring N are left
+to the Optimizer. Same machinery as thiols (tst_reduce2_metal_thiol.py):
+window, symmetry, occupancy coverage, supplied H kept.
+"""
+from __future__ import absolute_import, division, print_function
+import os
+import iotbx.pdb
+from six.moves import cStringIO as StringIO
+from iotbx.cli_parser import run_program
+from mmtbx.programs import reduce2
+from mmtbx.hydrogens.reduce_hydrogen import residue_is_amino_acid
+from mmtbx.monomer_library import server
+
+# 1xmk: the ATCUN-type Ni site (Gly 288 chain start, Ser 289 and His 290
+# amide N, His 290 ND1)
+pdb_1xmk = """\
+CRYST1   35.557   43.526   45.471  90.00  90.00  90.00 P 21 21 21
+ATOM      1  N   GLY A 288      12.334  23.080  30.892  1.00 20.00           N
+ATOM      2  CA  GLY A 288      11.259  22.629  29.968  1.00 20.00           C
+ATOM      3  C   GLY A 288      11.734  21.310  29.346  1.00 20.00           C
+ATOM      4  O   GLY A 288      11.046  20.536  28.686  1.00 20.00           O
+ATOM      5  N   SER A 289      12.992  21.082  29.673  1.00 20.00           N
+ATOM      6  CA  SER A 289      13.766  20.002  29.117  1.00 20.00           C
+ATOM      7  C   SER A 289      14.970  19.728  30.022  1.00 20.00           C
+ATOM      8  O   SER A 289      15.660  18.700  29.826  1.00 20.00           O
+ATOM      9  CB  SER A 289      14.288  20.329  27.695  1.00 20.00           C
+ATOM     10  OG  SER A 289      14.983  21.589  27.736  1.00 20.00           O
+ATOM     11  N   HIS A 290      15.185  20.681  30.963  1.00 20.00           N
+ATOM     12  CA  HIS A 290      16.475  20.629  31.642  1.00 20.00           C
+ATOM     13  C   HIS A 290      16.332  19.771  32.904  1.00 20.00           C
+ATOM     14  O   HIS A 290      16.691  20.326  33.953  1.00 20.00           O
+ATOM     15  CB  HIS A 290      17.030  22.019  31.962  1.00 20.00           C
+ATOM     16  CG  HIS A 290      16.054  22.940  32.675  1.00 20.00           C
+ATOM     17  ND1 HIS A 290      14.740  23.013  32.337  1.00 20.00           N
+ATOM     18  CD2 HIS A 290      16.315  23.854  33.689  1.00 20.00           C
+ATOM     19  CE1 HIS A 290      14.147  23.928  33.126  1.00 20.00           C
+ATOM     20  NE2 HIS A 290      15.081  24.445  33.946  1.00 20.00           N
+TER
+HETATM   21 NI    NI A 398      13.849  21.950  30.990  1.00 20.00          NI
+END
+"""
+
+# the same with supplied amide H on Ser 289 and His 290 (0.86 A, in plane)
+pdb_1xmk_h = pdb_1xmk.replace(
+  "ATOM     11  N   HIS A 290", "ATOM     30  H   SER A 289      13.367  21.603"
+  "  30.245  1.00 20.00           H\nATOM     11  N   HIS A 290").replace(
+  "TER\n", "ATOM     31  H   HIS A 290      14.596  21.280  31.148  1.00 20.00"
+  "           H\nTER\n")
+
+# 5gsk: thymine N3 on Hg (occupancy set to 1.00); the Hg of DT 3 is a
+# symmetry mate (y,x,-z)
+pdb_5gsk = """\
+CRYST1   40.318   40.318   24.980  90.00  90.00  90.00 P 43 21 2
+ATOM      1  P    DT A   3      10.011  19.045   4.108  1.00 20.00           P
+ATOM      2  OP1  DT A   3      10.235  19.681   5.425  1.00 20.00           O
+ATOM      3  OP2  DT A   3      10.906  17.959   3.643  1.00 20.00           O
+ATOM      4  O5'  DT A   3       8.532  18.470   4.070  1.00 20.00           O
+ATOM      5  C5'  DT A   3       7.452  19.242   4.612  1.00 20.00           C
+ATOM      6  C4'  DT A   3       6.153  18.502   4.416  1.00 20.00           C
+ATOM      7  O4'  DT A   3       5.899  18.337   3.006  1.00 20.00           O
+ATOM      8  C3'  DT A   3       6.130  17.086   4.976  1.00 20.00           C
+ATOM      9  O3'  DT A   3       5.798  17.096   6.359  1.00 20.00           O
+ATOM     10  C2'  DT A   3       5.039  16.439   4.154  1.00 20.00           C
+ATOM     11  C1'  DT A   3       5.228  17.096   2.794  1.00 20.00           C
+ATOM     12  N1   DT A   3       6.037  16.289   1.874  1.00 20.00           N
+ATOM     13  C2   DT A   3       5.382  15.302   1.178  1.00 20.00           C
+ATOM     14  O2   DT A   3       4.185  15.095   1.285  1.00 20.00           O
+ATOM     15  N3   DT A   3       6.183  14.567   0.341  1.00 20.00           N
+ATOM     16  C4   DT A   3       7.540  14.721   0.135  1.00 20.00           C
+ATOM     17  O4   DT A   3       8.121  13.998  -0.668  1.00 20.00           O
+ATOM     18  C5   DT A   3       8.169  15.755   0.922  1.00 20.00           C
+ATOM     19  C7   DT A   3       9.642  15.978   0.784  1.00 20.00           C
+ATOM     20  C6   DT A   3       7.398  16.472   1.749  1.00 20.00           C
+ATOM     21  P    DT A   6       6.997   3.938   7.325  1.00 20.00           P
+ATOM     22  OP1  DT A   6       6.310   2.987   8.233  1.00 20.00           O
+ATOM     23  OP2  DT A   6       8.123   4.774   7.822  1.00 20.00           O
+ATOM     24  O5'  DT A   6       7.536   3.150   6.055  1.00 20.00           O
+ATOM     25  C5'  DT A   6       6.736   2.142   5.437  1.00 20.00           C
+ATOM     26  C4'  DT A   6       7.417   1.644   4.186  1.00 20.00           C
+ATOM     27  O4'  DT A   6       7.577   2.730   3.251  1.00 20.00           O
+ATOM     28  C3'  DT A   6       8.829   1.104   4.367  1.00 20.00           C
+ATOM     29  O3'  DT A   6       8.835  -0.259   4.763  1.00 20.00           O
+ATOM     30  C2'  DT A   6       9.378   1.210   2.965  1.00 20.00           C
+ATOM     31  C1'  DT A   6       8.766   2.516   2.499  1.00 20.00           C
+ATOM     32  N1   DT A   6       9.650   3.669   2.695  1.00 20.00           N
+ATOM     33  C2   DT A   6      10.612   3.857   1.735  1.00 20.00           C
+ATOM     34  O2   DT A   6      10.749   3.117   0.774  1.00 20.00           O
+ATOM     35  N3   DT A   6      11.407   4.956   1.931  1.00 20.00           N
+ATOM     36  C4   DT A   6      11.343   5.859   2.972  1.00 20.00           C
+ATOM     37  O4   DT A   6      12.114   6.813   3.000  1.00 20.00           O
+ATOM     38  C5   DT A   6      10.328   5.588   3.961  1.00 20.00           C
+ATOM     39  C7   DT A   6      10.197   6.503   5.136  1.00 20.00           C
+ATOM     40  C6   DT A   6       9.544   4.516   3.778  1.00 20.00           C
+TER
+HETATM   41 HG    HG A 101      12.924   5.399   0.656  1.00 20.00          HG
+END
+"""
+
+# the 1xmk excerpt with the Gly 288 C (and O) in altloc A only, a shared
+# Ser 289 N, and the rest of Ser 289 in A and B: H/B has no preceding C in its
+# conformer
+pdb_1xmk_altloc = """\
+CRYST1   35.557   43.526   45.471  90.00  90.00  90.00 P 21 21 21
+ATOM      1  N   GLY A 288      12.334  23.080  30.892  1.00 20.00           N
+ATOM      2  CA  GLY A 288      11.259  22.629  29.968  1.00 20.00           C
+ATOM      3  C  AGLY A 288      11.734  21.310  29.346  0.50 20.00           C
+ATOM      4  O  AGLY A 288      11.046  20.536  28.686  0.50 20.00           O
+ATOM      5  N   SER A 289      12.992  21.082  29.673  1.00 20.00           N
+ATOM      6  CA ASER A 289      13.766  20.002  29.117  0.50 20.00           C
+ATOM      7  C  ASER A 289      14.970  19.728  30.022  0.50 20.00           C
+ATOM      8  O  ASER A 289      15.660  18.700  29.826  0.50 20.00           O
+ATOM      9  CB ASER A 289      14.288  20.329  27.695  0.50 20.00           C
+ATOM     10  OG ASER A 289      14.983  21.589  27.736  0.50 20.00           O
+ATOM     11  CA BSER A 289      13.766  20.002  29.117  0.50 20.00           C
+ATOM     12  C  BSER A 289      14.970  19.728  30.022  0.50 20.00           C
+ATOM     13  O  BSER A 289      15.660  18.700  29.826  0.50 20.00           O
+ATOM     14  CB BSER A 289      14.388  20.129  27.695  0.50 20.00           C
+ATOM     15  OG BSER A 289      13.583  21.089  27.036  0.50 20.00           O
+ATOM     16  N   HIS A 290      15.185  20.681  30.963  1.00 20.00           N
+ATOM     17  CA  HIS A 290      16.475  20.629  31.642  1.00 20.00           C
+ATOM     18  C   HIS A 290      16.332  19.771  32.904  1.00 20.00           C
+ATOM     19  O   HIS A 290      16.691  20.326  33.953  1.00 20.00           O
+ATOM     20  CB  HIS A 290      17.030  22.019  31.962  1.00 20.00           C
+ATOM     21  CG  HIS A 290      16.054  22.940  32.675  1.00 20.00           C
+ATOM     22  ND1 HIS A 290      14.740  23.013  32.337  1.00 20.00           N
+ATOM     23  CD2 HIS A 290      16.315  23.854  33.689  1.00 20.00           C
+ATOM     24  CE1 HIS A 290      14.147  23.928  33.126  1.00 20.00           C
+ATOM     25  NE2 HIS A 290      15.081  24.445  33.946  1.00 20.00           N
+TER
+HETATM   26 NI    NI A 398      13.849  21.950  30.990  1.00 20.00          NI
+END
+"""
+
+# the same with the Gly 288 C shared and no O atoms at all: the peptide bond
+# needs no observed carbonyl O
+pdb_1xmk_altloc_no_o = "".join(l + "\n" for l in pdb_1xmk_altloc.splitlines()
+  if not (l.startswith("ATOM") and l[76:78].strip() == "O")).replace(
+  "ATOM      3  C  AGLY A 288      11.734  21.310  29.346  0.50",
+  "ATOM      3  C   GLY A 288      11.734  21.310  29.346  1.00")
+
+# a C-terminal amide cap: ligand NH2 (not an amino acid), its N bonded to the
+# C of Gly 2, a fully occupied Ni 1.82 A from it
+pdb_nh2_cap = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  N   ALA A   1       5.000   5.000   5.000  1.00 20.00           N
+ATOM      2  CA  ALA A   1       6.458   5.000   5.000  1.00 20.00           C
+ATOM      3  C   ALA A   1       7.009   6.420   5.000  1.00 20.00           C
+ATOM      4  O   ALA A   1       6.252   7.390   5.000  1.00 20.00           O
+ATOM      5  CB  ALA A   1       6.986   4.235   6.210  1.00 20.00           C
+ATOM      6  N   GLY A   2       8.330   6.540   5.000  1.00 20.00           N
+ATOM      7  CA  GLY A   2       8.960   7.850   5.000  1.00 20.00           C
+ATOM      8  C   GLY A   2      10.470   7.740   5.000  1.00 20.00           C
+ATOM      9  O   GLY A   2      11.050   6.650   5.000  1.00 20.00           O
+HETATM   10  N   NH2 A   3      11.130   8.890   5.000  1.00 20.00           N
+HETATM   11 NI    NI A 101      10.580  10.620   5.000  1.00 20.00          NI
+END
+"""
+
+# Trp (from 1r27) with a Zn 2.10 A from NE1 along the N-H direction
+pdb_trp = """\
+ATOM      1  N   TRP A   1       3.153 138.508 109.939  1.00 20.00           N
+ATOM      2  CA  TRP A   1       3.837 138.040 108.735  1.00 20.00           C
+ATOM      3  C   TRP A   1       3.699 136.515 108.549  1.00 20.00           C
+ATOM      4  O   TRP A   1       3.729 136.015 107.423  1.00 20.00           O
+ATOM      5  CB  TRP A   1       5.325 138.409 108.784  1.00 20.00           C
+ATOM      6  CG  TRP A   1       6.132 137.483 109.640  1.00 20.00           C
+ATOM      7  CD1 TRP A   1       6.330 137.566 110.993  1.00 20.00           C
+ATOM      8  CD2 TRP A   1       6.773 136.276 109.213  1.00 20.00           C
+ATOM      9  NE1 TRP A   1       7.052 136.479 111.432  1.00 20.00           N
+ATOM     10  CE2 TRP A   1       7.337 135.671 110.362  1.00 20.00           C
+ATOM     11  CE3 TRP A   1       6.923 135.641 107.969  1.00 20.00           C
+ATOM     12  CZ2 TRP A   1       8.040 134.462 110.304  1.00 20.00           C
+ATOM     13  CZ3 TRP A   1       7.622 134.437 107.914  1.00 20.00           C
+ATOM     14  CH2 TRP A   1       8.172 133.861 109.076  1.00 20.00           C
+TER
+HETATM   15 ZN    ZN B 101       7.624 136.117 113.420  1.00 20.00          ZN
+END
+"""
+
+NOT_PLACED = ('N-H not placed: backbone amide N or thymine/uracil N3 bound to '
+  'a metal, taken as deprotonated')
+UNRESOLVED = 'N-H placed at metal sites with unresolved protonation'
+SUPPLIED = 'Supplied N-H at metal sites'
+REPORTED = 'N-H next to a metal, not changed'
+
+def run(prefix, pdb_str, args=()):
+  '''reduce2 on pdb_str. :return: (output hierarchy, description, log).'''
+  fn, out, txt = prefix + '_in.pdb', prefix + '_out.pdb', prefix + '.txt'
+  with open(fn, 'w') as f:
+    f.write(pdb_str)
+  for n in (out, txt):
+    if os.path.exists(n): os.remove(n)
+  log = StringIO()
+  run_program(program_class=reduce2.Program, logger=log, args=[fn,
+    'output.filename=' + out, 'output.description_file_name=' + txt]
+    + list(args))
+  with open(txt) as f:
+    description = f.read()
+  return iotbx.pdb.input(out).construct_hierarchy(), description, log.getvalue()
+
+def h_on(hierarchy, resseq, name):
+  '''Names of the H/D within 1.2 A of atom name in residue resseq.'''
+  atoms = list(hierarchy.atoms())
+  parent = [a for a in atoms if a.parent().parent().resseq_as_int() == resseq
+            and a.name.strip() == name]
+  assert len(parent) == 1, (resseq, name)
+  return sorted(a.name.strip() for a in atoms
+    if a.element.strip() in ('H', 'D') and a.distance(parent[0]) < 1.2)
+
+def section(text, title):
+  '''The lines of a report section (after its title, up to a line not
+  indented or the Optimizer's timing lines, which follow it in the
+  description).'''
+  lines = text.splitlines()
+  assert title in lines, (title, text)
+  result = []
+  for l in lines[lines.index(title) + 1:]:
+    if not l.startswith('  ') or l.strip().startswith('Time to'): break
+    result.append(l.strip())
+  return result
+
+def test_1xmk():
+  h, description, log = run('tst_reduce2_metal_nh_1xmk', pdb_1xmk)
+  assert h_on(h, 289, 'N') == [] and h_on(h, 290, 'N') == []
+  # metal-bound chain start (metal_bound_amines_as_nh2, on by default): NH2,
+  # listed there, no longer in the "not changed" list
+  assert h_on(h, 288, 'N') == ['H2', 'H3']
+  assert h_on(h, 290, 'ND1') == []
+  for text in (description, log):
+    assert section(text, NOT_PLACED) == [
+      'H   SER A 289  (N   SER A 289 - NI    NI A 398 1.80 A (geometric))',
+      'H   HIS A 290  (N   HIS A 290 - NI    NI A 398 1.84 A (geometric))'], text
+    assert ('  N GLY A 288: metal-bound chain start, placed as NH2 '
+      '(n_terminal_charge=residue_one would place 1 H, wrong for a terminus '
+      'and for a chain break)') in text.splitlines(), text
+    assert REPORTED not in text, text
+
+def test_thymine_hg():
+  h, description, log = run('tst_reduce2_metal_nh_5gsk', pdb_5gsk)
+  assert h_on(h, 3, 'N3') == [] and h_on(h, 6, 'N3') == []
+  lines = section(description, NOT_PLACED)
+  assert len(lines) == 2, lines
+  assert lines[0].startswith('H3   DT A   3') and 'sym y,x,-z' in lines[0], lines
+  assert lines[1].startswith('H3   DT A   6') and 'sym' not in lines[1], lines
+
+def test_alkaline_earth():
+  for metal in ('MG', 'CA'):
+    pdb = pdb_1xmk.replace('NI    NI A 398', '%-5s %2s A 398' % (metal, metal)
+      ).replace('          NI\n', '          %2s\n' % metal)
+    h, description, log = run('tst_reduce2_metal_nh_%s' % metal.lower(), pdb)
+    assert h_on(h, 289, 'N') == ['H'] and h_on(h, 290, 'N') == ['H'], metal
+    assert 'N-H' not in description, description
+
+def test_trp_reported():
+  h, description, log = run('tst_reduce2_metal_nh_trp', pdb_trp)
+  assert h_on(h, 1, 'NE1') == ['HE1']
+  assert NOT_PLACED not in description
+  assert section(description, REPORTED) == [
+    'NE1 TRP A   1 (HE1)  (NE1 TRP A   1 - ZN    ZN B 101 2.10 A (geometric))'
+    ], description
+
+def test_supplied_kept():
+  for args in (['keep_existing_H=True'], ['approach=optimize']):
+    h, description, log = run('tst_reduce2_metal_nh_supplied', pdb_1xmk_h,
+      args)
+    assert h_on(h, 289, 'N') == ['H'] and h_on(h, 290, 'N') == ['H'], args
+    lines = description.splitlines()
+    title = [l for l in lines if l.startswith(SUPPLIED)]
+    assert title == [SUPPLIED + ': kept as supplied; backbone amide N and '
+      'thymine/uracil N3 bound to metals are usually deprotonated'], lines
+    entries = section(description, title[0])
+    assert entries[0].startswith('H   SER A 289  (N   SER A 289 - NI'), entries
+    assert entries[1].startswith('H   HIS A 290  (N   HIS A 290 - NI'), entries
+    assert NOT_PLACED not in description
+
+def test_partial_metal():
+  pdb = pdb_1xmk.replace('NI A 398      13.849  21.950  30.990  1.00',
+                         'NI A 398      13.849  21.950  30.990  0.50')
+  h, description, log = run('tst_reduce2_metal_nh_partial', pdb)
+  assert h_on(h, 289, 'N') == ['H'] and h_on(h, 290, 'N') == ['H']
+  lines = section(description, UNRESOLVED)
+  assert len(lines) == 2, lines
+  assert lines[0].startswith('H   SER A 289: N occupancy 1.00 exceeds '
+    'coordinating NI occupancy 0.50.'), lines
+  assert NOT_PLACED not in description
+
+def test_ligand_n_kept():
+  # an N bonded to another residue's C is an amide only when both residues
+  # are amino acids
+  h, description, log = run('tst_reduce2_metal_nh_cap', pdb_nh2_cap)
+  assert h_on(h, 3, 'N') == ['HN1', 'HN2']
+  assert NOT_PLACED not in description
+  assert section(description, REPORTED) == [
+    'N   NH2 A   3 (HN1, HN2)  (N   NH2 A   3 - NI    NI A 101 1.82 A '
+    '(geometric))'], description
+
+def test_conformer_without_peptide_c():
+  # Ser 289 H/A: Gly 288 C(A) and CA(A), an amide; H/B: no C of its
+  # conformer bonded to N, kept and reported
+  h, description, log = run('tst_reduce2_metal_nh_altloc', pdb_1xmk_altloc)
+  n289 = [a for a in h.atoms() if a.parent().parent().resseq_as_int() == 289
+          and a.name.strip() == 'N'][0]
+  hs = [(a.name.strip(), a.parent().altloc) for a in h.atoms()
+        if a.element.strip() == 'H' and a.distance(n289) < 1.2]
+  assert hs == [('H', 'B')], hs
+  assert section(description, NOT_PLACED) == [
+    'H  ASER A 289  (N   SER A 289 - NI    NI A 398 1.80 A (geometric))',
+    'H   HIS A 290  (N   HIS A 290 - NI    NI A 398 1.84 A (geometric))'
+    ], description
+  assert 'N   SER A 289 (H altloc B)  (N   SER A 289 - NI    NI A 398 1.80 A '\
+    '(geometric))' in section(description, REPORTED), description
+
+def test_amino_acid_classification():
+  # outside the residue-name classes: the dictionary's is_peptide()
+  mon_lib_srv = server.server()
+  for resname, expected in (('9FZ', True), ('9G2', True), ('NH2', False)):
+    assert residue_is_amino_acid(resname, mon_lib_srv) == expected, resname
+
+def test_peptide_without_o():
+  h, description, log = run('tst_reduce2_metal_nh_no_o',
+    pdb_1xmk_altloc_no_o)
+  assert not [a for a in h.atoms() if a.element.strip() == 'O']
+  n289 = [a for a in h.atoms() if a.parent().parent().resseq_as_int() == 289
+          and a.name.strip() == 'N'][0]
+  assert not [a for a in h.atoms()
+              if a.element.strip() == 'H' and a.distance(n289) < 1.2]
+  lines = section(description, NOT_PLACED)
+  assert lines[:2] == [
+    'H  ASER A 289  (N   SER A 289 - NI    NI A 398 1.80 A (geometric))',
+    'H  BSER A 289  (N   SER A 289 - NI    NI A 398 1.80 A (geometric))'
+    ], description
+
+def test_rerun_stable():
+  run('tst_reduce2_metal_nh_rerun0', pdb_1xmk)
+  with open('tst_reduce2_metal_nh_rerun0_out.pdb') as f:
+    first = f.read()
+  for args in ([], ['approach=optimize']):
+    h, description, log = run('tst_reduce2_metal_nh_rerun1', first, args)
+    assert h_on(h, 289, 'N') == [] and h_on(h, 290, 'N') == [], args
+
+if __name__ == '__main__':
+  test_1xmk()
+  test_thymine_hg()
+  test_alkaline_earth()
+  test_trp_reported()
+  test_supplied_kept()
+  test_partial_metal()
+  test_ligand_n_kept()
+  test_conformer_without_peptide_c()
+  test_amino_acid_classification()
+  test_peptide_without_o()
+  test_rerun_stable()
+  print('OK')

@@ -238,7 +238,7 @@ def load_yaml_file(filepath):
         tuple: (data, None) on success, (None, error_message) on failure
     """
     try:
-        with open(filepath, 'r') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             content = f.read()
 
         # Try to parse

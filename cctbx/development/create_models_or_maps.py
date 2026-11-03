@@ -528,7 +528,6 @@ def get_real_space_noise_map(map_data=None,
   random_values.reshape(acc)  # map with random values rms 1 mean zero
 
   # Get map as fourier coefficients
-  from cctbx import miller
   randomized_map_coeffs=map_coeffs.structure_factors_from_map(random_values)
 
   return scale_map_coeffs(

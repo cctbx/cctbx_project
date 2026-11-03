@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
+import iotbx.cif
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.hydrogens.tst_add_hydrogen_1 import compare_models
 from libtbx.utils import null_out
@@ -17,6 +18,13 @@ def run():
   test_005()
   test_006()
   test_007()
+  test_008()
+  test_009()
+  test_010()
+  test_011()
+  test_012()
+  test_013()
+  test_014()
 
 # ------------------------------------------------------------------------------
 
@@ -96,8 +104,9 @@ def test_001():
 
 def test_002():
   '''
-    SIN forms covalent link to GLU 1. Make sure the default NH3  at the
-    N-terminal becomes a single peptide H in this particular scenario.
+    SIN forms covalent link to GLU 1. The linked N is a secondary amide,
+    not a free N-terminus: no NH3 is placed and GLU 1 keeps its peptide H,
+    named 'H', at the amide N-H distance (0.86; it was 0.89 from NH3).
   '''
   compare_models(pdb_str = pdb_str_002)
 
@@ -147,6 +156,183 @@ def test_007():
     blank). Make sure that H atoms are added at each alt conf.
   '''
   compare_models(pdb_str = pdb_str_007)
+
+# ------------------------------------------------------------------------------
+
+def nh3_residues(model):
+  '''
+    resseq of residues that have N-terminal H1, H2 and H3
+  '''
+  result = []
+  for rg in model.get_hierarchy().residue_groups():
+    names = [a.name.strip() for a in rg.atoms()]
+    if 'H1' in names and 'H2' in names and 'H3' in names:
+      result.append(rg.resseq.strip())
+  return result
+
+# ------------------------------------------------------------------------------
+
+def test_008():
+  '''
+    n_terminal_charge = all_chain_starts: NH3 at each residue that starts
+    a peptide fragment (first in chain or after a chain break), and not at
+    peptide-bonded residues. first_in_chain: NH3 at first residue only.
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_008.split("\n"), source_info=None)
+  model_initial = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  results = {}
+  for n_terminal_charge in ['first_in_chain', 'all_chain_starts']:
+    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+      model             = model_initial.deep_copy(),
+      n_terminal_charge = n_terminal_charge)
+    reduce_add_h_obj.run()
+    results[n_terminal_charge] = reduce_add_h_obj.get_model()
+  assert nh3_residues(results['first_in_chain']) == ['143']
+  model = results['all_chain_starts']
+  assert nh3_residues(model) == ['143', '147', '150', '232']
+  # peptide-bonded residues keep the amide H
+  for rg in model.get_hierarchy().residue_groups():
+    names = [a.name.strip() for a in rg.atoms()]
+    if rg.resseq.strip() in ['144', '233']:
+      assert 'H' in names, rg.resseq
+      assert 'H1' not in names, rg.resseq
+
+# ------------------------------------------------------------------------------
+
+def test_009():
+  '''
+    n_terminal_charge = all_chain_starts: N covalently linked to a ligand
+    (GLU 1 N - SIN) is not a terminus, no NH3 is placed.
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_002.split("\n"), source_info=None)
+  model_initial = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  model_initial = model_initial.select(~model_initial.get_hd_selection())
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+    model             = model_initial,
+    n_terminal_charge = 'all_chain_starts')
+  reduce_add_h_obj.run()
+  assert nh3_residues(reduce_add_h_obj.get_model()) == []
+
+# ------------------------------------------------------------------------------
+
+def test_010():
+  '''
+    place_n_terminal_propeller with n_terminal_charge = all_chain_starts:
+    GLU 1 linked to SIN (pdb_str_002) and copies of pdb_str_008. N linked to
+    another residue gets no NH3. With 1 copy (5 candidates) atoms near N are
+    found by scanning all atoms, with 3 copies (13 candidates) by spatial
+    lookup. Called directly: in run(), H at linked N is removed later anyway.
+  '''
+  from cctbx import crystal
+  for n_copies in [1, 3]:
+    ph = iotbx.pdb.input(lines=pdb_str_002.split("\n"),
+      source_info=None).construct_hierarchy()
+    ph = ph.select(~ph.atom_selection_cache().selection('element H'),
+      copy_atoms=True)
+    ph_frag = iotbx.pdb.input(lines=pdb_str_008.split("\n"),
+      source_info=None).construct_hierarchy()
+    for k in range(n_copies):
+      chain = ph_frag.only_chain().detached_copy()
+      chain.id = 'BCD'[k]
+      chain.atoms().set_xyz(chain.atoms().extract_xyz() + (50.*(k+1), 0, 0))
+      ph.only_model().append_chain(chain)
+    model = mmtbx.model.manager(
+      model_input      = None,
+      pdb_hierarchy    = ph.deep_copy(),
+      crystal_symmetry = crystal.symmetry((250,100,100,90,90,90), 'P1'),
+      log              = null_out())
+    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+      model             = model,
+      n_terminal_charge = 'all_chain_starts')
+    reduce_add_h_obj.place_n_terminal_propeller(pdb_hierarchy = ph)
+    result = []
+    for rg in ph.residue_groups():
+      names = [a.name.strip() for a in rg.atoms()]
+      if 'H1' in names and 'H2' in names and 'H3' in names:
+        result.append(rg.resseq.strip())
+    assert result == ['143', '147', '150', '232'] * n_copies, result
+
+# ------------------------------------------------------------------------------
+
+def place_residue_one(pdb_str, cif_str=None):
+  '''
+  Place H, return {name: distance to N} for the H of residue 1
+  '''
+  restraint_objects = None
+  if cif_str is not None:
+    restraint_objects = [('user.cif',
+      iotbx.cif.reader(input_string=cif_str).model())]
+  model = mmtbx.model.manager(
+    model_input       = iotbx.pdb.input(lines=pdb_str.split("\n"),
+                                        source_info=None),
+    restraint_objects = restraint_objects,
+    stop_for_unknowns = False,
+    log               = null_out())
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  rg = list(reduce_add_h_obj.get_model().get_hierarchy().residue_groups())[0]
+  n = rg.atom_groups()[0].get_atom('N')
+  return dict((a.name.strip(), a.distance(n)) for a in rg.atoms()
+              if a.element.strip() == 'H')
+
+# ------------------------------------------------------------------------------
+
+def test_011():
+  '''
+    Residue 1 known only from a user CIF (Z9Q, not in CCD): NH3 placed
+  '''
+  h = place_residue_one(pdb_str_011.replace('RES', 'Z9Q') + ser_str_011,
+    cif_str_011)
+  on_n = sorted(k for k, d in h.items() if d < 1.2)
+  assert on_n == ['H1', 'H2', 'H3'], on_n
+
+# ------------------------------------------------------------------------------
+
+def test_012():
+  '''
+    Residue 1 is ALA redefined by a user CIF as N-methyl alanine: N has two
+    heavy neighbours (CA, CM), not one as in the CCD. One H at N, no NH3.
+  '''
+  h = place_residue_one(
+    pdb_str_011.replace('RES', 'ALA') + cm_str_012 + ser_str_011, cif_str_012)
+  on_n = sorted(k for k, d in h.items() if d < 1.2)
+  assert on_n == ['H'], on_n
+  assert {'HM1', 'HM2', 'HM3'}.issubset(h), sorted(h)
+
+# ------------------------------------------------------------------------------
+
+def test_013():
+  '''
+    Residue 1 in neither a CIF nor the CCD: no crash, no NH3
+  '''
+  h = place_residue_one(pdb_str_011.replace('RES', 'Z9Q') + ser_str_011)
+  assert not h, sorted(h)
+
+# ------------------------------------------------------------------------------
+
+def test_014():
+  '''
+    Segid on every atom: N-terminal H inherit it. Residue 1 (residue_one),
+    and chain starts after breaks (all_chain_starts): a blank segid in an
+    inner residue flagged as terminus stops processing ("segid is not unique")
+  '''
+  for pdb_str, n_terminal_charge, nh3 in [
+      (pdb_str_011.replace('RES', 'ALA') + ser_str_011, 'residue_one', ['1']),
+      (pdb_str_008, 'all_chain_starts', ['143', '147', '150', '232'])]:
+    lines = []
+    for l in pdb_str.splitlines():
+      if l.startswith('ATOM'): l = l[:72] + 'UNK ' + l[76:]
+      lines.append(l)
+    model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=lines, source_info=None),
+      log         = null_out())
+    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+      model             = model,
+      n_terminal_charge = n_terminal_charge)
+    reduce_add_h_obj.run()
+    model = reduce_add_h_obj.get_model()
+    assert nh3_residues(model) == nh3, nh3_residues(model)
+    assert set(model.get_hierarchy().atoms().extract_segid()) == {'UNK '}
 
 # ------------------------------------------------------------------------------
 
@@ -208,8 +394,8 @@ ATOM     35  H3  GLU B   1      14.162  51.791  58.882  1.00 14.47           H
 ATOM     36  HA  GLU B   1      13.870  54.399  58.759  1.00 15.28           H
 ATOM     37  HB2 GLU B   1      15.529  54.326  57.204  1.00 18.89           H
 ATOM     38  HB3 GLU B   1      14.790  53.139  56.447  1.00 18.89           H
-ATOM     39  HG2 GLU B   1      13.835  55.760  56.590  1.00 27.57           H
-ATOM     40  HG3 GLU B   1      13.119  54.573  55.814  1.00 27.57           H
+ATOM     39  HG2 GLU B   1      13.119  54.573  55.814  1.00 27.57           H
+ATOM     40  HG3 GLU B   1      13.835  55.760  56.590  1.00 27.57           H
 TER
 ATOM     41  N   PHE C  -3       6.984  40.342  58.778  1.00  8.80           N
 ATOM     42  CA  PHE C  -3       7.384  40.247  60.166  1.00  8.32           C
@@ -261,12 +447,12 @@ ATOM      8  OE1 GLU A   1       6.017  24.742   4.259  1.00 -1.00           O
 ANISOU    8  OE1 GLU A   1     3535   3430   1924    346   -221   -295       O
 ATOM      9  OE2 GLU A   1       6.197  23.520   6.058  1.00 -1.00           O
 ANISOU    9  OE2 GLU A   1     3239   3344   1625     40   -119   -371       O
-ATOM     10  H1  GLU A   1       9.897  25.002   1.732  1.00 18.32           H
+ATOM     10  H   GLU A   1       9.904  25.008   1.760  1.00 18.32           H
 ATOM     13  HA  GLU A   1       8.880  25.353   4.068  1.00 16.97           H
 ATOM     14  HB2 GLU A   1       7.679  24.074   2.537  1.00 17.54           H
 ATOM     15  HB3 GLU A   1       8.778  22.927   2.590  1.00 17.54           H
-ATOM     16  HG2 GLU A   1       8.111  22.529   4.848  1.00 19.79           H
-ATOM     17  HG3 GLU A   1       7.010  22.151   3.767  1.00 19.79           H
+ATOM     16  HG2 GLU A   1       7.010  22.151   3.767  1.00 19.79           H
+ATOM     17  HG3 GLU A   1       8.111  22.529   4.848  1.00 19.79           H
 TER
 HETATM   18  C1  SIN A   0      11.143  26.020   2.776  1.00 -1.00           C
 ANISOU   18  C1  SIN A   0     3119   2972   1277    124   -163   -240       C
@@ -282,8 +468,8 @@ HETATM   23  O3  SIN A   0      11.966  30.230   1.941  1.00 -1.00           O
 ANISOU   23  O3  SIN A   0     3949   3621   1603    176    -78    -76       O
 HETATM   24  O4  SIN A   0      10.281  28.844   2.062  1.00 -1.00           O
 ANISOU   24  O4  SIN A   0     3699   3930   2011    285      2   -324       O
-HETATM   25  H21 SIN A   0      11.207  26.621   0.815  1.00 21.62           H
-HETATM   26  H22 SIN A   0      12.541  25.936   1.276  1.00 21.62           H
+HETATM   25  H21 SIN A   0      12.541  25.936   1.276  1.00 21.62           H
+HETATM   26  H22 SIN A   0      11.207  26.621   0.815  1.00 21.62           H
 HETATM   27  H31 SIN A   0      12.954  27.930   2.619  1.00 22.69           H
 HETATM   28  H32 SIN A   0      13.119  28.122   1.092  1.00 22.69           H
 END
@@ -319,8 +505,8 @@ ATOM     21  OD1BASN A  74      15.680   8.391   2.668  0.12  3.08           O
 ATOM     22  ND2BASN A  74      16.411   7.915   0.608  0.12  3.22           N
 ATOM     23  H  BASN A  74      13.365   6.396   3.487  0.12  5.92           H
 ATOM     24  HA BASN A  74      13.309   8.501   2.527  0.12  6.02           H
-ATOM     25  HB2BASN A  74      14.012   7.388   0.279  0.12  5.18           H
-ATOM     26  HB3BASN A  74      14.319   6.256   1.352  0.12  5.18           H
+ATOM     25  HB2BASN A  74      14.319   6.256   1.352  0.12  5.18           H
+ATOM     26  HB3BASN A  74      14.012   7.388   0.279  0.12  5.18           H
 ATOM     27 HD21BASN A  74      16.235   7.488  -0.118  0.12  3.22           H
 TER
 HETATM   29  C1 ANAG C   1      16.113   9.249  -1.424  0.74  8.24           C
@@ -342,11 +528,11 @@ HETATM   44  H2 ANAG C   1      16.401   8.030  -3.090  0.74  7.99           H
 HETATM   45  H3 ANAG C   1      18.456   9.829  -2.519  0.74  8.76           H
 HETATM   46  H4 ANAG C   1      16.631  10.272  -4.424  0.74 10.13           H
 HETATM   47  H5 ANAG C   1      16.602  11.677  -1.949  0.74  8.62           H
-HETATM   48  H61ANAG C   1      15.688  13.047  -3.442  0.74  9.76           H
-HETATM   49  H62ANAG C   1      14.606  12.589  -2.424  0.74  9.76           H
+HETATM   48  H61ANAG C   1      14.606  12.589  -2.424  0.74  9.76           H
+HETATM   49  H62ANAG C   1      15.688  13.047  -3.442  0.74  9.76           H
 HETATM   50  H81ANAG C   1      19.036   6.002  -0.389  0.74  9.89           H
-HETATM   51  H82ANAG C   1      19.216   4.900  -1.515  0.74  9.89           H
-HETATM   52  H83ANAG C   1      18.028   4.781  -0.471  0.74  9.89           H
+HETATM   51  H82ANAG C   1      18.028   4.781  -0.471  0.74  9.89           H
+HETATM   52  H83ANAG C   1      19.216   4.900  -1.515  0.74  9.89           H
 HETATM   53  HN2ANAG C   1      18.352   7.824  -1.219  0.74  8.57           H
 HETATM   55  HO3ANAG C   1      18.959   8.129  -3.895  0.74 10.65           H
 HETATM   57  HO6ANAG C   1      14.872  11.499  -4.815  0.74  8.68           H
@@ -369,11 +555,11 @@ HETATM   73  H2 BNAG C   1      18.012   8.327  -1.237  0.26  8.31           H
 HETATM   74  H3 BNAG C   1      20.062   8.479   0.674  0.26  6.55           H
 HETATM   75  H4 BNAG C   1      19.176  10.456  -1.424  0.26 10.04           H
 HETATM   76  H5 BNAG C   1      19.021  10.704   1.364  0.26  8.70           H
-HETATM   77  H61BNAG C   1      18.525  12.807   0.942  0.26 13.23           H
-HETATM   78  H62BNAG C   1      17.099  12.201   1.065  0.26 13.23           H
+HETATM   77  H61BNAG C   1      17.099  12.201   1.065  0.26 13.23           H
+HETATM   78  H62BNAG C   1      18.525  12.807   0.942  0.26 13.23           H
 HETATM   79  H81BNAG C   1      19.656   4.567  -0.315  0.26 12.42           H
-HETATM   80  H82BNAG C   1      19.915   4.466  -1.875  0.26 12.42           H
-HETATM   81  H83BNAG C   1      18.526   4.000  -1.271  0.26 12.42           H
+HETATM   80  H82BNAG C   1      18.526   4.000  -1.271  0.26 12.42           H
+HETATM   81  H83BNAG C   1      19.915   4.466  -1.875  0.26 12.42           H
 HETATM   82  HN2BNAG C   1      19.380   6.582   0.368  0.26  9.44           H
 HETATM   84  HO3BNAG C   1      20.316   9.121  -2.080  0.26 14.71           H
 HETATM   86  HO6BNAG C   1      18.423  12.288  -1.220  0.26 19.92           H
@@ -399,8 +585,8 @@ HETATM  105  H5 ANAG C   2      17.721  11.946  -7.834  0.74 29.19           H
 HETATM  106  H61ANAG C   2      18.738   9.762  -7.916  0.74 33.79           H
 HETATM  107  H62ANAG C   2      18.910  10.675  -9.163  0.74 33.79           H
 HETATM  108  H81ANAG C   2      17.079  16.294  -2.785  0.74 37.24           H
-HETATM  109  H82ANAG C   2      18.419  16.560  -1.981  0.74 37.24           H
-HETATM  110  H83ANAG C   2      17.375  15.490  -1.451  0.74 37.24           H
+HETATM  109  H82ANAG C   2      17.375  15.490  -1.451  0.74 37.24           H
+HETATM  110  H83ANAG C   2      18.419  16.560  -1.981  0.74 37.24           H
 HETATM  111  HN2ANAG C   2      17.567  15.083  -4.671  0.74 22.31           H
 HETATM  113  HO3ANAG C   2      20.590  14.783  -6.307  0.74 40.55           H
 HETATM  114  HO4ANAG C   2      19.521  14.322  -8.826  0.74 46.76           H
@@ -424,11 +610,11 @@ HETATM  131  H2 BNAG C   2      22.730  12.628  -0.768  0.26 19.56           H
 HETATM  132  H3 BNAG C   2      21.443  14.847  -1.886  0.26 24.38           H
 HETATM  133  H4 BNAG C   2      23.296  13.144  -3.071  0.26 21.94           H
 HETATM  134  H5 BNAG C   2      20.480  13.340  -3.539  0.26 20.16           H
-HETATM  135  H61BNAG C   2      21.284  12.729  -5.495  0.26 23.66           H
-HETATM  136  H62BNAG C   2      20.541  11.503  -4.893  0.26 23.66           H
+HETATM  135  H61BNAG C   2      20.541  11.503  -4.893  0.26 23.66           H
+HETATM  136  H62BNAG C   2      21.284  12.729  -5.495  0.26 23.66           H
 HETATM  137  H81BNAG C   2      20.980  14.517   2.641  0.26 36.29           H
-HETATM  138  H82BNAG C   2      22.413  15.051   3.060  0.26 36.29           H
-HETATM  139  H83BNAG C   2      21.953  13.595   3.488  0.26 36.29           H
+HETATM  138  H82BNAG C   2      21.953  13.595   3.488  0.26 36.29           H
+HETATM  139  H83BNAG C   2      22.413  15.051   3.060  0.26 36.29           H
 HETATM  140  HN2BNAG C   2      20.879  14.130   0.606  0.26 26.94           H
 HETATM  142  HO3BNAG C   2      23.951  14.520  -1.236  0.26 27.97           H
 HETATM  143  HO4BNAG C   2      22.798  15.328  -3.776  0.26 26.97           H
@@ -452,8 +638,8 @@ ATOM      7  OD1 ASN B  74      -2.472  38.834  32.203  1.00 18.21           O
 ATOM      8  ND2 ASN B  74      -3.692  38.409  34.028  1.00 16.96           N
 ATOM      9  H   ASN B  74      -2.549  34.876  29.982  1.00  9.05           H
 ATOM     10  HA  ASN B  74      -1.988  36.631  31.085  1.00  9.88           H
-ATOM     11  HB2 ASN B  74      -3.912  36.195  33.082  1.00 12.24           H
-ATOM     12  HB3 ASN B  74      -4.362  36.854  31.708  1.00 12.24           H
+ATOM     11  HB2 ASN B  74      -4.362  36.854  31.708  1.00 12.24           H
+ATOM     12  HB3 ASN B  74      -3.912  36.195  33.082  1.00 12.24           H
 ATOM     13 HD21 ASN B  74      -4.198  37.842  34.432  1.00 16.96           H
 TER
 HETATM   15  C1  NAG D   1      -3.389  39.731  34.716  1.00 15.06           C
@@ -475,11 +661,11 @@ HETATM   30  H2  NAG D   1      -4.545  39.445  36.235  1.00 16.43           H
 HETATM   31  H3  NAG D   1      -4.201  42.160  35.350  1.00 15.29           H
 HETATM   32  H4  NAG D   1      -2.726  41.025  37.553  1.00 15.66           H
 HETATM   33  H5  NAG D   1      -1.456  41.561  35.151  1.00 17.17           H
-HETATM   34  H61 NAG D   1      -0.689  39.788  37.439  1.00 25.12           H
-HETATM   35  H62 NAG D   1      -0.340  41.295  37.596  1.00 25.12           H
+HETATM   34  H61 NAG D   1      -0.340  41.295  37.596  1.00 25.12           H
+HETATM   35  H62 NAG D   1      -0.689  39.788  37.439  1.00 25.12           H
 HETATM   36  H81 NAG D   1      -7.800  40.119  33.386  1.00 20.06           H
-HETATM   37  H82 NAG D   1      -8.722  39.596  34.566  1.00 20.06           H
-HETATM   38  H83 NAG D   1      -8.079  38.566  33.546  1.00 20.06           H
+HETATM   37  H82 NAG D   1      -8.079  38.566  33.546  1.00 20.06           H
+HETATM   38  H83 NAG D   1      -8.722  39.596  34.566  1.00 20.06           H
 HETATM   39  HN2 NAG D   1      -5.852  40.780  34.170  1.00 16.04           H
 HETATM   41  HO3 NAG D   1      -5.213  41.286  37.631  1.00 17.10           H
 HETATM   43  HO6 NAG D   1       0.364  39.894  35.325  1.00 26.15           H
@@ -502,11 +688,11 @@ HETATM   59  H2  NAG D   2      -2.392  45.317  37.434  1.00 26.59           H
 HETATM   60  H3  NAG D   2      -0.902  45.033  39.787  1.00 26.26           H
 HETATM   61  H4  NAG D   2      -3.496  46.020  39.389  1.00 29.92           H
 HETATM   62  H5  NAG D   2      -2.821  43.547  40.644  1.00 30.15           H
-HETATM   63  H61 NAG D   2      -4.662  43.876  41.710  1.00 35.86           H
-HETATM   64  H62 NAG D   2      -5.117  42.974  40.529  1.00 35.86           H
+HETATM   63  H61 NAG D   2      -5.117  42.974  40.529  1.00 35.86           H
+HETATM   64  H62 NAG D   2      -4.662  43.876  41.710  1.00 35.86           H
 HETATM   65  H81 NAG D   2       1.786  44.392  36.098  1.00 33.11           H
-HETATM   66  H82 NAG D   2       1.552  45.570  35.063  1.00 33.11           H
-HETATM   67  H83 NAG D   2       1.163  44.083  34.673  1.00 33.11           H
+HETATM   66  H82 NAG D   2       1.163  44.083  34.673  1.00 33.11           H
+HETATM   67  H83 NAG D   2       1.552  45.570  35.063  1.00 33.11           H
 HETATM   68  HN2 NAG D   2       0.216  44.531  37.802  1.00 26.48           H
 HETATM   70  HO3 NAG D   2      -1.634  47.292  38.756  1.00 28.25           H
 HETATM   71  HO4 NAG D   2      -2.248  46.457  41.343  1.00 32.37           H
@@ -537,8 +723,8 @@ ATOM      8  ND2 ASN A  90      73.886 -17.776 158.730  1.00 -1.00           N
 ANISOU    8  ND2 ASN A  90    21686  27829  21572  -5430     16   2088       N
 ATOM      9  H   ASN A  90      76.270 -20.847 154.911  1.00142.97           H
 ATOM     10  HA  ASN A  90      75.375 -18.865 155.664  1.00148.71           H
-ATOM     11  HB2 ASN A  90      75.921 -19.835 158.244  1.00158.76           H
-ATOM     12  HB3 ASN A  90      74.468 -19.854 157.599  1.00158.76           H
+ATOM     11  HB2 ASN A  90      74.468 -19.854 157.599  1.00158.76           H
+ATOM     12  HB3 ASN A  90      75.921 -19.835 158.244  1.00158.76           H
 ATOM     13 HD21 ASN A  90      73.319 -18.422 158.759  1.00187.09           H
 TER
 HETATM   15  C1  NAG C   1      73.523 -16.504 159.309  1.00103.52           C
@@ -563,8 +749,8 @@ HETATM   33  H5  NAG C   1      73.736 -14.970 161.406  1.00121.57           H
 HETATM   34  H61 NAG C   1      71.867 -15.409 163.130  1.00122.81           H
 HETATM   35  H62 NAG C   1      72.316 -16.858 162.792  1.00122.81           H
 HETATM   36  H81 NAG C   1      73.509 -15.120 154.894  1.00127.15           H
-HETATM   37  H82 NAG C   1      72.095 -14.593 154.409  1.00127.15           H
-HETATM   38  H83 NAG C   1      72.477 -16.121 154.225  1.00127.15           H
+HETATM   37  H82 NAG C   1      72.477 -16.121 154.225  1.00127.15           H
+HETATM   38  H83 NAG C   1      72.095 -14.593 154.409  1.00127.15           H
 HETATM   39  HN2 NAG C   1      73.625 -15.236 157.040  1.00121.51           H
 HETATM   41  HO3 NAG C   1      70.851 -13.074 159.056  1.00116.89           H
 HETATM   43  HO6 NAG C   1      74.400 -16.202 163.325  1.00121.65           H
@@ -587,11 +773,11 @@ HETATM   59  H2  NAG C   2      71.140 -11.238 162.641  1.00149.90           H
 HETATM   60  H3  NAG C   2      69.893 -12.528 164.802  1.00153.90           H
 HETATM   61  H4  NAG C   2      68.684 -10.788 162.984  1.00157.09           H
 HETATM   62  H5  NAG C   2      68.256 -13.586 163.175  1.00152.27           H
-HETATM   63  H61 NAG C   2      66.399 -12.268 162.336  1.00151.75           H
-HETATM   64  H62 NAG C   2      66.770 -13.565 161.563  1.00151.75           H
+HETATM   63  H61 NAG C   2      66.770 -13.565 161.563  1.00151.75           H
+HETATM   64  H62 NAG C   2      66.399 -12.268 162.336  1.00151.75           H
 HETATM   65  H81 NAG C   2      74.432 -12.623 165.009  1.00149.56           H
-HETATM   66  H82 NAG C   2      74.862 -11.097 165.037  1.00149.56           H
-HETATM   67  H83 NAG C   2      75.353 -12.038 163.859  1.00149.56           H
+HETATM   66  H82 NAG C   2      75.353 -12.038 163.859  1.00149.56           H
+HETATM   67  H83 NAG C   2      74.862 -11.097 165.037  1.00149.56           H
 HETATM   68  HN2 NAG C   2      72.354 -12.860 164.480  1.00151.39           H
 HETATM   70  HO3 NAG C   2      70.256  -9.922 164.413  1.00153.21           H
 HETATM   72  HO6 NAG C   2      67.657 -11.163 160.832  1.00151.36           H
@@ -611,8 +797,8 @@ HETATM   85  H2  BMA C   3      65.448 -10.536 163.302  1.00164.51           H
 HETATM   86  H3  BMA C   3      65.260  -8.317 163.550  1.00164.84           H
 HETATM   87  H4  BMA C   3      64.914  -8.536 166.365  1.00165.75           H
 HETATM   88  H5  BMA C   3      67.297  -7.591 165.056  1.00164.34           H
-HETATM   89  H61 BMA C   3      67.191  -8.125 167.800  1.00159.95           H
-HETATM   90  H62 BMA C   3      68.339  -7.396 167.035  1.00159.95           H
+HETATM   89  H61 BMA C   3      68.339  -7.396 167.035  1.00159.95           H
+HETATM   90  H62 BMA C   3      67.191  -8.125 167.800  1.00159.95           H
 HETATM   92  HO2 BMA C   3      65.200 -10.810 165.932  1.00162.15           H
 HETATM   93  HO3 BMA C   3      63.182  -9.145 164.973  1.00162.71           H
 HETATM   94  HO4 BMA C   3      65.175  -6.362 166.344  1.00164.98           H
@@ -665,8 +851,8 @@ HETATM   37  H2 ACNZ A 301      19.822  34.147  80.392  0.42 33.98           H
 HETATM   38  H3 ACNZ A 301      21.672  37.827  81.328  0.42 35.82           H
 HETATM   39  HA1ACNZ A 301      20.347  31.361  84.585  0.42 31.32           H
 HETATM   40  HA2ACNZ A 301      21.958  35.873  80.218  0.42 35.21           H
-HETATM   41 HA31ACNZ A 301      20.051  39.024  82.627  0.42 36.22           H
-HETATM   42 HA32ACNZ A 301      19.218  39.033  81.316  0.42 36.22           H
+HETATM   41 HA31ACNZ A 301      19.218  39.033  81.316  0.42 36.22           H
+HETATM   42 HA32ACNZ A 301      20.051  39.024  82.627  0.42 36.22           H
 HETATM   43 HB11ACNZ A 301      22.306  32.400  83.541  0.42 31.90           H
 HETATM   44 HB12ACNZ A 301      22.245  31.294  82.446  0.42 31.90           H
 HETATM   45 HB21ACNZ A 301      21.113  36.646  78.181  0.42 36.67           H
@@ -682,8 +868,8 @@ HETATM   54  HG4ACNZ A 301      32.553  35.545  78.793  0.42 39.01           H
 HETATM   55  HG5ACNZ A 301      26.167  33.537  74.975  0.42 39.12           H
 HETATM   56  HZ4ACNZ A 301      30.397  32.932  75.652  0.42 38.64           H
 HETATM   57  HZ5ACNZ A 301      28.195  35.274  78.747  0.42 39.11           H
-HETATM   58 H11NACNZ A 301      22.044  30.742  85.726  0.42 31.34           H
-HETATM   59 H12NACNZ A 301      21.760  29.456  85.192  0.42 31.34           H
+HETATM   58 H11NACNZ A 301      21.760  29.456  85.192  0.42 31.34           H
+HETATM   59 H12NACNZ A 301      22.044  30.742  85.726  0.42 31.34           H
 HETATM   60 H131ACNZ A 301      23.934  35.181  78.457  0.42 38.76           H
 HETATM   61 H132ACNZ A 301      23.403  36.183  77.386  0.42 38.76           H
 HETATM   62  CB1BCNZ A 301      21.628  31.747  83.072  0.58 24.44           C
@@ -726,14 +912,14 @@ HETATM   98  H2 BCNZ A 301      19.824  34.173  80.514  0.58 28.24           H
 HETATM   99  H3 BCNZ A 301      21.718  38.138  80.426  0.58 32.37           H
 HETATM  100  HA1BCNZ A 301      20.186  31.424  84.576  0.58 23.32           H
 HETATM  101  HA2BCNZ A 301      22.025  35.797  80.242  0.58 30.56           H
-HETATM  102 HA31BCNZ A 301      20.474  38.898  82.477  0.58 33.89           H
-HETATM  103 HA32BCNZ A 301      19.406  39.129  81.373  0.58 33.89           H
-HETATM  104 HB11BCNZ A 301      22.242  31.164  82.598  0.58 24.44           H
-HETATM  105 HB12BCNZ A 301      22.170  32.385  83.562  0.58 24.44           H
+HETATM  102 HA31BCNZ A 301      19.406  39.129  81.373  0.58 33.89           H
+HETATM  103 HA32BCNZ A 301      20.474  38.898  82.477  0.58 33.89           H
+HETATM  104 HB11BCNZ A 301      22.170  32.385  83.562  0.58 24.44           H
+HETATM  105 HB12BCNZ A 301      22.242  31.164  82.598  0.58 24.44           H
 HETATM  106 HB21BCNZ A 301      21.231  36.455  78.144  0.58 32.96           H
 HETATM  107 HB22BCNZ A 301      19.988  35.509  78.306  0.58 32.96           H
-HETATM  108 HG11BCNZ A 301      20.506  31.917  81.325  0.58 25.13           H
-HETATM  109 HG12BCNZ A 301      19.915  32.770  82.473  0.58 25.13           H
+HETATM  108 HG11BCNZ A 301      19.915  32.770  82.473  0.58 25.13           H
+HETATM  109 HG12BCNZ A 301      20.506  31.917  81.325  0.58 25.13           H
 HETATM  110  HB4BCNZ A 301      29.436  30.783  78.296  0.58 27.67           H
 HETATM  111  HB5BCNZ A 301      27.207  31.685  74.677  0.58 33.10           H
 HETATM  112  HD4BCNZ A 301      30.844  27.529  76.433  0.58 26.53           H
@@ -743,8 +929,8 @@ HETATM  115  HG4BCNZ A 301      30.954  29.059  78.168  0.58 26.89           H
 HETATM  116  HG5BCNZ A 301      25.686  33.391  74.726  0.58 34.22           H
 HETATM  117  HZ4BCNZ A 301      27.640  29.424  74.968  0.58 27.81           H
 HETATM  118  HZ5BCNZ A 301      27.307  31.657  78.688  0.58 33.11           H
-HETATM  119 H11NBCNZ A 301      21.801  30.869  85.839  0.58 23.71           H
-HETATM  120 H12NBCNZ A 301      21.491  29.552  85.406  0.58 23.71           H
+HETATM  119 H11NBCNZ A 301      21.491  29.552  85.406  0.58 23.71           H
+HETATM  120 H12NBCNZ A 301      21.801  30.869  85.839  0.58 23.71           H
 HETATM  121 H131BCNZ A 301      24.007  34.190  78.713  0.58 36.08           H
 HETATM  122 H132BCNZ A 301      23.663  35.651  78.292  0.58 36.08           H
 END'''
@@ -767,8 +953,8 @@ ATOM     12  HB3AMET A 190       9.055   6.569   7.655  0.64  5.98           H
 ATOM     13  HG2AMET A 190       8.193   7.243   9.535  0.64  8.55           H
 ATOM     14  HG3AMET A 190       7.641   8.313   8.498  0.64  8.55           H
 ATOM     15  HE1AMET A 190       6.408   5.000  10.026  0.64 19.81           H
-ATOM     16  HE2AMET A 190       5.172   5.586  10.834  0.64 19.81           H
-ATOM     17  HE3AMET A 190       6.649   6.028  11.213  0.64 19.81           H
+ATOM     16  HE2AMET A 190       6.649   6.028  11.213  0.64 19.81           H
+ATOM     17  HE3AMET A 190       5.172   5.586  10.834  0.64 19.81           H
 ATOM     18  CA BMET A 190       7.599   6.926   6.172  0.21  4.35           C
 ATOM     19  CB BMET A 190       8.059   6.429   7.549  0.21  3.88           C
 ATOM     20  CG BMET A 190       7.945   7.470   8.646  0.21  3.81           C
@@ -781,8 +967,8 @@ ATOM     26  HB3BMET A 190       8.990   6.163   7.489  0.21  3.88           H
 ATOM     27  HG2BMET A 190       8.403   7.114   9.423  0.21  3.81           H
 ATOM     28  HG3BMET A 190       8.400   8.266   8.329  0.21  3.81           H
 ATOM     29  HE1BMET A 190       5.845   5.778   9.605  0.21  7.00           H
-ATOM     30  HE2BMET A 190       5.000   6.683  10.601  0.21  7.00           H
-ATOM     31  HE3BMET A 190       6.535   6.398  10.895  0.21  7.00           H
+ATOM     30  HE2BMET A 190       6.535   6.398  10.895  0.21  7.00           H
+ATOM     31  HE3BMET A 190       5.000   6.683  10.601  0.21  7.00           H
 ATOM     32  CA CMET A 190       7.592   6.970   6.290  0.15  4.69           C
 ATOM     33  CB CMET A 190       7.939   6.723   7.773  0.15  5.99           C
 ATOM     34  CG CMET A 190       7.637   7.940   8.598  0.15  7.61           C
@@ -790,15 +976,316 @@ ATOM     35  SD CMET A 190       7.421   7.776  10.371  0.15  6.55           S
 ATOM     36  CE CMET A 190       5.808   8.422  10.506  0.15  6.32           C
 ATOM     37  H  CMET A 190       8.470   8.203   5.044  1.00  5.11           H
 ATOM     38  HA CMET A 190       7.972   6.249   5.764  0.15  4.69           H
-ATOM     39  HB2CMET A 190       8.884   6.521   7.855  0.15  5.99           H
-ATOM     40  HB3CMET A 190       7.411   5.982   8.110  0.15  5.99           H
+ATOM     39  HB2CMET A 190       7.411   5.982   8.110  0.15  5.99           H
+ATOM     40  HB3CMET A 190       8.884   6.521   7.855  0.15  5.99           H
 ATOM     41  HG2CMET A 190       8.368   8.564   8.471  0.15  7.61           H
 ATOM     42  HG3CMET A 190       6.812   8.322   8.259  0.15  7.61           H
 ATOM     43  HE1CMET A 190       5.536   8.401  11.437  0.15  6.32           H
-ATOM     44  HE2CMET A 190       5.205   7.880   9.973  0.15  6.32           H
-ATOM     45  HE3CMET A 190       5.806   9.336  10.181  0.15  6.32           H
+ATOM     44  HE2CMET A 190       5.806   9.336  10.181  0.15  6.32           H
+ATOM     45  HE3CMET A 190       5.205   7.880   9.973  0.15  6.32           H
 END
 '''
+
+# ------------------------------------------------------------------------------
+
+pdb_str_008 = """
+REMARK Peptide fragments from 3vt9: 143-144, 147, 150, 232-233
+CRYST1   27.973   30.241   36.301  90.00  90.00  90.00 P 1
+ATOM      1  N   TYR A 143      18.189  17.846   5.000  1.00 23.64           N
+ATOM      2  CA  TYR A 143      18.357  18.668   6.193  1.00 24.34           C
+ATOM      3  C   TYR A 143      18.140  20.148   5.894  1.00 25.18           C
+ATOM      4  O   TYR A 143      18.982  20.801   5.278  1.00 26.15           O
+ATOM      5  CB  TYR A 143      19.753  18.468   6.795  1.00 23.00           C
+ATOM      6  CG  TYR A 143      19.906  19.085   8.170  1.00 26.16           C
+ATOM      7  CD1 TYR A 143      19.546  18.377   9.315  1.00 26.15           C
+ATOM      8  CD2 TYR A 143      20.374  20.392   8.326  1.00 29.44           C
+ATOM      9  CE1 TYR A 143      19.644  18.953  10.580  1.00 23.54           C
+ATOM     10  CE2 TYR A 143      20.475  20.979   9.587  1.00 19.77           C
+ATOM     11  CZ  TYR A 143      20.108  20.254  10.711  1.00 29.80           C
+ATOM     12  OH  TYR A 143      20.202  20.824  11.966  1.00 26.06           O
+ATOM     13  N   ASP A 144      17.005  20.671   6.345  1.00 26.39           N
+ATOM     14  CA  ASP A 144      16.656  22.072   6.145  1.00 26.41           C
+ATOM     15  C   ASP A 144      16.935  22.856   7.424  1.00 27.66           C
+ATOM     16  O   ASP A 144      16.168  22.794   8.387  1.00 27.41           O
+ATOM     17  CB  ASP A 144      15.177  22.187   5.774  1.00 26.75           C
+ATOM     18  CG  ASP A 144      14.663  23.604   5.876  1.00 32.49           C
+ATOM     19  OD1 ASP A 144      15.387  24.533   5.455  1.00 28.31           O
+ATOM     20  OD2 ASP A 144      13.534  23.787   6.382  1.00 41.39           O
+ATOM     21  N   TYR A 147      14.226  25.192   9.139  1.00 35.91           N
+ATOM     22  CA  TYR A 147      13.181  24.667  10.017  1.00 36.98           C
+ATOM     23  C   TYR A 147      11.773  24.971   9.506  1.00 37.02           C
+ATOM     24  O   TYR A 147      10.821  25.037  10.285  1.00 36.71           O
+ATOM     25  CB  TYR A 147      13.343  25.241  11.430  1.00 40.78           C
+ATOM     26  CG  TYR A 147      14.497  24.655  12.217  1.00 42.98           C
+ATOM     27  CD1 TYR A 147      15.745  24.462  11.627  1.00 44.97           C
+ATOM     28  CD2 TYR A 147      14.340  24.301  13.555  1.00 50.93           C
+ATOM     29  CE1 TYR A 147      16.806  23.931  12.347  1.00 50.90           C
+ATOM     30  CE2 TYR A 147      15.396  23.769  14.285  1.00 54.15           C
+ATOM     31  CZ  TYR A 147      16.625  23.587  13.674  1.00 54.34           C
+ATOM     32  OH  TYR A 147      17.672  23.064  14.392  1.00 56.08           O
+ATOM     33  N   PHE A 150       8.896  22.695  10.613  1.00 32.01           N
+ATOM     34  CA  PHE A 150       8.615  22.605  12.043  1.00 33.65           C
+ATOM     35  C   PHE A 150       7.281  23.232  12.427  1.00 34.16           C
+ATOM     36  O   PHE A 150       6.780  23.014  13.527  1.00 33.81           O
+ATOM     37  CB  PHE A 150       9.737  23.269  12.847  1.00 36.30           C
+ATOM     38  CG  PHE A 150      10.953  22.404  13.022  1.00 35.86           C
+ATOM     39  CD1 PHE A 150      11.504  21.724  11.937  1.00 36.69           C
+ATOM     40  CD2 PHE A 150      11.548  22.267  14.271  1.00 32.00           C
+ATOM     41  CE1 PHE A 150      12.628  20.920  12.095  1.00 37.39           C
+ATOM     42  CE2 PHE A 150      12.672  21.466  14.442  1.00 32.96           C
+ATOM     43  CZ  PHE A 150      13.214  20.791  13.352  1.00 37.79           C
+ATOM     59  N   TYR A 232       9.572  13.044  12.058  1.00 22.04           N
+ATOM     60  CA  TYR A 232      10.003  13.787  10.879  1.00 19.32           C
+ATOM     61  C   TYR A 232      11.468  13.494  10.564  1.00 19.71           C
+ATOM     62  O   TYR A 232      11.830  13.220   9.418  1.00 18.34           O
+ATOM     63  CB  TYR A 232       9.805  15.286  11.125  1.00 16.65           C
+ATOM     64  CG  TYR A 232      10.406  16.197  10.076  1.00 17.99           C
+ATOM     65  CD1 TYR A 232       9.680  16.574   8.949  1.00 22.93           C
+ATOM     66  CD2 TYR A 232      11.691  16.710  10.231  1.00 23.97           C
+ATOM     67  CE1 TYR A 232      10.220  17.444   8.000  1.00 24.15           C
+ATOM     68  CE2 TYR A 232      12.241  17.578   9.293  1.00 21.34           C
+ATOM     69  CZ  TYR A 232      11.504  17.942   8.183  1.00 27.57           C
+ATOM     70  OH  TYR A 232      12.055  18.799   7.259  1.00 25.99           O
+ATOM     71  N   SER A 233      12.301  13.542  11.598  1.00 19.07           N
+ATOM     72  CA  SER A 233      13.732  13.341  11.442  1.00 19.75           C
+ATOM     73  C   SER A 233      14.047  11.941  10.931  1.00 19.48           C
+ATOM     74  O   SER A 233      14.990  11.756  10.163  1.00 17.69           O
+ATOM     75  CB  SER A 233      14.449  13.574  12.776  1.00 20.71           C
+ATOM     76  OG  SER A 233      14.283  14.908  13.217  1.00 13.41           O
+END
+"""
+
+# ------------------------------------------------------------------------------
+
+# residue 1 (N, CA, C, O, CB; name RES replaced) and SER 2
+pdb_str_011 = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  N   RES A   1       9.572  13.044  12.058  1.00 20.00           N
+ATOM      2  CA  RES A   1      10.003  13.787  10.879  1.00 20.00           C
+ATOM      3  C   RES A   1      11.468  13.494  10.564  1.00 20.00           C
+ATOM      4  O   RES A   1      11.830  13.220   9.418  1.00 20.00           O
+ATOM      5  CB  RES A   1       9.805  15.286  11.125  1.00 20.00           C
+"""
+
+cm_str_012 = """\
+ATOM      6  CM  ALA A   1       8.158  12.930  12.260  1.00 20.00           C
+"""
+
+ser_str_011 = """\
+ATOM      7  N   SER A   2      12.301  13.542  11.598  1.00 19.07           N
+ATOM      8  CA  SER A   2      13.732  13.341  11.442  1.00 19.75           C
+ATOM      9  C   SER A   2      14.047  11.941  10.931  1.00 19.48           C
+ATOM     10  O   SER A   2      14.990  11.756  10.163  1.00 17.69           O
+ATOM     11  CB  SER A   2      14.449  13.574  12.776  1.00 20.71           C
+ATOM     12  OG  SER A   2      14.283  14.908  13.217  1.00 13.41           O
+END
+"""
+
+# geostd ALA, renamed (Z9Q is not in the CCD)
+cif_str_011 = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ Z9Q  Z9Q  'ALA copy'  L-peptide  10  5  .
+
+data_comp_Z9Q
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+ Z9Q  N    N  NH1
+ Z9Q  H    H  HNH1
+ Z9Q  CA   C  CH1
+ Z9Q  HA   H  HCH1
+ Z9Q  CB   C  CH3
+ Z9Q  HB1  H  HCH3
+ Z9Q  HB2  H  HCH3
+ Z9Q  HB3  H  HCH3
+ Z9Q  C    C  C
+ Z9Q  O    O  O
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ Z9Q  N   H    single  0.860  0.020
+ Z9Q  N   CA   single  1.458  0.019
+ Z9Q  CA  HA   single  0.970  0.020
+ Z9Q  CA  CB   single  1.521  0.033
+ Z9Q  CB  HB1  single  0.970  0.020
+ Z9Q  CB  HB2  single  0.970  0.020
+ Z9Q  CB  HB3  single  0.970  0.020
+ Z9Q  CA  C    single  1.525  0.021
+ Z9Q  C   O    double  1.231  0.020
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ Z9Q  H    N   CA   114.000  3.000
+ Z9Q  HA   CA  CB   109.000  3.000
+ Z9Q  CB   CA  C    110.500  1.500
+ Z9Q  HA   CA  C    109.000  3.000
+ Z9Q  N    CA  HA   110.000  3.000
+ Z9Q  N    CA  CB   110.400  1.500
+ Z9Q  HB1  CB  HB2  110.000  3.000
+ Z9Q  HB2  CB  HB3  110.000  3.000
+ Z9Q  HB1  CB  HB3  110.000  3.000
+ Z9Q  CA   CB  HB1  109.000  3.000
+ Z9Q  CA   CB  HB2  109.000  3.000
+ Z9Q  CA   CB  HB3  109.000  3.000
+ Z9Q  N    CA  C    111.000  2.800
+ Z9Q  CA   C   O    120.800  1.700
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ Z9Q  hh1     N  CA  CB  HB3   60.000   15.000   3
+ Z9Q  Var_01  C  CA  N   H    170.000  180.000  72
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ Z9Q  chir_01  CA  N  CB  C  negativ
+"""
+
+# geostd MAA (N-methyl-L-alanine) renamed ALA, without OXT
+cif_str_012 = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ ALA  ALA  'N-methyl-L-alanine'  L-peptide  14  6  .
+
+data_comp_ALA
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+ ALA  N    N  NH1
+ ALA  CM   C  CH3
+ ALA  CA   C  CH1
+ ALA  CB   C  CH3
+ ALA  C    C  C
+ ALA  O    O  O
+ ALA  H    H  HNH1
+ ALA  HM1  H  HCH3
+ ALA  HM2  H  HCH3
+ ALA  HM3  H  HCH3
+ ALA  HA   H  HCH1
+ ALA  HB1  H  HCH3
+ ALA  HB2  H  HCH3
+ ALA  HB3  H  HCH3
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ ALA  N   CM   single  1.449  0.020
+ ALA  N   CA   single  1.458  0.019
+ ALA  N   H    single  0.860  0.020
+ ALA  CM  HM1  single  0.970  0.020
+ ALA  CM  HM2  single  0.970  0.020
+ ALA  CM  HM3  single  0.970  0.020
+ ALA  CA  CB   single  1.521  0.033
+ ALA  CA  C    single  1.525  0.021
+ ALA  CA  HA   single  0.970  0.020
+ ALA  CB  HB1  single  0.970  0.020
+ ALA  CB  HB2  single  0.970  0.020
+ ALA  CB  HB3  single  0.970  0.020
+ ALA  C   O    double  1.231  0.020
+
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ ALA  H    N   CA   114.00  3.000
+ ALA  H    N   CM   109.03  3.000
+ ALA  CA   N   CM   114.79  3.000
+ ALA  HM3  CM  HM2  107.24  3.000
+ ALA  HM3  CM  HM1  107.27  3.000
+ ALA  HM2  CM  HM1  107.24  3.000
+ ALA  HM3  CM  N    109.69  3.000
+ ALA  HM2  CM  N    115.57  3.000
+ ALA  HM1  CM  N    109.49  3.000
+ ALA  HA   CA  C    109.00  3.000
+ ALA  HA   CA  CB   109.00  3.000
+ ALA  C    CA  CB   110.50  1.500
+ ALA  HA   CA  N    110.00  3.000
+ ALA  C    CA  N    111.00  2.800
+ ALA  CB   CA  N    110.40  1.500
+ ALA  HB3  CB  HB2  108.03  3.000
+ ALA  HB3  CB  HB1  107.42  3.000
+ ALA  HB2  CB  HB1  107.06  3.000
+ ALA  HB3  CB  CA   111.02  3.000
+ ALA  HB2  CB  CA   111.72  3.000
+ ALA  HB1  CB  CA   111.40  3.000
+ ALA  O    C   CA   120.80  1.700
+
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ ALA  Var_01  HM1  CM  N   CA  -176.32     30.0   3
+ ALA  Var_02  HB1  CB  CA  N   -176.55     30.0   3
+ ALA  Var_03  HB2  CB  CA  N    -56.87     30.0   3
+ ALA  Var_04  HB3  CB  CA  N     63.78     30.0   3
+ ALA  Var_05  HA   CA  N   CM   -49.72     30.0   3
+ ALA  Var_06  C    CA  N   H   170.000  180.000  72
+
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ ALA  chir_01  CA  N  CB  C  negativ
+"""
 
 # ------------------------------------------------------------------------------
 

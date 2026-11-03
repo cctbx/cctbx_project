@@ -2,17 +2,12 @@
 
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.powder_from_spots
 from __future__ import division
-import logging
 
 from iotbx.phil import parse
-from dials.util import log
 from dials.util import show_mail_on_error
 from dials.util.options import ArgumentParser
 from xfel.small_cell.powder_util import Spotfinder_radial_average, Center_scan
 
-
-
-logger = logging.getLogger("dials.command_line.powder_from_spots")
 
 help_message = """
 Script to synthesize a powder pattern from DIALS spotfinding output
@@ -120,8 +115,6 @@ filter {
 
 }
 output {
-  log = dials.powder_from_spots.log
-    .type = str
   xy_file = None
     .type = str
   xy_file_units = *d q

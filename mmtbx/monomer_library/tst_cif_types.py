@@ -38,9 +38,10 @@ _chem_comp_atom.atom_id
 _chem_comp_atom.type_symbol
 _chem_comp_atom.type_energy
 _chem_comp_atom.partial_charge
-IA TA EA 0.0
-IB TB EB 1.0
-IC TC EC 2.0
+_chem_comp_atom.charge
+IA TA EA 0.0 .
+IB TB EB 1.0 .
+IC TC EC 2.0 .
 
 loop_
 _chem_comp_bond.atom_id_1
@@ -71,7 +72,7 @@ IB IC double 3.0 4.0 .
   assert len(c.bond_list) == 2
   s = StringIO()
   c.show(s)
-  assert s.getvalue().splitlines()[8] == "ID TD TD 5.0"
+  assert s.getvalue().splitlines()[9] == "ID TD TD 5.0 ."
   mod_mod_id.atom_list[0] = cif_types.chem_mod_atom(
     function="change",
     atom_id="IA",
@@ -84,7 +85,7 @@ IB IC double 3.0 4.0 .
   assert len(c.bond_list) == 2
   s = StringIO()
   c.show(s)
-  assert s.getvalue().splitlines()[5] == "ID TD ED 5.0"
+  assert s.getvalue().splitlines()[6] == "ID TD ED 5.0 ."
   mod_mod_id.atom_list[0] = cif_types.chem_mod_atom(
     function="change",
     atom_id="IA",
@@ -97,7 +98,7 @@ IB IC double 3.0 4.0 .
   assert len(c.bond_list) == 2
   s = StringIO()
   c.show(s)
-  assert s.getvalue().splitlines()[5] == "IA TD ED 5.0"
+  assert s.getvalue().splitlines()[6] == "IA TD ED 5.0 ."
   mod_mod_id.atom_list[0] = cif_types.chem_mod_atom(
     function="delete",
     atom_id="IC",
@@ -133,7 +134,131 @@ IB IC double 3.0 4.0 .
   s = StringIO()
   c.show(s)
   assert s.getvalue().splitlines()[-3] == "IA IC quadruple 7.0 8.0 ."
-  print("OK")
+
+charge_cif = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ CHG  CHG  'charges' ligand 6 6 .
+ NOC  NOC  'no charge column' ligand 2 2 .
+
+data_comp_CHG
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+ CHG  A1  O  O   -1  -0.5
+ CHG  A2  C  C    0   0.1
+ CHG  A3  N  N   +1   0.4
+ CHG  A4  C  C    ?   0.0
+ CHG  A5  C  C    .   0.0
+ CHG  A6  O  O   1.0  0.0
+
+data_comp_NOC
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+ NOC  B1  C  C   0.0
+ NOC  B2  O  O   0.0
+"""
+
+def exercise_charge():
+  """_chem_comp_atom.charge: parsed as written (untyped), copied, written back."""
+  import copy
+  import iotbx.cif
+  from mmtbx.monomer_library import server
+  comps = dict([(c.chem_comp.id, c) for c in server.convert_comp_list(
+    source_info=None, cif_object=iotbx.cif.reader(input_string=charge_cif).model())])
+  chg, noc = comps["CHG"], comps["NOC"]
+  assert [a.charge for a in chg.atom_list] == ["-1", "0", "+1", "?", "", "1.0"]
+  assert [a.formal_charge() for a in chg.atom_list] == [-1, 0, 1, None, None, 1]
+  assert [a.charge for a in noc.atom_list] == [None, None]
+  assert [a.formal_charge() for a in noc.atom_list] == [None, None]
+  assert [cif_types.formal_charge_and_problem(v) for v in ("0.5", "1-", "x")] == [
+    (None, "charge '0.5' not integral"), (-1, None), (None, "charge 'x' not a number")]
+  # copy keeps the value
+  assert [copy.copy(a).charge for a in chg.atom_list] == [a.charge for a in chg.atom_list]
+  # written and read back: '.', '' and a missing column are written as '.'
+  s = StringIO()
+  chg.show(s)
+  lines = s.getvalue().splitlines()
+  assert "_chem_comp_atom.charge" in lines
+  assert [l.split()[-1] for l in lines[6:12]] == ["-1", "0", "+1", "?", ".", "1.0"], lines
+  block = "data_comp_list\nloop_\n_chem_comp.id\n_chem_comp.three_letter_code\n" \
+    "_chem_comp.name\n_chem_comp.group\n_chem_comp.number_atoms_all\n" \
+    "_chem_comp.number_atoms_nh\n_chem_comp.desc_level\n CHG CHG x ligand 6 6 .\n\n" \
+    "data_comp_CHG\n" + s.getvalue()
+  (again,) = list(server.convert_comp_list(source_info=None,
+    cif_object=iotbx.cif.reader(input_string=block).model()))
+  assert [a.charge for a in again.atom_list] == ["-1", "0", "+1", "?", "", "1.0"]
+  s = StringIO()
+  noc.show(s)
+  assert [l.split()[-1] for l in s.getvalue().splitlines()[6:8]] == [".", "."]
+  # a chem_mod "add" atom has no charge; "change" keeps the original's
+  mod = cif_types.mod_mod_id(source_info=None, chem_mod=cif_types.chem_mod(id="M",
+    name="", comp_id="CHG", group_id=""))
+  mod.atom_list.append(cif_types.chem_mod_atom(function="change", atom_id="A1",
+    new_atom_id="", new_type_symbol="", new_type_energy="OC", new_partial_charge=""))
+  mod.atom_list.append(cif_types.chem_mod_atom(function="add", atom_id="",
+    new_atom_id="A7", new_type_symbol="H", new_type_energy="H", new_partial_charge=0))
+  c = chg.apply_mod(mod)
+  d = dict([(a.atom_id, a) for a in c.atom_list])
+  assert d["A1"].charge == "-1" and d["A1"].type_energy == "OC"
+  assert d["A7"].charge is None
+
+def exercise_add_existing_h():
+  """A chem_mod "add" of an H the residue already has replaces it (3d5k SCY:
+  H2 on N in the entry, NH3 adds H2 again, two H2-N-CA angles conflict).
+  A heavy atom (OXT, mod_COO) is still added as before."""
+  comp = cif_types.comp_comp_id(source_info=None, chem_comp=cif_types.chem_comp(
+    id="AAH", three_letter_code="AAH", name="", group="peptide",
+    number_atoms_all=6, number_atoms_nh=4, desc_level=""))
+  for name, element in [("N","N"), ("CA","C"), ("C","C"), ("OXT","O"),
+                        ("H","H"), ("H2","H")]:
+    comp.atom_list.append(cif_types.chem_comp_atom(atom_id=name,
+      type_symbol=element, type_energy=element, partial_charge=0))
+  for a1, a2 in [("N","CA"), ("CA","C"), ("C","OXT"), ("N","H"), ("N","H2")]:
+    comp.bond_list.append(cif_types.chem_comp_bond(atom_id_1=a1, atom_id_2=a2,
+      type="single", value_dist=1., value_dist_esd=0.02))
+  for a1, a3, value in [("H","CA",114.0), ("H2","CA",110.2)]:
+    comp.angle_list.append(cif_types.chem_comp_angle(atom_id_1=a1,
+      atom_id_2="N", atom_id_3=a3, value_angle=value, value_angle_esd=3.))
+  mod = cif_types.mod_mod_id(source_info=None, chem_mod=cif_types.chem_mod(
+    id="NH3", name="", comp_id="", group_id=""))
+  mod.atom_list.append(cif_types.chem_mod_atom(function="delete", atom_id="H",
+    new_atom_id="", new_type_symbol="", new_type_energy="", new_partial_charge=""))
+  for name, element in [("H1","H"), ("H2","H"), ("H3","H"), ("OXT","O")]:
+    mod.atom_list.append(cif_types.chem_mod_atom(function="add", atom_id="",
+      new_atom_id=name, new_type_symbol=element, new_type_energy=element,
+      new_partial_charge=0))
+  for name in ("H1", "H2", "H3"):
+    mod.angle_list.append(cif_types.chem_mod_angle(function="add",
+      atom_id_1=name, atom_id_2="N", atom_id_3="CA",
+      new_value_angle=109.47, new_value_angle_esd=3.))
+  c = comp.apply_mod(mod)
+  names = [a.atom_id for a in c.atom_list]
+  assert names.count("H2") == 1, names
+  assert names.count("OXT") == 2, names
+  h2 = [a.value_angle for a in c.angle_list if "H2" in (a.atom_id_1, a.atom_id_3)]
+  assert h2 == [109.47], h2
+  # the residue entry itself is unchanged
+  assert [a.atom_id for a in comp.atom_list].count("H2") == 1
+  assert len(comp.angle_list) == 2
 
 if (__name__ == "__main__"):
   exercise()
+  exercise_charge()
+  exercise_add_existing_h()
+  print("OK")

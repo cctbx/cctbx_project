@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021-2023 Richardson Lab at Duke University
+#                Copyright 2021-2026 Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 
-import argparse, re
+import argparse, itertools, math, re, time
 
 from boost_adaptbx import graph
 from boost_adaptbx.graph import connected_component_algorithm as cca
@@ -75,6 +75,19 @@ def _ReportTiming(verbosity, message):
   _lastTime = curTime
   return _VerboseCheck(verbosity, 2,"Time to {}: {:0.3f}".format(message,diff)+"\n")
 
+class _InfoAccumulator(object):
+  """Collects the Optimizer's information string.  += appends a part in O(1),
+  str() joins once.  A plain str attribute is copied in full on every
+  self._infoString += ..., which is quadratic in the number of Movers."""
+  def __init__(self):
+    self._parts = []
+  def __iadd__(self, s):
+    if s:
+      self._parts.append(s)
+    return self
+  def __str__(self):
+    return "".join(self._parts)
+
 def AlternatesInModel(model):
   """Returns a set of altloc names of all conformers in all chains.
   :param model: pdb.hierarchy.model to search for alternates.
@@ -108,6 +121,17 @@ def GetAtomsForConformer(model, conf):
         which = i
         break
     ret += confs[which].atoms()
+  return ret
+
+def _HisAcceptorsInAnyState(mover):
+  """i_seq of the ring Nitrogens (NE2, ND1) of a MoverHisFlip that are acceptors in at
+  least one of its coarse states."""
+  coarse = mover.CoarsePositions()
+  ret = set()
+  for extras in coarse.extraInfos:
+    for i in (0, 4):
+      if extras[i].isAcceptor:
+        ret.add(coarse.atoms[i].i_seq)
   return ret
 
 def _ResNameAndID(a):
@@ -148,12 +172,119 @@ class FlipMoverState(object):
   def __repr__(self):
       return "Optimizers.FlipMoverState({})".format(str(self))
 
+class FlippedMoverInfo(object):
+  def __init__(self, alt, baseAtom):
+    self.alt = alt              # String altId of the conformation that is flipped
+    self.baseAtom = baseAtom    # Atom that is the base of the flip, which is the N for
+                                # an amide flip and the NE for a histidine flip
+
+  def __str__(self):
+    return "alt '{}', base atom {}".format(self.alt.strip().upper(), int(self.baseAtom.i_seq))
+  def __repr__(self):
+      return "Optimizers.FlippedMoverInfo({})".format(str(self))
+
 ##################################################################################
 # Optimizer, which wraps the OptimizerC class to do the optimization:
 
+def _OperatorKey(rt):
+  """Hashable key of a symmetry operator, the same for any denominators."""
+  return tuple(int(round(v * 24)) for v in rt.as_double_array())
+
+def _GridKey(xyz, size):
+  return (int(math.floor(xyz[0]/size)), int(math.floor(xyz[1]/size)),
+          int(math.floor(xyz[2]/size)))
+
+def _AddToGrid(grid, key, value):
+  if key not in grid:
+    grid[key] = []
+  grid[key].append(value)
+
+def _SameAtomInfo(a, b):
+  return (a.vdwRadius == b.vdwRadius and a.isAcceptor == b.isAcceptor and
+          a.isDonor == b.isDonor and a.isDummyHydrogen == b.isDummyHydrogen and
+          a.isIon == b.isIon and a.charge == b.charge)
+
+def _SymmetryCopyBonds(originals, copies, neighborLists, crossBonds, unitCell):
+  """Bonded neighbors of symmetry copies, and the bonds from originals to copies.
+  A copy under R is bonded to its original's neighbors under R and to a partner across
+  symmetry under R times the bond's operator; an original to its partner across symmetry
+  under the bond's operator. A partner under an operator whose copy was left out as
+  coincident (special position) is the atom kept at that site, original or copy.
+  :param originals: {i_seq: atom}, the original atoms of the pass.
+  :param copies: list of (copy, original, rt_mx), copies at their positions.
+  :param neighborLists: bonded neighbors of the originals (within the asymmetric unit).
+  :param crossBonds: list of (i_seq, j_seq, rt_mx_ji): j moved by rt_mx_ji is bonded to i.
+  :param unitCell: unit cell of the operators.
+  :return: ({copy: list of bonded atoms}, list of (atom, bonded atom) to add to the
+  originals' and copies' lists: the bonds to copies of originals, and the reverse of the
+  bonds of copies to atoms resolved by site).
+  """
+  from cctbx import sgtbx
+  from cctbx.crystal import super_cell
+  identity = _OperatorKey(sgtbx.rt_mx())
+  tolerance = 2 * super_cell.min_distance_sym_equiv_coincident
+  images = {}                     # original i_seq: {operator: copy}
+  grid = {}                       # sites of originals and copies, for coincident atoms
+  for a in originals.values():
+    _AddToGrid(grid, _GridKey(a.xyz, 1.0), a)
+  for c, o, rt in copies:
+    if o.i_seq not in images:
+      images[o.i_seq] = {}
+    images[o.i_seq][_OperatorKey(rt)] = c
+    _AddToGrid(grid, _GridKey(c.xyz, 1.0), c)
+
+  def image(j, rt):
+    # Atom j moved by rt; None outside the copies.
+    key = _OperatorKey(rt)
+    if key == identity:
+      return originals.get(j)
+    c = images.get(j, {}).get(key)
+    if c is not None or j not in originals:
+      return c
+    site = Helpers.rvec3(unitCell.orthogonalize(rt * unitCell.fractionalize(originals[j].xyz)))
+    element = originals[j].element.strip().upper()
+    k = _GridKey(site, 1.0)
+    for d in itertools.product((-1, 0, 1), repeat=3):
+      for a in grid.get((k[0]+d[0], k[1]+d[1], k[2]+d[2]), []):
+        if (a.element.strip().upper() == element and
+            (Helpers.rvec3(a.xyz) - site).length() < tolerance):
+          return a
+    return None
+
+  # Bonds across symmetry by original: (partner i_seq, operator of the partner).
+  byOriginal = {}
+  for i, j, rt in crossBonds:
+    if i in originals and j in originals:
+      _AddToGrid(byOriginal, i, (j, rt))
+      _AddToGrid(byOriginal, j, (i, rt.inverse()))
+  copyNeighbors = {}
+  for c, o, rt in copies:
+    partners = [image(n.i_seq, rt) for n in neighborLists[o]]
+    for j, bondRt in byOriginal.get(o.i_seq, []):
+      partners.append(image(j, rt.multiply(bondRt)))
+    copyNeighbors[c] = []
+    for p in partners:
+      if p is not None and p != c and p not in copyNeighbors[c]:
+        copyNeighbors[c].append(p)
+  originalBonds = []
+  for i, partners in byOriginal.items():
+    for j, bondRt in partners:
+      p = image(j, bondRt)
+      if p is not None and p != originals[i]:
+        originalBonds.append((originals[i], p))
+  for c, o, rt in copies:
+    for p in copyNeighbors[c]:
+      if p in copyNeighbors:
+        reverse = c in copyNeighbors[p]
+      else:
+        reverse = (p, c) in originalBonds
+      if not reverse:
+        originalBonds.append((p, c))
+  return copyNeighbors, originalBonds
+
 class Optimizer(object):
 
-  def __init__(self, probePhil, addFlipMovers, model, modelIndex = 0, altID = None,
+  def __init__(self, probePhil, addFlipMovers, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
@@ -163,7 +294,9 @@ class Optimizer(object):
                 flipStates = '',
                 verbosity = 1,
                 cliqueOutlineFileName = None,
-                fillAtomDump = True
+                fillAtomDump = True,
+                stopOptimizingAt = time.time() + 1.0e10,
+                symmetryCopies = None
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -223,6 +356,15 @@ class Optimizer(object):
     they are.
     :param fillAtomDump: If true, fill in the atomDump string with the atom information.
     This can take a long time to do, so the caller may want to turn it off if they don't need it.
+    :param stopOptimizingAt: Start treating cliques as singletons at this time relative to time.time().
+    :param symmetryCopies: None, or symmetry copies of atoms near the model as a fixed
+    environment: a group_args with crystal_symmetry and models, {model index (0-based):
+    list of (copy atom, original atom, rt_mx)}, copy = rt_mx * original in fractional
+    coordinates. The copies are scored, never moved; Mover placement sees them (ions,
+    candidate acceptors). After the optimization of each alternate they follow their
+    originals, and the Cliques near copies that changed are optimized again (at most 3
+    passes). Sites still changing after the last pass keep the combination of their
+    states that scores best with matching copies.
     """
 
     ################################################################################
@@ -239,16 +381,24 @@ class Optimizer(object):
     self._flipStates = flipStates
     self._verbosity = verbosity
     self._cliqueOutlineFileName = cliqueOutlineFileName
+    self._symmetryCopies = symmetryCopies
 
     ################################################################################
     # Initialize internal variables.
-    self._infoString = ""
+    self._infoString = _InfoAccumulator()
     self._warningString = ""
     self._atomDump = ""
     self._waterOccCutoff = 0.66 # @todo Make this a parameter, -WaterOCCcutoff param in reduce
     self._waterBCutoff = 40.0   # @todo Make this a parameter, -WaterBcutoff param in reduce
     self._numCalculated = 0
     self._numCached = 0
+    self._amideFlipsPerformed = []  # List of amide flips performed, whether by Mover or locking in place.
+    self._hisFlipsPerformed = []    # List of histidine flips performed, whether by Mover or locking in place.
+    self._hydrogensToDelete = []    # Each as decided by the last alternate pass that contained it.
+    self._environmentAtoms = []     # Symmetry copies and their Phantom Hydrogens in this pass.
+    self._passCopies = []           # (copy, original, rt_mx) for the originals in this pass
+    self._absentCopies = set()      # copies of deleted originals, not in the spatial query
+    self._copySummary = ""
 
     ################################################################################
     # Get the Cartesian positions of all of the atoms in the entire model and find
@@ -259,14 +409,15 @@ class Optimizer(object):
     for a in model.get_atoms():
       carts.append(a.xyz)
     self._infoString += _ReportTiming(self._verbosity, "get coordinates")
-    bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+    bondProxies, asuProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
     self._infoString += _ReportTiming(self._verbosity, "compute bond proxies")
 
     ################################################################################
     # Get the bonded neighbor lists for all of the atoms in the model, so we don't get
     # failures when we look up an atom from another in Helpers.getExtraAtomInfo().
-    # We won't get bonds between atoms in different conformations.
-    bondedNeighborLists = Helpers.getBondedNeighborLists(model.get_atoms(), bondProxies)
+    # Only for that: a blank atom here has the neighbors of every conformer (an H copied
+    # into A and B counts twice), so each alternate pass below builds its own lists.
+    bondedNeighborLists = Helpers.getBondedNeighborLists(model.get_atoms(), bondProxies, asuProxies)
     self._infoString += _ReportTiming(self._verbosity, "compute bonded neighbor lists")
 
     ################################################################################
@@ -291,7 +442,9 @@ class Optimizer(object):
     # None is specified and the specified one if it is specified.
 
     try:
-      model.setup_riding_h_manager()
+      # None, not False: callers outside reduce2 keep the scattering-table rule
+      model.setup_riding_h_manager(
+        use_neutron_distances=True if self._useNeutronDistances else None)
     except Exception:
       # If an optimized has already been run on the model, our riding H manager will
       # have already been set up.  When one has already been set up, this causes
@@ -309,6 +462,27 @@ class Optimizer(object):
           rotatableHydrogens.append(p.ih)
 
     self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens")
+
+    # Copies take i_seq above the model's and its water phantoms' (the phantoms of a
+    # pass all start at getMaxISeq() + 1), one range per model; their phantoms follow.
+    if symmetryCopies is not None:
+      nextISeq = Helpers.getMaxISeq(model) + 100
+      for mi in sorted(symmetryCopies.models):
+        for c, o, rt in symmetryCopies.models[mi]:
+          probeExt.set_atom_i_seq(c, nextISeq)
+          nextISeq += 1
+      self._copyPhantomISeq = nextISeq
+      # Bonds across symmetry (S-S, links, metal coordination) with their operator:
+      # j at rt_mx_ji * j is bonded to i.
+      self._crossBonds = []
+      if asuProxies.size() > 0:
+        # the pair proxies of get_all_bond_proxies() above, cached
+        asuMappings = model.get_restraints_manager().geometry.pair_proxies(
+          ).bond_proxies.asu_mappings()
+        for bp in asuProxies:
+          rt = asuMappings.get_rt_mx_ji(pair = bp)
+          if not rt.is_unit_mx():
+            self._crossBonds.append((bp.i_seq, bp.j_seq, rt))
 
     startModelIndex = 0
     stopModelIndex = len(model.get_hierarchy().models())
@@ -345,8 +519,11 @@ class Optimizer(object):
       if altID is not None:
         alts = [altID]
 
-      # Clear the Movers list for each model.  It will be retained from one alternate to the next.
+      # Clear the Movers list for each model.  _PlaceMovers() makes a new one for each alternate.
       self._movers = []
+      self._copyPassNotes = []
+      # i_seq: (atom, [(alt, deleted)]) for the H of each pass; _deleteMes is reset per pass.
+      passDeletions = {}
       firstAlt = True
       for alt in alts:
         # If we are doing the second or later alternate, place all atoms that are in a compatible alternate
@@ -374,7 +551,13 @@ class Optimizer(object):
         # Get the atoms from the specified conformer in the model (the empty string is the name
         # of the first conformation in the model; if there is no empty conformation, then it will
         # pick the first available conformation for each atom group.
-        self._atoms = GetAtomsForConformer(myModel, alt)
+        passAtoms = GetAtomsForConformer(myModel, alt)
+        self._atoms = list(passAtoms)
+
+        # The bonded neighbors within this conformer, for everything in this pass (the
+        # shared lists above mix conformers). A new dictionary each pass, so the Phantom
+        # Hydrogens added below stay in it.
+        passNeighborLists = Helpers.getBondedNeighborLists(self._atoms, bondProxies, asuProxies)
 
         ################################################################################
         # Reset the timer
@@ -424,6 +607,9 @@ class Optimizer(object):
         for a in self._atoms:
           if a.element == 'O' and common_residue_names_get_class(name=a.parent().resname) == "common_water":
             if a.occ >= self._waterOccCutoff and a.b < self._waterBCutoff:
+              # If the Oxygen is bonded (presumably to hydrogens/deuteriums), then we just leave it alone.
+              if len(passNeighborLists[a]) > 0:
+                self._infoString += _VerboseCheck(self._verbosity, 3,"Not adding phantom Hydrogens on {} due to bonded neighbors\n".format(_ResNameAndID(a)))
 
               # We're an acceptor and not a donor.
               ei = self._extraAtomInfo.getMappingFor(a)
@@ -450,8 +636,11 @@ class Optimizer(object):
 
         if len(watersToDelete) > 0:
           self._infoString += _VerboseCheck(self._verbosity, 1,"Ignored "+str(len(watersToDelete))+" waters due to occupancy or B factor\n")
+          # One pass: list.remove() per water scans the whole list each time.
+          # Atom hashing and equality use memory_id(), as list.remove() does.
+          ignored = set(watersToDelete)
+          self._atoms[:] = [a for a in self._atoms if a not in ignored]
           for a in watersToDelete:
-            self._atoms.remove(a)
             self._spatialQuery.remove(a)
 
         if len(phantoms) > 0:
@@ -469,7 +658,7 @@ class Optimizer(object):
             self._spatialQuery.add(p[0])
             eai = probeExt.ExtraAtomInfo(phantomHydrogenRadius, False, True, True)
             self._extraAtomInfo.setMappingFor(p[0], eai)
-            bondedNeighborLists[p[0]] = [p[1]]
+            passNeighborLists[p[0]] = [p[1]]
 
           self._infoString += _VerboseCheck(self._verbosity, 1,"Added "+str(len(phantoms))+" phantom Hydrogens on waters")
           self._infoString += _VerboseCheck(self._verbosity, 1," (Old total "+str(origCount)+", new total "+str(len(self._atoms))+")\n")
@@ -478,8 +667,34 @@ class Optimizer(object):
         ################################################################################
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
-        Helpers.fixupExplicitDonors(self._atoms, bondedNeighborLists, self._extraAtomInfo)
+        Helpers.fixupExplicitDonors(self._atoms, passNeighborLists, self._extraAtomInfo)
         self._infoString += _ReportTiming(self._verbosity, "fixup explicit doners")
+
+        ################################################################################
+        # A Histidine ring Nitrogen is an acceptor if and only if it carries no H or D in
+        # this conformer (probe typing marks both as acceptors). Before the symmetry copies
+        # take their atom info and before placement reads the flags for rotator candidates;
+        # placement marks a Nitrogen whose H it deletes as an acceptor, and the His flip
+        # Movers set both Nitrogens for each of their states.
+        for a in self._atoms:
+          if (a.parent().resname.strip().upper() == 'HIS' and
+              a.name.strip().upper() in ('ND1', 'NE2')):
+            protonated = False
+            for n in passNeighborLists[a]:
+              if n.element_is_hydrogen():
+                protonated = True
+            e = self._extraAtomInfo.getMappingFor(a)
+            if e.isAcceptor == protonated:
+              e.isAcceptor = not protonated
+              self._extraAtomInfo.setMappingFor(a, e)
+
+        ################################################################################
+        # Symmetry copies as a fixed environment, in the spatial query before Mover
+        # placement (ions, candidate acceptors) but not in the atoms it places Movers on.
+        if symmetryCopies is not None:
+          self._AddSymmetryCopies(mi, maxISeq, passNeighborLists,
+            phantomHydrogenRadius, placedHydrogenDistance)
+          self._infoString += _ReportTiming(self._verbosity, "add symmetry copies")
 
         ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
@@ -488,8 +703,8 @@ class Optimizer(object):
         # only includes those from the current model index.
         # NOTE: We must do this after fixupExplicitDonors() so that the Hydrogens are properly
         # marked as donors.
-        deleteAtoms = self._PlaceMovers(self._atoms, rotatableHydrogens, bondedNeighborLists, h_parameterization,
-                           addFlipMovers)
+        deleteAtoms = self._PlaceMovers(self._atoms, rotatableHydrogens, passNeighborLists, h_parameterization,
+                           addFlipMovers, alt)
         self._infoString += _VerboseCheck(self._verbosity, 1,"Inserted "+str(len(self._movers))+" Movers\n")
         self._infoString += _VerboseCheck(self._verbosity, 1,'Marked '+str(len(deleteAtoms))+' atoms for deletion\n')
         self._infoString += _ReportTiming(self._verbosity, "place movers")
@@ -498,6 +713,8 @@ class Optimizer(object):
         # Add the atoms that were unconditionally marked for deletion during placement
         # to the set of atoms to delete.
         self._deleteMes = self._deleteMes.union(deleteAtoms)
+        if symmetryCopies is not None:
+          self._PlaceSymmetryCopies(passNeighborLists)
 
         ################################################################################
         # Initialize the Movers to their starting coarse positions.
@@ -527,6 +744,9 @@ class Optimizer(object):
             str(len(singletonCliques))+" are singletons); largest Clique size = "+
             str(maxLen)+"\n")
         self._infoString += _ReportTiming(self._verbosity, "compute interaction graph")
+        # Sort the cliques by size, smallest first, so that if we run out of time we will
+        # have optimized as many as possible.
+        groupCliques = sorted(groupCliques, key=len, reverse=False)
 
         # If we've been asked to write an interaction graph file, do so.
         if self._cliqueOutlineFileName:
@@ -548,10 +768,12 @@ class Optimizer(object):
         # Get the excluded list for each atom in the set, making a dictionary.
         # We go at most 3 hops unless one end of the chain has a hydrogen.
         # Look up excluded atoms by i_seq.
+        # By bond count only: the lists serve every pose, so a distance taken with the
+        # Movers at state 0 does not hold for them.
         self._excludeDict = {}
         for a in moverAtoms:
-          self._excludeDict[a.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
-            bondedNeighborLists, self._extraAtomInfo, self._probeRadius, self._bondedNeighborDepth, 3)
+          self._excludeDict[a.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBondsAtAnyDistance(a,
+            passNeighborLists, self._extraAtomInfo, self._bondedNeighborDepth, 3)
         self._infoString += _ReportTiming(self._verbosity, "determine excluded atoms")
 
         ################################################################################
@@ -577,7 +799,10 @@ class Optimizer(object):
         # Compute and record the initial score for each Mover in its info
         optC.Initialize(self._movers)
         for m in self._movers:
-          self._moverInfo[m] += " Initial score: {:.2f}".format(optC.GetHighScore(m))
+          score = "{:.2f}".format(optC.GetHighScore(m))
+          self._moverInfo[m] += " Initial score: " + score
+          # Rounded as printed, so the clique totals below match the report.
+          self._initialScore[m] = float(score)
 
         ################################################################################
         # Call internal methods to optimize the single-element Cliques and then to optimize
@@ -587,46 +812,21 @@ class Optimizer(object):
         # so that we can do global fine optimization, we'll do that here rather than in the
         # subclasses.
 
-        # Do coarse optimization on the singleton Movers.  Record the selected coarse
-        # index.
-        for s in singletonCliques:
-          mover = self._interactionGraph.vertex_label(s[0])
-          (bestScore, infoString) = optC.OptimizeSingleMoverCoarse(mover)
-          self._infoString += infoString
-          ret = bestScore
-          self._infoString += _VerboseCheck(self._verbosity, 1,"Singleton optimized with score {:.2f}\n".format(ret))
-        self._infoString += _ReportTiming(self._verbosity, "optimize singletons (coarse)")
+        self._OptimizeCliques(optC, singletonCliques, groupCliques, stopOptimizingAt)
+        self._OptimizeFine(optC, singletonCliques + groupCliques, stopOptimizingAt)
+        self._optimizerOf = dict((m, optC) for m in self._movers)
 
-        # Do coarse optimization on the multi-Mover Cliques.
-        for g in groupCliques:
-          movers = [self._interactionGraph.vertex_label(i) for i in g]
-          subset = _subsetGraph(self._interactionGraph, movers)
+        ################################################################################
+        # Symmetry copies follow their originals; the Cliques near copies that changed
+        # are optimized again.
+        if symmetryCopies is not None:
+          self._RefreshSymmetryCopies(singletonCliques, groupCliques, dotSphereCache,
+            stopOptimizingAt, alt)
 
-          # Find all of the Movers in the clique so that we know which ones to capture the state for.
-          movers = [self._interactionGraph.vertex_label(v) for v in subset.vertices()]
-
-          # Turn the graph edges into a versa array that holds the edges. The first index is the
-          # number of edge and the second is 2D, listing the index of each mover.
-          vertexList = list(subset.vertices())
-          edges = flex.int(flex.grid(len(list(subset.edges())), 2))
-          for i,e in enumerate(subset.edges()):
-            edges[(i,0)] = vertexList.index(subset.source(e))
-            edges[(i,1)] = vertexList.index(subset.target(e))
-
-          (bestScore, infoString) = optC.OptimizeCliqueCoarse(movers, edges)
-          self._infoString += infoString
-          ret = bestScore
-
-          self._infoString += _VerboseCheck(self._verbosity, 1,"Clique optimized with score {:.2f}\n".format(ret))
-        self._infoString += _ReportTiming(self._verbosity, "optimize cliques (coarse)")
-
-        # Do fine optimization on the Movers.  This is done independently for
-        # each of them, whether they are part of a multi-Mover Clique or not.
-        self._infoString += _VerboseCheck(self._verbosity, 1,"Fine optimization on all Movers\n")
-        for m in self._movers:
-          (bestScore, infoString) = optC.OptimizeSingleMoverFine(m)
-          self._infoString += infoString
-        self._infoString += _ReportTiming(self._verbosity, "optimize all Movers (fine)")
+        ################################################################################
+        # Final scores at the final poses: a stored search score is stale when a Clique
+        # partner moved after it was set.
+        self._finalScore = dict((m, self._ScoreMover(m, self._dotScorer)) for m in self._movers)
 
         ################################################################################
         # Print the final state and score for all Movers
@@ -640,13 +840,14 @@ class Optimizer(object):
             maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
             res = self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
               maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom.i_seq],
-              optC.GetDots(atom.i_seq), self._probeDensity, False, False)
+              self._optimizerOf[m].GetDots(atom.i_seq), self._probeDensity, False, False)
             score += res.totalScore()
             if res.hasBadBump:
               clash = True
           return score, clash
 
         def _printPose(self, m):
+          optC = self._optimizerOf[m]
           description = m.PoseDescription(optC.GetCoarseLocation(m), optC.GetFineLocation(m),
                                           not self._skipBondFixup)
 
@@ -677,20 +878,19 @@ class Optimizer(object):
             description += " ."
 
           self._infoString += _VerboseCheck(self._verbosity, 1,"  {} final score: {:.2f} pose {}\n".format(
-            self._moverInfo[m], optC.GetHighScore(m), description))
+            self._moverInfo[m], self._finalScore[m], description))
 
         self._infoString += _VerboseCheck(self._verbosity, 1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+alt+"':\n")
         sortedGroups = sorted(groupCliques, key=len, reverse=True)
         for g in sortedGroups:
           self._infoString += _VerboseCheck(self._verbosity, 1," Set of "+str(len(g))+" Movers:")
           movers = [self._interactionGraph.vertex_label(i) for i in g]
-          # Parse the record for each mover and pull out the initial score.  Sum the initial and
-          # final scores across all Movers in the group and report this.
+          # Sum the initial and final scores across all Movers in the group and report this.
           initial = 0.0
           final = 0.0
           for m in movers:
-            initial += float(self._moverInfo[m].split()[9])
-            final += optC.GetHighScore(m)
+            initial += self._initialScore[m]
+            final += self._finalScore[m]
           self._infoString += _VerboseCheck(self._verbosity, 1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
           for m in movers:
             _printPose(self, m)
@@ -708,30 +908,60 @@ class Optimizer(object):
         if not self._skipBondFixup:
           self._infoString += _VerboseCheck(self._verbosity, 1,"FixUp on all Movers\n")
           for m in self._movers:
-            loc = optC.GetCoarseLocation(m)
+            loc = self._optimizerOf[m].GetCoarseLocation(m)
             self._infoString += _VerboseCheck(self._verbosity, 3,"FixUp on {} coarse location {}\n".format(
             self._moverInfo[m],loc))
             self._doFixup(m.FixUp(loc))
           self._infoString += _ReportTiming(self._verbosity, "fix up Movers")
 
+        ################################################################################
+        # Record this pass's deletions. Only H are deleted (Movers and placement).
+        for a in passAtoms:
+          deleted = a in self._deleteMes
+          if deleted or a.element_is_hydrogen():
+            if a.i_seq not in passDeletions:
+              passDeletions[a.i_seq] = (a, [])
+            passDeletions[a.i_seq][1].append((alt, deleted))
+
         #################################################################################
         # Record the fraction of atoms that were calculated and the fraction that were cached.
-        self._numCalculated += optC.GetNumCalculatedAtoms()
-        self._numCached += optC.GetNumCachedAtoms()
+        for optC in set(self._optimizerOf.values()):
+          self._numCalculated += optC.GetNumCalculatedAtoms()
+          self._numCached += optC.GetNumCachedAtoms()
 
-      ################################################################################
-      # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
-      # both in the initial setup and determined during optimization.  Phantom Hydrogens
-      # on waters do not need to be adjusted because they were never added to the
-      # structure.
-      # We only do this after the last-checked alternate configuration for a given model.
-      self._infoString += _VerboseCheck(self._verbosity, 1,"Deleting Hydrogens tagged by Histidine Movers\n")
-      for a in self._deleteMes:
-        aName = a.name.strip().upper()
-        resNameAndID = _ResNameAndID(a)
-        self._infoString += _VerboseCheck(self._verbosity, 5,"Deleting {} {}\n".format(resNameAndID, aName))
-        a.parent().remove_atom(a)
-      self._infoString += _ReportTiming(self._verbosity, "delete Hydrogens")
+        #################################################################################
+        # Add any flipped amides and histidines to the lists of flipped amides and histidines.
+        for m in self._movers:
+          coarse_loc = self._optimizerOf[m].GetCoarseLocation(m)
+
+          if isinstance(m, Movers.MoverAmideFlip) and coarse_loc == 1:
+            nitrogen = m.CoarsePositions().atoms[0]
+            self._amideFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
+
+          # The upper half of the coarse states is flipped (both H, HD1 only, HE2 only).
+          # Locked (one-orientation) His were recorded when their Mover was added.
+          elif (isinstance(m, Movers.MoverHisFlip) and m.EnabledFlipStates() == 3 and
+                coarse_loc >= len(m.CoarsePositions().positions)//2):
+            nitrogen = m.CoarsePositions().atoms[0]
+            self._hisFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
+
+      #################################################################################
+      # Each atom's deletion is decided by the last pass that contained it: an
+      # altloc-specific H by its own pass, a blank H by the last pass.
+      for i in sorted(passDeletions):
+        a, decisions = passDeletions[i]
+        if decisions[-1][1]:
+          self._hydrogensToDelete.append(a)
+        if len(set(d for alt, d in decisions)) > 1:
+          self._infoString += _VerboseCheck(self._verbosity, 1,
+            "Passes disagree about deleting {} {} (deleted in {}; kept in {}); the last pass decides: {}\n".format(
+            _ResNameAndID(a), a.name.strip(),
+            " ".join("'{}'".format(alt) for alt, d in decisions if d),
+            " ".join("'{}'".format(alt) for alt, d in decisions if not d),
+            "deleted" if decisions[-1][1] else "kept"))
+
+      if symmetryCopies is not None:
+        self._SummarizeCopies(mi)
 
       #################################################################################
       # Dump information about all of the atoms in the model into a string.
@@ -747,6 +977,426 @@ class Optimizer(object):
             self._numCalculated, self._numCached,
             self._numCalculated/(self._numCalculated + self._numCached)))
 
+  ##################################################################################
+  # Symmetry copies as a fixed environment
+
+  def _AddSymmetryCopies(self, mi, maxISeq, passNeighborLists, phantomHydrogenRadius,
+                         placedHydrogenDistance):
+    """Copies of this pass's atoms at their originals' current state, with their atom
+    info and bonded neighbors, and Phantom Hydrogens on copied waters, added to the
+    spatial query and to self._environmentAtoms (not to self._atoms, so that no Movers
+    are placed on them)."""
+    self._environmentAtoms = []
+    self._passCopies = []
+    self._absentCopies = set()
+    self._crossNeighbors = []       # (atom, bonded atom), added after Mover placement
+    originals = {}
+    for a in self._atoms:
+      if a.i_seq <= maxISeq:
+        originals[a.i_seq] = a
+    for c, o, rt in self._symmetryCopies.models.get(mi, []):
+      if o.i_seq in originals:
+        self._passCopies.append((c, originals[o.i_seq], rt))
+    if len(self._passCopies) == 0:
+      return
+    uc = self._symmetryCopies.crystal_symmetry.unit_cell()
+    for c, o, rt in self._passCopies:
+      c.xyz = uc.orthogonalize(rt * uc.fractionalize(o.xyz))
+      self._extraAtomInfo.setMappingFor(c, probeExt.ExtraAtomInfo(self._extraAtomInfo.getMappingFor(o)))
+    copyNeighbors, self._crossNeighbors = _SymmetryCopyBonds(originals, self._passCopies,
+      passNeighborLists, self._crossBonds, uc)
+    passNeighborLists.update(copyNeighbors)
+
+    for c, o, rt in self._passCopies:
+      self._spatialQuery.add(c)
+      self._environmentAtoms.append(c)
+    # Phantom Hydrogens on copied waters, as on the model's.
+    for c, o, rt in self._passCopies:
+      if c.element == 'O' and common_residue_names_get_class(name=c.parent().resname) == "common_water":
+        newPhantoms = Helpers.getPhantomHydrogensFor(self._copyPhantomISeq, c, self._spatialQuery,
+          self._extraAtomInfo, self._minOccupancy, False, phantomHydrogenRadius, placedHydrogenDistance)
+        for p in newPhantoms:
+          self._spatialQuery.add(p)
+          self._extraAtomInfo.setMappingFor(p, probeExt.ExtraAtomInfo(phantomHydrogenRadius, False, True, True))
+          passNeighborLists[p] = [c]
+          self._environmentAtoms.append(p)
+
+  def _PlaceSymmetryCopies(self, passNeighborLists):
+    """After Mover placement: the bonds from originals to copies (and the reverse of
+    copies' bonds to atoms at special positions), the copies of atoms
+    deleted during placement out of the spatial query, the copies into self._atoms."""
+    for o, c in self._crossNeighbors:
+      if c not in passNeighborLists[o]:
+        passNeighborLists[o].append(c)
+    for c, o, rt in self._passCopies:
+      if o in self._deleteMes:
+        self._spatialQuery.remove(c)
+        self._absentCopies.add(c)
+    self._atoms.extend(self._environmentAtoms)
+
+  def _FinalOriginalStates(self):
+    """Position, atom info and deletion of the atoms that FixUp of the Movers' current
+    states changes, by i_seq (the state written out)."""
+    xyz = {}
+    info = {}
+    deleted = {}
+    if not self._skipBondFixup:
+      for m in self._movers:
+        fixUp = m.FixUp(self._optimizerOf[m].GetCoarseLocation(m))
+        for i, a in enumerate(fixUp.atoms):
+          if i < len(fixUp.positions):
+            xyz[a.i_seq] = fixUp.positions[i]
+          if i < len(fixUp.extraInfos):
+            info[a.i_seq] = fixUp.extraInfos[i]
+          if i < len(fixUp.deleteMes):
+            deleted[a.i_seq] = fixUp.deleteMes[i]
+    return xyz, info, deleted
+
+  def _UpdateCopies(self):
+    """Move the copies to their originals' final state.
+    :return: list of (previous position, copy) for the copies that changed."""
+    xyz, info, deleted = self._FinalOriginalStates()
+    uc = self._symmetryCopies.crystal_symmetry.unit_cell()
+    changed = []
+    for c, o, rt in self._passCopies:
+      site = uc.orthogonalize(rt * uc.fractionalize(xyz.get(o.i_seq, o.xyz)))
+      e = info.get(o.i_seq)
+      if e is None:
+        e = self._extraAtomInfo.getMappingFor(o)
+      gone = deleted.get(o.i_seq, o in self._deleteMes)
+      wasGone = c in self._absentCopies
+      if ((Helpers.rvec3(site) - Helpers.rvec3(c.xyz)).length() <= 0.01 and
+          _SameAtomInfo(e, self._extraAtomInfo.getMappingFor(c)) and gone == wasGone):
+        continue
+      changed.append((c.xyz, c))
+      if not wasGone:
+        self._spatialQuery.remove(c)
+      c.xyz = site
+      self._extraAtomInfo.setMappingFor(c, probeExt.ExtraAtomInfo(e))
+      if gone:
+        self._absentCopies.add(c)
+      else:
+        self._absentCopies.discard(c)
+        self._spatialQuery.add(c)
+    return changed
+
+  def _CliquesNear(self, cliques, sites):
+    """The Cliques with an atom, in any coarse position, within interaction range of
+    one of the sites."""
+    reach = 2 * self._maximumVDWRadius + 2 * self._probeRadius + 0.5
+    grid = {}
+    for s in sites:
+      _AddToGrid(grid, _GridKey(s, reach), Helpers.rvec3(s))
+    result = []
+    for c in cliques:
+      near = False
+      for v in c:
+        m = self._interactionGraph.vertex_label(v)
+        for pos in m.CoarsePositions().positions:
+          for x in pos:
+            k = _GridKey(x, reach)
+            for d in itertools.product((-1, 0, 1), repeat=3):
+              for s in grid.get((k[0]+d[0], k[1]+d[1], k[2]+d[2]), []):
+                if (s - Helpers.rvec3(x)).length() < reach:
+                  near = True
+                  break
+              if near: break
+            if near: break
+          if near: break
+        if near: break
+      if near:
+        result.append(c)
+    return result
+
+  def _Poses(self):
+    """The current pose of each Mover: (OptimizerC, coarse index, fine index)."""
+    result = {}
+    for m in self._movers:
+      optC = self._optimizerOf[m]
+      result[m] = (optC, optC.GetCoarseLocation(m), optC.GetFineLocation(m))
+    return result
+
+  def _SetPose(self, m, pose):
+    optC, coarse, fine = pose
+    self._setMoverState(m.CoarsePositions(), coarse)
+    if fine >= 0:
+      self._setMoverState(m.FinePositions(coarse), fine)
+    self._optimizerOf[m] = optC
+
+  def _ScoreMover(self, m, dotScorer):
+    """Score of a Mover's current pose against everything around it, copies included."""
+    optC = self._optimizerOf[m]
+    coarse = optC.GetCoarseLocation(m)
+    fine = optC.GetFineLocation(m)
+    pr = m.CoarsePositions()
+    index = coarse
+    if fine >= 0:
+      pr = m.FinePositions(coarse)
+      index = fine
+    score = self._preferenceMagnitude * pr.preferenceEnergies[index]
+    for i in range(len(pr.positions[index])):
+      a = pr.atoms[i]
+      if a in self._deleteMes:
+        continue
+      maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(a).vdwRadius + self._maximumVDWRadius
+      score += dotScorer.score_dots(a, self._minOccupancy, self._spatialQuery,
+        maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[a.i_seq],
+        optC.GetDots(a.i_seq), self._probeDensity, False, False).totalScore()
+    return score
+
+  def _RefreshSymmetryCopies(self, singletonCliques, groupCliques, dotSphereCache,
+                             stopOptimizingAt, alt):
+    """Copies follow their originals; the Cliques near copies that changed are optimized
+    again, in a new OptimizerC, at most 3 passes in all. Movers still changing after the
+    last pass keep the combination of their states that scores best with matching copies;
+    so do the Movers a pass changed when the time limit overtook it, between their previous
+    and new states, and the refresh stops."""
+    cliques = singletonCliques + groupCliques
+    poses = [self._Poses()]
+    passNotes = []
+    lastRedo = []
+    lastChanged = []
+    changed = self._UpdateCopies()
+    moved = [(1, self._ChangedSites(changed))]  # (pass after which copies moved, sites)
+    while len(changed) > 0 and len(poses) < 3:
+      # Past the time limit a pass would solve its Cliques as singletons, in place of
+      # the main search's solutions.
+      if time.time() > stopOptimizingAt:
+        passNotes.append("stopped at pass {} due to time limit".format(len(poses) + 1))
+        changed = []
+        break
+      redo = self._CliquesNear(cliques, moved[-1][1])
+      movers = [self._interactionGraph.vertex_label(v) for c in redo for v in c]
+      if len(movers) > 0:
+        for m in movers:
+          self._setMoverState(m.CoarsePositions(), 0)
+        optC = OptimizerC(self._verbosity, self._preferenceMagnitude,
+                          self._maximumVDWRadius, self._minOccupancy, self._probeRadius, self._probeDensity,
+                          self._atoms,
+                          self._excludeDict, self._dotScorer, dotSphereCache, self._atomMoverLists,
+                          self._spatialQuery, self._extraAtomInfo, self._deleteMes)
+        optC.Initialize(movers)
+        self._OptimizeCliques(optC, [c for c in redo if len(c) == 1],
+          [c for c in redo if len(c) > 1], stopOptimizingAt)
+        self._OptimizeFine(optC, redo, stopOptimizingAt)
+        for m in movers:
+          self._optimizerOf[m] = optC
+      poses.append(self._Poses())
+      lastChanged = [m for m in movers if poses[-1][m][1:] != poses[-2][m][1:]]
+      lastRedo = redo
+      passNotes.append("pass {}: {} of {} Cliques re-optimized, {} Movers changed".format(
+        len(poses), len(redo), len(cliques), len(lastChanged)))
+      self._infoString += _VerboseCheck(self._verbosity, 3, "Symmetry copies "+passNotes[-1]+
+        "".join("\n  "+self._MoverName(m) for m in lastChanged)+"\n")
+      if time.time() > stopOptimizingAt:
+        # The time limit overtook the pass, which may have solved Cliques as singletons:
+        # the Movers it changed keep the best of their previous and new states.
+        if len(lastChanged) > 0:
+          text = self._ResolveUnsettled(lastChanged, lastRedo, poses[-2:], cliques)
+          passNotes[-1] += ", time limit reached: best of previous and new states of " + text
+        changed = []
+        break
+      changed = self._UpdateCopies()
+      moved.append((len(poses), self._ChangedSites(changed)))
+
+    unsettled = ""
+    if len(changed) > 0 and len(lastChanged) > 0:
+      unsettled = self._ResolveUnsettled(lastChanged, lastRedo, poses, cliques)
+
+    text = "{} passes".format(len(poses)) if len(poses) > 1 else "1 pass"
+    if len(passNotes) > 0:
+      text += " (" + "; ".join(passNotes) + ")"
+    self._copyPassNotes.append((alt, text, unsettled))
+
+  def _ChangedSites(self, changed):
+    """Previous and current sites of the copies that _UpdateCopies() changed."""
+    sites = []
+    for old, c in changed:
+      sites.append(old)
+      sites.append(c.xyz)
+    return sites
+
+  def _MoverName(self, m):
+    return self._moverInfo[m].split(" Initial score:")[0]
+
+  def _ResolveUnsettled(self, unsettled, lastRedo, poses, cliques):
+    """For Movers whose state changed in the last pass, try the combinations of the
+    states they had in the passes of poses (or the passes' combinations if there are more
+    than 64), each with copies rebuilt to match, and keep the one with the best summed score
+    of the Cliques involved.
+    :return: description of the unsettled Movers."""
+    options = []
+    for m in unsettled:
+      seen = []
+      for p in poses:
+        if p[m][1:] not in [s[1:] for s in seen]:
+          seen.append(p[m])
+      options.append(seen)
+    n = 1
+    for o in options:
+      n *= len(o)
+    if n <= 64:
+      combos = list(itertools.product(*options))
+    else:
+      combos = []
+      for p in poses:
+        combo = tuple(p[m] for m in unsettled)
+        if [x[1:] for x in combo] not in [[x[1:] for x in c] for c in combos]:
+          combos.append(combo)
+    scored = []
+    for c in cliques:
+      movers = [self._interactionGraph.vertex_label(v) for v in c]
+      if c in lastRedo or any(m in unsettled for m in movers):
+        scored.extend(movers)
+    best = None
+    for combo in combos:
+      for m, pose in zip(unsettled, combo):
+        self._SetPose(m, pose)
+      self._UpdateCopies()
+      total = 0.0
+      for m in scored:
+        total += self._ScoreMover(m, self._dotScorer)
+      if best is None or total > best[0]:
+        best = (total, combo)
+    for m, pose in zip(unsettled, best[1]):
+      self._SetPose(m, pose)
+    self._UpdateCopies()
+    return "{} (best of {} combinations, score {:.2f})".format(
+      "; ".join(self._MoverName(m) for m in unsettled), len(combos), best[0])
+
+  def _SummarizeCopies(self, mi):
+    n = len(self._symmetryCopies.models.get(mi, []))
+    if n == 0:
+      return
+    parts = []
+    for alt, text, unsettled in self._copyPassNotes:
+      if len(self._copyPassNotes) > 1:
+        text = "alternate '{}': {}".format(alt, text)
+      parts.append(text)
+    unsettled = "; ".join("'{}' {}".format(alt, u) if len(self._copyPassNotes) > 1 else u
+      for alt, text, u in self._copyPassNotes if u)
+    line = "Symmetry copies (fixed environment): model {}, {} copy atoms, {}; unsettled: {}\n".format(
+      mi + 1, n, "; ".join(parts), unsettled if unsettled else "none")
+    self._copySummary += line
+    self._infoString += _VerboseCheck(self._verbosity, 1, line)
+
+  def getSymmetryCopies(self):
+    """
+      :return: the symmetry copies of the last alternate pass as (copy, original, rt_mx,
+      present) tuples; present is False for copies of deleted originals.
+    """
+    return [(c, o, rt, c not in self._absentCopies) for c, o, rt in self._passCopies]
+
+  def getSymmetryCopiesSummary(self):
+    """
+      :return: one line per model about the symmetry copies: the number of copy atoms,
+      the passes and the Movers that did not settle; empty without copies.
+    """
+    return self._copySummary
+
+  def _OptimizeCliques(self, optC, singletonCliques, groupCliques, stopOptimizingAt):
+    """Coarse optimization of the Cliques."""
+    # Do coarse optimization on the singleton Movers.  Record the selected coarse
+    # index.  We do not check for the time limit here because singleton optimization
+    # is very fast.
+    for s in singletonCliques:
+      mover = self._interactionGraph.vertex_label(s[0])
+      (bestScore, infoString) = optC.OptimizeSingleMoverCoarse(mover)
+      self._infoString += infoString
+      ret = bestScore
+      self._infoString += _VerboseCheck(self._verbosity, 1, "Singleton optimized with score {:.2f}\n".format(ret))
+    self._infoString += _ReportTiming(self._verbosity, "optimize singletons (coarse)")
+
+    # Do coarse optimization on the multi-Mover Cliques.
+    # Sort the interaction-graph edges into their Cliques in one pass, in graph
+    # order.  (Building each Clique's subgraph with _subsetGraph() scanned every
+    # vertex and edge of the whole graph once per Clique: quadratic in the
+    # number of Movers.)
+    cliqueOf = {}
+    for ci, g in enumerate(groupCliques):
+      for v in g:
+        cliqueOf[self._interactionGraph.vertex_label(v)] = ci
+    cliqueEdges = [[] for g in groupCliques]
+    for e in self._interactionGraph.edges():
+      source = self._interactionGraph.vertex_label(self._interactionGraph.source(e))
+      ci = cliqueOf.get(source)
+      if ci is not None:
+        cliqueEdges[ci].append((source,
+          self._interactionGraph.vertex_label(self._interactionGraph.target(e))))
+    for ci, g in enumerate(groupCliques):
+      startTime = time.time()
+      remainingSeconds = stopOptimizingAt - time.time()
+
+      # Find all of the Movers in the clique so that we know which ones to capture the state for.
+      # connected_components() lists them in graph order, as _subsetGraph() did.
+      movers = [self._interactionGraph.vertex_label(i) for i in g]
+      index = dict((m, i) for i, m in enumerate(movers))
+
+      # Turn the graph edges into a versa array that holds the edges. The first index is the
+      # number of edge and the second is 2D, listing the index of each mover.
+      edges = flex.int(flex.grid(len(cliqueEdges[ci]), 2))
+      for i, (source, target) in enumerate(cliqueEdges[ci]):
+        edges[(i,0)] = index[source]
+        edges[(i,1)] = index[target]
+
+      (bestScore, infoString) = optC.OptimizeCliqueCoarse(movers, edges, remainingSeconds)
+      self._infoString += infoString
+      ret = bestScore
+
+      stopTime = time.time()
+
+      self._infoString += _VerboseCheck(self._verbosity, 1,
+        "Clique of size {:d} optimized with score {:.2f} in {:.2f} seconds\n".format(
+          len(movers), ret, stopTime - startTime))
+    self._infoString += _ReportTiming(self._verbosity, "optimize cliques (coarse)")
+
+  def _OptimizeFine(self, optC, cliques, stopOptimizingAt):
+    """Fine optimization of the Movers of the Cliques, then the polish of each
+    multi-Mover Clique, skipped after the time limit."""
+    # Do fine optimization on the Movers, one at a time.  A move of a member of
+    # a multi-Mover Clique must also raise the scores of its neighbours.
+    self._infoString += _VerboseCheck(self._verbosity, 1,"Fine optimization on all Movers\n")
+    inCliques = set(self._interactionGraph.vertex_label(v) for c in cliques for v in c)
+    neighbours = dict((m, []) for m in inCliques)
+    for e in self._interactionGraph.edges():
+      source = self._interactionGraph.vertex_label(self._interactionGraph.source(e))
+      target = self._interactionGraph.vertex_label(self._interactionGraph.target(e))
+      if source in neighbours and target in neighbours:
+        neighbours[source].append(target)
+        neighbours[target].append(source)
+    for m in self._movers:
+      if m not in inCliques:
+        continue
+      (bestScore, infoString) = optC.OptimizeSingleMoverFine(m, neighbours[m])
+      self._infoString += infoString
+    self._infoString += _ReportTiming(self._verbosity, "optimize all Movers (fine)")
+
+    # Polish each multi-Mover Clique: every coarse state of each member with its
+    # own fine search, the other members fixed.
+    skipped = 0
+    stopped = 0
+    for c in cliques:
+      if len(c) < 2:
+        continue
+      movers = [self._interactionGraph.vertex_label(v) for v in c]
+      (sweeps, moves, capped, stop, infoString) = optC.PolishClique(movers,
+        [neighbours[m] for m in movers], stopOptimizingAt - time.time())
+      self._infoString += infoString
+      if stop:
+        if sweeps == 0:
+          skipped += 1
+        else:
+          stopped += 1
+      if capped:
+        self._infoString += _VerboseCheck(self._verbosity, 1,
+          "Polish of a Clique of size {:d} stopped at the limit of {:d} sweeps\n".format(
+            len(movers), sweeps))
+    if skipped + stopped > 0:
+      self._infoString += _VerboseCheck(self._verbosity, 1,
+        "Polish skipped for {:d} and stopped for {:d} Cliques due to time limit\n".format(
+          skipped, stopped))
+    self._infoString += _ReportTiming(self._verbosity, "polish Cliques")
+
   def getInfo(self):
     """
       Returns information that the user may care about regarding the processing.  The level of
@@ -756,8 +1406,8 @@ class Optimizer(object):
       If the object was constructed with fillAtomDump = False, then the atom dump will always be
       empty.
     """
-    ret = self._infoString
-    self._infoString = ""
+    ret = str(self._infoString)
+    self._infoString = _InfoAccumulator()
     return ret
 
   def getWarnings(self):
@@ -782,6 +1432,35 @@ class Optimizer(object):
     ret = self._atomDump
     self._atomDump = ""
     return ret
+
+  def getHydrogensToDelete(self):
+    """
+      Returns a list of the Hydrogens that were marked for deletion during the processing.
+      The caller should delete these form the optimized structure to produce a model that
+      has the best contacts and fewest clashes.
+      Each atom's deletion is decided by the last alternate pass that contained it.
+      :return: a list of the Hydrogens that were marked for deletion during the processing,
+      in model order (i_seq), so that the deletions are reported in the same order on every run.
+    """
+    return sorted(self._hydrogensToDelete, key=lambda a: a.i_seq)
+
+  def getFlippedAmides(self):
+    """
+      Returns a list of the Movers that are amide flips.  The caller may want to use this to report
+      on the flips that were done.  This includes both "locked down" Movers and those
+      that were chosen to be flipped based on their scores.
+      :return: a list with a FlippedMoverInfo from each Mover that is an amide flip.
+    """
+    return list(self._amideFlipsPerformed)
+
+  def getFlippedHistidines(self):
+    """
+      Returns a list of the Movers that are histidine flips.  The caller may want to use this to report
+      on the flips that were done.  This includes both "locked down" Movers and those
+      that were chosen to be flipped based on their scores.
+      :return: a list with a FlippedMoverInfo from each Mover that is a histidine flip.
+    """
+    return list(self._hisFlipsPerformed)
 
   def _setMoverState(self, positionReturn, index):
     """
@@ -841,7 +1520,7 @@ class Optimizer(object):
   # Placement
 
   def _PlaceMovers(self, atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters,
-                    addFlipMovers):
+                    addFlipMovers, alt):
     """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
     :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
     Movers present in the structure already.
@@ -850,11 +1529,14 @@ class Optimizer(object):
     and they are rotatable.
     :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
     structure that the atom from the first parameter interacts with that lists all of the
-    bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
+    bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists()
+    on the atoms of the first parameter, so that only bonds within this conformer count.
     :param hParameters: List indexed by sequence ID that stores the riding
     coefficients for hydrogens that have associated dihedral angles.  This can be
     obtained by calling model.setup_riding_h_manager() and then model.get_riding_h_manager().
     :param addFlipMovers: Do we add flip Movers along with other types?
+    :param alt: The alternate conformation identifier for the conformer being processed.  This is
+    used for our logging purposes when we are recording flipped movers.
     :return: List of atoms that should be unconditionally marked for deletion as a result
     of the analysis done during placement.
     """
@@ -868,9 +1550,16 @@ class Optimizer(object):
     # List of atoms to delete
     deleteAtoms = []
 
+    # i_seq of the His ring Nitrogens that a coarse state of their His flip Mover makes an
+    # acceptor; candidate acceptors for the single-hydrogen rotators below.
+    hisStateAcceptors = set()
+
     # Dictionary mapping from Mover to information about the Mover, so that we can keep track of
     # everything from its placement to its final state in the same string.
     self._moverInfo = {}
+
+    # Initial score of each Mover; the blank chain ID drops a token from its _moverInfo text.
+    self._initialScore = {}
 
     # The radius of a Polar Hydrogen (one that forms Hydrogen bonds)
     # @todo Can we look this up from inside CCTBX?
@@ -979,6 +1668,9 @@ class Optimizer(object):
               cp = flip.CoarsePositions()
               if s.flipped:
                 index = 1
+                # Add to the list of flipped amide movers.
+                # We're not appending it to the list of Movers, so it won't be counted later.
+                self._amideFlipsPerformed.append(FlippedMoverInfo(alt, a))
               else:
                 index = 0
               self._setMoverState(cp, index)
@@ -989,7 +1681,7 @@ class Optimizer(object):
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverAmideFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
               self._moverInfo[self._movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName
           except Exception as e:
-            self._infoString += _VerboseCheck(self._verbosity, 0,"Could not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
+            self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
 
       # See if we should insert a MoverHisFlip here.
       # @todo Is there a more general way than looking for specific names?
@@ -1005,11 +1697,13 @@ class Optimizer(object):
           # Find the four positions to check for Nitrogen ionic bonds
           # The two atoms are NE2 (0th atom with its Hydrogen at atom 1) and
           # ND1 (4th atom with its Hydrogen at atom 5).
+          # The first flipped configuration follows the unflipped ones.
           cp = hist.CoarsePositions()
+          flippedConfig = len(cp.positions)//2
           ne2Orig = cp.positions[0][0]
           nd1Orig = cp.positions[0][4]
-          ne2Flip = cp.positions[4][0]
-          nd1Flip = cp.positions[4][4]
+          ne2Flip = cp.positions[flippedConfig][0]
+          nd1Flip = cp.positions[flippedConfig][4]
 
           # See if any are close enough to a positive ion to be ionically bonded.
           # If any are, record whether it is the original or
@@ -1030,9 +1724,9 @@ class Optimizer(object):
                   ', '+n.name.strip()+' rad = '+str(self._extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
                 if dist >= (expected - 0.55) and dist <= (expected + 0.25):
                   # The first two elements in the enumeration come from Histidine configuration 0
-                  # and the second two from configuration 4, so we figure out which one we should
-                  # be in.
-                  bondedConfig = (i // 2) * 4
+                  # and the second two from configuration flippedConfig, so we figure out which one we
+                  # should be in.
+                  bondedConfig = (i // 2) * flippedConfig
                   self._infoString += _VerboseCheck(self._verbosity, 5,'Found ionic bond in coarse configuration '+str(bondedConfig)+'\n')
                   break
             if bondedConfig is not None:
@@ -1051,6 +1745,11 @@ class Optimizer(object):
                 a.xyz = fixUp.positions[i]
               if i < len(fixUp.extraInfos):
                 self._extraAtomInfo.setMappingFor(a, fixUp.extraInfos[i])
+
+            # If the bonded configuration is the flipped one, then we add it to the list of
+            # flipped Histidine Movers so that we can report on it later.
+            if bondedConfig == flippedConfig:
+              self._hisFlipsPerformed.append(FlippedMoverInfo(alt, a))
 
             # See if we should remove the Hydrogen from each of the two potentially-bonded
             # Nitrogens and make each an acceptor if we do remove its Hydrogen.  The two atoms
@@ -1084,6 +1783,25 @@ class Optimizer(object):
             self._infoString += _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5])
 
             self._infoString += _VerboseCheck(self._verbosity, 1,"Set MoverHisFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
+          elif addFlipMovers and _HisRingNitrogensWithNonstandardBond(a, bondedNeighborLists):
+            # Issue #1199: a ring Nitrogen carries a bond outside the standard ring
+            # connectivity that the ion lock-down above (bondedConfig) did not handle
+            # -- a user-defined/custom bond, or an ion the spatial search missed.
+            # Flipping the ring could break that bond, so do not add a flip Mover.
+            # Hydrogen placement puts a Hydrogen on both ring Nitrogens, so remove
+            # the one on each bonded Nitrogen and mark that Nitrogen as an acceptor
+            # (as the ion lock-down does in _modifyIfNeeded); otherwise the Hydrogen
+            # is left dangling on an atom that is already bonded to its partner.
+            self._infoString += _VerboseCheck(self._verbosity, 1,"Did not add MoverHisFlip to "+resNameAndID+
+              " (bond outside standard ring connectivity)\n")
+            for nitro, hydro in _HisRingNitrogensWithNonstandardBond(a, bondedNeighborLists):
+              extra = self._extraAtomInfo.getMappingFor(nitro)
+              extra.isAcceptor = True
+              self._extraAtomInfo.setMappingFor(nitro, extra)
+              if hydro is not None:
+                deleteAtoms.append(hydro)
+                self._infoString += _VerboseCheck(self._verbosity, 1,"Not adding Hydrogen to "+resNameAndID+
+                  nitro.name+" and marking as an acceptor (bond outside standard ring connectivity)\n")
           elif addFlipMovers: # Add a Histidine flip Mover if we're adding flip Movers
             # Check to see if the state of this Mover has been specified. If so, place it in
             # the requested state and insert the Mover as a non-flipping Histidine.
@@ -1092,11 +1810,15 @@ class Optimizer(object):
             if s is not None:
               if s.flipped:
                 enabledFlips = 2
+                # Record that we have flipped this Histidine so that we can report on it later.
+                # We're not appending it to the list of Movers, so it won't be counted later.
+                self._hisFlipsPerformed.append(FlippedMoverInfo(alt, a))
               else:
                 enabledFlips = 1
               hist = Movers.MoverHisFlip(a, bondedNeighborLists, self._extraAtomInfo, self._nonFlipPreference,
                 enabledFlips, s.fixedUp)
               self._movers.append(hist)
+              hisStateAcceptors.update(_HisAcceptorsInAnyState(hist))
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisPlace "+str(len(self._movers))+" to "+resNameAndID+"\n")
               # Name is HisPlace rather than HisFlip, so we don't try and report uncertain or clash for it.
               self._moverInfo[self._movers[-1]] = "HisPlace at "+resNameAndID+" "+aName;
@@ -1105,10 +1827,21 @@ class Optimizer(object):
               self._setMoverState(coarse, 0)
             else:
               self._movers.append(hist)
+              hisStateAcceptors.update(_HisAcceptorsInAnyState(hist))
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
               self._moverInfo[self._movers[-1]] = "HisFlip at "+resNameAndID+" "+aName;
         except Exception as e:
-          self._infoString += _VerboseCheck(self._verbosity, 0,"Could not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
+          self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
+
+    # The Mover constructors above moved atoms after the spatial query was built
+    # (rotators turn their Hydrogens to a starting orientation; tetrahedral methyls are
+    # staggered; ion-bound Histidines are locked down).  SpatialQuery.remove() finds an
+    # atom by its current position, so these atoms stay listed in the bin of their old
+    # position, and whether a neighbor query finds them depends on the bin layout, which
+    # depends on the bounding box of all atoms, near or far.  Rebuild it from the current
+    # positions before the searches below and the optimization.  Symmetry copies stay in it.
+    self._spatialQuery = Helpers.createSpatialQuery(list(atoms) + self._environmentAtoms,
+      self._probePhil)
 
     # Make a dictionary looked up up by i_seq that returns the relevant atom. We use this to
     # look up the single-hydrogen rotators. We only place atoms that are in our current model
@@ -1116,6 +1849,12 @@ class Optimizer(object):
     atomDict = {}
     for a in atoms:
       atomDict[a.i_seq] = a
+
+    # A symmetry copy is a candidate acceptor as its original is now: the copies took
+    # their atom info before placement (ion lock) and have no His states of their own.
+    originalOf = {}
+    for c, o, rt in self._passCopies:
+      originalOf[c.i_seq] = o
 
     # Insert all single-hydrogen rotators, which we have a list of. Do this after we've
     # done all of the other Movers so that any lock-down placements will have been done
@@ -1139,8 +1878,9 @@ class Optimizer(object):
 
           # Get the list of atoms that are bonded in a chain to the hydrogen. They
           # cannot be either hydrogen-bond acceptors nor touches/clashes with this atom.
-          bonded = Helpers.getAtomsWithinNBonds(a, bondedNeighborLists, self._extraAtomInfo,
-                                                self._probeRadius, self._bondedNeighborDepth, 3)
+          # By bond count only, as the Optimizer's exclusions: the H rotates.
+          bonded = Helpers.getAtomsWithinNBondsAtAnyDistance(a, bondedNeighborLists,
+                                                self._extraAtomInfo, self._bondedNeighborDepth, 3)
 
           # Construct a list of nearby atoms that are potential acceptors and potential touches.
           # The potential acceptors are also potential touches.
@@ -1161,9 +1901,7 @@ class Optimizer(object):
           # a polar Hydrogen, and the radius of the nearby atom, indicating potential
           # overlap.
           # O-H & N-H bond len == 1.0, S-H bond len == 1.3
-          XHbondlen = 1.0
-          if neighbor.element == "S":
-            XHbondlen = 1.3
+          XHbondlen = Movers.NominalXHBondLength(neighbor)
           candidates = []
           for n in nearby:
             # We don't count bonded atoms.
@@ -1186,13 +1924,24 @@ class Optimizer(object):
               (cName == 'ND2' and resName == 'ASN') or
               (cName == 'NE2' and resName == 'GLN') or
               (cName == 'CE1' and resName == 'HIS') or (cName == 'CD2' and resName == 'HIS') )
-            acceptor = self._extraAtomInfo.getMappingFor(c).isAcceptor
+            orig = originalOf.get(c.i_seq, c)
+            acceptor = (self._extraAtomInfo.getMappingFor(orig).isAcceptor or
+              orig.i_seq in hisStateAcceptors)
             if acceptor or flipPartner:
               potentialAcceptors.append(c)
 
+          oldXYZ = a.xyz
           self._movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, self._extraAtomInfo,
                                                                 hParameters, potentialAcceptors,
                                                                 potentialTouches))
+          # The constructor turned the Hydrogen to its starting orientation; move its
+          # spatial-query entry along with it.
+          newXYZ = a.xyz
+          if newXYZ != oldXYZ:
+            a.xyz = oldXYZ
+            self._spatialQuery.remove(a)
+            a.xyz = newXYZ
+            self._spatialQuery.add(a)
           self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverSingleHydrogenRotator "+str(len(self._movers))+" to "+resNameAndID+" "+aName+
             " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
           self._moverInfo[self._movers[-1]] = "SingleHydrogenRotator at "+resNameAndID+" "+aName;
@@ -1296,6 +2045,35 @@ def _ParseFlipStates(fs):
         ret.append(FlipMoverState(t, modelId, altId, chain, resName, resIdWithICode, flipped, fixedUp))
   return ret
 
+
+def _HisRingNitrogensWithNonstandardBond(ne2Atom, bondedNeighborLists):
+  '''Issue #1199: find the Histidine ring Nitrogens (ND1/NE2) that carry a bond
+  outside the standard ring connectivity -- i.e. to something other than the two
+  ring Carbons and the Nitrogen's single Hydrogen (a user-defined/custom bond, or
+  a metal). Such a bond would be broken by flipping the ring; and unlike the ring
+  Carbons, the ring Nitrogens are not protected by the MoverHisFlip
+  neighbour-count checks, so we detect the extra bond here from the restraint bond
+  list.
+  :param ne2Atom: NE2 atom of the Histidine (its atom_group holds ND1 and NE2).
+  :param bondedNeighborLists: dictionary from probe.Helpers.getBondedNeighborLists().
+  :return: list of (nitrogen, hydrogen) tuples, one per ring Nitrogen that has a
+  nonstandard bond. hydrogen is that Nitrogen's bonded Hydrogen, or None if the
+  input model does not have it (we do not assume the Hydrogens are present).
+  '''
+  ret = []
+  for atom in ne2Atom.parent().atoms():
+    if atom.name.strip() not in ('ND1', 'NE2'):
+      continue
+    hydrogen = None
+    nonstandard = False
+    for neighbor in bondedNeighborLists[atom]:
+      if neighbor.element_is_hydrogen():
+        hydrogen = neighbor
+      elif neighbor.element.strip().upper() != 'C':
+        nonstandard = True
+    if nonstandard:
+      ret.append((atom, hydrogen))
+  return ret
 
 def _FindFlipState(a, flipStates):
   '''Is an atom in the list of residues that have flip states? If so, return the associated state
@@ -1559,7 +2337,9 @@ END
     return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator clash test: " + str(len(movers))
 
   # See what the pose angle is on the Mover. It is reported after 'pose Angle '.
-  expected = -64
+  # HG touches VAL B 2 C (2.62 A). It was -64, touching its own C (2.67 A, 4 bonds
+  # away), which the excluded atoms missed when they depended on the first pose.
+  expected = -163
   angle = int(re.findall(r'(?<=pose Angle )[-+]?\d+', opt.getInfo())[1])
   if angle != expected:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator clash, expected "+str(expected)+", found "+str(angle)
@@ -1741,8 +2521,8 @@ END
 
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
-  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+  bondProxies, asuProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies, asuProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
   probePhil = _philLike()
@@ -1865,8 +2645,8 @@ END
 
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
-  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+  bondProxies, asuProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies, asuProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
   probePhil = _philLike()
@@ -1888,7 +2668,7 @@ END
   global _DoCliqueOptimizationInC
 
   print('Testing Optimizer')
-  opt = Optimizer(probePhil, True, model, modelIndex = 0, altID = None,
+  opt = Optimizer(probePhil, True, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
@@ -1969,8 +2749,8 @@ END
 
   # Get the bond proxies for the atoms in the model and conformation we're using and
   # use them to determine the bonded neighbor lists.
-  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+  bondProxies, asuProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies, asuProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
   probePhil = _philLike()
@@ -1986,7 +2766,7 @@ END
   # Optimization will place the movers. Make sure we got as many as we expected.
   # Make sure that the orientation for all of the movers is correct.
   probePhil = _philLike()
-  opt = Optimizer(probePhil, True, model, modelIndex = 0, altID = None,
+  opt = Optimizer(probePhil, True, model, modelIndex = None, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
@@ -2002,6 +2782,47 @@ END
   for r in res:
     if not 'pose Angle 90' in r:
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for B-factor test"
+
+  #========================================================================
+  # Several ignored waters (B factor or occupancy) between kept ones: they leave the
+  # Optimizer's atom list, the remaining atoms keep their order, and the model keeps them.
+  pdb_waters = (
+"""
+CRYST1   93.586  127.886  251.681  90.00  90.00  90.00 I 2 2 2
+HETATM    1  C   ACT A   1       6.494 -47.273 -37.006  1.00 16.65           C
+HETATM    2  O   ACT A   1       5.654 -47.981 -37.645  1.00 15.33           O
+HETATM    3  CH3 ACT A   1       6.790 -47.410 -35.548  1.00 17.13           C
+HETATM    4  OXT ACT A   1       7.110 -46.425 -37.699  1.00 17.05           O
+HETATM  200  O   HOH A 200      12.200 -48.610 -35.148  1.00 50.00           O
+HETATM  201  O   HOH A 201       1.800 -46.810 -34.548  1.00 20.00           O
+HETATM  202  O   HOH A 202      12.200 -42.610 -35.148  0.50 20.00           O
+HETATM  203  O   HOH A 203       1.800 -52.810 -34.548  1.00 20.00           O
+HETATM  204  O   HOH A 204       6.200 -52.610 -41.148  1.00 45.00           O
+END
+"""
+    )
+  dm = DataManager(['model'])
+  dm.process_model_str("pdb_waters.pdb", pdb_waters)
+  model = shift_and_box_model(model = dm.get_model())
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
+  model.process(make_restraints=True, pdb_interpretation_params=p)
+  expected = [a.memory_id() for a in GetAtomsForConformer(model.get_hierarchy().models()[0], "")
+    if a.parent().resname.strip() != 'HOH' or a.parent().parent().resseq_as_int() in (201, 203)]
+  def waterOxygens():
+    return [a.memory_id() for a in model.get_hierarchy().atoms()
+      if a.parent().resname.strip() == 'HOH' and a.element.strip().upper() == 'O']
+  watersBefore = waterOxygens()
+  opt = Optimizer(_philLike(), True, model, modelIndex = None, altID = None, verbosity = 1)
+  # Phantom Hydrogens are appended after the model's atoms
+  got = [a.memory_id() for a in opt._atoms if not a.name.strip().startswith('H?')]
+  if got != expected:
+    return "Optimizers.Test(): Wrong atoms or order after ignoring waters"
+  if not "Ignored 3 waters due to occupancy or B factor" in opt.getInfo():
+    return "Optimizers.Test(): Missing ignored-waters line"
+  if waterOxygens() != watersBefore:
+    return "Optimizers.Test(): Ignored waters were removed from the model"
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read

@@ -1114,7 +1114,8 @@ def analyze_anisotropy(
     a_zero_values = overall_si.a_zero_values,
     fo_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.fo_b_cart),
     aa_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.aa_b_cart),
-    bb_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.bb_b_cart),
+    bb_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.bb_b_cart) if
+      aniso_info.bb_b_cart is not None else None,
     ss_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.ss_b_cart),
     uu_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.uu_b_cart),
     overall_scale = overall_si.target_scale_factors,
@@ -1162,12 +1163,20 @@ def estimate_s_matrix(aniso_info):
     aniso_info.ss_sd_values,  # using sigmas for ss_b_cart
   )
 
-  # Repeat for B matrix
-  aniso_info.bb_b_cart = get_aniso_from_scale_values(
-    aniso_info,
-    aniso_info.bb_scale_values,
-    aniso_info.ss_sd_values,  # using sigmas for ss_b_cart
-  )
+  # Repeat for B matrix. B is undefined where any value is nan or inf
+  #   (external map: no uncertainty estimates), and so is bb_b_cart
+  bb_defined = True
+  for x in aniso_info.bb_scale_values:
+    if not math.isfinite(x):
+      bb_defined = False
+      break
+  aniso_info.bb_b_cart = None
+  if bb_defined:
+    aniso_info.bb_b_cart = get_aniso_from_scale_values(
+      aniso_info,
+      aniso_info.bb_scale_values,
+      aniso_info.ss_sd_values,  # using sigmas for ss_b_cart
+    )
 
   # Repeat for D matrix
   aniso_info.dd_b_cart = get_aniso_from_scale_values(
@@ -1354,8 +1363,16 @@ def get_aniso_info(
       overall_si.rms_fo_list * overall_si.dd_values )
 
     # Anisotropy of the errors: B
-    si.bb_values = si.aa_values * flex.sqrt(
+    bb_values = si.aa_values * flex.sqrt(
        si.ssqr_values/overall_si.ssqr_values)
+    # B is undefined (nan or inf) where the overall ssqr is zero (external
+    #   map, cc set to 1): si.bb_values is then None, as si is pickled
+    #   and pickling flex.double needs finite values
+    si.bb_values = bb_values
+    for x in bb_values:
+      if not math.isfinite(x):
+        si.bb_values = None
+        break
 
     # Anisotropy of scale factors S:
     #     S = ratio of target scale factors to overall values
@@ -1383,8 +1400,8 @@ def get_aniso_info(
     fo_scale_values.extend(si.rms_fo_list)
     aa_values_by_dv.append(si.aa_values)
     aa_scale_values.extend(si.aa_values)
-    bb_values_by_dv.append(si.bb_values)
-    bb_scale_values.extend(si.bb_values)
+    bb_values_by_dv.append(bb_values)
+    bb_scale_values.extend(bb_values)
     dd_values_by_dv.append(si.dd_values)
     dd_scale_values.extend(si.dd_values)
     ss_values_by_dv.append(si.ss_values)
@@ -2803,7 +2820,7 @@ class analyze_aniso_object:
     if not d_min:
       (d_max,d_min)=f_array.d_max_min(d_max_is_highest_defined_if_infinite=True)
 
-    if b_cart_to_remove and b_iso:
+    if b_cart_to_remove and (b_iso is not None): # b_iso = 0 is a real value
       self.b_cart=b_cart_to_remove
       self.b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0] # change
       self.b_iso=b_iso

@@ -19,7 +19,7 @@ class ExpertKnowledgeBase:
   """Simple tag-based lookup for the expert knowledge base."""
 
   def __init__(self, yaml_path):
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding='utf-8') as f:
       self.entries = yaml.safe_load(f)
     # Index by category
     self.by_category = defaultdict(list)

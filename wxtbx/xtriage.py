@@ -102,7 +102,8 @@ class wx_output_base(mmtbx.scaling.xtriage_output):
     wx_txt = wx.StaticText(parent=self._current_panel,
       label=text)
     font = wx_txt.GetFont()
-    font2 = wx.Font(font.GetPointSize(), wx.FONTFAMILY_MODERN, wx.NORMAL,
+    font2 = wx.Font(font.GetPointSize(), wx.FONTFAMILY_MODERN,
+      wx.FONTSTYLE_NORMAL,
       wx.FONTWEIGHT_NORMAL) #  Python 3 Fix  , face="Courier")
     # FIXME this seems not to work on wxPython 3/Mac OS 10.9
     wx_txt.SetFont(font2)
@@ -311,7 +312,7 @@ def DrawStatusLightControl(parent, message, name, level):
   symbol indicating the severity of a message, with the actual message next to
   it.
   """
-  bmp = wx.EmptyBitmap(32, 32)
+  bmp = wx.Bitmap(32, 32)
   dc = wx.MemoryDC()
   dc.SelectObject(bmp)
   gc = wx.GraphicsContext.Create(dc)
@@ -361,11 +362,11 @@ class XtriageFrame(wx.Frame):
     self.toolbar = self.CreateToolBar(style=wx.TB_TEXT)
     self.AddAppSpecificButtons()
     bmp = wxtbx.bitmaps.fetch_icon_bitmap("mimetypes", "spreadsheet")
-    btn = self.toolbar.AddLabelTool(-1, "Save graph", bmp,
+    btn = self.toolbar.AddTool(-1, "Save graph", bmp,
       shortHelp="Save graph", kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.output_panel.OnSaveImage, btn)
     bmp = wxtbx.bitmaps.fetch_icon_bitmap("mimetypes", "txt")
-    btn = self.toolbar.AddLabelTool(-1, "View log file", bmp,
+    btn = self.toolbar.AddTool(-1, "View log file", bmp,
       shortHelp="View log file", kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnDisplayLog, btn)
     self.toolbar.Realize()

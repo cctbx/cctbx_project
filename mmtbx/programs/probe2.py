@@ -15,6 +15,7 @@
 
 from __future__ import absolute_import, division, print_function
 import sys
+import collections
 import math
 from datetime import datetime
 from pathlib import Path
@@ -27,6 +28,7 @@ import mmtbx_probe_ext as probeExt
 from mmtbx.probe import Helpers
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
+from scitbx.array_family import flex
 
 version = "4.13.0"
 
@@ -118,6 +120,13 @@ output
     .type = bool
     .short_caption = Write the output files
     .help = Write the output files(s) when this is True (default). Set to False when harnessing the program.
+
+  contact_records = False
+    .type = bool
+    .short_caption = Keep per-atom-pair contact records instead of dots
+    .help = For programs harnessing probe2: summarize contacts per atom pair in C++ (see \
+            mmtbx/probe/ContactDB.h) and store no dots, so dot output is empty. The records \
+            are left in the program's _contactRecords list as (ContactDB, source atoms) pairs.
 
   file_name = None
     .type = str
@@ -425,6 +434,30 @@ def _condense(dotInfoList, condense):
 
 # ------------------------------------------------------------------------------
 
+# Probe reads only bonds from the restraints. None skips the plain-pair table, which is
+# for ADP restraints only; at the default 5 A it is ~0.6 GB on 1aon.
+PLAIN_PAIRS_RADIUS = None
+
+def getPdbInterpretationParams(useNeutronDistances = False):
+  '''
+    PDB interpretation parameters probe2 uses to make restraints.  A caller that
+    pre-processes a model for overrideModel(processed=True) must use these same
+    parameters, and a matching use_neutron_distances.
+  '''
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.use_neutron_distances = useNeutronDistances
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
+  # We need to turn this on because without it the interpretation is
+  # renaming atoms to be more correct.  Unfortunately, this causes the
+  # dot names to no longer match the input file.
+  p.pdb_interpretation.flip_symmetric_amino_acids=False
+  return p
+
+# ------------------------------------------------------------------------------
+
 def _totalInteractionCount(chainCounts):
   '''
     Find the total count of interactions of any type for the specified chain-pair type.
@@ -440,8 +473,17 @@ def _totalInteractionCount(chainCounts):
 
 # ------------------------------------------------------------------------------
 
+class _ArrayDot(object):
+  '''The DotInfo fields _writeOutput() reads, made one at a time from ContactDB's dot arrays.'''
+  __slots__ = ('src', 'target', 'gap', 'ptmaster', 'loc', 'spike')
+
 class DotInfo:
   # Dot class storing information about an individual dot.
+
+  # Class-level cache: atom memory_id -> name string.  Shared across all
+  # DotInfo instances so each atom's name is formatted at most once.
+  _nameCache = {}
+
   def __init__(self, src, target, loc, spike, overlapType, gap, ptmaster, angle):
     self.src = src                  # Source atom for the interaction
     self.target = target            # Target atom for the interactions
@@ -452,38 +494,32 @@ class DotInfo:
     self.ptmaster = ptmaster        # Main/side chain interaction type
     self.angle = angle              # Angle associated with the bump
     self.dotCount = 1               # Used by _condense and raw/JSON output to count dots on the same source + target
+    # Pre-compute sort key to avoid repeated _makeName calls during sorting
+    self._sortKey = self._cachedName(src)
+    if target is not None:
+      self._sortKey += self._cachedName(target)
+
+  @staticmethod
+  def _cachedName(atom):
+      key = atom.memory_id()
+      name = DotInfo._nameCache.get(key)
+      if name is None:
+        name = "{}{:4.4s}{}{} {}{:1s} {:.3f} {:.3f} {:.3f}".format(
+          atom.parent().parent().parent().id,
+          str(atom.parent().parent().resseq_as_int()),
+          atom.parent().parent().icode,
+          atom.parent().resname,
+          atom.name,
+          atom.parent().altloc,
+          atom.xyz[0], atom.xyz[1], atom.xyz[2])
+        DotInfo._nameCache[key] = name
+      return name
 
   def _makeName(self, atom):
-      # Make the name for an atom, which includes its chain and residue information
-      # along with other atom data, and also includes its location to distinguish
-      # among H? atoms that are otherwise identical.
-      return "{}{:4.4s}{}{} {}{:1s} {:.3f} {:.3f} {:.3f}".format(
-        atom.parent().parent().parent().id, # chain
-        str(atom.parent().parent().resseq_as_int()), # residue number
-        atom.parent().parent().icode, # insertion code
-        atom.parent().resname, # residue name
-        atom.name, # atom name
-        atom.parent().altloc, # alternate location
-        atom.xyz[0], atom.xyz[1], atom.xyz[2])
+      return self._cachedName(atom)
 
   def __lt__(self, other):
-      # Sort dots based on characteristics of their source and target atoms, then their gap
-      # (smallest/most negative gap to largest).
-      # We include the XYZ position in the sort so that we get the same order and grouping each
-      # time even though the phantom H? atoms are otherwise identical.
-      # There may be no target atoms specified (may be Python None value), which will
-      # be treated as the empty string.
-
-      selfName = self._makeName(self.src)
-      if self.target is not None:
-        selfName += self._makeName(self.target)
-      otherName = other._makeName(other.src)
-      if other.target is not None:
-        otherName += other._makeName(other.target)
-
-      return (selfName < otherName) or (
-        (selfName == otherName) and (self.gap < other.gap)
-      )
+      return (self._sortKey, self.gap) < (other._sortKey, other.gap)
 
 # ------------------------------------------------------------------------------
 
@@ -495,6 +531,7 @@ def Test():
 
   #=====================================================================================
   # Test the _condense() method.
+  DotInfo._nameCache.clear()
 
   atoms = [ # Different atoms for different indices
     pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom()
@@ -769,7 +806,7 @@ Note:
 
   def _generate_interaction_dots(self, sourceAtoms, targetSet, spatialQuery, phantomsQuery, bondedNeighborLists):
     '''
-      Find all interaction dots for the specified atoms.
+      Find all interaction dots for the specified atoms, using probeExt.ContactDB.
       This does not include locations where the probe is inside a bonded neighbor.
       :param sourceAtoms: Sorted list of atoms that can be the source of an interaction.
       :param targetSet: Set of atoms that are targets; others will block dots but not interact
@@ -780,205 +817,100 @@ Note:
       Hydrogens (whether or not they are in the source or target atoms).
       :param bondedNeighborLists: List of bonded neighbors for atoms in sourceAtoms.
       :return: Side effect: Add dots to the self._results data structure by
-      atomclass and dot type.
+      atomclass and dot type.  For kinemage output without count_dots or contact_summary,
+      the dots are kept as ContactDB's arrays in self._cxxDots instead.
     '''
 
-    # Store constants used frequently
-    probeRadius = self.params.probe.probe_radius
-    include_mainchain_mainchain = self.params.include_mainchain_mainchain
-    minimum_occupancy = self.params.minimum_occupancy
-    include_water_water = self.params.include_water_water
-    excluded_bond_chain_length = self.params.excluded_bond_chain_length
-    maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.probe_radius
+    if self.params.output.contact_records:
+      self._contactRecords.append(
+        (self._build_contact_records(sourceAtoms, targetSet, spatialQuery, phantomsQuery, bondedNeighborLists),
+         list(sourceAtoms)))
+      return
+    db = self._build_contact_records(sourceAtoms, targetSet, spatialQuery, phantomsQuery,
+                                     bondedNeighborLists, keep_dots=True)
+    src, cause, itype, overlapType, gap, loc, spike, ptmaster = db.dots()
+    byIseq = {a.i_seq: a for a in self._atomClasses}
+    for a, nbrs in bondedNeighborLists.items():
+      byIseq.setdefault(a.i_seq, a)
+      for n in nbrs:
+        byIseq.setdefault(n.i_seq, n)
+    interactionTypes = probeExt.InteractionType.values
+    overlapTypes = probeExt.OverlapType.values
+    counts = {'M': self._MCMCCount, 'S': self._SCSCCount, 'P': self._MCSCCount, 'O': self._otherCount}
+    for (pm, t), n in collections.Counter(zip(ptmaster, itype)).items():
+      if pm in counts:
+        counts[pm][interactionTypes[t]] += n
 
-    for src in sourceAtoms:
-      # Find out what class of dot we should place for this atom.
-      atomClass = self._atomClasses[src]
+    spo = self.params.output
+    if spo.format == 'kinemage' and not spo.count_dots and not spo.contact_summary:
+      # Only _writeOutput() reads these dots: keep the arrays, grouped as _results would be.
+      classOf = {a.i_seq: self._atomClasses[a] for a in sourceAtoms}
+      groups = {}
+      for k, (s, t) in enumerate(zip(src, itype)):
+        groups.setdefault((classOf[s], t), []).append(k)
+      self._cxxDots.append((byIseq, src, cause, gap, loc, spike, ptmaster, groups))
+      return
 
-      # Generate no dots for ignored atoms.
-      if atomClass == 'ignore':
-        continue
+    for k in range(len(src)):
+      s = byIseq[src[k]]
+      it = interactionTypes[itype[k]]
+      pm = ptmaster[k]
+      self._results[self._atomClasses[s]][it].append(DotInfo(
+        s, byIseq[cause[k]], tuple(loc[k]), tuple(spike[k]), overlapTypes[overlapType[k]], gap[k], pm, 0))
 
-      # Generate no dots for atoms with too-low occupancy
-      if src.occ < minimum_occupancy:
-        continue
+# ------------------------------------------------------------------------------
 
-      # Find atoms that are close enough that they might touch.
-      nearby = spatialQuery.neighbors(src.xyz, 0.00001, maxRadius)
+  def _build_contact_records(self, sourceAtoms, targetSet, spatialQuery, phantomsQuery, bondedNeighborLists,
+                             keep_dots=False):
+    '''
+      Score the source atoms in C++, keeping the contacts summarized per atom pair.
+      Flattens the per-atom state into i_seq-indexed arrays for probeExt.ContactDB.
+      :param keep_dots: Also keep every reported dot, read back with dots().
+      :return: The built probeExt.ContactDB.
+    '''
+    atoms = {a.i_seq: a for a in self._atomClasses}
+    for a, nbrs in bondedNeighborLists.items():
+      atoms.setdefault(a.i_seq, a)
+      for n in nbrs:
+        atoms.setdefault(n.i_seq, n)
+    size = max(atoms) + 1
+    flags, model, chain, group, alt = (flex.int(size, 0) for _ in range(5))
+    codes = ({}, {}, {}, {})   # model, chain, atom group and altloc ids -> small ints
+    def code(table, key):
+      return table.setdefault(key, len(table) + 1)
+    for i, a in atoms.items():
+      ag = a.parent()
+      if a in self._atomClasses:
+        flags[i] = ((probeExt.ContactDB_IGNORE if self._atomClasses[a] == 'ignore' else 0) |
+                    (probeExt.ContactDB_MAINCHAIN if self._inMainChain[a] else 0) |
+                    (probeExt.ContactDB_SIDECHAIN if self._inSideChain[a] else 0) |
+                    (probeExt.ContactDB_HET if self._inHet[a] else 0) |
+                    (probeExt.ContactDB_WATER if self._inWater[a] else 0) |
+                    (probeExt.ContactDB_TARGET if a in targetSet else 0))
+      ch = ag.parent().parent()
+      model[i] = code(codes[0], ch.parent().id)
+      chain[i] = code(codes[1], ch.id)
+      group[i] = code(codes[2], ag.memory_id())
+      alt[i] = 0 if ag.altloc in ('', ' ') else code(codes[3], ag.altloc)
+    by_iseq = {a.i_seq: nbrs for a, nbrs in bondedNeighborLists.items()}
+    offsets, targets = flex.int([0]), []
+    for i in range(size):
+      targets.extend(by_iseq.get(i, []))
+      offsets.append(len(targets))
 
-      # Find our characteristics
-      srcMainChain = self._inMainChain[src]
-      srcSideChain = self._inSideChain[src]
-      srcHet = self._inHet[src]
-      srcInWater = self._inWater[src]
-      srcExtra = self._extraAtomInfo.getMappingFor(src)
-      srcModel = src.parent().parent().parent().parent().id
-
-      # Select those that are actually within the contact distance based on their
-      # particular radius (this query includes only target atoms, so we don't need to check separately for that).
-      # Also verify that the potential target atoms meet our criteria based on parameters.
-      # Keep a list of nearby Phantom Hydrogens in case we need to exclude them.
-      atomSet = set()
-      for n in nearby:
-        nMainChain = self._inMainChain[n]
-        nHet = self._inHet[n]
-        nInWater = self._inWater[n]
-        nExtra = self._extraAtomInfo.getMappingFor(n)
-        nModel = n.parent().parent().parent().parent().id
-
-        d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
-        if (d <= nExtra.vdwRadius + srcExtra.vdwRadius + 2*probeRadius):
-
-          # if both atoms are in the same non-HET chain and on the main chain, then skip
-          # if we're not allowing mainchain-mainchain interactions.
-          # The atoms must be on the same chain to be skipped.
-          if not include_mainchain_mainchain and (
-                (srcMainChain and nMainChain) and not (srcHet or nHet) and
-                (src.parent().parent().parent().id == n.parent().parent().parent().id) # Same chain
-              ):
-            continue
-          # Skip atoms that are marked to be ignored
-          if self._atomClasses[n] == 'ignore':
-            continue
-          # Skip atoms with too low occupancy
-          elif n.occ < minimum_occupancy:
-            continue
-          # Check for water-water interactions
-          elif srcInWater and nInWater:
-            # Skip water-water interactions unless they are allowed
-            if (not include_water_water):
-              continue
-            # Ensure that we're not from the same water; we don't interact with ourself
-            elif src.parent() == n.parent():
-              continue
-          # Skip atoms that are in non-compatible alternate conformations
-          elif not Helpers.compatibleConformations(src, n):
-            continue
-          # Skip atoms that are in different models.
-          elif srcModel != nModel:
-            continue
-          atomSet.add(n)
-
-      # Check the atoms for interactions
-      if len(atomSet) > 0:
-        # Find the atoms that are bonded to the source atom within the specified hop
-        # count.  Limit the length of the chain to 3 if neither the source nor the final
-        # atom is a Hydrogen.
-        excluded = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists, self._extraAtomInfo, probeRadius,
-          excluded_bond_chain_length, 3)
-
-        # For Phantom Hydrogens, add any non-Acceptor atom in the atom list into the
-        # excluded list and also add nearby Phantom Hydrogens into the excluded list.
-        # @todo Consider whether we'd rather handle this by making bonds between the
-        # Phantoms and their water Oxygens (both directions), which will shield their
-        # contacts from one another and (1) avoid removing sections of hydrogen bond patterns
-        # that fall inside atoms that are covalently bonded to acceptors, and (2) remove
-        # the inner collision of the water Oxygen with the acceptor that also makes
-        # a Hydrogen bond with the Phantom Hydrogen.
-        if srcExtra.isDummyHydrogen:
-          nearbyPhantomHydrogens = set(phantomsQuery.neighbors(src.xyz, 0.00001, maxRadius))
-          newExclusions = set()
-          for a in atomSet:
-            if not self._extraAtomInfo.getMappingFor(a).isAcceptor:
-              newExclusions.add(a)
-          excluded = list(set(excluded).union(newExclusions).union(nearbyPhantomHydrogens))
-
-        # Remove all of the excluded atoms from the interaction set so we don't
-        # put spurious dots on them.
-        for e in excluded:
-          atomSet.discard(e)
-
-        # Check each dot to see if it interacts with non-bonded nearby target atoms.
-        srcDots = self._dots[src]
-        scale = self.params.overlap_scale_factor
-        for dotvect in srcDots:
-
-          # Find out if there is an interaction
-          res = self._dotScorer.check_dot(src, dotvect, probeRadius, list(atomSet), excluded, scale)
-
-          # Classify the interaction and store appropriate results unless we should
-          # ignore the result because there was not valid overlap.
-          overlapType = res.overlapType
-
-          # If the overlap type is NoOverlap, check dot to make sure it is not annular.
-          # This excludes dots that are further from the contact than dots could be at
-          # the ideal just-touched contact.
-          if overlapType == probeExt.OverlapType.NoOverlap and res.annular:
-            continue
-
-          # Handle any dots that should not be ignored.
-          if overlapType != probeExt.OverlapType.Ignore:
-
-            # If the cause of the dot is not in the target set, we ignore the dot.
-            if not res.cause in targetSet:
-              continue
-
-            # If the overlap type is not a Hydrogen bond, then check the occupancy of atoms where
-            # at least one of the pair is on the "" or " " alternate conformation to make sure the
-            # sum of their occupancies is greater than 1.
-            if overlapType != probeExt.OverlapType.HydrogenBond:
-              if (src.parent().altloc in ['',' ']) or (res.cause.parent().altloc in ['',' ']):
-                if src.occ + res.cause.occ <= 1:
-                  continue
-
-            # See whether this dot is allowed based on our parameters.
-            spo = self.params.output
-            show = False
-            interactionType = self._dotScorer.interaction_type(overlapType,res.gap, self.params.output.separate_worse_clashes)
-            if interactionType == probeExt.InteractionType.Invalid:
-              print('Warning: Invalid interaction type encountered (internal error)', file=self.logger)
-              continue
-
-            # Main branch if we're reporting other than bad clashes
-            if (not spo.only_report_bad_clashes):
-              # We are reporting other than bad clashes, see if our type is being reported
-              if spo.report_hydrogen_bonds and (overlapType == probeExt.OverlapType.HydrogenBond):
-                show = True
-              elif spo.report_clashes and (overlapType == probeExt.OverlapType.Clash):
-                show = True
-              elif spo.report_vdws and (overlapType == probeExt.OverlapType.NoOverlap):
-                show = True
-            else:
-              # We are only reporting bad clashes.  See if we're reporting clashes and this is
-              # a bad one.
-              if (spo.report_clashes and interactionType in [
-                    probeExt.InteractionType.Bump, probeExt.InteractionType.BadBump]):
-                show = True
-
-            # If we're not showing this one, skip to the next
-            if not show:
-              continue
-
-            # Determine the ptmaster (main/side chain interaction type) and keep track of
-            # counts for each type.
-            causeMainChain = self._inMainChain[res.cause]
-            causeSideChain = self._inSideChain[res.cause]
-            causeHet = self._inHet[res.cause]
-            ptmaster = ' '
-            if srcMainChain and causeMainChain:
-              if (not srcHet) and (not causeHet): # This may be a redundant check
-                ptmaster = 'M'
-                self._MCMCCount[interactionType] += 1
-            elif srcSideChain and causeSideChain:
-              if (not srcHet) and (not causeHet): # This may be a redundant check
-                ptmaster = 'S'
-                self._SCSCCount[interactionType] += 1
-            elif ( (srcMainChain and causeSideChain) or (srcSideChain and causeMainChain) ):
-              if (not srcHet) and (not causeHet): # This may be a redundant check
-                ptmaster = 'P'
-                self._MCSCCount[interactionType] += 1
-            else:
-              ptmaster = 'O'
-              self._otherCount[interactionType] += 1
-
-            # Find the locations of the dot and spike by scaling the dot vector by the atom radius and
-            # the (negative because it is magnitude) overlap.
-            loc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect)
-            spikeloc = ( Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect).normalize() *
-                         (self._extraAtomInfo.getMappingFor(src).vdwRadius - res.overlap) )
-
-            # Save the dot
-            self._save_dot(src, res.cause, atomClass, loc, spikeloc, overlapType, res.gap, ptmaster, 0)
+    params, spo = self.params, self.params.output
+    probeRadius = params.probe.probe_radius
+    db = probeExt.ContactDB(self._extraAtomInfo, self._dotScorer, spatialQuery, phantomsQuery,
+                            Helpers.createDotSphereCache(params.probe))
+    db.set_atom_data(flags, model, chain, group, alt)
+    db.set_bonds(offsets, targets)
+    db.set_params(probeRadius, 2*self._maximumVDWRadius + 2*probeRadius, params.minimum_occupancy,
+                  params.excluded_bond_chain_length, params.include_mainchain_mainchain,
+                  params.include_water_water, params.overlap_scale_factor, spo.separate_worse_clashes,
+                  spo.report_hydrogen_bonds, spo.report_clashes, spo.report_vdws, spo.only_report_bad_clashes)
+    db.set_keep_dots(keep_dots)
+    db.build(list(sourceAtoms))
+    return db
 
 # ------------------------------------------------------------------------------
 
@@ -1004,13 +936,19 @@ Note:
     r = self._extraAtomInfo.getMappingFor(src).vdwRadius
     pr = self.params.probe.probe_radius
     srcDots = self._dots[src]
+    srcXYZ = src.xyz
     for dotvect in srcDots:
       # Dot on the surface of the atom, at its radius; both dotloc and spikeloc from original code.
       # This is where the probe touches the surface.
-      dotloc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect)
+      dotloc = (srcXYZ[0]+dotvect[0], srcXYZ[1]+dotvect[1], srcXYZ[2]+dotvect[2])
       # Dot that is one probe radius past the surface of the atom, exploring for contact with nearby
       # atoms.  This is the location of the center of the probe.
-      exploc = Helpers.rvec3(src.xyz) + Helpers.rvec3(dotvect).normalize() * (r + pr)
+      dvLen = math.sqrt(dotvect[0]*dotvect[0]+dotvect[1]*dotvect[1]+dotvect[2]*dotvect[2])
+      if dvLen > 0:
+        expScale = (r + pr) / dvLen
+        exploc = (srcXYZ[0]+dotvect[0]*expScale, srcXYZ[1]+dotvect[1]*expScale, srcXYZ[2]+dotvect[2]*expScale)
+      else:
+        exploc = dotloc
 
       # If the exploring dot is within a probe radius + vdW radius of a nearby atom,
       # we don't add a dot.
@@ -1031,8 +969,12 @@ Note:
         # The nearby atom is one that we should check interaction with, see if
         # we're in range.  If so, mark this dot as not okay because it is inside a
         # nearby atom.
-        if ( (Helpers.rvec3(b.xyz) - exploc).length() <=
-            pr + self._extraAtomInfo.getMappingFor(b).vdwRadius ):
+        bXYZ = b.xyz
+        dx = bXYZ[0] - exploc[0]
+        dy = bXYZ[1] - exploc[1]
+        dz = bXYZ[2] - exploc[2]
+        cutoff = pr + self._extraAtomInfo.getMappingFor(b).vdwRadius
+        if (dx*dx + dy*dy + dz*dz <= cutoff*cutoff):
           okay = False
 
       # If this dot is okay, add it to the internal data structure based on its
@@ -1184,8 +1126,10 @@ Note:
 
             r1 = self._extraAtomInfo.getMappingFor(a).vdwRadius
             r2 = self._extraAtomInfo.getMappingFor(t).vdwRadius
-            sl = (node.loc-node.spike).length()
-            gap = (Helpers.rvec3(a.xyz)-Helpers.rvec3(t.xyz)).length() - (r1 + r2)
+            ldx = node.loc[0]-node.spike[0]; ldy = node.loc[1]-node.spike[1]; ldz = node.loc[2]-node.spike[2]
+            sl = math.sqrt(ldx*ldx+ldy*ldy+ldz*ldz)
+            adx = a.xyz[0]-t.xyz[0]; ady = a.xyz[1]-t.xyz[1]; adz = a.xyz[2]-t.xyz[2]
+            gap = math.sqrt(adx*adx+ady*ady+adz*adz) - (r1 + r2)
             dtgp = node.gap
             score = 0.0
 
@@ -1322,7 +1266,7 @@ Note:
 
         # Write list headers for types that have entries.  Do not write one for weak Hydrogen
         # bonds unless we're separating them out.
-        if (len(self._results[atomClass][interactionType]) > 0 and
+        if (self._dot_count(atomClass, interactionType) > 0 and
               (self.params.probe.allow_weak_hydrogen_bonds or
                   interactionType != probeExt.InteractionType.WeakHydrogenBond
               )
@@ -1357,7 +1301,7 @@ Note:
                     )
 
         # Report all of the dots of this type.
-        for node in self._results[atomClass][interactionType]:
+        for node in self._dots_of(atomClass, interactionType):
           a = node.src
           t = node.target
           if self.params.output.bin_gaps:
@@ -1808,8 +1752,32 @@ Note:
 
 # ------------------------------------------------------------------------------
 
+  def _dot_count(self, atomClass, interactionType):
+    n = len(self._results[atomClass][interactionType])
+    for chunk in self._cxxDots:
+      n += len(chunk[-1].get((atomClass, int(interactionType)), ()))
+    return n
+
+  def _dots_of(self, atomClass, interactionType):
+    '''Dots of one class and type, in the order the Python loop would have saved them.'''
+    for node in self._results[atomClass][interactionType]:
+      yield node
+    for byIseq, src, cause, gap, loc, spike, ptmaster, groups in self._cxxDots:
+      for k in groups.get((atomClass, int(interactionType)), ()):
+        d = _ArrayDot()
+        d.src = byIseq[src[k]]
+        d.target = byIseq[cause[k]]
+        d.gap = gap[k]
+        d.ptmaster = ptmaster[k]
+        d.loc = loc[k]
+        d.spike = spike[k]
+        yield d
+
   def _clear_results(self):
     # Initialize the results to empty.
+    # The name cache is keyed on memory_id, which a later model can reuse for other atoms.
+    DotInfo._nameCache.clear()
+    self._cxxDots = []   # (byIseq, ..., groups) per _generate_interaction_dots() call; see there
     self._results = {}
     for c in _allAtomClasses:
       interactionTypeDicts = {}
@@ -1877,18 +1845,26 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def overrideModel(self, model):
+  def overrideModel(self, model, processed = False):
     '''This is a hack to let another program harness probe2 without having to write a
     new model file for it to read. After initializing probe2, but before calling
     run(), call this function to override the model that it should use.
+    :param processed: When True, restraints were already made with
+    getPdbInterpretationParams() and run() will not process the model again, which
+    lets a caller reuse one interpretation across the models of an ensemble.
+    run() can add Phantom Hydrogens to the hierarchy (waters with no explicit H),
+    so each run needs its own deep copy.
     '''
     self.model = model
+    self._modelAlreadyProcessed = processed
 
 # ------------------------------------------------------------------------------
 
   def run(self):
     # String that will be output to the specified file.
     outString = ''
+    # Unlike the per-model dot results, contact records accumulate across models.
+    self._contactRecords = []
 
     if (self.params.output.add_kinemage_keyword and not self.params.output.count_dots
         and self.params.output.format == 'kinemage'):
@@ -1907,18 +1883,16 @@ Note:
     make_sub_header('Compute neighbor lists', out=self.logger)
 
     self.model.set_stop_for_unknowns(False)
-    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-    p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
-    p.pdb_interpretation.allow_polymer_cross_special_position=True
-    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
-    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
-    # We need to turn this on because without it the interpretation is
-    # renaming atoms to be more correct.  Unfortunately, this causes the
-    # dot names to no longer match the input file.
-    p.pdb_interpretation.flip_symmetric_amino_acids=False
+    p = getPdbInterpretationParams(self.params.use_neutron_distances)
+    # If the model handed to overrideModel() was already processed with these
+    # interpretation parameters, we can use its restraints directly rather than
+    # re-processing, which re-reads the monomer library and re-interprets the model.
+    alreadyProcessed = ( getattr(self, '_modelAlreadyProcessed', False)
+      and (self.model.get_restraints_manager() is not None) )
     try:
-      self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+      if not alreadyProcessed:
+        self.model.process(make_restraints=True, pdb_interpretation_params=p,
+                           plain_pairs_radius=PLAIN_PAIRS_RADIUS) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
       bondProxies, asu = \
@@ -1929,7 +1903,8 @@ Note:
         self.model.add_crystal_symmetry_if_necessary()
 
         # Retry with the adjusted model
-        self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+        self.model.process(make_restraints=True, pdb_interpretation_params=p,
+                           plain_pairs_radius=PLAIN_PAIRS_RADIUS) # make restraints
         geometry = self.model.get_restraints_manager().geometry
         sites_cart = self.model.get_sites_cart() # cartesian coordinates
         bondProxies, asu = \
@@ -1940,7 +1915,7 @@ Note:
 
     ################################################################################
     # Get the bonding information we'll need to exclude our bonded neighbors.
-    self._allBondedNeighborLists = Helpers.getBondedNeighborLists(allAtoms, bondProxies)
+    self._allBondedNeighborLists = Helpers.getBondedNeighborLists(allAtoms, bondProxies, asu)
 
     ################################################################################
     # Get the extra atom information needed to score all of the atoms in the model.
@@ -2119,7 +2094,7 @@ Note:
       make_sub_header('Sorting atoms', out=self.logger)
       all_selected_atoms = sorted(source_atoms.union(target_atoms), key=lambda x:atomID(x))
       make_sub_header('Getting bonded-neighbor lists', out=self.logger)
-      bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
+      bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies, asu)
 
       ################################################################################
       # Build a spatial-query structure that tells which atoms are nearby.
@@ -2348,6 +2323,7 @@ Note:
         for src in self._source_atoms_sorted:
           srcInWater = self._inWater[src]
           srcModel = src.parent().parent().parent().parent().id
+          srcXYZ = src.xyz
 
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
@@ -2374,9 +2350,14 @@ Note:
             # Skip atoms that are in different models.
             elif srcModel != nModel:
               continue
-            d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
-            if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
-                self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.probe_radius):
+            nXYZ = n.xyz
+            dx = nXYZ[0] - srcXYZ[0]
+            dy = nXYZ[1] - srcXYZ[1]
+            dz = nXYZ[2] - srcXYZ[2]
+            d_sq = dx*dx + dy*dy + dz*dz
+            cutoff = (self._extraAtomInfo.getMappingFor(n).vdwRadius +
+                self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.probe_radius)
+            if (d_sq <= cutoff*cutoff):
               atomList.append(n)
 
           # Find out what class of dot we should place for this atom.
@@ -2556,7 +2537,9 @@ Note:
       ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
       ps.print_stats(profile_params['num_entries'])
 
-    # Return the results object that has all of the dots and the output string.
+    # Return the results object that has all of the dots and the output string.  The results
+    # are empty for kinemage output without count_dots or contact_summary, which is written
+    # straight from ContactDB's arrays.
     return self._results, outString
 
 # ------------------------------------------------------------------------------

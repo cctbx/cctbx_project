@@ -45,7 +45,7 @@ def load_parameter_fixes():
 
     if os.path.exists(path):
         try:
-            with open(path, 'r') as f:
+            with open(path, 'r', encoding='utf-8') as f:
                 fixes = json.load(f)
             print(f"Loaded parameter fixes from {path}")
         except Exception as e:

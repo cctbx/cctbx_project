@@ -1,0 +1,48 @@
+# parity test model: CA trace: one atom per residue group, three chains
+data_phenix
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.pdbx_PDB_model_num
+  _atom_site.auth_segid
+  ATOM     1  CA  .  ALA  AXLONG  2  ?  64.12800  -67.16000  -16.90100  1.000  2.19000  C  ?  A  ?  1  1  '    '
+  ATOM     2  CA  .  ALA  AXLONG  3  ?  63.52400  -68.82600  -13.57400  1.000  2.00000  C  ?  A  ?  2  1  '    '
+  ATOM     3  CA  .  LYS  AXLONG  4  ?  59.88900  -68.27400  -12.58600  1.000  2.00000  C  ?  A  ?  3  1  '    '
+  ATOM     4  CA  .  ASP  AXLONG  5  ?  58.19900  -67.41600   -9.30900  1.000  2.22000  C  ?  A  ?  4  1  '    '
+  ATOM     5  CA  .  VAL  AXLONG  6  ?  55.09900  -69.49900   -8.58000  1.000  2.00000  C  ?  A  ?  5  1  '    '
+  ATOM     6  CA  .  LYS  AXLONG  7  ?  52.46200  -68.68100   -5.99400  1.000  2.00000  C  ?  A  ?  6  1  '    '
+  ATOM     7  CA  .  PHE  AXLONG  8  ?  49.51000  -70.71200   -4.87200  1.000  2.00000  C  ?  A  ?  7  1  '    '
+  ATOM     8  CA  .  GLY  AXLONG  9  ?  46.00700  -70.31500   -3.58300  1.000  2.00000  C  ?  A  ?  8  1  '    '
+  ATOM   515  CA  .  ALA  NXLONG  2  ?  68.94900  -31.24800   29.26200  1.000  2.01000  C  ?  B  ?  1  1  '    '
+  ATOM   516  CA  .  ALA  NXLONG  3  ?  69.10200  -30.38400   25.57100  1.000  2.00000  C  ?  B  ?  2  1  '    '
+  ATOM   517  CA  .  LYS  NXLONG  4  ?  65.58600  -30.34500   24.04700  1.000  2.00000  C  ?  B  ?  3  1  '    '
+  ATOM   518  CA  .  ASP  NXLONG  5  ?  64.19900  -31.22700   20.65100  1.000  2.15000  C  ?  B  ?  4  1  '    '
+  ATOM   519  CA  .  VAL  NXLONG  6  ?  62.05900  -28.47000   19.20600  1.000  2.00000  C  ?  B  ?  5  1  '    '
+  ATOM   520  CA  .  LYS  NXLONG  7  ?  59.52700  -28.89000   16.43300  1.000  2.00000  C  ?  B  ?  6  1  '    '
+  ATOM   521  CA  .  PHE  NXLONG  8  ?  57.70700  -26.17500   14.56100  1.000  2.04000  C  ?  B  ?  7  1  '    '
+  ATOM   522  CA  .  GLY  NXLONG  9  ?  54.46500  -25.56400   12.80700  1.000  2.08000  C  ?  B  ?  8  1  '    '
+  ATOM  1009  CA  .  ALA  BXLONG  2  ?  81.55500  -73.47000  -17.12400  1.000  2.07000  C  ?  C  ?  1  1  '    '
+  ATOM  1010  CA  .  ALA  BXLONG  3  ?  82.51000  -74.91100  -13.78200  1.000  2.00000  C  ?  C  ?  2  1  '    '
+  ATOM  1011  CA  .  LYS  BXLONG  4  ?  79.82600  -77.47900  -12.78500  1.000  2.00000  C  ?  C  ?  3  1  '    '
+  ATOM  1012  CA  .  ASP  BXLONG  5  ?  78.10200  -78.27500   -9.52200  1.000  2.22000  C  ?  C  ?  4  1  '    '
+  ATOM  1013  CA  .  VAL  BXLONG  6  ?  77.73800  -81.97600   -8.76400  1.000  2.03000  C  ?  C  ?  5  1  '    '
+  ATOM  1014  CA  .  LYS  BXLONG  7  ?  75.48800  -83.51900   -6.17000  1.000  2.00000  C  ?  C  ?  6  1  '    '
+  ATOM  1015  CA  .  PHE  BXLONG  8  ?  75.24500  -87.08700   -5.01300  1.000  2.00000  C  ?  C  ?  7  1  '    '
+  ATOM  1016  CA  .  GLY  BXLONG  9  ?  72.72300  -89.59100   -3.78500  1.000  2.00000  C  ?  C  ?  8  1  '    '
+

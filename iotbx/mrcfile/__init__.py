@@ -124,6 +124,13 @@ class map_reader:
 
         if ignore_all_errors:
           pass
+        elif issubclass(war.category, (DeprecationWarning,
+                                       PendingDeprecationWarning)):
+          # Deprecation warnings (e.g. numpy >= 2.5 "Setting the dtype on a
+          # NumPy array has been deprecated") are emitted by the mrcfile
+          # library internals, not by a problem with the map file itself, so
+          # they must not be escalated to a Sorry.
+          pass
         elif str(war.message).find("Unrecognised machine stamp") > -1 and \
                 ignore_missing_machine_stamp:
           pass
@@ -722,7 +729,7 @@ class write_ccp4_map:
 
     mrc.header.nlabl=len(output_labels)
     for i in range(min(10,len(output_labels))):
-      mrc.header.label[i]=output_labels[i]
+      mrc.header.label[i] = output_labels[i].encode("ascii", "replace")[:80]
     mrc.update_header_from_data() # don't move this later as we overwrite values
 
     # Unit cell parameters and space group

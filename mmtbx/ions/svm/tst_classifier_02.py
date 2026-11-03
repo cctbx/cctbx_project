@@ -106,7 +106,7 @@ if __name__ == "__main__":
     warnings.warn("chem_data not available, skipping this test")
   else :
     try :
-      import svm
+      from libsvm import svm
     except ImportError :
       warnings.warn("libsvm not available, skipping this test")
     else :

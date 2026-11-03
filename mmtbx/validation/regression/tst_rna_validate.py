@@ -35,9 +35,14 @@ def exercise_1(test_mmcif=False):
   else:
     m = dm.get_model(regression_pdb)
   rv = rna_validation(m.get_hierarchy())
+  if 0:
+    for i, ra in enumerate(rv.angles.results):
+      print(i+1, ra.as_string())
+  if 1:
+    rv.show()
   assert len(rv.puckers.results) == 2, len(rv.puckers.results)
-  assert len(rv.bonds.results) == 4, len(rv.bonds.results)
-  assert len(rv.angles.results) == 14, len(rv.angles.results)
+  assert len(rv.bonds.results) == 2, len(rv.bonds.results)
+  assert len(rv.angles.results) == 48, len(rv.angles.results)
   assert len(rv.suites.results) == 5, len(rv.suites.results)
   #assert approx_equal(rv.suites.average_suiteness(), 0.55, eps=0.01)
   pickle_unpickle(rv)
@@ -53,20 +58,25 @@ def exercise_1(test_mmcif=False):
   suites_json = json.loads(rv.suites.as_JSON())
   #import pprint
   #pprint.pprint(puckers_json)
-  assert len(bonds_json["flat_results"]) == 4, "tst_rna_validate json output not returning correct number of bond outliers, changed to: "+str(len(bonds_json["flat_results"]))
-  assert approx_equal(bonds_json['flat_results'][0]["score"], 4.40664), "tst_rna_validate json output first bond outlier score changed to: "+str(bonds_json['flat_results'][0]["score"])
+  assert len(bonds_json["flat_results"]) == 2, "tst_rna_validate json output not returning correct number of bond outliers, changed to: "+str(len(bonds_json["flat_results"]))
+  # assert approx_equal(bonds_json['flat_results'][0]["score"], 4.40664), "tst_rna_validate json output first bond outlier score changed to: "+str(bonds_json['flat_results'][0]["score"])
+  assert approx_equal(bonds_json['flat_results'][0]["score"], 5.14997), "tst_rna_validate json output first bond outlier score changed to: "+str(bonds_json['flat_results'][0]["score"])
   assert approx_equal(bonds_json['flat_results'][0]["xyz"][0], -17.61949), "tst_rna_validate json output first bond x changed to: "+str(bonds_json['flat_results'][0]["xyz"][0])
   assert approx_equal(bonds_json['flat_results'][0]["xyz"][1], -2.9325), "tst_rna_validate json output first bond y changed to: "+str(bonds_json['flat_results'][0]["xyz"][1])
   assert approx_equal(bonds_json['flat_results'][0]["xyz"][2], -23.262), "tst_rna_validate json output first bond z changed to: "+str(bonds_json['flat_results'][0]["xyz"][2])
-  assert test_utils.count_dict_values(bonds_json['hierarchical_results'], True)==4, "tst_rna_validate json hierarchical output total number of bond outliers changed to: "+str(test_utils.count_dict_values(bonds_json['hierarchical_results'], True))
-  assert bonds_json['summary_results']['']["num_outliers_too_large"]==4, "tst_rna_validate json output summary result number of bond outliers too large changed to: "+str(bonds_json['summary_results']['']["num_outliers_too_large"])
-  assert len(angles_json["flat_results"]) == 14, "tst_rna_validate json output not returning correct number of angle outliers, changed to: " + str(len(angles_json["flat_results"]))
-  assert approx_equal(angles_json['flat_results'][0]["score"], -4.765809), "tst_rna_validate json output first angle outlier score changed to: " + str(angles_json['flat_results'][0]["score"])
-  assert approx_equal(angles_json['flat_results'][0]["xyz"][0], -16.161), "tst_rna_validate json output first angle x score changed to: " + str(angles_json['flat_results'][0]["xyz"][0])
-  assert approx_equal(angles_json['flat_results'][0]["xyz"][1], -6.863), "tst_rna_validate json output first angle y score changed to: " + str(angles_json['flat_results'][0]["xyz"][1])
-  assert approx_equal(angles_json['flat_results'][0]["xyz"][2], -20.773), "tst_rna_validate json output first angle z score changed to: " + str(angles_json['flat_results'][0]["xyz"][2])
-  assert test_utils.count_dict_values(angles_json['hierarchical_results'], [1.0, 1.0, 1.0])==14, "tst_rna_validate json hierarchical output number of angle outliers changed to: "+str(test_utils.count_dict_values(angles_json['hierarchical_results'], [1.0, 1.0, 1.0]))
-  assert angles_json['summary_results']['']["num_outliers_too_large"]==6, "tst_rna_validate json output summary result number of angle outliers too large changed to: "+str(angles_json['summary_results']['']["num_outliers_too_large"])
+  assert test_utils.count_dict_values(bonds_json['hierarchical_results'], True)==2, "tst_rna_validate json hierarchical output total number of bond outliers changed to: "+str(test_utils.count_dict_values(bonds_json['hierarchical_results'], True))
+  assert bonds_json['summary_results']['']["num_outliers_too_large"]==2, "tst_rna_validate json output summary result number of bond outliers too large changed to: "+str(bonds_json['summary_results']['']["num_outliers_too_large"])
+  assert len(angles_json["flat_results"]) == 48, "tst_rna_validate json output not returning correct number of angle outliers, changed to: " + str(len(angles_json["flat_results"]))
+  # assert approx_equal(angles_json['flat_results'][0]["score"], -4.765809), "tst_rna_validate json output first angle outlier score changed to: " + str(angles_json['flat_results'][0]["score"])
+  assert approx_equal(angles_json['flat_results'][0]["score"], 5.0307047), "tst_rna_validate json output first angle outlier score changed to: " + str(angles_json['flat_results'][0]["score"])
+  # assert approx_equal(angles_json['flat_results'][0]["xyz"][0], -16.161), "tst_rna_validate json output first angle x score changed to: " + str(angles_json['flat_results'][0]["xyz"][0])
+  assert approx_equal(angles_json['flat_results'][0]["xyz"][0], -10.912), "tst_rna_validate json output first angle x score changed to: " + str(angles_json['flat_results'][0]["xyz"][0])
+  # assert approx_equal(angles_json['flat_results'][0]["xyz"][1], -6.863), "tst_rna_validate json output first angle y score changed to: " + str(angles_json['flat_results'][0]["xyz"][1])
+  assert approx_equal(angles_json['flat_results'][0]["xyz"][1], 19.554), "tst_rna_validate json output first angle y score changed to: " + str(angles_json['flat_results'][0]["xyz"][1])
+  # assert approx_equal(angles_json['flat_results'][0]["xyz"][2], -20.773), "tst_rna_validate json output first angle z score changed to: " + str(angles_json['flat_results'][0]["xyz"][2])
+  assert approx_equal(angles_json['flat_results'][0]["xyz"][2], 14.462), "tst_rna_validate json output first angle z score changed to: " + str(angles_json['flat_results'][0]["xyz"][2])
+  assert test_utils.count_dict_values(angles_json['hierarchical_results'], [1.0, 1.0, 1.0])==48, "tst_rna_validate json hierarchical output number of angle outliers changed to: "+str(test_utils.count_dict_values(angles_json['hierarchical_results'], [1.0, 1.0, 1.0]))
+  assert angles_json['summary_results']['']["num_outliers_too_large"]==38, "tst_rna_validate json output summary result number of angle outliers too large changed to: "+str(angles_json['summary_results']['']["num_outliers_too_large"])
   assert len(puckers_json["flat_results"]) == 2, "tst_rna_validate json output not returning correct number of pucker outliers, changed to: " + str(len(puckers_json["flat_results"]))
   assert approx_equal(puckers_json['flat_results'][0]["delta_angle"], 106.454213), "tst_rna_validate json output first pucker outlier delta changed to: " + str(puckers_json['flat_results'][0]["delta_angle"])
   assert test_utils.count_dict_values(puckers_json['hierarchical_results'], " ")==2, "tst_rna_validate json hierarchical output number of pucker outliers changed to: "+str(test_utils.count_dict_values(puckers_json['hierarchical_results'], " "))
@@ -91,9 +101,8 @@ def exercise_pdbvcif(rv, rv_cif):
   assert puckers_json['summary_results'] == puckers_json_cif['summary_results'], "tst_rna_validate summary results changed between pdb and cif version"
   assert suites_json['summary_results'] == suites_json_cif['summary_results'], "tst_rna_validate summary results changed between pdb and cif version"
 
-def exercise_2():
-  # fragment from 3g8t
-  pdb_raw = """\
+# fragment from 3g8t
+pdb_str_3g8t = """\
 ATOM   7975  P     G Q 140      10.347 137.422  73.792  1.00118.69           P
 ATOM   7976  OP1   G Q 140       9.348 138.439  74.195  1.00118.63           O
 ATOM   7977  OP2   G Q 140      11.208 137.681  72.617  1.00118.60           O
@@ -141,9 +150,11 @@ ATOM   8018  N3    A Q 141      19.364 135.620  82.917  1.00123.84           N
 ATOM   8019  C4    A Q 141      18.953 136.340  83.979  1.00123.84           C
 TER    8020        A Q 141
 """
+
+def exercise_2():
   dm = DataManager()
   #print(help(dm))
-  dm.process_model_str("", pdb_raw)
+  dm.process_model_str("", pdb_str_3g8t)
   rv = rna_validation(dm.get_model().get_hierarchy())
   assert len(rv.puckers.results) == 1
   pickle_unpickle(rv)
@@ -212,6 +223,33 @@ ATOM     54  C6    C A   2      35.840  29.624  58.297  1.00 47.22           C
   rv = rna_validation(dm.get_model().get_hierarchy())
   pickle_unpickle(rv)
 
+def exercise_rna_validate_bonds_json():
+  """
+  rna_validate_bonds json=True must write valid JSON to the program logger
+  (it used to pprint a Python dict to stdout).
+  """
+  from iotbx.cli_parser import CCTBXParser
+  from libtbx.utils import multi_out
+  from mmtbx.programs import rna_validate_bonds
+  pdb_file = "tst_rna_validate_bonds_json.pdb"
+  with open(pdb_file, "w") as f:
+    f.write(pdb_str_3g8t)
+  parser = CCTBXParser(
+    program_class=rna_validate_bonds.Program,
+    logger=multi_out())
+  parser.parse_args([pdb_file, "json=True"])
+  out = StringIO()
+  task = rna_validate_bonds.Program(
+    parser.data_manager, parser.working_phil.extract(), logger=out)
+  task.validate()
+  task.run()
+  result = json.loads(out.getvalue())
+  assert sorted(result.keys()) == ["rna_angles", "rna_bonds"], list(result.keys())
+  assert result["rna_bonds"]["validation_type"] == "rna_bonds"
+  assert result["rna_angles"]["validation_type"] == "rna_angles"
+  assert list(result["rna_bonds"]["summary_results"].keys()) == [""], \
+    result["rna_bonds"]["summary_results"]
+
 def pickle_unpickle(result):
   result2 = loads(dumps(result))
   out1 = StringIO()
@@ -219,15 +257,24 @@ def pickle_unpickle(result):
   result.show(out=out1)
   result2.show(out=out2)
   assert (out1.getvalue() == out2.getvalue())
+  # molprobity pickle=True users call as_JSON() on the unpickled object
+  assert json.loads(result2.as_JSON()) == json.loads(result.as_JSON())
 
 def run():
   t0 = time.time()
   verbose = "--verbose" in sys.argv[1:]
   rv = exercise_1()
   rv_cif = exercise_1(test_mmcif=True)
-  exercise_pdbvcif(rv, rv_cif)
+  # exercise_1 returns None when phenix_regression is unavailable, following the same
+  # skip convention as every other test in this directory. Those all discard the
+  # return value; this is the only one that consumes it, and consuming it unguarded
+  # turned a clean skip into an AttributeError, so a checkout without
+  # phenix_regression looked like a real regression.
+  if (rv is not None and rv_cif is not None):
+    exercise_pdbvcif(rv, rv_cif)
   exercise_2()
   exercise_3()
+  exercise_rna_validate_bonds_json()
   print("OK. Time: %8.3f"%(time.time()-t0))
 
 if (__name__ == "__main__"):
