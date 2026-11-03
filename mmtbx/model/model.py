@@ -3965,6 +3965,166 @@ class manager(object):
         print("X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
         (flex.mean(xhd), flex.max(xhd)), file=self.log)
 
+  def regularize_geometry(self, force=False, bond_z_max=4.0,
+                          clash_overlap_max=0.4, mean_shift_max=0.3,
+                          max_shift_max=1.0, shell_radius=5.0,
+                          max_iterations=500):
+    """
+    Remove bond length outliers and steric clashes with the smallest shift
+    of the model, for example to make it fit for a QM calculation.
+
+    Bond outliers (|z| > bond_z_max) and clashes (nonbonded overlap more
+    than clash_overlap_max A, with symmetry mates too) are found with the
+    geometry restraints. Without any the model is not changed, unless
+    force is set. Otherwise the residues within shell_radius (A) of a
+    violation (all residues when forced without violations) are minimized
+    with riding H, Cartesian reference restraints to the starting
+    positions, secondary structure (H-bond), Ramachandran and chi torsion
+    restraints, until no violation is left or the mean or the maximum
+    shift of the moving non-H atoms exceeds its budget (mean_shift_max,
+    max_shift_max in A; None: no limit); see
+    mmtbx.refinement.geometry_minimization.regularize. Water O never move
+    (a water would fly away), water H do. The work is done on
+    a copy, with restraints made if the model has none: only the
+    coordinates of the model change. A report goes to the log.
+
+    Parameters
+    ----------
+    force : bool
+      Minimize even without violations, then until convergence or the
+      shift budget.
+    bond_z_max : float
+    clash_overlap_max : float
+    mean_shift_max : float or None
+    max_shift_max : float or None
+    shell_radius : float
+    max_iterations : int
+      LBFGS iterations in total.
+
+    Returns
+    -------
+    libtbx.group_args
+      needed (bool: there were violations), n_violations_start,
+      n_violations_end, n_iterations, mean_shift, max_shift (A, over the
+      moving non-H atoms).
+    """
+    from mmtbx.refinement import geometry_minimization
+    from mmtbx.secondary_structure import manager as ss_manager_class
+    from mmtbx.secondary_structure import sec_str_master_phil
+    pip = self.get_current_pdb_interpretation_params()
+    use_neutron_distances = pip.pdb_interpretation.use_neutron_distances
+    work = self.deep_copy()
+    work.set_log(null_out())
+    if(work.get_restraints_manager() is None):
+      pip = deepcopy(pip)
+      pip.pdb_interpretation.sort_atoms = False # keep the atom order
+      pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+      pip.pdb_interpretation.proceed_with_excessive_length_bonds = True
+      work.process(make_restraints=True, pdb_interpretation_params=pip)
+      assert work.get_number_of_atoms() == self.get_number_of_atoms()
+    grm = work.get_restraints_manager().geometry
+    violations = geometry_minimization.geometry_violations(
+      geometry_restraints_manager = grm,
+      sites_cart                  = work.get_sites_cart(),
+      bond_z_max                  = bond_z_max,
+      clash_overlap_max           = clash_overlap_max)
+    n_violations_start = len(violations.bonds) + len(violations.clashes)
+    needed = n_violations_start > 0
+    if(not needed and not force):
+      return group_args(
+        needed             = False,
+        n_violations_start = 0,
+        n_violations_end   = 0,
+        n_iterations       = 0,
+        mean_shift         = 0.0,
+        max_shift          = 0.0)
+    n_atoms = work.get_number_of_atoms()
+    selection = flex.bool(n_atoms, True)
+    if(needed):
+      # Residues with an atom (or a symmetry mate of it) within shell_radius
+      # of an atom of a violation.
+      i_seqs = set()
+      for v in violations.bonds + violations.clashes:
+        i_seqs.update(v[:2])
+      pairs = crystal.pairs_within(
+        sites_cart       = work.get_sites_cart(),
+        distance_cutoff  = shell_radius,
+        crystal_symmetry = work.crystal_symmetry(),
+        i_seqs           = sorted(i_seqs))
+      for i, j, rt_mx, distance in pairs:
+        i_seqs.add(j)
+      atom_selection = flex.bool(n_atoms, False)
+      atom_selection.set_selected(flex.size_t(sorted(i_seqs)), True)
+      selection = flex.bool(n_atoms, False)
+      for rg in work.get_hierarchy().residue_groups():
+        rg_i_seqs = rg.atoms().extract_i_seq()
+        if(atom_selection.select(rg_i_seqs).count(True) > 0):
+          selection.set_selected(rg_i_seqs, True)
+    water_o = work.solvent_selection()
+    if(work.has_hd()): water_o &= ~work.get_hd_selection()
+    selection &= ~water_o
+    work.setup_riding_h_manager(use_neutron_distances=use_neutron_distances)
+    hierarchy = work.get_hierarchy()
+    grm.remove_secondary_structure_restraints(sites_cart=work.get_sites_cart())
+    ss_params = sec_str_master_phil.extract()
+    ss_params.secondary_structure.protein.search_method = "from_ca"
+    ss_manager = ss_manager_class(
+      pdb_hierarchy               = hierarchy,
+      geometry_restraints_manager = grm,
+      sec_str_from_pdb_file       = self.get_ss_annotation(),
+      params                      = ss_params.secondary_structure,
+      mon_lib_srv                 = work.get_mon_lib_srv(),
+      show_summary_on             = False,
+      log                         = null_out())
+    grm.set_secondary_structure_restraints(
+      ss_manager = ss_manager,
+      hierarchy  = hierarchy,
+      log        = null_out())
+    rama_params = \
+      ramachandran.master_phil.extract().ramachandran_plot_restraints
+    rama_params.enabled = True
+    work.set_ramachandran_plot_restraints(rama_params)
+    grm.remove_chi_torsion_restraints_in_place()
+    grm.add_chi_torsion_restraints_in_place(
+      pdb_hierarchy   = hierarchy,
+      sites_cart      = work.get_sites_cart(),
+      chi_angles_only = True,
+      sigma           = 10.0)
+    hd_selection = None
+    if(work.has_hd()): hd_selection = work.get_hd_selection()
+    result = geometry_minimization.regularize(
+      geometry_restraints_manager = grm,
+      sites_cart                  = work.get_sites_cart(),
+      selection                   = selection,
+      hd_selection                = hd_selection,
+      riding_h_manager            = work.get_riding_h_manager(),
+      bond_z_max                  = bond_z_max,
+      clash_overlap_max           = clash_overlap_max,
+      mean_shift_max              = mean_shift_max,
+      max_shift_max               = max_shift_max,
+      max_iterations              = max_iterations,
+      stop_when_regular           = needed)
+    self.set_sites_cart(result.sites_cart)
+    n_violations_end = len(result.violations_end.bonds) + \
+                       len(result.violations_end.clashes)
+    if(self.log is not None):
+      print("Regularize geometry: %d of %d atoms free; violations %d -> %d "
+        "(bonds %d -> %d, clashes %d -> %d); %d iterations; shift of the "
+        "free non-H atoms (A): mean %.3f max %.3f" % (
+          selection.count(True), n_atoms,
+          n_violations_start, n_violations_end,
+          len(violations.bonds), len(result.violations_end.bonds),
+          len(violations.clashes), len(result.violations_end.clashes),
+          result.n_iterations, result.mean_shift, result.max_shift),
+        file=self.log)
+    return group_args(
+      needed             = needed,
+      n_violations_start = n_violations_start,
+      n_violations_end   = n_violations_end,
+      n_iterations       = result.n_iterations,
+      mean_shift         = result.mean_shift,
+      max_shift          = result.max_shift)
+
   def extract_water_residue_groups(self):
     result = []
     solvent_sel = self.solvent_selection()

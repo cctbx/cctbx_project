@@ -144,7 +144,11 @@ qmready = False
   .help = Add H to water, use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks, \
           and the terminal hydroxyl H of nucleic acids (HO3-prime at a 3-prime end, HO5-prime at a \
           5-prime OH end). Also complete residues whose conformers lack atoms \
-          their other conformers have (altloc completion)
+          their other conformers have (altloc completion), and regularize the \
+          geometry of the finished model: bond outliers and clashes are \
+          minimized away with the smallest shift of the atoms \
+          (mmtbx.model.manager.regularize_geometry), before the clash check and \
+          the caps
 capping = False
   .type = bool
   .short_caption = Cap dangling bonds with H
@@ -1033,7 +1037,10 @@ NOTES:
   residue gets no H. Cannot be combined with approach=remove or qmready=True.
 
   qmready=True prepares a model for QM: H on water, longer XH distances, OXT and NH3+ at
-  chain ends and breaks, HO3' and HO5' at nucleic-acid chain ends. Adding capping=True to it also puts H on every non-H atom left with
+  chain ends and breaks, HO3' and HO5' at nucleic-acid chain ends, and the geometry of the
+  finished model regularized: bond outliers and clashes minimized away with the smallest
+  shift (mmtbx.model.manager.regularize_geometry), before the clash check and the caps.
+  Adding capping=True to it also puts H on every non-H atom left with
   an unsatisfied valence by a missing non-H atom (truncated side chains, incomplete ligands),
   as the very last step; the capped model is for QM use only, because the cap names are
   unknown to the restraint libraries.
@@ -1940,6 +1947,34 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _RegularizeGeometry(self, model):
+    # qmready=True: bond outliers and clashes of the finished model are
+    # minimized away with the smallest shift (regularize_geometry(), riding
+    # H), on the rebuilt copy with restraints, before the clash check and
+    # the caps. The coordinates go back to self.model (the same atoms in the
+    # same order), the output model with capping=False.
+    # :param model: The rebuilt copy of self.model with restraints; its
+    # coordinates change.
+    # :return: The description-file text; also in the log.
+    from six.moves import cStringIO as StringIO
+    report = StringIO()
+    model.set_log(report)
+    r = model.regularize_geometry()
+    model.set_log(null_out())
+    if not r.needed:
+      text = ('qmready: geometry regularization not needed (no bond outliers '
+        'or clashes)\n')
+    else:
+      text = report.getvalue()
+      atoms = self.model.get_atoms()
+      qm_atoms = model.get_atoms()
+      assert atoms.size() == qm_atoms.size()
+      for a, qm_a in zip(atoms, qm_atoms):
+        assert a.id_str() == qm_a.id_str(), (a.id_str(), qm_a.id_str())
+      self.model.set_sites_cart(model.get_sites_cart())
+    print(text, file=self.logger)
+    return '\n' + text
+
   def _CheckQmreadyClashes(self, model):
     # qmready=True: Sorry if the finished model has a non-bonded contact
     # below 1.0 A. Checked on a copy with restraints (self.model has none);
@@ -2693,18 +2728,20 @@ NOTES:
     # generating mmCIF files, so we always do it for safety.
     self.model = self._FinalizeModel(self.model.get_hierarchy())
 
-    # qmready=True (remove adds no H): one copy with restraints for the clash
-    # check (the finished model must be clash-free), the dangling atoms
-    # (capping=True) and the total charge, as qr.finalise does with
-    # calculate_charge=True, added to the default output file name
-    # (approach=add). With capping=True the caps go on that copy as the
-    # last change to the hierarchy and it is the output model.
+    # qmready=True (remove adds no H): one copy with restraints for the
+    # geometry regularization (bond outliers and clashes minimized away with
+    # the smallest shift), the clash check (the finished model must be
+    # clash-free), the dangling atoms (capping=True) and the total charge, as
+    # qr.finalise does with calculate_charge=True, added to the default
+    # output file name (approach=add). With capping=True the caps go on that
+    # copy as the last change to the hierarchy and it is the output model.
     self.total_charge = None
     if self.params.qmready:
       outString += self._AltlocCompletionText()
     if self.params.qmready and self.params.approach != 'remove':
       qm_model = self._RebuildModel(self.model.get_hierarchy().deep_copy(),
         make_restraints=True)
+      outString += self._RegularizeGeometry(qm_model)
       self._CheckQmreadyClashes(qm_model)
       outString += self._HNotPlacedText(qm_model)
       if self.params.capping:

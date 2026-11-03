@@ -1,7 +1,10 @@
 """reduce2 with qmready=True stops with a Sorry when the finished model has a
-non-bonded contact below 1.0 A, H included. Model: 1yjp Asn 3 and Gln 4 with
-C3-N4 = 3.1 A, too long for a peptide bond, so qmready adds OXT to Asn 3 and
-NH3 to Gln 4; OXT ASN A 3 - H3 GLN A 4 = 0.892 A.
+non-bonded contact below 1.0 A, H included, after the geometry regularization
+of qmready (tst_reduce2_qmready_regularize.py). Model: 1yjp Asn 3 and Gln 4
+with C3-N4 = 3.1 A, too long for a peptide bond, so qmready adds OXT to Asn 3
+and NH3 to Gln 4; OXT ASN A 3 - H3 GLN A 4 = 0.892 A, which the
+regularization resolves; plus two waters 0.2 A apart, which it cannot
+separate within its shift budget.
 """
 from __future__ import absolute_import, division, print_function
 import os
@@ -74,7 +77,22 @@ ATOM     37 HE22 GLN A   4      31.592  28.487  23.891  1.00  9.05           H
 END
 """
 
-clash = ('pdb=" OXT ASN A   3 " - pdb=" H3  GLN A   4 " 0.892 A')
+water_str = """\
+HETATM   40  O   HOH A 101      40.000  40.000  40.000  1.00 20.00           O
+HETATM   41  O   HOH A 102      40.200  40.000  40.000  1.00 20.00           O
+"""
+
+water_str_h = """\
+HETATM   40  O   HOH A 101      40.000  40.000  40.000  1.00 20.00           O
+HETATM   41  H1  HOH A 101      40.980  40.000  40.000  1.00 20.00           H
+HETATM   42  H2  HOH A 101      39.720  40.940  40.000  1.00 20.00           H
+HETATM   43  O   HOH A 102      40.200  40.000  40.000  1.00 20.00           O
+HETATM   44  H1  HOH A 102      41.180  40.000  40.000  1.00 20.00           H
+HETATM   45  H2  HOH A 102      39.920  40.940  40.000  1.00 20.00           H
+"""
+
+pdb_str_pile = pdb_str_gap.replace("END\n", water_str + "END\n")
+pdb_str_pile_h = pdb_str_gap_h.replace("END\n", water_str_h + "END\n")
 
 def run(model_text, prefix, extra_args=()):
   fn_in = prefix + ".pdb"
@@ -92,16 +110,16 @@ def check_sorry(model_text, prefix, extra_args):
     fn_out = run(model_text, prefix, extra_args)
   except Sorry as e:
     assert "Bad clash(es) prevents qmready=True" in str(e), str(e)
-    assert clash in str(e), str(e)
+    assert "HOH" in str(e), str(e)
     assert not os.path.exists(prefix + "_out.pdb")
   else:
     raise AssertionError("no Sorry, %s written" % fn_out)
 
 def test_add():
-  check_sorry(pdb_str_gap, "tst_reduce2_qmready_clash_1", ["qmready=True"])
+  check_sorry(pdb_str_pile, "tst_reduce2_qmready_clash_1", ["qmready=True"])
 
 def test_optimize():
-  check_sorry(pdb_str_gap_h, "tst_reduce2_qmready_clash_2",
+  check_sorry(pdb_str_pile_h, "tst_reduce2_qmready_clash_2",
     ["qmready=True", "approach=optimize"])
 
 def test_add_no_qmready():
