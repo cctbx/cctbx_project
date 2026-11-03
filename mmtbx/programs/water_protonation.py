@@ -26,7 +26,7 @@ _GEOMETRY_KIND = {
 }
 
 master_phil_str = '''
-water_geometry = *auto xray neutron gas_phase
+geometry = *auto xray neutron gas_phase
   .type = choice
   .short_caption = Water geometry
   .help = "O-H length and H-O-H angle to place: xray (0.850 A, 103.91 deg) or neutron (0.980 A, 103.91 deg), the cctbx restraint targets; gas_phase (0.957 A, 104.5 deg); or auto: neutron for neutron and electron (microscopy or diffraction) models, xray for X-ray models, otherwise neutron if the model has D atoms or DOD waters."
@@ -176,11 +176,11 @@ and existing_h=reorient strips all water H and re-places both.
     print(f"Experiment type: {experiment or 'not given'}", file=self.logger)
 
     # Water geometry: the explicit choice, else from the structure.
-    geometry = self.params.water_geometry
+    geometry = self.params.geometry
     if geometry == "auto":
       geometry, note = _detect_geometry(pdb_in, hier)
     else:
-      note = f"water_geometry={geometry}"
+      note = f"geometry={geometry}"
     oh, hoh = water_protonation._WATER_GEOMETRY[geometry]
     kind = _GEOMETRY_KIND[geometry] + (f", {note}" if note else "")
     print(f"Water geometry: O-H {oh:.3f} A, H-O-H {hoh:g} deg ({kind})",
@@ -211,7 +211,7 @@ and existing_h=reorient strips all water H and re-places both.
     if places_d and geometry == "xray":
       neut = water_protonation._WATER_GEOMETRY["neutron"][0]
       self._warn(f"placing D at the X-ray O-H length ({oh:.3f} A); for "
-                 f"deuterium from neutron data, water_geometry=neutron places "
+                 f"deuterium from neutron data, geometry=neutron places "
                  f"{neut:.3f} A.")
     print(file=self.logger)
 

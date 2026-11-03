@@ -1438,7 +1438,7 @@ def exercise_reorient_keeps_isotope():
     f.write(_BAD_DEUTERATED_PDB)
   log = StringIO()
   run_program(program_class=wp_program.Program, logger=log,
-              args=[file_name, "existing_h=reorient", "water_geometry=xray",
+              args=[file_name, "existing_h=reorient", "geometry=xray",
                     "output.overwrite=True"])
   assert "Warning: placing D" in log.getvalue(), log.getvalue()
 
