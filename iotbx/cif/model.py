@@ -543,14 +543,19 @@ def _printed_column(column, numeric=False):
     [value for value in printed if "\n" not in value]).max_element_length()
   return flex.std_string(printed), width
 
-def _rows_in_chunks(columns, n_rows):
-  """The rows of the columns (flex.std_string of n_rows each) as tuples,
-  _show_chunk_rows at a time."""
-  for column in columns:
-    assert column.size() == n_rows
-  for start in range(0, n_rows, _show_chunk_rows):
-    stop = min(start + _show_chunk_rows, n_rows)
-    yield zip(*[list(column[start:stop]) for column in columns])
+def _format_rows_python(columns, start, stop, prefix, widths):
+  """Rows start to stop of the columns (flex.std_string of equal size),
+  each followed by a newline.  widths: one int per column, the field
+  width, negative to left-align; empty for the non-aligned form."""
+  rows = zip(*[list(column[start:stop]) for column in columns])
+  if len(widths) == 0:
+    lines = [prefix + " ".join(row) for row in rows]
+  else:
+    fmt_str = prefix + "  ".join(["%%%is" % width for width in widths])
+    lines = [(fmt_str % row).rstrip() for row in rows]
+  if len(lines) == 0:
+    return ""
+  return "\n".join(lines) + "\n"
 
 
 class loop(MutableMapping):
@@ -729,7 +734,7 @@ class loop(MutableMapping):
         print(fmt_str % tuple([values[j][i] for j in range_len_values]), file=out)
     elif align_columns:
       columns = []
-      fmt_str = []
+      widths = []
       for v in values:
         # right-align numerical columns, left-align everything else
         numeric = _is_numeric_column(v)
@@ -737,16 +742,19 @@ class loop(MutableMapping):
         if not numeric:
           width *= -1
         columns.append(v)
-        fmt_str.append("%%%is" %width)
-      fmt_str = indent_row + "  ".join(fmt_str)
-      for rows in _rows_in_chunks(columns, self.size()):
-        out.write("\n".join([(fmt_str % row).rstrip() for row in rows]))
-        out.write("\n")
+        widths.append(width)
+      self._show_rows(out, columns, indent_row, widths)
     else:
       columns = [_printed_column(v)[0] for v in values]
-      for rows in _rows_in_chunks(columns, self.size()):
-        out.write("\n".join([" ".join((indent,) + row) for row in rows]))
-        out.write("\n")
+      self._show_rows(out, columns, indent + " ", [])
+
+  def _show_rows(self, out, columns, prefix, widths):
+    n = self.size()
+    for column in columns:
+      assert column.size() == n
+    for start in range(0, n, _show_chunk_rows):
+      out.write(_format_rows_python(
+        columns, start, min(start + _show_chunk_rows, n), prefix, widths))
 
   def __str__(self):
     s = StringIO()

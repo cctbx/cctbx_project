@@ -714,6 +714,14 @@ def exercise_loop_show_many_rows():
   loop.show(out=s)
   assert s.getvalue() == "\n".join(expected) + "\n"
 
+def exercise_format_rows_python():
+  cols = [flex.std_string(["1", "22", "?"]),
+          flex.std_string(["a", "bb", "ccc"])]
+  out = model._format_rows_python(cols, 0, 3, "  ", [2, -3])
+  assert out == "   1  a\n  22  bb\n   ?  ccc\n", repr(out)
+  out = model._format_rows_python(cols, 1, 3, "  ", [])
+  assert out == "  22 bb\n  ? ccc\n", repr(out)
+
 if __name__ == '__main__':
   exercise_cif_model()
   test_301()
@@ -721,4 +729,5 @@ if __name__ == '__main__':
   exercise_loop_show_quoting()
   exercise_quoting_scan_matches_format_value()
   exercise_loop_show_many_rows()
+  exercise_format_rows_python()
   print("OK")
