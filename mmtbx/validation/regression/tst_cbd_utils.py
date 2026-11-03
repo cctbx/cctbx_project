@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from math import pi, cos, sin
 from libtbx.test_utils import approx_equal
+from mmtbx.validation import cbd_utils
 from mmtbx.validation.cbd_utils import radial_deviation
 
 def as_xy(v):
@@ -32,9 +33,51 @@ def exercise_input_in_cartesian():
     assert approx_equal(v.r, (x*x+y*y)**0.5, eps=1e-9), (x, y, v.r)
     assert approx_equal(as_xy(v), (x, y), eps=1e-9), (x, y, as_xy(v))
 
+def exercise_tables():
+  assert sorted(cbd_utils.tables) == ['PRO', 'VAL_THR_ILE', 'VAL_THR_ILE_pre_PRO',
+                                      'others', 'others_pre_PRO']
+  for name, table in cbd_utils.tables.items():
+    assert table, name
+    for (phi, psi), (r, t) in table.items():
+      assert 180 not in (phi, psi), (name, phi, psi)
+      assert -pi-1e-6 <= t <= pi+1e-6, (name, phi, psi, t)
+  # the pre-PRO helix offset is much larger than for other residues
+  assert approx_equal(cbd_utils.tables['others_pre_PRO'][(-60, -50)][0], 0.110,
+                      eps=0.003)
+  assert approx_equal(cbd_utils.tables['VAL_THR_ILE_pre_PRO'][(-60, -50)][0],
+                      0.155, eps=0.003)
+  assert cbd_utils.tables['others'][(-60, -50)][0] < 0.01
+
+def exercise_table_selection():
+  T = cbd_utils.tables
+  for resname, next_resname, name in [
+      ('PRO', 'PRO', 'PRO'),
+      ('PRO', 'ALA', 'PRO'),
+      ('VAL', 'PRO', 'VAL_THR_ILE_pre_PRO'),
+      ('THR', None, 'VAL_THR_ILE'),
+      ('ALA', 'PRO', 'others_pre_PRO'),
+      ('ALA', 'GLY', 'others'),
+      ('ALA', 'HYP', 'others'),
+      ]:
+    assert cbd_utils.get_correction_table(resname, next_resname) is T[name], \
+      (resname, next_resname)
+
+def exercise_wrap_lookup():
+  # psi 176 rounds to 180, which is the -180 key
+  table = cbd_utils.tables['others']
+  key = [k for k in sorted(table) if k[1] == -180][0]
+  v = cbd_utils.get_correction_vector('ALA', 'GLY', (key[0], 176.))
+  r, t = table[key]
+  assert approx_equal(v, (r*cos(t), r*sin(t)))
+  # D-amino acids are not corrected
+  assert cbd_utils.get_correction_vector('DAL', 'GLY', (key[0], 176.)) is None
+
 def run():
   exercise_angle_wrapping()
   exercise_input_in_cartesian()
+  exercise_tables()
+  exercise_table_selection()
+  exercise_wrap_lookup()
   print('OK')
 
 if __name__ == '__main__':

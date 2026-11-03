@@ -74,6 +74,11 @@ def classify_ca_chirality(resname, chiral_volume):
   return None
 
 def get_phi_psi_dict(pdb_hierarchy):
+  return dict((k, v[0]) for k, v in get_phi_psi_next_dict(pdb_hierarchy).items())
+
+def get_phi_psi_next_dict(pdb_hierarchy):
+  """{id_str: (phi_psi, next_resname)}; the next residue picks the pre-PRO
+  correction tables."""
   rc = {}
   # include modified and D-amino acids so their neighbours get phi/psi;
   # modified residues are only corrected themselves with
@@ -91,7 +96,7 @@ def get_phi_psi_dict(pdb_hierarchy):
           is_alt_conf = atom.parent().altloc
           break
     id_str = '|%s:%s|' % (three[1].id_str(), is_alt_conf)
-    rc[id_str] = phi_psi_angles
+    rc[id_str] = (phi_psi_angles, three[2].resname)
   return rc
 
 class cbeta(residue):
@@ -213,7 +218,7 @@ class cbetadev(validation):
     self.ca_chirality = []
     mahalanobis_pending = [] # [result, residual, model id, include]
     if apply_phi_psi_correction or mahalanobis_z_score:
-      phi_psi_angles = get_phi_psi_dict(pdb_hierarchy)
+      phi_psi_next = get_phi_psi_next_dict(pdb_hierarchy)
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
@@ -269,7 +274,7 @@ class cbetadev(validation):
                     result.chiral_volume, kind, dev])
                 if apply_phi_psi_correction or mahalanobis_z_score:
                   id_str = '|%s:%s|' % (residue.id_str(), altchar)
-                  phi_psi = phi_psi_angles.get(id_str, None)
+                  phi_psi, next_resname = phi_psi_next.get(id_str, (None, None))
                 if mahalanobis_z_score:
                   # scored on the uncorrected deviation
                   residual = cbd_mahalanobis.get_bin_residual(
@@ -283,6 +288,7 @@ class cbetadev(validation):
                       result,
                       residue,
                       phi_psi,
+                      next_resname=next_resname,
                       display_phi_psi_correction=display_phi_psi_correction,
                       use_parent_for_modified_residues=
                         use_parent_for_modified_residues,

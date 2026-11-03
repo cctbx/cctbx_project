@@ -163,17 +163,17 @@ def tst_03():
   assert len(default) == len(off) == len(on) == 10
   # the standard residue next to modified residues is corrected either way
   assert approx_equal(default[('9', 'VAL')], 0.0619, eps=1e-4)
-  assert approx_equal(off[('9', 'VAL')], 0.0562, eps=1e-4)
-  assert approx_equal(on[('9', 'VAL')], 0.0562, eps=1e-4)
+  assert approx_equal(off[('9', 'VAL')], 0.0609, eps=1e-4)
+  assert approx_equal(on[('9', 'VAL')], 0.0609, eps=1e-4)
   # modified residues are only corrected with the parent table
   expected = {
-    ('2', 'MLE')  : (0.1567, 0.1325),
-    ('3', 'MLE')  : (0.1443, 0.1374),
-    ('4', 'MVA')  : (0.0555, 0.0533),
-    ('5', 'BMT')  : (0.1716, 0.1808),
-    ('6', 'ABA')  : (0.0224, 0.0020),
-    ('8', 'MLE')  : (0.1255, 0.1034),
-    ('10', 'MLE') : (0.1558, 0.1379),
+    ('2', 'MLE')  : (0.1567, 0.1331),
+    ('3', 'MLE')  : (0.1443, 0.1390),
+    ('4', 'MVA')  : (0.0555, 0.0646),
+    ('5', 'BMT')  : (0.1716, 0.1794),
+    ('6', 'ABA')  : (0.0224, 0.0091),
+    ('8', 'MLE')  : (0.1255, 0.1013),
+    ('10', 'MLE') : (0.1558, 0.1392),
   }
   for key, (uncorrected, corrected) in expected.items():
     assert approx_equal(default[key], uncorrected, eps=1e-4), key

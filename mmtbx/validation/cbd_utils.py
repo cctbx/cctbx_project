@@ -2,9 +2,20 @@ from __future__ import division
 from math import pi, sin, cos, atan2, sqrt
 
 from mmtbx.conformation_dependent_library.cdl_utils import round_to_ten
-from mmtbx.validation.mean_devs_PRO_phi_psi import mean_devs as PRO_phi_psi
-from mmtbx.validation.mean_devs_others_phi_psi import mean_devs as others_phi_psi
-from mmtbx.validation.mean_devs_VAL_THR_ILE_phi_psi import mean_devs as VAL_THR_ILE_phi_psi
+from mmtbx.validation import mean_devs_PRO_phi_psi
+from mmtbx.validation import mean_devs_VAL_THR_ILE_phi_psi
+from mmtbx.validation import mean_devs_others_phi_psi
+from mmtbx.validation import mean_devs_VAL_THR_ILE_pre_PRO_phi_psi
+from mmtbx.validation import mean_devs_others_pre_PRO_phi_psi
+
+# (phi, psi) -> (r in Angstrom, t in radians) of the mean C-beta deviation
+tables = {
+  'PRO'                 : mean_devs_PRO_phi_psi.mean_devs,
+  'VAL_THR_ILE'         : mean_devs_VAL_THR_ILE_phi_psi.mean_devs,
+  'others'              : mean_devs_others_phi_psi.mean_devs,
+  'VAL_THR_ILE_pre_PRO' : mean_devs_VAL_THR_ILE_pre_PRO_phi_psi.mean_devs,
+  'others_pre_PRO'      : mean_devs_others_pre_PRO_phi_psi.mean_devs,
+  }
 
 class radial_deviation:
   def __init__(self, r, t, input_in_radians=False, input_in_cartesian=False):
@@ -78,26 +89,41 @@ def get_table_resname(resname, use_parent_for_modified_residues=False):
   from iotbx.pdb.aa_utils import get_aa_parent
   return get_aa_parent(resname)
 
+def get_correction_table(table_resname, next_resname):
+  """The table for a residue: PRO whatever follows, otherwise VAL/THR/ILE or
+  the others, each split by whether the next residue is PRO."""
+  if table_resname == 'PRO': return tables['PRO']
+  if table_resname in ['VAL', 'THR', 'ILE']: name = 'VAL_THR_ILE'
+  else: name = 'others'
+  if next_resname == 'PRO': name += '_pre_PRO'
+  return tables[name]
+
+def get_correction_vector(resname,
+                          next_resname,
+                          phi_psi,
+                          use_parent_for_modified_residues=False):
+  """Mean deviation vector (x, y) in Angstrom for the residue's (phi, psi)
+  bin, in the (deviation, dihedral_NABB) polar plane, or None if the residue
+  isn't corrected or its bin has no entry."""
+  resname = get_table_resname(resname,
+    use_parent_for_modified_residues=use_parent_for_modified_residues)
+  if resname is None: return None
+  table = get_correction_table(resname, next_resname)
+  entry = table.get((round_to_ten(phi_psi[0]), round_to_ten(phi_psi[1])), None)
+  if entry is None: return None
+  return (entry[0]*cos(entry[1]), entry[0]*sin(entry[1]))
+
 def get_phi_psi_correction(result,
                            residue,
                            phi_psi,
+                           next_resname=None,
                            display_phi_psi_correction=False,
                            use_parent_for_modified_residues=False,
                            verbose=False):
-  rc = None
-  resname = get_table_resname(residue.resname,
+  correction = get_correction_vector(residue.resname, next_resname, phi_psi,
     use_parent_for_modified_residues=use_parent_for_modified_residues)
-  if resname is None: return rc
-  key = (round_to_ten(phi_psi[0]), round_to_ten(phi_psi[1]))
-  if resname=='PRO':
-    table = PRO_phi_psi
-  elif resname in ['VAL', 'THR', 'ILE']:
-    table = VAL_THR_ILE_phi_psi
-  else:
-    table = others_phi_psi
-  correction = table.get(key, None)
   if correction:
-    correction = radial_deviation(*tuple(correction), input_in_radians=True)
+    correction = radial_deviation(*correction, input_in_cartesian=True)
     current = radial_deviation(result.deviation, result.dihedral)
     rc = current-correction
     start = (current.r>=0.25)
