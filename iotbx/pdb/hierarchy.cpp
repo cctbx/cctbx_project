@@ -1175,7 +1175,7 @@ namespace {
       "LI", "NA", "AL", "K",  "MG", "CA", "MN", "FE", "CO", "NI"
      ,"CU", "ZN", "RB", "SR", "MO", "AG", "CD", "IN", "CS", "BA", "AU", "HG", "TL"
      ,"PB", "V",  "CR", "TE", "SM", "GD", "YB", "W",  "PT", "U"
-     ,"BE", "SI", "SC", "TI", "FA", "GE", "Y",  "ZR", "SN", "SB", "LA", "CE", "FR", "RA", "TH"
+     ,"BE", "SI", "SC", "TI", "GA", "GE", "Y",  "ZR", "SN", "SB", "LA", "CE", "FR", "RA", "TH"
      ,"NB", "TC", "RU", "RH", "PD", "PR", "ND", "PM", "EU", "TB", "DY", "HO", "ER"
      ,"TM", "LU", "HF", "TA", "RE", "OS", "IR", "BI", "PO", "AT"
      ,"AC", "PA", "NP", "PU", "AM", "CM", "BK", "CF", "ES", "FM", "MD", "NO"
