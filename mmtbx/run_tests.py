@@ -497,6 +497,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_qmready_charge.py",
   "$D/regression/tst_reduce2_qmready_clash.py",
   "$D/regression/tst_reduce2_capping.py",
+  "$D/regression/tst_reduce2_altloc_completion.py",
   "$D/regression/tst_reduce2_blank_chain.py",
   "$D/regression/tst_reduce2_his_no_h.py",
   "$D/regression/tst_reduce2_near_acceptor.py",

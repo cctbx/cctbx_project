@@ -257,7 +257,13 @@ def _missing_atoms_records(acp, mon_lib_srv=None, link_bond_counts=None):
         link_bond_counts = link_bond_counts,
         mon_lib_srv      = mon_lib_srv)
     id_str = ag.id_str()
-    if(mm.conf_altloc):
+    # Conformers the residue group does not own (inherited by
+    # pdb_interpretation from other residues of the chain) are not reported;
+    # a residue group without conformers is reported once, under blank key.
+    own = set(g.altloc for g in ag.parent().atom_groups()
+              if g.altloc.strip())
+    if(mm.conf_altloc and own and mm.conf_altloc not in own): continue
+    if(mm.conf_altloc and own):
       key        = mm.conf_altloc + id_str[1:]
       legacy_key = '"%s"%s' % (mm.conf_altloc, id_str)
     else:
@@ -2563,8 +2569,10 @@ class manager(object):
     """
     Find residues with missing atoms. Expected atoms are those of monomer
     library definitions after applying modifications (as for restraints).
-    Residues are checked per conformer. Residues not in monomer library are
-    not checked. Missing C-terminal OXT is not reported.
+    Residues with alternative conformations are checked per conformer, only
+    for conformers the residue itself has; a residue without them is
+    reported once. Residues not in monomer library are not checked. Missing
+    C-terminal OXT is not reported.
 
     Atoms absent because of links are not reported (e.g. OD2 of ASP if CG is
     linked to N of another residue), see _missing_atoms_excused_by_links().
@@ -4694,6 +4702,30 @@ class manager(object):
 
   def remove_solvent(self):
     return self.select(selection = ~self.solvent_selection())
+
+  def complete_altlocs(self, check_only=False, log=None):
+    """
+    Make alternative conformations of residues complete by sharing or
+    copying atoms between conformers (see
+    iotbx.pdb.hierarchy.root.complete_altlocs() for the rules).
+
+    If anything is changed, serial numbers are reset and restraints are
+    unset (call process() if needed). With check_only the model is not
+    changed and only the findings are returned. Report lines are printed to
+    log if given.
+
+    Returns libtbx.group_args with fields: shared, copied, truncated,
+    inconsistent, changed (bool), see the hierarchy method.
+
+    Raises Sorry if the hierarchy cannot be completed (as the hierarchy
+    method does).
+    """
+    result = self._pdb_hierarchy.complete_altlocs(
+      check_only=check_only, log=log)
+    if(result.changed):
+      self._pdb_hierarchy.atoms().reset_serial()
+      self.reset_after_changing_hierarchy()
+    return result
 
   def add_terminal_oxt(self, peptide_bond_cutoff=2.0, log=None):
     """

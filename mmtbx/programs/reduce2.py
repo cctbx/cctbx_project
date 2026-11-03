@@ -25,6 +25,7 @@ from libtbx.utils import Sorry, null_out, peak_memory_usage, human_readable_size
 import mmtbx
 from mmtbx.probe import Helpers
 from iotbx import pdb, cli_parser
+from iotbx.pdb import altloc_completion
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.hydrogens import hd_exchange
 from mmtbx.hydrogens import capping
@@ -142,7 +143,8 @@ qmready = False
   .short_caption = Run with custom preset options suitable for QM
   .help = Add H to water, use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks, \
           and the terminal hydroxyl H of nucleic acids (HO3-prime at a 3-prime end, HO5-prime at a \
-          5-prime OH end)
+          5-prime OH end). Also complete residues whose conformers lack atoms \
+          their other conformers have (altloc completion)
 capping = False
   .type = bool
   .short_caption = Cap dangling bonds with H
@@ -2030,6 +2032,37 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _AltlocCompletionText(self):
+    # qmready=True: the Altloc completion section of the description file,
+    # the lines printed to the log after complete_altlocs().
+    # :return: The description-file text ('' if nothing was reported).
+    lines = altloc_completion.report_lines(self._altloc_completion)
+    if not lines: return ''
+    lines = ['', 'Altloc completion (atoms borrowed between conformers of a '
+      'residue):'] + ['  ' + line for line in lines]
+    return '\n'.join(lines) + '\n'
+
+  def _HNotPlacedText(self, model):
+    # qmready=True: the residues of the finished model that miss H. reduce2
+    # does not place a rotatable H on a shared atom whose bonded partners
+    # carry altlocs (TYR HH on a blank OH with CZ A/B). Residues that miss
+    # non-H atoms (truncated, capping=True) are listed by the atom-complete
+    # check instead.
+    # :param model: The finished model with restraints, not yet capped.
+    # :return: The description-file text ('' if none); also in the log.
+    heavy = model.missing_atoms_by_residue()
+    lines = []
+    for k, v in model.missing_atoms_by_residue(include_hydrogens=True).items():
+      if k in heavy: continue
+      lines.append('  %s: %s' % (k, ' '.join(v)))
+    if not lines: return ''
+    lines = ['qmready: H not placed (a rotatable H on a shared atom whose '
+      'partners carry altlocs; place by hand or wait for the reduce2 fix):'
+      ] + lines
+    text = '\n'.join(lines) + '\n'
+    print(text, file=self.logger)
+    return '\n' + text
+
   def _CapDanglingAtoms(self, model, r):
     # capping=True: the output model and the Capping report after
     # capping.cap_model() capped model's hierarchy in place, as the last
@@ -2326,6 +2359,8 @@ NOTES:
     # residues without restraints (optimize, D input): None until checked
     self._unrestrained = None
     self._auto_restraint_names = []
+    # qmready: the complete_altlocs() result, for the description
+    self._altloc_completion = None
 
     # String describing the run that will be output to the specified file.
     outString = 'reduce2 v.{}, run {}\n'.format(version, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -2380,6 +2415,16 @@ NOTES:
     if self.params.qmready:
       # add OXT
       self.model.add_terminal_oxt()
+      # residues with partial alternative conformations: borrow the atoms
+      # their conformers lack from each other. An ambiguous borrow is a Sorry
+      completion = self.model.complete_altlocs()
+      self._altloc_completion = completion
+      lines = altloc_completion.report_lines(completion)
+      if lines:
+        print("Altloc completion (atoms borrowed between conformers of a residue):",
+          file=self.logger)
+        for line in lines:
+          print("  " + line, file=self.logger)
       # make sure model is atom-complete. With capping=True a listing only:
       # the atoms left with a dangling bond are capped at the end
       if not self.model.is_atom_complete():
@@ -2655,10 +2700,13 @@ NOTES:
     # (approach=add). With capping=True the caps go on that copy as the
     # last change to the hierarchy and it is the output model.
     self.total_charge = None
+    if self.params.qmready:
+      outString += self._AltlocCompletionText()
     if self.params.qmready and self.params.approach != 'remove':
       qm_model = self._RebuildModel(self.model.get_hierarchy().deep_copy(),
         make_restraints=True)
       self._CheckQmreadyClashes(qm_model)
+      outString += self._HNotPlacedText(qm_model)
       if self.params.capping:
         # capping.cap_model: the records, the charge of the capped model
         # (the caps as sigma bonds) and the caps, shared with qrefine
