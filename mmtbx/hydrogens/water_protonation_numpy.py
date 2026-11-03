@@ -65,19 +65,9 @@ _WATER_REFINE_TOL = 1
 # re-orients the still-clashing waters, and relaxes. Seeded.
 _WATER_BASIN_SEED = 0
 _WATER_BASIN_RELAX = 2        # relaxation sweeps after each random kick
-# Cations within _WATER_CATION_RADIUS of the water O are repellers, keeping
-# both H in the hemisphere away from them, rather than acceptors.
-_WATER_CATION_ELEMENTS = frozenset({
-  "LI", "NA", "K", "RB", "CS",                                # alkali
-  "BE", "MG", "CA", "SR", "BA",                               # alkaline earth
-  "SC", "TI", "V", "CR", "MN", "FE", "CO", "NI", "CU", "ZN",  # 3d
-  "Y", "ZR", "NB", "MO", "TC", "RU", "RH", "PD", "AG", "CD",  # 4d
-  "HF", "TA", "W", "RE", "OS", "IR", "PT", "AU", "HG",        # 5d
-  "AL", "GA", "IN", "SN", "SB", "TL", "PB", "BI",             # p-block
-  "LA", "CE", "PR", "ND", "PM", "SM", "EU", "GD",             # lanthanides
-  "TB", "DY", "HO", "ER", "TM", "YB", "LU",
-  "TH", "U",                                                  # actinides
-})
+# Metal cations (mmtbx.hydrogens.reduce_hydrogen.METAL_ELEMENTS) within
+# _WATER_CATION_RADIUS of the water O are repellers, keeping both H in the
+# hemisphere away from them, rather than acceptors.
 _WATER_CATION_RADIUS = 3.0
 _WATER_METAL_COORD_RADIUS = 2.6  # first-shell M-O bond, reporting only
 _WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H1, acceptor) to be donated to
@@ -648,6 +638,7 @@ class _WaterHydrogenPlacer(object):
     water's own atoms ``own_idx`` and cations of an altloc other than the
     water's conformer index ``c``. Reporting only; placement ignores it.
     """
+    from mmtbx.hydrogens.reduce_hydrogen import METAL_ELEMENTS
     o = matrix.col(o_xyz)
     best = None
     for i in self.static_tree.query_ball_point(tuple(o_xyz),
@@ -657,7 +648,7 @@ class _WaterHydrogenPlacer(object):
       if c and not _compatible(c, self.conf[i]):
         continue
       el = self.atoms[i].element.strip().upper()
-      if el not in _WATER_CATION_ELEMENTS:
+      if el not in METAL_ELEMENTS:
         continue
       d = (matrix.col(self.atoms[i].xyz) - o).length()
       if best is None or d < best[1]:
@@ -719,6 +710,7 @@ class _WaterHydrogenPlacer(object):
     the acceptors are collinear) and ``("split_static", k1, k2)`` (the cached
     static half of its clearance test).
     """
+    from mmtbx.hydrogens.reduce_hydrogen import METAL_ELEMENTS
     g = self.w_geom[wi]
     if g is not None:
       return g
@@ -748,7 +740,7 @@ class _WaterHydrogenPlacer(object):
       if i in own_idx:
         continue
       a = atoms[i]
-      if a.element.strip().upper() not in _WATER_CATION_ELEMENTS:
+      if a.element.strip().upper() not in METAL_ELEMENTS:
         continue
       v = matrix.col(a.xyz) - o_xyz
       if v.length() < 1e-3:
