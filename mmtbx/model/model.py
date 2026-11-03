@@ -4702,9 +4702,11 @@ class manager(object):
     Chain end is the last amino-acid residue of a chain, or the last residue
     before a break in polypeptide chain: next residue is not an amino acid or
     is not peptide-bonded (C(i)-N(i+1) distance >= peptide_bond_cutoff).
-    No OXT if C is already bonded to a heavy atom of another residue, or of
-    a symmetry mate when the model has a unit cell (within
-    peptide_bond_cutoff): caps (NH2, NME), cyclic peptides, links.
+    No OXT if C is already bonded (within peptide_bond_cutoff) to a heavy atom
+    of another residue or a symmetry mate of it, when the model has a unit
+    cell: caps (NH2, NME), cyclic peptides, links. The C's own residue is not
+    a bond, mates too (disorder across an axis), but for a mate of its N: a
+    cyclic peptide with one residue per asymmetric unit.
 
     OXT is placed in CA-C-O plane at 1.231 A from C, symmetrically to O, and
     inherits altloc, occupancy and B from O. Residues missing C, CA or O are
@@ -4751,8 +4753,8 @@ class manager(object):
           c, ca, o = [atoms.get(name) for name in ["C", "CA", "O"]]
           if None in [c, ca, o]: continue
           ends.append((rg, c, ca, o))
-      # C bonded to a heavy atom of another residue, or of a symmetry mate
-      # (a peptide closed across symmetry): not a chain end
+      # C bonded to a heavy atom of another residue or a mate of it (a peptide
+      # closed across symmetry), or to a mate of its own N: not a chain end
       sites = flex.vec3_double([c.xyz for rg, c, ca, o in ends])
       sites.extend(flex.vec3_double([a.xyz for a in heavy]))
       bonded = set()
@@ -4760,9 +4762,10 @@ class manager(object):
           self.crystal_symmetry(), i_seqs=range(len(ends))):
         if j < len(ends): continue
         a = heavy[j - len(ends)]
-        if (not rt.is_unit_mx() or
-            a.parent().parent().memory_id() != ends[k][0].memory_id()):
-          bonded.add(k)
+        if (a.parent().parent().memory_id() == ends[k][0].memory_id() and
+            (rt.is_unit_mx() or a.name.strip() != "N")):
+          continue
+        bonded.add(k)
       for k, (rg, c, ca, o) in enumerate(ends):
         if k in bonded: continue
         c_xyz = matrix.col(c.xyz)

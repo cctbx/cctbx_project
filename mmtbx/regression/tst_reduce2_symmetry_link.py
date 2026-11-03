@@ -172,9 +172,40 @@ END
   for name in ("H1", "H2", "H3"):
     assert gly.count(name) == 1, gly
 
+def test_own_ca_mate_is_no_bond():
+  # Gly along a 2-fold: the mate of its own CA is 1.69 A from the N
+  h = run("tst_reduce2_symmetry_link_4", pdb="""\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1 2 1
+ATOM      1  N   GLY A   1       0.600  10.000   0.000  0.50 20.00           N
+ATOM      2  CA  GLY A   1       0.300  11.426   0.000  0.50 20.00           C
+ATOM      3  C   GLY A   1       1.500  12.350   0.000  0.50 20.00           C
+ATOM      4  O   GLY A   1       2.640  11.900   0.000  0.50 20.00           O
+END
+""")
+  gly = names(h, 1)
+  assert "H" not in gly, gly
+  for name in ("H1", "H2", "H3"):
+    assert gly.count(name) == 1, gly
+
+def test_closure_with_own_mate():
+  # cyclo(Gly-Gly) on a 2-fold, one Gly in the asymmetric unit: N is bonded to
+  # C of its own mate, 1.44 A. Neither end is a terminus
+  h = run("tst_reduce2_symmetry_link_5", ["qmready=True"], pdb="""\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1 2 1
+ATOM      1  N   GLY A   1       1.440  10.000   0.000  1.00 20.00           N
+ATOM      2  CA  GLY A   1       0.720  10.000   1.247  1.00 20.00           C
+ATOM      3  C   GLY A   1      -0.720  10.000   1.247  1.00 20.00           C
+ATOM      4  O   GLY A   1      -1.335  10.000   2.312  1.00 20.00           O
+END
+""")
+  gly = names(h, 1)
+  assert not set(gly) & {"H1", "H2", "H3", "OXT"}, gly
+
 if __name__ == "__main__":
   test_add_terminal_oxt()
   test_add()
   test_qmready()
   test_own_mate_is_no_bond()
+  test_own_ca_mate_is_no_bond()
+  test_closure_with_own_mate()
   print("OK")

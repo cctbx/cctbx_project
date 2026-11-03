@@ -3728,10 +3728,10 @@ class place_hydrogens():
           else: unchanged(n, rgs, why)
         candidates.append((rgs, ag, n))
       if not candidates: continue
-      # a nonmetal within 1.75 A of a candidate N, of another residue or of
-      # a symmetry mate (a peptide closed across symmetry): the N is bonded.
-      # Not a mate of the N itself (disorder across an axis). The candidates
-      # are also among the nonmetals, so by atom, not by index.
+      # a nonmetal within 1.75 A of a candidate N, of another residue or a
+      # mate of it (a peptide closed across symmetry): the N is bonded. Its own
+      # residue, mates too (disorder across an axis), is not a bond, but for
+      # a mate of its C: a cyclic peptide with one residue per asymmetric unit
       i_nonmetals = flex.size_t([i for i, a in enumerate(model_atoms)
         if a.element.strip().upper() in nonmetals])
       sites = flex.vec3_double([n.xyz for rgs, ag, n in candidates])
@@ -3743,11 +3743,11 @@ class place_hydrogens():
           atom = candidates[j][2]
         else:
           atom = model_atoms[i_nonmetals[j - len(candidates)]]
-        rgs, n = candidates[i_n][0], candidates[i_n][2]
-        if atom.memory_id() == n.memory_id(): continue
-        if (not rt.is_unit_mx() or
-            atom.parent().parent().memory_id() != rgs.memory_id()):
-          bonded.add(i_n)
+        rgs = candidates[i_n][0]
+        if (atom.parent().parent().memory_id() == rgs.memory_id() and
+            (rt.is_unit_mx() or atom.name.strip() != 'C')):
+          continue
+        bonded.add(i_n)
       for i_n, (rgs, ag, n) in enumerate(candidates):
         if i_n in bonded:
           if rgs.memory_id() in forced:
