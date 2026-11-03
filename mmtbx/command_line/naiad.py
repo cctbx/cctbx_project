@@ -6,4 +6,4 @@ from iotbx.cli_parser import run_program
 from mmtbx.programs import water_protonation
 
 if __name__ == "__main__":
-  run_program(water_protonation.Program)
+  run_program(program_class=water_protonation.Program)

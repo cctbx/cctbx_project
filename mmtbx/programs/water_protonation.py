@@ -8,15 +8,12 @@ command-line dispatcher is ``mmtbx.development.naiad``.
 import os
 import textwrap
 
-import iotbx.cif.model
 from iotbx.pdb.utils import check_for_missing_elements
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry, null_out
-from scitbx.array_family import flex
 
-import mmtbx.model
 from mmtbx.hydrogens import water_protonation
 
 _MAX_LISTED_WATERS = 20
@@ -30,15 +27,15 @@ _GEOMETRY_KIND = {
 
 master_phil_str = '''
 water_geometry = *auto xray neutron gas_phase
-  .type = choice(multi=False)
+  .type = choice
   .short_caption = Water geometry
   .help = "O-H length and H-O-H angle to place: xray (0.850 A, 103.91 deg) or neutron (0.980 A, 103.91 deg), the cctbx restraint targets; gas_phase (0.957 A, 104.5 deg); or auto: neutron for neutron and electron (microscopy or diffraction) models, xray for X-ray models, otherwise neutron if the model has D atoms or DOD waters."
 element = *auto H D
-  .type = choice(multi=False)
+  .type = choice
   .short_caption = Hydrogen element
   .help = "Element for the placed water hydrogens: H, D, or auto (the element the water already carries, else D if the model has D atoms or DOD waters, else H)."
 existing_h = *keep complete reorient
-  .type = choice(multi=False)
+  .type = choice
   .short_caption = Waters that already carry H
   .help = "What to do with a water that already carries H: keep leaves it untouched, complete builds the missing partner on the cone of the existing proton for a water carrying a single H, reorient strips all water H and re-places both."
 symmetry = True
@@ -219,15 +216,16 @@ and existing_h=reorient strips all water H and re-places both.
 
     # The summary and table header print at the first state, then one row
     # per state.
-    header = {"printed": False}
+    printed = False
     def on_state(label, stats):
-      if not header["printed"]:
+      nonlocal printed
+      if not printed:
         print(self._summary(n_before, self._count_water_h(hier)),
               file=self.logger)
         print("H-H contacts between waters:", file=self.logger)
-        water_protonation._clash_header(self.logger)
-        header["printed"] = True
-      water_protonation._clash_row(label, stats, self.logger)
+        self._clash_header(self.logger)
+        printed = True
+      self._clash_row(label, stats, self.logger)
 
     result = water_protonation.place_water_hydrogens(
       hier,
@@ -246,7 +244,7 @@ and existing_h=reorient strips all water H and re-places both.
     self.partial_waters = result.partial_waters
     if not report_stats:
       print(self._summary(n_before, n_after), file=self.logger)
-    elif header["printed"]:
+    elif printed:
       if self.params.basin.rounds and not result.basin_rounds:
         print("Basin hopping: no clashing placed waters, skipped",
               file=self.logger)
@@ -258,6 +256,7 @@ and existing_h=reorient strips all water H and re-places both.
 
     self._write_output(model)
     hier.atoms().reset_i_seq()
+    import mmtbx.model
     self.model = mmtbx.model.manager(
       model_input=None, pdb_hierarchy=hier,
       crystal_symmetry=model.crystal_symmetry(), log=null_out())
@@ -275,9 +274,7 @@ and existing_h=reorient strips all water H and re-places both.
     # New H atoms have blank serial numbers.
     model.get_hierarchy().atoms().reset_serial()
     target = self.params.output.target_output_format
-    if (target == "mmcif"
-        or (target is None and model.input_model_format_cif())
-        or not model.get_hierarchy().fits_in_pdb_format()):
+    if target == "mmcif" or not model.get_hierarchy().fits_in_pdb_format():
       fmt = "cif"
       text = model.model_as_mmcif(additional_blocks=self._exptl_blocks(model))
     else:
@@ -291,6 +288,8 @@ and existing_h=reorient strips all water H and re-places both.
   def _exptl_blocks(model):
     """The input's experiment type as an mmCIF ``_exptl.method`` block, for
     ``model_as_mmcif(additional_blocks=...)``; None without one."""
+    import iotbx.cif.model
+    from scitbx.array_family import flex
     inp = model.get_model_input()
     exp = inp.get_experiment_type() if inp is not None else None
     if exp is None or exp.is_empty():
@@ -342,7 +341,12 @@ and existing_h=reorient strips all water H and re-places both.
   def _summary(self, before, now):
     """One line on the water H/D before and after, ``(H, D)`` counts."""
     n_before, n_now = sum(before), sum(now)
-    kind = "H/D" if all(now) else ("D" if now[1] else "H")
+    if all(now):
+      kind = "H/D"
+    elif now[1]:
+      kind = "D"
+    else:
+      kind = "H"
     if self.params.existing_h == "reorient" and n_before:
       return f"Water {kind} atoms: {n_before} removed, {n_now} placed"
     return f"Water {kind} atoms: {n_before} -> {n_now} (+{n_now - n_before})"
@@ -393,6 +397,19 @@ and existing_h=reorient strips all water H and re-places both.
       if len(group) > _MAX_LISTED_WATERS:
         print(f"  ... and {len(group) - _MAX_LISTED_WATERS} more",
               file=self.logger)
+
+  @staticmethod
+  def _clash_header(log):
+    """Print the column header of the per-sweep clash table to ``log``."""
+    print(f"  {'state':<11}{'< 2.0 A':>9}{'< 1.8 A':>9}{'< 1.5 A':>9}  closest",
+          file=log)
+
+  @staticmethod
+  def _clash_row(label, stats, log):
+    """Print one row of the per-sweep clash table for ``stats`` to ``log``."""
+    _, n20, n18, n15, worst = stats
+    w = f"{worst:.2f} A" if worst is not None else "-"
+    print(f"  {label:<11}{n20:>9}{n18:>9}{n15:>9}  {w}", file=log)
 
   def _print_residual_contacts(self, hier, crystal_symmetry):
     """List the residual inter-water H-H contacts (< 2.0 A) with residue IDs,

@@ -27,7 +27,6 @@ from iotbx.pdb.utils import check_for_missing_elements
 from libtbx import group_args
 from scitbx import matrix
 from scitbx.array_family import flex
-from scipy.spatial import KDTree
 
 
 # ---------------------------------------------------------------------------
@@ -120,15 +119,6 @@ def _fibonacci_sphere(n):
 
 _WATER_FALLBACK_DIRECTIONS = _fibonacci_sphere(64)
 
-# Shared empty neighbour-slot list.
-_EMPTY_SLOTS = flex.size_t()
-
-
-def _as_vec3(tuples):
-  """Build a flex.vec3_double, tolerating the empty case."""
-  return flex.vec3_double(tuples) if tuples else flex.vec3_double()
-
-
 # Index arrays for the (candidate x neighbour) block, keyed by its shape and
 # shared by every water with that shape. The block is flattened row-major:
 # candidate i occupies ``[i * m, (i+1) * m)``, so a row is a plain slice.
@@ -197,7 +187,7 @@ _CONE_SIN = flex.double([math.sin(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
                          for k in range(_WATER_CONE_SAMPLES)])
 _FALLBACK_DIRS = [matrix.col(v).normalize().elems
                   for v in _WATER_FALLBACK_DIRECTIONS]
-_FALLBACK_FX = _as_vec3(_FALLBACK_DIRS)
+_FALLBACK_FX = flex.vec3_double(_FALLBACK_DIRS)
 
 
 def _ortho_frame(d1):
@@ -342,19 +332,6 @@ def _strip_water_hydrogens(hier):
   return stripped
 
 
-def _new_h_atom(name, element, xyz, occ, b, hetero=False):
-  """Build a hierarchy atom for a placed water H."""
-  atom = iotbx.pdb.hierarchy.atom()
-  atom.name = name
-  atom.element = element
-  atom.xyz = xyz
-  atom.occ = occ
-  atom.b = b
-  atom.segid = " " * 4
-  atom.hetero = hetero
-  return atom
-
-
 def _free_proton_name(existing_names, element):
   """First of ``<element>1`` / ``<element>2`` not in ``existing_names``.
 
@@ -480,7 +457,7 @@ def _water_sym_equiv_neighbours(sites, crystal_symmetry, radius, conf=None):
   return by_site, transforms, own
 
 
-class _Clearance(object):
+class _Clearance:
   """Result of one clearance test (see :meth:`_WaterHydrogenPlacer._clear`).
 
   ``ok`` is the per-candidate pass/fail flag; ``blocks`` and ``mins`` are the
@@ -517,7 +494,7 @@ class _Clearance(object):
     return flex.sqrt(best)
 
 
-class _WaterHydrogenPlacer(object):
+class _WaterHydrogenPlacer:
   """Engine behind :func:`place_water_hydrogens`.
 
   Holds the placement state (static-atom KDTree, donor/acceptor bookkeeping,
@@ -842,7 +819,7 @@ class _WaterHydrogenPlacer(object):
          "acceptors": acceptors,
          "acc_water": [_is_water(atoms[i].parent().resname) for i in acceptors],
          "acc_dirs": acc_dirs,
-         "acc_pts": _as_vec3(acc_dirs) * self.oh_length + o,
+         "acc_pts": flex.vec3_double(acc_dirs) * self.oh_length + o,
          "cat": [c.elems for c in cation_dirs],
          "sph": None,
          "acc_static": None,
@@ -1311,8 +1288,12 @@ class _WaterHydrogenPlacer(object):
           # A blank H shared by two conformers is one water to report.
           holder = (carried[0][2] if self.existing_h == "reorient"
                     else existing[0].parent())
-          action = ("stripped" if self.existing_h == "reorient"
-                    else "completed" if fixed_d1 is not None else "kept")
+          if self.existing_h == "reorient":
+            action = "stripped"
+          elif fixed_d1 is not None:
+            action = "completed"
+          else:
+            action = "kept"
           key = (rg.memory_id(), holder.memory_id())
           if key not in single:
             single[key] = (_water_id(holder), o.xyz, own_idx, c, action)
@@ -1326,13 +1307,16 @@ class _WaterHydrogenPlacer(object):
           if tats.size():
             occ = tats[0].occ
           else:
-            occ = next((q for _, q, g in carried if g is target), occ)
+            for _, q, g in carried:
+              if g is target:
+                occ = q
+                break
         waters.append((target, o, own_idx, fixed_d1, existing, names, wid, c,
                        occ, [el for el, _, _ in carried]))
     single = list(single.values())
-    self.wh_xyz = _as_vec3(wh_xyz)
-    self.wh_wid = flex.size_t(wh_wid) if wh_wid else flex.size_t()
-    self.wh_conf = flex.size_t(wh_conf) if wh_conf else flex.size_t()
+    self.wh_xyz = flex.vec3_double(wh_xyz)
+    self.wh_wid = flex.size_t(wh_wid)
+    self.wh_conf = flex.size_t(wh_conf)
     self.wh_anchor = wh_anchor
     # Water H pairs across symmetry for the clash counts, built by _stats.
     self.h_sym_pairs = None
@@ -1340,6 +1324,7 @@ class _WaterHydrogenPlacer(object):
 
   def _build_environment(self, sel, atoms, conf, waters, single):
     """Build the static environment and annotate the single-H waters."""
+    from scipy.spatial import KDTree
     hier = self.hier
     # Symmetry-equivalent environment atoms, appended after the model's own so
     # the indices 0..n-1 stay valid.
@@ -1394,6 +1379,7 @@ class _WaterHydrogenPlacer(object):
 
   def _build_neighbourhoods(self, waters):
     """Order the waters most-crowded first and build their neighbour lists."""
+    from scipy.spatial import KDTree
     # Per-water neighbour lists, built once for every pass.
     n = len(waters)
     self.w_geom = [None] * n
@@ -1526,6 +1512,7 @@ class _WaterHydrogenPlacer(object):
 
   def _greedy_pass(self, waters, stripped):
     """Place every water once, in order, each against the H placed so far."""
+    from mmtbx.ligands.hierarchy_utils import _new_atom
     hier = self.hier
     n = len(waters)
     # Initial greedy pass over the ordered waters, each avoiding the H
@@ -1563,8 +1550,8 @@ class _WaterHydrogenPlacer(object):
           continue
         existing_names.add(proton_name.strip())
         xyz = h1 if di == 1 else h2
-        atom = _new_h_atom(proton_name, proton_element, xyz, occ, o.b,
-                           o.hetero)
+        atom = _new_atom(proton_name, proton_element, xyz, occ, o.b,
+                         o.hetero)
         ag.append_atom(atom)
         slot = len(self.placed_coords)
         slots.append((atom, slot, di))
@@ -1588,15 +1575,16 @@ class _WaterHydrogenPlacer(object):
     for b, wj in self.w_sym_nbr[wi]:
       off = b * self.n_slots
       nbr.extend(off + s for s in self.slots_of[wj])
-    return flex.size_t(nbr) if nbr else _EMPTY_SLOTS
+    return flex.size_t(nbr)
 
   def _refine_and_hop(self):
     """Refine and basin-hop, keep the best state and return its label."""
     # Refinement sweeps: re-place each water against all other placed H,
     # stopping once a sweep removes fewer than refine_tol close (< 2.0 A)
     # contacts (0: all n_refine sweeps). The best state is kept.
-    stats = self._stats() \
-        if (self.on_state or self.n_refine or self.n_basin) else None
+    stats = None
+    if self.on_state or self.n_refine or self.n_basin:
+      stats = self._stats()
     if self.on_state is not None:
       self.on_state("initial", stats)
     prev_n20 = stats[1] if stats is not None else None
@@ -1741,6 +1729,7 @@ def _water_h_contacts(xyz, wid, conf=None):
   ``(i, j, d)``: the two H of each contact, H on the same water and H that
   never coexist (see :func:`_compatible`) excluded, and their distance.
   """
+  from scipy.spatial import KDTree
   empty = (flex.size_t(), flex.size_t(), flex.double())
   if xyz.size() < 2:
     return empty
@@ -1799,9 +1788,13 @@ def _water_h_sym_pairs(xyz, wid, anchor, crystal_symmetry, conf=None):
     flex.vec3_double([o for _, o in sites]), crystal_symmetry,
     2.0 + 2.0 * reach + 0.01)
   # Water pairs; a split water's two O can pair it twice under one operator.
-  pairs = list(dict.fromkeys((sites[si][0], sites[sj][0], op)
-                             for si, sj, op in found))
-  listed = set(pairs)
+  pairs = []
+  listed = set()
+  for si, sj, op in found:
+    pair = (sites[si][0], sites[sj][0], op)
+    if pair not in listed:
+      listed.add(pair)
+      pairs.append(pair)
   by_op = {}
   for wi, wj, op in pairs:
     mirror = (wj, wi, op.inverse().new_denominators(op))
@@ -1911,19 +1904,6 @@ def _water_clash_stats(hier, crystal_symmetry=None):
   """
   atoms, contacts = _all_water_h_contacts(hier, crystal_symmetry)
   return _contact_stats(len(atoms), flex.double([c[0] for c in contacts]))
-
-
-def _clash_header(log):
-  """Print the column header of the per-sweep clash table to ``log``."""
-  print(f"  {'state':<11}{'< 2.0 A':>9}{'< 1.8 A':>9}{'< 1.5 A':>9}  closest",
-        file=log)
-
-
-def _clash_row(label, stats, log):
-  """Print one row of the per-sweep clash table for ``stats`` to ``log``."""
-  _, n20, n18, n15, worst = stats
-  w = f"{worst:.2f} A" if worst is not None else "-"
-  print(f"  {label:<11}{n20:>9}{n18:>9}{n15:>9}  {w}", file=log)
 
 
 def _atom_id(a):
