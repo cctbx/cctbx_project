@@ -1,6 +1,6 @@
 """H-bond-aware placement of hydrogens on water residues.
 
-Thin DataManager/PHIL wrapper around
+DataManager/PHIL wrapper around
 :func:`mmtbx.hydrogens.water_protonation.place_water_hydrogens`. The
 command-line dispatcher is ``mmtbx.development.naiad``.
 """
@@ -52,7 +52,7 @@ refine
   tolerance = 1
     .type = int(value_min=0)
     .short_caption = Early-stop tolerance
-    .help = "Stop refining once a sweep removes fewer than this many close (< 2.0 A) H-H contacts; 0 runs all max_sweeps. The best sweep is kept."
+    .help = "Stop refining once a sweep removes fewer than this many close (< 2.0 A) H-H contacts; 0 runs all max_sweeps. The best state is kept."
 }
 basin
   .short_caption = Basin-hopping
@@ -65,7 +65,7 @@ basin
 stats = False
   .type = bool
   .short_caption = Report water-H clashes
-  .help = "After placement, print the per-sweep water-H clash summary and list the residual inter-water H-H contacts, grouped by the 1.5/1.8/2.0 A thresholds."
+  .help = "After placement, print the per-state water-H clash summary and list the residual inter-water H-H contacts, grouped by the 1.5/1.8/2.0 A thresholds."
 output {
   suffix = _waters_protonated
     .type = str
@@ -400,13 +400,13 @@ and existing_h=reorient strips all water H and re-places both.
 
   @staticmethod
   def _clash_header(log):
-    """Print the column header of the per-sweep clash table to ``log``."""
+    """Print the column header of the per-state clash table to ``log``."""
     print(f"  {'state':<11}{'< 2.0 A':>9}{'< 1.8 A':>9}{'< 1.5 A':>9}  closest",
           file=log)
 
   @staticmethod
   def _clash_row(label, stats, log):
-    """Print one row of the per-sweep clash table for ``stats`` to ``log``."""
+    """Print one row of the per-state clash table for ``stats`` to ``log``."""
     _, n20, n18, n15, worst = stats
     w = f"{worst:.2f} A" if worst is not None else "-"
     print(f"  {label:<11}{n20:>9}{n18:>9}{n15:>9}  {w}", file=log)

@@ -10,8 +10,9 @@ molecule (0.957 A, 104.5 deg). Given a crystal symmetry, waters at a lattice
 contact also see the neighbouring asymmetric units.
 
 The public entry point :func:`place_water_hydrogens` modifies a hierarchy
-in place; :class:`mmtbx.programs.water_protonation.Program` wraps it as the
-``mmtbx.development.naiad`` command line.
+in place. This module is the numpy implementation of
+:mod:`mmtbx.hydrogens.water_protonation`, with the same interface and
+output; the ``mmtbx.development.naiad`` command line uses that module.
 
 Needs ``numpy`` and ``scipy`` (KDTree).
 """
@@ -46,8 +47,8 @@ _WATER_ACCEPTOR_ELEMENTS = frozenset({"O", "N", "F", "S", "CL"})
 _WATER_NH_BOND = 1.3          # max N-H distance for "N carries an H" (A)
 _WATER_CONE_SAMPLES = 36      # angular samples around the O-H1 cone
 # Element-aware "clash-free" thresholds: a candidate H must clear every
-# heavy atom by _WATER_MIN_CLEARANCE and every hydrogen (and cation) by the
-# larger _WATER_MIN_H_CLEARANCE.
+# heavy atom by _WATER_MIN_CLEARANCE and every hydrogen by the larger
+# _WATER_MIN_H_CLEARANCE.
 _WATER_MIN_CLEARANCE = 1.5
 _WATER_MIN_H_CLEARANCE = 2.0
 _WATER_CLEARANCE_RADIUS = 3.0  # neighbour search radius for clearance (A)
@@ -55,7 +56,7 @@ _WATER_CLEARANCE_RADIUS = 3.0  # neighbour search radius for clearance (A)
 _WATER_SYM_EQUIV_TOL = 0.5
 
 # Relaxation sweeps after the greedy pass, each re-placing every water
-# against the final positions of all the others.
+# against the current positions of all the others.
 _WATER_REFINE_SWEEPS = 5
 # Early-stop tolerance: keep refining only while a sweep removes at least
 # this many close (<2.0 A) H-H contacts.
@@ -69,7 +70,7 @@ _WATER_BASIN_RELAX = 2        # relaxation sweeps after each random kick
 # hemisphere away from them, rather than acceptors.
 _WATER_CATION_RADIUS = 3.0
 _WATER_METAL_COORD_RADIUS = 2.6  # first-shell M-O bond, reporting only
-_WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H1, acceptor) to be donated to
+_WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H, O->acceptor) to donate to it
 
 
 def _has_deuterium(hier):
@@ -80,7 +81,18 @@ def _has_deuterium(hier):
 
 
 def count_environment_hydrogens(hier):
-  """Number of H/D carried by atoms outside water residues."""
+  """Count the H and D atoms outside the water residues.
+
+  Parameters
+  ----------
+  hier : iotbx.pdb.hierarchy.root
+      Model to count over.
+
+  Returns
+  -------
+  int
+      Number of H and D atoms in non-water atom groups.
+  """
   return sum(_n_hd(ag) for ag in hier.atom_groups()
              if not _is_water(ag.resname))
 
@@ -139,7 +151,8 @@ _FALLBACK_NP = _as_np([matrix.col(v).normalize()
 def _ortho_frame(d1):
   """Two unit vectors ``p, q`` making ``(d1, p, q)`` an orthonormal frame.
 
-  Mirrors ``scitbx.matrix.col.ortho()`` operation for operation.
+  ``p = d1.ortho().normalize()`` and ``q = d1.cross(p)`` of
+  :class:`scitbx.matrix.col`, operation for operation.
   """
   x, y, z = d1[0], d1[1], d1[2]
   a, b, c = abs(x), abs(y), abs(z)
@@ -303,10 +316,10 @@ def _symmetry_environment(hier, crystal_symmetry, radius):
 
   Each copy carries its whole residue group (see
   :meth:`iotbx.pdb.hierarchy.root.sym_equiv_residue_groups`). Copies are
-  environment only; a mate's placed protons are tracked separately (see
-  :func:`_water_sym_equiv_neighbours`). A copied atom closer than
-  ``_WATER_SYM_EQUIV_TOL`` to an atom of the same element, in the model or
-  an earlier copy, counts as that atom and is left out.
+  environment only; the placed protons of symmetry-equivalent waters are
+  tracked separately (see :func:`_water_sym_equiv_neighbours`). A copied
+  atom closer than ``_WATER_SYM_EQUIV_TOL`` to an atom of the same element,
+  in the model or an earlier copy, counts as that atom and is left out.
 
   Returns ``(hierarchies, atoms, xyz, source)``: the sub-hierarchies, which
   own the atom objects and must be kept alive, their atoms in coordinate
@@ -365,10 +378,10 @@ def _water_sym_equiv_neighbours(sites, crystal_symmetry, radius, conf=None):
 
   Returns ``(by_site, transforms, own)``: per site, the sorted ``(block, other
   site)`` pairs whose equivalent is in range; per block the cartesian
-  ``(rotation, translation)`` that produces it, block 0 being an unused
-  placeholder so a block index is never zero; and per site the blocks whose
-  operator brings the site's own equivalent into range. An equivalent closer
-  than ``_WATER_SYM_EQUIV_TOL`` to its own site is that same site, and is
+  ``(rotation, translation)`` that produces it, block 0, the untransformed
+  one, holding None; and per site the blocks whose operator brings the
+  site's own equivalent into range. An equivalent closer than
+  ``_WATER_SYM_EQUIV_TOL`` to its own site is that same site, and is
   dropped.
   """
   n = sites.size()
@@ -410,7 +423,7 @@ class _WaterHydrogenPlacer:
   and basin-hopping logic.
 
   Only the placed water H move; each water's static neighbour block and
-  water-neighbour list are built once in :meth:`run`.
+  water-neighbour list are built once in :meth:`_build_neighbourhoods`.
 
   The constructor records the parameters; :meth:`run` does the work, in
   place. Parameter semantics: :func:`place_water_hydrogens`.
@@ -432,13 +445,13 @@ class _WaterHydrogenPlacer:
     self.on_state = on_state
     self.crystal_symmetry = crystal_symmetry
 
-    # Placed-H coordinates, one slot per proton, filled in run(); placed_np
-    # is the same data as an (n, 3) array.
+    # Placed-H coordinates, one slot per proton, filled in _greedy_pass();
+    # placed_np is the same data as an (n, 3) array.
     self.placed_coords = []
     self.placed_np = None
-    # Sweep active-set stamps (see _dirty), sized in run(): off one
-    # monotonic counter, the tick at which each water was last placed and the
-    # tick at which its H last moved.
+    # Sweep active-set stamps (see _dirty), sized in _build_neighbourhoods():
+    # off one monotonic counter, the tick at which each water was last placed
+    # and the tick at which its H last moved.
     self.w_placed_at = []
     self.w_moved_at = []
     self.tick = 0
@@ -460,6 +473,8 @@ class _WaterHydrogenPlacer:
     dx = cands[:, 0, None] - P[None, :, 0]
     dy = cands[:, 1, None] - P[None, :, 1]
     dz = cands[:, 2, None] - P[None, :, 2]
+    # Squared distances as dx * dx + dy * dy + dz * dz, never a dot product
+    # or a norm; likewise throughout this file.
     d = dx * dx + dy * dy + dz * dz
     return d, ~(d < self.w_sthr[wi][None, :]).any(axis=1)
 
@@ -505,6 +520,8 @@ class _WaterHydrogenPlacer:
       equiv = (rot * flex.vec3_double(cands) + trn).as_numpy_array()
       pairs = [(cands, equiv)]
       for pt in own_fixed:
+        # The candidate against a fixed proton's equivalent, which stands
+        # still, and the fixed proton against the candidate's, which does not.
         one = flex.vec3_double(np.asarray(pt, dtype=float).reshape(1, 3))
         pairs.append((cands, (rot * one + trn).as_numpy_array()[0]))
         pairs.append((equiv, np.asarray(pt, dtype=float)))
@@ -565,7 +582,7 @@ class _WaterHydrogenPlacer:
 
   @staticmethod
   def _cat_ok(cat, pts, o):
-    """Whether each candidate is clear of every nearby cation.
+    """Whether each candidate lies in the hemisphere away from each cation.
 
     True where ``(H - O).(cation - O) <= 0`` for every O->cation direction in
     ``cat``, with ``pts`` the candidate H positions and ``o`` the water O.
@@ -607,7 +624,7 @@ class _WaterHydrogenPlacer:
   def _nearest_cation(self, o_xyz, own_idx, c):
     """Closest metal cation coordinating a water O, if any.
 
-    Returns ``(element, distance)`` or None, over
+    Returns ``(element, distance)`` or None, within
     ``_WATER_METAL_COORD_RADIUS`` (a first-shell bond), excluding the
     water's own atoms ``own_idx`` and cations of an altloc other than the
     water's conformer index ``c``. Reporting only; placement ignores it.
@@ -676,12 +693,13 @@ class _WaterHydrogenPlacer:
     ``acc_dirs``/``acc_pts`` (unit directions from the O toward each
     acceptor, and the H positions built from them), ``cat`` (O->cation unit
     directions), ``sph`` (the lazily built fallback-sphere H positions) and
-    ``acc_static``/``sph_static`` (the cached static half of the clearance test
-    for those two candidate sets, see :meth:`_static_clear`). :meth:`_place_one`
-    adds, per acceptor pair ``(k1, k2)``, the even split's ``("split", k1, k2)``
-    (its two H positions and whether both are away from cations, None when
-    the acceptors are collinear) and ``("split_static", k1, k2)`` (the cached
-    static half of its clearance test).
+    ``acc_static``/``sph_static`` (the cached static half of the clearance
+    test for those two candidate sets, see :meth:`_static_clear`).
+    :meth:`_place_one` adds, per acceptor pair ``(k1, k2)``, the even split's
+    ``("split", k1, k2)`` (its two H positions and whether both are away from
+    cations, None when the acceptors are collinear) and
+    ``("split_static", k1, k2)`` (the cached static half of its clearance
+    test).
     """
     from mmtbx.hydrogens.reduce_hydrogen import METAL_ELEMENTS
     g = self.w_geom[wi]
@@ -738,8 +756,8 @@ class _WaterHydrogenPlacer:
   def _place_symmetric(self, wi, nbr_slots, fixed_d1):
     """The two H of a water on a two-fold, each other's equivalents.
 
-    H2 is H1 turned 180 deg about the axis through the O, so both lie on the
-    cone of half the H-O-H angle about the axis, at either end. A given H1
+    H2 is H1 turned 180 deg about the axis through the O, so both lie on one
+    cone of half the H-O-H angle about either end of the axis. A given H1
     fixes H2; otherwise the pair is chosen over sampled azimuths, plus the
     azimuth of each acceptor, ranked (both away from cations, both
     clash-free, summed alignment of each H with its best acceptor, the
@@ -831,7 +849,7 @@ class _WaterHydrogenPlacer:
       d1 = None
       h1_k = -1
       for k in range(na):
-        if acc_ok[k] and acc_cat[k]:  # ok and away from cations
+        if acc_ok[k] and acc_cat[k]:  # clash-free and away from cations
           d1 = acc_dirs[k]
           h1_k = k
           break
@@ -892,6 +910,7 @@ class _WaterHydrogenPlacer:
       align = dots.max(axis=1)
     else:
       align = np.zeros(_WATER_CONE_SAMPLES)
+    # Alignment ranks only cation-ok, clash-free candidates (rank 3).
     a3 = np.where(c_cat & c_ok, align, 0.0)
     top &= a3 == np.where(top, a3, -np.inf).max()
     j = int(np.argmax(np.where(top, c_best, -np.inf)))
@@ -945,7 +964,7 @@ class _WaterHydrogenPlacer:
   def _store(self, wi, slots, h1, h2):
     """Write one water's new H positions to the model and the arrays.
 
-    True if any of them moved, which is what :meth:`_dirty` reads.
+    True if any of them moved (see :meth:`_dirty`).
     """
     moved = False
     for atom, slot, di in slots:
@@ -1526,14 +1545,13 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
   WAT, OH2, ...): H1 along O -> the nearest acceptor giving a clash-free H
   (``_WATER_ACCEPTOR_RADIUS``, ``_WATER_ACCEPTOR_ELEMENTS``, N carrying an H
   excluded as donors), else the max-clearance direction over a dense sphere;
-  H2 on the H-O-H cone about O-H1, at a clash-free angle toward
-  a second acceptor when there is one (outside the waters if it can reach
-  both kinds), else the clearest; with both on
-  acceptors, the water turns so each is equally far off its acceptor, where
-  that stays clash-free. Candidates are
-  scored against every other atom and every other water's placed H; waters go
-  most-crowded first and new H inherit the parent O's occupancy and B
-  factor.
+  H2 on the H-O-H cone about O-H1, at a clash-free angle toward a second
+  acceptor when there is one (outside the waters if it can reach both
+  kinds), else the clearest; with both on acceptors, the water turns so
+  each is equally far off its acceptor, where that stays clash-free.
+  Candidates are scored against every other atom and every other water's
+  placed H; waters go most-crowded first and new H inherit the parent O's
+  B factor and their conformer's occupancy.
 
   Parameters
   ----------
@@ -1591,6 +1609,14 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       ``"completed"``, ``"stripped"``.
       ``basin_rounds``: basin-hopping rounds run; fewer than ``n_basin`` once
       no placed water clashes in the best state.
+
+  Raises
+  ------
+  AssertionError
+      If ``hier`` has more than one model, or an atom without an element
+      symbol.
+  libtbx.utils.Sorry
+      If an atom group of ``hier`` has the improper altloc ``" "``.
   """
   placer = _WaterHydrogenPlacer(
     hier, oh_length=oh_length, element=element, n_refine=n_refine,
