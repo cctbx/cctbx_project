@@ -1,4 +1,5 @@
 from __future__ import division
+import math
 from math import pi, sin, cos, atan2, sqrt
 
 from mmtbx.conformation_dependent_library.cdl_utils import round_to_ten
@@ -112,6 +113,57 @@ def get_correction_vector(resname,
   entry = table.get((round_to_ten(phi_psi[0]), round_to_ten(phi_psi[1])), None)
   if entry is None: return None
   return (entry[0]*cos(entry[1]), entry[0]*sin(entry[1]))
+
+# the fitted strength is pulled toward prior_strength as if prior_weight more
+# residues agreed with it
+prior_strength = 0.5
+prior_weight = 100
+
+def apply_correction(deviation, dihedral, correction, strength):
+  """(deviation, dihedral in degrees) of v - strength*c, where v is the
+  deviation vector and c the correction (x, y) in Angstrom."""
+  t = math.radians(dihedral)
+  x = deviation*cos(t) - strength*correction[0]
+  y = deviation*sin(t) - strength*correction[1]
+  return sqrt(x*x + y*y), math.degrees(atan2(y, x))
+
+def choose_strength(deviations, dihedrals, corrections, user_strength=None):
+  """Correction strength for one model from its residues that have a
+  correction. fitted is the least-squares strength sum(v.c)/sum(|c|**2),
+  pulled the same with the prior; applied is pulled limited to 0..1, or 0 if
+  that would raise the mean deviation, or user_strength if given."""
+  from libtbx import group_args
+  n = len(corrections)
+  svc = scc = 0.
+  for d, t, c in zip(deviations, dihedrals, corrections):
+    t = math.radians(t)
+    svc += d*cos(t)*c[0] + d*sin(t)*c[1]
+    scc += c[0]*c[0] + c[1]*c[1]
+  fitted = pulled = None
+  if n and scc:
+    fitted = svc/scc
+    m = scc/n
+    pulled = (svc + prior_weight*prior_strength*m)/(scc + prior_weight*m)
+  rc = group_args(n=n,
+                  fitted=fitted,
+                  pulled=pulled,
+                  applied=0.,
+                  user_set=(user_strength is not None),
+                  check_failed=False,
+                  mean_uncorrected=None,
+                  mean_corrected=None)
+  if user_strength is not None:
+    rc.applied = user_strength
+  elif pulled is not None:
+    rc.applied = min(1., max(0., pulled))
+  if not n: return rc
+  rc.mean_uncorrected = sum(deviations)/n
+  rc.mean_corrected = sum(apply_correction(d, t, c, rc.applied)[0]
+    for d, t, c in zip(deviations, dihedrals, corrections))/n
+  if not rc.user_set and rc.mean_corrected > rc.mean_uncorrected:
+    rc.check_failed = True
+    rc.applied = 0.
+  return rc
 
 def get_phi_psi_correction(result,
                            residue,
