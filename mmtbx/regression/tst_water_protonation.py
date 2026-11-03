@@ -13,6 +13,7 @@ import libtbx.load_env
 from iotbx.cli_parser import CCTBXParser, run_program
 from iotbx.data_manager import DataManager
 from scitbx import matrix
+from scitbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import Sorry, format_cpu_times, null_out
 
@@ -183,6 +184,22 @@ HETATM   11  O   HOH W   8       2.600   2.600   2.600  1.00 10.00           O
 HETATM   12  H1  HOH W   8       2.600   3.557   2.600  1.00 10.00           H
 END
 """
+
+# A bare water (W 1) with ACA 2.6 A along +x and ACB 2.9 A at 55 deg from +x,
+# and a second bare water 3.4 A along -x that makes the two a cluster. H1
+# takes ACA, and ACB lies 49 deg off H2's cone, beyond the donation limit.
+# The even split over ACA and ACB puts each proton 24.5 deg off its acceptor.
+_CLUSTER_SEARCH_PDB = """\
+HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
+HETATM    2  O   ACA D   1       2.600   0.000   0.000  1.00 10.00           O
+HETATM    3  O   ACB E   1       1.663   2.376   0.000  1.00 10.00           O
+HETATM    4  O   HOH W   2      -3.400   0.000   0.000  1.00 10.00           O
+END
+"""
+# The same with a third water deposited on top of the second.
+_CLUSTER_SEARCH_OVERLAP_PDB = _CLUSTER_SEARCH_PDB.replace("END", (
+  "HETATM    5  O   HOH W   3      -3.400   0.000   0.000  1.00 10.00"
+  "           O\nEND"))
 
 
 # A protonated residue (one H, one D) beside a water that also carries H.
@@ -813,6 +830,51 @@ def exercise_completed_water_survives_refinement():
     ang = math.degrees(_unit(hs[0], o).angle(_unit(hs[1], o)))
     assert approx_equal(ang, wp._WATER_GEOMETRY["neutron"][1], eps=0.1,
                         prefix=f"water {ag.parent().resseq.strip()}: ")
+
+
+def exercise_cluster_search():
+  """The cluster search turns a clustered water to the candidate whose
+  protons lie closest to acceptors, here the even split over two acceptors
+  that the placement, taking the nearest acceptor first, cannot reach.
+
+  Places on ``_CLUSTER_SEARCH_PDB`` without the search, where one proton of
+  W 1 points at no acceptor within the donation limit, and with it, where
+  both do; then on ``_CLUSTER_SEARCH_OVERLAP_PDB``, whose two coincident
+  waters give each other no direction to donate along.
+  """
+  for pdb_str, search, want in (
+      (_CLUSTER_SEARCH_PDB, False, ["ACA"]),
+      (_CLUSTER_SEARCH_PDB, True, ["ACA", "ACB"]),
+      (_CLUSTER_SEARCH_OVERLAP_PDB, True, ["ACA", "ACB"])):
+    hier = _hierarchy(pdb_str)
+    wp.place_water_hydrogens(hier, cluster_search=search)
+    bare = next(rg for rg in hier.residue_groups() if rg.resseq.strip() == "1")
+    o = next(a for a in bare.atoms() if a.element.strip() == "O")
+    hs = [a for a in bare.atoms() if a.element.strip() == "H"]
+    assert len(hs) == 2, len(hs)
+    got = []
+    for a in hier.atoms():
+      if a.parent().resname not in ("ACA", "ACB"):
+        continue
+      for h in hs:
+        if _unit(h, o).dot(_unit(a, o)) >= wp._WATER_H1_ACC_ALIGN:
+          got.append(a.parent().resname)
+    assert sorted(got) == want, (search, sorted(got))
+
+
+def exercise_cluster_search_modes():
+  """Both cluster search modes keep only allowed combinations: the
+  exhaustive search finds the lowest total score, iterated conditional modes
+  the first local minimum from every water's current candidate.
+
+  Two waters of two candidates each, candidate 0 the current one, whose
+  second candidates may not coexist. Water 0's second candidate improves
+  first and blocks water 1's, the better improvement.
+  """
+  scores = [flex.double([2.0, 1.0]), flex.double([2.0, 0.5])]
+  allowed = {(0, 1): flex.bool([True, True, True, False])}
+  assert wp._search_exhaustive(scores, allowed) == [0, 1]
+  assert wp._search_icm(scores, allowed) == [1, 0]
 
 
 def exercise_element_override():
@@ -1486,6 +1548,8 @@ def run():
   exercise_h2_after_acceptor_fallback()
   exercise_refinement_reduces_clashes()
   exercise_completed_water_survives_refinement()
+  exercise_cluster_search()
+  exercise_cluster_search_modes()
   exercise_element_override()
   exercise_geometry_auto()
   exercise_environment_hydrogen_count()

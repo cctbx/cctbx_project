@@ -64,6 +64,11 @@ _WATER_BASIN_RELAX = 2        # relaxation sweeps after each random kick
 _WATER_CATION_RADIUS = 3.0
 _WATER_METAL_COORD_RADIUS = 2.6  # first-shell M-O bond, reporting only
 _WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H, O->acceptor) to donate to it
+# Cluster search (opt-in): a proton scores its distance to the nearest
+# acceptor, at most _WATER_CLUSTER_CAP (A); a cluster with up to
+# _WATER_CLUSTER_EXHAUSTIVE combinations of candidates is searched in full.
+_WATER_CLUSTER_CAP = 3.0
+_WATER_CLUSTER_EXHAUSTIVE = 100000
 
 
 def _has_deuterium(hier):
@@ -463,6 +468,129 @@ def _water_sym_equiv_neighbours(sites, crystal_symmetry, radius, conf=None):
   return by_site, transforms, own
 
 
+def _donating(pts, o, acceptor, oh_length):
+  """Which candidates aim a proton at an acceptor within the donation limit.
+
+  ``pts`` holds the candidates' protons as consecutive pairs about the O
+  ``o``; ``o`` and ``acceptor`` are ``matrix.col``. Returns one flag per
+  candidate.
+  """
+  u = (acceptor - o).normalize()
+  dx, dy, dz = (pts - o.elems).parts()
+  near = (dx / oh_length * u[0] + dy / oh_length * u[1]
+          + dz / oh_length * u[2]) >= _WATER_H1_ACC_ALIGN
+  k = pts.size()
+  return (near.select(flex.size_t_range(0, k, 2))
+          | near.select(flex.size_t_range(1, k, 2)))
+
+
+def _unrepeated_pairs(pts):
+  """Proton pairs without those repeating an earlier one.
+
+  ``pts`` holds the pairs as consecutive protons. A pair repeats an earlier
+  one when its two protons lie within 1e-6 A of the earlier pair's in all,
+  matched either way round. Returns the pairs kept, in order.
+  """
+  n = pts.size() // 2
+  ia, ib = _tile(n, n)
+
+  def apart(p, q):
+    dx, dy, dz = (pts.select(p) - pts.select(q)).parts()
+    return flex.sqrt(flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz))
+
+  # Pairs a and b at a * n + b: their protons' summed distance, matched the
+  # closer way round.
+  a1, a2, b1, b2 = ia * 2, ia * 2 + 1, ib * 2, ib * 2 + 1
+  gap = apart(a1, b1) + apart(a2, b2)
+  swap = apart(a1, b2) + apart(a2, b1)
+  closer = swap < gap
+  gap.set_selected(closer, swap.select(closer))
+  kept = [0]
+  for a in range(1, n):
+    repeat = False
+    for b in kept:
+      if gap[a * n + b] < 1e-6:
+        repeat = True
+        break
+    if not repeat:
+      kept.append(a)
+  sel = flex.size_t()
+  for a in kept:
+    sel.append(2 * a)
+    sel.append(2 * a + 1)
+  return pts.select(sel)
+
+
+def _search_exhaustive(scores, allowed):
+  """The allowed combination of candidates with the lowest total score.
+
+  ``scores`` holds per water the score of each candidate, candidate 0 being
+  its current orientation. ``allowed`` maps a pair of waters ``(i, j)``,
+  ``i < j``, to whether each combination of their candidates may coexist,
+  flattened row-major: candidate ``a`` of ``i`` with candidate ``b`` of ``j``
+  at ``a * n_j + b``. Every combination is enumerated, the last water
+  varying fastest, so combination 0 keeps every current orientation and
+  wins a tie. Returns the chosen candidate per water.
+  """
+  sizes = [s.size() for s in scores]
+  n = 1
+  for size in sizes:
+    n *= size
+  combo = flex.size_t_range(n)
+  pick = [None] * len(sizes)
+  stride = 1
+  for i in reversed(range(len(sizes))):
+    pick[i] = (combo / stride) % sizes[i]
+    stride *= sizes[i]
+  total = flex.double(n, 0.0)
+  for i, s in enumerate(scores):
+    total += s.select(pick[i])
+  ok = flex.bool(n, True)
+  for (i, j), table in allowed.items():
+    ok &= table.select(pick[i] * sizes[j] + pick[j])
+  rows = ok.iselection()
+  k = rows[flex.min_index(total.select(rows))]
+  return [int(p[k]) for p in pick]
+
+
+def _search_icm(scores, allowed):
+  """A locally best allowed combination, by iterated conditional modes.
+
+  Starting from every water's current orientation, each water in turn takes
+  its lowest-scoring candidate allowed with the others' current choices,
+  until a round changes nothing. Every change lowers the total score, so
+  the rounds end. ``scores`` and ``allowed`` as for
+  :func:`_search_exhaustive`. Returns the chosen candidate per water.
+  """
+  sizes = [s.size() for s in scores]
+  # Per water, its pair tables as (other water, table, stride of this
+  # water's candidate, stride of the other's).
+  pairs = [[] for _ in sizes]
+  for (i, j), table in allowed.items():
+    pairs[i].append((j, table, sizes[j], 1))
+    pairs[j].append((i, table, 1, sizes[j]))
+  pick = [0] * len(sizes)
+  changed = True
+  while changed:
+    changed = False
+    for i, s in enumerate(scores):
+      best = pick[i]
+      for a in range(sizes[i]):
+        if not s[a] < s[best]:
+          continue
+        fits = True
+        for j, table, own_stride, other_stride in pairs[i]:
+          if not table[a * own_stride + pick[j] * other_stride]:
+            fits = False
+            break
+        if fits:
+          best = a
+      if best != pick[i]:
+        pick[i] = best
+        changed = True
+  return pick
+
+
 class _Clearance:
   """Result of one clearance test (see :meth:`_WaterHydrogenPlacer._clear`).
 
@@ -515,7 +643,8 @@ class _WaterHydrogenPlacer:
   """
 
   def __init__(self, hier, oh_length, element, n_refine, refine_tol,
-               n_basin, existing_h, on_state, crystal_symmetry, geometry):
+               n_basin, cluster_search, existing_h, on_state,
+               crystal_symmetry, geometry):
     self.hier = hier
     self.oh_length = oh_length
     self.geometry = geometry
@@ -524,6 +653,7 @@ class _WaterHydrogenPlacer:
     self.n_refine = n_refine
     self.refine_tol = refine_tol
     self.n_basin = n_basin
+    self.cluster_search = cluster_search
     self.existing_h = existing_h
     self.on_state = on_state
     self.crystal_symmetry = crystal_symmetry
@@ -1210,7 +1340,10 @@ class _WaterHydrogenPlacer:
     self._build_environment(sel, atoms, conf, waters, single)
     waters = self._build_neighbourhoods(waters)
     self._greedy_pass(waters, stripped)
-    return self._refine_and_hop()
+    kept_label = self._refine_and_hop()
+    if self.cluster_search:
+      self._search_clusters()
+    return kept_label
 
   def _collect_waters(self, conf, altloc_index, stripped):
     """Collect the waters to place and the single-H waters to report."""
@@ -1570,14 +1703,17 @@ class _WaterHydrogenPlacer:
     # The placed-H neighbourhood of every water, now that all of them exist.
     self.w_nbr_slots = [self._nbr_slots(wi) for wi in range(n)]
 
-  def _nbr_slots(self, wi):
-    """Pool slots of the waters and equivalents neighbouring water ``wi``."""
+  def _nbr_slots(self, wi, skip=()):
+    """Pool slots of the waters and equivalents neighbouring water ``wi``,
+    leaving out those of the waters in ``skip``."""
     nbr = []
     for wj in self.w_wnbr[wi]:
-      nbr.extend(self.slots_of[wj])
+      if wj not in skip:
+        nbr.extend(self.slots_of[wj])
     for b, wj in self.w_sym_nbr[wi]:
-      off = b * self.n_slots
-      nbr.extend(off + s for s in self.slots_of[wj])
+      if wj not in skip:
+        off = b * self.n_slots
+        nbr.extend(off + s for s in self.slots_of[wj])
     return flex.size_t(nbr)
 
   def _refine_and_hop(self):
@@ -1636,10 +1772,230 @@ class _WaterHydrogenPlacer:
       self._restore(best_coords)
     return best_label if (self.n_refine or self.n_basin) else None
 
+  def _search_clusters(self):
+    """Re-choose the orientations of each cluster of waters jointly.
+
+    Each water of a cluster (see :meth:`_water_clusters`) has its candidates
+    from :meth:`_cluster_candidates`. The search keeps the combination of
+    lowest total score that :meth:`_cluster_allowed` allows: exhaustive up to
+    ``_WATER_CLUSTER_EXHAUSTIVE`` combinations, else by iterated conditional
+    modes. Clusters go in record order, each against the waters outside it
+    as they stand.
+    """
+    clusters, near = self._water_clusters()
+    slots_of = {wi: slots for wi, slots, _fixed in self.records}
+    for members in clusters:
+      skip = set(members)
+      cands = []
+      scores = []
+      for wi in members:
+        pts, score = self._cluster_candidates(wi, slots_of[wi],
+                                              self._nbr_slots(wi, skip))
+        cands.append(pts)
+        scores.append(score)
+      allowed = self._cluster_allowed(members, cands, near)
+      n = 1
+      for s in scores:
+        n *= s.size()
+      if n <= _WATER_CLUSTER_EXHAUSTIVE:
+        pick = _search_exhaustive(scores, allowed)
+      else:
+        pick = _search_icm(scores, allowed)
+      for wi, pts, a in zip(members, cands, pick):
+        if a:
+          self._store(wi, slots_of[wi], pts[2 * a], pts[2 * a + 1])
+    if self.on_state is not None:
+      self.on_state("cluster search", self._stats())
+
+  def _water_clusters(self):
+    """The clusters of waters :meth:`_search_clusters` re-chooses.
+
+    A cluster is a connected set of two or more waters whose O lie within
+    ``_WATER_ACCEPTOR_RADIUS`` of each other, symmetry equivalents included.
+    Only bare waters off a two-fold join one.
+
+    Returns ``(clusters, near)``: the clusters, each a list of water indices
+    in record order, and per clustered water its ``(block, water)`` pairs in
+    reach, block 0 for the untransformed water, a water whose O coincides
+    with its own left out (no direction to donate along, as in
+    :meth:`_water_geom`).
+    """
+    free = [wi for wi, slots, fixed_d1 in self.records
+            if fixed_d1 is None and self.w_axis[wi] is None
+            and len(slots) == 2]
+    near = {wi: [] for wi in free}
+    linked = {wi: set() for wi in free}
+    for wi in free:
+      oi = self.w_o_col[wi]
+      pairs = [(0, wj, self.w_o_col[wj]) for wj in self.w_wnbr[wi]
+               if wj in near]
+      for b, wj in self.w_sym_nbr[wi]:
+        if wj in near:
+          rot, trn = self.sym_tf[b]
+          pairs.append((b, wj, rot * self.w_o_col[wj] + trn))
+      for b, wj, oj in pairs:
+        d = (oj - oi).length()
+        if d > _WATER_ACCEPTOR_RADIUS:
+          continue
+        linked[wi].add(wj)
+        linked[wj].add(wi)
+        if d >= 1e-3:
+          near[wi].append((b, wj))
+    clusters = []
+    seen = set()
+    for wi in free:
+      if wi in seen:
+        continue
+      seen.add(wi)
+      members = [wi]
+      todo = [wi]
+      while todo:
+        for wj in linked[todo.pop()]:
+          if wj not in seen:
+            seen.add(wj)
+            members.append(wj)
+            todo.append(wj)
+      if len(members) > 1:
+        clusters.append(sorted(members))
+    return clusters, near
+
+  def _cluster_candidates(self, wi, slots, fixed):
+    """Candidate orientations of water ``wi`` for the cluster search.
+
+    The water's current orientation first, then the even split over each
+    acceptor pair whose protons both lie within the donation limit of their
+    acceptors, then for each acceptor H1 on it with H2 where
+    :meth:`_place_one` puts it. A new candidate must be away from cations and
+    clear of the static atoms and of the protons on the pool slots
+    ``fixed``, those of the waters outside the cluster; one repeating an
+    earlier candidate is dropped. ``slots`` are the water's own record
+    slots.
+
+    Returns ``(pts, score)``: the candidates' protons as consecutive pairs,
+    and per candidate the summed distance of its two protons to their
+    nearest acceptor, each at most ``_WATER_CLUSTER_CAP``.
+    """
+    g = self._water_geom(wi)
+    o = g["o"]
+    acc_dirs = g["acc_dirs"]
+    oh = self.oh_length
+    new = flex.vec3_double()
+    na = len(acc_dirs)
+    for k1 in range(na):
+      a1 = acc_dirs[k1]
+      for k2 in range(k1 + 1, na):
+        a2 = acc_dirs[k2]
+        dirs = _split_dirs(a1, a2, self.cos_half_hoh, self.sin_half_hoh)
+        if dirs is None:
+          continue
+        d1, d2 = dirs
+        if (d1[0] * a1[0] + d1[1] * a1[1] + d1[2] * a1[2] < _WATER_H1_ACC_ALIGN
+            or d2[0] * a2[0] + d2[1] * a2[1] + d2[2] * a2[2]
+            < _WATER_H1_ACC_ALIGN):
+          continue
+        for d in dirs:
+          new.append(tuple(o[c] + oh * d[c] for c in range(3)))
+    for a in acc_dirs:
+      new.extend(flex.vec3_double(self._place_one(wi, fixed, fixed_d1=a)))
+    ok = _cat_ok(g["cat"], new, o)
+    if self.w_self_ops[wi]:
+      # Each candidate against its own equivalents.
+      clear = flex.bool()
+      for c in range(0, new.size(), 2):
+        pair = new[c:c + 2]
+        clear.extend(self._clear(wi, pair, fixed,
+                                 own_fixed=(pair[0], pair[1])).ok)
+      ok &= clear
+    else:
+      ok &= self._clear(wi, new, fixed).ok
+
+    current = {di: self.placed_coords[slot] for _, slot, di in slots}
+    pts = flex.vec3_double([current[1], current[2]])
+    point = flex.size_t_range(new.size())
+    both = ok.select(point - point % 2) & ok.select(point - point % 2 + 1)
+    pts.extend(new.select(both))
+    pts = _unrepeated_pairs(pts)
+
+    acc = self.static_xyz.select(flex.size_t(g["acceptors"]))
+    k = pts.size()
+    m = acc.size()
+    ik, im = _tile(k, m)
+    dx, dy, dz = (pts.select(ik) - acc.select(im)).parts()
+    dist = flex.sqrt(_row_mins(flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz),
+                               k, m, flex.size_t_range(k)))
+    dist.set_selected(dist > _WATER_CLUSTER_CAP, _WATER_CLUSTER_CAP)
+    score = (dist.select(flex.size_t_range(0, k, 2))
+             + dist.select(flex.size_t_range(1, k, 2)))
+    return pts, score
+
+  def _cluster_allowed(self, members, cands, near):
+    """Which candidates of each pair of a cluster's waters may coexist.
+
+    Two candidates may not when a proton of one comes within
+    ``_WATER_MIN_H_CLEARANCE`` of a proton of the other, or when each aims a
+    proton within the donation limit at the other's O, symmetry equivalents
+    included. Both waters' current orientations always may. ``members`` are
+    the cluster's waters, ``cands`` their candidate protons as consecutive
+    pairs and ``near`` the pairs in reach from :meth:`_water_clusters`.
+
+    Returns the pair tables as :func:`_search_exhaustive` takes them.
+    """
+    pos = {wi: i for i, wi in enumerate(members)}
+    n = [c.size() // 2 for c in cands]
+    allowed = {}
+
+    def forbid(i, a, j, b):
+      """Rule out candidate ``a[k]`` of member ``i`` with ``b[k]`` of ``j``,
+      for every ``k``."""
+      if i > j:
+        i, a, j, b = j, b, i, a
+      table = allowed.get((i, j))
+      if table is None:
+        table = allowed[(i, j)] = flex.bool(n[i] * n[j], True)
+      table.set_selected(a * n[j] + b, False)
+
+    def equiv(b, wj):
+      """Candidate protons and O of member ``wj`` under block ``b``."""
+      pts = cands[pos[wj]]
+      o = self.w_o_col[wj]
+      if b:
+        rot, trn = self.sym_tf[b]
+        pts = rot.elems * pts + trn.elems
+        o = rot * o + trn
+      return pts, o
+
+    thr = _WATER_MIN_H_CLEARANCE ** 2
+    for i, wi in enumerate(members):
+      pts = cands[i]
+      partners = [(0, wj) for wj in self.w_wnbr[wi]
+                  if wj in pos and pos[wj] > i]
+      partners.extend((b, wj) for b, wj in self.w_sym_nbr[wi] if wj in pos)
+      for b, wj in partners:
+        other = equiv(b, wj)[0]
+        k = other.size()
+        ik, im = _tile(pts.size(), k)
+        dx, dy, dz = (pts.select(ik) - other.select(im)).parts()
+        bad = ((flex.pow2(dx) + flex.pow2(dy) + flex.pow2(dz)) < thr
+               ).iselection()
+        if bad.size():
+          forbid(i, bad / k / 2, pos[wj], bad % k / 2)
+      oi = self.w_o_col[wi]
+      for b, wj in near[wi]:
+        other, oj = equiv(b, wj)
+        gives = _donating(pts, oi, oj, self.oh_length).iselection()
+        takes = _donating(other, oj, oi, self.oh_length).iselection()
+        if gives.size() and takes.size():
+          ia, ib = _tile(gives.size(), takes.size())
+          forbid(i, gives.select(ia), pos[wj], takes.select(ib))
+    for table in allowed.values():
+      table[0] = True
+    return allowed
+
 
 def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
-                          refine_tol=1, n_basin=0, existing_h="keep",
-                          on_state=None, crystal_symmetry=None, geometry=None):
+                          refine_tol=1, n_basin=0, cluster_search=False,
+                          existing_h="keep", on_state=None,
+                          crystal_symmetry=None, geometry=None):
   """Place the two H on every bare water, H-bond-aware.
 
   For each water residue missing H (any common water alias: HOH, DOD, H2O,
@@ -1677,6 +2033,14 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
       Basin-hopping rounds after refinement (default 0 = off): each restarts
       from the best state, randomly re-orients the still-clashing waters,
       relaxes, and keeps any improvement (deterministic, seeded).
+  cluster_search : bool, optional
+      After refinement and basin-hopping, re-choose the orientations of each
+      cluster of waters whose O lie within H-bonding reach of each other
+      jointly (default False). Each water's candidates are its current
+      orientation, the even splits over two acceptors and H1 on each
+      acceptor; the search keeps the combination whose protons lie closest to
+      acceptors, without a new H-H clash or two waters donating to each
+      other.
   existing_h : str, optional
       What to do with a water that already carries H: ``"keep"`` (default,
       leave it untouched, single-H waters included), ``"complete"`` (a water
@@ -1685,7 +2049,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
   on_state : callable, optional
       Called as ``on_state(label, stats)`` at each state reached:
       ``"initial"`` after the greedy pass, ``"sweep N"`` after each refinement
-      sweep, ``"basin N.M"`` during basin-hopping; ``stats`` is the
+      sweep, ``"basin N.M"`` during basin-hopping and ``"cluster search"``
+      after the cluster search, on the kept state; ``stats`` is the
       ``_water_clash_stats`` tuple, under ``crystal_symmetry``.
   crystal_symmetry : cctbx.crystal.symmetry or None, optional
       Symmetry-equivalent atoms within reach of a water join its
@@ -1721,8 +2086,9 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
   """
   placer = _WaterHydrogenPlacer(
     hier, oh_length=oh_length, element=element, n_refine=n_refine,
-    refine_tol=refine_tol, n_basin=n_basin, existing_h=existing_h,
-    on_state=on_state, crystal_symmetry=crystal_symmetry, geometry=geometry)
+    refine_tol=refine_tol, n_basin=n_basin, cluster_search=cluster_search,
+    existing_h=existing_h, on_state=on_state,
+    crystal_symmetry=crystal_symmetry, geometry=geometry)
   kept_label = placer.run()
   return group_args(kept_label=kept_label,
                     partial_waters=placer.partial_waters,

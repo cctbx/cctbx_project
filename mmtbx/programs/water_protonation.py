@@ -62,6 +62,10 @@ basin
     .short_caption = Basin-hopping rounds
     .help = "Basin-hopping rounds after refinement (0 = off): each round randomly re-orients the still-clashing waters and relaxes, keeping the best. Seeded, so deterministic."
 }
+cluster_search = False
+  .type = bool
+  .short_caption = Joint search over water clusters
+  .help = "After refinement and basin-hopping, re-choose the orientations of each cluster of waters within H-bonding reach of each other jointly, keeping the combination whose protons lie closest to acceptors without a new H-H clash or two waters donating to each other."
 stats = False
   .type = bool
   .short_caption = Report water-H clashes
@@ -234,6 +238,7 @@ and existing_h=reorient strips all water H and re-places both.
       n_refine         = self.params.refine.max_sweeps,
       refine_tol       = self.params.refine.tolerance,
       n_basin          = self.params.basin.rounds,
+      cluster_search   = self.params.cluster_search,
       existing_h       = self.params.existing_h,
       crystal_symmetry = cs,
       on_state         = on_state if report_stats else None)
