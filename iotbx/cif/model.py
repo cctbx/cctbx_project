@@ -11,6 +11,8 @@ try:
 except ImportError:
   from collections import MutableMapping
 from cctbx.array_family import flex
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("iotbx_cif_ext")
 from six.moves import range
 from six.moves import zip
 from six import string_types
@@ -489,9 +491,8 @@ class block(block_base):
     new.saves = self.saves.copy()
     return new
 
-# The rows loop.show() converts to Python strings at a time.  Only a column
-# that needs quoting is formatted whole, so a big loop costs at most one
-# column of Python strings at a time, not the whole loop.
+# Rows per call of the C++ row formatter in loop.show(): bounds the size of
+# the string returned per chunk.
 _show_chunk_rows = 65536
 
 # format_value quotes a value that is empty, that starts with one of these
@@ -543,10 +544,13 @@ def _printed_column(column, numeric=False):
     [value for value in printed if "\n" not in value]).max_element_length()
   return flex.std_string(printed), width
 
+# Rows start to stop of the columns as loop.show() prints them: the
+# contract of format_loop_rows in loop_format.h.
+_format_rows = ext.format_loop_rows
+
 def _format_rows_python(columns, start, stop, prefix, widths):
-  """Rows start to stop of the columns (flex.std_string of equal size),
-  each followed by a newline.  widths: one int per column, the field
-  width, negative to left-align; empty for the non-aligned form."""
+  """The Python original of _format_rows, the reference of the parity tests
+  in tst_model.py; to be retired once the C++ path has shipped."""
   rows = zip(*[list(column[start:stop]) for column in columns])
   if len(widths) == 0:
     lines = [prefix + " ".join(row) for row in rows]
@@ -750,10 +754,8 @@ class loop(MutableMapping):
 
   def _show_rows(self, out, columns, prefix, widths):
     n = self.size()
-    for column in columns:
-      assert column.size() == n
     for start in range(0, n, _show_chunk_rows):
-      out.write(_format_rows_python(
+      out.write(_format_rows(
         columns, start, min(start + _show_chunk_rows, n), prefix, widths))
 
   def __str__(self):

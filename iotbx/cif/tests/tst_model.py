@@ -722,6 +722,61 @@ def exercise_format_rows_python():
   out = model._format_rows_python(cols, 1, 3, "  ", [])
   assert out == "  22 bb\n  ? ccc\n", repr(out)
 
+class python_references(object):
+  """While active, loop.show() runs through the retained Python references
+  of its C++ helpers."""
+  references = (("_format_rows", "_format_rows_python"),)
+  def __enter__(self):
+    self.saved = [(n, getattr(model, n)) for n, r in self.references]
+    for n, r in self.references:
+      setattr(model, n, getattr(model, r))
+  def __exit__(self, *args):
+    for n, f in self.saved:
+      setattr(model, n, f)
+
+def exercise_format_rows_parity():
+  from iotbx.cif import ext
+  cases = {
+    "numeric":   ([["1.5", "22", ".", "?"], ["a", "bb", "ccc", "d"]], [4, -3]),
+    "trailing":  ([["x", "y"], ["a  ", "b"]], [-1, -3]),
+    "textfield": ([["1", "2"], ["\n;long text\n;\n", "b"]], [1, -1]),
+    "utf8":      ([["\xe9", "ab"], ["1", "2"]], [-2, 1]),
+    "unaligned": ([["1", "22"], ["a", "bb"]], []),
+    # the strip removes what str.rstrip() removes, so an unquoted last
+    # value loses a trailing Unicode space or separator: parity with the
+    # Python path, not a feature
+    "pyspace":   ([["x", "y", "z"], ["a\x1c", "b\xa0", "c\u2003"]], [1, -4]),
+  }
+  for name, (raw, widths) in cases.items():
+    cols = [flex.std_string(c) for c in raw]
+    n = cols[0].size()
+    for prefix in ("", "  ", "\t"):
+      ref = model._format_rows_python(cols, 0, n, prefix, widths)
+      got = ext.format_loop_rows(cols, 0, n, prefix, widths)
+      assert got == ref, (name, prefix, repr(got), repr(ref))
+  # chunks: any split gives the same bytes
+  cols = [flex.std_string([str(i) for i in range(7)]),
+          flex.std_string(["v%d" % i for i in range(7)])]
+  w = [2, -3]
+  whole = ext.format_loop_rows(cols, 0, 7, " ", w)
+  for k in range(8):
+    assert ext.format_loop_rows(cols, 0, k, " ", w) + \
+           ext.format_loop_rows(cols, k, 7, " ", w) == whole
+  assert ext.format_loop_rows(cols, 3, 3, " ", w) == ""
+  for bad in ((0, 8), (5, 3)):
+    try: ext.format_loop_rows(cols, bad[0], bad[1], "", [])
+    except ValueError: pass
+    else: raise AssertionError(bad)
+  # loop.show() writes the same bytes through C++ as through the references
+  s1 = StringIO(); s2 = StringIO()
+  lp = model.loop(data={"_a.x": flex.std_string(["1", "2"]),
+                        "_a.y": flex.std_string(["p q", "r"])})
+  lp.show(out=s1)
+  with python_references():
+    lp.show(out=s2)
+  assert s1.getvalue() == s2.getvalue()
+  assert model._format_rows is not model._format_rows_python
+
 if __name__ == '__main__':
   exercise_cif_model()
   test_301()
@@ -730,4 +785,5 @@ if __name__ == '__main__':
   exercise_quoting_scan_matches_format_value()
   exercise_loop_show_many_rows()
   exercise_format_rows_python()
+  exercise_format_rows_parity()
   print("OK")

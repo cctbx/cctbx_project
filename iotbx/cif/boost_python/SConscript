@@ -37,6 +37,7 @@ prefix = "#ucif/antlr3/src"
 source = [os.path.join(prefix, file_name) for file_name in antlr3_src_files]
 source.extend([
   "cif_ext.cpp",
+  "#iotbx/cif/loop_format.cpp",
   "#ucif/cifParser.cpp",
   "#ucif/cifLexer.cpp",
 ])

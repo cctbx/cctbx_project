@@ -1,0 +1,160 @@
+#include <iotbx/cif/loop_format.h>
+#include <stdexcept>
+#include <sstream>
+
+namespace iotbx { namespace cif {
+
+namespace {
+
+  bool
+  is_continuation(unsigned char c)
+  {
+    return (c & 0xC0) == 0x80;
+  }
+
+  std::size_t
+  code_points(std::string const& s)
+  {
+    std::size_t n = 0;
+    for (std::size_t i = 0; i < s.size(); i++) {
+      if (!is_continuation(s[i])) n++;
+    }
+    return n;
+  }
+
+  // what str.isspace() reports: Unicode White_Space plus U+001C..U+001F
+  bool
+  python_is_space(unsigned long cp)
+  {
+    if (cp < 0x80) {
+      return (cp >= 0x09 && cp <= 0x0D) || (cp >= 0x1C && cp <= 0x20);
+    }
+    return cp == 0x85 || cp == 0xA0 || cp == 0x1680
+        || (cp >= 0x2000 && cp <= 0x200A)
+        || cp == 0x2028 || cp == 0x2029 || cp == 0x202F
+        || cp == 0x205F || cp == 0x3000;
+  }
+
+  // bytes in the UTF-8 sequence a lead byte starts; 0 for no lead byte
+  std::size_t
+  sequence_length(unsigned char b0)
+  {
+    if (b0 < 0x80) return 1;
+    if ((b0 & 0xE0) == 0xC0) return 2;
+    if ((b0 & 0xF0) == 0xE0) return 3;
+    if ((b0 & 0xF8) == 0xF0) return 4;
+    return 0;
+  }
+
+  // the code point of s[i..i+n); false unless that is one UTF-8 sequence
+  bool
+  decode(std::string const& s, std::size_t i, std::size_t n, unsigned long& cp)
+  {
+    static const unsigned char lead_mask[5] = {0, 0x7F, 0x1F, 0x0F, 0x07};
+    unsigned char b0 = s[i];
+    if (n == 0 || n != sequence_length(b0) || i + n > s.size()) return false;
+    cp = b0 & lead_mask[n];
+    for (std::size_t k = 1; k < n; k++) {
+      unsigned char b = s[i + k];
+      if (!is_continuation(b)) return false;
+      cp = (cp << 6) | (b & 0x3F);
+    }
+    return true;
+  }
+
+  // the size of s after str.rstrip(), not cutting before begin
+  std::size_t
+  rstripped_size(std::string const& s, std::size_t begin)
+  {
+    std::size_t end = s.size();
+    while (end > begin) {
+      std::size_t lead = end - 1;
+      while (lead > begin && is_continuation(s[lead]) && end - lead < 4) {
+        lead--;
+      }
+      unsigned long cp;
+      if (!decode(s, lead, end - lead, cp) || !python_is_space(cp)) break;
+      end = lead;
+    }
+    return end;
+  }
+
+} // namespace <anonymous>
+
+  std::string
+  format_loop_rows(
+    af::const_ref<af::shared<std::string> > const& columns,
+    std::size_t start,
+    std::size_t stop,
+    std::string const& prefix,
+    af::const_ref<int> const& widths)
+  {
+    std::size_t n_columns = columns.size();
+    std::size_t n_rows = (n_columns == 0 ? 0 : columns[0].size());
+    for (std::size_t j = 1; j < n_columns; j++) {
+      if (columns[j].size() != n_rows) {
+        std::ostringstream msg;
+        msg << "format_loop_rows: column " << j << " has "
+            << columns[j].size() << " rows, column 0 has " << n_rows;
+        throw std::invalid_argument(msg.str());
+      }
+    }
+    if (start > stop || stop > n_rows) {
+      std::ostringstream msg;
+      msg << "format_loop_rows: row range " << start << ".." << stop
+          << " outside 0.." << n_rows;
+      throw std::invalid_argument(msg.str());
+    }
+    bool aligned = (widths.size() != 0);
+    if (aligned && widths.size() != n_columns) {
+      std::ostringstream msg;
+      msg << "format_loop_rows: " << widths.size() << " widths for "
+          << n_columns << " columns";
+      throw std::invalid_argument(msg.str());
+    }
+    // one reservation for the whole range
+    std::size_t separators
+      = (n_columns == 0 ? 0 : n_columns - 1) * (aligned ? 2 : 1);
+    std::size_t per_row = prefix.size() + separators + 1;
+    std::size_t size = (stop - start) * per_row;
+    for (std::size_t j = 0; j < n_columns; j++) {
+      std::size_t w = (aligned ? static_cast<std::size_t>(
+        widths[j] < 0 ? -widths[j] : widths[j]) : 0);
+      for (std::size_t i = start; i < stop; i++) {
+        std::size_t len = columns[j][i].size();
+        size += (len > w ? len : w);
+      }
+    }
+    std::string result;
+    result.reserve(size);
+    for (std::size_t i = start; i < stop; i++) {
+      std::size_t line_begin = result.size();
+      result += prefix;
+      for (std::size_t j = 0; j < n_columns; j++) {
+        std::string const& value = columns[j][i];
+        if (!aligned) {
+          if (j != 0) result += ' ';
+          result += value;
+          continue;
+        }
+        if (j != 0) result += "  ";
+        int width = widths[j];
+        if (width == 0) {
+          result += value;
+          continue;
+        }
+        std::size_t field = static_cast<std::size_t>(
+          width < 0 ? -width : width);
+        std::size_t n = code_points(value);
+        std::size_t pad = (field > n ? field - n : 0);
+        if (width > 0) result.append(pad, ' ');
+        result += value;
+        if (width < 0) result.append(pad, ' ');
+      }
+      if (aligned) result.resize(rstripped_size(result, line_begin));
+      result += '\n';
+    }
+    return result;
+  }
+
+}} // namespace iotbx::cif
