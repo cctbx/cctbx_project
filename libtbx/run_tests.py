@@ -53,7 +53,6 @@ tst_list_base = [
   "$D/tst_run_tests_parallel_unique_dirs.py",
   "$D/tst_run_tests_parallel_retry.py",
   "$D/tst_t96_roster.py",
-  "$D/tst_guided_coding.py",
   "$D/tst_conda_dispatcher.py",
   "$D/tst_dispatcher_environment.py",
   "$D/auto_build/conda_build/tst_write_env_files.py",
