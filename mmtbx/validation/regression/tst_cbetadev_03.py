@@ -160,9 +160,7 @@ def tst_03():
   off = get_deviations(apply_phi_psi_correction=True)
   on = get_deviations(apply_phi_psi_correction=True,
                       use_parent_for_modified_residues=True)
-  positive_phi = get_deviations(apply_positive_phi_correction=True,
-                                use_parent_for_modified_residues=True)
-  assert len(default) == len(off) == len(on) == len(positive_phi) == 10
+  assert len(default) == len(off) == len(on) == 10
   # the standard residue next to modified residues is corrected either way
   assert approx_equal(default[('9', 'VAL')], 0.0619, eps=1e-4)
   assert approx_equal(off[('9', 'VAL')], 0.0562, eps=1e-4)
@@ -184,9 +182,6 @@ def tst_03():
   # D-amino acids are never corrected; ALA 11 is the chain end
   for key in [('1', 'DAL'), ('11', 'ALA')]:
     assert approx_equal(on[key], default[key]), key
-  # no residue here has 0 < phi < 150
-  for key in default:
-    assert approx_equal(positive_phi[key], default[key]), key
 
 def tst_04():
   """

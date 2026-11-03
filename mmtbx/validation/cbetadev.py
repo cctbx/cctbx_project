@@ -187,20 +187,15 @@ class cbetadev(validation):
       outliers_only=False,
       out=sys.stdout,
       collect_ideal=False,
-      apply_positive_phi_correction=False,
       apply_phi_psi_correction=False,
       display_phi_psi_correction=False,
       use_parent_for_modified_residues=False,
-      fill_empty_phi_psi_bins=False,
       exclude_d_peptides=False,
       mahalanobis_z_score=False,
       mahalanobis_cutoff=4.,
       show_deviation_stats=False,
       plot_deviation_histogram=False,
       quiet=False):
-    assert not (apply_phi_psi_correction and apply_positive_phi_correction), \
-      'Use either apply_phi_psi_correction or apply_positive_phi_correction'
-    use_phi_psi = (apply_phi_psi_correction or apply_positive_phi_correction)
     validation.__init__(self)
     self._outlier_i_seqs = flex.size_t()
     self.beta_ideal = {}
@@ -217,7 +212,7 @@ class cbetadev(validation):
     # [model id, chain id, resname, resid, altloc, chiral volume, kind, dev]
     self.ca_chirality = []
     mahalanobis_pending = [] # [result, residual, model id, include]
-    if use_phi_psi or mahalanobis_z_score:
+    if apply_phi_psi_correction or mahalanobis_z_score:
       phi_psi_angles = get_phi_psi_dict(pdb_hierarchy)
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
@@ -272,7 +267,7 @@ class cbetadev(validation):
                   self.ca_chirality.append([model.id, chain_id,
                     residue.resname, residue.resid(), altchar,
                     result.chiral_volume, kind, dev])
-                if use_phi_psi or mahalanobis_z_score:
+                if apply_phi_psi_correction or mahalanobis_z_score:
                   id_str = '|%s:%s|' % (residue.id_str(), altchar)
                   phi_psi = phi_psi_angles.get(id_str, None)
                 if mahalanobis_z_score:
@@ -282,10 +277,7 @@ class cbetadev(validation):
                       use_parent_for_modified_residues=
                         use_parent_for_modified_residues),
                     phi_psi, dev, dihedralNABB)
-                if use_phi_psi:
-                  if phi_psi and apply_positive_phi_correction:
-                    if not (0 < phi_psi[0] < 150):
-                      phi_psi=None
+                if apply_phi_psi_correction:
                   if phi_psi:
                     rc = cbd_utils.get_phi_psi_correction(
                       result,
@@ -294,7 +286,6 @@ class cbetadev(validation):
                       display_phi_psi_correction=display_phi_psi_correction,
                       use_parent_for_modified_residues=
                         use_parent_for_modified_residues,
-                      fill_empty_phi_psi_bins=fill_empty_phi_psi_bins,
                       )
                     if rc:
                       dev, dihedralNABB, start, finish = rc
@@ -343,7 +334,7 @@ class cbetadev(validation):
                   key = result.id_str()
                   if (collect_ideal):
                     self.beta_ideal[key] = betaxyz
-    if use_phi_psi and not quiet:
+    if apply_phi_psi_correction and not quiet:
       outln = '  '
       for rg_id_str, phi_psi in new_outliers:
         # print(rg.id_str(), len(rg.atom_groups()), len(new_outliers), phi_psi)
