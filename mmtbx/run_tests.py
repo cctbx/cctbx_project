@@ -500,6 +500,9 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_qmready_regularize.py",
   "$D/regression/tst_reduce2_capping.py",
   "$D/regression/tst_reduce2_altloc_completion.py",
+  "$D/regression/tst_reduce2_altloc_charge.py",
+  "$D/ligands/tst_electrons_altlocs.py",
+  "$D/ligands/tst_electrons_residues.py",
   "$D/regression/tst_reduce2_blank_chain.py",
   "$D/regression/tst_reduce2_his_no_h.py",
   "$D/regression/tst_reduce2_near_acceptor.py",
@@ -610,7 +613,6 @@ tst_list_expected_failures = [
   "$D/monomer_library/tst_pdb_interpretation_2.py",
   "$D/monomer_library/tst_pdb_interpretation_4.py",
   # known reduce2 bugs; each file says what fixes it and where to move it
-  #"$D/regression/tst_reduce2_altloc_charge.py",
   #"$D/regression/tst_reduce2_symmetry_optimizer.py",
   ]
 
