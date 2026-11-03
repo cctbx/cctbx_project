@@ -1226,7 +1226,15 @@ class _WaterHydrogenPlacer(object):
       hier.overall_counts().raise_improper_alt_conf_if_necessary()
     conf = ci.conformer_indices
     altloc_index = dict(ci.index_altloc_mapping)
+    waters, single = self._collect_waters(conf, altloc_index, stripped)
+    self._build_environment(sel, atoms, conf, waters, single)
+    waters = self._build_neighbourhoods(waters)
+    self._greedy_pass(waters, stripped)
+    return self._refine_and_hop()
 
+  def _collect_waters(self, conf, altloc_index, stripped):
+    """Collect the waters to place and the single-H waters to report."""
+    hier = self.hier
     # The waters to protonate, one per water conformer (see
     # _water_conformers), as (target atom group, O, own atom indices,
     # fixed_d1, existing H, atom names, water id, conformer index, occupancy,
@@ -1328,7 +1336,11 @@ class _WaterHydrogenPlacer(object):
     self.wh_anchor = wh_anchor
     # Water H pairs across symmetry for the clash counts, built by _stats.
     self.h_sym_pairs = None
+    return waters, single
 
+  def _build_environment(self, sel, atoms, conf, waters, single):
+    """Build the static environment and annotate the single-H waters."""
+    hier = self.hier
     # Symmetry-equivalent environment atoms, appended after the model's own so
     # the indices 0..n-1 stay valid.
     self.sym_hier = []
@@ -1380,6 +1392,8 @@ class _WaterHydrogenPlacer(object):
       (rid, self._nearest_cation(o_xyz, own_idx, c), action)
       for rid, o_xyz, own_idx, c, action in single]
 
+  def _build_neighbourhoods(self, waters):
+    """Order the waters most-crowded first and build their neighbour lists."""
     # Per-water neighbour lists, built once for every pass.
     n = len(waters)
     self.w_geom = [None] * n
@@ -1508,21 +1522,16 @@ class _WaterHydrogenPlacer(object):
                                        for b in sorted(bs)))
           self.pool_xyz = flex.vec3_double(
             len(self.sym_tf) * self.n_slots, (0.0, 0.0, 0.0))
+    return waters
 
+  def _greedy_pass(self, waters, stripped):
+    """Place every water once, in order, each against the H placed so far."""
+    hier = self.hier
+    n = len(waters)
     # Initial greedy pass over the ordered waters, each avoiding the H
     # already placed on earlier ones. ``records`` keeps per-water (index,
     # placed-H slots, fixed_d1) for the refinement sweeps.
-    slots_of = [()] * n
-
-    def nbr_slots(wi):
-      """Pool slots of the waters and equivalents neighbouring water ``wi``."""
-      nbr = []
-      for wj in self.w_wnbr[wi]:
-        nbr.extend(slots_of[wj])
-      for b, wj in self.w_sym_nbr[wi]:
-        off = b * self.n_slots
-        nbr.extend(off + s for s in slots_of[wj])
-      return flex.size_t(nbr) if nbr else _EMPTY_SLOTS
+    self.slots_of = [()] * n
 
     # A bare water takes D when the model has D anywhere, the stripped
     # protons included; resolved at the first bare water.
@@ -1544,7 +1553,7 @@ class _WaterHydrogenPlacer(object):
               if e == "D":
                 model_has_d = True
         proton_element = "D" if model_has_d else "H"
-      h1, h2 = self._place_one(wi, nbr_slots(wi), fixed_d1)
+      h1, h2 = self._place_one(wi, self._nbr_slots(wi), fixed_d1)
 
       # Completing builds only the cone proton; the name takes the free slot.
       slots = []
@@ -1566,11 +1575,23 @@ class _WaterHydrogenPlacer(object):
         self.slot_anchor[slot] = o.xyz
       if slots:
         self.records.append((wi, slots, fixed_d1))
-        slots_of[wi] = tuple(s for _, s, _ in slots)
+        self.slots_of[wi] = tuple(s for _, s, _ in slots)
 
     # The placed-H neighbourhood of every water, now that all of them exist.
-    self.w_nbr_slots = [nbr_slots(wi) for wi in range(n)]
+    self.w_nbr_slots = [self._nbr_slots(wi) for wi in range(n)]
 
+  def _nbr_slots(self, wi):
+    """Pool slots of the waters and equivalents neighbouring water ``wi``."""
+    nbr = []
+    for wj in self.w_wnbr[wi]:
+      nbr.extend(self.slots_of[wj])
+    for b, wj in self.w_sym_nbr[wi]:
+      off = b * self.n_slots
+      nbr.extend(off + s for s in self.slots_of[wj])
+    return flex.size_t(nbr) if nbr else _EMPTY_SLOTS
+
+  def _refine_and_hop(self):
+    """Refine and basin-hop, keep the best state and return its label."""
     # Refinement sweeps: re-place each water against all other placed H,
     # stopping once a sweep removes fewer than refine_tol close (< 2.0 A)
     # contacts (0: all n_refine sweeps). The best state is kept.
