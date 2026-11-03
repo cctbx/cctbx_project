@@ -768,6 +768,8 @@ class xfel_db_application(db_application):
     assert [trial_id, trial_number].count(None) == 1
     if trial_id is None:
       trials = [t for t in self.get_all_trials() if t.trial == trial_number]
+      if len(trials) == 0:
+        raise Sorry("Couldn't find trial %s"%trial_number)
       assert len(trials) == 1
       return trials[0]
     else:

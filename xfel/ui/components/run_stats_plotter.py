@@ -91,6 +91,21 @@ def get_paths_from_timestamps(timestamps,
   paths = [os.path.join(prepend, name) for name in names]
   return paths
 
+def drop_hit_selection(two_theta_low, two_theta_high, ratio_cutoff=1):
+  """ Images whose radial average at the high two theta, relative to the low
+      one, reaches ratio_cutoff: solvent is present. Returns (ratios, hits).
+      -1 flags a value that was not stored; such images are not hits. """
+  invalid = (two_theta_low <= 0) | (two_theta_high < 0) # <= to prevent /0
+  numerator = two_theta_high.set_selected(invalid, 0)
+  denominator = two_theta_low.set_selected(two_theta_low == 0, 1) # prevent /0
+  drop_ratios = numerator/denominator
+  return drop_ratios, drop_ratios >= ratio_cutoff
+
+def high_quality_selection(resolutions, d_min):
+  """ Indexed images whose best resolution bin passing the I/sig(I) cutoff
+      reaches d_min. Unindexed images have resolution 0. """
+  return (resolutions > 0) & (resolutions <= d_min)
+
 def get_run_stats(timestamps,
                    two_theta_low,
                    two_theta_high,
@@ -114,18 +129,12 @@ def get_run_stats(timestamps,
   print("%d total lattices" % (flex.sum(n_lattices)))
   iterator = range(len(resolutions))
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
-  # since -1 is used as a flag for "did not store this value", and we want a quotient,
-  # set the numerator value to 0 whenever either the numerator or denominator is -1
-  invalid = (two_theta_low <= 0) | (two_theta_high < 0) # <= to prevent /0
-  numerator = two_theta_high.set_selected(invalid, 0)
-  denominator = two_theta_low.set_selected(two_theta_low == 0, 1) # prevent /0
-  drop_ratios = numerator/denominator
-  drop_hits = drop_ratios >= ratio_cutoff
+  drop_ratios, drop_hits = drop_hit_selection(two_theta_low, two_theta_high, ratio_cutoff)
   xtal_hits = n_strong >= n_strong_cutoff
   half_idx_rate_window = min(50, max(int(len(timestamps)//20), 1))
   half_hq_rate_window = 500
   indexed_sel = n_lattices > 0
-  hq_sel = (resolutions > 0) & (resolutions <= d_min)
+  hq_sel = high_quality_selection(resolutions, d_min)
   # indexing and droplet hit rate in a sliding window
   idx_rate = flex.double()
   multiples_rate = flex.double()
