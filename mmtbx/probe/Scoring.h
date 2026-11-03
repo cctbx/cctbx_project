@@ -199,7 +199,8 @@ namespace molprobity {
     class DotScorer {
     public:
       /// @brief Constructor stores the non-bonded parameters to be used to determine atom features.
-      /// @param [in] extraInfoMap maps from atoms to ExtraAtomInfo.
+      /// @param [in] extraInfoMap maps from atoms to ExtraAtomInfo.  It is referenced, not copied,
+      ///             so changes made to it after construction are seen; it must outlive the scorer.
       /// @param [in] gapScale Scale factor to apply to gap between atoms (gap is divided by this)
       /// @param [in] bumpWeight Factor to apply when atoms are in bumping overlap
       /// @param [in] hBondWeight Factor to apply to hydrogen-bond overlaps
@@ -227,7 +228,7 @@ namespace molprobity {
       ///             target atom calculations (unless it is listed as an excluder).  This is because
       ///             as of 4/20/2022 Probe does not properly handle ionic interactions.
       /// @todo Consider moving the probe radius into the constructor parameters
-      DotScorer(ExtraAtomInfoMap extraInfoMap
+      DotScorer(ExtraAtomInfoMap const &extraInfoMap
         , double gapScale = 0.25
         , double bumpWeight = 10.0
         , double hBondWeight = 4.0
@@ -439,7 +440,7 @@ namespace molprobity {
 
     protected:
       /// Parameters stored from constructor.
-      ExtraAtomInfoMap m_extraInfoMap;
+      ExtraAtomInfoMap const &m_extraInfoMap;
       double m_gapScale;
       double m_bumpWeight;
       double m_hBondWeight;

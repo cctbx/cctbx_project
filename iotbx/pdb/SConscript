@@ -24,7 +24,8 @@ builder(
     "hierarchy_write.cpp",
     "atom_selection.cpp",
     "input.cpp",
-    "input_write.cpp"])
+    "input_write.cpp",
+    "mmcif_hierarchy.cpp"])
 
 env = env.Clone()
 env_etc.include_registry.append(env=env, paths=[env_etc.fable_include])
@@ -43,7 +44,8 @@ if (not env_etc.no_boost_python):
       "common_residue_names_bpl.cpp",
       "rna_dna_atom_names_bpl.cpp",
       "input_bpl.cpp",
-      "xray_structure_bpl.cpp"])
+      "xray_structure_bpl.cpp",
+      "mmcif_hierarchy_bpl.cpp"])
   env.SharedLibrary(
     target="#lib/iotbx_pdb_hierarchy_ext",
     source=[

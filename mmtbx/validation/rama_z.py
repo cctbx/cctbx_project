@@ -150,20 +150,29 @@ class z_score_mixins(object):
     assert psi>=y1 and psi<=y2, f'{y1} {psi} {y2}'
     return int_sc
 
-class rama_z(z_score_mixins):
-  def __init__(self, models, log):
+_db_cache = None
+
+def load_db():
+  """
+  The top8000 rama-Z database (chem_data/rama_z/top8000_rama_z_dict.pkl),
+  loaded once per process: the Python 3 pickle fix takes seconds and the
+  database is only read.
+  """
+  global _db_cache
+  if _db_cache is None:
     db_path = libtbx.env.find_in_repositories(
         relative_path="chem_data/rama_z/top8000_rama_z_dict.pkl",
         test=os.path.isfile)
-    self.log = log
-    # this takes ~0.15 seconds, so I don't see a need to cache it somehow.
-    self.db = easy_pickle.load(db_path)
-
-    # Python 3 pickle fix
-    # =========================================================================
+    db = easy_pickle.load(db_path)
     if sys.version_info.major == 3:
-      self.db = easy_pickle.fix_py2_pickle(self.db)
-    # =========================================================================
+      db = easy_pickle.fix_py2_pickle(db)
+    _db_cache = db
+  return _db_cache
+
+class rama_z(z_score_mixins):
+  def __init__(self, models, log):
+    self.log = log
+    self.db = load_db()
 
     self.calibration_values = {
         'H': (-0.045355950779513175, 0.1951165524439217),

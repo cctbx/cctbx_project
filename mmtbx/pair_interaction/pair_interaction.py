@@ -73,6 +73,15 @@ def load_wfc(element):
   return wfc_obj
 
 def run(ph, core=None):
+  """
+  core=None: the list of interacting residue pairs (1-based residue group
+  indices in ph) of the whole hierarchy.
+  core=[residue indices]: (core atoms, fragment atoms, fragment residues) of
+  the core residues, the fragment being the core plus the residues it
+  interacts with. Atoms are 1-based positions in ph.
+  The coordinates of ph are changed (Angstrom to Bohr) and its i_seqs reset.
+  """
+  ph.atoms().reset_i_seq()
   atom_in_residue = []
   atoms_group_dict={}
   mols=[]
@@ -101,15 +110,11 @@ def run(ph, core=None):
     for idx,item in enumerate(mols):
       if(idx+1 in core):
         core_atoms=core_atoms+atoms_group_dict[item]
-    non_core_atoms=set(atoms)-set(core_atoms)
-    non_core_atoms_filtered=[]
-    for ai in core_atoms:
-      for aj in non_core_atoms:
-        if(ai.distance(aj)<15):
-          non_core_atoms_filtered.append(aj)
+    # Only atoms within 15 Bohr of the core can interact with it: the
+    # density is evaluated for the core and these atoms.
     selection=flex.bool(len(atoms),False)
-    for atom in set(core_atoms+non_core_atoms_filtered):
-      selection[atom.i_seq]=True
+    for atom in core_atoms:
+      selection |= (xyz - atom.xyz).norms() < 15
     sub_ph=ph.select(selection)
     atom_in_residue_selected = list(flex.int(atom_in_residue).select(selection))
     #
@@ -172,6 +177,12 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   #print("step_size", step_size)
   #print("xyz_step", xyz_step)
   #print("points to process:",xyz_step[0]*xyz_step[1]*xyz_step[2])
+  # Only pairs with a core residue are used by run(): the others are skipped
+  residue_in_core = flex.bool()
+  if(core is not None):
+    residue_in_core = flex.bool(max(atom_in_residue)+1, False)
+    for i in core:
+      if(i < residue_in_core.size()): residue_in_core[i] = True
   interacting_pairs = ext.points_and_pairs(
     ngrid           = xyz_step,
     step_size       = step_size,
@@ -180,7 +191,8 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
     atom_in_residue = atom_in_residue,
     element_flags   = element_flags,
     wfc_obj         = wave_functions,
-    silva_type      = silva_type)
+    silva_type      = silva_type,
+    residue_in_core = residue_in_core)
   #print("interacting_pairs", list(set(list((interacting_pairs)))) )
   tmp = []
   for it in interacting_pairs:

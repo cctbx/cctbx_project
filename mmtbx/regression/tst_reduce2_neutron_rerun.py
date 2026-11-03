@@ -1,6 +1,7 @@
 """reduce2 neutron tests: each mode's output rerun in the same and in every
 other mode"""
 from __future__ import absolute_import, division, print_function
+from scitbx import matrix
 from mmtbx.regression import reduce2_neutron_utils
 from mmtbx.regression.reduce2_neutron_utils import (
   NEUTRON, all_atoms, check_water, dipeptide, dipeptide_out,
@@ -161,10 +162,26 @@ def test_own_output_fed_back():
   # rotatable NH3 and HG return to the ideal dihedral (the Optimizer turned
   # them), each H on its own site
   src = dipeptide_nh3_out()
+  args = ["approach=place", "neutron_option=all_hd",
+          "n_terminal_charge=first_in_chain"]
   fn, log, description = run_reduce2("tst_r2n_rerun_own_nh3", src,
-    ["approach=place", "keep_existing_H=True", "neutron_option=all_hd",
-     "n_terminal_charge=first_in_chain"])
+    args + ["keep_existing_H=True"])
   first, second = all_atoms(src, is_file=False), all_atoms(fn)
+  # the ideal sites: placement on the heavy atoms, each rotatable H turned
+  # by 0 and +-120 degrees about its axis (staggered minima)
+  fn_ideal, _, _ = run_reduce2("tst_r2n_rerun_own_nh3_ideal", dipeptide, args)
+  ideal = all_atoms(fn_ideal)
+  rotatable = (("H1", "H2", "H3"), ("HG",))
+  axes = {("H1", "H2", "H3"): ("CA", "N"), ("HG",): ("CB", "OG")}
+  sites = {}
+  for k, v in list(ideal.items()):
+    for g in rotatable:
+      if h_name(k[1], k[3]) in g:
+        a, b = [ideal[(k[0], n, "", "C" if n.startswith("C") else n[0])][2]
+                for n in axes[g]]
+        for angle in (0, 120, 240):
+          sites.setdefault((k[0], k[3], g), []).append(matrix.col(
+            matrix.rotate_point_around_axis(a, b, v[2], angle, deg=True)))
   assert sorted(first) == sorted(second), sorted(set(first) ^ set(second))
   for key, (occ, b, xyz) in second.items():
     # H and D of a pair share the site: nearest of the same element
@@ -172,9 +189,13 @@ def test_own_output_fed_back():
       key=lambda k: abs(first[k][2] - xyz))
     assert nearest == key, (key, nearest)
     assert first[key][:2] == (occ, b), key
-    limit = 0.35 if h_name(key[1], key[3]) in ("H1", "H2", "H3", "HG") \
-      else 0.01
-    assert abs(first[key][2] - xyz) < limit, (key, abs(first[key][2] - xyz))
+    group = [g for g in rotatable if h_name(key[1], key[3]) in g]
+    if group:
+      # on an ideal site of its group, wherever the Optimizer had turned it
+      d = min(abs(s - xyz) for s in sites[(key[0], key[3], group[0])])
+      assert d < 0.02, (key, d)
+    else:
+      assert abs(first[key][2] - xyz) < 0.01, (key, abs(first[key][2] - xyz))
 
 if __name__ == "__main__":
   test_rerun_same_mode()

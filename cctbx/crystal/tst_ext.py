@@ -1649,6 +1649,43 @@ def exercise_asu_mappings():
       for( c_o, c_r ) in zip( site_o.mapped_site(), site_r.mapped_site() ):
         assert approx_equal( c_o, c_r, 1E-7 )
 
+def exercise_pairs_within():
+  def listed(pairs):
+    return sorted((i, j, rt.as_xyz(), round(d, 6)) for i, j, rt, d in pairs)
+  # P 1, a = 5: site 1 is 3.8 A from site 0 in the asymmetric unit and its
+  # mate one cell along a is 1.2 A from it; site 2 is 1.3 A from site 0
+  cs = crystal.symmetry(unit_cell=(5, 10, 10, 90, 90, 90),
+                        space_group_symbol="P 1")
+  sites = flex.vec3_double([(1, 5, 5), (4.8, 5, 5), (1, 6.3, 5)])
+  assert listed(crystal.pairs_within(sites, 1.5, cs)) == [
+    (0, 1, "x-1,y,z", 1.2), (0, 2, "x,y,z", 1.3),
+    (1, 0, "x+1,y,z", 1.2), (2, 0, "x,y,z", 1.3)]
+  # first site restricted
+  assert listed(crystal.pairs_within(sites, 1.5, cs, i_seqs=[1])) == [
+    (1, 0, "x+1,y,z", 1.2)]
+  assert listed(crystal.pairs_within(sites, 1.5, cs, i_seqs=[0, 2])) == [
+    (0, 1, "x-1,y,z", 1.2), (0, 2, "x,y,z", 1.3), (2, 0, "x,y,z", 1.3)]
+  assert crystal.pairs_within(sites, 1.5, cs, i_seqs=[]) == []
+  # no symmetry: the asymmetric unit only
+  for no_cs in (None, crystal.symmetry(unit_cell=None, space_group=None)):
+    assert listed(crystal.pairs_within(sites, 1.5, no_cs)) == [
+      (0, 2, "x,y,z", 1.3), (2, 0, "x,y,z", 1.3)]
+  assert crystal.pairs_within(sites, 1.0, cs) == []
+  assert crystal.pairs_within(flex.vec3_double(), 1.5, cs) == []
+  # a rotational mate: the inversion of site 1 is 0.2 A from site 0
+  cs = crystal.symmetry(unit_cell=(5, 10, 10, 90, 90, 90),
+                        space_group_symbol="P -1")
+  sites = flex.vec3_double([(1, 5.3, 5.2), (-1.2, -5.3, -5.2)])
+  assert listed(crystal.pairs_within(sites, 1.5, cs)) == [
+    (0, 1, "-x,-y,-z", 0.2), (1, 0, "-x,-y,-z", 0.2)]
+  # a site near a special position is listed with its own mate; on it,
+  # the mates are one site
+  sites = flex.vec3_double([(0.3, 0, 0)])
+  assert listed(crystal.pairs_within(sites, 1.5, cs)) == [
+    (0, 0, "-x,-y,-z", 0.6)]
+  sites = flex.vec3_double([(0, 0, 0)])
+  assert crystal.pairs_within(sites, 1.5, cs) == []
+
 def exercise_pair_sym_table_pickling():
   # Test pickling of pair_asu_table in cctbx_project\cctbx\crystal\pair_tables_bpl.cpp
   from cctbx import geometry_restraints
@@ -1689,6 +1726,7 @@ def run():
   exercise_cubicles_max_memory()
   exercise_asu_mappings()
   exercise_pair_sym_table_pickling()
+  exercise_pairs_within()
   print("OK")
 
 if (__name__ == "__main__"):

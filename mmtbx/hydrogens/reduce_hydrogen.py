@@ -9,7 +9,6 @@ import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
 from libtbx import group_args
 from scitbx import matrix
-import scitbx.cubicle_neighbors
 from cctbx.array_family import flex
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_atom_group
@@ -786,6 +785,69 @@ def residue_label(atom):
   return '%s %s %s' % (atom.parent().resname.strip(),
     rg.parent().id.strip(), rg.resseq.strip())
 
+def atom_group_sites(hierarchy):
+  '''
+  Before processing, for symmetric_renames().
+  :return: {residue_part + altloc: (names, sites)} of every atom_group.
+  '''
+  parts = residue_parts(hierarchy)
+  result = {}
+  for ag in hierarchy.atom_groups():
+    atoms = ag.atoms()
+    result[parts[ag.memory_id()] + (ag.altloc,)] = (
+      list(atoms.extract_name()), atoms.extract_xyz())
+  return result
+
+def symmetric_renames(sites_before, hierarchy):
+  '''
+  What flip_symmetric_amino_acids() did in a processing (it returns only a
+  count): the pairs of atoms of an atom_group that exchanged their sites,
+  within 0.001 A (processing changes sites by ~1e-14 A; partners are > 1 A
+  apart). New H of a residue are superposed, so they do not count.
+  :param sites_before: atom_group_sites() of the hierarchy before processing.
+  :return: [group_args(model, residue, label, altloc, pairs)], in model order.
+  residue: residue_parts() with the model's id for its index, which selecting
+  a model changes. label: 'resname chain resseqicode'. pairs: (name, partner
+  name), stripped.
+  '''
+  tolerance_sq = 1.e-6
+  def same(a, b):
+    return sum((x - y)**2 for x, y in zip(a, b)) < tolerance_sq
+  parts = residue_parts(hierarchy)
+  result = []
+  for ag in hierarchy.atom_groups():
+    part = parts[ag.memory_id()]
+    before = sites_before.get(part + (ag.altloc,))
+    if before is None: continue
+    atoms = ag.atoms()
+    sites = atoms.extract_xyz()
+    if (before[1].size() == sites.size() and
+        flex.max((sites - before[1]).dot()) < tolerance_sq):
+      continue
+    old = dict(zip(before[0], before[1]))
+    new = dict(zip(atoms.extract_name(), sites))
+    pairs = []
+    done = set()
+    for name, site in new.items():
+      if name in done or name not in old or same(old[name], site): continue
+      for other in new:
+        if (other != name and other not in done and other in old and
+            same(old[other], site) and same(new[other], old[name])):
+          pairs.append((name.strip(), other.strip()))
+          done.update((name, other))
+          break
+    if pairs:
+      rg = ag.parent()
+      model_id = rg.parent().parent().id.strip()
+      result.append(group_args(
+        model   = model_id,
+        residue = (model_id,) + part[1:],
+        label   = '%s %s %s%s' % (ag.resname.strip(), rg.parent().id.strip(),
+          rg.resseq.strip(), rg.icode.strip()),
+        altloc  = ag.altloc,
+        pairs   = pairs))
+  return result
+
 def atoms_not_in_dictionary(model):
   '''
   Heavy atoms whose name is not in their residue's dictionary, in a processed
@@ -944,39 +1006,17 @@ def metal_contact_pairs(sites, elements, parents, metals, crystal_symmetry,
     max(_covalent_radius(elements[i]) for i in metals) + \
     THIOL_METAL_WINDOW[1]
   xyz = flex.vec3_double([sites[i] for i in subset])
-  cs = crystal_symmetry
-  if cs is None:
-    lo, hi = xyz.min(), xyz.max()
-    size = max(hi[k] - lo[k] for k in range(3)) + 3 * max_cut + 10
-    cs = crystal.symmetry(unit_cell=(size, size, size, 90, 90, 90),
-      space_group_symbol='P1')
-    xyz = xyz - lo + (max_cut, max_cut, max_cut)
-  uc = cs.unit_cell()
-  frac = uc.fractionalize(xyz)
-  am = cs.special_position_settings().asu_mappings(
-    buffer_thickness=max_cut)
-  am.process_sites_frac(original_sites=frac)
-  pt = crystal.pair_asu_table(asu_mappings=am)
-  pt.add_all_pairs(distance_cutoff=max_cut)
   n_parents = len(parents)
-  for i, js in enumerate(pt.table()):
-    for j, j_syms in js.items():
-      for group in j_syms:
-        for j_sym in group:
-          rt_ji = am.get_rt_mx(i_seq=i, i_sym=0).inverse().multiply(
-            am.get_rt_mx(i_seq=j, i_sym=j_sym))
-          for x, y, rt in ((i, j, rt_ji), (j, i, rt_ji.inverse())):
-            if x >= n_parents or y < n_parents: continue
-            i_x, i_m = subset[x], subset[y]
-            if (model_index is not None and
-                model_index[i_x] != model_index[i_m]): continue
-            d = uc.distance(frac[x], rt * frac[y])
-            r = _covalent_radius(elements[i_x]) + \
-              _covalent_radius(elements[i_m])
-            if not (r + THIOL_METAL_WINDOW[0] <= d <= r + THIOL_METAL_WINDOW[1]):
-              continue
-            if crystal_symmetry is None: rt = sgtbx.rt_mx()
-            result.append((i_x, i_m, rt))
+  for x, y, rt, d in crystal.pairs_within(xyz, max_cut, crystal_symmetry,
+      i_seqs=range(n_parents)):
+    if y < n_parents: continue
+    i_x, i_m = subset[x], subset[y]
+    if (model_index is not None and
+        model_index[i_x] != model_index[i_m]): continue
+    r = _covalent_radius(elements[i_x]) + _covalent_radius(elements[i_m])
+    if not (r + THIOL_METAL_WINDOW[0] <= d <= r + THIOL_METAL_WINDOW[1]):
+      continue
+    result.append((i_x, i_m, rt))
   return result
 
 class metal_h_sites(object):
@@ -2189,6 +2229,8 @@ class place_hydrogens():
     self.residue_keys_new_h     = set()
     # (model, chain, resseq, icode, resname) of no_H_placed_mlq
     self.residue_keys_no_restraints = set()
+    # flip_symmetric_amino_acids() in this run's processing (symmetric_renames())
+    self.renamed_symmetric_atoms = list()
     #self.charged_atoms          = list()
     self.sl_removed             = list()
     # thiols bound to metals (thiol_metal_sites): H not placed, with the
@@ -2339,6 +2381,7 @@ class place_hydrogens():
     p = get_reduce_pdb_interpretation_params(self.use_neutron_distances)
     ro = self.restraint_objects
     t0 = time.time()
+    sites_before = atom_group_sites(pdb_hierarchy)
     self.model = mmtbx.model.manager(
       model_input       = None,
       pdb_hierarchy     = pdb_hierarchy,
@@ -2353,6 +2396,8 @@ class place_hydrogens():
                        plain_pairs_radius=None,
                        # retain_zero_dihedrals=True,
                        )
+    self.renamed_symmetric_atoms = symmetric_renames(sites_before,
+      self.model.get_hierarchy())
 
     self.time_make_grm = round(time.time()-t0, 2)
     self.find_atoms_not_in_dictionary()
@@ -3683,30 +3728,25 @@ class place_hydrogens():
           else: unchanged(n, rgs, why)
         candidates.append((rgs, ag, n))
       if not candidates: continue
-      # Atoms within 1.75 A of candidate N. Few candidates: scan all atoms per
-      # N. Many (all_chain_starts, models can have very many chain starts):
-      # one spatial lookup for all N, as scan is O(N_atoms) per N. Crossover
-      # is at ~15 candidates.
-      cutoff_sq = 1.75**2
-      neighbors = None
-      if len(candidates) > 10:
-        n_sites = flex.vec3_double([n.xyz for rgs, ag, n in candidates])
-        neighbors = scitbx.cubicle_neighbors.cubicle_neighbors(
-          main_sites_cart = model_sites,
-          cubicle_edge    = 5).neighbors_of(
-            other_sites_cart   = n_sites,
-            distance_cutoff_sq = cutoff_sq)
-      for i_n, (rgs, ag, n) in enumerate(candidates):
-        if neighbors is None:
-          nb = ((model_sites - n.xyz).dot() < cutoff_sq).iselection()
-        elif i_n in neighbors:
-          nb = flex.size_t(list(neighbors[i_n]))
-          nb = nb.select((model_sites.select(nb) - n.xyz).dot() < cutoff_sq)
+      # a nonmetal within 1.75 A of a candidate N, of another residue or of
+      # a symmetry mate (a peptide closed across symmetry): the N is bonded
+      i_nonmetals = flex.size_t([i for i, a in enumerate(model_atoms)
+        if a.element.strip().upper() in nonmetals])
+      sites = flex.vec3_double([n.xyz for rgs, ag, n in candidates])
+      sites.extend(model_sites.select(i_nonmetals))
+      bonded = set()
+      for i_n, j, rt, d in crystal.pairs_within(sites, 1.75,
+          self._contact_cs, i_seqs=range(len(candidates))):
+        if j < len(candidates):
+          atom = candidates[j][2]
         else:
-          nb = []
-        if [i for i in nb
-            if model_atoms[i].element.strip().upper() in nonmetals
-            and model_atoms[i].parent().parent().memory_id() != rgs.memory_id()]:
+          atom = model_atoms[i_nonmetals[j - len(candidates)]]
+        rgs = candidates[i_n][0]
+        if (not rt.is_unit_mx() or
+            atom.parent().parent().memory_id() != rgs.memory_id()):
+          bonded.add(i_n)
+      for i_n, (rgs, ag, n) in enumerate(candidates):
+        if i_n in bonded:
           if rgs.memory_id() in forced:
             unchanged(n, rgs, 'a nonmetal of another residue within 1.75 A')
           continue

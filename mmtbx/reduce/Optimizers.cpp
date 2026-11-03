@@ -955,9 +955,57 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverCoarse(boost::python::object
   return boost::python::make_tuple(maxScore, infoString);
 }
 
-boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object const& mover)
+molprobity::reduce::PositionReturn& OptimizerC::cachedPoses(PoseCache& cache,
+  boost::python::object const& mover, int anchor)
+{
+  std::pair<PyObject*, int> key(mover.ptr(), anchor);
+  PoseCache::iterator it = cache.find(key);
+  if (it != cache.end()) {
+    return it->second;
+  }
+  if (anchor < 0) {
+    cache[key] = boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
+  } else {
+    cache[key] = boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("FinePositions")(anchor));
+  }
+  return cache[key];
+}
+
+double OptimizerC::scorePoseAt(PoseCache& cache, boost::python::object const& mover,
+  unsigned coarse, int fine)
+{
+  if (fine < 0) {
+    return scorePose(cachedPoses(cache, mover, -1), coarse, 0);
+  }
+  return scorePose(cachedPoses(cache, mover, static_cast<int>(coarse)),
+    static_cast<unsigned>(fine), fineDotCacheOffset(coarse));
+}
+
+double OptimizerC::scoreInPlace(PoseCache& cache,
+  scitbx::af::shared<boost::python::object> const& movers)
+{
+  double ret = 0;
+  for (size_t i = 0; i < movers.size(); i++) {
+    unsigned coarse = m_coarseLocations[movers[i].ptr()];
+    int fine = m_fineLocations[movers[i].ptr()];
+    if (fine < 0) {
+      molprobity::reduce::PositionReturn& states = cachedPoses(cache, movers[i], -1);
+      ret += m_preferenceMagnitude * states.preferenceEnergies[coarse]
+        + scorePosition(states, coarse, 0);
+    } else {
+      molprobity::reduce::PositionReturn& states = cachedPoses(cache, movers[i], static_cast<int>(coarse));
+      ret += m_preferenceMagnitude * states.preferenceEnergies[fine]
+        + scorePosition(states, static_cast<unsigned>(fine), fineDotCacheOffset(coarse));
+    }
+  }
+  return ret;
+}
+
+boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object const& mover,
+  scitbx::af::shared<boost::python::object> const& neighbours)
 {
   std::string infoString;
+  PoseCache cache;
 
   // Record this in case we need to put it back.
   molprobity::reduce::PositionReturn coarse =
@@ -966,11 +1014,13 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
   // Because other Movers in our clique may have been adjusted since we did coarse optimization,
   // we need to recompute the score at our current position.
   unsigned coarseLoc = m_coarseLocations[mover.ptr()];
-  double initialScore = scorePosition(coarse, coarseLoc, 0);
-  double maxScore = initialScore;
+  double initialScore = scorePose(coarse, coarseLoc, 0);
+  m_highScores[mover.ptr()] = initialScore;
   molprobity::reduce::PositionReturn fine =
     boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("FinePositions")(coarseLoc));
   if (fine.positions.size() > 0) {
+    // The neighbours' scores with this Mover at its coarse position.
+    double neighbourScore = scoreInPlace(cache, neighbours);
 
     std::vector<double> scores = fine.preferenceEnergies;
     for (size_t i = 0; i < scores.size(); i++) {
@@ -990,7 +1040,7 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
     }
 
     // Find the maximum score, keeping track of the index of the maximum score.
-    maxScore = scores[0];
+    double maxScore = scores[0];
     unsigned maxIndex = 0;
     for (size_t i = 1; i < scores.size(); i++) {
       if (scores[i] > maxScore) {
@@ -999,9 +1049,20 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
       }
     }
 
+    // A singleton compares its own scores; a Clique member also the neighbours' change.
+    bool accept;
+    double gain = maxScore - initialScore;
+    if (neighbours.size() == 0) {
+      accept = maxScore > initialScore;
+    } else {
+      setMoverState(fine, maxIndex);
+      gain += scoreInPlace(cache, neighbours) - neighbourScore;
+      accept = gain > cliqueGain();
+    }
+
     // Put the Mover into its final position (which may be back to its initial position)
     // and update the high score.
-    if (maxScore > m_highScores[mover.ptr()]) {
+    if (accept) {
       if (m_verbosity >= 3) {
         std::ostringstream oss;
         oss << "   Setting Mover to fine orientation " << maxIndex
@@ -1012,16 +1073,21 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
       }
       setMoverState(fine, maxIndex);
       m_fineLocations[mover.ptr()] = maxIndex;
-
-      // Record the high score for this Mover.
       m_highScores[mover.ptr()] = maxScore;
     } else {
-      // Put us back into the initial coarse location and don't change the high score
       setMoverState(coarse, coarseLoc);
       if (m_verbosity >= 3) {
-        infoString += "   Leaving Mover at coarse orientation\n";
+        std::ostringstream oss;
+        if (neighbours.size() > 0) {
+          oss << "   Leaving Mover " << describeMover(mover, coarse.atoms[0])
+            << " at coarse orientation (fine orientation " << maxIndex << ": own score change "
+            << roundToTwoDigits(maxScore - initialScore) << ", Clique score change "
+            << roundToTwoDigits(gain) << ")\n";
+        } else {
+          oss << "   Leaving Mover at coarse orientation\n";
+        }
+        infoString += oss.str();
       }
-      // No fine location
       m_fineLocations[mover.ptr()] = -1;
     }
   }
@@ -1032,17 +1098,17 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
   if (PyObject_HasAttrString(mover.ptr(), "NumPrimaryCoarsePositions")) {
     unsigned numPrimary = boost::python::extract<unsigned>(mover.attr("NumPrimaryCoarsePositions")());
     if (coarseLoc >= numPrimary) {
-      infoString += refineBestPrimary(mover, coarse, numPrimary);
-      maxScore = m_highScores[mover.ptr()];
+      infoString += refineBestPrimary(mover, coarse, numPrimary, neighbours);
     }
   }
 
   // Return the result
-  return boost::python::make_tuple(maxScore, infoString);
+  return boost::python::make_tuple(m_highScores[mover.ptr()], infoString);
 }
 
 std::string OptimizerC::refineBestPrimary(boost::python::object const& mover,
-  molprobity::reduce::PositionReturn& coarse, unsigned numPrimary)
+  molprobity::reduce::PositionReturn& coarse, unsigned numPrimary,
+  scitbx::af::shared<boost::python::object> const& neighbours)
 {
   std::string infoString;
   unsigned coarseLoc = m_coarseLocations[mover.ptr()];
@@ -1092,6 +1158,24 @@ std::string OptimizerC::refineBestPrimary(boost::python::object const& mover,
   }
   size_t chosen = (scores[best] > scores[current]) ? best : current;
 
+  // A Clique member switches only if its neighbours' change does not undo the gain.
+  if ((chosen != current) && (neighbours.size() > 0)) {
+    PoseCache cache;
+    scorePoseAt(cache, mover, anchors[current], fineIndices[current]);
+    double gain = scores[best] - scores[current] - scoreInPlace(cache, neighbours);
+    scorePoseAt(cache, mover, anchors[best], fineIndices[best]);
+    gain += scoreInPlace(cache, neighbours);
+    if (!(gain > cliqueGain())) {
+      chosen = current;
+    }
+    if (m_verbosity >= 3) {
+      std::ostringstream oss;
+      oss << "   " << describeMover(mover, coarse.atoms[0]) << ": Clique score change "
+        << roundToTwoDigits(gain) << " for the switch\n";
+      infoString += oss.str();
+    }
+  }
+
   // Put the Mover into the chosen pose through the usual state-setting path.
   if (fineIndices[chosen] < 0) {
     setMoverState(coarse, anchors[chosen]);
@@ -1114,6 +1198,111 @@ std::string OptimizerC::refineBestPrimary(boost::python::object const& mover,
     infoString += oss.str();
   }
   return infoString;
+}
+
+boost::python::tuple OptimizerC::PolishClique(scitbx::af::shared<boost::python::object> const& movers,
+  boost::python::list const& neighbours, double remainingSeconds)
+{
+  std::string infoString;
+  std::chrono::steady_clock::time_point startTime = std::chrono::steady_clock::now();
+  PoseCache cache;
+  std::vector< scitbx::af::shared<boost::python::object> > nbrs;
+  for (size_t i = 0; i < movers.size(); i++) {
+    nbrs.push_back(boost::python::extract< scitbx::af::shared<boost::python::object> >(neighbours[i]));
+  }
+
+  unsigned sweeps = 0;
+  unsigned moves = 0;
+  bool changed = true;
+  bool stopped = false;
+  while (changed && (sweeps < maxPolishSweeps())) {
+    std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - startTime;
+    if (elapsed.count() >= remainingSeconds) {
+      stopped = true;
+      break;
+    }
+    changed = false;
+    sweeps++;
+    for (size_t i = 0; i < movers.size(); i++) {
+      boost::python::object const& m = movers[i];
+      unsigned c0 = m_coarseLocations[m.ptr()];
+      int f0 = m_fineLocations[m.ptr()];
+      double current = scorePoseAt(cache, m, c0, f0) + scoreInPlace(cache, nbrs[i]);
+
+      // Per coarse position the best of it and its fine positions by own score.
+      size_t numCoarse = cachedPoses(cache, m, -1).positions.size();
+      std::vector<int> fines;
+      std::vector<double> owns;
+      for (size_t c = 0; c < numCoarse; c++) {
+        int bestFine = -1;
+        double bestOwn = scorePoseAt(cache, m, c, -1);
+        size_t numFine = cachedPoses(cache, m, static_cast<int>(c)).positions.size();
+        for (size_t f = 0; f < numFine; f++) {
+          double own = scorePoseAt(cache, m, c, static_cast<int>(f));
+          if (own > bestOwn) {
+            bestOwn = own;
+            bestFine = static_cast<int>(f);
+          }
+        }
+        fines.push_back(bestFine);
+        owns.push_back(bestOwn);
+      }
+
+      // The candidate that raises the Clique score most, other than the current pose.
+      double bestTotal = current;
+      int bestCoarse = -1;
+      for (size_t c = 0; c < numCoarse; c++) {
+        if ((c == c0) && (fines[c] == f0)) {
+          continue;
+        }
+        scorePoseAt(cache, m, c, fines[c]);
+        double total = owns[c] + scoreInPlace(cache, nbrs[i]);
+        if (total > bestTotal + cliqueGain()) {
+          bestTotal = total;
+          bestCoarse = static_cast<int>(c);
+        }
+      }
+
+      if (bestCoarse < 0) {
+        scorePoseAt(cache, m, c0, f0);
+      } else {
+        m_highScores[m.ptr()] = scorePoseAt(cache, m, bestCoarse, fines[bestCoarse]);
+        m_coarseLocations[m.ptr()] = bestCoarse;
+        m_fineLocations[m.ptr()] = fines[bestCoarse];
+        moves++;
+        changed = true;
+        if (m_verbosity >= 3) {
+          std::ostringstream oss;
+          oss << "   Polish sweep " << sweeps << ": "
+            << describeMover(m, cachedPoses(cache, m, -1).atoms[0])
+            << " to coarse orientation " << bestCoarse << ", fine orientation " << fines[bestCoarse]
+            << ", Clique score change " << roundToTwoDigits(bestTotal - current) << "\n";
+          infoString += oss.str();
+        }
+      }
+    }
+  }
+  // Release the members' fine-pose dots (keys >= fineDotCacheOffset(0)) on every exit:
+  // no later step in this OptimizerC uses them, the final scores use full dot spheres
+  // and the symmetry refresh builds a new OptimizerC.  Up to +46% peak memory otherwise.
+  for (size_t i = 0; i < movers.size(); i++) {
+    molprobity::reduce::PositionReturn& states = cachedPoses(cache, movers[i], -1);
+    for (size_t a = 0; a < states.atoms.size(); a++) {
+      unsigned iseq = states.atoms[a].data->i_seq;
+      m_excludedDots.erase(
+        m_excludedDots.lower_bound(std::make_pair(iseq, fineDotCacheOffset(0))),
+        m_excludedDots.lower_bound(std::make_pair(iseq + 1, 0u)));
+    }
+  }
+  bool capped = changed && (sweeps == maxPolishSweeps());
+  if (m_verbosity >= 3) {
+    std::ostringstream oss;
+    oss << "   Polished Clique of size " << movers.size() << ": " << sweeps << " sweeps, "
+      << moves << " moves" << (capped ? ", stopped at the sweep limit" : "")
+      << (stopped ? ", stopped by the time limit" : "") << "\n";
+    infoString += oss.str();
+  }
+  return boost::python::make_tuple(sweeps, moves, capped, stopped, infoString);
 }
 
 boost::python::tuple OptimizerC::OptimizeCliqueCoarse(

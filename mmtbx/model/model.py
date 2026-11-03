@@ -565,6 +565,7 @@ class manager(object):
     self._atom_selection_cache = None
     self._ncs_obj = None
     self._mon_lib_srv = None
+    self._mon_lib_srv_is_shared = False # set_mon_lib_srv: process() reuses it
     self._ener_lib = None
     self._rotamer_eval = None
     self._rotamer_id = None
@@ -1883,6 +1884,15 @@ class manager(object):
       self._mon_lib_srv = mmtbx.monomer_library.server.server()
     return self._mon_lib_srv
 
+  def set_mon_lib_srv(self, mon_lib_srv):
+    """
+    Monomer library server to use, by process() too, instead of creating
+    one: reading the library takes time, many models can share one server.
+    The restraint CIF objects of every model processed with it stay in it.
+    """
+    self._mon_lib_srv = mon_lib_srv
+    self._mon_lib_srv_is_shared = True
+
   def get_ener_lib(self):
     if self._ener_lib is None:
       self._ener_lib = mmtbx.monomer_library.server.ener_lib()
@@ -2387,7 +2397,7 @@ class manager(object):
       log                       = self.log,
       cif_objects               = self._restraint_objects,
       cif_parameters            = self._monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
-      mon_lib_srv               = None,
+      mon_lib_srv               = self._mon_lib_srv if self._mon_lib_srv_is_shared else None,
       ener_lib                  = None,
       use_neutron_distances     = pip.pdb_interpretation.use_neutron_distances)
     if(self._processed_pdb_file is None):
@@ -4109,27 +4119,12 @@ class manager(object):
 
   def pairs_within(self, radius, as_dict=False):
     """
-    Find pairs of atoms within radius.
+    Pairs of atoms within radius, in the asymmetric unit and across symmetry
+    mates (cctbx.crystal.pairs_within): [i, j, rt_mx, distance], each pair
+    with either atom first. as_dict: i -> list of [j, rt_mx, distance].
     """
-    cs = self.crystal_symmetry()
-    asu_mappings = crystal.symmetry.asu_mappings(cs, buffer_thickness = radius)
-    special_position_settings = crystal.special_position_settings(
-      crystal_symmetry = cs)
-    site_symmetry_table = special_position_settings.site_symmetry_table(
-      sites_cart = self.get_sites_cart())
-    asu_mappings.process_sites_frac(
-      original_sites      = self.get_sites_frac(),
-      site_symmetry_table = site_symmetry_table)
-    pair_asu_table = crystal.pair_asu_table(asu_mappings = asu_mappings)
-    pair_asu_table.add_all_pairs(distance_cutoff = radius)
-    pst = pair_asu_table.extract_pair_sym_table()
-    pairs = []
-    sites_frac = self.get_sites_frac()
-    uc = self.crystal_symmetry().unit_cell()
-    for p in pst.full_connectivity().iterator():
-      i, j, m = p.i_seq, p.j_seq, p.rt_mx_ji
-      dist = uc.distance(sites_frac[i], m*sites_frac[j])
-      pairs.append([i, j, m, dist])
+    pairs = [list(p) for p in crystal.pairs_within(
+      self.get_sites_cart(), radius, self.crystal_symmetry())]
     if as_dict:
       result = defaultdict(list)
       for first, second, third, fourth in pairs:
@@ -4602,6 +4597,7 @@ class manager(object):
       new._ncs_groups = new_ncs_groups
     new._update_master_sel()
     new._mon_lib_srv = self._mon_lib_srv
+    new._mon_lib_srv_is_shared = self._mon_lib_srv_is_shared
     new._ener_lib = self._ener_lib
     new._original_model_format = self._original_model_format
     if self._ss_annotation is not None:
@@ -4706,7 +4702,8 @@ class manager(object):
     Chain end is the last amino-acid residue of a chain, or the last residue
     before a break in polypeptide chain: next residue is not an amino acid or
     is not peptide-bonded (C(i)-N(i+1) distance >= peptide_bond_cutoff).
-    No OXT if C is already bonded to a heavy atom of another residue (within
+    No OXT if C is already bonded to a heavy atom of another residue, or of
+    a symmetry mate when the model has a unit cell (within
     peptide_bond_cutoff): caps (NH2, NME), cyclic peptides, links.
 
     OXT is placed in CA-C-O plane at 1.231 A from C, symmetrically to O, and
@@ -4739,11 +4736,7 @@ class manager(object):
           rgs.append((chain.id, rg))
       heavy = [a for a in model.atoms()
                if a.element.strip().upper() not in ["H", "D"]]
-      heavy_xyz = flex.vec3_double([a.xyz for a in heavy])
-      def bonded_elsewhere(c, rg):
-        close = ((heavy_xyz - c.xyz).norms() < peptide_bond_cutoff).iselection()
-        return any(heavy[k].parent().parent().memory_id() != rg.memory_id()
-                   for k in close)
+      ends = []
       for i, (chain_id, rg) in enumerate(rgs):
         if not is_amino_acid(rg): continue
         if i+1 < len(rgs):
@@ -4757,12 +4750,26 @@ class manager(object):
           if "OXT" in atoms: continue
           c, ca, o = [atoms.get(name) for name in ["C", "CA", "O"]]
           if None in [c, ca, o]: continue
-          if bonded_elsewhere(c, rg): continue
-          c_xyz = matrix.col(c.xyz)
-          u_ca = (matrix.col(ca.xyz) - c_xyz).normalize()
-          u_o  = (matrix.col(o.xyz)  - c_xyz).normalize()
-          xyz = c_xyz - 1.231 * (u_ca + u_o).normalize()
-          to_add.append((o, xyz))
+          ends.append((rg, c, ca, o))
+      # C bonded to a heavy atom of another residue, or of a symmetry mate
+      # (a peptide closed across symmetry): not a chain end
+      sites = flex.vec3_double([c.xyz for rg, c, ca, o in ends])
+      sites.extend(flex.vec3_double([a.xyz for a in heavy]))
+      bonded = set()
+      for k, j, rt, d in crystal.pairs_within(sites, peptide_bond_cutoff,
+          self.crystal_symmetry(), i_seqs=range(len(ends))):
+        if j < len(ends): continue
+        a = heavy[j - len(ends)]
+        if (not rt.is_unit_mx() or
+            a.parent().parent().memory_id() != ends[k][0].memory_id()):
+          bonded.add(k)
+      for k, (rg, c, ca, o) in enumerate(ends):
+        if k in bonded: continue
+        c_xyz = matrix.col(c.xyz)
+        u_ca = (matrix.col(ca.xyz) - c_xyz).normalize()
+        u_o  = (matrix.col(o.xyz)  - c_xyz).normalize()
+        xyz = c_xyz - 1.231 * (u_ca + u_o).normalize()
+        to_add.append((o, xyz))
     n_added = 0
     for o, xyz in to_add:
       ag = o.parent()
