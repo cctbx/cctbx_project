@@ -125,6 +125,7 @@ tst_list_base = [
   "$D/pdb/tst_hierarchy_atom_sort.py",
   "$D/pdb/tst_hierarchy_flip_symmetric.py",
   "$D/pdb/tst_hierarchy_reconcile_altlocs.py",
+  "$D/pdb/tst_altloc_completion.py",
   "$D/regression/tst_selected_hierarchy_flip.py",
   "$D/pdb/tst_ext.py",
   "$D/pdb/tst_input_pickling.py",

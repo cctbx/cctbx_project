@@ -2698,6 +2698,29 @@ class _():
       check_only        = check_only,
       log               = log)
 
+  def complete_altlocs(self, check_only=False, log=None):
+    """
+    Complete partial alternative conformations: every conformer label of a
+    residue gets the residue's atoms it lacks, borrowed from the residue's
+    other conformers when bonded to the conformer (an atom needed by every
+    other label becomes blank, otherwise it is copied and its occupancy
+    split). Total occupancy of every atom site is kept, so structure
+    factors do not change. Restraints built before this call must be
+    rebuilt if the hierarchy changes.
+
+    :param check_only: report changes without applying them
+    :param log: receives one line per shared, copied or truncated case
+    :returns: group_args with shared, copied, truncated, inconsistent,
+      changed and the details report_lines needs (see
+      iotbx.pdb.altloc_completion.run)
+    :raises Sorry: if an atom could come from more than one conformer
+    """
+    from iotbx.pdb import altloc_completion
+    return altloc_completion.run(
+      hierarchy  = self,
+      check_only = check_only,
+      log        = log)
+
   def is_hierarchy_altloc_consistent(self, verbose=False):
     """Return True if altlocs are consistent"""
     altlocs = {}
