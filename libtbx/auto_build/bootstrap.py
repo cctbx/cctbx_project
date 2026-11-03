@@ -2317,12 +2317,12 @@ class CCTBXBuilder(CCIBuilder):
 
   def _add_git(self, module, parameters, destination=None):
     super(CCTBXBuilder, self)._add_git(module, parameters, destination)
-    # select dials-3.22 branch
+    # select branch for DIALS related repositories
     if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
       workdir = ['modules', module]
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.24'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.31'], workdir=workdir))
       self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-3.24', 'dials-3.24'],
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.31', 'dials-3.31'],
         workdir=workdir))
 
 class DIALSBuilder(CCIBuilder):
@@ -2513,9 +2513,9 @@ class PhenixBuilder(CCIBuilder):
     super(PhenixBuilder, self)._add_git(module, parameters, destination)
     if (module == 'dials' or module == 'dxtbx' or module == 'xia2'):
       workdir = ['modules', module]
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.24'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.31'], workdir=workdir))
       self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-3.24', 'dials-3.24'],
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.31', 'dials-3.31'],
         workdir=workdir))
 
   def add_base(self, extra_opts=[]):
