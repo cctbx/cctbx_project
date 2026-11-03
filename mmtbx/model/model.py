@@ -571,7 +571,6 @@ class manager(object):
     self._atom_selection_cache = None
     self._ncs_obj = None
     self._mon_lib_srv = None
-    self._mon_lib_srv_is_shared = False # set_mon_lib_srv: process() reuses it
     self._ener_lib = None
     self._rotamer_eval = None
     self._rotamer_id = None
@@ -1892,12 +1891,11 @@ class manager(object):
 
   def set_mon_lib_srv(self, mon_lib_srv):
     """
-    Monomer library server to use, by process() too, instead of creating
-    one: reading the library takes time, many models can share one server.
+    Monomer library server for process() to use instead of creating one:
+    reading the library takes time, many models can share one server.
     The restraint CIF objects of every model processed with it stay in it.
     """
     self._mon_lib_srv = mon_lib_srv
-    self._mon_lib_srv_is_shared = True
 
   def get_ener_lib(self):
     if self._ener_lib is None:
@@ -2403,7 +2401,7 @@ class manager(object):
       log                       = self.log,
       cif_objects               = self._restraint_objects,
       cif_parameters            = self._monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
-      mon_lib_srv               = self._mon_lib_srv if self._mon_lib_srv_is_shared else None,
+      mon_lib_srv               = self._mon_lib_srv,
       ener_lib                  = None,
       use_neutron_distances     = pip.pdb_interpretation.use_neutron_distances)
     if(self._processed_pdb_file is None):
@@ -4765,7 +4763,6 @@ class manager(object):
       new._ncs_groups = new_ncs_groups
     new._update_master_sel()
     new._mon_lib_srv = self._mon_lib_srv
-    new._mon_lib_srv_is_shared = self._mon_lib_srv_is_shared
     new._ener_lib = self._ener_lib
     new._original_model_format = self._original_model_format
     if self._ss_annotation is not None:
