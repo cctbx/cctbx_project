@@ -245,7 +245,7 @@ and existing_h=reorient strips all water H and re-places both.
     if not report_stats:
       print(self._summary(n_before, n_after), file=self.logger)
     elif printed:
-      if self.params.basin.rounds and not result.basin_rounds:
+      if self.params.basin.rounds and not result.basin_rounds_run:
         print("Basin hopping: no clashing placed waters, skipped",
               file=self.logger)
       if result.kept_label is not None:

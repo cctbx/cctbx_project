@@ -769,10 +769,10 @@ def exercise_refinement_reduces_clashes():
   # placement runs none.
   hopped = _hierarchy(_WATER_CLUSTER_PDB)
   res = wp.place_water_hydrogens(hopped, n_refine=0, n_basin=2)
-  assert res.basin_rounds == 1, res.basin_rounds
+  assert res.basin_rounds_run == 1, res.basin_rounds_run
   res = wp.place_water_hydrogens(_hierarchy(_TWO_ACCEPTOR_PDB), n_refine=0,
                                  n_basin=2)
-  assert res.basin_rounds == 0, res.basin_rounds
+  assert res.basin_rounds_run == 0, res.basin_rounds_run
 
 
 def exercise_completed_water_survives_refinement():

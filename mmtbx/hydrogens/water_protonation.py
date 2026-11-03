@@ -519,7 +519,7 @@ class _WaterHydrogenPlacer:
     self.hier = hier
     self.oh_length = oh_length
     self.geometry = geometry
-    self.basin_rounds = 0
+    self.basin_rounds_run = 0
     self.element = element
     self.n_refine = n_refine
     self.refine_tol = refine_tol
@@ -1618,7 +1618,7 @@ class _WaterHydrogenPlacer:
         offenders = self._clashing_records()
         if not offenders:
           break  # nothing left to relax
-        self.basin_rounds += 1
+        self.basin_rounds_run += 1
         for ri in offenders:
           self._kick(ri, rng)
         for s in range(_WATER_BASIN_RELAX):
@@ -1708,8 +1708,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
       carried exactly one H on input, ``metal`` being ``(element, distance)``
       for a coordinating cation or None and ``action`` one of ``"kept"``,
       ``"completed"``, ``"stripped"``.
-      ``basin_rounds``: basin-hopping rounds run; fewer than ``n_basin`` once
-      no placed water clashes in the best state.
+      ``basin_rounds_run``: basin-hopping rounds run; fewer than ``n_basin``
+      once no placed water clashes in the best state.
 
   Raises
   ------
@@ -1726,7 +1726,7 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
   kept_label = placer.run()
   return group_args(kept_label=kept_label,
                     partial_waters=placer.partial_waters,
-                    basin_rounds=placer.basin_rounds)
+                    basin_rounds_run=placer.basin_rounds_run)
 
 
 def _water_h_contacts(xyz, wid, conf=None):
