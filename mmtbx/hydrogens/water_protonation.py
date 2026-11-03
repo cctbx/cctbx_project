@@ -54,12 +54,6 @@ _WATER_CLEARANCE_RADIUS = 3.0  # neighbour search radius for clearance (A)
 # Distance under which a symmetry equivalent is the same atom, not a copy.
 _WATER_SYM_EQUIV_TOL = 0.5
 
-# Relaxation sweeps after the greedy pass, each re-placing every water
-# against the current positions of all the others.
-_WATER_REFINE_SWEEPS = 5
-# Early-stop tolerance: keep refining only while a sweep removes at least
-# this many close (<2.0 A) H-H contacts.
-_WATER_REFINE_TOL = 1
 # Basin-hopping (opt-in): each round restarts from the best state, randomly
 # re-orients the still-clashing waters, and relaxes. Seeded.
 _WATER_BASIN_SEED = 0
@@ -520,10 +514,8 @@ class _WaterHydrogenPlacer:
   place. Parameter semantics: :func:`place_water_hydrogens`.
   """
 
-  def __init__(self, hier, oh_length=None, element=None,
-               n_refine=_WATER_REFINE_SWEEPS, refine_tol=_WATER_REFINE_TOL,
-               n_basin=0, existing_h="keep", on_state=None,
-               crystal_symmetry=None, geometry=None):
+  def __init__(self, hier, oh_length, element, n_refine, refine_tol,
+               n_basin, existing_h, on_state, crystal_symmetry, geometry):
     self.hier = hier
     self.oh_length = oh_length
     self.geometry = geometry
@@ -1645,11 +1637,9 @@ class _WaterHydrogenPlacer:
     return best_label if (self.n_refine or self.n_basin) else None
 
 
-def place_water_hydrogens(hier, oh_length=None, element=None,
-                          n_refine=_WATER_REFINE_SWEEPS,
-                          refine_tol=_WATER_REFINE_TOL, n_basin=0,
-                          existing_h="keep", on_state=None,
-                          crystal_symmetry=None, geometry=None):
+def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
+                          refine_tol=1, n_basin=0, existing_h="keep",
+                          on_state=None, crystal_symmetry=None, geometry=None):
   """Place the two H on every bare water, H-bond-aware.
 
   For each water residue missing H (any common water alias: HOH, DOD, H2O,
