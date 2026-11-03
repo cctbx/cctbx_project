@@ -118,6 +118,9 @@ def get_correction_vector(resname,
 # residues agreed with it
 prior_strength = 0.5
 prior_weight = 100
+# deviations this large (inverted CA, misplaced CB) aren't phi/psi offsets and
+# would dominate the fit, so they are left out of the fit and the check
+max_fit_deviation = 2.
 
 def apply_correction(deviation, dihedral, correction, strength):
   """(deviation, dihedral in degrees) of v - strength*c, where v is the
@@ -131,8 +134,13 @@ def choose_strength(deviations, dihedrals, corrections, user_strength=None):
   """Correction strength for one model from its residues that have a
   correction. fitted is the least-squares strength sum(v.c)/sum(|c|**2),
   pulled the same with the prior; applied is pulled limited to 0..1, or 0 if
-  that would raise the mean deviation, or user_strength if given."""
+  that would raise the mean deviation, or user_strength if given. Residues
+  with a deviation of max_fit_deviation or more are left out."""
   from libtbx import group_args
+  keep = [i for i, d in enumerate(deviations) if d < max_fit_deviation]
+  deviations = [deviations[i] for i in keep]
+  dihedrals = [dihedrals[i] for i in keep]
+  corrections = [corrections[i] for i in keep]
   n = len(corrections)
   svc = scc = 0.
   for d, t, c in zip(deviations, dihedrals, corrections):

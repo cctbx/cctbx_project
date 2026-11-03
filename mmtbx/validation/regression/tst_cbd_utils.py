@@ -108,7 +108,7 @@ def exercise_choose_strength():
 
 def exercise_never_worse():
   # one large residue drives the fit; 200 residues with v = 0 get worse
-  devs, dihedrals, corrections = [2.], [0.], [(2., 0.)]
+  devs, dihedrals, corrections = [1.5], [0.], [(1.5, 0.)]
   devs += [0.]*200
   dihedrals += [0.]*200
   corrections += [(0.1, 0.)]*200
@@ -117,7 +117,17 @@ def exercise_never_worse():
   assert s.mean_corrected > s.mean_uncorrected
   s = cbd_utils.choose_strength(devs, dihedrals, corrections, user_strength=1.)
   assert s.user_set and not s.check_failed and s.applied == 1.
-  assert approx_equal(s.fitted, 4/6.)
+  assert approx_equal(s.fitted, 2.25/4.25)
+
+def exercise_gross_deviation_not_fitted():
+  # one residue 2.5 A off, against its table vector, must not drive the fit
+  devs, dihedrals, corrections = synthetic(3000, 0.6)
+  devs.append(2.5)
+  dihedrals.append(180.)
+  corrections.append((0.05, 0.))
+  s = cbd_utils.choose_strength(devs, dihedrals, corrections)
+  assert abs(s.fitted - 0.6) < 0.01, s.fitted
+  assert s.n == 3000, s.n
 
 def run():
   exercise_angle_wrapping()
@@ -128,6 +138,7 @@ def run():
   exercise_apply_correction()
   exercise_choose_strength()
   exercise_never_worse()
+  exercise_gross_deviation_not_fitted()
   print('OK')
 
 if __name__ == '__main__':
