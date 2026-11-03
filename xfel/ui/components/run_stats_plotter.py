@@ -217,8 +217,6 @@ def plot_run_stats(stats,
   else:
     ax1, ax2, ax3, ax4 = f.subplots(4, sharex=True, sharey=False)
     axset = (ax1, ax2, ax3, ax4)
-  for a in axset:
-    a.tick_params(axis='x', which='both', bottom='off', top='off')
   ax1.scatter(t.select(~indexed_sel), n_strong.select(~indexed_sel), edgecolors="none", color ='#d9d9d9', s=spot_ratio)
   ax1.scatter(t.select(indexed_sel), n_strong.select(indexed_sel), edgecolors="none", color='blue', s=spot_ratio)
   ax1.set_ylim(ymin=0)
@@ -255,6 +253,17 @@ def plot_run_stats(stats,
     for l in xlab + ylab:
       l.set_fontsize(text_ratio)
   f.subplots_adjust(hspace=0)
+  if minimalist:
+    ax3.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
+    ax3.set_yticks([])
+  else:
+    sel = wavelengths > 0
+    energies = 12398.4/wavelengths.select(sel)
+    ax4.scatter(t.select(sel), energies, c='lightgray', s=spot_ratio, alpha=0.5)
+    ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
+    ax4.set_ylabel("energy (eV)", fontsize=text_ratio)
+  for item in axset:
+    item.tick_params(labelsize=text_ratio)
   # add lines and text summaries at the timestamp boundaries
   if not minimalist:
     for boundary in boundaries:
@@ -289,29 +298,23 @@ def plot_run_stats(stats,
       status_color = 'black'
     else:
       status_color = 'red'
-    if minimalist:
-      ax3.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
-      ax3.set_yticks([])
-    else:
-      sel = wavelengths > 0
-      energies = 12398.4/wavelengths.select(sel)
-      ax4.scatter(t.select(sel), energies, c='lightgray', s=spot_ratio, alpha=0.5)
-
+    if not minimalist:
       def clipit(ax, x, y, text, max_width, fontsize):
+        # Draw text at (x, y), shortened with "..." if it is wider than
+        # max_width data units.
         t = ax.text(x, y, text, fontsize=fontsize, transform=ax.get_xaxis_transform())
         width = t.get_window_extent().width
         ax_width = ax.get_window_extent().width
         xmin, xmax = ax.get_xlim()
         max_width_in_pixels = (max_width / (xmax-xmin)) * (ax_width)
-
-        if width > max_width_in_pixels:
-          for i in range(len(text), 0, -1):
-            t.remove()
-            truncated_text = text[:i] + "..."
-            t = ax.text(x, y, truncated_text, fontsize=fontsize, transform=ax.get_xaxis_transform())
-            if t.get_window_extent().width < max_width_in_pixels:
-              break
-          ax.text(x, y, truncated_text, fontsize=fontsize, transform=ax.get_xaxis_transform())
+        if width <= max_width_in_pixels:
+          return
+        # Start from the proportional estimate and shorten until it fits.
+        n = min(len(text) - 1, int(len(text) * max_width_in_pixels / width))
+        for i in range(max(n, 1), 0, -1):
+          t.set_text(text[:i] + "...")
+          if t.get_window_extent().width <= max_width_in_pixels:
+            break
 
       ax1.text(start_t, 1.05, " " + ", ".join(tags) + " [%s]" % status, fontsize=text_ratio, color=status_color, rotation=10, transform=ax1.get_xaxis_transform(), clip_on=False, zorder=10)
 
@@ -330,12 +333,6 @@ def plot_run_stats(stats,
         ax4.text(start_t, .25, "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), fontsize=text_ratio, transform=ax4.get_xaxis_transform())
         ax4.text(start_t, .05, "%-3.1f (%-3.1f)%% idx" % \
           (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), fontsize=text_ratio, transform=ax4.get_xaxis_transform())
-
-
-      ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
-      ax4.set_ylabel("energy (eV)", fontsize=text_ratio)
-    for item in axset:
-      item.tick_params(labelsize=text_ratio)
     start += lengths[idx]
   if title is not None:
     plt.title(title)
@@ -350,24 +347,20 @@ def plot_run_stats(stats,
     # print "plot_run_stats took %s" % duration(t1, t2)
     return "runstats_tmp.png"
 
-def plot_multirun_stats(runs,
-                        run_numbers,
-                        d_min,
-                        n_multiples=2,
-                        ratio_cutoff=1,
-                        n_strong_cutoff=40,
-                        i_sigi_cutoff=1,
-                        run_tags=[],
-                        run_statuses=[],
-                        minimalist=False,
-                        interactive=False,
-                        easy_run=False,
-                        compress_runs=True,
-                        xsize=30,
-                        ysize=10,
-                        high_vis=False,
-                        title=None,
-                        figure=None):
+def get_multirun_stats(runs,
+                       run_numbers,
+                       d_min,
+                       n_multiples=2,
+                       ratio_cutoff=1,
+                       n_strong_cutoff=40,
+                       i_sigi_cutoff=1,
+                       run_tags=[],
+                       run_statuses=[],
+                       compress_runs=True):
+  """ Concatenate the per-run stats and compute the sliding-window rates.
+      Returns (stats_tuple, run_tags, run_statuses) for the runs that have
+      data, ready for plot_run_stats. Does no plotting, so it can run off
+      the GUI thread. """
   tset = flex.double()
   two_theta_low_set = flex.double()
   two_theta_high_set = flex.double()
@@ -389,7 +382,6 @@ def plot_multirun_stats(runs,
         offset += (r[0][-1] - r[0][0] + 1)
       else:
         tslice = r[0]
-      last_end = r[0][-1]
       tset.extend(tslice)
       two_theta_low_set.extend(r[1])
       two_theta_high_set.extend(r[2])
@@ -420,6 +412,30 @@ def plot_multirun_stats(runs,
                               n_strong_cutoff=n_strong_cutoff,
                               i_sigi_cutoff=i_sigi_cutoff,
                               d_min=d_min)
+  return stats_tuple, run_tags_with_data, run_statuses_with_data
+
+def plot_multirun_stats(runs,
+                        run_numbers,
+                        d_min,
+                        n_multiples=2,
+                        ratio_cutoff=1,
+                        n_strong_cutoff=40,
+                        i_sigi_cutoff=1,
+                        run_tags=[],
+                        run_statuses=[],
+                        minimalist=False,
+                        interactive=False,
+                        easy_run=False,
+                        compress_runs=True,
+                        xsize=30,
+                        ysize=10,
+                        high_vis=False,
+                        title=None,
+                        figure=None):
+  stats_tuple, run_tags_with_data, run_statuses_with_data = get_multirun_stats(
+    runs, run_numbers, d_min, n_multiples=n_multiples, ratio_cutoff=ratio_cutoff,
+    n_strong_cutoff=n_strong_cutoff, i_sigi_cutoff=i_sigi_cutoff,
+    run_tags=run_tags, run_statuses=run_statuses, compress_runs=compress_runs)
   if easy_run:
     from libtbx import easy_run, easy_pickle
     easy_pickle.dump("plot_run_stats_tmp.pickle", (stats_tuple, d_min, n_multiples, run_tags_with_data, run_statuses_with_data, minimalist, interactive, xsize, ysize, high_vis, title))

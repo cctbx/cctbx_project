@@ -96,11 +96,14 @@ class Stats(object):
     return cells
 
 class HitrateStats(object):
-  def __init__(self, app, run_number, trial_number, rungroup_id, d_min = None, i_sigi_cutoff = 1, raw_data_sampling = 1):
+  def __init__(self, app, run_number, trial_number, rungroup_id, d_min = None, i_sigi_cutoff = 1, raw_data_sampling = 1,
+               run = None, trial = None, rungroup = None):
+    """ A caller that already holds the run, trial and rungroup objects can
+        pass them to skip looking them up by number again. """
     self.app = app
-    self.run = app.get_run(run_number = run_number)
-    self.trial = app.get_trial(trial_number = trial_number)
-    self.rungroup = app.get_rungroup(rungroup_id = rungroup_id)
+    self.run = run if run is not None else app.get_run(run_number = run_number)
+    self.trial = trial if trial is not None else app.get_trial(trial_number = trial_number)
+    self.rungroup = rungroup if rungroup is not None else app.get_rungroup(rungroup_id = rungroup_id)
     self.d_min = d_min
     self.i_sigi_cutoff = i_sigi_cutoff
     self.sampling = raw_data_sampling
@@ -110,10 +113,6 @@ class HitrateStats(object):
     from xfel.ui.components.timeit import duration
     #import time
     #t1 = time.time()
-    run_numbers = [r.run for r in self.trial.runs]
-    assert self.run.run in run_numbers
-    rungroup_ids = [rg.id for rg in self.trial.rungroups]
-    assert self.rungroup.id in rungroup_ids
     if len(self.trial.isoforms) > 0:
       cells = [isoform.cell for isoform in self.trial.isoforms]
     else:

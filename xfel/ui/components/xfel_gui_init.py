@@ -622,15 +622,13 @@ class RunStatsSentinel(Thread):
     self.parent = parent
     self.active = active
     self.output = self.parent.params.output_folder
-    self.number_of_pickles = 0
-    self.info = {}
     self.run_numbers = []
     self.stats = []
     self.run_tags = []
     self.run_statuses = []
 
   def post_refresh(self):
-    evt = RefreshRunStats(tp_EVT_RUNSTATS_REFRESH, -1, self.info)
+    evt = RefreshRunStats(tp_EVT_RUNSTATS_REFRESH, -1)
     wx.PostEvent(self.parent.run_window.runstats_tab, evt)
 
   def run(self):
@@ -645,45 +643,46 @@ class RunStatsSentinel(Thread):
         self.fetch_timestamps(indexed=True)
         self.fetch_timestamps(indexed=False)
         self.post_refresh()
-        self.info = {}
         wx.CallAfter(self.parent.run_window.runstats_light.change_status, 'on')
         time.sleep(5)
       except Exception as e:
-        print(e)
+        # The tab restarts the sentinel when it is next shown.
+        print("Run stats update failed: %s" % e)
         wx.CallAfter(self.parent.run_window.runstats_light.change_status, 'alert')
         break
 
   def refresh_stats(self):
-    #from xfel.ui.components.timeit import duration
     from xfel.ui.db.stats import HitrateStats
-    import copy, time
-    t1 = time.time()
+    import copy
     if self.parent.run_window.runstats_tab.trial_no is not None:
       trial = self.db.get_trial(
         trial_number=self.parent.run_window.runstats_tab.trial_no)
       selected_runs = copy.deepcopy(self.parent.run_window.runstats_tab.selected_runs)
-      self.run_numbers = []
+      # Build locally and assign at the end so the GUI thread never sees
+      # half-filled lists.
+      run_numbers = []
       trial_ids = []
       rungroup_ids = []
-      self.stats = []
-      self.trgr = {}
-      self.run_tags = []
-      self.run_statuses = []
+      stats = []
+      trgr = {}
+      run_tags = []
+      run_statuses = []
       for rg in trial.rungroups:
         for run in rg.runs:
-          if run.run not in self.run_numbers and run.run in selected_runs:
-            self.run_numbers.append(run.run)
+          if run.run not in run_numbers and run.run in selected_runs:
+            run_numbers.append(run.run)
             trial_ids.append(trial.id)
             rungroup_ids.append(rg.id)
-            self.trgr[run.run] = (trial, rg, run)
-            self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
-                                           i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
-                                           d_min=self.parent.run_window.runstats_tab.d_min)())
-            self.run_tags.append([tag.name for tag in run.tags])
+            trgr[run.run] = (trial, rg, run)
+            stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
+                                      i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
+                                      d_min=self.parent.run_window.runstats_tab.d_min,
+                                      run=run, trial=trial, rungroup=rg)())
+            run_tags.append([tag.name for tag in run.tags])
 
       jobs = self.db.get_all_jobs()
-      for idx in range(len(self.run_numbers)):
-        run_no = self.run_numbers[idx]
+      for idx in range(len(run_numbers)):
+        run_no = run_numbers[idx]
         rg_id = rungroup_ids[idx]
         t_id = trial_ids[idx]
         found_it = False
@@ -694,10 +693,14 @@ class RunStatsSentinel(Thread):
             pass
           else:
             if ok:
-              self.run_statuses.append(job.status)
+              run_statuses.append(job.status)
               found_it = True; break
-        if not found_it: self.run_statuses.append('UNKWN')
-    t2 = time.time()
+        if not found_it: run_statuses.append('UNKWN')
+      self.run_numbers = run_numbers
+      self.stats = stats
+      self.trgr = trgr
+      self.run_tags = run_tags
+      self.run_statuses = run_statuses
 
   def get_xtc_process_params_for_run(self, trial, rg, run):
     params = {}
@@ -754,7 +757,7 @@ class RunStatsSentinel(Thread):
         image_paths_by_run
 
   def plot_stats(self):
-    from xfel.ui.components.run_stats_plotter import plot_multirun_stats
+    from xfel.ui.components.run_stats_plotter import get_multirun_stats, plot_run_stats
     self.refresh_stats()
     tab = self.parent.run_window.runstats_tab
     sizex, sizey = tab.runstats_panelsize
@@ -770,23 +773,33 @@ class RunStatsSentinel(Thread):
     i_sigi = tab.i_sigi
     entire_expt = tab.entire_expt
     high_vis = self.parent.high_vis
+    # The sliding-window rates are computed here, on the sentinel thread;
+    # only the drawing is handed to the GUI thread.
+    stats_tuple, run_tags_with_data, run_statuses_with_data = get_multirun_stats(
+      stats, run_numbers, d_min, n_multiples=n_multiples, ratio_cutoff=ratio,
+      n_strong_cutoff=n_strong, i_sigi_cutoff=i_sigi,
+      run_tags=run_tags, run_statuses=run_statuses)
     def _draw():
-      figure.clear()
-      plot_multirun_stats(
-        stats, run_numbers,
-        d_min=d_min,
-        n_multiples=n_multiples,
-        interactive=True,
-        ratio_cutoff=ratio,
-        n_strong_cutoff=n_strong,
-        i_sigi_cutoff=i_sigi,
-        run_tags=run_tags,
-        run_statuses=run_statuses,
-        minimalist=entire_expt,
-        xsize=(sizex-25)/85, ysize=(sizey-25)/95,  # convert px to inches with fudge factor
-        high_vis=high_vis,
-        figure=figure)
-      figure.canvas.draw_idle()
+      # Runs on the GUI thread, outside the sentinel loop's handler.
+      try:
+        figure.clear()
+        plot_run_stats(
+          stats_tuple, d_min,
+          n_multiples=n_multiples,
+          run_tags=run_tags_with_data,
+          run_statuses=run_statuses_with_data,
+          minimalist=entire_expt,
+          interactive=True,
+          xsize=(sizex-25)/85, ysize=(sizey-25)/95,  # convert px to inches with fudge factor
+          high_vis=high_vis,
+          figure=figure)
+        figure.canvas.draw_idle()
+        # What the click handler maps clicks against: exactly what was drawn.
+        tab.plotted_stats = stats
+        tab.plotted_run_numbers = run_numbers
+      except Exception as e:
+        print("Run stats plot failed: %s" % e)
+        self.parent.run_window.runstats_light.change_status('alert')
     wx.CallAfter(_draw)
 
 class ImageDumpThread(Thread):
@@ -2701,8 +2714,6 @@ class RunStatsTab(BaseTab):
     self.trial = None
     self.all_runs = []
     self.selected_runs = []
-    self.tag_trial_changed = True
-    self.tag_runs_changed = True
     self.tag_last_five = False
     self.entire_expt = False
     self.d_min = 2
@@ -2718,6 +2729,8 @@ class RunStatsTab(BaseTab):
     self.auto_update = True
     self.sf_frame = None
     self.cached_run = None
+    self.plotted_stats = []
+    self.plotted_run_numbers = []
 
     self.runstats_panel = wx.Panel(self, size=(100, 100))
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
@@ -2731,7 +2744,7 @@ class RunStatsTab(BaseTab):
 
     self.figure = mpl.figure.Figure()
     self.canvas = FigureCanvas(self.runstats_box, -1, self.figure)
-    self.toolbar = NavigationToolbar(self.canvas)
+    self.toolbar = NavigationToolbar(self.canvas, coordinates=False)
     self.toolbar.SetWindowStyle(wx.TB_VERTICAL)
     self.toolbar.Realize()
 
@@ -2905,21 +2918,19 @@ class RunStatsTab(BaseTab):
     self.main_sizer.Add(self.bottom_sizer, 0,
                         flag=wx.EXPAND | wx.ALL, border=10)
 
-    self.static_bitmap = wx.StaticBitmap(
-      self.runstats_panel, wx.ID_ANY)#, wx.Bitmap(img))
-    self.runstats_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
-    self.runstats_panel.SetSizer(self.runstats_sizer)
-
     # Bindings
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_BUTTON, self.onLastFiveRuns, self.last_five_runs)
     self.Bind(wx.EVT_BUTTON, self.onEntireExpt, self.plot_entire_expt)
-    self.Bind(wx.EVT_TEXT_ENTER, self.onDMin, self.d_min_select.d_min)
-    self.Bind(wx.EVT_TEXT_ENTER, self.onMultiples, self.n_multiples_selector.multiples)
-    self.Bind(wx.EVT_TEXT_ENTER, self.onRatioCutoff, self.ratio_cutoff.ratio)
-    self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff.n_strong)
-    self.Bind(wx.EVT_TEXT_ENTER, self.onIsigICutoff, self.i_sigi_cutoff.isigi)
-    self.Bind(wx.EVT_TEXT_ENTER, self.onNDump, self.n_dump_cutoff.n_dump)
+    # Parameters take effect on Enter or when the box loses focus.
+    for ctrl, handler in ((self.d_min_select.d_min, self.onDMin),
+                          (self.n_multiples_selector.multiples, self.onMultiples),
+                          (self.ratio_cutoff.ratio, self.onRatioCutoff),
+                          (self.n_strong_cutoff.n_strong, self.onHitCutoff),
+                          (self.i_sigi_cutoff.isigi, self.onIsigICutoff),
+                          (self.n_dump_cutoff.n_dump, self.onNDump)):
+      self.Bind(wx.EVT_TEXT_ENTER, handler, ctrl)
+      ctrl.Bind(wx.EVT_KILL_FOCUS, handler)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
     self.Bind(wx.EVT_BUTTON, self.onOpenImages, self.idx_show_images_button)
     self.Bind(wx.EVT_BUTTON, self.onDumpImages, self.shi_dump_images_button)
@@ -2928,12 +2939,9 @@ class RunStatsTab(BaseTab):
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
 
-    if hasattr(self.figure, '_cid'):
-      self.figure.canvas.mpl_disconnect(self.figure._cid)
-    self.figure._cid = self.figure.canvas.mpl_connect('button_press_event', self.onCanvasClick)
+    self.figure.canvas.mpl_connect('button_press_event', self.onCanvasClick)
 
     self.Layout()
-    self.Fit()
     self.runstats_panelsize = self.runstats_box.GetSize()
 
   def OnSize(self, e):
@@ -2988,7 +2996,6 @@ class RunStatsTab(BaseTab):
         self.strong_indexed_box.Show()
         self.should_have_indexed_box.Show()
     self.Layout()
-    self.Fit()
 
   @staticmethod
   def onCanvasClick(event):
@@ -2997,7 +3004,7 @@ class RunStatsTab(BaseTab):
     tab = event.canvas.GetParent().GetParent().GetParent()
     params = tab.main.params
     if params.facility.name != 'lcls': return
-    all_stats = tab.main.runstats_sentinel.stats
+    all_stats = tab.plotted_stats
     if not all_stats:
       return
 
@@ -3014,7 +3021,7 @@ class RunStatsTab(BaseTab):
     mindiff = np.argmin(diffs)
     x = round(twod_data[mindiff][0])
 
-    run_numbers = tab.main.runstats_sentinel.run_numbers
+    run_numbers = tab.plotted_run_numbers
     found_it = False
     for run_number, stats in zip(run_numbers, all_stats):
       timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices, wavelengths = stats
@@ -3057,11 +3064,10 @@ class RunStatsTab(BaseTab):
 
   def onChkAutoUpdate(self, e):
     self.auto_update = self.chk_auto_update.GetValue()
-
-    if self.auto_update and (self.main.runstats_sentinel is None or not self.main.runstats_sentinel.active):
-      self.main.start_runstats_sentinel()
-    else:
+    if not self.auto_update:
       self.main.stop_runstats_sentinel()
+    elif self.main.runstats_sentinel is None or not self.main.runstats_sentinel.active:
+      self.main.start_runstats_sentinel()
 
   def print_strong_indexed_paths(self):
     try:
@@ -3098,43 +3104,49 @@ class RunStatsTab(BaseTab):
     self.select_all()
     self.main.run_window.runstats_light.change_status('idle')
 
-  def onDMin(self, e):
+  def read_option(self, ctrl, attr, convert, expected):
+    ''' Commit the text in ctrl to self.<attr> via convert. Bad input puts
+        the value in use back in the box and says why. '''
+    text = ctrl.GetValue().strip()
     try:
-      d_min = float(self.d_min_select.d_min.GetValue())
-      self.d_min = d_min
+      setattr(self, attr, convert(text))
     except ValueError:
-      pass
+      ctrl.SetValue(str(getattr(self, attr)))
+      # Deferred: a modal dialog must not open from inside a focus event.
+      wx.CallAfter(wx.MessageBox,
+                   '"%s" is not %s. Keeping %s.' % (text, expected, getattr(self, attr)),
+                   'Run stats', wx.OK | wx.ICON_ERROR, self)
+
+  @staticmethod
+  def count(text):
+    ''' int() restricted to non-negative whole numbers '''
+    if not text.isdigit():
+      raise ValueError(text)
+    return int(text)
+
+  def onDMin(self, e):
+    self.read_option(self.d_min_select.d_min, 'd_min', float, 'a number')
+    e.Skip()
 
   def onMultiples(self, e):
-    try:
-      mult = int(self.n_multiples_selector.multiples.GetValue())
-      self.n_multiples = mult
-    except ValueError:
-      pass
+    self.read_option(self.n_multiples_selector.multiples, 'n_multiples', self.count, 'a whole number')
+    e.Skip()
 
   def onRatioCutoff(self, e):
-    try:
-      ratio = float(self.ratio_cutoff.ratio.GetValue())
-      self.ratio = ratio
-    except ValueError:
-      pass
+    self.read_option(self.ratio_cutoff.ratio, 'ratio', float, 'a number')
+    e.Skip()
 
   def onHitCutoff(self, e):
-    n_strong = self.n_strong_cutoff.n_strong.GetValue()
-    if n_strong.isdigit():
-      self.n_strong = int(n_strong)
+    self.read_option(self.n_strong_cutoff.n_strong, 'n_strong', self.count, 'a whole number')
+    e.Skip()
 
   def onIsigICutoff(self, e):
-    try:
-      isigi = float(self.i_sigi_cutoff.isigi.GetValue())
-      self.i_sigi = isigi
-    except ValueError:
-      pass
+    self.read_option(self.i_sigi_cutoff.isigi, 'i_sigi', float, 'a number')
+    e.Skip()
 
   def onNDump(self, e):
-    n_dump = self.n_dump_cutoff.n_dump.GetValue()
-    if n_dump.isdigit():
-      self.n_dump = int(n_dump)
+    self.read_option(self.n_dump_cutoff.n_dump, 'n_dump', self.count, 'a whole number')
+    e.Skip()
 
   def dump_timestamps(self, params, ts_list, img_list):
     if not os.path.isdir(params['output_dir']):
@@ -3209,14 +3221,15 @@ class RunStatsTab(BaseTab):
           self.trial_number.ctr.SetClientData(item_idx, trial)
 
       if self.trial_no is not None:
-        self.trial_number.ctr.SetSelection(self.trial_no)
+        self.trial_number.ctr.SetSelection(self.trial_number.ctr.FindString(str(self.trial_no)))
       else:
         self.trial_number.ctr.SetSelection(0)
 
   def find_runs(self):
     self.run_numbers.ctr.Clear()
+    self.all_runs = []
     if self.trial is not None:
-      self.runs_available = [str(r.run) for r in self.trial.runs]
+      self.all_runs = [str(r.run) for r in self.trial.runs]
       if len(self.all_runs) > 0:
         self.run_numbers.ctr.InsertItems(items=self.all_runs, pos=0)
 
@@ -3244,10 +3257,17 @@ class RunStatsTab(BaseTab):
   def select_last_n_runs(self, n):
     if self.trial is not None:
       self.selected_runs = [r.run for r in self.trial.runs][-n:]
+      self.show_selected_runs()
 
   def select_all(self):
     if self.trial is not None:
       self.selected_runs = [r.run for r in self.trial.runs]
+      self.show_selected_runs()
+
+  def show_selected_runs(self):
+    ''' Tick the run checklist to match selected_runs '''
+    strings = self.run_numbers.ctr.GetStrings()
+    self.run_numbers.ctr.SetCheckedItems([i for i, s in enumerate(strings) if s in self.selected_runs])
 
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
