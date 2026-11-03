@@ -45,10 +45,6 @@ symmetry = True
   .type = bool
   .short_caption = Honour crystal symmetry
   .help = "Include the symmetry-equivalent atoms near each water in its environment. Ignored for a model without a unit cell and space group, and for an electron microscopy model."
-lone_pair = False
-  .type = bool
-  .short_caption = Lone-pair-directed placement
-  .help = "Aim each O-H at an acceptor lone-pair lobe (derived from its bonded-neighbour geometry) rather than its nucleus."
 refine
   .short_caption = Refinement sweeps
 {
@@ -235,15 +231,14 @@ and existing_h=reorient strips all water H and re-places both.
 
     result = water_protonation.place_water_hydrogens(
       hier,
-      geometry           = geometry,
-      element            = placer_element,
-      n_refine           = self.params.refine.max_sweeps,
-      refine_tol         = self.params.refine.tolerance,
-      n_basin            = self.params.basin.rounds,
-      existing_h         = self.params.existing_h,
-      lone_pair_directed = self.params.lone_pair,
-      crystal_symmetry   = cs,
-      on_state           = on_state if report_stats else None)
+      geometry         = geometry,
+      element          = placer_element,
+      n_refine         = self.params.refine.max_sweeps,
+      refine_tol       = self.params.refine.tolerance,
+      n_basin          = self.params.basin.rounds,
+      existing_h       = self.params.existing_h,
+      crystal_symmetry = cs,
+      on_state         = on_state if report_stats else None)
 
     n_after = self._count_water_h(hier)
     self.n_added = sum(n_after) - sum(n_before)

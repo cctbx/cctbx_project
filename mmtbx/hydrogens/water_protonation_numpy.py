@@ -45,11 +45,6 @@ _WATER_GEOMETRY = {
 _WATER_ACCEPTOR_RADIUS = 3.5  # max distance to search for H-bond acceptors (A)
 _WATER_ACCEPTOR_ELEMENTS = frozenset({"O", "N", "F", "S", "CL"})
 _WATER_NH_BOND = 1.3          # max N-H distance for "N carries an H" (A)
-# Lone-pair-directed placement (opt-in): H1 aims at an acceptor's lone-pair
-# lobe rather than its nucleus. Its distances and angles:
-_WATER_BOND_HEAVY = 1.9       # max heavy-atom bond length for lobe geometry (A)
-_WATER_HBOND_HA = 1.8         # nominal H...acceptor distance along a lobe (A)
-_WATER_SP2_LOBE_DEG = 60.0    # half-angle of the two sp2 carbonyl/-late lobes
 _WATER_CONE_SAMPLES = 36      # angular samples around the O-H1 cone
 # Element-aware "clash-free" thresholds: a candidate H must clear every
 # heavy atom by _WATER_MIN_CLEARANCE and every hydrogen (and cation) by the
@@ -330,124 +325,6 @@ def _compatible(ca, cb):
   return not ca or not cb or ca == cb
 
 
-def _sp2_plane_normal(atoms, static_tree, c, exclude, conf=None, view=0):
-  """Unit normal of the sp2 plane around atom ``c``.
-
-  Built from ``c``'s heavy substituents other than ``exclude``, the bonded
-  acceptor O that supplies one in-plane vector, taking only substituents
-  that coexist with conformer ``view`` (any, for view 0; ``conf`` holds the
-  per-atom conformer indices). None if underdetermined.
-  """
-  C = matrix.col(atoms[c].xyz)
-  oc = matrix.col(atoms[exclude].xyz) - C   # C -> O
-  for k in static_tree.query_ball_point(atoms[c].xyz, _WATER_BOND_HEAVY):
-    if k == c or k == exclude:
-      continue
-    if view and not _compatible(view, conf[k]):
-      continue
-    if atoms[k].element_is_hydrogen():
-      continue
-    v = matrix.col(atoms[k].xyz) - C
-    if v.length() > _WATER_BOND_HEAVY:
-      continue
-    nrm = oc.cross(v)
-    if nrm.length() > 1e-3:
-      return nrm.normalize()
-  return None
-
-
-def _bond_lobes(atoms, static_tree, i, el, nbrs, conf, view):
-  """Lone-pair lobes of acceptor ``i`` (element ``el``) from its bonded
-  neighbours ``nbrs``, the sp2 plane taken in conformer ``view``; see
-  :func:`_acceptor_lobes`."""
-  A = matrix.col(atoms[i].xyz)
-  bond_dirs = [(matrix.col(atoms[j].xyz) - A).normalize() for j in nbrs]
-  if not bond_dirs:
-    return []
-  if el == "O" and len(nbrs) == 1:
-    away = bond_dirs[0] * -1.0
-    n = _sp2_plane_normal(atoms, static_tree, nbrs[0], i, conf, view)
-    if n is None:
-      return [away]
-    return [
-      away.rotate_around_origin(axis=n, angle=_WATER_SP2_LOBE_DEG, deg=True),
-      away.rotate_around_origin(axis=n, angle=-_WATER_SP2_LOBE_DEG, deg=True)]
-  bsum = matrix.col((0.0, 0.0, 0.0))
-  for b in bond_dirs:
-    bsum = bsum + b
-  return [(bsum * -1.0).normalize()] if bsum.length() > 1e-6 else []
-
-
-def _acceptor_lobes(atoms, static_tree, donor_n, indices, conf=None):
-  """Lone-pair lobe unit vectors per acceptor atom among ``indices``, from
-  bonded geometry.
-
-  - terminal O (1 bond, carbonyl/carboxylate): two in-plane sp2 lobes
-    ``2 * _WATER_SP2_LOBE_DEG`` apart, straddling the direction away from the
-    bonded atom.
-  - otherwise: one lobe opposite the sum of the bond directions.
-
-  ``donor_n`` holds the indices of N that carry an H (donors, not acceptors).
-  ``conf`` holds per-atom conformer indices, None for a model without
-  altlocs: a bond joins only atoms that coexist, and a blank acceptor whose
-  bonded neighbours are split between altlocs has one geometry per altloc.
-
-  Returns acceptor index -> ``{view: lobe list}``, a lobe list empty where
-  the geometry is underdetermined. ``view`` is the conformer the lobes were
-  built in: the acceptor's own, unless it is blank with split neighbours,
-  which gives one view per altloc among them and view 0 from its blank
-  neighbours alone. :func:`_view_lobes` picks the lobes a water sees.
-  """
-  lobes = {}
-  for i in indices:
-    a = atoms[i]
-    el = a.element.strip().upper()
-    if el not in _WATER_ACCEPTOR_ELEMENTS:
-      continue
-    if el == "N" and i in donor_n:
-      continue  # protonated N is a donor, not an acceptor
-    ci = conf[i] if conf is not None else 0
-    A = matrix.col(a.xyz)
-    nbrs = []
-    for j in static_tree.query_ball_point(a.xyz, _WATER_BOND_HEAVY):
-      if j == i:
-        continue
-      if conf is not None and not _compatible(ci, conf[j]):
-        continue  # another altloc's copy of a neighbour, or of this atom
-      d = (matrix.col(atoms[j].xyz) - A).length()
-      lim = (_WATER_NH_BOND if atoms[j].element_is_hydrogen()
-             else _WATER_BOND_HEAVY)
-      # An atom on top of this one contributes no bond direction.
-      if 1e-3 < d <= lim:
-        nbrs.append(j)
-    split = ({conf[j] for j in nbrs} - {0}) if conf is not None and not ci \
-        else ()
-    if not split:
-      lobes[i] = {ci: _bond_lobes(atoms, static_tree, i, el, nbrs, conf, ci)}
-    else:
-      lobes[i] = {}
-      for v in sorted(split | {0}):
-        lobes[i][v] = _bond_lobes(atoms, static_tree, i, el,
-                                  [j for j in nbrs if conf[j] in (0, v)],
-                                  conf, v)
-  return lobes
-
-
-def _view_lobes(views, c):
-  """The lobes of ``views`` (see :func:`_acceptor_lobes`) that a water of
-  conformer index ``c`` sees: its own altloc's, else the blank view's; a
-  blank water sees every altloc's."""
-  if not views:
-    return ()
-  if not c:
-    split = []
-    for v in sorted(views):
-      if v:
-        split.extend(views[v])
-    return split or views.get(0, ())
-  return views.get(c, views.get(0, ()))
-
-
 def _symmetry_environment(hier, crystal_symmetry, radius,
                           min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL):
   """Copies of the atoms crystal symmetry places within ``radius`` of a water.
@@ -573,7 +450,7 @@ class _WaterHydrogenPlacer(object):
 
   def __init__(self, hier, oh_length=None, element=None,
                n_refine=_WATER_REFINE_SWEEPS, refine_tol=_WATER_REFINE_TOL,
-               n_basin=0, existing_h="keep", lone_pair_directed=False,
+               n_basin=0, existing_h="keep",
                on_state=None, crystal_symmetry=None,
                min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL,
                geometry=None):
@@ -586,7 +463,6 @@ class _WaterHydrogenPlacer(object):
     self.refine_tol = refine_tol
     self.n_basin = n_basin
     self.existing_h = existing_h
-    self.lone_pair_directed = lone_pair_directed
     self.on_state = on_state
     self.crystal_symmetry = crystal_symmetry
     self.min_distance_sym_equiv = min_distance_sym_equiv
@@ -833,9 +709,9 @@ class _WaterHydrogenPlacer(object):
 
     Returns the dict of ``o`` (O coordinates), ``acceptors`` (atom indices,
     nearest first), ``acc_water`` (whether each is a water atom),
-    ``acc_dirs``/``acc_pts`` (O-H unit directions and the H
-    positions built from them), ``cat`` (O->cation unit directions), ``sph``
-    (the lazily built fallback-sphere H positions) and
+    ``acc_dirs``/``acc_pts`` (unit directions from the O toward each
+    acceptor, and the H positions built from them), ``cat`` (O->cation unit
+    directions), ``sph`` (the lazily built fallback-sphere H positions) and
     ``acc_static``/``sph_static`` (the cached static half of the clearance test
     for those two candidate sets, see :meth:`_static_clear`). :meth:`_place_one`
     adds, per acceptor pair ``(k1, k2)``, the even split's ``("split", k1, k2)``
@@ -866,23 +742,6 @@ class _WaterHydrogenPlacer(object):
     acceptors.sort(key=lambda t: t[0])
     acceptors = [i for _, i in acceptors]
 
-    def accept_dir(i):
-      """Unit direction from the water O toward acceptor ``i``.
-
-      A lone-pair lobe facing the water when lone-pair-directed placement is
-      on, else the acceptor nucleus.
-      """
-      a_xyz = matrix.col(atoms[i].xyz)
-      if self.lone_pair_directed:
-        toward = (o_xyz - a_xyz).normalize()
-        best = None
-        for lobe in _view_lobes(self.acc_lobes.get(i), self.w_conf[wi]):
-          if best is None or lobe.dot(toward) > best.dot(toward):
-            best = lobe
-        if best is not None and best.dot(toward) > 0.0:
-          return (a_xyz + best * _WATER_HBOND_HA - o_xyz).normalize()
-      return (a_xyz - o_xyz).normalize()
-
     # Nearby metal cations, as O->cation unit directions (see _cat_ok).
     cation_dirs = []
     for i in self.w_cat_raw[wi]:
@@ -897,7 +756,8 @@ class _WaterHydrogenPlacer(object):
       cation_dirs.append(v.normalize())
 
     o = np.array(o_xyz.elems, dtype=float)
-    acc_dirs = _as_np([accept_dir(i) for i in acceptors])
+    acc_dirs = _as_np([(matrix.col(atoms[i].xyz) - o_xyz).normalize()
+                       for i in acceptors])
     g = {"o": o,
          "acceptors": acceptors,
          "acc_water": [_is_water(atoms[i].parent().resname) for i in acceptors],
@@ -1073,10 +933,9 @@ class _WaterHydrogenPlacer(object):
     h2_xyz = cone_pts[j]
 
     # Both protons on acceptors: turn the water so each is equally far off its
-    # acceptor, if that stays clash-free and away from cations. Not for a given
-    # H1, nor for lone-pair aiming.
-    if (fixed_d1 is not None or self.lone_pair_directed or h1_k < 0
-        or rank.max() != 3 or not use):
+    # acceptor, if that stays clash-free and away from cations. Not for a
+    # given H1.
+    if fixed_d1 is not None or h1_k < 0 or rank.max() != 3 or not use:
       return h1_xyz, h2_xyz
     d2 = cone_dirs[j]
     k2, best = -1, _WATER_H1_ACC_ALIGN
@@ -1407,10 +1266,6 @@ class _WaterHydrogenPlacer(object):
           if j != i and atoms[j].element.strip().upper() == "N":
             self.donor_n.add(j)
 
-    # Lone-pair lobe directions per acceptor (opt-in; empty when off), filled
-    # once the waters' acceptors are known.
-    self.acc_lobes = {}
-
     self.cos_hoh = math.cos(math.radians(self.hoh_deg))
     self.sin_hoh = math.sin(math.radians(self.hoh_deg))
     self.cos_half_hoh = math.cos(math.radians(self.hoh_deg) / 2.0)
@@ -1492,13 +1347,6 @@ class _WaterHydrogenPlacer(object):
                                 if _compatible(c, self.conf[j])]
           self.w_cat_raw[wi] = [j for j in self.w_cat_raw[wi]
                                 if _compatible(c, self.conf[j])]
-      if self.lone_pair_directed:
-        near = set()
-        for nb in self.w_acc_raw:
-          near.update(nb)
-        self.acc_lobes = _acceptor_lobes(
-          atoms, self.static_tree, self.donor_n, near,
-          self.conf if self.conf.any() else None)
       # One static-neighbour block per water: every candidate H lies on the
       # O-H sphere about the O, so a single ball of oh_length + clearance
       # covers every candidate's own clearance ball.
@@ -1673,7 +1521,7 @@ class _WaterHydrogenPlacer(object):
 def place_water_hydrogens(hier, oh_length=None, element=None,
                           n_refine=_WATER_REFINE_SWEEPS,
                           refine_tol=_WATER_REFINE_TOL, n_basin=0,
-                          existing_h="keep", lone_pair_directed=False,
+                          existing_h="keep",
                           on_state=None, crystal_symmetry=None,
                           min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL,
                           geometry=None):
@@ -1720,9 +1568,6 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
       leave it untouched, single-H waters included), ``"complete"`` (a water
       with exactly one H gets its partner on that proton's cone, inheriting
       its element) or ``"reorient"`` (strip all water H and re-place both).
-  lone_pair_directed : bool, optional
-      If True, each O-H aims at an acceptor's lone-pair lobe (estimated from
-      its bonded-neighbour geometry) rather than its nucleus.
   on_state : callable, optional
       Called as ``on_state(label, stats)`` at each state reached:
       ``"initial"`` after the greedy pass, ``"sweep N"`` after each refinement
@@ -1760,7 +1605,6 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
     hier, oh_length=oh_length, element=element, n_refine=n_refine,
     refine_tol=refine_tol, n_basin=n_basin,
     existing_h=existing_h,
-    lone_pair_directed=lone_pair_directed,
     on_state=on_state, crystal_symmetry=crystal_symmetry,
     min_distance_sym_equiv=min_distance_sym_equiv,
     geometry=geometry)

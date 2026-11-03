@@ -64,19 +64,6 @@ HETATM    4  H   DNR E   1       3.600   0.000   0.000  1.00 10.00           H
 END
 """
 
-# A water in the plane of an sp2 carbonyl (C=O with the C bonded to two
-# more C, defining the plane), off to one side. With lone-pair-directed
-# placement the O-H aims at an in-plane lobe (~120 deg from C=O); without
-# it, at the O nucleus.
-_CARBONYL_PDB = """\
-HETATM    1  O   HOH W   1       2.000   1.500   0.000  1.00 10.00           O
-HETATM    2  O   ACO A   1       0.000   0.000   0.000  1.00 10.00           O
-HETATM    3  C   ACO A   1      -1.220   0.000   0.000  1.00 10.00           C
-HETATM    4  C   ACO A   1      -1.950   1.260   0.000  1.00 10.00           C
-HETATM    5  C   ACO A   1      -1.950  -1.260   0.000  1.00 10.00           C
-END
-"""
-
 # A water that is already protonated (O + 2 H) must be left untouched.
 _PROTONATED_WATER_PDB = """\
 HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
@@ -549,38 +536,6 @@ def exercise_protonated_n_not_acceptor():
                  for h in hs.values())
   assert best_acc > 0.9, "H should point at the bare (acceptor) N"
   assert best_don < 0.9, "no H should point at the protonated (donor) N"
-
-
-def exercise_lone_pair_directed():
-  """``lone_pair_directed`` aims the O-H at a carbonyl O's sp2 lone-pair
-  lobe (~120 deg from C=O); the default aims at the nucleus (~180 deg).
-  With the carbonyl O split between altlocs 0.25 A apart, each copy's lobes
-  still come from its C alone, not from a bond to the other copy."""
-  c = matrix.col((-1.220, 0.0, 0.0))   # the carbonyl C
-  split = _CARBONYL_PDB.replace(
-    "HETATM    2  O   ACO A   1       0.000   0.000   0.000  1.00 10.00",
-    "HETATM    2  O  AACO A   1       0.000   0.000   0.000  0.50 10.00")
-  split = split.replace(
-    "END", "HETATM    6  O  BACO A   1       0.250   0.000   0.000  0.50 10.00"
-    "           O\nEND")
-
-  def co_h_angle(pdb_str, lone_pair):
-    hier = _hierarchy(pdb_str)
-    wp.place_water_hydrogens(hier, n_refine=0, lone_pair_directed=lone_pair)
-    _, hs = _water_atoms(hier)
-    acc = [matrix.col(a.xyz) for a in hier.atoms()
-           if a.parent().resname == "ACO" and a.element.strip() == "O"]
-    h, o_c = min(((matrix.col(a.xyz), o) for a in hs.values() for o in acc),
-                 key=lambda t: (t[0] - t[1]).length())
-    return (c - o_c).angle(h - o_c, deg=True)
-
-  off = co_h_angle(_CARBONYL_PDB, False)
-  assert off > 135.0, f"default should aim near the nucleus (got {off:.1f} deg)"
-  for pdb_str in (_CARBONYL_PDB, split):
-    on = co_h_angle(pdb_str, True)
-    assert abs(on - 120.0) < 15.0, (
-      f"lone-pair placement should give a ~120 deg C=O...H angle "
-      f"(got {on:.1f})")
 
 
 def exercise_reorient_existing():
@@ -1458,7 +1413,6 @@ def run():
   exercise_acceptor_directed()
   exercise_cation_repulsion()
   exercise_protonated_n_not_acceptor()
-  exercise_lone_pair_directed()
   exercise_idempotent()
   exercise_reorient_existing()
   exercise_single_h_water()
