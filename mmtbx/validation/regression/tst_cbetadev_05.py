@@ -77,7 +77,8 @@ def exercise_frame():
 def exercise_ideal_xyz():
   h = get_hierarchy()
   uncorrected = run_cbetadev(h, collect_ideal=True)
-  corrected = run_cbetadev(h, apply_phi_psi_correction=True, collect_ideal=True)
+  corrected = run_cbetadev(h, apply_phi_psi_correction=True, collect_ideal=True,
+                           phi_psi_correction_strength=0.5)
   n_moved = 0
   for u, c in zip(uncorrected.results, corrected.results):
     assert u.id_str() == c.id_str()

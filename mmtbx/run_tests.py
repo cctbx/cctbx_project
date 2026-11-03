@@ -542,6 +542,7 @@ molprobity_tests = [
   "$D/validation/regression/tst_cbetadev_02.py",
   "$D/validation/regression/tst_cbetadev_03.py",
   "$D/validation/regression/tst_cbetadev_05.py",
+  "$D/validation/regression/tst_cbetadev_06.py",
   "$D/validation/regression/tst_cbetadev_mahalanobis.py",
   "$D/validation/regression/tst_cbd_utils.py",
   "$D/validation/regression/tst_undowser.py",

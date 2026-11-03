@@ -157,8 +157,11 @@ def tst_03():
   Corrections with and without use_parent_for_modified_residues.
   """
   default = get_deviations()
-  off = get_deviations(apply_phi_psi_correction=True)
+  # full strength, so the values are the table corrections themselves
+  off = get_deviations(apply_phi_psi_correction=True,
+                       phi_psi_correction_strength=1.)
   on = get_deviations(apply_phi_psi_correction=True,
+                      phi_psi_correction_strength=1.,
                       use_parent_for_modified_residues=True)
   assert len(default) == len(off) == len(on) == 10
   # the standard residue next to modified residues is corrected either way

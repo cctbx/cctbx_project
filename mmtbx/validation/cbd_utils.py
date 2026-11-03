@@ -165,30 +165,6 @@ def choose_strength(deviations, dihedrals, corrections, user_strength=None):
     rc.applied = 0.
   return rc
 
-def get_phi_psi_correction(result,
-                           residue,
-                           phi_psi,
-                           next_resname=None,
-                           display_phi_psi_correction=False,
-                           use_parent_for_modified_residues=False,
-                           verbose=False):
-  correction = get_correction_vector(residue.resname, next_resname, phi_psi,
-    use_parent_for_modified_residues=use_parent_for_modified_residues)
-  if correction:
-    correction = radial_deviation(*correction, input_in_cartesian=True)
-    current = radial_deviation(result.deviation, result.dihedral)
-    rc = current-correction
-    start = (current.r>=0.25)
-    finish = (rc.r>=0.25)
-    if verbose:
-      print(f'{current=} corrected with {correction=} ~> {rc=}')
-    if display_phi_psi_correction and (start or finish):
-      show_phi_psi_correction(residue, phi_psi, current, correction, rc)
-    dihedral = (rc.t/pi*180 + 180) % 360 - 180
-    return rc.r, dihedral, start, finish
-  else:
-    return None
-
 def show_phi_psi_correction(residue, phi_psi, current, correction, rc, units=100):
   import matplotlib.pyplot as plt
 
