@@ -33,7 +33,8 @@ class experiment_type(object):
     return "ELECTRON MICROSCOPY" in self.lines
 
   def is_electron_diffraction(self):
-    # The PDBx term, and the legacy PDB one
+    """True for ELECTRON CRYSTALLOGRAPHY, the PDBx term, or ELECTRON
+    DIFFRACTION, the legacy PDB one."""
     return ("ELECTRON CRYSTALLOGRAPHY" in self.lines
             or "ELECTRON DIFFRACTION" in self.lines)
 
