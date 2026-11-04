@@ -931,6 +931,45 @@ def exercise_namings_beyond_limit_keep_own_decisions():
     assert abs(chi() - target) < 0.01, chi()
   assert renamed_on_own_decisions(hierarchy) == [("B", "CD1"), ("B", "CE1")]
 
+# phenix_regression pdb/2izq_a_9_13.pdb: three residues on one position
+pdb_2izq_a_11 = """\
+ATOM    221  CA ATRP A  11      21.094  12.032  35.602  0.50  5.24           C
+ATOM    224  CB ATRP A  11      20.690  10.588  35.288  0.50  6.15           C
+ATOM    225  CG ATRP A  11      19.252  10.269  35.140  0.50  5.91           C
+ATOM    226  CD1ATRP A  11      18.524  10.178  33.986  0.50  7.01           C
+ATOM    227  CD2ATRP A  11      18.371   9.973  36.236  0.50  5.97           C
+ATOM    229  CE2ATRP A  11      17.132   9.708  35.665  0.50  7.37           C
+ATOM    245  CA CPHE A  11      20.950  12.135  35.430  0.15  5.92           C
+ATOM    248  CB CPHE A  11      20.768  10.667  34.994  0.15  6.01           C
+ATOM    249  CG CPHE A  11      19.330  10.235  34.845  0.15  7.05           C
+ATOM    250  CD1CPHE A  11      18.847   9.877  33.587  0.15  8.78           C
+ATOM    251  CD2CPHE A  11      18.533  10.174  35.995  0.15  7.70           C
+ATOM    252  CE1CPHE A  11      17.551   9.436  33.473  0.15 10.43           C
+ATOM    253  CE2CPHE A  11      17.230   9.752  35.854  0.15  9.27           C
+ATOM    254  CZ CPHE A  11      16.789   9.396  34.594  0.15 10.98           C
+ATOM    256  CA BTYR A  11      21.106  11.838  35.524  0.35  5.51           C
+ATOM    259  CB BTYR A  11      20.694  10.354  35.327  0.35  5.65           C
+ATOM    260  CG BTYR A  11      19.188  10.175  35.507  0.35  7.68           C
+ATOM    261  CD1BTYR A  11      18.548  10.134  34.268  0.35  9.45           C
+ATOM    263  CD2BTYR A  11      18.463  10.012  36.681  0.35  9.08           C
+ATOM    265  CE1BTYR A  11      17.195   9.960  34.223  0.35 10.76           C
+ATOM    267  CE2BTYR A  11      17.100   9.826  36.693  0.35 11.29           C
+ATOM    269  CZ BTYR A  11      16.546   9.812  35.432  0.35 11.90           C
+ATOM    271  OH BTYR A  11      15.178   9.650  35.313  0.35 19.29           O
+"""
+
+def exercise_microheterogeneity():
+  # the first resname (TRP) has no flip; PHE and TYR each decide for themselves
+  hierarchy = iotbx.pdb.input(source_info=None,
+    lines=pdb_2izq_a_11).construct_hierarchy()
+  pairs = []
+  info = hierarchy.flip_symmetric_amino_acids(swapped_pairs=pairs)
+  assert "Time to flip 2 residue(s)" in info, info
+  renamed = sorted((atom1.parent().resname, atom1.parent().altloc, atom1.name)
+    for atom1, atom2 in pairs)
+  assert renamed == [("PHE", "C", " CD1"), ("PHE", "C", " CE1"),
+                     ("TYR", "B", " CD1"), ("TYR", "B", " CE1")], renamed
+
 def exercise_pair_spans_blank_and_altloc():
   # 8EYP Tyr A 102: the two atoms of a pair cannot be exchanged
   rows = split(rows_of("TYR"), ["CD2"])
@@ -1103,6 +1142,7 @@ def run_in_process():
   exercise_clear_conformers_keep_own_decisions()
   exercise_chiral_namings_close_keep_own_decisions()
   exercise_namings_beyond_limit_keep_own_decisions()
+  exercise_microheterogeneity()
   exercise_pair_spans_blank_and_altloc()
   exercise_incomplete_h_in_altloc()
   exercise_d_ring()
