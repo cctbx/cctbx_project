@@ -513,7 +513,7 @@ class info(object):
     if(self._llgi):
       a_name, b_name = "D", "V"
       print("|LLGI (E-scale) estimates for figures of merit, absolute phase error, and     |", file=out)
-      print("|distribution parameters D = Dobs*sigmaA and V = TEPS - D^2                   |", file=out)
+      print("|distribution parameters D = Dobs*sigmaA and V = 1 - D^2                      |", file=out)
       print("|"+" "*77+"|", file=out)
       print("| Bin     Resolution      No. Refl.   FOM  Phase Scale        D           V   |", file=out)
     else:
