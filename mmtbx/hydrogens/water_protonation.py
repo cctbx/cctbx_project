@@ -1687,7 +1687,7 @@ class _WaterHydrogenPlacer:
         existing_names.add(proton_name.strip())
         xyz = h1 if di == 1 else h2
         atom = _new_atom(proton_name, proton_element, xyz, occ, o.b,
-                         o.hetero)
+                         o.hetero, segid=o.segid)
         ag.append_atom(atom)
         slot = len(self.placed_coords)
         slots.append((atom, slot, di))

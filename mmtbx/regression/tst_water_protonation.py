@@ -648,18 +648,21 @@ def exercise_single_h_metal_annotation():
 
 
 def exercise_hetatm_flag():
-  """Placed H inherit the parent O's HETATM flag, so a HETATM water does
-  not acquire ATOM-record protons.
+  """Placed H inherit the parent O's HETATM flag and segid, so a HETATM
+  water does not acquire ATOM-record protons and stays in one segment.
 
-  Places on ``_TWO_ACCEPTOR_PDB``.
+  Places on ``_TWO_ACCEPTOR_PDB`` with the water's O in segment WAT1.
   """
   hier = _hierarchy(_TWO_ACCEPTOR_PDB)
+  _water_atoms(hier)[0].segid = "WAT1"
   wp.place_water_hydrogens(hier, n_refine=0)
   o, hs = _water_atoms(hier)
   assert o.hetero, "fixture water should be a HETATM"
   for name, a in sorted(hs.items()):
     assert a.hetero == o.hetero, (
       f"{name} must match the parent O record type (hetero={a.hetero})")
+    assert a.segid == o.segid, (
+      f"{name} must match the parent O segid ({a.segid!r}, {o.segid!r})")
 
 
 def exercise_heavy_cation_repulsion():
