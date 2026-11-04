@@ -189,6 +189,7 @@ general_tests = [
   "$D/hydrogens/tst_add_hydrogen_18.py",
   "$D/hydrogens/tst_add_hydrogen_19.py",
   "$D/hydrogens/tst_add_hydrogen_20.py",
+  "$D/hydrogens/tst_add_hydrogen_21.py",
   "$D/hydrogens/tst_hd_exchange.py",
   #"$D/hydrogens/tst_add_hydrogen_time.py",
   "$D/hydrogens/tst_validate_H.py",
