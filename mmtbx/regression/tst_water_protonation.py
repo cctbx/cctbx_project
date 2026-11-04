@@ -1018,7 +1018,7 @@ def exercise_detect_geometry():
   ``_detect_geometry`` takes the geometry it implies, electron data taking
   the neutron one, then falls back to D atoms or DOD waters.
 
-  Reads ``_TWO_ACCEPTOR_PDB`` under three EXPDTA records, two mmCIF
+  Reads ``_TWO_ACCEPTOR_PDB`` under four EXPDTA records, two mmCIF
   ``_exptl.method`` values and none, and two models without a record, one
   carrying a D atom and one a DOD water.
   """
@@ -1028,6 +1028,7 @@ def exercise_detect_geometry():
   neutron = "EXPDTA    NEUTRON DIFFRACTION\n" + _TWO_ACCEPTOR_PDB
   xray = "EXPDTA    X-RAY DIFFRACTION\n" + _TWO_ACCEPTOR_PDB
   diffraction = "EXPDTA    ELECTRON DIFFRACTION\n" + _TWO_ACCEPTOR_PDB
+  microscopy = "EXPDTA    ELECTRON MICROSCOPY\n" + _TWO_ACCEPTOR_PDB
   cif = _hierarchy(_TWO_ACCEPTOR_PDB).as_mmcif_string()
   # No experiment record, but a D atom present -> neutron by fallback.
   d_atom = """\
@@ -1045,6 +1046,7 @@ END
       (neutron, "neutron diffraction", "neutron"),
       (xray, "X-ray diffraction", "xray"),
       (diffraction, "electron diffraction", "neutron"),
+      (microscopy, "electron microscopy", "neutron"),
       (cif + "_exptl.method 'ELECTRON MICROSCOPY'\n", "electron microscopy",
        "neutron"),
       (cif + "_exptl.method 'ELECTRON CRYSTALLOGRAPHY'\n",

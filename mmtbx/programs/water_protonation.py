@@ -96,7 +96,7 @@ def _experiment_type(pdb_in):
     return "neutron diffraction", "neutron"
   if exp.is_electron_microscopy():
     return "electron microscopy", "neutron"
-  if any(line.startswith("ELECTRON") for line in exp.lines):
+  if exp.is_electron_diffraction():
     return "electron diffraction", "neutron"
   if exp.is_xray():
     return "X-ray diffraction", "xray"
