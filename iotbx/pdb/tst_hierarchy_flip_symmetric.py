@@ -455,7 +455,8 @@ def exercise_acid_h():
       add_h(rows, name, "", parent)
       before, after, info = flip(make(code, rows))
       assert_only_swapped(before, after, [])
-      assert '"A %s   11": not complete - not flipped' % code in info, info
+      assert ('"A %s   11": protonated acid (one H on the O pair) - not flipped'
+        % code) in info, info
     # both H: a complete pair goes with the O
     other = h[:-1] + "1"
     rows = rows_of(code)
@@ -473,7 +474,8 @@ def exercise_blank_o_acid_h_in_altlocs():
   add_h(rows, "DE2", "B", "OE2")
   before, after, info = flip(make("GLU", rows))
   assert_only_swapped(before, after, [])
-  assert '"A GLU   11": not complete - not flipped' in info, info
+  assert '"A GLU   11": protonated acid (one H on the O pair) - not flipped' \
+    in info, info
 
 def exercise_a_flips_b_not():
   # each conformer on its own test; one residue in the count
@@ -995,7 +997,8 @@ def exercise_conformer_in_several_atom_groups():
   hierarchy = glu_with_he2_in_second_group()
   before, after, info = flip(hierarchy)
   assert_only_swapped(before, after, [])
-  assert '"A GLU   11": not complete in altloc A - not flipped' in info, info
+  assert ('"A GLU   11": protonated acid (one H on the O pair) in altloc A - '
+    'not flipped') in info, info
   assert abs(distance(hierarchy.atoms(), "OE2", "HE2") - 1) < 1.e-3
 
 def exercise_conformer_in_several_atom_groups_no_acid_h():
@@ -1031,7 +1034,8 @@ def exercise_model_id_in_info():
     ).splitlines()).construct_hierarchy()
   info = hierarchy.flip_symmetric_amino_acids()
   for model_id in ("1", "2"):
-    assert '"MODEL %s A GLU   11": not complete - not flipped' % model_id in info, info
+    assert ('"MODEL %s A GLU   11": protonated acid (one H on the O pair) - not '
+      'flipped' % model_id) in info, info
 
 def exercise_selected_hierarchy_and_residue_identity():
   # select() shares atoms: their parent can be gone. The report has the icode.

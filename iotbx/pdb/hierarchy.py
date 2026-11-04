@@ -2817,12 +2817,14 @@ class _():
                "pairs"    : [["OD1", "OD2"],
                              ["HD1", "HD2"],
                             ],
+               "acid_h"   : ["HD1", "DD1"],
              },
       "GLU" : {"dihedral" : ["CB", "CG", "CD", "OE1"],
                "value"    : [0, 1],
                "pairs"    : [["OE1", "OE2"],
                              ["HE1", "HE2"],
                             ],
+               "acid_h"   : ["HE1", "DE1"],
              },
       "PHE" : {"dihedral" : ["CA", "CB", "CG", "CD1"],
                "value"    : [0, 1],
@@ -2908,13 +2910,14 @@ class _():
         flip_data, groups)
       pairs = []
       heavy_pairs = []
-      incomplete = has_blank = spans = False
+      incomplete = other_than_acid_h = has_blank = spans = False
       for name1, name2 in flip_data["pairs"]:
         atom1, blank1 = find_atom(groups, name1)
         atom2, blank2 = find_atom(groups, name2)
         if atom1 is None and atom2 is None: continue
         if atom1 is None or atom2 is None:
           incomplete = True
+          if name1 not in flip_data.get("acid_h", []): other_than_acid_h = True
           continue
         pairs.append((atom1, atom2))
         if name1[0] not in "HD": heavy_pairs.append((atom1, atom2))
@@ -2924,6 +2927,7 @@ class _():
         is_dihedral='dihedral' in flip_data, no_dihedral=no_dihedral,
         score=score, score_exchanged=score_exchanged,
         pairs=pairs, heavy_pairs=heavy_pairs,
+        protonated=incomplete and not other_than_acid_h,
         incomplete=incomplete, has_blank=has_blank, spans=spans)
     def naming_is_close(row):
       # Empirical naming tolerance. Over 333 files, without this limit, the two
@@ -3017,6 +3021,9 @@ class _():
         flipped = sorted([rows[i].altloc for i in parity if rows[i].flip_it])
         result.append((altlocs, flipped))
       return result
+    def incomplete_reason(row):
+      if row.protonated: return "protonated acid (one H on the O pair)"
+      return "not complete"
     def no_dihedral_reason(row):
       in_altloc = ""
       if row.altloc.strip()!="": in_altloc = " in altloc %s" % row.altloc
@@ -3057,7 +3064,8 @@ class _():
           if True in [row.spans for row in rows]:
             reasons.append("pair spans blank and altloc")
           elif True in [row.flip_it and row.incomplete for row in rows]:
-            reasons.append("not complete")
+            incomplete = [row for row in rows if row.flip_it and row.incomplete]
+            reasons.append(incomplete_reason(incomplete[0]))
           elif no_dihedral:
             reasons.append(no_dihedral_reason(no_dihedral[0]))
           elif None in decisions:
@@ -3078,7 +3086,7 @@ class _():
                 reasons.append("test atom missing%s" % in_altloc)
             elif row.flip_it:
               if row.incomplete:
-                reasons.append("not complete%s" % in_altloc)
+                reasons.append("%s%s" % (incomplete_reason(row), in_altloc))
               else:
                 to_swap.append(row)
         model_id = ""
