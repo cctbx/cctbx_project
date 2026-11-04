@@ -319,12 +319,14 @@ class RunSummaryStats(object):
       where += " AND run.run IN (%s)" % ", ".join("'%s'" % run.replace("'", "''") for run in set(runs))
     # A comparison is 1 or 0 in MySQL, so SUM of a condition counts the rows
     # satisfying it. The subquery is one row per indexed event of the wanted
-    # runs; unindexed events have no row, hence the IFNULLs.
+    # runs; unindexed events have no row, and a two theta value may be NULL
+    # when it was not computed, so every term is IFNULLed to 0, else a run
+    # with no indexed images or no two theta values sums to NULL.
     query = """SELECT run.run, ev.rungroup_id, COUNT(*),
                       SUM(ev.n_strong >= %(n_strong)d),
-                      SUM(IF(ev.two_theta_low <= 0 OR ev.two_theta_high < 0, 0,
-                             ev.two_theta_high / ev.two_theta_low) >= %(ratio)f),
-                      SUM(x.n_lattices > 0),
+                      SUM(IFNULL(IF(ev.two_theta_low <= 0 OR ev.two_theta_high < 0, 0,
+                                    ev.two_theta_high / ev.two_theta_low) >= %(ratio)f, 0)),
+                      SUM(IFNULL(x.n_lattices > 0, 0)),
                       SUM(IFNULL(x.n_lattices, 0)),
                       SUM(IFNULL(x.high_quality, 0)),
                       MIN(ev.timestamp), MAX(ev.timestamp)
@@ -351,7 +353,7 @@ class RunSummaryStats(object):
     summaries = {}
     for row in self.app.execute_query(query).fetchall():
       run, rungroup_id = row[0], row[1]
-      counts = [int(v) for v in row[2:8]]
+      counts = [int(v or 0) for v in row[2:8]]
       summaries[(run, rungroup_id)] = RunSummary(run, rungroup_id, *(counts + [row[8], row[9]]))
     return summaries
 
