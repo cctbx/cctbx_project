@@ -2857,24 +2857,26 @@ class _():
           return atom, ag.altloc.strip()==""
       return None, False
     def wants_flip(flip_data, groups):
-      # None: an atom of the test is missing
+      # (flip?, the sites define no dihedral); flip? None: no decision, an atom
+      # of the test is missing or the sites are coincident or collinear
       assert not ('dihedral' in flip_data and 'chiral' in flip_data)
       names = flip_data.get("dihedral", flip_data.get("chiral"))
       sites = []
       for name in names:
         atom = find_atom(groups, name)[0]
-        if atom is None: return None
+        if atom is None: return None, False
         sites.append(atom.xyz)
       if 'dihedral' in flip_data:
         dihedral = dihedral_angle(sites=sites, deg=True)
-        return abs(dihedral)>360./flip_data["value"][1]/4
+        if dihedral is None: return None, True
+        return abs(dihedral)>360./flip_data["value"][1]/4, False
       delta = chirality_delta(sites=[flex.vec3_double([xyz]) for xyz in sites],
                               volume_ideal=flip_data["value"][0],
                               both_signs=flip_data['value'][1],
                               )
-      return abs(delta)>2.
+      return abs(delta)>2., False
     def check_conformer(flip_data, groups):
-      flip_it = wants_flip(flip_data, groups)
+      flip_it, no_dihedral = wants_flip(flip_data, groups)
       pairs = []
       incomplete = has_blank = spans = False
       for name1, name2 in flip_data["pairs"]:
@@ -2887,8 +2889,13 @@ class _():
         pairs.append((atom1, atom2))
         if blank1 or blank2: has_blank = True
         if blank1 != blank2: spans = True
-      return group_args(altloc=groups[0].altloc, flip_it=flip_it, pairs=pairs,
+      return group_args(altloc=groups[0].altloc, flip_it=flip_it,
+        no_dihedral=no_dihedral, pairs=pairs,
         incomplete=incomplete, has_blank=has_blank, spans=spans)
+    def no_dihedral_reason(row):
+      in_altloc = ""
+      if row.altloc.strip()!="": in_altloc = " in altloc %s" % row.altloc
+      return "test atoms coincident or collinear%s" % in_altloc
     site_values = ['xyz', 'sigxyz', 'occ', 'sigocc', 'b', 'sigb', 'uij', 'fp',
                    'fdp', 'resolution']
     if ext.atom.has_siguij(): site_values.append('siguij')
@@ -2913,7 +2920,8 @@ class _():
         if not conformers: conformers = [blank]
         rows = [check_conformer(flip_data, groups) for groups in conformers]
         decisions = [row.flip_it for row in rows]
-        if True not in decisions: continue
+        no_dihedral = [row for row in rows if row.no_dihedral]
+        if True not in decisions and not no_dihedral: continue
         reasons = []
         to_swap = []
         if True in [row.has_blank for row in rows]:
@@ -2922,6 +2930,8 @@ class _():
             reasons.append("pair spans blank and altloc")
           elif True in [row.flip_it and row.incomplete for row in rows]:
             reasons.append("not complete")
+          elif no_dihedral:
+            reasons.append(no_dihedral_reason(no_dihedral[0]))
           elif None in decisions:
             untested = rows[decisions.index(None)]
             reasons.append("test atom missing in altloc %s" % untested.altloc)
@@ -2933,7 +2943,9 @@ class _():
           for row in rows:
             in_altloc = ""
             if row.altloc.strip()!="": in_altloc = " in altloc %s" % row.altloc
-            if row.flip_it is None:
+            if row.no_dihedral:
+              reasons.append(no_dihedral_reason(row))
+            elif row.flip_it is None:
               if row.pairs:
                 reasons.append("test atom missing%s" % in_altloc)
             elif row.flip_it:

@@ -549,6 +549,40 @@ def exercise_test_spans_blank_and_altloc():
   assert_only_swapped(before, after, [])
   assert '"A GLU   11": test atom missing in altloc B - not flipped' in info, info
 
+def exercise_no_dihedral():
+  # master: TypeError in abs(None)
+  def on_ca(rows, altloc):
+    ca = [r for r in rows if r[0] == "CA"][0]
+    for row in rows:
+      if row[0] == "CB" and row[1] == altloc: row[2] = ca[2]
+    return rows
+  # one group, CB on CA
+  before, after, info = flip(make("ASP", on_ca(rows_of("ASP"), "")))
+  assert_only_swapped(before, after, [])
+  assert '"A ASP   11": test atoms coincident or collinear - not flipped' in \
+    info, info
+  assert "test atom missing" not in info, info
+  # blank N, CA, C, O; CB of B on CA; A decides for itself
+  rows = split(rows_of("ASP"), ["CB", "CG", "OD1", "OD2"])
+  before, after, info = flip(make("ASP", on_ca(rows, "B")))
+  assert_only_swapped(before, after, [("A", "OD1", "OD2")])
+  assert ('"A ASP   11": test atoms coincident or collinear in altloc B - '
+    'not flipped') in info, info
+  # the same with a blank pair: nothing flips, as with a missing test atom
+  rows = split(rows_of("ASP"), ["CB", "CG"])
+  before, after, info = flip(make("ASP", on_ca(rows, "B")))
+  assert_only_swapped(before, after, [])
+  assert ('"A ASP   11": test atoms coincident or collinear in altloc B - '
+    'not flipped') in info, info
+  # collinear
+  rows = rows_of("GLU")
+  line = {"CB": (0, 0, 0), "CG": (1, 0, 0), "CD": (2, 0, 0)}
+  for row in rows:
+    if row[0] in line: row[2] = line[row[0]]
+  before, after, info = flip(make("GLU", rows))
+  assert_only_swapped(before, after, [])
+  assert "test atoms coincident or collinear - not flipped" in info, info
+
 def exercise_pair_spans_blank_and_altloc():
   # 8EYP Tyr A 102: the two atoms of a pair cannot be exchanged
   rows = split(rows_of("TYR"), ["CD2"])
@@ -710,6 +744,7 @@ def run_in_process():
   exercise_a_flips_b_not()
   exercise_disagree_on_blank_pair()
   exercise_test_spans_blank_and_altloc()
+  exercise_no_dihedral()
   exercise_pair_spans_blank_and_altloc()
   exercise_incomplete_h_in_altloc()
   exercise_d_ring()
