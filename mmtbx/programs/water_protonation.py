@@ -142,8 +142,6 @@ and existing_h=reorient strips all water H and re-places both.
 '''
   datatypes = ['model', 'phil']
   master_phil_str = master_phil_str
-  data_manager_options = ['model_skip_expand_with_mtrix',
-                          'model_skip_ss_annotations']
 
   # ----------------------------------------------------------------------------
 
