@@ -3583,7 +3583,7 @@ class manager(object):
       assert self._xray_structure is not None
       xh_conn_table = self.xh_connectivity_table()
       bfi = self._xray_structure.extract_u_iso_or_u_equiv()
-      for t in self.xh_connectivity_table():
+      for t in xh_conn_table:
         i_x, i_h = t[0], t[1]
         bfi[i_h] = adptbx.u_as_b(bfi[i_x])*scale
       self.set_b_iso(values = bfi, selection = hd_sel, keep_aniso=keep_aniso)

@@ -823,6 +823,22 @@ def load_restraint_objects_into_server(model, mon_lib_srv):
         except Exception:
           pass
 
+def _mon_lib_query_cached(residue, names, mon_lib_srv, cache):
+  '''
+  mon_lib_query() once per residue name and atom names. The names are in the
+  key because they can choose the dictionary: A with O2' is RNA, without it
+  DNA. A result with an auto-generated CIF (BGM) is not kept: every residue
+  passes its own to with_auto_restraint_object().
+  '''
+  key = (residue.resname, tuple(names))
+  if key in cache:
+    return cache[key], None
+  mlq, cif_object = mon_lib_query(residue=residue, mon_lib_srv=mon_lib_srv,
+    raise_sorry=False)
+  if cif_object is None:
+    cache[key] = mlq
+  return mlq, cif_object
+
 def with_auto_restraint_object(ro, resname, cif_object,
                                auto_restraint_names):
   '''
@@ -2186,7 +2202,11 @@ def name_prochiral_h(hierarchy, mon_lib_srv, kinds=(2, 3)):
             groups += [(3, g) for g in
                         _h_references(resname, mon_lib_srv, cache, 3, 1)]
           if not groups: continue
-          atoms = dict((a.name.strip(), a) for a in r.atoms())
+          # by index: a Python loop over a flex array ends in a C++ exception,
+          # 60-200 us per residue
+          r_atoms = r.atoms()
+          names = r_atoms.extract_name()
+          atoms = dict((names[i].strip(), r_atoms[i]) for i in range(len(names)))
           for n_h, (p, hv, hs, sites) in groups:
             if not all(n in atoms for n in (p,)+hv+hs): continue
             # first source wins. Keyed on the parent and its H atoms: a shared
@@ -2731,17 +2751,6 @@ class place_hydrogens():
     # on 4us9 it removed the hemiaminal H that must stay (tst_add_hydrogen_12).
     #self.model, _ = workaround_003(model = self.model)
 
-    # List missing H
-    mon_lib_srv = self.model.get_mon_lib_srv()
-    for m in self.model.get_hierarchy().models():
-      for c in m.chains():
-        for con in c.conformers():
-          for r in con.residues():
-            ma = r.missing_atoms(mon_lib_srv = mon_lib_srv, mode="h_only")
-            if ma is not None and len(ma)>0:
-              msg="chain %s resseq %s resname %s misses:"
-              if 0: # Hold off printing untill verbosity is added
-                print(msg%(c.id, r.resseq, r.resname), ma)
     self.n_H_final = self.model.get_hd_selection().count(True)
 
     if self.print_time:
@@ -3976,6 +3985,7 @@ class place_hydrogens():
     load_restraint_objects_into_server(self.model, mon_lib_srv)
     #XXX This breaks for 1jxt, residue 2, TYR
     rule = None
+    mlq_cache = {}
     for m in pdb_hierarchy.models():
       model_atoms = m.atoms()
       model_sites = model_atoms.extract_xyz()
@@ -4007,13 +4017,18 @@ class place_hydrogens():
             #print list(ag.atoms().extract_name())
             if exclude_water:
               if(get_class(name=ag.resname) == "common_water"): continue
-            actual = [a.name.strip().upper() for a in ag.atoms()]
+            # by index: a Python loop over a flex array ends in a C++ exception,
+            # 60-200 us per atom group
+            names = ag.atoms().extract_name()
+            names = [names[i] for i in range(len(names))]
+            actual = [n.strip().upper() for n in names]
             if single_altloc:
               actual += [a.name.strip().upper()
                          for other in ags if other.altloc != ''
                          for a in other.atoms()]
             #
-            mlq, cif_object = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv, raise_sorry=False)
+            mlq, cif_object = _mon_lib_query_cached(residue=ag, names=names,
+              mon_lib_srv=mon_lib_srv, cache=mlq_cache)
             if mlq is None:
               if ag.resname not in self.no_H_placed_mlq:
                 self.no_H_placed_mlq.append(ag.resname)
@@ -4090,9 +4105,8 @@ class place_hydrogens():
               add_amide_h = True
             if 0: print(ag.resname, missing_h)
             #new_xyz = ag.atoms().extract_xyz().mean()
-            new_xyz = flex.double(ag.atoms().extract_xyz().mean()) + \
-              flex.double([0.5,0.5,0.5])
-            new_xyz = tuple(new_xyz)
+            mean = ag.atoms().extract_xyz().mean()
+            new_xyz = (mean[0]+0.5, mean[1]+0.5, mean[2]+0.5)
 
             hetero = ag.atoms()[0].hetero
             segid = ag.atoms()[0].segid
