@@ -8,7 +8,8 @@ from iotbx.map_model_manager import map_model_manager
 
 # Averaging of local anisotropic scaling information over locations
 #  (map_model_manager._average_scale_factor_info_over_xyz) and the
-#  "most anisotropy" section of _summarize_scale_factor_info.
+#  "most anisotropy" section and the reporting of the anisotropy of the
+#  uncertainties of _summarize_scale_factor_info.
 # Each case can be run alone:
 #  libtbx.python tst_map_model_manager_aniso_averaging.py complete_unchanged
 
@@ -44,8 +45,9 @@ def make_si(scale = 1., rms_fo_list = True):
    )
 
 def make_location(scale = 1., n_directions = 2, complete = True,
-     empty = False, fo_u_cart = None, overall_si = True):
-  '''Synthetic location; all values are proportional to scale'''
+     empty = False, fo_u_cart = None, overall_si = True, missing = ()):
+  '''Synthetic location; all values are proportional to scale; the keys
+     in missing (overall_scale, *_b_cart_as_u_cart) are None'''
   if empty:
     scaling_info_list = []
     direction_vectors = []
@@ -54,7 +56,7 @@ def make_location(scale = 1., n_directions = 2, complete = True,
        for i in range(n_directions)]
     direction_vectors = [(1., 0., 0.), (0., 1., 0.), (0., 0., 1.)][
        :n_directions]
-  return group_args(
+  location = group_args(
     group_args_type = 'synthetic scaling_group_info',
     direction_vectors = direction_vectors,
     scaling_info_list = scaling_info_list,
@@ -67,6 +69,9 @@ def make_location(scale = 1., n_directions = 2, complete = True,
     fo_b_cart_as_u_cart = tuple(fo_u_cart) if fo_u_cart is not None
        else u_cart(5. * scale),
    )
+  for key in missing:
+    location.add(key = key, value = None)
+  return location
 
 XYZ = [(10., 11., 12.), (20., 21., 22.), (30., 31., 32.)]
 
@@ -118,6 +123,85 @@ def tst_empty_location_skipped():
   for si in avg.scaling_info_list:
     check_si_values(si, 2.5, keys = ('target_scale_factors',))
   check_b_cart(avg, 2.5)
+
+def tst_missing_values_per_quantity():
+  '''The middle location has no overall_scale and no anisotropy of the
+     uncertainties (bb, as for an external map): each is averaged over the
+     locations that have it (scales 1 and 6 -> 3.5; dividing by all three
+     would give 7/3); the other values over all three (scales 1, 2, 6
+     -> 3)'''
+  mmm, log = get_mmm()
+  sfi = make_scale_factor_info([make_location(scale = 1.),
+     make_location(scale = 2., missing = ('overall_scale',
+       'bb_b_cart_as_u_cart')),
+     make_location(scale = 6.)])
+  avg = mmm._average_scale_factor_info_over_xyz(sfi).value_list[0]
+  for si in avg.scaling_info_list:
+    check_si_values(si, 3.)
+  assert approx_equal(list(avg.overall_scale), list(scaled(TSF, 3.5))), (
+    list(avg.overall_scale))
+  assert approx_equal(list(avg.bb_b_cart_as_u_cart), list(u_cart(2. * 3.5))
+    ), list(avg.bb_b_cart_as_u_cart)
+  for key, factor in (('aa_b_cart_as_u_cart', 1.),
+     ('ss_b_cart_as_u_cart', 3.), ('uu_b_cart_as_u_cart', 4.),
+     ('fo_b_cart_as_u_cart', 5.)):
+    assert approx_equal(list(avg.get(key)), list(u_cart(factor * 3.))), (
+      key, list(avg.get(key)))
+
+UNCERTAINTY_HEADING = "Anisotropy of the uncertainties"
+
+def numbers(line):
+  """The numbers in a line of the log, or None if any word is not one"""
+  values = []
+  for word in line.replace("(", " ").replace(")", " ").replace(",", " "
+      ).split():
+    try:
+      values.append(float(word))
+    except ValueError:
+      return None
+  return values
+
+def tst_uncertainty_defined_at_some_locations():
+  '''The anisotropy of the uncertainties (bb) is defined at two of three
+     locations; the middle one has none, as for an external map.  The
+     summary reports the two defined values and their average (scales 1
+     and 6 -> 3.5), never zeros or "not defined", and the table by
+     position lists the two locations that have bb and leaves the middle
+     one out'''
+  mmm, log = get_mmm()
+  sfi = make_scale_factor_info([make_location(scale = 1.),
+     make_location(scale = 2., missing = ('bb_b_cart_as_u_cart',)),
+     make_location(scale = 6.)])
+  mmm._summarize_scale_factor_info(sfi)
+  lines = log.getvalue().splitlines()
+  assert not [x for x in lines if UNCERTAINTY_HEADING in x and
+    "not defined" in x], "bb reported as not defined"
+  # Summary sections: the heading, two lines of explanation, the values
+  reported = []
+  for i, line in enumerate(lines):
+    if line.strip() == UNCERTAINTY_HEADING:
+      reported.append(tuple(numbers(lines[i + 3])))
+  print("bb reported in the summary:", reported)
+  expected = [u_cart(2. * scale) for scale in (1., 6., 3.5)]
+  for values in reported:
+    assert [x for x in values if x != 0], "bb reported as zeros"
+    assert [e for e in expected if approx_equal(values, e, eps = 1.e-3,
+      out = None)], (values, expected)
+  assert [r for r in reported if approx_equal(r, u_cart(2. * 3.5),
+    eps = 1.e-3, out = None)], "average over the two locations missing"
+  # Table by position: rows of box center and U values
+  start = lines.index("    %s by position" %(UNCERTAINTY_HEADING))
+  rows = []
+  for line in lines[start + 1:]:
+    if "by position" in line:
+      break
+    values = numbers(line)
+    if values and len(values) == 9:
+      rows.append(values)
+  print("bb table by position:", rows)
+  assert [tuple(r[:3]) for r in rows] == [XYZ[0], XYZ[2]], rows
+  for r, scale in zip(rows, (1., 6.)):
+    assert approx_equal(r[3:], u_cart(2. * scale), eps = 0.06), (r, scale)
 
 def tst_complete_unchanged():
   '''All locations complete: averages are plain means
@@ -182,6 +266,9 @@ def run(args = None):
   all_tests = [
      ('overall_si_partial_skip', tst_overall_si_partial_skip),
      ('empty_location_skipped', tst_empty_location_skipped),
+     ('missing_values_per_quantity', tst_missing_values_per_quantity),
+     ('uncertainty_defined_at_some_locations',
+       tst_uncertainty_defined_at_some_locations),
      ('complete_unchanged', tst_complete_unchanged),
      ('most_anisotropy_section', tst_most_anisotropy_section),
      ('overall_si_none', tst_overall_si_none),

@@ -103,6 +103,25 @@ class FakeAdapter(object):
     return "FAKE_RESTART_COUNT"
 
 
+def exercise_scheduler_commands_do_not_inherit_the_managers_stdin():
+  """The manager may be an MCP server whose stdin is the JSON-RPC pipe;
+  a scheduler command must not be able to read it."""
+  backend = _backend()
+  r, w = os.pipe()
+  os.write(w, b"a JSON-RPC message\n")
+  os.close(w)
+  saved = os.dup(0)
+  os.dup2(r, 0)
+  os.close(r)
+  try:
+    proc = backend.run_command(
+      [sys.executable, "-c", "import sys; print(repr(sys.stdin.read()))"])
+  finally:
+    os.dup2(saved, 0)
+    os.close(saved)
+  assert proc.stdout.strip() == "''", proc.stdout
+
+
 def _backend(**kw):
   """Build a FakeAdapter-backed BatchBackend."""
   from libtbx.jobs.backends.batch import BatchBackend
@@ -1088,6 +1107,7 @@ def run():
     print("Skipping tst_batch on Windows")
     print("OK")
     return
+  exercise_scheduler_commands_do_not_inherit_the_managers_stdin()
   exercise_brace_template_leaves_shell_syntax_alone()
   exercise_render_defaults_resources_and_takeover()
   exercise_render_errors()

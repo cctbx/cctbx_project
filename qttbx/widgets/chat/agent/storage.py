@@ -29,7 +29,7 @@ from pathlib import Path
 
 from qttbx.widgets.chat.agent.conversation import (
   Attachment, ContentBlock, Conversation, ConversationMeta, Message,
-  SubagentRecord, TokenUsage, is_ephemeral_block)
+  SubagentRecord, TokenUsage)
 from qttbx.widgets.chat.agent.paths import chat_root_for
 
 
@@ -1287,15 +1287,10 @@ def persistable_prefix(messages):
 
 
 def _message_to_dict(m):
-  # Ephemeral blocks (e.g. a transient context-pressure note) reach the model
-  # in the live conversation but are never persisted -- dropped here, at the
-  # single serialization choke point every save path funnels through, so no
-  # writer can leak one to disk regardless of how the save was triggered.
   out = {
     "role": m.role,
     "timestamp": m.timestamp,
-    "content": [_content_block_to_dict(b) for b in m.content
-                if not is_ephemeral_block(b)],
+    "content": [_content_block_to_dict(b) for b in m.content],
   }
   if m.stop_reason is not None:
     out["stop_reason"] = m.stop_reason

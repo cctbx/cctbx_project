@@ -9,7 +9,7 @@ import json
 
 from qttbx.qt import QtCore, QtGui, QtWidgets
 
-from qttbx.widgets.chat.agent.conversation import ContentBlock, Message, now
+from qttbx.widgets.chat.agent.conversation import ContentBlock, Message, now, is_note_block
 from qttbx.widgets.chat.markdown_view import MarkdownView
 from qttbx.widgets.chat.tool_call_disclosure import (
   DisclosureRow, ToolCallDisclosure)
@@ -254,6 +254,12 @@ class MessageBubble(QtWidgets.QFrame):
   # ---- block rendering -----------------------------------------------------
 
   def _add_block(self, block):
+    # A persisted context-pressure note rides the user's own message; it is
+    # the model's scaffolding, not the user's words, so the bubble neither
+    # paints it nor reports it (combined_text) -- the twin of the Markdown
+    # export's rule (markdown_export).
+    if is_note_block(block):
+      return
     if block.type == "text":
       self._append_text_markdown(block.data.get("text", ""))
     elif block.type == "thinking":
@@ -720,6 +726,8 @@ class MessageBubble(QtWidgets.QFrame):
     from qttbx.widgets.chat.tool_approval import _short_json
     parts = []
     for block in self.message.content:
+      if is_note_block(block):
+        continue
       if block.type == "text":
         parts.append(block.data.get("text", ""))
       elif block.type == "thinking":

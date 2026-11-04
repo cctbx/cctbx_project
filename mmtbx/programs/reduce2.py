@@ -25,6 +25,7 @@ from libtbx.utils import Sorry, null_out, peak_memory_usage, human_readable_size
 import mmtbx
 from mmtbx.probe import Helpers
 from iotbx import pdb, cli_parser
+from iotbx.pdb import altloc_completion
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.hydrogens import hd_exchange
 from mmtbx.hydrogens import capping
@@ -142,7 +143,12 @@ qmready = False
   .short_caption = Run with custom preset options suitable for QM
   .help = Add H to water, use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks, \
           and the terminal hydroxyl H of nucleic acids (HO3-prime at a 3-prime end, HO5-prime at a \
-          5-prime OH end)
+          5-prime OH end). Also complete residues whose conformers lack atoms \
+          their other conformers have (altloc completion), and regularize the \
+          geometry of the finished model: bond outliers and clashes are \
+          minimized away with the smallest shift of the atoms \
+          (mmtbx.model.manager.regularize_geometry), before the clash check and \
+          the caps
 capping = False
   .type = bool
   .short_caption = Cap dangling bonds with H
@@ -1031,7 +1037,10 @@ NOTES:
   residue gets no H. Cannot be combined with approach=remove or qmready=True.
 
   qmready=True prepares a model for QM: H on water, longer XH distances, OXT and NH3+ at
-  chain ends and breaks, HO3' and HO5' at nucleic-acid chain ends. Adding capping=True to it also puts H on every non-H atom left with
+  chain ends and breaks, HO3' and HO5' at nucleic-acid chain ends, and the geometry of the
+  finished model regularized: bond outliers and clashes minimized away with the smallest
+  shift (mmtbx.model.manager.regularize_geometry), before the clash check and the caps.
+  Adding capping=True to it also puts H on every non-H atom left with
   an unsatisfied valence by a missing non-H atom (truncated side chains, incomplete ligands),
   as the very last step; the capped model is for QM use only, because the cap names are
   unknown to the restraint libraries.
@@ -1716,7 +1725,9 @@ NOTES:
         lines.append('    (+%d more)' % (len(entries) - len(shown)))
     by_reason = lambda entries, reason: [e for e in entries if e.reason == reason]
     section('Conformer sites written as one isotope',
-      by_reason(r.conformer_sites, 'conformer'), lambda e: e.reason)
+      by_reason(r.conformer_sites, 'conformer'), lambda e: e.reason,
+      remark='These sites have no H/D occupancy pair: a limit of the layout, '
+             'not evidence of full exchange.')
     section('Not split, no free altloc letters',
       by_reason(r.conformer_sites, 'no free altloc letters'), lambda e: e.reason)
     section('Name not pairable by phenix.refine, kept as H',
@@ -1938,6 +1949,34 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _RegularizeGeometry(self, model):
+    # qmready=True: bond outliers and clashes of the finished model are
+    # minimized away with the smallest shift (regularize_geometry(), riding
+    # H), on the rebuilt copy with restraints, before the clash check and
+    # the caps. The coordinates go back to self.model (the same atoms in the
+    # same order), the output model with capping=False.
+    # :param model: The rebuilt copy of self.model with restraints; its
+    # coordinates change.
+    # :return: The description-file text; also in the log.
+    from six.moves import cStringIO as StringIO
+    report = StringIO()
+    model.set_log(report)
+    r = model.regularize_geometry()
+    model.set_log(null_out())
+    if not r.needed:
+      text = ('qmready: geometry regularization not needed (no bond outliers '
+        'or clashes)\n')
+    else:
+      text = report.getvalue()
+      atoms = self.model.get_atoms()
+      qm_atoms = model.get_atoms()
+      assert atoms.size() == qm_atoms.size()
+      for a, qm_a in zip(atoms, qm_atoms):
+        assert a.id_str() == qm_a.id_str(), (a.id_str(), qm_a.id_str())
+      self.model.set_sites_cart(model.get_sites_cart())
+    print(text, file=self.logger)
+    return '\n' + text
+
   def _CheckQmreadyClashes(self, model):
     # qmready=True: Sorry if the finished model has a non-bonded contact
     # below 1.0 A. Checked on a copy with restraints (self.model has none);
@@ -2029,6 +2068,35 @@ NOTES:
           base, str(self.total_charge))
 
 # ------------------------------------------------------------------------------
+
+  def _AltlocCompletionText(self):
+    # qmready=True: the Altloc completion section of the description file,
+    # the lines printed to the log after complete_altlocs().
+    # :return: The description-file text ('' if nothing was reported).
+    lines = altloc_completion.report_lines(self._altloc_completion)
+    if not lines: return ''
+    lines = ['', 'Altloc completion (atoms borrowed between conformers of a '
+      'residue):'] + ['  ' + line for line in lines]
+    return '\n'.join(lines) + '\n'
+
+  def _HNotPlacedText(self, model):
+    # qmready=True: the residues of the finished model that miss H (an H
+    # that placement dropped: no parameterization, a metal site, a link).
+    # Residues that miss non-H atoms (truncated, capping=True) are listed by
+    # the atom-complete check instead.
+    # :param model: The finished model with restraints, not yet capped.
+    # :return: The description-file text ('' if none); also in the log.
+    heavy = model.missing_atoms_by_residue()
+    lines = []
+    for k, v in model.missing_atoms_by_residue(include_hydrogens=True).items():
+      if k in heavy: continue
+      lines.append('  %s: %s' % (k, ' '.join(v)))
+    if not lines: return ''
+    lines = ['qmready: H not placed (see the H placement report above):'
+      ] + lines
+    text = '\n'.join(lines) + '\n'
+    print(text, file=self.logger)
+    return '\n' + text
 
   def _CapDanglingAtoms(self, model, r):
     # capping=True: the output model and the Capping report after
@@ -2326,6 +2394,8 @@ NOTES:
     # residues without restraints (optimize, D input): None until checked
     self._unrestrained = None
     self._auto_restraint_names = []
+    # qmready: the complete_altlocs() result, for the description
+    self._altloc_completion = None
 
     # String describing the run that will be output to the specified file.
     outString = 'reduce2 v.{}, run {}\n'.format(version, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -2380,6 +2450,16 @@ NOTES:
     if self.params.qmready:
       # add OXT
       self.model.add_terminal_oxt()
+      # residues with partial alternative conformations: borrow the atoms
+      # their conformers lack from each other. An ambiguous borrow is a Sorry
+      completion = self.model.complete_altlocs()
+      self._altloc_completion = completion
+      lines = altloc_completion.report_lines(completion)
+      if lines:
+        print("Altloc completion (atoms borrowed between conformers of a residue):",
+          file=self.logger)
+        for line in lines:
+          print("  " + line, file=self.logger)
       # make sure model is atom-complete. With capping=True a listing only:
       # the atoms left with a dangling bond are capped at the end
       if not self.model.is_atom_complete():
@@ -2437,8 +2517,8 @@ NOTES:
     if self.params.approach != 'remove':
       # A model passed in memory (e.g. from an earlier run) gives the same
       # result as read from a file. Its cached monomer library server returns
-      # no CCD object for a CCD-only residue it has seen (no setter in
-      # mmtbx.model.manager; get_mon_lib_srv() builds a new one), and its
+      # no CCD object for a CCD-only residue it has seen (get_mon_lib_srv()
+      # then builds a new one), and its
       # riding-H manager, which setup_riding_h_manager() keeps, has the
       # earlier run's X-H lengths; a scattering table set on it (kept by
       # process()) sets the water O-H length when use_neutron_distances is
@@ -2648,17 +2728,22 @@ NOTES:
     # generating mmCIF files, so we always do it for safety.
     self.model = self._FinalizeModel(self.model.get_hierarchy())
 
-    # qmready=True (remove adds no H): one copy with restraints for the clash
-    # check (the finished model must be clash-free), the dangling atoms
-    # (capping=True) and the total charge, as qr.finalise does with
-    # calculate_charge=True, added to the default output file name
-    # (approach=add). With capping=True the caps go on that copy as the
-    # last change to the hierarchy and it is the output model.
+    # qmready=True (remove adds no H): one copy with restraints for the
+    # geometry regularization (bond outliers and clashes minimized away with
+    # the smallest shift), the clash check (the finished model must be
+    # clash-free), the dangling atoms (capping=True) and the total charge, as
+    # qr.finalise does with calculate_charge=True, added to the default
+    # output file name (approach=add). With capping=True the caps go on that
+    # copy as the last change to the hierarchy and it is the output model.
     self.total_charge = None
+    if self.params.qmready:
+      outString += self._AltlocCompletionText()
     if self.params.qmready and self.params.approach != 'remove':
       qm_model = self._RebuildModel(self.model.get_hierarchy().deep_copy(),
         make_restraints=True)
+      outString += self._RegularizeGeometry(qm_model)
       self._CheckQmreadyClashes(qm_model)
+      outString += self._HNotPlacedText(qm_model)
       if self.params.capping:
         # capping.cap_model: the records, the charge of the capped model
         # (the caps as sigma bonds) and the caps, shared with qrefine

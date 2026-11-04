@@ -872,15 +872,22 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
       # a conformer copy (H in an altloc group, parent in the blank group) is
       # compared with its conformer's occupancy, other H with the parent's
       ref, what = e.parent_occ, "parent"
+      value = atom.occ
       if atom.parent().altloc != "" and e.parent_altloc == "":
         occ = _conformer_occupancy(atom.parent())
-        # no heavy atom in that altloc: a lone alternate H, keeps the parent
+        # no heavy atom in that altloc: a lone alternate H, keeps the parent;
+        # copies of one H over such groups share the parent's population
         if occ != "no heavy atoms":
           ref, what = occ, "conformer"
-      if ref is not None and abs(atom.occ - ref) > 0.01:
+        else:
+          name = normalized_name(atom)
+          value = sum(x.occ for g in atom.parent().parent().atom_groups()
+            if g.altloc != "" for x in g.atoms()
+            if normalized_name(x) == name)
+      if ref is not None and abs(value - ref) > 0.01:
         result.notes.append(group_args(site=atom.id_str(),
           reason="occupancy differs from %s" % what,
-          text="occupancy %.2f, %s %.2f" % (atom.occ, what, ref)))
+          text="occupancy %.2f, %s %.2f" % (value, what, ref)))
         listed.append((result.notes[-1], atom))
     written.append((atom, item.source_key))
     written_as[atom.memory_id()] = atom

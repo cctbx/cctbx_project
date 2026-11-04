@@ -230,22 +230,19 @@ def exercise_thinking_blocks_render_as_labelled_blockquote():
   assert quote + "\nthe answer is 42\n" in md, md
 
 
-def exercise_ephemeral_blocks_are_skipped():
-  """An ephemeral block (e.g. a transient context-pressure note) reaches the
-  model in the live conversation but must never appear in an export.
-
-  ``conversation_to_markdown`` is a SECOND serializer of the in-memory
-  conversation, independent of ``storage.save``; between a delivering turn and
-  the next send the note sits in ``conv.messages``, so without the same
-  ``is_ephemeral_block`` filter a 'Save chat' then leaks it under the user's
-  own heading. The sibling text in the same message must survive."""
+def exercise_note_blocks_are_skipped():
+  """A context-pressure note block is part of the conversation the model
+  sees, but not of the user's record: the export skips it, as the reloaded
+  view does. The sibling text in the same message must survive."""
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
-  from qttbx.widgets.chat.agent.conversation import EPHEMERAL_BLOCK_KEY
+  from qttbx.widgets.chat.agent.conversation import (
+    NOTE_BLOCK_KEY, NOTE_VALUE, NOTE_STAGE_KEY)
   conv, Message, ContentBlock, now = _make_conv()
   conv.append(Message(role="user", timestamp=now(), content=[
     ContentBlock(type="text", data={"text": "my real question"}),
     ContentBlock(type="text", data={"text": "[system note] 80% used",
-                                    EPHEMERAL_BLOCK_KEY: True})]))
+                                    NOTE_BLOCK_KEY: NOTE_VALUE,
+                                    NOTE_STAGE_KEY: "offer"})]))
   md = conversation_to_markdown(conv)
   assert "my real question" in md, md
   assert "system note" not in md, md
@@ -353,14 +350,15 @@ def exercise_orphan_tool_result_answer_heading_the_chat_keeps_role_header():
   assert md.count("\n## ") == 1, md
 
 
-def exercise_tool_result_answer_with_ephemeral_note_still_folds():
+def exercise_tool_result_answer_with_note_still_folds():
   """Mid-turn, the context-pressure note rides the round's tool-result
-  message as an ephemeral text block. ``is_tool_result_answer`` ignores
-  ephemeral blocks, so the message is still an answer and still folds; the
-  export's own ephemeral filter then drops the note's text. Neither a
-  ``## You`` header nor the note may appear."""
+  message as a note block and stays there. ``is_tool_result_answer`` ignores
+  note blocks, so the message is still an answer and still folds; the
+  export's own note filter then drops the note's text. Neither a ``## You``
+  header nor the note may appear."""
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
-  from qttbx.widgets.chat.agent.conversation import EPHEMERAL_BLOCK_KEY
+  from qttbx.widgets.chat.agent.conversation import (
+    NOTE_BLOCK_KEY, NOTE_VALUE, NOTE_STAGE_KEY)
   conv, Message, ContentBlock, now = _make_conv()
   conv.append(Message(role="assistant", timestamp=now(), backend="anthropic",
     content=[ContentBlock(type="tool_use", data={
@@ -371,24 +369,48 @@ def exercise_tool_result_answer_with_ephemeral_note_still_folds():
       "content": [ContentBlock(type="text", data={"text": "tail: done"})],
       "is_error": False}),
     ContentBlock(type="text", data={"text": "[system note] 80% used",
-                                    EPHEMERAL_BLOCK_KEY: True})]))
+                                    NOTE_BLOCK_KEY: NOTE_VALUE,
+                                    NOTE_STAGE_KEY: "offer"})]))
   md = conversation_to_markdown(conv)
   assert "## You" not in md, md
   assert "tail: done" in md, md
   assert "system note" not in md, md
 
 
+def exercise_note_block_tags_and_answer_rule():
+  """A context-pressure note is a text block tagged note=context_pressure
+  with its stage; note_stage reads the stage and is None for a non-note or
+  a stray stage value (pending_note indexes it, so it must never raise);
+  a note never makes a tool-result message the user's own."""
+  from qttbx.widgets.chat.agent.conversation import (
+    ContentBlock, Message, now, is_note_block, note_stage,
+    is_tool_result_answer, NOTE_BLOCK_KEY, NOTE_VALUE, NOTE_STAGE_KEY)
+  note = ContentBlock(type="text", data={"text": "n", NOTE_BLOCK_KEY: NOTE_VALUE,
+                                         NOTE_STAGE_KEY: "offer"})
+  plain = ContentBlock(type="text", data={"text": "hello"})
+  tr = ContentBlock(type="tool_result", data={"tool_use_id": "t", "content": []})
+  assert is_note_block(note) and note_stage(note) == "offer"
+  assert not is_note_block(plain) and note_stage(plain) is None
+  assert is_tool_result_answer(Message(role="user", timestamp=now(), content=[tr, note]))
+  assert not is_tool_result_answer(Message(role="user", timestamp=now(), content=[note]))
+  stray = ContentBlock(type="text", data={"text": "n", NOTE_BLOCK_KEY: NOTE_VALUE,
+                                          NOTE_STAGE_KEY: "later"})
+  assert is_note_block(stray) and note_stage(stray) is None
+
+
 def exercise_is_tool_result_answer_predicate():
   """The shared predicate (used by the reloaded view and the export) is true
-  only for a user message whose persisted blocks are all tool_result: an
-  ephemeral block does not count, a typed text block disqualifies, an empty
-  message and an assistant message are never answers."""
+  only for a user message whose persisted blocks are all tool_result: a
+  context-pressure note block does not count, a typed text block
+  disqualifies, an empty message and an assistant message are never
+  answers."""
   from qttbx.widgets.chat.agent.conversation import (
-    is_tool_result_answer, EPHEMERAL_BLOCK_KEY)
+    is_tool_result_answer, NOTE_BLOCK_KEY, NOTE_VALUE, NOTE_STAGE_KEY)
   _, Message, ContentBlock, now = _make_conv()
   tr = ContentBlock(type="tool_result", data={
     "tool_use_id": "tu_1", "content": [], "is_error": False})
-  eph = ContentBlock(type="text", data={"text": "note", EPHEMERAL_BLOCK_KEY: True})
+  eph = ContentBlock(type="text", data={"text": "note", NOTE_BLOCK_KEY: NOTE_VALUE,
+                                        NOTE_STAGE_KEY: "offer"})
   txt = ContentBlock(type="text", data={"text": "hello"})
   assert is_tool_result_answer(Message(role="user", timestamp=now(), content=[tr]))
   assert is_tool_result_answer(
@@ -546,14 +568,15 @@ def exercise():
   exercise_assistant_label_reflects_backend_stamp()
   exercise_user_and_assistant_text_blocks_alternate()
   exercise_thinking_blocks_render_as_labelled_blockquote()
-  exercise_ephemeral_blocks_are_skipped()
+  exercise_note_blocks_are_skipped()
   exercise_tool_use_renders_as_fenced_block()
   exercise_tool_result_renders_text_content_in_fence()
   exercise_tool_result_fence_outlasts_inner_backticks()
   exercise_tool_result_answer_folds_under_preceding_assistant_section()
   exercise_orphan_tool_result_answer_heading_the_chat_keeps_role_header()
-  exercise_tool_result_answer_with_ephemeral_note_still_folds()
+  exercise_tool_result_answer_with_note_still_folds()
   exercise_is_tool_result_answer_predicate()
+  exercise_note_block_tags_and_answer_rule()
   exercise_image_renders_link_to_attachment_when_storage_present()
   exercise_image_resolves_via_public_conv_dir_accessor()
   exercise_image_without_storage_falls_back_to_placeholder()

@@ -4,6 +4,15 @@ import sys
 def run(args):
   assert len(args) == 0
   print("""
+CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES
+PHENIX_TRUST_OTHER_ENV
+  If either is set to a non-empty value, the command-line launchers keep
+  the caller's environment instead of clearing it (PYTHONPATH, library
+  search paths, GUI-toolkit module paths) and leave per-user site-packages
+  enabled. Needed when a CUDA runtime comes from "module load" or for
+  formats installed with dxtbx.install_format --user. PYTHONHOME is
+  cleared either way. See libtbx/dispatcher_env.py.
+
 LIBTBX_DISABLE_TRACEBACKLIMIT
   If set, Sorry and Usage exceptions are shown with the full traceback.
 

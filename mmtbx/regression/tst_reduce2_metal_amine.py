@@ -472,6 +472,30 @@ def test_special_position():
     'placed  (NZ  LYS A 359 - CD    CD A 396 2.') and ';' not in lines[0], lines
   check_nh2(h, 359, 'NZ', 'CE', 396, 'CD', ['HZ2', 'HZ3'])
 
+def test_two_metal_mates():
+  # NZ on a 2-fold, Cd 2.21 A off it: two positions of the Cd, 4.43 A apart,
+  # both in the contact window: no single frame for the NH2
+  pdb = """\
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1 2 1
+ATOM      1  N   LYS A 359       6.598  19.431   0.327  1.00  8.43           N
+ATOM      2  CA  LYS A 359       5.178  19.240   0.029  1.00  7.92           C
+ATOM      3  C   LYS A 359       4.837  17.779  -0.346  1.00  7.33           C
+ATOM      4  O   LYS A 359       4.096  17.521  -1.331  1.00  7.65           O
+ATOM      5  CB  LYS A 359       4.353  19.740   1.222  1.00  8.93           C
+ATOM      6  CG  LYS A 359       2.860  19.480   0.992  1.00 11.26           C
+ATOM      7  CD  LYS A 359       1.935  20.438   1.657  1.00 16.15           C
+ATOM      8  CE  LYS A 359       0.479  20.000   1.437  1.00 18.69           C
+ATOM      9  NZ  LYS A 359       0.000  20.000   0.000  1.00 18.51           N
+TER
+HETATM   10 CD    CD A 396      -2.214  20.000   0.000  1.00 10.07          CD
+END
+"""
+  h, description, log = run('tst_reduce2_metal_amine_two_mates', pdb, [ON])
+  assert CONVERTED not in description
+  lines = section(description, UNRESOLVED)
+  assert len(lines) == 1 and lines[0].startswith(
+    'NZ  LYS A 359: no unique metal position'), lines
+
 def test_hd_and_h():
   h, description, log = run('tst_reduce2_metal_amine_hd', pdb_lys_cd,
     [ON, 'neutron_option=hd_and_h'])
@@ -511,6 +535,7 @@ if __name__ == '__main__':
   test_shared_frame_restraints()
   test_alternate_metals_per_conformer()
   test_special_position()
+  test_two_metal_mates()
   test_hd_and_h()
   test_qmready_charge()
   print('OK')

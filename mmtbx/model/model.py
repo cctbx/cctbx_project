@@ -257,7 +257,13 @@ def _missing_atoms_records(acp, mon_lib_srv=None, link_bond_counts=None):
         link_bond_counts = link_bond_counts,
         mon_lib_srv      = mon_lib_srv)
     id_str = ag.id_str()
-    if(mm.conf_altloc):
+    # Conformers the residue group does not own (inherited by
+    # pdb_interpretation from other residues of the chain) are not reported;
+    # a residue group without conformers is reported once, under blank key.
+    own = set(g.altloc for g in ag.parent().atom_groups()
+              if g.altloc.strip())
+    if(mm.conf_altloc and own and mm.conf_altloc not in own): continue
+    if(mm.conf_altloc and own):
       key        = mm.conf_altloc + id_str[1:]
       legacy_key = '"%s"%s' % (mm.conf_altloc, id_str)
     else:
@@ -565,7 +571,6 @@ class manager(object):
     self._atom_selection_cache = None
     self._ncs_obj = None
     self._mon_lib_srv = None
-    self._mon_lib_srv_is_shared = False # set_mon_lib_srv: process() reuses it
     self._ener_lib = None
     self._rotamer_eval = None
     self._rotamer_id = None
@@ -1886,12 +1891,11 @@ class manager(object):
 
   def set_mon_lib_srv(self, mon_lib_srv):
     """
-    Monomer library server to use, by process() too, instead of creating
-    one: reading the library takes time, many models can share one server.
+    Monomer library server for process() to use instead of creating one:
+    reading the library takes time, many models can share one server.
     The restraint CIF objects of every model processed with it stay in it.
     """
     self._mon_lib_srv = mon_lib_srv
-    self._mon_lib_srv_is_shared = True
 
   def get_ener_lib(self):
     if self._ener_lib is None:
@@ -2397,7 +2401,7 @@ class manager(object):
       log                       = self.log,
       cif_objects               = self._restraint_objects,
       cif_parameters            = self._monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
-      mon_lib_srv               = self._mon_lib_srv if self._mon_lib_srv_is_shared else None,
+      mon_lib_srv               = self._mon_lib_srv,
       ener_lib                  = None,
       use_neutron_distances     = pip.pdb_interpretation.use_neutron_distances)
     if(self._processed_pdb_file is None):
@@ -2563,8 +2567,10 @@ class manager(object):
     """
     Find residues with missing atoms. Expected atoms are those of monomer
     library definitions after applying modifications (as for restraints).
-    Residues are checked per conformer. Residues not in monomer library are
-    not checked. Missing C-terminal OXT is not reported.
+    Residues with alternative conformations are checked per conformer, only
+    for conformers the residue itself has; a residue without them is
+    reported once. Residues not in monomer library are not checked. Missing
+    C-terminal OXT is not reported.
 
     Atoms absent because of links are not reported (e.g. OD2 of ASP if CG is
     linked to N of another residue), see _missing_atoms_excused_by_links().
@@ -3577,7 +3583,7 @@ class manager(object):
       assert self._xray_structure is not None
       xh_conn_table = self.xh_connectivity_table()
       bfi = self._xray_structure.extract_u_iso_or_u_equiv()
-      for t in self.xh_connectivity_table():
+      for t in xh_conn_table:
         i_x, i_h = t[0], t[1]
         bfi[i_h] = adptbx.u_as_b(bfi[i_x])*scale
       self.set_b_iso(values = bfi, selection = hd_sel, keep_aniso=keep_aniso)
@@ -3956,6 +3962,165 @@ class manager(object):
       if(show):
         print("X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
         (flex.mean(xhd), flex.max(xhd)), file=self.log)
+
+  def regularize_geometry(self, force=False, bond_z_max=6.0,
+                          clash_overlap_max=1.0, mean_shift_max=0.3,
+                          max_shift_max=1.0, shell_radius=5.0,
+                          max_iterations=500):
+    """
+    Remove bond length outliers and steric clashes with the smallest shift
+    of the model, for example to make it fit for a QM calculation.
+
+    Bond outliers (|z| > bond_z_max) and clashes (nonbonded overlap more
+    than clash_overlap_max A, with symmetry mates too) are found with the
+    geometry restraints. Without any the model is not changed, unless
+    force is set. Otherwise the residues within shell_radius (A) of a
+    violation (all residues when forced without violations) are minimized
+    with riding H, Cartesian reference restraints to the starting
+    positions, secondary structure (H-bond), Ramachandran and chi torsion
+    restraints, until no violation is left or the mean or the maximum
+    shift of the moving non-H atoms exceeds its budget (mean_shift_max,
+    max_shift_max in A; None: no limit); see
+    mmtbx.refinement.geometry_minimization.regularize. Water O never move
+    (a water would fly away), water H do. The work is done on
+    a copy, with restraints made if the model has none: only the
+    coordinates of the model change. A report goes to the log.
+
+    Parameters
+    ----------
+    force : bool
+      Minimize even without violations, then until convergence or the
+      shift budget.
+    bond_z_max : float
+    clash_overlap_max : float
+    mean_shift_max : float or None
+    max_shift_max : float or None
+    shell_radius : float
+    max_iterations : int
+      LBFGS iterations in total.
+
+    Returns
+    -------
+    libtbx.group_args
+      needed (bool: there were violations), n_violations_start,
+      n_violations_end, n_iterations, mean_shift, max_shift (A, over the
+      moving non-H atoms).
+    """
+    from mmtbx.refinement import geometry_minimization
+    from mmtbx.secondary_structure import manager as ss_manager_class
+    from mmtbx.secondary_structure import sec_str_master_phil
+    pip = self.get_current_pdb_interpretation_params()
+    use_neutron_distances = pip.pdb_interpretation.use_neutron_distances
+    work = self.deep_copy()
+    work.set_log(null_out())
+    if(work.get_restraints_manager() is None):
+      pip = deepcopy(pip)
+      pip.pdb_interpretation.sort_atoms = False # keep the atom order
+      pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+      pip.pdb_interpretation.proceed_with_excessive_length_bonds = True
+      work.process(make_restraints=True, pdb_interpretation_params=pip)
+      assert work.get_number_of_atoms() == self.get_number_of_atoms()
+    grm = work.get_restraints_manager().geometry
+    violations = geometry_minimization.geometry_violations(
+      geometry_restraints_manager = grm,
+      sites_cart                  = work.get_sites_cart(),
+      bond_z_max                  = bond_z_max,
+      clash_overlap_max           = clash_overlap_max)
+    n_violations_start = len(violations.bonds) + len(violations.clashes)
+    needed = n_violations_start > 0
+    if(not needed and not force):
+      return group_args(
+        needed             = False,
+        n_violations_start = 0,
+        n_violations_end   = 0,
+        n_iterations       = 0,
+        mean_shift         = 0.0,
+        max_shift          = 0.0)
+    n_atoms = work.get_number_of_atoms()
+    selection = flex.bool(n_atoms, True)
+    if(needed):
+      # Residues with an atom (or a symmetry mate of it) within shell_radius
+      # of an atom of a violation.
+      i_seqs = set()
+      for v in violations.bonds + violations.clashes:
+        i_seqs.update(v[:2])
+      # The pair table (with the symmetry mates) is built in C++;
+      # crystal.pairs_within would compute a distance per pair in Python.
+      pair_table = work.get_xray_structure().pair_asu_table(
+        distance_cutoff=shell_radius).table()
+      for i_seq in sorted(i_seqs):
+        i_seqs.update(pair_table[i_seq].keys())
+      atom_selection = flex.bool(n_atoms, False)
+      atom_selection.set_selected(flex.size_t(sorted(i_seqs)), True)
+      selection = flex.bool(n_atoms, False)
+      for rg in work.get_hierarchy().residue_groups():
+        rg_i_seqs = rg.atoms().extract_i_seq()
+        if(atom_selection.select(rg_i_seqs).count(True) > 0):
+          selection.set_selected(rg_i_seqs, True)
+    water_o = work.solvent_selection()
+    if(work.has_hd()): water_o &= ~work.get_hd_selection()
+    selection &= ~water_o
+    work.setup_riding_h_manager(use_neutron_distances=use_neutron_distances)
+    hierarchy = work.get_hierarchy()
+    grm.remove_secondary_structure_restraints(sites_cart=work.get_sites_cart())
+    ss_params = sec_str_master_phil.extract()
+    ss_params.secondary_structure.protein.search_method = "from_ca"
+    ss_manager = ss_manager_class(
+      pdb_hierarchy               = hierarchy,
+      geometry_restraints_manager = grm,
+      sec_str_from_pdb_file       = self.get_ss_annotation(),
+      params                      = ss_params.secondary_structure,
+      mon_lib_srv                 = work.get_mon_lib_srv(),
+      show_summary_on             = False,
+      log                         = null_out())
+    grm.set_secondary_structure_restraints(
+      ss_manager = ss_manager,
+      hierarchy  = hierarchy,
+      log        = null_out())
+    rama_params = \
+      ramachandran.master_phil.extract().ramachandran_plot_restraints
+    rama_params.enabled = True
+    work.set_ramachandran_plot_restraints(rama_params)
+    grm.remove_chi_torsion_restraints_in_place()
+    grm.add_chi_torsion_restraints_in_place(
+      pdb_hierarchy   = hierarchy,
+      sites_cart      = work.get_sites_cart(),
+      chi_angles_only = True,
+      sigma           = 10.0)
+    hd_selection = None
+    if(work.has_hd()): hd_selection = work.get_hd_selection()
+    result = geometry_minimization.regularize(
+      geometry_restraints_manager = grm,
+      sites_cart                  = work.get_sites_cart(),
+      selection                   = selection,
+      hd_selection                = hd_selection,
+      riding_h_manager            = work.get_riding_h_manager(),
+      bond_z_max                  = bond_z_max,
+      clash_overlap_max           = clash_overlap_max,
+      mean_shift_max              = mean_shift_max,
+      max_shift_max               = max_shift_max,
+      max_iterations              = max_iterations,
+      stop_when_regular           = needed)
+    self.set_sites_cart(result.sites_cart)
+    n_violations_end = len(result.violations_end.bonds) + \
+                       len(result.violations_end.clashes)
+    if(self.log is not None):
+      print("Regularize geometry: %d of %d atoms free; violations %d -> %d "
+        "(bonds %d -> %d, clashes %d -> %d); %d iterations; shift of the "
+        "free non-H atoms (A): mean %.3f max %.3f" % (
+          selection.count(True), n_atoms,
+          n_violations_start, n_violations_end,
+          len(violations.bonds), len(result.violations_end.bonds),
+          len(violations.clashes), len(result.violations_end.clashes),
+          result.n_iterations, result.mean_shift, result.max_shift),
+        file=self.log)
+    return group_args(
+      needed             = needed,
+      n_violations_start = n_violations_start,
+      n_violations_end   = n_violations_end,
+      n_iterations       = result.n_iterations,
+      mean_shift         = result.mean_shift,
+      max_shift          = result.max_shift)
 
   def extract_water_residue_groups(self):
     result = []
@@ -4597,7 +4762,6 @@ class manager(object):
       new._ncs_groups = new_ncs_groups
     new._update_master_sel()
     new._mon_lib_srv = self._mon_lib_srv
-    new._mon_lib_srv_is_shared = self._mon_lib_srv_is_shared
     new._ener_lib = self._ener_lib
     new._original_model_format = self._original_model_format
     if self._ss_annotation is not None:
@@ -4695,6 +4859,30 @@ class manager(object):
   def remove_solvent(self):
     return self.select(selection = ~self.solvent_selection())
 
+  def complete_altlocs(self, check_only=False, log=None):
+    """
+    Make alternative conformations of residues complete by sharing or
+    copying atoms between conformers (see
+    iotbx.pdb.hierarchy.root.complete_altlocs() for the rules).
+
+    If anything is changed, serial numbers are reset and restraints are
+    unset (call process() if needed). With check_only the model is not
+    changed and only the findings are returned. Report lines are printed to
+    log if given.
+
+    Returns libtbx.group_args with fields: shared, copied, truncated,
+    inconsistent, changed (bool), see the hierarchy method.
+
+    Raises Sorry if the hierarchy cannot be completed (as the hierarchy
+    method does).
+    """
+    result = self._pdb_hierarchy.complete_altlocs(
+      check_only=check_only, log=log)
+    if(result.changed):
+      self._pdb_hierarchy.atoms().reset_serial()
+      self.reset_after_changing_hierarchy()
+    return result
+
   def add_terminal_oxt(self, peptide_bond_cutoff=2.0, log=None):
     """
     Add C-terminal OXT atom to each protein chain end that does not have it.
@@ -4702,9 +4890,11 @@ class manager(object):
     Chain end is the last amino-acid residue of a chain, or the last residue
     before a break in polypeptide chain: next residue is not an amino acid or
     is not peptide-bonded (C(i)-N(i+1) distance >= peptide_bond_cutoff).
-    No OXT if C is already bonded to a heavy atom of another residue, or of
-    a symmetry mate when the model has a unit cell (within
-    peptide_bond_cutoff): caps (NH2, NME), cyclic peptides, links.
+    No OXT if C is already bonded (within peptide_bond_cutoff) to a heavy atom
+    of another residue or a symmetry mate of it, when the model has a unit
+    cell: caps (NH2, NME), cyclic peptides, links. The C's own residue is not
+    a bond, mates too (disorder across an axis), but for a mate of its N: a
+    cyclic peptide with one residue per asymmetric unit.
 
     OXT is placed in CA-C-O plane at 1.231 A from C, symmetrically to O, and
     inherits altloc, occupancy and B from O. Residues missing C, CA or O are
@@ -4751,8 +4941,8 @@ class manager(object):
           c, ca, o = [atoms.get(name) for name in ["C", "CA", "O"]]
           if None in [c, ca, o]: continue
           ends.append((rg, c, ca, o))
-      # C bonded to a heavy atom of another residue, or of a symmetry mate
-      # (a peptide closed across symmetry): not a chain end
+      # C bonded to a heavy atom of another residue or a mate of it (a peptide
+      # closed across symmetry), or to a mate of its own N: not a chain end
       sites = flex.vec3_double([c.xyz for rg, c, ca, o in ends])
       sites.extend(flex.vec3_double([a.xyz for a in heavy]))
       bonded = set()
@@ -4760,9 +4950,10 @@ class manager(object):
           self.crystal_symmetry(), i_seqs=range(len(ends))):
         if j < len(ends): continue
         a = heavy[j - len(ends)]
-        if (not rt.is_unit_mx() or
-            a.parent().parent().memory_id() != ends[k][0].memory_id()):
-          bonded.add(k)
+        if (a.parent().parent().memory_id() == ends[k][0].memory_id() and
+            (rt.is_unit_mx() or a.name.strip() != "N")):
+          continue
+        bonded.add(k)
       for k, (rg, c, ca, o) in enumerate(ends):
         if k in bonded: continue
         c_xyz = matrix.col(c.xyz)

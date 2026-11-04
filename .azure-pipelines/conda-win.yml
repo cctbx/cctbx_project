@@ -17,10 +17,6 @@ jobs:
   strategy:
     maxParallel: 2
     matrix:
-      python3.10:
-        OS: win-64
-        PYTHON_VERSION: py310
-        MODULES: ${{ parameters.modules }}
       python3.11:
         OS: win-64
         PYTHON_VERSION: py311

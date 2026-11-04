@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.plot_reflection_stats
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 from matplotlib import pyplot as plt
 from xfel.command_line.detector_residuals import setup_stats
 from dials.array_family import flex

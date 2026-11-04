@@ -246,7 +246,7 @@ def electrons(model,
   from libtbx.utils import Sorry
   from mmtbx.ligands import electrons
   atom_valences = electrons.electron_distribution(
-    model.get_hierarchy(), # needs to be altloc free
+    model.get_hierarchy(),
     model.get_restraints_manager().geometry,
     specific_atom_charges=specific_atom_charges,
     specific_atom_multiplicities=specific_atom_multiplicities,

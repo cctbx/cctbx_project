@@ -208,6 +208,55 @@ def exercise_alt_confs():
   assert m.missing_atoms_by_residue() == {"BTYR A   3 ": ["OH"]}, \
     m.missing_atoms_by_residue()
 
+def with_altlocs(pdb_str, spec):
+  """ spec: {(resname, atom name): labels}; atom is written once per label """
+  lines = []
+  for l in pdb_str.splitlines():
+    labels = spec.get((l[17:20], l[12:16].strip()))
+    if labels is None:
+      lines.append(l)
+    else:
+      for label in labels:
+        lines.append(l[:16]+label+l[17:54]+"  0.50"+l[60:])
+  return "\n".join(lines)+"\n"
+
+def exercise_inherited_conformer():
+  # TYR OH under A and B (complete), ASN ND2 under A, B and C: conformer C
+  # does not belong to TYR, no entry for it
+  m = get_model(with_altlocs(tripeptide,
+    {("TYR","OH"): "AB", ("ASN","ND2"): "ABC"}))
+  assert m.is_atom_complete(), m.missing_atoms_by_residue()
+  # TYR CZ under A and B, OH under A only: reported only for B
+  m = get_model(with_altlocs(tripeptide,
+    {("TYR","CZ"): "AB", ("TYR","OH"): "A", ("ASN","ND2"): "ABC"}))
+  assert m.missing_atoms_by_residue() == {"BTYR A   3 ": ["OH"]}, \
+    m.missing_atoms_by_residue()
+
+def exercise_plain_residue_in_altloc_chain():
+  # GLN 1 without CD, OE1, NE2 (blank residue) while TYR OH is under A and B
+  pdb_str = with_altlocs(remove(tripeptide, "GLN", ["CD","OE1","NE2"]),
+    {("TYR","OH"): "AB"})
+  m = get_model(pdb_str)
+  assert m.missing_atoms_by_residue() == {" GLN A   1 ": ["CD","NE2","OE1"]}, \
+    m.missing_atoms_by_residue()
+  # raw view lists missing H of all residues; heavy atoms only for GLN
+  assert [k for k, v in m.get_missing_atoms().items()
+          if v.get("missing", {}).get("heavy")] == [" GLN A   1 "]
+
+def exercise_complete_altlocs():
+  # TYR CZ under A and B, OH under A only (the incomplete case of
+  # exercise_alt_confs)
+  m = get_model(with_altlocs(tripeptide,
+    {("TYR","CZ"): "AB", ("TYR","OH"): "A"}))
+  assert not m.is_atom_complete()
+  r = m.complete_altlocs()
+  assert r.shared == [(" TYR A   3 ", "OH", "A")], r.shared
+  assert m.is_atom_complete()
+  h = m.get_hierarchy()
+  assert m.get_xray_structure().scatterers().size() == h.atoms_size()
+  # serials are reset
+  assert h.atoms().extract_serial()[-1].strip() == str(h.atoms_size())
+
 def exercise_hydrogens():
   m = get_model(cys_his_cys_h)
   # SG-SG bonded CYS do not need HG; waters do not need H
@@ -319,7 +368,8 @@ def exercise_cache():
 def exercise_fingerprint():
   """ In-place hierarchy changes invalidate cache """
   def gln(m):
-    return [ag for ag in m.get_hierarchy().atom_groups() if ag.resname=="GLN"][0]
+    return [ag for ag in m.get_hierarchy().atom_groups()
+      if ag.resname=="GLN"][0]
   def remove_atom(m):
     ag = gln(m)
     ag.remove_atom(ag.get_atom("CD"))
@@ -444,6 +494,9 @@ def exercise_pickle():
 def run():
   exercise_heavy_atoms()
   exercise_alt_confs()
+  exercise_inherited_conformer()
+  exercise_plain_residue_in_altloc_chain()
+  exercise_complete_altlocs()
   exercise_hydrogens()
   exercise_current_hierarchy_used()
   exercise_get_missing_atoms_not_stale()

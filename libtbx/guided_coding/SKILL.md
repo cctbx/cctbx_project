@@ -8,15 +8,16 @@ disable-model-invocation: true
 > GuidedCoding is at https://github.com/cctbx/guided_coding (branch `master`). When this skill is invoked, start no
 > job. Before reading or running anything, first tell the user in one sentence that this kit is retired and that you
 > can move them to the current GuidedCoding in one step. To do it:
-> read the reviewed README at https://raw.githubusercontent.com/cctbx/guided_coding/22dcdc035feefe0f4330e2905aaf40d5a2a3a430/README.md (that
-> fixed commit, not `master`) and take its "PHENIX developers" install block. That block installs the latest
-> GuidedCoding from `master` into the installation's `modules/guided_coding`, checks that it is version 1.4, and
-> replaces this kit's registration with the new one; say so to the user. If that page cannot
-> be read, or has no such block, stop and point to the README instead. Show the block, say in plain words what it
-> will change, and ask once. If the user
-> agrees, run it exactly as written with bash, with `$PHENIX` set or from the folder that contains `modules` (the
-> folder above `cctbx_project`), and report its output. Then tell the user to start a new Claude Code conversation
-> and type `/gc`. Continue with the earlier kit only if the user asks you to.
+> read the README at https://raw.githubusercontent.com/cctbx/guided_coding/master/README.md and take its block
+> under "Moving from the earlier kit". That block installs the current GuidedCoding into the installation's
+> `modules/guided_coding`, checks its version, and replaces this kit's registration with the new one; say so to the
+> user. If that page cannot be read, or has no such block, stop and point to the README instead. Show the block, say
+> in plain words what it will change, and ask once. If the user agrees, run it exactly as written with bash, with
+> `$PHENIX` set or from the folder that contains `modules` (the folder above `cctbx_project`), and report its
+> output. If its clone failed with Permission denied (for example in a PHENIX binary installation), follow the
+> README's "In a PHENIX binary installation" step instead, the same way: its line, then the home-folder block; if
+> that block fails, run the put-back command the line printed. For any other failure, stop and report it. Then tell
+> the user to start a new Claude Code conversation and type `/gc`. Continue with the earlier kit only if the user asks you to.
 
 # GuidedCoding, by explicit request
 

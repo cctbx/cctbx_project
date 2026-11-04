@@ -157,25 +157,26 @@ def tst_03():
   Corrections with and without use_parent_for_modified_residues.
   """
   default = get_deviations()
-  off = get_deviations(apply_phi_psi_correction=True)
+  # full strength, so the values are the table corrections themselves
+  off = get_deviations(apply_phi_psi_correction=True,
+                       phi_psi_correction_strength=1.)
   on = get_deviations(apply_phi_psi_correction=True,
+                      phi_psi_correction_strength=1.,
                       use_parent_for_modified_residues=True)
-  positive_phi = get_deviations(apply_positive_phi_correction=True,
-                                use_parent_for_modified_residues=True)
-  assert len(default) == len(off) == len(on) == len(positive_phi) == 10
+  assert len(default) == len(off) == len(on) == 10
   # the standard residue next to modified residues is corrected either way
   assert approx_equal(default[('9', 'VAL')], 0.0619, eps=1e-4)
-  assert approx_equal(off[('9', 'VAL')], 0.0562, eps=1e-4)
-  assert approx_equal(on[('9', 'VAL')], 0.0562, eps=1e-4)
+  assert approx_equal(off[('9', 'VAL')], 0.0609, eps=1e-4)
+  assert approx_equal(on[('9', 'VAL')], 0.0609, eps=1e-4)
   # modified residues are only corrected with the parent table
   expected = {
-    ('2', 'MLE')  : (0.1567, 0.1325),
-    ('3', 'MLE')  : (0.1443, 0.1374),
-    ('4', 'MVA')  : (0.0555, 0.0533),
-    ('5', 'BMT')  : (0.1716, 0.1808),
-    ('6', 'ABA')  : (0.0224, 0.0020),
-    ('8', 'MLE')  : (0.1255, 0.1034),
-    ('10', 'MLE') : (0.1558, 0.1379),
+    ('2', 'MLE')  : (0.1567, 0.1331),
+    ('3', 'MLE')  : (0.1443, 0.1390),
+    ('4', 'MVA')  : (0.0555, 0.0646),
+    ('5', 'BMT')  : (0.1716, 0.1794),
+    ('6', 'ABA')  : (0.0224, 0.0091),
+    ('8', 'MLE')  : (0.1255, 0.1013),
+    ('10', 'MLE') : (0.1558, 0.1392),
   }
   for key, (uncorrected, corrected) in expected.items():
     assert approx_equal(default[key], uncorrected, eps=1e-4), key
@@ -184,9 +185,6 @@ def tst_03():
   # D-amino acids are never corrected; ALA 11 is the chain end
   for key in [('1', 'DAL'), ('11', 'ALA')]:
     assert approx_equal(on[key], default[key]), key
-  # no residue here has 0 < phi < 150
-  for key in default:
-    assert approx_equal(positive_phi[key], default[key]), key
 
 def tst_04():
   """

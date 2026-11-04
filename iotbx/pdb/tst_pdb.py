@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 import iotbx.pdb.cryst1_interpretation
 import iotbx.pdb.remark_290_interpretation
+from iotbx.pdb.experiment_type import experiment_type
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure
@@ -77,6 +78,14 @@ EXPDTA    X-RAY DIFFRACTION""")
   assert r.continuation == "  "
   assert r.technique == "X-RAY DIFFRACTION" + " " * 43
   assert r.keywords == ["X-RAY DIFFRACTION"]
+  r = pdb.records.expdta(pdb_str="""\
+EXPDTA    ELECTRON MICROSCOPY""")
+  assert r.keywords == ["ELECTRON MICROSCOPY"]
+  assert not experiment_type(r.keywords).is_electron_diffraction()
+  for technique in ("ELECTRON CRYSTALLOGRAPHY", "ELECTRON DIFFRACTION"):
+    r = pdb.records.expdta(pdb_str=f"EXPDTA    {technique}")
+    assert r.keywords == [technique]
+    assert experiment_type(r.keywords).is_electron_diffraction()
   #
   r = pdb.records.remark_002(pdb_str="""\
 REMARK   2 RESOLUTION. 0.89 ANGSTROMS.""")

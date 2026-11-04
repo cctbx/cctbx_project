@@ -689,84 +689,82 @@ def exercise_portkey_block_absent_defaults_none():
     shutil.rmtree(tmp)
 
 
-def exercise_portkey_tools_reasoning_effort_parsed():
-  """portkey.tools_reasoning_effort -> Profile.portkey_tools_reasoning_effort,
-  for every accepted value."""
+def _load_body(body):
+  """Write ``body`` as profile ``p`` in a scratch dir, load it, clean up."""
   tmp = tempfile.mkdtemp()
   try:
-    for effort in ("none", "minimal", "low", "medium", "high"):
-      _write_profile(tmp, "p", {"name": "p", "model": "my-deploy",
-                                "backend": "portkey",
-                                "portkey": {"virtual_key": "vk",
-                                            "tools_reasoning_effort": effort}})
-      prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
-      assert prof.portkey_tools_reasoning_effort == effort, (
-        effort, prof.portkey_tools_reasoning_effort)
-      assert prof.portkey_virtual_key == "vk", prof.portkey_virtual_key
+    _write_profile(tmp, "p", body)
+    return ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
   finally:
     shutil.rmtree(tmp)
 
 
-def exercise_portkey_tools_reasoning_effort_defaults_none():
-  """Absent (no portkey block, or a block without the key, or an explicit
-  null) -> None, so the backend decides from the model name."""
+def exercise_effort_absent_or_null_is_not_declared():
+  """No `effort` key, or an explicit null, is "not declared" (None), so the
+  launcher's user default still applies. A root profile's raw JSON reaches
+  _build_profile directly, so null must be handled there, not only by the
+  based_on merge."""
+  assert _load_body({"name": "p", "model": "m"}).effort is None
+  assert _load_body({"name": "p", "model": "m", "effort": None}).effort is None
+
+
+def exercise_effort_parsed_for_every_level():
+  from qttbx.widgets.chat.agent.profile import EFFORT_LEVELS, DEFAULT_EFFORT
+  assert EFFORT_LEVELS == ("low", "medium", "high", "xhigh", "max"), \
+    EFFORT_LEVELS
+  assert DEFAULT_EFFORT == "high", DEFAULT_EFFORT
+  for level in EFFORT_LEVELS:
+    prof = _load_body({"name": "p", "model": "m", "effort": level})
+    assert prof.effort == level, (level, prof.effort)
+
+
+def exercise_effort_bad_value_raises_naming_the_key():
+  for bad in ("xtreme", "none", "HIGH", 0, True):
+    try:
+      _load_body({"name": "p", "model": "m", "effort": bad})
+    except Sorry as e:
+      assert "effort" in str(e) and repr(bad) in str(e), str(e)
+    else:
+      raise Exception_expected
+
+
+def exercise_effort_inherited_and_overridden_via_based_on():
   tmp = tempfile.mkdtemp()
   try:
-    for body in ({}, {"portkey": {"virtual_key": "vk"}},
-                 {"portkey": {"tools_reasoning_effort": None}}):
-      data = {"name": "p", "model": "gpt-x", "backend": "portkey"}
-      data.update(body)
-      _write_profile(tmp, "p", data)
-      prof = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
-      assert getattr(prof, "portkey_tools_reasoning_effort",
-                     "MISSING") is None, body
-  finally:
-    shutil.rmtree(tmp)
-
-
-def exercise_portkey_tools_reasoning_effort_bad_value_raises():
-  """A value OpenAI would reject fails at load time with a Sorry naming the
-  key, not as an HTTP 400 mid-turn."""
-  tmp = tempfile.mkdtemp()
-  try:
-    for bad in ("off", "None", "xhigh", 0, True):
-      _write_profile(tmp, "p", {"name": "p", "model": "gpt-x",
-                                "backend": "portkey",
-                                "portkey": {"tools_reasoning_effort": bad}})
-      loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
-      try:
-        loader.load("p")
-      except Sorry as e:
-        assert "tools_reasoning_effort" in str(e), str(e)
-      else:
-        raise Exception_expected
-  finally:
-    shutil.rmtree(tmp)
-
-
-def exercise_portkey_tools_reasoning_effort_inherited_via_based_on():
-  """A child naming only based_on keeps the parent's value (round trip
-  through _profile_to_dict), alongside the other portkey keys; a child may
-  override it."""
-  tmp = tempfile.mkdtemp()
-  try:
-    _write_profile(tmp, "parent", {
-      "name": "parent", "model": "my-deploy", "backend": "portkey",
-      "portkey": {"virtual_key": "vk", "tools_reasoning_effort": "none"}})
+    _write_profile(tmp, "parent", {"name": "parent", "model": "m",
+                                   "effort": "low"})
     _write_profile(tmp, "child", {"name": "child", "based_on": "parent"})
     _write_profile(tmp, "child2", {"name": "child2", "based_on": "parent",
-                                   "portkey": {"tools_reasoning_effort": "low"}})
+                                   "effort": "max"})
     loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
-    child = loader.load("child")
-    assert child.portkey_tools_reasoning_effort == "none", \
-      child.portkey_tools_reasoning_effort
-    assert child.portkey_virtual_key == "vk", child.portkey_virtual_key
-    child2 = loader.load("child2")
-    assert child2.portkey_tools_reasoning_effort == "low", \
-      child2.portkey_tools_reasoning_effort
-    assert child2.portkey_virtual_key == "vk", child2.portkey_virtual_key
+    assert loader.load("child").effort == "low"
+    assert loader.load("child2").effort == "max"
   finally:
     shutil.rmtree(tmp)
+
+
+def exercise_claude_sdk_option_routes_to_effort_are_rejected():
+  """`effort` reaches the claude CLI by three routes besides the top-level
+  key; each is refused at load time, naming the key to use instead, so the
+  canonical knob is never silently overridden."""
+  for claude in ({"sdk_options": {"effort": "low"}},
+                 {"sdk_options": {"extra_args": {"effort": "low"}}},
+                 {"sdk_options": {"env": {"CLAUDE_CODE_EFFORT_LEVEL": "low"}}}):
+    try:
+      _load_body({"name": "p", "model": "m", "claude": claude})
+    except Sorry as e:
+      assert "effort" in str(e), str(e)
+    else:
+      raise Exception_expected(str(claude))
+
+
+def exercise_portkey_tools_reasoning_effort_is_gone():
+  """The Portkey-only knob is replaced by `effort`; an old profile still
+  carrying it loads (nested portkey keys are read one by one) but the
+  attribute no longer exists."""
+  prof = _load_body({"name": "p", "model": "gpt-x", "backend": "portkey",
+                     "portkey": {"tools_reasoning_effort": "none"}})
+  assert not hasattr(prof, "portkey_tools_reasoning_effort"), prof
 
 
 def exercise_profile_backend_unknown_raises():
@@ -850,10 +848,12 @@ def exercise_mcp_server_env_cannot_override_path_or_phenix_vars():
     "LD_PRELOAD": "/tmp/x.so", "API_TOKEN": "keep"})
   assert out == {"API_TOKEN": "keep"}, out
   # Broader runtime-loader / interpreter families are stripped too,
-  # including PHENIX_TRUST_OTHER_ENV (which would disable the dispatcher
-  # env scrub). A harmless var (PYTHONUNBUFFERED) and a server's own
-  # token survive -- we strip the dangerous keys, not all PYTHON*.
+  # including both names that switch off the dispatcher's environment guard
+  # (PHENIX_TRUST_OTHER_ENV and CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES). A
+  # harmless var (PYTHONUNBUFFERED) and a server's own token survive -- we
+  # strip the dangerous keys, not all PYTHON*.
   out2 = sanitize_server_env({
+    "CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES": "1",
     "PYTHONPATH": "/evil", "PYTHONHOME": "/evil",
     "NODE_OPTIONS": "--require /evil.js", "NODE_PATH": "/evil",
     "BASH_ENV": "/evil.sh", "ENV": "/evil.sh", "IFS": " ",
@@ -862,6 +862,16 @@ def exercise_mcp_server_env_cannot_override_path_or_phenix_vars():
     "BASH_FUNC_x%%": "() { :; }", "PHENIX_TRUST_OTHER_ENV": "1",
     "PYTHONUNBUFFERED": "1", "MY_SERVER_TOKEN": "keep"})
   assert out2 == {"PYTHONUNBUFFERED": "1", "MY_SERVER_TOKEN": "keep"}, out2
+  # The dispatchers append the DivCon QB_* paths after their guard and run
+  # the interpreter under $LIBTBX_VALGRIND, so both reach the server past
+  # the guard; and Windows environment names are case-insensitive, so the
+  # comparison is too.
+  out3 = sanitize_server_env({
+    "QB_PYTHONPATH": "/evil", "QB_LD_LIBRARY_PATH": "/evil",
+    "LIBTBX_VALGRIND": "/evil/wrapper", "path": "/tmp/evil",
+    "Phenix_Project_Dir": "/x", "ld_preload": "/evil.so",
+    "MY_SERVER_TOKEN": "keep"})
+  assert out3 == {"MY_SERVER_TOKEN": "keep"}, out3
   tmp = tempfile.mkdtemp()
   try:
     _write_profile(tmp, "p", {
@@ -1013,10 +1023,12 @@ def exercise():
   exercise_google_is_known_backend()
   exercise_portkey_block_parsed()
   exercise_portkey_block_absent_defaults_none()
-  exercise_portkey_tools_reasoning_effort_parsed()
-  exercise_portkey_tools_reasoning_effort_defaults_none()
-  exercise_portkey_tools_reasoning_effort_bad_value_raises()
-  exercise_portkey_tools_reasoning_effort_inherited_via_based_on()
+  exercise_effort_absent_or_null_is_not_declared()
+  exercise_effort_parsed_for_every_level()
+  exercise_effort_bad_value_raises_naming_the_key()
+  exercise_effort_inherited_and_overridden_via_based_on()
+  exercise_claude_sdk_option_routes_to_effort_are_rejected()
+  exercise_portkey_tools_reasoning_effort_is_gone()
   exercise_profile_backend_unknown_raises()
   exercise_server_tools_parsed_and_defaults_empty()
   exercise_server_tools_string_raises_clear_sorry()

@@ -6,6 +6,8 @@ from libtbx.path import relocatable_path, absolute_path
 from libtbx.str_utils import show_string
 from libtbx.utils import detect_binary_file, to_str
 from libtbx import adopt_init_args
+from libtbx.dispatcher_env import environment_guard_lines, \
+  external_path_lines, unconditional_lines
 import platform
 import shutil
 from six.moves import zip, map
@@ -377,6 +379,15 @@ def conda_activation_lines(shell, conda_prefix=None):
       r'@set "LIBTBX_RUN_ACTIVATE="',
     ]
   raise ValueError("shell must be 'sh' or 'bat', not %r" % (shell,))
+
+def _is_scons_dispatcher(target_file):
+  """libtbx.scons builds against the caller's compiler environment, so its
+  development-build dispatcher is the one left without the environment
+  guard (libtbx.dispatcher_env)."""
+  name = target_file.basename()
+  if name.lower().endswith(".bat"):
+    name = name[:-len(".bat")]
+  return name == "libtbx.scons"
 
 def open_info(path, mode="w", info="   "):
   print(info, path.basename())
@@ -1311,13 +1322,19 @@ Wait for the command to finish, then try again.""" % vars())
         print('@set LIBTBX_PREFIX=%LIBTBX_PREFIX:~0,-1%', file=f)
         print('@set LIBTBX_BUILD=%LIBTBX_PREFIX%\\..\\Library\\share\\cctbx', file=f)
         print('@set LIBTBX_DISPATCHER_NAME=%~nx0', file=f)
-        print('@set PATH=%LIBTBX_PREFIX%\\..;%LIBTBX_PREFIX%\\..\\mingw-w64\\bin;%LIBTBX_PREFIX%\\..\\bin;%LIBTBX_PREFIX%\\..\\..\\Scripts;%PATH%', file=f)
+        # LIBTBX_PREFIX is <prefix>\Library here (the .bat lives in
+        # Library\bin), so the conda layout is: the prefix root (python.exe),
+        # Library\mingw-w64\bin, Library\usr\bin, Library\bin (dispatchers
+        # and DLLs), then Scripts and bin under the prefix.
+        print('@set PATH=%LIBTBX_PREFIX%\\..;%LIBTBX_PREFIX%\\mingw-w64\\bin;%LIBTBX_PREFIX%\\usr\\bin;%LIBTBX_PREFIX%\\bin;%LIBTBX_PREFIX%\\..\\Scripts;%LIBTBX_PREFIX%\\..\\bin;%PATH%', file=f)
         def write_dispatcher_include(where):
           for line in self.dispatcher_include(where=where):
             if (line.startswith("@")):
               print(line, file=f)
             else :
               print("@" + line, file=f)
+        for line in unconditional_lines("bat") + environment_guard_lines("bat"):
+          print(line, file=f)
         for line in conda_activation_lines(shell="bat"):
           print(line, file=f)
         write_dispatcher_include(where="at_start")
@@ -1370,17 +1387,16 @@ Wait for the command to finish, then try again.""" % vars())
         print('export LIBTBX_BUILD', file=f)
         print('LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename(), file=f)
         print('export LIBTBX_PYEXE_BASENAME', file=f)
-        print('# Set the CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES environment variable', file=f)
-        print('# if you want python to use the following environment variables.', file=f)
-        print('# Otherwise, this environment takes priority at runtime.', file=f)
-        print('if [ -z "${CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES}" ]; then', file=f)
-        print('  unset PYTHONHOME', file=f)
-        print('  unset PYTHONPATH', file=f)
-        print('  unset LD_LIBRARY_PATH', file=f)
-        print('  unset DYLD_LIBRARY_PATH', file=f)
-        print('  unset DYLD_FALLBACK_LIBRARY_PATH', file=f)
-        print('  export PATH="${LIBTBX_PREFIX}/bin:${PATH}"', file=f)
-        print('fi', file=f)
+        # Always: the interpreter's own standard library, and this prefix's
+        # bin directory first on PATH. The guard after it is skipped when a
+        # caller opts out (see libtbx.dispatcher_env).
+        for line in unconditional_lines("sh"):
+          print(line, file=f)
+        print('export PATH="${LIBTBX_PREFIX}/bin:${PATH}"', file=f)
+        for line in environment_guard_lines("sh"):
+          print(line, file=f)
+        for line in external_path_lines("sh"):
+          print(line, file=f)
         for line in conda_activation_lines(shell="sh"):
           print(line, file=f)
         source_is_py = False
@@ -1533,7 +1549,8 @@ Wait for the command to finish, then try again.""" % vars())
       % show_string(self.under_build("dispatcher_include_template.sh")), file=f)
     print('#', file=f)
     print(_SHELLREALPATH_CODE, file=f)
-    print('unset PYTHONHOME', file=f)
+    for line in unconditional_lines("sh"):
+      print(line, file=f)
     print('LC_ALL=' + LC_ALL, file=f)
     print('export LC_ALL', file=f)
     print('LIBTBX_BUILD="$(shellrealpath "$0" && cd "$(dirname "$RESULT")/.." && pwd)"', file=f)
@@ -1557,6 +1574,11 @@ Wait for the command to finish, then try again.""" % vars())
           first_line = fh.readline()
         if first_line.startswith(b'#!') and b'python' in first_line.lower():
           source_is_py = True
+    # The guard runs before the site include files and this dispatcher's own
+    # paths, for every builder, so neither is undone by it.
+    if (not _is_scons_dispatcher(target_file)):
+      for line in environment_guard_lines("sh"):
+        print(line, file=f)
     for line in self.dispatcher_include(where="at_start"):
       print(line, file=f)
     essentials = [("PYTHONPATH", self.pythonpath)]
@@ -1572,7 +1594,9 @@ Wait for the command to finish, then try again.""" % vars())
     essentials.append(("PATH", bin_path))
 
     if (cert_file is not None):
-      print('SSL_CERT_FILE="%s"' % cert_file.sh_value(), file=f)
+      # certifi's bundle unless the caller set one (a corporate CA bundle)
+      print('SSL_CERT_FILE="${SSL_CERT_FILE:-%s}"' % cert_file.sh_value(),
+            file=f)
       print('export SSL_CERT_FILE', file=f)
 
     print('OPENBLAS_NUM_THREADS="%s"' % openblas_num_threads, file=f)
@@ -1733,6 +1757,12 @@ Wait for the command to finish, then try again.""" % vars())
     print(r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_BUILD=%%~dpF', file=f)
     print('@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%', file=f)
     print('@set LIBTBX_DISPATCHER_NAME=%~nx0', file=f)
+    # As in write_bin_sh_dispatcher: guard first, then includes and paths.
+    for line in unconditional_lines("bat"):
+      print(line, file=f)
+    if (not _is_scons_dispatcher(target_file)):
+      for line in environment_guard_lines("bat"):
+        print(line, file=f)
     def write_dispatcher_include(where):
       for line in self.dispatcher_include(where=where):
         if (line.startswith("@")):
@@ -1750,7 +1780,11 @@ Wait for the command to finish, then try again.""" % vars())
     for n,v in essentials:
       if (len(v) == 0): continue
       v = ';'.join([ op.join('%LIBTBX_BUILD%', p.relocatable) for p in v ])
-      print('@set %s=%s;%%%s%%' % (n, v, n), file=f)
+      # cmd expands an undefined variable to nothing, which would leave a
+      # trailing ';' (an empty PYTHONPATH entry is the working directory),
+      # so the separator is added only when the variable is defined.
+      print('@if defined %s @set "%s=;%%%s%%"' % (n, n, n), file=f)
+      print('@set "%s=%s%%%s%%"' % (n, v, n), file=f)
     if self.build_options.use_conda:
       # Run the conda activate.d hooks here -- like the conda-package
       # dispatchers -- instead of from setpaths. The build directory is not

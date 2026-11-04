@@ -376,10 +376,19 @@ def test_guess_flag_alone():
 
 def test_clash():
   # THR without CG2: CB has CA and OG1, its two caps have fixed directions;
-  # a CL ion where CG2 was is 0.4 A from one of them
-  check_sorry(pdb_thr_cl, "tst_reduce2_capping_6",
-    ["qmready=True", "capping=True"], "Capping H", "THR A  46",
-    "CL    CL A  47")
+  # a CL ion where CG2 was is 0.4 A from one of them. The geometry
+  # regularization of qmready, before the caps, moves the ion off CB, so
+  # the cap goes on (the Sorry of a cap that clashes: tst_capping.py).
+  from scitbx import matrix
+  prefix = "tst_reduce2_capping_6"
+  fn_out = prefix + "_out.pdb"
+  run(pdb_thr_cl, prefix, ["qmready=True", "capping=True"], fn_out=fn_out)
+  atoms = iotbx.pdb.input(file_name=fn_out).atoms()
+  cl = [a for a in atoms if a.element.strip() == "CL"]
+  caps = [a for a in atoms if a.name.strip() == "HCG2"]
+  assert len(cl) == 1 and len(caps) == 1, [a.name for a in atoms]
+  d = (matrix.col(caps[0].xyz) - matrix.col(cl[0].xyz)).length()
+  assert d >= 1.0, d
 
 def test_unknown_residue():
   check_sorry(pdb_asp_gly_unl, "tst_reduce2_capping_7",

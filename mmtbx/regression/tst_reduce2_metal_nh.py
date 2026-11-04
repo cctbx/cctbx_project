@@ -298,7 +298,8 @@ def test_ligand_n_kept():
 
 def test_conformer_without_peptide_c():
   # Ser 289 H/A: Gly 288 C(A) and CA(A), an amide; H/B: no C of its
-  # conformer bonded to N, kept and reported
+  # conformer bonded to N, kept and reported. His 290: Ser 289 C in A and B,
+  # one H per conformer (A26), each judged and neither placed
   h, description, log = run('tst_reduce2_metal_nh_altloc', pdb_1xmk_altloc)
   n289 = [a for a in h.atoms() if a.parent().parent().resseq_as_int() == 289
           and a.name.strip() == 'N'][0]
@@ -307,7 +308,8 @@ def test_conformer_without_peptide_c():
   assert hs == [('H', 'B')], hs
   assert section(description, NOT_PLACED) == [
     'H  ASER A 289  (N   SER A 289 - NI    NI A 398 1.80 A (geometric))',
-    'H   HIS A 290  (N   HIS A 290 - NI    NI A 398 1.84 A (geometric))'
+    'H  AHIS A 290  (N   HIS A 290 - NI    NI A 398 1.84 A (geometric))',
+    'H  BHIS A 290  (N   HIS A 290 - NI    NI A 398 1.84 A (geometric))'
     ], description
   assert 'N   SER A 289 (H altloc B)  (N   SER A 289 - NI    NI A 398 1.80 A '\
     '(geometric))' in section(description, REPORTED), description

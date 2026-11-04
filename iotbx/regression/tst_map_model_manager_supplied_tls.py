@@ -294,19 +294,22 @@ def get_ownership(rec, model_points = True):
         in_masks = in_masks)
   return owner
 
-def check_tls_run(rec, model_points = True, n_calls = 1):
+def check_tls_run(rec, model_points = True, n_calls = 1,
+    shifted_tls = False):
   '''Common checks of a two-group run (n_calls calls of the TLS step; the
-     records are those of the last call); returns the overall U (removed
-     from each TLS U) and the ownership of entries (get_ownership)'''
+     records are those of the last call; TLS frame shifted from the map's
+     only if shifted_tls); returns the overall U (removed from each TLS U)
+     and the ownership of entries (get_ownership)'''
   from cctbx import adptbx
   assert rec.replace_calls == n_calls, (rec.replace_calls, n_calls)
   # get_tls_from_u None is taken as True by _analyze_aniso_replace_with_supplied
   assert rec.kw.get('get_tls_from_u') in (None, True), \
     rec.kw.get('get_tls_from_u')
   tgi = rec.kw['tlso_group_info']
-  # No coordinate shift between TLS and map (sites used as they are)
-  assert not [x for x in tgi.tlso_shift_cart_list if x], \
-    tgi.tlso_shift_cart_list
+  if not shifted_tls:
+    # No coordinate shift between TLS and map (sites used as they are)
+    assert not [x for x in tgi.tlso_shift_cart_list if x], \
+      tgi.tlso_shift_cart_list
   assert len(rec.selections) == 2
   assert sorted(rec.masks.keys()) == sorted(rec.selections), (
     sorted(rec.masks.keys()))
@@ -758,14 +761,15 @@ def tst_external_tls():
 def check_uncertainty_info(sfi_list):
   '''Scaling information from external-map sharpening: the overall cc is
      fixed at 1, so the overall ssqr is zero and the anisotropy of the
-     uncertainties (si.bb_values) is undefined.  Each si has bb_values None;
-     every flex.double in each si and overall_si is finite and is the same
+     uncertainties (si.bb_values) is undefined.  Each si has bb_values None,
+     the anisotropy of the uncertainties (bb_b_cart_as_u_cart) is None (it
+     was fitted to undefined values and came out as zeros), and every
+     flex.double in each si and overall_si is finite and is the same
      in a copy (deepcopy and pickle; non-finite values do not survive)'''
   import copy, math, pickle
   assert sfi_list, "analyze_anisotropy not called"
   for sfi in sfi_list:
-    for x in sfi.bb_b_cart_as_u_cart:
-      assert math.isfinite(x), "bb_b_cart_as_u_cart not finite"
+    assert sfi.bb_b_cart_as_u_cart is None, sfi.bb_b_cart_as_u_cart
     for si in sfi.scaling_info_list + [sfi.overall_si]:
       copies = (copy.deepcopy(si), pickle.loads(pickle.dumps(si)))
       for key in si.keys():
@@ -781,12 +785,19 @@ def check_uncertainty_info(sfi_list):
     for si in sfi.scaling_info_list:
       assert si.bb_values is None, "bb_values defined"
 
-def run_external_no_tls(noise_scale = 0., glg = False):
-  '''external_sharpen, local anisotropic, no TLS, against an
-     'external_map' that is a copy of the map plus uniform noise of
-     noise_scale times its rms (fixed seed); glg: global-local-global.
-     Checks that the sharpened map is finite and the scaling information
-     of each analyze_anisotropy call (check_uncertainty_info)'''
+UNCERTAINTY_HEADING = "Anisotropy of the uncertainties\n"
+UNCERTAINTY_NOTE = "Anisotropy of the uncertainties: not defined"
+UNCERTAINTY_BY_POSITION_NOTE = \
+  "Anisotropy of the uncertainties by position: not defined"
+
+def run_external_no_tls(noise_scale = 0., glg = False, local = True):
+  '''external_sharpen, anisotropic (local unless local is False), no TLS,
+     against an 'external_map' that is a copy of the map plus uniform noise
+     of noise_scale times its rms (fixed seed); glg: global-local-global.
+     Checks that the sharpened map is finite, the scaling information of
+     each analyze_anisotropy call (check_uncertainty_info), and that the
+     log says the anisotropy of the uncertainties is not defined instead of
+     listing values for it'''
   import math, random
   from cctbx.maptbx import refine_sharpening
   mmm = get_mmm()
@@ -807,7 +818,7 @@ def run_external_no_tls(noise_scale = 0., glg = False):
     sfi_list.append(sfi)
     return sfi
   def sharpen():
-    mmm.external_sharpen(local_sharpen = True, anisotropic_sharpen = True,
+    mmm.external_sharpen(local_sharpen = local, anisotropic_sharpen = True,
       overall_sharpen_before_and_after_local = glg, n_boxes = 8, nproc = 1)
   refine_sharpening.analyze_anisotropy = wrapped
   try:
@@ -818,6 +829,11 @@ def run_external_no_tls(noise_scale = 0., glg = False):
   for x in data:
     assert math.isfinite(x), "sharpened map has non-finite values"
   check_uncertainty_info(sfi_list)
+  log = mmm.log.getvalue()
+  assert UNCERTAINTY_HEADING not in log, "uncertainty anisotropy listed"
+  assert UNCERTAINTY_NOTE in log, "no note on the uncertainty anisotropy"
+  if local:
+    assert UNCERTAINTY_BY_POSITION_NOTE in log, "uncertainty table listed"
 
 def tst_external_identical_map():
   '''external_sharpen, local anisotropic, against an identical copy of
@@ -836,6 +852,12 @@ def tst_external_global_local_global():
      identical copy of the map runs (the local pass sees a map that the
      overall pass has changed; it crashed like external_differing_map)'''
   run_external_no_tls(glg = True)
+
+def tst_external_global():
+  '''external_sharpen, global anisotropic, against an identical copy of
+     the map: the anisotropy of the uncertainties is not defined, and the
+     log says so (it listed zeros)'''
+  run_external_no_tls(local = False)
 
 HALF_MAP_N_BOXES = 8
 HALF_MAP_SPLIT = SPLIT_A
@@ -995,6 +1017,71 @@ def tst_other_model_id():
   check_tl_calls(rec, n_calls = 1)
   check_with_model(rec)
   assert rec.kw.get('model_id') == 'other', rec.kw.get('model_id')
+
+_frame_shifts = {}
+
+def other_frame_setup():
+  '''model_sharpen (as model_sharpen_setup, split A) in a box cut from
+     get_mmm(), with TLS groups defined in the frame of another box (box
+     cushion 1 A) and that box's shift_cart supplied in
+     tlso_shift_cart_list (as get_tlso_group_info_from_model returns it).
+     The two boxes have different, non-zero shift_cart values.'''
+  from iotbx.map_model_manager import convert_tlso_group_info_to_lists
+  full_mmm = get_mmm()
+  tls_mmm = full_mmm.extract_all_maps_around_model(box_cushion = 1.)
+  groups = get_groups(tls_mmm, SPLIT_A)
+  mmm = full_mmm.extract_all_maps_around_model()
+  mmm.set_log(StringIO())
+  mmm.set_resolution(3)
+  _frame_shifts['tls'] = tls_mmm.shift_cart()
+  _frame_shifts['map'] = mmm.shift_cart()
+  def sharpen(tlso_group_info):
+    convert_tlso_group_info_to_lists(tlso_group_info)
+    tlso_group_info.tlso_shift_cart_list = [tls_mmm.shift_cart()] * len(
+      tlso_group_info.tlso_selection_list)
+    mmm.model_sharpen(local_sharpen = True, anisotropic_sharpen = True,
+      tlso_group_info = tlso_group_info,
+      replace_aniso_with_tls_equiv = True,
+      n_boxes = 8, nproc = 1)
+  return mmm, groups, sharpen
+
+def tst_tls_in_other_frame():
+  '''TLS defined in a frame with another shift_cart (tlso_shift_cart_list)
+     is evaluated at each entry's site converted to that frame: site minus
+     the map's shift_cart plus the TLS frame's shift_cart'''
+  rec = run_tls_groups(('other_frame',), other_frame_setup)
+  map_shift = flex.double(_frame_shifts['map'])
+  tls_shift = flex.double(_frame_shifts['tls'])
+  print("shift_cart of map %s, of TLS frame %s" %(
+    tuple(map_shift), tuple(tls_shift)))
+  # Both shifts are used, and the frames differ by more than the U
+  #  changes could hide
+  assert flex.min(flex.abs(tls_shift)) > 0.5
+  assert flex.max(flex.abs(map_shift - tls_shift)) > 0.5
+  overall_u, owner = check_tls_run(rec, shifted_tls = True)
+  n = 0
+  max_sign_difference = 0.
+  for e in rec.entries:
+    o = owner.get(e.index)
+    if not o:
+      continue
+    xyz_in_tls_frame = tuple(flex.double(e.xyz) - map_shift + tls_shift)
+    expected = expected_u(rec, o.selection, xyz_in_tls_frame, overall_u)
+    assert e.uu is not None, (o.selection, o.kind, e.xyz)
+    assert approx_equal(list(e.uu), list(expected), eps = U_EPS,
+      out = None), ("%s entry of '%s' at %s: U %s expected %s" %(
+      o.kind, o.selection, str(e.xyz), list(e.uu), list(expected)))
+    # U with the shift applied in the opposite direction
+    xyz_wrong_sign = tuple(flex.double(e.xyz) + map_shift - tls_shift)
+    wrong = expected_u(rec, o.selection, xyz_wrong_sign, overall_u)
+    max_sign_difference = max(max_sign_difference,
+      flex.max(flex.abs(wrong - expected)))
+    n += 1
+  print("Entries checked: %s, largest U change with the opposite sign "
+    "%.3g" %(n, max_sign_difference))
+  assert n > 0
+  # Required for the check above to tell the two directions apart
+  assert max_sign_difference > 2 * U_EPS, max_sign_difference
 
 # ---------------------------------------------------------------------------
 # Synthetic averaging over locations
@@ -1197,10 +1284,12 @@ def run(args = None):
      ('global_local_global_model', tst_global_local_global_model),
      ('global_local_global_half_map', tst_global_local_global_half_map),
      ('other_model_id', tst_other_model_id),
+     ('tls_in_other_frame', tst_tls_in_other_frame),
      ('external_tls', tst_external_tls),
      ('external_identical_map', tst_external_identical_map),
      ('external_differing_map', tst_external_differing_map),
      ('external_global_local_global', tst_external_global_local_global),
+     ('external_global', tst_external_global),
      ('average_overall_scale_stored', tst_average_overall_scale_stored),
      ('mixed_overall_si', tst_mixed_overall_si),
      ('averaged_ssqr', tst_averaged_ssqr),

@@ -156,11 +156,29 @@ def exercise_bonded_c():
     model = get_model(edit(tripeptide, keep=lambda l: not is_oxt(l)) + extra)
     assert model.add_terminal_oxt() == 0, extra
 
+def exercise_own_residue_mates():
+  # half-occupied Tyr, C close to a 2-fold along b and the chain pointing away
+  # from it: mates of its own C, O and CA are within 2 A of the C. Turned by
+  # 180 degrees about c, which keeps the hand
+  atoms = [l for l in tripeptide.splitlines() if l[17:20] == "TYR" and
+           not is_oxt(l)]
+  c = [l for l in atoms if l[12:16] == " C  "][0]
+  cx, cy, cz = [float(c[30+8*i:38+8*i]) for i in range(3)]
+  for off, n_oxt in ((0, 1), (0.1, 1), (0.2, 1), (0.6, 1), (12, 1)):
+    lines = ["CRYST1   80.000   80.000   80.000  90.00  90.00  90.00 P 1 2 1"]
+    for l in atoms:
+      x, y, z = [float(l[30+8*i:38+8*i]) for i in range(3)]
+      lines.append(l[:30] + "%8.3f%8.3f%8.3f" % (
+        off - (x - cx), 20 - (y - cy), z - cz) + "  0.50" + l[60:])
+    model = get_model("\n".join(lines) + "\n")
+    assert model.add_terminal_oxt() == n_oxt, off
+
 def run():
   exercise_chain_ends_and_breaks()
   exercise_alt_confs()
   exercise_missing_o()
   exercise_bonded_c()
+  exercise_own_residue_mates()
   print("OK")
 
 if (__name__ == "__main__"):

@@ -109,14 +109,19 @@ class AgentSession:
       host's verbose mode is on. ``None`` (default) -- the host has no such
       concept; messages stay unstamped. Never read back to configure anything.
   tool_round_note : callable, optional
-      ``note(agent) -> str or None``, asked once per tool round after the
-      tools ran. Text it returns rides that round's tool-result message as
-      an EPHEMERAL block (``EPHEMERAL_BLOCK_KEY``): the model reads it on
-      its very next call, inside the turn, and the session strips it before
-      the following round, so it is never re-sent with a stale reading nor
-      persisted. This is the in-turn delivery path for a note whose moment
-      is mid-turn -- the context-pressure handoff, whose send-time delivery
-      never arrives in a run that is one long turn. A raising provider is
+      ``note(agent, messages) -> ContentBlock or None``, asked once per
+      tool round after the tools ran, with the live ``conv.messages`` so
+      the provider can read which notes the history already holds. The
+      block it returns -- a NOTE block (``NOTE_BLOCK_KEY``) with a stage
+      ``note_stage`` can read and non-empty text; the provider owns any
+      further tags -- rides that round's tool-result message: the model
+      reads it on its very next call, inside the turn, and it stays there
+      -- persisted, replayed where it first went -- because removing it
+      later would edit history behind the thinking blocks the model
+      produced after reading it. This is the in-turn delivery path for a
+      note whose moment is mid-turn -- the context-pressure handoff, whose
+      send-time delivery never arrives in a run that is one long turn. A
+      raising provider, or one handing back anything but such a block, is
       logged and skipped; the tool results are never at risk.
   """
 
@@ -126,11 +131,6 @@ class AgentSession:
                attachment_conv_id=None, verbose=None, tool_round_note=None):
     self.agent = agent
     self.tool_round_note = tool_round_note
-    # True from the moment a round note is attached until a later round
-    # yields a real model event -- i.e. while the note may never have been
-    # read (the next request raised, or came back as an AgentError). The host
-    # reads it at turn end to re-arm exactly the notes that never landed.
-    self.round_note_in_flight = False
     self.conv = conversation
     self.storage = storage
     self.attachment_conv_id = (attachment_conv_id if attachment_conv_id
@@ -245,7 +245,6 @@ class AgentSession:
     self.approvals.begin_turn()
     self._pending_approval_calls.clear()
     _drain_stale_cancelled(self.question_queue)
-    self.round_note_in_flight = False
     self.conv.append(user_message)
     # Reconcile the conversation meta to the model/backend actually running
     # this turn. A conversation continued under a different model/backend
@@ -339,17 +338,9 @@ class AgentSession:
         return assistant_msg
 
       tool_result_msg = self._dispatch_and_build_results(tool_calls, cancel)
-      # Every ephemeral note now in the conversation -- the send-time nudge on
-      # the user message, or the previous round's tool-round note -- rode the
-      # request that just returned, so the model has read it once. Strip them
-      # BEFORE attaching this round's note, so an API backend (which resends
-      # the whole conversation every round) never repeats a note with a frozen
-      # reading, and the fresh note is the only one the next request carries.
-      self._strip_ephemeral_blocks()
-      # Not on a cancelled round: it sends no further request, so a note
-      # attached here would be consumed without ever being read.
-      if not cancel.is_set():
-        self._attach_round_note(tool_result_msg)
+      # On a cancelled round too: no further request goes out in this turn,
+      # but the note stays in the conversation and rides the next one.
+      self._attach_round_note(tool_result_msg)
       self.conv.append(tool_result_msg)
       self._checkpoint_iteration()                 # per-iteration disk cadence
 
@@ -364,37 +355,32 @@ class AgentSession:
         self.on_event(TurnDone(stop_reason="cancelled", finish=CANCELLED))
         return assistant_msg
 
-  def _strip_ephemeral_blocks(self):
-    """Drop every ephemeral block from the live conversation, in place.
-
-    Only the in-memory messages: the storage layer already refuses to persist
-    them. Content lists are edited in place because the Message objects are
-    shared with the UI and with ``persistable_prefix``.
-    """
-    from qttbx.widgets.chat.agent.conversation import is_ephemeral_block
-    for msg in self.conv.messages:
-      if any(is_ephemeral_block(b) for b in msg.content):
-        msg.content[:] = [b for b in msg.content if not is_ephemeral_block(b)]
-
   def _attach_round_note(self, tool_result_msg):
-    """Append the ``tool_round_note`` provider's text, if any, to this
-    round's tool-result message as an ephemeral block. See the constructor.
-    Best-effort: the note is scaffolding around the tool results, and a
-    failure computing it must not cost the round."""
+    """Append the ``tool_round_note`` provider's note block, if any, to
+    this round's tool-result message. See the constructor. Best-effort: the
+    note is scaffolding around the tool results, and a failure computing it
+    must not cost the round -- nor may a malformed one be persisted: a block
+    with no string text, or of another type than text, is rejected by the
+    API on every later request, and one without a readable stage is
+    invisible to the history rule, so any of them is skipped with a log line
+    like a raising provider."""
     provider = self.tool_round_note
     if provider is None:
       return
+    from qttbx.widgets.chat.agent.conversation import note_stage
     try:
-      text = provider(self.agent)
+      note = provider(self.agent, self.conv.messages)
+      if note is None:
+        return
+      text = note.data.get("text") if note_stage(note) is not None else None
+      if getattr(note, "type", None) != "text" or \
+         not isinstance(text, str) or not text.strip():
+        raise ValueError("provider handed %r, not a staged text note block"
+                         % (note,))
     except Exception as exc:
       print("chat: tool-round note skipped: %s" % exc, file=self.log)
       return
-    if not text:
-      return
-    from qttbx.widgets.chat.agent.conversation import EPHEMERAL_BLOCK_KEY
-    tool_result_msg.content.append(ContentBlock(
-      type="text", data={"text": text, EPHEMERAL_BLOCK_KEY: True}))
-    self.round_note_in_flight = True
+    tool_result_msg.content.append(note)
 
   def _maybe_autosave(self, partial_msg=None):
     """Throttled mid-turn persistence (top-level sessions only).
@@ -472,14 +458,6 @@ class AgentSession:
     answered = []
     last_committed = None
     for event in self.agent.stream_turn(self.conv, self.tools.specs(), cancel):
-      # A real model event means the request carrying any round note went
-      # out and was answered; an AgentError event, or a cancel that landed
-      # before any content (a bare TurnDone(cancelled)), means it was not.
-      if self.round_note_in_flight and not (
-          isinstance(event, AgentError)
-          or (isinstance(event, TurnDone)
-              and event.stop_reason == "cancelled")):
-        self.round_note_in_flight = False
       self.on_event(event)
       _accumulate(msg, event, tool_calls, answered, self.storage,
                   self.attachment_conv_id)
@@ -854,10 +832,21 @@ def _append_text(msg, text):
 
 
 def _append_thinking(msg, text, signature):
-  if msg.content and msg.content[-1].type == "thinking":
-    msg.content[-1].data["text"] += text
+  """Accumulate thinking into the open block, or start a new one.
+
+  A block is OPEN while it has no signature: text appends to it, and a
+  signature-only event signs it. A signed block is closed -- the signature
+  arrives last and signs exactly that text, so thinking that streams after
+  it (anthropic's adjacent blocks under interleaved thinking; two blocks in
+  one CLI AssistantMessage) starts a new block. Merging across a signature
+  would replay one block whose text no longer matches it, a 400.
+  """
+  last = msg.content[-1] if msg.content else None
+  if last is not None and last.type == "thinking" \
+     and not last.data.get("signature"):
+    last.data["text"] += text
     if signature:
-      msg.content[-1].data["signature"] = signature
+      last.data["signature"] = signature
   else:
     msg.content.append(ContentBlock(type="thinking", data={
       "text": text, "signature": signature or ""}))

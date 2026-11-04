@@ -173,10 +173,6 @@ Limitations.
   usually run without crystal symmetry (no CRYST1), where this cannot occur.
   Documented by mmtbx/regression/tst_reduce2_symmetry_optimizer.py (an
   expected failure until the optimizer is fixed).
-- reduce2's total charge is wrong for a model with alternate conformations
-  (electrons needs an altloc-free hierarchy and gets the whole model): a
-  pre-existing reduce2 issue, independent of capping, documented by
-  mmtbx/regression/tst_reduce2_altloc_charge.py (an expected failure).
 - A residue reduced to N and CA gets no NH3+ from qmready (the propeller needs
   C) and its N is not examined by capping.
 - reduce2 drops an input H on a truncated atom even with keep_existing_H=True;

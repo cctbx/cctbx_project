@@ -171,13 +171,13 @@ def main(run_mopac=None):
   rc = easy_run.go(cmd)
   assert rc.return_code
   cmd = 'mmtbx.quantum_interface %(preamble)s.updated.pdb write_qmr_phil=1 qi.selection="%(selection)s"' % locals()
-  cmd += ' format=quantum_interface'
+  cmd += ' format=qi'
   print('\n ~> %s' % cmd)
   rc = easy_run.go(cmd)
   assert rc.return_code==0
   t0=time.time()
   cmd = 'mmtbx.quantum_interface %(preamble)s.updated.pdb run_qmr=True %(preamble)s.updated_A_62_HIS.phil' % locals()
-  cmd += ' iterate_histidine=True only_i=1'
+  cmd += ' iterate_NQH=HIS only_i=1'
   if type(run_mopac)==type(1):
     cmd += ' qi.nproc=%d' % run_mopac
   print('\n ~> %s' % cmd)
@@ -185,6 +185,10 @@ def main(run_mopac=None):
     rc = easy_run.go(cmd)
     print('Time : %0.fs' % (time.time()-t0))
     assert rc.return_code==0
+    # only_i=1 is the doubly protonated state; it must report a QM energy
+    results = [line for line in rc.stdout_lines
+               if line.find('1. HD1, HE2')>-1 and line.find('kcal/mol')>-1]
+    assert results, 'no energy reported for HD1, HE2'
   print('DONE')
 
 if __name__ == '__main__':

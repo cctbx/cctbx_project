@@ -22,13 +22,13 @@ jobs:
       modules: ${{ parameters.modules }}
       timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
       template: ./unix-conda-build.yml
-  # - template: ./conda-linux.yml
-  #   parameters:
-  #     distribution: cctbx/rockylinux
-  #     version: [10]
-  #     modules: ${{ parameters.modules }}
-  #     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-  #     template: ./unix-conda-build.yml
+  - template: ./conda-linux.yml
+    parameters:
+      distribution: cctbx/rockylinux
+      version: [10]
+      modules: ${{ parameters.modules }}
+      timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+      template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
       distribution: cctbx/ubuntu
@@ -46,21 +46,14 @@ jobs:
   - template: ./conda-osx.yml
     parameters:
       vmImage: [15]
-      xcode_version: [26, 3]
+      xcode_version: [16, 4]
       modules: ${{ parameters.modules }}
       timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
-      vmImage: [15]
-      xcode_version: [16, 4]
+      vmImage: [26]
+      xcode_version: [26, 6]
       modules: ${{ parameters.modules }}
       timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
       template: ./unix-conda-build.yml
-  # - template: ./conda-osx.yml
-  #   parameters:
-  #     vmImage: [26]
-  #     xcode_version: [26, 6]
-  #     modules: ${{ parameters.modules }}
-  #     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-  #     template: ./unix-conda-build.yml

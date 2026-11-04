@@ -329,6 +329,11 @@ def _run_serial(lr, func):
 
 # =============================================================================
 
+def _altlocs_with_heavy_atoms(rg):
+  '''The altlocs of residue group rg with atoms other than H/D.'''
+  return set(ag.altloc for ag in rg.atom_groups() if ag.altloc and
+    any(not a.element_is_hydrogen() for a in ag.atoms()))
+
 class manager(list):
   '''
   Manager class for all ligands
@@ -429,7 +434,17 @@ class manager(list):
     for model in ph.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
-          for conformer in rg.conformers():
+          # H in atom groups of their own (split per conformer of a covalent
+          # partner) make no conformer of the ligand: one blank ligand with
+          # all its atoms
+          heavy_altlocs = _altlocs_with_heavy_atoms(rg)
+          conformers = rg.conformers()
+          blank_only = not heavy_altlocs and conformers[0].altloc != ''
+          if blank_only:
+            conformers = conformers[:1]
+          elif heavy_altlocs:
+            conformers = [c for c in conformers if c.altloc in heavy_altlocs]
+          for conformer in conformers:
             residue = conformer.only_residue()
             resname = residue.resname
             if self.params.ligand_code:
@@ -437,12 +452,13 @@ class manager(list):
                 continue
             if (not get_class(name=resname) in _LIGAND_EXCLUDE_CLASSES):
               iselection = residue.atoms().extract_i_seq()
+              if blank_only: iselection = rg.atoms().extract_i_seq()
               # blank chain id: unquoted, 'chain  and' selects nothing
               chain_id = chain.id if chain.id.strip() == chain.id and chain.id \
                 else '"%s"' % chain.id
               sel_str = 'chain %s and resseq %s and resname %s ' % (chain_id,
                 rg.resseq_as_int(), resname)
-              if conformer.altloc:
+              if conformer.altloc and not blank_only:
                 sel_str = sel_str + ' and (altloc %s or altloc " ")' % conformer.altloc
               #print(list(iselection), sel_str)
               yield iselection, sel_str
@@ -1289,9 +1305,10 @@ class ligand_result(object):
     self._xrs_ligand = self._xrs.select(self.ligand_isel)
 
     for rg in self._ph.select(self.ligand_isel).residue_groups():
+      heavy_altlocs = _altlocs_with_heavy_atoms(rg)
       for c in rg.conformers():
         _resname = c.only_residue().resname
-        self.altloc = c.altloc
+        self.altloc = c.altloc if c.altloc in heavy_altlocs else ''
 
     self.resname = _resname.strip()
 

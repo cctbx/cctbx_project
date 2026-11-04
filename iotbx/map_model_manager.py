@@ -6092,16 +6092,21 @@ class map_model_manager(object):
       xyz_list = working_scale_factor_info.xyz_list
       print("\nAdding info from tls for %s" %(selection), file = self.log)
 
+      # TLS is in the frame with shift_cart other_shift_cart: to evaluate
+      #   it at a site here, subtract the shift_cart of this map and add
+      #   other_shift_cart
+      if other_shift_cart:
+        tls_frame_shift = tuple([other_sc - sc for sc,other_sc in zip(
+          self.shift_cart(), other_shift_cart)])
+      else:
+        tls_frame_shift = (0, 0, 0)
+
       if xyz_list.size() >= 1:
         print("Total of %s grid points inside this selection" %(
           xyz_list.size()), file = self.log)
 
         value_list = working_scale_factor_info.value_list
-        if other_shift_cart:
-          xyz_list_use = xyz_list + tuple([sc - other_sc for sc,other_sc in zip(
-            self.shift_cart(), other_shift_cart)]) # XXX CHECK
-        else:
-          xyz_list_use = xyz_list
+        xyz_list_use = xyz_list + tls_frame_shift
 
         print("Using TLS information from tlso_group_info", file = self.log)
 
@@ -6165,7 +6170,7 @@ class map_model_manager(object):
            new_xyz_list.size()), file = self.log)
         new_anisos_from_tls = uaniso_from_tls_one_group(
            tlso = tlso_value,
-           sites_cart = new_xyz_list,
+           sites_cart = new_xyz_list + tls_frame_shift,
            zeroize_trace=False)
         for xyz,aniso in zip(new_xyz_list,new_anisos_from_tls):
 
@@ -6500,8 +6505,16 @@ class map_model_manager(object):
 
 
     average_overall_scale = None
+    aniso_keys = ('aa_b_cart_as_u_cart', 'fo_b_cart_as_u_cart',
+      'uu_b_cart_as_u_cart', 'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart')
 
     n_used = 0
+    # Locations with each value (a location may lack overall_scale or an
+    #   anisotropy, such as bb for an external map)
+    n_overall_scale = 0
+    n_by_key = {}
+    for key in aniso_keys:
+      n_by_key[key] = 0
     for scaling_group_info in scaling_group_info_list:
       # Catch case with missing values and skip it
       ok = True
@@ -6522,21 +6535,20 @@ class map_model_manager(object):
           average_overall_scale = flex.double(
             scaling_group_info.overall_scale.size(),0)
         average_overall_scale += scaling_group_info.overall_scale
+        n_overall_scale += 1
 
       if not average_scaling_group_info.direction_vectors:
         average_scaling_group_info.direction_vectors = \
            scaling_group_info.direction_vectors
 
-      for key in ('aa_b_cart_as_u_cart',
-        'fo_b_cart_as_u_cart','uu_b_cart_as_u_cart',
-        'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart',
-        ):
-
+      for key in aniso_keys:
+        if not scaling_group_info.get(key):
+          continue # not defined here (bb for an external map)
+        n_by_key[key] += 1
         if not average_scaling_group_info.get(key):
           average_scaling_group_info.add(key=key,value=flex.double(
             scaling_group_info.get(key)))
-
-        elif scaling_group_info.get(key):
+        else:
           xx = average_scaling_group_info.get(key)
           xx += flex.double(scaling_group_info.get(key))
 
@@ -6577,16 +6589,13 @@ class map_model_manager(object):
           si.ssqr_values = 2. * ( -1 + 1./cc_list)  # cc* is in cc_list
       if average_overall_scale:
         average_scaling_group_info.overall_scale = \
-          average_overall_scale/max(1, n_used)
+          average_overall_scale/n_overall_scale
 
 
-      for key in ('aa_b_cart_as_u_cart','fo_b_cart_as_u_cart',
-        'uu_b_cart_as_u_cart',
-        'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart',
-        ):
+      for key in aniso_keys:
         xx = average_scaling_group_info.get(key)
         if xx:
-          xx /= max(1, n_used)
+          xx /= n_by_key[key]
 
     avg = group_args(
       group_args_type = 'average scale_factor_info (averaged over xyz)',
@@ -6802,6 +6811,9 @@ class map_model_manager(object):
        "(  X,      Y,      Z,    XY,    XZ,    YZ)\n"+
        "(%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
        tuple(bb_b_cart_as_u_cart)), file = self.log)
+    elif aa_b_cart_as_u_cart:
+      print("\n Anisotropy of the uncertainties: not defined (no uncertainty "+
+        "estimates, as with an external map)", file = self.log)
 
     if ss_b_cart_as_u_cart:
       print("\n Anisotropy of the scale factors\n"+
@@ -6812,6 +6824,14 @@ class map_model_manager(object):
 
   def _print_aniso_by_xyz(self, text, kw, scale_factor_info, n_use):
       """Summary anisotropy by region"""
+
+      n_defined = 0
+      for scaling_group_info in scale_factor_info.value_list[:n_use]:
+        if scaling_group_info.get(kw):
+          n_defined += 1
+      if n_defined == 0: # bb for an external map
+        print("\n    %s by position: not defined" %(text), file = self.log)
+        return
 
       print("\n    %s by position" %(text), file = self.log)
       print("\n      Box center                       U values","\n",
