@@ -181,6 +181,8 @@ tst_list_base = [
   "$D/regression/tst_mmcif_segids.py",
   "$D/regression/tst_mmcif_input.py",
   "$D/regression/tst_hierarchy_forward_compatible_pdb.py",
+  "$D/regression/tst_hierarchy_pdb_v3.py",
+  "$D/regression/tst_generate_n_char_string.py",
   "$D/regression/tst_mmcif_multimodel.py",
   "$D/regression/tst_add_conformations.py",
   "$D/regression/tst_symmetry.py",

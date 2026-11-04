@@ -137,6 +137,7 @@ tst_list = [
    "$D/xray/observations/tst_observations.py",
    "$D/maptbx/tst_ccp.py",
    "$D/maptbx/tst_mask.py",
+   "$D/regression/tst_maptbx_mask.py",
    "$D/maptbx/tst_map_peak_3d_as_2d.py",
    "$D/maptbx/tst_asymmetric_map.py",
    "$D/maptbx/tst_peak_volume_estimate.py",
