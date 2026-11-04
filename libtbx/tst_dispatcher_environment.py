@@ -571,16 +571,27 @@ def exercise_include_generator_ignores_foreign_libtbx():
 
 
 def exercise():
-  exercise_guard_runtime()
-  exercise_generated_dispatchers()
-  exercise_windows_guard_text()
-  exercise_windows_dev_dispatcher_text()
-  exercise_windows_conda_dispatcher_path()
-  exercise_bootstrap_configure_environment()
-  exercise_dev_dispatchers()
-  exercise_interpreter_setup_ignores_opt_outs()
-  exercise_opt_out_comment_names_every_opt_out()
-  exercise_include_generator_ignores_foreign_libtbx()
+  # An installed package has an empty pythonpath (update_libtbx_env.py), so
+  # the development-build writers emit no PYTHONPATH of their own there. The
+  # checks on those writers are about a development build's, so give the
+  # env one. The generated dispatchers are read or run only up to the exec.
+  env = libtbx.env
+  saved_pythonpath = env.pythonpath
+  if not env.pythonpath:
+    env.pythonpath = [env.lib_path]
+  try:
+    exercise_guard_runtime()
+    exercise_generated_dispatchers()
+    exercise_windows_guard_text()
+    exercise_windows_dev_dispatcher_text()
+    exercise_windows_conda_dispatcher_path()
+    exercise_bootstrap_configure_environment()
+    exercise_dev_dispatchers()
+    exercise_interpreter_setup_ignores_opt_outs()
+    exercise_opt_out_comment_names_every_opt_out()
+    exercise_include_generator_ignores_foreign_libtbx()
+  finally:
+    env.pythonpath = saved_pythonpath
 
 
 if __name__ == "__main__":
