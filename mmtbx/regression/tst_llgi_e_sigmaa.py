@@ -123,6 +123,30 @@ def exercise_sigmaa_fit_leaves_k_mask_untouched():
     for v in result.evaluate_at(d_out):
       assert 0.0 < v < 1.0, (sigmaa_model, v)
 
+def exercise_constant_teps_is_a_rescaling():
+  # A constant TEPS = c with Feff scaled by sqrt(c) is the same data on
+  # another scale, so the fitted sigmaA is unchanged (without tNCS groups
+  # the fit is in the TEPS frame, llgi.h's tncs_frame with u = t = TEPS).
+  import math
+  import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+  from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
+  fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.0, seed=32)
+  ld = fmodel.llgi_data()
+  params = llgi_e_sigmaa.llgi_e_sigmaa_params.extract()
+  params.sigmaa_max_iterations = 20
+  params.d_model_params.max_iterations = 60
+  r1 = llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel(fmodel,
+    dobs=ld.dobs.data(), feff=ld.feff.data(), resn=ld.resn.data(),
+    params=params)
+  c = 2.0
+  feff_c = ld.feff.data() * math.sqrt(c)
+  fmodel.set_llgi_data(llgi_hybrid.replace_llgi_data(ld,
+    teps=ld.teps.customized_copy(data=flex.double(ld.teps.size(), c)),
+    feff=ld.feff.customized_copy(data=feff_c)))
+  r2 = llgi_e_sigmaa.estimate_e_sigmaa_for_fmodel(fmodel,
+    dobs=ld.dobs.data(), feff=feff_c, resn=ld.resn.data(), params=params)
+  assert approx_equal(r2.sigmaa, r1.sigmaa, eps=1.e-6)
+
 def exercise_spline_curvature_penalty_finite_difference():
   import numpy as np
   random_state = np.random.RandomState(23)
@@ -237,6 +261,7 @@ def run():
   exercise_spline_curvature_penalty_finite_difference()
   exercise_e_sigmaa_curvature_penalty_gradient_finite_difference()
   exercise_sigmaa_fit_leaves_k_mask_untouched()
+  exercise_constant_teps_is_a_rescaling()
   exercise_d_model_sigmaa_is_the_default()
   print("OK")
 
