@@ -79,6 +79,11 @@ tooltips = {
   'rs_ratio': 'Ratio of 2θ high to 2θ low needed for an image to be a solvent hit',
   'rs_n_strong': get_help('n_strong_cutoff', rs_scope),
   'rs_isigi': get_help('i_sigi_cutoff', rs_scope),
+  'rs_view': 'Per shot: every image of the selected runs, with sliding-window rates. '
+             'Per run: one point per run (hit, indexing, high quality and solvent rates and '
+             'frames), computed in the database, so it stays fast for many runs',
+  'rs_show_table': 'Show the per-run counts as a table under the plot. Select cells and press '
+                   'Ctrl+C to copy them; Ctrl+A selects all',
   'rs_n_dump': 'Number of images to convert to cbf and then display',
   'uc_selection_type': 'Union: include runs matching any of these tags\n' + \
                        'Intersection: include runs matching all of these tags',

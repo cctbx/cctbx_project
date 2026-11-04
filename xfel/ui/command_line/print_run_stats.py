@@ -10,11 +10,8 @@ from libtbx.phil import parse
 from libtbx.utils import Sorry
 from xfel.ui import load_cached_settings, master_phil_str, db_phil_str
 from xfel.ui.db.xfel_db import xfel_db_application
-from xfel.ui.db.stats import HitrateStats
-from xfel.ui.components.run_stats_plotter import drop_hit_selection, high_quality_selection
+from xfel.ui.db.stats import RunSummaryStats
 import sys
-from scitbx.array_family import flex
-from six.moves import zip
 
 phil_str = """
   trial = None
@@ -98,10 +95,10 @@ def run(args):
   if params.rungroup is not None and params.rungroup not in [rg.id for rg in trial.rungroups]:
     raise Sorry("Run group %d is not an active run group of trial %d" % (params.rungroup, params.trial))
 
+  # (run name, rungroup id) pairs to print
   if params.run is None or len(params.run) == 0:
-    runs = []
+    pairs = []
     run_ids = []
-    rungroups = []
     for rg in trial.rungroups:
       for run in rg.runs:
         if run.id in run_ids: continue
@@ -112,47 +109,40 @@ def run(args):
             if not requested & present: continue
           elif not requested <= present: continue
 
-        runs.append(run.run)
+        pairs.append((run.run, rg.id))
         run_ids.append(run.id)
-        rungroups.append(rg.id)
   else:
-    runs = params.run
     if params.rungroup is None:
       raise Sorry("Specify the run group of the given runs, e.g. rungroup=1")
-    rungroups = [params.rungroup] * len(runs)
+    pairs = [(run_no, params.rungroup) for run_no in params.run]
+  if params.rungroup:
+    pairs = [pair for pair in pairs if pair[1] == params.rungroup]
 
-  for run_no, rungroup_id in sorted(zip(runs, rungroups), key=lambda x: run_sort_key(x[0])):
-    if params.rungroup and params.rungroup != rungroup_id: continue
-    try:
-      timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices, wavelengths = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min, params.i_sigi_cutoff)()
-    except Exception as e:
-      print("Couldn't get run %s: %s" % (run_no, e))
-      continue
-
-    n_hit = (n_strong >= params.n_strong_cutoff).count(True)
-    n_indexed = (n_lattices > 0).count(True)
-    n_lattices = flex.sum(n_lattices)
-    n_total = len(timestamps)
-    n_high_quality = high_quality_selection(resolutions, params.d_min).count(True)
-    n_drop_hits = drop_hit_selection(two_theta_low, two_theta_high, params.ratio_cutoff)[1].count(True)
-
+  statuses = {}
+  for run_no, rungroup_id in pairs:
     status = "Not found"
     for job in jobs:
       if job.run and job.run.run == run_no and job.rungroup and job.rungroup.id == rungroup_id and \
          job.trial and job.trial.trial == params.trial:
         status = job.status
         break
+    statuses[(run_no, rungroup_id)] = status
 
-    print(format_row(run_no, n_drop_hits, n_hit, n_indexed, n_lattices, n_high_quality, n_total, status))
+  summaries = RunSummaryStats(app, trial, n_strong_cutoff=params.n_strong_cutoff, ratio_cutoff=params.ratio_cutoff,
+                              d_min=params.d_min, i_sigi_cutoff=params.i_sigi_cutoff)(statuses)
 
-    drop_hits_total += n_drop_hits
-    hit_total += n_hit
-    indexed_total += n_indexed
-    lattices_total += n_lattices
-    high_quality_total += n_high_quality
-    overall_total += n_total
+  for key in sorted(pairs, key=lambda pair: run_sort_key(pair[0])):
+    s = summaries[key]
+    print(format_row(s.run, s.n_drop_hits, s.n_hits, s.n_indexed, s.n_lattices, s.n_high_quality, s.n_frames, statuses[key]))
 
-  if len(runs) > 1:
+    drop_hits_total += s.n_drop_hits
+    hit_total += s.n_hits
+    indexed_total += s.n_indexed
+    lattices_total += s.n_lattices
+    high_quality_total += s.n_high_quality
+    overall_total += s.n_frames
+
+  if len(pairs) > 1:
     print("-" * 80)
     print(format_row("Total", drop_hits_total, hit_total, indexed_total, lattices_total, high_quality_total, overall_total))
 

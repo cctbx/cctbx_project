@@ -356,6 +356,58 @@ def plot_run_stats(stats,
     # print "plot_run_stats took %s" % duration(t1, t2)
     return "runstats_tmp.png"
 
+# Per-run view colours: the series keep the identities of the per-shot plot
+# (indexed blue, solvent green, high quality orange); job statuses use
+# reserved status colours.
+SUMMARY_SERIES = (('hits', 'n_hits', '#eda100'),
+                  ('indexed', 'n_indexed', '#2a78d6'),
+                  ('high quality', 'n_high_quality', '#eb6834'),
+                  ('solvent', 'n_drop_hits', '#1baf7a'))
+SUMMARY_STATUS_COLORS = {'DONE': '#898781', 'RUN': '#fab219', 'PEND': '#fab219', 'SUBMITTED': '#fab219'}
+
+def plot_run_summaries(summaries, statuses, figure, high_vis=False):
+  """ The per-run view: rates as a percentage of frames over runs, and the
+      frames per run as bars coloured by job status. summaries is a list of
+      RunSummary in run order and statuses the job status of each. """
+  fontsize = 12 if high_vis else 9
+  ax_rates, ax_frames = figure.subplots(2, sharex=True, gridspec_kw=dict(height_ratios=[3, 1], hspace=0.08))
+  n = len(summaries)
+  x = list(range(n))
+  def pct(a, b):
+    return 100. * a / b if b else 0.
+  for name, key, color in SUMMARY_SERIES:
+    ax_rates.plot(x, [pct(getattr(s, key), s.n_frames) for s in summaries], '-',
+                  color=color, linewidth=2, marker='o', markersize=3.5, label=name)
+  ax_rates.set_ylabel('% of frames', fontsize=fontsize)
+  ax_rates.set_ylim(0, 100)
+  ax_rates.grid(True, color='#e1e0d9', linewidth=0.8)
+  ax_rates.set_axisbelow(True)
+  # Legend above the axes so it never covers a line
+  ax_rates.legend(loc='lower left', bbox_to_anchor=(0, 1), ncol=4, frameon=False, fontsize=fontsize)
+  for ax in (ax_rates, ax_frames):
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.tick_params(labelsize=fontsize)
+  colors = [SUMMARY_STATUS_COLORS.get(status, '#d03b3b') for status in statuses]
+  frames = [s.n_frames / 1000. for s in summaries]
+  ax_frames.bar(x, frames, width=0.8, color=colors)
+  ax_frames.set_ylabel('frames (k)', fontsize=fontsize)
+  ax_frames.grid(True, axis='y', color='#e1e0d9', linewidth=0.8)
+  ax_frames.set_axisbelow(True)
+  # At least ten slots so a few runs do not become one wide bar
+  ax_frames.set_xlim(-0.5, max(n, 10) - 0.5)
+  step = max(1, n // 20)
+  ax_frames.set_xticks(x[::step])
+  ax_frames.set_xticklabels([summaries[i].run for i in x[::step]], fontsize=fontsize,
+                            rotation=45 if n > 20 else 0, ha='right' if n > 20 else 'center')
+  ax_frames.set_xlabel('run', fontsize=fontsize)
+  # Name the status of runs not done, once per stretch of the same status
+  for i, status in enumerate(statuses):
+    if status != 'DONE' and (i == 0 or statuses[i - 1] != status):
+      ax_frames.annotate(status, (i, frames[i]), textcoords='offset points', xytext=(0, 3),
+                         ha='center', fontsize=fontsize - 2, color='#52514e')
+  figure.subplots_adjust(left=0.07, right=0.99, top=0.92, bottom=0.22)
+
 def get_multirun_stats(runs,
                        run_numbers,
                        d_min,

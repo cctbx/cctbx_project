@@ -10,6 +10,7 @@ Description : XFEL UI Custom Widgets and Controls
 
 import os
 import wx
+import wx.grid
 import wx.lib.agw.floatspin as fs
 import wx.richtext as rt
 from wxtbx import metallicbutton as mb
@@ -971,3 +972,65 @@ class IsoformInfoCtrl(CtrlBase):
       plotter = pltr.PopUpCharts()
       plotter.plot_uc_histogram(info_list=[self.uc_values], legend_list=[])
       plotter.plt.show()
+
+class CopyGrid(wx.grid.Grid):
+  ''' Read-only grid of strings. Ctrl+C copies the selected cells to the
+      clipboard as tab-separated text, one line per row; Ctrl+A selects all. '''
+
+  def __init__(self, parent, columns, **kwargs):
+    wx.grid.Grid.__init__(self, parent, **kwargs)
+    self.CreateGrid(0, len(columns))
+    for i, name in enumerate(columns):
+      self.SetColLabelValue(i, name)
+    self.EnableEditing(False)
+    self.SetRowLabelSize(0)
+    self.Bind(wx.EVT_KEY_DOWN, self.onKey)
+
+  def set_rows(self, rows):
+    ''' Replace the contents with rows, a list of lists of strings '''
+    self.BeginBatch()
+    if self.GetNumberRows():
+      self.DeleteRows(0, self.GetNumberRows())
+    self.AppendRows(len(rows))
+    for r, row in enumerate(rows):
+      for c, value in enumerate(row):
+        self.SetCellValue(r, c, value)
+    self.AutoSizeColumns()
+    self.EndBatch()
+
+  def onKey(self, e):
+    if e.ControlDown() and e.GetKeyCode() == ord('C'):
+      self.copy_selection()
+    elif e.ControlDown() and e.GetKeyCode() == ord('A'):
+      self.SelectAll()
+    else:
+      e.Skip()
+
+  def selected_cells(self):
+    ''' The selected (row, col) pairs, from blocks, whole rows and columns
+        and single cells; the cursor cell when nothing is selected '''
+    cells = set((c.GetRow(), c.GetCol()) for c in self.GetSelectedCells())
+    for tl, br in zip(self.GetSelectionBlockTopLeft(), self.GetSelectionBlockBottomRight()):
+      for r in range(tl.GetRow(), br.GetRow() + 1):
+        for c in range(tl.GetCol(), br.GetCol() + 1):
+          cells.add((r, c))
+    for r in self.GetSelectedRows():
+      for c in range(self.GetNumberCols()):
+        cells.add((r, c))
+    for c in self.GetSelectedCols():
+      for r in range(self.GetNumberRows()):
+        cells.add((r, c))
+    if not cells:
+      cells.add((self.GetGridCursorRow(), self.GetGridCursorCol()))
+    return cells
+
+  def selection_text(self):
+    cells = self.selected_cells()
+    rows = sorted(set(r for r, c in cells))
+    cols = sorted(set(c for r, c in cells))
+    return "\n".join("\t".join(self.GetCellValue(r, c) if (r, c) in cells else "" for c in cols) for r in rows)
+
+  def copy_selection(self):
+    if wx.TheClipboard.Open():
+      wx.TheClipboard.SetData(wx.TextDataObject(self.selection_text()))
+      wx.TheClipboard.Close()

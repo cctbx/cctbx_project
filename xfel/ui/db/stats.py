@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 from scitbx.array_family import flex
+from collections import namedtuple
 
 class Stats(object):
   def __init__(self, app, trial, tags = None, isigi_cutoff = None, tag_selection_mode="union", selected_runs = None, selected_rungroup = None):
@@ -260,6 +261,99 @@ class HitrateStats(object):
     #t2 = time.time()
     #print "HitrateStats took %s" % duration(t1, t2)
     return timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices, wavelengths
+
+RunSummary = namedtuple("RunSummary", ["run", "rungroup_id", "n_frames", "n_hits", "n_drop_hits",
+                                       "n_indexed", "n_lattices", "n_high_quality",
+                                       "first_timestamp", "last_timestamp"])
+
+class RunSummaryStats(object):
+  """ Per-run counts for a trial, computed in the database by one aggregate
+      query instead of fetching every image: frames, hits, drop hits, indexed
+      images, lattices, high quality images and the first and last timestamp.
+      The definitions are those of HitrateStats and the run stats plot: a hit
+      has n_strong_cutoff strong spots; a drop hit has a high to low two theta
+      radial average ratio of at least ratio_cutoff (see drop_hit_selection in
+      run_stats_plotter); a high quality image has a lattice with a resolution
+      bin reaching d_min at i_sigi_cutoff (see high_quality_selection).
+
+      A run whose job has finished never changes, so it is queried once and
+      then served from a cache; runs still processing are queried on every
+      call, all in one query. """
+
+  def __init__(self, app, trial, n_strong_cutoff=16, ratio_cutoff=1, d_min=2.0, i_sigi_cutoff=1):
+    self.app = app
+    self.trial = trial
+    self.n_strong_cutoff = n_strong_cutoff
+    self.ratio_cutoff = ratio_cutoff
+    self.d_min = d_min
+    self.i_sigi_cutoff = i_sigi_cutoff
+    self.finished = {} # (run name, rungroup id) -> RunSummary
+
+  def __call__(self, run_statuses):
+    """ run_statuses: {(run name, rungroup id): job status}. Returns
+        {(run name, rungroup id): RunSummary} for those runs; a run with no
+        events gets zero counts. """
+    from xfel.ui.db.job import finished_job_statuses
+    to_query = [key for key in run_statuses if key not in self.finished]
+    fresh = self.query([run for run, rungroup_id in to_query]) if to_query else {}
+    summaries = {}
+    for key in run_statuses:
+      summary = self.finished.get(key) or fresh.get(key) or self.empty(*key)
+      if key in to_query and run_statuses[key] in finished_job_statuses:
+        self.finished[key] = summary
+      summaries[key] = summary
+    return summaries
+
+  @staticmethod
+  def empty(run, rungroup_id):
+    return RunSummary(run, rungroup_id, 0, 0, 0, 0, 0, 0, None, None)
+
+  def query(self, runs=None):
+    """ One query: {(run name, rungroup id): RunSummary} for every run of
+        the trial with events, or only for the named runs. """
+    tag = self.app.params.experiment_tag
+    where = "WHERE ev.trial_id = %d" % self.trial.id
+    if runs is not None:
+      if len(runs) == 0:
+        return {}
+      where += " AND run.run IN (%s)" % ", ".join("'%s'" % run.replace("'", "''") for run in set(runs))
+    # A comparison is 1 or 0 in MySQL, so SUM of a condition counts the rows
+    # satisfying it. The subquery is one row per indexed event of the wanted
+    # runs; unindexed events have no row, hence the IFNULLs.
+    query = """SELECT run.run, ev.rungroup_id, COUNT(*),
+                      SUM(ev.n_strong >= %(n_strong)d),
+                      SUM(IF(ev.two_theta_low <= 0 OR ev.two_theta_high < 0, 0,
+                             ev.two_theta_high / ev.two_theta_low) >= %(ratio)f),
+                      SUM(x.n_lattices > 0),
+                      SUM(IFNULL(x.n_lattices, 0)),
+                      SUM(IFNULL(x.high_quality, 0)),
+                      MIN(ev.timestamp), MAX(ev.timestamp)
+               FROM `%(tag)s_event` ev
+               JOIN `%(tag)s_run` run ON run.id = ev.run_id
+               LEFT JOIN (
+                 SELECT is_e.event_id, COUNT(DISTINCT crystal.id) AS n_lattices,
+                        MAX(bin.d_min <= %(d_min)f AND cb.avg_i_sigi >= %(i_sigi)f) AS high_quality
+                 FROM `%(tag)s_event` ev
+                 JOIN `%(tag)s_run` run ON run.id = ev.run_id
+                 JOIN `%(tag)s_imageset_event` is_e ON is_e.event_id = ev.id
+                 JOIN `%(tag)s_imageset` imgset ON imgset.id = is_e.imageset_id
+                 JOIN `%(tag)s_experiment` exp ON exp.imageset_id = imgset.id
+                 JOIN `%(tag)s_crystal` crystal ON crystal.id = exp.crystal_id
+                 LEFT JOIN `%(tag)s_cell_bin` cb ON cb.crystal_id = crystal.id
+                 LEFT JOIN `%(tag)s_bin` bin ON bin.id = cb.bin_id
+                 %(where)s
+                 GROUP BY is_e.event_id
+               ) x ON x.event_id = ev.id
+               %(where)s
+               GROUP BY ev.run_id, ev.rungroup_id
+            """ % dict(tag=tag, where=where, n_strong=self.n_strong_cutoff, ratio=self.ratio_cutoff,
+                     d_min=self.d_min, i_sigi=self.i_sigi_cutoff)
+    summaries = {}
+    for row in self.app.execute_query(query).fetchall():
+      run, rungroup_id = row[0], row[1]
+      counts = [int(v) for v in row[2:8]]
+      summaries[(run, rungroup_id)] = RunSummary(run, rungroup_id, *(counts + [row[8], row[9]]))
+    return summaries
 
 class SpotfinderStats(object):
   def __init__(self, app, run_number, trial_number, rungroup_id, raw_data_sampling = 1):

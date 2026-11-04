@@ -626,6 +626,12 @@ class RunStatsSentinel(Thread):
     self.stats = []
     self.run_tags = []
     self.run_statuses = []
+    # Per-run view: RunSummaryStats keeps finished runs cached, so it lives
+    # across cycles and is replaced when the trial or a cutoff changes.
+    self.run_summary_stats = None
+    self.run_summary_key = None
+    self.summaries = []
+    self.summary_statuses = []
 
   def post_refresh(self):
     evt = RefreshRunStats(tp_EVT_RUNSTATS_REFRESH, -1)
@@ -652,12 +658,13 @@ class RunStatsSentinel(Thread):
         break
 
   def refresh_stats(self):
-    from xfel.ui.db.stats import HitrateStats
+    from xfel.ui.db.stats import HitrateStats, RunSummaryStats
     import copy
-    if self.parent.run_window.runstats_tab.trial_no is not None:
-      trial = self.db.get_trial(
-        trial_number=self.parent.run_window.runstats_tab.trial_no)
-      selected_runs = copy.deepcopy(self.parent.run_window.runstats_tab.selected_runs)
+    tab = self.parent.run_window.runstats_tab
+    if tab.trial_no is not None:
+      trial = self.db.get_trial(trial_number=tab.trial_no)
+      selected_runs = copy.deepcopy(tab.selected_runs)
+      per_run = tab.per_run
       # Build locally and assign at the end so the GUI thread never sees
       # half-filled lists.
       run_numbers = []
@@ -674,10 +681,12 @@ class RunStatsSentinel(Thread):
             trial_ids.append(trial.id)
             rungroup_ids.append(rg.id)
             trgr[run.run] = (trial, rg, run)
-            stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
-                                      i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
-                                      d_min=self.parent.run_window.runstats_tab.d_min,
-                                      run=run, trial=trial, rungroup=rg)())
+            if not per_run:
+              # Per shot: every image of the run
+              stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
+                                        i_sigi_cutoff=tab.i_sigi,
+                                        d_min=tab.d_min,
+                                        run=run, trial=trial, rungroup=rg)())
             run_tags.append([tag.name for tag in run.tags])
 
       jobs = self.db.get_all_jobs()
@@ -696,11 +705,26 @@ class RunStatsSentinel(Thread):
               run_statuses.append(job.status)
               found_it = True; break
         if not found_it: run_statuses.append('UNKWN')
-      self.run_numbers = run_numbers
-      self.stats = stats
-      self.trgr = trgr
-      self.run_tags = run_tags
-      self.run_statuses = run_statuses
+      if per_run:
+        # Per run: counts from one aggregate query, finished runs cached.
+        # A run without a job is not finished, so it is queried each cycle.
+        key = (trial.id, tab.n_strong, tab.ratio, tab.d_min, tab.i_sigi)
+        if self.run_summary_key != key:
+          self.run_summary_stats = RunSummaryStats(self.db, trial, n_strong_cutoff=tab.n_strong,
+                                                   ratio_cutoff=tab.ratio, d_min=tab.d_min, i_sigi_cutoff=tab.i_sigi)
+          self.run_summary_key = key
+        statuses = {}
+        for run_no, rg_id, status in zip(run_numbers, rungroup_ids, run_statuses):
+          statuses[(run_no, rg_id)] = status if status != 'UNKWN' else 'Not found'
+        summaries = self.run_summary_stats(statuses)
+        self.summaries = [summaries[(run_no, rg_id)] for run_no, rg_id in zip(run_numbers, rungroup_ids)]
+        self.summary_statuses = run_statuses
+      else:
+        self.run_numbers = run_numbers
+        self.stats = stats
+        self.trgr = trgr
+        self.run_tags = run_tags
+        self.run_statuses = run_statuses
 
   def get_xtc_process_params_for_run(self, trial, rg, run):
     params = {}
@@ -757,11 +781,29 @@ class RunStatsSentinel(Thread):
         image_paths_by_run
 
   def plot_stats(self):
-    from xfel.ui.components.run_stats_plotter import get_multirun_stats, plot_run_stats
+    from xfel.ui.components.run_stats_plotter import get_multirun_stats, plot_run_stats, plot_run_summaries
     self.refresh_stats()
     tab = self.parent.run_window.runstats_tab
     sizex, sizey = tab.runstats_panelsize
     figure = tab.figure
+    if tab.per_run:
+      summaries = list(self.summaries)
+      statuses = list(self.summary_statuses)
+      high_vis = self.parent.high_vis
+      def _draw_summaries():
+        try:
+          figure.clear()
+          plot_run_summaries(summaries, statuses, figure, high_vis=high_vis)
+          figure.canvas.draw_idle()
+          tab.fill_summary_table(summaries, statuses)
+          # Nothing per shot is drawn, so canvas clicks have nothing to open
+          tab.plotted_stats = []
+          tab.plotted_run_numbers = []
+        except Exception as e:
+          print("Run stats plot failed: %s" % e)
+          self.parent.run_window.runstats_light.change_status('alert')
+      wx.CallAfter(_draw_summaries)
+      return
     stats = list(self.stats)
     run_numbers = list(self.run_numbers)
     run_tags = list(self.run_tags)
@@ -2731,6 +2773,8 @@ class RunStatsTab(BaseTab):
     self.cached_run = None
     self.plotted_stats = []
     self.plotted_run_numbers = []
+    self.per_run = False
+    self.show_table = True
 
     self.runstats_panel = wx.Panel(self, size=(100, 100))
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
@@ -2744,11 +2788,22 @@ class RunStatsTab(BaseTab):
 
     self.figure = mpl.figure.Figure()
     self.canvas = FigureCanvas(self.runstats_box, -1, self.figure)
+    # The canvas's default minimum is the figure's 640x480; let the sizer
+    # share the box between the canvas and the per-run table.
+    self.canvas.SetMinSize((100, 100))
     self.toolbar = NavigationToolbar(self.canvas, coordinates=False)
     self.toolbar.SetWindowStyle(wx.TB_VERTICAL)
     self.toolbar.Realize()
 
-    self.runstats_sizer.Add(self.canvas, 1, wx.EXPAND)
+    # Per-run view: the counts as a table under the plot, hidden per shot
+    self.summary_columns = ['Run', 'Frames', 'Hits', '%', 'Solvent', '%', 'Indexed', '%',
+                            'Lattices', 'High qual', '%', 'HQ/idx %', 'Status']
+    self.summary_table = gctr.CopyGrid(self.runstats_box, self.summary_columns)
+    self.summary_table.Hide()
+    self.plot_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.plot_sizer.Add(self.canvas, 3, wx.EXPAND)
+    self.plot_sizer.Add(self.summary_table, 2, wx.EXPAND | wx.TOP, 4)
+    self.runstats_sizer.Add(self.plot_sizer, 1, wx.EXPAND)
     self.runstats_sizer.Add(self.toolbar, 0, wx.LEFT)
 
     self.options_box = wx.StaticBox(self, label='Statistics Options')
@@ -2892,8 +2947,17 @@ class RunStatsTab(BaseTab):
                                               label='Hide options')
     self.chk_auto_update = wx.CheckBox(self.manage_panel, label='Auto update')
     self.chk_auto_update.SetValue(True)
-    self.manage_sizer.Add(self.btn_toggle_options)
-    self.manage_sizer.Add(self.chk_auto_update)
+    self.view_radio = wx.RadioBox(self.manage_panel, label='Show', name='rs_view',
+                                  choices=['Per shot', 'Per run'], style=wx.RA_HORIZONTAL)
+    setup_tooltip(self.view_radio)
+    self.chk_show_table = wx.CheckBox(self.manage_panel, label='Show table', name='rs_show_table')
+    self.chk_show_table.SetValue(True)
+    self.chk_show_table.Disable()
+    setup_tooltip(self.chk_show_table)
+    self.manage_sizer.Add(self.btn_toggle_options, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.manage_sizer.Add(self.chk_auto_update, flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=10)
+    self.manage_sizer.Add(self.view_radio, flag=wx.LEFT, border=20)
+    self.manage_sizer.Add(self.chk_show_table, flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border=10)
     self.manage_panel.SetSizer(self.manage_sizer)
 
     self.dump_images_sizer.Add(self.manage_panel, pos=(0, 0))
@@ -2932,6 +2996,8 @@ class RunStatsTab(BaseTab):
       self.Bind(wx.EVT_TEXT_ENTER, handler, ctrl)
       ctrl.Bind(wx.EVT_KILL_FOCUS, handler)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
+    self.Bind(wx.EVT_RADIOBOX, self.onViewChoice, self.view_radio)
+    self.Bind(wx.EVT_CHECKBOX, self.onShowTable, self.chk_show_table)
     self.Bind(wx.EVT_BUTTON, self.onOpenImages, self.idx_show_images_button)
     self.Bind(wx.EVT_BUTTON, self.onDumpImages, self.shi_dump_images_button)
     self.Bind(wx.EVT_TOGGLEBUTTON, self.onToggleOptions, self.btn_toggle_options)
@@ -3068,6 +3134,37 @@ class RunStatsTab(BaseTab):
       self.main.stop_runstats_sentinel()
     elif self.main.runstats_sentinel is None or not self.main.runstats_sentinel.active:
       self.main.start_runstats_sentinel()
+
+  def onViewChoice(self, e):
+    self.per_run = self.view_radio.GetSelection() == 1
+    self.chk_show_table.Enable(self.per_run)
+    self.layout_summary_table()
+    self.main.run_window.runstats_light.change_status('idle')
+
+  def onShowTable(self, e):
+    self.show_table = self.chk_show_table.GetValue()
+    self.layout_summary_table()
+
+  def layout_summary_table(self):
+    self.summary_table.Show(self.per_run and self.show_table)
+    self.runstats_panel.Layout()
+
+  def fill_summary_table(self, summaries, statuses):
+    ''' The per-run counts, one row per run plus a total '''
+    def pct(a, b):
+      return '%.1f' % (100. * a / b if b else 0)
+    def row(label, s, status):
+      return [label, str(s.n_frames), str(s.n_hits), pct(s.n_hits, s.n_frames),
+              str(s.n_drop_hits), pct(s.n_drop_hits, s.n_frames),
+              str(s.n_indexed), pct(s.n_indexed, s.n_frames), str(s.n_lattices),
+              str(s.n_high_quality), pct(s.n_high_quality, s.n_frames), pct(s.n_high_quality, s.n_indexed), status]
+    rows = [row(s.run, s, status) for s, status in zip(summaries, statuses)]
+    if len(summaries) > 1:
+      from xfel.ui.db.stats import RunSummary
+      total = RunSummary('Total', None, *[sum(getattr(s, k) for s in summaries) for k in
+                         ('n_frames', 'n_hits', 'n_drop_hits', 'n_indexed', 'n_lattices', 'n_high_quality')], None, None)
+      rows.append(row('Total', total, ''))
+    self.summary_table.set_rows(rows)
 
   def print_strong_indexed_paths(self):
     try:
