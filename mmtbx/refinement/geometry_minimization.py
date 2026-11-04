@@ -410,7 +410,7 @@ def minimize_wrapper_for_ramachandran(
   grm.geometry.reference_dihedral_manager=None
 
 def geometry_violations(geometry_restraints_manager, sites_cart,
-                        bond_z_max=4.0, clash_overlap_max=0.4):
+                        bond_z_max=6.0, clash_overlap_max=1.0):
   """
   Covalent bond outliers and clashes of the geometry restraints.
 
@@ -442,20 +442,20 @@ def geometry_violations(geometry_restraints_manager, sites_cart,
   bonds = []
   bp = pair_proxies.bond_proxies
   if(bp is not None and bp.n_total() > 0):
-    deltas = geometry_restraints.bond_deltas(
-      sites_cart=sites_cart, sorted_asu_proxies=bp)
+    # z = |delta| / sigma = sqrt(weight * delta^2) = sqrt(residual), all in
+    # C++; only the outliers are visited (a loop over all proxies costs
+    # 0.1 s per call on 8000 atoms, and the minimizer calls this every step).
+    z = flex.sqrt(bp.residuals(sites_cart=sites_cart))
     n_simple = bp.simple.size()
-    for k in range(bp.n_total()):
+    for k in (z > bond_z_max).iselection():
       if(k < n_simple):
         proxy = bp.simple[k]
         i_seq, j_seq = proxy.i_seqs
       else:
         proxy = bp.asu[k-n_simple]
         i_seq, j_seq = proxy.i_seq, proxy.j_seq
-      if(proxy.origin_id != covalent or proxy.weight <= 0): continue
-      z = abs(deltas[k]) / geometry_restraints.weight_as_sigma(proxy.weight)
-      if(z > bond_z_max):
-        bonds.append((i_seq, j_seq, z))
+      if(proxy.origin_id != covalent): continue
+      bonds.append((i_seq, j_seq, z[k]))
   clashes = []
   nbp = pair_proxies.nonbonded_proxies
   if(nbp is not None and nbp.n_total() > 0):
@@ -530,7 +530,7 @@ class regularizing_lbfgs(geometry_restraints.lbfgs.lbfgs):
   def __init__(self, sites_cart, sites_cart_start, shift_selection,
                geometry_restraints_manager, geometry_restraints_flags,
                riding_h_manager=None, sites_cart_selection=None,
-               max_iterations=500, bond_z_max=4.0, clash_overlap_max=0.4,
+               max_iterations=500, bond_z_max=6.0, clash_overlap_max=1.0,
                mean_shift_max=0.3, max_shift_max=1.0,
                stop_when_regular=True):
     self.sites_cart_start = sites_cart_start
@@ -581,8 +581,8 @@ class regularizing_lbfgs(geometry_restraints.lbfgs.lbfgs):
     return False
 
 def regularize(geometry_restraints_manager, sites_cart, selection=None,
-               hd_selection=None, riding_h_manager=None, bond_z_max=4.0,
-               clash_overlap_max=0.4, mean_shift_max=0.3, max_shift_max=1.0,
+               hd_selection=None, riding_h_manager=None, bond_z_max=6.0,
+               clash_overlap_max=1.0, mean_shift_max=0.3, max_shift_max=1.0,
                max_iterations=500,
                reference_sigmas=(0.05, 0.1, 0.2, 0.5, None),
                stop_when_regular=True):

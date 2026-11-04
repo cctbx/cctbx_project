@@ -173,10 +173,17 @@ def exercise_clean():
   assert model.get_restraints_manager() is grm
 
 def perturb_sparse(model):
-  # A stretched bond at the N-terminus and a clash at the C-terminus: the
+  # A stretched bond at the N-terminus and, at the C-terminus, OH of Tyr 7
+  # pulled to 1.8 A from NE2 of Gln 5 (a clash and a stretched bond): the
   # peptide is a straight strand along a, the two ends are > 15 A apart.
+  from scitbx import matrix
   move_atom(model, "C",  1, (0.30, 0.0, 0.0))
-  move_atom(model, "OH", 7, (0.00, 0.6, 0.0))
+  sites_cart = model.get_sites_cart()
+  oh = matrix.col(sites_cart[
+    model.selection("resseq 7 and name OH").iselection()[0]])
+  ne2 = matrix.col(sites_cart[
+    model.selection("resseq 5 and name NE2").iselection()[0]])
+  move_atom(model, "OH", 7, tuple(ne2 + (oh - ne2).normalize() * 1.8 - oh))
 
 def exercise_sparse():
   """Few violations far apart: only their surroundings move."""
@@ -231,7 +238,7 @@ def exercise_everywhere():
 def exercise_symmetry_clash():
   """Clashes with symmetry mates only (the whole model translated)."""
   model = get_model(pdb_str)
-  model.set_sites_cart(model.get_sites_cart() + (-0.5, 0.0, 0.5))
+  model.set_sites_cart(model.get_sites_cart() + (-1.0, 0.0, 0.0))
   v = violations(model)
   assert len(v.bonds) == 0, v.bonds
   assert len(v.clashes) > 0
@@ -243,6 +250,26 @@ def exercise_symmetry_clash():
   assert r.n_violations_end == 0
   v = violations(model)
   assert len(v.bonds) == 0 and len(v.clashes) == 0, (v.bonds, v.clashes)
+
+def exercise_mild():
+  """Mild outliers (a 5 sigma bond, a 0.6 A overlap) are below the default
+  thresholds: the model is not touched."""
+  model = water_model(distance=2.2)
+  move_atom(model, "C", 1, (0.12, 0.0, 0.0))
+  sites_cart_start = model.get_sites_cart().deep_copy()
+  grm = model.get_restraints_manager().geometry
+  v = geometry_violations(grm, model.get_sites_cart(),
+    bond_z_max=4.0, clash_overlap_max=0.4)
+  assert len(v.bonds) == 2 and len(v.clashes) == 1, (v.bonds, v.clashes)
+  assert max([z for i, j, z in v.bonds]) > 5, v.bonds
+  assert v.clashes[0][2] > 0.5, v.clashes
+  v = geometry_violations(grm, model.get_sites_cart(),
+    bond_z_max=6.0, clash_overlap_max=1.0)
+  assert len(v.bonds) == 0 and len(v.clashes) == 0, (v.bonds, v.clashes)
+  r = model.regularize_geometry()
+  assert not r.needed
+  assert r.n_violations_start == 0
+  assert (model.get_sites_cart() - sites_cart_start).norms().all_eq(0)
 
 def exercise_force():
   """force=True minimizes a clean model within the shift budget."""
@@ -272,9 +299,9 @@ def exercise_no_h():
   v = violations(model)
   assert len(v.bonds) == 0 and len(v.clashes) == 0, (v.bonds, v.clashes)
 
-def water_model():
+def water_model(distance=1.7):
   """The clean model in a P 1 box (no symmetry contacts) plus a water whose
-  O is 2.4 A from OE1 of Gln 5, a clash with the water O."""
+  O is distance (A) from OE1 of Gln 5, a clash with the water O."""
   from scitbx import matrix
   pdb_str_box = pdb_str.replace(pdb_str.splitlines()[0],
     "CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1")
@@ -285,7 +312,7 @@ def water_model():
   cd = matrix.col(sites_cart[
     model.selection("resseq 5 and name CD").iselection()[0]])
   d = (oe1 - cd).normalize()
-  o = oe1 + 2.4 * d
+  o = oe1 + distance * d
   h1 = o + 0.85 * d
   h2 = o + 0.85 * d.ortho().normalize()
   lines = []
@@ -331,6 +358,7 @@ if (__name__ == "__main__"):
   exercise_sparse()
   exercise_everywhere()
   exercise_symmetry_clash()
+  exercise_mild()
   exercise_force()
   exercise_no_h()
   exercise_water()

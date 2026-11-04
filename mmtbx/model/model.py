@@ -3963,8 +3963,8 @@ class manager(object):
         print("X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
         (flex.mean(xhd), flex.max(xhd)), file=self.log)
 
-  def regularize_geometry(self, force=False, bond_z_max=4.0,
-                          clash_overlap_max=0.4, mean_shift_max=0.3,
+  def regularize_geometry(self, force=False, bond_z_max=6.0,
+                          clash_overlap_max=1.0, mean_shift_max=0.3,
                           max_shift_max=1.0, shell_radius=5.0,
                           max_iterations=500):
     """
@@ -4044,13 +4044,12 @@ class manager(object):
       i_seqs = set()
       for v in violations.bonds + violations.clashes:
         i_seqs.update(v[:2])
-      pairs = crystal.pairs_within(
-        sites_cart       = work.get_sites_cart(),
-        distance_cutoff  = shell_radius,
-        crystal_symmetry = work.crystal_symmetry(),
-        i_seqs           = sorted(i_seqs))
-      for i, j, rt_mx, distance in pairs:
-        i_seqs.add(j)
+      # The pair table (with the symmetry mates) is built in C++;
+      # crystal.pairs_within would compute a distance per pair in Python.
+      pair_table = work.get_xray_structure().pair_asu_table(
+        distance_cutoff=shell_radius).table()
+      for i_seq in sorted(i_seqs):
+        i_seqs.update(pair_table[i_seq].keys())
       atom_selection = flex.bool(n_atoms, False)
       atom_selection.set_selected(flex.size_t(sorted(i_seqs)), True)
       selection = flex.bool(n_atoms, False)
