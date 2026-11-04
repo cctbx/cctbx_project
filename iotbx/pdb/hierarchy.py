@@ -2856,27 +2856,44 @@ class _():
         if atom is not None:
           return atom, ag.altloc.strip()==""
       return None, False
-    def wants_flip(flip_data, groups):
-      # (flip?, the sites define no dihedral); flip? None: no decision, an atom
-      # of the test is missing or the sites are coincident or collinear
+    def conformer_test(flip_data, groups):
+      # (flip?, the sites define no dihedral, score now, score with the first
+      # pair exchanged). flip? None: no decision, an atom of the test is missing
+      # or the sites are coincident or collinear. Flip only if the partner
+      # scores better: else a flip would turn the same test around, and a
+      # twisted ring or a volume near zero would be renamed on every call.
       assert not ('dihedral' in flip_data and 'chiral' in flip_data)
       names = flip_data.get("dihedral", flip_data.get("chiral"))
-      sites = []
+      def score(names):
+        sites = []
+        for name in names:
+          sites.append(find_atom(groups, name)[0].xyz)
+        if 'dihedral' in flip_data:
+          dihedral = dihedral_angle(sites=sites, deg=True)
+          if dihedral is None: return None
+          return abs(dihedral)
+        return abs(chirality_delta(
+          sites=[flex.vec3_double([xyz]) for xyz in sites],
+          volume_ideal=flip_data["value"][0],
+          both_signs=flip_data['value'][1]))
       for name in names:
-        atom = find_atom(groups, name)[0]
-        if atom is None: return None, False
-        sites.append(atom.xyz)
-      if 'dihedral' in flip_data:
-        dihedral = dihedral_angle(sites=sites, deg=True)
-        if dihedral is None: return None, True
-        return abs(dihedral)>360./flip_data["value"][1]/4, False
-      delta = chirality_delta(sites=[flex.vec3_double([xyz]) for xyz in sites],
-                              volume_ideal=flip_data["value"][0],
-                              both_signs=flip_data['value'][1],
-                              )
-      return abs(delta)>2., False
+        if find_atom(groups, name)[0] is None:
+          return None, False, None, None
+      limit = 2.
+      if 'dihedral' in flip_data: limit = 360./flip_data["value"][1]/4
+      score_now = score(names)
+      if score_now is None: return None, True, None, None
+      name1, name2 = flip_data["pairs"][0]
+      if find_atom(groups, name2)[0] is None:
+        return score_now>limit, False, score_now, None
+      exchange = {name1: name2, name2: name1}
+      score_exchanged = score([exchange.get(name, name) for name in names])
+      if score_exchanged is None: return None, True, None, None
+      flip_it = score_now>limit and score_exchanged<score_now
+      return flip_it, False, score_now, score_exchanged
     def check_conformer(flip_data, groups):
-      flip_it, no_dihedral = wants_flip(flip_data, groups)
+      flip_it, no_dihedral, score, score_exchanged = conformer_test(
+        flip_data, groups)
       pairs = []
       incomplete = has_blank = spans = False
       for name1, name2 in flip_data["pairs"]:
@@ -2890,7 +2907,8 @@ class _():
         if blank1 or blank2: has_blank = True
         if blank1 != blank2: spans = True
       return group_args(altloc=groups[0].altloc, flip_it=flip_it,
-        no_dihedral=no_dihedral, pairs=pairs,
+        no_dihedral=no_dihedral, score=score, score_exchanged=score_exchanged,
+        pairs=pairs,
         incomplete=incomplete, has_blank=has_blank, spans=spans)
     def no_dihedral_reason(row):
       in_altloc = ""

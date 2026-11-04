@@ -1380,8 +1380,7 @@ NOTES:
 
   def _NetRenames(self):
     # Input to output: renames of the input's processing (restraint files)
-    # followed by placement's; a second swap of a pair undoes the first
-    # (flip_symmetric_amino_acids() can do that near chi +-90).
+    # followed by placement's; a second swap of a pair undoes the first.
     net = {}
     for r in self._input_renames + self._placement_renames:
       key = (r.residue, r.altloc)

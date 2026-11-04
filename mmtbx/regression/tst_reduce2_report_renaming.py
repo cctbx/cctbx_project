@@ -2,7 +2,7 @@
 (flip_symmetric_amino_acids in pdb_interpretation): the description lists every
 renamed residue and atom pair, the log a capped list. Placement renames (add,
 place, the flipkin passes), optimize does not unless a restraint file makes
-reduce2 process the input; two renamings of a residue can cancel.
+reduce2 process the input; a second processing renames nothing.
 """
 from __future__ import absolute_import, division, print_function
 import os
@@ -209,21 +209,20 @@ def test_restraint_file():
   task, description, log = run(out, fn, ["approach=remove"])
   assert HEADER not in description, description
 
-def test_two_renamings_cancel():
-  # Asp from idealized_aa has chi2 near 90: the second call of
-  # flip_symmetric_amino_acids() swaps back; the output has the input names.
-  # No acid H, or there would be no swap to cancel.
+def test_second_processing_renames_nothing():
+  # Asp from idealized_aa has chi2 near 90 through both O, without acid H: the
+  # flip used to swap it in each processing; now in neither. The output has the
+  # input names.
   prefix = "tst_reduce2_report_renaming_cancel"
   root = without_acid_h(build([("asp_h", 21, False), ("glu_h", 11, False)]))
   fn = write(prefix, root)
-  assert expected_renamed(root) == set(["11", "21"])
+  assert expected_renamed(root) == set(["11"])
   cif = prefix + ".cif"
   with open(cif, "w") as f: f.write(zq4_cif)
   task, description, log = run(prefix, fn,
     ["approach=place", "keep_existing_H=True"], extra=[cif])
-  # both swaps happened
-  assert swapped_resseqs(task._input_renames).count("21") == 1
-  assert swapped_resseqs(task._placement_renames).count("21") == 1
+  assert swapped_resseqs(task._input_renames).count("21") == 0
+  assert swapped_resseqs(task._placement_renames).count("21") == 0
   assert listed(description) == {"GLU A 11": "OE1/OE2"}, description
   before, after = sites(fn), sites(prefix + ".pdb")
   assert before["21", "", "OD1"] == after["21", "", "OD1"]
@@ -322,8 +321,7 @@ def test_model_number():
   task, description, log = run(prefix, fn, ["approach=remove", "model_id=2"],
     extra=[cif])
   assert listed(description) == {"GLU A 12": "OE1/OE2"}, description
-  # the input's rename and placement's second swap of Asp 22 net to nothing,
-  # though selection moved the model from the second place to the first
+  # Asp 22 is not renamed, in the model selected from the second place
   out = prefix + "_cancel"
   root = without_acid_h(build([("asp_h", 21, False), ("glu_h", 11, False)]))
   second = root.only_model().detached_copy()
@@ -335,8 +333,8 @@ def test_model_number():
   fn = write(out, root)
   task, description, log = run(out, fn,
     ["approach=place", "keep_existing_H=True", "model_id=2"], extra=[cif])
-  assert swapped_resseqs(task._input_renames).count("22") == 1
-  assert swapped_resseqs(task._placement_renames).count("22") == 1
+  assert swapped_resseqs(task._input_renames).count("22") == 0
+  assert swapped_resseqs(task._placement_renames).count("22") == 0
   assert listed(description) == {"GLU A 12": "OE1/OE2"}, description
 
 def test_log_cap():
@@ -385,7 +383,7 @@ if __name__ == "__main__":
   test_add_nothing_renamed()
   test_optimize()
   test_restraint_file()
-  test_two_renamings_cancel()
+  test_second_processing_renames_nothing()
   test_neutron()
   test_flipkin_passes()
   test_altlocs_and_models()

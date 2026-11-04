@@ -583,6 +583,51 @@ def exercise_no_dihedral():
   assert_only_swapped(before, after, [])
   assert "test atoms coincident or collinear - not flipped" in info, info
 
+# phenix_regression pdb/pdb1jxt.ent: B beyond 90 deg through CD1 and CD2
+pdb_1jxt_phe_13 = """\
+ATOM    230  CA  PHE A  13       5.831   6.291   5.009  1.00  2.47           C
+ATOM    233  CB APHE A  13       7.031   6.945   5.693  0.65  3.27           C
+ATOM    234  CB BPHE A  13       7.149   6.917   5.744  0.35  2.82           C
+ATOM    235  CG APHE A  13       7.711   8.011   4.898  0.65  2.57           C
+ATOM    236  CG BPHE A  13       7.863   7.833   4.788  0.35  1.62           C
+ATOM    237  CD1APHE A  13       8.669   7.676   3.937  0.65  3.32           C
+ATOM    238  CD1BPHE A  13       8.961   7.361   4.045  0.35  3.15           C
+ATOM    239  CD2APHE A  13       7.366   9.356   5.067  0.65  3.05           C
+ATOM    240  CD2BPHE A  13       7.578   9.214   4.755  0.35  2.83           C
+ATOM    241  CE1APHE A  13       9.289   8.650   3.166  0.65  3.40           C
+ATOM    242  CE1BPHE A  13       9.672   8.207   3.200  0.35  3.54           C
+ATOM    243  CE2APHE A  13       8.015  10.359   4.340  0.65  2.96           C
+ATOM    244  CE2BPHE A  13       8.246  10.091   3.879  0.35  2.36           C
+ATOM    245  CZ APHE A  13       8.962   9.987   3.373  0.65  3.58           C
+ATOM    246  CZ BPHE A  13       9.266   9.542   3.081  0.35  4.87           C
+"""
+
+def exercise_second_call_renames_nothing():
+  hierarchy = iotbx.pdb.input(source_info=None,
+    lines=pdb_1jxt_phe_13).construct_hierarchy()
+  hierarchy.flip_symmetric_amino_acids()
+  after_first = hierarchy.atoms().extract_xyz().deep_copy()
+  for i in range(3):
+    pairs = []
+    hierarchy.flip_symmetric_amino_acids(swapped_pairs=pairs)
+    assert pairs == [], pairs
+    assert list(hierarchy.atoms().extract_xyz()) == list(after_first)
+  # Val: CG2 moved along CB-CG2; volumes 0.27, 0, -0.27, -4.93 (ideal -2.5). The
+  # delta exceeds 2 before and after a swap, so a rule on the delta alone swaps
+  # them on every call.
+  for shift in (-0.9, -1.0, -1.1, -2.8):
+    rows = rows_of("VAL")
+    sites = dict((r[0], r[2]) for r in rows)
+    for row in rows:
+      if row[0] == "CG2":
+        row[2] = tuple(x + shift*(x - c)
+          for x, c in zip(sites["CG2"], sites["CB"]))
+    hierarchy = make("VAL", rows)
+    hierarchy.flip_symmetric_amino_acids()
+    pairs = []
+    hierarchy.flip_symmetric_amino_acids(swapped_pairs=pairs)
+    assert pairs == [], (shift, pairs)
+
 def exercise_pair_spans_blank_and_altloc():
   # 8EYP Tyr A 102: the two atoms of a pair cannot be exchanged
   rows = split(rows_of("TYR"), ["CD2"])
@@ -745,6 +790,7 @@ def run_in_process():
   exercise_disagree_on_blank_pair()
   exercise_test_spans_blank_and_altloc()
   exercise_no_dihedral()
+  exercise_second_call_renames_nothing()
   exercise_pair_spans_blank_and_altloc()
   exercise_incomplete_h_in_altloc()
   exercise_d_ring()
