@@ -134,10 +134,6 @@ A **tst_reduce.py** script is located in the mmtbx/regression folder within this
 script runs all of the unit tests described above and then several specific test cases are run
 to ensure that various corner cases are properly handled.
 
-A **tst_mmtbx_reduce_ext.py:** Script is located in the mmtbx/reduce folder that runs the test
-functions in the C++ classes via their python wrappers. When run, prints nothing on success and
-raises an assertion on failure.
-
 ## Regression testing
 
 Regression tests were performed between Reduce2 and the original Reduce code in June-July 2023 before
@@ -154,10 +150,3 @@ behavior of reduce2 with original reduce on a Mover-by-Mover basis. 3VYK was stu
 with 1DFU. These tests turned up other issues that are being investigated. The 1XSO file was
 also studied, which has 164 Movers; the overall score was 75 higher for Reduce2, issues were
 created (and then resolved) for individual residues that were significantly lower.
-
-As of 2/29/2024, the issues under investigation are described in the status and issues document at
-https://docs.google.com/document/d/1ogzS6QlBnPJRGU2CNzHvw0KhV8E5fXdwO1TwUEM7GQc/edit?usp=sharing 
-which is being used to track ongoing issues. The major issues are:
-- Ionic bonds are not being handled properly, causing flip Movers to be adjustable near ions.
-- The restraints information for many files in the PDB is not available, so many files cannot be run.
-- The mostly-Python Reduce2 is significantly slower than the original C++ reduce.
