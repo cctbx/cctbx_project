@@ -186,11 +186,10 @@ Limitations.
 - A blank-altloc parent whose dictionary partner exists in only one altloc is
   treated as complete (the partner is present in some conformer).
 - reduce2's optimizer rotates H (the terminal HO3' and HO5' included) against
-  the asymmetric unit only; the qmready clash check is symmetry-aware, so a
-  hydroxyl H at a crystal contact can still end in its Sorry. A QM model is
-  usually run without crystal symmetry (no CRYST1), where this cannot occur.
-  Documented by mmtbx/regression/tst_reduce2_symmetry_optimizer.py (an
-  expected failure until the optimizer is fixed).
+  the asymmetric unit only unless include_symmetric_copies=True; with the
+  default, a hydroxyl H at a crystal contact is only pushed past the
+  symmetry-aware qmready clash check by the regularization
+  (mmtbx/regression/tst_reduce2_symmetry_optimizer.py).
 - A residue reduced to N and CA gets no NH3+ from qmready (the propeller needs
   C) and its N is not examined by capping.
 - reduce2 drops an input H on a truncated atom even with keep_existing_H=True;
