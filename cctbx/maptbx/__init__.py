@@ -1144,23 +1144,8 @@ class spherical_variance_around_point(object):
     self.site_cart = site_cart
     self.radius = radius
     assert n_points>0
-    sphere_points = []
-    x, y, z = site_cart
-    # reference: "Distributing many points on a sphere" by E.B. Saff and
-    #     A.B.J. Kuijlaars, Mathematical Intelligencer 19.1 (1997) 5--11.
-    # derived from http://packinon.sourceforge.net/py_progs/pg_saff.html
-    for k in range(1, n_points+1):
-      h = -1 + 2 * (k - 1) / float(n_points - 1)
-      theta = math.acos(h)
-      if (k  ==  1) or (k  ==  n_points):
-        phi = 0
-      else:
-        phi = (old_phi + 3.6/math.sqrt(n_points*(1-h*h))) % (2*math.pi)
-      sphere_points.append((
-        x + math.sin(phi)*math.sin(theta),
-        y + math.cos(theta),
-        z + math.cos(phi)*math.sin(theta) ))
-      old_phi = phi
+    sphere_points = scitbx.math.saff_kuijlaars_sphere_points(
+      n_points) + site_cart
     map_values = flex.double()
     for point in sphere_points :
       site_frac = unit_cell.fractionalize(site_cart = point)
