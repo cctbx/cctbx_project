@@ -1725,7 +1725,9 @@ NOTES:
         lines.append('    (+%d more)' % (len(entries) - len(shown)))
     by_reason = lambda entries, reason: [e for e in entries if e.reason == reason]
     section('Conformer sites written as one isotope',
-      by_reason(r.conformer_sites, 'conformer'), lambda e: e.reason)
+      by_reason(r.conformer_sites, 'conformer'), lambda e: e.reason,
+      remark='These sites have no H/D occupancy pair: a limit of the layout, '
+             'not evidence of full exchange.')
     section('Not split, no free altloc letters',
       by_reason(r.conformer_sites, 'no free altloc letters'), lambda e: e.reason)
     section('Name not pairable by phenix.refine, kept as H',

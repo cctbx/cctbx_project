@@ -585,10 +585,121 @@ def _blank_amide_group(rg, prev_rg):
     if ag.get_atom('H') is not None: return None
   n = blank[0].get_atom('N')
   if n is None or blank[0].get_atom('CA') is None: return None
-  cs = [ag.get_atom('C') for ag in prev_rg.atom_groups()]
-  cs = [c for c in cs if c is not None and c.distance(n) < 2.0]
-  if len(cs) != 1: return None
+  if len(_bonded_previous_c(n, prev_rg)) != 1: return None
   return blank[0]
+
+def _bonded_previous_c(n, prev_rg):
+  '''The C atoms of prev_rg within peptide bond distance of n, one per altloc.'''
+  cs = [ag.get_atom('C') for ag in prev_rg.atom_groups()]
+  return [c for c in cs if c is not None and c.distance(n) < 2.0]
+
+def _split_atoms_by_cell(m):
+  '''
+  Heavy non-metal atoms in an altloc group of model m, by 3 A grid cell: the
+  candidates for a covalent partner in another residue (none is longer).
+  '''
+  cells = {}
+  for ag in m.atom_groups():
+    if ag.altloc == '': continue
+    for a in ag.atoms():
+      if a.element.strip().upper() not in nonmetals: continue
+      x, y, z = a.xyz
+      cells.setdefault((int(x//3), int(y//3), int(z//3)), []).append(a)
+  return cells
+
+class link_rule(object):
+  '''
+  The decision of pdb_interpretation's automatic linking for a pair of atoms
+  (process_nonbonded_for_links(), reduce's parameters), without processing:
+  placement has to know the partners before the H exist.
+  '''
+  def __init__(self):
+    from mmtbx.monomer_library import linking_setup
+    self.params = get_reduce_pdb_interpretation_params(
+      False).pdb_interpretation.automatic_linking
+    self.skip_if_longer = linking_setup.update_skip_if_longer(
+      self.params.amino_acid_bond_cutoff,
+      rna_dna_bond_cutoff = 3.4,
+      intra_residue_bond_cutoff = self.params.inter_residue_bond_cutoff,
+      saccharide_bond_cutoff = self.params.carbohydrate_bond_cutoff,
+      metal_coordination_cutoff = self.params.metal_coordination_cutoff,
+      sulfur_bond_cutoff = 2.5,
+      other_bond_cutoff = 2)
+
+  def linked(self, a, b):
+    from mmtbx.monomer_library import linking_utils
+    c1, c2 = linking_utils.get_classes(a), linking_utils.get_classes(b)
+    if not self.params.link_ligands and (c1.other or c2.other): return False
+    if (not self.params.link_small_molecules and
+        (c1.common_small_molecule or c2.common_small_molecule)): return False
+    return linking_utils.is_atom_pair_linked(a, b,
+      c1.important_only, c2.important_only,
+      distance = a.distance(b),
+      skip_if_longer = self.skip_if_longer,
+      second_row_buffer = self.params.buffer_for_second_row_elements,
+      saccharide_bond_cutoff = self.params.carbohydrate_bond_cutoff,
+      metal_coordination_cutoff = self.params.metal_coordination_cutoff,
+      link_metals = False)
+
+def _link_bonds_atoms(link, swap, a1, a2):
+  '''
+  True if a bond of link joins a1 and a2 by name. link, swap as from
+  is_atom_group_pair_linked(a1.parent(), a2.parent(), ...): component 1 of the
+  link is a1's residue, or a2's if swap.
+  '''
+  comp_1, comp_2 = (a2, a1) if swap else (a1, a2)
+  names = (comp_1.name.strip(), comp_2.name.strip())
+  for b in link.bond_list:
+    ends = {b.atom_1_comp_id: b.atom_id_1.strip(),
+            b.atom_2_comp_id: b.atom_id_2.strip()}
+    if (ends.get(1), ends.get(2)) == names: return True
+  return False
+
+def _split_partners(parent, rg, prev_rg, cells, rule, mon_lib_srv):
+  '''
+  The altloc atoms of other residues covalently bonded to the blank atom
+  parent: the C of the previous residue if parent is its N, else what the
+  link rule bonds to it through a link defined for the two residue names, at
+  that link's own atoms (an N-glycan C1 to a split ND2, NAG-ASN; not its C2
+  in contact with ND2). Empty if none. pdb_interpretation
+  bonds both conformers of such a link; of others it can bond one only (GAL C1
+  to O3 of NGA and A2G, 4d3w), and a copy without its partner would be lost.
+  '''
+  if parent.name.strip() == 'N' and prev_rg is not None:
+    cs = _bonded_previous_c(parent, prev_rg)
+    if cs:
+      return [c for c in cs if c.parent().altloc != '']
+  from mmtbx.monomer_library.linking_utils import is_atom_group_pair_linked
+  x, y, z = parent.xyz
+  ci, cj, ck = int(x//3), int(y//3), int(z//3)
+  result = []
+  for i in (ci-1, ci, ci+1):
+    for j in (cj-1, cj, cj+1):
+      for k in (ck-1, ck, ck+1):
+        for a in cells.get((i, j, k), ()):
+          if a.parent().parent().memory_id() == rg.memory_id(): continue
+          if a.distance(parent) >= 3: continue
+          link, swap, _ = is_atom_group_pair_linked(parent.parent(), a.parent(),
+            mon_lib_srv)
+          if link is None or not _link_bonds_atoms(link, swap, parent, a):
+            continue
+          if rule.linked(parent, a):
+            result.append(a)
+  return result
+
+def _h_parent_names(ag, mon_lib_srv):
+  '''{H name: its parent's name} of the dictionary of ag.'''
+  mlq, _ = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv, raise_sorry=False)
+  result = {}
+  if mlq is None: return result
+  atom_dict = mlq.atom_dict()
+  for b in mlq.bond_list:
+    for h, x in ((b.atom_id_1, b.atom_id_2), (b.atom_id_2, b.atom_id_1)):
+      if h in atom_dict and atom_dict[h].type_symbol == 'H':
+        result[h] = x
+        # the v3 CH2 name placement writes for the mon_lib one (HB1 -> HB3)
+        if h[-1:] == '1': result.setdefault(h[:-1] + '3', x)
+  return result
 
 def _split_ca_groups(rg, n):
   '''
@@ -1040,7 +1151,8 @@ class metal_h_sites(object):
   the H is blank or X is in the H's altloc; for a blank X and an H in
   altloc X, the occupancy of the heavy atoms of conformer X.
     self.covered coverage >= population (1.e-6)
-    unresolved   coverage < population; the H's group has no heavy atoms;
+    unresolved   coverage < population; the H's group has no heavy atoms
+                 (metal_nh_sites: and no heavy neighbour of X in its altloc);
                  the heavy atoms of conformer X differ in occupancy
     not counted  no such metal (incompatible altloc, occupancy 0)
 
@@ -1129,6 +1241,8 @@ class metal_h_sites(object):
         occ = [a.occ for ag in x_atom.parent().parent().atom_groups()
                if ag.altloc == alt for a in ag.atoms() if not is_h(a.i_seq)]
         if not occ:
+          occ = self._partner_occupancies(atoms, heavy, i_x, alt)
+        if not occ:
           why = 'altloc group without heavy atoms'
         elif max(occ) - min(occ) > 1.e-6:
           why = 'heavy atoms of conformer %s differ in occupancy' % alt
@@ -1191,6 +1305,10 @@ class metal_h_sites(object):
       self.h_sites.append(group_args(i_h = i_h, i_x = i_x, verdict = verdict,
         reason = reason, population = population, coverage = coverage,
         i_metal = i_metal, contacts = counted, proxy = proxy, sites = sites))
+
+  def _partner_occupancies(self, atoms, heavy, i_x, alt):
+    # population of an H in an atom group without heavy atoms: none by default
+    return []
 
   def contact_text(self, c):
     a = self.atoms
@@ -1273,6 +1391,12 @@ class metal_nh_sites(metal_h_sites):
       self._amino_acid[resname] = residue_is_amino_acid(resname,
         self._mon_lib_srv)
     return self._amino_acid[resname]
+
+  def _partner_occupancies(self, atoms, heavy, i_x, alt):
+    # an amide H split per conformer of C(i-1) is in a group without heavy
+    # atoms: its population is that of the heavy neighbours of its letter
+    return [atoms[j].occ for j in heavy.get(i_x, [])
+            if atoms[j].parent().altloc == alt]
 
   def n_class(self, atoms, heavy, i_n, i_h):
     '''
@@ -2265,6 +2389,9 @@ class place_hydrogens():
     # H that riding H refused although their parent has all its heavy
     # neighbours
     self.site_labels_riding_refused = list()
+    # H on a blank parent left in the residue's own groups, whose letters
+    # differ from the covalent partner's (B7/B8)
+    self.h_letters_differ       = list()
     # how to drop the supplied H, for the report (set by reduce2)
     self.supplied_h_hint        = None
     # the input's own symmetry for contacts (contact_symmetry()); a caller
@@ -2569,6 +2696,7 @@ class place_hydrogens():
     kept_b = self.model.get_b_iso().select(sel_kept)
     self.model.reset_adp_for_hydrogens(scale = self.adp_scale, keep_aniso=True)
     self.model.reset_occupancy_for_hydrogens_simple()
+    self._set_h_only_group_occupancies()
     if sel_kept.count(True) > 0:
       self.model.set_occupancies(values = kept_occ, selection = sel_kept)
       self.model.set_b_iso(values = kept_b, selection = sel_kept,
@@ -2620,6 +2748,33 @@ class place_hydrogens():
       self.print_times()
 
   # ----------------------------------------------------------------------------
+
+  def _set_h_only_group_occupancies(self):
+    '''
+    An H of an atom group without heavy atoms, on a blank parent, belongs to
+    the conformer of the atom bonded to the parent with its letter: that atom's
+    occupancy, never above the parent's. The shared reset gives it the parent's
+    (no heavy atoms to take a conformer's from). No such atom: left as it is.
+    '''
+    groups = [ag for ag in self.model.get_hierarchy().atom_groups()
+              if ag.altloc != '' and ag.atoms_size() > 0 and
+              all(a.element.strip().upper() in ('H', 'D') for a in ag.atoms())]
+    if not groups: return
+    grm = self.model.get_restraints_manager().geometry
+    fsc0 = grm.shell_sym_tables[0].full_simple_connectivity()
+    atoms = self.model.get_atoms()
+    occ = self.model.get_occ()
+    for ag in groups:
+      for h in ag.atoms():
+        if fsc0[h.i_seq].size() == 0: continue
+        parent = atoms[fsc0[h.i_seq][0]]
+        if parent.parent().altloc != '': continue
+        partners = [atoms[j].occ for j in fsc0[parent.i_seq]
+                    if atoms[j].parent().altloc == ag.altloc
+                    and atoms[j].element.strip().upper() not in ('H', 'D')]
+        if partners:
+          occ[h.i_seq] = min(partners + [parent.occ])
+    self.model.set_occupancies(values = occ)
 
   def _h_identities(self):
     '''
@@ -3815,9 +3970,12 @@ class place_hydrogens():
     self.query_mon_lib_srv = mon_lib_srv
     load_restraint_objects_into_server(self.model, mon_lib_srv)
     #XXX This breaks for 1jxt, residue 2, TYR
+    rule = None
     for m in pdb_hierarchy.models():
       model_atoms = m.atoms()
       model_sites = model_atoms.extract_xyz()
+      split_cells = _split_atoms_by_cell(m)
+      if split_cells and rule is None: rule = link_rule()
       for chain in m.chains():
         chain_rgs = chain.residue_groups()
         for i_rg, rg in enumerate(chain_rgs):
@@ -3833,6 +3991,7 @@ class place_hydrogens():
             amide_ag = _blank_amide_group(rg,
               chain_rgs[i_rg-1] if i_rg > 0 else None)
           add_amide_h = False
+          new_h = []
           for ag in ags:
             # blank + two or more altlocs: blank-parent H go into each altloc
             # (not the amide H if it depends on no split atom, amide_ag)
@@ -3946,6 +4105,7 @@ class place_hydrogens():
                 .set_segid(new_segid=segid))
 
               ag.append_atom(a)
+              new_h.append(a)
           if add_amide_h:
             new_xyz = tuple(flex.double(amide_ag.atoms().extract_xyz().mean())
               + flex.double([0.5,0.5,0.5]))
@@ -3956,7 +4116,59 @@ class place_hydrogens():
               .set_hetero(new_hetero=amide_ag.atoms()[0].hetero)
               .set_segid(new_segid=amide_ag.atoms()[0].segid))
             self.residue_keys_new_h.add((m.id, chain.id, rg.resseq, rg.icode))
+          if split_cells and new_h:
+            self._split_h_by_partner(rg, chain_rgs[i_rg-1] if i_rg > 0 else None,
+              new_h, split_cells, rule, mon_lib_srv)
     return pdb_hierarchy
+
+  def _split_h_by_partner(self, rg, prev_rg, new_h, cells, rule, mon_lib_srv):
+    '''
+    New H on a blank parent whose covalent partner in another residue is in two
+    or more altlocs go into one atom group per letter of the partner (created
+    where the residue has none), so riding builds each copy from that conformer:
+    a blank H would follow one conformer only. Residue letters that differ from
+    the partner's: left as they are, listed (B7/B8).
+    '''
+    ags = rg.atom_groups()
+    if len(set(ag.resname for ag in ags)) != 1: return
+    blank = [ag for ag in ags if ag.altloc == '']
+    if len(blank) != 1: return
+    partners = {}
+    for a in blank[0].atoms():
+      if a.element.strip().upper() not in nonmetals: continue
+      p = _split_partners(a, rg, prev_rg, cells, rule, mon_lib_srv)
+      letters = sorted(set(x.parent().altloc for x in p))
+      if len(letters) > 1:
+        partners[a.name.strip()] = (letters, p[0])
+    if not partners: return
+    parent_of = _h_parent_names(blank[0], mon_lib_srv)
+    own = sorted(ag.altloc for ag in ags if ag.altloc != '' and
+      any(a.element.strip().upper() not in ('H', 'D') for a in ag.atoms()))
+    for h in new_h:
+      name = parent_of.get(h.name.strip())
+      if name not in partners: continue
+      letters, partner = partners[name]
+      if own:
+        # once per H, not per copy
+        if own != letters and h.parent().altloc == own[0]:
+          self.h_letters_differ.append('%s %s %s %s: residue letters %s; %s %s '
+            '%s %s letters %s' % (h.name.strip(), blank[0].resname.strip(),
+            rg.parent().id, rg.resseq.strip(), ', '.join(own),
+            partner.name.strip(), partner.parent().resname.strip(),
+            partner.parent().parent().parent().id,
+            partner.parent().parent().resseq.strip(), ', '.join(letters)))
+        continue
+      if h.parent().altloc != '': continue
+      for letter in letters:
+        group = [ag for ag in rg.atom_groups() if ag.altloc == letter]
+        if group:
+          ag = group[0]
+        else:
+          ag = iotbx.pdb.hierarchy.atom_group(altloc = letter,
+            resname = blank[0].resname)
+          rg.append_atom_group(ag)
+        ag.append_atom(h.detached_copy())
+      blank[0].remove_atom(h)
 
 # ------------------------------------------------------------------------------
 #
@@ -4383,6 +4595,11 @@ proline-type or N-substituted residue)'''
         for label in self.site_labels_missing_neighbor:
           print(label, file=log)
     #
+    if self.h_letters_differ:
+      print('''
+H on a blank parent not split: the residue's letters differ from its covalent partner's''', file=log)
+      for line in self.h_letters_differ:
+        print(line, file=log)
     if self.site_labels_riding_refused:
       msg = '''
 The following H atoms were not placed because riding H could not parameterize
