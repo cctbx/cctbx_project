@@ -175,6 +175,8 @@ namespace boost_python {
        arg("widths")));
     def("column_needs_format_value", column_needs_format_value,
       (arg("column")));
+    def("first_non_plain_number", first_non_plain_number,
+      (arg("column"), arg("start")));
   }
 
 }}} //iotbx::cif::boost_python

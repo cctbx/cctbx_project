@@ -499,16 +499,39 @@ _show_chunk_rows = 65536
 # changed by format_value; such a column goes through format_value.
 _column_needs_format_value = ext.column_needs_format_value
 
-def _is_numeric_column(column):
-  """True if every value of the column (a flex.std_string), '.' and '?'
-  aside, parses as a number.  loop.show() right-aligns such a column; its
-  values never need quoting."""
+# Values of a column that are not plain numbers go to flex.double one at a
+# time up to this many, then the whole column goes in one call.
+_numeric_single_values = 64
+
+def _flex_double_accepts(column):
+  """True if flex.double accepts every value of the column (a
+  flex.std_string), '.' and '?' aside."""
   values = column.select(~((column == ".") | (column == "?")))
   try:
     flex.double(values)
   except ValueError:
     return False
   return True
+
+def _is_numeric_column(column):
+  """True if every value of the column (a flex.std_string), '.' and '?'
+  aside, parses as a number.  loop.show() right-aligns such a column; its
+  values never need quoting.  Plain numbers are recognised by a C++ scan;
+  flex.double, the authority, judges the values the scan rejects: the
+  first _numeric_single_values one at a time, then the whole column in
+  one call, as before the scan."""
+  n = column.size()
+  i = 0
+  for unused in range(_numeric_single_values):
+    i = ext.first_non_plain_number(column, i)
+    if i == n:
+      return True
+    try:
+      flex.double(column[i:i+1])
+    except ValueError:
+      return False
+    i += 1
+  return _flex_double_accepts(column)
 
 def _printed_column(column, numeric=False):
   """The column (a flex.std_string) as loop.show() prints it and the width

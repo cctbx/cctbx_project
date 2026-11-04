@@ -746,7 +746,8 @@ def exercise_format_rows_python():
 class python_references(object):
   """While active, loop.show() runs through the retained Python references
   of its C++ helpers."""
-  references = (("_format_rows", "_format_rows_python"),)
+  references = (("_format_rows", "_format_rows_python"),
+                ("_is_numeric_column", "_flex_double_accepts"))
   def __enter__(self):
     self.saved = [(n, getattr(model, n)) for n, r in self.references]
     for n, r in self.references:
@@ -798,6 +799,86 @@ def exercise_format_rows_parity():
   assert s1.getvalue() == s2.getvalue()
   assert model._format_rows is not model._format_rows_python
 
+def exercise_numeric_column_parity():
+  # _is_numeric_column decides the alignment of a column; the C++ scan of
+  # plain numbers plus flex.double on the rest must give the answer of
+  # flex.double on the whole column
+  import random
+  from iotbx.cif import ext
+  probes = ["1", "-1", "+1", "1.5", ".5", "1.", "1e5", "1E-5", "0x10",
+            "nan", "inf", "-inf", "NaN", "Infinity", "-0", "1,2", "1_000",
+            "1(2)", "1.5(12)", "1e400", "1e-400", " 1", "1 ", "", "1d5",
+            "0x1p3", "nan(1)", "1e", "e5", "--1", "1.2.3", "1e+5", "+.5",
+            "-.5e-3", "5.", "1(", "1)", "1()", "(2)", "1(2", "1.0e+00",
+            "00012", "1e0005", "12345678901234567890", "1e308", "1e309",
+            "4.9e-324", "1\t", "1\n", "Inf", "-nan", "1E", "1e+", "1.e5",
+            ".e5", ".", "?", "..", "1.5+03", "1.5-03", "+", "-", "e",
+            "1e99", "1e-99", "0" * 39 + "1", "1" + "0" * 39, "1" * 41,
+            "1e100", "1e-100", "\xe9", "1\xe9", "abc"]
+  for value in probes:
+    for column in (flex.std_string([value]),
+                   flex.std_string([".", "1", value, "?"]),
+                   flex.std_string(["1.5", value, "nan"])):
+      assert model._is_numeric_column(column) == \
+        model._flex_double_accepts(column), (repr(value), list(column))
+  assert model._is_numeric_column(flex.std_string())
+  assert model._is_numeric_column(flex.std_string([".", "?"]))
+  # the scan: index of the first value that is neither ., ? nor a plain
+  # number, from a start index; the size when there is none
+  column = flex.std_string(["1", ".", "nan", "2", "?", "x"])
+  assert ext.first_non_plain_number(column, 0) == 2
+  assert ext.first_non_plain_number(column, 3) == 5
+  assert ext.first_non_plain_number(column, 6) == 6
+  assert ext.first_non_plain_number(flex.std_string(["1", "2"]), 0) == 2
+  # every plain number the scan accepts is accepted by flex.double, and
+  # a mutation of one is judged alike by both paths
+  random.seed(0)
+  def digits():
+    return "".join(random.choice("0123456789")
+                   for i in range(random.randrange(1, 12)))
+  def plain():
+    s = random.choice(["", "+", "-"])
+    kind = random.randrange(3)
+    if kind == 0: s += digits()
+    elif kind == 1: s += digits() + "." + random.choice(["", digits()])
+    else: s += "." + digits()
+    if random.randrange(2):
+      s += random.choice("eE") + random.choice(["", "+", "-"]) \
+         + "".join(random.choice("0123456789")
+                   for i in range(random.randrange(1, 3)))
+    return s
+  for i in range(3000):
+    value = plain()
+    column = flex.std_string([value])
+    assert ext.first_non_plain_number(column, 0) == 1, repr(value)
+    flex.double(column)
+    j = random.randrange(len(value) + 1)
+    mutant = value[:j] + random.choice("e.+- xg()0") + value[j:]
+    column = flex.std_string([value, mutant, "?"])
+    assert model._is_numeric_column(column) == \
+      model._flex_double_accepts(column), repr(mutant)
+  # values the scan leaves to flex.double go one at a time up to
+  # _numeric_single_values, then the rest of the column in one call
+  sizes = []
+  class counting_flex(object):
+    @staticmethod
+    def double(values):
+      sizes.append(values.size())
+      return flex.double(values)
+  model.flex = counting_flex
+  try:
+    column = flex.std_string(5000, "nan")
+    assert model._is_numeric_column(column)
+    assert sizes == [1] * model._numeric_single_values + [5000], sizes
+    column[4999] = "x"
+    assert not model._is_numeric_column(column)
+    column = flex.std_string(5000, "1.5(3)")
+    column[3000] = "1.5("
+    assert not model._is_numeric_column(column)
+  finally:
+    model.flex = flex
+  assert model._is_numeric_column is not model._flex_double_accepts
+
 if __name__ == '__main__':
   exercise_cif_model()
   test_301()
@@ -807,4 +888,5 @@ if __name__ == '__main__':
   exercise_loop_show_many_rows()
   exercise_format_rows_python()
   exercise_format_rows_parity()
+  exercise_numeric_column_parity()
   print("OK")

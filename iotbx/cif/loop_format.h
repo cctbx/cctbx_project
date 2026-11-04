@@ -35,6 +35,18 @@ namespace iotbx { namespace cif {
   bool
   column_needs_format_value(af::const_ref<std::string> const& column);
 
+  //! Index of the first value at or after start that is neither ".", "?"
+  //! nor a plain number; the size of the column when there is none.
+  /*! A plain number is an optional sign, digits with an optional fraction
+      or a fraction alone, and an optional exponent of at most two digits,
+      at most 40 characters in all: flex.double(flex.std_string) accepts
+      every such value and none of them overflows or underflows.
+   */
+  std::size_t
+  first_non_plain_number(
+    af::const_ref<std::string> const& column,
+    std::size_t start);
+
 }} // namespace iotbx::cif
 
 #endif // IOTBX_CIF_LOOP_FORMAT_H

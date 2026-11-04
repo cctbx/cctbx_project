@@ -127,6 +127,37 @@ namespace {
     return v.find_first_of(whitespace) != std::string::npos;
   }
 
+  bool
+  is_ascii_digit(char c)
+  {
+    return c >= '0' && c <= '9';
+  }
+
+  // the grammar of first_non_plain_number in loop_format.h
+  bool
+  is_plain_number(std::string const& s)
+  {
+    std::size_t n = s.size();
+    if (n == 0 || n > 40) return false;
+    std::size_t i = 0;
+    if (s[i] == '+' || s[i] == '-') i++;
+    std::size_t digits = 0;
+    while (i < n && is_ascii_digit(s[i])) { i++; digits++; }
+    if (i < n && s[i] == '.') {
+      i++;
+      while (i < n && is_ascii_digit(s[i])) { i++; digits++; }
+    }
+    if (digits == 0) return false;
+    if (i < n && (s[i] == 'e' || s[i] == 'E')) {
+      i++;
+      if (i < n && (s[i] == '+' || s[i] == '-')) i++;
+      std::size_t exponent_digits = 0;
+      while (i < n && is_ascii_digit(s[i])) { i++; exponent_digits++; }
+      if (exponent_digits == 0 || exponent_digits > 2) return false;
+    }
+    return i == n;
+  }
+
 } // namespace <anonymous>
 
   std::string
@@ -212,6 +243,21 @@ namespace {
       if (value_needs_format_value(column[i])) return true;
     }
     return false;
+  }
+
+  std::size_t
+  first_non_plain_number(
+    af::const_ref<std::string> const& column,
+    std::size_t start)
+  {
+    for (std::size_t i = start; i < column.size(); i++) {
+      std::string const& value = column[i];
+      if (value.size() == 1 && (value[0] == '.' || value[0] == '?')) {
+        continue;
+      }
+      if (!is_plain_number(value)) return i;
+    }
+    return column.size();
   }
 
 }} // namespace iotbx::cif
