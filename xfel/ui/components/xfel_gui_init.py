@@ -614,6 +614,10 @@ class RefreshRunStats(wx.PyCommandEvent):
 class RunStatsSentinel(Thread):
   ''' Worker thread for run stats; generated so that the GUI does not lock up when
       processing is running '''
+  # Per-run view: uncached runs queried per cycle. A whole trial's first
+  # pass is minutes on a big database, so it is filled in a few runs at a
+  # time, cycling without the pause until done.
+  runs_per_query = 5
 
   def __init__(self,
                parent,
@@ -630,8 +634,10 @@ class RunStatsSentinel(Thread):
     # across cycles and is replaced when the trial or a cutoff changes.
     self.run_summary_stats = None
     self.run_summary_key = None
+    self.summary_run_numbers = []
     self.summaries = []
     self.summary_statuses = []
+    self.summary_pending = 0
 
   def post_refresh(self):
     evt = RefreshRunStats(tp_EVT_RUNSTATS_REFRESH, -1)
@@ -649,8 +655,11 @@ class RunStatsSentinel(Thread):
         self.fetch_timestamps(indexed=True)
         self.fetch_timestamps(indexed=False)
         self.post_refresh()
-        wx.CallAfter(self.parent.run_window.runstats_light.change_status, 'on')
-        time.sleep(5)
+        if self.summary_pending:
+          time.sleep(0.2)
+        else:
+          wx.CallAfter(self.parent.run_window.runstats_light.change_status, 'on')
+          time.sleep(5)
       except Exception as e:
         # The tab restarts the sentinel when it is next shown.
         print("Run stats update failed: %s" % e)
@@ -716,9 +725,13 @@ class RunStatsSentinel(Thread):
         statuses = {}
         for run_no, rg_id, status in zip(run_numbers, rungroup_ids, run_statuses):
           statuses[(run_no, rg_id)] = status if status != 'UNKWN' else 'Not found'
-        summaries = self.run_summary_stats(statuses)
+        summaries = self.run_summary_stats(statuses, max_query=self.runs_per_query)
+        # Kept apart from run_numbers, which fetch_timestamps pairs with the
+        # per-shot stats
+        self.summary_run_numbers = run_numbers
         self.summaries = [summaries[(run_no, rg_id)] for run_no, rg_id in zip(run_numbers, rungroup_ids)]
         self.summary_statuses = run_statuses
+        self.summary_pending = self.run_summary_stats.pending
       else:
         self.run_numbers = run_numbers
         self.stats = stats
@@ -787,15 +800,16 @@ class RunStatsSentinel(Thread):
     sizex, sizey = tab.runstats_panelsize
     figure = tab.figure
     if tab.per_run:
+      run_numbers = list(self.summary_run_numbers)
       summaries = list(self.summaries)
       statuses = list(self.summary_statuses)
       high_vis = self.parent.high_vis
       def _draw_summaries():
         try:
           figure.clear()
-          plot_run_summaries(summaries, statuses, figure, high_vis=high_vis)
+          plot_run_summaries(run_numbers, summaries, statuses, figure, high_vis=high_vis)
           figure.canvas.draw_idle()
-          tab.fill_summary_table(summaries, statuses)
+          tab.fill_summary_table(run_numbers, summaries, statuses)
           # Nothing per shot is drawn, so canvas clicks have nothing to open
           tab.plotted_stats = []
           tab.plotted_run_numbers = []
@@ -3149,21 +3163,26 @@ class RunStatsTab(BaseTab):
     self.summary_table.Show(self.per_run and self.show_table)
     self.runstats_panel.Layout()
 
-  def fill_summary_table(self, summaries, statuses):
-    ''' The per-run counts, one row per run plus a total '''
+  def fill_summary_table(self, run_numbers, summaries, statuses):
+    ''' The per-run counts, one row per run plus a total. A run not queried
+        yet (summary None) shows only its name and status. '''
     def pct(a, b):
       return '%.1f' % (100. * a / b if b else 0)
     def row(label, s, status):
+      if s is None:
+        return [label] + [''] * 11 + [status]
       return [label, str(s.n_frames), str(s.n_hits), pct(s.n_hits, s.n_frames),
               str(s.n_drop_hits), pct(s.n_drop_hits, s.n_frames),
               str(s.n_indexed), pct(s.n_indexed, s.n_frames), str(s.n_lattices),
               str(s.n_high_quality), pct(s.n_high_quality, s.n_frames), pct(s.n_high_quality, s.n_indexed), status]
-    rows = [row(s.run, s, status) for s, status in zip(summaries, statuses)]
-    if len(summaries) > 1:
+    rows = [row(run_no, s, status) for run_no, s, status in zip(run_numbers, summaries, statuses)]
+    known = [s for s in summaries if s is not None]
+    if len(summaries) > 1 and known:
       from xfel.ui.db.stats import RunSummary
-      total = RunSummary('Total', None, *[sum(getattr(s, k) for s in summaries) for k in
+      total = RunSummary('Total', None, *[sum(getattr(s, k) for s in known) for k in
                          ('n_frames', 'n_hits', 'n_drop_hits', 'n_indexed', 'n_lattices', 'n_high_quality')], None, None)
-      rows.append(row('Total', total, ''))
+      label = 'Total' if len(known) == len(summaries) else 'Total of %d of %d runs' % (len(known), len(summaries))
+      rows.append(row(label, total, ''))
     self.summary_table.set_rows(rows)
 
   def print_strong_indexed_paths(self):

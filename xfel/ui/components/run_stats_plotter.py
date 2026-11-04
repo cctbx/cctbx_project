@@ -365,19 +365,25 @@ SUMMARY_SERIES = (('hits', 'n_hits', '#eda100'),
                   ('solvent', 'n_drop_hits', '#1baf7a'))
 SUMMARY_STATUS_COLORS = {'DONE': '#898781', 'RUN': '#fab219', 'PEND': '#fab219', 'SUBMITTED': '#fab219'}
 
-def plot_run_summaries(summaries, statuses, figure, high_vis=False):
+def plot_run_summaries(run_numbers, summaries, statuses, figure, high_vis=False):
   """ The per-run view: rates as a percentage of frames over runs, and the
-      frames per run as bars coloured by job status. summaries is a list of
-      RunSummary in run order and statuses the job status of each. """
+      frames per run as bars coloured by job status. run_numbers, summaries
+      (RunSummary, or None for a run not queried yet) and statuses (job
+      status) are parallel lists in run order. """
   fontsize = 12 if high_vis else 9
   ax_rates, ax_frames = figure.subplots(2, sharex=True, gridspec_kw=dict(height_ratios=[3, 1], hspace=0.08))
-  n = len(summaries)
+  n = len(run_numbers)
   x = list(range(n))
   def pct(a, b):
     return 100. * a / b if b else 0.
   for name, key, color in SUMMARY_SERIES:
-    ax_rates.plot(x, [pct(getattr(s, key), s.n_frames) for s in summaries], '-',
+    # A run not queried yet leaves a gap in the line
+    ax_rates.plot(x, [pct(getattr(s, key), s.n_frames) if s is not None else float('nan') for s in summaries], '-',
                   color=color, linewidth=2, marker='o', markersize=3.5, label=name)
+  pending = sum(1 for s in summaries if s is None)
+  if pending:
+    ax_rates.text(0.99, 0.97, '%d of %d runs still to query' % (pending, n), transform=ax_rates.transAxes,
+                  ha='right', va='top', fontsize=fontsize, color='#52514e')
   ax_rates.set_ylabel('% of frames', fontsize=fontsize)
   ax_rates.set_ylim(0, 100)
   ax_rates.grid(True, color='#e1e0d9', linewidth=0.8)
@@ -389,7 +395,7 @@ def plot_run_summaries(summaries, statuses, figure, high_vis=False):
     ax.spines['right'].set_visible(False)
     ax.tick_params(labelsize=fontsize)
   colors = [SUMMARY_STATUS_COLORS.get(status, '#d03b3b') for status in statuses]
-  frames = [s.n_frames / 1000. for s in summaries]
+  frames = [s.n_frames / 1000. if s is not None else 0. for s in summaries]
   ax_frames.bar(x, frames, width=0.8, color=colors)
   ax_frames.set_ylabel('frames (k)', fontsize=fontsize)
   ax_frames.grid(True, axis='y', color='#e1e0d9', linewidth=0.8)
@@ -398,7 +404,7 @@ def plot_run_summaries(summaries, statuses, figure, high_vis=False):
   ax_frames.set_xlim(-0.5, max(n, 10) - 0.5)
   step = max(1, n // 20)
   ax_frames.set_xticks(x[::step])
-  ax_frames.set_xticklabels([summaries[i].run for i in x[::step]], fontsize=fontsize,
+  ax_frames.set_xticklabels([run_numbers[i] for i in x[::step]], fontsize=fontsize,
                             rotation=45 if n > 20 else 0, ha='right' if n > 20 else 'center')
   ax_frames.set_xlabel('run', fontsize=fontsize)
   # Name the status of runs not done, once per stretch of the same status

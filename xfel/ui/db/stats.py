@@ -278,7 +278,9 @@ class RunSummaryStats(object):
 
       A run whose job has finished never changes, so it is queried once and
       then served from a cache; runs still processing are queried on every
-      call, all in one query. """
+      call, all in one query. A whole trial's first pass costs minutes on a
+      big database, so a caller can limit how many uncached runs each call
+      queries and fill in progressively. """
 
   def __init__(self, app, trial, n_strong_cutoff=16, ratio_cutoff=1, d_min=2.0, i_sigi_cutoff=1):
     self.app = app
@@ -288,19 +290,32 @@ class RunSummaryStats(object):
     self.d_min = d_min
     self.i_sigi_cutoff = i_sigi_cutoff
     self.finished = {} # (run name, rungroup id) -> RunSummary
+    self.pending = 0 # uncached runs the last call left for a later one
 
-  def __call__(self, run_statuses):
+  def __call__(self, run_statuses, max_query=None):
     """ run_statuses: {(run name, rungroup id): job status}. Returns
         {(run name, rungroup id): RunSummary} for those runs; a run with no
-        events gets zero counts. """
+        events gets zero counts. With max_query, at most that many uncached
+        runs are queried, in the order given; the rest map to None and are
+        counted in self.pending for the next call. """
     from xfel.ui.db.job import finished_job_statuses
     to_query = [key for key in run_statuses if key not in self.finished]
+    if max_query is not None:
+      self.pending = max(0, len(to_query) - max_query)
+      to_query = to_query[:max_query]
+    else:
+      self.pending = 0
     fresh = self.query([run for run, rungroup_id in to_query]) if to_query else {}
     summaries = {}
     for key in run_statuses:
-      summary = self.finished.get(key) or fresh.get(key) or self.empty(*key)
-      if key in to_query and run_statuses[key] in finished_job_statuses:
-        self.finished[key] = summary
+      if key in self.finished:
+        summary = self.finished[key]
+      elif key in to_query:
+        summary = fresh.get(key) or self.empty(*key)
+        if run_statuses[key] in finished_job_statuses:
+          self.finished[key] = summary
+      else:
+        summary = None
       summaries[key] = summary
     return summaries
 
