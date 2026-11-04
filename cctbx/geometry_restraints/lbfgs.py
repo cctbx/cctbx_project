@@ -33,16 +33,17 @@ class lbfgs(object):
       self.sites_cart_selection = flex.bool(sites_cart_selection)
     else:
       self.sites_cart_selection = None
-    # The refinable coordinates: the selected atoms, less the H atoms when
-    # they ride on their parents.
+    # The refinable coordinates: the selected atoms, less the H atoms that
+    # ride on their parents. An H the manager does not parameterize is an
+    # ordinary atom.
     self.tmp.refinable = flex.bool(sites_cart.size(), True)
     if(self.sites_cart_selection is not None):
       self.tmp.refinable = self.tmp.refinable & self.sites_cart_selection
     if(self.riding_h_manager is not None):
-      self.tmp.refinable = \
-        self.tmp.refinable & self.riding_h_manager.not_hd_selection
-      self.tmp.refinable_not_hd = \
-        self.tmp.refinable.select(self.riding_h_manager.not_hd_selection)
+      self.tmp.riding = self.riding_h_manager.riding_selection()
+      self.tmp.refinable = self.tmp.refinable & ~self.tmp.riding
+      self.tmp.refinable_not_riding = \
+        self.tmp.refinable.select(~self.tmp.riding)
     self.x = flex.double(self.tmp.refinable.count(True)*3, 0)
     self.tmp.geometry_restraints_manager = geometry_restraints_manager
     self.tmp.geometry_restraints_flags = geometry_restraints_flags
@@ -110,11 +111,11 @@ class lbfgs(object):
       gradients = gradients.select(self.tmp.refinable)
     else:
       # The gradients on the riding H atoms are transferred to their parents;
-      # the result holds the non-H atoms only.
+      # the result holds the other atoms only.
       gradients = self.riding_h_manager.gradients_reduced_cpp(
         gradients    = gradients,
         sites_cart   = self.tmp.sites_shifted,
-        hd_selection = self.riding_h_manager.hd_selection)
-      gradients = gradients.select(self.tmp.refinable_not_hd)
+        hd_selection = self.tmp.riding)
+      gradients = gradients.select(self.tmp.refinable_not_riding)
     self.g = gradients.as_double()
     return self.f, self.g

@@ -566,11 +566,10 @@ def test_riding_minimization():
   """
   The riding manager does not parameterize the H of LYS CD without CE: the
   dictionary HD2, HD3 and the cap HCE alike. phenix.geometry_minimization
-  with riding_h=True (mmtbx.refinement.geometry_minimization.run2) freezes
-  every H of the manager's hd_selection, parameterized or not, so all three
-  stay where they were while CD moves (pre-existing, not cap specific): the
-  cap must behave as the dictionary H. With riding_h=False they are free and
-  end at the X-H length (default: X-ray).
+  (mmtbx.refinement.geometry_minimization.run2) refines an H without a
+  parameterization as a free atom whether riding_h is on or off, so the cap
+  behaves as the dictionary H and all three end at the X-H length (default:
+  X-ray).
   """
   from mmtbx.command_line import geometry_minimization
   m, result = processed(fixtures.pdb_lys)
@@ -588,8 +587,7 @@ def test_riding_minimization():
     d = dict((n, (matrix.col(by_name[n].xyz) - cd).length())
              for n in ('HD2', 'HCE'))
     assert abs(d['HCE'] - d['HD2']) < 0.01, (riding, d)
-    if not riding:
-      assert abs(d['HCE'] - capping.xh_length('C', 4, False)) < 0.01, d
+    assert abs(d['HCE'] - capping.xh_length('C', 4, False)) < 0.01, (riding, d)
 
 def test_keyword_selection():
   m, result = processed(fixtures.pdb_arg)

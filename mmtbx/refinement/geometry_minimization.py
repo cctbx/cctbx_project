@@ -643,18 +643,6 @@ def regularize(geometry_restraints_manager, sites_cart, selection=None,
   if(hd_selection is not None): shift_selection &= ~hd_selection
   sites_cart_start = sites_cart.deep_copy()
   sites_cart = sites_cart.deep_copy()
-  if(riding_h_manager is not None):
-    # The LBFGS driver freezes every H of the manager's hd_selection and
-    # drops its gradient; an H without parameterization would stay behind
-    # its moving parent. A shallow copy of the manager selects the riding H
-    # only, so the others are refined as free atoms.
-    import copy
-    riding = flex.bool(n_atoms, False)
-    for rc in riding_h_manager.parameterization_cpp:
-      riding[rc.ih] = True
-    riding_h_manager = copy.copy(riding_h_manager)
-    riding_h_manager.hd_selection = riding
-    riding_h_manager.not_hd_selection = ~riding
   flags = geometry_restraints.flags.flags(
     bond                    = True,
     nonbonded               = True,
