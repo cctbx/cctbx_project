@@ -2660,7 +2660,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     build_e_model):
       Eeff   = Feff/(sqrt(TEPS)*RESN)
       Emodel = k*F_model/(RESN*sqrt(TEPS*ScatFrac))
-      D      = Dobs*sigmaA,  V = TEPS - D^2
+      D      = Dobs*sigmaA,  V = 1 - D^2
     combine() forms fo_scale*fom*f_obs + fc_scale*alpha*f_model, with
       .f_model  f_model_no_aniso_scale (the phase of f_model, without
                 k_anisotropic)
@@ -2735,6 +2735,12 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
           eeff = eeff / flex.sqrt(tncs_t)
           sqrt_teps = flex.sqrt(tncs_t)
           teps = flex.double(n, 1.0)
+        else:
+          # TEPS without tNCS groups: the TEPS frame (tncs_frame with
+          # u = t = TEPS), Eeff -> Feff/(RESN sqrt(TEPS)) as Emodel,
+          # V = 1 - D^2
+          eeff = eeff / sqrt_teps
+          teps = flex.double(n, 1.0).set_selected(teps <= 0, 0.0)
         valid = (sa > 0) & (dobs > 0)
         d = flex.double(n, 0.0)
         d.set_selected(valid, dobs * sa)
