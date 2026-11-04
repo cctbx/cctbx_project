@@ -29,6 +29,9 @@ tst_list_base.append("$D/regression/tst_chat_subagent_view.py")
 tst_list_base.append("$D/regression/tst_chat_tools.py")
 tst_list_base.append("$D/regression/tst_run_tests_manifest.py")
 
+# Viewer helpers -- no Qt required.
+tst_list_base.append("$D/regression/tst_viewers_coot.py")
+
 # Qt-requiring chat widgets
 try:
   import qttbx.qt  # noqa: F401
