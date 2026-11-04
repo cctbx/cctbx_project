@@ -129,6 +129,17 @@ def exercise_gross_deviation_not_fitted():
   assert abs(s.fitted - 0.6) < 0.01, s.fitted
   assert s.n == 3000, s.n
 
+def exercise_positive_phi_region():
+  # by table bin: a phi rounds to the nearest 10 degrees first
+  for phi in [68.7, 0., 3., 154.]:
+    assert cbd_utils.in_positive_phi_region(phi), phi
+  for phi in [-60., -6., 156., 175., -175.]:
+    assert not cbd_utils.in_positive_phi_region(phi), phi
+
+def exercise_prior_weight():
+  s = cbd_utils.choose_strength(*synthetic(30, 0.6), prior_weight=10)
+  assert approx_equal(s.pulled, (18 + 5)/40.)
+
 def run():
   exercise_angle_wrapping()
   exercise_input_in_cartesian()
@@ -139,6 +150,8 @@ def run():
   exercise_choose_strength()
   exercise_never_worse()
   exercise_gross_deviation_not_fitted()
+  exercise_positive_phi_region()
+  exercise_prior_weight()
   print('OK')
 
 if __name__ == '__main__':

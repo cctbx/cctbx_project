@@ -121,6 +121,15 @@ prior_weight = 100
 # deviations this large (inverted CA, misplaced CB) aren't phi/psi offsets and
 # would dominate the fit, so they are left out of the fit and the check
 max_fit_deviation = 2.
+# phi_psi_correction_region = positive: table bins with phi from 0 to 150, where
+# the mean deviations are large and share a direction. A model has few of these
+# residues, so its fit gets a lighter prior.
+positive_phi_bins = (0, 150)
+positive_prior_weight = 10
+
+def in_positive_phi_region(phi):
+  """True if phi falls in a table bin of the positive phi region."""
+  return positive_phi_bins[0] <= round_to_ten(phi) <= positive_phi_bins[1]
 
 def apply_correction(deviation, dihedral, correction, strength):
   """(deviation, dihedral in degrees) of v - strength*c, where v is the
@@ -130,7 +139,8 @@ def apply_correction(deviation, dihedral, correction, strength):
   y = deviation*sin(t) - strength*correction[1]
   return sqrt(x*x + y*y), math.degrees(atan2(y, x))
 
-def choose_strength(deviations, dihedrals, corrections, user_strength=None):
+def choose_strength(deviations, dihedrals, corrections, user_strength=None,
+                    prior_weight=prior_weight):
   """Correction strength for one model from its residues that have a
   correction. fitted is the least-squares strength sum(v.c)/sum(|c|**2),
   pulled the same with the prior; applied is pulled limited to 0..1, or 0 if
