@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from iotbx.cli_parser import run_program
+from libtbx.utils import Sorry
 from mmtbx.ligands import electrons
 
 pdb_1x24_modified = '''
@@ -86,10 +87,12 @@ def main():
   f=open('pdb_1x24_modified.pdb', 'w')
   f.write(pdb_1x24_modified)
   del f
-  rc = run_program(electrons.Program, args=['pdb_1x24_modified.pdb'])
-  print('-'*80)
-  print(rc.keys())
-  print(rc)
+  try:
+    run_program(electrons.Program, args=['pdb_1x24_modified.pdb'])
+  except Sorry as e:
+    assert str(e)=='Model must have Hydrogen atoms', str(e)
+  else:
+    assert 0, 'model without hydrogen atoms should raise Sorry'
 
   f=open('pdb_1x24_modified_complete.pdb', 'w')
   f.write(pdb_1x24_modified_complete)
@@ -98,6 +101,10 @@ def main():
   print('-'*80)
   print(rc.keys())
   print(rc)
+  # Pro-Val-Glu with free termini: N-terminal NH2+ +1, Glu side chain and
+  # C-terminal carboxylate -1 each
+  assert rc.total_charge==-1, rc.total_charge
+  print('OK')
 
 if __name__ == '__main__':
   main()
