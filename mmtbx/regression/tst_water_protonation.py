@@ -318,6 +318,11 @@ HETATM    1  O   HOH W   1       0.000   5.000   0.000  1.00 10.00           O
 HETATM    2  H1  HOH W   1       0.757   5.586   0.000  1.00 10.00           H
 END
 """
+# The same with a ligand C 1.3 A from H1. H2, along H1's equivalent, clashes
+# with the C's equivalent, and the completed water has nothing to vary.
+_TWO_FOLD_CLASH_PDB = _ON_TWO_FOLD_PDB.replace("END", (
+  "HETATM    3  C   LIG L   1       2.057   5.586   0.000  1.00 10.00"
+  "           C\nEND"))
 
 # The same water without H, and a ligand O 2.8 A away at 40 deg from the
 # axis; the two-fold makes its equivalent at 40 deg on the other side, so
@@ -1220,13 +1225,15 @@ def exercise_water_on_special_position():
 
   The two-fold of ``_ON_TWO_FOLD_PDB`` (along b through x = z = 0) maps
   (x, y, z) onto (-x, y, -z). Completing the water must put H2 along H1's
-  equivalent. A bare water on that axis, with ``_TWO_FOLD_ACCEPTOR_PDB``'s
-  acceptor or none, must get two H that are each other's equivalents and no
-  contact with its own equivalents; with the acceptor, each H must aim
-  within 13 deg of it or its equivalent, the cone passing 12 deg from both
-  (half the H-O-H angle less 40 deg). On the inversion centre of
-  ``_ON_INVERSION_PDB``, H1's equivalent is the water's other orientation,
-  not a neighbour, so H2 must still aim at the acceptor near its cone.
+  equivalent; with ``_TWO_FOLD_CLASH_PDB``'s clash, which no kick can
+  move, basin-hopping must run no round. A bare water on that axis, with
+  ``_TWO_FOLD_ACCEPTOR_PDB``'s acceptor or none, must get two H that are
+  each other's equivalents and no contact with its own equivalents; with
+  the acceptor, each H must aim within 13 deg of it or its equivalent, the
+  cone passing 12 deg from both (half the H-O-H angle less 40 deg). On the
+  inversion centre of ``_ON_INVERSION_PDB``, H1's equivalent is the
+  water's other orientation, not a neighbour, so H2 must still aim at the
+  acceptor near its cone.
   """
   hier, cs = _hierarchy_and_symmetry(_ON_TWO_FOLD_PDB)
   wp.place_water_hydrogens(hier, existing_h="complete", crystal_symmetry=cs)
@@ -1234,6 +1241,10 @@ def exercise_water_on_special_position():
   x, y, z = hs["H1"].xyz
   off = math.degrees(_unit(hs["H2"], o).angle(_unit((-x, y, -z), o)))
   assert off < 1e-4, f"H2 is {off:.3f} deg off H1's two-fold equivalent"
+  hier, cs = _hierarchy_and_symmetry(_TWO_FOLD_CLASH_PDB)
+  res = wp.place_water_hydrogens(hier, existing_h="complete", n_basin=3,
+                                 crystal_symmetry=cs)
+  assert res.basin_rounds_run == 0, res.basin_rounds_run
 
   acc = (1.800, 7.145, 0.000)
   acc_equiv = (-1.800, 7.145, 0.000)

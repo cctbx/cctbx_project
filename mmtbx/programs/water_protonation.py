@@ -249,7 +249,7 @@ and existing_h=reorient strips all water H and re-places both.
       print(self._summary(n_before, n_after), file=self.logger)
     elif printed:
       if self.params.basin.rounds and not result.basin_rounds_run:
-        print("Basin hopping: no clashing placed waters, skipped",
+        print("Basin hopping: no clashing water can move, skipped",
               file=self.logger)
       if result.kept_label is not None:
         print(f"Kept: {result.kept_label} (fewest contacts < 2.0 A)",

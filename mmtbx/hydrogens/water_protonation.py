@@ -1275,7 +1275,10 @@ class _WaterHydrogenPlacer:
     H1 goes along a random axis and H2 to a random azimuth on the H-O-H cone.
     A water being completed has a fixed O-H1, so only the azimuth is random.
     On a two-fold, H1 goes to a random azimuth on the cone about either end
-    of the axis (unless given) and H2 to its equivalent.
+    of the axis (unless given) and H2 to its equivalent, so a completed water
+    there stays put.
+
+    Returns True if any of the water's H moved.
     """
     wi, slots, fixed_d1 = self.records[ri]
     o = self._water_geom(wi)["o"]
@@ -1299,10 +1302,12 @@ class _WaterHydrogenPlacer:
                    for c in range(3))
       d2 = _turn_two_fold(d1, a)
     self.tick += 1
-    if self._store(wi, slots,
-                   tuple(o[c] + self.oh_length * d1[c] for c in range(3)),
-                   tuple(o[c] + self.oh_length * d2[c] for c in range(3))):
+    moved = self._store(wi, slots,
+                        tuple(o[c] + self.oh_length * d1[c] for c in range(3)),
+                        tuple(o[c] + self.oh_length * d2[c] for c in range(3)))
+    if moved:
       self.w_moved_at[wi] = self.tick
+    return moved
 
   def run(self):
     """Place H on every bare water, refine, optionally basin-hop, keep best.
@@ -1746,17 +1751,19 @@ class _WaterHydrogenPlacer:
 
     # Basin-hopping (optional): each round restarts from the best state,
     # kicks the still-clashing waters to a random orientation, relaxes, and
-    # keeps the result if it improved. Deterministic (seeded).
+    # keeps the result if it improved; it stops once no kick moves a water.
+    # Deterministic (seeded).
     if self.n_basin and best_coords is not None:
       rng = random.Random(_WATER_BASIN_SEED)
       for it in range(self.n_basin):
         self._restore(best_coords)
-        offenders = self._clashing_records()
-        if not offenders:
-          break  # nothing left to relax
+        moved = False
+        for ri in self._clashing_records():
+          if self._kick(ri, rng):
+            moved = True
+        if not moved:
+          break  # no clashing water can move
         self.basin_rounds_run += 1
-        for ri in offenders:
-          self._kick(ri, rng)
         for s in range(_WATER_BASIN_RELAX):
           self._apply_sweep()
           stats = self._stats()
@@ -2074,7 +2081,7 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
       for a coordinating cation or None and ``action`` one of ``"kept"``,
       ``"completed"``, ``"stripped"``.
       ``basin_rounds_run``: basin-hopping rounds run; fewer than ``n_basin``
-      once no placed water clashes in the best state.
+      once no clashing water in the best state can move.
 
   Raises
   ------
