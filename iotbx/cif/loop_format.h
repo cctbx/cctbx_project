@@ -29,6 +29,12 @@ namespace iotbx { namespace cif {
     std::string const& prefix,
     af::const_ref<int> const& widths);
 
+  //! True if a value of the column holds a newline or is changed by
+  //! iotbx.cif.model.format_value, whose rules this ports: change both
+  //! together (exercise_quoting_scan).
+  bool
+  column_needs_format_value(af::const_ref<std::string> const& column);
+
 }} // namespace iotbx::cif
 
 #endif // IOTBX_CIF_LOOP_FORMAT_H

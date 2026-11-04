@@ -79,6 +79,54 @@ namespace {
     return end;
   }
 
+  // byte index past the leading whitespace of s, as str.lstrip() counts it
+  std::size_t
+  leading_spaces(std::string const& s)
+  {
+    std::size_t i = 0;
+    while (i < s.size()) {
+      unsigned long cp;
+      std::size_t n = sequence_length(s[i]);
+      if (!decode(s, i, n, cp) || !python_is_space(cp)) break;
+      i += n;
+    }
+    return i;
+  }
+
+  bool
+  is_quote(char c)
+  {
+    return c == '\'' || c == '"';
+  }
+
+  // the rules of format_value, in the order it applies them; any newline
+  // too, as loop.show keeps text fields out of the column width
+  bool
+  value_needs_format_value(std::string const& v)
+  {
+    static const std::string whitespace(" \t\n\r\x0b\x0c");
+    if (v.empty() || v.find('\n') != std::string::npos) return true;
+    if (is_quote(v[0])) {
+      // already quoted: a second quote after printable characters only
+      for (std::size_t j = 1; j < v.size(); j++) {
+        unsigned char c = v[j];
+        if (is_quote(c)) return false;
+        if (c != '\t' && (c < 0x20 || c > 0x7E)) break;
+      }
+      return v.find_first_of(whitespace) != std::string::npos;
+    }
+    std::size_t i = leading_spaces(v);
+    if (i < v.size() && v[i] == ';'
+        && v.find(';', i + 1) != std::string::npos) {
+      return true;   // a semicolon text field
+    }
+    if (v[0] == '#' || v[0] == '$' || v[0] == '[' || v[0] == ']'
+        || v[0] == '_') {
+      return true;
+    }
+    return v.find_first_of(whitespace) != std::string::npos;
+  }
+
 } // namespace <anonymous>
 
   std::string
@@ -155,6 +203,15 @@ namespace {
       result += '\n';
     }
     return result;
+  }
+
+  bool
+  column_needs_format_value(af::const_ref<std::string> const& column)
+  {
+    for (std::size_t i = 0; i < column.size(); i++) {
+      if (value_needs_format_value(column[i])) return true;
+    }
+    return false;
   }
 
 }} // namespace iotbx::cif

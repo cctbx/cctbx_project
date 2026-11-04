@@ -173,6 +173,8 @@ namespace boost_python {
     def("format_loop_rows", format_loop_rows_from_python,
       (arg("columns"), arg("start"), arg("stop"), arg("prefix"),
        arg("widths")));
+    def("column_needs_format_value", column_needs_format_value,
+      (arg("column")));
   }
 
 }}} //iotbx::cif::boost_python

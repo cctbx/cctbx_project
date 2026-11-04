@@ -674,31 +674,52 @@ def exercise_loop_show_quoting():
     "say \"hi\" 'x'", "\nsemi\n", "\nline1\nline2\n", "ok"]
   assert list(block["_m.tail"]) == ["a", "b", "c", "d"]
 
-def exercise_quoting_scan_matches_format_value():
-  # the per-column scan of loop.show() must flag every value format_value
-  # changes, and a value flex.double accepts must never be changed
+def exercise_quoting_scan():
+  # the per-column scan of loop.show() flags a value exactly when
+  # format_value changes it or it holds a newline (a text field, kept out
+  # of the column width), and a value flex.double accepts is never changed
   probes = ["", " ", "a", "a b", " a", "a ", "a\tb", "a\nb", "\n", "a\rb",
             "a\x0bb", "a\x0cb", "'", "'a", "'a b'", "'a'", '"a"', '"a b"',
-            "#a", "$a", "[a", "]a", "_a", ";a", ";a;", ";\na\n;", "a'b",
-            'a"b', "a#b", "a$b", "a_b", "a;b", "a[b]", "?", ".", "..",
-            "1", "-1", "+1", "1.5", ".5", "1.", "1e5", "1E-5", "0x10",
-            "nan", "inf", "-inf", "NaN", "Infinity", "-0", "1,2", "1_000",
-            "abc", "abc's", "o", "f", "x"]
+            "'a b' x", "'a'b", "'ab\"", "'a\x01b", "'a\x01 b", "'\xe9'",
+            "'\xe9 '", "#a", "$a", "[a", "]a", "_a", ";a", ";a;", ";\na\n;",
+            " ;a;", "\xa0;a;", "\xa0;a", "\xa0a", "a;b;", "a'b", 'a"b',
+            "a#b", "a$b", "a_b", "a;b", "a[b]", "?", ".", "..", "1", "-1",
+            "+1", "1.5", ".5", "1.", "1e5", "1E-5", "0x10", "nan", "inf",
+            "-inf", "NaN", "Infinity", "-0", "1,2", "1_000", "abc", "abc's",
+            "o", "f", "x", "\xe9", "x\xa0y", "\u2003", "a\x1c",
+            # newline values format_value leaves alone
+            "\n;a;\n", "'a'\nb"]
   for value in probes:
     column = flex.std_string([value])
-    flagged = model._column_may_need_quoting(column)
-    assert flagged or model.format_value(value) == value, repr(value)
+    changed = model.format_value(value) != value
+    flagged = model._column_needs_format_value(column)
+    assert flagged == (changed or "\n" in value), repr(value)
     try:
       flex.double(column)
     except ValueError:
       continue
-    assert model.format_value(value) == value, repr(value)
+    assert not changed, repr(value)
     assert model._is_numeric_column(column), repr(value)
-  # a value that needs quoting is found past the first chunk of the scan
-  column = flex.std_string(model._show_chunk_rows + 10, "x")
-  assert not model._column_may_need_quoting(column)
-  column[model._show_chunk_rows + 5] = "a b"
-  assert model._column_may_need_quoting(column)
+  assert not model._column_needs_format_value(flex.std_string())
+  # the flagged value at any position of a column
+  for value in ("", "a b", "#a", "a\nb", "\xa0;a;"):
+    for i in range(5):
+      column = flex.std_string(5, "x")
+      column[i] = value
+      assert model._column_needs_format_value(column), (repr(value), i)
+  assert not model._column_needs_format_value(flex.std_string(5, "x"))
+  # a pre-formatted text field does not widen its column
+  loop = model.loop(data=OrderedDict((
+    ("_p.id", ("1", "2")),
+    ("_p.text", ("\n;a long preformatted text field\n;\n", "x")),
+    ("_p.tail", ("A", "B")),
+  )))
+  s = StringIO()
+  loop.show(out=s)
+  assert not show_diff(s.getvalue(),
+    "loop_\n  _p.id\n  _p.text\n  _p.tail\n"
+    "  1  \n;a long preformatted text field\n;\n  A\n"
+    "  2  x  B\n")
 
 def exercise_loop_show_many_rows():
   # more rows than show() prints at a time
@@ -782,7 +803,7 @@ if __name__ == '__main__':
   test_301()
   test_show_not_modify()
   exercise_loop_show_quoting()
-  exercise_quoting_scan_matches_format_value()
+  exercise_quoting_scan()
   exercise_loop_show_many_rows()
   exercise_format_rows_python()
   exercise_format_rows_parity()
