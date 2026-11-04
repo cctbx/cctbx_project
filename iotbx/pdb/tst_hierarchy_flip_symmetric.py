@@ -628,6 +628,307 @@ def exercise_second_call_renames_nothing():
     hierarchy.flip_symmetric_amino_acids(swapped_pairs=pairs)
     assert pairs == [], (shift, pairs)
 
+# 1us0: Phe A 276 A and B are copies straddling chi2 90 deg; Glu A 120 A and B
+# differ (OE1 A is nearer OE2 B)
+pdb_1us0_phe_276 = """\
+ATOM   2560  CA APHE A 276      20.326   6.924  41.525  0.62  8.37           C
+ATOM   2563  CB APHE A 276      18.811   6.689  41.733  0.62  9.44           C
+ATOM   2564  CG APHE A 276      17.952   6.093  40.580  0.62  8.00           C
+ATOM   2565  CD1APHE A 276      17.228   6.769  39.591  0.62  9.11           C
+ATOM   2566  CD2APHE A 276      17.853   4.736  40.499  0.62  7.92           C
+ATOM   2567  CE1APHE A 276      16.443   6.107  38.652  0.62  9.20           C
+ATOM   2568  CE2APHE A 276      17.071   4.049  39.586  0.62  9.24           C
+ATOM   2569  CZ APHE A 276      16.383   4.723  38.648  0.62  9.98           C
+ATOM   2571  CA BPHE A 276      20.134   6.965  41.065  0.38  6.42           C
+ATOM   2574  CB BPHE A 276      18.733   6.722  41.699  0.38  8.87           C
+ATOM   2575  CG BPHE A 276      17.888   6.137  40.558  0.38  8.63           C
+ATOM   2576  CD1BPHE A 276      17.238   7.030  39.714  0.38 11.38           C
+ATOM   2577  CD2BPHE A 276      17.874   4.778  40.439  0.38  8.44           C
+ATOM   2578  CE1BPHE A 276      16.511   6.453  38.679  0.38 12.54           C
+ATOM   2579  CE2BPHE A 276      17.126   4.222  39.418  0.38  9.68           C
+ATOM   2580  CZ BPHE A 276      16.511   5.083  38.577  0.38 12.17           C
+"""
+pdb_1us0_glu_120 = """\
+ATOM   1068  CA  GLU A 120       8.284 -15.895   9.413  1.00  4.56           C
+ATOM   1071  CB AGLU A 120       9.062 -16.155   8.127  0.61  5.80           C
+ATOM   1072  CG AGLU A 120       9.155 -17.675   7.889  0.61  9.15           C
+ATOM   1073  CD AGLU A 120       9.937 -17.891   6.590  0.61 14.69           C
+ATOM   1074  OE1AGLU A 120      10.365 -18.995   6.339  0.61 23.54           O
+ATOM   1075  OE2AGLU A 120      10.261 -17.020   5.784  0.61 27.15           O
+ATOM   1076  CB BGLU A 120       9.077 -16.132   8.114  0.39  6.45           C
+ATOM   1077  CG BGLU A 120       9.036 -17.601   7.659  0.39  6.23           C
+ATOM   1078  CD BGLU A 120       9.768 -18.525   8.594  0.39  7.11           C
+ATOM   1079  OE1BGLU A 120      10.478 -18.062   9.485  0.39 10.53           O
+ATOM   1080  OE2BGLU A 120       9.603 -19.769   8.429  0.39  8.41           O
+"""
+
+def exercise_corresponding_conformers():
+  def nearest(hierarchy, name1, name2):
+    # distance of name1 in A to name1 and to name2 in B
+    ags = hierarchy.only_residue_group().atom_groups()
+    a = dict((x.name.strip(), x) for x in ags[0].atoms() if ags[0].altloc == "A")
+    b = dict((x.name.strip(), x) for x in ags[1].atoms())
+    return a[name1].distance(b[name1]), a[name1].distance(b[name2])
+  def run_flip(pdb_str, occ=None):
+    hierarchy = iotbx.pdb.input(source_info=None,
+      lines=pdb_str).construct_hierarchy()
+    if occ is not None:
+      for ag in hierarchy.only_residue_group().atom_groups():
+        for atom in ag.atoms():
+          if ag.altloc in occ: atom.occ = occ[ag.altloc]
+    pairs = []
+    info = hierarchy.flip_symmetric_amino_acids(swapped_pairs=pairs)
+    # a second call renames nothing
+    again = []
+    hierarchy.flip_symmetric_amino_acids(swapped_pairs=again)
+    assert again == [], again
+    return hierarchy, pairs, info
+  # A wants a flip, B not: 0.62, 0.38 weigh for flipping both
+  hierarchy, pairs, info = run_flip(pdb_1us0_phe_276)
+  assert len(pairs) == 4, len(pairs) # CD and CE in A and B
+  assert ('"A PHE  276": altlocs A, B correspond, decided together - flipped'
+    ) in info, info
+  same, partner = nearest(hierarchy, "CD1", "CD2")
+  assert same < 0.1 and partner > 2, (same, partner)
+  # other weights: neither flips, the names stay matched too
+  hierarchy, pairs, info = run_flip(pdb_1us0_phe_276, occ={"A": 0.38, "B": 0.62})
+  assert pairs == []
+  assert ('"A PHE  276": altlocs A, B correspond, decided together - not '
+    'flipped') in info, info
+  same, partner = nearest(hierarchy, "CD1", "CD2")
+  assert same < 0.5 and partner > 2, (same, partner)
+  # a tie keeps the input names
+  hierarchy, pairs, info = run_flip(pdb_1us0_phe_276, occ={"A": 0., "B": 0.})
+  assert pairs == []
+  assert "decided together - not flipped" in info, info
+  # conformers that differ keep their own decisions: only A flips
+  hierarchy = iotbx.pdb.input(source_info=None,
+    lines=pdb_1us0_glu_120).construct_hierarchy()
+  sites = dict(((ag.altloc, a.name.strip()), a.xyz)
+    for ag in hierarchy.only_residue_group().atom_groups() for a in ag.atoms())
+  info = hierarchy.flip_symmetric_amino_acids()
+  assert "together" not in info, info
+  after = dict(((ag.altloc, a.name.strip()), a.xyz)
+    for ag in hierarchy.only_residue_group().atom_groups() for a in ag.atoms())
+  assert_only_swapped(sites, after, [("A", "OE1", "OE2")])
+
+def three_conformers():
+  # 1us0 Phe A 276 A and B, with C from A: CD and CE names exchanged, then CD1,
+  # CE1 and CA turned about CB-CG. A swap in A and B alone used to make C join
+  # them, and the next call chose differently.
+  from scitbx import matrix
+  rows = []
+  occ = {"A": 0.12, "B": 0.08, "C": 0.80}
+  for line in pdb_1us0_phe_276.splitlines():
+    rows.append([line[12:16].strip(), line[16],
+      matrix.col((float(line[30:38]), float(line[38:46]), float(line[46:54])))])
+  sites = dict((r[0], r[2]) for r in rows if r[1] == "A")
+  origin = sites["CB"]
+  axis = (sites["CG"] - origin).normalize()
+  def turned(site, angle):
+    r = axis.axis_and_angle_as_r3_rotation_matrix(angle, deg=True)
+    return r * (site - origin) + origin
+  exchange = {"CD1": "CD2", "CD2": "CD1", "CE1": "CE2", "CE2": "CE1"}
+  angles = {"CD1": -2., "CE1": -2., "CA": -3.3}
+  for name, altloc, site in list(rows):
+    if altloc != "A": continue
+    name = exchange.get(name, name)
+    if name in angles: site = turned(site, angles[name])
+    rows.append([name, "C", site])
+  lines = []
+  for name, altloc, site in rows:
+    lines.append("ATOM  %5d  %-3s%1sPHE A 276    %8.3f%8.3f%8.3f%6.2f%6.2f"
+      "           %1s" % (len(lines) + 1, name, altloc, site[0], site[1],
+      site[2], occ[altloc], 10., name[0]))
+  return "\n".join(lines)
+
+def exercise_three_conformers():
+  hierarchy = iotbx.pdb.input(source_info=None,
+    lines=three_conformers()).construct_hierarchy()
+  # after a PDB round trip
+  hierarchy = iotbx.pdb.input(source_info=None,
+    lines=hierarchy.as_pdb_string()).construct_hierarchy()
+  first = []
+  info = hierarchy.flip_symmetric_amino_acids(swapped_pairs=first)
+  second = []
+  hierarchy.flip_symmetric_amino_acids(swapped_pairs=second)
+  assert second == [], (len(first), len(second))
+  # all three match: each CD1 nearest the CD1 of the others
+  ags = hierarchy.only_residue_group().atom_groups()
+  for i, ag1 in enumerate(ags):
+    for ag2 in ags[i+1:]:
+      cd1, cd2 = ag1.get_atom("CD1"), ag2.get_atom("CD1")
+      assert cd1.distance(cd2) < cd1.distance(ag2.get_atom("CD2")), \
+        (ag1.altloc, ag2.altloc)
+  assert "altlocs A, B, C correspond, decided together" in info, info
+
+def exercise_crossed_input():
+  # A's names crossed against B: each conformer's own test says no; the names
+  # still end matched, the same two namings whatever the input names
+  lines = []
+  exchange = {" CD1": " CD2", " CD2": " CD1", " CE1": " CE2", " CE2": " CE1"}
+  for line in pdb_1us0_phe_276.splitlines():
+    if line[16] == "A" and line[12:16] in exchange:
+      line = line[:12] + exchange[line[12:16]] + line[16:]
+    lines.append(line)
+  hierarchy = iotbx.pdb.input(source_info=None,
+    lines=lines).construct_hierarchy()
+  pairs = []
+  info = hierarchy.flip_symmetric_amino_acids(swapped_pairs=pairs)
+  assert "altlocs A, B correspond, decided together" in info, info
+  ags = hierarchy.only_residue_group().atom_groups()
+  cd1, cd2 = ags[0].get_atom("CD1"), ags[1].get_atom("CD1")
+  assert cd1.distance(cd2) < cd1.distance(ags[1].get_atom("CD2"))
+  second = []
+  hierarchy.flip_symmetric_amino_acids(swapped_pairs=second)
+  assert second == []
+
+def exercise_contradiction_gives_no_set():
+  # OD1/OD2 of A, B, C turned 60 deg apart about CB-CG: A-B and B-C by the same
+  # names, A-C crossed. CA turned with them, so that |chi2| is near 90 in all
+  # three: B alone wants a flip. Each pair is decided together, the three are
+  # not.
+  from scitbx import matrix
+  from scitbx.math import dihedral_angle
+  rows = rows_of("ASP")
+  sites = dict((r[0], matrix.col(r[2])) for r in rows)
+  chi = dihedral_angle(sites=[sites[n] for n in ("CA", "CB", "CG", "OD1")],
+    deg=True)
+  axis = (sites["CG"] - sites["CB"]).normalize()
+  def turned(name, origin, angle):
+    r = axis.axis_and_angle_as_r3_rotation_matrix(angle, deg=True)
+    return (r * (sites[name] - sites[origin]) + sites[origin]).elems
+  result = [r for r in rows if r[0] not in ("CA", "OD1", "OD2")]
+  for altloc, angle, target in (("A", 80, 85), ("B", 140, 95), ("C", 200, 85)):
+    result.append(["CA", altloc, turned("CA", "CG", angle + chi - target)])
+    for name in ("OD1", "OD2"):
+      result.append([name, altloc, turned(name, "CG", angle)])
+  def of(altlocs):
+    return [r for r in result if r[1] == "" or r[1] in altlocs]
+  own = []
+  for altloc in "ABC":
+    pairs = []
+    make("ASP", of(altloc)).flip_symmetric_amino_acids(swapped_pairs=pairs)
+    if pairs: own.append(altloc)
+  assert own == ["B"], own
+  for altlocs in ("AB", "BC", "AC"):
+    info = make("ASP", of(altlocs)).flip_symmetric_amino_acids()
+    assert "altlocs %s, %s correspond" % tuple(altlocs) in info, info
+  hierarchy = make("ASP", result)
+  pairs = []
+  info = hierarchy.flip_symmetric_amino_acids(swapped_pairs=pairs)
+  assert "correspond" not in info, info
+  assert sorted(a.parent().altloc for a, b in pairs) == own, own
+  second = []
+  hierarchy.flip_symmetric_amino_acids(swapped_pairs=second)
+  assert second == []
+
+# Different rotamers that happen to be crossed: each conformer's naming is clear
+pdb_1us0_val_67 = """\
+ATOM    553  CA AVAL A  67       2.821  -3.084  42.712  0.71  5.76           C
+ATOM    556  CB AVAL A  67       3.744  -2.990  41.455  0.71  7.80           C
+ATOM    557  CG1AVAL A  67       5.136  -2.638  41.824  0.71  9.87           C
+ATOM    558  CG2AVAL A  67       3.708  -4.288  40.640  0.71  7.30           C
+ATOM    560  CA BVAL A  67       3.013  -3.012  42.739  0.29  5.33           C
+ATOM    563  CB BVAL A  67       4.135  -3.043  41.702  0.29  5.18           C
+ATOM    564  CG1BVAL A  67       3.818  -4.057  40.589  0.29  6.80           C
+ATOM    565  CG2BVAL A  67       4.231  -1.691  41.007  0.29  5.86           C
+"""
+pdb_3cp5_leu_13 = """\
+ATOM     34  CB  LEU A  13      12.971   0.595  34.455  1.00 13.45           C
+ATOM     35  CG ALEU A  13      13.660   1.308  35.615  0.79 15.19           C
+ATOM     36  CD1ALEU A  13      14.058   0.299  36.710  0.79 18.23           C
+ATOM     37  CD2ALEU A  13      14.935   1.905  35.031  0.79 26.92           C
+ATOM     38  CG BLEU A  13      14.278  -0.047  34.007  0.21 10.72           C
+ATOM     39  CD1BLEU A  13      15.322   0.991  33.614  0.21  7.47           C
+ATOM     40  CD2BLEU A  13      14.810  -0.985  35.077  0.21  8.27           C
+"""
+pdb_2erl_glu_21 = """\
+ATOM    270  CB AGLU    21       4.980  -4.649  -1.566  0.32 13.49           C
+ATOM    271  CG AGLU    21       3.942  -5.699  -1.498  0.32 13.60           C
+ATOM    272  CD AGLU    21       4.064  -6.621  -2.739  0.32 15.27           C
+ATOM    273  OE1AGLU    21       5.043  -6.411  -3.478  0.32 16.46           O
+ATOM    274  OE2AGLU    21       3.193  -7.474  -2.870  0.32 19.03           O
+ATOM    279  CB BGLU    21       4.769  -4.484  -1.766  0.68 14.37           C
+ATOM    280  CG BGLU    21       5.737  -5.573  -1.952  0.68 19.43           C
+ATOM    281  CD BGLU    21       5.251  -6.534  -3.036  0.68 19.91           C
+ATOM    282  OE1BGLU    21       4.044  -6.877  -3.026  0.68 22.58           O
+ATOM    283  OE2BGLU    21       6.037  -6.819  -3.934  0.68 23.06           O
+"""
+pdb_7kcu_arg_10 = """\
+ATOM    159  CD AARG A  10     -21.462   8.478 -11.276  0.28 31.85           C
+ATOM    160  NE AARG A  10     -20.646   8.199 -10.103  0.28 23.92           N
+ATOM    161  CZ AARG A  10     -20.219   6.989  -9.765  0.28 38.75           C
+ATOM    162  NH1AARG A  10     -19.483   6.826  -8.679  0.28 39.86           N
+ATOM    163  NH2AARG A  10     -20.525   5.941 -10.515  0.28 25.97           N
+ATOM    183  CD BARG A  10     -21.261   8.504 -11.282  0.27 31.19           C
+ATOM    184  NE BARG A  10     -20.649   7.542 -10.394  0.27 24.02           N
+ATOM    185  CZ BARG A  10     -20.197   7.811  -9.184  0.27 32.39           C
+ATOM    186  NH1BARG A  10     -19.638   6.849  -8.473  0.27 40.16           N
+ATOM    187  NH2BARG A  10     -20.311   9.024  -8.681  0.27 23.10           N
+ATOM    207  CD CARG A  10     -21.195   7.771 -11.486  0.45 28.11           C
+ATOM    208  NE CARG A  10     -20.890   8.477 -10.269  0.45 25.80           N
+ATOM    209  CZ CARG A  10     -20.224   7.966  -9.257  0.45 31.91           C
+ATOM    210  NH1CARG A  10     -19.992   8.709  -8.200  0.45 19.86           N
+ATOM    211  NH2CARG A  10     -19.792   6.717  -9.304  0.45 34.19           N
+"""
+
+def renamed_on_own_decisions(hierarchy):
+  pairs = []
+  info = hierarchy.flip_symmetric_amino_acids(swapped_pairs=pairs)
+  assert "correspond" not in info, info
+  again = []
+  hierarchy.flip_symmetric_amino_acids(swapped_pairs=again)
+  assert again == [], again
+  return sorted((a.parent().altloc, a.name.strip()) for a, b in pairs)
+
+def exercise_clear_conformers_keep_own_decisions():
+  for pdb_str, expected in (
+      (pdb_1us0_val_67, []),
+      (pdb_3cp5_leu_13, []),
+      (pdb_2erl_glu_21, []),
+      (pdb_7kcu_arg_10, [("A", "NH1"), ("B", "NH1"), ("C", "NH1")])):
+    hierarchy = iotbx.pdb.input(source_info=None,
+      lines=pdb_str).construct_hierarchy()
+    result = renamed_on_own_decisions(hierarchy)
+    assert result == expected, (pdb_str[17:26], result)
+
+def exercise_chiral_namings_close_keep_own_decisions():
+  # CA moved to volume -0.9 in both conformers of 1us0 Val A 67: each alone
+  # keeps its names (delta 1.6, exchanged 3.4), the two namings differ by less
+  # than 2.
+  from scitbx import matrix
+  hierarchy = iotbx.pdb.input(source_info=None,
+    lines=pdb_1us0_val_67).construct_hierarchy()
+  for ag in hierarchy.only_residue_group().atom_groups():
+    def site(name):
+      return matrix.col(ag.get_atom(name).xyz)
+    normal = (site("CG1") - site("CB")).cross(site("CG2") - site("CB"))
+    volume = (site("CA") - site("CB")).dot(normal)
+    ag.get_atom("CA").xyz = (
+      site("CA") + normal * ((-0.9 - volume) / normal.dot(normal))).elems
+  assert renamed_on_own_decisions(hierarchy) == []
+
+def exercise_namings_beyond_limit_keep_own_decisions():
+  # 1us0 Phe A 276 with CA turned about CB-CG to chi2 60 in A, 120 in B: the two
+  # namings differ by 59 and 58 deg, so each conformer decides alone.
+  from scitbx import matrix
+  from scitbx.math import dihedral_angle
+  hierarchy = iotbx.pdb.input(source_info=None,
+    lines=pdb_1us0_phe_276).construct_hierarchy()
+  atom_groups = hierarchy.only_residue_group().atom_groups()
+  for ag, target in zip(atom_groups, (60, 120)):
+    def chi():
+      return dihedral_angle(sites=[ag.get_atom(name).xyz
+        for name in ("CA", "CB", "CG", "CD1")], deg=True)
+    ca, cb, cg = [matrix.col(ag.get_atom(name).xyz)
+      for name in ("CA", "CB", "CG")]
+    r = (cg - cb).normalize().axis_and_angle_as_r3_rotation_matrix(
+      chi() - target, deg=True)
+    ag.get_atom("CA").xyz = (r * (ca - cg) + cg).elems
+    assert abs(chi() - target) < 0.01, chi()
+  assert renamed_on_own_decisions(hierarchy) == [("B", "CD1"), ("B", "CE1")]
+
 def exercise_pair_spans_blank_and_altloc():
   # 8EYP Tyr A 102: the two atoms of a pair cannot be exchanged
   rows = split(rows_of("TYR"), ["CD2"])
@@ -791,6 +1092,13 @@ def run_in_process():
   exercise_test_spans_blank_and_altloc()
   exercise_no_dihedral()
   exercise_second_call_renames_nothing()
+  exercise_corresponding_conformers()
+  exercise_three_conformers()
+  exercise_crossed_input()
+  exercise_contradiction_gives_no_set()
+  exercise_clear_conformers_keep_own_decisions()
+  exercise_chiral_namings_close_keep_own_decisions()
+  exercise_namings_beyond_limit_keep_own_decisions()
   exercise_pair_spans_blank_and_altloc()
   exercise_incomplete_h_in_altloc()
   exercise_d_ring()

@@ -2,7 +2,7 @@
 (flip_symmetric_amino_acids in pdb_interpretation): the description lists every
 renamed residue and atom pair, the log a capped list. Placement renames (add,
 place, the flipkin passes), optimize does not unless a restraint file makes
-reduce2 process the input; a second processing renames nothing.
+reduce2 process the input; two renamings of a residue can cancel.
 """
 from __future__ import absolute_import, division, print_function
 import os
@@ -13,6 +13,10 @@ from iotbx.pdb import hierarchy
 from mmtbx.monomer_library import idealized_aa
 from mmtbx.programs import reduce2
 from mmtbx.regression.reduce2_neutron_utils import zq4_cif
+from iotbx.pdb.tst_hierarchy_flip_symmetric import pdb_1us0_phe_276
+import iotbx.pdb
+import mmtbx.model
+from mmtbx.hydrogens import reduce_hydrogen
 from scitbx import matrix
 
 HEADER = "IUPAC renaming of symmetric side-chain atoms"
@@ -112,7 +116,6 @@ def listed(text):
   return result
 
 def sites(fn):
-  import iotbx.pdb
   h = iotbx.pdb.input(fn).construct_hierarchy()
   return dict(((rg.resseq.strip(), ag.altloc, a.name.strip()), a.xyz)
     for rg in h.residue_groups() for ag in rg.atom_groups() for a in ag.atoms())
@@ -226,6 +229,57 @@ def test_second_processing_renames_nothing():
   assert listed(description) == {"GLU A 11": "OE1/OE2"}, description
   before, after = sites(fn), sites(prefix + ".pdb")
   assert before["21", "", "OD1"] == after["21", "", "OD1"]
+
+def phe_276_matched(fn):
+  # conformers A and B renamed together: each CD1, CE1 nearest its namesake
+  h = sites(fn)
+  for name, partner in (("CD1", "CD2"), ("CE1", "CE2")):
+    same = distance(h["276", "A", name], h["276", "B", name])
+    crossed = distance(h["276", "A", name], h["276", "B", partner])
+    assert same < 0.5 and crossed > 2, (fn, name, same, crossed)
+
+def test_corresponding_conformers_in_placement():
+  # H sit on placeholder sites during placement; correspondence must not see
+  # them. As the direct call: A and B flip together.
+  prefix = "tst_reduce2_report_renaming_corresponding"
+  fn = prefix + "_in.pdb"
+  with open(fn, "w") as f: f.write(pdb_1us0_phe_276)
+  model = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(file_name=fn), log = null_out())
+  placed = reduce_hydrogen.place_hydrogens(model = model)
+  placed.run()
+  out = prefix + "_placed.pdb"
+  with open(out, "w") as f: f.write(placed.get_model().model_as_pdb())
+  phe_276_matched(out)
+  task, description, log = run(prefix, fn, ["approach=add"])
+  assert listed(description) == {
+    "PHE A 276 altloc A": "CD1/CD2, CE1/CE2",
+    "PHE A 276 altloc B": "CD1/CD2, CE1/CE2"}, description
+  phe_276_matched(prefix + ".pdb")
+
+def test_two_renamings_cancel():
+  # B has one H, so the input's processing leaves it out of the set with A and
+  # renames A alone. Placement completes B; the set (B weighs more) takes A back.
+  # The output has the input names and the report lists nothing.
+  prefix = "tst_reduce2_report_renaming_two_cancel"
+  occ = {"A": "0.38", "B": "0.62"}
+  lines = []
+  for l in pdb_1us0_phe_276.splitlines():
+    lines.append(l[:54] + "  " + occ[l[16]] + l[60:])
+    if l[12:16] == " CD1" and l[16] == "B":
+      lines.append("ATOM     99  HD1BPHE A 276    %8.3f" % (float(l[30:38]) + 1) +
+        l[38:54] + "  0.62  8.00           H")
+  fn = prefix + "_in.pdb"
+  with open(fn, "w") as f: f.write("\n".join(lines) + "\n")
+  cif = prefix + ".cif"
+  with open(cif, "w") as f: f.write(zq4_cif)
+  task, description, log = run(prefix, fn, ["approach=place"], extra=[cif])
+  pair = [("CD1", "CD2"), ("CE1", "CE2")]
+  for renames in (task._input_renames, task._placement_renames):
+    assert [(r.altloc, r.pairs) for r in renames] == [("A", pair)], renames
+  assert listed(description) == {}, description
+  before, after = sites(fn), sites(prefix + ".pdb")
+  assert before["276", "A", "CD1"] == after["276", "A", "CD1"]
 
 def test_neutron():
   # the same list as the run without a neutron_option
@@ -384,6 +438,8 @@ if __name__ == "__main__":
   test_optimize()
   test_restraint_file()
   test_second_processing_renames_nothing()
+  test_corresponding_conformers_in_placement()
+  test_two_renamings_cancel()
   test_neutron()
   test_flipkin_passes()
   test_altlocs_and_models()
