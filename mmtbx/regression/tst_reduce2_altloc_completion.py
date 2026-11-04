@@ -13,8 +13,7 @@ from mmtbx.regression.tst_reduce2_capping import run, check_sorry
 from mmtbx.regression.model.tst_model_atom_completeness import tripeptide
 
 HEADING = "Altloc completion (atoms borrowed between conformers of a residue):"
-H_NOT_PLACED = "qmready: H not placed (a rotatable H on a shared atom whose " \
-  "partners carry altlocs; place by hand or wait for the reduce2 fix):"
+H_NOT_PLACED = "qmready: H not placed (see the H placement report above):"
 CRYST1 = "CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1\n"
 
 def run_log(model_text, prefix, extra_args, fn_out):
@@ -74,14 +73,15 @@ def test_single_source_completed():
     description = f.read()
   assert HEADING in description, description
   assert " OH: altloc A -> shared (needed by B)" in description, description
-  # reduce2 places no HH on an OH next to a CZ with altlocs, also without
-  # qmready and with OH given as blank in the input; qmready says so. When
-  # reduce2 places HH, flip these: HH in the output, no H_NOT_PLACED block.
+  # HH on the shared OH, one per conformer of CZ (tst_add_hydrogen_20: the
+  # ester rule used to take CZ A and CZ B for two heavy neighbours)
+  hh = dict((a.parent().altloc, a) for a in h.atoms()
+            if a.name.strip() == "HH")
+  assert sorted(hh.keys()) == ["A", "B"], sorted(hh.keys())
+  for a in hh.values():
+    assert a.distance(oh[0]) < 1.1, a.distance(oh[0])
   for text in (log, description):
-    i = text.find(H_NOT_PLACED)
-    assert i >= 0, text
-    block = text[i:].splitlines()[1]
-    assert "TYR" in block and "HH" in block, block
+    assert H_NOT_PLACED not in text, text
 
 def test_no_heading_without_partial_conformers():
   out = "tst_r2ac_0_out.pdb"

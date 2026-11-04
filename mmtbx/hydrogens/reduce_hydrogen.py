@@ -3073,6 +3073,9 @@ class place_hydrogens():
     HOP2 in 2e4i, geostd GS HSP2 in 5zmn).
     Diesters within one residue keep their dictionary H (35G; 58 geostd
     entries have one).
+    Heavy neighbours are counted by residue group and atom name: a blank O
+    bonded to the same atom in two conformers (TYR OH shared, CZ A/B) is a
+    hydroxyl, not an ether, and keeps one H per conformer.
     '''
     grm = self.model.get_restraints_manager().geometry
     bps, asu = grm.get_all_bond_proxies(
@@ -3094,10 +3097,12 @@ class place_hydrogens():
         if is_h(other): h_on.setdefault(i_x, set()).add(other)
         else:           heavy_on.setdefault(i_x, set()).add(other)
     remove = set()
-    for i_o, hs in h_on.items():
-      if elements[i_o].strip() == 'O' and len(heavy_on.get(i_o, ())) > 1:
-        remove.update(hs)
     residue = lambda i: atoms[i].parent().parent().memory_id()
+    for i_o, hs in h_on.items():
+      partners = set((residue(k), atoms[k].name)
+                     for k in heavy_on.get(i_o, ()))
+      if elements[i_o].strip() == 'O' and len(partners) > 1:
+        remove.update(hs)
     for i_p, neighbors in heavy_on.items():
       if elements[i_p].strip() != 'P': continue
       os_ = [k for k in neighbors if elements[k].strip() in ('O', 'S')]

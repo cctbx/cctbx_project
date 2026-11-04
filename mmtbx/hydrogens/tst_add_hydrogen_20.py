@@ -3,9 +3,9 @@ A rotatable H on a shared atom whose bonded partner carries altlocs: TYR
 with OH in the blank atom group and CZ under A and B (reduce2 qmready
 makes this shape when it borrows OH between the conformers, mmtbx.reduce2
 with 1PWM or 1R6J; deposited models have it too). place_hydrogens adds
-HH to A and to B at a bogus position, then exclude_H_on_esterified_O sees
-the blank OH bonded to two heavy atoms (CZ A and CZ B), takes it for an
-ester O and removes both. Expected: one HH per conformer, bonded to OH,
+HH to A and to B at a bogus position; exclude_H_on_esterified_O used to see
+the blank OH bonded to two heavy atoms (CZ A and CZ B), take it for an
+ester O and remove both. Expected: one HH per conformer, bonded to OH,
 each with the occupancy of its CZ, as HB2/HB3 on a shared CB with CG A/B.
 """
 import iotbx.pdb

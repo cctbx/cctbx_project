@@ -2080,11 +2080,10 @@ NOTES:
     return '\n'.join(lines) + '\n'
 
   def _HNotPlacedText(self, model):
-    # qmready=True: the residues of the finished model that miss H. reduce2
-    # does not place a rotatable H on a shared atom whose bonded partners
-    # carry altlocs (TYR HH on a blank OH with CZ A/B). Residues that miss
-    # non-H atoms (truncated, capping=True) are listed by the atom-complete
-    # check instead.
+    # qmready=True: the residues of the finished model that miss H (an H
+    # that placement dropped: no parameterization, a metal site, a link).
+    # Residues that miss non-H atoms (truncated, capping=True) are listed by
+    # the atom-complete check instead.
     # :param model: The finished model with restraints, not yet capped.
     # :return: The description-file text ('' if none); also in the log.
     heavy = model.missing_atoms_by_residue()
@@ -2093,8 +2092,7 @@ NOTES:
       if k in heavy: continue
       lines.append('  %s: %s' % (k, ' '.join(v)))
     if not lines: return ''
-    lines = ['qmready: H not placed (a rotatable H on a shared atom whose '
-      'partners carry altlocs; place by hand or wait for the reduce2 fix):'
+    lines = ['qmready: H not placed (see the H placement report above):'
       ] + lines
     text = '\n'.join(lines) + '\n'
     print(text, file=self.logger)
