@@ -455,6 +455,12 @@ def occupancy_selections(
           cg_sel.append(list(sel))
       if(len(cg_sel) > 0):
         result.append(cg_sel)
+  # capping H (occupancy 0, not part of the deposited model) are never refined:
+  # not as members of their conformer's constrained group, not as partial
+  # occupancies, not as members of the user's selections
+  result = mmtbx.utils.remove_selections(selection = result,
+    other = model.selection('capping_h').iselection(),
+    size = model.get_number_of_atoms())
 
   if (constrain_correlated_3d_groups) and (len(result) > 0):
       result = assemble_constraint_groups_3d(

@@ -1929,10 +1929,17 @@ class manager(Base_geometry):
             file=f)
 
   def _bond_generator(self):
+    # bonds for struct_conn and cif links: not the covalent geometry and not
+    # the capping H. A cap bond (origin 'capping', mmtbx.hydrogens.capping)
+    # joins an H to an atom of its own residue: it is no link and has no
+    # cif_link to write.
+    from cctbx.geometry_restraints.linking_class import linking_class
+    capping = linking_class().get_origin_id('capping')
     simple, asu = self.get_all_bond_proxies()
     simple = simple.get_proxies_without_origin_id(0)
     asu = asu.get_proxies_without_origin_id(0)
     for bond in list(simple)+list(asu):
+      if bond.origin_id == capping: continue
       yield bond
 
   def get_struct_conn_mmcif(self, hierarchy):

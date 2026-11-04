@@ -671,7 +671,8 @@ def test_nucleic_sugar_and_base():
   '''
   DC 4 without C2': C1' (O4' N1 H1') and C3' (C4' O3' H3') lose one partner.
   DG 3 without C8: N9 V 3 (C1' C4 C8), used 2 -> 1; N7 V 3 (C8 double,
-  C5), used 1 -> 2.
+  C5), used 1 -> 2. reduce2 places the dictionary H8 of the absent C8 only
+  provisionally (no cap recognition during placement) and removes it.
   '''
   by_name = records_by_name(find(without(pdb_dna, 4, ["C2'"])))
   assert sorted(by_name) == [('DC', '4', '', "C1'"), ('DC', '4', '', "C3'")], \
@@ -1137,8 +1138,11 @@ def test_cap_arg_cb():
     assert abs((site(h) - site(cb)).length() - xh) < XH_TOLERANCE
     assert abs(bond_angle(ca, cb, h) - 109.5) < ANGLE_TOLERANCE
     assert h.parent().altloc == cb.parent().altloc
-    assert (h.occ, h.b, h.segid, h.hetero) == (cb.occ, cb.b, cb.segid,
-                                                cb.hetero)
+    # occupancy 0 only for the cap not named after a dictionary atom (HCG);
+    # the dictionary HB2, HB3 take CB's
+    expected = 0.0 if h.name.strip() == 'HCG' else cb.occ
+    assert h.occ == expected, (h.name, h.occ)
+    assert (h.b, h.segid, h.hetero) == (cb.b, cb.segid, cb.hetero)
   # i_seq reset; the caps written and read back with padded names
   atoms = model.get_hierarchy().atoms()
   assert list(atoms.extract_i_seq()) == list(range(atoms.size()))
@@ -1149,6 +1153,10 @@ def test_cap_arg_cb():
   model, result = cap(pdb_ser_altloc)
   assert result.lines == ['chain A SER 4 B: CB +3 H (HB2 HB3 HOG); missing OG'],\
     result.lines
+  cb = atom_named(model, 4, 'CB', altloc='B')
+  occ = dict((n, atom_named(model, 4, n, altloc='B').occ)
+             for n in ('HB2', 'HB3', 'HOG'))
+  assert occ == {'HB2': cb.occ, 'HB3': cb.occ, 'HOG': 0.0}, (cb.occ, occ)
 
 def test_cap_c_missing_o():
   '''

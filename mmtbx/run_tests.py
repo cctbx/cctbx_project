@@ -198,6 +198,7 @@ general_tests = [
   "$D/hydrogens/tst_validate_H.py",
   "$D/hydrogens/tst_connectivity.py",
   "$D/hydrogens/tst_capping.py",
+  "$D/hydrogens/tst_capping_h.py",
   "$D/hydrogens/tst_const_dihedral.py",
   "$D/hydrogens/tst_riding_coefficients.py",
   "$D/hydrogens/tst_riding_manager.py",

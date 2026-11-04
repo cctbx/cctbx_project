@@ -161,9 +161,13 @@ capping = False
           with three or more substituents, missing an atom, as an H there \
           would change the chemistry: add the atom (OP3 at a 5-prime end). \
           Done as the very last \
-          step. The caps have names unknown to the restraint libraries, so \
-          the capped model is for QM use and cannot be processed for \
-          restraints. Bond orders come from the CCD Kekule structure \
+          step. A cap whose name is no dictionary atom of its residue \
+          (HCG) has occupancy 0 and is selectable as capping_h. A cap with \
+          a dictionary H name (HB2, HB3 on a truncated CB) takes its \
+          parent's occupancy, as any reduce2 H. pdb_interpretation \
+          recognizes and restrains both, so the capped model can be \
+          processed for restraints. Bond orders come from the \
+          CCD Kekule structure \
           (DOUB and TRIP), all other bonds count as single. Requires \
           qmready=True.
 capping_guess_for_unknowns = False
@@ -1880,6 +1884,10 @@ NOTES:
     # by Hydrogen placement will have flipped them, so we don't need to do it again.
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     #p.pdb_interpretation.sort_atoms=True
+    # unlike placement (get_reduce_pdb_interpretation_params sets False), H
+    # here are final (placement removed its provisional ones): caps in the
+    # model, from the input, are recognized and restrained
+    p.pdb_interpretation.recognize_capping_h = True
     model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
     # no ADP pair table, as in place_hydrogens
     model.process(make_restraints=make_restraints, pdb_interpretation_params=p,
@@ -2101,9 +2109,11 @@ NOTES:
   def _CapDanglingAtoms(self, model, r):
     # capping=True: the output model and the Capping report after
     # capping.cap_model() capped model's hierarchy in place, as the last
-    # change to the hierarchy (the caps have names no restraint library
-    # knows). The output model is an unprocessed manager on the capped
-    # hierarchy and nothing interprets it later.
+    # change to the hierarchy (caps not named after a dictionary atom:
+    # occupancy 0, selectable as capping_h; all caps are restrained by
+    # pdb_interpretation when the model is processed). The
+    # output model is an unprocessed manager on the capped hierarchy;
+    # reduce2 does not process it again.
     # :param model: The rebuilt copy with restraints, capped; its X-ray
     # structure and restraints are stale.
     # :param r: The cap_model() result (dangling, capped, warnings).

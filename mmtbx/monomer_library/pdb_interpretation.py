@@ -375,6 +375,11 @@ master_params_str = """\
     .type = bool
     .short_caption = Use the nuclear distances for X-H/D
     .help = Use neutron X-H distances (which are longer than X-ray ones)
+  recognize_capping_h = True
+    .type = bool
+    .short_caption = Recognize capping H
+    .help = "Restrain capping H (mmtbx.reduce2 capping=True) found on atoms" \
+            "with a dangling valence; off during reduce2's own H placement"
   apply_cis_trans_specification
     .optional = True
     .multiple = True
@@ -6223,6 +6228,19 @@ class process(object):
 
     self._geometry_restraints_manager = None
     self._xray_structure = None
+    # capping H (mmtbx.reduce2 capping=True); None when all atoms attached
+    # or recognize_capping_h=False (reduce2's placement: every H provisional)
+    self.capping_h = None
+    acp = self.all_chain_proxies
+    if acp.params.recognize_capping_h:
+      from mmtbx.hydrogens import capping
+      self.capping_h = capping.add_capping_h_restraints(
+        hierarchy                      = acp.pdb_hierarchy,
+        mon_lib_srv                    = mon_lib_srv,
+        geometry_proxy_registries      = acp.geometry_proxy_registries,
+        nonbonded_energy_type_registry = acp.nonbonded_energy_type_registry,
+        use_neutron_distances          = acp.params.use_neutron_distances,
+        log                            = log)
     # attempt to fix pH problems
     if self.all_chain_proxies.nonbonded_energy_type_registry.n_unknown_type_symbols():
       from mmtbx.conformation_dependent_library import pH_dependent_restraints

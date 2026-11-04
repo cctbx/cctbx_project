@@ -491,8 +491,9 @@ def test_rna():
   """
   RNA 5'-OH trimer: HO5', HO3' and every HO2' are placed by reduce2, nothing
   is capped, charge -2. Base of G 3 removed: C1' gets one cap named after
-  the missing N9 (HN9); O3' of G 4 removed: C3' gets HO3' (the missing
-  atom's name) and no reduce2 HO3'.
+  the missing N9 (HN9); O3' of G 4 removed: C3' gets HC1 (HO3' is the
+  dictionary name of the absent O3', so a cap may not take it) and no
+  reduce2 HO3'.
   """
   prefix = "tst_reduce2_capping_rna"
   r = run(pdb_rna3, prefix, ["qmready=True", "capping=True"])
@@ -518,8 +519,9 @@ def test_rna():
             and l[12:16].strip() == "O3'")) + "\n"
   r = run(text, prefix + "_o3", ["qmready=True", "capping=True"])
   h = r.model.get_hierarchy()
-  assert h_names_of(h, 4).count("HO3'") == 1, h_names_of(h, 4)
-  assert "chain A G 4: C3' +1 H (HO3')" in description_of(prefix + "_o3", -2)
+  assert h_names_of(h, 4).count("HC1") == 1, h_names_of(h, 4)
+  assert "HO3'" not in h_names_of(h, 4), h_names_of(h, 4)
+  assert "chain A G 4: C3' +1 H (HC1)" in description_of(prefix + "_o3", -2)
 
 def test_dna_base_removed():
   """
