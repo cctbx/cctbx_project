@@ -14,7 +14,8 @@ nb_tst_list = [
 
 db_tst_list_nonCuda = ["$D/diffBragg/tests/tst_diffBragg_utils.py",
                        "$D/diffBragg/tests/tst_diffBragg_structure_factors.py"]
-db_tst_list_onlyCuda =[["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb eta --kokkos"]]
+# Disabled 11/05/26 due to running long on Azure pipelines. TODO: disable this dynamically if GPU is not available
+db_tst_list_onlyCuda = [] # [["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb eta --kokkos"]]
 
 db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_hopper_refine_Fhkl.py", "--scale .2"],
