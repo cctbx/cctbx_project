@@ -1,5 +1,7 @@
-"""reduce2 include_symmetric_copies: symmetry mates within 3.6 A of the model,
-from the input's crystal symmetry, as a fixed environment of the Optimizer.
+"""reduce2 include_symmetric_copies (default True): symmetry mates within 3.6 A
+of the model, from the input's crystal symmetry, as a fixed environment of the
+Optimizer. Both settings are named on the command line unless the default is
+what is being tested.
 
 - Ser + Asp, P 1 2 1: Ser OG is 2.65 A from a carboxylate O of the Asp mate
   -x+1,y,-z+1 and nothing else is within 12 A. With copies the mate's O is a
@@ -164,7 +166,8 @@ def summary_lines(text):
 def test_hbond_across_contact():
   on, desc_on, log_on = run("tst_reduce2_symmetry_copies_1", ser_asp_str,
     ["include_symmetric_copies=True"], check_copies=True)
-  off, desc_off, _ = run("tst_reduce2_symmetry_copies_2", ser_asp_str)
+  off, desc_off, _ = run("tst_reduce2_symmetry_copies_2", ser_asp_str,
+    ["include_symmetric_copies=False"])
   # the mate's O is a candidate acceptor of the HG rotator
   assert "SER 1 HG with 1 potential nearby acceptors" in desc_on, desc_on
   assert "SER 1 HG with 0 potential nearby acceptors" in desc_off
@@ -179,11 +182,11 @@ def test_hbond_across_contact():
   assert summary_lines(desc_on) == lines
   assert summary_lines(desc_off) == []
 
-def test_option_off_identical():
-  off, _, _ = run("tst_reduce2_symmetry_copies_3", ser_asp_str,
-    ["include_symmetric_copies=False"])
+def test_default_is_on():
+  on, _, _ = run("tst_reduce2_symmetry_copies_3", ser_asp_str,
+    ["include_symmetric_copies=True"])
   default, _, _ = run("tst_reduce2_symmetry_copies_4", ser_asp_str)
-  assert off == default
+  assert on == default
 
 def test_no_copies_without_symmetry():
   atoms = "".join(l + "\n" for l in ser_asp_str.split("\n")
@@ -191,7 +194,8 @@ def test_no_copies_without_symmetry():
   for i, text in enumerate([cryst1_placeholder + atoms, atoms]):
     prefix = "tst_reduce2_symmetry_copies_%d" % (5 + 2 * i)
     on, desc, log = run(prefix, text, ["include_symmetric_copies=True"])
-    off, _, _ = run(prefix + "_off", text)
+    off, _, _ = run(prefix + "_off", text,
+      ["include_symmetric_copies=False"])
     assert summary_lines(desc) == [] and summary_lines(log) == []
     assert on == off
 
@@ -200,12 +204,31 @@ def test_ion_lock_through_copy():
     ["include_symmetric_copies=True", "add_flip_movers=True"],
     check_copies=True)
   _, desc_off, _ = run("tst_reduce2_symmetry_copies_10", his_cd_str,
-    ["add_flip_movers=True"])
+    ["include_symmetric_copies=False", "add_flip_movers=True"])
   assert ("Not adding Hydrogen to chain A HIS 354 NE2 and marking as an "
     "acceptor (ionic bond to CD)") in desc_on, desc_on
   assert "Added MoverHisFlip" not in desc_on
   assert "Added MoverHisFlip 1 to chain A HIS 354" in desc_off
   assert "ionic bond" not in desc_off
+
+def test_ion_lock_with_defaults():
+  # reduce2's defaults, no flips: the Cd in the mate takes HE2 away. Without
+  # copies there is no His Mover and both ring H stay, HE2 1.45 A from the Cd.
+  def ring_h(text):
+    h = iotbx.pdb.input(lines=text.split("\n"), source_info=None
+      ).construct_hierarchy()
+    return sorted(a.name.strip() for a in h.atoms()
+      if a.parent().parent().resseq_as_int() == 354
+      and a.name.strip() in ("HD1", "HE2"))
+  out, desc, _ = run("tst_reduce2_symmetry_copies_30", his_cd_str,
+    check_copies=True)
+  assert ("Not adding Hydrogen to chain A HIS 354 NE2 and marking as an "
+    "acceptor (ionic bond to CD)") in desc, desc
+  assert ring_h(out) == ["HD1"], ring_h(out)
+  off, desc_off, _ = run("tst_reduce2_symmetry_copies_31", his_cd_str,
+    ["include_symmetric_copies=False"])
+  assert "ionic bond" not in desc_off
+  assert ring_h(off) == ["HD1", "HE2"], ring_h(off)
 
 def test_multi_model():
   # Model 1 has the Asp 6 A away along y: no contact, no copies. Model 2
@@ -509,9 +532,10 @@ END
 
 if __name__ == "__main__":
   test_hbond_across_contact()
-  test_option_off_identical()
+  test_default_is_on()
   test_no_copies_without_symmetry()
   test_ion_lock_through_copy()
+  test_ion_lock_with_defaults()
   test_multi_model()
   test_unsettled_pair()
   test_time_limit_in_refresh()

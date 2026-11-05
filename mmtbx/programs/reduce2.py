@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.6.0"
+version = "3.7.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -178,15 +178,17 @@ capping_guess_for_unknowns = False
           the valence of every atom from its element and formal charge, bonds \
           from distances, and add H accordingly (reported as guessed). \
           False: stop with a Sorry listing those residues.
-include_symmetric_copies = False
+include_symmetric_copies = True
   .type = bool
   .short_caption = Score Movers against symmetry mates
-  .help = Copies of the symmetry mates within 3.6 A of the model, from the \
-          input's own crystal symmetry (none for a placeholder cell such as \
-          CRYST1 1 1 1, or without symmetry), are a fixed environment for the \
-          optimization: scored, not moved, and refreshed until they agree \
-          with their originals. The flipkin and comparison passes run without \
-          copies.
+  .help = On by default. Copies of the symmetry mates within 3.6 A of the \
+          model, from the input's own crystal symmetry (none for a placeholder \
+          cell such as CRYST1 1 1 1, or without symmetry), are a fixed \
+          environment for the optimization: scored, not moved, and refreshed \
+          until they agree with their originals, so H-bonds, clashes and \
+          metals across crystal contacts count. The flipkin and comparison \
+          passes still run without copies, so at crystal contacts they can \
+          differ from the main result.
 output
   .style = menu_item auto_align
 {

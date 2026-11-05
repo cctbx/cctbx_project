@@ -10,7 +10,7 @@ Two things keep that from the Sorry "Bad clash(es) prevents qmready=True"
 of the symmetry-aware clash check (cutoff 1.0 A):
 - include_symmetric_copies=True scores the Movers against the symmetry mates
   as a fixed environment, so the optimizer itself turns HO3' clear of H22.
-- With the default (no copies) the qmready regularization pushes the clash
+- Without copies the qmready regularization pushes the clash
   apart until the violation check is satisfied, so HO3' ends just over the
   cutoff and the run succeeds.
 Both are asserted; the second only at the cutoff, since the regularization
@@ -162,12 +162,13 @@ def test_hydroxyl_at_crystal_contact():
   d, who = min_symmetry_distance(h, cs, idx["HO3'"], set(idx.values()))
   print("with include_symmetric_copies=True: %.2f A from %s" % (d, who))
   assert d >= 1.5, (d, who)
-  # With the defaults the regularization clears the clash check.
-  r = run(cryst1 + pdb_two_dg, prefix)
+  # Without copies the regularization clears the clash check.
+  r = run(cryst1 + pdb_two_dg, prefix,
+    extra_args=["include_symmetric_copies=False"])
   h = r.model.get_hierarchy()
   idx = atom_index(h, "A", "12")
   d, who = min_symmetry_distance(h, cs, idx["HO3'"], set(idx.values()))
-  print("with the defaults: %.2f A from %s" % (d, who))
+  print("without copies: %.2f A from %s" % (d, who))
   assert d >= CLASH_CUTOFF, (d, who)
 
 if __name__ == "__main__":
