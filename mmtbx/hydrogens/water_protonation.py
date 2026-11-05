@@ -2024,8 +2024,9 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
 
   For each water residue missing H (any common water alias: HOH, DOD, H2O,
   WAT, OH2, ...): H1 along O -> the nearest acceptor giving a clash-free H
-  (``_WATER_ACCEPTOR_RADIUS``, ``_WATER_ACCEPTOR_ELEMENTS``, N carrying an H
-  excluded as donors), else the max-clearance direction over a dense sphere;
+  (``_WATER_ACCEPTOR_RADIUS``, ``_WATER_ACCEPTOR_ELEMENTS``, excluding an N
+  that carries an H or is bonded to three heavy atoms in a plane), else the
+  max-clearance direction over a dense sphere;
   H2 on the H-O-H cone about O-H1, at a clash-free angle toward a second
   acceptor when there is one (outside the waters if it can reach both
   kinds), else the clearest; with both on acceptors, the water turns so
