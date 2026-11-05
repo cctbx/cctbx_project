@@ -389,9 +389,22 @@ def map_statistics(model, fmodel):
           result.append(score)
   return result
 
-def fit_rotatable2(model, fmodel):
+def fit_rotatable2(model, fmodel, reset_h=True, mapper=None):
   """
   Slow, OMIT map based fitting of rotatable H.
+
+  Parameters
+  ----------
+  model : mmtbx.model.manager
+  fmodel : mmtbx.f_model.manager
+  reset_h : bool
+    If True (default), reset all X-H lengths to the scattering table
+    convention and idealize H with the riding manager before fitting. If
+    False, the model coordinates are used as they are, and the check that
+    the scattering table is set (Sorry if not) is skipped too.
+  mapper : mmtbx.hydrogens.xh_mapper.mapper or None
+    If given, model coordinates are nuclear and the sites passed to fmodel
+    are mapper.shrink(model.get_sites_cart()).
   """
   # Reset mask params if needed
   mask_params = fmodel.mask_params
@@ -400,16 +413,20 @@ def fit_rotatable2(model, fmodel):
     mask_params.ignore_hydrogens=False
     fmodel.update(mask_params=mask_params)
   # Set X-H lengths based on data type
-  scattering_table = model.get_scattering_table()
-  if scattering_table is None:
-    raise Sorry("scattering_table must be set.")
-  use_neutron_distances = False
-  if scattering_table in ["neutron", "electron"]:
-    use_neutron_distances = True
-  model.set_hydrogen_bond_length(use_neutron_distances = use_neutron_distances)
-  model.idealize_h_riding()
+  if(reset_h):
+    scattering_table = model.get_scattering_table()
+    if scattering_table is None:
+      raise Sorry("scattering_table must be set.")
+    use_neutron_distances = False
+    if scattering_table in ["neutron", "electron"]:
+      use_neutron_distances = True
+    model.set_hydrogen_bond_length(
+      use_neutron_distances = use_neutron_distances)
+    model.idealize_h_riding()
   #
-  fmodel.xray_structure.set_sites_cart(model.get_sites_cart())
+  if(mapper is None): sites_for_fmodel = model.get_sites_cart()
+  else:               sites_for_fmodel = mapper.shrink(model.get_sites_cart())
+  fmodel.xray_structure.set_sites_cart(sites_for_fmodel)
   fmodel.update_xray_structure(
     update_f_calc  = True,
     update_f_mask  = True)
@@ -471,7 +488,9 @@ def fit_rotatable2(model, fmodel):
             if sites_cart_best is not None:
               sites_cart = sites_cart.set_selected(sel_to_rotate, sites_cart_best)
   model.set_sites_cart(sites_cart)
-  fmodel.xray_structure.set_sites_cart(model.get_sites_cart())
+  if(mapper is None): sites_for_fmodel = model.get_sites_cart()
+  else:               sites_for_fmodel = mapper.shrink(model.get_sites_cart())
+  fmodel.xray_structure.set_sites_cart(sites_for_fmodel)
   if(mpih):
     mask_params.ignore_hydrogens=False
     fmodel.update(mask_params=mask_params)
