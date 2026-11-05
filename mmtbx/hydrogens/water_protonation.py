@@ -44,6 +44,8 @@ _WATER_GEOMETRY = {
 _WATER_ACCEPTOR_RADIUS = 3.5  # max distance to search for H-bond acceptors (A)
 _WATER_ACCEPTOR_ELEMENTS = frozenset({"O", "N", "F", "S", "CL"})
 _WATER_NH_BOND = 1.3          # max N-H distance for "N carries an H" (A)
+_WATER_N_BOND = 1.8           # max bond length from an N to a heavy atom (A)
+_WATER_PLANAR_N = 350.0       # min bond-angle sum (deg) of a planar N
 _WATER_CONE_SAMPLES = 36      # angular samples around the O-H1 cone
 # Element-aware "clash-free" thresholds: a candidate H must clear every
 # heavy atom by _WATER_MIN_CLEARANCE and every hydrogen by the larger
@@ -72,7 +74,7 @@ _WATER_CATION_ELEMENTS = frozenset({
   "TH", "U",                                                  # actinides
 })
 _WATER_CATION_RADIUS = 3.0
-_WATER_METAL_COORD_RADIUS = 2.6  # first-shell M-O bond, reporting only
+_WATER_METAL_COORD_RADIUS = 2.6  # max first-shell metal bond (A)
 _WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H, O->acceptor) to donate to it
 # Cluster search (opt-in): a proton scores its distance to the nearest
 # acceptor, at most _WATER_CLUSTER_CAP (A); a cluster with up to
@@ -849,6 +851,50 @@ class _WaterHydrogenPlacer:
         return True
     return False
 
+  def _planar_n(self, i):
+    """Whether static atom ``i`` is an N bonded to three heavy atoms in a
+    plane, as a proline, amide or nucleoside N or one bound to a metal,
+    whose lone pair is not free to accept an H-bond.
+
+    A bond is a heavy atom within ``_WATER_N_BOND``, or a metal within
+    ``_WATER_METAL_COORD_RADIUS``, in the N's conformer or blank, and the
+    three bonds of one conformer are planar when their angles sum to more
+    than ``_WATER_PLANAR_N``. Each N is decided once.
+    """
+    planar = self.planar_n.get(i)
+    if planar is not None:
+      return planar
+    planar = False
+    if self.atoms[i].element.strip().upper() == "N":
+      x = matrix.col(self.static_xyz[i])
+      ci = self.conf[i]
+      bonds = []
+      for j in self.static_tree.query_ball_point(self.static_xyz[i],
+                                                 _WATER_METAL_COORD_RADIUS):
+        if j == i or self.static_is_h[j] or not _compatible(ci, self.conf[j]):
+          continue
+        v = matrix.col(self.static_xyz[j]) - x
+        d = v.length()
+        if self.atoms[j].element.strip().upper() in _WATER_CATION_ELEMENTS:
+          limit = _WATER_METAL_COORD_RADIUS
+        else:
+          limit = _WATER_N_BOND
+        if 1e-3 < d < limit:
+          bonds.append((self.conf[j], v / d))
+      confs = {c for c, _ in bonds if c}
+      if not confs:
+        confs = {0}
+      for c in confs:
+        u = [v for cj, v in bonds if not cj or cj == c]
+        if len(u) != 3:
+          continue
+        angles = (u[0].angle(u[1], deg=True) + u[0].angle(u[2], deg=True)
+                  + u[1].angle(u[2], deg=True))
+        if angles > _WATER_PLANAR_N:
+          planar = True
+    self.planar_n[i] = planar
+    return planar
+
   def _water_geom(self, wi):
     """Fixed per-water geometry, computed once.
 
@@ -878,6 +924,8 @@ class _WaterHydrogenPlacer:
         continue
       if i in self.donor_n:
         continue  # protonated N: a donor, not a usable acceptor
+      if self._planar_n(i):
+        continue  # no free lone pair
       a = atoms[i]
       if a.element.strip().upper() not in _WATER_ACCEPTOR_ELEMENTS:
         continue
@@ -1474,6 +1522,8 @@ class _WaterHydrogenPlacer:
         for j in nbrs:
           if j != i and atoms[j].element.strip().upper() == "N":
             self.donor_n.add(j)
+    # Per static N looked at so far, whether it is planar (see _planar_n).
+    self.planar_n = {}
 
     self.cos_hoh = math.cos(math.radians(self.hoh_deg))
     self.sin_hoh = math.sin(math.radians(self.hoh_deg))

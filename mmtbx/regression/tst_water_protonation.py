@@ -69,6 +69,39 @@ HETATM    3  N   DNR E   1       2.600   0.000   0.000  1.00 10.00           N
 HETATM    4  H   DNR E   1       3.600   0.000   0.000  1.00 10.00           H
 END
 """
+# The same with the nearer N bare, bonded to three C in a plane, as a
+# proline N: no lone pair to accept with.
+_PLANAR_N_PDB = """\
+HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
+HETATM    2  N   ACC D   1      -2.800   0.000   0.000  1.00 10.00           N
+HETATM    3  N   PLN E   1       2.600   0.000   0.000  1.00 10.00           N
+HETATM    4  C1  PLN E   1       2.600   1.470   0.000  1.00 10.00           C
+HETATM    5  C2  PLN E   1       2.600  -0.735   1.273  1.00 10.00           C
+HETATM    6  C3  PLN E   1       2.600  -0.735  -1.273  1.00 10.00           C
+END
+"""
+# The planar N with a Zn in place of one C, 3.3 A from the water O: its lone
+# pair is the metal's.
+_METAL_N_PDB = """\
+HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
+HETATM    2  N   ACC D   1      -2.800   0.000   0.000  1.00 10.00           N
+HETATM    3  N   MTN E   1       2.600   0.000   0.000  1.00 10.00           N
+HETATM    4  C1  MTN E   1       2.600   1.470   0.000  1.00 10.00           C
+HETATM    5  C2  MTN E   1       2.600  -0.735   1.273  1.00 10.00           C
+HETATM    6 ZN    ZN M   1       2.600  -1.000  -1.732  1.00 10.00          ZN
+END
+"""
+# The nearer N bonded to three C in a pyramid opening away from the water,
+# as a tertiary amine: an acceptor.
+_PYRAMIDAL_N_PDB = """\
+HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
+HETATM    2  N   ACC D   1      -2.800   0.000   0.000  1.00 10.00           N
+HETATM    3  N   PYN E   1       2.600   0.000   0.000  1.00 10.00           N
+HETATM    4  C1  PYN E   1       3.090   1.386   0.000  1.00 10.00           C
+HETATM    5  C2  PYN E   1       3.090  -0.693   1.200  1.00 10.00           C
+HETATM    6  C3  PYN E   1       3.090  -0.693  -1.200  1.00 10.00           C
+END
+"""
 
 # A water that is already protonated (O + 2 H) must be left untouched.
 _PROTONATED_WATER_PDB = """\
@@ -524,26 +557,34 @@ def exercise_protonated_water_kept():
       f"already-protonated water must be untouched:\n{before}\n{after}")
 
 
-def exercise_protonated_n_not_acceptor():
-  """An N that already carries an H is a donor, not an acceptor: H1 skips
-  the nearer protonated N and points at the farther bare N instead.
+def exercise_n_acceptors():
+  """An N that already carries an H is a donor, and one bonded to three
+  heavy atoms in a plane has no free lone pair: H1 skips such a nearer N and
+  points at the farther bare N instead. A nearer pyramidal N, bonded to
+  three C, is an acceptor and takes H1.
 
-  Places on ``_DONOR_N_PDB``.
+  Places on ``_DONOR_N_PDB``, ``_PLANAR_N_PDB``, ``_METAL_N_PDB`` (two C
+  and a Zn) and ``_PYRAMIDAL_N_PDB``.
   """
-  hier = _hierarchy(_DONOR_N_PDB)
-  wp.place_water_hydrogens(hier, n_refine=0)
-  o, hs = _water_atoms(hier)
-  o_xyz = matrix.col(o.xyz)
-  acc = matrix.col((-1.0, 0.0, 0.0))   # toward the bare N (acceptor)
-  don = matrix.col((1.0, 0.0, 0.0))    # toward the protonated N (donor)
-  best_acc = max((matrix.col(h.xyz) - o_xyz).normalize().dot(acc)
-                 for h in hs.values())
-  best_don = max((matrix.col(h.xyz) - o_xyz).normalize().dot(don)
-                 for h in hs.values())
-  assert best_acc > 0.9, (
-    f"H should point at the bare (acceptor) N ({best_acc:.3f})")
-  assert best_don < 0.9, (
-    f"no H should point at the protonated (donor) N ({best_don:.3f})")
+  far = matrix.col((-1.0, 0.0, 0.0))   # toward the farther bare N
+  near = matrix.col((1.0, 0.0, 0.0))   # toward the nearer N
+  for pdb_str, nearer, near_accepts in ((_DONOR_N_PDB, "DNR", False),
+                                        (_PLANAR_N_PDB, "PLN", False),
+                                        (_METAL_N_PDB, "MTN", False),
+                                        (_PYRAMIDAL_N_PDB, "PYN", True)):
+    hier = _hierarchy(pdb_str)
+    wp.place_water_hydrogens(hier, n_refine=0)
+    o, hs = _water_atoms(hier)
+    dirs = [(matrix.col(h.xyz) - matrix.col(o.xyz)).normalize()
+            for h in hs.values()]
+    best_far = max(d.dot(far) for d in dirs)
+    best_near = max(d.dot(near) for d in dirs)
+    if near_accepts:
+      assert best_near > 0.9, f"no H points at {nearer} N ({best_near:.3f})"
+    else:
+      assert best_far > 0.9, (
+        f"{nearer}: no H points at the bare N ({best_far:.3f})")
+      assert best_near < 0.9, f"an H points at {nearer} N ({best_near:.3f})"
 
 
 def exercise_reorient_existing():
@@ -1553,7 +1594,7 @@ def run():
   """Run every exercise and print the CPU times and ``OK`` on success."""
   exercise_acceptor_directed()
   exercise_cation_repulsion()
-  exercise_protonated_n_not_acceptor()
+  exercise_n_acceptors()
   exercise_protonated_water_kept()
   exercise_reorient_existing()
   exercise_single_h_water()
