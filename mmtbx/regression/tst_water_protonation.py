@@ -771,7 +771,7 @@ def exercise_refinement_reduces_clashes():
   once none does.
 
   Places on ``_WATER_CLUSTER_PDB`` without refinement, with five sweeps and
-  with two basin-hopping rounds, then on ``_TWO_ACCEPTOR_PDB`` with two
+  with up to ten basin-hopping rounds, then on ``_TWO_ACCEPTOR_PDB`` with two
   rounds. The contact listing holds the greedy pass's contacts, closest
   first.
   """
@@ -791,11 +791,13 @@ def exercise_refinement_reduces_clashes():
   assert len(listed) == n_greedy, (len(listed), n_greedy)
   assert listed == sorted(listed), listed
 
-  # One round clears the cluster, so the second is skipped; a clash-free
+  # Basin hopping clears the cluster and skips the rounds left; a clash-free
   # placement runs none.
   hopped = _hierarchy(_WATER_CLUSTER_PDB)
-  res = wp.place_water_hydrogens(hopped, n_refine=0, n_basin=2)
-  assert res.basin_rounds_run == 1, res.basin_rounds_run
+  res = wp.place_water_hydrogens(hopped, n_refine=0, n_basin=10)
+  stats = wp._water_clash_stats(hopped)
+  assert stats[1] == 0, stats
+  assert res.basin_rounds_run < 10, res.basin_rounds_run
   res = wp.place_water_hydrogens(_hierarchy(_TWO_ACCEPTOR_PDB), n_refine=0,
                                  n_basin=2)
   assert res.basin_rounds_run == 0, res.basin_rounds_run

@@ -18,7 +18,6 @@ Needs ``scipy`` (KDTree); the vectorised work is
 """
 
 import math
-import random
 
 import iotbx.pdb
 from cctbx import crystal
@@ -224,15 +223,6 @@ def _turn_two_fold(d, a):
   """Direction ``d`` turned 180 deg about the unit axis ``a``."""
   t = 2.0 * (d[0] * a[0] + d[1] * a[1] + d[2] * a[2])
   return (t * a[0] - d[0], t * a[1] - d[1], t * a[2] - d[2])
-
-
-def _rand_unit(rng):
-  """A random unit vector, from Gaussian deviates of ``rng``."""
-  while True:
-    v = (rng.gauss(0, 1), rng.gauss(0, 1), rng.gauss(0, 1))
-    n = math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
-    if n > 1e-6:
-      return (v[0] / n, v[1] / n, v[2] / n)
 
 
 def _water_residue_groups(hier):
@@ -1262,11 +1252,13 @@ class _WaterHydrogenPlacer:
     o = self._water_geom(wi)["o"]
     a = self.w_axis[wi]
     if a is None:
-      d1 = fixed_d1 if fixed_d1 is not None else _rand_unit(rng)
+      d1 = fixed_d1
+      if d1 is None:
+        d1 = rng.random_double_point_on_sphere()
       v = matrix.col(d1)
       p = v.ortho().normalize()
       p, q = p.elems, v.cross(p).elems
-      theta = rng.uniform(0.0, 2.0 * math.pi)
+      theta = 2.0 * math.pi * rng.random_double()
       ct, st = math.cos(theta), math.sin(theta)
       d2 = tuple(self.cos_hoh * d1[c] + self.sin_hoh * (ct * p[c] + st * q[c])
                  for c in range(3))
@@ -1276,8 +1268,8 @@ class _WaterHydrogenPlacer:
         axis = matrix.col(a)
         p = axis.ortho().normalize()
         p, q = p.elems, axis.cross(p).elems
-        s = rng.choice((1.0, -1.0))
-        theta = rng.uniform(0.0, 2.0 * math.pi)
+        s = 1.0 if rng.random_double() < 0.5 else -1.0
+        theta = 2.0 * math.pi * rng.random_double()
         ct, st = math.cos(theta), math.sin(theta)
         d1 = tuple(s * self.cos_half_hoh * a[c]
                    + self.sin_half_hoh * (ct * p[c] + st * q[c])
@@ -1736,7 +1728,7 @@ class _WaterHydrogenPlacer:
     # keeps the result if it improved; it stops once no kick moves a water.
     # Deterministic (seeded).
     if self.n_basin and best_coords is not None:
-      rng = random.Random(_WATER_BASIN_SEED)
+      rng = flex.mersenne_twister(seed=_WATER_BASIN_SEED)
       for it in range(self.n_basin):
         self._restore(best_coords)
         moved = False
