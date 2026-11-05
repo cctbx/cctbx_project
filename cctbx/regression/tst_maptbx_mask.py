@@ -3,6 +3,7 @@ from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from iotbx.map_model_manager import map_model_manager
 from libtbx import group_args
+import libtbx.load_env
 
 def get_random_structure_and_map(
    use_static_structure = False,
@@ -117,6 +118,12 @@ def exercise_mask():
   soft_mask = mm.get_mask_as_map_manager().map_data().deep_copy()
   mm.apply_mask()
   check_masked_map(mm.map_data(), map_data_orig, soft_mask, 0)
+
+  # The rest uses create_mask_around_density with a sequence, which needs
+  # phenix.loop_lib to estimate the solvent content
+  if not libtbx.env.has_module("phenix"):
+    print("phenix is not available, skipping create_mask_around_density")
+    return
 
   # auto-generate mask
   mm = mm_orig.deep_copy()
