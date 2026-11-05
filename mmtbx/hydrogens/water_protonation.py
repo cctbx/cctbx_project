@@ -27,6 +27,7 @@ from iotbx.pdb.utils import check_for_missing_elements
 from libtbx import group_args
 from scitbx import matrix
 from scitbx.array_family import flex
+from scitbx.math import fibonacci_sphere_points
 
 
 # ---------------------------------------------------------------------------
@@ -125,20 +126,6 @@ def _is_water(resname):
           == "common_water")
 
 
-def _fibonacci_sphere(n):
-  """``n`` roughly-uniform unit vectors over the sphere (Fibonacci spiral)."""
-  golden = math.pi * (3.0 - math.sqrt(5.0))
-  pts = []
-  for i in range(n):
-    y = 1.0 - 2.0 * (i + 0.5) / n
-    r = math.sqrt(max(0.0, 1.0 - y * y))
-    th = golden * i
-    pts.append((math.cos(th) * r, y, math.sin(th) * r))
-  return tuple(pts)
-
-
-_WATER_FALLBACK_DIRECTIONS = _fibonacci_sphere(64)
-
 # Index arrays for the (candidate x neighbour) block, keyed by its shape and
 # shared by every water with that shape. The block is flattened row-major:
 # candidate i occupies ``[i * m, (i+1) * m)``, so a row is a plain slice.
@@ -206,7 +193,7 @@ _CONE_COS = flex.double([math.cos(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
 _CONE_SIN = flex.double([math.sin(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
                          for k in range(_WATER_CONE_SAMPLES)])
 _FALLBACK_DIRS = [matrix.col(v).normalize().elems
-                  for v in _WATER_FALLBACK_DIRECTIONS]
+                  for v in fibonacci_sphere_points(64)]
 _FALLBACK_FX = flex.vec3_double(_FALLBACK_DIRS)
 
 

@@ -259,7 +259,7 @@ def _fallback_cage_pdb():
       PDB-format record text.
   """
   o = matrix.col((10.0, 10.0, 10.0))
-  dirs = [matrix.col(d).normalize() for d in wp._WATER_FALLBACK_DIRECTIONS]
+  dirs = [matrix.col(d) for d in wp._FALLBACK_DIRS]
   acc = dirs[4].rotate_around_origin(axis=dirs[4].ortho(), angle=6.0, deg=True)
   sites = [("O   HOH W", 1, o), ("O   ACA D", 1, o + acc * 2.8)]
   sites += [("C   BLK X", i + 1, o + d * 2.42) for i, d in enumerate(dirs)]
