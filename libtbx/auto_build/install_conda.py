@@ -436,10 +436,6 @@ common compilers provided by conda. Please update your version with
 
     if self.system == 'Windows':
       conda_python = os.path.join(conda_env, 'python.exe')
-    elif self.system == 'Darwin':
-      # use python.app for GUI applications
-      conda_python = os.path.join(conda_env, 'python.app', 'Contents', 'MacOS',
-                                  'python')
     else:
       conda_python = os.path.join(conda_env, 'bin', 'python')
 

@@ -61,6 +61,7 @@ tst_list_base = [
   "$D/tst_dispatcher_environment.py",
   "$D/auto_build/conda_build/tst_write_env_files.py",
   "$D/auto_build/conda_build/tst_create_custom_bin.py",
+  "$D/auto_build/tst_install_conda.py",
   ]
 
 try:
