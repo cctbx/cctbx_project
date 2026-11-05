@@ -50,7 +50,12 @@ def exercise(space_group_info,
              b_sol            = 45.0,
              b_cart           = None,
              quick=False,
-             verbose=0):
+             verbose=0,
+             targets=None):
+  if (targets is None):
+    # ml_sad needs phaser: phenix_regression/refinement/tst_fmodel_fd_ml_sad.py
+    targets = [target for target in mmtbx.refinement.targets.target_names
+               if target != "ml_sad"]
   xray_structure = random_structure.xray_structure(
     space_group_info       = space_group_info,
     elements               =(("O","N","C")*(n_elements//3+1))[:n_elements],
@@ -93,19 +98,18 @@ def exercise(space_group_info,
       #flags = flags.array(data = flex.bool(f_obs.data().size(), False))
       xrs = xray_structure.deep_copy_scatterers()
       xrs.shake_sites_in_place(rms_difference=0.3)
-      for target in mmtbx.refinement.targets.target_names:
+      for target in targets:
         if target=="mli": continue
         if target=="llgi": continue # needs LLGI data; see tst_llgi.py
         if (quick):
-          if (target not in ["ls_wunit_k1", "ml", "mlhl", "ml_sad"]):
+          if (target not in ["ls_wunit_k1", "ml", "mlhl"]):
             continue
         if (target == "mlhl"):
           if (have_non_zero_fdp): continue # XXX gradients not correct!
           experimental_phases = generate_random_hl(miller_set=f_obs)
         else:
           experimental_phases = None
-        if (target == "ml_sad"
-              and (not anomalous_flag or mmtbx.refinement.targets.phaser is None)):
+        if (target == "ml_sad" and not anomalous_flag):
           continue
         print("  ",target)
         xray.set_scatterer_grad_flags(
