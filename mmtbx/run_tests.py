@@ -256,6 +256,7 @@ general_tests = [
   "$D/conformation_dependent_library/tst_mcl_01.py",
   "$D/conformation_dependent_library/tst_mcl_02.py",
   "$D/conformation_dependent_library/tst_mcl_03.py",
+  "$D/conformation_dependent_library/tst_mcl_04.py",
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_find_ss_structure_cif.py",
   "$D/regression/tst_ss_validation_long_chainids.py",
