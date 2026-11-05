@@ -1,6 +1,13 @@
 from __future__ import absolute_import, division, print_function
 from xfel.ui.db import db_proxy
 
+def run_sort_key(run_no):
+  """ Numeric order for integer run names, string order for the rest """
+  try:
+    return (0, int(run_no), "")
+  except ValueError:
+    return (1, 0, run_no)
+
 class Run(db_proxy):
   def __init__(self, app, run_id = None, **kwargs):
     db_proxy.__init__(self, app, "%s_run" % app.params.experiment_tag, id = run_id, **kwargs)

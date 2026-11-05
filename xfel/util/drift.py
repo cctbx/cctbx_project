@@ -104,6 +104,12 @@ phil_scope_str = """
     unit_cell = *average distribution
       .type = choice
       .help = Use average unit cell or distribution of all?
+    iqr_ratio = None
+      .type = float
+      .help = If set, reject a chunk's cells whose a, b or c lies more than this \
+              many interquartile ranges beyond that length's quartiles within the \
+              chunk, before anything is averaged or plotted. The usual value is \
+              1.5. None keeps every cell.
     }
   plot {
     color {
@@ -500,13 +506,47 @@ class BaseDriftScraper(object):
   @staticmethod
   def locate_refined_expts_refls(combine_phil_path: str) \
           -> Tuple[ExperimentList, flex.reflection_table]:
-    """Return all refined expts and refls down-stream from combine_phil_path"""
+    """Return all refined expts and refls down-stream from combine_phil_path.
+    The ensemble refinement pipeline appends `_combined` to the stem after
+    combining (and a batch number when pre-splitting, a cluster suffix when
+    clustering) before refining, so the refined files are found under both
+    the plain stem and the combined one. The underscore after the stem keeps
+    chunk 100 from matching chunk 1000."""
     path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
-    expts_paths = path_lookup(path_stem + '_refined.expt')
-    refls_paths = path_lookup(path_stem + '_refined.refl')
-    expts = read_experiments(*expts_paths)
-    refls = read_reflections(*refls_paths)
+    expts_paths, refls_paths = [], []
+    for infix in ('_refined', '_combined*_refined'):
+      expts_paths.extend(path_lookup(path_stem + infix + '*.expt'))
+      refls_paths.extend(path_lookup(path_stem + infix + '*.refl'))
+    expts = read_experiments(*sorted(expts_paths))
+    refls = read_reflections(*sorted(refls_paths))
     return expts, refls
+
+  def reject_cell_outliers(self, expts: ExperimentList, refls: flex.reflection_table) \
+          -> Tuple[ExperimentList, flex.reflection_table]:
+    """Drop expts (and their refls) whose a, b or c is an outlier within the
+    chunk by the interquartile rule with scrap.iqr_ratio; None keeps all.
+    Done on the experiments rather than in one mixin so that every per-cell
+    array of the chunk (origin, cell, counts) stays the same length."""
+    ratio = self.parameters.scrap.iqr_ratio
+    if ratio is None or len(expts) < 4:
+      return expts, refls
+    lengths = np.array([expt.crystal.get_unit_cell().parameters()[:3] for expt in expts])
+    keep = np.ones(len(expts), dtype=bool)
+    for column in lengths.T:
+      q1, q3 = np.percentile(column, [25, 75])
+      cut = ratio * (q3 - q1) + 1e-6
+      keep &= (column >= q1 - cut) & (column <= q3 + cut)
+    if keep.all():
+      return expts, refls
+    kept_ids = [i for i, k in enumerate(keep) if k]
+    new_ids = {old: new for new, old in enumerate(kept_ids)}
+    mask = flex.bool([int(i) in new_ids for i in refls['id']])
+    refls = refls.select(mask)
+    refls['id'] = flex.int([new_ids[int(i)] for i in refls['id']])
+    kept_expts = ExperimentList()
+    for i in kept_ids:
+      kept_expts.append(expts[i])
+    return kept_expts, refls
 
   @autoupdate_scrap_dict_with_return
   def scrap_db_metadata(self, combine_phil_path: str) -> dict:
@@ -548,6 +588,7 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
         self.scrap_db_metadata(cpp)
         print(f'Processing run {self.scrap_dict["run"]}')
         refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
+        refined_expts, refined_refls = self.reject_cell_outliers(refined_expts, refined_refls)
         elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
         print(f'Found {elen} expts and {sum(rlen)} refls')
         self.scrap_dict.update({'expts': elen, 'refls': rlen})
@@ -587,6 +628,7 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             print(f'Found {elen} expts and {sum(rlen)} refls')
             refined_expts.select_on_experiment_identifiers(scaled_identifiers)
             refined_refls = refined_refls.select(refined_expts)
+            refined_expts, refined_refls = self.reject_cell_outliers(refined_expts, refined_refls)
             elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
             print(f'Accepted {elen} expts and {sum(rlen)} refls')
             self.scrap_dict.update({'expts': elen, 'refls': rlen})
@@ -597,6 +639,60 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             print(e)
           else:
             self.scrap_results.append(self.scrap_dict)
+
+
+class ExplicitDriftScraper(BaseDriftScraper):
+  """Drift scraper for a caller that already knows which combining phils to
+  read and what they are: a list of (combine_phil_path, metadata) entries, the
+  metadata being the 'merge', 'run', 'rungroup', 'trial', 'task' and 'chunk'
+  values the other scrapers infer from the paths. The cctbx.xfel GUI builds
+  these from its database. Results are cached per combining phil in `cache`,
+  a dict the caller may persist, keyed by path and keeping the refined
+  experiments' modification time, so a later scrap re-reads only chunks that
+  are new or have changed."""
+  input_kind = None  # not selectable through scrap.input.kind
+
+  def __init__(self, table: DriftTable, parameters,
+               entries: Sequence[Tuple[str, dict]], cache: dict = None) -> None:
+    super().__init__(table=table, parameters=parameters)
+    self.entries = list(entries)
+    self.cache = cache if cache is not None else {}
+    self.failures: List[Tuple[str, str]] = []  # (combine_phil_path, why it was skipped)
+
+  @staticmethod
+  def refined_mtime(combine_phil_path: str) -> float:
+    path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
+    mtimes = [os.path.getmtime(p) for p in path_lookup(path_stem + '_refined.expt')]
+    return max(mtimes) if mtimes else -1.
+
+  def scrap(self) -> None:
+    for combine_phil_path, metadata in self.entries:
+      mtime = self.refined_mtime(combine_phil_path)
+      cached = self.cache.get(combine_phil_path)
+      if cached is not None and cached[0] == mtime:
+        self.scrap_results.append(cached[1])
+        continue
+      try:
+        self.scrap_dict = dict(metadata)
+        refined_expts, refined_refls = self.locate_refined_expts_refls(combine_phil_path)
+        refined_expts, refined_refls = self.reject_cell_outliers(refined_expts, refined_refls)
+        elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
+        if elen == 0:
+          stem = combine_phil_path.replace('_combine_experiments.phil', '')
+          self.failures.append((combine_phil_path, 'no experiments in %s_refined.expt' % stem))
+          continue
+        self.scrap_dict.update({'expts': elen, 'refls': rlen})
+        self.scrap_origin(refined_expts)
+        self.scrap_unit_cell(refined_expts)
+        self.scrap_origin_deltas(refined_expts, refined_refls)
+      except Exception as e:  # noqa: one bad chunk must not stop the rest
+        self.failures.append((combine_phil_path, '%s: %s' % (type(e).__name__, e)))
+        print(combine_phil_path, type(e).__name__, e)
+      else:
+        self.cache[combine_phil_path] = (mtime, self.scrap_dict)
+        self.scrap_results.append(self.scrap_dict)
+    for scrap_dict in self.scrap_results:
+      self.table.add(scrap_dict)
 
 
 class DriftScraperMixin(object):
@@ -788,9 +884,8 @@ class DriftScraperFactory(object):
   }
 
   @classmethod
-  def get_drift_scraper(cls, table: DriftTable, parameters) \
-          -> BaseDriftScraper:
-    base = DriftScraperRegistrar.REGISTRY[parameters.scrap.input.kind]
+  def get_drift_scraper_class(cls, base: type, parameters) -> type:
+    """Combine a scraper base class with the mixins phil `parameters` ask for"""
     mixins = [
       cls.ORIGIN_MIXINS[parameters.scrap.origin],
       cls.UNCERTAINTIES_MIXINS[parameters.scrap.uncertainties],
@@ -798,7 +893,13 @@ class DriftScraperFactory(object):
     ]
     class DriftScraper(base, *mixins):
       """The actual data scraping class generated based on phil parameters"""
-    return DriftScraper(table=table, parameters=parameters)
+    return DriftScraper
+
+  @classmethod
+  def get_drift_scraper(cls, table: DriftTable, parameters) \
+          -> BaseDriftScraper:
+    base = DriftScraperRegistrar.REGISTRY[parameters.scrap.input.kind]
+    return cls.get_drift_scraper_class(base, parameters)(table=table, parameters=parameters)
 
 
 ############################## DRIFT VISUALIZING ##############################
@@ -806,7 +907,11 @@ class DriftScraperFactory(object):
 
 class DriftArtist(object):
   """Object responsible for plotting an instance of `DriftTable`."""
-  def __init__(self, table: DriftTable, parameters):
+  def __init__(self, table: DriftTable, parameters, fig: plt.Figure = None):
+    """Plot `table`; into `fig` when given (which is cleared and never shown
+    interactively, for embedding), else into a new pyplot figure."""
+    self.embedded = fig is not None
+    self.fig = fig
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
     self.corr_colormap = plt.get_cmap(parameters.plot.color.correlation)
@@ -821,7 +926,11 @@ class DriftArtist(object):
     self._setup_figure()
 
   def _init_figure(self) -> None:
-    self.fig = plt.figure(tight_layout=True)
+    if self.embedded:
+      self.fig.clear()
+      self.fig.set_tight_layout(True)
+    else:
+      self.fig = plt.figure(tight_layout=True)
     gs = GridSpec(7, 2, hspace=0, wspace=0, width_ratios=[4, 1],
                   height_ratios=[2, 3, 3, 3, 3, 3, 3])
     self.axh = self.fig.add_subplot(gs[0, 0])
@@ -986,7 +1095,7 @@ class DriftArtist(object):
       self.fig.set_size_inches(self.parameters.plot.width,
                                self.parameters.plot.height)
       self.fig.savefig(self.parameters.plot.path)
-    if self.parameters.plot.show:
+    if self.parameters.plot.show and not self.embedded:
       plt.show()
 
 
