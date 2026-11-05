@@ -267,58 +267,14 @@ and existing_h=reorient strips all water H and re-places both.
   # ----------------------------------------------------------------------------
 
   def _write_output(self, model):
-    """Write the (in-place mutated) model, with the input's experiment type,
-    via the DataManager.
-
-    Format follows the input, or ``output.target_output_format`` when set,
-    dropping to mmCIF for structures too large for the standard PDB format.
-    The writer fixes the extension to match the format actually written.
-    """
+    """Write the (in-place mutated) model via the DataManager, which picks
+    the format (the input's, or ``output.target_output_format``) and the
+    extension."""
     # New H atoms have blank serial numbers.
     model.get_hierarchy().atoms().reset_serial()
-    target = self.params.output.target_output_format
-    if target == "mmcif" or not model.get_hierarchy().fits_in_pdb_format():
-      fmt = "cif"
-      text = model.model_as_mmcif(additional_blocks=self._exptl_blocks(model))
-    else:
-      fmt = "pdb"
-      text = self._expdta_records(model) + model.model_as_pdb()
     self.output_file_name = self.data_manager.write_model_file(
-      text, filename=self._output_file_name(), format=fmt)
+      model, filename=self._output_file_name())
     print(f"Wrote file: {self.output_file_name}", file=self.logger)
-
-  @staticmethod
-  def _exptl_blocks(model):
-    """The input's experiment type as an mmCIF ``_exptl.method`` block, for
-    ``model_as_mmcif(additional_blocks=...)``; None without one."""
-    import iotbx.cif.model
-    from scitbx.array_family import flex
-    inp = model.get_model_input()
-    exp = inp.get_experiment_type() if inp is not None else None
-    if exp is None or exp.is_empty():
-      return None
-    block = iotbx.cif.model.block()
-    if len(exp.lines) == 1:
-      block["_exptl.method"] = exp.lines[0]
-    else:  # joint methods
-      block.add_loop(iotbx.cif.model.loop(
-        data={"_exptl.method": flex.std_string(exp.lines)}))
-    return [block]
-
-  @staticmethod
-  def _expdta_records(model):
-    """The input's experiment type as PDB EXPDTA records: the input's own
-    records for a PDB input, else one built from its _exptl.method."""
-    inp = model.get_model_input()
-    if inp is None:
-      return ""
-    if model.input_model_format_pdb():
-      records = [l for l in inp.title_section() if l.startswith("EXPDTA")]
-    else:
-      exp = inp.get_experiment_type()
-      records = ([] if exp.is_empty()
-                 else [f"EXPDTA    {'; '.join(exp.lines)}"])
-    return "".join(r.rstrip() + "\n" for r in records)
 
   def _output_file_name(self):
     """``output.file_name`` if given, else built from ``output.prefix``
