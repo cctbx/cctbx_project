@@ -18,6 +18,7 @@ from cctbx.array_family import flex
 from scitbx.math import dihedral_angle
 from libtbx import group_args
 from libtbx.utils import null_out
+from mmtbx.rotamer import rotamer_eval
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 import mmtbx.refinement.rotamer_bayes as rb
 from mmtbx.refinement.rotamer_bayes import priors, side_chain
@@ -338,12 +339,18 @@ def exercise_backrub():
   assert list(r._neighbours) == [("A", "60", "")], list(r._neighbours)
 
 if(__name__ == "__main__"):
-  exercise_priors()
+  # all but exercise_side_chain need chem_data/rotarama_data
+  have_data = rotamer_eval.find_rotarama_data_dir(optional=True) is not None
+  if(have_data):
+    exercise_priors()
   exercise_side_chain()
-  exercise_evidence_and_decisions()
-  exercise_stubs()
-  exercise_local_refinement()
-  exercise_unsupported_targets()
-  exercise_ncs_pooling()
-  exercise_backrub()
+  if(have_data):
+    exercise_evidence_and_decisions()
+    exercise_stubs()
+    exercise_local_refinement()
+    exercise_unsupported_targets()
+    exercise_ncs_pooling()
+    exercise_backrub()
+  else:
+    print("rotarama_data missing, skipping tests that need it")
   print("OK")

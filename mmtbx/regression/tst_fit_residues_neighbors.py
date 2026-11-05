@@ -3,7 +3,6 @@ import random
 from cctbx import crystal
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-from mmtbx.refinement.real_space import fit_residues
 import mmtbx.utils
 
 class symmetry_holder(object):
@@ -19,6 +18,8 @@ def all_atoms(h, sites_cart, i_selection, radius):
       primary_selection=flex.bool(sites_cart.size(), i_selection)).iselection())
 
 def neighbors_of(h, sites_cart, i_selection, radius):
+  # here because importing fit_residues needs chem_data/rotarama_data
+  from mmtbx.refinement.real_space import fit_residues
   return list(fit_residues.run._neighbors_of(h, sites_cart=sites_cart,
     i_selection=i_selection, radius=radius))
 
@@ -75,7 +76,11 @@ def exercise_approx_equal_fast():
         eps) == bool(expected), (a, b, eps)
 
 def run():
-  exercise_neighbors_of()
+  from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
+  if (find_rotarama_data_dir(optional=True) is None):
+    print("rotarama_data missing, skipping tests that need it")
+  else:
+    exercise_neighbors_of()
   exercise_approx_equal_fast()
   print("OK")
 
