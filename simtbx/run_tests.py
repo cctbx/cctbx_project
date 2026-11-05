@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 from libtbx import test_utils
 import libtbx.load_env
+OPT = libtbx.env.build_options
 
 nb_tst_list = [
     "$D/nanoBragg/tst_nanoBragg_minimal.py",
@@ -14,8 +15,12 @@ nb_tst_list = [
 
 db_tst_list_nonCuda = ["$D/diffBragg/tests/tst_diffBragg_utils.py",
                        "$D/diffBragg/tests/tst_diffBragg_structure_factors.py"]
-# Disabled 11/05/26 due to running long on Azure pipelines. TODO: disable this dynamically if GPU is not available
-db_tst_list_onlyCuda = [] # [["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb eta --kokkos"]]
+
+if not OPT.enable_cuda:
+  # Disabled 11/05/26 due to running long on Azure pipelines with OpenMP/nproc=2. Disabled dynamically only if GPU is not available.
+  db_tst_list_onlyCuda = []
+else:
+  db_tst_list_onlyCuda = [["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb eta --kokkos"]]
 
 db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_hopper_refine_Fhkl.py", "--scale .2"],
@@ -70,7 +75,6 @@ db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 2 --gamma 100 125 150 --grad sigma --sigma 1 2 3"]
     ]
 
-OPT = libtbx.env.build_options
 tst_list_parallel = []
 
 tst_list = nb_tst_list
