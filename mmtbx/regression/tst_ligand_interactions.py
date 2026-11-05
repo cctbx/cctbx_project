@@ -4868,9 +4868,10 @@ def exercise_templates_vs_builder():
   Gly-Asp-Lys-Arg-His-Gly, H complete (reduce2): the templates and the builder
   (use_templates=False) give the same side-chain groups; the builder's are
   uncertain (the amino-acid restraint files have no formal charges: total by
-  search). The N-terminal Gly with H1-H3 fails in the builder (the in-chain GLY
-  file has one H on N); the C-terminal Gly without OXT: no group either way (the
-  builder caps its C for the absent residue).
+  search). The N-terminal Gly with H1-H3: ammonium either way (the in-chain GLY
+  file has one H on N, the builder takes the extra H as a free N-terminus); the
+  C-terminal Gly without OXT: no group either way (the builder caps its C for the
+  absent residue).
   '''
   model = get_model(gdkrhg_model_str.split('\n'))
   atoms = model.get_hierarchy().atoms()
@@ -4884,15 +4885,13 @@ def exercise_templates_vs_builder():
   assert side == [('A ARG 4', 'guanidinium', 1, ('NE', 'NH1', 'NH2')),
     ('A ASP 2', 'carboxylate', -1, ('OD1', 'OD2')), ('A HIS 5', 'imidazolium', 1, ('ND1', 'NE2')),
     ('A LYS 3', 'ammonium', 1, ('NZ',))], side
-  assert core(b.groups) == side, core(b.groups)
   assert [r for r in core(t.groups) if r[0] == 'A GLY 1'] == [('A GLY 1', 'ammonium', 1,
     ('N',))]
+  assert core(b.groups) == core(t.groups), core(b.groups)
   assert set([(g['source'], g['certain'], g['charge_source']) for g in b.groups]) == set(
     [('builder', False, 'search')])
   assert set([(g['source'], g['certain']) for g in t.groups]) == set([('template', True)])
-  assert [(x['residue'], x['reason']) for x in b.failures] == [('A GLY 1',
-    'H not in the restraint file: N: 3 H in the model, 1 in the restraint file')]
-  assert t.failures == [] and t.missing == []
+  assert b.failures == [] and t.failures == [] and t.missing == []
   # the C-terminal Gly without OXT: the absent following residue capped (not an
   # acylium cation), neutral
   from mmtbx.ligands import rdkit_utils

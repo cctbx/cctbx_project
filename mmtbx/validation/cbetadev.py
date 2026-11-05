@@ -18,6 +18,7 @@ from scitbx.matrix import col, dihedral_angle, rotate_point_around_axis
 import sys
 from scitbx.array_family import flex
 from libtbx import group_args
+from libtbx.utils import Sorry
 
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from mmtbx.validation import cbd_utils
@@ -180,7 +181,8 @@ class cbetadev(validation):
   __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats",
                                       'percent_outliers', 'new_outliers', 'outliers_removed',
                                       'deviations', 'mahalanobis', 'ca_chirality',
-                                      'phi_psi_correction']
+                                      'phi_psi_correction',
+                                      'phi_psi_correction_region']
   program_description = "Analyze protein sidechain C-beta deviation"
   output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
   gui_list_headers = ["Chain", "Residue","Deviation","Angle"]
@@ -202,8 +204,14 @@ class cbetadev(validation):
       mahalanobis_cutoff=4.,
       show_deviation_stats=False,
       plot_deviation_histogram=False,
-      quiet=False):
+      quiet=False,
+      phi_psi_correction_region='all'):
     validation.__init__(self)
+    if phi_psi_correction_region not in ('all', 'positive'):
+      raise Sorry('phi_psi_correction_region must be all or positive, not %s'
+                  % phi_psi_correction_region)
+    self.phi_psi_correction_region = phi_psi_correction_region
+    positive_only = (phi_psi_correction_region == 'positive')
     self._outlier_i_seqs = flex.size_t()
     self.beta_ideal = {}
     output_list = []
@@ -289,7 +297,9 @@ class cbetadev(validation):
                       use_parent_for_modified_residues=
                         use_parent_for_modified_residues),
                     phi_psi, dev, dihedralNABB)
-                if apply_phi_psi_correction and phi_psi:
+                if (apply_phi_psi_correction and phi_psi and
+                    (not positive_only or
+                     cbd_utils.in_positive_phi_region(phi_psi[0]))):
                   correction = cbd_utils.get_correction_vector(
                     residue.resname, next_resname, phi_psi,
                     use_parent_for_modified_residues=
@@ -308,11 +318,15 @@ class cbetadev(validation):
       strength = 0.
       if apply_phi_psi_correction:
         corrected = [r for r in records if r.correction]
+        fit_kwds = {}
+        if positive_only:
+          fit_kwds['prior_weight'] = cbd_utils.positive_prior_weight
         s = cbd_utils.choose_strength(
           [r.result.deviation for r in corrected],
           [r.result.dihedral for r in corrected],
           [r.correction for r in corrected],
-          user_strength=phi_psi_correction_strength)
+          user_strength=phi_psi_correction_strength,
+          **fit_kwds)
         self.phi_psi_correction[model.id] = s
         strength = s.applied
       # second pass: apply the model's correction strength
@@ -395,6 +409,7 @@ class cbetadev(validation):
       for model_id, s in self.phi_psi_correction.items():
         model_label = ''
         if multi_model: model_label = ' model "%s"' % model_id.strip()
+        if positive_only: model_label += ' (positive phi only)'
         for line in format_correction_summary(model_label, s):
           print(line, file=out)
     if mahalanobis_z_score:
@@ -611,6 +626,8 @@ class cbetadev(validation):
             "phi_psi_correction_applied_strength" : s.applied,
             "phi_psi_correction_user_set" : s.user_set,
             "phi_psi_correction_check_failed" : s.check_failed,
+            "phi_psi_correction_region" :
+              getattr(self, 'phi_psi_correction_region', 'all'),
           })
     data['summary_results'] = summary_results
     return json.dumps(data, indent=2)

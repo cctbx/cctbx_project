@@ -1883,6 +1883,11 @@ def get_reduce_pdb_interpretation_params(use_neutron_distances):
   #p.pdb_interpretation.automatic_linking.link_metals = True
   p.pdb_interpretation.automatic_linking.link_residues = True
   p.pdb_interpretation.automatic_linking.exclude_hydrogens_from_bonding_decisions = True
+  # placement adds every dictionary H, also those whose parent is absent, and
+  # drops the isolated ones after process(): a cap would attach such a
+  # placeholder to the neighbour (H of a SER without N on CA). Callers that
+  # process a finished model, which may carry caps, set it back to True.
+  p.pdb_interpretation.recognize_capping_h = False
   #
   return p
 

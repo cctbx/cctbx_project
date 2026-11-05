@@ -52,6 +52,15 @@ Example:
                 strength between 0 and 1 is fitted for each model, and no \
                 correction is applied to a model whose mean deviation it \
                 would raise. Requires apply_phi_psi_correction.
+      phi_psi_correction_region = *all positive
+        .type = choice
+        .help = Residues the phi/psi correction applies to. all corrects every \
+                residue with a table entry. positive corrects only residues \
+                in the phi 0 to 150 bins, where the mean deviations share a \
+                direction, and fits the strength and checks the mean \
+                deviation on those residues alone. It adds far fewer new \
+                outliers but also removes far fewer. Requires \
+                apply_phi_psi_correction.
       use_parent_for_modified_residues = False
         .type = bool
         .help = Correct modified amino acids (e.g. SEP, HYP, MLY) using the \
@@ -104,6 +113,9 @@ Example:
     if (self.params.cbetadev.phi_psi_correction_strength is not None and
         not self.params.cbetadev.apply_phi_psi_correction):
       raise Sorry('phi_psi_correction_strength requires apply_phi_psi_correction')
+    if (self.params.cbetadev.phi_psi_correction_region != 'all' and
+        not self.params.cbetadev.apply_phi_psi_correction):
+      raise Sorry('phi_psi_correction_region requires apply_phi_psi_correction')
     if (self.params.cbetadev.display_phi_psi_correction and
         not self.params.cbetadev.apply_phi_psi_correction):
       raise Sorry('display_phi_psi_correction requires apply_phi_psi_correction')
@@ -128,6 +140,7 @@ Example:
       outliers_only=self.params.outliers_only,
       apply_phi_psi_correction=self.params.cbetadev.apply_phi_psi_correction,
       phi_psi_correction_strength=self.params.cbetadev.phi_psi_correction_strength,
+      phi_psi_correction_region=self.params.cbetadev.phi_psi_correction_region,
       display_phi_psi_correction=self.params.cbetadev.display_phi_psi_correction,
       use_parent_for_modified_residues=self.params.cbetadev.use_parent_for_modified_residues,
       exclude_d_peptides=self.params.cbetadev.exclude_d_peptides,

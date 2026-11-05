@@ -1307,7 +1307,8 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
   file's H minus those replaced by link caps (one per cap, less the atom's missing
   restraint-file heavy neighbours; none for a polymer bond of a polymer restraint
   file, e.g. the peptide N-C), compared with the model's H by count:
-    - fewer on a metal-bound atom: deprotonation (-1 each);
+    - fewer on a metal-bound atom, or on the ring N of a His with H on its other
+      ring N (a neutral tautomer of the file's charged ring): deprotonation (-1 each);
     - fewer elsewhere: the file's H added (no i_seq), noted in h_differences;
     - more: failure (an H the restraint file does not have).
   Without any H in the conformer: the file's H on every atom (no deprotonation).
@@ -1464,7 +1465,10 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
     ("O3*", "P"))
   # a peptide chain end where the file leaves the link's valence open (unlinked N or
   # C, uncharged, explicit orders summing to 2 on N or 3 on C, e.g. N-CA, N-H of a
-  # peptide-linking file; not an imine N=CA): the absent neighbour residue capped
+  # peptide-linking file; not an imine N=CA): the absent neighbour residue capped,
+  # unless the model closes the valence itself, as a free terminus does (OXT on C,
+  # more H on N than the file has). The H of such a terminus are the model's.
+  free_terminus = set()
   if polymer and group != "DNA" and group != "RNA":
     kinds = {"sing": 1, "doub": 2, "trip": 3}
     file_orders = {}
@@ -1479,6 +1483,15 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
       # orders not explicit (e.g. monomer library 'coval'): two file neighbours
       open_ = (sum(o) == valence - 1) if None not in o else len(o) == 2
       if i is not None and i not in linked and o and not q and open_:
+        if n == "C":
+          oxt = [k for k in fsc0[i] if k in present_set and not is_h(k) and
+            dict_name[k] not in d_atoms]
+          if oxt:
+            free_terminus.update(oxt)
+            continue
+        elif len([k for k in fsc0[i] if k in present_set and is_h(k)]) > len(d_h(n)):
+          free_terminus.add(i)
+          continue
         missing_caps.append((i, "(no %s residue)" % where))
   caps_on = {}
   for i, k in links:
@@ -1487,24 +1500,29 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
     caps_on[i] = caps_on.get(i, 0) + 1
   # hydrogens against the restraint file, per heavy atom
   deprotonations, deprotonated, to_add, extra = 0, {}, {}, []
+  his_ring_n = [i for i in heavy if resname == "HIS" and dict_name[i] in ("ND1", "NE2")]
+  his_no_h = [i for i in his_ring_n if not [k for k in fsc0[i] if k in present_set
+    and is_h(k)]]
+  tautomer_n = his_no_h if len(his_ring_n) == 2 and len(his_no_h) == 1 else []
   for i in heavy:
     n = dict_name[i]
     hs = d_h(n)
     replaced = max(0, caps_on.get(i, 0) - n_missing_nb.get(i, 0))
     want = max(0, len(hs) - replaced)
     mine = [k for k in fsc0[i] if k in present_set and is_h(k)]
-    if len(mine) == want:
+    if len(mine) == want or i in free_terminus:
       continue
     diff = dict(atom=n, model=len(mine), restraint_file=want, kind=None, added=[])
     if len(mine) > want:
       diff["kind"] = "extra"
       extra.append("%s: %d H in the model, %d in the restraint file" % (n, len(mine), want))
-    elif has_h and i in metal_bound:
+    elif has_h and (i in metal_bound or i in tautomer_n):
       diff["kind"] = "deprotonation"
       deprotonations += want - len(mine)
       deprotonated[i] = want - len(mine)
-      result.charge_notes.append("%s: %d restraint-file H missing on a metal-bound "
-        "atom, counted as deprotonation" % (n, want - len(mine)))
+      result.charge_notes.append("%s: %d restraint-file H missing on a %s atom, "
+        "counted as deprotonation" % (n, want - len(mine),
+        "metal-bound" if i in metal_bound else "His ring"))
     else:
       mine_names = set([dict_name.get(k) for k in mine])
       new = [h for h in hs if h not in mine_names][:want - len(mine)]
@@ -1781,6 +1799,15 @@ def residue_molecule(model, residue_group, altloc="", fsc0=None):
       result.search["set_aside"] = sorted([t for t in valid if t not in plausible])
       result.charge_notes.append("totals %s set aside (charged carbon)" % " ".join(
         ["%+d" % t for t in result.search["set_aside"]]))
+      valid = plausible
+    # a His ring N taken as deprotonated is not also a cation (two ring bonds, no H)
+    plausible = dict([(t, m) for t, m in valid.items() if not [i for i in tautomer_n
+      if m.GetAtomWithIdx(idx[i]).GetFormalCharge() > 0]])
+    if plausible and len(plausible) < len(valid):
+      dropped = sorted([t for t in valid if t not in plausible])
+      result.search["set_aside"] = sorted(result.search["set_aside"] + dropped)
+      result.charge_notes.append("totals %s set aside (cation on a His ring N without "
+        "H)" % " ".join(["%+d" % t for t in dropped]))
       valid = plausible
     if len(valid) > 1:
       return fail("ambiguous total charge for %s (%s): %s" % (resname, no_formal,

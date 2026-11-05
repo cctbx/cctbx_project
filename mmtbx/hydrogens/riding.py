@@ -172,6 +172,24 @@ class manager(object):
         parameterization_cpp.append(hp)
     return parameterization_cpp
 
+  def riding_selection(self):
+    """
+    Select the H atoms that ride: those with a parameterization.
+
+    The other H atoms (hd_selection is all H and D) have no parent to follow,
+    such as water H or the H of an atom whose heavy neighbor is missing, and
+    a minimizer must refine them as ordinary atoms instead of freezing them.
+
+    Returns
+    -------
+    flex.bool
+        One flag per atom of the hierarchy, True for a riding H.
+    """
+    result = flex.bool(self.pdb_hierarchy.atoms_size(), False)
+    for rc in self.parameterization_cpp:
+      result[rc.ih] = True
+    return result
+
   def refinable_parameters_init(self):
     return flex.double(self.n_parameters(), 0)
 

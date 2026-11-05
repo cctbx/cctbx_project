@@ -394,4 +394,8 @@ def main(only_i=None):
       file_name, flipped, unflipped)
 
 if __name__ == '__main__':
-  main(*tuple(sys.argv[1:]))
+  import libtbx.load_env
+  if libtbx.env.find_in_repositories('chem_data') is not None:
+    main(*tuple(sys.argv[1:]))
+  else:
+    print('chem_data is missing, skipping test')

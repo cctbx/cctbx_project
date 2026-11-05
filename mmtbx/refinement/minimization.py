@@ -116,19 +116,22 @@ class lbfgs(object):
     Riding H atoms are not parameters: apply_shifts ignores their shifts and
     places them on their parents, and compute_target transfers their
     gradients onto the parents. The X-ray gradients of the H atoms are needed
-    for that transfer, so every H atom carries a site gradient flag for the
-    duration of the minimization; restore_riding_h_flags undoes that.
+    for that transfer, so every riding H atom carries a site gradient flag
+    for the duration of the minimization; restore_riding_h_flags undoes
+    that. An H atom the manager does not parameterize (water, a parent with
+    a missing neighbor) is an ordinary atom refined by its own flags.
     """
     scatterers = self.xray_structure.scatterers()
-    hd_selection = self.riding_h_manager.hd_selection
-    assert hd_selection.size() == scatterers.size()
+    self.riding_selection = self.riding_h_manager.riding_selection()
+    assert self.riding_selection.size() == scatterers.size()
     grad_site = flex.bool([sc.flags.grad_site() for sc in scatterers])
-    self.riding_h_flags_added = (hd_selection & ~grad_site).iselection()
+    self.riding_h_flags_added = (
+      self.riding_selection & ~grad_site).iselection()
     scatterers.flags_set_grad_site(iselection = self.riding_h_flags_added)
     # The parameters are the sites of these atoms, three per atom.
-    self.sites_in_x = grad_site | hd_selection
+    self.sites_in_x = grad_site | self.riding_selection
     assert self.xray_structure.n_parameters() == 3*self.sites_in_x.count(True)
-    self.h_in_x = hd_selection.select(self.sites_in_x)
+    self.h_in_x = self.riding_selection.select(self.sites_in_x)
 
   def restore_riding_h_flags(self):
     scatterers = self.xray_structure.scatterers()
@@ -158,9 +161,9 @@ class lbfgs(object):
     reduced = self.riding_h_manager.gradients_reduced_cpp(
       gradients    = site_gradients,
       sites_cart   = self.xray_structure.sites_cart(),
-      hd_selection = self.riding_h_manager.hd_selection)
+      hd_selection = self.riding_selection)
     site_gradients = flex.vec3_double(n, [0,0,0])
-    site_gradients.set_selected(self.riding_h_manager.not_hd_selection, reduced)
+    site_gradients.set_selected(~self.riding_selection, reduced)
     return site_gradients.select(self.sites_in_x).as_double()
 
   def apply_shifts(self):
@@ -171,7 +174,7 @@ class lbfgs(object):
         max_value = self.u_max)
     shifts = self.x
     if(self.riding_h):
-      # The H atoms are not parameters: their shifts are ignored.
+      # The riding H atoms are not parameters: their shifts are ignored.
       shifts = flex.vec3_double(self.x)
       shifts.set_selected(self.h_in_x, [0,0,0])
       shifts = shifts.as_double()

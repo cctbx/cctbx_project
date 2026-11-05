@@ -1258,6 +1258,20 @@ output
 }
 '''
 
+def _label_atoms(molecule, atoms, i_seqs=None):
+  '''
+  Stores the quoted model atom on the RDKit atoms: a molecule is one residue, so
+  its atom indices are not those of the model, and caps and added H have no model
+  atom. i_seqs is {molecule index: index in atoms}; by default they are in step.
+  '''
+  for i, atom in enumerate(molecule.GetAtoms()):
+    j = i if i_seqs is None else i_seqs.get(i)
+    if j is not None:
+      atom.SetProp('quote', atoms[j].quote())
+
+def _atom_label(atom):
+  return atom.GetProp('quote' if atom.HasProp('quote') else '_Name')
+
 class Program(ProgramTemplate):
   description = '''
 Count electrons
@@ -1284,7 +1298,10 @@ Inputs:
       verbose = verbose,
       )
     if verbose: print(rc.molecule)
-    if rc.molecule.ok: return rc.molecule.total_charge, rc.molecule.mol
+    if rc.molecule.ok:
+      _label_atoms(rc.molecule.mol, model.get_hierarchy().atoms(),
+                   rc.molecule.rdkit_to_iseq)
+      return rc.molecule.total_charge, rc.molecule.mol
     return None, None
 
   def get_charge_of_molecule_simple(self, molecule, model, iterations=1000, verbose=False):
@@ -1373,7 +1390,6 @@ Inputs:
         raise Sorry('Model must have Hydrogen atoms')
       model.set_log(null_out())
       model.process(make_restraints=True)
-    atoms=model.get_hierarchy().atoms()
 
     t0=time.time()
     if 0:
@@ -1404,6 +1420,7 @@ Inputs:
                                                              verbose=False)
         print(f"Total formal charge simple: {total_charge_each}\n", file=self.logger)
         molecule_each=molecules[i_mol]
+        _label_atoms(molecule_each, models[i_mol].get_hierarchy().atoms())
       else:
         molecules[i_mol]=molecule_each
 
@@ -1442,7 +1459,7 @@ Inputs:
           elif self.params.action.show_non_zero_formal_charges and atom.GetFormalCharge():
             show=True
           if show:
-            outl+=f'  {i+1:2d} {atoms[i].quote()} : charge={atom.GetFormalCharge():2d}\n'
+            outl+=f'  {i+1:2d} {_atom_label(atom)} : charge={atom.GetFormalCharge():2d}\n'
 
       if outl:
         print(f'{header}\n{outl}', file=self.logger)
@@ -1457,7 +1474,7 @@ Inputs:
           break
         for i, atom in enumerate(molecule.GetAtoms()):
           pc=float(atom.GetProp('_GasteigerCharge'))
-          print(f'{i+1:2d} {atoms[i].quote()} : charge={atom.GetFormalCharge():2d} partial={pc:5.2f}')
+          print(f'{i+1:2d} {_atom_label(atom)} : charge={atom.GetFormalCharge():2d} partial={pc:5.2f}')
       if outl:
         print(f'\nPartial charges\n{outl}')
 
@@ -1465,8 +1482,8 @@ Inputs:
       outl=''
       for i_mol, molecule in enumerate(molecules):
         for bond in molecule.GetBonds():
-          q1=atoms[bond.GetBeginAtomIdx()].quote()
-          q2=atoms[bond.GetEndAtomIdx()].quote()
+          q1=_atom_label(bond.GetBeginAtom())
+          q2=_atom_label(bond.GetEndAtom())
           outl+=f'  {q1} - {q2} : {bond.GetBondType()}\n'
       if outl:
         print(f'\nBond types\n{outl}')

@@ -333,9 +333,15 @@ def exercise_environment_script():
       os.environ["PHENIX"] = os.path.join(box.dir, "no_such_dir")
       message = expect(Sorry, runtime_utils.get_environment_script)
       assert "phenix_env.sh" in message and "setpaths.sh" in message, message
-      # a plain cctbx tree has no phenix_env.sh to point the user at
+      # a plain cctbx tree has no phenix_env.sh to point the user at; an
+      # installed package (where this test also runs) is not a plain tree
       del os.environ["PHENIX"]
-      message = expect(Sorry, runtime_utils.get_environment_script)
+      saved_installed = libtbx.env.installed
+      libtbx.env.installed = False
+      try:
+        message = expect(Sorry, runtime_utils.get_environment_script)
+      finally:
+        libtbx.env.installed = saved_installed
       assert "setpaths.sh" in message, message
       assert "phenix_env.sh" not in message, message
       # the error leaves nothing behind: no half-written run script and no

@@ -121,9 +121,12 @@ every rotation, so leaving it out lets the 1-3 atoms decide: a CH3 on a CB is
 staggered, and the result does not depend on the frame of the input. X-H is
 the monomer library's (C with 3 substituents: aromatic C-H), else the sum of
 the covalent radii. Each H joins its parent's atom group with the parent's
-occupancy, B, segid and hetero flag. Afterwards a cap closer than 1.0 A to
-any atom of its MODEL but its parent, symmetry mates included, is a Sorry
-(the clash check is symmetry-aware), as in reduce2's qmready clash check.
+B, segid and hetero flag. Its occupancy is 0 when its name is no dictionary
+atom of the residue (HCG, HC1: a cap is not an observed atom and adds nothing
+to Fcalc), else the parent's, as for any reduce2 H (HB2, HB3 on a truncated
+CB). Afterwards a cap closer than 1.0 A to any atom of its MODEL but its
+parent, symmetry mates included, is a Sorry (the clash check is
+symmetry-aware), as in reduce2's qmready clash check.
 Several MODELs are capped independently: no atom of one MODEL orients or
 clashes with a cap of another. The bond table of the detection result is
 reused.
@@ -132,6 +135,8 @@ Names of the caps, unique within the conformer and at most 4 characters:
 1. dictionary H names that are free (HB2, HB3 on a truncated CB);
 2. 'H' + the missing heavy atom's name (HCG, HOP3);
 3. HC1, HC2, ... when 2 is too long or taken.
+Never a dictionary name of the residue unless it is a free H name of the
+parent: HO3' is the H of O3', not a cap on a C3' whose O3' is absent (HC1).
 
 Guess mode (guess_for_unknowns, reduce2's capping_guess_for_unknowns): V by
 element and formal charge, bonds from the bond table or covalent radii, as in
@@ -161,18 +166,30 @@ exactly gives some surprising but closed-shell, charge-preserving caps:
 - ASP without OD1, the double-bonded O: CG gets 2 H, CH2-O(-) with OD2 bare;
 - a C with OXT but no O: 2 H, CH2-OXT(-).
 
+Reading a capped model. find_capping_h() tells the caps of any hierarchy
+from the H the dictionary cannot attach (spec section 3), and
+pdb_interpretation.process calls add_capping_h_restraints() to give each cap
+a bond, angles and a nonbonded type under the 'capping' origin id, so a
+capped model processes under the default stop_for_unknowns (spec section 5).
+The PHIL parameter pdb_interpretation.recognize_capping_h (default True)
+switches this off; reduce2's own H placement does
+(reduce_hydrogen.get_reduce_pdb_interpretation_params): it adds every
+dictionary H, also those whose parent atom is absent, and removes the ones
+left isolated after processing, so a cap must not attach such a placeholder to
+the neighbour (the H of a SER without N on its CA). reduce2 turns it back on
+when it processes the placed model (_ReinterpretModel, the qmready copy).
+
 Limitations.
-- The capped model cannot be processed by pdb_interpretation (the cap names
-  are invented): it is for QM use. Capping is the last step, and the model
-  manager reduce2 returns is unprocessed.
+- An old capped file may hold a cap named like a dictionary H of another
+  atom (HG on a CB whose SG is absent): the name is then read as that H
+  (spec section 8).
 - A blank-altloc parent whose dictionary partner exists in only one altloc is
   treated as complete (the partner is present in some conformer).
 - reduce2's optimizer rotates H (the terminal HO3' and HO5' included) against
-  the asymmetric unit only; the qmready clash check is symmetry-aware, so a
-  hydroxyl H at a crystal contact can still end in its Sorry. A QM model is
-  usually run without crystal symmetry (no CRYST1), where this cannot occur.
-  Documented by mmtbx/regression/tst_reduce2_symmetry_optimizer.py (an
-  expected failure until the optimizer is fixed).
+  the asymmetric unit only unless include_symmetric_copies=True; with the
+  default, a hydroxyl H at a crystal contact is only pushed past the
+  symmetry-aware qmready clash check by the regularization
+  (mmtbx/regression/tst_reduce2_symmetry_optimizer.py).
 - A residue reduced to N and CA gets no NH3+ from qmready (the propeller needs
   C) and its N is not examined by capping.
 - reduce2 drops an input H on a truncated atom even with keep_existing_H=True;
@@ -185,9 +202,11 @@ from libtbx import group_args
 from libtbx.utils import Sorry
 from cctbx.geometry_restraints.linking_class import linking_class
 from cctbx import crystal
+from cctbx import geometry_restraints
 from mmtbx.ligands.electrons import atom_property
 from mmtbx.hydrogens import reduce_hydrogen
 import iotbx.pdb.hierarchy
+import itertools
 import math
 from scitbx import matrix
 from scitbx.array_family import flex
@@ -303,6 +322,51 @@ def _dictionary_atoms(resname, mon_lib_srv, log=None):
     return None
   return atoms, bonds
 
+_SHARED_MON_LIB_SRV = None
+
+def shared_mon_lib_srv():
+  '''
+  The monomer library server of this process, built on the first call:
+  reading the library is slow and the server accumulates the restraint CIF
+  objects of everything processed with it.
+  '''
+  global _SHARED_MON_LIB_SRV
+  if _SHARED_MON_LIB_SRV is None:
+    import mmtbx.monomer_library.server
+    _SHARED_MON_LIB_SRV = mmtbx.monomer_library.server.server()
+  return _SHARED_MON_LIB_SRV
+
+def _dictionary_names(resname, mon_lib_srv, cache):
+  '''
+  group_args(names, h_partner, backbone) of resname's dictionary
+  (_dictionary_atoms): names the set of all atom names, h_partner {H name:
+  the heavy atom it is bonded to}, backbone {reference name: dictionary
+  name} through iotbx.pdb.rna_dna_atom_names_backbone_aliases for a
+  nucleotide dictionary (it has C1'), else {}; None if no dictionary knows
+  resname. cache: {resname: result}.
+  '''
+  if resname in cache: return cache[resname]
+  entries = _dictionary_atoms(resname, mon_lib_srv)
+  if entries is None:
+    cache[resname] = None
+    return None
+  atoms, bonds = entries
+  is_h = dict((n, e.strip().upper() in ('H', 'D')) for n, e, l in atoms)
+  h_partner = {}
+  for n1, n2, t in bonds:
+    if is_h.get(n1) and not is_h.get(n2, True): h_partner[n1] = n2
+    elif is_h.get(n2) and not is_h.get(n1, True): h_partner[n2] = n1
+  names = set(n for n, e, l in atoms)
+  aliases = iotbx.pdb.rna_dna_atom_names_backbone_aliases
+  backbone = {}
+  for n in names:
+    ref = aliases.get(n)
+    if ref is not None: backbone[ref] = n
+  if " C1'" not in backbone: backbone = {}
+  cache[resname] = group_args(names=names, h_partner=h_partner,
+                              backbone=backbone)
+  return cache[resname]
+
 def _dictionary_partners(resname, mon_lib_srv, is_metal, cache, log=None):
   '''
   {name: [(partner name, partner is H, partner is a leaving atom)]} of
@@ -410,6 +474,52 @@ def _record(atom, n_fill, neighbours, missing_names, h_names, source,
     h_names       = h_names,
     source        = source))
 
+def _missing_partners(own, present):
+  '''
+  The heavy dictionary partners (own, _dictionary_partners()) absent from
+  present, in dictionary order.
+  '''
+  return [p for p, is_h, l in own if not is_h and p not in present]
+
+def _budget(atom, own, order, present, neighbours, rg):
+  '''
+  The valence budget of a non-H dictionary atom: group_args(n_fill, missing,
+  h_names). atom in residue group rg; own its dictionary partners
+  (_dictionary_partners()); order(a, b) the bond order of two dictionary
+  names; present the names in its conformer; neighbours its bonded atoms
+  (_conformer_neighbours()). missing: the dictionary heavy partners absent
+  from the conformer, less the leaving atoms that links replace; n_fill the
+  H it lacks (valence less the bond orders used by present partners, H and
+  links); h_names the dictionary H partners absent from the conformer.
+  n_fill 0 and missing [] when no heavy partner is missing; n_fill <= 0 with
+  missing as found when the atom is saturated.
+  '''
+  name = atom.name.strip()
+  missing = _missing_partners(own, present)
+  if not missing: return group_args(n_fill=0, missing=[], h_names=[])
+  valence = sum(order(name, p) for p, is_h, l in own)
+  heavy_partners = set(p for p, is_h, l in own if not is_h)
+  used = sum(order(name, p) for p in heavy_partners if p in present)
+  n_link = 0
+  for other in neighbours:
+    if other.element_is_hydrogen():
+      used += 1
+    elif (other.name.strip() not in heavy_partners or
+          other.parent().parent().memory_id() != rg.memory_id()):
+      # link partner, in place of a leaving atom
+      n_link += 1
+  used += n_link
+  n_fill = valence - used
+  if n_fill <= 0: return group_args(n_fill=n_fill, missing=missing, h_names=[])
+  # the leaving atoms the links replace are not missing (C without O,
+  # peptide-bonded: O, not OXT)
+  for p, is_h, is_leaving in own:
+    if n_link and is_leaving and p in missing:
+      missing.remove(p)
+      n_link -= 1
+  h_names = [p for p, is_h, l in own if is_h and p not in present]
+  return group_args(n_fill=n_fill, missing=missing, h_names=h_names)
+
 def find_dangling_atoms(model, guess_for_unknowns=False, log=None,
                         cut_bonds=None):
   '''
@@ -470,35 +580,15 @@ def find_dangling_atoms(model, guess_for_unknowns=False, log=None,
         if not own: continue
         if names_by_altloc is None: names_by_altloc = _conformer_names(rg)
         present = _present_names(atom, names_by_altloc)
-        missing = [p for p, is_h, l in own if not is_h and p not in present]
-        if not missing: continue
-        valence = sum(order(name, p) for p, is_h, l in own)
-        heavy_partners = set(p for p, is_h, l in own if not is_h)
-        used = sum(order(name, p) for p in heavy_partners if p in present)
+        if not _missing_partners(own, present): continue
         neighbours = _conformer_neighbours(atom, table.get(atom.i_seq, ()),
                                            atoms, is_metal)
-        n_link = 0
-        for other in neighbours:
-          if other.element_is_hydrogen():
-            used += 1
-          elif (other.name.strip() not in heavy_partners or
-                other.parent().parent().memory_id() != rg.memory_id()):
-            # link partner, in place of a leaving atom
-            n_link += 1
-        used += n_link
-        n_fill = valence - used
-        if n_fill <= 0:
-          saturated.add(atom.i_seq)
+        budget = _budget(atom, own, order, present, neighbours, rg)
+        if budget.n_fill <= 0:
+          if budget.missing: saturated.add(atom.i_seq)
           continue
-        # the leaving atoms the links replace are not missing (C without O,
-        # peptide-bonded: O, not OXT)
-        for p, is_h, is_leaving in own:
-          if n_link and is_leaving and p in missing:
-            missing.remove(p)
-            n_link -= 1
-        h_names = [p for p, is_h, l in own if is_h and p not in present]
-        _record(atom, n_fill, neighbours, missing, h_names, 'dictionary',
-                records, skipped)
+        _record(atom, budget.n_fill, neighbours, budget.missing,
+                budget.h_names, 'dictionary', records, skipped)
       if cut_bonds:
         # rule 9: atoms that lost a bond to an atom outside the model
         recorded = set(r.i_seq for r in records)
@@ -634,6 +724,434 @@ def extra_sigma_bonds(result):
     extra[i_seq] = extra.get(i_seq, 0) + 1
     extra[j_seq] = extra.get(j_seq, 0) + 1
   return extra
+
+# ==============================================================================
+# Recognition of capping H
+
+# H added by the chain-end modifications pdb_interpretation applies (NH3,
+# NH2, NH1, COOH, 5*END, 3*END, p5*END), with the heavy atom each is bonded to
+CHAIN_END_H = {'H1': 'N', 'H2': 'N', 'H3': 'N', 'HN1': 'N', 'HN2': 'N',
+               'HN': 'N', 'HXT': 'OXT', "HO5'": "O5'", "HO3'": "O3'",
+               'HOP3': 'OP3'}
+
+def _dictionary_h(name, names, synonyms):
+  '''
+  (dictionary name, its heavy partner or None) of an H named name, as
+  pdb_interpretation matches names (_get_mappings), or None when no
+  dictionary atom has that name. Tried in this order:
+  - the name, its upper case form (case folding), and of each the forms
+    with every ' made * and every * made ' (prime/star swapping);
+  - each of these with its leading or trailing digit moved to the other end
+    (1HB, HB1), and each result with D for H (DB2 is HB2; this is also what
+    the monomer's own hydrogen_deuterium_aliases() map);
+  - all of these as written, then through the monomer library's synonyms of
+    the residue (synonyms), then for a nucleotide dictionary through
+    iotbx.pdb.rna_dna_atom_names_backbone_aliases (H5T is HO5', 2HO* is
+    HO2');
+  - last the chain-end H (CHAIN_END_H, backbone aliases applied) when their
+    partner is in the dictionary.
+  Not reproduced: the name tables of pdb_interpretation's
+  atom_name_interpretation (old nucleotide and amino acid name sets read
+  as a whole residue). An H matched only through them is attached by
+  pdb_interpretation, so add_capping_h_restraints() still ignores it (it
+  acts on unattached atoms only); capping_h_selection() could select it.
+  names: _dictionary_names().
+  '''
+  bases = [name]
+  if name.upper() != name: bases.append(name.upper())
+  for n in list(bases):
+    for swapped in (n.replace("'", "*"), n.replace("*", "'")):
+      if swapped not in bases: bases.append(swapped)
+  tries = []
+  for n in bases:
+    tries.append(n)
+    if n[:1].isdigit(): tries.append(n[1:] + n[0])
+    elif n[-1:].isdigit(): tries.append(n[-1] + n[:-1])
+  tries += ['H' + n[1:] for n in tries if n[:1] == 'D']
+  for n in tries:
+    if n in names.names: return n, names.h_partner.get(n)
+  for n in tries:
+    n = synonyms.get(n)
+    if n is not None and n in names.names: return n, names.h_partner.get(n)
+  if names.backbone:
+    aliases = iotbx.pdb.rna_dna_atom_names_backbone_aliases
+    for n in list(tries):
+      ref = aliases.get(n)
+      if ref is None: continue
+      n = names.backbone.get(ref)
+      if n is not None: return n, names.h_partner.get(n)
+      if ref.strip() not in tries: tries.append(ref.strip())
+  for n in tries:
+    partner = CHAIN_END_H.get(n)
+    if partner is not None and partner in names.names: return n, partner
+  return None
+
+def _covalent_cutoff(a, b):
+  '''
+  Bonding distance of atoms a and b: the sum of their covalent radii +
+  GUESS_BOND_TOLERANCE; None for an element without a radius.
+  '''
+  r_a = reduce_hydrogen._covalent_radius(reduce_hydrogen._atom_element(a))
+  r_b = reduce_hydrogen._covalent_radius(reduce_hydrogen._atom_element(b))
+  if r_a is None or r_b is None: return None
+  return r_a + r_b + GUESS_BOND_TOLERANCE
+
+def _capping_parent(h, rg, is_metal):
+  '''
+  Condition 3: the closest non-H, non-metal atom of residue group rg
+  altloc-compatible with h and within bonding distance of it, else None.
+  '''
+  best, best_d = None, None
+  for other in rg.atoms():
+    if other.element_is_hydrogen(): continue
+    if is_metal(reduce_hydrogen._atom_element(other)): continue
+    if not reduce_hydrogen._compatible(other, h): continue
+    cutoff = _covalent_cutoff(h, other)
+    if cutoff is None: continue
+    d = h.distance(other)
+    if d < cutoff and (best_d is None or d < best_d): best, best_d = other, d
+  return best
+
+def _neighbours_by_distance(atom, atoms, sites, is_metal, partner_names,
+                            conformer=None):
+  '''
+  Bonded non-metal neighbours of atom by covalent radii + 0.4 A
+  (GUESS_BOND_TOLERANCE) among its residue group and the previous and next
+  residue groups of its chain, one per conformer (_conformer_neighbours();
+  conformer, default atom, is the atom whose altloc selects it). An atom of
+  atom's own residue group counts only if its name is in partner_names (the
+  dictionary partners of atom): inside a residue pdb_interpretation bonds
+  the dictionary bonds and nothing else, so an atom that is merely close (a
+  ligand whose name collides with an unrelated dictionary entry) is no
+  neighbour in the bond table either. Names are compared as written, without
+  the library's synonyms (old names such as O1P), so a partner under an old
+  name is missed. Atoms of the previous and next residue groups count by
+  distance alone (links). atoms, sites: hierarchy.atoms() with i_seq their
+  positions, and their sites.
+  '''
+  rg = atom.parent().parent()
+  rgs = rg.parent().residue_groups()
+  k = [r.memory_id() for r in rgs].index(rg.memory_id())
+  i_seqs = flex.size_t()
+  for other_rg in rgs[max(0, k-1):k+2]:
+    i_seqs.extend(other_rg.atoms().extract_i_seq())
+  d2 = (sites.select(i_seqs) - atom.xyz).dot()
+  close = []
+  for j, d2_j in zip(i_seqs, d2):
+    if j == atom.i_seq: continue
+    if (atoms[j].parent().parent().memory_id() == rg.memory_id() and
+        atoms[j].name.strip() not in partner_names): continue
+    cutoff = _covalent_cutoff(atom, atoms[j])
+    if cutoff is not None and d2_j < cutoff**2: close.append(j)
+  return _conformer_neighbours(conformer or atom, close, atoms, is_metal)
+
+def _hd_iselection(atoms):
+  '''
+  Positions of the H and D atoms in atoms, as atom.element_is_hydrogen()
+  tests them (element ' H', 'H ', ' D' or 'D '), in flex: no Python work per
+  atom.
+  '''
+  e = atoms.extract_element()
+  result = flex.bool(e.size(), False)
+  for symbol in (' H', 'H ', 'H', ' D', 'D ', 'D'):
+    result |= (e == symbol)
+  return result.iselection()
+
+def find_capping_h(hierarchy, mon_lib_srv, bond_table=None, log=None):
+  '''
+  The capping H of hierarchy. A capping H is an H or D atom such that
+  1. its residue has a restraint dictionary (_dictionary_atoms());
+  2. the dictionary cannot attach it to any present atom: its name is not
+     in the dictionary, or it is but the dictionary bond partner of that
+     name is absent from the atom's conformer. Names are matched as
+     pdb_interpretation matches them (_dictionary_h(): D for H, 1HB for HB1,
+     the library's synonyms, the H of the chain-end modifications);
+  3. the closest heavy atom of its own residue group within bonding distance
+     (covalent radii + 0.4 A) exists and is altloc-compatible: the parent;
+  4. the parent has a bonded neighbour other than these H (capping rule 5
+     refuses to orient caps on a lone atom) and a dangling valence that
+     accommodates it: it misses at least one heavy dictionary partner, and
+     the number of such H on the parent (in the H's altloc) does not exceed
+     the parent's n_fill (_budget(), with these H left out of the
+     neighbours).
+  HB2 and HB3 on a truncated CB are dictionary atoms attached to a present
+  atom: not caps. A residue without any dictionary has no caps.
+
+  Bonded neighbours of a parent come from bond_table ({i_seq: set(i_seq)},
+  bond_table()) when given: exact, links to remote residues included.
+  bond_table is indexed by positions in hierarchy.atoms().
+  Without it they are found by distance within the parent's residue group
+  and the previous and next residue groups of its chain
+  (_neighbours_by_distance()), an atom of the parent's own residue group
+  only if it is a dictionary partner of the parent: pdb_interpretation bonds
+  nothing else inside a residue, so a close non-partner would make the two
+  modes disagree. A link to a remote residue (disulfide, covalent ligand) is
+  then missed, which raises n_fill by one and makes the acceptance more
+  permissive, never stricter, with one exception: a parent whose only
+  bonded neighbour is such a link has no neighbour in this mode, and its H
+  are rejected (no bonded neighbour) where the bond-table mode accepts them.
+
+  Cost: a model without H or D returns at once (one flex element test);
+  otherwise one pass over the H and D atoms only, with set lookups,
+  dictionary work cached per residue name, neighbours only for the parents
+  of candidates.
+
+  hierarchy: not modified; when its i_seqs are not the positions of its
+  atoms the work is done on a copy with i_seq reset. log: one line per
+  rejected candidate (None: silent).
+  Returns group_args(selection, records, rejected):
+    selection: flex.bool over hierarchy.atoms(), True for the caps
+    records: group_args(i_seq, parent_i_seq, coordination, steric) per cap,
+      i_seq positions in hierarchy.atoms(); coordination of the parent with
+      its caps, steric its steric_number()
+    rejected: (atom label, reason) per candidate (condition 2) failing
+      condition 3 or 4
+  '''
+  atoms = hierarchy.atoms()
+  n_atoms = atoms.size()
+  hd = _hd_iselection(atoms)
+  if hd.size() == 0:
+    return group_args(selection=flex.bool(n_atoms, False), records=[],
+                      rejected=[])
+  if not (atoms.extract_i_seq() == flex.size_t_range(n_atoms)).all_eq(True):
+    hierarchy = hierarchy.deep_copy()
+    atoms = hierarchy.atoms()
+    atoms.reset_i_seq()
+  sites = atoms.extract_xyz()
+  properties = atom_property()
+  is_metal = lambda element: properties.is_metal(element.strip().upper())
+  synonyms = mon_lib_srv.comp_synonym_atom_list_dict
+  names_cache, h_cache, partners_cache, orders_cache = {}, {}, {}, {}
+  rejected = []
+  def reject(atom, reason):
+    rejected.append((_atom_label(atom), reason))
+    if log is not None:
+      print('Capping H: %s is not a capping H: %s' % rejected[-1], file=log)
+  # conditions 1 to 3, on the H and D atoms only (model order)
+  groups = {} # (parent i_seq, altloc of the H): [H], in model order
+  rg_id, names_by_altloc, present_by_altloc = None, None, {}
+  for i_seq in hd:
+    atom = atoms[i_seq]
+    ag = atom.parent()
+    rg = ag.parent()
+    if rg.memory_id() != rg_id:
+      rg_id, names_by_altloc, present_by_altloc = rg.memory_id(), None, {}
+    resname = ag.resname.strip()
+    names = _dictionary_names(resname, mon_lib_srv, names_cache)
+    if names is None: continue
+    altloc = ag.altloc.strip()
+    name = atom.name.strip()
+    key = (resname, name)
+    if key not in h_cache:
+      h_cache[key] = _dictionary_h(name, names, synonyms.get(resname, {}))
+    found = h_cache[key]
+    if found is not None and found[1] is not None:
+      if names_by_altloc is None: names_by_altloc = _conformer_names(rg)
+      present = present_by_altloc.get(altloc)
+      if present is None:
+        present = present_by_altloc[altloc] = _present_names(
+          atom, names_by_altloc)
+      if found[1] in present: continue
+    parent = _capping_parent(atom, rg, is_metal)
+    if parent is None:
+      reject(atom, 'no heavy atom of its residue within bonding distance')
+      continue
+    groups.setdefault((parent.i_seq, altloc), []).append(atom)
+  # condition 4
+  selection = flex.bool(n_atoms, False)
+  records = []
+  for (i_parent, altloc), group in groups.items():
+    parent = atoms[i_parent]
+    rg = parent.parent().parent()
+    resname = parent.parent().resname.strip()
+    parent_name = parent.name.strip()
+    partners = _dictionary_partners(resname, mon_lib_srv, is_metal,
+                                    partners_cache)
+    own = partners.get(parent_name) if partners is not None else None
+    if not own:
+      for atom in group:
+        reject(atom, 'parent %s is not in the dictionary' % parent_name)
+      continue
+    conformer = group[0] if altloc else parent
+    present = _present_names(conformer, _conformer_names(rg))
+    if bond_table is not None:
+      neighbours = _conformer_neighbours(conformer,
+        bond_table.get(i_parent, ()), atoms, is_metal)
+    else:
+      neighbours = _neighbours_by_distance(parent, atoms, sites, is_metal,
+        set(name for name, is_h, is_leaving in own), conformer=conformer)
+    in_group = set(atom.i_seq for atom in group)
+    neighbours = [a for a in neighbours if a.i_seq not in in_group]
+    if not neighbours:
+      # capping rule 5: nothing to orient the H against
+      for atom in group:
+        reject(atom, 'parent %s has no bonded neighbour' % parent_name)
+      continue
+    orders = reduce_hydrogen._bond_orders(resname, mon_lib_srv, orders_cache)
+    order = lambda a, b: orders.get(frozenset((a, b)), 1)
+    budget = _budget(parent, own, order, present, neighbours, rg)
+    if not budget.missing:
+      reason = 'parent %s misses no heavy atom' % parent_name
+    elif len(group) > budget.n_fill:
+      reason = '%d H on %s, its valence allows %d' % (len(group),
+        parent_name, max(0, budget.n_fill))
+    else:
+      reason = None
+    if reason is not None:
+      for atom in group: reject(atom, reason)
+      continue
+    coordination = len(neighbours) + len(group)
+    steric = steric_number(reduce_hydrogen._atom_element(parent), coordination)
+    for atom in group:
+      selection[atom.i_seq] = True
+      records.append(group_args(i_seq=atom.i_seq, parent_i_seq=i_parent,
+        coordination=coordination, steric=steric))
+  return group_args(selection=selection, records=records, rejected=rejected)
+
+def capping_h_selection(hierarchy, mon_lib_srv=None):
+  '''
+  find_capping_h(hierarchy, mon_lib_srv).selection; mon_lib_srv None: the
+  process's shared_mon_lib_srv().
+  '''
+  if mon_lib_srv is None: mon_lib_srv = shared_mon_lib_srv()
+  return find_capping_h(hierarchy, mon_lib_srv).selection
+
+# restraints of a cap (add_capping_h_restraints)
+CAP_BOND_SIGMA = 0.02 # A
+CAP_ANGLE_SIGMA = 3.0 # degrees
+CAP_ANGLE_IDEAL = {TETRAHEDRAL: TETRAHEDRAL_ANGLE, TRIGONAL: TRIGONAL_ANGLE,
+                   LINEAR: 180.}
+
+class _capping_source_info(object):
+  '''
+  Source of the cap proxies for the geometry proxy registries.
+  '''
+  def labels(self): return 'capping H'
+  def n_expected_atoms(self): return 0
+
+def _unattached(atoms, bond_registry, nonbonded_energy_type_registry):
+  '''
+  i_seqs of the atoms pdb_interpretation could not attach: unknown
+  nonbonded energy type, or H without a bond proxy. Vectorized but for one
+  pass over the keys of the bond registry table, skipped when the model
+  has no H.
+  '''
+  result = set(
+    (nonbonded_energy_type_registry.symbols == '').iselection())
+  elements = atoms.extract_element().strip().upper()
+  h = ((elements == 'H') | (elements == 'D')).iselection()
+  if h.size() == 0: return result
+  table = bond_registry.table
+  bonded = set(itertools.chain.from_iterable(table))
+  for i in h:
+    if not table[i] and i not in bonded: result.add(i)
+  return result
+
+def _registry_bond_table(bond_registry):
+  '''
+  {i_seq: set(i_seq)} of the simple bond proxies of a registry, without
+  metal coordination, as bond_table() builds it from a restraints manager.
+  '''
+  metal = linking_class().get_origin_id('metal coordination')
+  table = {}
+  for proxy in bond_registry.proxies:
+    if proxy.origin_id == metal: continue
+    i, j = proxy.i_seqs
+    table.setdefault(i, set()).add(j)
+    table.setdefault(j, set()).add(i)
+  return table
+
+def add_capping_h_restraints(hierarchy, mon_lib_srv, geometry_proxy_registries,
+                             nonbonded_energy_type_registry,
+                             use_neutron_distances, log=None):
+  '''
+  Called by pdb_interpretation.process before the restraints manager is
+  built. When some atom has an unknown nonbonded energy type or some H has
+  no bond proxy: find_capping_h with the bond table of
+  geometry_proxy_registries.bond_simple (simple proxies only), then per
+  cap: the bond proxy to its parent (xh_length(), sigma CAP_BOND_SIGMA),
+  angle proxies to every bonded non-metal neighbour of the parent
+  altloc-compatible with the cap, other caps included, each pair once
+  (ideal by the steric number, sigma CAP_ANGLE_SIGMA), and the nonbonded
+  type 'H'. All proxies carry the 'capping' origin id. An unattached H that
+  is no cap keeps its unknown type, for the caller's stop_for_unknowns; the
+  log says why it is no cap. Only records of unattached atoms are acted on:
+  an H pdb_interpretation attached is never a cap here, whatever
+  find_capping_h() says of its name.
+  Limitation: this runs before construct_geometry_restraints_manager adds
+  disulfides, automatic links (covalent ligands, glycans, metals), bond
+  edits and symmetry bonds. A partner of the parent bonded by such a later
+  link is not seen: the cap gets no angle to it, and the parent's valence
+  count misses it, so n_fill is over-estimated by one (permissive).
+  Returns None when nothing was unattached, else group_args(i_seqs=
+  flex.size_t of the caps, rejected=find_capping_h().rejected). Logs
+  'Capping H: N recognized' and the rejected lines.
+  '''
+  atoms = hierarchy.atoms()
+  bond_registry = geometry_proxy_registries.bond_simple
+  unattached = _unattached(atoms, bond_registry,
+                           nonbonded_energy_type_registry)
+  if not unattached: return None
+  table = _registry_bond_table(bond_registry)
+  result = find_capping_h(hierarchy, mon_lib_srv, bond_table=table, log=log)
+  # what pdb_interpretation left unattached is the truth: a record of an H
+  # it attached (through a name alias _dictionary_h() does not reproduce)
+  # is no cap and is skipped silently
+  records = [r for r in result.records if r.i_seq in unattached]
+  selection = flex.bool(atoms.size(), False)
+  for record in records: selection[record.i_seq] = True
+  properties = atom_property()
+  is_metal = lambda a: properties.is_metal(
+    reduce_hydrogen._atom_element(a).upper())
+  oid = linking_class().get_origin_id('capping')
+  source = _capping_source_info()
+  caps_of = {}
+  for record in records:
+    caps_of.setdefault(record.parent_i_seq, []).append(record.i_seq)
+  for record in records:
+    i_cap, i_parent = record.i_seq, record.parent_i_seq
+    cap = atoms[i_cap]
+    element = reduce_hydrogen._atom_element(atoms[i_parent])
+    bond_registry.process(source_info=source,
+      proxy=geometry_restraints.bond_simple_proxy(
+        i_seqs         = (i_parent, i_cap),
+        distance_ideal = xh_length(element, record.coordination,
+                                   use_neutron_distances),
+        weight         = 1/CAP_BOND_SIGMA**2,
+        origin_id      = oid))
+    nonbonded_energy_type_registry.assign_directly(i_seq=i_cap, symbol='H')
+    ideal = CAP_ANGLE_IDEAL.get(record.steric)
+    assert ideal is not None, 'Capping H: %s steric number %s' % (
+      _atom_label(cap), record.steric)
+    others = [j for j in table.get(i_parent, ()) if j not in caps_of[i_parent]]
+    others += [j for j in caps_of[i_parent] if j < i_cap]
+    for j in sorted(others):
+      if is_metal(atoms[j]) or not reduce_hydrogen._compatible(atoms[j], cap):
+        continue
+      geometry_proxy_registries.angle.process(source_info=source,
+        proxy=geometry_restraints.angle_proxy(
+          i_seqs      = (j, i_parent, i_cap),
+          angle_ideal = ideal,
+          weight      = 1/CAP_ANGLE_SIGMA**2,
+          origin_id   = oid))
+  if log is not None:
+    print('Capping H: %d recognized' % len(records), file=log)
+    rejected = set(label for label, reason in result.rejected)
+    names_cache = {}
+    for i in sorted(unattached):
+      atom = atoms[i]
+      if not atom.element_is_hydrogen() or selection[i]: continue
+      label = _atom_label(atom)
+      if label in rejected: continue
+      if _dictionary_names(atom.parent().resname.strip(), mon_lib_srv,
+                           names_cache) is None:
+        reason = 'its residue has no restraint dictionary'
+      else:
+        reason = 'its name is a dictionary H of a present atom'
+      print('Capping H: %s not attached by the dictionary (%s); left for '
+            'the unknown-atom check' % (label, reason), file=log)
+  return group_args(i_seqs=selection.iselection(),
+                    rejected=result.rejected)
 
 def cut_bonds_by_distance(hierarchy, selection):
   '''
@@ -843,7 +1361,8 @@ def fill_directions(parent, known, steric, n_fill, environment, step_deg=10):
 
 # ==============================================================================
 
-def cap_names(atom_group, h_names, missing_names, n_fill, parent=None):
+def cap_names(atom_group, h_names, missing_names, n_fill, parent=None,
+              dictionary_names=()):
   '''
   n_fill names for the caps on an atom of atom_group, unique in its
   conformer (atom_group and the atom groups of the residue sharing its
@@ -851,7 +1370,10 @@ def cap_names(atom_group, h_names, missing_names, n_fill, parent=None):
   dictionary H names (h_names) in order, then, when parent (the atom) is an
   O, N or S, 'H' + the parent's name (the hydroxyl convention: HO5' on O5',
   HO3B on O3B), then 'H' + each missing heavy atom's name (HCG on a CB
-  without CG), then HC1, HC2, ...
+  without CG), then HC1, HC2, ... Never a dictionary name of the residue
+  (dictionary_names) unless it is a free H name of the parent (in h_names):
+  HO3' stays the name of the H of O3', not of a cap on C3' whose O3' is
+  absent.
   '''
   altloc = atom_group.altloc.strip()
   taken = set()
@@ -865,15 +1387,17 @@ def cap_names(atom_group, h_names, missing_names, n_fill, parent=None):
     candidates.append('H' + parent.name.strip())
   candidates += ['H' + n for n in missing_names]
   result = []
+  free = set(h_names)
   for name in candidates:
     if len(result) == n_fill: break
+    if name in dictionary_names and name not in free: continue
     if len(name) <= 4 and name not in taken:
       result.append(name)
       taken.add(name)
   i = 1
   while len(result) < n_fill:
     name = 'HC%d' % i
-    if name not in taken:
+    if name not in taken and (name not in dictionary_names or name in free):
       result.append(name)
       taken.add(name)
     i += 1
@@ -929,17 +1453,17 @@ def _report_line(parent, names, missing):
   if missing: line += '; missing %s' % ' '.join(missing)
   return line
 
-def _new_h(name, xyz, parent):
+def _new_h(name, xyz, parent, occ):
   '''
-  H atom named name at xyz with the occupancy, B, segid and hetero flag of
-  parent; the name padded as reduce_hydrogen pads H names.
+  H atom named name at xyz with occupancy occ and the B, segid and hetero
+  flag of parent; the name padded as reduce_hydrogen pads H names.
   '''
   if len(name) < 4: name = (' ' + name).ljust(4)
   atom = iotbx.pdb.hierarchy.atom()
   atom.set_name(new_name=name)
   atom.set_element(new_element='H')
   atom.set_xyz(new_xyz=xyz)
-  atom.set_occ(new_occ=parent.occ)
+  atom.set_occ(new_occ=occ)
   atom.set_b(new_b=parent.b)
   atom.set_segid(new_segid=parent.segid)
   atom.set_hetero(new_hetero=parent.hetero)
@@ -985,8 +1509,10 @@ def cap_dangling_atoms(model, result, use_neutron_distances=True,
   '''
   Add the capping H of find_dangling_atoms() records to the hierarchy of
   model, the model the records come from (their i_seqs are used). Each H
-  goes to its parent's atom group (so its altloc) with the parent's
-  occupancy, B, segid and hetero flag; i_seq and serial are reset after.
+  goes to its parent's atom group (so its altloc) with the parent's B, segid
+  and hetero flag, and occupancy 0 when its name is no dictionary atom of the
+  residue (HCG), else the parent's (HB2, HB3 on a truncated CB); i_seq and
+  serial are reset after.
   Sorry, before anything is placed, if result has internal gaps (a missing
   atom two present dangling atoms of the residue miss: their caps would
   overlap) or hypervalent records (P, or S with 3 or more substituents: an
@@ -1050,6 +1576,7 @@ def cap_dangling_atoms(model, result, use_neutron_distances=True,
     else:
       missing_by_record.append([])
   added, lines, caps, residues = [], [], [], set()
+  names_cache = {}
   for record, missing in zip(result.records, missing_by_record):
     parent = atoms[record.i_seq]
     rg = parent.parent().parent()
@@ -1079,10 +1606,17 @@ def cap_dangling_atoms(model, result, use_neutron_distances=True,
       steric_number(element, record.coordination), record.n_fill,
       environment)
     length = xh_length(element, record.coordination, use_neutron_distances)
+    entry = _dictionary_names(parent.parent().resname.strip(), mon_lib_srv,
+                              names_cache)
+    dictionary_names = entry.names if entry else ()
     names = cap_names(parent.parent(), record.h_names, record.missing_names,
-                      record.n_fill, parent=parent)
+                      record.n_fill, parent=parent,
+                      dictionary_names=dictionary_names)
     for name, direction in zip(names, directions):
-      h = _new_h(name, (center + direction * length).elems, parent)
+      # a dictionary H (HB2 on a truncated CB) is an ordinary reduce2 H: the
+      # parent's occupancy; a true cap is no observed atom: occupancy 0
+      occ = parent.occ if name in dictionary_names else 0.0
+      h = _new_h(name, (center + direction * length).elems, parent, occ)
       parent.parent().append_atom(h)
       caps.append((h, parent))
     added.append((record.key, names))

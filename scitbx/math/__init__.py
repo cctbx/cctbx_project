@@ -369,6 +369,63 @@ def point_on_sphere(r, s_deg, t_deg, center):
   z = center[2] + r * cos(t)
   return x,y,z
 
+def fibonacci_sphere_points(n):
+  """Unit vectors spread over the sphere on a golden-angle spiral.
+
+  The heights along y step evenly from 1 - 1/n down to -(1 - 1/n), so
+  neither pole is a point, and the azimuth about y advances by the golden
+  angle, pi * (3 - sqrt(5)), from one point to the next.
+
+  Parameters
+  ----------
+  n : int
+    Number of points.
+
+  Returns
+  -------
+  scitbx.array_family.flex.vec3_double
+    The n unit vectors, starting next to the +y pole.
+  """
+  golden = math.pi * (3.0 - math.sqrt(5.0))
+  points = flex.vec3_double()
+  for i in range(n):
+    y = 1.0 - 2.0 * (i + 0.5) / n
+    r = math.sqrt(max(0.0, 1.0 - y * y))
+    points.append((math.cos(golden * i) * r, y, math.sin(golden * i) * r))
+  return points
+
+def saff_kuijlaars_sphere_points(n):
+  """Unit vectors spread over the sphere on the Saff-Kuijlaars spiral.
+
+  The heights h along y step evenly from -1 up to 1, both poles included,
+  and the azimuth about y advances by 3.6 / sqrt(n * (1 - h**2)). E. B.
+  Saff and A. B. J. Kuijlaars, "Distributing many points on a sphere",
+  Mathematical Intelligencer 19 (1997) 5-11.
+
+  Parameters
+  ----------
+  n : int
+    Number of points, at least 2.
+
+  Returns
+  -------
+  scitbx.array_family.flex.vec3_double
+    The n unit vectors, from the -y pole to the +y pole.
+  """
+  assert n >= 2, n
+  points = flex.vec3_double()
+  phi = 0
+  for k in range(n):
+    h = -1 + 2.0 * k / (n - 1)
+    theta = math.acos(h)
+    if k == 0 or k == n - 1:
+      phi = 0
+    else:
+      phi = (phi + 3.6 / math.sqrt(n * (1 - h * h))) % (2 * math.pi)
+    points.append((math.sin(phi) * math.sin(theta), math.cos(theta),
+                   math.cos(phi) * math.sin(theta)))
+  return points
+
 def equally_spaced_points_on_vector(start, end, n=None, step=None):
   assert [n, step].count(None) == 1
   vec = [end[0]-start[0],end[1]-start[1],end[2]-start[2]]

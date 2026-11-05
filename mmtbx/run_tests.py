@@ -112,6 +112,8 @@ general_tests = [
   "$D/regression/model/tst_model_pairs_within.py",
   "$D/regression/model/tst_restrain_selection_to_self_or_neighbors.py",
   "$D/regression/model/tst_model_mmcif_precision.py",
+  "$D/regression/model/tst_model_symmetry.py",
+  "$D/regression/model/tst_model_merge.py",
   #
   "$D/regression/tst_fmodel.py",
   "$D/regression/tst_utils.py",
@@ -196,10 +198,12 @@ general_tests = [
   "$D/hydrogens/tst_validate_H.py",
   "$D/hydrogens/tst_connectivity.py",
   "$D/hydrogens/tst_capping.py",
+  "$D/hydrogens/tst_capping_h.py",
   "$D/hydrogens/tst_const_dihedral.py",
   "$D/hydrogens/tst_riding_coefficients.py",
   "$D/hydrogens/tst_riding_manager.py",
   "$D/hydrogens/tst_riding_minimization.py",
+  "$D/hydrogens/tst_riding_free_h.py",
   "$D/hydrogens/tst_parameterization_1.py",
   "$D/hydrogens/tst_parameterization_2.py",
   "$D/hydrogens/tst_parameterization_3.py",
@@ -504,6 +508,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_qmready_charge.py",
   "$D/regression/tst_reduce2_qmready_clash.py",
   "$D/regression/tst_reduce2_qmready_regularize.py",
+  "$D/regression/tst_reduce2_symmetry_optimizer.py",
   "$D/regression/tst_reduce2_capping.py",
   "$D/regression/tst_reduce2_altloc_completion.py",
   "$D/regression/tst_reduce2_altloc_charge.py",
@@ -511,6 +516,9 @@ molprobity_tests = [
   "$D/ligands/tst_electrons_residues.py",
   "$D/ligands/tst_electrons_00.py",
   "$D/ligands/tst_electrons_02.py",
+  "$D/ligands/tst_electrons_termini.py",
+  "$D/ligands/tst_electrons_his.py",
+  "$D/ligands/tst_electron_scripting.py",
   "$D/regression/tst_reduce2_blank_chain.py",
   "$D/regression/tst_reduce2_his_no_h.py",
   "$D/regression/tst_reduce2_near_acceptor.py",
@@ -553,6 +561,7 @@ molprobity_tests = [
   "$D/validation/regression/tst_cbetadev_03.py",
   "$D/validation/regression/tst_cbetadev_05.py",
   "$D/validation/regression/tst_cbetadev_06.py",
+  "$D/validation/regression/tst_cbetadev_07.py",
   "$D/validation/regression/tst_cbetadev_mahalanobis.py",
   "$D/validation/regression/tst_cbd_utils.py",
   "$D/validation/regression/tst_undowser.py",
@@ -622,8 +631,6 @@ else:
 tst_list_expected_failures = [
   "$D/monomer_library/tst_pdb_interpretation_2.py",
   "$D/monomer_library/tst_pdb_interpretation_4.py",
-  # known reduce2 bugs; each file says what fixes it and where to move it
-  #"$D/regression/tst_reduce2_symmetry_optimizer.py",
   ]
 
 def run():
