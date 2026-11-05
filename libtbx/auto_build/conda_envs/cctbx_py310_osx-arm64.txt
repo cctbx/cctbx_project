@@ -144,7 +144,6 @@ https://conda.anaconda.org/conda-forge/noarch/pyopengl-3.1.10-pyh534df25_2.conda
 https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.3.2-pyhcf101f3_0.conda#3687cc0b82a8b4c17e1f0eb7e47163d5
 https://conda.anaconda.org/conda-forge/noarch/pysocks-1.7.1-pyha55dd90_7.conda#461219d1a5bd61342293efa2c0c90eac
 https://conda.anaconda.org/conda-forge/noarch/python-tzdata-2026.3-pyhd8ed1ab_0.conda#eefc8d916bd2e708d76d40398ef9a1ee
-https://conda.anaconda.org/conda-forge/osx-arm64/python.app-1.4-py310h750a6c6_6.conda#61c6eda216fd783b96b1a2d9678fcb2a
 https://conda.anaconda.org/conda-forge/noarch/pytz-2026.3.post1-pyhcf101f3_0.conda#eb2fb9070c0232e96ae5515d8b28e4f9
 https://conda.anaconda.org/conda-forge/osx-arm64/pyyaml-6.0.3-py310hb46c203_1.conda#cdd081d256a691c8adc3cffad215988c
 https://conda.anaconda.org/conda-forge/osx-arm64/scons-4.11.1-py310hbe9552e_0.conda#27ce4a67097faba9a000b0d79f5de10f
