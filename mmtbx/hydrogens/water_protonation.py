@@ -219,12 +219,6 @@ def _split_dirs(a1, a2, cos_half, sin_half):
           tuple(b[c] * cos_half - w[c] * sin_half for c in range(3)))
 
 
-def _turn_two_fold(d, a):
-  """Direction ``d`` turned 180 deg about the unit axis ``a``."""
-  t = 2.0 * (d[0] * a[0] + d[1] * a[1] + d[2] * a[2])
-  return (t * a[0] - d[0], t * a[1] - d[1], t * a[2] - d[2])
-
-
 def _water_residue_groups(hier):
   """Each residue group holding a water, as ``(residue_group, water atom
   groups)``."""
@@ -940,14 +934,15 @@ class _WaterHydrogenPlacer:
     g = self._water_geom(wi)
     o = g["o"]
     a = self.w_axis[wi]
+    axis = matrix.col(a)
+    turn = axis.axis_and_angle_as_r3_rotation_matrix(180, deg=True)
     oh = self.oh_length
 
     def at(d):
       return (o[0] + oh * d[0], o[1] + oh * d[1], o[2] + oh * d[2])
 
     if fixed_d1 is not None:
-      return at(fixed_d1), at(_turn_two_fold(fixed_d1, a))
-    axis = matrix.col(a)
+      return at(fixed_d1), at((turn * matrix.col(fixed_d1)).elems)
     p = axis.ortho().normalize()
     p, q = p.elems, axis.cross(p).elems
     ch, sh = self.cos_half_hoh, self.sin_half_hoh
@@ -963,7 +958,7 @@ class _WaterHydrogenPlacer:
         cp, sp = math.cos(psi), math.sin(psi)
         d1s.append(tuple(s * ch * a[c] + sh * (cp * p[c] + sp * q[c])
                          for c in range(3)))
-    d2s = [_turn_two_fold(d, a) for d in d1s]
+    d2s = [(turn * matrix.col(d)).elems for d in d1s]
     pts1 = flex.vec3_double([at(d) for d in d1s])
     pts2 = flex.vec3_double([at(d) for d in d2s])
     cl1 = self._clear(wi, pts1, nbr_slots)
@@ -1263,9 +1258,9 @@ class _WaterHydrogenPlacer:
       d2 = tuple(self.cos_hoh * d1[c] + self.sin_hoh * (ct * p[c] + st * q[c])
                  for c in range(3))
     else:
+      axis = matrix.col(a)
       d1 = fixed_d1
       if d1 is None:
-        axis = matrix.col(a)
         p = axis.ortho().normalize()
         p, q = p.elems, axis.cross(p).elems
         s = 1.0 if rng.random_double() < 0.5 else -1.0
@@ -1274,7 +1269,8 @@ class _WaterHydrogenPlacer:
         d1 = tuple(s * self.cos_half_hoh * a[c]
                    + self.sin_half_hoh * (ct * p[c] + st * q[c])
                    for c in range(3))
-      d2 = _turn_two_fold(d1, a)
+      turn = axis.axis_and_angle_as_r3_rotation_matrix(180, deg=True)
+      d2 = (turn * matrix.col(d1)).elems
     self.tick += 1
     moved = self._store(wi, slots,
                         tuple(o[c] + self.oh_length * d1[c] for c in range(3)),
