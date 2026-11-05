@@ -748,7 +748,8 @@ def exercise_h2_after_acceptor_fallback():
   # H1 clashes, so it came from the fallback.
   h1_clearance = clearance(matrix.col(hs["H1"].xyz))
   assert h1_clearance < wp._WATER_MIN_CLEARANCE, h1_clearance
-  p, q = (matrix.col(v) for v in wp._ortho_frame(d1.elems))
+  p = d1.ortho().normalize()
+  q = d1.cross(p)
   oh_gas, hoh_gas = wp._WATER_GEOMETRY["gas_phase"]
   hoh = math.radians(hoh_gas)
   n = wp._WATER_CONE_SAMPLES

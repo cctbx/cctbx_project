@@ -197,27 +197,6 @@ _FALLBACK_DIRS = [matrix.col(v).normalize().elems
 _FALLBACK_FX = flex.vec3_double(_FALLBACK_DIRS)
 
 
-def _ortho_frame(d1):
-  """Two unit vectors ``p, q`` making ``(d1, p, q)`` an orthonormal frame.
-
-  ``p = d1.ortho().normalize()`` and ``q = d1.cross(p)`` of
-  :class:`scitbx.matrix.col`, operation for operation.
-  """
-  x, y, z = d1[0], d1[1], d1[2]
-  a, b, c = abs(x), abs(y), abs(z)
-  if c <= a and c <= b:
-    p = (-y, x, 0.0)
-  elif b <= a and b <= c:
-    p = (-z, 0.0, x)
-  else:
-    p = (0.0, -z, y)
-  n = math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2])
-  p = (p[0] / n, p[1] / n, p[2] / n)
-  return p, (y * p[2] - p[1] * z,
-             z * p[0] - p[2] * x,
-             x * p[1] - p[0] * y)
-
-
 def _split_dirs(a1, a2, cos_half, sin_half):
   """O-H directions equally far off two acceptors.
 
@@ -978,7 +957,9 @@ class _WaterHydrogenPlacer:
 
     if fixed_d1 is not None:
       return at(fixed_d1), at(_turn_two_fold(fixed_d1, a))
-    p, q = _ortho_frame(a)
+    axis = matrix.col(a)
+    p = axis.ortho().normalize()
+    p, q = p.elems, axis.cross(p).elems
     ch, sh = self.cos_half_hoh, self.sin_half_hoh
     acc_dirs = g["acc_dirs"]
     psis = [math.pi * k / _WATER_CONE_SAMPLES
@@ -1096,7 +1077,9 @@ class _WaterHydrogenPlacer:
               o[1] + self.oh_length * d1[1],
               o[2] + self.oh_length * d1[2])
 
-    p, q = _ortho_frame(d1)
+    v = matrix.col(d1)
+    p = v.ortho().normalize()
+    p, q = p.elems, v.cross(p).elems
 
     # H2: rank the cone angles by (away-from-cation, clash-free, best
     # alignment over the acceptors H1 did not take, clearance).
@@ -1280,7 +1263,9 @@ class _WaterHydrogenPlacer:
     a = self.w_axis[wi]
     if a is None:
       d1 = fixed_d1 if fixed_d1 is not None else _rand_unit(rng)
-      p, q = _ortho_frame(d1)
+      v = matrix.col(d1)
+      p = v.ortho().normalize()
+      p, q = p.elems, v.cross(p).elems
       theta = rng.uniform(0.0, 2.0 * math.pi)
       ct, st = math.cos(theta), math.sin(theta)
       d2 = tuple(self.cos_hoh * d1[c] + self.sin_hoh * (ct * p[c] + st * q[c])
@@ -1288,7 +1273,9 @@ class _WaterHydrogenPlacer:
     else:
       d1 = fixed_d1
       if d1 is None:
-        p, q = _ortho_frame(a)
+        axis = matrix.col(a)
+        p = axis.ortho().normalize()
+        p, q = p.elems, axis.cross(p).elems
         s = rng.choice((1.0, -1.0))
         theta = rng.uniform(0.0, 2.0 * math.pi)
         ct, st = math.cos(theta), math.sin(theta)
