@@ -1,23 +1,18 @@
 from __future__ import absolute_import, division, print_function
 import os, sys
-from scitbx.array_family import flex
-import mmtbx.model
-from libtbx import easy_mp
-from collections import OrderedDict
-import iotbx.cif
 import traceback
-import os
+from io import StringIO
+from collections import OrderedDict
+from scitbx.array_family import flex
+from libtbx import easy_mp
+from libtbx.utils import Sorry, null_out
+from cctbx import crystal, maptbx, uctbx
+import cctbx.miller
+import iotbx.pdb
 from iotbx import reflection_file_reader
 import mmtbx.model
 import mmtbx.monomer_library.server
 mon_lib_srv = mmtbx.monomer_library.server.server()
-import cctbx.miller
-from cctbx import maptbx, crystal
-from scitbx.array_family import flex
-from cctbx import crystal, sgtbx
-import iotbx.pdb
-from cctbx import uctbx
-from libtbx.utils import Sorry
 
 cif_files = os.getenv('PDB_MIRROR_MMCIF')
 pdbmtz = os.getenv('PDBMTZ')
@@ -25,15 +20,17 @@ SUPPORTED = ["H","C","N","O","S","SE","B","SI","P","AS","F","CL","BR","I"]
 
 
 def get_model_files_dict(path):
-  index_file = "/".join([path,"INDEX"])
-  ifn = open(index_file,"r")
+  """
+  PDB code -> model file, from the INDEX file of the mirror. The code is the
+  file name without directories and extensions (ab/1abc.cif.gz -> 1abc).
+  """
   result = {}
-  for l in ifn.readlines():
-    l = l.strip()
-    file_name = "/".join([path,l])
-    #assert os.path.isfile(file_name) # Terribly runtime expensive
-    code = l[-11:-7]
-    result[code] = file_name
+  with open(os.path.join(path, "INDEX"), "r") as ifn:
+    for l in ifn.readlines():
+      l = l.strip()
+      if len(l) == 0: continue
+      code = os.path.basename(l).split(".")[0].lower()
+      result[code] = os.path.join(path, l)
   return result
 
 def get_mtz_dict(path):
@@ -54,7 +51,7 @@ def get_mtz_dict(path):
     #
     #if code != "5nmw": continue
     #
-    file_name = "/".join([path,l])
+    file_name = os.path.join(path, l)
     #assert os.path.isfile(file_name) # Terribly runtime expensive
     codes.append(code)
     file_names.append(file_name)
@@ -67,40 +64,37 @@ def get_mtz_dict(path):
     result[c] = [f,s]
   return result
 
-def has_ligands(h, code):
+def has_ligands(h, code, log):
   get_class = iotbx.pdb.common_residue_names_get_class
   skip_classes = {
       "common_water",
       "common_amino_acid",
       "modified_amino_acid",
       "d_amino_acid",
-      "common_rna_dna"
+      "common_rna_dna",
+      "modified_rna_dna",
+      "ccp4_mon_lib_rna_dna"
   }
   ligand_selections = []
-  if len(list(h.models())) > 1: return []
-  for m in h.models():
-    for c in m.chains():
-      for rg in c.residue_groups():
-        # Alt-Conf Check: If there is more than 1 atom_group, it has altlocs
-        if len(rg.atom_groups()) > 1: continue
-        ag = rg.only_atom_group()
-        # Failsafe: Skip if it's a pure alt-conf with no main conformer
-        if ag.altloc.strip() != '': continue
-        if get_class(name=ag.resname) in skip_classes: continue
-        atoms = ag.atoms()
-        nat = atoms.size()
-        if nat < 10: continue
-        elements = [a.element.strip().upper() for a in atoms]
-        if any(e not in SUPPORTED for e in elements): continue
-        occ = atoms.extract_occ()
-        if not occ.all_eq(1.0): continue
-        r = rg.conformers()[0].only_residue()
-        ma = r.missing_atoms(mon_lib_srv=mon_lib_srv)
-        if ma is None: continue
-        ma = [x for x in ma if x != "OXT"]
-        if len(ma) > 0: continue
-        print(code, ag.resname, nat, occ.all_eq(1.0))
-        ligand_selections.append(atoms.extract_i_seq())
+  for rg in h.residue_groups():
+    # Skip residues with alternative conformations
+    if len(rg.atom_groups()) != 1 or rg.have_conformers(): continue
+    ag = rg.only_atom_group()
+    if get_class(name=ag.resname) in skip_classes: continue
+    atoms = ag.atoms()
+    nat = atoms.size()
+    if nat < 10: continue
+    elements = [a.element.strip().upper() for a in atoms]
+    if any(e not in SUPPORTED for e in elements): continue
+    occ = atoms.extract_occ()
+    if not occ.all_eq(1.0): continue
+    r = rg.conformers()[0].only_residue()
+    ma = r.missing_atoms(mon_lib_srv=mon_lib_srv)
+    if ma is None: continue
+    ma = [x for x in ma if x != "OXT"]
+    if len(ma) > 0: continue
+    print(code, ag.resname, nat, file=log)
+    ligand_selections.append(atoms.extract_i_seq())
   return ligand_selections
 
 def check_maps(tfofc, fofc, ligand_selections, sites_frac):
@@ -117,7 +111,7 @@ def check_maps(tfofc, fofc, ligand_selections, sites_frac):
     if good: result.append(ls)
   return result
 
-def check_maps2(tfofc, fofc, sites_cart, unit_cell):
+def check_maps2(tfofc, fofc, sites_cart, unit_cell, log):
   m1 = flex.double()
   m2 = flex.double()
   for site_cart in sites_cart:
@@ -126,162 +120,113 @@ def check_maps2(tfofc, fofc, sites_cart, unit_cell):
     mv_fofc  = fofc .tricubic_interpolation(site_frac)
     m1.append(mv_tfofc)
     m2.append(mv_fofc)
-  print("  min tfofc, max |fofc|:", flex.min(m1), flex.max(flex.abs(m2)))
+  print("  min tfofc, max |fofc|:", flex.min(m1), flex.max(flex.abs(m2)),
+    file=log)
   if flex.min(m1) < 0.5 or flex.max(flex.abs(m2)) > 3.0:
     return False
   return True
 
-import iotbx.pdb
-from cctbx import crystal, sgtbx
-from scitbx.array_family import flex
+def append_chains_merged(hierarchy, model, new_chain_id):
+  """
+  Append the residue groups of hierarchy (one model) to model, one new chain
+  per chain ID: segments of a chain (split at TER in the input) are merged
+  and their residue groups sorted by residue number and insertion code.
+  The new chain is named new_chain_id(chain_id).
+  """
+  for chain_id in hierarchy.chain_ids(unique_only=True):
+    rgs = []
+    for chain in hierarchy.only_model().chains():
+      if chain.id == chain_id:
+        rgs.extend(chain.residue_groups())
+    rgs.sort(key=lambda rg: (rg.resseq_as_int(), rg.icode))
+    new_chain = iotbx.pdb.hierarchy.chain(id=new_chain_id(chain_id))
+    for rg in rgs:
+      new_chain.append_residue_group(rg.detached_copy())
+    model.append_chain(new_chain)
 
 def extract_ligand_environment(pdb_hierarchy, ligand_iselection,
                                crystal_symmetry, distmax):
   """
-  Extracts a ligand and its surrounding environment, explicitly applying
-  crystal symmetry to map interacting symmetry-related residues next to the ligand.
+  Extracts a ligand and its surrounding environment: a new hierarchy with
+  the ligand and every complete residue that has at least one atom within
+  `distmax` of a ligand atom, in the asymmetric unit or in a symmetry
+  mate.
 
-  This function creates a new PDB hierarchy containing the specified ligand
-  and any complete residue that has at least one atom within `distmax` of
-  any ligand atom. If an interacting residue comes from a symmetry-related
-  molecule, the required rigid-body transformation is explicitly applied to
-  its coordinates.
+  Residues of the asymmetric unit keep their chain IDs, one chain per ID,
+  sorted by residue number.  Symmetry mates
+  (iotbx.pdb.hierarchy.root.sym_equiv_residue_groups) are added as new
+  chains, one per original chain and symmetry operation, named with the
+  prefix 'S' (chain 'A' becomes 'SA'); a numerical suffix ('SA1', 'SA2') is
+  appended only if the same original chain interacts with the ligand
+  through several distinct symmetry operations.
 
-  To avoid duplicate atom-label errors, symmetry-transformed chains are
-  assigned new, unique chain IDs starting with the prefix 'S' (e.g., chain 'A'
-  becomes 'SA').
-
-  Importantly, if consecutive residues from the same original chain are mapped
-  by the *same* symmetry operation, they are kept together as consecutive
-  residues within the *same* single chain ID (e.g., 'SA'). Numerical suffixes
-  (e.g., 'SA1', 'SA2') are only appended if the *same original chain* interacts
-  with the ligand via *multiple, distinct* symmetry operations. This isolates
-  distinct symmetry mappings of the same chain into separate new chains to
-  prevent unphysical spatial jumps and duplicate residue labels.
-
-  If any of the extracted residues contain alternative conformations (altlocs),
-  the extraction is aborted.
+  Returns None if any of the extracted residues has alternative
+  conformations.
   """
-  # Ensure ligand_iselection is a standard set of integers (i_seqs)
   if isinstance(ligand_iselection, flex.bool):
     ligand_iselection = ligand_iselection.iselection()
-  ligand_set = set(ligand_iselection)
-  # Map each i_seq to its corresponding residue_group and chain
-  iseq_to_rg = {}
-  rg_to_chain = {}
-  for model in pdb_hierarchy.models():
-    for chain in model.chains():
-      for rg in chain.residue_groups():
-        for atom in rg.atoms():
-          iseq_to_rg[atom.i_seq] = rg
-        rg_to_chain[rg] = chain
-  # Helper function to check if a residue group has alternative conformations
-  def has_altlocs(rg):
-    if len(rg.atom_groups()) > 1:
-      return True
-    for ag in rg.atom_groups():
-      if ag.altloc.strip() != '':
-        return True
-    return False
-  sites_cart = pdb_hierarchy.atoms().extract_xyz()
-  # Setup symmetry and map atoms across unit cell boundaries
-  sst = crystal_symmetry.special_position_settings().site_symmetry_table(sites_cart=sites_cart)
-  conn_asu_mappings = crystal_symmetry.special_position_settings().asu_mappings(buffer_thickness=distmax)
-  conn_asu_mappings.process_sites_cart(
-    original_sites      = sites_cart,
-    site_symmetry_table = sst)
-  pair_generator = crystal.neighbors_fast_pair_generator(
-    conn_asu_mappings, distance_cutoff = distmax)
-  # Dictionary to store required RGs grouped by transformation and chain:
-  # extracted[op_str][chain_id] = set(rgs)
-  extracted = {}
-  identity_op = sgtbx.rt_mx("x,y,z").as_xyz()
-  # Always include the full ligand in its original position
-  for iseq in ligand_set:
-    rg = iseq_to_rg[iseq]
-    chain_id = rg_to_chain[rg].id
-    extracted.setdefault(identity_op, {}).setdefault(chain_id, set()).add(rg)
-  # Collect all interacting residues, mapped back to the ligand's environment
-  for pair in pair_generator:
-    i_seq = pair.i_seq
-    j_seq = pair.j_seq
-    rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
-    rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
-    if i_seq in ligand_set:
-      op = rt_mx_i.inverse().multiply(rt_mx_j)
-      rg = iseq_to_rg[j_seq]
-      chain_id = rg_to_chain[rg].id
-      extracted.setdefault(op.as_xyz(), {}).setdefault(chain_id, set()).add(rg)
-    if j_seq in ligand_set:
-      op = rt_mx_j.inverse().multiply(rt_mx_i)
-      rg = iseq_to_rg[i_seq]
-      chain_id = rg_to_chain[rg].id
-      extracted.setdefault(op.as_xyz(), {}).setdefault(chain_id, set()).add(rg)
-  # Validate that none of the extracted residues have alternative conformations
-  for op_str, chain_dict in extracted.items():
-    for chain_id, rgs in chain_dict.items():
-      for rg in rgs:
-        if has_altlocs(rg):
-          return None
+  atoms = pdb_hierarchy.atoms()
+  sites_cart = atoms.extract_xyz()
+  # Atoms of the asymmetric unit within distmax of the ligand, without
+  # symmetry mates, plus the ligand itself
+  keep = flex.bool(atoms.size(), False)
+  keep.set_selected(ligand_iselection, True)
+  for i, j, rt_mx, distance in crystal.pairs_within(
+      sites_cart=sites_cart, distance_cutoff=distmax, i_seqs=ligand_iselection):
+    keep[j] = True
+  # Complete the residue groups, by position in atoms()
+  first = 0
+  for rg in pdb_hierarchy.residue_groups():
+    i_seqs = flex.size_t_range(first, first + rg.atoms_size())
+    if keep.select(i_seqs).count(True) > 0:
+      if rg.have_conformers(): return None
+      keep.set_selected(i_seqs, True)
+    first += rg.atoms_size()
+  # Symmetry mates of residues within distmax of the ligand
+  copies = pdb_hierarchy.sym_equiv_residue_groups(
+    crystal_symmetry = crystal_symmetry,
+    radius           = distmax,
+    selection        = ligand_iselection)
+  for copy in copies:
+    for rg in copy.hierarchy.residue_groups():
+      if rg.have_conformers(): return None
   # Construct the new hierarchy
   new_hierarchy = iotbx.pdb.hierarchy.root()
   new_model = iotbx.pdb.hierarchy.model()
   new_hierarchy.append_model(new_model)
-  used_chain_ids = set()
-  # Add residues from the identity operation first (original chains stay together)
-  if identity_op in extracted:
-    chain_dict = extracted[identity_op]
-    for chain_id in sorted(chain_dict.keys()):
-      new_chain = iotbx.pdb.hierarchy.chain(id=chain_id)
-      used_chain_ids.add(chain_id)
-      # Sort RGs by residue sequence & insert code to maintain consecutive order
-      rgs = sorted(list(chain_dict[chain_id]), key=lambda x: (x.resseq_as_int(), x.icode))
-      for rg in rgs:
-        new_chain.append_residue_group(rg.detached_copy())
-      new_model.append_chain(new_chain)
-  # Add residues from explicit symmetry operations
-  unit_cell = crystal_symmetry.unit_cell()
-  for op_str, chain_dict in sorted(extracted.items()):
-    if op_str == identity_op: continue
-    rt_mx = sgtbx.rt_mx(op_str)
-    for chain_id in sorted(chain_dict.keys()):
-      # Create a unique chain ID starting with 'S'
-      base_new_id = "S" + chain_id.strip()
-      new_id = base_new_id
-      suffix = 1
-      while new_id in used_chain_ids:
-        new_id = base_new_id + str(suffix)
-        suffix += 1
-      used_chain_ids.add(new_id)
-      new_chain = iotbx.pdb.hierarchy.chain(id=new_id)
-      # Sorted iteration guarantees that sequential pairs remain adjacent
-      rgs = sorted(list(chain_dict[chain_id]), key=lambda x: (x.resseq_as_int(), x.icode))
-      for rg in rgs:
-        new_rg = rg.detached_copy()
-        # Apply the symmetry operator to rotate/translate the rigid-body residue
-        for atom in new_rg.atoms():
-          site_frac = unit_cell.fractionalize(atom.xyz)
-          new_site_frac = rt_mx * site_frac
-          atom.xyz = unit_cell.orthogonalize(new_site_frac)
-        new_chain.append_residue_group(new_rg)
-      new_model.append_chain(new_chain)
-  # Clean indices
+  asu = pdb_hierarchy.select(keep, copy_atoms=True)
+  append_chains_merged(asu, new_model, lambda chain_id: chain_id)
+  used_chain_ids = set(new_hierarchy.chain_ids())
+  def sym_chain_id(chain_id):
+    base_new_id = "S" + chain_id.strip()
+    new_id = base_new_id
+    suffix = 1
+    while new_id in used_chain_ids:
+      new_id = base_new_id + str(suffix)
+      suffix += 1
+    used_chain_ids.add(new_id)
+    return new_id
+  for copy in copies:
+    append_chains_merged(copy.hierarchy, new_model, sym_chain_id)
   new_hierarchy.atoms().reset_i_seq()
   return new_hierarchy
 
-def get_maps(miller_arrays):
+def get_map_coefficients(miller_arrays):
+  mc_tfofc, mc_fofc = None, None
+  for ma in miller_arrays:
+    lbls = ma.info().label_string()
+    if lbls == "2FOFCWT,PHI2FOFCWT": mc_tfofc = ma.deep_copy()
+    if lbls == "FOFCWT,PHIFOFCWT":   mc_fofc  = ma.deep_copy()
+  assert mc_tfofc is not None and mc_fofc is not None
+  return mc_tfofc, mc_fofc
+
+def get_maps(mc_tfofc, mc_fofc):
   def _get_real_map(mc):
     fft_map = cctbx.miller.fft_map(
       crystal_gridding     = crystal_gridding,
       fourier_coefficients = mc)
     fft_map.apply_sigma_scaling()
     return fft_map.real_map_unpadded()
-  mc_tfofc, mc_fofc = None, None
-  for ma in miller_arrays:
-    lbls = ma.info().label_string()
-    if "2FOFCWT,PHI2FOFCWT" in lbls: mc_tfofc = ma.deep_copy()
-    if "FOFCWT,PHIFOFCWT" in lbls:   mc_fofc  = ma.deep_copy()
-  assert mc_tfofc is not None and mc_fofc is not None
   crystal_gridding = mc_tfofc.crystal_gridding(
     d_min             = mc_tfofc.d_min(),
     symmetry_flags    = maptbx.use_space_group_symmetry,
@@ -290,151 +235,158 @@ def get_maps(miller_arrays):
   fofc  = _get_real_map(mc = mc_fofc)
   return tfofc, fofc
 
-def center_hierarchy_in_box(hierarchy, default_buffer=5.0):
-  """
-  Creates a new P1 crystal symmetry box around the hierarchy,
-  centers the molecule exactly in the middle of the box,
-  and updates the coordinates in-place.
-
-  Returns the modified hierarchy and the new P1 crystal_symmetry object.
-  """
-  # Extract the current Cartesian coordinates
-  sites_cart = hierarchy.atoms().extract_xyz()
-  # Calculate the new box and the required centering shift
-  box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
-      sites_cart=sites_cart,
-      buffer_layer=default_buffer
-  )
-  # Apply the shifted, centered coordinates back to the hierarchy in-place
-  hierarchy.atoms().set_xyz(new_xyz=box.sites_cart)
-  # Extract the newly generated P1 crystal symmetry
-  new_crystal_symmetry = box.crystal_symmetry()
-  return hierarchy, new_crystal_symmetry
-
 def write_skip(code, msg):
   file_name = "skip_%s.log"%code
   with open(file_name, "w") as fo:
     fo.write(msg)
 
+def write_info(code, log):
+  """Diagnostics of one entry, written only if there are any."""
+  msg = log.getvalue()
+  if len(msg) == 0: return
+  file_name = "info_%s.log"%code
+  with open(file_name, "w") as fo:
+    fo.write(msg)
+
 def run_one(args):
   cif, hkl, code = args
-  #
+  log = StringIO()
   try:
-    #
-    # DATA
-    #
-    miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-      hkl).as_miller_arrays()
-    d_min = miller_arrays[0].d_min()
-    if d_min > 2.5:
-      write_skip(code=code, msg="Bad resolution")
-      return None
-    #
-    # MODEL
-    #
-    model = mmtbx.model.manager(
-      model_input         = iotbx.pdb.input(file_name=cif),
-      stop_for_unknowns   = False,
-      skip_ss_annotations = True,
-      process_biomt       = False)
-    cs = model.crystal_symmetry()
-    model = model.remove_hydrogens()
-    h = model.get_hierarchy()
-    atoms = h.atoms()
-    atoms.reset_i_seq()
-    sp = model.selection(string="protein")
-    if sp.count(True)*100./sp.size() < 80.:
-      write_skip(code=code, msg="Not a protein")
-      return None # not protein
-    if len(h.models()) != 1:
-      write_skip(code=code, msg="Multi-model")
-      return None
-    ligand_selections = has_ligands(h, code)
-    if ligand_selections is None or len(ligand_selections)==0:
-      write_skip(code=code, msg="No ligand(s) selected")
-      return None
-    #
-    # Compute maps
-    #
-    tfofc, fofc = get_maps(miller_arrays = miller_arrays)
-    #
-    # Check ligands against maps
-    #
-    sites_frac = model.get_sites_frac()
-    ligand_selections = check_maps(
-      tfofc             = tfofc,
-      fofc              = fofc,
-      ligand_selections = ligand_selections,
-      sites_frac        = sites_frac)
-    if len(ligand_selections)==0:
-      write_skip(code=code, msg="No ligands with good map")
-      return None
-    file_was_created = False
-    for i, ls in enumerate(ligand_selections):
-      around_ligand = extract_ligand_environment(
-        pdb_hierarchy     = h,
-        ligand_iselection = ls,
-        crystal_symmetry  = cs,
-        distmax           = 4.0)
-      if around_ligand is None:
-        print(i, "poor env (altlocs)")
-        continue
-      # Check for unsupported
-      elements  = [a.element.strip().upper() for a in around_ligand.atoms()]
-      found_unsupported = False
-      for e in elements:
-        if not e in SUPPORTED: found_unsupported = True
-      if found_unsupported:
-        print(i, "poor env (unsupp)")
-        continue
-      # Check whole thing against maps
-      mcheck = check_maps2(
-        tfofc      = tfofc,
-        fofc       = fofc,
-        sites_cart = around_ligand.atoms().extract_xyz(),
-        unit_cell  = cs.unit_cell())
-      if mcheck is False:
-        print(i, "poor env (map)")
-        continue
-      # Make box around new hierarchy
-      box_h, box_cs = center_hierarchy_in_box(hierarchy = around_ligand)
-      # Create model object
-      model_box = None
-      try:
-        model_box = mmtbx.model.manager(
-          pdb_hierarchy    = box_h,
-          crystal_symmetry = box_cs)
-        model_box.process(make_restraints=True)
-      except KeyboardInterrupt:
-        raise
-      except Sorry as e:
-        print(i, "model processing failed:", str(e))
-        continue
-      if model_box is None: continue
-      # Check geometry
-      #g = model_box.geometry_statistics().result(slim = True)
-      #
-      #print("     bond ", g.bond.mean,  g.bond.max)
-      #print("     angle", g.angle.mean, g.angle.max)
-      #print("     nb", g.nonbonded.min)
-
-      # Format output file name prefix
-      resname = atoms[ls[0]].parent().resname.strip()
-      resseq  = atoms[ls[0]].parent().parent().resseq.strip()
-      cid     = atoms[ls[0]].parent().parent().parent().id.strip()
-      rid = "%s_%s_%s"%(resname, cid, resseq)
-      # Write as mmCIF
-      file_name = "%s_%s.cif" % (rid, code)
-      assert not os.path.isfile(file_name)
-      with open(file_name, "w") as fo:
-        fo.write(model_box.model_as_mmcif())
-      file_was_created = True
-    if not file_was_created:
-      write_skip(code=code, msg="File was not created")
-  #
+    _run_one(cif=cif, hkl=hkl, code=code, log=log)
   except Exception as e:
     msg = "Other:\n %s"%traceback.format_exc()
     write_skip(code=code, msg=msg)
+  write_info(code=code, log=log)
+
+def _run_one(cif, hkl, code, log):
+  #
+  # DATA
+  #
+  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
+    hkl).as_miller_arrays()
+  mc_tfofc, mc_fofc = get_map_coefficients(miller_arrays = miller_arrays)
+  if mc_tfofc.d_min() > 2.5:
+    write_skip(code=code, msg="Bad resolution")
+    return
+  #
+  # MODEL
+  #
+  model = mmtbx.model.manager(
+    model_input         = iotbx.pdb.input(file_name=cif),
+    stop_for_unknowns   = False,
+    skip_ss_annotations = True,
+    process_biomt       = False)
+  cs = model.crystal_symmetry()
+  model = model.remove_hydrogens()
+  h = model.get_hierarchy()
+  atoms = h.atoms()
+  atoms.reset_i_seq()
+  sp = model.selection(string="protein")
+  if sp.count(True)*100./sp.size() < 80.:
+    write_skip(code=code, msg="Not a protein")
+    return # not protein
+  if len(h.models()) != 1:
+    write_skip(code=code, msg="Multi-model")
+    return
+  ligand_selections = has_ligands(h, code, log)
+  if len(ligand_selections)==0:
+    write_skip(code=code, msg="No ligand(s) selected")
+    return
+  #
+  # Compute maps
+  #
+  tfofc, fofc = get_maps(mc_tfofc = mc_tfofc, mc_fofc = mc_fofc)
+  #
+  # Check ligands against maps
+  #
+  sites_frac = model.get_sites_frac()
+  ligand_selections = check_maps(
+    tfofc             = tfofc,
+    fofc              = fofc,
+    ligand_selections = ligand_selections,
+    sites_frac        = sites_frac)
+  if len(ligand_selections)==0:
+    write_skip(code=code, msg="No ligands with good map")
+    return
+  file_was_created = False
+  for i, ls in enumerate(ligand_selections):
+    # A failure for one ligand does not skip the entry: the files of the
+    # other ligands are still written
+    try:
+      file_was_created |= process_ligand(
+        h=h, ls=ls, i=i, cs=cs, tfofc=tfofc, fofc=fofc, code=code, log=log)
+    except KeyboardInterrupt:
+      raise
+    except Exception as e:
+      print(i, "failed:\n%s" % traceback.format_exc(), file=log)
+  if not file_was_created:
+    write_skip(code=code, msg="File was not created")
+
+def process_ligand(h, ls, i, cs, tfofc, fofc, code, log):
+  """
+  Extract, check and write the environment of one ligand. Returns True if
+  the file was written.
+  """
+  around_ligand = extract_ligand_environment(
+    pdb_hierarchy     = h,
+    ligand_iselection = ls,
+    crystal_symmetry  = cs,
+    distmax           = 4.0)
+  if around_ligand is None:
+    print(i, "poor env (altlocs)", file=log)
+    return False
+  # Check for unsupported
+  elements  = [a.element.strip().upper() for a in around_ligand.atoms()]
+  found_unsupported = False
+  for e in elements:
+    if not e in SUPPORTED: found_unsupported = True
+  if found_unsupported:
+    print(i, "poor env (unsupp)", file=log)
+    return False
+  # Check whole thing against maps
+  mcheck = check_maps2(
+    tfofc      = tfofc,
+    fofc       = fofc,
+    sites_cart = around_ligand.atoms().extract_xyz(),
+    unit_cell  = cs.unit_cell(),
+    log        = log)
+  if mcheck is False:
+    print(i, "poor env (map)", file=log)
+    return False
+  # Move the environment to the center of a P1 box
+  box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+    sites_cart   = around_ligand.atoms().extract_xyz(),
+    buffer_layer = 5.0)
+  around_ligand.atoms().set_xyz(box.sites_cart)
+  # Create model object
+  try:
+    model_box = mmtbx.model.manager(
+      pdb_hierarchy    = around_ligand,
+      crystal_symmetry = box.crystal_symmetry(),
+      log              = null_out())
+    model_box.process(make_restraints=True)
+  except Sorry as e:
+    print(i, "model processing failed:", str(e), file=log)
+    return False
+  # Check geometry
+  #g = model_box.geometry_statistics().result(slim = True)
+  #
+  #print("     bond ", g.bond.mean,  g.bond.max)
+  #print("     angle", g.angle.mean, g.angle.max)
+  #print("     nb", g.nonbonded.min)
+
+  # Format output file name prefix
+  atoms = h.atoms()
+  resname = atoms[ls[0]].parent().resname.strip()
+  resseq  = atoms[ls[0]].parent().parent().resseq.strip()
+  cid     = atoms[ls[0]].parent().parent().parent().id.strip()
+  rid = "%s_%s_%s"%(resname, cid, resseq)
+  # Write as mmCIF
+  file_name = "%s_%s.cif" % (rid, code)
+  assert not os.path.isfile(file_name)
+  with open(file_name, "w") as fo:
+    fo.write(model_box.model_as_mmcif())
+  return True
 
 def run(cmdargs, NPROC=128):
   #
@@ -460,10 +412,8 @@ def run(cmdargs, NPROC=128):
   for code in hkls.keys():
     if(code in ignore): continue
     hkl,size = hkls[code]
-    try:
-      cif = cifs[code]
-      argss.append([cif, hkl, code])
-    except: pass # intentional
+    if code not in cifs: continue
+    argss.append([cifs[code], hkl, code])
   print("NEW FILES TO PROCESS:", len(argss))
   if(NPROC>1):
     stdout_and_results = easy_mp.pool_map(
