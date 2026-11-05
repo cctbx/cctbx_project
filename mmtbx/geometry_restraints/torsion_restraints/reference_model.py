@@ -308,18 +308,19 @@ def add_reference_model_restraints_if_requested(
     (len(params.file) > 0) and params.file[0] is not None):
     raise Sorry("Cannot not restrain working model to self and a "+
                     "reference model simultaneously")
-  reference_file_list = set()
+  reference_file_list = []
   reference_hierarchy_list = None
   if params.use_starting_model_as_reference:
     reference_hierarchy_list = [model.get_hierarchy()]
     reference_file_list = None
     print("*** Restraining model using starting model ***", file=log)
   else:
-    for file_name in params.file:
-      reference_file_list.add(file_name)
+    file_names = list(params.file)
     for rg in params.reference_group:
-      if rg.file_name is not None:
-        reference_file_list.add(rg.file_name)
+      file_names.append(rg.file_name)
+    for file_name in file_names:
+      if file_name is not None and file_name not in reference_file_list:
+        reference_file_list.append(file_name)
   print("*** Adding Reference Model Restraints ***", file=log)
   #test for inserted TER cards in working model
   ter_indices = model._ter_indices
@@ -327,8 +328,6 @@ def add_reference_model_restraints_if_requested(
     utils.check_for_internal_chain_ter_records(
       pdb_hierarchy=model.get_hierarchy(),
       ter_indices=ter_indices)
-  if reference_file_list is not None:
-    reference_file_list = list(reference_file_list)
   rm = reference_model(
     model,
     reference_file_list=reference_file_list,
@@ -576,7 +575,7 @@ class reference_model(object):
           key_ref = "%s %s" % (reference_rg.unique_resnames()[0],
               reference_rg.id_str().strip())
           if key_model not in self.residue_match_hash:
-            self.residue_match_hash[key_model] = (self.reference_file_list[0], key_ref)
+            self.residue_match_hash[key_model] = (fn, key_ref)
           # Filling out self.match_map
           info_rgs = [[],[]]
           assert reference_rg.atoms_size() == model_rg.atoms_size(), "%s, %s" % (
