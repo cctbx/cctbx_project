@@ -125,20 +125,14 @@ def _is_water(resname):
           == "common_water")
 
 
-# Index arrays for the (candidate x neighbour) block, keyed by its shape and
-# shared by every water with that shape. The block is flattened row-major:
-# candidate i occupies ``[i * m, (i+1) * m)``, so a row is a plain slice.
-_TILE_CACHE = {}
-
-
 def _tile(k, m):
-  """``(cand_index, nbr_index)`` for a flattened (k, m) block."""
-  t = _TILE_CACHE.get((k, m))
-  if t is None:
-    r = flex.size_t_range(k * m)
-    t = (r / m, r % m)
-    _TILE_CACHE[(k, m)] = t
-  return t
+  """``(cand_index, nbr_index)`` for a flattened (k, m) block.
+
+  The block is flattened row-major: candidate i occupies
+  ``[i * m, (i+1) * m)``, so a row is a plain slice.
+  """
+  r = flex.size_t_range(k * m)
+  return r / m, r % m
 
 
 def _row_mins(d, k, m, rows):
