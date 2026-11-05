@@ -200,6 +200,13 @@ END
 _CLUSTER_SEARCH_OVERLAP_PDB = _CLUSTER_SEARCH_PDB.replace("END", (
   "HETATM    5  O   HOH W   3      -3.400   0.000   0.000  1.00 10.00"
   "           O\nEND"))
+# Two waters deposited on one site with nothing else in reach: a cluster
+# whose waters have no acceptor.
+_COINCIDENT_WATERS_PDB = """\
+HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
+HETATM    2  O   HOH W   2       0.000   0.000   0.000  1.00 10.00           O
+END
+"""
 
 
 # A protonated residue (one H, one D) beside a water that also carries H.
@@ -851,7 +858,9 @@ def exercise_cluster_search():
   Places on ``_CLUSTER_SEARCH_PDB`` without the search, where one proton of
   W 1 points at no acceptor within the donation limit, and with it, where
   both do; then on ``_CLUSTER_SEARCH_OVERLAP_PDB``, whose two coincident
-  waters give each other no direction to donate along.
+  waters give each other no direction to donate along. Last on
+  ``_COINCIDENT_WATERS_PDB``, whose waters have no acceptor at all and
+  must each still get two H.
   """
   for pdb_str, search, want in (
       (_CLUSTER_SEARCH_PDB, False, ["ACA"]),
@@ -871,6 +880,10 @@ def exercise_cluster_search():
         if _unit(h, o).dot(_unit(a, o)) >= wp._WATER_H1_ACC_ALIGN:
           got.append(a.parent().resname)
     assert sorted(got) == want, (search, sorted(got))
+  hier = _hierarchy(_COINCIDENT_WATERS_PDB)
+  wp.place_water_hydrogens(hier, cluster_search=True)
+  n_h = [a.element.strip() for a in hier.atoms()].count("H")
+  assert n_h == 4, n_h
 
 
 def exercise_cluster_search_modes():

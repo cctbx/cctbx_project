@@ -136,10 +136,13 @@ def _tile(k, m):
 
 
 def _row_mins(d, k, m, rows):
-  """Per-row minima of a flattened (k, m) block, for the rows in ``rows``."""
+  """Per-row minima of a flattened (k, m) block, for the rows in ``rows``;
+  an empty row's minimum is +inf."""
   n = rows.size()
   if n == 0:
     return flex.double()
+  if m == 0:
+    return flex.double(n, math.inf)
   if n == 1:
     i = int(rows[0]) * m
     return flex.double(1, flex.min(d[i:i + m]))
