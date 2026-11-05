@@ -668,6 +668,7 @@ class RunStatsSentinel(Thread):
 
   def refresh_stats(self):
     from xfel.ui.db.stats import HitrateStats, RunSummaryStats
+    from xfel.ui.db.run import run_sort_key
     import copy
     tab = self.parent.run_window.runstats_tab
     if tab.trial_no is not None:
@@ -683,20 +684,26 @@ class RunStatsSentinel(Thread):
       trgr = {}
       run_tags = []
       run_statuses = []
+      # The selected runs with their rungroups, in run order rather than
+      # rungroup order, so both plots read left to right in time
+      pairs = []
       for rg in trial.rungroups:
         for run in rg.runs:
-          if run.run not in run_numbers and run.run in selected_runs:
-            run_numbers.append(run.run)
-            trial_ids.append(trial.id)
-            rungroup_ids.append(rg.id)
-            trgr[run.run] = (trial, rg, run)
-            if not per_run:
-              # Per shot: every image of the run
-              stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
-                                        i_sigi_cutoff=tab.i_sigi,
-                                        d_min=tab.d_min,
-                                        run=run, trial=trial, rungroup=rg)())
-            run_tags.append([tag.name for tag in run.tags])
+          if run.run in selected_runs and all(run.run != r.run for r, _ in pairs):
+            pairs.append((run, rg))
+      pairs.sort(key=lambda pair: run_sort_key(pair[0].run))
+      for run, rg in pairs:
+        run_numbers.append(run.run)
+        trial_ids.append(trial.id)
+        rungroup_ids.append(rg.id)
+        trgr[run.run] = (trial, rg, run)
+        if not per_run:
+          # Per shot: every image of the run
+          stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
+                                    i_sigi_cutoff=tab.i_sigi,
+                                    d_min=tab.d_min,
+                                    run=run, trial=trial, rungroup=rg)())
+        run_tags.append([tag.name for tag in run.tags])
 
       jobs = self.db.get_all_jobs()
       for idx in range(len(run_numbers)):

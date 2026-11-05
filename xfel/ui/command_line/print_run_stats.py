@@ -11,6 +11,7 @@ from libtbx.utils import Sorry
 from xfel.ui import load_cached_settings, master_phil_str, db_phil_str
 from xfel.ui.db.xfel_db import xfel_db_application
 from xfel.ui.db.stats import RunSummaryStats
+from xfel.ui.db.run import run_sort_key
 import sys
 
 phil_str = """
@@ -54,13 +55,6 @@ def format_row(label, n_drop_hits, n_hit, n_indexed, n_lattices, n_high_quality,
     label, n_drop_hits, percent(n_drop_hits, n_total), n_hit, percent(n_hit, n_total),
     n_indexed, percent(n_indexed, n_total), n_lattices,
     n_high_quality, percent(n_high_quality, n_total), percent(n_high_quality, n_indexed), n_total, status)
-
-def run_sort_key(run_no):
-  ''' Numeric order for integer run names, string order for the rest '''
-  try:
-    return (0, int(run_no), "")
-  except ValueError:
-    return (1, 0, run_no)
 
 def run(args):
   user_phil = []
