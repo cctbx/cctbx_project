@@ -1381,6 +1381,13 @@ class _WaterHydrogenPlacer:
     wh_wid = []
     wh_conf = []
     wh_anchor = []
+    # cctbx counts an O at occupancy 1 on a site of order n once (a lower
+    # occupancy already carries the multiplicity): each of its H accounts
+    # for n times its occupancy, and new H take 1/n.
+    sps = None
+    if self.crystal_symmetry is not None:
+      sps = crystal.special_position_settings(
+        self.crystal_symmetry, min_distance_sym_equiv=_WATER_SYM_EQUIV_TOL)
     for wid, (rg, ags) in enumerate(_water_residue_groups(hier)):
       o_sites = _water_o_sites(ags)
       blank = None
@@ -1419,8 +1426,17 @@ class _WaterHydrogenPlacer:
             continue
           for el, occ in stripped.get(g.memory_id(), ()):
             carried.append((el, occ, g))
+        n_site = 1
+        if sps is not None and o.occ == 1:
+          n_site = sps.site_symmetry(site_cart=o.xyz).n_matrices()
+        if n_site > 1:
+          n_h = sum(int(n_site * a.occ + 0.5) for a in existing)
+          n_carried = sum(int(n_site * q + 0.5) for _, q, _ in carried)
+        else:
+          n_h = len(existing)
+          n_carried = len(carried)
         fixed_d1 = None
-        skip = len(existing) >= 2          # already protonated
+        skip = n_h >= 2                    # already protonated
         if existing and not skip:
           if self.existing_h != "complete":
             skip = True
@@ -1430,8 +1446,8 @@ class _WaterHydrogenPlacer:
               skip = True  # H coincident with O: no direction for a cone
             else:
               fixed_d1 = v.normalize().elems
-        is_single = (len(carried) == 1 if self.existing_h == "reorient"
-                     else len(existing) == 1)
+        is_single = (n_carried == 1 if self.existing_h == "reorient"
+                     else n_h == 1)
         if skip and not is_single:
           continue                         # nothing to place and nothing to say
         c = 0
@@ -1456,7 +1472,8 @@ class _WaterHydrogenPlacer:
         if skip:
           continue
         # New H take the conformer's occupancy: its own altloc's atoms', or
-        # what the strip took from them, else the O's.
+        # what the strip took from them, else the O's; divided by the site
+        # order of an O at occupancy 1.
         occ = o.occ
         if altloc:
           tats = target.atoms()
@@ -1467,6 +1484,7 @@ class _WaterHydrogenPlacer:
               if g is target:
                 occ = q
                 break
+        occ /= n_site
         waters.append((target, o, own_idx, fixed_d1, existing, names, wid, c,
                        occ, [el for el, _, _ in carried]))
     single = list(single.values())
@@ -2033,7 +2051,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
   each is equally far off its acceptor, where that stays clash-free.
   Candidates are scored against every other atom and every other water's
   placed H; waters go most-crowded first and new H inherit the parent O's
-  B factor and their conformer's occupancy.
+  B factor and their conformer's occupancy, divided by n for an O at
+  occupancy 1 on a site of order n.
 
   Parameters
   ----------
@@ -2069,8 +2088,10 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
   existing_h : str, optional
       What to do with a water that already carries H: ``"keep"`` (default,
       leave it untouched, single-H waters included), ``"complete"`` (a water
-      with exactly one H gets its partner on that proton's cone, inheriting
-      its element) or ``"reorient"`` (strip all water H and re-place both).
+      with one H gets its partner on that proton's cone, inheriting its
+      element) or ``"reorient"`` (strip all water H and re-place both). An H
+      of an O at occupancy 1 on a site of order n counts as n times its
+      occupancy.
   on_state : callable, optional
       Called as ``on_state(label, stats)`` at each state reached:
       ``"initial"`` after the greedy pass, ``"sweep N"`` after each refinement
@@ -2095,9 +2116,9 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
       ``kept_label``: label of the kept state (``"initial"``, ``"sweep N"`` or
       ``"basin N.M"``) when refinement or basin-hopping ran, else None.
       ``partial_waters``: one ``(residue_id, metal, action)`` per water that
-      carried exactly one H on input, ``metal`` being ``(element, distance)``
-      for a coordinating cation or None and ``action`` one of ``"kept"``,
-      ``"completed"``, ``"stripped"``.
+      carried one H on input, counted as for ``existing_h``, ``metal`` being
+      ``(element, distance)`` for a coordinating cation or None and
+      ``action`` one of ``"kept"``, ``"completed"``, ``"stripped"``.
       ``basin_rounds_run``: basin-hopping rounds run; fewer than ``n_basin``
       once no clashing water in the best state can move.
 

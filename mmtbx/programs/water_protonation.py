@@ -328,7 +328,8 @@ and existing_h=reorient strips all water H and re-places both.
                "rest of the model first.")
 
   def _print_partial_waters(self, partial):
-    """Report the waters that carried exactly one H on input.
+    """Report the waters that carried one H on input, counted as the placer
+    counts them.
 
     Metal-coordinating ones are annotated with the cation and its distance.
     """

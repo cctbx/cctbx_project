@@ -268,6 +268,15 @@ def _hierarchy_and_symmetry(pdb_str):
   return inp.construct_hierarchy(), inp.crystal_symmetry()
 
 
+def _h_per_o(hier, crystal_symmetry):
+  """H per O in the unit cell, each atom counted as cctbx counts it."""
+  xrs = hier.extract_xray_structure(crystal_symmetry=crystal_symmetry)
+  n = {"O": 0.0, "H": 0.0}
+  for sc in xrs.scatterers():
+    n[sc.scattering_type.strip()] += sc.occupancy * sc.multiplicity()
+  return n["H"] / n["O"]
+
+
 def _water_atoms(hier):
   """The O of the single HOH and a ``{name: atom}`` dict of its H/D."""
   water = [a for a in hier.atoms() if a.parent().resname.strip() == "HOH"]
@@ -350,14 +359,18 @@ END
 """
 
 
-# A water on the two-fold axis of P2, carrying one H. The two-fold maps the
-# O onto itself and the H onto the water's second H site.
+# A water on the two-fold axis of P2, carrying one H at half occupancy. The
+# two-fold maps the O onto itself and the H onto the water's second H site,
+# so with the O at 1.0 the water has one H.
 _ON_TWO_FOLD_PDB = """\
 CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1 2 1
 HETATM    1  O   HOH W   1       0.000   5.000   0.000  1.00 10.00           O
-HETATM    2  H1  HOH W   1       0.757   5.586   0.000  1.00 10.00           H
+HETATM    2  H1  HOH W   1       0.757   5.586   0.000  0.50 10.00           H
 END
 """
+# The same with the H at 1.0: the H and its equivalent are the water's two.
+_TWO_FOLD_COMPLETE_PDB = _ON_TWO_FOLD_PDB.replace(
+  "0.000  0.50 10.00           H", "0.000  1.00 10.00           H")
 # The same with a ligand C 1.3 A from H1. H2, along H1's equivalent, clashes
 # with the C's equivalent, and the completed water has nothing to vary.
 _TWO_FOLD_CLASH_PDB = _ON_TWO_FOLD_PDB.replace("END", (
@@ -380,14 +393,15 @@ HETATM    1  O   HOH W   1       0.000   5.000   0.000  1.00 10.00           O
 END
 """
 
-# A water on an inversion centre of P-1, carrying one H along +x, and a
-# ligand O 2.8 A away at 104.5 deg from it, 0.6 deg off H2's cone, at 60 deg
-# azimuth from +y. Inversion maps the H onto -x, the other orientation of a
-# water that cannot keep one ordered H-O-H on that site.
+# A water on an inversion centre of P-1, carrying one H along +x at half
+# occupancy, and a ligand O 2.8 A away at 104.5 deg from it, 0.6 deg off
+# H2's cone, at 60 deg azimuth from +y. Inversion maps the H onto -x, the
+# other orientation of a water that cannot keep one ordered H-O-H on that
+# site.
 _ON_INVERSION_PDB = """\
 CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P -1
 HETATM    1  O   HOH W   1       5.000   5.000   5.000  1.00 10.00           O
-HETATM    2  H1  HOH W   1       5.957   5.000   5.000  1.00 10.00           H
+HETATM    2  H1  HOH W   1       5.957   5.000   5.000  0.50 10.00           H
 HETATM    3  O   EOH L   1       4.299   6.356   7.348  1.00 10.00           O
 END
 """
@@ -1280,19 +1294,24 @@ def exercise_sym_equiv_on_symmetry_element():
 
 
 def exercise_water_on_special_position():
-  """A water on a special position is placed with its site symmetry.
+  """A water on a special position is placed with its site symmetry, with
+  two H per O in the unit cell as cctbx counts them.
 
   The two-fold of ``_ON_TWO_FOLD_PDB`` (along b through x = z = 0) maps
   (x, y, z) onto (-x, y, -z). Completing the water must put H2 along H1's
-  equivalent; with ``_TWO_FOLD_CLASH_PDB``'s clash, which no kick can
-  move, basin-hopping must run no round. A bare water on that axis, with
-  ``_TWO_FOLD_ACCEPTOR_PDB``'s acceptor or none, must get two H that are
-  each other's equivalents and no contact with its own equivalents; with
-  the acceptor, each H must aim within 13 deg of it or its equivalent, the
-  cone passing 12 deg from both (half the H-O-H angle less 40 deg). On the
-  inversion centre of ``_ON_INVERSION_PDB``, H1's equivalent is the
-  water's other orientation, not a neighbour, so H2 must still aim at the
-  acceptor near its cone.
+  equivalent, at H1's half occupancy. ``_TWO_FOLD_COMPLETE_PDB``'s H at 1.0
+  already gives the water its two H: keeping must not report it as carrying
+  one, and completing must add none. With ``_TWO_FOLD_CLASH_PDB``'s clash,
+  which no kick can move, basin-hopping must run no round. A bare water on
+  that axis, with ``_TWO_FOLD_ACCEPTOR_PDB``'s acceptor or none, must get
+  two H that are each other's equivalents and no contact with its own
+  equivalents; with the acceptor, each H must aim within 13 deg of it or
+  its equivalent, the cone passing 12 deg from both (half the H-O-H angle
+  less 40 deg). On the inversion centre of ``_ON_INVERSION_PDB``, H1's
+  equivalent is the water's other orientation, not a neighbour, so H2 must
+  still aim at the acceptor near its cone. A bare water on a two-fold, a
+  mirror, an inversion centre and a three-fold, its O at 1.0 or at 1/n of
+  a site of order n, must get two H per O.
   """
   hier, cs = _hierarchy_and_symmetry(_ON_TWO_FOLD_PDB)
   wp.place_water_hydrogens(hier, existing_h="complete", crystal_symmetry=cs)
@@ -1300,6 +1319,14 @@ def exercise_water_on_special_position():
   x, y, z = hs["H1"].xyz
   off = math.degrees(_unit(hs["H2"], o).angle(_unit((-x, y, -z), o)))
   assert off < 1e-4, f"H2 is {off:.3f} deg off H1's two-fold equivalent"
+  assert hs["H2"].occ == 0.5, hs["H2"].occ
+  for existing_h in ("keep", "complete"):
+    hier, cs = _hierarchy_and_symmetry(_TWO_FOLD_COMPLETE_PDB)
+    res = wp.place_water_hydrogens(hier, existing_h=existing_h,
+                                   crystal_symmetry=cs)
+    _, hs = _water_atoms(hier)
+    assert sorted(hs) == ["H1"], (existing_h, sorted(hs))
+    assert not res.partial_waters, (existing_h, res.partial_waters)
   hier, cs = _hierarchy_and_symmetry(_TWO_FOLD_CLASH_PDB)
   res = wp.place_water_hydrogens(hier, existing_h="complete", n_basin=3,
                                  crystal_symmetry=cs)
@@ -1328,6 +1355,19 @@ def exercise_water_on_special_position():
   off = math.degrees(_unit(hs["H2"], o).angle(
     _unit((4.299, 6.356, 7.348), o)))
   assert off < 1.0, f"H2 is {off:.2f} deg off the acceptor"
+
+  for sg, gamma, (x, y, z), n in (("P 1 2 1", 90.0, (0.0, 5.0, 0.0), 2),
+                                  ("P 1 m 1", 90.0, (3.0, 0.0, 4.0), 2),
+                                  ("P -1", 90.0, (5.0, 5.0, 5.0), 2),
+                                  ("P 3", 120.0, (0.0, 0.0, 4.0), 3)):
+    for occ in (1.0, 1.0 / n):
+      hier, cs = _hierarchy_and_symmetry(
+        f"CRYST1   10.000   10.000   10.000  90.00  90.00{gamma:7.2f} {sg}\n"
+        f"HETATM    1  O   HOH W   1    {x:8.3f}{y:8.3f}{z:8.3f}{occ:6.2f}"
+        f" 10.00           O\nEND\n")
+      wp.place_water_hydrogens(hier, crystal_symmetry=cs)
+      h_per_o = _h_per_o(hier, cs)
+      assert abs(h_per_o - 2.0) < 1e-6, f"{sg}, O at {occ:.2f}: {h_per_o:.2f}"
 
 
 def exercise_water_conformers():
