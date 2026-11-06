@@ -2666,6 +2666,10 @@ NOTES:
 
     # Get our model.
     self.model = self.data_manager.get_model()
+    # As read from a file: no X-ray structure, no scattering table. select()
+    # below then builds the X-ray structure from the selected hierarchy.
+    xrs_from_hierarchy = (self.model._xray_structure is None and
+      self.model.scattering_dict_info is None)
 
     sel_x = self.model.selection('element X')
     if sel_x.count(True) > 0:
@@ -2790,7 +2794,11 @@ NOTES:
       # sites. A model read from a file has none of these.
       self.model._mon_lib_srv = None
       self.model.unset_riding_h_manager()
-      self.model.get_xray_structure(force=True)
+      # Rebuilt unless it is already the hierarchy's own: process() (restraint
+      # file) replaces it with its interpretation's, the shift back changes it.
+      # Boxing and qmready's hierarchy changes rebuild it from the hierarchy.
+      self.model.get_xray_structure(force=not (xrs_from_hierarchy and
+        self._input_shift is None and not self.data_manager.has_restraints()))
       self.model.set_refinement_flags(None)
       self._unrestrained = self._PrepareRestraints()
 
