@@ -3,6 +3,10 @@ C of the symmetry mate 3666 of DAR A 5 (LINK record; the asymmetric unit
 holds half of the macrocycle). Neither end is a terminus: no NH3 at the
 PRO N, and with qmready=True no OXT on the DAR C (it stopped with a "Bad
 clash" between that OXT and the PRO N of the mate).
+
+The restraints know the bond too (automatic linking, a symmetry peptide
+closure): the qmready geometry regularization, which minimizes clashes
+away, keeps the 1.33 A contact instead of pushing the two atoms apart.
 """
 import os
 from io import StringIO
@@ -134,6 +138,24 @@ def names(hierarchy, resseq):
   return sorted(a.name.strip() for a in hierarchy.atoms()
                 if a.parent().parent().resseq_as_int() == resseq)
 
+def link_distance(hierarchy, crystal_symmetry):
+  """Distance between PRO 1 N and the nearest symmetry mate of DAR 5 C."""
+  atoms = {(a.parent().parent().resseq_as_int(), a.name.strip()): a.xyz
+    for a in hierarchy.atoms()}
+  uc = crystal_symmetry.unit_cell()
+  n = uc.fractionalize(atoms[(1, "N")])
+  c = uc.fractionalize(atoms[(5, "C")])
+  best = None
+  for op in crystal_symmetry.space_group():
+    cm = op * c
+    for tx in range(-2, 3):
+      for ty in range(-2, 3):
+        for tz in range(-2, 3):
+          d = uc.distance(n, (cm[0] + tx, cm[1] + ty, cm[2] + tz))
+          if best is None or d < best:
+            best = d
+  return best
+
 def check(hierarchy):
   pro = names(hierarchy, 1)
   assert not set(pro) & {"H", "H1", "H2", "H3"}, pro
@@ -154,7 +176,40 @@ def test_add():
   check(run("tst_reduce2_symmetry_link_1"))
 
 def test_qmready():
-  check(run("tst_reduce2_symmetry_link_2", ["qmready=True"]))
+  h = run("tst_reduce2_symmetry_link_2", ["qmready=True"])
+  check(h)
+  # the regularization keeps the symmetry peptide bond (it was a "clash"
+  # that minimization pushed to 2.3 A)
+  cs = iotbx.pdb.input(source_info=None, lines=pdb_str).crystal_symmetry()
+  d = link_distance(h, cs)
+  assert abs(d - 1.33) < 0.1, d
+
+def test_symmetry_peptide_bond_restraint():
+  # automatic linking (link_residues, the default) makes the bond between
+  # PRO 1 N and DAR 5 C of the symmetry mate: a bond proxy with that
+  # symmetry operation and the peptide bond length, no clash
+  model = mmtbx.model.manager(
+    model_input=iotbx.pdb.input(source_info=None, lines=pdb_str),
+    log=null_out())
+  model.process(make_restraints=True)
+  atoms = model.get_hierarchy().atoms()
+  i_seqs = {(a.parent().parent().resseq_as_int(), a.name.strip()): a.i_seq
+    for a in atoms}
+  i_n, i_c = i_seqs[(1, "N")], i_seqs[(5, "C")]
+  grm = model.get_restraints_manager().geometry
+  bonded = grm.shell_sym_tables[0][i_n]
+  assert i_c in bonded, [atoms[j].id_str() for j in bonded.keys()]
+  sym_ops = [str(op) for op in bonded[i_c]]
+  assert sym_ops == ["-x+1,-y+1,-z+1"], sym_ops
+  params = grm.bond_params_table[i_n][i_c]
+  assert abs(params.distance_ideal - 1.33) < 0.02, params.distance_ideal
+  # the bond is in the pair table (1-2 exclusion): no nonbonded proxy
+  # between the two atoms
+  nb = grm.pair_proxies(sites_cart=model.get_sites_cart()).nonbonded_proxies
+  assert not [q for q in nb.asu if {q.i_seq, q.j_seq} == {i_n, i_c}]
+  # the shift from the regularization is below the budget: not needed
+  r = model.regularize_geometry()
+  assert not r.needed, r
 
 def test_own_mate_is_no_bond():
   # half-occupied Gly, N 0.6 A from a 2-fold: its own mate is 1.2 A from the
@@ -205,6 +260,7 @@ if __name__ == "__main__":
   test_add_terminal_oxt()
   test_add()
   test_qmready()
+  test_symmetry_peptide_bond_restraint()
   test_own_mate_is_no_bond()
   test_own_ca_mate_is_no_bond()
   test_closure_with_own_mate()

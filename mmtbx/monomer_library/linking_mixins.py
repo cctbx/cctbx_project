@@ -427,6 +427,13 @@ class linking_mixins(object):
     link_notes = {}
     custom_links = {}
     exclude_out_lines = {}
+    # symmetry peptide closures (C-N between the first and the last residue
+    # of a chain, across a symmetry operation: half a macrocycle in the
+    # asymmetric unit): bond only, with the peptide bond length, as a
+    # disulfide across symmetry. The link's angles and torsions have no
+    # symmetry operations. Keyed by the two i_seqs; the report lines too.
+    peptide_closure_params = {}
+    peptide_closure_report = []
 
     atom_classes = [linking_utils.get_classes(a) for a in atoms]
     atoms_in_first_last_rgs = {}
@@ -678,7 +685,8 @@ Residue classes
            ]:
           continue
       else:
-        if len(key)>2: continue
+        # no links across symmetry, except a peptide closure (bond only)
+        if len(key)>2 and not use_only_bond_cutoff: continue
       #else:
       #  atoms_must_be.setdefault(("common_amino_acid",
       #                            "common_amino_acid"),["C", "N"])
@@ -782,6 +790,15 @@ Residue classes
         if link=='TRANS':
           key=link
           link = self.mon_lib_srv.link_link_id_dict[link]
+          if len(done_key)==3:
+            # peptide closure across symmetry: the bond alone, with the
+            # link's length (the simple bond below)
+            for bond in link.bond_list:
+              peptide_closure_params[frozenset((i_seq, j_seq))] = (
+                bond.value_dist, bond.value_dist_esd)
+            peptide_closure_report.append((atoms[i_seq].id_str(),
+              atoms[j_seq].id_str(), done_key[2]))
+            link = None
       if verbose:
         print('link',link)
         print('swap',swap)
@@ -1035,6 +1052,10 @@ Residue classes
             slack = ans[2]
       if equil is None:
         equil = 2.3
+      closure = peptide_closure_params.get(frozenset((i_seq, j_seq)))
+      if closure is not None:
+        equil, weight = closure
+        origin_id = origin_ids['link_TRANS']
       added_to_asu_table = False
       try:
         #bond_asu_table.add_pair([i_seq, j_seq])
@@ -1172,6 +1193,10 @@ Residue classes
                                                                       label2,
                                                                       sym_op,
             ), file=log)
+      if peptide_closure_report:
+        print("  Peptide bonds across symmetry (bond only):", file=log)
+        for label1, label2, sym_op in sorted(peptide_closure_report):
+          print("    %s - %s sym. op: %s" % (label1, label2, sym_op), file=log)
     if(log is not None):
       print('  Time building additional restraints: %0.2f' % (
         time.time()-t0), file=log)
