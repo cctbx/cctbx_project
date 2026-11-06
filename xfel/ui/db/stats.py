@@ -267,6 +267,11 @@ RunSummary = namedtuple("RunSummary", ["run", "rungroup_id", "n_frames", "n_hits
                                        "first_timestamp", "last_timestamp"])
 
 class RunSummaryStats(object):
+  # Above this many runs, query the whole trial and keep the wanted rows.
+  # The planner drives a filtered query from the run index with a lookup
+  # per event, measured at 0.13 ms per event on a 6M-event trial, but a
+  # whole-trial query from a scan of the crystal index at 0.02 to 0.04 ms.
+  whole_trial_above = 20
   """ Per-run counts for a trial, computed in the database by one aggregate
       query instead of fetching every image: frames, hits, drop hits, indexed
       images, lattices, high quality images and the first and last timestamp.
@@ -305,7 +310,12 @@ class RunSummaryStats(object):
       to_query = to_query[:max_query]
     else:
       self.pending = 0
-    fresh = self.query([run for run, rungroup_id in to_query]) if to_query else {}
+    if not to_query:
+      fresh = {}
+    elif len(to_query) > self.whole_trial_above:
+      fresh = self.query()
+    else:
+      fresh = self.query([run for run, rungroup_id in to_query])
     summaries = {}
     for key in run_statuses:
       if key in self.finished:

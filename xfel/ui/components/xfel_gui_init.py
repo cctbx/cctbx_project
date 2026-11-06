@@ -634,6 +634,7 @@ class RunStatsSentinel(Thread):
     # across cycles and is replaced when the trial or a cutoff changes.
     self.run_summary_stats = None
     self.run_summary_key = None
+    self.summary_first_cycle = True
     self.summary_run_numbers = []
     self.summaries = []
     self.summary_statuses = []
@@ -729,10 +730,15 @@ class RunStatsSentinel(Thread):
           self.run_summary_stats = RunSummaryStats(self.db, trial, n_strong_cutoff=tab.n_strong,
                                                    ratio_cutoff=tab.ratio, d_min=tab.d_min, i_sigi_cutoff=tab.i_sigi)
           self.run_summary_key = key
+          # The first cycle queries a few runs so the plot appears within
+          # seconds; the next one takes the rest in a single query, which
+          # costs a few times less per event than the same runs in chunks.
+          self.summary_first_cycle = True
         statuses = {}
         for run_no, rg_id, status in zip(run_numbers, rungroup_ids, run_statuses):
           statuses[(run_no, rg_id)] = status if status != 'UNKWN' else 'Not found'
-        summaries = self.run_summary_stats(statuses, max_query=self.runs_per_query)
+        summaries = self.run_summary_stats(statuses, max_query=self.runs_per_query if self.summary_first_cycle else None)
+        self.summary_first_cycle = False
         # Kept apart from run_numbers, which fetch_timestamps pairs with the
         # per-shot stats
         self.summary_run_numbers = run_numbers
