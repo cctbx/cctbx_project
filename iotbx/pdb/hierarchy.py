@@ -2569,6 +2569,13 @@ class _():
     else:
       sentinel = self.atoms().reset_tmp(first_value=0, increment=1)
     result = []
+    # Groups come only from atom groups with an altloc and from atoms with
+    # 0 < occ < 1: without either the result is empty.
+    occ = self.atoms().extract_occ()
+    if (set(self.altloc_indices().keys()) <= {""} and
+        ((occ > 0) & (occ < 1)).count(True) == 0):
+      del sentinel
+      return result
     for chain in self.chains():
       if(common_residue_name_class_only is None):
         if(chain.is_protein()):
