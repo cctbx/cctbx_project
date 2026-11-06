@@ -212,7 +212,7 @@ due to having no panel number.  xcal,ycal,xobs, yobs all meaningless.
         crystal_name="reciprocalspaceship", dataset_name="reciprocalspaceship"
         )
         mtz.datasets[0].wavelength=wavelength
-        mtz.write_to_file("step_%d_"%(self.logger.worker_step)+self.params.export.output_label+".mtz")
+        mtz.write_to_file("step_%d_"%(self.logger.worker_step or 0)+self.params.export.output_label+".mtz")
       bypass_data_write_mtz(data)
 
     if rank==0:
@@ -221,7 +221,7 @@ due to having no panel number.  xcal,ycal,xobs, yobs all meaningless.
       self.logger.main_log(str(counts_refl))
       self.logger.main_log("Sums to %d"%(sum(counts_refl)))
       self.logger.main_log("Data to file step_%d_%s.mtz wavelength=%.5fÅ"%(
-                           self.logger.worker_step,self.params.export.output_label, wavelength))
+                           (self.logger.worker_step or 0),self.params.export.output_label, wavelength))
 
     # what is left?
     from xfel.merging.application.utils.data_counter import data_counter
@@ -229,7 +229,7 @@ due to having no panel number.  xcal,ycal,xobs, yobs all meaningless.
 
     for iexpt, cexpt in enumerate(all_experiments):
       desc = "SPECT step_%d_%s %s imageindex %d iexpt %d of %d on rank %d"%(
-                           self.logger.worker_step, self.params.export.output_label,
+                           (self.logger.worker_step or 0), self.params.export.output_label,
                            cexpt.imageset.paths()[0], cexpt.imageset.indices()[0], iexpt, len(all_experiments), rank)
       self.logger.log(desc)
     return all_experiments, all_reflections
