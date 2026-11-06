@@ -5,7 +5,8 @@ from iotbx import reflection_file_reader
 from iotbx.cli_parser import run_program
 from libtbx.utils import null_out
 from iotbx.data_manager import DataManager
-from mmtbx.programs import fmodel
+from mmtbx.programs import fmodel, polder
+from libtbx.utils import Sorry
 import mmtbx.maps.polder
 import iotbx.phil
 from six.moves import range
@@ -107,9 +108,30 @@ def exercise(prefix="tst_polder_3"):
     assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
     #print mask_mmm[i], mmm_list[i]
 
+  exercise_sphere_radius_none(model_fn, mtz_fn)
+
   # Clean up files
   os.remove(model_fn)
   os.remove(mtz_fn)
+
+# ---------------------------------------------------------------------------
+
+def exercise_sphere_radius_none(model_fn, mtz_fn):
+  """
+  sphere_radius=None (blank GUI field) must give a Sorry without a box and
+  be ignored with compute_box=True.
+  """
+  args = [model_fn, mtz_fn, 'solvent_exclusion_mask_selection="chain A"',
+    'sphere_radius=None']
+  try:
+    run_program(program_class=polder.Program, args=args, logger=null_out())
+  except Sorry as e:
+    assert 'Solvent exclusion radius' in str(e)
+  else:
+    raise AssertionError('Sorry expected for sphere_radius=None')
+  r = run_program(program_class=polder.Program,
+    args=args + ['compute_box=True'], logger=null_out())
+  os.remove(r.output_file)
 
 # ---------------------------------------------------------------------------
 
