@@ -203,10 +203,13 @@ class _ElideMixin(object):
   def _floor_width(self):
     """The width of the ``keep`` characters this widget never drops.
 
-    Zero without any. Otherwise what the elide leaves at that count --
-    the head of the text and an ellipsis under ElideRight, the tail
-    under ElideLeft, both ends under ElideMiddle -- measured as
-    ``sizeHint`` measures the whole, and never more than the whole.
+    Zero without any. Otherwise what ``elidedText`` needs to leave that
+    count (the head under ElideRight, the tail under ElideLeft, both ends
+    under ElideMiddle), measured as it measures: the kept characters'
+    advances within the whole text plus an ellipsis measured alone, with
+    no kern between them. Shaped as one string instead, a font that kerns
+    into the ellipsis (Noto Sans, "r…") measured a pixel short and dropped
+    the last kept character. Never more than the whole.
     """
     keep, full = self._keep, self._full_text
     if keep <= 0 or not full:
@@ -214,20 +217,26 @@ class _ElideMixin(object):
     if len(full) <= keep:
       return self.sizeHint().width()
     mode = self._elide_mode
+    if mode == QtCore.Qt.ElideNone:
+      return self.sizeHint().width()
+    fm = self.fontMetrics()
+    whole = fm.horizontalAdvance(full)
+    # horizontalAdvance(full, n): the first n characters as shaped in the
+    # whole text; a tail is the whole less the head before it.
     if mode == QtCore.Qt.ElideLeft:
-      kept = "…" + full[len(full) - keep:]
+      kept = whole - fm.horizontalAdvance(full, len(full) - keep)
     elif mode == QtCore.Qt.ElideMiddle:
       # Qt keeps as many either side, so an odd count is kept only with
       # room for the next even one.
       half = (keep + 1) // 2
-      kept = full[:half] + "…" + full[len(full) - half:]
-    elif mode == QtCore.Qt.ElideNone:
-      return self.sizeHint().width()
+      kept = (fm.horizontalAdvance(full, half)
+              + whole - fm.horizontalAdvance(full, len(full) - half))
     else:
-      kept = full[:keep] + "…"
+      kept = fm.horizontalAdvance(full, keep)
+    kept += fm.horizontalAdvance("…")
     # Never past the whole text: for narrow glyphs the ellipsis alone is
     # wider than the characters it stands in for.
-    return min(self._text_width(kept) + self._chrome_width() + _HUG_SLACK,
+    return min(kept + self._chrome_width() + _HUG_SLACK,
                self.sizeHint().width())
 
   def _apply_elide(self):

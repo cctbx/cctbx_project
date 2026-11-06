@@ -731,6 +731,47 @@ def exercise_kept_characters_floor_the_label():
   assert none.minimumSizeHint().width() == 0, none.minimumSizeHint()
 
 
+def exercise_kept_characters_survive_a_kern_into_the_ellipsis():
+  """The floor keeps its characters under a font that kerns the last
+  of them into the ellipsis.
+
+  Measured as one string, "r…" came out 5 px narrower in Noto Sans (the
+  Rocky Linux 10 image's default sans) than elidedText's sum of the
+  head and a lone ellipsis, so the approval card's "skill r…" lead was
+  "skill …" there. The conda environment's Ubuntu font kerns the same
+  pairs at 48 pt; without it only the app font is checked, which may
+  kern none of them and see nothing.
+  """
+  from qttbx.widgets.chat.eliding import ElidingLabel
+  app = _qapp()
+  fonts = [QtGui.QFont(app.font())]
+  ubuntu = os.path.join(sys.prefix, "fonts", "Ubuntu-R.ttf")
+  if os.path.isfile(ubuntu):
+    families = QtGui.QFontDatabase.applicationFontFamilies(
+      QtGui.QFontDatabase.addApplicationFont(ubuntu))
+    if families:
+      fonts.append(QtGui.QFont(families[0]))
+  for font in fonts:
+    font.setPointSize(48)
+    for last in "rTVYFPW":
+      head, tail = "ABCDEF" + last, last + "BCDEFG"
+      for mode, keep, text, left, right in (
+          (QtCore.Qt.ElideRight, 7, head + " and the tail", head, ""),
+          (QtCore.Qt.ElideLeft, 7, "the head and " + tail, "", tail),
+          (QtCore.Qt.ElideMiddle, 8,
+           head[:3] + last + " the middle " + last + tail[-3:],
+           head[:3] + last, last + tail[-3:])):
+        label = ElidingLabel(mode=mode, keep=keep)
+        label.setFont(font)
+        label.set_full_text(text)
+        host = _in_layout(label, 1)
+        shown = label.text()
+        assert (shown != text and "…" in shown
+                and shown.startswith(left) and shown.endswith(right)), (
+          font.family(), text, shown)
+        del host
+
+
 def exercise_description_is_held_as_written():
   """A description is stored as Qt holds it, so a resize finds it
   unchanged and writes nothing.
@@ -1133,6 +1174,7 @@ _EXERCISES = (
   exercise_plain_text_tooltip_shows_markup_literally,
   exercise_accessible_name_is_the_full_text,
   exercise_kept_characters_floor_the_label,
+  exercise_kept_characters_survive_a_kern_into_the_ellipsis,
 )
 
 
