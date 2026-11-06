@@ -10,7 +10,9 @@
   -x-1/2,-y+2,z-1/2 (P 21 21 21).
 - his_zn: the same His with a Zn 2.05 A from NE2 in the asymmetric unit;
   his_zn_altlocs puts the His in conformer A and the Zn in conformer B.
-- frag_his_split: frag with His 56 split, A complete, B truncated after CG.
+- frag_his_split: frag with His 56 split, A complete, B truncated after CG
+  (or complete).
+- frag_two_his: frag with a copy of His 56 (His 256) in empty space.
 - His 56 before the NAG-Asn glycan of tst_reduce2_blank_parent_split (whose
   split Asn makes placement share H between covalent partners).
 
@@ -210,15 +212,15 @@ def his_zn_altlocs_str():
     out.append(l)
   return "\n".join(out) + "\n"
 
-def frag_his_split_str():
+def frag_his_split_str(complete=False):
   # His 56: N, CA, C, O blank; conformer A complete, conformer B CB and CG only
-  # (0.1 A away)
+  # (complete: all side-chain atoms), 0.1 A away
   out = []
   for l in frag_str.splitlines():
     if l.startswith("ATOM") and l[17:26] == "HIS A  56" and \
         l[12:16].strip() not in ("N", "CA", "C", "O"):
       out.append(l[:16] + "A" + l[17:54] + "  0.50" + l[60:])
-      if l[12:16].strip() in ("CB", "CG"):
+      if complete or l[12:16].strip() in ("CB", "CG"):
         out.append(l[:16] + "B" + l[17:30] + "%8.3f" % (float(l[30:38]) + 0.1)
           + l[38:54] + "  0.50" + l[60:])
       continue
@@ -244,6 +246,18 @@ def frag_swapped_str():
       l = l[:12] + swap[key] + l[16:]
     out.append(l)
   return "\n".join(out) + "\n"
+
+def frag_two_his_str():
+  # frag with a copy of His 56 as His 256, moved by (10, -6, -10) A: 13.5 A
+  # from every atom and lattice mate, so it gets a HisFlip and a His flipkin
+  lines = frag_str.splitlines()
+  copy = []
+  for l in lines:
+    if l.startswith("ATOM") and l[17:26] == "HIS A  56":
+      x, y, z = float(l[30:38]) + 10, float(l[38:46]) - 6, float(l[46:54]) - 10
+      copy.append(l[:22] + " 256" + l[26:30] + "%8.3f%8.3f%8.3f" % (x, y, z)
+        + l[54:])
+  return "\n".join(lines[:-1] + copy + lines[-1:]) + "\n"
 
 def write(name, text):
   with open(name, "w") as f:
@@ -402,6 +416,45 @@ def test_his_with_flips():
     assert "HisPlace at chain A HIS 56" not in desc
     assert "protonation set by the user" in desc
 
+def kin_ring_h(file_name, resseq):
+  """Ring H names of His A resseq in a flipkin file."""
+  import re
+  with open(file_name) as f:
+    text = f.read()
+  pattern = r"\{\s*(\S+)\s+his A\s+%d\s" % resseq
+  return sorted(set(n.upper() for n in re.findall(pattern, text)
+    if n.upper() in ("HD1", "HE2")))
+
+def test_flipkins_keep_state():
+  # add_flip_movers=True with flipkins: His 56 has a state, His 256 not (it
+  # makes the His flipkin). Both flipkin files carry the state, and in every
+  # flipkin pass His 56 gets no Mover and no ion lock. his_both: the
+  # comparison pass (no Optimizer: the main result) lists no Mover there.
+  for state, ring_h in (("his_he2", ["HE2"]), ("his_both", ["HD1", "HE2"])):
+    prefix = "tst_reduce2_protonation_25_" + state
+    if not os.path.isdir(prefix): os.mkdir(prefix)
+    extra = ["add_flip_movers=True", "output.flipkin_directory=" + prefix]
+    if state == "his_both":
+      extra.append("comparison_file=" + prefix + ".pdb")
+    out, desc, log = run(prefix, frag_two_his_str(), [("resseq 56", state)],
+      extra)
+    assert [n for n in h_names(out, 56) if n in ("HD1", "HE2")] == ring_h
+    assert "HisFlip at chain A HIS 256" in desc
+    for kin in ("flipnq", "fliphis"):
+      name = os.path.join(prefix, "%sFH-%s.kin" % (prefix, kin))
+      assert os.path.isfile(name), name
+      assert kin_ring_h(name, 56) == ring_h, (state, kin, kin_ring_h(name, 56))
+    passes = log.split("Results of optimization:")[1:]
+    assert len(passes) == 4, len(passes)
+    for p in passes:
+      assert ("Did not add MoverHisFlip to chain A HIS 56 (protonation set by "
+        "the user; no ion lock-down)") in p, state
+      assert "MoverHisFlip 1 to chain A HIS 56\n" not in p, state
+    if state == "his_both":
+      with open(prefix + "_out.pdb_comparison.csv") as f:
+        rows = f.read().splitlines()
+      assert len(rows) > 1 and not [r for r in rows if "HIS 56" in r], rows
+
 def test_his_next_to_zn():
   # The state is kept with the Zn at NE2 and the conflict is listed; without
   # a state the ion lock takes HE2 away (control).
@@ -519,7 +572,8 @@ def test_sorry():
     ["approach=optimize"])
   assert e == ("protonation entries need approach=add or place "
     "(approach=optimize): protonation entry 1 (selection=resseq 56, "
-    "state=his_hd1)."), e
+    "state=his_hd1). To keep the input H and set the state, use approach=add "
+    "keep_existing_H=True."), e
   # supplied H that contradict the state, kept with keep_existing_H=True
   lines = frag_str.splitlines()
   last = max(i for i, l in enumerate(lines) if l[17:26] == "HIS A  56")
@@ -534,6 +588,112 @@ def test_sorry():
   out, _, _ = run("tst_reduce2_protonation_15", with_he2,
     [("resseq 56", "his_hd1")])
   assert "HE2" not in h_names(out, 56)
+
+ALL_STATES = [("resseq 56", "his_he2"), ("resseq 99 or resseq 143", "protonated"),
+  ("resseq 57 or resseq 61", "deprotonated")]
+
+def without(text, pairs):
+  """text without the atoms {(resseq, name)}."""
+  return "\n".join(l for l in text.splitlines()
+    if not (l.startswith("ATOM") and (int(l[22:26]), l[12:16].strip()) in pairs)
+    ) + "\n"
+
+def h_counts(text, resseq):
+  """{(name, altloc): count} of the H/D of a residue."""
+  result = {}
+  h = hierarchy(text)
+  for a in h.atoms():
+    if a.parent().parent().resseq_as_int() == resseq and \
+        a.element.strip() in ("H", "D"):
+      k = (a.name.strip(), a.parent().altloc)
+      result[k] = result.get(k, 0) + 1
+  return result
+
+def test_supplied_h():
+  # keep_existing_H=True with supplied H: those that agree with the state are
+  # kept (not added twice), missing state H are added. Supplied D: the line
+  # names them. (Contradicting H: test_sorry.)
+  full, _, _ = run("tst_reduce2_protonation_26", frag_str, ALL_STATES)
+  out, desc, _ = run("tst_reduce2_protonation_27", full, ALL_STATES,
+    ["keep_existing_H=True"])
+  for resseq in (56, 57, 61, 99, 143):
+    assert h_counts(out, resseq) == h_counts(full, resseq), resseq
+  he2_in, he2_out = atoms_of(full, 56)["HE2"], atoms_of(out, 56)["HE2"]
+  assert he2_in.distance(he2_out) < 1.e-3
+  for line in ["  HIS A 56: HE2 only (his_he2): HE2 kept (supplied), HD1 left out",
+               "  ASP A 99: protonated on OD2 (protonated): HD2 kept (supplied)",
+               "  GLU A 143: protonated on OE2 (protonated): HE2 kept (supplied)"]:
+    assert line + "\n" in desc, line
+  # HE2 of His 56 and HD2 of Asp 99 missing: added, once
+  out, desc, _ = run("tst_reduce2_protonation_28",
+    without(full, {(56, "HE2"), (99, "HD2")}), ALL_STATES,
+    ["keep_existing_H=True"])
+  assert h_counts(out, 56) == h_counts(full, 56)
+  assert h_counts(out, 99) == h_counts(full, 99)
+  for line in ["  HIS A 56: HE2 only (his_he2): HE2 added, HD1 left out",
+               "  ASP A 99: protonated on OD2 (protonated): HD2 added",
+               "  GLU A 143: protonated on OE2 (protonated): HE2 kept (supplied)"]:
+    assert line + "\n" in desc, line
+  # all D (neutron_option=all_d): kept and named; a contradicting D stops
+  full_d, _, _ = run("tst_reduce2_protonation_29", frag_str, ALL_STATES,
+    ["neutron_option=all_d"])
+  out, desc, _ = run("tst_reduce2_protonation_30", full_d, ALL_STATES,
+    ["keep_existing_H=True", "neutron_option=all_d"])
+  assert h_counts(out, 56) == h_counts(full_d, 56), h_counts(out, 56)
+  assert "  HIS A 56: HE2 only (his_he2): DE2 kept (supplied), HD1 left out\n" \
+    in desc, desc
+  # H/D pairs (hd_and_h, written as altlocs A/B of the H): merged into one
+  # site, kept, one phrase
+  full_hd, _, _ = run("tst_reduce2_protonation_36", frag_str, ALL_STATES,
+    ["neutron_option=hd_and_h"])
+  _, desc, _ = run("tst_reduce2_protonation_37", full_hd, ALL_STATES,
+    ["keep_existing_H=True", "neutron_option=hd_and_h"])
+  assert ("  HIS A 56: HE2 only (his_he2, conformers A B): HE2/DE2 kept "
+    "(supplied), HD1 left out\n") in desc, desc
+  e = sorry("tst_reduce2_protonation_31", full_d, [("resseq 56", "his_hd1")],
+    ["keep_existing_H=True", "neutron_option=all_d"])
+  assert e == ("protonation entry 1 (selection=resseq 56, state=his_hd1): HIS A "
+    "56 has supplied DE2, which contradicts state his_hd1 (the supplied H are "
+    "kept: keep_existing_H=True). Remove it or change the state."), e
+
+def test_acid_out_of_plane_line():
+  # A46, report only: the acid H on frag_swapped's Asp 99 ends 67 deg from
+  # the carboxyl plane, and its line gives the angle (no cause: none is
+  # checked). frag with preference_magnitude=0: about 89 deg. Glu 143, and
+  # both in frag with the default preference (control), end in the plane.
+  _, desc, _ = run("tst_reduce2_protonation_32", frag_swapped_str(),
+    [("resseq 99 or resseq 143", "protonated")])
+  assert ("  ASP A 99: protonated on OD2 (protonated): HD2 added, HD2 67 deg "
+    "out of the carboxyl plane\n") in desc, desc
+  assert "  GLU A 143: protonated on OE2 (protonated): HE2 added\n" in desc
+  _, desc0, _ = run("tst_reduce2_protonation_33", frag_str,
+    [("resseq 99 or resseq 143", "protonated")])
+  assert "carboxyl plane" not in desc0
+  assert "  ASP A 99: protonated on OD2 (protonated): HD2 added\n" in desc0
+  _, desc1, _ = run("tst_reduce2_protonation_34", frag_str,
+    [("resseq 99", "protonated")], ["preference_magnitude=0"])
+  assert ("  ASP A 99: protonated on OD2 (protonated): HD2 added, HD2 89 deg "
+    "out of the carboxyl plane\n") in desc1, desc1
+
+def test_supplied_h_per_conformer():
+  # His 56 split A/B, HE2 supplied in A only, his_he2, keep_existing_H=True:
+  # one phrase per conformer. B complete: HE2 added there. B truncated after
+  # CG: HE2 not placed there.
+  for complete, b_phrase in ((True, "HE2 added in B"),
+                             (False, "HE2 not placed in B")):
+    prefix = "tst_reduce2_protonation_35_%s" % complete
+    full, _, _ = run(prefix + "_full", frag_his_split_str(complete),
+      [("resseq 56", "his_he2")])
+    supplied = "\n".join(l for l in full.splitlines() if not (
+      l.startswith("ATOM") and l[17:26] == "HIS A  56" and
+      l[12:16].strip() == "HE2" and l[16] == "B")) + "\n"
+    h = hierarchy(supplied)
+    assert [a.parent().altloc for a in h.atoms()
+      if a.name.strip() == "HE2" and a.parent().resname == "HIS"] == ["A"]
+    out, desc, _ = run(prefix, supplied, [("resseq 56", "his_he2")],
+      ["keep_existing_H=True"])
+    assert ("  HIS A 56: HE2 only (his_he2, conformers A B): HE2 kept (supplied) "
+      "in A; %s, HD1 left out\n" % b_phrase) in desc, (complete, desc)
 
 def test_neutron_options():
   # The new acid H is exchangeable: H/D pair with hd_and_h, D with all_d.
@@ -575,6 +735,7 @@ if __name__ == "__main__":
   test_states_placement()
   test_report_and_optimizer()
   test_his_with_flips()
+  test_flipkins_keep_state()
   test_his_next_to_zn()
   test_his_and_metal_in_different_conformers()
   test_presence_per_conformer()
@@ -582,6 +743,9 @@ if __name__ == "__main__":
   test_his_next_to_symmetry_mate_metal()
   test_acid_chi_beyond_90()
   test_sorry()
+  test_supplied_h()
+  test_acid_out_of_plane_line()
+  test_supplied_h_per_conformer()
   test_neutron_options()
   test_qmready_charge()
   print("OK")
