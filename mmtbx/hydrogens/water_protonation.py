@@ -917,12 +917,13 @@ class _WaterHydrogenPlacer:
     atoms = self.atoms
     o_xyz = self.w_o_col[wi]
     own_idx = self.w_own[wi]
+    c = self.w_conf[wi]
     # Acceptors (static O/N/F/S/Cl) within range, nearest first.
     acceptors = []
     for i in self.w_acc_raw[wi]:
       if i in own_idx:
         continue
-      if i in self.donor_n:
+      if any(_compatible(c, ch) for ch in self.donor_n.get(i, ())):
         continue  # protonated N: a donor, not a usable acceptor
       if self._planar_n(i):
         continue  # no free lone pair
@@ -1530,16 +1531,20 @@ class _WaterHydrogenPlacer:
     self.static_thr.set_selected(self.static_is_h,
                                  _WATER_MIN_H_CLEARANCE ** 2)
 
-    # N atoms carrying an H are donors, not acceptors.
-    self.donor_n = set()
+    # N atoms carrying an H are donors, not acceptors, to the waters that
+    # meet the H: per N, the conformer indices of its H (see _compatible).
+    self.donor_n = {}
     h_idx = self.static_is_h.iselection()
     if h_idx.size():
       for i, nbrs in zip(h_idx, self.static_tree.query_ball_point(
           self.static_xyz.select(h_idx).as_numpy_array(), _WATER_NH_BOND,
           return_sorted=False)):
         for j in nbrs:
-          if j != i and atoms[j].element.strip().upper() == "N":
-            self.donor_n.add(j)
+          if (j != i and atoms[j].element.strip().upper() == "N"
+              and _compatible(self.conf[i], self.conf[j])):
+            if j not in self.donor_n:
+              self.donor_n[j] = set()
+            self.donor_n[j].add(self.conf[i])
     # Per static N looked at so far, whether it is planar (see _planar_n).
     self.planar_n = {}
 

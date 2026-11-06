@@ -69,6 +69,27 @@ HETATM    3  N   DNR E   1       2.600   0.000   0.000  1.00 10.00           N
 HETATM    4  H   DNR E   1       3.600   0.000   0.000  1.00 10.00           H
 END
 """
+# A water in altloc B, its nearer N bare in altloc B, beside altloc A's N
+# and the H that N carries, 0.9 A from the bare N: the H never meets it.
+_ALTLOC_DONOR_N_PDB = """\
+HETATM    1  O  BHOH W   1       0.000   0.000   0.000  0.50 10.00           O
+HETATM    2  N   ACC D   1      -2.800   0.000   0.000  1.00 10.00           N
+HETATM    3  N  ADNR E   1       2.600   0.400   0.000  0.50 10.00           N
+HETATM    4  H  ADNR E   1       3.400   0.900   0.000  0.50 10.00           H
+HETATM    5  N  BDNR E   1       2.600   0.000   0.000  0.50 10.00           N
+END
+"""
+# A water in altloc B beside a blank N whose H is in altloc A only, and the
+# same water in altloc A, which meets the H.
+_BLANK_N_ALTLOC_H_PDB = """\
+HETATM    1  O  BHOH W   1       0.000   0.000   0.000  0.50 10.00           O
+HETATM    2  N   ACC D   1      -2.800   0.000   0.000  1.00 10.00           N
+HETATM    3  N   DNR E   1       2.600   0.000   0.000  1.00 10.00           N
+HETATM    4  H  ADNR E   1       3.600   0.000   0.000  0.50 10.00           H
+END
+"""
+_BLANK_N_SAME_ALTLOC_H_PDB = _BLANK_N_ALTLOC_H_PDB.replace(
+  "O  BHOH", "O  AHOH")
 # The same with the nearer N bare, bonded to three C in a plane, as a
 # proline N: no lone pair to accept with.
 _PLANAR_N_PDB = """\
@@ -575,17 +596,24 @@ def exercise_n_acceptors():
   """An N that already carries an H is a donor, and one bonded to three
   heavy atoms in a plane has no free lone pair: H1 skips such a nearer N and
   points at the farther bare N instead. A nearer pyramidal N, bonded to
-  three C, is an acceptor and takes H1.
+  three C, is an acceptor and takes H1, as does a nearer N whose H belongs
+  to an altloc the water never meets.
 
   Places on ``_DONOR_N_PDB``, ``_PLANAR_N_PDB``, ``_METAL_N_PDB`` (two C
-  and a Zn) and ``_PYRAMIDAL_N_PDB``.
+  and a Zn), ``_PYRAMIDAL_N_PDB``, ``_ALTLOC_DONOR_N_PDB`` and
+  ``_BLANK_N_ALTLOC_H_PDB`` (H in another altloc than the water), and
+  ``_BLANK_N_SAME_ALTLOC_H_PDB`` (H in the water's altloc).
   """
   far = matrix.col((-1.0, 0.0, 0.0))   # toward the farther bare N
   near = matrix.col((1.0, 0.0, 0.0))   # toward the nearer N
-  for pdb_str, nearer, near_accepts in ((_DONOR_N_PDB, "DNR", False),
-                                        (_PLANAR_N_PDB, "PLN", False),
-                                        (_METAL_N_PDB, "MTN", False),
-                                        (_PYRAMIDAL_N_PDB, "PYN", True)):
+  for pdb_str, nearer, near_accepts in (
+      (_DONOR_N_PDB, "DNR", False),
+      (_PLANAR_N_PDB, "PLN", False),
+      (_METAL_N_PDB, "MTN", False),
+      (_PYRAMIDAL_N_PDB, "PYN", True),
+      (_ALTLOC_DONOR_N_PDB, "altloc B DNR", True),
+      (_BLANK_N_ALTLOC_H_PDB, "blank DNR, H in altloc A", True),
+      (_BLANK_N_SAME_ALTLOC_H_PDB, "blank DNR, H in the altloc", False)):
     hier = _hierarchy(pdb_str)
     wp.place_water_hydrogens(hier, n_refine=0)
     o, hs = _water_atoms(hier)
