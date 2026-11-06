@@ -1,8 +1,9 @@
 """reduce2 reports the IUPAC renaming of symmetric side-chain atoms
 (flip_symmetric_amino_acids in pdb_interpretation): the description lists every
 renamed residue and atom pair, the log a capped list. Placement renames (add,
-place, the flipkin passes), optimize does not unless a restraint file makes
-reduce2 process the input; two renamings of a residue can cancel.
+place, the flipkin passes); optimize and remove keep the input names, also
+with a restraint file: reduce2's processing of the input for a restraint file
+runs without the flip (B23), so a restraint file never changes the names.
 """
 from __future__ import absolute_import, division, print_function
 import os
@@ -23,6 +24,7 @@ HEADER = "IUPAC renaming of symmetric side-chain atoms"
 
 # atoms the 180 deg turn about (first, second) moves
 TURN = {
+  "ASP": ("CB", "CG", ("OD1", "OD2", "HD2")),
   "GLU": ("CG", "CD", ("OE1", "OE2", "HE2")),
   "ARG": ("NE", "CZ", ("NH1", "NH2", "HH11", "HH12", "HH21", "HH22")),
   "PHE": ("CB", "CG", ("CD1", "CD2", "CE1", "CE2", "CZ", "HD1", "HD2", "HE1",
@@ -193,24 +195,164 @@ def test_optimize():
   before, after = sites(fn), sites(prefix + ".pdb")
   assert before["40", "", "NH1"] == after["40", "", "NH1"]
 
+def turned(spec):
+  """build() with the side-chain end of a residue turned by any angle:
+  spec (idealized_aa key, resseq, degrees about the TURN axis or 0)."""
+  root = build([(key, resseq, False) for key, resseq, degrees in spec])
+  for rg, (key, resseq, degrees) in zip(root.residue_groups(), spec):
+    if not degrees: continue
+    ag = rg.only_atom_group()
+    first, second, names = TURN[ag.resname]
+    origin = matrix.col(ag.get_atom(first).xyz)
+    axis = (matrix.col(ag.get_atom(second).xyz) - origin).normalize()
+    r = axis.axis_and_angle_as_r3_rotation_matrix(degrees, deg=True)
+    for n in names:
+      a = ag.get_atom(n)
+      if a is not None: a.xyz = (r * (matrix.col(a.xyz) - origin) + origin).elems
+  return root
+
+# Phe 60 turned 220 deg (chi2 133), Asp 61 by 60 deg (chi2 150), both named
+# against IUPAC; Phe 62 as IUPAC wants. All H supplied but the acid H.
+NON_IUPAC = [("phe_h", 60, 220), ("asp_h", 61, 60), ("phe_h", 62, 0)]
+NON_IUPAC_LIST = {"PHE A 60": "CD1/CD2, CE1/CE2", "ASP A 61": "OD1/OD2"}
+
 def test_restraint_file():
-  # a restraint file: reduce2 processes the input first, which renames, also
-  # for optimize and remove
+  # B23: an unrelated restraint file gives the output of the run without it,
+  # for every approach. add and place rename once (placement), optimize and
+  # remove keep the input names.
   prefix = "tst_reduce2_report_renaming_cif"
-  fn = write(prefix, build(SUPPLIED))
+  root = without_acid_h(turned(NON_IUPAC))
+  assert expected_renamed(root) == set(["60", "61"])
+  fn = write(prefix, root)
   cif = prefix + ".cif"
   with open(cif, "w") as f: f.write(zq4_cif)
-  task, description, log = run(prefix, fn, ["approach=optimize"], extra=[cif])
-  assert listed(description) == SUPPLIED_LIST, description
-  before, after = sites(fn), sites(prefix + ".pdb")
-  assert before["40", "", "NH1"] == after["40", "", "NH2"]
-  out = prefix + "_remove"
-  task, description, log = run(out, fn, ["approach=remove"], extra=[cif])
-  assert listed(description) == SUPPLIED_LIST, description
-  # without a restraint file remove does not mention it
-  out = prefix + "_remove_no_cif"
-  task, description, log = run(out, fn, ["approach=remove"])
-  assert HEADER not in description, description
+  for approach, renamed in (("add", True), ("place", True),
+                            ("optimize", False), ("remove", False)):
+    out = prefix + "_" + approach
+    task, with_cif, log = run(out + "_cif", fn, ["approach=" + approach],
+      extra=[cif])
+    task, without, log = run(out, fn, ["approach=" + approach])
+    with open(out + "_cif.pdb") as f: a = f.read()
+    with open(out + ".pdb") as f: b = f.read()
+    assert a == b, approach
+    assert listed(with_cif) == listed(without), (approach, with_cif)
+    assert task._input_renames == []
+    before, after = sites(fn), sites(out + "_cif.pdb")
+    if renamed:
+      assert listed(with_cif) == NON_IUPAC_LIST, (approach, with_cif)
+      assert before["61", "", "OD1"] == after["61", "", "OD2"]
+      assert before["60", "", "CE1"] == after["60", "", "CE2"]
+    else:
+      assert HEADER not in with_cif or listed(with_cif) == {}, with_cif
+      assert before["61", "", "OD1"] == after["61", "", "OD1"]
+      assert before["60", "", "CE1"] == after["60", "", "CE1"]
+    assert before["62", "", "CE1"] == after["62", "", "CE1"]
+
+# 8afw Phe C 298 (chi2 -90.8 deg) and every residue within 4 A of it: B20's
+# double flip with a restraint file (renamed in the input's processing, back
+# in placement's)
+pdb_8afw_phe_298 = """\
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
+ATOM   6321  N   ALA C 252     326.798 341.856 233.595  1.00 76.44           N
+ATOM   6322  CA  ALA C 252     325.720 342.833 233.539  1.00 76.44           C
+ATOM   6323  C   ALA C 252     325.984 343.836 232.425  1.00 76.44           C
+ATOM   6324  O   ALA C 252     327.129 344.052 232.023  1.00 76.44           O
+ATOM   6325  CB  ALA C 252     325.563 343.572 234.869  1.00 76.44           C
+ATOM   6326  N   ILE C 253     324.909 344.456 231.937  1.00 76.78           N
+ATOM   6327  CA  ILE C 253     324.962 345.454 230.876  1.00 76.78           C
+ATOM   6328  C   ILE C 253     324.284 346.726 231.366  1.00 76.78           C
+ATOM   6329  O   ILE C 253     323.256 346.662 232.048  1.00 76.78           O
+ATOM   6330  CB  ILE C 253     324.288 344.960 229.581  1.00 76.78           C
+ATOM   6331  CG1 ILE C 253     324.937 343.674 229.087  1.00 76.78           C
+ATOM   6332  CG2 ILE C 253     324.368 346.010 228.495  1.00 76.78           C
+ATOM   6333  CD1 ILE C 253     324.188 343.040 227.958  1.00 76.78           C
+ATOM   6334  N   SER C 254     324.855 347.874 231.014  1.00 80.14           N
+ATOM   6335  CA  SER C 254     324.256 349.147 231.381  1.00 80.14           C
+ATOM   6336  C   SER C 254     322.879 349.296 230.745  1.00 80.14           C
+ATOM   6337  O   SER C 254     322.483 348.529 229.864  1.00 80.14           O
+ATOM   6338  CB  SER C 254     325.151 350.310 230.957  1.00 80.14           C
+ATOM   6339  OG  SER C 254     325.626 350.125 229.639  1.00 80.14           O
+ATOM   6386  N   ALA C 261     330.157 344.442 232.133  1.00 76.55           N
+ATOM   6387  CA  ALA C 261     331.072 344.140 233.224  1.00 76.55           C
+ATOM   6388  C   ALA C 261     330.959 342.670 233.599  1.00 76.55           C
+ATOM   6389  O   ALA C 261     329.855 342.153 233.791  1.00 76.55           O
+ATOM   6390  CB  ALA C 261     330.788 345.015 234.443  1.00 76.55           C
+ATOM   6677  N   SER C 297     325.387 344.941 238.941  1.00 74.44           N
+ATOM   6678  CA  SER C 297     324.351 345.804 238.386  1.00 74.44           C
+ATOM   6679  C   SER C 297     324.886 347.217 238.222  1.00 74.44           C
+ATOM   6680  O   SER C 297     325.585 347.725 239.103  1.00 74.44           O
+ATOM   6681  CB  SER C 297     323.108 345.809 239.278  1.00 74.44           C
+ATOM   6682  OG  SER C 297     323.384 346.423 240.524  1.00 74.44           O
+ATOM   6683  N   PHE C 298     324.549 347.840 237.097  1.00 75.41           N
+ATOM   6684  CA  PHE C 298     324.922 349.224 236.842  1.00 75.41           C
+ATOM   6685  C   PHE C 298     323.887 350.168 237.432  1.00 75.41           C
+ATOM   6686  O   PHE C 298     322.783 349.755 237.796  1.00 75.41           O
+ATOM   6687  CB  PHE C 298     325.038 349.482 235.340  1.00 75.41           C
+ATOM   6688  CG  PHE C 298     326.280 348.925 234.715  1.00 75.41           C
+ATOM   6689  CD1 PHE C 298     327.427 349.692 234.626  1.00 75.41           C
+ATOM   6690  CD2 PHE C 298     326.294 347.644 234.196  1.00 75.41           C
+ATOM   6691  CE1 PHE C 298     328.565 349.187 234.045  1.00 75.41           C
+ATOM   6692  CE2 PHE C 298     327.430 347.136 233.617  1.00 75.41           C
+ATOM   6693  CZ  PHE C 298     328.567 347.908 233.541  1.00 75.41           C
+ATOM   6694  N   SER C 299     324.249 351.443 237.523  1.00 80.83           N
+ATOM   6695  CA  SER C 299     323.255 352.462 237.811  1.00 80.83           C
+ATOM   6696  C   SER C 299     322.485 352.808 236.540  1.00 80.83           C
+ATOM   6697  O   SER C 299     322.878 352.448 235.428  1.00 80.83           O
+ATOM   6698  CB  SER C 299     323.915 353.710 238.388  1.00 80.83           C
+ATOM   6699  OG  SER C 299     324.670 354.387 237.400  1.00 80.83           O
+ATOM   6732  N   TYR C 304     327.810 354.379 238.427  1.00 73.40           N
+ATOM   6733  CA  TYR C 304     328.401 353.480 239.403  1.00 73.40           C
+ATOM   6734  C   TYR C 304     328.043 352.038 239.079  1.00 73.40           C
+ATOM   6735  O   TYR C 304     327.061 351.760 238.387  1.00 73.40           O
+ATOM   6736  CB  TYR C 304     327.945 353.814 240.831  1.00 73.40           C
+ATOM   6737  CG  TYR C 304     327.938 355.289 241.147  1.00 73.40           C
+ATOM   6738  CD1 TYR C 304     329.113 355.959 241.450  1.00 73.40           C
+ATOM   6739  CD2 TYR C 304     326.756 356.009 241.158  1.00 73.40           C
+ATOM   6740  CE1 TYR C 304     329.109 357.305 241.741  1.00 73.40           C
+ATOM   6741  CE2 TYR C 304     326.742 357.356 241.451  1.00 73.40           C
+ATOM   6742  CZ  TYR C 304     327.922 357.998 241.741  1.00 73.40           C
+ATOM   6743  OH  TYR C 304     327.916 359.342 242.033  1.00 73.40           O
+ATOM   6744  N   LEU C 305     328.858 351.122 239.599  1.00 73.40           N
+ATOM   6745  CA  LEU C 305     328.657 349.690 239.435  1.00 73.40           C
+ATOM   6746  C   LEU C 305     328.623 349.035 240.808  1.00 73.40           C
+ATOM   6747  O   LEU C 305     329.450 349.352 241.667  1.00 73.40           O
+ATOM   6748  CB  LEU C 305     329.767 349.072 238.583  1.00 73.40           C
+ATOM   6749  CG  LEU C 305     329.619 347.584 238.286  1.00 73.40           C
+ATOM   6750  CD1 LEU C 305     328.369 347.354 237.473  1.00 73.40           C
+ATOM   6751  CD2 LEU C 305     330.840 347.062 237.556  1.00 73.40           C
+ATOM   6848  N   LEU C 319     332.273 354.582 237.959  1.00 76.75           N
+ATOM   6849  CA  LEU C 319     332.630 354.513 236.547  1.00 76.75           C
+ATOM   6850  C   LEU C 319     332.719 355.894 235.908  1.00 76.75           C
+ATOM   6851  O   LEU C 319     332.726 356.005 234.680  1.00 76.75           O
+ATOM   6852  CB  LEU C 319     331.634 353.640 235.788  1.00 76.75           C
+ATOM   6853  CG  LEU C 319     331.571 352.173 236.208  1.00 76.75           C
+ATOM   6854  CD1 LEU C 319     330.172 351.627 236.018  1.00 76.75           C
+ATOM   6855  CD2 LEU C 319     332.564 351.362 235.408  1.00 76.75           C
+TER
+"""
+
+def test_8afw_double_flip():
+  # B20: with a restraint file the flip ran twice and near chi2 +-90 the second
+  # call swapped back. Now (B23, and an idempotent flip since #1286) one
+  # renaming, in placement, the same with and without the restraint file, and
+  # a further flip renames nothing.
+  prefix = "tst_reduce2_report_renaming_8afw"
+  fn = prefix + "_in.pdb"
+  with open(fn, "w") as f: f.write(pdb_8afw_phe_298)
+  cif = prefix + ".cif"
+  with open(cif, "w") as f: f.write(zq4_cif)
+  task, with_cif, log = run(prefix + "_cif", fn, ["approach=place"], extra=[cif])
+  task, without, log = run(prefix, fn, ["approach=place"])
+  assert listed(with_cif) == listed(without), with_cif
+  assert listed(with_cif).get("PHE C 298") == "CD1/CD2, CE1/CE2", with_cif
+  for out in (prefix + "_cif.pdb", prefix + ".pdb"):
+    h = iotbx.pdb.input(out).construct_hierarchy()
+    before = list(h.atoms().extract_xyz())
+    h.flip_symmetric_amino_acids()
+    assert list(h.atoms().extract_xyz()) == before, out
+  with open(prefix + "_cif.pdb") as f: a = f.read()
+  with open(prefix + ".pdb") as f: b = f.read()
+  assert a == b
 
 def test_second_processing_renames_nothing():
   # Asp from idealized_aa has chi2 near 90 through both O, without acid H: the
@@ -258,9 +400,10 @@ def test_corresponding_conformers_in_placement():
   phe_276_matched(prefix + ".pdb")
 
 def test_two_renamings_cancel():
-  # B has one H, so the input's processing leaves it out of the set with A and
-  # renames A alone. Placement completes B; the set (B weighs more) takes A back.
-  # The output has the input names and the report lists nothing.
+  # B has one H. The input's processing for a restraint file used to rename A
+  # alone (B, incomplete, out of the set) and placement took A back. Without
+  # the flip there (B23) neither processing renames: the input names, nothing
+  # listed, as without the restraint file.
   prefix = "tst_reduce2_report_renaming_two_cancel"
   occ = {"A": "0.38", "B": "0.62"}
   lines = []
@@ -274,12 +417,14 @@ def test_two_renamings_cancel():
   cif = prefix + ".cif"
   with open(cif, "w") as f: f.write(zq4_cif)
   task, description, log = run(prefix, fn, ["approach=place"], extra=[cif])
-  pair = [("CD1", "CD2"), ("CE1", "CE2")]
-  for renames in (task._input_renames, task._placement_renames):
-    assert [(r.altloc, r.pairs) for r in renames] == [("A", pair)], renames
+  assert task._input_renames == [] and task._placement_renames == []
   assert listed(description) == {}, description
   before, after = sites(fn), sites(prefix + ".pdb")
   assert before["276", "A", "CD1"] == after["276", "A", "CD1"]
+  task, description, log = run(prefix + "_no_cif", fn, ["approach=place"])
+  with open(prefix + ".pdb") as f: a = f.read()
+  with open(prefix + "_no_cif.pdb") as f: b = f.read()
+  assert a == b
 
 def test_neutron():
   # the same list as the run without a neutron_option
@@ -337,13 +482,18 @@ def test_altlocs_and_models():
   task, description, log = run(prefix, fn, ["approach=place"])
   assert listed(description) == {"GLU A 11 (model 1)": "OE1/OE2",
     "GLU A 12 (model 2)": "OE1/OE2"}, description
-  # a restraint file renames all models before model_id selects one
+  # with model_id only the selected model, also with a restraint file
   cif = prefix + ".cif"
   with open(cif, "w") as f: f.write(zq4_cif)
   out = prefix + "_id2"
-  task, description, log = run(out, fn, ["approach=remove", "model_id=2"],
+  task, description, log = run(out, fn, ["approach=place", "model_id=2"],
     extra=[cif])
   assert listed(description) == {"GLU A 12": "OE1/OE2"}, description
+  # remove keeps the names of every model (B23)
+  out = prefix + "_remove"
+  task, description, log = run(out, fn, ["approach=remove", "model_id=2"],
+    extra=[cif])
+  assert HEADER not in description, description
 
 def test_insertion_codes():
   # same resseq, same pair: two residues, neither cancels the other
@@ -372,7 +522,7 @@ def test_model_number():
   assert "MODEL     0002" in open(fn).read()
   cif = prefix + ".cif"
   with open(cif, "w") as f: f.write(zq4_cif)
-  task, description, log = run(prefix, fn, ["approach=remove", "model_id=2"],
+  task, description, log = run(prefix, fn, ["approach=place", "model_id=2"],
     extra=[cif])
   assert listed(description) == {"GLU A 12": "OE1/OE2"}, description
   # Asp 22 is not renamed, in the model selected from the second place
@@ -437,6 +587,7 @@ if __name__ == "__main__":
   test_add_nothing_renamed()
   test_optimize()
   test_restraint_file()
+  test_8afw_double_flip()
   test_second_processing_renames_nothing()
   test_corresponding_conformers_in_placement()
   test_two_renamings_cancel()

@@ -2488,9 +2488,14 @@ NOTES:
     self._placement_renames = []
     if self.data_manager.has_restraints():
       self.model.set_stop_for_unknowns(self.params.stop_on_any_missing_hydrogen)
-      # default interpretation parameters: renames symmetric side-chain atoms
+      # default interpretation parameters without the IUPAC flip (B23): a
+      # restraint file must not decide the names. optimize and remove keep the
+      # input names; add and place rename once, in placement.
+      no_flip = mmtbx.model.manager.get_default_pdb_interpretation_params()
+      no_flip.pdb_interpretation.flip_symmetric_amino_acids = False
       sites_before = reduce_hydrogen.atom_group_sites(self.model.get_hierarchy())
-      self.model.process(make_restraints=False)
+      self.model.process(make_restraints=False,
+        pdb_interpretation_params=no_flip)
       self._input_renames = reduce_hydrogen.symmetric_renames(sites_before,
         self.model.get_hierarchy())
       if self.params.model_id is not None:
