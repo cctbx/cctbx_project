@@ -339,7 +339,8 @@ modify
 
 export_phil = """
 export
-  .help = Condense all expt + refl, output a single batch MTZ for Careless
+  .help = Condense all expt + refl, output a single batch MTZ for Careless. \
+          Current use case is limited to creating an unmerged batch MTZ for Careless, but other export options might be provided in the future.
   {
   output_label = None
     .type = str
