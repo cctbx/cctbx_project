@@ -490,6 +490,7 @@ general_tests = [
   "$D/conformation_dependent_library/tst_mutli_residue.py",
   "$D/conformation_dependent_library/tst_enol_peptide.py",
   "$D/regression/tst_arginine_geometry.py",
+  "$D/regression/tst_water_protonation.py",
   ]
 
 molprobity_tests = [
