@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Sat Sep  5 00:20:43 2026
+The date of file generation: Thu Nov  5 09:37:00 2026
 """
 from __future__ import absolute_import, division, print_function
 
@@ -39,7 +39,10 @@ lookup = {
   "A1CNL" : "?",
   "A1CNM" : "?",
   "A1CNT" : "?",
+  "A1CY0" : "?",
+  "A1CY1" : "?",
   "A1DCZ" : "?",
+  "A1DI1" : "?",
   "A1ELZ" : "?",
   "A1IY6" : "?",
   "A1L9Q" : "?",
@@ -61,6 +64,7 @@ lookup = {
   "ENP" : "?",
   "ENQ" : "?",
   "F3O" : "?",
+  "F86" : "?",
   "FA5" : "?",
   "FAI" : "?",
   "FMU" : "?",
@@ -102,6 +106,7 @@ lookup = {
   "S8M" : "?",
   "T2T" : "?",
   "TAL" : "?",
+  "TG" : "?",
   "TLB" : "?",
   "TYU" : "?",
   "U4M" : "?",
@@ -767,7 +772,6 @@ lookup = {
   "PGP" : "G",
   "QUO" : "G",
   "RFJ" : "G",
-  "TG" : "G",
   "TPG" : "G",
   "VC7" : "G",
   "VSN" : "G",
