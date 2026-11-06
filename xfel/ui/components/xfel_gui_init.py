@@ -630,6 +630,11 @@ class RunStatsSentinel(Thread):
     self.stats = []
     self.run_tags = []
     self.run_statuses = []
+    # Per-shot view: the HitrateStats of finished runs, which never change,
+    # keyed by (run name, rungroup id); emptied when the trial or a cutoff
+    # changes.
+    self.hitrate_cache = {}
+    self.hitrate_key = None
     # Per-run view: RunSummaryStats keeps finished runs cached, so it lives
     # across cycles and is replaced when the trial or a cutoff changes.
     self.run_summary_stats = None
@@ -670,6 +675,7 @@ class RunStatsSentinel(Thread):
   def refresh_stats(self):
     from xfel.ui.db.stats import HitrateStats, RunSummaryStats
     from xfel.ui.db.run import run_sort_key
+    from xfel.ui.db.job import finished_job_statuses
     import copy
     tab = self.parent.run_window.runstats_tab
     if tab.trial_no is not None:
@@ -693,35 +699,42 @@ class RunStatsSentinel(Thread):
           if run.run in selected_runs and all(run.run != r.run for r, _ in pairs):
             pairs.append((run, rg))
       pairs.sort(key=lambda pair: run_sort_key(pair[0].run))
+      jobs = self.db.get_all_jobs()
       for run, rg in pairs:
         run_numbers.append(run.run)
         trial_ids.append(trial.id)
         rungroup_ids.append(rg.id)
         trgr[run.run] = (trial, rg, run)
-        if not per_run:
-          # Per shot: every image of the run
-          stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
-                                    i_sigi_cutoff=tab.i_sigi,
-                                    d_min=tab.d_min,
-                                    run=run, trial=trial, rungroup=rg)())
         run_tags.append([tag.name for tag in run.tags])
-
-      jobs = self.db.get_all_jobs()
-      for idx in range(len(run_numbers)):
-        run_no = run_numbers[idx]
-        rg_id = rungroup_ids[idx]
-        t_id = trial_ids[idx]
-        found_it = False
+        status = 'UNKWN'
         for job in jobs:
           try:
-            ok = job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id
+            ok = job.run.run == run.run and job.rungroup.id == rg.id and job.trial.id == trial.id
           except AttributeError:
             pass
           else:
             if ok:
-              run_statuses.append(job.status)
-              found_it = True; break
-        if not found_it: run_statuses.append('UNKWN')
+              status = job.status
+              break
+        run_statuses.append(status)
+      if not per_run:
+        # Per shot: every image of the run. A finished run's stats never
+        # change, so they are fetched once; a run without a job is not
+        # finished, it may get one.
+        key = (trial.id, tab.d_min, tab.i_sigi)
+        if self.hitrate_key != key:
+          self.hitrate_cache = {}
+          self.hitrate_key = key
+        for (run, rg), status in zip(pairs, run_statuses):
+          cached = self.hitrate_cache.get((run.run, rg.id))
+          if cached is None:
+            cached = HitrateStats(self.db, run.run, trial.trial, rg.id,
+                                  i_sigi_cutoff=tab.i_sigi,
+                                  d_min=tab.d_min,
+                                  run=run, trial=trial, rungroup=rg)()
+            if status in finished_job_statuses and status != 'UNKWN':
+              self.hitrate_cache[(run.run, rg.id)] = cached
+          stats.append(cached)
       if per_run:
         # Per run: counts from one aggregate query, finished runs cached.
         # A run without a job is not finished, so it is queried each cycle.
