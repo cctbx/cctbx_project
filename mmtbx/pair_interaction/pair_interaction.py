@@ -6,6 +6,7 @@ import libtbx.load_env
 from scitbx.array_family import flex
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
+from libtbx import group_args
 
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("mmtbx_pair_interaction_ext")
@@ -16,28 +17,59 @@ if(dat_path is not None):
   qr_unit_tests_data = os.path.join(dat_path,"tests","unit","data_files")
 
 A2B=1.8897259885789
-global results
-results=[]
-global mol_pair_has_interaction
-mol_pair_has_interaction=[]
 
-def load_wfc(element):
-  element = element.lower()
-  folder = libtbx.env.find_in_repositories("mmtbx/pair_interaction")
-  for fn in os.listdir(folder):
-    if(fn.startswith(element) and fn.endswith(".pkl")):
-      fn = "/".join([folder,fn])
-      wfc_obj = easy_pickle.load(fn)
-      return wfc_obj
-  #
+_WFC_CACHE = {} # key -> ext.wfc, per process
+
+def _wfc_key(element):
+  """'c_' for C, 'cl' for Cl: the element symbol, lower case, padded with _."""
+  key = element.strip().lower()
+  if(len(key) == 1): key += "_"
+  return key
+
+def load_wfc(element, folder=None):
+  """
+  Wave function object of an element.
+
+  Parameters
+  ----------
+  element : str
+      Element symbol in any case; the key form ('c_', 'cl') is accepted.
+  folder : str, optional
+      Folder of the pickles <key>_wfc_obj.pkl; mmtbx/pair_interaction by
+      default.
+
+  Returns
+  -------
+  mmtbx_pair_interaction_ext.wfc
+      Loaded from <folder>/<key>_wfc_obj.pkl, else parsed from the text
+      table qrefine/plugin/yoink/dat/<key>_lda.wfc and written as that
+      pickle into folder (silently not written when folder is not
+      writable). Objects are cached per process. Nothing is written into
+      the current directory.
+  """
+  key = _wfc_key(element)
+  wfc_obj = _WFC_CACHE.get(key)
+  if(wfc_obj is not None): return wfc_obj
+  if(folder is None):
+    folder = libtbx.env.find_in_repositories("mmtbx/pair_interaction")
+  pkl = os.path.join(folder, key + "_wfc_obj.pkl")
+  if(os.path.isfile(pkl)):
+    wfc_obj = easy_pickle.load(pkl)
+  else:
+    wfc_obj = _parse_wfc(key)
+    try:
+      easy_pickle.dump(pkl, wfc_obj)
+    except (IOError, OSError):
+      pass
+  _WFC_CACHE[key] = wfc_obj
+  return wfc_obj
+
+def _parse_wfc(key):
+  """ext.wfc from the text table qrefine/plugin/yoink/dat/<key>_lda.wfc."""
   folder = libtbx.env.find_in_repositories("qrefine/plugin/yoink/dat")
   if(folder is None):
     raise Sorry("No _lda.wfc files found.")
-  #
-  if(len(element)==1): suffix = element+"__lda.wfc"
-  else:                suffix = element+"_lda.wfc"
-  lines=open(os.path.join(
-    dat_path,"./plugin/yoink/dat/"+suffix)).readlines()
+  lines=open(os.path.join(folder, key + "_lda.wfc")).readlines()
   num_orbitals=int(lines[0].strip().split()[0])
   occ_electrons_array = [[0]*num_orbitals]
   line_three = lines[2].strip().split()
@@ -62,15 +94,58 @@ def load_wfc(element):
     wfcin_array.append(tmp)
   assert len(wfcin_array) == ngrid, [len(wfcin_array) , ngrid]
 
-  wfc_obj = ext.wfc(
+  return ext.wfc(
     ngrid         = ngrid,
     zz            = zz,
     r_array       = r_array,
     wfcin_array   = wfcin_array,
     occ_electrons = occ_electrons)
 
-  easy_pickle.dump(suffix, wfc_obj)
-  return wfc_obj
+def prepare(ph):
+  """
+  Per-hierarchy data of run_prepared, computed once per hierarchy.
+
+  Parameters
+  ----------
+  ph : iotbx.pdb.hierarchy.root
+      The hierarchy; it is not changed.
+
+  Returns
+  -------
+  libtbx.group_args
+      ph: a deep copy with coordinates in Bohr and i_seqs reset; atoms: its
+      atoms; xyz: its coordinates; atom_in_residue (flex.int): the 1-based
+      residue group index of every atom; residue_atoms: the i_seqs
+      (flex.size_t) of every residue group; n_residues; element_wfc_dict:
+      the wave functions of the elements present, by key (load_wfc).
+      Prepared once, a hierarchy serves run_prepared for every core
+      (fragmentation: one super sphere, many clusters).
+  """
+  ph = ph.deep_copy()
+  ph.atoms().reset_i_seq()
+  atom_in_residue = flex.int()
+  residue_atoms = []
+  element_types = set()
+  for i_rg, rg in enumerate(ph.residue_groups()):
+    atoms = rg.atoms()
+    residue_atoms.append(atoms.extract_i_seq())
+    atom_in_residue.extend(flex.int(atoms.size(), i_rg + 1))
+    for e in atoms.extract_element():
+      element_types.add(_wfc_key(e))
+  assert atom_in_residue.size() == ph.atoms_size()
+  xyz = ph.atoms().extract_xyz() * A2B
+  ph.atoms().set_xyz(xyz)
+  element_wfc_dict = {}
+  for element in element_types:
+    element_wfc_dict[element] = load_wfc(element)
+  return group_args(
+    ph               = ph,
+    atoms            = ph.atoms(),
+    xyz              = xyz,
+    atom_in_residue  = atom_in_residue,
+    residue_atoms    = residue_atoms,
+    n_residues       = len(residue_atoms),
+    element_wfc_dict = element_wfc_dict)
 
 def run(ph, core=None):
   """
@@ -79,76 +154,71 @@ def run(ph, core=None):
   core=[residue indices]: (core atoms, fragment atoms, fragment residues) of
   the core residues, the fragment being the core plus the residues it
   interacts with. Atoms are 1-based positions in ph.
-  The coordinates of ph are changed (Angstrom to Bohr) and its i_seqs reset.
+  ph is not changed (prepare works on a copy).
   """
-  ph.atoms().reset_i_seq()
-  atom_in_residue = []
-  atoms_group_dict={}
-  mols=[]
-  cntr=1
-  element_types=set()
-  for rg in ph.residue_groups():
-    atoms_group_dict[cntr]=list(rg.atoms())
-    for atom in rg.atoms():
-      atom_in_residue.append(cntr)
-      e=atom.element.strip(" ")
-      if(len(e)==1):e=e+"_"
-      element_types.add(e.lower())
-    mols.append(cntr)
-    cntr+=1
-  xyz=ph.atoms().extract_xyz()*A2B
-  ph.atoms().set_xyz(xyz)
-  atoms=ph.atoms()
-  global element_wfc_dict
-  element_wfc_dict={}
-  for element in element_types:
-    wfc_obj=load_wfc(element)
-    element_wfc_dict[element]=wfc_obj
-  # End of stage 1
-  if(core is not None):
-    core_atoms=[]
-    for idx,item in enumerate(mols):
-      if(idx+1 in core):
-        core_atoms=core_atoms+atoms_group_dict[item]
-    # Only atoms within 15 Bohr of the core can interact with it: the
-    # density is evaluated for the core and these atoms.
-    selection=flex.bool(len(atoms),False)
-    for atom in core_atoms:
-      selection |= (xyz - atom.xyz).norms() < 15
-    sub_ph=ph.select(selection)
-    atom_in_residue_selected = list(flex.int(atom_in_residue).select(selection))
-    #
-    interactions=get_interactions(sub_ph,atom_in_residue_selected,silva_type='sedd',core=core)
-    #print("interactions(sedd)(cpp)", interactions)
-    new_core=[]
-    #print("1. interactions got: ",len(interactions))
-    for pair in interactions:
-      if(len(set(pair).intersection(set(core)))>0):
-        new_core+=pair
-    new_core=list(set(new_core)|set(core))
-    #print("new core:",new_core)
-    interactions=get_interactions(sub_ph, atom_in_residue_selected, silva_type='dori', core=new_core)
-    #print("interactions(dori) (cpp):", interactions)
-    #print("2. interactions got: ",len(interactions))
-    interaction_mols=new_core
-    ###
-    for item in interactions:
-      if(len(set(item).intersection(set(core)))>0):
-        interaction_mols=interaction_mols+list(item)
-    interaction_atoms=[]
-    for i in range(len(core_atoms)):
-      core_atoms[i]=core_atoms[i].i_seq+1
-    #print("3. interaction mols:",set(interaction_mols))
-    for mol_id in interaction_mols:
-      ams=[a.i_seq+1 for a in atoms_group_dict[mol_id]]
-      interaction_atoms+=ams
-    return(list(set(core_atoms)), list(set(interaction_atoms)), list(set(interaction_mols)))
-    ###
-  else:
-    return get_interactions(ph, atom_in_residue)
+  return run_prepared(prepare(ph), core)
+
+def run_prepared(prepared, core=None):
+  """
+  run(ph, core) from prepare(ph).
+
+  Parameters
+  ----------
+  prepared : libtbx.group_args
+      The result of prepare(ph).
+  core : list of int, optional
+      1-based residue group indices of the core; None for the whole
+      hierarchy.
+
+  Returns
+  -------
+  list or tuple
+      As run: the interacting residue pairs (core None), else (core atoms,
+      fragment atoms, fragment residues), atoms as 1-based positions in ph.
+  """
+  ph = prepared.ph
+  xyz = prepared.xyz
+  atom_in_residue = prepared.atom_in_residue
+  element_wfc_dict = prepared.element_wfc_dict
+  if(core is None):
+    return get_interactions(ph, list(atom_in_residue),
+      element_wfc_dict=element_wfc_dict)
+  # core atoms in residue order (as the residue groups come)
+  core_atoms = flex.size_t()
+  for idx in sorted(set(core)):
+    if(idx <= prepared.n_residues):
+      core_atoms.extend(prepared.residue_atoms[idx - 1])
+  # Only atoms within 15 Bohr of the core can interact with it: the
+  # density is evaluated for the core and these atoms.
+  selection = flex.bool(xyz.size(), False)
+  for site in xyz.select(core_atoms):
+    selection |= (xyz - site).norms() < 15
+  sub_ph = ph.select(selection)
+  atom_in_residue_selected = list(atom_in_residue.select(selection))
+  #
+  interactions = get_interactions(sub_ph, atom_in_residue_selected,
+    silva_type='sedd', core=core, element_wfc_dict=element_wfc_dict)
+  new_core = []
+  for pair in interactions:
+    if(len(set(pair).intersection(set(core))) > 0):
+      new_core += pair
+  new_core = list(set(new_core) | set(core))
+  interactions = get_interactions(sub_ph, atom_in_residue_selected,
+    silva_type='dori', core=new_core, element_wfc_dict=element_wfc_dict)
+  interaction_mols = new_core
+  for item in interactions:
+    if(len(set(item).intersection(set(core))) > 0):
+      interaction_mols = interaction_mols + list(item)
+  interaction_atoms = []
+  for mol_id in interaction_mols:
+    interaction_atoms += [i + 1 for i in prepared.residue_atoms[mol_id - 1]]
+  return (list(set([i + 1 for i in core_atoms])),
+          list(set(interaction_atoms)),
+          list(set(interaction_mols)))
 
 def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
-      core=None):
+      core=None, element_wfc_dict=None):
+  # element_wfc_dict: the wave functions by element key (prepare)
   if(silva_type=='sedd'):step_size=0.3*A2B
   t0=time.time()
   atoms = ph.atoms()

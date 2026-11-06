@@ -5,6 +5,7 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <mmtbx/pair_interaction/interaction.h>
+#include <mmtbx/pair_interaction/girvan_newman.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <boost/python/return_value_policy.hpp>
@@ -29,6 +30,9 @@ namespace {
     using boost::python::arg;
     typedef return_value_policy<return_by_value> rbv;
     typedef default_call_policies dcp;
+
+   def("girvan_newman", girvan_newman_remaining_edges,
+     (arg("n_vertices"), arg("edges"), arg("threshold")));
 
    class_<wfc>("wfc")
      .def(init<int const&,

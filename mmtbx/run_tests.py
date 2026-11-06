@@ -18,6 +18,7 @@ general_tests = [
   "$D/pair_interaction/tst_04.py",
   "$D/pair_interaction/tst_05.py",
   "$D/pair_interaction/tst_06.py",
+  "$D/pair_interaction/tst_07.py",
   # ions SVM
   "$D/ions/svm/tst_classifier_01.py",
   "$D/ions/svm/tst_classifier_02.py",
@@ -206,6 +207,7 @@ general_tests = [
   "$D/hydrogens/tst_riding_minimization.py",
   "$D/hydrogens/tst_riding_free_h.py",
   "$D/hydrogens/tst_xh_mapper.py",
+  "$D/hydrogens/tst_fit_rotatable2.py",
   "$D/hydrogens/tst_parameterization_1.py",
   "$D/hydrogens/tst_parameterization_2.py",
   "$D/hydrogens/tst_parameterization_3.py",
