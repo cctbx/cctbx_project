@@ -1,12 +1,16 @@
 """
-The mmCIF writer, iotbx.pdb.hierarchy.root.as_cif_block, against its Python
-body, root._as_cif_block_python, kept as the reference while the atom loop
-moves to C++: the two give the same block for every fixture below, and the
-C++ columns (iotbx.pdb.atom_site_columns_from_hierarchy) hold the values
-the exercises derive by hand and equal the reference's. Every use of the
-reference is in a block marked PARITY. The one difference, label_alt_id of
-an atom whose parent() is not the atom group that holds it, is pinned by
-exercise_atoms_with_other_parent.
+The mmCIF writer, iotbx.pdb.hierarchy.root.as_cif_block: the block holds
+the C++ columns (iotbx.pdb.atom_site_columns_from_hierarchy) under their
+tags (check_block), the columns hold the values the exercises derive by
+hand, and both equal those of the Python body as_cif_block replaced,
+root._as_cif_block_python, for every fixture below. Every use of that
+reference is in a block marked PARITY. The two differences from it are
+pinned: label_alt_id of an atom whose parent() is not the atom group that
+holds it (exercise_atoms_with_other_parent), and the exception of an input
+with two defects (exercise_errors). Retiring the reference deletes the
+PARITY blocks; compare and compare_columns then call check_block and
+cpp_columns directly in place of themselves, and the comments that name
+the reference are reworded.
 """
 import locale
 import os
@@ -182,13 +186,51 @@ def cpp_columns(h, segid_as_auth_segid=False, output_break_records=False,
     output_break_records=output_break_records and h.contains_break_records())
 
 
+def check_block(h, cs=None, **kw):
+  """Assert that as_cif_block writes the columns of
+  atom_site_columns_from_hierarchy under their tags, in the order of
+  atom_site_tags and aniso_tags: fp and fdp unless all ".", resolution
+  unless all "0.00", auth_segid when asked for, auth_break when asked for
+  and the hierarchy has break records, the anisotrop loop only when an atom
+  has U, and the _chem_comp and _struct_asym ids. Returns the block."""
+  out = cpp_columns(h, **kw)
+  block = h.as_cif_block(cs, **kw)
+  loop = block.get_loop("_atom_site")
+  expected_tags = []
+  for member, tag in atom_site_tags:
+    column = list(getattr(out, member))
+    if member in ("fp", "fdp") and column == ["."] * len(column):
+      continue
+    if member == "resolution" and column == ["0.00"] * len(column):
+      continue
+    if member == "auth_segid" and not kw.get("segid_as_auth_segid"):
+      continue
+    if member == "auth_break" and not (
+        kw.get("output_break_records") and h.contains_break_records()):
+      continue
+    expected_tags.append(tag)
+    assert list(loop[tag]) == column, tag
+  assert list(loop.keys()) == expected_tags
+  aniso = block.get_loop("_atom_site_anisotrop")
+  if out.aniso_id.size() == 0:
+    assert aniso is None
+  else:
+    assert list(aniso.keys()) == [tag for member, tag in aniso_tags]
+    for member, tag in aniso_tags:
+      assert list(aniso[tag]) == list(getattr(out, member)), tag
+  for member, tag in (("chem_comp_ids", "_chem_comp.id"),
+                      ("struct_asym_ids", "_struct_asym.id")):
+    assert list(block.get(tag, [])) == list(getattr(out, member)), tag
+  return block
+
+
 def compare(name, h, cs, **kw):
-  """The same block from as_cif_block and the Python reference."""
+  """check_block, and the same block as the Python reference."""
+  block = check_block(h, cs, **kw)
   # PARITY-BEGIN
   from libtbx.test_utils import show_diff
-  got = str(h.as_cif_block(cs, **kw))
   expected = str(h._as_cif_block_python(cs, **kw))
-  assert not show_diff(got, expected), (name, kw)
+  assert not show_diff(str(block), expected), (name, kw)
   # PARITY-END
 
 
@@ -243,11 +285,6 @@ def build_root(model_ids, serial=None):
         atom.serial = serial
       ag.append_atom(atom)
   return root
-
-
-def exercise_reference_exists(fixture_list):
-  for name, h, cs in fixture_list:
-    compare(name, h, cs)
 
 
 def exercise_atom_site_labels(fixture_list):
@@ -618,6 +655,45 @@ def exercise_errors(fixture_list):
   else:
     raise Exception_expected
   # PARITY-END
+  # the documented IndexError, and the difference in order: the labels of
+  # all chains are resolved before any atom is written, so the empty chain
+  # B raises before the bad serial of chain A, which the Python body hit
+  # first
+  root = build_root([""], serial="  x  ")
+  root.only_model().append_chain(iotbx.pdb.hierarchy.chain(id="B"))
+  try:
+    root.as_cif_block()
+  except IndexError:
+    pass
+  else:
+    raise Exception_expected
+  # PARITY-BEGIN
+  try:
+    root._as_cif_block_python()
+  except ValueError:
+    pass
+  else:
+    raise Exception_expected
+  # PARITY-END
+
+
+def exercise_input_unchanged(fixture_list):
+  # the writer reads its input only: i_seq, tmp, serials, names and the
+  # atom order stay as they were (the copy's i_seq are all 0)
+  h, cs = fixture(fixture_list, "multi_model_pdb")
+  h = h.select(flex.bool(h.atoms_size(), True), copy_atoms=True)
+  atoms = h.atoms()
+  for i, atom in enumerate(atoms):
+    atom.tmp = 100 + i
+  def state():
+    atoms = h.atoms()
+    return (list(atoms.extract_i_seq()), list(atoms.extract_tmp_as_size_t()),
+      list(atoms.extract_serial()), list(atoms.extract_name()),
+      list(atoms.extract_xyz()))
+  before = state()
+  assert before[0] == [0] * 10
+  h.as_cif_block(cs, segid_as_auth_segid=True, output_break_records=True)
+  assert state() == before
 
 
 def exercise_atoms_with_other_parent():
@@ -669,19 +745,80 @@ def exercise_atoms_with_other_parent():
   # PARITY-END
   out = cpp_columns(selected)
   assert list(out.label_alt_id) == [".", ".", ".", "A", "B"] + ["."] * 5
+  check_block(selected)
+
+
+def exercise_switched(fixture_list):
+  # PARITY-BEGIN
+  # as_cif_block does not go through the Python reference
+  reference = iotbx.pdb.hierarchy.root._as_cif_block_python
+  def refuse(self, *args, **kw):
+    raise AssertionError("as_cif_block called _as_cif_block_python")
+  h, cs = fixture(fixture_list, "multi_model_pdb")
+  iotbx.pdb.hierarchy.root._as_cif_block_python = refuse
+  try:
+    h.as_cif_block()
+  finally:
+    iotbx.pdb.hierarchy.root._as_cif_block_python = reference
+  # PARITY-END
+  # every fixture with the defaults; multi_model_pdb, which has segids and
+  # break records, with every other combination of the flags and of a
+  # coordinate precision other than the default
+  for name, h, cs in fixture_list:
+    compare(name, h, cs)
+  h, cs = fixture(fixture_list, "multi_model_pdb")
+  for segid in (False, True):
+    for breaks in (False, True):
+      for precision in (5, 3):
+        if (segid, breaks, precision) != (False, False, 5):
+          compare("multi_model_pdb", h, cs, segid_as_auth_segid=segid,
+            output_break_records=breaks, coordinate_precision=precision)
+  # an auth_segid column of blanks, fp and fdp with a coordinate precision
+  # other than the default; no break records: no auth_break column even
+  # when asked for
+  h, cs = fixture(fixture_list, "input_anom")
+  compare("input_anom", h, cs, segid_as_auth_segid=True,
+    coordinate_precision=3)
+  h, cs = fixture(fixture_list, "input_1ab1")
+  assert not h.contains_break_records()
+  compare("input_1ab1", h, cs, output_break_records=True)
+  # every precision through as_cif_block, each with its own value, and a
+  # kept resolution column
+  h, cs = fixture(fixture_list, "multi_model_pdb")
+  compare("multi_model_pdb", h, None, coordinate_precision=3,
+    occupancy_precision=2, b_iso_precision=1, u_aniso_precision=4,
+    resolution_precision=6)
+  root = charge_root()
+  root.atoms()[5].set_resolution(2.5)
+  compare("resolution", root, None)
+
+
+def exercise_block_layout(fixture_list):
+  # the loops in order, the symmetry items, the _chem_comp and _struct_asym
+  # ids; no symmetry items without a crystal_symmetry
+  h, cs = fixture(fixture_list, "multi_model_pdb")
+  block = h.as_cif_block(cs)
+  assert list(block.loops.keys()) == ["_atom_site", "_atom_site_anisotrop",
+    "_space_group_symop", "_chem_comp.id", "_struct_asym.id"]
+  assert block["_cell.length_a"] == "20.000"
+  assert block["_space_group.name_H-M_alt"] == "P 1"
+  assert list(block["_chem_comp.id"]) == ["ALA", "GLY", "HOH", "SER", "ZN"]
+  assert list(block["_struct_asym.id"]) == ["A", "B", "C", "E"]
+  block = h.as_cif_block()
+  assert "_cell.length_a" not in block
+  assert "_space_group_symop" not in block.loops
 
 
 def run():
   # all_label_asym_ids() builds its list of 475254 ids, A to ZZZZ, on every
   # call, 0.2 s, and every as_cif_block call makes one call; the checks here
-  # make dozens, so they share one list, up to ZZZ, more than any of them
+  # make hundreds, so they share one list, up to ZZZ, more than any of them
   # needs.
   all_label_asym_ids = iotbx.pdb.hierarchy.all_label_asym_ids
   label_asym_ids = all_label_asym_ids(maximum_length=3)
   iotbx.pdb.hierarchy.all_label_asym_ids = lambda: label_asym_ids
   try:
     fixture_list = fixtures()
-    exercise_reference_exists(fixture_list)
     exercise_atom_site_labels(fixture_list)
     exercise_cpp_columns(fixture_list)
     exercise_programmatic_hierarchy()
@@ -693,7 +830,10 @@ def run():
     exercise_non_finite_and_decimal_point()
     exercise_rare_branches()
     exercise_errors(fixture_list)
+    exercise_input_unchanged(fixture_list)
     exercise_atoms_with_other_parent()
+    exercise_switched(fixture_list)
+    exercise_block_layout(fixture_list)
   finally:
     iotbx.pdb.hierarchy.all_label_asym_ids = all_label_asym_ids
 
