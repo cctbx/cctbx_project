@@ -1766,7 +1766,7 @@ class _():
     if hasattr(self, '_label_seq_id_dict'):
       del self._label_seq_id_dict
 
-  def as_cif_block(self,
+  def _as_cif_block_python(self,
       crystal_symmetry=None,
       coordinate_precision=5,
       occupancy_precision=3,
@@ -1775,6 +1775,8 @@ class _():
       resolution_precision=2,
       segid_as_auth_segid=False,
       output_break_records=False):
+    """The Python body of as_cif_block, the reference of
+    iotbx/regression/tst_mmcif_writer_cpp.py."""
 
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
@@ -2032,6 +2034,66 @@ class _():
     h_cif_block.add_loop(struct_asym_loop)
     #
     return h_cif_block
+
+  def as_cif_block(self,
+      crystal_symmetry=None,
+      coordinate_precision=5,
+      occupancy_precision=3,
+      b_iso_precision=5,
+      u_aniso_precision=5,
+      resolution_precision=2,
+      segid_as_auth_segid=False,
+      output_break_records=False):
+    """Return the model as an mmCIF data block.
+
+    Parameters
+    ----------
+    crystal_symmetry : cctbx.crystal.symmetry, optional
+      Written as the cell and space group items; None writes neither.
+    coordinate_precision : int
+      Decimal places of _atom_site.Cartn_x, Cartn_y and Cartn_z.
+    occupancy_precision : int
+      Decimal places of _atom_site.occupancy.
+    b_iso_precision : int
+      Decimal places of _atom_site.B_iso_or_equiv.
+    u_aniso_precision : int
+      Decimal places of the _atom_site_anisotrop U values.
+    resolution_precision : int
+      Decimal places of _atom_site.phenix_resolution.
+    segid_as_auth_segid : bool
+      Write the segid as _atom_site.auth_segid. When False, a segid longer
+      than the chain id is written as auth_asym_id instead.
+    output_break_records : bool
+      Write _atom_site.auth_break when the hierarchy has chain breaks.
+
+    Returns
+    -------
+    iotbx.cif.model.block
+      The _atom_site loop, the _atom_site_anisotrop loop when an atom has
+      U values, the symmetry items, and the _chem_comp and _struct_asym
+      loops.
+
+    Raises
+    ------
+    ValueError
+      For an atom serial that is not a hybrid-36 number in a single-model
+      hierarchy, for a four-character residue number that is not a
+      hybrid-36 number, and for a negative precision when a value is
+      written with it.
+    IndexError
+      For a residue group without atom groups, for a chain without atoms
+      when segid_as_auth_segid is False, and for a chain with a blank id
+      and no residue groups when it is True.
+    """
+    return self._as_cif_block_python(
+      crystal_symmetry=crystal_symmetry,
+      coordinate_precision=coordinate_precision,
+      occupancy_precision=occupancy_precision,
+      b_iso_precision=b_iso_precision,
+      u_aniso_precision=u_aniso_precision,
+      resolution_precision=resolution_precision,
+      segid_as_auth_segid=segid_as_auth_segid,
+      output_break_records=output_break_records)
 
   def remove_segid(self):
     """Remove all segid information"""
