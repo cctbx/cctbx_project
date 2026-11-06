@@ -134,6 +134,12 @@ def _HisAcceptorsInAnyState(mover):
         ret.add(coarse.atoms[i].i_seq)
   return ret
 
+def _ProtonationKey(a):
+  # (model id, chain id, resseq, icode) of the atom's residue, stripped
+  rg = a.parent().parent()
+  return (rg.parent().parent().id.strip(), rg.parent().id.strip(), rg.resseq.strip(),
+    rg.icode.strip())
+
 def _ResNameAndID(a):
   """Make a string describing the residue and chain for the specfied atom.
   """
@@ -296,7 +302,8 @@ class Optimizer(object):
                 cliqueOutlineFileName = None,
                 fillAtomDump = True,
                 stopOptimizingAt = time.time() + 1.0e10,
-                symmetryCopies = None
+                symmetryCopies = None,
+                fixedHisProtonation = None
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -365,6 +372,9 @@ class Optimizer(object):
     originals, and the Cliques near copies that changed are optimized again (at most 3
     passes). Sites still changing after the last pass keep the combination of their
     states that scores best with matching copies.
+    :param fixedHisProtonation: None, or the His whose protonation the user set, as
+    (model id, chain id, resseq, icode), stripped (reduce_hydrogen.protonation_key()):
+    they get no His flip Mover and no ion lock-down, with or without addFlipMovers.
     """
 
     ################################################################################
@@ -382,6 +392,7 @@ class Optimizer(object):
     self._verbosity = verbosity
     self._cliqueOutlineFileName = cliqueOutlineFileName
     self._symmetryCopies = symmetryCopies
+    self._fixedHis = set(fixedHisProtonation or ())
 
     ################################################################################
     # Initialize internal variables.
@@ -1683,9 +1694,16 @@ class Optimizer(object):
           except Exception as e:
             self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
 
+      # A His whose protonation the user set keeps its H as placed: no Mover, no ion
+      # lock-down (whose H removal would change the state).
+      if (aName == 'NE2' and resName == 'HIS' and self._fixedHis and
+          _ProtonationKey(a) in self._fixedHis):
+        self._infoString += _VerboseCheck(self._verbosity, 1,"Did not add MoverHisFlip to "+resNameAndID+
+          " (protonation set by the user; no ion lock-down)\n")
+
       # See if we should insert a MoverHisFlip here.
       # @todo Is there a more general way than looking for specific names?
-      if aName == 'NE2' and resName == 'HIS':
+      elif aName == 'NE2' and resName == 'HIS':
         try:
           # Get a potential Mover and test both of its Nitrogens in the original and flipped
           # locations.  If one or both of them are near enough to be ionically bound to an

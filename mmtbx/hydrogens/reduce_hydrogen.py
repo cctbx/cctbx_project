@@ -2275,6 +2275,42 @@ def residue_key(rg):
   """(chain id, resseq, icode) of a residue group, stripped."""
   return (rg.parent().id.strip(), rg.resseq.strip(), rg.icode.strip())
 
+# Protonation states set per residue (reduce2 protonation): {state: {resname:
+# (H the state carries, dictionary H it leaves out, other H that contradict
+# it)}}. A carried H that the dictionary lacks is added (HD2/HE2:
+# pdb_interpretation applies ACID-ASP/ACID-GLU); a supplied H that is left
+# out or contradicts is a conflict with the state.
+PROTONATION_STATES = {
+  'his_hd1':      {'HIS': (('HD1',), ('HE2',), ())},
+  'his_he2':      {'HIS': (('HE2',), ('HD1',), ())},
+  'his_both':     {'HIS': (('HD1', 'HE2'), (), ())},
+  'protonated':   {'ASP': (('HD2',), (), ('HD1',)),
+                   'GLU': (('HE2',), (), ('HE1',))},
+  'deprotonated': {'CYS': ((), ('HG',), ()), 'TYR': ((), ('HH',), ())},
+}
+
+# the heavy atom of each carried H
+PROTONATION_PARENTS = {('HIS', 'HD1'): 'ND1', ('HIS', 'HE2'): 'NE2',
+  ('ASP', 'HD2'): 'OD2', ('GLU', 'HE2'): 'OE2'}
+
+def protonation_state_text(state, resname):
+  '''"HE2 only", "protonated on OD2", ... for the report.'''
+  if state == 'his_hd1': return 'HD1 only'
+  if state == 'his_he2': return 'HE2 only'
+  if state == 'his_both': return 'HD1 and HE2'
+  if state == 'protonated':
+    return 'protonated on %s' % PROTONATION_PARENTS[(resname,
+      PROTONATION_STATES[state][resname][0][0])]
+  return state
+
+def protonation_key(rg):
+  """(model id, chain id, resseq, icode) of a residue group, stripped: the
+  key of a protonation state."""
+  return (rg.parent().parent().id.strip(),) + residue_key(rg)
+
+def _with_d_names(names):
+  return set(names) | set('D' + n[1:] for n in names)
+
 def _residue_label(atom):
   # "N GLY A 288"
   rg = atom.parent().parent()
@@ -2316,6 +2352,11 @@ class place_hydrogens():
   metal_bound_amines_as_nh2 : bool
     a coordinating NH3+ becomes NH2 (convert_metal_bound_amines()); False
     here, reduce2 passes its option (on by default)
+
+  protonation_states : dict or None
+    {protonation_key(): state of PROTONATION_STATES}: the H expected on
+    those residues follow the state, and no rule here removes the H the
+    state carries (conflicts in protonation_conflicts). None: no states.
   '''
 
 # ------------------------------------------------------------------------------
@@ -2332,8 +2373,13 @@ class place_hydrogens():
                print_time            = False,
                mon_lib_srv           = None,
                na_terminal_h         = False,
-               metal_bound_amines_as_nh2 = False):
+               metal_bound_amines_as_nh2 = False,
+               protonation_states    = None):
     self.model                 = model
+    self.protonation_states    = dict(protonation_states or {})
+    # residues with a state where a rule would have removed the H the state
+    # carries, or whose protonated atom is at a metal: report lines
+    self.protonation_conflicts = list()
     self.na_terminal_h         = na_terminal_h
     self.use_neutron_distances = use_neutron_distances
     self.n_terminal_charge     = n_terminal_charge
@@ -2470,6 +2516,84 @@ class place_hydrogens():
     '''
     self._run()
     self._finish_metal_lists()
+    if self.protonation_states:
+      self._protonation_metal_conflicts()
+
+  def _state_h_iseqs(self):
+    # i_seq of the H (or D) that the protonation states carry
+    result = set()
+    if not self.protonation_states: return result
+    for rg in self.model.get_hierarchy().residue_groups():
+      state = self.protonation_states.get(protonation_key(rg))
+      if state is None: continue
+      for ag in rg.atom_groups():
+        rule = PROTONATION_STATES[state].get(ag.resname.strip())
+        if rule is None: continue
+        names = _with_d_names(rule[0])
+        for a in ag.atoms():
+          if a.name.strip() in names: result.add(a.i_seq)
+    return result
+
+  def _keep_state_h(self, remove, atoms, reason):
+    # the H of remove that a protonation state carries stay: a conflict line
+    # each ("HIS A 63: HE2 only, as set; NE2 in a link (...)")
+    state_h = self._state_h_iseqs()
+    kept = [i for i in remove if i in state_h]
+    for i in kept:
+      h = atoms[i]
+      rg = h.parent().parent()
+      resname = h.parent().resname.strip()
+      parent = PROTONATION_PARENTS.get((resname, 'H' + h.name.strip()[1:]),
+        '')
+      self.protonation_conflicts.append('%s %s %s%s: %s, as set; %s %s' % (
+        resname, rg.parent().id.strip(), rg.resseq.strip(), rg.icode.strip(),
+        protonation_state_text(self.protonation_states[protonation_key(rg)],
+          resname), parent, reason))
+    return [i for i in remove if i not in state_h]
+
+  def _protonation_metal_conflicts(self):
+    # an atom that carries an H of a protonation state, within the metal
+    # window of metal_contact_pairs() (also across the input's symmetry)
+    hierarchy = self.model.get_hierarchy()
+    atoms = hierarchy.atoms()
+    elements = [_atom_element(a) for a in atoms]
+    metals = [i for i, e in enumerate(elements) if e in METAL_ELEMENTS
+              and _covalent_radius(e) is not None]
+    if not metals: return
+    parents = []
+    for i in sorted(self._state_h_iseqs()):
+      h = atoms[i]
+      name = PROTONATION_PARENTS.get((h.parent().resname.strip(),
+        'H' + h.name.strip()[1:]))
+      for ag in h.parent().parent().atom_groups():
+        x = ag.get_atom(name)
+        if x is not None and _compatible(x, h) and x.i_seq not in parents:
+          parents.append(x.i_seq)
+    if not parents: return
+    model_index = {}
+    for i_model, m in enumerate(hierarchy.models()):
+      for a in m.atoms(): model_index[a.i_seq] = i_model
+    uc = None
+    if self._contact_cs is not None: uc = self._contact_cs.unit_cell()
+    for i_x, i_m, rt in metal_contact_pairs([a.xyz for a in atoms], elements,
+        parents, metals, self._contact_cs, model_index):
+      x, m = atoms[i_x], atoms[i_m]
+      # one conformer: a metal of another altloc is not there
+      if not _compatible(x, m): continue
+      conformer = x.parent().altloc or m.parent().altloc
+      xyz = matrix.col(m.xyz)
+      if not rt.is_unit_mx():
+        xyz = matrix.col(uc.orthogonalize(rt * uc.fractionalize(m.xyz)))
+      rg, mrg = x.parent().parent(), m.parent().parent()
+      resname = x.parent().resname.strip()
+      self.protonation_conflicts.append(
+        '%s %s %s%s%s: %s, as set; %s %.2f A from %s %s %s%s%s' % (resname,
+        rg.parent().id.strip(), rg.resseq.strip(), rg.icode.strip(),
+        ' conformer %s' % conformer if conformer else '',
+        protonation_state_text(self.protonation_states[protonation_key(rg)],
+          resname), x.name.strip(), (xyz - matrix.col(x.xyz)).length(),
+        m.name.strip(), mrg.parent().id.strip(), mrg.resseq.strip(),
+        mrg.icode.strip(), '' if rt.is_unit_mx() else ' (sym %s)' % rt))
 
   def _run(self):
 
@@ -3127,6 +3251,9 @@ class place_hydrogens():
       if all(residue(m) == r_p for v in bridged.values() for m in v): continue
       for k in os_:
         if k not in bridged: remove.update(h_on.get(k, ()))
+    if self.protonation_states and remove:
+      remove = self._keep_state_h(sorted(remove), atoms,
+        'has two heavy neighbours (ester or ether O)')
     remove = flex.size_t(sorted(remove))
     if remove.size():
       sel = flex.bool(elements.size(), True).set_selected(remove, False)
@@ -4102,6 +4229,17 @@ class place_hydrogens():
                     expected_h.remove(altname[0])
                     #print('renamed %s to %s' % (altname[0], altname[2]))
             # TODO end
+            # a protonation state set for this residue (all its conformers)
+            state = None
+            if self.protonation_states:
+              state = self.protonation_states.get(protonation_key(rg))
+            if state is not None:
+              # not "rule": that is the link_rule of _split_h_by_partner()
+              state_rule = PROTONATION_STATES[state].get(ag.resname.strip())
+              if state_rule is not None:
+                expected_h = [h for h in expected_h if h not in state_rule[1]]
+                expected_h.extend(h for h in state_rule[0]
+                                  if h not in expected_h)
             missing_h = list(set(expected_h).difference(set(actual)))
             if (amide_ag is not None and 'H' in missing_h and
                 any(set([b.atom_id_1, b.atom_id_2]) == set(['N', 'H'])
@@ -4465,6 +4603,9 @@ class place_hydrogens():
         sel_remove.remove(r)
         if verbose: print('keep',atoms[r].quote())
       sel_remove=flex.size_t(sel_remove)
+    if self.protonation_states and len(sel_remove) > 0:
+      sel_remove = flex.size_t(self._keep_state_h(list(sel_remove),
+        self.model.get_hierarchy().atoms(), 'in a link'))
     #
     def _removed_label(v):
       return v if isinstance(v, str) else origin_ids.get_origin_key(v)
