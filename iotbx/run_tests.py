@@ -121,6 +121,7 @@ tst_list_base = [
   "$D/regression/tst_mmcif_hierarchy_parity.py",
   "$D/regression/tst_mmcif_hierarchy_cpp.py",
   "$D/regression/tst_mmcif_hierarchy_gil.py",
+  "$D/regression/tst_mmcif_writer_cpp.py",
   "$D/pdb/tst_mmcif_hierarchy_2.py",
   "$D/pdb/tst_tls.py",
   ["$D/pdb/hybrid_36.py", "exercise"],
