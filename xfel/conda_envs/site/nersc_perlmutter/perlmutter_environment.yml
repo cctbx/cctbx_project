@@ -1,0 +1,100 @@
+name: psana_env
+channels:
+ - __PSANA_CHANNEL__   # set by build.sh: lcls-i (psana1) or lcls-ii (psana2)
+ - conda-forge
+ - cctbx
+ - nodefaults
+
+dependencies:
+# Don't do these -- they interfere with NERSC systems
+ # conda compilers
+ - gcc_linux-64<13
+ - gxx_linux-64<13
+ - gcc<13
+# - gxx<13 # This was never included. gxx likely always came from the system
+           # instead of Conda. Was this intended?
+
+ # compilers
+ - scons
+
+ # psana
+ - __PSANA__           # set by build.sh: psana=4.0.66 (lcls-i, https://github.com/lcls-psana/pytools/issues/1) or psana (lcls-ii)
+
+ # python
+ - python=3.11
+ - biopython
+ - ipython
+ - pybind11
+ - setuptools
+ - msgpack-cxx
+
+ # testing
+ - pytest
+ - pytest-xdist
+ - mock
+
+ # documentation
+ - docutils
+ - numpydoc
+ - sphinx
+
+ # graphics
+ - pillow<9.5.0|>10.0.0
+ - reportlab
+ - wxpython
+ - pyopengl
+ - libtiff
+
+ # HDF5 (main libraries come with psana)
+ - h5py
+ - hdf5plugin
+ 
+ # other
+ - libsvm
+ - mrcfile
+ - pint
+ - psutil
+ - conda-forge::nxmx
+
+ # cctbx channel
+ - libsvm_py
+
+ # dials
+ - jinja2
+ - msgpack-python
+ - ordered-set
+ - python-blosc
+ - scikit-learn
+ - tqdm
+ - eigen
+ - dials-data
+ # - gemmi  # DO NOT re-add: gemmi in this solve is pathological.  build.sh
+ #          # installs it separately with `conda install --no-deps`, followed by
+ #          # an import check.  cctbx upstream does exactly the same, for the
+ #          # same reason, in xfel/conda_envs/psana_environment.yml.
+ - hatchling
+
+ # dxtbx
+ - natsort
+
+ # xia2
+ - tabulate
+
+ # Phenix
+ - send2trash
+ - PyRTF
+
+ # xfel gui
+ - mysql
+ - mysqlclient
+ 
+ - pandas
+
+ # perlmutter
+ - libglu
+
+ - numpy
+
+ # boost (psana1 pulls it in transitively; psana2 does not)
+ - boost
+ - boost-cpp
