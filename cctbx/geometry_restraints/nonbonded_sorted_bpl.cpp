@@ -58,6 +58,8 @@ namespace {
             &w_t::process,
           (arg("proxies")))
         .def("n_total", &w_t::n_total)
+        .def("n_total_excluding", &w_t::n_total_excluding,
+          (arg("exclude")))
         .def_readonly("simple", &w_t::simple)
         .def_readonly("asu", &w_t::asu)
         .def_pickle(nonbonded_sorted_asu_proxies_base_wrappers())

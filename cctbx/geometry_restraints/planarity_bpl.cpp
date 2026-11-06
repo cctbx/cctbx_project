@@ -10,6 +10,7 @@
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <cctbx/geometry_restraints/planarity.h>
+#include <cctbx/geometry_restraints/n_proxies_excluding.h>
 #include <cctbx/geometry_restraints/proxy_select.h>
 
 namespace cctbx { namespace geometry_restraints {
@@ -164,6 +165,12 @@ namespace {
         af::ref<scitbx::vec3<double> > const&))
       planarity_residual_sum,
       (arg("sites_cart"), arg("proxies"), arg("gradient_array")));
+    def("n_proxies_excluding",
+      (std::size_t(*)(
+        af::const_ref<planarity_proxy> const&,
+        af::const_ref<bool> const&))
+      n_proxies_excluding,
+      (arg("proxies"), arg("exclude")));
     def("planarity_deltas_rms",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,

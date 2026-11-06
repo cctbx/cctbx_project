@@ -4536,9 +4536,14 @@ class manager(object):
     if(self.restraints_manager is None): return None
     sites_cart = self._xray_structure.sites_cart()
     ias_selection = self.get_ias_selection()
+    normalization_exclude = None
+    if(self.riding_h_manager is not None):
+      normalization_exclude = self.riding_h_manager.riding_selection()
     if(self.use_ias and ias_selection is not None and
        ias_selection.count(True) > 0):
       sites_cart = sites_cart.select(~ias_selection)
+      if(normalization_exclude is not None):
+        normalization_exclude = normalization_exclude.select(~ias_selection)
     result = self.restraints_manager.energies_sites(
       sites_cart=sites_cart,
       geometry_flags=geometry_flags,
@@ -4548,6 +4553,7 @@ class manager(object):
       gradients=gradients,
       disable_asu_cache=disable_asu_cache,
       hd_selection=self.get_hd_selection(),
+      normalization_exclude=normalization_exclude,
     )
     return result
 
@@ -5320,6 +5326,7 @@ class manager(object):
         use_hd            = use_hd,
         compute_gradients = compute_gradients)
       target = energies_adp_iso.target
+      number_of_restraints = energies_adp_iso.number_of_restraints
     else:
       energies_adp_aniso = self.restraints_manager.energies_adp_aniso(
         xray_structure    = xrs,
@@ -5327,6 +5334,7 @@ class manager(object):
         selection         = selection,
         use_hd            = use_hd)
       target = energies_adp_aniso.target
+      number_of_restraints = energies_adp_aniso.number_of_restraints
     u_iso_gradients = None
     u_aniso_gradients = None
     if(compute_gradients):
@@ -5338,6 +5346,7 @@ class manager(object):
     class result(object):
       def __init__(self):
         self.target = target
+        self.number_of_restraints = number_of_restraints
         self.u_iso_gradients = u_iso_gradients
         self.u_aniso_gradients = u_aniso_gradients
     return result()

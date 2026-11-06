@@ -82,11 +82,13 @@ class manager(standard_manager):
                      external_energy_function=None,
                      extension_objects=[],
                      site_labels=None,
+                     normalization_exclude=None,
                      log=None):
     result = standard_manager.energies_sites(
       self,
       sites_cart,
       flags=flags,
+      normalization_exclude=normalization_exclude,
       custom_nonbonded_function=custom_nonbonded_function,
       compute_gradients=compute_gradients,
       gradients=gradients,

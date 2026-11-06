@@ -118,6 +118,31 @@ namespace cctbx { namespace geometry_restraints {
       std::size_t
       n_total() const { return simple.size() + asu.size(); }
 
+      /*! \brief Number of proxies none of whose atoms is flagged in
+          exclude (simple proxies by i_seqs, asu proxies by i_seq, j_seq).
+       */
+      std::size_t
+      n_total_excluding(af::const_ref<bool> const& exclude) const
+      {
+        std::size_t result = 0;
+        af::const_ref<SimpleProxyType> s = simple.const_ref();
+        for(std::size_t i=0;i<s.size();i++) {
+          bool keep = true;
+          for(std::size_t j=0;j<s[i].i_seqs.size();j++) {
+            CCTBX_ASSERT(s[i].i_seqs[j] < exclude.size());
+            if (exclude[s[i].i_seqs[j]]) { keep = false; break; }
+          }
+          if (keep) result++;
+        }
+        af::const_ref<AsuProxyType> a = asu.const_ref();
+        for(std::size_t i=0;i<a.size();i++) {
+          CCTBX_ASSERT(a[i].i_seq < exclude.size());
+          CCTBX_ASSERT(a[i].j_seq < exclude.size());
+          if (!exclude[a[i].i_seq] && !exclude[a[i].j_seq]) result++;
+        }
+        return result;
+      }
+
 //    protected:
     public:
       boost::shared_ptr<direct_space_asu::asu_mappings<> > asu_mappings_owner_;

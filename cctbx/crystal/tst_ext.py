@@ -771,6 +771,30 @@ Si(2)
         assert energies.u_i.size() == 0
         assert energies.u_j.size() == 0
         assert energies.r_ij.size() == 0
+    # A pair contributes only when both atoms are selected: deselecting
+    # atom 2 is the same as removing it from the structure.
+    structure_2 = structure.select(flex.bool([True, True, False]))
+    asu_table_2 = crystal.pair_asu_table(
+      asu_mappings=structure_2.asu_mappings(buffer_thickness=3.5))
+    asu_table_2.add_all_pairs(distance_cutoff=3.5)
+    sym_table_2 = asu_table_2.extract_pair_sym_table(
+      skip_j_seq_less_than_i_seq=skip_j_seq_less_than_i_seq)
+    adp_energies_2 = adp_iso_local_sphere_restraints_energies_functor(
+      pair_sym_table=sym_table_2,
+      orthogonalization_matrix
+        =structure_2.unit_cell().orthogonalization_matrix(),
+      sites_frac=structure_2.sites_frac())
+    energies_2 = adp_energies_2(u_isos=u_isos[:2], compute_gradients=True)
+    energies = adp_energies(
+      u_isos=u_isos,
+      compute_gradients=True,
+      selection=flex.bool([True, True, False]))
+    assert energies_2.number_of_restraints > 0
+    assert energies.number_of_restraints == energies_2.number_of_restraints, (
+      energies.number_of_restraints, energies_2.number_of_restraints)
+    assert approx_equal(energies.residual_sum, energies_2.residual_sum)
+    assert approx_equal(energies.gradients[:2], energies_2.gradients)
+    assert approx_equal(energies.gradients[2], 0)
     for i_trial in range(5):
       u_isos = u_isos.select(flex.random_permutation(size=u_isos.size()))
       for distance_power in [0.3, 0.8, 1, 1.7]:
@@ -1331,14 +1355,17 @@ class adp_iso_local_sphere_restraints_energies_functor(object):
         distance_power=0.7,
         average_power=0.5,
         compute_gradients=False,
-        collect=False):
+        collect=False,
+        selection=None):
     sel = flex.bool(u_isos.size(),True)
+    if (selection is None):
+      selection = sel
     return crystal.adp_iso_local_sphere_restraints_energies(
       pair_sym_table=self.pair_sym_table,
       orthogonalization_matrix=self.orthogonalization_matrix,
       sites_frac=self.sites_frac,
       u_isos=u_isos,
-      selection = sel,
+      selection = selection,
       use_u_iso = sel,
       grad_u_iso= sel,
       sphere_radius=sphere_radius,

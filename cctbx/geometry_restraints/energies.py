@@ -31,7 +31,21 @@ class energies(scitbx.restraints.energies):
                gradients=None,
                disable_asu_cache=False,
                normalization=False,
-               extension_objects=[]):
+               extension_objects=[],
+               normalization_exclude=None):
+    """Geometry restraint residual sum and gradients.
+
+    Parameters
+    ----------
+    normalization_exclude : flex.bool or None
+        When given, ``number_of_restraints`` (the divisor used when
+        ``normalization`` is True) counts only the bond, nonbonded,
+        angle, dihedral, chirality, planarity, parallelity and
+        bond similarity proxies none of whose atoms is flagged; the
+        manager-based and reference coordinate terms are counted in
+        full. Residual sums, gradients and the ``n_*_proxies``
+        attributes are unchanged.
+    """
     # runsnaked away...
     #adopt_init_args(self, locals())
     #for local in sorted(locals()):
@@ -53,6 +67,9 @@ class energies(scitbx.restraints.energies):
     self.nonbonded_function=nonbonded_function
     self.nonbonded_proxies=nonbonded_proxies
     self.normalization=normalization
+    self.normalization_exclude=normalization_exclude
+    if (normalization_exclude is not None):
+      assert normalization_exclude.size() == sites_cart.size()
     self.parallelity_proxies=parallelity_proxies
     self.planarity_proxies=planarity_proxies
     self.ramachandran_manager=ramachandran_manager
@@ -81,25 +98,33 @@ class energies(scitbx.restraints.energies):
       self.bond_residual_sum = 0
     else:
       self.n_bond_proxies = bond_proxies.n_total()
+      if (normalization_exclude is None):
+        self.number_of_restraints += self.n_bond_proxies
+      else:
+        self.number_of_restraints += bond_proxies.n_total_excluding(
+          exclude=normalization_exclude)
       self.bond_residual_sum = geometry_restraints.bond_residual_sum(
         sites_cart=sites_cart,
         sorted_asu_proxies=bond_proxies,
         gradient_array=self.gradients,
         disable_cache=disable_asu_cache)
-      self.number_of_restraints += self.n_bond_proxies
       self.residual_sum += self.bond_residual_sum
     if (nonbonded_proxies is None):
       self.n_nonbonded_proxies = None
       self.nonbonded_residual_sum = 0
     else:
       self.n_nonbonded_proxies = nonbonded_proxies.n_total()
+      if (normalization_exclude is None):
+        self.number_of_restraints += self.n_nonbonded_proxies
+      else:
+        self.number_of_restraints += nonbonded_proxies.n_total_excluding(
+          exclude=normalization_exclude)
       self.nonbonded_residual_sum = geometry_restraints.nonbonded_residual_sum(
         sites_cart=sites_cart,
         sorted_asu_proxies=nonbonded_proxies,
         gradient_array=self.gradients,
         function=nonbonded_function,
         disable_cache=False)
-      self.number_of_restraints += self.n_nonbonded_proxies
       self.residual_sum += self.nonbonded_residual_sum
 
     # ====================================================================
@@ -128,7 +153,12 @@ class energies(scitbx.restraints.energies):
               sites_cart=sites_cart,
               proxies=proxies,
               gradient_array=self.gradients)
-        self.number_of_restraints += n_proxies
+        if (normalization_exclude is None):
+          self.number_of_restraints += n_proxies
+        else:
+          self.number_of_restraints += \
+            geometry_restraints.n_proxies_excluding(
+              proxies=proxies, exclude=normalization_exclude)
         self.residual_sum += res_sum
         setattr(self, "n_%s_proxies" % name, n_proxies)
         setattr(self, "%s_residual_sum" % name, res_sum)
@@ -181,7 +211,12 @@ class energies(scitbx.restraints.energies):
         sites_cart=sites_cart,
         proxies=self.chirality_proxies,
         gradient_array=self.gradients)
-      self.number_of_restraints += self.n_chirality_proxies
+      if (normalization_exclude is None):
+        self.number_of_restraints += self.n_chirality_proxies
+      else:
+        self.number_of_restraints += \
+          geometry_restraints.n_proxies_excluding(
+            proxies=self.chirality_proxies, exclude=normalization_exclude)
       self.residual_sum += self.chirality_residual_sum
 
     if (external_energy_function is not None):

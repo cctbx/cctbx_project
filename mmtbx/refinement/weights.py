@@ -265,11 +265,19 @@ class site_gradients(object):
       sel = sel_si
     else:
       sel = sel_sta
+    # The restraint count that normalizes the geometry target excludes the
+    # riding H, as in the minimizer (the model keeps its H for neutron
+    # data).
+    normalization_exclude = None
+    if model.riding_h_manager is not None:
+      normalization_exclude = model.riding_h_manager.riding_selection()
     if model.ias_manager is not None:
       ias_selection = model.ias_manager.get_ias_selection()
       if ias_selection is not None:
         xray_structure = xray_structure.select(~ias_selection)
         sel = sel.select(~ias_selection)
+        if normalization_exclude is not None:
+          normalization_exclude = normalization_exclude.select(~ias_selection)
     assert sel.count(True) > 0
     restraints_manager = model.restraints_manager
     if(shake):
@@ -294,6 +302,7 @@ class site_gradients(object):
       sites_cart        = xray_structure.sites_cart(),
       compute_gradients = True,
       hd_selection      = xray_structure.hd_selection(), # need for afitt
+      normalization_exclude = normalization_exclude,
       )
     gc=gco.gradients
     self.gc = gc.select(sel)
@@ -322,7 +331,14 @@ class weight:
                       iso_restraints                = None,
                       amber_params                  = None,
                       log                           = None,
-                      show_summary                  = True):
+                      show_summary                  = True,
+                      use_hd                        = None):
+     """
+     use_hd (bool or None): whether pairs involving H count in the printed
+     ADP restraint count, as in the minimizer (neutron data or individually
+     refined H). None infers it: neutron data, or H present without a riding
+     H manager.
+     """
      global time_weights_xray_chem_py
      timer = user_plus_sys_time()
      adopt_init_args(self, locals())
@@ -357,7 +373,43 @@ class weight:
      if(show_summary):
        show(xyz = self.xyz_weights_result, adp = self.adp_weights_result,
          log = self.log)
+       self.show_normalization_counts(log = self.log)
      time_weights_xray_chem_py += timer.elapsed()
+
+   def show_normalization_counts(self, log):
+     """
+     Print the restraint counts that normalize the geometry and ADP
+     targets, so that a weight can be compared between refinements with
+     and without riding H.
+     """
+     model = self.model
+     if(model.restraints_manager is None or
+        not model.restraints_manager.normalization):
+       return
+     parts = []
+     if(self.compute_wxc):
+       n = model.restraints_manager_energies_sites().number_of_restraints
+       part = "geometry %d restraints" % n
+       if(model.riding_h_manager is not None):
+         sites_cart = model.get_sites_cart()
+         ias_selection = model.get_ias_selection()
+         if(model.use_ias and ias_selection is not None and
+            ias_selection.count(True) > 0):
+           sites_cart = sites_cart.select(~ias_selection)
+         n_all = model.restraints_manager.energies_sites(
+           sites_cart=sites_cart).number_of_restraints
+         part += " (%d involving riding H excluded)" % (n_all - n)
+       parts.append(part)
+     if(self.compute_wxu):
+       use_hd = self.use_hd
+       if(use_hd is None):
+         use_hd = model.is_neutron() or (
+           model.has_hd() and model.riding_h_manager is None)
+       n = model.energies_adp(iso_restraints = self.iso_restraints,
+         compute_gradients = False, use_hd = use_hd).number_of_restraints
+       parts.append("ADP %d pairs" % n)
+     if(len(parts) > 0):
+       print("Normalization counts: " + "; ".join(parts), file=log)
 
    def xyz_weights(self, log=None):
      wxc       = None

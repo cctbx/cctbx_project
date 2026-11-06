@@ -71,6 +71,8 @@ namespace {
             &w_t::push_back,
           (arg("proxies")))
         .def("n_total", &w_t::n_total)
+        .def("n_total_excluding", &w_t::n_total_excluding,
+          (arg("exclude")))
         .def_readonly("simple", &w_t::simple)
         .def_readonly("asu", &w_t::asu)
         .def_pickle(bond_sorted_asu_proxies_base_wrappers())

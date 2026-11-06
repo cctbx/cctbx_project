@@ -6,7 +6,8 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.crystal import direct_space_asu
 from scitbx import matrix
-from libtbx.test_utils import approx_equal, not_approx_equal, eps_eq, show_diff
+from libtbx.test_utils import approx_equal, not_approx_equal, eps_eq, \
+  show_diff, Exception_expected
 from libtbx.utils import null_out
 from six.moves import cStringIO as StringIO
 import math
@@ -3377,6 +3378,155 @@ def exercise_origin_id_selections_for_bonds():
   assert len(new_p3) == 10
   assert len(new_p4) == 0
 
+def exercise_n_proxies_excluding():
+  n_excl = geometry_restraints.n_proxies_excluding
+  none = flex.bool(6, False)
+  def excl(*i_seqs):
+    e = flex.bool(6, False)
+    for i in i_seqs: e[i] = True
+    return e
+  # angle
+  proxies = geometry_restraints.shared_angle_proxy()
+  for i_seqs in [(0,1,2), (1,2,3), (2,3,4)]:
+    proxies.append(geometry_restraints.angle_proxy(
+      i_seqs=i_seqs, angle_ideal=100, weight=1))
+  assert n_excl(proxies=proxies, exclude=none) == 3
+  assert n_excl(proxies=proxies, exclude=excl(1)) == 1
+  assert n_excl(proxies=proxies, exclude=excl(1,4)) == 0
+  try:
+    n_excl(proxies=proxies, exclude=flex.bool(1, False))
+  except RuntimeError: pass
+  else: raise Exception_expected
+  # dihedral
+  proxies = geometry_restraints.shared_dihedral_proxy([
+    geometry_restraints.dihedral_proxy(
+      i_seqs=[3,2,1,0], angle_ideal=10, weight=1)])
+  assert n_excl(proxies=proxies, exclude=none) == 1
+  assert n_excl(proxies=proxies, exclude=excl(3)) == 0
+  assert n_excl(proxies=proxies, exclude=excl(4)) == 1
+  # chirality
+  proxies = geometry_restraints.shared_chirality_proxy([
+    geometry_restraints.chirality_proxy(
+      i_seqs=[0,2,3,1], volume_ideal=4, both_signs=False, weight=1)])
+  assert n_excl(proxies=proxies, exclude=none) == 1
+  assert n_excl(proxies=proxies, exclude=excl(2)) == 0
+  assert n_excl(proxies=proxies, exclude=excl(4)) == 1
+  # planarity
+  proxies = geometry_restraints.shared_planarity_proxy([
+    geometry_restraints.planarity_proxy(
+      i_seqs=flex.size_t([0,1,2,3]), weights=flex.double(4, 1))])
+  assert n_excl(proxies=proxies, exclude=none) == 1
+  assert n_excl(proxies=proxies, exclude=excl(3)) == 0
+  assert n_excl(proxies=proxies, exclude=excl(4)) == 1
+  # parallelity: j_seqs count too
+  proxies = geometry_restraints.shared_parallelity_proxy([
+    geometry_restraints.parallelity_proxy(
+      i_seqs=(0,1,2), j_seqs=(3,4,5), weight=1)])
+  assert n_excl(proxies=proxies, exclude=none) == 1
+  assert n_excl(proxies=proxies, exclude=excl(0)) == 0
+  assert n_excl(proxies=proxies, exclude=excl(5)) == 0
+  # bond similarity: both members of each pair count
+  proxies = geometry_restraints.shared_bond_similarity_proxy([
+    geometry_restraints.bond_similarity_proxy(
+      i_seqs=[(0,1),(2,3)], weights=[1,1])])
+  assert n_excl(proxies=proxies, exclude=none) == 1
+  assert n_excl(proxies=proxies, exclude=excl(3)) == 0
+  assert n_excl(proxies=proxies, exclude=excl(4)) == 1
+  # sorted asu proxies: one simple and one asu proxy each
+  sites_cart = flex.vec3_double([[1,2,3],[2,3,4],[5,5,5]])
+  asu_mappings = direct_space_asu.non_crystallographic_asu_mappings(
+    sites_cart=sites_cart)
+  pair_generator = crystal.neighbors_fast_pair_generator(
+    asu_mappings=asu_mappings, distance_cutoff=5)
+  pair = next(pair_generator)
+  assert (pair.i_seq, pair.j_seq) == (0, 1)
+  b_asu = geometry_restraints.bond_asu_proxy(
+    pair=pair, distance_ideal=2, weight=10)
+  b_simple = geometry_restraints.bond_simple_proxy(
+    i_seqs=[1,2], distance_ideal=2, weight=10)
+  sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
+    asu_mappings=asu_mappings)
+  sorted_asu_proxies.push_back(proxy=b_asu)
+  sorted_asu_proxies.process(proxy=b_simple)
+  assert sorted_asu_proxies.simple.size() == 1
+  assert sorted_asu_proxies.asu.size() == 1
+  assert sorted_asu_proxies.n_total() == 2
+  assert sorted_asu_proxies.n_total_excluding(exclude=flex.bool(3, False)) == 2
+  assert sorted_asu_proxies.n_total_excluding(
+    exclude=flex.bool([True, False, False])) == 1
+  assert sorted_asu_proxies.n_total_excluding(
+    exclude=flex.bool([False, False, True])) == 1
+  assert sorted_asu_proxies.n_total_excluding(
+    exclude=flex.bool([False, True, False])) == 0
+  try:
+    sorted_asu_proxies.n_total_excluding(exclude=flex.bool(1, False))
+  except RuntimeError: pass
+  else: raise Exception_expected
+  n_asu = geometry_restraints.nonbonded_asu_proxy(pair=pair, vdw_distance=2)
+  n_simple = geometry_restraints.nonbonded_simple_proxy(
+    i_seqs=[1,2], vdw_distance=2)
+  sorted_asu_proxies = geometry_restraints.nonbonded_sorted_asu_proxies(
+    asu_mappings=asu_mappings)
+  sorted_asu_proxies.process(proxy=n_asu)
+  sorted_asu_proxies.process(proxy=n_simple)
+  assert sorted_asu_proxies.n_total() == 2
+  assert sorted_asu_proxies.n_total_excluding(exclude=flex.bool(3, False)) == 2
+  assert sorted_asu_proxies.n_total_excluding(
+    exclude=flex.bool([True, False, False])) == 1
+  assert sorted_asu_proxies.n_total_excluding(
+    exclude=flex.bool([False, False, True])) == 1
+  try:
+    sorted_asu_proxies.n_total_excluding(exclude=flex.bool(1, False))
+  except RuntimeError: pass
+  else: raise Exception_expected
+
+def exercise_energies_normalization_exclude():
+  sites_cart = flex.vec3_double([[1,2,3],[2,3,4],[5,5,5]])
+  asu_mappings = direct_space_asu.non_crystallographic_asu_mappings(
+    sites_cart=sites_cart)
+  pair_generator = crystal.neighbors_fast_pair_generator(
+    asu_mappings=asu_mappings, distance_cutoff=5)
+  bond_proxies = geometry_restraints.bond_sorted_asu_proxies(
+    asu_mappings=asu_mappings)
+  bond_proxies.push_back(proxy=geometry_restraints.bond_asu_proxy(
+    pair=next(pair_generator), distance_ideal=2, weight=10))
+  bond_proxies.process(proxy=geometry_restraints.bond_simple_proxy(
+    i_seqs=[1,2], distance_ideal=2, weight=10))
+  angle_proxies = geometry_restraints.shared_angle_proxy([
+    geometry_restraints.angle_proxy(
+      i_seqs=(0,1,2), angle_ideal=100, weight=1)])
+  def get(normalization_exclude):
+    kw = {}
+    if (normalization_exclude is not None):
+      kw["normalization_exclude"] = normalization_exclude
+    from cctbx.geometry_restraints import energies
+    return energies.energies(
+      sites_cart=sites_cart,
+      bond_proxies=bond_proxies,
+      angle_proxies=angle_proxies,
+      compute_gradients=True,
+      normalization=True,
+      **kw)
+  e0 = get(None)
+  assert e0.number_of_restraints == 3
+  e1 = get(flex.bool(3, False))
+  assert e1.number_of_restraints == 3
+  e2 = get(flex.bool([False, False, True]))
+  assert e2.number_of_restraints == 1
+  for e in [e1, e2]:
+    assert e.n_bond_proxies == 2
+    assert e.n_angle_proxies == 1
+    assert approx_equal(e.residual_sum, e0.residual_sum)
+    assert approx_equal(e.bond_residual_sum, e0.bond_residual_sum)
+    assert approx_equal(e.angle_residual_sum, e0.angle_residual_sum)
+  assert approx_equal(e2.target, 3 * e0.target)
+  assert approx_equal(e2.gradients, 3 * e0.gradients)
+  for n in [2, 4]:
+    try:
+      get(flex.bool(n, False))
+    except AssertionError: pass
+    else: raise Exception_expected
+
 def exercise():
   exercise_bond_similarity()
   exercise_bond()
@@ -3391,6 +3541,8 @@ def exercise():
   exercise_proxy_show()
   exercise_parallelity()
   exercise_origin_id_selections_for_bonds()
+  exercise_n_proxies_excluding()
+  exercise_energies_normalization_exclude()
   print("OK")
 
 if (__name__ == "__main__"):
