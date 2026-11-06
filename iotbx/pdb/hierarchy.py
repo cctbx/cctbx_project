@@ -2035,6 +2035,47 @@ class _():
     #
     return h_cif_block
 
+  def _atom_site_labels(self, segid_as_auth_segid=False):
+    """The values of as_cif_block that Python resolves: label_asym_id and
+    label_seq_id, which depend on a residue's neighbours and its chain,
+    auth_asym_id, and auth_seq_id. One value per chain, residue group or
+    atom group, over all models in hierarchy order. The lookups are rebuilt
+    first.
+
+    Parameters
+    ----------
+    segid_as_auth_segid : bool
+      As in as_cif_block: when False, a segid longer than the chain id is
+      the auth_asym_id.
+
+    Returns
+    -------
+    libtbx.group_args
+      chain_auth_asym_id (per chain), rg_label_asym_id and rg_auth_seq_id
+      (per residue group), ag_label_seq_id (per atom group), each a
+      flex.std_string.
+    """
+    self.clear_label_asym_id_lookups()
+    chain_auth_asym_id = []
+    rg_label_asym_id = []
+    rg_auth_seq_id = []
+    ag_label_seq_id = []
+    for model in self.models():
+      for chain in model.chains():
+        chain_auth_asym_id.append(self.get_auth_asym_id(chain,
+          segid_as_auth_segid=segid_as_auth_segid))
+        for residue_group in chain.residue_groups():
+          rg_label_asym_id.append(
+            self.get_label_asym_id(residue_group).strip())
+          rg_auth_seq_id.append(self.get_auth_seq_id(residue_group))
+          for atom_group in residue_group.atom_groups():
+            ag_label_seq_id.append(self.get_label_seq_id(atom_group))
+    return group_args(
+      chain_auth_asym_id=flex.std_string(chain_auth_asym_id),
+      rg_label_asym_id=flex.std_string(rg_label_asym_id),
+      rg_auth_seq_id=flex.std_string(rg_auth_seq_id),
+      ag_label_seq_id=flex.std_string(ag_label_seq_id))
+
   def as_cif_block(self,
       crystal_symmetry=None,
       coordinate_precision=5,
