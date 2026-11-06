@@ -12,6 +12,7 @@ namespace iotbx { namespace pdb { namespace boost_python {
   void wrap_input();
   void wrap_xray_structure();
   void wrap_mmcif_hierarchy();
+  void wrap_mmcif_writer();
 
 namespace {
 
@@ -26,6 +27,7 @@ namespace {
     wrap_input();
     wrap_xray_structure();
     wrap_mmcif_hierarchy();
+    wrap_mmcif_writer();
   }
 
 }}}} // namespace iotbx::pdb::boost_python::<anonymous>
