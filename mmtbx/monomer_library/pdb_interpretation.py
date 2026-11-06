@@ -5468,27 +5468,6 @@ class build_all_chain_proxies(linking_mixins):
       bond_sym_proxies=bond_sym_proxies,
       bond_distance_model_max=bond_distance_model_max)
 
-  def process_custom_nonbonded_exclusions(self, log, exclude_pair_indices,
-      shell_asu_tables, verbose=True):
-    space_group = self.special_position_settings.space_group()
-    rt_mx_ji = sgtbx.rt_mx(symbol="x,y,z", t_den=space_group.t_den())
-    have_header = False
-    for (i_seq, j_seq) in exclude_pair_indices :
-      if (verbose) and (not have_header):
-        print(file=log)
-        print("  Custom nonbonded exclusions (H-bonds, etc.):", file=log)
-        have_header = True
-      if (verbose):
-        print("    %s  %s" % (self.pdb_atoms[i_seq].id_str(),
-                                      self.pdb_atoms[j_seq].id_str()), file=log)
-      try :
-        shell_asu_tables[1].add_pair(i_seq, j_seq, rt_mx_ji)
-      except RuntimeError as e :
-        print("    WARNING: could not process nonbonded pair", file=log)
-        print("    Original error:", file=log)
-        print("      %s" % str(e), file=log)
-      #shell_sym_tables[1][i_seq][j_seq].add(rt_mx_ji)
-
   def process_custom_nonbonded_symmetry_exclusions(self,
         log, curr_sym_excl_index):
     have_header = False
@@ -5549,7 +5528,6 @@ class build_all_chain_proxies(linking_mixins):
         plain_pairs_radius=None,
         params_edits=None,
         params_remove=None,
-        custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         external_energy_function=None,
         log=None):
@@ -5895,11 +5873,6 @@ class build_all_chain_proxies(linking_mixins):
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=bond_asu_table,
       max_shell=3)
-    if (custom_nonbonded_exclusions is not None):
-      self.process_custom_nonbonded_exclusions(
-        log=log,
-        exclude_pair_indices=custom_nonbonded_exclusions,
-        shell_asu_tables=shell_asu_tables)
     shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
       for shell_asu_table in shell_asu_tables]
     nonbonded_params = ener_lib_as_nonbonded_params(
@@ -6290,7 +6263,6 @@ class process(object):
         plain_pairs_radius=None,
         params_edits=None,
         params_remove=None,
-        custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
         hard_minimum_bond_distance_model=0.001,
@@ -6307,7 +6279,6 @@ class process(object):
             plain_pairs_radius=plain_pairs_radius,
             params_edits=params_edits,
             params_remove=params_remove,
-            custom_nonbonded_exclusions=custom_nonbonded_exclusions,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             external_energy_function=external_energy_function,
             log=self.log)

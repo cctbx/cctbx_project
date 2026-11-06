@@ -2366,7 +2366,6 @@ class manager(object):
         make_restraints           = False,
         grm_normalization         = True,
         plain_pairs_radius        = 5,
-        custom_nb_excl            = None,
         run_clash_guard           = False):
     self._processed = True
     SAVE_scatering_table = None
@@ -2454,7 +2453,6 @@ class manager(object):
         pdb_interpretation_params = pdb_interpretation_params,
         grm_normalization         = grm_normalization,
         plain_pairs_radius        = plain_pairs_radius,
-        custom_nb_excl            = custom_nb_excl,
         run_clash_guard           = run_clash_guard)
       if self.crystal_symmetry() is not None:
         self.rsm = restraints_scale_manager(model = self)
@@ -2695,7 +2693,6 @@ class manager(object):
       grm_normalization = True,
       external_energy_function = None,
       plain_pairs_radius=5.0,
-      custom_nb_excl=None,
       run_clash_guard = True,
       ):
     if(self.restraints_manager is not None): return
@@ -2705,7 +2702,6 @@ class manager(object):
       plain_pairs_radius = plain_pairs_radius,
       params_edits       = pdb_interpretation_params.geometry_restraints.edits,
       params_remove      = pdb_interpretation_params.geometry_restraints.remove,
-      custom_nonbonded_exclusions  = custom_nb_excl,
       external_energy_function=external_energy_function,
       assume_hydrogens_all_missing = not self.has_hd())
     if run_clash_guard:
