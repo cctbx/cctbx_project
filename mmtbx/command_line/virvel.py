@@ -1,5 +1,5 @@
-# LIBTBX_SET_DISPATCHER_NAME mmtbx.development.naiad
-"""mmtbx.development.naiad: H-bond-aware placement of hydrogens on water
+# LIBTBX_SET_DISPATCHER_NAME mmtbx.development.virvel
+"""mmtbx.development.virvel: H-bond-aware placement of hydrogens on water
 residues."""
 
 from iotbx.cli_parser import run_program

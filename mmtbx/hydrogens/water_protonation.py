@@ -11,7 +11,7 @@ contact also see the neighbouring asymmetric units.
 
 The public entry point :func:`place_water_hydrogens` modifies a hierarchy
 in place; :class:`mmtbx.programs.water_protonation.Program` wraps it as the
-``mmtbx.development.naiad`` command line.
+``mmtbx.development.virvel`` command line.
 
 Needs ``scipy`` (KDTree); the vectorised work is
 ``scitbx.array_family.flex``.

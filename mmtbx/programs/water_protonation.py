@@ -2,7 +2,7 @@
 
 DataManager/PHIL wrapper around
 :func:`mmtbx.hydrogens.water_protonation.place_water_hydrogens`. The
-command-line dispatcher is ``mmtbx.development.naiad``.
+command-line dispatcher is ``mmtbx.development.virvel``.
 """
 
 import os
@@ -121,7 +121,7 @@ def _detect_geometry(pdb_in, hier):
 
 class Program(ProgramTemplate):
   description = '''
-mmtbx.development.naiad: H-bond-aware placement of hydrogens on water residues.
+mmtbx.development.virvel: H-bond-aware placement of hydrogens on water residues.
 
 Adds the two H atoms to every bare water oxygen in a model, orienting each
 proton toward a nearby H-bond acceptor while staying clash-free against the

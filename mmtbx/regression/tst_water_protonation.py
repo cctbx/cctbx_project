@@ -1,5 +1,5 @@
 """Regression tests for ``water_protonation.place_water_hydrogens``, the
-H-bond-aware water-hydrogen placer, and the ``mmtbx.development.naiad``
+H-bond-aware water-hydrogen placer, and the ``mmtbx.development.virvel``
 program that wraps it.
 """
 
