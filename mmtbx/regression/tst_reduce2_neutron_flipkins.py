@@ -19,7 +19,8 @@ def test_flipkins_combined():
   #   distances: every configuration logs it)
   # - flipkins are made from the H-only self.model: hd_and_h and none with
   #   neutron distances give the same flipkins
-  # - an O-only water named DOD gets H in every pass (renamed HOH)
+  # - an O-only water named DOD gets H after the optimization (renamed HOH);
+  #   the passes leave the waters without H
   # - an orphan water H removed as floating stays out of every flipkin pass;
   #   optimize: a water H the dictionary does not know (H3), which placement
   #   in the passes keeps, too: removed from the snapshot

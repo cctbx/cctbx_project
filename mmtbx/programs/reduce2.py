@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.10.1"
+version = "3.11.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -66,7 +66,9 @@ metal_bound_amines_as_nh2 = True
 add_h_to_water = False
   .type = bool
   .short_caption = Add H to water
-  .help = Add H to water.
+  .help = Add H to water once the other H are final (approach=add, place \
+          or optimize), each pointing at its H-bond acceptors \
+          (mmtbx.development.virvel). Water H in the input are replaced.
 use_neutron_distances = False
   .type = bool
   .short_caption = Use neutron distances
@@ -141,7 +143,7 @@ treat_cliques_as_singletons_after_seconds = 1.0e10
 qmready = False
   .type = bool
   .short_caption = Run with custom preset options suitable for QM
-  .help = Add H to water, use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks, \
+  .help = Add H to water (as add_h_to_water=True), use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks, \
           and the terminal hydroxyl H of nucleic acids (HO3-prime at a 3-prime end, HO5-prime at a \
           5-prime OH end). Also complete residues whose conformers lack atoms \
           their other conformers have (altloc completion), and regularize the \
@@ -1111,10 +1113,11 @@ NOTES:
   contradict the state stop with a Sorry, missing ones are added). Symmetry copies are
   made from the model with its states.
 
-  qmready=True prepares a model for QM: H on water, longer XH distances, OXT and NH3+ at
-  chain ends and breaks, HO3' and HO5' at nucleic-acid chain ends, and the geometry of the
-  finished model regularized: bond outliers and clashes minimized away with the smallest
-  shift (mmtbx.model.manager.regularize_geometry), before the clash check and the caps.
+  qmready=True prepares a model for QM: H on water (as add_h_to_water=True), longer XH
+  distances, OXT and NH3+ at chain ends and breaks, HO3' and HO5' at nucleic-acid chain
+  ends, and the geometry of the finished model regularized: bond outliers and clashes
+  minimized away with the smallest shift (mmtbx.model.manager.regularize_geometry), before
+  the clash check and the caps.
   Adding capping=True to it also puts H on every non-H atom left with
   an unsatisfied valence by a missing non-H atom (truncated side chains, incomplete ligands),
   as the very last step; the capped model is for QM use only, because the cap names are
@@ -1261,7 +1264,7 @@ NOTES:
         model                 = self.model,
         use_neutron_distances = self.params.use_neutron_distances,
         n_terminal_charge     = "all_chain_starts",
-        exclude_water         = False,
+        exclude_water         = True,
         stop_for_unknowns     = self.params.stop_on_any_missing_hydrogen,
         keep_existing_H       = True,
         mon_lib_srv           = self.model.get_mon_lib_srv(),
@@ -1274,7 +1277,7 @@ NOTES:
         model = self.model,
         use_neutron_distances=self.params.use_neutron_distances,
         n_terminal_charge=self.params.n_terminal_charge,
-        exclude_water = not self.params.add_h_to_water,
+        exclude_water = True,
         stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
         keep_existing_H=self.params.keep_existing_H,
         mon_lib_srv=self.model.get_mon_lib_srv(),
@@ -1319,7 +1322,22 @@ NOTES:
       reduce_add_h_obj.renamed_existing_h)
 
     # Placement replaced the D of an input DOD water by H but kept the name
-    self._dod_renamed_note = ''
+    self._dod_renamed_note = self._RenameDodWithH()
+
+    # a model of waters (and ions) gets its only H at the end
+    # (_AddWaterHydrogens)
+    if not self.model.has_hd() and not (self._WaterHydrogensOn() and
+        self.model.selection("water and element O").count(True) > 0):
+      raise Sorry("It was not possible to place any H atoms. Is this a single atom model?")
+
+    # We must re-interpret the model when _type_energies is not defined, which happens
+    # for example when running on 8zst.cif.
+    if not hasattr(self.model, '_type_energies'):
+      self._ReinterpretModel(make_restraints=True)
+
+  def _RenameDodWithH(self):
+    # DOD waters that carry H, not D, become HOH; returns the note for the
+    # log and the description, empty when none was renamed.
     n_renamed = 0
     for rg in self.model.get_hierarchy().residue_groups():
       water = [ag for ag in rg.atom_groups()
@@ -1333,18 +1351,64 @@ NOTES:
       for ag in dod:
         ag.resname = 'HOH'
       n_renamed += 1
-    if n_renamed > 0:
-      self._dod_renamed_note = ('%d water(s) renamed DOD -> HOH (their D were '
-        'replaced by H)\n' % n_renamed)
-      print(self._dod_renamed_note, file=self.logger)
+    if n_renamed == 0:
+      return ''
+    note = ('%d water(s) renamed DOD -> HOH (their D were replaced by H)\n'
+      % n_renamed)
+    print(note, file=self.logger)
+    return note
 
-    if not self.model.has_hd():
-      raise Sorry("It was not possible to place any H atoms. Is this a single atom model?")
+  def _WaterHydrogensOn(self):
+    # water H by mmtbx.hydrogens.water_protonation: add_h_to_water or
+    # qmready with approach=add or place; with approach=optimize only
+    # add_h_to_water
+    p = self.params
+    if p.approach == 'optimize':
+      return p.add_h_to_water
+    return p.approach in ('add', 'place') and (p.add_h_to_water or p.qmready)
 
-    # We must re-interpret the model when _type_energies is not defined, which happens
-    # for example when running on 8zst.cif.
-    if not hasattr(self.model, '_type_energies'):
-      self._ReinterpretModel(make_restraints=True)
+  def _AddWaterHydrogens(self):
+    # H on the waters, by mmtbx.hydrogens.water_protonation, against the
+    # finished H of the rest of the model; water H in the model are placed
+    # again. Returns the text for the description.
+    from mmtbx.hydrogens import water_protonation
+    make_sub_header('Adding H to waters', out=self.logger)
+    start = time.time()
+    use_neutron = self.params.use_neutron_distances
+    oh_length = reduce_hydrogen._water_oh_targets(self.model, use_neutron)[0]
+    cs = reduce_hydrogen.contact_symmetry(self._output_cs)
+    root = self.model.get_hierarchy()
+    n_before = root.atom_selection_cache().selection(
+      "water and element H").count(True)
+    # the placer takes one model: each model on its own
+    models = list(root.models())
+    for i, m in enumerate(models):
+      single = root
+      if len(models) > 1:
+        root.remove_model(m)
+        single = pdb.hierarchy.root()
+        single.append_model(m)
+      water_protonation.place_water_hydrogens(single, oh_length=oh_length,
+        element='H', existing_h='reorient',
+        geometry='neutron' if use_neutron else 'xray', crystal_symmetry=cs)
+      if len(models) > 1:
+        single.remove_model(m)
+        root.insert_model(i, m)
+    root.atoms().reset_i_seq()
+    if self.params.neutron_option != 'none':
+      # the parent table was captured before these H existed
+      hd_exchange.add_water_h_parents(self._h_parents, root, oh_length)
+    n_after = root.atom_selection_cache().selection(
+      "water and element H").count(True)
+    symmetry = 'with' if cs is not None else 'without'
+    text = ('Water H placed: %d (O-H %.3f A, %s crystal symmetry)\n' % (
+      n_after, oh_length, symmetry))
+    if n_before > 0:
+      text += 'Water H in the input placed again: %d\n' % n_before
+    text += self._RenameDodWithH()
+    text += 'Time to place water H = {:.3f} sec\n'.format(time.time() - start)
+    print(text, file=self.logger)
+    return text
 
 # ------------------------------------------------------------------------------
 
@@ -2661,6 +2725,8 @@ NOTES:
         raise Sorry('neutron_option=%s cannot be used with qmready=True.'
           % p.neutron_option)
 
+    if p.add_h_to_water and p.approach == 'remove':
+      raise Sorry('add_h_to_water=True cannot be used with approach=remove.')
     # capping: the last step of a qmready run that adds H
     if p.capping:
       if not p.qmready:
@@ -3031,87 +3097,97 @@ NOTES:
             print('\n' + text, file=self.logger)
             outString += '\n' + text + '\n'
 
-      symmetryCopies = None
-      if self.params.include_symmetric_copies:
-        symmetryCopies = self._SymmetryCopies()
+      # A model of waters (and ions) has no H before its water H are placed:
+      # nothing for the Optimizer.
+      optimized = self.model.has_hd()
+      if optimized:
+        symmetryCopies = None
+        if self.params.include_symmetric_copies:
+          symmetryCopies = self._SymmetryCopies()
 
-      # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
-      # but the desired model ID structure from the model.
-      make_sub_header('Optimizing', out=self.logger)
-      startOpt = time.time()
-      stopTime = 0.0
-      stopTime = startOpt + self.params.treat_cliques_as_singletons_after_seconds
-      opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
-        self.model, altID=self.params.alt_id,
-        preferenceMagnitude=self.params.preference_magnitude,
-        bondedNeighborDepth = self._bondedNeighborDepth,
-        useNeutronDistances=self.params.use_neutron_distances,
-        nonFlipPreference=self.params.non_flip_preference,
-        skipBondFixup=self.params.skip_bond_fix_up,
-        flipStates = self.params.set_flip_states,
-        verbosity=self.params.verbosity,
-        cliqueOutlineFileName=self.params.output.clique_outline_file_name,
-        fillAtomDump = self.params.output.print_atom_info,
-        stopOptimizingAt = stopTime,
-        symmetryCopies = symmetryCopies,
-        fixedHisProtonation = self._FixedHisKeys())
-      doneOpt = time.time()
-      if opt.getSymmetryCopiesSummary():
-        print(opt.getSymmetryCopiesSummary(), file=self.logger)
-      warnings = opt.getWarnings()
-      # Find the lines from warnings that start with "Warning: " and
-      # concatenate them into a single string.
-      lines = [line for line in warnings.split('\n') if line.startswith('Warning:')]
-      # one line, by residue, for the atoms without an energy type (7a5m: 39)
-      prefix = 'Warning: Could not find atom info for '
-      no_info = [l for l in lines if l.startswith(prefix) and ' (perhaps' in l]
-      if no_info:
-        lines = [l for l in lines if l not in no_info]
-        residues = []
-        for l in no_info:
-          tokens = l[len(prefix):l.index(' (perhaps')].split()[:-1]
-          if len(tokens) == 3: tokens = [tokens[1], tokens[0], tokens[2]]
-          if ' '.join(tokens) not in residues: residues.append(' '.join(tokens))
-        shown = ', '.join(residues[:12])
-        if len(residues) > 12: shown += ' (+%d more)' % (len(residues) - 12)
-        lines.append('Warning: %d atoms have no energy type (element radius used, '
-          'not H-bond acceptors) - %d residues: %s' % (
-          len(no_info), len(residues), shown))
-      warnings = '\n'.join(lines)
-      if len(warnings) > 0:
-        print('\nWarnings during optimization:\n'+warnings, file=self.logger)
-      outString += opt.getInfo()
+        # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
+        # but the desired model ID structure from the model.
+        make_sub_header('Optimizing', out=self.logger)
+        startOpt = time.time()
+        stopTime = 0.0
+        stopTime = startOpt + self.params.treat_cliques_as_singletons_after_seconds
+        opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
+          self.model, altID=self.params.alt_id,
+          preferenceMagnitude=self.params.preference_magnitude,
+          bondedNeighborDepth = self._bondedNeighborDepth,
+          useNeutronDistances=self.params.use_neutron_distances,
+          nonFlipPreference=self.params.non_flip_preference,
+          skipBondFixup=self.params.skip_bond_fix_up,
+          flipStates = self.params.set_flip_states,
+          verbosity=self.params.verbosity,
+          cliqueOutlineFileName=self.params.output.clique_outline_file_name,
+          fillAtomDump = self.params.output.print_atom_info,
+          stopOptimizingAt = stopTime,
+          symmetryCopies = symmetryCopies,
+          fixedHisProtonation = self._FixedHisKeys())
+        doneOpt = time.time()
+        if opt.getSymmetryCopiesSummary():
+          print(opt.getSymmetryCopiesSummary(), file=self.logger)
+        warnings = opt.getWarnings()
+        # Find the lines from warnings that start with "Warning: " and
+        # concatenate them into a single string.
+        lines = [line for line in warnings.split('\n') if line.startswith('Warning:')]
+        # one line, by residue, for the atoms without an energy type (7a5m: 39)
+        prefix = 'Warning: Could not find atom info for '
+        no_info = [l for l in lines if l.startswith(prefix) and ' (perhaps' in l]
+        if no_info:
+          lines = [l for l in lines if l not in no_info]
+          residues = []
+          for l in no_info:
+            tokens = l[len(prefix):l.index(' (perhaps')].split()[:-1]
+            if len(tokens) == 3: tokens = [tokens[1], tokens[0], tokens[2]]
+            if ' '.join(tokens) not in residues: residues.append(' '.join(tokens))
+          shown = ', '.join(residues[:12])
+          if len(residues) > 12: shown += ' (+%d more)' % (len(residues) - 12)
+          lines.append('Warning: %d atoms have no energy type (element radius used, '
+            'not H-bond acceptors) - %d residues: %s' % (
+            len(no_info), len(residues), shown))
+        warnings = '\n'.join(lines)
+        if len(warnings) > 0:
+          print('\nWarnings during optimization:\n'+warnings, file=self.logger)
+        outString += opt.getInfo()
 
-      # the restraints still match the hierarchy here: before the deletions
-      # and before the final reinterpretation without restraints
-      if neutron:
-        self._CaptureParentTable()
+        # the restraints still match the hierarchy here: before the deletions
+        # and before the final reinterpretation without restraints
+        if neutron:
+          self._CaptureParentTable()
 
-      # Delete any hydrogens that we've been asked to delete, adding this to the info.
-      hToDelete = opt.getHydrogensToDelete()
-      if len(hToDelete) > 0:
-        outString += ' Deleting hydrogens requested for deletion by optimization:\n'
-        for a in hToDelete:
-          aName = a.name.strip().upper()
-          chainID = a.parent().parent().parent().id
-          resName = a.parent().resname.strip().upper()
-          resID = str(a.parent().parent().resseq_as_int())
-          altLoc = a.parent().altloc
-          # Don't print the code if it is a space (blank).
-          insertionCode = a.parent().parent().icode.strip()
-          resNameAndID = "chain "+str(chainID)+" "+altLoc+resName+" "+resID+insertionCode
-          outString += "  Deleting {} {}\n".format(resNameAndID, aName)
+        # Delete any hydrogens that we've been asked to delete, adding this to the info.
+        hToDelete = opt.getHydrogensToDelete()
+        if len(hToDelete) > 0:
+          outString += ' Deleting hydrogens requested for deletion by optimization:\n'
+          for a in hToDelete:
+            aName = a.name.strip().upper()
+            chainID = a.parent().parent().parent().id
+            resName = a.parent().resname.strip().upper()
+            resID = str(a.parent().parent().resseq_as_int())
+            altLoc = a.parent().altloc
+            # Don't print the code if it is a space (blank).
+            insertionCode = a.parent().parent().icode.strip()
+            resNameAndID = "chain "+str(chainID)+" "+altLoc+resName+" "+resID+insertionCode
+            outString += "  Deleting {} {}\n".format(resNameAndID, aName)
 
-          a.parent().remove_atom(a)
+            a.parent().remove_atom(a)
+      else:
+        if neutron:
+          self._CaptureParentTable()
+        outString += ('No H to optimize: only the waters get H, after the '
+          'optimization\n')
 
       if self.params.approach == 'add':
         outString = (outString[:protonationAt] +
           self._ProtonationText(optimized=True) + outString[protonationAt:])
         outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
-      outString += 'Time to Optimize = {:.3f} sec'.format(doneOpt-startOpt)+'\n'
-      if self.params.output.print_atom_info:
-        print('Atom information used during calculations:', file=self.logger)
-        print(opt.getAtomDump(), file=self.logger)
+      if optimized:
+        outString += 'Time to Optimize = {:.3f} sec'.format(doneOpt-startOpt)+'\n'
+        if self.params.output.print_atom_info:
+          print('Atom information used during calculations:', file=self.logger)
+          print(opt.getAtomDump(), file=self.logger)
 
     else: # Removing Hydrogens from the model rather than adding them.
       # Own path, independent of the isotope logic: any H/D layout, no
@@ -3137,6 +3213,10 @@ NOTES:
               chain.remove_residue_group(rg)
           if chain.residue_groups_size() == 0:
             m.remove_chain(chain)
+
+    # Water H go on last, once every other H is final.
+    if self._WaterHydrogensOn():
+      outString += self._AddWaterHydrogens()
 
     # Rebuild the model without restraints because we have removed some atoms
     # that were previously bonded. Like the re-interpretation without restraints
