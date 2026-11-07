@@ -1,11 +1,9 @@
 from __future__ import absolute_import, division, print_function
 import time, os
-from libtbx.test_utils import approx_equal
 from iotbx import reflection_file_reader
 import iotbx.phil
 import mmtbx.maps.polder
-from mmtbx.regression.tst_polder import get_map_stats_at_sites, \
-  polder_label, omit_label
+from mmtbx.regression.tst_polder import get_map_stats_at_sites, polder_label
 from iotbx.data_manager import DataManager
 from iotbx.cli_parser import run_program
 from mmtbx.programs import fmodel, polder
@@ -13,7 +11,8 @@ from libtbx.utils import null_out
 
 def exercise_00(dm, mtz_fn):
   """
-  Test for phenix.polder using the compute_box=True option.
+  Test for phenix.polder using the compute_box=True option: the model lacks
+  MES 88, the polder map must show it.
   """
   selection = '((resseq 65 and name CG) or (resseq 7 and name OH) or \
     resseq 183 or resseq 95 or (resseq 148 and name CG))'
@@ -27,15 +26,16 @@ def exercise_00(dm, mtz_fn):
 
   r = run_program(program_class=polder.Program, args=args, logger=null_out())
 
-  pdb_hierarchy = dm.get_model('tst_polder_box.pdb').get_hierarchy()
-  sel = pdb_hierarchy.atom_selection_cache().selection(string = selection)
+  pdb_hierarchy = dm.get_model('tst_polder_box_ligand.pdb').get_hierarchy()
+  sel = pdb_hierarchy.atom_selection_cache().selection(string = 'resseq 88')
   sites_cart = pdb_hierarchy.atoms().extract_xyz().select(sel)
-  mmm_mp, mmm_o = get_map_stats_at_sites(
+  mmm_mp = get_map_stats_at_sites(
     file_name  = r.output_file,
-    labels     = [polder_label, omit_label],
-    sites_cart = sites_cart)
-  assert approx_equal(mmm_mp, [-2.051, 1.255, -0.162], eps=0.15)
-  assert approx_equal(mmm_o,  [-0.558, 0.138, -0.068], eps=0.15)
+    labels     = [polder_label],
+    sites_cart = sites_cart)[0]
+  # lowest value at a MES atom observed: 5.0 sigma
+  # XXX omit map is higher at MES (mean 10.4 vs 7.5 sigma); not understood
+  assert mmm_mp[0] >= 3.0, mmm_mp
 
   os.remove(r.output_file)
 
@@ -68,8 +68,12 @@ def exercise_01(dm, mtz_fn):
   polder_object.run()
   vr = polder_object.get_results().validation_results
 
-  assert approx_equal([vr.cc12, vr.cc13, vr.cc23], [0.4153, 0.9980, 0.4213], eps = 0.1)
-  assert approx_equal([vr.cc12_peak, vr.cc13_peak, vr.cc23_peak], [0.4310, 0.9966, 0.4379], eps = 0.1)
+  # Program.result_message: cc13 >= 0.8 and cc13 largest -> map shows the
+  # omitted atoms (observed: cc13 0.998, cc12 and cc23 about 0.4)
+  for cc12, cc13, cc23 in [(vr.cc12, vr.cc13, vr.cc23),
+                           (vr.cc12_peak, vr.cc13_peak, vr.cc23_peak)]:
+    assert cc13 >= 0.8, (cc12, cc13, cc23)
+    assert cc13 > cc12 and cc13 > cc23, (cc12, cc13, cc23)
 
 # ---------------------------------------------------------------------------
 

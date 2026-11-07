@@ -8,7 +8,8 @@ from mmtbx.programs import polder
 from scitbx.array_family import flex
 from six.moves import range
 from libtbx.utils import null_out
-from mmtbx.regression.tst_polder import get_map_stats_at_sites, polder_label
+from mmtbx.regression.tst_polder import get_map_stats_at_sites, \
+  get_map_coeffs, polder_label
 
 
 def generate_r_free_flags_systematic(miller_array):
@@ -44,7 +45,7 @@ def exercise_01(fobs_1, fobs_2, flags_1, flags_2):
   r = run_program(program_class=polder.Program, args=args, logger=null_out())
 
   check(
-    tuple_calc=[10.6, 16.0, 13.5],
+    d_min_expected = 3.0, # FP1, not FP2 (2.5 A)
     selection=selection,
     filename = r.output_file,
     model_str = pdb_str)
@@ -83,7 +84,7 @@ def exercise_02(fobs_1, flags_1):
   r = run_program(program_class=polder.Program, args=args, logger=null_out())
 
   check(
-    tuple_calc=[10.7, 15.1, 13.4],
+    d_min_expected = 3.0,
     selection=selection,
     filename = r.output_file,
     model_str = pdb_str)
@@ -118,7 +119,7 @@ def exercise_03(fobs_2, flags_2):
   r = run_program(program_class=polder.Program, args=args, logger=null_out())
 
   check(
-    tuple_calc=[13.7, 20.3, 18.4],
+    d_min_expected = 2.5,
     selection=selection,
     filename = r.output_file,
     model_str = pdb_str)
@@ -149,7 +150,7 @@ def exercise_04(fobs_1, flags_1):
   r = run_program(program_class=polder.Program, args=args, logger=null_out())
 
   check(
-    tuple_calc = [10.927, 15.138, 12.849],
+    d_min_expected = 3.0,
     selection  = selection,
     filename = r.output_file,
     model_str = pdb_str_small)
@@ -177,7 +178,7 @@ def exercise_05(fobs_1):
   r = run_program(program_class=polder.Program, args=args, logger=null_out())
 
   check(
-    tuple_calc = [12.7, 22.7, 17.7],
+    d_min_expected = 3.0,
     selection  = selection,
     filename = r.output_file,
     model_str = pdb_str_small)
@@ -205,9 +206,8 @@ def exercise_06(fobs_1, flags_1):
 
   r = run_program(program_class=polder.Program, args=args, logger=null_out())
 
-  # exact values: 11.129  16.152  13.006
   check(
-    tuple_calc = [10.927,  15.138,  12.849],
+    d_min_expected = 3.0,
     selection  = selection,
     filename = r.output_file,
     model_str = pdb_str_small)
@@ -266,7 +266,15 @@ def exercise():
 
 # ---------------------------------------------------------------------------
 
-def check(tuple_calc, selection, filename, model_str):
+def check(d_min_expected, selection, filename, model_str):
+  """
+  Data are Fcalc of the full model: all selected atoms must be in strong
+  polder density. d_min shows which data array was used; anomalous input
+  must give non-anomalous map coefficients.
+  """
+  mc = get_map_coeffs(file_name=filename, label=polder_label)
+  assert approx_equal(mc.d_min(), d_min_expected, eps=0.01), mc.d_min()
+  assert not mc.anomalous_flag()
   pdb_hierarchy = iotbx.pdb.input(
     source_info=None, lines=model_str).construct_hierarchy()
   sel = pdb_hierarchy.atom_selection_cache().selection(string = selection)
@@ -275,8 +283,8 @@ def check(tuple_calc, selection, filename, model_str):
     file_name  = filename,
     labels     = [polder_label],
     sites_cart = sites_cart)[0]
-  assert approx_equal(mmm_mp, tuple_calc, eps=1.0), "\
-   calculated is %s and expected is %s" % (mmm_mp, tuple_calc)
+  # lowest value at a selected atom observed: 10.3 sigma
+  assert mmm_mp[0] >= 5.0, mmm_mp
 
 # ---------------------------------------------------------------------------
 

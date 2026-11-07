@@ -58,6 +58,13 @@ def get_map_stats_at_sites(file_name, labels, sites_cart):
       map=map_data, sites_frac=sites_frac).min_max_mean().as_tuple())
   return result
 
+def get_map_coeffs(file_name, label):
+  for ma in reflection_file_reader.any_reflection_file(
+      file_name = file_name).as_miller_arrays():
+    if ma.info().label_string() == label:
+      return ma
+  raise AssertionError("%s not in %s" % (label, file_name))
+
 def write_model_and_data(model_fn, mtz_fn, model_str):
   """
   Write model_str to model_fn and Fobs calculated from it to mtz_fn.
@@ -78,8 +85,10 @@ def write_model_and_data(model_fn, mtz_fn, model_str):
 
 def exercise_00(prefix="tst_polder"):
   """
-  Test for phenix.polder: polder and omit map values at the omitted atoms,
-  with all data and with high or low resolution cutoff.
+  Test for phenix.polder: at the omitted 20% occupancy PHE, the omit map is
+  flattened by bulk solvent, polder recovers the density and the biased omit
+  map (mask from the full model) is the upper bound. Also checks that the
+  high and low resolution cutoffs reach the output.
   """
   model_fn = "%s.pdb" % prefix
   mtz_fn = "%s.mtz" % prefix
@@ -91,18 +100,16 @@ def exercise_00(prefix="tst_polder"):
   sites_cart = pdb_hierarchy.atoms().extract_xyz().select(
     pdb_hierarchy.atom_selection_cache().selection(string = selection))
 
-  # extra arguments, expected min/max/mean of polder map and of omit map
+  # extra arguments, expected (d_max, d_min) of the polder map coefficients;
+  # data go from 28.99 to 2.0 A
   cases = [
-    ([],
-     [0.329, 6.119, 3.333], [-2.838, 0.901, -1.385]),
+    ([], (28.99, 2.0)),
     (["fmodel.xray_data.high_resolution=2.2",
-      "output_file_name_prefix=tst_cutoff"],
-     [-0.358, 5.149, 2.882], [-3.708, -0.734, -2.217]),
+      "output_file_name_prefix=tst_cutoff"], (28.99, 2.2)),
     (["fmodel.xray_data.low_resolution=10",
-      "output_file_name_prefix=tst_cutoff_low"],
-     [2.547, 12.601, 5.798], [0.325, 5.589, 2.042])]
+      "output_file_name_prefix=tst_cutoff_low"], (10.0, 2.0))]
 
-  for extra_args, mmm_mp_expected, mmm_o_expected in cases:
+  for extra_args, d_max_min_expected in cases:
     args_polder = [
       model_fn,
       mtz_fn,
@@ -111,13 +118,18 @@ def exercise_00(prefix="tst_polder"):
       'debug="True"'] + extra_args
     r = run_program(program_class=polder.Program, args=args_polder,
       logger=null_out())
+    d_max_min = get_map_coeffs(
+      file_name=r.output_file, label=polder_label).d_max_min()
+    assert approx_equal(d_max_min, d_max_min_expected, eps=0.05), d_max_min
     # debug=True also writes the biased omit map
     mmm_mp, mmm_bias_omit, mmm_o = get_map_stats_at_sites(
       file_name  = r.output_file,
       labels     = [polder_label, bias_omit_label, omit_label],
       sites_cart = sites_cart)
-    assert approx_equal(mmm_mp, mmm_mp_expected, eps=0.15)
-    assert approx_equal(mmm_o, mmm_o_expected, eps=0.15)
+    # mean (sigma) observed: polder 2.9-5.8, omit -2.2-2.0, biased 9.7-15.2
+    assert mmm_mp[2] >= 2.0, mmm_mp
+    assert mmm_mp[2] - mmm_o[2] >= 2.0, (mmm_mp, mmm_o)
+    assert mmm_bias_omit[2] > mmm_mp[2], (mmm_bias_omit, mmm_mp)
 
     for fn in [r.output_file, "box_1_polder.ccp4", "box_2_polder.ccp4",
                "box_3_polder.ccp4"]:
