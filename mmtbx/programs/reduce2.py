@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.8.1"
+version = "3.9.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -1473,8 +1473,19 @@ NOTES:
       key = reduce_hydrogen.protonation_key(rg)
       if key in pr.states: ags.setdefault(key, []).extend(rg.atom_groups())
     present = dict((key, _NamesByConformer(a)) for key, a in ags.items())
+    # input with D: the supplied names per conformer and the label's
+    # conformers through the H/D normalization (_SuppliedSites()), not by
+    # the input altloc letters (H/D layout letters are no conformers)
+    sites = getattr(self, '_supplied_sites', None)
     lines = ['Protonation states set by the user (protonation):']
     for key, label, state, resnames, altlocs, supplied in pr.residues:
+      if sites is not None and key in sites:
+        e = sites[key]
+        alts = sorted((e.heavy_altlocs | set(x[1] for x in e.sites)) -
+                      {''}) or ['']
+        supplied = dict((alt, set(n for _, site_alt, n in e.sites
+                                  if site_alt in ('', alt))) for alt in alts)
+        altlocs = [x for x in alts if x]
       parts = []
       for r in resnames:
         carried, left_out = reduce_hydrogen.PROTONATION_STATES[state][r][:2]
@@ -1821,15 +1832,16 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _MatchInputHD(self, model=None):
+  def _MatchInputHD(self, model=None, accepted=None):
     # Candidates and collapse check on an interpreted model (self.model if
-    # None).
+    # None); accepted: pairs repaired by repair_plan() case (e).
     # :return: Tuple (candidates, match).
     if model is None: model = self.model
     table = hd_exchange.h_parent_table(model)
     candidates = hd_exchange.find_hd_candidates(model.get_hierarchy(),
       table, model=model)
-    return candidates, hd_exchange.collapse_check(candidates)
+    return candidates, hd_exchange.collapse_check(candidates,
+      accepted=accepted)
 
 # ------------------------------------------------------------------------------
 
@@ -1860,6 +1872,45 @@ NOTES:
     part, part_keys = checked_part(full)
     candidates, match = self._MatchInputHD(part)
     clean = lambda id_str: id_str.replace('pdb=', '').replace('"', '')
+    # B16: repairs of deposited layouts, planned from this match; the
+    # repaired model is matched again and checked as before
+    self._input_repairs = []
+    refused = {}
+    origin = {}
+    accepted = None
+    if match.problems or any(u.action == 'stop' for u in match.unresolved):
+      plan = hd_exchange.repair_plan(part, candidates, match)
+      refused = plan.refused
+      accepted = set((x.h_key, x.d_key) for x in plan.accept)
+      if hd_exchange.repairs_made(plan):
+        key_map = None
+        if part_keys is not None:
+          key_map = dict(zip(hd_exchange.atom_keys(part.get_hierarchy()),
+                             part_keys))
+        h = full.get_hierarchy().deep_copy()
+        origin = hd_exchange.apply_repairs(h, plan, key_map)
+        self.model = self._RebuildModel(h, make_restraints=True)
+        full = self.model
+        part, part_keys = checked_part(full)
+      for title, entries in (
+          ('Blank H/D on a split parent, split per conformer', plan.split),
+          ('H/D names permuted between H and D, renamed by position',
+           plan.rename),
+          ('H/D pair in conformer groups, moved to H/D-only groups',
+           plan.relabel),
+          ('H/D pair on a one-H parent beyond 0.20 A, paired', plan.accept)):
+        for x in entries:
+          self._input_repairs.append(group_args(title=title, output=x.atom,
+            text=x.reason))
+      if self._input_repairs:
+        candidates, match = self._MatchInputHD(part, accepted=accepted)
+        print('Input H/D repaired: %d site(s), listed in the H/D model '
+          'section' % len(self._input_repairs), file=self.logger)
+    def why(*ids):
+      for i in ids:
+        if i is not None and clean(i).strip() in refused:
+          return ' (not repaired: %s)' % refused[clean(i).strip()]
+      return ''
     titles = {
       'pair': 'H/D pairs that cannot be collapsed',
       'different parents': 'Same-name H and D on different parents',
@@ -1875,12 +1926,15 @@ NOTES:
     for x in match.problems:
       ids = [clean(i) for i in (x.h_id, x.d_id) if i is not None]
       reasons = '; '.join(x.reasons)
-      add(titles[x.kind], ' / '.join(ids) + ': ' + reasons if ids else reasons)
+      c = x.candidate
+      add(titles[x.kind], (' / '.join(ids) + ': ' + reasons if ids else
+        reasons) + why(x.h_id, x.d_id, getattr(c, 'atom_id', None),
+        getattr(c, 'partner_id', None)))
     for u in match.unresolved:
       if u.action != 'stop': continue
       add('H/D with more than one covalent partner', clean(u.atom_id) + ': ' +
         '; '.join('%s %s, ideal %.3f A, %s' % (clean(s[0]), s[1], s[2], s[3])
-                  for s in u.source))
+                  for s in u.source) + why(u.atom_id))
     if categories:
       text = []
       for title, lines in categories:
@@ -1888,9 +1942,9 @@ NOTES:
         text.extend('    ' + l for l in lines[:20])
         if len(lines) > 20:
           text.append('    (+%d more)' % (len(lines) - 20))
-      raise Sorry('The input H/D cannot be used with approach=%s (no repair):'
-        '\n%s\nRebuild H: %s' % (self.params.approach, '\n'.join(text),
-        self._RebuildHint()))
+      raise Sorry('The input H/D cannot be used with approach=%s (sites not '
+        'repaired):\n%s\nRebuild H: %s' % (self.params.approach,
+        '\n'.join(text), self._RebuildHint()))
     # floating: dropped (select() keeps the restraints), then matched again
     floating = [u for u in candidates.unresolved if u.status == 'floating']
     self._input_floating = [clean(u.atom_id) for u in floating]
@@ -1905,8 +1959,10 @@ NOTES:
       keys = hd_exchange.atom_keys(full.get_hierarchy())
       full = full.select(flex.bool([k not in drop for k in keys]))
       part, part_keys = checked_part(full)
-      candidates, match = self._MatchInputHD(part)
+      candidates, match = self._MatchInputHD(part, accepted=accepted)
     self.model = full
+    self._supplied_sites = self._SuppliedSites(full, part, part_keys, match,
+      origin)
     self._input_notes = [group_args(output=clean(n.h_id) + ' / ' +
       clean(n.d_id), text=n.text) for n in match.notes]
     h = self.model.get_hierarchy().deep_copy()
@@ -1946,6 +2002,35 @@ NOTES:
     self.model = self._RebuildModel(h,
       make_restraints=self._normalized_with_restraints)
     return snapshot
+
+# ------------------------------------------------------------------------------
+
+  def _SuppliedSites(self, full, part, part_keys, match, origin):
+    # Input H/D per residue through the normalization: original atom ->
+    # repaired atom (origin: {key after the repairs: key before}) ->
+    # normalized site (a collapsed pair is one blank site, valid in every
+    # conformer; any other H/D keeps its altloc), by atom_key(). For
+    # _ProtonationText(): the supplied names per conformer and the label.
+    # :return: {protonation_key(): group_args(heavy_altlocs, sites
+    # [(original key, site altloc, name)])}.
+    keys = hd_exchange.atom_keys(full.get_hierarchy())
+    part_atom_keys = hd_exchange.atom_keys(part.get_hierarchy())
+    if part_keys is None: part_keys = part_atom_keys
+    merged = set()
+    for c in match.pairs:
+      merged.add(part_keys[c.i_h])
+      merged.add(part_keys[c.i_d])
+    result = {}
+    for a, k in zip(full.get_hierarchy().atoms(), keys):
+      rg = a.parent().parent()
+      e = result.setdefault(reduce_hydrogen.protonation_key(rg),
+        group_args(heavy_altlocs=set(), sites=[]))
+      if a.element.strip().upper() not in ('H', 'D'):
+        e.heavy_altlocs.add(a.parent().altloc)
+        continue
+      e.sites.append((origin.get(k, k), '' if k in merged else
+        a.parent().altloc, a.name.strip()))
+    return result
 
 # ------------------------------------------------------------------------------
 
@@ -1989,6 +2074,18 @@ NOTES:
              'keep their input values; phenix.refine currently refines '
              'H + D = 1.')
     section('Occupancy notes', r.notes, lambda e: e.text)
+    # every repaired site, uncapped: what was changed in the input and why
+    repairs = getattr(self, '_input_repairs', [])
+    if repairs:
+      lines.append('  Input H/D repaired (%d):' % len(repairs))
+      titles = []
+      for x in repairs:
+        if x.title not in titles: titles.append(x.title)
+      for title in titles:
+        entries = [x for x in repairs if x.title == title]
+        lines.append('    %s (%d):' % (title, len(entries)))
+        for x in entries:
+          lines.append('      %s  %s' % (x.output, x.text))
     section('Input H/D notes (values not changed)', self._input_notes,
       lambda e: e.text)
     section('H/D without a covalent partner, dropped at the input check',

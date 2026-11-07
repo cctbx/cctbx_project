@@ -643,18 +643,72 @@ def test_supplied_h():
   assert "  HIS A 56: HE2 only (his_he2): DE2 kept (supplied), HD1 left out\n" \
     in desc, desc
   # H/D pairs (hd_and_h, written as altlocs A/B of the H): merged into one
-  # site, kept, one phrase
+  # site, kept, one phrase; A/B are layout letters, no conformers (B16)
   full_hd, _, _ = run("tst_reduce2_protonation_36", frag_str, ALL_STATES,
     ["neutron_option=hd_and_h"])
   _, desc, _ = run("tst_reduce2_protonation_37", full_hd, ALL_STATES,
     ["keep_existing_H=True", "neutron_option=hd_and_h"])
-  assert ("  HIS A 56: HE2 only (his_he2, conformers A B): HE2/DE2 kept "
-    "(supplied), HD1 left out\n") in desc, desc
+  assert ("  HIS A 56: HE2 only (his_he2): HE2/DE2 kept (supplied), HD1 left "
+    "out\n") in desc, desc
   e = sorry("tst_reduce2_protonation_31", full_d, [("resseq 56", "his_hd1")],
     ["keep_existing_H=True", "neutron_option=all_d"])
   assert e == ("protonation entry 1 (selection=resseq 56, state=his_hd1): HIS A "
     "56 has supplied DE2, which contradicts state his_hd1 (the supplied H are "
     "kept: keep_existing_H=True). Remove it or change the state."), e
+
+def test_supplied_half_pair():
+  # B16 (I1 step B-2 review): hd_and_h, His 56 with DD1 alone (its HD1
+  # removed) and a full HE2/DE2 pair: the pair is one site, named HE2/DE2;
+  # the lone DD1 stays in its H/D-only group B, the only letter left
+  full, _, _ = run("tst_reduce2_protonation_38", frag_str,
+    [("resseq 56", "his_both")], ["neutron_option=hd_and_h"])
+  half = without(full, {(56, "HD1")})
+  assert h_counts(half, 56).get(("DD1", "B")) == 1
+  _, desc, _ = run("tst_reduce2_protonation_39", half,
+    [("resseq 56", "his_both")], ["keep_existing_H=True",
+    "neutron_option=hd_and_h"])
+  assert ("  HIS A 56: HD1 and HE2 (his_both, conformers B): DD1 kept "
+    "(supplied), HE2/DE2 kept (supplied)\n") in desc, desc
+
+def test_supplied_h_only_conformers():
+  # B16 A-2 review, control: no D (no normalization), blank heavy atoms,
+  # supplied HE2 in A and HB3 in B: the H-only altlocs are the conformers
+  plain, _, _ = run("tst_reduce2_protonation_40", frag_str,
+    [("resseq 56", "his_he2")])
+  def alt(l):
+    if l.startswith("ATOM") and int(l[22:26]) == 56:
+      if l[12:16].strip() == "HE2": return l[:16] + "A" + l[17:]
+      if l[12:16].strip() == "HB3": return l[:16] + "B" + l[17:]
+    return l
+  supplied = "\n".join(alt(l) for l in plain.splitlines()) + "\n"
+  _, desc, _ = run("tst_reduce2_protonation_41", supplied,
+    [("resseq 56", "his_he2")], ["keep_existing_H=True"])
+  assert ("  HIS A 56: HE2 only (his_he2, conformers A B): HE2 kept (supplied) "
+    "in A; HE2 added in B, HD1 left out\n") in desc, desc
+
+def test_supplied_pair_relabelled():
+  # B16 A-2 review (P3), repair (d): His 56 CG split A/B (0.6/0.4), the
+  # supplied H/D pairs in A/B at 0.5/0.5 then sit in conformer groups; the
+  # repair moves them to two free letters and the normalization merges them:
+  # one supplied pair, in both conformers
+  full_hd, _, _ = run("tst_reduce2_protonation_42", frag_str,
+    [("resseq 56", "his_he2")], ["neutron_option=hd_and_h"])
+  lines = []
+  for l in full_hd.splitlines():
+    if l.startswith("ATOM") and int(l[22:26]) == 56 and \
+       l[12:16].strip() == "CG":
+      lines.append(l[:16] + "A" + l[17:54] + "  0.60" + l[60:])
+      lines.append(l[:16] + "B" + l[17:54] + "  0.40" + l[60:])
+    else:
+      lines.append(l)
+  split = "\n".join(lines) + "\n"
+  assert h_counts(split, 56).get(("DE2", "B")) == 1
+  _, desc, log = run("tst_reduce2_protonation_43", split,
+    [("resseq 56", "his_he2")], ["keep_existing_H=True",
+    "neutron_option=hd_and_h"])
+  assert "H/D pair in conformer groups, moved to H/D-only groups" in desc
+  assert ("  HIS A 56: HE2 only (his_he2, conformers A B): HE2/DE2 kept "
+    "(supplied), HD1 left out\n") in desc, desc
 
 def test_acid_out_of_plane_line():
   # A46, report only: the acid H on frag_swapped's Asp 99 ends 67 deg from
@@ -744,6 +798,9 @@ if __name__ == "__main__":
   test_acid_chi_beyond_90()
   test_sorry()
   test_supplied_h()
+  test_supplied_half_pair()
+  test_supplied_h_only_conformers()
+  test_supplied_pair_relabelled()
   test_acid_out_of_plane_line()
   test_supplied_h_per_conformer()
   test_neutron_options()
