@@ -1261,6 +1261,47 @@ def test_water_alternative_orientations():
   check_water_reinterpreted(model.get_hierarchy(), model.crystal_symmetry(),
                             "H")
 
+# an O in each altloc, each with its own H
+pdb_water_alt_o = """\
+HETATM    6  O  AHOH A   2       5.000   5.000   5.000  0.60 20.00           O
+HETATM    7  H1 AHOH A   2       5.850   5.000   5.000  0.60 20.00           H
+HETATM    8  H2 AHOH A   2       4.795   5.825   5.000  0.60 20.00           H
+HETATM    9  O  BHOH A   2       5.300   5.000   5.000  0.40 20.00           O
+HETATM   10  H1 BHOH A   2       6.150   5.000   5.000  0.40 20.00           H
+HETATM   11  H2 BHOH A   2       5.095   5.825   5.000  0.40 20.00           H
+END
+"""
+
+def test_add_water_h_parents():
+  """
+  add_water_h_parents() gives water H the entries h_parent_table() gives
+  them from restraints, for a blank O with H in altlocs A and B and for an O
+  in each altloc; source names the O. Entries already in the table stay.
+  """
+  pdb = (pdb_water_alt % {"res": "HOH", "x": " H"}).replace(
+    "END\n", pdb_water_alt_o)
+  model = model_from_str(pdb)
+  expected = hd_exchange.h_parent_table(model)
+  assert len(expected) == 8, len(expected)
+  table = {}
+  n = hd_exchange.add_water_h_parents(table, model.get_hierarchy(), 0.85)
+  assert n == 8, n
+  assert sorted(table) == sorted(expected), set(table) ^ set(expected)
+  for key, e in expected.items():
+    for field in ("h_id", "parent_id", "parent_element", "parent_occ",
+                  "parent_altloc", "exchangeable", "status", "parent_key",
+                  "parent_sym_ops"):
+      got, want = getattr(table[key], field), getattr(e, field)
+      assert got == want, (key, field, got, want)
+    source = table[key].source
+    assert len(source) == 1 and len(source[0]) == 4, source
+    assert source[0][0] == e.parent_id and source[0][3] == "x,y,z", source
+  key = sorted(expected)[0]
+  kept = group_args(status="kept")
+  table = {key: kept}
+  n = hd_exchange.add_water_h_parents(table, model.get_hierarchy(), 0.85)
+  assert n == 7 and table[key] is kept, n
+
 def test_lone_alternate_h():
   # blank OG, HG only in A at 0.30: never merged or split; one isotope in A
   pdb = pdb_ser_hd.replace(
@@ -2696,6 +2737,7 @@ if __name__ == "__main__":
   test_parent_occupancy_from_table()
   test_anisotropic()
   test_round_trip()
+  test_add_water_h_parents()
   test_30f_split()
   test_alternative_orientations_output()
   test_cross_mode()

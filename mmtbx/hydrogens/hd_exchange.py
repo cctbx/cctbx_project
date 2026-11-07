@@ -236,6 +236,67 @@ def h_parent_table(model):
     result[keys[i]] = entry
   return result
 
+def _water_o(ag):
+  """the O of a water H/D: in its own atom_group, else in the blank one"""
+  groups = [ag]
+  for other in ag.parent().atom_groups():
+    if other.altloc.strip() == "" and _is_water(other):
+      groups.append(other)
+  for group in groups:
+    atoms = group.atoms()
+    for k in range(atoms.size()):
+      if atoms[k].element.strip().upper() == "O":
+        return atoms[k]
+  return None
+
+def add_water_h_parents(parent_table, hierarchy, oh_length):
+  """Add the water H/D missing from a parent table, each bonded to its O.
+
+  For water H placed after the table was made from the restraints, as reduce2
+  does: the entries are those h_parent_table() gives a water H/D bonded to its
+  O. The source records the bond as placed, (O id, "water H placement",
+  oh_length, "x,y,z").
+
+  Parameters
+  ----------
+  parent_table : dict
+      From h_parent_table(); changed in place. Entries already in it stay.
+  hierarchy : iotbx.pdb.hierarchy.root
+      The hierarchy the table belongs to, with the water H/D.
+  oh_length : float
+      O-H length the water H were placed at (A).
+
+  Returns
+  -------
+  int
+      Number of entries added.
+  """
+  parts = _residue_parts(hierarchy)
+  atoms = hierarchy.atoms()
+  n_added = 0
+  for k in range(atoms.size()):
+    atom = atoms[k]
+    ag = atom.parent()
+    if not _is_hd(atom) or not _is_water(ag): continue
+    key = atom_key(atom, parts[ag.memory_id()])
+    if key in parent_table: continue
+    o = _water_o(ag)
+    if o is None: continue
+    parent_table[key] = group_args(
+      h_id           = atom.id_str(),
+      parent_id      = o.id_str(),
+      parent_element = "O",
+      parent_occ     = o.occ,
+      parent_altloc  = o.parent().altloc,
+      exchangeable   = True,
+      status         = "ok",
+      source         = [(o.id_str(), "water H placement", oh_length,
+                         "x,y,z")],
+      parent_key     = atom_key(o, parts[o.parent().memory_id()]),
+      parent_sym_ops = ("x,y,z",))
+    n_added += 1
+  return n_added
+
 # ------------------------------------------------------------------------------
 # Candidates and collapse check
 
