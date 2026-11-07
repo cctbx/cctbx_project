@@ -146,7 +146,9 @@ def exercise_00(prefix="tst_polder"):
 
 def exercise_01(prefix="tst_polder_masks"):
   """
-  Test for phenix.polder sphere radius and box buffer.
+  Test for phenix.polder sphere radius and box buffer: which mask grid points
+  are reset. The spheres and boxes stay inside the P1 cell, so plain
+  Cartesian distances apply.
   """
   model_fn = "%s.pdb" % prefix
   mtz_fn = "%s.mtz" % prefix
@@ -154,30 +156,19 @@ def exercise_01(prefix="tst_polder_masks"):
   dm = DataManager(['model'])
   dm.process_model_str(model_fn, pdb_str)
   model = dm.get_model()
-
-  params = iotbx.phil.parse(
-    input_string=mmtbx.maps.polder.master_params_str,
-    process_includes=True).extract()
+  fobs = get_map_coeffs(file_name=mtz_fn, label="f-obs")
 
   selection_string = 'chain A'
+  sites_cart = model.get_sites_cart().select(
+    model.selection(selection_string))
+  unit_cell = model.crystal_symmetry().unit_cell()
 
-  fobs = None
-  for ma in reflection_file_reader.any_reflection_file(
-      file_name = mtz_fn).as_miller_arrays():
-    if(ma.info().label_string() == "f-obs"):
-      fobs = ma.deep_copy()
-  assert fobs is not None
-
-  mmm_list = []
-  mask_mmm = [[0.0, 1.0, 0.9083055555555556],
-              [0.0, 1.0, 0.8901388888888889],
-              [0.0, 1.0, 0.9083055555555556],
-              [0.0, 1.0, 0.8583379629629629],
-              [0.0, 1.0, 0.9083055555555556],
-              [0.0, 1.0, 0.8025601851851852] ]
-
-  for radius in [3, 5, 7]:
-    params.polder.sphere_radius = radius
+  def get_masks(**polder_params):
+    params = iotbx.phil.parse(
+      input_string=mmtbx.maps.polder.master_params_str,
+      process_includes=True).extract()
+    for name, value in polder_params.items():
+      setattr(params.polder, name, value)
     polder_object = mmtbx.maps.polder.compute_polder_map(
       f_obs            = fobs,
       r_free_flags     = None,
@@ -187,39 +178,70 @@ def exercise_01(prefix="tst_polder_masks"):
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()
+    m_all = results.mask_data_all.as_1d()
+    m_omit = results.mask_data_omit.as_1d()
+    m_polder = results.mask_data_polder.as_1d()
+    # polder only removes solvent
+    assert (m_polder > m_all).count(True) == 0
+    return results.mask_data_all.all(), m_all, m_omit, m_polder
 
-    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
-    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
+  sphere_masks = [(radius, get_masks(sphere_radius = radius))
+    for radius in [3, 5, 7]]
+  n_real = sphere_masks[0][1][0]
+  grid_frac = flex.vec3_double()
+  for i in range(n_real[0]):
+    for j in range(n_real[1]):
+      for k in range(n_real[2]):
+        grid_frac.append((i/n_real[0], j/n_real[1], k/n_real[2]))
+  # distance of each grid point to the closest selected atom
+  grid_cart = unit_cell.orthogonalize(grid_frac)
+  dist = flex.double(grid_cart.size(), 1.e9)
+  for site in sites_cart:
+    d = (grid_cart - site).norms()
+    closer = d < dist
+    dist.set_selected(closer, d.select(closer))
 
-  for i in range(6):
-    assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
+  # Sphere: reset exactly the grid points within the radius
+  n_changed = []
+  for radius, (_, m_all, m_omit, m_polder) in sphere_masks:
+    # without the selection there is only more solvent
+    assert (m_omit < m_all).count(True) == 0
+    assert (m_omit != m_all).count(True) > 0
+    changed = m_polder != m_all
+    assert changed.count(True) > 0
+    assert flex.max(dist.select(changed)) <= radius + 0.01
+    assert (m_polder.select(dist < radius - 0.01) != 0).count(True) == 0
+    n_changed.append(changed.count(True))
+  assert 0 < n_changed[0] < n_changed[1] < n_changed[2], n_changed
 
-  mmm_list = []
-  mask_mmm = [ [0.0, 1.0, 0.898712962962963],
-               [0.0, 1.0, 0.8642268518518519],
-               [0.0, 1.0, 0.898712962962963],
-               [0.0, 1.0, 0.7957083333333334],
-               [0.0, 1.0, 0.898712962962963],
-               [0.0, 1.0, 0.6772777777777778] ]
-
-  for box_buffer in [3, 5, 7]:
-    params.polder.box_buffer = box_buffer
-    params.polder.compute_box = True
-    polder_object = mmtbx.maps.polder.compute_polder_map(
-      f_obs               = fobs,
-      r_free_flags        = None,
-      model               = model,
-      params              = params.polder,
-      selection_string    = selection_string)
-    polder_object.validate()
-    polder_object.run()
-    results = polder_object.get_results()
-
-    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
-    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
-
-  for i in range(6):
-    assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
+  # Box: reset the bounding box of the selection plus buffer; grid rounding
+  # extends it by up to one grid step
+  grid_xyz = grid_frac.parts()
+  sites_xyz = unit_cell.fractionalize(sites_cart).parts()
+  n_changed = []
+  for box_buffer in [None, 3, 5, 7]:
+    _, m_all, m_omit, m_polder = get_masks(
+      compute_box = True,
+      box_buffer  = box_buffer)
+    # box mode keeps the selection in the model
+    assert (m_omit != m_all).count(True) == 0
+    if box_buffer is None:
+      cushion = (0, 0, 0)
+    else:
+      cushion = unit_cell.fractionalize((box_buffer,)*3)
+    in_box = flex.bool(grid_frac.size(), True)
+    in_box_plus_step = flex.bool(grid_frac.size(), True)
+    for g, s, c, n in zip(grid_xyz, sites_xyz, cushion, n_real):
+      lo = flex.min(s) - c - 1.e-6
+      hi = flex.max(s) + c + 1.e-6
+      in_box = in_box & (g >= lo) & (g <= hi)
+      in_box_plus_step = in_box_plus_step & (g >= lo - 1/n) & (g <= hi + 1/n)
+    changed = m_polder != m_all
+    assert (m_polder.select(in_box) != 0).count(True) == 0
+    assert (changed & ~in_box_plus_step).count(True) == 0
+    n_changed.append(changed.count(True))
+  assert 0 < n_changed[0] < n_changed[1] < n_changed[2] < n_changed[3], \
+    n_changed
 
   os.remove(model_fn)
   os.remove(mtz_fn)

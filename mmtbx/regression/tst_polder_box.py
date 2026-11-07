@@ -37,10 +37,10 @@ def exercise_00(dm, mtz_fn):
     sites_cart = sites_cart)[0]
   # lowest value at a MES atom observed: 5.0 sigma
   assert mmm_mp[0] >= 3.0, mmm_mp
-  # The box removes bulk solvent from about 9% of this small cell, which
-  # doubles the rms of the polder map: omit is higher in sigma (mean 10.4 vs
-  # 7.5), so compare unscaled values. Observed polder/omit mean ratio 1.45;
-  # 1.0 if the box mask is not applied.
+  # The box resets 1.7% of the mask, yet the polder map rms is twice the omit
+  # map rms: omit is higher in sigma (mean 10.4 vs 7.5), so compare unscaled
+  # values. Observed polder/omit mean ratio 1.45; 1.0 if the box mask is not
+  # applied.
   mmm_mp, mmm_o = get_map_stats_at_sites(
     file_name    = r.output_file,
     labels       = [polder_label, omit_label],
