@@ -1513,9 +1513,10 @@ namespace lbfgs {
     if (execute_entire_while_loop || iflag_ == 2) {
       if (n_pairs_ == 0 && iter_ != 1) {
         // No pair kept (gradient-only mode after a reset): steepest
-        // descent, as in the first iteration.
+        // descent scaled by the user diagonal if any, as in the first
+        // iteration.
         for (SizeType i = 0; i < n_; i++) {
-          w[ispt + point * n_ + i] = -g[i];
+          w[ispt + point * n_ + i] = -g[i] * (diag ? diag[i] : FloatType(1));
         }
       }
       if (n_pairs_ != 0) {
@@ -1571,9 +1572,12 @@ namespace lbfgs {
           return false; // zero gradient after a step: converged
         }
         if (detail::ddot(n_, g, dir) >= FloatType(0)) {
-          // Not a descent direction: drop the pairs, steepest descent.
+          // Not a descent direction: drop the pairs, steepest descent
+          // scaled by the user diagonal if any.
           n_pairs_ = 0;
-          for (SizeType i = 0; i < n_; i++) dir[i] = -g[i];
+          for (SizeType i = 0; i < n_; i++) {
+            dir[i] = -g[i] * (diag ? diag[i] : FloatType(1));
+          }
         }
         if (n_pairs_ == 0) {
           // First trial step of the minimization (or after a reset):

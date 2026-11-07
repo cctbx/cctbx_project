@@ -100,7 +100,8 @@ def exercise_no_duplicate_evaluation():
       assert (a - b).norm() > 0, "same point evaluated twice"
 
 def exercise_curvature_pairs():
-  e, m = run_go(ill_quadratic, [0] * 6, max_shift=0.2, first_step_max_shift=0.05)
+  e, m = run_go(ill_quadratic, [0] * 6, max_shift=0.2,
+    first_step_max_shift=0.05)
   assert len(e.iterates) > 2
   for (x0, g0), (x1, g1) in zip(e.iterates, e.iterates[1:]):
     s = x1 - x0
@@ -108,7 +109,8 @@ def exercise_curvature_pairs():
     assert flex.sum(s * y) > 0
 
 def exercise_first_step():
-  e, m = run_go(ill_quadratic, [0] * 6, max_shift=0.2, first_step_max_shift=0.05)
+  e, m = run_go(ill_quadratic, [0] * 6, max_shift=0.2,
+    first_step_max_shift=0.05)
   first = e.x_history[1] - e.x_history[0]
   assert approx_equal(largest_shift(first), 0.05, 1e-9), largest_shift(first)
 
@@ -124,14 +126,16 @@ def exercise_non_descent_reset():
   assert e.f_history[-1] < e.f_history[0]
 
 def exercise_zero_gradient_start():
-  e, m = run_go(ill_quadratic, list(C), max_shift=0.2, first_step_max_shift=0.05)
+  e, m = run_go(ill_quadratic, list(C), max_shift=0.2,
+    first_step_max_shift=0.05)
   assert len(e.x_history) == 1, len(e.x_history)
 
 def exercise_no_line_search_flag():
   e, m = run_go(ill_quadratic, [0] * 6, line_search=False, max_shift=0.2,
     first_step_max_shift=0.05)
   # one evaluation per iteration, plus the start
-  assert len(e.x_history) == len(e.iterates), (len(e.x_history), len(e.iterates))
+  assert len(e.x_history) == len(e.iterates), (
+    len(e.x_history), len(e.iterates))
 
 def flat_basin(x):
   """Zero gradient inside |x_i| < 1, quadratic walls outside."""
@@ -165,6 +169,37 @@ def exercise_zero_gradient_after_step():
       min_iterations=3, max_iterations=20))
   assert flex.max(flex.abs(e.x)) <= 1 + 1e-12, list(e.x)
 
+def concave(x):
+  """-sum x^2: every curvature pair has s.y < 0 and is skipped, so the
+  second iteration takes the steepest-descent reset path."""
+  return -flex.sum(x * x), -2 * x
+
+class diag_evaluator(evaluator):
+  """Supplies a fixed diagonal (inverse Hessian estimate) every iteration."""
+  diag_mode = "always"
+  def __init__(self, target, x0, diag):
+    evaluator.__init__(self, target, x0)
+    self.diag = flex.double(diag)
+  def compute_functional_gradients_diag(self):
+    f, g = self.compute_functional_and_gradients()
+    return f, g, self.diag
+
+def exercise_diag_after_reset():
+  """A user diagonal shapes the steepest-descent direction after a reset
+  as it does in the first iteration: with diag (1, 1e-6, 1e-6) every
+  accepted step moves x1 and x2 by at most 1e-3 of x0's move."""
+  e = diag_evaluator(concave, [1, 1, 1], diag=[1, 1e-6, 1e-6])
+  scitbx.lbfgs.run(target_evaluator=e, gradient_only=True,
+    core_params=scitbx.lbfgs.core_parameters(max_shift=0.2,
+      first_step_max_shift=0.05),
+    termination_params=scitbx.lbfgs.termination_parameters(
+      max_iterations=3))
+  assert len(e.iterates) == 4, len(e.iterates)
+  for (x0, g0), (x1, g1) in zip(e.iterates, e.iterates[1:]):
+    s = x1 - x0
+    assert abs(s[0]) > 0
+    assert max(abs(s[1]), abs(s[2])) <= 1e-3 * abs(s[0]), list(s)
+
 def exercise_function_mode_unchanged():
   e1 = evaluator(rosenbrock3, [-1.2, 1.0, 0.5])
   scitbx.lbfgs.run(target_evaluator=e1)
@@ -184,6 +219,7 @@ def run():
   exercise_no_line_search_flag()
   exercise_exhaustion_progress()
   exercise_zero_gradient_after_step()
+  exercise_diag_after_reset()
   exercise_function_mode_unchanged()
   print("OK")
 
