@@ -134,7 +134,7 @@ def test_dod_input_none():
       assert "DOD" not in f.read()
     assert "7 " + RENAMED in log and "7 " + RENAMED in description
 
-def test_dod_input_none_add_h_to_water():
+def test_dod_input_none_no_water_h():
   # no H added to water: the waters stay DOD with O only, nothing logged
   fn, log, description = run_reduce2("tst_r2n_water_dodx", pdb_1yjp_dod,
     [])
@@ -197,7 +197,7 @@ if __name__ == "__main__":
   test_dod_input_all_h()
   test_output_check_water_names()
   test_dod_input_none()
-  test_dod_input_none_add_h_to_water()
+  test_dod_input_none_no_water_h()
   test_dod_input_with_d_kept()
   test_dod_input_with_d_normalized()
   test_dod_input_hd_and_h()
