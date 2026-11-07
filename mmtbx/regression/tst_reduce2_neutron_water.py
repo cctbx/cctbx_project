@@ -51,10 +51,10 @@ def test_water_without_o_add():
   # deleted: no crash in workaround_002(); the two H are removed and reported
   # as missing their heavy atom, not as not parameterized
   pdb_str = "\n".join(l for l in cached_run(pdb_1yjp,
-    exclude_water=False).text.splitlines()
+    add_h_to_water=True).text.splitlines()
     if " O   HOH A   8" not in l) + "\n"
   fn, log, description = run_reduce2("tst_r2n_water_no_o", pdb_str,
-    ["approach=add", "keep_existing_H=True", "exclude_water=False"])
+    ["approach=add", "keep_existing_H=True", "add_h_to_water=True"])
   h = iotbx.pdb.input(fn).construct_hierarchy()
   assert not [a for a in h.atoms() if a.parent().resname == "HOH" and
               a.parent().parent().resseq.strip() == "8"]
@@ -76,7 +76,7 @@ def test_water_single_altloc_h():
     "HETATM   61  H2 AHOH A   8      -6.771   6.127   7.124  1.00 22.62"
     "           H\n")
   fn, log, description = run_reduce2("tst_r2n_water_w8a", pdb_str,
-    ["approach=add", "keep_existing_H=True", "exclude_water=False",
+    ["approach=add", "keep_existing_H=True", "add_h_to_water=True",
      "use_neutron_distances=True"])
   h = iotbx.pdb.input(fn).construct_hierarchy()
   w8 = sorted((a.name.strip(), a.parent().altloc) for a in h.atoms()
@@ -93,7 +93,7 @@ def test_dod_input_all_h():
   for approach in ("add", "place"):
     fn, log, description = run_reduce2("tst_r2n_water_dod_" + approach,
       pdb_1yjp_dod, ["neutron_option=all_h", "approach=" + approach,
-      "exclude_water=False", "keep_existing_H=False"])
+      "add_h_to_water=True", "keep_existing_H=False"])
     h = iotbx.pdb.input(fn).construct_hierarchy()
     waters = [ag for ag in h.atom_groups() if ag.resname in ("HOH", "DOD")]
     assert len(waters) == 7
@@ -115,7 +115,7 @@ def test_output_check_water_names():
   hd_exchange.apply_neutron_option = no_rename
   try:
     run_reduce2("tst_r2n_water_wname", pdb_1yjp_dod,
-      ["neutron_option=all_h", "exclude_water=False"])
+      ["neutron_option=all_h", "add_h_to_water=True"])
   except Sorry as e:
     assert "Internal error: H/D output check failed" in str(e), str(e)
     assert "water name DOD does not match its H/D" in str(e), str(e)
@@ -128,13 +128,13 @@ def test_dod_input_none():
   # none, add and place: placement replaced the D, so the waters are HOH
   for approach in ("add", "place"):
     fn, log, description = run_reduce2("tst_r2n_water_dodn_" + approach,
-      pdb_1yjp_dod, ["approach=" + approach, "exclude_water=False"])
+      pdb_1yjp_dod, ["approach=" + approach, "add_h_to_water=True"])
     assert water_groups(fn) == [("HOH", ["H", "O"])] * 7, water_groups(fn)
     with open(fn) as f:
       assert "DOD" not in f.read()
     assert "7 " + RENAMED in log and "7 " + RENAMED in description
 
-def test_dod_input_none_exclude_water():
+def test_dod_input_none_add_h_to_water():
   # no H added to water: the waters stay DOD with O only, nothing logged
   fn, log, description = run_reduce2("tst_r2n_water_dodx", pdb_1yjp_dod,
     [])
@@ -148,7 +148,7 @@ def test_dod_input_with_d_kept():
   assert pdb_1yjp_dod_d.count("D1  DOD") == 1
   try:
     run_reduce2("tst_r2n_water_dodd", pdb_1yjp_dod_d,
-      ["keep_existing_H=True", "exclude_water=False"])
+      ["keep_existing_H=True", "add_h_to_water=True"])
   except Sorry as e:
     assert "input contains deuterium; set neutron_option" in str(e), str(e)
     assert str(e).endswith("rebuild H: keep_existing_H=False"), str(e)
@@ -159,7 +159,7 @@ def test_dod_input_with_d_normalized():
   # the same water with hd_and_h: D1/D2 normalized to H1/H2 before
   # placement, no extra H, written as DOD with D1/D2 at 0.98 A
   fn, log, description = run_reduce2("tst_r2n_water_doddn",
-    pdb_1yjp_dod_d, ["keep_existing_H=True", "exclude_water=False",
+    pdb_1yjp_dod_d, ["keep_existing_H=True", "add_h_to_water=True",
                      "neutron_option=hd_and_h"])
   assert water_groups(fn) == [("DOD", ["D", "O"])] * 7, water_groups(fn)
   h = iotbx.pdb.input(fn).construct_hierarchy()
@@ -172,7 +172,7 @@ def test_dod_input_hd_and_h():
   # the earlier rename to HOH does not break the neutron path or the
   # resname invariant: written as DOD with D, output check passes
   fn, log, description = run_reduce2("tst_r2n_water_dodhd",
-    pdb_1yjp_dod, ["neutron_option=hd_and_h", "exclude_water=False"])
+    pdb_1yjp_dod, ["neutron_option=hd_and_h", "add_h_to_water=True"])
   assert water_groups(fn) == [("DOD", ["D", "O"])] * 7, water_groups(fn)
   check_water(fn, 0.98, 7)
 
@@ -197,7 +197,7 @@ if __name__ == "__main__":
   test_dod_input_all_h()
   test_output_check_water_names()
   test_dod_input_none()
-  test_dod_input_none_exclude_water()
+  test_dod_input_none_add_h_to_water()
   test_dod_input_with_d_kept()
   test_dod_input_with_d_normalized()
   test_dod_input_hd_and_h()

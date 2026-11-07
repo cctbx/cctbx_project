@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.9.0"
+version = "3.10.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -63,10 +63,10 @@ metal_bound_amines_as_nh2 = True
           as NH2, with the metal as the third substituent. Metal-bound chain \
           starts get NH2 whatever n_terminal_charge says. Sites that fail the \
           geometry checks keep their H.
-exclude_water = True
+add_h_to_water = False
   .type = bool
-  .short_caption = Add H to water if False
-  .help = Add H to water if False
+  .short_caption = Add H to water
+  .help = Add H to water.
 use_neutron_distances = False
   .type = bool
   .short_caption = Use neutron distances
@@ -1274,7 +1274,7 @@ NOTES:
         model = self.model,
         use_neutron_distances=self.params.use_neutron_distances,
         n_terminal_charge=self.params.n_terminal_charge,
-        exclude_water = self.params.exclude_water,
+        exclude_water = not self.params.add_h_to_water,
         stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
         keep_existing_H=self.params.keep_existing_H,
         mon_lib_srv=self.model.get_mon_lib_srv(),

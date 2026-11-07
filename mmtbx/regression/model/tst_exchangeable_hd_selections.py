@@ -117,7 +117,7 @@ def test_reduce2_outputs():
     prefix = "tst_exchangeable_hd_selections_" + option
     run_program(program_class=reduce2.Program, logger=null_out(), args=[
       "tst_exchangeable_hd_selections.pdb", "neutron_option=" + option,
-      "exclude_water=False", "overwrite=True",
+      "add_h_to_water=True", "overwrite=True",
       "output.filename=" + prefix + ".pdb",
       "output.description_file=" + prefix + ".txt"])
     with open(prefix + ".pdb") as f:
