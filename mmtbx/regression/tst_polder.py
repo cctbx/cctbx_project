@@ -20,11 +20,12 @@ bias_omit_label = "mFo-DFc_bias_omit,PHImFo-DFc_bias_omit"
 
 # ---------------------------------------------------------------------------
 
-def get_map(cg, mc):
+def get_map(cg, mc, sigma_scaled=True):
   fft_map = miller.fft_map(
     crystal_gridding     = cg,
     fourier_coefficients = mc)
-  fft_map.apply_sigma_scaling()
+  if sigma_scaled:
+    fft_map.apply_sigma_scaling()
   return fft_map.real_map_unpadded()
 
 def get_map_stats(map, sites_frac):
@@ -33,9 +34,9 @@ def get_map_stats(map, sites_frac):
     map_values.append(map.eight_point_interpolation(sf))
   return map_values
 
-def get_map_stats_at_sites(file_name, labels, sites_cart):
+def get_map_stats_at_sites(file_name, labels, sites_cart, sigma_scaled=True):
   """
-  Min, max and mean of sigma-scaled maps at sites_cart, one tuple per label.
+  Min, max and mean of maps at sites_cart, one tuple per label.
   All maps use the gridding of the first label's map coefficients.
   """
   mcs = {}
@@ -53,7 +54,7 @@ def get_map_stats_at_sites(file_name, labels, sites_cart):
   sites_frac = mc_first.unit_cell().fractionalize(sites_cart)
   result = []
   for label in labels:
-    map_data = get_map(cg=cg, mc=mcs[label])
+    map_data = get_map(cg=cg, mc=mcs[label], sigma_scaled=sigma_scaled)
     result.append(get_map_stats(
       map=map_data, sites_frac=sites_frac).min_max_mean().as_tuple())
   return result

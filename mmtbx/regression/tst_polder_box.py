@@ -3,7 +3,8 @@ import time, os
 from iotbx import reflection_file_reader
 import iotbx.phil
 import mmtbx.maps.polder
-from mmtbx.regression.tst_polder import get_map_stats_at_sites, polder_label
+from mmtbx.regression.tst_polder import get_map_stats_at_sites, \
+  polder_label, omit_label
 from iotbx.data_manager import DataManager
 from iotbx.cli_parser import run_program
 from mmtbx.programs import fmodel, polder
@@ -12,17 +13,18 @@ from libtbx.utils import null_out
 def exercise_00(dm, mtz_fn):
   """
   Test for phenix.polder using the compute_box=True option: the model lacks
-  MES 88, the polder map must show it.
+  MES 88; the box spanned by the atoms around the empty site must cover it,
+  and the polder map must show it.
   """
+  # Atoms 2.7-4.4 A from MES 88
   selection = '((resseq 65 and name CG) or (resseq 7 and name OH) or \
-    resseq 183 or resseq 95 or (resseq 148 and name CG))'
+    resseq 183 or resseq 95)'
 
   args = [
     "tst_polder_box.pdb",
     mtz_fn,
     "compute_box=True",
     'solvent_exclusion_mask_selection="%s"' % selection]
-    #'mask_output=True']
 
   r = run_program(program_class=polder.Program, args=args, logger=null_out())
 
@@ -34,8 +36,17 @@ def exercise_00(dm, mtz_fn):
     labels     = [polder_label],
     sites_cart = sites_cart)[0]
   # lowest value at a MES atom observed: 5.0 sigma
-  # XXX omit map is higher at MES (mean 10.4 vs 7.5 sigma); not understood
   assert mmm_mp[0] >= 3.0, mmm_mp
+  # The box removes bulk solvent from about 9% of this small cell, which
+  # doubles the rms of the polder map: omit is higher in sigma (mean 10.4 vs
+  # 7.5), so compare unscaled values. Observed polder/omit mean ratio 1.45;
+  # 1.0 if the box mask is not applied.
+  mmm_mp, mmm_o = get_map_stats_at_sites(
+    file_name    = r.output_file,
+    labels       = [polder_label, omit_label],
+    sites_cart   = sites_cart,
+    sigma_scaled = False)
+  assert mmm_mp[2] > 1.15 * mmm_o[2], (mmm_mp, mmm_o)
 
   os.remove(r.output_file)
 
