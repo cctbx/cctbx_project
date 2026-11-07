@@ -15,7 +15,7 @@ reduce2_neutron_utils.set_prefix("tst_r2n_distances")
 
 def test_xray_default():
   # control: the default run stays at X-ray distances
-  prog = cached_run(pdb_1yjp, exclude_water=False)
+  prog = cached_run(pdb_1yjp, add_h_to_water=True)
   fn, description = prog.params.output.filename, prog.description
   check_bond_lengths(fn, use_neutron_distances=False)
   check_water(fn, 0.85, 7)
@@ -24,7 +24,7 @@ def test_xray_default():
 def test_neutron_add():
   # 9b: also explicit neutron_option=none (none keeps today's distances)
   fn, log, description = run_reduce2("tst_r2n_distances_add", pdb_1yjp,
-    ["use_neutron_distances=True", "exclude_water=False",
+    ["use_neutron_distances=True", "add_h_to_water=True",
      "neutron_option=none"])
   check_bond_lengths(fn, use_neutron_distances=True)
   check_water(fn, 0.98, 7)
@@ -33,17 +33,17 @@ def test_neutron_add():
 
 def test_neutron_place():
   fn, log, description = run_reduce2("tst_r2n_distances_place", pdb_1yjp,
-    ["use_neutron_distances=True", "exclude_water=False", "approach=place"])
+    ["use_neutron_distances=True", "add_h_to_water=True", "approach=place"])
   check_bond_lengths(fn, use_neutron_distances=True)
   check_water(fn, 0.98, 7)
 
 def test_neutron_optimize():
   # input water H at 0.85 A (X-ray run), optimized with neutron distances
-  prog = cached_run(pdb_1yjp, exclude_water=False)
+  prog = cached_run(pdb_1yjp, add_h_to_water=True)
   check_water(prog.params.output.filename, 0.85, 7)
   pdb_str = prog.text
   fn, log, description = run_reduce2("tst_r2n_distances_opt", pdb_str,
-    ["use_neutron_distances=True", "exclude_water=False",
+    ["use_neutron_distances=True", "add_h_to_water=True",
      "approach=optimize"])
   check_water(fn, 0.98, 7)
   assert INFO_TRUE in description and INFO_FALSE not in description
@@ -62,7 +62,7 @@ def test_neutron_after_select():
   # placement drops the unparameterizable Lys HD2/HD3 with model.select();
   # the water must still get the neutron target afterwards
   fn, log, description = run_reduce2("tst_r2n_distances_select",
-    pdb_truncated_lys, ["use_neutron_distances=True", "exclude_water=False"])
+    pdb_truncated_lys, ["use_neutron_distances=True", "add_h_to_water=True"])
   h = iotbx.pdb.input(fn).construct_hierarchy()
   names = [a.name.strip() for a in h.atoms() if a.parent().resname == "LYS"]
   assert "HD2" not in names and "HD3" not in names, names
@@ -91,7 +91,7 @@ def test_distances_all_modes():
       prefix = "tst_r2n_distances_32_%s_%s" % (option, approach)
       fn, log, description = run_reduce2(prefix, pdb_1yjp,
         ["neutron_option=" + option, "approach=" + approach,
-         "exclude_water=False"])
+         "add_h_to_water=True"])
       check_bond_lengths(fn, use_neutron_distances=True)
       check_water(fn, 0.98, 7)
       h = iotbx.pdb.input(fn).construct_hierarchy()
@@ -111,7 +111,7 @@ def test_water_after_select_hd():
   # 9k(a): placement drops the unparameterizable Lys HD2/HD3 (select());
   # the water O-D stays 0.98 A
   fn, log, description = run_reduce2("tst_r2n_distances_9ka",
-    pdb_truncated_lys, ["neutron_option=hd_and_h", "exclude_water=False"])
+    pdb_truncated_lys, ["neutron_option=hd_and_h", "add_h_to_water=True"])
   h = iotbx.pdb.input(fn).construct_hierarchy()
   names = [a.name.strip() for a in h.atoms() if a.parent().resname == "LYS"]
   assert "HD2" not in names and "HD3" not in names, names

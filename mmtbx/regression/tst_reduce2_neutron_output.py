@@ -141,7 +141,7 @@ def test_output_model():
   for ext in ("_out.pdb", ".txt"):
     if os.path.exists(prefix + ext): os.remove(prefix + ext)
   prog = run_prog(prefix, pdb_1yjp, neutron_option="hd_and_h",
-    exclude_water=False, output__write_files=False)
+    add_h_to_water=True, output__write_files=False)
   assert not os.path.exists(prefix + "_out.pdb")
   assert not os.path.exists(prefix + ".txt")
   results = prog.get_results()
@@ -359,7 +359,7 @@ def test_description_file():
   pdb_str += heavy_pdb("03", zq3_atoms, offset=(5.0, 15.0, 5.0),
     cryst1=False) + "END\n"
   prog = run_prog("tst_r2n_output_desc", pdb_str, zq3_cif,
-    neutron_option="hd_and_h", exclude_water=False)
+    neutron_option="hd_and_h", add_h_to_water=True)
   with open(prog.params.output.description_file_name) as f:
     description = f.read()
   section = description[description.index("H/D model (neutron_option="

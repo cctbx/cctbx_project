@@ -51,10 +51,10 @@ def test_optimize_without_h():
 def test_floating_h_water_098():
   # 9k(b): water at 0.85 A in the input, a floating H removed with select();
   # with neutron distances the written water O-H is 0.98 A
-  pdb_str = h_input_without_tyr_oh(exclude_water=False)
+  pdb_str = h_input_without_tyr_oh(add_h_to_water=True)
   fn, log, description = run_reduce2("tst_r2n_optimizer_float_w", pdb_str,
     ["approach=optimize", "use_neutron_distances=True",
-     "exclude_water=False"])
+     "add_h_to_water=True"])
   assert FLOATING in description
   assert not [l for l in atom_labels(fn) if l[1:3] == ("TYR", " HH ")]
   check_water(fn, 0.98, 7)
@@ -82,7 +82,7 @@ def test_floating_h_flipkins():
   # in the main run and not brought back by the flipkin passes (the
   # keep_existing_H=True case is in test_flipkins_combined)
   pdb_str = "\n".join(l for l in cached_run(pdb_1yjp,
-    exclude_water=False).text.splitlines()
+    add_h_to_water=True).text.splitlines()
     if " O   HOH A   8" not in l) + "\n"
   assert pdb_str.count("HOH A   8") == 2       # H1, H2
   def orphans(hierarchy):
@@ -101,7 +101,7 @@ def test_floating_h_flipkins():
     try:
       fn, log, description = run_reduce2(
         "tst_r2n_optimizer_orphan_" + keep, pdb_str,
-        ["approach=optimize", "keep_existing_H=" + keep, "exclude_water=False",
+        ["approach=optimize", "keep_existing_H=" + keep, "add_h_to_water=True",
          "add_flip_movers=True",
          "output.flipkin_directory=tst_r2n_optimizer_orphan_fk"])
     finally:
@@ -117,9 +117,9 @@ def test_floating_h_flipkins():
 def test_floating_h_water_hd():
   # 9k(b), hd_and_h: Tyr HH without its OH is dropped by the removal step;
   # the written water O-D stays at 0.98 A
-  pdb_str = h_input_without_tyr_oh(exclude_water=False)
+  pdb_str = h_input_without_tyr_oh(add_h_to_water=True)
   fn, log, description = run_reduce2("tst_r2n_optimizer_float_wd", pdb_str,
-    ["approach=optimize", "neutron_option=hd_and_h", "exclude_water=False"])
+    ["approach=optimize", "neutron_option=hd_and_h", "add_h_to_water=True"])
   assert FLOATING in description
   assert not [l for l in atom_labels(fn) if l[1] == "TYR" and
               l[2].strip() in ("HH", "DH")]

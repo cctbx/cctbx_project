@@ -24,7 +24,7 @@ def test_rerun_same_mode():
                  ["approach=add", "keep_existing_H=True"]):
       fn, log, description = run_reduce2("tst_r2n_rerun_rr_%s_%s" % (
         option, args[0][9:]), src,
-        args + ["neutron_option=" + option, "exclude_water=False"])
+        args + ["neutron_option=" + option, "add_h_to_water=True"])
       second = all_atoms(fn)
       assert sorted(second) == sorted(first), (option, args,
         sorted(set(second) ^ set(first)))
@@ -53,7 +53,7 @@ def test_cross_mode():
       if option == source: continue
       fn, log, description = run_reduce2("tst_r2n_rerun_x_%s_%s" % (
         source, option), inputs[source], ["approach=optimize",
-        "neutron_option=" + option, "exclude_water=False"])
+        "neutron_option=" + option, "add_h_to_water=True"])
       got = dict((k, v[:2]) for k, v in all_atoms(fn).items()
                  if k[3] in ("H", "D"))
       expected = expected_hd(inputs[source], option)

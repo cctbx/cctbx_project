@@ -98,15 +98,15 @@ def test_in_memory_rerun():
   # a scattering table set on the model (neutron: water O-H 0.98 from the
   # table) is not used: X-ray run, water O-H 0.85 as from the file
   prefix = "tst_r2n_in_memory_inmem_table"
-  prog = run_prog(prefix + "_1", pdb_1yjp, exclude_water=False)
+  prog = run_prog(prefix + "_1", pdb_1yjp, add_h_to_water=True)
   with open(prog.params.output.filename) as f: written = f.read()
   model = prog.get_results().model
   model.setup_scattering_dictionaries(scattering_table="neutron")
   prog = run_prog_on_model(prefix + "_2", model, approach="optimize",
-    exclude_water=False)
+    add_h_to_water=True)
   check_water(prog.params.output.filename, 0.85, 7)
   reread = run_prog(prefix + "_file", written, approach="optimize",
-    exclude_water=False)
+    add_h_to_water=True)
   assert atom_lines(prog.params.output.filename) == \
     atom_lines(reread.params.output.filename)
 

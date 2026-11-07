@@ -725,10 +725,10 @@ dipeptide_rotatable = set([("37", "H"), ("37", "HG")])
 
 _dipeptide_water_out = {}
 def dipeptide_water_out(option):
-  """written output of dipeptide_water in mode option, exclude_water=False"""
+  """written output of dipeptide_water in mode option, add_h_to_water=True"""
   if option not in _dipeptide_water_out:
     fn, _, _ = run_reduce2(PREFIX + "_dwo_" + option,
-      dipeptide_water, ["neutron_option=" + option, "exclude_water=False"])
+      dipeptide_water, ["neutron_option=" + option, "add_h_to_water=True"])
     with open(fn) as f: _dipeptide_water_out[option] = f.read()
   return _dipeptide_water_out[option]
 
