@@ -468,21 +468,29 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
   return group_args(pairs=pairs, singles=singles, unresolved=unresolved,
     different_parents=different_parents, same_conformer=same_conformer)
 
-def collapse_check(candidates, xyz_tolerance=0.2):
+_LAYOUT_TEXT = "H and D not in H/D-only altloc groups"
+
+def _apart_text(distance):
+  return "H and D %.2f A apart" % distance
+
+def collapse_check(candidates, xyz_tolerance=0.2, accepted=None):
   """reduce2's policy -> group_args(pairs, problems, unresolved, notes).
   A pair collapses only if it is within xyz_tolerance, has no competing
   partner and no name mismatch, its parent is in the blank altloc and H and D
   are in different H/D-only altloc groups. Problems (stop): any other pair,
   same-name H/D on different parents, a single D whose H name exists in its
   atom_group, an H/D pair in one conformer (one of them floating).
-  Unresolved: floating (remove) and ambiguous (stop, restraints named). Notes (never a stop): occupancy sum vs parent occupancy, B."""
+  Unresolved: floating (remove) and ambiguous (stop, restraints named). Notes (never a stop): occupancy sum vs parent occupancy, B.
+  accepted: (h_key, d_key) of pairs that collapse beyond xyz_tolerance when
+  the distance is their only problem (repair_plan(), case e); None for none."""
   pairs = []
   problems = []
   notes = []
   for c in candidates.pairs:
     reasons = []
-    if c.distance > xyz_tolerance:
-      reasons.append("H and D %.2f A apart" % c.distance)
+    if c.distance > xyz_tolerance and not (accepted is not None and
+        (c.h_key, c.d_key) in accepted):
+      reasons.append(_apart_text(c.distance))
     if c.n_competing > 0:
       reasons.append("%d competing partner(s)" % c.n_competing)
     if c.name_mismatch:
@@ -494,7 +502,11 @@ def collapse_check(candidates, xyz_tolerance=0.2):
     if c.parent_altloc != "":
       reasons.append("parent in conformer group '%s'" % c.parent_altloc)
     elif not c.layout_ok:
-      reasons.append("H and D not in H/D-only altloc groups")
+      reasons.append(_LAYOUT_TEXT)
+    if accepted is not None and (c.h_key, c.d_key) in accepted and \
+       c.distance > xyz_tolerance and reasons:
+      # only the distance was accepted
+      reasons.insert(0, _apart_text(c.distance))
     if reasons:
       problems.append(group_args(kind="pair", h_id=c.h_id, d_id=c.d_id,
         reasons=reasons, candidate=c))
@@ -530,6 +542,556 @@ def collapse_check(candidates, xyz_tolerance=0.2):
       action=action, source=u.source))
   return group_args(pairs=pairs, problems=problems, unresolved=unresolved,
     notes=notes)
+
+# ------------------------------------------------------------------------------
+# Repairs of deposited H/D layouts (B16)
+
+# (a): the parent copies' ideal H positions within this of each other; the
+# supplied atom within _REPAIR_ANGLE of each copy's ideal direction, its
+# length in [L - below, L + above] at either dictionary length L
+_REPAIR_IDEAL_TOLERANCE = 0.10
+_REPAIR_ANGLE = 15.0
+_REPAIR_BOND_BELOW = 0.20
+_REPAIR_BOND_ABOVE = 0.05
+# (b), (d): H and D of one site
+_REPAIR_PAIR_TOLERANCE = 0.20
+# (e): an empirical repair limit, the largest H-D distance on a one-H parent
+# in the deposited models examined (7T5E Arg B 66 HE/DE 0.59 A), not a
+# geometric bound
+REPAIR_E_LIMIT = 0.6
+_OCC_TOLERANCE = 0.01
+
+def _label(atom):
+  return atom.id_str().replace("pdb=", "").replace('"', "").strip()
+
+class _chemistry(object):
+  """X-H lengths and H counts from the model's effective chemistry: its
+  loaded monomer server (user CIFs included) and its bond restraints"""
+  def __init__(self, model):
+    self.mon_lib_srv = model.get_mon_lib_srv()
+    geometry = model.get_restraints_manager().geometry
+    self.bonds = geometry.bond_params_table
+    self.fsc0 = geometry.shell_sym_tables[0].full_simple_connectivity()
+    self.atoms = model.get_hierarchy().atoms()
+    self._comps = {}
+
+  def comp(self, resname):
+    resname = resname.strip()
+    if resname not in self._comps:
+      try:
+        c = self.mon_lib_srv.get_comp_comp_id_direct(resname)
+      except Exception:
+        c = None
+      self._comps[resname] = c
+    return self._comps[resname]
+
+  def lengths(self, h, parent):
+    """X-H lengths the H/D may have: the dictionary's X-ray and neutron
+    values and the restraint target"""
+    result = set()
+    comp = self.comp(h.parent().resname)
+    if comp is not None:
+      names = set((parent.name.strip(), normalized_name(h).strip()))
+      for b in comp.bond_list:
+        if set((b.atom_id_1, b.atom_id_2)) != names: continue
+        for v in (b.value_dist, b.value_dist_neutron):
+          if v is not None and v > 0: result.add(v)
+    bond = self.bonds.lookup(h.i_seq, parent.i_seq)
+    if bond is not None: result.add(bond.distance_ideal)
+    return sorted(result)
+
+  def n_h_in_dictionary(self, parent):
+    """number of H bonded to the parent's name in its dictionary, or None"""
+    comp = self.comp(parent.parent().resname)
+    if comp is None: return None
+    hs = set(a.atom_id for a in comp.atom_list
+             if a.type_symbol.strip().upper() in ("H", "D"))
+    n = parent.name.strip()
+    return len([b for b in comp.bond_list if
+      (b.atom_id_1 == n and b.atom_id_2 in hs) or
+      (b.atom_id_2 == n and b.atom_id_1 in hs)])
+
+  def heavy_neighbours(self, atom):
+    """the restrained bond partners of atom that are not H/D"""
+    return [self.atoms[j] for j in self.fsc0[atom.i_seq]
+            if not _is_hd(self.atoms[j])]
+
+  def ideal_direction(self, parent):
+    """unit vector of a one-H parent's ideal X-H, from its own heavy
+    neighbours (opposite their sum: three neighbours, or two around an sp2
+    parent), with the reason when there is none"""
+    nb = self.heavy_neighbours(parent)
+    if len(nb) == 2:
+      if self.n_h_in_dictionary(parent) != 1:
+        return None, "%s with 2 heavy neighbours carries %s H in the " \
+          "dictionary (no single ideal direction)" % (_label(parent),
+          self.n_h_in_dictionary(parent))
+    elif len(nb) != 3:
+      return None, "%s has %d heavy neighbours (no ideal direction)" % (
+        _label(parent), len(nb))
+    s = matrix.col((0, 0, 0))
+    p = matrix.col(parent.xyz)
+    for a in nb: s += (matrix.col(a.xyz) - p).normalize()
+    if s.length() < 1.e-6:
+      return None, "no ideal direction on %s" % _label(parent)
+    return -s.normalize(), None
+
+  def out_of_plane(self, parent, atom):
+    """degrees by which atom is out of the plane of parent, its one heavy
+    neighbour X and a neighbour of X in one dictionary plane with parent and
+    atom; None where this is not measurable"""
+    nb = self.heavy_neighbours(parent)
+    comp = self.comp(parent.parent().resname)
+    if len(nb) != 1 or comp is None: return None
+    x = nb[0]
+    name = normalized_name(atom).strip()
+    planes = {}
+    for p in comp.get_planes():
+      planes[p.plane_id] = set(a.atom_id for a in p.plane_atoms)
+    for r in self.heavy_neighbours(x):
+      if r.i_seq == parent.i_seq: continue
+      for members in planes.values():
+        if not set((parent.name.strip(), x.name.strip(), r.name.strip(),
+                    name)) <= members:
+          continue
+        t = matrix.dihedral_angle(sites=[r.xyz, x.xyz, parent.xyz, atom.xyz],
+          deg=True)
+        if t is None: return None
+        return min(abs(t), 180 - abs(t)), "%s-%s-%s" % (r.name.strip(),
+          x.name.strip(), parent.name.strip())
+    return None
+
+def _in_window(length, lengths):
+  return any(L - _REPAIR_BOND_BELOW <= length <= L + _REPAIR_BOND_ABOVE
+             for L in lengths)
+
+def _lengths_text(lengths):
+  return "/".join("%.2f" % L for L in lengths)
+
+def repair_plan(model, candidates, match):
+  """Repairs of deposited H/D layouts that the input check refuses, each
+  proven from the model alone; everything else is refused with a reason.
+
+  Parameters
+  ----------
+  model : mmtbx.model.manager
+      The interpreted model the check ran on, with restraints; lengths and
+      H counts come from its own monomer server and bond restraints (user
+      CIFs included).
+  candidates : group_args
+      find_hd_candidates() on model.
+  match : group_args
+      collapse_check() of candidates (the check's own first match).
+
+  Returns
+  -------
+  group_args
+      split, rename, relabel, accept: lists of group_args, one per repair,
+      each with the atom keys (atom_keys() of model) it changes, its atom
+      label (atom) and what was done and why (reason):
+
+      - split (a): a blank H/D whose covalent partners are the altloc copies
+        of one parent, one copy per real conformer, at a valid position
+        from every copy (each copy's ideal H from its own neighbours, at
+        both dictionary lengths, within 0.10 A of the other copies' ideal
+        positions; direction within 15 deg and length in [L - 0.20,
+        L + 0.05] at either length): one copy per conformer, occupancy
+        shared by the parent copies' occupancy, B/ANISOU copied.
+      - rename (b): names permuted between the H set and the D set of one
+        parent: each H with a mutual unique opposite isotope within 0.20 A
+        takes that D's name; a leftover H whose name is then taken gets the
+        one name left free when no D carries it.
+      - relabel (d): H and D in heavy-atom conformer groups on a blank
+        parent, a mutual unique pair within 0.20 A, H + D = parent
+        occupancy (0.01), not both occupancies equal to their conformers'
+        (0.01): moved into two free H/D-only altloc letters, values
+        unchanged. That the two form an exchange pair is an inference from
+        the occupancies, not proof of how refinement constrained them.
+      - accept (e): H and D too far apart on a parent with one H site in
+        the dictionary, carrying only these two, each at a valid length,
+        at most REPAIR_E_LIMIT apart (an empirical repair limit). The pair
+        collapses with collapse_check(accepted=...), the H's position kept.
+
+      refused: {atom label: reason} for every refused atom (labels as in
+      the check's lines, without "pdb=" and quotes).
+  """
+  hierarchy = model.get_hierarchy()
+  atoms = hierarchy.atoms()
+  keys = atom_keys(hierarchy)
+  chem = _chemistry(model)
+  by_id = dict((a.id_str(), i) for i, a in enumerate(atoms))
+  plan = group_args(split=[], rename=[], relabel=[], accept=[], refused={})
+  def refuse(atom_ids, reason):
+    for a in atom_ids:
+      if a is not None: plan.refused[_label_of_id(a)] = reason
+  _plan_split(plan, candidates, atoms, keys, by_id, chem, refuse)
+  done = set()
+  _plan_rename(plan, match, model, atoms, keys, refuse, done)
+  table = None
+  for x in match.problems:
+    if x.kind != "pair":
+      if x.kind == "different parents":
+        refuse([x.h_id, x.d_id], "no repair for H and D on different "
+          "parents")
+      else:
+        refuse([x.h_id, x.d_id] + [getattr(x.candidate, "atom_id", None),
+          getattr(x.candidate, "partner_id", None)],
+          "no repair for this pattern")
+      continue
+    c = x.candidate
+    if (c.i_h, c.i_d) in done: continue
+    if x.reasons == [_LAYOUT_TEXT]:
+      _plan_relabel(plan, c, atoms, keys, refuse)
+    elif len(x.reasons) == 1 and x.reasons[0] == _apart_text(c.distance):
+      if table is None: table = _hd_on_parents(model, atoms, keys)
+      _plan_accept(plan, c, atoms, keys, by_id, chem, table, refuse)
+    else:
+      refuse([x.h_id, x.d_id], "no repair for: %s" % "; ".join(x.reasons))
+  return plan
+
+def _label_of_id(id_str):
+  return id_str.replace("pdb=", "").replace('"', "").strip()
+
+def _hd_on_parents(model, atoms, keys):
+  """{parent id_str: [i_seq]} of the H/D with one covalent partner, in the
+  asymmetric unit"""
+  table = h_parent_table(model)
+  result = {}
+  for i, a in enumerate(atoms):
+    if not _is_hd(a): continue
+    e = table[keys[i]]
+    if e.status == "ok" and e.parent_sym_ops == ("x,y,z",):
+      result.setdefault(e.parent_id, []).append(i)
+  return result
+
+def _plan_split(plan, candidates, atoms, keys, by_id, chem, refuse):
+  # (a)
+  for u in candidates.unresolved:
+    if u.status != "ambiguous": continue
+    a = atoms[u.i_seq]
+    why = None
+    parents = sorted(set(by_id.get(s[0]) for s in u.source))
+    ps = [atoms[i] for i in parents if i is not None]
+    rg = a.parent().parent()
+    if a.parent().altloc != "":
+      why = "H/D not in the blank altloc"
+    elif None in parents or len(ps) < 2:
+      why = "partners not found"
+    elif any(s[3] != "x,y,z" for s in u.source):
+      why = "a partner is a symmetry mate"
+    elif len(set(p.name for p in ps)) != 1:
+      why = "partners are different atoms"
+    elif any(p.parent().parent().memory_id() != rg.memory_id() for p in ps):
+      why = "a partner is in another residue"
+    else:
+      alts = [p.parent().altloc for p in ps]
+      # real conformers carry heavy atoms; H/D-only groups are layout letters
+      conformers = sorted(ag.altloc for ag in rg.atom_groups()
+        if ag.altloc != "" and ag.resname == a.parent().resname and
+        not _hd_only(ag))
+      if "" in alts or len(set(alts)) != len(alts):
+        why = "partners are not altloc copies"
+      elif sorted(alts) != conformers:
+        why = "not one partner copy per conformer (%s; conformers %s)" % (
+          " ".join(sorted(alts)), " ".join(conformers))
+      elif sum(p.occ for p in ps) <= 0:
+        why = "parent copies with total occupancy 0 (no basis for sharing it)"
+    per_copy, spread = [], {}
+    if why is None:
+      lengths = chem.lengths(a, ps[0])
+      if not lengths:
+        why = "no X-H length for %s" % _label(a)
+      ideal_at = dict((L, []) for L in lengths)
+      for p in ps:
+        if why is not None: break
+        d, no_direction = chem.ideal_direction(p)
+        if d is None:
+          why = no_direction
+          break
+        v = matrix.col(a.xyz) - matrix.col(p.xyz)
+        angle = v.angle(d, deg=True)
+        per_copy.append((p.parent().altloc, v.length(), angle))
+        if angle > _REPAIR_ANGLE:
+          why = "%.1f deg from the ideal direction on %s (limit %.0f)" % (
+            angle, _label(p), _REPAIR_ANGLE)
+        elif not _in_window(v.length(), lengths):
+          why = "bond %.3f A to %s (dictionary %s A)" % (v.length(),
+            _label(p), _lengths_text(lengths))
+        for L in lengths:
+          ideal_at[L].append(matrix.col(p.xyz) + d * L)
+      if why is None:
+        for L, pos in ideal_at.items():
+          spread[L] = max((x - y).length() for x in pos for y in pos)
+        worst = max(spread.values())
+        if worst > _REPAIR_IDEAL_TOLERANCE:
+          why = "ideal positions on the copies %.3f A apart (limit %.2f)" % (
+            worst, _REPAIR_IDEAL_TOLERANCE)
+    if why is None:
+      n = normalized_name(a)
+      for p in ps:
+        for other in p.parent().atoms():
+          if _is_hd(other) and normalized_name(other) == n:
+            why = "name %s already in conformer %s" % (n.strip(),
+              p.parent().altloc)
+    if why is not None:
+      refuse([u.atom_id], why)
+      continue
+    total = sum(p.occ for p in ps)
+    plan.split.append(group_args(key=keys[u.i_seq],
+      parent_keys=[keys[p.i_seq] for p in ps],
+      shares=[p.occ / total for p in ps],
+      atom=_label(a),
+      reason="split over the copies of %s (conformers %s): ideal positions "
+        "%s A apart; per copy %s" % (ps[0].name.strip(),
+        " ".join(p.parent().altloc for p in ps),
+        "/".join("%.3f" % spread[L] for L in sorted(spread)),
+        ", ".join("%s %.3f A %.1f deg" % c for c in per_copy))))
+
+def _plan_rename(plan, match, model, atoms, keys, refuse, done):
+  # (b): name-mismatch pair problems grouped by parent
+  groups = {}
+  for x in match.problems:
+    if x.kind != "pair" or not x.candidate.name_mismatch: continue
+    c = x.candidate
+    g = groups.setdefault(c.parent_id, group_args(bad=[], ids=set(),
+      pairs=set()))
+    g.ids.update([x.h_id, x.d_id])
+    g.pairs.add((c.i_h, c.i_d))
+    other = [r for r in x.reasons if not (r.startswith("names ") or
+             r == _apart_text(c.distance))]
+    if other or c.n_competing or c.parent_altloc != "" or not c.layout_ok:
+      g.bad.append("; ".join(x.reasons))
+  if not groups: return
+  on_parent = _hd_on_parents(model, atoms, keys)
+  for parent_id in sorted(groups):
+    g = groups[parent_id]
+    done.update(g.pairs)
+    members = on_parent.get(parent_id, [])
+    hs = [i for i in members if atoms[i].element.strip().upper() == "H"]
+    ds = [i for i in members if atoms[i].element.strip().upper() == "D"]
+    why = None
+    if g.bad: why = "not only a name permutation: " + " | ".join(g.bad)
+    renames = []
+    def near(i, pool):
+      return [j for j in pool if _distance(atoms[i], atoms[j]) <=
+              _REPAIR_PAIR_TOLERANCE]
+    if why is None:
+      for i in hs:
+        nd = near(i, ds)
+        if len(nd) > 1:
+          why = "%s: %d D within %.2f A" % (_label(atoms[i]), len(nd),
+            _REPAIR_PAIR_TOLERANCE)
+          break
+        if not nd: continue
+        j = nd[0]
+        if near(j, hs) != [i]:
+          why = "%s: %d H within %.2f A" % (_label(atoms[j]),
+            len(near(j, hs)), _REPAIR_PAIR_TOLERANCE)
+          break
+        new = normalized_name(atoms[j])
+        if new != atoms[i].name:
+          renames.append((i, new, "the name of the D at its site, %s, "
+            "%.3f A" % (atoms[j].name.strip(), _distance(atoms[i], atoms[j]))))
+      if why is None and not renames:
+        why = "no partner within %.2f A" % _REPAIR_PAIR_TOLERANCE
+    if why is None:
+      # a leftover H whose name a renamed H now takes gets the one name left
+      # free, when no D carries it (that D sits elsewhere: refused)
+      final = dict((i, atoms[i].name) for i in hs)
+      for i, new, _ in renames: final[i] = new
+      renamed = set(i for i, _, _ in renames)
+      clash = [i for i in hs if i not in renamed and
+               any(final[j] == final[i] for j in renamed)]
+      d_names = set(normalized_name(atoms[j]) for j in ds)
+      pool = set(atoms[i].name for i in hs) | d_names
+      free = sorted(pool - set(final.values()) - d_names)
+      if len(clash) == 1 and len(free) == 1:
+        renames.append((clash[0], free[0], "the one name left free; no D "
+          "carries it"))
+        final[clash[0]] = free[0]
+      elif clash:
+        why = "%d leftover H, %d free names" % (len(clash), len(free))
+    if why is None:
+      seen = set()
+      for i in hs:
+        k = (atoms[i].parent().memory_id(), final[i])
+        if k in seen:
+          why = "name %s twice after renaming" % final[i].strip()
+          break
+        seen.add(k)
+    if why is not None:
+      refuse(g.ids, why)
+      continue
+    for i, new, reason in renames:
+      plan.rename.append(group_args(key=keys[i], new=new,
+        atom=_label(atoms[i]),
+        reason="renamed %s (%s)" % (new.strip(), reason)))
+
+def _plan_relabel(plan, c, atoms, keys, refuse):
+  # (d)
+  h, d = atoms[c.i_h], atoms[c.i_d]
+  ids = [c.h_id, c.d_id]
+  ha, da = h.parent().altloc, d.parent().altloc
+  co = (_conformer_occupancy(h.parent()), _conformer_occupancy(d.parent()))
+  why = None
+  if c.n_competing or c.name_mismatch or c.parent_altloc != "":
+    why = "not a plain pair"
+  elif ha == "" or da == "" or ha == da:
+    why = "H and D not in two altloc groups"
+  elif c.distance > _REPAIR_PAIR_TOLERANCE:
+    why = "%s (limit %.2f)" % (_apart_text(c.distance),
+      _REPAIR_PAIR_TOLERANCE)
+  elif abs(c.occ_sum - c.parent_occ) > _OCC_TOLERANCE:
+    why = "H + D occupancy %.2f, parent %.2f (no exchange pair)" % (
+      c.occ_sum, c.parent_occ)
+  elif not all(isinstance(o, float) for o in co):
+    why = "conformer occupancy not one value (%s)" % (co,)
+  elif abs(h.occ - co[0]) <= _OCC_TOLERANCE and \
+       abs(d.occ - co[1]) <= _OCC_TOLERANCE:
+    why = ("H and D occupancies equal their conformers' (%.2f/%.2f): one "
+           "isotope per conformer or an exchange pair" % co)
+  if why is not None:
+    refuse(ids, why)
+    return
+  plan.relabel.append(group_args(h_key=keys[c.i_h], d_key=keys[c.i_d],
+    atom="%s / %s" % (_label(h), _label(d)),
+    reason="moved into H/D-only altloc groups: H %.2f in %s (conformer "
+      "%.2f), D %.2f in %s (conformer %.2f), %.3f A apart; read as an exchange "
+      "pair (H + D = parent occupancy), an inference" % (h.occ, ha, co[0],
+      d.occ, da, co[1], c.distance)))
+
+def _plan_accept(plan, c, atoms, keys, by_id, chem, on_parent, refuse):
+  # (e)
+  h, d = atoms[c.i_h], atoms[c.i_d]
+  ids = [c.h_id, c.d_id]
+  i_parent = by_id.get(c.parent_id)
+  why = None
+  if c.n_competing or c.name_mismatch or c.parent_altloc != "" or \
+     not c.layout_ok or i_parent is None:
+    why = "not a plain pair"
+  if why is None:
+    p = atoms[i_parent]
+    n = chem.n_h_in_dictionary(p)
+    if n != 1:
+      why = "%s carries %s H in the dictionary (one H site needed)" % (
+        p.name.strip(), n)
+      measured = [chem.out_of_plane(p, a) for a in (h, d)]
+      if all(m is not None for m in measured):
+        k = 0 if measured[0][0] >= measured[1][0] else 1
+        why += "; %s %.0f deg out of the %s plane" % (
+          (h, d)[k].element.strip(), measured[k][0], measured[k][1])
+    elif c.distance > REPAIR_E_LIMIT:
+      why = "%s (limit %.2f A, empirical)" % (_apart_text(c.distance),
+        REPAIR_E_LIMIT)
+  if why is None:
+    others = [i for i in on_parent.get(c.parent_id, [])
+              if i not in (c.i_h, c.i_d)]
+    if others:
+      why = "other H/D on %s: %s" % (p.name.strip(),
+        ", ".join(_label(atoms[i]) for i in others))
+  words = []
+  if why is None:
+    lengths = chem.lengths(h, p)
+    for a in (h, d):
+      v = matrix.col(a.xyz) - matrix.col(p.xyz)
+      if not lengths or not _in_window(v.length(), lengths):
+        why = "bond %.3f A to %s (dictionary %s A)" % (v.length(),
+          _label(p), _lengths_text(lengths))
+        break
+      words.append("%s %.2f at %.3f A" % (a.element.strip(), a.occ,
+        v.length()))
+  if why is not None:
+    refuse(ids, why)
+    return
+  plan.accept.append(group_args(h_key=keys[c.i_h], d_key=keys[c.i_d],
+    atom="%s / %s" % (_label(h), _label(d)),
+    reason="paired %.3f A apart on a one-H parent (limit %.2f A, an "
+      "empirical repair limit); %s; the H position is kept" % (c.distance,
+      REPAIR_E_LIMIT, ", ".join(words))))
+
+def repairs_made(plan):
+  """True if apply_repairs() changes anything (case e changes no atom)"""
+  return bool(plan.split or plan.rename or plan.relabel)
+
+def apply_repairs(hierarchy, plan, key_map=None):
+  """Apply repair_plan()'s split, rename and relabel to hierarchy.
+
+  Parameters
+  ----------
+  hierarchy : iotbx.pdb.hierarchy.root
+      The hierarchy to change in place: the planned model's or one that
+      contains its atoms.
+  plan : group_args
+      repair_plan() result.
+  key_map : dict or None
+      {plan atom key: atom key in hierarchy} when the two differ (the plan
+      was made on a selection of hierarchy).
+
+  Returns
+  -------
+  dict
+      {atom key after the repair: atom key before} for every atom whose
+      identity changed (renamed, relabelled, split copies); keys in
+      hierarchy's terms.
+  """
+  def k(key):
+    return key if key_map is None else key_map[key]
+  keys = atom_keys(hierarchy)
+  index = dict((key, i) for i, key in enumerate(keys))
+  atoms = hierarchy.atoms()
+  changed = []     # (atom, key before)
+  for r in plan.rename:
+    a = atoms[index[k(r.key)]]
+    a.set_name(r.new)
+    changed.append((a, k(r.key)))
+  # (d): every relabelled pair of a residue_group into the same two free
+  # letters, H in the first, D in the second
+  by_rg = {}
+  for x in plan.relabel:
+    h, d = atoms[index[k(x.h_key)]], atoms[index[k(x.d_key)]]
+    by_rg.setdefault(h.parent().parent().memory_id(), []).append(
+      (h, d, k(x.h_key), k(x.d_key)))
+  for items in by_rg.values():
+    rg = items[0][0].parent().parent()
+    used = set(ag.altloc for ag in rg.atom_groups())
+    free = [c for c in _ALTLOC_LETTERS if c not in used][:2]
+    if len(free) < 2:
+      raise Sorry("Internal error: no free altloc letters for %s" %
+        items[0][0].id_str())
+    made = {}
+    for h, d, h_key, d_key in items:
+      for a, alt, key in ((h, free[0], h_key), (d, free[1], d_key)):
+        group = (alt, a.parent().resname)
+        if group not in made:
+          made[group] = iotbx.pdb.hierarchy.atom_group(altloc=alt,
+            resname=a.parent().resname)
+          rg.append_atom_group(made[group])
+        moved = a.detached_copy()
+        made[group].append_atom(moved)
+        a.parent().remove_atom(a)
+        changed.append((moved, key))
+  # (a)
+  splits = []
+  for s in plan.split:
+    a = atoms[index[k(s.key)]]
+    targets = [atoms[index[k(p)]].parent() for p in s.parent_keys]
+    splits.append((a, targets, s.shares, k(s.key)))
+  for a, targets, shares, key in splits:
+    for ag, share in zip(targets, shares):
+      c = a.detached_copy()
+      c.set_occ(a.occ * share)
+      ag.append_atom(c)
+      changed.append((c, key))
+    ag = a.parent()
+    rg = ag.parent()
+    ag.remove_atom(a)
+    # the H/D may have been the only blank atom (6TAE Gln A 13)
+    _remove_empty_atom_groups(rg)
+  result = {}
+  for a, before in changed:
+    result[atom_key(a)] = before
+  _finish(hierarchy)
+  return result
 
 # ------------------------------------------------------------------------------
 # Normalization and output
