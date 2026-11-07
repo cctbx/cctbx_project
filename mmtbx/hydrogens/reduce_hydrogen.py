@@ -2243,6 +2243,155 @@ def name_prochiral_h(hierarchy, mon_lib_srv, kinds=(2, 3)):
               swaps.append((atoms[p], h1, h2))
   return swaps
 
+# Planar NH2 of the protein side chains (IUPAC 1998, PAC 70:117, Fig. 1): H "1"
+# is cis, "2" trans to the heavy atom three bonds closer to the main chain.
+# (parent, its heavy neighbour, reference, name suffix of "1", of "2")
+_IUPAC_NH2 = {
+  'ASN': (('ND2', 'CG', 'CB', 'D21', 'D22'),),
+  'GLN': (('NE2', 'CD', 'CG', 'E21', 'E22'),),
+  'ARG': (('NH1', 'CZ', 'NE', 'H11', 'H12'),
+          ('NH2', 'CZ', 'NE', 'H21', 'H22')),
+}
+
+def _nh2_side_restraints(geometry, atoms, residue_iseqs, h_iseqs):
+  '''
+  Restraints that tell the two sites of a planar NH2 apart, per H.
+
+  Parameters
+  ----------
+  geometry : cctbx.geometry_restraints.manager.manager
+      The processed model's restraints; its i_seqs index atoms.
+  atoms : iotbx.pdb.hierarchy.af_shared_atom
+      The model's atoms.
+  residue_iseqs : scitbx.array_family.flex.size_t
+      The atoms of the residues with the NH2 (proxies within them only).
+  h_iseqs : set of int
+      The H to look at.
+
+  Returns
+  -------
+  tuple
+      ({i_seq: [text]}, {i_seq: {key: ideal}}): the torsions with the H as
+      end atom that fix its side (CONST, or a periodicity that is not even:
+      an even one has a minimum at both sites), and its bond and angle
+      ideals keyed by the partner atoms, for comparing the two H.
+  '''
+  def label(i_seqs):
+    return '-'.join(atoms[i].name.strip() for i in i_seqs)
+  def within(proxies):
+    # proxy_select renumbers the atoms into residue_iseqs
+    for p in proxies.proxy_select(atoms.size(), residue_iseqs):
+      yield p, [residue_iseqs[i] for i in p.i_seqs]
+  fixing, ideals = {}, {}
+  const = getattr(geometry, 'const_dihedral_proxies', None)
+  for kind, proxies in (('CONST', const), ('torsion',
+                                           geometry.dihedral_proxies)):
+    if proxies is None: continue
+    for p, i_seqs in within(proxies):
+      i1, i4 = i_seqs[0], i_seqs[3]
+      if i1 not in h_iseqs and i4 not in h_iseqs: continue
+      if kind == 'torsion' and p.periodicity > 0 and p.periodicity % 2 == 0:
+        continue
+      if kind == 'CONST':
+        text = 'CONST torsion %s %.1f' % (label(i_seqs), p.angle_ideal)
+      else:
+        text = 'torsion %s %.1f, periodicity %d' % (label(i_seqs),
+          p.angle_ideal, p.periodicity)
+      for i in (i1, i4):
+        if i in h_iseqs: fixing.setdefault(i, []).append(text)
+  for p, (i1, i2, i3) in within(geometry.angle_proxies):
+    for i, k in ((i1, i3), (i3, i1)):
+      if i in h_iseqs and k not in h_iseqs:
+        ideals.setdefault(i, {})[('angle', i2, k)] = p.angle_ideal
+  fsc0 = geometry.shell_sym_tables[0].full_simple_connectivity()
+  for i in h_iseqs:
+    for j in fsc0[i]:
+      bond = geometry.bond_params_table.lookup(i, j)
+      if bond is not None:
+        ideals.setdefault(i, {})[('bond', j)] = bond.distance_ideal
+  return fixing, ideals
+
+def name_nh2_h(hierarchy, geometry, is_supplied=None):
+  '''
+  Name the two H of the planar NH2 of Asn, Gln and Arg by IUPAC.
+
+  Riding places them by a periodicity-2 torsion snapped to the bogus start
+  site (shared by both H), so the names follow that site: 4wsc, 1092/1092
+  groups, "1" trans in 95 %. Only names change; no atom moves. Kept as
+  they are: a pair with a supplied H (is_supplied(atom) True), a parent
+  with one H (link), and a pair whose restraints tell the two sites apart
+  (a CONST or odd-period torsion on an H, as in a user CIF; different bond
+  or angle ideals), since riding would put the H back.
+
+  Parameters
+  ----------
+  hierarchy : iotbx.pdb.hierarchy.root
+      The model's hierarchy; i_seqs as in geometry.
+  geometry : cctbx.geometry_restraints.manager.manager
+      The restraints the model was processed with.
+  is_supplied : callable or None
+      is_supplied(atom) is True for an H/D of the input.
+
+  Returns
+  -------
+  tuple
+      (swaps, fixed): swaps as (parent, h1, h2) atoms with their new names;
+      fixed as (h1, text) for the pairs kept against IUPAC, h1 being the H
+      "1" (trans) and text the restraint that fixes the side.
+  '''
+  groups_of, residue_iseqs = [], set()
+  for m in hierarchy.models():
+    for c in m.chains():
+      for conformer in c.conformers():
+        for r in conformer.residues():
+          groups = _IUPAC_NH2.get(r.resname.strip())
+          if groups is None: continue
+          residue_iseqs.update(a.i_seq for a in r.atoms())
+          atoms = dict((a.name.strip(), a) for a in r.atoms())
+          for n, x, ref, s1, s2 in groups:
+            if not all(k in atoms for k in (n, x, ref)): continue
+            # bonded, not same-named atoms of a neighbour (as name_prochiral_h)
+            if (atoms[n].distance(atoms[x]) > 2.4 or
+                atoms[x].distance(atoms[ref]) > 2.4): continue
+            for e in ('H', 'D'):
+              h1, h2 = atoms.get(e + s1), atoms.get(e + s2)
+              if h1 is None or h2 is None: continue
+              if any(atoms[n].distance(h) > 1.6 for h in (h1, h2)): continue
+              groups_of.append((atoms[n], atoms[x], atoms[ref], h1, h2))
+  if not groups_of: return [], []
+  fixing, ideals = _nh2_side_restraints(geometry, hierarchy.atoms(),
+    flex.size_t(sorted(residue_iseqs)),
+    set(h.i_seq for g in groups_of for h in g[3:]))
+  all_atoms = hierarchy.atoms()
+  def differs(h1, h2):
+    # ideals keyed by partner, so the two H compare like for like
+    a, b = ideals.get(h1.i_seq, {}), ideals.get(h2.i_seq, {})
+    for key in sorted(set(a) | set(b)):
+      if key in a and key in b and abs(a[key] - b[key]) <= 1.e-3: continue
+      names = '-'.join(all_atoms[i].name.strip() for i in key[:0:-1])
+      return '%s %s-%s %s, %s-%s %s' % (key[0], names, h1.name.strip(),
+        '%.3f' % a[key] if key in a else 'none', names, h2.name.strip(),
+        '%.3f' % b[key] if key in b else 'none')
+    return None
+  done, swaps, fixed = set(), [], []
+  for n, x, ref, h1, h2 in groups_of:
+    key = (h1.i_seq, h2.i_seq)
+    if key in done: continue
+    done.add(key)
+    if is_supplied is not None and (is_supplied(h1) or is_supplied(h2)):
+      continue
+    t = matrix.dihedral_angle(sites=[ref.xyz, x.xyz, n.xyz, h1.xyz], deg=True)
+    # cis already, or more than 60 degrees out of plane: no swap
+    if t is None or abs(t) < 120: continue
+    texts = fixing.get(h1.i_seq, []) + fixing.get(h2.i_seq, [])
+    text = texts[0] if texts else differs(h1, h2)
+    if text is not None:
+      fixed.append((h1, text))
+      continue
+    h1.name, h2.name = h2.name, h1.name
+    swaps.append((n, h1, h2))
+  return swaps, fixed
+
 def _bond_orders(resname, mon_lib_srv, cache):
   '''
   Double (2) and triple (3) bonds by atom-name pair; anything else counts 1.
@@ -2474,6 +2623,9 @@ class place_hydrogens():
     # made: (residue part as hd_exchange.site_key(), parent altloc, old name,
     # new name); each exchanges the two names
     self.renamed_existing_h     = list()
+    # planar NH2 kept against IUPAC because the restraints fix the side:
+    # one line per pair (name_nh2_h())
+    self.nh2_side_fixed         = list()
     self._existing_h            = set()
     # input positions of those H, by the same identity
     self._existing_h_xyz        = dict()
@@ -2869,6 +3021,8 @@ class place_hydrogens():
     # names that survived it stay as they are
     self._log_swaps(name_prochiral_h(self.model.get_hierarchy(),
       self.model.get_mon_lib_srv(), kinds = (3,)))
+    # after the links: a linked Asn ND2 keeps the one H the link left
+    self.name_nh2_h()
     self.time_remove_H_on_links = round(time.time()-t0, 2)
 
 
@@ -2964,6 +3118,43 @@ class place_hydrogens():
       changed = True
     if changed:
       self.model.set_sites_cart(sites_cart)
+
+  # ----------------------------------------------------------------------------
+
+  def name_nh2_h(self):
+    '''
+    IUPAC names for placed planar NH2 H (name_nh2_h()); supplied H/D keep
+    theirs, and the H placed next to one takes the other name. Pairs whose
+    restraints fix the side against IUPAC go to nh2_side_fixed.
+    '''
+    hierarchy = self.model.get_hierarchy()
+    supplied = None
+    if self._existing_h:
+      parts = residue_parts(hierarchy)
+      def supplied(a):
+        return (parts[a.parent().memory_id()] + (a.parent().altloc, a.name)
+                in self._existing_h)
+    _, fixed = name_nh2_h(hierarchy,
+      self.model.get_restraints_manager().geometry, supplied)
+    for h1, text in fixed:
+      ag = h1.parent()
+      rg = ag.parent()
+      ref = [g[2] for g in _IUPAC_NH2[ag.resname.strip()]
+             if h1.name.strip()[1:] == g[3]][0]
+      self.nh2_side_fixed.append('%s %s %s%s%s %s trans to %s (IUPAC: cis), '
+        'kept: %s' % (ag.resname.strip(), rg.parent().id.strip(),
+        rg.resseq.strip(), rg.icode.strip(),
+        (' altloc %s' % ag.altloc) if ag.altloc.strip() else '',
+        h1.name.strip(), ref, text))
+
+  def nh2_side_fixed_text(self):
+    '''
+    The report of nh2_side_fixed (show(), reduce2's description); '' if
+    there is none.
+    '''
+    if not self.nh2_side_fixed: return ''
+    return '\n'.join(['Planar NH2 H kept on the sides their restraints fix, '
+      'against the IUPAC names:'] + [' ' + s for s in self.nh2_side_fixed])
 
   # ----------------------------------------------------------------------------
 
@@ -4724,7 +4915,7 @@ proline-type or N-substituted residue)'''
       print(self.unknown_atoms_text(verbose), file=log)
     #
     for text in (self.metal_thiol_text(), self.metal_nh_text(),
-                 self.metal_amine_text()):
+                 self.metal_amine_text(), self.nh2_side_fixed_text()):
       if text:
         print('', file=log)
         print(text, file=log)

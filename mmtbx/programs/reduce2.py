@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.8.0"
+version = "3.8.1"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -1292,11 +1292,13 @@ NOTES:
     if reduce_add_h_obj.residues_unknown_atoms:
       self._unknown_atoms_note = '\n' + reduce_add_h_obj.unknown_atoms_text(
         verbose=self.params.verbosity > 2) + '\n'
-    # its report of thiols and N-H at metals, for the description
+    # its report of thiols and N-H at metals and of NH2 kept against IUPAC,
+    # for the description
     self._metal_thiol_note = ''
     for text in (reduce_add_h_obj.metal_thiol_text(),
                  reduce_add_h_obj.metal_nh_text(),
-                 reduce_add_h_obj.metal_amine_text()):
+                 reduce_add_h_obj.metal_amine_text(),
+                 reduce_add_h_obj.nh2_side_fixed_text()):
       if text:
         self._metal_thiol_note += '\n' + text + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)

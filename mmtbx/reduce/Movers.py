@@ -1037,12 +1037,12 @@ class MoverAmideFlip(object):
     self._atoms.extend(linkerHydrogens)
 
     #########################
-    # Compute the original positions for the Hydrogens such that they are at the same distance from
-    # the Nitrogen as one of them started out and located at +/-120 degrees from the
-    # Carbon-Nitrogen bond in the plane of the Nitrogen, Carbon, and Oxygen. The first one should
-    # point back towards the mainchain and the second more towards the Oxygen.
-    # @todo This assumes that all placement is done like Hydrogenate does, where the first-listed
-    # atom is the lower-numbered one.
+    # Compute the original positions for the Hydrogens such that each keeps its own distance from
+    # the Nitrogen and is located at +120 or -120 degrees from the Carbon-Nitrogen bond in the
+    # plane of the Nitrogen, Carbon, and Oxygen. +120 points back towards the mainchain, -120
+    # more towards the Oxygen. Each Hydrogen takes the side nearer its current position:
+    # supplied names need not follow the bonded-list order, and the name carries the
+    # occupancy and B of its site.
     cToN = lvec3(nh2Atom.xyz) - lvec3(hinge.xyz)
     cToO = rvec3(oxygen.xyz) - rvec3(hinge.xyz)
 
@@ -1051,13 +1051,29 @@ class MoverAmideFlip(object):
 
     hBond0Len = (rvec3(nh2Hydrogens[0].xyz) - rvec3(nh2Atom.xyz)).length()
     hBond1Len = (rvec3(nh2Hydrogens[1].xyz) - rvec3(nh2Atom.xyz)).length()
-    nh2Hydrogens[0].xyz = lvec3(nh2Atom.xyz) + ((-cToN.normalize()) * hBond0Len).rotate_around_origin(normal, 120 * math.pi/180)
-    nh2Hydrogens[1].xyz = lvec3(nh2Atom.xyz) + ((-cToN.normalize()) * hBond1Len).rotate_around_origin(normal,-120 * math.pi/180)
+    toC = -cToN.normalize()
+    h0Plus = lvec3(nh2Atom.xyz) + (toC * hBond0Len).rotate_around_origin(normal, 120 * math.pi/180)
+    h0Minus = lvec3(nh2Atom.xyz) + (toC * hBond0Len).rotate_around_origin(normal,-120 * math.pi/180)
+    h1Plus = lvec3(nh2Atom.xyz) + (toC * hBond1Len).rotate_around_origin(normal, 120 * math.pi/180)
+    h1Minus = lvec3(nh2Atom.xyz) + (toC * hBond1Len).rotate_around_origin(normal,-120 * math.pi/180)
+    h0 = lvec3(nh2Hydrogens[0].xyz)
+    h1 = lvec3(nh2Hydrogens[1].xyz)
+    listOrder = (h0 - h0Plus).length() + (h1 - h1Minus).length()
+    swapped = (h0 - h0Minus).length() + (h1 - h1Plus).length()
+    if swapped < listOrder:
+      hSide = [-120, 120]
+      nh2Hydrogens[0].xyz = h0Minus
+      nh2Hydrogens[1].xyz = h1Plus
+    else:
+      hSide = [120, -120]
+      nh2Hydrogens[0].xyz = h0Plus
+      nh2Hydrogens[1].xyz = h1Minus
 
     #########################
     # Compute the new positions for the Hydrogens such that they are at the same distance from
     # the Oxygen as one of them is from the Nitrogen and located at +/-120 degrees from the
-    # Carbon-Oxygen bond in the plane of the Nitrogen, Carbon, and Oxygen.
+    # Carbon-Oxygen bond in the plane of the Nitrogen, Carbon, and Oxygen. The normal is reversed,
+    # so the same angle as above is the mirror image: each Hydrogen keeps its side through the flip.
     cToO = lvec3(oxygen.xyz) - lvec3(hinge.xyz)
     cToN = rvec3(nh2Atom.xyz) - rvec3(hinge.xyz)
 
@@ -1066,8 +1082,8 @@ class MoverAmideFlip(object):
 
     hBond0Len = (rvec3(nh2Hydrogens[0].xyz) - rvec3(nh2Atom.xyz)).length()
     hBond1Len = (rvec3(nh2Hydrogens[1].xyz) - rvec3(nh2Atom.xyz)).length()
-    newH0 = lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBond0Len).rotate_around_origin(normal, 120 * math.pi/180)
-    newH1 = lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBond1Len).rotate_around_origin(normal,-120 * math.pi/180)
+    newH0 = lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBond0Len).rotate_around_origin(normal, hSide[0] * math.pi/180)
+    newH1 = lvec3(oxygen.xyz) + ((-cToO.normalize()) * hBond1Len).rotate_around_origin(normal, hSide[1] * math.pi/180)
 
     #########################
     # Compute the list of positions for all of the atoms. This consists of the original

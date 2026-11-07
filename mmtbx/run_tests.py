@@ -559,6 +559,8 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_clique_polish.py",
   "$D/regression/tst_reduce2_report_renaming.py",
   "$D/regression/tst_reduce2_blank_parent_split.py",
+  "$D/regression/tst_reduce2_nh2_names.py",
+  "$D/regression/tst_reduce2_amide_h_sides.py",
   "$D/regression/tst_altloc_chain_break.py",
   "$D/regression/ncs/tst_geometry_minimization_ncs_constraints.py",
   "$D/regression/tst_clashes.py",
