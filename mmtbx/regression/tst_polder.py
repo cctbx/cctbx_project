@@ -1,14 +1,22 @@
 from __future__ import absolute_import, division, print_function
 import time, os
 import iotbx.pdb
+import iotbx.phil
+import mmtbx.maps.polder
 from mmtbx.programs import fmodel, polder
 from iotbx.cli_parser import run_program
+from iotbx.data_manager import DataManager
 from iotbx import reflection_file_reader
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 from cctbx import miller
 from cctbx import maptbx
 from scitbx.array_family import flex
+from six.moves import range
+
+polder_label    = "mFo-DFc_polder,PHImFo-DFc_polder"
+omit_label      = "mFo-DFc_omit,PHImFo-DFc_omit"
+bias_omit_label = "mFo-DFc_bias_omit,PHImFo-DFc_bias_omit"
 
 # ---------------------------------------------------------------------------
 
@@ -25,26 +33,37 @@ def get_map_stats(map, sites_frac):
     map_values.append(map.eight_point_interpolation(sf))
   return map_values
 
-def format_map_stat(m):
-  return m.min_max_mean().as_tuple(), (m>flex.mean(m)).count(True)
-
-# ---------------------------------------------------------------------------
-
-def exercise_00(prefix="tst_polder"):
+def get_map_stats_at_sites(file_name, labels, sites_cart):
   """
-  Test for phenix.polder.
+  Min, max and mean of sigma-scaled maps at sites_cart, one tuple per label.
+  All maps use the gridding of the first label's map coefficients.
   """
+  mcs = {}
+  for ma in reflection_file_reader.any_reflection_file(
+      file_name = file_name).as_miller_arrays():
+    if ma.info().label_string() in labels:
+      mcs[ma.info().label_string()] = ma.deep_copy()
+  assert sorted(mcs.keys()) == sorted(labels), list(mcs.keys())
+  mc_first = mcs[labels[0]]
+  cg = maptbx.crystal_gridding(
+    unit_cell         = mc_first.unit_cell(),
+    d_min             = mc_first.d_min(),
+    resolution_factor = 0.25,
+    space_group_info  = mc_first.space_group_info())
+  sites_frac = mc_first.unit_cell().fractionalize(sites_cart)
+  result = []
+  for label in labels:
+    map_data = get_map(cg=cg, mc=mcs[label])
+    result.append(get_map_stats(
+      map=map_data, sites_frac=sites_frac).min_max_mean().as_tuple())
+  return result
 
-  # save test model as file
-  model_fn = "tst_polder.pdb"
+def write_model_and_data(model_fn, mtz_fn, model_str):
+  """
+  Write model_str to model_fn and Fobs calculated from it to mtz_fn.
+  """
   with open(model_fn, "w") as f:
-    f.write(pdb_str)
-
-  pdb_hierarchy = iotbx.pdb.input(
-    source_info=None, lines=pdb_str).construct_hierarchy()
-
-  # create test data with phenix.fmodel
-  mtz_fn = "tst_polder.mtz"
+    f.write(model_str)
   args = [
     model_fn,
     "high_res=2.0",
@@ -55,137 +74,142 @@ def exercise_00(prefix="tst_polder"):
     "output.file_name=%s" % mtz_fn]
   run_program(program_class=fmodel.Program, args=args, logger=null_out())
 
-  # run polder on test files
-  args_polder = [
-    model_fn,
-    mtz_fn,
-    "sphere_radius=3",
-    'solvent_exclusion_mask_selection="resname PHE and resseq 1" ',
-    'debug="True"'
-  ]
-  r = run_program(program_class=polder.Program, args=args_polder, logger=null_out())
+# ---------------------------------------------------------------------------
 
-  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    r.output_file).as_miller_arrays()
-  mmm_mp, mmm_o = check(miller_arrays, pdb_hierarchy)
-  assert approx_equal(mmm_mp, [0.329, 6.119, 3.333], eps=0.15)
-  assert approx_equal(mmm_o, [-2.838, 0.901, -1.385], eps=0.15)
+def exercise_00(prefix="tst_polder"):
+  """
+  Test for phenix.polder: polder and omit map values at the omitted atoms,
+  with all data and with high or low resolution cutoff.
+  """
+  model_fn = "%s.pdb" % prefix
+  mtz_fn = "%s.mtz" % prefix
+  write_model_and_data(model_fn=model_fn, mtz_fn=mtz_fn, model_str=pdb_str)
 
-  os.remove("box_1_polder.ccp4")
-  os.remove("box_2_polder.ccp4")
-  os.remove("box_3_polder.ccp4")
-  os.remove(r.output_file)
+  selection = "resname PHE and resseq 1"
+  pdb_hierarchy = iotbx.pdb.input(
+    source_info=None, lines=pdb_str).construct_hierarchy()
+  sites_cart = pdb_hierarchy.atoms().extract_xyz().select(
+    pdb_hierarchy.atom_selection_cache().selection(string = selection))
 
-  extensions = ['.pdb', '.cif']
-  for ext in extensions:
-    file_path = 'box_polder' + ext
-    if os.path.isfile(file_path):
-      try:
-        os.remove(file_path)
-      except Exception as e:
-        print(f"Error removing {file_path}: {e}")
+  # extra arguments, expected min/max/mean of polder map and of omit map
+  cases = [
+    ([],
+     [0.329, 6.119, 3.333], [-2.838, 0.901, -1.385]),
+    (["fmodel.xray_data.high_resolution=2.2",
+      "output_file_name_prefix=tst_cutoff"],
+     [-0.358, 5.149, 2.882], [-3.708, -0.734, -2.217]),
+    (["fmodel.xray_data.low_resolution=10",
+      "output_file_name_prefix=tst_cutoff_low"],
+     [2.547, 12.601, 5.798], [0.325, 5.589, 2.042])]
 
-  # now with high resolution cutoff
-  args_polder = [
-    model_fn,
-    mtz_fn,
-    "fmodel.xray_data.high_resolution=2.2",
-    "sphere_radius=3",
-    'solvent_exclusion_mask_selection="resname PHE and resseq 1" ',
-    'output_file_name_prefix=tst_cutoff',
-    'debug="True"'
-  ]
-  r = run_program(program_class=polder.Program, args=args_polder, logger=null_out())
+  for extra_args, mmm_mp_expected, mmm_o_expected in cases:
+    args_polder = [
+      model_fn,
+      mtz_fn,
+      "sphere_radius=3",
+      'solvent_exclusion_mask_selection="%s"' % selection,
+      'debug="True"'] + extra_args
+    r = run_program(program_class=polder.Program, args=args_polder,
+      logger=null_out())
+    # debug=True also writes the biased omit map
+    mmm_mp, mmm_bias_omit, mmm_o = get_map_stats_at_sites(
+      file_name  = r.output_file,
+      labels     = [polder_label, bias_omit_label, omit_label],
+      sites_cart = sites_cart)
+    assert approx_equal(mmm_mp, mmm_mp_expected, eps=0.15)
+    assert approx_equal(mmm_o, mmm_o_expected, eps=0.15)
 
-  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    r.output_file).as_miller_arrays()
-  mmm_mp, mmm_o = check(miller_arrays, pdb_hierarchy)
-  assert approx_equal(mmm_mp, [-0.358, 5.149, 2.882], eps=0.15)
-  assert approx_equal(mmm_o, [-3.708, -0.734, -2.217], eps=0.15)
+    for fn in [r.output_file, "box_1_polder.ccp4", "box_2_polder.ccp4",
+               "box_3_polder.ccp4"]:
+      os.remove(fn)
+    for fn in ["box_polder.pdb", "box_polder.cif"]:
+      if os.path.isfile(fn):
+        os.remove(fn)
 
-  os.remove(r.output_file)
-  os.remove("box_1_polder.ccp4")
-  os.remove("box_2_polder.ccp4")
-  os.remove("box_3_polder.ccp4")
-  extensions = ['.pdb', '.cif']
-  for ext in extensions:
-    file_path = 'box_polder' + ext
-    if os.path.isfile(file_path):
-      try:
-        os.remove(file_path)
-      except Exception as e:
-        print(f"Error removing {file_path}: {e}")
-
-  # now with low resolution cutoff
-  args_polder = [
-    model_fn,
-    mtz_fn,
-    "fmodel.xray_data.low_resolution=10",
-    "sphere_radius=3",
-    'solvent_exclusion_mask_selection="resname PHE and resseq 1" ',
-    'output_file_name_prefix=tst_cutoff_low',
-    'debug="True"'
-  ]
-  r = run_program(program_class=polder.Program, args=args_polder, logger=null_out())
-
-  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    r.output_file).as_miller_arrays()
-  mmm_mp, mmm_o = check(miller_arrays, pdb_hierarchy)
-  assert approx_equal(mmm_mp, [2.547, 12.601, 5.798], eps=0.15)
-  assert approx_equal(mmm_o, [0.325, 5.589, 2.042], eps=0.15)
-
-  # Clean up files
   os.remove(model_fn)
   os.remove(mtz_fn)
-  os.remove(r.output_file)
-  os.remove("box_1_polder.ccp4")
-  os.remove("box_2_polder.ccp4")
-  os.remove("box_3_polder.ccp4")
-  extensions = ['.pdb', '.cif']
-  for ext in extensions:
-    file_path = 'box_polder' + ext
-    if os.path.isfile(file_path):
-      try:
-        os.remove(file_path)
-      except Exception as e:
-        print(f"Error removing {file_path}: {e}")
 
 # ---------------------------------------------------------------------------
 
-def check(miller_arrays, pdb_hierarchy):
-  mc_polder, mc_bias_omit, mc_omit = [None,]*3
-  for ma in miller_arrays:
-    lbl = ma.info().label_string()
-    if(lbl == "mFo-DFc_polder,PHImFo-DFc_polder"):
-      mc_polder = ma.deep_copy()
-    if(lbl == "mFo-DFc_bias_omit,PHImFo-DFc_bias_omit"):
-      mc_bias_omit = ma.deep_copy()
-    if(lbl == "mFo-DFc_omit,PHImFo-DFc_omit"):
-      mc_omit = ma.deep_copy()
-  assert [mc_polder, mc_bias_omit, mc_omit].count(None)==0
-  cg = maptbx.crystal_gridding(
-    unit_cell         = mc_polder.unit_cell(),
-    d_min             = mc_polder.d_min(),
-    resolution_factor = 0.25,
-    space_group_info  = mc_polder.space_group_info())
-  map_polder   = get_map(cg=cg, mc=mc_polder)
-  map_bias_omit = get_map(cg=cg, mc=mc_bias_omit)
-  map_omit     = get_map(cg=cg, mc=mc_omit)
+def exercise_01(prefix="tst_polder_masks"):
+  """
+  Test for phenix.polder sphere radius and box buffer.
+  """
+  model_fn = "%s.pdb" % prefix
+  mtz_fn = "%s.mtz" % prefix
+  write_model_and_data(model_fn=model_fn, mtz_fn=mtz_fn, model_str=pdb_str)
+  dm = DataManager(['model'])
+  dm.process_model_str(model_fn, pdb_str)
+  model = dm.get_model()
 
-  sel = pdb_hierarchy.atom_selection_cache().selection(string = "resname PHE and resseq 1")
-  sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(sel)
-  sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
-  mp  = get_map_stats(map=map_polder,   sites_frac=sites_frac_lig)
-  mlo = get_map_stats(map=map_bias_omit, sites_frac=sites_frac_lig)
-  mo  = get_map_stats(map=map_omit,     sites_frac=sites_frac_lig)
-  #
-  mmm_mp = mp.min_max_mean().as_tuple()
-  mmm_o = mo.min_max_mean().as_tuple()
-  #print("Polder map : %7.3f %7.3f %7.3f"%mmm_mp)
-  #print("Biased map : %7.3f %7.3f %7.3f"%mlo.min_max_mean().as_tuple())
-  #print("Omit       : %7.3f %7.3f %7.3f"%mmm_o)
-  #
-  return(mmm_mp, mmm_o)
+  params = iotbx.phil.parse(
+    input_string=mmtbx.maps.polder.master_params_str,
+    process_includes=True).extract()
+
+  selection_string = 'chain A'
+
+  fobs = None
+  for ma in reflection_file_reader.any_reflection_file(
+      file_name = mtz_fn).as_miller_arrays():
+    if(ma.info().label_string() == "f-obs"):
+      fobs = ma.deep_copy()
+  assert fobs is not None
+
+  mmm_list = []
+  mask_mmm = [[0.0, 1.0, 0.9083055555555556],
+              [0.0, 1.0, 0.8901388888888889],
+              [0.0, 1.0, 0.9083055555555556],
+              [0.0, 1.0, 0.8583379629629629],
+              [0.0, 1.0, 0.9083055555555556],
+              [0.0, 1.0, 0.8025601851851852] ]
+
+  for radius in [3, 5, 7]:
+    params.polder.sphere_radius = radius
+    polder_object = mmtbx.maps.polder.compute_polder_map(
+      f_obs            = fobs,
+      r_free_flags     = None,
+      model            = model,
+      params           = params.polder,
+      selection_string = selection_string)
+    polder_object.validate()
+    polder_object.run()
+    results = polder_object.get_results()
+
+    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
+
+  for i in range(6):
+    assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
+
+  mmm_list = []
+  mask_mmm = [ [0.0, 1.0, 0.898712962962963],
+               [0.0, 1.0, 0.8642268518518519],
+               [0.0, 1.0, 0.898712962962963],
+               [0.0, 1.0, 0.7957083333333334],
+               [0.0, 1.0, 0.898712962962963],
+               [0.0, 1.0, 0.6772777777777778] ]
+
+  for box_buffer in [3, 5, 7]:
+    params.polder.box_buffer = box_buffer
+    params.polder.compute_box = True
+    polder_object = mmtbx.maps.polder.compute_polder_map(
+      f_obs               = fobs,
+      r_free_flags        = None,
+      model               = model,
+      params              = params.polder,
+      selection_string    = selection_string)
+    polder_object.validate()
+    polder_object.run()
+    results = polder_object.get_results()
+
+    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
+
+  for i in range(6):
+    assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
+
+  os.remove(model_fn)
+  os.remove(mtz_fn)
 
 # ---------------------------------------------------------------------------
 
@@ -333,6 +357,8 @@ END
 
 if (__name__ == "__main__"):
   t0 = time.time()
+  # Before the CIF pass: it selects by chain ID, which the conversion changes.
+  exercise_01()
   for as_cif in (False, True):  # XXX as_cif is one way so True must be last
     if as_cif:
       print("CONVERTING PDB STRINGS TO CIF AND CHANGING "+

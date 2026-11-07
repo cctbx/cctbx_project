@@ -2,16 +2,81 @@ from __future__ import absolute_import, division, print_function
 import time, os
 from libtbx.test_utils import approx_equal
 from iotbx import reflection_file_reader
-from cctbx import maptbx
-from mmtbx.regression.tst_polder import get_map, get_map_stats
+import iotbx.phil
+import mmtbx.maps.polder
+from mmtbx.regression.tst_polder import get_map_stats_at_sites, \
+  polder_label, omit_label
 from iotbx.data_manager import DataManager
 from iotbx.cli_parser import run_program
 from mmtbx.programs import fmodel, polder
 from libtbx.utils import null_out
 
-def exercise_00(prefix="tst_polder_box"):
+def exercise_00(dm, mtz_fn):
   """
   Test for phenix.polder using the compute_box=True option.
+  """
+  selection = '((resseq 65 and name CG) or (resseq 7 and name OH) or \
+    resseq 183 or resseq 95 or (resseq 148 and name CG))'
+
+  args = [
+    "tst_polder_box.pdb",
+    mtz_fn,
+    "compute_box=True",
+    'solvent_exclusion_mask_selection="%s"' % selection]
+    #'mask_output=True']
+
+  r = run_program(program_class=polder.Program, args=args, logger=null_out())
+
+  pdb_hierarchy = dm.get_model('tst_polder_box.pdb').get_hierarchy()
+  sel = pdb_hierarchy.atom_selection_cache().selection(string = selection)
+  sites_cart = pdb_hierarchy.atoms().extract_xyz().select(sel)
+  mmm_mp, mmm_o = get_map_stats_at_sites(
+    file_name  = r.output_file,
+    labels     = [polder_label, omit_label],
+    sites_cart = sites_cart)
+  assert approx_equal(mmm_mp, [-2.051, 1.255, -0.162], eps=0.15)
+  assert approx_equal(mmm_o,  [-0.558, 0.138, -0.068], eps=0.15)
+
+  os.remove(r.output_file)
+
+# ---------------------------------------------------------------------------
+
+def exercise_01(dm, mtz_fn):
+  """
+  Test for phenix.polder correlation coefficients.
+  """
+  model = dm.get_model('tst_polder_box_ligand.pdb')
+
+  params = iotbx.phil.parse(
+    input_string=mmtbx.maps.polder.master_params_str,
+    process_includes=True).extract()
+
+  fobs = None
+  for ma in reflection_file_reader.any_reflection_file(
+      file_name = mtz_fn).as_miller_arrays():
+    if(ma.info().label_string() == "f-obs"):
+      fobs = ma.deep_copy()
+  assert fobs is not None
+
+  polder_object = mmtbx.maps.polder.compute_polder_map(
+    f_obs             = fobs,
+    r_free_flags      = None,
+    model             = model,
+    params            = params.polder,
+    selection_string  = 'resseq 88')
+  polder_object.validate()
+  polder_object.run()
+  vr = polder_object.get_results().validation_results
+
+  assert approx_equal([vr.cc12, vr.cc13, vr.cc23], [0.4153, 0.9980, 0.4213], eps = 0.1)
+  assert approx_equal([vr.cc12_peak, vr.cc13_peak, vr.cc23_peak], [0.4310, 0.9966, 0.4379], eps = 0.1)
+
+# ---------------------------------------------------------------------------
+
+def exercise(prefix="tst_polder_box"):
+  """
+  Test for phenix.polder: compute_box=True and correlation coefficients.
+  Data are calculated from the model with ligand (MES 88).
   """
   dm = DataManager(['model'])
   dm.process_model_str('tst_polder_box.pdb', pdb_str)
@@ -35,56 +100,12 @@ def exercise_00(prefix="tst_polder_box"):
     "output.file_name=%s" % mtz_fn]
   run_program(program_class=fmodel.Program, args=args, logger=null_out())
 
-  selection = '((resseq 65 and name CG) or (resseq 7 and name OH) or \
-    resseq 183 or resseq 95 or (resseq 148 and name CG))'
-
-  args = [
-    "tst_polder_box.pdb",
-    "tst_polder_box.mtz",
-    "compute_box=True",
-    'solvent_exclusion_mask_selection="%s"' % selection]
-    #'mask_output=True']
-
-  r = run_program(program_class=polder.Program, args=args, logger=null_out())
-
-  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    r.output_file).as_miller_arrays()
-  mc_polder, mc_bias_omit, mc_omit = [None,]*3
-  for ma in miller_arrays:
-    lbl = ma.info().label_string()
-    if(lbl == "mFo-DFc_polder,PHImFo-DFc_polder"):
-      mc_polder = ma.deep_copy()
-    if(lbl == "mFo-DFc_bias_omit,PHImFo-DFc_bias_omit"):
-      mc_bias_omit = ma.deep_copy()
-    if(lbl == "mFo-DFc_omit,PHImFo-DFc_omit"):
-      mc_omit = ma.deep_copy()
-  assert [mc_polder, mc_omit].count(None)==0
-  cg = maptbx.crystal_gridding(
-    unit_cell         = mc_polder.unit_cell(),
-    d_min             = mc_polder.d_min(),
-    resolution_factor = 0.25,
-    space_group_info  = mc_polder.space_group_info())
-  map_polder   = get_map(cg=cg, mc=mc_polder)
-  map_omit     = get_map(cg=cg, mc=mc_omit)
-  pdb_hierarchy = dm.get_model('tst_polder_box.pdb').get_hierarchy()
-  sel = pdb_hierarchy.atom_selection_cache().selection(string = selection)
-  sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(sel)
-  sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
-  mp  = get_map_stats(map=map_polder,   sites_frac=sites_frac_lig)
-  mo  = get_map_stats(map=map_omit,     sites_frac=sites_frac_lig)
-  #
-  mmm_mp = mp.min_max_mean().as_tuple()
-  mmm_o = mo.min_max_mean().as_tuple()
-  #print("Polder map : %7.3f %7.3f %7.3f"%mmm_mp)
-  #print("Omit       : %7.3f %7.3f %7.3f"%mmm_o)
-  #
-  assert approx_equal(mmm_mp, [-2.051, 1.255, -0.162], eps=0.15)
-  assert approx_equal(mmm_o,  [-0.558, 0.138, -0.068], eps=0.15)
+  exercise_01(dm=dm, mtz_fn=mtz_fn)
+  exercise_00(dm=dm, mtz_fn=mtz_fn)
 
   os.remove('tst_polder_box.pdb')
   os.remove('tst_polder_box_ligand.pdb')
-  os.remove('tst_polder_box.mtz')
-  os.remove(r.output_file)
+  os.remove(mtz_fn)
 
 # ---------------------------------------------------------------------------
 
@@ -198,5 +219,5 @@ HETATM   88  S   MES A  88       8.674  10.225  15.261  1.00 59.12           S
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  exercise_00()
+  exercise()
   print("OK. Time: %8.3f"%(time.time()-t0))
