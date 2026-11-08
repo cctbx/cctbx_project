@@ -388,7 +388,7 @@ def process_predicted_model(
 
   # Decide what to do
   p = params.process_predicted_model
-  set_defaults(p, pae_matrix = pae_matrix)
+  set_defaults(p, pae_matrix = pae_matrix, log = log)
 
   # initialize variable
   selection_for_b_factor_filtering_no_chain_id = None
