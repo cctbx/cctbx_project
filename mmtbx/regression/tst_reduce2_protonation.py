@@ -685,6 +685,50 @@ def test_supplied_h_only_conformers():
     [("resseq 56", "his_he2")], ["keep_existing_H=True"])
   assert ("  HIS A 56: HE2 only (his_he2, conformers A B): HE2 kept (supplied) "
     "in A; HE2 added in B, HD1 left out\n") in desc, desc
+  # B16 C-2/C-3 reviews: input D is normalized, but His 56's H-only altlocs
+  # are no H/D layout and stay conformers. The D in another residue (Ala 55
+  # DA); in His 56 itself, its amide H as a coincident H/D pair in C/D (0.5
+  # each), also with HE2 A / HB3 B at 0.6/0.4
+  def da(l):
+    if l.startswith("ATOM") and int(l[22:26]) == 55 and \
+       l[12:16].strip() == "HA":
+      return l[:12] + " DA " + l[16:76] + " D" + l[78:]
+    return l
+  def amide_pair(l):
+    if l.startswith("ATOM") and int(l[22:26]) == 56 and \
+       l[12:16].strip() == "H":
+      return (l[:16] + "C" + l[17:54] + "  0.50" + l[60:] + "\n" +
+              l[:12] + " D  D" + l[17:54] + "  0.50" + l[60:76] + " D" +
+              l[78:])
+    return l
+  def occ_64(l):
+    if l.startswith("ATOM") and int(l[22:26]) == 56:
+      if l[12:17] == " HE2A": return l[:54] + "  0.60" + l[60:]
+      if l[12:17] == " HB3B": return l[:54] + "  0.40" + l[60:]
+    return l
+  with_d = "\n".join(da(l) for l in supplied.splitlines()) + "\n"
+  assert h_counts(with_d, 55).get(("DA", "")) == 1
+  with_pair = "\n".join(amide_pair(l) for l in supplied.splitlines()) + "\n"
+  assert h_counts(with_pair, 56).get(("D", "D")) == 1
+  with_pair_64 = "\n".join(occ_64(l) for l in with_pair.splitlines()) + "\n"
+  assert with_pair_64.count("  0.60") == 1 and with_pair_64.count("  0.40") == 1
+  for prefix, text in (("tst_reduce2_protonation_44", with_d),
+                       ("tst_reduce2_protonation_45", with_pair),
+                       ("tst_reduce2_protonation_46", with_pair_64)):
+    model, desc, _ = run(prefix, text, [("resseq 56", "his_he2")],
+      ["keep_existing_H=True", "neutron_option=hd_and_h"])
+    assert ("  HIS A 56: HE2 only (his_he2, conformers A B): HE2 kept "
+      "(supplied) in A; HE2 added in B, HD1 left out\n") in desc, (prefix,
+      desc)
+    # both conformers' HE2 sit on one site (blank ring): one HE2/DE2 pair
+    sites = {"HE2": [], "DE2": []}
+    out = hierarchy(model)   # the atoms keep their parents while in use
+    for a in out.atoms():
+      if a.parent().parent().resseq_as_int() == 56 and \
+         a.name.strip() in sites:
+        sites[a.name.strip()].append(a.xyz)
+    assert len(sites["HE2"]) == 1 and sites["HE2"] == sites["DE2"], (prefix,
+      sites)
 
 def test_supplied_pair_relabelled():
   # B16 A-2 review (P3), repair (d): His 56 CG split A/B (0.6/0.4), the

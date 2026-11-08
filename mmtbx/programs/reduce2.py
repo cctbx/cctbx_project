@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.10.0"
+version = "3.10.1"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -1873,22 +1873,46 @@ NOTES:
     candidates, match = self._MatchInputHD(part)
     clean = lambda id_str: id_str.replace('pdb=', '').replace('"', '')
     # B16: repairs of deposited layouts, planned from this match; the
-    # repaired model is matched again and checked as before
+    # repaired model is matched again and checked as before. Key sets kept
+    # across a change of the model (accepted pairs, origin, skip) are in the
+    # full model's keys, and remapped when a change renames atoms or shifts
+    # a chain occurrence (a removed chain).
     self._input_repairs = []
     refused = {}
     origin = {}
-    accepted = None
+    accepted_full = set()
+    def accepted_in(part, part_keys):
+      # the accepted pairs in the part's keys, for _MatchInputHD()
+      if not accepted_full: return None
+      if part_keys is None: return accepted_full
+      to_part = dict(zip(part_keys,
+                         hd_exchange.atom_keys(part.get_hierarchy())))
+      return set((to_part[h_key], to_part[d_key])
+                 for h_key, d_key in accepted_full)
+    def conversion(x, conformer_site):
+      # (c): one isotope in both conformers, as the output writes it
+      if not conformer_site: return ''
+      if hd_exchange.conformer_site_isotope(self.params.neutron_option,
+                                            x) == 'D':
+        return '; written as D in both conformers (the H converted to D)'
+      return '; written as H in both conformers (the D converted to H)'
     if match.problems or any(u.action == 'stop' for u in match.unresolved):
       plan = hd_exchange.repair_plan(part, candidates, match)
       refused = plan.refused
-      accepted = set((x.h_key, x.d_key) for x in plan.accept)
+      key_map = None
+      if part_keys is not None:
+        key_map = dict(zip(hd_exchange.atom_keys(part.get_hierarchy()),
+                           part_keys))
+      to_full = lambda k: k if key_map is None else key_map[k]
+      accepted_full = set((to_full(x.h_key), to_full(x.d_key))
+                          for x in plan.accept + plan.conformer)
       if hd_exchange.repairs_made(plan):
-        key_map = None
-        if part_keys is not None:
-          key_map = dict(zip(hd_exchange.atom_keys(part.get_hierarchy()),
-                             part_keys))
         h = full.get_hierarchy().deep_copy()
         origin = hd_exchange.apply_repairs(h, plan, key_map)
+        # an accepted atom renamed by another repair keeps its pair
+        renamed = dict((before, after) for after, before in origin.items())
+        accepted_full = set((renamed.get(h_key, h_key),
+          renamed.get(d_key, d_key)) for h_key, d_key in accepted_full)
         self.model = self._RebuildModel(h, make_restraints=True)
         full = self.model
         part, part_keys = checked_part(full)
@@ -1898,12 +1922,15 @@ NOTES:
            plan.rename),
           ('H/D pair in conformer groups, moved to H/D-only groups',
            plan.relabel),
-          ('H/D pair on a one-H parent beyond 0.20 A, paired', plan.accept)):
+          ('H/D pair on a one-H parent beyond 0.20 A, paired', plan.accept),
+          ('H and D on altloc copies of one parent, one isotope per '
+           'conformer', plan.conformer)):
         for x in entries:
           self._input_repairs.append(group_args(title=title, output=x.atom,
-            text=x.reason))
+            text=x.reason + conversion(x, entries is plan.conformer)))
       if self._input_repairs:
-        candidates, match = self._MatchInputHD(part, accepted=accepted)
+        candidates, match = self._MatchInputHD(part,
+          accepted=accepted_in(part, part_keys))
         print('Input H/D repaired: %d site(s), listed in the H/D model '
           'section' % len(self._input_repairs), file=self.logger)
     def why(*ids):
@@ -1957,9 +1984,21 @@ NOTES:
         drop = set(fk for k, fk in zip(
           hd_exchange.atom_keys(part.get_hierarchy()), part_keys) if k in drop)
       keys = hd_exchange.atom_keys(full.get_hierarchy())
-      full = full.select(flex.bool([k not in drop for k in keys]))
+      sel = flex.bool([k not in drop for k in keys])
+      full = full.select(sel)
+      # removing a whole chain shifts the occurrence of later same-id chains
+      new_key = dict(zip([k for k, x in zip(keys, sel) if x],
+                         hd_exchange.atom_keys(full.get_hierarchy())))
+      accepted_full = set((new_key[h_key], new_key[d_key])
+                          for h_key, d_key in accepted_full)
+      origin = dict((new_key[after], before)
+                    for after, before in origin.items() if after in new_key)
+      if skip:
+        skip = set(new_key[k] for k in skip)
+        self._unrestrained.keys = skip
       part, part_keys = checked_part(full)
-      candidates, match = self._MatchInputHD(part, accepted=accepted)
+      candidates, match = self._MatchInputHD(part,
+        accepted=accepted_in(part, part_keys))
     self.model = full
     self._supplied_sites = self._SuppliedSites(full, part, part_keys, match,
       origin)
