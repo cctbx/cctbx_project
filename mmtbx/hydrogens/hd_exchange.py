@@ -425,6 +425,7 @@ def find_hd_candidates(hierarchy, parent_table, provenance=None, model=None):
           continue
         different_parents.append(group_args(
           h_id=atoms[ih].id_str(), d_id=atoms[id_].id_str(),
+          h_key=keys[ih], d_key=keys[id_], i_h=ih, i_d=id_,
           h_parent=(eh.parent_id, eh.parent_sym_ops),
           d_parent=(ed.parent_id, ed.parent_sym_ops),
           distance=_distance(atoms[ih], atoms[id_])))
@@ -481,8 +482,10 @@ def collapse_check(candidates, xyz_tolerance=0.2, accepted=None):
   same-name H/D on different parents, a single D whose H name exists in its
   atom_group, an H/D pair in one conformer (one of them floating).
   Unresolved: floating (remove) and ambiguous (stop, restraints named). Notes (never a stop): occupancy sum vs parent occupancy, B.
-  accepted: (h_key, d_key) of pairs that collapse beyond xyz_tolerance when
-  the distance is their only problem (repair_plan(), case e); None for none."""
+  accepted: (h_key, d_key) accepted by repair_plan(): pairs that collapse
+  beyond xyz_tolerance when the distance is their only problem (case e), and
+  same-name H and D on altloc copies of one parent kept as two singles (case
+  c, no problem listed); None for none."""
   pairs = []
   problems = []
   notes = []
@@ -521,6 +524,7 @@ def collapse_check(candidates, xyz_tolerance=0.2, accepted=None):
       notes.append(group_args(kind="b", h_id=c.h_id, d_id=c.d_id,
         text="H and D B differ by %.2f" % c.b_diff))
   for dp in candidates.different_parents:
+    if accepted is not None and (dp.h_key, dp.d_key) in accepted: continue
     problems.append(group_args(kind="different parents", h_id=dp.h_id,
       d_id=dp.d_id, reasons=["same name on different parents: %s %s / %s %s"
         % (dp.h_parent + dp.d_parent)], candidate=dp))
@@ -711,6 +715,16 @@ def repair_plan(model, candidates, match):
         the dictionary, carrying only these two, each at a valid length,
         at most REPAIR_E_LIMIT apart (an empirical repair limit). The pair
         collapses with collapse_check(accepted=...), the H's position kept.
+      - conformer (c): same-name H and D on the altloc copies of one parent
+        atom in two real conformers of one residue_group, each in its own
+        parent's atom_group, neither in a pair, each occupancy equal to its
+        conformer's (0.01): kept as two singles, no atom changed (with
+        collapse_check(accepted=...)). That each conformer carries one
+        isotope is an inference from the occupancies. Each entry carries
+        what conformer_site_isotope() needs. The same layout with H + D =
+        the copies' occupancy otherwise is consistent with an exchange pair
+        over the two copies, but the occupancies do not determine how H and
+        D are distributed over the conformers: refused.
 
       refused: {atom label: reason} for every refused atom (labels as in
       the check's lines, without "pdb=" and quotes).
@@ -720,7 +734,8 @@ def repair_plan(model, candidates, match):
   keys = atom_keys(hierarchy)
   chem = _chemistry(model)
   by_id = dict((a.id_str(), i) for i, a in enumerate(atoms))
-  plan = group_args(split=[], rename=[], relabel=[], accept=[], refused={})
+  plan = group_args(split=[], rename=[], relabel=[], accept=[], conformer=[],
+    refused={})
   def refuse(atom_ids, reason):
     for a in atom_ids:
       if a is not None: plan.refused[_label_of_id(a)] = reason
@@ -728,11 +743,12 @@ def repair_plan(model, candidates, match):
   done = set()
   _plan_rename(plan, match, model, atoms, keys, refuse, done)
   table = None
+  singles = set(s.i_seq for s in candidates.singles)
   for x in match.problems:
     if x.kind != "pair":
       if x.kind == "different parents":
-        refuse([x.h_id, x.d_id], "no repair for H and D on different "
-          "parents")
+        _plan_conformer(plan, x.candidate, atoms, keys, by_id, singles,
+          refuse)
       else:
         refuse([x.h_id, x.d_id] + [getattr(x.candidate, "atom_id", None),
           getattr(x.candidate, "partner_id", None)],
@@ -810,6 +826,11 @@ def _plan_split(plan, candidates, atoms, keys, by_id, chem, refuse):
           break
         v = matrix.col(a.xyz) - matrix.col(p.xyz)
         angle = v.angle(d, deg=True)
+        if angle is None:
+          # on the parent's position: no direction
+          why = "bond %.3f A to %s (dictionary %s A)" % (v.length(),
+            _label(p), _lengths_text(lengths))
+          break
         per_copy.append((p.parent().altloc, v.length(), angle))
         if angle > _REPAIR_ANGLE:
           why = "%.1f deg from the ideal direction on %s (limit %.0f)" % (
@@ -1009,6 +1030,58 @@ def _plan_accept(plan, c, atoms, keys, by_id, chem, on_parent, refuse):
       "empirical repair limit); %s; the H position is kept" % (c.distance,
       REPAIR_E_LIMIT, ", ".join(words))))
 
+def _plan_conformer(plan, dp, atoms, keys, by_id, singles, refuse):
+  # (c)
+  h, d = atoms[dp.i_h], atoms[dp.i_d]
+  ids = [dp.h_id, dp.d_id]
+  i_ph, i_pd = by_id.get(dp.h_parent[0]), by_id.get(dp.d_parent[0])
+  why = None
+  if i_ph is None or i_pd is None:
+    why = "parents not found"
+  elif dp.h_parent[1] != ("x,y,z",) or dp.d_parent[1] != ("x,y,z",):
+    why = "a parent is a symmetry mate"
+  else:
+    ph, pd = atoms[i_ph], atoms[i_pd]
+    gh, gd = ph.parent(), pd.parent()
+    if ph.name != pd.name or gh.resname != gd.resname or \
+       gh.parent().memory_id() != gd.parent().memory_id():
+      why = "parents are different atoms"
+    elif gh.altloc == "" or gd.altloc == "" or gh.altloc == gd.altloc:
+      why = "parents are not altloc copies in two conformers"
+    elif h.parent().memory_id() != gh.memory_id() or \
+         d.parent().memory_id() != gd.memory_id():
+      why = "H or D not in its parent's conformer group"
+    elif dp.i_h not in singles or dp.i_d not in singles:
+      why = "H or D also in a pair"
+  if why is not None:
+    refuse(ids, "no repair for H and D on different parents: " + why)
+    return
+  co = (_conformer_occupancy(gh), _conformer_occupancy(gd))
+  if not all(isinstance(o, float) for o in co):
+    refuse(ids, "conformer occupancy not one value (%s)" % (co,))
+    return
+  words = "%s %.2f on %s (conformer %.2f), %s %.2f on %s (conformer %.2f)" % (
+    h.name.strip(), h.occ, _label(ph), co[0], d.name.strip(), d.occ,
+    _label(pd), co[1])
+  if abs(h.occ - co[0]) <= _OCC_TOLERANCE and \
+     abs(d.occ - co[1]) <= _OCC_TOLERANCE:
+    plan.conformer.append(group_args(h_key=keys[dp.i_h], d_key=keys[dp.i_d],
+      atom="%s / %s" % (_label(h), _label(d)),
+      reason="kept as two singles: %s; read as one isotope per conformer "
+        "(each at its conformer's occupancy), an inference" % words,
+      water=_is_water(gh), exchangeable=ph.element.strip().upper() != "C",
+      name=normalized_name(d)))
+  elif abs(h.occ + d.occ - (ph.occ + pd.occ)) <= _OCC_TOLERANCE:
+    refuse(ids, "%s, H + D = %.2f: consistent with an exchange pair over the "
+      "two copies, but the occupancies do not determine how H and D are "
+      "distributed over the conformers (%.2f/%.2f), so the site is not "
+      "repaired; remove the H and D at this site and rerun with "
+      "approach=add keep_existing_H=True, which places them anew "
+      "(approach=optimize adds no H)" % (words, h.occ + d.occ, co[0], co[1]))
+  else:
+    refuse(ids, "%s: neither one isotope per conformer nor an exchange "
+      "pair" % words)
+
 def repairs_made(plan):
   """True if apply_repairs() changes anything (case e changes no atom)"""
   return bool(plan.split or plan.rename or plan.relabel)
@@ -1181,6 +1254,13 @@ def normalize_to_h(hierarchy, match):
   return group_args(records=records,
     counts=group_args(n_pairs=n_pairs, n_d_renamed=n_renamed,
                       n_dod=n_water))
+
+def conformer_site_isotope(option, entry):
+  """'H' or 'D': the isotope apply_neutron_option() writes in both conformers
+  of a repair_plan() conformer (c) entry, per neutron option"""
+  kind = _output_kind(option, entry.water, entry.exchangeable, True)[0]
+  if not entry.name.strip().startswith("H"): kind = "H"   # NOT_PAIRABLE
+  return kind
 
 def _output_kind(option, water, exchangeable, conformer):
   """'H', 'D' or 'split' per "What each mode writes"; plus a reason when an

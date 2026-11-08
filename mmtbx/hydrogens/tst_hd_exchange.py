@@ -2087,8 +2087,9 @@ ATOM     43  D  BASP A  19     -14.364   3.791 -23.721  1.00 29.74           D
 END
 """
 
-# control (c) 7T5E B 24-26: Tyr B 25 HH on OH A, DH on OH B
-pdb_ctl_7t5e_tyr_b25 = """\
+# (c) 7T5E B 24-26: Tyr B 25 HH on OH A (0.65, conformer A 0.65), DH on
+# OH B (0.35, conformer B 0.35): one isotope per conformer
+pdb_c_7t5e_tyr_b25 = """\
 CRYST1   68.296   42.269   70.413  90.00  98.47  90.00 P 1 21 1
 ATOM      1  N   THR B  24     -26.961  -5.468  -6.207  1.00 20.38           N
 ATOM      2  CA  THR B  24     -27.028  -6.786  -6.835  1.00 20.32           C
@@ -2161,6 +2162,109 @@ ATOM     68 HD21AASN B  26     -18.980 -10.687  -4.769  0.05 15.72           H
 END
 """
 
+# control (c) 7T5E B 81-83: Ser B 82 H on N A (0.15, conformer 0.56), D on
+# N B (0.85, conformer 0.44): H + D = 1, consistent with an exchange pair
+# over the two copies, which the occupancies do not distribute
+pdb_ctl_7t5e_ser_b82 = """\
+CRYST1   68.296   42.269   70.413  90.00  98.47  90.00 P 1 21 1
+ATOM      1  N   ASP B  81     -11.576 -11.702  -1.277  1.00 18.52           N
+ATOM      2  CA  ASP B  81     -10.253 -12.182  -1.673  1.00 22.89           C
+ATOM      3  C   ASP B  81      -9.153 -11.635  -0.763  1.00 18.26           C
+ATOM      4  O   ASP B  81      -9.161 -10.465  -0.377  1.00 18.25           O
+ATOM      5  CB  ASP B  81      -9.946 -11.796  -3.119  1.00 22.45           C
+ATOM      6  CG  ASP B  81      -8.762 -12.585  -3.690  1.00 30.22           C
+ATOM      7  OD1 ASP B  81      -9.009 -13.673  -4.226  1.00 35.50           O
+ATOM      8  OD2 ASP B  81      -7.594 -12.159  -3.580  1.00 24.83           O
+ATOM      9  HA  ASP B  81     -10.216 -13.265  -1.618  1.00 19.86           H
+ATOM     10  HB2 ASP B  81     -10.798 -12.031  -3.759  1.00 30.20           H
+ATOM     11  HB3 ASP B  81      -9.718 -10.737  -3.187  1.00 17.62           H
+ATOM     12  H  AASP B  81     -12.081 -11.198  -2.005  0.31 17.56           H
+ATOM     13  D  BASP B  81     -12.058 -11.208  -2.025  0.69 17.73           D
+ATOM     14  N  ASER B  82      -8.190 -12.497  -0.404  0.56 19.69           N
+ATOM     15  CA ASER B  82      -7.139 -12.096   0.535  0.56 20.47           C
+ATOM     16  C  ASER B  82      -6.167 -11.056  -0.035  0.56 17.24           C
+ATOM     17  O  ASER B  82      -5.431 -10.452   0.743  0.56 18.12           O
+ATOM     18  CB ASER B  82      -6.354 -13.336   1.009  0.56 26.37           C
+ATOM     19  OG ASER B  82      -7.094 -14.060   1.996  0.56 28.69           O
+ATOM     20  DG ASER B  82      -7.951 -14.366   1.633  0.56 24.69           D
+ATOM     21  H  ASER B  82      -8.111 -13.457  -0.738  0.15 20.86           H
+ATOM     22  HA ASER B  82      -7.612 -11.642   1.406  0.56 23.40           H
+ATOM     23  HB2ASER B  82      -6.163 -13.985   0.160  0.56 24.54           H
+ATOM     24  HB3ASER B  82      -5.408 -12.998   1.432  0.56 22.13           H
+ATOM     25  N  BSER B  82      -8.182 -12.519  -0.468  0.44 19.76           N
+ATOM     26  CA BSER B  82      -7.051 -12.227   0.424  0.44 21.62           C
+ATOM     27  C  BSER B  82      -6.233 -11.030  -0.041  0.44 17.42           C
+ATOM     28  O  BSER B  82      -5.646 -10.319   0.780  0.44 18.26           O
+ATOM     29  CB BSER B  82      -6.119 -13.452   0.521  0.44 19.15           C
+ATOM     30  OG BSER B  82      -5.800 -13.975  -0.771  0.44 24.96           O
+ATOM     31  D  BSER B  82      -8.184 -13.456  -0.864  0.85 19.97           D
+ATOM     32  DG BSER B  82      -5.982 -13.331  -1.480  0.44 22.97           D
+ATOM     33  HA BSER B  82      -7.431 -12.005   1.420  0.44 23.61           H
+ATOM     34  HB2BSER B  82      -5.197 -13.136   1.005  0.44 20.95           H
+ATOM     35  HB3BSER B  82      -6.607 -14.225   1.116  0.44 23.29           H
+ATOM     36  N   SER B  83      -6.173 -10.806  -1.349  1.00 11.89           N
+ATOM     37  CA  SER B  83      -5.411  -9.695  -1.911  1.00 11.37           C
+ATOM     38  C   SER B  83      -5.903  -8.334  -1.430  1.00 17.87           C
+ATOM     39  O   SER B  83      -5.145  -7.360  -1.428  1.00 13.17           O
+ATOM     40  CB  SER B  83      -5.528  -9.723  -3.434  1.00 18.80           C
+ATOM     41  OG  SER B  83      -6.876  -9.521  -3.867  1.00 17.48           O
+ATOM     42  HA  SER B  83      -4.365  -9.833  -1.634  1.00 19.36           H
+ATOM     43  HB2 SER B  83      -4.912  -8.910  -3.820  1.00 23.88           H
+ATOM     44  HB3 SER B  83      -5.158 -10.680  -3.813  1.00 15.26           H
+ATOM     45  D  BSER B  83      -6.624 -11.353  -2.062  1.00 20.57           D
+ATOM     46  DG DSER B  83      -7.377 -10.365  -3.873  1.00 22.34           D
+END
+"""
+
+# A47 (open, not used by a test yet), 7T5E A 130-132: Lys A 131 HZ1-3 in A,
+# DZ1/DZ2 in B; after the input normalization HZ1/HZ2 are blank, HZ3 is
+# alone in A, the amide H in B. add keep_existing_H=True stops at the output
+# H/D check ("HZ3C/DZ3D: 1 competing partner")
+pdb_a47_7t5e_lys_a131 = """\
+CRYST1   68.296   42.269   70.413  90.00  98.47  90.00 P 1 21 1
+ATOM      1  N   GLY A 130     -13.378   7.004 -30.766  1.00 26.79           N
+ATOM      2  CA  GLY A 130     -13.919   6.573 -32.040  1.00 22.20           C
+ATOM      3  C   GLY A 130     -15.335   6.071 -31.961  1.00 28.48           C
+ATOM      4  O   GLY A 130     -15.721   5.148 -32.691  1.00 28.25           O
+ATOM      5  HA2 GLY A 130     -13.915   7.381 -32.767  1.00 23.99           H
+ATOM      6  HA3 GLY A 130     -13.297   5.766 -32.435  1.00 30.22           H
+ATOM      7  H  AGLY A 130     -13.185   6.225 -30.138  0.03 27.78           H
+ATOM      8  D  BGLY A 130     -13.190   6.219 -30.151  0.97 28.12           D
+ATOM      9  N   LYS A 131     -16.141   6.717 -31.124  1.00 23.22           N
+ATOM     10  CA  LYS A 131     -17.548   6.357 -30.962  1.00 17.59           C
+ATOM     11  C   LYS A 131     -17.756   4.897 -30.524  1.00 16.38           C
+ATOM     12  O   LYS A 131     -18.812   4.306 -30.776  1.00 19.42           O
+ATOM     13  CB  LYS A 131     -18.326   6.623 -32.256  1.00 35.34           C
+ATOM     14  CG  LYS A 131     -18.337   8.088 -32.643  1.00 43.86           C
+ATOM     15  CD  LYS A 131     -19.046   8.339 -33.976  1.00 48.35           C
+ATOM     16  CE  LYS A 131     -19.374   9.821 -34.151  1.00 47.46           C
+ATOM     17  NZ  LYS A 131     -20.670  10.246 -33.479  1.00 70.24           N
+ATOM     18  HA  LYS A 131     -17.999   6.995 -30.208  1.00 25.58           H
+ATOM     19  HB2 LYS A 131     -17.874   6.065 -33.075  1.00 24.06           H
+ATOM     20  HB3 LYS A 131     -19.361   6.309 -32.090  1.00 30.72           H
+ATOM     21  HG2 LYS A 131     -18.885   8.648 -31.882  1.00 38.19           H
+ATOM     22  HG3 LYS A 131     -17.313   8.449 -32.732  1.00 41.48           H
+ATOM     23  HD2 LYS A 131     -18.368   8.038 -34.773  1.00 36.31           H
+ATOM     24  HD3 LYS A 131     -19.973   7.770 -34.017  1.00 37.34           H
+ATOM     25  HE2 LYS A 131     -18.559  10.385 -33.695  1.00 42.17           H
+ATOM     26  HE3 LYS A 131     -19.443  10.059 -35.213  1.00 54.16           H
+ATOM     27  D  BLYS A 131     -15.836   7.525 -30.576  1.00 24.23           D
+ATOM     28  DZ1BLYS A 131     -20.704   9.907 -32.496  0.14 45.83           D
+ATOM     29  DZ2BLYS A 131     -20.735  11.285 -33.473  0.53 52.21           D
+ATOM     30  HZ1ALYS A 131     -20.696   9.876 -32.507  1.00 45.46           H
+ATOM     31  HZ2ALYS A 131     -20.749  11.283 -33.454  0.86 52.34           H
+ATOM     32  HZ3ALYS A 131     -21.477   9.854 -34.001  0.47 51.02           H
+ATOM     33  N   GLY A 132     -16.783   4.304 -29.835  1.00 19.85           N
+ATOM     34  CA  GLY A 132     -16.974   2.967 -29.318  1.00 18.69           C
+ATOM     35  C   GLY A 132     -16.764   1.878 -30.346  1.00 24.96           C
+ATOM     36  O   GLY A 132     -17.070   0.711 -30.048  1.00 17.33           O
+ATOM     37  HA2 GLY A 132     -16.284   2.772 -28.498  1.00 23.60           H
+ATOM     38  HA3 GLY A 132     -17.993   2.873 -28.943  1.00 23.32           H
+ATOM     39  H  AGLY A 132     -15.878   4.727 -29.642  0.68 20.26           H
+ATOM     40  D  BGLY A 132     -15.859   4.696 -29.637  0.32 20.43           D
+END
+"""
+
 # ------------------------------------------------------------------------------
 # B16: repair_plan() and apply_repairs()
 
@@ -2211,6 +2315,47 @@ def ala_fixture(rot=0.0, shift=0.01, occ_a=0.5, occ_b=0.5, d_length=1.09):
   atom("DA", " ", ca + u * d_length, 1.0, "D")
   return "\n".join(lines) + "\nEND\n"
 
+def ala_d_on_parent():
+  """ala_fixture() with the DA on CA A (zero bond length)"""
+  lines = ala_fixture().splitlines()
+  ca = [l for l in lines if l[12:17] == " CA A"][0]
+  return "\n".join(l[:30] + ca[30:54] + l[54:] if l[12:16] == " DA " else l
+                   for l in lines) + "\n"
+
+def ala_conformer_ha(occ_a=0.6, occ_b=0.4, shift=0.3):
+  """ala_fixture() in conformers A/B shift apart, HA on CA A at occ_a and
+  DA on CA B at occ_b (each at its conformer's occupancy): a carbon-bound
+  (c) site, no blank atom"""
+  lines = ala_fixture(shift=shift, occ_a=occ_a, occ_b=occ_b).splitlines()
+  xyz = {}
+  for l in lines:
+    if l.startswith("ATOM"):
+      xyz[l[12:17]] = matrix.col((float(l[30:38]), float(l[38:46]),
+                                  float(l[46:54])))
+  mean = (xyz[" CA A"] + xyz[" CA B"]) / 2.0
+  result = []
+  for l in lines:
+    if l[12:17] != " DA  ":
+      result.append(l)
+      continue
+    for name, alt, occ, element in (("HA", "A", occ_a, "H"),
+                                    ("DA", "B", occ_b, "D")):
+      p = xyz[" DA  "] + xyz[" CA " + alt] - mean
+      result.append("ATOM  %5d  %-3s%1sALA A   1    %8.3f%8.3f%8.3f%6.2f"
+        "%6.2f          %2s" % (len(result), name, alt, p[0], p[1], p[2],
+        occ, 10.0, element))
+  return "\n".join(result) + "\n"
+
+def floating_chain(pdb_str, chain_id="A"):
+  """pdb_str after a chain with only a floating H (Ala 900), so that the
+  chains chain_id of pdb_str are their second occurrence until it is
+  removed"""
+  lines = pdb_str.splitlines()
+  i = [k for k, l in enumerate(lines) if l.startswith(("ATOM", "HETATM"))][0]
+  return "\n".join(lines[:i] + [
+    "ATOM      1  H   ALA %s 900      40.000  40.000  40.000  1.00 20.00"
+    "           H" % chain_id, "TER"] + lines[i:]) + "\n"
+
 def make_model_cif(pdb_str, cif_str):
   """make_model() with a restraint CIF"""
   import iotbx.cif
@@ -2238,7 +2383,8 @@ def repaired_match(model, plan):
   m2 = model_from_hierarchy(h, model.crystal_symmetry())
   c = hd_exchange.find_hd_candidates(m2.get_hierarchy(),
     hd_exchange.h_parent_table(m2), model=m2)
-  accepted = set((x.h_key, x.d_key) for x in plan.accept) or None
+  accepted = set((x.h_key, x.d_key) for x in plan.accept + plan.conformer) \
+    or None
   return hd_exchange.collapse_check(c, accepted=accepted), h, origin
 
 def check_clean(match):
@@ -2430,12 +2576,75 @@ def test_repair_accept_refused_multi_h():
     assert r.startswith("NE2 carries 2 H in the dictionary (one H site "
       "needed); D ") and r.endswith(" deg out of the CG-CD-NE2 plane"), r
 
-def test_repair_different_parents_refused():
-  # (c) is not repaired
-  plan, c, m = plan_of(make_model(pdb_ctl_7t5e_tyr_b25))
+def test_repair_conformer():
+  # (c) one isotope per conformer (7T5E Tyr B 25): kept as two singles, no
+  # atom changed; the different-parents problem goes with accepted
+  model = make_model(pdb_c_7t5e_tyr_b25)
+  plan, c, m = plan_of(model)
+  assert [x.kind for x in m.problems] == ["different parents"]
+  assert len(plan.conformer) == 1 and not plan.refused, plan.refused
   assert not (plan.split or plan.rename or plan.relabel or plan.accept)
-  assert refused_reasons(plan) == ["no repair for H and D on different "
-    "parents"]
+  assert not hd_exchange.repairs_made(plan)
+  x = plan.conformer[0]
+  assert x.atom == "HH ATYR B  25 / DH BTYR B  25", x.atom
+  assert x.reason == ("kept as two singles: HH 0.65 on OH ATYR B  25 "
+    "(conformer 0.65), DH 0.35 on OH BTYR B  25 (conformer 0.35); read as "
+    "one isotope per conformer (each at its conformer's occupancy), an "
+    "inference"), x.reason
+  match = hd_exchange.collapse_check(c, accepted=set([(x.h_key, x.d_key)]))
+  check_clean(match)
+  singles = set(s.atom_key for s in c.singles)
+  assert x.h_key in singles and x.d_key in singles
+  # the isotope the output writes in both conformers (step C review P3): an
+  # exchangeable site D (H for all_h); a carbon-bound one (Ala HA in A, DA
+  # in B) per neutron option
+  for option, kind in (("hd_and_h", "D"), ("all_hd", "D"), ("all_h", "H")):
+    assert hd_exchange.conformer_site_isotope(option, x) == kind, option
+  plan, c, m = plan_of(make_model(ala_conformer_ha()))
+  assert len(plan.conformer) == 1 and not plan.refused, plan.refused
+  x = plan.conformer[0]
+  assert x.atom == "HA AALA A   1 / DA BALA A   1", x.atom
+  assert not x.exchangeable and not x.water
+  for option, kind in (("hd_and_h", "H"), ("all_hd", "H"), ("hd_and_d", "D"),
+                       ("all_d", "D"), ("all_h", "H")):
+    assert hd_exchange.conformer_site_isotope(option, x) == kind, option
+  # an H/D at another occupancy than its conformer's: refused
+  for old, new, reason in (
+      ("  0.65 24.15           H", "  0.50 24.15           H",
+       "HH 0.50 on OH ATYR B  25 (conformer 0.65), DH 0.35 on OH BTYR B  25 "
+       "(conformer 0.35): neither one isotope per conformer nor an exchange "
+       "pair"),
+      ("  0.65 24.15           H", "  0.15 24.15           H",
+       "HH 0.15 on OH ATYR B  25 (conformer 0.65), DH 0.35 on OH BTYR B  25 "
+       "(conformer 0.35): neither one isotope per conformer nor an exchange "
+       "pair")):
+    assert pdb_c_7t5e_tyr_b25.count(old) == 1
+    plan, c, m = plan_of(make_model(pdb_c_7t5e_tyr_b25.replace(old, new)))
+    assert not plan.conformer
+    assert refused_reasons(plan) == [reason], refused_reasons(plan)
+
+SER_B82_REASON = ("H 0.15 on N  ASER B  82 (conformer 0.56), D 0.85 on N  "
+  "BSER B  82 (conformer 0.44), H + D = 1.00: consistent with an exchange "
+  "pair over the two copies, but the occupancies do not determine how H and "
+  "D are distributed over the conformers (0.56/0.44), so the site is not "
+  "repaired; remove the H and D at this site and rerun with approach=add "
+  "keep_existing_H=True, which places them anew (approach=optimize adds no "
+  "H)")
+
+def test_repair_conformer_refused():
+  # Ser B 82: H + D = 1 over the two copies of the split N: consistent with
+  # an exchange pair, but how H and D sit in the conformers is not known
+  plan, c, m = plan_of(make_model(pdb_ctl_7t5e_ser_b82))
+  assert not plan.conformer
+  assert refused_reasons(plan) == [SER_B82_REASON], refused_reasons(plan)
+
+def test_repair_split_on_parent():
+  # step B review fix 3: a DA on CA A has no direction; refused with the
+  # bond length, no TypeError
+  plan, c, m = plan_of(make_model(ala_d_on_parent()))
+  assert not plan.split
+  assert refused_reasons(plan) == ["bond 0.000 A to CA AALA A   1 "
+    "(dictionary 0.97/1.09 A)"], refused_reasons(plan)
 
 def test_collapse_check_accepted_default():
   # accepted=None (validate_H, the output check) is collapse_check() as
@@ -2507,6 +2716,8 @@ if __name__ == "__main__":
   test_repair_relabel_refused()
   test_repair_accept()
   test_repair_accept_refused_multi_h()
-  test_repair_different_parents_refused()
+  test_repair_conformer()
+  test_repair_conformer_refused()
+  test_repair_split_on_parent()
   test_collapse_check_accepted_default()
   print("OK")
