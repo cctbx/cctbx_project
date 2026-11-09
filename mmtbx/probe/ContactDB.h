@@ -126,6 +126,9 @@ namespace molprobity {
 
       /// Also keep every reported dot (off by default; ~70 bytes per dot).
       void set_keep_dots(bool keep) { m_keepDots = keep; }
+      /// Also score, for each pair that can be a clash (centre overlap >= minOverlap), dots at
+      /// the exact worst-overlap points (extrema_dots() in ContactDB.cpp). Off by default.
+      void set_extrema_dots(bool on, double minOverlap) { m_extremaDots = on; m_extremaMinOverlap = minOverlap; }
 
       /// Score every source atom, in the given order.
       void build(scitbx::af::shared<iotbx::pdb::hierarchy::atom> sources);
@@ -148,6 +151,9 @@ namespace molprobity {
       void score_atom(iotbx::pdb::hierarchy::atom const& src, std::vector<PairRecord>& out);
       void keep_dot(unsigned si, int sf, unsigned ci, Point const& sXYZ, double srcVdw,
                     int itype, DotScorer::CheckDotResult const& res);
+      scitbx::af::shared<Point> extrema_dots(iotbx::pdb::hierarchy::atom const& src, double srcVdw,
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& interacting,
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude);
 
       ExtraAtomInfoMap m_info;
       DotScorer m_scorer;
@@ -161,7 +167,8 @@ namespace molprobity {
       double m_probeRadius, m_maxRadius, m_minOccupancy, m_overlapScale;
       int m_excludedBondChainLength;
       bool m_includeMainchainMainchain, m_includeWaterWater, m_separateWorseClashes,
-           m_reportHBonds, m_reportClashes, m_reportVdws, m_onlyBadClashes, m_keepDots;
+           m_reportHBonds, m_reportClashes, m_reportVdws, m_onlyBadClashes, m_keepDots, m_extremaDots;
+      double m_extremaMinOverlap;
     };
 
   }

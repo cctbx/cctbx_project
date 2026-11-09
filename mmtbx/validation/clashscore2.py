@@ -341,6 +341,7 @@ class clashscore2(validation):
         nuclear=nuclear,
         fast=self.fast,
         condensed_probe=self.condensed_probe,
+        extrema_dots=getattr(probe_parameters, "extrema_dots", False),
         largest_occupancy=occ_max,
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
@@ -565,7 +566,8 @@ class probe_clashscore_manager(object):
                use_segids=False,
                verbose=False,
                model_id="",
-               save_probe_output=False):
+               save_probe_output=False,
+               extrema_dots=False):
     """
     Calculate probe (MolProbity) clashscore
 
@@ -588,6 +590,7 @@ class probe_clashscore_manager(object):
     self.b_factor_cutoff = b_factor_cutoff
     self.fast = fast
     self.condensed_probe = condensed_probe
+    self.extrema_dots = extrema_dots
     self.save_probe_output = save_probe_output
     self.use_segids=use_segids
     self.model_id = model_id
@@ -774,6 +777,7 @@ class probe_clashscore_manager(object):
       "approach=once",
       "output.format=json",
       "output.condensed={}".format(self.condensed_probe),
+      "probe.extrema_dots={}".format(self.extrema_dots),
       "output.report_vdws=False",
       "ignore_lack_of_explicit_hydrogens=True",
     ]
@@ -824,6 +828,7 @@ class probe_clashscore_manager(object):
           "use_neutron_distances={}".format(self.nuclear),
           "approach=once",
           "output.format=json",
+          "probe.extrema_dots={}".format(self.extrema_dots),
           "ignore_lack_of_explicit_hydrogens=True",
         ]
         master_phil, probe2_params = _probe2_params_from_args(args, tempName)

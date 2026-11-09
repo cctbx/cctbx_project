@@ -22,6 +22,7 @@ Options:
   model=input_file          input PDB file
   fast = False              Produce only clashscore number, without anything else
   condensed_probe=False     Run probe with -CON parameter
+  extrema_dots=False        Run probe with -EXTREMA (clashes independent of orientation)
   keep_hydrogens=False      keep input hydrogen atoms if True, regenerate if False
   nuclear=False             use nuclear x-H distances and vdW radii
   json=False                Outputs results as JSON compatible dictionary
@@ -47,6 +48,12 @@ Example:
   condensed_probe = False
     .type = bool
     .help = ''' Run probe with -CON parameter '''
+
+  extrema_dots = False
+    .type = bool
+    .help = ''' Run probe with -EXTREMA: also score dots at the exact worst-overlap points of \
+               each atom pair that can clash, so that clashes do not depend on where the dot \
+               sphere falls or on model orientation. Needs a probe with -EXTREMA. '''
 
   json = False
     .type = bool
@@ -125,6 +132,7 @@ Example:
       pdb_hierarchy=hierarchy,
       fast = self.params.fast,
       condensed_probe = self.params.condensed_probe,
+      extrema_dots = self.params.extrema_dots,
       keep_hydrogens=self.params.keep_hydrogens,
       nuclear=self.params.nuclear,
       out=self.logger,

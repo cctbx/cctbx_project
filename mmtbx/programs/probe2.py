@@ -909,6 +909,7 @@ Note:
                   params.include_water_water, params.overlap_scale_factor, spo.separate_worse_clashes,
                   spo.report_hydrogen_bonds, spo.report_clashes, spo.report_vdws, spo.only_report_bad_clashes)
     db.set_keep_dots(keep_dots)
+    db.set_extrema_dots(params.probe.extrema_dots, params.probe.clash_cutoff)
     db.build(list(sourceAtoms))
     return db
 
