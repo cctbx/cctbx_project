@@ -203,7 +203,23 @@ The Computational Crystallography Toolbox (cctbx) is a large code base under act
 
   * Do not add `Co-Authored-By:` or other tool-attribution trailers. Do not put private tracker keys (Jira `UR-...` and the like) in commit messages, comments, or test names; describe the bug instead. GitHub issue and PR numbers are fine.
 
-  * Pull requests are usually rebased onto master, so the commits on a branch become the permanent history. Before pushing a branch for review, make that history read as the change, not the path to it: fold fixups, reverted experiments, and work-in-progress checkpoints into the commit they belong to, so each commit is one logical change with its tests. Non-interactively: `git reset --soft <base>` and recommit in logical pieces, or commit with `--fixup=<sha>` and run `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base>`. Rewrite only commits that have not been pushed.
+  * Pull requests are usually rebased onto master, so the commits on a branch become the permanent history. Before pushing a branch for review, make that history read as the change, not the path to it: fold fixups, reverted experiments, and work-in-progress checkpoints into the commit they belong to, so each commit is one logical change with its tests. Non-interactively: `git reset --soft <base>` and recommit in logical pieces, or commit with `--fixup=<sha>` and run `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base>`. Commits on your own branch, whether pushed for CI or for a pull request, may be rewritten and force-pushed with `git push --force-with-lease --force-if-includes` until the pull request is approved, and afterwards only to rebase onto master; never rewrite master or a branch others build on.
+
+  * Do not open a pull request on an agent's first draft or push that draft to master (pushing a work-in-progress branch for CI or for a reviewer is fine). Before either, put the agent-written code through one or more rounds of adversarial review. Review fixes are an exception to folding fixups before pushing: whether they are folded into existing commits is up to the person making the pull request and its human reviewers.
+
+    * The reviewer did not write the code, does not carry the writer's conversation or a summary of it, and reports findings without editing the code: a fresh agent session, a subagent given the diff, the problem, and the project instructions but not the writer's reasoning, a review tool run outside the writing session, or a person.
+
+    * It reviews the complete change, including uncommitted work and untracked new files (if the reviewer can't see the working tree, the person directing the work commits or pushes it first), against its merge base with the base branch as it now is in cctbx/cctbx_project, and ranks its findings, most severe first (if a review tool can't rank them, the person directing the work ranks them, not the writing agent):
+
+      * high: a silent wrong result or data loss on any real path; a security hole; a crash, hang, error, or visibly wrong output on a common path that users or downstream code hit; an unintended interface change or a broken module dependency.
+
+      * medium: a crash, hang, error, or visibly wrong output on a narrow path; a missing regression or unit test, or one that passes without the fix or never runs; a cost such as a slowdown or duplicated functionality.
+
+      * low: cosmetic problems, dead code, stale comments, other weak tests.
+
+    * Fixing (after confirming) or answering the findings completes a round; the person directing the agent decides when to stop. Between the final round and opening the pull request or pushing to master, change the code only as its findings or CI failures call for (rebasing and tidying the history are fine); after that, handle CI failures and review comments as usual.
+
+    * Report the rounds in the "Coding agent" section of the pull request template.
 
   * Fill in `.github/PULL_REQUEST_TEMPLATE.md`. Describe the problem solved, not just what changed; a few lines is the norm. Keep the signatures existing callers use, and announce interface changes and other breaking changes to the other developers.
 

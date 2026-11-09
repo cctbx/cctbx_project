@@ -1,8 +1,9 @@
 # cctbx guidance for coding agents
 
-`CONTRIBUTING.md` holds the project's contribution rules; this file adds
-what coding agents most often get wrong. Where the two differ, this file
-governs.
+`CONTRIBUTING.md` holds the project's contribution rules; read it before
+writing a change, and read the sections that apply to a change before
+reviewing it. This file adds what coding agents most often get wrong.
+Where the two differ, this file governs.
 
 ## Working rules
 
@@ -37,8 +38,10 @@ governs.
   presenting the work as done. Never invent a test result, a measurement,
   or a claim about behavior you did not observe. Run `git fetch` and
   compare with `origin/master` before reporting what has landed upstream.
-  When reviewing, verify each finding against the code before reporting
-  it, and quote error text and failing test output in full.
+  When reviewing, follow the reviewer rules in `CONTRIBUTING.md`,
+  "Commits and pull requests", rank findings on its severity scale,
+  verify each finding against the code before reporting it, and quote
+  error text and failing test output in full.
 - **Ask before installing anything**, system-wide or into the project.
   Say what you want to install and why, then wait for an okay.
 - **Commit only on an explicit request to commit, and never push.** Show
@@ -57,12 +60,19 @@ governs.
 - Write commit messages and tidy the branch as `CONTRIBUTING.md`,
   "Commits and pull requests", describes: a scoped summary line, a short
   body (preferably a bullet list) that says why, one logical change per
-  commit. Rewrite only commits that have not left your machine; once the
-  branch is pushed, add commits unless the person directing you asks for
-  a rebase.
+  commit. Commits that have not left your machine may be rewritten. Once
+  the branch is pushed, add commits unless the person directing you asks
+  you to fold them in or to rebase, which `CONTRIBUTING.md` allows on
+  your own branch until its pull request is approved (afterwards only to
+  rebase onto master); the person does the force-push.
 - Do not add a `Co-Authored-By:` trailer or any other co-authorship or
   tool-attribution line, and no private tracker keys (Jira `UR-...`);
   GitHub issue and PR numbers are fine.
+- Agent-written code needs the adversarial review rounds that
+  `CONTRIBUTING.md`, "Commits and pull requests", describes before its
+  pull request is opened or, without a pull request, before it is pushed
+  to master; the person directing you decides which independent reviewer
+  runs them and when to stop.
 - Open the pull request (for example with `gh pr create`) once the
   branch is pushed, and fill in `.github/PULL_REQUEST_TEMPLATE.md` with
   real, specific answers. The "Coding agent" section always applies to
