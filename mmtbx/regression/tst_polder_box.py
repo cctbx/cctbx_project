@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import time, os, math
-from iotbx import reflection_file_reader
 import iotbx.phil
 import mmtbx.maps.polder
 from mmtbx.regression.tst_polder import get_map_stats_at_sites, \
@@ -53,39 +52,50 @@ def exercise_00(dm, mtz_fn):
 
 # ---------------------------------------------------------------------------
 
-def exercise_01(dm, mtz_fn):
+def exercise_01(dm, mtz_fn, mtz_fn_no_ligand):
   """
-  Test for phenix.polder correlation coefficients.
+  Test for phenix.polder correlation coefficients and the result message
+  (sphere mode; box mode has neither), with data calculated with MES 88 and,
+  as negative control, without it.
   """
   model = dm.get_model('tst_polder_box_ligand.pdb')
+  for fn, ligand_in_data in [(mtz_fn, True), (mtz_fn_no_ligand, False)]:
+    params = iotbx.phil.parse(
+      input_string=mmtbx.maps.polder.master_params_str,
+      process_includes=True).extract()
+    polder_object = mmtbx.maps.polder.compute_polder_map(
+      f_obs             = get_map_coeffs(file_name=fn, label="f-obs"),
+      r_free_flags      = None,
+      model             = model,
+      params            = params.polder,
+      selection_string  = 'resseq 88')
+    polder_object.validate()
+    polder_object.run()
+    vr = polder_object.get_results().validation_results
+    for cc12, cc13, cc23 in [(vr.cc12, vr.cc13, vr.cc23),
+                             (vr.cc12_peak, vr.cc13_peak, vr.cc23_peak)]:
+      if ligand_in_data:
+        # observed: cc13 0.998, cc12 and cc23 about 0.4
+        assert cc13 >= 0.8, (cc12, cc13, cc23)
+        assert cc13 > cc12 and cc13 > cc23, (cc12, cc13, cc23)
+      else:
+        # observed: cc13 about 0.4, cc23 about 0.95: map 3 resembles map 2
+        assert cc13 < 0.7, (cc12, cc13, cc23)
+        assert cc23 > cc12 and cc23 > cc13, (cc12, cc13, cc23)
 
-  params = iotbx.phil.parse(
-    input_string=mmtbx.maps.polder.master_params_str,
-    process_includes=True).extract()
-
-  fobs = None
-  for ma in reflection_file_reader.any_reflection_file(
-      file_name = mtz_fn).as_miller_arrays():
-    if(ma.info().label_string() == "f-obs"):
-      fobs = ma.deep_copy()
-  assert fobs is not None
-
-  polder_object = mmtbx.maps.polder.compute_polder_map(
-    f_obs             = fobs,
-    r_free_flags      = None,
-    model             = model,
-    params            = params.polder,
-    selection_string  = 'resseq 88')
-  polder_object.validate()
-  polder_object.run()
-  vr = polder_object.get_results().validation_results
-
-  # Program.result_message: cc13 >= 0.8 and cc13 largest -> map shows the
-  # omitted atoms (observed: cc13 0.998, cc12 and cc23 about 0.4)
-  for cc12, cc13, cc23 in [(vr.cc12, vr.cc13, vr.cc23),
-                           (vr.cc12_peak, vr.cc13_peak, vr.cc23_peak)]:
-    assert cc13 >= 0.8, (cc12, cc13, cc23)
-    assert cc13 > cc12 and cc13 > cc23, (cc12, cc13, cc23)
+    # the program reports the verdict
+    args = [
+      'tst_polder_box_ligand.pdb',
+      fn,
+      'solvent_exclusion_mask_selection="resseq 88"']
+    r = run_program(program_class=polder.Program, args=args,
+      logger=null_out())
+    if ligand_in_data:
+      expected = 'The polder map is likely to show the omitted atoms.'
+    else:
+      expected = 'The polder map is very likely to show bulk-solvent or noise.'
+    assert r.message == expected, r.message
+    os.remove(r.output_file)
 
 # ---------------------------------------------------------------------------
 
@@ -131,8 +141,8 @@ def exercise_02(dm, mtz_fn):
 
 def exercise(prefix="tst_polder_box"):
   """
-  Test for phenix.polder: compute_box=True and correlation coefficients.
-  Data are calculated from the model with ligand (MES 88).
+  Test for phenix.polder: compute_box=True, correlation coefficients and
+  altloc_scale. Data are calculated from the model with ligand (MES 88).
   """
   dm = DataManager(['model'])
   dm.process_model_str('tst_polder_box.pdb', pdb_str)
@@ -155,14 +165,20 @@ def exercise(prefix="tst_polder_box"):
     "b_sol=50",
     "output.file_name=%s" % mtz_fn]
   run_program(program_class=fmodel.Program, args=args, logger=null_out())
+  # negative control: data without the ligand
+  mtz_fn_no_ligand = "tst_polder_box_no_ligand.mtz"
+  args = ['tst_polder_box.pdb'] + args[1:-1] + [
+    "output.file_name=%s" % mtz_fn_no_ligand]
+  run_program(program_class=fmodel.Program, args=args, logger=null_out())
 
-  exercise_01(dm=dm, mtz_fn=mtz_fn)
+  exercise_01(dm=dm, mtz_fn=mtz_fn, mtz_fn_no_ligand=mtz_fn_no_ligand)
   exercise_00(dm=dm, mtz_fn=mtz_fn)
   exercise_02(dm=dm, mtz_fn=mtz_fn)
 
   os.remove('tst_polder_box.pdb')
   os.remove('tst_polder_box_ligand.pdb')
   os.remove(mtz_fn)
+  os.remove(mtz_fn_no_ligand)
 
 # ---------------------------------------------------------------------------
 
