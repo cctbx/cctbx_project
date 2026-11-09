@@ -144,62 +144,66 @@ def exercise_00(prefix="tst_polder"):
 
 # ---------------------------------------------------------------------------
 
-def exercise_01(prefix="tst_polder_masks"):
+def get_masks(model, fobs, selection_string, **polder_params):
   """
-  Test for phenix.polder sphere radius and box buffer: which mask grid points
-  are reset. The spheres and boxes stay inside the P1 cell, so plain
-  Cartesian distances apply.
+  Run polder on the selection; return the grid and the 1d masks for all
+  atoms, for the omit model and for polder.
   """
-  model_fn = "%s.pdb" % prefix
-  mtz_fn = "%s.mtz" % prefix
-  write_model_and_data(model_fn=model_fn, mtz_fn=mtz_fn, model_str=pdb_str)
-  dm = DataManager(['model'])
-  dm.process_model_str(model_fn, pdb_str)
-  model = dm.get_model()
-  fobs = get_map_coeffs(file_name=mtz_fn, label="f-obs")
+  params = iotbx.phil.parse(
+    input_string=mmtbx.maps.polder.master_params_str,
+    process_includes=True).extract()
+  for name, value in polder_params.items():
+    setattr(params.polder, name, value)
+  polder_object = mmtbx.maps.polder.compute_polder_map(
+    f_obs            = fobs,
+    r_free_flags     = None,
+    model            = model,
+    params           = params.polder,
+    selection_string = selection_string)
+  polder_object.validate()
+  polder_object.run()
+  results = polder_object.get_results()
+  m_all = results.mask_data_all.as_1d()
+  m_omit = results.mask_data_omit.as_1d()
+  m_polder = results.mask_data_polder.as_1d()
+  # polder only removes solvent
+  assert (m_polder > m_all).count(True) == 0
+  return results.mask_data_all.all(), m_all, m_omit, m_polder
 
-  selection_string = 'chain A'
-  sites_cart = model.get_sites_cart().select(
+def check_masks(model, fobs, selection_string, radii, box_buffers):
+  """
+  Check which mask grid points polder resets around all symmetry mates of
+  the selection. Spheres and boxes are far smaller than the cell, so rounding
+  fractional differences gives the nearest lattice translation.
+  """
+  crystal_symmetry = model.crystal_symmetry()
+  unit_cell = crystal_symmetry.unit_cell()
+  sites_frac = model.get_sites_frac().select(
     model.selection(selection_string))
-  unit_cell = model.crystal_symmetry().unit_cell()
+  mates = []
+  for op in crystal_symmetry.space_group().all_ops():
+    mates.append(flex.vec3_double([op * site for site in sites_frac]))
 
-  def get_masks(**polder_params):
-    params = iotbx.phil.parse(
-      input_string=mmtbx.maps.polder.master_params_str,
-      process_includes=True).extract()
-    for name, value in polder_params.items():
-      setattr(params.polder, name, value)
-    polder_object = mmtbx.maps.polder.compute_polder_map(
-      f_obs            = fobs,
-      r_free_flags     = None,
-      model            = model,
-      params           = params.polder,
-      selection_string = selection_string)
-    polder_object.validate()
-    polder_object.run()
-    results = polder_object.get_results()
-    m_all = results.mask_data_all.as_1d()
-    m_omit = results.mask_data_omit.as_1d()
-    m_polder = results.mask_data_polder.as_1d()
-    # polder only removes solvent
-    assert (m_polder > m_all).count(True) == 0
-    return results.mask_data_all.all(), m_all, m_omit, m_polder
-
-  sphere_masks = [(radius, get_masks(sphere_radius = radius))
-    for radius in [3, 5, 7]]
+  sphere_masks = [(radius, get_masks(model, fobs, selection_string,
+    sphere_radius = radius)) for radius in radii]
   n_real = sphere_masks[0][1][0]
   grid_frac = flex.vec3_double()
   for i in range(n_real[0]):
     for j in range(n_real[1]):
       for k in range(n_real[2]):
         grid_frac.append((i/n_real[0], j/n_real[1], k/n_real[2]))
-  # distance of each grid point to the closest selected atom
-  grid_cart = unit_cell.orthogonalize(grid_frac)
-  dist = flex.double(grid_cart.size(), 1.e9)
-  for site in sites_cart:
-    d = (grid_cart - site).norms()
-    closer = d < dist
-    dist.set_selected(closer, d.select(closer))
+  grid_xyz = grid_frac.parts()
+  # distance of each grid point to the closest selected atom or mate
+  dist = flex.double(grid_frac.size(), 1.e9)
+  for mate in mates:
+    for site in mate:
+      d_frac = []
+      for g, x in zip(grid_xyz, site):
+        d = g - x
+        d_frac.append(d - flex.floor(d + 0.5))
+      d = unit_cell.orthogonalize(flex.vec3_double(*d_frac)).norms()
+      closer = d < dist
+      dist.set_selected(closer, d.select(closer))
 
   # Sphere: reset exactly the grid points within the radius
   n_changed = []
@@ -212,15 +216,14 @@ def exercise_01(prefix="tst_polder_masks"):
     assert flex.max(dist.select(changed)) <= radius + 0.01
     assert (m_polder.select(dist < radius - 0.01) != 0).count(True) == 0
     n_changed.append(changed.count(True))
-  assert 0 < n_changed[0] < n_changed[1] < n_changed[2], n_changed
+  for n_1, n_2 in zip(n_changed, n_changed[1:]):
+    assert n_1 < n_2, n_changed
 
-  # Box: reset the bounding box of the selection plus buffer; grid rounding
-  # extends it by up to one grid step
-  grid_xyz = grid_frac.parts()
-  sites_xyz = unit_cell.fractionalize(sites_cart).parts()
+  # Box: reset the bounding box of each mate plus buffer, wrapped at the cell
+  # faces; grid rounding extends it by up to one grid step
   n_changed = []
-  for box_buffer in [None, 3, 5, 7]:
-    _, m_all, m_omit, m_polder = get_masks(
+  for box_buffer in box_buffers:
+    _, m_all, m_omit, m_polder = get_masks(model, fobs, selection_string,
       compute_box = True,
       box_buffer  = box_buffer)
     # box mode keeps the selection in the model
@@ -229,20 +232,82 @@ def exercise_01(prefix="tst_polder_masks"):
       cushion = (0, 0, 0)
     else:
       cushion = unit_cell.fractionalize((box_buffer,)*3)
-    in_box = flex.bool(grid_frac.size(), True)
-    in_box_plus_step = flex.bool(grid_frac.size(), True)
-    for g, s, c, n in zip(grid_xyz, sites_xyz, cushion, n_real):
-      lo = flex.min(s) - c - 1.e-6
-      hi = flex.max(s) + c + 1.e-6
-      in_box = in_box & (g >= lo) & (g <= hi)
-      in_box_plus_step = in_box_plus_step & (g >= lo - 1/n) & (g <= hi + 1/n)
+    in_box = flex.bool(grid_frac.size(), False)
+    in_box_plus_step = flex.bool(grid_frac.size(), False)
+    for mate in mates:
+      inside = flex.bool(grid_frac.size(), True)
+      inside_plus_step = flex.bool(grid_frac.size(), True)
+      for g, s, c, n in zip(grid_xyz, mate.parts(), cushion, n_real):
+        lo = flex.min(s) - c - 1.e-6
+        width = flex.max(s) + c + 1.e-6 - lo
+        # offset from the box start, wrapped into [0,1)
+        offset = g - lo
+        offset = offset - flex.floor(offset)
+        inside = inside & (offset <= width)
+        offset = g - (lo - 1/n)
+        offset = offset - flex.floor(offset)
+        inside_plus_step = inside_plus_step & (offset <= width + 2/n)
+      in_box = in_box | inside
+      in_box_plus_step = in_box_plus_step | inside_plus_step
     changed = m_polder != m_all
+    assert changed.count(True) > 0
     assert (m_polder.select(in_box) != 0).count(True) == 0
     assert (changed & ~in_box_plus_step).count(True) == 0
     n_changed.append(changed.count(True))
-  assert 0 < n_changed[0] < n_changed[1] < n_changed[2] < n_changed[3], \
-    n_changed
+  for n_1, n_2 in zip(n_changed, n_changed[1:]):
+    assert n_1 < n_2, n_changed
 
+# ---------------------------------------------------------------------------
+
+def exercise_01(prefix="tst_polder_masks"):
+  """
+  Test for phenix.polder sphere radius and box buffer: which mask grid points
+  are reset.
+  """
+  model_fn = "%s.pdb" % prefix
+  mtz_fn = "%s.mtz" % prefix
+  write_model_and_data(model_fn=model_fn, mtz_fn=mtz_fn, model_str=pdb_str)
+  dm = DataManager(['model'])
+  dm.process_model_str(model_fn, pdb_str)
+  check_masks(
+    model            = dm.get_model(),
+    fobs             = get_map_coeffs(file_name=mtz_fn, label="f-obs"),
+    selection_string = 'chain A',
+    radii            = [3, 5, 7],
+    box_buffers      = [None, 3, 5, 7])
+  os.remove(model_fn)
+  os.remove(mtz_fn)
+
+# ---------------------------------------------------------------------------
+
+def exercise_02(prefix="tst_polder_symmetry"):
+  """
+  Test for phenix.polder masks in P21 (beta 105), with PHE A 1 across the
+  x=0 cell face: spheres and boxes cover all symmetry mates and wrap.
+  """
+  model_str = []
+  for line in pdb_str.splitlines():
+    if line.startswith("CRYST1"):
+      line = "CRYST1   40.000   35.000   38.000  90.00 105.00  90.00 P 1 21 1"
+    elif line.startswith(("ATOM", "HETATM")):
+      x = float(line[30:38]) - 12.5
+      line = line[:30] + "%8.3f" % x + line[38:]
+    model_str.append(line)
+  model_str = "\n".join(model_str) + "\n"
+  model_fn = "%s.pdb" % prefix
+  mtz_fn = "%s.mtz" % prefix
+  write_model_and_data(model_fn=model_fn, mtz_fn=mtz_fn, model_str=model_str)
+  dm = DataManager(['model'])
+  dm.process_model_str(model_fn, model_str)
+  model = dm.get_model()
+  x_frac = model.get_sites_frac().select(model.selection('chain A')).parts()[0]
+  assert flex.min(x_frac) < 0 < flex.max(x_frac)
+  check_masks(
+    model            = model,
+    fobs             = get_map_coeffs(file_name=mtz_fn, label="f-obs"),
+    selection_string = 'chain A',
+    radii            = [5],
+    box_buffers      = [2])
   os.remove(model_fn)
   os.remove(mtz_fn)
 
@@ -392,8 +457,10 @@ END
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  # Before the CIF pass: it selects by chain ID, which the conversion changes.
+  # Before the CIF pass: they select by chain ID and edit PDB columns, which
+  # the conversion changes.
   exercise_01()
+  exercise_02()
   for as_cif in (False, True):  # XXX as_cif is one way so True must be last
     if as_cif:
       print("CONVERTING PDB STRINGS TO CIF AND CHANGING "+

@@ -1,14 +1,15 @@
 from __future__ import absolute_import, division, print_function
-import time, os
+import time, os, math
 from iotbx import reflection_file_reader
 import iotbx.phil
 import mmtbx.maps.polder
 from mmtbx.regression.tst_polder import get_map_stats_at_sites, \
-  polder_label, omit_label
+  get_map_coeffs, polder_label, omit_label
 from iotbx.data_manager import DataManager
 from iotbx.cli_parser import run_program
 from mmtbx.programs import fmodel, polder
 from libtbx.utils import null_out
+from scitbx.array_family import flex
 
 def exercise_00(dm, mtz_fn):
   """
@@ -88,6 +89,46 @@ def exercise_01(dm, mtz_fn):
 
 # ---------------------------------------------------------------------------
 
+def exercise_02(dm, mtz_fn):
+  """
+  Test for phenix.polder altloc_scale: applied only to a selection of exactly
+  two altlocs without blank altloc, and not in box mode (LEU A 63 has
+  CG, CD1, CD2 in altlocs A and B).
+  """
+  model = dm.get_model('tst_polder_box_ligand.pdb')
+  fobs = get_map_coeffs(file_name=mtz_fn, label="f-obs")
+  # selection, compute_box, altloc scaling expected
+  cases = [
+    ("resseq 63",                            False, False), # blank altloc
+    ("resseq 63 and (altloc A or altloc B)", True,  False), # box mode
+    ("resseq 63 and (altloc A or altloc B)", False, True),
+    # altloc subselections must not bind to the last 'or' term
+    ("altloc A or altloc B",                 False, True)]
+  for selection_string, compute_box, applied in cases:
+    params = iotbx.phil.parse(
+      input_string=mmtbx.maps.polder.master_params_str,
+      process_includes=True).extract()
+    params.polder.altloc_scale = True
+    params.polder.compute_box = compute_box
+    polder_object = mmtbx.maps.polder.compute_polder_map(
+      f_obs             = fobs,
+      r_free_flags      = None,
+      model             = model,
+      params            = params.polder,
+      selection_string  = selection_string)
+    polder_object.validate()
+    polder_object.run()
+    results = polder_object.get_results()
+    assert polder_object.apply_scale_for_altloc == applied, selection_string
+    # validation runs only for the unscaled sphere-mode map
+    expect_vr = not (applied or compute_box)
+    assert (results.validation_results is not None) == expect_vr
+    amplitudes = flex.abs(results.mc_polder.data())
+    assert amplitudes.size() > 0
+    assert math.isfinite(flex.sum(amplitudes))
+
+# ---------------------------------------------------------------------------
+
 def exercise(prefix="tst_polder_box"):
   """
   Test for phenix.polder: compute_box=True and correlation coefficients.
@@ -117,6 +158,7 @@ def exercise(prefix="tst_polder_box"):
 
   exercise_01(dm=dm, mtz_fn=mtz_fn)
   exercise_00(dm=dm, mtz_fn=mtz_fn)
+  exercise_02(dm=dm, mtz_fn=mtz_fn)
 
   os.remove('tst_polder_box.pdb')
   os.remove('tst_polder_box_ligand.pdb')
