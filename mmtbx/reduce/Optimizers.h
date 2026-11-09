@@ -104,6 +104,7 @@ namespace molprobity {
           If the Mover has a NumPrimaryCoarsePositions() method and its coarse position is
           not one of those primary ones, the best primary coarse position is refined as well
           (see refineBestPrimary()).
+          The Mover's fine-pose dots are released at the end (releaseFineDots()).
       */
       boost::python::tuple OptimizeSingleMoverFine(boost::python::object const& mover,
         scitbx::af::shared<boost::python::object> const& neighbours);
@@ -285,6 +286,10 @@ namespace molprobity {
       /// position anchor uses 100000 + 1000 * anchor + i (coarse positions use their index).
       /// Assumes fewer than 1000 fine positions per coarse position.
       static unsigned fineDotCacheOffset(unsigned anchor) { return 100000 + 1000 * anchor; }
+
+      /// @brief Erase the fine-pose dots (keys >= fineDotCacheOffset(0)) of the atoms in
+      /// states; a later score of a fine pose recomputes them.
+      void releaseFineDots(molprobity::reduce::PositionReturn const& states);
 
       /// @brief Move the Mover to a pose and return its full objective there: the Probe
       /// score plus the preference energy times the preference magnitude.

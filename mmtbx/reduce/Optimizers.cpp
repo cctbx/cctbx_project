@@ -1001,6 +1001,16 @@ double OptimizerC::scoreInPlace(PoseCache& cache,
   return ret;
 }
 
+void OptimizerC::releaseFineDots(molprobity::reduce::PositionReturn const& states)
+{
+  for (size_t a = 0; a < states.atoms.size(); a++) {
+    unsigned iseq = states.atoms[a].data->i_seq;
+    m_excludedDots.erase(
+      m_excludedDots.lower_bound(std::make_pair(iseq, fineDotCacheOffset(0))),
+      m_excludedDots.lower_bound(std::make_pair(iseq + 1, 0u)));
+  }
+}
+
 boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object const& mover,
   scitbx::af::shared<boost::python::object> const& neighbours)
 {
@@ -1101,6 +1111,11 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
       infoString += refineBestPrimary(mover, coarse, numPrimary, neighbours);
     }
   }
+
+  // The Mover's fine-pose dots are not needed after its own fine step; a neighbour's
+  // fine step or the polish recomputes those it scores. Kept, those of singletons
+  // (which no polish releases) added up to ~270 MB on 4wsc.
+  releaseFineDots(coarse);
 
   // Return the result
   return boost::python::make_tuple(m_highScores[mover.ptr()], infoString);
@@ -1282,17 +1297,11 @@ boost::python::tuple OptimizerC::PolishClique(scitbx::af::shared<boost::python::
       }
     }
   }
-  // Release the members' fine-pose dots (keys >= fineDotCacheOffset(0)) on every exit:
-  // no later step in this OptimizerC uses them, the final scores use full dot spheres
-  // and the symmetry refresh builds a new OptimizerC.  Up to +46% peak memory otherwise.
+  // Release the members' fine-pose dots on every exit: no later step in this OptimizerC
+  // uses them, the final scores use full dot spheres and the symmetry refresh builds a
+  // new OptimizerC.  Up to +46% peak memory otherwise.
   for (size_t i = 0; i < movers.size(); i++) {
-    molprobity::reduce::PositionReturn& states = cachedPoses(cache, movers[i], -1);
-    for (size_t a = 0; a < states.atoms.size(); a++) {
-      unsigned iseq = states.atoms[a].data->i_seq;
-      m_excludedDots.erase(
-        m_excludedDots.lower_bound(std::make_pair(iseq, fineDotCacheOffset(0))),
-        m_excludedDots.lower_bound(std::make_pair(iseq + 1, 0u)));
-    }
+    releaseFineDots(cachedPoses(cache, movers[i], -1));
   }
   bool capped = changed && (sweeps == maxPolishSweeps());
   if (m_verbosity >= 3) {

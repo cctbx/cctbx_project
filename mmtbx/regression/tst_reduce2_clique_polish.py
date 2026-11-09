@@ -20,8 +20,10 @@ Tests:
   skipped; with a limit that expires after the first accepted polish move that
   sweep finishes and no other starts. Poses stay consistent and no Clique ends
   below its coarse total.
-- test_release: 6vw1: after each Clique's polish (also after the time limit)
-  the members' fine-pose dots are released from the dot cache.
+- test_release: 6vw1: each Mover's fine-pose dots are released from the dot
+  cache at the end of its fine step (a singleton's step leaves the cache as it
+  found it) and the members' after each Clique's polish (also after the time
+  limit).
 """
 import re
 import time
@@ -559,22 +561,24 @@ class Capture(object):
   polish = True
   limit = None
   calls = []
+  # per singleton fine step: the dot cache (entries, points) before and after
+  singletons = []
   def __init__(self, *args):
     self._r = _OptimizerC(*args)
     (self.verb, self.mag, self.maxvdw, self.minocc, self.probe, self.density,
      self.atoms, self.excl, self.scorer, self.cache, self.aml, self.sq,
      self.extra, self.dele) = args
-    # dot-cache entries: before the fine step plus the singletons' fine poses
+    # dot-cache (entries, points) before the first fine step
     self.kept = None
   def __getattr__(self, n):
     return getattr(self._r, n)
   def OptimizeSingleMoverFine(self, m, neighbours):
-    before = self._r.GetExcludedDotsSize()[0]
+    before = self._r.GetExcludedDotsSize()
     ret = self._r.OptimizeSingleMoverFine(m, neighbours)
     if self.kept is None:
       self.kept = before
     if len(neighbours) == 0:
-      self.kept += self._r.GetExcludedDotsSize()[0] - before
+      Capture.singletons.append((before, self._r.GetExcludedDotsSize()))
     return ret
   def fresh(self, m):
     pr, index = pose_of(self._r, m)
@@ -628,7 +632,7 @@ class Capture(object):
     Capture.calls.append(dict(sweeps=ret[0], moves=ret[1], capped=ret[2],
       stopped=ret[3], moved=len(moved), stale=stale,
       triggered=len(triggered) > 0, size=len(movers), optC=id(self),
-      entries=self._r.GetExcludedDotsSize()[0], kept=self.kept))
+      entries=self._r.GetExcludedDotsSize(), kept=self.kept))
     return ret
 
 def run(prefix, pdb_text, extra_args=(), polish=True, limit=None):
@@ -636,6 +640,7 @@ def run(prefix, pdb_text, extra_args=(), polish=True, limit=None):
     f.write(pdb_text)
   Recorder.cliques = []
   Capture.calls = []
+  Capture.singletons = []
   Capture.polish = polish
   Capture.limit = limit
   Capture.triggered = False
@@ -663,8 +668,13 @@ def clique_with(desc, *parts):
     if all(any(p in n for n in x[0]) for p in parts)]
 
 def assert_released():
-  """After the last polish of each OptimizerC the dot cache holds only what it
-  held before the fine step and the singletons' fine poses."""
+  """Each singleton's fine step leaves the dot cache (entries, points) as it
+  found it: its fine-pose dots (keys >= fineDotCacheOffset(0)) are released, the
+  coarse ones kept. After the last polish of each OptimizerC the cache holds
+  what it held before the fine step."""
+  assert len(Capture.singletons) > 0
+  for before, after in Capture.singletons:
+    assert after == before, (before, after)
   last = {}
   for c in Capture.calls:
     last[c["optC"]] = c
@@ -748,8 +758,9 @@ def test_deadline():
   print("test_deadline OK")
 
 def test_release():
-  # The members' fine-pose dots (keys >= fineDotCacheOffset(0)) are released
-  # after their Clique's polish: 464 cache entries left, 1300 without it.
+  # The fine-pose dots (keys >= fineDotCacheOffset(0)) are released at the end
+  # of each Mover's fine step and of each Clique's polish: 180 cache entries
+  # left; 464 if singletons kept theirs (9 singleton fine steps).
   run("tst_reduce2_clique_polish_release", pdb_6vw1, ["add_flip_movers=True"])
   assert_released()
   print("test_release OK")
