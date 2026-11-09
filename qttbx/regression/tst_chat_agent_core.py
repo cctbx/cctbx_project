@@ -138,7 +138,7 @@ def exercise_note_context_tokens_is_a_high_water_mark():
   assert note_context_tokens(agent, 0) == 250
   assert note_context_tokens(agent, None) == 250
   assert agent.last_context_tokens == 250, agent.last_context_tokens
-  # And it is a free function, not a method: ClaudeCodeAgent duck-types the
+  # And it is a free function, not a method: ClaudeAgent duck-types the
   # agent contract, so a method would raise AttributeError on that backend.
   from qttbx.widgets.chat.agent.base import Agent as _Base
   assert not hasattr(_Base, "note_context_tokens"), \
@@ -345,7 +345,7 @@ def exercise_classify_error_text_matches_whole_phrases_only():
   expired', 'token has been revoked', ...). Bare 'expired'/'revoked'
   substrings classified a TLS 'certificate has expired' (proxy, clock skew)
   or a provider's expired *uploaded file* as an auth failure -- driving the
-  wrong banner and, on claude_code, the credential-reload + auto-retry
+  wrong banner and, on claude_agent, the credential-reload + auto-retry
   machinery for non-auth errors. The documented legacy traps stay pinned
   too: the 'rate' inside 'generate'/'moderate' and the 'auth' inside
   'author' must not match, and a message carrying both a rate and an auth

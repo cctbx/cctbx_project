@@ -31,7 +31,7 @@ def _single_select_question(label_choice):
     "multiSelect": False,
     "options": [
       {"label": "anthropic", "description": "Use the Anthropic API"},
-      {"label": "claude_code", "description": "Use Claude Code OAuth"},
+      {"label": "claude_agent", "description": "Use the claude CLI login"},
     ],
   }]
 
@@ -40,14 +40,14 @@ def exercise_single_select_emits_chosen_label():
   from qttbx.widgets.chat.question_card import QuestionCard
   _qapp()
   card = QuestionCard()
-  card.set_request("q_1", _single_select_question("claude_code"))
+  card.set_request("q_1", _single_select_question("claude_agent"))
   fired = []
   card.answered.connect(lambda rid, ans: fired.append((rid, ans)))
   # Pick the second radio.
   state = card._question_state[0]
   state["option_buttons"][1][0].setChecked(True)
   card.click_submit()
-  assert fired == [("q_1", {"Which backend?": "claude_code"})], fired
+  assert fired == [("q_1", {"Which backend?": "claude_agent"})], fired
 
 
 def exercise_single_select_other_overrides_radio():
@@ -56,7 +56,7 @@ def exercise_single_select_other_overrides_radio():
   from qttbx.widgets.chat.question_card import QuestionCard
   _qapp()
   card = QuestionCard()
-  card.set_request("q_2", _single_select_question("claude_code"))
+  card.set_request("q_2", _single_select_question("claude_agent"))
   fired = []
   card.answered.connect(lambda rid, ans: fired.append((rid, ans)))
   state = card._question_state[0]
@@ -288,7 +288,7 @@ def exercise_long_option_description_does_not_floor_the_card_width():
     "question": "Which backend?",
     "header": "Backend",
     "multiSelect": False,
-    "options": [{"label": "claude_code", "description": "d"},
+    "options": [{"label": "claude_agent", "description": "d"},
                 {"label": "anthropic", "description": "d"}],
   }])
   wide_width = _card_min_width([{
@@ -296,8 +296,8 @@ def exercise_long_option_description_does_not_floor_the_card_width():
     "header": "Backend",
     "multiSelect": False,
     "options": [
-      {"label": "claude_code",
-       "description": "Reuse the existing Claude Code OAuth login so no API "
+      {"label": "claude_agent",
+       "description": "Reuse the existing `claude` CLI login so no API "
                       "key is needed; this is the default and works for "
                       "every profile that does not pin its own backend."},
       {"label": "anthropic",
@@ -320,14 +320,14 @@ def exercise_long_option_description_stays_readable():
   """
   from qttbx.widgets.chat.question_card import QuestionCard
   app = _qapp()
-  desc = ("Reuse the existing Claude Code OAuth login so no API key is "
+  desc = ("Reuse the existing `claude` CLI login so no API key is "
           "needed; this is the default for every profile.")
   card = QuestionCard()
   card.set_request("r1", [{
     "question": "Which backend?",
     "header": "Backend",
     "multiSelect": False,
-    "options": [{"label": "claude_code", "description": desc},
+    "options": [{"label": "claude_agent", "description": desc},
                 {"label": "anthropic", "description": "Use an API key."}],
   }])
   card.resize(360, 500)
@@ -336,7 +336,7 @@ def exercise_long_option_description_stays_readable():
   rendered = _rendered_text(card)
   assert desc in rendered, (
     "option description is not rendered in full anywhere on the card")
-  assert "claude_code" in rendered, "option label went missing"
+  assert "claude_agent" in rendered, "option label went missing"
 
 
 def _rendered_text(widget):

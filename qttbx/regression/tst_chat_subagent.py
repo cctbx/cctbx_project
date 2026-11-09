@@ -126,7 +126,7 @@ class _LateCrashingAgent(FakeAgent):
 class _ClosableAgent(FakeAgent):
   """Records ``close()``, as every real backend agent implements it.
 
-  The API agents close an HTTP connection pool; ``ClaudeCodeAgent.close()``
+  The API agents close an HTTP connection pool; ``ClaudeAgent.close()``
   tears down a ``claude`` CLI subprocess (which itself hosts the child's MCP
   servers) and a daemon asyncio loop thread. Neither has a finalizer, so
   nothing collects them if this is never called.
@@ -749,7 +749,7 @@ def exercise_a_capped_child_still_reports_what_it_found():
 
   ``AgentSession`` commits each completed tool iteration and opens a FRESH
   assistant message for the next round. When the cap fires on that next round
-  the residual is appended carrying no text -- empty on the claude_code shape
+  the residual is appended carrying no text -- empty on the claude_agent shape
   below, or holding only ``tool_use`` blocks on an API backend -- and the cap
   marker goes on after it. A ``_final_text`` that reads the last assistant
   MESSAGE therefore found the residual, found no text in it, and returned
@@ -762,7 +762,7 @@ def exercise_a_capped_child_still_reports_what_it_found():
   tmp = tempfile.mkdtemp()
   try:
     parent, storage = _parent(tmp)
-    # claude_code shape: the iteration is committed from ToolResultObserved,
+    # claude_agent shape: the iteration is committed from ToolResultObserved,
     # and the residual assistant message is appended completely empty.
     bundle = _bundle([[TextDelta(text="FINDINGS: clashes at A:12, A:44"),
                        ToolUseRequested(id="tu1", name="mcp__probe__measure",
@@ -1550,10 +1550,10 @@ def exercise_a_mid_stream_abort_keeps_its_committed_work():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
-def exercise_a_capped_claude_code_child_is_not_a_clean_one():
+def exercise_a_capped_claude_agent_child_is_not_a_clean_one():
   """The DEFAULT backend's cap fires where AgentSession cannot see it.
 
-  ``claude_code`` runs its agentic loop inside the SDK subprocess, so
+  ``claude_agent`` runs its agentic loop inside the SDK subprocess, so
   ``AgentSession``'s ``max_turns`` never fires for it and the transcript marker
   the API backends leave is never written. The SDK reports its own cap as
   ``ResultMessage(subtype='error_max_turns')``, which the backend maps to
@@ -1634,7 +1634,7 @@ def exercise_every_non_clean_finish_reaches_the_parent():
 def exercise_an_empty_child_answer_is_never_an_empty_result():
   """`""` is both a provider 400 and a lie about what happened.
 
-  A ``claude_code`` ERROR result carries no assistant text at all, so the
+  A ``claude_agent`` ERROR result carries no assistant text at all, so the
   child's closing text is genuinely empty (measured). The registry path then
   emits an empty text block and the SDK path a ``_text_result("")`` -- the same
   empty block the cancel branch was already careful to avoid. Only the cancel
@@ -1666,7 +1666,7 @@ def exercise_a_provider_error_is_never_a_clean_finish():
 
   Every API backend surfaces a provider failure that way -- anthropic's
   ``APIError``/``TransportError`` arms, openai's, gemini's ``_map_error``, and
-  claude_code's own input-extraction guard all ``yield AgentError`` and return.
+  claude_agent's own input-extraction guard all ``yield AgentError`` and return.
   ``AgentSession`` then exits its loop on a ``stop_reason`` of ``''``, so the
   sink latches nothing and ``incomplete_reason`` stays ``''`` -- which
   ``SubagentRecord`` documents as "it ran to its own end".
@@ -1815,7 +1815,7 @@ def exercise_one_real_tool_result_is_still_a_measurement():
     assert record.incomplete_reason == "", record.incomplete_reason
     assert "measured nothing" not in record.final_text, record.final_text
 
-    # ...and the claude_code shape: the tool ran inside the SDK subprocess and
+    # ...and the claude_agent shape: the tool ran inside the SDK subprocess and
     # was only OBSERVED, so nothing about it is registry-resolvable.
     observed = _bundle(
       [[ToolUseRequested(id="tu1", name="mcp__phenix__phenix_get_results",
@@ -1866,13 +1866,13 @@ def exercise_an_equipped_child_that_measured_nothing_is_never_clean():
 
   Read on the two routes a child's equipment arrives by, because each is
   invisible from the other: an API child's MCP tools are registry entries
-  sourced ``mcp:<server>``, while a ``claude_code`` child's live in its SDK
+  sourced ``mcp:<server>``, while a ``claude_agent`` child's live in its SDK
   subprocess and appear only as the bundle's ``measurement_servers``.
   """
   tmp = tempfile.mkdtemp()
   try:
     parent, storage = _parent(tmp)
-    # 1. Errored, on the claude_code route: allowed by policy, dispatched, and
+    # 1. Errored, on the claude_agent route: allowed by policy, dispatched, and
     #    answered with an error. No denial anywhere.
     errored = _bundle(
       [[ToolUseRequested(id="tu1", name="mcp__phenix__phenix_get_results",
@@ -1921,7 +1921,7 @@ def exercise_a_backends_own_bookkeeping_server_is_not_a_measurement():
   """A tool the child's PROFILE never asked for measures nothing for it.
 
   Every backend wires in servers of its own on top of the profile's.
-  ``claude_code`` builds an in-process ``phenix_agent`` server on EVERY agent,
+  ``claude_agent`` builds an in-process ``phenix_agent`` server on EVERY agent,
   carrying ``phenix_get_job_history`` -- auto-approved ahead of every policy
   check, and (with no provider wired, which is every child: only the chat
   window ever wires one) returning ``"(no job history is attached to this
@@ -1974,7 +1974,7 @@ def exercise_a_backends_own_bookkeeping_server_is_not_a_measurement():
 def exercise_a_backend_side_denial_reaches_the_record():
   """A backend that denies tools ITSELF must still feed the denial record.
 
-  ``claude_code`` resolves every permission inside its own SDK callback: a
+  ``claude_agent`` resolves every permission inside its own SDK callback: a
   child's tool calls never reach ``_HeadlessApprovals``, so the whole
   denied-every-tool backstop was dead on the DEFAULT backend -- the one every
   shipped profile inherits. ``run_child`` therefore hands such an agent a sink
@@ -1985,7 +1985,7 @@ def exercise_a_backend_side_denial_reaches_the_record():
     parent, storage = _parent(tmp)
 
     class _SelfDenyingAgent(FakeAgent):
-      """Denies in its own permission layer, as ClaudeCodeAgent does."""
+      """Denies in its own permission layer, as ClaudeAgent does."""
 
       def __init__(self, script):
         FakeAgent.__init__(self, script)
@@ -2122,7 +2122,7 @@ def exercise_a_build_notice_leads_the_final_text():
   tmp = tempfile.mkdtemp()
   try:
     parent, storage = _parent(tmp)
-    notice = "[Subagent note: ran on claude_code/opus, not google/gemini]"
+    notice = "[Subagent note: ran on claude_agent/opus, not google/gemini]"
     record = _run_child(
       parent, "review",
       _bundle([[TextDelta(text="FINDINGS: none"),
@@ -2230,7 +2230,7 @@ def exercise_a_failed_save_keeps_the_child_result():
 def exercise_a_blank_task_is_refused_on_both_tool_paths():
   """``"   "`` is an empty task, whichever backend family asks.
 
-  claude_code's SDK tool strips before its emptiness check; the registry
+  claude_agent's SDK tool strips before its emptiness check; the registry
   builtin did not, so a whitespace-only task was refused on one backend family
   and spawned a child with no instructions on the other. Same tool, same
   refusal.
@@ -2282,7 +2282,7 @@ def exercise_a_blank_task_is_refused_on_both_tool_paths():
 def exercise_the_tool_description_is_a_shared_constant():
   """One tool, two backend surfaces, one wording.
 
-  ``ClaudeCodeAgent`` registers ``run_subagent`` on the SDK from its own copy
+  ``ClaudeAgent`` registers ``run_subagent`` on the SDK from its own copy
   of the description, so a verbatim duplicate drifts silently -- and this
   wording is what tells the model the child starts blind and cannot ask, i.e.
   what it needs to write a self-contained task. Exported so the phenix side
@@ -2329,7 +2329,7 @@ def exercise():
   exercise_cancel_returns_partial_text_not_an_exception()
   exercise_cancel_is_never_silently_a_clean_finish()
   exercise_a_mid_stream_abort_keeps_its_committed_work()
-  exercise_a_capped_claude_code_child_is_not_a_clean_one()
+  exercise_a_capped_claude_agent_child_is_not_a_clean_one()
   exercise_every_non_clean_finish_reaches_the_parent()
   exercise_an_empty_child_answer_is_never_an_empty_result()
   exercise_a_provider_error_is_never_a_clean_finish()

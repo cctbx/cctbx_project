@@ -201,7 +201,7 @@ class ConversationView(QtWidgets.QScrollArea):
   def finish_tool_cell(self, tool_use_id, is_error=False, result=None):
     """Mark a tool cell on the in-progress bubble as finished or failed.
 
-    The claude_code backend runs its tools inside the SDK subprocess, bypassing
+    The claude_agent backend runs its tools inside the SDK subprocess, bypassing
     the session's dispatch loop -- the path that finishes an API backend's cell
     by delivering its tool_result. So nothing else finishes the live tool_use
     cell; observing the result is the signal that the tool completed, and this

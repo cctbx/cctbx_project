@@ -118,7 +118,7 @@ def open_debug_log(chat_root):
   is invoked with ``--debug``. Collects what would otherwise be lost
   when ``phenix.agent`` runs without a visible terminal -- uncaught
   exceptions, ``AgentError`` events surfaced by the runner, and (for the
-  claude_code backend) the SDK's ``debug_stderr`` stream. Same
+  claude_agent backend) the SDK's ``debug_stderr`` stream. Same
   ``LOG_KEEP`` rotation as session logs but tracked separately so debug
   history doesn't push out routine session logs.
 

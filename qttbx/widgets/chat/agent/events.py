@@ -84,7 +84,7 @@ class ImageEmitted(AgentEvent):
   """Emitted when an image lands in the assistant stream.
 
   Sources include MCP tool results carrying image content and (for the
-  Claude Code backend) tool-result ``UserMessage`` payloads from
+  claude_agent backend) tool-result ``UserMessage`` payloads from
   claude's built-in tools (e.g. ``Read`` on a PNG). The session stores
   the raw bytes via ``storage.store_attachment`` and appends an image
   ``ContentBlock`` referencing the resulting ``sha256``.
@@ -168,7 +168,7 @@ class ToolResultsBatched(AgentEvent):
 class ToolResultObserved(AgentEvent):
   """A tool result observed from an agent that runs its own tool loop.
 
-  The Claude Code backend dispatches MCP tools inside the SDK subprocess, so
+  The claude_agent backend dispatches MCP tools inside the SDK subprocess, so
   the ``ToolResultsBatched`` path (which the session emits only for tools it
   dispatches itself) never fires for it. The backend instead surfaces one of
   these per in-subprocess tool result, carrying ``tool_use_id`` + ``content`` +

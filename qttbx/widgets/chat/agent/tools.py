@@ -78,7 +78,7 @@ def record_tool_remember(response, tool_name_of, allow_remember, remember):
 
   The single implementation of the remember='tool' contract, shared by both
   backends -- the API path (``AgentSession``) and the SDK path
-  (``ClaudeCodeAgent``), which differ only in where the request_id->tool_name
+  (``ClaudeAgent``), which differ only in where the request_id->tool_name
   map, the opt-out recheck, and the allow set live. Records nothing unless the
   user APPROVED with remember='tool' AND the tool still permits being remembered
   (the data-layer opt-out floor, enforced here rather than trusting the card's
@@ -222,7 +222,7 @@ class ToolPolicy:
 
     Each config carries ``name`` and a ``tool_policy`` mapping of tool
     name -> decision, where the ``"*"`` key applies to the whole server.
-    Shared by the launcher (claude_code path) and ChatWindow (API-backend
+    Shared by the launcher (claude_agent path) and ChatWindow (API-backend
     path) so both derive identical policy from one profile.
 
     Parameters
@@ -236,7 +236,7 @@ class ToolPolicy:
         and its rename map reach the policy together, so that a
         renamed tool's per-tool decision cannot be left behind by a
         caller passing one map without the other, which let the deny
-        fall to the server's allow. ``None`` on the claude_code path,
+        fall to the server's allow. ``None`` on the claude_agent path,
         which has no registry.
     """
     tool_to_source = renamed = None
@@ -473,7 +473,7 @@ def _within_limit(server, bare, suffix):
 # ---- builtin: phenix_ask_user_question -------------------------------------
 
 # Input schema for the phenix_ask_user_question tool. Module-level so the
-# Claude Code backend (which registers its own SDK copy of the tool) imports
+# claude_agent backend (which registers its own SDK copy of the tool) imports
 # the SAME schema: the GUI QuestionCard renders these fields, so the two
 # backends' ask-user contracts must not drift.
 ASK_USER_QUESTION_SCHEMA = {
@@ -501,8 +501,8 @@ ASK_USER_QUESTION_SCHEMA = {
 def register_ask_user_question(registry):
   """Register the ``phenix_ask_user_question`` builtin on ``registry``.
 
-  The API-backend equivalent of ``ClaudeCodeAgent``'s SDK ask-user tool
-  (claude_code runs its own loop and owns its own copy; this is for the
+  The API-backend equivalent of ``ClaudeAgent``'s SDK ask-user tool
+  (claude_agent runs its own loop and owns its own copy; this is for the
   anthropic / openai / portkey / google backends that drive
   ``AgentSession``'s tool loop). The handler emits an
   ``AskUserQuestionRequested`` and parks the ``AgentSession`` worker on its

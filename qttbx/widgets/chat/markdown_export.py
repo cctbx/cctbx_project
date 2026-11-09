@@ -44,7 +44,7 @@ def conversation_to_markdown(conv, storage=None):
   - text -> emitted verbatim (already markdown from the model)
   - image -> ``![caption](path)`` or placeholder when storage absent
   - thinking -> blockquote headed ``**Thinking**`` (the narration of a
-    claude_code run lives here; signature-only blocks are skipped)
+    claude_agent run lives here; signature-only blocks are skipped)
   - tool_use -> fenced code block tagged 'tool-use' with JSON input
   - tool_result -> fenced code block tagged 'tool-result' with the text
     content; nested image blocks render as image links

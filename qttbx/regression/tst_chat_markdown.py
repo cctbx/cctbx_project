@@ -205,7 +205,7 @@ def exercise_user_and_assistant_text_blocks_alternate():
 
 
 def exercise_thinking_blocks_render_as_labelled_blockquote():
-  """A thinking block is the run's narration (on claude_code the summaries
+  """A thinking block is the run's narration (on claude_agent the summaries
   are the only account of an autonomous run between tool calls), so Save
   chat keeps it: a blockquote headed **Thinking**, every line quoted so a
   multi-paragraph summary stays one quote, in its place among the other

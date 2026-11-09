@@ -29,7 +29,7 @@ prose in ``final_text`` (all the parent MODEL ever sees).
 
 Whose cap fired matters, because the two backend families are capped in
 different places. ``AgentSession.run_turn(max_turns=...)`` caps the API
-backends and reports it through a transcript marker; ``claude_code`` runs its
+backends and reports it through a transcript marker; ``claude_agent`` runs its
 agentic loop inside the SDK subprocess, which reports its own cap as
 ``TurnDone(finish=CAP)`` and never writes that marker. Reading only the marker
 therefore made a capped child on the DEFAULT backend byte-identical to a clean
@@ -47,7 +47,7 @@ had a half nothing was reading:
   everything and found nothing. ``_TerminalOutcome`` therefore records whether
   a terminal event arrived AT ALL, not merely what it said.
 - **Whose permission layer denied.** The API backends route every approval
-  through ``_HeadlessApprovals`` here; ``claude_code`` resolves permissions
+  through ``_HeadlessApprovals`` here; ``claude_agent`` resolves permissions
   inside its own SDK callback, where nothing this module owns is consulted. So
   the denied-every-tool backstop was dead on the DEFAULT backend. ``run_child``
   hands such an agent a denial sink (``set_denial_sink``, duck-typed so no
@@ -70,7 +70,7 @@ both read off the wiring the child was actually built from so neither can drift
   signal the phenix-side factory uses to choose what to pre-allow, never a
   hardcoded name list that a renamed or added skill tool walks past;
 - any tool from an MCP server the child's PROFILE did not ask for. A backend
-  adds servers of its own: ``claude_code`` builds an in-process ``phenix_agent``
+  adds servers of its own: ``claude_agent`` makes an in-process ``phenix_agent``
   server on every agent, and its ``phenix_get_job_history`` -- auto-approved
   ahead of every policy check, and returning ``"(no job history is attached
   to this session)"`` as a SUCCESSFUL result when no provider is wired, which
@@ -156,7 +156,7 @@ RUN_SUBAGENT_SCHEMA = {
 
 # The wording the MODEL reads before deciding to delegate, so it must say that
 # the child starts blind and cannot ask. ONE tool on TWO backend surfaces --
-# the registry builtin below and claude_code's SDK tool -- and a description
+# the registry builtin below and claude_agent's SDK tool -- and a description
 # that drifted between them would describe a tool that does not exist on one of
 # them. Shared as a constant so it cannot; a parity test pins the pair.
 RUN_SUBAGENT_DESCRIPTION = (
@@ -203,7 +203,7 @@ class _HeadlessApprovals(ApprovalCoordinator):
   ``incomplete_reason`` when nothing else succeeded.
 
   The record is deliberately WIDER than this coordinator's own decisions.
-  ``claude_code`` resolves every permission inside its own SDK callback, so a
+  ``claude_agent`` resolves every permission inside its own SDK callback, so a
   child on the DEFAULT backend never reaches ``open`` at all and the backstop
   fired for nobody. :meth:`record_denial` is therefore public: ``run_child``
   hands it to any agent that denies on its own behalf.
@@ -291,7 +291,7 @@ class _TerminalOutcome:
     canonical ``finish`` -- the one field that distinguishes a cap, a backend
     error, a truncation and a provider block from a clean end -- exists ONLY on
     the event. A literal no-op sink discarded it, which is what made a
-    ``claude_code`` child capped inside its SDK subprocess byte-identical to
+    ``claude_agent`` child capped inside its SDK subprocess byte-identical to
     one that finished and found nothing.
 
   ``TurnDone`` is per-round and ``AgentSession`` loops while ``finish`` stays
@@ -301,7 +301,7 @@ class _TerminalOutcome:
   A terminal event can also be ABSENT, which is a third state and not a
   degenerate ``finish``. Every backend reports a provider failure by yielding
   an ``AgentError`` and returning -- anthropic's ``APIError`` /
-  ``TransportError`` arms, openai's, gemini's ``_map_error``, claude_code's
+  ``TransportError`` arms, openai's, gemini's ``_map_error``, claude_agent's
   input-extraction guard -- so no ``TurnDone`` is ever emitted, ``_accumulate``
   leaves ``stop_reason`` empty and ``AgentSession`` exits its loop. ``finish``
   alone cannot tell that from a backend that reported a ``TurnDone`` carrying
@@ -412,7 +412,7 @@ _RESULT_BLOCK_TYPES = ("tool_result", "server_tool_result")
 _FINISH_OUTCOMES = {
   CANCELLED: ("cancelled", _CANCEL_MARKER),
   # Both cap shapes land on the same reason. CAP is the backend's own cap
-  # (claude_code's SDK subprocess); a FINAL TOOL_USE is an API backend's loop
+  # (claude_agent's SDK subprocess); a FINAL TOOL_USE is an API backend's loop
   # stopped by AgentSession's cap while the model still wanted tools -- the
   # same reading the headless runner's disposition makes.
   CAP: ("turn_cap", _SDK_CAP_MARKER),
@@ -477,7 +477,7 @@ def _cap_marker(conversation):
   exercises fail loudly; a test that breaks beats a live false positive nobody
   can see.
 
-  This covers the API backends only. ``claude_code``'s loop is capped inside
+  This covers the API backends only. ``claude_agent``'s loop is capped inside
   its SDK subprocess, which reports through ``TurnDone(finish=CAP)`` and writes
   no marker at all; that half is read from the event sink.
 
@@ -584,7 +584,7 @@ def _tool_names_by_use_id(conversation):
 
   A ``tool_result`` block carries only the id it answers, so the name has to
   come from the ``tool_use`` block that raised it. Both backend families write
-  that block: the API loop from its own ``ToolUseRequested``, ``claude_code``
+  that block: the API loop from its own ``ToolUseRequested``, ``claude_agent``
   from the tool_use it observed in its SDK subprocess.
 
   ``server_tool_use`` counts too. A provider-executed tool (web search, code
@@ -614,12 +614,12 @@ def _is_skill_tool(name, tools):
   measurement again.
 
   Registered under the BARE name on both surfaces, so an SDK-prefixed
-  ``mcp__<server>__<bare>`` is retried bare -- ``claude_code`` wraps the skill
+  ``mcp__<server>__<bare>`` is retried bare -- ``claude_agent`` wraps the skill
   tools into an in-process MCP server and reports them that way. Only a name
   the registry does not know: one it knows is what it says, so a server named
   ``mcp`` whose renamed ``mcp__x__load_skill`` ends in a skill tool's name
   keeps its measurement. A name the registry does not know is NOT a skill
-  tool either: an MCP tool a claude_code child ran inside its own subprocess
+  tool either: an MCP tool a claude_agent child ran inside its own subprocess
   never enters the registry at all, and calling that "no measurement" would
   fire the flag on a child that measured plenty.
 
@@ -655,7 +655,7 @@ def _tool_server(name, tools):
   through ``ToolRegistry.register_mcp_tool``, which stamps the source
   ``mcp:<server>`` (and renames a colliding tool ``<server>__<bare>``,
   leaving the source untouched), so the registry answers first.
-  ``claude_code`` names every MCP tool ``mcp__<server>__<bare>``, so the
+  ``claude_agent`` names every MCP tool ``mcp__<server>__<bare>``, so the
   server is IN the name -- which is the only route available for it,
   because a tool its SDK subprocess ran never enters the registry. The
   server there is spelled as that backend wired it (``coot_bridge`` for
@@ -707,7 +707,7 @@ def _is_measurement_tool(name, tools, servers):
     pre-allow. They read the child's own prompt material.
   - **Tools from a server the child's PROFILE did not ask for.** *servers*
     names the MCP servers this build really wired up. A backend adds servers of
-    its own on top of those -- ``claude_code`` builds an in-process
+    its own on top of those -- ``claude_agent`` builds an in-process
     ``phenix_agent`` server on EVERY agent, carrying the job-history and
     ask-user tools, and auto-approves the job-history one ahead of any policy
     check. With no provider wired (nothing wires one for a child)
@@ -864,7 +864,7 @@ def _child_was_equipped(bundle):
   nothing.
 
   Both routes are read, because the two backend families deliver tools
-  differently and each is invisible on the other's route: ``claude_code``'s MCP
+  differently and each is invisible on the other's route: ``claude_agent``'s MCP
   tools live in its SDK subprocess and never enter the registry (only the
   server list on the bundle records them), while an API child's arrive as
   registry entries sourced ``mcp:<server>``.
@@ -1082,7 +1082,7 @@ def _effective_max_turns(bundle, max_turns):
   Applied here rather than at the call sites because both of them pass the
   parent's number and neither holds the child's declaration. A reviewer profile
   asking for 40 turns otherwise ran at the parent's 25 on every backend but
-  ``claude_code`` (whose separate SDK cap the factory writes directly), which
+  ``claude_agent`` (whose separate SDK cap the factory writes directly), which
   truncates the review and blocks the readiness claim it was spawned to settle.
 
   Whatever wins is then validated (:func:`_validate_max_turns`): an
@@ -1156,7 +1156,7 @@ def run_child(parent_session, task, bundle, cancel, tool_use_id,
       profile's ``subagents.default_max_turns``, so ``None`` arrives only when
       the parent profile omits the field -- a plain ``group_args`` parent, or a
       ``Profile`` predating it -- and then :data:`_DEFAULT_CHILD_MAX_TURNS`
-      applies. A ``claude_code`` child is capped elsewhere entirely: its agentic
+      applies. A ``claude_agent`` child is capped elsewhere: its agentic
       loop runs in the SDK subprocess, reached only through
       ``extra_sdk_options['max_turns']``.
 
@@ -1188,7 +1188,7 @@ def run_child(parent_session, task, bundle, cancel, tool_use_id,
                                 backend=bundle.backend)
   outcome = _TerminalOutcome()
   approvals = _HeadlessApprovals(log=parent_session.log)
-  # A backend that resolves permissions in its OWN layer (claude_code, inside
+  # A backend that resolves permissions in its OWN layer (claude_agent, inside
   # the SDK callback) never reaches the coordinator above, so its denials were
   # invisible to the record and the denied-every-tool backstop fired for nobody
   # on the DEFAULT backend. Duck-typed: this module must not import, or know
@@ -1355,7 +1355,7 @@ def run_child(parent_session, task, bundle, cancel, tool_use_id,
     if not final_text.strip():
       # An empty tool result is a provider 400 on the parent's next request,
       # and reads as "ran fine, nothing to report" if it survives -- which is
-      # what a claude_code finish=ERROR produced, its assistant turn carrying
+      # what a claude_agent finish=ERROR produced, its assistant turn carrying
       # no text at all. Checked BEFORE the notice below, or a notice would
       # stand in for an answer that was never written.
       final_text = _NO_TEXT_MARKER
@@ -1539,7 +1539,7 @@ def normalize_subagent_task(task):
   """Validate a ``run_subagent`` ``task`` argument and return it stripped.
 
   PUBLIC because ``task`` arrives on TWO tool surfaces -- this module's registry
-  builtin and ``claude_code``'s SDK tool -- which must refuse exactly the same
+  builtin and ``claude_agent``'s SDK tool -- which must refuse exactly the same
   inputs, or an argument that spawns a child on one backend family is refused
   on the other.
 
@@ -1587,7 +1587,7 @@ def subagents_permitted(profile, depth=0):
   The same two fields ``register_run_subagent``'s handler checks when it is
   CALLED. Exposed so an assembler can apply the policy BEFORE building a tool,
   which the handler's own check cannot cover: a backend that runs its own
-  agentic loop (claude_code) pins its tool set at client construction and never
+  agentic loop (claude_agent) pins its tool set at client construction and never
   dispatches through ``AgentSession``, so its copy of ``run_subagent`` has no
   backstop and a disabled profile has to be honored earlier.
 

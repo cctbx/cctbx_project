@@ -278,7 +278,7 @@ class _SwitchingAgent(FakeAgent):
     self._answers_with = answers_with
 
   def stream_turn(self, conversation, tools, cancel):
-    self.observed_model = None          # reset per turn, as claude_code does
+    self.observed_model = None          # reset per turn, as claude_agent does
     for event in super().stream_turn(conversation, tools, cancel):
       if self._answers_with:
         self.observed_model = self._answers_with
@@ -735,8 +735,8 @@ def exercise_server_tool_events_accumulate_without_dispatch():
     shutil.rmtree(tmp)
 
 
-# ---- claude_code observed-result answering -------------------------------
-# The claude_code backend runs its OWN tool loop inside the SDK subprocess and
+# ---- claude_agent observed-result answering -------------------------------
+# The claude_agent backend runs its OWN tool loop inside the SDK subprocess and
 # surfaces each executed result as a ToolResultObserved -- its tool_use blocks
 # still reach the session as ToolUseRequested (populating tool_calls), but the
 # turn ends with a normal end_turn, NOT 'tool_use'. The session must answer the
@@ -745,9 +745,9 @@ def exercise_server_tool_events_accumulate_without_dispatch():
 # 'result (error)' entries.
 
 
-def exercise_observed_results_answer_completed_claude_code_tools():
-  """[Major] A claude_code turn (tool_use answered by ToolResultObserved, then a
-  normal end_turn) must NOT fabricate a 'Cancelled by user.' result for the
+def exercise_observed_results_answer_completed_claude_agent_tools():
+  """[Major] A claude_agent turn (tool_use answered by ToolResultObserved, then
+  a normal end_turn) must NOT fabricate a 'Cancelled by user.' result for the
   completed tool, and must commit the iteration as an (assistant tool_use, user
   tool_result) pair whose REAL answer keeps persistable_prefix from trimming the
   committed assistant -- the turn then ends in the final assistant text message
@@ -809,7 +809,7 @@ def exercise_observed_results_answer_completed_claude_code_tools():
 
 
 def exercise_partial_observed_answers_mix_real_and_cancelled():
-  """A claude_code turn cut short after one of two tools ran: the observed tool
+  """A claude_agent turn cut short after one of two tools ran: the observed tool
   gets its real result, the un-observed one still gets 'Cancelled by user.' so
   the transcript never orphans a tool_use."""
   session, tmp = _new_test_session([
@@ -839,7 +839,7 @@ def exercise_partial_observed_answers_mix_real_and_cancelled():
 
 
 def exercise_observed_error_result_preserves_is_error():
-  """A claude_code tool that FAILED in its SDK subprocess -- a ToolResultObserved
+  """A claude_agent tool that FAILED in its subprocess -- a ToolResultObserved
   with is_error=True -- must be answered with an is_error tool_result, not
   recorded as a success, so a resumed conversation shows the failure rather than
   a muted 'success' cell."""
@@ -867,7 +867,7 @@ def exercise_observed_error_result_preserves_is_error():
 
 
 def exercise_observed_content_blocks_normalizes_shapes():
-  """_observed_content_blocks (which builds each claude_code answer block) keeps
+  """_observed_content_blocks (building each claude_agent answer block) keeps
   text verbatim, reduces base64-bearing blocks (image / document) to a compact
   ``[<type>]`` placeholder so no blob inlines into the transcript, JSON-encodes
   small structured items, and maps empty / None to an empty text block."""
@@ -1749,8 +1749,8 @@ def exercise_checkpoint_floor_resets_per_turn():
     shutil.rmtree(tmp)
 
 
-def exercise_claude_code_iterations_commit_as_alternating_pairs():
-  """A claude_code-style turn (tool results observed in-stream, single
+def exercise_claude_agent_iterations_commit_as_alternating_pairs():
+  """A claude_agent-style turn (tool results observed in-stream, single
   terminal TurnDone) commits each completed iteration into the conversation
   as an (assistant tool_use, user tool_results) pair -- the SAME transcript
   shape the API backends produce -- and checkpoints it to disk mid-turn."""
@@ -1810,7 +1810,7 @@ def exercise_parallel_tool_uses_commit_once_all_answered_in_order():
 
 
 def exercise_two_sequential_iterations_commit_two_pairs():
-  """Sequential iterations inside one claude_code turn commit as two
+  """Sequential iterations inside one claude_agent turn commit as two
   alternating pairs, then the trailing text lands as the final assistant."""
   session, tmp = _new_test_session([
     [ToolUseRequested(id="t1", name="a", input={}),
@@ -1854,7 +1854,7 @@ def exercise_observed_result_for_unknown_tool_use_never_commits():
 def exercise_empty_residual_folds_usage_and_stop_onto_last_commit():
   """A turn ending right on a tool result (no trailing text) leaves an
   EMPTY residual assistant carrying the terminal stop_reason and usage
-  (claude_code emits usage once, from the terminal ResultMessage).
+  (claude_agent emits usage once, from the terminal ResultMessage).
   Appending it would be trimmed on save, silently dropping usage -- so it
   folds onto the last committed assistant instead, and run_turn returns
   that message."""
@@ -2037,7 +2037,7 @@ def exercise_run_turn_cancels_pending_approval_on_exit():
       model = "opens-1"
 
       def stream_turn(self, conversation, tools, cancel):
-        # Open an approval future the way claude_code's _on_can_use_tool would,
+        # Open an approval future the way claude_agent's _on_can_use_tool would,
         # then end the turn WITHOUT it resolving (as on a subprocess death).
         req = ToolApprovalRequest(
           request_id="r1", tool_name="t", tool_source="builtin",
@@ -2064,7 +2064,7 @@ def exercise_run_turn_cancels_pending_approval_on_exit():
 def exercise_api_remember_recorded_before_resolve_survives_cancel():
   """The API-backend remember='tool' persistence runs in record_approval_remember
   (GUI thread, before the coordinator resolves) via the request->tool map, so a
-  click racing a cancel still records 'always allow' -- parity with claude_code
+  click racing a cancel still records 'always allow' -- parity with claude_agent
   (whose recording lives in submit_approval, likewise pre-resolve)."""
   from qttbx.widgets.chat.agent.tools import ToolApprovalResponse
   session, tmp = _new_test_session([])
@@ -2236,7 +2236,7 @@ def exercise():
   exercise_token_usage_event_carries_all_fields_to_message()
   exercise_deny_and_stop_ends_turn()
   exercise_server_tool_events_accumulate_without_dispatch()
-  exercise_observed_results_answer_completed_claude_code_tools()
+  exercise_observed_results_answer_completed_claude_agent_tools()
   exercise_partial_observed_answers_mix_real_and_cancelled()
   exercise_observed_error_result_preserves_is_error()
   exercise_observed_content_blocks_normalizes_shapes()
@@ -2261,7 +2261,7 @@ def exercise():
   exercise_checkpoint_fires_immediately_after_tool_result()
   exercise_checkpoint_floor_coalesces_rapid_iterations()
   exercise_checkpoint_floor_resets_per_turn()
-  exercise_claude_code_iterations_commit_as_alternating_pairs()
+  exercise_claude_agent_iterations_commit_as_alternating_pairs()
   exercise_parallel_tool_uses_commit_once_all_answered_in_order()
   exercise_two_sequential_iterations_commit_two_pairs()
   exercise_observed_result_for_unknown_tool_use_never_commits()

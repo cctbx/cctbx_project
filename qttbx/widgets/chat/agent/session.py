@@ -165,7 +165,7 @@ class AgentSession:
     self.on_event = on_event or (lambda ev: None)
     self.log = log if log is not None else sys.stdout
 
-    # Cancel-safe approval bookkeeping shared with the claude_code backend
+    # Cancel-safe approval bookkeeping shared with the claude_agent backend
     # (chat_window builds one coordinator and injects it into both). A fresh
     # one is created when no caller injects it (tests, headless subagents).
     from qttbx.widgets.chat.agent.approval import ApprovalCoordinator
@@ -177,7 +177,7 @@ class AgentSession:
 
     # The question queue is the worker's blocking point while a
     # phenix_ask_user_question builtin is in flight (the API-backend
-    # equivalent of ClaudeCodeAgent's SDK ask-user tool). The GUI runner
+    # equivalent of ClaudeAgent's SDK ask-user tool). The GUI runner
     # flushes a _Cancelled sentinel into it on cancel, and delivers the
     # user's answers via submit_question_answer.
     self.question_queue = queue.Queue()
@@ -194,7 +194,7 @@ class AgentSession:
     """Run one turn, then guarantee the approval registry is left clean.
 
     A turn that ends with an approval still open -- e.g. a subprocess-death
-    claude_code turn whose ``_on_can_use_tool`` future never resolved -- must
+    claude_agent turn whose ``_on_can_use_tool`` future never resolved -- must
     not leave a pending future in the coordinator: it would keep
     ``owns_pending_approval`` True while idle (so a stale Deny+Stop could set the
     idle cancel token) and destroy a still-pending SDK task at exit.
@@ -290,7 +290,7 @@ class AgentSession:
 
       if assistant_msg.stop_reason != "tool_use":
         # A tool_use can ride a non-"tool_use" stop. Two backends reach here:
-        #   - claude_code runs its OWN tool loop in the SDK subprocess, so its
+        #   - claude_agent runs its OWN tool loop in the SDK subprocess, so its
         #     tool_use blocks arrive as ToolUseRequested and each real result as
         #     a ToolResultObserved that _accumulate has ALREADY turned into an
         #     answering tool_result in ``answered`` -- so those tools are never
@@ -463,7 +463,7 @@ class AgentSession:
                   self.attachment_conv_id)
       # Record the model that actually ANSWERED, when the backend reports one.
       # `agent.model` is what we ASKED for, and on a backend that can switch
-      # models inside a conversation (claude_code's /model) the two diverge:
+      # models inside a conversation (claude_agent's /model) the two diverge:
       # the stamp applied when this message was created would then name a
       # model that did not produce it. Applied inside the loop, so a
       # per-iteration commit already carries the corrected value.
@@ -477,12 +477,12 @@ class AgentSession:
         msg.model = observed
         if self.depth == 0:
           self.conv.meta.model = observed
-      # A backend that runs its OWN tool loop (claude_code) streams the whole
+      # A backend that runs its OWN tool loop (claude_agent) streams the whole
       # multi-iteration turn through one stream_turn call. Commit each
       # completed iteration -- every pending tool_use answered by an observed
       # result -- as the same (assistant, tool_results) message pair the API
       # loop appends, so the persisted shape is backend-uniform and the
-      # checkpoint below gives claude_code the same per-iteration disk
+      # checkpoint below gives claude_agent the same per-iteration disk
       # cadence. API backends never emit ToolResultObserved, so this branch
       # cannot fire for them.
       if isinstance(event, ToolResultObserved) and tool_calls:
@@ -580,17 +580,17 @@ class AgentSession:
     """Append one user message answering every tool_use of the just-ended turn.
 
     A turn that ends right after an assistant tool_use block -- Stop pressed
-    before dispatch, the subagent turn-cap, or a claude_code turn (which runs
+    before dispatch, the subagent turn-cap, or a claude_agent turn (which runs
     tools in its SDK subprocess) -- must not leave an UNMATCHED tool_use in the
     saved transcript: on the next turn that transcript is replayed verbatim, and
     an assistant tool_use with no following tool_result is a non-recoverable
     provider 400 (anthropic / openai / portkey / gemini) that permanently breaks
-    the conversation. (claude_code resumes via its own SDK session and is immune
+    the conversation. (claude_agent resumes via its SDK session and is immune
     to the 400, but an unanswered tool_use would still be trimmed off the saved
     transcript by ``persistable_prefix`` and lost from the rebuilt view.)
 
     ``answered`` is the ordered list of tool_result blocks ``_accumulate``
-    already built from this turn's observed results (claude_code tools that
+    already built from this turn's observed results (claude_agent tools that
     actually ran, each carrying its real content + is_error). A tool_use with no
     answer genuinely did not run -- a pre-dispatch cancel, a mid-turn cancel
     before its result arrived, or the turn cap -- and gets an is_error result
@@ -647,7 +647,7 @@ class AgentSession:
     """Persist a remember='tool' choice for an API-backend approval by wiring the
     session's pending-calls map, the registry opt-out recheck, and the policy's
     session-allow set into the shared ``record_tool_remember`` contract (the same
-    one ``ClaudeCodeAgent.submit_approval`` uses). No-op for claude_code, whose
+    one ``ClaudeAgent.submit_approval`` uses). No-op for claude_agent, whose
     SDK tools never populate ``_pending_approval_calls`` (so ``tool_name_of``
     returns None). Called by the runner on the GUI thread BEFORE the coordinator
     resolves the future, so a click racing a cancel still records it."""
@@ -689,7 +689,7 @@ class AgentSession:
   def _await_question_answer(self, request_id, questions):
     """Emit an ``AskUserQuestionRequested`` and park the worker for answers.
 
-    The API-backend counterpart of ``ClaudeCodeAgent``'s SDK ask-user
+    The API-backend counterpart of ``ClaudeAgent``'s SDK ask-user
     tool. Mirrors ``_await_approval``: surface the request to the UI, then
     block on ``question_queue`` until the GUI delivers the user's answers
     (via ``submit_question_answer``) or pushes a ``_Cancelled`` sentinel.
@@ -788,7 +788,7 @@ def _accumulate(msg, event, tool_calls, answered, storage, attachment_conv_id):
       "id": event.id, "name": event.name, "input": event.input}))
     tool_calls.append(event)
   elif isinstance(event, ToolResultObserved):
-    # A backend that runs its OWN tool loop (claude_code, in the SDK subprocess)
+    # A backend that runs its OWN tool loop (claude_agent, in an SDK subprocess)
     # reports each executed result here instead of the session dispatching it.
     # The matching tool_use rode in as a ToolUseRequested (pending in tool_calls)
     # but the turn ends 'end_turn' (not 'tool_use'), so build its answering
@@ -886,14 +886,14 @@ def _is_binary_block(item):
 
 
 def _observed_content_blocks(content):
-  """Canonical tool_result content blocks from a claude_code observed result.
+  """Canonical tool_result content blocks from a claude_agent observed result.
 
   The SDK surfaces a tool result's content as a plain string, a list of
   Anthropic content dicts (text / image / document / tool_reference / ...), or
   None. Text is preserved verbatim; a base64-bearing block (image, document,
   ...) is reduced to a compact ``[<type>]`` placeholder -- so the persisted
   transcript stays text-sized and never inlines a base64 blob (the bytes are
-  re-derivable from the claude_code transcript on resume; images are also
+  re-derivable from the claude_agent transcript on resume; images are also
   surfaced live via ImageEmitted). Any other structured item is JSON-encoded,
   and an empty or None result becomes a single empty text block.
   """

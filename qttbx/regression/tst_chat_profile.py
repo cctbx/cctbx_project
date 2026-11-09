@@ -591,8 +591,8 @@ def exercise_profile_json_non_ascii_utf8_loads():
     shutil.rmtree(tmp)
 
 
-def exercise_profile_backend_defaults_to_claude_code():
-  """Profiles with no `backend:` key default to claude_code so a user
+def exercise_profile_backend_defaults_to_claude_agent():
+  """Profiles with no `backend:` key default to claude_agent so a user
   with `claude login` already done can chat with no extra setup. Users
   who want the API-key path must opt in with `backend: anthropic`."""
   tmp = tempfile.mkdtemp()
@@ -600,7 +600,7 @@ def exercise_profile_backend_defaults_to_claude_code():
     _write_profile(tmp, "p", {"name": "p", "model": "claude-opus-4-7"})
     loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
     p = loader.load("p")
-    assert p.backend == "claude_code", p.backend
+    assert p.backend == "claude_agent", p.backend
     # The claude.* subtree is exposed with safe defaults so callers can
     # read profile.claude.cli_path / sdk_options unconditionally.
     assert p.claude.cli_path is None, p.claude.cli_path
@@ -609,28 +609,68 @@ def exercise_profile_backend_defaults_to_claude_code():
     shutil.rmtree(tmp)
 
 
-def exercise_profile_backend_claude_code_parsed():
-  """backend: claude_code parses cleanly and the optional claude.*
+def exercise_profile_backend_claude_agent_parsed():
+  """backend: claude_agent parses cleanly and the optional claude.*
   subtree is exposed on the loaded Profile."""
   tmp = tempfile.mkdtemp()
   try:
     _write_profile(tmp, "p", {
       "name": "p", "model": "claude-opus-4-7",
-      "backend": "claude_code",
+      "backend": "claude_agent",
       "claude": {"cli_path": "/opt/claude/bin/claude",
                  "sdk_options": {"max_turns": 20}}})
     loader = ProfileLoader(builtin_dir=Path(tmp), log=null_out())
     p = loader.load("p")
-    assert p.backend == "claude_code", p.backend
+    assert p.backend == "claude_agent", p.backend
     assert p.claude.cli_path == "/opt/claude/bin/claude", p.claude.cli_path
     assert p.claude.sdk_options == {"max_turns": 20}, p.claude.sdk_options
   finally:
     shutil.rmtree(tmp)
 
 
+def exercise_profile_legacy_claude_code_backend_loads_as_claude_agent():
+  """A profile written before the rename still names `claude_code`; it must
+  load as `claude_agent` rather than fail as an unknown backend."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {"name": "p", "model": "opus",
+                              "backend": "claude_code"})
+    p = ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+    assert p.backend == "claude_agent", p.backend
+  finally:
+    shutil.rmtree(tmp)
+
+
+def exercise_canonical_backend():
+  """canonical_backend maps only the renamed id; every other value, including
+  a malformed non-string one, comes back unchanged so the caller's own
+  validation reports it."""
+  from qttbx.widgets.chat.agent.profile import canonical_backend
+  assert canonical_backend("claude_code") == "claude_agent"
+  for value in ("claude_agent", "anthropic", "openai", "bogus", "", None,
+                ["claude_code"]):
+    assert canonical_backend(value) == value, value
+
+
+def exercise_profile_malformed_backend_still_refused():
+  """A non-string backend is still a load-time Sorry, not a TypeError."""
+  tmp = tempfile.mkdtemp()
+  try:
+    _write_profile(tmp, "p", {"name": "p", "model": "opus",
+                              "backend": ["claude_code"]})
+    try:
+      ProfileLoader(builtin_dir=Path(tmp), log=null_out()).load("p")
+    except Sorry as e:
+      assert "unknown backend" in str(e), str(e)
+    else:
+      raise AssertionError("a list backend loaded")
+  finally:
+    shutil.rmtree(tmp)
+
+
 def exercise_openai_is_known_backend():
   """The openai backend must validate at load time (it is a real agent
-  backend now), mirroring the claude_code/anthropic known-backend cases."""
+  backend now), mirroring the claude_agent/anthropic known-backend cases."""
   tmp = tempfile.mkdtemp()
   try:
     _write_profile(tmp, "p",
@@ -1016,8 +1056,11 @@ def exercise():
   exercise_system_prompt_file_with_expansion()
   exercise_system_prompt_file_non_ascii_utf8_round_trips()
   exercise_profile_json_non_ascii_utf8_loads()
-  exercise_profile_backend_defaults_to_claude_code()
-  exercise_profile_backend_claude_code_parsed()
+  exercise_profile_backend_defaults_to_claude_agent()
+  exercise_profile_backend_claude_agent_parsed()
+  exercise_profile_legacy_claude_code_backend_loads_as_claude_agent()
+  exercise_canonical_backend()
+  exercise_profile_malformed_backend_still_refused()
   exercise_openai_is_known_backend()
   exercise_portkey_is_known_backend()
   exercise_google_is_known_backend()
@@ -1067,6 +1110,8 @@ def exercise_backend_display_name_maps_each_backend():
   """backend_display_name turns a backend id into a user-facing assistant name
   (Claude / GPT / Gemini / …); unknown or empty falls back to 'Assistant'."""
   from qttbx.widgets.chat.agent.profile import backend_display_name
+  assert backend_display_name("claude_agent") == "Claude"
+  # A conversation saved before the rename stamps its turns `claude_code`.
   assert backend_display_name("claude_code") == "Claude"
   assert backend_display_name("anthropic") == "Claude"
   assert backend_display_name("openai") == "GPT"

@@ -29,7 +29,7 @@ _KNOWN_KEYS = {
 }
 
 # The one reasoning-depth vocabulary every backend maps onto its own control
-# (Anthropic output_config.effort, the Claude Code CLI --effort, OpenAI
+# (Anthropic output_config.effort, the `claude` CLI's --effort, OpenAI
 # reasoning.effort, Gemini thinking_level). Defined once here; the launcher
 # flag, the agents and the composer combo import it.
 EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
@@ -37,7 +37,33 @@ DEFAULT_EFFORT = "high"
 
 # Backends supported by the agent factory. Validated at load time so
 # typos surface before the chat window opens.
-_KNOWN_BACKENDS = ("anthropic", "claude_code", "openai", "portkey", "google")
+_KNOWN_BACKENDS = ("anthropic", "claude_agent", "openai", "portkey", "google")
+
+# Renamed backend ids, mapped to the current id, so a profile, a saved
+# conversation, or a --backend flag written before the rename still works.
+# claude_code became claude_agent: Anthropic's Agent SDK branding terms do not
+# allow a third-party product to use the name "Claude Code".
+_RENAMED_BACKENDS = {"claude_code": "claude_agent"}
+
+
+def canonical_backend(backend):
+  """Return the current id for a backend id that may predate a rename.
+
+  Parameters
+  ----------
+  backend : object
+      A backend id as read from a profile, a stored message, or the command
+      line.
+
+  Returns
+  -------
+  object
+      The current id for a renamed one; any other value unchanged, so the
+      caller's own validation still reports a bad one.
+  """
+  if isinstance(backend, str):
+    return _RENAMED_BACKENDS.get(backend, backend)
+  return backend
 
 # There is deliberately NO `subagents.default_model`. A child that names no
 # model runs on the PARENT's pair (see `subagent_factory._resolve_pair`), which
@@ -53,7 +79,7 @@ _KNOWN_BACKENDS = ("anthropic", "claude_code", "openai", "portkey", "google")
 # input placeholder, question card). Portkey is a gateway whose underlying
 # model varies, so it -- and anything unmapped -- gets the generic "Assistant".
 _BACKEND_DISPLAY_NAMES = {
-  "claude_code": "Claude",
+  "claude_agent": "Claude",
   "anthropic": "Claude",
   "openai": "GPT",
   "google": "Gemini",
@@ -76,7 +102,8 @@ def backend_display_name(backend):
       The display name (``"Claude"``, ``"GPT"``, ``"Gemini"``, or
       ``"Assistant"``).
   """
-  return _BACKEND_DISPLAY_NAMES.get(backend or "", "Assistant")
+  return _BACKEND_DISPLAY_NAMES.get(canonical_backend(backend) or "",
+                                    "Assistant")
 
 # Environment keys a profile-supplied MCP-server ``env`` block must not be
 # able to set. A profile can be project-scoped (and therefore untrusted),
@@ -169,9 +196,9 @@ class McpServerConfig:
 
 @dataclass
 class ClaudeProfileOptions:
-  """Backend-specific knobs for the ``claude_code`` backend.
+  """Backend-specific knobs for the ``claude_agent`` backend.
 
-  Only consulted when ``Profile.backend == 'claude_code'``. Exposed with
+  Only consulted when ``Profile.backend == 'claude_agent'``. Exposed with
   safe defaults on every ``Profile`` so call sites can read attributes
   unconditionally without ``hasattr``/``getattr`` guards.
   """
@@ -224,7 +251,7 @@ class Profile:
   # from this profile runs at its parent's level. A filled-in default here
   # would outrank both.
   effort: str = None
-  backend: str = "claude_code"  # anthropic|claude_code|openai|portkey|google
+  backend: str = "claude_agent"  # anthropic|claude_agent|openai|portkey|google
   claude: ClaudeProfileOptions = field(default_factory=ClaudeProfileOptions)
   # Backend-specific knobs for the "portkey" backend; only consulted when
   # backend == "portkey". Default None on every Profile so call sites can
@@ -387,7 +414,7 @@ class ProfileLoader:
 
     # Validate backend at load time so typos fail before the chat window
     # opens, not after the user has been waiting for a streaming response.
-    backend = data.get("backend", "claude_code")
+    backend = canonical_backend(data.get("backend", "claude_agent"))
     if backend not in _KNOWN_BACKENDS:
       raise Sorry(
         "Profile %s: unknown backend %r (expected one of: %s)"
@@ -506,7 +533,7 @@ def _build_profile(data, source_path):
   skills = data.get("skills", {}) or {}
   subagents = data.get("subagents", {}) or {}
   # The claude subtree is parsed on every load (cheap), but only the
-  # claude_code backend will consult it; for anthropic profiles it just
+  # claude_agent backend will consult it; for anthropic profiles it just
   # carries default values so attribute access is always safe.
   claude_data = data.get("claude", {}) or {}
   claude_opts = ClaudeProfileOptions(
@@ -609,7 +636,7 @@ def _build_profile(data, source_path):
     max_turns=(None if data.get("max_turns") is None else
                _coerce_int(data.get("max_turns"), "max_turns", source_path)),
     effort=effort,
-    backend=data.get("backend", "claude_code"),
+    backend=canonical_backend(data.get("backend", "claude_agent")),
     claude=claude_opts,
     portkey_virtual_key=portkey_data.get("virtual_key"),
     portkey_config=portkey_data.get("config"),

@@ -139,7 +139,7 @@ def exercise_finalize_non_cancel_leaves_running_cells_untouched():
   """A non-cancel finalize (end_turn) must NOT relabel a still-running tool
   cell -- the sweep is cancel-specific (only stop_reason='cancelled' calls
   cancel_running_tools). This pins that gate directly; it does NOT assume the
-  cell was already finished -- on claude_code a live tool_use cell is only
+  cell was already finished -- on claude_agent a live tool_use cell is only
   finished when its result is observed (see
   exercise_observed_result_finishes_cell_so_cancel_sweep_skips_it)."""
   from qttbx.widgets.chat.conversation_view import ConversationView
@@ -155,7 +155,7 @@ def exercise_finalize_non_cancel_leaves_running_cells_untouched():
 
 
 def exercise_observed_result_finishes_cell_so_cancel_sweep_skips_it():
-  """[F#2] claude_code runs its tools in the SDK subprocess, bypassing the
+  """[F#2] claude_agent runs its tools in the SDK subprocess, bypassing the
   session dispatch that finishes an API backend's cell -- so nothing finishes
   the live tool_use cell and it stays 'running'. ConversationView's
   finish_tool_cell (driven by ChatWindow._on_tool_result_observed when a result

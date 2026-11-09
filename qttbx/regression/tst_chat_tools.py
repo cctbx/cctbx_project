@@ -253,7 +253,7 @@ def exercise_allow_remember_of():
 
 def exercise_record_tool_remember():
   """The single implementation of the remember='tool' contract that both
-  backends delegate to (API via AgentSession, SDK via ClaudeCodeAgent), differing
+  backends delegate to (API via AgentSession, SDK via ClaudeAgent), differing
   only in the lookup map / recheck / sink they pass. Records via the sink iff the
   user APPROVED with remember='tool' AND the tool still permits being remembered
   (the data-layer opt-out floor, independent of the card's checkbox)."""

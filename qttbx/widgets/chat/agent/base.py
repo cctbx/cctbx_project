@@ -1,7 +1,7 @@
 """Agent ABC and supporting types.
 
 Provider-agnostic. The concrete backends all live in ``phenix.gui.chat``
-(``AnthropicAgent``, ``ClaudeCodeAgent``, ``OpenAIAgent``, ``PortkeyAgent``,
+(``AnthropicAgent``, ``ClaudeAgent``, ``OpenAIAgent``, ``PortkeyAgent``,
 ``GeminiAgent``); each is selected by
 ``phenix.gui.chat.agent_factory.build_agent``.
 """
@@ -22,7 +22,7 @@ class ToolSpec:
   name: str
   description: str
   input_schema: dict           # JSON Schema
-  risk: str = "read"           # 'read' | 'write' | 'destructive' (claude_code card)
+  risk: str = "read"           # 'read' | 'write' | 'destructive' (claude_agent card)
   allow_remember: bool = True  # False -> approval card omits "Always allow this tool"
 
 
@@ -30,7 +30,7 @@ class AttachmentScope:
   """Where an agent's transcript files -- and therefore reads -- its images.
 
   A mixin rather than an ``Agent`` method because the backends do not share one
-  base: ``ClaudeCodeAgent`` is duck-typed and inherits from nothing, while the
+  base: ``ClaudeAgent`` is duck-typed and inherits from nothing, while the
   HTTP backends come through :class:`Agent`. Both re-send image blocks, so both
   need the same answer, and a second copy of the rule would drift.
 
@@ -96,7 +96,7 @@ class Agent(AttachmentScope, ABC):
   #: Optional. The model that actually produced the most recent response,
   #: when the backend reports one. Distinct from ``model`` because they can
   #: differ: a backend able to switch models inside a conversation
-  #: (claude_code's ``/model``) answers with something other than what was
+  #: (claude_agent's ``/model``) answers with something other than what was
   #: configured, and a provider resolving an alias answers with a dated id.
   #: ``AgentSession`` stamps the message and the conversation meta from this
   #: when set, and NEVER writes it back into ``model`` -- doing so would pin
@@ -198,10 +198,10 @@ class Agent(AttachmentScope, ABC):
     session's ApprovalCoordinator instead.
 
     Backends that gate tool execution via a provider-side callback
-    (e.g. the Claude Code SDK's ``can_use_tool``) override this to
+    (e.g. the Claude Agent SDK's ``can_use_tool``) override this to
     persist any remember choice before the coordinator resolves the
     future. Returning ``True`` would tell the runner the request was
-    fully handled here; the claude_code override returns ``False`` so
+    fully handled here; the claude_agent override returns ``False`` so
     the decision still flows through the shared coordinator.
 
     Parameters
@@ -251,7 +251,7 @@ class Agent(AttachmentScope, ABC):
     be reloaded in place; they recover through the credentials dialog
     (``credentials_dialog_class`` + ``set_api_key``), so the caller falls
     through to that prompt. A backend whose credentials live outside the
-    process (e.g. claude_code's CLI OAuth login, re-read from disk when its
+    process (e.g. claude_agent's CLI OAuth login, re-read from disk when its
     subprocess respawns) overrides this to refresh them and return ``True``.
 
     Declared on the ABC so the capability is protocol, not duck-typing: a
@@ -289,7 +289,7 @@ class Agent(AttachmentScope, ABC):
 
     Default: store ``level`` on :attr:`effort`; the backends that build a
     request per turn read it there. A backend that must push the change
-    into a live process (claude_code) overrides this. Returns ``True``
+    into a live process (claude_agent) overrides this. Returns ``True``
     when the change is in force for the next turn.
     """
     self.effort = level
@@ -360,7 +360,7 @@ def anthropic_image_block(mime, data):
 
   Returns the ``{"type": "image", "source": {"type": "base64", ...}}`` dict
   the Anthropic messages API expects. Shared by the Anthropic backend (its
-  canonical->wire image conversion) and the Claude Code backend (its outbound
+  canonical->wire image conversion) and the claude_agent backend (its outbound
   image envelope), which both speak the Anthropic wire image shape.
 
   Parameters
@@ -386,7 +386,7 @@ def anthropic_image_block(mime, data):
   }
 
 
-# Shared exception-text classifier signals. The Gemini and Claude Code backends
+# Shared exception-text classifier signals. The Gemini and claude_agent backends
 # both sniff a code-less provider/SDK error's message for auth vs. rate/quota
 # signals; their phrase lists had DRIFTED, so they live here ONCE (the union of
 # what each had) to stay in lockstep. Match whole signal phrases, NOT bare
@@ -396,7 +396,7 @@ _AUTH_SIGNALS = ("authentication", "authenticated", "unauthorized",
                  "authorization", "permission", "api key", "api_key",
                  "oauth", "login",
                  # A mid-session credential expiry/revoke -- the target of the
-                 # claude_code auth-reload path -- often reads "token expired" /
+                 # claude_agent auth-reload path -- often says "token expired" /
                  # "session expired" / "token has been revoked" with none of
                  # the words above. WHOLE phrases only (with their has/been
                  # variants), per the rule above: a bare "expired"/"revoked"
@@ -416,9 +416,9 @@ def classify_error_text(text):
   ``text`` is matched case-insensitively against whole signal phrases. Rate is
   checked first: a subscription/quota rate-limit is recoverable (the user just
   waits), so a message carrying both signals favors the retryable read. Shared
-  by the Gemini and Claude Code backends so their phrase lists can't drift apart
+  by the Gemini and claude_agent backends so the phrase lists can't drift apart
   again; each caller maps the returned category to its own ``AgentError`` kind +
-  recoverable policy (Gemini: ``"auth"`` / ``"rate_limited"``; Claude Code:
+  recoverable policy (Gemini: ``"auth"`` / ``"rate_limited"``; claude_agent:
   ``"auth_failed"`` / ``"rate_limited"`` / ``"sdk_error"``).
 
   Parameters
@@ -532,7 +532,7 @@ class HttpClientAgent(Agent):
   Codifies the api-key rotation dance -- build a fresh client for the new key
   (re-applying ``base_url`` + any subclass kwargs) and release the old client's
   connection pool -- so each backend doesn't re-implement ``set_api_key``. The
-  subprocess-shaped ``claude_code`` backend is a plain ``Agent`` (no HTTP client
+  subprocess ``claude_agent`` backend is a plain ``Agent`` (no HTTP client
   to rotate), which is why this refinement lives one level below the ABC rather
   than on ``Agent`` itself. Subclasses store the client on ``self.client`` and a
   0-arg-per-key factory on ``self._client_factory``; they vary only in how the
@@ -588,7 +588,7 @@ class HttpClientAgent(Agent):
 def note_context_tokens(agent, measured):
   """Fold one per-call prompt-size reading into *agent*'s high-water mark.
 
-  A free function, not a method: ``ClaudeCodeAgent`` DUCK-TYPES the agent
+  A free function, not a method: ``ClaudeAgent`` DUCK-TYPES the agent
   contract rather than deriving from :class:`Agent`, so a method here would
   reach three of the four backends and raise ``AttributeError`` on the fourth.
 

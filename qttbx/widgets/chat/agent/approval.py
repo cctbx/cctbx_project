@@ -6,7 +6,7 @@ registry: it drops every pending request at each turn boundary
 is no longer in the registry and ``submit`` rejects it, and it wakes waiters on
 cancel. Both
 ``AgentSession`` (the API backends, which block a worker thread on
-``future.result()``) and ``ClaudeCodeAgent`` (the SDK backend, whose async
+``future.result()``) and ``ClaudeAgent`` (the SDK backend, whose async
 ``_on_can_use_tool`` does ``await asyncio.wrap_future(future)``) delegate to it,
 so neither carries its own copy of the invariant that a cancelled turn must not
 wedge the next turn's approvals. Callers supply only how to *emit* a request to
@@ -56,7 +56,7 @@ class ApprovalCoordinator:
         The request to surface; ``req.request_id`` keys the registry.
     emit : callable
         ``emit(req)`` pushes the request toward the UI (the session passes its
-        ``on_event``; claude_code passes its per-turn event queue's ``put``).
+        ``on_event``; claude_agent passes its per-turn event queue's ``put``).
 
     Returns
     -------
@@ -123,7 +123,7 @@ class ApprovalCoordinator:
     """Note that ``tool_name`` was refused WITHOUT an approval being surfaced.
 
     A policy ``deny`` is settled by ``AgentSession`` before any request is
-    opened, and a backend that owns its own permission layer (claude_code's SDK
+    opened, and a backend that owns its own permission layer (claude_agent's SDK
     callback) never opens one either -- so a coordinator that learns of
     denials only through ``open`` sees a subset that can be empty even when
     every tool the turn tried was refused. This is where the rest arrive, so

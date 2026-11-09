@@ -21,7 +21,7 @@ from qttbx.widgets.chat.agent.conversation import ContentBlock
 def phenix_server_env(project_dir):
   """The PHENIX_* env a phenix-aware MCP server subprocess should receive.
 
-  Centralizes the project/chat-home env so the launcher's claude_code SDK
+  Centralizes the project/chat-home env so the launcher's claude_agent SDK
   loop and McpServerConnection inject identical values.
 
   Parameters

@@ -1,7 +1,7 @@
 """Conversation data model.
 
 Provider-agnostic content blocks. Each backend (``AnthropicAgent``,
-``ClaudeCodeAgent``) converts to and from this shape at its API
+``ClaudeAgent``) converts to and from this shape at its API
 boundary.
 """
 
@@ -72,7 +72,7 @@ def note_stage(b):
 def is_tool_result_answer(message):
   """True for a user message whose blocks, note blocks aside, are ALL
   tool_result -- the answering message the session appends after an
-  assistant tool_use turn (a dispatched batch, or claude_code's observed
+  assistant tool_use turn (a dispatched batch, or claude_agent's observed
   results). It carries the user role only because that is the Messages API
   shape for tool results; the user did not write it. Note blocks (the
   context-pressure note riding the round's tool-result message, persisted
@@ -218,7 +218,7 @@ class ConversationMeta:
   archived: bool = False
   pinned: bool = False
   summary: str = ""
-  agent_session_id: str = None       # session-based backends (claude_code) only
+  agent_session_id: str = None       # session-based backend (claude_agent)
   # A read-only view of something that is NOT a conversation directory --
   # today, a finished subagent's transcript surfaced in the sidebar. It is
   # synthesized from the parent's subagents/ record and owns no directory, so
