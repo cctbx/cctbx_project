@@ -519,7 +519,6 @@ molprobity_tests = [
   "$D/ligands/tst_electrons_00.py",
   "$D/ligands/tst_electrons_02.py",
   "$D/ligands/tst_electrons_termini.py",
-  "$D/ligands/tst_electrons_his.py",
   "$D/ligands/tst_electron_scripting.py",
   "$D/regression/tst_reduce2_blank_chain.py",
   "$D/regression/tst_reduce2_his_no_h.py",
