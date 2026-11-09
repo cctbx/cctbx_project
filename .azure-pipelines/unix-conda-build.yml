@@ -186,7 +186,6 @@ steps:
     mkdir tests
     cd tests
     export PYTHONDEVMODE=1
-    export PYTHONTRACEMALLOC=1
     echo "##vso[task.setvariable variable=tests_failed]false"
     rc=0
     libtbx.run_tests_parallel \
