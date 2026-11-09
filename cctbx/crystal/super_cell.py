@@ -15,6 +15,9 @@ min_distance_sym_equiv_coincident = 1.e-2
 class sym_equiv_tables(libtbx.slots_getstate_setstate):
   """The tables get_siiu reads.
 
+  From get_sym_equiv_tables, the pair table holds every interaction under a
+  non-identity operator and every interaction of a site on a special
+  position; identity contacts between two general sites are left out.
   Both must be built from the same sites; neither records which, so a
   mismatched pair gives wrong equivalents.
   """
@@ -28,9 +31,14 @@ class sym_equiv_tables(libtbx.slots_getstate_setstate):
 def get_sym_equiv_tables(sites_cart, crystal_symmetry, radius,
                          min_distance_sym_equiv=None,
                          site_symmetry_table=None):
-  """Pair and site symmetry tables covering every contact within radius.
+  """Pair and site symmetry tables that get_siiu reads, for contacts within radius.
 
-  Neither depends on the selection, so one build serves many of them.
+  The pair table holds every interaction under a non-identity operator and
+  every interaction of a site on a special position; identity contacts
+  between two general sites, nearly all the pairs of a macromolecule, are
+  left out.  get_siiu does not read them, so its results are those of a
+  table holding every contact.
+  Neither table depends on the selection, so one build serves many of them.
 
   Parameters
   ----------
@@ -61,13 +69,26 @@ def get_sym_equiv_tables(sites_cart, crystal_symmetry, radius,
   else:
     assert site_symmetry_table.indices().size() == sites_cart.size(), (
       "the site symmetry table covers a different number of sites")
-  # add_all_pairs searches to distance_cutoff*(1+is_inside_epsilon()), which
-  # defaults to 1e-6; the buffer matches.
-  pair_asu_table = sps.pair_asu_table(
-    distance_cutoff               = radius,
-    sites_cart                    = sites_cart,
-    site_symmetry_table           = site_symmetry_table,
-    asu_mappings_buffer_thickness = radius * (1 + 1.e-6))
+  from cctbx import crystal
+  # The search reaches radius*(1+is_inside_epsilon()), which defaults to
+  # 1e-6; the buffer matches.
+  asu_mappings = sps.asu_mappings(
+    buffer_thickness    = radius * (1 + 1.e-6),
+    sites_cart          = sites_cart,
+    site_symmetry_table = site_symmetry_table)
+  pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  # add_all_pairs()'s generator and settings, adding only the pairs that
+  # is_simple_interaction() rejects: get_siiu reads no others.
+  pair_generator = crystal.neighbors_fast_pair_generator(
+    asu_mappings     = asu_mappings,
+    distance_cutoff  = radius * (1 + asu_mappings.asu().is_inside_epsilon()),
+    minimal          = True,
+    min_cubicle_edge = 5)
+  is_simple_interaction = asu_mappings.is_simple_interaction
+  while (not pair_generator.at_end()):
+    pair = pair_generator.next()
+    if (not is_simple_interaction(pair)):
+      pair_asu_table.add_pair(pair)
   # all_interactions_from_inside_asu keeps every operator of a group of
   # symmetry-equivalent interactions.
   return sym_equiv_tables(

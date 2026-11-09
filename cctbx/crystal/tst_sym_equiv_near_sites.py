@@ -548,9 +548,97 @@ def exercise_selection_order_does_not_change_the_result():
     assert ([op.as_xyz() for op in forward[j_seq]]
             == [op.as_xyz() for op in reverse[j_seq]]), j_seq
 
+def every_contact_tables(sites_cart, crystal_symmetry, radius):
+  """Tables holding every contact within radius, identity contacts between
+  two general sites included: the reference for get_sym_equiv_tables.
+  """
+  sps = crystal_symmetry.special_position_settings(
+    min_distance_sym_equiv=super_cell.min_distance_sym_equiv_coincident)
+  site_symmetry_table = sps.site_symmetry_table(sites_cart=sites_cart)
+  pair_asu_table = sps.pair_asu_table(
+    distance_cutoff               = radius,
+    sites_cart                    = sites_cart,
+    site_symmetry_table           = site_symmetry_table,
+    asu_mappings_buffer_thickness = radius * (1 + 1.e-6))
+  return super_cell.sym_equiv_tables(
+    pair_sym_table = pair_asu_table.extract_pair_sym_table(
+      skip_j_seq_less_than_i_seq       = False,
+      all_interactions_from_inside_asu = True),
+    site_symmetry_table = site_symmetry_table)
+
+def special_and_translated_structure(space_group_info):
+  """general_position_structure, a site on each special position of the
+  space group, and four sites moved by lattice translations.
+  """
+  cs, sites_cart = general_position_structure(space_group_info, n_sites=8)
+  sites_frac = cs.unit_cell().fractionalize(sites_cart=sites_cart)
+  wyckoff_table = space_group_info.wyckoff_table()
+  for i_position in range(wyckoff_table.size()):
+    position = wyckoff_table.position(i_position)
+    if (position.multiplicity() == cs.space_group().order_z()): continue
+    sites_frac.append(position.special_op() * (0.1531, 0.2713, 0.3893))
+  for i_seq, shift in [(0, (1, 0, 0)), (1, (0, -1, 0)), (2, (0, 0, 2)),
+                       (3, (-1, 1, -1))]:
+    sites_frac[i_seq] = tuple(
+      [x + s for x, s in zip(sites_frac[i_seq], shift)])
+  return cs, cs.unit_cell().orthogonalize(sites_frac)
+
+def exercise_siiu_as_from_every_contact(space_group_info):
+  """get_siiu on get_sym_equiv_tables returns what it returns on tables
+  holding every contact: the same equivalents in the same order, each
+  operator list in its order, and the distinct operators in their order.
+  """
+  cs, sites_cart = special_and_translated_structure(space_group_info)
+  n_sites = sites_cart.size()
+  for radius in [2.5, 5.0]:
+    tables = super_cell.get_sym_equiv_tables(sites_cart, cs, radius)
+    reference = every_contact_tables(sites_cart, cs, radius)
+    special = list(tables.site_symmetry_table.special_position_indices())
+    assert special == list(range(8, n_sites)), (
+      str(space_group_info), radius, special, list(range(8, n_sites)))
+    assert tables.pair_sym_table.size() == n_sites, (
+      str(space_group_info), radius, tables.pair_sym_table.size(), n_sites)
+    for selection in [None, [0, 3, 7], [1, 2], [n_sites - 1], special]:
+      for keep_site_symmetry_ops in [False, True]:
+        info = (str(space_group_info), radius, selection,
+                keep_site_symmetry_ops)
+        expected = super_cell.get_siiu(selection=selection,
+          symmetry_tables=reference,
+          keep_site_symmetry_ops=keep_site_symmetry_ops)
+        obtained = super_cell.get_siiu(selection=selection,
+          symmetry_tables=tables,
+          keep_site_symmetry_ops=keep_site_symmetry_ops)
+        assert list(obtained[0]) == list(expected[0]), info
+        for j_seq, ops in expected[0].items():
+          assert ([op.as_xyz() for op in obtained[0][j_seq]]
+                  == [op.as_xyz() for op in ops]), (info, j_seq)
+        assert ([op.as_xyz() for op in obtained[1]]
+                == [op.as_xyz() for op in expected[1]]), info
+
+def exercise_identity_contacts_only_leave_the_table_empty():
+  """Sites in contact only within one copy of the asymmetric unit give a
+  pair table with a row for each site and nothing in it.
+  """
+  cs = crystal.symmetry(unit_cell=(60, 70, 80, 90, 90, 90),
+                        space_group_symbol="P 21 21 21")
+  sites_cart = flex.vec3_double([
+    (20.0, 25.0, 30.0), (21.5, 25.0, 30.0), (21.5, 26.5, 30.0)])
+  reference = every_contact_tables(sites_cart, cs, 5.0)
+  n_symmetry = reference.pair_sym_table.number_of_pairs_involving_symmetry()
+  assert n_symmetry == 0, (n_symmetry, 0)
+  n_pairs = sum([len(reference.pair_sym_table[i]) for i in range(3)])
+  assert n_pairs == 6, (n_pairs, 6)
+  tables = super_cell.get_sym_equiv_tables(sites_cart, cs, 5.0)
+  assert tables.pair_sym_table.size() == 3, (tables.pair_sym_table.size(), 3)
+  row_sizes = [len(tables.pair_sym_table[i]) for i in range(3)]
+  assert row_sizes == [0, 0, 0], (row_sizes, [0, 0, 0])
+  siiu = super_cell.get_siiu(symmetry_tables=tables)
+  assert siiu == ({}, []), (siiu, ({}, []))
+
 def run_call_back(flags, space_group_info):
   exercise_matches_brute_force(space_group_info)
   exercise_brute_force_block_is_large_enough(space_group_info)
+  exercise_siiu_as_from_every_contact(space_group_info)
 
 def run():
   exercise_a_smaller_selection_is_a_subset()
@@ -575,6 +663,7 @@ def run():
   exercise_a_neighbour_near_an_element_keeps_its_equivalents()
   exercise_result_is_lists_of_operators()
   exercise_every_selected_site_contributes()
+  exercise_identity_contacts_only_leave_the_table_empty()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print("OK")
 
