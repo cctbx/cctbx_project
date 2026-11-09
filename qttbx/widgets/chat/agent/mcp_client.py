@@ -501,8 +501,10 @@ class McpServerConnection:
     return ToolSpec(
       name=name,
       description=getattr(raw, "description", "") or "",
-      input_schema=getattr(raw, "inputSchema", None)
-        or getattr(raw, "input_schema", {}) or {})
+      # mcp >= 2 names it input_schema (inputSchema is a deprecated alias
+      # that warns); mcp 1.x has only inputSchema.
+      input_schema=getattr(raw, "input_schema", None)
+        or getattr(raw, "inputSchema", None) or {})
 
   def risk_for(self, name):
     """Return the risk class for ``name`` (``"write"`` if unknown)."""
