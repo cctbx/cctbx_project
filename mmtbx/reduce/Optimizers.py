@@ -988,6 +988,23 @@ class Optimizer(object):
             self._numCalculated, self._numCached,
             self._numCalculated/(self._numCalculated + self._numCached)))
 
+    ################################################################################
+    # Release what only the search used: the OptimizerC with its dot cache, the Movers
+    # (and the dictionaries and lists keyed by them), the interaction graph, the
+    # excluded atoms, the dot scorer and the spatial query. The getters return the
+    # strings and lists filled in above. Kept, they stay alive while the caller
+    # finalizes and writes the model (4wsc: ~400 MB).
+    self._optimizerOf = {}
+    self._movers = []
+    self._moverInfo = {}
+    self._initialScore = {}
+    self._finalScore = {}
+    self._interactionGraph = None
+    self._atomMoverLists = None
+    self._excludeDict = {}
+    self._dotScorer = None
+    self._spatialQuery = None
+
   ##################################################################################
   # Symmetry copies as a fixed environment
 
@@ -2200,6 +2217,11 @@ def _optimizeFragment(pdb_raw, bondedNeighborDepth = 4):
   probePhil = _philLike()
   return Optimizer(probePhil, True, model, bondedNeighborDepth=bondedNeighborDepth)
 
+def _numMovers(opt):
+  """The number of Movers of the last alternate pass, from the info string (the
+  Optimizer releases its Movers at the end of its construction); verbosity >= 1."""
+  return int(re.findall(r'Inserted (\d+) Movers', str(opt._infoString))[-1])
+
 def Test(inFileName = None, dumpAtoms = False):
 
   """Test function for all functions provided above.
@@ -2277,9 +2299,9 @@ TER    1447      CYS B  47
 END
 """
   opt = _optimizeFragment(pdb_7c31_two_residues)
-  movers = opt._movers
-  if len(movers) != 3:
-    return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator test: " + str(len(movers))
+  numMovers = _numMovers(opt)
+  if numMovers != 3:
+    return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator test: " + str(numMovers)
 
   # See what the pose angle is on the Mover. It should be 62 degrees, and is reported
   # after 'pose Angle '.
@@ -2316,9 +2338,9 @@ TER    1447      CYS B  47
 END
 """
   opt = _optimizeFragment(pdb_7c31_two_residues_close_O)
-  movers = opt._movers
-  if len(movers) != 2:
-    return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator H-bond test: " + str(len(movers))
+  numMovers = _numMovers(opt)
+  if numMovers != 2:
+    return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator H-bond test: " + str(numMovers)
 
   # See what the pose angle is on the Mover. It is reported after 'pose Angle '.
   expected = 113
@@ -2350,9 +2372,9 @@ TER    1447      CYS B  47
 END
 """
   opt = _optimizeFragment(pdb_7c31_two_residues_close_C)
-  movers = opt._movers
-  if len(movers) != 2:
-    return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator clash test: " + str(len(movers))
+  numMovers = _numMovers(opt)
+  if numMovers != 2:
+    return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator clash test: " + str(numMovers)
 
   # See what the pose angle is on the Mover. It is reported after 'pose Angle '.
   # HG touches VAL B 2 C (2.62 A). It was -64, touching its own C (2.67 A, 4 bonds
@@ -2397,9 +2419,9 @@ END
   # This test is done with a bonded-neighbor depth of 3 because that is how we were
   # doing the calculations when we set it up.
   opt = _optimizeFragment(pdb_1ubq_two_residues_close_O, 3)
-  movers = opt._movers
-  if len(movers) != 2:
-    return "Optimizers.Test(): Incorrect number of Movers for NH3 rotator test: " + str(len(movers))
+  numMovers = _numMovers(opt)
+  if numMovers != 2:
+    return "Optimizers.Test(): Incorrect number of Movers for NH3 rotator test: " + str(numMovers)
 
   # See what the pose angle is on the Mover. It should be 163 degrees, and is reported
   # after 'pose Angle '.
@@ -2453,9 +2475,9 @@ END
 """
     )
   opt = _optimizeFragment(pdb_1dfu_his80)
-  movers = opt._movers
-  if len(movers) != 3:
-    return "Optimizers.Test(): Incorrect number of Movers for His placement test: " + str(len(movers))
+  numMovers = _numMovers(opt)
+  if numMovers != 3:
+    return "Optimizers.Test(): Incorrect number of Movers for His placement test: " + str(numMovers)
   info = opt.getInfo()
   if not 'HD1NotPlaced' in info:
     return "Optimizers.Test(): Unexpected HD1 placement for His."
@@ -2568,9 +2590,9 @@ END
   # terminus, but no Flip Mover.
   probePhil = _philLike()
   opt = Optimizer(probePhil, True, model)
-  movers = opt._movers
-  if len(movers) != 1:
-    return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test: " + str(len(movers))
+  numMovers = _numMovers(opt)
+  if numMovers != 1:
+    return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test: " + str(numMovers)
 
   # Make sure that the two ring Nitrogens have been marked as acceptors.
   # Make sure that the two hydrogens have been marked for deletion.
@@ -2695,9 +2717,9 @@ END
                 skipBondFixup = False,
                 flipStates = '',
                 verbosity = 1)
-  movers = opt._movers
-  if len(movers) != 6:
-    return "Optimizers.Test(): Incorrect number of Movers for Optimizer multi-ACT test: " + str(len(movers))
+  numMovers = _numMovers(opt)
+  if numMovers != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for Optimizer multi-ACT test: " + str(numMovers)
   res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
@@ -2793,9 +2815,9 @@ END
                 skipBondFixup = False,
                 flipStates = '',
                 verbosity = 1)
-  movers = opt._movers
-  if len(movers) != 1:
-    return "Optimizers.Test(): Incorrect number of Movers for B-factor test: " + str(len(movers))
+  numMovers = _numMovers(opt)
+  if numMovers != 1:
+    return "Optimizers.Test(): Incorrect number of Movers for B-factor test: " + str(numMovers)
   res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
