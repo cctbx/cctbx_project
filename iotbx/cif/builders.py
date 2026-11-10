@@ -95,8 +95,8 @@ class builder_base(object):
                                   '_space_group.name_H-M_alt',
                                   '_symmetry.space_group_name_H-M'),
     '_space_group_IT_number': ('_symmetry_Int_Tables_number',
-                                 '_symmetry.Int_Tables_number'
-                                 '_space_group.IT_number'),
+                                 '_space_group.IT_number',
+                                 '_symmetry.Int_Tables_number'),
     '_cell_length_a': ('_cell.length_a',),
     '_cell_length_b': ('_cell.length_b',),
     '_cell_length_c': ('_cell.length_c',),
@@ -139,8 +139,8 @@ class crystal_symmetry_builder(builder_base):
     # The space group comes from the H-M symbol, else the Hall symbol,
     # else the operators, which must agree with a symbol. When none of
     # those gives a group, the H-M symbol is looked up in the table of
-    # the PDB CRYST1 reader; such a weak group is dropped when it does
-    # not fit the unit cell.
+    # the PDB CRYST1 reader, else the space group number is used; such a
+    # weak group is dropped when it does not fit the unit cell.
     self.cif_block = cif_block
     sym_ops = self.get_cif_item('_space_group_symop_operation_xyz')
     sym_op_ids = self.get_cif_item('_space_group_symop_id')
@@ -183,7 +183,7 @@ class crystal_symmetry_builder(builder_base):
     hm_symbol = self.get_cif_item('_space_group_name_H-M_alt')
     sg_number = self.get_cif_item('_space_group_IT_number')
     if sg_number not in (None, '?'):
-      try: space_group_from_other = sgtbx.space_group_info(number=sg_number).group()
+      try: space_group_weak = sgtbx.space_group_info(number=sg_number).group()
       except Exception: pass
     if hall_symbol not in (None, '?'):
       try: space_group_from_other = sgtbx.space_group(hall_symbol)

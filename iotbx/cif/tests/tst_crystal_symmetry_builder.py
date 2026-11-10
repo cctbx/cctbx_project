@@ -226,6 +226,76 @@ _symmetry_equiv.pos_as_xyz
   assert cs.space_group() == sgtbx.space_group_info("P 1 1 2").group()
 
 
+def tst_space_group_from_it_number_only():
+  """ _symmetry.Int_Tables_number alone (no symbol, no operators) gives
+  the standard setting of that number.
+  """
+  cif_txt = """\
+data_x
+_cell.length_a 10
+_cell.length_b 20
+_cell.length_c 30
+_cell.angle_alpha 90
+_cell.angle_beta 90
+_cell.angle_gamma 90
+_symmetry.Int_Tables_number 19
+"""
+  cs = build(cif_txt)
+  assert cs.space_group() == sgtbx.space_group_info(number=19).group()
+
+def tst_it_number_yields_to_operators():
+  """ The number only knows the standard setting. Operators in another
+  setting (I 1 2 1 for number 5) define the group; the number is ignored
+  rather than reported as inconsistent.
+  """
+  cif_txt = monoclinic_cell + """\
+_symmetry.Int_Tables_number 5
+loop_
+_symmetry_equiv.id
+_symmetry_equiv.pos_as_xyz
+1 x,y,z
+2 -x,y,-z
+3 x+1/2,y+1/2,z+1/2
+4 -x+1/2,y+1/2,-z+1/2
+"""
+  cs = build(cif_txt)
+  assert cs.space_group() == sgtbx.space_group_info("I 1 2 1").group()
+
+def tst_it_number_not_fitting_cell():
+  """ Number 4 is P 1 21 1, but the cell is c-unique: no space group,
+  as when the number was not read at all. In strict mode the misfit is
+  reported, as it was for a core CIF number.
+  """
+  cif_txt = c_unique_cell + "_symmetry.Int_Tables_number 4\n"
+  cs = build(cif_txt)
+  assert cs.space_group() is None
+  assert cs.unit_cell() is not None
+  try:
+    build(cif_txt, strict=True)
+  except CifBuilderError as e:
+    assert "incompatible with unit cell" in str(e), str(e)
+  else:
+    raise AssertionError("CifBuilderError expected")
+
+def tst_it_number_with_partial_cell():
+  """ A number cannot complete a partial cell: the usual error, not a
+  raw exception from the cell inference.
+  """
+  cif_txt = """\
+data_x
+_cell.length_a 10
+_cell.length_b 20
+_cell.length_c 30
+_symmetry.Int_Tables_number 4
+"""
+  try:
+    build(cif_txt)
+  except CifBuilderError as e:
+    assert "Not all unit cell parameters" in str(e), str(e)
+  else:
+    raise AssertionError("CifBuilderError expected")
+
+
 if __name__ == '__main__':
   tst_bad_symmetry_1()
   tst_bad_symmetry_2()
@@ -236,3 +306,7 @@ if __name__ == '__main__':
   tst_alternative_setting_symbol_not_fitting_cell()
   tst_bad_symop_is_cif_builder_error()
   tst_symop_trailing_comma()
+  tst_space_group_from_it_number_only()
+  tst_it_number_yields_to_operators()
+  tst_it_number_not_fitting_cell()
+  tst_it_number_with_partial_cell()
