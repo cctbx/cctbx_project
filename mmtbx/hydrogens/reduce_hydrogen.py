@@ -759,6 +759,53 @@ def _na_terminal_h(ag, rg, expected_h, model_atoms, model_sites):
       names.append(h_name)
   return names
 
+def _free_het_nucleotide(rg, model_atoms, model_sites):
+  '''
+  True for a standard nucleotide whose heavy atoms are all HETATM and whose
+  P, O5' and O3' bond to no other residue: a free nucleotide heterogen (wwPDB
+  writes several in one chain after one TER).
+  '''
+  if not [ag for ag in rg.atom_groups()
+          if get_class(name=ag.resname) == 'common_rna_dna']:
+    return False
+  heavy = [a for a in rg.atoms() if a.element.strip().upper() not in ('H', 'D')]
+  if not heavy or [a for a in heavy if not a.hetero]: return False
+  for a in heavy:
+    if (a.name.strip() in ("P", "O5'", "O3'") and
+        _bonded_to_other_residue(a, rg, model_atoms, model_sites)):
+      return False
+  return True
+
+def _na_chain_ends(m, model_atoms, model_sites):
+  '''
+  Memory ids of the first and the last nucleotide (common or modified RNA/DNA)
+  of each chain object of model m, in hierarchy order: the order of the file,
+  not of residue numbers. A chain object ends at a TER (PDB) or at a change of
+  label_asym_id after a polymer residue (mmCIF), so a nucleotide ligand or a
+  second strand with the same author chain ID has its own ends. A free
+  nucleotide heterogen (_free_het_nucleotide()) is its own first and last
+  and not part of the chain's. A missing bond inside a chain object is a gap,
+  not an end, and a TER put at a gap makes two chains: both sides are ends.
+  Limits: an unlinked nucleotide written as ATOM, or a modified one, inside a
+  chain object counts as part of the chain.
+  '''
+  first, last = set(), set()
+  for chain in m.chains():
+    rgs = []
+    for rg in chain.residue_groups():
+      classes = [get_class(name=ag.resname) for ag in rg.atom_groups()]
+      na = [c for c in classes if c in ('common_rna_dna', 'modified_rna_dna')]
+      if not na: continue
+      if _free_het_nucleotide(rg, model_atoms, model_sites):
+        first.add(rg.memory_id())
+        last.add(rg.memory_id())
+      else:
+        rgs.append(rg)
+    if rgs:
+      first.add(rgs[0].memory_id())
+      last.add(rgs[-1].memory_id())
+  return first, last
+
 def _dictionary_h_on_n(ag, mon_lib_srv):
   '''
   False if the dictionary bonds "H" to an atom other than N (geostd ASJ: C).
@@ -2482,11 +2529,18 @@ class place_hydrogens():
   keep_existing_H : bool
     keep existing H atoms in model, only place missing H
 
-  na_terminal_h : bool
+  na_terminal_h : bool or str
     place the terminal hydroxyl H of standard nucleic acids that the
     polymer dictionaries (geostd GD, CD ...) lack: HO3' on an O3' bonded to
     no other residue (a 3' end) and HO5' on the O5' of a residue without P
-    (a 5'-OH end). pdb_interpretation restrains both. qmready=True uses it.
+    (a 5'-OH end). pdb_interpretation restrains both. False or None: none.
+    'chain_ends' (reduce2 add and place): HO5' only on the first and HO3'
+    only on the last nucleotide of a chain object, or of a free nucleotide
+    heterogen (_na_chain_ends()); a free end at a chain break inside it gets
+    none and is reported. 'all_unlinked_ends' or True
+    (qmready): every free end. Such an O is a hydroxyl in the model as
+    given; this does not show whether a phosphate was present
+    experimentally.
   n_terminal_charge : str
     where to place N-terminal NH3: 'residue_one' (residue with resseq 1),
     'first_in_chain' (first residue of each chain), 'all_chain_starts'
@@ -2529,6 +2583,8 @@ class place_hydrogens():
     # residues with a state where a rule would have removed the H the state
     # carries, or whose protonated atom is at a metal: report lines
     self.protonation_conflicts = list()
+    if na_terminal_h is True: na_terminal_h = 'all_unlinked_ends'
+    assert na_terminal_h in (False, None, 'chain_ends', 'all_unlinked_ends')
     self.na_terminal_h         = na_terminal_h
     self.use_neutron_distances = use_neutron_distances
     self.n_terminal_charge     = n_terminal_charge
@@ -2554,6 +2610,9 @@ class place_hydrogens():
     self.no_H_placed_mlq        = list()
     self.site_labels_disulfides = list()
     self.site_labels_no_para    = list()
+    self.site_labels_na_terminal_h = list()
+    # free O5'/O3' at chain breaks left without H (na_terminal_h chain_ends)
+    self.site_labels_na_gap_ends = list()
     self.site_labels_tertiary_amide = list()
     self.site_labels_missing_neighbor = list()
     self.residues_missing_neighbor    = list()
@@ -3034,6 +3093,7 @@ class place_hydrogens():
     # on 4us9 it removed the hemiaminal H that must stay (tst_add_hydrogen_12).
     #self.model, _ = workaround_003(model = self.model)
 
+    self.find_na_terminal_h()
     self.n_H_final = self.model.get_hd_selection().count(True)
 
     if self.print_time:
@@ -3231,6 +3291,66 @@ class place_hydrogens():
             self.residues_no_restraints.append(resid)
 
   # ----------------------------------------------------------------------------
+
+  def find_na_terminal_h(self):
+    '''
+    Labels of the terminal hydroxyl H that this run added (na_terminal_h):
+    the report of na_terminal_h_text(). H supplied in the input are not new.
+    '''
+    self.site_labels_na_terminal_h = list()
+    if not self.na_terminal_h: return
+    hierarchy = self.model.get_hierarchy()
+    parts = residue_parts(hierarchy)
+    for a in hierarchy.atoms():
+      if a.name.strip() not in ("HO5'", "HO3'"): continue
+      if get_class(name=a.parent().resname) != 'common_rna_dna': continue
+      if self._atom_key(parts, a) in self._existing_h: continue
+      self.site_labels_na_terminal_h.append(
+        a.id_str().replace('pdb=','').replace('"',''))
+
+  def na_terminal_h_text(self):
+    '''
+    The report of the terminal hydroxyl H added at nucleic-acid ends (show(),
+    reduce2's description); '' if there is none.
+    '''
+    if not self.site_labels_na_terminal_h: return ''
+    lines = ["Hydroxyl H added at free nucleic-acid ends: an O5' without "
+      "phosphate or an unlinked O3'",
+      'is a hydroxyl in the model as given; this does not show whether a '
+      'phosphate was present experimentally.']
+    for label in self.site_labels_na_terminal_h:
+      lines.append('  ' + label)
+    if self.use_neutron_distances:
+      lines.append('The listed names are H labels from placement, before any '
+        'requested isotope conversion.')
+    return '\n'.join(lines)
+
+  def _note_na_gap_end(self, m, rg, ag, o_name):
+    # one line per end: the conformers of a split O are one end
+    for g in [ag] + list(rg.atom_groups()):
+      o = g.get_atom(o_name)
+      if o is None: continue
+      label = o.id_str().replace('pdb=', '').replace('"', '')
+      key = (m.id, rg.parent().id, rg.resid(), o_name)
+      if key not in [k for k, l in self.site_labels_na_gap_ends]:
+        self.site_labels_na_gap_ends.append((key, label))
+      return
+
+  def na_terminal_gap_text(self):
+    '''
+    The report of free nucleic-acid ends at chain breaks that got no hydroxyl
+    H (na_terminal_h chain_ends); '' if there is none.
+    '''
+    if not self.site_labels_na_gap_ends: return ''
+    n = len(self.site_labels_na_gap_ends)
+    lines = ['%d free nucleic-acid end%s inside a chain (chain breaks) got no '
+      'hydroxyl H:' % (n, '' if n == 1 else 's')]
+    for key, label in self.site_labels_na_gap_ends:
+      lines.append('  ' + label)
+    lines.append('Only the first and the last nucleotide of a chain get one. '
+      'Modelled chain')
+    lines.append('boundaries do not establish experimental termini.')
+    return '\n'.join(lines)
 
   def add_na_terminal_h_restraints(self):
     '''
@@ -4314,6 +4434,8 @@ class place_hydrogens():
       model_sites = model_atoms.extract_xyz()
       split_cells = _split_atoms_by_cell(m)
       if split_cells and rule is None: rule = link_rule()
+      if self.na_terminal_h == 'chain_ends':
+        na_first, na_last = _na_chain_ends(m, model_atoms, model_sites)
       for chain in m.chains():
         chain_rgs = chain.residue_groups()
         for i_rg, rg in enumerate(chain_rgs):
@@ -4400,8 +4522,16 @@ class place_hydrogens():
               #  expected_ha.append(k)
             if (self.na_terminal_h and
                 get_class(name=ag.resname) == 'common_rna_dna'):
-              expected_h.extend(_na_terminal_h(ag, rg, expected_h,
-                                               model_atoms, model_sites))
+              names = _na_terminal_h(ag, rg, expected_h, model_atoms,
+                                     model_sites)
+              if self.na_terminal_h == 'chain_ends':
+                ends = {"HO5'": na_first, "HO3'": na_last}
+                for h_name in names:
+                  if rg.memory_id() in ends[h_name]: continue
+                  if h_name.upper() not in actual:
+                    self._note_na_gap_end(m, rg, ag, h_name[1:])
+                names = [h for h in names if rg.memory_id() in ends[h]]
+              expected_h.extend(names)
             #print('expected H', expected_h)
             #
             # TODO start
@@ -4915,7 +5045,8 @@ proline-type or N-substituted residue)'''
       print(self.unknown_atoms_text(verbose), file=log)
     #
     for text in (self.metal_thiol_text(), self.metal_nh_text(),
-                 self.metal_amine_text(), self.nh2_side_fixed_text()):
+                 self.metal_amine_text(), self.nh2_side_fixed_text(),
+                 self.na_terminal_h_text(), self.na_terminal_gap_text()):
       if text:
         print('', file=log)
         print(text, file=log)

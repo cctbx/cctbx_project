@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.11.1"
+version = "3.12.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -1113,11 +1113,23 @@ NOTES:
   contradict the state stop with a Sorry, missing ones are added). Symmetry copies are
   made from the model with its states.
 
+  Nucleic-acid ends: approach=add and place put HO5' on an O5' without phosphate of the
+  first nucleotide of a chain and HO3' on an unlinked O3' of the last, in file order. A
+  chain ends at TER or, in mmCIF, at a new label_asym_id after a polymer residue, so a
+  nucleotide ligand or a second strand with the same chain ID has its own ends; a TER at
+  a gap makes both sides ends. A standard nucleotide that is all HETATM and unlinked is
+  its own chain. An unlinked nucleotide written as ATOM, or a modified one, inside a
+  chain counts as part of it. These are hydroxyls in the model as given; this does not
+  show whether a phosphate was present experimentally. The log and the description file
+  list the H added this way, and the free ends at chain breaks, which get no H: modelled
+  chain boundaries do not establish experimental termini. With neutron distances: the
+  listed names are H labels from placement, before any requested isotope conversion.
+
   qmready=True prepares a model for QM: H on water (as add_h_to_water=True), longer XH
   distances, OXT and NH3+ at chain ends and breaks, HO3' and HO5' at nucleic-acid chain
-  ends, and the geometry of the finished model regularized: bond outliers and clashes
-  minimized away with the smallest shift (mmtbx.model.manager.regularize_geometry), before
-  the clash check and the caps.
+  ends and breaks, and the geometry of the finished model regularized: bond outliers and
+  clashes minimized away with the smallest shift (mmtbx.model.manager.regularize_geometry),
+  before the clash check and the caps.
   Adding capping=True to it also puts H on every non-H atom left with
   an unsatisfied valence by a missing non-H atom (truncated side chains, incomplete ligands),
   as the very last step; the capped model is for QM use only, because the cap names are
@@ -1281,6 +1293,7 @@ NOTES:
         stop_for_unknowns=self.params.stop_on_any_missing_hydrogen,
         keep_existing_H=self.params.keep_existing_H,
         mon_lib_srv=self.model.get_mon_lib_srv(),
+        na_terminal_h='chain_ends',
         metal_bound_amines_as_nh2=self.params.metal_bound_amines_as_nh2,
         protonation_states=self._protonation.states
       )
@@ -1301,7 +1314,9 @@ NOTES:
     for text in (reduce_add_h_obj.metal_thiol_text(),
                  reduce_add_h_obj.metal_nh_text(),
                  reduce_add_h_obj.metal_amine_text(),
-                 reduce_add_h_obj.nh2_side_fixed_text()):
+                 reduce_add_h_obj.nh2_side_fixed_text(),
+                 reduce_add_h_obj.na_terminal_h_text(),
+                 reduce_add_h_obj.na_terminal_gap_text()):
       if text:
         self._metal_thiol_note += '\n' + text + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)

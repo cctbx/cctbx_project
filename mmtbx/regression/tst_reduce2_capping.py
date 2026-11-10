@@ -465,8 +465,7 @@ def test_na_termini():
   Nucleic-acid chain ends are not dangling with qmready: reduce2 places
   HO5' on the 5'-OH end and HO3' on the 3' end (the polymer dictionaries
   have neither), so capping adds nothing and the charge is the two
-  phosphates, -2. Without qmready the H are not placed (unchanged
-  behaviour).
+  phosphates, -2. Plain reduce2 places them too (add and place).
   """
   prefix = "tst_reduce2_capping_na1"
   r = run(pdb_dna3, prefix, ["qmready=True", "capping=True"])
@@ -482,10 +481,10 @@ def test_na_termini():
   h = r.model.get_hierarchy()
   assert "HO5'" in h_names_of(h, 1) and "HO3'" in h_names_of(h, 3)
   assert r.total_charge == -2, r.total_charge
-  # plain reduce2: not placed
+  # plain reduce2 places them too
   r = run(pdb_dna3, prefix + "_plain", [])
   h = r.model.get_hierarchy()
-  assert "HO5'" not in h_names_of(h, 1) and "HO3'" not in h_names_of(h, 3)
+  assert "HO5'" in h_names_of(h, 1) and "HO3'" in h_names_of(h, 3)
 
 def test_rna():
   """
