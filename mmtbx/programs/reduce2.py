@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.12.1"
+version = "3.13.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -68,7 +68,56 @@ add_h_to_water = False
   .short_caption = Add H to water
   .help = Add H to water once the other H are final (approach=add, place \
           or optimize), each pointing at its H-bond acceptors \
-          (mmtbx.development.virvel). Water H in the input are replaced.
+          (mmtbx.development.virvel).
+water_hydrogens
+  .short_caption = Water H placement
+  .help = Settings of the water H placement (add_h_to_water=True, or \
+          qmready=True with approach=add).
+{
+  existing_h = keep complete *reorient
+    .type = choice
+    .short_caption = Water H in the input
+    .help = Water H in the input: reorient places them again, complete \
+            adds the missing H of a water with one H, keep leaves them as \
+            they are. complete and keep need the input H kept \
+            (approach=optimize, keep_existing_H=True, or qmready=True with \
+            approach=add).
+  symmetry = True
+    .type = bool
+    .short_caption = Symmetry mates in the water environment
+    .help = Include the symmetry mates near each water. Ignored without a \
+            unit cell and space group, or with a placeholder cell such as \
+            CRYST1 1 1 1.
+  refine
+    .short_caption = Refinement sweeps
+  {
+    max_sweeps = 5
+      .type = int(value_min=0)
+      .short_caption = Maximum refinement sweeps
+      .help = Maximum refinement sweeps, each placing every water again. \
+              0 turns refinement off.
+    tolerance = 1
+      .type = int(value_min=0)
+      .short_caption = Early-stop tolerance
+      .help = Stop once a sweep removes fewer than this many H-H contacts \
+              under 2.0 A. 0 runs all max_sweeps.
+  }
+  basin
+    .short_caption = Basin-hopping
+  {
+    rounds = 0
+      .type = int(value_min=0)
+      .short_caption = Basin-hopping rounds
+      .help = Basin-hopping rounds after refinement: each turns the waters \
+              that still clash to random orientations, refines them and \
+              keeps any improvement. 0 turns it off.
+  }
+  cluster_search = False
+    .type = bool
+    .short_caption = Joint search over water clusters
+    .help = Choose the orientations of each cluster of H-bonded waters \
+            jointly, after refinement and basin-hopping.
+}
 use_neutron_distances = False
   .type = bool
   .short_caption = Use neutron distances
@@ -1392,29 +1441,49 @@ NOTES:
     return p.approach in ('add', 'place') and (p.add_h_to_water or p.qmready)
 
   def _AddWaterHydrogens(self):
-    # H on the waters, by mmtbx.hydrogens.water_protonation, against the
-    # finished H of the rest of the model; water H in the model are placed
-    # again. Returns the text for the description.
+    # H on the waters, by mmtbx.hydrogens.water_protonation with the
+    # water_hydrogens settings, against the finished H of the rest of the
+    # model. Returns the text for the description.
     from mmtbx.hydrogens import water_protonation
     make_sub_header('Adding H to waters', out=self.logger)
     start = time.time()
     use_neutron = self.params.use_neutron_distances
     oh_length = reduce_hydrogen._water_oh_targets(self.model, use_neutron)[0]
-    cs = reduce_hydrogen.contact_symmetry(self._output_cs)
+    w = self.params.water_hydrogens
+    cs = None
+    if w.symmetry:
+      cs = reduce_hydrogen.contact_symmetry(self._output_cs)
+    # placement works in H; the output writes the water H as this isotope
+    isotope = hd_exchange.water_isotope(self.params.neutron_option)
     root = self.model.get_hierarchy()
     n_before = root.atom_selection_cache().selection(
       "water and element H").count(True)
     # the placer takes one model: each model on its own
     models = list(root.models())
+    partial = []
     for i, m in enumerate(models):
       single = root
       if len(models) > 1:
         root.remove_model(m)
         single = pdb.hierarchy.root()
         single.append_model(m)
-      water_protonation.place_water_hydrogens(single, oh_length=oh_length,
-        element='H', existing_h='reorient',
-        geometry='neutron' if use_neutron else 'xray', crystal_symmetry=cs)
+      result = water_protonation.place_water_hydrogens(single,
+        oh_length=oh_length, element='H', existing_h=w.existing_h,
+        geometry='neutron' if use_neutron else 'xray', crystal_symmetry=cs,
+        n_refine=w.refine.max_sweeps, refine_tol=w.refine.tolerance,
+        n_basin=w.basin.rounds, cluster_search=w.cluster_search)
+      # the report names the waters as written, by model: DOD with D, and
+      # HOH for a DOD with H
+      for rid, metal, action in result.partial_waters:
+        name, rest = rid.split(' ', 1)
+        if isotope == 'D':
+          name = 'DOD'
+        elif name == 'DOD':
+          name = 'HOH'
+        rid = name + ' ' + rest
+        if len(models) > 1:
+          rid = '%s (model %s)' % (rid, m.id.strip())
+        partial.append((rid, metal, action))
       if len(models) > 1:
         single.remove_model(m)
         root.insert_model(i, m)
@@ -1424,11 +1493,25 @@ NOTES:
       hd_exchange.add_water_h_parents(self._h_parents, root, oh_length)
     n_after = root.atom_selection_cache().selection(
       "water and element H").count(True)
+    # reorient places every water H again; keep and complete add to them
+    n_placed = n_after
+    if w.existing_h != 'reorient':
+      n_placed = n_after - n_before
     symmetry = 'with' if cs is not None else 'without'
-    text = ('Water H placed: %d (O-H %.3f A, %s crystal symmetry)\n' % (
-      n_after, oh_length, symmetry))
+    text = ('Water %s placed: %d (O-%s %.3f A, %s crystal symmetry)\n' % (
+      isotope, n_placed, isotope, oh_length, symmetry))
+    # with neutron_option the input water H may have been H or D
+    hydrogen = 'H'
+    if self.params.neutron_option != 'none':
+      hydrogen = 'H/D'
     if n_before > 0:
-      text += 'Water H in the input placed again: %d\n' % n_before
+      text += 'Water %s in the input: %d (existing_h=%s)\n' % (hydrogen,
+        n_before, w.existing_h)
+    labels = {'completed': 'completed', 'stripped': 'placed again',
+              'kept': 'left as is'}
+    for line in water_protonation.partial_water_lines(partial, labels,
+        hydrogen=isotope):
+      text += line + '\n'
     text += self._RenameDodWithH()
     text += 'Time to place water H = {:.3f} sec\n'.format(time.time() - start)
     print(text, file=self.logger)
@@ -2733,6 +2816,30 @@ NOTES:
 
     if p.add_h_to_water and p.approach == 'remove':
       raise Sorry('add_h_to_water=True cannot be used with approach=remove.')
+    w = p.water_hydrogens
+    for name, value in (('existing_h', w.existing_h),
+        ('symmetry', w.symmetry), ('refine.max_sweeps', w.refine.max_sweeps),
+        ('refine.tolerance', w.refine.tolerance),
+        ('basin.rounds', w.basin.rounds),
+        ('cluster_search', w.cluster_search)):
+      if value is None:
+        raise Sorry('water_hydrogens.%s needs a value.' % name)
+    diff = self.get_program_phil(diff=True)
+    changed = [d.path for d in diff.all_definitions()
+               if d.path.startswith('water_hydrogens.')]
+    if changed and p.approach == 'remove':
+      raise Sorry('water_hydrogens cannot be used with approach=remove: %s'
+        % ', '.join(changed))
+    if changed and not self._WaterHydrogensOn():
+      raise Sorry('water_hydrogens requires add_h_to_water=True, or '
+        'qmready=True with approach=add: %s' % ', '.join(changed))
+    if (w.existing_h != 'reorient' and p.approach in ('add', 'place') and
+        not (p.keep_existing_H or p.qmready)):
+      keep = 'keep_existing_H=True'
+      if p.approach == 'add':
+        keep += ' or qmready=True'
+      raise Sorry('water_hydrogens.existing_h=%s needs the input H kept: %s.'
+        % (w.existing_h, keep))
     # capping: the last step of a qmready run that adds H
     if p.capping:
       if not p.qmready:

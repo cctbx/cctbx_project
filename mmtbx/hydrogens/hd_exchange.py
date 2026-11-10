@@ -1323,12 +1323,28 @@ def conformer_site_isotope(option, entry):
   if not entry.name.strip().startswith("H"): kind = "H"   # NOT_PAIRABLE
   return kind
 
+def water_isotope(option):
+  """
+  The isotope apply_neutron_option() writes for the H of a water.
+
+  Parameters
+  ----------
+  option : str
+      The neutron option, one of NEUTRON_OPTIONS.
+
+  Returns
+  -------
+  str
+      "H" for none and all_h, else "D".
+  """
+  return "H" if option in ("none", "all_h") else "D"
+
 def _output_kind(option, water, exchangeable, conformer):
   """'H', 'D' or 'split' per "What each mode writes"; plus a reason when an
   exchangeable or all_hd site is written as one isotope because of its
   conformer"""
   if water:
-    return ("H" if option in ("none", "all_h") else "D"), None
+    return water_isotope(option), None
   if option in ("none", "all_h"): return "H", None
   if option == "all_d": return "D", None
   if exchangeable:
