@@ -929,12 +929,15 @@ def add_ccd_restraint_objects(model):
   restraint objects; drop them after the interpretation with
   remove_auto_restraint_objects().
   Returns group_args(no_restraints (residue names without restraints, as
-  placement's no_H_placed_mlq), auto_restraint_names).
+  placement's no_H_placed_mlq), auto_restraint_names, auto_restraint_objects
+  (the cif objects themselves, for place_hydrogens'
+  generated_restraint_objects)).
   '''
   mon_lib_srv = model.get_mon_lib_srv()
   load_restraint_objects_into_server(model, mon_lib_srv)
   no_restraints = set()
   auto_restraint_names = []
+  auto_restraint_objects = []
   seen = set()
   for ag in model.get_hierarchy().atom_groups():
     if ag.resname in seen: continue
@@ -946,8 +949,10 @@ def add_ccd_restraint_objects(model):
     elif cif_object:
       add_auto_restraint_object(model, ag.resname, cif_object,
         auto_restraint_names)
+      auto_restraint_objects.append(cif_object)
   return group_args(no_restraints=no_restraints,
-    auto_restraint_names=auto_restraint_names)
+    auto_restraint_names=auto_restraint_names,
+    auto_restraint_objects=auto_restraint_objects)
 
 # ==============================================================================
 
@@ -2623,6 +2628,10 @@ class place_hydrogens():
     # removed from the model before returning so they don't leak into
     # downstream geometry validation.
     self.auto_restraint_names   = list()
+    # the cif objects generated from the CCD: by placement, and by the caller
+    # (reduce2's _PrepareRestraints(); set before run()). Not a user's CIF.
+    self._auto_restraint_objects = list()
+    self.generated_restraint_objects = list()
     # the received model's restraint objects plus the auto-generated ones
     self.restraint_objects      = None
     # server of the queries in this run (see mon_lib_srv)
@@ -3392,6 +3401,25 @@ class place_hydrogens():
     if new.size():
       grm.add_dihedrals_in_place(new, check_for_duplicates=False)
 
+  def _user_defined_resnames(self):
+    '''
+    Residue names defined (comp_<name>) by a restraint object of the model
+    that is not one generated from the CCD: those are recognized by identity
+    (_auto_restraint_objects, generated_restraint_objects), not by name, so a
+    user file called auto_<name> still counts.
+    '''
+    generated = (list(self._auto_restraint_objects) +
+                 list(self.generated_restraint_objects))
+    names = set()
+    for fname, cif_obj in self.model.get_restraint_objects() or []:
+      if cif_obj is None: continue
+      if [g for g in generated if g is cif_obj]: continue
+      for key in cif_obj.keys():
+        # comp_list is the index of the file, not a residue
+        if key.startswith('comp_') and key != 'comp_list':
+          names.add(key[len('comp_'):].upper())
+    return names
+
   def add_link_h_restraints(self):
     '''
     The peptide link defines the angle C-N-H (TRANS, 124.3 deg) and the amide
@@ -3404,6 +3432,19 @@ class place_hydrogens():
     carbonyl C (5nxq, 17 deg). Add both to this model's restraints. The plane
     is added whole: without the H it holds three atoms, which are coplanar
     whatever they do.
+
+    The angle C-N-H, the angle C-N-X and the plane C, N, X, H are checked one
+    by one, so one that exists does not stop the others. X is CA, or, when N
+    has no CA (9eor HT7, a beta-amino acid), its one heavy neighbour in the
+    same residue and conformer; with none or several there is no fallback and
+    the H stays refused. Riding needs C-N-X to parameterize the H; the plane
+    keeps it planar. With the fallback, N-H and X-N-H take the peptide values
+    (HT7 has the free amine's 0.89/1.04 A) unless a user CIF defines the
+    residue (_user_defined_resnames(); CCD-generated ones do not count).
+    Limitation: such a CIF keeps its X-N-H, so the three angles at N
+    need not add up to 360 under the plane (HT7 109.45: 124.3 + 121.7 + 109.45
+    = 355.45 deg). Placement does not change (riding puts the H on the
+    bisector); a caller minimizing with these restraints sees the conflict.
 
     Only reduce2 places H from these restraints, so this is not the whole fix:
     refinement has the same gap, and the proper place for it is the name
@@ -3446,10 +3487,20 @@ class place_hydrogens():
       bonds.setdefault(i, []).append(j)
       bonds.setdefault(j, []).append(i)
     new, planarities, stale = [], [], []
-    known = set()
+    n_h_changed = False
+    known = {}
     for proxy in grm.angle_proxies:
       i, j, k = proxy.i_seqs
-      known.add((min(i, k), j, max(i, k)))
+      known[(min(i, k), j, max(i, k))] = proxy.angle_ideal
+    planes_with_h = {}
+    for proxy in grm.planarity_proxies:
+      i_seqs = set(proxy.i_seqs)
+      for i in i_seqs:
+        if elements[i].strip() in ('H', 'D'):
+          planes_with_h.setdefault(i, []).append(i_seqs)
+    user_comps = self._user_defined_resnames()
+    xh_lengths = (get_library_neutron_xh() if self.use_neutron_distances
+                  else get_library_xray_xh())
     # H/A must not get C/B of the previous residue (7a5m ALA A 103: N without
     # altloc, CA and H in A and B)
     altloc = lambda i: atoms[i].parent().altloc.strip()
@@ -3467,37 +3518,59 @@ class place_hydrogens():
         if atoms[i_c].parent().parent().memory_id() == rg_n.memory_id(): continue
         if not same_conf(i_c, i_h): continue
         key = (min(i_c, i_h), i_n, max(i_c, i_h))
-        if key in known: continue
-        known.add(key)
-        new.append(geometry_restraints.angle_proxy(
-          i_seqs      = [i_c, i_n, i_h],
-          angle_ideal = angle_ideal,
-          weight      = 1./esd**2))
-        i_ca = [j for j in set(bonds.get(i_n, []))
-                if atoms[j].name.strip() == 'CA'
-                and atoms[j].parent().parent().memory_id() == rg_n.memory_id()
-                and same_conf(j, i_h)]
+        c_n_h_exists = key in known
+        if not c_n_h_exists:
+          known[key] = angle_ideal
+          new.append(geometry_restraints.angle_proxy(
+            i_seqs      = [i_c, i_n, i_h],
+            angle_ideal = angle_ideal,
+            weight      = 1./esd**2))
+        rg_id = rg_n.memory_id()
+        in_residue = [j for j in set(bonds.get(i_n, []))
+                      if elements[j].strip() not in ('H', 'D')
+                      and atoms[j].parent().parent().memory_id() == rg_id]
+        i_ca = [j for j in in_residue
+                if atoms[j].name.strip() == 'CA' and same_conf(j, i_h)]
+        fallback = False
+        if not [j for j in in_residue if atoms[j].name.strip() == 'CA']:
+          others = [j for j in in_residue if same_conf(j, i_h)
+                    and elements[j].strip().upper() in nonmetals]
+          if len(others) == 1:
+            i_ca = others
+            fallback = True
         # a covalent link (cyclic peptide, 1evd MDH 5 C - ACB 1 N) has the bond
         # but not C-N-CA, which riding H needs for an H with two heavy neighbours
         if ca and ca[0].value_angle_esd and i_ca:
           key_ca = (min(i_c, i_ca[0]), i_n, max(i_c, i_ca[0]))
           if key_ca not in known:
-            known.add(key_ca)
+            known[key_ca] = ca[0].value_angle
             new.append(geometry_restraints.angle_proxy(
               i_seqs      = [i_c, i_n, i_ca[0]],
               angle_ideal = ca[0].value_angle,
               weight      = 1./ca[0].value_angle_esd**2))
         if plane_esd and i_ca:
           i_seqs = [i_c, i_n, i_ca[0], i_h]
-          planarities.append(geometry_restraints.planarity_proxy(
-            i_seqs  = flex.size_t(i_seqs),
-            weights = flex.double([1./plane_esd**2]*len(i_seqs))))
-        if ca_ideal is not None and i_ca:
-          stale.append((i_ca[0], i_n, i_h))
+          have_plane = [p for p in planes_with_h.get(i_h, [])
+                        if set(i_seqs) <= p]
+          if not have_plane:
+            planarities.append(geometry_restraints.planarity_proxy(
+              i_seqs  = flex.size_t(i_seqs),
+              weights = flex.double([1./plane_esd**2]*len(i_seqs))))
+        resname = atoms[i_n].parent().resname.strip().upper()
+        if fallback and resname not in user_comps:
+          bond = grm.bond_params_table.lookup(i_n, i_h)
+          bond.distance_ideal = xh_lengths['N']
+          n_h_changed = True
+          if ca_ideal is not None:
+            key_ca = (min(i_c, i_ca[0]), i_n, max(i_c, i_ca[0]))
+            stale.append((i_ca[0], i_n, i_h, 360. - known[key] - known[key_ca]))
+        elif (ca_ideal is not None and i_ca and not c_n_h_exists
+              and not fallback):
+          stale.append((i_ca[0], i_n, i_h, ca_ideal))
     # replace the amine CA-N-H of each of those residues by the amide value:
     # proxy_remove drops a proxy only when all of its atoms are selected, so
     # selecting the three atoms takes that angle and nothing else
-    for i_ca, i_n, i_h in stale:
+    for i_ca, i_n, i_h, ideal in stale:
       weight = [p.weight for p in grm.angle_proxies
                 if tuple(sorted(p.i_seqs)) == tuple(sorted((i_ca, i_n, i_h)))]
       if not weight: continue
@@ -3506,10 +3579,12 @@ class place_hydrogens():
       grm.remove_angles_in_place(selection=sel)
       new.append(geometry_restraints.angle_proxy(
         i_seqs      = [i_ca, i_n, i_h],
-        angle_ideal = ca_ideal,
+        angle_ideal = ideal,
         weight      = weight[0]))
     if new: grm.add_angles_in_place(new)
     if planarities: grm.add_planarities_in_place(planarities)
+    # the cached bond proxies hold copies of the old N-H, and riding reads them
+    if n_h_changed: grm.reset_internals()
 
   def exclude_H_on_esterified_O(self):
     '''
@@ -4485,6 +4560,7 @@ class place_hydrogens():
               self.restraint_objects = with_auto_restraint_object(
                 self.restraint_objects, ag.resname, cif_object,
                 self.auto_restraint_names)
+              self._auto_restraint_objects.append(cif_object)
 
             expected_h = []
             #expected_ha = []

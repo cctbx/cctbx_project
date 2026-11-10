@@ -1298,6 +1298,8 @@ NOTES:
         protonation_states=self._protonation.states
       )
     reduce_add_h_obj.supplied_h_hint = self._RebuildHint()
+    # the CCD objects of _PrepareRestraints() are not a user's CIF
+    reduce_add_h_obj.generated_restraint_objects = self._auto_restraint_objects
     # the model is boxed for the calculation: contacts across its own symmetry
     reduce_add_h_obj.input_crystal_symmetry = self._output_cs
     reduce_add_h_obj.run()
@@ -1632,6 +1634,7 @@ NOTES:
       self.model.set_restraint_objects(list(ro))
     r = reduce_hydrogen.add_ccd_restraint_objects(self.model)
     self._auto_restraint_names = r.auto_restraint_names
+    self._auto_restraint_objects = r.auto_restraint_objects
     if r.no_restraints and not self.params.ignore_missing_restraints:
       raise self._MissingRestraintsSorry(r.no_restraints)
     hierarchy = self.model.get_hierarchy()
@@ -2872,6 +2875,7 @@ NOTES:
     # residues without restraints (optimize, D input): None until checked
     self._unrestrained = None
     self._auto_restraint_names = []
+    self._auto_restraint_objects = []
     # qmready: the complete_altlocs() result, for the description
     self._altloc_completion = None
 
