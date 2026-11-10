@@ -2145,6 +2145,49 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
                     basin_rounds_run=placer.basin_rounds_run)
 
 
+def partial_water_lines(partial, labels, hydrogen="H", max_listed=20):
+  """Report lines for the waters that carried one H on input.
+
+  Parameters
+  ----------
+  partial : list of tuple
+      ``partial_waters`` of :func:`place_water_hydrogens`.
+  labels : dict
+      Text after the count for each action: ``"completed"``,
+      ``"stripped"`` and ``"kept"``.
+  hydrogen : str, optional
+      How the lines name the water H, e.g. ``"D"``.
+  max_listed : int, optional
+      Most water ids listed per action.
+
+  Returns
+  -------
+  list of str
+      For each action with waters, a line with their count, how many
+      coordinate a metal and the label, then up to ``max_listed`` water
+      ids, each with the metal and its distance, and how many more there
+      are.
+  """
+  lines = []
+  for action in ("completed", "stripped", "kept"):
+    group = [p for p in partial if p[2] == action]
+    if not group:
+      continue
+    n_metal = sum(1 for _, metal, _ in group if metal is not None)
+    head = (f"{len(group)} single-{hydrogen} water"
+            f"{'s' if len(group) > 1 else ''}")
+    if n_metal:
+      head += f", {n_metal} metal-coordinated,"
+    lines.append(f"{head} {labels[action]}:")
+    for rid, metal, _ in group[:max_listed]:
+      note = (f" ({metal[0]} at {metal[1]:.2f} A)" if metal is not None
+              else "")
+      lines.append(f"  {rid}{note}")
+    if len(group) > max_listed:
+      lines.append(f"  ... and {len(group) - max_listed} more")
+  return lines
+
+
 def _water_h_contacts(xyz, wid, conf=None):
   """Inter-water H-H contacts within 2.0 A.
 

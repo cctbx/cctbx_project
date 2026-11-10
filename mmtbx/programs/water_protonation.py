@@ -16,8 +16,6 @@ from libtbx.utils import Sorry, null_out
 
 from mmtbx.hydrogens import water_protonation
 
-_MAX_LISTED_WATERS = 20
-
 # How the log describes each water geometry.
 _GEOMETRY_KIND = {
   "xray":      "electron-cloud target",
@@ -47,8 +45,8 @@ refine
 {
   max_sweeps = 5
     .type = int(value_min=0)
-    .short_caption = Maximum relaxation sweeps
-    .help = "Maximum relaxation sweeps, each re-placing every water against the others' current H; 0 disables refinement."
+    .short_caption = Maximum refinement sweeps
+    .help = "Maximum refinement sweeps, each re-placing every water against the others' current H; 0 disables refinement."
   tolerance = 1
     .type = int(value_min=0)
     .short_caption = Early-stop tolerance
@@ -160,6 +158,15 @@ and existing_h=reorient strips all water H and re-places both.
         file_name=self.data_manager.get_default_model_name())
     except AssertionError as e:
       raise Sorry(str(e)) from None
+    p = self.params
+    for name, value in (("geometry", p.geometry), ("element", p.element),
+        ("existing_h", p.existing_h), ("symmetry", p.symmetry),
+        ("refine.max_sweeps", p.refine.max_sweeps),
+        ("refine.tolerance", p.refine.tolerance),
+        ("basin.rounds", p.basin.rounds),
+        ("cluster_search", p.cluster_search), ("stats", p.stats)):
+      if value is None:
+        raise Sorry(f"{name} needs a value.")
     self._warn_if_environment_unprotonated(model)
 
   # ----------------------------------------------------------------------------
@@ -333,30 +340,14 @@ and existing_h=reorient strips all water H and re-places both.
 
     Metal-coordinating ones are annotated with the cation and its distance.
     """
-    if not partial:
-      return
     tail = {
       "kept": ("left as is (possibly hydroxide; existing_h=complete adds "
                "the second H)"),
       "completed": "completed (any hydroxide is now water)",
       "stripped": "stripped and re-placed",
     }
-    for action in ("completed", "stripped", "kept"):
-      group = [p for p in partial if p[2] == action]
-      if not group:
-        continue
-      n_metal = sum(1 for _, metal, _ in group if metal is not None)
-      head = f"{len(group)} single-H water{'s' if len(group) > 1 else ''}"
-      if n_metal:
-        head += f", {n_metal} metal-coordinated,"
-      print(f"{head} {tail[action]}:", file=self.logger)
-      for rid, metal, _ in group[:_MAX_LISTED_WATERS]:
-        note = (f" ({metal[0]} at {metal[1]:.2f} A)" if metal is not None
-                else "")
-        print(f"  {rid}{note}", file=self.logger)
-      if len(group) > _MAX_LISTED_WATERS:
-        print(f"  ... and {len(group) - _MAX_LISTED_WATERS} more",
-              file=self.logger)
+    for line in water_protonation.partial_water_lines(partial, tail):
+      print(line, file=self.logger)
 
   @staticmethod
   def _clash_header(log):
