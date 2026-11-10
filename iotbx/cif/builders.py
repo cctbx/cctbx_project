@@ -121,14 +121,18 @@ class builder_base(object):
 class crystal_symmetry_builder(builder_base):
 
   def __init__(self, cif_block, strict=False):
-    # The order of priority for determining space group is:
-    #   sym_ops, hall symbol, H-M symbol, space group number
+    # The space group comes from the H-M symbol, else the Hall symbol,
+    # else the operators, which must agree with a symbol. When none of
+    # those gives a group, the H-M symbol is looked up in the table of
+    # the PDB CRYST1 reader; such a weak group is dropped when it does
+    # not fit the unit cell.
     self.cif_block = cif_block
     sym_ops = self.get_cif_item('_space_group_symop_operation_xyz')
     sym_op_ids = self.get_cif_item('_space_group_symop_id')
     space_group = None
     space_group_from_ops = None
     space_group_from_other = None
+    space_group_weak = None
     # Symmetry from operators
     if sym_ops is not None:
       if isinstance(sym_ops, string_types):
@@ -172,7 +176,13 @@ class crystal_symmetry_builder(builder_base):
       except Exception: pass
     if hm_symbol not in (None, '?'):
       try: space_group_from_other = sgtbx.space_group_info(symbol=hm_symbol).group()
-      except Exception: pass
+      except Exception:
+        # Symbols the wwPDB uses for alternative settings (C 1 21 1,
+        # P 21 21 2 A, ...)
+        from iotbx.pdb import cryst1_interpretation
+        symbol = cryst1_interpretation.categorize(hm_symbol)
+        if symbol.get_category() == "special":
+          space_group_weak = symbol.space_group_info().group()
     # Check consistency.
     # Use space group equivalence operation in cctbx.sgtbx.space_group
 
@@ -191,6 +201,9 @@ class crystal_symmetry_builder(builder_base):
       if(sg is not None):
         space_group = sg
         break
+    weak = space_group is None and space_group_weak is not None
+    if weak:
+      space_group = space_group_weak
     if (space_group is None and strict):
       raise CifBuilderError(
         "No symmetry instructions could be extracted from the cif block")
@@ -228,7 +241,7 @@ class crystal_symmetry_builder(builder_base):
           raise CifBuilderError(e)
         else:
           raise
-    elif (space_group is not None):
+    elif (space_group is not None and not weak):
       unit_cell = uctbx.infer_unit_cell_from_symmetry(
         [float_from_string(s) for s in items if s is not None], space_group)
     else:
@@ -240,10 +253,13 @@ class crystal_symmetry_builder(builder_base):
         space_group_input = space_group
         space_group = space_group.info().primitive_setting().group()
         if not space_group.is_compatible_unit_cell(unit_cell):
-          raise CifBuilderError(
-            "Space group is incompatible with unit cell parameters:\n" + \
-            "  Space group: %s\n" %space_group_input.info() + \
-            "  Unit cell: %s" %unit_cell)
+          if weak and not strict:
+            space_group = None
+          else:
+            raise CifBuilderError(
+              "Space group is incompatible with unit cell parameters:\n" + \
+              "  Space group: %s\n" %space_group_input.info() + \
+              "  Unit cell: %s" %unit_cell)
     self.crystal_symmetry = crystal.symmetry(unit_cell=unit_cell,
                                              space_group=space_group)
 
