@@ -118,6 +118,21 @@ class builder_base(object):
     return default
 
 
+def _rt_mx(op):
+  """sgtbx.rt_mx for an operator string, forgiving one trailing comma."""
+  try:
+    return sgtbx.rt_mx(op)
+  except (RuntimeError, ValueError):
+    # PDB entry 1l6j ends every operator with a comma
+    op = op.rstrip()
+    if op.endswith(","):
+      try:
+        return sgtbx.rt_mx(op[:-1])
+      except (RuntimeError, ValueError):
+        pass
+    raise
+
+
 class crystal_symmetry_builder(builder_base):
 
   def __init__(self, cif_block, strict=False):
@@ -143,10 +158,9 @@ class crystal_symmetry_builder(builder_base):
         assert len(sym_op_ids) == len(sym_ops)
       self.sym_ops = {}
       space_group_from_ops = sgtbx.space_group()
-      if isinstance(sym_ops, string_types): sym_ops = [sym_ops]
       for i, op in enumerate(sym_ops):
         try:
-          s = sgtbx.rt_mx(op)
+          s = _rt_mx(op)
         except (RuntimeError, ValueError) as e:
           str_e = str(e)
           if "Parse error: " in str_e:

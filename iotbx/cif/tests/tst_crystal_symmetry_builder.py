@@ -192,21 +192,38 @@ def tst_alternative_setting_symbol_not_fitting_cell():
 
 def tst_bad_symop_is_cif_builder_error():
   """ A symmetry operator sgtbx cannot parse is reported as a
-  CifBuilderError, not as the raw sgtbx exception.
+  CifBuilderError quoting the operator as written, not as the raw sgtbx
+  exception. Only one trailing comma is forgiven.
   """
   cif_txt = """\
 data_x
 loop_
 _symmetry_equiv.id
 _symmetry_equiv.pos_as_xyz
-1 x,y
+1 x,y,z,,
 """
   try:
     build(cif_txt)
   except CifBuilderError as e:
     assert "Error interpreting symmetry operator" in str(e), str(e)
+    assert "x,y,z,," in str(e), str(e)
   else:
     raise AssertionError("CifBuilderError expected")
+
+def tst_symop_trailing_comma():
+  """ PDB entry 1l6j writes every operator with one trailing comma
+  ("+X,+Y,+Z,"). Tolerate it.
+  """
+  cif_txt = """\
+data_x
+loop_
+_symmetry_equiv.id
+_symmetry_equiv.pos_as_xyz
+1 +X,+Y,+Z,
+2 -X,-Y,+Z,
+"""
+  cs = build(cif_txt)
+  assert cs.space_group() == sgtbx.space_group_info("P 1 1 2").group()
 
 
 if __name__ == '__main__':
@@ -218,3 +235,4 @@ if __name__ == '__main__':
   tst_alternative_setting_symbol_yields_to_hall()
   tst_alternative_setting_symbol_not_fitting_cell()
   tst_bad_symop_is_cif_builder_error()
+  tst_symop_trailing_comma()
