@@ -147,7 +147,7 @@ class crystal_symmetry_builder(builder_base):
       for i, op in enumerate(sym_ops):
         try:
           s = sgtbx.rt_mx(op)
-        except RuntimeError as e:
+        except (RuntimeError, ValueError) as e:
           str_e = str(e)
           if "Parse error: " in str_e:
             raise CifBuilderError("Error interpreting symmetry operator: %s" %(

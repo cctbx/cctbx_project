@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from iotbx.pdb.mmcif import cif_input
 import iotbx.cif
-from iotbx.cif.builders import crystal_symmetry_builder
+from iotbx.cif.builders import crystal_symmetry_builder, CifBuilderError
 from cctbx import sgtbx, uctbx
 
 def tst_bad_symmetry_1():
@@ -190,6 +190,25 @@ def tst_alternative_setting_symbol_not_fitting_cell():
   assert cs.unit_cell() is not None
 
 
+def tst_bad_symop_is_cif_builder_error():
+  """ A symmetry operator sgtbx cannot parse is reported as a
+  CifBuilderError, not as the raw sgtbx exception.
+  """
+  cif_txt = """\
+data_x
+loop_
+_symmetry_equiv.id
+_symmetry_equiv.pos_as_xyz
+1 x,y
+"""
+  try:
+    build(cif_txt)
+  except CifBuilderError as e:
+    assert "Error interpreting symmetry operator" in str(e), str(e)
+  else:
+    raise AssertionError("CifBuilderError expected")
+
+
 if __name__ == '__main__':
   tst_bad_symmetry_1()
   tst_bad_symmetry_2()
@@ -198,3 +217,4 @@ if __name__ == '__main__':
   tst_alternative_setting_symbol_yields_to_operators()
   tst_alternative_setting_symbol_yields_to_hall()
   tst_alternative_setting_symbol_not_fitting_cell()
+  tst_bad_symop_is_cif_builder_error()
