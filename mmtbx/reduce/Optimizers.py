@@ -614,19 +614,31 @@ class Optimizer(object):
         # model) by removing them from the atom list and from the spatial query structure.
         phantoms = [] # List of tuples, the Phantom and its parent Oxygen
         watersToDelete = []
+        self._watersWithH = set()   # i_seq of the water Oxygens with H or D in this pass
         maxISeq = Helpers.getMaxISeq(model)
         for a in self._atoms:
           if a.element == 'O' and common_residue_names_get_class(name=a.parent().resname) == "common_water":
             if a.occ >= self._waterOccCutoff and a.b < self._waterBCutoff:
-              # If the Oxygen is bonded (presumably to hydrogens/deuteriums), then we just leave it alone.
-              if len(passNeighborLists[a]) > 0:
-                self._infoString += _VerboseCheck(self._verbosity, 3,"Not adding phantom Hydrogens on {} due to bonded neighbors\n".format(_ResNameAndID(a)))
-
               # We're an acceptor and not a donor.
               ei = self._extraAtomInfo.getMappingFor(a)
               ei.isDonor = False
               ei.isAcceptor = True
               self._extraAtomInfo.setMappingFor(a, ei)
+
+              # Any H or D bonded in this conformer, one as well as two, stops the
+              # phantoms: the model's H as given, so the second donor of a one-H
+              # water is not represented. Other bonded atoms (a metal linked by
+              # the caller's restraints) leave the Oxygen without H.
+              numHD = 0
+              for n in passNeighborLists[a]:
+                if n.element_is_hydrogen():
+                  numHD += 1
+              if numHD > 0:
+                self._watersWithH.add(a.i_seq)
+                self._infoString += _VerboseCheck(self._verbosity, 3,
+                  "Not adding phantom Hydrogens on {}: it carries {} H/D\n".format(
+                  _ResNameAndID(a), numHD))
+                continue
 
               newPhantoms = Helpers.getPhantomHydrogensFor(maxISeq, a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
                               False, phantomHydrogenRadius, placedHydrogenDistance)
@@ -645,6 +657,9 @@ class Optimizer(object):
                 " with occupancy "+str(a.occ)+" and B factor "+str(a.b)+"\n")
               watersToDelete.append(a)
 
+        if len(self._watersWithH) > 0:
+          self._infoString += _VerboseCheck(self._verbosity, 1,"No phantom Hydrogens on "+
+            str(len(self._watersWithH))+" waters that carry H or D\n")
         if len(watersToDelete) > 0:
           self._infoString += _VerboseCheck(self._verbosity, 1,"Ignored "+str(len(watersToDelete))+" waters due to occupancy or B factor\n")
           # One pass: list.remove() per water scans the whole list each time.
@@ -1038,9 +1053,17 @@ class Optimizer(object):
     for c, o, rt in self._passCopies:
       self._spatialQuery.add(c)
       self._environmentAtoms.append(c)
-    # Phantom Hydrogens on copied waters, as on the model's.
+    # Phantom Hydrogens on copied waters, as on the model's: none on the copy of a
+    # water that carries H or D in this pass.
+    numSkipped = 0
     for c, o, rt in self._passCopies:
       if c.element == 'O' and common_residue_names_get_class(name=c.parent().resname) == "common_water":
+        if o.i_seq in self._watersWithH:
+          numSkipped += 1
+          self._infoString += _VerboseCheck(self._verbosity, 3,
+            "Not adding phantom Hydrogens on the copy of {} ({}): it carries H/D\n".format(
+            _ResNameAndID(o), rt))
+          continue
         newPhantoms = Helpers.getPhantomHydrogensFor(self._copyPhantomISeq, c, self._spatialQuery,
           self._extraAtomInfo, self._minOccupancy, False, phantomHydrogenRadius, placedHydrogenDistance)
         for p in newPhantoms:
@@ -1048,6 +1071,9 @@ class Optimizer(object):
           self._extraAtomInfo.setMappingFor(p, probeExt.ExtraAtomInfo(phantomHydrogenRadius, False, True, True))
           passNeighborLists[p] = [c]
           self._environmentAtoms.append(p)
+    if numSkipped > 0:
+      self._infoString += _VerboseCheck(self._verbosity, 1,"No phantom Hydrogens on "+
+        str(numSkipped)+" symmetry copies of waters that carry H or D\n")
 
   def _PlaceSymmetryCopies(self, passNeighborLists):
     """After Mover placement: the bonds from originals to copies (and the reverse of
