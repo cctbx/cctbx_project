@@ -60,6 +60,13 @@ input {
   experiments_suffix = _integrated.expt
     .type = str
     .help = Find file names with this suffix for experiments
+  max_lattices = None
+    .type = int
+    .help = After all files are loaded, keep a random subset of at most this many experiments,
+    .help = counted over all ranks, and discard the rest with their reflections
+  random_seed = 0
+    .type = int
+    .help = Seed for the random subset drawn when max_lattices is set
 
   parallel_file_load {
     method = *uniform node_memory
