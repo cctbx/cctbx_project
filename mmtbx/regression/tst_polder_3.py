@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import time, os, math
 import iotbx.phil
 import mmtbx.maps.polder
-from mmtbx.regression.tst_polder import get_map_stats_at_sites, \
+from mmtbx.regression.tst_polder_1 import get_map_stats_at_sites, \
   get_map_coeffs, polder_label, omit_label
 from iotbx.data_manager import DataManager
 from iotbx.cli_parser import run_program
@@ -21,14 +21,14 @@ def exercise_00(dm, mtz_fn):
     resseq 183 or resseq 95)'
 
   args = [
-    "tst_polder_box.pdb",
+    "tst_polder_3.pdb",
     mtz_fn,
     "compute_box=True",
     'solvent_exclusion_mask_selection="%s"' % selection]
 
   r = run_program(program_class=polder.Program, args=args, logger=null_out())
 
-  pdb_hierarchy = dm.get_model('tst_polder_box_ligand.pdb').get_hierarchy()
+  pdb_hierarchy = dm.get_model('tst_polder_3_ligand.pdb').get_hierarchy()
   sel = pdb_hierarchy.atom_selection_cache().selection(string = 'resseq 88')
   sites_cart = pdb_hierarchy.atoms().extract_xyz().select(sel)
   mmm_mp = get_map_stats_at_sites(
@@ -58,7 +58,7 @@ def exercise_01(dm, mtz_fn, mtz_fn_no_ligand):
   (sphere mode; box mode has neither), with data calculated with MES 88 and,
   as negative control, without it.
   """
-  model = dm.get_model('tst_polder_box_ligand.pdb')
+  model = dm.get_model('tst_polder_3_ligand.pdb')
   for fn, ligand_in_data in [(mtz_fn, True), (mtz_fn_no_ligand, False)]:
     params = iotbx.phil.parse(
       input_string=mmtbx.maps.polder.master_params_str,
@@ -85,7 +85,7 @@ def exercise_01(dm, mtz_fn, mtz_fn_no_ligand):
 
     # the program reports the verdict
     args = [
-      'tst_polder_box_ligand.pdb',
+      'tst_polder_3_ligand.pdb',
       fn,
       'solvent_exclusion_mask_selection="resseq 88"']
     r = run_program(program_class=polder.Program, args=args,
@@ -105,7 +105,7 @@ def exercise_02(dm, mtz_fn):
   two altlocs without blank altloc, and not in box mode (LEU A 63 has
   CG, CD1, CD2 in altlocs A and B).
   """
-  model = dm.get_model('tst_polder_box_ligand.pdb')
+  model = dm.get_model('tst_polder_3_ligand.pdb')
   fobs = get_map_coeffs(file_name=mtz_fn, label="f-obs")
   # selection, compute_box, altloc scaling expected
   cases = [
@@ -139,25 +139,25 @@ def exercise_02(dm, mtz_fn):
 
 # ---------------------------------------------------------------------------
 
-def exercise(prefix="tst_polder_box"):
+def exercise(prefix="tst_polder_3"):
   """
   Test for phenix.polder: compute_box=True, correlation coefficients and
   altloc_scale. Data are calculated from the model with ligand (MES 88).
   """
   dm = DataManager(['model'])
-  dm.process_model_str('tst_polder_box.pdb', pdb_str)
-  dm.process_model_str('tst_polder_box_ligand.pdb', pdb_str + pdb_str_ligand)
-  dm.write_model_file(dm.get_model('tst_polder_box.pdb').model_as_pdb(),
-                      filename  = 'tst_polder_box.pdb',
+  dm.process_model_str('tst_polder_3.pdb', pdb_str)
+  dm.process_model_str('tst_polder_3_ligand.pdb', pdb_str + pdb_str_ligand)
+  dm.write_model_file(dm.get_model('tst_polder_3.pdb').model_as_pdb(),
+                      filename  = 'tst_polder_3.pdb',
                       overwrite = True)
-  dm.write_model_file(dm.get_model('tst_polder_box_ligand.pdb').model_as_pdb(),
-                      filename  = 'tst_polder_box_ligand.pdb',
+  dm.write_model_file(dm.get_model('tst_polder_3_ligand.pdb').model_as_pdb(),
+                      filename  = 'tst_polder_3_ligand.pdb',
                       overwrite = True)
 
   # create test data with phenix.fmodel
-  mtz_fn = "tst_polder_box.mtz"
+  mtz_fn = "tst_polder_3.mtz"
   args = [
-    'tst_polder_box_ligand.pdb',
+    'tst_polder_3_ligand.pdb',
     "high_res=2.0",
     "type=real",
     "label=f-obs",
@@ -166,8 +166,8 @@ def exercise(prefix="tst_polder_box"):
     "output.file_name=%s" % mtz_fn]
   run_program(program_class=fmodel.Program, args=args, logger=null_out())
   # negative control: data without the ligand
-  mtz_fn_no_ligand = "tst_polder_box_no_ligand.mtz"
-  args = ['tst_polder_box.pdb'] + args[1:-1] + [
+  mtz_fn_no_ligand = "tst_polder_3_no_ligand.mtz"
+  args = ['tst_polder_3.pdb'] + args[1:-1] + [
     "output.file_name=%s" % mtz_fn_no_ligand]
   run_program(program_class=fmodel.Program, args=args, logger=null_out())
 
@@ -175,8 +175,8 @@ def exercise(prefix="tst_polder_box"):
   exercise_00(dm=dm, mtz_fn=mtz_fn)
   exercise_02(dm=dm, mtz_fn=mtz_fn)
 
-  os.remove('tst_polder_box.pdb')
-  os.remove('tst_polder_box_ligand.pdb')
+  os.remove('tst_polder_3.pdb')
+  os.remove('tst_polder_3_ligand.pdb')
   os.remove(mtz_fn)
   os.remove(mtz_fn_no_ligand)
 

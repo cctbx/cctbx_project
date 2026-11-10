@@ -25,7 +25,7 @@ def write_model_and_data(prefix):
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = "%s.mtz"%prefix)
 
-def exercise_00(prefix="tst_phenix_regression_maps_polder"):
+def exercise_00(prefix="tst_polder_4"):
   """
   Make sure EXACTLY THIS comand below runs (= does not crash):
 
@@ -42,14 +42,14 @@ def exercise_00(prefix="tst_phenix_regression_maps_polder"):
     ])
   #print(cmd)
   assert not easy_run.call(cmd)
-  assert os.path.isfile("tst_phenix_regression_maps_polder_polder_map_coeffs.mtz")
+  assert os.path.isfile("tst_polder_4_polder_map_coeffs.mtz")
 
-  os.remove('tst_phenix_regression_maps_polder.mtz')
-  os.remove('tst_phenix_regression_maps_polder.pdb')
-  os.remove('tst_phenix_regression_maps_polder.zlog')
-  os.remove('tst_phenix_regression_maps_polder_polder_map_coeffs.mtz')
+  os.remove('tst_polder_4.mtz')
+  os.remove('tst_polder_4.pdb')
+  os.remove('tst_polder_4.zlog')
+  os.remove('tst_polder_4_polder_map_coeffs.mtz')
 
-def exercise_01(prefix="tst_polder_and_twins"):
+def exercise_01(prefix="tst_polder_4_twins"):
   """
   Make sure Sorry happens in case of twinning.
   """
@@ -99,7 +99,7 @@ def exercise_02():
     msg = program.result_message(cc12=cc12, cc13=cc13, cc23=cc23)
     assert expected in " ".join(msg.split()), (cc12, cc13, cc23, msg)
 
-def exercise_03(prefix="tst_polder_errors"):
+def exercise_03(prefix="tst_polder_4_errors"):
   """
   Make sure Sorry happens for invalid input, with the expected message.
   """

@@ -1,294 +1,319 @@
 from __future__ import absolute_import, division, print_function
 import time, os
-from libtbx.test_utils import approx_equal
-from iotbx.data_manager import DataManager
-from iotbx.cli_parser import run_program
 import iotbx.pdb
-from mmtbx.programs import polder
+import iotbx.phil
+import mmtbx.maps.polder
+from mmtbx.programs import fmodel, polder
+from iotbx.cli_parser import run_program
+from iotbx.data_manager import DataManager
+from iotbx import reflection_file_reader
+from libtbx.test_utils import approx_equal
+from libtbx.utils import null_out
+from cctbx import miller
+from cctbx import maptbx
 from scitbx.array_family import flex
 from six.moves import range
-from libtbx.utils import null_out
-from mmtbx.regression.tst_polder import get_map_stats_at_sites, \
-  get_map_coeffs, polder_label
 
-
-def generate_r_free_flags_systematic(miller_array):
-  result = flex.bool()
-  for i in range(miller_array.indices().size()):
-    if(i%10==0): result.append(True)
-    else: result.append(False)
-  return miller_array.array(data = result)
+polder_label    = "mFo-DFc_polder,PHImFo-DFc_polder"
+omit_label      = "mFo-DFc_omit,PHImFo-DFc_omit"
+bias_omit_label = "mFo-DFc_bias_omit,PHImFo-DFc_bias_omit"
 
 # ---------------------------------------------------------------------------
 
-def exercise_01(fobs_1, fobs_2, flags_1, flags_2):
-  '''
-  Test reading one mtz with different choices for F and Rfree
-  '''
-  mtz = fobs_1.as_mtz_dataset(column_root_label="FP1")
-  mtz.add_miller_array(fobs_2, column_root_label="FP2")
-  mtz.add_miller_array(flags_1, column_root_label="R-free-flags-1")
-  mtz.add_miller_array(flags_2, column_root_label="R-free-flags-2")
-  mtz.mtz_object().write("tst_polder_1_1.mtz")
-  #
-  selection = "chain A"
+def get_map(cg, mc, sigma_scaled=True):
+  fft_map = miller.fft_map(
+    crystal_gridding     = cg,
+    fourier_coefficients = mc)
+  if sigma_scaled:
+    fft_map.apply_sigma_scaling()
+  return fft_map.real_map_unpadded()
 
-  args = [
-    "tst_polder_1.pdb",
-    "tst_polder_1_1.mtz",
-    "sphere_radius=3",
-    'solvent_exclusion_mask_selection="%s"' % selection,
-    "user_selected_labels=FP1",
-    "user_selected_labels=R-free-flags-1",
-    "output_file_name_prefix=tst_polder_1_1"]
+def get_map_stats(map, sites_frac):
+  map_values = flex.double()
+  for sf in sites_frac:
+    map_values.append(map.eight_point_interpolation(sf))
+  return map_values
 
-  r = run_program(program_class=polder.Program, args=args, logger=null_out())
-
-  check(
-    d_min_expected = 3.0, # FP1, not FP2 (2.5 A)
-    selection=selection,
-    filename = r.output_file,
-    model_str = pdb_str)
-
-  os.remove("tst_polder_1_1.mtz")
-  os.remove(r.output_file)
-
-# ---------------------------------------------------------------------------
-
-def exercise_02(fobs_1, flags_1):
-  '''
-  Test reading two cns files: one with Fobs, one with Rfree;
-  without specifying labels --> test automatic machinery
-  '''
-  with open("tst_polder_1_2.cns", "w") as file_object:
-    fobs_1.export_as_cns_hkl(
-      file_object=file_object,
-      file_name="tst_polder_1_2.cns",
-      info=["calculated structure factors FP1"])
-  #
-  with open("tst_polder_1_2_free.cns", "w") as file_object:
-    flags_1.export_as_cns_hkl(
-      file_object=file_object,
-      file_name="tst_polder_1_2_free.cns",
-      info=["R-free-flags for FP1"])
-  #
-  selection = "chain E and resseq 14"
-  args = [
-    "tst_polder_1.pdb",
-    "tst_polder_1_2.cns",
-    "tst_polder_1_2_free.cns",
-    "sphere_radius=5",
-    'solvent_exclusion_mask_selection="%s"' % selection,
-    "output_file_name_prefix=tst_polder_1_2"]
-
-  r = run_program(program_class=polder.Program, args=args, logger=null_out())
-
-  check(
-    d_min_expected = 3.0,
-    selection=selection,
-    filename = r.output_file,
-    model_str = pdb_str)
-
-  os.remove("tst_polder_1_2.cns")
-  os.remove("tst_polder_1_2_free.cns")
-  os.remove(r.output_file)
-
-# ---------------------------------------------------------------------------
-
-def exercise_03(fobs_2, flags_2):
-  '''
-  Test reading model as cif, Fobs from mtz and Rfree from cns file
-  '''
-  mtz = fobs_2.as_mtz_dataset(column_root_label="FP1")
-  mtz.mtz_object().write("tst_polder_1_3.mtz")
-  with open("tst_polder_1_3.cns", "w") as file_object:
-    flags_2.export_as_cns_hkl(
-      file_object=file_object,
-      file_name="tst_polder_1_3.cns",
-      info=["R-free-flags for FP1"])
-  #
-  selection = "chain E and resseq 7"
-  args = [
-    "tst_polder_1.cif",
-    "tst_polder_1_3.mtz",
-    "tst_polder_1_3.cns",
-    "sphere_radius=5",
-    'solvent_exclusion_mask_selection="%s"' % selection,
-    "output_file_name_prefix=tst_polder_1_3"]
-
-  r = run_program(program_class=polder.Program, args=args, logger=null_out())
-
-  check(
-    d_min_expected = 2.5,
-    selection=selection,
-    filename = r.output_file,
-    model_str = pdb_str)
-
-  # Clean up files
-  os.remove('tst_polder_1_3.mtz')
-  os.remove('tst_polder_1_3.cns')
-  os.remove(r.output_file)
-
-# ---------------------------------------------------------------------------
-
-def exercise_04(fobs_1, flags_1):
-  '''
-  Test reading mtz with anomalous arrays for F and Rfree
-  '''
-  mtz = fobs_1.as_mtz_dataset(column_root_label="FP1")
-  mtz.add_miller_array(flags_1, column_root_label="R-free-flags")
-  mtz.mtz_object().write("tst_polder_1_4.mtz")
-  #
-  selection = "chain A"
-  args = [
-    "tst_polder_1_small.pdb",
-    "tst_polder_1_4.mtz",
-    "sphere_radius=3",
-    'solvent_exclusion_mask_selection="%s"' % selection,
-    "output_file_name_prefix=tst_polder_1_4"]
-
-  r = run_program(program_class=polder.Program, args=args, logger=null_out())
-
-  check(
-    d_min_expected = 3.0,
-    selection  = selection,
-    filename = r.output_file,
-    model_str = pdb_str_small)
-
-  os.remove("tst_polder_1_4.mtz")
-  os.remove(r.output_file)
-
-# ---------------------------------------------------------------------------
-
-def exercise_05(fobs_1):
-  '''
-  Test reading one mtz with F as anomalous array (no Rfree present)
-  '''
-  mtz = fobs_1.as_mtz_dataset(column_root_label="FP1")
-  mtz.mtz_object().write("tst_polder_1_5.mtz")
-  #
-  selection = "chain E and resseq 1"
-  args = [
-    "tst_polder_1_small.pdb",
-    "tst_polder_1_5.mtz",
-    "sphere_radius=3",
-    'solvent_exclusion_mask_selection="%s"' % selection,
-    "output_file_name_prefix=tst_polder_1_5"]
-
-  r = run_program(program_class=polder.Program, args=args, logger=null_out())
-
-  check(
-    d_min_expected = 3.0,
-    selection  = selection,
-    filename = r.output_file,
-    model_str = pdb_str_small)
-
-  os.remove("tst_polder_1_5.mtz")
-  os.remove(r.output_file)
-
-# ---------------------------------------------------------------------------
-
-def exercise_06(fobs_1, flags_1):
-  '''
-  Test reading mtz with F as anomalous array and Rfree is usual array
-  '''
-  mtz = fobs_1.as_mtz_dataset(column_root_label="FP1")
-  mtz.add_miller_array(flags_1, column_root_label="R-free-flags")
-  mtz.mtz_object().write("tst_polder_1_6.mtz")
-  #
-  selection = "chain A"
-  args = [
-    "tst_polder_1_small.pdb",
-    "tst_polder_1_6.mtz",
-    "sphere_radius=3",
-    'solvent_exclusion_mask_selection="%s"' % selection,
-    "output_file_name_prefix=tst_polder_1_6"]
-
-  r = run_program(program_class=polder.Program, args=args, logger=null_out())
-
-  check(
-    d_min_expected = 3.0,
-    selection  = selection,
-    filename = r.output_file,
-    model_str = pdb_str_small)
-
-  os.remove("tst_polder_1_6.mtz")
-  os.remove(r.output_file)
-
-# ---------------------------------------------------------------------------
-
-def exercise():
+def get_map_stats_at_sites(file_name, labels, sites_cart, sigma_scaled=True):
   """
-  Test for phenix.polder: Reading files and accepting anomalous data labels.
+  Min, max and mean of maps at sites_cart, one tuple per label.
+  All maps use the gridding of the first label's map coefficients.
   """
-  dm = DataManager(['model'])
-  dm.process_model_str("tst_polder_1.pdb", pdb_str)
-  model = dm.get_model()
-  dm.write_model_file(model.model_as_pdb(),
-                      filename  = "tst_polder_1.pdb",
-                      overwrite = True)
-  dm.write_model_file(model.model_as_mmcif(),
-                      filename  = "tst_polder_1.cif",
-                      overwrite = True)
-  xrs = model.get_xray_structure()
+  mcs = {}
+  for ma in reflection_file_reader.any_reflection_file(
+      file_name = file_name).as_miller_arrays():
+    if ma.info().label_string() in labels:
+      mcs[ma.info().label_string()] = ma.deep_copy()
+  assert sorted(mcs.keys()) == sorted(labels), list(mcs.keys())
+  mc_first = mcs[labels[0]]
+  cg = maptbx.crystal_gridding(
+    unit_cell         = mc_first.unit_cell(),
+    d_min             = mc_first.d_min(),
+    resolution_factor = 0.25,
+    space_group_info  = mc_first.space_group_info())
+  sites_frac = mc_first.unit_cell().fractionalize(sites_cart)
+  result = []
+  for label in labels:
+    map_data = get_map(cg=cg, mc=mcs[label], sigma_scaled=sigma_scaled)
+    result.append(get_map_stats(
+      map=map_data, sites_frac=sites_frac).min_max_mean().as_tuple())
+  return result
 
-  fobs_1 = abs(xrs.structure_factors(d_min=3.0).f_calc())
-  fobs_2 = abs(xrs.structure_factors(d_min=2.5).f_calc())
-  flags_1 = generate_r_free_flags_systematic(miller_array=fobs_1)
-  flags_2 = generate_r_free_flags_systematic(miller_array=fobs_2)
+def get_map_coeffs(file_name, label):
+  for ma in reflection_file_reader.any_reflection_file(
+      file_name = file_name).as_miller_arrays():
+    if ma.info().label_string() == label:
+      return ma
+  raise AssertionError("%s not in %s" % (label, file_name))
 
-  exercise_01(fobs_1, fobs_2, flags_1, flags_2)
-  exercise_02(fobs_1, flags_1)
-  exercise_03(fobs_2, flags_2)
-
-  # Anomalous data, from a smaller model
-  dm.process_model_str("tst_polder_1_small.pdb", pdb_str_small)
-  model_small = dm.get_model("tst_polder_1_small.pdb")
-  dm.write_model_file(model_small.model_as_pdb(),
-                      filename  = "tst_polder_1_small.pdb",
-                      overwrite = True)
-  xrs_small = model_small.get_xray_structure()
-
-  f_anom = abs(xrs_small.structure_factors(
-    d_min=3.0).f_calc().generate_bijvoet_mates())
-  f_obs = abs(xrs_small.structure_factors(d_min=3.0).f_calc())
-  flags_obs = generate_r_free_flags_systematic(miller_array=f_obs)
-  flags_anom = flags_obs.generate_bijvoet_mates()
-
-  exercise_04(fobs_1 = f_anom, flags_1 = flags_anom)
-  exercise_05(fobs_1 = f_anom)
-  exercise_06(fobs_1 = f_anom, flags_1 = flags_obs)
-
-  # Clean up files
-  os.remove('tst_polder_1.pdb')
-  os.remove('tst_polder_1.cif')
-  os.remove('tst_polder_1_small.pdb')
+def write_model_and_data(model_fn, mtz_fn, model_str):
+  """
+  Write model_str to model_fn and Fobs calculated from it to mtz_fn.
+  """
+  with open(model_fn, "w") as f:
+    f.write(model_str)
+  args = [
+    model_fn,
+    "high_res=2.0",
+    "type=real",
+    "label=f-obs",
+    "k_sol=0.4",
+    "b_sol=50",
+    "output.file_name=%s" % mtz_fn]
+  run_program(program_class=fmodel.Program, args=args, logger=null_out())
 
 # ---------------------------------------------------------------------------
 
-def check(d_min_expected, selection, filename, model_str):
+def exercise_00(prefix="tst_polder_1"):
   """
-  Data are Fcalc of the full model: all selected atoms must be in strong
-  polder density. d_min shows which data array was used; anomalous input
-  must give non-anomalous map coefficients.
+  Test for phenix.polder: at the omitted 20% occupancy PHE, the omit map is
+  flattened by bulk solvent, polder recovers the density and the biased omit
+  map (mask from the full model) is the upper bound. Also checks that the
+  high and low resolution cutoffs reach the output.
   """
-  mc = get_map_coeffs(file_name=filename, label=polder_label)
-  assert approx_equal(mc.d_min(), d_min_expected, eps=0.01), mc.d_min()
-  assert not mc.anomalous_flag()
+  model_fn = "%s.pdb" % prefix
+  mtz_fn = "%s.mtz" % prefix
+  write_model_and_data(model_fn=model_fn, mtz_fn=mtz_fn, model_str=pdb_str)
+
+  selection = "resname PHE and resseq 1"
   pdb_hierarchy = iotbx.pdb.input(
-    source_info=None, lines=model_str).construct_hierarchy()
-  sel = pdb_hierarchy.atom_selection_cache().selection(string = selection)
-  sites_cart = pdb_hierarchy.atoms().extract_xyz().select(sel)
-  mmm_mp = get_map_stats_at_sites(
-    file_name  = filename,
-    labels     = [polder_label],
-    sites_cart = sites_cart)[0]
-  # lowest value at a selected atom observed: 10.3 sigma
-  assert mmm_mp[0] >= 5.0, mmm_mp
+    source_info=None, lines=pdb_str).construct_hierarchy()
+  sites_cart = pdb_hierarchy.atoms().extract_xyz().select(
+    pdb_hierarchy.atom_selection_cache().selection(string = selection))
+
+  # extra arguments, expected (d_max, d_min) of the polder map coefficients;
+  # data go from 28.99 to 2.0 A
+  cases = [
+    ([], (28.99, 2.0)),
+    (["fmodel.xray_data.high_resolution=2.2",
+      "output_file_name_prefix=tst_polder_1_cutoff"], (28.99, 2.2)),
+    (["fmodel.xray_data.low_resolution=10",
+      "output_file_name_prefix=tst_polder_1_cutoff_low"], (10.0, 2.0))]
+
+  for extra_args, d_max_min_expected in cases:
+    args_polder = [
+      model_fn,
+      mtz_fn,
+      "sphere_radius=3",
+      'solvent_exclusion_mask_selection="%s"' % selection,
+      'debug="True"'] + extra_args
+    r = run_program(program_class=polder.Program, args=args_polder,
+      logger=null_out())
+    d_max_min = get_map_coeffs(
+      file_name=r.output_file, label=polder_label).d_max_min()
+    assert approx_equal(d_max_min, d_max_min_expected, eps=0.05), d_max_min
+    # debug=True also writes the biased omit map
+    mmm_mp, mmm_bias_omit, mmm_o = get_map_stats_at_sites(
+      file_name  = r.output_file,
+      labels     = [polder_label, bias_omit_label, omit_label],
+      sites_cart = sites_cart)
+    # mean (sigma) observed: polder 2.9-5.8, omit -2.2-2.0, biased 9.7-15.2
+    assert mmm_mp[2] >= 2.0, mmm_mp
+    assert mmm_mp[2] - mmm_o[2] >= 2.0, (mmm_mp, mmm_o)
+    assert mmm_bias_omit[2] > mmm_mp[2], (mmm_bias_omit, mmm_mp)
+
+    for fn in [r.output_file, "box_1_polder.ccp4", "box_2_polder.ccp4",
+               "box_3_polder.ccp4"]:
+      os.remove(fn)
+    for fn in ["box_polder.pdb", "box_polder.cif"]:
+      if os.path.isfile(fn):
+        os.remove(fn)
+
+  os.remove(model_fn)
+  os.remove(mtz_fn)
 
 # ---------------------------------------------------------------------------
 
-pdb_str = """
+def get_masks(model, fobs, selection_string, **polder_params):
+  """
+  Run polder on the selection; return the grid and the 1d masks for all
+  atoms, for the omit model and for polder.
+  """
+  params = iotbx.phil.parse(
+    input_string=mmtbx.maps.polder.master_params_str,
+    process_includes=True).extract()
+  for name, value in polder_params.items():
+    setattr(params.polder, name, value)
+  polder_object = mmtbx.maps.polder.compute_polder_map(
+    f_obs            = fobs,
+    r_free_flags     = None,
+    model            = model,
+    params           = params.polder,
+    selection_string = selection_string)
+  polder_object.validate()
+  polder_object.run()
+  results = polder_object.get_results()
+  m_all = results.mask_data_all.as_1d()
+  m_omit = results.mask_data_omit.as_1d()
+  m_polder = results.mask_data_polder.as_1d()
+  # polder only removes solvent
+  assert (m_polder > m_all).count(True) == 0
+  return results.mask_data_all.all(), m_all, m_omit, m_polder
+
+def check_masks(model, fobs, selection_string, radii, box_buffers):
+  """
+  Check which mask grid points polder resets around all symmetry mates of
+  the selection. Spheres and boxes are far smaller than the cell, so rounding
+  fractional differences gives the nearest lattice translation.
+  """
+  crystal_symmetry = model.crystal_symmetry()
+  unit_cell = crystal_symmetry.unit_cell()
+  sites_frac = model.get_sites_frac().select(
+    model.selection(selection_string))
+  mates = []
+  for op in crystal_symmetry.space_group().all_ops():
+    mates.append(flex.vec3_double([op * site for site in sites_frac]))
+
+  sphere_masks = [(radius, get_masks(model, fobs, selection_string,
+    sphere_radius = radius)) for radius in radii]
+  n_real = sphere_masks[0][1][0]
+  grid_frac = flex.vec3_double()
+  for i in range(n_real[0]):
+    for j in range(n_real[1]):
+      for k in range(n_real[2]):
+        grid_frac.append((i/n_real[0], j/n_real[1], k/n_real[2]))
+  grid_xyz = grid_frac.parts()
+  # distance of each grid point to the closest selected atom or mate
+  dist = flex.double(grid_frac.size(), 1.e9)
+  for mate in mates:
+    for site in mate:
+      d_frac = []
+      for g, x in zip(grid_xyz, site):
+        d = g - x
+        d_frac.append(d - flex.floor(d + 0.5))
+      d = unit_cell.orthogonalize(flex.vec3_double(*d_frac)).norms()
+      closer = d < dist
+      dist.set_selected(closer, d.select(closer))
+
+  # Sphere: reset exactly the grid points within the radius
+  n_changed = []
+  for radius, (_, m_all, m_omit, m_polder) in sphere_masks:
+    # without the selection there is only more solvent
+    assert (m_omit < m_all).count(True) == 0
+    assert (m_omit != m_all).count(True) > 0
+    changed = m_polder != m_all
+    assert changed.count(True) > 0
+    assert flex.max(dist.select(changed)) <= radius + 0.01
+    assert (m_polder.select(dist < radius - 0.01) != 0).count(True) == 0
+    n_changed.append(changed.count(True))
+  for n_1, n_2 in zip(n_changed, n_changed[1:]):
+    assert n_1 < n_2, n_changed
+
+  # Box: reset the bounding box of each mate plus buffer, wrapped at the cell
+  # faces; grid rounding extends it by up to one grid step
+  n_changed = []
+  for box_buffer in box_buffers:
+    _, m_all, m_omit, m_polder = get_masks(model, fobs, selection_string,
+      compute_box = True,
+      box_buffer  = box_buffer)
+    # box mode keeps the selection in the model
+    assert (m_omit != m_all).count(True) == 0
+    if box_buffer is None:
+      cushion = (0, 0, 0)
+    else:
+      cushion = unit_cell.fractionalize((box_buffer,)*3)
+    in_box = flex.bool(grid_frac.size(), False)
+    in_box_plus_step = flex.bool(grid_frac.size(), False)
+    for mate in mates:
+      inside = flex.bool(grid_frac.size(), True)
+      inside_plus_step = flex.bool(grid_frac.size(), True)
+      for g, s, c, n in zip(grid_xyz, mate.parts(), cushion, n_real):
+        lo = flex.min(s) - c - 1.e-6
+        width = flex.max(s) + c + 1.e-6 - lo
+        # offset from the box start, wrapped into [0,1)
+        offset = g - lo
+        offset = offset - flex.floor(offset)
+        inside = inside & (offset <= width)
+        offset = g - (lo - 1/n)
+        offset = offset - flex.floor(offset)
+        inside_plus_step = inside_plus_step & (offset <= width + 2/n)
+      in_box = in_box | inside
+      in_box_plus_step = in_box_plus_step | inside_plus_step
+    changed = m_polder != m_all
+    assert changed.count(True) > 0
+    assert (m_polder.select(in_box) != 0).count(True) == 0
+    assert (changed & ~in_box_plus_step).count(True) == 0
+    n_changed.append(changed.count(True))
+  for n_1, n_2 in zip(n_changed, n_changed[1:]):
+    assert n_1 < n_2, n_changed
+
+# ---------------------------------------------------------------------------
+
+def exercise_01(prefix="tst_polder_1_masks"):
+  """
+  Test for phenix.polder sphere radius and box buffer: which mask grid points
+  are reset.
+  """
+  model_fn = "%s.pdb" % prefix
+  mtz_fn = "%s.mtz" % prefix
+  write_model_and_data(model_fn=model_fn, mtz_fn=mtz_fn, model_str=pdb_str)
+  dm = DataManager(['model'])
+  dm.process_model_str(model_fn, pdb_str)
+  check_masks(
+    model            = dm.get_model(),
+    fobs             = get_map_coeffs(file_name=mtz_fn, label="f-obs"),
+    selection_string = 'chain A',
+    radii            = [3, 5, 7],
+    box_buffers      = [None, 3, 5, 7])
+  os.remove(model_fn)
+  os.remove(mtz_fn)
+
+# ---------------------------------------------------------------------------
+
+def exercise_02(prefix="tst_polder_1_symmetry"):
+  """
+  Test for phenix.polder masks in P21 (beta 105), with PHE A 1 across the
+  x=0 cell face: spheres and boxes cover all symmetry mates and wrap.
+  """
+  model_str = []
+  for line in pdb_str.splitlines():
+    if line.startswith("CRYST1"):
+      line = "CRYST1   40.000   35.000   38.000  90.00 105.00  90.00 P 1 21 1"
+    elif line.startswith(("ATOM", "HETATM")):
+      x = float(line[30:38]) - 12.5
+      line = line[:30] + "%8.3f" % x + line[38:]
+    model_str.append(line)
+  model_str = "\n".join(model_str) + "\n"
+  model_fn = "%s.pdb" % prefix
+  mtz_fn = "%s.mtz" % prefix
+  write_model_and_data(model_fn=model_fn, mtz_fn=mtz_fn, model_str=model_str)
+  dm = DataManager(['model'])
+  dm.process_model_str(model_fn, model_str)
+  model = dm.get_model()
+  x_frac = model.get_sites_frac().select(model.selection('chain A')).parts()[0]
+  assert flex.min(x_frac) < 0 < flex.max(x_frac)
+  check_masks(
+    model            = model,
+    fobs             = get_map_coeffs(file_name=mtz_fn, label="f-obs"),
+    selection_string = 'chain A',
+    radii            = [5],
+    box_buffers      = [2])
+  os.remove(model_fn)
+  os.remove(mtz_fn)
+
+# ---------------------------------------------------------------------------
+
+pdb_str = """\
 CRYST1   28.992   28.409   27.440  90.00  90.00  90.00 P 1
 ATOM      1  N   ALA E   1       9.731  23.364   9.222  1.00 20.00           N
 ATOM      2  CA  ALA E   1      10.928  22.678   9.693  1.00 20.00           C
@@ -336,13 +361,13 @@ ATOM     43  CE1 TYR E   6       8.427  14.363  11.446  1.00 20.00           C
 ATOM     44  CE2 TYR E   6       8.244  14.674   9.080  1.00 20.00           C
 ATOM     45  CZ  TYR E   6       7.656  14.589  10.325  1.00 20.00           C
 ATOM     46  OH  TYR E   6       6.293  14.731  10.449  1.00 20.00           O
-ATOM     47  N   THR E   7      14.979  14.884  10.479  0.20 20.00           N
-ATOM     48  CA  THR E   7      16.391  14.547  10.326  0.20 20.00           C
-ATOM     49  C   THR E   7      17.120  14.587  11.664  0.20 20.00           C
-ATOM     50  O   THR E   7      17.960  13.724  11.944  0.20 20.00           O
-ATOM     51  CB  THR E   7      17.058  15.492   9.326  0.20 20.00           C
-ATOM     52  OG1 THR E   7      16.757  16.850   9.672  0.20 20.00           O
-ATOM     53  CG2 THR E   7      16.571  15.207   7.912  0.20 20.00           C
+ATOM     47  N   THR E   7      14.979  14.884  10.479  1.00 20.00           N
+ATOM     48  CA  THR E   7      16.391  14.547  10.326  1.00 20.00           C
+ATOM     49  C   THR E   7      17.120  14.587  11.664  1.00 20.00           C
+ATOM     50  O   THR E   7      17.960  13.724  11.944  1.00 20.00           O
+ATOM     51  CB  THR E   7      17.058  15.492   9.326  1.00 20.00           C
+ATOM     52  OG1 THR E   7      16.757  16.850   9.672  1.00 20.00           O
+ATOM     53  CG2 THR E   7      16.571  15.207   7.912  1.00 20.00           C
 ATOM     54  N   ILE E   8      16.814  15.580  12.502  1.00 20.00           N
 ATOM     55  CA  ILE E   8      17.450  15.665  13.815  1.00 20.00           C
 ATOM     56  C   ILE E   8      17.050  14.475  14.679  1.00 20.00           C
@@ -387,17 +412,17 @@ ATOM     94  CA  ALA E  13      17.640   8.405  17.442  1.00 20.00           C
 ATOM     95  C   ALA E  13      18.531   7.237  17.035  1.00 20.00           C
 ATOM     96  O   ALA E  13      18.671   6.266  17.787  1.00 20.00           O
 ATOM     97  CB  ALA E  13      16.253   8.268  16.816  1.00 20.00           C
-ATOM     98  N   PHE E  14      19.140   7.312  15.850  0.20 20.00           N
-ATOM     99  CA  PHE E  14      20.024   6.243  15.402  0.20 20.00           C
-ATOM    100  C   PHE E  14      21.374   6.283  16.108  0.20 20.00           C
-ATOM    101  O   PHE E  14      22.022   5.241  16.254  0.20 20.00           O
-ATOM    102  CB  PHE E  14      20.223   6.320  13.887  0.20 20.00           C
-ATOM    103  CG  PHE E  14      18.980   6.023  13.096  0.20 20.00           C
-ATOM    104  CD1 PHE E  14      17.953   5.275  13.646  0.20 20.00           C
-ATOM    105  CD2 PHE E  14      18.841   6.492  11.800  0.20 20.00           C
-ATOM    106  CE1 PHE E  14      16.809   5.000  12.919  0.20 20.00           C
-ATOM    107  CE2 PHE E  14      17.700   6.221  11.068  0.20 20.00           C
-ATOM    108  CZ  PHE E  14      16.683   5.474  11.629  0.20 20.00           C
+ATOM     98  N   PHE E  14      19.140   7.312  15.850  1.00 20.00           N
+ATOM     99  CA  PHE E  14      20.024   6.243  15.402  1.00 20.00           C
+ATOM    100  C   PHE E  14      21.374   6.283  16.108  1.00 20.00           C
+ATOM    101  O   PHE E  14      22.022   5.241  16.254  1.00 20.00           O
+ATOM    102  CB  PHE E  14      20.223   6.320  13.887  1.00 20.00           C
+ATOM    103  CG  PHE E  14      18.980   6.023  13.096  1.00 20.00           C
+ATOM    104  CD1 PHE E  14      17.953   5.275  13.646  1.00 20.00           C
+ATOM    105  CD2 PHE E  14      18.841   6.492  11.800  1.00 20.00           C
+ATOM    106  CE1 PHE E  14      16.809   5.000  12.919  1.00 20.00           C
+ATOM    107  CE2 PHE E  14      17.700   6.221  11.068  1.00 20.00           C
+ATOM    108  CZ  PHE E  14      16.683   5.474  11.629  1.00 20.00           C
 ATOM    109  N   ALA E  15      21.810   7.463  16.548  1.00 20.00           N
 ATOM    110  CA  ALA E  15      23.084   7.598  17.240  1.00 20.00           C
 ATOM    111  C   ALA E  15      22.974   7.379  18.742  1.00 20.00           C
@@ -428,53 +453,22 @@ TER
 END
 """
 
-pdb_str_small = """\
-CRYST1   28.992   28.409   27.440  90.00  90.00  90.00 P 1
-ATOM      1  N   ALA E   1       9.731  23.364   9.222  0.20 20.00           N
-ATOM      2  CA  ALA E   1      10.928  22.678   9.693  0.20 20.00           C
-ATOM      3  C   ALA E   1      10.619  21.229  10.055  0.20 20.00           C
-ATOM      4  O   ALA E   1      11.301  20.629  10.886  0.20 20.00           O
-ATOM      5  CB  ALA E   1      11.522  23.409  10.887  0.20 20.00           C
-ATOM      6  N   HIS E   2       9.586  20.672   9.419  1.00 20.00           N
-ATOM      7  CA  HIS E   2       9.202  19.291   9.695  1.00 20.00           C
-ATOM      8  C   HIS E   2      10.295  18.321   9.264  1.00 20.00           C
-ATOM      9  O   HIS E   2      10.653  17.402  10.010  1.00 20.00           O
-ATOM     10  CB  HIS E   2       7.882  18.965   8.997  1.00 20.00           C
-ATOM     11  CG  HIS E   2       6.738  19.828   9.431  1.00 20.00           C
-ATOM     12  ND1 HIS E   2       5.915  19.498  10.485  1.00 20.00           N
-ATOM     13  CD2 HIS E   2       6.282  21.010   8.953  1.00 20.00           C
-ATOM     14  CE1 HIS E   2       5.000  20.438  10.638  1.00 20.00           C
-ATOM     15  NE2 HIS E   2       5.200  21.367   9.721  1.00 20.00           N
-ATOM     16  N   CYS E   3      10.837  18.510   8.058  1.00 20.00           N
-ATOM     17  CA  CYS E   3      11.937  17.667   7.605  1.00 20.00           C
-ATOM     18  C   CYS E   3      13.176  17.854   8.470  1.00 20.00           C
-ATOM     19  O   CYS E   3      13.943  16.905   8.669  1.00 20.00           O
-ATOM     20  CB  CYS E   3      12.260  17.966   6.141  1.00 20.00           C
-ATOM     21  SG  CYS E   3      10.887  17.680   5.000  1.00 20.00           S
-ATOM     22  N   ALA E   4      13.386  19.064   8.995  1.00 20.00           N
-ATOM     23  CA  ALA E   4      14.520  19.295   9.885  1.00 20.00           C
-ATOM     24  C   ALA E   4      14.353  18.539  11.196  1.00 20.00           C
-ATOM     25  O   ALA E   4      15.308  17.933  11.696  1.00 20.00           O
-ATOM     26  CB  ALA E   4      14.689  20.792  10.142  1.00 20.00           C
-TER
-ATOM     98  N   PHE A   1       9.174   9.310  14.969  0.20 20.00           N
-ATOM     99  CA  PHE A   1      10.235   8.421  14.508  0.20 20.00           C
-ATOM    100  C   PHE A   1      11.171   8.048  15.652  0.20 20.00           C
-ATOM    101  O   PHE A   1      12.391   8.032  15.489  0.20 20.00           O
-ATOM    102  CB  PHE A   1      11.025   9.073  13.371  0.20 20.00           C
-ATOM    103  CG  PHE A   1      10.196   9.391  12.160  0.20 20.00           C
-ATOM    104  CD1 PHE A   1      10.002   8.444  11.168  0.20 20.00           C
-ATOM    105  CD2 PHE A   1       9.611  10.638  12.012  0.20 20.00           C
-ATOM    106  CE1 PHE A   1       9.240   8.734  10.052  0.20 20.00           C
-ATOM    107  CE2 PHE A   1       8.847  10.934  10.898  0.20 20.00           C
-ATOM    108  CZ  PHE A   1       8.662   9.980   9.917  0.20 20.00           C
-TER
-END
-"""
-
 # ---------------------------------------------------------------------------
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  exercise()
+  # Before the CIF pass: they select by chain ID and edit PDB columns, which
+  # the conversion changes.
+  exercise_01()
+  exercise_02()
+  for as_cif in (False, True):  # XXX as_cif is one way so True must be last
+    if as_cif:
+      print("CONVERTING PDB STRINGS TO CIF AND CHANGING "+
+         "CHAIN ID/HETATM RESIDUE NAMES")
+      # Convert to mmcif and make long chain ID and HETATM resname:
+      from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
+      convert_pdb_to_cif_for_pdb_str(locals(), print_new_string=False)
+    else:
+      print("USING PDB STRINGS AS IS")
+    exercise_00()
   print("OK. Time: %8.3f"%(time.time()-t0))

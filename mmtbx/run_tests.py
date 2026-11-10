@@ -410,10 +410,10 @@ general_tests = [
   "$D/regression/tncs/tst_moments.py",
   #
   "$D/regression/tst_rank_scale_map.py",
-  "$D/regression/tst_polder.py",
   "$D/regression/tst_polder_1.py",
+  "$D/regression/tst_polder_2.py",
+  "$D/regression/tst_polder_3.py",
   "$D/regression/tst_polder_4.py",
-  "$D/regression/tst_polder_box.py",
   "$D/regression/tst_map_model_cc.py",
   "$D/regression/tst_model_map.py",
   #
