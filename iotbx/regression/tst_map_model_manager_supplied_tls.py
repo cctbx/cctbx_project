@@ -1463,8 +1463,19 @@ def tst_no_tls_unchanged():
   assert approx_equal(sample, EXPECTED_SAMPLE, eps = FINGERPRINT_EPS), (
     sample, EXPECTED_SAMPLE)
 
+# Cases without complete sharpening, run by the argument "fast" (listing
+#  them makes too long a directory name in run_tests_parallel)
+FAST_CASES = ['options_passed_on', 'all_tls_entries_updated',
+  'two_tls_groups', 'overlap_nearest', 'reversed_order', 'sampling_count',
+  'empty_mask_group', 'tie_first_listed', 'no_model_first_listed',
+  'multi_grid_ownership', 'half_map_with_model', 'tls_reused',
+  'global_local_global_model', 'global_local_global_half_map',
+  'tls_in_other_frame', 'average_overall_scale_stored', 'mixed_overall_si',
+  'averaged_ssqr']
+
 def run(args = None):
-  # Each case is listed separately in iotbx/run_tests.py; add new ones there
+  # iotbx/run_tests.py runs "fast" and the other cases in groups; add a new
+  #  case to FAST_CASES or to iotbx/run_tests.py
   all_tests = [
      ('options_passed_on', tst_options_passed_on),
      ('all_tls_entries_updated', tst_all_tls_entries_updated),
@@ -1493,10 +1504,16 @@ def run(args = None):
      ('no_tls_unchanged', tst_no_tls_unchanged),
     ]
   if args:
-    unknown = set(args) - set([name for name, f in all_tests])
+    names = []
+    for arg in args:
+      if arg == 'fast':
+        names += FAST_CASES
+      else:
+        names.append(arg)
+    unknown = set(names) - set([name for name, f in all_tests])
     assert not unknown, "Unknown test name(s): %s" %(
       " ".join(sorted(unknown)))
-    tests = [(name, f) for name, f in all_tests if name in args]
+    tests = [(name, f) for name, f in all_tests if name in names]
   else:
     tests = all_tests
   for name, f in tests:
