@@ -70,6 +70,13 @@ class processed_options(object):
     return False
 
 class option_parser(OptionParser):
+  """optparse parser with libtbx extras such as --show_defaults and --chunk.
+
+  Legacy for crystallographic programs: new ones subclass
+  libtbx.program_template.ProgramTemplate and run through
+  iotbx.cli_parser.run_program. libtbx's own build and test tools
+  still use this class.
+  """
 
   processed_options_type = processed_options
 

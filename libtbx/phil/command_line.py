@@ -174,6 +174,13 @@ class argument_interpreter(object):
     return result, remaining_args
 
 class process(object):
+  """Parse PHIL arguments and keep the others in remaining_args.
+
+  Legacy: do not use in new code. New programs subclass
+  libtbx.program_template.ProgramTemplate and run through
+  iotbx.cli_parser.run_program. argument_interpreter above is not
+  legacy: iotbx.cli_parser uses it.
+  """
 
   def __init__(self, args, master_string, parse=None, extra_sources=()):
     if (parse is None): parse = libtbx.phil.parse
