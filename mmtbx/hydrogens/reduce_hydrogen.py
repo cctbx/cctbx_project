@@ -1179,6 +1179,48 @@ def contact_symmetry(crystal_symmetry):
     return None
   return cs
 
+def symmetry_copies(hierarchy, crystal_symmetry, distance=3.6):
+  '''
+  Symmetry copies of the residue groups within distance of each model, for
+  the Optimizer's symmetryCopies (reduce2 and
+  mmtbx.hydrogens.place_and_optimize_hydrogens()).
+
+  Parameters
+  ----------
+  hierarchy : iotbx.pdb.hierarchy.root
+    the model with its H, as the Optimizer gets it
+  crystal_symmetry : cctbx.crystal.symmetry or None
+    the input's own symmetry (before any box); passed through
+    contact_symmetry()
+  distance : float
+    copies of residue groups with an atom within this distance (A)
+
+  Returns
+  -------
+  group_args(crystal_symmetry, models {model index: [(copy atom, original
+  atom, rt_mx)]}, hierarchies (the copies' atoms belong to them)), or None
+  without a cell or with the CRYST1 1 1 1 placeholder
+  '''
+  cs = contact_symmetry(crystal_symmetry)
+  if cs is None:
+    return None
+  models = {}
+  hierarchies = []
+  for mi, myModel in enumerate(hierarchy.models()):
+    # sym_equiv_residue_groups() takes one model
+    if hierarchy.models_size() == 1:
+      single = hierarchy
+    else:
+      single = iotbx.pdb.hierarchy.root()
+      single.append_model(myModel.detached_copy())
+    originals = myModel.atoms()
+    models[mi] = []
+    for entry in single.sym_equiv_residue_groups(cs, distance):
+      hierarchies.append(entry.hierarchy)
+      for k, c in zip(entry.i_seqs, entry.hierarchy.atoms()):
+        models[mi].append((c, originals[k], entry.rt_mx))
+  return group_args(crystal_symmetry=cs, models=models, hierarchies=hierarchies)
+
 def _compatible(a, b):
   alt_a, alt_b = a.parent().altloc, b.parent().altloc
   return alt_a == '' or alt_b == '' or alt_a == alt_b

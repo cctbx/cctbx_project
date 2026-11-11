@@ -2315,27 +2315,8 @@ NOTES:
     input's crystal symmetry, for the Optimizer's symmetryCopies (None without a
     cell or with the CRYST1 1 1 1 placeholder).
     '''
-    cs = reduce_hydrogen.contact_symmetry(self._output_cs)
-    if cs is None:
-      return None
-    hierarchy = self.model.get_hierarchy()
-    models = {}
-    hierarchies = []
-    for mi, myModel in enumerate(hierarchy.models()):
-      # sym_equiv_residue_groups() takes one model
-      if hierarchy.models_size() == 1:
-        single = hierarchy
-      else:
-        single = pdb.hierarchy.root()
-        single.append_model(myModel.detached_copy())
-      originals = myModel.atoms()
-      models[mi] = []
-      for entry in single.sym_equiv_residue_groups(cs, 3.6):
-        hierarchies.append(entry.hierarchy)
-        for k, c in zip(entry.i_seqs, entry.hierarchy.atoms()):
-          models[mi].append((c, originals[k], entry.rt_mx))
-    # hierarchies: the copies' atoms belong to them
-    return group_args(crystal_symmetry=cs, models=models, hierarchies=hierarchies)
+    return reduce_hydrogen.symmetry_copies(self.model.get_hierarchy(),
+      self._output_cs)
 
   def _ReinterpretModel(self, make_restraints=True, model=None):
     # Reinterpret the model using the same approach that hydrogen-placement does.
