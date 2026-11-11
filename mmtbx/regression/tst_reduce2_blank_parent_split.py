@@ -199,7 +199,8 @@ CONFORMER_SITES = 'Conformer sites written as one isotope'
 NOT_PLACED = ('N-H not placed: backbone amide N or thymine/uracil N3 bound to '
   'a metal, taken as deprotonated')
 UNRESOLVED = 'N-H placed at metal sites with unresolved protonation'
-LETTERS = 'not split: the residue\'s letters differ from its covalent partner\'s'
+LETTERS = ("H placed once, not split: the residue's altloc letters differ "
+  "from its covalent partner's")
 
 def run(prefix, pdb_str, args=()):
   '''reduce2 on pdb_str. :return: (output hierarchy, description, log).'''
@@ -389,14 +390,16 @@ def test_letters_differ_unchanged():
   assert sorted(a) == [('H', 'C'), ('H', 'D')], sorted(a)
   assert abs(a[('H', 'C')].occ - 0.6) < 1.e-3
   assert abs(a[('H', 'D')].occ - 0.4) < 1.e-3
-  return l
+  return d, l
 
 def test_letters_differ_logged():
-  # the log line is new: this part fails on master
-  l = test_letters_differ_unchanged()
-  assert LETTERS in l, l
-  line = [x for x in l.splitlines() if 'LEU A 101' in x and 'A, B' in x]
+  # the full line in the description, a summary in the log
+  d, l = test_letters_differ_unchanged()
+  assert [x for x in d.splitlines() if x.startswith(LETTERS)], d
+  line = [x for x in d.splitlines() if 'LEU A 101' in x and 'A, B' in x]
   assert len(line) == 1, line
+  assert 'placed, not split per conformer: 1 H, 1 residue: LEU A 101' \
+    in l, l
 
 def test_metal_per_conformer():
   # Ni at 0.50: covers the conformer at 0.35, not the one at 0.65

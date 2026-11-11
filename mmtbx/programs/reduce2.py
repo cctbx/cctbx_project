@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.12.0"
+version = "3.12.1"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -1303,22 +1303,29 @@ NOTES:
     # the model is boxed for the calculation: contacts across its own symmetry
     reduce_add_h_obj.input_crystal_symmetry = self._output_cs
     reduce_add_h_obj.run()
-    reduce_add_h_obj.show(self.logger, verbose=self.params.verbosity > 2)
+    # water H are placed after the Optimizer with add_h_to_water (and
+    # qmready): no water line then
+    water_rule = 'add_h_to_water=False'
+    if self.params.add_h_to_water or self.params.qmready: water_rule = None
+    reduce_add_h_obj.show(self.logger, verbose=self.params.verbosity > 2,
+      see='the description file', water_rule=water_rule)
     self._protonation.conflicts = reduce_add_h_obj.protonation_conflicts
     # its report of atom names not in the dictionary, for the description
     self._unknown_atoms_note = ''
     if reduce_add_h_obj.residues_unknown_atoms:
       self._unknown_atoms_note = '\n' + reduce_add_h_obj.unknown_atoms_text(
         verbose=self.params.verbosity > 2) + '\n'
-    # its report of thiols and N-H at metals and of NH2 kept against IUPAC,
-    # for the description
+    # its report of thiols and N-H at metals, of NH2 kept against IUPAC, of
+    # nucleic-acid ends and the full list of H not placed (last: it points
+    # to the others), for the description
     self._metal_thiol_note = ''
     for text in (reduce_add_h_obj.metal_thiol_text(),
                  reduce_add_h_obj.metal_nh_text(),
                  reduce_add_h_obj.metal_amine_text(),
                  reduce_add_h_obj.nh2_side_fixed_text(),
                  reduce_add_h_obj.na_terminal_h_text(),
-                 reduce_add_h_obj.na_terminal_gap_text()):
+                 reduce_add_h_obj.na_terminal_gap_text(),
+                 reduce_add_h_obj.not_placed_text(water_rule)):
       if text:
         self._metal_thiol_note += '\n' + text + '\n'
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)

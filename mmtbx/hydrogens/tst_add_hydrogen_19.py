@@ -178,8 +178,12 @@ def test_no_restraints_listed():
   assert "04" not in obj.no_H_placed_mlq
   log = StringIO()
   obj.show(log)
-  assert ("No H atoms were placed on the following residues because the "
-    "processed model has no restraints for them:\n04 B 1\n") in log.getvalue()
+  line = [l for l in log.getvalue().splitlines()
+          if l.startswith('  no restraints in the processed model:')]
+  assert len(line) == 1 and line[0].endswith(' 1 residue: 04 B 1'), \
+    log.getvalue()
+  assert ('  04 B 1: ' in obj.not_placed_text() and
+    '(no bonds in the processed model)' in obj.not_placed_text())
   # truncated residue: not listed
   text = "".join(l for l in (cryst1 + pdb_protein).splitlines(True)
                  if " ND2 ASN A   3" not in l)
@@ -217,8 +221,10 @@ def test_keep_existing_h_no_restraints():
       assert not [l for l in labels if " 04 " in l], labels
     log = StringIO()
     obj.show(log)
-    assert "were found:\n 04\n" in log.getvalue(), log.getvalue()
-    assert log.getvalue().count("\n 04\n") == 1, log.getvalue()
+    assert ("  no dictionary, not assessed: 1 residue: 04 B 1\n" in
+      log.getvalue()), log.getvalue()
+    kept = '; its H/D from the input are kept)' in obj.not_placed_text()
+    assert kept == keep, obj.not_placed_text()
 
 def test_given_server():
   srv = counting_server()

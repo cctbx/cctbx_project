@@ -265,10 +265,12 @@ def test_005():
 
   # Reporting: summary by default; per-atom enumeration only when verbose.
   buf = StringIO(); reduce_add_h_obj.show(buf); out = buf.getvalue()
-  assert('neighbouring heavy atom is missing' in out), out
-  assert(' HB2 GLN' not in out), 'per-atom list should be suppressed by default'
+  assert('incomplete side chain: 2 H, 1 residue: GLN A 2' in out), out
+  assert('HB2 HB3 on CB' not in out), \
+    'per-atom list should be suppressed by default'
   buf_v = StringIO(); reduce_add_h_obj.show(buf_v, verbose=True); out_v = buf_v.getvalue()
-  assert(' HB2 GLN' in out_v), 'per-atom list should appear when verbose'
+  assert('  GLN A 2: HB2 HB3 on CB' in out_v), \
+    'per-atom list should appear when verbose'
 
 # ------------------------------------------------------------------------------
 

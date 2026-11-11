@@ -58,10 +58,11 @@ def test_water_without_o_add():
   h = iotbx.pdb.input(fn).construct_hierarchy()
   assert not [a for a in h.atoms() if a.parent().resname == "HOH" and
               a.parent().parent().resseq.strip() == "8"]
-  report = log.split("were not placed because a neighbouring heavy atom is")
-  assert len(report) == 2 and "HOH A 8" in report[1].split("\n\n")[0], log
-  for block in log.split("could not be parameterized")[1:]:
-    assert "HOH A   8" not in block.split("\n\n")[0]
+  assert "parent atom not in the model: 2 H, 1 residue: HOH A 8" in log, log
+  assert ("  HOH A 8: H1 H2 on O (water without O)" in
+    description.splitlines()), description
+  assert not [l for l in log.splitlines()
+              if l.startswith("  not parameterized") and "HOH A 8" in l]
 
 def test_water_single_altloc_h():
   # water 8 with a blank O and H1/H2 in altloc A, approach=add
@@ -83,8 +84,9 @@ def test_water_single_altloc_h():
               if a.parent().parent().resseq.strip() == "8")
   assert w8 == [("H1", "A"), ("H2", "A"), ("O", "")], w8
   check_water(fn, 0.98, 7)
-  for block in log.split("could not be parameterized")[1:]:
-    assert "HOH A   8" not in block.split("\n\n")[0], log
+  # nothing about water 8 in the list of H not placed (any cause)
+  assert not [l for l in description.splitlines()
+              if l.startswith("  HOH A 8")], description
 
 def test_dod_input_all_h():
   # input waters named DOD (O only), all_h: placement adds H, the written

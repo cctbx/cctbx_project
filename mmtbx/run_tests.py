@@ -554,6 +554,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_symmetry_link.py",
   "$D/regression/tst_reduce2_conjugated_oh.py",
   "$D/regression/tst_reduce2_na_terminal_h.py",
+  "$D/regression/tst_reduce2_not_placed.py",
   "$D/regression/tst_reduce2_exclusions.py",
   "$D/regression/tst_reduce2_fresh_scores.py",
   "$D/regression/tst_reduce2_clique_polish.py",

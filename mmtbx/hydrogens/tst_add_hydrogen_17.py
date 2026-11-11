@@ -67,9 +67,9 @@ def check_reported(obj, report, resseq):
       label, obj.site_labels_missing_neighbor)
     assert label not in obj.site_labels_no_para
   assert obj.residues_missing_neighbor.count("HOH A %d" % resseq) == 1
-  assert "HOH A %d" % resseq in report.split(
-    "were not placed because a neighbouring heavy atom is")[1]
-  assert "could not be parameterized" not in report
+  assert "  HOH A %d: H1 H2 on O (water without O)" % resseq in \
+    report.splitlines(), report
+  assert "Not enough restraints" not in report
 
 def test_first_water_without_o():
   # (a) the H of a water without O come before any O: no crash, removed

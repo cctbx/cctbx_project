@@ -257,7 +257,9 @@ def gap_reported(text, *o_labels):
   assert GAP_CAVEAT in text, text
   i = text.index(GAP_CAVEAT)
   assert GAP_CAVEAT not in text[i+1:], text
-  head = [l for l in text.splitlines() if 'inside a chain' in l]
+  # the section's title, not the lines that quote it
+  head = [l for l in text.splitlines()
+          if 'inside a chain' in l and not l.startswith(' ')]
   assert len(head) == 1 and head[0].startswith('%d ' % len(o_labels)), head
   lines = [l for l in text.splitlines()
            if l.strip().startswith(("O5'", "O3'"))]
