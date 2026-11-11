@@ -1,7 +1,7 @@
 #ifndef MMTBX_GEOMETRY_ASA_CALCULATOR_H
 #define MMTBX_GEOMETRY_ASA_CALCULATOR_H
 
-#include <mmtbx/geometry/sphere_surface_sampling.hpp>
+#include <scitbx/math/golden_spiral.h>
 #include <mmtbx/geometry/indexing.hpp>
 #include <mmtbx/geometry/asa.hpp>
 #include <mmtbx/geometry/containment.hpp>
@@ -130,7 +130,7 @@ public:
   typedef typename boost::remove_reference< coordinate_access_type >::type::value_type coordinate_type;
   typedef typename boost::remove_reference< radius_access_type >::type::value_type radius_type;
 
-  typedef mmtbx::geometry::sphere_surface_sampling::GoldenSpiral< coordinate_type > sampling_type;
+  typedef scitbx::math::golden_spiral< coordinate_type > sampling_type;
   typedef mmtbx::geometry::indexing::Hash< size_type, coordinate_type, discrete_type > indexer_type;
 
 private:

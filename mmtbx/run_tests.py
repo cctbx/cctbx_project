@@ -436,7 +436,6 @@ general_tests = [
   "$D/geometry/tests/tst_clash.py",
   "$D/geometry/tests/tst_indexing.py",
   "$D/geometry/tests/tst_shared_types.py",
-  "$D/geometry/tests/tst_sphere_surface_sampling.py",
   "$D/geometry/tests/tst_topology.py",
   #
   "$D/nci/tst_hbond.py",

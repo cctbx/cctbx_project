@@ -24,7 +24,7 @@
 #include <mmtbx/geometry/indexing.hpp>
 #include <mmtbx/geometry/overlap.hpp>
 #include <mmtbx/geometry/containment.hpp>
-#include <mmtbx/geometry/sphere_surface_sampling.hpp>
+#include <scitbx/math/golden_spiral.h>
 #include <mmtbx/geometry/calculator.hpp>
 
 #include <mmtbx/geometry/boost_python/indexing.hpp>
@@ -159,7 +159,7 @@ struct python_exports
     { // enter accessibility namespace
       scope accessibility_scope = accessibility_module;
 
-      typedef typename sphere_surface_sampling::GoldenSpiral< vector_type >
+      typedef typename scitbx::math::golden_spiral< vector_type >
         ::storage_type points_range;
       typedef asa::Transform< vector_type > transformation_type;
       typedef boost::transformed_range< transformation_type, points_range >
