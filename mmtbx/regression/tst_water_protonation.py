@@ -1518,6 +1518,31 @@ def exercise_improper_altloc_rejected():
     raise Exception_expected
 
 
+def exercise_symmetry_false_site_symmetry():
+  """symmetry=False leaves out the symmetry mates, not the site symmetry.
+
+  Runs the program with symmetry=False on waters on the two-fold of
+  ``_TWO_FOLD_BARE_PDB`` and ``_TWO_FOLD_COMPLETE_PDB``. The bare water,
+  placed again (reorient) or completed, must get two H at half occupancy,
+  one H per O in the cell; the water whose H at 1.0 already makes its two
+  must get nothing added when completed.
+  """
+  for name, pdb_str, existing_h, expected in (
+      ("bare", _TWO_FOLD_BARE_PDB, "reorient", [0.5, 0.5]),
+      ("bare", _TWO_FOLD_BARE_PDB, "complete", [0.5, 0.5]),
+      ("complete", _TWO_FOLD_COMPLETE_PDB, "reorient", [0.5, 0.5]),
+      ("complete", _TWO_FOLD_COMPLETE_PDB, "complete", [1.0])):
+    file_name = f"tst_water_protonation_two_fold_{name}.pdb"
+    with open(file_name, "w") as f:
+      f.write(pdb_str)
+    result = run_program(program_class=wp_program.Program, logger=null_out(),
+      args=[file_name, "symmetry=False", f"existing_h={existing_h}",
+            "output.overwrite=True"])
+    _, hs = _water_atoms(result.model.get_hierarchy())
+    occ = sorted(a.occ for a in hs.values())
+    assert approx_equal(occ, expected), (name, existing_h, occ)
+
+
 def exercise_electron_microscopy_isolated():
   """The program ignores the cell of an electron microscopy model.
 
@@ -1744,6 +1769,7 @@ def run():
   exercise_altloc_environment()
   exercise_improper_altloc_rejected()
   exercise_electron_microscopy_isolated()
+  exercise_symmetry_false_site_symmetry()
   exercise_reorient_keeps_isotope()
   exercise_missing_elements_rejected()
   exercise_multi_model_rejected()

@@ -602,7 +602,7 @@ class _WaterHydrogenPlacer:
 
   def __init__(self, hier, oh_length, element, n_refine, refine_tol,
                n_basin, cluster_search, existing_h, on_state,
-               crystal_symmetry, geometry):
+               crystal_symmetry, geometry, symmetry_mates):
     self.hier = hier
     self.oh_length = oh_length
     self.geometry = geometry
@@ -615,6 +615,9 @@ class _WaterHydrogenPlacer:
     self.existing_h = existing_h
     self.on_state = on_state
     self.crystal_symmetry = crystal_symmetry
+    # The symmetry whose copies join the environment; crystal_symmetry
+    # itself also gives the site symmetry of the waters on special positions.
+    self.mates_symmetry = crystal_symmetry if symmetry_mates else None
 
     # Placed-H coordinates, one slot per proton, filled in _greedy_pass();
     # placed_xyz is the same data as a flex.vec3_double.
@@ -776,14 +779,14 @@ class _WaterHydrogenPlacer:
     if (C == 0).all_eq(True):
       C = None
     d = _water_h_contacts(X, W, C)[2]
-    if self.crystal_symmetry is not None:
+    if self.mates_symmetry is not None:
       # The slots are final once the greedy pass is done, so one pairing
       # serves every state.
       if self.h_sym_pairs is None:
         self.h_sym_pairs = _water_h_sym_pairs(
-          X, W, anchor, self.crystal_symmetry, C)
+          X, W, anchor, self.mates_symmetry, C)
       for _op, _i, _j, d_sym in _water_h_sym_contacts(
-          X, self.h_sym_pairs, self.crystal_symmetry.unit_cell()):
+          X, self.h_sym_pairs, self.mates_symmetry.unit_cell()):
         d = d.concatenate(d_sym)
     return _contact_stats(X.size(), d)
 
@@ -1506,9 +1509,9 @@ class _WaterHydrogenPlacer:
     sym_atoms = []
     sym_xyz = flex.vec3_double()
     sym_src = flex.size_t()
-    if self.crystal_symmetry is not None and (waters or single):
+    if self.mates_symmetry is not None and (waters or single):
       self.sym_hier, sym_atoms, sym_xyz, sym_src = _symmetry_environment(
-        hier, self.crystal_symmetry,
+        hier, self.mates_symmetry,
         max(self.oh_length + _WATER_CLEARANCE_RADIUS + 0.01,
             _WATER_ACCEPTOR_RADIUS))
     self.n_model_atoms = len(atoms)
@@ -1666,9 +1669,9 @@ class _WaterHydrogenPlacer:
                               not split or _compatible(self.w_conf[wi],
                                                        self.w_conf[j]))])
       # The same test against the symmetry equivalents of these waters.
-      if self.crystal_symmetry is not None:
+      if self.mates_symmetry is not None:
         self.w_sym_nbr, self.sym_tf, own_blocks = _water_sym_equiv_neighbours(
-          o_pts, self.crystal_symmetry, r_wh,
+          o_pts, self.mates_symmetry, r_wh,
           self.w_conf if split else None)
         # matrix_cart's raw tuple is what multiplies a vec3_double array;
         # the matrix.sqr wrapper _pool_write uses does not.
@@ -2041,7 +2044,8 @@ class _WaterHydrogenPlacer:
 def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
                           refine_tol=1, n_basin=0, cluster_search=False,
                           existing_h="keep", on_state=None,
-                          crystal_symmetry=None, geometry=None):
+                          crystal_symmetry=None, geometry=None,
+                          symmetry_mates=True):
   """Place the two H on every bare water, H-bond-aware.
 
   For each water residue missing H (any common water alias: HOH, DOD, H2O,
@@ -2105,14 +2109,18 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
   crystal_symmetry : cctbx.crystal.symmetry or None, optional
       Symmetry-equivalent atoms within reach of a water join its
       environment, placed protons included, and contacts with those protons
-      count towards the kept state. None (default) treats the model as
-      isolated.
+      count towards the kept state; a water on a special position is placed
+      with its site symmetry. None (default) treats the model as isolated.
   geometry : str or None, optional
       O-H length and H-O-H angle, a key of ``_WATER_GEOMETRY``: ``"xray"``
       (0.850 A, 103.91 deg) or ``"neutron"`` (0.980 A, 103.91 deg), cctbx's
       restraint targets, or ``"gas_phase"`` (0.957 A, 104.5 deg). None
       (default) picks neutron if the model contains D or a DOD water, else
       X-ray.
+  symmetry_mates : bool, optional
+      False leaves the symmetry-equivalent atoms out of every water's
+      environment; ``crystal_symmetry`` still gives the site symmetry of the
+      waters on special positions (default True).
 
   Returns
   -------
@@ -2138,7 +2146,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
     hier, oh_length=oh_length, element=element, n_refine=n_refine,
     refine_tol=refine_tol, n_basin=n_basin, cluster_search=cluster_search,
     existing_h=existing_h, on_state=on_state,
-    crystal_symmetry=crystal_symmetry, geometry=geometry)
+    crystal_symmetry=crystal_symmetry, geometry=geometry,
+    symmetry_mates=symmetry_mates)
   kept_label = placer.run()
   return group_args(kept_label=kept_label,
                     partial_waters=placer.partial_waters,

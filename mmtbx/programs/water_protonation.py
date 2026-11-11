@@ -39,7 +39,7 @@ existing_h = *keep complete reorient
 symmetry = True
   .type = bool
   .short_caption = Honour crystal symmetry
-  .help = "Include the symmetry-equivalent atoms near each water in its environment. Ignored for a model without a unit cell and space group, and for an electron microscopy model."
+  .help = "Include the symmetry-equivalent atoms near each water in its environment. Waters on special positions keep their site symmetry either way. Ignored for a model without a unit cell and space group, and for an electron microscopy model."
 refine
   .short_caption = Refinement sweeps
 {
@@ -191,20 +191,21 @@ and existing_h=reorient strips all water H and re-places both.
     print(f"Water geometry: O-H {oh:.3f} A, H-O-H {hoh:g} deg ({kind})",
           file=self.logger)
 
-    cs = None
-    if not self.params.symmetry:
-      print("Crystal symmetry: not used (symmetry=False)", file=self.logger)
+    # symmetry=False leaves out the symmetry mates; the crystal symmetry
+    # still gives the site symmetry of the waters on special positions.
+    cs = model.crystal_symmetry()
+    if cs is None or cs.unit_cell() is None or cs.space_group_info() is None:
+      print("Crystal symmetry: none in the model", file=self.logger)
+      cs = None
+    elif pdb_in.get_experiment_type().is_electron_microscopy():
+      print("Crystal symmetry: not used (cell is the map box)",
+            file=self.logger)
+      cs = None
+    elif not self.params.symmetry:
+      print(f"Crystal symmetry: {cs.space_group_info()}, site symmetry only "
+            "(symmetry=False)", file=self.logger)
     else:
-      cs = model.crystal_symmetry()
-      if cs is None or cs.unit_cell() is None or cs.space_group_info() is None:
-        print("Crystal symmetry: none in the model", file=self.logger)
-        cs = None
-      elif pdb_in.get_experiment_type().is_electron_microscopy():
-        print("Crystal symmetry: not used (cell is the map box)",
-              file=self.logger)
-        cs = None
-      else:
-        print(f"Crystal symmetry: {cs.space_group_info()}", file=self.logger)
+      print(f"Crystal symmetry: {cs.space_group_info()}", file=self.logger)
 
     # Element: None leaves the choice to the placer, per water.
     placer_element = (None if self.params.element == "auto"
@@ -246,6 +247,7 @@ and existing_h=reorient strips all water H and re-places both.
       cluster_search   = self.params.cluster_search,
       existing_h       = self.params.existing_h,
       crystal_symmetry = cs,
+      symmetry_mates   = self.params.symmetry,
       on_state         = on_state if report_stats else None)
 
     n_after = self._count_water_h(hier)
@@ -261,7 +263,8 @@ and existing_h=reorient strips all water H and re-places both.
       if result.kept_label is not None:
         print(f"Kept: {result.kept_label} (fewest contacts < 2.0 A)",
               file=self.logger)
-      self._print_residual_contacts(hier, cs)
+      self._print_residual_contacts(hier,
+                                    cs if self.params.symmetry else None)
     self._print_partial_waters(result.partial_waters)
 
     self._write_output(model)
