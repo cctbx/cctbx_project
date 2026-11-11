@@ -485,7 +485,10 @@ class probe_line_info(object): # this is parent
 
   def is_similar(self, other):
     assert type(self) is type(other)
-    return (self.srcAtom == other.srcAtom and self.targAtom == other.targAtom)
+    # Same atom pair and same dot type: the merged group keeps the first line's type, so
+    # merging e.g. 'so' with 'bo' lines would hide the pair's bad overlaps (#413).
+    return (self.srcAtom == other.srcAtom and self.targAtom == other.targAtom
+            and self.type == other.type)
 
   def as_clash_obj(self, use_segids):
     assert self.overlap_value is not None
