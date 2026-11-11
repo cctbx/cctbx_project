@@ -2393,12 +2393,12 @@ def _atom_id(a):
 
 
 def _water_id(ag):
-  """Compact water identity, e.g. ``"HOH A 863"`` or
-  ``"HOH A 863 altloc B"``."""
+  """Compact water identity, e.g. ``"HOH A 863"``, ``"HOH A 863A"`` with an
+  insertion code, or ``"HOH A 863 altloc B"``."""
   rg = ag.parent()
   alt = ag.altloc.strip()
   return (f"{ag.resname.strip()} {rg.parent().id.strip()} {rg.resseq.strip()}"
-          + (f" altloc {alt}" if alt else ""))
+          f"{rg.icode.strip()}" + (f" altloc {alt}" if alt else ""))
 
 
 def _worst_water_clashes(hier, crystal_symmetry=None):

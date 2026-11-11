@@ -173,7 +173,8 @@ def exercise_report_names():
   water H are D, the input ones H/D, and water 5 is listed once per model,
   as DOD with "(model N)" after it, as in reduce2's other reports.
   approach=optimize with the waters named DOD: water 5 carries H, so it is
-  listed as HOH, its name in the written model.
+  listed as HOH, its name in the written model. Waters 5 and 5A, each with
+  one H, are listed apart.
   """
   inp = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
   h = inp.construct_hierarchy()
@@ -201,6 +202,19 @@ def exercise_report_names():
               if ag.parent().resseq.strip() == "5")
   assert names == {"HOH"}, names
   assert "  HOH A 5\n" in description, description
+  # waters 5 and 5A, each with one H, are listed apart
+  water_5a = (
+    "HETATM   27  O   HOH A   5A     24.007  -3.513   9.351  1.00 20.00"
+    "           O\n"
+    "HETATM   28  H1  HOH A   5A     24.007  -3.513  10.201  1.00 20.00"
+    "           H\nEND")
+  _, description = run_reduce2("tst_reduce2_water_h_settings_icode",
+    ["add_h_to_water=True", "keep_existing_H=True",
+     "water_hydrogens.existing_h=keep"],
+    model_str=pdb_str.replace("END", water_5a))
+  for line in ("2 single-H waters left as is:", "  HOH A 5\n",
+               "  HOH A 5A\n"):
+    assert line in description, (line, description)
 
 def exercise_symmetry_off_site_symmetry():
   """
