@@ -85,7 +85,8 @@ water_hydrogens
   symmetry = True
     .type = bool
     .short_caption = Symmetry mates in the water environment
-    .help = Include the symmetry mates near each water. Ignored without a \
+    .help = Include the symmetry mates near each water. Waters on special \
+            positions keep their site symmetry either way. Ignored without a \
             unit cell and space group, or with a placeholder cell such as \
             CRYST1 1 1 1.
   refine
@@ -1450,9 +1451,9 @@ NOTES:
     use_neutron = self.params.use_neutron_distances
     oh_length = reduce_hydrogen._water_oh_targets(self.model, use_neutron)[0]
     w = self.params.water_hydrogens
-    cs = None
-    if w.symmetry:
-      cs = reduce_hydrogen.contact_symmetry(self._output_cs)
+    # symmetry=False leaves out the symmetry mates; the crystal symmetry
+    # still gives the site symmetry of the waters on special positions.
+    cs = reduce_hydrogen.contact_symmetry(self._output_cs)
     # placement works in H; the output writes the water H as this isotope
     isotope = hd_exchange.water_isotope(self.params.neutron_option)
     root = self.model.get_hierarchy()
@@ -1471,7 +1472,8 @@ NOTES:
         oh_length=oh_length, element='H', existing_h=w.existing_h,
         geometry='neutron' if use_neutron else 'xray', crystal_symmetry=cs,
         n_refine=w.refine.max_sweeps, refine_tol=w.refine.tolerance,
-        n_basin=w.basin.rounds, cluster_search=w.cluster_search)
+        n_basin=w.basin.rounds, cluster_search=w.cluster_search,
+        symmetry_mates=w.symmetry)
       # the report names the waters as written, by model: DOD with D, and
       # HOH for a DOD with H
       for rid, metal, action in result.partial_waters:
@@ -1498,7 +1500,10 @@ NOTES:
     if w.existing_h != 'reorient':
       n_placed = n_after - n_before
     symmetry = 'with' if cs is not None else 'without'
-    text = ('Water %s placed: %d (O-%s %.3f A, %s crystal symmetry)\n' % (
+    symmetry += ' crystal symmetry'
+    if cs is not None and not w.symmetry:
+      symmetry += ', without symmetry mates'
+    text = ('Water %s placed: %d (O-%s %.3f A, %s)\n' % (
       isotope, n_placed, isotope, oh_length, symmetry))
     # with neutron_option the input water H may have been H or D
     hydrogen = 'H'

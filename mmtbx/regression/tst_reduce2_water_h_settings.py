@@ -42,6 +42,17 @@ HETATM   26  H1  HOH A   5      20.007  -3.513  10.201  1.00 20.00           H
 END
 """
 
+# A water on the two-fold of P 1 2 1 (along b through x = z = 0), bare and
+# with one H at 1.0, which with its equivalent makes the water's two.
+two_fold_str = """\
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1 2 1
+HETATM    1  O   HOH W   1       0.000   5.000   0.000  1.00 10.00           O
+END
+"""
+two_fold_h_str = two_fold_str.replace("END", (
+  "HETATM    2  H1  HOH W   1       0.757   5.586   0.000  1.00 10.00"
+  "           H\nEND"))
+
 def run_reduce2(prefix, extra_args=(), model_str=pdb_str):
   """Run reduce2 on model_str; returns the output hierarchy and description."""
   fn_in, fn_out = prefix + ".pdb", prefix + "_out.pdb"
@@ -110,7 +121,7 @@ def exercise_settings_reach_placer():
   """
   existing_h, refine.max_sweeps, refine.tolerance, basin.rounds and
   cluster_search reach place_water_hydrogens as given, and symmetry=False
-  as no crystal symmetry.
+  as symmetry_mates=False with the crystal symmetry kept.
   """
   calls = placer_arguments("tst_reduce2_water_h_settings_placer", [
     "add_h_to_water=True", "keep_existing_H=True",
@@ -119,10 +130,11 @@ def exercise_settings_reach_placer():
     "water_hydrogens.refine.tolerance=0", "water_hydrogens.basin.rounds=2",
     "water_hydrogens.cluster_search=True"])
   assert len(calls) == 1, len(calls)
-  expected = dict(existing_h="keep", crystal_symmetry=None, n_refine=0,
+  expected = dict(existing_h="keep", symmetry_mates=False, n_refine=0,
     refine_tol=0, n_basin=2, cluster_search=True)
   for key, value in expected.items():
     assert calls[0][key] == value, (key, calls[0][key], value)
+  assert calls[0]["crystal_symmetry"] is not None, "crystal symmetry dropped"
 
 def exercise_existing_h():
   """
@@ -190,6 +202,27 @@ def exercise_report_names():
   assert names == {"HOH"}, names
   assert "  HOH A 5\n" in description, description
 
+def exercise_symmetry_off_site_symmetry():
+  """
+  water_hydrogens.symmetry=False leaves out the symmetry mates, not the
+  site symmetry: a bare water on a two-fold, placed again or completed,
+  gets two H at half occupancy, and a water whose H at 1.0 already makes
+  its two gets nothing added when completed.
+  """
+  for name, model_str, existing_h, expected in (
+      ("bare", two_fold_str, "reorient", [0.5, 0.5]),
+      ("bare", two_fold_str, "complete", [0.5, 0.5]),
+      ("h", two_fold_h_str, "reorient", [0.5, 0.5]),
+      ("h", two_fold_h_str, "complete", [1.0])):
+    out, _ = run_reduce2(
+      f"tst_reduce2_water_h_settings_two_fold_{name}_{existing_h}",
+      ["add_h_to_water=True", "keep_existing_H=True",
+       "water_hydrogens.symmetry=False",
+       f"water_hydrogens.existing_h={existing_h}"], model_str=model_str)
+    sel = out.atom_selection_cache().selection("water and element H")
+    occ = sorted(a.occ for a in out.select(sel).atoms())
+    assert approx_equal(occ, expected), (name, existing_h, occ)
+
 def exercise_settings_accepted():
   """
   validate() accepts the settings where they can take effect: qmready=True
@@ -248,6 +281,7 @@ if __name__ == "__main__":
   exercise_settings_reach_placer()
   exercise_existing_h()
   exercise_report_names()
+  exercise_symmetry_off_site_symmetry()
   exercise_settings_accepted()
   exercise_settings_without_water_h()
   exercise_settings_need_values()
