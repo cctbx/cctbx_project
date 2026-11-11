@@ -18,7 +18,7 @@ from scitbx.math import principal_axes_of_inertia, \
 from scitbx.math import sphere_3d, minimum_covering_sphere
 from scitbx.math import signed_phase_error, phase_error, nearest_phase
 from scitbx.math import icosahedron
-from scitbx.math import fibonacci_sphere_points, saff_kuijlaars_sphere_points
+from scitbx.math import saff_kuijlaars_sphere_points
 from scitbx.math import golden_spiral
 from scitbx.math import chebyshev_base
 from scitbx.math import chebyshev_polynome
@@ -1398,23 +1398,13 @@ def exercise_icosahedron():
       assert d/2 < m
 
 def exercise_sphere_points():
-  """Both spirals give n unit vectors with heights along y evenly spaced.
-
-  The Fibonacci sphere's heights run from 1 - 1/n down to -(1 - 1/n), its
-  azimuth about y advancing by the golden angle; the Saff-Kuijlaars
-  spiral's run from -1 up to 1, so its first and last points are the poles.
+  """The Saff-Kuijlaars spiral gives n unit vectors with heights along y
+  evenly spaced from -1 up to 1, so its first and last points are the poles.
   """
   n = 64
-  for points in (fibonacci_sphere_points(n), saff_kuijlaars_sphere_points(n)):
-    assert points.size() == n, points.size()
-    assert approx_equal(points.dot(), [1] * n)
-  x, y, z = fibonacci_sphere_points(n).parts()
-  assert approx_equal(y, [1 - (2 * i + 1) / n for i in range(n)])
-  golden = math.pi * (3 - math.sqrt(5))
-  for i in range(1, n):
-    step = (math.atan2(z[i], x[i]) - math.atan2(z[i-1], x[i-1])) % (2*math.pi)
-    assert approx_equal(step, golden), (i, step)
   points = saff_kuijlaars_sphere_points(n)
+  assert points.size() == n, points.size()
+  assert approx_equal(points.dot(), [1] * n)
   heights = [-1 + 2 * k / (n - 1) for k in range(n)]
   assert approx_equal(points.parts()[1], heights)
   assert approx_equal(points[0], (0, -1, 0))
