@@ -26,7 +26,7 @@ from iotbx.pdb.utils import check_for_missing_elements
 from libtbx import group_args
 from scitbx import matrix
 from scitbx.array_family import flex
-from scitbx.math import fibonacci_sphere_points
+from scitbx.math import golden_spiral
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +191,7 @@ _CONE_COS = flex.double([math.cos(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
 _CONE_SIN = flex.double([math.sin(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
                          for k in range(_WATER_CONE_SAMPLES)])
 _FALLBACK_DIRS = [matrix.col(v).normalize().elems
-                  for v in fibonacci_sphere_points(64)]
+                  for v in golden_spiral(64).points]
 _FALLBACK_FX = flex.vec3_double(_FALLBACK_DIRS)
 
 

@@ -314,6 +314,20 @@ def _unit(a, b):
   return (va - vb).normalize()
 
 
+def _fallback_offset(o, hs):
+  """How far the H of a water lie from the placer's fallback directions: the
+  smallest distance between an O-H unit vector and a fallback direction, 0
+  when an H took one."""
+  best = None
+  for h in hs.values():
+    u = _unit(h, o)
+    for d in wp._FALLBACK_DIRS:
+      distance = (u - matrix.col(d)).length()
+      if best is None or distance < best:
+        best = distance
+  return best
+
+
 def _fallback_cage_pdb():
   """A bare water whose every H1 candidate clashes.
 
@@ -1161,7 +1175,8 @@ END
 
 def exercise_crystal_symmetry():
   """An acceptor reachable only as a lattice translate draws an H once a
-  crystal symmetry is given, and is invisible without one.
+  crystal symmetry is given, and is invisible without one: H1 then takes one
+  of the fallback directions.
 
   Places on ``_LATTICE_CONTACT_PDB`` with and without its symmetry, and
   with the water and acceptor in altlocs. A translate keeps its altloc: a
@@ -1178,9 +1193,10 @@ def exercise_crystal_symmetry():
   hier, _ = _hierarchy_and_symmetry(_LATTICE_CONTACT_PDB)
   wp.place_water_hydrogens(hier, n_refine=0)
   o, hs = _water_atoms(hier)
-  isolated = max(_unit(h, o)[0] for h in hs.values())
-  assert isolated < 0.9, (
-    f"an isolated water should not find the acceptor (best {isolated:.3f})")
+  off = _fallback_offset(o, hs)
+  assert off < 1e-6, (
+    "an isolated water should take a fallback direction, not find the "
+    f"acceptor (closest fallback {off:.3g} away)")
 
   # A translate keeps its altloc: a water in A reaches an acceptor in A
   # across the face, but not one in B.
@@ -1498,7 +1514,7 @@ def exercise_electron_microscopy_isolated():
   recorded as X-ray diffraction and once as electron microscopy. The X-ray
   run must aim an H across the cell face at the translated acceptor; the
   electron microscopy run, whose cell is a map box rather than a lattice,
-  must treat the model as isolated and aim none there.
+  must treat the model as isolated: H1 takes a fallback direction.
   """
   hier, cs = _hierarchy_and_symmetry(_LATTICE_CONTACT_PDB)
   cif = hier.as_mmcif_string(crystal_symmetry=cs)
@@ -1512,11 +1528,13 @@ def exercise_electron_microscopy_isolated():
     result = run_program(program_class=wp_program.Program, logger=null_out(),
                          args=[file_name, "output.overwrite=True"])
     o, hs = _water_atoms(result.model.get_hierarchy())
-    aimed = max(_unit(h, o)[0] for h in hs.values())
     if across:
+      aimed = max(_unit(h, o)[0] for h in hs.values())
       assert aimed > 0.99, f"{method}: no H aims across the face ({aimed:.3f})"
     else:
-      assert aimed < 0.9, f"{method}: an H aims across the face ({aimed:.3f})"
+      off = _fallback_offset(o, hs)
+      assert off < 1e-6, (
+        f"{method}: no H on a fallback direction (closest {off:.3g} away)")
 
 
 def exercise_reorient_keeps_isotope():
