@@ -3474,19 +3474,21 @@ def score_ncs_in_map_point_group_symmetry(
      crystal_symmetry = None, out = sys.stdout):
   ncs_group = ncs_object.ncs_groups()[0]
   all_value_lists = []
+  x, y, z = sites_orth.parts()
   for c, t, r in zip(ncs_group.centers(),
                        ncs_group.translations_orth(),
                        ncs_group.rota_matrices()):
-    new_sites_cart = flex.vec3_double()
     r_inv = r.inverse()
-    for site in sites_orth:
-      new_sites_cart.append(r_inv * (matrix.col(site) - t))
+    # r_inv * (site - t) for all sites, summed in the order of matrix.sqr
+    dx, dy, dz = x - t[0], y - t[1], z - t[2]
+    new_sites_cart = flex.vec3_double(
+      dx * r_inv[0] + dy * r_inv[1] + dz * r_inv[2],
+      dx * r_inv[3] + dy * r_inv[4] + dz * r_inv[5],
+      dx * r_inv[6] + dy * r_inv[7] + dz * r_inv[8])
     # get value at new_sites cart and make sure they are all the same...
     new_sites_fract = crystal_symmetry.unit_cell().fractionalize(new_sites_cart)
-    values = flex.double()
-    for site_fract in new_sites_fract:
-      values.append(map_data.value_at_closest_grid_point(site_fract))
-    all_value_lists.append(values)
+    all_value_lists.append(
+      maptbx.values_at_closest_grid_points(map_data, new_sites_fract))
   return get_cc_among_value_lists(all_value_lists)
 
 def get_cc_among_value_lists(all_value_lists):

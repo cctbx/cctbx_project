@@ -236,6 +236,37 @@ def shift_origin_if_needed(map_data = None,
 def value_at_closest_grid_point(map, x_frac):
   return map[closest_grid_point(map.accessor(), x_frac)]
 
+def values_at_closest_grid_points(map_data, sites_frac):
+  """Return the map values at the grid points closest to many sites.
+
+  Same result as value_at_closest_grid_point for each site, without a
+  Python call per site.
+
+  Parameters
+  ----------
+  map_data : flex.double or flex.int
+    3-D map on a 0-based grid, padded or not.
+  sites_frac : flex.vec3_double
+    Fractional coordinates; sites outside the unit cell are wrapped.
+
+  Returns
+  -------
+  flex.double or flex.int
+    One map value per site.
+  """
+  accessor = map_data.accessor()
+  assert accessor.nd() == 3 and accessor.is_0_based()
+  index = flex.size_t(sites_frac.size(), 0)
+  for x, n, n_all in zip(sites_frac.parts(), accessor.focus(),
+      accessor.all()):
+    # same rounding as get_corner::closest_grid_point in interpolation.h
+    xn = x * n
+    i = flex.floor(xn)
+    w = xn - i
+    i = (flex.fmod_positive(i, n).iround() + (w > 1 - w).as_int()) % n
+    index = index * n_all + i.as_size_t()
+  return map_data.select(index)
+
 flex.int.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.eight_point_interpolation = eight_point_interpolation
