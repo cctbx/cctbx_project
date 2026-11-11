@@ -423,6 +423,7 @@ general_tests = [
   "$D/regression/tst_validate_ligands_2.py",
   "$D/regression/tst_validate_ligands_3.py",
   "$D/regression/tst_validate_ligands_4.py",
+  "$D/regression/tst_validate_ligands_5.py",
   "$D/regression/tst_ligand_interactions.py",
   "$D/regression/tst_rdkit_utils_fragmentation.py",
   "$D/regression/tst_rdkit_utils_molecule.py",

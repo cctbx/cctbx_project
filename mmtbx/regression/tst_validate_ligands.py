@@ -37,9 +37,11 @@ def _load_1avd_manager():
     test=os.path.isfile)
   if mtz_fname is None or pdb_fname is None:
     return None
+  # the values pinned below are those of the input's heavy atoms: no flips
   result = run_program(
     program_class=val_lig.Program,
-    args=[pdb_fname, mtz_fname],
+    args=[pdb_fname, mtz_fname, 'add_flip_movers=False',
+      'include_symmetric_copies=False', 'metal_bound_amines_as_nh2=False'],
     logger=null_out())
   _1avd_manager_cache = result.ligand_manager
   return _1avd_manager_cache

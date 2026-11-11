@@ -26,6 +26,30 @@ scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .help = Scattering table for structure factors calculations
 run_reduce2 = True
   .type = bool
+add_flip_movers = True
+  .type = bool
+  .short_caption = Flip Asn/Gln/His
+  .help = "When reduce2 places H, let it flip Asn and Gln amides and His rings
+          (heavy atoms swapped, as in MolProbity) and choose the His
+          protonation. The validated model, and the model written with
+          save_reduce2_model, carry the flipped heavy atoms. The flips are
+          listed in the log. False: no Asn/Gln amide or His ring is flipped to
+          improve contacts, but a His can still be flipped so that a ring N
+          binds a metal ion (reduce2's ion lock-down; listed in the log). The
+          His protonation is chosen either way."
+include_symmetric_copies = True
+  .type = bool
+  .short_caption = Crystal contacts in H placement
+  .help = "When reduce2 places H, let H orientations and flips account for
+          atoms of symmetry-related molecules (crystal contacts), using the
+          model's own crystal symmetry. Not used with map input, whose box is
+          not a lattice, or without a unit cell. With map input the metal
+          contacts of H placement are not searched across the box either."
+metal_bound_amines_as_nh2 = True
+  .type = bool
+  .short_caption = Metal-bound amines as NH2
+  .help = "When reduce2 places H, place a primary amine (NH3+) that coordinates
+          a metal as NH2, as reduce2 does. Listed in the log."
 save_reduce2_model = False
   .type = bool
 save_map_coeffs = False
@@ -104,26 +128,117 @@ is then compared against an Fcalc map.
 
   # ---------------------------------------------------------------------------
 
-  def add_hydrogens(self, model):
+  def add_hydrogens(self, model, crystal_symmetry=None,
+                    input_crystal_symmetry='from_model'):
     '''
     Place H atoms with reduce2
+
+    crystal_symmetry: the input's own symmetry for the symmetry copies, or
+    None (no copies); input_crystal_symmetry: the symmetry of placement's
+    metal contacts (None for map input); the flips, amines placed as NH2 and
+    copies go to self.reduce2_report (show_reduce2_changes()).
     '''
     make_sub_header('Placing hydrogen atoms with reduce2', out=self.logger)
+    self.reduce2_report = group_args(flips=[], metal_amines_nh2=[],
+      symmetry_copies=[])
     try:
       self.working_model = place_and_optimize_hydrogens(
         model           = model,
+        do_flips        = self.params.add_flip_movers,
         keep_existing_H = False,
         optimize_his_protonation = True,
         probe_phil      = self.params.probe,
         stop_for_unknowns = False,
         raise_on_missing = False,
-        log             = self.logger)
+        log             = self.logger,
+        metal_bound_amines_as_nh2 = self.params.metal_bound_amines_as_nh2,
+        crystal_symmetry = crystal_symmetry,
+        input_crystal_symmetry = input_crystal_symmetry,
+        report          = self.reduce2_report)
       self.working_model.unset_riding_h_manager()
     except Exception:
       msg = traceback.format_exc()
       print('Reduce2 failed.\n' + msg, file=self.logger)
       raise Sorry('Hydrogen placement (reduce2) failed; '
                   'see log for details.')
+
+  # ---------------------------------------------------------------------------
+
+  @staticmethod
+  def flip_label(key):
+    '''
+    'GLN B 14A conformer A (amide)', with 'model N ' in front for a MODEL id,
+    from a flip key of place_and_optimize_hydrogens()'s report.
+    '''
+    model_id, chain_id, resseq, icode, resname, altloc, kind = key
+    label = '%s %s %s%s' % (resname.strip(), chain_id.strip(), resseq.strip(),
+      icode.strip())
+    if altloc.strip(): label += ' conformer %s' % altloc.strip()
+    if model_id.strip(): label = 'model %s %s' % (model_id.strip(), label)
+    return '%s (%s)' % (label, kind)
+
+  def show_reduce2_changes(self, ligand_manager, near=5.0):
+    '''
+    Log what reduce2 changed beyond adding H: whether symmetry copies were
+    used, the Asn/Gln/His whose final model is flipped against the input
+    (with add_flip_movers=False only His flipped to bind a metal ion), each
+    marked when one of its flipped atoms (OD1/ND2, OE1/NE2, the His ring) is
+    within near A of a heavy atom of a validated ligand, in the model without
+    symmetry; and the amines placed as NH2.
+    '''
+    report = getattr(self, 'reduce2_report', None)
+    if report is None: return
+    from mmtbx.hydrogens import FLIPPED_ATOMS
+    make_sub_header('Changes by reduce2 besides adding H', out=self.logger)
+    lines = report.symmetry_copies if self._copies_reason == 'used' else []
+    if lines == ['used, none within 3.6 A']:
+      print('Symmetry copies (crystal contacts): used, none within 3.6 A',
+        file=self.logger)
+    else:
+      print('Symmetry copies (crystal contacts): %s' % self._copies_reason,
+        file=self.logger)
+      # the Optimizer's summary; without copies the reason above says why
+      for line in lines:
+        print('  ' + line, file=self.logger)
+    if not self.params.add_flip_movers:
+      print('Flips: off (add_flip_movers=False); flipped to bind a metal '
+        'ion: %d' % len(report.flips), file=self.logger)
+    else:
+      print('Flipped Asn/Gln/His: %d' % len(report.flips), file=self.logger)
+    ph = self.working_model.get_hierarchy()
+    atoms = ph.atoms()
+    ligands = [(lr.id_str, [a for a in atoms.select(lr.ligand_isel)
+      if a.element.strip().upper() not in ('H', 'D')])
+      for lr in ligand_manager]
+    for key in report.flips:
+      model_id, chain_id, resseq, icode, resname, altloc, kind = key
+      names = FLIPPED_ATOMS[resname.strip().upper()]
+      flipped = [a for m in ph.models() if m.id == model_id
+        for c in m.chains() if c.id == chain_id
+        for rg in c.residue_groups()
+        if rg.resseq == resseq and rg.icode == icode
+        for ag in rg.atom_groups()
+        if ag.resname == resname and ag.altloc == altloc
+        for a in ag.atoms() if a.name.strip() in names]
+      close = []
+      for id_str, lig in ligands:
+        d = min([a.distance(b) for a in flipped for b in lig] or [None])
+        if d is not None and d <= near:
+          close.append('%s %.1f A' % (id_str, d))
+      text = '  ' + self.flip_label(key)
+      if close:
+        text += '  * within %.0f A of ligand: %s' % (near, '; '.join(close))
+      print(text, file=self.logger)
+    if report.metal_amines_nh2:
+      print('Metal-bound amines placed as NH2: %d' %
+        len(report.metal_amines_nh2), file=self.logger)
+      for text, contact in report.metal_amines_nh2:
+        print('  %s  (%s)' % (text, contact), file=self.logger)
+    elif not self.params.metal_bound_amines_as_nh2:
+      print('Metal-bound amines as NH2: off (metal_bound_amines_as_nh2=False)',
+        file=self.logger)
+    else:
+      print('Metal-bound amines placed as NH2: 0', file=self.logger)
 
   # ---------------------------------------------------------------------------
 
@@ -235,8 +350,22 @@ is then compared against an Fcalc map.
 
     self.working_model = None
 
+    # copies from the input's own symmetry, before the box; none for a map
+    copies_cs = None
+    if has_map:
+      self._copies_reason = 'none: map input (the map box is not a lattice)'
+    elif not self.params.include_symmetric_copies:
+      self._copies_reason = 'off (include_symmetric_copies=False)'
+    elif reduce_hydrogen.contact_symmetry(output_cs) is None:
+      self._copies_reason = ('none: no unit cell, or the CRYST1 1 1 1 '
+        'placeholder')
+    else:
+      copies_cs = output_cs
+      self._copies_reason = 'used'
+    # the map box is not a lattice: no metal contacts across it either
     if self.params.run_reduce2:
-      self.add_hydrogens(model = m)
+      self.add_hydrogens(model = m, crystal_symmetry = copies_cs,
+        input_crystal_symmetry = None if has_map else output_cs)
     else:
       self.working_model = m
 
@@ -349,6 +478,8 @@ is then compared against an Fcalc map.
       params = self.params.validate_ligands,
       log   = self.logger)
     ligand_manager.run()
+    if self.params.run_reduce2:
+      self.show_reduce2_changes(ligand_manager)
     ligand_manager.show_ligand_counts()
     ligand_manager.show_fragmentation()
     ligand_manager.show_sites_within()
