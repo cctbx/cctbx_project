@@ -5,6 +5,62 @@ from libtbx.str_utils import format_value
 import sys
 import six
 import json
+import numbers
+
+def _label(value):
+  # py2-era pickles keep bytes in slot objects, which fix_py2_pickle skips;
+  # clashscore2 stores resseq as an int, which a selection takes in
+  # hybrid-36 (10000 is A000)
+  if isinstance(value, bytes):
+    value = value.decode("utf8")
+  elif isinstance(value, numbers.Integral) and not isinstance(value, bool):
+    from iotbx.pdb.hybrid_36 import hy36encode
+    try:
+      value = hy36encode(4, int(value))
+    except ValueError:
+      value = str(value)
+  elif (value is not None) and not isinstance(value, str):
+    value = str(value)
+  return value
+
+def _selection_word(value):
+  """
+  A label as a single word of an atom selection.  A quoted word must match
+  the label with its padding, so only a blank label is quoted; otherwise the
+  label is stripped and its wildcard characters escaped (old names like O5*).
+  """
+  value = value.strip()
+  if (value == ""):
+    return "' '"
+  return "".join([ "\\" + c if c in "\\*?[]" else c for c in value ])
+
+def residue_selection_string(chain_id, resseq, icode=None, name=None):
+  """
+  Atom selection for one residue, or for one atom in it.
+
+  resid matches the residue number and insertion code together, so residue
+  2 does not select 2A.
+
+  Parameters
+  ----------
+  chain_id, resseq, icode, name : str, bytes, int or None
+      Labels as stored in validation results; padding is ignored
+
+  Returns
+  -------
+  str or None
+      e.g. "chain A and resid 42A and name CB", or None without a chain
+      or residue number
+  """
+  chain_id, resseq, icode, name = [ _label(value)
+    for value in (chain_id, resseq, icode, name) ]
+  if (chain_id is None) or (resseq is None) or (resseq.strip() == ""):
+    return None
+  resid = resseq.strip() + (icode or "").strip()
+  selection = "chain %s and resid %s" % (_selection_word(chain_id), resid)
+  if (name is not None) and (name.strip() != ""):
+    selection += " and name %s" % _selection_word(name)
+  return selection
 
 class entity(slots_getstate_setstate):
   """
@@ -212,6 +268,13 @@ class residue(entity):
   def is_single_residue_object(self):
     return True
 
+  def as_selection_string(self):
+    # getattr: slots added after an old result was pickled are unset
+    return residue_selection_string(
+      chain_id=getattr(self, "chain_id", None),
+      resseq=getattr(self, "resseq", None),
+      icode=getattr(self, "icode", None))
+
   def atom_selection_string(self):
     return "(chain '%s' and resid '%s' and resname %s and altloc '%s')" % \
       (self.chain_id, self.resid, self.resname, self.altloc)
@@ -253,6 +316,22 @@ class atoms(entity):
 
   def is_single_residue_object(self):
     return False
+
+  def as_selection_string(self):
+    selections = []
+    for atom in (getattr(self, "atoms_info", None) or []):
+      # attributes, not atom.as_selection_string(): elbow's carbohydrate
+      # results keep their own atom objects here
+      selection = residue_selection_string(
+        chain_id=getattr(atom, "chain_id", None),
+        resseq=getattr(atom, "resseq", None),
+        icode=getattr(atom, "icode", None),
+        name=getattr(atom, "name", None))
+      if (selection is not None) and (selection not in selections):
+        selections.append(selection)
+    if (len(selections) == 0):
+      return None
+    return " or ".join([ "(%s)" % s for s in selections ])
 
   def get_altloc(self):
     consensus_altloc = ''
@@ -359,6 +438,14 @@ class atom_base(slots_getstate_setstate):
   @property
   def resid(self):
     return "%4s%1s" % (self.resseq, self.icode)
+
+  def as_selection_string(self):
+    # getattr: slots added after an old result was pickled are unset
+    return residue_selection_string(
+      chain_id=getattr(self, "chain_id", None),
+      resseq=getattr(self, "resseq", None),
+      icode=getattr(self, "icode", None),
+      name=getattr(self, "name", None))
 
   def __cmp__(self, other):
     return cmp(self.id_str(), other.id_str())
