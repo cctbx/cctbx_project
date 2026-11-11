@@ -125,6 +125,7 @@ class clashscore(validation):
       save_modified_hierarchy=False,
       verbose=False,
       do_flips=False,
+      extrema_dots=False, # Probe -EXTREMA: exact worst overlaps, independent of orientation
       out=sys.stdout):
     if (not pdb_hierarchy.fits_in_pdb_format()):
       from iotbx.pdb.forward_compatible_pdb_cif_conversion \
@@ -183,6 +184,7 @@ class clashscore(validation):
         nuclear=nuclear,
         fast=self.fast,
         condensed_probe=self.condensed_probe,
+        extrema_dots=extrema_dots,
         largest_occupancy=occ_max,
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
@@ -368,7 +370,8 @@ class probe_clashscore_manager(object):
                b_factor_cutoff=None,
                use_segids=False,
                verbose=False,
-               model_id=""):
+               model_id="",
+               extrema_dots=False):
     """
     Calculate probe (MolProbity) clashscore
 
@@ -411,6 +414,8 @@ class probe_clashscore_manager(object):
       nuclear_flag = "-nuclear"
     if self.condensed_probe:
       condensed_flag = "-CON"
+    if extrema_dots:   # needs a probe with -EXTREMA
+      nuclear_flag += " -EXTREMA"
     self.probe_txt = \
       '%s -u -q -mc -het -once -NOVDWOUT %s %s' % (probe_command, condensed_flag, nuclear_flag) +\
         ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)

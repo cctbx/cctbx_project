@@ -203,6 +203,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .def("build", &ContactDB::build)
     .def("pairs", &ContactDB::pairs)
     .def("set_keep_dots", &ContactDB::set_keep_dots)
+    .def("set_extrema_dots", &ContactDB::set_extrema_dots)
     .def("dots", &ContactDB::dots)
     ;
   scope().attr("ContactDB_IGNORE") = int(ContactDB::IGNORE);
