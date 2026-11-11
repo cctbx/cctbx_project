@@ -457,6 +457,7 @@ general_tests = [
   "$D/regression/tst_table_one.py",
   "$D/regression/tst_msa.py",
   "$D/regression/tst_cc_star.py",
+  "$D/regression/tst_reduce_cryoem_resolution.py", # TODO move to maptbx?
   "$D/regression/tst_fmodel_2.py",
   "$D/regression/tst_rigid_bond_test.py",
   "$D/validation/regression/tst_cablam.py",
