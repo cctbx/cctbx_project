@@ -369,7 +369,7 @@ def point_on_sphere(r, s_deg, t_deg, center):
   z = center[2] + r * cos(t)
   return x,y,z
 
-def saff_kuijlaars_sphere_points(n):
+def saff_kuijlaars_spiral(n):
   """Unit vectors spread over the sphere on the Saff-Kuijlaars spiral.
 
   The heights h along y step evenly from -1 up to 1, both poles included,

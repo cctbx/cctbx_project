@@ -18,7 +18,7 @@ from scitbx.math import principal_axes_of_inertia, \
 from scitbx.math import sphere_3d, minimum_covering_sphere
 from scitbx.math import signed_phase_error, phase_error, nearest_phase
 from scitbx.math import icosahedron
-from scitbx.math import saff_kuijlaars_sphere_points
+from scitbx.math import saff_kuijlaars_spiral
 from scitbx.math import golden_spiral
 from scitbx.math import chebyshev_base
 from scitbx.math import chebyshev_polynome
@@ -1397,12 +1397,12 @@ def exercise_icosahedron():
       assert d > m
       assert d/2 < m
 
-def exercise_sphere_points():
+def exercise_saff_kuijlaars_spiral():
   """The Saff-Kuijlaars spiral gives n unit vectors with heights along y
   evenly spaced from -1 up to 1, so its first and last points are the poles.
   """
   n = 64
-  points = saff_kuijlaars_sphere_points(n)
+  points = saff_kuijlaars_spiral(n)
   assert points.size() == n, points.size()
   assert approx_equal(points.dot(), [1] * n)
   heights = [-1 + 2 * k / (n - 1) for k in range(n)]
@@ -2097,7 +2097,7 @@ def run():
   exercise_row_echelon()
   exercise_tensor_rank_2()
   exercise_icosahedron()
-  exercise_sphere_points()
+  exercise_saff_kuijlaars_spiral()
   exercise_golden_spiral()
   exercise_basic_statistics()
   exercise_cheb_family()

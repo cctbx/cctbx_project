@@ -1144,7 +1144,7 @@ class spherical_variance_around_point(object):
     self.site_cart = site_cart
     self.radius = radius
     assert n_points>0
-    sphere_points = scitbx.math.saff_kuijlaars_sphere_points(
+    sphere_points = scitbx.math.saff_kuijlaars_spiral(
       n_points) + site_cart
     map_values = flex.double()
     for point in sphere_points :
