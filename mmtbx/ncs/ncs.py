@@ -3041,18 +3041,65 @@ class ncs_group:
     if symmetry_to_match is None:
       symmetry_to_match=self
 
+    from scitbx.array_family import flex
+    def as_columns(rotations, translations):
+      """Arrays of the 9 rotation and 3 translation elements"""
+      columns = []
+      for i in range(9):
+        columns.append(flex.double([r[i] for r in rotations]))
+      for i in range(3):
+        columns.append(flex.double([t[i] for t in translations]))
+      return columns
+    ops = as_columns(self.rota_matrices_inv(), self.translations_orth_inv())
+    targets = as_columns(symmetry_to_match.rota_matrices_inv(),
+      symmetry_to_match.translations_orth_inv())
+    m = targets[0].size()
+    if m == 0:
+      return False
+    # Compare products with targets in blocks of n_block products, about
+    #  10000 pairs; pair k of a block is product k // m and target k % m
+    n_block = max(1, 10000 // m)
+    blocks = []
+    for first in range(0, ops[0].size(), n_block):
+      blocks.append([x[first:first + n_block] for x in ops])
+    pairs = {}
+    def get_pairs(n_products):
+      if n_products not in pairs:
+        target_of_pair = flex.size_t([k % m for k in range(n_products * m)])
+        pairs[n_products] = (
+          flex.size_t([k // m for k in range(n_products * m)]),
+          [x.select(target_of_pair) for x in targets])
+      return pairs[n_products]
+
     for r,t in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
-      for r1,t1 in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
-        new_r = r1 * r
-        new_t = (r1 * t) + t1
-        is_similar=False
-        for r2,t2 in zip(symmetry_to_match.rota_matrices_inv(),
-           symmetry_to_match.translations_orth_inv()):
-          if is_same_transform(new_r,new_t,r2,t2,tol_r=tol_r,
-            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
-            is_similar=True
-            break
-        if not is_similar:
+      for block in blocks:
+        # r1 * r and (r1 * t) + t1 for the r1, t1 in the block, summed in
+        #  the order of matrix.sqr
+        products = []
+        for i in range(3):
+          for j in range(3):
+            products.append(block[3*i] * r[j] + block[3*i+1] * r[3+j] +
+              block[3*i+2] * r[6+j])
+        for i in range(3):
+          products.append(block[3*i] * t[0] + block[3*i+1] * t[1] +
+            block[3*i+2] * t[2] + block[9+i])
+        product_of_pair, block_targets = get_pairs(products[0].size())
+        # the tests in is_same_transform
+        is_same = flex.bool(product_of_pair.size(), True)
+        for i in range(12):
+          p = products[i].select(product_of_pair)
+          dd = flex.abs(p - block_targets[i])
+          if i < 9:
+            is_same &= ~(dd > tol_r)
+          else:
+            # relative test only where the absolute one fails
+            far = is_same & (dd > abs_tol_t)
+            if far.count(True):
+              dd2 = 0.5 * (flex.abs(p) + flex.abs(block_targets[i]))
+              is_same &= ~(far & (dd > rel_tol_t * dd2))
+        is_similar = flex.bool(products[0].size(), False)
+        is_similar.set_selected(product_of_pair.select(is_same), True)
+        if not is_similar.all_eq(True):
           return False
     self._have_point_group_symmetry=True
     self.tol_r=tol_r
