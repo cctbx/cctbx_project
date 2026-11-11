@@ -9,20 +9,25 @@ from iotbx.map_model_manager import map_model_manager
 # Supplied TLS in local anisotropic sharpening (model_sharpen with
 #  tlso_group_info and replace_aniso_with_tls_equiv) and averaging of
 #  scaling information over locations (_average_scale_factor_info_over_xyz).
-# Each case can be run alone:
+# Each case can be run alone, or several in one run (runs are cached):
 #  libtbx.python tst_map_model_manager_supplied_tls.py options_passed_on
+# Most cases run the TLS step (_analyze_aniso_replace_with_supplied)
+#  directly on synthetic entries, or run the sharpening with local
+#  anisotropic sharpening stubbed to check what reaches the TLS step.  The
+#  external_* cases, other_model_id and no_tls_unchanged run the complete
+#  sharpening (slow).
 
 # ---------------------------------------------------------------------------
-# model_sharpen with two supplied TLS groups (residue ranges split at
-#  SPLIT_A or SPLIT_B residues).  Runs are cached and shared by the cases.
-#  The generated model has residues 219-228 (86 atoms); with d_min 3 and
-#  n_boxes 8 there is one original grid entry, at about (10.8, 17.7, 11.4).
-#   Split A (219:222 | 223:228; 36 and 50 atoms): the grid entry is inside
-#    both masks and nearest to an atom of 223:228 (overlap_nearest); 50
-#    atoms give a different number of model points under the rule using
-#    the original entry count and under the old rule using the growing
-#    entry count when 219:222 is processed first (sampling_count).
-#   Split B (219:220 | 221:228): the grid entry is not inside the mask of
+# Two supplied TLS groups (residue ranges split at SPLIT_A or SPLIT_B
+#  residues).  Runs are cached and shared by the cases.  The generated
+#  model has residues 219-228 (86 atoms); with d_min 3 and n_boxes 8,
+#  model_sharpen has one original grid entry, at about GRID_XYZ.
+#   Split A (219:222 | 223:228; 36 and 50 atoms): GRID_XYZ is inside both
+#    masks and nearest to an atom of 223:228 (overlap_nearest); 50 atoms
+#    give a different number of model points under the rule using the
+#    original entry count and under the old rule using the growing entry
+#    count when 219:222 is processed first (sampling_count).
+#   Split B (219:220 | 221:228): GRID_XYZ is not inside the mask of
 #    219:220 (empty_mask_group).
 
 def get_mmm(d_min = 3):
@@ -81,13 +86,7 @@ def get_groups_from_ranges(mmm, ranges):
 
 _tls_runs = {}
 
-def run_two_groups(split = SPLIT_A, reverse = False):
-  '''model_sharpen (n_boxes 8) with the two groups of get_groups(split);
-     see run_tls_groups'''
-  return run_tls_groups(('split', split), lambda: model_sharpen_setup(
-    get_groups_f = lambda mmm: get_groups(mmm, split)), reverse = reverse)
-
-def model_sharpen_setup(get_groups_f, n_boxes = 8):
+def model_sharpen_setup(get_groups_f):
   '''(mmm, groups, sharpen) for model_sharpen of get_mmm() with the
      groups returned by get_groups_f(mmm)'''
   mmm = get_mmm()
@@ -95,20 +94,29 @@ def model_sharpen_setup(get_groups_f, n_boxes = 8):
     mmm.model_sharpen(local_sharpen = True, anisotropic_sharpen = True,
       tlso_group_info = tlso_group_info,
       replace_aniso_with_tls_equiv = True,
-      n_boxes = n_boxes, nproc = 1)
+      n_boxes = 8, nproc = 1)
   return mmm, get_groups_f(mmm), sharpen
 
-def run_tls_groups(key, setup, reverse = False):
+def run_tls_groups(key, setup, reverse = False, stub_sharpening = False):
   '''Run the sharpening given by setup() (returns mmm, the two TLS groups
      and a function sharpen(tlso_group_info)) with the two groups (in
-     reversed order if reverse) and record what the TLS step did.  Class
-     methods are wrapped and always restored.  Recorded:
-      - options seen by _run_group_of_anisotropic_sharpen
+     reversed order if reverse) and record what the TLS step did.  With
+     stub_sharpening, _run_group_of_anisotropic_sharpen (local anisotropic
+     sharpening, which runs the TLS step) is replaced by a stub that only
+     records, and adds each map to be scaled, unchanged, as its scaled map
+     (callers read those maps afterwards).  Class methods are wrapped and
+     always restored.  Recorded:
+      - the selections in the order of the run
+      - options seen by _run_group_of_anisotropic_sharpen, and the number
+        of atoms of each group in the model the TLS step uses
+        (model_id_for_tls, default 'model'; None if that model is
+        missing); with stub_sharpening also, for every call, the
+        selections, T and L lists it received (tl_calls)
       - for each entry passed to _update_scale_factor_info_from_aniso,
         whether it has overall_scale and whether its target_scale_factors
         were changed by the update
       - in _analyze_aniso_replace_with_supplied: its inputs, the number of
-        original entries, the mask returned by
+        original entries and their uu_b_cart_as_u_cart, the mask returned by
         _create_mask_from_selection_as_string for each selection, the
         model sites of each selection, and the xyz and
         uu_b_cart_as_u_cart of every entry when it returns (all of these
@@ -117,13 +125,14 @@ def run_tls_groups(key, setup, reverse = False):
      Nothing here depends on the order in which that function makes masks
      or processes groups; group membership is worked out afterwards from
      these records (see get_ownership).'''
-  key = (key, bool(reverse))
+  key = (key, bool(reverse), bool(stub_sharpening))
   if key in _tls_runs:
     return _tls_runs[key]
   M = map_model_manager
   rec = group_args(run_group_kw_list = [], update_calls = [],
      replace_calls = 0, active = False, kw = None, masks = {},
-     n_original = None, entries = None, group_definitions = None,
+     n_original = None, uu_before = None, entries = None,
+     group_definitions = None,
      selections = None, sites = None, has_model = None, tl_calls = [])
   originals = dict(
     _update_scale_factor_info_from_aniso =
@@ -151,13 +160,34 @@ def run_tls_groups(key, setup, reverse = False):
     rec.update_calls.append(group_args(kw = dict(kw), entries = entries))
     return result
 
+  def tl_record(tgi):
+    return group_args(
+      selections = list(getattr(tgi, 'tlso_selection_list', None) or []),
+      T_list = [tuple(x) for x in (getattr(tgi, 'T_list', None) or [])],
+      L_list = [tuple(x) for x in (getattr(tgi, 'L_list', None) or [])])
+
   def wrapped_run(self, **kw):
+    tls_model = self.get_model_by_id(kw.get('model_id_for_tls') or 'model')
+    if tls_model is None:
+      tls_model_atoms = None
+    else:
+      tls_model_atoms = [tls_model.apply_selection_string(
+        s).get_number_of_atoms() for s in rec.selections]
     rec.run_group_kw_list.append(dict(
       get_scale_as_aniso_u = kw.get('get_scale_as_aniso_u'),
       get_tls_from_u = kw.get('get_tls_from_u'),
       replace_aniso_with_tls_equiv = kw.get('replace_aniso_with_tls_equiv'),
-      tlso_group_info = bool(kw.get('tlso_group_info'))))
-    return originals['_run_group_of_anisotropic_sharpen'](self, **kw)
+      tlso_group_info = bool(kw.get('tlso_group_info')),
+      model_id_for_tls = kw.get('model_id_for_tls'),
+      tls_model_atoms = tls_model_atoms))
+    if not stub_sharpening:
+      return originals['_run_group_of_anisotropic_sharpen'](self, **kw)
+    rec.tl_calls.append(tl_record(kw.get('tlso_group_info')))
+    for map_id, scaled_map_id in zip(kw['map_id_to_be_scaled_list'],
+        kw['map_id_scaled_list']):
+      self.add_map_manager_by_id(map_id = scaled_map_id,
+        map_manager = self.get_map_manager_by_id(map_id).deep_copy())
+    return None
 
   def wrapped_mask(self, *args, **kw):
     result = originals['_create_mask_from_selection_as_string'](
@@ -170,12 +200,10 @@ def run_tls_groups(key, setup, reverse = False):
     rec.replace_calls += 1
     rec.active = True
     rec.kw = dict(kw)
-    tgi = kw['tlso_group_info']
-    rec.tl_calls.append(group_args(
-      selections = list(getattr(tgi, 'tlso_selection_list', None) or []),
-      T_list = [tuple(x) for x in (getattr(tgi, 'T_list', None) or [])],
-      L_list = [tuple(x) for x in (getattr(tgi, 'L_list', None) or [])]))
+    rec.tl_calls.append(tl_record(kw['tlso_group_info']))
     rec.n_original = len(scale_factor_info.value_list)
+    rec.uu_before = [v.get('uu_b_cart_as_u_cart')
+       for v in scale_factor_info.value_list]
     try:
       result = originals['_analyze_aniso_replace_with_supplied'](
          self, scale_factor_info, **kw)
@@ -203,6 +231,7 @@ def run_tls_groups(key, setup, reverse = False):
     rec.group_definitions = dict([(g.selection, g) for g in groups])
     if reverse:
       groups = list(reversed(groups))
+    rec.selections = [g.selection for g in groups]
     tlso_group_info = group_args(
       tlso_list = [g.tlso for g in groups],
       selection_as_text_list = [g.selection for g in groups])
@@ -217,23 +246,36 @@ def run_tls_groups(key, setup, reverse = False):
 
 def tst_options_passed_on():
   '''With supplied TLS and replace_aniso_with_tls_equiv (get_scale_as_aniso_u
-     and get_tls_from_u not given), the sharpening driver receives
-     get_scale_as_aniso_u = True and get_tls_from_u = True and updates
-     scale factors from the aniso U values'''
-  record = run_two_groups()
+     and get_tls_from_u not given), the sharpening driver of model_sharpen
+     (stubbed) receives get_scale_as_aniso_u = True, get_tls_from_u = True
+     and replace_aniso_with_tls_equiv = True, so it updates scale factors
+     from the aniso U values (checked in the complete run of
+     other_model_id)'''
+  record = run_tls_groups(('model_sharpen', SPLIT_A),
+    lambda: model_sharpen_setup(
+      get_groups_f = lambda mmm: get_groups(mmm, SPLIT_A)),
+    stub_sharpening = True)
   print("run_group options:", record.run_group_kw_list)
-  print("update calls:", len(record.update_calls))
   assert record.run_group_kw_list, "no call to _run_group_of_anisotropic_sharpen"
   for kw in record.run_group_kw_list:
     assert kw['get_scale_as_aniso_u'] is True, kw
     assert kw['get_tls_from_u'] is True, kw
-  assert len(record.update_calls) > 0, \
-    "_update_scale_factor_info_from_aniso not called"
+    assert kw['replace_aniso_with_tls_equiv'] is True, kw
 
 def tst_all_tls_entries_updated():
-  '''Every entry passed to _update_scale_factor_info_from_aniso has
-     overall_scale and has its target_scale_factors changed'''
-  record = run_two_groups()
+  '''Every entry passed to _update_scale_factor_info_from_aniso after the
+     TLS step (both run directly, in the order of local anisotropic
+     sharpening) has overall_scale and has its target_scale_factors
+     changed'''
+  def setup():
+    mmm = get_mmm()
+    return direct_setup(mmm, get_groups(mmm, SPLIT_A), update = True)
+  check_update_calls(run_tls_groups(('direct_update', SPLIT_A), setup))
+
+def check_update_calls(record):
+  '''_update_scale_factor_info_from_aniso was called, and every entry
+     passed to it has overall_scale and has its target_scale_factors
+     changed'''
   assert len(record.update_calls) > 0, \
     "_update_scale_factor_info_from_aniso not called"
   for call in record.update_calls:
@@ -343,6 +385,9 @@ def check_entry_u(rec, e, selection, kind, overall_u):
     selection, kind, e.xyz, list(e.uu), list(other_u))
 
 def check_all_owned(rec, overall_u, owner):
+  '''Every owned entry has its own group's U (check_entry_u) and every
+     original entry that is not owned keeps the U it had before the TLS
+     step.  Returns the number of owned entries by (selection, kind).'''
   counts = {}
   for e in rec.entries:
     if e.index in owner:
@@ -350,17 +395,96 @@ def check_all_owned(rec, overall_u, owner):
       check_entry_u(rec, e, o.selection, o.kind, overall_u)
       k = (o.selection, o.kind)
       counts[k] = counts.get(k, 0) + 1
+    elif e.index < rec.n_original:
+      assert e.uu == rec.uu_before[e.index], ("entry at %s inside no mask "
+        "changed: U %s before %s" %(str(e.xyz), e.uu,
+        rec.uu_before[e.index]))
   return counts
+
+# ---------------------------------------------------------------------------
+# The TLS step (_analyze_aniso_replace_with_supplied) run directly on
+#  synthetic original entries at chosen sites.  In sharpening, the original
+#  entries are at the centres of the boxes of local_fsc; they depend on the
+#  map and n_boxes, not on the TLS groups.  model_sharpen of get_mmm() with
+#  n_boxes 8 gives one, at about GRID_XYZ.
+
+GRID_XYZ = (10.83, 17.72, 11.43)
+OUTSIDE_XYZ = (0.5, 0.5, 0.5) # corner of the map, inside no mask
+# Overall anisotropy removed from the maps before the TLS step, about as
+#  model_sharpen of get_mmm() gives it
+ANISO_B_CART = (170.8, 174.2, 168.7, -2.7, 0.4, 4.5)
+B_ISO = 20.8
+
+def chosen_sites(groups):
+  '''Sites in the frame of get_mmm(): GRID_XYZ, the centre of each group
+     (its TLS origin) and OUTSIDE_XYZ'''
+  return [GRID_XYZ] + [tuple(g.tlso.origin) for g in groups] + [OUTSIDE_XYZ]
+
+def synthetic_scale_factor_info(xyz_list, d_min = 3):
+  '''Original entries at the sites xyz_list, as local_fsc gives them for
+     local anisotropic sharpening: complete locations (make_location) with
+     error estimates ssqr_values derived from cc_list as the producer does
+     (see tst_averaged_ssqr)'''
+  value_list = [make_location() for i in range(len(xyz_list))]
+  for location in value_list:
+    for si in location.scaling_info_list + [location.overall_si]:
+      si.ssqr_values = flex.double([2. * (1. / cc - 1.) for cc in si.cc_list])
+  return group_args(group_args_type = 'synthetic scale_factor_info',
+    value_list = value_list, xyz_list = flex.vec3_double(xyz_list),
+    d_min = d_min)
+
+def tls_step(mmm, tlso_group_info, xyz_list, model_id = 'model',
+    update = False):
+  '''Convert tlso_group_info to lists and run the TLS step of mmm on
+     synthetic original entries at the sites xyz_list, with the other
+     arguments as model_sharpen gives them (map 'map_manager',
+     get_tls_from_u, overall anisotropy ANISO_B_CART and B_ISO; model_id
+     'model', where half_map_sharpen and external_sharpen give None); then,
+     if update, _update_scale_factor_info_from_aniso, as local anisotropic
+     sharpening does after the TLS step'''
+  from iotbx.map_model_manager import convert_tlso_group_info_to_lists
+  convert_tlso_group_info_to_lists(tlso_group_info)
+  scale_factor_info = synthetic_scale_factor_info(xyz_list)
+  mmm._analyze_aniso_replace_with_supplied(scale_factor_info,
+    tlso_group_info = tlso_group_info, map_id = 'map_manager',
+    model_id = model_id, get_tls_from_u = True,
+    aniso_b_cart = ANISO_B_CART, b_iso = B_ISO)
+  if update:
+    mmm._update_scale_factor_info_from_aniso(scale_factor_info,
+      get_tls_from_u = True)
+
+def direct_setup(mmm, groups, xyz_list = None, model_id = 'model',
+    update = False):
+  '''(mmm, groups, sharpen) for run_tls_groups, where sharpen runs the TLS
+     step directly (tls_step) at the sites xyz_list (default
+     chosen_sites)'''
+  if xyz_list is None:
+    xyz_list = chosen_sites(groups)
+  def sharpen(tlso_group_info):
+    tls_step(mmm, tlso_group_info, xyz_list, model_id = model_id,
+      update = update)
+  return mmm, groups, sharpen
+
+def run_direct(split = SPLIT_A, reverse = False):
+  '''The TLS step run directly on get_mmm() with the two groups of
+     get_groups(split) at chosen_sites; see run_tls_groups'''
+  def setup():
+    mmm = get_mmm()
+    return direct_setup(mmm, get_groups(mmm, split))
+  return run_tls_groups(('direct', split), setup, reverse = reverse)
 
 def tst_two_tls_groups():
   '''With two TLS groups and get_tls_from_u, uu_b_cart_as_u_cart of every
      owned entry equals the U from its own group's TLS at the entry's site
-     minus the overall U (and differs from the other group's).  Model-point
-     entries keep their own group's TLS also when they lie inside the
-     mask of the other group.'''
-  rec = run_two_groups()
+     minus the overall U (and differs from the other group's), and an
+     original entry inside no mask keeps its U.  Model-point entries keep
+     their own group's TLS also when they lie inside the mask of the other
+     group.'''
+  rec = run_direct()
   overall_u, owner = check_tls_run(rec)
   counts = check_all_owned(rec, overall_u, owner)
+  n_not_owned = len([e for e in rec.entries[:rec.n_original]
+    if e.index not in owner])
   n_in_other = {}
   for e in rec.entries:
     o = owner.get(e.index)
@@ -374,11 +498,14 @@ def tst_two_tls_groups():
   print("Model-point entries inside the other group's mask: %s" %(
      ", ".join(["'%s': %s" %(s, n_in_other.get(s, 0))
         for s in rec.selections])))
+  print("Original entries inside no mask: %s" %(n_not_owned))
   for s in rec.selections:
     assert counts.get((s, 'model')), (s, counts)
   assert [1 for k in counts.keys() if k[1] == 'grid'], counts
-  # Required for the check above to cover model points in the other mask
+  # Required for the checks above to cover model points in the other mask
+  #  and an original entry inside no mask
   assert sum(n_in_other.values()) > 0, n_in_other
+  assert n_not_owned > 0, n_not_owned
 
 def tst_overlap_nearest():
   '''An original grid entry inside both masks takes the TLS of the group
@@ -387,7 +514,7 @@ def tst_overlap_nearest():
      would give a different result)'''
   n_differs_from_later = 0
   for reverse in (False, True):
-    rec = run_two_groups(reverse = reverse)
+    rec = run_direct(reverse = reverse)
     overall_u, owner = check_tls_run(rec)
     both = [e for e in rec.entries if e.index in owner and
        owner[e.index].kind == 'grid' and len(owner[e.index].in_masks) == 2]
@@ -414,8 +541,7 @@ def tst_reversed_order():
      index (the original xyz lists must be identical in the two runs);
      model-point entries are placed exactly at atom sites of their own
      selection and are matched by (selection, xyz).'''
-  compare_orders(run_two_groups(reverse = False),
-    run_two_groups(reverse = True))
+  compare_orders(run_direct(reverse = False), run_direct(reverse = True))
 
 def compare_orders(fwd, rev):
   '''Same U for every entry and same set of entries in two runs with the
@@ -468,7 +594,7 @@ def tst_sampling_count():
   n_old_differs = 0
   counts = {}
   for reverse in (False, True):
-    rec = run_two_groups(reverse = reverse)
+    rec = run_direct(reverse = reverse)
     overall_u, owner = check_tls_run(rec)
     assert rec.n_original < MIN_MODEL_POINTS, rec.n_original
     n_entries_old_rule = rec.n_original
@@ -501,10 +627,15 @@ def tst_sampling_count():
 def tst_empty_mask_group():
   '''A group whose mask contains none of the original grid entries gets
      model-point entries carrying its own TLS, not that of the group
-     processed before it.  Real configuration, no wrapper: split B in
-     reversed order, so the group of the first two residues is processed
-     second and the only original grid entry is not inside its mask.'''
-  rec = run_two_groups(split = SPLIT_B, reverse = True)
+     processed before it.  Split B in reversed order, so the group of the
+     first two residues is processed second, with original entries at
+     GRID_XYZ (the grid entry of model_sharpen) and OUTSIDE_XYZ, neither
+     inside its mask.'''
+  def setup():
+    mmm = get_mmm()
+    return direct_setup(mmm, get_groups(mmm, SPLIT_B),
+      xyz_list = [GRID_XYZ, OUTSIDE_XYZ])
+  rec = run_tls_groups(('empty_mask', SPLIT_B), setup, reverse = True)
   overall_u, owner = check_tls_run(rec)
   s = rec.selections[1]
   n_original_inside = len([e for e in rec.entries if
@@ -524,48 +655,37 @@ def tst_empty_mask_group():
 # ---------------------------------------------------------------------------
 # More rules for original entries inside more than one mask: an exact tie
 #  and no model (the group listed first in both), and ownership with many
-#  original grid entries.
+#  original entries.
 
-def tie_ranges():
+def tie_ranges(mmm):
   '''Overlapping residue ranges (first:r) and (r:last), where r is the
-     residue of the atom nearest to the first original grid entry of the
-     split A run (original grid entries depend on the map and n_boxes, not
-     on the groups; checked in tst_tie_first_listed).  That atom is selected
-     by both groups, so for that entry the nearest selected atom of each
-     group is the same atom and the two distances are exactly equal.
-     Returns the ranges and the original xyz list of the split A run.'''
-  probe = run_two_groups()
-  probe_xyz = [e.xyz for e in probe.entries[:probe.n_original]]
-  mmm = get_mmm()
+     residue of the atom nearest to GRID_XYZ.  That atom is selected by
+     both groups, so for an entry at GRID_XYZ the nearest selected atom of
+     each group is the same atom and the two distances are exactly
+     equal.'''
   atoms = mmm.model().get_hierarchy().atoms()
-  dist = (atoms.extract_xyz() - probe_xyz[0]).norms()
+  dist = (atoms.extract_xyz() - GRID_XYZ).norms()
   i_nearest = list(dist).index(flex.min(dist))
   r = atoms[i_nearest].parent().parent().resseq_as_int()
   resseqs = get_resseqs(mmm)
-  return ((resseqs[0], r), (r, resseqs[-1])), probe_xyz
+  return ((resseqs[0], r), (r, resseqs[-1]))
 
 def tst_tie_first_listed():
   '''Two groups on overlapping residue ranges sharing the residue of the
-     atom nearest to an original grid entry (tie_ranges): that entry is
+     atom nearest to GRID_XYZ (tie_ranges): an original entry there is
      inside both masks at exactly equal nearest-atom distance and takes the
      TLS of the group listed first, so the other group's TLS when the order
-     is reversed.  Other original entries follow the nearest-atom rule.
-     Model-point entries are not checked here (the selections overlap, so
-     a model point can be at an atom of both groups).'''
-  ranges, probe_xyz = tie_ranges()
+     is reversed.  Other original entries (chosen_sites) follow the
+     nearest-atom rule.  Model-point entries are not checked here (the
+     selections overlap, so a model point can be at an atom of both
+     groups).'''
   def setup():
-    return model_sharpen_setup(
-      get_groups_f = lambda mmm: get_groups_from_ranges(mmm, ranges))
+    mmm = get_mmm()
+    return direct_setup(mmm, get_groups_from_ranges(mmm, tie_ranges(mmm)))
   n_ties = []
   for reverse in (False, True):
-    rec = run_tls_groups(('tie', ranges), setup, reverse = reverse)
+    rec = run_tls_groups(('tie',), setup, reverse = reverse)
     overall_u, owner = check_tls_run(rec, model_points = False)
-    # Same original grid entries as in the run used to choose the ranges
-    assert rec.n_original == len(probe_xyz), (rec.n_original,
-       len(probe_xyz))
-    for e in rec.entries[:rec.n_original]:
-      assert approx_equal(e.xyz, probe_xyz[e.index], out = None), (e.xyz,
-        probe_xyz[e.index])
     ties = []
     for e in rec.entries[:rec.n_original]:
       in_masks = [s for s in rec.selections if inside_mask(rec.masks[s],
@@ -621,15 +741,23 @@ def no_model_setup(n_boxes = 8):
       tlso_group_info = tlso_group_info, n_boxes = n_boxes, nproc = 1)
   return new_mmm, groups, sharpen
 
+def no_model_direct_setup():
+  '''The TLS step run directly (direct_setup) on the manager of
+     no_model_setup (two half maps, no model), with model_id None as
+     half_map_sharpen gives it'''
+  mmm, groups, unused_sharpen = no_model_setup()
+  return direct_setup(mmm, groups, model_id = None)
+
 def tst_no_model_first_listed():
-  '''Supplied TLS without a model (half_map_sharpen): each group's mask
-     is the mask around all density, so an original entry inside a mask is
-     inside every group's mask and takes the TLS of the group listed first
-     (the other group's when the order is reversed); no model-point
-     entries are added.'''
+  '''Supplied TLS without a model (manager with two half maps): each
+     group's mask is the mask around all density, so an original entry
+     inside a mask is inside every group's mask and takes the TLS of the
+     group listed first (the other group's when the order is reversed); no
+     model-point entries are added.'''
   n_inside = []
   for reverse in (False, True):
-    rec = run_tls_groups(('no_model',), no_model_setup, reverse = reverse)
+    rec = run_tls_groups(('no_model',), no_model_direct_setup,
+      reverse = reverse)
     assert rec.has_model is False, rec.has_model
     overall_u, owner = check_tls_run(rec)
     assert len(rec.entries) == rec.n_original, (len(rec.entries),
@@ -650,20 +778,35 @@ def tst_no_model_first_listed():
     n_inside.append(len(inside))
   assert n_inside[0] == n_inside[1], n_inside
 
-MULTI_N_BOXES = 64
+MULTI_SPACING = 2.5 # A, lattice of original entries over the model
 MULTI_SPLIT = 5
 
+def lattice_sites(mmm, spacing = MULTI_SPACING, margin = 2.):
+  '''Sites on a lattice with this spacing over the box around the atoms of
+     the model of mmm (margin added on each side)'''
+  sites = mmm.model().get_sites_cart()
+  lower = flex.double(sites.min()) - margin
+  upper = flex.double(sites.max()) + margin
+  n = [int((u - l) / spacing) + 1 for l, u in zip(lower, upper)]
+  xyz_list = []
+  for i in range(n[0]):
+    for j in range(n[1]):
+      for k in range(n[2]):
+        xyz_list.append(tuple(lower + spacing * flex.double((i, j, k))))
+  return xyz_list
+
 def run_multi(reverse):
-  return run_tls_groups(('multi', MULTI_SPLIT, MULTI_N_BOXES),
-    lambda: model_sharpen_setup(
-      get_groups_f = lambda mmm: get_groups(mmm, MULTI_SPLIT),
-      n_boxes = MULTI_N_BOXES), reverse = reverse)
+  def setup():
+    mmm = get_mmm()
+    return direct_setup(mmm, get_groups(mmm, MULTI_SPLIT),
+      xyz_list = lattice_sites(mmm))
+  return run_tls_groups(('multi', MULTI_SPLIT), setup, reverse = reverse)
 
 def tst_multi_grid_ownership():
-  '''model_sharpen with n_boxes 64 (several original grid entries, some
-     inside both masks): every owned entry has the U of its group by the
-     nearest-atom rule (get_ownership), and every entry has the same U with
-     the group order reversed'''
+  '''Original entries on a lattice over the model (lattice_sites; many,
+     some inside both masks): every owned entry has the U of its group by
+     the nearest-atom rule (get_ownership), and every entry has the same U
+     with the group order reversed'''
   runs = []
   n_differs_from_later = 0
   for reverse in (False, True):
@@ -695,7 +838,10 @@ def tst_multi_grid_ownership():
 #  with the model 'model' (group masks around each group's atoms, nearest-
 #  atom rule and model points, as in model_sharpen), and the same
 #  tlso_group_info object converted more than once (used twice, and
-#  model_sharpen global-local-global).
+#  global-local-global).  Of the cases with supplied TLS, external_tls and
+#  other_model_id run the complete sharpening; the others stub it
+#  (run_tls_groups with stub_sharpening) to check what reaches the TLS
+#  step, run the TLS step directly, or both.
 
 def check_with_model(rec, n_calls = 1):
   '''The TLS step (last call) sees the model; every owned entry has its own
@@ -716,13 +862,14 @@ def check_with_model(rec, n_calls = 1):
   return counts
 
 def check_tl_calls(rec, n_calls = None):
-  '''Every call of the TLS step received both groups (in the order of the
-     run) with their own T and L'''
+  '''Every call of the TLS step (of the sharpening driver if it is
+     stubbed) received both groups (in the order of the run) with their own
+     T and L'''
   if n_calls is not None:
     assert len(rec.tl_calls) == n_calls, (len(rec.tl_calls), n_calls)
   assert rec.tl_calls
   for i, c in enumerate(rec.tl_calls):
-    print("TLS step call %s: selections %s" %(i + 1, c.selections))
+    print("Call %s with TLS: selections %s" %(i + 1, c.selections))
     assert c.selections == rec.selections, (i, c.selections, rec.selections)
     assert len(c.T_list) == 2 and len(c.L_list) == 2, (i, c.T_list,
        c.L_list)
@@ -730,6 +877,16 @@ def check_tl_calls(rec, n_calls = None):
       t = rec.group_definitions[s].tlso
       assert approx_equal(T, t.t, out = None), (i, s, T, t.t)
       assert approx_equal(L, t.l, out = None), (i, s, L, t.l)
+
+def check_tls_model(rec):
+  '''In every call of the sharpening driver, the model the TLS step uses
+     has atoms of both groups'''
+  assert rec.run_group_kw_list
+  for kw in rec.run_group_kw_list:
+    print("Sharpening driver: model_id_for_tls %s, atoms of each group in "
+      "the model %s" %(kw['model_id_for_tls'], kw['tls_model_atoms']))
+    assert kw['tls_model_atoms'] is not None, "no model for the TLS step"
+    assert min(kw['tls_model_atoms']) > 0, kw['tls_model_atoms']
 
 def external_setup():
   '''external_sharpen of get_mmm() (with its model 'model') against an
@@ -875,27 +1032,35 @@ def half_map_with_model_setup(n_boxes = HALF_MAP_N_BOXES,
     groups = get_groups(new_mmm, split)
   return new_mmm, groups, sharpen
 
-def run_half_map_with_model(reverse, n_boxes = HALF_MAP_N_BOXES,
-    split = HALF_MAP_SPLIT):
-  return run_tls_groups(('half_map_model', n_boxes, split),
-    lambda: half_map_with_model_setup(n_boxes = n_boxes, split = split),
-    reverse = reverse)
+def run_half_map_with_model(reverse):
+  '''The TLS step run directly (direct_setup) on the manager of
+     half_map_with_model_setup, with model_id None as half_map_sharpen
+     gives it'''
+  def setup():
+    mmm, groups, unused_sharpen = half_map_with_model_setup()
+    return direct_setup(mmm, groups, model_id = None)
+  return run_tls_groups(('half_map_model_direct',), setup, reverse = reverse)
 
 def tst_half_map_with_model():
   '''half_map_sharpen with supplied TLS on a manager with two half maps and
-     the model 'model': the TLS step sees the model, the two groups' masks
-     differ, every owned entry has its own group's U by the nearest-atom
-     rule, each group gets model-point entries, and the result is the same
-     with the group order reversed.  At least one original entry is inside
-     both masks, and for at least one such entry (over both orders) the
-     nearest group is not the group processed last (so "later group wins"
-     would give a different result).'''
+     the model 'model': the sharpening driver (stubbed) receives both
+     groups' T and L and the model.  The TLS step (run directly) on that
+     manager: the two groups' masks differ, every owned entry has its own
+     group's U by the nearest-atom rule, each group gets model-point
+     entries, and the result is the same with the group order reversed.
+     At least one original entry is inside both masks, and for at least
+     one such entry (over both orders) the nearest group is not the group
+     processed last (so "later group wins" would give a different
+     result).'''
+  rec = run_tls_groups(('half_map_model',), half_map_with_model_setup,
+    stub_sharpening = True)
+  check_tl_calls(rec, n_calls = 1)
+  check_tls_model(rec)
   runs = []
   n_both = []
   n_differs_from_later = 0
   for reverse in (False, True):
     rec = run_half_map_with_model(reverse)
-    check_tl_calls(rec, n_calls = 1)
     check_with_model(rec)
     m0, m1 = [(rec.masks[s].map_data().as_1d().as_double() > 0.5).as_int()
        for s in rec.selections]
@@ -932,12 +1097,28 @@ def reused_setup():
     sharpen(tlso_group_info)
   return mmm, groups, sharpen_twice
 
+def reused_direct_setup():
+  '''The TLS step run directly (tls_step) twice on get_mmm() with the same
+     tlso_group_info object (split A, chosen_sites)'''
+  mmm = get_mmm()
+  groups = get_groups(mmm, SPLIT_A)
+  xyz_list = chosen_sites(groups)
+  def sharpen_twice(tlso_group_info):
+    tls_step(mmm, tlso_group_info, xyz_list)
+    tls_step(mmm, tlso_group_info, xyz_list)
+  return mmm, groups, sharpen_twice
+
 def tst_tls_reused():
   '''The same tlso_group_info object passed to model_sharpen twice: both
-     runs complete, and the TLS step of each (in particular the second)
-     receives both groups' T and L; the second run's entries follow the
-     nearest-atom rule'''
-  rec = run_tls_groups(('reused',), reused_setup)
+     runs complete, and the sharpening driver (stubbed) of each (in
+     particular the second) receives both groups' T and L and the model.
+     The TLS step run directly twice with the same object receives both
+     groups' T and L each time, and the second run's entries follow the
+     nearest-atom rule.'''
+  rec = run_tls_groups(('reused',), reused_setup, stub_sharpening = True)
+  check_tl_calls(rec, n_calls = 2)
+  check_tls_model(rec)
+  rec = run_tls_groups(('reused_direct',), reused_direct_setup)
   check_tl_calls(rec, n_calls = 2)
   check_with_model(rec, n_calls = 2)
 
@@ -955,13 +1136,17 @@ def global_local_global_setup():
 
 def tst_global_local_global_model():
   '''model_sharpen global-local-global with supplied TLS (the object is
-     copied and converted again by the inner runs) completes; every call
-     of the TLS step receives both groups' T and L, and the entries of the
-     last call follow the nearest-atom rule'''
-  rec = run_tls_groups(('global_local_global',), global_local_global_setup)
-  print("TLS step calls: %s" %(rec.replace_calls))
+     copied and converted again by the inner runs) completes with the
+     local anisotropic sharpening stubbed (the overall passes run); every
+     call of the sharpening driver receives both groups' T and L, the
+     model, get_scale_as_aniso_u = True and get_tls_from_u = True'''
+  rec = run_tls_groups(('global_local_global',), global_local_global_setup,
+    stub_sharpening = True)
   check_tl_calls(rec)
-  check_with_model(rec, n_calls = rec.replace_calls)
+  check_tls_model(rec)
+  for kw in rec.run_group_kw_list:
+    assert kw['get_scale_as_aniso_u'] is True, kw
+    assert kw['get_tls_from_u'] is True, kw
 
 def glg_setup(setup, method_name):
   '''(mmm, groups, sharpen) from setup(), with sharpen replaced by the
@@ -978,14 +1163,18 @@ def glg_setup(setup, method_name):
 
 def tst_global_local_global_half_map():
   '''half_map_sharpen global-local-global with supplied TLS
-     (half_map_with_model_setup) completes; every call of the TLS step
-     receives both groups' T and L, and the entries of the last call follow
-     the nearest-atom rule'''
+     (half_map_with_model_setup) completes with the local anisotropic
+     sharpening stubbed (the overall passes run); every call of the
+     sharpening driver receives both groups' T and L, the model,
+     get_scale_as_aniso_u = True and get_tls_from_u = True'''
   rec = run_tls_groups(('global_local_global_half_map',),
-    lambda: glg_setup(half_map_with_model_setup, 'half_map_sharpen'))
-  print("TLS step calls: %s" %(rec.replace_calls))
+    lambda: glg_setup(half_map_with_model_setup, 'half_map_sharpen'),
+    stub_sharpening = True)
   check_tl_calls(rec)
-  check_with_model(rec, n_calls = rec.replace_calls)
+  check_tls_model(rec)
+  for kw in rec.run_group_kw_list:
+    assert kw['get_scale_as_aniso_u'] is True, kw
+    assert kw['get_tls_from_u'] is True, kw
 
 def other_model_id_setup():
   '''model_sharpen (as model_sharpen_setup, split A) with the model of
@@ -1009,7 +1198,10 @@ def other_model_id_setup():
 def tst_other_model_id():
   '''model_sharpen(model_id = 'other') with supplied TLS: the TLS step uses
      the model 'other' (group masks, nearest-atom rule and model points for
-     both groups), not the model 'model' and not the no-model fallback'''
+     both groups), not the model 'model' and not the no-model fallback,
+     and the scale factors are then updated from the TLS U values
+     (check_update_calls).  Not stubbed: model_id is passed down through
+     every level of the sharpening to the TLS step.'''
   rec = run_tls_groups(('other_model_id',), other_model_id_setup)
   print("TLS step: model_id %s, model found %s, original entries %s, "
      "entries after the TLS step %s" %(rec.kw.get('model_id'),
@@ -1017,15 +1209,18 @@ def tst_other_model_id():
   check_tl_calls(rec, n_calls = 1)
   check_with_model(rec)
   assert rec.kw.get('model_id') == 'other', rec.kw.get('model_id')
+  check_update_calls(rec)
 
 _frame_shifts = {}
 
 def other_frame_setup():
-  '''model_sharpen (as model_sharpen_setup, split A) in a box cut from
-     get_mmm(), with TLS groups defined in the frame of another box (box
+  '''The TLS step run directly (tls_step) on a box cut from get_mmm(),
+     with TLS groups (split A) defined in the frame of another box (box
      cushion 1 A) and that box's shift_cart supplied in
      tlso_shift_cart_list (as get_tlso_group_info_from_model returns it).
-     The two boxes have different, non-zero shift_cart values.'''
+     The two boxes have different, non-zero shift_cart values.  Original
+     entries at GRID_XYZ and the centre of each group, in the frame of the
+     box, and at OUTSIDE_XYZ.'''
   from iotbx.map_model_manager import convert_tlso_group_info_to_lists
   full_mmm = get_mmm()
   tls_mmm = full_mmm.extract_all_maps_around_model(box_cushion = 1.)
@@ -1035,14 +1230,16 @@ def other_frame_setup():
   mmm.set_resolution(3)
   _frame_shifts['tls'] = tls_mmm.shift_cart()
   _frame_shifts['map'] = mmm.shift_cart()
+  xyz_list = [tuple(flex.double(GRID_XYZ) + flex.double(mmm.shift_cart()))]
+  for g in groups:
+    xyz_list.append(tuple(mmm.model().apply_selection_string(
+      g.selection).get_sites_cart().mean()))
+  xyz_list.append(OUTSIDE_XYZ)
   def sharpen(tlso_group_info):
     convert_tlso_group_info_to_lists(tlso_group_info)
     tlso_group_info.tlso_shift_cart_list = [tls_mmm.shift_cart()] * len(
       tlso_group_info.tlso_selection_list)
-    mmm.model_sharpen(local_sharpen = True, anisotropic_sharpen = True,
-      tlso_group_info = tlso_group_info,
-      replace_aniso_with_tls_equiv = True,
-      n_boxes = 8, nproc = 1)
+    tls_step(mmm, tlso_group_info, xyz_list)
   return mmm, groups, sharpen
 
 def tst_tls_in_other_frame():
