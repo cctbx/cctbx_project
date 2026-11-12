@@ -17,7 +17,6 @@ import numpy as np
 import math
 import json
 import os
-import sys
 
 master_phil_str = """
 rama_z {
@@ -155,18 +154,14 @@ _db_cache = None
 def load_db():
   """
   The top8000 rama-Z database (chem_data/rama_z/top8000_rama_z_dict.pkl),
-  loaded once per process: the Python 3 pickle fix takes seconds and the
-  database is only read.
+  loaded once per process: the database is only read.
   """
   global _db_cache
   if _db_cache is None:
     db_path = libtbx.env.find_in_repositories(
         relative_path="chem_data/rama_z/top8000_rama_z_dict.pkl",
         test=os.path.isfile)
-    db = easy_pickle.load(db_path)
-    if sys.version_info.major == 3:
-      db = easy_pickle.fix_py2_pickle(db)
-    _db_cache = db
+    _db_cache = easy_pickle.load(db_path)
   return _db_cache
 
 class rama_z(z_score_mixins):
