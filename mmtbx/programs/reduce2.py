@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.13.0"
+version = "3.14.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
