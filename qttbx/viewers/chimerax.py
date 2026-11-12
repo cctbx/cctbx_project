@@ -22,6 +22,7 @@ try:
 except ImportError:
   from urllib import unquote
 
+from libtbx import launchd_process
 from libtbx.utils import Sorry
 from qttbx.viewers import ModelViewer, residue_selection_terms
 
@@ -206,8 +207,15 @@ class ChimeraXViewer(ModelViewer):
     for v in ['PYTHONPATH', 'LD_LIBRARY_PATH', 'DYLD_LIBRARY_PATH', 'DYLD_FALLBACK_LIBRARY_PATH']:
       env.pop(v, None)
 
-    # start ChimeraX server and wait until it is ready
-    self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+    # start ChimeraX server and wait until it is ready; on macOS 26 and later
+    # as a launchd job, in a coalition of its own (libtbx.launchd_process)
+    try:
+      self.process = launchd_process.spawn(
+        cmd, lambda: subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env),
+        env=env, label_prefix='org.cctbx.qttbx.chimerax', warn=print,
+        name='ChimeraX')
+    except (launchd_process.LaunchError, OSError) as e:
+      raise Sorry('Could not start ChimeraX ({}): {}'.format(self.command, e)) from e
 
     print()
     print('-'*79)

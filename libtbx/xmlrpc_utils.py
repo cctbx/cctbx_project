@@ -55,6 +55,7 @@ from __future__ import absolute_import, division, print_function
 # --------------------------------------------------------------------
 
 from libtbx import adopt_init_args
+from libtbx import launchd_process
 from libtbx.utils import to_bytes, to_str
 try:
   import xmlrpclib
@@ -223,6 +224,23 @@ class ServerProxy(object):
     return self._errors
 
 #-----------------------------------------------------------------------
+def _copy_output(readers, sinks, final=False):
+  """Pass what each reader has gained since the last call to its sink;
+  ``final`` tells the sinks nothing more will come."""
+  for reader, sink in zip(readers, sinks):
+    data = reader.read()
+    if data or final:
+      sink(data, final)
+
+def _write_fd(fd, data):
+  """Write all of ``data`` to file descriptor ``fd``, dropping it if ``fd``
+  is closed or broken (as a Popen child writing there would lose it)."""
+  try:
+    while data:
+      data = data[os.write(fd, data):]
+  except OSError:
+    pass
+
 class external_program_thread(threading.Thread):
   def __init__(self, command_args, program_id, log=None,
       intercept_output=True, use_env = False):
@@ -231,8 +249,18 @@ class external_program_thread(threading.Thread):
       self.log = sys.stdout
     threading.Thread.__init__(self)
     self._alive = True
+    # Whether what this thread last wrote, to the log or to file descriptors
+    # 1 and 2 (where the log usually goes too), ended a line.
+    self._log_ends_line = True
 
   def run(self):
+    try:
+      if not (launchd_process.use_launchd() and self._run_launchd()):
+        self._run_popen()
+    finally:
+      self._alive = False
+
+  def _run_popen(self):
     if self.use_env:
       # Allow specifically sending the environment (including CCTBX_COOT_PORT)
       #  and do not depend on details of the operating system
@@ -258,7 +286,87 @@ class external_program_thread(threading.Thread):
         if output is not None and output != "" :
           self.log.write(output)
           self.log.flush()
-    self._alive = False
+
+  def _run_launchd(self):
+    """macOS 26+: run the program as a launchd job, in a coalition of its own
+    (see libtbx.launchd_process), through /bin/sh -c as shell=True would.
+
+    A job can neither hand back pipes nor inherit this process's stdout and
+    stderr, so its output goes through files, copied as it arrives: with
+    intercept_output, stdout and stderr together into the log; otherwise
+    stdout and stderr to this process's file descriptors 1 and 2, where a
+    Popen child would have written them. A program that exits before
+    launchd reports its pid has run, as a Popen child that exits at once
+    has: its output is passed on and nothing is raised. Any other launch
+    failure is written to the log, since an exception out of this thread
+    would reach nobody. Returns False, having warned, if there is no GUI
+    session to start the job in, so that run() falls back to Popen."""
+    import codecs
+    import tempfile
+    command = self.command_args
+    if isinstance(command, str):
+      command = [command]
+    if self.intercept_output:
+      decoder = codecs.getincrementaldecoder("utf-8")("replace")
+      sinks = [lambda data, final=False: self._write_log(
+        decoder.decode(data, final))]
+    else:
+      sinks = [lambda data, final=False: self._write_out(1, data),
+               lambda data, final=False: self._write_out(2, data)]
+    paths, readers = [], []
+    try:
+      try:
+        for _ in sinks:
+          fd, path = tempfile.mkstemp(prefix="cctbx_external_",
+                                      suffix=".log")
+          os.close(fd)
+          paths.append(path)
+          readers.append(open(path, "rb"))
+        p = launchd_process.launch(
+          ["/bin/sh", "-c"] + list(command),
+          env=os.environ.copy() if self.use_env else None,
+          log_path=paths[0], stderr_path=paths[-1],
+          label_prefix="org.cctbx.xmlrpc", name=self.program_id,
+          warn=lambda msg: self._write_log(msg + "\n"))
+      except launchd_process.LaunchdRefused as exc:
+        self._write_log(
+          launchd_process.refused_warning(self.program_id, exc) + "\n")
+        return False
+      except launchd_process.ExitedAtOnce:
+        return True
+      except Exception as exc:         # a thread's exception reaches nobody
+        _copy_output(readers, sinks, final=True)   # what it wrote comes first
+        self._write_log("%sWARNING: could not start %s: %s\n"
+                        % ("" if self._log_ends_line else "\n",
+                           self.program_id, exc))
+        return True
+      while p.poll() is None:
+        time.sleep(0.5)
+        _copy_output(readers, sinks)
+      return True
+    finally:
+      try:
+        # what the program wrote last, or before it failed to start
+        _copy_output(readers, sinks, final=True)
+      finally:
+        for reader in readers:
+          reader.close()
+        for path in paths:
+          try:
+            os.remove(path)
+          except OSError:
+            pass
+
+  def _write_out(self, fd, data):
+    if data:
+      _write_fd(fd, data)
+      self._log_ends_line = data.endswith(b"\n")
+
+  def _write_log(self, text):
+    if text:
+      self.log.write(text)
+      self.log.flush()
+      self._log_ends_line = text.endswith("\n")
 
   # XXX: this is probably a bad idea
   def is_alive(self):
