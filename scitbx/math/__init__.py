@@ -38,6 +38,28 @@ Examples
 1.0 2.30258509299
 """
 
+golden_spiral.__doc__ = """
+Unit vectors spread over the sphere on a golden-angle spiral.
+
+The heights along y step evenly by 2 / count from next to the -y pole, half
+a step in from each pole, and the azimuth about y advances by the golden
+angle, pi * (3 - sqrt(5)).
+
+Parameters
+----------
+count : int
+  Number of points.
+
+Attributes
+----------
+count : int
+  Number of points.
+unit_area : float
+  The area of the unit sphere each point stands for, 4 pi / count.
+points : golden_spiral_points_range
+  The count unit vectors, from next to the -y pole; iterable.
+"""
+
 def median_statistics(data):
   return flex.median.dispersion(data)
 
@@ -369,32 +391,7 @@ def point_on_sphere(r, s_deg, t_deg, center):
   z = center[2] + r * cos(t)
   return x,y,z
 
-def fibonacci_sphere_points(n):
-  """Unit vectors spread over the sphere on a golden-angle spiral.
-
-  The heights along y step evenly from 1 - 1/n down to -(1 - 1/n), so
-  neither pole is a point, and the azimuth about y advances by the golden
-  angle, pi * (3 - sqrt(5)), from one point to the next.
-
-  Parameters
-  ----------
-  n : int
-    Number of points.
-
-  Returns
-  -------
-  scitbx.array_family.flex.vec3_double
-    The n unit vectors, starting next to the +y pole.
-  """
-  golden = math.pi * (3.0 - math.sqrt(5.0))
-  points = flex.vec3_double()
-  for i in range(n):
-    y = 1.0 - 2.0 * (i + 0.5) / n
-    r = math.sqrt(max(0.0, 1.0 - y * y))
-    points.append((math.cos(golden * i) * r, y, math.sin(golden * i) * r))
-  return points
-
-def saff_kuijlaars_sphere_points(n):
+def saff_kuijlaars_spiral(n):
   """Unit vectors spread over the sphere on the Saff-Kuijlaars spiral.
 
   The heights h along y step evenly from -1 up to 1, both poles included,

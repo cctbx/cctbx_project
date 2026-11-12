@@ -18,7 +18,8 @@ from scitbx.math import principal_axes_of_inertia, \
 from scitbx.math import sphere_3d, minimum_covering_sphere
 from scitbx.math import signed_phase_error, phase_error, nearest_phase
 from scitbx.math import icosahedron
-from scitbx.math import fibonacci_sphere_points, saff_kuijlaars_sphere_points
+from scitbx.math import saff_kuijlaars_spiral
+from scitbx.math import golden_spiral
 from scitbx.math import chebyshev_base
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_fitter
@@ -1396,28 +1397,32 @@ def exercise_icosahedron():
       assert d > m
       assert d/2 < m
 
-def exercise_sphere_points():
-  """Both spirals give n unit vectors with heights along y evenly spaced.
-
-  The Fibonacci sphere's heights run from 1 - 1/n down to -(1 - 1/n), its
-  azimuth about y advancing by the golden angle; the Saff-Kuijlaars
-  spiral's run from -1 up to 1, so its first and last points are the poles.
+def exercise_saff_kuijlaars_spiral():
+  """The Saff-Kuijlaars spiral gives n unit vectors with heights along y
+  evenly spaced from -1 up to 1, so its first and last points are the poles.
   """
   n = 64
-  for points in (fibonacci_sphere_points(n), saff_kuijlaars_sphere_points(n)):
-    assert points.size() == n, points.size()
-    assert approx_equal(points.dot(), [1] * n)
-  x, y, z = fibonacci_sphere_points(n).parts()
-  assert approx_equal(y, [1 - (2 * i + 1) / n for i in range(n)])
-  golden = math.pi * (3 - math.sqrt(5))
-  for i in range(1, n):
-    step = (math.atan2(z[i], x[i]) - math.atan2(z[i-1], x[i-1])) % (2*math.pi)
-    assert approx_equal(step, golden), (i, step)
-  points = saff_kuijlaars_sphere_points(n)
+  points = saff_kuijlaars_spiral(n)
+  assert points.size() == n, points.size()
+  assert approx_equal(points.dot(), [1] * n)
   heights = [-1 + 2 * k / (n - 1) for k in range(n)]
   assert approx_equal(points.parts()[1], heights)
   assert approx_equal(points[0], (0, -1, 0))
   assert approx_equal(points[n - 1], (0, 1, 0))
+
+def exercise_golden_spiral():
+  """golden_spiral(count) has count unit vectors on the golden-angle spiral,
+  from next to the -y pole, each standing for 4 pi / count of the sphere.
+  """
+  sampling = golden_spiral(count=5)
+  assert sampling.count == 5, sampling.count
+  assert approx_equal(sampling.unit_area, 4 * math.pi / 5)
+  assert approx_equal(list(sampling.points), [
+    (0.6, -0.8, 0.0),
+    (-0.6758097397797129, -0.4, 0.6190970809322855),
+    (0.08742572471695988, 0.0, -0.9961710408648278),
+    (0.5576434272376701, 0.4, 0.7273471028736039),
+    (-0.590828091189257, 0.8, -0.10450917022758696)])
 
 def exercise_basic_statistics():
   x = flex.double([])
@@ -2092,7 +2097,8 @@ def run():
   exercise_row_echelon()
   exercise_tensor_rank_2()
   exercise_icosahedron()
-  exercise_sphere_points()
+  exercise_saff_kuijlaars_spiral()
+  exercise_golden_spiral()
   exercise_basic_statistics()
   exercise_cheb_family()
   exercise_slatec_dlngam()

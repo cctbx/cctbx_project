@@ -40,6 +40,7 @@ namespace boost_python {
   void wrap_row_echelon();
   void wrap_tensor_rank_2();
   void wrap_icosahedron();
+  void wrap_golden_spiral();
   void wrap_chebyshev_base();
   void wrap_chebyshev_polynome();
   void wrap_chebyshev_fitter();
@@ -437,6 +438,7 @@ namespace {
     wrap_row_echelon();
     wrap_tensor_rank_2();
     wrap_icosahedron();
+    wrap_golden_spiral();
     wrap_chebyshev_base();
     wrap_chebyshev_polynome();
     wrap_chebyshev_fitter();
