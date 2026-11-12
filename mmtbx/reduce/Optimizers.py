@@ -303,7 +303,8 @@ class Optimizer(object):
                 fillAtomDump = True,
                 stopOptimizingAt = time.time() + 1.0e10,
                 symmetryCopies = None,
-                fixedHisProtonation = None
+                fixedHisProtonation = None,
+                chooseHisProtonation = False
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -375,6 +376,12 @@ class Optimizer(object):
     :param fixedHisProtonation: None, or the His whose protonation the user set, as
     (model id, chain id, resseq, icode), stripped (reduce_hydrogen.protonation_key()):
     they get no His flip Mover and no ion lock-down, with or without addFlipMovers.
+    :param chooseHisProtonation: With addFlipMovers False, each His still chooses HD1,
+    HE2 or both, among its unflipped states only, and the Asn/Gln/His flips that would
+    score better are listed (getSuggestedFlips()). The ion lock-down then sets a His
+    only in its unflipped orientation: a His whose ion binds only the flipped ring is
+    listed with the ion. No effect with addFlipMovers. Without this parameter and
+    without addFlipMovers the ion lock-down still flips a His to bind its ion.
     """
 
     ################################################################################
@@ -393,6 +400,7 @@ class Optimizer(object):
     self._cliqueOutlineFileName = cliqueOutlineFileName
     self._symmetryCopies = symmetryCopies
     self._fixedHis = set(fixedHisProtonation or ())
+    self._chooseHis = chooseHisProtonation and not addFlipMovers
 
     ################################################################################
     # Initialize internal variables.
@@ -405,6 +413,7 @@ class Optimizer(object):
     self._numCached = 0
     self._amideFlipsPerformed = []  # List of amide flips performed, whether by Mover or locking in place.
     self._hisFlipsPerformed = []    # List of histidine flips performed, whether by Mover or locking in place.
+    self._suggestedFlips = {}       # flips scored but not made (chooseHisProtonation), by residue
     self._hydrogensToDelete = []    # Each as decided by the last alternate pass that contained it.
     self._environmentAtoms = []     # Symmetry copies and their Phantom Hydrogens in this pass.
     self._passCopies = []           # (copy, original, rt_mx) for the originals in this pass
@@ -855,6 +864,11 @@ class Optimizer(object):
         self._finalScore = dict((m, self._ScoreMover(m, self._dotScorer)) for m in self._movers)
 
         ################################################################################
+        # Flips that are not made: each scored alone, with everything else as placed.
+        if self._chooseHis:
+          self._SuggestFlips(mi, alt, passNeighborLists, dotSphereCache)
+
+        ################################################################################
         # Print the final state and score for all Movers
         def _scoreMoverReportClash(self, m, index):
           coarse = m.CoarsePositions()
@@ -884,7 +898,10 @@ class Optimizer(object):
           # if they are close in energy. If so, then we annotate the output.
           # We add the same number of words to the output string in all cases to make things
           # easier for a program to parse.
-          if "lipped " in description:
+          # A His Mover with one orientation (HisPlace) has no other flip state.
+          oneOrientation = (isinstance(m, Movers.MoverHisFlip) and
+            m.EnabledFlipStates() != 3)
+          if "lipped " in description and not oneOrientation:
             coarse = m.CoarsePositions()
             numPositions = len(coarse.positions)
             final = optC.GetCoarseLocation(m)
@@ -1516,6 +1533,154 @@ class Optimizer(object):
     """
     return list(self._hisFlipsPerformed)
 
+  def getSuggestedFlips(self):
+    """
+      With chooseHisProtonation and addFlipMovers False: the Asn/Gln amide and His ring
+      flips that were scored but not made, each alone with everything else as placed,
+      whose best flipped state scores better than the pose kept by more than
+      preferenceMagnitude * nonFlipPreference, and the His whose ion binds only the
+      flipped ring. A later alternate pass that handles a residue replaces or withdraws
+      the entry of an earlier one.
+      :return: list of group_args (model, alt, atom (ND2 or NE2), kind 'AmideFlip' or
+      'HisFlip', resNameAndID, gain (best flipped state minus the kept pose, without
+      the flip penalty; None for a His listed for its ion whose flip could not be
+      scored), threshold, chosen and flipped (pose descriptions; flipped None when not
+      scored), ion (None,
+      or group_args(atom (of the model, also for an ion in a symmetry copy), rt_mx
+      (None for the model's own ion), ring (CE1 or CD2, whose site the flipped ring N
+      takes), distance (of that ring atom from the ion as modelled)))), in model order.
+    """
+    result = [v for v in self._suggestedFlips.values() if v is not None]
+    return sorted(result, key=lambda v: (v.model, v.atom.i_seq))
+
+  def _scorePoseAtoms(self, atoms, passNeighborLists, dotSphereCache):
+    """Score of these atoms where they are now, as _ScoreMover scores a pose, without
+    the preference energy; deleted atoms do not count."""
+    score = 0.0
+    for b in atoms:
+      if b in self._deleteMes:
+        continue
+      if b.i_seq not in self._excludeDict:
+        self._excludeDict[b.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBondsAtAnyDistance(b,
+          passNeighborLists, self._extraAtomInfo, self._bondedNeighborDepth, 3)
+      rad = self._extraAtomInfo.getMappingFor(b).vdwRadius
+      score += self._dotScorer.score_dots(b, self._minOccupancy, self._spatialQuery,
+        rad + self._maximumVDWRadius, self._probeRadius, self._excludeDict[b.i_seq],
+        dotSphereCache.get_sphere(rad).dots(), self._probeDensity, False, False).totalScore()
+    return score
+
+  def _SuggestFlips(self, mi, alt, passNeighborLists, dotSphereCache):
+    """Score the flip candidates of this pass (flips off) in the final environment:
+    the pose kept (its sites as optimized) against every flipped coarse state of a
+    full flip Mover, then back to the kept pose. Copies of the residue do not follow
+    its flipped states."""
+    from libtbx import group_args
+    threshold = self._preferenceMagnitude * self._nonFlipPreference
+    copyOf = {}
+    for c, o, rt in self._passCopies:
+      copyOf[c] = (o, rt)
+    def suggestKey(a):
+      rg = a.parent().parent()
+      return (mi, rg.parent().id, rg.resseq, rg.icode, a.parent().resname, a.parent().altloc)
+    # this pass decides for every residue it handled, candidate or not (locked to an
+    # ion, linked, not scored); entries of other alternate residues stay
+    earlier = {}
+    for a in self._flipHandled:
+      key = suggestKey(a)
+      if self._suggestedFlips.get(key) is not None:
+        earlier[key] = self._suggestedFlips[key]
+      self._suggestedFlips[key] = None
+    for candAlt, a, place, ion in self._flipCandidates:
+      # The amide Mover re-places the NH2 Hydrogens when it is built: keep the sites
+      # of the residue's atoms in this pass (its H may be in a conformer when its N
+      # is not), out of the spatial query while it is built, and put them back.
+      saved = [(b, b.xyz) for b in a.parent().parent().atoms() if b in passNeighborLists]
+      inQuery = [b for b, xyz in saved if b not in self._deleteMes]
+      def restoreSites():
+        for b in inQuery:
+          self._spatialQuery.remove(b)
+        for b, xyz in saved:
+          b.xyz = xyz
+        for b in inQuery:
+          self._spatialQuery.add(b)
+      m = None
+      pr = None
+      chosen = 0
+      kind = 'AmideFlip'
+      if place is not None:
+        chosen = self._optimizerOf[place].GetCoarseLocation(place)
+        kind = 'HisFlip'
+      stateSet = False
+      try:
+        for b in inQuery:
+          self._spatialQuery.remove(b)
+        try:
+          if place is None:
+            m = Movers.MoverAmideFlip(a, "CA", passNeighborLists, self._nonFlipPreference)
+          else:
+            m = Movers.MoverHisFlip(a, passNeighborLists, self._extraAtomInfo,
+              self._nonFlipPreference)
+        finally:
+          for b in inQuery:
+            self._spatialQuery.add(b)
+        pr = m.CoarsePositions()
+        restoreSites()
+        kept = self._preferenceMagnitude * pr.preferenceEnergies[chosen] + \
+          self._scorePoseAtoms(pr.atoms[:len(pr.positions[chosen])], passNeighborLists,
+            dotSphereCache)
+        half = len(pr.positions)//2
+        best = None
+        bestScore = None
+        for i in range(half, len(pr.positions)):
+          stateSet = True
+          self._setMoverState(pr, i)
+          score = self._preferenceMagnitude * pr.preferenceEnergies[i] + \
+            self._scorePoseAtoms(pr.atoms[:len(pr.positions[i])], passNeighborLists,
+              dotSphereCache)
+          if best is None or score > bestScore:
+            best = i
+            bestScore = score
+      except Exception as e:
+        # with flips off the residue is only not scored; the default verbosity (2)
+        # would show a level-1 line in every default run
+        self._infoString += _VerboseCheck(self._verbosity, 3,"Could not score the flip of "+
+          _ResNameAndID(a)+": "+str(e)+"\n")
+        m = None
+      finally:
+        if stateSet:
+          self._setMoverState(pr, chosen)
+        restoreSites()
+      if m is None and ion is None:
+        continue
+      key = suggestKey(a)
+      ionInfo = None
+      if ion is not None:
+        ionAtom, ring, dist = ion
+        rt = None
+        if ionAtom in copyOf:
+          ionAtom, rt = copyOf[ionAtom]
+        ionInfo = group_args(atom = ionAtom, rt_mx = rt, ring = ring, distance = dist)
+      if m is None:
+        # the ion evidence does not depend on a score
+        self._suggestedFlips[key] = group_args(model = mi + 1, alt = candAlt, atom = a,
+          kind = kind, resNameAndID = _ResNameAndID(a), gain = None, threshold = threshold,
+          chosen = place.PoseDescription(chosen, None, False), flipped = None, ion = ionInfo)
+        self._infoString += _VerboseCheck(self._verbosity, 1,"Suggested flip: "+kind+" at "+
+          _ResNameAndID(a)+" (for its ion; the flip could not be scored)\n")
+        continue
+      gain = bestScore - kept + threshold
+      if gain > threshold or ionInfo is not None:
+        self._suggestedFlips[key] = group_args(model = mi + 1, alt = candAlt, atom = a,
+          kind = kind, resNameAndID = _ResNameAndID(a), gain = gain, threshold = threshold,
+          chosen = m.PoseDescription(chosen, None, False),
+          flipped = m.PoseDescription(best, None, False), ion = ionInfo)
+        self._infoString += _VerboseCheck(self._verbosity, 1,"Suggested flip: "+kind+" at "+
+          _ResNameAndID(a)+" (flipped minus kept score {:.2f})\n".format(gain))
+    for key, entry in earlier.items():
+      if self._suggestedFlips[key] is None:
+        self._infoString += _VerboseCheck(self._verbosity, 1,"Suggested flip of "+
+          entry.resNameAndID+" withdrawn: not suggested in this pass\n")
+
   def _setMoverState(self, positionReturn, index):
     """
       Move the atoms to their new positions, updating the spatial query structure
@@ -1601,6 +1766,11 @@ class Optimizer(object):
     # List of Movers
     self._movers = []
 
+    # Flip Movers not made with flips off: (alt, ND2/NE2 atom, His Mover or None, ion or None)
+    self._flipCandidates = []
+    # With flips off, the ND2/NE2 of every Asn, Gln and His of this pass, candidate or not
+    self._flipHandled = []
+
     # List of atoms to delete
     deleteAtoms = []
 
@@ -1631,6 +1801,9 @@ class Optimizer(object):
       aName = a.name.strip().upper()
       resName = a.parent().resname.strip().upper()
       resNameAndID = _ResNameAndID(a)
+      if self._chooseHis and not addFlipMovers and ((aName == 'ND2' and resName == 'ASN') or
+          (aName == 'NE2' and resName in ('GLN', 'HIS'))):
+        self._flipHandled.append(a)
 
       # See if we should construct a MoverNH3Rotator here.
       # Find any Nitrogen that has four total bonded neighbors, three of which are Hydrogens.
@@ -1681,7 +1854,8 @@ class Optimizer(object):
       # @todo Is there a more general way than looking for specific names?
       if addFlipMovers and ((aName == 'XD2' and resName == 'ASX') or (aName == 'XE2' and resName == 'GLX')):
         self._infoString += _VerboseCheck(self._verbosity, 1,"Not attempting to adjust "+resNameAndID+" "+aName+"\n")
-      if addFlipMovers and ((aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN')):
+      if (addFlipMovers or self._chooseHis) and (
+          (aName == 'ND2' and resName == 'ASN') or (aName == 'NE2' and resName == 'GLN')):
         # Find the Oxygen and see if it is within a range of ideal bonding distances to a positive ion.
         # Do this in two steps; find the Carbon bonded to the Nitrogen and then the Oxygen bonded to the
         # Carbon.
@@ -1710,7 +1884,10 @@ class Optimizer(object):
               if dist >= (expected - 0.65) and dist <= (expected + 0.25):
                 foundIon = True
 
-        if not foundIon:
+        if not foundIon and not addFlipMovers:
+          # flips off: scored after the optimization, never made
+          self._flipCandidates.append((alt, a, None, None))
+        elif not foundIon:
           try:
             # Check to see if the state of this Mover has been specified. If so, place it in
             # the requested state and don't insert the Mover. If not, then insert the Mover.
@@ -1774,6 +1951,7 @@ class Optimizer(object):
           minDist = myRad
           maxDist = 0.25 + myRad + self._maximumVDWRadius
           bondedConfig = None
+          bondedIon = None
           for i,pos in enumerate([ne2Orig, nd1Orig, ne2Flip, nd1Flip]):
             neighbors = self._spatialQuery.neighbors(pos, minDist, maxDist)
             for n in neighbors:
@@ -1788,11 +1966,25 @@ class Optimizer(object):
                   # and the second two from configuration flippedConfig, so we figure out which one we
                   # should be in.
                   bondedConfig = (i // 2) * flippedConfig
+                  bondedIon = n
+                  bondedPos = i
+                  bondedDist = dist
                   self._infoString += _VerboseCheck(self._verbosity, 5,'Found ionic bond in coarse configuration '+str(bondedConfig)+'\n')
                   break
             if bondedConfig is not None:
               # We want the first configuration that is found, so we don't flip if we don't need to.
               break
+
+          # His states chosen without flips: no heavy atom moves, so a His whose ion
+          # binds only its flipped ring is not locked; it is listed as a suggested
+          # flip with the ion. Other callers without flips keep the flip.
+          ionOnlyFlipped = None
+          if bondedConfig == flippedConfig and self._chooseHis:
+            # the flipped N sites are the modelled CE1 (NE2) and CD2 (ND1) sites
+            ionOnlyFlipped = (bondedIon, ('CE1', 'CD2')[bondedPos - 2], bondedDist)
+            bondedConfig = None
+            self._infoString += _VerboseCheck(self._verbosity, 1,"Not locking "+resNameAndID+
+              ": "+bondedIon.name.strip()+" binds only the flipped ring (flips off)\n")
 
           # If one of the bonded configurations has at least one Ionic bond, then check each of
           # the Nitrogens in that configuration, removing its Hydrogen if it is bonded to an ion.
@@ -1844,7 +2036,8 @@ class Optimizer(object):
             self._infoString += _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5])
 
             self._infoString += _VerboseCheck(self._verbosity, 1,"Set MoverHisFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
-          elif addFlipMovers and _HisRingNitrogensWithNonstandardBond(a, bondedNeighborLists):
+          elif (addFlipMovers or self._chooseHis) and _HisRingNitrogensWithNonstandardBond(
+              a, bondedNeighborLists):
             # Issue #1199: a ring Nitrogen carries a bond outside the standard ring
             # connectivity that the ion lock-down above (bondedConfig) did not handle
             # -- a user-defined/custom bond, or an ion the spatial search missed.
@@ -1855,6 +2048,9 @@ class Optimizer(object):
             # is left dangling on an atom that is already bonded to its partner.
             self._infoString += _VerboseCheck(self._verbosity, 1,"Did not add MoverHisFlip to "+resNameAndID+
               " (bond outside standard ring connectivity)\n")
+            if ionOnlyFlipped is not None:
+              self._infoString += _VerboseCheck(self._verbosity, 1,"Not listing "+resNameAndID+
+                ": a ring Nitrogen has a bond outside the ring\n")
             for nitro, hydro in _HisRingNitrogensWithNonstandardBond(a, bondedNeighborLists):
               extra = self._extraAtomInfo.getMappingFor(nitro)
               extra.isAcceptor = True
@@ -1891,6 +2087,15 @@ class Optimizer(object):
               hisStateAcceptors.update(_HisAcceptorsInAnyState(hist))
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
               self._moverInfo[self._movers[-1]] = "HisFlip at "+resNameAndID+" "+aName;
+          elif self._chooseHis:
+            # Flips off: the unflipped states only (HD1, HE2 or both), no fix-up.
+            place = Movers.MoverHisFlip(a, bondedNeighborLists, self._extraAtomInfo,
+              self._nonFlipPreference, 1)
+            self._movers.append(place)
+            hisStateAcceptors.update(_HisAcceptorsInAnyState(place))
+            self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisPlace "+str(len(self._movers))+" to "+resNameAndID+"\n")
+            self._moverInfo[self._movers[-1]] = "HisPlace at "+resNameAndID+" "+aName;
+            self._flipCandidates.append((alt, a, place, ionOnlyFlipped))
         except Exception as e:
           self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
 
@@ -2115,16 +2320,23 @@ def _HisRingNitrogensWithNonstandardBond(ne2Atom, bondedNeighborLists):
   Carbons, the ring Nitrogens are not protected by the MoverHisFlip
   neighbour-count checks, so we detect the extra bond here from the restraint bond
   list.
-  :param ne2Atom: NE2 atom of the Histidine (its atom_group holds ND1 and NE2).
+  :param ne2Atom: NE2 atom of the Histidine.
   :param bondedNeighborLists: dictionary from probe.Helpers.getBondedNeighborLists().
   :return: list of (nitrogen, hydrogen) tuples, one per ring Nitrogen that has a
   nonstandard bond. hydrogen is that Nitrogen's bonded Hydrogen, or None if the
   input model does not have it (we do not assume the Hydrogens are present).
   '''
-  ret = []
-  for atom in ne2Atom.parent().atoms():
-    if atom.name.strip() not in ('ND1', 'NE2'):
+  # ND1 through CE1, by the bonds of this conformer: it may be in another atom_group
+  # than NE2 when the ring is split into conformers
+  ring = [ne2Atom]
+  for c in bondedNeighborLists[ne2Atom]:
+    if c.name.strip() != 'CE1':
       continue
+    for n in bondedNeighborLists[c]:
+      if n.name.strip() == 'ND1' and n not in ring:
+        ring.append(n)
+  ret = []
+  for atom in ring:
     hydrogen = None
     nonstandard = False
     for neighbor in bondedNeighborLists[atom]:

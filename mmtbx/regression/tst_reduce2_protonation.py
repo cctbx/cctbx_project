@@ -757,7 +757,8 @@ def test_supplied_pair_relabelled():
 def test_acid_out_of_plane_line():
   # A46, report only: the acid H on frag_swapped's Asp 99 ends 67 deg from
   # the carboxyl plane, and its line gives the angle (no cause: none is
-  # checked). frag with preference_magnitude=0: about 89 deg. Glu 143, and
+  # checked). frag with preference_magnitude=0: about 90 deg (HD2 is in a
+  # Clique with the His 56 Mover, which chooses the His state). Glu 143, and
   # both in frag with the default preference (control), end in the plane.
   _, desc, _ = run("tst_reduce2_protonation_32", frag_swapped_str(),
     [("resseq 99 or resseq 143", "protonated")])
@@ -770,7 +771,7 @@ def test_acid_out_of_plane_line():
   assert "  ASP A 99: protonated on OD2 (protonated): HD2 added\n" in desc0
   _, desc1, _ = run("tst_reduce2_protonation_34", frag_str,
     [("resseq 99", "protonated")], ["preference_magnitude=0"])
-  assert ("  ASP A 99: protonated on OD2 (protonated): HD2 added, HD2 89 deg "
+  assert ("  ASP A 99: protonated on OD2 (protonated): HD2 added, HD2 90 deg "
     "out of the carboxyl plane\n") in desc1, desc1
 
 def test_supplied_h_per_conformer():
@@ -815,15 +816,17 @@ def h_names_all(text, resseq):
 def test_qmready_charge():
   # The qmready total charge follows the states: +1 per protonated acid,
   # -1 for a His with one ring H instead of both, -1 per deprotonated
-  # Cys or Tyr.
+  # Cys or Tyr. His 56 is set to both ring H in the reference runs (by
+  # default it chooses one).
   def charge(prefix, entries):
     _, _, log = run(prefix, frag_str, entries, ["qmready=True"])
     lines = [l for l in log.splitlines() if l.startswith("Total charge:")]
     assert len(lines) == 1, lines
     return int(lines[0].split()[-1])
-  q0 = charge("tst_reduce2_protonation_18", [])
+  both = [("resseq 56", "his_both")]
+  q0 = charge("tst_reduce2_protonation_18", both)
   q1 = charge("tst_reduce2_protonation_19",
-    [("resseq 99 or resseq 143", "protonated")])
+    both + [("resseq 99 or resseq 143", "protonated")])
   assert q1 == q0 + 2, (q0, q1)
   q2 = charge("tst_reduce2_protonation_20", [("resseq 56", "his_hd1"),
     ("resseq 57 or resseq 61", "deprotonated")])

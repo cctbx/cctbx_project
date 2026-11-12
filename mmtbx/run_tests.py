@@ -529,6 +529,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_model_id.py",
   "$D/regression/tst_reduce2_peak_memory.py",
   "$D/regression/tst_reduce2_place.py",
+  "$D/regression/tst_reduce2_his_states_default.py",
   "$D/regression/tst_reduce2_metal_thiol.py",
   "$D/regression/tst_reduce2_metal_nh.py",
   "$D/regression/tst_reduce2_metal_amine.py",

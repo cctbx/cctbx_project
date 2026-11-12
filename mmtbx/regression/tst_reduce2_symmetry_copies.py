@@ -212,8 +212,9 @@ def test_ion_lock_through_copy():
   assert "ionic bond" not in desc_off
 
 def test_ion_lock_with_defaults():
-  # reduce2's defaults, no flips: the Cd in the mate takes HE2 away. Without
-  # copies there is no His Mover and both ring H stay, HE2 1.45 A from the Cd.
+  # reduce2's defaults, no flips: the Cd in the mate takes HE2 away (ion
+  # lock). Without copies the His chooses its state by score, blind to the
+  # Cd (here HD1 too).
   def ring_h(text):
     h = iotbx.pdb.input(lines=text.split("\n"), source_info=None
       ).construct_hierarchy()
@@ -228,7 +229,8 @@ def test_ion_lock_with_defaults():
   off, desc_off, _ = run("tst_reduce2_symmetry_copies_31", his_cd_str,
     ["include_symmetric_copies=False"])
   assert "ionic bond" not in desc_off
-  assert ring_h(off) == ["HD1", "HE2"], ring_h(off)
+  assert "Added MoverHisPlace 1 to chain A HIS 354" in desc_off, desc_off
+  assert ring_h(off) == ["HD1"], ring_h(off)
 
 def test_multi_model():
   # Model 1 has the Asp 6 A away along y: no contact, no copies. Model 2

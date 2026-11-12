@@ -99,11 +99,14 @@ def _nd1_neighbor_names(model):
       return set(n.name.strip() for n in bnl[a])
   return set()
 
-def _optimizer_for(pdb_str, custom_bond=None):
+def _optimizer_for(pdb_str, custom_bond=None, add_flip_movers=True,
+    choose_his=False):
   """Place H, make restraints, optionally add a custom bond, build the Optimizer.
 
   :param custom_bond: optional ((resname1, name1), (resname2, name2)) to bond.
-  :return: (optimizer, model).  addFlipMovers=True so flip Movers are considered.
+  :param add_flip_movers, choose_his: the Optimizer's addFlipMovers and
+    chooseHisProtonation (reduce2's default: False, True).
+  :return: (optimizer, model).
   """
   dm = DataManager(['model'])
   dm.process_model_str("tst_reduce_custom_bond.pdb", pdb_str)
@@ -126,8 +129,9 @@ def _optimizer_for(pdb_str, custom_bond=None):
       distance_ideal=2.3, weight=1/0.02**2)
     model.get_restraints_manager().geometry.add_new_bond_restraints_in_place(
       proxies=[proxy], sites_cart=model.get_sites_cart())
-  opt = Optimizers.Optimizer(Optimizers._philLike(), True, model,
-                             bondedNeighborDepth=4)
+  opt = Optimizers.Optimizer(Optimizers._philLike(), add_flip_movers, model,
+                             bondedNeighborDepth=4,
+                             chooseHisProtonation=choose_his)
   return opt, model
 
 def test_his_is_flippable_without_custom_bond():
@@ -182,6 +186,60 @@ def test_metal_coordinated_his_stays_locked():
     "bonded-neighbour check must run AFTER the lock-down, not before it.\n" + info)
   assert "Added MoverHisFlip" not in info, info
   print("test_metal_coordinated_his_stays_locked OK")
+
+def test_custom_bond_default_no_flips():
+  """reduce2's default (no flips, His states chosen): the His with the ND1-SG
+  bond loses HD1 and gets no His Mover and no suggested flip; no heavy atom
+  moves. (The N is marked an acceptor; that says nothing of the chemistry
+  of other links.)"""
+  from scitbx.array_family import flex
+  dm = DataManager(['model'])
+  dm.process_model_str("tst_reduce_custom_bond_in.pdb", his_cys_pdb)
+  start = dm.get_model().get_sites_cart()
+  opt, model = _optimizer_for(his_cys_pdb,
+    custom_bond=(("HIS", "ND1"), ("CYS", "SG")), add_flip_movers=False,
+    choose_his=True)
+  info = opt.getInfo()
+  assert "bond outside standard ring connectivity" in info, info
+  assert "Added MoverHis" not in info, info
+  deleted = set((h.parent().resname.strip(), h.name.strip())
+                for h in opt.getHydrogensToDelete())
+  assert ("HIS", "HD1") in deleted, deleted
+  assert opt.getSuggestedFlips() == [], opt.getSuggestedFlips()
+  h = model.get_hierarchy()
+  sel = flex.bool([not a.element_is_hydrogen() for a in h.atoms()])
+  assert sel.count(True) == start.size(), (sel.count(True), start.size())
+  assert flex.max((h.atoms().extract_xyz().select(sel) - start).norms()) < 1e-6
+  # NE2 and CE1 split into conformers A and B, ND1 blank: the bond on ND1 is
+  # still found in each pass
+  split = []
+  for l in his_cys_pdb.split("\n"):
+    if l.startswith("ATOM") and l[17:20] == "HIS" and \
+        l[12:16].strip() in ("NE2", "CE1"):
+      split += [l[:16] + alt + l[17:54] + "  0.50" + l[60:] for alt in "AB"]
+    else:
+      split.append(l)
+  opt, model = _optimizer_for("\n".join(split),
+    custom_bond=(("HIS", "ND1"), ("CYS", "SG")), add_flip_movers=False,
+    choose_his=True)
+  info = opt.getInfo()
+  # two lines in each of the two passes
+  assert info.count("bond outside standard ring connectivity)\n") == 4, info
+  assert "Added MoverHis" not in info, info
+  deleted = set((h.parent().altloc, h.name.strip())
+                for h in opt.getHydrogensToDelete())
+  assert deleted == set([("A", "HD1"), ("B", "HD1")]), deleted
+  # a Zn that binds only the flipped ring: not locked, and the log says why
+  # it is not listed either
+  from mmtbx.regression.tst_reduce_switch import his_zn_str
+  opt, model = _optimizer_for(his_zn_str(),
+    custom_bond=(("HIS", "NE2"), ("EOH", "O")), add_flip_movers=False,
+    choose_his=True)
+  info = opt.getInfo()
+  assert ("Not listing chain A HIS 1: a ring Nitrogen has a bond outside the "
+    "ring") in info, info
+  assert opt.getSuggestedFlips() == [], opt.getSuggestedFlips()
+  print("test_custom_bond_default_no_flips OK")
 
 # 4KW9 His 139, 147, 169, 202, 204 (Thr 203) and Zn 301-304: the ion
 # lock-down removes one ring H from each His (5 H in 5 residues, no scoring).
@@ -265,5 +323,6 @@ if __name__ == "__main__":
   test_his_is_flippable_without_custom_bond()
   test_custom_bond_on_his_ring_n_suppresses_flip()
   test_metal_coordinated_his_stays_locked()
+  test_custom_bond_default_no_flips()
   test_deleted_h_in_model_order()
   print("OK")

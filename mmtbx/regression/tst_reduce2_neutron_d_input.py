@@ -196,8 +196,10 @@ def test_d_input_qmready():
 def test_unused_records():
   # input pairs on His HD1 and HE2: the Optimizer flips the His and deletes
   # HD1 (the ring N that keeps its H is not an acceptor), so the recorded
-  # values for HD1 are not used and listed by site
-  src = cached_run(his_no_h, neutron_option="hd_and_h").text
+  # values for HD1 are not used and listed by site. Placed, not added: add
+  # chooses the His state, which leaves one of HD1 and HE2.
+  src = cached_run(his_no_h, neutron_option="hd_and_h",
+    approach="place").text
   fn, log, description = run_reduce2("tst_r2n_d_input_unused", src,
     ["approach=optimize", "neutron_option=hd_and_h", "add_flip_movers=True"])
   assert "Deleting chain A HIS 45 HD1" in description, description
@@ -242,7 +244,8 @@ def test_remove_d_input():
 def test_remove_then_qmready():
   # the qmready hint: hd_and_h output -> approach=remove -> qmready=True runs
   # free His: atom-complete, as qmready requires (the dipeptide is not)
-  src = cached_run(his_no_h, neutron_option="hd_and_h").text
+  src = cached_run(his_no_h, neutron_option="hd_and_h",
+    approach="place").text
   assert " DD1BHIS" in src
   fn, log, description = run_reduce2("tst_r2n_d_input_rmq", src,
     ["approach=remove"])

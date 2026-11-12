@@ -37,13 +37,13 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.12.1"
+version = "3.13.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
   .type = choice
   .short_caption = Add (and optimize), remove, optimize, or place Hydrogens
-  .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model, or place them without optimizing (place). Note: if using optimize and add_flip_movers=True, all possible hydrogens must be added to histidines (even ones making collision). remove removes all H and D atoms and renames DOD waters to HOH.
+  .help = Determines whether Reduce will add (and optimize), remove, or optimize Hydrogens from the model, or place them without optimizing (place). Note: with optimize, a His gets a His Mover only if it has both HD1 and HE2. A His with one ring H keeps its H as in the input: no protonation choice, no flip score in the Suggested flips and, with add_flip_movers=True, no flip. remove removes all H and D atoms and renames DOD waters to HOH.
 keep_existing_H = False
   .type = bool
   .short_caption = Do not remove Hydrogens in the original model
@@ -99,7 +99,24 @@ model_id = None
 add_flip_movers = False
   .type = bool
   .short_caption = Add flip movers
-  .help = Insert flip movers (-flip, -build, -noflip, -demandflipallnhqs in reduce)
+  .help = Flip Asn and Gln amides and His rings where the flipped orientation \
+          scores better by more than preference_magnitude times \
+          non_flip_preference (Asn OD1 and ND2, Gln OE1 and NE2, His ND1 and \
+          CD2, CE1 and NE2 exchange places). A flip moves heavy atoms: the \
+          exchanged atoms and, unless skip_bond_fix_up=True, the side chain \
+          docked back to its bond geometry. B factors and ANISOU stay with \
+          the atom names. False (default): no heavy atom moves. Each His \
+          chooses HD1, HE2 or both in its input orientation (a His whose \
+          protonation is set by the user keeps it, a His bound to a metal \
+          through a ring N loses the H on that N, as does a ring N with \
+          another bond outside the ring), and the flips that would \
+          score better are listed in the description file (Suggested \
+          flips) but not made. The log gives their number and names each \
+          listed His whose metal binds only the flipped ring. With True, a His \
+          locked by set_flip_states (also in the flipkin runs) gets no \
+          Uncertain or BothClash note in the Mover report, since it has one \
+          orientation only. In reduce: -build, -flip (and -noflip, \
+          -nobuild#, which also set preference_magnitude).
 non_flip_preference = 0.5
   .type = float
   .short_caption = Preference to not flip
@@ -1049,7 +1066,7 @@ Output:
   with the same base name (.cif), and the log says so.
   If output.filename is not specified, the output file will be
   written into the current working directory with the same base name and type as the
-  original file and with FH or H added to the base name (FH when flips are requested);
+  original file and with FH or H added to the base name (FH with add_flip_movers=True);
   1xs0.pdb would be written to ./1xsoH.pdb and 1xso.cif to ./1xsoH.cif by default.
   With neutron_option other than none, _<option> follows: ./1xsoH_all_d.pdb.
 
@@ -1061,6 +1078,14 @@ NOTES:
   for the final alternate tested.  This may leave other alternates in sub-optimal configurations.
   When a single alternate is selected using alt_id= on the command line, everything is
   optimized a single time and for that configuration.
+
+  By default (add_flip_movers=False) no heavy atom moves: each His chooses HD1, HE2 or
+  both in its input orientation, and Asn/Gln amides keep theirs. The flips that would
+  score better than the pose kept are listed in the description file (Suggested flips),
+  each judged alone with the rest as placed; the log gives their number. A His whose
+  metal binds only the flipped ring is listed with the metal (and its symmetry operator
+  for a metal in a symmetry copy), also in the log. add_flip_movers=True makes the
+  flips, with the flipped residues optimized together.
 
   neutron_option writes a model for neutron refinement. Every option other than none
   switches on use_neutron_distances (qmready=True does too). Exchangeable H are H on a
@@ -1158,11 +1183,15 @@ NOTES:
     -flip: approach=add add_flip_movers=True
     -allalt: This is the default.
     -penalty200: preference_magnitude=200
-    -nobuild9999: approach=add preference_magnitude=9999
-    -noflip: approach=add add_flip_movers=True preference_magnitude=9999
+    -nobuild#: approach=add add_flip_movers=True preference_magnitude=#
+    -noflip: approach=add add_flip_movers=True preference_magnitude=9999 (as -nobuild9999).
+             The large penalty is a bias against flips: a His whose metal binds only the
+             flipped ring is still flipped, unlike the default. It also scales the 0.05
+             bias against a His with both ring H: such a His keeps one.
     -onlya: alt_id=A
     -nuclear: use_neutron_distances=True
-    -demandflipallnhqs: add_flip_movers=True
+    -demandflipallnhqs: no such option in reduce (-build, -flip, -noflip and -nobuild set
+                        it); flips: add_flip_movers=True
     -rad0.25: probe.probe_radius=0.25
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
@@ -1616,6 +1645,65 @@ NOTES:
     return text
 
 # ------------------------------------------------------------------------------
+
+  def _SuggestedFlipsText(self, flips):
+    # :param flips: Optimizer.getSuggestedFlips().
+    # :return: (the Suggested flips section of the description file, one log
+    # line per His whose metal binds only the flipped ring).
+    def _h(pose):
+      # 'Unflipped HD1Placed HE2NotPlaced .' -> 'HD1'
+      words = pose.split()
+      h = [w[:3] for w in words if w in ('HD1Placed', 'HE2Placed')]
+      return '+'.join(h)
+    def _where(f):
+      rg = f.atom.parent().parent()
+      ag = f.atom.parent()
+      where = 'chain %s %s %s%s' % (rg.parent().id.strip(), ag.resname.strip(),
+        rg.resseq.strip(), rg.icode.strip())
+      if ag.altloc.strip():
+        where += ' conformer %s' % ag.altloc
+      if len(models) > 1 or f.model != 1:
+        where = 'model %d %s' % (f.model, where)
+      return where
+    def _ion(ion):
+      a = ion.atom
+      irg = a.parent().parent()
+      text = '%s %s %s%s' % (a.parent().resname.strip(), irg.parent().id.strip(),
+        irg.resseq.strip(), irg.icode.strip())
+      if ion.rt_mx is not None:
+        text += ' (symmetry copy %s)' % ion.rt_mx
+      return text
+    lines = ['Suggested flips (add_flip_movers=False, none made): %d' % len(flips)]
+    metal = []
+    if not flips:
+      return lines[0], metal
+    lines.append('  Each scored alone, with everything else as placed; listed when the '
+      'flipped orientation scores')
+    lines.append('  better than the pose kept by more than preference_magnitude * '
+      'non_flip_preference = %.2f,' % flips[0].threshold)
+    lines.append('  or when a metal binds only the flipped His ring.')
+    models = set(f.model for f in flips)
+    for f in flips:
+      where = _where(f)
+      if f.gain is None:
+        text = '  %s: listed for its metal, flip not scored' % where
+      elif f.gain > 0:
+        text = '  %s: flipped scores better by %.2f' % (where, f.gain)
+      else:
+        text = '  %s: listed for its metal, flipped scores %.2f worse' % (
+          where, -f.gain)
+      if f.kind == 'HisFlip' and f.flipped is not None:
+        text += ' (%s as chosen, %s flipped)' % (_h(f.chosen), _h(f.flipped))
+      if f.ion is not None:
+        text += '; %s binds only the flipped ring' % _ion(f.ion)
+        d = ''
+        if f.ion.distance is not None:
+          d = ', %s %.2f A from it as modelled' % (f.ion.ring, f.ion.distance)
+        metal.append('  %s: %s binds only the flipped ring%s, not flipped' % (
+          where, _ion(f.ion), d))
+      lines.append(text)
+    lines.append('  Use add_flip_movers=True to apply them.')
+    return '\n'.join(lines), metal
 
   def _MissingRestraintsSorry(self, resnames):
     return Sorry("Restraints were not found for the following residues:" +
@@ -3131,7 +3219,8 @@ NOTES:
           fillAtomDump = self.params.output.print_atom_info,
           stopOptimizingAt = stopTime,
           symmetryCopies = symmetryCopies,
-          fixedHisProtonation = self._FixedHisKeys())
+          fixedHisProtonation = self._FixedHisKeys(),
+          chooseHisProtonation = True)
         doneOpt = time.time()
         if opt.getSymmetryCopiesSummary():
           print(opt.getSymmetryCopiesSummary(), file=self.logger)
@@ -3158,6 +3247,18 @@ NOTES:
         if len(warnings) > 0:
           print('\nWarnings during optimization:\n'+warnings, file=self.logger)
         outString += opt.getInfo()
+        if not self.params.add_flip_movers:
+          text, metal = self._SuggestedFlipsText(opt.getSuggestedFlips())
+          lines = text.split('\n')
+          shown = lines[0]
+          if len(lines) > 1:
+            shown += ' (listed in the description file)'
+            if metal:
+              shown += '\n His whose metal binds only the flipped ring:\n' + \
+                '\n'.join(metal)
+            shown += '\n' + lines[-1]
+          print('\n' + shown, file=self.logger)
+          outString += text + '\n'
 
         # the restraints still match the hierarchy here: before the deletions
         # and before the final reinterpretation without restraints
