@@ -336,14 +336,14 @@ def run_test03():
   assert approx_equal(adps.b_mean, 31.19, eps=0.05)
   assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
   assert approx_equal(adps.b_max_within, 54.65, eps=0.01)
-  # Asn A12 is within 3 A only through HD21 (2.96 A from O3), as re-placed by
-  # the amide Mover that optimize_his_protonation brings in.
-  assert approx_equal(adps.b_mean_within, 23.49, eps=0.02)
+  # Asn A12 is not within 3 A: its HD21, as placed (no amide Mover without
+  # flips), is 3.02 A from O3.
+  assert approx_equal(adps.b_mean_within, 23.23, eps=0.02)
   assert overlaps.n_clashes == 4
   # 2 as donor (HN1, HN2) + 4 as acceptor (Ser16 HG, Ser73 HG, Ala39 H, Thr40 H)
   # Ser16 HG...O3 D-H...A is 122.5 deg, cutoff 120
   assert overlaps.n_hbonds == 6
-  assert approx_equal(overlaps.clashscore, 12.46, eps=0.5)
+  assert approx_equal(overlaps.clashscore, 13.03, eps=0.5)
   assert rmsd_result.bond_n == 17
   assert approx_equal(rmsd_result.bond_rmsd, 0.033, eps=0.005)
   assert approx_equal(rmsd_result.bond_rmsz, 1.639, eps=0.005)

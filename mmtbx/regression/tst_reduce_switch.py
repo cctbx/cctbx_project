@@ -700,7 +700,8 @@ def his_cu_box_str():
 def test_flips_from_final_model():
   """report.flips are the residues whose final heavy atoms are flipped: a
   blank His flipped only in the first conformer pass is not listed; each
-  flipped conformer once; with do_flips=False the ion-locked His."""
+  flipped conformer once; with do_flips=False nothing, except a His whose Zn
+  binds only the flipped ring when optimize_his_protonation is False."""
   def flips(s, **kw):
     report = _report()
     reduce_switch.place_and_optimize_hydrogens(model=model_from_str(s),
@@ -711,11 +712,45 @@ def test_flips_from_final_model():
   assert flips(his_d_str("so4_split"), do_flips=True) == []
   assert flips(his_d_str("his_split"), do_flips=True) == [
     key + ("A", "His"), key + ("B", "His")]
-  # the ion lock-down flips the His also without do_flips
-  for df in (False, True):
-    assert flips(his_zn_str(), do_flips=df, optimize_his_protonation=True) \
-      == [("", "A", "   1", " ", "HIS", "", "His")], df
+  his = [("", "A", "   1", " ", "HIS", "", "His")]
+  assert flips(his_zn_str(), do_flips=True, optimize_his_protonation=True) \
+    == his
+  assert flips(his_zn_str(), do_flips=False) == his
+  assert flips(his_zn_str(), do_flips=False,
+    optimize_his_protonation=True) == []
   print("test_flips_from_final_model OK")
+
+def test_ion_lock_without_flips():
+  """His A 1 of his_zn_str(), whose Zn binds only the flipped ring, without
+  do_flips: the ion lock-down flips it (a ring N on the Zn, without its H)
+  unless optimize_his_protonation, which moves no heavy atom (the ring CD2
+  and its H stay on the Zn side)."""
+  from scitbx import matrix
+  def near_zn(**kw):
+    m = reduce_switch.place_and_optimize_hydrogens(
+      model=model_from_str(his_zn_str()), log=null_out(), do_flips=False, **kw)
+    atoms = dict((a.name.strip(), a) for a in m.get_hierarchy().atoms()
+      if a.parent().resname.strip() in ("HIS", "ZN"))
+    zn = matrix.col(atoms["ZN"].xyz)
+    return dict((n, (matrix.col(atoms[n].xyz) - zn).length())
+      for n in ("ND1", "CD2", "NE2", "CE1", "HD1", "HD2", "HE2") if n in atoms)
+  d = near_zn()
+  assert d["ND1"] < 2.3 and "HD1" not in d, d
+  def key(a):
+    return (a.parent().resname, a.name.strip())
+  start = dict((key(a), a.xyz) for a in
+    model_from_str(his_zn_str()).get_hierarchy().atoms())
+  m = reduce_switch.place_and_optimize_hydrogens(
+    model=model_from_str(his_zn_str()), log=null_out(), do_flips=False,
+    optimize_his_protonation=True)
+  for a in m.get_hierarchy().atoms():
+    if a.element.strip() != "H":
+      # round-off only (1e-15 A)
+      d = (matrix.col(a.xyz) - matrix.col(start[key(a)])).length()
+      assert d < 1e-6, (key(a), d)
+  d = near_zn(optimize_his_protonation=True)
+  assert abs(d["CD2"] - 2.1) < 0.01 and d["HD2"] < 1.3, d
+  print("test_ion_lock_without_flips OK")
 
 def test_metal_contact_symmetry():
   """input_crystal_symmetry: placement's metal contacts across the model's
@@ -757,5 +792,6 @@ if __name__ == "__main__":
   test_metal_amine_option()
   test_new_options_default_off()
   test_flips_from_final_model()
+  test_ion_lock_without_flips()
   test_metal_contact_symmetry()
   print("OK")

@@ -695,14 +695,11 @@ def _place_and_optimize_core(model, do_flips, nuclear, keep_existing_H,
   # it already carries restraints from place_hydrogens. ORDER MATTERS -- the
   # re-process afterwards drops restraints, so it must come AFTER the Optimizer
   # (this mirrors clashscore2.check_and_add_hydrogen).
-  # MoverHisFlip, which also chooses the His protonation, exists only with the
-  # flip Movers; without do_flips a 9999 bias toward the input orientation
-  # keeps every Asn/Gln amide and His ring unflipped, except a His that the
-  # ion lock-down flips so that a ring N binds a metal ion (it runs before
-  # the bias; also in the report's flips).
+  # Without do_flips, optimize_his_protonation gives each His a Mover over its
+  # unflipped states only and no heavy atom moves: the ion lock-down then sets a
+  # His only in its unflipped orientation. Without either option the ion
+  # lock-down still flips a His so that a ring N binds a metal ion.
   kwargs = {}
-  if optimize_his_protonation and not do_flips:
-    kwargs["nonFlipPreference"] = 9999
   # copies of the placed model's own atoms, so built after placement
   copies = None
   if crystal_symmetry is not None:
@@ -711,8 +708,9 @@ def _place_and_optimize_core(model, do_flips, nuclear, keep_existing_H,
     if copies is not None:
       kwargs["symmetryCopies"] = copies
   opt = Optimizers.Optimizer(
-    probe_phil, do_flips or optimize_his_protonation, model, modelIndex=None,
-    useNeutronDistances=nuclear, fillAtomDump=False, **kwargs)
+    probe_phil, do_flips, model, modelIndex=None,
+    useNeutronDistances=nuclear, fillAtomDump=False,
+    chooseHisProtonation=optimize_his_protonation, **kwargs)
   if report is not None:
     if crystal_symmetry is None:
       report.symmetry_copies.append('not requested')
@@ -749,9 +747,10 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
     callers (e.g. the MolProbity kinemage view) that prefer to produce results
     for the rest of the structure rather than fail on a few problem residues.
   :param optimize_his_protonation: With do_flips=False, still choose each His
-    ring protonation (HD1, HE2 or both) without flipping any His ring or Asn/Gln
-    amide. When False (default), every His keeps H on both ring N except those
-    bound to an ion. No effect when do_flips=True.
+    ring protonation (HD1, HE2 or both) in its input orientation, without
+    flipping any His ring or Asn/Gln amide. When False (default), every His
+    keeps H on both ring N except those bound to an ion. No effect when
+    do_flips=True.
   :param metal_bound_amines_as_nh2: When True, a primary amine (NH3+) that
     coordinates a metal is placed as NH2, as in reduce2 (on by default there).
     False (default): placed as NH3+.
@@ -775,7 +774,8 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
     as NH2, as in place_hydrogens.metal_amine_converted_text;
     symmetry_copies, one line per model on the copies used or why none.
     With do_flips=False a His can still be flipped, so that a ring N binds a
-    metal ion (the Optimizer's ion lock-down); it is then in flips too."""
+    metal ion (the Optimizer's ion lock-down); it is then in flips too. With
+    optimize_his_protonation=True it is not flipped, and nothing is."""
   from mmtbx.hydrogens import reduce_hydrogen
   if log is None: log = sys.stdout
   if probe_phil is None: probe_phil = default_probe_phil()

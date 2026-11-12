@@ -33,10 +33,9 @@ add_flip_movers = True
           (heavy atoms swapped, as in MolProbity) and choose the His
           protonation. The validated model, and the model written with
           save_reduce2_model, carry the flipped heavy atoms. The flips are
-          listed in the log. False: no Asn/Gln amide or His ring is flipped to
-          improve contacts, but a His can still be flipped so that a ring N
-          binds a metal ion (reduce2's ion lock-down; listed in the log). The
-          His protonation is chosen either way."
+          listed in the log. False: no heavy atom moves, no Asn/Gln amide or
+          His ring is flipped, also not to bind a metal ion. The His
+          protonation is chosen either way."
 include_symmetric_copies = True
   .type = bool
   .short_caption = Crystal contacts in H placement
@@ -181,7 +180,7 @@ is then compared against an Fcalc map.
     '''
     Log what reduce2 changed beyond adding H: whether symmetry copies were
     used, the Asn/Gln/His whose final model is flipped against the input
-    (with add_flip_movers=False only His flipped to bind a metal ion), each
+    (none with add_flip_movers=False), each
     marked when one of its flipped atoms (OD1/ND2, OE1/NE2, the His ring) is
     within near A of a heavy atom of a validated ligand, in the model without
     symmetry; and the amines placed as NH2.
@@ -201,8 +200,8 @@ is then compared against an Fcalc map.
       for line in lines:
         print('  ' + line, file=self.logger)
     if not self.params.add_flip_movers:
-      print('Flips: off (add_flip_movers=False); flipped to bind a metal '
-        'ion: %d' % len(report.flips), file=self.logger)
+      print('Flips: off (add_flip_movers=False), none made',
+        file=self.logger)
     else:
       print('Flipped Asn/Gln/His: %d' % len(report.flips), file=self.logger)
     ph = self.working_model.get_hierarchy()

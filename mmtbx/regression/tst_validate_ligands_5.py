@@ -12,8 +12,9 @@ metal_bound_amines_as_nh2; all True by default), and their report in the log.
 - 7T5E His A 1 on Cu A 301 with its glycan: the N-terminal amine is placed as
   NH2 with the default and as NH3+ with metal_bound_amines_as_nh2=False.
 - Flips are read from the final model: a blank His flipped only in the first
-  conformer pass is not listed; split conformers once each, labelled; a His
-  the ion lock-down flips is listed also with add_flip_movers=False.
+  conformer pass is not listed; split conformers once each, labelled; with
+  add_flip_movers=False a His whose Zn binds only the flipped ring is not
+  flipped.
 - Map input: no metal contact across the map box (a Cu one box edge away).
 - 1avd with its data and the defaults: the log and a few values pinned.
 """
@@ -218,8 +219,7 @@ def test_asn_flip():
   _, log, h = run_vl('tst_validate_ligands_5_noflip', pdb_1avd_asn12,
     ['add_flip_movers=False'])
   lines = section(log)
-  assert ('Flips: off (add_flip_movers=False); flipped to bind a metal ion: '
-    '0') in lines, lines
+  assert 'Flips: off (add_flip_movers=False), none made' in lines, lines
   assert not [l for l in lines if 'ASN A 12' in l], lines
   assert approx_xyz(atom(h, 'A', '12', 'OD1').xyz, od1), od1
   print('test_asn_flip OK')
@@ -304,7 +304,7 @@ def test_all_off():
   _, log, _ = run_vl('tst_validate_ligands_5_off', pdb_1avd_asn12, OFF)
   assert section(log) == [
     'Symmetry copies (crystal contacts): off (include_symmetric_copies=False)',
-    'Flips: off (add_flip_movers=False); flipped to bind a metal ion: 0',
+    'Flips: off (add_flip_movers=False), none made',
     'Metal-bound amines as NH2: off (metal_bound_amines_as_nh2=False)'], \
     section(log)
   print('test_all_off OK')
@@ -343,14 +343,18 @@ def test_flips_final_model():
   print('test_flips_final_model OK')
 
 def test_ion_lock_flip():
-  """add_flip_movers=False: a His whose flipped ring binds a Zn is still
-  flipped (the ion lock-down), and said so."""
+  """A His whose flipped ring binds a Zn: flipped by the ion lock-down with
+  the default, not with add_flip_movers=False (no heavy atom moves)."""
+  _, log, _ = run_vl('tst_validate_ligands_5_zn_flip', trs.his_zn_str())
+  lines = section(log)
+  assert lines[1:3] == ['Flipped Asn/Gln/His: 1',
+    '  HIS A 1 (His)  * within 5 A of ligand: EOH A 201 3.3 A'], lines
   _, log, _ = run_vl('tst_validate_ligands_5_zn', trs.his_zn_str(),
     ['add_flip_movers=False'])
   lines = section(log)
-  assert lines[1:3] == [
-    'Flips: off (add_flip_movers=False); flipped to bind a metal ion: 1',
-    '  HIS A 1 (His)  * within 5 A of ligand: EOH A 201 3.3 A'], lines
+  assert lines[1:] == [
+    'Flips: off (add_flip_movers=False), none made',
+    'Metal-bound amines placed as NH2: 0'], lines
   print('test_ion_lock_flip OK')
 
 def test_map_box_contacts():
