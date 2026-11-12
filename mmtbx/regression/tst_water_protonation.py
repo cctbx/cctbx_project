@@ -9,6 +9,7 @@ from io import StringIO
 
 import iotbx.cif
 import iotbx.pdb
+import iotbx.phil
 import libtbx.load_env
 from iotbx.cli_parser import CCTBXParser, run_program
 from iotbx.data_manager import DataManager
@@ -728,7 +729,8 @@ def exercise_single_h_metal_annotation():
   """The single-H report flags a coordinating cation, using a first-shell
   cutoff rather than the looser proton-repulsion radius, and a cation that
   only crystal symmetry brings next to the water even when no water is
-  placed.
+  placed. partial_water_lines() lists the water with the cation and its
+  distance, and by default lists at most 20 waters per action.
 
   Places on ``_MG_SINGLE_H_PDB``, ``_MG_SINGLE_H_FAR_PDB`` and
   ``_MG_SINGLE_H_SYM_PDB``.
@@ -743,6 +745,15 @@ def exercise_single_h_metal_annotation():
     f"a 2.1 A Mg should be reported as coordinating; got {metal}")
   assert metal[0] == "MG", metal
   assert approx_equal(metal[1], 2.100, eps=1e-3)
+  lines = wp.partial_water_lines(near, {"kept": "left as is"})
+  assert lines == ["1 single-H water, 1 metal-coordinated, left as is:",
+                   "  HOH W 1 (MG at 2.10 A)"], lines
+  many = [(f"HOH W {i}", None, "kept") for i in range(1, 23)]
+  lines = wp.partial_water_lines(many, {"kept": "left as is"})
+  assert len(lines) == 22, lines
+  assert lines[0] == "22 single-H waters left as is:", lines[0]
+  assert lines[20] == "  HOH W 20", lines[20]
+  assert lines[21] == "  ... and 2 more", lines[21]
 
   far = wp.place_water_hydrogens(
     _hierarchy(_MG_SINGLE_H_FAR_PDB), n_refine=0).partial_waters
@@ -1507,6 +1518,31 @@ def exercise_improper_altloc_rejected():
     raise Exception_expected
 
 
+def exercise_symmetry_false_site_symmetry():
+  """symmetry=False leaves out the symmetry mates, not the site symmetry.
+
+  Runs the program with symmetry=False on waters on the two-fold of
+  ``_TWO_FOLD_BARE_PDB`` and ``_TWO_FOLD_COMPLETE_PDB``. The bare water,
+  placed again (reorient) or completed, must get two H at half occupancy,
+  one H per O in the cell; the water whose H at 1.0 already makes its two
+  must get nothing added when completed.
+  """
+  for name, pdb_str, existing_h, expected in (
+      ("bare", _TWO_FOLD_BARE_PDB, "reorient", [0.5, 0.5]),
+      ("bare", _TWO_FOLD_BARE_PDB, "complete", [0.5, 0.5]),
+      ("complete", _TWO_FOLD_COMPLETE_PDB, "reorient", [0.5, 0.5]),
+      ("complete", _TWO_FOLD_COMPLETE_PDB, "complete", [1.0])):
+    file_name = f"tst_water_protonation_two_fold_{name}.pdb"
+    with open(file_name, "w") as f:
+      f.write(pdb_str)
+    result = run_program(program_class=wp_program.Program, logger=null_out(),
+      args=[file_name, "symmetry=False", f"existing_h={existing_h}",
+            "output.overwrite=True"])
+    _, hs = _water_atoms(result.model.get_hierarchy())
+    occ = sorted(a.occ for a in hs.values())
+    assert approx_equal(occ, expected), (name, existing_h, occ)
+
+
 def exercise_electron_microscopy_isolated():
   """The program ignores the cell of an electron microscopy model.
 
@@ -1652,6 +1688,31 @@ def exercise_multi_model_rejected():
     raise Exception_expected
 
 
+def exercise_settings_need_values():
+  """A placement setting given as None is refused.
+
+  Runs the program's validate() with each placement setting set to None in
+  turn; each must raise a Sorry naming the setting.
+  """
+  dm = DataManager(["model", "phil"])
+  dm.process_model_str("unknown_atom.pdb", _UNKNOWN_ATOM_PDB)
+  master = CCTBXParser(program_class=wp_program.Program,
+                       logger=null_out()).master_phil
+  for path in ("geometry", "element", "existing_h", "symmetry",
+               "refine.max_sweeps", "refine.tolerance", "basin.rounds",
+               "cluster_search", "stats"):
+    working, unused = master.fetch(source=iotbx.phil.parse(f"{path}=None"),
+                                   track_unused_definitions=True)
+    assert not unused, [u.path for u in unused]
+    params = working.extract()
+    try:
+      wp_program.Program(dm, params, logger=null_out()).validate()
+    except Sorry as e:
+      assert f"{path} needs a value" in str(e), (path, str(e))
+    else:
+      raise Exception_expected
+
+
 def exercise_output_file_name():
   """The output file name follows the output.* parameters.
 
@@ -1708,9 +1769,11 @@ def run():
   exercise_altloc_environment()
   exercise_improper_altloc_rejected()
   exercise_electron_microscopy_isolated()
+  exercise_symmetry_false_site_symmetry()
   exercise_reorient_keeps_isotope()
   exercise_missing_elements_rejected()
   exercise_multi_model_rejected()
+  exercise_settings_need_values()
   exercise_output_file_name()
   print(format_cpu_times())
   print("OK")

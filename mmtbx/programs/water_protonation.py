@@ -16,8 +16,6 @@ from libtbx.utils import Sorry, null_out
 
 from mmtbx.hydrogens import water_protonation
 
-_MAX_LISTED_WATERS = 20
-
 # How the log describes each water geometry.
 _GEOMETRY_KIND = {
   "xray":      "electron-cloud target",
@@ -41,14 +39,14 @@ existing_h = *keep complete reorient
 symmetry = True
   .type = bool
   .short_caption = Honour crystal symmetry
-  .help = "Include the symmetry-equivalent atoms near each water in its environment. Ignored for a model without a unit cell and space group, and for an electron microscopy model."
+  .help = "Include the symmetry-equivalent atoms near each water in its environment. Waters on special positions keep their site symmetry either way. Ignored for a model without a unit cell and space group, and for an electron microscopy model."
 refine
   .short_caption = Refinement sweeps
 {
   max_sweeps = 5
     .type = int(value_min=0)
-    .short_caption = Maximum relaxation sweeps
-    .help = "Maximum relaxation sweeps, each re-placing every water against the others' current H; 0 disables refinement."
+    .short_caption = Maximum refinement sweeps
+    .help = "Maximum refinement sweeps, each re-placing every water against the others' current H; 0 disables refinement."
   tolerance = 1
     .type = int(value_min=0)
     .short_caption = Early-stop tolerance
@@ -160,6 +158,15 @@ and existing_h=reorient strips all water H and re-places both.
         file_name=self.data_manager.get_default_model_name())
     except AssertionError as e:
       raise Sorry(str(e)) from None
+    p = self.params
+    for name, value in (("geometry", p.geometry), ("element", p.element),
+        ("existing_h", p.existing_h), ("symmetry", p.symmetry),
+        ("refine.max_sweeps", p.refine.max_sweeps),
+        ("refine.tolerance", p.refine.tolerance),
+        ("basin.rounds", p.basin.rounds),
+        ("cluster_search", p.cluster_search), ("stats", p.stats)):
+      if value is None:
+        raise Sorry(f"{name} needs a value.")
     self._warn_if_environment_unprotonated(model)
 
   # ----------------------------------------------------------------------------
@@ -184,20 +191,21 @@ and existing_h=reorient strips all water H and re-places both.
     print(f"Water geometry: O-H {oh:.3f} A, H-O-H {hoh:g} deg ({kind})",
           file=self.logger)
 
-    cs = None
-    if not self.params.symmetry:
-      print("Crystal symmetry: not used (symmetry=False)", file=self.logger)
+    # symmetry=False leaves out the symmetry mates; the crystal symmetry
+    # still gives the site symmetry of the waters on special positions.
+    cs = model.crystal_symmetry()
+    if cs is None or cs.unit_cell() is None or cs.space_group_info() is None:
+      print("Crystal symmetry: none in the model", file=self.logger)
+      cs = None
+    elif pdb_in.get_experiment_type().is_electron_microscopy():
+      print("Crystal symmetry: not used (cell is the map box)",
+            file=self.logger)
+      cs = None
+    elif not self.params.symmetry:
+      print(f"Crystal symmetry: {cs.space_group_info()}, site symmetry only "
+            "(symmetry=False)", file=self.logger)
     else:
-      cs = model.crystal_symmetry()
-      if cs is None or cs.unit_cell() is None or cs.space_group_info() is None:
-        print("Crystal symmetry: none in the model", file=self.logger)
-        cs = None
-      elif pdb_in.get_experiment_type().is_electron_microscopy():
-        print("Crystal symmetry: not used (cell is the map box)",
-              file=self.logger)
-        cs = None
-      else:
-        print(f"Crystal symmetry: {cs.space_group_info()}", file=self.logger)
+      print(f"Crystal symmetry: {cs.space_group_info()}", file=self.logger)
 
     # Element: None leaves the choice to the placer, per water.
     placer_element = (None if self.params.element == "auto"
@@ -239,6 +247,7 @@ and existing_h=reorient strips all water H and re-places both.
       cluster_search   = self.params.cluster_search,
       existing_h       = self.params.existing_h,
       crystal_symmetry = cs,
+      symmetry_mates   = self.params.symmetry,
       on_state         = on_state if report_stats else None)
 
     n_after = self._count_water_h(hier)
@@ -254,7 +263,8 @@ and existing_h=reorient strips all water H and re-places both.
       if result.kept_label is not None:
         print(f"Kept: {result.kept_label} (fewest contacts < 2.0 A)",
               file=self.logger)
-      self._print_residual_contacts(hier, cs)
+      self._print_residual_contacts(hier,
+                                    cs if self.params.symmetry else None)
     self._print_partial_waters(result.partial_waters)
 
     self._write_output(model)
@@ -333,30 +343,14 @@ and existing_h=reorient strips all water H and re-places both.
 
     Metal-coordinating ones are annotated with the cation and its distance.
     """
-    if not partial:
-      return
     tail = {
       "kept": ("left as is (possibly hydroxide; existing_h=complete adds "
                "the second H)"),
       "completed": "completed (any hydroxide is now water)",
       "stripped": "stripped and re-placed",
     }
-    for action in ("completed", "stripped", "kept"):
-      group = [p for p in partial if p[2] == action]
-      if not group:
-        continue
-      n_metal = sum(1 for _, metal, _ in group if metal is not None)
-      head = f"{len(group)} single-H water{'s' if len(group) > 1 else ''}"
-      if n_metal:
-        head += f", {n_metal} metal-coordinated,"
-      print(f"{head} {tail[action]}:", file=self.logger)
-      for rid, metal, _ in group[:_MAX_LISTED_WATERS]:
-        note = (f" ({metal[0]} at {metal[1]:.2f} A)" if metal is not None
-                else "")
-        print(f"  {rid}{note}", file=self.logger)
-      if len(group) > _MAX_LISTED_WATERS:
-        print(f"  ... and {len(group) - _MAX_LISTED_WATERS} more",
-              file=self.logger)
+    for line in water_protonation.partial_water_lines(partial, tail):
+      print(line, file=self.logger)
 
   @staticmethod
   def _clash_header(log):
