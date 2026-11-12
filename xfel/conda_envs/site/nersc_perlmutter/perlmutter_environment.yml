@@ -21,7 +21,7 @@ dependencies:
  - __PSANA__           # set by build.sh: psana=4.0.66 (lcls-i, https://github.com/lcls-psana/pytools/issues/1) or psana (lcls-ii)
 
  # python
- - python=3.11
+ - python=__PYVERSION__
  - biopython
  - ipython
  - pybind11

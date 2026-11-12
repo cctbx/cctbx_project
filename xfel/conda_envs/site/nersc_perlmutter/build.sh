@@ -15,8 +15,8 @@ set -eo pipefail
 [[ -z ${CONDA_PREFIX:-} ]] || { echo "conda env active; run 'conda deactivate' first" >&2; exit 1; }
 
 case "${PSANA_CHANNEL:-}" in
-    lcls-i|lcls-ii) ;;
-    *) echo "set PSANA_CHANNEL=lcls-i (psana1) or lcls-ii (psana2)" >&2; exit 1 ;;
+    lcls-i|lcls-ii|none) ;;
+    *) echo "set PSANA_CHANNEL=lcls-i (psana1) or lcls-ii (psana2) or none" >&2; exit 1 ;;
 esac
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -31,12 +31,9 @@ MINIFORGE=Miniforge3-$MINIFORGE_VERSION-Linux-x86_64.sh
 MINIFORGE_URL=https://github.com/conda-forge/miniforge/releases/download/$MINIFORGE_VERSION/$MINIFORGE
 
 BOOTSTRAP_FLAGS=(
-    --builder=dials
-    --python=310
+    --builder=xfel
     --nproc=$NPROC
-    --config-flags=--cxxstd=c++14
     --config-flags=--no_bin_python
-    --config-flags=--enable_openmp_if_possible=True
     --config-flags=--enable_cuda
     --config-flags=--enable_kokkos
     --config-flags=--use_environment_flags
@@ -63,33 +60,40 @@ cp modules/cctbx_project/libtbx/auto_build/bootstrap.py bootstrap.py
 wget -O "opt/$MINIFORGE" "$MINIFORGE_URL"
 
 step "install Miniforge3 into $MINIFORGE_PREFIX"
-bash "opt/$MINIFORGE" -b -p "$MINIFORGE_PREFIX"   # -b: no prompts, no conda init.
+bash "opt/$MINIFORGE" -b -p "$MINIFORGE_PREFIX"
 
 step "module load PrgEnv-gnu cudatoolkit cpe-cuda"
 module load PrgEnv-gnu cudatoolkit cpe-cuda
 
 source "$MINIFORGE_PREFIX/etc/profile.d/conda.sh"
 
-# Capture the Cray wrapper BEFORE `conda activate`: the env's c-compiler package
-# shadows `cc` with a conda shim, and mpi4py then links against the wrong MPI.
+# Capture the Cray wrapper BEFORE `conda activate`
 native_cc=$(which cc)
 
 step "conda env create (5-10 min)"
+YMLFILE="$BUILD_PREFIX/opt/environment.yml"
+cp "$SCRIPT_DIR/perlmutter_environment.yml" "$YMLFILE"
 case "$PSANA_CHANNEL" in
-    lcls-i)  PSANA_SPEC='psana=4.0.66' ;;
-    lcls-ii) PSANA_SPEC='psana' ;;
+    lcls-i)
+      PSANA_SPEC='psana=4.0.66'
+      PYVERSION='3.11'
+      ;;
+    lcls-ii)
+      PSANA_SPEC='psana'
+      PYVERSION='3.13'
+      ;;
+    none)
+      PSANA_SPEC='none'
+      PYVERSION='3.13'
+      sed -i "/__PSANA/d" $YMLFILE
 esac
-sed -e "s/__PSANA_CHANNEL__/$PSANA_CHANNEL/" -e "s/__PSANA__/$PSANA_SPEC/" \
-    "$SCRIPT_DIR/perlmutter_environment.yml" > "$BUILD_PREFIX/opt/environment.yml"
-grep -q '__PSANA' "$BUILD_PREFIX/opt/environment.yml" \
-    && { echo "placeholder substitution into opt/environment.yml did not fully apply" >&2; exit 1; }
+sed -i -e "s/__PSANA_CHANNEL__/$PSANA_CHANNEL/" -e "s/__PSANA__/$PSANA_SPEC/" \
+    -e "s/__PYVERSION__/$PYVERSION/" $YMLFILE
 conda env create -f "$BUILD_PREFIX/opt/environment.yml" -p "$ENV_PREFIX" -v
 
 conda activate "$ENV_PREFIX"
 
-# gemmi is deliberately not in the yml -- it makes the solve pathological.  It is
-# a pure runtime dependency (dials.export/dials.merge), nothing in the build
-# needs it, and it must go in before the MPI strip leaves the prefix inconsistent.
+# Install gemmi separately to avoid solver problems
 step "install gemmi"
 conda install -y -p "$ENV_PREFIX" -c conda-forge --override-channels --no-deps -v gemmi
 
