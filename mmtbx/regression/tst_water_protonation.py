@@ -315,16 +315,16 @@ def _unit(a, b):
 
 
 def _fallback_offset(o, hs):
-  """How far the H of a water lie from the placer's fallback directions: the
-  smallest distance between an O-H unit vector and a fallback direction, 0
-  when an H took one."""
+  """How far a water's H1 lies from the placer's fallback directions: the
+  smallest distance between its O-H1 unit vector and a fallback direction,
+  0 when H1 took one."""
+  assert "H1" in hs, f"the water has no H1: {sorted(hs)}"
+  u = _unit(hs["H1"], o)
   best = None
-  for h in hs.values():
-    u = _unit(h, o)
-    for d in wp._FALLBACK_DIRS:
-      distance = (u - matrix.col(d)).length()
-      if best is None or distance < best:
-        best = distance
+  for d in wp._FALLBACK_DIRS:
+    distance = (u - matrix.col(d)).length()
+    if best is None or distance < best:
+      best = distance
   return best
 
 
@@ -1534,7 +1534,8 @@ def exercise_electron_microscopy_isolated():
     else:
       off = _fallback_offset(o, hs)
       assert off < 1e-6, (
-        f"{method}: no H on a fallback direction (closest {off:.3g} away)")
+        f"{method}: H1 is not on a fallback direction (closest {off:.3g} "
+        "away)")
 
 
 def exercise_reorient_keeps_isotope():

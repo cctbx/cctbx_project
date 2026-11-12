@@ -185,13 +185,12 @@ def _cat_ok(cat, pts, o):
   return ok
 
 
-# Fixed H2-cone azimuth cosines and sines, and the normalized fallback sphere.
+# Fixed H2-cone azimuth cosines and sines, and the fallback sphere.
 _CONE_COS = flex.double([math.cos(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
                          for k in range(_WATER_CONE_SAMPLES)])
 _CONE_SIN = flex.double([math.sin(2.0 * math.pi * k / _WATER_CONE_SAMPLES)
                          for k in range(_WATER_CONE_SAMPLES)])
-_FALLBACK_DIRS = [matrix.col(v).normalize().elems
-                  for v in golden_spiral(64).points]
+_FALLBACK_DIRS = list(golden_spiral(64).points)
 _FALLBACK_FX = flex.vec3_double(_FALLBACK_DIRS)
 
 
