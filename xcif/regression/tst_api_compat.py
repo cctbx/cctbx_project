@@ -4,6 +4,10 @@ from __future__ import absolute_import, division, print_function
 # Step 11: API compatibility tests.
 # Parses identical CIF inputs through both xcif_ext and iotbx.cif.reader,
 # then verifies that the extracted data matches.
+#
+# The iotbx.cif.reader side is the legacy ucif parser. iotbx.cif.reader
+# defaults to engine="xcif" (iotbx.cif.DEFAULT_ENGINE), so every call
+# here passes engine="ucif"; without it both sides would be xcif.
 
 import os
 import math
@@ -103,7 +107,8 @@ save_
 def exercise_block_names():
   """Both parsers find the same block names (case-preserved)."""
   doc = xcif_ext.parse(MULTI_BLOCK_CIF)
-  cif_model = iotbx.cif.reader(input_string=MULTI_BLOCK_CIF).model()
+  cif_model = iotbx.cif.reader(
+    input_string=MULTI_BLOCK_CIF, engine="ucif").model()
 
   xcif_names = [doc[i].name for i in range(len(doc))]
   iotbx_names = list(cif_model.keys())
@@ -114,7 +119,7 @@ def exercise_block_names():
 def exercise_tag_values():
   """Single tag-value pairs match between parsers."""
   doc = xcif_ext.parse(SIMPLE_CIF)
-  cif_model = iotbx.cif.reader(input_string=SIMPLE_CIF).model()
+  cif_model = iotbx.cif.reader(input_string=SIMPLE_CIF, engine="ucif").model()
 
   xb = doc[0]
   ib = list(cif_model.values())[0]
@@ -136,7 +141,7 @@ def exercise_tag_values():
 def exercise_tag_case_insensitive():
   """Case-insensitive tag lookup works in both parsers."""
   doc = xcif_ext.parse(SIMPLE_CIF)
-  cif_model = iotbx.cif.reader(input_string=SIMPLE_CIF).model()
+  cif_model = iotbx.cif.reader(input_string=SIMPLE_CIF, engine="ucif").model()
 
   xb = doc[0]
   ib = list(cif_model.values())[0]
@@ -152,7 +157,7 @@ def exercise_tag_case_insensitive():
 def exercise_loop_columns():
   """Loop column extraction matches between parsers."""
   doc = xcif_ext.parse(LOOP_CIF)
-  cif_model = iotbx.cif.reader(input_string=LOOP_CIF).model()
+  cif_model = iotbx.cif.reader(input_string=LOOP_CIF, engine="ucif").model()
 
   xloop = doc[0].find_loop("_atom_site")
   iblock = list(cif_model.values())[0]
@@ -187,7 +192,7 @@ def exercise_loop_columns():
 def exercise_loop_dimensions():
   """Loop width and length match between parsers."""
   doc = xcif_ext.parse(LOOP_CIF)
-  cif_model = iotbx.cif.reader(input_string=LOOP_CIF).model()
+  cif_model = iotbx.cif.reader(input_string=LOOP_CIF, engine="ucif").model()
 
   xloop = doc[0].find_loop("_atom_site")
   iloop = list(cif_model.values())[0].get_loop("_atom_site")
@@ -201,7 +206,7 @@ def exercise_loop_dimensions():
 def exercise_null_handling():
   """Null/unknown values handled identically."""
   doc = xcif_ext.parse(NULLS_CIF)
-  cif_model = iotbx.cif.reader(input_string=NULLS_CIF).model()
+  cif_model = iotbx.cif.reader(input_string=NULLS_CIF, engine="ucif").model()
 
   xloop = doc[0].find_loop("_val")
   iblock = list(cif_model.values())[0]
@@ -230,7 +235,7 @@ def exercise_null_handling():
 def exercise_quoted_strings():
   """Quoted string values have quotes stripped by both parsers."""
   doc = xcif_ext.parse(QUOTED_CIF)
-  cif_model = iotbx.cif.reader(input_string=QUOTED_CIF).model()
+  cif_model = iotbx.cif.reader(input_string=QUOTED_CIF, engine="ucif").model()
 
   xb = doc[0]
   ib = list(cif_model.values())[0]
@@ -251,7 +256,8 @@ def exercise_quoted_strings():
 def exercise_semicolon_text_field():
   """Semicolon-delimited text fields match between parsers."""
   doc = xcif_ext.parse(SEMICOLON_CIF)
-  cif_model = iotbx.cif.reader(input_string=SEMICOLON_CIF).model()
+  cif_model = iotbx.cif.reader(
+    input_string=SEMICOLON_CIF, engine="ucif").model()
 
   xb = doc[0]
   ib = list(cif_model.values())[0]
@@ -271,7 +277,8 @@ def exercise_semicolon_text_field():
 def exercise_multi_block():
   """Multi-block CIF files parsed identically."""
   doc = xcif_ext.parse(MULTI_BLOCK_CIF)
-  cif_model = iotbx.cif.reader(input_string=MULTI_BLOCK_CIF).model()
+  cif_model = iotbx.cif.reader(
+    input_string=MULTI_BLOCK_CIF, engine="ucif").model()
 
   assert len(doc) == len(cif_model), \
     "Block count: xcif=%d vs iotbx=%d" % (len(doc), len(cif_model))
@@ -289,7 +296,8 @@ def exercise_multi_block():
 def exercise_find_block_case_insensitive():
   """Case-insensitive block lookup works in both parsers."""
   doc = xcif_ext.parse(MULTI_BLOCK_CIF)
-  cif_model = iotbx.cif.reader(input_string=MULTI_BLOCK_CIF).model()
+  cif_model = iotbx.cif.reader(
+    input_string=MULTI_BLOCK_CIF, engine="ucif").model()
 
   # xcif: find_block is case-insensitive
   assert doc.find_block("block_a") is not None
@@ -378,7 +386,7 @@ def exercise_example_cif():
   cif_path = os.path.join(dist_dir, "regression", "example.cif")
 
   doc = xcif_ext.parse_file(cif_path)
-  cif_model = iotbx.cif.reader(file_path=cif_path).model()
+  cif_model = iotbx.cif.reader(file_path=cif_path, engine="ucif").model()
 
   # Block count and name
   assert len(doc) == len(cif_model), \
@@ -453,9 +461,9 @@ def exercise_error_on_missing_data_header():
 
   # iotbx raises CifParserError (subclass of Sorry)
   try:
-    iotbx.cif.reader(input_string="_tag value\n")
+    iotbx.cif.reader(input_string="_tag value\n", engine="ucif")
     raise AssertionError("iotbx: expected exception for missing data_ header")
-  except Exception:
+  except iotbx.cif.CifParserError:
     pass
 
 
@@ -467,7 +475,7 @@ def exercise_error_on_missing_data_header():
 def exercise_model_simple():
   """xcif.reader and iotbx.cif.reader models match on simple tag-value CIF."""
   m_xcif = xcif.reader(input_string=SIMPLE_CIF).model()
-  m_ucif = iotbx.cif.reader(input_string=SIMPLE_CIF).model()
+  m_ucif = iotbx.cif.reader(input_string=SIMPLE_CIF, engine="ucif").model()
 
   # Same block names
   assert list(m_xcif.keys()) == list(m_ucif.keys()), \
@@ -486,7 +494,7 @@ def exercise_model_simple():
 def exercise_model_loop():
   """xcif.reader and iotbx.cif.reader models match on looped data."""
   m_xcif = xcif.reader(input_string=LOOP_CIF).model()
-  m_ucif = iotbx.cif.reader(input_string=LOOP_CIF).model()
+  m_ucif = iotbx.cif.reader(input_string=LOOP_CIF, engine="ucif").model()
 
   bx = m_xcif["loop_test"]
   bu = m_ucif["loop_test"]
@@ -516,7 +524,7 @@ def exercise_model_loop():
 def exercise_model_multi_block():
   """xcif.reader and iotbx.cif.reader models match on multi-block CIF."""
   m_xcif = xcif.reader(input_string=MULTI_BLOCK_CIF).model()
-  m_ucif = iotbx.cif.reader(input_string=MULTI_BLOCK_CIF).model()
+  m_ucif = iotbx.cif.reader(input_string=MULTI_BLOCK_CIF, engine="ucif").model()
 
   assert list(m_xcif.keys()) == list(m_ucif.keys())
   assert len(m_xcif) == len(m_ucif)
@@ -533,7 +541,7 @@ def exercise_model_multi_block():
 def exercise_model_nulls():
   """xcif.reader and iotbx.cif.reader models match on null values."""
   m_xcif = xcif.reader(input_string=NULLS_CIF).model()
-  m_ucif = iotbx.cif.reader(input_string=NULLS_CIF).model()
+  m_ucif = iotbx.cif.reader(input_string=NULLS_CIF, engine="ucif").model()
 
   bx = m_xcif["nulls"]
   bu = m_ucif["nulls"]
@@ -548,7 +556,7 @@ def exercise_model_nulls():
 def exercise_model_quoted():
   """xcif.reader and iotbx.cif.reader models match on quoted strings."""
   m_xcif = xcif.reader(input_string=QUOTED_CIF).model()
-  m_ucif = iotbx.cif.reader(input_string=QUOTED_CIF).model()
+  m_ucif = iotbx.cif.reader(input_string=QUOTED_CIF, engine="ucif").model()
 
   bx = m_xcif["quoted"]
   bu = m_ucif["quoted"]
@@ -561,7 +569,7 @@ def exercise_model_quoted():
 def exercise_model_case_insensitive():
   """Both models support case-insensitive block and tag lookup."""
   m_xcif = xcif.reader(input_string=SIMPLE_CIF).model()
-  m_ucif = iotbx.cif.reader(input_string=SIMPLE_CIF).model()
+  m_ucif = iotbx.cif.reader(input_string=SIMPLE_CIF, engine="ucif").model()
 
   # Case-insensitive block lookup
   assert "COMPAT" in m_xcif
@@ -582,7 +590,7 @@ def exercise_model_example_cif():
   cif_path = os.path.join(dist_dir, "regression", "example.cif")
 
   m_xcif = xcif.reader(file_path=cif_path).model()
-  m_ucif = iotbx.cif.reader(file_path=cif_path).model()
+  m_ucif = iotbx.cif.reader(file_path=cif_path, engine="ucif").model()
 
   # Same block names
   assert list(m_xcif.keys()) == list(m_ucif.keys())
@@ -645,7 +653,7 @@ def _show_str(model):
 def exercise_output_simple():
   """show() output matches for simple tag-value CIF."""
   m_xcif = xcif.reader(input_string=SIMPLE_CIF).model()
-  m_ucif = iotbx.cif.reader(input_string=SIMPLE_CIF).model()
+  m_ucif = iotbx.cif.reader(input_string=SIMPLE_CIF, engine="ucif").model()
   sx = _show_str(m_xcif)
   su = _show_str(m_ucif)
   assert sx == su, "Simple CIF output differs:\nxcif:\n%s\nucif:\n%s" % (sx, su)
@@ -654,7 +662,7 @@ def exercise_output_simple():
 def exercise_output_loop():
   """show() output matches for looped data."""
   m_xcif = xcif.reader(input_string=LOOP_CIF).model()
-  m_ucif = iotbx.cif.reader(input_string=LOOP_CIF).model()
+  m_ucif = iotbx.cif.reader(input_string=LOOP_CIF, engine="ucif").model()
   sx = _show_str(m_xcif)
   su = _show_str(m_ucif)
   assert sx == su, "Loop CIF output differs:\nxcif:\n%s\nucif:\n%s" % (sx, su)
@@ -663,7 +671,7 @@ def exercise_output_loop():
 def exercise_output_multi_block():
   """show() output matches for multi-block CIF."""
   m_xcif = xcif.reader(input_string=MULTI_BLOCK_CIF).model()
-  m_ucif = iotbx.cif.reader(input_string=MULTI_BLOCK_CIF).model()
+  m_ucif = iotbx.cif.reader(input_string=MULTI_BLOCK_CIF, engine="ucif").model()
   sx = _show_str(m_xcif)
   su = _show_str(m_ucif)
   assert sx == su, \
@@ -673,7 +681,7 @@ def exercise_output_multi_block():
 def exercise_output_quoted():
   """show() output matches for quoted strings."""
   m_xcif = xcif.reader(input_string=QUOTED_CIF).model()
-  m_ucif = iotbx.cif.reader(input_string=QUOTED_CIF).model()
+  m_ucif = iotbx.cif.reader(input_string=QUOTED_CIF, engine="ucif").model()
   sx = _show_str(m_xcif)
   su = _show_str(m_ucif)
   assert sx == su, \
@@ -683,7 +691,7 @@ def exercise_output_quoted():
 def exercise_output_nulls():
   """show() output matches for null values."""
   m_xcif = xcif.reader(input_string=NULLS_CIF).model()
-  m_ucif = iotbx.cif.reader(input_string=NULLS_CIF).model()
+  m_ucif = iotbx.cif.reader(input_string=NULLS_CIF, engine="ucif").model()
   sx = _show_str(m_xcif)
   su = _show_str(m_ucif)
   assert sx == su, \
@@ -695,7 +703,7 @@ def exercise_output_example_cif():
   dist_dir = libtbx.env.dist_path("xcif")
   cif_path = os.path.join(dist_dir, "regression", "example.cif")
   m_xcif = xcif.reader(file_path=cif_path).model()
-  m_ucif = iotbx.cif.reader(file_path=cif_path).model()
+  m_ucif = iotbx.cif.reader(file_path=cif_path, engine="ucif").model()
   sx = _show_str(m_xcif)
   su = _show_str(m_ucif)
   assert sx == su, \

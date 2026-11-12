@@ -4,6 +4,9 @@ from __future__ import absolute_import, division, print_function
 # Step 13: Real-world validation — PDB coordinate file (1yjp.cif).
 # Parses a real mmCIF coordinate file with both xcif and iotbx.cif.reader,
 # then verifies that all extracted data matches.
+#
+# iotbx.cif.reader is called with engine="ucif" (the legacy parser) because
+# its default is xcif; otherwise both sides of each comparison are xcif.
 
 import os
 import xcif
@@ -23,7 +26,7 @@ def _get_cif_path():
 def _parse_both(cif_path):
   """Parse with both engines, return (xcif_doc, iotbx_model)."""
   doc = xcif_ext.parse_file(cif_path)
-  cif_model = iotbx.cif.reader(file_path=cif_path).model()
+  cif_model = iotbx.cif.reader(file_path=cif_path, engine="ucif").model()
   return doc, cif_model
 
 
@@ -179,7 +182,7 @@ def exercise_other_loops():
   """Verify loops and get_loop_or_row match between parsers."""
   cif_path = _get_cif_path()
   m_xcif = xcif.reader(file_path=cif_path).model()
-  m_ucif = iotbx.cif.reader(file_path=cif_path).model()
+  m_ucif = iotbx.cif.reader(file_path=cif_path, engine="ucif").model()
 
   bx = m_xcif["1YJP"]
   bu = m_ucif["1YJP"]
@@ -228,7 +231,7 @@ def exercise_model_level():
   """Model-level API: xcif.reader vs iotbx.cif.reader."""
   cif_path = _get_cif_path()
   m_xcif = xcif.reader(file_path=cif_path).model()
-  m_ucif = iotbx.cif.reader(file_path=cif_path).model()
+  m_ucif = iotbx.cif.reader(file_path=cif_path, engine="ucif").model()
 
   # Block names
   assert list(m_xcif.keys()) == list(m_ucif.keys())
