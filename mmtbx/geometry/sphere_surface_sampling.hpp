@@ -2,7 +2,8 @@
 #define MMTBX_GEOMETRY_SPHERE_SURFACE_SAMPLING_H
 
 // The golden spiral is scitbx::math::golden_spiral; this header keeps its
-// former name for code outside cctbx that includes it (phasertng).
+// former name for code outside cctbx that includes it (phasertng). It can go
+// once phasertng's copy of calculator.hpp includes scitbx/math/golden_spiral.h.
 #include <scitbx/math/golden_spiral.h>
 
 namespace mmtbx

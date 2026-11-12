@@ -23,7 +23,6 @@ namespace scitbx { namespace math {
       //! A type of its own, so that its Python class does not claim
       //! std::vector<Vector>, which other modules convert too.
       struct storage_type : std::vector<vector_type> {};
-      typedef typename storage_type::const_iterator const_storage_iterator;
 
     private:
       size_t count_;

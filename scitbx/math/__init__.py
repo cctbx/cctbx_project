@@ -38,6 +38,28 @@ Examples
 1.0 2.30258509299
 """
 
+golden_spiral.__doc__ = """
+Unit vectors spread over the sphere on a golden-angle spiral.
+
+The heights along y step evenly by 2 / count from next to the -y pole, half
+a step in from each pole, and the azimuth about y advances by the golden
+angle, pi * (3 - sqrt(5)).
+
+Parameters
+----------
+count : int
+  Number of points.
+
+Attributes
+----------
+count : int
+  Number of points.
+unit_area : float
+  The area of the unit sphere each point stands for, 4 pi / count.
+points : golden_spiral_points_range
+  The count unit vectors, from next to the -y pole; iterable.
+"""
+
 def median_statistics(data):
   return flex.median.dispersion(data)
 
