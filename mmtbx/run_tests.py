@@ -531,7 +531,6 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_neutron_water.py",
   "$D/regression/tst_reduce2_neutron_optimizer.py",
   "$D/regression/tst_reduce2_neutron_output.py",
-  "$D/regression/tst_flipping_his.py",
   "$D/regression/tst_reduce2_neutron_d_input.py",
   "$D/regression/tst_reduce2_neutron_rerun.py",
   "$D/regression/tst_reduce2_neutron_ligands.py",

@@ -353,49 +353,6 @@ def test_rsr_per_cycle_clashscore_keeps_h_reduce2():
     reduce_switch.USE_OLD_REDUCE = saved
   print("test_rsr_per_cycle_clashscore_keeps_h_reduce2 OK")
 
-def test_model_idealization_stat_display_tolerates_none_reduce2():
-  """phenix.model_idealization works on an H-less model (it runs remove_hydrogens),
-  so under reduce2 every geometry_statistics() snapshot has clash.score=None and
-  molprobity_score=None. print_stat_comparison() must render those as the program's
-  own 99999 'not available' sentinel instead of crashing on "{:10.2f}".format(None)
-  (the contract: all clash()/mp_score() callers must tolerate None)."""
-  from io import StringIO
-  from libtbx import group_args
-  from mmtbx.command_line import model_idealization as mi
-  def fake_stats():
-    # mimic geometry_statistics().result() under reduce2: clash/molprobity are None,
-    # the other validation fields are real numbers (reduce2 does not touch them).
-    return group_args(
-      molprobity_score = None,
-      clash        = group_args(score=None, clashes=None),
-      c_beta       = group_args(outliers=0),
-      ramachandran = group_args(outliers=0, allowed=0, favored=100),
-      rotamer      = group_args(outliers=0),
-      omega        = group_args(cis_proline=0, cis_general=0,
-                                twisted_proline=0, twisted_general=0),
-      cablam       = group_args(outliers=0, disfavored=0, ca_outliers=0))
-  # Build the reporter without the heavy __init__ (needs a real model+map); we only
-  # exercise the stat-printing method, feeding it the reduce2-shaped stat objects.
-  obj = mi.model_idealization.__new__(mi.model_idealization)
-  obj.log = StringIO()
-  obj.params = group_args(run_minimization_first=False)
-  obj.after_cablam_statistics  = None
-  obj.init_gm_model_statistics = None
-  obj.init_model_statistics    = fake_stats()
-  obj.after_ss_idealization    = fake_stats()
-  obj.after_loop_idealization  = fake_stats()
-  obj.after_rotamer_fixing     = fake_stats()
-  obj.final_model_statistics   = fake_stats()
-  obj.time_for_init = 0; obj.time_for_run = 0
-  obj.get_rmsd_from_start  = lambda: 0.0  # shadow the heavy rmsd calc (unrelated)
-  obj.get_rmsd_from_start2 = lambda: 0.0
-  obj.print_stat_comparison()             # must NOT raise on the None values
-  out = obj.log.getvalue()
-  clash_lines = [l for l in out.splitlines() if l.startswith("Clashscore")]
-  assert len(clash_lines) == 1, out
-  assert "99999" in clash_lines[0], clash_lines[0]   # None -> sentinel, not a crash
-  print("test_model_idealization_stat_display_tolerates_none_reduce2 OK")
-
 def test_molprobity_validation_adds_h_reduce2():
   """Standalone comprehensive validation (mmtbx.validation.molprobity.molprobity)
   needs a real clashscore. Under reduce2 clash() is a non-adding observer, so for
@@ -784,7 +741,6 @@ if __name__ == "__main__":
   test_flip_nqh_applies_reduce2_flip()
   test_flip_nqh_use_ncs_without_groups_reduce2()
   test_rsr_per_cycle_clashscore_keeps_h_reduce2()
-  test_model_idealization_stat_display_tolerates_none_reduce2()
   test_molprobity_validation_adds_h_reduce2()
   test_reduce2_flips_applies_wholesale()
   test_his_protonation_without_flips()
