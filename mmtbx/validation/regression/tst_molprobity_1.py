@@ -7,6 +7,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 from six.moves import cStringIO as StringIO
 from six.moves import zip
+import os
 
 # derivative of 1yjp, with alternate conformation Asn3 in different rotamer,
 # plus Asn2/Gln4 split.  the unit cell 'b' edge has been increased to 6A to
@@ -225,16 +226,35 @@ def exercise_synthetic():
     out=null_out()).validation
   out = StringIO()
   result.show(out=out)
+  # the outer bin lies inside the d < 1.6 shell: test reflections only
+  assert result.r_work(outer_shell=True) is None
+  assert result.r_free(outer_shell=True) is not None
   # case 2: no test set in high-res shell
   flags2 = ls.array(data=flex.bool(ls.size(), False))
   flags_all = flags.concatenate(other=flags2)
   mtz_out = fc.as_mtz_dataset(column_root_label="F")
   mtz_out.add_miller_array(flags_all, column_root_label="FreeR_flag")
+  # own file name, so case 2 can never pick up the case-1 data
+  mtz_file_2 = "tst_molprobity_1_no_free_hires.mtz"
+  if os.path.exists(mtz_file_2):
+    os.remove(mtz_file_2)
+  mtz_out.mtz_object().write(mtz_file_2)
+  args = [
+    "tst_molprobity_1.pdb",
+    mtz_file_2,
+    "--kinemage",
+    "--maps",
+    "flags.clashscore=False",
+    "flags.xtriage=True",
+  ]
   result = molprobity.run(args=args,
     ignore_missing_modules=True,
     out=null_out()).validation
   out = StringIO()
   result.show(out=out)
+  # work reflections only in the outer bin
+  assert result.r_free(outer_shell=True) is None
+  assert result.r_work(outer_shell=True) is not None
   # case 3: multi-MODEL structure
   # XXX This is not a very sophisticated test - it only ensures that the
   # program does not crash.  We need a test for expected output...
