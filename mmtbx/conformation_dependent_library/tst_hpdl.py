@@ -1,12 +1,8 @@
 from __future__ import absolute_import, division, print_function
-import sys
-
+import iotbx.pdb
+import mmtbx.model
+from libtbx.utils import null_out
 from mmtbx.conformation_dependent_library.hpdl_database import get_hpdl_database
-from libtbx import easy_run
-try:
-  from elbow.formats import refine_geo_parser
-except ImportError as e:
-  refine_geo_parser = None
 
 pdbs = {
   "his_double" : """
@@ -75,71 +71,54 @@ HETATM   20  HE2 HIS A   1      -0.215   0.280  -3.847  1.00 20.00      A    H
 """,
   }
 
-def check_ideals(geo_filename, restraints):
-  rc = refine_geo_parser.run(geo_filename,
-                             selection1="HIS",
-                             return_internals=True)
-  bonds, angles, dihedrals, chirals, planes = rc
-  bond_remove=[]
-  angle_remove=[]
-  for restraint, values in restraints.items():
-    if len(restraint)==2:
-      for i, bond in enumerate(bonds):
-        if ((bond[0].find(" %s " % restraint[0])>-1 and
-             bond[1].find(" %s " % restraint[1])>-1) or
-            (bond[0].find(" %s " % restraint[1])>-1 and
-             bond[1].find(" %s " % restraint[0])>-1)):
-          assert float(bond[2][0])==values[0]
-          bond_remove.append(i)
-          break
-    elif len(restraint)==3:
-      for i, angle in enumerate(angles):
-        if angle[1].find(" %s " % restraint[1])==-1: continue
-        if ((angle[0].find(" %s " % restraint[0])>-1 and
-             angle[2].find(" %s " % restraint[2])>-1) or
-            (angle[0].find(" %s " % restraint[2])>-1 and
-             angle[2].find(" %s " % restraint[0])>-1)):
-          assert float(angle[3][0])==values[0], "mismatch %s %s to %s" % (
-            restraint,
-            values,
-            angle,
-            )
-          angle_remove.append(i)
-          break
-  assert len(bond_remove)==6
-  assert len(angle_remove)>=13
-  bond_remove.sort()
-  bond_remove.reverse()
-  for i in bond_remove: del bonds[i]
-  print("OK")
+# HPDL key; angles: 7 heavy-atom + 8 ring-H, less the 2 of an absent HD1/HE2
+protonations = {
+  "his_double" : ("ND1 and NE2 protonated", 15),
+  "his_nd1"    : ("Only ND1 protonated", 13),
+  "his_ne2"    : ("Only NE2 protonated", 13),
+  }
 
-def run(filename=None):
-  assert filename is None
+def check_ideals(lines, restraints, n_angles_expected):
+  """Process one His with hpdl=True and compare the bond and angle ideals of
+  the geometry restraints manager with the HPDL table for its protonation."""
+  model = mmtbx.model.manager(
+    model_input=iotbx.pdb.input(source_info=None, lines=lines), log=null_out())
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.restraints_library.hpdl = True
+  model.process(make_restraints=True, pdb_interpretation_params=params)
+  grm = model.get_restraints_manager().geometry
+  names = [a.name.strip() for a in model.get_hierarchy().atoms()]
+  bonds = {}
+  for p in grm.get_all_bond_proxies(sites_cart=model.get_sites_cart())[0]:
+    bonds[frozenset(names[i] for i in p.i_seqs)] = p.distance_ideal
+  angles = {}
+  for p in grm.angle_proxies:
+    i, j, k = [names[i_seq] for i_seq in p.i_seqs]
+    angles[(j, frozenset((i, k)))] = p.angle_ideal
+  n_bonds = 0
+  n_angles = 0
+  for restraint, values in restraints.items():
+    if len(restraint) == 2:
+      ideal = bonds.get(frozenset(restraint))
+      if ideal is None: continue
+      assert ideal == values[0], (restraint, ideal, values)
+      n_bonds += 1
+    elif len(restraint) == 3:
+      i, j, k = restraint
+      ideal = angles.get((j, frozenset((i, k))))
+      if ideal is None: continue
+      assert ideal == values[0], (restraint, ideal, values)
+      n_angles += 1
+  assert n_bonds == 6, n_bonds
+  assert n_angles == n_angles_expected, (n_angles, n_angles_expected)
+
+def run():
   hpdl_database = get_hpdl_database()
-  if 0:
-    print("HPDL")
-    print(hpdl_database)
-    for aa in sorted(hpdl_database):
-      print("  %s" % aa)
-      for key, value in sorted(hpdl_database[aa].items()):
-        print("    %s : %s" % (key, value))
-    assert 0
-  #
-  for pdb, lines in pdbs.items():
-    print(pdb)
-    filename="hpdl_%s.pdb" % pdb
-    f=open(filename, "w")
-    f.write(lines)
-    f.close()
-    cmd = "phenix.pdb_interpretation %s write_geo=1 hpdl=%s" % (filename, True)
-    print(cmd)
-    assert not easy_run.call(cmd)
-    if filename.find("his_double")>-1: key="ND1 and NE2 protonated"
-    elif filename.find("his_nd1")>-1: key="Only ND1 protonated"
-    elif filename.find("his_ne2")>-1: key="Only NE2 protonated"
-    if refine_geo_parser:
-      check_ideals("%s.geo" % filename, hpdl_database[key])
+  for name, lines in pdbs.items():
+    print(name)
+    protonation, n_angles = protonations[name]
+    check_ideals(lines, hpdl_database[protonation], n_angles)
   print("OK")
 
 if __name__=="__main__":
-  run(*tuple(sys.argv[1:]))
+  run()
