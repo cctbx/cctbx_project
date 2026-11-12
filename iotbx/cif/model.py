@@ -847,6 +847,9 @@ def common_substring(seq):
   if len(seq) == 1: return seq[0]
   substr = seq[0]
   for s in seq:
+    # if substr occurs in s, it is already their longest common substring
+    if substr in s:
+      continue
     substr = LCSubstr_set(substr, s).pop()
   if not (substr.endswith('_') or substr.endswith('.')):
     if '.' in substr:
