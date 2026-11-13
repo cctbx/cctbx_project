@@ -1,7 +1,8 @@
 """reduce2 with qmready=True completes the conformers of residues with partial
 alternative conformations (iotbx/pdb/altloc_completion.py) before the
 atom-complete check: atoms the conformers of a residue share are borrowed
-between them, a truncated conformer still needs capping=True.
+between them, a truncated conformer is still capped (capping=Auto is True
+with qmready=True; capping=False stops on it).
 """
 import os
 from six.moves import cStringIO as StringIO
@@ -203,10 +204,11 @@ def truncated_model():
 
 def test_truncated_still_needs_capping():
   model = truncated_model()
-  check_sorry(model, "tst_r2ac_4", ["qmready=True"],
+  check_sorry(model, "tst_r2ac_4", ["qmready=True", "capping=False"],
     "Model must be atom-complete")
   out = "tst_r2ac_4b_out.pdb"
-  run(model, "tst_r2ac_4b", ["qmready=True", "capping=True"], fn_out=out)
+  # capping=Auto: capped
+  run(model, "tst_r2ac_4b", ["qmready=True"], fn_out=out)
   h = iotbx.pdb.input(out).construct_hierarchy()
   asn = [rg for rg in h.residue_groups() if rg.resseq.strip() == "2"][0]
   names_b = [a.name.strip() for ag in asn.atom_groups() if ag.altloc == "B"

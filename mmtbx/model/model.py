@@ -4991,6 +4991,89 @@ class manager(object):
       self.reset_after_changing_hierarchy()
     return n_added
 
+  def add_terminal_op3(self, bond_cutoff=2.0, log=None):
+    """
+    Add OP3 to the phosphate of each nucleic-acid 5' end that lacks it.
+
+    A 5' end is a nucleotide whose P is not bonded (within bond_cutoff) to a
+    heavy atom of another residue, or of a symmetry mate of one when the
+    model has a unit cell: the O3' of the previous nucleotide, a link, a
+    cap. A deposited 5' phosphate usually has P, OP1 and OP2 only; without
+    OP3 the P lacks a substituent that neither capping nor a QM calculation
+    can supply with an H (a P-H is a phosphonate). OP3 completes the
+    tetrahedron: 1.48 A from P opposite the mean of the P-O5', P-OP1 and
+    P-OP2 directions, with the altloc, occupancy and B of OP2. Residues
+    missing P, O5', OP1 or OP2 are skipped, as is a P whose three oxygens
+    are coplanar with it. Alternative conformations are handled per
+    conformer. Hierarchy is changed: restraints are unset, call process()
+    if needed.
+
+    Returns number of added atoms.
+    """
+    get_class = iotbx.pdb.common_residue_names_get_class
+    na_classes = ["common_rna_dna", "modified_rna_dna", "ccp4_mon_lib_rna_dna"]
+    def is_nucleic_acid(rg):
+      for ag in rg.atom_groups():
+        if get_class(name=ag.resname) in na_classes: return True
+      return False
+    to_add = []
+    for model in self._pdb_hierarchy.models():
+      heavy = [a for a in model.atoms()
+               if a.element.strip().upper() not in ["H", "D"]]
+      ends = []
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          if not is_nucleic_acid(rg): continue
+          for conformer in rg.conformers():
+            atoms = {}
+            for a in conformer.only_residue().atoms():
+              atoms[a.name.strip()] = a
+            if "OP3" in atoms: continue
+            p, o5, op1, op2 = [atoms.get(name)
+                               for name in ["P", "O5'", "OP1", "OP2"]]
+            if None in [p, o5, op1, op2]: continue
+            ends.append((rg, p, o5, op1, op2))
+      # P bonded to a heavy atom of another residue, or of a mate of one:
+      # not a 5' end. The P's own residue is not a bond, mates of it too
+      sites = flex.vec3_double([p.xyz for rg, p, o5, op1, op2 in ends])
+      sites.extend(flex.vec3_double([a.xyz for a in heavy]))
+      bonded = set()
+      for k, j, rt, d in crystal.pairs_within(sites, bond_cutoff,
+          self.crystal_symmetry(), i_seqs=range(len(ends))):
+        if j < len(ends): continue
+        a = heavy[j - len(ends)]
+        if a.parent().parent().memory_id() == ends[k][0].memory_id():
+          continue
+        bonded.add(k)
+      for k, (rg, p, o5, op1, op2) in enumerate(ends):
+        if k in bonded: continue
+        p_xyz = matrix.col(p.xyz)
+        v = matrix.col((0, 0, 0))
+        for o in (o5, op1, op2):
+          v += (matrix.col(o.xyz) - p_xyz).normalize()
+        if v.length() < 0.1: continue # the three O coplanar with P
+        to_add.append((op2, p_xyz - 1.48 * v.normalize()))
+    n_added = 0
+    for op2, xyz in to_add:
+      ag = op2.parent()
+      if ag.get_atom("OP3") is not None: continue # shared by conformers
+      op3 = iotbx.pdb.hierarchy.atom()
+      op3.set_name(" OP3")
+      op3.set_element(" O")
+      op3.set_xyz(xyz)
+      op3.set_occ(op2.occ)
+      op3.set_b(op2.b)
+      op3.set_segid(op2.segid)
+      op3.hetero = op2.hetero
+      if op2.uij_is_defined(): op3.set_uij(op2.uij)
+      ag.append_atom(op3)
+      n_added += 1
+      if log is not None:
+        print("Added OP3 to %s" % ag.id_str(), file=log)
+    if n_added > 0:
+      self.reset_after_changing_hierarchy()
+    return n_added
+
   def remove_hydrogens(self):
     if self.has_hd():
       noh_selection = self.selection("not (element H or element D)")

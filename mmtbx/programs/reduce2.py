@@ -19,7 +19,7 @@ import os
 import time
 from datetime import datetime
 from libtbx.program_template import ProgramTemplate
-from libtbx import group_args, phil
+from libtbx import group_args, phil, Auto
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry, null_out, peak_memory_usage, human_readable_size
 import mmtbx
@@ -211,17 +211,19 @@ qmready = False
   .type = bool
   .short_caption = Run with custom preset options suitable for QM
   .help = Add H to water (as add_h_to_water=True), use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks, \
-          and the terminal hydroxyl H of nucleic acids (HO3-prime at a 3-prime end, HO5-prime at a \
-          5-prime OH end). Also complete residues whose conformers lack atoms \
+          the terminal hydroxyl H of nucleic acids (HO3-prime at a 3-prime end, HO5-prime at a \
+          5-prime OH end) and OP3 to a 5-prime phosphate that lacks it. Also complete residues whose conformers lack atoms \
           their other conformers have (altloc completion), and regularize the \
           geometry of the finished model: bond outliers and clashes are \
           minimized away with the smallest shift of the atoms \
           (mmtbx.model.manager.regularize_geometry), before the clash check and \
           the caps
-capping = False
+capping = Auto
   .type = bool
-  .short_caption = Cap dangling bonds with H
-  .help = Add capping H to every non-H atom whose valence is unsatisfied \
+  .short_caption = Cap dangling bonds with H (Auto: with qmready=True)
+  .help = Auto: True with qmready=True (a model ready for qr.refine needs \
+          its dangling bonds capped), False otherwise. \
+          Add capping H to every non-H atom whose valence is unsatisfied \
           because a bonded non-H atom is missing (truncated side chains, \
           incomplete ligands): as many H as the missing bonds need, never \
           a non-H atom. A missing atom between two present atoms of a \
@@ -238,14 +240,18 @@ capping = False
           processed for restraints. Bond orders come from the \
           CCD Kekule structure \
           (DOUB and TRIP), all other bonds count as single. Requires \
-          qmready=True.
-capping_guess_for_unknowns = False
+          qmready=True. With qmready=True, capping=False stops with a \
+          Sorry when the model misses non-H atoms.
+capping_guess_for_unknowns = Auto
   .type = bool
   .short_caption = Guess the valence of residues without a dictionary
-  .help = With capping=True, residues without a dictionary (no monomer \
-          library, CCD or user CIF entry) cannot be checked. True: guess \
+  .help = With capping, residues without a dictionary (no monomer \
+          library, CCD or user CIF entry) cannot be checked. Auto: as \
+          capping (True when capping is on, so such a residue does not stop \
+          the run). True: guess \
           the valence of every atom from its element and formal charge, bonds \
-          from distances, and add H accordingly (reported as guessed). \
+          from distances, and add H accordingly (reported as guessed, with a \
+          warning in the log and the description file). \
           False: stop with a Sorry listing those residues.
 include_symmetric_copies = True
   .type = bool
@@ -1202,13 +1208,16 @@ NOTES:
 
   qmready=True prepares a model for QM: H on water (as add_h_to_water=True), longer XH
   distances, OXT and NH3+ at chain ends and breaks, HO3' and HO5' at nucleic-acid chain
-  ends and breaks, and the geometry of the finished model regularized: bond outliers and
+  ends and breaks, OP3 on a 5' phosphate that lacks it (a P with three O cannot be
+  capped with H), and the geometry of the finished model regularized: bond outliers and
   clashes minimized away with the smallest shift (mmtbx.model.manager.regularize_geometry),
-  before the clash check and the caps.
-  Adding capping=True to it also puts H on every non-H atom left with
-  an unsatisfied valence by a missing non-H atom (truncated side chains, incomplete ligands),
-  as the very last step; the capped model is for QM use only, because the cap names are
-  unknown to the restraint libraries.
+  before the clash check and the caps. As the very last step (capping=Auto, the default,
+  resolves to True with qmready=True) every non-H atom left with an unsatisfied valence by
+  a missing non-H atom (truncated side chains, incomplete ligands) gets capping H, and
+  residues without a dictionary are capped by element valence
+  (capping_guess_for_unknowns=Auto). pdb_interpretation recognizes and restrains the caps
+  (occupancy 0, selection capping_h), so the capped model is the input of qr.refine.
+  capping=False keeps the stop on a model that misses non-H atoms.
 
   Note that the program also takes probe Phil arguments; run with --show_defaults to see
   all Phil arguments.
@@ -2771,9 +2780,13 @@ NOTES:
     # cap_dangling_atoms() reports in record order
     section([line for record, line in zip(dangling.records, result.lines)
              if record.source != 'guess'])
-    section([line for record, line in zip(dangling.records, result.lines)
-             if record.source == 'guess'],
-      'Capped by element valence (no dictionary):')
+    guessed = [line for record, line in zip(dangling.records, result.lines)
+               if record.source == 'guess']
+    section(guessed, 'Capped by element valence (no dictionary):')
+    if guessed:
+      lines.append('    Warning: no dictionary for these residues, so their '
+        'H count comes from element valence and the bonds found by distance; '
+        'check them, or give a restraint file for the residue')
     section(['%s: %s' % (label, reason) for label, reason in dangling.skipped],
       'Not capped:')
     section(list(result.warnings) + list(parity))
@@ -2933,20 +2946,34 @@ NOTES:
         keep += ' or qmready=True'
       raise Sorry('water_hydrogens.existing_h=%s needs the input H kept: %s.'
         % (w.existing_h, keep))
-    # capping: the last step of a qmready run that adds H
+    # capping: the last step of a qmready run that adds H. Auto follows
+    # qmready: a model ready for qr.refine has its dangling bonds capped
+    # (approach=remove adds no H, so there is nothing to cap)
+    if p.capping is Auto:
+      p.capping = bool(p.qmready and p.approach != 'remove')
+      if p.capping:
+        print('qmready=True: capping set to True (dangling bonds are capped '
+          'with H at the end; capping=False stops on them instead)',
+          file=self.logger)
     if p.capping:
       if not p.qmready:
         raise Sorry('capping=True requires qmready=True.')
       if p.approach == 'remove':
         raise Sorry('capping=True cannot be used with approach=remove.')
       # residues without a dictionary reach the capping step, where
-      # capping_guess_for_unknowns decides
+      # capping_guess_for_unknowns decides; Auto guesses, so such a residue
+      # does not stop the run
+      if p.capping_guess_for_unknowns is Auto:
+        p.capping_guess_for_unknowns = True
       if not p.ignore_missing_restraints:
         p.ignore_missing_restraints = True
         print('capping=True: ignore_missing_restraints set to True (residues '
           'without a dictionary are handled by capping)', file=self.logger)
-    elif p.capping_guess_for_unknowns:
-      raise Sorry('capping_guess_for_unknowns=True requires capping=True.')
+    else:
+      if p.capping_guess_for_unknowns is Auto:
+        p.capping_guess_for_unknowns = False
+      elif p.capping_guess_for_unknowns:
+        raise Sorry('capping_guess_for_unknowns=True requires capping=True.')
 
     # One distance flag for the whole run: qmready and neutron_option place H
     # at neutron distances, so every later step must use them
@@ -3122,8 +3149,13 @@ NOTES:
 
     # qmready=True
     if self.params.qmready:
-      # add OXT
+      # add OXT, and OP3 to a 5' phosphate that lacks it (a P with three O
+      # cannot be capped with H)
       self.model.add_terminal_oxt()
+      n_op3 = self.model.add_terminal_op3(log=self.logger)
+      if n_op3:
+        print("qmready=True: added OP3 to %d 5' phosphate(s) that lacked it"
+          % n_op3, file=self.logger)
       # residues with partial alternative conformations: borrow the atoms
       # their conformers lack from each other. An ambiguous borrow is a Sorry
       completion = self.model.complete_altlocs()
@@ -3143,7 +3175,9 @@ NOTES:
           print("  where: '%s' missing:"%k,v, file=self.logger)
         if not self.params.capping:
           raise Sorry(
-            "Model misses non-H atoms. Model must be atom-complete for qmready=true.")
+            "Model misses non-H atoms. Model must be atom-complete for "
+            "qmready=true with capping=False (the default capping=Auto caps "
+            "the dangling bonds with H).")
         print("capping=True: continuing, dangling bonds are capped with H at the end",
           file=self.logger)
 

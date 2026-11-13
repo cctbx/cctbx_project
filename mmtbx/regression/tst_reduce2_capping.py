@@ -1,7 +1,8 @@
-"""reduce2 with qmready=True capping=True: every non-H atom whose valence is
-unsatisfied because a bonded non-H atom is missing gets as many H as the
-missing bonds need, as the very last step (mmtbx/hydrogens/capping.py). The
-capped model is written without being interpreted again.
+"""reduce2 with qmready=True: every non-H atom whose valence is unsatisfied
+because a bonded non-H atom is missing gets as many H as the missing bonds
+need, as the very last step (mmtbx/hydrogens/capping.py; capping=Auto, the
+default, is True with qmready=True, and capping=False stops on such a model
+instead). The capped model is written without being interpreted again.
 """
 from __future__ import absolute_import, division, print_function
 import os
@@ -391,13 +392,20 @@ def test_clash():
   assert d >= 1.0, d
 
 def test_unknown_residue():
+  # capping_guess_for_unknowns=Auto guesses with capping: only an explicit
+  # False stops on a residue without a dictionary
   check_sorry(pdb_asp_gly_unl, "tst_reduce2_capping_7",
-    ["qmready=True", "capping=True"], "capping=True: no dictionary for",
-    "UNL B 1", "capping_guess_for_unknowns=True")
-  prefix = "tst_reduce2_capping_8"
+    ["qmready=True", "capping_guess_for_unknowns=False"],
+    "capping=True: no dictionary for", "UNL B 1",
+    "capping_guess_for_unknowns=True")
+  for prefix, extra in (("tst_reduce2_capping_8", ["qmready=True",
+      "capping=True", "capping_guess_for_unknowns=True"]),
+      ("tst_reduce2_capping_8b", ["qmready=True"])):
+    check_unknown_guessed(prefix, extra)
+
+def check_unknown_guessed(prefix, extra):
   fn_out = prefix + "_out.pdb"
-  r = run(pdb_asp_gly_unl, prefix, ["qmready=True", "capping=True",
-    "capping_guess_for_unknowns=True"], fn_out=fn_out)
+  r = run(pdb_asp_gly_unl, prefix, extra, fn_out=fn_out)
   assert os.path.isfile(fn_out), fn_out
   # ASP-GLY -1, propane 0: the bonds guessed by distance reach electrons
   assert r.total_charge == -1, r.total_charge
@@ -413,11 +421,37 @@ def test_unknown_residue():
     description = f.read()
   assert "Capped by element valence (no dictionary):" in description, \
     description
+  assert "Warning: no dictionary for these residues" in description, \
+    description
   assert "open-shell cap on" not in description, description
 
-def test_qmready_without_capping_unchanged():
-  check_sorry(pdb_lys_asp_gly, "tst_reduce2_capping_9", ["qmready=True"],
-    "Model must be atom-complete for qmready=true")
+def test_capping_false_stops():
+  # qmready=True capping=False: the hard stop on a model that misses non-H
+  # atoms
+  check_sorry(pdb_lys_asp_gly, "tst_reduce2_capping_9", ["qmready=True",
+    "capping=False"], "Model must be atom-complete for qmready=true",
+    "capping=False", "capping=Auto")
+
+def test_qmready_caps_by_default():
+  # qmready=True alone (capping=Auto) is qmready=True capping=True
+  prefix = "tst_reduce2_capping_9b"
+  fn_out = prefix + "_out.pdb"
+  r = run(pdb_lys_asp_gly, prefix, ["qmready=True"], fn_out=fn_out)
+  assert r.total_charge == expected_charge, r.total_charge
+  check_capped(iotbx.pdb.input(fn_out).construct_hierarchy())
+  check_capped(r.model.get_hierarchy())
+  with open(prefix + "_out.txt") as f:
+    description = f.read()
+  assert "Capped 1 atoms in 1 residues with 3 H" in description, description
+  # the log says that Auto resolved to True
+  from six.moves import cStringIO as StringIO
+  log = StringIO()
+  with open(prefix + ".pdb", "w") as f:
+    f.write(pdb_lys_asp_gly)
+  run_program(program_class=reduce2.Program, logger=log, args=[
+    prefix + ".pdb", "overwrite=True", "qmready=True",
+    "output.filename=" + fn_out])
+  assert "qmready=True: capping set to True" in log.getvalue()
 
 def test_internal_gap():
   # the Sorry of cap_dangling_atoms() reaches the user, nothing is written
@@ -576,31 +610,41 @@ def test_na_termini_altloc():
 
 def test_5p_phosphate_keeps_charge():
   """
-  qmready alone on the RNA trimer with its deposited 5' phosphate (no OP3):
-  no HO5' (the residue has P), no HOP2/HOP3 (protonation is reduce2's), HO3'
-  on the 3' end.
+  qmready on the RNA trimer with its deposited 5' phosphate (P, OP1, OP2,
+  no OP3): qmready adds OP3 (model.add_terminal_op3; a P with three O
+  cannot be capped with H), so nothing is capped; no HO5' (the residue has
+  P), no HOP2/HOP3 (protonation is reduce2's), HO3' on the 3' end. The 5'
+  phosphate counts -2 with the two phosphodiesters: -4.
   """
   prefix = "tst_reduce2_capping_5p"
-  r = run(pdb_rna3_5p, prefix, ["qmready=True"])
+  r = run(pdb_rna3_5p, prefix, ["qmready=True"], fn_out=prefix + "_out.pdb")
   h = r.model.get_hierarchy()
+  names_2 = [a.name.strip() for a in h.atoms()
+             if a.parent().parent().resseq.strip() == "2"]
+  assert names_2.count("OP3") == 1, names_2
   assert "HO5'" not in h_names_of(h, 2), h_names_of(h, 2)
   assert not [n for n in h_names_of(h, 2) if n.startswith("HOP")]
   assert "HO3'" in h_names_of(h, 4), h_names_of(h, 4)
+  assert r.total_charge == -4, r.total_charge
+  with open(prefix + "_out.txt") as f:
+    description = f.read()
+  assert "Capped 0 atoms" in description, description
 
 def test_phosphorus_refused():
   """
-  A P missing an oxygen is never capped (a P-H is a phosphonate): the
-  deposited 5' phosphate without OP3, and a P whose O5' is gone at a
-  backbone break, both stop with a Sorry naming the atom and the remedy, and
-  no file is written.
+  A P missing an oxygen is never capped (a P-H is a phosphonate): a P whose
+  O5' is gone at a backbone break (qmready adds OP3 only to a 5' phosphate
+  with O5', OP1 and OP2) stops with a Sorry naming the atom and the remedy,
+  with the default capping=Auto and with capping=True, and no file is
+  written.
   """
   prefix = "tst_reduce2_capping_p"
-  msg = check_sorry(pdb_rna3_5p, prefix, ["qmready=True", "capping=True"],
-    "Cannot cap", "C A 2 P", "OP3", "phosphonate", "OP3 at a 5' end")
   text = "\n".join(l for l in pdb_dna3.splitlines()
     if not (l.startswith("ATOM") and l[22:26].strip() == "2"
             and l[12:16].strip() in ("O5'", "C5'"))) + "\n"
-  check_sorry(text, prefix + "_break", ["qmready=True", "capping=True"],
+  check_sorry(text, prefix + "_break", ["qmready=True"],
+    "Cannot cap", "DG A 2 P", "O5'", "phosphonate")
+  check_sorry(text, prefix + "_break2", ["qmready=True", "capping=True"],
     "Cannot cap", "DG A 2 P", "O5'", "phosphonate")
 
 if __name__ == "__main__":
@@ -611,7 +655,8 @@ if __name__ == "__main__":
   test_guess_flag_alone()
   test_clash()
   test_unknown_residue()
-  test_qmready_without_capping_unchanged()
+  test_capping_false_stops()
+  test_qmready_caps_by_default()
   test_internal_gap()
   test_optimize()
   test_na_termini()
