@@ -6,6 +6,7 @@
 #include <cctbx/sgtbx/direct_space_asu/proto/small_vec_math.h>
 #include <cctbx/sgtbx/direct_space_asu/proto/asymmetric_unit.h>
 #include <scitbx/fftpack/real_to_complex_3d.h>
+#include <scitbx/math/modulo.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -156,10 +157,54 @@ namespace mmtbx { namespace masks {
     const af::ref<data_type, grid_t > data_ref = data.ref();
     data_type *d_ptr = data_ref.begin();
     size_t cell_volume = 0;
+    // faces as exact integer planes on the grid: n.(i/n0,j/n1,k/n2)+c
+    // times n0*n1*n2; along a row the points where every face is positive
+    // are inside and not on a face, where_is would return 1
+    const std::size_t n_faces = asu.n_faces();
+    std::vector<long long> face_i(n_faces), face_j(n_faces), face_k(n_faces),
+      face_c(n_faces);
+    for(std::size_t i_face=0; i_face<n_faces; ++i_face)
+    {
+      cctbx::sgtbx::asu::cut face;
+      asu.get_nth_plane(i_face, face);
+      face_i[i_face] = static_cast<long long>(face.n[0])*n[1]*n[2];
+      face_j[i_face] = static_cast<long long>(face.n[1])*n[0]*n[2];
+      face_k[i_face] = static_cast<long long>(face.n[2])*n[0]*n[1];
+      face_c[i_face] = static_cast<long long>(face.c)*n[0]*n[1]*n[2];
+    }
     for(long i=smn[0]; i<smx[0]; ++i)
     {
       for(long j=smn[1]; j<smx[1]; ++j)
       {
+        long k_inside_min = smn[2], k_inside_max = smx[2]-1;
+        for(std::size_t i_face=0; i_face<n_faces; ++i_face)
+        {
+          const long long a = face_i[i_face]*i + face_j[i_face]*j
+            + face_c[i_face];
+          const long long step = face_k[i_face];
+          // a + k*step > 0
+          if( step > 0 )
+          {
+            const long long q = -a / step, r = -a % step;
+            const long long k_min = (r < 0 ? q-1 : q) + 1; // floor(-a/step)+1
+            if( k_min > k_inside_min )
+              k_inside_min = static_cast<long>(
+                std::min<long long>(k_min, smx[2]));
+          }
+          else if( step < 0 )
+          {
+            const long long q = a / (-step), r = a % (-step);
+            const long long k_max = (r > 0 ? q+1 : q) - 1; // ceil(a/-step)-1
+            if( k_max < k_inside_max )
+              k_inside_max = static_cast<long>(
+                std::max<long long>(k_max, smn[2]-1));
+          }
+          else if( a <= 0 )
+          {
+            k_inside_min = smx[2];
+            k_inside_max = smn[2]-1;
+          }
+        }
         for(long k=smn[2]; k<smx[2]; ++k, ++d_ptr)
         {
           // set points wthin shrink_truncation_radius around asu to
@@ -170,7 +215,9 @@ namespace mmtbx { namespace masks {
           if( !(scitbx::ge_all(pos, imn) && scitbx::lt_all(pos, imx)) )
             continue;
           unsigned short nops = 0;
-          if( has_enclosed_box )
+          if( k >= k_inside_min && k <= k_inside_max )
+            nops = order;
+          else if( has_enclosed_box )
           {
             if( scitbx::ge_all(pos, emn) && scitbx::le_all(pos, emx) )
               nops = order;
@@ -392,6 +439,16 @@ namespace mmtbx { namespace masks {
       {
         scitbx::double3 sym_at = symops[isym]*at;
         sym_at -= scitbx::floor(sym_at);
+        // only cells whose atom box can reach the asu box, one cell of
+        // margin each side for rounding; the test below decides as before
+        scitbx::vec3<int> lo, hi;
+        for(short idim=0; idim<3; ++idim)
+        {
+          lo[idim] = std::max(cmin[idim], iceil(
+            asu_box[0][idim] - box[idim] - sym_at[idim]) - 1);
+          hi[idim] = std::min(cmax[idim], ifloor(
+            asu_box[1][idim] + box[idim] - sym_at[idim]) + 1);
+        }
         scitbx::vec3<int> cell;
         // In previous version there was mapping onto full cell
         // so only atoms in the adjacent [1,+1] cells needed
@@ -401,11 +458,11 @@ namespace mmtbx { namespace masks {
         // closer one.
         // In this version, there is no mapping, so need
         // to collect all intersecting atoms
-        for(cell[0] = cmin[0]; cell[0]<=cmax[0]; ++cell[0])
+        for(cell[0] = lo[0]; cell[0]<=hi[0]; ++cell[0])
         {
-          for(cell[1] = cmin[1]; cell[1]<=cmax[1]; ++cell[1])
+          for(cell[1] = lo[1]; cell[1]<=hi[1]; ++cell[1])
           {
-            for(cell[2] = cmin[2]; cell[2]<=cmax[2]; ++cell[2])
+            for(cell[2] = lo[2]; cell[2]<=hi[2]; ++cell[2])
             {
               const scitbx::double3 sym_at_cell = sym_at + cell;
               cctbx::sgtbx::asu::intersection_kind  intersection
@@ -557,7 +614,27 @@ namespace mmtbx { namespace masks {
 
     boost::posix_time::ptime
       tb = boost::posix_time::microsec_clock::local_time(), te;
-    fft.forward(padded_real); // in-place forward FFT
+    scitbx::int3 imn, imx;
+    this->get_asu_boundaries(imn, imx); // [imn, imx)
+    std::vector<char> nonzero_x(ndim[0], 0), nonzero_y(ndim[1], 0);
+    for(long i=imn[0]; i<imx[0]; ++i)
+      nonzero_x[scitbx::math::mod_positive(i, long(ndim[0]))] = 1;
+    for(long j=imn[1]; j<imx[1]; ++j)
+      nonzero_y[scitbx::math::mod_positive(j, long(ndim[1]))] = 1;
+    // from_map reads h*r of each symmetry operation, or its friedel mate
+    scitbx::int3 hmax(0,0,0);
+    for(std::size_t i=0; i<indices.size(); ++i)
+      for(std::size_t i_smx=0; i_smx<group.n_smx(); ++i_smx)
+      {
+        cctbx::miller::index<> hr = indices[i] * group.smx(i_smx).r();
+        for(unsigned char j=0; j<3U; ++j)
+          hmax[j] = std::max(hmax[j], std::abs(hr[j]));
+      }
+    std::vector<char> needed_y(ndim[1], 0);
+    for(long k=-hmax[1]; k<=hmax[1]; ++k)
+      needed_y[scitbx::math::mod_positive(k, long(ndim[1]))] = 1;
+    fft.forward_pruned(padded_real.ref(), nonzero_x, nonzero_y, needed_y,
+      hmax[2]+1);
     const padded_grid_t pad_complex( fft.n_complex(), fft.n_complex() );
     versa_3d_padded_complex_array result(padded_real.handle(), pad_complex );
     boost::posix_time::time_duration tdif =
@@ -664,6 +741,21 @@ namespace mmtbx { namespace masks {
     }
     MMTBX_ASSERT( shells_rad>=0.0 );
     shells_array_t layers_sq(shells.size()+2);
+    // asu faces n.x+c>=0 with the cartesian length of n, to drop atoms
+    // that paint no point the mask reads: those inside the asu and their
+    // neighbours within shrink_truncation_radius
+    const std::size_t n_faces = asu.n_faces();
+    std::vector<scitbx::double3> face_n(n_faces);
+    std::vector<double> face_c(n_faces), face_length(n_faces);
+    for(std::size_t i_face=0; i_face<n_faces; ++i_face)
+    {
+      cctbx::sgtbx::asu::cut face;
+      asu.get_nth_plane(i_face, face);
+      face_n[i_face] = scitbx::double3(face.n[0], face.n[1], face.n[2]);
+      face_c[i_face] = face.c;
+      face_length[i_face] = std::sqrt(unit_cell.d_star_sq(
+        cctbx::miller::index<>(face.n[0], face.n[1], face.n[2])));
+    }
     for(std::size_t i_site=0;i_site<atoms.size();i_site++) {
       cctbx::fractional<> const& site = atoms[i_site].first;
       const f_t xfi=static_cast<f_t>(site[0]);
@@ -686,6 +778,19 @@ namespace mmtbx { namespace masks {
         layers_sq[2+ii] = csq*csq;
       }
       const f_t cutoff=shell_cutoff;
+      const double reach = cutoff + shrink_truncation_radius + 0.01;
+      bool far_from_asu = false;
+      for(std::size_t i_face=0; i_face<n_faces; ++i_face)
+      {
+        const scitbx::double3 &fn = face_n[i_face];
+        if( fn[0]*site[0] + fn[1]*site[1] + fn[2]*site[2] + face_c[i_face]
+            < -reach*face_length[i_face] )
+        {
+          far_from_asu = true;
+          break;
+        }
+      }
+      if( far_from_asu ) continue;
       const f_t coas = cutoff*rp[0];
       int x1box=ifloor(nx*(xfi-coas));
       int x2box=1+iceil(nx*(xfi+coas));
@@ -709,6 +814,10 @@ namespace mmtbx { namespace masks {
       const f_t w7=tsxg1*sxbcen+tsxg4*sybcen+tsxg7*szbcen;
       const f_t w8=tsyg4*sxbcen+tsyg5*sybcen+tsyg8*szbcen;
       const f_t w9=tszg3*sxbcen+tszg8*sybcen+tszg9*szbcen;
+      const std::size_t n_layers_sq = layers_sq.size();
+      const f_t layer_sq_0 = layers_sq[0];
+      const f_t layer_sq_1 = layers_sq[1];
+      const f_t layer_sq_max = layers_sq.back()*(1+1e-9) + 1e-12;
       f_t distsx = distsm;
       f_t s1xx = sxsq - w7;
       f_t s1xy = sysq - w8;
@@ -727,22 +836,53 @@ namespace mmtbx { namespace masks {
           f_t s3_incr = s2yz;
           f_t dist = s2;
           const long ind_z_max = ind_y+z2box;
-          for(long ind_z=ind_y+z1box; ind_z<ind_z_max; ++ind_z)
+          // dist along the row is quadratic in z: a row whose minimum lies
+          // beyond the outer layer paints nothing
+          const f_t b_row = s2yz - 0.5*w6;
+          if( s2 - b_row*b_row/(2*w6) <= layer_sq_max )
           {
-            const f_t dist_c  = dist;
-            for(unsigned ii=0; ii<layers_sq.size(); ++ii)
+            if( n_layers_sq == 2 )
             {
-              if( dist_c < layers_sq[ii] )
+              // no radial shells: the loop below with its two layers unrolled
+              for(long ind_z=ind_y+z1box; ind_z<ind_z_max; ++ind_z)
               {
-                data_type& dr = data_ref[ind_z];
-                if( dr.layer() > ii )
-                  dr.set(ii, ii==0?0:dr.multiplicity());
-                break;
-              }
+                const f_t dist_c  = dist;
+                if( dist_c < layer_sq_0 )
+                {
+                  data_type& dr = data_ref[ind_z];
+                  if( dr.layer() > 0 )
+                    dr.set(0, 0);
+                }
+                else if( dist_c < layer_sq_1 )
+                {
+                  data_type& dr = data_ref[ind_z];
+                  if( dr.layer() > 1 )
+                    dr.set(1, dr.multiplicity());
+                }
+                dist += s3_incr;
+                s3_incr += w6;
+              } // z-box loop
             }
-            dist += s3_incr;
-            s3_incr += w6;
-          } // z-box loop
+            else
+            {
+              for(long ind_z=ind_y+z1box; ind_z<ind_z_max; ++ind_z)
+              {
+                const f_t dist_c  = dist;
+                for(unsigned ii=0; ii<layers_sq.size(); ++ii)
+                {
+                  if( dist_c < layers_sq[ii] )
+                  {
+                    data_type& dr = data_ref[ind_z];
+                    if( dr.layer() > ii )
+                      dr.set(ii, ii==0?0:dr.multiplicity());
+                    break;
+                  }
+                }
+                dist += s3_incr;
+                s3_incr += w6;
+              } // z-box loop
+            }
+          }
           s2 += s2_incr;
           s2_incr += w4;
           s2yz += w5;
