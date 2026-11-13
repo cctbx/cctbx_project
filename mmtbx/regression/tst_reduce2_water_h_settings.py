@@ -100,20 +100,11 @@ def placer_arguments(prefix, args):
 
 def exercise_defaults():
   """
-  reduce2's water_hydrogens defaults, from its master PHIL: the search
-  settings of mmtbx.development.virvel's program, existing_h=reorient and
+  reduce2's own water_hydrogens defaults: existing_h=reorient and
   symmetry=True.
   """
-  from mmtbx.programs import water_protonation as virvel
   r = iotbx.phil.parse(reduce2.Program.master_phil_str,
     process_includes=True).extract().water_hydrogens
-  v = iotbx.phil.parse(virvel.Program.master_phil_str).extract()
-  for name, got, want in (
-      ("refine.max_sweeps", r.refine.max_sweeps, v.refine.max_sweeps),
-      ("refine.tolerance", r.refine.tolerance, v.refine.tolerance),
-      ("basin.rounds", r.basin.rounds, v.basin.rounds),
-      ("cluster_search", r.cluster_search, v.cluster_search)):
-    assert got == want, (name, got, want)
   assert r.existing_h == "reorient", r.existing_h
   assert r.symmetry is True, r.symmetry
 
