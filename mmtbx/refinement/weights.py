@@ -198,6 +198,16 @@ class adp_gradients(object):
       scatterers.flags_set_grad_u_aniso(iselection = sel_a.iselection())
     fmodel_dc.update_xray_structure(xray_structure = xray_structure,
       update_f_calc = True)
+    if(fmodel_dc.target_name == "llgi"):
+      # ML's alpha and beta follow the shaken model (update_xray_structure
+      # clears them); without the same for sigmaA and ScatFrac, the llgi
+      # gradient is far too large where sigmaA is high, and wxu too small.
+      # With tNCS the frame is kept: the structure here may lack the
+      # hydrogens and IAS that the tNCS groups index.
+      fit_params = getattr(fmodel_dc.llgi_data(), "fit_params", None)
+      if(fit_params is not None):
+        fmodel_dc.update_llgi_sigmaa_scatfrac(params=fit_params.scatfrac,
+          e_params=fit_params.e_scale, refit_tncs=False)
     gxu = fmodel_dc.one_time_gradients_wrt_atomic_parameters().packed()
     gu = None
     if(sel_a is None or sel_a.count(True) == 0):
@@ -296,6 +306,12 @@ class site_gradients(object):
     scatterers.flags_set_grad_site(iselection = sel.iselection())
     fmodel_dc.update_xray_structure(xray_structure = xray_structure,
       update_f_calc = True, update_f_mask = True)
+    if(fmodel_dc.target_name == "llgi"):
+      # as in adp_gradients, for the shaken sites
+      fit_params = getattr(fmodel_dc.llgi_data(), "fit_params", None)
+      if(fit_params is not None):
+        fmodel_dc.update_llgi_sigmaa_scatfrac(params=fit_params.scatfrac,
+          e_params=fit_params.e_scale, refit_tncs=False)
     gxc = flex.vec3_double(
       fmodel_dc.one_time_gradients_wrt_atomic_parameters(site = True).packed())
     gco = restraints_manager.energies_sites(

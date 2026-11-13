@@ -379,7 +379,7 @@ def map_coefficients_from_fmodel(
      mnm.phaser_sad_llg):
     return None
   if(fmodel is not None):
-    e_map_obj = fmodel.electron_density_map()
+    e_map_obj = fmodel.electron_density_map_for_target()
     xrs = fmodel.xray_structure
   else:
     e_map_obj = map_calculation_server
@@ -463,7 +463,7 @@ class compute_map_coefficients(object):
     self.mtz_dataset = mtz_dataset
     coeffs = None
     # Avoid doing slow calculation several times!
-    map_calculation_server = fmodel.electron_density_map()
+    map_calculation_server = fmodel.electron_density_map_for_target()
     self.map_coeffs = []
     for mcp in params:
       if(mcp.map_type is not None):

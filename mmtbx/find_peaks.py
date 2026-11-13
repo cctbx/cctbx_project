@@ -264,7 +264,7 @@ def show_highest_peaks_and_deepest_holes(fmodel,
     print_statistics.make_sub_header(par[1], out = log)
     #
     from cctbx import maptbx
-    e_map = fmodel.electron_density_map()
+    e_map = fmodel.electron_density_map_for_model_building()
     crystal_symmetry = fmodel.xray_structure.crystal_symmetry()
     crystal_gridding = maptbx.crystal_gridding(
       unit_cell        = crystal_symmetry.unit_cell(),

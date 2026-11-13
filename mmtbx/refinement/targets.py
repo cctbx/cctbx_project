@@ -43,6 +43,8 @@ class target_attributes(object):
       return self.specialization is None
     elif (self.family == "ml"):
       return self.specialization in [None, "hl", "sad", "i", "f"]
+    elif (self.family == "llgi"):
+      return self.specialization is None
     return False
 
   def requires_experimental_phases(self):
@@ -66,7 +68,8 @@ target_names = {
   "ml": target_attributes("ml", "f"),
   "mli": target_attributes("ml","i"),
   "mlhl": target_attributes("ml", "hl"),
-  "ml_sad": target_attributes("ml", "sad")}
+  "ml_sad": target_attributes("ml", "sad"),
+  "llgi": target_attributes("llgi")}
 
 class phaser_sad_target_functor(object):
 
@@ -178,6 +181,33 @@ class target_functor(object):
         epsilons              = manager.epsilons,
         spacialization        = attr.specialization,
         integration_step_size = 5.0)
+    elif (attr.family == "llgi"):
+      import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+      llgi_data = manager.llgi_data()
+      if (llgi_data is None):
+        raise Sorry(
+          "llgi target requires precomputed LLGI data (DOBS/FEFF/TEPS/"
+          "RESN); none provided.")
+      sigmaa = getattr(llgi_data, "sigmaa", None)
+      scatfrac = getattr(llgi_data, "scatfrac", None)
+      if (sigmaa is None or scatfrac is None):
+        raise Sorry(
+          "llgi target requires sigmaA(resolution) and ScatFrac"
+          "(resolution): call update_llgi_sigmaa_scatfrac() first.")
+      import mmtbx.refinement.llgi_tncs as llgi_tncs
+      tncs_u, tncs_t = llgi_tncs.arrays(llgi_data)
+      self.core = xray.target_functors.llgi(
+        f_eff        = llgi_data.feff,
+        r_free_flags = manager.r_free_flags(),
+        dobs         = llgi_data.dobs,
+        sigmaa       = sigmaa,
+        scatfrac     = scatfrac,
+        scale_factor = manager.scale_ml_wrapper(),
+        teps         = llgi_data.teps.data(),
+        resn         = llgi_data.resn.data(),
+        hybrid       = llgi_hybrid.get_hybrid(llgi_data),
+        tncs_u       = tncs_u,
+        tncs_t       = tncs_t)
     else:
       if (attr.pseudo_ml):
         f_obs, weights = manager.f_star_w_star()

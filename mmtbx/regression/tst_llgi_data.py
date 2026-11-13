@@ -1,0 +1,277 @@
+from __future__ import absolute_import, division, print_function
+from cctbx.array_family import flex
+from libtbx.utils import Sorry
+from mmtbx.regression.llgi_test_utils import build_fmodel
+
+def make_llgi_arrays(f_obs, resize=None):
+  """ Build synthetic dobs/feff/teps/resn arrays on (a possibly resized
+  subset of) f_obs's index set, matching the shapes get_llgi_data would
+  produce, without going through an actual reflection file. """
+  from libtbx import group_args
+  indices = f_obs.indices()
+  if(resize is not None):
+    indices = indices[:resize]
+    f_obs = f_obs.customized_copy(indices=indices,
+      data=f_obs.data()[:resize])
+  n = indices.size()
+  dobs = f_obs.array(data=flex.double(n, 0.7))
+  feff = f_obs.array(data=f_obs.data())
+  teps = f_obs.array(data=flex.double(n, 1.0))
+  resn = f_obs.array(data=flex.double(n, 1.0))
+  return group_args(dobs=dobs, feff=feff, teps=teps, resn=resn, info=None)
+
+def exercise_set_llgi_data_ok():
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
+  assert fmodel.llgi_data() is None
+  llgi_data = make_llgi_arrays(fmodel.f_obs())
+  fmodel.set_llgi_data(llgi_data)
+  assert fmodel.llgi_data() is not None
+  assert fmodel.llgi_data().dobs.indices().all_eq(fmodel.f_obs().indices())
+
+def exercise_set_llgi_data_mismatched_indices():
+  # An array on a different (smaller) index set must be rejected rather
+  # than silently accepted -- set_llgi_data() requires callers to have
+  # already completed/common_set every array against f_obs (see
+  # phenix.refinement.llgi_data.get_llgi_data, which does this).
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
+  n_full = fmodel.f_obs().indices().size()
+  assert n_full > 5
+  llgi_data = make_llgi_arrays(fmodel.f_obs(), resize=n_full - 2)
+  try:
+    fmodel.set_llgi_data(llgi_data)
+  except Sorry:
+    pass
+  else:
+    assert False, "expected Sorry to be raised"
+
+def exercise_set_llgi_data_missing_component():
+  from libtbx import group_args
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
+  llgi_data = make_llgi_arrays(fmodel.f_obs())
+  incomplete = group_args(
+    dobs=llgi_data.dobs, feff=llgi_data.feff, teps=None,
+    resn=llgi_data.resn, info=None)
+  try:
+    fmodel.set_llgi_data(incomplete)
+  except Sorry:
+    pass
+  else:
+    assert False, "expected Sorry to be raised"
+
+def exercise_set_target_name_llgi_requires_data():
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
+  assert fmodel.llgi_data() is None
+  try:
+    fmodel.set_target_name("llgi")
+  except Sorry:
+    pass
+  else:
+    assert False, "expected Sorry to be raised"
+  # once attached, set_target_name should succeed
+  llgi_data = make_llgi_arrays(fmodel.f_obs())
+  fmodel.set_llgi_data(llgi_data)
+  fmodel.set_target_name("llgi")
+  assert fmodel.target_name == "llgi"
+  # target_attributes() must resolve the newly-registered "llgi" family
+  attr = fmodel.target_attributes()
+  assert attr.family == "llgi"
+  assert attr.specialization is None
+
+def exercise_target_functor_reports_missing_sigmaa_scatfrac():
+  # target_functor() must fail with a clear Sorry, not an opaque
+  # AttributeError/TypeError, when llgi_data lacks sigmaa/scatfrac (i.e.
+  # before update_llgi_sigmaa_scatfrac() has run).
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
+  llgi_data = make_llgi_arrays(fmodel.f_obs())
+  fmodel.set_llgi_data(llgi_data)
+  fmodel.set_target_name("llgi")
+  try:
+    fmodel.target_functor()
+  except Sorry:
+    pass
+  else:
+    assert False, "expected Sorry to be raised"
+
+def exercise_update_llgi_sigmaa_scatfrac_enables_target_functor():
+  # fmodel.update_llgi_sigmaa_scatfrac() attaches sigmaa/scatfrac to
+  # llgi_data, after which target_functor() succeeds (the counterpart of
+  # exercise_target_functor_reports_missing_sigmaa_scatfrac).
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
+  llgi_data = make_llgi_arrays(fmodel.f_obs())
+  fmodel.set_llgi_data(llgi_data)
+  fmodel.set_target_name("llgi")
+  assert getattr(fmodel.llgi_data(), "sigmaa", None) is None
+  fmodel.update_llgi_sigmaa_scatfrac()
+  assert getattr(fmodel.llgi_data(), "sigmaa", None) is not None
+  assert getattr(fmodel.llgi_data(), "scatfrac", None) is not None
+  # dobs/feff/teps/resn must survive the update unchanged.
+  assert fmodel.llgi_data().dobs.indices().all_eq(fmodel.f_obs().indices())
+  result = fmodel.target_functor()
+  core_result = result(compute_gradients=True)
+  # A finite target_work is enough here (correctness of the underlying
+  # estimator and target math is covered by tst_llgi_scatfrac.py and
+  # cctbx/xray/targets/tst_llgi.py respectively) -- this test is only
+  # about the plumbing between update_llgi_sigmaa_scatfrac() and
+  # target_functor() actually working end to end.
+  import math
+  assert math.isfinite(core_result.core_result.target_work())
+
+def exercise_update_llgi_sigmaa_scatfrac_requires_llgi_data():
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
+  assert fmodel.llgi_data() is None
+  try:
+    fmodel.update_llgi_sigmaa_scatfrac()
+  except Sorry:
+    pass
+  else:
+    assert False, "expected Sorry to be raised"
+
+def exercise_llgi_data_survives_select_and_update_all_scales():
+  # select() (used by remove_outliers in every bss pass) builds a new
+  # manager; llgi_data, including sigmaa/scatfrac, must come along.
+  fmodel = build_fmodel(5, 2.5, space_group="P 4", update_scales=False)
+  llgi_data = make_llgi_arrays(fmodel.f_obs())
+  fmodel.set_llgi_data(llgi_data)
+  fmodel.set_target_name("llgi")
+  fmodel.update_llgi_sigmaa_scatfrac()
+  assert fmodel.llgi_data() is not None
+  # select() with an all-True selection (a deep_copy, in effect) must
+  # still carry llgi_data (all components, including sigmaa/scatfrac)
+  # through to the new manager.
+  selection = flex.bool(fmodel.f_obs().data().size(), True)
+  new_fmodel = fmodel.select(selection=selection, deep_copy_xray_structure=False)
+  assert new_fmodel.llgi_data() is not None
+  assert getattr(new_fmodel.llgi_data(), "sigmaa", None) is not None
+  assert getattr(new_fmodel.llgi_data(), "scatfrac", None) is not None
+  assert new_fmodel.llgi_data().dobs.indices().all_eq(
+    new_fmodel.f_obs().indices())
+  # target_functor() must still succeed on the selected copy without
+  # needing update_llgi_sigmaa_scatfrac() to be called again.
+  new_fmodel.target_functor()
+
+def exercise_llgi_sigmaa_is_current():
+  # True right after the sigmaA/ScatFrac fit; False without llgi_data,
+  # after a selection (the record is not carried over) and after the model
+  # moves; True again after refitting.
+  from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
+  assert not build_fmodel(5, 2.5, update_scales=False).llgi_sigmaa_is_current()
+  fmodel = build_llgi_fmodel(30, 2.2, seed=3)
+  assert fmodel.llgi_sigmaa_is_current()
+  selected = fmodel.select(flex.bool(fmodel.f_obs().size(), True))
+  assert not selected.llgi_sigmaa_is_current()
+  xrs = fmodel.xray_structure.deep_copy_scatterers()
+  xrs.shake_sites_in_place(mean_distance=0.2)
+  fmodel.update_xray_structure(xray_structure=xrs, update_f_calc=True)
+  assert not fmodel.llgi_sigmaa_is_current()
+  fmodel.update_llgi_sigmaa_scatfrac()
+  assert fmodel.llgi_sigmaa_is_current()
+
+def exercise_low_resolution_removal_keeps_llgi_target():
+  # update_all_scales removes the lowest-resolution bin when R-work there
+  # exceeds 0.7; the rebuilt manager keeps target llgi and llgi_data on the
+  # remaining reflections, and its origin and data type.
+  import random
+  from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
+  fmodel = build_llgi_fmodel(30, 2.0, seed=5)
+  origin = object()
+  fmodel._origin = origin
+  fmodel._data_type = "x_ray"
+  sel = fmodel.bin_selections[0]
+  f_obs = fmodel.f_obs()
+  data = f_obs.data().deep_copy()
+  rnd = random.Random(1)
+  mean_low = flex.mean(data.select(sel))
+  data.set_selected(sel, flex.double(
+    [rnd.choice([0.05, 4.0]) * mean_low for i in range(sel.count(True))]))
+  fmodel.update(f_obs=f_obs.customized_copy(data=data))
+  assert fmodel.r_work_low() > 0.7
+  n_before = fmodel.f_obs().size()
+  fmodel.update_all_scales(remove_outliers=True)
+  assert fmodel.f_obs().size() < n_before
+  assert fmodel.target_name == "llgi" and fmodel.llgi_target_active()
+  assert fmodel.llgi_data().dobs.indices().all_eq(fmodel.f_obs().indices())
+  assert fmodel.origin() is origin
+  assert fmodel.data_type() == "x_ray"
+
+def exercise_site_gradients_refit_sigmaa():
+  # the xyz weight takes the llgi gradient with sigmaA and ScatFrac
+  # refitted at the structure it differentiates, as for the ADP weight;
+  # here the sites move after the fit, without shaking
+  import random
+  import iotbx.pdb, mmtbx.model, mmtbx.f_model
+  import mmtbx.refinement.refinement_flags
+  from libtbx.utils import null_out
+  from mmtbx.refinement import weights
+  from mmtbx.regression import model_1yjp
+  from mmtbx.regression.llgi_test_utils import synthetic_llgi_data
+  random.seed(0)
+  flex.set_random_seed(0)
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(source_info=None,
+    lines=model_1yjp), log=null_out())
+  model.process(make_restraints=True)
+  xrs = model.get_xray_structure()
+  f_obs = abs(xrs.structure_factors(d_min=1.2).f_calc())
+  shaken = xrs.deep_copy_scatterers()
+  shaken.shake_sites_in_place(mean_distance=0.3)
+  fmodel = mmtbx.f_model.manager(xray_structure=shaken, f_obs=f_obs,
+    r_free_flags=f_obs.generate_r_free_flags())
+  fmodel.update_all_scales()
+  fmodel.set_llgi_data(synthetic_llgi_data(fmodel, seed=3))
+  fmodel.set_target_name("llgi")
+  fmodel.update_llgi_sigmaa_scatfrac()
+  shaken = shaken.deep_copy_scatterers()
+  shaken.shake_sites_in_place(mean_distance=0.5)
+  fmodel.update_xray_structure(xray_structure=shaken, update_f_calc=True,
+    update_f_mask=True)
+  model.set_xray_structure(shaken)
+  sel = flex.bool(model.size(), True)
+  model.set_refinement_flags(flags=mmtbx.refinement.refinement_flags.manager(
+    individual_sites=True, sites_individual=sel))
+  result = weights.site_gradients(fmodel=fmodel, model=model,
+    correct_special_position_tolerance=1.0,
+    cartesian_dynamics_parameters=None, shake=False, regularize_ncycles=50,
+    rmsd_cutoff_for_gradient_filtering=3.0, gradient_filtering=False,
+    log=null_out())
+  fit_params = fmodel.llgi_data().fit_params
+  fmodel.update_llgi_sigmaa_scatfrac(params=fit_params.scatfrac,
+    e_params=fit_params.e_scale, refit_tncs=False)
+  scatterers = fmodel.xray_structure.scatterers()
+  scatterers.flags_set_grads(state=False)
+  scatterers.flags_set_grad_site(iselection=sel.iselection())
+  expected = flex.vec3_double(
+    fmodel.one_time_gradients_wrt_atomic_parameters(site=True).packed())
+  ratio = result.gxc.norm() / expected.norm()
+  assert abs(ratio - 1) < 1.e-3, ratio
+
+def exercise_e_scale_sigmaa_phil_scope_parses():
+  # The refinement.llgi_data.e_scale_sigmaa phil scope (phenix/phenix/
+  # refinement/__init__.params) includes mmtbx.refinement.
+  # llgi_e_sigmaa.llgi_e_sigmaa_params; check the fields the
+  # sigmaA fit reads are all present, including the d_model
+  # sub-scope, to catch field-name drift without a phenix-side test.
+  import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
+  extract = llgi_e_sigmaa.llgi_e_sigmaa_params.extract()
+  for name in ("sigmaa_model", "model_anisotropy", "n_sigmaa_coeffs",
+               "spline_degree", "sigmaa_max_iterations",
+               "sigmaa_curvature_weight"):
+    assert hasattr(extract, name), name
+  for name in ("n_gaussian_terms", "max_iterations", "include_constant_term"):
+    assert hasattr(extract.d_model_params, name), name
+
+def exercise():
+  exercise_set_llgi_data_ok()
+  exercise_set_llgi_data_mismatched_indices()
+  exercise_set_llgi_data_missing_component()
+  exercise_set_target_name_llgi_requires_data()
+  exercise_target_functor_reports_missing_sigmaa_scatfrac()
+  exercise_update_llgi_sigmaa_scatfrac_enables_target_functor()
+  exercise_update_llgi_sigmaa_scatfrac_requires_llgi_data()
+  exercise_llgi_data_survives_select_and_update_all_scales()
+  exercise_llgi_sigmaa_is_current()
+  exercise_low_resolution_removal_keeps_llgi_target()
+  exercise_site_gradients_refit_sigmaa()
+  exercise_e_scale_sigmaa_phil_scope_parses()
+  print("OK")
+
+if (__name__ == "__main__"):
+  exercise()

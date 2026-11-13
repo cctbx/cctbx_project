@@ -5,6 +5,7 @@ with the separate mmtbx.maps module.
 """
 
 from __future__ import absolute_import, division, print_function
+from libtbx import group_args
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import maptbx
@@ -243,10 +244,15 @@ class electron_density_map(object):
     if(fill_missing):
       if(coeffs.anomalous_flag()):
         coeffs = coeffs.average_bijvoet_mates()
-      coeffs = fill_missing_f_obs(
-        coeffs = coeffs,
-        fmodel = self.fmodel,
-        method = fill_missing_method)
+      if(fill_missing_method == "f_model" and getattr(self.mch, "llgi", False)):
+        coeffs = fill_missing_f_obs_llgi(coeffs = coeffs, fmodel = self.fmodel,
+          isotropize = isotropize,
+          scale = map_name_manager.k + map_name_manager.n)
+      else:
+        coeffs = fill_missing_f_obs(
+          coeffs = coeffs,
+          fmodel = self.fmodel,
+          method = fill_missing_method)
     if(sharp):
       ss = 1./flex.pow2(coeffs.d_spacings().data()) / 4.
       from cctbx import adptbx
@@ -512,6 +518,122 @@ def fill_missing_f_obs(coeffs, fmodel, method):
     return coeffs
   else:
     raise RuntimeError("Invalid arg of fill_missing_f_obs: method:"%(method))
+
+def nearest_in_d_star_sq(d_star_sq, values, d_star_sq_eval):
+  """ values (one per reflection with d*^2 in d_star_sq) at the reflection
+  nearest in d*^2 to each of d_star_sq_eval """
+  import numpy as np
+  d = np.asarray(d_star_sq, dtype=float)
+  order = np.argsort(d)
+  d, v = d[order], np.asarray(values, dtype=float)[order]
+  e = np.asarray(d_star_sq_eval, dtype=float)
+  i = np.clip(np.searchsorted(d, e), 0, len(d) - 1)
+  j = np.clip(i - 1, 0, len(d) - 1)
+  return flex.double(v[np.where(np.abs(d[j] - e) < np.abs(d[i] - e), j, i)])
+
+class model_missing_reflections_llgi(object):
+  """ The LLGI fill for reflections without data: D*Fc in LLGI terms,
+  sigmaA*|Emodel|*sqrt(TEPS)*RESN along the model phase (the limit of the
+  LLGI 2mFo-DFc coefficient, 2<E> - sigmaA*Emodel on the E scale, as the
+  information in a reflection goes to 0), on the complete set to the
+  resolution of f_obs, from fmodel's model and scales:
+    F_model       k_isotropic*(Fcalc + sum k_mask*Fmask) of fmodel's
+                  structure and mask, with fmodel's k_isotropic and k_mask
+                  (functions of resolution) at the nearest observed
+                  reflection in d*^2
+    Emodel        k*F_model/(RESN*sqrt(TEPS*ScatFrac)), as in the target
+                  and the sigmaA fit (llgi_e_sigmaa.build_e_model), with
+                  ScatFrac (as a function of d*^2 and, with
+                  llgi_e_sigmaa's model_anisotropy, the direction) from the
+                  observed reflections and k_anisotropic as fitted below
+    sigmaA        the fitted curve (llgi_data.sigmaa_curve)
+    RESN          nacelle's value or its model (llgi_maps.resn_model)
+    TEPS          llgi_data.teps for the reflections refined, otherwise 1
+  With isotropize, as the map coefficients (electron_density_map.
+  map_coefficients), divided by k_isotropic*k_anisotropic, k_anisotropic
+  in the form fmodel's anisotropic scale takes, fitted to fmodel's values
+  (llgi_maps.fit_k_anisotropic). For an observed reflection this is the
+  D*Fc term of the LLGI map coefficients (with intensities; the Rice
+  form's is Dobs*sigmaA*Emodel). coeffs is not used (kept for the
+  interface of model_missing_reflections). Requires llgi_data with
+  sigmaa_curve
+  (update_llgi_sigmaa_scatfrac()); raises AttributeError otherwise.
+  """
+
+  def __init__(self, fmodel, coeffs=None):
+    self.fmodel = fmodel
+    llgi_data = fmodel.llgi_data()
+    if(llgi_data is None):
+      raise AttributeError(
+        "model_missing_reflections_llgi requires llgi_data (FEFF/DOBS/"
+        "TEPS/RESN) -- none attached.")
+    if(getattr(llgi_data, "sigmaa_curve", None) is None):
+      raise AttributeError(
+        "model_missing_reflections_llgi requires the sigmaA fit "
+        "(update_llgi_sigmaa_scatfrac()) -- not yet available.")
+    self.llgi_data = llgi_data
+
+  def get_missing(self, isotropize=True):
+    """ The fill values on the complete set (as a complex miller array).
+    Also sets .e_scale_missing (miller_set, sigmaa, e_model_abs,
+    f_model_no_aniso, resn: the E-scale quantities, for mmtbx.refinement.
+    llgi_maps). """
+    import mmtbx.refinement.llgi_e_sigmaa as llgi_e_sigmaa
+    import mmtbx.refinement.llgi_maps as llgi_maps
+    fmodel = self.fmodel
+    f_obs = fmodel.f_obs()
+    cs = f_obs.average_bijvoet_mates().complete_set(d_min=f_obs.d_min())
+    d_star_sq, d_obs = cs.d_star_sq().data(), f_obs.d_star_sq().data()
+    def at(values):
+      return nearest_in_d_star_sq(d_obs, values, d_star_sq)
+    xrs = fmodel.xray_structure
+    f_calc = cs.structure_factors_from_scatterers(xray_structure=xrs).f_calc()
+    f_masks = mmtbx.masks.manager(miller_array=f_calc, miller_array_twin=None,
+      mask_params=fmodel.mask_params).shell_f_masks(xray_structure=xrs,
+      force_update=True)
+    k_iso = at(fmodel.k_isotropic())
+    f_part = f_calc.data().deep_copy()
+    assert len(fmodel.k_masks()) == len(f_masks)
+    for k_mask, f_mask in zip(fmodel.k_masks(), f_masks):
+      f_part += at(k_mask) * f_mask.data()
+    fmnas = k_iso * f_part
+    # the model's normalisation as for the sigmaA fit (fitted to the
+    # observed reflections, evaluated for all), anisotropic with
+    # llgi_e_sigmaa's model_anisotropy
+    em_obs = llgi_e_sigmaa.build_e_model_as_fitted(fmodel)
+    sigmaa = self.llgi_data.sigmaa_curve(d_star_sq)
+    resn, _ = llgi_maps.get_resn_model(self.llgi_data).resn_for(cs)
+    teps = flex.double(cs.size(), 1)
+    pairs = miller.match_indices(cs.indices(), f_obs.indices()).pairs()
+    teps.set_selected(pairs.column(0),
+      self.llgi_data.teps.data().select(pairs.column(1)))
+    k_aniso = llgi_maps.fit_k_anisotropic(f_obs.array(
+      data=fmodel.k_anisotropic())).evaluate(cs)
+    # the model's E with fmodel's own k_anisotropic where it has one (so
+    # that it is the target's Ecalc there), the fitted form elsewhere
+    k_aniso_e = k_aniso.deep_copy()
+    k_aniso_e.set_selected(pairs.column(0),
+      fmodel.k_anisotropic().select(pairs.column(1)))
+    e_model_abs = em_obs.e_abs_for(cs, fmnas, resn, teps, k_aniso_e)
+    self.e_scale_missing = group_args(miller_set=cs, sigmaa=sigmaa,
+      e_model_abs=e_model_abs, f_model_no_aniso=fmnas, resn=resn)
+    fill = sigmaa * e_model_abs * flex.sqrt(teps) * resn
+    if(isotropize):
+      fill = fill / (k_iso * k_aniso)
+    return cs.array(data=flex.complex_double(fill, flex.double(fill.size(), 0))
+      * llgi_maps._unit_phase(fmnas))
+
+def fill_missing_f_obs_llgi(coeffs, fmodel, isotropize=True, scale=1):
+  """ LLGI counterpart of fill_missing_f_obs_1 (method "f_model"): the
+  reflections absent from coeffs filled by model_missing_reflections_llgi,
+  on the scale of coeffs (isotropize as for coeffs), times scale: for map
+  coefficients k*mFo + n*DFc, k + n (the limit of the coefficient as the
+  information goes to 0), so a difference map is not filled. """
+  if(scale == 0): return coeffs
+  missing = model_missing_reflections_llgi(fmodel=fmodel).get_missing(
+    isotropize=isotropize)
+  return coeffs.complete_with(
+    other=missing.customized_copy(data=missing.data() * scale), scale=False)
 
 def sharp_evaluation_target(sites_frac, map_coeffs, resolution_factor = 0.25):
   fft_map = map_coeffs.fft_map(resolution_factor=resolution_factor)
