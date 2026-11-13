@@ -103,23 +103,23 @@ class plot_container(wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin):
   def setup_fonts(self):
     import matplotlib.font_manager
     self._fonts["basic"] = matplotlib.font_manager.FontProperties(
-      family = ["Courier", "Monaco", "monospace"],
+      family = ["monospace"],
       weight = "normal",
       size   = 10)
     self._fonts["value_label"] = matplotlib.font_manager.FontProperties(
-      family = ["Courier", "Monaco", "monospace"],
+      family = ["monospace"],
       weight = "normal",
       size   = self.font_size)
     self._fonts["axis_label"] = matplotlib.font_manager.FontProperties(
-      family = ["Helvetica", "sans-serif"],
+      family = ["sans-serif"],
       weight = "bold",
       size   = self.font_size)
     self._fonts["text"] = matplotlib.font_manager.FontProperties(
-      family = ["Helvetica", "sans-serif"],
+      family = ["sans-serif"],
       weight = "normal",
       size   = self.font_size)
     self._fonts["title"] = matplotlib.font_manager.FontProperties(
-      family = ["Helvetica", "sans-serif"],
+      family = ["sans-serif"],
       weight = "bold",
       size   = self.title_font_size)
 
