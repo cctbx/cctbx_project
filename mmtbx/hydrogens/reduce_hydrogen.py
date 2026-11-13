@@ -930,6 +930,14 @@ def _mon_lib_query_cached(residue, names, mon_lib_srv, cache):
     cache[key] = mlq
   return mlq, cif_object
 
+def auto_restraint_name(resname):
+  '''
+  Name of the placeholder dictionary that mon_lib_query() generates from the
+  CCD for resname. A monomer library server that processed it records it as
+  its source_info, 'file: <path>/auto_<resname>'.
+  '''
+  return 'auto_%s' % resname
+
 def with_auto_restraint_object(ro, resname, cif_object,
                                auto_restraint_names):
   '''
@@ -937,7 +945,7 @@ def with_auto_restraint_object(ro, resname, cif_object,
   generated from the CCD for resname, as auto_<resname>. ro is not changed:
   select() and deep_copy() pass the same list to the copy.
   '''
-  auto_name = 'auto_%s' % resname
+  auto_name = auto_restraint_name(resname)
   if auto_name not in auto_restraint_names:
     auto_restraint_names.append(auto_name)
   return list(ro or []) + [(auto_name, cif_object)]

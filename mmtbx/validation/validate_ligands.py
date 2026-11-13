@@ -943,9 +943,37 @@ class ligand_result(object):
 
   # ----------------------------------------------------------------------------
 
+  def _has_ccd_placeholder_restraints(self):
+    '''
+    True if the ligand's restraints are the placeholder that reduce2 generates
+    from the CCD to place H on a residue not in the monomer library (bond
+    sigma 0.1 A, angle and torsion sigma 1 deg). It stays in the model's
+    monomer library server after placement.
+    '''
+    # not the module's os: tst_validate_ligands_3 test39 replaces it
+    from os.path import basename
+    from mmtbx.hydrogens.reduce_hydrogen import auto_restraint_name
+    resname = self._atoms_ligand[0].parent().resname.strip()
+    comp = self.model.get_mon_lib_srv().get_comp_comp_id_direct(resname)
+    source_info = getattr(comp, 'source_info', None)
+    if not source_info: return False
+    return basename(source_info) == auto_restraint_name(resname)
+
+  # ----------------------------------------------------------------------------
+
   def get_rmsds(self):
 
     if self._rmsds is not None:
+      return self._rmsds
+    if self._has_ccd_placeholder_restraints():
+      # as for a ligand without restraints: nothing validated
+      self._rmsds = group_args(
+        bond_rmsd = 0, bond_rmsz = 0, bond_n = 0, bond_n_outliers = 0,
+        angle_rmsd = 0, angle_rmsz = 0, angle_n = 0, angle_n_outliers = 0,
+        chirality_rmsd = 0, chirality_n = 0, chirality_n_outliers = 0,
+        planarity_rmsd = 0,
+        dihedral_rmsd = 0, dihedral_rmsz = 0, dihedral_n = 0,
+        dihedral_n_outliers = 0)
       return self._rmsds
     # ligand without H atoms
     model_ligand = self.model.select(self.ligand_isel_noH)
