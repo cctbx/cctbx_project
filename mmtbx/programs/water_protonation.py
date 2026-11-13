@@ -40,34 +40,7 @@ symmetry = True
   .type = bool
   .short_caption = Honour crystal symmetry
   .help = "Include the symmetry-equivalent atoms near each water in its environment. Waters on special positions keep their site symmetry either way. Ignored for a model without a unit cell and space group, and for an electron microscopy model."
-refine
-  .short_caption = Refinement sweeps
-{
-  max_sweeps = 5
-    .type = int(value_min=0)
-    .short_caption = Maximum refinement sweeps
-    .help = "Maximum refinement sweeps, each re-placing every water against the others' current H; 0 disables refinement."
-  tolerance = 1
-    .type = int(value_min=0)
-    .short_caption = Early-stop tolerance
-    .help = "Stop refining once a sweep removes fewer than this many close (< 2.0 A) H-H contacts; 0 runs all max_sweeps. The best state is kept."
-}
-basin
-  .short_caption = Basin-hopping
-{
-  rounds = 0
-    .type = int(value_min=0)
-    .short_caption = Basin-hopping rounds
-    .help = "Basin-hopping rounds after refinement (0 = off): each round randomly re-orients the still-clashing waters and relaxes, keeping the best. Seeded, so deterministic."
-}
-cluster_search = False
-  .type = bool
-  .short_caption = Joint search over water clusters
-  .help = "After refinement and basin-hopping, re-choose the orientations of each cluster of waters within H-bonding reach of each other jointly, keeping the combination whose protons lie closest to acceptors without a new H-H clash or two waters donating to each other."
-stats = False
-  .type = bool
-  .short_caption = Report water-H clashes
-  .help = "After placement, print the per-state water-H clash summary and list the residual inter-water H-H contacts, grouped by the 1.5/1.8/2.0 A thresholds."
+include scope mmtbx.hydrogens.water_protonation.placement_phil_str
 output {
   suffix = _waters_protonated
     .type = str
@@ -222,20 +195,9 @@ and existing_h=reorient strips all water H and re-places both.
     print(file=self.logger)
 
     n_before = self._count_water_h(hier)
-    report_stats = self.params.stats
-
-    # The summary and table header print at the first state, then one row
-    # per state.
-    printed = False
+    states = []
     def on_state(label, stats):
-      nonlocal printed
-      if not printed:
-        print(self._summary(n_before, self._count_water_h(hier)),
-              file=self.logger)
-        print("H-H contacts between waters:", file=self.logger)
-        self._clash_header(self.logger)
-        printed = True
-      self._clash_row(label, stats, self.logger)
+      states.append((label, stats))
 
     result = water_protonation.place_water_hydrogens(
       hier,
@@ -248,23 +210,24 @@ and existing_h=reorient strips all water H and re-places both.
       existing_h       = self.params.existing_h,
       crystal_symmetry = cs,
       symmetry_mates   = self.params.symmetry,
-      on_state         = on_state if report_stats else None)
+      on_state         = on_state if self.params.stats else None)
 
     n_after = self._count_water_h(hier)
     self.n_added = sum(n_after) - sum(n_before)
     self.kept_label = result.kept_label
     self.partial_waters = result.partial_waters
-    if not report_stats:
-      print(self._summary(n_before, n_after), file=self.logger)
-    elif printed:
-      if self.params.basin.rounds and not result.basin_rounds_run:
-        print("Basin hopping: no clashing water can move, skipped",
-              file=self.logger)
-      if result.kept_label is not None:
-        print(f"Kept: {result.kept_label} (fewest contacts < 2.0 A)",
-              file=self.logger)
-      self._print_residual_contacts(hier,
-                                    cs if self.params.symmetry else None)
+    print(self._summary(n_before, n_after), file=self.logger)
+    if states:
+      contacts = water_protonation.worst_water_clashes(
+        hier, crystal_symmetry=cs if self.params.symmetry else None)
+      basin_skipped = (self.params.basin.rounds > 0
+                       and result.basin_rounds_run == 0)
+      lines = water_protonation.clash_report_lines(
+        states, result.kept_label, basin_skipped, contacts)
+      if lines:
+        print("H-H contacts between waters:", file=self.logger)
+      for line in lines:
+        print(line, file=self.logger)
     self._print_partial_waters(result.partial_waters)
 
     self._write_output(model)
@@ -351,39 +314,6 @@ and existing_h=reorient strips all water H and re-places both.
     }
     for line in water_protonation.partial_water_lines(partial, tail):
       print(line, file=self.logger)
-
-  @staticmethod
-  def _clash_header(log):
-    """Print the column header of the per-state clash table to ``log``."""
-    print(f"  {'state':<11}{'< 2.0 A':>9}{'< 1.8 A':>9}{'< 1.5 A':>9}  closest",
-          file=log)
-
-  @staticmethod
-  def _clash_row(label, stats, log):
-    """Print one row of the per-state clash table for ``stats`` to ``log``."""
-    _, n20, n18, n15, worst = stats
-    w = f"{worst:.2f} A" if worst is not None else "-"
-    print(f"  {label:<11}{n20:>9}{n18:>9}{n15:>9}  {w}", file=log)
-
-  def _print_residual_contacts(self, hier, crystal_symmetry):
-    """List the residual inter-water H-H contacts (< 2.0 A) with residue IDs,
-    grouped into the 1.5/1.8/2.0 A bands and closest-first within each band.
-    Contacts with symmetry equivalents carry the operator."""
-    contacts = water_protonation._worst_water_clashes(
-      hier, crystal_symmetry=crystal_symmetry)
-    if not contacts:
-      print("Residual contacts: none", file=self.logger)
-      return
-    print("Residual contacts:", file=self.logger)
-    for label, lo, hi in (("< 1.5 A", 0.0, 1.5),
-                          ("1.5-1.8 A", 1.5, 1.8),
-                          ("1.8-2.0 A", 1.8, 2.0)):
-      band = [c for c in contacts if lo <= c[0] < hi]
-      if not band:
-        continue
-      print(f"  {label} ({len(band)}):", file=self.logger)
-      for d, id_a, id_b in band:
-        print(f"    {d:.2f} A  {id_a}  <->  {id_b}", file=self.logger)
 
   # ----------------------------------------------------------------------------
 

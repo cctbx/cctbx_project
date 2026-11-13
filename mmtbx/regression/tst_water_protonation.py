@@ -3,6 +3,7 @@ H-bond-aware water-hydrogen placer, and the ``mmtbx.development.virvel``
 program that wraps it.
 """
 
+import inspect
 import math
 import os
 from io import StringIO
@@ -902,7 +903,7 @@ def exercise_refinement_reduces_clashes():
   assert n_refined < n_greedy, (
     f"refinement should reduce close contacts ({n_greedy} -> {n_refined})")
   # The program's contact listing reports the same contacts, closest first.
-  listed = [c[0] for c in wp._worst_water_clashes(greedy)]
+  listed = [c[0] for c in wp.worst_water_clashes(greedy)]
   assert len(listed) == n_greedy, (len(listed), n_greedy)
   assert listed == sorted(listed), listed
 
@@ -964,18 +965,22 @@ def exercise_cluster_search():
   that the placement, taking the nearest acceptor first, cannot reach.
 
   Places on ``_CLUSTER_SEARCH_PDB`` without the search, where one proton of
-  W 1 points at no acceptor within the donation limit, and with it, where
-  both do; then on ``_CLUSTER_SEARCH_OVERLAP_PDB``, whose two coincident
-  waters give each other no direction to donate along. Last on
-  ``_COINCIDENT_WATERS_PDB``, whose waters have no acceptor at all and
+  W 1 points at no acceptor within the donation limit, and with it, given or
+  by default, where both do; then on ``_CLUSTER_SEARCH_OVERLAP_PDB``, whose
+  two coincident waters give each other no direction to donate along. Last
+  on ``_COINCIDENT_WATERS_PDB``, whose waters have no acceptor at all and
   must each still get two H.
   """
   for pdb_str, search, want in (
       (_CLUSTER_SEARCH_PDB, False, ["ACA"]),
       (_CLUSTER_SEARCH_PDB, True, ["ACA", "ACB"]),
+      (_CLUSTER_SEARCH_PDB, None, ["ACA", "ACB"]),
       (_CLUSTER_SEARCH_OVERLAP_PDB, True, ["ACA", "ACB"])):
     hier = _hierarchy(pdb_str)
-    wp.place_water_hydrogens(hier, cluster_search=search)
+    if search is None:
+      wp.place_water_hydrogens(hier)
+    else:
+      wp.place_water_hydrogens(hier, cluster_search=search)
     bare = next(rg for rg in hier.residue_groups() if rg.resseq.strip() == "1")
     o = next(a for a in bare.atoms() if a.element.strip() == "O")
     hs = [a for a in bare.atoms() if a.element.strip() == "H"]
@@ -1291,24 +1296,26 @@ def exercise_sym_equiv_protons():
 def exercise_sym_equiv_contacts_counted():
   """The clash counts include contacts with symmetry-equivalent water H.
 
-  Places on ``_SYM_CONTACT_PDB``, whose waters already carry H, and reads
-  the counts the placer reports for its state, the counts from the
-  hierarchy and the program's contact listing. Each must hold the two
-  contacts across symmetry once, at 1.486 and 1.600 A, the second against
-  the water's own equivalent; without a crystal symmetry there are none. On
+  Places on ``_SYM_CONTACT_PDB``, whose waters already carry H, without
+  refinement or the cluster search, and reads the counts the placer reports
+  for its one state, the counts from the hierarchy and the program's contact
+  listing. Each must hold the two contacts across symmetry once, at 1.486
+  and 1.600 A, the second against the water's own equivalent; without a
+  crystal symmetry there are none. On
   ``_SPLIT_SYM_CONTACT_PDB`` a water split between altlocs, with an O per
   conformer, makes two contacts, each counted once.
   """
   hier, cs = _hierarchy_and_symmetry(_SYM_CONTACT_PDB)
   states = []
-  wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs,
+  wp.place_water_hydrogens(hier, n_refine=0, cluster_search=False,
+                           crystal_symmetry=cs,
                            on_state=lambda label, stats: states.append(stats))
   assert [s[1] for s in states] == [2], states
   stats = wp._water_clash_stats(hier, crystal_symmetry=cs)
   assert stats == states[0], (stats, states[0])
   stats = wp._water_clash_stats(hier)
   assert stats[1] == 0, stats
-  listed = wp._worst_water_clashes(hier, crystal_symmetry=cs)
+  listed = wp.worst_water_clashes(hier, crystal_symmetry=cs)
   assert approx_equal([c[0] for c in listed], [1.486, 1.600], eps=1e-6)
   assert [c[1:] for c in listed] == [
     ("HOH W 2 H1", "HOH W 3 H1 [x-1,y,z]"),
@@ -1318,12 +1325,13 @@ def exercise_sym_equiv_contacts_counted():
   # with it counts once.
   hier, cs = _hierarchy_and_symmetry(_SPLIT_SYM_CONTACT_PDB)
   states = []
-  wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs,
+  wp.place_water_hydrogens(hier, n_refine=0, cluster_search=False,
+                           crystal_symmetry=cs,
                            on_state=lambda label, stats: states.append(stats))
   assert [s[1] for s in states] == [2], states
   stats = wp._water_clash_stats(hier, crystal_symmetry=cs)
   assert stats == states[0], (stats, states[0])
-  listed = wp._worst_water_clashes(hier, crystal_symmetry=cs)
+  listed = wp.worst_water_clashes(hier, crystal_symmetry=cs)
   assert approx_equal([c[0] for c in listed], [1.486, 1.603], eps=1e-3)
   assert [c[1:] for c in listed] == [
     ("HOH W 2 H1", "HOH W 3 H1 altloc A [x-1,y,z]"),
@@ -1432,7 +1440,8 @@ def exercise_water_conformers():
   Completes ``_ALTLOC_D_WATER_PDB`` stripped of its D2s: each altloc gains a
   D2 at its own occupancy. Completes ``_ALTLOC_O_WATER_PDB``: each altloc
   gains a D2 beside the shared blank D1, the water is reported once as
-  carrying a single H, and its own D count as no clash. Places
+  carrying a single H, and its own D count as no clash in the one state
+  without refinement or the cluster search. Places
   ``_WATER_SO4_ALTLOC_PDB``: the water's altloc gains two H, the sulfate's
   none. Reorients ``_ALTLOC_D_WATER_PDB``: each altloc's pair is re-placed
   at its occupancy.
@@ -1457,7 +1466,7 @@ def exercise_water_conformers():
   hier = _hierarchy(_ALTLOC_O_WATER_PDB)
   states = []
   res = wp.place_water_hydrogens(
-    hier, n_refine=0, existing_h="complete",
+    hier, n_refine=0, cluster_search=False, existing_h="complete",
     on_state=lambda label, stats: states.append(stats[1]))
   got = hd_by_altloc(hier)
   assert got == {"": [("D1", "D", 1.0)], "A": [("D2", "D", 0.5)],
@@ -1480,14 +1489,15 @@ def exercise_altloc_environment():
   """A water conformer ignores atoms of another altloc, its own other
   conformer included.
 
-  Places on ``_SPLIT_WATER_PDB``, where conformer B's O blocks, and would
-  itself attract, the H conformer A aims at the acceptor. Conformer A must
-  still aim an H at the acceptor, the clash counts must not count A's H
-  against B's, and the contact listing names an atom's altloc.
+  Places on ``_SPLIT_WATER_PDB``, without refinement or the cluster search,
+  where conformer B's O blocks, and would itself attract, the H conformer A
+  aims at the acceptor. Conformer A must still aim an H at the acceptor, the
+  clash counts must not count A's H against B's, and the contact listing
+  names an atom's altloc and its residue's insertion code.
   """
   hier = _hierarchy(_SPLIT_WATER_PDB)
   states = []
-  wp.place_water_hydrogens(hier, n_refine=0,
+  wp.place_water_hydrogens(hier, n_refine=0, cluster_search=False,
                            on_state=lambda label, stats: states.append(stats))
   ag_a = next(ag for ag in hier.atom_groups()
               if ag.resname == "HOH" and ag.altloc == "A")
@@ -1502,6 +1512,9 @@ def exercise_altloc_environment():
   assert stats[1] == 0, stats
   atom_id = wp._atom_id(hs[0])
   assert atom_id == f"HOH W 1 {hs[0].name.strip()} altloc A", atom_id
+  ag_a.parent().icode = "A"
+  atom_id = wp._atom_id(hs[0])
+  assert atom_id == f"HOH W 1A {hs[0].name.strip()} altloc A", atom_id
 
 
 def exercise_improper_altloc_rejected():
@@ -1688,6 +1701,105 @@ def exercise_multi_model_rejected():
     raise Exception_expected
 
 
+def exercise_clash_report_lines():
+  """clash_report_lines() gives the per-state table, the kept state and the
+  residual contacts, at most max_listed per band, with each band's count,
+  and no lines without water H.
+
+  The kept state is the cluster search's whenever it ran, from the state
+  refinement kept, if any; checked on the placer's own states and
+  kept_label for ``_CLUSTER_SEARCH_PDB``, with and without refinement and
+  without the search.
+  """
+  states = [("initial", (4, 3, 1, 0, 1.6)),
+            ("cluster search", (4, 1, 0, 0, 1.9))]
+  contacts = [(1.4, "HOH A 1 H1", "HOH A 2 H1")] + [
+    (1.85, f"HOH A {i} H2", f"HOH A {i + 1} H2") for i in range(3, 25)]
+  lines = wp.clash_report_lines(states, "initial", False, contacts)
+  assert lines[:4] == [
+    "  state            < 2.0 A  < 1.8 A  < 1.5 A  closest",
+    "  initial                3        1        0  1.60 A",
+    "  cluster search         1        0        0  1.90 A",
+    "Kept: cluster search, from initial (fewest contacts < 2.0 A)"], lines[:4]
+  assert lines[4:7] == ["Residual contacts:", "  < 1.5 A (1):",
+                        "    1.40 A  HOH A 1 H1  <->  HOH A 2 H1"], lines[4:7]
+  assert lines[7] == "  1.8-2.0 A (22):", lines[7]
+  assert len(lines) == 8 + 20 + 1, len(lines)
+  assert lines[-1] == "    ... and 2 more", lines[-1]
+  lines = wp.clash_report_lines(states[:1], None, True, [])
+  assert lines[2:] == ["Basin hopping: no clashing water can move, skipped",
+                       "Residual contacts: none"], lines[2:]
+  lines = wp.clash_report_lines([("initial", (0, 0, 0, 0, None))], "initial",
+                                False, [])
+  assert lines == [], lines
+
+  def kept_line(**kw):
+    placed = []
+    res = wp.place_water_hydrogens(
+      _hierarchy(_CLUSTER_SEARCH_PDB),
+      on_state=lambda label, stats: placed.append((label, stats)), **kw)
+    lines = wp.clash_report_lines(placed, res.kept_label, False, [])
+    return res.kept_label, [l for l in lines if l.startswith("Kept")]
+  label, kept = kept_line()
+  assert kept == [
+    f"Kept: cluster search, from {label} (fewest contacts < 2.0 A)"], kept
+  label, kept = kept_line(n_refine=0)
+  assert label is None and kept == ["Kept: cluster search"], (label, kept)
+  label, kept = kept_line(cluster_search=False)
+  assert kept == [f"Kept: {label} (fewest contacts < 2.0 A)"], kept
+
+
+def exercise_program_stats():
+  """stats=True, the default, reports the clash table, the kept state and
+  the residual contacts; stats=False reports none of them, and nor does a
+  model without waters. With basin.rounds=2 on a model whose water has no
+  clash, it reports basin-hopping as skipped.
+
+  Runs the program on ``_MIXED_CLUSTER_PDB``, and on ``_TWO_ACCEPTOR_PDB``
+  with and without its water.
+  """
+  no_water = "\n".join(l for l in _TWO_ACCEPTOR_PDB.split("\n")
+                       if "HOH" not in l)
+  for name, pdb_str, args, shown in (
+      ("stats", _MIXED_CLUSTER_PDB, [], True),
+      ("stats", _MIXED_CLUSTER_PDB, ["stats=False"], False),
+      ("no_water", no_water, [], False),
+      ("basin", _TWO_ACCEPTOR_PDB, ["basin.rounds=2"], True)):
+    file_name = f"tst_water_protonation_{name}.pdb"
+    with open(file_name, "w") as f:
+      f.write(pdb_str)
+    log = StringIO()
+    run_program(program_class=wp_program.Program, logger=log,
+                args=[file_name, "output.overwrite=True"] + args)
+    text = log.getvalue()
+    for line in ("H-H contacts between waters:", "Kept: ", "Residual contacts"):
+      assert (line in text) == shown, (args, line, text)
+    skipped = "Basin hopping: no clashing water can move, skipped" in text
+    assert skipped == (name == "basin"), (args, text)
+
+
+def exercise_placement_phil_defaults():
+  """The placer's search arguments default to placement_phil_str's values:
+  five refinement sweeps, tolerance 1, no basin-hopping and the cluster
+  search on. The clash report is on by default too.
+
+  Both programs include placement_phil_str, so a run with their defaults
+  and a call of place_water_hydrogens without these arguments search alike.
+  """
+  p = iotbx.phil.parse(wp.placement_phil_str).extract()
+  defaults = {k: v.default for k, v in
+              inspect.signature(wp.place_water_hydrogens).parameters.items()}
+  for name, value in (("n_refine", p.refine.max_sweeps),
+                      ("refine_tol", p.refine.tolerance),
+                      ("n_basin", p.basin.rounds),
+                      ("cluster_search", p.cluster_search)):
+    assert defaults[name] == value, (name, defaults[name], value)
+  values = (p.refine.max_sweeps, p.refine.tolerance, p.basin.rounds,
+            p.cluster_search)
+  assert values == (5, 1, 0, True), values
+  assert p.stats is True, p.stats
+
+
 def exercise_settings_need_values():
   """A placement setting given as None is refused.
 
@@ -1773,6 +1885,9 @@ def run():
   exercise_reorient_keeps_isotope()
   exercise_missing_elements_rejected()
   exercise_multi_model_rejected()
+  exercise_clash_report_lines()
+  exercise_program_stats()
+  exercise_placement_phil_defaults()
   exercise_settings_need_values()
   exercise_output_file_name()
   print(format_cpu_times())
