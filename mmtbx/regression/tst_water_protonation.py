@@ -965,18 +965,22 @@ def exercise_cluster_search():
   that the placement, taking the nearest acceptor first, cannot reach.
 
   Places on ``_CLUSTER_SEARCH_PDB`` without the search, where one proton of
-  W 1 points at no acceptor within the donation limit, and with it, where
-  both do; then on ``_CLUSTER_SEARCH_OVERLAP_PDB``, whose two coincident
-  waters give each other no direction to donate along. Last on
-  ``_COINCIDENT_WATERS_PDB``, whose waters have no acceptor at all and
+  W 1 points at no acceptor within the donation limit, and with it, given or
+  by default, where both do; then on ``_CLUSTER_SEARCH_OVERLAP_PDB``, whose
+  two coincident waters give each other no direction to donate along. Last
+  on ``_COINCIDENT_WATERS_PDB``, whose waters have no acceptor at all and
   must each still get two H.
   """
   for pdb_str, search, want in (
       (_CLUSTER_SEARCH_PDB, False, ["ACA"]),
       (_CLUSTER_SEARCH_PDB, True, ["ACA", "ACB"]),
+      (_CLUSTER_SEARCH_PDB, None, ["ACA", "ACB"]),
       (_CLUSTER_SEARCH_OVERLAP_PDB, True, ["ACA", "ACB"])):
     hier = _hierarchy(pdb_str)
-    wp.place_water_hydrogens(hier, cluster_search=search)
+    if search is None:
+      wp.place_water_hydrogens(hier)
+    else:
+      wp.place_water_hydrogens(hier, cluster_search=search)
     bare = next(rg for rg in hier.residue_groups() if rg.resseq.strip() == "1")
     o = next(a for a in bare.atoms() if a.element.strip() == "O")
     hs = [a for a in bare.atoms() if a.element.strip() == "H"]
@@ -1292,17 +1296,19 @@ def exercise_sym_equiv_protons():
 def exercise_sym_equiv_contacts_counted():
   """The clash counts include contacts with symmetry-equivalent water H.
 
-  Places on ``_SYM_CONTACT_PDB``, whose waters already carry H, and reads
-  the counts the placer reports for its state, the counts from the
-  hierarchy and the program's contact listing. Each must hold the two
-  contacts across symmetry once, at 1.486 and 1.600 A, the second against
-  the water's own equivalent; without a crystal symmetry there are none. On
+  Places on ``_SYM_CONTACT_PDB``, whose waters already carry H, without
+  refinement or the cluster search, and reads the counts the placer reports
+  for its one state, the counts from the hierarchy and the program's contact
+  listing. Each must hold the two contacts across symmetry once, at 1.486
+  and 1.600 A, the second against the water's own equivalent; without a
+  crystal symmetry there are none. On
   ``_SPLIT_SYM_CONTACT_PDB`` a water split between altlocs, with an O per
   conformer, makes two contacts, each counted once.
   """
   hier, cs = _hierarchy_and_symmetry(_SYM_CONTACT_PDB)
   states = []
-  wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs,
+  wp.place_water_hydrogens(hier, n_refine=0, cluster_search=False,
+                           crystal_symmetry=cs,
                            on_state=lambda label, stats: states.append(stats))
   assert [s[1] for s in states] == [2], states
   stats = wp._water_clash_stats(hier, crystal_symmetry=cs)
@@ -1319,7 +1325,8 @@ def exercise_sym_equiv_contacts_counted():
   # with it counts once.
   hier, cs = _hierarchy_and_symmetry(_SPLIT_SYM_CONTACT_PDB)
   states = []
-  wp.place_water_hydrogens(hier, n_refine=0, crystal_symmetry=cs,
+  wp.place_water_hydrogens(hier, n_refine=0, cluster_search=False,
+                           crystal_symmetry=cs,
                            on_state=lambda label, stats: states.append(stats))
   assert [s[1] for s in states] == [2], states
   stats = wp._water_clash_stats(hier, crystal_symmetry=cs)
@@ -1433,7 +1440,8 @@ def exercise_water_conformers():
   Completes ``_ALTLOC_D_WATER_PDB`` stripped of its D2s: each altloc gains a
   D2 at its own occupancy. Completes ``_ALTLOC_O_WATER_PDB``: each altloc
   gains a D2 beside the shared blank D1, the water is reported once as
-  carrying a single H, and its own D count as no clash. Places
+  carrying a single H, and its own D count as no clash in the one state
+  without refinement or the cluster search. Places
   ``_WATER_SO4_ALTLOC_PDB``: the water's altloc gains two H, the sulfate's
   none. Reorients ``_ALTLOC_D_WATER_PDB``: each altloc's pair is re-placed
   at its occupancy.
@@ -1458,7 +1466,7 @@ def exercise_water_conformers():
   hier = _hierarchy(_ALTLOC_O_WATER_PDB)
   states = []
   res = wp.place_water_hydrogens(
-    hier, n_refine=0, existing_h="complete",
+    hier, n_refine=0, cluster_search=False, existing_h="complete",
     on_state=lambda label, stats: states.append(stats[1]))
   got = hd_by_altloc(hier)
   assert got == {"": [("D1", "D", 1.0)], "A": [("D2", "D", 0.5)],
@@ -1481,14 +1489,15 @@ def exercise_altloc_environment():
   """A water conformer ignores atoms of another altloc, its own other
   conformer included.
 
-  Places on ``_SPLIT_WATER_PDB``, where conformer B's O blocks, and would
-  itself attract, the H conformer A aims at the acceptor. Conformer A must
-  still aim an H at the acceptor, the clash counts must not count A's H
-  against B's, and the contact listing names an atom's altloc.
+  Places on ``_SPLIT_WATER_PDB``, without refinement or the cluster search,
+  where conformer B's O blocks, and would itself attract, the H conformer A
+  aims at the acceptor. Conformer A must still aim an H at the acceptor, the
+  clash counts must not count A's H against B's, and the contact listing
+  names an atom's altloc.
   """
   hier = _hierarchy(_SPLIT_WATER_PDB)
   states = []
-  wp.place_water_hydrogens(hier, n_refine=0,
+  wp.place_water_hydrogens(hier, n_refine=0, cluster_search=False,
                            on_state=lambda label, stats: states.append(stats))
   ag_a = next(ag for ag in hier.atom_groups()
               if ag.resname == "HOH" and ag.altloc == "A")
@@ -1690,7 +1699,9 @@ def exercise_multi_model_rejected():
 
 
 def exercise_placement_phil_defaults():
-  """The placer's search arguments default to placement_phil_str's values.
+  """The placer's search arguments default to placement_phil_str's values:
+  five refinement sweeps, tolerance 1, no basin-hopping and the cluster
+  search on.
 
   Both programs include placement_phil_str, so a run with their defaults
   and a call of place_water_hydrogens without these arguments search alike.
@@ -1703,6 +1714,9 @@ def exercise_placement_phil_defaults():
                       ("n_basin", p.basin.rounds),
                       ("cluster_search", p.cluster_search)):
     assert defaults[name] == value, (name, defaults[name], value)
+  values = (p.refine.max_sweeps, p.refine.tolerance, p.basin.rounds,
+            p.cluster_search)
+  assert values == (5, 1, 0, True), values
 
 
 def exercise_settings_need_values():
