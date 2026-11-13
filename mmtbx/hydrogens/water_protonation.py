@@ -2426,12 +2426,12 @@ def _water_clash_stats(hier, crystal_symmetry=None):
 
 
 def _atom_id(a):
-  """Compact atom identity, e.g. ``"HOH A 863 H2"`` or
-  ``"HOH A 863 H2 altloc B"``."""
+  """Compact atom identity, e.g. ``"HOH A 863 H2"``, ``"HOH A 863A H2"``
+  with an insertion code, or ``"HOH A 863 H2 altloc B"``."""
   L = a.fetch_labels()
   alt = L.altloc.strip()
   return (f"{L.resname.strip()} {L.chain_id.strip()} "
-          f"{L.resseq.strip()} {L.name.strip()}"
+          f"{L.resseq.strip()}{L.icode.strip()} {L.name.strip()}"
           + (f" altloc {alt}" if alt else ""))
 
 
