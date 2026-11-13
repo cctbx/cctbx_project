@@ -28,6 +28,25 @@ steps:
     tar -xf modules.tar
   displayName: Extract modules tarball
 
+# chem_data and geostd for the mmtbx tests (not in the modules tarball)
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: '$(resources.pipeline.data_cache.projectID)'
+    pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+    artifact: 'chem_data'
+    path: $(Pipeline.Workspace)/modules/chem_data
+  displayName: Download chem_data
+
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: '$(resources.pipeline.data_cache.projectID)'
+    pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+    artifact: 'geostd'
+    path: $(Pipeline.Workspace)/modules/chem_data/geostd
+  displayName: Download geostd
+
 - script: |
     set -xe
     cd $(Pipeline.Workspace)/modules
@@ -200,6 +219,7 @@ steps:
       module=gltbx \
       module=iotbx \
       module=libtbx \
+      module=mmtbx \
       module=rstbx \
       module=scitbx \
       module=crys3d \
@@ -214,7 +234,6 @@ steps:
     exit $rc
   failOnStderr: false
   displayName: Test
-  retryCountOnTaskFailure: 3
 
 # delete currently failing test
 - script: |

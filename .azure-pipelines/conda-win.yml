@@ -72,6 +72,25 @@ jobs:
       del modules.tar
     displayName: Extract modules tarball
 
+  # chem_data and geostd for the mmtbx tests (not in the modules tarball)
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(resources.pipeline.data_cache.projectID)'
+      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+      artifact: 'chem_data'
+      path: $(Pipeline.Workspace)/modules/chem_data
+    displayName: Download chem_data
+
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(resources.pipeline.data_cache.projectID)'
+      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+      artifact: 'geostd'
+      path: $(Pipeline.Workspace)/modules/chem_data/geostd
+    displayName: Download geostd
+
   - script: |
       cd $(Pipeline.Workspace)
       copy modules\cctbx_project\libtbx\auto_build\bootstrap.py .
@@ -260,6 +279,7 @@ jobs:
         module=gltbx ^
         module=iotbx ^
         module=libtbx ^
+        module=mmtbx ^
         module=rstbx ^
         module=scitbx ^
         module=smtbx ^
@@ -275,7 +295,6 @@ jobs:
       exit /b %rc%
     failOnStderr: false
     displayName: Test
-    retryCountOnTaskFailure: 3
 
   # run pyDiSCaMB tests
   - script: |

@@ -67,14 +67,6 @@ jobs:
       sudo xcode-select --switch /Applications/Xcode_${{ join('.', parameters.xcode_version) }}.app/Contents/Developer
     displayName: Select Xcode version
 
-  # - script: |
-  #     echo "Removing homebrew from Azure to avoid conflicts."
-  #     curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh > ~/uninstall_homebrew
-  #     chmod +x ~/uninstall_homebrew
-  #     ~/uninstall_homebrew -f -q
-  #     rm ~/uninstall_homebrew
-  #   displayName: Remove homebrew
-
   # download daily cached build directory for builds
   # always do builds from scratch for "Update build cache" on Saturday night (Pacific)
   # always do builds from scratch for "Weekly" pipeline
