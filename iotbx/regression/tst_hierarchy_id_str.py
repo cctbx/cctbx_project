@@ -185,6 +185,11 @@ ATOM      6  CA  ASN B   2      -6.522   2.038   2.831  1.00 14.10           C""
   h.only_model().only_chain().id="dlinB"
   assert rg.id_str() == 'dlinBA001F', "'%s'" % rg.id_str()
 
+def exercise_short_segid():
+  # a segid shorter than four characters is padded on the right
+  a = pdb.hierarchy.atom().set_name(new_name=" CA ").set_segid(new_segid="S1")
+  assert a.id_str() == 'pdb=" CA            " segid="S1  "', a.id_str()
+
 
 
 if (__name__ == "__main__"):
@@ -192,5 +197,6 @@ if (__name__ == "__main__"):
   exercise_awl_id_str()
   exercise_ag_id_str()
   exercise_rg_id_str()
+  exercise_short_segid()
 
   print(format_cpu_times())

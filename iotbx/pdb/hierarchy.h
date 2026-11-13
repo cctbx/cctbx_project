@@ -1424,6 +1424,10 @@ namespace hierarchy {
       af::shared<atom>
       atoms_with_i_seq_mismatch() const;
 
+      //! The atoms of atoms() with their model, chain and residue labels.
+      af::shared<atom_with_labels>
+      atoms_with_labels() const;
+
       void
       atoms_reset_serial(
         int interleaved_conf=0,

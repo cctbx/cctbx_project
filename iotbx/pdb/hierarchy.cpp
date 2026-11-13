@@ -394,6 +394,47 @@ namespace {
     return result;
   }
 
+  af::shared<atom_with_labels>
+  root::atoms_with_labels() const
+  {
+    af::shared<atom_with_labels> result((af::reserve(atoms_size())));
+    std::vector<model> const& mds = models();
+    for(unsigned i_md=0;i_md<mds.size();i_md++) {
+      model_data const& md = *mds[i_md].data;
+      std::vector<chain> const& chs = mds[i_md].chains();
+      for(unsigned i_ch=0;i_ch<chs.size();i_ch++) {
+        chain_data const& ch = *chs[i_ch].data;
+        bool is_first_in_chain = true;
+        std::vector<residue_group> const& rgs = chs[i_ch].residue_groups();
+        for(unsigned i_rg=0;i_rg<rgs.size();i_rg++) {
+          residue_group_data const& rg = *rgs[i_rg].data;
+          bool is_first_after_break = !(
+            is_first_in_chain || rg.link_to_previous);
+          std::vector<atom_group> const& ags = rgs[i_rg].atom_groups();
+          for(unsigned i_ag=0;i_ag<ags.size();i_ag++) {
+            atom_group_data const& ag = *ags[i_ag].data;
+            std::vector<atom> const& ats = ags[i_ag].atoms();
+            for(unsigned i_at=0;i_at<ats.size();i_at++) {
+              result.push_back(atom_with_labels(
+                ats[i_at],
+                md.id.c_str(),
+                ch.id.c_str(),
+                rg.resseq.elems,
+                rg.icode.elems,
+                ag.altloc.c_str(),
+                ag.resname.c_str(),
+                is_first_in_chain,
+                is_first_after_break));
+              is_first_in_chain = false;
+              is_first_after_break = false;
+            }
+          }
+        }
+      }
+    }
+    return result;
+  }
+
   af::shared<atom>
   model::atoms_sequential_conf() const
   {
@@ -440,6 +481,25 @@ namespace {
     return result;
   }
 
+namespace {
+
+  //! value padded with blanks to at least width columns, as printf's
+  //! "%<width>s" (left=false) or "%-<width>s" (left=true)
+  void
+  append_padded(
+    std::string& result,
+    const char* value,
+    std::size_t width,
+    bool left)
+  {
+    std::size_t n = std::strlen(value);
+    if (!left && n < width) result.append(width - n, ' ');
+    result.append(value, n);
+    if (left && n < width) result.append(width - n, ' ');
+  }
+
+} // namespace <anonymous>
+
   std::string
   atom_label_columns_formatter::format(
     bool add_model,
@@ -454,7 +514,7 @@ namespace {
         std::size_t l = std::strlen(model_id);
         IOTBX_ASSERT(l <= 8);
         result += "model=\"";
-        result += (boost::format("%4s") % model_id).str();
+        append_padded(result, model_id, 4, false);
         result += "\" ";
       }
       if (name != 0) {
@@ -465,19 +525,19 @@ namespace {
       }
     }
     if (name != 0) {
-      result += (boost::format("%-4s") % name).str();
-      result += (boost::format("%-1s") % (altloc==0 ? " " : altloc)).str();
+      append_padded(result, name, 4, true);
+      append_padded(result, (altloc==0 ? " " : altloc), 1, true);
     }
-    result += (boost::format("%3s") % (resname ==0 ? " " : resname)).str();
-    result += (boost::format("%2s") % (chain_id == 0 ? " " : chain_id)).str();
-    result += (boost::format("%4s") % (resseq == 0 ? " " : resseq)).str();
-    result += (boost::format("%1s") % (icode == 0 ? " " : icode)).str();
+    append_padded(result, (resname ==0 ? " " : resname), 3, false);
+    append_padded(result, (chain_id == 0 ? " " : chain_id), 2, false);
+    append_padded(result, (resseq == 0 ? " " : resseq), 4, false);
+    append_padded(result, (icode == 0 ? " " : icode), 1, false);
     if (add_model) {
       result += '"';
     }
     if (add_segid && segid != 0 && str4(segid).stripped_size() != 0) {
       result += " segid=\"";
-      result += (boost::format("%-4s") % segid).str();
+      append_padded(result, segid, 4, true);
       result += "\"";
     }
     return result;
