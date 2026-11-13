@@ -60,6 +60,13 @@ input {
   experiments_suffix = _integrated.expt
     .type = str
     .help = Find file names with this suffix for experiments
+  max_lattices = None
+    .type = int
+    .help = After all files are loaded, keep a random subset of at most this many experiments,
+    .help = counted over all ranks, and discard the rest with their reflections
+  random_seed = 0
+    .type = int
+    .help = Seed for the random subset drawn when max_lattices is set
 
   parallel_file_load {
     method = *uniform node_memory
@@ -301,6 +308,19 @@ modify
           individually, but if the options twin_axis and twin_rotation are \
           used, the transformation has to be the same for every lattice. \
           Forcing this is probably harmless but has not been tested extensively.
+    merge_friedel_mates = False
+      .type = bool
+      .help = Merge each image's reflections under the Laue group before the \
+          cosym analysis, so that each Friedel pair becomes one averaged \
+          observation. By default (False) each image is merged as an anomalous \
+          array and h,k,l and -h,-k,-l stay separate. The dials cosym target \
+          then maps both to the same Laue index, so they already pair up across \
+          images, but within an image they are duplicate keys in the \
+          correlation kernel's lookup: one mate is dropped on the reference \
+          side while both are paired on the other, so pair counts and \
+          correlations are asymmetric and computed from unaveraged single mates. \
+          The reindexing operators are proper rotations outside the Laue group, \
+          so Friedel merging cannot hide the ambiguity. Experimental.
     plot
       {
       do_plot = True

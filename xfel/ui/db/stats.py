@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 from scitbx.array_family import flex
+from collections import namedtuple
 
 class Stats(object):
   def __init__(self, app, trial, tags = None, isigi_cutoff = None, tag_selection_mode="union", selected_runs = None, selected_rungroup = None):
@@ -96,11 +97,14 @@ class Stats(object):
     return cells
 
 class HitrateStats(object):
-  def __init__(self, app, run_number, trial_number, rungroup_id, d_min = None, i_sigi_cutoff = 1, raw_data_sampling = 1):
+  def __init__(self, app, run_number, trial_number, rungroup_id, d_min = None, i_sigi_cutoff = 1, raw_data_sampling = 1,
+               run = None, trial = None, rungroup = None):
+    """ A caller that already holds the run, trial and rungroup objects can
+        pass them to skip looking them up by number again. """
     self.app = app
-    self.run = app.get_run(run_number = run_number)
-    self.trial = app.get_trial(trial_number = trial_number)
-    self.rungroup = app.get_rungroup(rungroup_id = rungroup_id)
+    self.run = run if run is not None else app.get_run(run_number = run_number)
+    self.trial = trial if trial is not None else app.get_trial(trial_number = trial_number)
+    self.rungroup = rungroup if rungroup is not None else app.get_rungroup(rungroup_id = rungroup_id)
     self.d_min = d_min
     self.i_sigi_cutoff = i_sigi_cutoff
     self.sampling = raw_data_sampling
@@ -110,10 +114,6 @@ class HitrateStats(object):
     from xfel.ui.components.timeit import duration
     #import time
     #t1 = time.time()
-    run_numbers = [r.run for r in self.trial.runs]
-    assert self.run.run in run_numbers
-    rungroup_ids = [rg.id for rg in self.trial.rungroups]
-    assert self.rungroup.id in rungroup_ids
     if len(self.trial.isoforms) > 0:
       cells = [isoform.cell for isoform in self.trial.isoforms]
     else:
@@ -261,6 +261,126 @@ class HitrateStats(object):
     #t2 = time.time()
     #print "HitrateStats took %s" % duration(t1, t2)
     return timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices, wavelengths
+
+RunSummary = namedtuple("RunSummary", ["run", "rungroup_id", "n_frames", "n_hits", "n_drop_hits",
+                                       "n_indexed", "n_lattices", "n_high_quality",
+                                       "first_timestamp", "last_timestamp"])
+
+class RunSummaryStats(object):
+  # Above this many runs, query the whole trial and keep the wanted rows.
+  # The planner drives a filtered query from the run index with a lookup
+  # per event, measured at 0.13 ms per event on a 6M-event trial, but a
+  # whole-trial query from a scan of the crystal index at 0.02 to 0.04 ms.
+  whole_trial_above = 20
+  """ Per-run counts for a trial, computed in the database by one aggregate
+      query instead of fetching every image: frames, hits, drop hits, indexed
+      images, lattices, high quality images and the first and last timestamp.
+      The definitions are those of HitrateStats and the run stats plot: a hit
+      has n_strong_cutoff strong spots; a drop hit has a high to low two theta
+      radial average ratio of at least ratio_cutoff (see drop_hit_selection in
+      run_stats_plotter); a high quality image has a lattice with a resolution
+      bin reaching d_min at i_sigi_cutoff (see high_quality_selection).
+
+      A run whose job has finished never changes, so it is queried once and
+      then served from a cache; runs still processing are queried on every
+      call, all in one query. A whole trial's first pass costs minutes on a
+      big database, so a caller can limit how many uncached runs each call
+      queries and fill in progressively. """
+
+  def __init__(self, app, trial, n_strong_cutoff=16, ratio_cutoff=1, d_min=2.0, i_sigi_cutoff=1):
+    self.app = app
+    self.trial = trial
+    self.n_strong_cutoff = n_strong_cutoff
+    self.ratio_cutoff = ratio_cutoff
+    self.d_min = d_min
+    self.i_sigi_cutoff = i_sigi_cutoff
+    self.finished = {} # (run name, rungroup id) -> RunSummary
+    self.pending = 0 # uncached runs the last call left for a later one
+
+  def __call__(self, run_statuses, max_query=None):
+    """ run_statuses: {(run name, rungroup id): job status}. Returns
+        {(run name, rungroup id): RunSummary} for those runs; a run with no
+        events gets zero counts. With max_query, at most that many uncached
+        runs are queried, in the order given; the rest map to None and are
+        counted in self.pending for the next call. """
+    from xfel.ui.db.job import finished_job_statuses
+    to_query = [key for key in run_statuses if key not in self.finished]
+    if max_query is not None:
+      self.pending = max(0, len(to_query) - max_query)
+      to_query = to_query[:max_query]
+    else:
+      self.pending = 0
+    if not to_query:
+      fresh = {}
+    elif len(to_query) > self.whole_trial_above:
+      fresh = self.query()
+    else:
+      fresh = self.query([run for run, rungroup_id in to_query])
+    summaries = {}
+    for key in run_statuses:
+      if key in self.finished:
+        summary = self.finished[key]
+      elif key in to_query:
+        summary = fresh.get(key) or self.empty(*key)
+        if run_statuses[key] in finished_job_statuses:
+          self.finished[key] = summary
+      else:
+        summary = None
+      summaries[key] = summary
+    return summaries
+
+  @staticmethod
+  def empty(run, rungroup_id):
+    return RunSummary(run, rungroup_id, 0, 0, 0, 0, 0, 0, None, None)
+
+  def query(self, runs=None):
+    """ One query: {(run name, rungroup id): RunSummary} for every run of
+        the trial with events, or only for the named runs. """
+    tag = self.app.params.experiment_tag
+    where = "WHERE ev.trial_id = %d" % self.trial.id
+    if runs is not None:
+      if len(runs) == 0:
+        return {}
+      where += " AND run.run IN (%s)" % ", ".join("'%s'" % run.replace("'", "''") for run in set(runs))
+    # A comparison is 1 or 0 in MySQL, so SUM of a condition counts the rows
+    # satisfying it. The subquery is one row per indexed event of the wanted
+    # runs; unindexed events have no row, and a two theta value may be NULL
+    # when it was not computed, so every term is IFNULLed to 0, else a run
+    # with no indexed images or no two theta values sums to NULL.
+    query = """SELECT run.run, ev.rungroup_id, COUNT(*),
+                      SUM(ev.n_strong >= %(n_strong)d),
+                      SUM(IFNULL(IF(ev.two_theta_low <= 0 OR ev.two_theta_high < 0, 0,
+                                    ev.two_theta_high / ev.two_theta_low) >= %(ratio)f, 0)),
+                      SUM(IFNULL(x.n_lattices > 0, 0)),
+                      SUM(IFNULL(x.n_lattices, 0)),
+                      SUM(IFNULL(x.high_quality, 0)),
+                      MIN(ev.timestamp), MAX(ev.timestamp)
+               FROM `%(tag)s_event` ev
+               JOIN `%(tag)s_run` run ON run.id = ev.run_id
+               LEFT JOIN (
+                 SELECT is_e.event_id, COUNT(DISTINCT crystal.id) AS n_lattices,
+                        MAX(bin.d_min <= %(d_min)f AND cb.avg_i_sigi >= %(i_sigi)f) AS high_quality
+                 FROM `%(tag)s_event` ev
+                 JOIN `%(tag)s_run` run ON run.id = ev.run_id
+                 JOIN `%(tag)s_imageset_event` is_e ON is_e.event_id = ev.id
+                 JOIN `%(tag)s_imageset` imgset ON imgset.id = is_e.imageset_id
+                 JOIN `%(tag)s_experiment` exp ON exp.imageset_id = imgset.id
+                 JOIN `%(tag)s_crystal` crystal ON crystal.id = exp.crystal_id
+                 LEFT JOIN `%(tag)s_cell_bin` cb ON cb.crystal_id = crystal.id
+                 LEFT JOIN `%(tag)s_bin` bin ON bin.id = cb.bin_id
+                 %(where)s
+                 GROUP BY is_e.event_id
+               ) x ON x.event_id = ev.id
+               %(where)s
+               GROUP BY ev.run_id, ev.rungroup_id
+            """ % dict(tag=tag, where=where, n_strong=self.n_strong_cutoff, ratio=self.ratio_cutoff,
+                     d_min=self.d_min, i_sigi=self.i_sigi_cutoff)
+    summaries = {}
+    for row in self.app.execute_query(query).fetchall():
+      run, rungroup_id = row[0], row[1]
+      counts = [int(v or 0) for v in row[2:8]]
+      summaries[(run, rungroup_id)] = RunSummary(run, rungroup_id, *(counts + [row[8], row[9]]))
+    return summaries
 
 class SpotfinderStats(object):
   def __init__(self, app, run_number, trial_number, rungroup_id, raw_data_sampling = 1):

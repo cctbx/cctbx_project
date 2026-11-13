@@ -305,13 +305,18 @@ def do_submit(command, submit_path, stdoutdir, mp_params, log_name="log.out", er
     print("Execute this command to submit the job:")
     print(submit_command)
   elif mp_params.method == 'local':
-    submission_id = os.fork()
-    if submission_id > 0:
-      return submission_id
-    else:
-      stdout = os.open(os.path.join(stdoutdir, 'submit.log'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stdout, 1)
-      stderr = os.open(os.path.join(stdoutdir, 'submit.err'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stderr, 2)
-      os.execv(command.split()[0], command.split())
+    # Spawn the job as a detached child process. Note this must not be done by
+    # forking the caller: the caller is usually the GUI, and a fork that fails
+    # to exec leaves a second copy of the GUI running on the same X connection,
+    # which takes down both processes with no diagnostic. subprocess.Popen only
+    # returns once the exec has succeeded, and reports failures as exceptions in
+    # the parent, where they can be shown to the user.
+    import subprocess
+    with open(os.path.join(stdoutdir, 'submit.log'), 'wb') as stdout, \
+         open(os.path.join(stdoutdir, 'submit.err'), 'wb') as stderr:
+      proc = subprocess.Popen(command.split(), stdout=stdout, stderr=stderr,
+                              stdin=subprocess.DEVNULL, start_new_session=True)
+    return proc.pid
   else:
     try:
       result = easy_run.fully_buffered(command=submit_command)
