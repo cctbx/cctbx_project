@@ -2375,7 +2375,9 @@ class _():
     with open(file_name, "w") as f:
       print(cif_object, file=f)
 
-  def atoms_with_labels(self):
+  # The C++ root.atoms_with_labels() replaces this generator; kept as the
+  # reference for iotbx/regression/tst_hierarchy_atoms_with_labels.py.
+  def _atoms_with_labels_python(self):
     """
     Generator for atom_with_labels objects, presented in the same order as
     the array returned by the atoms() method.

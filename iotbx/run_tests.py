@@ -88,6 +88,7 @@ tst_list_base = [
   ["$D/pdb/hybrid_36.py", "exercise"],
   "$B/pdb/hybrid_36_fem",
   "$D/pdb/tst_hierarchy.py",
+  "$D/regression/tst_hierarchy_atoms_with_labels.py",
   "$D/pdb/tst_hierarchy_atom_sort.py",
   "$D/pdb/tst_hierarchy_flip_symmetric.py",
   "$D/pdb/tst_hierarchy_flip_symmetric_2.py",
