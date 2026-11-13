@@ -5,7 +5,7 @@ from dials.command_line.dials_import import  phil_scope as detector_phil_scope
 from scitbx.matrix import sqr, col
 from dials.array_family import flex
 from matplotlib import pyplot as plt
-import sys, math
+import sys, math, copy
 
 """
 This script uses several approaches to simulate a detector and crystal and predict
@@ -65,7 +65,209 @@ bandpass = None
   .help = Full width
 show_plots=True
   .type = bool
+separation_plot {
+  distance_min = None
+    .type = float
+    .help = Minimum detector distance (mm) for the distance vs. energy plot. \
+            Default is half the distance in the detector phil.
+  distance_max = None
+    .type = float
+    .help = Maximum detector distance (mm) for the distance vs. energy plot. \
+            Default is twice the distance in the detector phil.
+  energy_min = None
+    .type = float
+    .help = Minimum energy (eV) for the distance vs. energy plot. Default is \
+            half the energy parameter.
+  energy_max = None
+    .type = float
+    .help = Maximum energy (eV) for the distance vs. energy plot. Default is \
+            1.5 times the energy parameter.
+  n_steps = 50
+    .type = int(value_min=2)
+    .help = Number of grid points along each of the distance and energy axes
+  target_separation = 5.5
+    .type = float
+    .help = Draw a dashed line at this spot separation (px), the current \
+            estimate of a good spot separation. Set to None to disable.
+}
 """)
+
+def spot_separations(panel, unit_cell, energy, reference_reflection, bandpass=None, verbose=False):
+  """
+  Compute the separation in pixels between the reference reflection and its
+  neighbor (e.g. 20,0,0 and 21,0,0) along each of the three reciprocal axes.
+  Axes for which the reflections cannot be observed are skipped.
+  @return list of separations in pixels
+  """
+  wavelength = 12398.4/energy
+  s0 = col((0,0,-1/wavelength))
+  if bandpass:
+    wavelength1 = 12398.4/(energy-(bandpass/2))
+    wavelength2 = 12398.4/(energy+(bandpass/2))
+  else:
+    wavelength1 = wavelength2 = wavelength
+  vals = []
+  for axis in range(3):
+    m1 = [0,0,0]; m1[axis] += reference_reflection
+    m2 = [0,0,0]; m2[axis] += reference_reflection+1
+
+    # n Lambda = 2dsin(theta)
+    d = unit_cell.d(flex.miller_index([m1, m2]))
+    try:
+      tt_1 = math.asin(wavelength1/(2*d[0])) * 2
+      tt_2 = math.asin(wavelength2/(2*d[1])) * 2
+    except ValueError: # domain error if resolution is too high
+      continue
+
+    # Compute two s1 vectors
+    s1_1 = s0.rotate(col((0,1,0)), -tt_1)
+    s1_2 = s0.rotate(col((0,1,0)), -tt_2)
+
+    if verbose:
+      print(m1, m2, list(d), tt_1*180/math.pi, tt_2*180/math.pi)
+
+    # Get panel intersections and compute spacing
+    try:
+      v1 = col(panel.get_ray_intersection_px(s1_1))
+      v2 = col(panel.get_ray_intersection_px(s1_2))
+    except RuntimeError: # ray does not intersect the panel plane
+      continue
+    vals.append((v1-v2).length())
+  return vals
+
+def inscribed_resolution(panel, energy):
+  """
+  Resolution (angstroms) of the largest circle inscribed on the panel, taken
+  as the lowest resolution among the midpoints of the four panel edges.
+  Assumes a single panel, centered detector.
+  """
+  s0 = col((0,0,-energy/12398.4))
+  fast, slow = panel.get_image_size()
+  f = fast//2; s = slow//2
+  return max([panel.get_resolution_at_pixel(s0, p) for p in [(f,0),(fast,s),(f,slow),(0,s)]])
+
+def panel_at_distance(panel, distance):
+  """
+  Return a copy of panel translated along the beam (z) axis such that its
+  distance (along the panel normal) is the requested value in mm.
+  """
+  beam_dir = col((0,0,-1))
+  normal = col(panel.get_normal())
+  origin = col(panel.get_origin())
+  # panel distance is origin.dot(normal), so solve for the shift along the beam
+  shift = float(distance - panel.get_distance()) / beam_dir.dot(normal)
+  new_panel = copy.deepcopy(panel)
+  new_panel.set_frame(panel.get_fast_axis(), panel.get_slow_axis(), origin + beam_dir*shift)
+  return new_panel
+
+def distance_for_separation(panel, unit_cell, energy, reference_reflection, target, bandpass=None):
+  """
+  Find the detector distance (mm) at which the smallest spot separation equals
+  target (px), by bisection. The separation increases with distance.
+  @return the distance, or None if it could not be found
+  """
+  def separation(distance):
+    vals = spot_separations(panel_at_distance(panel, distance), unit_cell, energy, reference_reflection, bandpass)
+    return min(vals) if vals else None
+  lo = 1.0; hi = max(2*panel.get_distance(), 2*lo)
+  for i in range(30): # expand the upper bound until it exceeds the target
+    val = separation(hi)
+    if val is None: return None
+    if val >= target: break
+    hi *= 2
+  else:
+    return None
+  val = separation(lo)
+  if val is None or val > target: return None
+  while hi - lo > 1e-3:
+    mid = (lo+hi)/2
+    if separation(mid) < target: lo = mid
+    else: hi = mid
+  return (lo+hi)/2
+
+def plot_separation_vs_distance_and_energy(panel, unit_cell, params):
+  """
+  Plot detector distance vs. energy, colored by the smallest spot separation
+  in pixels over the three reciprocal axes.
+  """
+  import numpy as np
+  sp = params.separation_plot
+  current_distance = panel.get_distance()
+  d_lo = sp.distance_min if sp.distance_min is not None else current_distance * 0.5
+  d_hi = sp.distance_max if sp.distance_max is not None else current_distance * 2.0
+  e_lo = sp.energy_min if sp.energy_min is not None else params.energy * 0.5
+  e_hi = sp.energy_max if sp.energy_max is not None else params.energy * 1.5
+  assert d_lo < d_hi and e_lo < e_hi
+  distances = np.linspace(d_lo, d_hi, sp.n_steps)
+  energies = np.linspace(e_lo, e_hi, sp.n_steps)
+
+  separations = np.full((len(distances), len(energies)), np.nan)
+  resolutions = np.full((len(distances), len(energies)), np.nan)
+  for i, distance in enumerate(distances):
+    test_panel = panel_at_distance(panel, distance)
+    for j, energy in enumerate(energies):
+      vals = spot_separations(test_panel, unit_cell, float(energy), params.reference_reflection, params.bandpass)
+      if vals:
+        separations[i,j] = min(vals)
+      resolutions[i,j] = inscribed_resolution(test_panel, float(energy))
+
+  fig, ax = plt.subplots()
+  mesh = ax.pcolormesh(energies, distances, separations, shading='auto', cmap='viridis')
+  fig.colorbar(mesh, ax=ax, label="Smallest spot separation (px)")
+  if not np.all(np.isnan(separations)):
+    contours = ax.contour(energies, distances, separations, colors='white', linewidths=0.75)
+    ax.clabel(contours, fmt="%.1f", fontsize=8)
+    ax.plot([], [], color='white', linewidth=0.75, label="Spot separation (px)")
+    if sp.target_separation is not None and \
+       np.nanmin(separations) < sp.target_separation < np.nanmax(separations):
+      ax.contour(energies, distances, separations, levels=[sp.target_separation],
+                 colors='red', linewidths=2, linestyles='dashed')
+      ax.plot([], [], color='red', linewidth=2, linestyle='dashed',
+              label="Target separation: %g px"%sp.target_separation)
+  res_contours = ax.contour(energies, distances, resolutions, colors='cyan',
+                            linewidths=1, linestyles='dashdot')
+  ax.clabel(res_contours, fmt=u"%.1f \u00c5", fontsize=8)
+  ax.plot([], [], color='cyan', linewidth=1, linestyle='dashdot',
+          label=u"Inscribed resolution (\u00c5)")
+  # Dashed lines for the requested d_min and energy. Where these cross the
+  # target separation line is the desired detector distance.
+  if np.nanmin(resolutions) < params.d_min < np.nanmax(resolutions):
+    ax.contour(energies, distances, resolutions, levels=[params.d_min],
+               colors='cyan', linewidths=2, linestyles='dashed')
+    ax.plot([], [], color='cyan', linewidth=2, linestyle='dashed',
+            label=u"d_min: %g \u00c5 inscribed"%params.d_min)
+  if e_lo <= params.energy <= e_hi:
+    ax.axvline(params.energy, color='orange', linewidth=2, linestyle='dashed',
+               label="Energy: %g eV"%params.energy)
+  if e_lo <= params.energy <= e_hi and d_lo <= current_distance <= d_hi:
+    ax.plot([params.energy], [current_distance], marker='*', color='red', markersize=14,
+            markeredgecolor='white', linestyle='none',
+            label="Current: %.0f eV, %.1f mm"%(params.energy, current_distance))
+  if ax.get_legend_handles_labels()[0]:
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2, fontsize=8, facecolor='gray')
+  ax.set_xlabel("Energy (eV)")
+  ax.set_ylabel("Detector distance (mm)")
+  title = "Spot separation, reflections %d and %d"%(params.reference_reflection, params.reference_reflection+1)
+  if params.bandpass:
+    title += ", %g eV bandpass"%params.bandpass
+  ax.set_title(title)
+
+  # Mouseover text: energy, distance, and the resolution and spot separation
+  # computed exactly at the cursor position (not interpolated from the grid)
+  def format_coord(x, y):
+    text = "%.1f eV, %.1f mm"%(x, y)
+    if x <= 0 or y <= 0:
+      return text
+    cursor_panel = panel_at_distance(panel, y)
+    text += u", %.2f \u00c5"%inscribed_resolution(cursor_panel, x)
+    vals = spot_separations(cursor_panel, unit_cell, x, params.reference_reflection, params.bandpass)
+    if vals:
+      text += ", %.1f px"%min(vals)
+    return text
+  ax.format_coord = format_coord
+  mesh.get_cursor_data = lambda event: None # avoid appending the mesh value a second time
+  fig.tight_layout()
+  return separations
 
 def run(args):
   # read in phil files (detector and crystal)
@@ -92,48 +294,29 @@ def run(args):
   energy = float(params.energy)
   wavelength = 12398.4/energy
   s0 = col((0,0,-1/wavelength))
-  if params.bandpass is not None:
-    wavelength1 = 12398.4/(energy-(params.bandpass/2))
-    wavelength2 = 12398.4/(energy+(params.bandpass/2))
-  vals = []
   print("Reference reflections 1 and 2, resolutions, two theta (deg) 1 and 2:")
-  for axis in range(3):
-    m1 = [0,0,0]; m1[axis] += params.reference_reflection
-    m2 = [0,0,0]; m2[axis] += params.reference_reflection+1
-
-    # n Lambda = 2dsin(theta)
-    d = unit_cell.d(flex.miller_index([m1, m2]))
-    try:
-      if params.bandpass:
-        tt_1 = math.asin(wavelength1/(2*d[0])) * 2
-        tt_2 = math.asin(wavelength2/(2*d[1])) * 2
-      else:
-        tt_1 = math.asin(wavelength/(2*d[0])) * 2
-        tt_2 = math.asin(wavelength/(2*d[1])) * 2
-    except ValueError: # domain error if resolution is too high
-      continue
-
-    # Compute two s1 vectors
-    s1_1 = s0.rotate(col((0,1,0)), -tt_1)
-    s1_2 = s0.rotate(col((0,1,0)), -tt_2)
-
-    print(m1, m2, list(d), tt_1*180/math.pi, tt_2*180/math.pi)
-
-    # Get panel intersections and compute spacing
-    v1 = col(panel.get_ray_intersection_px(s1_1))
-    v2 = col(panel.get_ray_intersection_px(s1_2))
-    vals.append((v1-v2).length())
+  vals = spot_separations(panel, unit_cell, energy, params.reference_reflection, params.bandpass, verbose=True)
 
   print("Spot separations:", vals)
   print("Smallest spot separation: %7.1f px"%(min(vals)))
+
+  target = params.separation_plot.target_separation
+  if target is not None:
+    target_distance = distance_for_separation(panel, unit_cell, energy, params.reference_reflection, target, params.bandpass)
+    if target_distance is None:
+      print("Could not find a detector distance giving a spot separation of %g px at %g eV"%(target, energy))
+    else:
+      target_resolution = inscribed_resolution(panel_at_distance(panel, target_distance), energy)
+      print("Detector distance for a spot separation of %g px at %g eV: %.1f mm"%(target, energy, target_distance))
+      print("Inscribed resolution at that distance: %.2f angstroms (%s than the d_min of %g)"%(
+        target_resolution, "better" if target_resolution <= params.d_min else "worse", params.d_min))
 
   # Hack for quick tests
   assert len(detector)==1
   panel = detector[0]
   fast, slow = panel.get_image_size()
-  f = fast//2; s = slow//2
   print("Inscribed resolution, assuming single panel centered detector %.3f:"% \
-    min([panel.get_resolution_at_pixel(s0, p) for p in [(f,0),(fast,s),(f,slow),(0,s)]]))
+    inscribed_resolution(panel, energy))
 
   print("Computing pixel resolutions...")
   resolutions = []
@@ -192,6 +375,9 @@ def run(args):
 
   resolutions[0].set_selected(resolutions[0] > 50, 50)
   if params.show_plots:
+    plot_separation_vs_distance_and_energy(detector[0], unit_cell, params)
+
+    plt.figure()
     plt.imshow(resolutions[0].as_numpy_array(), cmap='gray')
     plt.colorbar()
 
