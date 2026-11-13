@@ -626,6 +626,19 @@ class link_rule(object):
       metal_coordination_cutoff = self.params.metal_coordination_cutoff,
       sulfur_bond_cutoff = 2.5,
       other_bond_cutoff = 2)
+    self.disulfide_distance_cutoff = get_reduce_pdb_interpretation_params(
+      False).pdb_interpretation.disulfide_distance_cutoff
+
+  def disulfide(self, a, b):
+    '''
+    pdb_interpretation's create_disulfides(): the SG of two CYS within
+    disulfide_distance_cutoff are bonded. No link definition is consulted
+    for them, so is_atom_group_pair_linked() does not know this bond.
+    '''
+    for x in (a, b):
+      if x.name.strip() != 'SG' or x.parent().resname.strip() != 'CYS':
+        return False
+    return a.distance(b) < self.disulfide_distance_cutoff
 
   def linked(self, a, b):
     from mmtbx.monomer_library import linking_utils
@@ -662,7 +675,8 @@ def _split_partners(parent, rg, prev_rg, cells, rule, mon_lib_srv):
   parent: the C of the previous residue if parent is its N, else what the
   link rule bonds to it through a link defined for the two residue names, at
   that link's own atoms (an N-glycan C1 to a split ND2, NAG-ASN; not its C2
-  in contact with ND2). Empty if none. pdb_interpretation
+  in contact with ND2), and that atom in the other conformers of its residue
+  (bonded or not; the linked ones first). Empty if none. pdb_interpretation
   bonds both conformers of such a link; of others it can bond one only (GAL C1
   to O3 of NGA and A2G, 4d3w), and a copy without its partner would be lost.
   '''
@@ -680,12 +694,27 @@ def _split_partners(parent, rg, prev_rg, cells, rule, mon_lib_srv):
         for a in cells.get((i, j, k), ()):
           if a.parent().parent().memory_id() == rg.memory_id(): continue
           if a.distance(parent) >= 3: continue
+          if rule.disulfide(parent, a):
+            result.append(a)
+            continue
           link, swap, _ = is_atom_group_pair_linked(parent.parent(), a.parent(),
             mon_lib_srv)
           if link is None or not _link_bonds_atoms(link, swap, parent, a):
             continue
           if rule.linked(parent, a):
             result.append(a)
+  # The other conformers of a linked atom's residue, at that atom: a link can
+  # exist in one conformer only (1pq7 CYS A 41 SG A bonds CYS A 57 SG, SG B is
+  # 3.1 A away), and the H the link consumes in that conformer stays in the
+  # others, so the H is split by these letters too. exclude_H_on_links()
+  # judges each copy in its conformer.
+  for a in list(result):
+    for ag in a.parent().parent().atom_groups():
+      if ag.altloc in ('', a.parent().altloc): continue
+      other = ag.get_atom(a.name.strip())
+      if other is None: continue
+      if any(x.memory_id() == other.memory_id() for x in result): continue
+      result.append(other)
   return result
 
 def _h_identity_key(atom):
@@ -3474,7 +3503,9 @@ class place_hydrogens():
     An H of an atom group without heavy atoms, on a blank parent, belongs to
     the conformer of the atom bonded to the parent with its letter: that atom's
     occupancy, never above the parent's. The shared reset gives it the parent's
-    (no heavy atoms to take a conformer's from). No such atom: left as it is.
+    (no heavy atoms to take a conformer's from). No such atom: that conformer's
+    occupancy at the residue of a bonded atom of another letter, if any
+    (a link that exists in the other conformer only); else left as it is.
     '''
     groups = [ag for ag in self.model.get_hierarchy().atom_groups()
               if ag.altloc != '' and ag.atoms_size() > 0 and
@@ -3492,6 +3523,19 @@ class place_hydrogens():
         partners = [atoms[j].occ for j in fsc0[parent.i_seq]
                     if atoms[j].parent().altloc == ag.altloc
                     and atoms[j].element.strip().upper() not in ('H', 'D')]
+        if not partners:
+          # The conformer of the H at the residue of an atom bonded to the
+          # parent in another letter, without a bond to the parent (1pq7
+          # CYS A 41 SG B, 3.1 A from CYS A 57 SG, whose disulfide partner
+          # is SG A: HG B 57 takes the occupancy of CYS 41 B).
+          for j in fsc0[parent.i_seq]:
+            other = atoms[j]
+            if other.parent().altloc == '': continue
+            if other.element.strip().upper() in ('H', 'D'): continue
+            for group in other.parent().parent().atom_groups():
+              if group.altloc != ag.altloc: continue
+              partners.extend(a.occ for a in group.atoms()
+                              if a.element.strip().upper() not in ('H', 'D'))
         if partners:
           occ[h.i_seq] = min(partners + [parent.occ])
     self.model.set_occupancies(values = occ)

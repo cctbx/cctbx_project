@@ -296,6 +296,59 @@ def test_two_residue_groups():
       if atom.name.strip() == "N" and atom.parent().resname == "PRO":
         assert d[atom.i_seq] == 0, (altloc, d[atom.i_seq])
 
+# 1pq7 CYS A 41 (A, B) and CYS A 57 (blank), with the H reduce2 places: the
+# disulfide SG A 41 - SG 57 takes HG A 57, HG B 57 stays (an H-only atom
+# group B on the blank SG). Two residues cut from the chain: the same
+# truncation charges in both conformers.
+cys_str = """\
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+ATOM     25  N  ACYS A  41       5.508   7.360   1.752  0.59  3.97           N
+ATOM     26  CA ACYS A  41       4.721   6.164   1.517  0.60  3.70           C
+ATOM     27  C  ACYS A  41       3.333   6.308   2.146  0.60  3.80           C
+ATOM     28  O  ACYS A  41       2.979   7.330   2.757  0.60  3.74           O
+ATOM     29  CB ACYS A  41       5.431   4.898   2.010  0.61  3.50           C
+ATOM     30  SG ACYS A  41       6.731   4.335   0.827  0.60  3.82           S
+ATOM     31  H  ACYS A  41       5.397   7.692   2.538  0.59  3.97           H
+ATOM     32  HA ACYS A  41       4.609   6.046   0.561  0.60  3.70           H
+ATOM     33  HB2ACYS A  41       5.855   5.081   2.863  0.61  3.50           H
+ATOM     34  HB3ACYS A  41       4.780   4.185   2.109  0.61  3.50           H
+ATOM     35  N  BCYS A  41       5.374   7.503   1.660  0.40  4.85           N
+ATOM     36  CA BCYS A  41       4.595   6.308   1.311  0.39  5.11           C
+ATOM     37  C  BCYS A  41       3.340   6.305   2.209  0.40  4.25           C
+ATOM     38  O  BCYS A  41       3.124   7.213   3.049  0.40  3.20           O
+ATOM     39  CB BCYS A  41       5.483   5.140   1.450  0.40  7.12           C
+ATOM     40  SG BCYS A  41       5.836   4.613   3.064  0.39 10.10           S
+ATOM     41  H  BCYS A  41       5.164   7.892   2.398  0.40  4.85           H
+ATOM     42  HA BCYS A  41       4.272   6.271   0.397  0.39  5.11           H
+ATOM     43  HB2BCYS A  41       5.068   4.392   0.992  0.40  7.12           H
+ATOM     44  HB3BCYS A  41       6.331   5.356   1.031  0.40  7.12           H
+ATOM     45  HG BCYS A  41       6.022   3.427   3.056  0.39 10.10           H
+ATOM     71  N   CYS A  57       9.445   0.516   1.315  1.00  4.44           N
+ATOM     72  CA  CYS A  57       9.313   1.815   1.946  1.00  4.72           C
+ATOM     73  C   CYS A  57      10.241   1.988   3.148  1.00  4.55           C
+ATOM     74  O   CYS A  57      10.553   3.132   3.509  1.00  5.19           O
+ATOM     75  CB  CYS A  57       7.875   2.020   2.439  1.00  5.19           C
+ATOM     76  SG  CYS A  57       6.674   2.294   1.132  1.00  6.27           S
+ATOM     77  H   CYS A  57       8.749   0.015   1.378  1.00  4.44           H
+ATOM     78  HA  CYS A  57       9.546   2.481   1.280  1.00  4.72           H
+ATOM     79  HB2 CYS A  57       7.600   1.229   2.929  1.00  5.19           H
+ATOM     80  HB3 CYS A  57       7.856   2.795   3.022  1.00  5.19           H
+ATOM     81  HG BCYS A  57       7.054   3.193   0.434  0.39  6.27           H
+END
+"""
+
+def test_h_only_group():
+  """An H-only atom group is not a conformer of its residue: conformer A of
+  CYS 57 is the blank atoms (SG bonded to SG A 41), without HG B."""
+  ed = distribution(cys_str)
+  charges = ed.get_conformer_charges()
+  assert charges["A"] == charges["B"], charges
+  assert ed.get_conformer_charge_differences() == [], \
+    ed.get_conformer_charge_differences()
+  n = dict((a, ed.conformers[a].atoms.size()) for a in ed.conformers)
+  # B has HG B 57 and HG B 41, A neither; the heavy atoms are the same count
+  assert n["B"] == n["A"] + 2, n
+
 def test_differences_named():
   """the Sorry of get_total_charge() names the residues that differ"""
   ed = distribution(lines(altloc_of={"H3": "A"}))
@@ -317,5 +370,6 @@ if __name__ == "__main__":
   test_run_without_restraints()
   test_inherited_conformer()
   test_two_residue_groups()
+  test_h_only_group()
   test_differences_named()
   print("OK")

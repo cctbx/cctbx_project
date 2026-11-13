@@ -401,6 +401,86 @@ def test_letters_differ_logged():
   assert 'placed, not split per conformer: 1 H, 1 residue: LEU A 101' \
     in l, l
 
+pdb_1pq7 = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+ATOM    328  N   TRP A  40       6.387  10.256   1.511  1.00  5.49           N
+ATOM    329  CA  TRP A  40       7.193   9.080   1.247  1.00  5.04           C
+ATOM    330  C   TRP A  40       6.321   7.884   0.831  1.00  4.88           C
+ATOM    331  O   TRP A  40       6.480   7.354  -0.277  1.00  5.86           O
+ATOM    332  CB  TRP A  40       8.095   8.763   2.458  1.00  5.03           C
+ATOM    333  CG  TRP A  40       9.027   7.641   2.206  1.00  5.03           C
+ATOM    334  CD1 TRP A  40       8.993   6.404   2.791  1.00  5.31           C
+ATOM    335  CD2 TRP A  40      10.125   7.632   1.305  1.00  5.34           C
+ATOM    336  NE1 TRP A  40      10.003   5.631   2.317  1.00  6.10           N
+ATOM    337  CE2 TRP A  40      10.722   6.354   1.386  1.00  5.95           C
+ATOM    338  CE3 TRP A  40      10.668   8.596   0.434  1.00  7.16           C
+ATOM    339  CZ2 TRP A  40      11.829   6.034   0.622  1.00  7.79           C
+ATOM    340  CZ3 TRP A  40      11.776   8.226  -0.326  1.00  9.41           C
+ATOM    341  CH2 TRP A  40      12.325   6.985  -0.228  1.00  9.46           C
+ATOM    352  N  ACYS A  41       5.508   7.360   1.752  0.59  3.97           N
+ATOM    353  N  BCYS A  41       5.374   7.503   1.660  0.40  4.85           N
+ATOM    354  CA ACYS A  41       4.721   6.164   1.517  0.60  3.70           C
+ATOM    355  CA BCYS A  41       4.595   6.308   1.311  0.39  5.11           C
+ATOM    356  C  ACYS A  41       3.333   6.308   2.146  0.60  3.80           C
+ATOM    357  C  BCYS A  41       3.340   6.305   2.209  0.40  4.25           C
+ATOM    358  O  ACYS A  41       2.979   7.330   2.757  0.60  3.74           O
+ATOM    359  O  BCYS A  41       3.124   7.213   3.049  0.40  3.20           O
+ATOM    360  CB ACYS A  41       5.431   4.898   2.010  0.61  3.50           C
+ATOM    361  CB BCYS A  41       5.483   5.140   1.450  0.40  7.12           C
+ATOM    362  SG ACYS A  41       6.731   4.335   0.827  0.60  3.82           S
+ATOM    363  SG BCYS A  41       5.836   4.613   3.064  0.39 10.10           S
+ATOM    372  N   GLY A  42       2.514   5.271   1.971  1.00  4.10           N
+ATOM    373  CA  GLY A  42       1.322   5.042   2.727  1.00  4.02           C
+ATOM    374  C   GLY A  42       1.417   3.729   3.505  1.00  3.74           C
+ATOM    375  O   GLY A  42       2.392   2.983   3.382  1.00  4.06           O
+ATOM    570  N   HIS A  56       9.728  -2.142   0.726  1.00  4.02           N
+ATOM    571  CA  HIS A  56      10.687  -1.249   0.118  1.00  4.42           C
+ATOM    572  C   HIS A  56      10.576   0.171   0.697  1.00  4.38           C
+ATOM    573  O   HIS A  56      11.534   0.956   0.573  1.00  5.25           O
+ATOM    574  CB  HIS A  56      10.592  -1.249  -1.407  1.00  4.99           C
+ATOM    575  CG  HIS A  56       9.480  -0.462  -1.999  1.00  5.02           C
+ATOM    576  ND1 HIS A  56       8.294  -0.988  -2.415  1.00  5.14           N
+ATOM    577  CD2 HIS A  56       9.435   0.875  -2.263  1.00  5.76           C
+ATOM    578  CE1 HIS A  56       7.560  -0.010  -2.923  1.00  5.72           C
+ATOM    579  NE2 HIS A  56       8.216   1.121  -2.838  1.00  5.92           N
+ATOM    587  N   CYS A  57       9.445   0.516   1.315  1.00  4.44           N
+ATOM    588  CA  CYS A  57       9.313   1.815   1.946  1.00  4.72           C
+ATOM    589  C   CYS A  57      10.241   1.988   3.148  1.00  4.55           C
+ATOM    590  O   CYS A  57      10.553   3.132   3.509  1.00  5.19           O
+ATOM    591  CB  CYS A  57       7.875   2.020   2.439  1.00  5.19           C
+ATOM    592  SG  CYS A  57       6.674   2.294   1.132  1.00  6.27           S
+ATOM    597  N   VAL A  58      10.599   0.888   3.802  1.00  4.24           N
+ATOM    598  CA  VAL A  58      11.264   0.950   5.096  1.00  4.21           C
+ATOM    599  C   VAL A  58      12.556   0.168   5.196  1.00  4.23           C
+ATOM    600  O   VAL A  58      13.370   0.456   6.092  1.00  5.18           O
+ATOM    601  CB  VAL A  58      10.295   0.532   6.237  1.00  4.70           C
+ATOM    602  CG1 VAL A  58       9.187   1.577   6.396  1.00  5.80           C
+ATOM    603  CG2 VAL A  58       9.702  -0.860   6.006  1.00  5.12           C
+END
+"""
+
+def test_disulfide_one_conformer():
+  """1pq7: CYS A 41 SG A bonds the blank CYS A 57 SG (2.06 A), SG B is 3.13 A
+  away. HG 57 exists in conformer B only, at the occupancy of CYS 41 B; the
+  disulfide takes HG A 41 and leaves HG B 41. Deposited H kept: the same."""
+  for prefix, args in (('tst_a26_ss', ()),
+      ('tst_a26_ss_keep', ('keep_existing_H=True',))):
+    h, d, l = run(prefix, pdb_1pq7, args)
+    a = atoms_of(h, '57', ('HG',))
+    assert sorted(a) == [('HG', 'B')], (prefix, sorted(a))
+    assert abs(a[('HG', 'B')].occ - 0.40) < 0.02, a[('HG', 'B')].occ
+    assert sorted(atoms_of(h, '41', ('HG',))) == [('HG', 'B')], prefix
+    sg = atoms_of(h, '57', ('SG',))[('SG', '')]
+    assert abs(a[('HG', 'B')].distance(sg) - 1.2) < 0.2
+    # the two conformers are neutral: no Sorry from the charge check
+    from mmtbx.ligands import electrons
+    m = mmtbx.model.manager(model_input=iotbx.pdb.input(prefix + '_out.pdb'),
+      log=null_out())
+    m.process(make_restraints=True)
+    charges = electrons.electron_distribution(m.get_hierarchy(),
+      m.get_restraints_manager().geometry).get_conformer_charges()
+    assert charges == {'A': 0, 'B': 0}, charges
+
 def test_metal_per_conformer():
   # Ni at 0.50: covers the conformer at 0.35, not the one at 0.65
   h, d, l = run('tst_a26_ni', pdb_ni.replace('NIOC', '0.50'))
@@ -427,4 +507,5 @@ if __name__ == '__main__':
   test_letters_differ_unchanged()
   test_letters_differ_logged()
   test_metal_per_conformer()
+  test_disulfide_one_conformer()
   print('OK')

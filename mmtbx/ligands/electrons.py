@@ -249,7 +249,10 @@ class electron_distribution(dict):
     # blank atoms only, truncated, and its dangling bonds would be counted
     # as charges. The residue groups of one residue are taken together: a
     # residue with two residue names (1ejg PRO A / SER B, C 22) is read as
-    # two residue groups, and the blank N of the first bonds both.
+    # two residue groups, and the blank N of the first bonds both. Own
+    # altlocs are those of atom groups with a heavy atom: an H-only group on
+    # a blank parent is that conformer's H, not a conformer of the residue
+    # (1pq7 CYS A 57: HG B only, the disulfide to CYS A 41 SG A takes HG A).
     residues = {}
     for model in self.hierarchy.models():
       for chain in model.chains():
@@ -259,7 +262,8 @@ class electron_distribution(dict):
           residues.setdefault(key, []).extend(residue_group.atom_groups())
     inherited = []
     for atom_groups in residues.values():
-      own = sorted(set(ag.altloc for ag in atom_groups if ag.altloc.strip()))
+      own = sorted(set(ag.altloc for ag in atom_groups if ag.altloc.strip()
+        and any(not a.element_is_hydrogen() for a in ag.atoms())))
       if own:
         inherited.append((own, [ag for ag in atom_groups
                                 if ag.altloc == own[0]]))
