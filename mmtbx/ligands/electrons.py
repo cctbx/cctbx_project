@@ -243,10 +243,34 @@ class electron_distribution(dict):
             'electron distribution (%d atoms)' % (i_seq, n))
     altloc_indices = self.hierarchy.altloc_indices()
     blank = altloc_indices.get('', flex.size_t())
+    # A residue without atoms of altloc X belongs to conformer X through
+    # its first own altloc (the conformer pdb_interpretation inherits along
+    # the chain). Without it the residue would enter conformer X with its
+    # blank atoms only, truncated, and its dangling bonds would be counted
+    # as charges. The residue groups of one residue are taken together: a
+    # residue with two residue names (1ejg PRO A / SER B, C 22) is read as
+    # two residue groups, and the blank N of the first bonds both.
+    residues = {}
+    for model in self.hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          key = (model.id, chain.id, residue_group.resseq,
+                 residue_group.icode)
+          residues.setdefault(key, []).extend(residue_group.atom_groups())
+    inherited = []
+    for atom_groups in residues.values():
+      own = sorted(set(ag.altloc for ag in atom_groups if ag.altloc.strip()))
+      if own:
+        inherited.append((own, [ag for ag in atom_groups
+                                if ag.altloc == own[0]]))
     for altloc in altlocs:
       selection = flex.bool(n, False)
       selection.set_selected(blank, True)
       selection.set_selected(altloc_indices[altloc], True)
+      for own, atom_groups in inherited:
+        if altloc in own: continue
+        for atom_group in atom_groups:
+          selection.set_selected(atom_group.atoms().extract_i_seq(), True)
       i_seqs = selection.iselection()
       conformer = self.hierarchy.select(selection, copy_atoms=True)
       for atom_group in conformer.atom_groups():
@@ -1130,15 +1154,66 @@ class electron_distribution(dict):
       rc[altloc] = distribution.get_total_charge()
     return rc
 
+  def get_residue_charges(self):
+    """Charge of each residue of this distribution.
+
+    Returns
+    -------
+    dict
+      {(model id, chain id, resseq, icode): charge} summed over the atoms of
+      the residue (the conformer's, for a distribution in self.conformers).
+    """
+    rc = {}
+    for key, electrons in self.items():
+      if type(key)==type(tuple([])): continue
+      atom = self.atoms[key]
+      rg = atom.parent().parent()
+      chain = rg.parent()
+      k = (chain.parent().id, chain.id, rg.resseq, rg.icode)
+      rc[k] = rc.get(k, 0) - electrons
+    return rc
+
+  def get_conformer_charge_differences(self):
+    """The residues whose charge differs between the conformers.
+
+    Returns
+    -------
+    list
+      [(label, {altloc: charge})] in residue order; charge None where the
+      conformer has no atoms of the residue. Empty without conformers.
+    """
+    per = dict((altloc, d.get_residue_charges())
+               for altloc, d in self.conformers.items())
+    keys = []
+    for charges in per.values():
+      for k in charges:
+        if k not in keys: keys.append(k)
+    rc = []
+    for k in sorted(keys):
+      charges = dict((altloc, per[altloc].get(k)) for altloc in per)
+      if len(set(charges.values())) > 1:
+        label = '%s %s%s' % (k[1].strip(), k[2].strip(), k[3].strip())
+        if k[0].strip(): label = 'model %s %s' % (k[0].strip(), label)
+        rc.append((label, charges))
+    return rc
+
   def get_total_charge(self):
     if self.conformers:
       charges = self.get_conformer_charges()
       values = sorted(set(charges.values()))
       if len(values) > 1:
+        differences = self.get_conformer_charge_differences()
+        shown = ['%s (%s)' % (label, ', '.join('%s: %s' % (a, c)
+          for a, c in sorted(residue.items()))) for label, residue in
+          differences[:10]]
+        if len(differences) > 10:
+          shown.append('%d more' % (len(differences) - 10))
         raise Sorry('The alternate conformations have different total '
           'charges (%s). The charge of the model is the charge of one '
           'conformer; check the protonation of the residues with altlocs.'
-          % ', '.join('%s: %d' % (a, charges[a]) for a in sorted(charges)))
+          '\nResidues whose charge differs between the conformers: %s'
+          % (', '.join('%s: %d' % (a, charges[a]) for a in sorted(charges)),
+             '; '.join(shown)))
       return values[0]
     total=0
     for key, electrons in self.items():
