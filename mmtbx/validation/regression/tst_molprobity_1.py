@@ -212,7 +212,8 @@ def exercise_synthetic():
   mtz_out = fc.as_mtz_dataset(column_root_label="F")
   mtz_out.add_miller_array(flags_all, column_root_label="FreeR_flag")
   mtz_out.mtz_object().write("tst_molprobity_1.mtz")
-  open("tst_molprobity_1.pdb", "w").write(pdb_raw_0)
+  with open("tst_molprobity_1.pdb", "w") as fh:
+    fh.write(pdb_raw_0)
   args = [
     "tst_molprobity_1.pdb",
     "tst_molprobity_1.mtz",
@@ -263,7 +264,8 @@ def exercise_synthetic():
   hierarchy.append_model(model2)
   hierarchy.models()[0].id = "1"
   hierarchy.models()[1].id = "2"
-  open("tst_molprobity_multi_model.pdb", "w").write(hierarchy.as_pdb_string())
+  with open("tst_molprobity_multi_model.pdb", "w") as fh:
+    fh.write(hierarchy.as_pdb_string())
   args = [
     "tst_molprobity_multi_model.pdb",
     "tst_molprobity_1.mtz",
@@ -276,7 +278,8 @@ def exercise_synthetic():
   out = StringIO()
   result.show(out=out)
   # test rotamer distributions
-  open("tst_molprobity_misc1.pdb", "w").write(pdb_raw_0)
+  with open("tst_molprobity_misc1.pdb", "w") as fh:
+    fh.write(pdb_raw_0)
   args = [
     "tst_molprobity_1.pdb",
     "rotamer_library=8000",
@@ -323,8 +326,10 @@ ATOM   1317  CB  SER A 204       1.962  61.780  -4.504  1.00 27.64           C
   pdb_raw_2 = """\
 REMARK   3    GEOSTD + MON.LIB. + CDL v1.2
 """ + pdb_raw
-  open("tst_molprobity_cdl_1.pdb", "w").write(pdb_raw)
-  open("tst_molprobity_cdl_2.pdb", "w").write(pdb_raw_2)
+  with open("tst_molprobity_cdl_1.pdb", "w") as fh:
+    fh.write(pdb_raw)
+  with open("tst_molprobity_cdl_2.pdb", "w") as fh:
+    fh.write(pdb_raw_2)
   files = ["tst_molprobity_cdl_1.pdb","tst_molprobity_cdl_2.pdb"]
   rmsds = [0.9019, 0.8769]
   for file_name, rmsd, cdl_expected in zip(files, rmsds, [False, True]):

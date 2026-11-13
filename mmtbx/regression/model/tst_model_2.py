@@ -481,12 +481,15 @@ END
 
 def exercise_model_filename():
   for suffix in ['.pdb', '.cif']:
-    with tempfile.NamedTemporaryFile(dir=os.getcwd(), suffix=suffix) as f:
+    # closed before reading: Windows cannot open a temporary file twice
+    with tempfile.NamedTemporaryFile(dir=os.getcwd(), suffix=suffix,
+                                     delete=False) as f:
       filename = f.name
-      inp = iotbx.pdb.input(file_name=os.path.basename(filename))
-      m = mmtbx.model.manager(model_input=inp)
-      assert os.path.abspath(filename) == m.get_source_filename()
-      assert os.path.basename(filename) == m.get_source_filename(full_path=False)
+    inp = iotbx.pdb.input(file_name=os.path.basename(filename))
+    m = mmtbx.model.manager(model_input=inp)
+    assert os.path.abspath(filename) == m.get_source_filename()
+    assert os.path.basename(filename) == m.get_source_filename(full_path=False)
+    os.remove(filename)
 
   inp = iotbx.pdb.input(source_info=None, lines=pdb_str_1)
   m = mmtbx.model.manager(model_input=inp)

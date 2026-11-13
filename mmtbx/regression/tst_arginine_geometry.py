@@ -92,9 +92,8 @@ def main(pdb_file=None):
   embedded_model = pdb_file is None
   if embedded_model:
     pdb_file='tst_arginine_geometry.pdb'
-    f=open(pdb_file, 'w')
-    f.write(pdb_str)
-    del f
+    with open(pdb_file, 'w') as fh:
+      fh.write(pdb_str)
   results = run_program(program_class=Program, args=[pdb_file])
   assert len(results)==1
   if not embedded_model: return

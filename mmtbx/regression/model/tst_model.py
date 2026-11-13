@@ -1050,7 +1050,8 @@ def exercise_convert_atom():
   symm = crystal.symmetry(
     space_group_symbol="P1",
     unit_cell=(10,10,10,90,90,90))
-  open("tmp_tst_model_5.pdb", "w").write(root.as_pdb_string(symm))
+  with open("tmp_tst_model_5.pdb", "w") as fh:
+    fh.write(root.as_pdb_string(symm))
   mol = mmtbx.model.manager(
       model_input = iotbx.pdb.input(file_name="tmp_tst_model_5.pdb"))
   mol.process(make_restraints=True)

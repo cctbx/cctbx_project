@@ -799,7 +799,8 @@ def exercise_observed_results_answer_completed_claude_agent_tools():
     assert any(m.role == "assistant" for m in kept), [m.role for m in kept]
     session.storage.save(session.conv)
     p = session.storage.conv_dir(session.conv.meta.id) / "messages.json"
-    reloaded = json.load(open(p, encoding="utf-8"))["messages"]
+    with open(p, encoding="utf-8") as fh:
+      reloaded = json.load(fh)["messages"]
     amsg = next(m for m in reloaded if m["role"] == "assistant")
     assert any(b["type"] == "tool_use" for b in amsg["content"]), amsg
     assert "Cancelled by user" not in json.dumps(reloaded), \

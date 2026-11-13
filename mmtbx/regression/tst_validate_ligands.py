@@ -1117,7 +1117,9 @@ def run_test17():
   if gol_cif is None:
     print('  skipping: geostd not available')
     return
-  lines = [ln for ln in open(gol_cif).read().splitlines()
+  with open(gol_cif) as fh:
+    gol_text = fh.read()
+  lines = [ln for ln in gol_text.splitlines()
            if not (ln.strip().startswith('GOL') and
                    (' O3 ' in ln or ' HO3 ' in ln or ln.rstrip().endswith(' O3')
                     or ln.rstrip().endswith(' HO3')))]

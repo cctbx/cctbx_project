@@ -84,9 +84,8 @@ ATOM     48  HG3 GLU A  11      31.204  29.701 104.992  0.00 47.28           H
 '''
 
 def main():
-  f=open('pdb_1x24_modified.pdb', 'w')
-  f.write(pdb_1x24_modified)
-  del f
+  with open('pdb_1x24_modified.pdb', 'w') as fh:
+    fh.write(pdb_1x24_modified)
   try:
     run_program(electrons.Program, args=['pdb_1x24_modified.pdb'])
   except Sorry as e:
@@ -94,9 +93,8 @@ def main():
   else:
     assert 0, 'model without hydrogen atoms should raise Sorry'
 
-  f=open('pdb_1x24_modified_complete.pdb', 'w')
-  f.write(pdb_1x24_modified_complete)
-  del f
+  with open('pdb_1x24_modified_complete.pdb', 'w') as fh:
+    fh.write(pdb_1x24_modified_complete)
   rc = run_program(electrons.Program, args=['pdb_1x24_modified_complete.pdb'])
   print('-'*80)
   print(rc.keys())

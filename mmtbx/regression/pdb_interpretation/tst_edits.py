@@ -237,9 +237,9 @@ refinement.geometry_restraints.edits {
   cmd = "phenix.pdb_interpretation \"%s\" \"%s\" write_geo_files=True" %(
     pdb_file.name, edits_file.name)
   result = easy_run.fully_buffered(cmd).raise_if_errors()
-  geo_file = open(pdb_file.name+'.geo', "r")
   # geo_file = open(pdb_file.name.replace(".pdb", '_minimized.geo'), "r")
-  geo_file_str = geo_file.read()
+  with open(pdb_file.name+'.geo', "r") as geo_file:
+    geo_file_str = geo_file.read()
   assert '''| User supplied | restraints: 1
 Sorted by residual:
 angle pdb=" N   ALA A   2 " segid="A   "

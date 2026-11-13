@@ -665,7 +665,9 @@ if (__name__ == "__main__"):
     print("RMSD %7.2f "%rmsd)
     # Make sure it wrote pdb_out:
     fn = "std.%s" %("cif" if mmcif else "pdb")
-    test_inp = iotbx.pdb.input(source_info=None, lines = open(fn).read())
+    with open(fn) as fh:
+      fn_text = fh.read()
+    test_inp = iotbx.pdb.input(source_info=None, lines = fn_text)
     test_ph = test_inp.construct_hierarchy()
     assert test_ph.overall_counts().n_residues > 0
     print("Time: %6.4f"%(time.time()-t0a))

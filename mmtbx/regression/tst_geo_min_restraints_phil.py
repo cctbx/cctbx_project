@@ -241,7 +241,8 @@ ATOM     55  CB  ASN A  11       5.780  16.740   5.000  1.00  0.00
 TER
 END
   """
-  open("tst_geo_min_ss_phil.pdb", "w").write(pdb_in_p1)
+  with open("tst_geo_min_ss_phil.pdb", "w") as fh:
+    fh.write(pdb_in_p1)
   from mmtbx.command_line import secondary_structure_restraints
   out = StringIO()
   args = [
@@ -251,7 +252,8 @@ END
   secondary_structure_restraints.run(args, out=out, log=null_out())
   # phenix.geometry_minimization
   from mmtbx.command_line import geometry_minimization
-  open("tst_geo_min_ss_phil.phil", "w").write(out.getvalue())
+  with open("tst_geo_min_ss_phil.phil", "w") as fh:
+    fh.write(out.getvalue())
   args = [
     "tst_geo_min_ss_phil.pdb",
     "tst_geo_min_ss_phil.phil",

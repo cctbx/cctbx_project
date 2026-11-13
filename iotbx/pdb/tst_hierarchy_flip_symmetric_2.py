@@ -383,9 +383,8 @@ def main(only_i=None):
   except Exception: only_i=None
   for file_name, lines in pdbs.items():
     print(file_name)
-    f=open(file_name, 'w')
-    f.write(lines)
-    del f
+    with open(file_name, 'w') as fh:
+      fh.write(lines)
     unflipped, flipped = [get_target(file_name, i) for i in range(2)]
     assert unflipped<2000
     assert flipped<2000

@@ -2928,7 +2928,8 @@ def exercise_imports():
   r = easy_run.fully_buffered('libtbx.python %s' % fn)
   assert r.return_code == 0, '\n'.join(r.stderr_lines)
   assert [l for l in r.stdout_lines if l.strip()] == [], r.stdout_lines
-  src = open(LI.__file__.replace('.pyc', '.py')).read()
+  with open(LI.__file__.replace('.pyc', '.py')) as fh:
+    src = fh.read()
   for name in ('validate_ligands', 'mmtbx.nci', 'nci_analysis'):
     assert ('import %s' % name) not in src and ('from %s' % name) not in src, name
 
@@ -4435,8 +4436,9 @@ def pdb_from_cif_text(code, text):
 def geostd_text(code):
   from mmtbx.monomer_library import server
   import os
-  return open(os.path.join(server.server().geostd_path, code[0].lower(),
-    'data_%s.cif' % code)).read()
+  with open(os.path.join(server.server().geostd_path, code[0].lower(),
+      'data_%s.cif' % code)) as fh:
+    return fh.read()
 
 def exercise_charge_separated():
   '''
@@ -4853,7 +4855,8 @@ def exercise_builder_chain():
   model = M.get_model(M.chain_pdb)
   f = LI.find_charged_groups(model, all_atoms(model))
   assert [g for g in f.groups if g['resname'] == 'SEP'] == [] and f.failures == []
-  text = open(os.path.join(server.server().geostd_path, 's', 'data_SEP.cif')).read()
+  with open(os.path.join(server.server().geostd_path, 's', 'data_SEP.cif')) as fh:
+    text = fh.read()
   dianion = '\n'.join([l for l in text.split('\n') if 'HOP2' not in l and 'HOP3' not in l])
   pdb = '\n'.join([l for l in M.chain_pdb.split('\n') if l[12:16].strip() not in ('HOP2',
     'HOP3')])

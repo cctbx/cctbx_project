@@ -1507,7 +1507,7 @@ ATOM      2  CA  GLN A  56      22.670  12.004   2.148  1.00 39.46           C
   cmd = " ".join([
       "phenix.pdbtools",
       "%s.pdb"%prefix,
-      "keep='resname ALA'",
+      "keep=\"resname ALA\"",
       "output.prefix=out_%s"%(prefix)])
   print(cmd)
   run_pdbtools(cmd)

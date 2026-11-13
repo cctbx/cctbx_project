@@ -51,7 +51,8 @@ END
 
 def exercise(args):
   assert len(args) == 0
-  open("tmp_altloc_chain_break.pdb", "w").write(pdb1exr_fragment)
+  with open("tmp_altloc_chain_break.pdb", "w") as fh:
+    fh.write(pdb1exr_fragment)
   command = " ".join([
     "phenix.geometry_minimization",
     "cdl=False",
@@ -60,7 +61,9 @@ def exercise(args):
     ">tmp_altloc_chain_break.zlog"])
   assert not easy_run.call(command=command)
   target_values = []
-  for line in open("tmp_altloc_chain_break.zlog","r").readlines():
+  with open("tmp_altloc_chain_break.zlog","r") as fh:
+    zlog_lines = fh.readlines()
+  for line in zlog_lines:
     line = line.strip()
     if (line.startswith("target: ")):
       target_values.append(float(line.split()[-1]))

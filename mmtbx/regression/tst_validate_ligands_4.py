@@ -421,7 +421,8 @@ def run_test38():
         args          = [pdb_fn, 'save_reduce2_model=True'] + extra,
         logger        = null_out())
       inp = iotbx.pdb.input(out_fn)
-      txt = open(out_fn).read()
+      with open(out_fn) as fh:
+        txt = fh.read()
       assert [e for e in inp.atoms().extract_element() if e.strip() == 'H'], label
       if abc is None:
         assert '_cell.length_a' not in txt, label

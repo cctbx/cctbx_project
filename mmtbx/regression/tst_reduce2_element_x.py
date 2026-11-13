@@ -44,7 +44,9 @@ def test_element_x():
     master_phil=parser.master_phil, logger=log)
   task.validate()
   task.run()
-  for text in (log.getvalue(), open(txt).read()):
+  with open(txt) as fh:
+    txt_text = fh.read()
+  for text in (log.getvalue(), txt_text):
     lines = text.splitlines()
     assert LINE in lines, text
     i = lines.index(LINE)

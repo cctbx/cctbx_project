@@ -776,7 +776,9 @@ def tst_TLSAmplitudes_fails():
     a.set([1], [-1])
   assert ("can't convert negative value to unsigned" == str(e.value) or
           "negative overflow" in str(e.value) or
-          "can't convert negative value to unsigned" in str(e.value))
+          "can't convert negative value to unsigned" in str(e.value) or
+          # 64-bit unsigned on Windows (PyLong_AsUnsignedLongLong)
+          "can't convert negative int to unsigned" in str(e.value))
 
   # Negative/zero-value target values!
   msg = "target must be positive"

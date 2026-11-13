@@ -215,7 +215,8 @@ def run_test_interactions_fmn():
   assert 'C FMN 301 O1P O2P O3P ... C ARG 207 NE NH1 NH2' in section
   # JSON, snapshot, get_results
   assert result.interactions_fn == 'tst_interactions_fmn_ligand_interactions.json'
-  d = json.load(open(result.interactions_fn))
+  with open(result.interactions_fn) as fh:
+    d = json.load(fh)
   assert d['parameters']['salt_bridge.criterion'] == 'charge_centre'
   assert d['parameters']['symmetry'] is True and d['versions']['cctbx']
   assert [x['ligand'] for x in d['ligands']] == ['FMN C 301']

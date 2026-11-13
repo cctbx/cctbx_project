@@ -42,12 +42,12 @@ def run():
         "phenix.clashscore tst_mol_args.pdb",
         "keep_hydrogens=%s"%str(keep_hydrogens),
         "nuclear=%s"%str(nuclear),
-        ">& tst_molprobity_arguments.zlog1"])
+        "> tst_molprobity_arguments.zlog1 2>&1"])
       cmd2 = " ".join([
         "phenix.molprobity tst_mol_args.pdb",
         "keep_hydrogens=%s"%str(keep_hydrogens),
         "pdb_interpretation.use_neutron_distances=%s"%str(nuclear),
-        ">& tst_molprobity_arguments.zlog2"])
+        "> tst_molprobity_arguments.zlog2 2>&1"])
       cs1=run_and_get_clashscore(cmd=cmd1, out="tst_molprobity_arguments.zlog1")
       cs2=run_and_get_clashscore(cmd=cmd2, out="tst_molprobity_arguments.zlog2")
       if(0):
