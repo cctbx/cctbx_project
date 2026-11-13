@@ -903,7 +903,7 @@ def exercise_refinement_reduces_clashes():
   assert n_refined < n_greedy, (
     f"refinement should reduce close contacts ({n_greedy} -> {n_refined})")
   # The program's contact listing reports the same contacts, closest first.
-  listed = [c[0] for c in wp._worst_water_clashes(greedy)]
+  listed = [c[0] for c in wp.worst_water_clashes(greedy)]
   assert len(listed) == n_greedy, (len(listed), n_greedy)
   assert listed == sorted(listed), listed
 
@@ -1315,7 +1315,7 @@ def exercise_sym_equiv_contacts_counted():
   assert stats == states[0], (stats, states[0])
   stats = wp._water_clash_stats(hier)
   assert stats[1] == 0, stats
-  listed = wp._worst_water_clashes(hier, crystal_symmetry=cs)
+  listed = wp.worst_water_clashes(hier, crystal_symmetry=cs)
   assert approx_equal([c[0] for c in listed], [1.486, 1.600], eps=1e-6)
   assert [c[1:] for c in listed] == [
     ("HOH W 2 H1", "HOH W 3 H1 [x-1,y,z]"),
@@ -1331,7 +1331,7 @@ def exercise_sym_equiv_contacts_counted():
   assert [s[1] for s in states] == [2], states
   stats = wp._water_clash_stats(hier, crystal_symmetry=cs)
   assert stats == states[0], (stats, states[0])
-  listed = wp._worst_water_clashes(hier, crystal_symmetry=cs)
+  listed = wp.worst_water_clashes(hier, crystal_symmetry=cs)
   assert approx_equal([c[0] for c in listed], [1.486, 1.603], eps=1e-3)
   assert [c[1:] for c in listed] == [
     ("HOH W 2 H1", "HOH W 3 H1 altloc A [x-1,y,z]"),
@@ -1701,10 +1701,87 @@ def exercise_multi_model_rejected():
     raise Exception_expected
 
 
+def exercise_clash_report_lines():
+  """clash_report_lines() gives the per-state table, the kept state and the
+  residual contacts, at most max_listed per band, with each band's count,
+  and no lines without water H.
+
+  The kept state is the cluster search's whenever it ran, from the state
+  refinement kept, if any; checked on the placer's own states and
+  kept_label for ``_CLUSTER_SEARCH_PDB``, with and without refinement and
+  without the search.
+  """
+  states = [("initial", (4, 3, 1, 0, 1.6)),
+            ("cluster search", (4, 1, 0, 0, 1.9))]
+  contacts = [(1.4, "HOH A 1 H1", "HOH A 2 H1")] + [
+    (1.85, f"HOH A {i} H2", f"HOH A {i + 1} H2") for i in range(3, 25)]
+  lines = wp.clash_report_lines(states, "initial", False, contacts)
+  assert lines[:4] == [
+    "  state            < 2.0 A  < 1.8 A  < 1.5 A  closest",
+    "  initial                3        1        0  1.60 A",
+    "  cluster search         1        0        0  1.90 A",
+    "Kept: cluster search, from initial (fewest contacts < 2.0 A)"], lines[:4]
+  assert lines[4:7] == ["Residual contacts:", "  < 1.5 A (1):",
+                        "    1.40 A  HOH A 1 H1  <->  HOH A 2 H1"], lines[4:7]
+  assert lines[7] == "  1.8-2.0 A (22):", lines[7]
+  assert len(lines) == 8 + 20 + 1, len(lines)
+  assert lines[-1] == "    ... and 2 more", lines[-1]
+  lines = wp.clash_report_lines(states[:1], None, True, [])
+  assert lines[2:] == ["Basin hopping: no clashing water can move, skipped",
+                       "Residual contacts: none"], lines[2:]
+  lines = wp.clash_report_lines([("initial", (0, 0, 0, 0, None))], "initial",
+                                False, [])
+  assert lines == [], lines
+
+  def kept_line(**kw):
+    placed = []
+    res = wp.place_water_hydrogens(
+      _hierarchy(_CLUSTER_SEARCH_PDB),
+      on_state=lambda label, stats: placed.append((label, stats)), **kw)
+    lines = wp.clash_report_lines(placed, res.kept_label, False, [])
+    return res.kept_label, [l for l in lines if l.startswith("Kept")]
+  label, kept = kept_line()
+  assert kept == [
+    f"Kept: cluster search, from {label} (fewest contacts < 2.0 A)"], kept
+  label, kept = kept_line(n_refine=0)
+  assert label is None and kept == ["Kept: cluster search"], (label, kept)
+  label, kept = kept_line(cluster_search=False)
+  assert kept == [f"Kept: {label} (fewest contacts < 2.0 A)"], kept
+
+
+def exercise_program_stats():
+  """stats=True, the default, reports the clash table, the kept state and
+  the residual contacts; stats=False reports none of them, and nor does a
+  model without waters. With basin.rounds=2 on a model whose water has no
+  clash, it reports basin-hopping as skipped.
+
+  Runs the program on ``_MIXED_CLUSTER_PDB``, and on ``_TWO_ACCEPTOR_PDB``
+  with and without its water.
+  """
+  no_water = "\n".join(l for l in _TWO_ACCEPTOR_PDB.split("\n")
+                       if "HOH" not in l)
+  for name, pdb_str, args, shown in (
+      ("stats", _MIXED_CLUSTER_PDB, [], True),
+      ("stats", _MIXED_CLUSTER_PDB, ["stats=False"], False),
+      ("no_water", no_water, [], False),
+      ("basin", _TWO_ACCEPTOR_PDB, ["basin.rounds=2"], True)):
+    file_name = f"tst_water_protonation_{name}.pdb"
+    with open(file_name, "w") as f:
+      f.write(pdb_str)
+    log = StringIO()
+    run_program(program_class=wp_program.Program, logger=log,
+                args=[file_name, "output.overwrite=True"] + args)
+    text = log.getvalue()
+    for line in ("H-H contacts between waters:", "Kept: ", "Residual contacts"):
+      assert (line in text) == shown, (args, line, text)
+    skipped = "Basin hopping: no clashing water can move, skipped" in text
+    assert skipped == (name == "basin"), (args, text)
+
+
 def exercise_placement_phil_defaults():
   """The placer's search arguments default to placement_phil_str's values:
   five refinement sweeps, tolerance 1, no basin-hopping and the cluster
-  search on.
+  search on. The clash report is on by default too.
 
   Both programs include placement_phil_str, so a run with their defaults
   and a call of place_water_hydrogens without these arguments search alike.
@@ -1720,6 +1797,7 @@ def exercise_placement_phil_defaults():
   values = (p.refine.max_sweeps, p.refine.tolerance, p.basin.rounds,
             p.cluster_search)
   assert values == (5, 1, 0, True), values
+  assert p.stats is True, p.stats
 
 
 def exercise_settings_need_values():
@@ -1807,6 +1885,8 @@ def run():
   exercise_reorient_keeps_isotope()
   exercise_missing_elements_rejected()
   exercise_multi_model_rejected()
+  exercise_clash_report_lines()
+  exercise_program_stats()
   exercise_placement_phil_defaults()
   exercise_settings_need_values()
   exercise_output_file_name()

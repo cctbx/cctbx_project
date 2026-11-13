@@ -1466,36 +1466,61 @@ NOTES:
     cs = reduce_hydrogen.contact_symmetry(self._output_cs)
     # placement works in H; the output writes the water H as this isotope
     isotope = hd_exchange.water_isotope(self.params.neutron_option)
+    def written(label):
+      # a water or water H label as the written model has it: DOD and D with
+      # D, HOH for a DOD with H
+      words = label.split(' ')
+      if isotope == 'D':
+        words[0] = 'DOD'
+        if len(words) > 3 and words[3].startswith('H'):
+          words[3] = words[3].replace('H', 'D', 1)
+      elif words[0] == 'DOD':
+        words[0] = 'HOH'
+      return ' '.join(words)
     root = self.model.get_hierarchy()
     n_before = root.atom_selection_cache().selection(
       "water and element H").count(True)
     # the placer takes one model: each model on its own
     models = list(root.models())
     partial = []
+    stats_lines = []
     for i, m in enumerate(models):
       single = root
       if len(models) > 1:
         root.remove_model(m)
         single = pdb.hierarchy.root()
         single.append_model(m)
+      states = []
       result = water_protonation.place_water_hydrogens(single,
         oh_length=oh_length, element='H', existing_h=w.existing_h,
         geometry='neutron' if use_neutron else 'xray', crystal_symmetry=cs,
         n_refine=w.refine.max_sweeps, refine_tol=w.refine.tolerance,
         n_basin=w.basin.rounds, cluster_search=w.cluster_search,
-        symmetry_mates=w.symmetry)
-      # the report names the waters as written, by model: DOD with D, and
-      # HOH for a DOD with H
+        symmetry_mates=w.symmetry,
+        on_state=(lambda label, stats: states.append((label, stats)))
+          if w.stats else None)
+      # the report names the waters as written, by model
       for rid, metal, action in result.partial_waters:
-        name, rest = rid.split(' ', 1)
-        if isotope == 'D':
-          name = 'DOD'
-        elif name == 'DOD':
-          name = 'HOH'
-        rid = name + ' ' + rest
+        rid = written(rid)
         if len(models) > 1:
           rid = '%s (model %s)' % (rid, m.id.strip())
         partial.append((rid, metal, action))
+      if states:
+        contacts = water_protonation.worst_water_clashes(single,
+          crystal_symmetry=cs if w.symmetry else None)
+        contacts = [(d, written(a), written(b)) for d, a, b in contacts]
+        lines = water_protonation.clash_report_lines(states,
+          result.kept_label,
+          w.basin.rounds > 0 and result.basin_rounds_run == 0, contacts)
+        if lines:
+          title = 'H-H contacts between waters'
+          if self.params.qmready:
+            # the geometry regularization moves the water H afterwards
+            title += ', as placed'
+          if len(models) > 1:
+            title += ' (model %s)' % m.id.strip()
+          stats_lines.append(title + ':')
+        stats_lines.extend(lines)
       if len(models) > 1:
         single.remove_model(m)
         root.insert_model(i, m)
@@ -1526,6 +1551,8 @@ NOTES:
               'kept': 'left as is'}
     for line in water_protonation.partial_water_lines(partial, labels,
         hydrogen=isotope):
+      text += line + '\n'
+    for line in stats_lines:
       text += line + '\n'
     text += self._RenameDodWithH()
     text += 'Time to place water H = {:.3f} sec\n'.format(time.time() - start)
@@ -2899,7 +2926,7 @@ NOTES:
         ('symmetry', w.symmetry), ('refine.max_sweeps', w.refine.max_sweeps),
         ('refine.tolerance', w.refine.tolerance),
         ('basin.rounds', w.basin.rounds),
-        ('cluster_search', w.cluster_search)):
+        ('cluster_search', w.cluster_search), ('stats', w.stats)):
       if value is None:
         raise Sorry('water_hydrogens.%s needs a value.' % name)
     diff = self.get_program_phil(diff=True)
