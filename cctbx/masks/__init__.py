@@ -18,25 +18,36 @@ def vdw_radii_from_xray_structure(xray_structure, table=None):
 class vdw_radii:
 
   def __init__(self, xray_structure, table=None):
-    # XXX use scattering dictionary and set_selected
     # XXX use monomer library definitions for radii
     unknown = []
     if table is None:
       self.table = {}
     else:
       self.table = table.copy()
-    self.atom_radii = flex.double()
-    for i_seq, scatterer in enumerate(xray_structure.scatterers()):
-      try:
-        radius = self.table.get(scatterer.element_symbol())
-        if radius is None:
-          radius = van_der_waals_radii.vdw.table[scatterer.element_symbol()]
-          self.table[scatterer.element_symbol()] = radius
-      except KeyError:
-        unknown.append(scatterer.element_symbol())
-      else:
-        self.atom_radii.append(radius)
-    if(len(unknown) > 0):
+    from cctbx.xray import ext as xray_ext
+    scatterers = xray_structure.scatterers()
+    # one lookup per scattering type, which decides the element symbol; a
+    # registry of its own because the structure's would assign tables
+    registry = xray_ext.scattering_type_registry()
+    registry.process(scatterers)
+    unique_indices = registry.unique_indices(scatterers)
+    self.atom_radii = flex.double(unique_indices.size(), 0)
+    unknown_types = set()
+    for scattering_type, i in registry.type_index_pairs_as_dict().items():
+      selection = (unique_indices == i)
+      symbol = scatterers[selection.iselection()[0]].element_symbol()
+      radius = self.table.get(symbol)
+      if radius is None:
+        if symbol not in van_der_waals_radii.vdw.table:
+          unknown_types.add(scattering_type)
+          continue
+        radius = van_der_waals_radii.vdw.table[symbol]
+        self.table[symbol] = radius
+      self.atom_radii.set_selected(selection, radius)
+    if(len(unknown_types) > 0):
+      for scatterer in scatterers:
+        if scatterer.scattering_type in unknown_types:
+          unknown.append(scatterer.element_symbol())
       raise RuntimeError("Atoms with unknown van der Waals radius: ",unknown)
 
   def show(self, log=None):
