@@ -4,6 +4,7 @@
 #include <scitbx/fftpack/complex_to_complex.h>
 #include <scitbx/fftpack/real_to_complex.h>
 #include <omptbx/omp_or_stubs.h>
+#include <vector>
 
 #define SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP
 
@@ -133,6 +134,32 @@ namespace scitbx { namespace fftpack {
           real_or_complex_type;
         forward(map, real_or_complex_type());
       }
+      //! In-place "forward" transformation of a sparse real map.
+      /*! Every line map(ix,iy,:) where x_nonzero[ix] or y_nonzero[iy] is
+          false must be zero. The result is that of forward() for each
+          coefficient whose y index k has y_needed[k] true and whose z index
+          is below n_z_complex; the other coefficients are undefined. The
+          vectors have n_real()[0], n_real()[1] and n_real()[1] elements.
+       */
+      template <typename MapType>
+      void forward_pruned(
+        MapType map,
+        std::vector<char> const& x_nonzero,
+        std::vector<char> const& y_nonzero,
+        std::vector<char> const& y_needed,
+        int n_z_complex)
+      {
+        std::vector<int> x_lines, y_lines, y_columns;
+        for (int ix = 0; ix < n_real_[0]; ix++) {
+          if (x_nonzero[ix]) x_lines.push_back(ix);
+        }
+        for (int iy = 0; iy < n_real_[1]; iy++) {
+          if (y_nonzero[iy]) y_lines.push_back(iy);
+          if (y_needed[iy]) y_columns.push_back(iy);
+        }
+        forward_lines(map, x_lines, y_lines, y_columns,
+          std::min(n_z_complex, static_cast<int>(fft1d_z_.n_complex())));
+      }
       //! In-place "backward" Fourier transformation.
       /*! <b>It is important to provide both
           map(i,j,0) and map(-i,-j,0)</b>. See class details.
@@ -161,13 +188,32 @@ namespace scitbx { namespace fftpack {
       // Core routine always works on real maps.
       template <typename MapType>
       void forward(MapType map, real_type)
+      {
+        std::vector<int> x_lines(n_real_[0]), y_lines(n_real_[1]);
+        for (int ix = 0; ix < n_real_[0]; ix++) x_lines[ix] = ix;
+        for (int iy = 0; iy < n_real_[1]; iy++) y_lines[iy] = iy;
+        forward_lines(map, x_lines, y_lines, y_lines, fft1d_z_.n_complex());
+      }
+      // z transforms of the lines (x_lines, y_lines), y transforms of the
+      // x_lines planes and x transforms of the y_columns rows, for the
+      // first nzc z coefficients
+      template <typename MapType>
+      void forward_lines(
+        MapType map,
+        std::vector<int> const& x_lines,
+        std::vector<int> const& y_lines,
+        std::vector<int> const& y_columns,
+        int nzc)
   // FUTURE: move out of class body
   {
     // TODO: avoid i, i+1 by casting to complex
     int nx = n_real_[0];
     int ny = n_real_[1];
-    int nzc = fft1d_z_.n_complex();
-    int seq_size = 2 * std::max(std::max(nx, ny), nzc);
+    int seq_size = 2 * std::max(std::max(nx, ny),
+      static_cast<int>(fft1d_z_.n_complex()));
+    int n_x_lines = static_cast<int>(x_lines.size());
+    int n_y_lines = static_cast<int>(y_lines.size());
+    int n_y_columns = static_cast<int>(y_columns.size());
     scitbx::auto_array<real_type> seq_and_scratch;
     if (omp_in_parallel() == 0) omp_set_dynamic(0);
 #if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
@@ -188,10 +234,11 @@ namespace scitbx { namespace fftpack {
 #if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
       #pragma omp for
 #endif
-      for (int ix = 0; ix < nx; ix++) {
-        for (int iy = 0; iy < ny; iy++) {
+      for (int i_x = 0; i_x < n_x_lines; i_x++) {
+        int ix = x_lines[i_x];
+        for (int i_y = 0; i_y < n_y_lines; i_y++) {
           // Transform along z (fast direction)
-          fft1d_z_.forward(&map(ix, iy, 0), scratch);
+          fft1d_z_.forward(&map(ix, y_lines[i_y], 0), scratch);
         }
         for (int iz = 0; iz < nzc; iz++) {
           for (int iy = 0; iy < ny; iy++) {
@@ -209,7 +256,8 @@ namespace scitbx { namespace fftpack {
 #if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
       #pragma omp for
 #endif
-      for (int iy = 0; iy < ny; iy++) {
+      for (int i_y = 0; i_y < n_y_columns; i_y++) {
+        int iy = y_columns[i_y];
         for (int iz = 0; iz < nzc; iz++) {
           for (int ix = 0; ix < nx; ix++) {
             seq[2*ix] = map(ix, iy, 2*iz);
