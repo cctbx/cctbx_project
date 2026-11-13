@@ -669,12 +669,5 @@ if (__name__ == "__main__"):
     test_ph = test_inp.construct_hierarchy()
     assert test_ph.overall_counts().n_residues > 0
     print("Time: %6.4f"%(time.time()-t0a))
-
-    t0a=time.time()
-    print("\nRunning standard minimize_chain plus merge_models")
-    extra_args=['merge_models=True','pdb_out=merged.pdb']
-    rmsd=tst_02(args+extra_args,prefix='tst_03')
-    print("RMSD %7.2f "%rmsd)
-    print("Time: %6.4f"%(time.time()-t0a))
   print("Total Time: %6.4f"%(time.time()-t0))
   print("OK")

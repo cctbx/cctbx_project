@@ -18,7 +18,9 @@ def exercise():
   m.process(make_restraints=True)
   grm = m.get_restraints_manager()
   dm.process_miller_array_file(mtz_file)
-  fmo = dm.get_fmodel(scattering_table="n_gaussian")
+  # 2 A data keep Phaser substructure completion (most of the run) fast
+  fmo = dm.get_fmodel(scattering_table="n_gaussian").resolution_filter(
+    d_min=2.0)
   from mmtbx.ions.identify import ion_identification_phil_str
   params = iotbx.phil.parse(input_string = ion_identification_phil_str).extract()
   out = StringIO()

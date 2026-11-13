@@ -18,8 +18,7 @@ def load_dict():
 
   return database_dict
 
-def exercise_00():
-  database_dict = load_dict()
+def exercise_00(database_dict):
   #
   i_1l2h = list(database_dict["pdb_code"]).index("1l2h")
   found = 0
@@ -45,8 +44,7 @@ def exercise_00():
   #
   assert found == 5
 
-def exercise_01():
-  database_dict = load_dict()
+def exercise_01(database_dict):
   #
   twinned = database_dict["twinned"]
   sel  = twinned != "none"
@@ -91,8 +89,7 @@ def exercise_01():
   for n,d,rwc,rwp,rw,t in zip(name,delta,r_work_cutoff,r_work_pdb, r_work_re_computed, twinned):
     print ("%s diff=%6.2f rw_c=%6.4f rw_p=%6.4f rw_ad=%6.4f %s" % (n,d,rwc,rwp,rw, t))
 
-def exercise_02():
-  database_dict = load_dict()
+def exercise_02(database_dict):
   #
   r_work_pdb = database_dict["pdb_header_r_work"]
   r_work_cutoff = database_dict["r_work_cutoffs"]
@@ -135,7 +132,8 @@ def exercise_02():
 
 
 if (__name__ == "__main__"):
-  exercise_00()
-  exercise_01()
-  exercise_02()
+  database_dict = load_dict()
+  exercise_00(database_dict)
+  exercise_01(database_dict)
+  exercise_02(database_dict)
   print("OK")

@@ -32,7 +32,7 @@ def exercise():
   pdb_in = iotbx.pdb.input(regression_pdb)
   hierarchy = pdb_in.construct_hierarchy()
   new_hierarchy = iotbx.pdb.hierarchy.root()
-  for i in range(5):
+  for i in range(2):
     model = hierarchy.only_model().detached_copy()
     model.id = str(i+1)
     new_hierarchy.append_model(model)

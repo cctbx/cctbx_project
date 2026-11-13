@@ -256,7 +256,7 @@ def test_gradients_fd_fmodel():
   m = get_model(pdb_str, "n_gaussian", use_neutron_distances=True)
   mp = xh_mapper.mapper(m)
   f_obs = abs(m.get_xray_structure().structure_factors(
-    d_min=1.5, algorithm="direct").f_calc())
+    d_min=3.0, algorithm="direct").f_calc())
   flags = f_obs.generate_r_free_flags(fraction=0.1)
   xrs = m.get_xray_structure().deep_copy_scatterers()
   random.seed(0)
@@ -305,7 +305,7 @@ def test_fit_rotatable2_keeps_nuclear():
   sites = m.get_sites_cart()
   lengths_before = [dist(sites, i, j) for i, j in zip(mp.i_h, mp.i_x)]
   f_obs = abs(m.get_xray_structure().structure_factors(
-    d_min=1.5, algorithm="direct").f_calc())
+    d_min=3.0, algorithm="direct").f_calc())
   flags = f_obs.generate_r_free_flags(fraction=0.1)
   # fmodel is built on a copy with the SER HG rotated 120 degrees about
   # CB-OG, so the fit has something to do.

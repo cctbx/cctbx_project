@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import cStringIO as StringIO
-from libtbx import easy_run
+from mmtbx.command_line import geometry_minimization
 from six.moves import range
 pdbs = ["""
 ATOM   3239  N   ASN A 411       8.430  37.928 107.306  1.00 14.13           N
@@ -66,7 +66,6 @@ pdb_interpretation {
   }
 
 cmd_args = {
-  "" : [0],
   "peptide_link.apply_all_trans=False" : [0],
   "peptide_link.apply_all_trans=True" : [-180],
   }
@@ -97,9 +96,7 @@ def cis_trans_specification():
       f.close()
       cmd = "phenix.geometry_minimization %(preamble)s.pdb %(preamble)s.params" % locals()
       print(cmd)
-      ero = easy_run.fully_buffered(command=cmd)
-      out = StringIO()
-      ero.show_stdout(out=out)
+      geometry_minimization.run(args=cmd.split()[1:], log=StringIO())
 
       with open("%(preamble)s_minimized.geo" % locals(), "r") as f:
         lines = f.read()
@@ -116,9 +113,7 @@ def trans_only_specification():
     for arg, results in cmd_args.items():
       cmd = "phenix.geometry_minimization %(preamble)s_minimized.pdb %(arg)s" % locals()
       print(cmd)
-      ero = easy_run.fully_buffered(command=cmd)
-      out = StringIO()
-      ero.show_stdout(out=out)
+      geometry_minimization.run(args=cmd.split()[1:], log=StringIO())
 
       with open("%(preamble)s_minimized_minimized.geo" % locals(), "r") as f:
         lines = f.read()

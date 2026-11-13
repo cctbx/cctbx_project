@@ -23,7 +23,7 @@ def exercise(prefix="ions_svm_classifier_01"):
 
   cmdline = mmtbx.command_line.load_model_and_data(
     args = [pdb_file, mtz_file, "wavelength={}".format(wavelength),
-            "use_phaser=True", "use_svm=True"],
+            "use_phaser=True", "use_svm=True", "skip_twin_detection=True"],
     master_phil = master_phil(),
     out = null_out,
     process_pdb_file = True,

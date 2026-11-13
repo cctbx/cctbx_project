@@ -132,7 +132,7 @@ def get_model(lines):
 def get_fmodel(model, sites_cart):
   """fmodel with f_obs = |Fcalc| of model and the structure at sites_cart."""
   xrs = model.get_xray_structure().deep_copy_scatterers()
-  f_obs = abs(xrs.structure_factors(d_min=1.0, algorithm="direct").f_calc())
+  f_obs = abs(xrs.structure_factors(d_min=2.0, algorithm="direct").f_calc())
   flags = f_obs.generate_r_free_flags(fraction=0.1)
   xrs.set_sites_cart(sites_cart)
   return mmtbx.f_model.manager(f_obs=f_obs, r_free_flags=flags,

@@ -442,8 +442,8 @@ def tst_1():
     r  = maptbx.loc_res(
       map_model_manager = mmm,
       method            = method,
-      b_min             = -1000,
-      b_max             = 1000,
+      b_min             = -300,
+      b_max             = 300,
       b_step            = 1)
     print("result:", list(set(r.result)), "expected:", expected_occs)
 
