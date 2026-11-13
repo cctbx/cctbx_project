@@ -7,7 +7,7 @@ from libtbx import easy_run
 import iotbx.pdb
 import os
 
-def generate_calcium_inputs(file_base="ca_frag", anonymize=True):
+def generate_calcium_inputs(file_base="ca_frag", anonymize=True, d_min=1.5):
   """
   Generate both a PDB file and an MTZ file for the calcium-bound structure,
   with the calcium optionally  replaced by solvent after F(model) was
@@ -21,6 +21,8 @@ def generate_calcium_inputs(file_base="ca_frag", anonymize=True):
   file_base : str, optional
   anonymize : bool, optional
       Replace all ions in the returned pdb file with waters.
+  d_min : float, optional
+      High-resolution limit of the simulated data.
 
   Returns
   -------
@@ -30,7 +32,7 @@ def generate_calcium_inputs(file_base="ca_frag", anonymize=True):
   pdb_file = write_pdb_input_calcium_binding(file_base=file_base)
   mtz_file = generate_mtz_file(
     file_base=file_base,
-    d_min=1.5,
+    d_min=d_min,
     anomalous_scatterers=[
       group_args(selection="element CA", fp=0.25, fdp=0.5)
       ])
