@@ -251,8 +251,13 @@ class electron_distribution(dict):
     # residue with two residue names (1ejg PRO A / SER B, C 22) is read as
     # two residue groups, and the blank N of the first bonds both. Own
     # altlocs are those of atom groups with a heavy atom: an H-only group on
-    # a blank parent is that conformer's H, not a conformer of the residue
-    # (1pq7 CYS A 57: HG B only, the disulfide to CYS A 41 SG A takes HG A).
+    # a blank parent is that conformer's H, not a conformer of the residue.
+    # Such groups are the copies of one H split by the altlocs of a bonded
+    # partner (reduce2: the amide H of a blank residue after a residue in
+    # A and B; HG of 1pq7 CYS A 57, whose SG bonds SG A 41). A conformer the
+    # partner lacks takes the partner's first altloc and with it the first
+    # copy (conformer C: H A); a conformer the partner has lost its copy on
+    # purpose (exclude_H_on_links: HG A of CYS 57) and takes none.
     residues = {}
     for model in self.hierarchy.models():
       for chain in model.chains():
@@ -261,12 +266,33 @@ class electron_distribution(dict):
                  residue_group.icode)
           residues.setdefault(key, []).extend(residue_group.atom_groups())
     inherited = []
+    bonded = None
     for atom_groups in residues.values():
       own = sorted(set(ag.altloc for ag in atom_groups if ag.altloc.strip()
         and any(not a.element_is_hydrogen() for a in ag.atoms())))
       if own:
         inherited.append((own, [ag for ag in atom_groups
                                 if ag.altloc == own[0]]))
+        continue
+      h_only = sorted(set(ag.altloc for ag in atom_groups
+                          if ag.altloc.strip()))
+      if not h_only: continue
+      if bonded is None:
+        bonded = {}
+        for proxy in self.simple:
+          i, j = proxy.i_seqs
+          bonded.setdefault(i, []).append(j)
+          bonded.setdefault(j, []).append(i)
+      first = [ag for ag in atom_groups if ag.altloc == h_only[0]]
+      # the altlocs of the atoms bonded to the parents of the first copies
+      partner = set()
+      for ag in first:
+        for h in ag.atoms():
+          for p in bonded.get(h.i_seq, ()):
+            for q in bonded.get(p, ()):
+              partner.add(self.atoms[q].parent().altloc.strip())
+      partner.discard('')
+      inherited.append((sorted(set(h_only) | partner), first))
     for altloc in altlocs:
       selection = flex.bool(n, False)
       selection.set_selected(blank, True)

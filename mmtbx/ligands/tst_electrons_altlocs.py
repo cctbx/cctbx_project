@@ -349,6 +349,72 @@ def test_h_only_group():
   # B has HG B 57 and HG B 41, A neither; the heavy atoms are the same count
   assert n["B"] == n["A"] + 2, n
 
+# 1exr A 9-11: ILE 9 and GLU 11 in A and B, ALA 10 blank with its amide H
+# split into H A and H B (reduce2 _split_h_by_partner, after C A 9 / C B 9);
+# a water labelled C makes conformer C, which has no atom in 9-11
+split_h_str = """\
+CRYST1   34.580   30.910   26.860  90.00  90.00  90.00 P 1
+ATOM     61  N  AILE A   9      50.042  12.619   9.863  0.60 15.47           N  
+ATOM     62  N  BILE A   9      50.064  12.669   9.955  0.40 15.79           N  
+ATOM     63  CA AILE A   9      49.760  12.880   8.443  0.60 16.16           C  
+ATOM     64  CA BILE A   9      49.894  13.068   8.557  0.40 14.97           C  
+ATOM     65  C  AILE A   9      50.740  12.096   7.568  0.60 16.68           C  
+ATOM     66  C  BILE A   9      50.739  12.182   7.629  0.40 15.01           C  
+ATOM     67  O  AILE A   9      50.344  11.527   6.549  0.60 13.30           O  
+ATOM     68  O  BILE A   9      50.215  11.661   6.634  0.40 13.83           O  
+ATOM     69  CB AILE A   9      49.712  14.388   8.233  0.60 17.94           C  
+ATOM     70  CB BILE A   9      50.201  14.546   8.306  0.40 15.90           C  
+ATOM     71  CG1AILE A   9      48.529  15.065   8.881  0.60 19.71           C  
+ATOM     72  CG1BILE A   9      49.111  15.466   8.868  0.40 14.83           C  
+ATOM     73  CG2AILE A   9      49.644  14.632   6.712  0.60 18.98           C  
+ATOM     74  CG2BILE A   9      50.339  14.857   6.814  0.40 13.92           C  
+ATOM     75  CD1AILE A   9      48.524  16.563   9.024  0.60 23.19           C  
+ATOM     76  CD1BILE A   9      49.568  16.907   8.941  0.40 21.29           C  
+ATOM     77  N   ALA A  10      52.006  12.040   7.976  1.00 16.22           N  
+ATOM      0  H  AALA A  10      52.291  12.523   8.804  0.60 10.00           H
+ATOM      0  H  BALA A  10      52.319  12.486   8.814  0.40 10.00           H
+ATOM     78  CA  ALA A  10      52.970  11.271   7.207  1.00 15.86           C  
+ATOM     79  C   ALA A  10      52.525   9.824   7.134  1.00 14.08           C  
+ATOM     80  O   ALA A  10      52.586   9.200   6.066  1.00 14.53           O  
+ATOM     81  CB  ALA A  10      54.346  11.404   7.820  1.00 18.40           C  
+ATOM     82  N  AGLU A  11      52.061   9.296   8.275  0.44 15.90           N  
+ATOM     83  N  BGLU A  11      52.057   9.197   8.209  0.56 15.09           N  
+ATOM     84  CA AGLU A  11      51.546   7.936   8.363  0.44 14.66           C  
+ATOM     85  CA BGLU A  11      51.682   7.783   8.120  0.56 15.80           C  
+ATOM     86  C  AGLU A  11      50.383   7.727   7.397  0.44 13.66           C  
+ATOM     87  C  BGLU A  11      50.422   7.562   7.298  0.56 14.26           C  
+ATOM     88  O  AGLU A  11      50.391   6.775   6.606  0.44 12.45           O  
+ATOM     89  O  BGLU A  11      50.190   6.519   6.668  0.56 17.23           O  
+ATOM     90  CB AGLU A  11      51.112   7.561   9.802  0.44 17.94           C  
+ATOM     91  CB BGLU A  11      51.550   7.251   9.567  0.56 16.15           C  
+ATOM     92  CG AGLU A  11      52.323   7.209  10.666  0.44 21.16           C  
+ATOM     93  CG BGLU A  11      52.838   7.443  10.375  0.56 20.25           C  
+ATOM     94  CD AGLU A  11      52.011   7.191  12.138  0.44 25.14           C  
+ATOM     95  CD BGLU A  11      52.867   6.691  11.676  0.56 22.28           C  
+ATOM     96  OE1AGLU A  11      50.841   7.137  12.571  0.44 31.42           O  
+ATOM     97  OE1BGLU A  11      51.880   5.993  12.030  0.56 32.07           O  
+ATOM     98  OE2AGLU A  11      52.985   7.223  12.925  0.44 28.65           O  
+ATOM     99  OE2BGLU A  11      53.923   6.803  12.349  0.56 26.18           O  
+HETATM    0  O  CHOH A 500      63.101  10.466   8.775  0.30 20.00           O
+END
+"""
+
+def test_split_h_inherited():
+  """The H copies of a blank residue follow their partner: conformer C,
+  which ILE 9 lacks, takes ILE 9 A and with it H A of ALA 10 (not nothing,
+  which would leave the amide N a radical and charge C by -1)."""
+  ed = distribution(split_h_str)
+  charges = ed.get_conformer_charges()
+  assert charges["A"] == charges["B"] == charges["C"], charges
+  assert ed.get_conformer_charge_differences() == [], \
+    ed.get_conformer_charge_differences()
+  n = dict((a, ed.conformers[a].atoms.size()) for a in ed.conformers)
+  # the water is in every conformer (inherited); C = ILE A, ALA + H A, GLU A
+  assert n["A"] == n["B"] == n["C"], n
+  names_c = [a.name.strip() + a.parent().parent().resseq.strip()
+             for a in ed.conformers["C"].atoms]
+  assert names_c.count("H10") == 1, names_c
+
 def test_differences_named():
   """the Sorry of get_total_charge() names the residues that differ"""
   ed = distribution(lines(altloc_of={"H3": "A"}))
@@ -371,5 +437,6 @@ if __name__ == "__main__":
   test_inherited_conformer()
   test_two_residue_groups()
   test_h_only_group()
+  test_split_h_inherited()
   test_differences_named()
   print("OK")
