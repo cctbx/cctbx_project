@@ -359,6 +359,22 @@ def tst_04(log = sys.stdout):
   assert pp.processed_model.overall_counts().n_residues == 172
   assert pp.processed_model.chain_ids() == ['B1','B2']
 
+def tst_05():
+  # PAE defaults left unset are reported in the log, not on stdout
+  from io import StringIO
+  import contextlib
+  params = master_phil.extract()
+  params.process_predicted_model.split_model_by_compact_regions = False
+  dm = DataManager()
+  dm.set_overwrite(True)
+  m = dm.get_model(model_file)
+  log = StringIO()
+  stdout = StringIO()
+  with contextlib.redirect_stdout(stdout):
+    process_predicted_model(m, params, log = log)
+  assert "Minimum_domain_length" in log.getvalue()
+  assert "Minimum_domain_length" not in stdout.getvalue()
+
 if __name__ == "__main__":
 
   t0 = time.time()
@@ -366,5 +382,6 @@ if __name__ == "__main__":
   tst_02()
   tst_03()
   tst_04()
+  tst_05()
   print ("Time:", time.time()-t0)
   print ("OK")
