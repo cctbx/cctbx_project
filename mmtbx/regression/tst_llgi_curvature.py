@@ -47,6 +47,40 @@ def exercise():
   assert diag.size() == 3 * xrs.scatterers().size()
   assert flex.min(diag) > 0 and flex.min(h_data) > 0 and h_restr == 0
 
+def exercise_symmetry_sum():
+  """ the data curvature against sum_h I_h |dF_h/dx|^2 / N_work with dF_h/dx
+  by finite differences of direct summation over all symmetry operators,
+  centring included """
+  from mmtbx.regression.llgi_test_utils import build_fmodel, \
+    synthetic_llgi_data
+  for sg in ("P 1 21 1", "C 1 2 1", "F 2 2 2"):
+    fmodel = build_fmodel(n_atoms=20, d_min=2.0, seed=1, space_group=sg,
+      update_scales=True)
+    fmodel.set_llgi_data(synthetic_llgi_data(fmodel=fmodel, seed=101,
+      feff_scale=1.0))
+    fmodel.set_target_name("llgi")
+    fmodel.update_llgi_sigmaa_scatfrac()
+    xrs = fmodel.xray_structure
+    info = llgi_curvature.fisher_information(fmodel)
+    n_work = (~fmodel.r_free_flags().data()).count(True)
+    h = llgi_curvature.data_curvatures(fmodel, xrs)
+    ratios = []
+    for j in range(4):
+      x1 = xrs.select(flex.size_t([j]))
+      s0 = x1.sites_cart()[0]
+      total = 0.
+      for c in range(3):
+        f = []
+        for step in (1.e-4, -1.e-4):
+          s = list(s0); s[c] += step
+          x1.set_sites_cart(flex.vec3_double([s]))
+          f.append(fmodel.f_obs().structure_factors_from_scatterers(
+            xray_structure=x1, algorithm="direct").f_calc().data())
+        total += flex.sum(info * flex.norm((f[0] - f[1]) / 2.e-4)) / 3
+      ratios.append(total / n_work / h[j])
+    assert approx_equal(sum(ratios) / len(ratios), 1, eps=0.05), (sg, ratios)
+
 if(__name__ == "__main__"):
   exercise()
+  exercise_symmetry_sum()
   print("OK")

@@ -50,7 +50,7 @@ def _independent_e_scale_quantities(fmodel):
   n = feff.size()
   d = flex.double(n, 0.0)
   d.set_selected(valid, dobs * sa)
-  v = teps - d * d
+  v = 1.0 - d * d
   sqrt_teps_resn = flex.sqrt(
     teps.deep_copy().set_selected(teps <= 0, 1.0)) * resn
   return eeff, emodel_abs, d, v, sqrt_teps_resn, e_per_f
@@ -66,7 +66,7 @@ def exercise_alpha_matches_d_formula():
   assert approx_equal(mch.alpha.data(), alpha_expected, eps=1.e-9)
 
 def exercise_beta_matches_v_formula():
-  # .beta = V = TEPS - D^2.
+  # .beta = V = 1 - D^2.
   fmodel = build_llgi_fmodel(60, 1.9, seed=14)
   mch = fmodel.map_calculation_helper_llgi()
   llgi_data = fmodel.llgi_data()
@@ -76,7 +76,7 @@ def exercise_beta_matches_v_formula():
   valid = (dobs > 0) & (sa > 0)
   d = flex.double(teps.size(), 0.0)
   d.set_selected(valid, dobs * sa)
-  v_expected = teps - d * d
+  v_expected = 1.0 - d * d
   beta = mch.beta.data()
   for i in range(teps.size()):
     if(valid[i]):
@@ -110,6 +110,24 @@ def exercise_fom_matches_bessel_ratio_reference():
     assert approx_equal(fom[i], expected, eps=1.e-5), (i, fom[i], expected)
     n_checked += 1
   assert n_checked > 0
+
+def exercise_constant_teps_is_a_rescaling():
+  # A constant TEPS = c with Feff scaled by sqrt(c) is the same data on
+  # another scale, so the fom, X and V are unchanged (without tNCS groups
+  # the map helper is in the TEPS frame, llgi.h's tncs_frame with
+  # u = t = TEPS).
+  import mmtbx.refinement.llgi_hybrid as llgi_hybrid
+  fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.0, seed=16)
+  mch = fmodel.map_calculation_helper_llgi()
+  ld = fmodel.llgi_data()
+  c = 2.0
+  fmodel.set_llgi_data(llgi_hybrid.replace_llgi_data(ld,
+    teps=ld.teps.customized_copy(data=flex.double(ld.teps.size(), c)),
+    feff=ld.feff.customized_copy(data=ld.feff.data() * math.sqrt(c))))
+  mch_c = fmodel.map_calculation_helper_llgi()
+  assert approx_equal(mch_c.fom, mch.fom, eps=1.e-9)
+  assert approx_equal(mch_c.x, mch.x, eps=1.e-9)
+  assert approx_equal(mch_c.beta.data(), mch.beta.data(), eps=1.e-9)
 
 def exercise_map_coefficients_llgi_matches_hand_computation():
   # 2mFo-DFc and mFo-DFc equal Feff*fo_scale*fom along the model phase
@@ -389,6 +407,27 @@ def exercise_phase_errors_llgi_exact_posterior_mean():
       if(pher[i] > _von_mises_mean_abs_phase(x_m[0])): n_lower += 1
   assert n_lower > 0
 
+def exercise_zero_hl_keeps_llgi_fom():
+  # All-zero experimental HL coefficients add no phase information, so
+  # the combined fom and the maps equal those without HL, for Rice and
+  # exact reflections.
+  for rice_kappa in [None, 0.1]:
+    fmodel = build_llgi_fmodel(n_atoms=50, d_min=2.1, seed=45,
+      rice_kappa=rice_kappa)
+    no_hl = fmodel.map_coefficients_llgi(map_type="2mFo-DFc")
+    fmodel.update(abcd=fmodel.f_obs().array(
+      data=flex.hendrickson_lattman(fmodel.f_obs().size(), (0,0,0,0))))
+    mch = fmodel.map_calculation_helper_llgi()
+    fom = fmodel.combine_phases(map_calculation_helper=mch).fom()
+    # the exact X comes from an approximate inverse of I1/I0
+    diff = flex.max(flex.abs(fom - mch.fom))
+    assert diff < 1.e-2, (rice_kappa, diff)
+    with_hl = fmodel.map_coefficients_llgi(map_type="2mFo-DFc")
+    assert with_hl.indices().all_eq(no_hl.indices())
+    diff = flex.max(flex.abs(with_hl.data() - no_hl.data())) / \
+      flex.max(flex.abs(no_hl.data()))
+    assert diff < 1.e-2, (rice_kappa, diff)
+
 def exercise_outlier_selection_skips_model_based_test_for_llgi():
   # Model-based outlier rejection (its own Dobs-free sigmaA fit) must not
   # run under the llgi target; it still runs for ml.
@@ -457,6 +496,7 @@ def exercise():
   exercise_alpha_matches_d_formula()
   exercise_beta_matches_v_formula()
   exercise_fom_matches_bessel_ratio_reference()
+  exercise_constant_teps_is_a_rescaling()
   exercise_map_coefficients_llgi_matches_hand_computation()
   exercise_map_coefficients_llgi_fcalc_only_matches_ordinary()
   exercise_map_coefficients_llgi_anomalous_as_ordinary()
@@ -465,6 +505,7 @@ def exercise():
   exercise_llgi_fill_is_d_fc()
   exercise_phase_errors_llgi_match_numerical_integration()
   exercise_phase_errors_llgi_exact_posterior_mean()
+  exercise_zero_hl_keeps_llgi_fom()
   exercise_outlier_selection_skips_model_based_test_for_llgi()
   exercise_map_coefficients_from_fmodel_ml_target_unaffected()
   exercise_compute_map_coefficients_mixed_dispatch()

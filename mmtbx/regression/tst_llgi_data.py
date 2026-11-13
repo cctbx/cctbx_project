@@ -169,10 +169,13 @@ def exercise_llgi_sigmaa_is_current():
 def exercise_low_resolution_removal_keeps_llgi_target():
   # update_all_scales removes the lowest-resolution bin when R-work there
   # exceeds 0.7; the rebuilt manager keeps target llgi and llgi_data on the
-  # remaining reflections.
+  # remaining reflections, and its origin and data type.
   import random
   from mmtbx.regression.llgi_test_utils import build_llgi_fmodel
   fmodel = build_llgi_fmodel(30, 2.0, seed=5)
+  origin = object()
+  fmodel._origin = origin
+  fmodel._data_type = "x_ray"
   sel = fmodel.bin_selections[0]
   f_obs = fmodel.f_obs()
   data = f_obs.data().deep_copy()
@@ -187,6 +190,58 @@ def exercise_low_resolution_removal_keeps_llgi_target():
   assert fmodel.f_obs().size() < n_before
   assert fmodel.target_name == "llgi" and fmodel.llgi_target_active()
   assert fmodel.llgi_data().dobs.indices().all_eq(fmodel.f_obs().indices())
+  assert fmodel.origin() is origin
+  assert fmodel.data_type() == "x_ray"
+
+def exercise_site_gradients_refit_sigmaa():
+  # the xyz weight takes the llgi gradient with sigmaA and ScatFrac
+  # refitted at the structure it differentiates, as for the ADP weight;
+  # here the sites move after the fit, without shaking
+  import random
+  import iotbx.pdb, mmtbx.model, mmtbx.f_model
+  import mmtbx.refinement.refinement_flags
+  from libtbx.utils import null_out
+  from mmtbx.refinement import weights
+  from mmtbx.regression import model_1yjp
+  from mmtbx.regression.llgi_test_utils import synthetic_llgi_data
+  random.seed(0)
+  flex.set_random_seed(0)
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(source_info=None,
+    lines=model_1yjp), log=null_out())
+  model.process(make_restraints=True)
+  xrs = model.get_xray_structure()
+  f_obs = abs(xrs.structure_factors(d_min=1.2).f_calc())
+  shaken = xrs.deep_copy_scatterers()
+  shaken.shake_sites_in_place(mean_distance=0.3)
+  fmodel = mmtbx.f_model.manager(xray_structure=shaken, f_obs=f_obs,
+    r_free_flags=f_obs.generate_r_free_flags())
+  fmodel.update_all_scales()
+  fmodel.set_llgi_data(synthetic_llgi_data(fmodel, seed=3))
+  fmodel.set_target_name("llgi")
+  fmodel.update_llgi_sigmaa_scatfrac()
+  shaken = shaken.deep_copy_scatterers()
+  shaken.shake_sites_in_place(mean_distance=0.5)
+  fmodel.update_xray_structure(xray_structure=shaken, update_f_calc=True,
+    update_f_mask=True)
+  model.set_xray_structure(shaken)
+  sel = flex.bool(model.size(), True)
+  model.set_refinement_flags(flags=mmtbx.refinement.refinement_flags.manager(
+    individual_sites=True, sites_individual=sel))
+  result = weights.site_gradients(fmodel=fmodel, model=model,
+    correct_special_position_tolerance=1.0,
+    cartesian_dynamics_parameters=None, shake=False, regularize_ncycles=50,
+    rmsd_cutoff_for_gradient_filtering=3.0, gradient_filtering=False,
+    log=null_out())
+  fit_params = fmodel.llgi_data().fit_params
+  fmodel.update_llgi_sigmaa_scatfrac(params=fit_params.scatfrac,
+    e_params=fit_params.e_scale, refit_tncs=False)
+  scatterers = fmodel.xray_structure.scatterers()
+  scatterers.flags_set_grads(state=False)
+  scatterers.flags_set_grad_site(iselection=sel.iselection())
+  expected = flex.vec3_double(
+    fmodel.one_time_gradients_wrt_atomic_parameters(site=True).packed())
+  ratio = result.gxc.norm() / expected.norm()
+  assert abs(ratio - 1) < 1.e-3, ratio
 
 def exercise_e_scale_sigmaa_phil_scope_parses():
   # The refinement.llgi_data.e_scale_sigmaa phil scope (phenix/phenix/
@@ -214,6 +269,7 @@ def exercise():
   exercise_llgi_data_survives_select_and_update_all_scales()
   exercise_llgi_sigmaa_is_current()
   exercise_low_resolution_removal_keeps_llgi_target()
+  exercise_site_gradients_refit_sigmaa()
   exercise_e_scale_sigmaa_phil_scope_parses()
   print("OK")
 

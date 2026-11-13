@@ -1,8 +1,8 @@
 """ ScatFrac(resolution), the model's own normalisation for the F-scale LLGI
 target: the fraction of the expected intensity the model accounts for, so
 that Ecalc = k Fcalc/(sqrt(TEPS ScatFrac) RESN) has unit mean square. It
-enters the target's mean only (the variance is TEPS - (Dobs sigmaA)^2, as
-in phasertng). Estimated from the model's moments (default) or fitted
+enters the target's mean only (the variance is TEPS (1 - (Dobs sigmaA)^2),
+as in phasertng). Estimated from the model's moments (default) or fitted
 against the F-scale target with sigmaA fixed (see mmtbx.refinement.
 llgi_e_sigmaa.estimate_sigmaa_and_scatfrac); the moments ScatFrac also
 normalises the model's E in the sigmaA fit and the LLGI maps

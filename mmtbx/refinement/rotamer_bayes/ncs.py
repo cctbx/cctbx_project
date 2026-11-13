@@ -104,6 +104,7 @@ class pooled(object):
       for r in recs:
         tried &= set([c.well for c in r.candidates] + [r.current_well])
       if(not tried): continue
+      tried = sorted(tried)
       log_pi = dict((w, math.log(named[w])) for w in tried)
       ev = [copy_evidence(r, tried, exact) for r in recs]
       for e in ev: e.log_z = e.logz(log_pi)

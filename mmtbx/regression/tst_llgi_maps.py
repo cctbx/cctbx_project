@@ -57,6 +57,22 @@ def exercise_phi_table_limits():
   ps = [llgi_phi_table.phi_one(0.8, s, False) for s in [0, 0.3, 1, 3, 10, 30]]
   assert all(a > b for a, b in zip(ps, ps[1:]))
 
+def exercise_phi_table_off_grid():
+  # llgi_phi_table_generate.phi at points between the grid nodes
+  # (sigmaA, sigma, centric, phi)
+  for sa, s, c, ref in [
+      (0.9925, 0.125, False, 0.2624785), (0.985, 0.125, False, 0.3217239),
+      (0.985, 0.25, False, 0.1934322), (0.9925, 0.6, False, 0.03546277),
+      (0.9925, 27.0, False, 1.992066e-05), (0.125, 1.2, False, 0.007447099),
+      (0.475, 1.2, False, 0.07179829), (0.725, 0.03, False, 0.2932878),
+      (0.725, 1.2, False, 0.1042462), (0.985, 0.25, True, 0.4402414),
+      (0.9925, 0.125, True, 0.5510229), (0.985, 0.125, True, 0.6405949),
+      (0.9925, 1.2, True, 0.03670225), (0.985, 1.2, True, 0.06616017),
+      (0.125, 0.03, True, 0.02918831), (0.475, 1.2, True, 0.1800567),
+      (0.725, 0.03, True, 0.5104959), (0.725, 1.2, True, 0.267761)]:
+    p = llgi_phi_table.phi_one(sa, s, c)
+    assert abs(p - ref) < 0.001 and abs(p/ref - 1) < 0.005, (sa, s, c, p, ref)
+
 def exercise_no_measurement_error():
   # sigma = 0: |E| known, <E> = |E| I1/I0(X) (acentric), |E| tanh(X/2)
   e = llgi_maps.posterior_mean_e(
@@ -374,6 +390,7 @@ def exercise_model_building_maps():
 def run():
   exercise_handoff_fixtures()
   exercise_phi_table_limits()
+  exercise_phi_table_off_grid()
   exercise_no_measurement_error()
   exercise_fit_anisobeta()
   exercise_fit_anisobeta_resolution_dependent()

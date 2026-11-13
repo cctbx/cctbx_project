@@ -390,6 +390,9 @@ def estimate_e_sigmaa_for_fmodel(fmodel, dobs, feff, resn, params=None,
     teps = flex.double(f_obs.size(), 1.)
   else:
     teps = llgi_data.teps.data()
+    # without tNCS groups the fit is in the TEPS frame (llgi.h's
+    # tncs_frame with u = t = TEPS): Eeff normalised by TEPS as Emodel
+    e_eff = e_eff / flex.sqrt(teps.deep_copy().set_selected(teps <= 0, 1.0))
   e_model = flex.abs(build_e_model(fmodel.f_model().data(),
     fmodel.k_anisotropic(), f_obs, resn, teps,
     scale_factor=fmodel.scale_ml_wrapper(),

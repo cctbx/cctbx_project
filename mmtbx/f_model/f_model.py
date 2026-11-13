@@ -1618,7 +1618,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
              max_number_of_bins           = self.max_number_of_bins,
              bin_selections               = None    ,
              n_resolution_bins_output     = self.n_resolution_bins_output,
-             scale_method                 = self.scale_method)
+             scale_method                 = self.scale_method,
+             origin                       = self.origin(),
+             data_type                    = self.data_type())
           o = f_model_all_scales.run(
             fmodel=self, apply_back_trace = apply_back_trace,
             remove_outliers = remove_outliers, fast = fast,
@@ -2658,7 +2660,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     build_e_model):
       Eeff   = Feff/(sqrt(TEPS)*RESN)
       Emodel = k*F_model/(RESN*sqrt(TEPS*ScatFrac))
-      D      = Dobs*sigmaA,  V = TEPS - D^2
+      D      = Dobs*sigmaA,  V = 1 - D^2
     combine() forms fo_scale*fom*f_obs + fc_scale*alpha*f_model, with
       .f_model  f_model_no_aniso_scale (the phase of f_model, without
                 k_anisotropic)
@@ -2674,13 +2676,14 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
                 (centric), X = 2*D*Eeff*Emodel/V,  coefficient D
     (fom and alpha 0 where D, V, Eeff or Emodel is not positive).
     Also: .beta = V and .d = D for every reflection (the statistics table),
-    .x, the Rice form's X, and .n_exact; .llgi marks the helper for
-    electron_density_map's fill of missing reflections. With phase_errors,
-    .phase_error is the expected |phi - phi_model| (degrees) per reflection
-    (else None): the mean over the exact posterior, which, unlike the
-    phase probability implied by its fom (a mean cosine weighted by |E|),
-    includes the uncertainty of |E|, or for the Rice form that of the
-    fom's phase probability.
+    .x, the Rice form's X, .x_fom, the X whose fom is .fom (exact or
+    Rice; f_model_phases_as_hl_coefficients), and .n_exact; .llgi marks
+    the helper for electron_density_map's fill of missing reflections.
+    With phase_errors, .phase_error is the expected |phi - phi_model|
+    (degrees) per reflection (else None): the mean over the exact
+    posterior, which, unlike the phase probability implied by its fom (a
+    mean cosine weighted by |E|), includes the uncertainty of |E|, or for
+    the Rice form that of the fom's phase probability.
     With tNCS (llgi_data.tncs_u/tncs_t, TEPS = 1) everything above is in the
     t-normalised frame of mmtbx.refinement.llgi_tncs.frame: sigmaA -> a',
     Emodel -> s*Emodel, and sqrt(t) in place of sqrt(TEPS).
@@ -2732,6 +2735,12 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
           eeff = eeff / flex.sqrt(tncs_t)
           sqrt_teps = flex.sqrt(tncs_t)
           teps = flex.double(n, 1.0)
+        else:
+          # TEPS without tNCS groups: the TEPS frame (tncs_frame with
+          # u = t = TEPS), Eeff -> Feff/(RESN sqrt(TEPS)) as Emodel,
+          # V = 1 - D^2
+          eeff = eeff / sqrt_teps
+          teps = flex.double(n, 1.0).set_selected(teps <= 0, 0.0)
         valid = (sa > 0) & (dobs > 0)
         d = flex.double(n, 0.0)
         d.set_selected(valid, dobs * sa)
@@ -2769,6 +2778,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         import mmtbx.refinement.llgi_hybrid as llgi_hybrid
         from cctbx.xray import ext as xray_ext
         self.n_exact = 0
+        x_fom = x.deep_copy()
         hybrid = llgi_hybrid.get_exact_data(llgi_data)
         f_obs_data = feff.data()
         if(hybrid is not None):
@@ -2796,6 +2806,13 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
               sa_exact * (sqrt_teps * resn * e_per_f).select(isel))
             if(phase_errors):
               self.phase_error.set_selected(isel, r.phase_error)
+            c_ex = centric_flags.select(isel)
+            x_ex = flex.double(isel.size(), 0.0)
+            x_ex.set_selected(~c_ex,
+              scitbx.math.inverse_bessel_i1_over_i0(m_exact.select(~c_ex)))
+            mc = m_exact.select(c_ex)
+            x_ex.set_selected(c_ex, flex.log((1 + mc) / (1 - mc)))
+            x_fom.set_selected(isel, x_ex)
             self.n_exact = isel.size()
         self.f_obs = feff.customized_copy(data=f_obs_data)
         self.alpha = feff.array(data=alpha_data)
@@ -2803,6 +2820,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         self.fom = fom
         self.d = d
         self.x = x
+        self.x_fom = x_fom
     return result(fmodel=self, phase_errors=phase_errors)
 
   def phase_errors_llgi(self, map_calculation_helper_llgi=None):
@@ -2845,11 +2863,18 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     sin_f_model_phases = flex.sin(f_model_phases)
     cos_f_model_phases = flex.cos(f_model_phases)
     if([k_blur, b_blur].count(None) == 2):
-      t = maxlik.fo_fc_alpha_over_eps_beta(
-        f_obs   = mch.f_obs,
-        f_model = mch.f_model,
-        alpha   = mch.alpha,
-        beta    = mch.beta)
+      if(getattr(mch, "llgi", False)):
+        # llgi alpha is on the F scale and beta on the E scale, so use the
+        # X of the fom, halved for centrics as in fo_fc_alpha_over_eps_beta
+        centric_flags = mch.f_obs.centric_flags().data()
+        t = mch.x_fom.deep_copy()
+        t.set_selected(centric_flags, mch.x_fom.select(centric_flags) * 0.5)
+      else:
+        t = maxlik.fo_fc_alpha_over_eps_beta(
+          f_obs   = mch.f_obs,
+          f_model = mch.f_model,
+          alpha   = mch.alpha,
+          beta    = mch.beta)
     else:
       assert [k_blur, b_blur].count(None) == 0
       t = 2*k_blur * flex.exp(-b_blur*self.ss)

@@ -13,7 +13,7 @@ atom without changing the target.
 Data term: the expected (Fisher) information of each reflection about the
 model's structure factor, in the Gaussian approximation of the target:
 with mean D Ecalc and variance V in the E scale (D = Dobs sigmaA,
-V = TEPS - D^2; in the tNCS frame of mmtbx.refinement.llgi_tncs D = Dobs
+V = TEPS (1 - D^2); in the tNCS frame of mmtbx.refinement.llgi_tncs D = Dobs
 a', V = 1 - D^2 and Ecalc scaled by s), I_E = D^2/V, halved for acentric
 reflections (only the component along the model phase is informative),
 and put on the scale of Fcalc by (k/(RESN sqrt(ScatFrac)))^2 times the
@@ -61,7 +61,7 @@ def fisher_information(fmodel):
   else:
     d = dobs * sa
     i_e = d * d
-    v = teps - d * d
+    v = teps * (1. - d * d)
   v.set_selected(v < 1.e-3, 1.e-3)
   half = flex.double(n, 0.5)                 # acentric: half per component
   half.set_selected(f_obs.centric_flags().data(), 1.)
@@ -95,7 +95,9 @@ def data_curvatures(fmodel, xray_structure, n_bins=40):
   for t in reg.type_index_pairs_as_dict().keys():
     g = reg.gaussian_not_optional(scattering_type=t)
     f_sq[t] = [g.at_d_star_sq(s2) ** 2 for s2, _ in bins]
-  n_sym = xray_structure.space_group().order_z()
+  # centring copies add in phase for allowed reflections
+  sg = xray_structure.space_group()
+  n_sym = sg.order_z() * sg.n_ltr()
   c = 4 * math.pi ** 2 / 3 * n_sym / n_work
   b_iso = xray_structure.extract_u_iso_or_u_equiv() * (8 * math.pi ** 2)
   result = flex.double()
