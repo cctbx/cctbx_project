@@ -102,7 +102,8 @@ def test_dod_input_all_h():
     assert set(ag.resname for ag in waters) == set(["HOH"])
     assert set(a.element.strip() for ag in waters for a in ag.atoms()) == \
       set(["O", "H"])
-    assert "DOD" not in open(fn).read()
+    with open(fn) as fh:
+      assert "DOD" not in fh.read()
     check_water(fn, 0.98, 7)
 
 def test_output_check_water_names():

@@ -36,7 +36,7 @@ def exercise_00(prefix="tst_polder_4"):
     "phenix.polder",
     "%s.mtz"%prefix,
     "%s.pdb"%prefix,
-    "selection='resseq 1' ",
+    "selection=\"resseq 1\"",
     "scattering_table=electron",
     "> %s.zlog"%prefix
     ])

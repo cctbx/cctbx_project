@@ -715,14 +715,16 @@ def exercise_default_slow_is_exact():
 def exercise_large_b_cart():
   """
   Overall B of the data far from that of the model (b_cart of 100 A**2 and
-  more, either sign) is found, with and without grid search.
+  more, either sign) is found, with and without grid search. Reaching it
+  takes 60 to 160 iterations depending on the last bits of the data, which
+  can exceed the default limit of 100.
   """
   for b in [150., -120.]:
     b_cart = (b, b, b+30., 0, 0, 0)
     for edits in [[], ["slow.k_sol_b_sol_grid_search=False"]]:
       kbu = _exact_fmodel_kbu(d_min=3.5, b_cart=b_cart)
       r = bss.bulk_solvent_and_scales(fmodel_kbu=kbu,
-        params=_params(["mode=slow"]+edits))
+        params=_params(["mode=slow", "slow.max_iterations=300"]+edits))
       assert r.r_factor() < 1.e-3, (b, edits, r.r_factor())
       assert approx_equal(r.k_sols(), [0.35], 1.e-2)
       assert approx_equal(r.b_sols(), [50.], 0.5)

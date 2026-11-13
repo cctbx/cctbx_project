@@ -41,9 +41,8 @@ ATOM     70  HG3 GLU C   3      28.444  38.658  20.735  1.00 29.92           H
 
 def main():
   model_filename = 'tst_electron_00.pdb'
-  f=open(model_filename, 'w')
-  f.write(pdb_str)
-  del f
+  with open(model_filename, 'w') as fh:
+    fh.write(pdb_str)
   rc = run_program(program_class=electrons.Program,
                    args=[model_filename],
                    logger=null_out(),

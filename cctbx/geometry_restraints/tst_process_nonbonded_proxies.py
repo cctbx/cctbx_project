@@ -224,6 +224,10 @@ def test_running_from_command_line():
   '''
   Make sure mmtbx.nonbonded_overlaps can run without errors
   '''
+  # mmtbx.nonbonded_overlaps imports elbow and adds H with ready_set
+  if not libtbx.env.has_module('elbow'):
+    print('elbow not available, skipping test_running_from_command_line')
+    return
   file_name = 'test_pdb_file.pdb'
   if not os.path.isfile(file_name):
     open(file_name,'w').write(raw_records_1)

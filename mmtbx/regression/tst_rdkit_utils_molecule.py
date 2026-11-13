@@ -1186,7 +1186,8 @@ def exercise_file_first():
   import re
   from mmtbx.monomer_library import server
   path = os.path.join(server.server().geostd_path, 'a', 'data_AQS.cif')
-  text = open(path).read()
+  with open(path) as fh:
+    text = fh.read()
   coval = re.sub(r'( AQS\s+C1A\s+C2A\s+)single', r'\1coval ', text)
   assert coval != text
   r = build(get_model(pdb_from_cif('AQS', text), cifs=(('AQS', text),)))
@@ -1208,7 +1209,8 @@ def exercise_peptide_ends():
   from mmtbx.monomer_library import server
   geostd = server.server().geostd_path
   for code, capped in (('4GJ', True), ('MH6', False)):
-    text = open(os.path.join(geostd, code[0].lower(), 'data_%s.cif' % code)).read()
+    with open(os.path.join(geostd, code[0].lower(), 'data_%s.cif' % code)) as fh:
+      text = fh.read()
     model = get_model(pdb_from_cif(code, text), cifs=((code, text),))
     r = build(model)
     assert r.ok, (code, r.reason)
@@ -1461,10 +1463,12 @@ def exercise_rigid_components():
     rc = rdkit_utils.residue_rigid_components(model, model.get_hierarchy().only_residue_group())
     from PIL import Image
     rdkit_utils.draw_colored_fragments(rc.mol, rc.frags, png.name)
-    h_plain = Image.open(png.name).size[1]
+    with Image.open(png.name) as im:
+      h_plain = im.size[1]
     rdkit_utils.draw_colored_fragments(rc.mol, rc.frags, png.name,
       note='approximate: a reason written below the figure')
-    assert Image.open(png.name).size[1] > h_plain
+    with Image.open(png.name) as im:
+      assert im.size[1] > h_plain
   finally:
     os.unlink(png.name)
 

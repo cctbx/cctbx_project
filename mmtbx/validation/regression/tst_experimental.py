@@ -34,8 +34,8 @@ HETATM 6419  D2  DOD A1001      -4.625   2.741 -13.845  1.00 14.81           D
   xrs = pdb_in.xray_structure_simple()
   hierarchy = pdb_in.construct_hierarchy()
   hierarchy.atoms().reset_i_seq()
-  open("tst_validate_experimental.pdb", "w").write(
-    hierarchy.as_pdb_string(crystal_symmetry=xrs))
+  with open("tst_validate_experimental.pdb", "w") as fh:
+    fh.write(hierarchy.as_pdb_string(crystal_symmetry=xrs))
   f_calc =abs( xrs.structure_factors(d_min=2.0).f_calc())
   f_calc.set_observation_type_xray_amplitude()
   flags = f_calc.generate_r_free_flags()

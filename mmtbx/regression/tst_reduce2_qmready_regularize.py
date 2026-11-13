@@ -124,7 +124,9 @@ def run(model_text, prefix, extra_args=()):
     args=args + list(extra_args))
   assert os.path.isfile(fn_out), fn_out
   assert os.path.isfile(fn_desc), fn_desc
-  return fn_out, open(fn_desc).read()
+  with open(fn_desc) as fh:
+    desc = fh.read()
+  return fn_out, desc
 
 def get_model(file_name):
   model = mmtbx.model.manager(
@@ -168,13 +170,17 @@ def test_gap_regularized():
     ["qmready=True"])
   assert len(violations(fn_out)) == 0, violations(fn_out)
   assert "Regularize geometry" in desc, desc
-  shift = max_heavy_shift(pdb_str_gap, open(fn_out).read())
+  with open(fn_out) as fh:
+    out_text = fh.read()
+  shift = max_heavy_shift(pdb_str_gap, out_text)
   assert 0.01 < shift <= 1.0, shift
   # The regularized model needs nothing on a second run.
-  fn_out_2, desc_2 = run(open(fn_out).read(),
+  fn_out_2, desc_2 = run(out_text,
     "tst_reduce2_qmready_regularize_1b", ["qmready=True"])
   assert "regularization not needed" in desc_2, desc_2
-  assert max_heavy_shift(open(fn_out).read(), open(fn_out_2).read()) == 0
+  with open(fn_out_2) as fh:
+    out_text_2 = fh.read()
+  assert max_heavy_shift(out_text, out_text_2) == 0
 
 def test_clean_untouched():
   """No violations: the non-H atoms are the input ones, and the description
@@ -183,14 +189,16 @@ def test_clean_untouched():
     ["qmready=True"])
   assert len(violations(fn_out)) == 0, violations(fn_out)
   assert "regularization not needed" in desc, desc
-  assert max_heavy_shift(pdb_str_clean, open(fn_out).read()) == 0
+  with open(fn_out) as fh:
+    assert max_heavy_shift(pdb_str_clean, fh.read()) == 0
 
 def test_no_qmready():
   """Without qmready nothing is regularized."""
   fn_out, desc = run(pdb_str_gap, "tst_reduce2_qmready_regularize_3")
   assert "Regularize geometry" not in desc, desc
   assert "regularization not needed" not in desc, desc
-  assert max_heavy_shift(pdb_str_gap, open(fn_out).read()) == 0
+  with open(fn_out) as fh:
+    assert max_heavy_shift(pdb_str_gap, fh.read()) == 0
 
 def test_capping():
   """With capping=True the regularized coordinates are the capped ones."""
@@ -198,7 +206,11 @@ def test_capping():
     ["qmready=True", "capping=True"])
   assert "Regularize geometry" in desc, desc
   fn_ref = "tst_reduce2_qmready_regularize_1_out.pdb"
-  assert max_heavy_shift(open(fn_ref).read(), open(fn_out).read()) == 0
+  with open(fn_ref) as fh:
+    ref_text = fh.read()
+  with open(fn_out) as fh:
+    out_text = fh.read()
+  assert max_heavy_shift(ref_text, out_text) == 0
 
 def test_metal_site():
   """Collapsed bonds to a metal (1nlt: Zn-S 1.42-1.45 A) are bond outliers

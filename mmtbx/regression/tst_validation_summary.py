@@ -41,7 +41,8 @@ def exercise():
           model_input=None,
           pdb_hierarchy = new_hierarchy,
           crystal_symmetry = pdb_in.crystal_symmetry())
-  open("tst_validation_summary.pdb", "w").write(model_object.model_as_pdb())
+  with open("tst_validation_summary.pdb", "w") as fh:
+    fh.write(model_object.model_as_pdb())
   out2 = StringIO()
   summary = validation_summary.run(args=["tst_validation_summary.pdb"],
     out=out2)

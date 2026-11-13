@@ -519,7 +519,8 @@ def test_model_number():
   second.only_chain().only_residue_group().resseq = "  12"
   root.append_model(second)
   fn = write(prefix, root)
-  assert "MODEL     0002" in open(fn).read()
+  with open(fn) as fh:
+    assert "MODEL     0002" in fh.read()
   cif = prefix + ".cif"
   with open(cif, "w") as f: f.write(zq4_cif)
   task, description, log = run(prefix, fn, ["approach=place", "model_id=2"],

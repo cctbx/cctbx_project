@@ -607,7 +607,8 @@ def test_pdbtools_remove():
   from libtbx import easy_run
   model, result, h = capped_hierarchy(fixtures.pdb_arg)
   uncapped = fixtures.model_with_h(fixtures.pdb_arg)
-  open('capped_arg.pdb', 'w').write(model.model_as_pdb())
+  with open('capped_arg.pdb', 'w') as fh:
+    fh.write(model.model_as_pdb())
   assert easy_run.call('phenix.pdbtools capped_arg.pdb remove=capping_h '
                        'output.file_name=stripped.pdb > pdbtools.log') == 0
   out = iotbx.pdb.input(file_name='stripped.pdb').construct_hierarchy()

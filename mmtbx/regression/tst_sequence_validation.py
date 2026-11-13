@@ -653,7 +653,8 @@ END
     assert (n_seq == 4)
     # now with files as input
     seq_file = "tmp_mmtbx_validation_sequence.fa"
-    open(seq_file, "w").write(">1ywf\n%s" % seq.sequence)
+    with open(seq_file, "w") as fh:
+      fh.write(">1ywf\n%s" % seq.sequence)
     n_seq = get_sequence_n_copies_from_files(
       pdb_file=pdb_file,
       seq_file=seq_file,
@@ -739,20 +740,23 @@ HETATM 3892  C4  A3P A 301     -30.631  -5.420  -0.849  1.00 56.63           C
 """
 
   for pdb_str, seq_str in [(pdb_str1, seq_str1), (pdb_str2, seq_str2)]:
-    seq_file = tempfile.NamedTemporaryFile(suffix='.fasta', mode='w')
+    # closed before reading: Windows cannot open a temporary file twice
+    seq_file = tempfile.NamedTemporaryFile(suffix='.fasta', mode='w',
+                                           delete=False)
     seq_file.write(seq_str)
-    seq_file.flush()
-    model_file = tempfile.NamedTemporaryFile(suffix='.pdb', mode='w')
+    seq_file.close()
+    model_file = tempfile.NamedTemporaryFile(suffix='.pdb', mode='w',
+                                             delete=False)
     model_file.write(pdb_str)
-    model_file.flush()
+    model_file.close()
     dm = DataManager()
     dm.process_model_file(model_file.name)
     dm.process_sequence_file(seq_file.name)
     model = dm.get_model()
     seq = dm.get_sequence()
     model.set_sequences(seq)
-    model_file.close()
-    seq_file.close()
+    os.remove(model_file.name)
+    os.remove(seq_file.name)
     # model._sequence_validation.show()
 
 if (__name__ == "__main__"):

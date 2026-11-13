@@ -100,7 +100,11 @@ def run(prefix, model_str, extra_args=(), log=None):
   run_program(program_class=reduce2.Program, logger=log,
     args=[fn_in, "output.filename=" + fn_out, "overwrite=True",
           "output.description_file=" + fn_txt] + list(extra_args))
-  return atoms(open(fn_out).read()), open(fn_txt).read()
+  with open(fn_out) as fh:
+    out_text = fh.read()
+  with open(fn_txt) as fh:
+    txt_text = fh.read()
+  return atoms(out_text), txt_text
 
 def all_atoms(text):
   """{(model, chain, resseq, icode, altloc, name): xyz} of a PDB-format
@@ -221,14 +225,16 @@ def test_scoring_leaves_h():
   for i, s in enumerate((_his_fragment_str(), asn_str)):
     fn = "tst_reduce2_his_states_default_9%d" % i
     run(fn, s)
-    with_scores = all_atoms(open(fn + "_out.pdb").read())
+    with open(fn + "_out.pdb") as fh:
+      with_scores = all_atoms(fh.read())
     original = Optimizers.Optimizer._SuggestFlips
     Optimizers.Optimizer._SuggestFlips = lambda *args: None
     try:
       run(fn + "n", s)
     finally:
       Optimizers.Optimizer._SuggestFlips = original
-    without = all_atoms(open(fn + "n_out.pdb").read())
+    with open(fn + "n_out.pdb") as fh:
+      without = all_atoms(fh.read())
     assert with_scores == without, (set(with_scores) ^ set(without))
 
 def asn_models_str():
@@ -402,8 +408,10 @@ def _fault_run(prefix, model_str, inject):
     run(prefix + "n", model_str)
   finally:
     Optimizers.Optimizer._SuggestFlips = original
-  got = all_atoms(open(prefix + "_out.pdb").read())
-  ref = all_atoms(open(prefix + "n_out.pdb").read())
+  with open(prefix + "_out.pdb") as fh:
+    got = all_atoms(fh.read())
+  with open(prefix + "n_out.pdb") as fh:
+    ref = all_atoms(fh.read())
   assert got == ref, sorted(set(got) ^ set(ref))
   return desc
 
@@ -440,7 +448,8 @@ def test_restore_after_failures():
   desc = _fault_run("tst_reduce2_his_states_default_23", asn_str, amide_fails)
   assert "Suggested flips (add_flip_movers=False, none made): 0" in desc, desc
   # his_zn_str: the second score (the flipped state) fails
-  desc = open("tst_reduce2_his_states_default_22.txt").read()
+  with open("tst_reduce2_his_states_default_22.txt") as fh:
+    desc = fh.read()
   assert suggested(desc) == ["chain A HIS 1: listed for its metal, flip not "
     "scored; ZN A 101 binds only the flipped ring"], suggested(desc)
 
