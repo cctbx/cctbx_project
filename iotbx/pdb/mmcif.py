@@ -377,6 +377,68 @@ def hierarchy_from_atom_site(cif_block):
     raise CifBuilderError(str(e))
 
 
+def xray_structure_from_atom_site(cif_block, crystal_symmetry=None,
+    enable_scattering_type_unknown=False, min_distance_sym_equiv=0.5):
+  """
+  Build the xray.structure of a model block without the hierarchy.
+
+  The scatterers are those of
+  hierarchy_from_atom_site(cif_block).extract_xray_structure(), in the row
+  order of the _atom_site loop.
+
+  Parameters
+  ----------
+  cif_block : iotbx.cif.model.block
+    A data block with an _atom_site loop.
+  crystal_symmetry : cctbx.crystal.symmetry or None
+    The symmetry of the structure; None takes it from the block.
+  enable_scattering_type_unknown : bool
+    Give an atom with no known scattering type the type "unknown" instead
+    of raising.
+  min_distance_sym_equiv : float
+    As for extract_xray_structure, whose None means 0.5.
+
+  Returns
+  -------
+  cctbx.xray.structure
+    One scatterer per row of every model, labelled as the hierarchy atom,
+    with the anisotropic U of _atom_site_anisotrop where given.
+
+  Raises
+  ------
+  iotbx.cif.builders.CifBuilderError
+    A bad _atom_site value (as hierarchy_from_atom_site), an atom with no
+    scattering type, or a block without crystal symmetry.
+  AssertionError
+    A missing label column, as from atom_site_columns_from_block.
+  """
+  from cctbx import xray
+  import scitbx.stl.set
+  from iotbx.pdb import build_mmcif_scatterers
+  from iotbx.pdb import default_atom_names_scattering_type_const
+  if crystal_symmetry is None:
+    crystal_symmetry = crystal_symmetry_builder(cif_block).crystal_symmetry
+  if (crystal_symmetry is None or crystal_symmetry.unit_cell() is None or
+      crystal_symmetry.space_group_info() is None):
+    raise CifBuilderError("crystal symmetry is missing")
+  columns = atom_site_columns_from_block(cif_block)
+  try:
+    scatterers = build_mmcif_scatterers(
+      columns=columns,
+      unit_cell=crystal_symmetry.unit_cell(),
+      atom_names_scattering_type_const=scitbx.stl.set.stl_string(
+        default_atom_names_scattering_type_const),
+      scattering_type_exact=False,
+      enable_scattering_type_unknown=enable_scattering_type_unknown)
+  except ValueError as e:
+    raise CifBuilderError(str(e))
+  return xray.structure(
+    special_position_settings=crystal_symmetry.special_position_settings(
+      min_distance_sym_equiv=min_distance_sym_equiv),
+    scatterers=scatterers,
+    non_unit_occupancy_implies_min_distance_sym_equiv_zero=True)
+
+
 def atom_site_columns_from_block(cif_block):
   """
   Resolve the _atom_site (and _atom_site_anisotrop) columns of a model mmCIF
