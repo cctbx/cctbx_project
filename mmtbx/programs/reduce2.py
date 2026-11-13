@@ -89,35 +89,7 @@ water_hydrogens
             positions keep their site symmetry either way. Ignored without a \
             unit cell and space group, or with a placeholder cell such as \
             CRYST1 1 1 1.
-  refine
-    .short_caption = Refinement sweeps
-  {
-    max_sweeps = 5
-      .type = int(value_min=0)
-      .short_caption = Maximum refinement sweeps
-      .help = Maximum refinement sweeps, each placing every water again. \
-              0 turns refinement off.
-    tolerance = 1
-      .type = int(value_min=0)
-      .short_caption = Early-stop tolerance
-      .help = Stop once a sweep removes fewer than this many H-H contacts \
-              under 2.0 A. 0 runs all max_sweeps.
-  }
-  basin
-    .short_caption = Basin-hopping
-  {
-    rounds = 0
-      .type = int(value_min=0)
-      .short_caption = Basin-hopping rounds
-      .help = Basin-hopping rounds after refinement: each turns the waters \
-              that still clash to random orientations, refines them and \
-              keeps any improvement. 0 turns it off.
-  }
-  cluster_search = False
-    .type = bool
-    .short_caption = Joint search over water clusters
-    .help = Choose the orientations of each cluster of H-bonded waters \
-            jointly, after refinement and basin-hopping.
+  include scope mmtbx.hydrogens.water_protonation.placement_phil_str
 }
 use_neutron_distances = False
   .type = bool

@@ -3,6 +3,7 @@ H-bond-aware water-hydrogen placer, and the ``mmtbx.development.virvel``
 program that wraps it.
 """
 
+import inspect
 import math
 import os
 from io import StringIO
@@ -1688,6 +1689,22 @@ def exercise_multi_model_rejected():
     raise Exception_expected
 
 
+def exercise_placement_phil_defaults():
+  """The placer's search arguments default to placement_phil_str's values.
+
+  Both programs include placement_phil_str, so a run with their defaults
+  and a call of place_water_hydrogens without these arguments search alike.
+  """
+  p = iotbx.phil.parse(wp.placement_phil_str).extract()
+  defaults = {k: v.default for k, v in
+              inspect.signature(wp.place_water_hydrogens).parameters.items()}
+  for name, value in (("n_refine", p.refine.max_sweeps),
+                      ("refine_tol", p.refine.tolerance),
+                      ("n_basin", p.basin.rounds),
+                      ("cluster_search", p.cluster_search)):
+    assert defaults[name] == value, (name, defaults[name], value)
+
+
 def exercise_settings_need_values():
   """A placement setting given as None is refused.
 
@@ -1773,6 +1790,7 @@ def run():
   exercise_reorient_keeps_isotope()
   exercise_missing_elements_rejected()
   exercise_multi_model_rejected()
+  exercise_placement_phil_defaults()
   exercise_settings_need_values()
   exercise_output_file_name()
   print(format_cpu_times())

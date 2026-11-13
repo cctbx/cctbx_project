@@ -20,6 +20,7 @@ Needs ``scipy`` (KDTree); the vectorised work is
 import math
 
 import iotbx.pdb
+import libtbx.phil
 from cctbx import crystal
 from cctbx.crystal import super_cell
 from iotbx.pdb.utils import check_for_missing_elements
@@ -2041,8 +2042,48 @@ class _WaterHydrogenPlacer:
     return allowed
 
 
-def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
-                          refine_tol=1, n_basin=0, cluster_search=False,
+# The search settings of the water H placement, included by
+# mmtbx.development.virvel and mmtbx.reduce2; place_water_hydrogens takes its
+# defaults from them.
+placement_phil_str = """
+refine
+  .short_caption = Refinement sweeps
+{
+  max_sweeps = 5
+    .type = int(value_min=0)
+    .short_caption = Maximum refinement sweeps
+    .help = Maximum refinement sweeps, each placing every water again. \
+            0 turns refinement off.
+  tolerance = 1
+    .type = int(value_min=0)
+    .short_caption = Early-stop tolerance
+    .help = Stop once a sweep removes fewer than this many H-H contacts \
+            under 2.0 A. 0 runs all max_sweeps. The best state is kept.
+}
+basin
+  .short_caption = Basin-hopping
+{
+  rounds = 0
+    .type = int(value_min=0)
+    .short_caption = Basin-hopping rounds
+    .help = Basin-hopping rounds after refinement: each turns the waters \
+            that still clash to random orientations, refines them and \
+            keeps any improvement. 0 turns it off.
+}
+cluster_search = False
+  .type = bool
+  .short_caption = Joint search over water clusters
+  .help = Choose the orientations of each cluster of H-bonded waters \
+          jointly, after refinement and basin-hopping.
+"""
+_PLACEMENT = libtbx.phil.parse(placement_phil_str).extract()
+
+
+def place_water_hydrogens(hier, oh_length=None, element=None,
+                          n_refine=_PLACEMENT.refine.max_sweeps,
+                          refine_tol=_PLACEMENT.refine.tolerance,
+                          n_basin=_PLACEMENT.basin.rounds,
+                          cluster_search=_PLACEMENT.cluster_search,
                           existing_h="keep", on_state=None,
                           crystal_symmetry=None, geometry=None,
                           symmetry_mates=True):
@@ -2076,19 +2117,21 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
       has D atoms or DOD waters and ``"H"`` otherwise. Names follow it:
       ``H1``/``H2`` or ``D1``/``D2``.
   n_refine : int, optional
-      Maximum relaxation sweeps after the greedy pass, each re-placing every
+      Maximum refinement sweeps after the greedy pass, each re-placing every
       water against the final environment, best state kept; 0 disables it.
+      ``n_refine``, ``refine_tol``, ``n_basin`` and ``cluster_search``
+      default to the values of ``placement_phil_str``.
   refine_tol : int, optional
       Stop refining once a sweep removes fewer than this many close (<2.0 A)
       H-H contacts, making ``n_refine`` a cap; 0 runs all ``n_refine`` sweeps.
   n_basin : int, optional
-      Basin-hopping rounds after refinement (default 0 = off): each restarts
+      Basin-hopping rounds after refinement (0 = off): each restarts
       from the best state, randomly re-orients the still-clashing waters,
       relaxes, and keeps any improvement (deterministic, seeded).
   cluster_search : bool, optional
       After refinement and basin-hopping, re-choose the orientations of each
       cluster of waters whose O lie within H-bonding reach of each other
-      jointly (default False). Each water's candidates are its current
+      jointly. Each water's candidates are its current
       orientation, the even splits over two acceptors and H1 on each
       acceptor; the search keeps the combination whose protons lie closest to
       acceptors, without a new H-H clash or two waters donating to each
