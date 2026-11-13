@@ -481,6 +481,25 @@ namespace {
     return result;
   }
 
+namespace {
+
+  //! value padded with blanks to at least width columns, as printf's
+  //! "%<width>s" (left=false) or "%-<width>s" (left=true)
+  void
+  append_padded(
+    std::string& result,
+    const char* value,
+    std::size_t width,
+    bool left)
+  {
+    std::size_t n = std::strlen(value);
+    if (!left && n < width) result.append(width - n, ' ');
+    result.append(value, n);
+    if (left && n < width) result.append(width - n, ' ');
+  }
+
+} // namespace <anonymous>
+
   std::string
   atom_label_columns_formatter::format(
     bool add_model,
@@ -495,7 +514,7 @@ namespace {
         std::size_t l = std::strlen(model_id);
         IOTBX_ASSERT(l <= 8);
         result += "model=\"";
-        result += (boost::format("%4s") % model_id).str();
+        append_padded(result, model_id, 4, false);
         result += "\" ";
       }
       if (name != 0) {
@@ -506,19 +525,19 @@ namespace {
       }
     }
     if (name != 0) {
-      result += (boost::format("%-4s") % name).str();
-      result += (boost::format("%-1s") % (altloc==0 ? " " : altloc)).str();
+      append_padded(result, name, 4, true);
+      append_padded(result, (altloc==0 ? " " : altloc), 1, true);
     }
-    result += (boost::format("%3s") % (resname ==0 ? " " : resname)).str();
-    result += (boost::format("%2s") % (chain_id == 0 ? " " : chain_id)).str();
-    result += (boost::format("%4s") % (resseq == 0 ? " " : resseq)).str();
-    result += (boost::format("%1s") % (icode == 0 ? " " : icode)).str();
+    append_padded(result, (resname ==0 ? " " : resname), 3, false);
+    append_padded(result, (chain_id == 0 ? " " : chain_id), 2, false);
+    append_padded(result, (resseq == 0 ? " " : resseq), 4, false);
+    append_padded(result, (icode == 0 ? " " : icode), 1, false);
     if (add_model) {
       result += '"';
     }
     if (add_segid && segid != 0 && str4(segid).stripped_size() != 0) {
       result += " segid=\"";
-      result += (boost::format("%-4s") % segid).str();
+      append_padded(result, segid, 4, true);
       result += "\"";
     }
     return result;
