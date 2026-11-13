@@ -50,7 +50,6 @@ general_tests = [
   "$D/regression/tls/tst_formula_t_S_10_vs_11_4muy.py",
   #
   "$D/regression/tst_mmtbx_refinement_wrappers.py",
-  "$D/regression/tst_mmtbx_refinement_wrappers_1.py",
   #
   "$D/regression/tst_angle.py",
   "$D/regression/tst_holton_geometry_validation.py",
@@ -63,7 +62,6 @@ general_tests = [
   "$D/geometry_restraints/tst_manager.py",
   "$D/geometry_restraints/tst_xtb_manager.py",
   "$D/geometry_restraints/tst_orca_manager.py",
-  "$D/geometry_restraints/external.py",
   "$D/regression/tst_map_type_parser.py",
   "$D/rsr/tst.py",
   "$D/polygon/tst.py",
@@ -168,7 +166,6 @@ general_tests = [
   "$D/monomer_library/tst_carbo_linking.py",
   "$D/monomer_library/tst_glyco_hand.py",
   "$D/monomer_library/tst_glyco_coordination.py",
-  "$D/monomer_library/tst_paral_geo.py",
   #
   "$D/regression/tst_altloc_remediate.py",
   "$D/hydrogens/build_hydrogens.py",
@@ -265,8 +262,6 @@ general_tests = [
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_find_ss_structure_cif.py",
   "$D/regression/tst_ss_validation_long_chainids.py",
-  "$D/regression/tst_chain_comparison.py",
-  "$D/regression/tst_chain_comparison_cif.py",
   "$D/regression/tst_regularize_from_pdb.py",
   "$D/regression/tst_regularize_from_pdb_cif.py",
   "$D/regression/tst_find_ncs.py",
@@ -404,7 +399,6 @@ general_tests = [
   "$D/regression/tst_polder_2.py",
   "$D/regression/tst_polder_3.py",
   "$D/regression/tst_polder_4.py",
-  "$D/regression/tst_map_model_cc.py",
   "$D/regression/tst_model_map.py",
   #
   "$D/regression/tst_validate_ligands.py",

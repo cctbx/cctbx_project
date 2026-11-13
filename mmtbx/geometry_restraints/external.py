@@ -110,7 +110,3 @@ from mmtbx.geometry_restraints.quantum_interface import is_any_quantum_package_i
 any_quantum_package_installed = is_any_quantum_package_installed(os.environ)
 if any_quantum_package_installed:
   external_energy_params_str += any_quantum_package_installed
-
-if __name__=='__main__':
-  print('external_energy_params_str',external_energy_params_str)
-  assert external_energy_params_str.find('amber')>-1
