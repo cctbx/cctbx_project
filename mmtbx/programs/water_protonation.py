@@ -40,30 +40,7 @@ symmetry = True
   .type = bool
   .short_caption = Honour crystal symmetry
   .help = "Include the symmetry-equivalent atoms near each water in its environment. Waters on special positions keep their site symmetry either way. Ignored for a model without a unit cell and space group, and for an electron microscopy model."
-refine
-  .short_caption = Refinement sweeps
-{
-  max_sweeps = 5
-    .type = int(value_min=0)
-    .short_caption = Maximum refinement sweeps
-    .help = "Maximum refinement sweeps, each re-placing every water against the others' current H; 0 disables refinement."
-  tolerance = 1
-    .type = int(value_min=0)
-    .short_caption = Early-stop tolerance
-    .help = "Stop refining once a sweep removes fewer than this many close (< 2.0 A) H-H contacts; 0 runs all max_sweeps. The best state is kept."
-}
-basin
-  .short_caption = Basin-hopping
-{
-  rounds = 0
-    .type = int(value_min=0)
-    .short_caption = Basin-hopping rounds
-    .help = "Basin-hopping rounds after refinement (0 = off): each round randomly re-orients the still-clashing waters and relaxes, keeping the best. Seeded, so deterministic."
-}
-cluster_search = False
-  .type = bool
-  .short_caption = Joint search over water clusters
-  .help = "After refinement and basin-hopping, re-choose the orientations of each cluster of waters within H-bonding reach of each other jointly, keeping the combination whose protons lie closest to acceptors without a new H-H clash or two waters donating to each other."
+include scope mmtbx.hydrogens.water_protonation.placement_phil_str
 stats = False
   .type = bool
   .short_caption = Report water-H clashes
