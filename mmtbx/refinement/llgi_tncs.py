@@ -210,7 +210,9 @@ class tncs_groups(object):
     their i_seq values: those are reset on a copy of pdb_hierarchy, which is
     left unchanged, if they are not 0..n-1). """
     from libtbx.utils import Sorry
+    from mmtbx.model.model import _hierarchy_fingerprint
     n_atoms = pdb_hierarchy.atoms().size()
+    fingerprint = _hierarchy_fingerprint(pdb_hierarchy)
     if(list(pdb_hierarchy.atoms().extract_i_seq()) != list(range(n_atoms))):
       pdb_hierarchy = pdb_hierarchy.deep_copy()
       pdb_hierarchy.atoms().reset_i_seq()
@@ -220,7 +222,9 @@ class tncs_groups(object):
     self = cls.__new__(cls)
     self.crystal_symmetry = crystal_symmetry
     self.n_atoms = n_atoms
+    self.fingerprint = fingerprint
     self.groups = []
+    self.skipped = []
     for i_group, selections in enumerate(groups):
       selections = list(selections)
       if(len(selections) < 2):
