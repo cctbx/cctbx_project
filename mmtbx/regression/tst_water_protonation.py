@@ -1493,7 +1493,7 @@ def exercise_altloc_environment():
   where conformer B's O blocks, and would itself attract, the H conformer A
   aims at the acceptor. Conformer A must still aim an H at the acceptor, the
   clash counts must not count A's H against B's, and the contact listing
-  names an atom's altloc.
+  names an atom's altloc and its residue's insertion code.
   """
   hier = _hierarchy(_SPLIT_WATER_PDB)
   states = []
@@ -1512,6 +1512,9 @@ def exercise_altloc_environment():
   assert stats[1] == 0, stats
   atom_id = wp._atom_id(hs[0])
   assert atom_id == f"HOH W 1 {hs[0].name.strip()} altloc A", atom_id
+  ag_a.parent().icode = "A"
+  atom_id = wp._atom_id(hs[0])
+  assert atom_id == f"HOH W 1A {hs[0].name.strip()} altloc A", atom_id
 
 
 def exercise_improper_altloc_rejected():
