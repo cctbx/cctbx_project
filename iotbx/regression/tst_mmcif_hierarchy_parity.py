@@ -239,9 +239,8 @@ def exercise_fixtures():
 # carry a feature (first altloc, insertion code, hybrid-36 residue number,
 # two-letter element, HETATM, anisotrop row) and the first residue groups of
 # every chain, with their _atom_site_anisotrop rows, cell and symmetry. With
-# the fixtures the test takes about a second (about 4 s with PYTHONDEVMODE=1
-# and PYTHONTRACEMALLOC=1, as the unix CI jobs run it). Formal charges, B
-# tensors, fp/fdp and null occupancies are covered by the fixtures.
+# the fixtures the test takes about a second. Formal charges, B tensors,
+# fp/fdp and null occupancies are covered by the fixtures.
 PARITY_FILES = [
   # PDB entry: label_asym_id chain split after the polymer, HETATM
   ("xcif", "regression/1yjp.cif"),
