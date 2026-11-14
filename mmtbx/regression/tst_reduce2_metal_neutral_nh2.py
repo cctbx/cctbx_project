@@ -19,7 +19,6 @@ import iotbx.pdb
 import mmtbx.model
 from libtbx.utils import null_out
 from scitbx import matrix
-from scitbx.array_family import flex
 from six.moves import cStringIO as StringIO
 from iotbx.cli_parser import run_program
 from mmtbx.programs import reduce2
