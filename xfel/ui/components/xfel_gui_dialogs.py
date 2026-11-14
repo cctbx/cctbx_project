@@ -233,11 +233,22 @@ class SettingsDialog(BaseDialog):
     self.drop_tables = False
     # When True (i.e. the GUI is already running and connected), the database
     # connection and experiment tag must not change, as that would require a
-    # full GUI refresh. This disables the relevant controls and blocks loading
-    # a project whose connection settings differ from the current ones.
+    # full GUI refresh. This disables the relevant controls and project
+    # loading, since a project is a whole configuration.
     self.lock_db = lock_db
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    # Which project these settings belong to, since the default is chosen
+    # silently by modification time
+    project_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    project_label = wx.StaticText(self, label='Project', size=(150, -1))
+    project_label.SetFont(project_label.GetFont().Bold())
+    self.project_name = wx.StaticText(self, label='')
+    project_sizer.Add(project_label, flag=wx.ALIGN_CENTER_VERTICAL)
+    project_sizer.Add(self.project_name, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.main_sizer.Add(project_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.show_project()
 
     # Experiment tag and DB Credentials button
     exp_tag = self.params.experiment_tag if self.params.experiment_tag is not None else ""
@@ -313,6 +324,9 @@ class SettingsDialog(BaseDialog):
                         border=10)
 
     self.btn_load_project = gctr.Button(self, name='load_project', label='Load Project...')
+    if self.lock_db:
+      # Switching projects means reconnecting: quit and relaunch instead.
+      self.btn_load_project.Disable()
     self.btn_save_project = gctr.Button(self, name='save_project', label='Save Project As...')
     self.btn_op = gctr.Button(self, name='advanced', label='Advanced Settings...')
     self.btn_help = gctr.Button(self, name='settings_help', label='Help', id=wx.ID_HELP)
@@ -350,6 +364,20 @@ class SettingsDialog(BaseDialog):
   def onHelp(self, e):
     ''' Open the online documentation for this dialog. '''
     open_help(self, 'Settings')
+
+  def show_project(self):
+    ''' Name the project the settings will be saved to, or the file named by
+        CCTBX_XFEL_SETTINGS when that overrides the projects. '''
+    from xfel.ui import get_current_project
+    settings_file = os.environ.get('CCTBX_XFEL_SETTINGS')
+    project = get_current_project()
+    if settings_file is not None:
+      text = settings_file
+    elif project is not None:
+      text = project
+    else:
+      text = 'none (use Save Project As...)'
+    self.project_name.SetLabel(text)
 
   def onBrowse(self, e):
     dlg = wx.DirDialog(self, "Choose the input directory:",
@@ -411,29 +439,18 @@ class SettingsDialog(BaseDialog):
       self.params.facility.lcls.experiment = self.experiment.ctr.GetValue()
 
   def onOK(self, e):
-    from xfel.ui import get_current_project
+    from xfel.ui import cached_settings_file
     self.update_settings()
-    # Settings are persisted to the current project's bundle. If there is no
-    # project yet (e.g. a fresh setup), require the user to name one before
-    # closing, otherwise there is nowhere to save.
-    if get_current_project() is None:
+    # Settings are persisted to the current project's bundle, or to the file
+    # CCTBX_XFEL_SETTINGS names. If there is neither (e.g. a fresh setup),
+    # require the user to name a project before closing, otherwise there is
+    # nowhere to save.
+    if cached_settings_file() is None:
       wx.MessageBox('Please name a project to save these settings.',
                     'Save Project', wx.OK | wx.ICON_INFORMATION)
       if self.save_project_as() is None:
         return  # cancelled; keep the dialog open
     e.Skip()
-
-  @staticmethod
-  def connection_signature(params):
-    ''' Return the settings that determine which database/tables the live GUI
-        talks to. If any of these change, the GUI must be restarted, so a
-        running (locked) session refuses to load a project that alters them.
-        Operational-only db fields (verbose, logging_batch_size) and the
-        local-server launch settings (db.server.*) are excluded, as they do
-        not affect an already-established connection. '''
-    db = params.db
-    return (params.experiment_tag,
-            db.host, db.name, db.user, db.password, db.port)
 
   def fill_fields_from_params(self):
     ''' Push the current self.params into every widget on the dialog. Used after
@@ -482,22 +499,13 @@ class SettingsDialog(BaseDialog):
       wx.MessageBox('Unable to load project "%s":\n%s' % (name, str(exc)),
                     'Load Project', wx.OK | wx.ICON_ERROR)
       return
-    # While the GUI is connected, refuse a project whose database connection
-    # or experiment tag differs, since applying it would require a restart.
-    if self.lock_db and \
-       self.connection_signature(new_params) != self.connection_signature(self.params):
-      wx.MessageBox(
-        'Loading project "%s" would change the database connection or '
-        'experiment tag, which requires restarting the GUI. Project not '
-        'loaded.' % name,
-        'Load Project', wx.OK | wx.ICON_ERROR)
-      return
     set_current_project(name)
     # Mutate the existing params object in place rather than rebinding, so the
     # MainWindow and the OnInit save path (which share this object) see the
     # newly loaded configuration.
     self.params.__dict__.update(new_params.__dict__)
     self.fill_fields_from_params()
+    self.show_project()
 
   def onSaveProjectAs(self, e):
     self.save_project_as()
@@ -506,22 +514,26 @@ class SettingsDialog(BaseDialog):
     ''' Prompt for a project name and save the current params to its bundle.
         Returns the saved name, or None if the user cancelled or the save
         failed. '''
-    from xfel.ui import save_project_settings, get_current_project, set_current_project
+    from xfel.ui import save_project_settings, get_current_project, set_current_project, \
+                        list_settings_projects
     self.update_settings()
-    default_name = get_current_project() or ''
+    current = get_current_project()
     dlg = wx.TextEntryDialog(self, 'Project name (saved as settings_<name>.phil):',
-                             'Save Project As', default_name)
+                             'Save Project As', current or '')
     saved = None
     if dlg.ShowModal() == wx.ID_OK:
       name = dlg.GetValue().strip()
-      if not name:
-        wx.MessageBox('Please provide a project name.',
-                      'Save Project As', wx.OK | wx.ICON_WARNING)
-      else:
+      # Saving under the current name is the normal save; another existing
+      # name is someone else's project until the user says so.
+      overwrite = name != current and name in list_settings_projects()
+      if not overwrite or \
+         wx.MessageBox('Project "%s" already exists. Overwrite it?' % name,
+                       'Save Project As', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION) == wx.YES:
         try:
           save_project_settings(self.params, name)
           set_current_project(name)
           saved = name
+          self.show_project()
         except Exception as exc:
           wx.MessageBox('Unable to save project "%s":\n%s' % (name, str(exc)),
                         'Save Project As', wx.OK | wx.ICON_ERROR)

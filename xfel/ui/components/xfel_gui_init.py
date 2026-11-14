@@ -1722,11 +1722,16 @@ class MainWindow(wx.Frame):
     if (settings_dlg.ShowModal() == wx.ID_OK):
       self.params = settings_dlg.params
       save_cached_settings(self.params)
-      if self.params.facility.name == 'lcls':
-        self.title = 'CCTBX.XFEL | {} | {}'.format(self.params.experiment_tag,
-                                                   self.params.facility.lcls.experiment)
-      else:
-        self.title = 'CCTBX.XFEL | {}'.format(self.params.experiment_tag)
+      self.update_title()
+
+  def update_title(self):
+    ''' The window title names the project, the experiment tag and, at LCLS,
+        the experiment. '''
+    from xfel.ui import get_current_project
+    parts = ['CCTBX.XFEL', get_current_project(), self.params.experiment_tag]
+    if self.params.facility.name == 'lcls':
+      parts.append(self.params.facility.lcls.experiment)
+    self.SetTitle(' | '.join(part for part in parts if part))
 
   def onZoom(self, e):
     self.high_vis = not self.high_vis
