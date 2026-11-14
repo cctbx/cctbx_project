@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.14.0"
+version = "3.15.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -62,7 +62,11 @@ metal_bound_amines_as_nh2 = True
           ligand amine, not with alkali or alkaline-earth metals) is placed \
           as NH2, with the metal as the third substituent. Metal-bound chain \
           starts get NH2 whatever n_terminal_charge says. Sites that fail the \
-          geometry checks keep their H.
+          geometry checks keep their H. A neutral NH2 bound to a metal \
+          (ethylenediamine on Cu) keeps both H, placed with the lone pair at \
+          the metal. Unresolved sites are turned away from the metal \
+          positions. False: these NH2 are placed as without a metal and \
+          listed.
 add_h_to_water = False
   .type = bool
   .short_caption = Add H to water
@@ -1205,6 +1209,16 @@ NOTES:
   list the H added this way, and the free ends at chain breaks, which get no H: modelled
   chain boundaries do not establish experimental termini. With neutron distances: the
   listed names are H labels from placement, before any requested isotope conversion.
+
+  Amine NH2 (an N with two H and one sp3 C, acyclic N or O neighbour in its dictionary,
+  no plane restraint on the H) is pyramidal at the dictionary angles. Placement puts it at
+  the dictionary torsion; riding H elsewhere (refinement) keeps its current torsion, and
+  with ignore_h_with_dof (neutron refinement) it does not ride. Bound to a metal, it is
+  placed with the lone pair at the metal (metal_bound_amines_as_nh2). In a peptide-like
+  residue, all but one dictionary H on N are left out only where a bond restraint joins
+  that N to a C of another residue (a peptide bond): SAM, SAH or a free modified amino
+  acid keep both H. At a chain start, n_terminal_charge decides the H on N, and the H on
+  OXT is never added.
 
   qmready=True prepares a model for QM: H on water (as add_h_to_water=True), longer XH
   distances, OXT and NH3+ at chain ends and breaks, HO3' and HO5' at nucleic-acid chain

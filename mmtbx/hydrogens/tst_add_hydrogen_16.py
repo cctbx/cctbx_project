@@ -129,11 +129,12 @@ def test_004():
 
 def test_005():
   '''
-    Control: 0TD H2 is the amine H on N; a residue that is not first in the
-    chain keeps only H on N.
+    Control: 0TD H2 is the amine H on N (test_004: 6EL's H2 is on CG). 0TD
+    alone has no peptide bond to its N, so it keeps both dictionary H (A56;
+    before: H only, the free-form rule applied without a peptide bond).
   '''
   names = h_names_on(pdb_str_005, 'N')
-  assert names == ['H'], names
+  assert names == ['H', 'H2'], names
 
 def test_006():
   '''

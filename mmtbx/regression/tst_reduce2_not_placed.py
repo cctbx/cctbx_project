@@ -799,16 +799,17 @@ def waters(n, with_h=()):
   return '\n'.join(lines) + '\n'
 
 def test_rule_counts():
-  # three waters, and the free-form H of DNE and HT7 on N: counted, not
-  # listed; placement's own wording names no option
+  # three waters, and the free-form H of HT7 on N (peptide bond to DNE):
+  # counted, not listed; DNE's N has no peptide bond and keeps both H;
+  # placement's own wording names no option
   o = place(t23.pdb_str.replace('END\n', waters(3) + 'END\n'))
-  assert o.not_placed_rules == {'waters': 3, 'free_form': 2}, \
+  assert o.not_placed_rules == {'waters': 3, 'free_form': 1}, \
     o.not_placed_rules
   assert records(o) == [], records(o)
-  rules = ('Rules, not listed: 3 waters get no H from placement; 2 dictionary '
-    'H entries on N or OXT of peptide-like residues skipped by the free-form '
-    'rule during initial placement (counted per model and conformer). '
-    'Chain-start placement may add H on these N atoms later.')
+  rules = ('Rules, not listed: 3 waters get no H from placement; 1 dictionary '
+    'H entry of peptide-like residues not added (free form: the H on OXT, '
+    'and all but one H on an N with a peptide bond; counted per model and '
+    'conformer).')
   text = o.not_placed_text()
   assert text.splitlines()[0] == rules, text
   assert 'exclude_water' not in text
@@ -817,34 +818,53 @@ def test_rule_counts():
   one = place(t23.pdb_str.replace('END\n', waters(1) + 'END\n'))
   assert '1 water gets no H from placement' in one.not_placed_text()
   summary = reduce_hydrogen.not_placed_summary([], {'free_form': 1})
-  assert summary.startswith('Rules, not listed: 1 dictionary H entry on N or '
-    'OXT of peptide-like residues skipped by the free-form rule'), summary
+  assert summary.startswith('Rules, not listed: 1 dictionary H entry of '
+    'peptide-like residues not added (free form'), summary
+
+def n_h(o, resname):
+  '''Names of the H/D on N of resname in the final model.'''
+  h = o.get_model().get_hierarchy()
+  result = []
+  for ag in h.atom_groups():
+    n = ag.get_atom('N')
+    if ag.resname.strip() != resname or n is None: continue
+    result.extend(a.name.strip() for a in ag.atoms()
+      if a.element.strip().upper() in ('H', 'D') and a.distance(n) < 1.3)
+  return sorted(result)
 
 def test_free_form():
-  # the count is placement's policy, _terminal_h(): one dictionary H entry on
-  # N of DNE, whether or not a peptide bond replaces it; DNE alone (its N
-  # keeps one H) and DNE as a chain start where chain-start placement puts
-  # H1, H2, H3 on N count it too
-  for pdb_str, kw in ((dne(), {}), (dne(), {'n_terminal_charge':
-      'first_in_chain'}), (dne('1'), {})):
+  # the free-form H on N is removed only with a peptide bond (a bond
+  # restraint to a C of another residue). DNE alone (residue 2, not a chain
+  # start for n_terminal_charge=residue_one) keeps H and H2: no rule; HT7
+  # after DNE loses HA2: one rule; at a chain start, chain-start placement
+  # puts H1, H2, H3 on N and nothing is counted
+  o, _ = placed(dne())
+  assert o.not_placed_rules['free_form'] == 0, o.not_placed_rules
+  assert records(o) == [], records(o)
+  assert n_h(o, 'DNE') == ['H', 'H2'], n_h(o, 'DNE')
+  o, _ = placed(t23.pdb_str)
+  assert o.not_placed_rules['free_form'] == 1, o.not_placed_rules
+  assert n_h(o, 'DNE') == ['H', 'H2'] and n_h(o, 'HT7') == ['HN1'], (
+    n_h(o, 'DNE'), n_h(o, 'HT7'))
+  for pdb_str, kw in ((dne(), {'n_terminal_charge': 'first_in_chain'}),
+      (dne('1'), {})):
     o, _ = placed(pdb_str, **kw)
-    assert o.not_placed_rules['free_form'] == 1, o.not_placed_rules
+    assert o.not_placed_rules['free_form'] == 0, o.not_placed_rules
     assert records(o) == [], records(o)
-  o, _ = placed(dne('1'))
-  names = [a.name.strip() for a in o.get_model().get_hierarchy().atoms()]
-  assert ['H1', 'H2', 'H3'] == [n for n in names if n in ('H1', 'H2', 'H3')], \
-    names
+    assert n_h(o, 'DNE') == ['H1', 'H2', 'H3'], n_h(o, 'DNE')
 
 def test_free_form_per_conformer():
-  # DNE and HT7 in A and B: four sites
+  # DNE and HT7 in A and B: HT7's peptide-bonded N in A and B, two sites;
+  # DNE keeps H and H2 in both
   o = place(split_ab(t23.pdb_str))
-  assert o.not_placed_rules['free_form'] == 4, o.not_placed_rules
-  # DNE with a blank N and the rest in A and B: its H site in A and B; HT7
-  # whole (its own blank N next to split HT7 atoms names the H differently,
-  # left as it is): one
+  assert o.not_placed_rules['free_form'] == 2, o.not_placed_rules
+  assert n_h(o, 'DNE') == ['H', 'H', 'H2', 'H2'], n_h(o, 'DNE')
+  # DNE with a blank N and the rest in A and B (no peptide bond: H and H2 in
+  # A and B); HT7 whole (its own blank N next to split HT7 atoms names the H
+  # differently, left as it is): one site
   o = place(split_ab(t23.pdb_str,
     lambda l: l[17:20] == 'HT7' or l[12:16] == ' N  '))
-  assert o.not_placed_rules['free_form'] == 3, o.not_placed_rules
+  assert o.not_placed_rules['free_form'] == 1, o.not_placed_rules
 
 def test_water_rule_reduce2():
   # add_h_to_water=False: the waters that end without H, by the option;
