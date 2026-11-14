@@ -476,3 +476,61 @@ def simpson(f, a, b, n):
       if i % 2 == 0: s += 2 * f(a + i * h)
       else:          s += 4 * f(a + i * h)
     return s * h / 3
+
+def bessel_i1_over_i0_derivative(x):
+  """
+  Derivative with respect to x of the Bessel function ratio I1(x)/I0(x).
+
+  The identity d/dx [I1/I0] = 1 - (I1/I0)/x - (I1/I0)^2 is exact but
+  cancels catastrophically for large x when the ratio comes from the
+  polynomial fit in scitbx/math/bessel.h (absolute error ~1e-6 against a
+  derivative of 1/(2 x^2)). The ratio is therefore recomputed here from
+  the power series of I0 and I1 for |x| <= 25, and the derivative is
+  taken from its asymptotic expansion in 1/x beyond that. Both branches
+  agree with a finite difference of the exact ratio to 1e-6 relative.
+
+  Parameters
+  ----------
+  x : flex.double
+    Arguments; the derivative is even in x.
+
+  Returns
+  -------
+  flex.double
+    d(I1/I0)/dx at each x, 1/2 at x = 0.
+  """
+  x_switch = 25.0
+  ax = flex.abs(x)
+  small = ax <= x_switch
+  # power series, with x clipped to the switch to avoid overflow where the
+  # asymptotic branch is used instead
+  xs = ax.deep_copy()
+  xs.set_selected(~small, x_switch)
+  q = xs * xs / 4
+  term0 = flex.double(x.size(), 1.0)
+  term1 = xs / 2
+  sum0 = term0.deep_copy()
+  sum1 = term1.deep_copy()
+  for k in range(60):
+    term0 = term0 * q / ((k + 1) * (k + 1))
+    term1 = term1 * q / ((k + 1) * (k + 2))
+    sum0 += term0
+    sum1 += term1
+  m = sum1 / sum0
+  zero = xs == 0
+  xs.set_selected(zero, 1.0)
+  result = 1 - m / xs - m * m
+  result.set_selected(zero, 0.5)
+  # asymptotic expansion of the derivative in u = 1/x
+  xl = ax.deep_copy()
+  xl.set_selected(small, x_switch)
+  u = 1 / xl
+  coefficients = (1 / 2., 1 / 4., 3 / 8., 25 / 32., 65 / 32., 3219 / 512.,
+                  721 / 32.)
+  asymptotic = flex.double(x.size(), 0.0)
+  power = u * u
+  for c in coefficients:
+    asymptotic += c * power
+    power = power * u
+  result.set_selected(~small, asymptotic.select(~small))
+  return result

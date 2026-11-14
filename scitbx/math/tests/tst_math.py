@@ -360,6 +360,35 @@ def exercise_bessel():
     assert approx_equal(bessel_ln_of_i0(x),math.log(bessel_i0(x)))
     x+=0.01
 
+def exercise_bessel_i1_over_i0_derivative():
+  from scitbx.math import bessel_i1_over_i0_derivative
+  def exact_ratio(x):
+    # power series of I1 and I0, summed in log space
+    n_terms = int(2 * x) + 200
+    l = math.log(x / 2)
+    s0, s1 = 0.0, 0.0
+    for k in range(n_terms):
+      s0 += math.exp(2 * k * l - 2 * math.lgamma(k + 1) - x)
+      s1 += math.exp((2 * k + 1) * l - math.lgamma(k + 1)
+                     - math.lgamma(k + 2) - x)
+    return s1 / s0
+  x = flex.double([1.e-3, 0.5, 2, 3.75, 5, 10, 24.9, 25.1, 30, 100, 1000])
+  d = bessel_i1_over_i0_derivative(x)
+  for xi, di in zip(x, d):
+    h = 1.e-4 * xi
+    fd = (exact_ratio(xi + h) - exact_ratio(xi - h)) / (2 * h)
+    # the reference loses accuracy as x grows (cancellation in the ratio)
+    assert approx_equal(di, fd, eps=5.e-7 * fd)
+  # beyond the reach of the series reference: leading asymptotic terms
+  x_large = 5000.
+  d_large = bessel_i1_over_i0_derivative(flex.double([x_large]))[0]
+  assert approx_equal(d_large, (1 + 1 / (2 * x_large)) / (2 * x_large**2),
+                      eps=1.e-6 * d_large)
+  # even in x, 1/2 at zero
+  assert approx_equal(bessel_i1_over_i0_derivative(-x), d, eps=1.e-15)
+  assert approx_equal(bessel_i1_over_i0_derivative(flex.double([0.0]))[0],
+                      0.5)
+
 def exercise_eix():
   x = flex.double( range(4000) )/20.0
   expx = flex.exp( -x )
@@ -2058,6 +2087,7 @@ def run():
   exercise_gamma_complete()
   exercise_exponential_integral_e1z()
   exercise_bessel()
+  exercise_bessel_i1_over_i0_derivative()
   exercise_lambertw()
   exercise_golay()
   exercise_inertia_tensor()
