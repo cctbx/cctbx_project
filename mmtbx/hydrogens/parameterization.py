@@ -176,6 +176,16 @@ class manager(object):
         return
     i_b1 = self.h_connectivity[ih_dihedral].b1['iseq']
     rb1 = matrix.col(self.sites_cart[i_b1])
+    frame = None
+    if self.is_pyramidal_nh2(neighbors, i_h1):
+      frame = self.nh2_frame(ih_dihedral, ih_no_dihedral, i_b1)
+    if frame is not None:
+      # a rotor, like NH3+: refined individually against neutron data
+      if self.ignore_h_with_dof:
+        self.unk_list.append(ih)
+        return
+      self.process_pyramidal_nh2(ih_dihedral, ih_no_dihedral, *frame)
+      return
     # check if angle is typical for propeller
     # catches case of missing propeller atom
     if (neighbors.h1['angle_ideal'] >107 and neighbors.h1['angle_ideal'] <111):
@@ -214,6 +224,160 @@ class manager(object):
             n      = 0,
             h      = 0,
             disth = disth)
+
+  def is_pyramidal_nh2(self, neighbors, i_h1):
+    """
+    Amine NH2 (cif: N with 2 H and one sp3 C, N or O neighbour X; see
+    connectivity._dictionary_pyramidal_nh2), neither H in a plane restraint
+    """
+    other = self.h_connectivity[i_h1]
+    if other is None: return False
+    if not (getattr(neighbors, 'pyramidal_nh2', False) and
+            getattr(other, 'pyramidal_nh2', False)):
+      return False
+    for nb in (neighbors, other):
+      if not nb.a1 or 'angle_ideal' not in nb.a1: return False
+      if not nb.a0 or 'dist_ideal' not in nb.a0: return False
+    if not neighbors.h1 or 'angle_ideal' not in neighbors.h1: return False
+    return self.nh2_dphi(math.radians(neighbors.a1['angle_ideal']),
+      math.radians(other.a1['angle_ideal']),
+      math.radians(neighbors.h1['angle_ideal'])) is not None
+
+  @staticmethod
+  def nh2_dphi(a1, a2, hnh):
+    """
+    Torsion difference of the two H about X-N from the X-N-H angles a1, a2
+    and H-N-H (radians); pi for planar angles (sum 360). None if no
+    torsion gives hnh: H-N-H outside [|a1 - a2|, min(a1 + a2, 360 - a1 - a2)]
+    (above the upper bound: angle sum above 360).
+    """
+    c = (math.cos(hnh) - math.cos(a1) * math.cos(a2)) / (
+      math.sin(a1) * math.sin(a2))
+    if abs(c) > 1 + 1.e-6: return None
+    return math.acos(max(-1., min(1., c)))
+
+  def nh2_frame(self, ih_dihedral, ih_no_dihedral, i_b1):
+    """
+    (frame atom, heavy-third torsions per H, placement phi without
+    torsions) of an amine NH2.
+    Frame: i_b1 if heavy (phi: connectivity's staggered default), else the
+    third atom of a heavy-third torsion, else a heavy atom bonded to X
+    (phi: anti, as the torsion minimum nearest 180). With no heavy atom on X
+    (methylamine whose torsions are H-C-N-H only) the frame is the H i_b1:
+    during placement it is still at its seed, so the NH2 is pyramidal at the
+    dictionary angles with the first H anti to that H, and its orientation
+    is arbitrary.
+    """
+    nb = {ih_dihedral: self.h_connectivity[ih_dihedral],
+          ih_no_dihedral: self.h_connectivity[ih_no_dihedral]}
+    # connectivity keeps torsions with a heavy third atom only (CCD fallback
+    # torsions H-C-N-H have an H, still at its seed during placement)
+    torsions = dict((i, list(getattr(nb[i], 'torsions', []))) for i in nb)
+    if not getattr(nb[ih_dihedral], 'b1_is_hd', True):
+      return i_b1, torsions, math.radians(
+        nb[ih_dihedral].b1['dihedral_ideal'])
+    thirds = ([t[0] for i in nb for t in torsions[i]] +
+      list(getattr(nb[ih_dihedral], 'heavy_thirds', [])))
+    if thirds: return thirds[0], torsions, math.pi
+    return i_b1, torsions, math.pi
+
+  def process_pyramidal_nh2(self, ih_dihedral, ih_no_dihedral, i_b1,
+      torsions, phi_default):
+    """
+    Amine NH2 as two alg1a H, each with its own X-N-H and N-H, H-N-H from
+    the dictionary (dphi). With use_ideal_dihedral (placement): one H at
+    its torsion restraint minimum nearest 180 (anti), the other at
+    phi +/- dphi on the side nearer its own torsion restraint, + without
+    one; independent of where the H were seeded. Otherwise the first H
+    keeps its current torsion (the NH2 is a rotor) and the other takes the
+    side nearer its current site.
+    """
+    nb = {ih_dihedral: self.h_connectivity[ih_dihedral],
+          ih_no_dihedral: self.h_connectivity[ih_no_dihedral]}
+    i_a0 = nb[ih_dihedral].a0['iseq']
+    i_a1 = nb[ih_dihedral].a1['iseq']
+    r0 = matrix.col(self.sites_cart[i_a0])
+    r1 = matrix.col(self.sites_cart[i_a1])
+    rb1 = matrix.col(self.sites_cart[i_b1])
+    for i in nb:
+      self.check_if_atoms_superposed(matrix.col(self.sites_cart[i]), r0, i, i_a0)
+    self.check_if_atoms_superposed(r1, r0, i_a1, i_a0)
+    # the alg1a frame (hydrogens.h): phi of an atom = its torsion about
+    # a1-a0 from i_b1
+    u1 = (r0 - r1).normalize()
+    rb10 = rb1 - r1
+    u2 = (rb10 - (rb10.dot(u1)) * u1).normalize()
+    u3 = u1.cross(u2)
+    def site(alpha, phi, d):
+      return r0 + d * (math.sin(alpha) * (math.cos(phi) * u2 +
+        math.sin(phi) * u3) - math.cos(alpha) * u1)
+    def frame_phi(r, origin):
+      v = r - origin
+      return math.atan2(v.dot(u3), v.dot(u2))
+    def adiff(x, y):
+      return abs((x - y + math.pi) % (2 * math.pi) - math.pi)
+    def minima(i):
+      """phi of the minima of the H's torsion restraints"""
+      result = []
+      for i_third, ideal, p in torsions[i]:
+        off = frame_phi(matrix.col(self.sites_cart[i_third]), r1)
+        n = p if p > 0 else 1
+        result.extend(off + math.radians(ideal + k * 360. / n)
+          for k in range(n))
+      return result
+    alpha, phi, d = {}, {}, {}
+    for i in nb:
+      if self.use_ideal_bonds_angles:
+        alpha[i] = math.radians(nb[i].a1['angle_ideal'])
+        d[i] = nb[i].a0['dist_ideal']
+      else:
+        v = matrix.col(self.sites_cart[i]) - r0
+        alpha[i] = (r1 - r0).angle(v)
+        d[i] = v.length()
+    if not self.use_ideal_bonds_angles:
+      for i in nb:
+        phi[i] = frame_phi(matrix.col(self.sites_cart[i]), r0)
+    else:
+      first, second = ih_dihedral, ih_no_dihedral
+      if self.use_ideal_dihedral:
+        if not minima(first) and minima(second):
+          first, second = second, first
+        m1 = minima(first)
+        if m1:
+          phi1 = min(m1, key=lambda t: (adiff(t, math.pi), -t))
+        else:
+          phi1 = phi_default
+      else:
+        phi1 = frame_phi(matrix.col(self.sites_cart[first]), r0)
+      dphi = self.nh2_dphi(alpha[first], alpha[second],
+        math.radians(nb[first].h1['angle_ideal']))
+      candidates = [phi1 + dphi, phi1 - dphi]
+      if self.use_ideal_dihedral:
+        m2 = minima(second)
+        if m2:
+          score = [min(adiff(c, t) for t in m2) for c in candidates]
+        else:
+          score = [0, 1]
+      else:
+        rh = matrix.col(self.sites_cart[second])
+        score = [(site(alpha[second], c, d[second]) - rh).length()
+          for c in candidates]
+      phi[first] = phi1
+      phi[second] = candidates[0 if score[0] <= score[1] else 1]
+    for i in (ih_dihedral, ih_no_dihedral):
+      if self.h_parameterization[i] is None:
+        self.h_parameterization[i] = riding_coefficients(
+          htype  = 'alg1a',
+          ih     = i,
+          a0     = i_a0,
+          a1     = i_a1,
+          a2     = i_b1,
+          a3     = -1,
+          a      = alpha[i],
+          b      = phi[i],
+          n      = 0,
+          h      = 0,
+          disth  = d[i])
 
   # alg2a, 2tetra, 2neigbs
   def process_2_neighbors(self, neighbors):

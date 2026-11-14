@@ -33,27 +33,40 @@ from mmtbx.regression import tst_reduce2_na_terminal_h as tna
 FIELDS = ('model_id', 'chain', 'resseq', 'icode', 'resname', 'altloc',
           'h_name', 'parent', 'cause', 'detail')
 
-# ethanolamine with an sp3 NH2 (H-N-H 109.5): riding H refuses both H
-eta_atoms = [
-  ("N1", "N", "NH2", -0.700, 1.210, 0.0), ("C1", "C", "CH2", 0.0, 0.0, 0.0),
-  ("C2", "C", "CH2", 1.520, 0.0, 0.0), ("O1", "O", "OH1", 2.220, 1.210, 0.0),
-  ("HN1", "H", "HNH2", -0.200, 1.900, 0.500),
-  ("HN2", "H", "HNH2", -1.200, 1.500, -0.800),
-  ("H11", "H", "HCH2", -0.330, -0.550, 0.890),
-  ("H12", "H", "HCH2", -0.330, -0.550, -0.890),
-  ("H21", "H", "HCH2", 1.850, -0.550, 0.890),
-  ("H22", "H", "HCH2", 1.850, -0.550, -0.890),
-  ("HO1", "H", "HOH1", 3.120, 1.000, 0.0)]
+# aniline like GeoStd A6H: the NH2 H in the ring plane restraint, C-N-H 115,
+# H-N-H 110.9 (inside riding's 107-111 propeller window): riding H refuses
+# both H. 258 GeoStd anilines are like this. (An amine NH2, sp3 C and no
+# plane, is parameterized pyramidal: tst_parameterization_10.)
+def _aniline_atoms():
+  atoms = []
+  for k in range(6):
+    t = math.radians(60 * k)
+    atoms.append(("C%d" % (k + 1), "C", "CR6",
+      1.39 * math.cos(t), 1.39 * math.sin(t), 0.0))
+  for k in range(1, 6):
+    t = math.radians(60 * k)
+    atoms.append(("H%d" % (k + 1), "H", "HCR6", 2.47 * math.cos(t),
+      2.47 * math.sin(t), 0.0))
+  atoms += [("N1", "N", "NH2", 2.79, 0.0, 0.0),
+            ("HN1", "H", "HNH2", 3.290, 0.795, 0.0),
+            ("HN2", "H", "HNH2", 3.290, -0.795, 0.0)]
+  return atoms
+eta_atoms = _aniline_atoms()
+_ring = ["C%d" % k for k in range(1, 7)]
 eta_cif = u.make_cif("01", eta_atoms,
-  [("C1", "N1", 1.47, 1.47), ("C1", "C2", 1.52, 1.52),
-   ("C2", "O1", 1.43, 1.43), ("N1", "HN1", 0.89, 1.01),
-   ("N1", "HN2", 0.89, 1.01), ("O1", "HO1", 0.85, 0.98),
-   ("C1", "H11", 0.97, 1.09), ("C1", "H12", 0.97, 1.09),
-   ("C2", "H21", 0.97, 1.09), ("C2", "H22", 0.97, 1.09)],
-  [(x[0], x[1], x[2], 109.5) for x in
-    [("C1", "N1", "HN1"), ("C1", "N1", "HN2"), ("HN1", "N1", "HN2"),
-     ("N1", "C1", "C2"), ("C1", "C2", "O1"), ("C2", "O1", "HO1")] +
-    u._tetra("C1", "N1", "C2") + u._tetra("C2", "C1", "O1")])
+  [(_ring[k], _ring[(k + 1) % 6], 1.39, 1.39) for k in range(6)] +
+  [("C1", "N1", 1.38, 1.38), ("N1", "HN1", 0.86, 1.01),
+   ("N1", "HN2", 0.86, 1.01)] +
+  [("C%d" % k, "H%d" % k, 0.93, 1.08) for k in range(2, 7)],
+  [(_ring[k - 1], _ring[k], _ring[(k + 1) % 6], 120.0) for k in range(6)] +
+  [("C2", "C1", "N1", 120.0), ("C6", "C1", "N1", 120.0)] +
+  [(a, "C%d" % k, "H%d" % k, 120.0) for k in range(2, 7)
+   for a in (_ring[k - 2], _ring[k % 6])] +
+  [("C1", "N1", "HN1", 115.0), ("C1", "N1", "HN2", 115.0),
+   ("HN1", "N1", "HN2", 110.9)]) + "\n".join(["loop_",
+  "_chem_comp_plane_atom.comp_id", "_chem_comp_plane_atom.plane_id",
+  "_chem_comp_plane_atom.atom_id", "_chem_comp_plane_atom.dist_esd"] +
+  [" 01  plan-1  %-4s  0.020" % a[0] for a in eta_atoms]) + "\n"
 
 # 7T5E NAG C 1 - NAG C 2, linked BETA1-4 (C1 of NAG 2 to O4 of NAG 1); O1
 # is in neither
