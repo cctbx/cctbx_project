@@ -2172,7 +2172,7 @@ def na_gap_title(n):
 # 'na_gap' for na_gap_title()); placed: the H is placed (letters_differ);
 # assessed: False for residues without a dictionary
 NOT_PLACED_CAUSES = [group_args(key=k, short=s, title=t, hint=h, listed_in=l,
-                                placed=(k == 'letters_differ'),
+                                placed=(k in ('letters_differ', 'lone_parent')),
                                 assessed=(k != 'no_dictionary'))
   for k, s, t, h, l in (
   ('no_dictionary', 'no dictionary, not assessed',
@@ -2225,6 +2225,11 @@ NOT_PLACED_CAUSES = [group_args(key=k, short=s, title=t, hint=h, listed_in=l,
    None, METAL_AMINE_CONVERTED),
   ('na_gap_end', 'nucleic-acid chain break',
    'Free nucleic-acid end at a chain break', None, 'na_gap'),
+  ('lone_parent', 'placed as free H (parent without heavy neighbour)',
+   'H placed as free atoms, oriented by H-bonds and clearance '
+   '(mmtbx.hydrogens.lone_parent_h): the parent atom has no heavy '
+   'neighbour (an ion such as NH4+), so riding H cannot parameterize them',
+   None, None),
   ('letters_differ', 'placed, not split per conformer',
    "H placed once, not split: the residue's altloc letters differ from its "
    "covalent partner's", None, None),
@@ -2395,6 +2400,23 @@ def not_placed_summary(records, rules, with_model=False, see=None, n_shown=3,
   return '\n'.join(lines)
 
 # ==============================================================================
+
+def dictionary_heavy_degree(mon_lib_srv, atom):
+  '''
+  Number of heavy (non-H) neighbours of atom in the dictionary of its
+  residue; None without a dictionary or when the atom name is not in it.
+  '''
+  try: cc = mon_lib_srv.get_comp_comp_id_direct(atom.parent().resname.strip())
+  except Exception: cc = None
+  if cc is None: return None
+  ad = cc.atom_dict()
+  name = atom.name.strip()
+  if name not in ad: return None
+  n = 0
+  for b in cc.bond_list:
+    for x, y in [(b.atom_id_1, b.atom_id_2), (b.atom_id_2, b.atom_id_1)]:
+      if x == name and y in ad and ad[y].type_symbol not in ('H', 'D'): n += 1
+  return n
 
 def get_reduce_pdb_interpretation_params(use_neutron_distances):
   '''
@@ -3171,6 +3193,7 @@ class place_hydrogens():
     # H that riding H refused although their parent has all its heavy
     # neighbours
     self.site_labels_riding_refused = list()
+    self.site_labels_lone_parent = list()
     # H on a blank parent left in the residue's own groups, whose letters
     # differ from the covalent partner's (B7/B8)
     self.h_letters_differ       = list()
@@ -3515,6 +3538,7 @@ class place_hydrogens():
     self.residues_missing_neighbor = list()
     self.site_labels_unknown_atoms = list()
     self.site_labels_riding_refused = list()
+    self.site_labels_lone_parent = list()
     unknown = set(r for r, names in self.residues_unknown_atoms)
     if not sel_h_not_in_para_but_not_lone.all_eq(False):
       grm = self.model.get_restraints_manager().geometry
@@ -3535,6 +3559,20 @@ class place_hydrogens():
         sel_h_not_in_para_but_not_lone.iselection(), bonds, _heavy_neighbors))
       sel_h_not_in_para.set_selected(placed, False)
       sel_h_not_in_para_but_not_lone.set_selected(placed, False)
+      # H whose parent has no heavy neighbour at all (NH4+): placed as free
+      # H oriented by H-bonds, reported under a heading of their own
+      lone = self.place_lone_parent_h(
+        sel_h_not_in_para_but_not_lone.iselection(), bonds, _heavy_neighbors,
+        ignore=sel_h_not_in_para_but_not_lone)
+      for ih in lone:
+        atom = atoms[ih]
+        self.site_labels_lone_parent.append(
+          atom.id_str().replace('pdb=','').replace('"',''))
+        self._not_placed(atom, 'lone_parent',
+          atoms[_heavy_neighbors(ih)[0]].name.strip())
+      lone = flex.size_t(lone)
+      sel_h_not_in_para.set_selected(lone, False)
+      sel_h_not_in_para_but_not_lone.set_selected(lone, False)
       seen_residues = set()
       for atom in self.model.get_hierarchy().atoms().select(
           sel_h_not_in_para_but_not_lone):
@@ -4949,18 +4987,7 @@ class place_hydrogens():
     mon_lib_srv = self.model.get_mon_lib_srv()
     atoms = self.model.get_hierarchy().atoms()
     def _dict_heavy_degree(atom):
-      # heavy neighbours of this atom in its dictionary, None if unknown
-      try: cc = mon_lib_srv.get_comp_comp_id_direct(atom.parent().resname.strip())
-      except Exception: cc = None
-      if cc is None: return None
-      ad = cc.atom_dict()
-      name = atom.name.strip()
-      if name not in ad: return None
-      n = 0
-      for b in cc.bond_list:
-        for x, y in [(b.atom_id_1, b.atom_id_2), (b.atom_id_2, b.atom_id_1)]:
-          if x == name and y in ad and ad[y].type_symbol not in ('H', 'D'): n += 1
-      return n
+      return dictionary_heavy_degree(mon_lib_srv, atom)
     by_parent = {}
     for ih in iseqs:
       parents = heavy_neighbors(ih)
@@ -5013,6 +5040,58 @@ class place_hydrogens():
         phi = math.radians(offset + step[k]*k)
         d = u*math.cos(a) + (p*math.cos(phi) + q*math.sin(phi))*math.sin(a)
         sites_cart[ih] = r0 + d*dist_ideal[ih]
+        placed.append(ih)
+    self.model.set_sites_cart(sites_cart)
+    return placed
+
+  # ----------------------------------------------------------------------------
+
+  def place_lone_parent_h(self, iseqs, bonds, heavy_neighbors, ignore=None):
+    '''
+    Place H whose parent has no heavy neighbour at all, in the model and in
+    its dictionary (NH4+, H3O+, H2S): riding H has no frame for them. Ideal
+    bond lengths and the H-X-H angle from the restraints, the group oriented
+    by mmtbx.hydrogens.lone_parent_h (H-bonds to acceptors, clearance from
+    the rest of the model and its symmetry mates). They stay non-riding.
+    ignore: flex.bool of atoms left out of the environment (H about to be
+    removed). Returns the i_seqs placed.
+    '''
+    from mmtbx.hydrogens import lone_parent_h
+    atoms = self.model.get_hierarchy().atoms()
+    mon_lib_srv = self.model.get_mon_lib_srv()
+    by_parent = {}
+    for ih in iseqs:
+      parents = heavy_neighbors(ih)
+      if len(parents) != 1: continue
+      i0 = parents[0]
+      if heavy_neighbors(i0): continue
+      if dictionary_heavy_degree(mon_lib_srv, atoms[i0]) != 0: continue
+      by_parent.setdefault(i0, []).append(ih)
+    if not by_parent: return []
+    grm = self.model.get_restraints_manager().geometry
+    sites_cart = self.model.get_sites_cart()
+    targets = set(ih for hs in by_parent.values() for ih in hs)
+    dist_ideal, angle_ideal = {}, {}
+    bps, asu = grm.get_all_bond_proxies(sites_cart=sites_cart)
+    for p in bps:
+      for ih in set(p.i_seqs) & targets:
+        dist_ideal[ih] = p.distance_ideal
+    for p in grm.angle_proxies:
+      i, j, k = p.i_seqs
+      if i in targets and k in targets and j in by_parent:
+        angle_ideal[j] = p.angle_ideal
+    placed = []
+    for i0, hs in sorted(by_parent.items()):
+      hs = sorted(hs)
+      if any(ih not in dist_ideal for ih in hs): continue
+      sites = lone_parent_h.place(
+        parent_xyz   = sites_cart[i0],
+        bond_lengths = [dist_ideal[ih] for ih in hs],
+        angle        = angle_ideal.get(i0, lone_parent_h.TETRAHEDRAL),
+        environment  = lone_parent_h.environment(self.model, i0, hs,
+                                                 ignore=ignore))
+      for ih, xyz in zip(hs, sites):
+        sites_cart[ih] = xyz
         placed.append(ih)
     self.model.set_sites_cart(sites_cart)
     return placed
