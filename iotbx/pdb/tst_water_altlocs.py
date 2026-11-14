@@ -2,7 +2,6 @@
 alternates around waters; labels only, nothing else changes."""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
-from cctbx import crystal
 from iotbx.pdb import water_altlocs
 
 CRYST1 = "CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1\n"

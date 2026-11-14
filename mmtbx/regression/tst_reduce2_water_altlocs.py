@@ -4,11 +4,9 @@ two waters 0.8 A apart at occupancy 0.5 are conformers A and B, each with
 two H, instead of the "Bad clash(es)" Sorry; labels only (the non-H atoms
 keep their occupancies and B; the qmready regularization may move them). Without qmready nothing is labelled."""
 from __future__ import absolute_import, division, print_function
-import os
 import iotbx.pdb
 from scitbx import matrix
-from mmtbx.regression.tst_reduce2_capping import (run, check_sorry,
-  pdb_lys_asp_gly)
+from mmtbx.regression.tst_reduce2_capping import run, check_sorry, pdb_lys_asp_gly
 
 # ASP A 5 - GLY A 6 of pdb_lys_asp_gly (complete) and two waters near OD2 of
 # ASP 5 (12.531 8.382 6.067), 0.8 A apart, at occupancy 0.5 each

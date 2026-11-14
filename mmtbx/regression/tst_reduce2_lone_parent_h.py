@@ -5,7 +5,6 @@ they are placed as free H (mmtbx.hydrogens.lone_parent_h): ideal geometry,
 oriented by H-bonds and clearance, reported under their own heading, and the
 charge of 2PVB-like models is right (NH4+ counts +1)."""
 from __future__ import absolute_import, division, print_function
-import math
 import iotbx.pdb
 from scitbx import matrix
 from scitbx.array_family import flex
