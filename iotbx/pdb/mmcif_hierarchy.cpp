@@ -498,27 +498,13 @@ namespace iotbx { namespace pdb { namespace mmcif {
     typedef std::map<std::pair<std::string, std::string>, hierarchy::atom_group>
       atom_group_map;
 
-  } // namespace <anonymous>
-
-  hierarchy::root
-  build_hierarchy(atom_site_columns const& c)
-  {
-    const std::size_t n = c.atom_name.size();
-    check_lengths(c, n);
-    const bool have_model = c.model_num.size() != 0;
-    const bool have_ins = c.ins_code.size() != 0;
-    const bool have_group = c.group_pdb.size() != 0;
-    const bool have_segid = c.segid.size() != 0;
-    const bool have_break = c.auth_break.size() != 0;
-    const bool have_charge = c.formal_charge.size() != 0;
-    const bool have_aniso = c.aniso_id.size() != 0;
-    if (have_aniso && n != 0 && c.atom_id.size() == 0) {
-      throw std::invalid_argument(
-        "_atom_site_anisotrop present but _atom_site.id missing");
-    }
-    std::map<std::string, std::size_t> aniso_index;
-    std::vector<scitbx::sym_mat3<double> > aniso_uij;
-    if (have_aniso) {
+    //! The _atom_site_anisotrop rows as U, indexed by _atom_site_anisotrop.id
+    void
+    parse_aniso(
+      atom_site_columns const& c,
+      std::map<std::string, std::size_t>& aniso_index,
+      std::vector<scitbx::sym_mat3<double> >& aniso_uij)
+    {
       const std::size_t m = c.aniso_id.size();
       aniso_uij.reserve(m);
       af::shared<std::string> const* cols[6] = {
@@ -543,6 +529,58 @@ namespace iotbx { namespace pdb { namespace mmcif {
         aniso_index[c.aniso_id[r]] = r;   // last occurrence wins
       }
     }
+
+    //! s padded with blanks to width, as boost::format %-Ns (left) or %Ns
+    void
+    append_padded(
+      std::string& out, std::string const& s, std::size_t width, bool left)
+    {
+      std::size_t pad = s.size() < width ? width - s.size() : 0;
+      if (!left) out.append(pad, ' ');
+      out += s;
+      if (left) out.append(pad, ' ');
+    }
+
+    //! The anisotrop row of an atom, or m when it has none
+    std::size_t
+    aniso_row_for(
+      atom_site_columns const& c,
+      std::map<std::string, std::size_t> const& aniso_index,
+      std::size_t row,
+      std::string const& serial)
+    {
+      std::map<std::string, std::size_t>::const_iterator a
+        = aniso_index.find(c.atom_id[row]);
+      if (a == aniso_index.end()) {
+        // mmCIF written by cctbx from February 2013 to January 2015 has
+        // the hybrid-36 serial as the anisotrop id
+        a = aniso_index.find(strip_spaces(serial));
+      }
+      if (a == aniso_index.end()) return c.aniso_id.size();
+      return a->second;
+    }
+
+  } // namespace <anonymous>
+
+  hierarchy::root
+  build_hierarchy(atom_site_columns const& c)
+  {
+    const std::size_t n = c.atom_name.size();
+    check_lengths(c, n);
+    const bool have_model = c.model_num.size() != 0;
+    const bool have_ins = c.ins_code.size() != 0;
+    const bool have_group = c.group_pdb.size() != 0;
+    const bool have_segid = c.segid.size() != 0;
+    const bool have_break = c.auth_break.size() != 0;
+    const bool have_charge = c.formal_charge.size() != 0;
+    const bool have_aniso = c.aniso_id.size() != 0;
+    if (have_aniso && n != 0 && c.atom_id.size() == 0) {
+      throw std::invalid_argument(
+        "_atom_site_anisotrop present but _atom_site.id missing");
+    }
+    std::map<std::string, std::size_t> aniso_index;
+    std::vector<scitbx::sym_mat3<double> > aniso_uij;
+    if (have_aniso) parse_aniso(c, aniso_index, aniso_uij);
     hierarchy::root result;
     hierarchy::model model;
     hierarchy::chain chain;
@@ -658,14 +696,8 @@ namespace iotbx { namespace pdb { namespace mmcif {
         atom.set_fdp(v);
       }
       if (have_aniso) {
-        std::map<std::string, std::size_t>::const_iterator a
-          = aniso_index.find(c.atom_id[i]);
-        if (a == aniso_index.end()) {
-          // mmCIF written by cctbx from February 2013 to January 2015 has
-          // the hybrid-36 serial as the anisotrop id
-          a = aniso_index.find(strip_spaces(serial));
-        }
-        if (a != aniso_index.end()) atom.set_uij(aniso_uij[a->second]);
+        std::size_t a = aniso_row_for(c, aniso_index, i, serial);
+        if (a != c.aniso_id.size()) atom.set_uij(aniso_uij[a]);
       }
       prev_model = model_num;
       prev_auth = auth;
@@ -675,6 +707,149 @@ namespace iotbx { namespace pdb { namespace mmcif {
     }
     if (result.models_size() == 1) {
       result.models()[0].data->id = "";
+    }
+    return result;
+  }
+
+  atom_site_rows
+  parse_atom_site_rows(atom_site_columns const& c)
+  {
+    const std::size_t n = c.atom_name.size();
+    check_lengths(c, n);
+    const bool have_model = c.model_num.size() != 0;
+    const bool have_ins = c.ins_code.size() != 0;
+    const bool have_segid = c.segid.size() != 0;
+    const bool have_charge = c.formal_charge.size() != 0;
+    const bool have_aniso = c.aniso_id.size() != 0;
+    if (have_aniso && n != 0 && c.atom_id.size() == 0) {
+      throw std::invalid_argument(
+        "_atom_site_anisotrop present but _atom_site.id missing");
+    }
+    std::map<std::string, std::size_t> aniso_index;
+    std::vector<scitbx::sym_mat3<double> > aniso_uij;
+    if (have_aniso) parse_aniso(c, aniso_index, aniso_uij);
+    // the hierarchy starts a model where model_num changes and drops the
+    // id when there is one model
+    bool one_model = true;
+    for(std::size_t i=1;i<n && have_model;i++) {
+      if (c.model_num[i] != c.model_num[i-1]) {
+        one_model = false;
+        break;
+      }
+    }
+    atom_site_rows result;
+    result.label.reserve(n);
+    result.name.reserve(n);
+    result.element.reserve(n);
+    result.charge.reserve(n);
+    result.sites_cart.reserve(n);
+    result.b_iso.reserve(n);
+    result.occupancy.reserve(n);
+    result.fp.reserve(n);
+    result.fdp.reserve(n);
+    result.u_cart.reserve(n);
+    const scitbx::sym_mat3<double> no_uij(-1,-1,-1,-1,-1,-1);
+    for(std::size_t i=0;i<n;i++) {
+      std::string const model_num = have_model ? c.model_num[i] : std::string();
+      std::string const& auth = c.auth_asym_id[i];
+      check_cif_text(tags::label_asym_id, i, c.label_asym_id[i]);
+      std::string icode(" ");
+      if (have_ins) {
+        check_cif_text(tags::ins_code, i, c.ins_code[i]);
+        icode = c.ins_code[i];
+        if (icode == "?" || icode == ".") icode = " ";
+        if (icode.size() > 1) {
+          throw_cell_error(tags::ins_code, i,
+            "insertion code longer than one character", c.ins_code[i]);
+        }
+      }
+      if (have_model) check_cif_text(tags::model_num, i, model_num);
+      if (auth == "." || auth == "?" || auth == " ") {
+        throw_cell_error(tags::auth_asym_id, i,
+          "chain id is a null value", auth);
+      }
+      check_cif_text(tags::auth_asym_id, i, auth);
+      std::string const resseq = resseq_for(c.seq_id[i], i);
+      std::string altloc = c.alt_id[i];
+      if (altloc == "." || altloc == "?") altloc.clear();
+      check_cif_text(tags::alt_id, i, altloc);
+      check_cif_text(tags::comp_id, i, c.comp_id[i]);
+      std::string const resname = pad_resname(c.comp_id[i]);
+      check_cif_text(tags::type_symbol, i, c.type_symbol[i]);
+      if (c.type_symbol[i].size() > 2) {
+        throw_cell_error(tags::type_symbol, i,
+          "element longer than two characters", c.type_symbol[i]);
+      }
+      check_cif_text(tags::atom_name, i, c.atom_name[i]);
+      std::string const name
+        = format_atom_name(c.atom_name[i], c.type_symbol[i], i);
+      if (name.size() > 4) {
+        throw_cell_error(tags::atom_name, i,
+          "atom name longer than four characters", c.atom_name[i]);
+      }
+      result.sites_cart.push_back(scitbx::vec3<double>(
+        parse_or_throw("_atom_site.Cartn_x", c.cartn_x, i),
+        parse_or_throw("_atom_site.Cartn_y", c.cartn_y, i),
+        parse_or_throw("_atom_site.Cartn_z", c.cartn_z, i)));
+      result.b_iso.push_back(
+        parse_b_or_occ("_atom_site.B_iso_or_equiv", c.b_iso, i));
+      result.occupancy.push_back(
+        parse_b_or_occ("_atom_site.occupancy", c.occupancy, i));
+      std::string const serial = serial_for(c, i);
+      std::string segid("    ");
+      if (have_segid) {
+        check_cif_text(tags::segid, i, c.segid[i]);
+        segid = c.segid[i].substr(0, 4);
+        while (segid.size() < 4) segid += ' ';
+      }
+      std::string charge;
+      if (have_charge) {
+        std::string const& cell = c.formal_charge[i];
+        if (cell != "?" && cell != ".") charge = charge_for(cell, i);
+      }
+      double v;
+      // not a scatterer field: parsed for the errors of build_hierarchy
+      parse_optional("_atom_site.phenix_resolution", c.resolution, i, v);
+      double fp = 0;
+      double fdp = 0;
+      if (parse_optional(
+            "_atom_site.phenix_scat_dispersion_real", c.fp, i, v)) fp = v;
+      if (parse_optional(
+            "_atom_site.phenix_scat_dispersion_imag", c.fdp, i, v)) fdp = v;
+      result.fp.push_back(fp);
+      result.fdp.push_back(fdp);
+      scitbx::sym_mat3<double> uij = no_uij;
+      if (have_aniso) {
+        std::size_t a = aniso_row_for(c, aniso_index, i, serial);
+        if (a != c.aniso_id.size()) uij = aniso_uij[a];
+      }
+      result.u_cart.push_back(uij);
+      // atom_label_columns_formatter::format(true, true), without its
+      // boost::format calls, which would take most of the time here
+      std::string label;
+      label.reserve(52);
+      if (!one_model && model_num.size() != 0) {
+        label += "model=\"";
+        append_padded(label, model_num, 4, false);
+        label += "\" ";
+      }
+      label += "pdb=\"";
+      append_padded(label, name, 4, true);
+      append_padded(label, altloc.size() == 0 ? " " : altloc, 1, true);
+      append_padded(label, resname, 3, false);
+      append_padded(label, auth, 2, false);
+      append_padded(label, resseq, 4, false);
+      append_padded(label, icode, 1, false);
+      label += '"';
+      if (strip_spaces(segid).size() != 0) {
+        label += " segid=\"";
+        append_padded(label, segid, 4, true);
+        label += '"';
+      }
+      result.label.push_back(label);
+      result.name.push_back(name);
+      result.element.push_back(c.type_symbol[i]);
+      result.charge.push_back(charge);
     }
     return result;
   }

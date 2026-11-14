@@ -3,6 +3,8 @@
 
 #include <iotbx/pdb/hierarchy.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/vec3.h>
+#include <scitbx/sym_mat3.h>
 #include <string>
 
 namespace iotbx { namespace pdb { namespace mmcif {
@@ -94,6 +96,30 @@ namespace iotbx { namespace pdb { namespace mmcif {
    */
   hierarchy::root
   build_hierarchy(atom_site_columns const& columns);
+
+  //! The atoms of an _atom_site loop as the hierarchy would hold them.
+  /*! One entry per row, in row order. name, element and charge are the
+      hierarchy atom fields (the four-character name, the element and
+      charge as build_hierarchy sets them); label is the id_str of the
+      hierarchy atom; u_cart is (-1,-1,-1,-1,-1,-1) where the row has no
+      _atom_site_anisotrop entry.
+   */
+  struct atom_site_rows
+  {
+    af::shared<std::string> label, name, element, charge;
+    af::shared<scitbx::vec3<double> > sites_cart;
+    af::shared<double> b_iso, occupancy, fp, fdp;
+    af::shared<scitbx::sym_mat3<double> > u_cart;
+  };
+
+  //! The rows of build_hierarchy without the hierarchy.
+  /*! Every cell is parsed and checked as in build_hierarchy, with the same
+      errors; atoms are in row order, where the hierarchy groups each
+      residue's atoms by altloc. For an xray.structure without the
+      hierarchy (xray_structure_from_atom_site in iotbx.pdb.mmcif).
+   */
+  atom_site_rows
+  parse_atom_site_rows(atom_site_columns const& columns);
 
 }}} // namespace iotbx::pdb::mmcif
 
