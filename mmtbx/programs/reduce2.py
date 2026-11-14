@@ -217,7 +217,9 @@ qmready = False
   .help = Add H to water (as add_h_to_water=True), use longer XH distances, add OXT and terminal NH3 at all chain ends and breaks, \
           the terminal hydroxyl H of nucleic acids (HO3-prime at a 3-prime end, HO5-prime at a \
           5-prime OH end) and OP3 to a 5-prime phosphate that lacks it. Also complete residues whose conformers lack atoms \
-          their other conformers have (altloc completion), and regularize the \
+          their other conformers have (altloc completion), give altloc labels to unlabelled \
+          partial-occupancy alternates around waters (two waters, a water and a ligand, a water and \
+          one conformer of a split residue, within 2.2 A: labels only, scattering unchanged), and regularize the \
           geometry of the finished model: bond outliers and clashes are \
           minimized away with the smallest shift of the atoms \
           (mmtbx.model.manager.regularize_geometry), before the clash check and \
@@ -1223,7 +1225,9 @@ NOTES:
   qmready=True prepares a model for QM: H on water (as add_h_to_water=True), longer XH
   distances, OXT and NH3+ at chain ends and breaks, HO3' and HO5' at nucleic-acid chain
   ends and breaks, OP3 on a 5' phosphate that lacks it (a P with three O cannot be
-  capped with H), and the geometry of the finished model regularized: bond outliers and
+  capped with H), altloc labels for unlabelled partial-occupancy alternates around waters
+  (iotbx.pdb.water_altlocs: labels only, the scattering is unchanged), and the geometry of
+  the finished model regularized: bond outliers and
   clashes minimized away with the smallest shift (mmtbx.model.manager.regularize_geometry),
   before the clash check and the caps. As the very last step (capping=Auto, the default,
   resolves to True with qmready=True) every non-H atom left with an unsatisfied valence by
@@ -2737,6 +2741,22 @@ NOTES:
       'residue):'] + ['  ' + line for line in lines]
     return '\n'.join(lines) + '\n'
 
+  def _WaterAltlocsText(self):
+    # qmready=True: the Water alternates section of the description file,
+    # the labels given by label_water_alternates() and the overlaps left to
+    # the user, as printed to the log.
+    # :return: The description-file text ('' if nothing was labelled or
+    # reported).
+    r = getattr(self, '_water_altlocs', None)
+    if r is None or (r.n_labelled == 0 and not r.manual): return ''
+    lines = ['', 'Water alternates (altloc labels for unlabelled '
+      'partial-occupancy alternates; labels only, scattering unchanged): '
+      '%d labelled' % r.n_labelled]
+    lines += ['  %s -> altloc %s' % (label, altloc)
+              for label, altloc in r.labelled]
+    lines += ['  not labelled: ' + line for line in r.manual]
+    return '\n'.join(lines) + '\n'
+
   def _HNotPlacedText(self, model):
     # qmready=True: the residues of the finished model that miss H (an H
     # that placement dropped: no parameterization, a metal site, a link).
@@ -3180,6 +3200,15 @@ NOTES:
           file=self.logger)
         for line in lines:
           print("  " + line, file=self.logger)
+      # unlabelled partial-occupancy alternates around waters (two waters, a
+      # water and a uniformly partial ligand, a water and one conformer of a
+      # split residue, within 2.2 A) get altloc labels: labels only, so the
+      # scattering is unchanged; H placement and the clash check then see
+      # conformers instead of a clash (iotbx.pdb.water_altlocs)
+      self._water_altlocs = self.model.label_water_alternates(log=self.logger)
+      if self._water_altlocs.n_labelled:
+        print("Water alternates labelled: %d (labels only, scattering "
+          "unchanged)" % self._water_altlocs.n_labelled, file=self.logger)
       # make sure model is atom-complete. With capping=True a listing only:
       # the atoms left with a dangling bond are capped at the end
       if not self.model.is_atom_complete():
@@ -3502,6 +3531,7 @@ NOTES:
     self.total_charge = None
     if self.params.qmready:
       outString += self._AltlocCompletionText()
+      outString += self._WaterAltlocsText()
     if self.params.qmready and self.params.approach != 'remove':
       qm_model = self._RebuildModel(self.model.get_hierarchy().deep_copy(),
         make_restraints=True)

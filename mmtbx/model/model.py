@@ -5074,6 +5074,29 @@ class manager(object):
       self.reset_after_changing_hierarchy()
     return n_added
 
+  def label_water_alternates(self, distance_cutoff=2.2, log=None):
+    """
+    Give altloc labels to the unlabelled partial-occupancy alternates
+    around waters (iotbx.pdb.water_altlocs: two waters, a water and a
+    uniformly partial ligand, a water and one conformer of a split residue,
+    within distance_cutoff). Labels only: coordinates, occupancies and B
+    factors are unchanged, so the scattering is. Hierarchy changed when
+    anything was labelled: restraints are unset, call process() if needed.
+
+    Returns the water_altlocs.run() result (n_labelled, labelled, manual).
+    """
+    from iotbx.pdb import water_altlocs
+    result = water_altlocs.run(self._pdb_hierarchy, self.crystal_symmetry(),
+      distance_cutoff=distance_cutoff)
+    if log is not None:
+      for label, altloc in result.labelled:
+        print("Labelled %s as altloc %s" % (label, altloc), file=log)
+      for line in result.manual:
+        print("Not labelled: %s" % line, file=log)
+    if result.n_labelled > 0:
+      self.reset_after_changing_hierarchy()
+    return result
+
   def remove_hydrogens(self):
     if self.has_hd():
       noh_selection = self.selection("not (element H or element D)")

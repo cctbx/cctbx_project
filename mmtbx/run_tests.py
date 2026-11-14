@@ -551,6 +551,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_nh2_names.py",
   "$D/regression/tst_reduce2_amide_h_sides.py",
   "$D/regression/tst_reduce2_water_h.py",
+  "$D/regression/tst_reduce2_water_altlocs.py",
   "$D/regression/tst_reduce2_water_h_settings.py",
   "$D/regression/tst_reduce2_water_phantoms.py",
   "$D/regression/tst_reduce2_amine_nh2.py",

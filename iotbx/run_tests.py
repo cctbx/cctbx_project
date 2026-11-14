@@ -93,6 +93,7 @@ tst_list_base = [
   "$D/pdb/tst_hierarchy_flip_symmetric_2.py",
   "$D/pdb/tst_hierarchy_reconcile_altlocs.py",
   "$D/pdb/tst_altloc_completion.py",
+  "$D/pdb/tst_water_altlocs.py",
   "$D/regression/tst_selected_hierarchy_flip.py",
   "$D/pdb/tst_ext.py",
   "$D/pdb/tst_input_pickling.py",
