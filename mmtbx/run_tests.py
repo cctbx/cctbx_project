@@ -50,6 +50,7 @@ general_tests = [
   #
   "$D/regression/tst_mmtbx_refinement_wrappers.py",
   "$D/regression/tst_mmtbx_refinement_wrappers_1.py",
+  "$D/regression/tst_refinement_curvatures.py",
   #
   "$D/regression/tst_angle.py",
   "$D/regression/tst_holton_geometry_validation.py",
