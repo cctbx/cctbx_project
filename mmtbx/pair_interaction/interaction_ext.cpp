@@ -107,7 +107,9 @@ namespace {
                      af::shared<int> const&,
                      boost::python::list const&,
                      std::string const &,
-                     af::shared<bool> const&)) points_and_pairs, (
+                     af::shared<bool> const&,
+                     af::shared<vec3<double> > const&,
+                     bool)) points_and_pairs, (
        arg("ngrid"),
        arg("step_size"),
        arg("xyz"),
@@ -116,7 +118,9 @@ namespace {
        arg("element_flags"),
        arg("wfc_obj"),
        arg("silva_type"),
-       arg("residue_in_core")=af::shared<bool>()
+       arg("residue_in_core")=af::shared<bool>(),
+       arg("region_sites")=af::shared<vec3<double> >(),
+       arg("near_only")=false
        ))
    ;
 

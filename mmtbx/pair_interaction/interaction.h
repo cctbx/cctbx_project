@@ -444,12 +444,19 @@ class cell_list
   density interaction of type silva_type. Grid points step_size apart from
   xyz_min: a point is assigned to the pair of residues of its two nearest
   atoms (within 10 Bohr), and the pair interacts if the density at any of its
-  points does.
+  points does. The outcome at a point depends only on the point and the
+  atoms within 10 Bohr of it, so a caller may fix xyz_min and ngrid (a grid
+  shared by several hierarchies) instead of the bounding box of xyz.
   residue_in_core: indexed by residue index; when not empty, only pairs with
-  at least one residue in the core are examined. The other pairs are never
-  used by the callers, and a point farther than 10 Bohr from every core atom
-  cannot have a core atom among its nearest two, so the grid is restricted
-  to the core region (the grid points themselves do not move).
+  a core residue are searched (grid points within the cutoff of the core
+  atoms) and returned.
+  region_sites (Bohr): when not empty, a point within the cutoff of a region
+  site is "near", the others are "far"; the third component of a returned
+  pair is 1 when the pair has so far been found only at near points, 0 when
+  it was found at a far point. A pair first found near and later far is
+  emitted twice (1, then 0): the caller keeps the minimum. near_only skips
+  the far points. Without region_sites every point is far, the third
+  component is 0 and the result is the same as before these arguments.
 */
 af::shared<vec3<int> > points_and_pairs(
   vec3<int> const& ngrid,
@@ -460,15 +467,20 @@ af::shared<vec3<int> > points_and_pairs(
   af::shared<int> const& element_flags,
   boost::python::list const& wfc_obj,
   std::string const & silva_type,
-  af::shared<bool> const& residue_in_core
+  af::shared<bool> const& residue_in_core,
+  af::shared<vec3<double> > const& region_sites,
+  bool near_only
   )
 {
   const double cutoff = 10.0;
-  // Create 2x2 bool map with lengths being max residue number, init with false
+  // Residue pair states: 0 unseen, 1 found at near points only, 2 found at
+  // a far point (one byte per pair, indexed by the residue numbers)
   int max_air = af::max(atom_in_residue.const_ref());
-  af::versa<bool, af::c_grid<2> > pairs;
-  pairs.resize(af::c_grid<2>(max_air+1, max_air+1), false);
+  af::versa<signed char, af::c_grid<2> > pairs;
+  pairs.resize(af::c_grid<2>(max_air+1, max_air+1), 0);
   bool use_core = residue_in_core.size() > 0;
+  bool use_region = region_sites.size() > 0;
+  if(near_only && !use_region) return af::shared<vec3<int> >();
   if(use_core) MMTBX_ASSERT(residue_in_core.size() > max_air);
   std::vector<wfc> wfcs;
   for(std::size_t i=0; i < boost::python::len(wfc_obj); i++) {
@@ -498,6 +510,7 @@ af::shared<vec3<int> > points_and_pairs(
   }
 
   cell_list cells(xyz.const_ref(), xyz_min, cutoff);
+  cell_list region(region_sites.const_ref(), xyz_min, cutoff);
   af::shared<vec3<int> > interacting_pairs;
   for(int ix=lo[0]; ix <= hi[0]; ix++) {
     double stx = xyz_min[0]+ix*step_size;
@@ -508,6 +521,16 @@ af::shared<vec3<int> > points_and_pairs(
           stx,
           sty,
           xyz_min[2]+iz*step_size);
+        bool near = false;
+        if(use_region) {
+          std::vector<int> const& rc = region.candidates(point);
+          for(std::size_t c=0; c < rc.size() && !near; c++) {
+            vec3<double> diff = region_sites[rc[c]] - point;
+            near = diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2] <
+              cutoff*cutoff;
+          }
+          if(near_only && !near) continue;
+        }
         // int: the distances are compared truncated to whole Bohr^2 (atoms
         // closer than that count as equally near; kept as it always was)
         int first  = 999999;
@@ -541,16 +564,18 @@ af::shared<vec3<int> > points_and_pairs(
         if(use_core && !residue_in_core[ia1] && !residue_in_core[ia2]) continue;
 
         vec3<int> pair;
-        if(ia1<ia2) pair = vec3<int>(ia1, ia2, 0);
-        else        pair = vec3<int>(ia2, ia1, 0);
-        if(pairs(pair[0], pair[1]) == true) continue;
+        if(ia1<ia2) pair = vec3<int>(ia1, ia2, near ? 1 : 0);
+        else        pair = vec3<int>(ia2, ia1, near ? 1 : 0);
+        signed char state = pairs(pair[0], pair[1]);
+        if(state == 2) continue;
+        if(state == 1 && near) continue;
 
         density_props<double> density_props_obj = build_density_props_obj(
           point, xyz.const_ref(), element_flags.const_ref(), wfcs, candidates);
         bool has_interaction = density_props_obj.has_silva_interaction(silva_type);
 
         if(has_interaction) {
-          pairs(pair[0], pair[1])=true;
+          pairs(pair[0], pair[1]) = near ? 1 : 2;
           interacting_pairs.push_back(pair);
         }
   }}}
