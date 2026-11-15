@@ -10,7 +10,9 @@ from mmtbx.pair_interaction.tst_04 import pdb_str
 Interaction search of single-conformer views on a shared grid: the flags of
 points_and_pairs (near/far points of a region of differing atoms), the fixed
 grid of prepare/run_prepared, and run_prepared_views against independent
-per-view runs (exact by construction). Nothing is written to disk.
+per-view runs (exact by construction); the pairs of a whole hierarchy
+(interaction_pairs, views_pairs) and the fragment rule applied to them
+(fragment_from_pairs). Nothing is written to disk.
 """
 
 ALTLOC_RESIDUES = (4, 12, 21)   # side chains duplicated as A and B
@@ -182,11 +184,105 @@ def exercise_duplicates():
     assert got == expected, (core, got, expected)
     assert got[0][2] == got[1][2], core
 
+def mapped_pairs(view, silva_type, grid=None):
+  """interaction_pairs of one view in parent residue indices."""
+  res = view.residues
+  result = set()
+  for a, b in pair_interaction.interaction_pairs(view.prepared, silva_type,
+                                                 grid=grid):
+    pa, pb = res[a-1], res[b-1]
+    result.add((min(pa, pb), max(pa, pb)))
+  return result
+
+def exercise_pairs():
+  """The pairs of the whole hierarchy: the core-restricted search returns
+  exactly the pairs of the unrestricted search that touch the core, and
+  fragment_from_pairs applies the two-pass rule of run_prepared to them."""
+  ph = iotbx.pdb.input(source_info=None,
+    lines=flex.std_string(pdb_str.splitlines())).construct_hierarchy()
+  p = pair_interaction.prepare(ph)
+  air = list(p.atom_in_residue)
+  pairs = {}
+  for st in ("sedd", "dori"):
+    pairs[st] = pair_interaction.interaction_pairs(p, st)
+    assert len(pairs[st]) > 0
+    for core in CORES:
+      restricted = set(pair_interaction.get_interactions(p.ph, air,
+        silva_type=st, core=core, element_wfc_dict=p.element_wfc_dict))
+      expected = set([q for q in pairs[st] if q[0] in core or q[1] in core])
+      assert restricted == expected, (st, core, restricted, expected)
+  for core in CORES:
+    new_core = set(core)
+    for a, b in pairs["sedd"]:
+      if(a in core or b in core): new_core.update((a, b))
+    mols = set(new_core)
+    for a, b in pairs["dori"]:
+      if(a in core or b in core): mols.update((a, b))
+    assert len(mols) > len(core), core          # non-vacuous
+    got = pair_interaction.fragment_from_pairs(p, core, pairs["sedd"],
+                                               pairs["dori"])
+    atoms = lambda rs: sorted([i+1 for r in rs for i in p.residue_atoms[r-1]])
+    assert got == (atoms(core), atoms(mols), sorted(mols)), (core, got)
+  # against the two passes of run_prepared on the whole hierarchy (no core
+  # of this peptide has a 15 Bohr sub-selection keeping every atom, so
+  # run_prepared itself searches other points): its second pass searches
+  # around the new core and keeps the pairs touching the original core
+  for core in CORES:
+    sedd = pair_interaction.get_interactions(p.ph, air, silva_type="sedd",
+      core=core, element_wfc_dict=p.element_wfc_dict)
+    new_core = set(core)
+    for q in sedd:
+      if(set(q) & set(core)): new_core.update(q)
+    dori = pair_interaction.get_interactions(p.ph, air, silva_type="dori",
+      core=sorted(new_core), element_wfc_dict=p.element_wfc_dict)
+    mols = set(new_core)
+    for q in dori:
+      if(set(q) & set(core)): mols.update(q)
+    got = pair_interaction.fragment_from_pairs(p, core, pairs["sedd"],
+                                               pairs["dori"])
+    assert got[2] == sorted(mols), (core, got[2], sorted(mols))
+  # a core residue beyond the hierarchy contributes nothing (run_prepared)
+  got = pair_interaction.fragment_from_pairs(p, [1, 999], pairs["sedd"],
+                                             pairs["dori"])
+  assert got[0] == sorted([i+1 for i in p.residue_atoms[0]])
+  assert 999 in got[2] and 1 in got[2]
+
+def exercise_views_pairs():
+  """views_pairs equals the union over the views of independent searches
+  on the shared grid of all view atoms (views_grid without a core), with
+  either view as the reference; duplicate conformers give the pairs of
+  the single-conformer hierarchy on its own box, bit for bit."""
+  views = prepared_views(altloc_fixture())
+  g = pair_interaction.views_grid(views)
+  for st in ("sedd", "dori"):
+    per_view = [mapped_pairs(v, st, grid=g) for v in views]
+    expected = per_view[0] | per_view[1]
+    for vs in [views, views[::-1]]:
+      got = pair_interaction.views_pairs(vs, st)
+      assert got == expected, (st, got ^ expected)
+    assert per_view[0] != per_view[1], st             # non-vacuous
+    assert len([q for q in expected if 26 in q]) > 0  # HIS 26: B only
+  # one view: the search on its own box
+  assert pair_interaction.views_pairs(views[:1], "dori") == \
+    mapped_pairs(views[0], "dori")
+  # a view without atoms contributes nothing
+  empty = group_args(prepared=pair_interaction.prepare(
+    iotbx.pdb.hierarchy.root()), iselection=flex.size_t(), residues=[])
+  assert pair_interaction.views_pairs(views + [empty], "dori") == \
+    pair_interaction.views_pairs(views, "dori")
+  views = prepared_views(altloc_fixture(shift=0.0, b_only=False))
+  for st in ("sedd", "dori"):
+    single = mapped_pairs(views[0], st)
+    assert mapped_pairs(views[1], st) == single
+    assert pair_interaction.views_pairs(views, st) == single, st
+
 def run():
   exercise_flags()
   exercise_grid()
   exercise_views()
   exercise_duplicates()
+  exercise_pairs()
+  exercise_views_pairs()
 
 if(__name__ == "__main__"):
   t0 = time.time()

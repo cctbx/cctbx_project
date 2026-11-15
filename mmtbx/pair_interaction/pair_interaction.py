@@ -265,15 +265,21 @@ def _union_box(views, vc):
   if(xyz.size() == 0): return None
   return group_args(xyz_min=xyz.min(), xyz_max=xyz.max())
 
-def views_grid(views, core):
+def views_grid(views, core=None):
   """
   The grid run_prepared_views(views, core) searches every view on: the
   bounding box (Bohr) of the union over the views of the atoms within 15
-  Bohr of the core (_core_selection). Views of duplicate conformers (same
+  Bohr of the core (_core_selection); without a core (views_pairs), the
+  box of all atoms of all views. Views of duplicate conformers (same
   coordinates) get the box run_prepared alone would use, so their results
   are those of the single-conformer hierarchy, bit for bit.
-  None when no view has a residue of the core.
+  None when no view has a residue of the core (or an atom).
   """
+  if(core is None):
+    xyz = flex.vec3_double()
+    for v in views: xyz.extend(v.prepared.xyz)
+    if(xyz.size() == 0): return None
+    return group_args(xyz_min=xyz.min(), xyz_max=xyz.max())
   return _union_box(views, _view_cores(views, core))
 
 def run_prepared_views(views, core):
@@ -385,6 +391,139 @@ def run_prepared_views(views, core):
       atoms.extend([isel[j]+1 for j in residue_atoms[to_view[i][m]-1]])
     result[i] = (sorted([isel[j]+1 for j in sel[i].core_atoms]),
                  sorted(atoms), sorted(mols))
+  return result
+
+def interaction_pairs(prepared, silva_type, grid=None):
+  """
+  The interacting residue pairs of a whole prepared hierarchy.
+
+  Parameters
+  ----------
+  prepared : libtbx.group_args
+      The result of prepare(ph).
+  silva_type : str
+      'sedd' (step 0.3 A: the pass of run_prepared that extends the core)
+      or 'dori' (step 0.5 A: the pass that adds the buffer).
+  grid : libtbx.group_args, optional
+      xyz_min, xyz_max (Bohr), as run_prepared.
+
+  Returns
+  -------
+  set of tuple
+      (i, j), i < j, 1-based residue group indices in ph.
+  """
+  step = {'sedd': 0.3, 'dori': 0.5}[silva_type]*A2B
+  return set(_grid_search(prepared.ph, list(prepared.atom_in_residue), step,
+    silva_type, None, prepared.element_wfc_dict, grid=grid))
+
+def partner_map(pairs):
+  """{residue: set of its partners} of a set of pairs (interaction_pairs)."""
+  result = {}
+  for a, b in pairs:
+    result.setdefault(a, set()).add(b)
+    result.setdefault(b, set()).add(a)
+  return result
+
+def fragment_residues(core, sedd, dori):
+  """
+  The rule of run_prepared applied to the pairs of the whole hierarchy:
+  new_core, the core and its sedd partners; fragment, new_core and the
+  dori partners of the core. The points that give a pair touching a core
+  residue lie within 10 Bohr of a core atom, so on one grid the
+  core-restricted search of run_prepared finds the same pairs as the
+  whole-hierarchy search. run_prepared alone differs through its 15 Bohr
+  sub-selection around the core, which truncates the environment of the
+  points near its edge and sets the grid origin (its bounding box). One
+  search per pass for the whole hierarchy then serves every core
+  (fragmentation: one super sphere, many clusters).
+
+  Parameters
+  ----------
+  core : list of int
+      1-based residue group indices.
+  sedd, dori : dict
+      partner_map of the sedd and dori pairs.
+
+  Returns
+  -------
+  tuple of set
+      (new_core, fragment): 1-based residue group indices.
+  """
+  new_core = set(core)
+  for r in core: new_core |= sedd.get(r, set())
+  fragment = set(new_core)
+  for r in core: fragment |= dori.get(r, set())
+  return new_core, fragment
+
+def fragment_from_pairs(prepared, core, sedd_pairs, dori_pairs):
+  """
+  run_prepared(prepared, core) from the pairs of the whole hierarchy
+  (interaction_pairs, 'sedd' and 'dori'; fragment_residues): (core atoms,
+  fragment atoms, fragment residues), sorted lists, atoms 1-based positions
+  in ph. A core residue beyond the hierarchy has no atoms.
+  """
+  new_core, fragment = fragment_residues(core, partner_map(sedd_pairs),
+                                         partner_map(dori_pairs))
+  def atoms(residues):
+    result = []
+    for r in residues:
+      if(r <= prepared.n_residues):
+        result.extend([i+1 for i in prepared.residue_atoms[r-1]])
+    return sorted(result)
+  return (atoms(set(core)), atoms(fragment), sorted(fragment))
+
+def views_pairs(views, silva_type):
+  """
+  interaction_pairs of several single-conformer views of one parent
+  hierarchy, united in parent residue indices, every view on one shared
+  grid (views_grid(views)): the first view is searched in full, the others
+  only at the grid points within 10 Bohr of an atom that differs between
+  the views; a far point sees the same atoms in every view and gives the
+  same pair (run_prepared_views, with the whole views as the searched
+  part), so the result is the union of the views' independent searches on
+  that grid.
+
+  Parameters
+  ----------
+  views : list of libtbx.group_args
+      prepared, iselection, residues, as run_prepared_views; a view
+      without atoms contributes nothing.
+  silva_type : str
+      As interaction_pairs.
+
+  Returns
+  -------
+  set of tuple
+      (i, j), i < j, 1-based parent residue group indices.
+  """
+  result = set()
+  views = [v for v in views if v.prepared.xyz.size() > 0]
+  if(len(views) == 0): return result
+  grid = views_grid(views)
+  # the differing atoms (region): the parent atoms not in every view
+  n_parent = max([flex.max(v.iselection) for v in views]) + 1
+  count = flex.int(n_parent, 0)
+  for v in views:
+    count.set_selected(v.iselection, count.select(v.iselection) + 1)
+  differing = count < len(views)
+  region = flex.vec3_double()
+  seen = flex.bool(n_parent, False)
+  for v in views:
+    isel = v.iselection
+    take = differing.select(isel) & ~seen.select(isel)
+    region.extend(v.prepared.xyz.select(take))
+    seen.set_selected(isel.select(take), True)
+  if(region.size() == 0): region = None
+  step = {'sedd': 0.3, 'dori': 0.5}[silva_type]*A2B
+  for i, v in enumerate(views):
+    if(i > 0 and region is None): break
+    d = _grid_search(v.prepared.ph, list(v.prepared.atom_in_residue), step,
+      silva_type, None, v.prepared.element_wfc_dict, grid=grid,
+      region_sites=region, near_only=(i > 0))
+    res = v.residues
+    for a, b in d:
+      pa, pb = res[a-1], res[b-1]
+      result.add((min(pa, pb), max(pa, pb)))
   return result
 
 def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
