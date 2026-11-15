@@ -109,6 +109,7 @@ tst_list = [
   ["$D/regression/tst_grouped_data.py", "P31"],
   ["$D/regression/tst_miller_fft_map.py", "P31"],
   ["$D/regression/tst_sampled_model_density.py", "P31"],
+  "$D/regression/tst_xray_sf_of_parts.py",
   ["$D/regression/tst_fast_nv1995.py", "F222"],
   "$D/regression/tst_geometry_restraints.py",
   "$D/regression/tst_geometry_restraints_lbfgs.py",

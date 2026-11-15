@@ -32,7 +32,8 @@ namespace {
                            bool,
                            double const&,
                            bool,
-                           int> >(
+                           int,
+                           double const&> >(
           (arg("unit_cell"),
            arg("scatterers"),
            arg("scattering_type_registry"),
@@ -45,7 +46,8 @@ namespace {
            arg("sampled_density_must_be_positive")=false,
            arg("tolerance_positive_definite")=1.e-5,
            arg("use_u_base_as_u_extra")=false,
-           arg("store_grid_indices_for_each_scatterer")=0)))
+           arg("store_grid_indices_for_each_scatterer")=0,
+           arg("rho_cutoff")=0)))
         .def("real_map", &w_t::real_map)
         .def("complex_map", &w_t::complex_map)
         .def("eliminate_u_extra_and_normalize",

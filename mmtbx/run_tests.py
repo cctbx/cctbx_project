@@ -379,6 +379,7 @@ general_tests = [
   "$D/regression/tst_loop_closure.py",
   "$D/utils/tst_switch_rotamers.py",
   "$D/refinement/tst_occupancy_selections.py",
+  "$D/refinement/tst_occupancies.py",
   "$D/regression/ncs/tst_minimization_ncs_constraints.py",
   "$D/regression/ncs/tst_minimization_ncs_constraints2.py",
   "$D/regression/ncs/tst_minimization_ncs_constraints3.py",
