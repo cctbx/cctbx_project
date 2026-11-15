@@ -121,7 +121,7 @@ geo_strings = {'ASP' :
    3 : '''nonbonded pdb=" OD1 ASP A 270 "
           pdb=" HD2 ASP A 270 "
    model   vdw
-   2.475 2.056''',
+   2.475 1.576''',
   },
                'ASP_D' :
   {

@@ -157,6 +157,7 @@ general_tests = [
   "$D/monomer_library/tst_selection.py",
   "$D/monomer_library/tst_tyr_from_gly_and_bnz.py",
   "$D/monomer_library/tst_pdb_interpretation.py",
+  "$D/monomer_library/tst_nonbonded_h_bond_shrink.py",
   "$D/monomer_library/tst_pdb_interpretation_3.py",
   "$D/monomer_library/tst_pdb_interpretation_5.py",
   "$D/monomer_library/tst_rna_dna_interpretation.py",

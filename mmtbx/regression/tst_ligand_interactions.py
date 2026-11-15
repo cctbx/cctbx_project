@@ -2484,8 +2484,9 @@ def exercise_hbond_floor():
   An H-bond entry whose D...A is below pnp's minimum (d_DA_cutoff[0]) is a clash,
   subtype "too short for an H-bond", its H-bond geometry (probe2's hb dots) kept.
   EDO 1 O1-HO1...EDO 2 O1, D...A 2.86 A:
-  (a) the minimum raised to 2.9: pnp drops the H-bond and calls HO1...O1 a clash;
-      that clash takes the subtype (no second entry);
+  (a) the minimum raised to 2.9: pnp drops the H-bond; HO1...O1 at 2.01 A is not
+      a pnp overlap (polar H...acceptor minimum 1.85 A), so the clash comes from
+      probe2's hb dots alone and takes the subtype (no second entry);
   (b) EDO 2 moved to D...A 2.30 (default minimum 2.4): the same, as in 8VZ0 B;
   (c) EDO 2 moved out by 0.1 A (D...A 2.96), minimum 3.2: pnp has no clash there,
       so a new clash entry O1...O1 from probe2's hb alone.
@@ -2496,12 +2497,12 @@ def exercise_hbond_floor():
   n = math.sqrt(sum([x * x for x in u]))
   u = [x / n for x in u]
   pair = set(['A EDO 1 HO1', 'A EDO 1 O1'])
-  def check_merged(m, d_DA, d_DA_min):
+  def check_merged(m, d_DA, d_DA_min, sources):
     assert [e for e in m.entries if e['type'] == 'hbond' and 'A EDO 2 O1' in e['labels']] == []
     c = _floor_entries(m)
     assert len(c) == 1, [(e['type'], e['labels']) for e in m.entries if e['type'] == 'clash']
     c = c[0]
-    assert c['type'] == 'clash' and 'pnp' in c['sources'], c
+    assert c['type'] == 'clash' and c['sources'] == sources, c
     assert 'A EDO 2 O1' in c['labels'] and set(c['labels']) & pair, c['labels']
     g = c['geometry']['hbond']
     assert approx_equal(g['d_DA'], d_DA, eps=0.01) and g['d_DA_min'] == d_DA_min
@@ -2512,11 +2513,11 @@ def exercise_hbond_floor():
       e['labels'] and set(e['labels']) & pair]) == 1
   # (a)
   m = _floor_manager(get_model(), 2.9)
-  check_merged(m, 2.861, 2.9)
+  check_merged(m, 2.861, 2.9, sources=['probe2'])
   assert m.counts().per_type['clash:%s' % LI.too_short_hbond] == 1
   # (b)
   shift = [o + 2.30 * x - a for o, x, a in zip(o1, u, a0)]
-  check_merged(_floor_manager(_edo2_moved(shift)), 2.30, 2.4)
+  check_merged(_floor_manager(_edo2_moved(shift)), 2.30, 2.4, sources=['pnp'])
   # (c)
   m = _floor_manager(_edo2_moved([0.1 * x for x in u]), 3.2)
   assert [e for e in m.entries if e['type'] == 'hbond' and 'A EDO 2 O1' in e['labels']] == []

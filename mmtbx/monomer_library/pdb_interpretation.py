@@ -512,6 +512,16 @@ master_params_str = """\
     .optional=False
     .expert_level=3
     .help = **EXPERIMENTAL, developers only**
+  const_shrink_hydrogen_acceptor = 0.6
+    .type=float
+    .optional=False
+    .expert_level=3
+    .short_caption = Shrink of polar H ... acceptor nonbonded distance
+    .help = Nonbonded minimum distance between a polar hydrogen (bonded to \
+      N, O or S) and a hydrogen-bond acceptor is the sum of the vdW radii \
+      minus this value, so that hydrogen bonds are not scored as clashes. \
+      Affects only models with explicit hydrogens. 0 restores the plain \
+      radius sum (e.g. H...O 2.45 A instead of 1.85 A).
   vdw_1_4_factor = 0.8
     .type=float
     .optional=False
@@ -2666,7 +2676,8 @@ def ener_lib_as_nonbonded_params(
       default_distance,
       minimum_distance,
       const_shrink_donor_acceptor,
-      use_lib_vdw=False):
+      use_lib_vdw=False,
+      const_shrink_hydrogen_acceptor=0):
   params = geometry_restraints.nonbonded_params(
     factor_1_4_interactions=factor_1_4_interactions,
     const_shrink_1_4_interactions=0,
@@ -2716,6 +2727,29 @@ def ener_lib_as_nonbonded_params(
       params.donor_acceptor_table[atom_type] = 3
     elif getattr(energy_lib_atom, "hb_type") == 'H':
       params.donor_acceptor_table[atom_type] = 4
+  if (const_shrink_hydrogen_acceptor != 0):
+    # Polar H ... acceptor pairs (hydrogen bonds) are allowed to approach
+    # closer than the vdW radius sum. Explicit distance_table entries take
+    # precedence over the radius sum in get_nonbonded_distance(). Heavy
+    # donor/acceptor pairs are left alone, so models without hydrogens are
+    # unaffected.
+    polar_h = []
+    acceptors = []
+    for atom_type, energy_lib_atom in ener_lib.lib_atom.items():
+      if (len(atom_type) == 0): continue
+      if (atom_type not in params.radius_table): continue
+      hb_type = getattr(energy_lib_atom, "hb_type")
+      if (hb_type == 'H'):
+        polar_h.append(atom_type)
+      elif (hb_type in ['A', 'B']):
+        acceptors.append(atom_type)
+    for h_type in polar_h:
+      r_h = params.radius_table[h_type]
+      table = params.distance_table.setdefault(h_type)
+      for a_type in acceptors:
+        if (a_type in table): continue # e.g. from use_lib_vdw
+        table[a_type] = r_h + params.radius_table[a_type] \
+          - const_shrink_hydrogen_acceptor
   return params
 
 def is_same_model_as_before(model_type_indices, i_model, models):
@@ -5881,7 +5915,9 @@ class build_all_chain_proxies(linking_mixins):
       factor_1_4_interactions=self.params.vdw_1_4_factor,
       default_distance=self.params.default_vdw_distance,
       minimum_distance=self.params.min_vdw_distance,
-      const_shrink_donor_acceptor=self.params.const_shrink_donor_acceptor)
+      const_shrink_donor_acceptor=self.params.const_shrink_donor_acceptor,
+      const_shrink_hydrogen_acceptor=
+        self.params.const_shrink_hydrogen_acceptor)
     if(self.params.nonbonded_weight is None):
       nonbonded_weight = 100 # c_rep in prolsq repulsion function
       if(assume_hydrogens_all_missing):
