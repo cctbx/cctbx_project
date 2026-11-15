@@ -90,14 +90,34 @@ def site_key(atom, parent_altloc, residue_part=None):
   if residue_part is None: residue_part = _residue_part(atom.parent())
   return residue_part + (parent_altloc, normalized_name(atom))
 
+def rename_entry(part, parent_altloc, moves):
+  """The entry of rekey_records() for the renames moves, [(old name, new
+  name)] made at once in one residue part: (part, parent altloc, old, new)
+  for one rename or a swap of two names, else (part, parent altloc,
+  ((old, new), ...)), a permutation."""
+  moves = tuple((old, new) for old, new in moves)
+  if len(moves) == 1 or (len(moves) == 2 and moves[0] == moves[1][::-1]):
+    return (part, parent_altloc) + moves[0]
+  return (part, parent_altloc, moves)
+
 def rekey_records(records, renames):
   """records (site_key -> values) after placement renamed input H.
-  renames: (residue part, parent altloc, old name, new name) in the order
-  made (place_hydrogens.renamed_existing_h). Each exchanges the two names:
-  both recorded -> the records swap; one recorded -> it moves to the other
-  name. Returns a new dict."""
+  renames: in the order made (place_hydrogens.renamed_existing_h), each
+  (residue part, parent altloc, old name, new name), which exchanges the two
+  names (both recorded -> the records swap; one recorded -> it moves to the
+  other name), or (residue part, parent altloc, ((old, new), ...)), a
+  permutation applied at once: each recorded old name moves to its new name.
+  Returns a new dict."""
   result = dict(records)
-  for part, parent_altloc, old, new in renames:
+  for entry in renames:
+    if len(entry) == 3:
+      part, parent_altloc, moves = entry
+      values = [(new, result.pop(part + (parent_altloc, old), None))
+        for old, new in moves]
+      for new, value in values:
+        if value is not None: result[part + (parent_altloc, new)] = value
+      continue
+    part, parent_altloc, old, new = entry
     key_old, key_new = part + (parent_altloc, old), part + (parent_altloc, new)
     value_old, value_new = result.pop(key_old, None), result.pop(key_new, None)
     if value_old is not None: result[key_new] = value_old

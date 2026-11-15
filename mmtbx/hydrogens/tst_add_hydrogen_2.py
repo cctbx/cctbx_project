@@ -40,6 +40,9 @@ def test_001():
 def test_002():
   '''
     Test if multi-model file is supported
+    GLY N-H at a chain start: its torsion C-CA-N-H (171.01, period 3) is
+    met, at the minimum nearest the seed (51 deg; before, -51 deg, 18 deg off
+    the minimum -69, from a reordered proxy)
   '''
   compare_models(pdb_str = pdb_str_002)
 
@@ -80,6 +83,9 @@ def test_006():
 def test_007():
   '''
     Check if mmCIF file format works
+    GLY N-H after a chain break: its torsion C-CA-N-H (171.01, period 3) is
+    met, at the minimum nearest the seed (51 deg; before, -51 deg, 18 deg off
+    the minimum -69, from a reordered proxy)
   '''
   compare_models(pdb_str = pdb_str_007)
 
@@ -243,7 +249,7 @@ ATOM      1  N   GLY A  -3      14.573   7.304   5.082  1.00 23.20           N
 ATOM      2  CA  GLY A  -3      15.503   6.752   6.050  1.00 43.12           C
 ATOM      3  C   GLY A  -3      16.822   7.516   6.092  1.00 10.33           C
 ATOM      4  O   GLY A  -3      17.833   7.000   5.608  1.00 34.23           O
-ATOM      5  H   GLY A  -3      14.453   8.152   5.157  1.00 23.20           H
+ATOM      5  H   GLY A  -3      14.908   7.413   4.298  1.00 23.20           H
 ATOM      6  HA2 GLY A  -3      15.103   6.784   6.933  1.00 43.12           H
 ATOM      7  HA3 GLY A  -3      15.692   5.828   5.822  1.00 43.12           H
 ATOM      8  N   PRO A  -2      16.855   8.759   6.667  1.00 43.42           N
@@ -277,7 +283,7 @@ ATOM      1  N   GLY A  -3      15.598  12.155  12.730  1.00 23.20           N
 ATOM      2  CA  GLY A  -3      15.801  13.217  11.761  1.00 43.12           C
 ATOM      3  C   GLY A  -3      15.603  12.746  10.322  1.00 10.33           C
 ATOM      4  O   GLY A  -3      14.940  11.727  10.105  1.00 34.23           O
-ATOM      5  H   GLY A  -3      14.858  11.727  12.631  1.00 23.20           H
+ATOM      5  H   GLY A  -3      16.043  11.439  12.562  1.00 23.20           H
 ATOM      6  HA2 GLY A  -3      15.172  13.934  11.936  1.00 43.12           H
 ATOM      7  HA3 GLY A  -3      16.704  13.561  11.848  1.00 43.12           H
 ATOM      8  N   PRO A  -2      16.164  13.467   9.301  1.00 43.42           N
@@ -514,7 +520,7 @@ ATOM   594 N N   . GLY A 1 75 ? 41.165 35.531 31.898 0.25 36.31 ? 75  GLY A N   
 ATOM   595 C CA  . GLY A 1 75 ? 41.845 36.550 32.686 0.25 36.07 ? 75  GLY A CA  1
 ATOM   596 C C   . GLY A 1 75 ? 41.251 37.941 32.588 0.25 36.16 ? 75  GLY A C   1
 ATOM   597 O O   . GLY A 1 75 ? 41.102 38.523 31.500 0.25 36.26 ? 75  GLY A O   1
-ATOM   598 H H   . GLY A 1 75 ? 40.314 35.502 32.022 0.25 36.31 ? 75  GLY A H   1
+ATOM   598 H H   . GLY A 1 75 ? 41.045 35.748 31.074 0.25 36.31 ? 75  GLY A H   1
 ATOM 599 H HA2 . GLY A 1 75 ? 41.823 36.286 33.619 0.25 36.07 ? 75 GLY A HA3 1
 ATOM 600 H HA3 . GLY A 1 75 ? 42.768 36.603 32.393 0.25 36.07 ? 75 GLY A HA2 1
 ATOM   601 N N   . GLY A 1 76 ? 40.946 38.472 33.757 0.25 36.05 ? 76  GLY A N   1

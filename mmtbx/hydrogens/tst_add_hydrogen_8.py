@@ -53,6 +53,8 @@ def test_002():
     1eko : AYA is residue number 1. This molecule has a N nitrogen atom but
     only a single H atom (not a propeller) because it is not at the end of the
     molecule.
+    Methyl HM1-3 meet the torsion N-CM-CT-HM1 (-127.97, period 3; before
+    16 deg off, from a reordered proxy).
   '''
   compare_models(pdb_str = pdb_str_002)
 
@@ -64,6 +66,9 @@ def test_003():
     only CONST (period=0, ESD=0) torsions as third-neighbor source. They
     are placed correctly via the CONST-proxy connectivity path; pre-fix
     they were silently dropped.
+    The methyl H (H1A..H1DB) meet their period-3 torsions (before 1.6-4.2
+    deg off); which of the three sites carries which name follows the seed
+    and is not fixed by the restraints.
   '''
   compare_models(pdb_str  = pdb_str_003,
                  contains = 'HN1A')
@@ -155,9 +160,9 @@ HETATM   10  HA  AYA A   1       7.886   6.268  11.455  1.00 77.17           H
 HETATM   11  HB1 AYA A   1       6.007   7.584  10.896  1.00 77.63           H
 HETATM   12  HB2 AYA A   1       6.923   8.414  11.858  1.00 77.63           H
 HETATM   13  HB3 AYA A   1       6.937   8.704  10.318  1.00 77.63           H
-HETATM   14  HM1 AYA A   1       9.365   5.148  11.655  1.00 79.53           H
-HETATM   15  HM2 AYA A   1      10.877   5.000  11.213  1.00 79.53           H
-HETATM   16  HM3 AYA A   1      10.520   5.287  12.728  1.00 79.53           H
+HETATM   14  HM1 AYA A   1       9.456   5.103  11.423  1.00 79.53           H
+HETATM   15  HM2 AYA A   1      11.037   5.027  11.408  1.00 79.53           H
+HETATM   16  HM3 AYA A   1      10.270   5.305  12.765  1.00 79.53           H
 ATOM     17  N   SER A   2       7.170   6.983   8.504  1.00 72.40           N
 ATOM     18  CA  SER A   2       7.016   6.502   7.133  1.00 67.69           C
 ATOM     19  C   SER A   2       7.368   7.668   6.208  1.00 63.08           C
@@ -203,22 +208,22 @@ HETATM   22  C1S EKB A   1       1.661  -0.565   1.268  1.00 20.00           C
 HETATM   23  C1V EKB A   1       3.307   1.048   0.580  1.00 20.00           C
 HETATM   24  C1W EKB A   1       3.123  -1.068  -0.575  1.00 20.00           C
 HETATM   25  C1Y EKB A   1       3.732   0.181  -0.430  1.00 20.00           C
-HETATM   26  H1A EKB A   1      -4.978  -2.938   0.774  1.00 20.00           H
-HETATM   27  H1B EKB A   1       3.660   2.799   2.535  1.00 20.00           H
-HETATM   28  H1C EKB A   1       3.093  -3.684  -1.012  1.00 20.00           H
-HETATM   29  H1D EKB A   1       6.127  -0.774  -0.782  1.00 20.00           H
+HETATM   26  H1A EKB A   1      -3.413  -2.860   1.128  1.00 20.00           H
+HETATM   27  H1B EKB A   1       2.637   3.430   1.525  1.00 20.00           H
+HETATM   28  H1C EKB A   1       2.075  -3.023  -2.029  1.00 20.00           H
+HETATM   29  H1D EKB A   1       6.265   0.604  -0.006  1.00 20.00           H
 HETATM   30  H1I EKB A   1       1.962   1.242   2.098  1.00 20.00           H
 HETATM   31  H1J EKB A   1       1.662  -2.263   0.186  1.00 20.00           H
 HETATM   32  H1K EKB A   1      -3.844  -1.003   2.528  1.00 20.00           H
 HETATM   33  H1L EKB A   1       0.584  -0.508   3.019  1.00 20.00           H
-HETATM   34 H1AA EKB A   1      -3.434  -2.846   1.067  1.00 20.00           H
-HETATM   35 H1AB EKB A   1      -4.429  -3.259   2.214  1.00 20.00           H
-HETATM   36 H1BA EKB A   1       4.082   3.970   1.599  1.00 20.00           H
-HETATM   37 H1BB EKB A   1       2.630   3.410   1.541  1.00 20.00           H
-HETATM   38 H1CA EKB A   1       2.063  -3.026  -1.979  1.00 20.00           H
-HETATM   39 H1CB EKB A   1       3.415  -3.569  -2.533  1.00 20.00           H
-HETATM   40 H1DA EKB A   1       6.713   0.500  -1.467  1.00 20.00           H
-HETATM   41 H1DB EKB A   1       6.244   0.560   0.020  1.00 20.00           H
+HETATM   34 H1AA EKB A   1      -4.494  -3.262   2.199  1.00 20.00           H
+HETATM   35 H1AB EKB A   1      -4.934  -2.921   0.727  1.00 20.00           H
+HETATM   36 H1BA EKB A   1       3.636   2.790   2.534  1.00 20.00           H
+HETATM   37 H1BB EKB A   1       4.099   3.959   1.616  1.00 20.00           H
+HETATM   38 H1CA EKB A   1       3.448  -3.590  -2.501  1.00 20.00           H
+HETATM   39 H1CB EKB A   1       3.049  -3.665  -0.996  1.00 20.00           H
+HETATM   40 H1DA EKB A   1       6.111  -0.770  -0.729  1.00 20.00           H
+HETATM   41 H1DB EKB A   1       6.708   0.452  -1.494  1.00 20.00           H
 HETATM   42 H1KA EKB A   1      -5.370  -1.080   2.183  1.00 20.00           H
 HETATM   43 H1LA EKB A   1       0.529  -1.906   2.342  1.00 20.00           H
 HETATM   44 HN1A EKB A   1      -6.997   0.933  -1.557  1.00 20.00           H

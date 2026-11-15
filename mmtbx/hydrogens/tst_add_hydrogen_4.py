@@ -32,6 +32,9 @@ def test_001():
 def test_002():
   '''
   ADM linked to GLY. Make sure HA2 is tetrahedral.
+  GLY N-H at a chain start: its torsion C-CA-N-H (171.01, period 3) is
+  met, at the minimum nearest the seed (51 deg; before, -51 deg, 18 deg off
+  the minimum -69, from a reordered proxy)
   '''
   compare_models(pdb_str = pdb_str_002)
 
@@ -127,7 +130,7 @@ ATOM      1  N   GLY B  10       2.957 -10.749  -1.364  1.00 22.36           N
 ATOM      2  CA  GLY B  10       2.830 -10.787  -2.810  1.00 23.42           C
 ATOM      3  C   GLY B  10       3.228 -12.114  -3.425  1.00 21.76           C
 ATOM      4  O   GLY B  10       2.672 -12.516  -4.453  1.00 20.78           O
-ATOM      5  H   GLY B  10       2.574 -11.405  -0.962  1.00 22.36           H
+ATOM      5  H   GLY B  10       3.723 -11.009  -1.073  1.00 22.36           H
 ATOM      6  HA2 GLY B  10       1.884 -10.688  -3.000  1.00 23.42           H
 TER
 HETATM    8  C1  ADM B 101       3.506  -9.585  -3.485  1.00 29.99           C

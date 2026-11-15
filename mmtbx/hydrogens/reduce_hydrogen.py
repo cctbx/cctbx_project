@@ -18,7 +18,7 @@ from cctbx.geometry_restraints.linking_class import linking_class
 from cctbx.maptbx.box import shift_and_box_model
 # residue part of hd_exchange.site_key(), for the log of renamed input H
 from mmtbx.hydrogens.hd_exchange import residue_part, residue_parts
-from mmtbx.hydrogens.hd_exchange import normalized_name
+from mmtbx.hydrogens.hd_exchange import normalized_name, rename_entry
 import math
 import itertools
 from cctbx import crystal
@@ -2725,7 +2725,79 @@ def _h_references(resname, mon_lib_srv, cache, n_h=2, n_heavy=2):
   cache[cache_key] = result
   return result
 
-def name_prochiral_h(hierarchy, mon_lib_srv, kinds=(2, 3)):
+def _deciding_torsions(resname, mon_lib_srv, cache):
+  '''
+  {H name: [(atom names, ideal, periodicity)]}: the dictionary torsions that
+  put one H of a propeller at one site, so they name it: the H at an end, the
+  other end heavy, periodicity 1 or CONST (0). Period 3 (GeoStd's methyls)
+  fits each H at every site and names nothing. The CCD fallback has per-H
+  torsions of period 1 from the CCD's coordinates. Alternative ideals
+  (alt_value_angle) are not looked at: no dictionary gives them to an H.
+  '''
+  key = ('torsions', resname)
+  if key in cache: return cache[key]
+  result = {}
+  try: cc = mon_lib_srv.get_comp_comp_id_direct(resname)
+  except Exception: cc = None
+  if cc is not None:
+    element = dict((a.atom_id, (a.type_symbol or '').strip().upper())
+      for a in cc.atom_list)
+    for t in cc.tor_list:
+      if t.value_angle is None: continue
+      const = t.value_angle_esd in (None, 0)
+      period = 0 if const else (t.period or 0)
+      if period not in (0, 1): continue
+      names = (t.atom_id_1, t.atom_id_2, t.atom_id_3, t.atom_id_4)
+      for h, third in ((names[0], names[3]), (names[3], names[0])):
+        if element.get(h) not in ('H', 'D'): continue
+        if element.get(third) in ('H', 'D', None): continue
+        result.setdefault(h, []).append((names, float(t.value_angle), period))
+  cache[key] = result
+  return result
+
+def _torsion_names(atoms, p, hv, hs, sites, torsions):
+  '''
+  The names of a propeller's three H from its deciding torsions (see
+  _deciding_torsions): the permutation of the names over the three sites that
+  meets them best, by the sum of the residuals; within 1 deg of it, the
+  permutation with the reference's handedness, then the current names.
+  None if no H of the group has a deciding torsion about p and hv[0].
+  atoms: the residue's atoms by name; sites: the reference sites.
+  Returns [(H atom, name it gets)].
+  '''
+  from itertools import permutations
+  from scitbx.math import dihedral_angle
+  axis = set((p, hv[0]))
+  deciding = {}
+  for h in hs:
+    for names, ideal, period in torsions.get(h, []):
+      if set(names[1:3]) != axis or not all(n in atoms for n in names): continue
+      deciding.setdefault(h, []).append((names, ideal, period))
+  if not deciding: return None
+  sites_now = dict((h, atoms[h].xyz) for h in hs)
+  def residual(names, ideal, period, h_site):
+    xyz = [h_site if n in hs else atoms[n].xyz for n in names]
+    d = dihedral_angle(sites=xyz, deg=True)
+    if d is None: return 180.
+    return abs(geometry_restraints.angle_delta_deg(angle_1=d, angle_2=ideal,
+      periodicity=max(1, period)))
+  v_ref = _chiral_volume(sites[p], *[sites[n] for n in (hs[0], hs[1], hv[0])])
+  scored = []
+  for perm in permutations(hs):
+    # name hs[k] goes to the atom now named perm[k]
+    cost = sum(residual(names, ideal, period, sites_now[perm[k]])
+      for k, h in enumerate(hs) for names, ideal, period in deciding.get(h, []))
+    v = _chiral_volume(atoms[p].xyz, sites_now[perm[0]], sites_now[perm[1]],
+      atoms[hv[0]].xyz)
+    hand = abs(v_ref) >= 0.5 and abs(v) >= 0.5 and (v_ref > 0) == (v > 0)
+    scored.append((cost, hand, perm == tuple(hs), perm))
+  best = min(c[0] for c in scored)
+  near = [c for c in scored if c[0] <= best + 1.]
+  near.sort(key=lambda c: (not c[1], not c[2], c[0]))
+  perm = near[0][3]
+  return [(atoms[perm[k]], h) for k, h in enumerate(hs)]
+
+def name_prochiral_h(hierarchy, mon_lib_srv, kinds=(2, 3), handedness=True):
   '''
   Riding places the two H of a CH2 in processing order, so about half get each
   other's name (1akg: 16 of 38 vs CCD), and it numbers a propeller (CH3, NH3)
@@ -2735,13 +2807,27 @@ def name_prochiral_h(hierarchy, mon_lib_srv, kinds=(2, 3)):
   Only names change; no atom moves, and the swap survives a later riding
   idealization, which follows the H positions it finds.
 
+  A propeller whose H have torsion restraints that tell the H apart (period 1
+  or CONST with a heavy third atom: the CCD fallback, some GeoStd entries) is
+  named by them instead, all three names (_torsion_names): the handedness alone
+  cannot say which of the three sites riding gave the target, and riding puts
+  it on whichever H's torsion came last. Period-3 propellers (all standard
+  residues) keep the handedness rule; their restraints cannot decide.
+
   kinds selects the groups: 2 the CH2 centres, 3 the propellers. The CH2 are
   named before exclude_H_on_links, which picks the H a link drops by position,
   the propellers after it: a linked methyl (BGS CS in 2b5z) is a CH2 by then,
   no longer matches a three-H reference and keeps the surviving names it had.
 
-  Returns the swaps made, in order, as (parent, h1, h2) atoms; h1 and h2
-  carry their new names.
+  handedness=False: only the propellers named by their torsions; reduce2 calls
+  it so after the Optimizer, which turns a methyl as a symmetric group and
+  may end 120 deg from where the names were given.
+
+  Returns the renames made, in order, as (parent, moves): moves is a tuple of
+  (atom, old name, new name), the names as written and fixed when the rename
+  is made (a later rename of the same atom does not change them). A swap has
+  two moves; a propeller named by its torsions has all its moves in one
+  record, applied at once.
   '''
   cache, done, swaps = {}, set(), []
   for m in hierarchy.models():
@@ -2775,6 +2861,13 @@ def name_prochiral_h(hierarchy, mon_lib_srv, kinds=(2, 3)):
             if any(atoms[p].distance(atoms[n]) > 2.4 for n in hv): continue
             if any(atoms[p].distance(atoms[n]) > 1.6 for n in hs): continue
             done.add(key)
+            if n_h == 3:
+              new = _torsion_names(atoms, p, hv, hs, sites,
+                _deciding_torsions(resname, mon_lib_srv, cache))
+              if new is not None:
+                swaps += _rename(new, atoms[p])
+                continue
+            if not handedness: continue
             if n_h == 2:
               # the side of the two heavy neighbours the first H is named on
               ref = (hv[0], hv[1], hs[0])
@@ -2789,9 +2882,25 @@ def name_prochiral_h(hierarchy, mon_lib_srv, kinds=(2, 3)):
             if abs(v_ideal) < 0.5 or abs(v_model) < 0.5: continue # flat
             if (v_ideal > 0) != (v_model > 0):
               h1, h2 = atoms[swap[0]], atoms[swap[1]]
-              h1.name, h2.name = h2.name, h1.name
-              swaps.append((atoms[p], h1, h2))
+              n1, n2 = h1.name, h2.name
+              h1.name, h2.name = n2, n1
+              swaps.append((atoms[p], ((h1, n1, n2), (h2, n2, n1))))
   return swaps
+
+def _rename(new, parent):
+  '''
+  Give each atom of [(atom, name)] its name, all at once: the whole
+  permutation first, then the names. Returns [] or one rename record of
+  name_prochiral_h, (parent, moves) with the atoms whose names change. A
+  three-name cycle done as two swaps would leave the first swap's atoms
+  renamed again by the second. Names keep their PDB padding, which they
+  carry with them.
+  '''
+  formatted = dict((a.name.strip(), a.name) for a, n in new)
+  moves = tuple((a, a.name, formatted[want]) for a, want in new
+    if a.name.strip() != want)
+  for a, old, name in moves: a.name = name
+  return [(parent, moves)] if moves else []
 
 # Planar NH2 of the protein side chains (IUPAC 1998, PAC 70:117, Fig. 1): H "1"
 # is cis, "2" trans to the heavy atom three bonds closer to the main chain.
@@ -3810,23 +3919,27 @@ class place_hydrogens():
 
   # ----------------------------------------------------------------------------
 
-  def _log_rename(self, parent, atom, old_name, partner=None, part=None):
+  def _log_rename(self, parent, atom, old_name, part=None):
     '''
-    Log the rename of atom (it carries the new name) if it or its swap
-    partner (now named old_name) was in the input.
+    Log the rename of atom (it carries the new name) if it was in the input.
+    '''
+    self._log_moves(parent, ((atom, old_name, atom.name),), part=part)
+
+  def _log_moves(self, parent, moves, part=None):
+    '''
+    Log the renames moves, (atom, old name, new name) made at once, if one of
+    the atoms was in the input.
     '''
     if not self._existing_h: return
-    if part is None: part = residue_part(atom.parent())
-    moved = [(atom, old_name)]
-    if partner is not None: moved.append((partner, atom.name))
-    old_keys = [part + (a.parent().altloc, n) for a, n in moved]
+    if part is None: part = residue_part(moves[0][0].parent())
+    old_keys = [part + (a.parent().altloc, old) for a, old, new in moves]
     existed = [k in self._existing_h for k in old_keys]
     if not any(existed): return
     for k in old_keys: self._existing_h.discard(k)
-    for (a, n), e in zip(moved, existed):
-      if e: self._existing_h.add(part + (a.parent().altloc, a.name))
-    self.renamed_existing_h.append(
-      (part, parent.parent().altloc, old_name, atom.name))
+    for (a, old, new), e in zip(moves, existed):
+      if e: self._existing_h.add(part + (a.parent().altloc, new))
+    self.renamed_existing_h.append(rename_entry(part, parent.parent().altloc,
+      [(old, new) for a, old, new in moves]))
 
   # ----------------------------------------------------------------------------
 
@@ -3836,9 +3949,9 @@ class place_hydrogens():
     '''
     if not (swaps and self._existing_h): return
     parts = residue_parts(self.model.get_hierarchy())
-    for parent, h1, h2 in swaps:
-      self._log_rename(parent, h1, h2.name, partner=h2,
-        part=parts[h1.parent().memory_id()])
+    for parent, moves in swaps:
+      self._log_moves(parent, moves,
+        part=parts[moves[0][0].parent().memory_id()])
 
   # ----------------------------------------------------------------------------
 

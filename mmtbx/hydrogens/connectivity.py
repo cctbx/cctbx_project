@@ -91,6 +91,10 @@ class determine_connectivity(object):
     self.determine_a0_angles_and_third_neighbors_without_dihedral(
       angle_proxies = angle_proxies)
 
+    # 6a. A group whose torsion targets all have an H third atom: frame on a
+    #     heavy atom instead (needs the third neighbours of step 6)
+    self.heavy_frame_for_h_third()
+
     # 7. Assign the angles found previously and process preliminary list of
     #    third neighbors
     self.process_a0_angles_and_third_neighbors_without_dihedral()
@@ -414,7 +418,9 @@ class determine_connectivity(object):
     Fill in neighbors.b1 with iseq and angle proxy.
 
     CONST dihedrals are processed first; Var dihedrals override via last-write
-    semantics (a Var entry on the same H wins because find sets b1 unconditionally).
+    semantics (a Var entry on the same H wins because find sets b1 unconditionally),
+    except that a torsion with an H third atom never replaces one with a heavy
+    third atom (_keeps_heavy_b1): in placement that H is still at its seed.
     """
     # Process CONST first - their value_angle IS the ideal (no periodicity correction).
     for dp in const_dihedral_proxies:
@@ -425,18 +431,50 @@ class determine_connectivity(object):
       self._set_b1_from_var_proxy(dp)
       self._collect_h_torsion(dp, dp.periodicity)
 
+  def _riding_torsion(self, dp, ih):
+    """riding_torsion() for the H ih and its parent; None without a parent"""
+    nb = self.h_connectivity[ih]
+    if nb is None or not nb.a0 or 'iseq' not in nb.a0: return None
+    return riding_torsion(dp.i_seqs, ih, nb.a0['iseq'])
+
+  def _keeps_heavy_b1(self, ih, i_third):
+    """True if an H third atom would replace the heavy third atom of the
+    group's b1 (assign_b1_for_H_atom_groups gives every H of the group the
+    same b1 atom)"""
+    b1 = self.h_connectivity[ih].b1
+    return (self.hd_sel[i_third] and 'iseq' in b1 and
+      not self.hd_sel[b1['iseq']])
+
+  def heavy_frame_for_h_third(self):
+    """
+    An alg1b H or a propeller (one heavy neighbour of the parent; 0 or 2
+    sibling H) whose b1 is an H, so all its torsion restraints have an H third
+    atom: frame on a heavy atom bonded to a1, at the staggered default 180 of
+    an H without torsions. In placement the H third is still at its seed, so
+    its target is arbitrary; in refinement these H keep their current torsion
+    whatever the frame. Kept when a1 has no other heavy neighbour (methanol).
+    Not for an NH2 (1 sibling): the planar path reads b1's target in every
+    idealization, where a constant would swap the two H, and the amine path
+    (nh2_frame) already frames on a heavy atom itself.
+    """
+    for nb in self.h_connectivity:
+      if nb is None or nb.number_non_h_neighbors != 1: continue
+      if nb.number_h_neighbors not in (0, 2): continue
+      if 'dihedral_ideal' not in nb.b1 or not self.hd_sel[nb.b1['iseq']]:
+        continue
+      heavy = self._heavy_third_neighbors(nb.a0['iseq'])
+      if not heavy: continue
+      nb.b1 = {'iseq': heavy[0], 'dihedral_ideal': STAGGERED_DEFAULT_1H}
+      self.assign_b1_for_H_atom_groups(ih = nb.ih, i_third = heavy[0])
+
   def _collect_h_torsion(self, dp, periodicity):
     """Every torsion restraint of an H (b1 keeps one per group), as
     (third atom, ideal, periodicity) with the ideal for the riding convention
-    dihedral(third, a1, a0, H): the registry may store (third, a0, a1, H),
-    whose angle has the opposite sign"""
-    i1, i2, i3, i4 = dp.i_seqs
-    for ih, i_third, i_next in ((i1, i4, i2), (i4, i1, i3)):
-      nb = self.h_connectivity[ih]
-      if nb is None or not nb.a0 or 'iseq' not in nb.a0: continue
-      if i_next == nb.a0['iseq']: sign = 1
-      elif nb.a0['iseq'] in (i2, i3): sign = -1
-      else: continue
+    dihedral(third, a1, a0, H)"""
+    for ih in (dp.i_seqs[0], dp.i_seqs[3]):
+      t = self._riding_torsion(dp, ih)
+      if t is None: continue
+      i_third, sign = t
       self.h_torsions.setdefault(ih, []).append(
         (i_third, sign * dp.angle_ideal, periodicity))
 
@@ -448,21 +486,17 @@ class determine_connectivity(object):
       if self.h_connectivity[i_test] is None:
         continue
       ih = i_test
-      i1, i2, i3, i4 = dp.i_seqs
-      if (ih == i1):
-        i_third = i4
-        dihedral_ideal = dp.angle_ideal
-      elif (ih == i4):
-        i_third = i1
-        # dihedral_proxy_registry canonicalizes by outer-swapping i1<->i4 when
-        # needed (keeping i2,i3 fixed), which negates the stored angle_ideal
-        # because dihedral(a,b,c,d) == -dihedral(d,b,c,a). Negating here
-        # recovers the original cif value_angle.
-        dihedral_ideal = -dp.angle_ideal
-      else:
-        # H is in the middle of the dihedral (i2 or i3) - cannot use as third-neighbor source
+      # None: the H in the middle, or its parent not in the middle
+      t = self._riding_torsion(dp, ih)
+      if t is None:
         continue
-      b1 = {'iseq': i_third, 'dihedral_ideal': dihedral_ideal}
+      i_third, sign = t
+      if self._keeps_heavy_b1(ih, i_third):
+        continue
+      if not sign_sensitive(dp.angle_ideal, 0):
+        # 0 or 180: the value as before, to the bit
+        sign = 1 if ih == dp.i_seqs[0] else -1
+      b1 = {'iseq': i_third, 'dihedral_ideal': sign * dp.angle_ideal}
       self.h_connectivity[ih].b1 = b1
       self.assign_b1_for_H_atom_groups(ih = ih, i_third = i_third)
 
@@ -474,24 +508,31 @@ class determine_connectivity(object):
       if self.h_connectivity[i_test] is None:
         continue
       ih = i_test
-      i1, i2, i3, i4 = dp.i_seqs
-      if (ih == i1):
-        i_third = i4
-      elif (ih == i4):
-        i_third = i1
-      else:
+      t = self._riding_torsion(dp, ih)
+      if t is None:
         continue
+      i_third, sign = t
+      if self._keeps_heavy_b1(ih, i_third):
+        continue
+      if not sign_sensitive(dp.angle_ideal, dp.periodicity):
+        # the minima of the ideal and of its negative coincide: the minimum
+        # as before (the mirror of the nearest one when the proxy is
+        # reordered), so these H do not move
+        sign = 1
+      i1, i2, i3, i4 = dp.i_seqs
       dihedral = dihedral_angle(
             sites = [self.sites_cart[i1], self.sites_cart[i2],
             self.sites_cart[i3],self.sites_cart[i4]])
       if dihedral is None:
         return
-      dihedral_id = dp.angle_ideal
+      # the restraint minimum nearest the current torsion, both in riding's
+      # convention
+      current = sign * math.degrees(dihedral)
       delta = geometry_restraints.angle_delta_deg(
-        angle_1 = math.degrees(dihedral),
-        angle_2 = dihedral_id,
+        angle_1 = current,
+        angle_2 = sign * dp.angle_ideal,
         periodicity = dp.periodicity)
-      dihedral_ideal = math.degrees(dihedral) + delta
+      dihedral_ideal = current + delta
       b1 = {'iseq': i_third, 'dihedral_ideal': dihedral_ideal}
       self.h_connectivity[ih].b1 = b1
       self.assign_b1_for_H_atom_groups(ih = ih, i_third = i_third)
@@ -709,6 +750,39 @@ class determine_connectivity(object):
     for atom in self.atoms:
       result.append(atom.element_is_hydrogen())
     return result
+
+def riding_torsion(i_seqs, ih, i_parent):
+  """
+  For an H at an end of a dihedral proxy: (third atom, sign), where sign
+  times the proxy's angle and ideal gives riding's convention
+  dihedral(third, a1, a0, H). The registry stores sort_i_seqs() order
+  (i1 < i4, i2 < i3; the ideal negated per swap), so the atom next to the H
+  is its parent (+1) or the parent's neighbour (-1). None if the H is not at
+  an end or its parent is not in the middle.
+  """
+  i1, i2, i3, i4 = i_seqs
+  if ih == i1: i_third, i_next, i_far = i4, i2, i3
+  elif ih == i4: i_third, i_next, i_far = i1, i3, i2
+  else: return None
+  if i_next == i_parent: return i_third, 1
+  if i_far == i_parent: return i_third, -1
+  return None
+
+def sign_sensitive(angle_ideal, periodicity):
+  """
+  False if the minima of the ideal and of its negative are within 1 deg
+  (2 v = 0 modulo 360/periodicity; CONST, periodicity 0: 0 or 180), that is,
+  the ideal is within 0.5 deg of a value its negative also meets. Callers
+  then keep the target riding had before the sign was corrected, to the bit.
+  The 1 deg is a compatibility choice: below it the old sign costs < 1 deg
+  (< 0.02 A at the H), while the corrected one would turn a propeller by
+  120 deg (GeoStd 60/3) or move backbone N-H at chain breaks (170/72).
+  Those targets keep the old choice of minimum, which is the mirror of the
+  nearest one for a reordered proxy and so not idempotent.
+  """
+  p = 360. / periodicity if periodicity > 0 else 360.
+  w = (2 * angle_ideal) % p
+  return min(w, p - w) >= 1.0
 
 def dictionary_pyramidal_nh2(mon_lib_srv, resname, n, x, element='N',
                              cache=None):

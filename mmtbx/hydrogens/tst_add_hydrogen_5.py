@@ -15,6 +15,9 @@ def test_000():
     renamed 1_G: 1MG is in GeoStd since 2026-09. 1_G classifies as 'other',
     not modified_rna_dna, which turns the unrestrained methyl by 10 deg.
     No HOP2: the 1_G phosphate bridges to U 746 (phosphodiester).
+    Methyl HM11-13: sites and names at their CCD torsions (period 1, one per
+    H; residual < 0.6 deg); reduce2 names the propeller by those torsions
+    (A62b). Before, the names were 120-130 deg off.
   '''
   compare_models(pdb_str = pdb_str_000)
 
@@ -96,9 +99,9 @@ HETATM   59  H2' 1_G a 747     195.879 174.478 236.435  1.00 20.77           H
 HETATM   60 HO2' 1_G a 747     196.427 172.999 238.000  1.00 27.89           H
 HETATM   61  H1' 1_G a 747     196.890 172.835 234.779  1.00 16.90           H
 HETATM   62  H8  1_G a 747     193.558 173.932 233.307  1.00 15.76           H
-HETATM   63 HM11 1_G a 747     199.692 177.548 231.327  1.00 15.85           H
-HETATM   64 HM12 1_G a 747     198.441 178.519 231.302  1.00 15.85           H
-HETATM   65 HM13 1_G a 747     199.393 178.486 232.568  1.00 15.85           H
+HETATM   63 HM11 1_G a 747     199.264 178.579 232.553  1.00 15.85           H
+HETATM   64 HM12 1_G a 747     199.779 177.554 231.460  1.00 15.85           H
+HETATM   65 HM13 1_G a 747     198.482 178.420 231.185  1.00 15.85           H
 HETATM   66 HN21 1_G a 747     200.453 175.538 234.332  1.00 17.42           H
 HETATM   67 HN22 1_G a 747     200.569 176.783 233.525  1.00 17.42           H
 HETATM   70  P   PSU a 748     192.982 174.005 238.688  1.00 29.88           P

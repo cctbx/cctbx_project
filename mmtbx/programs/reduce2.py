@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.15.0"
+version = "3.16.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -2512,6 +2512,21 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _NameTorsionPropellers(self):
+    '''
+    After the Optimizer: name the propellers whose torsion restraints tell
+    their H apart (reduce_hydrogen.name_prochiral_h, handedness=False) by
+    those torsions; the input-H records follow the names.
+    '''
+    swaps = reduce_hydrogen.name_prochiral_h(self.model.get_hierarchy(),
+      self.model.get_mon_lib_srv(), kinds=(3,), handedness=False)
+    if not swaps: return
+    parts = hd_exchange.residue_parts(self.model.get_hierarchy())
+    self._hd_records = hd_exchange.rekey_records(self._hd_records,
+      [hd_exchange.rename_entry(parts[moves[0][0].parent().memory_id()],
+        parent.parent().altloc, [(old, new) for a, old, new in moves])
+        for parent, moves in swaps])
+
   def _SymmetryCopies(self):
     '''
     Symmetry copies of the residue groups within 3.6 A of each model, under the
@@ -3448,6 +3463,12 @@ NOTES:
             shown += '\n' + lines[-1]
           print('\n' + shown, file=self.logger)
           outString += text + '\n'
+
+        # the Optimizer turns a methyl as a symmetric group: the propellers
+        # whose torsions tell their H apart are named again (sites unchanged),
+        # before the parent table, which is keyed by name
+        if self.params.approach == 'add':
+          self._NameTorsionPropellers()
 
         # the restraints still match the hierarchy here: before the deletions
         # and before the final reinterpretation without restraints
