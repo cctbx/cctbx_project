@@ -901,7 +901,7 @@ def test_read_file_restraint_gate():
 
 def test_text_reclassification():
   '''A text file whose content is PHIL but whose extension says ncs_spec is
-  detected as phil (content wins). This is the tst_ncs_1.py .ncs-PHIL bug.'''
+  detected as phil (content wins). This is the refinement/tst_190.py .ncs-PHIL bug.'''
   from iotbx.file_io import get_file_type
   import tempfile, shutil
   tmp = tempfile.mkdtemp()

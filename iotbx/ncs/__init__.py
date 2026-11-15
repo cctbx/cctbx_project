@@ -483,7 +483,7 @@ class input(object):
     # Warning! str_selections updating with truncated hierarchy because
     # there are tests
     # phenix_regression/refinement/torsion_ncs/tst_refinement_torsion_ncs.py
-    # phenix_regression/refinement/ncs/tst_ncs_5.py
+    # phenix_regression/refinement/tst_194.py
     # that fail otherwise. It was ok for couple of years, so not rushing to fix.
     #
     self.ncs_restraints_group_list.update_str_selections_if_needed(

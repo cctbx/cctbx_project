@@ -14,7 +14,7 @@ apply coordinates to another using NCS.
 """
 
 
-# taken from phenix_regression/refinement/ncs/tst_ncs_0.py
+# taken from phenix_regression/refinement/tst_189.py
 pdb_str = """\
 CRYST1   34.917   22.246   44.017  90.00  90.00  90.00 P 1
 SCALE1      0.028639  0.000000  0.000000        0.00000

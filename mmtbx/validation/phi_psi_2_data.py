@@ -554,7 +554,7 @@ def print_lookup_table(data):
   f.write(outl)
   del f
 
-def load_phi_psi_2_rama_restraints_tables():
+def load_phi_psi_2_rama_restraints_tables(log=None):
   t0=time.time()
   from scitbx.array_family import flex
   from mmtbx_ramachandran_restraints_ext import lookup_table
@@ -579,7 +579,7 @@ def load_phi_psi_2_rama_restraints_tables():
       t = lookup_table(data, 180)
       key = '%s|%s' % (info[0], ['leading', 'following'][i])
       tables[key] = t
-  print('time to load tables: %0.1fs' % (time.time()-t0))
+  print('time to load tables: %0.1fs' % (time.time()-t0), file=log)
   return tables
 
 def get_rama_table(proxy,
