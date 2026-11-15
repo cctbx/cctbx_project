@@ -787,20 +787,24 @@ def exercise_hetatm_flag():
 
 
 def exercise_heavy_cation_repulsion():
-  """The cation set is not limited to the first row: a Pt keeps both
-  protons out of its hemisphere just as an Mg does.
+  """The cation set is not limited to the first row: a Pt, an As, an Sb, a Po,
+  Fr, Ra, Ac, Pa and the metals from Np on keep both protons out of their
+  hemisphere just as an Mg does.
 
-  Places on ``_MG_WATER_PDB`` with the Mg replaced by Pt.
+  Places on ``_MG_WATER_PDB`` with the Mg replaced by each in turn.
   """
-  hier = _hierarchy(_MG_WATER_PDB.replace("MG", "PT"))
-  wp.place_water_hydrogens(hier, n_refine=0)
-  o, hs = _water_atoms(hier)
-  O = matrix.col(o.xyz)
-  cd = (matrix.col((2.500, 0.000, 0.000)) - O).normalize()
-  for name, h in sorted(hs.items()):
-    proj = (matrix.col(h.xyz) - O).dot(cd)
-    assert proj <= 1e-9, (
-      f"{name} must stay out of the Pt hemisphere (proj={proj:.3f})")
+  for el in ("PT", "AS", "SB", "PO", "FR", "RA", "AC", "PA", "NP", "PU", "AM",
+             "CM", "BK", "CF", "ES", "FM", "MD", "NO", "LR", "RF", "DB", "SG",
+             "BH", "HS", "MT", "DS", "RG"):
+    hier = _hierarchy(_MG_WATER_PDB.replace("MG", el))
+    wp.place_water_hydrogens(hier, n_refine=0)
+    o, hs = _water_atoms(hier)
+    O = matrix.col(o.xyz)
+    cd = (matrix.col((2.500, 0.000, 0.000)) - O).normalize()
+    for name, h in sorted(hs.items()):
+      proj = (matrix.col(h.xyz) - O).dot(cd)
+      assert proj <= 1e-9, (
+        f"{name} must stay out of the {el} hemisphere (proj={proj:.3f})")
 
 
 def exercise_h2_reachable_acceptor():
