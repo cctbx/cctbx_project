@@ -305,6 +305,53 @@ class target_attributes(mmtbx.refinement.targets.target_attributes):
     self.twin = "amplitudes"
     self.pseudo_ml = False
 
+def flat_scaling_parameters(fmodel):
+  """
+  Flat bulk-solvent and scale parameters that describe the model of a
+  regular (per-bin scaled) fmodel as closely as possible.
+
+  The twin target works with k_overall * exp(-2 pi^2 h U* h) *
+  (F_calc + k_sol * exp(-b_sol * s^2/4) * F_mask), while fmodel carries
+  per-bin k_mask and per-reflection k_isotropic * k_anisotropic. The scaling
+  result of fmodel does not always report these parameters (for example
+  k_sol=0 and b_cart=0 with the scale folded into k_anisotropic), so they are
+  fitted here: k_sol, b_sol to the k_mask curve and k_overall, U* by linear
+  least squares to the logarithm of the per-reflection scale.
+
+  Parameters
+  ----------
+  fmodel : mmtbx.f_model.manager
+      Scaled fmodel (after update_all_scales).
+
+  Returns
+  -------
+  tuple
+      (k_sol, b_sol, b_cart, k_overall); b_cart is the Cartesian B tensor
+      equivalent to U*.
+  """
+  from scitbx import matrix
+  from cctbx import adptbx
+  k_sol, b_sol = fmodel.k_sol_b_sol_from_k_mask()
+  k_total = fmodel.k_isotropic() * fmodel.k_anisotropic() * \
+    fmodel.scale_k1_w_for_twin_targets()
+  sel = k_total > 0
+  y = flex.log(k_total.select(sel))
+  hkl = fmodel.f_obs().indices().select(sel)
+  h = flex.double([i[0] for i in hkl])
+  k = flex.double([i[1] for i in hkl])
+  l = flex.double([i[2] for i in hkl])
+  c = -2*math.pi**2
+  cols = [flex.double(y.size(), 1.0), c*h*h, c*k*k, c*l*l, 2*c*h*k, 2*c*h*l,
+    2*c*k*l]
+  n = len(cols)
+  a = [flex.sum(cols[i]*cols[j]) for i in range(n) for j in range(n)]
+  b = [flex.sum(cols[i]*y) for i in range(n)]
+  x = matrix.sqr(a).inverse() * matrix.col(b)
+  k_overall = math.exp(x[0])
+  b_cart = adptbx.u_as_b(adptbx.u_star_as_u_cart(
+    fmodel.f_obs().unit_cell(), tuple(x[1:7])))
+  return k_sol, b_sol, b_cart, k_overall
+
 class twin_model_manager(mmtbx.f_model.manager_mixin):
   def __init__(self,
                f_obs              = None,
@@ -813,12 +860,13 @@ the percentage of R-free reflections).
     #params.number_of_macro_cycles=1 # XXX too slow otherwise, let's see may be ok
     result = self.fmodel_ts1.update_all_scales(fast=False, # XXX
       params=params, log=log, apply_back_trace=apply_back_trace)
+    k_sol, b_sol, b_cart, k_overall = flat_scaling_parameters(self.fmodel_ts1)
     self.update_core(
-      k_sol = result.k_sol, # XXX not implemented (see above)
-      b_sol = result.b_sol,
+      k_sol = k_sol,
+      b_sol = b_sol,
       twin_fraction = self.fmodel_ts1.twin_fraction,
-      b_cart = result.b_cart,
-      k_overall = self.fmodel_ts1.scale_k1_w_for_twin_targets())
+      b_cart = b_cart,
+      k_overall = k_overall)
     self.mask_params = self.fmodel_ts1.mask_params
     self.arrays = self.fmodel_ts1.arrays
 
