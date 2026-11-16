@@ -1913,11 +1913,21 @@ def exercise_2c2u_sym_image_provenance():
   operator, so a metal-ligand bond to a symmetry image can be restrained via
   geometry_restraints.edits (atom_1 vs symmetry_operation * atom_2). The identity
   is captured, not the atom object, so the hand-off does not depend on the parent
-  model staying alive."""
-  result = _run_endo_exo_on_string(_2C2U_FE_SPHERE_PDB)
+  model staying alive. The images carry their parent's anisotropic U rotated by
+  the operator."""
+  pdb_in = iotbx.pdb.input(
+    source_info=None, lines=_2C2U_FE_SPHERE_PDB.split("\n"))
+  crystal_symmetry = pdb_in.crystal_symmetry()
+  hierarchy = pdb_in.construct_hierarchy()
+  u_cart = (0.10, 0.20, 0.30, 0.01, 0.02, 0.03)
+  for atom in hierarchy.atoms():
+    atom.set_uij(u_cart)
+  result = _run_endo_exo_on_string(
+    hierarchy.as_pdb_string(crystal_symmetry=crystal_symmetry))
   prov = result["sym_image_provenance"]
   atoms = list(result["model"].get_hierarchy().atoms())
   identity = sgtbx.rt_mx().as_xyz()
+  unit_cell = crystal_symmetry.unit_cell()
 
   assert prov, "expected symmetry-image provenance for the special-position Fe"
   for iseq, (ident, op_xyz) in prov.items():
@@ -1930,6 +1940,9 @@ def exercise_2c2u_sym_image_provenance():
     assert chain_id == "A"
     assert name == image.name.strip()
     assert resseq == image.parent().parent().resseq.strip()
+    r = matrix.sqr(unit_cell.matrix_cart(sgtbx.rt_mx(op_xyz).r()))
+    u_image = r * matrix.sym(sym_mat3=u_cart) * r.transpose()
+    assert approx_equal(image.uij, u_image.as_sym_mat3(), eps=1e-6)
   # the coordinating Asp 93 / HOH 2154 images are represented
   resnames = {atoms[i].parent().resname.strip().upper() for i in prov}
   assert "ASP" in resnames and "HOH" in resnames

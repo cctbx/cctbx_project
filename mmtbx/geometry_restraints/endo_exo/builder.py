@@ -17,6 +17,7 @@ from libtbx import Auto
 from libtbx.utils import Sorry
 from cctbx import sgtbx
 from cctbx.array_family import flex
+from cctbx.crystal import super_cell
 from iotbx.pdb import common_residue_names_get_class
 from scitbx import matrix
 
@@ -927,8 +928,6 @@ class QMRegionBuilder(object):
     n_parent_atoms = parent_atoms.size()
     for op_xyz in op_keys:
       op = sgtbx.rt_mx(op_xyz)
-      r_mat = matrix.sqr(op.r().as_double())
-      t_vec = matrix.col(op.t().as_double())
 
       iseqs_in_order = sorted(by_op[op_xyz])
       mask = flex.bool(n_parent_atoms, False)
@@ -937,14 +936,14 @@ class QMRegionBuilder(object):
       sub_model = model.select(mask)
       sub_hier = sub_model.get_hierarchy()
 
-      # Transform coordinates from ASU positions to the image.
+      # Transform coordinates and anisotropic U from ASU positions to the
+      # image.
       if op_xyz != identity_xyz:
-        new_sites = flex.vec3_double()
-        for xyz in sub_model.get_sites_cart():
-          frac = matrix.col(unit_cell.fractionalize(xyz))
-          new_frac = r_mat * frac + t_vec
-          new_sites.append(unit_cell.orthogonalize(new_frac.elems))
-        sub_model.set_sites_cart(new_sites)
+        sub_model.set_sites_cart(super_cell.sym_equiv_sites_cart(
+          sites_cart=sub_model.get_sites_cart(), unit_cell=unit_cell,
+          rt_mx=op))
+        sub_hier.atoms().rotate_uij_and_clear_sigmas(
+          r_cart=unit_cell.matrix_cart(op.r()))
         # Rename chains so this image is distinguishable
         for ch in sub_hier.chains():
           ch.id = chain_id_for[(ch.id.strip(), op_xyz)]
