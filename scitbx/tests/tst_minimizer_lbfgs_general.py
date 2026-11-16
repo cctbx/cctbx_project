@@ -95,8 +95,45 @@ def run():
   assert approx_equal(m_unbound2.x[0]-res[0],0, tolerance), (m_unbound2.x[0], res[0], m_unbound2.x[0]-res[0])
   assert approx_equal(m_unbound2.x[1]-res[1],0, tolerance), (m_unbound2.x[1], res[1], m_unbound2.x[1]-res[1])
 
+class nan_away_from_start(object):
+  """Finite only at the starting point; every trial point of the line
+  search evaluates to nan, so the search cannot bracket and gives up."""
+
+  def __init__(self, x):
+    self.x_start = x.deep_copy()
+    self.x = x
+    # state derived from x at each update, as a model built from x would be
+    self.model_x = x.deep_copy()
+    self.n_updates = 0
+
+  def update(self, x):
+    self.x = x
+    self.model_x = x.deep_copy()
+    self.n_updates += 1
+
+  def target(self):
+    if self.model_x.all_eq(self.x_start): return 1.0
+    return float("nan")
+
+  def gradients(self):
+    return flex.double([1.0, 1.0])
+
+def exercise_calculator_follows_restored_x():
+  # After a line-search failure the core puts the best x seen back into
+  # minimizer.x; the calculator must be updated to that x as well, not
+  # left with the state of the last trial point.
+  calculator = nan_away_from_start(x = flex.double([0.5, -0.5]))
+  m = scitbx.minimizers.lbfgs(
+    mode = 'lbfgs', max_iterations = 10, calculator = calculator,
+    exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_maxfev = True))
+  assert m.minimizer.error is not None
+  assert m.x.all_eq(calculator.x_start)
+  assert calculator.n_updates > 1
+  assert calculator.model_x.all_eq(m.x), (list(calculator.model_x), list(m.x))
 
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
+  exercise_calculator_follows_restored_x()
   print("OK. Time: %8.3f"%(time.time()-t0))

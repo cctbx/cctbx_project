@@ -331,6 +331,10 @@ class lbfgs(object):
         gradient_only             = gradient_only,
         line_search               = True
         )
+      if self.minimizer.error is not None:
+        # run_c_plus_plus has put the best x seen back into self.x; the
+        # calculator still holds the state of the last trial point
+        self.calculator.update(x = self.x)
     if self.mode == 'lbfgsb':
       self.minimizer = lbfgsb_core.run(
         target_evaluator = self,
