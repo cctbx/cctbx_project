@@ -4,6 +4,7 @@ import sys, time
 from libtbx.utils import Sorry
 import mmtbx.model
 import mmtbx.monomer_library.server
+from mmtbx.monomer_library import terminal_nh3
 import iotbx.pdb
 import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
@@ -5365,7 +5366,9 @@ class place_hydrogens():
           label, ', '.join(b.strip() for b in bonds) or 'no heavy atom'))
       return False
     bond = outgoing_peptide_bond(rg, next_rg)
-    if bond == 'bonded': return True
+    if bond == 'bonded':
+      self._supplied_unknown_terminal_names(rg, n)
+      return True
     if bond == 'mixed':
       why = 'ambiguous, conformers disagree on a peptide bond to the next residue'
     elif bond == 'missing':
@@ -5409,11 +5412,46 @@ class place_hydrogens():
           rg.parent().id.strip(), rg.resseq.strip() + rg.icode.strip(),
           a.parent().resname.strip(), key, parent[key]))
 
+  def _supplied_unknown_terminal_names(self, rg, n):
+    # at a converted terminus: supplied H1-H3 (D1-D3) on N that a
+    # terminal_nh3 dictionary lacks (0A0; 2KZ H1/H3) are never parented by
+    # name; listed as unknown atoms, with the names the terminus gets
+    if not (self.keep_existing_H and self._existing_h): return
+    mlq = mon_lib_query(residue=n.parent(), mon_lib_srv=self.query_mon_lib_srv,
+      raise_sorry=False)[0]
+    if mlq is None: return
+    parent = set()
+    for b in mlq.bond_list:
+      parent.update([b.atom_id_1.strip(), b.atom_id_2.strip()])
+    unknown = {}
+    for a in rg.atoms():
+      name = a.name.strip()
+      key = 'H' + name[1:] if name[:1] == 'D' else name
+      if (key in ('H1', 'H2', 'H3') and a.element.strip().upper() in ('H', 'D')
+          and residue_part(a.parent()) + (a.parent().altloc, a.name)
+            in self._existing_h
+          and _compatible(a, n) and a.distance(n) < 1.3
+          and key not in parent):
+        unknown.setdefault(a.parent().resname.strip(), []).append(name)
+    for resname, names in sorted(unknown.items()):
+      try:
+        mon = self.query_mon_lib_srv.get_comp_comp_id_direct(resname)
+      except Exception:
+        mon = None
+      if mon is None or not terminal_nh3.applies(mon): continue
+      extra = terminal_nh3.extra_h_names(mon) or []
+      self.chain_start_kept.append('%s %s %s %s: on N, not in the %s '
+        'dictionary (its terminal N-H: %s); listed as unknown atoms, not '
+        'renamed; reduce2 without keep_existing_H rebuilds them' % (
+        ', '.join(sorted(set(names))), resname, rg.parent().id.strip(),
+        rg.resseq.strip() + rg.icode.strip(), resname,
+        ', '.join(terminal_nh3.n_h_names(mon) + extra)))
+
   def chain_start_kept_text(self):
     # A57 report; '' if there is nothing to report
     if not self.chain_start_kept: return ''
-    lines = ['Chain starts: terminal conversion not applied, and supplied '
-      'H1-H3 names the dictionary gives another parent']
+    lines = ['Chain starts not converted, and supplied H1-H3 whose name the '
+      'dictionary gives another parent or lacks']
     for t in self.chain_start_kept:
       if '  ' + t not in lines: lines.append('  ' + t)
     return '\n'.join(lines)
@@ -5562,6 +5600,77 @@ class place_hydrogens():
           self._chain_start_handled.add((rg_key, alt))
           add_n_terminal_hydrogens_to_atom_group(ag, n_ca_c=(n, ca, c))
 
+  def _dictionary_nh3(self, rgs, n, rg_key):
+    '''
+    A terminus whose dictionary does not fit mod_NH3 (terminal_nh3.applies():
+    no atom H, or H1-H3 on another atom): its dictionary N-H stay (the
+    free-form ones are restored, the conformer is not marked handled) and
+    the missing H are added under terminal_nh3.extra_h_names(), which
+    pdb_interpretation restrains as an NH3. Decided per atom group that
+    carries the N-H (each group with N; a blank N with split CA: each CA
+    group, as _split_ca_groups()), by that group's own residue name; the
+    other conformers (ALA beside 0A0) get the standard propeller here.
+    False if no group applies: the standard path for the whole residue.
+    Standard amino acids never apply.
+    '''
+    ags = rgs.atom_groups()
+    def extra_for(ag):
+      if get_class(name=ag.resname) == 'common_amino_acid': return None
+      try:
+        mon = self.query_mon_lib_srv.get_comp_comp_id_direct(ag.resname.strip())
+      except Exception:
+        return None
+      if mon is None or not terminal_nh3.applies(mon): return None
+      extra = terminal_nh3.extra_h_names(mon)
+      if extra is None: return None
+      return mon, extra
+    blank = [ag for ag in ags if ag.altloc == '']
+    with_ca = [ag for ag in ags if ag.get_atom('CA') is not None]
+    split_ca = (n.parent().altloc == '' and len(with_ca) > 1 and
+      not [ag for ag in with_ca if ag.altloc == ''])
+    targets = with_ca if split_ca else [ag for ag in ags
+      if ag.get_atom('N') is not None]
+    plan = [(ag, extra_for(ag)) for ag in targets]
+    if not [x for ag, x in plan if x is not None]: return False
+    pick = lambda ag, name: ag.get_atom(name) or ([x.get_atom(name)
+      for x in blank if x.get_atom(name)] or [None])[0]
+    moved = set()
+    for ag, x in plan:
+      n_ag = pick(ag, 'N')
+      if x is None:
+        # a standard conformer: the propeller for this group only
+        h = ag.get_atom('H')
+        if h and _dictionary_h_on_n(ag, self.query_mon_lib_srv):
+          ag.remove_atom(h)
+        ca, c = pick(ag, 'CA'), pick(ag, 'C')
+        if ca is None or c is None: continue
+        self._chain_start_handled.add((rg_key, ag.altloc))
+        add_n_terminal_hydrogens_to_atom_group(ag, n_ca_c=(n_ag, ca, c))
+        continue
+      mon, extra = x
+      names = list(extra)
+      if split_ca:
+        # the blank group's N-H (dictionary and computed names, also
+        # supplied ones) follow the split CA too
+        for name in terminal_nh3.n_h_names(mon) + list(extra):
+          if [b for b in blank if b.get_atom(name) is not None]:
+            if name not in names: names.append(name)
+            moved.add(name)
+      xyz = ag.atoms().extract_xyz().mean()
+      for name in names:
+        if ag.get_atom(name): continue
+        a = (iotbx.pdb.hierarchy.atom()
+          .set_name(new_name=(' ' + name).ljust(4) if len(name) < 4 else name)
+          .set_element(new_element='H')
+          .set_xyz(new_xyz=(xyz[0]+0.5, xyz[1]+0.5, xyz[2]+0.5))
+          .set_hetero(new_hetero=n_ag.hetero)
+          .set_segid(new_segid=n_ag.segid))
+        ag.append_atom(a)
+    for b in blank:
+      for name in moved:
+        if b.get_atom(name) is not None: b.remove_atom(b.get_atom(name))
+    return True
+
   def place_n_terminal_propeller(self, pdb_hierarchy):
     '''
     Place NH3 at residue #1, at first residue in chain, or at all chain starts
@@ -5676,12 +5785,16 @@ class place_hydrogens():
           if rgs.memory_id() in forced:
             unchanged(n, rgs, 'a nonmetal of another residue within 1.75 A')
           continue
-        self._chain_start_handled.add(((m.id, rgs.parent().id, rgs.resseq,
-          rgs.icode), ''))
         if rgs.memory_id() in forced:
+          # also for a dictionary NH3 (_dictionary_nh3())
           key = (residue_key(rgs), n.parent().altloc)
           self._chain_start_sites[key] = 'NH3'
           self._chain_start_label[key] = self._start_label(n, rgs)
+        if self._dictionary_nh3(rgs, n, (m.id, rgs.parent().id, rgs.resseq,
+            rgs.icode)):
+          continue
+        self._chain_start_handled.add(((m.id, rgs.parent().id, rgs.resseq,
+          rgs.icode), ''))
         # remove the amide H also for peptide-like residues of class 'other'
         # (UNK, ACB): add_n_terminal_hydrogens keeps an existing H in place of
         # H1, and H, H2, H3 do not match mod_NH3
