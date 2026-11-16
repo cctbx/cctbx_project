@@ -7,6 +7,7 @@ from collections import deque
 
 from cctbx import sgtbx
 from iotbx.pdb import common_residue_names_get_class
+from libtbx.utils import null_out
 
 from mmtbx.geometry_restraints.endo_exo.util import _canon_op, _neighbour_iseqs
 from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
@@ -25,7 +26,7 @@ class QMRegionGrower:
   bond_cut_detector : BondCutDetector
       Classifier for cuttable bonds.
   log : file-like or None, optional
-      Destination for diagnostic messages.
+      Destination for diagnostic messages; None discards them.
   """
 
   #: Backstop on alternating grow/reattach rounds.  The loop ends well inside
@@ -37,6 +38,8 @@ class QMRegionGrower:
 
   def __init__(self, bond_cut_detector, log=None):
     self.bond_cut_detector = bond_cut_detector
+    if log is None:
+      log = null_out()
     self.log = log
 
   # ------------------------------------------------------------------

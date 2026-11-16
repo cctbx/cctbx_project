@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import iotbx.pdb.hierarchy
 from cctbx.array_family import flex
+from libtbx.utils import null_out
 from scitbx import matrix
 
 #: Names a backbone nitrogen's added hydrogens may take.  The monomer library
@@ -50,10 +51,12 @@ class HydrogenCapper:
   Parameters
   ----------
   log : file-like or None, optional
-      Destination for diagnostic messages.
+      Destination for diagnostic messages; None discards them.
   """
 
   def __init__(self, log=None):
+    if log is None:
+      log = null_out()
     self.log = log
 
   def cap_atom(self, anchor, cap):

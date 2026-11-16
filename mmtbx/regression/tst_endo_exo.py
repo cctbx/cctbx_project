@@ -2423,6 +2423,33 @@ def exercise_write_files_roundtrip():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
+def exercise_builder_without_logger():
+  """Driven directly without a logger, the builder prints nothing and leaves
+  the interpretation parameters the caller's model was processed with as
+  they were."""
+  import contextlib
+  from libtbx.utils import null_out
+  from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
+
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(
+    source_info=None, lines=_1BQ8_FE_SPHERE_PDB.split("\n")), log=null_out())
+  interpretation_params = model.get_default_pdb_interpretation_params()
+  model.process(pdb_interpretation_params=interpretation_params)
+
+  def flags():
+    p = interpretation_params.pdb_interpretation
+    return (p.restraints_library.cdl, p.restraints_library.mcl,
+            p.flip_symmetric_amino_acids, p.automatic_linking.link_metals)
+
+  before = flags()
+  stdout = io.StringIO()
+  with contextlib.redirect_stdout(stdout):
+    QMRegionBuilder(_program_master_phil().extract()).run(
+      model, "model.pdb", lambda prefix, suffix: prefix + suffix)
+  assert stdout.getvalue() == "", stdout.getvalue()[:300]
+  assert flags() == before, (flags(), before)
+
+
 def exercise_region_invariants():
   """Every capped region satisfies the cap invariants across radii and both
   preferred-cut settings."""
@@ -3921,6 +3948,7 @@ def run():
   exercise_multi_model_refused()
   exercise_depth_and_skip_search()
   exercise_write_files_roundtrip()
+  exercise_builder_without_logger()
   exercise_scaffold_residue_keeps_no_functional_group()
   exercise_ligand_keeps_its_coordinating_group()
   exercise_symmetry_images_truncate_alike()

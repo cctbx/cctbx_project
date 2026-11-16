@@ -9,12 +9,13 @@ driven directly in memory: construct it with a params object, then call
 
 from __future__ import absolute_import, division, print_function
 
+import copy
 import os
 from collections import defaultdict
 
 import libtbx.phil
 from libtbx import Auto
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from cctbx.crystal import super_cell
@@ -104,11 +105,13 @@ class QMRegionBuilder(object):
       :class:`mmtbx.programs.endo_exo.Program`, or any object exposing the
       same attributes).
   logger : file-like or None, optional
-      Destination for diagnostic messages.
+      Destination for diagnostic messages; None discards them.
   """
 
   def __init__(self, params, logger=None):
     self.params = params
+    if logger is None:
+      logger = null_out()
     self.logger = logger
     self._results = []
     self._include_nodes = set()
@@ -151,7 +154,8 @@ class QMRegionBuilder(object):
     # coordination library are off as well, so the graph holds covalent bonds
     # only, with no metal-donor coordination bonds and no idealized Zn/Fe-S
     # proxies.
-    interpretation_params = model.get_current_pdb_interpretation_params()
+    interpretation_params = copy.deepcopy(
+      model.get_current_pdb_interpretation_params())
     interpretation_params.pdb_interpretation.restraints_library.cdl = False
     interpretation_params.pdb_interpretation.restraints_library.mcl = False
     interpretation_params.pdb_interpretation.flip_symmetric_amino_acids = False
