@@ -1357,7 +1357,12 @@ namespace lbfgs {
       }
       FloatType gnorm = std::sqrt(detail::ddot(n_, g, g));
       if (gnorm == FloatType(0)) return false;
-      stp1 = FloatType(1) / gnorm;
+      // Without a diagonal the first direction -g has no natural length
+      // and 1/|g| makes the first trial a step of length 1. A user
+      // diagonal is the inverse Hessian estimate, so -diag*g is already
+      // the Newton step and the first trial step is 1, as for every
+      // later iteration.
+      stp1 = diagco ? FloatType(1) : FloatType(1) / gnorm;
       execute_entire_while_loop = true;
     }
     if (execute_entire_while_loop) {

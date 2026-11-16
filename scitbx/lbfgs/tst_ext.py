@@ -66,11 +66,31 @@ def exercise_minimization(verbose):
   assert minimizer.nfun() < 50
   assert abs(minimizer.stp() - 1) < 1.e-6
 
+def exercise_first_step_with_diagonal():
+  # With the inverse diagonal of the Hessian supplied, the search
+  # direction of the first iteration is the Newton step, so the first
+  # trial point of a quadratic is its minimum. Without a diagonal the
+  # first trial is a step of length 1 along -g (Nocedal's heuristic).
+  c = flex.double([1., 10., 100.])
+  x = flex.double([1., 2., 3.])
+  g = c * x
+  f = 0.5 * flex.sum(c * x * x)
+  minimizer = lbfgs.minimizer(3)
+  assert minimizer.run(x, f, g, 1. / c)
+  assert x.all_approx_equal(0., 1.e-12), list(x)
+  x = flex.double([1., 2., 3.])
+  g = c * x
+  minimizer = lbfgs.minimizer(3)
+  assert minimizer.run(x, f, g)
+  expected = flex.double([1., 2., 3.]) - g / minimizer.euclidean_norm(g)
+  assert x.all_approx_equal(expected, 1.e-12), list(x)
+
 def run():
   import os, sys
   Endless = "--Endless" in sys.argv
   verbose = "--Verbose" in sys.argv and not Endless
   exercise_drop_convergence_test()
+  exercise_first_step_with_diagonal()
   while 1:
     exercise_minimization(verbose)
     if (not Endless): break

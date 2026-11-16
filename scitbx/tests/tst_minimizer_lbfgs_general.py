@@ -33,7 +33,9 @@ class rosenbrock(object):
   def curvatures(self):
     d1 = 2+4*self.b*(-self.x[1]+3*self.x[0]**2)
     d2 = 2*self.b
-    d = flex.double([d1,d2])
+    # d1 is negative above the parabola x1 = 3 x0^2; the minimizer requires
+    # a positive diagonal, so the magnitude is used there
+    d = flex.abs(flex.double([d1,d2]))
     assert d.all_ne(0)
     return 1 / d
 
