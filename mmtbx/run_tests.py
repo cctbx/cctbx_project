@@ -123,7 +123,8 @@ general_tests = [
   "$D/regression/model/tst_model_symmetry.py",
   "$D/regression/model/tst_model_merge.py",
   #
-  "$D/regression/tst_fmodel.py",
+  ["$D/regression/tst_fmodel.py", "1"],
+  ["$D/regression/tst_fmodel.py", "2"],
   "$D/regression/tst_utils.py",
   "$D/regression/tst_alignment.py",
   ["$D/regression/tst_fmodel_fd.py", "P31"],
