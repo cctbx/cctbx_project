@@ -403,7 +403,7 @@ def test_1avd_defaults():
   btn = find_lr(result.ligand_manager, 'chain A and resseq 400')
   # Asn A 12 flipped: other atoms within the radius than in the input (23.49)
   assert approx_equal(btn.get_adps().b_mean_within, 23.23, eps=0.01)
-  assert approx_equal(btn.get_ccs().rscc, 0.969, eps=0.002)
+  assert approx_equal(btn.get_ccs().rscc, 0.972, eps=0.002)
   print('test_1avd_defaults OK')
 
 # ------------------------------------------------------------------------------

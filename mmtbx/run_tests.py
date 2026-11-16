@@ -325,6 +325,7 @@ general_tests = [
   "$D/regression/tst_fmodel_and_dm.py",
   "$D/regression/tst_fmodel_misc.py",
   "$D/regression/tst_fmodel_optimize_mask.py",
+  "$D/regression/tst_mask_radii_default.py",
   "$D/twinning/tst_twin_f_model_bulk_solvent.py",
   "$D/regression/tst_isomorphous_difference_misc.py",
   "$D/regression/tst_dynamics_cli.py",

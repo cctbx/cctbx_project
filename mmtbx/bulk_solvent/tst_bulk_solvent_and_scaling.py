@@ -34,12 +34,15 @@ def get_xray_structure_random(space_group_info):
   return xray_structure
 
 def get_f_obs_freer(d_min, k_sol, b_sol, b_cart, xray_structure,
-    radial_shell_width=None):
+    radial_shell_width=None, mask_radii=None):
   f_dummy = abs(xray_structure.structure_factors(d_min = d_min,
     anomalous_flag = False).f_calc())
   r_free_flags = f_dummy.generate_r_free_flags(fraction = 0.1,
                                                max_free = 99999999)
   mask_params = mmtbx.masks.mask_master_params.extract()
+  if( mask_radii is not None ):
+    mask_params.solvent_radius, mask_params.shrink_truncation_radius = \
+      mask_radii
   if( radial_shell_width is not None ):
     mask_params.radial_shell_width = radial_shell_width
   if( type(k_sol) is list):
@@ -313,7 +316,9 @@ def exercise_05_k_sol_b_sol_only(d_min = 2.0):
   #
   assert approx_equal(r_work,              0.0,   eps = 1.e-4)
   assert approx_equal(result.k_sols()[0], k_sol,  eps = 1.e-4)
-  assert approx_equal(result.b_sols()[0], b_sol,  eps = 1.e-4)
+  # b_sol converges to 1e-4 (34.0001 with mask radii 0.95/0.7): minimizer
+  # precision, the model is exact (r_work 1e-4).
+  assert approx_equal(result.b_sols()[0], b_sol,  eps = 1.e-3)
   assert approx_equal(result.b_cart(),    b_cart, eps = 1.e-4)
 
 def exercise_06_b_cart_only(d_min = 2.0):
@@ -353,6 +358,11 @@ def exercise_06_b_cart_only(d_min = 2.0):
   assert approx_equal(result.b_cart(),    b_cart, eps = 1.e-6)
 
 def exercise_radial_shells(k_sol=0.33,d_min=1.5,grid_search=False,shell_width=0.6):
+  # The shells are built on the historical mask (solvent radius 1.1 A,
+  # shrink 0.9 A): with the default 0.95/0.7 A mask the three 0.3 A shells
+  # are degenerate (r_work 0 with k_sol 0.32 instead of 0.30) and the test
+  # no longer checks that the shell parameters are recovered.
+  mask_radii = (1.1, 0.9)
   xray_structure = get_xray_structure_from_file()
   b_sol = 34.0
   if( type(k_sol) is list ):
@@ -364,8 +374,10 @@ def exercise_radial_shells(k_sol=0.33,d_min=1.5,grid_search=False,shell_width=0.
     b_sol  = b_sol,
     b_cart = b_cart,
     xray_structure = xray_structure,
-    radial_shell_width=shell_width)
+    radial_shell_width=shell_width,
+    mask_radii = mask_radii)
   mask_params = mmtbx.masks.mask_master_params.extract()
+  mask_params.solvent_radius, mask_params.shrink_truncation_radius = mask_radii
   mask_params.radial_shell_width = shell_width
   if( type(k_sol) is list ):
     mask_params.n_radial_shells = len(k_sol)

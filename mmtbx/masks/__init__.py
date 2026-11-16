@@ -19,13 +19,23 @@ asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 
 number_of_mask_calculations = 0
 
+# Default mask radii solvent_radius=0.95 / shrink_truncation_radius=0.7 A
+# (historical values 1.1 / 0.9) were derived 2026-11 on 55 low-resolution and
+# 10 high-resolution refinements with and without riding H. With explicit H
+# electrons the historical mask mis-fits the d > 6 A data (Rfree +0.002 on the
+# 55 models); the optimum moves by about -0.15 A in solvent_radius along the
+# ridge solvent_radius - shrink_truncation_radius = 0.2-0.3 A. Without H the
+# new values are neutral (Rfree -0.0005, Rwork -0.0015 on the same sets).
 mask_master_params = iotbx.phil.parse("""\
   use_asu_masks = True
     .type = bool
-  solvent_radius = 1.1
+  solvent_radius = 0.95
     .type = float
-  shrink_truncation_radius = 0.9
+    .help = Probe radius (A) added to the atomic van der Waals radii when \
+            building the bulk-solvent mask.
+  shrink_truncation_radius = 0.7
     .type = float
+    .help = Shrink radius (A) applied to the solvent region.
   use_resolution_based_gridding = False
     .type = bool
     .help = If enabled, mask grid step = d_min / grid_step_factor
