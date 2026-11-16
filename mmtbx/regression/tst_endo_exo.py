@@ -454,6 +454,16 @@ def exercise_residues_to_include():
     _1BQ8_FE_SPHERE_PDB, include=("resseq 7 and name NZ", "global", 1.0))
   assert heavy_lys7(expand) == full_lys7
 
+  # A selection that does not parse is refused by validate().
+  try:
+    _run_endo_exo_params(
+      _1BQ8_FE_SPHERE_PDB, residues_to_include__selection="resseq 7 and")
+  except Sorry as e:
+    assert "residues_to_include.selection" in str(e), (
+      f"unexpected refusal: {e}")
+  else:
+    raise AssertionError("an unparsable include selection was accepted")
+
 
 def exercise_submodel_shape():
   """Lock in the structural shape of the submodel: total atom count,
@@ -2225,6 +2235,14 @@ def exercise_altloc_filter():
     hierarchy = _filter(mode)
     names = {a.name.strip() for a in hierarchy.atoms()}
     assert {"N", "CA", "C", "O"} <= names, (mode, names)
+
+  # Anything else is refused by validate().
+  try:
+    _run_endo_exo_params(_1BQ8_FE_SPHERE_PDB, altloc="ZZ")
+  except Sorry as e:
+    assert "altloc" in str(e), f"unexpected refusal: {e}"
+  else:
+    raise AssertionError("altloc=ZZ was accepted")
 
 
 def exercise_multi_model_refused():

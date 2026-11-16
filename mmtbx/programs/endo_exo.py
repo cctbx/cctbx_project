@@ -21,6 +21,7 @@ Programmatic use::
 
 from __future__ import absolute_import, division, print_function
 
+from libtbx import Auto
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 
@@ -136,14 +137,26 @@ class Program(ProgramTemplate):
     n_models = model.get_number_of_models()
     if n_models > 1:
       raise Sorry(f'Multi-model files are not supported ({n_models} models).')
-    selection_strings = [s for s in (self.params.selection or []) if s]
-    for sel_str in selection_strings:
+    selection_strings = [('selection', s)
+                         for s in (self.params.selection or []) if s]
+    include_selection = self.params.residues_to_include.selection
+    if include_selection:
+      selection_strings.append(
+        ('residues_to_include.selection', include_selection))
+    for name, sel_str in selection_strings:
       try:
         model.selection(sel_str)
       except Exception as e:
         raise Sorry(
-          f"Invalid selection string '{sel_str}': {e}"
+          f"Invalid {name} string '{sel_str}': {e}"
         )
+
+    altloc = self.params.altloc
+    if altloc is not Auto and altloc is not None:
+      if (altloc.strip().lower() not in ('auto', 'all')
+          and len(altloc.strip()) != 1):
+        raise Sorry(
+          f"altloc must be auto, all or one altloc character, not '{altloc}'.")
 
     if not model.has_hd():
       raise Sorry('Model has no hydrogens. Add them and run again.')
