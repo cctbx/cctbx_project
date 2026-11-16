@@ -903,16 +903,19 @@ class QMRegionBuilder(object):
       if c not in orig_chain_ids)
     chain_id_for = {}
     for op_xyz in op_keys:
-      for orig_id in orig_chain_ids:
+      region_chain_ids = sorted({
+        parent_atoms[i].parent().parent().parent().id.strip()
+        for i in by_op[op_xyz]})
+      for orig_id in region_chain_ids:
         if op_xyz == identity_xyz:
           chain_id_for[(orig_id, op_xyz)] = orig_id
         else:
           try:
             chain_id_for[(orig_id, op_xyz)] = next(available_chain_ids)
           except StopIteration:
-            raise RuntimeError(
-              "exhausted single-character chain IDs while "
-              "materialising symmetry images")
+            raise Sorry(
+              'The symmetry images in the QM region need more '
+              'single-character chain IDs than the model leaves free.')
 
     # Build an empty target hierarchy and append per-sym_op sub-models
     out_root = iotbx.pdb.hierarchy.root()

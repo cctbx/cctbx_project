@@ -662,7 +662,9 @@ def exercise_2c2u_symmetry_materialization():
   * three HOH 2154 oxygens, one per coordinating sym_op;
   * chain IDs are all single character (PDB-compatible) and include
     the parent "A" plus at least two additional chains for the
-    symmetry images.
+    symmetry images;
+  * twenty more chains away from the site take no chain IDs from the
+    images.
   """
   result = _run_endo_exo_on_string(_2C2U_FE_SPHERE_PDB)
   hier = result["model"].get_hierarchy()
@@ -700,6 +702,19 @@ def exercise_2c2u_symmetry_materialization():
   assert len(chain_ids) >= 3, (
     f"expected >=3 chain ids (identity + two sym images); got "
     f"{sorted(chain_ids)}")
+
+  lines = [line for line in _2C2U_FE_SPHERE_PDB.split("\n")
+           if line and line != "END"]
+  for k, chain_id in enumerate("BCDEFGHIJKLMNOPQRSTU"):
+    lines.append(
+      "HETATM%5d  O   HOH %s 900    %8.3f%8.3f%8.3f  1.00 20.00           O"
+      % (900 + k, chain_id, 45.0 + 3.0 * k, 45.0, 45.0))
+  many_chains = _run_endo_exo_on_string("\n".join(lines))
+  assert (many_chains["model"].get_number_of_atoms() ==
+          result["model"].get_number_of_atoms())
+  many_chain_ids = {
+    ch.id for ch in many_chains["model"].get_hierarchy().chains()}
+  assert len(many_chain_ids) == len(chain_ids), sorted(many_chain_ids)
 
 
 def exercise_2c2u_fe_coordination_distances():
