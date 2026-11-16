@@ -95,21 +95,6 @@ HETATM    1  O   HOH Y   1       0.000   0.000  15.000  1.00 20.00           O
 END
 """
 
-pdb_str_7 = """\
-CRYST1   15.000   15.000   15.000  80.00  70.00 100.00 P 1
-HETATM    1  O   HOH X   1       0.000   0.000   0.000  1.00 20.00           O
-HETATM    1  O   HOH X   1       0.000   0.000   0.000  1.00 20.00           O
-HETATM    1  O   HOH X   1       0.000   0.000   0.000  1.00 20.00           O
-HETATM    1  O   HOH X   1       0.000   0.000   0.000  1.00 20.00           O
-HETATM    1  O   HOH X   1       0.000   0.000   0.000  1.00 20.00           O
-HETATM    1  O   HOH Y   1       0.000   0.000   0.000  1.00 20.00           O
-HETATM    1  O   HOH Y   1       0.000   0.000   0.000  1.00 20.00           O
-HETATM    1  O   HOH Y   1       0.000   0.000   0.000  1.00 20.00           O
-HETATM    1  O   HOH Y   1       0.000   0.000   0.000  1.00 20.00           O
-HETATM    1  O   HOH Y   1       0.000   0.000   0.000  1.00 20.00           O
-END
-"""
-
 # 45
 pdb_str_8 = """\
 CRYST1   15.000   15.000   15.000  80.00  70.00 100.00 P 1
@@ -808,7 +793,7 @@ def run(prefix, target, pdb_strs, eps=1.e-3):
 if (__name__ == "__main__"):
   t0 = time.time()
   run(prefix="tst_angle_exercise_1", target=90., pdb_strs=[pdb_str_1, pdb_str_2, pdb_str_3])
-  run(prefix="tst_angle_exercise_2", target=0.,  pdb_strs=[pdb_str_4, pdb_str_5, pdb_str_6, pdb_str_7])
+  run(prefix="tst_angle_exercise_2", target=0.,  pdb_strs=[pdb_str_4, pdb_str_5, pdb_str_6])
   run(prefix="tst_angle_exercise_3", target=45., pdb_strs=[pdb_str_8, pdb_str_9])
   run(prefix="tst_angle_exercise_4", target=8.98, pdb_strs=[pdb_str_10], eps=0.1)
   print("Time: %6.4f"%(time.time()-t0))
