@@ -25,6 +25,8 @@ class QMRegionGrower:
       Classifier for cuttable bonds.
   log : file-like or None, optional
       Destination for diagnostic messages; None discards them.
+  verbose : bool, optional
+      Whether to log each bond cut and cap demotion with its atoms.
   """
 
   #: Backstop on alternating grow/reattach rounds.  The loop ends well inside
@@ -34,11 +36,12 @@ class QMRegionGrower:
   #: of one of those properties into a slow run rather than a hang.
   max_repair_rounds = 20
 
-  def __init__(self, bond_cut_detector, log=None):
+  def __init__(self, bond_cut_detector, log=None, verbose=False):
     self.bond_cut_detector = bond_cut_detector
     if log is None:
       log = null_out()
     self.log = log
+    self.verbose = verbose
 
   # ------------------------------------------------------------------
   # Public interface
@@ -274,7 +277,9 @@ class QMRegionGrower:
                               max_depth=max_depth)
 
   def _log_bond(self, message, iseq_a, iseq_b, atoms):
-    """Print *message* followed by the two atom records."""
+    """Print *message* followed by the two atom records, when verbose."""
+    if not self.verbose:
+      return
     print(f'{message} between:', file=self.log)
     print('  ' + atoms[iseq_a].format_atom_record().rstrip(), file=self.log)
     print('  ' + atoms[iseq_b].format_atom_record().rstrip(), file=self.log)
@@ -709,8 +714,10 @@ class QMRegionGrower:
     protected : set of (int, rt_mx), optional
     """
     cap_iseq, _cap_op = cap
-    print('Demoting cap candidate:', file=self.log)
-    print('  ' + atoms[cap_iseq].format_atom_record().rstrip(), file=self.log)
+    if self.verbose:
+      print('Demoting cap candidate:', file=self.log)
+      print('  ' + atoms[cap_iseq].format_atom_record().rstrip(),
+            file=self.log)
     cap_candidates.pop(cap)
     queue.append(cap)
 

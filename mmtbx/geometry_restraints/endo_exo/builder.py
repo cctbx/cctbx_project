@@ -118,7 +118,8 @@ class QMRegionBuilder:
     self._waters_cache = None
     self._waters_cache_rep_frac = None
     self._graph_builder = AtomGraphBuilder()
-    self._capper = HydrogenCapper(log=self.logger)
+    trace_log = self.logger if self.params.verbose else null_out()
+    self._capper = HydrogenCapper(log=trace_log)
     self._bond_cut_detector = BondCutDetector(
       use_preferred_cuts=self.params.capping.preferred_cuts,
       log=self.logger,
@@ -126,6 +127,7 @@ class QMRegionBuilder:
     self._region_grower = QMRegionGrower(
       self._bond_cut_detector,
       log=self.logger,
+      verbose=self.params.verbose,
     )
 
   def run(self, model, model_name, default_output_filename):

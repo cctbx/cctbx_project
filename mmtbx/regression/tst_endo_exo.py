@@ -2443,7 +2443,8 @@ def exercise_write_files_roundtrip():
 def exercise_builder_without_logger():
   """Driven directly without a logger, the builder prints nothing and leaves
   the interpretation parameters the caller's model was processed with as
-  they were."""
+  they were.  With a logger it logs a summary, and the per-atom trace of cuts
+  and caps only with verbose=True."""
   import contextlib
   from libtbx.utils import null_out
   from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
@@ -2465,6 +2466,24 @@ def exercise_builder_without_logger():
       model, "model.pdb", lambda prefix, suffix: prefix + suffix)
   assert stdout.getvalue() == "", stdout.getvalue()[:300]
   assert flags() == before, (flags(), before)
+
+  def log_of(verbose):
+    model = mmtbx.model.manager(model_input=iotbx.pdb.input(
+      source_info=None, lines=_1BQ8_FE_SPHERE_PDB.split("\n")),
+      log=null_out())
+    params = _program_master_phil().extract()
+    params.verbose = verbose
+    log = io.StringIO()
+    QMRegionBuilder(params, logger=log).run(
+      model, "model.pdb", lambda prefix, suffix: prefix + suffix)
+    return log.getvalue()
+
+  quiet = log_of(False)
+  loud = log_of(True)
+  assert "candidate atoms for hydrogen capping" in quiet, quiet
+  for trace in ("Capped atom:", "bond between:"):
+    assert trace not in quiet, (trace, quiet)
+    assert trace in loud, (trace, loud)
 
 
 def exercise_region_invariants():

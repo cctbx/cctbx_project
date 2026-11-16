@@ -104,6 +104,9 @@ a seed's region. Used only when scope=per_seed."
 write_files = True
   .type = bool
   .help = "Whether to write a model file and a sidecar PHIL file per seed."
+verbose = False
+  .type = bool
+  .help = "Whether to log each bond cut, cap and repair with its atoms."
 """
 
 
