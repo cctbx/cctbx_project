@@ -192,7 +192,9 @@ class run(object):
       print("  "+fmt%p1+p2)
       cntr += float(p2)
     print("Total: %8.3f"%self.total_time)
-    assert approx_equal(cntr, self.total_time) # total time and the sum match!
+    # total time and the sum match, allowing for the 3-decimal rounding!
+    eps = 1.e-3*len(self.time_strings)
+    assert approx_equal(cntr, self.total_time, eps)
 
   def _init_states_accumulator(self):
     """

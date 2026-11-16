@@ -574,7 +574,7 @@ class probe_undowser_manager(probe_clashscore_manager):
                verbose=verbose,
                model_id=model_id)
     self.water_contacts = {}
-    self.probe_command = "%s -u -q -mc -het -con -once -wat2wat -stdbonds -onlybadout 'water' 'all' -" % (self.probe_command)
+    self.probe_command = "%s -u -q -mc -het -con -once -wat2wat -stdbonds -onlybadout \"water\" \"all\" -" % (self.probe_command)
 
   def run_probe_undowser(self):
     #print(self.probe_command)
