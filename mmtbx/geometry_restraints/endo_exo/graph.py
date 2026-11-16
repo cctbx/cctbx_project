@@ -7,6 +7,7 @@ from collections import defaultdict
 
 from cctbx import sgtbx
 from cctbx.array_family import flex
+from cctbx.crystal import super_cell
 from scipy.spatial import KDTree
 
 from mmtbx.geometry_restraints.endo_exo.util import _canon_op
@@ -201,12 +202,12 @@ class AtomGraphBuilder:
       mask = self._atoms_within_radius_selection(center_atom, model, radius)
     return mask
 
-  def _pair_sym_table(self, model, radius):
-    """Return the whole-structure pair-symmetry table for *radius*.
+  def _sym_equiv_tables(self, model, radius):
+    """Return the whole-structure symmetry tables for *radius*.
 
-    Covers every close contact in the structure, so it depends on the model
-    and the radius but not on which seed is being grown.  It is built once
-    and reused across seeds.
+    They cover every close contact in the structure, so they depend on the
+    model and the radius but not on which seed is being grown.  They are
+    built once and reused across seeds.
 
     Parameters
     ----------
@@ -215,20 +216,17 @@ class AtomGraphBuilder:
 
     Returns
     -------
-    cctbx.crystal.pair_sym_table
+    cctbx.crystal.super_cell.sym_equiv_tables
     """
     key = (id(model), radius)
-    if getattr(self, '_sym_table_key', None) != key:
-      pair_asu_table = model.get_xray_structure().pair_asu_table(
-        distance_cutoff=radius)
-      # ``all_interactions_from_inside_asu=True`` enumerates every close
-      # contact of an ASU atom rather than collapsing site-symmetry-
-      # equivalent pairs (see add_seed_contact_edges).
-      self._sym_table = pair_asu_table.extract_pair_sym_table(
-        skip_j_seq_less_than_i_seq=False,
-        all_interactions_from_inside_asu=True)
-      self._sym_table_key = key
-    return self._sym_table
+    if getattr(self, '_sym_tables_key', None) != key:
+      xrs = model.get_xray_structure()
+      self._sym_tables = super_cell.get_sym_equiv_tables(
+        sites_cart=xrs.sites_cart(),
+        crystal_symmetry=model.crystal_symmetry(), radius=radius,
+        site_symmetry_table=xrs.site_symmetry_table())
+      self._sym_tables_key = key
+    return self._sym_tables
 
   def seed_sym_nodes_within_radius(self, seeds, model, radius):
     """Return symmetry-image ``(iseq, op)`` nodes within *radius* of a seed.
@@ -236,9 +234,9 @@ class AtomGraphBuilder:
     The KD-tree radius search (:meth:`atoms_within_radius`) only sees ASU
     atoms, so a seed on or near a special position misses the
     symmetry-related copies of its neighbouring residues that lie inside
-    the buffer sphere.  This enumerates those copies via
-    ``pair_asu_table`` and returns one ``(j_seq, rt_mx_ji)`` node per
-    atom-image within *radius* of any seed.
+    the buffer sphere.  This enumerates those copies with
+    ``cctbx.crystal.super_cell.get_siiu`` and returns one
+    ``(j_seq, rt_mx_ji)`` node per atom-image within *radius* of any seed.
 
     Only non-identity images are returned; the identity image is already
     covered by the KD-tree search, so the caller unions the two.
@@ -256,14 +254,13 @@ class AtomGraphBuilder:
     set of (int, sgtbx.rt_mx)
         Non-identity atom-image nodes within *radius* of a seed.
     """
-    identity_xyz = _canon_op(sgtbx.rt_mx()).as_xyz()
-    sym_table = self._pair_sym_table(model, radius)
+    siiu, _ = super_cell.get_siiu(
+      crystal_symmetry=model.crystal_symmetry(),
+      sites_cart=model.get_xray_structure().sites_cart(),
+      selection=[seed.i_seq for seed in seeds], select_within_radius=radius,
+      symmetry_tables=self._sym_equiv_tables(model, radius))
     nodes = set()
-    for seed in seeds:
-      for j_seq, rt_mx_ji_list in dict(sym_table[seed.i_seq]).items():
-        for rt_mx_ji in rt_mx_ji_list:
-          op = _canon_op(rt_mx_ji)
-          if op.as_xyz() == identity_xyz:
-            continue
-          nodes.add((j_seq, op))
+    for j_seq, rt_mx_ji_list in siiu.items():
+      for rt_mx_ji in rt_mx_ji_list:
+        nodes.add((j_seq, _canon_op(rt_mx_ji)))
     return nodes
