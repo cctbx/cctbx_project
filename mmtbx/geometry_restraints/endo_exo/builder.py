@@ -21,7 +21,7 @@ from cctbx.crystal import super_cell
 from iotbx.pdb import common_residue_names_get_class
 from scitbx import matrix
 
-from scipy.spatial import ConvexHull
+from scipy.spatial import ConvexHull, QhullError
 
 from mmtbx.geometry_restraints.endo_exo.util import (
   _canon_op, _neighbour_iseqs)
@@ -745,7 +745,9 @@ class QMRegionBuilder(object):
       return visited_nodes
     try:
       hull = ConvexHull(hull_cart)
-    except Exception:
+    except QhullError:
+      print('No hull waters added: the QM region encloses no volume.',
+            file=self.logger)
       return visited_nodes
 
     centroid_frac = uc.fractionalize(hull_cart.mean())

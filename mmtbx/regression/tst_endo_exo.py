@@ -1626,7 +1626,7 @@ END
 """
 
 
-def _hull_water_nodes(pdb_str, enabled=True):
+def _hull_water_nodes(pdb_str, enabled=True, log=None):
   """Run ``_add_hull_waters`` over a hull made of the fixture's zinc ions.
 
   The method reads only the crystal symmetry, the sites and the hierarchy,
@@ -1645,7 +1645,9 @@ def _hull_water_nodes(pdb_str, enabled=True):
   master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
   params = master.extract()
   params.include_waters_in_convex_hull = enabled
-  builder = QMRegionBuilder(params, logger=io.StringIO())
+  if log is None:
+    log = io.StringIO()
+  builder = QMRegionBuilder(params, logger=log)
 
   visited = {(i_seq, identity) for i_seq, atom in enumerate(atoms)
              if atom.element.strip().upper() == "ZN"}
@@ -1752,6 +1754,22 @@ def exercise_hull_waters():
     _HULL_WATER_PDB, enabled=False)
   assert out_off == visited_off, (
     "include_waters_in_convex_hull=False still added waters")
+
+  # Four coplanar zinc ions enclose no volume, and the log says so.
+  flat = """\
+CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A   1      34.000  34.000  30.000  1.00 10.00          ZN
+HETATM    2 ZN    ZN A   2      34.000  26.000  30.000  1.00 10.00          ZN
+HETATM    3 ZN    ZN A   3      26.000  34.000  30.000  1.00 10.00          ZN
+HETATM    4 ZN    ZN A   4      26.000  26.000  30.000  1.00 10.00          ZN
+HETATM    5  O   HOH A   5      30.000  30.000  30.000  1.00 10.00           O
+END
+"""
+  log = io.StringIO()
+  _model_flat, _atoms_flat, visited_flat, out_flat = _hull_water_nodes(
+    flat, log=log)
+  assert out_flat == visited_flat, "a flat region took in a water"
+  assert "No hull waters added" in log.getvalue(), log.getvalue()
 
 
 def exercise_hull_waters_use_symmetry_images():
