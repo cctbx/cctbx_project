@@ -8,7 +8,6 @@ from collections import defaultdict
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from cctbx.crystal import super_cell
-from scipy.spatial import KDTree
 
 from mmtbx.geometry_restraints.endo_exo.util import _canon_op
 
@@ -140,6 +139,7 @@ class AtomGraphBuilder:
     cctbx.array_family.flex.bool
     """
     if getattr(self, '_kdtree_model_id', None) != id(model):
+      from scipy.spatial import KDTree
       self._kdtree = KDTree(model.get_sites_cart())
       self._kdtree_model_id = id(model)
       self._kdtree_n_atoms = model.get_number_of_atoms()

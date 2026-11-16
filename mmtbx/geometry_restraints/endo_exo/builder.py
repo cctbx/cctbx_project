@@ -21,8 +21,6 @@ from cctbx.crystal import super_cell
 from iotbx.pdb import common_residue_names_get_class
 from scitbx import matrix
 
-from scipy.spatial import ConvexHull, QhullError
-
 from mmtbx.geometry_restraints.endo_exo.util import (
   _canon_op, _neighbour_iseqs)
 from mmtbx.geometry_restraints.endo_exo.seeds import SeedFinder
@@ -771,6 +769,7 @@ class QMRegionBuilder(object):
 
     if hull_cart.size() < 4:
       return visited_nodes
+    from scipy.spatial import ConvexHull, QhullError
     try:
       hull = ConvexHull(hull_cart)
     except QhullError:
