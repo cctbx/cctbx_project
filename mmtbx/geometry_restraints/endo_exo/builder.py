@@ -272,7 +272,9 @@ class QMRegionBuilder:
       requested letter, fall back to the highest-occupancy altloc and
       emit a warning.
 
-    Atoms with empty altloc (the shared backbone) are always kept.
+    Atoms with empty altloc (the shared backbone) are always kept.  The
+    conformer kept is the one :meth:`iotbx.pdb.hierarchy.root.remove_alt_confs`
+    keeps, here with its altloc label left in place.
 
     Parameters
     ----------
