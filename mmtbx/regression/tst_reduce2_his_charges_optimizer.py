@@ -17,7 +17,7 @@ import os
 from six.moves import cStringIO as StringIO
 import iotbx.pdb
 import mmtbx.model
-from libtbx.utils import null_out, Sorry
+from libtbx.utils import Sorry
 from iotbx.cli_parser import run_program
 from mmtbx.programs import reduce2
 from mmtbx.reduce import Optimizers, HisCharges
