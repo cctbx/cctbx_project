@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.18.0"
+version = "3.18.1"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -1878,7 +1878,7 @@ NOTES:
           out.append('%s: conformer charges differ (%s; expected)' % (where, dec[len('kept: '):]))
         elif c['category'] == 'restored' and m['code'] == HisCharges.INTERNAL:
           out.append('%s: conformer charges differ: the first result was kept after an '
-            'internal check failed (%s); please report this' % (where, m['detail']))
+            'internal error (%s); please report this' % (where, m['detail']))
         elif c['category'] in ('unchanged', 'changed'):
           out.append('%s: conformer charges differ (%s)' % (where, dec))
         else:

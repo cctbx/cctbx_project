@@ -56,8 +56,13 @@ Contract for the one-state Mover.
   during the search, not only after FixUp) is needed: the written state can
   be right while the search scored wrong flags.
 - Contract failures raise ContractError (explicit checks). The Optimizer
-  restores the free result and warns; in strict mode (tests) it restores first,
-  then raises. If the restore cannot be verified, it stops with a Sorry.
+  handles them, and any other error after the free result is saved
+  (MemoryError and a user's Stop, Abort, apart), by keeping the free result
+  (restored if a rerun started) and warning; in strict mode (tests) it
+  restores first, then re-raises. A MemoryError propagates as it is; an Abort
+  after the restore. If the restore cannot be verified, it stops with a Sorry
+  naming the error that led to it. Errors in the free run propagate as
+  without reconciliation.
 - Limits: at most run_cap(n) = min(max_runs(n), RUN_CAP_LIMIT) reruns per model
   (confirmations and retries count). A free run that reached its search
   deadline gets no rerun; each rerun may search as long as the free run was
@@ -88,7 +93,7 @@ REJECTED = 'scientific rejection'         # plan() restored: no trial passed
 RUN_CAP = 'run cap'                       # another rerun needed after run_cap(n)
 SEARCH_DEADLINE = 'search deadline'       # the free run or a rerun reached its search time
 WALL_BACKSTOP = 'wall-time backstop'      # reruns past WALL_BACKSTOP_FACTOR x the free run
-INTERNAL = 'internal check'               # a ContractError; the free result restored
+INTERNAL = 'internal check'               # a ContractError or other error; the free result kept
 OUTCOME_TEXT = {
   NO_RERUN: 'no rerun',
   RECONCILED: 'reconciled',
@@ -96,7 +101,7 @@ OUTCOME_TEXT = {
   RUN_CAP: 'first result restored: rerun cap reached',
   SEARCH_DEADLINE: 'first result restored: search time limit reached',
   WALL_BACKSTOP: 'first result restored: wall-time backstop reached',
-  INTERNAL: 'first result restored: internal check failed',
+  INTERNAL: 'first result kept: internal error',
 }
 
 def run_cap(n):

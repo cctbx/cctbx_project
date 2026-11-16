@@ -35,7 +35,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 import boost_adaptbx.boost.python as bp
 bp.import_ext("mmtbx_probe_ext")
 import mmtbx_probe_ext as probeExt
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Abort
 from mmtbx.probe import Helpers
 from mmtbx.reduce import Movers, InteractionGraph, HisCharges
 
@@ -255,9 +255,9 @@ def _HisOutcomeText(run):
 
 @contextlib.contextmanager
 def his_charges_strict(strict=True):
-  """Tests: within the block a failed His charge check raises after the free
-  result is restored (Optimizer.hisChargesStrict); the previous value is always
-  restored."""
+  """Tests: within the block an error while reconciling His charges is re-raised
+  after the free result is restored (Optimizer.hisChargesStrict); the previous
+  value is always restored."""
   old = Optimizer.hisChargesStrict
   Optimizer.hisChargesStrict = strict
   try:
@@ -1332,16 +1332,18 @@ class Optimizer(object):
       report=str(self._infoString), warnings=self._warningString,
       copyNotes=[str(x) for x in getattr(self, '_copyPassNotes', [])])
 
-  def _HisRestoreVerified(self, myModel, saved, fingerprint):
-    """Restore the free result; a restore that cannot be verified stops the run."""
+  def _HisRestoreVerified(self, myModel, saved, fingerprint, cause=None):
+    """Restore the free result; a restore that cannot be verified stops the run.
+    cause: the error that led to the restore, named in the Sorry."""
+    after = '' if cause is None else '; restoring after %s: %s' % (type(cause).__name__, cause)
     try:
       self._HisRestore(myModel, saved)
     except HisCharges.ContractError as e:
-      raise Sorry("His charges: the first result could not be restored (%s)" % e)
+      raise Sorry("His charges: the first result could not be restored (%s)%s" % (e, after))
     now = self._HisFingerprint(myModel)
     diff = sorted(k for k in fingerprint if now[k] != fingerprint[k])
     if diff:
-      raise Sorry("His charges: the restored first result differs from it (%s)" % ", ".join(diff))
+      raise Sorry("His charges: the restored first result differs from it (%s)%s" % (", ".join(diff), after))
 
   def _HisWritten(self, his, key, confs):
     """check_written()'s record per conformer from the final state of the model. A
@@ -1363,61 +1365,85 @@ class Optimizer(object):
         writer=dict((n, writer[x.i_seq]) for n, x in ring.items()))
     return out
 
-  hisChargesStrict = False    # his_charges_strict(): after the restore, a failed check raises
+  hisChargesStrict = False    # his_charges_strict(): after the restore, the error is re-raised
 
   def _ReconcileHisCharges(self, mi, myModel, ctx):
     """The passes, then the His whose conformers end with different charges:
     decide(), reruns with the reconciled states fixed, trial() and plan() until
     DONE (the last run is the result) or RESTORE_FREE (the saved free result is
-    written). A failed check (HisCharges.ContractError) restores the free result
-    with a warning (hisChargesStrict: then raises). Reported in the info string
-    and getHisCharges(). Returns the seconds the reruns took (added to later
-    models' deadline)."""
+    written). Any error after the free result is saved (a failed check,
+    HisCharges.ContractError, or any other Exception) keeps the free result,
+    restored if a rerun started, with a warning (hisChargesStrict: then
+    re-raises it). A MemoryError propagates as it is; a user's Stop (Abort)
+    propagates after that restore. Errors in the free run propagate.
+    Reported in the info string and getHisCharges(). Returns the seconds the
+    reruns took (added to later models' deadline)."""
     start = self._HisSave(myModel)
     freeHis = self._HisRun({})
     t0 = time.time()
     self._OptimizeModel(mi, myModel, ctx, freeHis)
     t1 = time.time()
     free = self._HisSave(myModel)
-    freeRes = self._HisByResidue(freeHis)
+    freeRes = None
     first = {}
     cases = []
-    for key, (confs, final) in sorted(freeRes.items()):
-      if len(confs) < 2 or len(set(final.values())) < 2:
-        continue
-      lacking = _HisBlankRingLastPassLacksH([r for r, hs in freeHis['recs']], key)
-      if lacking is not None:
-        # the final writer of the blank ring is a pass without its ring H
-        d = dict(kind='unchanged', decision='unchanged: blank ring last written by pass %s, '
-          'which lacks the ring H' % (lacking or 'blank'))
-      else:
-        d = HisCharges.decide(dict((c, r) for c, (r, hs) in confs.items()), HisCharges.BUDGET,
-          0.05 * self._preferenceMagnitude)
-      cases.append(dict(key=key, free=final, final=dict(final), first=d))
-      if d['kind'] == 'reconciled':
-        first[key] = d
     run = dict(code=HisCharges.NO_RERUN, detail=None, reruns=0, cap=0, freeSeconds=t1 - t0,
       rerunSeconds=0.0, backstopSeconds=None, unmatched=0)
-    if not first:
-      self._HisReport(mi, cases, None, None, run)
-      return 0.0
-    freePrint = self._HisFingerprint(myModel)
-    st = HisCharges.new_plan(sorted(first))
-    run.update(cap=HisCharges.run_cap(st['n']),
-      backstopSeconds=HisCharges.WALL_BACKSTOP_FACTOR * (t1 - t0))
-    failure = None
+    st = freePrint = None
+    failure = error = None
     try:
-      out, his, now, pins = self._HisReruns(mi, myModel, ctx, st, start, free, first, freeHis,
-        freeRes, cases, t0, t1, run)
-      if out == HisCharges.DONE:
-        self._HisCheckWritten(st, his, now, pins, freeRes, cases)
-        run['code'] = HisCharges.RECONCILED
-    except HisCharges.ContractError as e:
-      failure = str(e)
+      freeRes = self._HisByResidue(freeHis)
+      for key, (confs, final) in sorted(freeRes.items()):
+        if len(confs) < 2 or len(set(final.values())) < 2:
+          continue
+        lacking = _HisBlankRingLastPassLacksH([r for r, hs in freeHis['recs']], key)
+        if lacking is not None:
+          # the final writer of the blank ring is a pass without its ring H
+          d = dict(kind='unchanged', decision='unchanged: blank ring last written by pass %s, '
+            'which lacks the ring H' % (lacking or 'blank'))
+        else:
+          d = HisCharges.decide(dict((c, r) for c, (r, hs) in confs.items()), HisCharges.BUDGET,
+            0.05 * self._preferenceMagnitude)
+        cases.append(dict(key=key, free=final, final=dict(final), first=d))
+        if d['kind'] == 'reconciled':
+          first[key] = d
+      if first:
+        freePrint = self._HisFingerprint(myModel)
+        st = HisCharges.new_plan(sorted(first))
+        run.update(cap=HisCharges.run_cap(st['n']),
+          backstopSeconds=HisCharges.WALL_BACKSTOP_FACTOR * (t1 - t0))
+        out, his, now, pins = self._HisReruns(mi, myModel, ctx, st, start, free, first, freeHis,
+          freeRes, cases, t0, t1, run)
+        if out == HisCharges.DONE:
+          self._HisCheckWritten(st, his, now, pins, freeRes, cases)
+          run['code'] = HisCharges.RECONCILED
+    except MemoryError:
+      raise
+    except Abort as e:
+      # a user's Stop: a caller that catches it holds the first result
+      if run['reruns'] > 0:
+        self._HisRestoreVerified(myModel, free, freePrint, e)
+      raise
+    except Exception as e:
+      error = e
+      failure = str(e) if isinstance(e, HisCharges.ContractError) else '%s: %s' % (type(e).__name__, e)
       out = HisCharges.RESTORE_FREE
       run.update(code=HisCharges.INTERNAL, detail=failure)
+      if run['backstopSeconds'] is None:
+        # the description prints it for every outcome but NO_RERUN
+        run['backstopSeconds'] = HisCharges.WALL_BACKSTOP_FACTOR * (t1 - t0)
+      # His with different charges that decide() did not reach
+      done = set(c['key'] for c in cases)
+      for key, (confs, final) in sorted((freeRes or {}).items()):
+        if key not in done and len(confs) > 1 and len(set(final.values())) > 1:
+          cases.append(dict(key=key, free=final, final=dict(final),
+            first=dict(kind='reconciled', decision='not decided')))
+    if not first and error is None:
+      self._HisReport(mi, cases, None, None, run)
+      return 0.0
+    if out != HisCharges.DONE and run['reruns'] > 0:
+      self._HisRestoreVerified(myModel, free, freePrint, error)
     if out != HisCharges.DONE:
-      self._HisRestoreVerified(myModel, free, freePrint)
       # nothing of the reruns is written: no His fixed, the free charges
       cases[:] = [c for c in cases if c['first']['kind'] != 'changed']
       for c in cases:
@@ -1425,12 +1451,12 @@ class Optimizer(object):
         for x in ('fixed', 'checked', 'skipped'):
           c.pop(x, None)
     if failure is not None:
-      self._warningString += ("Warning: His charges: internal check failed, the first result "
-        "is kept: %s\n" % failure)
+      self._warningString += ("Warning: His charges: reconciliation stopped by an error, the "
+        "first result is kept: %s: %s\n" % (type(error).__name__, error))
     run['rerunSeconds'] = time.time() - t1
     self._HisReport(mi, cases, st, out, run)
-    if failure is not None and self.hisChargesStrict:
-      raise HisCharges.ContractError(failure)
+    if error is not None and self.hisChargesStrict:
+      raise error
     return run['rerunSeconds']
 
   def _HisReruns(self, mi, myModel, ctx, st, start, free, first, freeHis, freeRes, cases, t0, t1, run):
@@ -1460,10 +1486,10 @@ class Optimizer(object):
         break
       keys = sorted(st['accepted'] | set(st['trial']))
       pins = dict(((k, c), p['to']) for k in keys for c, p in first[k]['per'].items())
+      run['reruns'] += 1    # from here the model may differ from the free result
       self._HisRestore(myModel, start)
       his = self._HisRun(pins)
       runCtx = dict(ctx, stopOptimizingAt=time.time() + searchTime)
-      run['reruns'] += 1
       self._OptimizeModel(mi, myModel, runCtx, his)
       if time.time() > runCtx['stopOptimizingAt']:
         # Cliques may have been optimized as singletons: not comparable
@@ -2655,14 +2681,19 @@ class Optimizer(object):
           self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
           if self._reconcileHisCharges:
             why = 'failed: ' + str(e)
-            nd1 = [x for x in hisNE2.parent().atoms() if x.name.strip() == 'ND1'] or \
-              [x for x in hisNE2.parent().parent().atoms() if x.name.strip() == 'ND1']
-            for n in [hisNE2] + nd1[:1]:
-              ions = [x for x in self._spatialQuery.neighbors(n.xyz, 0.0, 3.0) if x.element_is_positive_ion()]
-              if ions and not [x for x in bondedNeighborLists.get(n, []) if x.element_is_hydrogen()]:
-                # placement put no H on this N (metal-bound)
-                why = 'metal-bound %s without H (%s)' % (n.name.strip(), ions[0].name.strip())
-                break
+            try:
+              nd1 = [x for x in hisNE2.parent().atoms() if x.name.strip() == 'ND1'] or \
+                [x for x in hisNE2.parent().parent().atoms() if x.name.strip() == 'ND1']
+              for n in [hisNE2] + nd1[:1]:
+                ions = [x for x in self._spatialQuery.neighbors(n.xyz, 0.0, 3.0) if x.element_is_positive_ion()]
+                if ions and not [x for x in bondedNeighborLists.get(n, []) if x.element_is_hydrogen()]:
+                  # placement put no H on this N (metal-bound)
+                  why = 'metal-bound %s without H (%s)' % (n.name.strip(), ions[0].name.strip())
+                  break
+            except (MemoryError, Abort):
+              raise
+            except Exception:
+              pass    # a diagnostic only: the Mover's own error stands
             self._hisNoMover[(alt, hisNE2.i_seq)] = why
 
     # The Mover constructors above moved atoms after the spatial query was built

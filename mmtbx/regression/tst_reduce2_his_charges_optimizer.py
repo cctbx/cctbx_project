@@ -17,7 +17,7 @@ import os
 from six.moves import cStringIO as StringIO
 import iotbx.pdb
 import mmtbx.model
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Abort
 from iotbx.cli_parser import run_program
 from mmtbx.programs import reduce2
 from mmtbx.reduce import Optimizers, HisCharges
@@ -130,8 +130,8 @@ def test_check_failure_restores():
     assert m['outcome'] == HisCharges.RESTORE_FREE and m['code'] == HisCharges.INTERNAL, m
     assert m['detail'] == 'His A 107 written state: injected', m
     assert on == off, removed(off, on)
-    assert "Warning: His charges: internal check failed, the first result is kept: His A 107 " \
-      "written state: injected" in LOG[0].getvalue(), LOG[0].getvalue()
+    assert "Warning: His charges: reconciliation stopped by an error, the first result is kept: ContractError: " \
+      "His A 107 written state: injected" in LOG[0].getvalue(), LOG[0].getvalue()
     c = case(m, '107')
     assert c['final'] == c['free'] == {'A': 1, 'B': 0} and not c.get('fixed'), c
     assert c['category'] == 'restored', c
@@ -195,7 +195,7 @@ def test_unpin_contract():
     m = only(made)
     assert m['code'] == HisCharges.INTERNAL and what in m['detail'], m
     assert on == off, removed(off, on)
-    assert "Warning: His charges: internal check failed" in LOG[0].getvalue()
+    assert "Warning: His charges: reconciliation stopped by an error" in LOG[0].getvalue()
     opt, e = strict_run(pdb_1exr, "tst_reduce2_his_charges_opt_us" + tag, (Optimizers.Optimizer, '_HisUnpin', f))
     assert what in e and hd1_a_deleted(opt) == [], (e, hd1_a_deleted(opt))
 
@@ -216,6 +216,7 @@ def test_restore_check_catches_omission():
         run(pdb, "tst_reduce2_his_charges_opt_4" + item, ON)
       except Sorry as e:
         assert "restored first result differs from it (%s)" % where in str(e), (item, e)
+        assert str(e).endswith("; restoring after ContractError: His A 107 written state: injected"), (item, e)
       else:
         raise AssertionError("omitted %s not caught" % item)
   # without the omission the symmetry fixture restores cleanly
@@ -274,6 +275,245 @@ def test_deadline():
     "treat_cliques_as_singletons_after_seconds=1000")
   m = only(made)
   assert m['code'] == HisCharges.RECONCILED and m['reruns'] == 1, m
+
+def failing_call(owner, name, on_call, exc, after=True):
+  """owner.name raising exc on call on_call (after the original ran, or instead
+  of it)."""
+  orig = getattr(owner, name)
+  calls = []
+  def f(*a, **k):
+    calls.append(1)
+    if len(calls) == on_call and not after:
+      raise exc
+    r = orig(*a, **k)
+    if len(calls) == on_call:
+      raise exc
+    return r
+  return (owner, name, f)
+
+def test_any_error_keeps_first():
+  """Any error after the first result is saved, not only a ContractError: a
+  RuntimeError or a Sorry at the end of the first rerun (the model then holds
+  the rerun's state) and an error in decide() (no rerun) keep the first result
+  (output equal to flag off), with a warning naming the exception, outcome code
+  INTERNAL and no His fixed. Strict mode re-raises the original exception after
+  the restore."""
+  off, desc_off, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_e")
+  for tag, p, cls, reruns in (
+      ('r', lambda: failing_call(Optimizers.Optimizer, '_OptimizeModel', 2, RuntimeError('injected')), RuntimeError, 1),
+      ('s', lambda: failing_call(Optimizers.Optimizer, '_OptimizeModel', 2, Sorry('injected')), Sorry, 1),
+      ('d', lambda: failing_call(HisCharges, 'decide', 1, ValueError('injected'), after=False), ValueError, 0)):
+    with patched(p()):
+      on, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_e" + tag, ON)
+    m = only(made)
+    name = cls.__name__
+    assert (m['outcome'], m['code'], m['reruns']) == (HisCharges.RESTORE_FREE, HisCharges.INTERNAL, reruns), m
+    assert m['detail'] == name + ': injected', m
+    assert on == off, (tag, removed(off, on))
+    assert ("Warning: His charges: reconciliation stopped by an error, the first result is kept: %s: injected"
+      % name) in LOG[0].getvalue(), LOG[0].getvalue()
+    c = case(m, '107')
+    assert c['final'] == c['free'] == {'A': 1, 'B': 0} and not c.get('fixed'), c
+    assert c['category'] == 'restored', c
+    assert "His A 107: A +1 B 0; kept: first result kept: internal error" in desc, desc
+    made = []
+    init = Optimizers.Optimizer.__init__
+    def rec(self, *a, **k):
+      made.append(self)
+      init(self, *a, **k)
+    with patched((Optimizers.Optimizer, '__init__', rec), p()):
+      with Optimizers.his_charges_strict():
+        try:
+          run(pdb_1exr, "tst_reduce2_his_charges_opt_es" + tag, ON)
+        except cls as e:
+          assert str(e) == 'injected', e
+        else:
+          raise AssertionError("strict mode did not raise")
+    assert hd1_a_deleted(made[-1]) == [], hd1_a_deleted(made[-1])
+    assert made[-1].getHisCharges()[0]['code'] == HisCharges.INTERNAL
+  assert Optimizers.Optimizer.hisChargesStrict is False
+
+def test_first_run_error_propagates():
+  """An error in the first run propagates the same with the flag off and on."""
+  for extra in ((), (ON,)):
+    with patched(failing_call(Optimizers.Optimizer, '_OptimizeModel', 1, RuntimeError('injected first'))):
+      try:
+        run(pdb_1exr, "tst_reduce2_his_charges_opt_f", *extra)
+      except RuntimeError as e:
+        assert str(e) == 'injected first', e
+      else:
+        raise AssertionError("no error with %s" % (extra,))
+
+def test_memory_error_propagates():
+  """A MemoryError in a rerun is re-raised as it is, not handled."""
+  with patched(failing_call(Optimizers.Optimizer, '_OptimizeModel', 2, MemoryError('injected'))):
+    try:
+      run(pdb_1exr, "tst_reduce2_his_charges_opt_m", ON)
+    except MemoryError as e:
+      assert str(e) == 'injected', e
+    else:
+      raise AssertionError("MemoryError not re-raised")
+
+def test_decide_error_second_his():
+  """decide() fails on the second of two His (A 107 decided, D 163 not): both
+  are reported with their first charges as restored, no rerun, output equal
+  to flag off."""
+  pdb = two_candidates()
+  off, desc_off, made = run(pdb, "tst_reduce2_his_charges_opt_d2")
+  with patched(failing_call(HisCharges, 'decide', 2, ValueError('injected'), after=False)):
+    on, desc, made = run(pdb, "tst_reduce2_his_charges_opt_d2on", ON)
+  m = only(made)
+  assert (m['code'], m['detail'], m['reruns']) == (HisCharges.INTERNAL, 'ValueError: injected', 0), m
+  assert on == off, removed(off, on)
+  for r in ('107', '163'):
+    c = case(m, r)
+    assert c['category'] == 'restored' and c['final'] == c['free'] and not c.get('fixed'), c
+  assert case(m, '107')['first'].get('target') == 0 and case(m, '163')['first']['decision'] == 'not decided', m
+
+def test_abort_in_rerun():
+  """A user's Stop (Abort) in a rerun propagates, after the first result is
+  restored: the model then equals the first result."""
+  first = []
+  fp = Optimizers.Optimizer._HisFingerprint
+  def fingerprint(self, myModel):
+    r = fp(self, myModel)
+    if not first:
+      first.append((self, myModel, r))    # the first call: the first result
+    return r
+  with patched((Optimizers.Optimizer, '_HisFingerprint', fingerprint),
+               failing_call(Optimizers.Optimizer, '_OptimizeModel', 2, Abort('injected stop'))):
+    try:
+      run(pdb_1exr, "tst_reduce2_his_charges_opt_ab", ON)
+    except Abort as e:
+      assert str(e) == 'injected stop', e
+    else:
+      raise AssertionError("Abort did not propagate")
+  opt, myModel, want = first[0]
+  assert fp(opt, myModel) == want
+  assert hd1_a_deleted(opt) == [], hd1_a_deleted(opt)
+  # a restore that cannot be verified after the Stop: the Sorry names it
+  orig_save = Optimizers.Optimizer._HisSave
+  def save(self, myModel):
+    s = orig_save(self, myModel)
+    s['deleted'] = []
+    return s
+  with patched((Optimizers.Optimizer, '_HisSave', save),
+               failing_call(Optimizers.Optimizer, '_OptimizeModel', 2, Abort('injected stop'))):
+    try:
+      run(pdb_1exr, "tst_reduce2_his_charges_opt_ab2", ON)
+    except Sorry as e:
+      assert not isinstance(e, Abort), e
+      assert str(e) == ("His charges: the restored first result differs from it (deleted); "
+        "restoring after Abort: injected stop"), e
+    else:
+      raise AssertionError("unverified restore after the Stop not reported")
+
+def test_diagnostic_errors():
+  """The metal diagnostic for a His without a Mover (approach=optimize on the
+  flag-off add output: B has one ring H) ignores its own errors, so the Mover's
+  failure stands, but lets MemoryError and Abort through. The error is raised
+  in the diagnostic's spatial-query call (a Python wrapper set only while
+  _PlaceMovers runs)."""
+  run(pdb_1exr, "tst_reduce2_his_charges_opt_g")
+  with open("tst_reduce2_his_charges_opt_g_out.pdb") as f:
+    added = f.read()
+  base, desc, made = run(added, "tst_reduce2_his_charges_opt_g0", "approach=optimize", ON)
+  place = Optimizers.Optimizer._PlaceMovers
+  for tag, exc, raised in (('r', RuntimeError('injected'), False), ('m', MemoryError('injected'), True),
+      ('a', Abort('injected'), True)):
+    calls = []
+    class Query(object):
+      def __init__(self, real):
+        self.real = real
+      def __getattr__(self, n):
+        return getattr(self.real, n)
+      def neighbors(self, xyz, low, high):
+        if (low, high) == (0.0, 3.0):
+          calls.append(1)
+          raise exc
+        return self.real.neighbors(xyz, low, high)
+    def wrapped(self, *a, **k):
+      self._spatialQuery = Query(self._spatialQuery)
+      try:
+        return place(self, *a, **k)
+      finally:
+        if isinstance(self._spatialQuery, Query):
+          self._spatialQuery = self._spatialQuery.real
+    with patched((Optimizers.Optimizer, '_PlaceMovers', wrapped)):
+      try:
+        atoms, desc, made = run(added, "tst_reduce2_his_charges_opt_g" + tag, "approach=optimize", ON)
+      except (MemoryError, Abort) as e:
+        assert raised and e is exc, (tag, e)
+      else:
+        assert not raised, tag
+        assert atoms == base, removed(base, atoms)
+        c = case(only(made), '107')
+        assert c['decision'].startswith('unchanged: unscorable conformer B (failed: MoverHisFlip()'), c
+    assert calls, tag
+
+def ring_xyz(atoms, alt):
+  return dict((l[0:4], l[18:42]) for l in atoms if l[9] == 'A' and l[10:14].strip() == '107'
+    and l[0:4] in (' CG ', ' ND1', ' CD2', ' CE1', ' NE2') and l[4] == alt)
+
+def test_set_flip_states():
+  """With flips, conformer A of His A 107 locked by set_flip_states. Unflipped:
+  A takes both H (B one), reconciled to 0 within the locked orientation (ring
+  of A as in the input; HisPlace line, pose word Unflipped). Flipped: A then
+  takes HE2 only, both conformers are neutral, no case; output as flag off."""
+  inp = ring_xyz([l[12:80] for l in pdb_1exr.splitlines() if l.startswith("ATOM")], 'A')
+  lock = "set_flip_states=1 a A HIS 107 Unflipped"
+  off, desc_off, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_14", "add_flip_movers=True", lock)
+  assert ring_h(off, 'A', '107') == [('HD1', 'A'), ('HD1', 'B'), ('HE2', 'A')], ring_h(off, 'A', '107')
+  on, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_14on", "add_flip_movers=True", lock, ON)
+  m = only(made)
+  assert m['code'] == HisCharges.RECONCILED, m
+  c = case(m, '107')
+  assert c['final'] == {'A': 0, 'B': 0} and c.get('fixed'), c
+  assert ring_h(on, 'A', '107') == [('HD1', 'B'), ('HE2', 'A')], ring_h(on, 'A', '107')
+  assert ring_xyz(on, 'A') == inp, (ring_xyz(on, 'A'), inp)
+  got = [x for x in reduce2._FindFlipsInOutputString(desc, 'HisPlace') if x.resName == 'AHIS']
+  assert len(got) == 1 and not got[0].flipped, got
+  lock = "set_flip_states=1 a A HIS 107 Flipped AnglesAdjusted"
+  off, desc_off, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_15", "add_flip_movers=True", lock)
+  on, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_15on", "add_flip_movers=True", lock, ON)
+  assert only(made)['cases'] == [] and on == off, removed(off, on)
+  assert ring_xyz(on, 'A') != inp
+  got = [x for x in reduce2._FindFlipsInOutputString(desc, 'HisPlace') if x.resName == 'AHIS']
+  assert len(got) == 1 and got[0].flipped, got
+
+def test_optimize():
+  """approach=optimize. On reduce2's flag-off add output, B has one ring H, so
+  no His Mover for B: unchanged with the reason, output as flag off. On the
+  approach=place output (both ring H on both conformers): the decision of add,
+  charge 0."""
+  run(pdb_1exr, "tst_reduce2_his_charges_opt_16")
+  with open("tst_reduce2_his_charges_opt_16_out.pdb") as f:
+    added = f.read()
+  off, desc_off, made = run(added, "tst_reduce2_his_charges_opt_16o", "approach=optimize")
+  on, desc, made = run(added, "tst_reduce2_his_charges_opt_16on", "approach=optimize", ON)
+  c = case(only(made), '107')
+  assert c['category'] == 'unchanged' and c['decision'].startswith('unchanged: unscorable conformer B'), c
+  assert on == off, removed(off, on)
+  run(pdb_1exr, "tst_reduce2_his_charges_opt_17", "approach=place")
+  with open("tst_reduce2_his_charges_opt_17_out.pdb") as f:
+    placed = f.read()
+  on, desc, made = run(placed, "tst_reduce2_his_charges_opt_17on", "approach=optimize", ON)
+  m = only(made)
+  c = case(m, '107')
+  assert m['code'] == HisCharges.RECONCILED and c['free'] == {'A': 1, 'B': 0}, m
+  assert c['final'] == {'A': 0, 'B': 0} and c.get('fixed'), c
+  assert ring_h(on, 'A', '107') == [('HD1', 'B'), ('HE2', 'A')], ring_h(on, 'A', '107')
+
+def test_real_deadline():
+  """treat_cliques_as_singletons_after_seconds=0: the first run reaches its
+  deadline, no rerun, output as flag off with the same setting."""
+  dl = "treat_cliques_as_singletons_after_seconds=0"
+  off, desc_off, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_18", dl)
+  on, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_18on", dl, ON)
+  m = only(made)
+  assert (m['code'], m['detail'], m['reruns']) == (HisCharges.SEARCH_DEADLINE, 'the first run reached it', 0), m
+  assert not case(m, '107').get('fixed')
+  assert on == off, removed(off, on)
 
 def two_candidates():
   a = iotbx.pdb.input(source_info=None, lines=pdb_1exr).construct_hierarchy()
@@ -360,8 +600,8 @@ def test_failure_after_first_his():
     assert c['final'] == c['free'] and c['category'] == 'restored', c
     assert not [x for x in ('fixed', 'checked', 'skipped') if x in c], c
   assert "2 His with different charges, 0 set to one charge" in desc, desc
-  for r in ('A 107: A +1 B 0; kept: first result restored: internal check failed',
-            'D 163: A +1 B 0; kept: first result restored: internal check failed'):
+  for r in ('A 107: A +1 B 0; kept: first result kept: internal error',
+            'D 163: A +1 B 0; kept: first result kept: internal error'):
     assert "  His " + r in desc, desc
   assert "set to charge" not in desc and "(state fixed by charge reconciliation)" not in desc, desc
   assert fixed_keys(made, pdb) == set()
@@ -448,9 +688,9 @@ def test_hint_and_report():
   for detail in ("('evaluation of another run', [], [])",
                  "His A 1 written state: His conformer A NE2: no expected position"):
     p = program_stub(his(HisCharges.INTERNAL, detail, c(1, two, two, 'restored',
-      'kept: first result restored: internal check failed (%s)' % detail)))
+      'kept: first result kept: internal error (%s)' % detail)))
     h = p._HisChargesHint()
-    assert "expected)" not in h and "internal check failed" in h and "please report" in h, h
+    assert "expected)" not in h and "kept after an internal error" in h and "please report" in h, h
   p = program_stub(his(HisCharges.NO_RERUN, None,
     c(1, two, two, 'metal', 'kept: B metal-bound NE2 without H (ZN)'),
     c(2, two, two, 'cost', 'kept: cost to 0 is 0.80 > 0.50'),
@@ -1338,6 +1578,15 @@ if __name__ == "__main__":
   test_unpin_contract()
   test_restore_check_catches_omission()
   test_deadline()
+  test_any_error_keeps_first()
+  test_first_run_error_propagates()
+  test_memory_error_propagates()
+  test_abort_in_rerun()
+  test_diagnostic_errors()
+  test_decide_error_second_his()
+  test_set_flip_states()
+  test_optimize()
+  test_real_deadline()
   test_two_candidates()
   test_failure_after_first_his()
   test_blank_ring_rule_in_driver()
