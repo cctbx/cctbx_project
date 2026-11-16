@@ -2,8 +2,8 @@
 
 Grows a QM region around each seed site (metal atoms by default, or a
 user-supplied selection) by breadth-first traversal of the covalent graph,
-optionally caps dangling bonds with hydrogen atoms, and writes a PDB file, an
-mmCIF file, and a sidecar PHIL file per seed.
+optionally caps dangling bonds with hydrogen atoms, and writes a model file
+and a sidecar PHIL file per seed.
 
 Usage (via dispatcher):
 
@@ -24,7 +24,8 @@ from __future__ import absolute_import, division, print_function
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 
-from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
+from mmtbx.geometry_restraints.endo_exo.builder import (
+  QMRegionBuilder, format_sidecar)
 
 
 master_phil_str = """
@@ -104,8 +105,7 @@ a seed's region. Used only when scope=per_seed."
 }
 write_files = True
   .type = bool
-  .help = "Whether to write a PDB, an mmCIF, and a sidecar PHIL file per seed \
-to the current working directory."
+  .help = "Whether to write a model file and a sidecar PHIL file per seed."
 """
 
 
@@ -120,8 +120,8 @@ class Program(ProgramTemplate):
 
   description = '''
   Grows a QM region around each seed site, optionally caps dangling bonds
-  with hydrogen atoms, and writes a PDB file, an mmCIF file, and a sidecar
-  PHIL file per seed.  Seeds are all metals in the structure unless a custom
+  with hydrogen atoms, and writes a model file and a sidecar PHIL file per
+  seed.  Seeds are all metals in the structure unless a custom
   selection string is provided via the ``selection`` parameter.
   '''
 
@@ -149,14 +149,56 @@ class Program(ProgramTemplate):
       raise Sorry('Model has no hydrogens. Add them and run again.')
 
   def run(self):
-    """Build the QM region(s) by delegating to :class:`QMRegionBuilder`."""
+    """Build the QM region(s) and write each one with its sidecar.
+
+    Raises
+    ------
+    Sorry
+        When two regions would be written under one file name, or an output
+        file exists and overwriting is off.
+    """
     model = self.data_manager.get_model()
     self._builder = QMRegionBuilder(self.params, logger=self.logger)
     self._results = self._builder.run(
       model,
       model_name=self.data_manager.get_default_model_name(),
-      default_output_filename=self.get_default_output_filename,
+      default_output_filename=self._region_filename,
     )
+    if not self.params.write_files:
+      return
+    file_names = [result['file_name'] for result in self._results]
+    if len(set(file_names)) < len(file_names):
+      raise Sorry(
+        'Several QM regions would be written under one file name; set '
+        'output.prefix rather than output.filename.')
+    for result in self._results:
+      model_file = self.data_manager.write_model_file(
+        result['model'], filename=result['file_name'])
+      phil_file = self.data_manager.write_phil_file(
+        format_sidecar(result), filename=result['file_name'] + '.phil')
+      print(f'Wrote QM region to {model_file} ({result["n_atoms"]} atoms) '
+            f'and its sidecar to {phil_file}', file=self.logger)
+
+  def _region_filename(self, prefix, suffix):
+    """Return the output file name stem of one region.
+
+    Parameters
+    ----------
+    prefix : str
+        The model file's name without its extension; ``output.prefix``
+        replaces it when set.
+    suffix : str
+        The region's own suffix; ``output.suffix`` is appended when set.
+
+    Returns
+    -------
+    str
+    """
+    if self.params.output.prefix is not None:
+      prefix = self.params.output.prefix
+    if self.params.output.suffix is not None:
+      suffix += self.params.output.suffix
+    return self.get_default_output_filename(prefix=prefix, suffix=suffix)
 
   def get_results(self):
     """Return per-seed result dicts produced during :meth:`run`.
@@ -167,8 +209,8 @@ class Program(ProgramTemplate):
         Each dict contains:
 
         file_name : str
-            Output filename stem (no extension); the PDB and mmCIF copies
-            are written as ``file_name + '.pdb'`` and ``file_name + '.cif'``.
+            Output filename stem (no extension), unique to the region; the
+            model file adds ``.pdb`` or ``.cif`` and the sidecar ``.phil``.
         n_atoms : int
             Number of atoms in the QM region.
         model : mmtbx.model.manager

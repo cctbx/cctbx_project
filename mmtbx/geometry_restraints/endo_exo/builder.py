@@ -1,9 +1,9 @@
 """QMRegionBuilder: the per-seed QM-region extraction pipeline.
 
-Orchestrates seed discovery, covalent-graph construction, BFS region growth,
-hydrogen capping, and (optionally) writing a PDB, mmCIF, and sidecar PHIL file
-per seed.  It is independent of the ProgramTemplate and the data manager, so it
-can be driven directly in memory: construct it with a params object, then call
+Orchestrates seed discovery, covalent-graph construction, BFS region growth
+and hydrogen capping, and formats the sidecar PHIL that describes each region.
+It is independent of the ProgramTemplate and the data manager, so it can be
+driven directly in memory: construct it with a params object, then call
 :meth:`run` with a model.
 """
 
@@ -32,8 +32,8 @@ from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
 from mmtbx.geometry_restraints.endo_exo.capping import HydrogenCapper
 
 
-# Sidecar PHIL emitted alongside each QM-region PDB/mmCIF.  Indices are
-# 0-based positional indices into the output PDB/mmCIF atom list.
+# Sidecar PHIL emitted alongside each QM-region model file.  Indices are
+# 0-based positional indices into the output model's atom list.
 master_sidecar_phil_str = """
 endo_exo_region {
   cap_atoms = None
@@ -60,6 +60,40 @@ atom in metal-scan mode, or all atoms matched by the selection string)."
 None for metal-scan regions."
 }
 """
+
+
+def format_sidecar(result):
+  """Return the sidecar PHIL text that describes one QM region.
+
+  The sidecar records which atoms are hydrogen caps, the element each carried
+  beforehand, which atoms were added to repair an open valence, which atoms
+  seeded the region, and the selection string.  Every index it holds is
+  positional into the region's model.
+
+  Parameters
+  ----------
+  result : dict
+      One region as returned by :meth:`QMRegionBuilder.run`.
+
+  Returns
+  -------
+  str
+  """
+  # An empty list formats as a bare ``key =``, which does not parse back, so
+  # empty lists are written as None (the declared default) instead.
+  def _or_none(values):
+    values = list(values)
+    return values or None
+
+  sidecar_phil = libtbx.phil.parse(master_sidecar_phil_str)
+  sidecar_phil_extract = sidecar_phil.extract()
+  region = sidecar_phil_extract.endo_exo_region
+  region.cap_atoms = _or_none(result['cap_iseqs'])
+  region.cap_original_elements = _or_none(result['cap_original_elements'])
+  region.completed_atoms = _or_none(result['completed_iseqs'])
+  region.seed_atoms = _or_none(result['seed_iseqs'])
+  region.selection_string = result['selection_string']
+  return sidecar_phil.format(sidecar_phil_extract).as_str()
 
 
 class QMRegionBuilder(object):
@@ -92,7 +126,7 @@ class QMRegionBuilder(object):
     )
 
   def run(self, model, model_name, default_output_filename):
-    """Locate seeds, grow QM regions, and (optionally) write outputs.
+    """Locate seeds and grow a QM region around each.
 
     Parameters
     ----------
@@ -102,8 +136,8 @@ class QMRegionBuilder(object):
         Source model filename; used to derive output filename stems.
     default_output_filename : callable
         ``f(prefix=..., suffix=...) -> stem`` returning an output filename
-        stem (no extension); typically
-        ``ProgramTemplate.get_default_output_filename``.
+        stem (no extension), called with the model name as *prefix* and
+        the region's own suffix.
 
     Returns
     -------
@@ -377,12 +411,6 @@ class QMRegionBuilder(object):
     file_name = self._make_output_filename(
       seed_index, seeds, selection_str=selection_str
     )
-    if self.params.write_files:
-      self._write_submodel(
-        model_sel, model.crystal_symmetry(), file_name)
-      self._write_sidecar(
-        file_name, cap_indices, cap_original_elements,
-        seed_indices, selection_str, completed_indices)
 
     return {
       'file_name': file_name,
@@ -1158,84 +1186,6 @@ class QMRegionBuilder(object):
             cap_anchor_indices, sym_image_provenance,
             frozenset(completed_amines), completed_indices)
 
-  def _write_submodel(self, model_sel, crystal_symmetry, file_name):
-    """Write *model_sel* as both a PDB and an mmCIF file.
-
-    mmCIF is emitted alongside the PDB because mmCIF stores the element in
-    ``_atom_site.type_symbol`` as a first-class field, so capped atoms keep
-    their hydrogen identity when re-parsed instead of being silently
-    re-classified from their atom names.
-
-    Parameters
-    ----------
-    model_sel : mmtbx.model.manager
-    crystal_symmetry : cctbx.crystal.symmetry
-    file_name : str
-        Filename stem (no extension); ``.pdb`` and ``.cif`` are appended here.
-    """
-    hierarchy = model_sel.get_hierarchy()
-    hierarchy.write_pdb_file(
-      crystal_symmetry=crystal_symmetry,
-      file_name=file_name + '.pdb',
-    )
-    hierarchy.write_mmcif_file(
-      crystal_symmetry=crystal_symmetry,
-      file_name=file_name + '.cif',
-      data_block_name='qm_region',
-    )
-    print(
-      f'Wrote QM region to {file_name}.pdb and {file_name}.cif '
-      f'({model_sel.get_number_of_atoms()} atoms)',
-      file=self.logger,
-    )
-
-  def _write_sidecar(self, file_name, cap_indices, cap_original_elements,
-                     seed_indices, selection_string, completed_indices=()):
-    """Write the per-region sidecar PHIL file as ``<file_name>.phil``.
-
-    The sidecar records which atoms are hydrogen caps, the element each
-    carried beforehand, which atoms seeded the region, and the original
-    selection string.  Every index it holds is positional into the emitted
-    file.
-
-    Parameters
-    ----------
-    file_name : str
-        Filename stem (no extension); ``.phil`` is appended here.
-    cap_indices : list of int
-        Sorted 0-based positional indices of cap atoms in the output file.
-    cap_original_elements : list of str
-        Element symbol each cap atom carried before being replaced by H
-        (parallel to *cap_indices*).
-    seed_indices : list of int
-        Sorted 0-based positional indices of seed atoms in the output file.
-    selection_string : str or None
-        The CCTBX selection string that seeded the region, or ``None`` for
-        metal-scan regions.
-    completed_indices : sequence of int, optional
-        Sorted 0-based positional indices of atoms added to repair a valence
-        the input model left open.
-    """
-    # An empty list formats as a bare ``key =``, which does not parse back, so
-    # empty lists are written as None (the declared default) instead.
-    def _or_none(values):
-      values = list(values)
-      return values or None
-
-    sidecar_phil = libtbx.phil.parse(master_sidecar_phil_str)
-    sidecar_phil_extract = sidecar_phil.extract()
-    sidecar_phil_extract.endo_exo_region.cap_atoms = _or_none(cap_indices)
-    sidecar_phil_extract.endo_exo_region.cap_original_elements = _or_none(
-      cap_original_elements)
-    sidecar_phil_extract.endo_exo_region.completed_atoms = _or_none(
-      completed_indices)
-    sidecar_phil_extract.endo_exo_region.seed_atoms = _or_none(seed_indices)
-    sidecar_phil_extract.endo_exo_region.selection_string = selection_string
-    sidecar_phil_path = file_name + '.phil'
-    with open(sidecar_phil_path, 'w') as file:
-      sidecar_phil.format(sidecar_phil_extract).show(out=file)
-    print(f'Wrote sidecar to {sidecar_phil_path}', file=self.logger)
-
   def _make_output_filename(self, seed_index, seeds, selection_str=None):
     """Build the output filename stem from the model name and seed identity.
 
@@ -1245,7 +1195,9 @@ class QMRegionBuilder(object):
 
     When seeds are individual metal atoms the stem is::
 
-        {model_stem}_{element}_chain{chain}_res{resseq}_within{radius}A_depth{depth}
+        {model_stem}_{name}_chain{chain}_res{resseq}{icode}_within{radius}A_depth{depth}
+
+    with ``_alt{altloc}`` after the residue when the seed has an altloc.
 
     Parameters
     ----------
@@ -1272,12 +1224,12 @@ class QMRegionBuilder(object):
       atom_group = seed.parent()
       residue_group = atom_group.parent()
       chain = residue_group.parent()
-      element = seed.element.strip().upper()
-      chain_id = chain.id.strip()
-      resseq = residue_group.resseq.strip()
       seed_suffix = (
-        f'_{element}_chain{chain_id}_res{resseq}' + common_suffix
-      )
+        f'_{seed.name.strip()}_chain{chain.id.strip()}'
+        f'_res{residue_group.resseq.strip()}{residue_group.icode.strip()}')
+      if atom_group.altloc.strip():
+        seed_suffix += f'_alt{atom_group.altloc.strip()}'
+      seed_suffix += common_suffix
 
     return self.default_output_filename(
       prefix=model_stem,

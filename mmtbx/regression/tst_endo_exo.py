@@ -349,6 +349,14 @@ END
 """
 
 
+def _program_master_phil():
+  """Return the program's master PHIL with the template's output scope,
+  as ``run_program`` builds it."""
+  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  master.adopt_scope(libtbx.phil.parse(EndoexoProgram.output_phil_str))
+  return master
+
+
 def _run_endo_exo_on_string(pdb_str, radius=None, include=None, selection=None):
   """Drive ``mmtbx.programs.endo_exo.Program`` in-memory on a PDB string
   with default settings (metal scan, radius=5.0, depth=3).  Parses the
@@ -364,7 +372,7 @@ def _run_endo_exo_on_string(pdb_str, radius=None, include=None, selection=None):
   dm.add_model("model", model)
   dm.set_default_model("model")
 
-  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = _program_master_phil()
   params = master.extract()
   params.write_files = False
   if radius is not None:
@@ -2044,7 +2052,7 @@ def _run_endo_exo_params(pdb_str, **overrides):
   dm = DataManager(["model"])
   dm.add_model("model", model)
   dm.set_default_model("model")
-  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = _program_master_phil()
   params = master.extract()
   params.write_files = False
   for dotted, value in overrides.items():
@@ -2301,25 +2309,56 @@ def exercise_depth_and_skip_search():
     assert skipped["cap_iseqs"] == [], skipped["cap_iseqs"]
 
 
-def exercise_write_files_roundtrip():
-  """write_files emits a PDB, an mmCIF and a sidecar that re-parses.
+# Two iron atoms in one residue, placed away from the 1BQ8 Fe site, so that
+# a metal scan yields two regions whose seeds share chain, residue and
+# element.
+_FES_HETATM = """\
+HETATM 2001 FE1  FES B 301      40.000  40.000  40.000  1.00 10.00          FE
+HETATM 2002 FE2  FES B 301      42.700  40.000  40.000  1.00 10.00          FE
+HETATM 2003  S1  FES B 301      41.350  41.700  40.000  1.00 10.00           S
+HETATM 2004  S2  FES B 301      41.350  38.300  40.000  1.00 10.00           S
+"""
 
-  The sidecar indices address the written atoms, and cap_atoms point at
-  hydrogens."""
+
+def exercise_write_files_roundtrip():
+  """The program writes one model file and a sidecar per region, under a
+  name of its own, through the DataManager.
+
+  The sidecar indices address the written atoms and cap_atoms point at
+  hydrogens.  The two Fe of one FES get separate files, an existing file is
+  kept unless overwrite is asked for, output.prefix and
+  output.target_output_format apply, and output.filename is refused when it
+  would hold several regions."""
   import os
   import shutil
   import tempfile
 
+  from iotbx.cli_parser import run_program
+  from libtbx.utils import null_out
   from mmtbx.geometry_restraints.endo_exo.builder import master_sidecar_phil_str
+
+  def run(*args):
+    return run_program(program_class=EndoexoProgram, args=["fes.pdb"] +
+                       list(args), logger=null_out())
 
   tmp = tempfile.mkdtemp(prefix="tst_endo_exo_")
   cwd = os.getcwd()
   try:
     os.chdir(tmp)
-    result = _run_endo_exo_params(_1BQ8_FE_SPHERE_PDB, write_files=True)[0]
-    stem = os.path.basename(result["file_name"])
-    for ext in (".pdb", ".cif", ".phil"):
-      assert os.path.isfile(stem + ext), f"missing {stem + ext}"
+    lines = [line for line in _1BQ8_FE_SPHERE_PDB.split("\n")
+             if line and line != "END"]
+    with open("fes.pdb", "w") as f:
+      f.write("\n".join(lines) + "\n" + _FES_HETATM + "END\n")
+
+    results = run()
+    stems = [r["file_name"] for r in results]
+    assert len(results) == 3 and len(set(stems)) == 3, stems
+    for stem in stems:
+      for ext in (".pdb", ".phil"):
+        assert os.path.isfile(stem + ext), f"missing {stem + ext}"
+      assert not os.path.isfile(stem + ".cif"), f"{stem}.cif written"
+    result = results[0]
+    stem = result["file_name"]
 
     # Fetch against the schema so the values come back typed, which also
     # checks the sidecar carries nothing the schema does not declare.
@@ -2339,35 +2378,44 @@ def exercise_write_files_roundtrip():
     assert region.selection_string is None
 
     pdb_in = iotbx.pdb.input(file_name=stem + ".pdb")
-    written = pdb_in.construct_hierarchy()
-    watoms = list(written.atoms())
+    watoms = list(pdb_in.construct_hierarchy().atoms())
     assert len(watoms) == result["n_atoms"], (len(watoms), result["n_atoms"])
     assert pdb_in.crystal_symmetry() is not None, "written PDB lost CRYST1"
     for ci in region.cap_atoms:
       assert watoms[ci].element.strip().upper() == "H", (
         f"sidecar cap index {ci} does not address a hydrogen in the PDB")
 
-    # The mmCIF copy exists so the capped atoms keep their element through a
-    # re-parse rather than being re-derived from their (heavy-atom) names.
-    cif_in = iotbx.pdb.input(file_name=stem + ".cif")
-    cif_hier = cif_in.construct_hierarchy()
-    catoms = list(cif_hier.atoms())
-    assert len(catoms) == result["n_atoms"], (len(catoms), result["n_atoms"])
-    assert ([a.element.strip().upper() for a in catoms]
-            == [a.element.strip().upper() for a in watoms]), (
-      "mmCIF and PDB copies disagree on elements")
+    try:
+      run()
+    except Sorry as e:
+      assert "already exists" in str(e), f"unexpected refusal: {e}"
+    else:
+      raise AssertionError("a second run replaced the existing files")
+
+    others = run("output.prefix=other", "output.target_output_format=mmcif")
+    for r in others:
+      assert r["file_name"].startswith("other_"), r["file_name"]
+      assert os.path.isfile(r["file_name"] + ".cif"), r["file_name"]
+      assert not os.path.isfile(r["file_name"] + ".pdb"), r["file_name"]
+    cif_atoms = list(iotbx.pdb.input(
+      file_name=others[0]["file_name"] + ".cif").construct_hierarchy().atoms())
     for ci in region.cap_atoms:
-      assert catoms[ci].element.strip().upper() == "H", (
+      assert cif_atoms[ci].element.strip().upper() == "H", (
         f"sidecar cap index {ci} does not address a hydrogen in the mmCIF")
+
+    try:
+      run("output.filename=one")
+    except Sorry as e:
+      assert "output.filename" in str(e), f"unexpected refusal: {e}"
+    else:
+      raise AssertionError("output.filename took several regions")
 
     # A region with no caps must still write a sidecar that re-parses: an
     # empty list cannot be expressed in PHIL, so it is written as None.
-    capless = _run_endo_exo_params(
-      _1BQ8_FE_SPHERE_PDB, write_files=True, buffer__skip_search=True)[0]
-    capless_stem = os.path.basename(capless["file_name"])
+    capless = run("buffer.skip_search=True", "output.prefix=capless")[0]
     assert capless["cap_iseqs"] == [], capless["cap_iseqs"]
     capless_region = schema.fetch(source=libtbx.phil.parse(
-      file_name=capless_stem + ".phil")).extract().endo_exo_region
+      file_name=capless["file_name"] + ".phil")).extract().endo_exo_region
     assert capless_region.cap_atoms is None, capless_region.cap_atoms
     assert capless_region.seed_atoms is not None
   finally:
@@ -3681,7 +3729,7 @@ def exercise_open_valences_are_reported():
     dm = DataManager(["model"])
     dm.add_model("model", model)
     dm.set_default_model("model")
-    master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+    master = _program_master_phil()
     params = master.extract()
     params.write_files = False
     params.buffer.radius = radius
