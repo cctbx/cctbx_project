@@ -1813,7 +1813,7 @@ class manager(object):
       sm = self._get_selection_manager()
       return sm.selection(
         string   = string,
-        cache    = self._atom_selection_cache,
+        cache    = self.get_atom_selection_cache(),
         optional = optional)
 
   def iselection(self, string):
@@ -5209,14 +5209,14 @@ class manager(object):
       sites_frac = solvent_xray_structure.sites_frac()
     import mmtbx.solvent.ordered_solvent as osm
     params = osm.master_params().extract()
-    params.output_chain_id     = chain_id
     params.output_residue_name = residue_name
     params.output_atom_name    = atom_name
     params.refine_occupancies  = refine_occupancies
     osm.add_solvent_to_model_inplace(
-      sites = sites_frac,
-      model = self,
-      params = params)
+      sites    = sites_frac,
+      model    = self,
+      params   = params,
+      chain_id = chain_id)
 
   def convert_atom(self,
       i_seq,

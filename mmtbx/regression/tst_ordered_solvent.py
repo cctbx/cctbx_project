@@ -272,7 +272,7 @@ def exercise_filter_by_distance_h():
   lines = [
     # 1: 2.0 A from non-polar HD1 (2.9 A from CD1): removed
     hoh_line(1, w1),
-    # 2: partner of 1, nothing close: kept
+    # 2: only partner is 1 that is removed: removed
     hoh_line(2, along(g(P,"TYR","HD1"), w1, 2.8)),
     # 3: H-bond with polar HD21 (1.8 A), 2.8 A from ND2: kept
     hoh_line(3, along(g(P,"ASN","ND2"), g(P,"ASN","HD21"), 1.8)),
@@ -285,18 +285,17 @@ def exercise_filter_by_distance_h():
   lines.extend(water_with_h(5, along(g(P,"ASN","CG"), od1, 2.8),
     away_from=od1))
   m = get_model_h(lines)
-  for altlocs in [False, True]:
-    r = ordered_solvent.filter_by_distance(m.deep_copy(),
-      fix_altlocs_and_filter_was_run=altlocs)
-    assert kept_waters(r) == [2, 3, 5], kept_waters(r)
+  r = ordered_solvent.filter_by_distance(m.deep_copy())
+  assert kept_waters(r) == [3, 5], kept_waters(r)
   # thresholds are parameters
-  r = ordered_solvent.filter_by_distance(m.deep_copy(), False,
+  r = ordered_solvent.filter_by_distance(m.deep_copy(),
     dist_min_h_nonpolar=1.9, dist_min_h_polar=1.3, dist_min=1.4)
   assert kept_waters(r) == [1, 2, 3, 4, 5, 6], kept_waters(r)
-  # fix_altlocs_and_filter: own H of water are not neighbors (used to get
-  # altloc assigned or be removed)
-  r = ordered_solvent.fix_altlocs_and_filter(m.deep_copy(), dist_min=1.8)
-  assert 5 in kept_waters(r)
+  # water that must be kept is kept
+  fixed = m.selection("resname HOH and resseq 4")
+  r = ordered_solvent.filter_by_distance(m.deep_copy(),
+    fixed_water_selection=fixed)
+  assert kept_waters(r) == [3, 4, 5], kept_waters(r)
 
 def exercise_no_duplicate_water_h_restraints():
   """ Adding water must not add restraints again for existing water with H """
@@ -329,20 +328,30 @@ def get_manager_stub(model, fmodel, params):
   o.model, o.fmodel, o.params, o.log = model, fmodel, params, null_out()
   o._maps, o._model_state, o.n_water = None, None, None
   o.new_solvent_selection = None
+  o._labelled_selection = None
+  o._saved_occ, o._saved_u_iso = None, None
+  o.water_state = ordered_solvent.water_state()
   o.model_size_init = model.size()
   return o
 
 def exercise_build_h():
   """
-  H atoms are built for water in different chains (used to crash), water with
-  alternative conformations is not touched (used to be duplicated).
+  H atoms are built for water in different chains (used to crash) and for
+  water with alternative conformations: each conformer gets its own H; a
+  conformer without H peaks gets none.
   """
   cryst1 = "CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1"
   w1 = water_with_h(1, matrix.col((5,5,5)), matrix.col((5,5,0)), chain="A")
   w2 = water_with_h(2, matrix.col((5,14,5)), matrix.col((5,14,0)), chain="S")
   w3 = [hoh_line(3, matrix.col((14,4,4)), chain="S", altloc="A", occ=0.5),
         hoh_line(3, matrix.col((14,4.8,4)), chain="S", altloc="B", occ=0.5)]
-  lines_true = w1 + w3 + w2
+  # water with alternative conformations 1.5 A apart, both with H
+  w4 = []
+  for altloc, x in [("A", 13.), ("B", 14.5)]:
+    for l in water_with_h(4, matrix.col((x,14,14)), matrix.col((x,14,0)),
+                          chain="A"):
+      w4.append(l[:16]+altloc+l[17:54]+"  0.50"+l[60:])
+  lines_true = w1 + w4 + w3 + w2
   lines = [l for l in lines_true if l[76:78].strip() != "H"]
   model_true = get_model_h(lines_true, cryst1=cryst1)
   model = get_model_h(lines, cryst1=cryst1)
@@ -363,11 +372,25 @@ def exercise_build_h():
       waters.setdefault(c.id, []).append(
         sorted([(ag.altloc, a.name.strip()) for ag in rg.atom_groups()
                 for a in ag.atoms()]))
-  assert waters["A"] == [[("", "H1"), ("", "H2"), ("", "O")]], waters
+  assert sorted(waters["A"]) == sorted([
+    [("", "H1"), ("", "H2"), ("", "O")],
+    [("A", "H1"), ("A", "H2"), ("A", "O"),
+     ("B", "H1"), ("B", "H2"), ("B", "O")]]), waters
   assert sorted(waters["S"]) == sorted([
     [("", "H1"), ("", "H2"), ("", "O")],
     [("A", "O"), ("B", "O")]]), waters
-  assert o.model.size() == model.size() + 4
+  assert o.model.size() == model.size() + 8
+  # H have altloc and occupancy of their O, O-H is about 1 A
+  for rg in h.residue_groups():
+    for ag in rg.atom_groups():
+      if ag.resname != "HOH": continue
+      o_atom = [a for a in ag.atoms() if a.element.strip()=="O"][0]
+      for a in ag.atoms():
+        if(not a.element_is_hydrogen()): continue
+        assert approx_equal(a.occ, o_atom.occ)
+        assert 0.5 < a.distance(o_atom) < 1.5, (a.quote(), o_atom.quote())
+  assert approx_equal(o.model.get_xray_structure().sites_cart(),
+    h.atoms().extract_xyz())
 
 def exercise_refine_new_water():
   """ New water is refined even if model size did not change """

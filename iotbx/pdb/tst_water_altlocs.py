@@ -105,6 +105,23 @@ def test_water_and_ligand():
     r.manual
   assert altlocs(h)[("22", "O")] == ""
 
+def test_water_at_metal():
+  # a partial water 2.1 A from a partial Mg coordinates it: not alternates
+  h, cs = hierarchy([
+    "HETATM   20 MG    MG A  20      12.000  12.000  12.000  0.60 10.00          MG",
+    water(21, 21, 14.1, 12.0, 12.0, 0.6)])
+  r = water_altlocs.run(h, cs)
+  assert r.n_labelled == 0 and r.manual == [], (r.labelled, r.manual)
+  assert water_altlocs.DISTANCE_CUTOFF == 2.2
+
+def test_water_on_special_position():
+  # a partial water on a 2-fold axis is not an alternate of its own copy
+  cryst1 = "CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1 2 1\n"
+  h, cs = hierarchy([water(1, 1, 0, 5, 0, 0.5), water(2, 2, 0.3, 9, 0, 0.5)],
+    cryst1=cryst1)
+  r = water_altlocs.run(h, cs)
+  assert r.n_labelled == 0 and r.manual == [], (r.labelled, r.manual)
+
 if __name__ == "__main__":
   test_water_pair()
   test_three_waters()
@@ -112,4 +129,6 @@ if __name__ == "__main__":
   test_symmetry_mate()
   test_water_at_split_residue()
   test_water_and_ligand()
+  test_water_at_metal()
+  test_water_on_special_position()
   print("OK")

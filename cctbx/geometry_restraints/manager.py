@@ -2051,6 +2051,7 @@ class manager(Base_geometry):
                                  'metal coordination',
                                  'glycosidic custom',
                                  'Misc. bond',
+                                 'water coordination',
                                  ]:
         # not writing cif_link for various reasons like programatic links
         pass
