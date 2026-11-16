@@ -119,10 +119,10 @@ def exercise_settings_reach_placer():
     "water_hydrogens.existing_h=keep", "water_hydrogens.symmetry=False",
     "water_hydrogens.refine.max_sweeps=0",
     "water_hydrogens.refine.tolerance=0", "water_hydrogens.basin.rounds=2",
-    "water_hydrogens.cluster_search=True"])
+    "water_hydrogens.cluster_search=False"])
   assert len(calls) == 1, len(calls)
   expected = dict(existing_h="keep", symmetry_mates=False, n_refine=0,
-    refine_tol=0, n_basin=2, cluster_search=True)
+    refine_tol=0, n_basin=2, cluster_search=False)
   for key, value in expected.items():
     assert calls[0][key] == value, (key, calls[0][key], value)
   assert calls[0]["crystal_symmetry"] is not None, "crystal symmetry dropped"
