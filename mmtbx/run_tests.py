@@ -159,6 +159,7 @@ general_tests = [
   # monomer library
   "$D/monomer_library/tst_rna_sugar_pucker_analysis.py",
   "$D/monomer_library/tst_cif_types.py",
+  "$D/regression/tst_monomer_library_terminal_nh3.py",
   "$D/monomer_library/tst_motif.py",
   "$D/monomer_library/tst_cif_triage.py",
   "$D/monomer_library/tst_rotamer_utils.py",

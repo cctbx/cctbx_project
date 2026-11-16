@@ -4,6 +4,7 @@ import iotbx.phil
 import iotbx.ncs
 from mmtbx.monomer_library import server
 from mmtbx.monomer_library import cif_types
+from mmtbx.monomer_library import terminal_nh3
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from mmtbx.monomer_library import conformation_dependent_restraints
 from mmtbx.geometry_restraints import ramachandran
@@ -1574,6 +1575,11 @@ class monomer_mapping(slots_getstate_setstate):
     caa = get_class(name=self.monomer.chem_comp.id) in ['common_amino_acid',
                                                         'modified_amino_acid',
                                                         ]
+    def nh3():
+      # mod_NH3 would take the name of an H on another atom (2KZ H2 on CB)
+      mod = mod_dict["NH3"]
+      if terminal_nh3.mod_takes_name(self.monomer, mod): return []
+      return [mod]
     if (self.monomer.classification == "peptide"):
       if (ani is not None):
         u_mon_lib = {}
@@ -1620,7 +1626,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
         nitrogen_hydrogen_translation = None
         if (len(nitrogen_hydrogens) == 3):
           if (self.monomer_atom_dict.get("H") is not None):
-            mod_mod_ids.append(mod_dict["NH3"])
+            mod_mod_ids.extend(nh3())
         elif (len(nitrogen_hydrogens) == 2):
           if (self.monomer.chem_comp.id == "PRO"):
             mod_mod_id = mod_dict["NH2"]
@@ -1652,7 +1658,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
               and ("H2" in u or "2H" in u)
               and ("H3" in u or "3H" in u)):
           if (self.monomer_atom_dict.get("H") is not None):
-            mod_mod_ids.append(mod_dict["NH3"])
+            mod_mod_ids.extend(nh3())
         elif (    ("HN1" in u or "1HN" in u)
               and ("HN2" in u or "2HN" in u)):
           mod_mod_ids.append(mod_dict["NH2"])
@@ -1662,10 +1668,15 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
               or  ("H2" in u or "2H" in u)
               or  ("H3" in u or "3H" in u)):
           if (self.monomer_atom_dict.get("H") is not None):
-            mod_mod_ids.append(mod_dict["NH3"])
+            mod_mod_ids.extend(nh3())
         elif (    ("HN1" in u or "1HN" in u)
               or  ("HN2" in u or "2HN" in u)):
           mod_mod_ids.append(mod_dict["NH2"])
+        if (not [m for m in mod_mod_ids if m.chem_mod.id.startswith("NH")]):
+          # the dictionary's N-H names plus the names terminal_nh3 adds
+          mod = terminal_nh3.terminal_mod(self.monomer, u, mod_dict["NH3"])
+          if (mod is not None):
+            mod_mod_ids.append(mod)
     elif (self.monomer.classification in ["RNA", "DNA"]):
       if (ani is not None):
         if (ani.have_op3_or_hop3):
