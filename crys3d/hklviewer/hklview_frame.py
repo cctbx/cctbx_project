@@ -576,15 +576,17 @@ class HKLViewFrame() :
     if not self.update_handler_sem.acquire(timeout=jsview_3d.lock_timeout):
       self.mprint("Timed out getting update_handler_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
     self.mprint("guarded_process_PHIL_parameters() got update_handler_sem", verbose="threadingmsg")
-    self.process_PHIL_parameters(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
-    if postrender:
-      time.sleep(1)
-      self.viewer.RedrawNGL()
-      time.sleep(1)
-      self.viewer.SimulateClick()
-      time.sleep(1)
-      self.viewer.GetReflectionsInFrustum()
-    self.update_handler_sem.release()
+    try:
+      self.process_PHIL_parameters(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
+      if postrender:
+        time.sleep(1)
+        self.viewer.RedrawNGL()
+        time.sleep(1)
+        self.viewer.SimulateClick()
+        time.sleep(1)
+        self.viewer.GetReflectionsInFrustum()
+    finally:
+      self.update_handler_sem.release()
     self.mprint("guarded_process_PHIL_parameters() releasing update_handler_sem", verbose="threadingmsg")
 
 
@@ -1104,8 +1106,10 @@ Borrowing them from the first miller array""" %i)
         self.mprint(str(e))
       finally:
         # reapply the phil paramaters that may have been reset by external_cmd doing an openfilename call
-        self.guarded_process_PHIL_parameters(new_phil=diff2)
-        self.run_external_sem.release()
+        try:
+          self.guarded_process_PHIL_parameters(new_phil=diff2)
+        finally:
+          self.run_external_sem.release()
         self.mprint("run_external_cmd.thrdfunc() releasing run_external_sem", verbose="threadingmsg")
 
       # Since process_PHIL_parameters() might be called by update_from_philstr() in external_cmd()
