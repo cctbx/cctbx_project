@@ -410,9 +410,18 @@ def minimize_wrapper_for_ramachandran(
   grm.geometry.reference_dihedral_manager=None
 
 def geometry_violations(geometry_restraints_manager, sites_cart,
-                        bond_z_max=6.0, clash_overlap_max=1.0):
+                        bond_z_max=6.0, clash_overlap_max=1.0,
+                        metal_short_max=0.5, metal_short_resolved=0.2,
+                        resolving=None):
   """
-  Covalent bond outliers and clashes of the geometry restraints.
+  Bond outliers and clashes of the geometry restraints.
+
+  The bonds are the covalent ones and those to a coordinated metal. A
+  covalent bond is judged in sigmas. A bond to a metal is judged in A and
+  only when too short: its ideal length and sigma depend on the metal site
+  and are not reliable to a few sigmas (Zn-N(His) of 2.0 A is fine with an
+  ideal of 2.3 A), while a collapsed one (1nlt: Zn-S(Cys) of 1.4 A) puts
+  the ligand atoms into bonding distance of each other.
 
   Parameters
   ----------
@@ -426,6 +435,16 @@ def geometry_violations(geometry_restraints_manager, sites_cart,
   clash_overlap_max : float
     A nonbonded pair is a clash when its distance is more than this (A)
     below the van der Waals distance of the restraint.
+  metal_short_max : float
+    A bond to a coordinated metal is an outlier when it is more than this
+    (A) shorter than its ideal length.
+  metal_short_resolved : float
+    The same limit for the bonds of resolving.
+  resolving : set of (i_seq, j_seq), optional
+    Bonds to a metal that are being regularized (the outliers of the
+    starting model, i_seqs as returned in bonds): they stay outliers until
+    within metal_short_resolved of the ideal length, so that the
+    minimization does not stop at metal_short_max.
 
   Returns
   -------
@@ -436,7 +455,9 @@ def geometry_violations(geometry_restraints_manager, sites_cart,
   """
   from libtbx import group_args
   from cctbx.geometry_restraints.linking_class import linking_class
-  covalent = linking_class().get_origin_id('covalent geometry')
+  origin_ids = linking_class()
+  covalent = origin_ids.get_origin_id('covalent geometry')
+  metal = origin_ids.get_origin_id('metal coordination')
   pair_proxies = geometry_restraints_manager.pair_proxies(
     sites_cart=sites_cart)
   bonds = []
@@ -446,15 +467,27 @@ def geometry_violations(geometry_restraints_manager, sites_cart,
     # C++; only the outliers are visited (a loop over all proxies costs
     # 0.1 s per call on 8000 atoms, and the minimizer calls this every step).
     z = flex.sqrt(bp.residuals(sites_cart=sites_cart))
+    # ideal - model: positive for a bond that is too short
+    short = bp.deltas(sites_cart=sites_cart)
+    short_min = metal_short_max
+    if(resolving): short_min = min(short_min, metal_short_resolved)
     n_simple = bp.simple.size()
-    for k in (z > bond_z_max).iselection():
+    for k in ((z > bond_z_max) | (short > short_min)).iselection():
       if(k < n_simple):
         proxy = bp.simple[k]
         i_seq, j_seq = proxy.i_seqs
       else:
         proxy = bp.asu[k-n_simple]
         i_seq, j_seq = proxy.i_seq, proxy.j_seq
-      if(proxy.origin_id != covalent): continue
+      if(proxy.origin_id == covalent):
+        if(z[k] <= bond_z_max): continue
+      elif(proxy.origin_id == metal):
+        short_max = metal_short_max
+        if(resolving and (i_seq, j_seq) in resolving):
+          short_max = metal_short_resolved
+        if(short[k] <= short_max): continue
+      else:
+        continue
       bonds.append((i_seq, j_seq, z[k]))
   clashes = []
   nbp = pair_proxies.nonbonded_proxies
@@ -514,6 +547,8 @@ class regularizing_lbfgs(geometry_restraints.lbfgs.lbfgs):
     Shift budget (A). None: no limit.
   stop_when_regular : bool
     False: the violations do not stop the minimization.
+  resolving : set of (i_seq, j_seq), optional
+    As for geometry_violations.
 
   Attributes
   ----------
@@ -532,8 +567,9 @@ class regularizing_lbfgs(geometry_restraints.lbfgs.lbfgs):
                riding_h_manager=None, sites_cart_selection=None,
                max_iterations=500, bond_z_max=6.0, clash_overlap_max=1.0,
                mean_shift_max=0.3, max_shift_max=1.0,
-               stop_when_regular=True):
+               stop_when_regular=True, resolving=None):
     self.sites_cart_start = sites_cart_start
+    self.resolving = resolving
     self.shift_selection = shift_selection
     self.bond_z_max = bond_z_max
     self.clash_overlap_max = clash_overlap_max
@@ -565,7 +601,8 @@ class regularizing_lbfgs(geometry_restraints.lbfgs.lbfgs):
       geometry_restraints_manager = self.tmp.geometry_restraints_manager,
       sites_cart                  = sites_cart,
       bond_z_max                  = self.bond_z_max,
-      clash_overlap_max           = self.clash_overlap_max)
+      clash_overlap_max           = self.clash_overlap_max,
+      resolving                   = self.resolving)
     self.mean_shift, self.max_shift = mean_and_max_shift(
       sites_cart, self.sites_cart_start, self.shift_selection)
     n = len(self.violations.bonds) + len(self.violations.clashes)
@@ -593,7 +630,9 @@ def regularize(geometry_restraints_manager, sites_cart, selection=None,
   The selected atoms move under all restraints of the manager plus
   Cartesian reference restraints to their starting positions. The
   minimization stops at the first step without violations
-  (geometry_violations). If it converges with violations left, the
+  (geometry_violations; a bond to a metal that is an outlier at the start
+  counts until it is within metal_short_resolved of its ideal length). If
+  it converges with violations left, the
   reference restraints are loosened (next sigma of reference_sigmas; None:
   no reference restraints) and the minimization continues. It also stops
   when the mean or the maximum shift of the moving non-H atoms exceeds its
@@ -660,6 +699,7 @@ def regularize(geometry_restraints_manager, sites_cart, selection=None,
     sites_cart                  = sites_cart,
     bond_z_max                  = bond_z_max,
     clash_overlap_max           = clash_overlap_max)
+  resolving = set([(b[0], b[1]) for b in violations_start.bonds])
   n_iterations = 0
   for i_round, sigma in enumerate(reference_sigmas):
     n_rounds_left = len(reference_sigmas) - i_round
@@ -685,7 +725,8 @@ def regularize(geometry_restraints_manager, sites_cart, selection=None,
       clash_overlap_max           = clash_overlap_max,
       mean_shift_max              = mean_shift_max,
       max_shift_max               = max_shift_max,
-      stop_when_regular           = stop_when_regular)
+      stop_when_regular           = stop_when_regular,
+      resolving                   = resolving)
     n_iterations += minimized.n_iterations
     if(minimized.stopped is not None or n_iterations >= max_iterations or
        not stop_when_regular):
@@ -695,7 +736,8 @@ def regularize(geometry_restraints_manager, sites_cart, selection=None,
     geometry_restraints_manager = grm,
     sites_cart                  = sites_cart,
     bond_z_max                  = bond_z_max,
-    clash_overlap_max           = clash_overlap_max)
+    clash_overlap_max           = clash_overlap_max,
+    resolving                   = resolving)
   mean_shift, max_shift = mean_and_max_shift(
     sites_cart, sites_cart_start, shift_selection)
   return group_args(

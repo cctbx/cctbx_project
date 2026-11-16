@@ -3974,7 +3974,8 @@ class manager(object):
     Remove bond length outliers and steric clashes with the smallest shift
     of the model, for example to make it fit for a QM calculation.
 
-    Bond outliers (|z| > bond_z_max) and clashes (nonbonded overlap more
+    Bond outliers (|z| > bond_z_max; a bond to a coordinated metal: more
+    than 0.5 A shorter than ideal) and clashes (nonbonded overlap more
     than clash_overlap_max A, with symmetry mates too) are found with the
     geometry restraints. Without any the model is not changed, unless
     force is set. Otherwise the residues within shell_radius (A) of a
