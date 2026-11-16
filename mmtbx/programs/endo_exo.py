@@ -21,11 +21,7 @@ Programmatic use::
 
 from __future__ import absolute_import, division, print_function
 
-try:
-  from phenix.program_template import ProgramTemplate
-except ImportError:
-  from libtbx.program_template import ProgramTemplate
-
+from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 
 from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
