@@ -353,10 +353,6 @@ class run_ensemble_refinement(object):
     self.cmremove = True
     self.cdp = self.params.cartesian_dynamics
     self.bsp = mmtbx.bulk_solvent.bulk_solvent_and_scaling.master_params.extract()
-    if (self.params.target_name == 'mlhl'):
-      self.bsp.target = 'ml'
-    else :
-      self.bsp.target = self.params.target_name
     if self.params.tx == None:
       print("\nAutomatically set Tx (parameter not defined)", file=log)
       print("Tx          :  2(1/dmin)**2", file=log)

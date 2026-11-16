@@ -26,7 +26,6 @@ import sys, os, math
 import mmtbx.f_model
 from libtbx.str_utils import format_value
 from libtbx import Auto
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import libtbx.path
 import mmtbx.refinement.targets
 import mmtbx.f_model.f_model_info
@@ -827,6 +826,7 @@ the percentage of R-free reflections).
                         remove_outliers=False,refine_hd_scattering=False,
                         apply_back_trace=False, update_f_part1=False):
     self.update_solvent_and_scale(log=log,
+      params=params,
       apply_back_trace=apply_back_trace,
       update_f_part1=update_f_part1)
 
@@ -854,11 +854,8 @@ the percentage of R-free reflections).
       b_cart         = self.b_cart(),
       twin_fraction  = self.twin_fraction)
     self.twin_set = self.fmodel_ts1.twin_set
-    #if(params is None):
-    #  params = bss.master_params.extract()
-    #params.k_sol_b_sol_grid_search = False # XXX too slow otherwise
-    #params.number_of_macro_cycles=1 # XXX too slow otherwise, let's see may be ok
-    result = self.fmodel_ts1.update_all_scales(fast=False, # XXX
+    # Twinned data: fmodel uses its twin protocol whatever the mode is.
+    result = self.fmodel_ts1.update_all_scales(
       params=params, log=log, apply_back_trace=apply_back_trace)
     k_sol, b_sol, b_cart, k_overall = flat_scaling_parameters(self.fmodel_ts1)
     self.update_core(

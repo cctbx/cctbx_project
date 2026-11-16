@@ -432,12 +432,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     self.use_f_model_scaled= use_f_model_scaled
     self.max_number_of_bins = max_number_of_bins
     self.n_resolution_bins_output = n_resolution_bins_output
-    if(mask_params is not None):
-      self.mask_params = mask_params
-    else:
-      self.mask_params = mmtbx.masks.mask_master_params.extract()
-    if(self._data_type == "neutron"):
-      self.mask_params.ignore_hydrogens=False
+    self._set_mask_params(mask_params = mask_params)
     self.mask_manager = mask_manager
     if(self.mask_manager is None):
       self.mask_manager = masks.manager(
@@ -530,6 +525,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     if(self.twin_law is not None):
       twin_law_xyz = sgtbx.rt_mx(symbol=self.twin_law, r_den=12, t_den=144)
       twin_law_matrix = twin_law_xyz.as_double_array()[0:9]
+      import mmtbx.utils # not imported at module level (circular)
       twin_mi = mmtbx.utils.create_twin_mate(
         miller_indices  = miller_array.indices(),
         twin_law_matrix = twin_law_matrix)
@@ -928,7 +924,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     print(file=out)
 
   def optimize_mask(self, params = None, thorough=False, out = None,
-      nproc=1, fast=True, refine_hd_scattering=False):
+      nproc=1, fast=None, refine_hd_scattering=False):
     """
     Grid-search the bulk-solvent mask parameters that minimize r_work.
 
@@ -951,7 +947,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     nproc : int or Auto
       Trials are evaluated in parallel when > 1.
     fast, refine_hd_scattering : bool
-      Scaling options, as in update_all_scales.
+      Scaling options, as in update_all_scales (fast=None: params.mode
+      decides, fast if there are no params).
 
     Returns
     -------
@@ -960,6 +957,8 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     """
     if(len(self.f_masks()) != 1):
       return False
+    if(fast is None):
+      fast = (params is None or params.mode == "fast")
     scaling_kwds = dict(params=params, fast=fast,
       refine_hd_scattering=refine_hd_scattering)
     self.show_mask_optimization_statistics(prefix="Mask optimization: start",
@@ -1541,7 +1540,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         params = None, # XXX DUMMY
         nproc = None,
         cycles = None,
-        fast = True,
+        fast = None,
         optimize_mask = False,
         refine_hd_scattering = True,
         refine_hd_scattering_method = "fast",
@@ -1552,6 +1551,16 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         verbose=None,
         log = None):
     self.alpha_beta_cache = None
+    # Which protocol: params.mode decides unless the caller insists on one.
+    if(params is None):
+      fast = (fast is None or fast)
+    elif(fast is None):
+      fast = (params.mode == "fast")
+    else:
+      assert not (fast and params.mode == "slow"), \
+        "fast=True contradicts bulk_solvent_and_scale.mode=slow"
+    if(params is not None and not params.apply_back_trace):
+      apply_back_trace = False
     # Auto-shutoff refine_hd_scattering if number of H is too small.
     if refine_hd_scattering:
       if self.xray_structure is not None:
@@ -1679,8 +1688,21 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
   def target_unscaled_t(self, alpha_beta=None):
     return self.target_t(alpha_beta=alpha_beta)*self.f_calc_t().data().size()
 
-  def _update_mask_params(self, mask_params):
+  def _set_mask_params(self, mask_params):
+    """
+    Neutron data: H and D are always part of the mask. The caller's
+    parameters are not changed for that (they may be shared with an X-ray
+    fmodel).
+    """
+    if(mask_params is None):
+      mask_params = mmtbx.masks.mask_master_params.extract()
+    if(self._data_type == "neutron" and mask_params.ignore_hydrogens):
+      mask_params = deepcopy(mask_params)
+      mask_params.ignore_hydrogens = False
     self.mask_params = mask_params
+
+  def _update_mask_params(self, mask_params):
+    self._set_mask_params(mask_params = mask_params)
     self.mask_manager = masks.manager(
       miller_array      = self.f_obs(),
       miller_array_twin = self.twin_set,

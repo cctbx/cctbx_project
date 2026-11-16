@@ -45,6 +45,14 @@ class run(mmtbx.f_model.manager):
   def compute(self, apply_back_trace, remove_outliers, fast,
               params, refine_hd_scattering, log):
     assert [self.arrays.core_twin, self.twin_law].count(None) in [0,2]
+    if(params is None): params = bss.master_params.extract()
+    bss.validate_params(
+      params  = params,
+      fast    = fast,
+      twinned = self.twinned(),
+      n_masks = len(self.f_masks()))
+    self._show_parameters(params = params, fast = fast,
+      apply_back_trace = apply_back_trace, log = log)
     self.show(prefix = "start", log = log)
     self.reset_all_scales()
     self.show(prefix = "re-set all scales", log = log)
@@ -105,6 +113,75 @@ class run(mmtbx.f_model.manager):
     else:
       print(m+" twin_fraction=%4.2f"%self.twin_fraction, file=log)
 
+  def _show_parameters(self, params, fast, apply_back_trace, log):
+    """
+    Tell which protocol is used and with which parameters. apply_back_trace
+    is what is going to be done: the parameter and the caller both have to
+    ask for it.
+    """
+    if(log is None): return
+    if(self.twinned()):
+      print("Bulk-solvent and scaling: twin protocol (mode and slow.* not "
+        "used)", file=log)
+      self._show_mask_parameters(log = log)
+      return
+    mode = "slow"
+    if(fast): mode = "fast"
+    print("Bulk-solvent and scaling: mode=%s"%mode, file=log)
+    print("  bulk_solvent=%s anisotropic_scaling=%s apply_back_trace=%s"%(
+      str(params.bulk_solvent), str(params.anisotropic_scaling),
+      str(bool(apply_back_trace))), file=log)
+    self._show_mask_parameters(log = log)
+    if(fast): return
+    s = params.slow
+    if(s.k_sol_b_sol_grid_search):
+      print("  grid search: k_sol %.2f-%.2f step %.2f, "
+        "b_sol %.1f-%.1f step %.1f"%(s.k_sol_grid_search_min,
+        s.k_sol_grid_search_max, s.k_sol_step, s.b_sol_grid_search_min,
+        s.b_sol_grid_search_max, s.b_sol_step), file=log)
+    else:
+      print("  grid search: off", file=log)
+    print("  minimization: k_sol,b_sol=%s b_cart=%s "
+      "(symmetry constraints=%s)"%(str(s.minimization_k_sol_b_sol),
+      str(s.minimization_b_cart), str(s.symmetry_constraints_on_b_cart)),
+      file=log)
+    print("  bounds: k_sol %.2f-%.2f, b_sol %.1f-%.1f"%(s.k_sol_min,
+      s.k_sol_max, s.b_sol_min, s.b_sol_max), file=log)
+    fixed = []
+    if(s.fix_k_sol is not None): fixed.append("k_sol=%.4f"%s.fix_k_sol)
+    if(s.fix_b_sol is not None): fixed.append("b_sol=%.4f"%s.fix_b_sol)
+    fbc = s.fix_b_cart
+    fbc = [fbc.b11, fbc.b22, fbc.b33, fbc.b12, fbc.b13, fbc.b23]
+    if(fbc.count(None) == 0):
+      fixed.append("b_cart=%s"%",".join(["%.4f"%b for b in fbc]))
+    if(len(fixed) == 0): fixed = ["none"]
+    print("  fixed: %s"%" ".join(fixed), file=log)
+
+  def _show_mask_parameters(self, log):
+    """
+    Mask parameters as they are used (neutron data always with H in the
+    mask).
+    """
+    import mmtbx.masks
+    p = self.mask_params
+    if(p is None): return
+    print("  mask: solvent_radius=%.2f shrink_truncation_radius=%.2f "
+      "use_asu_masks=%s"%(p.solvent_radius, p.shrink_truncation_radius,
+      str(p.use_asu_masks)), file=log)
+    print("  mask: gridding from %s"%mmtbx.masks.gridding_source(
+      mask_params = p, d_min = self.f_obs().d_min()), file=log)
+    note = ""
+    if(self.data_type() == "neutron" and not p.ignore_hydrogens):
+      note = " (always False for neutron data)"
+    print("  mask: ignore_zero_occupancy_atoms=%s ignore_hydrogens=%s%s"%(
+      str(p.ignore_zero_occupancy_atoms), str(p.ignore_hydrogens), note),
+      file=log)
+    line = "  mask: Fmask_res_high=%.2f n_radial_shells=%d"%(
+      p.Fmask_res_high, p.n_radial_shells)
+    if(p.n_radial_shells > 1):
+      line += " radial_shell_width=%.2f"%p.radial_shell_width
+    print(line, file=log)
+
   def _capture_scaling_b_values(self, fast, result):
     # Capture the anisotropic (b_cart from k_anisotropic) and isotropic
     # (b_isotropic from k_isotropic) B-values of the bulk-solvent scaling for
@@ -121,14 +198,26 @@ class run(mmtbx.f_model.manager):
     if(k_isotropic is not None and k_isotropic.size() == self.ss.size()):
       b_isotropic = scitbx.math.gaussian_fit_1d_analytical(
         x = flex.sqrt(self.ss), y = k_isotropic).b
+    k_sol, b_sol = None, None
+    if(not fast):
+      k_sol, b_sol = list(result.k_sols()), list(result.b_sols())
     return group_args(
-      mode = "fast" if fast else "slow", b_cart = b_cart, b_isotropic = b_isotropic)
+      mode        = "fast" if fast else "slow",
+      k_sol       = k_sol,
+      b_sol       = b_sol,
+      b_cart      = b_cart,
+      b_isotropic = b_isotropic)
 
   def _show_scaling_b_values(self, result, log):
     i = getattr(result, "scaling_b_info", None)
     if(log is None or i is None): return
     print(file=log)
     print("bulk-solvent scaling B-values (mode: %s):" % i.mode, file=log)
+    if(i.k_sol is not None):
+      print("  k_sol:       %s" % " ".join(["%.4f" % k for k in i.k_sol]),
+        file=log)
+      print("  b_sol:       %s" % " ".join(["%.4f" % b for b in i.b_sol]),
+        file=log)
     if(i.b_cart is not None):
       print("  b_cart:      %s" % " ".join(["%.4f" % b for b in i.b_cart]),
         file=log)
@@ -149,7 +238,6 @@ class run(mmtbx.f_model.manager):
 
   def update_solvent_and_scale_2(self, fast, params, apply_back_trace,
                                  refine_hd_scattering, log):
-    if(params is None): params = bss.master_params.extract()
     if(self.xray_structure is not None):
       # Figure out Fcalc and Fmask based on presence of H
       hd_selection = self.xray_structure.hd_selection()
@@ -181,6 +269,8 @@ class run(mmtbx.f_model.manager):
         params     = params)
       k_sol, b_sol, b_cart = result.k_sols(), result.b_sols(), result.b_cart()
       r_all_from_scaler = result.r_all() # must be here, before apply_back_trace
+    if(apply_back_trace and len(fmodel_kbu.f_masks)>1 and log is not None):
+      print("  apply_back_trace skipped: more than one mask", file=log)
     if(apply_back_trace and len(fmodel_kbu.f_masks)==1 and
        self.xray_structure is not None):
       o = result.apply_back_trace_of_overall_exp_scale_matrix(

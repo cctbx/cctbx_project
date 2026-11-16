@@ -281,16 +281,13 @@ class run(object):
     if(k_isotropic is None):     k_isotropic     = self.core.k_isotropic
     if(k_mask is None):          k_mask          = self.core.k_mask()
     if(k_anisotropic is None):   k_anisotropic   = self.core.k_anisotropic
-    c = mmtbx.arrays.init(
-      f_calc          = self.core.f_calc,
-      f_masks         = self.core.f_mask(),
-      k_isotropic_exp = k_isotropic_exp,
-      k_isotropic     = k_isotropic,
-      k_anisotropic   = k_anisotropic,
-      k_masks         = k_mask)
+    # Same as f_model of mmtbx.arrays.init with these scales (f_part1 and
+    # f_part2 are zero here), without building that object for each trial.
+    f_model = (k_isotropic_exp*k_isotropic*k_anisotropic)*(
+      self.core.f_calc.data() + k_mask*self.core.f_mask().data())
     sel = self.selection_work.data()
     if(selection is not None): sel = selection & sel
-    return bulk_solvent.r_factor(self.f_obs.data(), c.f_model.data(), sel)
+    return bulk_solvent.r_factor(self.f_obs.data(), f_model, sel)
 
   def r_all(self):
     return bulk_solvent.r_factor(self.f_obs.data(),

@@ -237,6 +237,7 @@ general_tests = [
   "$D/max_lik/tst_maxlik.py",
   "$D/masks/tst_masks.py",
   "$D/masks/tst_asu_mask.py",
+  "$D/masks/tst_mask_params.py",
   "$D/max_lik/tst_max_lik.py",
   "$D/dynamics/tst_cartesian_dynamics.py",
   "$D/dynamics/tst_sa.py",
@@ -244,6 +245,7 @@ general_tests = [
   "$D/examples/f_model_manager.py",
   # Bulk solvent
   "$D/bulk_solvent/tst_bulk_solvent_and_scaling.py",
+  "$D/bulk_solvent/tst_update_all_scales_params.py",
   "$D/bulk_solvent/tst_fit_kexpb_to_ktotal.py",
   "$D/bulk_solvent/tst_scaler.py",
   "$D/bulk_solvent/tst_flat_nonuniform.py",

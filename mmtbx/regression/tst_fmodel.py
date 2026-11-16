@@ -320,7 +320,6 @@ def exercise_5_bulk_sol_and_scaling(d_min, symbol = "C 2", k_sol = 0.37,
   assert fmodel.f_masks()[0].data().all_eq(f_mask.data())
   # test 3
   params = bss.master_params.extract()
-  params.number_of_macro_cycles=5
   fmodel = mmtbx.f_model.manager(
     f_calc       = f_calc,
     f_mask       = f_mask,

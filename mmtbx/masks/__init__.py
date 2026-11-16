@@ -29,6 +29,10 @@ number_of_mask_calculations = 0
 mask_master_params = iotbx.phil.parse("""\
   use_asu_masks = True
     .type = bool
+    .help = Compute the mask in the asymmetric unit (faster for high \
+            symmetry). If False the mask is computed in the whole unit \
+            cell, with the same result within the accuracy of the grid. \
+            More than one radial shell requires True.
   solvent_radius = 0.95
     .type = float
     .help = Probe radius (A) added to the atomic van der Waals radii when \
@@ -38,40 +42,132 @@ mask_master_params = iotbx.phil.parse("""\
     .help = Shrink radius (A) applied to the solvent region.
   use_resolution_based_gridding = False
     .type = bool
-    .help = If enabled, mask grid step = d_min / grid_step_factor
+    .help = If enabled, mask grid step = d_min / grid_step_factor (kept \
+            between 0.15 and 0.8 A), and step and n_real are not used.
   step = 0.6
     .type = float
-    .help = Grid step (in A) for solvent mask calculation
+    .help = Grid step (in A) for solvent mask calculation. Set to None to \
+            use n_real.
   n_real = None
-    .type = ints
-    .help = Gridding for mask calculation
+    .type = ints(size=3)
+    .help = Gridding (three integers) for mask calculation. Requires \
+            step=None.
   grid_step_factor = 4.0
     .type = float
-    .help = Grid step is resolution divided by grid_step_factor
-  verbose = 1
-    .type = int
-    .expert_level=3
+    .help = Grid step is resolution divided by grid_step_factor. Used only \
+            if use_resolution_based_gridding=True.
   mean_shift_for_mask_update = 0.1
     .type = float
-    .help = Value of overall model shift in refinement to updates the mask.
+    .help = The mask is re-calculated if the mean shift of atoms (in A) \
+            since the previous mask calculation is larger than this value.
     .expert_level=2
   ignore_zero_occupancy_atoms = True
     .type = bool
     .short_caption = Ignore zero-occupancy atoms when calculating bulk solvent mask (recommended)
-    .help = Include atoms with zero occupancy into mask calculation
+    .help = Do not include atoms with zero occupancy into mask calculation
   ignore_hydrogens = True
     .type = bool
-    .help = Ignore H or D atoms in mask calculation
+    .help = Ignore H or D atoms in mask calculation. Always False for \
+            neutron data.
   n_radial_shells = 1
     .type = int
-    .help = Number of shells in a radial shell bulk solvent model
+    .help = Number of shells in a radial shell bulk solvent model. More \
+            than one shell requires bulk_solvent_and_scale.mode=slow.
   radial_shell_width = 1.3
     .type = float
-    .help = Radial shell width
+    .help = Radial shell width (A). Used only if n_radial_shells > 1.
   Fmask_res_high = 3.0
     .type = float
     .help = Assume Fmask=0 for reflections outside the range inf>d>=Fmask_res_high
 """)
+
+def _sorry(problem, options):
+  """
+  Raise Sorry that states the problem and the ways out.
+  """
+  from libtbx.utils import Sorry
+  lines = ["mask: %s"%problem]
+  for i, o in enumerate(options):
+    if(i == 0): lines.append("  Either %s"%o)
+    else:       lines.append("  or %s"%o)
+  raise Sorry("\n".join(lines))
+
+def validate_mask_params(mask_params, d_min_given=False):
+  """
+  Stop with a clear message if mask parameters contradict each other or
+  have meaningless values.
+
+  Parameters
+  ----------
+  mask_params : libtbx.phil.scope_extract
+      Extract of mask_master_params.
+  d_min_given : bool
+      True if the caller defines the gridding by resolution itself
+      (asu_mask(d_min=...)); step and n_real are not checked then.
+
+  Raises
+  ------
+  libtbx.utils.Sorry
+  """
+  p = mask_params
+  for name in ["solvent_radius", "shrink_truncation_radius"]:
+    value = getattr(p, name)
+    if(value is None or value < 0):
+      _sorry("mask.%s=%s is not possible."%(name, str(value)),
+        ["set mask.%s to a non-negative number."%name])
+  if(p.grid_step_factor is not None and p.grid_step_factor <= 0):
+    _sorry("mask.grid_step_factor=%s is not possible."%str(
+      p.grid_step_factor), ["set mask.grid_step_factor to a positive number."])
+  if(p.use_resolution_based_gridding or d_min_given):
+    if(p.grid_step_factor is None):
+      _sorry("mask.use_resolution_based_gridding=True requires "
+        "mask.grid_step_factor.", ["set mask.grid_step_factor (default 4),",
+        "set mask.use_resolution_based_gridding=False."])
+  else:
+    if(p.step is not None and p.n_real is not None):
+      _sorry("mask.step=%s and mask.n_real=%s are both set."%(str(p.step),
+        ",".join([str(n) for n in p.n_real])),
+        ["set mask.step=None to use mask.n_real,",
+         "remove mask.n_real to use mask.step."])
+    if(p.step is None and p.n_real is None):
+      _sorry("mask.step=None and mask.n_real=None: the grid is not defined.",
+        ["set mask.step (default 0.6),", "set mask.n_real,",
+         "set mask.use_resolution_based_gridding=True."])
+  if(p.step is not None and p.step <= 0):
+    _sorry("mask.step=%s is not possible."%str(p.step),
+      ["set mask.step to a positive number (default 0.6)."])
+  if(p.n_real is not None and min(p.n_real) < 1):
+    _sorry("mask.n_real=%s is not possible."%",".join(
+      [str(n) for n in p.n_real]), ["set three positive integers."])
+  if(p.n_radial_shells is None or p.n_radial_shells < 1):
+    _sorry("mask.n_radial_shells=%s is not possible."%str(p.n_radial_shells),
+      ["set mask.n_radial_shells=1 or more."])
+  if(p.n_radial_shells > 1):
+    if(not p.use_asu_masks):
+      _sorry("mask.n_radial_shells=%d requires mask.use_asu_masks=True."%
+        p.n_radial_shells, ["set mask.use_asu_masks=True,",
+        "set mask.n_radial_shells=1."])
+    if(p.radial_shell_width is None or p.radial_shell_width <= 0):
+      _sorry("mask.radial_shell_width=%s is not possible."%str(
+        p.radial_shell_width),
+        ["set mask.radial_shell_width to a positive number (default 1.3),",
+         "set mask.n_radial_shells=1."])
+  for name in ["mean_shift_for_mask_update", "Fmask_res_high"]:
+    value = getattr(p, name)
+    if(value is None or value < 0):
+      _sorry("mask.%s=%s is not possible."%(name, str(value)),
+        ["set mask.%s to a non-negative number."%name])
+
+def gridding_source(mask_params, d_min=None):
+  """
+  One-line description of what defines the mask grid, for logs.
+  """
+  p = mask_params
+  if(p.use_resolution_based_gridding):
+    if(d_min is None): return "d_min/grid_step_factor"
+    return "d_min/grid_step_factor=%.2f/%.2f"%(d_min, p.grid_step_factor)
+  if(p.step is not None): return "step=%.2f"%p.step
+  return "n_real=%s"%",".join([str(n) for n in p.n_real])
 
 class bulk_solvent(around_atoms):
 
@@ -173,6 +269,45 @@ class bulk_solvent(around_atoms):
     assert non_uniform_mask.accessor() == self.data.accessor()
     self.data.set_selected(non_uniform_mask > 0, 0)
 
+def gridding_n_real(mask_params, xray_structure, d_min=None):
+  """
+  Mask gridding from mask parameters: d_min/grid_step_factor if d_min is
+  given, else step if given, else n_real.
+
+  Parameters
+  ----------
+  mask_params : libtbx.phil.scope_extract
+  xray_structure : cctbx.xray.structure
+  d_min : float, optional
+      Resolution; give it only for resolution-based gridding.
+
+  Returns
+  -------
+  tuple of int
+  """
+  if(d_min is not None):
+    # Same as atom_mask::determine_gridding (atom_mask.cpp): step limits and
+    # symmetry flags.
+    from cctbx import sgtbx
+    step = min(0.8, max(0.15, d_min/mask_params.grid_step_factor))
+    return maptbx.crystal_gridding(
+      unit_cell         = xray_structure.unit_cell(),
+      space_group_info  = xray_structure.space_group_info(),
+      symmetry_flags    = sgtbx.search_symmetry_flags(
+        use_space_group_symmetry = True,
+        use_space_group_ltr      = 0,
+        use_seminvariants        = True,
+        use_normalizer_k2l       = True,
+        use_normalizer_l2n       = True),
+      d_min             = 2*step,
+      resolution_factor = 0.5).n_real()
+  if(mask_params.step is None): return tuple(mask_params.n_real)
+  return maptbx.crystal_gridding(
+    unit_cell        = xray_structure.unit_cell(),
+    space_group_info = xray_structure.space_group_info(),
+    symmetry_flags   = maptbx.use_space_group_symmetry,
+    step             = mask_params.step).n_real()
+
 class asu_mask(object):
   def __init__(self,
                xray_structure,
@@ -187,11 +322,7 @@ class asu_mask(object):
     if(mask_params is None):
       mask_params = mmtbx.masks.mask_master_params.extract()
       self.mask_params = mask_params
-    if(d_min is not None):
-      assert mask_params.grid_step_factor is not None
-    assert [mask_params.step, mask_params.n_real].count(None) in [1,2]
-    assert mask_params.step is not None or mask_params.n_real is not None or \
-           [d_min, mask_params.grid_step_factor].count(None)==0
+    validate_mask_params(mask_params, d_min_given = d_min is not None)
     if self.mask_params.ignore_hydrogens:
       hd_sel = self.xray_structure.hd_selection()
       self.xray_structure = self.xray_structure.select(~hd_sel)
@@ -201,15 +332,11 @@ class asu_mask(object):
     else:
       self.atom_radii = flex.double(self.xray_structure.scatterers().size(),
         atom_radius)
-    if(mask_params.step is not None):
-      crystal_gridding = maptbx.crystal_gridding(
-        unit_cell        = self.xray_structure.unit_cell(),
-        space_group_info = self.xray_structure.space_group_info(),
-        symmetry_flags   = maptbx.use_space_group_symmetry,
-        step             = mask_params.step)
-      self.n_real = crystal_gridding.n_real()
-    else:
-      self.n_real = mask_params.n_real
+    self.n_real = None
+    if(d_min is None):
+      self.n_real = gridding_n_real(
+        mask_params    = mask_params,
+        xray_structure = self.xray_structure)
     if(d_min is not None):
       self.asu_mask = atom_mask(
         unit_cell                = self.xray_structure.unit_cell(),
@@ -253,6 +380,7 @@ class manager(object):
     adopt_init_args(self, locals())
     if(self.mask_params is not None): self.mask_params = mask_params
     else: self.mask_params = mask_master_params.extract()
+    validate_mask_params(self.mask_params)
     Fmask_res_high = self.mask_params.Fmask_res_high
     self.sel_Fmask_res = miller_array.d_spacings().data() >= Fmask_res_high
     self.sel_Fmask_res_twin = None
@@ -351,7 +479,7 @@ class manager(object):
       assert self.mask_params.grid_step_factor is not None
     if(not self.mask_params.use_asu_masks):
       assert self.mask_params.n_radial_shells <= 1
-      mask_obj = self.bulk_solvent_mask()
+      mask_obj = self.bulk_solvent_mask(d_min = d_min)
       self._f_mask = self._compute_f(
         mask_obj=mask_obj, ma=self.miller_array, sel=self.sel_Fmask_res)
       if(self.miller_array_twin is not None):
@@ -360,6 +488,8 @@ class manager(object):
       self.solvent_content_via_mask = mask_obj \
         .contact_surface_fraction
     else:
+      global number_of_mask_calculations
+      number_of_mask_calculations += 1
       asu_mask_obj = asu_mask(
         xray_structure = self.xray_structure,
         d_min          = d_min,
@@ -383,17 +513,31 @@ class manager(object):
         fm_asu = mask_obj.structure_factors(ma_sel.indices(),i+1)
       else:
         assert self.mask_params.n_radial_shells==1
-        fm_asu = mask_obj.structure_factors(ma_sel).data()
+        # The mask covers the whole unit cell: no symmetry summation. sel
+        # (Fmask_res_high) is the only resolution cutoff.
+        ma_sel_p1 = ma_sel.customized_copy(
+          crystal_symmetry = mask_obj.xray_structure.crystal_symmetry())
+        fm_asu = mask_obj.structure_factors(ma_sel_p1, zero_high=False).data()
       data = flex.complex_double(ma.indices().size(), 0)
       data = data.set_selected(sel, fm_asu)
       result.append( ma.set().array(data = data) )
     return result
 
-  def bulk_solvent_mask(self):
+  def bulk_solvent_mask(self, d_min=None):
+    """
+    Mask in the whole unit cell, on the same grid as the asu mask. d_min is
+    given for resolution-based gridding only.
+
+    mmtbx.masks.bulk_solvent marks the grid around the given sites only, so
+    it gets the structure expanded to P1.
+    """
     mp = self.mask_params
+    n_real = gridding_n_real(mask_params = mp,
+      xray_structure = self.xray_structure, d_min = d_min)
     return bulk_solvent(
-      xray_structure              = self.xray_structure,
-      grid_step                   = mp.step,
+      xray_structure = self.xray_structure.expand_to_p1(
+        sites_mod_positive = True),
+      gridding_n_real             = n_real,
       ignore_zero_occupancy_atoms = mp.ignore_zero_occupancy_atoms,
       ignore_hydrogen_atoms       = mp.ignore_hydrogens,
       solvent_radius              = mp.solvent_radius,

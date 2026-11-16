@@ -1011,8 +1011,6 @@ def extract_tls_and_u_total_from_pdb(
   f_obs = f_obs.select(selection)
   r_free_flags = r_free_flags.select(selection)
   bss_params = bss.master_params.extract()
-  bss_params.k_sol_b_sol_grid_search=False
-  bss_params.number_of_macro_cycles=1
   r_work = 999.
   i_best = None
   for i, xrs in enumerate([xrs_1, xrs_2]):
@@ -1187,13 +1185,6 @@ class guess_observation_type(object):
       twin_laws = twin_analyses.get_twin_laws(miller_array=f_obs)
       twin_laws.append(None)
     params = bss.master_params.extract()
-    params.k_sol_grid_search_min = 0.0
-    params.k_sol_grid_search_max = 0.35
-    params.k_sol_step = 0.35
-    params.b_sol_grid_search_min = 0.0
-    params.b_sol_grid_search_max = 91.
-    params.b_sol_step = 45.
-    params.target = "ls_wunit_k1"
     fmodel = fmodel_simple(
       f_obs                    = f_obs,
       scattering_table         = scattering_table,
