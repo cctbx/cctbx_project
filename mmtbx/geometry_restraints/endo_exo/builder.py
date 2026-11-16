@@ -150,9 +150,8 @@ class QMRegionBuilder:
     Raises
     ------
     Sorry
-        When no seed atoms are found, a selection matches no atoms, the model
-        has no hydrogens where hydrogen bonds are needed, or the symmetry
-        images need more chain IDs than are free.
+        When no seed atoms are found, a selection matches no atoms, or the
+        model has no hydrogens where hydrogen bonds are needed.
     """
     self.model_name = model_name
     self.default_output_filename = default_output_filename
@@ -1082,10 +1081,8 @@ class QMRegionBuilder:
     """Return the chain ID each chain of the region takes under each
     symmetry operation.
 
-    The identity keeps the original IDs; every image takes a free
-    single-character ID per chain it contains.  PDB's chain field is one
-    character wide; multi-char IDs overflow into the residue-name field and
-    break the bond graph that ``make_restraints`` builds.
+    The identity keeps the original IDs; every image takes a new ID per
+    chain it contains, from :func:`iotbx.pdb.utils.chain_id_generator`.
 
     Parameters
     ----------
@@ -1099,17 +1096,12 @@ class QMRegionBuilder:
     -------
     dict
         ``{(original_chain_id, sym_op): chain_id}``.
-
-    Raises
-    ------
-    Sorry
-        When the images need more chain IDs than the model leaves free.
     """
+    import iotbx.pdb.utils
+
     parent_atoms = parent_hier.atoms()
-    orig_chain_ids = sorted({ch.id.strip() for ch in parent_hier.chains()})
-    available_chain_ids = iter(c for c in
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-      if c not in orig_chain_ids)
+    new_chain_ids = iotbx.pdb.utils.chain_id_generator(
+      used_ids={ch.id.strip() for ch in parent_hier.chains()})
     chain_id_for = {}
     for op in ops:
       region_chain_ids = sorted({
@@ -1119,12 +1111,7 @@ class QMRegionBuilder:
         if op.is_unit_mx():
           chain_id_for[(orig_id, op)] = orig_id
         else:
-          try:
-            chain_id_for[(orig_id, op)] = next(available_chain_ids)
-          except StopIteration:
-            raise Sorry(
-              'The symmetry images in the QM region need more '
-              'single-character chain IDs than the model leaves free.')
+          chain_id_for[(orig_id, op)] = next(new_chain_ids)
     return chain_id_for
 
   @staticmethod

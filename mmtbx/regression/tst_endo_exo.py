@@ -680,7 +680,9 @@ def exercise_2c2u_symmetry_materialization():
     the parent "A" plus at least two additional chains for the
     symmetry images;
   * twenty more chains away from the site take no chain IDs from the
-    images.
+    images;
+  * images that need more IDs than there are single characters still get
+    distinct ones that no original chain uses.
   """
   result = _run_endo_exo_on_string(_2C2U_FE_SPHERE_PDB)
   hier = result["model"].get_hierarchy()
@@ -731,6 +733,25 @@ def exercise_2c2u_symmetry_materialization():
   many_chain_ids = {
     ch.id for ch in many_chains["model"].get_hierarchy().chains()}
   assert len(many_chain_ids) == len(chain_ids), sorted(many_chain_ids)
+
+  from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
+  original_ids = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcd"
+  thirty_chains = iotbx.pdb.input(source_info=None, lines=[
+    "HETATM%5d  O   HOH %s 900    %8.3f%8.3f%8.3f  1.00 20.00           O"
+    % (k + 1, c, 3.0 * k, 0.0, 0.0)
+    for k, c in enumerate(original_ids)]).construct_hierarchy()
+  ops = [sgtbx.rt_mx(), sgtbx.rt_mx("-x,y,-z"), sgtbx.rt_mx("x+1,y,z"),
+         sgtbx.rt_mx("-x+1,y,-z")]
+  by_op = {op: set(range(len(original_ids))) for op in ops}
+  ids = QMRegionBuilder._image_chain_ids(thirty_chains, by_op, ops)
+  image_ids = []
+  for op in ops[1:]:
+    for c in original_ids:
+      image_ids.append(ids[(c, op)])
+  assert len(set(image_ids)) == 90, image_ids
+  assert not set(image_ids) & set(original_ids), image_ids
+  for c in original_ids:
+    assert ids[(c, ops[0])] == c
 
 
 def exercise_2c2u_fe_coordination_distances():
