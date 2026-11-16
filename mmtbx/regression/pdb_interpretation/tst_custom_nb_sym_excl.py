@@ -23,7 +23,7 @@ def exercise_01(prefix="tst_custom_nb_sym_excl"):
 
   critical='  nonbonded pdb=" OD1 ASN A   3 "'
 
-  cmd = "mmtbx.pdb_interpretation %s.pdb custom_nonbonded_symmetry_exclusions='resname HOH' custom_nonbonded_symmetry_exclusions='resname HOH and resseq 9' " % prefix
+  cmd = "mmtbx.pdb_interpretation %s.pdb custom_nonbonded_symmetry_exclusions=\"resname HOH\" custom_nonbonded_symmetry_exclusions=\"resname HOH and resseq 9\" " % prefix
   fb = easy_run.fully_buffered(cmd)
   assert not fb.return_code
   stdout_text = "\n".join(fb.stdout_lines)
@@ -34,7 +34,7 @@ def exercise_01(prefix="tst_custom_nb_sym_excl"):
         Example: pdb=" O   HOH A   9 " """)
   assert_lines_in_text(stdout_text, critical)
 
-  cmd = "mmtbx.pdb_interpretation %s.pdb custom_nonbonded_symmetry_exclusions='chain A and resid 3' > %s_2.log" % (prefix, prefix)
+  cmd = "mmtbx.pdb_interpretation %s.pdb custom_nonbonded_symmetry_exclusions=\"chain A and resid 3\" > %s_2.log" % (prefix, prefix)
   fb = easy_run.fully_buffered(cmd)
   assert not fb.return_code
 

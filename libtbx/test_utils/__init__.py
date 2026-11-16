@@ -589,8 +589,8 @@ def assert_lines_text(text, lines, present=True,
     text = text.replace(" ", "")
     filtered_lines = filtered_lines.replace(" ", "")
   if remove_newline:
-    text = text.replace(os.linesep,"")
-    filtered_lines = filtered_lines.replace(os.linesep,"")
+    text = text.replace("\n","")
+    filtered_lines = filtered_lines.replace("\n","")
   if present:
     assert text.find(filtered_lines) >= 0, \
         "Lines:\n %s\n are not found" % (lines)
