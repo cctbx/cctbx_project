@@ -1649,10 +1649,8 @@ def _hull_water_nodes(pdb_str, enabled=True, log=None):
 
   The method reads only the crystal symmetry, the sites and the hierarchy,
   so the fixture needs no restraints.  The builder is constructed normally
-  rather than through ``__new__``: the method reaches for state with
-  ``getattr(self, ..., default)``, so a half-built object would answer
-  differently from the one the program uses and the difference would be
-  silent."""
+  rather than through ``__new__``, so it starts from the state the
+  program's builder has."""
   from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
 
   pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))

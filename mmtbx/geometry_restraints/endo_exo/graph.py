@@ -29,6 +29,14 @@ class AtomGraphBuilder:
   and the region does not grow through a metal centre.
   """
 
+  def __init__(self):
+    self._kdtree = None
+    self._kdtree_model = None
+    self._kdtree_n_atoms = None
+    self._sym_tables = None
+    self._sym_tables_model = None
+    self._sym_tables_radius = None
+
   def build_adjacency(self, bond_proxies_simple, bond_proxies_asu,
                       asu_mappings):
     """Build a tagged adjacency graph combining intra-ASU and
@@ -138,10 +146,10 @@ class AtomGraphBuilder:
     -------
     cctbx.array_family.flex.bool
     """
-    if getattr(self, '_kdtree_model_id', None) != id(model):
+    if self._kdtree_model is not model:
       from scipy.spatial import KDTree
       self._kdtree = KDTree(model.get_sites_cart())
-      self._kdtree_model_id = id(model)
+      self._kdtree_model = model
       self._kdtree_n_atoms = model.get_number_of_atoms()
     indices = self._kdtree.query_ball_point(center_atom.xyz, radius)
     selected = flex.bool(self._kdtree_n_atoms, False)
@@ -218,14 +226,15 @@ class AtomGraphBuilder:
     -------
     cctbx.crystal.super_cell.sym_equiv_tables
     """
-    key = (id(model), radius)
-    if getattr(self, '_sym_tables_key', None) != key:
+    if (self._sym_tables_model is not model
+        or self._sym_tables_radius != radius):
       xrs = model.get_xray_structure()
       self._sym_tables = super_cell.get_sym_equiv_tables(
         sites_cart=xrs.sites_cart(),
         crystal_symmetry=model.crystal_symmetry(), radius=radius,
         site_symmetry_table=xrs.site_symmetry_table())
-      self._sym_tables_key = key
+      self._sym_tables_model = model
+      self._sym_tables_radius = radius
     return self._sym_tables
 
   def seed_sym_nodes_within_radius(self, seeds, model, radius):

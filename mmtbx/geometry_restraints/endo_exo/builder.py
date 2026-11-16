@@ -113,8 +113,13 @@ class QMRegionBuilder(object):
     if logger is None:
       logger = null_out()
     self.logger = logger
+    self.model_name = None
+    self.default_output_filename = None
     self._results = []
     self._include_nodes = set()
+    self._hbond_cache = None
+    self._waters_cache = None
+    self._waters_cache_rep_frac = None
     self._graph_builder = AtomGraphBuilder()
     self._capper = HydrogenCapper(log=self.logger)
     self._bond_cut_detector = BondCutDetector(
@@ -168,9 +173,10 @@ class QMRegionBuilder(object):
     model = self._apply_altloc_filter(model)
 
     self._include_nodes = self._resolve_residues_to_include(model)
-    # Hydrogen bonds are found once per run and reused across seed groups.
-    # They index this model's atoms, so they cannot outlive it.
+    # Hydrogen bonds and waters are found once per run and reused across seed
+    # groups.  They index this model's atoms, so they cannot outlive it.
     self._hbond_cache = None
+    self._waters_cache = None
 
     seed_finder = SeedFinder()
     selection_strings = [s for s in (self.params.selection or []) if s]
@@ -650,7 +656,7 @@ class QMRegionBuilder(object):
     """
     from mmtbx.nci import hbond
 
-    if getattr(self, '_hbond_cache', None) is None:
+    if self._hbond_cache is None:
       if not model.has_hd():
         raise Sorry('Model has no hydrogens. Add them and run again.')
       self._hbond_cache = hbond.find(model=model).result
@@ -787,10 +793,9 @@ class QMRegionBuilder(object):
     for (iseq, op) in visited_nodes:
       visited_iseqs_by_op.setdefault(op.as_xyz(), set()).add(iseq)
 
-    # Collect water residues once per *parent model*: ``_add_hull_waters``
-    # is called per seed but the water set is the same every call.
-    if (getattr(self, '_waters_cache', None) is None
-        or self._waters_cache_model_id != id(model)):
+    # Collect water residues once per run: ``_add_hull_waters`` is called per
+    # seed but the water set is the same every call.
+    if self._waters_cache is None:
       cached = []
       for chain in model.get_hierarchy().chains():
         for rg in chain.residue_groups():
@@ -802,7 +807,6 @@ class QMRegionBuilder(object):
                    for a in ag.atoms()]
           cached.append((rep_iseq, iseqs))
       self._waters_cache = cached
-      self._waters_cache_model_id = id(model)
       self._waters_cache_rep_frac = (
         sites_frac.select(flex.size_t(w[0] for w in cached))
         if cached else None)
