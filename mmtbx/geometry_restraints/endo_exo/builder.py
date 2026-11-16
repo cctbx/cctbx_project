@@ -1025,14 +1025,15 @@ class QMRegionBuilder:
     import iotbx.pdb
 
     unit_cell = model.crystal_symmetry().unit_cell()
-    n_parent_atoms = model.get_number_of_atoms()
+    parent_hier = model.get_hierarchy()
+    sites_cart = parent_hier.atoms().extract_xyz()
 
     # Group iseqs by symmetry operation, the identity first.
     by_op = defaultdict(set)
     for (iseq, op) in visited_nodes:
       by_op[op].add(iseq)
     ops = sorted(by_op, key=lambda op: (not op.is_unit_mx(), op.as_xyz()))
-    chain_id_for = self._image_chain_ids(model.get_hierarchy(), by_op, ops)
+    chain_id_for = self._image_chain_ids(parent_hier, by_op, ops)
 
     # Build an empty target hierarchy and append per-sym_op sub-models
     out_root = iotbx.pdb.hierarchy.root()
@@ -1040,25 +1041,21 @@ class QMRegionBuilder:
     out_root.append_model(out_hier_model)
 
     # As we copy each per-sym_op sub-hierarchy into the master,
-    # remember which parent node each fresh atom came from.
-    # ``model.select(mask)`` preserves atom order, so the k-th atom in
-    # the copied sub-hierarchy corresponds to the k-th parent i_seq in
-    # ascending order from ``by_op[op]``.
+    # remember which parent node each fresh atom came from.  The selection
+    # preserves atom order, so the k-th atom in the copied sub-hierarchy
+    # corresponds to the k-th parent i_seq in ascending order from
+    # ``by_op[op]``.
     node_of_atom = {}  # output atom -> (parent_iseq, op)
     for op in ops:
-      iseqs_in_order = sorted(by_op[op])
-      mask = flex.bool(n_parent_atoms, False)
-      for i in iseqs_in_order:
-        mask[i] = True
-      sub_model = model.select(mask)
-      sub_hier = sub_model.get_hierarchy()
+      iseqs_in_order = flex.size_t(sorted(by_op[op]))
+      sub_hier = parent_hier.select(iseqs_in_order, copy_atoms=True)
 
       # Transform coordinates and anisotropic U from ASU positions to the
       # image.
       if not op.is_unit_mx():
-        sub_model.set_sites_cart(super_cell.sym_equiv_sites_cart(
-          sites_cart=sub_model.get_sites_cart(), unit_cell=unit_cell,
-          rt_mx=op))
+        sub_hier.atoms().set_xyz(super_cell.sym_equiv_sites_cart(
+          sites_cart=sites_cart, unit_cell=unit_cell, rt_mx=op,
+          selection=iseqs_in_order))
         sub_hier.atoms().rotate_uij_and_clear_sigmas(
           r_cart=unit_cell.matrix_cart(op.r()))
         # Rename chains so this image is distinguishable
