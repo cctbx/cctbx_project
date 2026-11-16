@@ -77,7 +77,7 @@ _WATER_CATION_ELEMENTS = frozenset({
 _WATER_CATION_RADIUS = 3.0
 _WATER_METAL_COORD_RADIUS = 2.6  # max first-shell metal bond (A)
 _WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H, O->acceptor) to donate to it
-# Cluster search (opt-in): a proton scores its distance to the nearest
+# Cluster search: a proton scores its distance to the nearest
 # acceptor, at most _WATER_CLUSTER_CAP (A); a cluster with up to
 # _WATER_CLUSTER_EXHAUSTIVE combinations of candidates is searched in full.
 _WATER_CLUSTER_CAP = 3.0
@@ -2070,7 +2070,7 @@ basin
             that still clash to random orientations, refines them and \
             keeps any improvement. 0 turns it off.
 }
-cluster_search = False
+cluster_search = True
   .type = bool
   .short_caption = Joint search over water clusters
   .help = Choose the orientations of each cluster of H-bonded waters \
