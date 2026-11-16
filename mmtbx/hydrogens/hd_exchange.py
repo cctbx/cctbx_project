@@ -1605,7 +1605,13 @@ def apply_neutron_option(hierarchy, option, parent_table, records=None,
       result.n_to_d += 1
     if record is not None:
       occ, b, uij = record[item.kind]
-      _set_values(atom, e.parent_occ, b, uij)
+      # a conformer copy of an H on a blank-group parent (one supplied H
+      # copied into each split-CA conformer) keeps its occupancy as placed,
+      # as without a record: the parent's would count the site once per copy
+      ref = e.parent_occ
+      if atom.parent().altloc != "" and e.parent_altloc == "":
+        ref = atom.occ
+      _set_values(atom, ref, b, uij)
       result.n_restored += 1
     else:
       # a conformer copy (H in an altloc group, parent in the blank group) is
