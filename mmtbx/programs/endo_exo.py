@@ -129,6 +129,11 @@ class Program(ProgramTemplate):
   datatypes = ['model', 'phil']
   master_phil_str = master_phil_str
 
+  def custom_init(self):
+    """Start with no results, so :meth:`get_results` works before
+    :meth:`run`."""
+    self._results = []
+
   def validate(self):
     """Validate user inputs before :meth:`run` is called."""
     self.data_manager.has_models(
@@ -224,6 +229,7 @@ class Program(ProgramTemplate):
         file_name : str
             Output filename stem (no extension), unique to the region; the
             model file adds ``.pdb`` or ``.cif`` and the sidecar ``.phil``.
+            Set also when ``write_files`` is False.
         n_atoms : int
             Number of atoms in the QM region.
         model : mmtbx.model.manager
@@ -244,6 +250,9 @@ class Program(ProgramTemplate):
             Sorted, unique positional indices of the QM-region heavy atoms
             the caps are bonded to.  In-memory only; not written to the
             sidecar.
+        completed_iseqs : list of int
+            Sorted positional indices of the atoms added to repair a valence
+            the input model left open; they are not caps.
         sym_image_provenance : dict
             ``{i_seq: ((chain, resseq, resname, name, altloc),
             symmetry_operation_xyz)}`` for each materialized symmetry-image

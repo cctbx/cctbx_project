@@ -35,21 +35,21 @@ from mmtbx.geometry_restraints.endo_exo.capping import HydrogenCapper
 # 0-based positional indices into the output model's atom list.
 master_sidecar_phil_str = """
 endo_exo_region {
-  cap_atoms = None
+  cap_iseqs = None
     .type = ints
     .help = "Indices of the boundary atoms in the QM-region output file; \
 None when the region has none."
   cap_original_elements = None
     .type = strings
     .help = "Element each boundary atom carried before capping, parallel to \
-cap_atoms."
-  completed_atoms = None
+cap_iseqs."
+  completed_iseqs = None
     .type = ints
     .help = "Indices of atoms this run ADDED to repair a valence the input \
 model left open at a chain break; they are not caps and carry no original \
 element.  Their positions are constructed, not measured, so a consumer may \
 wish to leave them free to relax."
-  seed_atoms = None
+  seed_iseqs = None
     .type = ints
     .help = "Indices of seed atoms in the QM-region output file (the metal \
 atom in metal-scan mode, or all atoms matched by the selection string)."
@@ -87,10 +87,10 @@ def format_sidecar(result):
   sidecar_phil = libtbx.phil.parse(master_sidecar_phil_str)
   sidecar_phil_extract = sidecar_phil.extract()
   region = sidecar_phil_extract.endo_exo_region
-  region.cap_atoms = _or_none(result['cap_iseqs'])
+  region.cap_iseqs = _or_none(result['cap_iseqs'])
   region.cap_original_elements = _or_none(result['cap_original_elements'])
-  region.completed_atoms = _or_none(result['completed_iseqs'])
-  region.seed_atoms = _or_none(result['seed_iseqs'])
+  region.completed_iseqs = _or_none(result['completed_iseqs'])
+  region.seed_iseqs = _or_none(result['seed_iseqs'])
   region.selection_string = result['selection_string']
   return sidecar_phil.format(sidecar_phil_extract).as_str()
 
@@ -392,7 +392,7 @@ class QMRegionBuilder(object):
     dict
         Keys: ``file_name``, ``n_atoms``, ``model``, ``seed_iseqs``,
         ``cap_iseqs``, ``cap_original_elements``, ``cap_anchor_iseqs``,
-        ``sym_image_provenance``, ``selection_string``.
+        ``completed_iseqs``, ``sym_image_provenance``, ``selection_string``.
     """
     qm_atoms = self._seed_qm_region(seeds, model)
     visited_nodes, cap_nodes = self._region_grower.grow_region(

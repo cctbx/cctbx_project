@@ -2342,7 +2342,7 @@ def exercise_write_files_roundtrip():
   """The program writes one model file and a sidecar per region, under a
   name of its own, through the DataManager.
 
-  The sidecar indices address the written atoms and cap_atoms point at
+  The sidecar indices address the written atoms and cap_iseqs point at
   hydrogens.  The two Fe of one FES get separate files, an existing file is
   kept unless overwrite is asked for, output.prefix and
   output.target_output_format apply, and output.filename is refused when it
@@ -2387,10 +2387,12 @@ def exercise_write_files_roundtrip():
       source=written_phil,
       track_unused_definitions=unused).extract().endo_exo_region
     assert not unused, f"sidecar has undeclared parameters: {unused}"
-    assert list(region.cap_atoms) == list(result["cap_iseqs"]), (
-      region.cap_atoms, result["cap_iseqs"])
-    assert list(region.seed_atoms) == list(result["seed_iseqs"]), (
-      region.seed_atoms, result["seed_iseqs"])
+    assert list(region.cap_iseqs) == list(result["cap_iseqs"]), (
+      region.cap_iseqs, result["cap_iseqs"])
+    assert list(region.seed_iseqs) == list(result["seed_iseqs"]), (
+      region.seed_iseqs, result["seed_iseqs"])
+    assert list(region.completed_iseqs or []) == list(
+      result["completed_iseqs"])
     assert list(region.cap_original_elements) == list(
       result["cap_original_elements"])
     assert region.selection_string is None
@@ -2399,7 +2401,7 @@ def exercise_write_files_roundtrip():
     watoms = list(pdb_in.construct_hierarchy().atoms())
     assert len(watoms) == result["n_atoms"], (len(watoms), result["n_atoms"])
     assert pdb_in.crystal_symmetry() is not None, "written PDB lost CRYST1"
-    for ci in region.cap_atoms:
+    for ci in region.cap_iseqs:
       assert watoms[ci].element.strip().upper() == "H", (
         f"sidecar cap index {ci} does not address a hydrogen in the PDB")
 
@@ -2417,7 +2419,7 @@ def exercise_write_files_roundtrip():
       assert not os.path.isfile(r["file_name"] + ".pdb"), r["file_name"]
     cif_atoms = list(iotbx.pdb.input(
       file_name=others[0]["file_name"] + ".cif").construct_hierarchy().atoms())
-    for ci in region.cap_atoms:
+    for ci in region.cap_iseqs:
       assert cif_atoms[ci].element.strip().upper() == "H", (
         f"sidecar cap index {ci} does not address a hydrogen in the mmCIF")
 
@@ -2434,8 +2436,14 @@ def exercise_write_files_roundtrip():
     assert capless["cap_iseqs"] == [], capless["cap_iseqs"]
     capless_region = schema.fetch(source=libtbx.phil.parse(
       file_name=capless["file_name"] + ".phil")).extract().endo_exo_region
-    assert capless_region.cap_atoms is None, capless_region.cap_atoms
-    assert capless_region.seed_atoms is not None
+    assert capless_region.cap_iseqs is None, capless_region.cap_iseqs
+    assert capless_region.seed_iseqs is not None
+
+    dm = DataManager(["model", "phil"])
+    dm.process_model_file("fes.pdb")
+    unrun = EndoexoProgram(dm, _program_master_phil().extract(),
+                           logger=null_out())
+    assert unrun.get_results() == [], "results before run() were not empty"
   finally:
     os.chdir(cwd)
     shutil.rmtree(tmp, ignore_errors=True)
@@ -3495,7 +3503,7 @@ def exercise_chain_break_carbonyl_is_completed():
     # Every recorded index must still name the same atom after a consumer
     # re-processes the region.  pdb_interpretation sorts by default, and an
     # atom appended at the end of its group moves to the front of the
-    # hydrogen block, so a consumer told to free `completed_atoms` would
+    # hydrogen block, so a consumer told to free `completed_iseqs` would
     # free a sidechain hydrogen instead.
     def identity(atom):
       return (atom.parent().parent().parent().id.strip(),
