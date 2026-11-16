@@ -366,6 +366,7 @@ def _run_endo_exo_on_string(pdb_str, radius=None, include=None, selection=None):
   selection string instead of scanning for metals."""
   pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
+  model.set_mon_lib_srv(_monomer_server())
   dm = DataManager(["model"])
   dm.add_model("model", model)
   dm.set_default_model("model")
@@ -1564,6 +1565,7 @@ def exercise_cut_depends_on_where_bfs_arrives():
 def _simple_bond_proxies(pdb_str):
   pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
+  model.set_mon_lib_srv(_monomer_server())
   model.process(
     pdb_interpretation_params=model.get_current_pdb_interpretation_params(),
     make_restraints=True)
@@ -2055,6 +2057,7 @@ def _run_endo_exo_params(pdb_str, **overrides):
   the knobs that change how many regions are produced, or that raise."""
   pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
+  model.set_mon_lib_srv(_monomer_server())
   dm = DataManager(["model"])
   dm.add_model("model", model)
   dm.set_default_model("model")
@@ -2617,6 +2620,7 @@ def _protonated_graph(pdb_str):
   nothing references dangle."""
   pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
+  model.set_mon_lib_srv(_monomer_server())
   model.process(make_restraints=True)
 
   geometry = model.get_restraints_manager().geometry
@@ -3250,6 +3254,7 @@ def exercise_terminal_carboxylate_detection():
   def _verdicts(pdb_str):
     pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
     model = mmtbx.model.manager(model_input=pdb_in)
+    model.set_mon_lib_srv(_monomer_server())
     model.process(make_restraints=True)
     grm = model.get_restraints_manager().geometry
     sites_cart = model.get_sites_cart()
@@ -3442,6 +3447,7 @@ def exercise_chain_break_carbonyl_is_completed():
     params = rebuilt.get_current_pdb_interpretation_params()
     params.pdb_interpretation.restraints_library.mcl = False
     params.pdb_interpretation.automatic_linking.link_metals = False
+    rebuilt.set_mon_lib_srv(_monomer_server())
     rebuilt.process(pdb_interpretation_params=params, make_restraints=True)
     geometry = rebuilt.get_restraints_manager().geometry
     simple, _asu = geometry.get_all_bond_proxies(
@@ -3575,6 +3581,7 @@ def exercise_completed_amide_follows_its_altloc():
   params = rebuilt.get_current_pdb_interpretation_params()
   params.pdb_interpretation.restraints_library.mcl = False
   params.pdb_interpretation.automatic_linking.link_metals = False
+  rebuilt.set_mon_lib_srv(_monomer_server())
   rebuilt.process(pdb_interpretation_params=params, make_restraints=True)
   simple, _asu = rebuilt.get_restraints_manager().geometry.get_all_bond_proxies(
     sites_cart=rebuilt.get_sites_cart())
@@ -3678,6 +3685,7 @@ def exercise_chain_break_amine_is_completed():
     params = rebuilt.get_current_pdb_interpretation_params()
     params.pdb_interpretation.restraints_library.mcl = False
     params.pdb_interpretation.automatic_linking.link_metals = False
+    rebuilt.set_mon_lib_srv(_monomer_server())
     rebuilt.process(pdb_interpretation_params=params, make_restraints=True)
     geometry = rebuilt.get_restraints_manager().geometry
     simple, _asu = geometry.get_all_bond_proxies(
@@ -3775,6 +3783,7 @@ def exercise_open_valences_are_reported():
   def note_for(pdb_str, radius, selection=None, **overrides):
     pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
     model = mmtbx.model.manager(model_input=pdb_in)
+    model.set_mon_lib_srv(_monomer_server())
     dm = DataManager(["model"])
     dm.add_model("model", model)
     dm.set_default_model("model")
