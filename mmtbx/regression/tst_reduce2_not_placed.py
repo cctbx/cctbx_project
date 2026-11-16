@@ -15,6 +15,8 @@ import iotbx.pdb
 import mmtbx.model
 from libtbx.utils import null_out
 from scitbx import matrix
+from scitbx.array_family import flex
+from scitbx.math import superpose
 from six.moves import cStringIO as StringIO
 from iotbx.cli_parser import run_program
 from mmtbx.hydrogens import reduce_hydrogen
@@ -159,6 +161,45 @@ def gln_supplied(*names):
   """The Gln cut at CB (pdb_gln()) with supplied H/D of these names."""
   return with_atoms(pdb_gln(), 'GLN', '2', [(n, n[0], 10. + 2 * i, 10., 10.)
     for i, n in enumerate(names)])
+
+# 1pq7 ILE A 16 (as ALA) and VAL A 17 (as GLY): a peptide bond, C-N 1.33 A
+ref_ala_gly = """\
+ATOM      1  N   ALA A   1      -1.405   9.032  -6.919  1.00  5.08           N
+ATOM      2  CA  ALA A   1      -2.526   8.411  -7.691  1.00  4.71           C
+ATOM      3  C   ALA A   1      -2.739   9.202  -8.960  1.00  5.06           C
+ATOM      4  O   ALA A   1      -2.863  10.449  -8.918  1.00  5.50           O
+ATOM      5  CB  ALA A   1      -3.787   8.434  -6.835  1.00  4.85           C
+ATOM      6  N   GLY A   2      -2.773   8.494 -10.089  1.00  5.27           N
+ATOM      7  CA  GLY A   2      -3.068   9.061 -11.398  1.00  5.73           C
+ATOM      8  C   GLY A   2      -4.514   8.748 -11.734  1.00  5.60           C
+ATOM      9  O   GLY A   2      -4.966   7.602 -11.604  1.00  5.67           O
+ATOM     10  OXT GLY A   2      -5.200   9.700 -12.100  1.00  5.60           O
+"""
+
+def _xyz(line):
+  return (float(line[30:38]), float(line[38:46]), float(line[46:54]))
+
+def with_next_gly(pdb_str):
+  """The residue of pdb_str (HETATM) without OXT, and a GLY (resseq + 1)
+  peptide-bonded to its C: ref_ala_gly's N, CA, C superposed on the
+  residue's. A terminus, not a free amino acid (A57)."""
+  lines = [l for l in pdb_str.splitlines()
+           if l.startswith('HETATM') and l[12:16] != ' OXT']
+  ref = dict((l[12:16], l) for l in ref_ala_gly.splitlines()
+             if l[17:20] == 'ALA')
+  mov = dict((l[12:16], l) for l in lines)
+  names = (' N  ', ' CA ', ' C  ')
+  fit = superpose.least_squares_fit(
+    reference_sites = flex.vec3_double([_xyz(mov[k]) for k in names]),
+    other_sites = flex.vec3_double([_xyz(ref[k]) for k in names]))
+  resseq = int(lines[0][22:26]) + 1
+  out = list(lines)
+  for l in ref_ala_gly.splitlines():
+    if l[17:20] != 'GLY' or l[12:16] == ' OXT': continue
+    x = fit.r * matrix.col(_xyz(l)) + fit.t
+    out.append('ATOM  %5d %4s GLY %s%4d    %8.3f%8.3f%8.3f%s' % (len(out) + 1,
+      l[12:16], lines[0][21], resseq, x[0], x[1], x[2], l[54:]))
+  return '\n'.join([pdb_str.splitlines()[0]] + out + ['END']) + '\n'
 
 def pdb_0a0_supplied_h1():
   """pdb_0a0 with a supplied H1 1 A from N."""
@@ -379,12 +420,13 @@ def test_accounting():
     (pdb_water_no_o(), {'exclude_water': False, 'keep_existing_H': True}),
     (t16.pdb_str_009, {}), (t16.pdb_str_015, {}), (t16.pdb_str_019_control, {}),
     (pdb_nag_nag, {}), (nag_019(drop=('O6',)), {}), (t16.pdb_str_021, {}),
-    (tnh.pdb_1xmk, {'metal_bound_amines_as_nh2': True}), (pdb_0a0, {}),
-    (pdb_004, {}), (gln_supplied('HE21', 'DE21'), {'keep_existing_H': True}),
+    (tnh.pdb_1xmk, {'metal_bound_amines_as_nh2': True}),
+    (with_next_gly(pdb_0a0), {}), (with_next_gly(pdb_004), {}),
+    (gln_supplied('HE21', 'DE21'), {'keep_existing_H': True}),
     (gln_supplied('HXX'), {'keep_existing_H': True}),
-    (pdb_0a0_supplied_h1(), {'keep_existing_H': True}),
-    (split_ab(pdb_0a0), {}),
-    (split_ab(pdb_0a0, lambda l: l[12:16] == ' N  '), {})]
+    (with_next_gly(pdb_0a0_supplied_h1()), {'keep_existing_H': True}),
+    (split_ab(with_next_gly(pdb_0a0)), {}),
+    (split_ab(with_next_gly(pdb_0a0), lambda l: l[12:16] == ' N  '), {})]
   results = [placed(pdb_str, **kw) for pdb_str, kw in cases]
   # restraint objects are not a key of placed()
   results.append(place_counted(t19.cryst1 + t19.pdb_protein + t19.pdb_04,
@@ -435,9 +477,9 @@ def test_supplied_names():
   assert records(o, 'unknown_atoms') == [('', 'A', '2', '', 'GLN', '', 'HXX',
     '', 'unknown_atoms', '')], records(o)
   assert o.site_labels_unknown_atoms == [], o.site_labels_unknown_atoms
-  # a supplied H1 on the chain-start N of 0A0: not from chain-start
-  # placement, which adds H2 and H3
-  o, _ = placed(pdb_0a0_supplied_h1(), keep_existing_H=True)
+  # a supplied H1 on the chain-start N of 0A0 (a terminus): not from
+  # chain-start placement, which adds H2 and H3
+  o, _ = placed(with_next_gly(pdb_0a0_supplied_h1()), keep_existing_H=True)
   detail = ('added by chain-start placement, name not in the 0A0 '
     'dictionary; no bond restraint in the processed model')
   assert records(o) == [('', 'A', '1', '', '0A0', '', 'H1', '',
@@ -468,10 +510,12 @@ def test_unknown_atoms_supplied():
     'ASP A 11' in log.splitlines()), log
 
 def test_chain_start_unknown_names():
-  # 0A0 and 004 at residue 1: chain-start placement adds H1, H2, H3 on N,
-  # names their dictionaries do not know; riding H has no bond for them and
-  # they are removed: not_parameterized on N, not parent_missing
-  for pdb_str, resname in ((pdb_0a0, '0A0'), (pdb_004, '004')):
+  # 0A0 and 004 at residue 1, peptide-bonded to a GLY: chain-start placement
+  # adds H1, H2, H3 on N, names their dictionaries do not know; riding H has
+  # no bond for them and they are removed: not_parameterized on N, not
+  # parent_missing (alone, they keep their dictionary H: A57)
+  for pdb_str, resname in ((with_next_gly(pdb_0a0), '0A0'),
+                           (with_next_gly(pdb_004), '004')):
     o, _ = placed(pdb_str)
     detail = ('added by chain-start placement, name not in the %s '
       'dictionary; no bond restraint in the processed model' % resname)
@@ -485,8 +529,8 @@ def test_chain_start_unknown_names():
   # in each conformer, on N
   detail = ('added by chain-start placement, name not in the 0A0 '
     'dictionary; no bond restraint in the processed model')
-  for pdb_str in (split_ab(pdb_0a0),
-                  split_ab(pdb_0a0, lambda l: l[12:16] == ' N  ')):
+  for pdb_str in (split_ab(with_next_gly(pdb_0a0)),
+      split_ab(with_next_gly(pdb_0a0), lambda l: l[12:16] == ' N  ')):
     o, _ = placed(pdb_str)
     assert records(o) == [('', 'A', '1', '', '0A0', alt, h, 'N',
       'not_parameterized', detail) for alt in 'AB'
@@ -836,8 +880,9 @@ def test_free_form():
   # the free-form H on N is removed only with a peptide bond (a bond
   # restraint to a C of another residue). DNE alone (residue 2, not a chain
   # start for n_terminal_charge=residue_one) keeps H and H2: no rule; HT7
-  # after DNE loses HA2: one rule; at a chain start, chain-start placement
-  # puts H1, H2, H3 on N and nothing is counted
+  # after DNE loses HA2: one rule; DNE alone at a chain start has no next
+  # residue (ambiguous, A57) and keeps H and H2; DNE 1 bonded to HT7 is a
+  # terminus: chain-start placement puts H1, H2, H3 on N
   o, _ = placed(dne())
   assert o.not_placed_rules['free_form'] == 0, o.not_placed_rules
   assert records(o) == [], records(o)
@@ -851,7 +896,9 @@ def test_free_form():
     o, _ = placed(pdb_str, **kw)
     assert o.not_placed_rules['free_form'] == 0, o.not_placed_rules
     assert records(o) == [], records(o)
-    assert n_h(o, 'DNE') == ['H1', 'H2', 'H3'], n_h(o, 'DNE')
+    assert n_h(o, 'DNE') == ['H', 'H2'], n_h(o, 'DNE')
+  o, _ = placed(t23.pdb_str.replace('DNE G   2', 'DNE G   1'))
+  assert n_h(o, 'DNE') == ['H1', 'H2', 'H3'], n_h(o, 'DNE')
 
 def test_free_form_per_conformer():
   # DNE and HT7 in A and B: HT7's peptide-bonded N in A and B, two sites;

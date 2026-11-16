@@ -502,6 +502,46 @@ def chain_start_residue_groups(model, peptide_bond_cutoff=2.0):
       prev_c_sites = c_sites
   return result
 
+def outgoing_peptide_bond(rg, next_rg, peptide_bond_cutoff=2.0):
+  '''
+  C of rg to N of next_rg in each complete conformer of the pair (every
+  altloc of either residue group with the blank atoms; the blank one alone
+  without altlocs): 'bonded' if C-N is within the cutoff in all of them,
+  'none' in none, 'mixed' if they disagree. A conformer without C or N cannot
+  decide (never 'bonded'): 'missing' where the residue lacking the atom has
+  main-chain atoms in that conformer (or it is the blank one), else 'altloc'
+  (the letter is not a main-chain conformer of that residue: a side-chain-only
+  letter, or letters that differ between the residues). 'none' also where
+  next_rg has no N at all (not a peptide residue). None without a next
+  residue group.
+  Distance only: the hierarchy is not processed yet where chain-start
+  placement runs.
+  '''
+  if next_rg is None: return None
+  def atom(r, alt, name):
+    for x in (alt, ''):
+      for ag in r.atom_groups():
+        if ag.altloc == x and ag.get_atom(name) is not None:
+          return ag.get_atom(name)
+    return None
+  if not any(ag.get_atom('N') for ag in next_rg.atom_groups()): return 'none'
+  alts = sorted(set(ag.altloc for r in (rg, next_rg)
+                    for ag in r.atom_groups()) - set([''])) or ['']
+  def main_chain(r, alt):
+    return alt == '' or any(ag.altloc == alt and ag.get_atom(name) is not None
+      for ag in r.atom_groups() for name in ('N', 'CA', 'C', 'O'))
+  seen, undecided = set(), set()
+  for alt in alts:
+    c, n = atom(rg, alt, 'C'), atom(next_rg, alt, 'N')
+    if c is None or n is None:
+      undecided.add('missing' if (c is None and main_chain(rg, alt)) or
+        (n is None and main_chain(next_rg, alt)) else 'altloc')
+      continue
+    seen.add(c.distance(n) <= peptide_bond_cutoff)
+  if undecided: return 'missing' if 'missing' in undecided else 'altloc'
+  if len(seen) == 2: return 'mixed'
+  return 'bonded' if True in seen else 'none'
+
 # ==============================================================================
 
 def heavy_neighbors_in_restraints(atom, mon_lib_srv):
@@ -3299,6 +3339,8 @@ class place_hydrogens():
     self._protected_h            = set()
     self._metal_amine_listed_n   = set()
     self.metal_amine_chain_starts = list()
+    # A57: chain starts the propeller leaves alone, and supplied H1-H3 names
+    self.chain_start_kept = list()
     # H that riding H refused although their parent has all its heavy
     # neighbours
     self.site_labels_riding_refused = list()
@@ -5295,6 +5337,87 @@ class place_hydrogens():
     return ' (n_terminal_charge=%s would place %s%s)' % (self.n_terminal_charge,
       start, ', wrong for a terminus and for a chain break' if placed else '')
 
+  def _chain_start_terminus(self, rg, next_rg):
+    '''
+    A57: whether the propeller builds NH3 at chain start rg. Standard amino
+    acids: always, as before. Any other residue: only with an outgoing peptide
+    bond in every complete conformer (outgoing_peptide_bond()), and never where
+    the dictionary does not bond N to CA (beta-amino acids: the propeller is
+    CA-based). Otherwise the residue keeps its dictionary placement and is
+    listed. Used for both propeller paths (n_terminal_charge, metal-bound).
+    '''
+    n = None
+    for ag in rg.atom_groups():
+      n = ag.get_atom('N')
+      if n: break
+    if n is None: return True # the propeller lists it
+    resname = n.parent().resname.strip()
+    if get_class(name=resname) == 'common_amino_acid': return True
+    bonds = heavy_neighbors_in_restraints(n, self.query_mon_lib_srv)
+    if bonds is None: return True # the propeller lists it
+    self._supplied_terminal_names(rg, n)
+    label = self._start_label(n, rg)
+    if 'CA' not in [b.strip() for b in bonds]:
+      if any(ag.get_atom('CA') for ag in rg.atom_groups()):
+        self.chain_start_kept.append('%s: N bonded to %s, not CA, in the '
+          'dictionary: terminal conversion not supported; dictionary '
+          'placement retained' % (
+          label, ', '.join(b.strip() for b in bonds) or 'no heavy atom'))
+      return False
+    bond = outgoing_peptide_bond(rg, next_rg)
+    if bond == 'bonded': return True
+    if bond == 'mixed':
+      why = 'ambiguous, conformers disagree on a peptide bond to the next residue'
+    elif bond == 'missing':
+      why = 'ambiguous, C or the next residue\'s N missing in a conformer'
+    elif bond == 'altloc':
+      why = 'ambiguous, altloc letters do not match between this and the ' \
+        'next residue'
+    elif bond is None and get_class(name=resname) in ('modified_amino_acid',
+        'd_amino_acid'):
+      why = 'ambiguous, no next residue (a free amino acid, or the next ' \
+        'residue is missing)'
+    else:
+      why = 'no peptide bond to a next residue (standalone)'
+    self.chain_start_kept.append('%s: %s; terminal conversion not applied; '
+      'dictionary placement retained' % (label, why))
+    return False
+
+  def _supplied_terminal_names(self, rg, n):
+    # supplied H1-H3 (D1-D3) on N whose name the dictionary gives another
+    # parent (SAM/SAH ring H2): listed, not renamed; riding H moves it to the
+    # dictionary parent's site (on master too): the collision is unresolved
+    if not (self.keep_existing_H and self._existing_h): return
+    mlq = mon_lib_query(residue=n.parent(), mon_lib_srv=self.query_mon_lib_srv,
+      raise_sorry=False)[0]
+    if mlq is None: return
+    parent = {}
+    for b in mlq.bond_list:
+      parent.setdefault(b.atom_id_1.strip(), b.atom_id_2.strip())
+      parent.setdefault(b.atom_id_2.strip(), b.atom_id_1.strip())
+    for a in rg.atoms():
+      name = a.name.strip()
+      key = 'H' + name[1:] if name[:1] == 'D' else name
+      if (key in ('H1', 'H2', 'H3') and a.element.strip().upper() in ('H', 'D')
+          and residue_part(a.parent()) + (a.parent().altloc, a.name)
+            in self._existing_h
+          and _compatible(a, n) and a.distance(n) < 1.3
+          and parent.get(key, 'N') != 'N'):
+        self.chain_start_kept.append('%s %s %s %s: within bond length of N, '
+          'but the %s dictionary bonds %s to %s; not renamed; name collision '
+          'unresolved' % (name, a.parent().resname.strip(),
+          rg.parent().id.strip(), rg.resseq.strip() + rg.icode.strip(),
+          a.parent().resname.strip(), key, parent[key]))
+
+  def chain_start_kept_text(self):
+    # A57 report; '' if there is nothing to report
+    if not self.chain_start_kept: return ''
+    lines = ['Chain starts: terminal conversion not applied, and supplied '
+      'H1-H3 names the dictionary gives another parent']
+    for t in self.chain_start_kept:
+      if '  ' + t not in lines: lines.append('  ' + t)
+    return '\n'.join(lines)
+
   def _start_message(self, text):
     # one line per site and conformer, not repeated
     if text not in self.metal_amine_chain_starts:
@@ -5464,9 +5587,26 @@ class place_hydrogens():
         rgs_list = []
       else:
         rgs_list = [chain.residue_groups()[0] for chain in m.chains()]
+      next_rg = {}
+      for chain in m.chains():
+        rgl = chain.residue_groups()
+        for i, rg in enumerate(rgl):
+          next_rg[rg.memory_id()] = rgl[i+1] if i+1 < len(rgl) else None
+      judged = {}
+      def eligible(rg):
+        # one judgement (and report line) per residue, for both paths
+        if rg.memory_id() not in judged:
+          judged[rg.memory_id()] = self._chain_start_terminus(rg,
+            next_rg[rg.memory_id()])
+        return judged[rg.memory_id()]
+      rgs_list = [rg for rg in rgs_list if
+        (self.n_terminal_charge == 'residue_one' and rg.resseq_as_int() != 1)
+        or eligible(rg)]
       metal_starts = set()
       if self.metal_bound_amines_as_nh2:
-        starts = self.chain_start_metal_conformers(m)
+        # the metal-selected starts pass the same check, under every setting
+        starts = [(rg, ns) for rg, ns in self.chain_start_metal_conformers(m)
+                  if eligible(rg)]
         metal_starts = set(rg.memory_id() for rg, ns in starts)
         places = set(rg.memory_id() for rg in rgs_list
           if not (self.n_terminal_charge == 'residue_one' and
@@ -6392,7 +6532,8 @@ class place_hydrogens():
       print(self.unknown_atoms_text(verbose), file=log)
     #
     for text in (self.metal_thiol_text(), self.metal_nh_text(),
-                 self.metal_amine_text(), self.nh2_side_fixed_text(),
+                 self.metal_amine_text(), self.chain_start_kept_text(),
+                 self.nh2_side_fixed_text(),
                  self.na_terminal_h_text(), self.na_terminal_gap_text()):
       if text:
         print('', file=log)

@@ -130,7 +130,8 @@ def test_dne_alone():
 
 def test_peptide_bond_and_chain_start():
   # HT7 G 3 after DNE G 2: a bond restraint N-C to DNE, HA2 left out and
-  # counted; DNE as residue 1 is a chain start: H1, H2, H3
+  # counted; DNE alone as residue 1 is a chain start without a next residue:
+  # ambiguous, its dictionary H and H2 kept (A57)
   o = place(t23.pdb_str)
   n, hs = n_h(o, 'HT7')
   assert [a.name.strip() for a in hs] == ['HN1'], [a.name for a in hs]
@@ -139,30 +140,31 @@ def test_peptide_bond_and_chain_start():
   start = '\n'.join(l for l in start.splitlines() if 'HT7' not in l) + '\n'
   o = place(start)
   n, hs = n_h(o, 'DNE')
-  assert [a.name.strip() for a in hs] == ['H1', 'H2', 'H3'], [a.name
-    for a in hs]
+  assert [a.name.strip() for a in hs] == ['H', 'H2'], [a.name for a in hs]
   assert o.not_placed_rules['free_form'] == 0, o.not_placed_rules
 
 def test_sam_chain_start():
-  # SAM as residue 1 is a chain start: chain-start placement decides its N
-  # (its H1-H3 are names the SAM dictionary lacks and are dropped, A57); the
-  # free-form HN2 is not restored there: HN1 only, as before
+  # SAM as residue 1 is a chain start without a peptide bond: standalone, so
+  # chain-start placement leaves it and the free-form rule keeps both
+  # dictionary H, HN1 and HN2 (A57)
   o = place(pdb_sam.replace('SAM A 406', 'SAM A   1'))
   n, hs = n_h(o, 'SAM')
-  assert [a.name.strip() for a in hs] == ['HN1'], [a.name for a in hs]
+  assert [a.name.strip() for a in hs] == ['HN1', 'HN2'], [a.name for a in hs]
   assert o.not_placed_rules['free_form'] == 0, o.not_placed_rules
 
-def dne_split_cu():
-  """DNE G 2 alone, every atom in conformers A and B (occupancy 0.5), and a
-  Cu in conformer A only, 2.00 A from N (CB-CA-N-Cu 180, CA-N-Cu 109.5)"""
-  lines = [l for l in t23.pdb_str.splitlines() if 'HT7' not in l]
+def dne_split_cu(ht7=False):
+  """DNE G 2 alone (with ht7: peptide-bonded to HT7 G 3, a terminus), every
+  atom in conformers A and B (occupancy 0.5), and a Cu in conformer A only,
+  2.00 A from N (CB-CA-N-Cu 180, CA-N-Cu 109.5)"""
+  lines = [l for l in t23.pdb_str.splitlines() if ht7 or 'HT7' not in l]
   out, sites = [], {}
   for l in lines:
     if not l.startswith('HETATM'):
       if not l.startswith('END'): out.append(l)
       continue
-    sites[l[12:16].strip()] = matrix.col((float(l[30:38]), float(l[38:46]),
-      float(l[46:54])))
+    if l[17:20] == 'DNE':
+      sites[l[12:16].strip()] = matrix.col((float(l[30:38]),
+        float(l[38:46]), float(l[46:54])))
     for alt in 'AB':
       out.append(l[:16] + alt + l[17:54] + '  0.50' + l[60:])
   a, b, c = sites['CB'], sites['CA'], sites['N']
@@ -170,7 +172,7 @@ def dne_split_cu():
   th, ph = math.radians(109.5), math.radians(180)
   cu = c + 2.00 * (-math.cos(th) * bc + math.sin(th) * (math.cos(ph) * mm +
     math.sin(ph) * nn))
-  out.append("HETATM14160 CU  ACU  G   3    %8.3f%8.3f%8.3f  0.50 20.00"
+  out.append("HETATM14170 CU  ACU  G   4    %8.3f%8.3f%8.3f  0.50 20.00"
     "          CU" % tuple(cu))
   return '\n'.join(out) + '\nEND\n'
 
@@ -212,11 +214,12 @@ def h_on_n(o, resname):
   return found
 
 def test_metal_chain_start_one_conformer():
-  # Cu in conformer A only: chain-start placement makes N/A an NH3, of which
-  # the metal-bound amine conversion keeps H2, H3; N/B, not handled and without a
-  # peptide bond, keeps both dictionary H (H, H2). Before, the whole residue
-  # counted as handled and N/B kept H only
-  o = place(dne_split_cu(), metal_bound_amines_as_nh2=True)
+  # DNE peptide-bonded to HT7 (a terminus, A57), Cu in conformer A only:
+  # chain-start placement makes N/A an NH3, of which the metal-bound amine
+  # conversion keeps H2, H3; N/B, not handled and without a peptide bond to
+  # its N, keeps both dictionary H (H, H2). Before, the whole residue counted
+  # as handled and N/B kept H only
+  o = place(dne_split_cu(ht7=True), metal_bound_amines_as_nh2=True)
   h = o.get_model().get_hierarchy()
   found = {}
   for ag in h.atom_groups():
@@ -226,32 +229,32 @@ def test_metal_chain_start_one_conformer():
       if a.element.strip().upper() in ('H', 'D') and a.distance(n) < 1.3)
   assert found['B'] == ['H', 'H2'], found
   assert found['A'] == ['H2', 'H3'], found
-  assert o.not_placed_rules['free_form'] == 0, o.not_placed_rules
+  # the rule counts HT7's peptide-bonded N, in A and B, not DNE's
+  assert o.not_placed_rules['free_form'] == 2, o.not_placed_rules
   # one conformer (blank) with the Cu: the whole residue is handled, H2, H3
   # as before (A57 not worse)
   blank = []
-  for l in dne_split_cu().splitlines():
+  for l in dne_split_cu(ht7=True).splitlines():
     if l.startswith('HETATM') and l[16] == 'B': continue
     if l.startswith('HETATM'): l = l[:16] + ' ' + l[17:54] + '  1.00' + l[60:]
     blank.append(l)
   o = place('\n'.join(blank) + '\n', metal_bound_amines_as_nh2=True)
   n, hs = n_h(o, 'DNE')
   assert [a.name.strip() for a in hs] == ['H2', 'H3'], [a.name for a in hs]
-  assert o.not_placed_rules['free_form'] == 0, o.not_placed_rules
-  # SAM 406 in A and B, Cu on N/A: N/A is handled (its chain-start H1-H3
-  # are names the SAM dictionary lacks, A57: HN1 as for a whole-residue chain
-  # start); N/B keeps HN1, HN2
+  assert o.not_placed_rules['free_form'] == 1, o.not_placed_rules # HT7
+  # SAM 406 in A and B, Cu on N/A: standalone, so the metal option does not
+  # convert it either (A57): both conformers keep HN1, HN2
   cu = cu_on_n(pdb_sam, 'SAM')
   sam = split_ab(pdb_sam.splitlines()) + ["HETATM   28 CU  ACU  A 407    "
     "%8.3f%8.3f%8.3f  0.50 20.00          CU" % tuple(cu)]
   o = place('\n'.join(sam) + '\nEND\n', metal_bound_amines_as_nh2=True)
   found = h_on_n(o, 'SAM')
-  assert found == {'A': ['HN1'], 'B': ['HN1', 'HN2']}, found
-  # supplied chain start in one conformer (keep_existing_H): DNE with N, CA,
-  # C, O blank and the side chain in A and B, Cu blank; the supplied H2 on N
-  # in A only stays, conformer B gets H, H2
+  assert found == {'A': ['HN1', 'HN2'], 'B': ['HN1', 'HN2']}, found
+  # supplied chain start in one conformer (keep_existing_H): DNE (bonded to
+  # HT7) with N, CA, C, O blank and the side chain in A and B, Cu blank; the
+  # supplied H2 on N in A only stays, conformer B gets H, H2
   lines = []
-  for l in dne_split_cu().splitlines():
+  for l in dne_split_cu(ht7=True).splitlines():
     if l.startswith('HETATM') and (l[12:16].strip() in ('N', 'CA', 'C', 'O')
         or ' CU ' in l):
       if l[16] == 'B': continue

@@ -570,6 +570,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_water_phantoms.py",
   "$D/regression/tst_reduce2_amine_nh2.py",
   "$D/regression/tst_reduce2_free_form_h.py",
+  "$D/regression/tst_reduce2_chain_start_ligands.py",
   "$D/regression/tst_reduce2_metal_neutral_nh2.py",
   "$D/regression/tst_altloc_chain_break.py",
   "$D/regression/ncs/tst_geometry_minimization_ncs_constraints.py",
