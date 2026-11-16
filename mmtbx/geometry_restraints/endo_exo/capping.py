@@ -1,7 +1,5 @@
 """Hydrogen cap placement at covalent boundary sites."""
 
-from __future__ import absolute_import, division, print_function
-
 import iotbx.pdb
 import iotbx.pdb.hierarchy
 from cctbx.array_family import flex
@@ -33,8 +31,10 @@ def _free_resseq(chain):
   chain_id = chain.id
   root = chain.parent()
   if root is not None:
-    groups = [rg for other in root.chains() if other.id == chain_id
-              for rg in other.residue_groups()]
+    groups = []
+    for other in root.chains():
+      if other.id == chain_id:
+        groups.extend(other.residue_groups())
   else:
     groups = list(chain.residue_groups())
   taken = {rg.resseq_as_int() for rg in groups}

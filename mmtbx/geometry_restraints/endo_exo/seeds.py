@@ -1,7 +1,5 @@
 """Seed-atom discovery for the endo_exo QM-region builder."""
 
-from __future__ import absolute_import, division, print_function
-
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
 
 

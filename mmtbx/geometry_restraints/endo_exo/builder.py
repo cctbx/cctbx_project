@@ -7,8 +7,6 @@ driven directly in memory: construct it with a params object, then call
 :meth:`run` with a model.
 """
 
-from __future__ import absolute_import, division, print_function
-
 import copy
 import os
 from collections import defaultdict
@@ -95,7 +93,7 @@ def format_sidecar(result):
   return sidecar_phil.format(sidecar_phil_extract).as_str()
 
 
-class QMRegionBuilder(object):
+class QMRegionBuilder:
   """Build QM regions around seed sites for a single model.
 
   Parameters
@@ -149,6 +147,13 @@ class QMRegionBuilder(object):
     -------
     list of dict
         One per-seed result dict (see :meth:`_process_seed`).
+
+    Raises
+    ------
+    Sorry
+        When no seed atoms are found, a selection matches no atoms, the model
+        has no hydrogens where hydrogen bonds are needed, or the symmetry
+        images need more chain IDs than are free.
     """
     self.model_name = model_name
     self.default_output_filename = default_output_filename
@@ -161,10 +166,11 @@ class QMRegionBuilder(object):
     # proxies.
     interpretation_params = copy.deepcopy(
       model.get_current_pdb_interpretation_params())
-    interpretation_params.pdb_interpretation.restraints_library.cdl = False
-    interpretation_params.pdb_interpretation.restraints_library.mcl = False
-    interpretation_params.pdb_interpretation.flip_symmetric_amino_acids = False
-    interpretation_params.pdb_interpretation.automatic_linking.link_metals = False
+    pdb_interpretation = interpretation_params.pdb_interpretation
+    pdb_interpretation.restraints_library.cdl = False
+    pdb_interpretation.restraints_library.mcl = False
+    pdb_interpretation.flip_symmetric_amino_acids = False
+    pdb_interpretation.automatic_linking.link_metals = False
     model.process(
       pdb_interpretation_params=interpretation_params,
       make_restraints=True,
@@ -210,7 +216,9 @@ class QMRegionBuilder(object):
         )
         self._print_seeds(seeds, label='selected atoms')
     else:
-      seeds_all = [s for _, grp in seed_groups for s in grp]
+      seeds_all = []
+      for _, grp in seed_groups:
+        seeds_all.extend(grp)
       self._print_seeds(seeds_all, label='seed atoms')
 
     # seeds_flat = [atom for _, grp in seed_groups for atom in grp]  # needed for contact_cutoff
@@ -234,7 +242,8 @@ class QMRegionBuilder(object):
     #   print(f'Added {added_edges} seed-contact edges '
     #         f'(cutoff={cutoff:.2f} A)', file=self.logger)
     print(
-      f'Always-included seed-centered radius: {self.params.buffer.radius:.2f} A',
+      f'Always-included seed-centered radius: '
+      f'{self.params.buffer.radius:.2f} A',
       file=self.logger,
     )
 
@@ -437,9 +446,9 @@ class QMRegionBuilder(object):
       # freezes caps may still want to leave these free to relax.
       'completed_iseqs': completed_indices,
       # {sub-model i_seq: ((chain, resseq, resname, name, altloc),
-      # symmetry_operation_xyz)} for symmetry-image atoms, so a metal-ligand bond
-      # to one can be restrained against its ASU parent (kept in memory only, not
-      # the on-disk sidecar).
+      # symmetry_operation_xyz)} for symmetry-image atoms, so a metal-ligand
+      # bond to one can be restrained against its ASU parent (kept in memory
+      # only, not the on-disk sidecar).
       'sym_image_provenance': sym_image_provenance,
       'selection_string': selection_str,
     }
@@ -522,7 +531,8 @@ class QMRegionBuilder(object):
         continue
       atom = atoms[iseq]
       name = atom.name.strip().upper()
-      if name not in ('N', 'C') or atom.element.strip().upper() not in ('N', 'C'):
+      if (name not in ('N', 'C')
+          or atom.element.strip().upper() not in ('N', 'C')):
         continue
       # An atom whose valence materialisation completed is not short of
       # anything, so it is not reported.
@@ -533,6 +543,7 @@ class QMRegionBuilder(object):
       hydrogens = 0
       oxygens = 0
       on_backbone = False
+      chain_continues = False
       for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
         other = atoms[neighbour_iseq]
         if other.element_is_hydrogen():
@@ -540,28 +551,30 @@ class QMRegionBuilder(object):
           continue
         if other.parent().parent() != residue_group:
           if other.name.strip().upper() == partner:
-            break                     # the chain continues, nothing missing
+            chain_continues = True    # nothing missing
+            break
           continue                    # some other link, not the backbone one
         other_name = other.name.strip().upper()
         if other_name == 'CA' and other.element.strip().upper() == 'C':
           on_backbone = True
         if other.element.strip().upper() == 'O':
           oxygens += 1
-      else:
-        # Only a peptide backbone has a neighbouring residue that can be
-        # missing.  A ligand that happens to name an atom N or C is bonded
-        # entirely within itself, and is short of nothing.
-        if not on_backbone:
-          continue
-        # A real terminus is not short of anything: an amine carries its
-        # own hydrogens, a carboxylate its second oxygen.
-        if name == 'C' and oxygens >= 2:
-          continue
-        if name == 'N' and hydrogens >= 2:
-          continue
-        open_valences.add(
-          f'{atom.parent().resname.strip()} '
-          f'{residue_group.resseq.strip()} {atom.name.strip()}')
+      if chain_continues:
+        continue
+      # Only a peptide backbone has a neighbouring residue that can be
+      # missing.  A ligand that happens to name an atom N or C is bonded
+      # entirely within itself, and is short of nothing.
+      if not on_backbone:
+        continue
+      # A real terminus is not short of anything: an amine carries its own
+      # hydrogens, a carboxylate its second oxygen.
+      if name == 'C' and oxygens >= 2:
+        continue
+      if name == 'N' and hydrogens >= 2:
+        continue
+      open_valences.add(
+        f'{atom.parent().resname.strip()} '
+        f'{residue_group.resseq.strip()} {atom.name.strip()}')
 
     if open_valences:
       print(
@@ -803,8 +816,10 @@ class QMRegionBuilder(object):
               rg.atom_groups()[0].resname) != 'common_water':
             continue
           rep_iseq = rg.atom_groups()[0].atoms()[0].i_seq
-          iseqs = [a.i_seq for ag in rg.atom_groups()
-                   for a in ag.atoms()]
+          iseqs = []
+          for ag in rg.atom_groups():
+            for a in ag.atoms():
+              iseqs.append(a.i_seq)
           cached.append((rep_iseq, iseqs))
       self._waters_cache = cached
       self._waters_cache_rep_frac = (
@@ -910,9 +925,9 @@ class QMRegionBuilder(object):
         are bonded to (their anchors).
     sym_image_provenance : dict
         ``{sub-model i_seq: ((chain, resseq, resname, name, altloc),
-        symmetry_operation_xyz)}`` for each materialized symmetry-image atom: the
-        ASU parent's selection identity (not the atom object, whose parent chain
-        dangles once this model is freed) plus the symmetry op.
+        symmetry_operation_xyz)}`` for each materialized symmetry-image atom:
+        the ASU parent's selection identity (not the atom object, whose parent
+        chain dangles once this model is freed) plus the symmetry op.
     """
     import iotbx.pdb
     import mmtbx.model as mmtbx_model
@@ -1024,9 +1039,13 @@ class QMRegionBuilder(object):
             group_key = parent_atoms[parent_iseq].parent().memory_id()
             other_images = [kept for (kept_op, kept) in seen_images[group_key]
                             if kept_op != op_xyz]
-            is_duplicate = any(
-              a.distance(prev) < POS_TOL
-              for a in heavy for prev in other_images)
+            for a in heavy:
+              for prev in other_images:
+                if a.distance(prev) < POS_TOL:
+                  is_duplicate = True
+                  break
+              if is_duplicate:
+                break
           if is_duplicate:
             rg.remove_atom_group(ag)
             continue
@@ -1085,11 +1104,11 @@ class QMRegionBuilder(object):
         nitrogen = _lookup_node(iseq, op.as_xyz())
         if nitrogen is None or nitrogen in cap_atoms:
           continue
-        neighbours = [
-          neighbour for neighbour in (
-            _lookup_node(j, _canon_op(op.multiply(edge_op)).as_xyz())
-            for (j, edge_op) in adjacency[iseq])
-          if neighbour is not None]
+        neighbours = []
+        for (j, edge_op) in adjacency[iseq]:
+          neighbour = _lookup_node(j, _canon_op(op.multiply(edge_op)).as_xyz())
+          if neighbour is not None:
+            neighbours.append(neighbour)
         added = self._capper.complete_amine(nitrogen, neighbours)
         if added:
           completed_amines.append((iseq, op))
@@ -1109,11 +1128,11 @@ class QMRegionBuilder(object):
         carbon = _lookup_node(iseq, op.as_xyz())
         if carbon is None or carbon in cap_atoms:
           continue
-        neighbours = [
-          neighbour for neighbour in (
-            _lookup_node(j, _canon_op(op.multiply(edge_op)).as_xyz())
-            for (j, edge_op) in adjacency[iseq])
-          if neighbour is not None]
+        neighbours = []
+        for (j, edge_op) in adjacency[iseq]:
+          neighbour = _lookup_node(j, _canon_op(op.multiply(edge_op)).as_xyz())
+          if neighbour is not None:
+            neighbours.append(neighbour)
         # Which repair depends on whether the chain continues past this
         # residue.  Later polymer means an interior gap, so the missing
         # partner is the next residue's nitrogen; nothing later means the
@@ -1152,13 +1171,18 @@ class QMRegionBuilder(object):
     # ``atom_for_node`` already holds the materialized atoms.  Every index
     # below is read only after the wrapping above, which is what gives the
     # copied atoms their final ``.i_seq``.
-    seed_indices = sorted(
-      a.i_seq for a in (_lookup_node(s.i_seq, identity_xyz)
-                        for s in seeds) if a is not None)
-    cap_atoms_sorted = sorted(
-      (a for a in (_lookup_node(iseq, op.as_xyz())
-                   for (iseq, op) in cap_nodes) if a is not None),
-      key=lambda a: a.i_seq)
+    seed_indices = []
+    for s in seeds:
+      a = _lookup_node(s.i_seq, identity_xyz)
+      if a is not None:
+        seed_indices.append(a.i_seq)
+    seed_indices.sort()
+    cap_atoms_sorted = []
+    for (iseq, op) in cap_nodes:
+      a = _lookup_node(iseq, op.as_xyz())
+      if a is not None:
+        cap_atoms_sorted.append(a)
+    cap_atoms_sorted.sort(key=lambda a: a.i_seq)
     cap_indices = [a.i_seq for a in cap_atoms_sorted]
     # Indexed rather than fetched with ``.get``: both lists are built from
     # ``cap_nodes`` under the same not-None filter, so a missing entry is a
@@ -1242,4 +1266,3 @@ class QMRegionBuilder(object):
       prefix=model_stem,
       suffix=seed_suffix,
     )
-

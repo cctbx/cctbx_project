@@ -1,8 +1,6 @@
 """Breadth-first QM-region growth over the covalent graph, with cap-candidate
 detection."""
 
-from __future__ import absolute_import, division, print_function
-
 from collections import deque
 
 from cctbx import sgtbx
@@ -379,12 +377,11 @@ class QMRegionGrower:
     bool
     """
     amide_atom_names = {'N', 'C', 'O'}
-    amide_i_seqs = [
-      residue_atom.i_seq
-      for atom_group in residue_group.atom_groups()
-      for residue_atom in atom_group.atoms()
-      if residue_atom.name.strip().upper() in amide_atom_names
-    ]
+    amide_i_seqs = []
+    for atom_group in residue_group.atom_groups():
+      for residue_atom in atom_group.atoms():
+        if residue_atom.name.strip().upper() in amide_atom_names:
+          amide_i_seqs.append(residue_atom.i_seq)
     if not amide_i_seqs:
       return False
     return any((i_seq, sym_op) in visited for i_seq in amide_i_seqs)
@@ -426,12 +423,11 @@ class QMRegionGrower:
     bool
     """
     residue_group = atoms[atom_idx].parent().parent()
-    carbonyl_iseqs = [
-      residue_atom.i_seq
-      for atom_group in residue_group.atom_groups()
-      for residue_atom in atom_group.atoms()
-      if residue_atom.name.strip().upper() == 'C'
-    ]
+    carbonyl_iseqs = []
+    for atom_group in residue_group.atom_groups():
+      for residue_atom in atom_group.atoms():
+        if residue_atom.name.strip().upper() == 'C':
+          carbonyl_iseqs.append(residue_atom.i_seq)
 
     for carbonyl_iseq in carbonyl_iseqs:
       for (neighbour_iseq, edge_op) in adjacency[carbonyl_iseq]:

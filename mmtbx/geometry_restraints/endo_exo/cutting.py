@@ -1,8 +1,6 @@
 """Bond-cut heuristics (backbone / sidechain) for locating good
 hydrogen-capping sites."""
 
-from __future__ import absolute_import, division, print_function
-
 from collections import deque
 
 from mmtbx.geometry_restraints.endo_exo.util import _neighbour_iseqs

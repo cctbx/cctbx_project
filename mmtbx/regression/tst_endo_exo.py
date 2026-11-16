@@ -19,8 +19,6 @@ QM region around two contrasting Fe sites:
     two extra images land in single-character chain IDs).
 """
 
-from __future__ import absolute_import, division, print_function
-
 import io
 import math
 import random
@@ -3852,10 +3850,9 @@ def exercise_surviving_cap_has_only_its_anchor():
   """A cap that survives growth is bonded to its anchor and nothing else
   in the region.
 
-  This is what keeps the repair machinery small.  Two branches it used to
-  carry -- invalidating a demoted cap's neighbours, and promoting two
-  adjacent caps to interior -- exist only for regions that break this, and
-  were removed once measurement showed they never ran.  Their absence is
+  This is what keeps the repair machinery small: it has no branch for
+  invalidating a demoted cap's neighbours or for promoting two adjacent caps
+  to interior, which only a region that breaks this would need.  That is
   safe exactly as long as this holds, so it is checked rather than implied.
 
   Checked on the grower's own state: once a region is materialised the caps

@@ -7,19 +7,18 @@ and a sidecar PHIL file per seed.
 
 Usage (via dispatcher):
 
-    mmtbx.endo_exo model.pdb
-    mmtbx.endo_exo model.pdb selection="chain A and resseq 100" buffer.radius=5.0
-    mmtbx.endo_exo model.pdb selection="chain A and resseq 100" \\
-                             selection="chain B and resseq 200"
+    mmtbx.development.endo_exo model.pdb
+    mmtbx.development.endo_exo model.pdb selection="chain A and resseq 100" \\
+      buffer.radius=5.0
+    mmtbx.development.endo_exo model.pdb selection="chain A and resseq 100" \\
+      selection="chain B and resseq 200"
 
 Programmatic use::
 
     from mmtbx.programs.endo_exo import Program
     from iotbx.cli_parser import run_program
-    run_program(program_class=Program)
+    results = run_program(program_class=Program, args=['model.pdb'])
 """
-
-from __future__ import absolute_import, division, print_function
 
 from libtbx import Auto
 from libtbx.program_template import ProgramTemplate
@@ -41,7 +40,7 @@ element_filter = None
   .multiple = True
   .help = "Restrict the seed search to atoms of these element(s). Element \
 symbols are case-insensitive and need not be metals. Consulted only when no \
-`selection` is given."
+selection is given."
 altloc = auto
   .type = str
   .help = "Which altloc to retain per residue. 'auto' keeps the non-blank \
@@ -123,7 +122,7 @@ class Program(ProgramTemplate):
   Grows a QM region around each seed site, optionally caps dangling bonds
   with hydrogen atoms, and writes a model file and a sidecar PHIL file per
   seed.  Seeds are all metals in the structure unless a custom
-  selection string is provided via the ``selection`` parameter.
+  selection string is provided via the selection parameter.
   '''
 
   datatypes = ['model', 'phil']
@@ -135,7 +134,15 @@ class Program(ProgramTemplate):
     self._results = []
 
   def validate(self):
-    """Validate user inputs before :meth:`run` is called."""
+    """Validate user inputs before :meth:`run` is called.
+
+    Raises
+    ------
+    Sorry
+        When there is not exactly one model, a selection does not parse,
+        altloc is not auto, all or one character, or the model has no
+        hydrogens.
+    """
     self.data_manager.has_models(
       raise_sorry=True, expected_n=1, exact_count=True)
     model = self.data_manager.get_model()
