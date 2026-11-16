@@ -145,13 +145,56 @@ def chain_id_generator(used_ids=()):
     length += 1
 
 def all_label_asym_ids(maximum_length=4):
-  """Return a list of possible label_asym_ids"""
+  """Return a list of possible label_asym_ids
+
+  Deprecated: builds all 475254 ids up to ZZZZ, about 0.2 s; use
+  label_asym_id_from_index instead. Kept as the reference that
+  iotbx/pdb/tst_utils.py compares label_asym_id_from_index with.
+  """
   chars = string.ascii_uppercase
   rc = ["".join(c) for c in chars]
   for r in range(2, maximum_length+1):
     char_upper = __permutations(iterable = chars, r = r)
     rc += ["".join(p) for p in char_upper]
   return rc
+
+def label_asym_id_from_index(index, maximum_length=4):
+  """Return the mmCIF chain label at a position in the order A, B, ..., AA.
+
+  Gives the same id as the list of all_label_asym_ids at that position,
+  without building the list.
+
+  Parameters
+  ----------
+  index : int
+    Position of the id, ids ordered by length, then alphabetically:
+    A..Z, AA..ZZ, AAA..ZZZ, ...
+  maximum_length : int, optional
+    Length of the longest id, at least 1; the default 4 ends at ZZZZ.
+
+  Returns
+  -------
+  str
+    The label_asym_id.
+
+  Raises
+  ------
+  IndexError
+    If index is negative or past the last id of maximum_length characters.
+  """
+  if index < 0:
+    raise IndexError("label_asym_id index out of range: %d" % index)
+  j = index
+  for length in range(1, maximum_length+1):
+    n = 26**length
+    if j < n:
+      chars = []
+      for _ in range(length):
+        j, r = divmod(j, 26)
+        chars.append(string.ascii_uppercase[r])
+      return "".join(reversed(chars))
+    j -= n
+  raise IndexError("label_asym_id index out of range: %d" % index)
 
 def tst_get_input_model_file_name_from_params():
   from libtbx import group_args
@@ -959,15 +1002,3 @@ class numbering_dict:
             key = self.get_key(r)
             dd[key] = key
     return dd
-
-if __name__ == '__main__':
-  import time
-  l=0
-  p=1
-  for r in range(1,5):
-    t0=time.time()
-    rc = all_label_asym_ids(maximum_length=r)
-    p*=26
-    l+=p
-    print('%7d %7d %7d %5s %0.3fs' % (l,p,len(rc), rc[-1], time.time()-t0))
-    assert len(rc)==l

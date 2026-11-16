@@ -64,6 +64,35 @@ def exercise_all_chain_ids():
   assert next(gen) == "AAB"
   assert next(gen) == "AAC"
 
+def exercise_label_asym_id_from_index():
+  """label_asym_id_from_index gives the id at the same position as the list
+  of all_label_asym_ids: compared at the first and last position of each id
+  length, at random positions, and at all positions for maximum_length 1 to
+  3. A position past the end or a negative one raises IndexError, past ZZZZ
+  with the default maximum_length."""
+  import random
+  from iotbx.pdb.utils import all_label_asym_ids, label_asym_id_from_index
+  ids = all_label_asym_ids()
+  assert len(ids) == 475254
+  # first and last index of each id length, A..Z, AA..ZZ, AAA..ZZZ, AAAA..ZZZZ
+  for i in [0, 25, 26, 701, 702, 18277, 18278, 475253]:
+    assert label_asym_id_from_index(i) == ids[i], (i, ids[i])
+  rng = random.Random(0)
+  for i in [rng.randrange(len(ids)) for _ in range(500)]:
+    assert label_asym_id_from_index(i) == ids[i], (i, ids[i])
+  for maximum_length in [1, 2, 3]:
+    ids = all_label_asym_ids(maximum_length=maximum_length)
+    for i in range(len(ids)):
+      assert label_asym_id_from_index(i, maximum_length) == ids[i], \
+        (i, maximum_length, ids[i])
+  for args in [(475254,), (-1,), (475254, 4), (18278, 3), (26, 1)]:
+    try:
+      label_asym_id_from_index(*args)
+    except IndexError:
+      pass
+    else:
+      raise AssertionError("no IndexError for %s" % (args,))
+
 def exercise_add_models_and_hierarchies():
   from iotbx.pdb.utils import get_pdb_info, add_models, add_hierarchies
   ph1 = get_pdb_info(as_pdb).hierarchy
@@ -198,6 +227,7 @@ def run():
   exercise_check_pseudo_atoms()
   exercise_get_pdb_info()
   exercise_all_chain_ids()
+  exercise_label_asym_id_from_index()
   exercise_interleave_alt_confs()
   exercise_try_to_get_hierarchy()
   print("OK")

@@ -810,32 +810,22 @@ def exercise_block_layout(fixture_list):
 
 
 def run():
-  # all_label_asym_ids() builds its list of 475254 ids, A to ZZZZ, on every
-  # call, 0.2 s, and every as_cif_block call makes one call; the checks here
-  # make hundreds, so they share one list, up to ZZZ, more than any of them
-  # needs.
-  all_label_asym_ids = iotbx.pdb.hierarchy.all_label_asym_ids
-  label_asym_ids = all_label_asym_ids(maximum_length=3)
-  iotbx.pdb.hierarchy.all_label_asym_ids = lambda: label_asym_ids
-  try:
-    fixture_list = fixtures()
-    exercise_atom_site_labels(fixture_list)
-    exercise_cpp_columns(fixture_list)
-    exercise_programmatic_hierarchy()
-    exercise_multi_model(fixture_list)
-    exercise_chain_id_fallbacks()
-    exercise_charge_fp_resolution()
-    exercise_break_records()
-    exercise_python_whitespace()
-    exercise_non_finite_and_decimal_point()
-    exercise_rare_branches()
-    exercise_errors(fixture_list)
-    exercise_input_unchanged(fixture_list)
-    exercise_atoms_with_other_parent()
-    exercise_switched(fixture_list)
-    exercise_block_layout(fixture_list)
-  finally:
-    iotbx.pdb.hierarchy.all_label_asym_ids = all_label_asym_ids
+  fixture_list = fixtures()
+  exercise_atom_site_labels(fixture_list)
+  exercise_cpp_columns(fixture_list)
+  exercise_programmatic_hierarchy()
+  exercise_multi_model(fixture_list)
+  exercise_chain_id_fallbacks()
+  exercise_charge_fp_resolution()
+  exercise_break_records()
+  exercise_python_whitespace()
+  exercise_non_finite_and_decimal_point()
+  exercise_rare_branches()
+  exercise_errors(fixture_list)
+  exercise_input_unchanged(fixture_list)
+  exercise_atoms_with_other_parent()
+  exercise_switched(fixture_list)
+  exercise_block_layout(fixture_list)
 
 
 if __name__ == "__main__":
