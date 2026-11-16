@@ -30,11 +30,10 @@ from mmtbx.geometry_restraints.endo_exo.builder import (
 
 master_phil_str = """
 selection = None
-  .type = str
+  .type = atom_selection
   .multiple = True
-  .help = "Atom selection string for a seed region; each entry produces one \
-QM region output. If no selection is given, every metal in the structure is \
-used as a seed, one output per metal."
+  .help = "Atoms that seed a QM region; each entry produces one region. If no \
+selection is given, every metal in the structure seeds its own region."
 element_filter = None
   .type = str
   .multiple = True
@@ -90,9 +89,8 @@ residues_to_include
 cut rules. Leave 'selection' unset to disable."
 {
   selection = None
-    .type = str
-    .help = "CCTBX selection string, e.g. 'chain A and resseq 50-100'. \
-Matches are expanded to whole residue groups."
+    .type = atom_selection
+    .help = "Atoms whose residue groups are included whole in a region."
   scope = *per_seed global
     .type = choice
     .help = "per_seed: add an included residue only to the region of a seed \

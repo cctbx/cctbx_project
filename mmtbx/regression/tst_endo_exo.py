@@ -25,6 +25,7 @@ import random
 from collections import defaultdict, deque
 
 import iotbx.pdb
+import iotbx.phil
 from iotbx.pdb import common_residue_names_get_class
 import libtbx.phil
 from libtbx.test_utils import approx_equal
@@ -349,7 +350,7 @@ END
 def _program_master_phil():
   """Return the program's master PHIL with the template's output scope,
   as ``run_program`` builds it."""
-  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
   master.adopt_scope(libtbx.phil.parse(EndoexoProgram.output_phil_str))
   return master
 
@@ -1648,7 +1649,7 @@ def _hull_water_nodes(pdb_str, enabled=True, log=None):
   atoms = list(model.get_hierarchy().atoms())
   identity = sgtbx.rt_mx()
 
-  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
   params = master.extract()
   params.include_waters_in_convex_hull = enabled
   if log is None:
@@ -1681,7 +1682,7 @@ def exercise_hbond_partner_symmetry_composition():
   pdb_in = iotbx.pdb.input(
     source_info=None, lines=_HULL_WATER_TRIGONAL_PDB.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
-  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
   params = master.extract()
   params.include_hbond_partners = True
   builder = QMRegionBuilder(params, logger=io.StringIO())
@@ -1829,7 +1830,7 @@ def exercise_hull_spans_symmetry_images_already_in_the_region():
   identity = sgtbx.rt_mx()
   image = sgtbx.rt_mx("-x+1,y,-z+1")
 
-  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
   params = master.extract()
   params.include_waters_in_convex_hull = True
   builder = QMRegionBuilder(params, logger=io.StringIO())
@@ -1860,7 +1861,7 @@ def exercise_hbond_partners():
   carbonyl carbon away, so the acceptor is missing.  Seeding it brings the
   oxygen in, and growth carries on over the peptide bond into PHE 49, which
   is why atoms of a second residue appear as well."""
-  master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
   assert master.extract().include_hbond_partners is False, (
     "include_hbond_partners must stay off by default: it grows a region by "
     "over a tenth on a real structure")
@@ -2201,7 +2202,7 @@ def exercise_altloc_filter():
   def _filter(altloc):
     pdb_in = iotbx.pdb.input(source_info=None, lines=_ALTLOC_PDB.split("\n"))
     model = mmtbx.model.manager(model_input=pdb_in)
-    master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
+    master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
     params = master.extract()
     params.altloc = altloc
     builder = QMRegionBuilder(params, logger=io.StringIO())
@@ -2430,7 +2431,8 @@ def exercise_write_files_roundtrip():
 
     dm = DataManager(["model", "phil"])
     dm.process_model_file("fes.pdb")
-    unrun = EndoexoProgram(dm, _program_master_phil().extract(),
+    master = _program_master_phil()
+    unrun = EndoexoProgram(dm, master.extract(), master_phil=master,
                            logger=null_out())
     assert unrun.get_results() == [], "results before run() were not empty"
   finally:
