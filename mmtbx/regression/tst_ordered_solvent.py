@@ -9,6 +9,7 @@ import mmtbx.f_model
 import math
 from scitbx import matrix
 from libtbx.utils import null_out
+import libtbx.log
 
 pdb_str = """\
 CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
@@ -332,6 +333,8 @@ def get_manager_stub(model, fmodel, params):
   o._saved_occ, o._saved_u_iso = None, None
   o.water_state = ordered_solvent.water_state()
   o.model_size_init = model.size()
+  o.is_neutron_scat_table = False
+  o.ma = libtbx.log.manager(log = o.log)
   return o
 
 def exercise_build_h():
@@ -391,6 +394,71 @@ def exercise_build_h():
         assert 0.5 < a.distance(o_atom) < 1.5, (a.quote(), o_atom.quote())
   assert approx_equal(o.model.get_xray_structure().sites_cart(),
     h.atoms().extract_xyz())
+
+def exercise_build_h_misplaced():
+  """
+  H of water that are not in density are moved to difference map peaks, and
+  get occupancy of their O (they used to stay where they were, and their
+  occupancy refined to zero). H that are in density stay as they are.
+  """
+  cryst1 = "CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1"
+  o1, o2 = matrix.col((5,5,5)), matrix.col((5,14,5))
+  w1_true = water_with_h(1, o1, matrix.col((5,5,0)), chain="A")
+  w1_wrong = water_with_h(1, o1, matrix.col((5,5,10)), chain="A")
+  w1_wrong = [w1_wrong[0]] + [l[:54]+"  0.30"+l[60:] for l in w1_wrong[1:]]
+  w2 = water_with_h(2, o2, matrix.col((5,14,0)), chain="S")
+  w2_low = [w2[0]] + [l[:54]+"  0.70"+l[60:] for l in w2[1:]]
+  model_true = get_model_h(w1_true + w2, cryst1=cryst1)
+  model = get_model_h(w1_wrong + w2_low, cryst1=cryst1)
+  for m in [model_true, model]:
+    m.setup_scattering_dictionaries(scattering_table="n_gaussian")
+  fmodel = get_fmodel(model_true, model, d_min=0.9)
+  params = ordered_solvent.master_params().extract()
+  # at this resolution H peaks are closer to O and H-O-H angle is ~77
+  params.add_hydrogens.min_angle = 60
+  o = get_manager_stub(model, fmodel, params)
+  atoms_start = model.get_hierarchy().atoms()
+  labels_start = [a.id_str() for a in atoms_start]
+  xyz_start = atoms_start.extract_xyz().deep_copy()
+  r_start = fmodel.r_work()
+  o._get_maps()
+  o._build_h()
+  o._get_and_set_n_water_and_sync_fmodel_and_model_and_update_maps()
+  o._assert_same_model()
+  assert o.fmodel.r_work() < r_start
+  atoms = o.model.get_hierarchy().atoms()
+  assert [a.id_str() for a in atoms] == labels_start
+  assert approx_equal(o.model.get_xray_structure().sites_cart(),
+    atoms.extract_xyz())
+  true_h = {}
+  for a in model_true.get_hierarchy().atoms():
+    if(a.parent().resname=="HOH" and a.element_is_hydrogen()):
+      true_h.setdefault(a.parent().parent().resseq_as_int(), []).append(a.xyz)
+  n_checked = 0
+  for a, xyz in zip(atoms, xyz_start):
+    if(a.parent().resname != "HOH"):
+      assert approx_equal(a.xyz, xyz)
+      continue
+    resseq = a.parent().parent().resseq_as_int()
+    if(not a.element_is_hydrogen() or resseq == 2):
+      # O, and H that are in density: not changed
+      assert approx_equal(a.xyz, xyz)
+      if(a.element_is_hydrogen()): assert approx_equal(a.occ, 0.7)
+    else:
+      d = min([abs(matrix.col(a.xyz)-matrix.col(t)) for t in true_h[1]])
+      assert d < 0.4, d # peaks are closer to O than H are
+      assert abs(matrix.col(a.xyz)-matrix.col(xyz)) > 1
+      assert approx_equal(a.occ, 1.0)
+      n_checked += 1
+  assert n_checked == 2
+  # the two H are at different peaks
+  h1, h2 = [a.xyz for a in atoms if a.element_is_hydrogen()
+    and a.parent().resname=="HOH" and a.parent().parent().resseq_as_int()==1]
+  assert abs(matrix.col(h1)-matrix.col(h2)) > 0.8
+  # occupancies of scatterers follow
+  assert approx_equal(
+    o.model.get_xray_structure().scatterers().extract_occupancies(),
+    atoms.extract_occ())
 
 def exercise_refine_new_water():
   """ New water is refined even if model size did not change """
@@ -455,6 +523,7 @@ def run():
   exercise_filter_by_distance_h()
   exercise_no_duplicate_water_h_restraints()
   exercise_build_h()
+  exercise_build_h_misplaced()
   exercise_refine_new_water()
   exercise_manager()
 
