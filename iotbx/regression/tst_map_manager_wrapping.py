@@ -52,6 +52,15 @@ def run():
     assert mm.map_data().all() != n_real
     new_mm=mm.as_full_size_map()
     assert new_mm.map_data().all() == n_real
+    # The boxed values are all kept, including the last plane on each axis
+    lb = mm.origin_shift_grid_units
+    ub = tuple([i+j-1 for i, j in zip(lb, mm.map_data().all())])
+    assert maptbx.copy(new_mm.map_data(), lb, ub).as_1d().all_eq(
+      mm.map_data().as_1d()), "boxed values lost in full-size map"
+    # ...and every point outside the box is zero
+    n_outside = new_mm.map_data().size() - mm.map_data().size()
+    assert new_mm.map_data().as_1d().count(0) == \
+      n_outside + mm.map_data().as_1d().count(0), "padding is not all zero"
 
 if (__name__ == "__main__"):
   run()

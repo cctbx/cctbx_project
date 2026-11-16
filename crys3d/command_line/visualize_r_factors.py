@@ -1,7 +1,6 @@
 
 # LIBTBX_SET_DISPATCHER_NAME cctbx.visualize_r_factors
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 from __future__ import absolute_import, division, print_function
 from crys3d.hklview.frames import *

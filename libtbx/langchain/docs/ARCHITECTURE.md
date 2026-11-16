@@ -722,10 +722,10 @@ The system uses three distinct LLM roles, each with provider-specific model defa
 
 | Activity | Function | ollama | google | openai | anthropic | portkey |
 |---|---|---|---|---|---|---|
-| **Agent decisions** (PLAN node) | `get_planning_llm()` → `get_expensive_llm()` | qwen3:32b (json_mode) | gemini-2.5-pro | gpt-5.5 | claude-opus-4-7 | gpt-5 (Azure) |
-| **Log summarization** | `get_cheap_llm()` | qwen2.5:7b | gemini-2.5-flash-lite | gpt-5.4-nano | claude-sonnet-4-6 | gpt-5 (Azure) |
-| **RAG analysis** | `get_expensive_llm()` | qwen3:32b | gemini-2.5-pro | gpt-5.5 | claude-opus-4-7 | gpt-5 (Azure) |
-| **Directive extraction** | `call_llm_simple()` | direct ollama HTTP | gemini-2.5-flash-lite | (provider default) | claude-sonnet-4-6 | gpt-5 (Azure) |
+| **Agent decisions** (PLAN node) | `get_planning_llm()` → `get_expensive_llm()` | qwen3:32b (json_mode) | gemini-3.8-flash | gpt-5.5 | claude-opus-5-5 | gpt-5 (Azure) |
+| **Log summarization** | `get_cheap_llm()` | qwen2.5:7b | gemini-3.5-flash-lite | gpt-6-luna | claude-sonnet-5-5 | gpt-5 (Azure) |
+| **RAG analysis** | `get_expensive_llm()` | qwen3:32b | gemini-3.8-flash | gpt-5.5 | claude-opus-5-5 | gpt-5 (Azure) |
+| **Directive extraction** | `call_llm_simple()` | direct ollama HTTP | gemini-3.5-flash-lite | gpt-6-luna | claude-sonnet-5-5 | gpt-5 (Azure) |
 
 Model defaults come from the five role tables in `core/llm.py` and can be
 overridden per provider via env var (`OLLAMA_LLM_MODEL`, `ANTHROPIC_LLM_MODEL`,
@@ -852,13 +852,56 @@ the same object and that no literal survives outside `core/llm.py`.
   keyed per provider: portkey (Azure gpt-5) renames `max_tokens →
   max_completion_tokens` and drops `temperature`; anthropic always keeps
   `max_tokens` (`ChatAnthropic` requires it) but `temperature` is
-  **model-dependent** — the Claude 4.6/4.7+ reasoning family
-  (`claude-sonnet-4-6`, `claude-opus-4-7`, future 4.8+) rejects
+  **model-dependent** — the Claude 4.6+ reasoning family and every
+  Claude 5.x model (`claude-sonnet-4-6`, `claude-opus-4-7`,
+  `claude-sonnet-5-5`, `claude-opus-5-5`, ...) reject
   `temperature`/`top_p`/`top_k` with HTTP 400, so both `sanitize_llm_kwargs`
   and the `ChatAnthropic` constructor drop them for that family (detected by
   `anthropic_model_rejects_sampling_params()`, a model-name family check).
   Older Claude models still accept `temperature` and keep it. The factory's
   `ChatAnthropic(...)` only passes `temperature=` when the model accepts it.
+- **Reply text.** Claude 5.x models think by default, so a reply can hold a
+  thinking block before the text, and LangChain may then return `.content`
+  as a list of blocks rather than a string. Every caller reads replies
+  through `core.llm.response_text()`, which joins the text blocks and skips
+  the rest.
+- **Output budget.** Claude 5.x thinking counts toward `max_tokens`, so every
+  Claude request asks for `ANTHROPIC_MAX_TOKENS` (16000) output tokens; a live
+  probe on 2026-10-14 saw a 2000 cap cut off both default models on a short
+  reasoning task. The direct SDK calls read replies through
+  `anthropic_reply_text()`, which raises when a reply is empty or was cut off
+  (`stop_reason` `max_tokens` or `model_context_window_exceeded`). The direct
+  call's request is kept between 16000 and 21333 by
+  `anthropic_request_max_tokens()` whatever the caller asks for.
+  The cap must stay at or below 21333 while these requests are not streamed.
+- **Cut-off replies on the LangChain path.** `response_text()` raises when a
+  LangChain reply's own metadata says it was cut off (Anthropic `stop_reason`
+  `max_tokens` / `model_context_window_exceeded`, OpenAI `finish_reason`
+  `length`, Gemini `MAX_TOKENS`), so no caller reads a partial reply as
+  complete. Error messages carry no numbers, because `rate_limit_handler`
+  treats "429"/"503" in a message as a rate limit and would retry.
+- **Timeouts.** Hosted reasoning/thinking models can take well over a
+  minute (live replies of 31-41 s on short prompts, 2026-10-14), so
+  `get_llm_and_embeddings` gives anthropic, google, openai and portkey clients
+  at least `HOSTED_LLM_MIN_TIMEOUT` (180 s), even when a caller such as
+  `run_ai_analysis` passes 60 s. Ollama keeps the caller's timeout.
+- **Portkey.** The direct Portkey (Azure OpenAI) calls give reasoning
+  deployments such as gpt-5 at least 16000 `max_completion_tokens`
+  (`portkey_max_completion_tokens()`) and read replies with
+  `openai_reply_text()`.
+- **Google and OpenAI reasoning models.** OpenAI reasoning models (`gpt-5*`,
+  `gpt-6*` and later, `o1`/`o3`/`o4`; not `*-chat`) reject a non-default
+  `temperature`, and langchain-openai strips it only for `gpt-5*`, so
+  `get_llm_and_embeddings` and the direct calls omit it for every reasoning
+  model (`openai_model_is_reasoning()`). Gemini 3+ ignores sampling
+  parameters, so they are not sent (`google_model_ignores_sampling()`). The
+  direct calls give thinking/reasoning models `REASONING_MAX_TOKENS` (16000)
+  output tokens and read replies through `openai_reply_text()` /
+  `google_reply_text()`, which raise when a reply was cut off
+  (`finish_reason` `length` / `MAX_TOKENS`) or is empty. A live probe on
+  2026-10-14 saw gemini-2.5-pro and gpt-6-luna use a whole 2000-token cap on
+  reasoning and return no text, and gpt-5.5 / gpt-6-luna reject
+  `temperature=0.1` with HTTP 400.
 - **Embeddings.** Anthropic has no native embeddings endpoint. The factory
   always returns a working chat LLM; the embeddings object is constructed
   lazily (no network call), so the end-of-run `agent_session` assessment —

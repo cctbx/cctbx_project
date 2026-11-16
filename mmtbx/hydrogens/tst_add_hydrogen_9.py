@@ -4,6 +4,7 @@ import iotbx.pdb
 import mmtbx.model
 from scitbx import matrix
 from libtbx.utils import null_out
+from scitbx.array_family import flex
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.hydrogens.tst_add_hydrogen_1 import compare_models
 
@@ -14,6 +15,16 @@ def run():
   test_004()
   test_005()
   test_006()
+  test_007()
+
+# ------------------------------------------------------------------------------
+
+def assert_xrs_in_step(model):
+  '''exclude_H_on_links moves kept H by direct xyz edits'''
+  d = flex.sqrt((model.get_sites_cart() -
+                 model.get_xray_structure().sites_cart()).dot())
+  assert flex.max(d) <= 1e-6, \
+    'hierarchy and X-ray structure differ by %.3f A' % flex.max(d)
 
 # ------------------------------------------------------------------------------
 
@@ -94,8 +105,8 @@ def test_005():
   '''
     Cyclohexyl ligand (CHX) bridges CYS-SG and LYS-NZ via auto-detected
     C5-SG (~1.77 A) and C6-NZ (~1.43 A) links. exclude_H_on_links must drop
-    CHX H52 (C5 side facing SG) and H62 (C6 side facing NZ); H51 and H61
-    must survive on the opposite faces.
+    CHX H51 (C5 side facing SG) and H61 (C6 side facing NZ); H52 and H62
+    must survive on the opposite faces (CCD and geostd ideal chirality).
   '''
   pdb_inp = iotbx.pdb.input(lines=pdb_str_005.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
@@ -105,10 +116,11 @@ def test_005():
   chx_names = set(
     a.name.strip() for a in add_h.get_model().get_hierarchy().atoms()
     if a.parent().resname.strip() == 'CHX')
-  assert 'H51' in chx_names, "CHX H51 should survive (opposite face of C5-SG link)"
-  assert 'H61' in chx_names, "CHX H61 should survive (opposite face of C6-NZ link)"
-  assert 'H52' not in chx_names, "CHX H52 should be removed (C5-SG link)"
-  assert 'H62' not in chx_names, "CHX H62 should be removed (C6-NZ link)"
+  assert 'H52' in chx_names, "CHX H52 should survive (opposite face of C5-SG link)"
+  assert 'H62' in chx_names, "CHX H62 should survive (opposite face of C6-NZ link)"
+  assert 'H51' not in chx_names, "CHX H51 should be removed (C5-SG link)"
+  assert 'H61' not in chx_names, "CHX H61 should be removed (C6-NZ link)"
+  assert_xrs_in_step(add_h.get_model())
 
 # ------------------------------------------------------------------------------
 
@@ -129,6 +141,7 @@ def test_006():
   add_h = reduce_hydrogen.place_hydrogens(model=model, stop_for_unknowns=False)
   add_h.run()
   mh = add_h.get_model()
+  assert_xrs_in_step(mh)
   atoms = mh.get_hierarchy().atoms()
   grm = mh.get_restraints_manager().geometry
   bond_proxies, asu = grm.get_all_bond_proxies(sites_cart=mh.get_sites_cart())
@@ -177,6 +190,38 @@ def test_006():
           '%s: %s-%s-%s angle = %.1f (not tetrahedral)' % (
             cb, atoms[hv].name.strip(), cb, atoms[h].name.strip(), a)
 
+
+def test_007():
+  '''
+    B0I of test_006 with the ring ends (CE*, CZ*) in conformers A and B and the
+    linked CB1/CB2 shared. The valence check counted the H copies of both
+    conformers as bonds of CB1/CB2: A kept two H each, B none.
+  '''
+  lines = []
+  for l in pdb_str_006.splitlines():
+    if l[17:20] == 'B0I' and l[12:16].strip()[:2] in ('CE', 'CZ'):
+      lines.append(l[:16] + 'A' + l[17:54] + '  0.50' + l[60:])
+      x = float(l[30:38]) + 0.3
+      lines.append(l[:16] + 'B' + l[17:30] + '%8.3f' % x + l[38:54] + '  0.50' +
+        l[60:])
+    else:
+      lines.append(l)
+  pdb_inp = iotbx.pdb.input(lines=lines, source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  model.set_stop_for_unknowns(False)
+  add_h = reduce_hydrogen.place_hydrogens(model=model, stop_for_unknowns=False)
+  add_h.run()
+  atoms = add_h.get_model().get_hierarchy().atoms()
+  b0i = [a for a in atoms if a.parent().resname.strip() == 'B0I']
+  for cb in ('CB1', 'CB2'):
+    c = [a for a in b0i if a.name.strip() == cb][0]
+    assert c.parent().altloc == ''
+    for altloc in ('A', 'B'):
+      hs = [a for a in b0i if a.element.strip() == 'H' and
+            a.parent().altloc == altloc and a.distance(c) < 1.2]
+      assert len(hs) == 2, (cb, altloc, [a.name.strip() for a in hs])
+      assert hs[0].distance(hs[1]) > 1.5, (cb, altloc)
+
 # ------------------------------------------------------------------------------
 
 pdb_str_001 = """
@@ -195,8 +240,8 @@ ATOM     10  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
 ATOM     11  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
 ATOM     12  H   TYR A 139       9.382   7.879   5.001  1.00 10.00           H
 ATOM     13  HA  TYR A 139      10.487   8.115   6.973  1.00 10.00           H
-ATOM     14  HB2 TYR A 139      10.961   5.881   7.464  1.00 10.00           H
-ATOM     15  HB3 TYR A 139      10.893   5.529   5.916  1.00 10.00           H
+ATOM     14  HB2 TYR A 139      10.893   5.529   5.916  1.00 10.00           H
+ATOM     15  HB3 TYR A 139      10.961   5.881   7.464  1.00 10.00           H
 ATOM     16  HD2 TYR A 139       8.896   6.220   8.714  1.00 10.00           H
 ATOM     17  HE2 TYR A 139       6.643   5.772   8.919  1.00 10.00           H
 ATOM     18  HH  TYR A 139       4.752   5.127   7.905  1.00 10.00           H
@@ -306,18 +351,18 @@ HETATM   12  C7  ADM B 101       3.789  -7.091  -3.424  1.00 35.16           C
 HETATM   13  C8  ADM B 101       3.171  -8.301  -2.730  1.00 32.12           C
 HETATM   14  C9  ADM B 101       5.021  -9.747  -3.503  1.00 25.37           C
 HETATM   15  H3  ADM B 101       3.284  -8.191  -6.643  1.00 36.03           H
-HETATM   16  H21 ADM B 101       1.912  -9.324  -4.912  1.00 44.89           H
-HETATM   17  H22 ADM B 101       3.225 -10.365  -5.473  1.00 44.89           H
+HETATM   16  H21 ADM B 101       3.225 -10.365  -5.473  1.00 44.89           H
+HETATM   17  H22 ADM B 101       1.912  -9.324  -4.912  1.00 44.89           H
 HETATM   18  H41 ADM B 101       5.419  -9.353  -6.156  1.00 49.15           H
 HETATM   19  H42 ADM B 101       5.633  -7.598  -6.112  1.00 49.15           H
 HETATM   20  H5  ADM B 101       6.760  -8.663  -4.185  1.00 41.15           H
 HETATM   21  H61 ADM B 101       5.752  -6.402  -3.971  1.00 34.81           H
 HETATM   22  H62 ADM B 101       5.690  -7.280  -2.437  1.00 34.81           H
 HETATM   23  H7  ADM B 101       3.528  -6.176  -2.874  1.00 42.19           H
-HETATM   24  H81 ADM B 101       3.549  -8.368  -1.708  1.00 38.54           H
-HETATM   25  H82 ADM B 101       2.087  -8.178  -2.681  1.00 38.54           H
-HETATM   26  H91 ADM B 101       5.287 -10.658  -4.043  1.00 30.45           H
-HETATM   27  H92 ADM B 101       5.394  -9.838  -2.480  1.00 30.45           H
+HETATM   24  H81 ADM B 101       2.087  -8.178  -2.681  1.00 38.54           H
+HETATM   25  H82 ADM B 101       3.549  -8.368  -1.708  1.00 38.54           H
+HETATM   26  H91 ADM B 101       5.394  -9.838  -2.480  1.00 30.45           H
+HETATM   27  H92 ADM B 101       5.287 -10.658  -4.043  1.00 30.45           H
 HETATM   28 H101 ADM B 101       2.187  -6.873  -4.847  1.00 40.63           H
 HETATM   29 H102 ADM B 101       3.711  -6.124  -5.347  1.00 40.63           H
 END

@@ -669,16 +669,13 @@ class planarities(restraint_validation):
         score=deviation,
         outlier=True,
         xyz=get_mean_xyz(plane_atoms_))
+      model_id = plane_atoms_[0].model_id
+      if model_id not in self.n_outliers_by_model:
+        # initialize dicts.  covers cases where some structures don't have certain outliers
+        self.n_outliers_by_model[model_id] = 0
       if (outlier.score > sigma_cutoff):
         outliers.append(outlier)
-        model_id = plane_atoms_[0].model_id
-        if model_id not in self.n_outliers_by_model:
-          # initialize dicts.  covers cases where some structures don't have certain outliers
-          self.n_outliers_by_model[model_id] = 0
-        if model_id not in self.n_outliers_by_model:
-          self.n_outliers_by_model[model_id] = 1
-        else:
-          self.n_outliers_by_model[model_id] += 1
+        self.n_outliers_by_model[model_id] += 1
       elif (not outliers_only):
         outlier.outlier=False
         outliers.append(outlier)

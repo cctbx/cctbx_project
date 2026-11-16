@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import os
-from libtbx import easy_run
+from contextlib import redirect_stderr
+from io import StringIO
 from six.moves import range
 
 pdbs = {"linking_test_CYS_CYS_alt_loc.pdb" : """
@@ -2465,13 +2466,15 @@ links = {
   }
 
 def run_and_test(cmd, pdb, i, skip_links=False):
-  result = easy_run.fully_buffered(cmd).raise_if_errors()
-  assert (result.return_code == 0)
-  for line in result.stdout_lines :
-    if ("Write PDB file" in line):
-      break
-  else :
-    raise RuntimeError("Missing expected log output")
+  from mmtbx.command_line import geometry_minimization
+  log = StringIO()
+  err = StringIO()
+  # restraints and LINKs come from processing; one cycle is enough
+  args = cmd.split()[1:] + ["minimization.macro_cycles=1"]
+  with redirect_stderr(err):
+    geometry_minimization.run(args=args, log=log)
+  assert err.getvalue() == "", err.getvalue()
+  assert "Write PDB file" in log.getvalue(), "Missing expected log output"
   print("OK")
   # test .geo
   f=open(pdb.replace(".pdb", "_minimized.geo"), "r")
@@ -2539,15 +2542,16 @@ def run_and_test(cmd, pdb, i, skip_links=False):
                                                                 )
     os.system(cmd)
 
-def run(only_i=None):
-  try: only_i=int(only_i)
-  except ValueError: only_i=None
-  except TypeError: only_i=None
+def run(cases=None):
+  only_i = None
+  if cases is not None:
+    bounds = cases.split("-")
+    only_i = list(range(int(bounds[0]), int(bounds[-1])+1))
   longer_tests = [
     "linking_test_two_ASN-NAG.pdb",
     ]
   # test exclusion
-  if only_i is not None and only_i==1:
+  if only_i is not None and 1 in only_i:
     cifs = ""
     for pdb in pdbs:
       f=open(pdb, "w")
@@ -2583,7 +2587,7 @@ def run(only_i=None):
     if pdb in ['linking_test_exclusion_SO4.pdb']: continue
     print('pdb '*10,k-10,pdb)
     j+=1
-    if only_i is not None and only_i!=j: continue
+    if only_i is not None and j not in only_i: continue
     for i in range(2):
       log_filename = "%s_%d.log" % (pdb, i)
       cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
@@ -2607,7 +2611,7 @@ def run(only_i=None):
   for pdb in sorted(pdbs):
     if pdb not in longer_tests: continue
     j+=1
-    if only_i is not None and only_i!=j: continue
+    if only_i is not None and j not in only_i: continue
     k=0
     for i in range(2):
       for ii in range(2):

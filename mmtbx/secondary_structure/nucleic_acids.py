@@ -618,10 +618,14 @@ def get_h_bonds_for_particular_basepair(atoms, saenger_class=0):
     raise Sorry("""
 Bad or unknown Saenger class. Presently we don't have enough
 data to support Saenger class #16. """)
-  if bondlength_defaults.basepairs_lengths[saenger_class][0] != (r1n, r2n):
-    print(bondlength_defaults.basepairs_lengths[saenger_class][0], r1n, r2n,saenger_class)
-    print(r1.id_str(), r2.id_str())
-    raise Sorry("Saenger class does not match residue names")
+  expected = bondlength_defaults.basepairs_lengths[saenger_class][0]
+  if expected != (r1n, r2n):
+    raise Sorry("""\
+Saenger class %d does not match residue names: this class is defined for
+%s-%s base pairs, but it was assigned to residues '%s' and '%s' (%s-%s).
+T is treated as U. Use saenger_class=0 to determine the class
+automatically.""" % (saenger_class, expected[0], expected[1],
+        r1.id_str().strip(), r2.id_str().strip(), r1n, r2n))
   hbonds = []
   for b in bondlength_defaults.basepairs_lengths[saenger_class][1:]:
     hba1 = r1.get_atom(b[0])

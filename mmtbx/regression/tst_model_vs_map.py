@@ -12,7 +12,7 @@ SCALE1      0.028639  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.044952  0.000000        0.00000
 SCALE3      0.000000  0.000000  0.022718        0.00000
 """
-# taken from phenix_regression/refinement/ncs/tst_ncs_0.py
+# taken from phenix_regression/refinement/tst_189.py
 # ncs-related chain omitted
 pdb_str = """\
 ATOM      1  N   ALA A   1      27.344  16.348  30.784  1.00 10.00           N

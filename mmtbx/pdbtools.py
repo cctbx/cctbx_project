@@ -42,7 +42,9 @@ selection = None
 flip_symmetric_amino_acids = False
   .type = bool
   .short_caption = Flip symmetric amino acid side chains
-  .help = Flip symmetric amino acid side chains
+  .help = Flip symmetric amino acid side chains. Runs after rotate_about_axis, \
+          adp, sites and occupancies: their atom selections refer to the input \
+          names.
 adp
   .help = Scope of options to modify ADP of selected atoms
   .multiple = True
@@ -296,6 +298,9 @@ class modify(object):
     self._process_adp()
     self._process_sites()
     self._process_occupancies()
+    # after every edit that selects atoms: they all see the input names
+    if(self.params.flip_symmetric_amino_acids):
+      self._flip_symmetric_amino_acids()
     self._put_in_box()
     self._change_of_basis()
     # Up to this point we are done with self.xray_structure
@@ -622,10 +627,6 @@ class modify(object):
     self.xray_structure.shake_adp(selection=selection.flags)
 
   def _process_sites(self):
-    if(self.params.flip_symmetric_amino_acids):
-      self.pdb_hierarchy.flip_symmetric_amino_acids()
-      self.xray_structure.set_sites_cart(
-        sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
     for sites in self.params.sites:
       if (sites.atom_selection is None):
         selection = self.top_selection
@@ -642,6 +643,26 @@ class modify(object):
         translate=sites.translate,
         rotate=sites.rotate,
         euler_angle_convention=sites.euler_angle_convention)
+
+  def _flip_symmetric_amino_acids(self):
+    # Scatterers hold edits the hierarchy lacks (rotations, ADP, sites,
+    # occupancies): same swaps there, every other value stays.
+    atoms = self.pdb_hierarchy.atoms()
+    # what the decision uses: the sites and the occupancies that weigh them
+    atoms.set_xyz(self.xray_structure.sites_cart())
+    atoms.set_occ(self.xray_structure.scatterers().extract_occupancies())
+    atoms.reset_i_seq()
+    swapped_pairs = []
+    self.pdb_hierarchy.flip_symmetric_amino_acids(swapped_pairs=swapped_pairs)
+    scatterers = self.xray_structure.scatterers()
+    for atom1, atom2 in swapped_pairs:
+      sc1 = scatterers[atom1.i_seq]
+      sc2 = scatterers[atom2.i_seq]
+      old = sc1.customized_copy()
+      for attr in ["site", "occupancy", "u_iso", "u_star", "flags", "fp",
+                   "fdp"]:
+        setattr(sc1, attr, getattr(sc2, attr))
+        setattr(sc2, attr, getattr(old, attr))
 
   def _switch_rotamers(self, selection, mode):
     if(mode is None): return

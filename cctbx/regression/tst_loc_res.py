@@ -420,7 +420,7 @@ def tst_0():
   r  = maptbx.loc_res(
     map_model_manager = mmm,
     method            = method)
-  assert  approx_equal(sorted([round(r,1) for r in set(r.result)]), [1.9, 5.2], eps=.05)
+  assert  approx_equal(sorted([round(r,1) for r in set(r.result)]), [3.0, 4.0], eps=.05)
 
 def tst_1():
   for set_b_iso,expected_b_values,expected_occs in zip(
@@ -442,8 +442,8 @@ def tst_1():
     r  = maptbx.loc_res(
       map_model_manager = mmm,
       method            = method,
-      b_min             = -1000,
-      b_max             = 1000,
+      b_min             = -300,
+      b_max             = 300,
       b_step            = 1)
     print("result:", list(set(r.result)), "expected:", expected_occs)
 

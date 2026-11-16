@@ -424,8 +424,16 @@ class linking_mixins(object):
     sym_links = 0
     done = ResidueLinkClass()
     links = {}
+    link_notes = {}
     custom_links = {}
     exclude_out_lines = {}
+    # symmetry peptide closures (C-N between the first and the last residue
+    # of a chain, across a symmetry operation: half a macrocycle in the
+    # asymmetric unit): bond only, with the peptide bond length, as a
+    # disulfide across symmetry. The link's angles and torsions have no
+    # symmetry operations. Keyed by the two i_seqs; the report lines too.
+    peptide_closure_params = {}
+    peptide_closure_report = []
 
     atom_classes = [linking_utils.get_classes(a) for a in atoms]
     atoms_in_first_last_rgs = {}
@@ -450,6 +458,16 @@ class linking_mixins(object):
         _nonbonded_pair_objects(max_bonded_cutoff=max_bonded_cutoff,
           )
     initial_pair_asu_table_table = bond_asu_table.table().deep_copy()
+    n_links = {}
+    def _may_link_again(atom, distance):
+      # Past maximum_per_atom_links only at covalent distance and with free
+      # valence: 2b5z LYS NZ carries two BGS (both LINKs deposited).
+      if distance > linking_setup.other_bond_cutoff: return False
+      valence = linking_setup.neutral_valence.get(atom.element.strip().upper())
+      if valence is None: return False
+      heavy = [j for j in initial_pair_asu_table_table[atom.i_seq].keys()
+               if not atoms[j].element_is_hydrogen()]
+      return len(heavy) + n_links.get(atom.i_seq, 0) < valence
     for ii, item in enumerate(nonbonded_proxies.sorted_value_proxies_generator(
         by_value="delta",
         sites_cart=sites_cart,
@@ -667,7 +685,8 @@ Residue classes
            ]:
           continue
       else:
-        if len(key)>2: continue
+        # no links across symmetry, except a peptide closure (bond only)
+        if len(key)>2 and not use_only_bond_cutoff: continue
       #else:
       #  atoms_must_be.setdefault(("common_amino_acid",
       #                            "common_amino_acid"),["C", "N"])
@@ -699,11 +718,13 @@ Residue classes
         if names in done[key]: continue
       if atom1.parent().altloc==atom2.parent().altloc:
         if atom1_key:
-          if atom1_key in done: continue
+          if atom1_key in done and not _may_link_again(atom1, distance): continue
           done[atom1_key] = key
+          n_links[atom1.i_seq] = n_links.get(atom1.i_seq, 0) + 1
         if atom2_key:
-          if atom2_key in done: continue
+          if atom2_key in done and not _may_link_again(atom2, distance): continue
           done[atom2_key] = key
+          n_links[atom2.i_seq] = n_links.get(atom2.i_seq, 0) + 1
       if verbose: print(done)
       #
       current_number_of_links = len(done.setdefault(key, []))
@@ -769,6 +790,15 @@ Residue classes
         if link=='TRANS':
           key=link
           link = self.mon_lib_srv.link_link_id_dict[link]
+          if len(done_key)==3:
+            # peptide closure across symmetry: the bond alone, with the
+            # link's length (the simple bond below)
+            for bond in link.bond_list:
+              peptide_closure_params[frozenset((i_seq, j_seq))] = (
+                bond.value_dist, bond.value_dist_esd)
+            peptide_closure_report.append((atoms[i_seq].id_str(),
+              atoms[j_seq].id_str(), done_key[2]))
+            link = None
       if verbose:
         print('link',link)
         print('swap',swap)
@@ -851,7 +881,7 @@ Residue classes
                        key.find("BETA2")>-1
                        )
       if is_glyco_link: # is handled in elif
-        key, cif, bond_i_seqs = \
+        key, cif, bond_i_seqs, note = \
           glyco_utils.apply_glyco_link_using_proxies_and_atoms(
             atom_group2,
             atom_group1,
@@ -865,6 +895,7 @@ Residue classes
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs
+        if note: link_notes[tuple(bond_i_seqs)] = note
         continue
       elif link:
         origin_id = origin_ids['link_%s' % key]
@@ -1021,6 +1052,10 @@ Residue classes
             slack = ans[2]
       if equil is None:
         equil = 2.3
+      closure = peptide_closure_params.get(frozenset((i_seq, j_seq)))
+      if closure is not None:
+        equil, weight = closure
+        origin_id = origin_ids['link_TRANS']
       added_to_asu_table = False
       try:
         #bond_asu_table.add_pair([i_seq, j_seq])
@@ -1106,16 +1141,20 @@ Residue classes
                                                 self.pdb_atoms[j_seq],
                                                 "x,y,z", #link_rt_mx_ji,
                                                 ])
+          note = link_notes.get((i_seq, j_seq), '')
+          if note: note = '  ' + note
           if ag1.altloc or ag2.altloc:
-            print('      "%s" - "%s" : altloc "%s" - "%s"' % (
+            print('      "%s" - "%s" : altloc "%s" - "%s"%s' % (
               ag1.id_str(),
               ag2.id_str(),
               ag1.altloc,
               ag2.altloc,
+              note,
               ), file=log)
           else:
-            print('      "%s" - "%s"' % (ag1.id_str(),
+            print('      "%s" - "%s"%s' % (ag1.id_str(),
                                                  ag2.id_str(),
+              note,
               ), file=log)
           explain=""
           if key.find("ALPHA")==0 or key.find("BETA")==0:
@@ -1154,6 +1193,10 @@ Residue classes
                                                                       label2,
                                                                       sym_op,
             ), file=log)
+      if peptide_closure_report:
+        print("  Peptide bonds across symmetry (bond only):", file=log)
+        for label1, label2, sym_op in sorted(peptide_closure_report):
+          print("    %s - %s sym. op: %s" % (label1, label2, sym_op), file=log)
     if(log is not None):
       print('  Time building additional restraints: %0.2f' % (
         time.time()-t0), file=log)

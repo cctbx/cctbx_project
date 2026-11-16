@@ -79,7 +79,7 @@ def _source_text(rel_path):
     path = _source_path(rel_path)
     if path is None:
         return None
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return f.read()
 
 
@@ -308,6 +308,171 @@ def test_test_api_keys_uses_central_defaults():
     print("  PASS: test_test_api_keys_uses_central_defaults")
 
 
+def test_test_api_keys_openai_probe_params():
+    """test_openai() sends max_completion_tokens to reasoning models.
+
+    OpenAI rejects max_tokens for reasoning models (gpt-5 and later,
+    o-series) with HTTP 400.  Loads tests/test_api_keys.py by file
+    path, replaces urllib.request.urlopen with a fake that records the
+    request body (no network), and checks the JSON that test_openai()
+    sends for a reasoning model and for a non-reasoning model.
+    """
+    import importlib.util
+    import json
+    import urllib.request
+
+    path = _source_path("tests/test_api_keys.py")
+    if path is None:
+        print("  SKIP: test_api_keys.py not found")
+        return
+    spec = importlib.util.spec_from_file_location(
+        "_tst_default_models_test_api_keys", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    sent = []
+
+    class _FakeResponse(object):
+        def read(self):
+            return json.dumps({
+                "model": "x",
+                "choices": [{"message": {"content": "OK"}}],
+            }).encode("utf-8")
+
+    def _fake_urlopen(req, timeout=None):
+        sent.append(req.data)
+        return _FakeResponse()
+
+    saved_urlopen = urllib.request.urlopen
+    saved_key = os.environ.get("OPENAI_API_KEY")
+    try:
+        urllib.request.urlopen = _fake_urlopen
+        os.environ["OPENAI_API_KEY"] = "sk-fake-test-key-0000000000"
+        results = {}
+        for model in ("gpt-6-luna", "gpt-4o-mini"):
+            n_before = len(sent)
+            status, detail, used_model = mod.test_openai(model=model)
+            assert len(sent) == n_before + 1, (
+              "test_openai(%r) did not call urlopen once (status=%r, %s)"
+              % (model, status, detail))
+            assert status == "OK", (
+              "test_openai(%r) returned %r: %s" % (model, status, detail))
+            assert used_model == model, (used_model, model)
+            results[model] = json.loads(sent[-1].decode("utf-8"))
+    finally:
+        urllib.request.urlopen = saved_urlopen
+        if saved_key is None:
+            os.environ.pop("OPENAI_API_KEY", None)
+        else:
+            os.environ["OPENAI_API_KEY"] = saved_key
+
+    luna = results["gpt-6-luna"]
+    assert "max_tokens" not in luna, (
+      "gpt-6-luna probe body still sends max_tokens: %r" % luna)
+    assert "max_completion_tokens" in luna, (
+      "gpt-6-luna probe body lacks max_completion_tokens: %r" % luna)
+    assert "temperature" not in luna, (
+      "gpt-6-luna probe body sends temperature: %r" % luna)
+
+    mini = results["gpt-4o-mini"]
+    assert mini.get("max_tokens") == 5, (
+      "gpt-4o-mini probe body max_tokens != 5: %r" % mini)
+    assert "max_completion_tokens" not in mini, (
+      "gpt-4o-mini probe body sends max_completion_tokens: %r" % mini)
+    assert "temperature" not in mini, (
+      "gpt-4o-mini probe body sends temperature: %r" % mini)
+    print("  PASS: test_test_api_keys_openai_probe_params")
+
+
+def test_test_api_keys_openai_probe_cap():
+    """The OpenAI key check caps reasoning-model tokens at 1000.
+
+    The key check runs at every server start and needs only a short
+    reply, so a reasoning model gets max_completion_tokens == 1000,
+    not the agent's shared 16000.  An empty reply cut off at that
+    limit (finish_reason "length") still means the key works: the
+    status is "OK" and the detail says the reply was cut off.  Uses a
+    fake urllib.request.urlopen (no network) and a fake key.
+    """
+    import importlib.util
+    import json
+    import urllib.request
+
+    path = _source_path("tests/test_api_keys.py")
+    if path is None:
+        print("  SKIP: test_api_keys.py not found")
+        return
+    spec = importlib.util.spec_from_file_location(
+        "_tst_default_models_test_api_keys_cap", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    sent = []
+    reply = {"content": "OK", "finish_reason": "stop"}
+
+    class _FakeResponse(object):
+        def read(self):
+            return json.dumps({
+                "model": "x",
+                "choices": [{"message": {"content": reply["content"]},
+                             "finish_reason": reply["finish_reason"]}],
+            }).encode("utf-8")
+
+    def _fake_urlopen(req, timeout=None):
+        sent.append(req.data)
+        return _FakeResponse()
+
+    saved_urlopen = urllib.request.urlopen
+    saved_key = os.environ.get("OPENAI_API_KEY")
+    try:
+        urllib.request.urlopen = _fake_urlopen
+        os.environ["OPENAI_API_KEY"] = "sk-fake-test-key-0000000000"
+        bodies = {}
+        for model in ("gpt-6-luna", "gpt-4o-mini"):
+            n_before = len(sent)
+            status, detail, _ = mod.test_openai(model=model)
+            assert len(sent) == n_before + 1, (
+              "test_openai(%r) did not call urlopen once (status=%r, %s)"
+              % (model, status, detail))
+            assert status == "OK", (
+              "test_openai(%r) returned %r: %s" % (model, status, detail))
+            bodies[model] = json.loads(sent[-1].decode("utf-8"))
+
+        # Empty reply cut off at the token limit.
+        reply["content"] = ""
+        reply["finish_reason"] = "length"
+        cut_status, cut_detail, _ = mod.test_openai(model="gpt-6-luna")
+    finally:
+        urllib.request.urlopen = saved_urlopen
+        if saved_key is None:
+            os.environ.pop("OPENAI_API_KEY", None)
+        else:
+            os.environ["OPENAI_API_KEY"] = saved_key
+
+    luna = bodies["gpt-6-luna"]
+    assert luna.get("max_completion_tokens") == 1000, (
+      "gpt-6-luna probe max_completion_tokens != 1000: %r" % luna)
+    assert "max_tokens" not in luna, (
+      "gpt-6-luna probe body sends max_tokens: %r" % luna)
+    assert "temperature" not in luna, (
+      "gpt-6-luna probe body sends temperature: %r" % luna)
+
+    mini = bodies["gpt-4o-mini"]
+    assert mini.get("max_tokens") == 5, (
+      "gpt-4o-mini probe body max_tokens != 5: %r" % mini)
+    assert "max_completion_tokens" not in mini, (
+      "gpt-4o-mini probe body sends max_completion_tokens: %r" % mini)
+    assert "temperature" not in mini, (
+      "gpt-4o-mini probe body sends temperature: %r" % mini)
+
+    assert cut_status == "OK", (
+      "cut-off reply: test_openai returned %r: %s"
+      % (cut_status, cut_detail))
+    assert "cut off" in cut_detail, (
+      "cut-off reply: detail does not say 'cut off': %r" % cut_detail)
+    print("  PASS: test_test_api_keys_openai_probe_cap")
+
+
 # ---------- AST-level structural regression test -------------------
 
 def test_no_orphan_model_strings_in_agent_runtime_code():
@@ -338,7 +503,7 @@ def test_no_orphan_model_strings_in_agent_runtime_code():
     for rel_path in files:
         path = _source_path(rel_path)
         assert path is not None, "%s not found" % rel_path
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             source = f.read()
         tree = ast.parse(source)
         module_docstring = ast.get_docstring(tree)
@@ -494,15 +659,15 @@ def test_baseline_values_unchanged():
     # v120: anthropic + portkey entries added.  portkey fronts Azure OpenAI
     # (default gpt-5); anthropic chat defaults for decision/expensive roles.
     expected_decision = {
-      "google":    "gemini-2.5-flash-lite",
-      "openai":    "gpt-4o-mini",
-      "anthropic": "claude-sonnet-4-6",
+      "google":    "gemini-3.5-flash-lite",
+      "openai":    "gpt-6-luna",
+      "anthropic": "claude-sonnet-5-5",
       "ollama":    "llama3.2",
       "portkey":   "gpt-5",
     }
     expected_rag = {
-      "google":    "gemini-2.5-flash-lite",
-      "openai":    "gpt-5.4-nano",
+      "google":    "gemini-3.5-flash-lite",
+      "openai":    "gpt-6-luna",
       "ollama":    "llama3.1:70b",
       "portkey":   "gpt-5",
     }
@@ -515,10 +680,10 @@ def test_baseline_values_unchanged():
       "portkey":   "text-embedding-3-small-1",
     }
     expected_expensive = {
-      "google":    "gemini-2.5-pro",
+      "google":    "gemini-3.8-flash",
       "openai":    "gpt-5.5",
       "ollama":    "qwen3:32b",
-      "anthropic": "claude-opus-4-7",
+      "anthropic": "claude-opus-5-5",
       "portkey":   "gpt-5",
     }
     expected_cheap = {
@@ -733,6 +898,8 @@ def run_all_tests():
     test_api_client_ollama_uses_central_default()
     test_directive_extractor_fallback_uses_central_defaults()
     test_test_api_keys_uses_central_defaults()
+    test_test_api_keys_openai_probe_params()
+    test_test_api_keys_openai_probe_cap()
     # AST-level structural regression (1)
     test_no_orphan_model_strings_in_agent_runtime_code()
     # Retired-model helpers (4)

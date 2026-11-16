@@ -64,6 +64,7 @@ def is_cis_peptide(prev_atoms, atoms):
   prevCA, prevC, thisN, thisCA = get_omega_atoms(prev_atoms, atoms)
   if (not None in [ prevCA, prevC, thisN, thisCA]):
     omega = omega_from_atoms(prevCA, prevC, thisN, thisCA)
+    if(omega is None): return False
     if(omega > -30 and omega < 30):
       return True
   return False

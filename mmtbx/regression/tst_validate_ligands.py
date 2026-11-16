@@ -37,9 +37,11 @@ def _load_1avd_manager():
     test=os.path.isfile)
   if mtz_fname is None or pdb_fname is None:
     return None
+  # the values pinned below are those of the input's heavy atoms: no flips
   result = run_program(
     program_class=val_lig.Program,
-    args=[pdb_fname, mtz_fname],
+    args=[pdb_fname, mtz_fname, 'add_flip_movers=False',
+      'include_symmetric_copies=False', 'metal_bound_amines_as_nh2=False'],
     logger=null_out())
   _1avd_manager_cache = result.ligand_manager
   return _1avd_manager_cache
@@ -58,6 +60,8 @@ def run():
   run_test10()
   run_test11()
   run_test12()
+  run_test_has_restraints()
+  run_test_has_restraints_ccd_placeholder()
   run_test13()
   run_test14()
   run_test15()
@@ -72,6 +76,9 @@ def run():
   run_test24()
   run_test25()
   run_test26()
+  run_test27()
+  run_test28()
+  run_test29()
 
 # ------------------------------------------------------------------------------
 
@@ -114,7 +121,8 @@ def run_test01():
   # Number of clashes and clashscore
   clashes_result = lr.get_overlaps()
   assert(clashes_result.n_clashes == 5)
-  assert approx_equal(clashes_result.clashscore, 27.5, eps=0.5)
+  # 5/172; 5/182 if a methyl pose brings Val A46 (10 atoms) within 3 A
+  assert approx_equal(clashes_result.clashscore, 29.07, eps=0.5)
   #
   # Geometry deviations
   rmsd_result = lr.get_rmsds()
@@ -329,10 +337,14 @@ def run_test03():
   assert approx_equal(adps.b_mean, 31.19, eps=0.05)
   assert approx_equal(adps.b_min_within, 4.00, eps=0.01)
   assert approx_equal(adps.b_max_within, 54.65, eps=0.01)
+  # Asn A12 is not within 3 A: its HD21, as placed (no amide Mover without
+  # flips), is 3.02 A from O3.
   assert approx_equal(adps.b_mean_within, 23.23, eps=0.02)
   assert overlaps.n_clashes == 4
-  assert overlaps.n_hbonds == 2
-  assert approx_equal(overlaps.clashscore, 13.0, eps=0.5)
+  # 2 as donor (HN1, HN2) + 4 as acceptor (Ser16 HG, Ser73 HG, Ala39 H, Thr40 H)
+  # Ser16 HG...O3 D-H...A is 122.5 deg, cutoff 120
+  assert overlaps.n_hbonds == 6
+  assert approx_equal(overlaps.clashscore, 13.03, eps=0.5)
   assert rmsd_result.bond_n == 17
   assert approx_equal(rmsd_result.bond_rmsd, 0.033, eps=0.005)
   assert approx_equal(rmsd_result.bond_rmsz, 1.639, eps=0.005)
@@ -366,7 +378,9 @@ def run_test03():
   assert approx_equal(adps.b_max_within, 75.42, eps=0.01)
   assert approx_equal(adps.b_mean_within, 28.20, eps=0.02)
   assert overlaps.n_clashes == 6
-  assert overlaps.n_hbonds == 2
+  # 2 as donor (HN1, HN2) + 6 as acceptor (Asn12, Ser16, Tyr33, Ala39, Thr40,
+  # Ser73)
+  assert overlaps.n_hbonds == 8
   assert approx_equal(overlaps.clashscore, 19.3, eps=0.5)
 
 # ------------------------------------------------------------------------------
@@ -596,9 +610,18 @@ def run_test09():
       assert ccs is not None
       assert hasattr(ccs, 'rscc')
       assert -1 <= ccs.rscc <= 1
-      assert ccs.rscc_sites is None   # map path never computes sites RSCC
-    # Well-fitted ligand: CC with its own model map should be positive
-    assert find_lr(vl_manager2, 'chain A and resseq 400 and resname BTN').get_ccs().rscc > 0.5
+      # a ligand with nothing inside within_radius still has no sites RSCC
+      assert ccs.rscc_sites is None or -1 <= ccs.rscc_sites <= 1
+    # Well-fitted ligand: CC with its own model map should be positive.
+    ccs_btn = find_lr(
+      vl_manager2, 'chain A and resseq 400 and resname BTN').get_ccs()
+    # eps is deliberately tighter than in run_test04: an all-atom mask gives
+    # 0.934 here, so anything looser would not notice hydrogen re-entering the
+    # mask.
+    assert approx_equal(ccs_btn.rscc, 0.918, eps=0.01), ccs_btn.rscc
+    # Biotin is buried in avidin, so it has an environment
+    assert approx_equal(ccs_btn.rscc_sites, 0.937, eps=0.01), ccs_btn.rscc_sites
+    assert ccs_btn.frag_ccs
   finally:
     if os.path.isfile(map_fn):
       os.remove(map_fn)
@@ -895,6 +918,109 @@ def _gol_and_unknown_ligand_manager():
     model=model, fmodel=None, map_manager=None, params=params, log=null_out())
   vl_manager.run()
   return vl_manager
+
+def run_test_has_restraints():
+  '''
+  get_missing_atoms().has_restraints says whether restraints were applied to
+  this ligand; without them the geometry rmsZ values are vacuous. J99 IS in the
+  monomer library, but the three atoms modelled here do not match its atom
+  names, so no restraints are built - a library lookup would say "known".
+  Missing atoms come from the library entry and are reported either way.
+  '''
+  print('test_has_restraints')
+  vl_manager = _gol_and_unknown_ligand_manager()
+
+  lr_gol = find_lr(vl_manager, 'resname GOL and chain A and resseq 1')
+  assert lr_gol.get_missing_atoms().has_restraints is True
+  assert lr_gol.get_rmsds().bond_n > 0
+
+  lr_unknown = find_lr(vl_manager, 'resname J99 and chain A and resseq 2')
+  assert lr_unknown.get_missing_atoms().has_restraints is False
+  assert lr_unknown.get_rmsds().bond_n == 0
+  assert lr_unknown.get_missing_atoms().n_missing_heavy > 0
+
+# 7n63 TQP A 401, conformer A, altloc and occupancy dropped. TQP is in the
+# CCD but not in GeoStd.
+pdb_str_tqp = """\
+CRYST1   61.005  150.766   91.058  90.00  90.00  90.00 C 2 2 21
+HETATM 3015  O2P TQP A 401      14.019   8.748   0.260  1.00  9.38           O
+HETATM 3016  P   TQP A 401      15.124   9.767   0.464  1.00  8.40           P
+HETATM 3017  O3P TQP A 401      15.606  10.421  -0.816  1.00 10.42           O
+HETATM 3018  O1P TQP A 401      16.203   9.330   1.365  1.00  6.81           O
+HETATM 3019  O4P TQP A 401      14.417  10.922   1.362  1.00  7.88           O
+HETATM 3020  C5' TQP A 401      13.122  11.387   0.950  1.00  8.19           C
+HETATM 3021  C5P TQP A 401      12.843  12.818   1.430  1.00  8.15           C
+HETATM 3022  C4P TQP A 401      13.519  13.927   0.940  1.00  9.26           C
+HETATM 3023  C4' TQP A 401      14.573  13.817  -0.100  1.00 10.60           C
+HETATM 3024  C3P TQP A 401      13.182  15.169   1.435  1.00  9.64           C
+HETATM 3025  O3' TQP A 401      13.797  16.239   1.028  1.00 11.28           O
+HETATM 3026  C2P TQP A 401      12.220  15.251   2.359  1.00  8.74           C
+HETATM 3027  C2' TQP A 401      11.801  16.593   2.935  1.00  8.78           C
+HETATM 3028  N1P TQP A 401      11.612  14.163   2.742  1.00  7.92           N
+HETATM 3029  C6P TQP A 401      11.923  13.019   2.312  1.00  8.08           C
+HETATM 3030  O4  TQP A 401      25.710  10.729  -6.034  1.00 15.88           O
+HETATM 3031  C4  TQP A 401      25.630  11.953  -6.092  1.00 17.71           C
+HETATM 3032  N3  TQP A 401      26.665  12.742  -6.419  1.00 16.04           N
+HETATM 3033  C2  TQP A 401      26.530  14.063  -6.499  1.00 20.67           C
+HETATM 3034  O2  TQP A 401      27.481  14.762  -6.797  1.00 21.21           O
+HETATM 3035  C5  TQP A 401      24.424  12.541  -5.831  1.00 18.23           C
+HETATM 3036  C5M TQP A 401      23.261  11.691  -5.443  1.00 18.13           C
+HETATM 3037  C6  TQP A 401      24.290  13.914  -5.899  1.00 18.62           C
+HETATM 3038  N1  TQP A 401      25.317  14.659  -6.229  1.00 17.50           N
+HETATM 3039  C1' TQP A 401      25.180  16.130  -6.321  1.00 18.68           C
+HETATM 3040  O4' TQP A 401      24.356  16.615  -5.294  1.00 17.48           O
+HETATM 3041  C2H TQP A 401      24.371  16.500  -7.547  1.00 19.95           C
+HETATM 3042  C3' TQP A 401      23.644  17.756  -7.139  1.00 19.60           C
+HETATM 3043  O3H TQP A 401      24.336  18.877  -7.599  1.00 20.65           O
+HETATM 3044  C4H TQP A 401      23.737  17.826  -5.676  1.00 18.18           C
+HETATM 3045  C5H TQP A 401      22.244  17.506  -5.244  1.00 18.31           C
+HETATM 3046  O5' TQP A 401      21.698  16.192  -5.242  1.00 17.30           O
+HETATM 3048  PA  TQP A 401      20.402  15.783  -5.915  1.00 16.34           P
+HETATM 3050  O1A TQP A 401      20.243  16.576  -7.170  1.00 15.21           O
+HETATM 3052  O2A TQP A 401      20.266  14.336  -6.185  1.00 15.42           O
+HETATM 3054  O3A TQP A 401      19.139  16.142  -5.146  1.00 15.22           O
+HETATM 3056  PB  TQP A 401      18.234  17.483  -4.797  1.00 13.45           P
+HETATM 3057  O1B TQP A 401      19.127  18.492  -4.120  1.00 13.38           O
+HETATM 3058  O2B TQP A 401      17.416  18.062  -5.947  1.00 13.06           O
+HETATM 3059  O3B TQP A 401      17.248  16.781  -3.708  1.00 13.28           O
+HETATM 3060  O4Q TQP A 401      16.646  12.780  -2.086  1.00 14.11           O
+HETATM 3061  C4Q TQP A 401      15.911  13.764  -2.728  1.00 13.21           C
+HETATM 3062  C5Q TQP A 401      16.642  14.063  -4.049  1.00 14.13           C
+HETATM 3063  O5Q TQP A 401      16.015  15.092  -4.750  1.00 13.08           O
+HETATM 3064  C6Q TQP A 401      16.590  12.839  -4.939  1.00 15.08           C
+HETATM 3065  C3Q TQP A 401      15.861  15.039  -1.892  1.00 11.25           C
+HETATM 3066  N3Q TQP A 401      14.899  14.825  -0.785  1.00 11.28           N
+HETATM 3067  C2Q TQP A 401      15.225  16.174  -2.742  1.00 12.63           C
+HETATM 3068  O2Q TQP A 401      15.309  17.425  -2.082  1.00 11.58           O
+HETATM 3069  C1Q TQP A 401      15.970  16.311  -4.033  1.00 12.83           C
+END
+"""
+
+def run_test_has_restraints_ccd_placeholder():
+  '''
+  A ligand in the CCD but not in GeoStd (7n63 TQP): reduce2 places its H with
+  a placeholder dictionary generated from the CCD (bond sigma 0.1 A, angle
+  and torsion sigma 1 deg), which stays in the model's monomer library
+  server. Its geometry is not validated against that: has_restraints False,
+  no bond, angle or dihedral counted.
+  '''
+  print('test_has_restraints_ccd_placeholder')
+  fn = 'tst_validate_ligands_tqp.pdb'
+  with open(fn, 'w') as fh:
+    fh.write(pdb_str_tqp)
+  result = run_program(program_class=val_lig.Program,
+    args=[fn, 'ligand_code=TQP'], logger=null_out())
+  lr = find_lr(result.ligand_manager, 'resname TQP')
+  # reduce2 placed H on TQP, so the placeholder was used
+  atoms = lr.model.get_hierarchy().atoms()
+  n_h = [a.element.strip() for a in atoms.select(lr.ligand_isel)].count('H')
+  assert n_h > 0, n_h
+  assert lr.get_missing_atoms().has_restraints is False
+  rmsds = lr.get_rmsds()
+  assert rmsds.bond_n == 0, rmsds.bond_n
+  assert rmsds.angle_n == 0, rmsds.angle_n
+  assert rmsds.dihedral_n == 0, rmsds.dihedral_n
+
 
 def run_test21():
   print('test21')
@@ -1505,6 +1631,147 @@ def run_test26():
   text = sio.getvalue()
   assert 'B ratio' in text, text
   assert '0.67' in text, text
+
+# ------------------------------------------------------------------------------
+
+def run_test27():
+  print('test27')
+  vl_manager = _load_1avd_manager()
+  if vl_manager is None:
+    print('  skipping: phenix_regression not available')
+    return
+
+  # biotin has three chiral centres, the NAG sugar four; none is an outlier
+  btn_a = find_lr(vl_manager, 'chain A and resseq 400 and resname BTN').get_rmsds()
+  assert btn_a.chirality_n == 3, btn_a.chirality_n
+  assert btn_a.chirality_n_outliers == 0, btn_a.chirality_n_outliers
+  assert approx_equal(btn_a.chirality_rmsd, 0.2318, eps=0.005), btn_a.chirality_rmsd
+
+  btn_b = find_lr(vl_manager, 'chain B and resseq 401 and resname BTN').get_rmsds()
+  assert btn_b.chirality_n == 3, btn_b.chirality_n
+  assert approx_equal(btn_b.chirality_rmsd, 0.4550, eps=0.005), btn_b.chirality_rmsd
+
+  nag = find_lr(vl_manager, 'chain A and resseq 600 and resname NAG').get_rmsds()
+  assert nag.chirality_n == 4, nag.chirality_n
+  assert approx_equal(nag.chirality_rmsd, 0.1913, eps=0.005), nag.chirality_rmsd
+
+  # it reaches the snapshot the GUI and CSV are built from
+  snap = find_lr(vl_manager,
+    'chain A and resseq 400 and resname BTN').as_picklable_snapshot()
+  assert snap.rmsds.chirality_n == 3, snap.rmsds.chirality_n
+  assert approx_equal(snap.rmsds.chirality_rmsd, 0.2318, eps=0.005)
+
+  # a ligand with no chiral centre reports zero rather than failing
+  gol = find_lr(_gol_and_protein_shells_manager(),
+                'resname GOL and chain A and resseq 1').get_rmsds()
+  assert gol.chirality_n == 0, gol.chirality_n
+  assert gol.chirality_rmsd == 0.0, gol.chirality_rmsd
+
+  # a ligand without restraints does not raise
+  nr = find_lr(_gol_and_norestraints_manager(),
+               'resname 7Q8 and chain A and resseq 2').get_rmsds()
+  assert nr.chirality_n == 0, nr.chirality_n
+
+  # and it is shown in the log table
+  from six.moves import cStringIO as StringIO
+  sio = StringIO()
+  vl_manager.show_table(out=sio)
+  text = sio.getvalue()
+  assert 'chirality' in text, text
+  assert '0(3)' in text, text
+
+# ------------------------------------------------------------------------------
+
+_gol_bad_h_occupancy_pdb_str = '''
+CRYST1   40.000   30.000   30.000  90.00  90.00  90.00 P 1
+SCALE1      0.025000  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.033333  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.033333        0.00000
+HETATM    1  C1  GOL A   1       5.000   5.000   5.000  1.00 20.00           C
+HETATM    2  C2  GOL A   1       6.520   5.000   5.000  1.00 20.00           C
+HETATM    3  O1  GOL A   1       4.300   3.850   5.400  1.00 20.00           O
+HETATM    4  O2  GOL A   1       7.220   4.050   5.700  1.00 20.00           O
+HETATM    5  C3 AGOL A   1       7.100   6.400   5.000  0.60 20.00           C
+HETATM    6  O3 AGOL A   1       8.500   6.350   4.700  0.60 20.00           O
+HETATM    7  H31AGOL A   1       6.700   7.000   5.700  1.00 20.00           H
+HETATM    8  HO3AGOL A   1       8.900   7.100   4.900  1.00 20.00           H
+HETATM    9  C3 BGOL A   1       7.000   6.500   5.200  0.40 20.00           C
+HETATM   10  O3 BGOL A   1       8.400   6.500   4.900  0.40 20.00           O
+HETATM   11  H31BGOL A   1       6.600   7.100   5.900  1.00 20.00           H
+HETATM   12  HO3BGOL A   1       8.800   7.200   5.100  1.00 20.00           H
+END
+'''
+
+def run_test28():
+  print('test28')
+  # A DELIBERATELY MALFORMED model: only part of the ligand is split - C1, C2,
+  # O1 and O2 are shared (blank altloc, occupancy 1.00) while C3/O3 are alt
+  # confs A (0.60) and B (0.40) - and the hydrogens on the split atoms carry
+  # occupancy 1.00 instead of following their parents.
+  #
+  # The protonation here is incomplete, which does not matter: the point
+  # is that _conformer_occ must derive a conformer's occupancy from its HEAVY
+  # atoms and so be unaffected by whatever the H occupancies happen to be.
+  #
+  # Without that, averaging the H in gives conformers of 0.80/0.70 summing to
+  # 1.50, and a correctly modelled ligand is flagged.
+  model = mmtbx.model.manager(
+    model_input = iotbx.pdb.input(
+      lines=_gol_bad_h_occupancy_pdb_str.split("\n"), source_info=None),
+    log = null_out())
+  model.set_stop_for_unknowns(False)
+  model.process(make_restraints=True)
+  params = val_lig_mod.master_params().extract().validate_ligands
+  params.ligand_code = []
+  vl = val_lig_mod.manager(model=model, fmodel=None, map_manager=None,
+                           params=params, log=null_out())
+  vl.run()
+
+  seen = 0
+  for lr in vl:
+    ac = lr.get_alt_conf()
+    assert ac.state == 'alt_conf', ac.state
+    assert sorted(ac.altlocs) == ['A', 'B'], ac.altlocs
+    occ = ac.occupancy
+    assert occ is not None
+    # the conformers themselves, from the heavy atoms alone
+    expected_self = 0.60 if lr.altloc.strip() == 'A' else 0.40
+    assert approx_equal(occ.self_occ, expected_self, eps=1.e-6), (
+      lr.altloc, occ.self_occ)
+    assert approx_equal(occ.occ_sum, 1.0, eps=1.e-6), occ.occ_sum
+    assert occ.sum_ok is True, occ.occ_sum
+    assert ac.flag == 'ok', (ac.flag, ac.reason)
+    seen += 1
+  assert seen == 2, seen
+
+# ------------------------------------------------------------------------------
+
+def run_test29():
+  print('test29')
+  # get_map_values must report positive and negative difference blobs
+  # separately.
+  vl_manager = _load_1avd_manager()
+  if vl_manager is None:
+    print('  skipping: phenix_regression not available')
+    return
+
+  seen = 0
+  for lr in vl_manager:
+    mv = lr.get_map_values()
+    if mv is None: continue
+    seen += 1
+    # the split fields exist and are non-negative
+    for attr in ('n_blobs_pos', 'n_blobs_neg',
+                 'percent_blobs_pos', 'percent_blobs_neg'):
+      assert hasattr(mv, attr), attr
+      assert getattr(mv, attr) >= 0, (attr, getattr(mv, attr))
+    # and they reconstruct the pooled values that were reported before
+    assert mv.n_blobs_pos + mv.n_blobs_neg == mv.n_bad_blobs, (
+      mv.n_blobs_pos, mv.n_blobs_neg, mv.n_bad_blobs)
+    assert approx_equal(mv.percent_blobs_pos + mv.percent_blobs_neg,
+                        mv.percent_bad_blobs, eps=1.e-6), (
+      mv.percent_blobs_pos, mv.percent_blobs_neg, mv.percent_bad_blobs)
+  assert seen > 0, 'no ligand had map values'
 
 # ------------------------------------------------------------------------------
 

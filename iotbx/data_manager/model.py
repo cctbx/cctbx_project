@@ -221,7 +221,7 @@ The choices are {}.
     return self._has_data(ModelDataManager.datatype, expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
-  def process_model_file(self, filename, force=False):
+  def process_model_file(self, filename):
     """
     Parse a model file and store the mmtbx.model.manager object
 
@@ -229,8 +229,6 @@ The choices are {}.
     ----------
     filename : str
         The filepath as a string
-    force : bool, optional
-        If True, force the reader to extract the model from a combined CIF
 
     Returns
     -------
@@ -241,7 +239,7 @@ The choices are {}.
     # parse once via the file_io facade (type already known)
     if (filename not in self.get_model_names()):
       from iotbx.file_io import read_file
-      result = read_file(filename, file_type='model', force=force)
+      result = read_file(filename, file_type='model')
       model_in = result.file_object.input
       expand_with_mtrix = True  # default
       skip_ss_annotations = False

@@ -240,7 +240,7 @@ def _load_generate_guard():
   cb_path = _find("COMMAND_BUILDER_PY", _AGENT, "command_builder.py")
   if not cb_path:
     return None
-  src = open(cb_path).read()
+  src = open(cb_path, encoding="utf-8").read()
   if "_input_mtz_rfree_state" not in src:
     return None
   lines = src.splitlines()

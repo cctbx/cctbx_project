@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME distl.sweep_strength
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 from six.moves import range
 import spotfinder
 import libtbx.phil

@@ -86,13 +86,13 @@ if "libtbx" not in sys.modules:
     # workflow_engine to consult YAML for these tests.
     if _knowledge_dir and os.path.isfile(
             os.path.join(_knowledge_dir, "programs.yaml")):
-        with open(os.path.join(_knowledge_dir, "programs.yaml")) as _f:
+        with open(os.path.join(_knowledge_dir, "programs.yaml"), encoding="utf-8") as _f:
             _PROGRAMS = _yaml.safe_load(_f)
     else:
         _PROGRAMS = {}
     if _knowledge_dir and os.path.isfile(
             os.path.join(_knowledge_dir, "workflows.yaml")):
-        with open(os.path.join(_knowledge_dir, "workflows.yaml")) as _f:
+        with open(os.path.join(_knowledge_dir, "workflows.yaml"), encoding="utf-8") as _f:
             _WORKFLOWS = _yaml.safe_load(_f)
     else:
         _WORKFLOWS = {}

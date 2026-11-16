@@ -10,6 +10,7 @@
 
 #include <scitbx/array_family/shared.h>
 #include <ucif/parser.h>
+#include <iotbx/cif/loop_format.h>
 #include <iotbx/error.h>
 
 namespace iotbx { namespace cif {
@@ -117,6 +118,33 @@ namespace iotbx { namespace cif {
       &builder, input_string, filename, strict);
   }
 
+  // columns: a list of flex.std_string (the shared <-> flex converters
+  // share storage); widths: a sequence of int
+  static std::string format_loop_rows_from_python(
+    boost::python::list const& columns,
+    std::size_t start,
+    std::size_t stop,
+    std::string const& prefix,
+    boost::python::object const& widths)
+  {
+    using namespace boost::python;
+    scitbx::af::shared<scitbx::af::shared<std::string> > cols;
+    std::size_t n = len(columns);
+    cols.reserve(n);
+    for (std::size_t i = 0; i < n; i++) {
+      cols.push_back(
+        extract<scitbx::af::shared<std::string> >(columns[i])());
+    }
+    scitbx::af::shared<int> w;
+    std::size_t nw = len(widths);
+    w.reserve(nw);
+    for (std::size_t i = 0; i < nw; i++) {
+      w.push_back(extract<int>(widths[i])());
+    }
+    return format_loop_rows(
+      cols.const_ref(), start, stop, prefix, w.const_ref());
+  }
+
 
 namespace boost_python {
 
@@ -142,6 +170,13 @@ namespace boost_python {
     using namespace boost::python;
 
     cif_wrapper::wrap("fast_reader");
+    def("format_loop_rows", format_loop_rows_from_python,
+      (arg("columns"), arg("start"), arg("stop"), arg("prefix"),
+       arg("widths")));
+    def("column_needs_format_value", column_needs_format_value,
+      (arg("column")));
+    def("first_non_plain_number", first_non_plain_number,
+      (arg("column"), arg("start")));
   }
 
 }}} //iotbx::cif::boost_python

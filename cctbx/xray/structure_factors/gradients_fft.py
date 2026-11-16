@@ -29,10 +29,10 @@ class gradients_fft(gradients_base):
       unit_cell=xray_structure.unit_cell(),
       scatterers=xray_structure.scatterers(),
       scattering_type_registry=xray_structure.scattering_type_registry(),
-      u_base=manager.u_base(),
       wing_cutoff=manager.wing_cutoff(),
       exp_table_one_over_step_size=manager.exp_table_one_over_step_size(),
-      tolerance_positive_definite=manager.tolerance_positive_definite())
+      tolerance_positive_definite=manager.tolerance_positive_definite(),
+      **manager.sampling_params())
     coeff = self._gradient_map_coeff()
     time_apply_u_extra = time_apply_u_extra.elapsed()
     time_from_or_to_map = user_plus_sys_time()

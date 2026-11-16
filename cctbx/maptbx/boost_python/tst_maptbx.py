@@ -455,6 +455,38 @@ def exercise_eight_point_interpolation():
             [int(i+offs+.5)%n for i,n in zip(index,map.focus())])
         v = 1-v
 
+def exercise_values_at_closest_grid_points():
+  """values_at_closest_grid_points rounds, wraps, and breaks ties toward
+  the lower index as value_at_closest_grid_point does, on plain and
+  padded maps"""
+  map = flex.double(range(60))
+  map.resize(flex.grid(4,3,5)) # value at (i,j,k) is 15*i + 5*j + k
+  padded = flex.double(range(72))
+  padded.resize(flex.grid((0,0,0), (4,3,6)).set_focus((4,3,5)))
+  for m, sites_frac, expected in [
+      (map, [(0,0,0), (0.25,0,0.2), (0.375,0,0), (0.375+1.e-9,0,0),
+             (-0.25,0,0), (-0.375,0,0), (0.95,0.5,0.5), (1.25,-1,2.5),
+             (0,0,1.e9+0.25), (0,0,-1.e9-0.25)],
+            [0, 16, 15, 30, 45, 30, 7, 17, 1, 4]),
+      (padded, [(0.25,0.5,0.5), (0,0,0.85)], [26, 4])]:
+    values = maptbx.values_at_closest_grid_points(m,
+      flex.vec3_double(sites_frac))
+    assert list(values) == expected, (list(values), expected)
+  for m in (map, padded):
+    sites_frac = flex.vec3_double()
+    for j in range(100):
+      sites_frac.append([5*random.random()-2 for i in range(3)])
+    values = maptbx.values_at_closest_grid_points(m, sites_frac)
+    assert list(values) == [m.value_at_closest_grid_point(x)
+      for x in sites_frac]
+  try:
+    maptbx.values_at_closest_grid_points(flex.double(flex.grid(3,4), 0),
+      flex.vec3_double([(0,0,0)]))
+  except AssertionError:
+    pass
+  else:
+    raise Exception_expected
+
 def exercise_real_space_gradients_simple(timing):
   uc = uctbx.unit_cell((11,13,17))
   def check():
@@ -1343,6 +1375,7 @@ def run(args):
   exercise_fft()
   exercise_transformers()
   exercise_eight_point_interpolation()
+  exercise_values_at_closest_grid_points()
   exercise_real_space_gradients_simple(timing=timing)
   exercise_non_crystallographic_eight_point_interpolation()
   exercise_asu_eight_point_interpolation()

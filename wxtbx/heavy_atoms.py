@@ -1,22 +1,19 @@
 from __future__ import absolute_import, division, print_function
 
 import wxtbx.phil_controls.floatctrl
-import wx.lib.mixins.listctrl
 import wx
 from libtbx.utils import Sorry
-import sys
 from six.moves import range
 
-# XXX TEMPORARY PYTHON 3 FIX TT
-class SitesList(wx.ListCtrl): #wx.lib.mixins.listctrl.CheckListCtrlMixin):
+class SitesList(wx.ListCtrl):
   """
   ListCtrl for displaying and editing heavy-atom sites.  Only the occupancy
-  and the selection of sites may be changed.
+  and the selection of sites may be changed.  Each row carries a native
+  checkbox (wxPython 4.1+) marking whether the site is selected for saving.
   """
   def __init__(self, *args, **kwds):
     wx.ListCtrl.__init__(self, *args, **kwds)
-    # XXX TEMPORARY PYTHON 3 FIX TT
-    #wx.lib.mixins.listctrl.CheckListCtrlMixin.__init__(self)
+    self.EnableCheckBoxes()
     self._atoms = None
     self._symm = None
     self.InsertColumn(0, "#", format=wx.LIST_FORMAT_RIGHT, width=64)
@@ -54,14 +51,13 @@ class SitesList(wx.ListCtrl): #wx.lib.mixins.listctrl.CheckListCtrlMixin):
     self.DeleteAllItems()
     self._atoms = atoms
     for atom in atoms :
-      item = self.InsertStringItem(sys.maxunicode, atom.serial.strip())
-      self.SetStringItem(item, 1, atom.element.strip())
-      self.SetStringItem(item, 2, "%.3f" % atom.xyz[0])
-      self.SetStringItem(item, 3, "%.3f" % atom.xyz[1])
-      self.SetStringItem(item, 4, "%.3f" % atom.xyz[2])
-      self.SetStringItem(item, 5, "%.2f" % atom.occ)
-      if hasattr(self,'CheckItem'):  # XXX Python 3 fix
-        self.CheckItem(item)
+      item = self.InsertItem(self.GetItemCount(), atom.serial.strip())
+      self.SetItem(item, 1, atom.element.strip())
+      self.SetItem(item, 2, "%.3f" % atom.xyz[0])
+      self.SetItem(item, 3, "%.3f" % atom.xyz[1])
+      self.SetItem(item, 4, "%.3f" % atom.xyz[2])
+      self.SetItem(item, 5, "%.2f" % atom.occ)
+      self.CheckItem(item)
 
   def SetSymmetry(self, symmetry):
     self._symm = symmetry
@@ -73,7 +69,7 @@ class SitesList(wx.ListCtrl): #wx.lib.mixins.listctrl.CheckListCtrlMixin):
     selection = flex.bool(self._atoms.size(), False)
     assert (len(selection) == self.GetItemCount())
     for item in range(self.GetItemCount()):
-      if (self.IsChecked(item)):
+      if self.IsItemChecked(item):
         selection[item] = True
     atoms_selected = self._atoms.select(selection)
     if (len(atoms_selected) == 0):
@@ -101,13 +97,13 @@ class SitesList(wx.ListCtrl): #wx.lib.mixins.listctrl.CheckListCtrlMixin):
       new_occ = dlg.GetOccupancy()
       assert (0. <= new_occ <= 1.)
       atom.set_occ(new_occ)
-      self.SetStringItem(item, 5, "%.2f" % atom.occ)
+      self.SetItem(item, 5, "%.2f" % atom.occ)
 
   def OnSaveSites(self, event):
     from iotbx import file_reader
-    # XXX Python 3 fix needed here (flags and wildcard not allowed)
     wildcards = file_reader.get_wildcard_strings(["pdb"])
     file_name = wx.FileSelector(
+      "Save selected sites",
       flags=wx.FD_SAVE,
       wildcard=wildcards,
       )
@@ -121,6 +117,7 @@ class SitesList(wx.ListCtrl): #wx.lib.mixins.listctrl.CheckListCtrlMixin):
     from iotbx import file_reader
     wildcards = file_reader.get_wildcard_strings(["pdb"])
     file_name = wx.FileSelector(
+      "Load heavy-atom sites",
       wildcard=wildcards)
     if (file_name != ""):
       self.LoadFile(file_name)
@@ -194,12 +191,11 @@ class sites_panel_mixin(object):
                          show_load_button=False):
     if (label is not None):
       txt = wx.StaticText(self, -1, label + ":")
-      sizer.Add(txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      sizer.Add(txt, 0, wx.ALL, 5)
     self.sites_list = SitesList(self, -1,
       size=(540,200),
       style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
-    # XXX  TEMPORARY PYTHON 3 FIX TT
-    sizer.Add(self.sites_list, 1, wx.ALL, 5) # |wx.EXPAND|wx.ALIGN_CENTER_VERTICAL, 5)
+    sizer.Add(self.sites_list, 1, wx.ALL, 5)
     szr2 = wx.BoxSizer(wx.HORIZONTAL)
     sizer.Add(szr2)
     if (show_load_button):

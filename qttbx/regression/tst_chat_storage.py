@@ -590,30 +590,31 @@ def exercise_usage_written_before_context_tokens_existed_loads_as_zero():
   assert usage.input == 1, usage
 
 
-def exercise_ephemeral_blocks_are_never_persisted():
-  """A content block tagged ephemeral is dropped on save, on EVERY path.
-
-  ``save`` is the single choke point every writer funnels through -- the
-  worker's mid-turn autosave, the turn-end / errored-turn / close saves alike
-  (see ``persistable_prefix``). Filtering here, rather than at one caller's
-  turn-end, is what makes a transient block (a context-pressure note sent to
-  the model for one turn) provably absent from disk no matter which path saved.
-  The block's non-ephemeral siblings in the same message must survive."""
-  from qttbx.widgets.chat.agent.conversation import EPHEMERAL_BLOCK_KEY
+def exercise_note_blocks_round_trip_with_their_tags():
+  """A context-pressure note block is part of the conversation from the
+  moment it is appended: ``save`` writes it with both tags and ``load``
+  reads it back beside its siblings, on every save path (``save`` is the
+  single choke point every writer funnels through). Stripping it on save
+  would make the history on disk differ from the one the model's thinking
+  blocks were produced against."""
+  from qttbx.widgets.chat.agent.conversation import (
+    NOTE_BLOCK_KEY, NOTE_VALUE, NOTE_STAGE_KEY, is_note_block, note_stage)
   tmp, storage = _new_storage()
   try:
-    conv = Conversation.new(profile_name="p", model="m", title="eph")
+    conv = Conversation.new(profile_name="p", model="m", title="note")
     conv.append(Message(role="user", timestamp=now(), content=[
       ContentBlock(type="text", data={"text": "real question"}),
-      ContentBlock(type="text", data={"text": "[transient note]",
-                                      EPHEMERAL_BLOCK_KEY: True})]))
+      ContentBlock(type="text", data={"text": "[system note] 80%",
+                                      NOTE_BLOCK_KEY: NOTE_VALUE,
+                                      NOTE_STAGE_KEY: "offer"})]))
     storage.save(conv)
     loaded = storage.load(conv.meta.id)
-    texts = [b.data.get("text") for b in loaded.messages[-1].content]
-    assert texts == ["real question"], texts
-    # The in-memory conversation is untouched -- the block is still there for
-    # the turn that is delivering it; only the serialized form drops it.
-    assert len(conv.messages[-1].content) == 2, conv.messages[-1].content
+    blocks = loaded.messages[-1].content
+    texts = [b.data.get("text") for b in blocks]
+    assert texts == ["real question", "[system note] 80%"], texts
+    assert not is_note_block(blocks[0])
+    assert is_note_block(blocks[1]) and note_stage(blocks[1]) == "offer", \
+      blocks[1].data
   finally:
     shutil.rmtree(tmp)
 
@@ -1362,7 +1363,7 @@ def exercise():
   exercise_store_attachment_cleans_up_tmp_on_replace_failure()
   exercise_atomic_replace_fails_fast_on_posix()
   exercise_all_token_usage_fields_round_trip()
-  exercise_ephemeral_blocks_are_never_persisted()
+  exercise_note_blocks_round_trip_with_their_tags()
   exercise_usage_written_before_context_tokens_existed_loads_as_zero()
   exercise_read_json_retries_windows_sharing_violation()
   exercise_concurrent_saves_do_not_corrupt()

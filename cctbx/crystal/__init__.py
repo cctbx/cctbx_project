@@ -2004,3 +2004,71 @@ def unit_crystal_symmetry():
 
 bp.inject(ext.neighbors_simple_pair_generator, bp.py3_make_iterator)
 bp.inject_into(ext.neighbors_fast_pair_generator, bp.py3_make_iterator)
+
+def pairs_within(sites_cart, distance_cutoff, crystal_symmetry=None,
+                 i_seqs=None):
+  """
+  Pairs of sites closer than distance_cutoff, in the asymmetric unit and
+  with symmetry mates.
+
+  Parameters
+  ----------
+  sites_cart : flex.vec3_double
+    Cartesian coordinates of the sites.
+  distance_cutoff : float
+    Largest distance of a pair (A).
+  crystal_symmetry : cctbx.crystal.symmetry, optional
+    None, or without a unit cell: no symmetry mates, pairs of the sites
+    themselves only.
+  i_seqs : iterable of int, optional
+    Indices of the first sites of the pairs wanted. None: all sites.
+
+  Returns
+  -------
+  list of tuple
+    (i, j, rt_mx, distance): sites_cart[i] is distance (A) from the mate
+    rt_mx * sites_cart[j] of sites_cart[j], rt_mx a sgtbx.rt_mx acting on
+    fractional coordinates, the identity for a pair in the asymmetric unit.
+    Every position of a mate within the cutoff is listed, also when the
+    site i is on or close to a special position. Mates of a site closer
+    than 0.01 A to each other are one position, listed once (a site on a
+    2-fold axis, with the identity); a site is not listed with such a mate
+    of itself. A site farther from a special position is listed with its
+    own mates. A pair of distinct sites is listed with either site first,
+    unless i_seqs leaves one out.
+  """
+  if i_seqs is None:
+    order = list(range(sites_cart.size()))
+    n_first = len(order)
+  else:
+    order = list(i_seqs)
+    n_first = len(order)
+    first = set(order)
+    for i in range(sites_cart.size()):
+      if i not in first: order.append(i)
+  if n_first == 0: return []
+  sites = sites_cart.select(flex.size_t(order))
+  cs = crystal_symmetry
+  if cs is None or cs.unit_cell() is None:
+    box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+      sites_cart=sites, buffer_layer=distance_cutoff)
+    cs = symmetry(unit_cell=box.unit_cell, space_group_symbol="P 1")
+    sites = box.sites_cart
+  # the default 0.5 A puts a site within 0.25 A of a 2-fold on the axis and
+  # loses the distinct mates of its neighbours; 0.01 A: coordinate rounding
+  settings = cs.special_position_settings(
+    min_distance_sym_equiv=0.01, assert_min_distance_sym_equiv=False)
+  pair_sym_table = settings.pair_asu_table(
+    distance_cutoff=distance_cutoff,
+    sites_cart=sites).extract_pair_sym_table(
+      skip_j_seq_less_than_i_seq=False,
+      all_interactions_from_inside_asu=True)
+  uc = cs.unit_cell()
+  sites_frac = uc.fractionalize(sites)
+  result = []
+  for i in range(n_first):
+    for j, rt_mxs in pair_sym_table[i].items():
+      for rt_mx in rt_mxs:
+        distance = uc.distance(sites_frac[i], rt_mx * sites_frac[j])
+        result.append((order[i], order[j], rt_mx, distance))
+  return result

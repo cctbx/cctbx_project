@@ -112,7 +112,7 @@ def _read_version_file():
     if not os.path.isfile(path):
         return None
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             return f.read().strip()
     except Exception:
         return None

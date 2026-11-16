@@ -1,16 +1,28 @@
 from __future__ import division
-from math import pi, sin, cos, atan2, sqrt, atan
+import math
+from math import pi, sin, cos, atan2, sqrt
 
 from mmtbx.conformation_dependent_library.cdl_utils import round_to_ten
-from mmtbx.validation.mean_devs_PRO_phi_psi import mean_devs as PRO_phi_psi
-from mmtbx.validation.mean_devs_others_phi_psi import mean_devs as others_phi_psi
-from mmtbx.validation.mean_devs_VAL_THR_ILE_phi_psi import mean_devs as VAL_THR_ILE_phi_psi
+from mmtbx.validation import mean_devs_PRO_phi_psi
+from mmtbx.validation import mean_devs_VAL_THR_ILE_phi_psi
+from mmtbx.validation import mean_devs_others_phi_psi
+from mmtbx.validation import mean_devs_VAL_THR_ILE_pre_PRO_phi_psi
+from mmtbx.validation import mean_devs_others_pre_PRO_phi_psi
+
+# (phi, psi) -> (r in Angstrom, t in radians) of the mean C-beta deviation
+tables = {
+  'PRO'                 : mean_devs_PRO_phi_psi.mean_devs,
+  'VAL_THR_ILE'         : mean_devs_VAL_THR_ILE_phi_psi.mean_devs,
+  'others'              : mean_devs_others_phi_psi.mean_devs,
+  'VAL_THR_ILE_pre_PRO' : mean_devs_VAL_THR_ILE_pre_PRO_phi_psi.mean_devs,
+  'others_pre_PRO'      : mean_devs_others_pre_PRO_phi_psi.mean_devs,
+  }
 
 class radial_deviation:
   def __init__(self, r, t, input_in_radians=False, input_in_cartesian=False):
     if input_in_cartesian:
-      self.r = sqrt(r*r + t*t)
-      self.t = atan(t/r)
+      # r, t are x, y
+      r, t = sqrt(r*r + t*t), atan2(t, r)
       input_in_radians=True
     self.r = r
     self.t = t
@@ -25,6 +37,7 @@ class radial_deviation:
     numer = other.r * sin(other.t-self.t)
     denom = self.r + other.r * cos(other.t-self.t)
     t = self.t + atan2(numer, denom)
+    t = atan2(sin(t), cos(t)) # wrap to (-pi, pi] to match dihedral_angle
     new = radial_deviation(0,0)
     new.r = r
     new.t = t
@@ -65,33 +78,110 @@ class radial_deviation:
   def __ge__(self, other):
     return self.r >= other.r
 
-def get_phi_psi_correction(result,
-                           residue,
-                           phi_psi,
-                           display_phi_psi_correction=False,
-                           verbose=False):
-  rc = None
-  key = (round_to_ten(phi_psi[0]), round_to_ten(phi_psi[1]))
-  if residue.resname=='PRO':
-    correction = PRO_phi_psi.get(key, None)
-  elif residue.resname in ['VAL', 'THR', 'ILE']:
-    correction = VAL_THR_ILE_phi_psi.get(key, None)
-  else:
-    correction = others_phi_psi.get(key, None)
-  if correction:
-    correction = radial_deviation(*tuple(correction), input_in_radians=True)
-    current = radial_deviation(result.deviation, result.dihedral)
-    rc = current-correction
-    start = (current.r>=0.25)
-    finish = (rc.r>=0.25)
-    if verbose:
-      print('current %s is corrected with %s' % (current, correction)),
-      print(' to give %s\n' % rc)
-    if display_phi_psi_correction and (start or finish):
-      show_phi_psi_correction(residue, phi_psi, current, correction, rc)
-    return rc.r, rc.t/pi*180, start, finish
-  else:
-    return None
+def get_table_resname(resname, use_parent_for_modified_residues=False):
+  """Residue name used to choose the phi/psi table: the name itself for
+  standard amino acids and, if use_parent_for_modified_residues, the parent
+  amino acid from iotbx.pdb.modified_aa_names for other residues. None if
+  the residue isn't corrected, which includes the D-amino acids."""
+  from iotbx.pdb import common_residue_names_get_class
+  if common_residue_names_get_class(resname) == 'common_amino_acid':
+    return resname
+  if not use_parent_for_modified_residues: return None
+  from iotbx.pdb.aa_utils import get_aa_parent
+  return get_aa_parent(resname)
+
+def get_correction_table(table_resname, next_resname):
+  """The table for a residue: PRO whatever follows, otherwise VAL/THR/ILE or
+  the others, each split by whether the next residue is PRO."""
+  if table_resname == 'PRO': return tables['PRO']
+  if table_resname in ['VAL', 'THR', 'ILE']: name = 'VAL_THR_ILE'
+  else: name = 'others'
+  if next_resname == 'PRO': name += '_pre_PRO'
+  return tables[name]
+
+def get_correction_vector(resname,
+                          next_resname,
+                          phi_psi,
+                          use_parent_for_modified_residues=False):
+  """Mean deviation vector (x, y) in Angstrom for the residue's (phi, psi)
+  bin, in the (deviation, dihedral_NABB) polar plane, or None if the residue
+  isn't corrected or its bin has no entry."""
+  resname = get_table_resname(resname,
+    use_parent_for_modified_residues=use_parent_for_modified_residues)
+  if resname is None: return None
+  table = get_correction_table(resname, next_resname)
+  entry = table.get((round_to_ten(phi_psi[0]), round_to_ten(phi_psi[1])), None)
+  if entry is None: return None
+  return (entry[0]*cos(entry[1]), entry[0]*sin(entry[1]))
+
+# the fitted strength is pulled toward prior_strength as if prior_weight more
+# residues agreed with it
+prior_strength = 0.5
+prior_weight = 100
+# deviations this large (inverted CA, misplaced CB) aren't phi/psi offsets and
+# would dominate the fit, so they are left out of the fit and the check
+max_fit_deviation = 2.
+# phi_psi_correction_region = positive: table bins with phi from 0 to 150, where
+# the mean deviations are large and share a direction. A model has few of these
+# residues, so its fit gets a lighter prior.
+positive_phi_bins = (0, 150)
+positive_prior_weight = 10
+
+def in_positive_phi_region(phi):
+  """True if phi falls in a table bin of the positive phi region."""
+  return positive_phi_bins[0] <= round_to_ten(phi) <= positive_phi_bins[1]
+
+def apply_correction(deviation, dihedral, correction, strength):
+  """(deviation, dihedral in degrees) of v - strength*c, where v is the
+  deviation vector and c the correction (x, y) in Angstrom."""
+  t = math.radians(dihedral)
+  x = deviation*cos(t) - strength*correction[0]
+  y = deviation*sin(t) - strength*correction[1]
+  return sqrt(x*x + y*y), math.degrees(atan2(y, x))
+
+def choose_strength(deviations, dihedrals, corrections, user_strength=None,
+                    prior_weight=prior_weight):
+  """Correction strength for one model from its residues that have a
+  correction. fitted is the least-squares strength sum(v.c)/sum(|c|**2),
+  pulled the same with the prior; applied is pulled limited to 0..1, or 0 if
+  that would raise the mean deviation, or user_strength if given. Residues
+  with a deviation of max_fit_deviation or more are left out."""
+  from libtbx import group_args
+  keep = [i for i, d in enumerate(deviations) if d < max_fit_deviation]
+  deviations = [deviations[i] for i in keep]
+  dihedrals = [dihedrals[i] for i in keep]
+  corrections = [corrections[i] for i in keep]
+  n = len(corrections)
+  svc = scc = 0.
+  for d, t, c in zip(deviations, dihedrals, corrections):
+    t = math.radians(t)
+    svc += d*cos(t)*c[0] + d*sin(t)*c[1]
+    scc += c[0]*c[0] + c[1]*c[1]
+  fitted = pulled = None
+  if n and scc:
+    fitted = svc/scc
+    m = scc/n
+    pulled = (svc + prior_weight*prior_strength*m)/(scc + prior_weight*m)
+  rc = group_args(n=n,
+                  fitted=fitted,
+                  pulled=pulled,
+                  applied=0.,
+                  user_set=(user_strength is not None),
+                  check_failed=False,
+                  mean_uncorrected=None,
+                  mean_corrected=None)
+  if user_strength is not None:
+    rc.applied = user_strength
+  elif pulled is not None:
+    rc.applied = min(1., max(0., pulled))
+  if not n: return rc
+  rc.mean_uncorrected = sum(deviations)/n
+  rc.mean_corrected = sum(apply_correction(d, t, c, rc.applied)[0]
+    for d, t, c in zip(deviations, dihedrals, corrections))/n
+  if not rc.user_set and rc.mean_corrected > rc.mean_uncorrected:
+    rc.check_failed = True
+    rc.applied = 0.
+  return rc
 
 def show_phi_psi_correction(residue, phi_psi, current, correction, rc, units=100):
   import matplotlib.pyplot as plt

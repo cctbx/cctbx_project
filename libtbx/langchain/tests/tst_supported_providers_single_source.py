@@ -97,7 +97,7 @@ def test_graph_nodes_shares_core_list():
 
 def test_graph_nodes_imports_from_core_not_literal():
     assert os.path.isfile(_GRAPH_NODES), "graph_nodes.py not found"
-    with open(_GRAPH_NODES) as fh:
+    with open(_GRAPH_NODES, encoding="utf-8") as fh:
         src = fh.read()
     assert "import SUPPORTED_PROVIDERS" in src, \
         "graph_nodes must import SUPPORTED_PROVIDERS"
@@ -113,7 +113,7 @@ def test_ai_agent_imports_from_core_not_literal():
     if path is None:
         print("  (skip) ai_agent.py not found in this checkout")
         return
-    with open(path) as fh:
+    with open(path, encoding="utf-8") as fh:
         src = fh.read()
     assert "core.llm import SUPPORTED_PROVIDERS" in src, \
         "ai_agent must import SUPPORTED_PROVIDERS from core.llm"
@@ -132,7 +132,7 @@ def test_core_llm_is_sole_literal_definition():
     shipped modules, and it must live in core/llm.py."""
     core_path = os.path.join(_ROOT, "core", "llm.py")
     assert os.path.isfile(core_path), "core/llm.py not found"
-    with open(core_path) as fh:
+    with open(core_path, encoding="utf-8") as fh:
         core_src = fh.read()
     assert re.search(r"SUPPORTED_PROVIDERS\s*=\s*\[", core_src), \
         "core/llm.py must hold the literal SUPPORTED_PROVIDERS definition"

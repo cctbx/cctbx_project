@@ -805,8 +805,10 @@ class ScalingJob(Job):
       nersc_reservation         = self.app.params.mp.shifter.reservation,
       nersc_staging             = self.app.params.mp.shifter.staging,
       target                    = target_phil_path,
-      # always use mpi for 'lcls'
-      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
+      # cctbx.xfel.merge is mpi only, and has no mp.nproc to be parallelized with
+      # instead, so it runs under mpirun whatever the multiprocessing method is.
+      # Local mode is included: it still runs mpirun, just on this machine.
+      use_mpi                   = True,
       mpi_command               = self.app.params.mp.mpi_command,
       nnodes                    = self.app.params.mp.nnodes_scale or self.app.params.mp.nnodes,
       wall_time                 = self.app.params.mp.wall_time,
@@ -899,10 +901,13 @@ class MergingJob(Job):
     command = "cctbx.xfel.merge %s"%target_phil_path
     submit_path = os.path.join(output_path, identifier_string + "_submit.sh")
 
-    params = self.app.params.mp
+    # Copied rather than used directly because use_mpi is overridden below and
+    # these params are shared with the rest of the GUI.
+    params = copy.deepcopy(self.app.params.mp)
     if params.nnodes_merge:
-      params = copy.deepcopy(params)
       params.nnodes = params.nnodes_merge
+    # cctbx.xfel.merge is mpi only, as for the scaling job above
+    params.use_mpi = True
 
     return do_submit(command, submit_path, output_path, params, log_name="out.log", err_name="err.log", job_name=identifier_string)
 
@@ -1021,6 +1026,181 @@ class _job(object):
   def __eq__(self, other):
     return _job.job_hash(self) == _job.job_hash(other)
 
+def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_operator = None, tasks = None,
+                         runs_rungroups = None, submitted_jobs = None, planned = None, merge_mode = None):
+  """ The jobs submit_all_jobs would submit for a dataset once it is active, as
+      an ordered dict of counts by task type, in pipeline order. Takes an
+      existing dataset and/or the pieces of a new or revised one; a piece not
+      given comes from the dataset. The dataset supplies the versions already
+      run, which decide whether the global stages run again.
+
+      Local counts are exact: one job per tagged run and local task that has no
+      job yet (indexing jobs belong to the trial and are not counted). Global
+      counts assume every local job finishes and one set of global jobs is then
+      submitted, one job per global task, plus any global job missing from a
+      version that would still be filled in. A dataset merging after every run
+      (merge_mode 'per_run', taken from the dataset when not given) instead
+      gets one set per run not yet in the latest version. Otherwise the order
+      in which the local jobs finish decides how many versions, and so how many global jobs,
+      there are.
+      @param runs_rungroups: (run, rungroup) pairs to use as the dataset's run
+      selection instead of querying it by tags; predict_trial_jobs passes a
+      selection from run groups that may not exist yet.
+      @param submitted_jobs: the job hash dict, if the caller already has it.
+      @param planned: hashes of jobs an earlier prediction in the same call
+      already counted; a local job two datasets share is submitted once. """
+  import collections
+  if tasks is None:
+    tasks = dataset.tasks
+  if tags is None:
+    tags = dataset.tags
+  if tag_operator is None:
+    tag_operator = dataset.tag_operator
+  if trial is None:
+    trial = next((t.trial for t in tasks if t.trial is not None), None)
+  counts = collections.OrderedDict()
+  for task in tasks:
+    counts.setdefault(task.type, 0)
+  if trial is None or not tasks:
+    return counts
+
+  if runs_rungroups is None:
+    trial_tag_ids = [t.id for t in trial.tags]
+    dataset_tags = [t for t in tags if t.id in trial_tag_ids]
+    if not dataset_tags or len(dataset_tags) < len(tags):
+      return counts
+    runs_rungroups = []
+    for rungroup in trial.rungroups:
+      runs_rungroups.extend([(run, rungroup) for run in app.get_rungroup_runs_by_tags(rungroup, dataset_tags, tag_operator)])
+  if not runs_rungroups:
+    return counts
+  if submitted_jobs is None:
+    submitted_jobs = {_job.job_hash(j):j for j in app.get_all_jobs()}
+
+  local_tasks = [t for t in tasks if t.scope == 'local']
+  global_tasks = [t for t in tasks if t.scope == 'global']
+  merge_mode = merge_mode or getattr(dataset, 'merge_mode', None) or 'incremental'
+  new_local = False
+  new_final = 0 # runs whose last local job does not exist yet
+  final_local_job_ids = set() # existing jobs of the last local task, which feed the global stages
+  for run, rungroup in runs_rungroups:
+    for task in local_tasks:
+      job = _job(trial, rungroup, run, None if task.type == 'indexing' else task)
+      job_hash = _job.job_hash(job)
+      existing = submitted_jobs.get(job_hash)
+      if existing is None:
+        new_local = True
+        if task is local_tasks[-1]:
+          new_final += 1
+        if task.type != 'indexing' and (planned is None or job_hash not in planned):
+          counts[task.type] += 1
+          if planned is not None:
+            planned.add(job_hash)
+      elif task is local_tasks[-1]:
+        # A job that failed never feeds a merge (submit_all_jobs takes DONE and
+        # EXIT only); one still queued or running is assumed to finish
+        if existing.status in finished_job_statuses and existing.status not in ('DONE', 'EXIT'):
+          continue
+        final_local_job_ids.add(existing.id)
+  if not global_tasks:
+    return counts
+
+  # Mirror the version handling in submit_all_jobs: versions set up under the
+  # current tasks and runs get any global job they lack; a new version rolls
+  # when the local jobs feeding the global stages are not the latest version's.
+  current_task_ids = {t.id for t in tasks}
+  current_local_task_ids = {t.id for t in local_tasks}
+  current_run_ids = {run.id for run, rungroup in runs_rungroups}
+  versions = dataset.versions if dataset is not None else []
+  latest = None
+  for version in versions:
+    if latest is None or version.version > latest.version:
+      latest = version
+    local_inputs = [j for j in version.jobs if j.task and j.task.scope == 'local']
+    if not local_inputs: continue
+    if not all(j.task_id in current_local_task_ids for j in local_inputs): continue
+    if not all(j.run_id in current_run_ids for j in local_inputs): continue
+    if any(j.task and j.task.scope == 'global' and j.task_id not in current_task_ids for j in version.jobs): continue
+    present = {j.task_id for j in version.jobs}
+    for task in global_tasks:
+      if task.id not in present:
+        counts[task.type] += 1
+  if latest is None:
+    roll = True
+    latest_local_ids = set()
+  else:
+    latest_local = [j for j in latest.jobs if j.task and j.task.scope == 'local']
+    latest_local_ids = {j.id for j in latest_local}
+    roll = new_local or \
+      any(job_id not in latest_local_ids for job_id in final_local_job_ids) or \
+      any(j.run_id not in current_run_ids for j in latest_local) or \
+      any(j.task and j.task.scope == 'global' and j.task_id not in current_task_ids for j in latest.jobs)
+  if roll:
+    sets = 1
+    if merge_mode == 'per_run':
+      # A version per run not yet merged in, plus the corrective version of the
+      # runs already merged when a run was tagged out or a global stage edited
+      added = new_final + len(final_local_job_ids - latest_local_ids)
+      corrective = latest is not None and (
+        any(j.run_id not in current_run_ids for j in latest_local) or
+        any(j.task and j.task.scope == 'global' and j.task_id not in current_task_ids for j in latest.jobs))
+      sets = max(1, added + (1 if corrective and (final_local_job_ids & latest_local_ids) else 0))
+    for task in global_tasks:
+      counts[task.type] += sets
+  return counts
+
+def predict_trial_jobs(app, trial, rungroups = None):
+  """ The jobs submit_all_jobs would submit for a trial once active, as an
+      ordered dict of counts by task type: the indexing jobs for the runs of
+      its active run groups, then, for every active dataset on the trial, the
+      jobs predict_dataset_jobs expects for the runs the dataset selects from
+      those run groups.
+      @param rungroups: (rungroup, runs) pairs standing in for the trial's
+      active run groups, for a run group being created or edited. A rungroup
+      of None is one that does not exist yet, so every run of it is new (a run
+      group that replaces another reprocesses its runs). The default is the
+      trial's active run groups and their current runs. """
+  import collections
+  if rungroups is None:
+    rungroups = [(rungroup, rungroup.runs) for rungroup in trial.rungroups]
+  submitted_jobs = {_job.job_hash(j):j for j in app.get_all_jobs()}
+  counts = collections.OrderedDict([('indexing', 0)])
+  runs_rungroups = []
+  for rungroup, runs in rungroups:
+    for run in runs:
+      runs_rungroups.append((run, rungroup))
+      if rungroup is None or _job.job_hash(_job(trial, rungroup, run)) not in submitted_jobs:
+        counts['indexing'] += 1
+  if not runs_rungroups:
+    return counts
+
+  trial_tag_ids = {t.id for t in trial.tags}
+  run_tag_ids = {}
+  planned = set()
+  for dataset in app.get_all_datasets():
+    if not dataset.active: continue
+    tasks = dataset.tasks
+    if not tasks or not any(t.trial_id == trial.id for t in tasks): continue
+    tags = dataset.tags
+    if not tags or not all(t.id in trial_tag_ids for t in tags): continue
+    tag_ids = {t.id for t in tags}
+    selected = []
+    for run, rungroup in runs_rungroups:
+      if run.id not in run_tag_ids:
+        run_tag_ids[run.id] = {t.id for t in run.tags}
+      if dataset.tag_operator == 'union':
+        hit = bool(tag_ids & run_tag_ids[run.id])
+      else:
+        hit = tag_ids <= run_tag_ids[run.id]
+      if hit:
+        selected.append((run, rungroup))
+    dataset_counts = predict_dataset_jobs(app, dataset = dataset, trial = trial, tasks = tasks,
+                                          runs_rungroups = selected, submitted_jobs = submitted_jobs,
+                                          planned = planned)
+    for task_type, n in dataset_counts.items():
+      counts[task_type] = counts.get(task_type, 0) + n
+  return counts
+
 def submit_all_jobs(app):
   submitted_jobs = {_job.job_hash(j):j for j in app.get_all_jobs()}
   if app.params.mp.method == 'local': # only run one job at a time
@@ -1096,6 +1276,10 @@ def submit_all_jobs(app):
 
     # Datasets always start with indexing
     global_tasks = {}
+    # Runs whose local chain is not finished: a job waiting or running, or one
+    # still to be submitted. A run whose chain failed is not pending; by design
+    # it never holds the merging schedule up. See merge_mode below.
+    pending_runs = set()
     for run, rungroup in runs_rungroups:
       submit_next_task = False
       last_task_status = ""
@@ -1118,6 +1302,7 @@ def submit_all_jobs(app):
           if not submit_next_task:
             print("Warning, expected to find submitted %s job: trial %d, rungroup %d, run %s, task %d"% \
               (task.type, trial.trial, rungroup.id, run.run, task.id))
+            pending_runs.add(run.id)
             break
         else:
           if not task_idx+1 < len(tasks): break # no more tasks to do after this one
@@ -1125,6 +1310,7 @@ def submit_all_jobs(app):
           if submitted_job.status not in finished_job_statuses or submitted_job.status == "UNKWN":
             print ("Task %s waiting on job %d (%s) for trial %d, rungroup %d, run %s, task %d" % \
               (next_task.type, submitted_job.id, submitted_job.status, trial.trial, rungroup.id, run.run, next_task.id))
+            pending_runs.add(run.id)
             break
           if submitted_job.status not in ["DONE"]:
             if submitted_job.status != "EXIT":
@@ -1155,6 +1341,7 @@ def submit_all_jobs(app):
           raise
 
         submitted_jobs[_job.job_hash(job)] = j  # keep in-call dict current
+        pending_runs.add(run.id)
 
         previous_job = j
 
@@ -1183,8 +1370,16 @@ def submit_all_jobs(app):
       # to the version -- this also covers resubmitting a merge whose job the
       # user deleted, since the on-disk folder was removed by delete() and the
       # new submission writes to the same path under the same version number.
+      current_task_ids = {t.id for t in tasks}
       current_local_task_ids = {t.id for t in tasks if t.scope == 'local'}
       current_run_ids = {run.id for run, rungroup in runs_rungroups}
+      def ran_task_no_longer_in_dataset(version):
+        # Tasks are content-addressed, so editing a global stage's parameters
+        # gives the dataset a different task. A version that ran the old task
+        # is a result of the old settings; it is left as it is, and the new
+        # settings get a version of their own (see below).
+        return any(j.task and j.task.scope == 'global' and j.task_id not in current_task_ids
+                   for j in version.jobs)
       for version in versions:
         # Only process versions created under the current task list. If any
         # local input belongs to a task no longer in the dataset's task list,
@@ -1201,6 +1396,8 @@ def submit_all_jobs(app):
         # resubmitting it as-is would merge the wrongly-tagged runs. The new
         # dataset version created below picks up only the currently-tagged runs.
         if not all(j.run_id in current_run_ids for j in local_inputs):
+          continue
+        if ran_task_no_longer_in_dataset(version):
           continue
 
         if any(j.task_id == task.id for j in version.jobs):
@@ -1240,14 +1437,25 @@ def submit_all_jobs(app):
 
       key = dataset_idx, task_idx
       if key not in global_tasks: continue # no jobs ready yet
+      pool = global_tasks[key] # every finished final local job of the dataset
       latest_version = dataset.latest_version
-      next_version = None
+      first_global = prev_task.scope != 'global'
+      # The dataset's merging schedule, see MERGE_MODE_LABELS in the dialogs:
+      # 'incremental' cuts one version per pass from whatever has finished,
+      # 'per_run' one version per newly finished run, 'complete' a single
+      # version once no run of the dataset is still processing.
+      merge_mode = getattr(dataset, 'merge_mode', None) or 'incremental'
+      if first_global and merge_mode == 'complete' and pending_runs:
+        print("Dataset %s merges once all runs finish; %d still processing" % (dataset.name, len(pending_runs)))
+        continue
+      corrective = False
       if latest_version is None:
-        next_version = 0
+        new_jobs, base = list(pool), []
       else:
         latest_version_local_jobs = [j for j in latest_version.jobs if j.task and j.task.scope == 'local']
         latest_local_job_ids = {j.id for j in latest_version_local_jobs}
-        new_jobs = [j for j in global_tasks[key] if j.id not in latest_local_job_ids]
+        new_jobs = [j for j in pool if j.id not in latest_local_job_ids]
+        base = [j for j in pool if j.id in latest_local_job_ids]
         # Additions (new_jobs) roll a new version as runs finish. For the first
         # global task, also roll one when the latest version was built from a run
         # that is no longer tagged into the dataset (e.g. runs were re-tagged
@@ -1257,6 +1465,11 @@ def submit_all_jobs(app):
         # later global tasks (e.g. phenix) key off the version's merge job.
         removed_runs = prev_task.scope != 'global' and \
           any(j.run_id not in current_run_ids for j in latest_version_local_jobs)
+        # Also roll one when a global stage's parameters were edited since the
+        # latest version ran: that version is frozen above, so the new task
+        # needs a version of its own, built from the same local jobs.
+        edited_global_task = prev_task.scope != 'global' and \
+          ran_task_no_longer_in_dataset(latest_version)
         # Note: the new version's local-input set may duplicate that of an older
         # version (e.g. de-tagging C from {A,B,C} reproduces an earlier {A,B}
         # version). This is intentional -- keeping the latest version correct is
@@ -1264,13 +1477,29 @@ def submit_all_jobs(app):
         # version already exists" guard here. Only one corrective version is
         # created: on the next pass latest == the corrected set with no removed
         # runs, so it is not repeated.
-        if new_jobs or removed_runs:
-          next_version = latest_version.version + 1
+        corrective = removed_runs or edited_global_task
 
-      if next_version is not None:
+      # The local job sets of the versions to create now, in order. One version
+      # with everything finished, or, merging after every run, one per new job
+      # in the dataset's run order, each adding that run to what came before.
+      # A correction (a run tagged out, a global stage edited) is one version of
+      # the runs already merged that are still selected; merging after every
+      # run, the new runs then follow one version each rather than riding
+      # along in it.
+      batches = []
+      if new_jobs or corrective:
+        if first_global and merge_mode == 'per_run':
+          run_order = {run.id: i for i, (run, rungroup) in enumerate(runs_rungroups)}
+          ordered = sorted(new_jobs, key=lambda j: run_order.get(j.run_id, len(run_order)))
+          batches = ([base] if corrective and base else []) + [base + ordered[:i+1] for i in range(len(ordered))]
+        else:
+          batches = [pool]
+
+      for batch in batches:
+        next_version = 0 if latest_version is None else latest_version.version + 1
         latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
-        print("Created a new dataset version", next_version, "with jobs", [j.id for j in global_tasks[key]])
-        for job in global_tasks[key]:
+        print("Created a new dataset version", next_version, "with jobs", [j.id for j in batch])
+        for job in batch:
           latest_version.add_job(job)
 
         j = JobFactory.from_args(app,

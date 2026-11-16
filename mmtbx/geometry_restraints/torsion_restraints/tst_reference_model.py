@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx import monomer_library
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
-    reference_model, reference_model_params
+    reference_model, reference_model_params, \
+    add_reference_model_restraints_if_requested
 from mmtbx.geometry_restraints.torsion_restraints import utils
 from mmtbx.validation.rotalyze import rotalyze
 import mmtbx.model
@@ -785,6 +786,62 @@ TER
       "GLN D   6  <=====>  GLN D   6",
       ]:
     assert needed_string in log_strings, "'%s' not in log!" % needed_string
+
+  # Two different reference files: the summary and fix_outliers must use the
+  # file each residue was matched to, not the first file in the list.
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
+                                    source_info=None))
+  model.process(make_restraints=True)
+  pdb_h = model.get_hierarchy()
+  ref_x = pdb_h.select(pdb_h.atom_selection_cache().selection("chain D"))
+  ref_x.only_model().chains()[0].id = "A"
+  ref_x.write_pdb_file(file_name="ref_x.pdb") # GLN A 6 is pt0
+  with open("ref_y.pdb", "w") as f:
+    f.write(pdb_str_ref_minimized) # GLN A 6 is mp10
+  params_text = """\
+  reference_model {
+    enabled = True
+    file = ref_x.pdb
+    file = ref_y.pdb
+    reference_group {
+      reference = chain 'A'
+      selection = chain 'A'
+      file_name = ref_x.pdb
+    }
+    reference_group {
+      reference = chain 'A'
+      selection = chain 'B'
+      file_name = ref_y.pdb
+    }
+  }  """
+  all_pars = def_pars.fetch(iotbx.phil.parse(params_text)).extract()
+  log = StringIO()
+  geometry = model.get_restraints_manager().geometry
+  add_reference_model_restraints_if_requested(
+    model=model,
+    geometry=geometry,
+    params=all_pars.reference_model,
+    log=log)
+  summary = log.getvalue().split("Reference Model Matching Summary:")[1]
+  i_x = summary.find("reference file: ref_x.pdb")
+  i_y = summary.find("reference file: ref_y.pdb")
+  assert 0 <= i_x < i_y, (i_x, i_y, summary)
+  assert "GLN A   6  <=====>  GLN A   6" in summary[i_x:i_y], summary
+  assert "GLN B   6  <=====>  GLN A   6" in summary[i_y:], summary
+  # GLN B 6 is a rotamer outlier, fixed to the rotamer in ref_y.pdb
+  new_h = pdb_h.deep_copy()
+  xray_structure = new_h.extract_xray_structure()
+  geometry.reference_dihedral_manager.set_rotamer_to_reference(
+    xray_structure=xray_structure,
+    log=log)
+  new_h.adopt_xray_structure(xray_structure)
+  rotamers = {}
+  for r in rotalyze(pdb_hierarchy=new_h, outliers_only=False).results:
+    rotamers[(r.chain_id, r.resseq.strip(), r.resname)] = r.rotamer_name
+  assert rotamers[("B", "6", "GLN")] == "mp10", rotamers
+  os.remove("ref_x.pdb")
+  os.remove("ref_y.pdb")
 
 
 

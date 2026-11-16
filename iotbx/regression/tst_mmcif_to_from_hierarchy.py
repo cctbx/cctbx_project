@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import time
 import iotbx.pdb
+import iotbx.cif
 
 # ------------------------------------------------------------------------------
 
@@ -98,6 +99,39 @@ loop_
 
 '''
 
+# label_asym_id of every residue group in mmcif_str, keyed by auth_seq_id.
+# One auth_asym_id (A) is split over six label_asym_ids: two LYS residues
+# in separate label_asym_ids (A, B), a CA ion (C), two 7ZT ligands (D, E)
+# and the waters (F). The reader keeps the two LYS in separate chain objects,
+# so get_label_asym_id() reproduces the split on output.
+expected_label_asym_ids = [
+  ('278', 'A'), ('279', 'B'), ('301', 'C'), ('302', 'D'), ('303', 'E'),
+  ('401', 'F'), ('402', 'F'), ('403', 'F'), ('404', 'F')]
+
+def check_label_asym_ids(h):
+  found = [(rg.resseq.strip(), h.get_label_asym_id(rg))
+    for chain in h.only_model().chains() for rg in chain.residue_groups()]
+  assert found == expected_label_asym_ids, found
+
+def assert_same_cif_items(reference_text, text):
+  """
+  Every data item of reference_text must be present in text with the same
+  values. as_mmcif_string() writes a fixed set of _atom_site columns, e.g. it
+  adds _atom_site.auth_atom_id, which is not in reference_text, so the two
+  texts can not be compared line by line. Extra items in text are ignored.
+  """
+  reference_block = iotbx.cif.reader(input_string=reference_text).model()["phenix"]
+  block = iotbx.cif.reader(input_string=text).model()["phenix"]
+  for key in reference_block.keys():
+    assert key in block, "missing %s" % key
+    reference_values = list(reference_block[key])
+    values = list(block[key])
+    if reference_values != values:
+      print("item: %s" % key)
+      print("reference: %s" % reference_values)
+      print("found    : %s" % values)
+      assert reference_values == values
+
 def test1():
   """
   Test correct reading of mmCIF file with multiple label_asym_id (multiple chains with
@@ -105,13 +139,9 @@ def test1():
   """
   inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
   h = inp.construct_hierarchy()
+  check_label_asym_ids(h)
   text = h.as_mmcif_string()
-  for a,b in zip(mmcif_str.splitlines(),text.splitlines()):
-    if a != b:
-      print("from mmCIF text: %s" %(a))
-      print("From hierarchy : %s" %(b))
-      assert a==b
-  assert text == mmcif_str
+  assert_same_cif_items(mmcif_str, text)
   chains = list(h.overall_counts().chain_ids.keys())
   chains.sort()
   answer = ['A']
@@ -119,30 +149,26 @@ def test1():
   resnames = sorted(h.overall_counts().resnames.keys())
   assert resnames == [' CA', '7ZT', 'HOH', 'LYS'], resnames
 
-  # write as mmCIF string
-  mmcif_text = h.as_mmcif_string()
-
-  new_h = iotbx.pdb.input(lines=mmcif_text.split("\n"), source_info=None).construct_hierarchy()
+  # read back what was written as mmCIF
+  new_h = iotbx.pdb.input(lines=text.split("\n"), source_info=None).construct_hierarchy()
+  check_label_asym_ids(new_h)
   # as PDB:
   for a,b in zip(h.as_pdb_string().splitlines(),new_h.as_pdb_string().splitlines()):
     if a != b:
       print("Original as PDB: %s" %(a))
       print("From CIF as PDB: %s" %(b))
       assert a==b
+  assert h.as_pdb_string() == new_h.as_pdb_string()
   # As mmCIF
   for a,b in zip(h.as_mmcif_string().splitlines(),new_h.as_mmcif_string().splitlines()):
     if a != b:
       print("Original as CIF: %s" %(a))
       print("From CIF as CIF: %s" %(b))
       assert a==b
+  assert h.as_mmcif_string() == new_h.as_mmcif_string()
 
   assert h.is_similar_hierarchy(new_h)
-  for a,b in zip(new_h.as_mmcif_string().splitlines(),mmcif_str.splitlines()):
-    if a != b:
-      print("From hierarchy: %s" %(a))
-      print("Original CIF  : %s" %(b))
-      assert a == b
-  assert new_h.as_mmcif_string() == mmcif_str
+  assert_same_cif_items(mmcif_str, new_h.as_mmcif_string())
 
 
 if (__name__ == "__main__"):

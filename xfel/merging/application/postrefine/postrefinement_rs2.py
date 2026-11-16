@@ -215,7 +215,7 @@ class postrefinement_rs2(postrefinement_rs):
         new_exp_reflections['intensity.sum.value.unmodified'] = exp_reflections_match_results['intensity.sum.value.unmodified']
         new_exp_reflections['intensity.sum.variance.unmodified'] = exp_reflections_match_results['intensity.sum.variance.unmodified']
         for key in self.params.input.persistent_refl_cols:
-          if key not in new_exp_reflections.keys():
+          if key not in new_exp_reflections.keys() and key in exp_reflections_match_results.keys():
             new_exp_reflections[key] = exp_reflections_match_results[key]
         new_exp_reflections["correlation_after_post"] = flex.double(len(new_exp_reflections), SWC_after_post.corr)
         new_reflections.extend(new_exp_reflections)
@@ -313,7 +313,7 @@ class postrefinement_rs2(postrefinement_rs):
     if self.params.output.log_level == 0:
       self.logger.log("CORR: NEW correlation is: %f"%SWC.corr)
       self.logger.log("ASTAR: ")
-      self.logger.log(tuple(self.refinery.get_eff_Astar(values)))
+      self.logger.log(str(tuple(self.refinery.get_eff_Astar(values))))
 
     self.final_corr = SWC.corr
     self.refined_mini = self.MINI

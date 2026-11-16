@@ -421,7 +421,8 @@ class manager(object):
         angle                          = True,
         dihedral                       = True,
         chirality                      = True,
-        planarity                      = True)
+        planarity                      = True,
+        log                            = self.log)
     self.model.set_sites_cart_from_hierarchy()
 
     utils.assert_xray_structures_equal(

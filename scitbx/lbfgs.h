@@ -256,8 +256,6 @@ namespace lbfgs {
     {
       protected:
         int infoc;
-        bool gradient_only;
-        bool line_search;
         FloatType dginit;
         bool brackt;
         bool stage1;
@@ -273,7 +271,6 @@ namespace lbfgs {
         FloatType sty;
         FloatType fy;
         FloatType dgy;
-        std::vector<FloatType> gy;
         FloatType stmin;
         FloatType stmax;
 
@@ -380,11 +377,10 @@ namespace lbfgs {
            @param wa Temporary storage array, of length <code>n</code>.
          */
         void run(
-          bool gradient_only,
-          bool line_search,
           FloatType const& gtol,
           FloatType const& stpmin,
           FloatType const& stpmax,
+          bool accept_at_stpmax,
           SizeType n,
           FloatType* x,
           FloatType f,
@@ -473,26 +469,14 @@ namespace lbfgs {
           FloatType stpmin,
           FloatType stpmax);
 
-        //---> Insertion starts
-        static int mcstep_g(
-         SizeType& n,
-         FloatType* const& sx,
-         FloatType* const& gx,
-         FloatType& stp,
-         FloatType* const& gp,
-         bool& brackt,
-         FloatType stpmin,
-         FloatType stpmax);
-         //<--- Insertion ends
     };
 
     template <typename FloatType, typename SizeType>
     void mcsrch<FloatType, SizeType>::run(
-      bool gradient_only,
-      bool line_search,
       FloatType const& gtol,
       FloatType const& stpmin,
       FloatType const& stpmax,
+      bool accept_at_stpmax,
       SizeType n,
       FloatType* x,
       FloatType f,
@@ -526,7 +510,7 @@ namespace lbfgs {
         for (SizeType j = 0; j < n; j++) {
           dginit += g[j] * s[is0+j];
         }
-        if (dginit >= FloatType(0) && !gradient_only) {
+        if (dginit >= FloatType(0)) {
           throw error_search_direction_not_descent();
         }
         brackt = false;
@@ -559,29 +543,6 @@ namespace lbfgs {
       }
       for (;;) {
         if (info != -1) {
-          //---> Insertion starts
-          if (gradient_only){
-            FloatType dr_max=0.0;
-            SizeType m = n/3;
-            for (SizeType i=0; i<m; i++){
-              FloatType dr=0.0;
-              SizeType j = 3*i;
-              dr = sx[j]*sx[j];
-              dr = dr + sx[j+1]*sx[j+1];
-              dr = dr + sx[j+2]*sx[j+2];
-              if(dr_max<dr){
-                dr_max = dr;
-              }
-            }
-            dr_max = std::sqrt(dr_max);
-            if (abs(dr_max*stp) > stpmax) {
-              stp = stpmax/dr_max;
-            }
-            else if (abs(dr_max*stp) < FloatType(0.0001)) {
-              stp = FloatType(0.0001)/dr_max;
-            }
-          }
-          //<--- Insertion ends
           // Set the minimum and maximum steps to correspond
           // to the present interval of uncertainty.
           if (brackt) {
@@ -619,15 +580,7 @@ namespace lbfgs {
         }
         FloatType ftest1 = finit + stp*dgtest;
         // Check for termination.
-        //---> Insertion starts
-        if (gradient_only) {
-          if (!line_search || nfev==2 || ((abs(dg) <= gtol * (-dginit)))) {
-            info = 1;
-            break;
-          }
-        }
-        //<--- Insertion ends
-        else {
+        {
           // Test for convergence.
           if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0) {
             throw error_line_search_failed_rounding_errors(
@@ -637,6 +590,12 @@ namespace lbfgs {
               " Tolerances may be too small.");
           }
           if (stp == stpmax && f <= ftest1 && dg <= dgtest) {
+            if (accept_at_stpmax) {
+              // stpmax is the max_shift cap of the minimizer, not a
+              // failure: the step at the cap is accepted.
+              info = 1;
+              break;
+            }
             throw error_line_search_failed(
               "The step is at the upper bound stpmax().");
           }
@@ -660,24 +619,11 @@ namespace lbfgs {
         }
         // In the first stage we seek a step for which the modified
         // function has a nonpositive value and nonnegative derivative.
-        if (   stage1 && (f <= ftest1 || gradient_only)
+        if (   stage1 && f <= ftest1
             && dg >= std::min(ftol, gtol) * dginit) {
           stage1 = false;
         }
-        //---> Insertion starts
-        if (gradient_only) {
-          gy = std::vector<FloatType>(n);
-          for (SizeType j = 0; j < n; j++) {
-            gy[j] = g[j];
-          }
-          FloatType* const& const_gy = &(gy[0]);
-          FloatType* const& const_gx = &(gx[0]);
-          FloatType* const& const_sx = &(sx[0]);
-          infoc = mcstep_g(n,  const_sx, const_gx, stp,  const_gy,
-                        brackt, stmin, stpmax);
-         }
-         //<--- Insertion ends
-        else{
+        {
           // A modified function is used to predict the step only if
           // we have not obtained a step for which the modified
           // function has a nonpositive function value and nonnegative
@@ -900,45 +846,163 @@ namespace lbfgs {
     }
 
     // gradient_only line search
-    //---> Insertion starts
+    //! Gradient-only line search (no function values).
+    /*! Accepts a step when the strong curvature condition
+        |g(x+stp s).s| <= gtol |g(x).s| holds. An overshoot (positive
+        directional derivative) is bracketed and the secant zero of the
+        derivative is tried, kept inside the middle 80 % of the bracket;
+        an undershoot doubles the step up to stpmax (a step at stpmax
+        is accepted). No point is evaluated twice. After maxfev
+        evaluations the evaluated point with the smallest |derivative|
+        is taken, re-evaluated when it is not the last one so that the
+        caller's gradient belongs to x. With line_search false the first
+        trial point is accepted. Reverse communication as mcsrch: info
+        -1 requests the gradient at x; info 1 means done with x at stp.
+     */
     template <typename FloatType, typename SizeType>
-    int mcsrch<FloatType, SizeType>::mcstep_g(
-      SizeType& n,
-      FloatType* const& sx,
-      FloatType* const& gx,
-      FloatType& stp,
-      FloatType* const& gp,
-      bool& brackt,
-      FloatType stpmin,
-      FloatType stpmax)
+    class gradient_only_line_search
     {
-      int info = 5;
-      brackt = false;
-      FloatType sxnorm = std::sqrt(ddot(SizeType(n), sx, sx));
-      std::vector<FloatType> pk(n);
-      std::vector<FloatType> a_sum(n);
-      std::vector<FloatType> akm1(n);
-      for (SizeType i=0; i < n; i++) {
-        pk[i] = sx[i]/sxnorm;
-        akm1[i] = -gx[i]/sxnorm;
-        a_sum[i] = akm1[i] - gp[i]/sxnorm;
-      }
-      FloatType* const& a_sum_c = &(a_sum[0]);
-      FloatType* const& akm1_c = &(akm1[0]);
-      FloatType* const& pk_c = &(pk[0]);
-      FloatType dfk = -0.5*ddot(SizeType(n), pk_c, a_sum_c);
-      FloatType rho = -1.0*ddot(SizeType(n), pk_c, akm1_c);
-      if (abs(dfk - rho) < 1e-5){
-       rho = -(dfk - rho);
-      }
-      FloatType theta = -rho / (dfk - rho);
-      if ((dfk < 0) && (theta < 0)){
-        theta = -theta;
-      }
-      stp = theta / 2.0;
-      return info;
-    }
-    //<--- Insertion ends
+      protected:
+        FloatType d0;
+        FloatType stp_lo;
+        FloatType d_lo;
+        FloatType stp_hi;
+        FloatType d_hi;
+        bool has_hi;
+        FloatType best_stp;
+        FloatType best_abs_d;
+        bool final_eval;
+        std::vector<FloatType> x0;
+        std::vector<FloatType> evaluated;
+
+        static FloatType derivative(
+          SizeType n, const FloatType* g, const FloatType* s, SizeType is0)
+        {
+          FloatType d = FloatType(0);
+          for (SizeType j = 0; j < n; j++) d += g[j] * s[is0+j];
+          return d;
+        }
+
+        void set_x(
+          SizeType n, FloatType* x, const FloatType* s, SizeType is0,
+          FloatType stp) const
+        {
+          for (SizeType j = 0; j < n; j++) x[j] = x0[j] + stp * s[is0+j];
+        }
+
+        FloatType secant() const
+        {
+          FloatType w = stp_hi - stp_lo;
+          FloatType t = stp_lo + w * (-d_lo) / (d_hi - d_lo);
+          FloatType a = stp_lo + FloatType(0.1) * w;
+          FloatType b = stp_hi - FloatType(0.1) * w;
+          if (t < a) t = a;
+          if (t > b) t = b;
+          return t;
+        }
+
+        static bool same_step(FloatType a, FloatType b)
+        {
+          return std::fabs(a - b) <= FloatType(1.e-10) * std::max(a, b);
+        }
+
+      public:
+        void run(
+          FloatType gtol,
+          FloatType stpmax,
+          bool line_search,
+          SizeType maxfev,
+          SizeType n,
+          FloatType* x,
+          const FloatType* g,
+          const FloatType* s,
+          SizeType is0,
+          FloatType& stp,
+          int& info,
+          SizeType& nfev)
+        {
+          if (info != -1) {
+            d0 = derivative(n, g, s, is0);
+            if (d0 >= FloatType(0) || stp <= FloatType(0) || maxfev == 0) {
+              throw error_internal_error(__FILE__, __LINE__);
+            }
+            stp_lo = FloatType(0);
+            d_lo = d0;
+            has_hi = false;
+            best_abs_d = std::fabs(d0);
+            best_stp = FloatType(0);
+            final_eval = false;
+            x0.assign(x, x+n);
+            evaluated.clear();
+            nfev = 0;
+            if (stp > stpmax) stp = stpmax;
+            set_x(n, x, s, is0, stp);
+            evaluated.push_back(stp);
+            nfev++;
+            info = -1;
+            return;
+          }
+          if (final_eval) {
+            info = 1;
+            return;
+          }
+          FloatType d = derivative(n, g, s, is0);
+          if (std::fabs(d) < best_abs_d) {
+            best_abs_d = std::fabs(d);
+            best_stp = stp;
+          }
+          if (!line_search || std::fabs(d) <= gtol * std::fabs(d0)) {
+            info = 1;
+            return;
+          }
+          FloatType next;
+          if (d > FloatType(0)) {
+            stp_hi = stp;
+            d_hi = d;
+            has_hi = true;
+            next = secant();
+          }
+          else {
+            stp_lo = stp;
+            d_lo = d;
+            if (has_hi) {
+              next = secant();
+            }
+            else {
+              next = FloatType(2) * stp;
+              if (next > stpmax) next = stpmax;
+            }
+          }
+          if (same_step(next, stp)) {
+            info = 1;
+            return;
+          }
+          bool seen = false;
+          for (std::size_t k = 0; k < evaluated.size(); k++) {
+            if (same_step(next, evaluated[k])) seen = true;
+          }
+          if (seen || nfev >= maxfev) {
+            if (best_stp == FloatType(0) || same_step(best_stp, stp)) {
+              // No trial point reduced |d| (non-smooth or noisy target):
+              // keep the last point rather than a zero step, the pair
+              // guard of the caller judges its curvature.
+              info = 1;
+              return;
+            }
+            stp = best_stp;
+            set_x(n, x, s, is0, stp);
+            final_eval = true;
+            nfev++;
+            info = -1;
+            return;
+          }
+          stp = next;
+          set_x(n, x, s, is0, stp);
+          evaluated.push_back(stp);
+          nfev++;
+          info = -1;
+        }
+    };
   } // namespace detail
 
   //! Interface to the LBFGS %minimizer.
@@ -1002,6 +1066,8 @@ namespace lbfgs {
       : n_(0), m_(0), maxfev_(0),
         gtol_(0), xtol_(0),
         stpmin_(0), stpmax_(0),
+        max_shift_(0), first_step_max_shift_(0),
+        stpmax_eff_(0), accept_at_stpmax_(false),
         ispt(0), iypt(0)
       {}
 
@@ -1048,6 +1114,17 @@ namespace lbfgs {
             unless the exponent is too large for the machine being used,
             or unless the problem is extremely badly scaled (in which
             case the exponent should be increased).
+
+          @param max_shift bounds the largest shift of any atom
+            (consecutive triplet of x; single coordinate when n is not
+            a multiple of 3) within one line search: the step is
+            bounded by max_shift / largest_shift(direction), and a
+            step at that bound is accepted. 0 (the default) means no
+            bound.
+
+          @param first_step_max_shift largest atom shift of the first
+            trial step of the first iteration in gradient-only mode.
+            0 (the default) keeps the step 1/|g|.
        */
       explicit
       minimizer(
@@ -1057,12 +1134,17 @@ namespace lbfgs {
         FloatType gtol = FloatType(0.9),
         FloatType xtol = FloatType(1.e-16),
         FloatType stpmin = FloatType(1.e-20),
-        FloatType stpmax = FloatType(1.e20))
+        FloatType stpmax = FloatType(1.e20),
+        FloatType max_shift = FloatType(0),
+        FloatType first_step_max_shift = FloatType(0))
         : n_(n), m_(m), maxfev_(maxfev),
           gtol_(gtol), xtol_(xtol),
           stpmin_(stpmin), stpmax_(stpmax),
+          max_shift_(max_shift),
+          first_step_max_shift_(first_step_max_shift),
+          stpmax_eff_(stpmax), accept_at_stpmax_(false),
           iflag_(0), requests_f_and_g_(false), requests_diag_(false),
-          iter_(0), nfun_(0), stp_(0),
+          iter_(0), nfun_(0), n_pairs_(0), stp_(0),
           stp1(0), ftol(0.0001), ys(0), point(0), npt(0),
           ispt(n+2*m), iypt((n+2*m)+n*m),
           info(0), bound(0), nfev(0)
@@ -1087,6 +1169,12 @@ namespace lbfgs {
         }
         if (stpmax_ < stpmin) {
           throw error_improper_input_parameter("stpmax < stpmin");
+        }
+        if (max_shift_ < FloatType(0)) {
+          throw error_improper_input_parameter("max_shift < 0.");
+        }
+        if (first_step_max_shift_ < FloatType(0)) {
+          throw error_improper_input_parameter("first_step_max_shift < 0.");
         }
         w_.resize(n_*(2*m_+1)+2*m_);
         scratch_array_.resize(n_);
@@ -1120,6 +1208,37 @@ namespace lbfgs {
           (as passed to the constructor).
        */
       FloatType stpmax() const { return stpmax_; }
+
+      /*! \brief Largest shift of any atom in one line search
+          (as passed to the constructor; 0: no bound).
+       */
+      FloatType max_shift() const { return max_shift_; }
+
+      /*! \brief Largest atom shift of the first trial step in
+          gradient-only mode (as passed to the constructor; 0: 1/|g|).
+       */
+      FloatType first_step_max_shift() const { return first_step_max_shift_; }
+
+      /*! \brief Largest Euclidean norm over the consecutive triplets of
+          p (the atoms), or the largest |p_i| when n is not a multiple
+          of 3.
+       */
+      static FloatType largest_shift(SizeType n, const FloatType* p)
+      {
+        FloatType result = FloatType(0);
+        if (n % 3 == 0) {
+          for (SizeType i = 0; i < n; i += 3) {
+            FloatType d = p[i]*p[i] + p[i+1]*p[i+1] + p[i+2]*p[i+2];
+            if (d > result) result = d;
+          }
+          return std::sqrt(result);
+        }
+        for (SizeType i = 0; i < n; i++) {
+          FloatType d = std::fabs(p[i]);
+          if (d > result) result = d;
+        }
+        return result;
+      }
 
       //! Status indicator for reverse communication.
       /*! <code>true</code> if the run() function returns to request
@@ -1159,6 +1278,11 @@ namespace lbfgs {
           See also: iter()
        */
       SizeType nfun() const { return nfun_; }
+
+      /*! \brief Number of curvature pairs (s, y) kept, at most m().
+          In gradient-only mode a pair with s.y <= 0 is not kept.
+       */
+      SizeType n_pairs() const { return n_pairs_; }
 
       //! Norm of gradient given gradient array of length n().
       FloatType euclidean_norm(const FloatType* a) const {
@@ -1293,6 +1417,7 @@ namespace lbfgs {
         const FloatType* diag);
 
       detail::mcsrch<FloatType, SizeType> mcsrch_instance;
+      detail::gradient_only_line_search<FloatType, SizeType> gols_instance;
       const SizeType n_;
       const SizeType m_;
       const SizeType maxfev_;
@@ -1300,11 +1425,16 @@ namespace lbfgs {
       const FloatType xtol_;
       const FloatType stpmin_;
       const FloatType stpmax_;
+      const FloatType max_shift_;
+      const FloatType first_step_max_shift_;
+      FloatType stpmax_eff_;
+      bool accept_at_stpmax_;
       int iflag_;
       bool requests_f_and_g_;
       bool requests_diag_;
       SizeType iter_;
       SizeType nfun_;
+      SizeType n_pairs_;
       FloatType stp_;
       FloatType stp1;
       FloatType ftol;
@@ -1361,11 +1491,10 @@ namespace lbfgs {
       execute_entire_while_loop = true;
     }
     if (execute_entire_while_loop) {
-      bound = iter_;
+      bound = n_pairs_;
       iter_++;
       info = 0;
-      if (iter_ != 1) {
-        if (iter_ > m_) bound = m_;
+      if (n_pairs_ != 0) {
         ys = detail::ddot(
           n_, w, iypt + npt, SizeType(1), w, ispt + npt, SizeType(1));
         if (!diagco) {
@@ -1382,7 +1511,15 @@ namespace lbfgs {
       }
     }
     if (execute_entire_while_loop || iflag_ == 2) {
-      if (iter_ != 1) {
+      if (n_pairs_ == 0 && iter_ != 1) {
+        // No pair kept (gradient-only mode after a reset): steepest
+        // descent scaled by the user diagonal if any, as in the first
+        // iteration.
+        for (SizeType i = 0; i < n_; i++) {
+          w[ispt + point * n_ + i] = -g[i] * (diag ? diag[i] : FloatType(1));
+        }
+      }
+      if (n_pairs_ != 0) {
         if (diag == 0) {
           throw error_internal_error(__FILE__, __LINE__);
         }
@@ -1429,13 +1566,57 @@ namespace lbfgs {
       }
       stp_ = FloatType(1);
       if (iter_ == 1) stp_ = stp1;
+      if (gradient_only) {
+        FloatType* dir = w + ispt + point * n_;
+        if (detail::ddot(n_, g, g) == FloatType(0)) {
+          return false; // zero gradient after a step: converged
+        }
+        if (detail::ddot(n_, g, dir) >= FloatType(0)) {
+          // Not a descent direction: drop the pairs, steepest descent
+          // scaled by the user diagonal if any.
+          n_pairs_ = 0;
+          for (SizeType i = 0; i < n_; i++) {
+            dir[i] = -g[i] * (diag ? diag[i] : FloatType(1));
+          }
+        }
+        if (n_pairs_ == 0) {
+          // First trial step of the minimization (or after a reset):
+          // a fixed largest atom shift, or 1/|g|.
+          FloatType dr = largest_shift(n_, dir);
+          FloatType gnorm = std::sqrt(detail::ddot(n_, g, g));
+          if (first_step_max_shift_ > FloatType(0) && dr > FloatType(0)) {
+            stp_ = first_step_max_shift_ / dr;
+          }
+          else if (gnorm > FloatType(0)) {
+            stp_ = FloatType(1) / gnorm;
+          }
+        }
+      }
       std::copy(g, g+n_, w);
     }
-    //---> Insertion starts
-    mcsrch_instance.run(
-      gradient_only, line_search, gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
-      stp_, ftol, xtol_, maxfev_, info, nfev, &(*(scratch_array_.begin())));
-    //<--- Insertion ends
+    if (info != -1) {
+      // A new line search: bound the step by the max_shift cap.
+      stpmax_eff_ = stpmax_;
+      accept_at_stpmax_ = false;
+      if (max_shift_ > FloatType(0)) {
+        FloatType dr = largest_shift(n_, w + ispt + point * n_);
+        if (dr > FloatType(0) && max_shift_ / dr < stpmax_eff_) {
+          stpmax_eff_ = std::max(max_shift_ / dr, stpmin_);
+          accept_at_stpmax_ = true;
+        }
+      }
+    }
+    if (gradient_only) {
+      gols_instance.run(
+        gtol_, stpmax_eff_, line_search, maxfev_, n_, x, g, w,
+        ispt + point * n_, stp_, info, nfev);
+    }
+    else {
+      mcsrch_instance.run(
+        gtol_, stpmin_, stpmax_eff_, accept_at_stpmax_, n_, x, f, g, w,
+        ispt + point * n_, stp_, ftol, xtol_, maxfev_, info, nfev,
+        &(*(scratch_array_.begin())));
+    }
     if (info == -1) {
       iflag_ = 1;
       requests_f_and_g_ = true;
@@ -1445,13 +1626,27 @@ namespace lbfgs {
       throw error_internal_error(__FILE__, __LINE__);
     }
     nfun_ += nfev;
-    npt = point*n_;
+    SizeType slot = point*n_;
     for (SizeType i = 0; i < n_; i++) {
-      w[ispt + npt + i] = stp_ * w[ispt + npt + i];
-      w[iypt + npt + i] = g[i] - w[i];
+      w[ispt + slot + i] = stp_ * w[ispt + slot + i];
+      w[iypt + slot + i] = g[i] - w[i];
     }
+    if (gradient_only) {
+      // Keep the pair only with positive curvature.
+      FloatType sy = detail::ddot(
+        n_, w, ispt + slot, SizeType(1), w, iypt + slot, SizeType(1));
+      FloatType ss = detail::ddot(
+        n_, w, ispt + slot, SizeType(1), w, ispt + slot, SizeType(1));
+      FloatType yy = detail::ddot(
+        n_, w, iypt + slot, SizeType(1), w, iypt + slot, SizeType(1));
+      if (sy <= FloatType(1.e-10) * std::sqrt(ss * yy)) {
+        return false;
+      }
+    }
+    npt = slot;
     point++;
     if (point == m_) point = 0;
+    if (n_pairs_ < m_) n_pairs_++;
     return false;
   }
 

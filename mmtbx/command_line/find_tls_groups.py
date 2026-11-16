@@ -6,6 +6,7 @@ from mmtbx.tls import tools
 from mmtbx.refinement import print_statistics
 import mmtbx.secondary_structure
 import iotbx.pdb
+import iotbx.phil
 from scitbx.array_family import flex
 import scitbx.linalg
 import libtbx.phil
@@ -14,7 +15,6 @@ from libtbx import Auto
 from copy import deepcopy
 from six.moves import cStringIO as StringIO
 import random
-import os
 import time
 import sys
 import six
@@ -583,33 +583,21 @@ Usage:
   if(len(args) == 0):
     print(default_message)
     return
-  cmdline_phil = []
-  for arg in args :
-    if os.path.isfile(arg):
-      if iotbx.pdb.is_pdb_file(arg) or iotbx.pdb.is_pdb_mmcif_file(arg):
-        pdb_phil = libtbx.phil.parse("pdb_file=%s" % os.path.abspath(arg))
-        cmdline_phil.append(pdb_phil)
-      else:
-        try: file_phil = libtbx.phil.parse(file_name=arg)
-        except Exception: raise Sorry("Bad parameter file: %s"%arg)
-        cmdline_phil.append(file_phil)
-    else:
-      try: arg_phil = libtbx.phil.parse(arg)
-      except Exception: raise Sorry("Bad parameter: %s"%arg)
-      cmdline_phil.append(arg_phil)
-  working_phil = master_phil.fetch(sources=cmdline_phil)
-  params = working_phil.extract()
+  cmdline = iotbx.phil.process_command_line_with_files(
+    args=args,
+    master_phil=master_phil,
+    pdb_file_def="pdb_file")
+  params = cmdline.work.extract()
   # XXX params.pdb_file is not used anymore. Maybe should be removed.
   pdb_file_name = params.pdb_file
-  if ((pdb_file_name is None) or
-      (not iotbx.pdb.is_pdb_file(pdb_file_name) and
-          not iotbx.pdb.is_pdb_mmcif_file(pdb_file_name))):
+  if (pdb_file_name is None):
     print("A model file is required.")
     return
   if (params.nproc is None):
     params.nproc = 1
-  pdb_inp = iotbx.pdb.input(file_name=pdb_file_name)
-  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  pdb_in = cmdline.get_file(pdb_file_name, force_type="pdb").file_object
+  pdb_inp = pdb_in.input
+  pdb_hierarchy = pdb_in.hierarchy
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
   #

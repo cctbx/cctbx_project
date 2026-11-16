@@ -10,9 +10,12 @@ workflow: rules of engagement, which guideline files to
 attach and when, and checklists for the human side of
 the process.
 
-All prompt files live in `docs/prompts/`. The small ones
-are reproduced in full throughout this document so you
-can read the guide without opening anything else.
+All prompt files live in `docs/prompts/`; the two
+programming guidelines (`CCTBX_LLM_PROGRAMMING_GUIDELINES.md`
+and `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md`) live one
+level up, in `docs/`. The small ones are reproduced in
+full throughout this document so you can read the
+guide without opening anything else.
 
 ---
 
@@ -24,7 +27,8 @@ in detail in Parts 1 and 2.
 
 1. **Gather your materials.** You need the code files
    to be changed, a description of the task, and the
-   prompt files from `docs/prompts/`.
+   prompt files from `docs/prompts/`, plus the
+   programming guidelines from `docs/`.
 
 2. **Open a new LLM session.** Attach as files:
    `CCTBX_LLM_PROGRAMMING_GUIDELINES.md`, `WORKFLOW.md`,
@@ -843,7 +847,8 @@ sure you are holding up your end.
 
 ## Appendix A: File Reference
 
-All files live in `docs/prompts/`.
+These files live in `docs/prompts/`, except the two
+programming guidelines, which live in `docs/`.
 
 **Attach as files** — these are large reference
 documents. Do NOT paste their contents into the chat;
@@ -855,7 +860,7 @@ less room for your actual code.
 | `CCTBX_LLM_PROGRAMMING_GUIDELINES.md` | ~650 lines | Coding standards, cctbx patterns, pitfalls, checklist | **Every** session |
 | `WORKFLOW.md` | ~250 lines | Checkpoint rules, plan format, interruption protocol | **Every** session |
 | `ARCHITECTURE.md` | varies | System structure, module responsibilities, data flow, design constraints | **Every** session (if you have one). See §1.11. |
-| `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md` | ~310 lines | Agent-specific patterns: imports, state persistence, error systems | Only when working on **agent code** |
+| `AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md` | ~800 lines | Agent-specific patterns: imports, state persistence, error systems | Only when working on **agent code** |
 
 **Paste into chat** — these are short prompts you type
 or paste at specific moments during a session. They are

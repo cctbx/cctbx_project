@@ -50,7 +50,7 @@ def _load_is_stop_after_requested():
         break
   if not path or not os.path.isfile(path):
     return None
-  src = open(path).read()
+  src = open(path, encoding="utf-8").read()
   try:
     start = src.index("_POSITIVE_STOP_AFTER_PATTERNS = (")
     end = src.index("def _resolve_after_program")

@@ -59,7 +59,7 @@ of individual sites.
           rc = random.choice(range(len(result)))
           if rc not in random_chunks:
             random_chunks.append(rc)
-    self.msg_strings.append("random chunks:"%random_chunks)
+    self.msg_strings.append("random chunks: %s"%str(random_chunks))
     # setup refinery
     xrs_dc = xray_structure.deep_copy_scatterers()
     sel_all = flex.bool(xrs_dc.scatterers().size(), True)
@@ -104,11 +104,12 @@ of individual sites.
           str(chunk), ro.weight_optimal))
       if(ro.weight_optimal is not None):
         optimal_weights.append(ro.weight_optimal)
-    # select overall best weight
+    # select overall best weight: mean of the lower half of the estimates.
     sel = flex.sort_permutation(optimal_weights)
     optimal_weights = optimal_weights.select(sel)
+    n_lowest = max(1, optimal_weights.size()//2)
     self.weight = flex.mean_default(
-      optimal_weights[:optimal_weights.size()//2], default_weight)
+      optimal_weights[:n_lowest], default_weight)
     #mean = flex.mean(optimal_weights)
     #sel  = optimal_weights < mean*3
     #sel &= optimal_weights > mean/3

@@ -1,9 +1,10 @@
 from __future__ import absolute_import, division, print_function, with_statement
 
+import shlex
 import subprocess
 
 from libtbx.queuing_system_utils.processing import errors
-from libtbx.utils import to_bytes, to_str
+
 
 class Submission(object):
   """
@@ -39,7 +40,7 @@ class Synchronous(Submission):
 
   SCRIPT = \
 """\
-source %s
+. %s
 %s << EOF
 %s
 EOF
@@ -48,7 +49,8 @@ EOF
   def __call__(self, name, executable, script, include, cleanup):
 
     ( process, outfile, errfile ) = self.create( name = name )
-    process.stdin.write( self.SCRIPT % ( include, executable, script ) )
+    process.stdin.write(
+      self.SCRIPT % ( shlex.quote( include ), executable, script ) )
     process.stdin.close()
 
     from libtbx.queuing_system_utils.processing import status
@@ -131,7 +133,7 @@ class AsynchronousCmdLine(Submission):
     ( process, outfile, errfile ) = self.create( name = name )
 
     ( out, err ) = process.communicate(
-      input = to_bytes(self.handler.script( include = include, executable = executable, script = script, cwd = self.cwd ))
+      input = self.handler.script( include = include, executable = executable, script = script, cwd = self.cwd )
       )
 
     if process.poll():
@@ -336,6 +338,8 @@ def execute(args):
       stdin = subprocess.PIPE,
       stdout = subprocess.PIPE,
       stderr = subprocess.PIPE,
+      encoding = "utf-8",
+      errors = "replace",
       )
 
   except OSError as e:
@@ -371,7 +375,7 @@ def condor_jobid_extract(output):
 
 def slurm_jobid_extract(output):
 
-  match = SLURM_JOBID_EXTRACT_REGEX().search( to_str(output) )
+  match = SLURM_JOBID_EXTRACT_REGEX().search( output )
 
   if not match:
     raise errors.ExtractionError("Unexpected response from Slurm: %r" % output)

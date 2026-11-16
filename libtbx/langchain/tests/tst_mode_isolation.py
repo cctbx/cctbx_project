@@ -122,7 +122,7 @@ def ok(name, condition, detail=""):
 
 
 def function_body(path, name):
-    lines = open(path, errors="replace").read().split("\n")
+    lines = open(path, errors="replace", encoding="utf-8").read().split("\n")
     start = None
     for i, line in enumerate(lines):
         if line.startswith("def %s(" % name):
@@ -146,7 +146,7 @@ def reaches(path, entry):
     having been true on the day it was written.
     """
     import ast
-    tree = ast.parse(open(path, errors="replace").read())
+    tree = ast.parse(open(path, errors="replace", encoding="utf-8").read())
     funcs = {n.name: n for n in ast.walk(tree)
              if isinstance(n, ast.FunctionDef)}
     seen = set()
@@ -247,7 +247,7 @@ def t_no_blocking_summary_gate_remains(run_ai_analysis):
     are distinguished rather than lumped together.
     """
     import ast
-    src = open(run_ai_analysis, errors="replace").read()
+    src = open(run_ai_analysis, errors="replace", encoding="utf-8").read()
     tree = ast.parse(src)
     funcs = {n.name: n for n in ast.walk(tree)
              if isinstance(n, ast.FunctionDef)}
@@ -299,7 +299,7 @@ def t_no_database_gate_blocks_the_report_path(ai_analysis, run_ai):
     after another edit in the same file.
     """
     import ast
-    src = open(ai_analysis, errors="replace").read()
+    src = open(ai_analysis, errors="replace", encoding="utf-8").read()
 
     ok("'standard' is treated as an LLM-only mode",
        re.search(r"_LLM_ONLY_MODES\s*=\s*\{[^}]*'standard'", src,
@@ -324,8 +324,8 @@ def t_no_database_gate_blocks_the_report_path(ai_analysis, run_ai):
     # guarded by a database error. Grepping for the strings I happened
     # to write is error class 3, which has already produced three false
     # failures in this package.
-    run_tree = ast.parse(open(run_ai, errors="replace").read())
-    run_src = open(run_ai, errors="replace").read()
+    run_tree = ast.parse(open(run_ai, errors="replace", encoding="utf-8").read())
+    run_src = open(run_ai, errors="replace", encoding="utf-8").read()
     aborts = []
     for node in ast.walk(run_tree):
         if not (isinstance(node, ast.FunctionDef) and node.name == "run"):

@@ -21,8 +21,8 @@ PDB = os.path.join(
 ROOT = iotbx.pdb.input( PDB ).construct_hierarchy( sort_atoms = False )
 ATOMS = ROOT.atoms()
 
-from mmtbx.geometry import sphere_surface_sampling
-SAMPLING_POINTS = sphere_surface_sampling.golden_spiral( count = 960 )
+from scitbx.math import golden_spiral
+SAMPLING_POINTS = golden_spiral( count = 960 )
 
 from cctbx.eltbx import van_der_waals_radii
 TABLE = van_der_waals_radii.vdw.table
@@ -115,8 +115,8 @@ class TestTransformation(unittest.TestCase):
 
   def test_range(self):
 
-    from mmtbx.geometry import sphere_surface_sampling
-    sampling = sphere_surface_sampling.golden_spiral( count = 960 )
+    from scitbx.math import golden_spiral
+    sampling = golden_spiral( count = 960 )
     transformed = asa.accessibility.transform(
       range = sampling.points,
       transformation = self.transformation,
@@ -129,8 +129,8 @@ class TestTransformation(unittest.TestCase):
 
   def get_transformed_points(self):
 
-    from mmtbx.geometry import sphere_surface_sampling
-    sampling = sphere_surface_sampling.golden_spiral( count = 5 )
+    from scitbx.math import golden_spiral
+    sampling = golden_spiral( count = 5 )
     return (
       list( sampling.points ),
       asa.accessibility.transform(

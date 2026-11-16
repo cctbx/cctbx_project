@@ -1620,7 +1620,11 @@ def _call_thinking_llm(state, system_msg, user_msg):
     else:
       response = llm.invoke(messages)
 
-    return response.content
+    try:
+      from libtbx.langchain.core.llm import response_text
+    except ImportError:
+      from core.llm import response_text
+    return response_text(response)
 
   except ImportError:
     # Missing packages (standalone testing) — degrade silently

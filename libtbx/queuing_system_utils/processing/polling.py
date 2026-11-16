@@ -96,7 +96,9 @@ class SinglePoller(object):
       process = subprocess.Popen(
         self.command + [ jobid ],
         stdout = subprocess.PIPE,
-        stderr = subprocess.PIPE
+        stderr = subprocess.PIPE,
+        encoding = "utf-8",
+        errors = "replace",
         )
 
     except OSError as e:
@@ -161,7 +163,9 @@ class CentralPoller(object):
       process = subprocess.Popen(
         self.command,
         stdout = subprocess.PIPE,
-        stderr = subprocess.PIPE
+        stderr = subprocess.PIPE,
+        encoding = "utf-8",
+        errors = "replace",
         )
 
     except OSError as e:

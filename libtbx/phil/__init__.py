@@ -2218,6 +2218,12 @@ def read_default(
     process_includes=process_includes)
 
 def process_command_line(args, master_string, parse=None):
+  """Parse PHIL arguments; see libtbx.phil.command_line.process.
+
+  Legacy: do not use in new code. New programs subclass
+  libtbx.program_template.ProgramTemplate and run through
+  iotbx.cli_parser.run_program.
+  """
   from libtbx.phil import command_line
   return command_line.process(
     args=args, master_string=master_string, parse=parse)

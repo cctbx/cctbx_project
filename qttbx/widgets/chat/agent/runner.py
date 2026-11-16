@@ -202,7 +202,7 @@ class QtAgentRunner(QtCore.QObject):
 
     First persists any remember='tool' choice on the GUI thread --
     ``session.record_approval_remember`` (API backends) and
-    ``agent.submit_approval`` (claude_code) -- BEFORE resolving, so a click
+    ``agent.submit_approval`` (claude_agent) -- BEFORE resolving, so a click
     that races a cancel still records "always allow". Then resolves the
     decision through the session's ApprovalCoordinator, but only while a turn
     is in flight: a late click after the turn ended is dropped (the is_busy
@@ -219,7 +219,7 @@ class QtAgentRunner(QtCore.QObject):
     handled = False
     if self.is_busy():
       # A live turn: persist any remember='tool' on the GUI thread BEFORE the
-      # coordinator resolves (API backends via the session, claude_code via
+      # coordinator resolves (API backends via the session, claude_agent via
       # agent.submit_approval), so a click racing a cancel still records "always
       # allow", then resolve. An idle click on a stale card records NOTHING and
       # is dropped -- it must not grant a standing session auto-approve for a
@@ -228,7 +228,7 @@ class QtAgentRunner(QtCore.QObject):
       self.session.agent.submit_approval(response)
       handled = self.session.approvals.submit(response)
     # A deny_and_stop cancels the in-flight turn -- but only when this response
-    # belongs to it: the agent owned it (claude_code's can_use_tool callback),
+    # belongs to it: the agent owned it (claude_agent's can_use_tool callback),
     # or it answers the approval the session worker is parked on. A stale card's
     # stop from an abandoned earlier turn must NOT cancel an unrelated later
     # turn (the same hazard cancel()'s is_busy() guard addresses).
@@ -239,13 +239,13 @@ class QtAgentRunner(QtCore.QObject):
   def submit_question_answer(self, request_id, answers):
     """Route the user's answers to whoever asked the question.
 
-    Tries ``agent.submit_question_answer`` first: the Claude Code backend
+    Tries ``agent.submit_question_answer`` first: the claude_agent backend
     runs its own loop and owns its own ask-user futures, so it resolves
     them itself. The API backends inherit the ``Agent`` base default
     (returns ``False``) and so fall through to the session's
     ``submit_question_answer`` -- the path a ``phenix_ask_user_question``
     builtin parks on. Every backend exposes the ``Agent`` contract (the API
-    backends subclass it; claude_code duck-types it), so the method is always
+    backends subclass it; claude_agent duck-types it), so the method is always
     present (a direct call, mirroring ``submit_approval`` above).
 
     Must be called from the GUI thread.

@@ -3,7 +3,7 @@ import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import format_cpu_times
 from iotbx.regression.ncs.tst_ncs import pdb_str_5
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 
 
 def exercise_merge():
@@ -19,7 +19,7 @@ def exercise_merge():
   try:
     ab.merge_other_model(b)
     raise AssertionError("Failed to fail in duplicate merge")
-  except Exception as e:
+  except Sorry:
     pass # ok
 
 def run():

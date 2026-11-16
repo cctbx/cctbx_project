@@ -3,10 +3,8 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.utils import get_atom_selections
 import mmtbx.utils
 from cctbx.array_family import flex
-from scitbx import lbfgs
 from libtbx.str_utils import format_value, make_sub_header
 from libtbx.utils import Sorry, null_out
-from libtbx import adopt_init_args
 from six.moves import range
 
 class manager(object):
@@ -52,44 +50,29 @@ class manager(object):
         occ_max   = occupancy_max,
         occ_min   = occupancy_min,
         selection = i_selection)
-      xray_structure_dc = fmodels.fmodel_xray().xray_structure.\
-        deep_copy_scatterers()
+      occupancies = fmodels.fmodel_xray().xray_structure.scatterers(
+        ).extract_occupancies()
       par_initial = flex.double()
-      occupancies = xray_structure_dc.scatterers().extract_occupancies()
-      constrained_groups_selections = []
-      group_counter = 0
       for sel in selections:
-        ss = []
         for sel_ in sel:
-          ss.append(group_counter)
-          group_counter += 1
-          val = flex.mean(occupancies.select(sel_))
-          par_initial.append(val)
-        constrained_groups_selections.append(ss)
-      minimized = None
+          par_initial.append(flex.mean(occupancies.select(sel_)))
       n_iterations_total, n_fun_total = 0, 0
       for macro_cycle in range(number_of_macro_cycles):
-        if(minimized is not None): par_initial = minimized.par_min
         minimized = minimizer(
-          fmodels                       = fmodels,
-          selections                    = selections,
-          constrained_groups_selections = constrained_groups_selections,
-          par_initial                   = par_initial,
-          max_number_of_iterations      = max_number_of_iterations)
-        mm = getattr(minimized, "minimizer", None)
-        if(mm is not None):
-          n_iterations_total += mm.iter()
-          n_fun_total        += mm.nfun()
-        if(minimized is not None): par_initial = minimized.par_min
-        set_refinable_parameters(
-          xray_structure     = fmodels.fmodel_xray().xray_structure,
-          parameters         = par_initial,
-          selections         = selections,
-          enforce_positivity = (occupancy_min>=0))
-        fmodels.fmodel_xray().xray_structure.adjust_occupancy(
-          occ_max   = occupancy_max,
-          occ_min   = occupancy_min,
-          selection = i_selection)
+          fmodels                  = fmodels,
+          selections               = selections,
+          par_initial              = par_initial,
+          max_number_of_iterations = max_number_of_iterations,
+          occupancy_min            = occupancy_min,
+          occupancy_max            = occupancy_max)
+        par_initial = minimized.par_min
+        n_iterations_total += minimized.n_iterations
+        n_fun_total        += minimized.n_fun
+      # Constrained groups are bounded by 0 and 1 in minimization.
+      fmodels.fmodel_xray().xray_structure.adjust_occupancy(
+        occ_max   = occupancy_max,
+        occ_min   = occupancy_min,
+        selection = i_selection)
       xray_structure_final = fmodels.fmodel_xray().xray_structure
       model.set_xray_structure(xray_structure_final)
       fmodels.update_xray_structure(xray_structure = xray_structure_final,
@@ -131,116 +114,238 @@ class manager(object):
     print(p1+" "*(79-len(p1+p2))+p2, file=log)
 
 class minimizer(object):
+  """
+  Minimize the data target with respect to occupancies using L-BFGS-B.
+
+  Atoms of one selection share one occupancy, q. A constrained group of one
+  selection has one parameter, x = q, bounded by occupancy_min and
+  occupancy_max. Occupancies of a constrained group of n > 1 selections add
+  up to one; the group has n-1 parameters, each bounded by 0 and 1:
+  q1 = x1, q2 = (1-x1)*x2, ..., qn = (1-x1)*...*(1-x(n-1)). This way box
+  bounds on x keep all q of the group between 0 and 1.
+
+  Structure factors are a sum over atoms, so only the contribution of
+  selected atoms is recalculated in minimization (not with twinning or joint
+  X-ray and neutron refinement). For this sum to be equal to structure
+  factors calculated from all atoms at once, sampling of atoms in FFT
+  calculations is fixed by the structure the minimization starts with.
+
+  Parameters
+  ----------
+  fmodels : mmtbx.fmodels
+      Occupancy gradient flags of the scatterers must be set for the
+      selected atoms.
+  selections : list of list of flex.size_t
+      Constrained groups, each a list of atom selections.
+  par_initial : flex.double
+      Starting occupancy for each selection, in the order of selections.
+  max_number_of_iterations : int
+      Zero means no minimization.
+  occupancy_min, occupancy_max : float
+      Bounds for occupancies of constrained groups of one selection.
+
+  Attributes
+  ----------
+  par_min : flex.double
+      Refined occupancy for each selection.
+  n_iterations, n_fun : int
+      Number of iterations and of target evaluations.
+  """
   def __init__(self,
                fmodels,
-               constrained_groups_selections,
                selections,
                par_initial,
-               max_number_of_iterations):
-    adopt_init_args(self, locals())
+               max_number_of_iterations,
+               occupancy_min = 0,
+               occupancy_max = 1):
+    self.fmodels = fmodels
     self.fmodels.create_target_functors()
     self.fmodels.prepare_target_functors_for_minimization()
     from mmtbx.refinement import weights
     self.weights = weights.weights(wx = 1, wx_scale = 1, w = 0)
-    self.par_min = self.par_initial.deep_copy()
-    self.x = self.pack(self.par_min)
-    self.n = self.x.size()
-    self.minimizer = lbfgs.run(
-    target_evaluator = self,
-    termination_params = lbfgs.termination_parameters(
-      max_iterations = max_number_of_iterations),
-    exception_handling_params = lbfgs.exception_handling_parameters(
-      ignore_line_search_failed_step_at_lower_bound = True,
-      ignore_line_search_failed_step_at_upper_bound = True))
-    self.compute_functional_and_gradients()
-    del self.x
+    self.group_sizes = []
+    self.i_selection = flex.size_t() # all selected atoms
+    self.i_q = flex.size_t()         # index of q for each selected atom
+    self.q_ranges = []               # range in i_selection for each q
+    lower, upper = flex.double(), flex.double()
+    for sel in selections:
+      self.group_sizes.append(len(sel))
+      for sel_ in sel:
+        start = self.i_selection.size()
+        self.i_selection.extend(sel_)
+        self.i_q.extend(flex.size_t(sel_.size(), len(self.q_ranges)))
+        self.q_ranges.append((start, self.i_selection.size()))
+      if(len(sel) == 1):
+        lower.append(occupancy_min)
+        upper.append(occupancy_max)
+      else:
+        lower.extend(flex.double(len(sel)-1, 0))
+        upper.extend(flex.double(len(sel)-1, 1))
+    fmodel = self.fmodels.fmodel_xray()
+    self.occupancies = fmodel.xray_structure.scatterers(
+      ).extract_occupancies()
+    self.f_calc_fixed = None # from atoms that are not selected
+    if(self.fmodels.fmodel_neutron() is None and fmodel.twin_law is None and
+       fmodel.sfg_params.algorithm in ["fft", "direct"]):
+      import cctbx.xray.structure_factors
+      p = fmodel.sfg_params
+      self.sf_managers = []
+      for manager_type, miller_set in [
+            (cctbx.xray.structure_factors.from_scatterers, fmodel.f_obs()),
+            (cctbx.xray.structure_factors.gradients, fmodel.f_obs_work())]:
+        manager = manager_type(
+          miller_set                   = miller_set,
+          cos_sin_table                = p.cos_sin_table,
+          grid_resolution_factor       = p.grid_resolution_factor,
+          quality_factor               = p.quality_factor,
+          u_base                       = p.u_base,
+          b_base                       = p.b_base,
+          wing_cutoff                  = p.wing_cutoff,
+          exp_table_one_over_step_size = p.exp_table_one_over_step_size)
+        manager.fix_sampling(xray_structure = fmodel.xray_structure)
+        self.sf_managers.append(manager)
+      xray_structure_fixed = fmodel.xray_structure.deep_copy_scatterers()
+      xray_structure_fixed.set_occupancies(0, self.i_selection)
+      self.f_calc_fixed = self.f_calc(xray_structure = xray_structure_fixed)
+    self.x = self.q_as_x(q = par_initial)
+    for i in range(self.x.size()):
+      self.x[i] = min(upper[i], max(lower[i], self.x[i]))
+    self.x_current = None # parameters the structure factors correspond to
+    self.n_fun = 0
+    self.n_iterations = 0
+    # L-BFGS-B stops on absolute changes of a target that is less than one.
+    self.target_scale = None
+    self.occupancy_small = 0.01
+    if(max_number_of_iterations > 0):
+      from scitbx import lbfgsb
+      n = self.x.size()
+      m = lbfgsb.run(
+        target_evaluator = self,
+        bound_flags      = flex.int(n, 2),
+        lower_bound      = lower,
+        upper_bound      = upper,
+        n                = n,
+        max_iterations   = max_number_of_iterations)
+      self.n_iterations = m.n_iteration()
+    self.par_min = self.x_as_q(x = self.x)
+    if(self.x_current is None or not self.x_current.all_eq(self.x)):
+      self.set_occupancies(q = self.par_min)
 
-  def pack(self, par):
-    return pack_unpack(x = par, table = self.constrained_groups_selections)
+  def q_as_x(self, q):
+    x = flex.double()
+    i = 0
+    for n in self.group_sizes:
+      if(n == 1):
+        x.append(q[i])
+      else:
+        rest = 1.
+        for k in range(n-1):
+          if(rest > 1.e-6): x.append(min(1., max(0., q[i+k]/rest)))
+          else:             x.append(0.5)
+          rest -= q[i+k]
+      i += n
+    return x
 
-  def unpack_x(self):
-    self.par_min = pack_unpack(x = self.x,
-      table = self.constrained_groups_selections)
+  def x_as_q(self, x):
+    q = flex.double()
+    j = 0
+    for n in self.group_sizes:
+      if(n == 1):
+        q.append(x[j])
+        j += 1
+      else:
+        rest = 1.
+        for k in range(n-1):
+          q.append(rest*x[j])
+          rest *= (1-x[j])
+          j += 1
+        q.append(rest)
+    return q
+
+  def gradients_wrt_x(self, x, gq):
+    result = flex.double()
+    i, j = 0, 0
+    for n in self.group_sizes:
+      if(n == 1):
+        result.append(gq[i])
+      else:
+        # v[k]: derivative wrt the part of the group left for selections k,
+        # k+1, ..., n-1, per unit of that part.
+        v = [0]*n
+        v[n-1] = gq[i+n-1]
+        for k in range(n-2, -1, -1):
+          v[k] = x[j+k]*gq[i+k] + (1-x[j+k])*v[k+1]
+        rest = 1.
+        for k in range(n-1):
+          result.append(rest*(gq[i+k]-v[k+1]))
+          rest *= (1-x[j+k])
+      i += n
+      j += max(1, n-1)
+    return result
+
+  def f_calc(self, xray_structure):
+    fmodel = self.fmodels.fmodel_xray()
+    return self.sf_managers[0](
+      xray_structure = xray_structure,
+      miller_set     = fmodel.f_obs(),
+      algorithm      = fmodel.sfg_params.algorithm).f_calc()
+
+  def set_occupancies(self, q):
+    self.occupancies.set_selected(self.i_selection, q.select(self.i_q))
+    fmodel = self.fmodels.fmodel_xray()
+    fmodel.xray_structure.scatterers().set_occupancies(self.occupancies)
+    if(self.f_calc_fixed is None):
+      self.fmodels.update_xray_structure(update_f_calc = True)
+    else:
+      f_calc = self.f_calc(
+        xray_structure = fmodel.xray_structure.select(self.i_selection))
+      fmodel.update(f_calc = f_calc.customized_copy(
+        data = f_calc.data() + self.f_calc_fixed.data()))
 
   def compute_functional_and_gradients(self):
-    self.unpack_x()
-    set_refinable_parameters(
-      xray_structure = self.fmodels.fmodel_xray().xray_structure,
-      parameters     = self.par_min,
-      selections     = self.selections)
-    self.fmodels.update_xray_structure(update_f_calc = True)
-    fmodels_target_and_gradients = self.fmodels.target_and_gradients(
-      weights           = self.weights,
-      compute_gradients = True,
-      occupancy         = True)
-    self.f = fmodels_target_and_gradients.target()
-    g =  fmodels_target_and_gradients.gradients()
-    # do group grads first then pack for constraints
-    grads_wrt_par = flex.double()
-    for sel in self.selections:
-      for sel_ in sel:
-        grads_wrt_par.append(flex.sum( g.select(sel_) ))
-    # now apply constraints
-    self.g = pack_gradients(x = grads_wrt_par,
-      table = self.constrained_groups_selections)
-    return self.f, self.g
-
-def set_refinable_parameters(xray_structure, parameters, selections,
-                             enforce_positivity=False):
-  # XXX PVA: Code below is terribly inefficient and MUST be moved into C++
-  sz = xray_structure.scatterers().size()
-  i = 0
-  for sel in selections:
-    # pre-check for positivity begin
-    # spread negative occupancies across i_seqs having positive ones
-    par_all = flex.double()
-    par_neg = flex.double()
-    i_p = i
-    for sel_ in sel:
-      p = parameters[i_p]
-      par_all.append(p)
-      if(p<0): par_neg.append(p)
-      i_p += 1
-    if(enforce_positivity and par_neg.size()>0):
-      par_all = par_all - flex.min(par_all)
-      fs = flex.sum(par_all)
-      if(fs != 0):
-        par_all = par_all / fs
-    # pre-check for positivity end
-    for j, sel_ in enumerate(sel):
-      sel__b = flex.bool(sz, flex.size_t(sel_))
-      xray_structure.set_occupancies(par_all[j], sel__b)
-      i+=1
-
-def pack_unpack(x, table):
-  result = x.deep_copy()
-  for indices in table :
-    if (len(indices) == 1):
-      i0 = indices[0]
-      result[i0] = x[i0]
-    else :
-      xsum = 0
-      for i in indices[0:-1] :
-        result[i] = x[i]
-        xsum += x[i]
-      result[indices[-1]] = 1. - xsum
-  return result
-
-def pack_gradients(x, table):
-  result = flex.double(x.size(), 0)
-  for indices in table :
-    if(len(indices) == 1):
-      i0 = indices[0]
-      result[i0] = x[i0]
-    elif(len(indices) == 2):
-      i0,i1 = indices
-      result[i0] = x[i0] - x[i1]
-      result[i1] =-x[i1] # ??? zero or this value?
-    else :
-      for i in indices[0:-1] :
-        result[i] = x[i] - x[indices[-1]]
-      result[indices[-1]] = 0
-  return result
+    q = self.x_as_q(x = self.x)
+    self.set_occupancies(q = q)
+    self.x_current = self.x.deep_copy()
+    # The derivative of a structure factor wrt occupancy does not depend on
+    # occupancy, but the FFT calculation gives zero for an atom with zero
+    # occupancy: such an atom would stay at the lower bound forever. So
+    # gradients are calculated with occupancies that are not too small.
+    scatterers = self.fmodels.fmodel_xray().xray_structure.scatterers()
+    small = q < self.occupancy_small
+    if(small.count(True) > 0):
+      q_g = q.deep_copy().set_selected(small, self.occupancy_small)
+      scatterers.set_occupancies(self.occupancies.deep_copy().set_selected(
+        self.i_selection, q_g.select(self.i_q)))
+    if(self.f_calc_fixed is None):
+      t_g = self.fmodels.target_and_gradients(
+        weights           = self.weights,
+        compute_gradients = True,
+        occupancy         = True)
+      f = t_g.target()
+      g = t_g.gradients().select(self.i_selection)
+    else:
+      t_g = self.fmodels.target_functor_result_xray(compute_gradients = True)
+      f = t_g.target_work()
+      fmodel = self.fmodels.fmodel_xray()
+      d_target_d_f_calc = t_g.d_target_d_f_calc_work()
+      g = self.sf_managers[1](
+        xray_structure         = fmodel.xray_structure.select(self.i_selection),
+        u_iso_refinable_params = None,
+        miller_set             = d_target_d_f_calc,
+        d_target_d_f_calc      = d_target_d_f_calc.data(),
+        n_parameters           = 0,
+        algorithm              = fmodel.sfg_params.algorithm
+        ).d_target_d_occupancy()
+    scatterers.set_occupancies(self.occupancies)
+    gq = flex.double()
+    for start, end in self.q_ranges:
+      gq.append(flex.sum(g[start:end]))
+    self.n_fun += 1
+    if(self.target_scale is None):
+      self.target_scale = 1
+      if(f > 0): self.target_scale = 1/f
+    gx = self.gradients_wrt_x(x = self.x, gq = gq)
+    return self.x, f*self.target_scale, gx*self.target_scale
 
 #-----------------------------------------------------------------------
 # SELECTION HANDLING
@@ -455,6 +560,12 @@ def occupancy_selections(
           cg_sel.append(list(sel))
       if(len(cg_sel) > 0):
         result.append(cg_sel)
+  # capping H (occupancy 0, not part of the deposited model) are never refined:
+  # not as members of their conformer's constrained group, not as partial
+  # occupancies, not as members of the user's selections
+  result = mmtbx.utils.remove_selections(selection = result,
+    other = model.selection('capping_h').iselection(),
+    size = model.get_number_of_atoms())
 
   if (constrain_correlated_3d_groups) and (len(result) > 0):
       result = assemble_constraint_groups_3d(

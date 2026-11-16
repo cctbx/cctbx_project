@@ -292,34 +292,53 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, extraAtomInfo, probeRad, N, 
     :param nonHydrogenN: When neither the original atom nor the bonded atom is a Hydrogen,
     limit the depth to this value (if this value is less than N).
     :returns a list of all atoms that are bonded to atom within a depth of N.  The original
+    atom is never on the list.  Implemented in C++ (atomsWithinNBonds() in ContactDB.h).
+  """
+  return probeExt.getAtomsWithinNBonds(atom, bondedNeighborLists, extraAtomInfo, probeRad, N, nonHydrogenN)
+
+def getAtomsWithinNBondsAtAnyDistance(atom, bondedNeighborLists, extraAtomInfo, N, nonHydrogenN = 1e10):
+  """
+    getAtomsWithinNBonds() without its distance condition: the atoms within N bonds of
+    the specified atom, in compatible conformations, wherever they are.
+    getAtomsWithinNBonds() keeps a bonded atom only if it is close enough to touch at the
+    current coordinates, which holds for atoms that do not move. For an atom that moves
+    after the list is made (an atom of a Mover), the distance at the current pose does not
+    hold for its other poses, so the list must not depend on it; an atom that never comes
+    close enough to touch is never scored against, so excluding it changes no score.
+    :param atom: The atom to be tested.
+    :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
+    each atom in a set of atoms, as for getAtomsWithinNBonds().
+    :param extraAtomInfo: mmtbx_probe_ext.ExtraAtomInfo mapper; used only to find Phantom
+    Hydrogens, which are bonded to their parent Oxygen only (a depth of one).
+    :param N: Depth of recursion, as for getAtomsWithinNBonds().
+    :param nonHydrogenN: When neither the original atom nor the bonded atom is a Hydrogen,
+    limit the depth to this value (if this value is less than N).
+    :returns a list of all atoms that are bonded to atom within a depth of N, in the order
+    getAtomsWithinNBonds() would list them without its distance condition.  The original
     atom is never on the list.
   """
-  aLoc = atom.xyz
-  aRad = extraAtomInfo.getMappingFor(atom).vdwRadius
-  atomIsHydrogen = atom.element_is_hydrogen()
+  def blank(a):
+    ag = a.parent()
+    return ag is None or ag.altloc in ['', ' ']
   if extraAtomInfo.getMappingFor(atom).isDummyHydrogen:
-    # Only ever allow a Phantom Hydrogen to be bonded to its parent Oxygen
     N = 1
-  # Find all atoms to the specified depth
-  atoms = {atom}            # Initialize the set with the atom itself
-  for i in range(N):        # Repeat the recursion this many times
-    current = list(atoms)   # Make a copy so we're not modifying the list we are traversing
-    for a in current:       # Add all neighbors of all atoms in the current level
-      for n in bondedNeighborLists[a]:
-        # If we find a hydrogen, we no longer use the non-Hydrogen N limit.
-        if i < nonHydrogenN or atomIsHydrogen or n.element_is_hydrogen():
-          # Ensure that the new atom is in a compatible conformation with the original atom.
-          if compatibleConformations(atom, n):
-            # Ensure that the atom is not too far away from the original atom.
-            nLoc = n.xyz
-            nRad = extraAtomInfo.getMappingFor(n).vdwRadius
-            d = (rvec3(nLoc) - rvec3(aLoc)).length()
-            if d <= aRad + nRad + 2 * probeRad:
-              atoms.add(n)
-
-  # Remove the original atom from the result and turn the result into a list.
-  atoms.discard(atom)
-  return list(atoms)
+  atomIsHydrogen = atom.element_is_hydrogen()
+  # The same walk as atomsWithinNBonds() in ContactDB.h: each level expands every atom
+  # found so far, so the result has the same order.
+  # Atoms hash and compare by memory_id(), as the C++ compares atom data.
+  found = [atom]
+  seen = set([atom])
+  for i in range(N):
+    levelSize = len(found)
+    for k in range(levelSize):
+      for n in bondedNeighborLists[found[k]]:
+        if n in seen:
+          continue
+        if ((i < nonHydrogenN or atomIsHydrogen or n.element_is_hydrogen()) and
+            (blank(atom) or blank(n) or atom.parent().altloc == n.parent().altloc)):
+          found.append(n)
+          seen.add(n)
+  return found[1:]
 
 def isPolarHydrogen(atom, bondedNeighborLists):
   '''
@@ -714,7 +733,7 @@ def getPhantomHydrogensFor(largestISeq, atom, spatialQuery, extraAtomInfo, minOc
     # before we consider possible Hs.
     overlap = ( (rvec3(atom.xyz) - rvec3(a.xyz)).length()  -
                 (placedHydrogenRadius + extraAtomInfo.getMappingFor(a).vdwRadius + placedHydrogenDistance) )
-    if overlap <= -0.1 and a.occ >= minOccupancy and a.element != "H":
+    if overlap <= -0.1 and a.occ >= minOccupancy and not a.element_is_hydrogen():
       if not acceptorOnly or extraAtomInfo.getMappingFor(a).isAcceptor:
         # If we have multiple atoms in the same Aromatic ring (part of the same residue)
         # we only point at the closest one.  To ensure this, we check all current candidates
@@ -1259,6 +1278,18 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, extraInfo, smallRadius, N))
     assert count == nestedNeighborsForN4Small[N], ("Helpers.Test(): Nested small-radius count for "+N4.name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN4Small[N]))
+
+  # getAtomsWithinNBondsAtAnyDistance() lists what getAtomsWithinNBonds() lists when no
+  # atom is too far, in the same order, whatever the distances.
+  for a in (N4, H41):
+    for N in range(1,7):
+      for nonHydrogenN in (3, 1e10):
+        expected = [x.i_seq for x in getAtomsWithinNBonds(a, bondedNeighborLists, extraInfo,
+          hugeRadius, N, nonHydrogenN)]
+        found = [x.i_seq for x in getAtomsWithinNBondsAtAnyDistance(a, bondedNeighborLists,
+          extraInfo, N, nonHydrogenN)]
+        assert found == expected, ("Helpers.Test(): getAtomsWithinNBondsAtAnyDistance() for "+
+          a.name.strip()+" for N = "+str(N)+" gave "+str(found)+", expected "+str(expected))
 
   # Test with Phantom Hydrogens to ensure we don't see more than just the nearest atom.
   # @todo

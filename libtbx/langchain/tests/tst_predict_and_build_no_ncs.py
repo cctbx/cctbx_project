@@ -58,7 +58,7 @@ def _load_programs_yaml():
     for path in candidates:
         if os.path.exists(path):
             try:
-                with open(path) as f:
+                with open(path, encoding="utf-8") as f:
                     return yaml.safe_load(f), None
             except Exception as e:
                 return None, "Error loading %s: %s" % (path, e)

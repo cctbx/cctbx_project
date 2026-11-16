@@ -443,11 +443,17 @@ class geometry(object):
       from cctbx.geometry_restraints.linking_class import linking_class
       origin_ids = linking_class()
       result += '%s\n%s\n%sDetails of bonding type rmsd/Z' % (prefix, prefix, prefix)
+      fr = self.from_restraints
       for key, i in origin_ids.items():
-        bond_rc=self.bond(origin_id=-i)
-        angle_rc=self.angle(origin_id=-i)
-        bond_z_rc=self.bond(origin_id=-i, return_rmsZ=True)
-        angle_z_rc=self.angle(origin_id=-i, return_rmsZ=True)
+        if fr is None: continue
+        # deviations only: self.bond()/self.angle() also sort all proxies for
+        # outliers, ~3 s per call of show() for 6500 atoms
+        mi, ma, me, n = fr.bond_deviations(origin_id=-i)
+        bond_rc = group_args(mean=me, n=n)
+        mi, ma, me, n = fr.angle_deviations(origin_id=-i)
+        angle_rc = group_args(mean=me, n=n)
+        bond_z_rc = group_args(mean=fr.bond_deviations_z(origin_id=-i)[2])
+        angle_z_rc = group_args(mean=fr.angle_deviations_z(origin_id=-i)[2])
         if bond_rc.n:
           result += '\n%s  %-20s : bond   %12.5f / %5.2f (%5d)' % (prefix,
                                                            key,

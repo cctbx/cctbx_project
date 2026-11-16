@@ -18,18 +18,76 @@ from scitbx.matrix import col, dihedral_angle, rotate_point_around_axis
 import sys
 from scitbx.array_family import flex
 from libtbx import group_args
+from libtbx.utils import Sorry
 
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from mmtbx.validation import cbd_utils
+from mmtbx.validation import cbd_mahalanobis
 import json
+import math
 
 relevant_atom_names = {
   " CA ": None, " N  ": None, " C  ": None, " CB ": None} # FUTURE: set
 
+def project_onto_x(length, angle, degrees=False):
+  """Project a vector given by (length, angle) onto the x-axis.
+
+  Returns the signed scalar projection (the x component).
+  """
+  if degrees:
+    angle = math.radians(angle)
+  return length * math.cos(angle)
+
+_cb_in_main_chain_cache = {}
+
+def cb_in_main_chain(resname):
+  """True if CB is part of the N-C main chain, as in beta- and gamma-amino
+  acids (BAL: N-CB-CA-C, B3A: N-CA-CB-C). Alpha-amino acids have both N-CA
+  and CA-C bonds in the chemical components. Residues without a chemical
+  components entry are assumed to be alpha-amino acids.
+  """
+  rc = _cb_in_main_chain_cache.get(resname, None)
+  if rc is not None: return rc
+  rc = False
+  from iotbx.pdb import common_residue_names_get_class
+  if common_residue_names_get_class(resname) != "common_amino_acid":
+    from mmtbx.chemical_components import is_code, get_bond_pairs
+    if is_code(resname):
+      bonds = get_bond_pairs(resname, use_tuple=True)
+      rc = not (("CA", "N") in bonds and ("C", "CA") in bonds)
+  _cb_in_main_chain_cache[resname] = rc
+  return rc
+
+ca_flat_volume = 1.0 # Angstrom**3
+
+def classify_ca_chirality(resname, chiral_volume):
+  """'flat' if CB is close to the N-CA-C plane, 'inverted' if CA has the
+  wrong hand for the residue name, otherwise None. The chiral volume
+  (CA, N, CB, C) is about -2.5 A**3 for L-amino acids. The hand of other
+  nonstandard residues isn't known, so they can only be flat.
+  """
+  if chiral_volume is None: return None
+  if abs(chiral_volume) < ca_flat_volume: return "flat"
+  from iotbx.pdb import common_residue_names_get_class
+  res_class = common_residue_names_get_class(resname)
+  if res_class == "common_amino_acid" and chiral_volume > 0: return "inverted"
+  if res_class == "d_amino_acid" and chiral_volume < 0: return "inverted"
+  return None
+
 def get_phi_psi_dict(pdb_hierarchy):
+  return dict((k, v[0]) for k, v in get_phi_psi_next_dict(pdb_hierarchy).items())
+
+def get_phi_psi_next_dict(pdb_hierarchy):
+  """{id_str: (phi_psi, next_resname)}; the next residue picks the pre-PRO
+  correction tables."""
   rc = {}
+  # include modified and D-amino acids so their neighbours get phi/psi;
+  # modified residues are only corrected themselves with
+  # use_parent_for_modified_residues and D-amino acids never are
   for i, three in enumerate(generate_protein_threes(hierarchy=pdb_hierarchy,
-                                                    geometry=None)):
+                                                    geometry=None,
+                                                    include_non_standard_peptides=True,
+                                                    include_d_amino_acids=True)):
     phi_psi_angles = three.get_phi_psi_angles()
     is_alt_conf = ' '
     relevant_atoms = {}
@@ -39,7 +97,7 @@ def get_phi_psi_dict(pdb_hierarchy):
           is_alt_conf = atom.parent().altloc
           break
     id_str = '|%s:%s|' % (three[1].id_str(), is_alt_conf)
-    rc[id_str] = phi_psi_angles
+    rc[id_str] = (phi_psi_angles, three[2].resname)
   return rc
 
 class cbeta(residue):
@@ -50,7 +108,8 @@ class cbeta(residue):
     "deviation",
     "dihedral_NABB",
     "ideal_xyz",
-    "model_id"
+    "model_id",
+    "mahalanobis_d",
   ]
   __slots__ = residue.__slots__ + __cbeta_attr__
 
@@ -62,10 +121,14 @@ class cbeta(residue):
     return "%-20s  %5.2f" % (self.id_str(), self.deviation)
 
   # Backwards compatibility
-  def format_old(self):
-    return "%s:%s:%2s:%4s%1s:%7.3f:%7.2f:%7.2f:%s:" % (self.altloc,
+  def format_old(self, show_mahalanobis=False):
+    outl = "%s:%s:%2s:%4s%1s:%7.3f:%7.2f:%7.2f:%s:" % (self.altloc,
       self.resname.lower(), self.chain_id, self.resseq, self.icode,
       self.deviation, self.dihedral_NABB, self.occupancy, self.altloc)
+    if show_mahalanobis:
+      if self.mahalanobis_d is None: outl += "%7s:" % "n/a"
+      else: outl += "%7.2f:" % self.mahalanobis_d
+    return outl
 
   def as_kinemage(self):
     key = "cb %3s%2s%4s%1s  %.3f %.2f" % (self.resname.lower(),
@@ -116,7 +179,10 @@ class cbeta(residue):
 
 class cbetadev(validation):
   __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats",
-                                      'percent_outliers', 'new_outliers', 'outliers_removed']
+                                      'percent_outliers', 'new_outliers', 'outliers_removed',
+                                      'deviations', 'mahalanobis', 'ca_chirality',
+                                      'phi_psi_correction',
+                                      'phi_psi_correction_region']
   program_description = "Analyze protein sidechain C-beta deviation"
   output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
   gui_list_headers = ["Chain", "Residue","Deviation","Angle"]
@@ -130,10 +196,22 @@ class cbetadev(validation):
       out=sys.stdout,
       collect_ideal=False,
       apply_phi_psi_correction=False,
+      phi_psi_correction_strength=None,
       display_phi_psi_correction=False,
+      use_parent_for_modified_residues=False,
       exclude_d_peptides=False,
-      quiet=False):
+      mahalanobis_z_score=False,
+      mahalanobis_cutoff=4.,
+      show_deviation_stats=False,
+      plot_deviation_histogram=False,
+      quiet=False,
+      phi_psi_correction_region='all'):
     validation.__init__(self)
+    if phi_psi_correction_region not in ('all', 'positive'):
+      raise Sorry('phi_psi_correction_region must be all or positive, not %s'
+                  % phi_psi_correction_region)
+    self.phi_psi_correction_region = phi_psi_correction_region
+    positive_only = (phi_psi_correction_region == 'positive')
     self._outlier_i_seqs = flex.size_t()
     self.beta_ideal = {}
     output_list = []
@@ -141,19 +219,28 @@ class cbetadev(validation):
                             n_weighted_results = 0,
                             n_weighted_outliers = 0)
     total_residues = 0
-    new_outliers = None
-    outliers_removed = None
-    if apply_phi_psi_correction:
-      phi_psi_angles = get_phi_psi_dict(pdb_hierarchy)
-      new_outliers = 0
-      outliers_removed = 0
+    new_outliers=[]
+    outliers_removed=[]
+    self.deviations = []
+    histogram_deviations = []
+    self.mahalanobis = None
+    # [model id, chain id, resname, resid, altloc, chiral volume, kind, dev]
+    self.ca_chirality = []
+    mahalanobis_pending = [] # [result, residual, model id, include]
+    if apply_phi_psi_correction or mahalanobis_z_score:
+      phi_psi_next = get_phi_psi_next_dict(pdb_hierarchy)
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
+    self.phi_psi_correction = None
+    if apply_phi_psi_correction:
+      self.phi_psi_correction = {}
     for model in pdb_hierarchy.models():
       if model.id not in self.n_total_by_model:
         self.n_total_by_model[model.id] = 0
         self.n_outliers_by_model[model.id] = 0
+      # first pass: uncorrected deviations and the residues' table vectors
+      records = []
       for chain in model.chains():
         if use_segids:
           chain_id = utils.get_segid_as_chainid(chain=chain)
@@ -163,6 +250,8 @@ class cbetadev(validation):
           for i_cf,cf in enumerate(rg.conformers()):
             for i_residue,residue in enumerate(cf.residues()):
               if (residue.resname == "GLY"):
+                continue
+              if cb_in_main_chain(residue.resname):
                 continue
               is_first = (i_cf == 0)
               is_alt_conf = False
@@ -178,8 +267,10 @@ class cbetadev(validation):
                   resname=residue.resname)
                 dev = result.deviation
                 dihedralNABB = result.dihedral
-                betaxyz = result.ideal
                 if (dev is None) : continue
+                if show_deviation_stats:
+                  self.deviations.append(project_onto_x(dev, dihedralNABB-45, degrees=True))
+                  assert abs(self.deviations[-1])<=dev, print(dev,dihedralNABB,self.deviations[-1])
                 resCB = relevant_atoms[" CB "]
                 self.stats.n_results += 1
                 self.n_total_by_model[model.id] += 1
@@ -189,63 +280,160 @@ class cbetadev(validation):
                 else:
                   altchar = " "
                 total_residues+=1
-                if apply_phi_psi_correction:
+                kind = classify_ca_chirality(residue.resname,
+                                             result.chiral_volume)
+                if kind:
+                  self.ca_chirality.append([model.id, chain_id,
+                    residue.resname, residue.resid(), altchar,
+                    result.chiral_volume, kind, dev])
+                phi_psi = residual = correction = None
+                if apply_phi_psi_correction or mahalanobis_z_score:
                   id_str = '|%s:%s|' % (residue.id_str(), altchar)
-                  phi_psi = phi_psi_angles.get(id_str, None)
-                  if phi_psi:
-                    rc = cbd_utils.get_phi_psi_correction(
-                      result,
-                      residue,
-                      phi_psi,
-                      display_phi_psi_correction=display_phi_psi_correction,
-                      )
-                    if rc:
-                      dev, dihedralNABB, start, finish = rc
-                      # if start or finish: print(id_str,dev,dihedralNABB,start,finish)
-                      if start and not finish:
-                        outliers_removed += 1
-                      elif not start and finish:
-                        new_outliers += 1
-                if(exclude_d_peptides and dev>=2.):
-                  pass
-                elif(dev >=0.25 or outliers_only==False):
-                  if(dev >=0.25):
-                    self.n_outliers+=1
-                    self.n_outliers_by_model[model.id]+=1
-                    self.stats.n_weighted_outliers += resCB.occ
-                    self._outlier_i_seqs.append(atom.i_seq)
-                  res=residue.resname.lower()
-                  sub=chain.id
-                  if(len(sub)==1):
-                    sub=" "+sub
-                  result = cbeta(
-                    model_id=model.id,
-                    chain_id=chain_id,
-                    resname=residue.resname,
-                    resseq=residue.resseq,
-                    icode=residue.icode,
-                    altloc=altchar,
-                    xyz=resCB.xyz,
-                    occupancy=resCB.occ,
-                    deviation=dev,
-                    dihedral_NABB=dihedralNABB,
-                    ideal_xyz=betaxyz,
-                    outlier=(dev >= 0.25))
-                  self.results.append(result)
-                  key = result.id_str()
-                  if (collect_ideal):
-                    self.beta_ideal[key] = betaxyz
+                  phi_psi, next_resname = phi_psi_next.get(id_str, (None, None))
+                if mahalanobis_z_score:
+                  # scored on the uncorrected deviation
+                  residual = cbd_mahalanobis.get_bin_residual(
+                    cbd_utils.get_table_resname(residue.resname,
+                      use_parent_for_modified_residues=
+                        use_parent_for_modified_residues),
+                    phi_psi, dev, dihedralNABB)
+                if (apply_phi_psi_correction and phi_psi and
+                    (not positive_only or
+                     cbd_utils.in_positive_phi_region(phi_psi[0]))):
+                  correction = cbd_utils.get_correction_vector(
+                    residue.resname, next_resname, phi_psi,
+                    use_parent_for_modified_residues=
+                      use_parent_for_modified_residues)
+                records.append(group_args(chain_id=chain_id,
+                                          rg=rg,
+                                          residue=residue,
+                                          relevant_atoms=relevant_atoms,
+                                          resCB=resCB,
+                                          i_seq=atom.i_seq,
+                                          altchar=altchar,
+                                          result=result,
+                                          phi_psi=phi_psi,
+                                          residual=residual,
+                                          correction=correction))
+      strength = 0.
       if apply_phi_psi_correction:
-        print('''
-  Outliers removed : %5d
-  New outliers     : %5d
+        corrected = [r for r in records if r.correction]
+        fit_kwds = {}
+        if positive_only:
+          fit_kwds['prior_weight'] = cbd_utils.positive_prior_weight
+        s = cbd_utils.choose_strength(
+          [r.result.deviation for r in corrected],
+          [r.result.dihedral for r in corrected],
+          [r.correction for r in corrected],
+          user_strength=phi_psi_correction_strength,
+          **fit_kwds)
+        self.phi_psi_correction[model.id] = s
+        strength = s.applied
+      # second pass: apply the model's correction strength
+      for r in records:
+        residue = r.residue
+        resCB = r.resCB
+        altchar = r.altchar
+        result = r.result
+        dev = result.deviation
+        dihedralNABB = result.dihedral
+        betaxyz = result.ideal
+        if r.correction and strength:
+          dev, dihedralNABB = cbd_utils.apply_correction(
+            result.deviation, result.dihedral, r.correction, strength)
+          betaxyz = corrected_ideal_xyz(r.relevant_atoms, betaxyz,
+            result.deviation, result.dihedral, dev, dihedralNABB)
+          start = (result.deviation >= 0.25)
+          finish = (dev >= 0.25)
+          if start and not finish:
+            outliers_removed.append([r.rg.id_str(), r.phi_psi])
+          elif not start and finish:
+            new_outliers.append([r.rg.id_str(), r.phi_psi])
+          if display_phi_psi_correction and (start or finish):
+            c = r.correction
+            cbd_utils.show_phi_psi_correction(residue, r.phi_psi,
+              cbd_utils.radial_deviation(result.deviation, result.dihedral),
+              cbd_utils.radial_deviation(strength*c[0], strength*c[1],
+                                         input_in_cartesian=True),
+              cbd_utils.radial_deviation(dev, dihedralNABB))
+        if plot_deviation_histogram and not (exclude_d_peptides and dev>=2.):
+          histogram_deviations.append(dev)
+        if(exclude_d_peptides and dev>=2.):
+          pass
+        elif(dev >=0.25 or outliers_only==False or mahalanobis_z_score):
+          if(dev >=0.25):
+            self.n_outliers+=1
+            self.n_outliers_by_model[model.id]+=1
+            self.stats.n_weighted_outliers += resCB.occ
+            self._outlier_i_seqs.append(r.i_seq)
+          result = cbeta(
+            model_id=model.id,
+            chain_id=r.chain_id,
+            resname=residue.resname,
+            resseq=residue.resseq,
+            icode=residue.icode,
+            altloc=altchar,
+            xyz=resCB.xyz,
+            occupancy=resCB.occ,
+            deviation=dev,
+            dihedral_NABB=dihedralNABB,
+            ideal_xyz=betaxyz,
+            outlier=(dev >= 0.25))
+          if mahalanobis_z_score:
+            # appended once the model error has been fitted
+            mahalanobis_pending.append([result, r.residual, model.id,
+              (dev >= 0.25 or outliers_only==False), betaxyz])
+            continue
+          self.results.append(result)
+          key = result.id_str()
+          if (collect_ideal):
+            self.beta_ideal[key] = betaxyz
+    if apply_phi_psi_correction and not quiet:
+      outln = '  '
+      for rg_id_str, phi_psi in new_outliers:
+        outln += '%s, ' % rg_id_str.strip()
+      outlo = '  '
+      for rg_id_str, phi_psi in outliers_removed:
+        outlo += '%s, ' % rg_id_str.strip()
+      print('''
+  Outliers removed : %5d %s
+  New outliers     : %5d %s
   Num. of outliers : %5d
   Num. of residues : %5d
-  ''' % (outliers_removed,
-         new_outliers,
+  ''' % (len(outliers_removed), outlo[:-2],
+         len(new_outliers), outln[:-2],
          self.n_outliers,
          total_residues,
-        ))
+        ), file=out)
+      multi_model = (len(self.phi_psi_correction) > 1)
+      for model_id, s in self.phi_psi_correction.items():
+        model_label = ''
+        if multi_model: model_label = ' model "%s"' % model_id.strip()
+        if positive_only: model_label += ' (positive phi only)'
+        for line in format_correction_summary(model_label, s):
+          print(line, file=out)
+    if mahalanobis_z_score:
+      self.mahalanobis = group_args(cutoff=mahalanobis_cutoff,
+                                    model_error_by_model={},
+                                    n_scored_by_model={},
+                                    n_outliers_by_model={})
+      m = self.mahalanobis
+      for model_id in self.n_total_by_model:
+        pending = [p for p in mahalanobis_pending if p[2]==model_id]
+        s, ds = cbd_mahalanobis.score([p[1] for p in pending])
+        m.model_error_by_model[model_id] = s
+        m.n_scored_by_model[model_id] = len([d for d in ds if d is not None])
+        m.n_outliers_by_model[model_id] = 0
+        for p, d in zip(pending, ds):
+          p[0].mahalanobis_d = d
+          if d is not None and d >= mahalanobis_cutoff:
+            m.n_outliers_by_model[model_id] += 1
+      for result, residual, model_id, include, betaxyz in mahalanobis_pending:
+        d = result.mahalanobis_d
+        if include or (d is not None and d >= mahalanobis_cutoff):
+          self.results.append(result)
+          if (collect_ideal):
+            self.beta_ideal[result.id_str()] = betaxyz
     self.new_outliers=new_outliers
     self.outliers_removed=outliers_removed
     if total_residues:
@@ -253,18 +441,85 @@ class cbetadev(validation):
     else:
       self.percent_outliers = None
 
+    if show_deviation_stats and not self.deviations:
+      print('\n  No C-beta deviations for statistics\n', file=out)
+    elif show_deviation_stats:
+      from mmtbx.validation.describe import describe, print_stats
+      print('\n  Projected C-beta deviation statistics (Angstrom)\n', file=out)
+      print_stats(describe(self.deviations), out=out)
+      print(f'\nAverage deviation : {sum(self.deviations)/len(self.deviations):0.3f}\n',
+            file=out)
+    if plot_deviation_histogram:
+      # the deviations as reported (after any correction) or, if scored,
+      # the Mahalanobis distances
+      if mahalanobis_z_score:
+        values = [p[0].mahalanobis_d for p in mahalanobis_pending
+                  if p[0].mahalanobis_d is not None]
+        title = 'C-beta deviation Mahalanobis distances'
+        xlabel = 'd'
+      else:
+        values = histogram_deviations
+        title = 'C-beta deviations'
+        xlabel = 'Deviation (Angstrom)'
+      if not values:
+        print('\n  No values for the histogram\n', file=out)
+      else:
+        from mmtbx.validation.describe import plot_histogram
+        plot_histogram(values, bins=20, title=title, xlabel=xlabel)
+
   def show_old_output(self, out, verbose=False, prefix="pdb"):
+    show_mahalanobis = (self.mahalanobis is not None)
     if (verbose):
-      print(self.output_header, file=out)
+      header = self.output_header
+      if show_mahalanobis: header += "mahalanobis_d:"
+      print(header, file=out)
     for result in self.results :
-      print(prefix + " :" + result.format_old(), file=out)
+      print(prefix + " :" + result.format_old(show_mahalanobis=show_mahalanobis),
+            file=out)
     if (verbose):
+      self.show_ca_chirality(out)
       self.show_summary(out)
+
+  def show_ca_chirality(self, out):
+    """List residues with an inverted or flat C-alpha. These aren't part of
+    the summary."""
+    ca_chirality = getattr(self, "ca_chirality", [])
+    if not ca_chirality: return
+    print('C-alpha chirality: %d inverted, %d flat (|chiral volume| < %.1f '
+          'Angstrom**3)' % (
+      len([c for c in ca_chirality if c[6]=="inverted"]),
+      len([c for c in ca_chirality if c[6]=="flat"]),
+      ca_flat_volume), file=out)
+    multi_model = (len(self.n_total_by_model)>1)
+    for model_id, chain_id, resname, resid, altloc, volume, kind, dev in \
+        ca_chirality:
+      model_str = ''
+      if multi_model: model_str = 'model "%s" ' % model_id
+      print('  %-8s %s%2s %s %s%s  chiral volume %6.2f  dev %.3f' % (
+        kind, model_str, chain_id, resid, altloc, resname, volume, dev),
+        file=out)
 
   def show_summary(self, out, prefix=""):
     print(prefix + \
       'SUMMARY: %d C-beta deviations >= 0.25 Angstrom (Goal: 0)' % \
       self.n_outliers, file=out)
+    if self.mahalanobis is not None:
+      m = self.mahalanobis
+      for model_id in sorted(m.n_scored_by_model):
+        s = m.model_error_by_model[model_id]
+        if s is None: s_str = 'not calibrated, too few residues'
+        else: s_str = 'model error s = %.3f Angstrom' % s
+        model_str = ''
+        if len(m.n_scored_by_model)>1: model_str = ' model "%s":' % model_id
+        print(prefix + \
+          'SUMMARY:%s %d C-beta Mahalanobis outliers, d >= %.1f '
+          '(%d residues scored, %s)' % (model_str,
+          m.n_outliers_by_model[model_id], m.cutoff,
+          m.n_scored_by_model[model_id], s_str), file=out)
+
+  def get_mahalanobis_outlier_count(self):
+    if self.mahalanobis is None: return None
+    return sum(self.mahalanobis.n_outliers_by_model.values())
 
   #functions for internal access of summary statistics
   def get_outlier_count(self):
@@ -355,6 +610,25 @@ class cbetadev(validation):
           "outlier_percentage" : self.n_outliers_by_model[model_id]/self.n_total_by_model[model_id]*100,
           "outlier_goal" : 0,
         }
+        if self.mahalanobis is not None:
+          m = self.mahalanobis
+          summary_results[model_id].update({
+            "mahalanobis_cutoff" : m.cutoff,
+            "mahalanobis_model_error" : m.model_error_by_model[model_id],
+            "num_mahalanobis_scored" : m.n_scored_by_model[model_id],
+            "num_mahalanobis_outliers" : m.n_outliers_by_model[model_id],
+          })
+        s = (getattr(self, 'phi_psi_correction', None) or {}).get(model_id)
+        if s is not None:
+          summary_results[model_id].update({
+            "phi_psi_correction_residues" : s.n,
+            "phi_psi_correction_fitted_strength" : s.fitted,
+            "phi_psi_correction_applied_strength" : s.applied,
+            "phi_psi_correction_user_set" : s.user_set,
+            "phi_psi_correction_check_failed" : s.check_failed,
+            "phi_psi_correction_region" :
+              getattr(self, 'phi_psi_correction_region', 'all'),
+          })
     data['summary_results'] = summary_results
     return json.dumps(data, indent=2)
 
@@ -367,13 +641,15 @@ class cbetadev(validation):
     return data
 
 class calculate_ideal_and_deviation(object):
-  __slots__ = ["deviation", "ideal", "dihedral"]
+  __slots__ = ["deviation", "ideal", "dihedral", "chiral_volume"]
   def __init__(self, relevant_atoms, resname):
     assert (resname != "GLY")
     from cctbx.geometry_restraints import chirality
     self.deviation = None
     self.ideal = None
     self.dihedral = None
+    self.chiral_volume = None
+    if cb_in_main_chain(resname) : return
     resCA = relevant_atoms[" CA "]
     resN  = relevant_atoms[" N  "]
     resC  = relevant_atoms[" C  "]
@@ -386,6 +662,7 @@ class calculate_ideal_and_deviation(object):
                                ).volume_model
     else:
       chiral_volume = None
+    self.chiral_volume = chiral_volume
     dist, angleCAB, dihedralNCAB, angleNAB, dihedralCNAB, angleideal= \
       idealized_calpha_angles(resname, chiral_volume)
     betaNCAB = construct_fourth(resN,
@@ -413,6 +690,56 @@ class calculate_ideal_and_deviation(object):
         self.dihedral = dihedral_angle(
           sites=[resN.xyz,resCA.xyz,betaxyz.elems,resCB.xyz], deg=True)
         self.ideal = betaxyz.elems
+
+def format_correction_summary(model_label, s):
+  """Summary lines for one model's phi/psi correction strength s, from
+  cbd_utils.choose_strength."""
+  head = '  Correction strength%s : ' % model_label
+  if not s.n:
+    return [head + 'no residues with a correction']
+  user = ''
+  if s.user_set: user = ' (user set)'
+  if s.fitted is None: fitted = 'n/a'
+  else: fitted = '%.2f' % s.fitted
+  rc = [head + 'fitted %s, applied %.2f%s (%d residues)' % (
+    fitted, s.applied, user, s.n)]
+  if s.fitted is not None and s.fitted < 0:
+    rc.append('  WARNING%s: fitted strength %.2f is below 0; the C-beta '
+              'offsets in this model run against the high-resolution '
+              'phi/psi pattern' % (model_label, s.fitted))
+  if s.check_failed:
+    rc.append('  Correction not applied%s: it would raise the mean deviation '
+              'from %.3f to %.3f Angstrom' % (model_label, s.mean_uncorrected,
+                                              s.mean_corrected))
+  return rc
+
+def deviation_frame(N, CA, ideal):
+  """Unit vectors (e1, e2) of the plane perpendicular to CA->ideal in which
+  the (deviation, dihedral_NABB) polar coordinates are measured: a point at
+  angle t in this plane is at dihedral N-CA-ideal-point t."""
+  u = (ideal - CA).normalize()
+  n = N - CA
+  e1 = (n - u*n.dot(u)).normalize()
+  return e1, u.cross(e1)
+
+def corrected_ideal_xyz(relevant_atoms, ideal, deviation, dihedral,
+                        corrected_deviation, corrected_dihedral):
+  """Ideal CB moved by the phi/psi correction vector, the difference between
+  the uncorrected and corrected (deviation, dihedral) in the polar plane,
+  then placed so the modelled CB is corrected_deviation from it."""
+  N  = col(relevant_atoms[" N  "].xyz)
+  CA = col(relevant_atoms[" CA "].xyz)
+  CB = col(relevant_atoms[" CB "].xyz)
+  ideal = col(ideal)
+  e1, e2 = deviation_frame(N, CA, ideal)
+  def in_plane(r, t):
+    t = math.radians(t)
+    return (e1*math.cos(t) + e2*math.sin(t))*r
+  correction = in_plane(deviation, dihedral) - in_plane(corrected_deviation,
+                                                        corrected_dihedral)
+  offset = CB - (ideal + correction)
+  if abs(offset) == 0: return CB.elems
+  return (CB - offset*(corrected_deviation/abs(offset))).elems
 
 def idealized_calpha_angles(resname, chiral_volume=None):
   from iotbx.pdb import common_residue_names_get_class

@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 from iotbx.reflection_file_reader import any_reflection_file
+from iotbx.cif.builders import get_wavelengths, as_int_or_none_if_all_question_marks
 from cctbx.xray import observation_types
 from iotbx.gui_tools.reflections import ArrayInfo
 from crys3d.hklviewer import display2 as display
@@ -22,6 +23,104 @@ import sys, zmq, threading,  time, cmath, zlib, os.path, math, re
 from pathlib import Path
 import importlib.util
 
+
+
+def origarrays_from_cif_block(cif_block, wavelengths=None):
+  """
+  Raw reflection columns of a cif block for tabulating in HKLviewer: the
+  miller indices of the reflection loop under "HKLs" and one entry per other
+  column, keyed by the column label without its _refln. or _refln_ prefix.
+  A column is cast to flex.int or flex.double when every selected row
+  converts; otherwise the whole column is kept as the flex.std_string it was
+  read as. When the loop has more than one wavelength_id, crystal_id or
+  scale_group_code the entries hold the rows of one id combination each and
+  the key carries the same suffix as the labels of the miller arrays built
+  from the block, which is what tabulate_arrays() looks up.
+  """
+  if wavelengths is None:
+    wavelengths = get_wavelengths(cif_block)
+  if wavelengths is None:
+    wavelengths = {}
+  result = {}
+  id_names = ["wavelength_id", "crystal_id", "scale_group_code"]
+  for loop in cif_block.loops.values():
+    index_key = None
+    for key in loop.keys():
+      if "index_h" in key:
+        index_key = key
+        break
+    if index_key is None:
+      continue
+    hkl = []
+    for axis in "hkl":
+      column = loop.get(index_key.replace("index_h", "index_" + axis))
+      if column is not None:
+        hkl.append(flex.int(column))
+    if len(hkl) != 3:
+      continue
+    indices = flex.miller_index(hkl[0], hkl[1], hkl[2])
+    result["HKLs"] = indices
+    # id columns with more than one value split the other columns
+    id_columns = {}
+    id_values = {}
+    for name in id_names:
+      id_columns[name] = None
+      id_values[name] = [None]
+    for key, column in loop.items():
+      name = None
+      for candidate in id_names:
+        if key.endswith(candidate):
+          name = candidate
+      if name is None:
+        continue
+      data = as_int_or_none_if_all_question_marks(column, column_name=key)
+      if data is None:
+        continue
+      counts = data.counts()
+      if name == "wavelength_id":
+        id_values[name] = list(counts.keys())
+      if len(counts) == 1:
+        continue
+      id_columns[name] = data
+      id_values[name] = list(counts.keys())
+    labels = sorted(loop.keys())
+    for w_id in id_values["wavelength_id"]:
+      for crys_id in id_values["crystal_id"]:
+        for scale_group in id_values["scale_group_code"]:
+          suffix = []
+          if len(id_values["scale_group_code"]) > 1 and scale_group is not None:
+            suffix.append("scale_group_code=%i" % scale_group)
+          if len(id_values["crystal_id"]) > 1 and crys_id is not None:
+            suffix.append("crystal_id=%i" % crys_id)
+          if (len(id_values["wavelength_id"]) > 1 or len(wavelengths) > 1) and w_id is not None:
+            suffix.append("wavelength_id=%i" % w_id)
+          key_suffix = ""
+          if len(suffix) > 0:
+            key_suffix = "," + ",".join(suffix)
+          selection = flex.bool(indices.size(), True)
+          if id_columns["wavelength_id"] is not None and w_id is not None:
+            selection &= (id_columns["wavelength_id"] == w_id)
+          if id_columns["crystal_id"] is not None and crys_id is not None:
+            selection &= (id_columns["crystal_id"] == crys_id)
+          if id_columns["scale_group_code"] is not None and scale_group is not None:
+            selection &= (id_columns["scale_group_code"] == scale_group)
+          for label in labels:
+            if "index_" in label:
+              continue
+            column = loop[label]
+            values = column.select(selection)
+            try:
+              values = flex.int(values)
+            except ValueError:
+              try:
+                values = flex.double(values)
+              except ValueError:
+                values = column
+            if values.size() == 0:
+              continue
+            key = label.replace("_refln.", "").replace("_refln_", "") + key_suffix
+            result[key] = values
+  return result
 
 
 NOREFLDATA = "No reflection data has been selected"
@@ -1181,11 +1280,7 @@ Borrowing them from the first miller array""" %i)
                 if not found:
                   newlabels.append(label)
                 arr.info().labels = newlabels
-          ciforigarrays = cifreader.as_original_arrays()[dataname[0]]
-          for key in ciforigarrays:
-            if key not in ['_refln.crystal_id', # avoid these un-displayable arrays
-                      '_refln.wavelength_id', '_refln.scale_group_code']:
-              self.origarrays[key] = ciforigarrays[key]
+          self.origarrays = origarrays_from_cif_block(cifreader.model()[dataname[0]])
           # replace ? with nan in self.origarrays to allow sorting tables of data in HKLviewer
           for labl in self.origarrays.keys():
             origarray = self.origarrays[labl]

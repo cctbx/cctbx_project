@@ -375,6 +375,11 @@ master_params_str = """\
     .type = bool
     .short_caption = Use the nuclear distances for X-H/D
     .help = Use neutron X-H distances (which are longer than X-ray ones)
+  recognize_capping_h = True
+    .type = bool
+    .short_caption = Recognize capping H
+    .help = "Restrain capping H (mmtbx.reduce2 capping=True) found on atoms" \
+            "with a dangling valence; off during reduce2's own H placement"
   apply_cis_trans_specification
     .optional = True
     .multiple = True
@@ -507,6 +512,16 @@ master_params_str = """\
     .optional=False
     .expert_level=3
     .help = **EXPERIMENTAL, developers only**
+  const_shrink_hydrogen_acceptor = 0.6
+    .type=float
+    .optional=False
+    .expert_level=3
+    .short_caption = Shrink of polar H ... acceptor nonbonded distance
+    .help = Nonbonded minimum distance between a polar hydrogen (bonded to \
+      N, O or S) and a hydrogen-bond acceptor is the sum of the vdW radii \
+      minus this value, so that hydrogen bonds are not scored as clashes. \
+      Affects only models with explicit hydrogens. 0 restores the plain \
+      radius sum (e.g. H...O 2.45 A instead of 1.85 A).
   vdw_1_4_factor = 0.8
     .type=float
     .optional=False
@@ -851,6 +866,20 @@ def involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs):
     for j in range(i+1,len(i_seqs)):
       if ((i_seqs[i],i_seqs[j]) in broken_bond_i_seq_pairs):
         return True
+  return False
+
+def link_h_bonded_elsewhere(m_x, atom_id, partner_ids):
+  '''
+  True if the dictionary of m_x bonds H atom_id to an atom not in partner_ids.
+  Links name the H (TRANS C-N-H); in geostd ASJ "H" is on C (4dco).
+  '''
+  if m_x.monomer_atom_dict[atom_id].type_symbol not in ("H", "D"):
+    return False
+  for bond in m_x.monomer.bond_list:
+    if   bond.atom_id_1 == atom_id: other = bond.atom_id_2
+    elif bond.atom_id_2 == atom_id: other = bond.atom_id_1
+    else: continue
+    if other not in partner_ids: return True
   return False
 
 class source_info_server(object):
@@ -2203,6 +2232,13 @@ class add_angle_proxies(object):
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue
+      if (m_j is not None and
+          ((m_1 is m_2 and link_h_bonded_elsewhere(
+             m_1, angle.atom_id_1, [angle.atom_id_2])) or
+           (m_3 is m_2 and link_h_bonded_elsewhere(
+             m_3, angle.atom_id_3, [angle.atom_id_2])))):
+        counters.unresolved_hydrogen += 1
+        continue
       atoms = (m_1.expected_atoms.get(angle.atom_id_1, None),
                m_2.expected_atoms.get(angle.atom_id_2, None),
                m_3.expected_atoms.get(angle.atom_id_3, None))
@@ -2549,6 +2585,11 @@ class add_planarity_proxies(object):
           else:
             counters.corrupt_monomer_library_definitions += 1
             continue
+        if (m_j is not None and link_h_bonded_elsewhere(m_x, plane_atom.atom_id,
+              [p.atom_id for p in plane.plane_atoms
+               if p.atom_comp_id == plane_atom.atom_comp_id])):
+          counters.unresolved_hydrogen += 1
+          continue
         atom = m_x.expected_atoms.get(plane_atom.atom_id, None)
         if (atom is None):
           if (m_x.monomer_atom_dict[plane_atom.atom_id].type_symbol == "H"):
@@ -2635,7 +2676,8 @@ def ener_lib_as_nonbonded_params(
       default_distance,
       minimum_distance,
       const_shrink_donor_acceptor,
-      use_lib_vdw=False):
+      use_lib_vdw=False,
+      const_shrink_hydrogen_acceptor=0):
   params = geometry_restraints.nonbonded_params(
     factor_1_4_interactions=factor_1_4_interactions,
     const_shrink_1_4_interactions=0,
@@ -2685,6 +2727,29 @@ def ener_lib_as_nonbonded_params(
       params.donor_acceptor_table[atom_type] = 3
     elif getattr(energy_lib_atom, "hb_type") == 'H':
       params.donor_acceptor_table[atom_type] = 4
+  if (const_shrink_hydrogen_acceptor != 0):
+    # Polar H ... acceptor pairs (hydrogen bonds) are allowed to approach
+    # closer than the vdW radius sum. Explicit distance_table entries take
+    # precedence over the radius sum in get_nonbonded_distance(). Heavy
+    # donor/acceptor pairs are left alone, so models without hydrogens are
+    # unaffected.
+    polar_h = []
+    acceptors = []
+    for atom_type, energy_lib_atom in ener_lib.lib_atom.items():
+      if (len(atom_type) == 0): continue
+      if (atom_type not in params.radius_table): continue
+      hb_type = getattr(energy_lib_atom, "hb_type")
+      if (hb_type == 'H'):
+        polar_h.append(atom_type)
+      elif (hb_type in ['A', 'B']):
+        acceptors.append(atom_type)
+    for h_type in polar_h:
+      r_h = params.radius_table[h_type]
+      table = params.distance_table.setdefault(h_type)
+      for a_type in acceptors:
+        if (a_type in table): continue # e.g. from use_lib_vdw
+        table[a_type] = r_h + params.radius_table[a_type] \
+          - const_shrink_hydrogen_acceptor
   return params
 
 def is_same_model_as_before(model_type_indices, i_model, models):
@@ -3942,52 +4007,6 @@ class build_all_chain_proxies(linking_mixins):
           print("%sRestraints for '%s'" % (' '*6, item[0]), file=log)
           print('%swere not modified by "%s"' % (' '*8,item[1]), file=log)
       #
-      # Identify disulfide bond exclusions BEGIN
-      self.disulfide_bond_exclusions_selection = flex.size_t()
-      if(self.cystein_sulphur_i_seqs.size()>0):
-        if(params.disulfide_bond_exclusions_selection_string is not None):
-          self.disulfide_bond_exclusions_selection = \
-            self.pdb_hierarchy.atom_selection_cache().selection(
-              params.disulfide_bond_exclusions_selection_string).iselection()
-        else:
-          exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
-          cystein_sulphur_atoms_exclude = []
-          for atom in self.pdb_atoms:
-            e_ = atom.element.strip().upper()
-            e = atom.determine_chemical_element_simple()
-            if(e is not None):
-              e = e.strip().upper()
-              if(e_.strip() != ""):
-                if(e_!=e):
-                  raise Sorry("Bad element type: '%s', '%s'."%(e,e_))
-              if(not e in exclusion_list):
-                for cs_i_seq in self.cystein_sulphur_i_seqs:
-                  csa = self.pdb_atoms[cs_i_seq]
-                  if(csa.distance(atom) < params.exclusion_distance_cutoff):
-                    cystein_sulphur_atoms_exclude.append(csa)
-                    self.disulfide_bond_exclusions_selection.append(csa.i_seq)
-      if(self.disulfide_bond_exclusions_selection.size()>0):
-        if log is not None:
-          print(file=log)
-          print("List of CYS excluded from plausible disulfide bonds:", file=log)
-          print("  (reason: may participate in coordination)", file=log)
-        for i_seq in self.disulfide_bond_exclusions_selection:
-          a = self.pdb_atoms[i_seq]
-          if log is not None: print("  %s"%a.format_atom_record(), file=log)
-          dces = a.determine_chemical_element_simple()
-          if dces is None:
-            raise Sorry("Atom '%s' has unknown chemical element symbol" % a.format_atom_record())
-          e = dces.strip().upper()
-          if(e!="S"):
-            raise Sorry("disulfide_bond_exclusions_selection_string must select CYS sulfur.")
-        if log is not None: print(file=log)
-      tmp = flex.size_t()
-      for i_seq in self.cystein_sulphur_i_seqs:
-        if(not i_seq in self.disulfide_bond_exclusions_selection):
-          tmp.append(i_seq)
-      self.cystein_sulphur_i_seqs = tmp
-      # Identify disulfide bond exclusions END
-      #
       n_unresolved_apply_cif_link_bonds = 0
       n_unresolved_apply_cif_link_angles = 0
       n_unresolved_apply_cif_link_dihedrals = 0
@@ -4170,17 +4189,70 @@ class build_all_chain_proxies(linking_mixins):
       self.geometry_proxy_registries.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.type_energies.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.type_h_bonds.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
-      # Expand cystein_sulphur_i_seqs
-      new_cystein_sulphur_i_seqs = list(self.cystein_sulphur_i_seqs)
-      for master_c_iseq in self.cystein_sulphur_i_seqs:
+      # Expand cystein_sulphur_i_seqs. They were collected on the reduced
+      # (masters and rest) hierarchy, so translate them to the full
+      # hierarchy before looking up NCS copies.
+      master_and_rest_iselection = master_and_rest_bool_selection.iselection()
+      new_cystein_sulphur_i_seqs = []
+      for reduced_c_iseq in self.cystein_sulphur_i_seqs:
+        master_c_iseq = master_and_rest_iselection[reduced_c_iseq]
+        new_cystein_sulphur_i_seqs.append(master_c_iseq)
         copy_iseqs = nrgl.get_copy_iseqs([master_c_iseq])
         flatten_copies = [item for sublist in copy_iseqs for item in sublist]
         new_cystein_sulphur_i_seqs.extend(flatten_copies)
-      self.cystein_sulphur_i_seqs = flex.size_t(new_cystein_sulphur_i_seqs)
+      self.cystein_sulphur_i_seqs = flex.size_t(
+        sorted(new_cystein_sulphur_i_seqs))
 
       # self.scattering_type_registry._show()
     # STOP()
 
+    # Runs after the NCS expansion so that exclusions are evaluated on the full hierarchy:
+    # Identify disulfide bond exclusions BEGIN
+    self.disulfide_bond_exclusions_selection = flex.size_t()
+    if(self.cystein_sulphur_i_seqs.size()>0):
+      if(params.disulfide_bond_exclusions_selection_string is not None):
+        self.disulfide_bond_exclusions_selection = \
+          self.pdb_hierarchy.atom_selection_cache().selection(
+            params.disulfide_bond_exclusions_selection_string).iselection()
+      else:
+        exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
+        cystein_sulphur_atoms_exclude = []
+        for atom in self.pdb_atoms:
+          e_ = atom.element.strip().upper()
+          e = atom.determine_chemical_element_simple()
+          if(e is not None):
+            e = e.strip().upper()
+            if(e_.strip() != ""):
+              if(e_!=e):
+                raise Sorry("Bad element type: '%s', '%s'."%(e,e_))
+            if(not e in exclusion_list):
+              for cs_i_seq in self.cystein_sulphur_i_seqs:
+                csa = self.pdb_atoms[cs_i_seq]
+                if(csa.distance(atom) < params.exclusion_distance_cutoff):
+                  cystein_sulphur_atoms_exclude.append(csa)
+                  self.disulfide_bond_exclusions_selection.append(csa.i_seq)
+    if(self.disulfide_bond_exclusions_selection.size()>0):
+      if log is not None:
+        print(file=log)
+        print("List of CYS excluded from plausible disulfide bonds:", file=log)
+        print("  (reason: may participate in coordination)", file=log)
+      for i_seq in self.disulfide_bond_exclusions_selection:
+        a = self.pdb_atoms[i_seq]
+        if log is not None: print("  %s"%a.format_atom_record(), file=log)
+        dces = a.determine_chemical_element_simple()
+        if dces is None:
+          raise Sorry("Atom '%s' has unknown chemical element symbol" % a.format_atom_record())
+        e = dces.strip().upper()
+        if(e!="S"):
+          raise Sorry("disulfide_bond_exclusions_selection_string must select CYS sulfur.")
+      if log is not None: print(file=log)
+    tmp = flex.size_t()
+    for i_seq in self.cystein_sulphur_i_seqs:
+      if(not i_seq in self.disulfide_bond_exclusions_selection):
+        tmp.append(i_seq)
+    self.cystein_sulphur_i_seqs = tmp
+    # Identify disulfide bond exclusions END
+    #
     for apply in self.apply_cif_links:
       if (not apply.was_used):
         raise RuntimeError(
@@ -5430,27 +5502,6 @@ class build_all_chain_proxies(linking_mixins):
       bond_sym_proxies=bond_sym_proxies,
       bond_distance_model_max=bond_distance_model_max)
 
-  def process_custom_nonbonded_exclusions(self, log, exclude_pair_indices,
-      shell_asu_tables, verbose=True):
-    space_group = self.special_position_settings.space_group()
-    rt_mx_ji = sgtbx.rt_mx(symbol="x,y,z", t_den=space_group.t_den())
-    have_header = False
-    for (i_seq, j_seq) in exclude_pair_indices :
-      if (verbose) and (not have_header):
-        print(file=log)
-        print("  Custom nonbonded exclusions (H-bonds, etc.):", file=log)
-        have_header = True
-      if (verbose):
-        print("    %s  %s" % (self.pdb_atoms[i_seq].id_str(),
-                                      self.pdb_atoms[j_seq].id_str()), file=log)
-      try :
-        shell_asu_tables[1].add_pair(i_seq, j_seq, rt_mx_ji)
-      except RuntimeError as e :
-        print("    WARNING: could not process nonbonded pair", file=log)
-        print("    Original error:", file=log)
-        print("      %s" % str(e), file=log)
-      #shell_sym_tables[1][i_seq][j_seq].add(rt_mx_ji)
-
   def process_custom_nonbonded_symmetry_exclusions(self,
         log, curr_sym_excl_index):
     have_header = False
@@ -5511,7 +5562,6 @@ class build_all_chain_proxies(linking_mixins):
         plain_pairs_radius=None,
         params_edits=None,
         params_remove=None,
-        custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         external_energy_function=None,
         log=None):
@@ -5857,11 +5907,6 @@ class build_all_chain_proxies(linking_mixins):
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=bond_asu_table,
       max_shell=3)
-    if (custom_nonbonded_exclusions is not None):
-      self.process_custom_nonbonded_exclusions(
-        log=log,
-        exclude_pair_indices=custom_nonbonded_exclusions,
-        shell_asu_tables=shell_asu_tables)
     shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
       for shell_asu_table in shell_asu_tables]
     nonbonded_params = ener_lib_as_nonbonded_params(
@@ -5870,7 +5915,9 @@ class build_all_chain_proxies(linking_mixins):
       factor_1_4_interactions=self.params.vdw_1_4_factor,
       default_distance=self.params.default_vdw_distance,
       minimum_distance=self.params.min_vdw_distance,
-      const_shrink_donor_acceptor=self.params.const_shrink_donor_acceptor)
+      const_shrink_donor_acceptor=self.params.const_shrink_donor_acceptor,
+      const_shrink_hydrogen_acceptor=
+        self.params.const_shrink_hydrogen_acceptor)
     if(self.params.nonbonded_weight is None):
       nonbonded_weight = 100 # c_rep in prolsq repulsion function
       if(assume_hydrogens_all_missing):
@@ -6190,6 +6237,19 @@ class process(object):
 
     self._geometry_restraints_manager = None
     self._xray_structure = None
+    # capping H (mmtbx.reduce2 capping=True); None when all atoms attached
+    # or recognize_capping_h=False (reduce2's placement: every H provisional)
+    self.capping_h = None
+    acp = self.all_chain_proxies
+    if acp.params.recognize_capping_h:
+      from mmtbx.hydrogens import capping
+      self.capping_h = capping.add_capping_h_restraints(
+        hierarchy                      = acp.pdb_hierarchy,
+        mon_lib_srv                    = mon_lib_srv,
+        geometry_proxy_registries      = acp.geometry_proxy_registries,
+        nonbonded_energy_type_registry = acp.nonbonded_energy_type_registry,
+        use_neutron_distances          = acp.params.use_neutron_distances,
+        log                            = log)
     # attempt to fix pH problems
     if self.all_chain_proxies.nonbonded_energy_type_registry.n_unknown_type_symbols():
       from mmtbx.conformation_dependent_library import pH_dependent_restraints
@@ -6239,7 +6299,6 @@ class process(object):
         plain_pairs_radius=None,
         params_edits=None,
         params_remove=None,
-        custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
         hard_minimum_bond_distance_model=0.001,
@@ -6256,7 +6315,6 @@ class process(object):
             plain_pairs_radius=plain_pairs_radius,
             params_edits=params_edits,
             params_remove=params_remove,
-            custom_nonbonded_exclusions=custom_nonbonded_exclusions,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             external_energy_function=external_energy_function,
             log=self.log)

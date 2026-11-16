@@ -38,6 +38,56 @@ END
 """
 
 
+# Ala plus a ligand no dictionary knows (ZZX), with an explicit H, for the
+# probe dots fallback and user-restraints tests
+pdb_unknown_ligand_str = pdb_str.replace("END\n", """\
+HETATM   16  C1  ZZX A 200       5.000   5.000  10.000  1.00 10.00           C
+HETATM   17  O1  ZZX A 200       6.430   5.000  10.000  1.00 10.00           O
+HETATM   18  HO1 ZZX A 200       6.700   5.800  10.000  1.00 10.00           H
+END
+""")
+
+zzx_cif_str = """\
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ZZX ZZX 'test ligand' ligand 3 2 .
+data_comp_ZZX
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+ZZX C1  C CH3  0
+ZZX O1  O OH1  0
+ZZX HO1 H HOH1 0
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ZZX C1 O1  single 1.430 0.020
+ZZX O1 HO1 single 0.840 0.020
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ZZX C1 O1 HO1 109.0 3.0
+"""
+
+
 # PDB with hets (SO4 ligand), ions (ZN), waters (HOH + WAT),
 # and a single-atom SO4 (like in 1nxb) to test het/ion/water handling
 pdb_het_str = """\
@@ -375,9 +425,7 @@ def exercise_helper_functions():
   assert prev_key is None
 
   # _draw_rna_virtual_backbone with missing keys should return empty
-  vbb = _draw_rna_virtual_backbone(
-    type('MockRG', (), {'resseq_as_int': lambda self: 5})(),
-    {}, {}, {}, {}, {}, {})
+  vbb = _draw_rna_virtual_backbone(5, True, {}, {}, {}, {}, {}, {})
   assert vbb == ""
 
   print("  exercise_helper_functions: OK")
@@ -972,7 +1020,8 @@ def exercise_draw_residue_bonds():
 
 def exercise_track_amino_acid_atom():
   """Test _track_amino_acid_atom backbone tracking for inter-residue bonds."""
-  from mmtbx.kinemage.validation import _track_amino_acid_atom
+  from mmtbx.kinemage.validation import (
+    _track_amino_acid_atom, backbone_linked_pairs)
   from mmtbx.monomer_library import pdb_interpretation
   from mmtbx import monomer_library
   from iotbx import pdb
@@ -996,9 +1045,12 @@ def exercise_track_amino_acid_atom():
   prev_C_xyz = {}
   prev_CA_key = {}
   prev_CA_xyz = {}
-  prev_resid = None
+  prev_rg = None
+  pairs = backbone_linked_pairs(hierarchy)
 
   for rg in residue_groups:
+    linked = prev_rg is not None and (
+      chain.memory_id(), prev_rg.resid(), rg.resid()) in pairs
     cur_C_xyz = {}
     cur_C_key = {}
     cur_CA_xyz = {}
@@ -1009,7 +1061,7 @@ def exercise_track_amino_acid_atom():
       for atom in ag.atoms():
         key = "key_%s_%s" % (atom.name.strip(), rg.resseq_as_int())
         _track_amino_acid_atom(
-          atom, key, ' ', rg, prev_resid,
+          atom, key, ' ', linked,
           cur_C_xyz, cur_C_key, cur_CA_xyz, cur_CA_key,
           prev_C_key, prev_C_xyz, prev_CA_key, prev_CA_xyz,
           mc_parts, ca_parts)
@@ -1024,7 +1076,7 @@ def exercise_track_amino_acid_atom():
     prev_C_xyz = cur_C_xyz
     prev_CA_key = cur_CA_key
     prev_CA_xyz = cur_CA_xyz
-    prev_resid = rg.resid()
+    prev_rg = rg
 
   print("  exercise_track_amino_acid_atom: OK")
 
@@ -1040,14 +1092,6 @@ def exercise_track_rna_dna_atom():
       self.xyz = xyz
       self.i_seq = i_seq
 
-  class MockResidueGroup:
-    def __init__(self, resseq):
-      self._resseq = resseq
-    def resseq_as_int(self):
-      return self._resseq
-    def resid(self):
-      return "%4d " % self._resseq
-
   # Track a P atom for residue 2
   cur_O3_xyz = {}
   cur_O3_key = {}
@@ -1061,11 +1105,10 @@ def exercise_track_rna_dna_atom():
   c4_hash_xyz = {}
   mc_parts = []
 
-  rg = MockResidueGroup(2)
   p_atom = MockAtom(' P  ', (4.0, 5.0, 6.0))
 
   _track_rna_dna_atom(
-    p_atom, 'p_key_2', ' ', rg, '   1 ',
+    p_atom, 'p_key_2', ' ', 2, True,
     cur_O3_xyz, cur_O3_key,
     prev_O3_key, prev_O3_xyz,
     p_hash_key, p_hash_xyz,
@@ -1085,7 +1128,7 @@ def exercise_track_rna_dna_atom():
   c4_atom = MockAtom(" C4'", (10.0, 11.0, 12.0))
 
   _track_rna_dna_atom(
-    c1_atom, 'c1_key_2', ' ', rg, '   1 ',
+    c1_atom, 'c1_key_2', ' ', 2, True,
     cur_O3_xyz, cur_O3_key,
     prev_O3_key, prev_O3_xyz,
     p_hash_key, p_hash_xyz,
@@ -1093,7 +1136,7 @@ def exercise_track_rna_dna_atom():
     c4_hash_key, c4_hash_xyz,
     mc_parts)
   _track_rna_dna_atom(
-    c4_atom, 'c4_key_2', ' ', rg, '   1 ',
+    c4_atom, 'c4_key_2', ' ', 2, True,
     cur_O3_xyz, cur_O3_key,
     prev_O3_key, prev_O3_xyz,
     p_hash_key, p_hash_xyz,
@@ -1107,7 +1150,7 @@ def exercise_track_rna_dna_atom():
   # Track O3' atom
   o3_atom = MockAtom(" O3'", (13.0, 14.0, 15.0))
   _track_rna_dna_atom(
-    o3_atom, 'o3_key_2', ' ', rg, '   1 ',
+    o3_atom, 'o3_key_2', ' ', 2, True,
     cur_O3_xyz, cur_O3_key,
     prev_O3_key, prev_O3_xyz,
     p_hash_key, p_hash_xyz,
@@ -1204,9 +1247,221 @@ def exercise_make_multikin_with_disulfide():
   print("  exercise_make_multikin_with_disulfide: OK")
 
 
+def exercise_probe_dots_unrestrained_ligand():
+  """A ligand without restraints is left out of the dots with a note, or
+  stops the run when omission is off."""
+  from mmtbx.kinemage.validation import make_probe_dots
+  from libtbx.utils import Sorry
+  from iotbx import pdb
+  hierarchy = pdb.input(source_info=None,
+    lines=pdb_unknown_ligand_str).construct_hierarchy()
+  dots = make_probe_dots(hierarchy, keep_hydrogens=True)
+  assert "@caption probe2" in dots, "Probe dots missing for the protein"
+  assert "@text" in dots and "ZZX A 200" in dots, "Missing omission note"
+  try:
+    make_probe_dots(hierarchy, keep_hydrogens=True, omit_unrestrained=False)
+  except Sorry as e:
+    assert "ZZX A 200" in str(e)
+  else:
+    raise AssertionError("Expected Sorry with omit_unrestrained=False")
+  print("  exercise_probe_dots_unrestrained_ligand: OK")
+
+
+def exercise_run_with_ligand_cif():
+  """cif= restraints reach the probe dots, so the ligand is not omitted."""
+  import tempfile, shutil
+  from mmtbx.kinemage.validation import run
+  tmp = tempfile.mkdtemp()
+  try:
+    pdb_file = os.path.join(tmp, "lig.pdb")
+    cif_file = os.path.join(tmp, "zzx.cif")
+    with open(pdb_file, "w") as f:
+      f.write(pdb_unknown_ligand_str)
+    with open(cif_file, "w") as f:
+      f.write(zzx_cif_str)
+    for extra, expect_note in [([], True), (["cif=%s" % cif_file], False)]:
+      out = os.path.join(tmp, "lig.kin")
+      run([pdb_file, "keep_hydrogens=True", "out_file=%s" % out] + extra)
+      with open(out) as f:
+        content = f.read()
+      assert "@caption probe2" in content
+      assert ("@text" in content) == expect_note, extra
+  finally:
+    shutil.rmtree(tmp)
+  print("  exercise_run_with_ligand_cif: OK")
+
+
+def exercise_run_missing_file():
+  from mmtbx.kinemage.validation import run
+  from libtbx.utils import Sorry
+  for args in (["no_such_file.pdb"], ["pdb=no_such_file.pdb"]):
+    try:
+      run(args)
+    except Sorry as e:
+      assert "no_such_file.pdb" in str(e)
+    else:
+      raise AssertionError("Expected Sorry for %s" % args)
+  print("  exercise_run_missing_file: OK")
+
+
+def _vectorlist_points(kin, name):
+  """Point lines of the @vectorlist {name} lists in kin."""
+  lines = []
+  in_list = False
+  for line in kin.splitlines():
+    if line.startswith("@"):
+      in_list = line.startswith("@vectorlist {%s}" % name)
+    elif in_list:
+      lines.append(line)
+  return lines
+
+
+def exercise_backbone_links():
+  """Backbone links follow geometry, not numbering: insertion codes join,
+  a gap between consecutive numbers does not, CA-only models still trace."""
+  from mmtbx.kinemage.validation import build_name_hash, get_kin_lots
+  from iotbx import pdb
+
+  def links(lines_str, shift_last=None, ca_only=False):
+    h = pdb.input(source_info=None, lines=lines_str).construct_hierarchy()
+    if ca_only:
+      h = h.select(h.atom_selection_cache().selection("name CA"))
+    chain = h.models()[0].chains()[0]
+    if shift_last is not None:
+      for atom in chain.residue_groups()[-1].atoms():
+        atom.xyz = tuple(x + d for x, d in zip(atom.xyz, shift_last))
+    kin = get_kin_lots(chain=chain, bond_hash={},
+                       i_seq_name_hash=build_name_hash(h), pdbID="t")
+    return (len(_vectorlist_points(kin, "mc")),
+            len(_vectorlist_points(kin, "Calphas")))
+
+  assert links(pdb_str) == (2, 2)
+  # A detached chain (no parent hierarchy) links the same way
+  h = pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
+  detached = h.models()[0].chains()[0].detached_copy()
+  kin = get_kin_lots(chain=detached, bond_hash={},
+                     i_seq_name_hash=build_name_hash(h), pdbID="t")
+  assert (len(_vectorlist_points(kin, "mc")),
+          len(_vectorlist_points(kin, "Calphas"))) == (2, 2)
+  icode_str = pdb_str.replace("ALA A   2 ", "ALA A   1A").replace(
+    "ALA A   3 ", "ALA A   2 ")
+  assert links(icode_str) == (2, 2), links(icode_str)
+  assert links(pdb_str, shift_last=(10, 0, 0)) == (1, 1)
+  assert links(pdb_str, ca_only=True) == (0, 2)
+  print("  exercise_backbone_links: OK")
+
+
+def exercise_footer_dot_masters():
+  """Dot types the footer switches must be masters probe2 emits here: the
+  overlaps and H-bonds, with vdW contacts off (report_vdws=False)."""
+  import re
+  import mmtbx_probe_ext as probeExt
+  from mmtbx.kinemage.validation import get_footer
+  it = probeExt.InteractionType
+  emitted = set(
+    probeExt.DotScorer.interaction_type_name(t).replace("_", " ")
+    for t in (it.SmallOverlap, it.Bump, it.BadBump, it.StandardHydrogenBond))
+  switched = re.findall(r"@master \{([^}]*)\}", get_footer())
+  dot_masters = [m for m in switched
+                 if "contact" in m or "overlap" in m or "H-bond" in m]
+  assert "H-bond" in dot_masters, dot_masters
+  assert set(dot_masters) <= emitted, set(dot_masters) - emitted
+  assert "{vdw contact}" in get_footer(vdw_dots=True)
+  print("  exercise_footer_dot_masters: OK")
+
+
+def exercise_run_vdw_dots():
+  """vdw_dots=True adds vdW contact lists, and the footer switches them off;
+  by default neither appears."""
+  import tempfile, shutil
+  from mmtbx.kinemage.validation import run
+  tmp = tempfile.mkdtemp()
+  try:
+    pdb_file = os.path.join(tmp, "ala.pdb")
+    with open(pdb_file, "w") as f:
+      f.write(pdb_str)
+    for vdw_dots in (False, True):
+      out = os.path.join(tmp, "ala.kin")
+      run([pdb_file, "keep_hydrogens=True", "out_file=%s" % out,
+           "vdw_dots=%s" % vdw_dots])
+      with open(out) as f:
+        content = f.read()
+      assert ("master={vdw contact}" in content) == vdw_dots, vdw_dots
+      assert ("@master {vdw contact} off" in content) == vdw_dots, vdw_dots
+  finally:
+    shutil.rmtree(tmp)
+  print("  exercise_run_vdw_dots: OK")
+
+
+def exercise_run_output_name_and_inputs():
+  """The output is named after the whole file name, spaces and extra dots
+  included; a second model file is refused instead of silently dropped."""
+  import tempfile, shutil
+  from mmtbx.kinemage.validation import run
+  from libtbx.utils import Sorry
+  tmp = tempfile.mkdtemp()
+  cwd = os.getcwd()
+  try:
+    sub = os.path.join(tmp, "dir with space")
+    os.mkdir(sub)
+    pdb_file = os.path.join(sub, "ala.refined.pdb")
+    with open(pdb_file, "w") as f:
+      f.write(pdb_str)
+    os.chdir(tmp)
+    out = run([pdb_file, "keep_hydrogens=True"])
+    assert out == "ala.refined.kin", out
+    assert os.path.exists(os.path.join(tmp, "ala.refined.kin"))
+    second = os.path.join(tmp, "second.pdb")
+    shutil.copy(pdb_file, second)
+    for args in ([pdb_file, second], ["pdb=%s" % pdb_file, "pdb=%s" % second],
+                 ["pdb=%s" % pdb_file, second], [pdb_file, "pdb=%s" % second]):
+      try:
+        run(args + ["keep_hydrogens=True"])
+      except Sorry as e:
+        assert "Only one model file" in str(e), str(e)
+      else:
+        raise AssertionError("Expected Sorry for %s" % args)
+  finally:
+    os.chdir(cwd)
+    shutil.rmtree(tmp)
+  print("  exercise_run_output_name_and_inputs: OK")
+
+
+def exercise_run_multimodel():
+  """A multi-model file gets one animatable group per MODEL on the command
+  line, each with its own sticks and probe dots."""
+  import tempfile, shutil
+  from mmtbx.kinemage.validation import run
+  atoms = [l for l in pdb_str.splitlines() if l.startswith("ATOM")]
+  lines = [pdb_str.splitlines()[0]]
+  for i_model in (1, 2):
+    lines.append("MODEL %8d" % i_model)
+    lines.extend(atoms)
+    lines.append("ENDMDL")
+  lines.append("END")
+  tmp = tempfile.mkdtemp()
+  try:
+    pdb_file = os.path.join(tmp, "ens.pdb")
+    out = os.path.join(tmp, "ens.kin")
+    with open(pdb_file, "w") as f:
+      f.write("\n".join(lines) + "\n")
+    run([pdb_file, "keep_hydrogens=True", "out_file=%s" % out])
+    with open(out) as f:
+      content = f.read()
+    groups = [l for l in content.splitlines() if l.startswith("@group")]
+    assert groups == ["@group {m1 ens} dominant animate",
+                      "@group {m2 ens} dominant animate"], groups
+    assert content.count("@caption probe2") == 2
+    assert len(_vectorlist_points(content, "Calphas")) == 4
+  finally:
+    shutil.rmtree(tmp)
+  print("  exercise_run_multimodel: OK")
+
+
 def run():
   print("Testing mmtbx.kinemage.validation:")
   exercise_helper_functions()
+  exercise_footer_dot_masters()
   exercise_deleted_functions()
   exercise_altloc_handling()
   exercise_build_kinemage()
@@ -1217,6 +1472,7 @@ def run():
   exercise_draw_residue_bonds()
   exercise_track_amino_acid_atom()
   exercise_track_rna_dna_atom()
+  exercise_backbone_links()
   exercise_disulfide_bonds()
   exercise_make_multikin_with_ribbons()
   exercise_make_multikin_with_disulfide()
@@ -1225,6 +1481,12 @@ def run():
   exercise_build_kinemage_from_model_toggles()
   exercise_ribbon_rendering()
   exercise_ribbon_in_kinemage()
+  exercise_probe_dots_unrestrained_ligand()
+  exercise_run_with_ligand_cif()
+  exercise_run_missing_file()
+  exercise_run_vdw_dots()
+  exercise_run_output_name_and_inputs()
+  exercise_run_multimodel()
   print("All tests passed.")
 
 

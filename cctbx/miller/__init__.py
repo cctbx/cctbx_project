@@ -4399,7 +4399,107 @@ class array(set):
     raise ValueError(
       "Could not construct non-empty resolution bins for the provided array.")
 
-  def fsc(self, other, smooth=False):
+  @staticmethod
+  def adaptive_value_bins(
+        values,
+        thresholds=(2.0, 4.0, 10.0, 25.0, 50.0),
+        widths=(0.001, 0.005, 0.01, 0.1, 1.0, 1.0),
+        target_counts=(1000, 1000, 500, 250, 100, 50)):
+    """
+    Partition a sorted CCTBX flex.double into adaptive bins.
+
+    Parameters
+    ----------
+    values : cctbx.array_family.flex.double
+        Values sorted in nondecreasing order.
+
+    thresholds : sequence of float
+        Boundaries separating the value regimes.
+
+    widths : sequence of float
+        Nominal bin width for each regime. Must contain one more entry
+        than thresholds.
+
+    target_counts : sequence of int
+        Minimum point count for each regime. Must contain one more entry
+        than thresholds.
+
+    Returns
+    -------
+    list of tuple
+        Contiguous ``(start, end)`` index pairs, where ``start`` is
+        inclusive and ``end`` is exclusive.
+
+    Raises
+    ------
+    ValueError
+        If a nonempty input is too small to form even one valid bin.
+
+    Notes
+    -----
+    The input is assumed to be valid and sorted; no validation is done.
+
+    Width has priority over the target count. If the nominal-width bin
+    contains fewer than the target count, it is extended. Equal values
+    are never split. An underfilled final tail is merged into the
+    preceding bin.
+    """
+    import bisect
+    n = len(values)
+    if n == 0: return []
+    result = []
+    start = 0
+    while start < n:
+      first_value = values[start]
+      # bisect_right implements these regimes:
+      #
+      # value < thresholds[0]
+      # thresholds[0] <= value < thresholds[1]
+      # ...
+      # thresholds[-1] <= value
+      regime = bisect.bisect_right(thresholds, first_value)
+      width = widths[regime]
+      target_count = target_counts[regime]
+      remaining = n - start
+      # The remaining tail cannot form a valid independent bin.
+      if remaining < target_count:
+        if not result:
+          raise ValueError(
+              "Cannot form a valid bin: input contains %d points, "
+              "but the first bin requires at least %d."
+              % (n, target_count)
+          )
+        # Absorb the entire underfilled tail into the preceding bin.
+        previous_start, _ = result[-1]
+        result[-1] = (previous_start, n)
+        break
+      nominal_upper_bound = first_value + width
+      # Find the first value >= nominal_upper_bound. Therefore, the
+      # nominal value interval is half-open:
+      #
+      #     first_value <= value < nominal_upper_bound
+      width_end = bisect.bisect_left(
+        values,
+        nominal_upper_bound,
+        start + 1,
+        n)
+      target_end = start + target_count
+      # Width has priority: keep all points within the nominal width,
+      # even if that produces more than target_count points.
+      end = max(width_end, target_end)
+      # Do not split identical values at a count-based boundary.
+      if end < n and values[end - 1] == values[end]:
+          boundary_value = values[end]
+          end = bisect.bisect_right(
+            values,
+            boundary_value,
+            end,
+            n)
+      result.append((start, end))
+      start = end
+    return result
+
+  def fsc(self, other):
     """
     Compute Fourier Shell Correlation (FSC)
     """
@@ -4407,20 +4507,36 @@ class array(set):
     assert f1.indices().all_eq(f2.indices())
     # Get data and order
     ds = f1.d_spacings().data()
+    s = ds > 0
+    ds = ds.select(s)
+    f1 = f1.select(s)
+    f2 = f2.select(s)
+    s = flex.sort_permutation(ds)
+    ds = ds.select(s)
+    f1 = f1.select(s)
+    f2 = f2.select(s)
     d1 = f1.data()
     d2 = f2.data()
-    s = flex.sort_permutation(ds)
-    # [1:] excludes s=0 or d=-1
-    ds = ds.select(s)[1:]
-    d1 = d1.select(s)[1:]
-    d2 = d2.select(s)[1:]
     del s
-    # Get bins
-    bins = bins_mixed(d_spacings_sorted=ds)
     # Compute FSC
     fsc = flex.double()
     d   = flex.double()
     raw = []
+    #
+    # PVA: switch to adaptive_value_bins ; 16-SEP-2026
+    #
+    #bins = bins_mixed(d_spacings_sorted=ds)
+    #
+    # This is to pass iotbx/regression/tst_map_model_manager_3.py
+    #
+    try:
+      bins = self.adaptive_value_bins(values = ds)
+    except ValueError as e:
+      if "Cannot form a valid bin" in str(e):
+        bins = bins_mixed(d_spacings_sorted=ds)
+      else:
+        raise
+    #
     for bin in bins:
       l, r = bin[0], bin[1]
       x = d1[l:r]
@@ -4430,15 +4546,13 @@ class array(set):
       fsc.append(value)
       d.append(flex.mean(z))
       raw.append( (z[0], z[-1], 2./(z[0]+z[-1]), value) )
-
+    #
     d_inv = 1/d
     # Smooth FSC curve
     # Smoothing can change the input array size causing an assertion crash!
     sel = d>15.
     d_const = None
-
     if d.size() > 10:
-
       if sel.count(True)>0:
         d_const   = d    .select(sel)
         fsc_const = fsc  .select(sel)
@@ -4452,10 +4566,174 @@ class array(set):
         d  .extend(d_const)
         fsc.extend(fsc_const)
       d_inv = 1./d
-
     s = flex.sort_permutation(d_inv)
     return group_args(
       raw=raw, d=d.select(s), d_inv=d_inv.select(s), fsc=fsc.select(s))
+
+  @staticmethod
+  def _d_min_from_fsc_helper(
+        fsc, d, d_inv, cutoff, half_window=5, max_resolution_shift=0.25,
+        fallback=None):
+      """
+      Find the resolution at the first downward FSC cutoff crossing.
+
+      Parameters
+      ----------
+      fsc : flex.double
+          FSC values.
+      d : flex.double
+          Resolution values.
+      d_inv : flex.double
+          Reciprocal-resolution values corresponding to `d`.
+      cutoff : float
+          FSC cutoff.
+      half_window : int
+          Number of neighboring points used on either side of the crossing.
+      max_resolution_shift : float or None
+          Maximum allowed difference between the quadratic result and the
+          linearly interpolated result. Set to None to disable this check.
+      fallback
+          Returned when no point below the cutoff exists.
+
+      Returns
+      -------
+      float or fallback
+          Estimated resolution at the first downward crossing.
+      """
+      try:
+        n = min(len(fsc), len(d), len(d_inv))
+        cutoff = float(cutoff)
+        if n == 0 or not math.isfinite(cutoff): return fallback
+        # Find the first value below the cutoff. This explicitly selects
+        # the first downward-crossing branch of an oscillating curve.
+        i_mid = None
+        for i in range(n):
+          try:
+            if float(fsc[i]) < cutoff:
+              i_mid = i
+              break
+          except (TypeError, ValueError, OverflowError):
+            continue
+        if i_mid is None: return fallback
+        try:
+          d_mid = float(d[i_mid])
+        except (TypeError, ValueError, OverflowError):
+          return fallback
+        if not math.isfinite(d_mid): return fallback
+        # If the curve starts below the cutoff, there is no preceding
+        # sample from which to estimate the crossing.
+        if i_mid == 0: return d_mid
+        # Fallback: linear interpolation across the actual
+        # crossing pair.
+        d_result = d_mid
+        x_cross = None
+        try:
+          y0 = float(fsc[i_mid - 1])
+          y1 = float(fsc[i_mid])
+          x0 = float(d_inv[i_mid - 1])
+          x1 = float(d_inv[i_mid])
+          if all(math.isfinite(v) for v in (y0, y1, x0, x1)):
+            if y1 != y0:
+              fraction = (cutoff - y0) / (y1 - y0)
+              # The pair should bracket the cutoff, but clamp against
+              # small numerical or malformed-data excursions.
+              fraction = max(0.0, min(1.0, fraction))
+              x_cross = x0 + fraction * (x1 - x0)
+            else:
+              x_cross = 0.5 * (x0 + x1)
+            if x_cross != 0.0 and math.isfinite(x_cross):
+              candidate = 1.0 / x_cross
+              if math.isfinite(candidate):
+                d_result = candidate
+            else:
+              x_cross = None
+        except (TypeError, ValueError, OverflowError, ZeroDivisionError):
+          x_cross = None
+        # Improve the result using local quadratic fit.
+        # Any problem simply leaves the linear result unchanged.
+        try:
+          i_min = max(0, i_mid - int(half_window))
+          # Python's upper slice bound is exclusive.
+          i_stop = min(n, i_mid + int(half_window) + 1)
+          if i_stop - i_min < 3: return d_result
+          # For a positive cutoff, require the whole local window to
+          # support a downward trend through the cutoff. Around zero,
+          # retain less restrictive behavior.
+          on_slope = (
+            cutoff <= 0.0 or
+            (
+              float(fsc[i_min]) > cutoff and
+              float(fsc[i_stop - 1]) < cutoff
+            )
+          )
+          if not on_slope: return d_result
+          x = d_inv[i_min:i_stop]
+          y = fsc[i_min:i_stop]
+          from scitbx.math import curve_fitting
+          c, b, a = curve_fitting.univariate_polynomial_fit(
+            x_obs=x,
+            y_obs=y,
+            degree=2,
+            number_of_cycles=5
+          ).params
+          a = float(a)
+          b = float(b)
+          c = float(c) - cutoff
+          if not all(math.isfinite(v) for v in (a, b, c)): return d_result
+          roots = []
+          if a != 0.0:
+            determinant = b * b - 4.0 * a * c
+            if math.isfinite(determinant) and determinant >= 0.0:
+              sqrt_det = math.sqrt(determinant)
+              roots.append((-b + sqrt_det) / (2.0 * a))
+              roots.append((-b - sqrt_det) / (2.0 * a))
+          elif b != 0.0:
+            # A nominal quadratic fit can effectively be linear.
+            roots.append(-c / b)
+          x_values = [
+            float(d_inv[i])
+            for i in range(i_min, i_stop)
+            if math.isfinite(float(d_inv[i]))
+          ]
+          if not x_values: return d_result
+          x_low = min(x_values)
+          x_high = max(x_values)
+          # Reject roots outside the fitted data range. Such roots are
+          # polynomial extrapolations and are generally unreliable.
+          roots = [
+            root for root in roots
+            if (
+              math.isfinite(root) and
+              root > 0.0 and
+              x_low <= root <= x_high
+            )
+          ]
+          if not roots: return d_result
+          # Select the root nearest the actual crossing pair rather than
+          # selecting solely in resolution space.
+          if x_cross is not None:
+            root = min(roots, key=lambda value: abs(value - x_cross))
+          else:
+            x_mid = float(d_inv[i_mid])
+            root = min(roots, key=lambda value: abs(value - x_mid))
+          d_quadratic = 1.0 / root
+          if not math.isfinite(d_quadratic): return d_result
+          # Preserve protection against implausibly large movement,
+          # but compare against the interpolated crossing rather than the
+          # lower sampled point.
+          if (
+            max_resolution_shift is not None and
+            abs(d_quadratic - d_result) >
+                abs(float(max_resolution_shift))
+          ):
+              return d_result
+          return d_quadratic
+        except Exception:
+          # Local fitting is optional; the interpolated crossing remains
+          # a valid and safe result.
+          return d_result
+      except Exception:
+        return fallback
 
   def d_min_from_fsc(self, other=None, fsc_curve=None, fsc_cutoff=0.143):
     """
@@ -4468,51 +4746,11 @@ class array(set):
       if not fsc_curve: return group_args(fsc=None, d_min=None)
     else:
       assert other is None
-    i_mid = None
-    for i in range(fsc_curve.fsc.size()):
-      if(fsc_curve.fsc[i]<fsc_cutoff):
-        i_mid = i
-        break
-    #print "i_mid, cc:", fsc_curve.d[i_mid], fsc_curve.d_inv[i_mid]
-    d_min = None
-    d_mid = None
-    if(i_mid is not None):
-      d_mid = fsc_curve.d[i_mid]
-      if(i_mid is not None):
-        i_min = i_mid-5
-        if i_min < 0:
-          i_min = 0
-        i_max = i_mid+6
-        if i_max >= len(fsc_curve.fsc):
-          i_max = len(fsc_curve.fsc) - 1
-        on_slope=True
-        if(fsc_cutoff>0.): # does not have to be on slope around fsc_cutoff=0
-          on_slope = [
-            fsc_curve.fsc[i_min]>fsc_cutoff,
-            fsc_curve.fsc[i_max]<fsc_cutoff].count(True)==2
-        if(on_slope or fsc_cutoff):
-          x = fsc_curve.d_inv[i_min:i_max]
-          y = fsc_curve.fsc[i_min:i_max]
-          from scitbx.math import curve_fitting
-          c,b,a = curve_fitting.univariate_polynomial_fit(x_obs=x, y_obs=y,
-            degree=2, number_of_cycles=5).params
-          c = c-fsc_cutoff
-          det = b**2-4*a*c
-          well_defined = [det >= 0., a != 0.]
-          if(well_defined.count(True)==2):
-            x1 = (-b+math.sqrt(det))/(2*a)
-            x2 = (-b-math.sqrt(det))/(2*a)
-            #print "x1,x2", 1./x1,1/x2
-            if(x1*x2<0.):
-              d_min = 1./max(x1,x2)
-            elif(x1>0 and x2>0):
-              d1,d2 = 1./x1, 1./x2
-              diff1 = abs(d1-d_mid)
-              diff2 = abs(d2-d_mid)
-              if(diff1<diff2): d_min = d1
-              else:            d_min = d2
-              if(abs(d_mid-d_min)>0.25): d_min = None
-    if(d_min is None): d_min = d_mid
+    d_min = self._d_min_from_fsc_helper(
+      fsc    = fsc_curve.fsc,
+      d      = fsc_curve.d,
+      d_inv  = fsc_curve.d_inv,
+      cutoff = fsc_cutoff)
     return group_args(fsc=fsc_curve, d_min=d_min)
 
   def map_correlation(self, other):

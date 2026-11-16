@@ -1412,9 +1412,75 @@ def tst_07():
 
   print("OK")
 
+def tst_08():
+  """Point-group test at the tolerance limits.
+
+  Products of 2-fold operators miss the set by a bit less or a bit more
+  than tol_r, abs_tol_t, or rel_tol_t times the translation; the group
+  is accepted only in the first case.
+  """
+  print("Point-group symmetry within tolerances...", end=' ')
+  from mmtbx.ncs.ncs import ncs
+  from scitbx import matrix
+  identity = matrix.sqr((1,0,0, 0,1,0, 0,0,1))
+  zero = matrix.col((0,0,0))
+  def group(rotations, translations):
+    ncs_object = ncs()
+    ncs_object.import_ncs_group(ncs_rota_matr=rotations,
+      trans_orth=translations, center_orth=[zero]*len(rotations))
+    return ncs_object.ncs_groups()[0]
+  def two_fold(delta=0, t=(0,0,0)):
+    """2-fold along z; its square misses the identity by 2*delta"""
+    return group([identity, matrix.sqr((-1,delta,0, 0,-1,0, 0,0,1))],
+      [zero, matrix.col(t)])
+  tol = dict(tol_r=0.02, abs_tol_t=2.0, rel_tol_t=0.05)
+  assert two_fold(delta=0.009).is_point_group_symmetry(**tol)
+  assert not two_fold(delta=0.011).is_point_group_symmetry(**tol)
+  # translation along the axis: the square translates by 2*t_z
+  assert two_fold(t=(0,0,0.9)).is_point_group_symmetry(**tol)
+  assert not two_fold(t=(0,0,1.1)).is_point_group_symmetry(**tol)
+  # translation of the 2-fold off by e from that of symmetry_to_match:
+  # accepted if e <= 2 A or e <= 5% of the mean of the two translations
+  for t_x, e, expected in [(2, 1.5, True), (2, 2.5, False),
+                           (200, 10.2, True), (200, 10.4, False)]:
+    result = two_fold(t=(t_x,0,0)).is_point_group_symmetry(
+      symmetry_to_match=two_fold(t=(t_x+e,0,0)), **tol)
+    assert result == expected, (t_x, e, result)
+  # the relative test is needed only where the absolute one fails
+  assert two_fold(t=(0,0,0.9)).is_point_group_symmetry(tol_r=0.02,
+    abs_tol_t=2.0, rel_tol_t=None)
+  # identity and a 3-fold, without its square
+  c, s = -0.5, 0.75**0.5
+  assert not group([identity, matrix.sqr((c,-s,0, s,c,0, 0,0,1))],
+    [zero, zero]).is_point_group_symmetry(**tol)
+  # D3 about a center off the origin: operators that do not commute
+  from mmtbx.ncs.ncs import generate_ncs_ops
+  from libtbx.utils import null_out
+  d3 = generate_ncs_ops(symmetry="D3", out=null_out())[0].coordinate_offset(
+    coordinate_offset=(10.3, 20.1, -5.7))
+  assert d3.ncs_groups()[0].is_point_group_symmetry(**tol)
+  # C100 and a 2-fold g along (1,0,1), 101 operators, compared in blocks
+  #  of products with 299 or 200 operators
+  from math import cos, sin, pi
+  g = matrix.sqr((0,0,1, 0,-1,0, 1,0,0))
+  c100 = []
+  for k in range(100):
+    c, s = cos(2*pi*k/100), sin(2*pi*k/100)
+    c100.append(matrix.sqr((c,-s,0, s,c,0, 0,0,1)))
+  c100_g = group(c100 + [g], [zero]*101)
+  g_r = [g * r for r in c100]
+  r_g = [r * g for r in c100[1:]]
+  assert c100_g.is_point_group_symmetry(
+    symmetry_to_match=group(c100 + g_r + r_g, [zero]*299), **tol)
+  # without the r*g, in blocks of 50, 50 and 1: only the last block, g
+  #  alone, has products that miss
+  assert not c100_g.is_point_group_symmetry(
+    symmetry_to_match=group(c100 + g_r, [zero]*200), **tol)
+  print("OK")
 
 
 if __name__=="__main__":
+  tst_08()
   tst_07()
   tst_01()
   tst_02()

@@ -3,7 +3,9 @@ import os
 Import("env_base", "env_etc")
 
 try:
-  env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../eigen"))
+  env_etc.eigen_dist = libtbx.env.find_in_repositories("eigen")
+  if env_etc.eigen_dist is None:
+    env_etc.eigen_dist = ""
   if not os.path.isdir(env_etc.eigen_dist) and hasattr(env_etc, "conda_cpppath"):
     for candidate in env_etc.conda_cpppath:
       if os.path.isdir(os.path.join(candidate, "eigen3")):

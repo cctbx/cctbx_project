@@ -855,6 +855,10 @@ Parameters:
   verbose:  optional control of log stream
   any other kw items:  passed directly to function
 
+Returns:
+  list of the results of function, in the order of iteration_list,
+  leaving out results that are None (use None to signal "no result")
+
 Sample use:
   result_list = simple_parallel(
     function = run_something,        # function to run
@@ -971,7 +975,7 @@ def run_parallel(): # run in parallel
       if result_info and result_info.result and result_info.result.result_list:
         result = result_info.result
         for r in result.result_list:
-          if r:
+          if r is not None:
             result_list.append(r)
             if not printed_something:
               print (result.log_as_text, file = log)

@@ -10,7 +10,6 @@ trigger:
   branches:
     exclude:
       - master
-      - main
       - releases/*
 
 resources:

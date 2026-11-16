@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import sys
-from libtbx import easy_run
+from contextlib import redirect_stdout
+from io import StringIO
+from mmtbx.command_line import pdb_interpretation
 from libtbx.test_utils import assert_lines_in_file
 from iotbx.pdb import pdb_input
 
@@ -119,7 +121,7 @@ geo_strings = {'ASP' :
    3 : '''nonbonded pdb=" OD1 ASP A 270 "
           pdb=" HD2 ASP A 270 "
    model   vdw
-   2.475 2.056''',
+   2.475 1.576''',
   },
                'ASP_D' :
   {
@@ -182,7 +184,8 @@ def tst_adding_side_chain_acid_hydrogen_atoms(switch):
     hierarchy.write_pdb_file(fn.replace('.pdb', '_updated.pdb'))
     cmd='phenix.pdb_interpretation const_shrink_donor_acceptor=0.6 %s flip_sym=0 write_geo=True' % fn.replace('.pdb', '_updated.pdb')
     print(cmd)
-    easy_run.go(cmd)
+    with redirect_stdout(StringIO()):
+      pdb_interpretation.run(args=cmd.split()[1:])
     assert_lines_in_file(file_name='%s.geo' % fn.replace('.pdb', '_updated.pdb'),
                          lines = geo_strings[switch][i])
 
@@ -205,7 +208,8 @@ def tst_adding_disulfur_hydrogen_atoms(switch):
   else:
     cmd='phenix.pdb_interpretation const_shrink_donor_acceptor=0.6 %s write_geo=True' % fn.replace('.pdb', '_updated.pdb')
     print(cmd)
-    easy_run.go(cmd)
+    with redirect_stdout(StringIO()):
+      pdb_interpretation.run(args=cmd.split()[1:])
     assert_lines_in_file(file_name='%s.geo' % fn.replace('.pdb', '_updated.pdb'),
                          lines = geo_strings[switch])
 

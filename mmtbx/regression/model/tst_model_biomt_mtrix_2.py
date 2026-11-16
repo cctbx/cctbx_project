@@ -102,9 +102,66 @@ def exercise_mtrix_only():
   model.expand_with_BIOMT_records()
   assert model.get_number_of_atoms() == 120, model.get_number_of_atoms()
 
+def exercise_many_chains_many_operators():
+  """
+  38 chains x 106 operators needs more chain ids than there are 1- and
+  2-character ones (3906). Expansion must continue with longer ids instead of
+  failing with IndexError; the result is only representable as mmCIF.
+  """
+  import math
+  from iotbx.pdb import hierarchy
+  from iotbx.pdb.utils import all_chain_ids
+  n_chains, n_ops = 38, 106
+  root = hierarchy.root()
+  m = hierarchy.model()
+  root.append_model(m)
+  for i, cid in enumerate(all_chain_ids()[:n_chains]):
+    c = hierarchy.chain(id=cid)
+    rg = hierarchy.residue_group(resseq="   1")
+    ag = hierarchy.atom_group(resname="GLY")
+    a = hierarchy.atom()
+    a.name = " CA "
+    a.element = " C"
+    a.xyz = (10.0*i, 0, 0)
+    a.occ = 1
+    a.b = 20
+    ag.append_atom(a)
+    rg.append_atom_group(ag)
+    c.append_residue_group(rg)
+    m.append_chain(c)
+  root.atoms().reset_serial()
+  lines = ["CRYST1  500.000  500.000  500.000  90.00  90.00  90.00 P 1"]
+  for k in range(n_ops):
+    ang = 2*math.pi*k/n_ops
+    r = (math.cos(ang), -math.sin(ang), 0,
+         math.sin(ang),  math.cos(ang), 0,
+         0, 0, 1)
+    t = (5.0*k, 0, 0)
+    for i in range(3):
+      lines.append("MTRIX%d %3d%10.6f%10.6f%10.6f     %10.5f" % (
+        i+1, k+1, r[3*i], r[3*i+1], r[3*i+2], t[i]))
+  lines.append(root.as_pdb_string())
+  inp = iotbx.pdb.input(lines="\n".join(lines), source_info=None)
+  model = mmtbx.model.manager(model_input=inp)
+  h = model.get_hierarchy()
+  n_expected = n_chains*n_ops
+  assert h.overall_counts().n_chains == n_expected, (
+    h.overall_counts().n_chains, n_expected)
+  ids = [c.id for c in h.only_model().chains()]
+  assert len(set(ids)) == n_expected, (len(set(ids)), n_expected)
+  assert max([len(i) for i in ids]) == 3, max([len(i) for i in ids])
+  assert not model.can_be_output_as_pdb()
+  # round-trip through mmCIF
+  h2 = iotbx.pdb.input(lines=model.model_as_mmcif(),
+    source_info=None).construct_hierarchy()
+  assert h2.overall_counts().n_chains == n_expected, (
+    h2.overall_counts().n_chains, n_expected)
+  assert [c.id for c in h2.only_model().chains()] == ids
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_biomt_only()
   exercise_mtrix_only()
+  exercise_many_chains_many_operators()
   print("Total time: %8.3f"%(time.time() - t0))
   print("OK.")

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 from libtbx import test_utils
 import libtbx.load_env
+OPT = libtbx.env.build_options
 
 nb_tst_list = [
     "$D/nanoBragg/tst_nanoBragg_minimal.py",
@@ -14,7 +15,12 @@ nb_tst_list = [
 
 db_tst_list_nonCuda = ["$D/diffBragg/tests/tst_diffBragg_utils.py",
                        "$D/diffBragg/tests/tst_diffBragg_structure_factors.py"]
-db_tst_list_onlyCuda =[["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb eta --kokkos"]]
+
+if not OPT.enable_cuda:
+  # Disabled 11/05/26 due to running long on Azure pipelines with OpenMP/nproc=2. Disabled dynamically only if GPU is not available.
+  db_tst_list_onlyCuda = []
+else:
+  db_tst_list_onlyCuda = [["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb eta --kokkos"]]
 
 db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_hopper_refine_Fhkl.py", "--scale .2"],
@@ -69,11 +75,10 @@ db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 2 --gamma 100 125 150 --grad sigma --sigma 1 2 3"]
     ]
 
-OPT = libtbx.env.build_options
 tst_list_parallel = []
 
 tst_list = nb_tst_list
-if OPT.enable_cxx11 and sys.platform != 'win32':
+if OPT.cxxstd in ['c++11', 'c++14', 'c++17'] and sys.platform != 'win32':
   tst_list += db_tst_list+db_tst_list_nonCuda
 
 if OPT.enable_cuda:
@@ -100,7 +105,7 @@ if OPT.enable_kokkos and sys.platform.startswith('linux') and OPT.enable_cuda an
     ["$D/tests/tst_memory_policy.py","context=kokkos_gpu"],
   ]
 if OPT.enable_kokkos:
-  if OPT.enable_cxx11 and sys.platform != 'win32':
+  if OPT.cxxstd in ['c++11', 'c++14', 'c++17'] and sys.platform != 'win32':
     for tst in db_tst_list:
       if isinstance(tst, str):
         par_tst = [tst, "--kokkos"]

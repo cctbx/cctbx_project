@@ -212,12 +212,44 @@ class simple_file_loader(worker):
     self.logger.log('Read %d experiments consisting of %d reflections'%(len(all_experiments)-starting_expts_count, len(all_reflections)-starting_refls_count))
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
 
+    if self.params.input.max_lattices is not None:
+      all_experiments, all_reflections = self.select_random_subset(all_experiments, all_reflections)
+
     all_reflections = self.prune_reflection_table_keys(all_reflections)
 
     # Do we have any data?
     from xfel.merging.application.utils.data_counter import data_counter
     data_counter(self.params, mpi_helper = self.mpi_helper, mpi_logger = self.logger).count(all_experiments, all_reflections)
     return all_experiments, all_reflections
+
+  def select_random_subset(self, experiments, reflections):
+    """ Keep at most input.max_lattices experiments, drawn at random over
+        all ranks, with their reflections. Every rank draws the same
+        selection of global experiment indices from the same seed and keeps
+        the part that falls in its own range, so no rank needs to send
+        anything but its count. """
+    self.logger.log_step_time("RANDOM_SUBSET")
+    counts = self.mpi_helper.comm.allgather(len(experiments))
+    total = sum(counts)
+    max_lattices = self.params.input.max_lattices
+    if total > max_lattices:
+      mt = flex.mersenne_twister(seed = self.params.input.random_seed)
+      selected = mt.random_selection(total, max_lattices) # sorted, without replacement
+      first = sum(counts[:self.mpi_helper.rank])
+      mine = selected.select((selected >= first) & (selected < first + counts[self.mpi_helper.rank])) - first
+      identifiers = [experiments[int(i)].identifier for i in mine]
+      experiments.select_on_experiment_identifiers(identifiers)
+      reflections = reflections.select_on_experiment_identifiers(identifiers)
+      reflections.reset_ids()
+      self.logger.log("Kept a random subset of %d of %d experiments on this rank, %d reflections"%(
+        len(experiments), counts[self.mpi_helper.rank], len(reflections)))
+      if self.mpi_helper.rank == 0:
+        self.logger.main_log("Kept a random subset of %d of %d experiments (input.max_lattices, seed %d)"%(
+          max_lattices, total, self.params.input.random_seed))
+    elif self.mpi_helper.rank == 0:
+      self.logger.main_log("All %d experiments kept, fewer than input.max_lattices=%d"%(total, max_lattices))
+    self.logger.log_step_time("RANDOM_SUBSET", True)
+    return experiments, reflections
 
   def prune_reflection_table_keys(self, reflections):
     from xfel.merging.application.reflection_table_utils import reflection_table_utils

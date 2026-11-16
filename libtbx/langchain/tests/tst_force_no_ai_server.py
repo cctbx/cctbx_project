@@ -182,7 +182,7 @@ def _run_body():
     path = _find_ai_agent_source()
     if path is None:
         return None
-    with open(path, "r") as fh:
+    with open(path, "r", encoding="utf-8") as fh:
         src = fh.read()
     m = re.search(r"\n  def run\(self\):\n", src)
     if not m:
@@ -239,7 +239,7 @@ def _ai_analysis_run_body():
     path = _find_ai_analysis_source()
     if path is None:
         return None
-    with open(path, "r") as fh:
+    with open(path, "r", encoding="utf-8") as fh:
         src = fh.read()
     m = re.search(r"\n  def run\(self\):\n", src)
     if not m:
@@ -285,7 +285,7 @@ def _dispatcher_body(find_fn, func_name="run_job_on_server_or_locally"):
     path = find_fn()
     if path is None:
         return None
-    with open(path, "r") as fh:
+    with open(path, "r", encoding="utf-8") as fh:
         src = fh.read()
     m = re.search(r"\ndef %s\(" % re.escape(func_name), src)
     if not m:

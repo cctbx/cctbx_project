@@ -353,14 +353,14 @@ def _run_one(job):
     shutil.copytree(TESTS, os.path.join(target, "tests"))
     path = os.path.join(target, "log_extraction",
                         "log_structure_extractor.py")
-    handle = open(path)
+    handle = open(path, encoding="utf-8")
     try:
       source = handle.read()
     finally:
       handle.close()
     if pattern not in source:
       return name, None, None, "patch target not found"
-    handle = open(path, "w")
+    handle = open(path, "w", encoding="utf-8")
     try:
       handle.write(source.replace(pattern, replacement, 1))
     finally:

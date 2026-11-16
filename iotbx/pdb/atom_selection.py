@@ -159,9 +159,9 @@ class cache(slots_getstate_setstate):
   """
   Manager for interpreting atom selection strings, with caching of partial
   selections.  This has some limited understanding of chemical identities via
-  keywords like pepnames, water, or single_atom_residue, but more advanced
-  selections require the use of a callback.  In practice this would usually
-  involve wrapping the cache in another object, for example the class
+  keywords like pepnames, water, single_atom_residue, or capping_h, but more
+  advanced selections require the use of a callback.  In practice this would
+  usually involve wrapping the cache in another object, for example the class
   build_all_chain_proxies in mmtbx.monomer_library.pdb_interpretation.
 
   Because the selections available here are used in some situations where setup
@@ -191,6 +191,7 @@ class cache(slots_getstate_setstate):
     "protein",
     "nucleotide",
     "single_atom_residue",
+    "capping_h",
     "water",
     'ion',
     "hetero",
@@ -210,6 +211,7 @@ class cache(slots_getstate_setstate):
     root.get_atom_selection_cache(self)
     self.pepnames = None
     self.single_atom_residue = None
+    self.capping_h = None
     self.protein = None
     self.nucleotide = None
     self.water = None
@@ -451,6 +453,17 @@ class cache(slots_getstate_setstate):
       self.pepnames = (atoms.extract_tmp_as_size_t() == 1).iselection()
     return [self.pepnames]
 
+  def get_capping_h(self):
+    if (self.capping_h is None):
+      try:
+        import mmtbx
+      except ImportError as e:
+        raise Sorry("The capping_h selection keyword needs mmtbx (%s)." % e)
+      # outside the try: an ImportError inside mmtbx is a real error
+      from mmtbx.hydrogens.capping import capping_h_selection
+      self.capping_h = capping_h_selection(self.root).iselection()
+    return [self.capping_h]
+
   def get_single_atom_residue(self):
     if (self.single_atom_residue is None):
       atoms = self.root.atoms()
@@ -554,6 +567,9 @@ class cache(slots_getstate_setstate):
 
   def sel_pepnames(self):
     return self.union(iselections=self.get_pepnames())
+
+  def sel_capping_h(self):
+    return self.union(iselections=self.get_capping_h())
 
   def sel_single_atom_residue(self):
     return self.union(iselections=self.get_single_atom_residue())
@@ -761,6 +777,8 @@ class cache(slots_getstate_setstate):
           result_stack.append(self.sel_nucleotide())
         elif (lword == "single_atom_residue"):
           result_stack.append(self.sel_single_atom_residue())
+        elif (lword == "capping_h"):
+          result_stack.append(self.sel_capping_h())
         elif (lword == "water"):
           result_stack.append(self.sel_water())
         elif (lword == "carbohydrate"):

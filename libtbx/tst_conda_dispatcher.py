@@ -12,6 +12,7 @@ development-build dispatchers (write_bin_sh_dispatcher / write_win32_dispatcher)
 emit this block; the setpaths scripts no longer do.
 """
 
+import contextlib
 import os
 import shutil
 import subprocess
@@ -141,11 +142,12 @@ def exercise_runtime():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
-def exercise_generated_dispatcher():
-  """The conda-package dispatcher and the development-build dispatcher must
-  both emit the activation block."""
+@contextlib.contextmanager
+def isolated_dispatcher_env():
+  """Yield (env, bin_dir, source_file) for generating dispatchers into a
+  temporary directory, isolated from any dispatcher_include*.sh in the build
+  directory. The use_conda build option is restored on exit."""
   env = libtbx.env
-  # Isolate from any dispatcher_include*.sh present in the build directory.
   env._dispatcher_include_at_start = []
   env._dispatcher_include_before_command = []
   env._dispatcher_precall_commands = []
@@ -156,37 +158,79 @@ def exercise_generated_dispatcher():
     os.makedirs(bin_dir)
     source_file = os.path.join(tmp, "tst_conda_src.py")
     write_file(source_file, "print('hello')\n")
-    activate_d = os.path.join("etc", "conda", "activate.d")
-
-    def emits_activation(writer, name):
-      target_file = os.path.join(bin_dir, name)
-      if os.name == "nt":
-        target_file += ".bat"
-      writer(
-        source_file=env.as_relocatable_path(source_file),
-        target_file=env.as_relocatable_path(target_file))
-      with open(target_file) as f:
-        text = f.read()
-      return (activate_d in text, text)
-
-    # The conda-package dispatcher always emits the block.
-    ok, text = emits_activation(env.write_conda_dispatcher, "tst_conda_disp")
-    assert ok, text
-
-    # The development-build dispatcher emits it when use_conda is set.
-    env.build_options.use_conda = True
-    dev_writer = (env.write_win32_dispatcher if os.name == "nt"
-                  else env.write_bin_sh_dispatcher)
-    ok, text = emits_activation(dev_writer, "tst_dev_disp")
-    assert ok, text
+    yield env, bin_dir, source_file
   finally:
     env.build_options.use_conda = saved_use_conda
     shutil.rmtree(tmp, ignore_errors=True)
 
 
+def write_dispatcher(env, writer, bin_dir, source_file, name):
+  """Generate a dispatcher with ``writer`` and return its text."""
+  target_file = os.path.join(bin_dir, name)
+  if os.name == "nt":
+    target_file += ".bat"
+  writer(
+    source_file=env.as_relocatable_path(source_file),
+    target_file=env.as_relocatable_path(target_file))
+  with open(target_file) as f:
+    return f.read()
+
+
+def exercise_generated_dispatcher():
+  """The conda-package dispatcher and the development-build dispatcher must
+  both emit the activation block."""
+  activate_d = os.path.join("etc", "conda", "activate.d")
+  with isolated_dispatcher_env() as (env, bin_dir, source_file):
+    # The conda-package dispatcher always emits the block.
+    text = write_dispatcher(
+      env, env.write_conda_dispatcher, bin_dir, source_file, "tst_conda_disp")
+    assert activate_d in text, text
+
+    # The development-build dispatcher emits it when use_conda is set.
+    env.build_options.use_conda = True
+    dev_writer = (env.write_win32_dispatcher if os.name == "nt"
+                  else env.write_bin_sh_dispatcher)
+    text = write_dispatcher(
+      env, dev_writer, bin_dir, source_file, "tst_dev_disp")
+    assert activate_d in text, text
+
+
+def exercise_conda_bin_on_path():
+  """The sh development-build dispatcher must put <conda_prefix>/bin on PATH
+  directly after $LIBTBX_BUILD/bin when use_conda is set, matching the
+  conda-package dispatchers (whose prefix bin is the dispatcher bin), and
+  must not add it otherwise."""
+  if os.name == "nt":
+    return  # write_win32_dispatcher already adds the Library/bin dirs.
+  with isolated_dispatcher_env() as (env, bin_dir, source_file):
+    conda_bin = (env.as_relocatable_path(env_config.get_conda_prefix())
+                 / "bin").sh_value()
+
+    def path_assignment(name):
+      text = write_dispatcher(
+        env, env.write_bin_sh_dispatcher, bin_dir, source_file, name)
+      lines = [l.strip() for l in text.splitlines()
+               if l.strip().startswith('PATH="')]
+      assert len(lines) == 2, lines  # if/else branches of the essential
+      return lines
+
+    env.build_options.use_conda = True
+    lines = path_assignment("tst_dev_conda")
+    expected = 'PATH="$LIBTBX_BUILD/bin:%s' % conda_bin
+    for line in lines:
+      assert line.startswith(expected), (line, expected)
+
+    env.build_options.use_conda = False
+    lines = path_assignment("tst_dev_noconda")
+    for line in lines:
+      assert conda_bin not in line, (line, conda_bin)
+      assert line.startswith('PATH="$LIBTBX_BUILD/bin'), line
+
+
 def exercise():
   exercise_runtime()
   exercise_generated_dispatcher()
+  exercise_conda_bin_on_path()
 
 
 if __name__ == "__main__":

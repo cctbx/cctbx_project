@@ -28,18 +28,41 @@ setenv {program}_VERSION {version}
 setenv PATH {bin_dir}:$PATH
 '''
 
-# Windows file
+# Windows file (%~dp0 ends with a backslash, which is stripped so the
+# variables hold the prefix the way the POSIX files and the dispatchers do)
 bat_template = '''\
 @echo off
 set {program}=%~dp0
-set {program}_PREFIX=%~dp0
+set {program}=%{program}:~0,-1%
+set {program}_PREFIX=%{program}%
 set {program}_VERSION={version}
 set PATH={bin_dir};%PATH%
 '''
 
 # =============================================================================
+def default_bin_dirs(prefix, platform=sys.platform):
+  '''
+  The directory added to PATH when none is given
+
+  Parameters
+  ----------
+  prefix : str
+      The installation prefix
+  platform : str
+      sys.platform of the installation
+
+  Returns
+  -------
+  list of str
+      The conda bin directory, which is Library\\bin on Windows
+  '''
+  if platform == 'win32':
+    return [os.path.join(prefix, 'Library', 'bin')]
+  return [os.path.join(prefix, 'bin')]
+
+# -----------------------------------------------------------------------------
 def write_files(program=None, prefix=None, bin_dirs=None, version=None,
-  destination=None):
+  destination=None, platform=sys.platform):
   '''
   Populate template with arguments
 
@@ -55,6 +78,8 @@ def write_files(program=None, prefix=None, bin_dirs=None, version=None,
       see parser arguments in run()
   destination : str
       see parser arguments in run()
+  platform : str
+      sys.platform of the installation; selects the .bat or the sh/csh files
   '''
   if version is None:
     version = ''
@@ -62,7 +87,7 @@ def write_files(program=None, prefix=None, bin_dirs=None, version=None,
   program = program.upper()
   filename = '{program}_env'.format(program=program.lower())
   filename = os.path.join(destination, filename)
-  if sys.platform == 'win32':
+  if platform == 'win32':
     with open('.'.join([filename, 'bat']), 'w') as f:
       f.write(bat_template.format(
         program=program,
@@ -81,14 +106,12 @@ def write_files(program=None, prefix=None, bin_dirs=None, version=None,
         ))
 
 # -----------------------------------------------------------------------------
-def run():
+def run(args=None):
   parser = argparse.ArgumentParser(description=__doc__,
     formatter_class=argparse.RawDescriptionHelpFormatter)
 
   default_prefix = os.path.normpath(sys.prefix)
-  if sys.platform == 'win32':
-    default_bin_dirs = [os.path.join(default_prefix, 'Library', 'bin')]
-  default_bin_dirs = [os.path.join(default_prefix, 'bin')]
+  default_bins = default_bin_dirs(default_prefix)
 
   parser.add_argument(
     '--program', default='cctbx', type=str,
@@ -104,7 +127,7 @@ def run():
     '--bin-dir', default=None, type=str, action='append',
     help='''The location to be added to $PATH, by default it is $PREFIX/bin.
       If the argument is a relative path, it will be appended to the
-      --prefix argument. ({default_bin_dirs})'''.format(default_bin_dirs=default_bin_dirs)
+      --prefix argument. ({default_bins})'''.format(default_bins=default_bins)
   )
   parser.add_argument(
     '--version', default=None, type=str,
@@ -115,19 +138,15 @@ def run():
     help='''The directory to write the output ({destination})'''.format(destination=os.getcwd())
   )
 
-  namespace = parser.parse_args()
+  namespace = parser.parse_args(args)
 
+  prefix = os.path.abspath(namespace.prefix)
   bin_dirs = namespace.bin_dir
   if bin_dirs is None:
-    bin_dirs = default_bin_dirs
+    bin_dirs = default_bin_dirs(prefix)
   for i in range(len(bin_dirs)):
     if not os.path.isabs(bin_dirs[i]):
-      bin_dirs[i] = os.path.join(namespace.prefix, bin_dirs[i])
-      bin_dirs[i] = os.path.abspath(bin_dirs[i])
-
-  prefix = namespace.prefix
-  if not os.path.isabs(prefix):
-    prefix = os.path.abspath(prefix)
+      bin_dirs[i] = os.path.abspath(os.path.join(prefix, bin_dirs[i]))
 
   try:
     write_files(

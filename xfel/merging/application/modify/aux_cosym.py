@@ -304,9 +304,18 @@ cosym.single_cb_op_to_minimum is not True')
             partiality_threshold=params.partiality_threshold,
         )
 
-        datasets = [
-            ma.as_anomalous_array().merge_equivalents().array() for ma in datasets
-        ]
+        if params.merge_friedel_mates:
+          # One averaged observation per Friedel pair, matching what the dials
+          # Target assumes of its input (it drops the anomalous flag before
+          # mapping to the asymmetric unit). See the phil help.
+          datasets = [
+              ma.customized_copy(anomalous_flag=False).merge_equivalents().array()
+              for ma in datasets
+          ]
+        else:
+          datasets = [
+              ma.as_anomalous_array().merge_equivalents().array() for ma in datasets
+          ]
         # opportunity here to subclass as defined above, instead of the dials-implemented version
         self.params.min_reflections = 0 # avoid any further filtering implemented in https://github.com/dials/dials/pull/2741
         self.cosym_analysis = CosymAnalysis(

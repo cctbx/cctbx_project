@@ -97,7 +97,11 @@ def query_docs(query_text, llm=None, embeddings=None,
     for attempt in range(max_attempts):
         try:
             response = rag_chain.invoke(query_text)
-            return response.content
+            try:
+              from libtbx.langchain.core.llm import response_text
+            except ImportError:
+              from core.llm import response_text
+            return response_text(response)
 
         except openai.RateLimitError:
             if attempt < max_attempts - 1:

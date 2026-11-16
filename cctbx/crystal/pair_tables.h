@@ -90,6 +90,7 @@ namespace cctbx { namespace crystal {
                   pair_sym_dict_i!=pair_sym_dict.end();
                   pair_sym_dict_i++) {
               unsigned j_seq = pair_sym_dict_i->first;
+              if (!selection[j_seq]) continue;
               scitbx::vec3<double> const& site_j = sites_frac[j_seq];
               af::const_ref<sgtbx::rt_mx> rt_mx_list = af::make_const_ref(
                 pair_sym_dict_i->second);

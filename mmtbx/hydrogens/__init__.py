@@ -389,9 +389,22 @@ def map_statistics(model, fmodel):
           result.append(score)
   return result
 
-def fit_rotatable2(model, fmodel):
+def fit_rotatable2(model, fmodel, reset_h=True, mapper=None):
   """
   Slow, OMIT map based fitting of rotatable H.
+
+  Parameters
+  ----------
+  model : mmtbx.model.manager
+  fmodel : mmtbx.f_model.manager
+  reset_h : bool
+    If True (default), reset all X-H lengths to the scattering table
+    convention and idealize H with the riding manager before fitting. If
+    False, the model coordinates are used as they are, and the check that
+    the scattering table is set (Sorry if not) is skipped too.
+  mapper : mmtbx.hydrogens.xh_mapper.mapper or None
+    If given, model coordinates are nuclear and the sites passed to fmodel
+    are mapper.shrink(model.get_sites_cart()).
   """
   # Reset mask params if needed
   mask_params = fmodel.mask_params
@@ -400,31 +413,31 @@ def fit_rotatable2(model, fmodel):
     mask_params.ignore_hydrogens=False
     fmodel.update(mask_params=mask_params)
   # Set X-H lengths based on data type
-  scattering_table = model.get_scattering_table()
-  if scattering_table is None:
-    raise Sorry("scattering_table must be set.")
-  use_neutron_distances = False
-  if scattering_table in ["neutron", "electron"]:
-    use_neutron_distances = True
-  model.set_hydrogen_bond_length(use_neutron_distances = use_neutron_distances)
-  model.idealize_h_riding()
+  if(reset_h):
+    scattering_table = model.get_scattering_table()
+    if scattering_table is None:
+      raise Sorry("scattering_table must be set.")
+    use_neutron_distances = False
+    if scattering_table in ["neutron", "electron"]:
+      use_neutron_distances = True
+    model.set_hydrogen_bond_length(
+      use_neutron_distances = use_neutron_distances)
+    model.idealize_h_riding()
   #
-  fmodel.xray_structure.set_sites_cart(model.get_sites_cart())
+  if(mapper is None): sites_for_fmodel = model.get_sites_cart()
+  else:               sites_for_fmodel = mapper.shrink(model.get_sites_cart())
+  fmodel.xray_structure.set_sites_cart(sites_for_fmodel)
   fmodel.update_xray_structure(
     update_f_calc  = True,
     update_f_mask  = True)
   fmodel.update_all_scales()
   #
-  # FIT
-  mm = map_manager(fmodel = fmodel, map_type = "mFobs-DFmodel")
+  # FIT: one OMIT map with every rotatable H of the model omitted, then the
+  # rotations of every residue fitted in it (per-residue OMIT maps cost a
+  # full structure factor calculation per residue).
   get_class = iotbx.pdb.common_residue_names_get_class
   sites_cart = model.get_sites_cart()
-
-  #for m in model.get_hierarchy().models():
-  #  for c in m.chains():
-  #    first=True
-  #    for r in c.residues():
-
+  rotations = [] # per residue: the [axis, atoms] list of shortcut
   for m in model.get_hierarchy().models():
     for c in m.chains():
       first=True
@@ -432,46 +445,51 @@ def fit_rotatable2(model, fmodel):
         conformers = residue_group.conformers()
         for conformer in conformers:
           r = conformer.only_residue()
-
           if not get_class(r.resname)=="common_amino_acid": continue
           s = mmtbx.hydrogens.shortcut(residue=r, first=first, log=model.log)
           first=False
           if s is None: continue
-          # print(r.resname, s)
-          omit_selection = flex.size_t()
-          for cl in s:
-            omit_selection.extend(flex.size_t(cl[1]))
-          mm.update_omit_map(omit_selection = omit_selection)
-          for cl in s:
-            axis = cl[0]
-            a1, a2               = sites_cart[axis[0]], sites_cart[axis[1]]
-            sel_to_rotate        = flex.size_t(cl[1])
-            sites_cart_to_rotate = sites_cart.select(sel_to_rotate)
-            score_start          = mm.score(sites_cart = sites_cart_to_rotate)
-            score_best           = score_start
-            sites_cart_moved     = flex.vec3_double(sites_cart_to_rotate.size())
-            sites_cart_best      = None
-            assert len(sel_to_rotate) in [1,3]
-            if len(sel_to_rotate)==1: stop=360
-            else:                     stop=60
-            for angle in range(0, stop, 1):
-              sites_cart_moved = flex.vec3_double(sites_cart_to_rotate.size())
-              for isite, site_cart in enumerate(sites_cart_to_rotate):
-                site_cart_rotated = rotate_point_around_axis(
-                  axis_point_1 = a1,
-                  axis_point_2 = a2,
-                  point        = site_cart,
-                  angle        = angle,
-                  deg          = True)
-                sites_cart_moved[isite] = site_cart_rotated
-              score = mm.score(sites_cart = sites_cart_moved)
-              if score > score_best:
-                score_best = score
-                sites_cart_best = sites_cart_moved.deep_copy()
-            if sites_cart_best is not None:
-              sites_cart = sites_cart.set_selected(sel_to_rotate, sites_cart_best)
+          rotations.append(s)
+  omit_selection = flex.size_t()
+  for s in rotations:
+    for cl in s:
+      omit_selection.extend(flex.size_t(cl[1]))
+  if(omit_selection.size() > 0):
+    mm = map_manager(fmodel = fmodel, map_type = "mFobs-DFmodel")
+    mm.update_omit_map(omit_selection = omit_selection)
+    for s in rotations:
+      for cl in s:
+        axis = cl[0]
+        a1, a2               = sites_cart[axis[0]], sites_cart[axis[1]]
+        sel_to_rotate        = flex.size_t(cl[1])
+        sites_cart_to_rotate = sites_cart.select(sel_to_rotate)
+        score_start          = mm.score(sites_cart = sites_cart_to_rotate)
+        score_best           = score_start
+        sites_cart_moved     = flex.vec3_double(sites_cart_to_rotate.size())
+        sites_cart_best      = None
+        assert len(sel_to_rotate) in [1,3]
+        if len(sel_to_rotate)==1: stop=360
+        else:                     stop=60
+        for angle in range(0, stop, 1):
+          sites_cart_moved = flex.vec3_double(sites_cart_to_rotate.size())
+          for isite, site_cart in enumerate(sites_cart_to_rotate):
+            site_cart_rotated = rotate_point_around_axis(
+              axis_point_1 = a1,
+              axis_point_2 = a2,
+              point        = site_cart,
+              angle        = angle,
+              deg          = True)
+            sites_cart_moved[isite] = site_cart_rotated
+          score = mm.score(sites_cart = sites_cart_moved)
+          if score > score_best:
+            score_best = score
+            sites_cart_best = sites_cart_moved.deep_copy()
+        if sites_cart_best is not None:
+          sites_cart = sites_cart.set_selected(sel_to_rotate, sites_cart_best)
   model.set_sites_cart(sites_cart)
-  fmodel.xray_structure.set_sites_cart(model.get_sites_cart())
+  if(mapper is None): sites_for_fmodel = model.get_sites_cart()
+  else:               sites_for_fmodel = mapper.shrink(model.get_sites_cart())
+  fmodel.xray_structure.set_sites_cart(sites_for_fmodel)
   if(mpih):
     mask_params.ignore_hydrogens=False
     fmodel.update(mask_params=mask_params)
@@ -569,7 +587,7 @@ def run_fit_rotatable(
 # cycle (reduce_hydrogen -> mmtbx.model / mmtbx.ligands.ready_set_utils) and the
 # import-time cost.
 # =============================================================================
-import sys
+import re, sys
 
 USE_OLD_REDUCE = True # SINGLE flip for switching to reduce2.
                       # Flip to False to run reduce2 everywhere.
@@ -590,20 +608,68 @@ def default_probe_phil():
   return iotbx.phil.parse(
     reduce2.master_phil_str, process_includes=True).extract().probe
 
-def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
-      keep_existing_H=False, probe_phil=None, stop_for_unknowns=False,
-      raise_on_missing=True, log=None):
-  """Add H with reduce2 in-process: place_hydrogens then Optimizers.Optimizer.
-  Mirrors mmtbx.validation.clashscore2.check_and_add_hydrogen.
+# the atoms a flip exchanges: (atom, its partner) per residue name; the first
+# of each pair is compared (FLIP_PAIRS), all of them are the flipped atoms
+FLIP_PAIRS = {
+  'ASN': (('OD1', 'ND2'),),
+  'GLN': (('OE1', 'NE2'),),
+  'HIS': (('ND1', 'CD2'), ('CE1', 'NE2')),
+}
+FLIPPED_ATOMS = {
+  'ASN': ('OD1', 'ND2'),
+  'GLN': ('OE1', 'NE2'),
+  'HIS': ('CG', 'ND1', 'CD2', 'CE1', 'NE2'),
+}
 
-  :param raise_on_missing: When True (default), raise Sorry if restraints were
-    not found for some residues (no H placed there). Set False for best-effort
-    callers (e.g. the MolProbity kinemage view) that prefer to produce results
-    for the rest of the structure rather than fail on a few problem residues."""
+def _flip_key(ag):
+  rg = ag.parent()
+  chain = rg.parent()
+  return (chain.parent().id, chain.id, rg.resseq, rg.icode, ag.resname,
+    ag.altloc)
+
+def _flip_sites(hierarchy):
+  """{_flip_key(): {atom name: xyz}} of the flip atoms of each Asn, Gln
+  and His atom group."""
+  result = {}
+  for ag in hierarchy.atom_groups():
+    names = FLIPPED_ATOMS.get(ag.resname.strip().upper())
+    if names is None: continue
+    sites = dict((a.name.strip(), a.xyz) for a in ag.atoms()
+      if a.name.strip() in names)
+    if sites: result[_flip_key(ag)] = sites
+  return result
+
+def flipped_residues(before, after):
+  """The Asn/Gln amides and His rings flipped between two _flip_sites()
+  maps: keys (model id, chain, resseq, icode, resname, altloc, 'amide' or
+  'His'), in the order of after. An atom group is flipped when, for every
+  exchanged pair of FLIP_PAIRS, the first atom is now closer to where its
+  partner was than to where it was."""
+  def d(x, y):
+    return sum((p - q) ** 2 for p, q in zip(x, y)) ** 0.5
+  result = []
+  for key, sites in after.items():
+    old = before.get(key)
+    resname = key[4].strip().upper()
+    if old is None: continue
+    pairs = FLIP_PAIRS[resname]
+    if not all(a in sites and a in old and b in old for a, b in pairs):
+      continue
+    if all(d(sites[a], old[b]) < d(sites[a], old[a]) for a, b in pairs):
+      result.append(key + ('His' if resname == 'HIS' else 'amide',))
+  return result
+
+def _place_and_optimize_core(model, do_flips, nuclear, keep_existing_H,
+      probe_phil, raise_on_missing, log, optimize_his_protonation=False,
+      metal_bound_amines_as_nh2=False, crystal_symmetry=None, report=None,
+      input_crystal_symmetry='from_model'):
+  """Placement + orientation/flip optimization, without the final
+  interpretation-only re-process.  Raises Sorry after placement (before
+  optimizing) when restraints are missing and raise_on_missing is set.
+  metal_bound_amines_as_nh2, crystal_symmetry, report and
+  input_crystal_symmetry: see place_and_optimize_hydrogens()."""
   from mmtbx.hydrogens import reduce_hydrogen
   from mmtbx.reduce import Optimizers
-  if log is None: log = sys.stdout
-  if probe_phil is None: probe_phil = default_probe_phil()
   o = reduce_hydrogen.place_hydrogens(
     model                 = model,
     use_neutron_distances = nuclear,
@@ -612,9 +678,14 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
     stop_for_unknowns     = False,  # match clashscore2: place what we can, then
                                     # raise below on missed residues; the param
                                     # applies to the post-optimization reprocess.
-    keep_existing_H       = keep_existing_H)
+    keep_existing_H       = keep_existing_H,
+    metal_bound_amines_as_nh2 = metal_bound_amines_as_nh2)
+  # the symmetry of the metal contacts (thiolates, metal N-H, amines)
+  o.input_crystal_symmetry = input_crystal_symmetry
   o.run()
   o.show(log)
+  if report is not None:
+    report.metal_amines_nh2.extend(o.metal_amine_converted_text)
   missed = set(o.no_H_placed_mlq)
   if len(missed) > 0 and raise_on_missing:
     raise Sorry("Restraints were not found for the following residues:" +
@@ -622,18 +693,137 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
   model = o.get_model()
   # Optimize H orientations (and flips if do_flips) on the freshly placed model:
   # it already carries restraints from place_hydrogens. ORDER MATTERS -- the
-  # re-process below drops restraints, so it must come AFTER the Optimizer
+  # re-process afterwards drops restraints, so it must come AFTER the Optimizer
   # (this mirrors clashscore2.check_and_add_hydrogen).
+  # Without do_flips, optimize_his_protonation gives each His a Mover over its
+  # unflipped states only and no heavy atom moves: the ion lock-down then sets a
+  # His only in its unflipped orientation. Without either option the ion
+  # lock-down still flips a His so that a ring N binds a metal ion.
+  kwargs = {}
+  # copies of the placed model's own atoms, so built after placement
+  copies = None
+  if crystal_symmetry is not None:
+    copies = reduce_hydrogen.symmetry_copies(
+      model.get_hierarchy(), crystal_symmetry)
+    if copies is not None:
+      kwargs["symmetryCopies"] = copies
   opt = Optimizers.Optimizer(
     probe_phil, do_flips, model, modelIndex=None,
-    useNeutronDistances=nuclear, fillAtomDump=False)
+    useNeutronDistances=nuclear, fillAtomDump=False,
+    chooseHisProtonation=optimize_his_protonation, **kwargs)
+  if report is not None:
+    if crystal_symmetry is None:
+      report.symmetry_copies.append('not requested')
+    elif copies is None:
+      report.symmetry_copies.append(
+        'none: no unit cell, or the CRYST1 1 1 1 placeholder')
+    else:
+      line = opt.getSymmetryCopiesSummary().strip()
+      if not line:
+        line = 'used, none within 3.6 A'
+      else:
+        # the multi-model path optimizes one MODEL at a time, so the
+        # Optimizer numbers it 1: name it by its MODEL id instead
+        model_id = model.get_hierarchy().models()[0].id.strip()
+        if model_id:
+          line = re.sub(r'\bmodel 1\b', 'model %s' % model_id, line, count=1)
+      report.symmetry_copies.append(line)
 
   # Delete any hydrogens that we've been asked to delete.
   for a in opt.getHydrogensToDelete():
     a.parent().remove_atom(a)
+  return model
 
-  # Re-process for output safety (matches clashscore2: avoids a pair_proxies crash
-  # when writing mmCIF). No restraints are needed afterwards.
+def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
+      keep_existing_H=False, probe_phil=None, stop_for_unknowns=False,
+      raise_on_missing=True, log=None, optimize_his_protonation=False,
+      metal_bound_amines_as_nh2=False, crystal_symmetry=None, report=None,
+      input_crystal_symmetry='from_model'):
+  """Add H with reduce2 in-process: place_hydrogens then Optimizers.Optimizer.
+  Mirrors mmtbx.validation.clashscore2.check_and_add_hydrogen.
+
+  :param raise_on_missing: When True (default), raise Sorry if restraints were
+    not found for some residues (no H placed there). Set False for best-effort
+    callers (e.g. the MolProbity kinemage view) that prefer to produce results
+    for the rest of the structure rather than fail on a few problem residues.
+  :param optimize_his_protonation: With do_flips=False, still choose each His
+    ring protonation (HD1, HE2 or both) in its input orientation, without
+    flipping any His ring or Asn/Gln amide. When False (default), every His
+    keeps H on both ring N except those bound to an ion. No effect when
+    do_flips=True.
+  :param metal_bound_amines_as_nh2: When True, a primary amine (NH3+) that
+    coordinates a metal is placed as NH2, as in reduce2 (on by default there).
+    False (default): placed as NH3+.
+  :param crystal_symmetry: The input's own crystal symmetry (before any box,
+    e.g. reduce_hydrogen.get_output_crystal_symmetry()): the Optimizer then
+    sees the symmetry copies of the whole residue groups with an atom within
+    3.6 A of the model (reduce_hydrogen.symmetry_copies()), so H
+    orientations and flips account for crystal contacts, as reduce2 does by
+    default. None (default): no copies. No copies either without a unit cell
+    or with the CRYST1 1 1 1 placeholder. Not for a map's box, which is not a
+    lattice.
+  :param input_crystal_symmetry: The symmetry placement searches for metal
+    contacts (thiolates, metal-bound N-H, metal-bound amines):
+    'from_model' (default) reads it from the model, as before; None: no
+    symmetry (map input, or a model without a real cell); or a symmetry.
+  :param report: None, or a group_args with the lists flips, metal_amines_nh2
+    and symmetry_copies, which are extended: flips, one key (model id, chain,
+    resseq, icode, resname, altloc, 'amide' or 'His') per Asn/Gln/His atom
+    group whose final heavy atoms are flipped against the input
+    (flipped_residues()); metal_amines_nh2, (text, contact) per amine placed
+    as NH2, as in place_hydrogens.metal_amine_converted_text;
+    symmetry_copies, one line per model on the copies used or why none.
+    With do_flips=False a His can still be flipped, so that a ring N binds a
+    metal ion (the Optimizer's ion lock-down); it is then in flips too. With
+    optimize_his_protonation=True it is not flipped, and nothing is."""
+  from mmtbx.hydrogens import reduce_hydrogen
+  if log is None: log = sys.stdout
+  if probe_phil is None: probe_phil = default_probe_phil()
+
+  hierarchy = model.get_hierarchy()
+  # the input's flip atoms, to decide the flips from the final model
+  before = _flip_sites(hierarchy) if report is not None else None
+  if len(hierarchy.models()) > 1:
+    # One model at a time: superimposed ensemble models make whole-file
+    # restraints quadratic in the model count, and placement and flip
+    # optimization are per-model operations anyway.
+    cs = model.crystal_symmetry()
+    ro = model.get_restraint_objects()
+    combined = iotbx.pdb.hierarchy.root()
+    for m in hierarchy.models():
+      r = iotbx.pdb.hierarchy.root()
+      r.append_model(m.detached_copy())
+      sub = mmtbx.model.manager(
+        model_input       = None,
+        pdb_hierarchy     = r,
+        stop_for_unknowns = False,
+        crystal_symmetry  = cs,
+        restraint_objects = ro,
+        log               = None)
+      sub = _place_and_optimize_core(
+        sub, do_flips, nuclear, keep_existing_H, probe_phil,
+        raise_on_missing, log, optimize_his_protonation,
+        metal_bound_amines_as_nh2, crystal_symmetry, report,
+        input_crystal_symmetry)
+      sub_model = sub.get_hierarchy().models()[0].detached_copy()
+      sub_model.id = m.id
+      combined.append_model(sub_model)
+    model = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = combined,
+      stop_for_unknowns = False,
+      crystal_symmetry  = cs,
+      restraint_objects = ro,
+      log               = None)
+  else:
+    model = _place_and_optimize_core(
+      model, do_flips, nuclear, keep_existing_H, probe_phil,
+      raise_on_missing, log, optimize_his_protonation,
+      metal_bound_amines_as_nh2, crystal_symmetry, report,
+      input_crystal_symmetry)
+
+  # Re-process for output safety (avoids a pair_proxies crash when writing
+  # mmCIF).  Interpretation-only, which stays linear in the model count.
   model.get_hierarchy().sort_atoms_in_place()
   model.get_hierarchy().atoms().reset_serial()
   p = reduce_hydrogen.get_reduce_pdb_interpretation_params(nuclear)
@@ -644,6 +834,9 @@ def place_and_optimize_hydrogens(model, do_flips=False, nuclear=False,
   p.pdb_interpretation.proceed_with_excessive_length_bonds      = True
   model.set_stop_for_unknowns(stop_for_unknowns)
   model.process(make_restraints=False, pdb_interpretation_params=p)
+  if report is not None:
+    report.flips.extend(flipped_residues(before,
+      _flip_sites(model.get_hierarchy())))
   return model
 
 def add_hydrogens(model, old=None, do_flips=False, nuclear=False,

@@ -60,6 +60,13 @@ input {
   experiments_suffix = _integrated.expt
     .type = str
     .help = Find file names with this suffix for experiments
+  max_lattices = None
+    .type = int
+    .help = After all files are loaded, keep a random subset of at most this many experiments,
+    .help = counted over all ranks, and discard the rest with their reflections
+  random_seed = 0
+    .type = int
+    .help = Seed for the random subset drawn when max_lattices is set
 
   parallel_file_load {
     method = *uniform node_memory
@@ -301,6 +308,19 @@ modify
           individually, but if the options twin_axis and twin_rotation are \
           used, the transformation has to be the same for every lattice. \
           Forcing this is probably harmless but has not been tested extensively.
+    merge_friedel_mates = False
+      .type = bool
+      .help = Merge each image's reflections under the Laue group before the \
+          cosym analysis, so that each Friedel pair becomes one averaged \
+          observation. By default (False) each image is merged as an anomalous \
+          array and h,k,l and -h,-k,-l stay separate. The dials cosym target \
+          then maps both to the same Laue index, so they already pair up across \
+          images, but within an image they are duplicate keys in the \
+          correlation kernel's lookup: one mate is dropped on the reference \
+          side while both are paired on the other, so pair counts and \
+          correlations are asymmetric and computed from unaveraged single mates. \
+          The reindexing operators are proper rotations outside the Laue group, \
+          so Friedel merging cannot hide the ambiguity. Experimental.
     plot
       {
       do_plot = True
@@ -321,10 +341,30 @@ modify
       }
     }
   reindex_to_abc
-    .help = Apply a reindexing operator
+    .help = Apply a reindexing operator, with mandatory change_of_basis_op \
+            and space_group. Supports the case of reindexing with space group \
+            change, e.g. photosystem I with change_of_basis_op=a,-c-a,b and \
+            monoclinic input P21 changing to space_group=P6. Merging is in \
+            two steps with dispatch.step_list=input,balance, \
+            model_scaling[old model],modify,filter,modify_reindex_to_abc \
+            followed by step_list=input,balance,model_scaling[new model], \
+            modify_cosym,scale,postrefine,statistics_unitcell,statistics_beam,\
+            model_statistics,statistics_resolution,group,errors_merge, \
+            statistics_intensity,merge,statistics_intensity_cxi
     {
       include scope dials.command_line.reindex.phil_scope
     }
+}
+"""
+
+export_phil = """
+export
+  .help = Condense all expt + refl, output a single batch MTZ for Careless. \
+          Current use case is limited to creating an unmerged batch MTZ for Careless, but other export options might be provided in the future.
+  {
+  output_label = None
+    .type = str
+    .help = If output_label is not None, worker writes a batch MTZ file.
 }
 """
 
@@ -898,6 +938,7 @@ modify.cosym.use_curvatures=False
 """
 
 master_phil = dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
+              export_phil + \
               select_phil + scaling_phil + postrefinement_phil + merging_phil + \
               output_phil + statistics_phil + group_phil + lunus_phil + \
               publish_phil + diffbragg_phil + monitor_phil + filter_global_phil + \

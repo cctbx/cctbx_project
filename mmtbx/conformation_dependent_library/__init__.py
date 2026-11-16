@@ -220,6 +220,7 @@ def generate_residue_tuples(hierarchy,
       threes = LinkedResidues(geometry,
                               registry=registry,
                               length=length,
+                              allow_poly_ca=allow_poly_ca,
                               include_non_linked=include_non_linked,
                               )
 

@@ -86,7 +86,7 @@ def t_every_log_yields_a_summary(mod):
     on others. This one must produce something bounded on all twenty."""
     empty, oversize = [], []
     for name in logs():
-        text = open(os.path.join(CORPUS, name), errors="replace").read()
+        text = open(os.path.join(CORPUS, name), errors="replace", encoding="utf-8").read()
         out = mod.summary_for_log(text, name)
         if not out.strip():
             empty.append(name)
@@ -102,7 +102,7 @@ def t_summary_is_smaller_than_the_log(mod):
     156,951-character log, reproducibly."""
     bad = []
     for name in logs():
-        text = open(os.path.join(CORPUS, name), errors="replace").read()
+        text = open(os.path.join(CORPUS, name), errors="replace", encoding="utf-8").read()
         out = mod.summary_for_log(text, name)
         if len(out) >= len(text):
             bad.append((name, len(out), len(text)))
@@ -115,7 +115,7 @@ def t_no_llm_derived_value_reaches_it(mod):
     prose that named the very thing it forbids."""
     import ast
     tree = ast.parse(open(mod.__file__.replace(".pyc", ".py"),
-                          errors="replace").read())
+                          errors="replace", encoding="utf-8").read())
     for node in ast.walk(tree):
         if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef)):
             if (node.body and isinstance(node.body[0], ast.Expr)
@@ -135,7 +135,7 @@ def t_it_does_not_duplicate_the_resolver(mod):
     program_identity -- the error class this whole change cites as its
     reason for reusing tested code."""
     import ast
-    src = open(mod.__file__.replace(".pyc", ".py"), errors="replace").read()
+    src = open(mod.__file__.replace(".pyc", ".py"), errors="replace", encoding="utf-8").read()
     tree = ast.parse(src)
     defined = {n.name for n in ast.walk(tree)
                if isinstance(n, ast.FunctionDef)}
@@ -155,7 +155,7 @@ def t_it_agrees_with_the_resolver(mod):
                        "programs.yaml")
     bad = []
     for name in logs():
-        text = open(os.path.join(CORPUS, name), errors="replace").read()
+        text = open(os.path.join(CORPUS, name), errors="replace", encoding="utf-8").read()
         want = ident.resolve_program(
             log_text=text, log_path=name,
             registry_path=reg if os.path.exists(reg) else None).name
@@ -169,7 +169,7 @@ def t_it_agrees_with_the_resolver(mod):
 def t_it_promises_nothing_pending(mod):
     """The on-screen form ends '[the full analysis is being prepared]'.
     The saved file is written AFTER the analysis exists."""
-    text = open(os.path.join(CORPUS, logs()[0]), errors="replace").read()
+    text = open(os.path.join(CORPUS, logs()[0]), errors="replace", encoding="utf-8").read()
     saved = mod.summary_for_log(text, logs()[0])
     ok("the saved summary does not promise a pending analysis",
        "being prepared" not in saved and "follows in" not in saved,
@@ -216,7 +216,7 @@ def t_no_python_repr_leaks_into_the_summary(mod):
     import re
     bad = []
     for name in logs():
-        text = open(os.path.join(CORPUS, name), errors="replace").read()
+        text = open(os.path.join(CORPUS, name), errors="replace", encoding="utf-8").read()
         out = mod.summary_for_log(text, name)
         if re.search(r"\w+\(line=\d+", out) or " object at 0x" in out:
             bad.append(name)
@@ -230,7 +230,7 @@ def t_nothing_is_claimed_as_written(mod):
     exposes no output-file structure, so nothing may claim one."""
     bad = []
     for name in logs():
-        text = open(os.path.join(CORPUS, name), errors="replace").read()
+        text = open(os.path.join(CORPUS, name), errors="replace", encoding="utf-8").read()
         out = mod.summary_for_log(text, name)
         if "wrote:" in out:
             bad.append(name)
@@ -247,7 +247,7 @@ def t_large_log_is_handled(mod):
         print("  SKIP: set PHIL_BIG_LOG to a multi-hundred-KB log")
         return
     import time
-    text = open(big, errors="replace").read()
+    text = open(big, errors="replace", encoding="utf-8").read()
     start = time.time()
     out = mod.summary_for_log(text, os.path.basename(big))
     elapsed = time.time() - start

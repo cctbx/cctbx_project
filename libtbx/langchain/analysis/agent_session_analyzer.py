@@ -103,10 +103,11 @@ async def analyze_agent_session_async(session, llm, timeout=60):
         timeout=timeout
       )
 
-      if hasattr(response, 'content'):
-        assessment = response.content
-      else:
-        assessment = str(response)
+      try:
+        from libtbx.langchain.core.llm import response_text
+      except ImportError:
+        from core.llm import response_text
+      assessment = response_text(response)
 
       # Replace placeholder in markdown with actual assessment
       markdown = markdown.replace(

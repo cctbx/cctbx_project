@@ -101,6 +101,12 @@ def read_default(
     process_includes=process_includes)
 
 def process_command_line(args, master_string, parse=None):
+  """Parse PHIL arguments with the iotbx PHIL converters.
+
+  Legacy: do not use in new code. New programs subclass
+  libtbx.program_template.ProgramTemplate and run through
+  iotbx.cli_parser.run_program.
+  """
   if (parse is None):
     import iotbx.phil
     parse = iotbx.phil.parse
@@ -108,6 +114,14 @@ def process_command_line(args, master_string, parse=None):
     args=args, master_string=master_string, parse=parse)
 
 class process_command_line_with_files(object):
+  """Parse PHIL arguments and assign each file argument to the PHIL
+  parameter named by the matching *_def argument.
+
+  Legacy: do not use in new code. New programs subclass
+  libtbx.program_template.ProgramTemplate, run through
+  iotbx.cli_parser.run_program, and read files with
+  iotbx.data_manager.DataManager.
+  """
   def __init__(self,
                 args,
                 master_phil=None,

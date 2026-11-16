@@ -204,36 +204,45 @@ def exercise_user_and_assistant_text_blocks_alternate():
   assert "## Claude\n\nhi! how can i help?\n" in md, md
 
 
-def exercise_thinking_blocks_are_skipped():
-  """Extended-thinking is internal -- exporting it would leak noise
-  into the user's archived chat."""
+def exercise_thinking_blocks_render_as_labelled_blockquote():
+  """A thinking block is the run's narration (on claude_agent the summaries
+  are the only account of an autonomous run between tool calls), so Save
+  chat keeps it: a blockquote headed **Thinking**, every line quoted so a
+  multi-paragraph summary stays one quote, in its place among the other
+  blocks. Signature-only (empty) thinking is skipped."""
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
   conv, Message, ContentBlock, now = _make_conv()
   conv.append(Message(role="assistant", timestamp=now(), content=[
+    ContentBlock(type="thinking", data={"text": "", "signature": "sig"}),
     ContentBlock(type="thinking", data={
-      "text": "let me reason carefully", "signature": "sig"}),
+      "text": "let me reason carefully\n\n- first\n- second\n\n",
+      "signature": "sig"}),
     ContentBlock(type="text", data={"text": "the answer is 42"})]))
   md = conversation_to_markdown(conv)
-  assert "let me reason" not in md, md
-  assert "the answer is 42" in md, md
+  quote = ("> **Thinking**\n"
+           ">\n"
+           "> let me reason carefully\n"
+           ">\n"
+           "> - first\n"
+           "> - second\n")
+  assert md.count("> **Thinking**") == 1, md          # empty block skipped
+  # In its place, closed by a blank line before the next block.
+  assert quote + "\nthe answer is 42\n" in md, md
 
 
-def exercise_ephemeral_blocks_are_skipped():
-  """An ephemeral block (e.g. a transient context-pressure note) reaches the
-  model in the live conversation but must never appear in an export.
-
-  ``conversation_to_markdown`` is a SECOND serializer of the in-memory
-  conversation, independent of ``storage.save``; between a delivering turn and
-  the next send the note sits in ``conv.messages``, so without the same
-  ``is_ephemeral_block`` filter a 'Save chat' then leaks it under the user's
-  own heading. The sibling text in the same message must survive."""
+def exercise_note_blocks_are_skipped():
+  """A context-pressure note block is part of the conversation the model
+  sees, but not of the user's record: the export skips it, as the reloaded
+  view does. The sibling text in the same message must survive."""
   from qttbx.widgets.chat.markdown_export import conversation_to_markdown
-  from qttbx.widgets.chat.agent.conversation import EPHEMERAL_BLOCK_KEY
+  from qttbx.widgets.chat.agent.conversation import (
+    NOTE_BLOCK_KEY, NOTE_VALUE, NOTE_STAGE_KEY)
   conv, Message, ContentBlock, now = _make_conv()
   conv.append(Message(role="user", timestamp=now(), content=[
     ContentBlock(type="text", data={"text": "my real question"}),
     ContentBlock(type="text", data={"text": "[system note] 80% used",
-                                    EPHEMERAL_BLOCK_KEY: True})]))
+                                    NOTE_BLOCK_KEY: NOTE_VALUE,
+                                    NOTE_STAGE_KEY: "offer"})]))
   md = conversation_to_markdown(conv)
   assert "my real question" in md, md
   assert "system note" not in md, md
@@ -285,6 +294,139 @@ def exercise_tool_result_fence_outlasts_inner_backticks():
   # output (its own ``` fences and the line after them) is preserved verbatim
   # between the 4-backtick open/close rather than breaking out of the fence.
   assert "````tool-result\n%s\n````" % inner in md, md
+
+
+def exercise_tool_result_answer_folds_under_preceding_assistant_section():
+  """The session stores a round's tool results as a ``role="user"`` message
+  (the Messages API shape), but the user did not type them. The export must
+  not open a ``## You`` section for such a message: its fences append under
+  the assistant section that issued the tool_use, mirroring the reloaded
+  window, where ``ConversationView`` folds the answering message into the
+  preceding bubble. A user message the user actually typed still gets its
+  own ``## You`` section."""
+  from qttbx.widgets.chat.markdown_export import conversation_to_markdown
+  conv, Message, ContentBlock, now = _make_conv()
+  conv.append(Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="text", data={"text": "refine it"})]))
+  conv.append(Message(role="assistant", timestamp=now(), backend="anthropic",
+    content=[
+      ContentBlock(type="text", data={"text": "starting the job"}),
+      ContentBlock(type="tool_use", data={
+        "id": "tu_1", "name": "phenix_start_job", "input": {"x": 1}})]))
+  conv.append(Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="tool_result", data={
+      "tool_use_id": "tu_1",
+      "content": [ContentBlock(type="text", data={"text": "job_id: abc"})],
+      "is_error": False})]))
+  conv.append(Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="text", data={"text": "thanks, now validate"})]))
+  md = conversation_to_markdown(conv)
+  assert md.count("## You") == 2, md
+  assert "## You\n\nrefine it\n" in md, md
+  assert "## You\n\nthanks, now validate\n" in md, md
+  # The tool-result fence sits inside the Claude section: after the tool-use
+  # fence and before the next header, with no header of ANY name (not just
+  # ``## You``) opened for it in between.
+  claude_at = md.index("## Claude")
+  result_at = md.index("```tool-result\njob_id: abc\n```")
+  next_header_at = md.index("## You", claude_at)
+  assert claude_at < result_at < next_header_at, md
+  assert md[claude_at:next_header_at].count("\n## ") == 0, md
+
+
+def exercise_orphan_tool_result_answer_heading_the_chat_keeps_role_header():
+  """A tool-result answer with nothing before it (no assistant section to fold
+  under) keeps its role header, so the export never opens with a bare fence.
+  This is the only case where a tool-result answer heads a ``## You``."""
+  from qttbx.widgets.chat.markdown_export import conversation_to_markdown
+  conv, Message, ContentBlock, now = _make_conv()
+  conv.append(Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="tool_result", data={
+      "tool_use_id": "tu_0",
+      "content": [ContentBlock(type="text", data={"text": "orphan out"})],
+      "is_error": False})]))
+  md = conversation_to_markdown(conv)
+  assert "## You\n\n```tool-result\norphan out\n```" in md, md
+  assert md.count("\n## ") == 1, md
+
+
+def exercise_tool_result_answer_with_note_still_folds():
+  """Mid-turn, the context-pressure note rides the round's tool-result
+  message as a note block and stays there. ``is_tool_result_answer`` ignores
+  note blocks, so the message is still an answer and still folds; the
+  export's own note filter then drops the note's text. Neither a ``## You``
+  header nor the note may appear."""
+  from qttbx.widgets.chat.markdown_export import conversation_to_markdown
+  from qttbx.widgets.chat.agent.conversation import (
+    NOTE_BLOCK_KEY, NOTE_VALUE, NOTE_STAGE_KEY)
+  conv, Message, ContentBlock, now = _make_conv()
+  conv.append(Message(role="assistant", timestamp=now(), backend="anthropic",
+    content=[ContentBlock(type="tool_use", data={
+      "id": "tu_1", "name": "phenix_tail_log", "input": {}})]))
+  conv.append(Message(role="user", timestamp=now(), content=[
+    ContentBlock(type="tool_result", data={
+      "tool_use_id": "tu_1",
+      "content": [ContentBlock(type="text", data={"text": "tail: done"})],
+      "is_error": False}),
+    ContentBlock(type="text", data={"text": "[system note] 80% used",
+                                    NOTE_BLOCK_KEY: NOTE_VALUE,
+                                    NOTE_STAGE_KEY: "offer"})]))
+  md = conversation_to_markdown(conv)
+  assert "## You" not in md, md
+  assert "tail: done" in md, md
+  assert "system note" not in md, md
+
+
+def exercise_note_block_tags_and_answer_rule():
+  """A context-pressure note is a text block tagged note=context_pressure
+  with its stage; note_stage reads the stage and is None for a non-note or
+  a stray stage value (pending_note indexes it, so it must never raise);
+  a note never makes a tool-result message the user's own."""
+  from qttbx.widgets.chat.agent.conversation import (
+    ContentBlock, Message, now, is_note_block, note_stage,
+    is_tool_result_answer, NOTE_BLOCK_KEY, NOTE_VALUE, NOTE_STAGE_KEY)
+  note = ContentBlock(type="text", data={"text": "n", NOTE_BLOCK_KEY: NOTE_VALUE,
+                                         NOTE_STAGE_KEY: "offer"})
+  plain = ContentBlock(type="text", data={"text": "hello"})
+  tr = ContentBlock(type="tool_result", data={"tool_use_id": "t", "content": []})
+  assert is_note_block(note) and note_stage(note) == "offer"
+  assert not is_note_block(plain) and note_stage(plain) is None
+  assert is_tool_result_answer(Message(role="user", timestamp=now(), content=[tr, note]))
+  assert not is_tool_result_answer(Message(role="user", timestamp=now(), content=[note]))
+  stray = ContentBlock(type="text", data={"text": "n", NOTE_BLOCK_KEY: NOTE_VALUE,
+                                          NOTE_STAGE_KEY: "later"})
+  assert is_note_block(stray) and note_stage(stray) is None
+
+
+def exercise_is_tool_result_answer_predicate():
+  """The shared predicate (used by the reloaded view and the export) is true
+  only for a user message whose persisted blocks are all tool_result: a
+  context-pressure note block does not count, a typed text block
+  disqualifies, an empty message and an assistant message are never
+  answers."""
+  from qttbx.widgets.chat.agent.conversation import (
+    is_tool_result_answer, NOTE_BLOCK_KEY, NOTE_VALUE, NOTE_STAGE_KEY)
+  _, Message, ContentBlock, now = _make_conv()
+  tr = ContentBlock(type="tool_result", data={
+    "tool_use_id": "tu_1", "content": [], "is_error": False})
+  eph = ContentBlock(type="text", data={"text": "note", NOTE_BLOCK_KEY: NOTE_VALUE,
+                                        NOTE_STAGE_KEY: "offer"})
+  txt = ContentBlock(type="text", data={"text": "hello"})
+  assert is_tool_result_answer(Message(role="user", timestamp=now(), content=[tr]))
+  assert is_tool_result_answer(
+    Message(role="user", timestamp=now(), content=[tr, tr]))
+  assert is_tool_result_answer(
+    Message(role="user", timestamp=now(), content=[tr, eph]))
+  assert not is_tool_result_answer(
+    Message(role="user", timestamp=now(), content=[tr, txt]))
+  assert not is_tool_result_answer(
+    Message(role="user", timestamp=now(), content=[txt]))
+  assert not is_tool_result_answer(
+    Message(role="user", timestamp=now(), content=[eph]))
+  assert not is_tool_result_answer(
+    Message(role="user", timestamp=now(), content=[]))
+  assert not is_tool_result_answer(
+    Message(role="assistant", timestamp=now(), content=[tr]))
 
 
 def exercise_image_renders_link_to_attachment_when_storage_present():
@@ -425,11 +567,16 @@ def exercise():
   exercise_header_renders_title_meta_and_separator()
   exercise_assistant_label_reflects_backend_stamp()
   exercise_user_and_assistant_text_blocks_alternate()
-  exercise_thinking_blocks_are_skipped()
-  exercise_ephemeral_blocks_are_skipped()
+  exercise_thinking_blocks_render_as_labelled_blockquote()
+  exercise_note_blocks_are_skipped()
   exercise_tool_use_renders_as_fenced_block()
   exercise_tool_result_renders_text_content_in_fence()
   exercise_tool_result_fence_outlasts_inner_backticks()
+  exercise_tool_result_answer_folds_under_preceding_assistant_section()
+  exercise_orphan_tool_result_answer_heading_the_chat_keeps_role_header()
+  exercise_tool_result_answer_with_note_still_folds()
+  exercise_is_tool_result_answer_predicate()
+  exercise_note_block_tags_and_answer_rule()
   exercise_image_renders_link_to_attachment_when_storage_present()
   exercise_image_resolves_via_public_conv_dir_accessor()
   exercise_image_without_storage_falls_back_to_placeholder()

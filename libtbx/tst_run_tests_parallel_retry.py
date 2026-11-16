@@ -241,26 +241,44 @@ def exercise_run_command_cleans_cwd_between_attempts():
     shutil.rmtree(tmpdir, ignore_errors=True)
 
 
-def exercise_run_command_backoff_timing():
-  """A fully-failing 3-attempt run sleeps ~3s total (1 + 2)."""
+class _recording_time(object):
+  """Stand-in for the ``time`` module that records sleeps instead of
+  sleeping. ``time()`` still returns the real clock so
+  ``run_command`` can compute ``wall_time``."""
+
+  def __init__(self):
+    self.sleeps = []
+
+  def sleep(self, seconds):
+    self.sleeps.append(seconds)
+
+  def time(self):
+    return time.time()
+
+
+def exercise_run_command_backoff_schedule():
+  """A fully-failing 3-attempt run requests sleeps of 1s then 2s.
+
+  ``time.sleep`` is stubbed so the test checks the backoff schedule
+  rather than elapsed wall-clock time: on loaded CI agents the three
+  process spawns alone can take tens of seconds.
+  """
   tmpdir = tempfile.mkdtemp(prefix="tst_retry_run_")
+  real_time = parallel_mod.time
+  fake_time = _recording_time()
+  parallel_mod.time = fake_time
   try:
     script = _write_flaky_script(tmpdir, pass_on_attempt=99)
     cwd = os.path.join(tmpdir, "run_cwd")
     os.makedirs(cwd)
     cmd = 'libtbx.python "%s"' % script
-    t0 = time.time()
     result = parallel_mod.run_command(cmd, cwd=cwd, max_retries=2)
-    elapsed = time.time() - t0
     assert result.return_code != 0
     assert result.attempt == 3
-    # Sleeps of 1s + 2s = 3s, plus 3 process spawns. Upper bound is
-    # generous to avoid CI flakiness.
-    assert elapsed >= 3.0, \
-      "expected >= 3s elapsed (backoff), got %.2fs" % elapsed
-    assert elapsed <= 15.0, \
-      "expected <= 15s elapsed, got %.2fs" % elapsed
+    assert fake_time.sleeps == [1, 2], \
+      "expected backoff sleeps [1, 2], got %r" % fake_time.sleeps
   finally:
+    parallel_mod.time = real_time
     shutil.rmtree(tmpdir, ignore_errors=True)
 
 
@@ -451,7 +469,7 @@ def run():
   exercise_run_command_no_retries_fails_once()
   exercise_run_command_skip_retry_overrides_max_retries()
   exercise_run_command_cleans_cwd_between_attempts()
-  exercise_run_command_backoff_timing()
+  exercise_run_command_backoff_schedule()
   exercise_run_command_list_respects_max_retries()
   exercise_run_command_list_skips_retry_for_expected_failures()
   exercise_cli_auto_enables_unique_dirs_when_max_retries_positive()

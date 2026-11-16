@@ -42,7 +42,7 @@ def _load_verify():
     path = _find_llm()
     if path is None:
         return None, None
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     dim = re.search(r'EMBEDDING_EXPECTED_DIM = \{.*?\}', src, re.DOTALL)
     fn = re.search(r'def verify_embeddings\(.*?\n  return \(True, observed\)',
                    src, re.DOTALL)
@@ -60,7 +60,7 @@ def test_portkey_embedding_name_has_minus_one():
     if path is None:
         print("  (skip) core/llm.py not found")
         return
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     block = re.search(r'RAG_EMBEDDING_DEFAULTS = \{.*?\}', src, re.DOTALL)
     assert block, "RAG_EMBEDDING_DEFAULTS not found"
     body = block.group(0)
@@ -77,7 +77,7 @@ def test_direct_openai_embedding_name_unchanged():
     if path is None:
         print("  (skip)")
         return
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     body = re.search(r'RAG_EMBEDDING_DEFAULTS = \{.*?\}', src, re.DOTALL).group(0)
     m = re.search(r'"openai":\s*"([^"]+)"', body)
     assert m and m.group(1) == "text-embedding-3-small", \
@@ -243,7 +243,7 @@ def test_run_build_db_calls_verify_before_persist():
     if not path or not os.path.isfile(path):
         print("  (skip) run_build_db.py not found")
         return
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     assert "verify_embeddings" in src, \
         "run_build_db must call verify_embeddings"
     i_construct = src.find("get_llm_and_embeddings(")

@@ -292,7 +292,7 @@ struct raw_lbfgs_wrappers
       using namespace boost::python;
       class_<w_t>("minimizer", no_init)
         .def(init<optional<std::size_t, std::size_t, std::size_t,
-          double, double, double, double> >())
+          double, double, double, double, double, double> >())
         //---> Insertion starts
         .def("run", run_6)
         .def("run", run_5)
@@ -300,6 +300,9 @@ struct raw_lbfgs_wrappers
         .def("run", run_4)
         .def("run", run_3)
         .def("n", &w_t::n)
+        .def("max_shift", &w_t::max_shift)
+        .def("n_pairs", &w_t::n_pairs)
+        .def("first_step_max_shift", &w_t::first_step_max_shift)
         .def("m", &w_t::m)
         .def("maxfev", &w_t::maxfev)
         .def("gtol", &w_t::gtol)

@@ -1,12 +1,19 @@
 # Templates for linux, macOS, and Windows
 # Based on approach from conda-forge
 
+# batch builds for master
 trigger:
   batch: true
   branches:
     include:
       - master
-      - main
+
+# build pull requests, cancelling superseded builds of the same pull request
+pr:
+  autoCancel: true
+  branches:
+    include:
+      - '*'
 
 resources:
   pipelines:
