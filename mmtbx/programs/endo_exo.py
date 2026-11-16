@@ -130,10 +130,12 @@ class Program(ProgramTemplate):
 
   def validate(self):
     """Validate user inputs before :meth:`run` is called."""
-    if not self.data_manager.has_models():
-      raise Sorry('No model provided. Please supply a PDB or mmCIF file.')
-
+    self.data_manager.has_models(
+      raise_sorry=True, expected_n=1, exact_count=True)
     model = self.data_manager.get_model()
+    n_models = model.get_number_of_models()
+    if n_models > 1:
+      raise Sorry(f'Multi-model files are not supported ({n_models} models).')
     selection_strings = [s for s in (self.params.selection or []) if s]
     for sel_str in selection_strings:
       try:

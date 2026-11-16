@@ -2186,6 +2186,25 @@ def exercise_altloc_filter():
     assert {"N", "CA", "C", "O"} <= names, (mode, names)
 
 
+def exercise_multi_model_refused():
+  """A file holding more than one model is refused."""
+  pdb_in = iotbx.pdb.input(
+    source_info=None, lines=_1BQ8_FE_SPHERE_PDB.split("\n"))
+  hierarchy = pdb_in.construct_hierarchy()
+  second = hierarchy.models()[0].detached_copy()
+  second.id = "2"
+  hierarchy.models()[0].id = "1"
+  hierarchy.append_model(second)
+  two_models = hierarchy.as_pdb_string(
+    crystal_symmetry=pdb_in.crystal_symmetry())
+  try:
+    _run_endo_exo_params(two_models)
+  except Sorry as e:
+    assert "2 models" in str(e), f"unexpected refusal: {e}"
+  else:
+    raise AssertionError("a file with two models was accepted")
+
+
 def exercise_element_filter():
   """element_filter restricts which metals seed a region; a miss raises Sorry.
 
@@ -3818,6 +3837,7 @@ def run():
   exercise_special_position_partial_overlap()
   exercise_altloc_filter()
   exercise_element_filter()
+  exercise_multi_model_refused()
   exercise_depth_and_skip_search()
   exercise_write_files_roundtrip()
   exercise_scaffold_residue_keeps_no_functional_group()
