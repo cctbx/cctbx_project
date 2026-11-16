@@ -7,7 +7,7 @@ from cctbx import sgtbx
 from iotbx.pdb import common_residue_names_get_class
 from libtbx.utils import null_out
 
-from mmtbx.geometry_restraints.endo_exo.util import _canon_op, _neighbour_iseqs
+from mmtbx.geometry_restraints.endo_exo.util import neighbour_iseqs
 from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
 
 
@@ -99,7 +99,7 @@ class QMRegionGrower:
         neighbour.
     """
     atoms = model.get_hierarchy().atoms()
-    identity = _canon_op(sgtbx.rt_mx())
+    identity = sgtbx.rt_mx()
     # Seeds may be bare iseqs (identity image) or pre-built (iseq, op)
     # nodes (symmetry images from the symmetry-aware radius search);
     # normalise both to nodes.
@@ -148,7 +148,7 @@ class QMRegionGrower:
       curr_resname = atoms[curr_iseq].parent().resname.strip().upper()
 
       for (nbr_iseq, edge_op) in list(adjacency[curr_iseq]):
-        nbr_op = _canon_op(curr_op.multiply(edge_op))
+        nbr_op = curr_op.multiply(edge_op).new_denominators(1, 12)
         neighbour = (nbr_iseq, nbr_op)
 
         if neighbour in visited:
@@ -227,7 +227,7 @@ class QMRegionGrower:
       for (nb_iseq, edge_op) in adjacency[iseq]:
         if atoms[nb_iseq].element_is_hydrogen():
           continue
-        neighbour = (nb_iseq, _canon_op(op.multiply(edge_op)))
+        neighbour = (nb_iseq, op.multiply(edge_op).new_denominators(1, 12))
         if neighbour not in visited:
           continue
         if neighbour in cap_candidates:
@@ -238,7 +238,7 @@ class QMRegionGrower:
       if held or not caps_on_it:
         continue
 
-      hops = BondCutDetector._hops_to_ca(atoms[iseq], adjacency)
+      hops = BondCutDetector.hops_to_ca(atoms[iseq], adjacency)
       unranked = len(hops) + 1
 
       def rank(candidate, _hops=hops, _unranked=unranked):
@@ -345,7 +345,7 @@ class QMRegionGrower:
     """
     residue_group = atoms[iseq].parent().parent()
     oxygens = 0
-    for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
+    for neighbour_iseq in neighbour_iseqs(adjacency, iseq):
       other = atoms[neighbour_iseq]
       element = other.element.strip().upper()
       if element == 'O':
@@ -441,10 +441,11 @@ class QMRegionGrower:
         # with no next residue, so the cut would be refused however far BFS
         # walks.
         if (other_group.memory_id() == residue_group.memory_id()
-            and _canon_op(edge_op).as_xyz() == 'x,y,z'):
+            and edge_op.is_unit_mx()):
           continue
         if self._any_amide_in_residue_group_in_visited(
-            other_group, _canon_op(sym_op.multiply(edge_op)), visited):
+            other_group, sym_op.multiply(edge_op).new_denominators(1, 12),
+            visited):
           return True
     return False
 
@@ -518,7 +519,7 @@ class QMRegionGrower:
     residue_group = atom.parent().parent()
     on_backbone = False
     oxygens = 0
-    for j in _neighbour_iseqs(adjacency, iseq):
+    for j in neighbour_iseqs(adjacency, iseq):
       other = atoms[j]
       element = other.element.strip().upper()
       name = other.name.strip().upper()
@@ -572,7 +573,7 @@ class QMRegionGrower:
     rg = atom.parent().parent()
     on_backbone = False
     hydrogens = 0
-    for j in _neighbour_iseqs(adjacency, iseq):
+    for j in neighbour_iseqs(adjacency, iseq):
       other = atoms[j]
       if other.element_is_hydrogen():
         hydrogens += 1
@@ -584,7 +585,7 @@ class QMRegionGrower:
         on_backbone = True
         continue
       if any(atoms[k].element.strip().upper() == 'O'
-             for k in _neighbour_iseqs(adjacency, j)):
+             for k in neighbour_iseqs(adjacency, j)):
         return False              # a carbonyl, so this nitrogen has its amide
     return on_backbone and hydrogens < 2
 
@@ -616,7 +617,7 @@ class QMRegionGrower:
     residue_group = atoms[iseq].parent().parent()
     on_backbone = False
     hydrogens = 0
-    for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
+    for neighbour_iseq in neighbour_iseqs(adjacency, iseq):
       other = atoms[neighbour_iseq]
       if other.element_is_hydrogen():
         hydrogens += 1
@@ -668,7 +669,7 @@ class QMRegionGrower:
     for (nb_iseq, edge_op) in adjacency[cap_iseq]:
       if atoms[nb_iseq].element_is_hydrogen():
         continue
-      nb_node = (nb_iseq, _canon_op(cap_op.multiply(edge_op)))
+      nb_node = (nb_iseq, cap_op.multiply(edge_op).new_denominators(1, 12))
       if nb_node != anchor and nb_node in visited:
         return (f'far atom is already bonded to '
                 f'{atoms[nb_iseq].name.strip()} in the region')
@@ -677,7 +678,7 @@ class QMRegionGrower:
     for (nb_iseq, edge_op) in adjacency[anchor_iseq]:
       if atoms[nb_iseq].element_is_hydrogen():
         continue
-      if (nb_iseq, _canon_op(anchor_op.multiply(edge_op))) != cap:
+      if (nb_iseq, anchor_op.multiply(edge_op).new_denominators(1, 12)) != cap:
         return None
     return (f'near atom {atoms[anchor_iseq].name.strip()} has no other '
             f'heavy neighbour to hold it in the region')

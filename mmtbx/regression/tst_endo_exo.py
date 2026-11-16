@@ -36,7 +36,6 @@ from mmtbx.programs.endo_exo import Program as EndoexoProgram
 from scitbx import matrix
 from cctbx import geometry_restraints, sgtbx
 
-from mmtbx.geometry_restraints.endo_exo.util import _canon_op
 from mmtbx.geometry_restraints.endo_exo.capping import (
   AMINE_HYDROGEN_NAMES, HydrogenCapper)
 from mmtbx.geometry_restraints.endo_exo.cutting import (
@@ -982,36 +981,6 @@ def _atoms_by_name(pdb_str):
   return {a.name.strip(): a for a in atoms}
 
 
-def exercise_canon_op():
-  """``_canon_op`` must give a canonical, hash-stable representative: two
-  rt_mx values that compare equal (same xyz) must hash equal and satisfy
-  set membership after canonicalisation, regardless of how they were
-  built.  This is the contract the symmetry-aware BFS relies on when it
-  keys ``visited`` / ``cap_candidates`` on ``(i_seq, rt_mx)`` nodes."""
-  op = sgtbx.rt_mx("x,y,z+1")
-  # Same operation reached via composition with the identity -- this can
-  # leave a different internal denominator / representation.
-  op_composed = op.multiply(sgtbx.rt_mx())
-  assert op.as_xyz() == op_composed.as_xyz()
-
-  c1 = _canon_op(op)
-  c2 = _canon_op(op_composed)
-
-  # canonical form preserves the operation ...
-  assert c1.as_xyz() == op.as_xyz()
-  # ... is idempotent ...
-  assert _canon_op(c1).as_xyz() == c1.as_xyz()
-  # ... and is hash-stable: equal ops hash equal and live as one set member.
-  assert c1 == c2
-  assert hash(c1) == hash(c2)
-  assert c2 in {c1}
-
-  # The inverse of a pure translation negates it; canonicalisation must
-  # survive that too (the reverse-edge case in build_adjacency).
-  inv = _canon_op(op.inverse())
-  assert inv.as_xyz() == sgtbx.rt_mx("x,y,z-1").as_xyz()
-
-
 _CAP_PDB = """\
 ATOM      1  C1  XXX A   1       0.000   0.000   0.000  1.00  0.00           C
 ATOM      2  C2  XXX A   1       1.500   0.000   0.000  1.00  0.00           C
@@ -1062,7 +1031,7 @@ ATOM      2  CB  XXX A   1       1.540   0.000   0.000  1.00  0.00           C
 
 def _edge(adj, i, j):
   """Add an undirected bare edge (the sym_op is irrelevant to the cut
-  checks, which drop it via _neighbour_iseqs)."""
+  checks, which drop it via neighbour_iseqs)."""
   adj.setdefault(i, set()).add((j, None))
   adj.setdefault(j, set()).add((i, None))
 
@@ -1404,7 +1373,7 @@ def exercise_consumed_preferred_cut():
 
   # Tagged adjacency must carry a real rt_mx on each edge (the BFS
   # composes ops); the identity stands in for an intra-ASU bond.
-  identity = _canon_op(sgtbx.rt_mx())
+  identity = sgtbx.rt_mx()
   adjacency = defaultdict(set)
   def _bond(a, b):
     adjacency[iseq[a]].add((iseq[b], identity))
@@ -1494,7 +1463,7 @@ def exercise_cut_depends_on_where_bfs_arrives():
   resseq_of = {a.i_seq: a.parent().parent().resseq.strip() for a in atoms}
   elem_of = {a.i_seq: a.element.strip().upper() for a in atoms}
 
-  identity = _canon_op(sgtbx.rt_mx())
+  identity = sgtbx.rt_mx()
   adjacency = defaultdict(set)
   def _bond(i, j):
     adjacency[i].add((j, identity))
@@ -1656,7 +1625,7 @@ def _hull_water_nodes(pdb_str, enabled=True, log=None):
   pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
   atoms = list(model.get_hierarchy().atoms())
-  identity = _canon_op(sgtbx.rt_mx())
+  identity = sgtbx.rt_mx()
 
   master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
   params = master.extract()
@@ -1697,7 +1666,7 @@ def exercise_hbond_partner_symmetry_composition():
   builder = QMRegionBuilder(params, logger=io.StringIO())
 
   turn = sgtbx.rt_mx("-y,x-y,z")
-  seed_op = _canon_op(sgtbx.rt_mx("y,x,-z"))
+  seed_op = sgtbx.rt_mx("y,x,-z")
   assert turn.as_xyz() != turn.inverse().as_xyz(), (
     "the operation must not be its own inverse or this proves nothing")
   # The two must not commute either, or composing them the wrong way round
@@ -1726,8 +1695,8 @@ def exercise_hbond_partner_symmetry_composition():
     found = builder._hbond_partner_nodes(model, {(seeded, seed_op)})
     return {op.as_xyz() for _i_seq, op in found}
 
-  forward = _canon_op(seed_op.multiply(turn)).as_xyz()
-  backward = _canon_op(seed_op.multiply(turn.inverse())).as_xyz()
+  forward = seed_op.multiply(turn).as_xyz()
+  backward = seed_op.multiply(turn.inverse()).as_xyz()
   assert forward != backward
 
   # With the hydrogen first the operation carries the acceptor, so seeding
@@ -1836,8 +1805,8 @@ def exercise_hull_spans_symmetry_images_already_in_the_region():
     source_info=None, lines=_HULL_WATER_SYMMETRY_PDB.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
   atoms = list(model.get_hierarchy().atoms())
-  identity = _canon_op(sgtbx.rt_mx())
-  image = _canon_op(sgtbx.rt_mx("-x+1,y,-z+1"))
+  identity = sgtbx.rt_mx()
+  image = sgtbx.rt_mx("-x+1,y,-z+1")
 
   master = libtbx.phil.parse(EndoexoProgram.master_phil_str)
   params = master.extract()
@@ -1933,7 +1902,7 @@ def exercise_build_adjacency():
   symmetry-crossing bonds carry the rt_mx forward and its inverse on the
   reverse edge."""
   builder = AtomGraphBuilder()
-  identity = _canon_op(sgtbx.rt_mx())
+  identity = sgtbx.rt_mx()
 
   simple = _simple_bond_proxies(_1BQ8_FE_SPHERE_PDB)
   assert len(simple) > 0
@@ -1948,11 +1917,11 @@ def exercise_build_adjacency():
   adj = builder.build_adjacency([], asu, asu_mappings)
   n_non_identity = 0
   for proxy in asu:
-    op = _canon_op(asu_mappings.get_rt_mx_ji(proxy))
+    op = asu_mappings.get_rt_mx_ji(proxy).new_denominators(1, 12)
     if op != identity:
       n_non_identity += 1
     assert (proxy.j_seq, op) in adj[proxy.i_seq]
-    assert (proxy.i_seq, _canon_op(op.inverse())) in adj[proxy.j_seq]
+    assert (proxy.i_seq, op.inverse()) in adj[proxy.j_seq]
   assert n_non_identity > 0
 
 
@@ -2955,7 +2924,7 @@ def exercise_chain_break_amine_is_not_any_nitrogen():
   # CN, AYA its acetyl CT, SAC its C1A, and all three sit in the residue's
   # own atom group.  Each is a complete amide.
   monomers = _monomer_server()
-  identity = _canon_op(sgtbx.rt_mx())
+  identity = sgtbx.rt_mx()
   for code, expected in (("FME", False), ("AYA", False), ("SAC", False),
                          ("MSE", True), ("ALA", True)):
     comp = monomers.get_comp_comp_id_direct(code)
@@ -3302,7 +3271,6 @@ def exercise_polymer_bonded_to_its_own_image_terminates():
   Driven on a hand-built adjacency because the point is the graph, and
   bounded by counting neighbour lookups, because the failure is a hang."""
   from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
-  from mmtbx.geometry_restraints.endo_exo.util import _canon_op as canon
 
   class BoundedAdjacency(dict):
     """Raise rather than hang if growth does not settle."""
@@ -3322,9 +3290,9 @@ def exercise_polymer_bonded_to_its_own_image_terminates():
   atoms = model.get_hierarchy().atoms()
   iseq = {atom.name.strip(): atom.i_seq for atom in atoms}
 
-  identity = canon(sgtbx.rt_mx())
-  forward = canon(sgtbx.rt_mx("x+1,y,z"))
-  backward = canon(sgtbx.rt_mx("x-1,y,z"))
+  identity = sgtbx.rt_mx()
+  forward = sgtbx.rt_mx("x+1,y,z")
+  backward = sgtbx.rt_mx("x-1,y,z")
 
   adjacency = BoundedAdjacency()
   def bond(first, second, there, back):
@@ -3873,7 +3841,6 @@ def exercise_surviving_cap_has_only_its_anchor():
   radius of the metal do not produce, leaving the composed-operator path the
   invariant most depends on unexamined."""
   from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
-  from mmtbx.geometry_restraints.endo_exo.util import _canon_op as canon
 
   grow_by_depth = QMRegionGrower.grow_by_depth
   regions = []
@@ -3904,7 +3871,7 @@ def exercise_surviving_cap_has_only_its_anchor():
       for (nb_iseq, edge_op) in adjacency[cap_iseq]:
         if atoms[nb_iseq].element_is_hydrogen():
           continue
-        neighbour = (nb_iseq, canon(cap_op.multiply(edge_op)))
+        neighbour = (nb_iseq, cap_op.multiply(edge_op).new_denominators(1, 12))
         if neighbour == anchor or neighbour not in visited:
           continue
         raise AssertionError(
@@ -4000,7 +3967,6 @@ def run():
   exercise_surviving_cap_has_only_its_anchor()
   exercise_cut_not_made_into_the_region()
   # engine unit tests
-  exercise_canon_op()
   exercise_hydrogen_capper()
   exercise_bond_cut_preferred()
   exercise_bond_cut_heuristic()

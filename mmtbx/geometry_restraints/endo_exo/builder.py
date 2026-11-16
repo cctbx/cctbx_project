@@ -20,8 +20,7 @@ from cctbx.crystal import super_cell
 from iotbx.pdb import common_residue_names_get_class
 from scitbx import matrix
 
-from mmtbx.geometry_restraints.endo_exo.util import (
-  _canon_op, _neighbour_iseqs)
+from mmtbx.geometry_restraints.endo_exo.util import neighbour_iseqs
 from mmtbx.geometry_restraints.endo_exo.seeds import SeedFinder
 from mmtbx.geometry_restraints.endo_exo.graph import AtomGraphBuilder
 from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
@@ -483,7 +482,7 @@ class QMRegionBuilder:
     -------
     set of (int, sgtbx.rt_mx)
     """
-    identity = _canon_op(sgtbx.rt_mx())
+    identity = sgtbx.rt_mx()
     qm_nodes = set()
     if self.params.buffer.skip_search:
       for seed in seeds:
@@ -544,7 +543,7 @@ class QMRegionBuilder:
       oxygens = 0
       on_backbone = False
       chain_continues = False
-      for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
+      for neighbour_iseq in neighbour_iseqs(adjacency, iseq):
         other = atoms[neighbour_iseq]
         if other.element_is_hydrogen():
           hydrogens += 1
@@ -640,7 +639,7 @@ class QMRegionBuilder:
           continue
         step = record.symop if forward else record.symop.inverse()
         for op in ops_by_iseq[this]:
-          node = (other, _canon_op(op.multiply(step)))
+          node = (other, op.multiply(step).new_denominators(1, 12))
           if node not in qm_nodes:
             partners.add(node)
 
@@ -694,7 +693,7 @@ class QMRegionBuilder:
     selection = self.params.residues_to_include.selection
     if not selection:
       return set()
-    identity = _canon_op(sgtbx.rt_mx())
+    identity = sgtbx.rt_mx()
     atoms = model.get_hierarchy().atoms()
     nodes = set()
     for iseq in model.selection(selection).iselection():
@@ -802,9 +801,9 @@ class QMRegionBuilder:
 
     centroid_frac = uc.fractionalize(hull_cart.mean())
 
-    visited_iseqs_by_op = {}
+    visited_iseqs_by_op = defaultdict(set)
     for (iseq, op) in visited_nodes:
-      visited_iseqs_by_op.setdefault(op.as_xyz(), set()).add(iseq)
+      visited_iseqs_by_op[op].add(iseq)
 
     # Collect water residues once per run: ``_add_hull_waters`` is called per
     # seed but the water set is the same every call.
@@ -864,8 +863,8 @@ class QMRegionBuilder:
       for k in inside.iselection():
         sx, sy, sz = shifts_x[k], shifts_y[k], shifts_z[k]
         shift_op = sgtbx.rt_mx(f"x{-sx:+d},y{-sy:+d},z{-sz:+d}")
-        final_op = _canon_op(shift_op.multiply(sg_op))
-        already = visited_iseqs_by_op.get(final_op.as_xyz(), set())
+        final_op = shift_op.multiply(sg_op).new_denominators(1, 12)
+        already = visited_iseqs_by_op.get(final_op, set())
         for iseq in waters[k][1]:
           if iseq not in already:
             new_nodes.add((iseq, final_op))
@@ -936,16 +935,15 @@ class QMRegionBuilder:
     parent_atoms = parent_hier.atoms()
     cs = model.crystal_symmetry()
     unit_cell = cs.unit_cell()
-    identity_xyz = sgtbx.rt_mx().as_xyz()
+    identity = sgtbx.rt_mx()
 
-    # Group iseqs by sym_op (keyed by canonical xyz string)
+    # Group iseqs by symmetry operation, the identity first.
     by_op = defaultdict(set)
     for (iseq, op) in visited_nodes:
-      by_op[op.as_xyz()].add(iseq)
-    op_keys = sorted(by_op.keys(),
-                     key=lambda k: (k != identity_xyz, k))
+      by_op[op].add(iseq)
+    ops = sorted(by_op, key=lambda op: (not op.is_unit_mx(), op.as_xyz()))
 
-    # Build chain ID map: (original_chain_id, sym_op_xyz) -> new_chain_id.
+    # Build chain ID map: (original_chain_id, sym_op) -> new_chain_id.
     # Stick to single-character chain IDs because PDB's chain field is
     # one character wide; multi-char IDs overflow into the residue-name
     # field and break the bond graph that ``make_restraints`` builds.
@@ -954,16 +952,16 @@ class QMRegionBuilder:
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
       if c not in orig_chain_ids)
     chain_id_for = {}
-    for op_xyz in op_keys:
+    for op in ops:
       region_chain_ids = sorted({
         parent_atoms[i].parent().parent().parent().id.strip()
-        for i in by_op[op_xyz]})
+        for i in by_op[op]})
       for orig_id in region_chain_ids:
-        if op_xyz == identity_xyz:
-          chain_id_for[(orig_id, op_xyz)] = orig_id
+        if op.is_unit_mx():
+          chain_id_for[(orig_id, op)] = orig_id
         else:
           try:
-            chain_id_for[(orig_id, op_xyz)] = next(available_chain_ids)
+            chain_id_for[(orig_id, op)] = next(available_chain_ids)
           except StopIteration:
             raise Sorry(
               'The symmetry images in the QM region need more '
@@ -978,13 +976,11 @@ class QMRegionBuilder:
     # remember which parent node each fresh atom came from.
     # ``model.select(mask)`` preserves atom order, so the k-th atom in
     # the copied sub-hierarchy corresponds to the k-th parent i_seq in
-    # ascending order from ``by_op[op_xyz]``.
-    node_of_atom = {}  # output atom -> (parent_iseq, op_xyz)
+    # ascending order from ``by_op[op]``.
+    node_of_atom = {}  # output atom -> (parent_iseq, op)
     n_parent_atoms = parent_atoms.size()
-    for op_xyz in op_keys:
-      op = sgtbx.rt_mx(op_xyz)
-
-      iseqs_in_order = sorted(by_op[op_xyz])
+    for op in ops:
+      iseqs_in_order = sorted(by_op[op])
       mask = flex.bool(n_parent_atoms, False)
       for i in iseqs_in_order:
         mask[i] = True
@@ -993,7 +989,7 @@ class QMRegionBuilder:
 
       # Transform coordinates and anisotropic U from ASU positions to the
       # image.
-      if op_xyz != identity_xyz:
+      if not op.is_unit_mx():
         sub_model.set_sites_cart(super_cell.sym_equiv_sites_cart(
           sites_cart=sub_model.get_sites_cart(), unit_cell=unit_cell,
           rt_mx=op))
@@ -1001,7 +997,7 @@ class QMRegionBuilder:
           r_cart=unit_cell.matrix_cart(op.r()))
         # Rename chains so this image is distinguishable
         for ch in sub_hier.chains():
-          ch.id = chain_id_for[(ch.id.strip(), op_xyz)]
+          ch.id = chain_id_for[(ch.id.strip(), op)]
 
       # Detached-copy each chain into the master and record the parent
       # node for every fresh atom object.
@@ -1010,7 +1006,7 @@ class QMRegionBuilder:
         new_ch = ch.detached_copy()
         out_hier_model.append_chain(new_ch)
         for new_atom in new_ch.atoms():
-          node_of_atom[new_atom] = (iseqs_in_order[k], op_xyz)
+          node_of_atom[new_atom] = (iseqs_in_order[k], op)
           k += 1
 
     # Drop any symmetry image that positionally duplicates a kept atom group
@@ -1027,18 +1023,18 @@ class QMRegionBuilder:
     # never cancel each other.  A single coincidence drops the whole group,
     # since a group straddling the axis has some atoms on it and some off,
     # and keeping it would put two nuclei in one place.
-    seen_images = defaultdict(list)  # parent group -> [(op_xyz, heavy atom), ]
-    atom_for_node = {}  # (parent_iseq, op_xyz) -> surviving atom
+    seen_images = defaultdict(list)  # parent group -> [(op, heavy atom), ]
+    atom_for_node = {}  # (parent_iseq, op) -> surviving atom
     for ch in list(out_hier_model.chains()):
       for rg in list(ch.residue_groups()):
         for ag in list(rg.atom_groups()):
           heavy = [a for a in ag.atoms() if not a.element_is_hydrogen()]
           is_duplicate = False
           if heavy:
-            parent_iseq, op_xyz = node_of_atom[heavy[0]]
+            parent_iseq, image_op = node_of_atom[heavy[0]]
             group_key = parent_atoms[parent_iseq].parent().memory_id()
             other_images = [kept for (kept_op, kept) in seen_images[group_key]
-                            if kept_op != op_xyz]
+                            if kept_op != image_op]
             for a in heavy:
               for prev in other_images:
                 if a.distance(prev) < POS_TOL:
@@ -1062,8 +1058,8 @@ class QMRegionBuilder:
         out_hier_model.remove_chain(ch)
     out_root.atoms().reset_serial()
 
-    def _lookup_node(iseq, op_xyz):
-      return atom_for_node.get((iseq, op_xyz))
+    def _lookup_node(iseq, op):
+      return atom_for_node.get((iseq, op))
 
     # Record each boundary atom's element and anchor, then cap.  The record
     # describes the region boundary, which exists whether or not a hydrogen
@@ -1073,8 +1069,8 @@ class QMRegionBuilder:
     for cap_node, anchor_node in cap_nodes.items():
       cap_iseq_orig, cap_op = cap_node
       anchor_iseq_orig, anchor_op = anchor_node
-      cap_atom = _lookup_node(cap_iseq_orig, cap_op.as_xyz())
-      anchor_atom = _lookup_node(anchor_iseq_orig, anchor_op.as_xyz())
+      cap_atom = _lookup_node(cap_iseq_orig, cap_op)
+      anchor_atom = _lookup_node(anchor_iseq_orig, anchor_op)
       if cap_atom is None:
         continue
       orig_element_by_cap[cap_atom] = cap_atom.element.strip()
@@ -1101,12 +1097,13 @@ class QMRegionBuilder:
         if not QMRegionGrower._is_chain_break_amine(
             iseq, adjacency, parent_atoms):
           continue
-        nitrogen = _lookup_node(iseq, op.as_xyz())
+        nitrogen = _lookup_node(iseq, op)
         if nitrogen is None or nitrogen in cap_atoms:
           continue
         neighbours = []
         for (j, edge_op) in adjacency[iseq]:
-          neighbour = _lookup_node(j, _canon_op(op.multiply(edge_op)).as_xyz())
+          neighbour = _lookup_node(
+            j, op.multiply(edge_op).new_denominators(1, 12))
           if neighbour is not None:
             neighbours.append(neighbour)
         added = self._capper.complete_amine(nitrogen, neighbours)
@@ -1125,12 +1122,13 @@ class QMRegionBuilder:
         if not QMRegionGrower._is_chain_break_carbonyl(
             iseq, adjacency, parent_atoms):
           continue
-        carbon = _lookup_node(iseq, op.as_xyz())
+        carbon = _lookup_node(iseq, op)
         if carbon is None or carbon in cap_atoms:
           continue
         neighbours = []
         for (j, edge_op) in adjacency[iseq]:
-          neighbour = _lookup_node(j, _canon_op(op.multiply(edge_op)).as_xyz())
+          neighbour = _lookup_node(
+            j, op.multiply(edge_op).new_denominators(1, 12))
           if neighbour is not None:
             neighbours.append(neighbour)
         # Which repair depends on whether the chain continues past this
@@ -1173,13 +1171,13 @@ class QMRegionBuilder:
     # copied atoms their final ``.i_seq``.
     seed_indices = []
     for s in seeds:
-      a = _lookup_node(s.i_seq, identity_xyz)
+      a = _lookup_node(s.i_seq, identity)
       if a is not None:
         seed_indices.append(a.i_seq)
     seed_indices.sort()
     cap_atoms_sorted = []
     for (iseq, op) in cap_nodes:
-      a = _lookup_node(iseq, op.as_xyz())
+      a = _lookup_node(iseq, op)
       if a is not None:
         cap_atoms_sorted.append(a)
     cap_atoms_sorted.sort(key=lambda a: a.i_seq)
@@ -1202,8 +1200,8 @@ class QMRegionBuilder:
     # freed after the region is returned.  Angles cannot cross symmetry, so
     # only bond restraints can use this.
     sym_image_provenance = {}
-    for (parent_iseq, op_xyz), atom in atom_for_node.items():
-      if op_xyz == identity_xyz:
+    for (parent_iseq, op), atom in atom_for_node.items():
+      if op.is_unit_mx():
         continue
       pa = parent_atoms[parent_iseq]
       ag = pa.parent()
@@ -1211,7 +1209,7 @@ class QMRegionBuilder:
       ch = rg.parent()
       ident = (ch.id.strip(), rg.resseq.strip(), ag.resname.strip(),
                pa.name.strip(), ag.altloc.strip())
-      sym_image_provenance[atom.i_seq] = (ident, op_xyz)
+      sym_image_provenance[atom.i_seq] = (ident, op.as_xyz())
 
     return (model_sel, seed_indices, cap_indices, cap_original_elements,
             cap_anchor_indices, sym_image_provenance,

@@ -7,8 +7,6 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from cctbx.crystal import super_cell
 
-from mmtbx.geometry_restraints.endo_exo.util import _canon_op
-
 
 class AtomGraphBuilder:
   """Build a unified, symmetry-aware covalent adjacency graph from CCTBX
@@ -59,7 +57,7 @@ class AtomGraphBuilder:
         (intra-ASU) edges carry the identity ``rt_mx``; the reverse
         edge ``j -> i`` is recorded with the inverse operation.
     """
-    identity = _canon_op(sgtbx.rt_mx())
+    identity = sgtbx.rt_mx()
     adj = defaultdict(set)
     for proxy in bond_proxies_simple:
       i_seq, j_seq = proxy.i_seqs
@@ -67,9 +65,13 @@ class AtomGraphBuilder:
       adj[j_seq].add((i_seq, identity))
     for proxy in bond_proxies_asu:
       i_seq, j_seq = proxy.i_seq, proxy.j_seq
-      sym_op = _canon_op(asu_mappings.get_rt_mx_ji(proxy))
+      # rt_mx hashes its denominators, and these operations and the
+      # products of multiply() come on reduced ones, so every operation in a
+      # node is put on the denominators (1, 12) that rt_mx() and the
+      # space-group operations use.
+      sym_op = asu_mappings.get_rt_mx_ji(proxy).new_denominators(1, 12)
       adj[i_seq].add((j_seq, sym_op))
-      adj[j_seq].add((i_seq, _canon_op(sym_op.inverse())))
+      adj[j_seq].add((i_seq, sym_op.inverse()))
     return adj
 
   def add_seed_contact_edges(self, seeds, model, adjacency, cutoff):
@@ -119,12 +121,13 @@ class AtomGraphBuilder:
         if atom.element_is_hydrogen():
           continue
         for rt_mx_ji in rt_mx_ji_list:
-          op = _canon_op(rt_mx_ji)
+          op = rt_mx_ji.new_denominators(1, 12)
           edge = (j_seq, op)
           if edge in adjacency[i_seq]:
             continue
           adjacency[i_seq].add(edge)
-          adjacency[j_seq].add((i_seq, _canon_op(rt_mx_ji.inverse())))
+          adjacency[j_seq].add(
+            (i_seq, rt_mx_ji.inverse().new_denominators(1, 12)))
           added_edges += 1
 
     return added_edges
@@ -269,5 +272,5 @@ class AtomGraphBuilder:
     nodes = set()
     for j_seq, rt_mx_ji_list in siiu.items():
       for rt_mx_ji in rt_mx_ji_list:
-        nodes.add((j_seq, _canon_op(rt_mx_ji)))
+        nodes.add((j_seq, rt_mx_ji))
     return nodes
