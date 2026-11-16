@@ -244,6 +244,10 @@ def exercise_add_existing_h():
       new_atom_id=name, new_type_symbol=element, new_type_energy=element,
       new_partial_charge=0))
   for name in ("H1", "H2", "H3"):
+    # as mod_NH3: each added H bonded to N
+    mod.bond_list.append(cif_types.chem_mod_bond(function="add",
+      atom_id_1="N", atom_id_2=name, new_type="single", new_value_dist=0.89,
+      new_value_dist_esd=0.02, new_value_dist_neutron=1.04))
     mod.angle_list.append(cif_types.chem_mod_angle(function="add",
       atom_id_1=name, atom_id_2="N", atom_id_3="CA",
       new_value_angle=109.47, new_value_angle_esd=3.))
@@ -256,9 +260,40 @@ def exercise_add_existing_h():
   # the residue entry itself is unchanged
   assert [a.atom_id for a in comp.atom_list].count("H2") == 1
   assert len(comp.angle_list) == 2
+  # H2 on another atom than N (2KZ: CB): not replaced, an error that names
+  # the residue, the name and both parents
+  comp.bond_list = [b for b in comp.bond_list if "H2" not in
+    (b.atom_id_1, b.atom_id_2)]
+  comp.bond_list.append(cif_types.chem_comp_bond(atom_id_1="CA",
+    atom_id_2="H2", type="single", value_dist=1., value_dist_esd=0.02))
+  try:
+    comp.apply_mod(mod)
+  except RuntimeError as e:
+    assert str(e) == ("AAH: modification NH3 adds H2 bonded to N, but the"
+      " residue has H2 bonded to CA"), str(e)
+  else:
+    raise AssertionError("H2 on CA replaced")
+
+def exercise_add_existing_h_library():
+  """mon_lib's mod_NH3 on SCY (H2 on N): H2 replaced; on 2KZ (H2 on CB):
+  the error."""
+  from mmtbx.monomer_library import server
+  mon_lib_srv = server.server()
+  nh3 = mon_lib_srv.mod_mod_id_dict["NH3"]
+  c = mon_lib_srv.get_comp_comp_id_direct("SCY").apply_mod(nh3)
+  assert [sorted([b.atom_id_1, b.atom_id_2]) for b in c.bond_list
+    if "H2" in (b.atom_id_1, b.atom_id_2)] == [["H2", "N"]]
+  try:
+    mon_lib_srv.get_comp_comp_id_direct("2KZ").apply_mod(nh3)
+  except RuntimeError as e:
+    assert str(e) == ("2KZ: modification NH3 adds H2 bonded to N, but the"
+      " residue has H2 bonded to CB"), str(e)
+  else:
+    raise AssertionError("2KZ H2 on CB replaced")
 
 if (__name__ == "__main__"):
   exercise()
   exercise_charge()
   exercise_add_existing_h()
+  exercise_add_existing_h_library()
   print("OK")
