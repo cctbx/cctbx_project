@@ -29,6 +29,65 @@ private:
   bool preprocess_shallow;
   std::vector<cctbx::sgtbx::grid_symop> symops;
   int3 uc_dims;
+  // Grid directions along which a voxel is tested for being shallow.
+  std::vector<int3> shallow_directions;
+
+  // Three grid axes: all that is known without symmetry.
+  void set_shallow_directions()
+  {
+    shallow_directions.clear();
+    shallow_directions.push_back(int3(1,0,0));
+    shallow_directions.push_back(int3(0,1,0));
+    shallow_directions.push_back(int3(0,0,1));
+  }
+
+  // Grid axes and all their symmetry copies (up to the sign). Three axes are
+  // not a symmetric set if the space group has 3- or 6-fold axes (the
+  // operation -y,x-y,z maps b onto -(a+b)); shallow voxels found along the
+  // axes only would then be different in symmetry-related places.
+  void set_shallow_directions(
+    cctbx::sgtbx::space_group const& space_group,
+    int3 const& n)
+  {
+    set_shallow_directions();
+    for(std::size_t i=0; i<space_group.order_z(); ++i) {
+      sgtbx::grid_symop s(space_group(i), n);
+      for(unsigned char c=0; c<3; ++c) {
+        int3 d(s(0,c), s(1,c), s(2,c));
+        int sign = 1;
+        for(unsigned char r=0; r<3; ++r) {
+          if(d[r] != 0) { if(d[r] < 0) sign = -1; break; }
+        }
+        for(unsigned char r=0; r<3; ++r) d[r] *= sign;
+        bool is_new = true;
+        for(std::size_t j=0; j<shallow_directions.size(); ++j) {
+          int3 const& e = shallow_directions[j];
+          if(e[0]==d[0] && e[1]==d[1] && e[2]==d[2]) { is_new = false; break; }
+        }
+        if(is_new) shallow_directions.push_back(d);
+      }
+    }
+  }
+
+  // Map value at a grid point that may be outside of the map: wrapped if
+  // the map is periodic, below the threshold otherwise.
+  template <typename MapType>
+  MapType
+  value_or_below_threshold(
+    af::ref<MapType, af::c_grid<3> > const& map_data,
+    MapType const& threshold,
+    int x, int y, int z) const
+  {
+    int p[3] = {x, y, z};
+    for(int a=0; a<3; a++) {
+      int n = map_dimensions[a];
+      if(p[a] < 0 || p[a] >= n) {
+        if(!border_wrapping) return threshold-1;
+        p[a] = ((p[a] % n) + n) % n;
+      }
+    }
+    return map_data(p[0], p[1], p[2]);
+  }
 
 
   inline
@@ -297,6 +356,35 @@ public:
     bool wrapping=true,
     bool preprocess_against_shallow=false) //: sg(cctbx::sgtbx::space_group("P 1"))
   {
+    set_shallow_directions();
+    compute(map_data, threshold, wrapping, preprocess_against_shallow);
+  }
+
+  //! Same for a whole unit cell map that obeys space_group symmetry.
+  /*! The space group is used by preprocess_against_shallow only: with it
+      the map stays symmetric after shallow voxels are removed.
+   */
+  template <typename MapType>
+  connectivity(
+    af::ref<MapType, af::c_grid<3> > map_data,
+    MapType const& threshold,
+    bool wrapping,
+    bool preprocess_against_shallow,
+    cctbx::sgtbx::space_group const& space_group)
+  {
+    af::tiny<int, 3> n = map_data.accessor();
+    set_shallow_directions(space_group, int3(n[0], n[1], n[2]));
+    compute(map_data, threshold, wrapping, preprocess_against_shallow);
+  }
+
+  template <typename MapType>
+  void
+  compute(
+    af::ref<MapType, af::c_grid<3> > map_data,
+    MapType const& threshold,
+    bool wrapping,
+    bool preprocess_against_shallow)
+  {
     //new code
     // std::cout << "Old constructor.\n";
     // cctbx::sgtbx::space_group dummy_sg = cctbx::sgtbx::space_group("P 1");
@@ -317,13 +405,18 @@ public:
           for (int j = 0; j < map_dimensions[1]; j++) {
             for (int k = 0; k < map_dimensions[2]; k++) {
               if (map_data(i,j,k) > threshold) {
-                int n_neib = get_six_neighbours(i,j,k, neighbours, true);
-                CCTBX_ASSERT(n_neib == 6);
+                // Shallow: both neighbours along some direction are at or
+                // below the threshold. Removing a voxel can only make other
+                // voxels shallow, so the result does not depend on the order
+                // voxels are visited in.
                 bool keep=true;
-                int l=0;
-                while (keep && l<3) {
-                  MapType v1 = (neighbours[l*2][0]>=0) ? map_data(af::adapt(neighbours[l*2])) : threshold-1;
-                  MapType v2 = (neighbours[l*2+1][0]>=0) ? map_data(af::adapt(neighbours[l*2+1])) : threshold-1;
+                std::size_t l=0;
+                while (keep && l<shallow_directions.size()) {
+                  int3 const& d = shallow_directions[l];
+                  MapType v1 = value_or_below_threshold(
+                    map_data, threshold, i+d[0], j+d[1], k+d[2]);
+                  MapType v2 = value_or_below_threshold(
+                    map_data, threshold, i-d[0], j-d[1], k-d[2]);
                   if (v1 <= threshold && v2 <= threshold) keep=false;
                   l += 1;
                 }

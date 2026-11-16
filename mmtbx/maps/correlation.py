@@ -51,6 +51,8 @@ class five_cc(object):
       xray_structure        = self.xray_structure,
       p1                    = True,
       for_structure_factors = False,
+      solvent_radius        = masks.real_space_solvent_radius,
+      shrink_truncation_radius = masks.real_space_shrink_truncation_radius,
       n_real                = self.map.accessor().all()).mask_data
     maptbx.unpad_in_place(map=bs_mask)
     self.sel_inside = (bs_mask==0.).iselection()

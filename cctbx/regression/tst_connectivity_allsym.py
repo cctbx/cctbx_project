@@ -16,6 +16,14 @@ if (1):
   flex.set_random_seed(0)
 
 def run_group(symbol, preprocess_against_shallow):
+  """
+  Regions of a symmetric whole-cell mask, of the same mask with symmetry
+  related regions merged, and of the mask restored from its asymmetric unit
+  must be the same. The space group is given to connectivity so that removing
+  shallow voxels (preprocess_against_shallow) keeps the mask symmetric: the
+  three grid axes alone are not a symmetric set of directions in trigonal and
+  hexagonal space groups.
+  """
   group = space_group_info(symbol)
   print("\n== space group %d"%symbol)
   xrs = random_structure.xray_structure(
@@ -46,7 +54,8 @@ def run_group(symbol, preprocess_against_shallow):
     map_data                   = mask_p1,
     threshold                  = 0.01,
     preprocess_against_shallow = preprocess_against_shallow,
-    wrapping                   = True)
+    wrapping                   = True,
+    space_group                = xrs.space_group())
   #
   print("Regions in P1")
   regions_p1 = list(co.regions())
@@ -73,7 +82,8 @@ def run_group(symbol, preprocess_against_shallow):
     map_data                   = mask_p1_1,
     threshold                  = 0.01,
     preprocess_against_shallow = preprocess_against_shallow,
-    wrapping                   = True)
+    wrapping                   = True,
+    space_group                = xrs.space_group())
   print("Restored")
   regions_p1_restored = list(co.regions())
   s3 = flex.sum(flex.int(regions_p1_restored))

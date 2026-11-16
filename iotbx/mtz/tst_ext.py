@@ -15,6 +15,33 @@ from itertools import count
 from six.moves import cStringIO as StringIO
 import sys, os
 
+def exercise_history_non_ascii():
+  """
+  History records with bytes that are not valid UTF-8 (found in files
+  written by some old programs) must be readable: such bytes are shown as
+  question marks.
+  """
+  from cctbx import crystal, miller
+  ms = miller.build_set(
+    crystal_symmetry = crystal.symmetry((10,10,10,90,90,90), "P1"),
+    anomalous_flag   = False,
+    d_min            = 3)
+  ma = ms.array(data = flex.double(ms.size(), 1.))
+  mo = ma.as_mtz_dataset(column_root_label = "F").mtz_object()
+  mo.add_history("MARKERXYZ")
+  file_name = "tmp_iotbx_mtz_ext_history.mtz"
+  mo.write(file_name)
+  with open(file_name, "rb") as f:
+    content = f.read()
+  assert content.count(b"MARKERXYZ") == 1
+  with open(file_name, "wb") as f:
+    f.write(content.replace(b"MARKERXYZ", b"MARK\xfaRXYZ"))
+  lines = [l.strip() for l in mtz.object(file_name = file_name).history()]
+  assert "MARK?RXYZ" in lines, lines
+  out = StringIO()
+  mtz.object(file_name = file_name).show_summary(out = out)
+  assert out.getvalue().count("MARK?RXYZ") == 1
+
 def exercise_read_corrupt():
   for i_trial in range(5):
     f = open("tmp_iotbx_mtz_ext.mtz", "w")
@@ -1370,6 +1397,7 @@ def exercise():
       help="Visit all MTZ files")
   ).process(args=sys.argv[1:])
   exercise_read_corrupt()
+  exercise_history_non_ascii()
   exercise_basic()
   exercise_setting_nref_etc()
   exercise_modifiers(verbose=command_line.options.verbose)

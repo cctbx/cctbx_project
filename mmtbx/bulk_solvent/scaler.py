@@ -779,6 +779,7 @@ class tmp(object):
     k,b,r = mmtbx.bulk_solvent.fit_k_exp_b_to_k_total(k_total, self.ss, k, b)
     k_exp_overall, b_exp_overall = None,None
     if(r<0.7): k_exp_overall, b_exp_overall = k,b
+    self.b_adj = 0
     if(self.xray_structure is None): return None
     b_adj = 0
     if([k_exp_overall, b_exp_overall].count(None)==0 and k != 0):
@@ -795,5 +796,6 @@ class tmp(object):
       diff = bs2-bs1
       assert approx_equal(flex.min(diff), flex.max(diff))
       assert approx_equal(flex.max(diff), b_adj)
+      self.b_adj = b_adj
       self.k_anisotropic = self.k_anisotropic/k_new
       self.k_masks = [m*flex.exp(-self.ss*b_adj) for m in self.k_masks]

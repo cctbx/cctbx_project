@@ -519,7 +519,8 @@ def filter_mask(mask_p1, volume_cutoff, crystal_symmetry,
     map_data                   = mask_p1,
     threshold                  = 0.01,
     preprocess_against_shallow = True,
-    wrapping                   = True)
+    wrapping                   = True,
+    space_group                = crystal_symmetry.space_group())
   mi, ma = flex.min(mask_p1), flex.max(mask_p1)
   print (mask_p1.size(), (mask_p1<0).count(True))
   assert mi == 0, mi

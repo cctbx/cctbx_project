@@ -67,7 +67,8 @@ class run(mmtbx.f_model.manager):
         self.update_twin_fraction()
         self.show(prefix = "update twin fraction", log = log)
         result = self.update_solvent_and_scale_twin(log = log,
-          refine_hd_scattering = refine_hd_scattering)
+          refine_hd_scattering = refine_hd_scattering,
+          back_trace = (cycle == 1))
     else:
       result = self.update_solvent_and_scale_2(
         fast                 = fast,
@@ -236,129 +237,175 @@ class run(mmtbx.f_model.manager):
       refine_hd_scattering = False
     return refine_hd_scattering
 
+  def _h_scattering_grid_search(self, f_obs, f_calc_plus_f_bulk, f_h, k_total,
+                                ss, b_mean, r_ref, zero, log):
+    """
+    Two-step (coarse, fine) grid search of the scale k_h and B-factor b_h of
+    the H contribution k_h*exp(-b_h*s^2/4)*F_H added to
+    k_total*(F_calc+F_bulk). Returns k_h, b_h, the contribution (zero array if
+    no trial point lowers the R-factor r_ref) and the last search object.
+    """
+    kh, bh, f_part2 = 0, 0, zero
+    b_min = int(max(0,b_mean)*0.5)
+    b_max = int(b_mean*1.5)
+    sc = 1000.
+    # Coarse sampling
+    kr=[i/sc for i in range(ifloor(0*sc), iceil(1.5*sc)+1, int(0.1*sc))]
+    br=[i/sc for i in range(ifloor(b_min*sc), iceil(b_max*sc)+1, int(5.*sc))]
+    o = bulk_solvent.k_sol_b_sol_k_anisotropic_scaler_twin(
+      f_obs       = f_obs,
+      f_calc      = f_calc_plus_f_bulk,
+      f_mask      = f_h.data(),
+      k_total     = k_total,
+      ss          = ss,
+      k_sol_range = flex.double(kr),
+      b_sol_range = flex.double(br),
+      r_ref       = r_ref)
+    if(o.updated()):
+      f_part2 = f_h.array(data = o.k_mask()*f_h.data())
+      kh, bh = o.k_sol(), o.b_sol()
+      self.show(prefix = "add H (%4.2f, %6.2f)"%(kh, bh), log = log, r=o.r())
+    # Fine sampling
+    k_min = max(0,o.k_sol()-0.1)
+    k_max = o.k_sol()+0.1
+    b_min = max(0,o.b_sol()-5.)
+    b_max = o.b_sol()+5.
+    kr=[i/sc for i in range(ifloor(k_min*sc),iceil(k_max*sc)+1,int(0.01*sc))]
+    br=[i/sc for i in range(ifloor(b_min*sc),iceil(b_max*sc)+1,int(1.*sc))]
+    o = bulk_solvent.k_sol_b_sol_k_anisotropic_scaler_twin(
+      f_obs       = f_obs,
+      f_calc      = f_calc_plus_f_bulk,
+      f_mask      = f_h.data(),
+      k_total     = k_total,
+      ss          = ss,
+      k_sol_range = flex.double(kr),
+      b_sol_range = flex.double(br),
+      r_ref       = o.r())
+    if(o.updated()):
+      f_part2 = f_h.array(data = o.k_mask()*f_h.data())
+      kh, bh = o.k_sol(), o.b_sol()
+      self.show(prefix = "add H (%4.2f, %6.2f)"%(kh, bh), log = log, r=o.r())
+    return kh, bh, f_part2, o
+
   def update_solvent_and_scale_2(self, fast, params, apply_back_trace,
                                  refine_hd_scattering, log):
+    """
+    Bulk-solvent and overall scales (fast: per resolution bin; slow: k_sol,
+    b_sol, b_cart by minimization), then the contribution of riding H
+    (zero occupancy in the model) as k_h*exp(-b_h*s^2/4)*F_H by grid search.
+
+    The scales and the H contribution depend on each other: scales fitted
+    with H scattering missing are biased, and so is the H contribution found
+    on top of them. In slow mode the two steps are therefore repeated, the
+    scales being fitted with the current H contribution included, until k_h
+    and b_h stop changing. The overall B is moved to the atoms
+    (apply_back_trace) after that, which changes b_sol, b_cart and b_h by
+    b_adj but not the model structure factors.
+    """
+    refine_h = (refine_hd_scattering and
+      self.need_to_refine_hd_scattering_contribution())
     if(self.xray_structure is not None):
       # Figure out Fcalc and Fmask based on presence of H
       hd_selection = self.xray_structure.hd_selection()
       xrs_no_h = self.xray_structure.select(~hd_selection)
       xrs_h    = self.xray_structure.select(hd_selection)
-    # Create data container for scalers. If H scattering is refined then it is
-    # assumed that self.f_calc() does not contain H contribution at all.
-    fmodel_kbu = mmtbx.f_model.manager_kbu(
-      f_obs   = self.f_obs(),
-      f_calc  = self.f_calc(),
-      f_masks = self.f_masks(),
-      ss      = self.ss)
-    # Compute k_total and k_mask using one of the two methods (anal or min).
-    # Note: this intentionally ignores previously existing f_part1 and f_part2.
-    #
-    k_sol, b_sol, b_cart, b_adj = [None,]*4
-    if(fast): # analytical
-      assert len(fmodel_kbu.f_masks)==1
-      result = mmtbx.bulk_solvent.scaler.run_simple(
-        fmodel_kbu     = fmodel_kbu,
-        r_free_flags   = self.r_free_flags(),
-        bulk_solvent   = params.bulk_solvent,
-        aniso_scale    = params.anisotropic_scaling,
-        bin_selections = self.bin_selections)
-      r_all_from_scaler = result.r_all() # must be here, before apply_back_trace
-    else: # using minimization: exp solvent and scale model (k_sol,b_sol,b_cart)
-      result = bss.bulk_solvent_and_scales(
-        fmodel_kbu = fmodel_kbu,
-        params     = params)
-      k_sol, b_sol, b_cart = result.k_sols(), result.b_sols(), result.b_cart()
-      r_all_from_scaler = result.r_all() # must be here, before apply_back_trace
-    if(apply_back_trace and len(fmodel_kbu.f_masks)>1 and log is not None):
+    back_trace = (apply_back_trace and len(self.f_masks())==1 and
+      self.xray_structure is not None)
+    if(apply_back_trace and len(self.f_masks())>1 and log is not None):
       print("  apply_back_trace skipped: more than one mask", file=log)
-    if(apply_back_trace and len(fmodel_kbu.f_masks)==1 and
-       self.xray_structure is not None):
-      o = result.apply_back_trace_of_overall_exp_scale_matrix(
-        xray_structure = self.xray_structure)
-      b_adj = o.b_adj
-      if(not fast): b_sol, b_cart = [o.b_sol], o.b_cart
-      self.update_xray_structure(
-        xray_structure = o.xray_structure,
-        update_f_calc  = True)
-      fmodel_kbu = fmodel_kbu.update(f_calc = self.f_calc())
-      self.show(prefix = "overall B=%s to atoms"%str("%7.2f"%o.b_adj).strip(),
-        log = log)
-    # Update self with new arrays so that H correction knows current R factor.
-    # If no H to account for, then this is the final result.
-    k_masks       = result.k_masks()
-    k_anisotropic = result.k_anisotropic()
-    k_isotropic   = result.k_isotropic()
-    self.update_core(
-      k_mask        = k_masks,
-      k_anisotropic = k_anisotropic,
-      k_isotropic   = k_isotropic)
-    self.show(prefix = "bulk-solvent and scaling", log = log)
-    scaling_b_info = self._capture_scaling_b_values(fast = fast, result = result)
-    # Consistency check
-    if(not apply_back_trace):
-      assert approx_equal(self.r_all(), r_all_from_scaler)
-    # Add contribution from H (if present and riding). This goes to f_part2.
+    alternate = (refine_h and not fast)
+    n_cycles = 1
+    if(alternate): n_cycles = 5
+    # If H scattering is refined then it is assumed that self.f_calc() does
+    # not contain H contribution at all.
+    f_calc_no_h = self.f_calc()
+    zero = f_calc_no_h.array(data=f_calc_no_h.data()*0)
+    f_part2 = zero
+    f_h = None
     kh, bh = 0, 0
-    if(refine_hd_scattering and
-       self.need_to_refine_hd_scattering_contribution()):
+    k_sol, b_sol, b_cart, b_adj = [None,]*4
+    for cycle in range(n_cycles):
+      # Create data container for scalers. Note: this intentionally ignores
+      # previously existing f_part1 and f_part2 (f_part2 is the H contribution
+      # found in the previous cycle, zero in the first one).
+      fmodel_kbu = mmtbx.f_model.manager_kbu(
+        f_obs   = self.f_obs(),
+        f_calc  = f_calc_no_h.array(data = f_calc_no_h.data()+f_part2.data()),
+        f_masks = self.f_masks(),
+        ss      = self.ss)
+      # Compute k_total and k_mask using one of the two methods (anal or min).
+      if(fast): # analytical
+        assert len(fmodel_kbu.f_masks)==1
+        result = mmtbx.bulk_solvent.scaler.run_simple(
+          fmodel_kbu     = fmodel_kbu,
+          r_free_flags   = self.r_free_flags(),
+          bulk_solvent   = params.bulk_solvent,
+          aniso_scale    = params.anisotropic_scaling,
+          bin_selections = self.bin_selections)
+      else: # using minimization: exp solvent and scale model (k_sol,b_sol,b_cart)
+        result = bss.bulk_solvent_and_scales(
+          fmodel_kbu = fmodel_kbu,
+          params     = params)
+        k_sol, b_sol, b_cart = result.k_sols(), result.b_sols(), result.b_cart()
+      r_all_from_scaler = result.r_all() # must be here, before apply_back_trace
+      if(back_trace and not alternate):
+        o = result.apply_back_trace_of_overall_exp_scale_matrix(
+          xray_structure = self.xray_structure)
+        b_adj = o.b_adj
+        if(not fast): b_sol, b_cart = [o.b_sol], o.b_cart
+        self.update_xray_structure(
+          xray_structure = o.xray_structure,
+          update_f_calc  = True)
+        f_calc_no_h = self.f_calc()
+        self.show(prefix = "overall B=%s to atoms"%str("%7.2f"%o.b_adj).strip(),
+          log = log)
+      # Update self with new arrays so that H correction knows current R factor.
+      # If no H to account for, then this is the final result.
+      k_masks       = result.k_masks()
+      k_anisotropic = result.k_anisotropic()
+      k_isotropic   = result.k_isotropic()
+      self.update_core(
+        k_mask        = k_masks,
+        k_anisotropic = k_anisotropic,
+        k_isotropic   = k_isotropic,
+        f_part2       = f_part2)
+      self.show(prefix = "bulk-solvent and scaling", log = log)
+      scaling_b_info = self._capture_scaling_b_values(fast=fast, result=result)
+      # Consistency check
+      if(not apply_back_trace or alternate):
+        assert approx_equal(self.r_all(), r_all_from_scaler)
+      if(not refine_h): break
+      #
+      # Add contribution from H (riding, zero occupancy). This goes to f_part2.
+      #
+      kh_prev, bh_prev = kh, bh
       # Obsolete previous contribution f_part2
-      f_part2 = fmodel_kbu.f_calc.array(data=fmodel_kbu.f_calc.data()*0)
-      self.update_core(f_part2 = f_part2)
-      xrs_h = xrs_h.set_occupancies(value=1).set_b_iso(value = 0)
-      f_h = self.compute_f_calc(xray_structure = xrs_h)
+      self.update_core(f_part2 = zero)
+      if(f_h is None or not alternate):
+        f_h = self.compute_f_calc(
+          xray_structure = xrs_h.set_occupancies(value=1).set_b_iso(value = 0))
       # Accumulate all mask contributions: Fcalc_atoms+Fbulk_1+...+Fbulk_N
-      data = fmodel_kbu.f_calc.data()
+      data = f_calc_no_h.data()
       for k_mask_, f_mask_ in zip(k_masks, fmodel_kbu.f_masks):
         data = data + k_mask_*f_mask_.data()
-      f_calc_plus_f_bulk_no_scales = fmodel_kbu.f_calc.array(data = data)
+      f_calc_plus_f_bulk_no_scales = f_calc_no_h.array(data = data)
       # Consistency check
       assert approx_equal(self.f_model().data(),
         f_calc_plus_f_bulk_no_scales.data()*k_isotropic*k_anisotropic)
       assert approx_equal(self.f_model_no_scales().data(),
         f_calc_plus_f_bulk_no_scales.data())
-      #
       # Compute contribution from H (F_H)
-      #
-      # Coarse sampling
       b_mean = flex.mean(xrs_no_h.extract_u_iso_or_u_equiv())*adptbx.u_as_b(1.)
-      b_min = int(max(0,b_mean)*0.5)
-      b_max = int(b_mean*1.5)
-      sc = 1000.
-      kr=[i/sc for i in range(ifloor(0*sc), iceil(1.5*sc)+1, int(0.1*sc))]
-      br=[i/sc for i in range(ifloor(b_min*sc), iceil(b_max*sc)+1, int(5.*sc))]
-      o = bulk_solvent.k_sol_b_sol_k_anisotropic_scaler_twin(
-        f_obs       = fmodel_kbu.f_obs.data(),
-        f_calc      = f_calc_plus_f_bulk_no_scales.data(),
-        f_mask      = f_h.data(),
-        k_total     = k_isotropic*k_anisotropic,
-        ss          = fmodel_kbu.ss,
-        k_sol_range = flex.double(kr),
-        b_sol_range = flex.double(br),
-        r_ref       = self.r_work())
-      if(o.updated()):
-        f_part2 = f_h.array(data = o.k_mask()*f_h.data())
-        kh, bh = o.k_sol(), o.b_sol()
-        self.show(prefix = "add H (%4.2f, %6.2f)"%(kh, bh), log = log, r=o.r())
-      # Fine sampling
-      k_min = max(0,o.k_sol()-0.1)
-      k_max = o.k_sol()+0.1
-      b_min = max(0,o.b_sol()-5.)
-      b_max = o.b_sol()+5.
-      kr=[i/sc for i in range(ifloor(k_min*sc),iceil(k_max*sc)+1,int(0.01*sc))]
-      br=[i/sc for i in range(ifloor(b_min*sc),iceil(b_max*sc)+1,int(1.*sc))]
-      o = bulk_solvent.k_sol_b_sol_k_anisotropic_scaler_twin(
-        f_obs       = fmodel_kbu.f_obs.data(),
-        f_calc      = f_calc_plus_f_bulk_no_scales.data(),
-        f_mask      = f_h.data(),
-        k_total     = k_isotropic*k_anisotropic,
-        ss          = fmodel_kbu.ss,
-        k_sol_range = flex.double(kr),
-        b_sol_range = flex.double(br),
-        r_ref       = o.r())
-      if(o.updated()):
-        f_part2 = f_h.array(data = o.k_mask()*f_h.data())
-        kh, bh = o.k_sol(), o.b_sol()
-        self.show(prefix = "add H (%4.2f, %6.2f)"%(kh, bh), log = log, r=o.r())
+      kh, bh, f_part2, o = self._h_scattering_grid_search(
+        f_obs              = fmodel_kbu.f_obs.data(),
+        f_calc_plus_f_bulk = f_calc_plus_f_bulk_no_scales.data(),
+        f_h                = f_h,
+        k_total            = k_isotropic*k_anisotropic,
+        ss                 = fmodel_kbu.ss,
+        b_mean             = b_mean,
+        r_ref              = self.r_work(),
+        zero               = zero,
+        log                = log)
       # THIS HELPS if fast=true is used, see how it works in reality
       #
       if(fast):
@@ -389,6 +436,28 @@ class run(mmtbx.f_model.manager):
         assert approx_equal(result.r_work(), self.r_work(), 1.e-4)
       else:
         assert approx_equal(self.r_all(), o.r()), [self.r_all(), o.r()]
+      # Scales in self were fitted with the H contribution of the previous
+      # cycle: done once it is the same as the current one.
+      if(alternate and kh == kh_prev and bh == bh_prev): break
+    if(alternate and back_trace):
+      # Move overall B to atoms. H contribution follows the atoms.
+      o = result.apply_back_trace_of_overall_exp_scale_matrix(
+        xray_structure = self.xray_structure)
+      b_adj = o.b_adj
+      b_sol, b_cart = [o.b_sol], o.b_cart
+      self.update_xray_structure(
+        xray_structure = o.xray_structure,
+        update_f_calc  = True)
+      f_part2 = f_part2.array(data = f_part2.data()*flex.exp(-self.ss*b_adj))
+      if(kh != 0): bh = bh + b_adj
+      self.update_core(
+        k_mask        = result.k_masks(),
+        k_anisotropic = result.k_anisotropic(),
+        k_isotropic   = result.k_isotropic(),
+        f_part2       = f_part2)
+      scaling_b_info = self._capture_scaling_b_values(fast=fast, result=result)
+      self.show(prefix = "overall B=%s to atoms"%str("%7.2f"%o.b_adj).strip(),
+        log = log)
     return group_args(
       k_sol  = k_sol,
       b_sol  = b_sol,
@@ -398,15 +467,26 @@ class run(mmtbx.f_model.manager):
       b_adj  = b_adj,
       scaling_b_info = scaling_b_info)
 
-  def update_solvent_and_scale_twin(self, refine_hd_scattering, log):
+  def update_solvent_and_scale_twin(self, refine_hd_scattering, log,
+                                    back_trace = True):
+    """
+    Grid search of k_sol, b_sol (with analytical anisotropic scale), then of
+    the scale and B of the riding H contribution. The H contribution found by
+    the previous call is part of the model during the k_sol, b_sol search.
+    back_trace: move the overall B to the atoms once all is done (changes
+    b_h by b_adj, not the model structure factors).
+    """
     if(not self.twinned()): return
     assert len(self.f_masks()) == 1
     # Re-set all scales to unit or zero
     self.show(prefix = "update scales twin start", log = log)
+    # H contribution found in the previous cycle (zero in the first one) is
+    # part of the model while k_sol and b_sol are searched for: without it
+    # they are biased.
+    f_calc_data      = self.f_calc().data()      + self.f_part2().data()
+    f_calc_data_twin = self.f_calc_twin().data() + self.f_part2_twin().data()
     self.reset_all_scales()
     self.show(prefix = "reset f_part, k_(total,mask)", log = log)
-    f_calc_data      = self.f_calc().data()
-    f_calc_data_twin = self.f_calc_twin().data()
     # Initial trial set
     sc = 1000.
     ksr = [i/sc for i in range(ifloor(0*sc), iceil(0.6*sc)+1,  int(0.05*sc))]
@@ -456,22 +536,6 @@ class run(mmtbx.f_model.manager):
       # since different routines are used tiny disagreements are possible.
       # See examples in : /net/anaconda/raid1/afonine/work/bugs/twin_refinement
       #assert approx_equal(self.r_all(), o_kbu_sol.r(), 1.e-5)
-      ##############
-      # use apply_back_trace in if below
-      if(self.xray_structure is not None):
-        o = mmtbx.bulk_solvent.scaler.tmp(
-          xray_structure = self.xray_structure,
-          k_anisotropic  = o_kbu_sol.k_anisotropic(),
-          k_masks        = [o_kbu_sol.k_mask()],
-          ss             = self.ss)
-        self.update_xray_structure(
-          xray_structure = o.xray_structure,
-          update_f_calc  = True)
-      #############
-        self.update(
-          k_mask        = o.k_masks,
-          k_anisotropic = o.k_anisotropic)
-
     self.show(prefix = "bulk-solvent and scaling", log = log)
     #
     # Add contribution from H (if present and riding). This goes to f_part2.
@@ -523,7 +587,7 @@ class run(mmtbx.f_model.manager):
       b_min = max(0,obj.b_sol()-5.)
       b_max = obj.b_sol()+5.
       kr=[i/sc for i in range(ifloor(k_min*sc),iceil(k_max*sc)+1,int(0.01*sc))]
-      br=[i/sc for i in range(ifloor(b_min*sc),iceil(b_max*sc)+1,int(5.*sc))]
+      br=[i/sc for i in range(ifloor(b_min*sc),iceil(b_max*sc)+1,int(1.*sc))]
       obj = bulk_solvent.k_sol_b_sol_k_anisotropic_scaler_twin(
         f_obs          = self.f_obs().data(),
         f_calc_1       = f_calc_plus_f_bulk_no_scales.data(),
@@ -546,6 +610,31 @@ class run(mmtbx.f_model.manager):
         f_part2_twin  = f_part2_twin,
         k_anisotropic = obj.k_anisotropic())
       self.show(prefix = "add H (%4.2f, %6.2f)"%(kh, bh), log = log)
+    #
+    # Move overall B to atoms; solvent and H contributions follow the atoms.
+    #
+    b_adj = 0
+    if(back_trace and o_kbu_sol.updated() and self.xray_structure is not None):
+      o = mmtbx.bulk_solvent.scaler.tmp(
+        xray_structure = self.xray_structure,
+        k_anisotropic  = self.k_anisotropic(),
+        k_masks        = [self.k_masks()[0]],
+        ss             = self.ss)
+      b_adj = o.b_adj
+      f_part2, f_part2_twin = self.f_part2(), self.f_part2_twin()
+      self.update_xray_structure(
+        xray_structure = o.xray_structure,
+        update_f_calc  = True)
+      self.update(
+        k_mask        = o.k_masks,
+        k_anisotropic = o.k_anisotropic)
+      scale = flex.exp(-self.ss*b_adj)
+      self.update_core(
+        f_part2      = f_part2.array(data = f_part2.data()*scale),
+        f_part2_twin = f_part2_twin.array(data = f_part2_twin.data()*scale))
+      if(kh != 0): bh = bh + b_adj
+      self.show(prefix = "overall B=%s to atoms"%str("%7.2f"%b_adj).strip(),
+        log = log)
     b_cart = adptbx.u_as_b(adptbx.u_star_as_u_cart(
                              self.f_obs().unit_cell(), o_kbu_sol.u_star()))
     return group_args(
@@ -553,4 +642,5 @@ class run(mmtbx.f_model.manager):
       b_sol  = o_kbu_sol.b_sol(),
       b_cart = b_cart,
       k_h    = kh,
-      b_h    = bh)
+      b_h    = bh,
+      b_adj  = b_adj)

@@ -427,6 +427,8 @@ class _mtriage(object):
       self.mask_smooth = masks.smooth_mask(
         xray_structure = self.xray_structure,
         n_real         = self.map_data.all(),
+        solvent_radius = masks.real_space_solvent_radius,
+        shrink_truncation_radius = masks.real_space_shrink_truncation_radius,
         rad_smooth     = self.radius_smooth).mask_smooth
     self.map_data = self.map_data*self.mask_smooth
     if(self.map_data_1 is not None):

@@ -26,6 +26,13 @@ number_of_mask_calculations = 0
 # 55 models); the optimum moves by about -0.15 A in solvent_radius along the
 # ridge solvent_radius - shrink_truncation_radius = 0.2-0.3 A. Without H the
 # new values are neutral (Rfree -0.0005, Rwork -0.0015 on the same sets).
+# Radii of the model mask used by real-space (cryo-EM) tools: CC_mask and
+# related map-model correlations, the mtriage model-based soft mask. They
+# define published metrics and are not tied to the calibration of the
+# bulk-solvent mask above, so they keep the historical values.
+real_space_solvent_radius = 1.1
+real_space_shrink_truncation_radius = 0.9
+
 mask_master_params = iotbx.phil.parse("""\
   use_asu_masks = True
     .type = bool

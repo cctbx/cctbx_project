@@ -516,6 +516,39 @@ namespace {
                      arg("wrapping")=true,
                      arg("preprocess_against_shallow")=false)))
 
+        // Whole unit cell map with space group symmetry: shallow voxels are
+        // removed so that the map stays symmetric.
+        .def(init<af::ref<float, af::c_grid<3> >,
+                  float const&,
+                  bool,
+                  bool,
+                  cctbx::sgtbx::space_group const& >(
+                    (arg("map_data"),
+                     arg("threshold"),
+                     arg("wrapping"),
+                     arg("preprocess_against_shallow"),
+                     arg("space_group"))))
+        .def(init<af::ref<double, af::c_grid<3> > ,
+                  double const&,
+                  bool,
+                  bool,
+                  cctbx::sgtbx::space_group const& >(
+                    (arg("map_data"),
+                     arg("threshold"),
+                     arg("wrapping"),
+                     arg("preprocess_against_shallow"),
+                     arg("space_group"))))
+        .def(init<af::ref<int, af::c_grid<3> >,
+                  int const&,
+                  bool,
+                  bool,
+                  cctbx::sgtbx::space_group const& >(
+                    (arg("map_data"),
+                     arg("threshold"),
+                     arg("wrapping"),
+                     arg("preprocess_against_shallow"),
+                     arg("space_group"))))
+
         // Symmetry-aware constructors
         // .def(init< //af::ref<float, af::c_grid<3> >
         //           float const&
