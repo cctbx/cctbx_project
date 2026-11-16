@@ -1238,12 +1238,15 @@ class electron_distribution(dict):
           differences[:10]]
         if len(differences) > 10:
           shown.append('%d more' % (len(differences) - 10))
-        raise Sorry('The alternate conformations have different total '
+        e = Sorry('The alternate conformations have different total '
           'charges (%s). The charge of the model is the charge of one '
           'conformer; check the protonation of the residues with altlocs.'
           '\nResidues whose charge differs between the conformers: %s'
           % (', '.join('%s: %d' % (a, charges[a]) for a in sorted(charges)),
              '; '.join(shown)))
+        # plain Sorry for every caller; the marker lets a caller add its hint
+        e.conformer_charge_mismatch = True
+        raise e
       return values[0]
     total=0
     for key, electrons in self.items():

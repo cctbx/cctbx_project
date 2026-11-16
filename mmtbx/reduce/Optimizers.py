@@ -16,7 +16,7 @@
 from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 
-import argparse, itertools, math, re, time
+import argparse, contextlib, itertools, math, re, time
 
 from boost_adaptbx import graph
 from boost_adaptbx.graph import connected_component_algorithm as cca
@@ -35,8 +35,9 @@ from mmtbx.hydrogens import reduce_hydrogen
 import boost_adaptbx.boost.python as bp
 bp.import_ext("mmtbx_probe_ext")
 import mmtbx_probe_ext as probeExt
+from libtbx.utils import Sorry
 from mmtbx.probe import Helpers
-from mmtbx.reduce import Movers, InteractionGraph
+from mmtbx.reduce import Movers, InteractionGraph, HisCharges
 
 bp.import_ext("mmtbx_reduce_ext")
 from mmtbx_reduce_ext import OptimizerC, Optimizers_test
@@ -205,6 +206,82 @@ def _AddToGrid(grid, key, value):
     grid[key] = []
   grid[key].append(value)
 
+_HIS_RING_NAMES = ('CG', 'ND1', 'CD2', 'CE1', 'NE2', 'HD1', 'HE2')
+
+def _HisKey(mi, a):
+  rg = a.parent().parent()
+  return (mi, rg.parent().id.strip(), rg.resseq.strip(), rg.icode.strip())
+
+def _HisMid(m):
+  # Mover id: its atoms' i_seqs (a display label can repeat across conformers)
+  return tuple(a.i_seq for a in m.CoarsePositions().atoms)
+
+def _HisLetter(atoms):
+  """Conformer letter of His ring atoms and H, and whether blank and split mix."""
+  alts = [a.parent().altloc.strip() for a in atoms]
+  letters = set(x for x in alts if x)
+  return (sorted(letters)[0] if letters else ''), bool(letters) and ('' in alts or len(letters) > 1)
+
+def _HisRing(ne2, inPass):
+  """(conformer letter, partial, {name: atom}) for the ring and ring H of a His in a
+  pass. The ring H name the conformer; a blank ring with split H is a whole one."""
+  found = {}
+  for a in ne2.parent().parent().atoms():
+    if a in inPass and a.name.strip() in ('CG', 'ND1', 'CD2', 'CE1', 'NE2'):
+      found[a.name.strip()] = a
+  found['NE2'] = ne2
+  for n, hn in (('NE2', 'HE2'), ('ND1', 'HD1')):
+    if n in found:
+      hs = [h for h in inPass[found[n]] if h.element_is_hydrogen()]
+      if hs:
+        found[hn] = hs[0]
+  hs = [found[n] for n in ('HE2', 'HD1') if n in found]
+  letter, partial = _HisLetter(hs if hs else found.values())
+  return letter, partial, found
+
+def _HisBlankRingLastPassLacksH(recs, key):
+  """The letter of the last pass recording His key when that pass sees the blank
+  ring without its ring H (it resets the ring and sets the ring N acceptors), else
+  None. recs: the run's His records in pass order."""
+  mine = [r for r in recs if r['key'] == key]
+  if mine and mine[-1].get('hNotInPass'):
+    return mine[-1]['passAlt']
+  return None
+
+def _HisOutcomeText(run):
+  """The model outcome's text, from its code (HisCharges.OUTCOME_TEXT) and detail."""
+  text = HisCharges.OUTCOME_TEXT[run['code']]
+  return text + (' (%s)' % run['detail'] if run['detail'] else '')
+
+@contextlib.contextmanager
+def his_charges_strict(strict=True):
+  """Tests: within the block a failed His charge check raises after the free
+  result is restored (Optimizer.hisChargesStrict); the previous value is always
+  restored."""
+  old = Optimizer.hisChargesStrict
+  Optimizer.hisChargesStrict = strict
+  try:
+    yield
+  finally:
+    Optimizer.hisChargesStrict = old
+
+class _FixedHisOptimizer(object):
+  """The OptimizerC of a His that was a one-state Mover: reports its original
+  state index, everything else from the OptimizerC."""
+  def __init__(self, optC, pin):
+    self._optC = optC
+    self._pin = pin
+  def GetCoarseLocation(self, m):
+    return self._pin
+  def __getattr__(self, name):
+    return getattr(self._optC, name)
+  def __eq__(self, other):
+    return self._optC == getattr(other, '_optC', other)
+  def __ne__(self, other):
+    return not self == other
+  def __hash__(self):
+    return hash(self._optC)
+
 def _SameAtomInfo(a, b):
   return (a.vdwRadius == b.vdwRadius and a.isAcceptor == b.isAcceptor and
           a.isDonor == b.isDonor and a.isDummyHydrogen == b.isDummyHydrogen and
@@ -304,7 +381,8 @@ class Optimizer(object):
                 stopOptimizingAt = time.time() + 1.0e10,
                 symmetryCopies = None,
                 fixedHisProtonation = None,
-                chooseHisProtonation = False
+                chooseHisProtonation = False,
+                reconcileHisCharges = False
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -382,6 +460,10 @@ class Optimizer(object):
     only in its unflipped orientation: a His whose ion binds only the flipped ring is
     listed with the ion. No effect with addFlipMovers. Without this parameter and
     without addFlipMovers the ion lock-down still flips a His to bind its ion.
+    :param reconcileHisCharges: His whose conformers end with different charges are
+    reconciled to one charge where the scores allow it (mmtbx.reduce.HisCharges):
+    the passes run again with those His states fixed, and the result is kept only if
+    it passes the rerun checks; otherwise the first result is restored.
     """
 
     ################################################################################
@@ -401,6 +483,7 @@ class Optimizer(object):
     self._symmetryCopies = symmetryCopies
     self._fixedHis = set(fixedHisProtonation or ())
     self._chooseHis = chooseHisProtonation and not addFlipMovers
+    self._reconcileHisCharges = reconcileHisCharges
 
     ################################################################################
     # Initialize internal variables.
@@ -419,6 +502,8 @@ class Optimizer(object):
     self._passCopies = []           # (copy, original, rt_mx) for the originals in this pass
     self._absentCopies = set()      # copies of deleted originals, not in the spatial query
     self._copySummary = ""
+    self._hisNoMover = {}           # (alt, NE2 i_seq): why a His has no Mover
+    self._hisCharges = []           # reconcileHisCharges: per model, getHisCharges()
 
     ################################################################################
     # Get the Cartesian positions of all of the atoms in the entire model and find
@@ -539,13 +624,17 @@ class Optimizer(object):
       if altID is not None:
         alts = [altID]
 
-      # The passes over the alternates of this model.
+      # The passes over the alternates, as a method so that a rerun is a call.
       ctx = dict(model=model, alts=alts, addFlipMovers=addFlipMovers, asuProxies=asuProxies,
         bondProxies=bondProxies, h_parameterization=h_parameterization,
         initialAtomPositions=initialAtomPositions, initialExtraAtomInfos=initialExtraAtomInfos,
         rotatableHydrogens=rotatableHydrogens, stopOptimizingAt=stopOptimizingAt,
         symmetryCopies=symmetryCopies, useNeutronDistances=useNeutronDistances)
-      self._OptimizeModel(mi, myModel, ctx)
+      if self._reconcileHisCharges:
+        # reruns do not take later models' search time
+        stopOptimizingAt += self._ReconcileHisCharges(mi, myModel, ctx)
+      else:
+        self._OptimizeModel(mi, myModel, ctx)
       if symmetryCopies is not None:
         self._SummarizeCopies(mi)
 
@@ -580,9 +669,11 @@ class Optimizer(object):
     self._dotScorer = None
     self._spatialQuery = None
 
-  def _OptimizeModel(self, mi, myModel, ctx):
+  def _OptimizeModel(self, mi, myModel, ctx, his=None):
     """The passes over the alternates of model index mi, from the state before the
-    first pass. ctx: the constructor's values the passes use."""
+    first pass. ctx: the constructor's values the passes use. his: None, or the
+    record of a His charge run (_ReconcileHisCharges): its His states are fixed
+    during the search and each pass's His states and scores are recorded."""
     model = ctx['model']
     alts = ctx['alts']
     addFlipMovers = ctx['addFlipMovers']
@@ -800,6 +891,8 @@ class Optimizer(object):
       self._infoString += _VerboseCheck(self._verbosity, 1,"Inserted "+str(len(self._movers))+" Movers\n")
       self._infoString += _VerboseCheck(self._verbosity, 1,'Marked '+str(len(deleteAtoms))+' atoms for deletion\n')
       self._infoString += _ReportTiming(self._verbosity, "place movers")
+      if his is not None:
+        self._HisPin(mi, his)
 
       ################################################################################
       # Add the atoms that were unconditionally marked for deletion during placement
@@ -918,12 +1011,17 @@ class Optimizer(object):
       ################################################################################
       # Final scores at the final poses: a stored search score is stale when a Clique
       # partner moved after it was set.
+      if his is not None:
+        self._HisUnpin(his)
       self._finalScore = dict((m, self._ScoreMover(m, self._dotScorer)) for m in self._movers)
 
       ################################################################################
       # Flips that are not made: each scored alone, with everything else as placed.
       if self._chooseHis:
         self._SuggestFlips(mi, alt, passNeighborLists, dotSphereCache)
+      if his is not None:
+        self._HisRecordPass(mi, alt, passNeighborLists, dotSphereCache, his,
+          [[self._interactionGraph.vertex_label(v) for v in c] for c in singletonCliques + groupCliques])
 
       ################################################################################
       # Print the final state and score for all Movers
@@ -977,6 +1075,9 @@ class Optimizer(object):
         else:
           description += " ."
 
+        # a fixed His is noted at the end: reduce2 reads the flip state by word position
+        if his is not None and _HisMid(m) in his['fullAtoms']:
+          description += " (state {} fixed)".format(his['fullAtoms'][_HisMid(m)])
         self._infoString += _VerboseCheck(self._verbosity, 1,"  {} final score: {:.2f} pose {}\n".format(
           self._moverInfo[m], self._finalScore[m], description))
 
@@ -1059,6 +1160,432 @@ class Optimizer(object):
           " ".join("'{}'".format(alt) for alt, d in decisions if d),
           " ".join("'{}'".format(alt) for alt, d in decisions if not d),
           "deleted" if decisions[-1][1] else "kept"))
+
+  ##################################################################################
+  # His charges across conformers (policy and checks in HisCharges)
+
+  def _HisRun(self, pins):
+    """Record of one run of the passes. pins: {(His key, conformer): fixed state
+    (index in the full Mover)}."""
+    self._hisNoMover = {}
+    return dict(pins=dict(pins), pinned={}, fullAtoms={}, pinMid={}, passes=[], cliques=[], recs=[])
+
+  def _HisPin(self, mi, his):
+    # A fixed His becomes a one-state Mover over its full atom list: every array
+    # index is 0 during the search; _HisUnpin restores the full Mover.
+    his['pinned'] = {}
+    for m in self._movers:
+      if not isinstance(m, Movers.MoverHisFlip):
+        continue
+      atoms = m.CoarsePositions().atoms
+      kc = (_HisKey(mi, atoms[0]), _HisLetter([atoms[i] for i in (0, 1, 4, 5)])[0])
+      pin = his['pins'].get(kc)
+      if pin is None:
+        continue
+      his['pinMid'][kc] = _HisMid(m)
+      m._hisFull = (m._coarsePositions, m._extras, m._deleteMes, m._preferenceEnergies, m._fixUpPositions)
+      (m._coarsePositions, m._extras, m._deleteMes, m._preferenceEnergies,
+        m._fixUpPositions) = [[x[pin]] for x in m._hisFull]
+      his['pinned'][m] = pin
+      his['fullAtoms'][_HisMid(m)] = pin
+
+  def _HisUnpin(self, his):
+    for m, pin in his['pinned'].items():
+      optC = self._optimizerOf[m]
+      if optC.GetCoarseLocation(m) != 0:
+        raise HisCharges.ContractError(("one-state His Mover not at index 0", self._moverInfo[m],
+          optC.GetCoarseLocation(m)))
+      (m._coarsePositions, m._extras, m._deleteMes, m._preferenceEnergies,
+        m._fixUpPositions) = m._hisFull
+      del m._hisFull
+      pr = m.CoarsePositions()
+      for a, xyz in zip(pr.atoms, pr.positions[pin]):
+        if (Helpers.rvec3(a.xyz) - Helpers.rvec3(xyz)).length() > 1e-6:
+          raise HisCharges.ContractError("His state {} not at its positions for {}".format(pin, self._moverInfo[m]))
+      # reports, FixUp and flip lists read the full Mover at the original index
+      self._optimizerOf[m] = _FixedHisOptimizer(optC, pin)
+    his['pinned'] = {}
+
+  def _HisRecordPass(self, mi, alt, passNeighborLists, dotSphereCache, his, cliques):
+    """This pass's fresh final score per Mover id, the Cliques holding a His, and per
+    His NE2 the record decide() takes, with each state's scores, deletions and
+    positions (ring and ring H, coarse and fix-up)."""
+    his['passes'].append((alt, dict((_HisMid(m), round(self._finalScore[m], 3)) for m in self._movers)))
+    his['cliques'] += [set(_HisMid(m) for m in c) for c in cliques
+      if any(isinstance(m, Movers.MoverHisFlip) for m in c)]
+    hisMovers = dict((m.CoarsePositions().atoms[0].i_seq, m) for m in self._movers
+      if isinstance(m, Movers.MoverHisFlip))
+    environment = set(self._environmentAtoms)
+    for a in self._atoms:
+      if not (a.name.strip().upper() == 'NE2' and a.parent().resname.strip().upper() == 'HIS'):
+        continue
+      if a in environment:
+        continue
+      letter, partial, ring = _HisRing(a, passNeighborLists)
+      hs = dict((n, ring.get(n)) for n in ('HE2', 'HD1'))
+      rec = dict(passAlt=alt, key=_HisKey(mi, a), conf=letter, partial=partial, ring=ring)
+      if hs['HE2'] is None and hs['HD1'] is None and not letter:
+        # a pass that sees the blank ring but not the residue's ring H
+        rec['hNotInPass'] = any(x.element_is_hydrogen() and x.name.strip()[1:] in ('D1', 'E2')
+          and x not in passNeighborLists for x in a.parent().parent().atoms())
+      m = hisMovers.get(a.i_seq)
+      if m is None:
+        rec.update(mover=None, noMover=self._hisNoMover.get((alt, a.i_seq), 'no Mover'))
+        his['recs'].append((rec, hs))
+        continue
+      pr = m.CoarsePositions()
+      optC = self._optimizerOf[m]
+      chosen = optC.GetCoarseLocation(m)
+      half = len(pr.positions)//2 if m.EnabledFlipStates() == 3 else len(pr.positions)
+      names = [x.name.strip() for x in pr.atoms]
+      states = []
+      for i in range(len(pr.positions)):
+        self._setMoverState(pr, i)
+        score = self._preferenceMagnitude * pr.preferenceEnergies[i] + self._scorePoseAtoms(
+          pr.atoms[:len(pr.positions[i])], passNeighborLists, dotSphereCache)
+        dels = pr.deleteMes[i]
+        fx = m.FixUp(i)
+        states.append(dict(index=i, desc=m.PoseDescription(i, None, False), score=round(score, 3),
+          charge=int(not dels[1]) + int(not dels[5]) - 1,
+          flipped=(m.EnabledFlipStates() == 3 and i >= half),
+          dels={'HE2': bool(dels[1]), 'HD1': bool(dels[5])},
+          coarse=dict((n, tuple(p)) for n, p in zip(names, pr.positions[i]) if n in _HIS_RING_NAMES),
+          fixup=dict((n, tuple(p)) for n, p in zip(names, fx.positions) if n in _HIS_RING_NAMES)))
+      self._setMoverState(pr, chosen)
+      sug = None
+      for k, v in self._suggestedFlips.items():
+        if v is not None and v.atom is a:
+          sug = dict(gain=None if v.gain is None else round(v.gain, 3), ion=v.ion is not None)
+      rec.update(mover=type(m).__name__, mid=_HisMid(m), chosen=chosen, states=states, suggested=sug)
+      his['recs'].append((rec, {'HE2': pr.atoms[1], 'HD1': pr.atoms[5]}))
+
+  def _HisByResidue(self, his):
+    """{His key: ({conformer: (record, ring H)}, {conformer: final charge})}. A
+    conformer's record is the last pass that has its ring H (the pass whose
+    deletion decision holds); a record without ring H only fills a gap."""
+    deleted = set(self._hydrogensToDelete)
+    byRes = {}
+    for rec, hs in his['recs']:
+      if rec.get('hNotInPass'):
+        continue
+      confs = byRes.setdefault(rec['key'], {})
+      if any(h is not None for h in hs.values()) or rec['conf'] not in confs:
+        confs[rec['conf']] = (rec, hs)
+    return dict((key, (confs, dict((c, sum(1 for h in hs.values() if h is not None and h not in deleted) - 1)
+      for c, (rec, hs) in confs.items()))) for key, confs in byRes.items())
+
+  def _HisSave(self, myModel):
+    """Everything the passes change for this model: the free result when taken
+    after the free run, the starting state when taken before it."""
+    return dict(ids=[(a.i_seq, a.id_str()) for a in myModel.atoms()],
+      xyz=[tuple(a.xyz) for a in myModel.atoms()],
+      info=[probeExt.ExtraAtomInfo(self._extraAtomInfo.getMappingFor(a)) for a in myModel.atoms()],
+      deleted=list(self._hydrogensToDelete), amides=list(self._amideFlipsPerformed),
+      hisFlips=list(self._hisFlipsPerformed), suggested=dict(self._suggestedFlips),
+      parts=list(self._infoString._parts), warnings=self._warningString,
+      counts=(self._numCalculated, self._numCached), copyNotes=list(getattr(self, '_copyPassNotes', [])),
+      passCopies=list(self._passCopies), absent=set(self._absentCopies),
+      environment=list(self._environmentAtoms),
+      copyXyz=[tuple(c.xyz) for c, o, rt in self._passCopies],
+      copyInfo=[probeExt.ExtraAtomInfo(self._extraAtomInfo.getMappingFor(c)) for c, o, rt in self._passCopies])
+
+  def _HisRestore(self, myModel, saved):
+    if [(a.i_seq, a.id_str()) for a in myModel.atoms()] != saved['ids']:
+      raise HisCharges.ContractError("atoms changed")
+    for a, xyz in zip(myModel.atoms(), saved['xyz']):
+      a.xyz = xyz
+    for a, info in zip(myModel.atoms(), saved['info']):
+      self._extraAtomInfo.setMappingFor(a, probeExt.ExtraAtomInfo(info))
+    self._hydrogensToDelete[:] = saved['deleted']
+    self._amideFlipsPerformed[:] = saved['amides']
+    self._hisFlipsPerformed[:] = saved['hisFlips']
+    self._suggestedFlips = dict(saved['suggested'])
+    self._infoString._parts[:] = saved['parts']
+    self._warningString = saved['warnings']
+    self._numCalculated, self._numCached = saved['counts']
+    self._copyPassNotes = list(saved['copyNotes'])
+    self._passCopies = list(saved['passCopies'])
+    self._absentCopies = set(saved['absent'])
+    self._environmentAtoms = list(saved['environment'])
+    for (c, o, rt), xyz in zip(self._passCopies, saved['copyXyz']):
+      c.xyz = xyz
+    for (c, o, rt), info in zip(self._passCopies, saved['copyInfo']):
+      self._extraAtomInfo.setMappingFor(c, probeExt.ExtraAtomInfo(info))
+
+  def _HisFingerprint(self, myModel):
+    """The model's result read without _HisSave (it checks the restore): sites and
+    atom info of the model atoms and the symmetry copies, deletions, flips,
+    suggested flips, report and warnings."""
+    def atoms(pairs):
+      out = []
+      for key, a in pairs:
+        e = self._extraAtomInfo.getMappingFor(a)
+        out.append((key, tuple(a.xyz), e.vdwRadius, e.isAcceptor, e.isDonor, e.isDummyHydrogen,
+          e.isIon, e.charge))
+      return out
+    return dict(model=atoms(((a.i_seq, a.id_str()), a) for a in myModel.atoms()),
+      copies=atoms(((o.i_seq, str(rt)), c) for c, o, rt in self._passCopies),
+      absent=sorted(str(x) for x in self._absentCopies), environment=len(self._environmentAtoms),
+      deleted=sorted(a.i_seq for a in self._hydrogensToDelete),
+      flips=[str(x) for x in self._amideFlipsPerformed] + [str(x) for x in self._hisFlipsPerformed],
+      suggested=sorted((str(k), str(v)) for k, v in self._suggestedFlips.items()),
+      report=str(self._infoString), warnings=self._warningString,
+      copyNotes=[str(x) for x in getattr(self, '_copyPassNotes', [])])
+
+  def _HisRestoreVerified(self, myModel, saved, fingerprint):
+    """Restore the free result; a restore that cannot be verified stops the run."""
+    try:
+      self._HisRestore(myModel, saved)
+    except HisCharges.ContractError as e:
+      raise Sorry("His charges: the first result could not be restored (%s)" % e)
+    now = self._HisFingerprint(myModel)
+    diff = sorted(k for k in fingerprint if now[k] != fingerprint[k])
+    if diff:
+      raise Sorry("His charges: the restored first result differs from it (%s)" % ", ".join(diff))
+
+  def _HisWritten(self, his, key, confs):
+    """check_written()'s record per conformer from the final state of the model. A
+    pass that sees the blank ring without its ring H writes it too: its letter is
+    no fixed conformer (check_written reports it)."""
+    deleted = set(self._hydrogensToDelete)
+    writer = {}
+    for rec, hs in his['recs']:
+      if rec['key'] == key:
+        w = rec['conf'] if not rec.get('hNotInPass') else 'pass %s without the ring H' % (rec['passAlt'] or 'blank')
+        for n, x in rec['ring'].items():
+          writer[x.i_seq] = w
+    out = {}
+    for c, (rec, hs) in confs.items():
+      ring = rec['ring']
+      out[c] = dict(present=dict((n, ring.get(n) is not None and ring[n] not in deleted) for n in ('HE2', 'HD1')),
+        xyz=dict((n, tuple(x.xyz)) for n, x in ring.items() if x not in deleted),
+        acceptor=dict((n, self._extraAtomInfo.getMappingFor(ring[n]).isAcceptor) for n in ('NE2', 'ND1') if n in ring),
+        writer=dict((n, writer[x.i_seq]) for n, x in ring.items()))
+    return out
+
+  hisChargesStrict = False    # his_charges_strict(): after the restore, a failed check raises
+
+  def _ReconcileHisCharges(self, mi, myModel, ctx):
+    """The passes, then the His whose conformers end with different charges:
+    decide(), reruns with the reconciled states fixed, trial() and plan() until
+    DONE (the last run is the result) or RESTORE_FREE (the saved free result is
+    written). A failed check (HisCharges.ContractError) restores the free result
+    with a warning (hisChargesStrict: then raises). Reported in the info string
+    and getHisCharges(). Returns the seconds the reruns took (added to later
+    models' deadline)."""
+    start = self._HisSave(myModel)
+    freeHis = self._HisRun({})
+    t0 = time.time()
+    self._OptimizeModel(mi, myModel, ctx, freeHis)
+    t1 = time.time()
+    free = self._HisSave(myModel)
+    freeRes = self._HisByResidue(freeHis)
+    first = {}
+    cases = []
+    for key, (confs, final) in sorted(freeRes.items()):
+      if len(confs) < 2 or len(set(final.values())) < 2:
+        continue
+      lacking = _HisBlankRingLastPassLacksH([r for r, hs in freeHis['recs']], key)
+      if lacking is not None:
+        # the final writer of the blank ring is a pass without its ring H
+        d = dict(kind='unchanged', decision='unchanged: blank ring last written by pass %s, '
+          'which lacks the ring H' % (lacking or 'blank'))
+      else:
+        d = HisCharges.decide(dict((c, r) for c, (r, hs) in confs.items()), HisCharges.BUDGET,
+          0.05 * self._preferenceMagnitude)
+      cases.append(dict(key=key, free=final, final=dict(final), first=d))
+      if d['kind'] == 'reconciled':
+        first[key] = d
+    run = dict(code=HisCharges.NO_RERUN, detail=None, reruns=0, cap=0, freeSeconds=t1 - t0,
+      rerunSeconds=0.0, backstopSeconds=None, unmatched=0)
+    if not first:
+      self._HisReport(mi, cases, None, None, run)
+      return 0.0
+    freePrint = self._HisFingerprint(myModel)
+    st = HisCharges.new_plan(sorted(first))
+    run.update(cap=HisCharges.run_cap(st['n']),
+      backstopSeconds=HisCharges.WALL_BACKSTOP_FACTOR * (t1 - t0))
+    failure = None
+    try:
+      out, his, now, pins = self._HisReruns(mi, myModel, ctx, st, start, free, first, freeHis,
+        freeRes, cases, t0, t1, run)
+      if out == HisCharges.DONE:
+        self._HisCheckWritten(st, his, now, pins, freeRes, cases)
+        run['code'] = HisCharges.RECONCILED
+    except HisCharges.ContractError as e:
+      failure = str(e)
+      out = HisCharges.RESTORE_FREE
+      run.update(code=HisCharges.INTERNAL, detail=failure)
+    if out != HisCharges.DONE:
+      self._HisRestoreVerified(myModel, free, freePrint)
+      # nothing of the reruns is written: no His fixed, the free charges
+      cases[:] = [c for c in cases if c['first']['kind'] != 'changed']
+      for c in cases:
+        c['final'] = dict(c['free'])
+        for x in ('fixed', 'checked', 'skipped'):
+          c.pop(x, None)
+    if failure is not None:
+      self._warningString += ("Warning: His charges: internal check failed, the first result "
+        "is kept: %s\n" % failure)
+    run['rerunSeconds'] = time.time() - t1
+    self._HisReport(mi, cases, st, out, run)
+    if failure is not None and self.hisChargesStrict:
+      raise HisCharges.ContractError(failure)
+    return run['rerunSeconds']
+
+  def _HisReruns(self, mi, myModel, ctx, st, start, free, first, freeHis, freeRes, cases, t0, t1, run):
+    """The reruns until plan() ends. Returns (outcome, last run's record, its
+    _HisByResidue, its pins); run gets the outcome code, detail and reruns.
+    Limits (HisCharges): run_cap(n) reruns; for each rerun, the search time the
+    free run was allowed (not its duration); the wall-time backstop. A limit restores the free result."""
+    freeFinal = dict((k, f) for k, (confs, f) in freeRes.items() if len(confs) > 1)
+    freeMids = set(m for alt, sc in freeHis['passes'] for m in sc)
+    firstCost = dict((k, d['costs'][str(d['target'])]['total']) for k, d in first.items())
+    mids = lambda res, k: set(r['mid'] for r, hs in res[k][0].values() if r.get('mid'))
+    searchTime = ctx['stopOptimizingAt'] - t0
+    backstopEnd = t1 + run['backstopSeconds']
+    rerunCost = {}
+    his = now = pins = None
+    if t1 > ctx['stopOptimizingAt']:
+      run.update(code=HisCharges.SEARCH_DEADLINE, detail='the first run reached it')
+      return HisCharges.RESTORE_FREE, his, now, pins
+    while True:
+      if run['reruns'] >= run['cap']:
+        run.update(code=HisCharges.RUN_CAP, detail='%d rerun(s)' % run['reruns'])
+        out = HisCharges.RESTORE_FREE
+        break
+      if time.time() > backstopEnd:
+        run.update(code=HisCharges.WALL_BACKSTOP, detail='%d x the first run' % HisCharges.WALL_BACKSTOP_FACTOR)
+        out = HisCharges.RESTORE_FREE
+        break
+      keys = sorted(st['accepted'] | set(st['trial']))
+      pins = dict(((k, c), p['to']) for k in keys for c, p in first[k]['per'].items())
+      self._HisRestore(myModel, start)
+      his = self._HisRun(pins)
+      runCtx = dict(ctx, stopOptimizingAt=time.time() + searchTime)
+      run['reruns'] += 1
+      self._OptimizeModel(mi, myModel, runCtx, his)
+      if time.time() > runCtx['stopOptimizingAt']:
+        # Cliques may have been optimized as singletons: not comparable
+        run.update(code=HisCharges.SEARCH_DEADLINE, detail='rerun %d reached it' % run['reruns'])
+        out = HisCharges.RESTORE_FREE
+        break
+      # contract: same atoms and Mover ids as the free run; each fixed His was a
+      # one-state Mover over its own free-run Mover's full atom list
+      if [(a.i_seq, a.id_str()) for a in myModel.atoms()] != free['ids']:
+        raise HisCharges.ContractError("atoms changed in the rerun")
+      if len(his['fullAtoms']) != len(pins) or sorted(his['pinMid']) != sorted(pins):
+        raise HisCharges.ContractError(("fixed His without a one-state Mover", sorted(pins), sorted(his['pinMid'])))
+      now = self._HisByResidue(his)
+      for (k, c), mid in sorted(his['pinMid'].items()):
+        if mid not in freeMids or freeRes[k][0].get(c, ({},))[0].get('mid') != mid:
+          raise HisCharges.ContractError(("one-state Mover is not the free run's", HisCharges.key_text(k), c, mid))
+      for k in keys:
+        if k not in now or not mids(now, k):
+          raise HisCharges.ContractError("His %s fixed but not recorded in the rerun" % HisCharges.key_text(k))
+        confs, final = now[k]
+        HisCharges.check_fixed(k, dict((c, p) for (x, c), p in pins.items() if x == k),
+          dict((c, r['chosen']) for c, (r, hs) in confs.items() if r.get('states') is not None), final)
+      nowFinal = dict((k, f) for k, (confs, f) in now.items() if len(confs) > 1)
+      mm, missing = HisCharges.new_mismatches(freeFinal, nowFinal, set(keys))
+      ev = HisCharges.trial(freeHis['passes'], his['passes'], dict((k, mids(now, k)) for k in keys),
+        freeHis['cliques'] + his['cliques'], st['trial'], dict((k, mids(now, k)) for k in mm),
+        missing=missing)
+      run['unmatched'] = sum(len(comp['cost']['unmatched']) for comp in ev['components']) + \
+        len(ev['unattributedUnmatched'])
+      for comp in ev['components']:
+        for k in comp['keys']:
+          rerunCost[k] = dict(total=comp['cost']['total'], his=comp['cost']['his'],
+            neighbours=comp['cost']['neighbours'], keys=comp['keys'])
+      out = HisCharges.plan(st, ev, firstCost)
+      if out == HisCharges.FAILED:
+        # free_saved is True: plan() never returns FAILED
+        raise HisCharges.ContractError(("plan() failed with the free result saved", st['reason']))
+      if out == HisCharges.RESTORE_FREE:
+        run.update(code=HisCharges.REJECTED, detail=st['reason'])
+      if out != HisCharges.RERUN:
+        break
+    for c in cases:
+      if c['key'] in rerunCost:
+        c['rerun'] = rerunCost[c['key']]
+    return out, his, now, pins
+
+  def _HisCheckWritten(self, st, his, now, pins, freeRes, cases):
+    """DONE: check_written() for every accepted His; any error raises
+    ContractError before anything is marked. Then the marks (fixed, checked,
+    skipped), and the final charges of the written run for every reported His
+    and every His whose charges changed in it."""
+    results = {}
+    errors = []
+    for k in sorted(st['accepted']):
+      confs, final = now[k]
+      # expected positions: the free run's full Mover at the original index
+      fixed = {}
+      for (x, c), p in pins.items():
+        if x == k:
+          s = freeRes[k][0][c][0]['states'][p]
+          fixed[c] = dict(dels=s['dels'], coarse=s['coarse'], fixup=s['fixup'])
+      results[k] = r = HisCharges.check_written(fixed, self._HisWritten(his, k, confs), self._skipBondFixup)
+      if r['errors']:
+        errors.append("His %s written state: %s" % (HisCharges.key_text(k), "; ".join(r['errors'])))
+    if errors:
+      raise HisCharges.ContractError(" | ".join(errors))
+    for c in cases:
+      r = results.get(c['key'])
+      if r is not None:
+        c.update(checked=r['checked'], skipped=r['skipped'], fixed=True)
+    reported = set(c['key'] for c in cases)
+    for c in cases:
+      if c['key'] in now:
+        c['final'] = dict(now[c['key']][1])
+    for k in sorted(set(now) & set(freeRes) - reported):
+      f, n = freeRes[k][1], now[k][1]
+      if f != n:
+        cases.append(dict(key=k, free=dict(f), final=dict(n), first=dict(kind='changed',
+          decision='changed in the rerun (not fixed)')))
+
+  def _HisReport(self, mi, cases, st, out, run):
+    """Per His: decision text and category (fixed, metal, cost, rejected,
+    restored, unchanged, changed; from the structure, for the qmready hint); the
+    model record for getHisCharges()."""
+    lines = []
+    for c in cases:
+      key = c['key']
+      d = c['first']
+      if d['kind'] == 'kept':
+        # decide()'s metal, ion and user-protonation results have no target; a cost has one
+        c['category'] = 'metal' if d.get('target') is None else 'cost'
+        c['decision'] = d['decision']
+      elif d['kind'] != 'reconciled':
+        c['category'] = d['kind']
+        c['decision'] = d['decision']
+      elif c.get('fixed'):
+        c['category'] = 'fixed'
+        c['decision'] = 'reconciled to charge %s (first stage: %s)' % (HisCharges.charge_text(list(c['final'].values())[0]), d['decision'])
+      elif st is not None and key in st['rejected']:
+        c['category'] = 'rejected'
+        c['decision'] = 'kept: rerun failed (%s)' % st['rejected'][key]
+      else:
+        c['category'] = 'restored'
+        c['decision'] = 'kept: %s' % _HisOutcomeText(run)
+      lines.append("His charges: His %s conformers %s -> %s\n" % (HisCharges.key_text(key),
+        " ".join("%s:%s" % (x or 'blank', HisCharges.charge_text(c['final'][x])) for x in sorted(c['final'])), c['decision']))
+    lines.append("His charges: model index %d: %s\n" % (mi, _HisOutcomeText(run)))
+    for l in lines:
+      self._infoString += _VerboseCheck(self._verbosity, 3, l)
+    rec = dict(model=mi, outcome=out, cases=cases, maxRuns=HisCharges.max_runs(st['n']) if st else 0,
+      rejected=dict(st['rejected']) if st else {}, reason=_HisOutcomeText(run))
+    rec.update(run)
+    self._hisCharges.append(rec)
+
+  def getHisCharges(self):
+    """His whose conformers ended the free run with different charges, per model:
+    dict(model, outcome (None, DONE, RESTORE_FREE), code (HisCharges outcome code),
+    detail, reason (text from code and detail), reruns, cap, maxRuns, freeSeconds,
+    rerunSeconds, backstopSeconds, unmatched, rejected {key: why}, cases
+    [dict(key, free, final, first (decide()), decision, category, rerun (cost),
+    fixed, checked, skipped)])."""
+    return self._hisCharges
 
   ##################################################################################
   # Symmetry copies as a fixed environment
@@ -1943,10 +2470,12 @@ class Optimizer(object):
           _ProtonationKey(a) in self._fixedHis):
         self._infoString += _VerboseCheck(self._verbosity, 1,"Did not add MoverHisFlip to "+resNameAndID+
           " (protonation set by the user; no ion lock-down)\n")
+        self._hisNoMover[(alt, a.i_seq)] = HisCharges.USER_PROTONATION
 
       # See if we should insert a MoverHisFlip here.
       # @todo Is there a more general way than looking for specific names?
       elif aName == 'NE2' and resName == 'HIS':
+        hisNE2 = a    # a is reused below
         try:
           # Get a potential Mover and test both of its Nitrogens in the original and flipped
           # locations.  If one or both of them are near enough to be ionically bound to an
@@ -2059,6 +2588,8 @@ class Optimizer(object):
             self._infoString += _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5])
 
             self._infoString += _VerboseCheck(self._verbosity, 1,"Set MoverHisFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
+            # 'a' was reused by the loop above
+            self._hisNoMover[(alt, hist.CoarsePositions().atoms[0].i_seq)] = 'ion lock (' + bondedIon.name.strip() + ')'
           elif (addFlipMovers or self._chooseHis) and _HisRingNitrogensWithNonstandardBond(
               a, bondedNeighborLists):
             # Issue #1199: a ring Nitrogen carries a bond outside the standard ring
@@ -2071,6 +2602,7 @@ class Optimizer(object):
             # is left dangling on an atom that is already bonded to its partner.
             self._infoString += _VerboseCheck(self._verbosity, 1,"Did not add MoverHisFlip to "+resNameAndID+
               " (bond outside standard ring connectivity)\n")
+            self._hisNoMover[(alt, a.i_seq)] = 'bond outside the ring'
             if ionOnlyFlipped is not None:
               self._infoString += _VerboseCheck(self._verbosity, 1,"Not listing "+resNameAndID+
                 ": a ring Nitrogen has a bond outside the ring\n")
@@ -2121,6 +2653,17 @@ class Optimizer(object):
             self._flipCandidates.append((alt, a, place, ionOnlyFlipped))
         except Exception as e:
           self._infoString += _VerboseCheck(self._verbosity, 0,"Did not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
+          if self._reconcileHisCharges:
+            why = 'failed: ' + str(e)
+            nd1 = [x for x in hisNE2.parent().atoms() if x.name.strip() == 'ND1'] or \
+              [x for x in hisNE2.parent().parent().atoms() if x.name.strip() == 'ND1']
+            for n in [hisNE2] + nd1[:1]:
+              ions = [x for x in self._spatialQuery.neighbors(n.xyz, 0.0, 3.0) if x.element_is_positive_ion()]
+              if ions and not [x for x in bondedNeighborLists.get(n, []) if x.element_is_hydrogen()]:
+                # placement put no H on this N (metal-bound)
+                why = 'metal-bound %s without H (%s)' % (n.name.strip(), ions[0].name.strip())
+                break
+            self._hisNoMover[(alt, hisNE2.i_seq)] = why
 
     # The Mover constructors above moved atoms after the spatial query was built
     # (rotators turn their Hydrogens to a starting orientation; tetrahedral methyls are

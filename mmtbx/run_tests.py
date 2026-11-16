@@ -513,6 +513,8 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_capping.py",
   "$D/regression/tst_reduce2_altloc_completion.py",
   "$D/regression/tst_reduce2_altloc_charge.py",
+  "$D/regression/tst_reduce2_his_charges.py",
+  "$D/regression/tst_reduce2_his_charges_optimizer.py",
   "$D/ligands/tst_electrons_altlocs.py",
   "$D/ligands/tst_electrons_residues.py",
   "$D/ligands/tst_electrons_00.py",

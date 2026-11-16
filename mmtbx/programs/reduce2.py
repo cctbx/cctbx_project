@@ -29,7 +29,7 @@ from iotbx.pdb import altloc_completion
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.hydrogens import hd_exchange
 from mmtbx.hydrogens import capping
-from mmtbx.reduce import Optimizers
+from mmtbx.reduce import Optimizers, HisCharges
 from scitbx.array_family import flex
 from iotbx.pdb import common_residue_names_get_class, amino_acid_codes, nucleic_acid_codes
 from mmtbx.programs import probe2
@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.17.0"
+version = "3.18.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -175,6 +175,22 @@ non_flip_preference = 0.5
   .type = float
   .short_caption = Preference to not flip
   .help = For flip movers, only do the flip if the score in the flipped orientation is this much better.
+reconcile_his_charges = False
+  .type = bool
+  .short_caption = One charge for His across conformers
+  .help = A His whose conformers end the optimization with different ring \
+          protonation (charge +1 with HD1 and HE2, 0 with one of them) is \
+          given one charge where the scores allow it: the conformers are set \
+          to the cheaper charge (at most 0.5 in total, neutral when the \
+          scores do not separate them), the passes are run again with that \
+          state fixed, and the change is kept only if the His and its \
+          neighbours lose at most 0.5 (otherwise the first result is \
+          written). A His bound to a metal, with an ion at the flipped ring \
+          or with a protonation set by the user keeps its charges. One whose \
+          conformers cannot all be scored or whose ring is partly split is \
+          left unchanged. Reruns are capped per model, each limited to the \
+          search time allowed to the first run. Listed in the description \
+          file (His charges across conformers). Experimental, default False.
 skip_bond_fix_up = False
   .type = bool
   .short_caption = Skip fixup step for Movers that are flips
@@ -1112,6 +1128,12 @@ def _NamesByConformer(atom_groups, keep=None):
 _ACID_H_DIHEDRAL = {'ASP': ('CB', 'CG', 'OD2', 'HD2'),
                     'GLU': ('CG', 'CD', 'OE2', 'HE2')}
 
+def _HisFixedKey(atom):
+  # (model id, chain, resseq, icode) of a His atom
+  rg = atom.parent().parent()
+  return (rg.parent().parent().id.strip(), rg.parent().id.strip(), rg.resseq.strip(),
+    rg.icode.strip())
+
 class Program(ProgramTemplate):
   description = '''
 reduce2 version {}
@@ -1762,8 +1784,112 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _SuggestedFlipsText(self, flips):
+  def _HisFixedKeys(self):
+    # His whose conformers were set to one charge (reconcile_his_charges)
+    models = self.model.get_hierarchy().models()
+    out = set()
+    for m in getattr(self, '_hisCharges', None) or []:
+      for c in m['cases']:
+        if c.get('fixed'):
+          out.add((models[m['model']].id.strip(),) + tuple(c['key'][1:]))
+    return out
+
+  def _HisChargesText(self, his, flips):
+    # :param his: Optimizer.getHisCharges().
     # :param flips: Optimizer.getSuggestedFlips().
+    # :return: the His charges across conformers section of the description
+    # file; its first line is also logged.
+    models = self.model.get_hierarchy().models()
+    sug = {}
+    for f in flips:
+      if f.kind == 'HisFlip' and f.gain is not None:
+        ag = f.atom.parent()
+        sug.setdefault(_HisFixedKey(f.atom), []).append(
+          '%s %.2f' % (ag.altloc.strip() or 'blank', f.gain))
+    q = HisCharges.charge_text
+    def charges(d):
+      return ' '.join('%s %s' % (c or 'blank', q(d[c])) for c in sorted(d))
+    cases = [c for m in his for c in m['cases']]
+    lines = ['His charges across conformers (reconcile_his_charges=True): %d His with '
+      'different charges, %d set to one charge' % (len([c for c in cases if c['first']['kind'] != 'changed']),
+      len([c for c in cases if c.get('fixed')]))]
+    for m in his:
+      mid = models[m['model']].id.strip()
+      where = 'model %s ' % mid if len(models) > 1 else ''
+      for c in m['cases']:
+        text = '  %sHis %s: %s' % (where, ' '.join(str(x) for x in c['key'][1:]).strip(),
+          charges(c['free']))
+        if c['final'] != c['free']:
+          text += ' -> %s' % charges(c['final'])
+        d = c['first']
+        if c.get('fixed'):
+          text += '; set to charge %s' % q(list(c['final'].values())[0])
+        else:
+          text += '; ' + c['decision']
+        if d.get('target') is not None and d.get('costs'):
+          cost = d['costs'][str(d['target'])]
+          text += '; screen cost %.2f (%s)' % (cost['total'], ', '.join(
+            '%s %.2f' % (x or 'blank', p['cost']) for x, p in sorted(cost['per'].items())))
+        r = c.get('rerun')
+        if r is not None:
+          text += '; rerun cost %.2f (His %.2f, neighbours %.2f)' % (r['total'], r['his'], r['neighbours'])
+        k = (mid,) + tuple(c['key'][1:])
+        if k in sug:
+          text += '; suggested flip %s' % ', '.join(sug[k])
+        lines.append(text)
+      # one line per model, also without a rerun
+      text = '  %s%s; first run %.2f s' % (where or 'model: ', m['reason'], m['freeSeconds'])
+      if m['code'] != HisCharges.NO_RERUN:
+        rej = {}
+        for why in m['rejected'].values():
+          rej[why] = rej.get(why, 0) + 1
+        text += ('; %d rerun(s), cap %d (max_runs %d), %.2f s (backstop %.2f s); rejected: %s; '
+          'unmatched Movers: %d; skipped checks: %d' % (m['reruns'], m['cap'], m['maxRuns'],
+          m['rerunSeconds'], m['backstopSeconds'],
+          ', '.join('%d %s' % (n, w) for w, n in sorted(rej.items())) or 'none',
+          m['unmatched'], sum(len(c.get('skipped') or []) for c in m['cases'])))
+      lines.append(text)
+    return '\n'.join(lines)
+
+  def _WithHisChargesHint(self, f):
+    # the total charge's Sorry (conformers with different charges, marked in
+    # electrons.py) gets the His charges hint; one plain Sorry, no chaining
+    try:
+      return f()
+    except Sorry as e:
+      if not getattr(e, 'conformer_charge_mismatch', False):
+        raise
+      hint = self._HisChargesHint()
+      r = Sorry(str(e) + ('\n' + hint if hint else ''))
+      r.conformer_charge_mismatch = True
+      raise r from None
+
+  def _HisChargesHint(self):
+    # qmready: why His conformers kept different charges (reconcile_his_charges),
+    # from each His's category and the model's outcome code, never from text
+    out = []
+    for m in getattr(self, '_hisCharges', None) or []:
+      for c in m['cases']:
+        if len(set(c['final'].values())) < 2:
+          continue
+        where = 'His %s' % ' '.join(str(x) for x in c['key'][1:]).strip()
+        dec = c['decision']
+        if c['category'] == 'metal':
+          out.append('%s: conformer charges differ (%s; expected)' % (where, dec[len('kept: '):]))
+        elif c['category'] == 'restored' and m['code'] == HisCharges.INTERNAL:
+          out.append('%s: conformer charges differ: the first result was kept after an '
+            'internal check failed (%s); please report this' % (where, m['detail']))
+        elif c['category'] in ('unchanged', 'changed'):
+          out.append('%s: conformer charges differ (%s)' % (where, dec))
+        else:
+          out.append('reduce2 kept %s with different charges (%s); set a common state '
+            'with protonation { selection = ... state = ... }; a broader alternative '
+            '(changes all flip decisions): add_flip_movers=True' % (where, dec))
+    return '\n'.join(out)
+
+  def _SuggestedFlipsText(self, flips, fixed=frozenset()):
+    # :param flips: Optimizer.getSuggestedFlips().
+    # :param fixed: _HisFixedKeys(): His set to one charge, whose flip is marked.
     # :return: (the Suggested flips section of the description file, one log
     # line per His whose metal binds only the flipped ring).
     def _h(pose):
@@ -1810,6 +1936,8 @@ NOTES:
           where, -f.gain)
       if f.kind == 'HisFlip' and f.flipped is not None:
         text += ' (%s as chosen, %s flipped)' % (_h(f.chosen), _h(f.flipped))
+      if _HisFixedKey(f.atom) in fixed:
+        text += ' (state fixed by charge reconciliation)'
       if f.ion is not None:
         text += '; %s binds only the flipped ring' % _ion(f.ion)
         d = ''
@@ -3425,7 +3553,8 @@ NOTES:
           stopOptimizingAt = stopTime,
           symmetryCopies = symmetryCopies,
           fixedHisProtonation = self._FixedHisKeys(),
-          chooseHisProtonation = True)
+          chooseHisProtonation = True,
+          reconcileHisCharges = self.params.reconcile_his_charges)
         doneOpt = time.time()
         if opt.getSymmetryCopiesSummary():
           print(opt.getSymmetryCopiesSummary(), file=self.logger)
@@ -3452,8 +3581,14 @@ NOTES:
         if len(warnings) > 0:
           print('\nWarnings during optimization:\n'+warnings, file=self.logger)
         outString += opt.getInfo()
+        self._hisCharges = opt.getHisCharges()
+        if self.params.reconcile_his_charges:
+          text = self._HisChargesText(self._hisCharges, opt.getSuggestedFlips())
+          print('\n' + text.split('\n')[0], file=self.logger)
+          outString += text + '\n'
         if not self.params.add_flip_movers:
-          text, metal = self._SuggestedFlipsText(opt.getSuggestedFlips())
+          text, metal = self._SuggestedFlipsText(opt.getSuggestedFlips(),
+            self._HisFixedKeys())
           lines = text.split('\n')
           shown = lines[0]
           if len(lines) > 1:
@@ -3563,16 +3698,16 @@ NOTES:
       if self.params.capping:
         # capping.cap_model: the records, the charge of the capped model
         # (the caps as sigma bonds) and the caps, shared with qrefine
-        r = capping.cap_model(qm_model,
+        r = self._WithHisChargesHint(lambda: capping.cap_model(qm_model,
           guess_for_unknowns    = self.params.capping_guess_for_unknowns,
           use_neutron_distances = self.params.use_neutron_distances,
           calculate_charge      = self.params.approach == 'add',
-          log                   = self.logger)
+          log                   = self.logger))
         if self.params.approach == 'add':
           self._ApplyTotalCharge(r.total_charge)
         outString += self._CapDanglingAtoms(qm_model, r)
       elif self.params.approach == 'add':
-        self._CalculateTotalCharge(qm_model)
+        self._WithHisChargesHint(lambda: self._CalculateTotalCharge(qm_model))
 
     # The model that is written and returned; self.model stays H-only for
     # the comparison and the flipkins.
@@ -3844,7 +3979,8 @@ NOTES:
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
             verbosity=3,
-            fixedHisProtonation = self._FixedHisKeys())
+            fixedHisProtonation = self._FixedHisKeys(),
+            reconcileHisCharges = self.params.reconcile_his_charges)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
@@ -3968,7 +4104,8 @@ NOTES:
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
             verbosity=3,
-            fixedHisProtonation = self._FixedHisKeys())
+            fixedHisProtonation = self._FixedHisKeys(),
+            reconcileHisCharges = self.params.reconcile_his_charges)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
