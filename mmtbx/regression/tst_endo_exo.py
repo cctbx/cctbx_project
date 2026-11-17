@@ -1978,12 +1978,13 @@ def exercise_build_adjacency():
 
 def exercise_2c2u_sym_image_provenance():
   """Symmetry-image donors of the 2C2U Fe site carry provenance back to their
-  ASU parent's selection identity (chain, resseq, resname, name, altloc) + the
-  operator, so a metal-ligand bond to a symmetry image can be restrained via
+  ASU parent's labels (atom.fetch_labels()) + the operator, so a
+  metal-ligand bond to a symmetry image can be restrained via
   geometry_restraints.edits (atom_1 vs symmetry_operation * atom_2). The identity
   is captured, not the atom object, so the hand-off does not depend on the parent
-  model staying alive. The images carry their parent's anisotropic U rotated by
-  the operator."""
+  model staying alive, and it names one input atom even when residue numbers
+  differ only by insertion code. The images carry their parent's anisotropic U
+  rotated by the operator."""
   pdb_in = iotbx.pdb.input(
     source_info=None, lines=_2C2U_FE_SPHERE_PDB.split("\n"))
   crystal_symmetry = pdb_in.crystal_symmetry()
@@ -2004,17 +2005,37 @@ def exercise_2c2u_sym_image_provenance():
     assert image.parent().parent().parent().id.strip() != "A"   # renamed image
     assert op_xyz != identity                                    # a real sym op
     sgtbx.rt_mx(op_xyz)                                          # parseable operator
-    chain_id, resseq, resname, name, altloc = ident
     # the ASU parent is on an original chain and shares the image's identity
-    assert chain_id == "A"
-    assert name == image.name.strip()
-    assert resseq == image.parent().parent().resseq.strip()
+    assert ident.chain_id == "A"
+    assert ident.name == image.name
+    assert ident.resseq == image.parent().parent().resseq
     r = matrix.sqr(unit_cell.matrix_cart(sgtbx.rt_mx(op_xyz).r()))
     u_image = r * matrix.sym(sym_mat3=u_cart) * r.transpose()
     assert approx_equal(image.uij, u_image.as_sym_mat3(), eps=1e-6)
   # the coordinating Asp 93 / HOH 2154 images are represented
   resnames = {atoms[i].parent().resname.strip().upper() for i in prov}
   assert "ASP" in resnames and "HOH" in resnames
+
+  # HOH 301 and 301A differ only by insertion code; both have 2-fold images
+  # in the region, and each image names exactly one input atom.
+  lines = [line for line in _SPECIAL_POS_WATER_PDB.split("\n")
+           if line and line != "END"]
+  lines += [
+    "HETATM    8  O   HOH A 301A     11.000  -1.500   1.500  1.00 10.00"
+    "           O",
+    "ATOM      9  H1  HOH A 301A     11.500  -2.100   1.900  1.00 10.00"
+    "           H",
+    "ATOM     10  H2  HOH A 301A     11.500  -1.900   2.100  1.00 10.00"
+    "           H",
+    "END"]
+  pdb_str = "\n".join(lines)
+  parent_hierarchy = iotbx.pdb.input(
+    source_info=None, lines=lines).construct_hierarchy()
+  ids = [a.id_str() for a in parent_hierarchy.atoms()]
+  prov = _run_endo_exo_on_string(pdb_str)["sym_image_provenance"]
+  assert len(prov) == 6, len(prov)
+  for iseq, (ident, op_xyz) in prov.items():
+    assert ids.count(ident.id_str()) == 1, (iseq, ident.id_str(), op_xyz)
 
 
 def exercise_special_position_water_dedup():

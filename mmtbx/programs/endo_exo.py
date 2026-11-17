@@ -188,9 +188,12 @@ class Program(ProgramTemplate):
             Sorted positional indices of the atoms added to repair a valence
             the input model left open; they are not caps.
         sym_image_provenance : dict
-            ``{i_seq: ((chain, resseq, resname, name, altloc),
-            symmetry_operation_xyz)}`` for each materialized symmetry-image
-            atom, so a bond to one can be restrained against its ASU parent.
+            ``{i_seq: (parent_labels, symmetry_operation_xyz)}`` for each
+            materialized symmetry-image atom, so a bond to one can be
+            restrained against its ASU parent; ``parent_labels`` is the
+            parent's ``iotbx.pdb.hierarchy.atom_with_labels``
+            (``fetch_labels()``), with chain_id, resseq, icode, resname,
+            altloc and name.
             In-memory only; not written to the sidecar.
         selection_string : str or None
             The CCTBX selection string that produced this seed group, or

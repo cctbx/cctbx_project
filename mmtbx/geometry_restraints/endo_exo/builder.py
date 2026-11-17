@@ -540,10 +540,10 @@ class QMRegionBuilder:
       # positions are constructed rather than measured, so a consumer that
       # freezes caps may still want to leave these free to relax.
       'completed_iseqs': region.completed_iseqs,
-      # {sub-model i_seq: ((chain, resseq, resname, name, altloc),
-      # symmetry_operation_xyz)} for symmetry-image atoms, so a metal-ligand
-      # bond to one can be restrained against its ASU parent (kept in memory
-      # only, not the on-disk sidecar).
+      # {sub-model i_seq: (parent atom_with_labels, symmetry_operation_xyz)}
+      # for symmetry-image atoms, so a metal-ligand bond to one can be
+      # restrained against its ASU parent (kept in memory only, not the
+      # on-disk sidecar).
       'sym_image_provenance': region.sym_image_provenance,
       'selection_string': selection_str,
     }
@@ -1006,11 +1006,10 @@ class QMRegionBuilder:
         ``completed_iseqs`` (list of int)
             Sorted positional indices of the atoms those repairs added.
         ``sym_image_provenance`` (dict)
-            ``{sub-model i_seq: ((chain, resseq, resname, name, altloc),
-            symmetry_operation_xyz)}`` for each materialized symmetry-image
-            atom: the ASU parent's selection identity (not the atom object,
-            whose parent chain dangles once this model is freed) plus the
-            symmetry op.
+            ``{sub-model i_seq: (parent_labels, symmetry_operation_xyz)}``
+            for each materialized symmetry-image atom: the ASU parent's
+            ``fetch_labels()`` (not the atom object, whose parent chain
+            dangles once this model is freed) plus the symmetry op.
     """
     import mmtbx.model as mmtbx_model
 
@@ -1405,10 +1404,12 @@ class QMRegionBuilder:
   def _sym_image_provenance(atom_for_node, parent_atoms):
     """Return the ASU parent of each materialized symmetry-image atom.
 
-    The parent's selection identity is recorded rather than the atom object,
+    The parent's ``fetch_labels()`` is recorded rather than the atom object,
     whose parent chain dangles once this filtered model is freed after the
-    region is returned.  Angles cannot cross symmetry, so only bond
-    restraints can use this.  Call once the atoms carry their final i_seq.
+    region is returned.  It carries the parent's identity (chain, resseq,
+    icode, resname, altloc, name) and the parent's own coordinates, not the
+    image's.  Angles cannot cross symmetry, so only bond restraints can use
+    this.  Call once the atoms carry their final i_seq.
 
     Parameters
     ----------
@@ -1419,20 +1420,15 @@ class QMRegionBuilder:
     Returns
     -------
     dict
-        ``{sub-model i_seq: ((chain, resseq, resname, name, altloc),
-        symmetry_operation_xyz)}``.
+        ``{sub-model i_seq: (parent_labels, symmetry_operation_xyz)}``, with
+        ``parent_labels`` an ``iotbx.pdb.hierarchy.atom_with_labels``.
     """
     sym_image_provenance = {}
     for (parent_iseq, op), atom in atom_for_node.items():
       if op.is_unit_mx():
         continue
-      pa = parent_atoms[parent_iseq]
-      ag = pa.parent()
-      rg = ag.parent()
-      ch = rg.parent()
-      ident = (ch.id.strip(), rg.resseq.strip(), ag.resname.strip(),
-               pa.name.strip(), ag.altloc.strip())
-      sym_image_provenance[atom.i_seq] = (ident, op.as_xyz())
+      sym_image_provenance[atom.i_seq] = (
+        parent_atoms[parent_iseq].fetch_labels(), op.as_xyz())
     return sym_image_provenance
 
   def _make_output_filename(self, seed_index, seeds, selection_str=None):
