@@ -22,14 +22,18 @@ class manager(object):
     self._use_xyz     = None
     self._use_adp     = None
     self._use_occ     = None
+    self._use_xyz_adp = None
 
-  def set_flags(self, use_xyz=False, use_adp=False, use_occ=False):
-    self._use_xyz = use_xyz
-    self._use_adp = use_adp
-    self._use_occ = use_occ
+  def set_flags(self, use_xyz=False, use_adp=False, use_occ=False,
+                use_xyz_adp=False):
+    self._use_xyz     = use_xyz
+    self._use_adp     = use_adp
+    self._use_occ     = use_occ
+    self._use_xyz_adp = use_xyz_adp
 
   def check_flags(self):
-    assert [self._use_xyz, self._use_adp, self._use_occ].count(True) == 1
+    assert [self._use_xyz, self._use_adp, self._use_occ,
+            self._use_xyz_adp].count(True) == 1
 
   def check_selection(self, selection):
     if selection is not None:
@@ -63,7 +67,29 @@ class manager(object):
     if   self._use_xyz: return xrs.sites_cart().as_double()
     elif self._use_adp: return xrs.extract_u_iso_or_u_equiv()
     elif self._use_occ: return xrs.scatterers().extract_occupancies()
+    elif self._use_xyz_adp:
+      return xrs.sites_cart().as_double().concatenate(
+        xrs.extract_u_iso_or_u_equiv())
     else: assert 0
+
+  def set_use_xyz_adp(self, selection=None, max_shift=3.0, b_min=1,
+                      b_max=200):
+    """
+    Box bounds for joint refinement of sites and u_iso, in block order
+    (sites_cart of all atoms, then u_iso of all atoms): the bounds of
+    set_use_xyz followed by those of set_use_adp. Restraint targets are
+    not available in this mode.
+    """
+    assert not self.use_target
+    self.set_use_xyz(selection=selection, max_shift=max_shift)
+    lower_xyz, upper_xyz = self._lower_bound, self._upper_bound
+    self.set_use_adp(selection=selection, b_min=b_min, b_max=b_max)
+    self._lower_bound = lower_xyz.concatenate(self._lower_bound)
+    self._upper_bound = upper_xyz.concatenate(self._upper_bound)
+    self.set_flags(use_xyz_adp=True)
+    self.x = self.get_x()
+    self._bound_flags = flex.int(self.x.size(), 2)
+    self._restraints = None
 
   def set_use_adp(self, selection=None, b_min=1, b_max=200):
     self.set_flags(use_adp=True)
@@ -129,6 +155,7 @@ class manager(object):
     if   self._use_xyz: return self._restraints.target
     elif self._use_adp: return self._restraints.target
     elif self._use_occ: return None
+    elif self._use_xyz_adp: return None
     else: assert 0
 
   def gradients(self):
@@ -136,4 +163,5 @@ class manager(object):
     if   self._use_xyz: return self._restraints.gradients.as_double()
     elif self._use_adp: return self._restraints.u_iso_gradients
     elif self._use_occ: return None
+    elif self._use_xyz_adp: return None
     else: assert 0
