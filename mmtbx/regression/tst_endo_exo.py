@@ -1736,7 +1736,9 @@ def exercise_hbond_partner_symmetry_composition():
 
 def exercise_hull_waters():
   """Waters inside the region's convex hull are pulled in whole, waters
-  outside are not, and the knob turns the whole thing off.
+  outside are not, and the knob turns the whole thing off.  A water more
+  than half a lattice spacing from the hull's centroid, in a short or an
+  oblique cell, is found too.
 
   Worth pinning because it is reached on real structures -- 8FUM adds 23
   water atoms this way around Fe at radius 8 -- while no test structure
@@ -1777,6 +1779,28 @@ END
     flat, log=log)
   assert out_flat == visited_flat, "a flat region took in a water"
   assert "No hull waters added" in log.getvalue(), log.getvalue()
+
+  # The hull spans z 2 to 10 A, its centroid at z 4, in a cell only 10 A
+  # along c.  The water at z 9.2 is inside, 0.52 of a cell above the
+  # centroid.  The same water in an oblique cell, whose lattice planes along
+  # c are c sin(beta) = 10 A apart.
+  short_cell = """\
+CRYST1   30.000   30.000   10.000  90.00  90.00  90.00 P 1
+HETATM    1 ZN    ZN A   1      10.000  10.000   2.000  1.00 10.00          ZN
+HETATM    2 ZN    ZN A   2      20.000  10.000   2.000  1.00 10.00          ZN
+HETATM    3 ZN    ZN A   3      15.000  20.000   2.000  1.00 10.00          ZN
+HETATM    4 ZN    ZN A   4      15.000  15.000  10.000  1.00 10.00          ZN
+HETATM    5  O   HOH A   5      15.000  15.000   9.200  1.00 10.00           O
+END
+"""
+  oblique_cell = short_cell.replace(
+    "30.000   30.000   10.000  90.00  90.00  90.00",
+    "30.000   30.000   20.000  90.00 150.00  90.00")
+  for pdb_str in (short_cell, oblique_cell):
+    _model, atoms_far, visited_far, out_far = _hull_water_nodes(pdb_str)
+    added = {(atoms_far[i_seq].parent().parent().resseq.strip(), op.as_xyz())
+             for i_seq, op in out_far - visited_far}
+    assert added == {("5", "x,y,z")}, (pdb_str.split("\n")[0], added)
 
 
 def exercise_hull_waters_use_symmetry_images():

@@ -116,7 +116,6 @@ class QMRegionBuilder:
     self._include_nodes = set()
     self._hbond_cache = None
     self._waters_cache = None
-    self._waters_cache_rep_frac = None
     self._graph_builder = AtomGraphBuilder()
     trace_log = self.logger if self.params.verbose else null_out()
     self._capper = HydrogenCapper(log=trace_log)
@@ -756,12 +755,13 @@ class QMRegionBuilder:
     images that already participate in the QM region contribute to
     the bounding volume on equal footing with the parent atoms.
 
-    For every water residue group in the model and every space-group
-    operator, the operator is composed with the integer lattice shift
-    that brings the water's representative atom closest to the hull
-    centroid; if the resulting position lies inside the hull, nodes
-    for every atom in that residue group (under that combined op)
-    are added.  No-op when
+    Every point inside a convex hull is a weighted average of its
+    vertices, so none is farther from the centroid than the farthest
+    vertex.  The candidates are the water representative atoms within that
+    distance of the centroid, in place and as every symmetry copy
+    :func:`cctbx.crystal.super_cell.get_siiu` finds; for each candidate
+    inside the hull, nodes for every atom of its residue group (under that
+    copy's operation) are added.  No-op when
     ``params.include_waters_in_convex_hull`` is ``False``.
 
     Parameters
@@ -779,8 +779,8 @@ class QMRegionBuilder:
 
     cs = model.crystal_symmetry()
     uc = cs.unit_cell()
-    sg = cs.space_group()
-    sites_frac = uc.fractionalize(model.get_sites_cart())
+    sites_cart = model.get_sites_cart()
+    sites_frac = uc.fractionalize(sites_cart)
 
     # Hull built from materialized node positions
     hull_cart = flex.vec3_double()
@@ -800,7 +800,8 @@ class QMRegionBuilder:
             file=self.logger)
       return visited_nodes
 
-    centroid_frac = uc.fractionalize(hull_cart.mean())
+    centroid = hull_cart.mean()
+    radius = flex.max((hull_cart - centroid).norms())
 
     visited_iseqs_by_op = defaultdict(set)
     for (iseq, op) in visited_nodes:
@@ -822,53 +823,49 @@ class QMRegionBuilder:
               iseqs.append(a.i_seq)
           cached.append((rep_iseq, iseqs))
       self._waters_cache = cached
-      self._waters_cache_rep_frac = (
-        sites_frac.select(flex.size_t(w[0] for w in cached))
-        if cached else None)
     waters = self._waters_cache
     if not waters:
       return visited_nodes
 
-    n_waters = len(waters)
-    rep_frac_orig = self._waters_cache_rep_frac
-    cx, cy, cz = centroid_frac
+    # Candidates: (water index, operation) for each representative atom in
+    # place within the radius, and for each symmetry copy of one that
+    # get_siiu finds near the centroid, searched as one extra site.
+    rep_iseqs = flex.size_t([w[0] for w in waters])
+    rep_cart = sites_cart.select(rep_iseqs)
+    identity = sgtbx.rt_mx()
+    candidates = []
+    for k in ((rep_cart - centroid).norms() <= radius).iselection():
+      candidates.append((k, identity))
+    search_sites = flex.vec3_double([centroid])
+    search_sites.extend(rep_cart)
+    siiu, _ = super_cell.get_siiu(
+      crystal_symmetry=cs, sites_cart=search_sites, selection=[0],
+      select_within_radius=radius)
+    for j_seq, ops in siiu.items():
+      if j_seq == 0:
+        continue  # copies of the centroid itself
+      for op in ops:
+        candidates.append((j_seq - 1, op))
 
-    centroid_tuple = (cx, cy, cz)
+    # Batched hull test: one flex dot product per hull plane over all
+    # candidates.
+    rep_frac = sites_frac.select(rep_iseqs)
+    candidate_cart = flex.vec3_double()
+    for k, op in candidates:
+      candidate_cart.append(uc.orthogonalize(op * rep_frac[k]))
+    inside = flex.bool(len(candidates), True)
+    for eq in hull.equations:
+      d = candidate_cart.dot((float(eq[0]), float(eq[1]), float(eq[2]))) \
+          + float(eq[3])
+      inside &= (d <= 1e-6)
+
     new_nodes = set()
-    for sg_op in sg.all_ops():
-      # Bulk apply r * f + t over all water rep positions.  ``v * R``
-      # in flex is row-vector * matrix; using ``R.transpose()`` makes
-      # the result equivalent to the column-vector form ``R * v``.
-      r_t = matrix.sqr(sg_op.r().as_double()).transpose()
-      t_tuple = sg_op.t().as_double()
-      rep_frac_sym = rep_frac_orig * r_t + t_tuple
-
-      # Nearest-image shift toward centroid, vectorized per axis.
-      diff = rep_frac_sym - centroid_tuple
-      xs_d, ys_d, zs_d = diff.parts()
-      shifts_x = xs_d.iround()
-      shifts_y = ys_d.iround()
-      shifts_z = zs_d.iround()
-      shifts_vec = flex.vec3_double(
-        shifts_x.as_double(), shifts_y.as_double(), shifts_z.as_double())
-      rep_cart = uc.orthogonalize(rep_frac_sym - shifts_vec)
-
-      # Batched hull test: one flex dot product per hull plane over all
-      # waters.
-      inside = flex.bool(n_waters, True)
-      for eq in hull.equations:
-        d = rep_cart.dot((float(eq[0]), float(eq[1]), float(eq[2]))) \
-            + float(eq[3])
-        inside &= (d <= 1e-6)
-
-      for k in inside.iselection():
-        sx, sy, sz = shifts_x[k], shifts_y[k], shifts_z[k]
-        shift_op = sgtbx.rt_mx(f"x{-sx:+d},y{-sy:+d},z{-sz:+d}")
-        final_op = shift_op.multiply(sg_op).new_denominators(1, 12)
-        already = visited_iseqs_by_op.get(final_op, set())
-        for iseq in waters[k][1]:
-          if iseq not in already:
-            new_nodes.add((iseq, final_op))
+    for c in inside.iselection():
+      k, op = candidates[c]
+      already = visited_iseqs_by_op.get(op, set())
+      for iseq in waters[k][1]:
+        if iseq not in already:
+          new_nodes.add((iseq, op))
 
     if new_nodes:
       print(
