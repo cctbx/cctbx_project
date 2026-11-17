@@ -172,6 +172,22 @@ class PopUpCharts(object):
     #print "Rejecting", outliers.count(True), "out of", len(outliers)
     return outliers
 
+  @staticmethod
+  def hist_range(data, lim):
+    """ The range for a histogram of data: lim when the caller set one, else
+        None so numpy takes the data's own span, unless that span is too
+        narrow to divide into bins. A symmetry-fixed cell angle comes back
+        from the database as 90 plus floating-point noise, a span of a few
+        ulps, and numpy refuses to make bins out of it. Such data get the
+        range numpy gives identical values, half a unit either side. """
+    if lim is not None or len(data) == 0:
+      return lim
+    low, high = flex.min(data), flex.max(data)
+    if high - low < 1e-9 * max(abs(low), abs(high), 1.0):
+      mid = (low + high) / 2
+      return (mid - 0.5, mid + 0.5)
+    return None
+
   def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None, angle_ranges = None, title = None, image_fname=None, hist_scale=None):
     """
     Plot a 3x3 grid of plots showing unit cell dimensions.
@@ -277,7 +293,7 @@ class PopUpCharts(object):
         legend_key.means.append(mean)
         legend_key.stds.append(stddev)
         hist = sub.hist(d, nbins, alpha=0.75, histtype='stepfilled',
-                        label='placeholder-label', range=lim)
+                        label='placeholder-label', range=self.hist_range(d, lim))
         hists.append(hist)
         if len(info_list) == 1:
           sub.set_xlabel(legend_key.line_list[-1]).set_fontsize(text_ratio)
@@ -304,7 +320,7 @@ class PopUpCharts(object):
         sub.set_ylabel("%s axis" % n2).set_fontsize(text_ratio)
 
       for (angle, sub, lim) in [(alpha, sub_alpha, allim), (beta, sub_beta, belim), (gamma, sub_gamma, galim)]:
-        sub.hist(angle, nbins, alpha=0.75, histtype='stepfilled', range=lim)
+        sub.hist(angle, nbins, alpha=0.75, histtype='stepfilled', range=self.hist_range(angle, lim))
         stats = flex.mean_and_variance(angle)
         mean = stats.mean()
         stddev = stats.unweighted_sample_standard_deviation()

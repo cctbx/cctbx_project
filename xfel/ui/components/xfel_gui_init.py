@@ -3436,19 +3436,24 @@ class UnitCellTab(BaseTab):
     self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
     # self.tab_panel.SetSizer(self.tab_sizer)
 
-    self.selection_columns_panel = ScrolledPanel(self)
+    # The column: the tag selection lists scroll when the window is shorter
+    # than they need; the plot controls under them stay in view.
+    self.selection_columns_panel = wx.Panel(self)
     self.selection_columns_box = wx.StaticBox(self.selection_columns_panel, label='Select tag sets')
     self.selection_columns_sizer = wx.StaticBoxSizer(self.selection_columns_box, wx.VERTICAL)
     self.selection_columns_panel.SetSizer(self.selection_columns_sizer)
+    self.selection_scroll = ScrolledPanel(self.selection_columns_box)
+    self.selection_scroll_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.selection_scroll.SetSizer(self.selection_scroll_sizer)
 
-    self.trial_number = gctr.ChoiceCtrl(self.selection_columns_panel,
+    self.trial_number = gctr.ChoiceCtrl(self.selection_scroll,
                                         label='Trial:',
                                         label_size=(90, -1),
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
 
-    self.tag_checklist = gctr.CheckListCtrl(self.selection_columns_panel,
+    self.tag_checklist = gctr.CheckListCtrl(self.selection_scroll,
                                             label='Available tags:',
                                             label_size=(200, -1),
                                             label_style='normal',
@@ -3456,7 +3461,7 @@ class UnitCellTab(BaseTab):
                                             direction='vertical',
                                             choices=[])
 
-    self.selection_type_radio = gctr.RadioCtrl(self.selection_columns_panel,
+    self.selection_type_radio = gctr.RadioCtrl(self.selection_scroll,
                                                name='uc_selection_type',
                                                label='',
                                                label_style='normal',
@@ -3465,9 +3470,9 @@ class UnitCellTab(BaseTab):
                                                items={'union':'union',
                                                       'inter':'intersection'})
 
-    self.add_sele_button = wx.Button(self.selection_columns_panel, label='Add selection')
+    self.add_sele_button = wx.Button(self.selection_scroll, label='Add selection')
 
-    self.tag_set_checklist = gctr.CheckListCtrl(self.selection_columns_panel,
+    self.tag_set_checklist = gctr.CheckListCtrl(self.selection_scroll,
                                                 label='Tag sets to display:',
                                                 label_size=(200, -1),
                                                 label_style='normal',
@@ -3475,19 +3480,19 @@ class UnitCellTab(BaseTab):
                                                 direction='vertical',
                                                 choices=[])
 
-    self.remove_sele_button = wx.Button(self.selection_columns_panel, label='Remove selection')
+    self.remove_sele_button = wx.Button(self.selection_scroll, label='Remove selection')
 
-    self.reset_sele_button = wx.Button(self.selection_columns_panel, label='Reset selections')
+    self.reset_sele_button = wx.Button(self.selection_scroll, label='Reset selections')
 
-    self.chk_reject_outliers = wx.CheckBox(self.selection_columns_panel, label='Reject outliers')
+    self.chk_reject_outliers = wx.CheckBox(self.selection_columns_box, label='Reject outliers')
     self.chk_reject_outliers.SetValue(True)
 
-    self.chk_plot_clusters = wx.CheckBox(self.selection_columns_panel, label='Plot clusters')
-    self.btn_cluster_options = gctr.Button(self.selection_columns_panel,
+    self.chk_plot_clusters = wx.CheckBox(self.selection_columns_box, label='Plot clusters')
+    self.btn_cluster_options = gctr.Button(self.selection_columns_box,
                                            name='uc_cluster_options',
                                            label='Options...')
 
-    self.chk_auto_update = wx.CheckBox(self.selection_columns_panel, label='Auto update')
+    self.chk_auto_update = wx.CheckBox(self.selection_columns_box, label='Auto update')
     self.chk_auto_update.SetValue(True)
 
     try:
@@ -3507,7 +3512,7 @@ class UnitCellTab(BaseTab):
                             flag=wx.ALL | wx.EXPAND)
     self.add_sele_sizer.AddGrowableCol(0)
     self.add_sele_sizer.AddGrowableRow(1)
-    self.selection_columns_sizer.Add(self.add_sele_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
+    self.selection_scroll_sizer.Add(self.add_sele_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.remove_sele_sizer = wx.GridBagSizer(3, 1)
     self.remove_sele_sizer.Add(self.tag_set_checklist, pos=(0, 0),
@@ -3518,7 +3523,8 @@ class UnitCellTab(BaseTab):
                                flag=wx.ALL | wx.EXPAND)
     self.remove_sele_sizer.AddGrowableCol(0)
     self.remove_sele_sizer.AddGrowableRow(0)
-    self.selection_columns_sizer.Add(self.remove_sele_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
+    self.selection_scroll_sizer.Add(self.remove_sele_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
+    self.selection_columns_sizer.Add(self.selection_scroll, 1, flag=wx.EXPAND)
     self.selection_columns_sizer.Add(self.chk_reject_outliers, flag=wx.ALL | wx.EXPAND, border=5)
     self.cluster_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.cluster_sizer.Add(self.chk_plot_clusters, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -3529,11 +3535,11 @@ class UnitCellTab(BaseTab):
 
     # The column is as wide as its contents need, which depends on the
     # platform's fonts and widget padding. The two lists share any extra
-    # height, and the column scrolls rather than clipping when the window is
-    # shorter than its contents.
-    self.selection_columns_panel.SetupScrolling(scroll_x=False, scrollToTop=False)
+    # height, and scroll rather than clip when the window is shorter than
+    # they need.
+    self.selection_scroll.SetupScrolling(scroll_x=False, scrollToTop=False)
     scrollbar_width = max(wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X), 0)
-    self.selection_columns_panel.SetMinSize((self.selection_columns_sizer.GetMinSize().width + scrollbar_width, -1))
+    self.selection_scroll.SetMinSize((self.selection_scroll_sizer.GetMinSize().width + scrollbar_width, -1))
     self.sync_cluster_settings()
 
     self.unit_cell_panel = wx.Panel(self, size=(200, 120))
