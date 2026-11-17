@@ -3420,6 +3420,10 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
   else:
     n_range = 6
     k_range = range(0,1)
+    # Dihedral and polyhedral centers can affect operators along z.
+    # Cyclic and helical operators are invariant to axial center shifts.
+    if symmetry.upper().startswith('D') or symmetry.upper() in ('T', 'O', 'I'):
+      k_range = range(-4,5)
     i_range = range(-4,5)
     j_range = range(-4,5)
     scale_x = 1
