@@ -350,7 +350,8 @@ END
 def _program_master_phil():
   """Return the program's master PHIL with the template's output scope,
   as ``run_program`` builds it."""
-  master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = iotbx.phil.parse(
+    EndoexoProgram.master_phil_str, process_includes=True)
   master.adopt_scope(libtbx.phil.parse(EndoexoProgram.output_phil_str))
   return master
 
@@ -1649,7 +1650,8 @@ def _hull_water_nodes(pdb_str, enabled=True, log=None):
   atoms = list(model.get_hierarchy().atoms())
   identity = sgtbx.rt_mx()
 
-  master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = iotbx.phil.parse(
+    EndoexoProgram.master_phil_str, process_includes=True)
   params = master.extract()
   params.include_waters_in_convex_hull = enabled
   if log is None:
@@ -1682,7 +1684,8 @@ def exercise_hbond_partner_symmetry_composition():
   pdb_in = iotbx.pdb.input(
     source_info=None, lines=_HULL_WATER_TRIGONAL_PDB.split("\n"))
   model = mmtbx.model.manager(model_input=pdb_in)
-  master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = iotbx.phil.parse(
+    EndoexoProgram.master_phil_str, process_includes=True)
   params = master.extract()
   params.include_hbond_partners = True
   builder = QMRegionBuilder(params, logger=io.StringIO())
@@ -1854,7 +1857,8 @@ def exercise_hull_spans_symmetry_images_already_in_the_region():
   identity = sgtbx.rt_mx()
   image = sgtbx.rt_mx("-x+1,y,-z+1")
 
-  master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = iotbx.phil.parse(
+    EndoexoProgram.master_phil_str, process_includes=True)
   params = master.extract()
   params.include_waters_in_convex_hull = True
   builder = QMRegionBuilder(params, logger=io.StringIO())
@@ -1885,7 +1889,8 @@ def exercise_hbond_partners():
   carbonyl carbon away, so the acceptor is missing.  Seeding it brings the
   oxygen in, and growth carries on over the peptide bond into PHE 49, which
   is why atoms of a second residue appear as well."""
-  master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
+  master = iotbx.phil.parse(
+    EndoexoProgram.master_phil_str, process_includes=True)
   assert master.extract().include_hbond_partners is False, (
     "include_hbond_partners must stay off by default: it grows a region by "
     "over a tenth on a real structure")
@@ -2226,7 +2231,8 @@ def exercise_altloc_filter():
   def _filter(altloc):
     pdb_in = iotbx.pdb.input(source_info=None, lines=_ALTLOC_PDB.split("\n"))
     model = mmtbx.model.manager(model_input=pdb_in)
-    master = iotbx.phil.parse(EndoexoProgram.master_phil_str)
+    master = iotbx.phil.parse(
+      EndoexoProgram.master_phil_str, process_includes=True)
     params = master.extract()
     params.altloc = altloc
     builder = QMRegionBuilder(params, logger=io.StringIO())
@@ -2468,7 +2474,9 @@ def exercise_builder_without_logger():
   """Driven directly without a logger, the builder prints nothing and leaves
   the interpretation parameters the caller's model was processed with as
   they were.  With a logger it logs a summary, and the per-atom trace of cuts
-  and caps only with verbose=True."""
+  and caps only with verbose=True.  Given no parameters and no naming
+  callback, it uses its own defaults and names a region after the model and
+  the seed."""
   import contextlib
   from libtbx.utils import null_out
   from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
@@ -2508,6 +2516,12 @@ def exercise_builder_without_logger():
   for trace in ("Capped atom:", "bond between:"):
     assert trace not in quiet, (trace, quiet)
     assert trace in loud, (trace, loud)
+
+  model = mmtbx.model.manager(model_input=iotbx.pdb.input(
+    source_info=None, lines=_1BQ8_FE_SPHERE_PDB.split("\n")), log=null_out())
+  result = QMRegionBuilder().run(model, "model.pdb")[0]
+  assert result["file_name"] == "model_FE_chainA_res55_within5.00A_depth3", (
+    result["file_name"])
 
 
 def exercise_region_invariants():

@@ -29,84 +29,10 @@ from mmtbx.geometry_restraints.endo_exo.builder import (
 
 
 master_phil_str = """
-selection = None
-  .type = atom_selection
-  .multiple = True
-  .help = "Atoms that seed a QM region; each entry produces one region. If no \
-selection is given, every metal in the structure seeds its own region."
-element_filter = None
-  .type = str
-  .multiple = True
-  .help = "Restrict the seed search to atoms of these element(s). Element \
-symbols are case-insensitive and need not be metals. Consulted only when no \
-selection is given."
-altloc = auto
-  .type = str
-  .help = "Which altloc to retain per residue. 'auto' keeps the non-blank \
-altloc of highest mean occupancy, a letter keeps that altloc and falls back \
-to the highest-occupancy one where the letter is absent, and 'all' retains \
-every altloc."
-buffer {
-  radius = 5.0
-    .type = float(value_min=0)
-    .help = "Radius of the buffer region around the selected scatterer."
-  skip_search = False
-    .type = bool
-    .help = "Skip the initial radius search, so the region starts from the \
-seed atoms alone. Expansion along bonds still applies."
-}
-# contact_cutoff removed: its seed-contact edges let the BFS drift across the
-# lattice forever; the radius search covers what it did.
-# contact_cutoff = 3.0
-#   .type = float(value_min=0)
-#   .help = "Atoms within this distance (Angstrom) of any metal or selected atom are treated as bonded to it, even when the model has no such bond (e.g. metal-ligand coordination)."
-max_search_depth = 3
-  .type = int(value_min=0)
-  .help = "Maximum number of bonds traversed outwards from any atom already \
-in the QM region."
-capping {
-  enable = True
-    .type = bool
-    .help = "Whether to cap boundary atoms with hydrogens. If False, the QM \
-region is written with dangling bonds."
-  preferred_cuts = True
-    .type = bool
-    .help = "Consult the per-residue table of preferred cut bonds before the \
-geometric cut heuristic."
-}
-include_hbond_partners = False
-  .type = bool
-  .help = "Whether to seed the QM region with atoms hydrogen bonded to it, so \
-that a hydrogen bond is not left with only one of its two partners. The added \
-seeds also shift where residues are cut, so the region can lose atoms as well \
-as gain them. Requires hydrogens."
-include_waters_in_convex_hull = True
-  .type = bool
-  .help = "Whether to add water molecules lying inside the convex hull of the \
-selected QM region."
-residues_to_include
-  .help = "Residues to include in the output whole, exempt from the sidechain \
-cut rules. Leave 'selection' unset to disable."
-{
-  selection = None
-    .type = atom_selection
-    .help = "Atoms whose residue groups are included whole in a region."
-  scope = *per_seed global
-    .type = choice
-    .help = "per_seed: add an included residue only to the region of a seed \
-it lies within 'proximity' of. global: add every included residue to every \
-seed region."
-  proximity = 5.0
-    .type = float(value_min=0)
-    .help = "Distance (Angstrom) within which an included residue is added to \
-a seed's region. Used only when scope=per_seed."
-}
+include scope mmtbx.geometry_restraints.endo_exo.builder.master_phil_str
 write_files = True
   .type = bool
   .help = "Whether to write a model file and a sidecar PHIL file per seed."
-verbose = False
-  .type = bool
-  .help = "Whether to log each bond cut, cap and repair with its atoms."
 """
 
 
