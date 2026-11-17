@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import os, time
+import os, re, time
 import libtbx.load_env
 from libtbx.utils import Sorry
 
@@ -804,7 +804,8 @@ class xfel_db_application(db_application):
     if len(run_ids) == 0:
       return []
 
-    use_ids = self.params.facility.name not in ['lcls']
+    from xfel.ui import runs_are_numbered
+    use_ids = not runs_are_numbered(self.params)
     if use_ids:
       key = lambda x: x.id
     else:
@@ -1222,6 +1223,79 @@ class standalone_run_finder(object):
 
     return runs
 
+def read_cheetah_status(status_file):
+  ''' The Status value of a Cheetah status.txt, or None without one '''
+  if not os.path.exists(status_file):
+    return None
+  status_lines = [line for line in open(status_file).readlines() if 'Status' in line]
+  if len(status_lines) != 1:
+    return None
+  return status_lines[0].strip().split(',')[-1].split('=')[-1]
+
+class numbered_run_finder(object):
+  ''' Runs from a template that captures the run number: each # stands for
+      one digit, glob wildcards for what varies within a run. The files whose
+      digits agree form one run, named by those digits, whose path is the
+      template with the digits filled in and the wildcards kept, for the
+      shell to expand when the job is submitted.
+
+      A run is complete when, with the status_file method, at least
+      n_files_needed of its subfolders have a status.txt reporting Finished,
+      or, with the n_files method, it has at least n_files_needed files. An
+      error status in any subfolder marks the run bad for good. '''
+  def __init__(self, params):
+    self.params = params
+    standalone = params.facility.standalone
+    self.data_dir = standalone.data_dir
+    template = standalone.template
+    digits = re.search(r'#+', template)
+    assert digits is not None, "The template needs a run of # for the run number digits"
+    self.glob_template = template.replace('#', '?')
+    before, after = template[:digits.start()], template[digits.end():]
+    self.template_before, self.template_after = before, after
+    # Matches the path relative to data_dir and captures the run number
+    def rx(part):
+      return re.escape(part).replace(r'\*', '[^/]*').replace(r'\?', '[^/]')
+    self.regex = re.compile('^' + rx(before) + r'(\d{%d})' % len(digits.group()) + rx(after) + '$')
+    self.known_runs = []
+    self.known_bad_runs = []
+
+  def run_path(self, digits):
+    return os.path.join(self.data_dir, self.template_before + digits + self.template_after)
+
+  def list_runs(self):
+    import glob
+    files_by_run = {}
+    for filepath in sorted(glob.glob(os.path.join(self.data_dir, self.glob_template))):
+      match = self.regex.match(os.path.relpath(filepath, self.data_dir))
+      if match is not None:
+        files_by_run.setdefault(match.group(1), []).append(filepath)
+
+    runs = []
+    for digits, files in sorted(files_by_run.items()):
+      name = str(int(digits))
+      if name in self.known_bad_runs:
+        continue
+      if name not in self.known_runs:
+        if not self.is_complete(name, files):
+          continue
+        self.known_runs.append(name)
+      runs.append((name, self.run_path(digits)))
+    return runs
+
+  def is_complete(self, name, files):
+    folders = self.params.facility.standalone.folders
+    if folders.method == 'status_file':
+      statuses = [read_cheetah_status(os.path.join(folder, 'status.txt'))
+                  for folder in sorted(set(os.path.dirname(f) for f in files))]
+      errors = [status for status in statuses if status is not None and 'error' in status.lower()]
+      if errors:
+        print("Run %s has an error: %s" % (name, errors[0]))
+        self.known_bad_runs.append(name)
+        return False
+      return statuses.count('Finished') >= folders.n_files_needed
+    return len(files) >= folders.n_files_needed
+
 class cheetah_run_finder(standalone_run_finder):
   def __init__(self, params):
     super(cheetah_run_finder, self).__init__(params)
@@ -1236,12 +1310,8 @@ class cheetah_run_finder(standalone_run_finder):
       if name in self.known_runs:
         good_runs.append((name, path))
       elif name not in self.known_bad_runs:
-        status_file = os.path.join(os.path.dirname(path), 'status.txt')
-        if not os.path.exists(status_file): continue
-        status_lines = [line for line in open(status_file).readlines() if 'Status' in line]
-        if len(status_lines) != 1: continue
-        l = status_lines[0].strip()
-        status = l.split(',')[-1].split('=')[-1]
+        status = read_cheetah_status(os.path.join(os.path.dirname(path), 'status.txt'))
+        if status is None: continue
         print(name, status)
         if status == 'Finished':
           good_runs.append((name, path))

@@ -1019,7 +1019,7 @@ class StandaloneOptions(BaseDialog):
 
     self.n_files_needed = gctr.TextButtonCtrl(self,
                                               name='n_files_needed',
-                                              label='Number of files per run',
+                                              label='Number of files per run\n(status files, with that criterion)',
                                               label_style='normal',
                                               label_size=(-1, -1),
                                               value=str(self.params.facility.standalone.folders.n_files_needed))
@@ -1046,7 +1046,7 @@ class StandaloneOptions(BaseDialog):
       self.params.facility.standalone.template = ''
     self.template = gctr.TextButtonCtrl(self,
                                         name='template',
-                                        label='File matching template\n(example *.h5)',
+                                        label='File matching template\n(example *.h5, or 118####-*/run*.h5\nwith # per run number digit)',
                                         label_style='bold',
                                         label_size=(300, -1),
                                         value=self.params.facility.standalone.template)
@@ -1091,7 +1091,7 @@ class StandaloneOptions(BaseDialog):
       self.params.facility.standalone.folders.method = 'status_file'
     elif self.folders_options.n_files.GetValue():
       self.params.facility.standalone.folders.method = 'n_files'
-      self.params.facility.standalone.folders.n_files_needed = int(self.n_files_needed.ctr.GetValue())
+    self.params.facility.standalone.folders.n_files_needed = int(self.n_files_needed.ctr.GetValue())
     self.params.facility.standalone.template = self.template.ctr.GetValue()
     self.params.facility.standalone.composite_files = self.chk_composite.GetValue()
     e.Skip()
@@ -1115,10 +1115,8 @@ class StandaloneOptions(BaseDialog):
       self.minimum_file_size.Enable()
     else:
       self.folders_options.Enable()
-      if self.folders_options.status_file.GetValue():
-        self.n_files_needed.Disable()
-      else:
-        self.n_files_needed.Enable()
+      # Files to count, or status files reporting Finished
+      self.n_files_needed.Enable()
       self.last_modified.Disable()
       self.minimum_file_size.Disable()
 
@@ -2482,7 +2480,8 @@ class RunBlockDialog(BaseDialog):
     self.all_blocks = []
     self.db = db
     self.calibration = calibration # EnergyCalibration from the Energy tab, or None
-    self.use_ids = db.params.facility.name not in ['lcls']
+    from xfel.ui import runs_are_numbered
+    self.use_ids = not runs_are_numbered(db.params)
     self.is_lcls = db.params.facility.name == 'lcls'
 
     all_runs = db.get_all_runs()

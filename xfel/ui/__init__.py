@@ -69,7 +69,8 @@ facility {
       n_files_needed = 0
         .type = int
         .help = If criteria is n_files, this is how many files are needed \
-                before a run is complete
+                before a run is complete. With a numbered template and \
+                status files, how many subfolders must report Finished.
     }
     files {
       last_modified = 0
@@ -82,7 +83,11 @@ facility {
     }
     template = None
       .type = str
-      .help = File matching pattern for new data. Example: *.h5
+      .help = File matching pattern for new data. Example: *.h5. Each # in \
+              the pattern stands for one digit of the run number: the files \
+              whose digits agree form one run, named by those digits, so \
+              118####-*/run*.h5 gathers 1187451-0/run1187451-0.h5 and \
+              1187451-1/run1187451-1.h5 into run 7451.
     composite_files = True
       .type = bool
       .help = If True, files are submitted as individual runs. Otherwise, groups \
@@ -152,6 +157,15 @@ db {
 master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)
 
 settings_dir = os.path.join(os.path.expanduser('~'), '.cctbx.xfel')
+
+def runs_are_numbered(params):
+  ''' True when every run name is an integer, so run groups can span run
+      numbers rather than run ids: at LCLS, or standalone with a template
+      that captures the run number. '''
+  if params.facility.name == 'lcls':
+    return True
+  template = params.facility.standalone.template
+  return template is not None and '#' in template
 
 known_dials_dispatchers = {
   'cctbx.xfel.xtc_process': 'xfel.command_line.xtc_process',

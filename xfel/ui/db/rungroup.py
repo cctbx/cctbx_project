@@ -27,7 +27,8 @@ class Rungroup(db_proxy):
     super(Rungroup, self).__setattr__(name, value)
 
   def get_first_and_last_runs(self):
-    use_ids = self.app.params.facility.name not in ['lcls']
+    from xfel.ui import runs_are_numbered
+    use_ids = not runs_are_numbered(self.app.params)
     runs = self.runs
     if len(runs) == 0:
       return (None, None)

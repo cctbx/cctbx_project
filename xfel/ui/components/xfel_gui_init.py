@@ -84,8 +84,11 @@ class RunSentinel(Thread):
     self.active = active
 
     if self.parent.params.facility.name == 'standalone':
-      if self.parent.params.facility.standalone.monitor_for == 'folders' and \
-         self.parent.params.facility.standalone.folders.method == 'status_file':
+      standalone = self.parent.params.facility.standalone
+      if standalone.template is not None and '#' in standalone.template:
+        from xfel.ui.db.xfel_db import numbered_run_finder
+        self.finder = numbered_run_finder(self.parent.params)
+      elif standalone.monitor_for == 'folders' and standalone.folders.method == 'status_file':
         from xfel.ui.db.xfel_db import cheetah_run_finder
         self.finder = cheetah_run_finder(self.parent.params)
       else:
@@ -100,8 +103,9 @@ class RunSentinel(Thread):
   def run(self):
     # one time post for an initial update
     self.post_refresh()
+    from xfel.ui import runs_are_numbered
     db = xfel_db_application(self.parent.params)
-    use_ids = self.parent.params.facility.name not in ['lcls']
+    use_ids = not runs_are_numbered(self.parent.params)
 
     while self.active:
       try:
