@@ -10294,8 +10294,8 @@ def split_boxes(lower = None, upper = None, target_size = None, target_n_overlap
     #                 ts*n_box-offset*(n_box-1) = n approx
     #             n_box (ts-offset) +offset = n
     #             n_box =  (n-offset)/(ts-offset)
-    assert ts>target_n_overlap
     if fix_target_size_and_overlap:
+      assert ts>target_n_overlap
       n_box = (n-target_n_overlap-1)/(ts-target_n_overlap)
       if n_box>int(n_box):
         n_box = int(n_box)+1
