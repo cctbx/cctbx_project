@@ -464,7 +464,12 @@ class aa_residue_axes_and_clusters(object):
         if(i_aa == len(self.axes_and_atoms_aa_specific)-1):
           selection = flex.size_t(aa[1])
         else:
-          selection = flex.size_t([aa[1][0]])
+          # First non-H atom of the rotating group: H of shared (blank
+          # altloc) atoms can precede the altloc heavy atoms in a conformer
+          # residue, so aa[1][0] may be an H (e.g. HB2 instead of CG).
+          non_h = [i for i in aa[1]
+            if not atoms_as_list[i].element.strip().upper() in ["H","D"]]
+          selection = flex.size_t(non_h[:1] if len(non_h)>0 else [aa[1][0]])
         # Exclude pure H or D rotatable groups
         elements_to_rotate = flex.std_string()
         for etr in aa[1]:
