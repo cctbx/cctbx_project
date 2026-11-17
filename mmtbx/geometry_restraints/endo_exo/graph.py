@@ -4,8 +4,68 @@ QM-region builder."""
 from collections import defaultdict
 
 from cctbx import sgtbx
-from cctbx.array_family import flex
 from cctbx.crystal import super_cell
+
+
+def sites_within_radius(sites_cart, centre, radius):
+  """Return the sites within *radius* of *centre*, as a selection.
+
+  Parameters
+  ----------
+  sites_cart : flex.vec3_double
+  centre : tuple of float
+      Cartesian coordinates.
+  radius : float
+      In Angstrom.
+
+  Returns
+  -------
+  flex.bool
+  """
+  return (sites_cart - centre).dot() <= radius * radius
+
+
+def nodes_within_radius(sites_cart, crystal_symmetry, radius, selection,
+                        symmetry_tables=None):
+  """Return every site, in place or as a symmetry copy, within *radius* of
+  a selected site.
+
+  Site symmetry is taken from the positions alone: a site whose copy lies
+  within 0.5 A of it counts as on the symmetry element, whatever its
+  occupancy.
+
+  Parameters
+  ----------
+  sites_cart : flex.vec3_double
+  crystal_symmetry : cctbx.crystal.symmetry
+  radius : float
+      In Angstrom.
+  selection : list of int
+      The sites to search around.
+  symmetry_tables : cctbx.crystal.super_cell.sym_equiv_tables, optional
+      From :func:`cctbx.crystal.super_cell.get_sym_equiv_tables` for
+      *sites_cart* and *radius*, to search several selections without
+      rebuilding them.
+
+  Returns
+  -------
+  set of (int, sgtbx.rt_mx)
+      ``(j_seq, rt_mx)`` nodes, the identity for a site in place.
+  """
+  identity = sgtbx.rt_mx()
+  nodes = set()
+  for i_seq in selection:
+    for j_seq in sites_within_radius(
+        sites_cart, sites_cart[i_seq], radius).iselection():
+      nodes.add((j_seq, identity))
+  siiu, _ = super_cell.get_siiu(
+    crystal_symmetry=crystal_symmetry, sites_cart=sites_cart,
+    selection=selection, select_within_radius=radius, buffer=0,
+    symmetry_tables=symmetry_tables)
+  for j_seq, rt_mx_ji_list in siiu.items():
+    for rt_mx_ji in rt_mx_ji_list:
+      nodes.add((j_seq, rt_mx_ji))
+  return nodes
 
 
 class AtomGraphBuilder:
@@ -26,9 +86,6 @@ class AtomGraphBuilder:
   """
 
   def __init__(self):
-    self._kdtree = None
-    self._kdtree_model = None
-    self._kdtree_n_atoms = None
     self._sym_tables = None
     self._sym_tables_model = None
     self._sym_tables_radius = None
@@ -132,91 +189,13 @@ class AtomGraphBuilder:
 
     return added_edges
 
-  def _atoms_within_radius_kdtree(self, center_atom, model, radius):
-    """Return a boolean mask for atoms within *radius* of *center_atom*.
-
-    The KD-tree is built once per *model* and reused across calls.
-
-    Parameters
-    ----------
-    center_atom : iotbx.pdb.hierarchy.atom
-    model : mmtbx.model.manager
-    radius : float
-
-    Returns
-    -------
-    cctbx.array_family.flex.bool
-    """
-    if self._kdtree_model is not model:
-      from scipy.spatial import KDTree
-      self._kdtree = KDTree(model.get_sites_cart())
-      self._kdtree_model = model
-      self._kdtree_n_atoms = model.get_number_of_atoms()
-    indices = self._kdtree.query_ball_point(center_atom.xyz, radius)
-    selected = flex.bool(self._kdtree_n_atoms, False)
-    for idx in indices:
-      selected[idx] = True
-    return selected
-
-  def _atoms_within_radius_selection(self, center_atom, model, radius):
-    """Select atoms within *radius* using CCTBX selection syntax.
-
-    Parameters
-    ----------
-    center_atom : iotbx.pdb.hierarchy.atom
-    model : mmtbx.model.manager
-    radius : float
-
-    Returns
-    -------
-    cctbx.array_family.flex.bool
-    """
-    atom_group = center_atom.parent()
-    residue_group = atom_group.parent()
-    chain = residue_group.parent()
-
-    center_terms = [
-      f'chain {chain.id.strip()}',
-      f'resseq {residue_group.resseq.strip()}',
-      f'resname {atom_group.resname.strip()}',
-      f'name {center_atom.name.strip()}',
-    ]
-    altloc = atom_group.altloc.strip()
-    if altloc:
-      center_terms.append(f'altloc "{altloc}"')
-
-    center_selector = ' and '.join(center_terms)
-    selection_str = f'within({radius}, ({center_selector}))'
-    return model.selection(selection_str)
-
-  def atoms_within_radius(self, center_atom, model, radius):
-    """Return a boolean mask for atoms within *radius* of *center_atom*.
-
-    Uses the cached KD-tree path; falls back to the CCTBX selection-string
-    approach if the tree returns no atoms (e.g. the seed atom is outside
-    the model's coordinate range).
-
-    Parameters
-    ----------
-    center_atom : iotbx.pdb.hierarchy.atom
-    model : mmtbx.model.manager
-    radius : float
-
-    Returns
-    -------
-    cctbx.array_family.flex.bool
-    """
-    mask = self._atoms_within_radius_kdtree(center_atom, model, radius)
-    if mask.count(True) == 0:
-      mask = self._atoms_within_radius_selection(center_atom, model, radius)
-    return mask
-
   def _sym_equiv_tables(self, model, radius):
     """Return the whole-structure symmetry tables for *radius*.
 
     They cover every close contact in the structure, so they depend on the
     model and the radius but not on which seed is being grown.  They are
-    built once and reused across seeds.
+    built once and reused across seeds.  Site symmetry is taken from the
+    positions alone, as in :func:`nodes_within_radius`.
 
     Parameters
     ----------
@@ -229,27 +208,19 @@ class AtomGraphBuilder:
     """
     if (self._sym_tables_model is not model
         or self._sym_tables_radius != radius):
-      xrs = model.get_xray_structure()
       self._sym_tables = super_cell.get_sym_equiv_tables(
-        sites_cart=xrs.sites_cart(),
-        crystal_symmetry=model.crystal_symmetry(), radius=radius,
-        site_symmetry_table=xrs.site_symmetry_table())
+        sites_cart=model.get_sites_cart(),
+        crystal_symmetry=model.crystal_symmetry(), radius=radius)
       self._sym_tables_model = model
       self._sym_tables_radius = radius
     return self._sym_tables
 
-  def seed_sym_nodes_within_radius(self, seeds, model, radius):
-    """Return symmetry-image ``(iseq, op)`` nodes within *radius* of a seed.
+  def seed_nodes_within_radius(self, seeds, model, radius):
+    """Return the ``(iseq, op)`` nodes within *radius* of a seed.
 
-    The KD-tree radius search (:meth:`atoms_within_radius`) only sees ASU
-    atoms, so a seed on or near a special position misses the
-    symmetry-related copies of its neighbouring residues that lie inside
-    the buffer sphere.  This enumerates those copies with
-    ``cctbx.crystal.super_cell.get_siiu`` and returns one
-    ``(j_seq, rt_mx_ji)`` node per atom-image within *radius* of any seed.
-
-    Only non-identity images are returned; the identity image is already
-    covered by the KD-tree search, so the caller unions the two.
+    Atoms in place and their symmetry copies both count, so a seed on or
+    near a special position gets the copies of its neighbouring residues
+    that lie inside the buffer sphere.
 
     Parameters
     ----------
@@ -262,15 +233,11 @@ class AtomGraphBuilder:
     Returns
     -------
     set of (int, sgtbx.rt_mx)
-        Non-identity atom-image nodes within *radius* of a seed.
+        Atom nodes within *radius* of a seed, the identity for an atom in
+        place.
     """
-    siiu, _ = super_cell.get_siiu(
-      crystal_symmetry=model.crystal_symmetry(),
-      sites_cart=model.get_xray_structure().sites_cart(),
-      selection=[seed.i_seq for seed in seeds], select_within_radius=radius,
+    return nodes_within_radius(
+      sites_cart=model.get_sites_cart(),
+      crystal_symmetry=model.crystal_symmetry(), radius=radius,
+      selection=[seed.i_seq for seed in seeds],
       symmetry_tables=self._sym_equiv_tables(model, radius))
-    nodes = set()
-    for j_seq, rt_mx_ji_list in siiu.items():
-      for rt_mx_ji in rt_mx_ji_list:
-        nodes.add((j_seq, rt_mx_ji))
-    return nodes

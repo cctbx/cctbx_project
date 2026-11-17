@@ -22,7 +22,8 @@ from scitbx import matrix
 
 from mmtbx.geometry_restraints.endo_exo.util import neighbour_iseqs
 from mmtbx.geometry_restraints.endo_exo.seeds import SeedFinder
-from mmtbx.geometry_restraints.endo_exo.graph import AtomGraphBuilder
+from mmtbx.geometry_restraints.endo_exo.graph import (
+  AtomGraphBuilder, nodes_within_radius, sites_within_radius)
 from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
 from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
 from mmtbx.geometry_restraints.endo_exo.capping import HydrogenCapper
@@ -465,10 +466,9 @@ class QMRegionBuilder:
     BFS expansion (controlled by ``params.max_search_depth``) is relied upon to
     grow the region.
 
-    The radius search is symmetry-aware: the KD-tree supplies ASU
-    (identity-image) atoms within ``params.buffer.radius``, and
-    :meth:`AtomGraphBuilder.seed_sym_nodes_within_radius` adds the
-    symmetry-image atoms inside the same sphere.  Both halves are needed for
+    The radius search is symmetry-aware:
+    :meth:`AtomGraphBuilder.seed_nodes_within_radius` returns the atoms in
+    place and their symmetry copies inside the sphere.  Both are needed for
     a seed on a special position, so that symmetry copies of its
     surroundings are seeded, and therefore truncated, exactly like the ASU
     copy.
@@ -488,15 +488,8 @@ class QMRegionBuilder:
       for seed in seeds:
         qm_nodes.add((seed.i_seq, identity))
     else:
-      for seed in seeds:
-        mask = self._graph_builder.atoms_within_radius(
-          seed, model, self.params.buffer.radius
-        )
-        for iseq in mask.iselection():
-          qm_nodes.add((iseq, identity))
-      qm_nodes |= self._graph_builder.seed_sym_nodes_within_radius(
-        seeds, model, self.params.buffer.radius
-      )
+      qm_nodes |= self._graph_builder.seed_nodes_within_radius(
+        seeds, model, self.params.buffer.radius)
     qm_nodes |= self._include_nodes_for(seeds, model)
     qm_nodes |= self._hbond_partner_nodes(model, qm_nodes)
     return qm_nodes
@@ -726,12 +719,11 @@ class QMRegionBuilder:
     if scope.scope == 'global':
       return self._include_nodes
 
-    # per_seed: union the proximity spheres of every seed in this group,
-    # reusing the graph builder's cached KD-tree.
+    # per_seed: union the proximity spheres of every seed in this group.
+    sites_cart = model.get_sites_cart()
     near = flex.bool(model.get_number_of_atoms(), False)
     for seed in seeds:
-      near = near | self._graph_builder.atoms_within_radius(
-        seed, model, scope.proximity)
+      near = near | sites_within_radius(sites_cart, seed.xyz, scope.proximity)
     near_iseqs = set(near.iselection())
 
     # Keep a residue whole if any of its atoms is inside a sphere.
@@ -827,24 +819,17 @@ class QMRegionBuilder:
     if not waters:
       return visited_nodes
 
-    # Candidates: (water index, operation) for each representative atom in
-    # place within the radius, and for each symmetry copy of one that
-    # get_siiu finds near the centroid, searched as one extra site.
+    # Candidates: (water index, operation) for each representative atom, in
+    # place or as a symmetry copy, within the radius of the centroid, which
+    # is searched around as one extra site.
     rep_iseqs = flex.size_t([w[0] for w in waters])
-    rep_cart = sites_cart.select(rep_iseqs)
-    identity = sgtbx.rt_mx()
-    candidates = []
-    for k in ((rep_cart - centroid).norms() <= radius).iselection():
-      candidates.append((k, identity))
     search_sites = flex.vec3_double([centroid])
-    search_sites.extend(rep_cart)
-    siiu, _ = super_cell.get_siiu(
-      crystal_symmetry=cs, sites_cart=search_sites, selection=[0],
-      select_within_radius=radius)
-    for j_seq, ops in siiu.items():
-      if j_seq == 0:
-        continue  # copies of the centroid itself
-      for op in ops:
+    search_sites.extend(sites_cart.select(rep_iseqs))
+    candidates = []
+    for j_seq, op in nodes_within_radius(
+        sites_cart=search_sites, crystal_symmetry=cs, radius=radius,
+        selection=[0]):
+      if j_seq != 0:  # not the centroid itself
         candidates.append((j_seq - 1, op))
 
     # Batched hull test: one flex dot product per hull plane over all
