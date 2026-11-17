@@ -8,7 +8,6 @@ driven directly in memory: construct it with a params object, then call
 """
 
 import copy
-import os
 from collections import defaultdict
 
 import libtbx.phil
@@ -163,7 +162,7 @@ def format_sidecar(result):
 
   Parameters
   ----------
-  result : dict
+  result : libtbx.group_args
       One region as returned by :meth:`QMRegionBuilder.run`.
 
   Returns
@@ -179,11 +178,11 @@ def format_sidecar(result):
   sidecar_phil = libtbx.phil.parse(master_sidecar_phil_str)
   sidecar_phil_extract = sidecar_phil.extract()
   region = sidecar_phil_extract.endo_exo_region
-  region.cap_iseqs = _or_none(result['cap_iseqs'])
-  region.cap_original_elements = _or_none(result['cap_original_elements'])
-  region.completed_iseqs = _or_none(result['completed_iseqs'])
-  region.seed_iseqs = _or_none(result['seed_iseqs'])
-  region.selection_string = result['selection_string']
+  region.cap_iseqs = _or_none(result.cap_iseqs)
+  region.cap_original_elements = _or_none(result.cap_original_elements)
+  region.completed_iseqs = _or_none(result.completed_iseqs)
+  region.seed_iseqs = _or_none(result.seed_iseqs)
+  region.selection_string = result.selection_string
   return sidecar_phil.format(sidecar_phil_extract).as_str()
 
 
@@ -206,8 +205,6 @@ class QMRegionBuilder:
     if logger is None:
       logger = null_out()
     self.logger = logger
-    self.model_name = None
-    self.default_output_filename = None
     self._results = []
     self._include_nodes = set()
     self._hbond_cache = None
@@ -225,24 +222,49 @@ class QMRegionBuilder:
       verbose=self.params.verbose,
     )
 
-  def run(self, model, model_name, default_output_filename=None):
+  def run(self, model):
     """Locate seeds and grow a QM region around each.
 
     Parameters
     ----------
     model : mmtbx.model.manager
         The input model.  Restraints are processed in place.
-    model_name : str
-        Source model filename; used to derive output filename stems.
-    default_output_filename : callable, optional
-        ``f(prefix=..., suffix=...) -> stem`` returning an output filename
-        stem (no extension), called with the model name as *prefix* and
-        the region's own suffix.  When None, the stem is the two joined.
 
     Returns
     -------
-    list of dict
-        One per-seed result dict (see :meth:`_process_seed`).
+    list of libtbx.group_args
+        One region per seed group, with
+
+        ``label`` (str)
+            The seed's identity, unique within the run: atom name, chain,
+            residue number and insertion code, and altloc when it has one,
+            as in ``FE1_chainB_res301`` or ``FE_chainA_res55A_altB``; or
+            ``sel001``, ``sel002``, ... for selection groups, in order.
+        ``model`` (mmtbx.model.manager)
+            The truncated, capped sub-model, without a restraints manager.
+        ``seed_iseqs`` (list of int)
+            Sorted positional indices of the seed atoms in ``model``.
+        ``cap_iseqs`` (list of int)
+            Sorted positional indices of the boundary atoms in ``model``,
+            whether or not capping is enabled; with ``capping.enable=False``
+            these atoms keep their original element and position.
+        ``cap_original_elements`` (list of str)
+            Element each cap atom carried before capping, parallel to
+            ``cap_iseqs``.
+        ``cap_anchor_iseqs`` (list of int)
+            Sorted, unique positional indices of the region's heavy atoms
+            the caps are bonded to.
+        ``completed_iseqs`` (list of int)
+            Sorted positional indices of the atoms added to repair a valence
+            the input model left open; they are not caps, and their
+            positions are constructed rather than measured.
+        ``sym_image_provenance`` (dict)
+            ``{i_seq: (parent_labels, symmetry_operation_xyz)}`` for each
+            symmetry-image atom, so a bond to one can be restrained against
+            its ASU parent; ``parent_labels`` is the parent's
+            ``iotbx.pdb.hierarchy.atom_with_labels`` (``fetch_labels()``).
+        ``selection_string`` (str or None)
+            The selection that seeded the group, or None for a metal.
 
     Raises
     ------
@@ -250,9 +272,6 @@ class QMRegionBuilder:
         When no seed atoms are found, a selection matches no atoms, or the
         model has no hydrogens where hydrogen bonds are needed.
     """
-    self.model_name = model_name
-    self.default_output_filename = default_output_filename
-
     # Only the bond graph is needed, so the CDL and symmetric-flip stages are
     # switched off: CDL ideals never reach the adjacency, and flipping would
     # move the input coordinates.  Metal auto-linking and the metal
@@ -490,21 +509,19 @@ class QMRegionBuilder:
     Parameters
     ----------
     seed_index : int
-        1-based index used in output filenames and messages.
+        1-based index used in the labels of selection groups.
     seeds : list of iotbx.pdb.hierarchy.atom
         Seed atom(s).
     model : mmtbx.model.manager
     adjacency : collections.defaultdict of set
         Full covalent graph (not modified).
     selection_str : str or None, optional
-        Original selection string used to derive the output filename.
+        The selection that seeded the group.
 
     Returns
     -------
-    dict
-        Keys: ``file_name``, ``n_atoms``, ``model``, ``seed_iseqs``,
-        ``cap_iseqs``, ``cap_original_elements``, ``cap_anchor_iseqs``,
-        ``completed_iseqs``, ``sym_image_provenance``, ``selection_string``.
+    libtbx.group_args
+        One region, as :meth:`run` describes it.
     """
     qm_atoms = self._seed_qm_region(seeds, model)
     visited_nodes, cap_nodes = self._region_grower.grow_region(
@@ -520,33 +537,16 @@ class QMRegionBuilder:
     self._report_open_valences(
       model, visited_nodes, cap_nodes, adjacency, region.completed_nodes)
 
-    file_name = self._make_output_filename(
-      seed_index, seeds, selection_str=selection_str
-    )
-
-    return {
-      'file_name': file_name,
-      'n_atoms': region.model.get_number_of_atoms(),
-      # In-memory hand-off: the truncated sub-model (no restraints manager)
-      # and the positional indices of seed and cap atoms inside it, plus the
-      # heavy-atom anchor each cap is bonded to (kept in memory only, not the
-      # on-disk sidecar).
-      'model': region.model,
-      'seed_iseqs': region.seed_iseqs,
-      'cap_iseqs': region.cap_iseqs,
-      'cap_original_elements': region.cap_original_elements,
-      'cap_anchor_iseqs': region.cap_anchor_iseqs,
-      # Atoms added to repair an open valence.  They are not caps, and their
-      # positions are constructed rather than measured, so a consumer that
-      # freezes caps may still want to leave these free to relax.
-      'completed_iseqs': region.completed_iseqs,
-      # {sub-model i_seq: (parent atom_with_labels, symmetry_operation_xyz)}
-      # for symmetry-image atoms, so a metal-ligand bond to one can be
-      # restrained against its ASU parent (kept in memory only, not the
-      # on-disk sidecar).
-      'sym_image_provenance': region.sym_image_provenance,
-      'selection_string': selection_str,
-    }
+    return group_args(
+      label=self._region_label(seed_index, seeds, selection_str),
+      model=region.model,
+      seed_iseqs=region.seed_iseqs,
+      cap_iseqs=region.cap_iseqs,
+      cap_original_elements=region.cap_original_elements,
+      cap_anchor_iseqs=region.cap_anchor_iseqs,
+      completed_iseqs=region.completed_iseqs,
+      sym_image_provenance=region.sym_image_provenance,
+      selection_string=selection_str)
 
   # ------------------------------------------------------------------
   # Pipeline steps
@@ -1431,18 +1431,13 @@ class QMRegionBuilder:
         parent_atoms[parent_iseq].fetch_labels(), op.as_xyz())
     return sym_image_provenance
 
-  def _make_output_filename(self, seed_index, seeds, selection_str=None):
-    """Build the output filename stem from the model name and seed identity.
+  @staticmethod
+  def _region_label(seed_index, seeds, selection_str=None):
+    """Return the label of a region, from its seed.
 
-    When *selection_str* is given the stem is::
-
-        {model_stem}_sel{seed_index:03d}_within{radius}A_depth{depth}
-
-    When seeds are individual metal atoms the stem is::
-
-        {model_stem}_{name}_chain{chain}_res{resseq}{icode}_within{radius}A_depth{depth}
-
-    with ``_alt{altloc}`` after the residue when the seed has an altloc.
+    ``sel{seed_index:03d}`` for a selection group; for a metal seed
+    ``{name}_chain{chain}_res{resseq}{icode}``, with ``_alt{altloc}`` after
+    it when the seed has an altloc.
 
     Parameters
     ----------
@@ -1453,32 +1448,16 @@ class QMRegionBuilder:
     Returns
     -------
     str
-        Filename stem without extension.
     """
-    model_stem = os.path.splitext(os.path.basename(self.model_name))[0]
-
-    common_suffix = (
-      f'_within{self.params.buffer.radius:.2f}A'
-      f'_depth{self.params.max_search_depth}'
-    )
-
     if selection_str:
-      seed_suffix = f'_sel{seed_index:03d}' + common_suffix
-    else:
-      seed = seeds[0]
-      atom_group = seed.parent()
-      residue_group = atom_group.parent()
-      chain = residue_group.parent()
-      seed_suffix = (
-        f'_{seed.name.strip()}_chain{chain.id.strip()}'
-        f'_res{residue_group.resseq.strip()}{residue_group.icode.strip()}')
-      if atom_group.altloc.strip():
-        seed_suffix += f'_alt{atom_group.altloc.strip()}'
-      seed_suffix += common_suffix
-
-    if self.default_output_filename is None:
-      return model_stem + seed_suffix
-    return self.default_output_filename(
-      prefix=model_stem,
-      suffix=seed_suffix,
-    )
+      return f'sel{seed_index:03d}'
+    seed = seeds[0]
+    atom_group = seed.parent()
+    residue_group = atom_group.parent()
+    chain = residue_group.parent()
+    label = (
+      f'{seed.name.strip()}_chain{chain.id.strip()}'
+      f'_res{residue_group.resseq.strip()}{residue_group.icode.strip()}')
+    if atom_group.altloc.strip():
+      label += f'_alt{atom_group.altloc.strip()}'
+    return label

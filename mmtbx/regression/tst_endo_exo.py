@@ -397,7 +397,7 @@ def _residue_atom_names(result, resseq):
   """Return the sorted set of atom names for residue *resseq* in the
   materialized submodel of *result* (empty set if the residue is absent)."""
   names = set()
-  for rg in result["model"].get_hierarchy().residue_groups():
+  for rg in result.model.get_hierarchy().residue_groups():
     if rg.resseq.strip() == resseq:
       for ag in rg.atom_groups():
         for a in ag.atoms():
@@ -425,27 +425,27 @@ def exercise_residues_to_include():
 
   # Baseline: the sidechain is cut back at CB.
   base = _run_endo_exo_on_string(_1BQ8_FE_SPHERE_PDB)
-  assert base["model"].get_number_of_atoms() == 170
+  assert base.model.get_number_of_atoms() == 170
   assert heavy_lys7(base) == cut_back_lys7, (
     f"expected the sidechain cut at CB, got {sorted(heavy_lys7(base))}")
 
   # per_seed, proximity below the 5.88 A closest approach -> still excluded.
   near_excl = _run_endo_exo_on_string(
     _1BQ8_FE_SPHERE_PDB, include=("resseq 7", "per_seed", 5.0))
-  assert near_excl["model"].get_number_of_atoms() == 170
+  assert near_excl.model.get_number_of_atoms() == 170
   assert heavy_lys7(near_excl) == cut_back_lys7
 
   # per_seed, proximity above 5.88 A -> included whole (all 9 heavy atoms),
   # regardless of the sidechain cut rules.
   near_incl = _run_endo_exo_on_string(
     _1BQ8_FE_SPHERE_PDB, include=("resseq 7", "per_seed", 7.0))
-  assert near_incl["model"].get_number_of_atoms() == 178
+  assert near_incl.model.get_number_of_atoms() == 178
   assert heavy_lys7(near_incl) == full_lys7
 
   # global ignores proximity: included even with a tiny sphere.
   glob = _run_endo_exo_on_string(
     _1BQ8_FE_SPHERE_PDB, include=("resseq 7", "global", 1.0))
-  assert glob["model"].get_number_of_atoms() == 178
+  assert glob.model.get_number_of_atoms() == 178
   assert heavy_lys7(glob) == full_lys7
 
   # Whole-residue expansion: a single-atom selection still pulls the
@@ -470,7 +470,7 @@ def exercise_submodel_shape():
   element distribution, seed and cap iseq counts."""
   result = _run_endo_exo_on_string(_1BQ8_FE_SPHERE_PDB)
 
-  atoms = list(result["model"].get_hierarchy().atoms())
+  atoms = list(result.model.get_hierarchy().atoms())
   assert len(atoms) == 170, (
     f"submodel atom count drifted: expected 170, got {len(atoms)}")
 
@@ -484,20 +484,20 @@ def exercise_submodel_shape():
     f"  expected: {expected_elements}\n"
     f"  got     : {elements}")
 
-  assert len(result["seed_iseqs"]) == 1
-  assert len(result["cap_iseqs"]) == 8
-  seed_iseq = result["seed_iseqs"][0]
+  assert len(result.seed_iseqs) == 1
+  assert len(result.cap_iseqs) == 8
+  seed_iseq = result.seed_iseqs[0]
   assert atoms[seed_iseq].element.strip().upper() == "FE"
 
   # Each cap's heavy-atom anchor is recorded (caps sit 1.1 A from their
   # anchor): anchors are heavy atoms, and every cap has one within bonding
   # distance.
-  anchors = result["cap_anchor_iseqs"]
+  anchors = result.cap_anchor_iseqs
   assert anchors, "no cap anchors recorded"
   for ai in anchors:
     assert atoms[ai].element.strip().upper() != "H", (
       f"cap anchor {ai} is not a heavy atom")
-  for ci in result["cap_iseqs"]:
+  for ci in result.cap_iseqs:
     cap_xyz = matrix.col(atoms[ci].xyz)
     assert any((matrix.col(atoms[ai].xyz) - cap_xyz).length() < 1.2
                for ai in anchors), (
@@ -508,7 +508,7 @@ def exercise_cys_coordination():
   """Verify the chemistry: the four Cys side chains coordinate the Fe
   with Sg atoms within 3 A of the seed."""
   result = _run_endo_exo_on_string(_1BQ8_FE_SPHERE_PDB)
-  hier = result["model"].get_hierarchy()
+  hier = result.model.get_hierarchy()
   atoms = list(hier.atoms())
 
   cys_residues = [
@@ -517,7 +517,7 @@ def exercise_cys_coordination():
   assert len(cys_residues) == 4, (
     f"expected 4 Cys residues in submodel; got {len(cys_residues)}")
 
-  seed_iseq = result["seed_iseqs"][0]
+  seed_iseq = result.seed_iseqs[0]
   fe_xyz = matrix.col(atoms[seed_iseq].xyz)
   sg_distances = []
   for ag in cys_residues:
@@ -687,7 +687,7 @@ def exercise_2c2u_symmetry_materialization():
     distinct ones that no original chain uses.
   """
   result = _run_endo_exo_on_string(_2C2U_FE_SPHERE_PDB)
-  hier = result["model"].get_hierarchy()
+  hier = result.model.get_hierarchy()
 
   fe_atoms = 0
   asp93_groups = 0
@@ -730,10 +730,10 @@ def exercise_2c2u_symmetry_materialization():
       "HETATM%5d  O   HOH %s 900    %8.3f%8.3f%8.3f  1.00 20.00           O"
       % (900 + k, chain_id, 45.0 + 3.0 * k, 45.0, 45.0))
   many_chains = _run_endo_exo_on_string("\n".join(lines))
-  assert (many_chains["model"].get_number_of_atoms() ==
-          result["model"].get_number_of_atoms())
+  assert (many_chains.model.get_number_of_atoms() ==
+          result.model.get_number_of_atoms())
   many_chain_ids = {
-    ch.id for ch in many_chains["model"].get_hierarchy().chains()}
+    ch.id for ch in many_chains.model.get_hierarchy().chains()}
   assert len(many_chain_ids) == len(chain_ids), sorted(many_chain_ids)
 
   from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
@@ -761,10 +761,10 @@ def exercise_2c2u_fe_coordination_distances():
   materialization should all be within Fe coordination range
   (<= 3.0 A from the deduplicated Fe)."""
   result = _run_endo_exo_on_string(_2C2U_FE_SPHERE_PDB)
-  hier = result["model"].get_hierarchy()
+  hier = result.model.get_hierarchy()
   atoms = list(hier.atoms())
 
-  seed_iseq = result["seed_iseqs"][0]
+  seed_iseq = result.seed_iseqs[0]
   fe_xyz = matrix.col(atoms[seed_iseq].xyz)
   assert atoms[seed_iseq].element.strip().upper() == "FE"
 
@@ -803,7 +803,7 @@ def exercise_2c2u_symmetry_truncation_consistency():
   ASU seeds) while the symmetry images, reached only by BFS, were cut at
   CA-CB; this pins that asymmetry shut."""
   result = _run_endo_exo_on_string(_2C2U_FE_SPHERE_PDB, radius=6.0)
-  hier = result["model"].get_hierarchy()
+  hier = result.model.get_hierarchy()
 
   asp_copies = []
   for ch in hier.chains():
@@ -834,7 +834,7 @@ def exercise_residue_composition():
   """The default buffer (radius=5, depth=3) pulls in a stable scaffold
   around the four coordinating Cys.  Pin the residue type counts."""
   result = _run_endo_exo_on_string(_1BQ8_FE_SPHERE_PDB)
-  hier = result["model"].get_hierarchy()
+  hier = result.model.get_hierarchy()
 
   resname_counts = {}
   for ag in hier.atom_groups():
@@ -976,7 +976,7 @@ def exercise_selection_seed_terminates():
   result = _run_endo_exo_on_string(_1YJP_PDB, selection="resid 3")
 
   # Finite region, not an unbounded lattice walk.
-  n = result["model"].get_number_of_atoms()
+  n = result.model.get_number_of_atoms()
   assert 0 < n < 400, f"resid 3 region atom count looks unbounded: {n}"
 
   # The seeded ASN 3 is present with its side chain kept whole.
@@ -1135,8 +1135,8 @@ def exercise_proline_ring_is_never_cut():
   for seed in ("resseq 40 and name CG", "resseq 45 and name CG"):
     result = _run_endo_exo_params(
       _1BQ8_FE_SPHERE_PDB, buffer__skip_search=True, selection=[seed])[0]
-    hierarchy = result["model"].get_hierarchy()
-    caps = set(result["cap_iseqs"])
+    hierarchy = result.model.get_hierarchy()
+    caps = set(result.cap_iseqs)
     present = {
       atom.name.strip()
       for i_seq, atom in enumerate(hierarchy.atoms())
@@ -1285,8 +1285,8 @@ def exercise_cut_refused_when_it_would_strand_the_anchor():
   finally:
     QMRegionGrower._demote_cap_candidate = original
 
-  hierarchy = result["model"].get_hierarchy()
-  caps = set(result["cap_iseqs"])
+  hierarchy = result.model.get_hierarchy()
+  caps = set(result.cap_iseqs)
   kept = {
     atom.name.strip()
     for i_seq, atom in enumerate(hierarchy.atoms())
@@ -1316,7 +1316,7 @@ def exercise_no_atom_is_left_unattached():
   for radius in (5.0, 6.0, 7.0, 8.0):
     for result in _run_endo_exo_params(
         _1BQ8_FE_SPHERE_PDB, buffer__radius=radius):
-      hierarchy = result["model"].get_hierarchy()
+      hierarchy = result.model.get_hierarchy()
       atoms = list(hierarchy.atoms())
       heavy = [
         (i_seq, atom) for i_seq, atom in enumerate(atoms)
@@ -1912,8 +1912,8 @@ def exercise_hbond_partners():
     for result in _run_endo_exo_params(
         _1BQ8_FE_SPHERE_PDB, buffer__radius=7.0,
         include_hbond_partners=enabled):
-      hierarchy = result["model"].get_hierarchy()
-      cap_iseqs = set(result["cap_iseqs"])
+      hierarchy = result.model.get_hierarchy()
+      cap_iseqs = set(result.cap_iseqs)
       for i_seq, atom in enumerate(hierarchy.atoms()):
         if atom.element_is_hydrogen() and i_seq not in cap_iseqs:
           continue
@@ -1994,8 +1994,8 @@ def exercise_2c2u_sym_image_provenance():
     atom.set_uij(u_cart)
   result = _run_endo_exo_on_string(
     hierarchy.as_pdb_string(crystal_symmetry=crystal_symmetry))
-  prov = result["sym_image_provenance"]
-  atoms = list(result["model"].get_hierarchy().atoms())
+  prov = result.sym_image_provenance
+  atoms = list(result.model.get_hierarchy().atoms())
   identity = sgtbx.rt_mx().as_xyz()
   unit_cell = crystal_symmetry.unit_cell()
 
@@ -2032,7 +2032,7 @@ def exercise_2c2u_sym_image_provenance():
   parent_hierarchy = iotbx.pdb.input(
     source_info=None, lines=lines).construct_hierarchy()
   ids = [a.id_str() for a in parent_hierarchy.atoms()]
-  prov = _run_endo_exo_on_string(pdb_str)["sym_image_provenance"]
+  prov = _run_endo_exo_on_string(pdb_str).sym_image_provenance
   assert len(prov) == 6, len(prov)
   for iseq, (ident, op_xyz) in prov.items():
     assert ids.count(ident.id_str()) == 1, (iseq, ident.id_str(), op_xyz)
@@ -2045,7 +2045,7 @@ def exercise_special_position_water_dedup():
   keeps both two-H copies."""
   result = _run_endo_exo_on_string(_SPECIAL_POS_WATER_PDB)
   waters = []
-  for ch in result["model"].get_hierarchy().chains():
+  for ch in result.model.get_hierarchy().chains():
     for rg in ch.residue_groups():
       for ag in rg.atom_groups():
         if ag.resname.strip().upper() != "HOH":
@@ -2134,18 +2134,18 @@ def region_invariant_violations(result, cap_bond=1.1, tol=1.0e-4):
   * ``cap_original_elements`` is parallel to ``cap_iseqs``.
   """
   # Keep the hierarchy referenced: atoms taken from a discarded one dangle.
-  hierarchy = result["model"].get_hierarchy()
+  hierarchy = result.model.get_hierarchy()
   atoms = list(hierarchy.atoms())
-  caps = list(result["cap_iseqs"])
+  caps = list(result.cap_iseqs)
   bad = []
 
-  if len(result["cap_original_elements"]) != len(caps):
+  if len(result.cap_original_elements) != len(caps):
     bad.append("cap_original_elements is not parallel to cap_iseqs")
   if len(set(caps)) != len(caps):
     bad.append(f"cap_iseqs has duplicates: {caps}")
   if any(ci < 0 or ci >= len(atoms) for ci in caps):
     bad.append(f"cap_iseqs out of range for {len(atoms)} atoms: {caps}")
-  overlap = set(caps) & set(result["seed_iseqs"])
+  overlap = set(caps) & set(result.seed_iseqs)
   if overlap:
     bad.append(f"atoms are both cap and seed: {sorted(overlap)}")
 
@@ -2167,7 +2167,7 @@ def region_invariant_violations(result, cap_bond=1.1, tol=1.0e-4):
                  f"from its nearest heavy atom, expected {cap_bond}")
     observed_anchors.add(anchor)
 
-  if observed_anchors != set(result["cap_anchor_iseqs"]):
+  if observed_anchors != set(result.cap_anchor_iseqs):
     bad.append(f"cap_anchor_iseqs {sorted(result['cap_anchor_iseqs'])} does "
                f"not match the anchors actually used "
                f"{sorted(observed_anchors)}")
@@ -2185,23 +2185,25 @@ def exercise_capping_disabled():
     on = _run_endo_exo_params(pdb_str, capping__enable=True)[0]
     off = _run_endo_exo_params(pdb_str, capping__enable=False)[0]
 
-    assert on["n_atoms"] == off["n_atoms"], (on["n_atoms"], off["n_atoms"])
-    assert on["cap_iseqs"] == off["cap_iseqs"], "cap set must not depend on capping"
-    assert on["cap_anchor_iseqs"] == off["cap_anchor_iseqs"], (
+    n_on = on.model.get_number_of_atoms()
+    n_off = off.model.get_number_of_atoms()
+    assert n_on == n_off, (n_on, n_off)
+    assert on.cap_iseqs == off.cap_iseqs, "cap set must not depend on capping"
+    assert on.cap_anchor_iseqs == off.cap_anchor_iseqs, (
       "anchors must be recorded whether or not a hydrogen is placed")
-    assert len(on["cap_iseqs"]) > 0, "fixture is expected to have caps"
+    assert len(on.cap_iseqs) > 0, "fixture is expected to have caps"
 
-    assert on["cap_original_elements"] == off["cap_original_elements"], (
-      on["cap_original_elements"], off["cap_original_elements"])
+    assert on.cap_original_elements == off.cap_original_elements, (
+      on.cap_original_elements, off.cap_original_elements)
 
-    on_hier = on["model"].get_hierarchy()
-    off_hier = off["model"].get_hierarchy()
+    on_hier = on.model.get_hierarchy()
+    off_hier = off.model.get_hierarchy()
     on_atoms = list(on_hier.atoms())
     off_atoms = list(off_hier.atoms())
-    for k, ci in enumerate(on["cap_iseqs"]):
+    for k, ci in enumerate(on.cap_iseqs):
       assert on_atoms[ci].element.strip().upper() == "H", (
         f"capping on: cap {ci} should be H")
-      assert off_atoms[ci].element.strip() == on["cap_original_elements"][k], (
+      assert off_atoms[ci].element.strip() == on.cap_original_elements[k], (
         f"capping off: cap {ci} should keep its original element")
 
 
@@ -2219,7 +2221,7 @@ def exercise_special_position_partial_overlap():
   for radius in (4.0, 5.0, 6.0):
     result = _run_endo_exo_params(
       _SPECIAL_PARTIAL_PDB, buffer__radius=radius, selection=["resname ZN"])
-    atoms = list(result[0]["model"].get_hierarchy().atoms())
+    atoms = list(result[0].model.get_hierarchy().atoms())
     assert len(atoms) > 10, f"region collapsed to {len(atoms)} atoms"
     for i, atom in enumerate(atoms):
       for other in atoms[i + 1:]:
@@ -2236,7 +2238,7 @@ def exercise_special_position_partial_overlap():
     result = _run_endo_exo_params(
       _ALTLOC_PDB, buffer__radius=4.0, altloc=mode,
       selection=["name CA"], buffer__skip_search=True)
-    hierarchy = result[0]["model"].get_hierarchy()
+    hierarchy = result[0].model.get_hierarchy()
     present = {ag.altloc.strip() or "." for ag in hierarchy.atom_groups()}
     assert present == expected, f"altloc={mode} gave {present}"
 
@@ -2321,10 +2323,10 @@ def exercise_element_filter():
   def _seed_elements(results):
     out = []
     for res in results:
-      hierarchy = res["model"].get_hierarchy()
+      hierarchy = res.model.get_hierarchy()
       atoms = list(hierarchy.atoms())
       out.append(sorted(atoms[i].element.strip().upper()
-                        for i in res["seed_iseqs"]))
+                        for i in res.seed_iseqs))
     return sorted(out)
 
   both = _run_endo_exo_params(two_metals)
@@ -2356,16 +2358,19 @@ def exercise_depth_and_skip_search():
   the seed is the metal alone, and metal coordination bonds are absent from
   the graph (``link_metals=False``), so there is nothing to expand through."""
   for pdb_str in (_1BQ8_FE_SPHERE_PDB, _2C2U_FE_SPHERE_PDB):
-    sizes = {_run_endo_exo_params(pdb_str, max_search_depth=d)[0]["n_atoms"]
-             for d in (0, 1, 2, 3, 10)}
+    sizes = set()
+    for d in (0, 1, 2, 3, 10):
+      region = _run_endo_exo_params(pdb_str, max_search_depth=d)[0]
+      sizes.add(region.model.get_number_of_atoms())
     assert len(sizes) == 1, f"max_search_depth changed the region: {sizes}"
 
     skipped = _run_endo_exo_params(pdb_str, buffer__skip_search=True)[0]
     # The region is exactly the seed set: nothing was added by the radius
     # search, and a metal has no covalent edge to expand along.
-    assert sorted(skipped["seed_iseqs"]) == list(range(skipped["n_atoms"])), (
-      skipped["seed_iseqs"], skipped["n_atoms"])
-    assert skipped["cap_iseqs"] == [], skipped["cap_iseqs"]
+    n_skipped = skipped.model.get_number_of_atoms()
+    assert sorted(skipped.seed_iseqs) == list(range(n_skipped)), (
+      skipped.seed_iseqs, n_skipped)
+    assert skipped.cap_iseqs == [], skipped.cap_iseqs
 
 
 # Two iron atoms in one residue, placed away from the 1BQ8 Fe site, so that
@@ -2410,14 +2415,14 @@ def exercise_write_files_roundtrip():
       f.write("\n".join(lines) + "\n" + _FES_HETATM + "END\n")
 
     results = run()
-    stems = [r["file_name"] for r in results]
+    stems = [r.file_name for r in results]
     assert len(results) == 3 and len(set(stems)) == 3, stems
     for stem in stems:
       for ext in (".pdb", ".phil"):
         assert os.path.isfile(stem + ext), f"missing {stem + ext}"
       assert not os.path.isfile(stem + ".cif"), f"{stem}.cif written"
     result = results[0]
-    stem = result["file_name"]
+    stem = result.file_name
 
     # Fetch against the schema so the values come back typed, which also
     # checks the sidecar carries nothing the schema does not declare.
@@ -2428,19 +2433,20 @@ def exercise_write_files_roundtrip():
       source=written_phil,
       track_unused_definitions=unused).extract().endo_exo_region
     assert not unused, f"sidecar has undeclared parameters: {unused}"
-    assert list(region.cap_iseqs) == list(result["cap_iseqs"]), (
-      region.cap_iseqs, result["cap_iseqs"])
-    assert list(region.seed_iseqs) == list(result["seed_iseqs"]), (
-      region.seed_iseqs, result["seed_iseqs"])
+    assert list(region.cap_iseqs) == list(result.cap_iseqs), (
+      region.cap_iseqs, result.cap_iseqs)
+    assert list(region.seed_iseqs) == list(result.seed_iseqs), (
+      region.seed_iseqs, result.seed_iseqs)
     assert list(region.completed_iseqs or []) == list(
-      result["completed_iseqs"])
+      result.completed_iseqs)
     assert list(region.cap_original_elements) == list(
-      result["cap_original_elements"])
+      result.cap_original_elements)
     assert region.selection_string is None
 
     pdb_in = iotbx.pdb.input(file_name=stem + ".pdb")
     watoms = list(pdb_in.construct_hierarchy().atoms())
-    assert len(watoms) == result["n_atoms"], (len(watoms), result["n_atoms"])
+    n_atoms = result.model.get_number_of_atoms()
+    assert len(watoms) == n_atoms, (len(watoms), n_atoms)
     assert pdb_in.crystal_symmetry() is not None, "written PDB lost CRYST1"
     for ci in region.cap_iseqs:
       assert watoms[ci].element.strip().upper() == "H", (
@@ -2455,11 +2461,11 @@ def exercise_write_files_roundtrip():
 
     others = run("output.prefix=other", "output.target_output_format=mmcif")
     for r in others:
-      assert r["file_name"].startswith("other_"), r["file_name"]
-      assert os.path.isfile(r["file_name"] + ".cif"), r["file_name"]
-      assert not os.path.isfile(r["file_name"] + ".pdb"), r["file_name"]
+      assert r.file_name.startswith("other_"), r.file_name
+      assert os.path.isfile(r.file_name + ".cif"), r.file_name
+      assert not os.path.isfile(r.file_name + ".pdb"), r.file_name
     cif_atoms = list(iotbx.pdb.input(
-      file_name=others[0]["file_name"] + ".cif").construct_hierarchy().atoms())
+      file_name=others[0].file_name + ".cif").construct_hierarchy().atoms())
     for ci in region.cap_iseqs:
       assert cif_atoms[ci].element.strip().upper() == "H", (
         f"sidecar cap index {ci} does not address a hydrogen in the mmCIF")
@@ -2474,9 +2480,9 @@ def exercise_write_files_roundtrip():
     # A region with no caps must still write a sidecar that re-parses: an
     # empty list cannot be expressed in PHIL, so it is written as None.
     capless = run("buffer.skip_search=True", "output.prefix=capless")[0]
-    assert capless["cap_iseqs"] == [], capless["cap_iseqs"]
+    assert capless.cap_iseqs == [], capless.cap_iseqs
     capless_region = schema.fetch(source=libtbx.phil.parse(
-      file_name=capless["file_name"] + ".phil")).extract().endo_exo_region
+      file_name=capless.file_name + ".phil")).extract().endo_exo_region
     assert capless_region.cap_iseqs is None, capless_region.cap_iseqs
     assert capless_region.seed_iseqs is not None
 
@@ -2495,9 +2501,8 @@ def exercise_builder_without_logger():
   """Driven directly without a logger, the builder prints nothing and leaves
   the interpretation parameters the caller's model was processed with as
   they were.  With a logger it logs a summary, and the per-atom trace of cuts
-  and caps only with verbose=True.  Given no parameters and no naming
-  callback, it uses its own defaults and names a region after the model and
-  the seed."""
+  and caps only with verbose=True.  Given no parameters, it uses its own
+  defaults, and it labels a region by its seed."""
   import contextlib
   from libtbx.utils import null_out
   from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
@@ -2515,8 +2520,7 @@ def exercise_builder_without_logger():
   before = flags()
   stdout = io.StringIO()
   with contextlib.redirect_stdout(stdout):
-    QMRegionBuilder(_program_master_phil().extract()).run(
-      model, "model.pdb", lambda prefix, suffix: prefix + suffix)
+    QMRegionBuilder(_program_master_phil().extract()).run(model)
   assert stdout.getvalue() == "", stdout.getvalue()[:300]
   assert flags() == before, (flags(), before)
 
@@ -2527,8 +2531,7 @@ def exercise_builder_without_logger():
     params = _program_master_phil().extract()
     params.verbose = verbose
     log = io.StringIO()
-    QMRegionBuilder(params, logger=log).run(
-      model, "model.pdb", lambda prefix, suffix: prefix + suffix)
+    QMRegionBuilder(params, logger=log).run(model)
     return log.getvalue()
 
   quiet = log_of(False)
@@ -2540,9 +2543,8 @@ def exercise_builder_without_logger():
 
   model = mmtbx.model.manager(model_input=iotbx.pdb.input(
     source_info=None, lines=_1BQ8_FE_SPHERE_PDB.split("\n")), log=null_out())
-  result = QMRegionBuilder().run(model, "model.pdb")[0]
-  assert result["file_name"] == "model_FE_chainA_res55_within5.00A_depth3", (
-    result["file_name"])
+  result = QMRegionBuilder().run(model)[0]
+  assert result.label == "FE_chainA_res55", result.label
 
 
 def exercise_region_invariants():
@@ -2674,7 +2676,7 @@ END
 
 def _atom_names_by_residue(result):
   """Return ``{resseq: set of atom names}`` for a region."""
-  hierarchy = result["model"].get_hierarchy()
+  hierarchy = result.model.get_hierarchy()
   out = {}
   for atom in hierarchy.atoms():
     resseq = atom.parent().parent().resseq.strip()
@@ -2719,8 +2721,8 @@ def exercise_radius_only_grows_the_region():
         pdb_str, buffer__radius=radius, **overrides)
       present, interior = set(), set()
       for result in results:
-        hierarchy = result["model"].get_hierarchy()
-        caps = set(result["cap_iseqs"])
+        hierarchy = result.model.get_hierarchy()
+        caps = set(result.cap_iseqs)
         for i_seq, atom in enumerate(hierarchy.atoms()):
           residue_group = atom.parent().parent()
           key = (residue_group.parent().id.strip(),
@@ -2830,9 +2832,9 @@ def exercise_amide_unit_is_never_split():
     for radius in (5.0, 7.0):
       for result in _run_endo_exo_params(
           pdb_str, buffer__radius=radius, **overrides):
-        hierarchy = result["model"].get_hierarchy()
+        hierarchy = result.model.get_hierarchy()
         atoms = list(hierarchy.atoms())
-        caps = set(result["cap_iseqs"])
+        caps = set(result.cap_iseqs)
         # Capping sets the element to H but leaves the name alone, so a
         # severed nitrogen still reads as "N" and no longer reads as
         # nitrogen.  Ask what each atom WAS, or the check walks straight
@@ -2841,7 +2843,7 @@ def exercise_amide_unit_is_never_split():
                for i_seq, atom in enumerate(atoms)}
         was.update({
           i_seq: element.strip().upper() for i_seq, element
-          in zip(result["cap_iseqs"], result["cap_original_elements"])})
+          in zip(result.cap_iseqs, result.cap_original_elements)})
         partners = [i_seq for i_seq, element in was.items()
                     if element in ("O", "N")]
 
@@ -3153,8 +3155,8 @@ def exercise_terminal_amine_kept():
   for radius in (3.0, 5.0):
     result = _run_endo_exo_params(
       _TRIPEPTIDE_PDB, selection=seed, buffer__radius=radius)[0]
-    hierarchy = result["model"].get_hierarchy()
-    caps = set(result["cap_iseqs"])
+    hierarchy = result.model.get_hierarchy()
+    caps = set(result.cap_iseqs)
     for i_seq, atom in enumerate(hierarchy.atoms()):
       residue_group = atom.parent().parent()
       if residue_group.resseq.strip() != "1" or atom.name.strip() != "N":
@@ -3215,9 +3217,9 @@ def exercise_terminal_carboxylate_kept():
   assert "OXT" not in broken
   result = _run_endo_exo_params(
     broken, selection=seed, buffer__radius=3.0)[0]
-  hierarchy = result["model"].get_hierarchy()
+  hierarchy = result.model.get_hierarchy()
   atoms = list(hierarchy.atoms())
-  caps = set(result["cap_iseqs"])
+  caps = set(result.cap_iseqs)
   for i, atom in enumerate(atoms):
     if atom.parent().parent().resseq.strip() != "3":
       continue
@@ -3243,7 +3245,7 @@ def exercise_scaffold_residue_keeps_no_functional_group():
   for radius in (5.0, 6.0, 7.0, 8.0, 9.0):
     result = _run_endo_exo_params(
       _1BQ8_FE_SPHERE_PDB, buffer__radius=radius)[0]
-    hierarchy = result["model"].get_hierarchy()
+    hierarchy = result.model.get_hierarchy()
     heavy = set()
     for atom in hierarchy.atoms():
       if atom.element_is_hydrogen():
@@ -3265,7 +3267,7 @@ def exercise_ligand_keeps_its_coordinating_group():
   BFS enters the Cys ligands of 1BQ8 at SG, so it meets the CA-CB entry
   first and the thiolate survives."""
   result = _run_endo_exo_params(_1BQ8_FE_SPHERE_PDB)[0]
-  hierarchy = result["model"].get_hierarchy()
+  hierarchy = result.model.get_hierarchy()
   by_res = {}
   for atom in hierarchy.atoms():
     if atom.element_is_hydrogen():
@@ -3288,7 +3290,7 @@ def exercise_symmetry_images_truncate_alike():
   agree."""
   result = _run_endo_exo_params(
     _2C2U_FE_SPHERE_PDB, buffer__radius=6.0)[0]
-  hierarchy = result["model"].get_hierarchy()
+  hierarchy = result.model.get_hierarchy()
   # One shape per residue COPY: union the atom groups of a residue group,
   # so a shared backbone plus an altloc'd sidechain counts once rather than
   # as two shapes.  Each symmetry image lands in its own chain.
@@ -3490,15 +3492,15 @@ def exercise_chain_break_carbonyl_is_completed():
       ("r=9", 9.0, 18, {"ARG", "NH2", "ASP"})):
     result = _run_endo_exo_params(
       _2C2U_FE_SPHERE_PDB, buffer__radius=radius)[0]
-    submodel = result["model"]
+    submodel = result.model
     atoms = list(submodel.get_hierarchy().atoms())
-    completed = result["completed_iseqs"]
+    completed = result.completed_iseqs
     assert len(completed) == expected_added, (
       f"{mode}: completed {len(completed)} atoms, expected {expected_added}")
 
     # Added atoms are not caps: a consumer round-trips a cap through its
     # original element, and these have none.
-    assert not set(completed) & set(result["cap_iseqs"]), (
+    assert not set(completed) & set(result.cap_iseqs), (
       f"{mode}: an added atom is listed as a cap")
     assert {atoms[i].parent().resname.strip()
             for i in completed} == expected_resnames, (
@@ -3507,8 +3509,8 @@ def exercise_chain_break_carbonyl_is_completed():
 
     # Every added atom must BOND.  Rebuild restraints the way a consumer
     # does, with cap elements restored first.
-    for i_seq, element in zip(result["cap_iseqs"],
-                              result["cap_original_elements"]):
+    for i_seq, element in zip(result.cap_iseqs,
+                              result.cap_original_elements):
       atoms[i_seq].set_element(element)
     rebuilt = mmtbx.model.manager(
       model_input=None, pdb_hierarchy=submodel.get_hierarchy(),
@@ -3538,7 +3540,7 @@ def exercise_chain_break_carbonyl_is_completed():
     # No backbone carbonyl is left a bond short.  Either repair satisfies it:
     # an amide nitrogen where the chain continues, a second carboxylate
     # oxygen where it ends.
-    caps = set(result["cap_iseqs"])
+    caps = set(result.cap_iseqs)
     short = []
     for i, a in enumerate(rebuilt_atoms):
       if i in caps or a.name.strip().upper() != "C":
@@ -3632,7 +3634,7 @@ def exercise_completed_amide_follows_its_altloc():
     "\n".join(split), buffer__radius=8.0, altloc="all",
     selection=["chain A and resseq 43 and name C"],
     buffer__skip_search=True)[0]
-  submodel = result["model"]
+  submodel = result.model
   atoms = list(submodel.get_hierarchy().atoms())
   restored = [i for i, a in enumerate(atoms)
               if a.parent().resname.strip() == "NH2"]
@@ -3641,8 +3643,8 @@ def exercise_completed_amide_follows_its_altloc():
     f"restored amides carry altlocs "
     f"{sorted({atoms[i].parent().altloc or '-' for i in restored})}")
 
-  for i_seq, element in zip(result["cap_iseqs"],
-                            result["cap_original_elements"]):
+  for i_seq, element in zip(result.cap_iseqs,
+                            result.cap_original_elements):
     atoms[i_seq].set_element(element)
   rebuilt = mmtbx.model.manager(
     model_input=None, pdb_hierarchy=submodel.get_hierarchy(),
@@ -3703,7 +3705,7 @@ def exercise_chain_break_amine_is_completed():
       # 1BQ8's breaks are cut rather than completed at this radius.
       (_1BQ8_FE_SPHERE_PDB, 7.0, 0, set())):
     result = _run_endo_exo_params(pdb_str, buffer__radius=radius)[0]
-    submodel = result["model"]
+    submodel = result.model
     atoms = list(submodel.get_hierarchy().atoms())
     # Water hydrogens are named H1/H2 too, so the name alone is not enough:
     # any fixture carrying protonated waters would be miscounted.
@@ -3735,18 +3737,18 @@ def exercise_chain_break_amine_is_completed():
     # The recorded indices must still point where they did before the
     # insertion: a shifted cap_iseq makes a consumer restore the wrong
     # atom's element when it rebuilds restraints.
-    for i_seq, element in zip(result["cap_iseqs"],
-                              result["cap_original_elements"]):
+    for i_seq, element in zip(result.cap_iseqs,
+                              result.cap_original_elements):
       assert atoms[i_seq].element.strip().upper() == "H", (
         f"cap_iseqs[{i_seq}] points at "
         f"{atoms[i_seq].name.strip()}, not a capping hydrogen")
-    for i_seq in result["cap_anchor_iseqs"]:
+    for i_seq in result.cap_anchor_iseqs:
       assert not atoms[i_seq].element_is_hydrogen(), (
         f"cap_anchor_iseqs[{i_seq}] points at a hydrogen")
 
     # Restore cap elements first, as a consumer does before interpreting.
-    for i_seq, element in zip(result["cap_iseqs"],
-                              result["cap_original_elements"]):
+    for i_seq, element in zip(result.cap_iseqs,
+                              result.cap_original_elements):
       atoms[i_seq].set_element(element)
     rebuilt = mmtbx.model.manager(
       model_input=None, pdb_hierarchy=submodel.get_hierarchy(),
@@ -3809,7 +3811,7 @@ def exercise_chain_break_amine_is_completed():
     if not (line.startswith(("ATOM", "HETATM"))
             and line[22:26].strip() == "44"))
   result = _run_endo_exo_params(gapped, buffer__radius=8.0)[0]
-  atoms = list(result["model"].get_hierarchy().atoms())
+  atoms = list(result.model.get_hierarchy().atoms())
   proline_n = next(
     a for a in atoms
     if a.parent().resname.strip() == "PRO"
@@ -3830,7 +3832,7 @@ def exercise_chain_break_amine_is_completed():
   # Turning capping off leaves the nitrogen alone, as it leaves caps alone.
   result = _run_endo_exo_params(
     _2C2U_FE_SPHERE_PDB, buffer__radius=7.0, capping__enable=False)[0]
-  assert not [a for a in result["model"].get_hierarchy().atoms()
+  assert not [a for a in result.model.get_hierarchy().atoms()
               if a.name.strip() in AMINE_HYDROGEN_NAMES
               and common_residue_names_get_class(
                 a.parent().resname) == "common_amino_acid"], (
