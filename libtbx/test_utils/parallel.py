@@ -2,13 +2,15 @@ from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 from libtbx import test_utils
 import libtbx.load_env
-from libtbx.utils import import_python_object, multi_out
+from libtbx.utils import Sorry, import_python_object, multi_out
 from libtbx import group_args, Auto
 from multiprocessing import Pool, cpu_count
 from six.moves import cStringIO as StringIO
 import traceback
 import time
+import math
 import os
+import posixpath
 import re
 import sys
 import re
@@ -188,6 +190,440 @@ def find_tests(dir_name):
       if (file_name.startswith("tst")) and (ext in [".py", ".csh", ".sh"]):
         all_tests.append(os.path.join(root, file_name))
   return all_tests
+
+TEST_TIMINGS_KEPT = 5
+# A command with its test file in quotes: the file, then the arguments.
+QUOTED_PATH_RE = re.compile(r'^[^"]*"([^"]*)"(.*)$')
+
+def test_name_from_command(command, build_path=None, repository_paths=None):
+  """Name a test the same way on every install.
+
+  The name is the path of the test relative to the directory that holds
+  the source repositories, or ``build/`` and its path below the build
+  directory for a compiled test, followed by the arguments. The path is
+  normalized first, and made absolute if it is the relative path of a
+  file, so the name does not depend on how it was written. A test not in
+  this install, as in a log from another machine, is named by its path
+  after the first ``/modules/`` or, failing that, from the first
+  ``/build/`` on; a path with neither is kept whole.
+
+  Parameters
+  ----------
+  command : str
+      A test command as :func:`make_commands` or
+      ``libtbx.test_utils.iter_tests_cmd`` builds it.
+  build_path : str, optional
+      Build directory of the install. Default: that of ``libtbx.env``.
+  repository_paths : list of str, optional
+      Directories that hold the sources. Default: those of
+      ``libtbx.env``.
+
+  Returns
+  -------
+  str
+      The name, with ``/`` as the path separator.
+  """
+  if build_path is None:
+    build_path = abs(libtbx.env.build_path)
+  if repository_paths is None:
+    repository_paths = [abs(path) for path in libtbx.env.repository_paths]
+  m = QUOTED_PATH_RE.match(command)
+  if m:
+    path = m.group(1)
+    args = m.group(2).strip()
+  else:
+    path = command.strip()
+    args = ""
+  if not os.path.isabs(path) and os.path.exists(path):
+    path = os.path.abspath(path)
+  path = posixpath.normpath(path.replace("\\", "/"))
+  name = None
+  root = build_path.replace("\\", "/") + "/"
+  if path.startswith(root):
+    name = "build/" + path[len(root):]
+  else:
+    # the shortest root is the directory the repositories are in
+    for repository_path in sorted(repository_paths, key=len):
+      root = repository_path.replace("\\", "/") + "/"
+      if path.startswith(root):
+        name = path[len(root):]
+        break
+  if name is None:
+    name = path
+    i = path.find("/modules/")
+    if i >= 0:
+      name = path[i + len("/modules/"):]
+    else:
+      i = path.find("/build/")
+      if i >= 0:
+        name = path[i + 1:]
+  if args:
+    return "%s %s" % (name, args)
+  return name
+
+def check_timings_file(file_name, will_write=True):
+  """Resolve the path of a timings file and check that it can be used.
+
+  Parameters
+  ----------
+  file_name : str
+      Path as given; the file need not exist yet.
+  will_write : bool, optional
+      Whether the file is going to be written. Default ``True``.
+
+  Returns
+  -------
+  str
+      The real path. A link is followed, so that the file it points to
+      is the one updated and the link stays.
+
+  Raises
+  ------
+  Sorry
+      If the path is a directory, or the file is going to be written and
+      its directory is missing or not writable.
+  """
+  file_name = os.path.realpath(file_name)
+  if os.path.isdir(file_name):
+    raise Sorry("The timings file %s is a directory, not a file." % file_name)
+  directory = os.path.dirname(file_name)
+  if will_write and not os.access(directory, os.W_OK):
+    raise Sorry("Cannot write the timings file: %s is not a writable "
+      "directory." % directory)
+  return file_name
+
+def read_test_timings(file_name):
+  """Read the run times recorded for each test.
+
+  Parameters
+  ----------
+  file_name : str
+      CSV file with one row per test: name, then its run times in
+      seconds, oldest first. A missing file reads as no timings.
+
+  Returns
+  -------
+  dict
+      Test name to list of float.
+
+  Raises
+  ------
+  Sorry
+      If the file is not UTF-8 CSV, or a run time is not a finite number
+      of seconds, zero or more.
+  """
+  import csv
+  timings = {}
+  if not os.path.isfile(file_name):
+    return timings
+  with open(file_name, newline="", encoding="utf-8") as f:
+    try:
+      for i_row, row in enumerate(csv.reader(f, strict=True)):
+        if len(row) == 0:
+          continue
+        times = []
+        for value in row[1:]:
+          try:
+            seconds = float(value)
+          except ValueError:
+            seconds = -1
+          if not math.isfinite(seconds) or seconds < 0:
+            raise Sorry("Bad run time %s in %s, line %d."
+              % (value, file_name, i_row + 1))
+          times.append(seconds)
+        timings[row[0]] = times
+    except (csv.Error, UnicodeError) as e:
+      raise Sorry("Cannot read the timings file %s: %s" % (file_name, e))
+  return timings
+
+def write_test_timings(file_name, timings):
+  """Write test run times, replacing the file in one step.
+
+  Parameters
+  ----------
+  file_name : str
+      File to write, in the format :func:`read_test_timings` reads.
+  timings : dict
+      Test name to list of float.
+  """
+  import csv
+  tmp_name = "%s.tmp%d" % (file_name, os.getpid())
+  try:
+    with open(tmp_name, "w", newline="", encoding="utf-8") as f:
+      writer = csv.writer(f, lineterminator="\n")
+      for name in sorted(timings):
+        row = [name]
+        for seconds in timings[name]:
+          row.append("%.2f" % seconds)
+        writer.writerow(row)
+    os.replace(tmp_name, file_name)
+  finally:
+    if os.path.exists(tmp_name):
+      os.remove(tmp_name)
+
+def add_test_timings(timings, commands_and_seconds):
+  """Add one run time per test, keeping the newest of each test.
+
+  Parameters
+  ----------
+  timings : dict
+      Test name to list of float; modified in place.
+  commands_and_seconds : list of tuple
+      ``(command, seconds)`` for each test that passed. A negative
+      time, as when the clock was set back during the test, is not
+      added: :func:`read_test_timings` would reject the file.
+  """
+  for command, seconds in commands_and_seconds:
+    if seconds < 0:
+      continue
+    name = test_name_from_command(command)
+    times = timings.get(name, [])
+    times.append(seconds)
+    timings[name] = times[-TEST_TIMINGS_KEPT:]
+
+def _longest_first(commands, timings):
+  """Pair each command with its estimated run time, longest first and then
+  by test name. The estimate is the median of the test's recorded times; a
+  test without times gets the median of the other estimates, and if no test
+  has times all estimates are equal."""
+  from statistics import median
+  names = {}
+  known = {}
+  for command in commands:
+    names[command] = test_name_from_command(command)
+    times = timings.get(names[command])
+    if times:
+      known[command] = median(times)
+  default = 1.0
+  if known:
+    default = median(known.values())
+  seconds = {}
+  for command in commands:
+    seconds[command] = known.get(command, default)
+  ordered = sorted(
+    commands, key=lambda command: (-seconds[command], names[command]))
+  return [(command, seconds[command]) for command in ordered]
+
+def select_chunk(commands, n_chunks, chunk, timings):
+  """Select one of several shares of the tests that take about equally long.
+
+  Each test, longest first, goes to the chunk with the smallest total
+  estimated time so far, so the totals differ by at most one test's time.
+  A test's estimate is the median of its recorded times, or the median of
+  the other estimates if it has none. The same tests and the same timings
+  give the same chunks on every machine, whatever the order of
+  ``commands`` and wherever the tests are installed, and each test is in
+  exactly one chunk.
+
+  Parameters
+  ----------
+  commands : list of str
+      All test commands of the run.
+  n_chunks : int
+      Number of chunks the tests are divided into.
+  chunk : int
+      The chunk to return, from 1 to ``n_chunks``.
+  timings : dict
+      Test name to list of float, as :func:`read_test_timings` returns.
+
+  Returns
+  -------
+  list of str
+      The commands of the chunk, longest first.
+  """
+  import heapq
+  loads = []
+  for i_chunk in range(n_chunks):
+    loads.append((0.0, 0, i_chunk))
+  selected = []
+  for command, seconds in _longest_first(commands, timings):
+    load, n_tests, i_chunk = heapq.heappop(loads)
+    if i_chunk == chunk - 1:
+      selected.append(command)
+    heapq.heappush(loads, (load + seconds, n_tests + 1, i_chunk))
+  return selected
+
+def format_chunk_line(chunk, n_chunks, n_chunk_tests, commands, timings):
+  """Return the line by which a chunked run identifies itself in its log.
+
+  Parameters
+  ----------
+  chunk : int
+      The chunk that runs, from 1 to ``n_chunks``.
+  n_chunks : int
+      Number of chunks the tests are divided into.
+  n_chunk_tests : int
+      Number of tests in this chunk.
+  commands : list of str
+      The test commands of all chunks.
+  timings : dict
+      Test name to list of float, as :func:`read_test_timings` returns.
+
+  Returns
+  -------
+  str
+      The line, which :func:`chunk_of_log` reads back. It also says how
+      many of the tests have recorded run times.
+  """
+  n_timed = 0
+  for command in commands:
+    if timings.get(test_name_from_command(command)):
+      n_timed += 1
+  return "Chunk %d of %d: %d of %d tests; run times known for %d." % (
+    chunk, n_chunks, n_chunk_tests, len(commands), n_timed)
+
+def chunk_of_log(text):
+  """Find which chunk a run log is of.
+
+  Parameters
+  ----------
+  text : str
+      Content of ``run_tests_parallel_zlog`` or the captured output of a
+      run.
+
+  Returns
+  -------
+  tuple of int or None
+      The chunk, the number of chunks, the number of tests in the
+      chunk and in all chunks; ``None`` if the run was not chunked.
+  """
+  m = re.search(
+    r"^Chunk (\d+) of (\d+): (\d+) of (\d+) tests", text, re.MULTILINE)
+  if m is None:
+    return None
+  return (int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4)))
+
+def _read_run_log(log_file):
+  if not os.path.isfile(log_file):
+    raise Sorry("Cannot find the log file %s." % log_file)
+  with open(log_file, errors="replace") as f:
+    return f.read()
+
+def chunk_log_problems(log_files):
+  """Check that run logs together are one run of each test.
+
+  For the logs of chunked runs this means every chunk of one division of
+  the tests, each once.
+
+  Parameters
+  ----------
+  log_files : list of str
+      Logs of runs, each ``run_tests_parallel_zlog`` or captured output.
+
+  Returns
+  -------
+  list of str
+      One message for each: logs of different divisions, a log that is
+      not of a chunk among logs that are, a missing chunk, a chunk given
+      more than once, chunks that do not add up to all the tests, tests
+      that are in more than one log. Empty if there is nothing to
+      report.
+
+  Raises
+  ------
+  Sorry
+      If a log file does not exist.
+  """
+  from libtbx.test_utils import t96_roster
+  logs_of_chunk = {}
+  n_tests_in_chunks = 0
+  divisions = []
+  not_chunked = []
+  logs_of_test = {}
+  for log_file in log_files:
+    text = _read_run_log(log_file)
+    chunk_info = chunk_of_log(text)
+    if chunk_info is None:
+      not_chunked.append(log_file)
+    else:
+      chunk, n_chunks, n_chunk_tests, n_tests = chunk_info
+      if (n_chunks, n_tests) not in divisions:
+        divisions.append((n_chunks, n_tests))
+      if chunk not in logs_of_chunk:
+        logs_of_chunk[chunk] = []
+        n_tests_in_chunks += n_chunk_tests
+      logs_of_chunk[chunk].append(log_file)
+    for command in t96_roster.parse_roster(text).tests:
+      name = test_name_from_command(command)
+      if name not in logs_of_test:
+        logs_of_test[name] = []
+      logs_of_test[name].append(log_file)
+  problems = []
+  if len(divisions) > 1:
+    described = []
+    for n_chunks, n_tests in sorted(divisions):
+      described.append("%d chunks of %d tests" % (n_chunks, n_tests))
+    problems.append("The logs are of different divisions of the tests: %s."
+      % ", ".join(described))
+  elif len(divisions) == 1:
+    for log_file in not_chunked:
+      problems.append("%s is not the log of a chunk." % log_file)
+    n_chunks = divisions[0][0]
+    for chunk in range(1, n_chunks + 1):
+      if chunk not in logs_of_chunk:
+        problems.append("Chunk %d of %d is missing." % (chunk, n_chunks))
+      elif len(logs_of_chunk[chunk]) > 1:
+        problems.append("Chunk %d of %d is given %d times: %s." % (
+          chunk, n_chunks, len(logs_of_chunk[chunk]),
+          ", ".join(logs_of_chunk[chunk])))
+    n_tests = divisions[0][1]
+    if len(logs_of_chunk) == n_chunks and n_tests_in_chunks != n_tests:
+      problems.append("The chunks hold %d tests of %d: they are not of one "
+        "division, as with different timings files."
+        % (n_tests_in_chunks, n_tests))
+  repeated = []
+  for name in sorted(logs_of_test):
+    if len(logs_of_test[name]) > 1:
+      repeated.append(name)
+  if len(repeated) == 1:
+    problems.append("1 test is in more than one log: %s." % repeated[0])
+  elif len(repeated) > 1:
+    problems.append("%d tests are in more than one log, for example %s."
+      % (len(repeated), repeated[0]))
+  return problems
+
+def add_test_timings_from_logs(timings_file, log_files):
+  """Add the run times of the tests that passed in run logs to a file.
+
+  Parameters
+  ----------
+  timings_file : str
+      File to update, in the format :func:`read_test_timings` reads; it
+      is created if missing.
+  log_files : list of str
+      Logs of runs, each ``run_tests_parallel_zlog`` or captured output.
+      A test gets one time, from the first log it passed in.
+
+  Returns
+  -------
+  list of int
+      For each log, the number of tests it added a time for.
+
+  Raises
+  ------
+  Sorry
+      If a log file does not exist, or :func:`check_timings_file` rejects
+      the timings file.
+  """
+  from libtbx.test_utils import t96_roster
+  timings_file = check_timings_file(timings_file)
+  timings = read_test_timings(timings_file)
+  added = set()
+  n_added = []
+  for log_file in log_files:
+    roster = t96_roster.parse_roster(_read_run_log(log_file))
+    passed = []
+    for command in roster.tests:
+      test = roster.tests[command]
+      name = test_name_from_command(command)
+      if test.outcome in (t96_roster.PASS, t96_roster.WARNING):
+        if name not in added:
+          added.add(name)
+          passed.append((command, test.wall_time))
+    add_test_timings(timings, passed)
+    n_added.append(len(passed))
+  write_test_timings(timings_file, timings)
+  return n_added
 
 def run_command(command,
                 verbosity=DEFAULT_VERBOSITY,
