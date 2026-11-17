@@ -43,6 +43,7 @@ namespace {
             arg("daa_dbb_dab"))))
         .add_property("grads", make_getter(&w_t::grads, rbv()))
         .add_property("curvs", make_getter(&w_t::curvs, rbv()))
+        .add_property("site_curvs", make_getter(&w_t::site_curvs, rbv()))
       ;
     }
   };

@@ -95,6 +95,7 @@ tst_list = [
   ["$D/regression/tst_wilson_plot.py", "P31"],
   #"$D/regression/tst_xray_target_functors.py",
   ["$D/regression/tst_xray_derivatives.py", "P31"],
+  "$D/regression/tst_xray_curvatures_simple.py",
   ["$D/regression/tst_xray_fast_gradients.py", "P31"],
   ["$D/regression/tst_xray_minimization.py", "--F", "P31"],
   ["$D/regression/tst_xray_minimization.py", "--F_sq", "P31"],

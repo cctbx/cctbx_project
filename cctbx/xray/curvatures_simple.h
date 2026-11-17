@@ -29,6 +29,10 @@ namespace curvatures_simple {
     unsigned n_params;
     af::tiny<c_t, 12> grad_values;
     af::tiny<c_t, 12> curv_values;
+    // second derivatives with respect to the (constrained) site parameters:
+    // packed upper triangle of the n_params_site x n_params_site block
+    unsigned n_params_site;
+    af::tiny<c_t, 6> d2_site_site;
 
     grads_and_curvs_hkl_scatterer(
       miller::index<> const& hkl)
@@ -93,9 +97,8 @@ namespace curvatures_simple {
       f_t ffp = f0 + scatterer.fp;
       f_t fdp = scatterer.fdp;
       c_t ff(ffp, fdp);
-      unsigned n_params_site = 3;
+      n_params_site = 3;
       af::tiny<c_t, 3> d_site;
-      af::tiny<c_t, 6> d2_site_site;
       d_site.fill(c_t(0,0));
       d2_site_site.fill(c_t(0,0));
       c_t d_u_iso;
@@ -313,6 +316,11 @@ namespace curvatures_simple {
 
     af::shared<f_t> grads;
     af::shared<f_t> curvs;
+    // per scatterer, the packed upper triangle of the curvature block of
+    // the site parameters (6 entries; the first n(n+1)/2 are used for a
+    // special position with n independent parameters). Its diagonal is
+    // the site part of curvs.
+    af::shared<f_t> site_curvs;
 
     template <typename ScattererType>
     grads_and_curvs_target(
@@ -360,6 +368,7 @@ namespace curvatures_simple {
       }
       grads.resize(n_params_total, 0);
       curvs.resize(n_params_total, 0);
+      site_curvs.resize(6*n_scatterers, 0);
       //
       for(std::size_t ih=0;ih<miller_indices.size();ih++) {
         miller::index<> const& hkl = miller_indices[ih];
@@ -388,6 +397,20 @@ namespace curvatures_simple {
               +  dah * c.real()
               +  dbh * c.imag();
             i_param_total++;
+          }
+          unsigned k = 0;
+          for(unsigned ip=0;ip<gachs.n_params_site;ip++) {
+            c_t const& gi = gachs.grad_values[ip];
+            for(unsigned jp=ip;jp<gachs.n_params_site;jp++,k++) {
+              c_t const& gj = gachs.grad_values[jp];
+              c_t const& c = gachs.d2_site_site[k];
+              site_curvs[i_scatterer*6+k]
+                += daah * gi.real() * gj.real()
+                +  dbbh * gi.imag() * gj.imag()
+                +  dabh * (gi.real() * gj.imag() + gi.imag() * gj.real())
+                +  dah * c.real()
+                +  dbh * c.imag();
+            }
           }
         }
         CCTBX_ASSERT(i_param_total == n_params_total);
