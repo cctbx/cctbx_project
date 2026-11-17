@@ -3392,7 +3392,14 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
   else:
     print("Optimizing center position...type is %s" %(ncs_info), file = out)
 
-  if len(ncs_info.split())>1 and ncs_info.split()[1] == '(a)':
+  # The symmetry that was found is picked by name from the generated list
+  # below. two_fold_along_x only limits what is generated: (a) and (b) follow
+  # it for D, O and I, but not for T, so all T settings are generated.
+  is_point_group = symmetry.upper().startswith('D') or \
+    symmetry.upper() in ('T', 'O', 'I')
+  if symmetry.upper() == 'T':
+    two_fold_along_x = None
+  elif len(ncs_info.split())>1 and ncs_info.split()[1] == '(a)':
     two_fold_along_x = True
   elif len(ncs_info.split())>1 and ncs_info.split()[1] == '(b)':
     two_fold_along_x = False
@@ -3422,7 +3429,7 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
     k_range = range(0,1)
     # Dihedral and polyhedral centers can affect operators along z.
     # Cyclic and helical operators are invariant to axial center shifts.
-    if symmetry.upper().startswith('D') or symmetry.upper() in ('T', 'O', 'I'):
+    if is_point_group:
       k_range = range(-4,5)
     i_range = range(-4,5)
     j_range = range(-4,5)
@@ -3449,7 +3456,19 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
        out = null_out(),
        )
       if ncs_list:
-        ncs_obj = ncs_list[0]
+        ncs_obj = None
+        for candidate in ncs_list:
+          name = candidate.get_ncs_name()
+          if name and name.strip() == ncs_info.strip():
+            ncs_obj = candidate
+            break
+        if ncs_obj is None and is_point_group:
+          # Never score another setting in place of the one that was found
+          print("Symmetry %s could not be regenerated; center not optimized"
+            %(ncs_info.strip()), file = out)
+          return best_center, best_cc_avg, best_score, best_ncs_obj
+        if ncs_obj is None:
+          ncs_obj = ncs_list[0]
         score, cc_avg = score_ncs_in_map(map_data = map_data, ncs_object = ncs_obj,
           identify_ncs_id = identify_ncs_id,
           ncs_in_cell_only = ncs_in_cell_only,
