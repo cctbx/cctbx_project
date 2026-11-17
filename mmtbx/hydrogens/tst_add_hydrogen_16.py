@@ -3,9 +3,10 @@ import iotbx.pdb, iotbx.cif
 import mmtbx.model
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
+from libtbx import group_args
 from libtbx.utils import null_out, Sorry
 from mmtbx.monomer_library import server
-from mmtbx.hydrogens import reduce_hydrogen
+from mmtbx.hydrogens import parameterization, reduce_hydrogen
 from six.moves import cStringIO as StringIO
 
 def run():
@@ -39,6 +40,7 @@ def run():
   test_028()
   test_029()
   test_030()
+  test_031()
 
 # ------------------------------------------------------------------------------
 
@@ -663,6 +665,38 @@ def test_011():
   assert hand(atoms, 'LEU', '107', 'CD2', 'HD21', 'HD22', 'CG') == -1
   # the CH2 of the same residue is unchanged
   assert hand(atoms, 'LEU', '107', 'CB', 'CA', 'CG', 'HB2') == -1
+
+def test_031():
+  '''
+    The propeller order of new H that are still superposed on their seed is a
+    tie and stays as given, (i_h1, i_h2). It came from the sign of a triple
+    product that is exactly 0 for identical sites. A rounding difference of
+    1e-13 A reverses it (simulated; the likely cause of the LYS NH3 of
+    tst_add_hydrogen_1, test_007, turned by 120 degrees on one CI build).
+    Placed H keep both turning senses apart.
+  '''
+  # the method reads only sites_cart, so group_args stands in for the manager
+  # LYS NZ, CE and the seed of the three new H (5c11 fragment of
+  # tst_add_hydrogen_1.py, test_007)
+  nz = (-44.063, -15.229, -13.941)
+  ce = (-45.456, -15.678, -13.663)
+  seed = (-47.692, -15.704666666666666, -14.197888888888885)
+  order = parameterization.manager.check_propeller_order
+  for d in (0, 1.e-13, -1.e-13):
+    for axis in range(3):
+      h2 = list(seed)
+      h2[axis] += d
+      m = group_args(sites_cart = [nz, ce, seed, seed, tuple(h2)])
+      result = order(m, i_a0=0, i_a1=1, ih=2, i_h1=3, i_h2=4)
+      assert result == (3, 4), (d, axis, result)
+  # placed H: both turning senses are still told apart
+  hz1 = (-43.731, -15.679, -14.633)
+  hz2 = (-44.056, -14.360, -14.131)
+  hz3 = (-43.549, -15.374, -13.229)
+  m = group_args(sites_cart = [nz, ce, hz1, hz2, hz3])
+  assert order(m, i_a0=0, i_a1=1, ih=2, i_h1=3, i_h2=4) == (3, 4)
+  m = group_args(sites_cart = [nz, ce, hz1, hz3, hz2])
+  assert order(m, i_a0=0, i_a1=1, ih=2, i_h1=3, i_h2=4) == (4, 3)
 
 def test_012():
   '''
