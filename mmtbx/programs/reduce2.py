@@ -21,7 +21,7 @@ from datetime import datetime
 from libtbx.program_template import ProgramTemplate
 from libtbx import group_args, phil, Auto
 from libtbx.str_utils import make_sub_header
-from libtbx.utils import Sorry, null_out, peak_memory_usage, human_readable_size
+from libtbx.utils import Sorry, Abort, null_out, peak_memory_usage, human_readable_size
 import mmtbx
 from mmtbx.probe import Helpers
 from iotbx import pdb, cli_parser
@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.18.2"
+version = "3.19.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -147,10 +147,11 @@ non_flip_preference = 0.5
   .type = float
   .short_caption = Preference to not flip
   .help = For flip movers, only do the flip if the score in the flipped orientation is this much better.
-reconcile_his_charges = False
+reconcile_his_charges = Auto
   .type = bool
-  .short_caption = One charge for His across conformers
-  .help = A His whose conformers end the optimization with different ring \
+  .short_caption = One charge for His across conformers (Auto: with qmready=True)
+  .help = Auto: True with qmready=True (a model for QM needs one total \
+          charge for all conformers), False otherwise. A His whose conformers end the optimization with different ring \
           protonation (charge +1 with HD1 and HE2, 0 with one of them) is \
           given one charge where the scores allow it: the conformers are set \
           to the cheaper charge (at most 0.5 in total, neutral when the \
@@ -162,7 +163,7 @@ reconcile_his_charges = False
           conformers cannot all be scored or whose ring is partly split is \
           left unchanged. Reruns are capped per model, each limited to the \
           search time allowed to the first run. Listed in the description \
-          file (His charges across conformers). Experimental, default False.
+          file (His charges across conformers). Experimental.
 skip_bond_fix_up = False
   .type = bool
   .short_caption = Skip fixup step for Movers that are flips
@@ -1143,6 +1144,13 @@ NOTES:
   for a metal in a symmetry copy), also in the log. add_flip_movers=True makes the
   flips, with the flipped residues optimized together.
 
+  A His whose conformers end with different ring protonation (charge +1 and 0) is given
+  one charge where the scores allow it with reconcile_his_charges=True: the passes run
+  again with the His states fixed, and the change is kept only if the His and its
+  neighbours lose little (His charges across conformers, in the description file).
+  Auto, the default, turns it on with qmready=True, where different conformer charges
+  stop the run, and off otherwise: it costs reruns and changes His protonation.
+
   neutron_option writes a model for neutron refinement. Every option other than none
   switches on use_neutron_distances (qmready=True does too). Exchangeable H are H on a
   non-carbon atom. A split site is written as two altlocs, H and D, each at half the
@@ -1812,9 +1820,21 @@ NOTES:
     lines = ['His charges across conformers (reconcile_his_charges=True): %d His with '
       'different charges, %d set to one charge' % (len([c for c in cases if c['first']['kind'] != 'changed']),
       len([c for c in cases if c.get('fixed')]))]
+    unreported = len([m for m in his if m.get('reportError')])
+    if unreported and unreported == len(his):
+      lines = ['His charges across conformers (reconcile_his_charges=True): counts not available '
+        '(the report could not be written)']
+    elif unreported:
+      lines[0] += '; incomplete: %d model(s) not reported' % unreported
+    failed = len([m for m in his if m['code'] == HisCharges.FIRST_RUN_ERROR])
+    if failed:
+      lines[0] += '; %d model(s) not checked (error in the first run)' % failed
     for m in his:
       mid = models[m['model']].id.strip()
       where = 'model %s ' % mid if len(models) > 1 else ''
+      if m.get('reportError'):
+        lines.append('  %sHis charges not reported: %s' % (where or 'model: ', m['reportError']))
+        continue
       for c in m['cases']:
         text = '  %sHis %s: %s' % (where, ' '.join(str(x) for x in c['key'][1:]).strip(),
           charges(c['free']))
@@ -1838,7 +1858,9 @@ NOTES:
         lines.append(text)
       # one line per model, also without a rerun
       text = '  %s%s; first run %.2f s' % (where or 'model: ', m['reason'], m['freeSeconds'])
-      if m['code'] != HisCharges.NO_RERUN:
+      if m['code'] == HisCharges.FIRST_RUN_ERROR:
+        text += '; rerun without reconciliation in %.2f s' % m['rerunSeconds']
+      elif m['code'] != HisCharges.NO_RERUN:
         rej = {}
         for why in m['rejected'].values():
           rej[why] = rej.get(why, 0) + 1
@@ -1863,11 +1885,43 @@ NOTES:
       r.conformer_charge_mismatch = True
       raise r from None
 
+  def _HisWithDifferentRingH(self):
+    # 'chain resseq' of each His whose conformers have different numbers of
+    # ring H (HD1, HE2 or D), in the model as it is
+    out = []
+    models = self.model.get_hierarchy().models()
+    for model in models:
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          n = {}
+          for ag in rg.atom_groups():
+            if ag.resname.strip().upper() != 'HIS':
+              continue
+            n[ag.altloc] = len([a for a in ag.atoms() if a.name.strip().upper() in ('HD1', 'HE2', 'DD1', 'DE2')])
+          if len(n) > 1:
+            blank = n.pop('', 0)
+            if len(set(blank + x for x in n.values())) > 1:
+              text = ' '.join(x for x in (chain.id.strip(), rg.resseq.strip() + rg.icode.strip()) if x)
+              if len(models) > 1:
+                text = 'model %s %s' % (model.id.strip(), text)
+              if text not in out:
+                out.append(text)
+    return out
+
   def _HisChargesHint(self):
     # qmready: why His conformers kept different charges (reconcile_his_charges),
     # from each His's category and the model's outcome code, never from text
     out = []
+    if self.params.qmready and not self.params.reconcile_his_charges:
+      his = self._HisWithDifferentRingH()
+      if his:
+        out.append('His %s: conformer charges differ; reconcile_his_charges=True (the '
+          'default with qmready=True) gives a His one charge where the scores allow it'
+          % ', '.join(his))
     for m in getattr(self, '_hisCharges', None) or []:
+      if m['code'] == HisCharges.FIRST_RUN_ERROR:
+        out.append('His charges were not reconciled: optimized again without reconciliation '
+          'after an error in the first run (%s); please report this' % m['detail'])
       for c in m['cases']:
         if len(set(c['final'].values())) < 2:
           continue
@@ -3152,6 +3206,14 @@ NOTES:
       elif p.capping_guess_for_unknowns:
         raise Sorry('capping_guess_for_unknowns=True requires capping=True.')
 
+    # reconcile_his_charges: Auto follows qmready, which stops on conformers with
+    # different total charges; resolved here, so the Optimizers get a bool
+    if p.reconcile_his_charges is Auto:
+      p.reconcile_his_charges = bool(p.qmready and p.approach != 'remove')
+      if p.reconcile_his_charges:
+        print('qmready=True: reconcile_his_charges set to True (His conformers are '
+          'given one charge where the scores allow it)', file=self.logger)
+
     # One distance flag for the whole run: qmready and neutron_option place H
     # at neutron distances, so every later step must use them
     self._neutron_distance_reason = None
@@ -3553,7 +3615,7 @@ NOTES:
           symmetryCopies = symmetryCopies,
           fixedHisProtonation = self._FixedHisKeys(),
           chooseHisProtonation = True,
-          reconcileHisCharges = self.params.reconcile_his_charges)
+          reconcileHisCharges = self.params.reconcile_his_charges is True)
         doneOpt = time.time()
         if opt.getSymmetryCopiesSummary():
           print(opt.getSymmetryCopiesSummary(), file=self.logger)
@@ -3582,7 +3644,18 @@ NOTES:
         outString += opt.getInfo()
         self._hisCharges = opt.getHisCharges()
         if self.params.reconcile_his_charges:
-          text = self._HisChargesText(self._hisCharges, opt.getSuggestedFlips())
+          # the optimized model is final here: an error in the report only warns
+          try:
+            text = self._HisChargesText(self._hisCharges, opt.getSuggestedFlips())
+          except (MemoryError, Abort):
+            raise
+          except Exception as e:
+            if Optimizers.Optimizer.hisChargesStrict:
+              raise
+            text = ('His charges across conformers (reconcile_his_charges=True): could not be '
+              'written: %s: %s' % (type(e).__name__, e))
+            print('\nWarning: His charges: the description section could not be written: '
+              '%s: %s' % (type(e).__name__, e), file=self.logger)
           print('\n' + text.split('\n')[0], file=self.logger)
           outString += text + '\n'
         if not self.params.add_flip_movers:
@@ -3979,7 +4052,7 @@ NOTES:
             flipStates = flipStates,
             verbosity=3,
             fixedHisProtonation = self._FixedHisKeys(),
-            reconcileHisCharges = self.params.reconcile_his_charges)
+            reconcileHisCharges = self.params.reconcile_his_charges is True)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
@@ -4104,7 +4177,7 @@ NOTES:
             flipStates = flipStates,
             verbosity=3,
             fixedHisProtonation = self._FixedHisKeys(),
-            reconcileHisCharges = self.params.reconcile_his_charges)
+            reconcileHisCharges = self.params.reconcile_his_charges is True)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()

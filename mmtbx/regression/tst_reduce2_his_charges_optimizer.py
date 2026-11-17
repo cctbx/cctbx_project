@@ -13,7 +13,7 @@ Built from these: two candidates in one model, a Zn at conformer B's NE2 or
 conformer B's ND1 (kept), two models.
 """
 from __future__ import absolute_import, division, print_function
-import os
+import os, re
 from six.moves import cStringIO as StringIO
 import iotbx.pdb
 import mmtbx.model
@@ -344,6 +344,143 @@ def test_first_run_error_propagates():
       else:
         raise AssertionError("no error with %s" % (extra,))
 
+def partial_record(on_call, exc):
+  """_HisRecordPass failing partway on call on_call: each His Mover is left in a
+  state it did not choose (as the record loop sets them in turn), then exc."""
+  orig = Optimizers.Optimizer._HisRecordPass
+  calls = []
+  def f(self, *a, **k):
+    calls.append(1)
+    if len(calls) != on_call:
+      return orig(self, *a, **k)
+    for m in self._movers:
+      if isinstance(m, Optimizers.Movers.MoverHisFlip):
+        pr = m.CoarsePositions()
+        chosen = self._optimizerOf[m].GetCoarseLocation(m)
+        self._setMoverState(pr, (chosen + 1) % len(pr.positions))
+    raise exc
+  return (Optimizers.Optimizer, '_HisRecordPass', f)
+
+def test_first_run_record_error():
+  """An error in code that runs only with the flag, in the first run (the
+  record pass, partway, in the first or the last pass; the save before or
+  after it): the passes run again without reconciliation, so the output equals
+  flag off; a warning naming the exception, code FIRST_RUN_ERROR, no His case,
+  the description line. Strict mode re-raises it. A MemoryError propagates."""
+  off, desc_off, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_p")
+  calls = []
+  orig = Optimizers.Optimizer._HisRecordPass
+  def count(self, *a, **k):
+    calls.append(1)
+    return orig(self, *a, **k)
+  with patched((Optimizers.Optimizer, '_HisRecordPass', count)):
+    run(pdb_1exr, "tst_reduce2_his_charges_opt_pc", ON)
+  assert len(calls) == 4, calls    # two passes: the first run (calls 1, 2) and one rerun
+  for tag, p, cls in (
+      ('1', lambda: partial_record(1, RuntimeError('injected')), RuntimeError),
+      ('2', lambda: partial_record(2, Sorry('injected')), Sorry),
+      ('s', lambda: failing_call(Optimizers.Optimizer, '_HisSave', 1, ValueError('injected'), after=False), ValueError),
+      ('t', lambda: failing_call(Optimizers.Optimizer, '_HisSave', 2, KeyError('injected'), after=False), KeyError)):
+    with patched(p()):
+      on, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_p" + tag, ON)
+    assert len(made) == 1, made
+    his = made[0].getHisCharges()
+    assert len(his) == 1, his
+    m = his[0]
+    detail = '%s: %s' % (cls.__name__, cls('injected'))
+    assert (m['outcome'], m['code'], m['reruns'], m['cases']) == (None, HisCharges.FIRST_RUN_ERROR, 0, []), m
+    assert m['detail'] == detail, m
+    assert on == off, (tag, removed(off, on))
+    assert ("Warning: His charges: an error in the first run, the model was optimized again "
+      "without reconciliation: " + detail) in LOG[0].getvalue(), LOG[0].getvalue()
+    assert ("  model: not reconciled: error in the first run (%s); first run " % detail) in desc, desc
+    assert "; 1 model(s) not checked (error in the first run)" in desc, desc
+    with patched(p()):
+      with Optimizers.his_charges_strict():
+        try:
+          run(pdb_1exr, "tst_reduce2_his_charges_opt_ps" + tag, ON)
+        except cls as e:
+          assert type(e) is cls, e
+        else:
+          raise AssertionError("strict mode did not raise")
+  with patched(partial_record(1, MemoryError('injected'))):
+    try:
+      run(pdb_1exr, "tst_reduce2_his_charges_opt_pm", ON)
+    except MemoryError as e:
+      assert str(e) == 'injected', e
+    else:
+      raise AssertionError("MemoryError not re-raised")
+
+def test_fallback_deadline():
+  """The fallback run's search time starts after the restore: a first-pass
+  error, then a restore that takes 2000 s (clock offset). The fallback still gets
+  the first run's allowance (1000 s), the output equals flag off, and the
+  failed run's seconds reported include the restore."""
+  dl = "treat_cliques_as_singletons_after_seconds=1000"
+  off, desc_off, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_q", "reconcile_his_charges=False", dl)
+  clock = _Clock(1, 2000.0)
+  O = Optimizers.Optimizer
+  restore, optimize = O._HisRestore, O._OptimizeModel
+  seen = []
+  def slow_restore(self, *a, **k):
+    r = restore(self, *a, **k)
+    clock.on = True
+    return r
+  def budget(self, mi, model, ctx, his=None):
+    seen.append((his is not None, ctx['stopOptimizingAt'] - clock.time()))
+    return optimize(self, mi, model, ctx, his)
+  with patched((Optimizers, 'time', clock), (O, '_HisRestore', slow_restore), (O, '_OptimizeModel', budget),
+      partial_record(1, RuntimeError('injected'))):
+    on, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_qon", ON, dl)
+  assert [x for x, b in seen] == [True, False] and all(990 < b <= 1000 for x, b in seen), seen
+  m = only(made)
+  assert m['code'] == HisCharges.FIRST_RUN_ERROR and m['freeSeconds'] >= 2000, m
+  assert on == off, removed(off, on)
+  # a failed first save that takes 2000 s: the same allowance, the save credited
+  clock = _Clock(1, 2000.0)
+  save, seen = O._HisSave, []
+  def slow_failed_save(self, *a, **k):
+    save(self, *a, **k)
+    clock.on = True
+    raise ValueError('injected')
+  with patched((Optimizers, 'time', clock), (O, '_HisSave', slow_failed_save), (O, '_OptimizeModel', budget)):
+    on, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_qs", ON, dl)
+  assert [x for x, b in seen] == [False] and all(990 < b <= 1000 for x, b in seen), seen
+  m = only(made)
+  assert m['code'] == HisCharges.FIRST_RUN_ERROR and m['freeSeconds'] >= 2000, m
+  assert on == off, removed(off, on)
+
+def test_report_errors():
+  """An error in the His report (Optimizer._HisReport, reduce2's _HisChargesText)
+  after the model is final: qmready (Auto) on the 1exr fixture writes the same
+  model and total charge as without the error, with a warning and a one-line
+  section; strict mode re-raises."""
+  ok, desc_ok, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_w", "qmready=True")
+  assert "Total charge: 0" in LOG[0].getvalue()
+  for tag, owner, name, warning, line in (
+      ('o', Optimizers.Optimizer, '_HisReport', "Warning: His charges: the report could not be written: "
+        "RuntimeError: injected", "  model: His charges not reported: RuntimeError: injected"),
+      ('r', reduce2.Program, '_HisChargesText', "Warning: His charges: the description section could not "
+        "be written: RuntimeError: injected", "His charges across conformers (reconcile_his_charges=True): "
+        "could not be written: RuntimeError: injected")):
+    with patched(failing_call(owner, name, 1, RuntimeError('injected'), after=False)):
+      atoms, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_w" + tag, "qmready=True")
+    assert atoms == ok, (tag, removed(ok, atoms))
+    assert "Total charge: 0" in LOG[0].getvalue(), tag
+    assert warning in LOG[0].getvalue(), (tag, LOG[0].getvalue())
+    assert line in desc.splitlines(), (tag, desc)
+    if tag == 'o':
+      assert ("His charges across conformers (reconcile_his_charges=True): counts not available "
+        "(the report could not be written)") in desc.splitlines(), desc
+    with patched(failing_call(owner, name, 1, RuntimeError('injected'), after=False)):
+      with Optimizers.his_charges_strict():
+        try:
+          run(pdb_1exr, "tst_reduce2_his_charges_opt_ws" + tag, "qmready=True")
+        except RuntimeError as e:
+          assert str(e) == 'injected', e
+        else:
+          raise AssertionError("strict mode did not raise")
+
 def test_memory_error_propagates():
   """A MemoryError in a rerun is re-raised as it is, not handled."""
   with patched(failing_call(Optimizers.Optimizer, '_OptimizeModel', 2, MemoryError('injected'))):
@@ -670,7 +807,9 @@ def program_stub(his):
       return h
   p.model = M()
   p._hisCharges = his
-  for n in ('_HisChargesText', '_HisChargesHint', '_WithHisChargesHint', '_HisFixedKeys'):
+  p.params = P()
+  p.params.qmready, p.params.reconcile_his_charges = True, True
+  for n in ('_HisChargesText', '_HisChargesHint', '_WithHisChargesHint', '_HisFixedKeys', '_HisWithDifferentRingH'):
     setattr(p, n, getattr(reduce2.Program, n).__get__(p))
   return p
 
@@ -819,7 +958,7 @@ def test_qmready():
       raise
   try:
     with patched((electrons.electron_distribution, 'get_total_charge', total)):
-      run(pdb_1exr, "tst_reduce2_his_charges_opt_10", "qmready=True")
+      run(pdb_1exr, "tst_reduce2_his_charges_opt_10", "qmready=True", "reconcile_his_charges=False")
   except Sorry as e:
     assert type(e) is Sorry and e.conformer_charge_mismatch, type(e)
     assert "different total charges (A: 1, B: 0)" in str(e), e
@@ -839,21 +978,56 @@ def run_command(pdb, prefix, *extra):
   return r.return_code, [l for l in r.stderr_lines if l.strip()]
 
 def test_qmready_stderr():
-  """What the user sees when qmready stops on conformer charges: flag off,
-  master's text (one Sorry: message, no class name, no traceback, exit 1);
-  flag on with a kept His (Zn at conformer B's NE2), the same message followed
-  by the hint, no "During handling"."""
+  """What the user sees when qmready stops on conformer charges: flag off
+  (explicit False; Auto is on with qmready), master's text (one Sorry: message,
+  no class name, no traceback, exit 1) and the hint to turn it on; flag on with
+  a kept His (Zn at conformer B's NE2), the same message followed by the hint,
+  no "During handling"."""
   first = ("Sorry: The alternate conformations have different total charges "
     "(A: %d, B: %d). The charge of the model is the charge of one conformer; "
     "check the protonation of the residues with altlocs.")
   rows = "Residues whose charge differs between the conformers: A 107 (A: 1, B: 0)"
   hint = "His A 107: conformer charges differ (B metal-bound NE2 without H (ZN); expected)"
+  turn_on = ("His A 107: conformer charges differ; reconcile_his_charges=True (the default with "
+    "qmready=True) gives a His one charge where the scores allow it")
   for pdb, prefix, extra, want in (
-      (pdb_1exr, "tst_reduce2_his_charges_opt_12", (), [first % (1, 0), rows]),
+      (pdb_1exr, "tst_reduce2_his_charges_opt_12", ("reconcile_his_charges=False",), [first % (1, 0), rows, turn_on]),
       (with_zn('B'), "tst_reduce2_his_charges_opt_12on", (ON,), [first % (3, 2), rows, hint])):
     rc, err = run_command(pdb, prefix, "qmready=True", *extra)
     assert rc == 1, (rc, err)
     assert err == want, err
+
+def test_auto():
+  """reconcile_his_charges=Auto (the default): on with qmready, off otherwise.
+  1exr fixture: Auto with qmready reconciles (total charge 0, no stop); Auto
+  without qmready writes what explicit False writes; explicit False with
+  qmready stops with the hint to turn it on; explicit True without qmready
+  reconciles."""
+  on, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_a1", "qmready=True")
+  assert [o._reconcileHisCharges for o in made] == [True], made
+  assert only(made)['code'] == HisCharges.RECONCILED
+  assert "qmready=True: reconcile_his_charges set to True" in LOG[0].getvalue()
+  assert "Total charge: 0" in LOG[0].getvalue()
+  auto, desc_auto, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_a2")
+  assert [(o._reconcileHisCharges, o.getHisCharges()) for o in made] == [(False, [])], made
+  assert "reconcile_his_charges set to" not in LOG[0].getvalue()
+  off, desc_off, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_a3", "reconcile_his_charges=False")
+  assert auto == off
+  mask = lambda d: [re.sub(r" in [0-9.]+ seconds", "", l) for l in d.splitlines()
+    if not l.startswith("reduce2 v.") and "Time to " not in l]
+  assert mask(desc_auto) == mask(desc_off)
+  try:
+    run(pdb_1exr, "tst_reduce2_his_charges_opt_a4", "qmready=True", "reconcile_his_charges=False")
+  except Sorry as e:
+    assert str(e).splitlines()[-1] == ("His A 107: conformer charges differ; reconcile_his_charges=True "
+      "(the default with qmready=True) gives a His one charge where the scores allow it"), e
+  else:
+    raise AssertionError("qmready with reconcile_his_charges=False ran")
+  on, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_a5", ON)
+  assert [o._reconcileHisCharges for o in made] == [True], made
+  assert only(made)['code'] == HisCharges.RECONCILED
+  # an explicit value is not announced
+  assert "reconcile_his_charges set to" not in LOG[0].getvalue()
 
 def test_flip_report_words():
   """With flips, a fixed His keeps the Mover report format that reduce2's
@@ -1580,6 +1754,9 @@ if __name__ == "__main__":
   test_deadline()
   test_any_error_keeps_first()
   test_first_run_error_propagates()
+  test_first_run_record_error()
+  test_fallback_deadline()
+  test_report_errors()
   test_memory_error_propagates()
   test_abort_in_rerun()
   test_diagnostic_errors()
@@ -1597,6 +1774,7 @@ if __name__ == "__main__":
   test_multi_model()
   test_qmready()
   test_qmready_stderr()
+  test_auto()
   test_flip_report_words()
   test_search_atom_info()
   test_blank_ring_last_pass()

@@ -62,7 +62,10 @@ Contract for the one-state Mover.
   restores first, then re-raises. A MemoryError propagates as it is; an Abort
   after the restore. If the restore cannot be verified, it stops with a Sorry
   naming the error that led to it. Errors in the free run propagate as
-  without reconciliation.
+  without reconciliation, except in the code that runs only with it (the
+  records, the saves): then the starting state is restored and the passes run
+  again without reconciliation (FIRST_RUN_ERROR, a warning; strict mode
+  re-raises), so the model is the one written without it.
 - Limits: at most run_cap(n) = min(max_runs(n), RUN_CAP_LIMIT) reruns per model
   (confirmations and retries count). A free run that reached its search
   deadline gets no rerun; each rerun may search as long as the free run was
@@ -94,6 +97,7 @@ RUN_CAP = 'run cap'                       # another rerun needed after run_cap(n
 SEARCH_DEADLINE = 'search deadline'       # the free run or a rerun reached its search time
 WALL_BACKSTOP = 'wall-time backstop'      # reruns past WALL_BACKSTOP_FACTOR x the free run
 INTERNAL = 'internal check'               # a ContractError or other error; the free result kept
+FIRST_RUN_ERROR = 'first run error'       # an error in the first run's records: optimized again without
 OUTCOME_TEXT = {
   NO_RERUN: 'no rerun',
   RECONCILED: 'reconciled',
@@ -102,6 +106,7 @@ OUTCOME_TEXT = {
   SEARCH_DEADLINE: 'first result restored: search time limit reached',
   WALL_BACKSTOP: 'first result restored: wall-time backstop reached',
   INTERNAL: 'first result kept: internal error',
+  FIRST_RUN_ERROR: 'not reconciled: error in the first run',
 }
 
 def run_cap(n):

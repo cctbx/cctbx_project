@@ -248,6 +248,12 @@ def _HisBlankRingLastPassLacksH(recs, key):
     return mine[-1]['passAlt']
   return None
 
+class _HisFirstRunError(Exception):
+  """An error in the first run's reconciliation-only code; error: the original."""
+  def __init__(self, error):
+    Exception.__init__(self, '%s: %s' % (type(error).__name__, error))
+    self.error = error
+
 def _HisOutcomeText(run):
   """The model outcome's text, from its code (HisCharges.OUTCOME_TEXT) and detail."""
   text = HisCharges.OUTCOME_TEXT[run['code']]
@@ -892,7 +898,7 @@ class Optimizer(object):
       self._infoString += _VerboseCheck(self._verbosity, 1,'Marked '+str(len(deleteAtoms))+' atoms for deletion\n')
       self._infoString += _ReportTiming(self._verbosity, "place movers")
       if his is not None:
-        self._HisPin(mi, his)
+        self._HisStep(his, self._HisPin, mi, his)
 
       ################################################################################
       # Add the atoms that were unconditionally marked for deletion during placement
@@ -1012,7 +1018,7 @@ class Optimizer(object):
       # Final scores at the final poses: a stored search score is stale when a Clique
       # partner moved after it was set.
       if his is not None:
-        self._HisUnpin(his)
+        self._HisStep(his, self._HisUnpin, his)
       self._finalScore = dict((m, self._ScoreMover(m, self._dotScorer)) for m in self._movers)
 
       ################################################################################
@@ -1020,8 +1026,8 @@ class Optimizer(object):
       if self._chooseHis:
         self._SuggestFlips(mi, alt, passNeighborLists, dotSphereCache)
       if his is not None:
-        self._HisRecordPass(mi, alt, passNeighborLists, dotSphereCache, his,
-          [[self._interactionGraph.vertex_label(v) for v in c] for c in singletonCliques + groupCliques])
+        self._HisStep(his, lambda: self._HisRecordPass(mi, alt, passNeighborLists, dotSphereCache, his,
+          [[self._interactionGraph.vertex_label(v) for v in c] for c in singletonCliques + groupCliques]))
 
       ################################################################################
       # Print the final state and score for all Movers
@@ -1076,7 +1082,7 @@ class Optimizer(object):
           description += " ."
 
         # a fixed His is noted at the end: reduce2 reads the flip state by word position
-        if his is not None and _HisMid(m) in his['fullAtoms']:
+        if his is not None and his['fullAtoms'] and _HisMid(m) in his['fullAtoms']:
           description += " (state {} fixed)".format(his['fullAtoms'][_HisMid(m)])
         self._infoString += _VerboseCheck(self._verbosity, 1,"  {} final score: {:.2f} pose {}\n".format(
           self._moverInfo[m], self._finalScore[m], description))
@@ -1169,6 +1175,19 @@ class Optimizer(object):
     (index in the full Mover)}."""
     self._hisNoMover = {}
     return dict(pins=dict(pins), pinned={}, fullAtoms={}, pinMid={}, passes=[], cliques=[], recs=[])
+
+  def _HisStep(self, his, f, *args):
+    """f(*args), code that runs only with reconcileHisCharges. In the first run
+    (his['first']) an error becomes _HisFirstRunError; MemoryError and Abort
+    propagate as they are."""
+    try:
+      return f(*args)
+    except (MemoryError, Abort):
+      raise
+    except Exception as e:
+      if his.get('first'):
+        raise _HisFirstRunError(e) from e
+      raise
 
   def _HisPin(self, mi, his):
     # A fixed His becomes a one-state Mover over its full atom list: every array
@@ -1377,13 +1396,31 @@ class Optimizer(object):
     re-raises it). A MemoryError propagates as it is; a user's Stop (Abort)
     propagates after that restore. Errors in the free run propagate.
     Reported in the info string and getHisCharges(). Returns the seconds the
-    reruns took (added to later models' deadline)."""
-    start = self._HisSave(myModel)
+    reruns took (added to later models' deadline). An error in the code that
+    runs only with reconciliation before the first result is saved (the saves,
+    _HisPin, _HisUnpin, _HisRecordPass): _HisFirstRunFallback."""
+    ts = time.time()    # before the first save: a slow failed save is credited too
+    try:
+      start = self._HisSave(myModel)
+    except (MemoryError, Abort):
+      raise
+    except Exception as e:
+      return self._HisFirstRunFallback(mi, myModel, ctx, None, e, ts)
     freeHis = self._HisRun({})
+    freeHis['first'] = True
     t0 = time.time()
-    self._OptimizeModel(mi, myModel, ctx, freeHis)
+    try:
+      self._OptimizeModel(mi, myModel, ctx, freeHis)
+    except _HisFirstRunError as e:
+      return self._HisFirstRunFallback(mi, myModel, ctx, start, e.error, t0)
     t1 = time.time()
-    free = self._HisSave(myModel)
+    try:
+      # an error here: the rerun repeats a finished first run (rare; one rule for all)
+      free = self._HisSave(myModel)
+    except (MemoryError, Abort):
+      raise
+    except Exception as e:
+      return self._HisFirstRunFallback(mi, myModel, ctx, start, e, t0)
     freeRes = None
     first = {}
     cases = []
@@ -1439,7 +1476,7 @@ class Optimizer(object):
           cases.append(dict(key=key, free=final, final=dict(final),
             first=dict(kind='reconciled', decision='not decided')))
     if not first and error is None:
-      self._HisReport(mi, cases, None, None, run)
+      self._HisReportGuarded(mi, cases, None, None, run)
       return 0.0
     if out != HisCharges.DONE and run['reruns'] > 0:
       self._HisRestoreVerified(myModel, free, freePrint, error)
@@ -1454,10 +1491,43 @@ class Optimizer(object):
       self._warningString += ("Warning: His charges: reconciliation stopped by an error, the "
         "first result is kept: %s: %s\n" % (type(error).__name__, error))
     run['rerunSeconds'] = time.time() - t1
-    self._HisReport(mi, cases, st, out, run)
+    self._HisReportGuarded(mi, cases, st, out, run)
     if error is not None and self.hisChargesStrict:
       raise error
     return run['rerunSeconds']
+
+  def _HisFirstRunFallback(self, mi, myModel, ctx, start, error, t0):
+    """The first run failed in code that runs only with reconciliation, maybe
+    partway through a pass (_HisRecordPass sets each His state in turn, so Movers
+    and atoms can be left changed): the starting state is restored (start None:
+    nothing ran) and the passes run again without reconciliation, with the search
+    time the first run was allowed (from the end of the restore; t0 is taken before
+    the first save), so the model is
+    the one written without it. Warning, code FIRST_RUN_ERROR, no His cases; strict
+    mode re-raises error. Returns the seconds of the failed run and the restore
+    (added to later models' deadline; the fallback run is the run made without
+    reconciliation too)."""
+    if start is not None:
+      try:
+        self._HisRestore(myModel, start)
+      except (MemoryError, Abort):
+        raise
+      except Exception as e:
+        raise Sorry("His charges: the starting state could not be restored (%s: %s); restoring after %s: %s"
+          % (type(e).__name__, e, type(error).__name__, error))
+    tr = time.time()
+    # the failed run, save or restore does not use up the search time
+    runCtx = dict(ctx, stopOptimizingAt=tr + (ctx['stopOptimizingAt'] - t0))
+    self._OptimizeModel(mi, myModel, runCtx)
+    detail = '%s: %s' % (type(error).__name__, error)
+    self._warningString += ("Warning: His charges: an error in the first run, the model was "
+      "optimized again without reconciliation: %s\n" % detail)
+    run = dict(code=HisCharges.FIRST_RUN_ERROR, detail=detail, reruns=0, cap=0, freeSeconds=tr - t0,
+      rerunSeconds=time.time() - tr, backstopSeconds=None, unmatched=0)
+    self._HisReportGuarded(mi, [], None, None, run)
+    if self.hisChargesStrict:
+      raise error
+    return tr - t0
 
   def _HisReruns(self, mi, myModel, ctx, st, start, free, first, freeHis, freeRes, cases, t0, t1, run):
     """The reruns until plan() ends. Returns (outcome, last run's record, its
@@ -1604,10 +1674,31 @@ class Optimizer(object):
     rec.update(run)
     self._hisCharges.append(rec)
 
+  def _HisReportGuarded(self, mi, cases, st, out, run):
+    """_HisReport; the model is final by then, so an error in it (MemoryError
+    and Abort apart) only warns, and getHisCharges() gets a record without cases
+    (reportError). Strict mode re-raises."""
+    n = len(self._hisCharges)
+    try:
+      self._HisReport(mi, cases, st, out, run)
+    except (MemoryError, Abort):
+      raise
+    except Exception as e:
+      if self.hisChargesStrict:
+        raise
+      detail = '%s: %s' % (type(e).__name__, e)
+      self._warningString += "Warning: His charges: the report could not be written: %s\n" % detail
+      del self._hisCharges[n:]
+      rec = dict(model=mi, outcome=out, cases=[], maxRuns=0, rejected={}, reason='report not written',
+        reportError=detail)
+      rec.update(run)
+      self._hisCharges.append(rec)
+
   def getHisCharges(self):
     """His whose conformers ended the free run with different charges, per model:
     dict(model, outcome (None, DONE, RESTORE_FREE), code (HisCharges outcome code),
     detail, reason (text from code and detail), reruns, cap, maxRuns, freeSeconds,
+    reportError (only when the report failed: the error; cases is then empty),
     rerunSeconds, backstopSeconds, unmatched, rejected {key: why}, cases
     [dict(key, free, final, first (decide()), decision, category, rerun (cost),
     fixed, checked, skipped)])."""
