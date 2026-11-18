@@ -165,7 +165,10 @@ def test_output_model():
     return dict((a.name.strip(), a.xyz) for a in h.atoms()
       if a.parent().resname == "TYR" and a.name.strip() in
       ("CD1", "CD2", "CE1", "CE2"))
-  assert ring(out_h) == ring(prog.model.get_hierarchy())
+  out_ring, in_ring = ring(out_h), ring(prog.model.get_hierarchy())
+  assert sorted(out_ring) == sorted(in_ring)
+  for name, xyz in in_ring.items():
+    assert approx_equal(out_ring[name], xyz, eps=1e-9, out=None), name
 
 def test_occupancy_groups():
   # 10: one exchangeable pair per split site; phenix.refine's
