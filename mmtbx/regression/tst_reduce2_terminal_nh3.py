@@ -10,6 +10,8 @@ Standard residues keep H1-H3 and mod_NH3.
 from __future__ import absolute_import, division, print_function
 import math
 import os
+import libtbx.load_env
+import iotbx.cif
 import iotbx.pdb
 import mmtbx.model
 import mmtbx.monomer_library.server
@@ -496,6 +498,60 @@ def test_metal_bound_start():
   assert 'N 0A0 A 1: metal-bound chain start, placed as NH2' in \
     [l.strip() for l in description.splitlines()], description
 
+def geostd_peptide(comp):
+  """comp's GeoStd ideal heavy atoms as residue 1 (+20 A, P1 cell of 40 A)
+  with a GLY 2 peptide-bonded to it; None without chem_data"""
+  path = libtbx.env.find_in_repositories(relative_path='chem_data/geostd/'
+    '%s/data_%s.cif' % (comp[0].lower(), comp), test=os.path.isfile)
+  if path is None: return None
+  loop = iotbx.cif.reader(file_path=path).model()['comp_' + comp].get_loop(
+    '_chem_comp_atom')
+  lines = ['CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1']
+  for i, name in enumerate(loop['_chem_comp_atom.atom_id']):
+    e = loop['_chem_comp_atom.type_symbol'][i]
+    if e.upper() in ('H', 'D'): continue
+    xyz = [float(loop['_chem_comp_atom.' + k][i]) + 20 for k in 'xyz']
+    lines.append('HETATM%5d %-4s %3s A   1    %8.3f%8.3f%8.3f  1.00 20.00'
+      '          %2s' % (len(lines), name if len(name) == 4 else ' ' + name,
+      comp, xyz[0], xyz[1], xyz[2], e))
+  return tnp.with_next_gly('\n'.join(lines) + '\nEND\n')
+
+def h_forms(names):
+  return sorted(set('H' + x[1:] if x[:1] == 'D' else x for x in names))
+
+def check_reread(label, out, comp):
+  """the output read again: NH3-<comp> applied (no NH2/NH1 rule), every H
+  restrained, each angle at N within 1 deg of its restraint"""
+  m, residue_names = reread(out)
+  mods = [x for x in residue_names if x.startswith(comp + '%')]
+  assert mods == ['%s%%NH3-%s' % (comp, comp)], (label, residue_names)
+  assert unrestrained_h(m) == [], (label, unrestrained_h(m))
+  assert worst_angle_at_n(m) < 1.0, (label, worst_angle_at_n(m))
+
+def test_computed_rule_names():
+  # a computed name that pdb_interpretation's name rules also test (0AA,
+  # CTE: HN2 -> mod_NH2) is restrained by NH3-<comp>, in every neutron
+  # option, read again with the angles at N at their restraints
+  for comp, names in (('0AA', ['HA2', 'HN1', 'HN2']),
+                      ('CTE', ['HN', 'HN1', 'HN2'])):
+    pdb_str = geostd_peptide(comp)
+    if pdb_str is None:
+      print('Skipping test_computed_rule_names: chem_data not available')
+      return
+    for option in ('none', 'all_h') + NEUTRON:
+      label = '%s_%s' % (comp, option)
+      h, _, out = run(label, pdb_str, 'neutron_option=' + option)
+      rg = first_rg(h)
+      n = [a for a in rg.atoms() if a.name.strip() == 'N'][0]
+      on_n = [a.name.strip() for a in rg.atoms() if is_hd(a) and
+        a.distance(n) < 1.3]
+      assert h_forms(on_n) == names, (label, on_n)
+      check_reread(label, out, comp)
+  for comp in ('0AB', 'BB8', 'DGH', 'MH8', 'TY2'):
+    h, _, out = run(comp, geostd_peptide(comp))
+    assert len(h_on_n(h)) == 3, (comp, h_on_n(h))
+    check_reread(comp, out, comp)
+
 if __name__ == '__main__':
   test_converted_termini()
   test_standard_terminus()
@@ -505,4 +561,5 @@ if __name__ == '__main__':
   test_master_written_file()
   test_neutron()
   test_metal_bound_start()
+  test_computed_rule_names()
   print('OK')

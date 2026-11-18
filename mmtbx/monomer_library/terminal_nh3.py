@@ -137,6 +137,12 @@ def nh3_mod(monomer, extra, mod_nh3=None):
       new_value_angle_esd=3.0))
   return mod
 
+def _h_forms(names):
+  # a D conformer (neutron H/D pairs) names them DN3 for HN3
+  result = set(names)
+  result.update('H' + x[1:] for x in names if x[:1] == 'D')
+  return result
+
 def terminal_mod(monomer, unexpected, mod_nh3=None):
   """The generated modification for a terminus of monomer, if any extra
   name is among the unexpected atoms; else None. Built per call from the
@@ -144,9 +150,20 @@ def terminal_mod(monomer, unexpected, mod_nh3=None):
   mod_nh3: the library's mod_NH3 (its N-CA term)."""
   if not applies(monomer): return None
   extra = extra_h_names(monomer)
-  # a D conformer (neutron H/D pairs) names them DN3 for HN3
-  names = set(unexpected)
-  names.update('H' + x[1:] for x in unexpected if x[:1] == 'D')
   # any of them, as mod_NH3 takes any of H1-H3 (a partial terminus)
-  if not extra or not [h for h in extra if h in names]: return None
+  if not extra or not set(extra) & _h_forms(unexpected): return None
   return nh3_mod(monomer, extra, mod_nh3)
+
+# the names pdb_interpretation's N-terminal rules test (mod_NH3, NH2, NH1)
+RULE_NAMES = ('H1', 'H2', 'H3', '1H', '2H', '3H', 'HN1', 'HN2', '1HN',
+  '2HN', 'HN')
+
+def computed_names_mod(monomer, unexpected, mod_nh3=None):
+  """terminal_mod() where every unexpected name that pdb_interpretation's
+  N-terminal rules test (RULE_NAMES) is a computed name, so that the rules
+  do not take it (0AA, CTE: computed HN2 -> mod_NH2); else None."""
+  mod = terminal_mod(monomer, unexpected, mod_nh3)
+  if mod is None: return None
+  if (_h_forms(unexpected) & set(RULE_NAMES)) - set(extra_h_names(monomer)):
+    return None
+  return mod

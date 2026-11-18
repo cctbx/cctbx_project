@@ -1654,7 +1654,12 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
               j += 1
           assert j == len(nitrogen_hydrogen_translation)
       else:
-        if (      ("H1" in u or "1H" in u)
+        # computed terminal_nh3 names only (0AA HN2): before the name rules
+        computed = terminal_nh3.computed_names_mod(self.monomer, u,
+          mod_dict["NH3"])
+        if (computed is not None):
+          mod_mod_ids.append(computed)
+        elif (    ("H1" in u or "1H" in u)
               and ("H2" in u or "2H" in u)
               and ("H3" in u or "3H" in u)):
           if (self.monomer_atom_dict.get("H") is not None):

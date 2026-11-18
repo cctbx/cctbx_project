@@ -13,7 +13,7 @@ import iotbx.pdb
 import libtbx.load_env
 import mmtbx.monomer_library.server
 from libtbx.utils import null_out
-from mmtbx.monomer_library import pdb_interpretation
+from mmtbx.monomer_library import pdb_interpretation, terminal_nh3
 
 # 0A0-GLY: HN1, HN2 (dictionary) and HN3 (computed) on N
 pdb_0a0 = """\
@@ -245,6 +245,19 @@ def test_replacement_cif():
   assert values == dict((h, (1.08, 0.03)) for h in ('HN1', 'HN2', 'HN3')), \
     values
 
+def test_computed_rule_name():
+  # 0AA: the computed HN2 is also a name of the HN1/HN2 -> mod_NH2 rule;
+  # NH3-0AA restrains it, never mod_NH2
+  srv = mmtbx.monomer_library.server.server()
+  mon = srv.get_comp_comp_id_direct('0AA')
+  assert terminal_nh3.extra_h_names(mon) == ['HN2']
+  nh3 = srv.mod_mod_id_dict['NH3']
+  assert terminal_nh3.computed_names_mod(mon, ['HN2'], nh3) is not None
+  assert terminal_nh3.computed_names_mod(mon, ['DN2'], nh3) is not None
+  # a supplied rule name that is not computed: the rules as before
+  assert terminal_nh3.computed_names_mod(mon, ['HN2', 'H1'], nh3) is None
+  assert terminal_nh3.computed_names_mod(mon, ['OXT'], nh3) is None
+
 if __name__ == '__main__':
   test_0a0()
   test_2kz_carbon_h()
@@ -252,4 +265,5 @@ if __name__ == '__main__':
   test_standard_terminus()
   test_partial_and_sp3()
   test_replacement_cif()
+  test_computed_rule_name()
   print('OK')
