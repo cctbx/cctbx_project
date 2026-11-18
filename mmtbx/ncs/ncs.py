@@ -3417,9 +3417,9 @@ class ncs_group:
   def helix_rt_reverse(self):
     """Return r and t for moving one reverse in a helix"""
     assert self._have_helical_symmetry
-    if not hasattr(self,'helix_oper_reverse') or not self.helix_oper_reverse:
-      if not hasattr(self,'helix_oper_forwards') or \
-         not self.helix_oper_forwards: # no info, quit
+    # NOTE: an operator index of 0 is valid; only None means not available
+    if getattr(self,'helix_oper_reverse',None) is None:
+      if getattr(self,'helix_oper_forwards',None) is None: # no info, quit
         return None,None
       else: # generate from forwards:
         r_forwards,t_forwards=self.helix_rt_forwards()
@@ -3435,9 +3435,9 @@ class ncs_group:
   def helix_rt_forwards(self):
     """Return r and t for moving one forwards in a helix"""
     assert self._have_helical_symmetry
-    if not hasattr(self,'helix_oper_forwards') or not self.helix_oper_forwards:
-      if not hasattr(self,'helix_oper_reverse') or \
-         not self.helix_oper_reverse: # no info, quit
+    # NOTE: an operator index of 0 is valid; only None means not available
+    if getattr(self,'helix_oper_forwards',None) is None:
+      if getattr(self,'helix_oper_reverse',None) is None: # no info, quit
         return None,None
       else: # generate from reverse:
         r_reverse,t_reverse=self.helix_rt_reverse()
