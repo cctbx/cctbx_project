@@ -146,6 +146,8 @@ FLIPS = ["add_flip_movers=True"]
 def test_guard():
   free, _ = run("tst_reduce2_clique_limits_guard", pdb_6vw1, FLIPS)
   assert limited(free) == [], limited(free)
+  # the comparisons below need the Clique's line
+  assert len(coarse_scores(free)) == 1, coarse_scores(free)
   desc, _ = run("tst_reduce2_clique_limits_guard", pdb_6vw1, FLIPS + ["max_clique_search=1"])
   lines = limited(desc)
   assert len(lines) == 1, lines

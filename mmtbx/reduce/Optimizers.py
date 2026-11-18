@@ -2283,7 +2283,9 @@ class Optimizer(object):
       # the count is not charged to the allowance
       startTime = time.time()
       (bestScore, infoString) = optC.OptimizeCliqueCoarse(movers, edges, remainingSeconds)
-      self._infoString += _VerboseCheck(self._verbosity, 1, infoString)
+      # as the C++ wrote it: _VerboseCheck() would indent the next line when it is empty
+      if self._verbosity >= 1:
+        self._infoString += infoString
       ret = bestScore
 
       stopTime = time.time()
