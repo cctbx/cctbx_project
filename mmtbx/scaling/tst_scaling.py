@@ -929,6 +929,12 @@ def twin_the_data_and_analyse(twin_operator,twin_fraction=0.2):
   assert approx_equal(twin_anal_object.twin_law_dependent_analyses[index].ml_murray_rust.estimated_alpha,
                       twin_fraction, eps=0.1)
 
+  # the L-test estimate runs low near a perfect twin
+  if twin_fraction == 0:
+    assert twin_anal_object.l_test.ml_alpha < 0.05
+  else:
+    assert twin_anal_object.l_test.ml_alpha > twin_fraction/2
+
   ## Untwinned data standards
   if twin_fraction==0:
     ## L-test

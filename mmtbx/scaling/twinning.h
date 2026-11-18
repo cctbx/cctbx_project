@@ -721,14 +721,13 @@ namespace twinning {
       SCITBX_ASSERT( fabs(l_value) <=1);
       SCITBX_ASSERT( alpha < 0.5);
       SCITBX_ASSERT( alpha >=0 );
-      FloatType P=0.;
-      FloatType den = (l_value*l_value-1)*
+      FloatType P = (l_value*l_value-1)*
       (-1+l_value*l_value+2.0*alpha*
        (-1+alpha+(-1+alpha)*(3+4*(-1+alpha)*alpha)*l_value*l_value));
-      if(den == 0) return P;
-      den = ((-1+(1-2*alpha)*(1-2*alpha)*l_value*l_value)*
+      FloatType den = ((-1+(1-2*alpha)*(1-2*alpha)*l_value*l_value)*
       (-1+(1-2*alpha)*(1-2*alpha)*l_value*l_value));
-      if(den == 0) return den;
+      // both vanish only at alpha=0, |L|=1, where the density is 1
+      if(den == 0) return 0;
       P/=den;
       if (P < 1e-10){
         P=1e-10;
