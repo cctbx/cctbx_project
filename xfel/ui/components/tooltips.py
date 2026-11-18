@@ -214,9 +214,11 @@ tooltips = {
                      'whole distribution as a heatmap.',
   'drift_uncertainties': 'Error bars on the origin from the mean difference between observed '
                          'and predicted reflection positions. Roughly doubles the reading time.',
-  'drift_reject_outliers': 'Drop a chunk\'s cells whose a, b or c lies more than 1.5 interquartile '
-                           'ranges beyond the quartiles of that length within the chunk, before '
-                           'averaging or plotting.',
+  'drift_reject_outliers': 'Drop a chunk\'s cells whose a, b or c lies more than the IQR ratio '
+                           'times the interquartile range beyond the quartiles of that length '
+                           'within the chunk, before averaging or plotting.',
+  'drift_iqr_ratio': 'How many interquartile ranges beyond the quartiles a cell length may lie '
+                     'before the cell is rejected. The usual value is 1.5; smaller rejects more.',
   'mergingstats_auto_update': 'Refresh the plots every few seconds. Uncheck to freeze them, for '
                               'instance to zoom into the drift plot without it being redrawn.',
   # Dataset scaling stage — unit-cell cluster filter

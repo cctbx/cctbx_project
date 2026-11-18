@@ -15,6 +15,7 @@ import collections
 import numpy as np
 from threading import Thread
 from wx.lib.scrolledpanel import ScrolledPanel
+from wx.lib.agw.floatspin import EVT_FLOATSPIN
 from libtbx import easy_run
 
 try:
@@ -1276,6 +1277,7 @@ DriftResult = collections.namedtuple('DriftResult', ['version_id', 'settings', '
 DRIFT_ORIGINS = ['first', 'average', 'distribution', 'panel_com_first', 'panel_com_average', 'panel_com_distribution']
 DRIFT_COLOR_BY = ['run', 'rungroup', 'chunk', 'task', 'trial', 'merge']
 DRIFT_UNIT_CELLS = ['average', 'distribution']
+DRIFT_IQR_RATIO = 1.5  # the ratio the drift page starts with when rejecting outliers
 
 def drift_parameters(settings):
   ''' cctbx.xfel.drift parameters for a DriftSettings, with plotting set up for
@@ -1439,7 +1441,10 @@ class MergingStatsSentinel(Thread):
       pass
     params = drift_parameters(settings)
     table = DriftTable()
-    scraper = DriftScraperFactory.get_drift_scraper_class(ExplicitDriftScraper, params)(table, params, entries, cache)
+    def progress(done, total):
+      wx.CallAfter(tab.show_drift_progress, version_id, settings, done, total)
+    scraper = DriftScraperFactory.get_drift_scraper_class(ExplicitDriftScraper, params)(
+      table, params, entries, cache, progress=progress)
     scraper.scrap()
     try:
       if not os.path.isdir(cache_dir):
@@ -3902,16 +3907,24 @@ class MergingStatsTab(BaseTab):
     setup_tooltip(self.chk_drift_uncertainties)
     self.chk_drift_reject_outliers = wx.CheckBox(self.drift_page, name='drift_reject_outliers', label='Reject outliers')
     setup_tooltip(self.chk_drift_reject_outliers)
+    self.drift_iqr_ratio = gctr.SpinCtrl(self.drift_page, name='drift_iqr_ratio', label='IQR ratio:',
+                                         label_size=(-1, -1), label_style='normal', ctrl_size=(150, -1),
+                                         ctrl_value=str(DRIFT_IQR_RATIO), ctrl_min=0, ctrl_max=100,
+                                         ctrl_step=0.5, ctrl_digits=1)
     for ctrl, value in ((self.drift_origin, self.drift_settings.origin),
                         (self.drift_color_by, self.drift_settings.color_by),
                         (self.drift_unit_cell, self.drift_settings.unit_cell)):
       ctrl.ctr.SetStringSelection(value)
     self.chk_drift_uncertainties.SetValue(self.drift_settings.uncertainties)
     self.chk_drift_reject_outliers.SetValue(self.drift_settings.iqr_ratio is not None)
+    if self.drift_settings.iqr_ratio is not None:
+      self.drift_iqr_ratio.ctr.SetValue(self.drift_settings.iqr_ratio)
+    self.drift_iqr_ratio.Enable(self.drift_settings.iqr_ratio is not None)
     for ctrl in (self.drift_origin, self.drift_color_by, self.drift_unit_cell):
       drift_controls.Add(ctrl, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT | wx.BOTTOM, border=5)
     drift_controls.Add(self.chk_drift_uncertainties, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT | wx.BOTTOM, border=15)
-    drift_controls.Add(self.chk_drift_reject_outliers, flag=wx.ALIGN_CENTER_VERTICAL | wx.BOTTOM, border=5)
+    drift_controls.Add(self.chk_drift_reject_outliers, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT | wx.BOTTOM, border=5)
+    drift_controls.Add(self.drift_iqr_ratio, flag=wx.ALIGN_CENTER_VERTICAL | wx.BOTTOM, border=5)
     self.drift_label = wx.StaticText(self.drift_page, label='')
     self.drift_figure = mpl.figure.Figure()
     self.drift_canvas = FigureCanvas(self.drift_page, -1, self.drift_figure)
@@ -3953,6 +3966,7 @@ class MergingStatsTab(BaseTab):
       self.Bind(wx.EVT_CHOICE, self.onDriftSettings, ctrl.ctr)
     self.Bind(wx.EVT_CHECKBOX, self.onDriftSettings, self.chk_drift_uncertainties)
     self.Bind(wx.EVT_CHECKBOX, self.onDriftSettings, self.chk_drift_reject_outliers)
+    self.Bind(EVT_FLOATSPIN, self.onDriftSettings, self.drift_iqr_ratio.ctr)
     self.Bind(wx.EVT_CHECKBOX, self.onChkAutoUpdate, self.chk_auto_update)
     self.plots_nb.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onPlotPageChanged)
 
@@ -3968,12 +3982,14 @@ class MergingStatsTab(BaseTab):
     e.Skip()
 
   def onDriftSettings(self, e):
+    reject_outliers = self.chk_drift_reject_outliers.GetValue()
+    self.drift_iqr_ratio.Enable(reject_outliers)
     # Rebind whole, never mutate: the sentinel reads this record
     self.drift_settings = DriftSettings(self.drift_origin.ctr.GetStringSelection(),
                                         self.drift_color_by.ctr.GetStringSelection(),
                                         self.drift_unit_cell.ctr.GetStringSelection(),
                                         self.chk_drift_uncertainties.GetValue(),
-                                        1.5 if self.chk_drift_reject_outliers.GetValue() else None)
+                                        self.drift_iqr_ratio.ctr.GetValue() if reject_outliers else None)
     self.drift_label.SetLabel('Reading...')
 
   def _plots_page_size(self):
@@ -4087,6 +4103,13 @@ class MergingStatsTab(BaseTab):
     self._draw_stats()
     self._draw_cosym()
     self._draw_drift()
+
+  def show_drift_progress(self, version_id, settings, done, total):
+    ''' Called from the sentinel, through CallAfter, before it reads a chunk:
+        show how far it is, unless the page has since moved on to another
+        version or other settings. '''
+    if version_id == self.drift_version_id and settings is self.drift_settings:
+      self.drift_label.SetLabel('Reading... (%d/%d chunks)' % (done, total))
 
   def _draw_drift(self):
     ''' Draw the sentinel's latest drift result, once per result. '''
