@@ -8428,7 +8428,8 @@ def iterate_search(params,
   new_params.segmentation.density_threshold = None
   new_params.output_files.write_output_maps = False
   new_params.output_files.output_info_file = None
-  if params.output_files.write_intermediate_maps:
+  if params.output_files.write_intermediate_maps and \
+      params.output_files.au_output_file_stem:
     new_params.output_files.au_output_file_stem = \
       params.output_files.au_output_file_stem+"_cycle_2"
   else:
