@@ -128,10 +128,11 @@ def crystal_symmetry_to_ncs(crystal_symmetry=None):
     trans_orth.append(t_orth_inv)
     ncs_center_orth.append(c_value)
 
-    chain_residue_id= [
-        len(r_orth)*[None],
-        len(r_orth)*[[]]
-        ]
+  # One entry for each operator (not for each element of a matrix)
+  chain_residue_id= [
+      len(ncs_rota_matr)*[None],
+      len(ncs_rota_matr)*[[]]
+      ]
 
   ncs_obj=ncs()
   ncs_obj.import_ncs_group(
