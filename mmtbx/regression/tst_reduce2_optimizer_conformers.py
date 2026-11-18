@@ -7,6 +7,10 @@ Models: the Zn-Cys model of tst_add_hydrogen_1 with O split A/B and the Zn in
 altloc A (A4 B0 case c2); 1US0 Tyr A 189, Lys A 85 and Ile A 14 (backbone
 atoms split A/B, side chains blank); 3CP5 Thr A 46 (blank CB, OG1 and CG2
 split A/B: CB counted both conformers' substituents).
+A residue present only in another conformer (no blank atoms, one other altloc)
+in a chain without the pass's altloc is left out of that pass:
+the c2 Zn after TER; 4Y7E BMA A 414 (altloc A) and its superposed copy BMA C 1
+(altloc B), each in its own chain; three altlocs; alt_id given.
 """
 from __future__ import absolute_import, division, print_function
 import os, re
@@ -15,6 +19,7 @@ from iotbx.cli_parser import run_program
 import iotbx.pdb
 import scitbx.math
 from mmtbx.programs import reduce2
+from mmtbx.reduce import Optimizers
 
 m_c2 = """\
 CRYST1  108.910  108.910  108.910  90.00  90.00  90.00 I 4 3 2
@@ -123,7 +128,49 @@ ATOM    301  O   ALA A  47       4.468  26.498  35.305  1.00 21.55           O
 ATOM    302  CB  ALA A  47       2.251  25.606  37.352  1.00 14.76           C
 """
 
-def run(model_text, prefix):
+m_bma = """\
+CRYST1   65.709  100.706  104.737  90.00  90.00  90.00 P 21 21 21
+HETATM 4814  C1 ABMA A 414      58.277  85.591 -21.661  0.50 34.39           C
+HETATM 4815  C2 ABMA A 414      59.360  84.534 -21.848  0.50 33.10           C
+HETATM 4816  C3 ABMA A 414      58.795  83.150 -21.558  0.50 31.09           C
+HETATM 4817  C4 ABMA A 414      58.059  83.120 -20.225  0.50 29.83           C
+HETATM 4818  C5 ABMA A 414      57.075  84.278 -20.119  0.50 31.35           C
+HETATM 4819  C6 ABMA A 414      56.337  84.300 -18.780  0.50 31.27           C
+HETATM 4820  O1 ABMA A 414      58.807  86.901 -21.893  0.50 37.20           O
+HETATM 4821  O2 ABMA A 414      60.438  84.791 -20.942  0.50 33.70           O
+HETATM 4822  O3 ABMA A 414      59.851  82.191 -21.524  0.50 31.12           O
+HETATM 4823  O4 ABMA A 414      57.299  81.913 -20.193  0.50 26.68           O
+HETATM 4824  O5 ABMA A 414      57.760  85.510 -20.329  0.50 32.83           O
+HETATM 4825  O6 ABMA A 414      57.234  84.116 -17.675  0.50 31.10           O
+TER
+HETATM 4645  C1 BBMA C   1      58.274  85.577 -21.658  0.50 34.39           C
+HETATM 4646  C2 BBMA C   1      59.360  84.522 -21.844  0.50 33.10           C
+HETATM 4647  C3 BBMA C   1      58.802  83.137 -21.549  0.50 31.08           C
+HETATM 4648  C4 BBMA C   1      58.077  83.105 -20.210  0.50 29.83           C
+HETATM 4649  C5 BBMA C   1      57.082  84.255 -20.113  0.50 31.35           C
+HETATM 4650  C6 BBMA C   1      56.338  84.278 -18.776  0.50 31.27           C
+HETATM 4651  O1 BBMA C   1      58.800  86.888 -21.887  0.50 37.21           O
+HETATM 4652  O2 BBMA C   1      60.439  84.787 -20.942  0.50 33.70           O
+HETATM 4653  O3 BBMA C   1      59.859  82.179 -21.524  0.50 31.16           O
+HETATM 4654  O4 BBMA C   1      57.334  81.888 -20.166  0.50 26.65           O
+HETATM 4655  O5 BBMA C   1      57.754  85.493 -20.327  0.50 32.82           O
+HETATM 4656  O6 BBMA C   1      57.234  84.114 -17.668  0.50 31.08           O
+"""
+
+m_three = """\
+ATOM      1  N  AALA A   1      10.000  10.000  10.000  0.40 10.00           N
+ATOM      2  N  BALA A   1      10.300  10.000  10.000  0.30 10.00           N
+ATOM      3  N  CALA A   1      10.600  10.000  10.000  0.30 10.00           N
+TER
+ATOM      4  N  AALA B  10      20.000  10.000  10.000  0.50 10.00           N
+ATOM      5  N  BALA B  10      20.300  10.000  10.000  0.50 10.00           N
+ATOM      6  N  AALA B  11      23.000  10.000  10.000  0.50 10.00           N
+ATOM      7  N   ALA B  12      26.000  10.000  10.000  1.00 10.00           N
+ATOM      8  CA AALA B  12      27.000  10.000  10.000  0.50 10.00           C
+ATOM      9  CA BALA B  12      27.000  10.300  10.000  0.50 10.00           C
+"""
+
+def run(model_text, prefix, *extra):
   fn_in = prefix + ".pdb"
   fn_out = prefix + "_out.pdb"
   fn_desc = prefix + "_out.txt"
@@ -133,7 +180,7 @@ def run(model_text, prefix):
     if os.path.exists(fn): os.remove(fn)
   run_program(program_class=reduce2.Program, logger=null_out(),
     args=[fn_in, "approach=add", "output.filename=" + fn_out,
-      "output.description_file_name=" + fn_desc, "overwrite=True"])
+      "output.description_file_name=" + fn_desc, "overwrite=True"] + list(extra))
   with open(fn_desc) as f:
     return f.read()
 
@@ -169,11 +216,12 @@ def test_c2():
 
 def test_c2_after_ter():
   '''The same with the Zn after TER, a chain of its own with only altloc A:
-  the B pass takes that chain's first conformer, so ZN/A is in the B pass and
-  SG has three neighbours there; no rotator for HG/B. Pins today's result,
-  see plan item B8 (passes before the per-pass lists too).'''
+  the B pass leaves that residue out (only in another conformer), so the
+  result is test_c2's: HG/B gets a rotator; labels swapped, HG/A'''
   m = movers(run(m_c2_ter, 'tst_reduce2_optimizer_conformers_c2_ter'))
-  assert not [x for x in m if x[1].endswith('CYS 48 HG')], m
+  assert ('B', 'MoverSingleHydrogenRotator chain A BCYS 48 HG') in m, m
+  m = movers(run(swap_ab(m_c2_ter), 'tst_reduce2_optimizer_conformers_c2_ter_swap'))
+  assert ('A', 'MoverSingleHydrogenRotator chain A ACYS 48 HG') in m, m
 
 def test_tyr_oh():
   '''1US0 Tyr A 189: backbone in A/B, ring blank; HH/A and HH/B each get a
@@ -229,6 +277,60 @@ def test_thr_split_branch():
           sites=[xyz['CA'], xyz['CB'], xyz['CG2'], xyz[hn]], deg=True)
         assert abs((t % 120.0) - 60.0) < 5.0, (name, alt, hn, t)
 
+def test_glycan_copies():
+  '''Two superposed copies of a sugar, each in its own chain with one altloc:
+  each pass holds the Movers of its own copy only, and no Clique spans the
+  copies (before: both copies in both passes, one Clique of 10 per pass)'''
+  cliques = []
+  orig = Optimizers.OptimizerC
+  class Recorder(object):
+    def __init__(self, *a, **k):
+      self._optC = orig(*a, **k)
+    def __getattr__(self, name):
+      return getattr(self._optC, name)
+    def OptimizeCliqueCoarse(self, movers, edges, seconds):
+      cliques.append(set(a.parent().parent().parent().id
+        for m in movers for a in m.CoarsePositions().atoms))
+      return self._optC.OptimizeCliqueCoarse(movers, edges, seconds)
+  Optimizers.OptimizerC = Recorder
+  try:
+    m = movers(run(m_bma, 'tst_reduce2_optimizer_conformers_bma'))
+  finally:
+    Optimizers.OptimizerC = orig
+  hos = ('HO1', 'HO2', 'HO3', 'HO4', 'HO6')
+  assert m == set([('A', 'MoverSingleHydrogenRotator chain A ABMA 414 ' + h) for h in hos] +
+    [('B', 'MoverSingleHydrogenRotator chain C BBMA 1 ' + h) for h in hos]), m
+  assert cliques and all(len(c) == 1 for c in cliques), cliques
+
+def test_three_altlocs():
+  '''Pass C, chain B without C: Ala 10 (A and B) and Ala 12 (blank and A, B)
+  give their first conformer (A), Ala 11 (A only) is left out; pass A keeps
+  it.'''
+  model = iotbx.pdb.input(source_info=None, lines=m_three).construct_hierarchy().models()[0]
+  def ids(alt):
+    return sorted((a.parent().parent().parent().id, a.parent().parent().resseq_as_int(),
+      a.name.strip(), a.parent().altloc) for a in Optimizers.GetAtomsForConformer(model, alt))
+  assert ids('C') == [('A', 1, 'N', 'C'), ('B', 10, 'N', 'A'), ('B', 12, 'CA', 'A'),
+    ('B', 12, 'N', '')], ids('C')
+  assert ('B', 11, 'N', 'A') in ids('A'), ids('A')
+
+def test_full_occupancy():
+  '''Ala 11 (A only) at occupancy 0.99 is present in every state: pass C keeps
+  it; at 0.98 it is left out.'''
+  for occ, kept in (('0.99', True), ('0.98', False)):
+    text = m_three.replace('23.000  10.000  10.000  0.50', '23.000  10.000  10.000  ' + occ)
+    model = iotbx.pdb.input(source_info=None, lines=text).construct_hierarchy().models()[0]
+    got = [a for a in Optimizers.GetAtomsForConformer(model, 'C')
+      if a.parent().parent().resseq_as_int() == 11]
+    assert len(got) == (1 if kept else 0), (occ, [a.id_str() for a in got])
+
+def test_alt_id_single_pass():
+  '''alt_id=B (one pass): the Zn after TER, only in A, is left out of it as in
+  the full run; HG/B gets a rotator'''
+  m = movers(run(m_c2_ter, 'tst_reduce2_optimizer_conformers_c2_ter_b', 'alt_id=B'))
+  assert set(x[0] for x in m) == set(['B']), m
+  assert ('B', 'MoverSingleHydrogenRotator chain A BCYS 48 HG') in m, m
+
 if __name__ == "__main__":
   test_c2()
   test_c2_after_ter()
@@ -236,4 +338,8 @@ if __name__ == "__main__":
   test_lys_nh3()
   test_ile_methyl()
   test_thr_split_branch()
+  test_glycan_copies()
+  test_three_altlocs()
+  test_full_occupancy()
+  test_alt_id_single_pass()
   print("OK")

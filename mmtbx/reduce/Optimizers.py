@@ -105,8 +105,13 @@ def AlternatesInModel(model):
 def GetAtomsForConformer(model, conf):
   """Returns a list of atoms in the named conformer.  It also includes atoms from
   the first conformation in chains that do not have this conformation, to provide a
-  complete model.  For a model whose chains have only one conformer, it will return
-  all of the atoms.
+  complete model.  For a model without altlocs, it will return all of the atoms.
+  In that fallback, a residue whose atom groups all carry one other altloc (no blank
+  atoms, e.g. a glycan copy modelled as altloc B in its own chain) is left out, as an
+  alternative to this conformer's atoms, unless every atom of it has occupancy
+  >= 0.99 (present in every state, whatever its label).  Residues with blank atoms
+  or several altlocs still contribute their first conformer.  This also holds for the
+  single pass run when the Optimizer is given an altID.
   :param model: pdb.hierarchy.model to search for atoms.
   :param conf: String name of the conformation to find.  Can be "", which finds the
   default conformer; if there is no empty conformation, then it will
@@ -121,7 +126,22 @@ def GetAtomsForConformer(model, conf):
       if confs[i].altloc == conf:
         which = i
         break
-    ret += confs[which].atoms()
+    if conf.strip() == '' or confs[which].altloc in (conf, ''):
+      ret += confs[which].atoms()
+      continue
+    # Fallback for a chain without conf: residues only in one other altloc are
+    # alternatives to conf's atoms, not their environment, unless fully occupied
+    # (deposited "full" is often 0.99).
+    onlyOther = {}
+    for a in confs[which].atoms():
+      rg = a.parent().parent()
+      key = rg.memory_id()
+      if key not in onlyOther:
+        alts = set(ag.altloc.strip() for ag in rg.atom_groups())
+        onlyOther[key] = (len(alts) == 1 and '' not in alts and
+          not all(x.occ >= 0.99 for x in rg.atoms()))
+      if not onlyOther[key]:
+        ret.append(a)
   return ret
 
 def _HisAcceptorsInAnyState(mover):

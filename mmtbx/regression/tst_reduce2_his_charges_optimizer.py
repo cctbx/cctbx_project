@@ -894,6 +894,41 @@ def with_zn(alt, n='NE2'):
   return pdb_1exr + "HETATM  999 ZN   ZN%s Z   1    %8.3f%8.3f%8.3f  0.50 20.00          ZN\n" % (
     alt, zn[0], zn[1], zn[2])
 
+def ion_locks(desc):
+  """{(pass altloc, ring N label)} of His N given no H for an ionic bond"""
+  out, alt = set(), None
+  for l in desc.split('\n'):
+    m = re.search(r"Running Reduce optimization on model index \d+, alternate '(.*)'", l)
+    if m:
+      alt = m.group(1)
+    m = re.match(r"\s*Not adding Hydrogen to (chain .*?) and marking as an acceptor "
+      r"\(ionic bond to ", l)
+    if m:
+      out.add((alt, m.group(1)))
+  return out
+
+def test_zn_own_chain():
+  """A Zn with one altloc in its own chain Z, 1.78 A from conformer B's NE2
+  (3.06 A from A's): labelled B, it ion-locks His B in pass B only; labelled
+  A, it is left out of pass B (only in another conformer) and locks nothing
+  (before the change, His B was ion-locked by the Zn of conformer A)."""
+  zn = "HETATM  999 ZN  %s ZN Z   1      36.285 -15.375  39.232  0.50 20.00          ZN\n"
+  for alt, expected in (('B', set([('B', 'chain A BHIS 107 NE2')])), ('A', set())):
+    atoms, desc, made = run(pdb_1exr + zn % alt, "tst_reduce2_his_charges_opt_zn" + alt)
+    assert ion_locks(desc) == expected, (alt, ion_locks(desc))
+
+def test_zn_full_occupancy():
+  """A Zn labelled A in its own chain Z, 2.05 A from conformer B's ND1: at
+  occupancy 1.00 it is present in every state, so pass B ion-locks ND1/B and
+  writes HE2/B; at 0.50 it is left out of pass B, which writes HD1/B 1.19 A
+  from it."""
+  zn = "HETATM  999 ZN  A ZN Z   1      32.046 -17.617  40.552  %s 20.00          ZN\n"
+  for occ, lockB, ringB in (('1.00', True, 'HE2'), ('0.50', False, 'HD1')):
+    atoms, desc, made = run(pdb_1exr + zn % occ, "tst_reduce2_his_charges_opt_znocc" + occ[0])
+    locks = ion_locks(desc)
+    assert (('B', 'chain A BHIS 107 ND1') in locks) == lockB, (occ, locks)
+    assert [x for x in ring_h(atoms, 'A', '107') if x[1] == 'B'] == [(ringB, 'B')], (occ, ring_h(atoms, 'A', '107'))
+
 def test_metal_kept():
   """A Zn at NE2 of conformer B only: B loses HE2, the His keeps A +1, B 0 with
   the reason; no rerun. qmready then stops with the hint. A Zn at conformer B's
@@ -2155,6 +2190,8 @@ if __name__ == "__main__":
   test_hint_and_report()
   test_blank_ring_split_h()
   test_metal_kept()
+  test_zn_own_chain()
+  test_zn_full_occupancy()
   test_multi_model()
   test_qmready()
   test_qmready_stderr()

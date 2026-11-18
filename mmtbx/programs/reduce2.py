@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.21.0"
+version = "3.22.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -1160,6 +1160,9 @@ NOTES:
   for the final alternate tested.  This may leave other alternates in sub-optimal configurations.
   When a single alternate is selected using alt_id= on the command line, everything is
   optimized a single time and for that configuration.
+  A residue that carries a single altloc and no blank atoms (e.g. a ligand copy given
+  altloc B in its own chain) is left out of the other alternates' passes, also with
+  alt_id=, unless every atom of it has occupancy >= 0.99.
 
   By default (add_flip_movers=False) no heavy atom moves: each His chooses HD1, HE2 or
   both in its input orientation, and Asn/Gln amides keep theirs. The flips that would
