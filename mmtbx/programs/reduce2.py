@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.19.0"
+version = "3.20.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -196,10 +196,18 @@ ignore_missing_restraints = False
   .type = bool
   .short_caption = Don't stop if restraints for a residue are missing.
   .help = Don't stop if restraints for a residue are missing (otherwise every approach except remove stops). With approach=optimize such a residue is left exactly as in the input, also with a neutron_option (its H/D are not converted), and is listed in the log and the description file. With approach=add or place and keep_existing_H=True, its existing H/D are kept unchanged and it is listed in the log and the description file. With keep_existing_H=False it gets no H and is listed in the log.
-treat_cliques_as_singletons_after_seconds = 1.0e10
+treat_cliques_as_singletons_after_seconds = 1800
   .type = float
   .short_caption = Treat cliques as singletons after this many seconds
-  .help = Once the program has run for this many seconds, handle any ongoing or new cliques as singletons.  Note that for many runs most of the time is spent on PDB interpretation and Mover placement, which will not be cut short. Fine optimizations are completed after coarse optimizations cease.
+  .help = Once this many seconds have passed since the start of the optimization (all models together, Mover placement included), handle any ongoing or new cliques as singletons and skip the clique polish. A last resort: max_clique_search and clique_search_seconds stop a hard clique well before it. Note that for many runs most of the time is spent on PDB interpretation and Mover placement, which will not be cut short. Fine optimizations are completed after coarse optimizations cease. None: no limit.
+max_clique_search = 1e6
+  .type = float
+  .short_caption = Largest search of one clique
+  .help = A clique whose search would take more work than this (state combinations scored plus subsets tried to find cuts, counted from the clique's interaction graph before searching) is optimized as singletons, with a warning in the log and the description file. The count does not depend on the computer. A clique too large to count (its cut searches alone visit more than 5e6 Movers) is optimized as singletons too, whatever this limit, unless it is None. Cliques of normal models count at most about 1.5e4, so the default leaves them unchanged. None: no limit, the full search (it can take hours and tens of GB for some large cliques).
+clique_search_seconds = 120
+  .type = float
+  .short_caption = Search time of one clique
+  .help = A backstop for the search time of one clique: past it, the part of the clique still to search is optimized as singletons, with a warning. Some steps of the search are not checked, so a clique can run past it. The cliques of normal models take at most about 1 s, so the default leaves them unchanged. None: no limit. For the full search set this and max_clique_search to None (and raise treat_cliques_as_singletons_after_seconds).
 qmready = False
   .type = bool
   .short_caption = Run with custom preset options suitable for QM
@@ -1940,6 +1948,28 @@ NOTES:
             '(changes all flip decisions): add_flip_movers=True' % (where, dec))
     return '\n'.join(out)
 
+  def _CliqueLimits(self):
+    """The Optimizer's limits of one Clique's search, from the parameters."""
+    return dict(maxCliqueWork=self.params.max_clique_search,
+      cliqueSeconds=self.params.clique_search_seconds)
+
+  def _PrintCliqueLimits(self, opt):
+    """The flipkin runs: the Cliques whose search was limited, in the log."""
+    lines = [l for l in opt.getWarnings().split('\n') if l.startswith(Optimizers._CLIQUE_WARNING)]
+    if lines:
+      print(self._CliqueLimitText(lines), file=self.logger)
+
+  def _CliqueLimitText(self, lines):
+    """The Optimizer's warnings about Cliques whose search was limited, for the
+    log and the description, capped at 20 unless verbosity > 2."""
+    shown = lines if self.params.verbosity > 2 else lines[:20]
+    text = ('Warning: the search of {} Clique(s) was limited (max_clique_search, '
+      'clique_search_seconds, treat_cliques_as_singletons_after_seconds):\n'.format(len(lines)))
+    text += ''.join(' ' + l[len(Optimizers._CLIQUE_WARNING):] + '\n' for l in shown)
+    if len(shown) < len(lines):
+      text += ' ... {} more\n'.format(len(lines) - len(shown))
+    return text
+
   def _SuggestedFlipsText(self, flips, fixed=frozenset()):
     # :param flips: Optimizer.getSuggestedFlips().
     # :param fixed: _HisFixedKeys(): His set to one charge, whose flip is marked.
@@ -3598,8 +3628,8 @@ NOTES:
         # but the desired model ID structure from the model.
         make_sub_header('Optimizing', out=self.logger)
         startOpt = time.time()
-        stopTime = 0.0
-        stopTime = startOpt + self.params.treat_cliques_as_singletons_after_seconds
+        stopTime = startOpt + (1.0e10 if self.params.treat_cliques_as_singletons_after_seconds is None
+          else self.params.treat_cliques_as_singletons_after_seconds)
         opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
           self.model, altID=self.params.alt_id,
           preferenceMagnitude=self.params.preference_magnitude,
@@ -3615,7 +3645,8 @@ NOTES:
           symmetryCopies = symmetryCopies,
           fixedHisProtonation = self._FixedHisKeys(),
           chooseHisProtonation = True,
-          reconcileHisCharges = self.params.reconcile_his_charges is True)
+          reconcileHisCharges = self.params.reconcile_his_charges is True,
+          **self._CliqueLimits())
         doneOpt = time.time()
         if opt.getSymmetryCopiesSummary():
           print(opt.getSymmetryCopiesSummary(), file=self.logger)
@@ -3638,6 +3669,13 @@ NOTES:
           lines.append('Warning: %d atoms have no energy type (element radius used, '
             'not H-bond acceptors) - %d residues: %s' % (
             len(no_info), len(residues), shown))
+        # one line per Clique whose search was limited, also in the description
+        cliques = [l for l in lines if l.startswith(Optimizers._CLIQUE_WARNING)]
+        if cliques:
+          lines = [l for l in lines if l not in cliques]
+          text = self._CliqueLimitText(cliques)
+          lines.append(text.rstrip('\n'))
+          outString += text
         warnings = '\n'.join(lines)
         if len(warnings) > 0:
           print('\nWarnings during optimization:\n'+warnings, file=self.logger)
@@ -4052,9 +4090,11 @@ NOTES:
             flipStates = flipStates,
             verbosity=3,
             fixedHisProtonation = self._FixedHisKeys(),
-            reconcileHisCharges = self.params.reconcile_his_charges is True)
+            reconcileHisCharges = self.params.reconcile_his_charges is True,
+            **self._CliqueLimits())
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
+          self._PrintCliqueLimits(opt)
           self._ReinterpretModel()
 
           # Get the other characteristics we need to know about each atom to do our work.
@@ -4177,9 +4217,11 @@ NOTES:
             flipStates = flipStates,
             verbosity=3,
             fixedHisProtonation = self._FixedHisKeys(),
-            reconcileHisCharges = self.params.reconcile_his_charges is True)
+            reconcileHisCharges = self.params.reconcile_his_charges is True,
+            **self._CliqueLimits())
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
+          self._PrintCliqueLimits(opt)
           self._ReinterpretModel()
 
           # Get the other characteristics we need to know about each atom to do our work.
