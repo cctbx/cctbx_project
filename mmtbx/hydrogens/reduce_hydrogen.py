@@ -5409,9 +5409,13 @@ class place_hydrogens():
       return True
     bonds = heavy_neighbors_in_restraints(n, self.query_mon_lib_srv)
     if bonds is None: return True # the propeller lists it
-    self._supplied_terminal_names(rg, n)
+    has_ca = 'CA' in [b.strip() for b in bonds]
+    if not has_ca: imine, all_imine = [], False
+    bond = (outgoing_peptide_bond(rg, next_rg) if has_ca and not all_imine
+      else None)
+    self._supplied_terminal_names(rg, n, converted=(bond == 'bonded'))
     label = self._start_label(n, rg)
-    if 'CA' not in [b.strip() for b in bonds]:
+    if not has_ca:
       if any(ag.get_atom('CA') for ag in rg.atom_groups()):
         self.chain_start_kept.append('%s: N bonded to %s, not CA, in the '
           'dictionary: terminal conversion not supported; dictionary '
@@ -5422,12 +5426,10 @@ class place_hydrogens():
       self.chain_start_kept.append('%s: N=CA not a single bond in the '
         'dictionary (imine N): terminal conversion not supported; '
         'dictionary placement retained' % label)
-      return False
-    list_imine(imine)
-    bond = outgoing_peptide_bond(rg, next_rg)
-    if bond == 'bonded':
-      self._supplied_unknown_terminal_names(rg, n)
-      return True
+    else:
+      list_imine(imine)
+    if all_imine: return False
+    if bond == 'bonded': return True
     if bond == 'mixed':
       why = 'ambiguous, conformers disagree on a peptide bond to the next residue'
     elif bond == 'missing':
@@ -5445,10 +5447,17 @@ class place_hydrogens():
       'dictionary placement retained' % (label, why))
     return False
 
-  def _supplied_terminal_names(self, rg, n):
-    # supplied H1-H3 (D1-D3) on N whose name the dictionary gives another
-    # parent (SAM/SAH ring H2): listed, not renamed; riding H moves it to the
-    # dictionary parent's site (on master too): the collision is unresolved
+  def _supplied_terminal_names(self, rg, n, converted):
+    '''
+    Supplied H1-H3 (D1-D3) on N at a chain start (keep_existing_H), in one
+    pass that knows the dictionary and the computed terminal names. A name
+    the dictionary gives another parent (SAM/SAH ring H2) is listed, not
+    renamed; riding H moves it to that parent's site (on master too): the
+    collision is unresolved. At a converted terminus (converted) of a
+    terminal_nh3 dictionary, a name the dictionary lacks is listed as
+    unknown (0A0 H1-H3; never parented by name), except a computed name
+    (TSY, 07O H3), which is the terminus's own.
+    '''
     if not (self.keep_existing_H and self._existing_h): return
     mlq = mon_lib_query(residue=n.parent(), mon_lib_srv=self.query_mon_lib_srv,
       raise_sorry=False)[0]
@@ -5457,54 +5466,47 @@ class place_hydrogens():
     for b in mlq.bond_list:
       parent.setdefault(b.atom_id_1.strip(), b.atom_id_2.strip())
       parent.setdefault(b.atom_id_2.strip(), b.atom_id_1.strip())
-    for a in rg.atoms():
-      name = a.name.strip()
-      key = 'H' + name[1:] if name[:1] == 'D' else name
-      if (key in ('H1', 'H2', 'H3') and a.element.strip().upper() in ('H', 'D')
-          and residue_part(a.parent()) + (a.parent().altloc, a.name)
-            in self._existing_h
-          and _compatible(a, n) and a.distance(n) < 1.3
-          and parent.get(key, 'N') != 'N'):
-        self.chain_start_kept.append('%s %s %s %s: within bond length of N, '
-          'but the %s dictionary bonds %s to %s; not renamed; name collision '
-          'unresolved' % (name, a.parent().resname.strip(),
-          rg.parent().id.strip(), rg.resseq.strip() + rg.icode.strip(),
-          a.parent().resname.strip(), key, parent[key]))
-
-  def _supplied_unknown_terminal_names(self, rg, n):
-    # at a converted terminus: supplied H1-H3 (D1-D3) on N that a
-    # terminal_nh3 dictionary lacks (0A0; 2KZ H1/H3) are never parented by
-    # name; listed as unknown atoms, with the names the terminus gets
-    if not (self.keep_existing_H and self._existing_h): return
-    mlq = mon_lib_query(residue=n.parent(), mon_lib_srv=self.query_mon_lib_srv,
-      raise_sorry=False)[0]
-    if mlq is None: return
-    parent = set()
-    for b in mlq.bond_list:
-      parent.update([b.atom_id_1.strip(), b.atom_id_2.strip()])
+    terminus = {}
+    def terminal_names(resname):
+      # (dictionary N-H, computed names) of a terminal_nh3 dictionary, or None
+      if resname not in terminus:
+        try:
+          mon = self.query_mon_lib_srv.get_comp_comp_id_direct(resname)
+        except Exception:
+          mon = None
+        terminus[resname] = None
+        if mon is not None and terminal_nh3.applies(mon):
+          terminus[resname] = (terminal_nh3.n_h_names(mon),
+            terminal_nh3.extra_h_names(mon) or [])
+      return terminus[resname]
     unknown = {}
     for a in rg.atoms():
       name = a.name.strip()
       key = 'H' + name[1:] if name[:1] == 'D' else name
-      if (key in ('H1', 'H2', 'H3') and a.element.strip().upper() in ('H', 'D')
-          and residue_part(a.parent()) + (a.parent().altloc, a.name)
-            in self._existing_h
-          and _compatible(a, n) and a.distance(n) < 1.3
-          and key not in parent):
-        unknown.setdefault(a.parent().resname.strip(), []).append(name)
+      if not (key in ('H1', 'H2', 'H3') and
+          a.element.strip().upper() in ('H', 'D') and
+          residue_part(a.parent()) + (a.parent().altloc, a.name)
+            in self._existing_h and
+          _compatible(a, n) and a.distance(n) < 1.3):
+        continue
+      resname = a.parent().resname.strip()
+      if parent.get(key, 'N') != 'N':
+        self.chain_start_kept.append('%s %s %s %s: within bond length of N, '
+          'but the %s dictionary bonds %s to %s; not renamed; name collision '
+          'unresolved' % (name, resname, rg.parent().id.strip(),
+          rg.resseq.strip() + rg.icode.strip(), resname, key, parent[key]))
+      elif converted and key not in parent:
+        names = terminal_names(resname)
+        if names is not None and key not in names[1]:
+          unknown.setdefault(resname, []).append(name)
     for resname, names in sorted(unknown.items()):
-      try:
-        mon = self.query_mon_lib_srv.get_comp_comp_id_direct(resname)
-      except Exception:
-        mon = None
-      if mon is None or not terminal_nh3.applies(mon): continue
-      extra = terminal_nh3.extra_h_names(mon) or []
+      on_n = terminal_names(resname)
       self.chain_start_kept.append('%s %s %s %s: on N, not in the %s '
         'dictionary (its terminal N-H: %s); listed as unknown atoms, not '
         'renamed; reduce2 without keep_existing_H rebuilds them' % (
         ', '.join(sorted(set(names))), resname, rg.parent().id.strip(),
         rg.resseq.strip() + rg.icode.strip(), resname,
-        ', '.join(terminal_nh3.n_h_names(mon) + extra)))
+        ', '.join(on_n[0] + on_n[1])))
 
   def chain_start_kept_text(self):
     # A57 report; '' if there is nothing to report

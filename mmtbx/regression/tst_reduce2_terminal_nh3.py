@@ -614,6 +614,24 @@ def test_blank_n_ca():
     == ['HN1', 'HN2', 'HN3'], h_on_n(h)
   check_reread('0A0_side_split_hd', out, '0A0')
 
+def test_supplied_computed_name():
+  # keep_existing_H: a supplied H on N under the computed name (07O, TSY:
+  # H3) is the terminus's own: no unknown-atom line, output as without it
+  for comp in ('07O', 'TSY'):
+    pdb_str = geostd_peptide(comp)
+    if pdb_str is None:
+      print('Skipping test_supplied_computed_name: chem_data not available')
+      return
+    h, _, out = run(comp, pdb_str)
+    assert 'H3' in h_on_n(h), (comp, h_on_n(h))
+    with open(out) as f:
+      placed = f.read()
+    h2, description, out2 = run(comp + '_kept', placed,
+      'keep_existing_H=True')
+    assert 'listed as unknown atoms' not in description, description
+    assert h_on_n(h2) == h_on_n(h), (comp, h_on_n(h2), h_on_n(h))
+    check_reread(comp + '_kept', out2, comp)
+
 def test_blank_n_ca_supplied():
   # N and CA blank, side chain split, an N-H supplied in conformer A only
   # (H with keep_existing_H, D with all_d): the three N-H stay together,
@@ -787,6 +805,7 @@ if __name__ == '__main__':
   test_computed_rule_names()
   test_imine()
   test_blank_n_ca()
+  test_supplied_computed_name()
   test_blank_n_ca_supplied()
   test_mixed_imine()
   test_blank_n_ca_supplied_split()
