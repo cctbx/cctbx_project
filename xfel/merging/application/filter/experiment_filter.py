@@ -82,10 +82,10 @@ class experiment_filter(worker):
     features = [P[idx] for idx in self.cluster_data["idxs"]]
     features = np.array(features).reshape(1,-1)
     cov=self.cluster_data["populations"].fit_components[self.params.filter.unit_cell.cluster.covariance.component]
-    m_distance = sqrt(cov.mahalanobis(features))
+    m_distance = sqrt(cov.mahalanobis(features)[0])
     for other in self.params.filter.unit_cell.cluster.covariance.skip_component:
       skip_cov = self.cluster_data["populations"].fit_components[other]
-      skip_distance = sqrt(skip_cov.mahalanobis(features))
+      skip_distance = sqrt(skip_cov.mahalanobis(features)[0])
       if skip_distance < self.params.filter.unit_cell.cluster.covariance.skip_mahalanobis:
         return False
     return m_distance < self.params.filter.unit_cell.cluster.covariance.mahalanobis
