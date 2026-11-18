@@ -245,6 +245,51 @@ def test_replacement_cif():
   assert values == dict((h, (1.08, 0.03)) for h in ('HN1', 'HN2', 'HN3')), \
     values
 
+def mod_n_h(srv, comp):
+  """{N-H name: (x-ray, esd, neutron)} of comp with its generated
+  modification applied"""
+  mon = srv.get_comp_comp_id_direct(comp)
+  mod = terminal_nh3.nh3_mod(mon, terminal_nh3.extra_h_names(mon),
+    srv.mod_mod_id_dict['NH3'])
+  new = mon.apply_mod(mod)
+  result = {}
+  for b in new.bond_list:
+    ids = set([b.atom_id_1, b.atom_id_2])
+    if 'N' in ids and (ids - set(['N'])) & set(
+        terminal_nh3.n_h_names(mon) + terminal_nh3.extra_h_names(mon)):
+      result[list(ids - set(['N']))[0]] = (b.value_dist, b.value_dist_esd,
+        b.value_dist_neutron)
+  return result
+
+def test_n_h_values():
+  # one value set for the three N-H: the dictionary's own where its N-H
+  # agree (0A0), else mod_NH3's (TSY and 2KZ: 0.86 and 0.89; NPH: no
+  # neutron value)
+  srv = mmtbx.monomer_library.server.server()
+  own = mod_n_h(srv, '0A0')
+  assert sorted(own) == ['HN1', 'HN2', 'HN3'], own
+  assert set(own.values()) == set([(0.89, 0.02, 1.04)]), own
+  assert terminal_nh3.n_h_values(srv.get_comp_comp_id_direct('0A0'))[1]
+  for comp in ('TSY', 'NPH', '2KZ'):
+    values = mod_n_h(srv, comp)
+    assert len(values) == 3, (comp, values)
+    assert set(values.values()) == set([(0.89, 0.02, 1.04)]), (comp, values)
+  mon = srv.get_comp_comp_id_direct('TSY')
+  assert terminal_nh3.n_h_values(mon)[1] is False
+  # one nuclear length in both columns is the dictionary's own; an x-ray
+  # length repeated (NPH 0.86/0.86) is not
+  mon = srv.get_comp_comp_id_direct('0A0')
+  for b in mon.bond_list:
+    if 'N' in (b.atom_id_1, b.atom_id_2) and set([b.atom_id_1,
+        b.atom_id_2]) & set(terminal_nh3.n_h_names(mon)):
+      b.value_dist = b.value_dist_neutron = 1.03
+  assert terminal_nh3.n_h_values(mon) == ((1.03, 0.02, 1.03), True)
+  for b in mon.bond_list:
+    if 'N' in (b.atom_id_1, b.atom_id_2) and set([b.atom_id_1,
+        b.atom_id_2]) & set(terminal_nh3.n_h_names(mon)):
+      b.value_dist = b.value_dist_neutron = 0.86
+  assert terminal_nh3.n_h_values(mon) == ((0.89, 0.02, 1.04), False)
+
 def test_imine_and_bond_order():
   # an N=CA imine is not an amine terminus (HHI, ITR); 2KZ's N-CA (single,
   # 1.402, sp2 CA) is. Without a bond order (coval) the ideal length
@@ -287,6 +332,7 @@ if __name__ == '__main__':
   test_standard_terminus()
   test_partial_and_sp3()
   test_replacement_cif()
+  test_n_h_values()
   test_imine_and_bond_order()
   test_computed_rule_name()
   print('OK')
