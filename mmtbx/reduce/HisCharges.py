@@ -94,7 +94,8 @@ NO_RERUN = 'no rerun'                     # nothing to rerun
 RECONCILED = 'reconciled'                 # DONE: the last rerun is written
 REJECTED = 'scientific rejection'         # plan() restored: no trial passed
 RUN_CAP = 'run cap'                       # another rerun needed after run_cap(n)
-SEARCH_DEADLINE = 'search deadline'       # the free run or a rerun reached its search time
+SEARCH_DEADLINE = 'search deadline'       # the free run or a rerun reached its search time,
+                                          # or a rerun limited other Cliques' searches
 WALL_BACKSTOP = 'wall-time backstop'      # reruns past WALL_BACKSTOP_FACTOR x the free run
 INTERNAL = 'internal check'               # a ContractError or other error; the free result kept
 FIRST_RUN_ERROR = 'first run error'       # an error in the first run's records: optimized again without
@@ -103,7 +104,7 @@ OUTCOME_TEXT = {
   RECONCILED: 'reconciled',
   REJECTED: 'first result restored: no fixed state passed',
   RUN_CAP: 'first result restored: rerun cap reached',
-  SEARCH_DEADLINE: 'first result restored: search time limit reached',
+  SEARCH_DEADLINE: 'first result restored: search limit reached',
   WALL_BACKSTOP: 'first result restored: wall-time backstop reached',
   INTERNAL: 'first result kept: internal error',
   FIRST_RUN_ERROR: 'not reconciled: error in the first run',

@@ -371,6 +371,115 @@ def _SymmetryCopyBonds(originals, copies, neighborLists, crossBonds, unitCell):
         originalBonds.append((p, c))
   return copyNeighbors, originalBonds
 
+# vertices visited by the cut searches of one count: ~1 s of Python
+_CLIQUE_WORK_MAX_STEPS = 5000000
+# _CliqueSearchWork() gave up: its cut searches alone passed _CLIQUE_WORK_MAX_STEPS
+_CLIQUE_WORK_ABANDONED = -1
+# OptimizeCliqueCoarseVertexCut() at verbosity >= 1, when a (sub)Clique falls back.
+# These are the only C++ lines below verbosity 3: OptimizerC always gets >= 1.
+_CLIQUE_SINGLETONS_LINE = re.compile(r'(Out of time|No time remaining), treating \(sub\)clique of size \d+ as singletons')
+# start of the warning about a Clique whose search was limited (reduce2 reads it)
+_CLIQUE_WARNING = 'Warning: search limit: '
+
+def _LimitedCliques(warnings):
+  """The Cliques (size, model, alternate, first Mover) named by the search-limit warnings in warnings."""
+  return set(l[len(_CLIQUE_WARNING):].split('): ')[0] for l in warnings.split('\n')
+    if l.startswith(_CLIQUE_WARNING))
+
+def _CliqueSearchWork(n, edges, numStates, limit):
+  """Work count of OptimizerC.OptimizeCliqueCoarse() on a Clique, from its graph
+  alone: state combinations scored plus subsets tried to find cuts, with the cuts as
+  findVertexCut() picks them (fewest Movers, then most even components, first in
+  nChooseM order). Each state combination scores all Movers of its (sub)Clique and
+  the fixed ones around it. Units, added up for each call of the recursion:
+  - no cut (or at most 2 Movers): one per combination of the Movers' states (brute
+    force), plus the 2**N - 1 subsets the cut search tried (none at N <= 2);
+  - a cut of K Movers: the subsets of 0..K Movers tried, plus for each combination
+    of the cut's states one (the rescoring) and the work of each component, which
+    the C++ searches again, cut search included, for every such combination.
+  :param n: number of Movers, vertices 0..n-1 in the order given to the C++.
+  :param edges: list of (i, j) vertex pairs.
+  :param numStates: coarse states of each Mover.
+  :param limit: stop counting above it.
+  :return: the count, None when above limit, or _CLIQUE_WORK_ABANDONED when the cut
+  searches would visit more than _CLIQUE_WORK_MAX_STEPS vertices (the C++ would try
+  those subsets too, and again for each state of an enclosing cut).
+  """
+  adj = dict((i, set()) for i in range(n))
+  for i, j in edges:
+    adj[i].add(j)
+    adj[j].add(i)
+  steps = [0]   # vertices visited by the cut searches of this count, each subproblem once
+
+  class Abandoned(Exception):
+    pass
+
+  def components(keep):
+    left = set(keep)
+    out = []
+    while left:
+      todo = [min(left)]
+      left.discard(todo[0])
+      comp = []
+      while todo:
+        v = todo.pop()
+        comp.append(v)
+        for w in adj[v] & left:
+          left.discard(w)
+          todo.append(w)
+      out.append(comp)
+    return out
+
+  memo = {}
+  def work(nodes):
+    # nodes: tuple in graph order, as subsetGraph() keeps them
+    if nodes in memo:
+      return memo[nodes]
+    N = len(nodes)
+    w = cut(nodes) if N > 2 else math.prod(numStates[v] for v in nodes)
+    if w is None or w > limit:
+      return None
+    memo[nodes] = w
+    return w
+
+  def cut(nodes):
+    N = len(nodes)
+    best = None
+    for k in range(N):
+      for removed in itertools.combinations(range(N), k):
+        steps[0] += N
+        if steps[0] > _CLIQUE_WORK_MAX_STEPS:
+          raise Abandoned()
+        keep = [nodes[i] for i in range(N) if i not in removed]
+        if len(keep) < 2:
+          continue
+        comps = components(keep)
+        if len(comps) > 1:
+          sizes = [len(c) for c in comps]
+          key = (max(sizes) - min(sizes), max(sizes))
+          if best is None or key < best[0]:
+            best = (key, [nodes[i] for i in removed], comps)
+      if best is not None:
+        break
+    if best is None:
+      w = math.prod(numStates[v] for v in nodes)
+      w += 2**N - 1   # every subset of 0..N-1 Movers tried
+    else:
+      cutStates = math.prod(numStates[v] for v in best[1])
+      sub = 0
+      for c in best[2]:
+        s = work(tuple(sorted(c)))
+        if s is None:
+          return None
+        sub += s
+      w = cutStates * (sub + 1) + sum(math.comb(N, k) for k in range(len(best[1]) + 1))
+    return w
+
+  try:
+    return work(tuple(range(n)))
+  except Abandoned:
+    return _CLIQUE_WORK_ABANDONED
+
 class Optimizer(object):
 
   def __init__(self, probePhil, addFlipMovers, model, modelIndex = None, altID = None,
@@ -388,7 +497,9 @@ class Optimizer(object):
                 symmetryCopies = None,
                 fixedHisProtonation = None,
                 chooseHisProtonation = False,
-                reconcileHisCharges = False
+                reconcileHisCharges = False,
+                cliqueSeconds = 120.0,
+                maxCliqueWork = 1.0e6
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -449,6 +560,14 @@ class Optimizer(object):
     :param fillAtomDump: If true, fill in the atomDump string with the atom information.
     This can take a long time to do, so the caller may want to turn it off if they don't need it.
     :param stopOptimizingAt: Start treating cliques as singletons at this time relative to time.time().
+    :param cliqueSeconds: Search time allowed to one multi-Mover Clique (a backstop: brute
+    force and the cut search are not checked, so a search can run past it). Out of time,
+    the part still to search is treated as singletons. None: only stopOptimizingAt.
+    :param maxCliqueWork: A Clique whose search work count (_CliqueSearchWork(): state
+    combinations scored plus subsets tried to find cuts) is above this, or too large to
+    count, is treated as singletons without searching. The largest normal Cliques count
+    about 1.5e4. None: no limit.
+    Limited Cliques get a warning that starts with _CLIQUE_WARNING.
     :param symmetryCopies: None, or symmetry copies of atoms near the model as a fixed
     environment: a group_args with crystal_symmetry and models, {model index (0-based):
     list of (copy atom, original atom, rt_mx)}, copy = rt_mx * original in fractional
@@ -490,6 +609,10 @@ class Optimizer(object):
     self._fixedHis = set(fixedHisProtonation or ())
     self._chooseHis = chooseHisProtonation and not addFlipMovers
     self._reconcileHisCharges = reconcileHisCharges
+    self._cliqueSeconds = cliqueSeconds
+    self._maxCliqueWork = maxCliqueWork
+    self._cliqueModel = 0
+    self._cliqueAlt = ''
 
     ################################################################################
     # Initialize internal variables.
@@ -680,6 +803,7 @@ class Optimizer(object):
     first pass. ctx: the constructor's values the passes use. his: None, or the
     record of a His charge run (_ReconcileHisCharges): its His states are fixed
     during the search and each pass's His states and scores are recorded."""
+    self._cliqueModel = mi    # named in the search-limit warnings
     model = ctx['model']
     alts = ctx['alts']
     addFlipMovers = ctx['addFlipMovers']
@@ -712,6 +836,7 @@ class Optimizer(object):
             a.xyz = initialAtomPositions[a.i_seq]
             self._extraAtomInfo.setMappingFor(a, initialExtraAtomInfos[a.i_seq])
 
+      self._cliqueAlt = alt     # named in the search-limit warnings
       # Tell about the run we are currently doing.
       self._infoString += _VerboseCheck(self._verbosity, 1,"Running Reduce optimization on model index "+str(mi)+
         ", alternate '"+alt+"'\n")
@@ -979,7 +1104,7 @@ class Optimizer(object):
 
       ################################################################################
       # Construct C++ optimizer.
-      optC = OptimizerC(self._verbosity, self._preferenceMagnitude,
+      optC = OptimizerC(max(self._verbosity, 1), self._preferenceMagnitude,
                         self._maximumVDWRadius, self._minOccupancy, self._probeRadius, self._probeDensity,
                         self._atoms,
                         self._excludeDict, self._dotScorer, dotSphereCache, self._atomMoverLists,
@@ -1533,7 +1658,8 @@ class Optimizer(object):
     """The reruns until plan() ends. Returns (outcome, last run's record, its
     _HisByResidue, its pins); run gets the outcome code, detail and reruns.
     Limits (HisCharges): run_cap(n) reruns; for each rerun, the search time the
-    free run was allowed (not its duration); the wall-time backstop. A limit restores the free result."""
+    free run was allowed (not its duration); the wall-time backstop. A limit restores the free result,
+    as does a rerun whose limited Cliques (_LimitedCliques) differ from the free run's."""
     freeFinal = dict((k, f) for k, (confs, f) in freeRes.items() if len(confs) > 1)
     freeMids = set(m for alt, sc in freeHis['passes'] for m in sc)
     firstCost = dict((k, d['costs'][str(d['target'])]['total']) for k, d in first.items())
@@ -1564,6 +1690,13 @@ class Optimizer(object):
       if time.time() > runCtx['stopOptimizingAt']:
         # Cliques may have been optimized as singletons: not comparable
         run.update(code=HisCharges.SEARCH_DEADLINE, detail='rerun %d reached it' % run['reruns'])
+        out = HisCharges.RESTORE_FREE
+        break
+      if _LimitedCliques(self._warningString) != _LimitedCliques(free['warnings']):
+        # a fixed His lowers a Clique's work count, and the time allowance varies:
+        # a Clique searched differently from the free run is not comparable
+        run.update(code=HisCharges.SEARCH_DEADLINE,
+          detail='rerun %d limited other Cliques than the first run' % run['reruns'])
         out = HisCharges.RESTORE_FREE
         break
       # contract: same atoms and Mover ids as the free run; each fixed His was a
@@ -1908,7 +2041,7 @@ class Optimizer(object):
       if len(movers) > 0:
         for m in movers:
           self._setMoverState(m.CoarsePositions(), 0)
-        optC = OptimizerC(self._verbosity, self._preferenceMagnitude,
+        optC = OptimizerC(max(self._verbosity, 1), self._preferenceMagnitude,
                           self._maximumVDWRadius, self._minOccupancy, self._probeRadius, self._probeDensity,
                           self._atoms,
                           self._excludeDict, self._dotScorer, dotSphereCache, self._atomMoverLists,
@@ -2062,8 +2195,14 @@ class Optimizer(object):
         cliqueEdges[ci].append((source,
           self._interactionGraph.vertex_label(self._interactionGraph.target(e))))
     for ci, g in enumerate(groupCliques):
-      startTime = time.time()
       remainingSeconds = stopOptimizingAt - time.time()
+      perClique = False
+      reason = None
+      if remainingSeconds <= 0:
+        reason = 'optimized as singletons, the total time limit had passed'
+      elif self._cliqueSeconds is not None and self._cliqueSeconds < remainingSeconds:
+        remainingSeconds = self._cliqueSeconds
+        perClique = True
 
       # Find all of the Movers in the clique so that we know which ones to capture the state for.
       # connected_components() lists them in graph order, as _subsetGraph() did.
@@ -2077,15 +2216,49 @@ class Optimizer(object):
         edges[(i,0)] = index[source]
         edges[(i,1)] = index[target]
 
+      # A search above the work limit is not started: with 0 s the C++ treats the
+      # Clique as singletons.
+      if reason is None and self._maxCliqueWork is not None:
+        work = _CliqueSearchWork(len(movers),
+          [(index[s], index[t]) for s, t in cliqueEdges[ci]],
+          [len(m.CoarsePositions().positions) for m in movers], self._maxCliqueWork)
+        if work is None:
+          reason = 'optimized as singletons, search work count above the limit of {:.3g}'.format(
+            self._maxCliqueWork)
+        elif work == _CLIQUE_WORK_ABANDONED:
+          reason = ('optimized as singletons, search work not counted: the cut searches alone '
+            'visit more than {:.3g} Movers'.format(_CLIQUE_WORK_MAX_STEPS))
+        if reason is not None:
+          remainingSeconds = 0.0
+
+      # the count is not charged to the allowance
+      startTime = time.time()
       (bestScore, infoString) = optC.OptimizeCliqueCoarse(movers, edges, remainingSeconds)
-      self._infoString += infoString
+      self._infoString += _VerboseCheck(self._verbosity, 1, infoString)
       ret = bestScore
 
       stopTime = time.time()
+      cutShort = reason is not None
+      if reason is None:
+        # Brute force has no time check and can finish late: only the C++ line
+        # shows that part of the search fell back to singletons.
+        if _CLIQUE_SINGLETONS_LINE.search(infoString):
+          reason = 'search ran out of {}, part or all of it optimized as singletons'.format(
+            'its {:.3g} s allowance'.format(remainingSeconds) if perClique
+            else 'the total time limit')
+          cutShort = True
 
       self._infoString += _VerboseCheck(self._verbosity, 1,
         "Clique of size {:d} optimized with score {:.2f} in {:.2f} seconds\n".format(
           len(movers), ret, stopTime - startTime))
+      if reason is not None:
+        msg = "{}Clique of {:d} Movers (model {}, {}first {}): {}{}\n".format(_CLIQUE_WARNING,
+          len(movers), self._cliqueModel + 1,
+          'alt {}, '.format(self._cliqueAlt) if self._cliqueAlt.strip() else '',
+          self._MoverName(movers[0]).strip(), reason,
+          '; its Movers may not be in their best joint orientations' if cutShort else '')
+        if msg not in self._warningString:
+          self._warningString += msg
     self._infoString += _ReportTiming(self._verbosity, "optimize cliques (coarse)")
 
   def _OptimizeFine(self, optC, cliques, stopOptimizingAt):
