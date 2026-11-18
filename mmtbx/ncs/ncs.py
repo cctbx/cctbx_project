@@ -3152,6 +3152,24 @@ class ncs_group:
     for i1,i2 in zip(sorted_indices,range(n)):
       self._rota_matrices[i2]=rota_matrices_sav[i1]
       self._translations_orth[i2]=translations_orth_sav[i1]
+    # Keep the center and the other information for each operator with it
+    #  (new lists are made as the existing ones may be shared)
+    def reorder(values):
+      if isinstance(values,list) and len(values)==n:
+        return [values[i1] for i1 in sorted_indices]
+      return values
+    self._centers=reorder(self._centers)
+    self._rmsd_list=reorder(self._rmsd_list)
+    self._residues_in_common_list=reorder(self._residues_in_common_list)
+    if isinstance(self._chain_residue_id,list) and \
+        len(self._chain_residue_id)==2:
+      self._chain_residue_id=[reorder(x) for x in self._chain_residue_id]
+    # Keep the saved one-step operators pointing at the same operators
+    for key in ['helix_oper_forwards','helix_oper_reverse',
+        'helix_oper_identity']:
+      i1=getattr(self,key,None)
+      if i1 is not None and i1 in sorted_indices:
+        setattr(self,key,sorted_indices.index(i1))
     self.delete_inv() # remove the inv matrices/rotations so they regenerate
     if len(self._rota_matrices)<2:
       self._helix_theta=None
@@ -3207,6 +3225,9 @@ class ncs_group:
     is_helical=True
     rota_matrices_sav=deepcopy(self._rota_matrices)
     translations_orth_sav=deepcopy(self._translations_orth)
+    # sorting replaces these lists and leaves the saved ones as they were
+    other_sav=[self._centers,self._rmsd_list,self._residues_in_common_list,
+      self._chain_residue_id]
     sorted_indices=self.sort_by_z_translation(tol_z=tol_z)
 
     offset_list=[]
@@ -3248,6 +3269,8 @@ class ncs_group:
     sys.stdout.flush()
     self._rota_matrices=rota_matrices_sav
     self._translations_orth=translations_orth_sav
+    [self._centers,self._rmsd_list,self._residues_in_common_list,
+      self._chain_residue_id]=other_sav
     self.delete_inv() # remove the inv matrices/rotations so they regenerate
     if is_helical:
       self._have_helical_symmetry=True
