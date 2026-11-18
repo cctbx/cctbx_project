@@ -132,13 +132,17 @@ if (__name__ == "__main__"):
     print("OK but exception.")
     exception_occured = True
   if not exception_occured and r.ok and len(r.text) > 100:
-    exercise_1()
-    exercise_11()
-    exercise_12()
-    exercise_2()
-    exercise_3()
-    exercise_4()
-    exercise_6()
-    print("OK")
+    try:
+      exercise_1()
+      exercise_11()
+      exercise_12()
+      exercise_2()
+      exercise_3()
+      exercise_4()
+      exercise_6()
+      print("OK")
+    except requests.exceptions.RequestException as e:
+      # RCSB passed the check above, then did not answer or sent no JSON
+      print("OK but skipped: %s: %s" % (type(e).__name__, e))
   else:
     print("OK but skipped.")
