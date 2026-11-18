@@ -1,5 +1,6 @@
 """mmtbx.reduce.HisCharges: the decision, cost, planning and written-state
-check for His whose conformers end with different charges, on synthetic
+check for His whose conformers end with different charges (or, his_conformers=state,
+different ring-H states), on synthetic
 records (no model runs). Mover ids are tuples of atom i_seqs. Every case was
 checked once against a mutation of the function it guards."""
 from __future__ import absolute_import, division, print_function
@@ -629,6 +630,94 @@ def t_x_fixed_all_final():
     assert 'charges differ' in str(e), str(e)
   else:
     raise AssertionError('no exception')
+
+# ---------------------------------------------------------------- one state (his_conformers=state)
+def rec_s(scores, chosen, **k):
+  """rec() with each state's ring H: 0 both, 1 HD1 only (HE2 deleted), 2 HE2 only; 3-5 flipped."""
+  r = rec(scores, chosen, **k)
+  for s in r['states']:
+    s['dels'] = {'HE2': s['index'] % 3 == 1, 'HD1': s['index'] % 3 == 2}
+  return r
+
+def decide_s(recs, budget=None):
+  """decide() in state mode: (kind, target, {conformer: state index})."""
+  d = HC.decide(recs, budget, same_state=True)
+  return d['kind'], d.get('target'), dict((c, p['to']) for c, p in (d.get('per') or {}).items())
+
+def t_s_state_charge():
+  assert [HC.state_charge(v) for v in ('none', 'HD1', 'HE2', 'HD1+HE2', 1, 0)] == [-1, 0, 0, 1, 1, 0]
+  assert [HC.state_label(dict(HD1=a, HE2=b)) for a, b in ((False, False), (False, True), (True, False),
+    (True, True))] == ['HD1+HE2', 'HD1', 'HE2', 'none']
+
+def t_s_targets():
+  # each of the three states, as the cheapest common state
+  assert decide_s(dict(A=rec_s([0.0, -2.0, -3.0], 0), B=rec_s([-0.2, 0.0, -3.0], 1))) == \
+    ('reconciled', 'HD1+HE2', {'A': 0, 'B': 0})
+  assert decide_s(dict(A=rec_s([-2.0, 0.0, -3.0], 1), B=rec_s([-3.0, -0.7, 0.0], 2))) == \
+    ('reconciled', 'HD1', {'A': 1, 'B': 1})
+  assert decide_s(dict(A=rec_s([-3.0, -0.9, 0.0], 2), B=rec_s([-2.0, 0.0, -0.7], 1))) == \
+    ('reconciled', 'HE2', {'A': 2, 'B': 2})
+
+def t_s_same_charge_tautomers():
+  # HD1 against HE2: one charge, so the charge rule has nothing to change; one state does
+  recs = dict(A=rec_s([-3.0, 0.0, -0.4], 1), B=rec_s([-3.0, -0.3, 0.0], 2))
+  d = HC.decide(recs)
+  assert (d['kind'], d['target'], d['costs']['0']['total']) == ('reconciled', 0, 0.0), d
+  assert decide_s(recs) == ('reconciled', 'HD1', {'A': 1, 'B': 1})
+
+def t_s_tie_policy():
+  # no evidence (every cost within the both-H preference): neutral, HE2 before HD1,
+  # also when HD1 is cheaper
+  d = HC.decide(dict(A=rec_s([-0.03, 0.0, -0.04], 1), B=rec_s([-0.01, -0.02, 0.0], 2)), None, same_state=True)
+  assert d['target'] == 'HE2' and 'by policy' in d['decision'], d
+  # a tie within 0.001 between HE2 and HD1: HE2 (HE2 1.000 against HD1 0.999)
+  assert decide_s(dict(A=rec_s([-9.0, 0.0, -1.0], 1), B=rec_s([-9.0, -0.999, 0.0], 2)))[1] == 'HE2'
+  assert decide_s(dict(A=rec_s([-9.0, 0.0, -1.0], 1), B=rec_s([-9.0, -0.998, 0.0], 2)))[1] == 'HD1'
+  # a tie between HD1+HE2 and HD1, with evidence: the neutral state
+  assert decide_s(dict(A=rec_s([0.0, -1.0, -9.0], 0), B=rec_s([-1.0, 0.0, -9.0], 1)))[1] == 'HD1'
+  # no tie: the cheapest, also when it is charged
+  assert decide_s(dict(A=rec_s([0.0, -1.0, -9.0], 0), B=rec_s([-0.9, 0.0, -9.0], 1)))[1] == 'HD1+HE2'
+
+def t_s_no_budget():
+  recs = dict(A=rec_s([0.0, -6.0, -9.0], 0), B=rec_s([-7.0, 0.0, -9.0], 1))
+  assert decide_s(recs) == ('reconciled', 'HD1', {'A': 1, 'B': 1})
+  assert decide_s(recs, budget=HC.BUDGET)[0] == 'kept'
+
+def t_s_exceptions():
+  # the charge rule's exceptions hold in state mode
+  B = dict(A=rec_s([0.0, -0.1, -0.1], 0))
+  for other, kind in ((dict(mover=None, noMover='ion lock (ZN)', partial=False), 'kept'),
+                      (dict(mover=None, noMover=HC.USER_PROTONATION, partial=False), 'kept'),
+                      (dict(mover=None, noMover='failed: CG does not have three bonded neighbors',
+                        partial=False), 'unchanged')):
+    assert decide_s(dict(B, B=other))[0] == kind, other
+  assert decide_s(dict(A=rec_s([0.0, -0.1, -0.1], 0, partial=True), B=rec_s([-6.0, 0.0, -2.0], 1)))[0] == 'unchanged'
+  assert decide_s(dict(A=rec_s([0.0, -0.2, -0.3], 0, sug=dict(gain=None, ion=True)),
+    B=rec_s([-6.0, 0.0, -2.0], 1)))[0] == 'kept'
+
+def t_s_orientation():
+  # each conformer keeps its orientation: A (flipped, HD1+HE2) is costed in flipped
+  # states only, although its unflipped HE2 scores best
+  recs = dict(A=rec_s([-9.0, -9.0, 1.0, 0.0, -0.5, -0.4], 3), B=rec_s([-6.0, -2.0, 0.0], 2))
+  assert decide_s(recs) == ('reconciled', 'HE2', {'A': 5, 'B': 2})
+
+def t_s_mismatch_charge_guard():
+  # review A69: an unpinned His whose conformers already differed in tautomer (HE2/HD1)
+  # and now differ in charge (HD1+HE2/HD1) is a new mismatch; by state alone it is not
+  free = {K2: {'A': 'HE2', 'B': 'HD1'}}
+  now = {K2: {'A': 'HD1+HE2', 'B': 'HD1'}}
+  assert HC.new_mismatches(free, now, {K1}) == ([], [])
+  mm, missing = HC.new_mismatches_states(free, now, {K1})
+  assert (mm, missing) == ([K2], []), (mm, missing)
+  m1, m2 = (1,), (2,)
+  scores = [('A', {m1: 0.0, m2: 0.0})]
+  ev = HC.trial(scores, scores, {K1: {m1}}, [{m1}, {m2}], [K1], dict((k, {m2}) for k in mm),
+    budget=float('inf'), missing=missing)
+  st = HC.new_plan([K1])
+  assert HC.plan(st, ev, {K1: 0.0}) == HC.RESTORE_FREE and K1 in st['rejected'], st
+  # a tautomer swap in a His whose conformers matched: a new state mismatch
+  mm, missing = HC.new_mismatches_states({K2: {'A': 'HE2', 'B': 'HE2'}}, {K2: {'A': 'HE2', 'B': 'HD1'}}, {K1})
+  assert mm == [K2], mm
 
 TESTS = [(n, make_decide_test(n, want, recs)) for n, name, recs, want in DECIDE] + [
   (n[2:], f) for n, f in sorted(globals().items()) if n.startswith('t_')]

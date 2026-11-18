@@ -76,6 +76,17 @@ Contract for the one-state Mover.
   deadline.
 - The model outcome is a code (OUTCOME_TEXT); the report text derives from it.
 
+One state (his_conformers=state; the Optimizer's reconcileHisStates): the target is
+one ring-H state for all conformers (HD1, HE2, or HD1+HE2) instead of one charge, so
+a His whose conformers have the same charge with different tautomers is a case too.
+- Cost of a state: as for a charge, per conformer in the orientation of the first
+  run; each conformer keeps its own ring orientation and no flipped state is offered.
+- No cost limit: decide() never keeps a His for its cost and trial() accepts any
+  cost; the checks for unmatched Movers, new mismatches and unattributed losses are
+  the same. The final values are state labels; a rerun fails on a new state
+  mismatch or a new charge mismatch (new_mismatches_states()).
+- No evidence, or a tie within 0.001: a neutral state, HE2 before HD1.
+
 Known limits: a state is scored against the His's own symmetry mates in the
 chosen state (the mates follow only after the search), as in the suggested
 flips.
@@ -131,11 +142,27 @@ def key_text(k):
   return ' '.join(str(x) for x in k[1:]).strip()
 
 def charge_text(q):
-  """A His charge for reports: '+1', '0'."""
+  """A His charge for reports: '+1', '0'; a state label (same-state mode) as it is."""
+  if isinstance(q, str):
+    return q
   return '%+d' % q if q else '0'
 
-def decide(recs, budget=BUDGET, both_pref=0.05):
-  """Decision for one His whose conformers end with different charges.
+STATES = ('HE2', 'HD1', 'HD1+HE2')   # one-state targets, in tie order: neutral, HE2 before HD1
+
+def state_label(dels):
+  """'HD1', 'HE2', 'HD1+HE2' or 'none' from a state's {ring H: deleted}."""
+  return '+'.join(n for n in ('HD1', 'HE2') if not dels[n]) or 'none'
+
+def state_charge(v):
+  """The His charge of a final value: a charge as it is; a state label: 0 for HD1 or
+  HE2, +1 for HD1+HE2, -1 for none."""
+  if isinstance(v, str):
+    return v.count('+') if v != 'none' else -1
+  return v
+
+def decide(recs, budget=BUDGET, both_pref=0.05, same_state=False):
+  """Decision for one His whose conformers end with different charges (same_state:
+  different ring-H states).
   recs: {conformer letter: record of the pass that decides its ring H}. A record
     has partial (bool), mover (None if no Mover; then noMover gives the reason),
     suggested (None or dict(gain, ion)), chosen (state index) and states
@@ -144,7 +171,9 @@ def decide(recs, budget=BUDGET, both_pref=0.05):
     (the Optimizer passes it; the default is for magnitude 1).
   Returns dict(kind='reconciled'|'kept'|'unchanged', decision=text, and, when
   costed, target, costs {'0'|'1': dict(total, per)}, per {conf: dict(cost, raw,
-  to)}, policy)."""
+  to)}, policy).
+  same_state: the targets are the ring-H states (STATES) instead of the charges;
+  the costs are keyed by state label. budget None: no cost limit."""
   partial = sorted(c for c, r in recs.items() if r['partial'])
   if partial:
     return dict(kind='unchanged', decision='unchanged: partially split ring in %s (blank and split ring atoms; '
@@ -161,37 +190,48 @@ def decide(recs, budget=BUDGET, both_pref=0.05):
   if ion:
     return dict(kind='kept', decision='kept: an ion binds the flipped ring of ' + ','.join(c or 'blank' for c in ion))
   costs = {}
-  for q in (0, 1):
+  targets = STATES if same_state else (0, 1)
+  group = (lambda s: state_label(s['dels'])) if same_state else (lambda s: s['charge'])
+  for q in targets:
     per = {}
     tot = 0.0
     for c, r in sorted(recs.items()):
       st = r['states']
       ch = st[r['chosen']]
-      same = [s for s in st if s['flipped'] == ch['flipped'] and s['charge'] == q]
+      same = [s for s in st if s['flipped'] == ch['flipped'] and group(s) == q]
       if not same:
         per = None
         break
-      best = ch if ch['charge'] == q else max(same, key=lambda s: s['score'])
+      best = ch if group(ch) == q else max(same, key=lambda s: s['score'])
       raw = ch['score'] - best['score']
       per[c] = dict(cost=round(max(0.0, raw), 3), raw=round(raw, 3), to=best['index'])
       tot += max(0.0, raw)
     costs[str(q)] = dict(total=round(tot, 3) if per is not None else None, per=per)
-  valid = [q for q in (0, 1) if costs[str(q)]['total'] is not None]
+  valid = [q for q in targets if costs[str(q)]['total'] is not None]
   if not valid:
     return dict(kind='unchanged', decision='unchanged: no state of either charge', costs=costs)
   tot = dict((q, costs[str(q)]['total']) for q in valid)
   noEvidence = all(p['cost'] <= both_pref + 1e-3 for q in valid for p in costs[str(q)]['per'].values())
   policy = None
-  if noEvidence or (len(valid) == 2 and abs(tot[0] - tot[1]) <= 1e-3):
+  if same_state:
+    # no evidence, or a tie within 0.001 (costs are rounded to 0.001: compared in
+    # thousandths, not floats): the first of STATES (neutral, HE2 before HD1)
+    low = min(tot.values())
+    tied = [x for x in STATES if x in valid and (noEvidence or round((tot[x] - low) * 1000) <= 1)]
+    q = tied[0]
+    if len(tied) > 1:
+      policy = '%s: neutral, HE2 before HD1, by policy' % ('no evidence' if noEvidence else 'tie')
+  elif noEvidence or (len(valid) == 2 and abs(tot[0] - tot[1]) <= 1e-3):
     q = 0 if 0 in valid else valid[0]
     policy = 'tie without evidence: neutral by policy'
   else:
     q = min(valid, key=lambda x: tot[x])
   other = ''.join('; to %s: %.2f' % (charge_text(x), tot[x]) for x in valid if x != q)
-  if tot[q] > budget:
+  if budget is not None and tot[q] > budget:
     return dict(kind='kept', decision='kept: cost to %s is %.2f > %.2f%s' % (charge_text(q), tot[q], budget, other),
       target=q, costs=costs, per=costs[str(q)]['per'], policy=policy)
-  return dict(kind='reconciled', decision='reconciled to charge %s (cost %.2f%s%s)' % (charge_text(q), tot[q], other,
+  return dict(kind='reconciled', decision='reconciled to %s %s (cost %.2f%s%s)' % (
+    'state' if same_state else 'charge', charge_text(q), tot[q], other,
     ('; ' + policy) if policy else ''), target=q, costs=costs, per=costs[str(q)]['per'], policy=policy)
 
 def _owners(runs):
@@ -606,8 +646,8 @@ def check_written(fixed, written, skip_bond_fixup=False, tol=XYZ_TOL):
 def check_fixed(key, pins, chosen, final):
   """Assert that a run kept a fixed His as fixed. pins: {conformer: fixed state
   (original index)}; chosen: {conformer: state the run selected, as the recorded
-  original index of the one-state Mover}; final: {conformer: written charge},
-  which must hold every pinned conformer."""
+  original index of the one-state Mover}; final: {conformer: written charge, or
+  state label in state mode}, which must hold every pinned conformer."""
   missing = sorted(set(pins) - set(final))
   if missing:
     raise ContractError("His %s fixed but conformer(s) %s missing from the final state: %s" % (
@@ -618,9 +658,19 @@ def check_fixed(key, pins, chosen, final):
   if len(set(final.values())) != 1:
     raise ContractError("His %s fixed but charges differ: %s" % (key_text(key), final))
 
+def new_mismatches_states(free_final, now_final, fixed):
+  """new_mismatches() for state labels: a His that is new by state or by charge
+  (state_charge()), so a conformer pair that already differed in tautomer and now
+  differs in charge is caught. Returns (mismatch keys, missing keys)."""
+  mm, missing = new_mismatches(free_final, now_final, fixed)
+  q = lambda d: dict((k, dict((c, state_charge(v)) for c, v in f.items())) for k, f in d.items())
+  mq = new_mismatches(q(free_final), q(now_final), fixed)[0]
+  return sorted(set(mm) | set(mq)), missing
+
 def new_mismatches(free_final, now_final, fixed):
-  """His whose conformers had equal charges in the free run and differ now.
-  free_final, now_final: {key: {conformer: charge}}; fixed: keys fixed in this
+  """His whose conformers had equal charges (state labels: equal states) in the free
+  run and differ now. free_final, now_final: {key: {conformer: charge or state
+  label}}; fixed: keys fixed in this
   run (excluded). Returns (mismatch keys, keys of the free run missing now)."""
   mm = sorted(k for k, f0 in free_final.items() if k not in fixed and k in now_final
     and len(set(f0.values())) == 1 and len(set(now_final[k].values())) > 1)

@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.20.0"
+version = "3.21.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -153,8 +153,9 @@ reconcile_his_charges = Auto
   .help = Auto: True with qmready=True (a model for QM needs one total \
           charge for all conformers), False otherwise. A His whose conformers end the optimization with different ring \
           protonation (charge +1 with HD1 and HE2, 0 with one of them) is \
-          given one charge where the scores allow it: the conformers are set \
-          to the cheaper charge (at most 0.5 in total, neutral when the \
+          given one charge where the scores allow it (his_conformers=charge, \
+          as described here, or one state, see his_conformers): the \
+          conformers are set to the cheaper charge (at most 0.5 in total, neutral when the \
           scores do not separate them), the passes are run again with that \
           state fixed, and the change is kept only if the His and its \
           neighbours lose at most 0.5 (otherwise the first result is \
@@ -163,7 +164,23 @@ reconcile_his_charges = Auto
           conformers cannot all be scored or whose ring is partly split is \
           left unchanged. Reruns are capped per model, each limited to the \
           search time allowed to the first run. Listed in the description \
-          file (His charges across conformers). Experimental.
+          file (His charges across conformers). his_conformers chooses one \
+          charge or one state. Experimental.
+his_conformers = *Auto charge state
+  .type = choice(multi=False)
+  .short_caption = His conformers: one charge or one state (Auto: state with qmready=True)
+  .help = What reconcile_his_charges gives the conformers of a His. Auto: \
+          state with qmready=True, charge otherwise. charge: one charge (+1 \
+          or 0) where it costs at most 0.5, and the conformers may keep \
+          different tautomers (HD1 or HE2). state: one ring-H state (HD1, \
+          HE2, or both) for all conformers, also when they have the same \
+          charge, without a cost limit: a cost above 0.5 is a warning in the \
+          log and the description file. Without evidence, or when the costs \
+          tie, a neutral state is chosen, HE2 before HD1. Each conformer keeps \
+          its ring orientation from the first run (no flip is used to reach \
+          the state). The exceptions of reconcile_his_charges (metal, ion at \
+          the flipped ring, protonation set by the user, partly split or \
+          unscorable ring) apply to both.
 skip_bond_fix_up = False
   .type = bool
   .short_caption = Skip fixup step for Movers that are flips
@@ -1158,6 +1175,9 @@ NOTES:
   neighbours lose little (His charges across conformers, in the description file).
   Auto, the default, turns it on with qmready=True, where different conformer charges
   stop the run, and off otherwise: it costs reruns and changes His protonation.
+  his_conformers=Auto then gives every conformer one ring-H state with qmready=True
+  (state: HD1, HE2 or both, also for tautomers of the same charge, with no cost limit;
+  a large cost is a warning) and one charge otherwise (charge: at most 0.5).
 
   neutron_option writes a model for neutron refinement. Every option other than none
   switches on use_neutron_distances (qmready=True does too). Exchangeable H are H on a
@@ -1809,6 +1829,12 @@ NOTES:
           out.add((models[m['model']].id.strip(),) + tuple(c['key'][1:]))
     return out
 
+  def _HisChargesHeader(self):
+    # the first words of the His section of the description file
+    if self.params.his_conformers == 'state':
+      return 'His protonation across conformers (one state, his_conformers=state)'
+    return 'His charges across conformers (reconcile_his_charges=True)'
+
   def _HisChargesText(self, his, flips):
     # :param his: Optimizer.getHisCharges().
     # :param flips: Optimizer.getSuggestedFlips().
@@ -1825,13 +1851,13 @@ NOTES:
     def charges(d):
       return ' '.join('%s %s' % (c or 'blank', q(d[c])) for c in sorted(d))
     cases = [c for m in his for c in m['cases']]
-    lines = ['His charges across conformers (reconcile_his_charges=True): %d His with '
-      'different charges, %d set to one charge' % (len([c for c in cases if c['first']['kind'] != 'changed']),
-      len([c for c in cases if c.get('fixed')]))]
+    what = 'states' if self.params.his_conformers == 'state' else 'charges'
+    lines = ['%s: %d His with different %s, %d set to one %s' % (self._HisChargesHeader(),
+      len([c for c in cases if c['first']['kind'] != 'changed']), what,
+      len([c for c in cases if c.get('fixed')]), what[:-1])]
     unreported = len([m for m in his if m.get('reportError')])
     if unreported and unreported == len(his):
-      lines = ['His charges across conformers (reconcile_his_charges=True): counts not available '
-        '(the report could not be written)']
+      lines = ['%s: counts not available (the report could not be written)' % self._HisChargesHeader()]
     elif unreported:
       lines[0] += '; incomplete: %d model(s) not reported' % unreported
     failed = len([m for m in his if m['code'] == HisCharges.FIRST_RUN_ERROR])
@@ -1850,7 +1876,8 @@ NOTES:
           text += ' -> %s' % charges(c['final'])
         d = c['first']
         if c.get('fixed'):
-          text += '; set to charge %s' % q(list(c['final'].values())[0])
+          v = list(c['final'].values())[0]
+          text += '; set to %s %s' % ('state' if isinstance(v, str) else 'charge', q(v))
         else:
           text += '; ' + c['decision']
         if d.get('target') is not None and d.get('costs'):
@@ -1864,6 +1891,8 @@ NOTES:
         if k in sug:
           text += '; suggested flip %s' % ', '.join(sug[k])
         lines.append(text)
+        if c.get('warning'):
+          lines.append('  %sWarning: %s' % (where, c['warning']))
       # one line per model, also without a rerun
       text = '  %s%s; first run %.2f s' % (where or 'model: ', m['reason'], m['freeSeconds'])
       if m['code'] == HisCharges.FIRST_RUN_ERROR:
@@ -1931,7 +1960,7 @@ NOTES:
         out.append('His charges were not reconciled: optimized again without reconciliation '
           'after an error in the first run (%s); please report this' % m['detail'])
       for c in m['cases']:
-        if len(set(c['final'].values())) < 2:
+        if len(set(HisCharges.state_charge(v) for v in c['final'].values())) < 2:
           continue
         where = 'His %s' % ' '.join(str(x) for x in c['key'][1:]).strip()
         dec = c['decision']
@@ -3242,7 +3271,15 @@ NOTES:
       p.reconcile_his_charges = bool(p.qmready and p.approach != 'remove')
       if p.reconcile_his_charges:
         print('qmready=True: reconcile_his_charges set to True (His conformers are '
-          'given one charge where the scores allow it)', file=self.logger)
+          'given one charge or one state, see his_conformers)', file=self.logger)
+    # his_conformers: Auto is one state with qmready (no cost limit: a QM run needs
+    # one protonation), one charge otherwise
+    # the default extracts as the string 'Auto', a typed Auto as libtbx.Auto; None as Auto
+    if p.his_conformers in (None, Auto, 'Auto'):
+      p.his_conformers = 'state' if p.qmready else 'charge'
+      if p.qmready and p.reconcile_his_charges:
+        print('qmready=True: his_conformers set to state (His conformers are given one '
+          'ring-H state; a cost above %.1f is a warning)' % HisCharges.BUDGET, file=self.logger)
 
     # One distance flag for the whole run: qmready and neutron_option place H
     # at neutron distances, so every later step must use them
@@ -3646,6 +3683,7 @@ NOTES:
           fixedHisProtonation = self._FixedHisKeys(),
           chooseHisProtonation = True,
           reconcileHisCharges = self.params.reconcile_his_charges is True,
+          reconcileHisStates = self.params.reconcile_his_charges is True and self.params.his_conformers == 'state',
           **self._CliqueLimits())
         doneOpt = time.time()
         if opt.getSymmetryCopiesSummary():
@@ -3690,8 +3728,8 @@ NOTES:
           except Exception as e:
             if Optimizers.Optimizer.hisChargesStrict:
               raise
-            text = ('His charges across conformers (reconcile_his_charges=True): could not be '
-              'written: %s: %s' % (type(e).__name__, e))
+            text = ('%s: could not be written: %s: %s' % (self._HisChargesHeader(),
+              type(e).__name__, e))
             print('\nWarning: His charges: the description section could not be written: '
               '%s: %s' % (type(e).__name__, e), file=self.logger)
           print('\n' + text.split('\n')[0], file=self.logger)
@@ -4091,6 +4129,7 @@ NOTES:
             verbosity=3,
             fixedHisProtonation = self._FixedHisKeys(),
             reconcileHisCharges = self.params.reconcile_his_charges is True,
+            reconcileHisStates = self.params.reconcile_his_charges is True and self.params.his_conformers == 'state',
             **self._CliqueLimits())
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
@@ -4218,6 +4257,7 @@ NOTES:
             verbosity=3,
             fixedHisProtonation = self._FixedHisKeys(),
             reconcileHisCharges = self.params.reconcile_his_charges is True,
+            reconcileHisStates = self.params.reconcile_his_charges is True and self.params.his_conformers == 'state',
             **self._CliqueLimits())
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)

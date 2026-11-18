@@ -499,7 +499,8 @@ class Optimizer(object):
                 chooseHisProtonation = False,
                 reconcileHisCharges = False,
                 cliqueSeconds = 120.0,
-                maxCliqueWork = 1.0e6
+                maxCliqueWork = 1.0e6,
+                reconcileHisStates = False
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -589,6 +590,11 @@ class Optimizer(object):
     reconciled to one charge where the scores allow it (mmtbx.reduce.HisCharges):
     the passes run again with those His states fixed, and the result is kept only if
     it passes the rerun checks; otherwise the first result is restored.
+    :param reconcileHisStates: with reconcileHisCharges, the target is one ring-H
+    state (HD1, HE2 or both) for all conformers instead of one charge, without a cost
+    limit (a cost above HisCharges.BUDGET is a warning). Each conformer keeps its ring
+    orientation from the first run. The exceptions (metal, ion, user state, partial
+    or unscorable ring) and the rerun checks are the same.
     """
 
     ################################################################################
@@ -613,6 +619,8 @@ class Optimizer(object):
     self._maxCliqueWork = maxCliqueWork
     self._cliqueModel = 0
     self._cliqueAlt = ''
+    self._reconcileHisStates = reconcileHisStates
+    self._hisBudget = None if reconcileHisStates else HisCharges.BUDGET
 
     ################################################################################
     # Initialize internal variables.
@@ -1404,7 +1412,8 @@ class Optimizer(object):
       his['recs'].append((rec, {'HE2': pr.atoms[1], 'HD1': pr.atoms[5]}))
 
   def _HisByResidue(self, his):
-    """{His key: ({conformer: (record, ring H)}, {conformer: final charge})}. A
+    """{His key: ({conformer: (record, ring H)}, {conformer: final charge, or with
+    reconcileHisStates the state label (HisCharges.state_label())})}. A
     conformer's record is the last pass that has its ring H (the pass whose
     deletion decision holds); a record without ring H only fills a gap."""
     deleted = set(self._hydrogensToDelete)
@@ -1415,8 +1424,14 @@ class Optimizer(object):
       confs = byRes.setdefault(rec['key'], {})
       if any(h is not None for h in hs.values()) or rec['conf'] not in confs:
         confs[rec['conf']] = (rec, hs)
-    return dict((key, (confs, dict((c, sum(1 for h in hs.values() if h is not None and h not in deleted) - 1)
-      for c, (rec, hs) in confs.items()))) for key, confs in byRes.items())
+    if self._reconcileHisStates:
+      # state mode: the final value is the ring-H state label, not the charge
+      final = lambda hs: HisCharges.state_label(dict((n, hs.get(n) is None or hs[n] in deleted)
+        for n in ('HD1', 'HE2')))
+    else:
+      final = lambda hs: sum(1 for h in hs.values() if h is not None and h not in deleted) - 1
+    return dict((key, (confs, dict((c, final(hs)) for c, (rec, hs) in confs.items())))
+      for key, confs in byRes.items())
 
   def _HisSave(self, myModel):
     """Everything the passes change for this model: the free result when taken
@@ -1564,8 +1579,8 @@ class Optimizer(object):
           d = dict(kind='unchanged', decision='unchanged: blank ring last written by pass %s, '
             'which lacks the ring H' % (lacking or 'blank'))
         else:
-          d = HisCharges.decide(dict((c, r) for c, (r, hs) in confs.items()), HisCharges.BUDGET,
-            0.05 * self._preferenceMagnitude)
+          d = HisCharges.decide(dict((c, r) for c, (r, hs) in confs.items()), self._hisBudget,
+            0.05 * self._preferenceMagnitude, same_state=self._reconcileHisStates)
         cases.append(dict(key=key, free=final, final=dict(final), first=d))
         if d['kind'] == 'reconciled':
           first[key] = d
@@ -1716,10 +1731,11 @@ class Optimizer(object):
         HisCharges.check_fixed(k, dict((c, p) for (x, c), p in pins.items() if x == k),
           dict((c, r['chosen']) for c, (r, hs) in confs.items() if r.get('states') is not None), final)
       nowFinal = dict((k, f) for k, (confs, f) in now.items() if len(confs) > 1)
-      mm, missing = HisCharges.new_mismatches(freeFinal, nowFinal, set(keys))
+      newMismatches = HisCharges.new_mismatches_states if self._reconcileHisStates else HisCharges.new_mismatches
+      mm, missing = newMismatches(freeFinal, nowFinal, set(keys))
       ev = HisCharges.trial(freeHis['passes'], his['passes'], dict((k, mids(now, k)) for k in keys),
         freeHis['cliques'] + his['cliques'], st['trial'], dict((k, mids(now, k)) for k in mm),
-        missing=missing)
+        missing=missing, budget=float('inf') if self._hisBudget is None else self._hisBudget)
       run['unmatched'] = sum(len(comp['cost']['unmatched']) for comp in ev['components']) + \
         len(ev['unattributedUnmatched'])
       for comp in ev['components']:
@@ -1790,7 +1806,18 @@ class Optimizer(object):
         c['decision'] = d['decision']
       elif c.get('fixed'):
         c['category'] = 'fixed'
-        c['decision'] = 'reconciled to charge %s (first stage: %s)' % (HisCharges.charge_text(list(c['final'].values())[0]), d['decision'])
+        c['decision'] = 'reconciled to %s %s (first stage: %s)' % ('state' if self._reconcileHisStates else 'charge',
+          HisCharges.charge_text(list(c['final'].values())[0]), d['decision'])
+        cost = d['costs'][str(d['target'])]
+        rerun = (c.get('rerun') or {}).get('total')
+        if self._reconcileHisStates and max(cost['total'], rerun or 0.0) > HisCharges.BUDGET:
+          # no cost limit in state mode: a large screen or rerun cost is reported, not refused
+          c['warning'] = ("His %s: one state for all conformers (%s) costs %.2f (%s; rerun %s); the "
+            "conformers' own states were %s" % (HisCharges.key_text(key), d['target'], cost['total'],
+            ', '.join('%s %.2f' % (x or 'blank', p['cost']) for x, p in sorted(cost['per'].items())),
+            'none' if rerun is None else '%.2f' % rerun,
+            ', '.join('%s %s' % (x or 'blank', c['free'][x]) for x in sorted(c['free']))))
+          self._warningString += 'Warning: ' + c['warning'] + '\n'
       elif st is not None and key in st['rejected']:
         c['category'] = 'rejected'
         c['decision'] = 'kept: rerun failed (%s)' % st['rejected'][key]
@@ -1834,7 +1861,9 @@ class Optimizer(object):
     reportError (only when the report failed: the error; cases is then empty),
     rerunSeconds, backstopSeconds, unmatched, rejected {key: why}, cases
     [dict(key, free, final, first (decide()), decision, category, rerun (cost),
-    fixed, checked, skipped)])."""
+    fixed, checked, skipped, warning (reconcileHisStates: a fixed state that costs more
+    than HisCharges.BUDGET))]). free and final are {conformer: charge}, or {conformer:
+    state label} with reconcileHisStates (HisCharges.state_label())."""
     return self._hisCharges
 
   ##################################################################################

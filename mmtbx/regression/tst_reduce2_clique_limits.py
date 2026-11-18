@@ -27,6 +27,9 @@ Tests:
   limited Cliques differ from the free run's restores the free result
   (SEARCH_DEADLINE); the same limited Cliques in both runs reconcile; a real
   fallback in pass B of the free run and in pass A of the rerun differ.
+- test_his_rerun_state: the same check with his_conformers=state (one state
+  across conformers): a rerun that limits other Cliques restores the free
+  result (A HD1+HE2, B HD1) instead of setting both to HD1.
 """
 import itertools, math
 from io import StringIO
@@ -265,10 +268,38 @@ def test_his_rerun():
     'rerun 1 limited other Cliques than the first run'), m
   print("test_his_rerun OK")
 
+def test_his_rerun_state():
+  from mmtbx.reduce import HisCharges
+  from mmtbx.regression import tst_reduce2_his_charges_optimizer as his
+  orig = Optimizers.Optimizer._OptimizeModel
+  calls = []
+  def f(self, *a, **k):
+    # a search-limit warning after rerun 1 only
+    r = orig(self, *a, **k)
+    calls.append(1)
+    if len(calls) == 2:
+      self._warningString += Optimizers._CLIQUE_WARNING + "Clique of 2 Movers (first test): test\n"
+    return r
+  Optimizers.Optimizer._OptimizeModel = f
+  try:
+    atoms, _, made = his.run(his.pdb_1exr, "tst_reduce2_clique_limits_his_st", his.ON, his.STATE)
+  finally:
+    Optimizers.Optimizer._OptimizeModel = orig
+  assert [o._reconcileHisStates for o in made] == [True], made
+  m = his.only(made)
+  c = his.case(m, '107')
+  assert (m['code'], m['detail'], m['reruns']) == (HisCharges.SEARCH_DEADLINE,
+    'rerun 1 limited other Cliques than the first run', 1), m
+  assert (c['free'], c['final']) == ({'A': 'HD1+HE2', 'B': 'HD1'}, {'A': 'HD1+HE2', 'B': 'HD1'}), c
+  assert his.ring_h(atoms, 'A', '107') == [('HD1', 'A'), ('HD1', 'B'), ('HE2', 'A')], \
+    his.ring_h(atoms, 'A', '107')
+  print("test_his_rerun_state OK")
+
 if __name__ == "__main__":
   test_work_count()
   test_guard()
   test_allowance()
   test_defaults()
   test_his_rerun()
+  test_his_rerun_state()
   print("OK")

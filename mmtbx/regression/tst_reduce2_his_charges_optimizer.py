@@ -52,6 +52,8 @@ def run(pdb, prefix, *extra):
   return atoms, desc, made
 
 ON = "reconcile_his_charges=True"
+STATE = "his_conformers=state"
+STATE_HEADER = "His protonation across conformers (one state, his_conformers=state)"
 
 def ring_h(atoms, chain, resseq):
   return sorted((l[0:4].strip(), l[4]) for l in atoms if l[9] == chain and
@@ -461,8 +463,7 @@ def test_report_errors():
       ('o', Optimizers.Optimizer, '_HisReport', "Warning: His charges: the report could not be written: "
         "RuntimeError: injected", "  model: His charges not reported: RuntimeError: injected"),
       ('r', reduce2.Program, '_HisChargesText', "Warning: His charges: the description section could not "
-        "be written: RuntimeError: injected", "His charges across conformers (reconcile_his_charges=True): "
-        "could not be written: RuntimeError: injected")):
+        "be written: RuntimeError: injected", STATE_HEADER + ": could not be written: RuntimeError: injected")):
     with patched(failing_call(owner, name, 1, RuntimeError('injected'), after=False)):
       atoms, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_w" + tag, "qmready=True")
     assert atoms == ok, (tag, removed(ok, atoms))
@@ -470,8 +471,7 @@ def test_report_errors():
     assert warning in LOG[0].getvalue(), (tag, LOG[0].getvalue())
     assert line in desc.splitlines(), (tag, desc)
     if tag == 'o':
-      assert ("His charges across conformers (reconcile_his_charges=True): counts not available "
-        "(the report could not be written)") in desc.splitlines(), desc
+      assert (STATE_HEADER + ": counts not available (the report could not be written)") in desc.splitlines(), desc
     with patched(failing_call(owner, name, 1, RuntimeError('injected'), after=False)):
       with Optimizers.his_charges_strict():
         try:
@@ -808,8 +808,9 @@ def program_stub(his):
   p.model = M()
   p._hisCharges = his
   p.params = P()
-  p.params.qmready, p.params.reconcile_his_charges = True, True
-  for n in ('_HisChargesText', '_HisChargesHint', '_WithHisChargesHint', '_HisFixedKeys', '_HisWithDifferentRingH'):
+  p.params.qmready, p.params.reconcile_his_charges, p.params.his_conformers = True, True, 'charge'
+  for n in ('_HisChargesText', '_HisChargesHeader', '_HisChargesHint', '_WithHisChargesHint', '_HisFixedKeys',
+      '_HisWithDifferentRingH'):
     setattr(p, n, getattr(reduce2.Program, n).__get__(p))
   return p
 
@@ -855,6 +856,13 @@ def test_hint_and_report():
       assert str(r).startswith(str(e)), r
       assert (r is e) == (not hinted), (e, r)
       assert getattr(r, 'conformer_charge_mismatch', False) == hinted, r
+  # state labels (his_conformers=state): the hint compares their charges; a
+  # tautomer pair (HD1, HE2) has one charge and gets no hint
+  p = program_stub(his(HisCharges.NO_RERUN, None,
+    c(5, {'A': 'HD1', 'B': 'HE2'}, {'A': 'HD1', 'B': 'HE2'}, 'unchanged', 'unchanged: partially split ring'),
+    c(6, {'A': 'HD1+HE2', 'B': 'HD1'}, {'A': 'HD1+HE2', 'B': 'HD1'}, 'metal', 'kept: B ion lock (ZN)')))
+  h = p._HisChargesHint().splitlines()
+  assert h == ["His A 6: conformer charges differ (B ion lock (ZN); expected)"], h
   # the report: free -> final
   m = his(HisCharges.NO_RERUN, None, c(3, two, one, 'cost', 'kept: cost to +1 is 0.90 > 0.50'))
   m[0].update(reason='no rerun', freeSeconds=0.5, rejected={})
@@ -1095,6 +1103,111 @@ def test_blank_ring_last_pass():
   w = o._HisWritten(his, k, {'B': (dict(recs[1], ring=ringB), {}), 'C': (dict(recs[0], ring=ringC), {})})
   assert w['B']['writer']['NE2'] == 'pass A without the ring H' and w['B']['writer']['HE2'] == 'B', w
 
+
+def counted(owner, name):
+  """patched() entry: owner.name wrapped to count its calls in the returned list."""
+  calls = []
+  orig = getattr(owner, name)
+  def f(*a, **k):
+    calls.append(1)
+    return orig(*a, **k)
+  return (owner, name, f), calls
+
+def test_state_mode():
+  """his_conformers=state without qmready on the 1exr fixture (free A HD1+HE2, B
+  HD1): both conformers HD1, the records hold state labels, the description has
+  the one-state header and line; a rerun is checked by state and charge."""
+  entry, calls = counted(HisCharges, 'new_mismatches_states')
+  with patched(entry):
+    atoms, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_s1", ON, STATE)
+  assert [o._reconcileHisStates for o in made] == [True], made
+  assert ring_h(atoms, 'A', '107') == [('HD1', 'A'), ('HD1', 'B')], ring_h(atoms, 'A', '107')
+  m = only(made)
+  c = case(m, '107')
+  assert (m['code'], c['free'], c['final'], c['first']['target']) == (HisCharges.RECONCILED,
+    {'A': 'HD1+HE2', 'B': 'HD1'}, {'A': 'HD1', 'B': 'HD1'}, 'HD1'), (m['code'], c)
+  assert calls, "the rerun was not checked with new_mismatches_states"
+  lines = desc.splitlines()
+  assert STATE_HEADER + ": 1 His with different states, 1 set to one state" in lines, desc
+  assert any(l.startswith("  His A 107: A HD1+HE2 B HD1 -> A HD1 B HD1; set to state HD1; screen cost 0.33")
+    for l in lines), desc
+  assert not c.get('warning'), c
+
+def test_state_same_charge():
+  """A His whose conformers have one charge and different tautomers (2r6w B 513
+  fragment: A HE2, B HD1): one state sets both to HE2; one charge leaves it."""
+  atoms, desc, made = run(pdb_2r6w_b513, "tst_reduce2_his_charges_opt_s2", ON, STATE)
+  c = case(only(made), '513')
+  assert (c['free'], c['final'], c['category']) == ({'A': 'HE2', 'B': 'HD1'}, {'A': 'HE2', 'B': 'HE2'}, 'fixed'), c
+  assert ring_h(atoms, 'B', '513') == [('HE2', 'A'), ('HE2', 'B')], ring_h(atoms, 'B', '513')
+  atoms, desc, made = run(pdb_2r6w_b513, "tst_reduce2_his_charges_opt_s2c", ON, "his_conformers=charge")
+  assert only(made)['cases'] == [], only(made)
+  assert ring_h(atoms, 'B', '513') == [('HD1', 'B'), ('HE2', 'A')], ring_h(atoms, 'B', '513')
+
+def test_state_large_cost():
+  """No cost limit in state mode (3hpw A 55 fragment, cost 6.89): the His is set,
+  with a warning in the log and the same line in the description."""
+  atoms, desc, made = run(pdb_3hpw_a55, "tst_reduce2_his_charges_opt_s3", ON, STATE)
+  c = case(only(made), '55')
+  assert (c['final'], c['category']) == ({'A': 'HE2', 'B': 'HE2'}, 'fixed'), c
+  w = ("His A 55: one state for all conformers (HE2) costs 6.89 (A 0.00, B 6.89; rerun 6.89); the "
+    "conformers' own states were A HE2, B HD1")
+  assert c['warning'] == w, c
+  assert "Warning: " + w in LOG[0].getvalue(), LOG[0].getvalue()
+  assert "  Warning: " + w in desc.splitlines(), desc
+
+def test_state_rerun_cost():
+  """The warning also covers the rerun cost: the 1exr fixture's screen cost is 0.33,
+  with the rerun cost raised to 3.0 (as from losses at the neighbours) it warns."""
+  orig = HisCharges.trial
+  def trial(*a, **k):
+    ev = orig(*a, **k)
+    for comp in ev['components']:
+      comp['cost'] = dict(comp['cost'], total=3.0)
+    return ev
+  with patched((HisCharges, 'trial', trial)):
+    atoms, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_s7", ON, STATE)
+  c = case(only(made), '107')
+  assert c['category'] == 'fixed' and c['first']['costs']['HD1']['total'] < 0.5, c
+  assert c['warning'] == ("His A 107: one state for all conformers (HD1) costs 0.33 (A 0.33, B 0.00; "
+    "rerun 3.00); the conformers' own states were A HD1+HE2, B HD1"), c
+
+def test_charge_mode_qmready():
+  """his_conformers=charge with qmready keeps the cost limit: with BUDGET lowered
+  to 0.30 the 1exr fixture's His (cost 0.39 to 0) is kept and qmready stops; the
+  same limit in state mode is a warning only."""
+  with patched((HisCharges, 'BUDGET', 0.3)):
+    try:
+      run(pdb_1exr, "tst_reduce2_his_charges_opt_s4", "qmready=True", "his_conformers=charge")
+    except Sorry as e:
+      assert "kept: cost to 0 is 0.39 > 0.30" in str(e), e
+    else:
+      raise AssertionError("charge mode ran past the cost limit")
+    atoms, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_s4s", "qmready=True")
+    assert ring_h(atoms, 'A', '107') == [('HD1', 'A'), ('HD1', 'B')], ring_h(atoms, 'A', '107')
+    assert "Warning: His A 107: one state for all conformers (HD1) costs 0.78" in LOG[0].getvalue()
+
+def test_charge_mode_default():
+  """Without qmready Auto is charge: explicit reconciliation writes what
+  his_conformers=charge writes, with charges in the records."""
+  auto, desc_auto, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_s5", ON)
+  assert [o._reconcileHisStates for o in made] == [False], made
+  assert case(only(made), '107')['final'] == {'A': 0, 'B': 0}, only(made)
+  assert "his_conformers set to" not in LOG[0].getvalue()
+  assert ("His charges across conformers (reconcile_his_charges=True): 1 His with different charges, "
+    "1 set to one charge") in desc_auto.splitlines(), desc_auto
+  charge, desc_charge, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_s5c", ON, "his_conformers=charge")
+  assert auto == charge
+
+def test_qmready_state():
+  """qmready with the defaults on the 1exr fixture: one state, both conformers HD1,
+  total charge 0, the resolved value logged; his_conformers=Auto or None typed is the same."""
+  for i, extra in enumerate(((), ("his_conformers=Auto",), ("his_conformers=None",))):
+    atoms, desc, made = run(pdb_1exr, "tst_reduce2_his_charges_opt_s6%d" % i, "qmready=True", *extra)
+    assert ring_h(atoms, 'A', '107') == [('HD1', 'A'), ('HD1', 'B')], (extra, ring_h(atoms, 'A', '107'))
+    log = LOG[0].getvalue()
+    assert "Total charge: 0" in log and "qmready=True: his_conformers set to state" in log, (extra, log)
+    assert case(only(made), '107')['final'] == {'A': 'HD1', 'B': 'HD1'}, extra
 
 pdb_1exr = """\
 ATOM    935  N   ARG A  94      34.136 -16.706  29.792  1.00 13.44           N
@@ -1745,6 +1858,277 @@ HETATM 1634  O   HOH A2161      12.461 -17.449  40.907  0.60 18.47           O
 HETATM 1646  O   HOH A2173      11.730 -12.749  34.283  1.00 40.97           O
 """
 
+pdb_2r6w_b513 = """\
+CRYST1   56.470  102.761  172.952  90.00  90.00  90.00 C 2 2 21
+ATOM      1  N   ASN A 455       3.663  38.696  71.354  1.00 30.46           N
+ATOM      2  CA  ASN A 455       4.597  37.579  71.169  1.00 33.58           C
+ATOM      3  C   ASN A 455       6.053  37.975  71.241  1.00 35.50           C
+ATOM      4  O   ASN A 455       6.875  37.213  71.727  1.00 37.37           O
+ATOM      5  CB  ASN A 455       4.358  36.900  69.800  1.00 32.74           C
+ATOM      6  CG  ASN A 455       5.210  35.631  69.610  1.00 33.94           C
+ATOM      7  OD1 ASN A 455       6.000  35.526  68.657  1.00 34.46           O
+ATOM      8  ND2 ASN A 455       5.059  34.684  70.516  1.00 27.10           N
+ATOM      9  N   SER A 456       6.400  39.143  70.724  1.00 37.86           N
+ATOM     10  CA  SER A 456       7.818  39.433  70.459  1.00 40.20           C
+ATOM     11  C   SER A 456       8.731  39.426  71.711  1.00 41.54           C
+ATOM     12  O   SER A 456       9.814  38.816  71.712  1.00 40.02           O
+ATOM     13  CB  SER A 456       7.976  40.653  69.545  1.00 40.60           C
+ATOM     14  OG  SER A 456       7.613  40.240  68.207  1.00 39.84           O
+ATOM     15  N   GLY A 457       8.254  40.023  72.786  1.00 43.13           N
+ATOM     16  CA  GLY A 457       9.027  40.039  74.014  1.00 46.32           C
+ATOM     17  C   GLY A 457       8.610  38.953  74.974  1.00 49.75           C
+ATOM     18  O   GLY A 457       9.127  38.885  76.096  1.00 50.10           O
+ATOM     19  N   VAL A 458       7.702  38.081  74.550  1.00 52.79           N
+ATOM     20  CA  VAL A 458       7.148  37.092  75.477  1.00 56.64           C
+ATOM     21  C   VAL A 458       8.213  36.135  76.059  1.00 59.44           C
+ATOM     22  O   VAL A 458       8.282  35.957  77.283  1.00 60.14           O
+ATOM     23  CB  VAL A 458       5.885  36.375  74.905  1.00 56.45           C
+ATOM     24  CG1 VAL A 458       6.246  35.286  73.926  1.00 56.55           C
+ATOM     25  CG2 VAL A 458       5.043  35.810  76.035  1.00 57.54           C
+ATOM     26  N   TYR A 459       9.070  35.565  75.208  1.00 62.40           N
+ATOM     27  CA  TYR A 459      10.071  34.603  75.687  1.00 65.39           C
+ATOM     28  C   TYR A 459      11.383  35.234  76.126  1.00 66.80           C
+ATOM     29  O   TYR A 459      12.420  34.563  76.118  1.00 67.21           O
+ATOM     30  CB  TYR A 459      10.334  33.483  74.660  1.00 66.17           C
+ATOM     31  CG  TYR A 459       9.115  32.639  74.359  1.00 67.43           C
+ATOM     32  CD1 TYR A 459       8.226  32.259  75.377  1.00 68.89           C
+ATOM     33  CD2 TYR A 459       8.846  32.224  73.062  1.00 68.02           C
+ATOM     34  CE1 TYR A 459       7.091  31.491  75.089  1.00 69.74           C
+ATOM     35  CE2 TYR A 459       7.728  31.458  72.763  1.00 68.71           C
+ATOM     36  CZ  TYR A 459       6.854  31.095  73.773  1.00 68.85           C
+ATOM     37  OH  TYR A 459       5.740  30.340  73.458  1.00 68.57           O
+ATOM     38  N   THR A 460      11.324  36.511  76.506  1.00 68.47           N
+ATOM     39  CA  THR A 460      12.499  37.242  77.013  1.00 70.46           C
+ATOM     40  C   THR A 460      12.264  37.967  78.347  1.00 71.50           C
+ATOM     41  O   THR A 460      13.097  38.780  78.764  1.00 71.97           O
+ATOM     42  CB  THR A 460      13.094  38.236  75.970  1.00 70.08           C
+ATOM     43  OG1 THR A 460      12.049  38.763  75.145  1.00 70.39           O
+ATOM     44  CG2 THR A 460      14.120  37.540  75.092  1.00 70.57           C
+ATOM     45  N   ARG A 515      10.265  39.728  62.237  1.00 27.68           N
+ATOM     46  CA  ARG A 515      11.326  39.662  63.273  1.00 28.82           C
+ATOM     47  C   ARG A 515      12.738  39.873  62.686  1.00 27.92           C
+ATOM     48  O   ARG A 515      13.546  40.649  63.212  1.00 26.47           O
+ATOM     49  CB  ARG A 515      11.282  38.342  64.060  1.00 27.55           C
+ATOM     50  CG  ARG A 515      12.174  38.313  65.344  1.00 31.97           C
+ATOM     51  CD  ARG A 515      11.653  39.264  66.431  1.00 36.37           C
+ATOM     52  NE  ARG A 515      11.736  38.653  67.746  1.00 48.20           N
+ATOM     53  CZ  ARG A 515      10.843  37.809  68.257  1.00 50.12           C
+ATOM     54  NH1 ARG A 515       9.740  37.466  67.587  1.00 52.00           N
+ATOM     55  NH2 ARG A 515      11.061  37.316  69.458  1.00 51.55           N
+TER
+ATOM     56  N   MET B 427      17.517  32.270  76.548  1.00 36.88           N
+ATOM     57  CA  MET B 427      16.477  32.185  75.502  1.00 38.46           C
+ATOM     58  C   MET B 427      16.305  30.729  75.006  1.00 36.12           C
+ATOM     59  O   MET B 427      15.178  30.171  74.936  1.00 35.67           O
+ATOM     60  CB  MET B 427      16.845  33.126  74.338  1.00 37.56           C
+ATOM     61  CG  MET B 427      16.547  34.602  74.602  1.00 40.00           C
+ATOM     62  SD  MET B 427      16.731  35.626  73.124  1.00 46.59           S
+ATOM     63  CE  MET B 427      18.464  35.999  73.049  1.00 44.27           C
+ATOM     64  N   LEU B 428      17.436  30.084  74.718  1.00 34.90           N
+ATOM     65  CA  LEU B 428      17.408  28.670  74.290  1.00 33.28           C
+ATOM     66  C   LEU B 428      16.813  27.817  75.393  1.00 31.91           C
+ATOM     67  O   LEU B 428      15.967  26.967  75.139  1.00 29.77           O
+ATOM     68  CB  LEU B 428      18.827  28.172  73.908  1.00 33.11           C
+ATOM     69  CG  LEU B 428      19.432  28.785  72.665  1.00 33.27           C
+ATOM     70  CD1 LEU B 428      20.947  28.654  72.666  1.00 31.02           C
+ATOM     71  CD2 LEU B 428      18.816  28.178  71.396  1.00 33.17           C
+ATOM     72  N   ALA B 430      14.672  28.747  77.706  1.00 35.18           N
+ATOM     73  CA  ALA B 430      13.221  29.081  77.741  1.00 35.11           C
+ATOM     74  C   ALA B 430      12.468  28.370  76.622  1.00 35.20           C
+ATOM     75  O   ALA B 430      11.373  27.828  76.850  1.00 34.31           O
+ATOM     76  CB  ALA B 430      13.023  30.583  77.662  1.00 35.34           C
+ATOM     77  N   THR B 431      13.067  28.315  75.414  1.00 33.93           N
+ATOM     78  CA  THR B 431      12.405  27.559  74.323  1.00 33.35           C
+ATOM     79  C   THR B 431      12.281  26.106  74.633  1.00 33.47           C
+ATOM     80  O   THR B 431      11.244  25.480  74.374  1.00 33.30           O
+ATOM     81  CB  THR B 431      13.118  27.757  72.980  1.00 32.02           C
+ATOM     82  OG1 THR B 431      13.393  29.137  72.869  1.00 31.17           O
+ATOM     83  CG2 THR B 431      12.189  27.399  71.823  1.00 30.12           C
+ATOM     84  N   LEU B 509       4.648  30.578  66.047  1.00 26.13           N
+ATOM     85  CA  LEU B 509       5.151  31.708  66.821  1.00 27.53           C
+ATOM     86  C   LEU B 509       6.500  31.454  67.487  1.00 28.49           C
+ATOM     87  O   LEU B 509       7.359  32.343  67.538  1.00 28.41           O
+ATOM     88  CB  LEU B 509       4.101  32.229  67.840  1.00 27.30           C
+ATOM     89  CG  LEU B 509       2.883  32.970  67.213  1.00 26.78           C
+ATOM     90  CD1 LEU B 509       1.854  33.396  68.313  1.00 27.83           C
+ATOM     91  CD2 LEU B 509       3.253  34.187  66.261  1.00 25.61           C
+ATOM     92  N   ILE B 510       6.727  30.226  67.920  1.00 28.90           N
+ATOM     93  CA  ILE B 510       8.054  29.881  68.481  1.00 29.84           C
+ATOM     94  C   ILE B 510       9.149  30.001  67.407  1.00 29.18           C
+ATOM     95  O   ILE B 510      10.279  30.375  67.699  1.00 28.48           O
+ATOM     96  CB  ILE B 510       7.965  28.486  69.141  1.00 29.57           C
+ATOM     97  CG1 ILE B 510       7.293  28.577  70.522  1.00 30.05           C
+ATOM     98  CG2 ILE B 510       9.318  27.780  69.192  1.00 30.25           C
+ATOM     99  CD1 ILE B 510       6.731  27.187  71.007  1.00 31.82           C
+ATOM    100  N   LEU B 511       8.801  29.720  66.143  1.00 30.13           N
+ATOM    101  CA  LEU B 511       9.744  29.872  65.017  1.00 30.01           C
+ATOM    102  C   LEU B 511      10.235  31.297  64.844  1.00 29.83           C
+ATOM    103  O   LEU B 511      11.338  31.510  64.420  1.00 29.50           O
+ATOM    104  CB  LEU B 511       9.145  29.360  63.691  1.00 30.01           C
+ATOM    105  CG  LEU B 511       8.794  27.873  63.557  1.00 32.61           C
+ATOM    106  CD1 LEU B 511       8.487  27.501  62.098  1.00 32.63           C
+ATOM    107  CD2 LEU B 511       9.932  26.958  64.104  1.00 33.65           C
+ATOM    108  N   SER B 512       9.421  32.298  65.205  1.00 28.50           N
+ATOM    109  CA  SER B 512       9.907  33.660  65.242  1.00 28.09           C
+ATOM    110  C   SER B 512      10.955  33.853  66.322  1.00 26.06           C
+ATOM    111  O   SER B 512      11.862  34.655  66.149  1.00 25.79           O
+ATOM    112  CB  SER B 512       8.744  34.687  65.535  1.00 28.96           C
+ATOM    113  OG  SER B 512       8.116  35.025  64.314  1.00 34.38           O
+ATOM    114  N   HIS B 513      10.762  33.253  67.481  1.00 26.66           N
+ATOM    115  C   HIS B 513      13.100  32.723  68.158  1.00 27.78           C
+ATOM    116  O   HIS B 513      14.187  33.274  68.386  1.00 28.68           O
+ATOM    117  CA AHIS B 513      11.756  33.365  68.571  0.50 28.33           C
+ATOM    118  CB AHIS B 513      11.153  32.748  69.822  0.50 28.60           C
+ATOM    119  CG AHIS B 513      10.016  33.557  70.366  0.50 32.09           C
+ATOM    120  ND1AHIS B 513      10.186  34.835  70.850  0.50 34.27           N
+ATOM    121  CD2AHIS B 513       8.689  33.300  70.444  0.50 35.04           C
+ATOM    122  CE1AHIS B 513       9.021  35.316  71.240  0.50 34.23           C
+ATOM    123  NE2AHIS B 513       8.097  34.400  71.015  0.50 35.02           N
+ATOM    124  CA BHIS B 513      11.790  33.414  68.555  0.50 28.10           C
+ATOM    125  CB BHIS B 513      11.337  32.923  69.924  0.50 28.48           C
+ATOM    126  CG BHIS B 513      12.292  33.291  71.028  0.50 30.55           C
+ATOM    127  ND1BHIS B 513      12.665  34.592  71.289  0.50 32.21           N
+ATOM    128  CD2BHIS B 513      12.973  32.522  71.912  0.50 32.47           C
+ATOM    129  CE1BHIS B 513      13.517  34.614  72.299  0.50 33.14           C
+ATOM    130  NE2BHIS B 513      13.721  33.371  72.695  0.50 32.98           N
+ATOM    131  N   ILE B 514      12.987  31.572  67.504  1.00 27.86           N
+ATOM    132  CA  ILE B 514      14.181  30.872  66.936  1.00 27.33           C
+ATOM    133  C   ILE B 514      14.864  31.726  65.911  1.00 27.75           C
+ATOM    134  O   ILE B 514      16.079  31.829  65.957  1.00 26.44           O
+ATOM    135  CB  ILE B 514      13.863  29.459  66.399  1.00 28.65           C
+ATOM    136  CG1 ILE B 514      13.458  28.584  67.575  1.00 28.92           C
+ATOM    137  CG2 ILE B 514      15.131  28.830  65.725  1.00 27.01           C
+ATOM    138  CD1 ILE B 514      12.823  27.312  67.161  1.00 32.96           C
+ATOM    139  N   HIS B 516      14.968  34.887  66.001  1.00 27.98           N
+ATOM    140  CA  HIS B 516      15.576  35.969  66.783  1.00 28.48           C
+ATOM    141  C   HIS B 516      16.885  35.470  67.428  1.00 27.61           C
+ATOM    142  O   HIS B 516      17.929  36.150  67.405  1.00 29.12           O
+ATOM    143  CB  HIS B 516      14.563  36.511  67.830  1.00 28.76           C
+ATOM    144  CG  HIS B 516      15.122  37.556  68.733  1.00 33.92           C
+ATOM    145  ND1 HIS B 516      15.569  38.780  68.272  1.00 36.71           N
+ATOM    146  CD2 HIS B 516      15.346  37.554  70.067  1.00 38.58           C
+ATOM    147  CE1 HIS B 516      16.043  39.481  69.284  1.00 37.72           C
+ATOM    148  NE2 HIS B 516      15.920  38.761  70.383  1.00 38.84           N
+ATOM    149  N   MET B 517      16.818  34.305  68.013  1.00 28.75           N
+ATOM    150  CA  MET B 517      18.010  33.699  68.681  1.00 29.78           C
+ATOM    151  C   MET B 517      19.064  33.489  67.623  1.00 30.02           C
+ATOM    152  O   MET B 517      20.219  33.908  67.815  1.00 30.40           O
+ATOM    153  CB  MET B 517      17.657  32.398  69.349  1.00 29.85           C
+ATOM    154  CG  MET B 517      16.740  32.545  70.545  1.00 30.58           C
+ATOM    155  SD  MET B 517      16.424  31.036  71.432  1.00 34.88           S
+ATOM    156  CE  MET B 517      15.374  30.116  70.353  1.00 33.46           C
+TER
+HETATM  157  O   HOH A 564       6.318  37.804  67.035  1.00 42.57           O
+HETATM  158  O   HOH A 567       4.140  32.404  71.769  1.00 56.75           O
+HETATM  159  O   HOH B 602       4.285  29.933  71.417  1.00 45.20           O
+"""
+
+pdb_3hpw_a55 = """\
+CRYST1   41.357   38.038   69.651  90.00  97.51  90.00 P 1 21 1
+ATOM      1  N   VAL A  53      -4.037   7.874 -37.497  1.00  7.01           N
+ATOM      2  CA  VAL A  53      -3.176   7.023 -38.301  1.00  6.47           C
+ATOM      3  C   VAL A  53      -1.746   7.372 -37.922  1.00  7.04           C
+ATOM      4  O   VAL A  53      -1.326   8.536 -38.031  1.00  8.60           O
+ATOM      5  CB  VAL A  53      -3.407   7.245 -39.814  1.00  7.24           C
+ATOM      6  CG1 VAL A  53      -2.378   6.456 -40.628  1.00  9.22           C
+ATOM      7  CG2 VAL A  53      -4.817   6.782 -40.195  1.00 10.26           C
+ATOM      8  N   VAL A  54      -0.999   6.349 -37.499  1.00  6.89           N
+ATOM      9  CA  VAL A  54       0.400   6.510 -37.082  1.00  6.74           C
+ATOM     10  C   VAL A  54       1.304   5.608 -37.905  1.00  8.00           C
+ATOM     11  O   VAL A  54       0.846   4.630 -38.501  1.00  9.72           O
+ATOM     12  CB  VAL A  54       0.583   6.252 -35.565  1.00  8.22           C
+ATOM     13  CG1 VAL A  54      -0.274   7.224 -34.738  1.00  8.44           C
+ATOM     14  CG2 VAL A  54       0.197   4.819 -35.208  1.00  9.18           C
+ATOM     15  N   HIS A  55       2.589   5.947 -37.972  1.00  7.63           N
+ATOM     16  C   HIS A  55       4.636   4.535 -37.952  1.00  7.59           C
+ATOM     17  O   HIS A  55       5.191   5.149 -37.039  1.00  8.75           O
+ATOM     18  CA AHIS A  55       3.518   5.157 -38.783  0.50  8.44           C
+ATOM     19  CB AHIS A  55       4.102   5.963 -39.963  0.50  9.22           C
+ATOM     20  CG AHIS A  55       3.160   6.127 -41.124  0.50  9.11           C
+ATOM     21  ND1AHIS A  55       3.255   5.380 -42.281  0.50 12.80           N
+ATOM     22  CD2AHIS A  55       2.112   6.962 -41.305  0.50 12.46           C
+ATOM     23  CE1AHIS A  55       2.313   5.758 -43.128  0.50 10.53           C
+ATOM     24  NE2AHIS A  55       1.597   6.709 -42.554  0.50 11.01           N
+ATOM     25  CA BHIS A  55       3.544   5.207 -38.779  0.50  8.44           C
+ATOM     26  CB BHIS A  55       4.124   6.185 -39.794  0.50  7.43           C
+ATOM     27  CG BHIS A  55       3.060   6.971 -40.495  0.50  7.67           C
+ATOM     28  ND1BHIS A  55       2.593   8.182 -40.028  0.50 15.16           N
+ATOM     29  CD2BHIS A  55       2.333   6.684 -41.598  0.50  4.86           C
+ATOM     30  CE1BHIS A  55       1.638   8.620 -40.827  0.50 14.97           C
+ATOM     31  NE2BHIS A  55       1.458   7.728 -41.787  0.50 14.09           N
+ATOM     32  N   ILE A  56       4.939   3.281 -38.284  1.00  7.04           N
+ATOM     33  CA  ILE A  56       6.055   2.532 -37.708  1.00  8.18           C
+ATOM     34  C   ILE A  56       6.853   2.096 -38.919  1.00  7.80           C
+ATOM     35  O   ILE A  56       6.357   1.316 -39.740  1.00  7.82           O
+ATOM     36  CB  ILE A  56       5.577   1.318 -36.871  1.00  8.73           C
+ATOM     37  CG1 ILE A  56       4.727   1.815 -35.690  1.00  8.85           C
+ATOM     38  CG2 ILE A  56       6.784   0.503 -36.391  1.00  8.99           C
+ATOM     39  CD1 ILE A  56       4.031   0.708 -34.917  1.00 10.51           C
+ATOM     40  N   GLY A  57       8.064   2.638 -39.067  1.00  7.74           N
+ATOM     41  CA  GLY A  57       8.822   2.403 -40.288  1.00  8.68           C
+ATOM     42  C   GLY A  57       8.014   2.846 -41.493  1.00  7.27           C
+ATOM     43  O   GLY A  57       7.484   3.957 -41.502  1.00 10.30           O
+ATOM     44  N   ASP A  58       7.898   1.975 -42.489  1.00 10.19           N
+ATOM     45  CA  ASP A  58       7.208   2.300 -43.730  1.00 11.50           C
+ATOM     46  C   ASP A  58       5.684   2.121 -43.663  1.00 11.91           C
+ATOM     47  O   ASP A  58       4.970   2.529 -44.587  1.00 14.60           O
+ATOM     48  CB  ASP A  58       7.740   1.418 -44.880  1.00 15.37           C
+ATOM     49  CG  ASP A  58       9.269   1.436 -45.002  1.00 18.26           C
+ATOM     50  OD1 ASP A  58       9.880   2.489 -44.741  1.00 19.50           O
+ATOM     51  OD2 ASP A  58       9.870   0.399 -45.373  1.00 21.75           O
+ATOM     52  N   GLU A  59       5.185   1.490 -42.601  1.00  8.61           N
+ATOM     53  CA  GLU A  59       3.791   1.042 -42.574  1.00  8.56           C
+ATOM     54  C   GLU A  59       2.891   1.878 -41.670  1.00  9.42           C
+ATOM     55  O   GLU A  59       3.338   2.503 -40.712  1.00 12.17           O
+ATOM     56  CB  GLU A  59       3.701  -0.444 -42.194  1.00 12.61           C
+ATOM     57  CG  GLU A  59       4.237  -1.397 -43.272  1.00 16.38           C
+ATOM     58  N   SER A  60       1.611   1.880 -42.007  1.00  8.13           N
+ATOM     59  C   SER A  60      -0.309   1.831 -40.424  1.00  6.68           C
+ATOM     60  O   SER A  60      -0.679   0.689 -40.768  1.00  8.33           O
+ATOM     61  CA ASER A  60       0.604   2.671 -41.315  0.50  8.40           C
+ATOM     62  CB ASER A  60      -0.250   3.420 -42.335  0.50  9.19           C
+ATOM     63  OG ASER A  60       0.559   4.275 -43.123  0.50 12.49           O
+ATOM     64  CA BSER A  60       0.628   2.674 -41.283  0.50  7.98           C
+ATOM     65  CB BSER A  60      -0.201   3.520 -42.247  0.50 10.37           C
+ATOM     66  OG BSER A  60      -0.840   2.701 -43.202  0.50 13.67           O
+ATOM     67  N   TRP A  61      -0.711   2.427 -39.306  1.00  6.27           N
+ATOM     68  CA  TRP A  61      -1.501   1.764 -38.281  1.00  6.82           C
+ATOM     69  C   TRP A  61      -2.556   2.716 -37.776  1.00  7.62           C
+ATOM     70  O   TRP A  61      -2.282   3.898 -37.618  1.00  8.48           O
+ATOM     71  CB  TRP A  61      -0.583   1.361 -37.118  1.00  8.77           C
+ATOM     72  CG  TRP A  61       0.475   0.400 -37.567  1.00  9.97           C
+ATOM     73  CD1 TRP A  61       1.722   0.694 -38.075  1.00 10.26           C
+ATOM     74  CD2 TRP A  61       0.355  -1.018 -37.615  1.00 12.15           C
+ATOM     75  NE1 TRP A  61       2.381  -0.460 -38.400  1.00 12.05           N
+ATOM     76  CE2 TRP A  61       1.563  -1.527 -38.136  1.00 13.98           C
+ATOM     77  CE3 TRP A  61      -0.654  -1.917 -37.244  1.00 14.07           C
+ATOM     78  CZ2 TRP A  61       1.787  -2.890 -38.308  1.00 16.31           C
+ATOM     79  CZ3 TRP A  61      -0.429  -3.266 -37.419  1.00 13.04           C
+ATOM     80  CH2 TRP A  61       0.778  -3.741 -37.943  1.00 15.63           C
+ATOM     81  N   ARG A  86       3.662  11.908 -31.726  1.00  5.74           N
+ATOM     82  CA  ARG A  86       2.210  12.044 -31.960  1.00  5.70           C
+ATOM     83  C   ARG A  86       1.419  12.281 -30.671  1.00  6.48           C
+ATOM     84  O   ARG A  86       0.202  12.079 -30.642  1.00  6.71           O
+ATOM     85  CB  ARG A  86       1.657  10.822 -32.709  1.00  7.49           C
+ATOM     86  CG  ARG A  86       2.300  10.649 -34.092  1.00  6.15           C
+ATOM     87  CD  ARG A  86       1.981  11.832 -35.006  1.00  7.57           C
+ATOM     88  NE  ARG A  86       0.554  12.002 -35.255  1.00  7.87           N
+ATOM     89  CZ  ARG A  86      -0.153  11.270 -36.112  1.00  9.56           C
+ATOM     90  NH1 ARG A  86       0.430  10.300 -36.818  1.00  8.14           N
+ATOM     91  NH2 ARG A  86      -1.456  11.520 -36.271  1.00  8.65           N
+TER
+HETATM   92  O   HOH A 106       2.885   8.907 -37.361  1.00  9.49           O
+HETATM   93  O   HOH A 115       5.332   4.538 -42.360  1.00 28.04           O
+HETATM   94  O   HOH A 121       5.402   7.991 -37.091  1.00  9.97           O
+HETATM   95  O   HOH A 193       5.803   4.182 -46.653  1.00 40.44           O
+HETATM   96  O   HOH A 197       0.883   0.391 -44.475  1.00 31.83           O
+HETATM   97  O   HOH A 209       7.587   6.053 -39.743  1.00 10.22           O
+HETATM   98  O   HOH A 247       2.533   3.695 -45.011  1.00 29.48           O
+HETATM   99  O   HOH A 248       0.626   5.204 -46.253  1.00 42.08           O
+HETATM  100  O   HOH A 251      -1.679   6.390 -44.666  1.00 30.50           O
+HETATM  101  O   HOH A 256      -0.519   9.495 -43.613  1.00 41.03           O
+"""
+
 if __name__ == "__main__":
   test_done_1exr()
   test_check_failure_restores()
@@ -1778,4 +2162,11 @@ if __name__ == "__main__":
   test_flip_report_words()
   test_search_atom_info()
   test_blank_ring_last_pass()
+  test_state_mode()
+  test_state_same_charge()
+  test_state_large_cost()
+  test_state_rerun_cost()
+  test_charge_mode_qmready()
+  test_charge_mode_default()
+  test_qmready_state()
   print("OK")
