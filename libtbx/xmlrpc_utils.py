@@ -65,6 +65,7 @@ try:
   import httplib
 except ImportError:
   import http.client as httplib
+import errno
 import socket
 import subprocess
 import threading
@@ -79,6 +80,26 @@ check_type = bytes
 if sys.version_info.major == 2:
   check_type = unicode
 
+class NoSelfConnectHTTPConnection(httplib.HTTPConnection):
+  """
+  An HTTP connection that refuses to be connected to itself.
+
+  With nothing listening on a localhost port inside the range the operating
+  system uses for automatically chosen local ports (32768-60999 on Linux,
+  which holds the viewer ports of external_program_server), a connection
+  attempt can be given that same port as its local port and connect to
+  itself (TCP simultaneous open). The request is then read back as the
+  reply, which raises BadStatusLine("POST /RPC2 HTTP/1.1"). Such a
+  connection is closed and reported as refused, which ServerProxy retries.
+  """
+  def connect(self):
+    httplib.HTTPConnection.connect(self)
+    if (self.sock.getsockname() == self.sock.getpeername()):
+      self.close()
+      raise socket.error(errno.ECONNREFUSED,
+        "connected to itself; nothing is listening on %s:%s" %
+        (self.host, self.port))
+
 # http://stackoverflow.com/questions/372365/set-timeout-for-xmlrpclib-serverproxy
 class TimeoutTransport(xmlrpclib.Transport):
   def __init__(self, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, *args, **kwargs):
@@ -91,7 +112,7 @@ class TimeoutTransport(xmlrpclib.Transport):
     # create a HTTP connection object from a host descriptor
     chost, self._extra_headers, x509 = self.get_host_info(host)
     #store the host argument along with the connection object
-    self._connection = host, httplib.HTTPConnection(chost,
+    self._connection = host, NoSelfConnectHTTPConnection(chost,
       timeout=self.timeout)
     return self._connection[1]
 
