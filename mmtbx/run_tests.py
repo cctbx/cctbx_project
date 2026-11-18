@@ -335,6 +335,7 @@ general_tests = [
   "$D/regression/tst_dynamics_cli.py",
   "$D/ligands/tst_xtal_screens.py",
   "$D/ligands/tst_ready_set_utils.py",
+  "$D/regression/tst_electrons_bond_index.py",
   "$D/regression/tst_mtz2map.py",
   # ringer
   "$D/regression/tst_ringer.py",

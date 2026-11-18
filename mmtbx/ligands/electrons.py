@@ -182,6 +182,7 @@ class electron_distribution(dict):
     self.atoms_with_charges_set = []
     self.first_i_seqs=[]
     self.frozen_bonds=[]
+    self._bonds_by_i_seq=None # get_bonds_containing_i_seq()
     if log is None:
       self.logger = sys.stdout
     else:
@@ -767,11 +768,28 @@ class electron_distribution(dict):
         yield i_seqs
 
   def get_bonds_containing_i_seq(self, i_seq):
-    rc = []
-    for i_seqs in self.generate_bond_i_seqs():
-      if i_seq in i_seqs:
-        rc.append(i_seqs)
-    return rc
+    """Return the bonds that contain one atom.
+
+    Parameters
+    ----------
+    i_seq : int
+      Atom index. Any other key of the distribution (a bond tuple) has no
+      bonds.
+
+    Returns
+    -------
+    list of tuple
+      The bonds' i_seqs, in the order generate_bond_i_seqs() yields them.
+    """
+    # Indexed once: a scan of every bond per atom made the callers that loop
+    # over all atoms quadratic. self.simple and self.asu are assigned once,
+    # in __init__.
+    if self._bonds_by_i_seq is None:
+      self._bonds_by_i_seq = {}
+      for i_seqs in self.generate_bond_i_seqs():
+        for i in set(i_seqs):
+          self._bonds_by_i_seq.setdefault(i, []).append(i_seqs)
+    return list(self._bonds_by_i_seq.get(i_seq, []))
 
   def get_cycle_charge_count(self, cycle):
     tmp=[]
