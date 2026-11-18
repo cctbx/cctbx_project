@@ -101,6 +101,7 @@ general_tests = [
   "$D/regression/model/tst_model_mtrix.py",
   "$D/regression/model/tst_model_ncs.py",
   "$D/regression/model/tst_model_2.py",
+  "$D/regression/model/tst_model_restraints_scale.py",
   "$D/regression/model/tst_model_biomt_mtrix.py",
   "$D/regression/model/tst_model_biomt_mtrix_2.py",
   "$D/regression/model/tst_model_neutralize_scatterers.py",
