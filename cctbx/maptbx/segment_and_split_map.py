@@ -4917,7 +4917,8 @@ def get_bounds_for_au_box(params,
 
   # write out closest_sites to match original position
   coordinate_offset = -1*matrix.col(box.shift_cart)
-  write_atoms(file_name = 'one_au.pdb', # PDB OK just writing out atoms
+  if params.output_files.write_output_maps:
+    write_atoms(file_name = 'one_au.pdb', # PDB OK just writing out atoms
       crystal_symmetry = box_crystal_symmetry, sites = closest_sites+coordinate_offset)
 
   unique_closest_sites = closest_sites.deep_copy()
@@ -5512,6 +5513,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
           crystal_symmetry = crystal_symmetry,
           ncs_object = ncs_obj,
           wrapping = wrapping,
+          write_output_files = params.output_files.write_output_maps,
           upper_bounds = upper_bounds, log = out)
         box.map_box = box.map_box.as_double()  # Do we need double?
         shifted_unique_closest_sites = unique_closest_sites+box.shift_cart
