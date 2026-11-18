@@ -8186,9 +8186,12 @@ def write_output_files(params,
         matrix.col(map_data.origin())-matrix.col((1, 1, 1)))
 
 
+  box_buffer = params.output_files.box_buffer
+  if box_buffer is None: # same as in adjust_bounds
+    box_buffer = 0
   print("\nMaking two types of maps for AU of NCS mask and map with "+\
       "buffer of %d grid units \nin each direction around AU" %(
-      params.output_files.box_buffer), file = out)
+      box_buffer), file = out)
   if params.output_files.write_output_maps:
    print("Both types of maps have the same origin and overlay on %s" %(
    os.path.join(tracking_data.params.output_files.output_directory,
