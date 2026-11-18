@@ -2395,7 +2395,26 @@ NOTES:
     if self.params.neutron_option == 'none':
       raise Sorry('input contains deuterium; set neutron_option, or rebuild '
         'H: ' + self._RebuildHint())
-    self._ReinterpretModel(make_restraints=True)
+    try:
+      self._ReinterpretModel(make_restraints=True)
+    except Sorry as e:
+      # pdb_interpretation's nonbonded-type conflict at the shared N of a
+      # terminus that is NH3 in some conformers only (terminal_nh3 names):
+      # explained, original text kept. Every other Sorry unchanged (a
+      # scattering-type conflict there is the element column's).
+      text = str(e).strip()
+      head, _, atom = text.partition('atom:')
+      if head.splitlines()[0] != 'Conflicting nonbonded energy type symbols:':
+        raise
+      split = [line for label, line in
+        reduce_hydrogen.split_terminal_nh3_names(self.model.get_hierarchy(),
+        self.model.get_mon_lib_srv()) if label in atom]
+      if not split: raise
+      raise Sorry('Supplied H/D make an N terminus NH3 in some conformers '
+        'only, which cannot be interpreted with a shared N:\n  %s\n'
+        'Supply the terminal N-H/D under the same names in every conformer, '
+        'or rebuild them: %s\nOriginal error:\n%s' % ('\n  '.join(split),
+        self._RebuildHint(), text))
     skip = self._unrestrained.keys
     def checked_part(full):
       # the model without the residues left unchanged, and the full model's

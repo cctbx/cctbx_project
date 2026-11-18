@@ -573,6 +573,86 @@ def test_imine():
       (comp, residue_names)
     assert unrestrained_h(m) == [], (comp, unrestrained_h(m))
 
+def side_chain_split(pdb_str, split=(' CG ', ' OD1', ' OD2')):
+  """residue 1 with only the atoms in split in A and B (B turned 35 deg
+  about CA-CB), the rest blank"""
+  lines = pdb_str.splitlines()
+  xyz = lambda l: matrix.col((float(l[30:38]), float(l[38:46]),
+    float(l[46:54])))
+  first = lambda name: [l for l in lines if l[12:16] == name and
+    l[22:26].strip() == '1'][0]
+  ca, cb = xyz(first(' CA ')), xyz(first(' CB '))
+  rot = (cb - ca).axis_and_angle_as_r3_rotation_matrix(35, deg=True)
+  result = []
+  for l in lines:
+    if not (l[:6] in ('ATOM  ', 'HETATM') and l[22:26].strip() == '1' and
+        l[12:16] in split):
+      result.append(l)
+      continue
+    result.append(l[:16] + 'A' + l[17:54] + '  0.50' + l[60:])
+    result.append(l[:16] + 'B' + l[17:30] + '%8.3f%8.3f%8.3f' %
+      tuple(rot * (xyz(l) - cb) + cb) + '  0.50' + l[60:])
+  return '\n'.join(result) + '\n'
+
+def test_blank_n_ca():
+  # N and CA blank, only the side chain split (0A0: CG, OD1, OD2 in A/B):
+  # the three N-H in the blank group, as ALA's H1-H3; angles at N within 1
+  # deg in every conformer, also read again
+  pdb_str = side_chain_split(tnp.with_next_gly(tnp.pdb_0a0))
+  h, _, out = run('0A0_side_split', pdb_str)
+  assert h_on_n(h) == ['HN1', 'HN2', 'HN3'], h_on_n(h)
+  for alt in 'AB':
+    assert h_on_n(h, alt) == [], (alt, h_on_n(h, alt))
+  check_reread('0A0_side_split', out, '0A0')
+  # all_hd: the three H/D sites in the blank group
+  h, _, out = run('0A0_side_split_hd', pdb_str, 'neutron_option=all_hd')
+  for alt in 'AB':
+    assert [x for x in h_on_n(h, alt) if x[1:] in ('N1', 'N2', 'N3')] == \
+      [], (alt, h_on_n(h, alt))
+  assert h_forms(x for ag in first_rg(h).atom_groups() for x in
+    [a.name.strip() for a in ag.atoms()] if x[1:] in ('N1', 'N2', 'N3')) \
+    == ['HN1', 'HN2', 'HN3'], h_on_n(h)
+  check_reread('0A0_side_split_hd', out, '0A0')
+
+def test_blank_n_ca_supplied():
+  # N and CA blank, side chain split, an N-H supplied in conformer A only
+  # (H with keep_existing_H, D with all_d): the three N-H stay together,
+  # per conformer, the computed name included; the supplied site stays in A
+  # (an H at its coordinates; a D rebuilt at the neutron length, as any
+  # supplied D under all_d); every angle at N within 1 deg in every
+  # conformer
+  base = side_chain_split(tnp.with_next_gly(tnp.pdb_0a0))
+  h, _, _ = run('0A0_side_split', base)
+  hn1 = [a for a in first_rg(h).atoms() if a.name.strip() == 'HN1'][0]
+  for isotope, option in (('H', 'none'), ('D', 'all_d')):
+    inp = iotbx.pdb.input(source_info=None, lines=base)
+    hier = inp.construct_hierarchy()
+    ag = [x for x in first_rg(hier).atom_groups() if x.altloc == 'A'][0]
+    atom = hn1.detached_copy()
+    atom.set_name(' %sN1' % isotope)
+    atom.set_element(isotope)
+    atom.set_occ(0.5)
+    ag.append_atom(atom)
+    label = '0A0_side_split_%s_%s' % (isotope, option)
+    h, _, out = run(label, hier.as_pdb_string(
+      crystal_symmetry=inp.crystal_symmetry()), 'keep_existing_H=True',
+      'neutron_option=' + option)
+    assert h_on_n(h) == [], (label, h_on_n(h))
+    for alt in 'AB':
+      assert h_forms(h_on_n(h, alt)) == ['HN1', 'HN2', 'HN3'], (label, alt,
+        h_on_n(h, alt))
+    kept = [a for a in first_rg(h).atoms() if a.name.strip() == isotope +
+      'N1' and a.parent().altloc == 'A']
+    assert len(kept) == 1, (label, [a.id_str() for a in kept])
+    if option == 'none':
+      assert kept[0].distance(hn1) < 1.e-3, (label, kept[0].xyz)
+    else:
+      # rebuilt at the neutron N-D, as reduce2 does any supplied D
+      n = [a for a in first_rg(h).atoms() if a.name.strip() == 'N'][0]
+      assert abs(kept[0].distance(n) - 1.04) < 0.01, (label,
+        kept[0].distance(n))
+    check_reread(label, out, '0A0')
+
 def test_mixed_imine():
   # an imine conformer beside ALA (HHI/ALA, both orders): HHI keeps its HN
   # and is listed per conformer, ALA gets H1-H3 in its own; every angle at
@@ -597,6 +677,104 @@ def test_mixed_imine():
     assert unrestrained_h(m) == [], (label, unrestrained_h(m))
     assert worst_angle_at_n(m) < 1.0, (label, worst_angle_at_n(m))
 
+def supplied_layout(layout, isotope):
+  """the split-side-chain 0A0 fixture with HN1-HN3 (or DN1-DN3) supplied at
+  the sites of the plain run; layout: per site '' (absent), ' ' (blank), or
+  conformer letters ('A', 'B', 'AB')"""
+  base = side_chain_split(tnp.with_next_gly(tnp.pdb_0a0))
+  h, _, _ = run('0A0_side_split', base)
+  xyz = dict((a.name.strip(), a.xyz) for a in first_rg(h).atoms())
+  inp = iotbx.pdb.input(source_info=None, lines=base)
+  hier = inp.construct_hierarchy()
+  groups = dict((ag.altloc, ag) for ag in first_rg(hier).atom_groups())
+  for name, alts in zip(('HN1', 'HN2', 'HN3'), layout):
+    for alt in alts:
+      a = iotbx.pdb.hierarchy.atom()
+      a.set_name(' %s%s' % (isotope, name[1:]))
+      a.set_element(isotope)
+      a.set_xyz(xyz[name])
+      a.set_occ(1.0 if alt == ' ' else 0.5)
+      a.set_hetero(True)
+      groups[alt.strip()].append_atom(a)
+  return hier.as_pdb_string(crystal_symmetry=inp.crystal_symmetry()), xyz
+
+def test_blank_n_ca_supplied_split():
+  # supplied sites split between the blank group and a conformer (HN1 in A,
+  # HN2 blank: the reviewer's case), and all three in both conformers: the
+  # blank one is copied into each conformer, none stays blank; every angle
+  # at N within 1 deg; H kept at their coordinates, D at the neutron N-D
+  for layout, isotope, option in ((('A', ' ', ''), 'H', 'none'),
+                                  (('A', ' ', ''), 'D', 'all_d'),
+                                  (('AB', 'AB', 'AB'), 'H', 'none')):
+    pdb_str, xyz = supplied_layout(layout, isotope)
+    label = '0A0_layout_%s_%s' % (isotope, '_'.join(x.strip() or 'blank'
+      if x else 'none' for x in layout))
+    h, _, out = run(label, pdb_str, 'keep_existing_H=True',
+      'neutron_option=' + option)
+    assert h_on_n(h) == [], (label, h_on_n(h))
+    for alt in 'AB':
+      assert h_forms(h_on_n(h, alt)) == ['HN1', 'HN2', 'HN3'], (label, alt,
+        h_on_n(h, alt))
+    rg = first_rg(h)
+    n = [a for a in rg.atoms() if a.name.strip() == 'N'][0]
+    for name, alts in zip(('HN1', 'HN2', 'HN3'), layout):
+      for alt in (alts.replace(' ', 'AB') if alts else ''):
+        a = [x for x in rg.atoms() if x.name.strip() == isotope + name[1:]
+          and x.parent().altloc == alt][0]
+        if isotope == 'H':
+          assert a.distance(matrix.col(xyz[name])) < 1.e-3, (label, a.id_str())
+        else:
+          assert abs(a.distance(n) - 1.04) < 0.01, (label, a.id_str())
+    check_reread(label, out, '0A0')
+
+def test_supplied_nh3_in_one_conformer():
+  # D input (all_d) with the computed DN3 in conformer B and only the
+  # dictionary's DN2 in A: NH3 in B only at a shared N cannot be
+  # interpreted; the run stops and says why
+  pdb_str, _ = supplied_layout(('', 'A', 'B'), 'D')
+  try:
+    run('0A0_layout_D_nh3_one_conformer', pdb_str, 'keep_existing_H=True',
+      'neutron_option=all_d')
+  except Sorry as e:
+    assert 'NH3 in some conformers only' in str(e), str(e)
+    assert ('N 0A0 A 1: computed terminal name supplied in conformer B, '
+      'not in A') in str(e), str(e)
+    # the original text in full, with its atom record
+    assert 'Conflicting nonbonded energy type symbols:' in str(e), str(e)
+    assert '"HETATM    1  N   0A0 A   1 .*.     N  "' in str(e), str(e)
+  else:
+    raise AssertionError('no stop')
+
+def test_other_stop_unchanged():
+  # the same layout with a duplicated GLY CA (the reviewer's case): the
+  # duplicate-atom stop comes first and is passed on unchanged
+  pdb_str, _ = supplied_layout(('', 'A', 'B'), 'D')
+  wrong = '\n'.join(l[:76] + ' O' + l[78:] if l[12:16] == ' N  ' and
+    l[17:20] == '0A0' else l for l in pdb_str.splitlines()) + '\n'
+  lines = pdb_str.splitlines()
+  ca = [l for l in lines if l[12:16] == ' CA ' and l[22:26].strip() == '2'][0]
+  lines.insert(lines.index(ca) + 1, ca)
+  try:
+    run('0A0_layout_D_nh3_one_conformer_dup_ca', '\n'.join(lines) + '\n',
+      'keep_existing_H=True', 'neutron_option=all_d')
+  except Sorry as e:
+    assert 'number of groups of duplicate atom labels: 1' in str(e), str(e)
+    assert str(e).count('CA  GLY A   2 .*.     C  ') == 2, str(e)
+    assert 'NH3' not in str(e), str(e)
+  else:
+    raise AssertionError('no stop')
+  # the blank N's element column O: the scattering-type conflict at that N
+  # is the element column's and is passed on unchanged
+  try:
+    run('0A0_layout_D_nh3_one_conformer_element_o', wrong,
+      'keep_existing_H=True', 'neutron_option=all_d')
+  except Sorry as e:
+    assert str(e).startswith('Conflicting scattering type symbols:'), str(e)
+    assert '"HETATM    1  N   0A0 A   1 .*.     O  "' in str(e), str(e)
+    assert 'NH3' not in str(e), str(e)
+  else:
+    raise AssertionError('no stop')
+
 if __name__ == '__main__':
   test_converted_termini()
   test_standard_terminus()
@@ -608,5 +786,10 @@ if __name__ == '__main__':
   test_metal_bound_start()
   test_computed_rule_names()
   test_imine()
+  test_blank_n_ca()
+  test_blank_n_ca_supplied()
   test_mixed_imine()
+  test_blank_n_ca_supplied_split()
+  test_supplied_nh3_in_one_conformer()
+  test_other_stop_unchanged()
   print('OK')

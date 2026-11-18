@@ -20,6 +20,7 @@ from cctbx.maptbx.box import shift_and_box_model
 # residue part of hd_exchange.site_key(), for the log of renamed input H
 from mmtbx.hydrogens.hd_exchange import residue_part, residue_parts
 from mmtbx.hydrogens.hd_exchange import normalized_name, rename_entry
+from mmtbx.hydrogens.hd_exchange import _conformer_occupancy
 import math
 import itertools
 from cctbx import crystal
@@ -610,6 +611,41 @@ no atom named 'H2' (e.g. 9FZ uses H3/H4).
 
 # metals do not count as bonded to N (coordination, not a covalent bond)
 nonmetals = ('C', 'N', 'O', 'S', 'P', 'SE', 'B', 'SI', 'F', 'CL', 'BR', 'I')
+
+def split_terminal_nh3_names(hierarchy, mon_lib_srv):
+  '''
+  Termini at a blank N whose supplied H/D carry a computed terminal_nh3
+  name (0A0 HN3/DN3) in some conformers and not in others: pdb_interpretation
+  then gives the shared N the NH3 type in one conformer and the
+  dictionary's in another, and stops on conflicting types. Per residue the
+  blank N's PDB label columns and a line naming the conformers; [] if none.
+  '''
+  result = []
+  for rg in hierarchy.residue_groups():
+    ags = rg.atom_groups()
+    blank = [ag for ag in ags if ag.altloc == '']
+    alts = [ag for ag in ags if ag.altloc != '']
+    n = [b.get_atom('N') for b in blank if b.get_atom('N')]
+    if not alts or not n: continue
+    with_name, without = [], []
+    for ag in alts:
+      try:
+        mon = mon_lib_srv.get_comp_comp_id_direct(ag.resname.strip())
+      except Exception:
+        mon = None
+      if mon is None or not terminal_nh3.applies(mon): continue
+      extra = set(terminal_nh3.extra_h_names(mon) or [])
+      names = set(a.name.strip().upper() for g in blank + [ag]
+        for a in g.atoms())
+      names.update('H' + x[1:] for x in list(names) if x[:1] == 'D')
+      (with_name if names & extra else without).append(ag.altloc)
+    if with_name and without:
+      result.append((n[0].pdb_label_columns(), 'N %s %s %s: computed '
+        'terminal name supplied in conformer %s, not in %s' % (
+        alts[0].resname.strip(), rg.parent().id.strip(),
+        rg.resseq.strip() + rg.icode.strip(), ', '.join(with_name),
+        ', '.join(without))))
+  return result
 
 def _blank_amide_group(rg, prev_rg):
   '''
@@ -5640,7 +5676,8 @@ class place_hydrogens():
     the missing H are added under terminal_nh3.extra_h_names(), which
     pdb_interpretation restrains as an NH3. Decided per atom group that
     carries the N-H (each group with N; a blank N with split CA: each CA
-    group, as _split_ca_groups()), by that group's own residue name; the
+    group, as _split_ca_groups(); N and CA blank: the blank group, also the
+    dictionary's N-H, _nh3_into_blank()), by that group's own residue name; the
     other conformers (ALA beside 0A0) get the standard propeller here.
     False if no group applies: the standard path for the whole residue.
     Standard amino acids never apply.
@@ -5664,6 +5701,10 @@ class place_hydrogens():
     targets = with_ca if split_ca else [ag for ag in ags
       if ag.get_atom('N') is not None]
     plan = [(ag, extra_for(ag)) for ag in targets]
+    # N and CA blank, only the side chain split: the three N-H depend on no
+    # split atom and all go into the blank group, as ALA's H1-H3
+    blank_n_ca = (not split_ca and n.parent().altloc == '' and
+      len(ags) > 1 and [ag for ag in blank if ag.get_atom('CA') is not None])
     if not [x for ag, x in plan if x is not None]: return False
     pick = lambda ag, name: ag.get_atom(name) or ([x.get_atom(name)
       for x in blank if x.get_atom(name)] or [None])[0]
@@ -5684,6 +5725,20 @@ class place_hydrogens():
         continue
       mon, extra = x
       names = list(extra)
+      into = [ag]
+      if blank_n_ca and ag.altloc == '':
+        moved_in = self._nh3_into_blank(rgs, ag, rg_key,
+          terminal_nh3.n_h_names(mon), extra)
+        if moved_in is None:
+          # an N-H supplied in a conformer: the three stay per conformer,
+          # each set built from that conformer's sites; supplied blank N-H
+          # are copied into each conformer
+          into = [o for o in ags if o.altloc != '' and
+            o.resname == ag.resname]
+          self._nh3_blank_into_conformers(ag, into,
+            terminal_nh3.n_h_names(mon) + list(extra))
+        else:
+          names = moved_in + names
       if split_ca:
         # the blank group's N-H (dictionary and computed names, also
         # supplied ones) follow the split CA too
@@ -5691,20 +5746,83 @@ class place_hydrogens():
           if [b for b in blank if b.get_atom(name) is not None]:
             if name not in names: names.append(name)
             moved.add(name)
-      xyz = ag.atoms().extract_xyz().mean()
-      for name in names:
-        if ag.get_atom(name): continue
-        a = (iotbx.pdb.hierarchy.atom()
-          .set_name(new_name=(' ' + name).ljust(4) if len(name) < 4 else name)
-          .set_element(new_element='H')
-          .set_xyz(new_xyz=(xyz[0]+0.5, xyz[1]+0.5, xyz[2]+0.5))
-          .set_hetero(new_hetero=n_ag.hetero)
-          .set_segid(new_segid=n_ag.segid))
-        ag.append_atom(a)
+      for dest in into:
+        xyz = dest.atoms().extract_xyz().mean()
+        for name in names:
+          if dest.get_atom(name) or dest.get_atom(_hd_swapped(name)):
+            continue
+          a = (iotbx.pdb.hierarchy.atom()
+            .set_name(new_name=(' ' + name).ljust(4) if len(name) < 4
+              else name)
+            .set_element(new_element='H')
+            .set_xyz(new_xyz=(xyz[0]+0.5, xyz[1]+0.5, xyz[2]+0.5))
+            .set_hetero(new_hetero=n_ag.hetero)
+            .set_segid(new_segid=n_ag.segid))
+          dest.append_atom(a)
     for b in blank:
       for name in moved:
         if b.get_atom(name) is not None: b.remove_atom(b.get_atom(name))
     return True
+
+  def _nh3_blank_into_conformers(self, blank, into, names):
+    '''
+    N and CA blank, one of the three N-H sites supplied in a conformer: the
+    N-H at those sites in the blank group (supplied blank HN2, as H or D)
+    go into each conformer of into that lacks the site, coordinates kept,
+    each copy at its conformer's occupancy (as hd_exchange's conformer
+    copies); a supplied one stays supplied in each copy. Nothing of the
+    three stays in the blank group, so each conformer's missing sites are
+    built from its own.
+    '''
+    def site(ag, name):
+      return [a for a in ag.atoms() if a.name.strip().upper() in
+        (name.upper(), _hd_swapped(name))]
+    for name in names:
+      for a in site(blank, name):
+        key = residue_part(blank) + (blank.altloc, a.name)
+        supplied = self.keep_existing_H and key in self._existing_h
+        for dest in into:
+          if site(dest, name): continue
+          c = a.detached_copy()
+          occ = _conformer_occupancy(dest)
+          if isinstance(occ, float): c.set_occ(occ)
+          dest.append_atom(c)
+          if supplied:
+            k = residue_part(dest) + (dest.altloc, c.name)
+            self._existing_h.add(k)
+            self._existing_h_xyz[k] = c.xyz
+        blank.remove_atom(a)
+
+  def _nh3_into_blank(self, rgs, blank, rg_key, names, extra=()):
+    '''
+    The dictionary N-H names that _dictionary_nh3() adds to the blank group
+    (N and CA blank): placement put them into each conformer (the free-form
+    ones kept aside), where their angles at N follow no split atom. Those
+    placed H are removed from the conformers and the kept-aside ones
+    dropped. None if one of the three sites (names, or the computed extra)
+    is supplied in a conformer (keep_existing_H), as H or D: then nothing
+    moves, and the three stay per conformer.
+    '''
+    existing = self._existing_h if self.keep_existing_H else set()
+    def supplied(a):
+      return residue_part(a.parent()) + (a.parent().altloc, a.name) in existing
+    def site(ag, name):
+      # the H or D of that site (HN1 or DN1)
+      return [a for a in ag.atoms() if a.name.strip().upper() in
+        (name.upper(), _hd_swapped(name))]
+    others = [ag for ag in rgs.atom_groups() if ag.altloc != '']
+    if [a for ag in others for name in list(names) + list(extra)
+        for a in site(ag, name) if supplied(a)]:
+      return None
+    result = []
+    for name in names:
+      if site(blank, name): continue
+      for a in [a for ag in others for a in site(ag, name)]:
+        a.parent().remove_atom(a)
+      result.append(name)
+    self._free_form_pending = [p for p in self._free_form_pending
+      if not (p.rg_key == rg_key and p.ag.altloc != '' and p.name in result)]
+    return result
 
   def place_n_terminal_propeller(self, pdb_hierarchy):
     '''
