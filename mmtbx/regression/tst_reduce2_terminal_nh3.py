@@ -552,6 +552,51 @@ def test_computed_rule_names():
     assert len(h_on_n(h)) == 3, (comp, h_on_n(h))
     check_reread(comp, out, comp)
 
+def test_imine():
+  # an imine N (N=CA) is not built as NH3 and keeps its dictionary
+  # placement, listed: HHI and ITR their single HN (as on master), 4VI and
+  # FOO their H (master: H1-H3, 4VI's H1 taken from NE); no NH3
+  # modification
+  for comp, names in (('HHI', ['HN']), ('ITR', ['HN']), ('4VI', ['H']),
+                      ('FOO', ['H'])):
+    pdb_str = geostd_peptide(comp)
+    if pdb_str is None:
+      print('Skipping test_imine: chem_data not available')
+      return
+    h, description, out = run(comp, pdb_str)
+    assert h_on_n(h) == names, (comp, h_on_n(h))
+    assert ('N %s A 1: N=CA not a single bond in the dictionary (imine N): '
+      'terminal conversion not supported; dictionary placement retained'
+      % comp) in [l.strip() for l in description.splitlines()], description
+    m, residue_names = reread(out)
+    assert [x for x in residue_names if x.startswith(comp)] == [comp], \
+      (comp, residue_names)
+    assert unrestrained_h(m) == [], (comp, unrestrained_h(m))
+
+def test_mixed_imine():
+  # an imine conformer beside ALA (HHI/ALA, both orders): HHI keeps its HN
+  # and is listed per conformer, ALA gets H1-H3 in its own; every angle at
+  # N within 1 deg on a reread
+  pdb_str = geostd_peptide('HHI')
+  if pdb_str is None:
+    print('Skipping test_mixed_imine: chem_data not available')
+    return
+  for own in 'AB':
+    other = 'B' if own == 'A' else 'A'
+    label = 'HHI_ala_' + own
+    h, description, out = run(label, with_ala(pdb_str, own))
+    assert h_on_n(h, own) == ['HN'], (label, h_on_n(h, own))
+    # ALA sits on HHI's N=CA (1.265 A), so its HA is within 1.3 A of N too
+    assert [x for x in h_on_n(h, other) if x != 'HA'] == ['H1', 'H2', 'H3'], \
+      (label, h_on_n(h, other))
+    assert ('N HHI A 1 conformer %s: N=CA not a single bond in the '
+      'dictionary (imine N): terminal conversion not supported; dictionary '
+      'placement retained' % own) in [l.strip() for l in
+      description.splitlines()], description
+    m, _ = reread(out)
+    assert unrestrained_h(m) == [], (label, unrestrained_h(m))
+    assert worst_angle_at_n(m) < 1.0, (label, worst_angle_at_n(m))
+
 if __name__ == '__main__':
   test_converted_termini()
   test_standard_terminus()
@@ -562,4 +607,6 @@ if __name__ == '__main__':
   test_neutron()
   test_metal_bound_start()
   test_computed_rule_names()
+  test_imine()
+  test_mixed_imine()
   print('OK')

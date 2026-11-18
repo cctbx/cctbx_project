@@ -58,14 +58,34 @@ def _bump(n):
   if m: return 'HN' + chr(ord(m.group(1)) + 1)
   return None
 
+# N-CA at least this long (A) is single where the dictionary gives no bond
+# order (mon_lib "coval"): imines 1.27-1.30, 2KZ's enamine N-CA 1.402
+N_CA_SINGLE_MIN = 1.35
+
+def n_ca_single(monomer):
+  """Whether the dictionary's N-CA is a single bond: by its type, or, where
+  the type gives no order (coval, missing), by the ideal length
+  (N_CA_SINGLE_MIN); without either, not single. An imine N (HHI, ITR: N=CA 1.265) is not an amine."""
+  for b in monomer.bond_list:
+    if set([b.atom_id_1, b.atom_id_2]) != set(['N', 'CA']): continue
+    t = (b.type or '').strip().lower()
+    if t in ('single', 'sing'): return True
+    if t in ('double', 'doub', 'triple', 'trip', 'aromatic', 'arom',
+        'deloc', 'metal'):
+      return False
+    if b.value_dist is None: return False
+    return b.value_dist >= N_CA_SINGLE_MIN
+  return False
+
 def applies(monomer):
   """Whether a terminus of this monomer is built and restrained here:
-  a peptide whose N has one heavy neighbour, CA, and either no atom H or an
-  H1/H2/H3 not on N."""
+  a peptide whose N has one heavy neighbour, CA, by a single bond
+  (n_ca_single()), and either no atom H or an H1/H2/H3 not on N."""
   if not monomer.is_peptide(): return False
   t = _types(monomer)
   heavy = [x for x in _neighbours(monomer, 'N') if t.get(x) not in ('H', 'D')]
   if heavy != ['CA']: return False
+  if not n_ca_single(monomer): return False
   return monomer.i_atom_by_id('H') is None or standard_names_collide(monomer)
 
 def extra_h_names(monomer):

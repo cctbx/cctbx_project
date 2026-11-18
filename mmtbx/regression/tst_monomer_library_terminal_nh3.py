@@ -245,6 +245,28 @@ def test_replacement_cif():
   assert values == dict((h, (1.08, 0.03)) for h in ('HN1', 'HN2', 'HN3')), \
     values
 
+def test_imine_and_bond_order():
+  # an N=CA imine is not an amine terminus (HHI, ITR); 2KZ's N-CA (single,
+  # 1.402, sp2 CA) is. Without a bond order (coval) the ideal length
+  # decides: N_CA_SINGLE_MIN
+  srv = mmtbx.monomer_library.server.server()
+  for comp in ('HHI', 'ITR'):
+    mon = srv.get_comp_comp_id_direct(comp)
+    assert not terminal_nh3.n_ca_single(mon), comp
+    assert not terminal_nh3.applies(mon), comp
+  mon = srv.get_comp_comp_id_direct('2KZ')
+  assert terminal_nh3.n_ca_single(mon) and terminal_nh3.applies(mon)
+  mon = srv.get_comp_comp_id_direct('0A0')
+  n_ca = [b for b in mon.bond_list if set([b.atom_id_1, b.atom_id_2]) ==
+    set(['N', 'CA'])][0]
+  n_ca.type = 'coval'
+  for d, expected in ((1.30, False), (terminal_nh3.N_CA_SINGLE_MIN, True),
+                      (1.458, True)):
+    n_ca.value_dist = d
+    assert terminal_nh3.n_ca_single(mon) == expected, (d, expected)
+  n_ca.value_dist = None
+  assert not terminal_nh3.n_ca_single(mon)
+
 def test_computed_rule_name():
   # 0AA: the computed HN2 is also a name of the HN1/HN2 -> mod_NH2 rule;
   # NH3-0AA restrains it, never mod_NH2
@@ -265,5 +287,6 @@ if __name__ == '__main__':
   test_standard_terminus()
   test_partial_and_sp3()
   test_replacement_cif()
+  test_imine_and_bond_order()
   test_computed_rule_name()
   print('OK')

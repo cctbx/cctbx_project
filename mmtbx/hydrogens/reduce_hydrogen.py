@@ -5344,8 +5344,10 @@ class place_hydrogens():
     acids: always, as before. Any other residue: only with an outgoing peptide
     bond in every complete conformer (outgoing_peptide_bond()), and never where
     the dictionary does not bond N to CA (beta-amino acids: the propeller is
-    CA-based). Otherwise the residue keeps its dictionary placement and is
-    listed. Used for both propeller paths (n_terminal_charge, metal-bound).
+    CA-based) or bonds them by a double bond (an imine N: HHI, 4VI;
+    terminal_nh3.n_ca_single()). Otherwise the residue keeps its dictionary
+    placement and is listed. Used for both propeller paths
+    (n_terminal_charge, metal-bound).
     '''
     n = None
     for ag in rg.atom_groups():
@@ -5353,7 +5355,22 @@ class place_hydrogens():
       if n: break
     if n is None: return True # the propeller lists it
     resname = n.parent().resname.strip()
-    if get_class(name=resname) == 'common_amino_acid': return True
+    # an imine N by each conformer's own residue (HHI beside ALA: only the
+    # HHI conformer keeps its dictionary placement, _dictionary_nh3())
+    imine = [ag for ag in rg.atom_groups() if self._imine(ag)]
+    all_imine = len(imine) == len(rg.atom_groups())
+    def list_imine(ags):
+      for ag in ags:
+        # by the conformer's own residue name (N may be blank or ALA's)
+        label = 'N %s %s %s' % (ag.resname.strip(), rg.parent().id.strip(),
+          rg.resseq.strip() + rg.icode.strip())
+        if ag.altloc: label += ' conformer %s' % ag.altloc
+        self.chain_start_kept.append('%s: N=CA not a single bond in the '
+          'dictionary (imine N): terminal conversion not supported; '
+          'dictionary placement retained' % label)
+    if get_class(name=resname) == 'common_amino_acid':
+      list_imine(imine)
+      return True
     bonds = heavy_neighbors_in_restraints(n, self.query_mon_lib_srv)
     if bonds is None: return True # the propeller lists it
     self._supplied_terminal_names(rg, n)
@@ -5365,6 +5382,12 @@ class place_hydrogens():
           'placement retained' % (
           label, ', '.join(b.strip() for b in bonds) or 'no heavy atom'))
       return False
+    if all_imine:
+      self.chain_start_kept.append('%s: N=CA not a single bond in the '
+        'dictionary (imine N): terminal conversion not supported; '
+        'dictionary placement retained' % label)
+      return False
+    list_imine(imine)
     bond = outgoing_peptide_bond(rg, next_rg)
     if bond == 'bonded':
       self._supplied_unknown_terminal_names(rg, n)
@@ -5600,6 +5623,15 @@ class place_hydrogens():
           self._chain_start_handled.add((rg_key, alt))
           add_n_terminal_hydrogens_to_atom_group(ag, n_ca_c=(n, ca, c))
 
+  def _imine(self, ag):
+    # the dictionary of ag's residue bonds N=CA (terminal_nh3.n_ca_single())
+    if get_class(name=ag.resname) == 'common_amino_acid': return False
+    try:
+      mon = self.query_mon_lib_srv.get_comp_comp_id_direct(ag.resname.strip())
+    except Exception:
+      return False
+    return mon is not None and not terminal_nh3.n_ca_single(mon)
+
   def _dictionary_nh3(self, rgs, n, rg_key):
     '''
     A terminus whose dictionary does not fit mod_NH3 (terminal_nh3.applies():
@@ -5615,6 +5647,7 @@ class place_hydrogens():
     '''
     ags = rgs.atom_groups()
     def extra_for(ag):
+      if self._imine(ag): return 'imine'
       if get_class(name=ag.resname) == 'common_amino_acid': return None
       try:
         mon = self.query_mon_lib_srv.get_comp_comp_id_direct(ag.resname.strip())
@@ -5637,6 +5670,8 @@ class place_hydrogens():
     moved = set()
     for ag, x in plan:
       n_ag = pick(ag, 'N')
+      # an imine conformer keeps its dictionary placement (not handled)
+      if x == 'imine': continue
       if x is None:
         # a standard conformer: the propeller for this group only
         h = ag.get_atom('H')
