@@ -77,6 +77,9 @@ _WATER_CATION_ELEMENTS = frozenset({
 _WATER_CATION_RADIUS = 3.0
 _WATER_METAL_COORD_RADIUS = 2.6  # max first-shell metal bond (A)
 _WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H, O->acceptor) to donate to it
+# H1 takes an acceptor outside the waters over a water O that is nearer by at
+# most _WATER_H1_TIE (A).
+_WATER_H1_TIE = 0.1
 # Cluster search: a proton scores its distance to the nearest
 # acceptor, at most _WATER_CLUSTER_CAP (A); a cluster with up to
 # _WATER_CLUSTER_EXHAUSTIVE combinations of candidates is searched in full.
@@ -902,7 +905,8 @@ class _WaterHydrogenPlacer:
     """Fixed per-water geometry, computed once.
 
     Returns the dict of ``o`` (O coordinates), ``acceptors`` (atom indices,
-    nearest first), ``acc_water`` (whether each is a water atom),
+    nearest first), ``acc_dist`` (their distances from the O), ``acc_water``
+    (whether each is a water atom),
     ``acc_dirs``/``acc_pts`` (unit directions from the O toward each
     acceptor, as tuples, and the H positions built from them), ``cat``
     (O->cation unit directions), ``sph`` (the lazily built fallback-sphere H
@@ -938,6 +942,7 @@ class _WaterHydrogenPlacer:
         continue  # atom coincident with O (alt-conf / overlap): no direction
       acceptors.append((d, i))
     acceptors.sort(key=lambda t: t[0])
+    acc_dist = [d for d, _ in acceptors]
     acceptors = [i for _, i in acceptors]
 
     # Nearby metal cations, as O->cation unit directions (see _cat_ok).
@@ -958,6 +963,7 @@ class _WaterHydrogenPlacer:
                 for i in acceptors]
     g = {"o": o,
          "acceptors": acceptors,
+         "acc_dist": acc_dist,
          "acc_water": [_is_water(atoms[i].parent().resname) for i in acceptors],
          "acc_dirs": acc_dirs,
          "acc_pts": flex.vec3_double(acc_dirs) * self.oh_length + o,
@@ -1052,7 +1058,8 @@ class _WaterHydrogenPlacer:
     na = len(acceptors)
 
     # H1: nearest acceptor giving a placement that is away from cations and
-    # clash-free; else the best direction over the acceptors plus a dense
+    # clash-free, one outside the waters over a water O nearer by at most
+    # _WATER_H1_TIE; else the best direction over the acceptors plus a dense
     # fallback sphere, ranked (away-from-cation, clash-free, clearance).
     # ``h1_k`` is H1's position in the acceptor list, or -1.
     if fixed_d1 is not None:
@@ -1077,6 +1084,16 @@ class _WaterHydrogenPlacer:
         if acc_ok[k] and acc_cat[k]:  # clash-free and away from cations
           d1 = acc_dirs[k]
           h1_k = k
+          break
+      if h1_k >= 0 and g["acc_water"][h1_k]:
+        # The nearest usable acceptor outside the waters, if close enough.
+        limit = g["acc_dist"][h1_k] + _WATER_H1_TIE
+        for k in range(h1_k + 1, na):
+          if g["acc_water"][k] or not (acc_ok[k] and acc_cat[k]):
+            continue
+          if g["acc_dist"][k] <= limit:
+            d1 = acc_dirs[k]
+            h1_k = k
           break
       if d1 is None:
         if g["sph"] is None:
@@ -2098,7 +2115,8 @@ def place_water_hydrogens(hier, oh_length=None, element=None,
   For each water residue missing H (any common water alias: HOH, DOD, H2O,
   WAT, OH2, ...): H1 along O -> the nearest acceptor giving a clash-free H
   (``_WATER_ACCEPTOR_RADIUS``, ``_WATER_ACCEPTOR_ELEMENTS``, excluding an N
-  that carries an H or is bonded to three heavy atoms in a plane), else the
+  that carries an H or is bonded to three heavy atoms in a plane; one outside
+  the waters over a water O nearer by at most ``_WATER_H1_TIE``), else the
   max-clearance direction over a dense sphere;
   H2 on the H-O-H cone about O-H1, at a clash-free angle toward a second
   acceptor when there is one (outside the waters if it can reach both

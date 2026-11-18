@@ -208,6 +208,20 @@ END
 _WATER_OR_FAR_LIGAND_ACCEPTOR_PDB = _WATER_OR_LIGAND_ACCEPTOR_PDB.replace(
   "-1.450   0.000   2.511", "-2.856   0.000   0.504")
 
+# A bare water between a protonated water 2.75 A along +x and ACB 2.80 A
+# along -x, so whichever H1 takes, H2's cone cannot reach the other. The FAR
+# copy moves ACB to 2.90 A.
+_WATER_OR_LIGAND_H1_PDB = """\
+HETATM    1  O   HOH W   1       0.000   0.000   0.000  1.00 10.00           O
+HETATM    2  O   HOH W   2       2.750   0.000   0.000  1.00 10.00           O
+HETATM    3  H1  HOH W   2       3.300   0.800   0.000  1.00 10.00           H
+HETATM    4  H2  HOH W   2       3.300  -0.800   0.000  1.00 10.00           H
+HETATM    5  O   ACB E   1      -2.800   0.000   0.000  1.00 10.00           O
+END
+"""
+_WATER_OR_FAR_LIGAND_H1_PDB = _WATER_OR_LIGAND_H1_PDB.replace(
+  "-2.800   0.000   0.000", "-2.900   0.000   0.000")
+
 # Six bare waters on a tight 2.6 A grid with no other acceptors: the greedy
 # pass leaves close H-H contacts that refinement relaxes.
 _WATER_CLUSTER_PDB = """\
@@ -525,10 +539,13 @@ END
 def exercise_acceptor_directed():
   """Both protons point at the flanking acceptors, clash-free, with the
   right O-H length and H-O-H angle. Acceptors wider apart than H-O-H leave
-  both protons equally far off, in the acceptors' plane.
+  both protons equally far off, in the acceptors' plane. H1 takes an
+  acceptor outside the waters over a water O nearer by at most
+  ``_WATER_H1_TIE``, and the nearer water O otherwise.
 
-  Places on ``_TWO_ACCEPTOR_PDB``, then on a copy with the second acceptor
-  124 deg from the first.
+  Places on ``_TWO_ACCEPTOR_PDB``, a copy with the second acceptor 124 deg
+  from the first, ``_WATER_OR_LIGAND_H1_PDB`` and
+  ``_WATER_OR_FAR_LIGAND_H1_PDB``.
   """
   hier = _hierarchy(_TWO_ACCEPTOR_PDB)
   wp.place_water_hydrogens(hier, n_refine=0)
@@ -571,6 +588,20 @@ def exercise_acceptor_directed():
   assert max(abs(x - (124.0 - hoh_target) / 2) for x in off) < 0.05, off
   dev = max(abs(h.xyz[1] - 5.0) for h in hs.values())
   assert dev < 1e-3, f"protons should lie in the acceptors' plane ({dev:.4f})"
+
+  # A water O 0.05 A nearer than ACB: H1 takes ACB (-x); 0.15 A nearer: the
+  # water (+x).
+  for pdb_str, want in ((_WATER_OR_LIGAND_H1_PDB, -1.0),
+                        (_WATER_OR_FAR_LIGAND_H1_PDB, 1.0)):
+    hier = _hierarchy(pdb_str)
+    wp.place_water_hydrogens(hier, n_refine=0)
+    bare = next(rg for rg in hier.residue_groups() if rg.resseq.strip() == "1"
+                and rg.parent().id == "W")
+    o = next(a for a in bare.atoms() if a.element.strip() == "O")
+    h1 = next(a for a in bare.atoms() if a.name.strip() == "H1")
+    x = _unit(h1, o)[0]
+    assert abs(x - want) < 1e-6, (
+      f"H1 should point along {want:+.0f} x; got {x:+.3f}")
 
 
 def exercise_cation_repulsion():
