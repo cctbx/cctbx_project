@@ -47,7 +47,7 @@ class QMRegionGrower:
   # Public interface
   # ------------------------------------------------------------------
 
-  def grow_by_depth(self, seed_atoms, adjacency, model, max_depth=3):
+  def grow_region(self, seed_atoms, adjacency, model):
     """Symmetry-aware BFS over ``(iseq, sym_op)`` nodes, recording cap
     candidates by pruning.
 
@@ -89,8 +89,6 @@ class QMRegionGrower:
         :meth:`AtomGraphBuilder.build_adjacency`). Read-only;
         not mutated.
     model : mmtbx.model.manager
-    max_depth : int, optional
-        Accepted for signature compatibility and unused.  Default is 3.
 
     Returns
     -------
@@ -254,27 +252,6 @@ class QMRegionGrower:
       reattached += 1
 
     return reattached
-
-  def grow_region(self, seed_atoms, adjacency, model, max_depth=3):
-    """Grow the QM region around *seed_atoms*.
-
-    Single public entry point; delegates to :meth:`grow_by_depth`.
-
-    Parameters
-    ----------
-    seed_atoms : set of int or (int, rt_mx)
-    adjacency : collections.defaultdict of set
-    model : mmtbx.model.manager
-    max_depth : int, optional
-
-    Returns
-    -------
-    visited : set of (int, rt_mx)
-    cap_candidates : dict
-        Same contract as :meth:`grow_by_depth`.
-    """
-    return self.grow_by_depth(seed_atoms, adjacency, model,
-                              max_depth=max_depth)
 
   def _log_bond(self, message, iseq_a, iseq_b, atoms):
     """Print *message* followed by the two atom records, when verbose."""

@@ -138,9 +138,9 @@ class Program(ProgramTemplate):
   def _region_filename(self, model_stem, label):
     """Return the output file name stem of one region.
 
-    ``{model_stem}_{label}_within{radius}A_depth{depth}``, then the
-    template's serial; ``output.prefix`` replaces the model stem and
-    ``output.suffix`` follows the depth when they are set, and
+    ``{model_stem}_{label}_within{radius}A``, then the template's serial;
+    ``output.prefix`` replaces the model stem and ``output.suffix`` follows
+    the radius when they are set, and
     ``output.filename`` replaces the whole name.
 
     Parameters
@@ -157,8 +157,7 @@ class Program(ProgramTemplate):
     prefix = model_stem
     if self.params.output.prefix is not None:
       prefix = self.params.output.prefix
-    suffix = (f'_{label}_within{self.params.buffer.radius:.2f}A'
-              f'_depth{self.params.max_search_depth}')
+    suffix = f'_{label}_within{self.params.buffer.radius:.2f}A'
     if self.params.output.suffix is not None:
       suffix += self.params.output.suffix
     return self.get_default_output_filename(prefix=prefix, suffix=suffix)

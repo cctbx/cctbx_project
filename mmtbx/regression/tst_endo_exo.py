@@ -358,7 +358,7 @@ def _program_master_phil():
 
 def _run_endo_exo_on_string(pdb_str, radius=None, include=None, selection=None):
   """Drive ``mmtbx.programs.endo_exo.Program`` in-memory on a PDB string
-  with default settings (metal scan, radius=5.0, depth=3).  Parses the
+  with default settings (metal scan, radius=5.0).  Parses the
   string with ``iotbx.pdb`` directly -- no disk roundtrip.  Returns
   the single result dict produced for the seed.  *radius* overrides
   ``params.buffer.radius`` when given; *include*, when given, is a
@@ -831,7 +831,7 @@ def exercise_2c2u_symmetry_truncation_consistency():
 
 
 def exercise_residue_composition():
-  """The default buffer (radius=5, depth=3) pulls in a stable scaffold
+  """The default buffer (radius=5) pulls in a stable scaffold
   around the four coordinating Cys.  Pin the residue type counts."""
   result = _run_endo_exo_on_string(_1BQ8_FE_SPHERE_PDB)
   hier = result.model.get_hierarchy()
@@ -1418,17 +1418,13 @@ def exercise_consumed_preferred_cut():
                 if i not in cap_iseqs and elem_of[i] not in ("H", "D")}
     return interior, {name_of[i] for i in cap_iseqs}
 
-  for label, (visited, caps) in (
-      ("grow_by_depth", grower.grow_by_depth(seeds, adjacency, model)),
-      ("grow_region", grower.grow_region(seeds, adjacency, model))):
-    interior, cap_names = _split(visited, caps)
-    assert interior == {"CD", "CE", "NZ"}, (
-      f"{label}: expected the {{CD, CE, NZ}} tip, got {sorted(interior)}")
-    assert cap_names == {"CG"}, (
-      f"{label}: expected CG as the cap, got {sorted(cap_names)}")
-    assert not ({"N", "CA", "CB"} & interior), (
-      f"{label}: the backbone must not be pulled in; "
-      f"interior={sorted(interior)}")
+  visited, caps = grower.grow_region(seeds, adjacency, model)
+  interior, cap_names = _split(visited, caps)
+  assert interior == {"CD", "CE", "NZ"}, (
+    f"expected the {{CD, CE, NZ}} tip, got {sorted(interior)}")
+  assert cap_names == {"CG"}, f"expected CG as the cap, got {sorted(cap_names)}"
+  assert not ({"N", "CA", "CB"} & interior), (
+    f"the backbone must not be pulled in; interior={sorted(interior)}")
 
 
 # Real 1RYO chain-A LEU 62 - ASP 63 dipeptide (peptide bond LEU62 C - ASP63
@@ -1516,21 +1512,17 @@ def exercise_cut_depends_on_where_bfs_arrives():
     return interior, caps_leu, present
 
   # LEU is a spectator, so it is cut at CA-CB and its sidechain beyond CB
-  # is dropped.  Both entry points agree.
-  for label, (visited, caps) in (
-      ("grow_by_depth", grower.grow_by_depth(seeds, adjacency, model)),
-      ("grow_region", grower.grow_region(seeds, adjacency, model))):
-    _interior, caps_leu, present = _leu_atoms(visited, caps)
-    assert "CB" in caps_leu, (
-      f"{label}: spectator LEU should cap CB (CA-CB cut); "
-      f"caps={sorted(caps_leu)}")
-    assert not ({"CG", "CD1", "CD2"} & present), (
-      f"{label}: spectator LEU sidechain beyond CB should be dropped; "
-      f"present={sorted(present)}")
+  # is dropped.
+  visited, caps = grower.grow_region(seeds, adjacency, model)
+  _interior, caps_leu, present = _leu_atoms(visited, caps)
+  assert "CB" in caps_leu, (
+    f"spectator LEU should cap CB (CA-CB cut); caps={sorted(caps_leu)}")
+  assert not ({"CG", "CD1", "CD2"} & present), (
+    f"spectator LEU sidechain beyond CB should be dropped; "
+    f"present={sorted(present)}")
 
   # ASP coordinates through its sidechain, so it keeps its preferred cut
   # rather than being trimmed at CA-CB.
-  visited, caps = grower.grow_by_depth(seeds, adjacency, model)
   cap_iseqs = {c[0] for c in caps}
   asp_present = {name_of[i] for (i, _o) in visited if resseq_of[i] == "63"}
   asp_caps = {name_of[i] for i in cap_iseqs if resseq_of[i] == "63"}
@@ -1543,7 +1535,7 @@ def exercise_cut_depends_on_where_bfs_arrives():
   # Backbone-only seeding is not coordination: seed ASP's mainchain alone
   # and its sidechain is trimmed like any other spectator.
   backbone_seeds = {asp[n] for n in ("N", "CA", "C", "O")}
-  visited, caps = grower.grow_by_depth(backbone_seeds, adjacency, model)
+  visited, caps = grower.grow_region(backbone_seeds, adjacency, model)
   cap_iseqs = {c[0] for c in caps}
   asp_caps = {name_of[i] for i in cap_iseqs if resseq_of[i] == "63"}
   asp_present = {name_of[i] for (i, _o) in visited if resseq_of[i] == "63"}
@@ -2349,21 +2341,13 @@ def exercise_element_filter():
     raise AssertionError("element_filter=ZN on an Fe-only model should Sorry")
 
 
-def exercise_depth_and_skip_search():
-  """max_search_depth does not bound the region, and a metal seed alone
-  cannot expand.
+def exercise_skip_search():
+  """A metal seed alone cannot expand.
 
-  Growth is bounded by the cut rules rather than by a hop count, so every
-  ``max_search_depth`` yields the same region.  With ``buffer.skip_search``
-  the seed is the metal alone, and metal coordination bonds are absent from
-  the graph (``link_metals=False``), so there is nothing to expand through."""
+  With ``buffer.skip_search`` the seed is the metal alone, and metal
+  coordination bonds are absent from the graph (``link_metals=False``), so
+  there is nothing to expand through."""
   for pdb_str in (_1BQ8_FE_SPHERE_PDB, _2C2U_FE_SPHERE_PDB):
-    sizes = set()
-    for d in (0, 1, 2, 3, 10):
-      region = _run_endo_exo_params(pdb_str, max_search_depth=d)[0]
-      sizes.add(region.model.get_number_of_atoms())
-    assert len(sizes) == 1, f"max_search_depth changed the region: {sizes}"
-
     skipped = _run_endo_exo_params(pdb_str, buffer__skip_search=True)[0]
     # The region is exactly the seed set: nothing was added by the radius
     # search, and a metal has no covalent edge to expand along.
@@ -2417,6 +2401,7 @@ def exercise_write_files_roundtrip():
     results = run()
     stems = [r.file_name for r in results]
     assert len(results) == 3 and len(set(stems)) == 3, stems
+    assert stems[0] == "fes_FE_chainA_res55_within5.00A_000", stems[0]
     for stem in stems:
       for ext in (".pdb", ".phil"):
         assert os.path.isfile(stem + ext), f"missing {stem + ext}"
@@ -2750,7 +2735,7 @@ def exercise_radius_only_grows_the_region():
 def exercise_region_does_not_depend_on_queue_order():
   """The region is the same however BFS orders its queue.
 
-  This has to reorder the queue itself.  Handing ``grow_by_depth`` the
+  This has to reorder the queue itself.  Handing ``grow_region`` the
   seeds in a different order proves nothing: it collects them into a set on
   the way in, so the ordering is gone before BFS starts, and a test written
   that way passes against code that is plainly racy.
@@ -2771,7 +2756,7 @@ def exercise_region_does_not_depend_on_queue_order():
   from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
 
   original = QMRegionGrower._grow_until_exhausted
-  grow_by_depth = QMRegionGrower.grow_by_depth
+  grow_region = QMRegionGrower.grow_region
   captured = []
   trial = [0]
 
@@ -2784,7 +2769,7 @@ def exercise_region_does_not_depend_on_queue_order():
     return original(self, queue, *args, **kwargs)
 
   def capturing(self, seeds, adjacency, model, *args, **kwargs):
-    visited, caps = grow_by_depth(
+    visited, caps = grow_region(
       self, seeds, adjacency, model, *args, **kwargs)
     captured.append((
       tuple(sorted((iseq, op.as_xyz()) for (iseq, op) in visited)),
@@ -2796,7 +2781,7 @@ def exercise_region_does_not_depend_on_queue_order():
 
   outcomes = {}
   QMRegionGrower._grow_until_exhausted = reordered
-  QMRegionGrower.grow_by_depth = capturing
+  QMRegionGrower.grow_region = capturing
   try:
     for index in range(4):
       trial[0] = index
@@ -2807,7 +2792,7 @@ def exercise_region_does_not_depend_on_queue_order():
       outcomes.setdefault(tuple(captured), []).append(index)
   finally:
     QMRegionGrower._grow_until_exhausted = original
-    QMRegionGrower.grow_by_depth = grow_by_depth
+    QMRegionGrower.grow_region = grow_region
 
   assert outcomes, "no region was grown"
   assert len(outcomes) == 1, (
@@ -3412,7 +3397,7 @@ def exercise_polymer_bonded_to_its_own_image_terminates():
   grower = QMRegionGrower(
     BondCutDetector(use_preferred_cuts=True, log=io.StringIO()),
     log=io.StringIO())
-  visited, caps = grower.grow_by_depth(
+  visited, caps = grower.grow_region(
     {(iseq["CA"], identity)}, adjacency, model)
 
   assert len(visited) < 20, f"region grew to {len(visited)} nodes"
@@ -3432,7 +3417,7 @@ def exercise_growth_converges_in_a_couple_of_rounds():
   from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
 
   original = QMRegionGrower._grow_until_exhausted
-  grow_by_depth = QMRegionGrower.grow_by_depth
+  grow_region = QMRegionGrower.grow_region
   passes, current = [], [0]
 
   def counting_grow(self, *args, **kwargs):
@@ -3445,12 +3430,12 @@ def exercise_growth_converges_in_a_couple_of_rounds():
   def counting_region(self, *args, **kwargs):
     current[0] = 0
     try:
-      return grow_by_depth(self, *args, **kwargs)
+      return grow_region(self, *args, **kwargs)
     finally:
       passes.append(current[0])
 
   QMRegionGrower._grow_until_exhausted = counting_grow
-  QMRegionGrower.grow_by_depth = counting_region
+  QMRegionGrower.grow_region = counting_region
   try:
     for pdb_str, overrides in (
         (_1BQ8_FE_SPHERE_PDB, {}),
@@ -3459,7 +3444,7 @@ def exercise_growth_converges_in_a_couple_of_rounds():
         _run_endo_exo_params(pdb_str, buffer__radius=radius, **overrides)
   finally:
     QMRegionGrower._grow_until_exhausted = original
-    QMRegionGrower.grow_by_depth = grow_by_depth
+    QMRegionGrower.grow_region = grow_region
 
   assert len(passes) == 6, (
     f"expected one count per region, got {len(passes)}")
@@ -3945,22 +3930,22 @@ def exercise_surviving_cap_has_only_its_anchor():
   invariant most depends on unexamined."""
   from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
 
-  grow_by_depth = QMRegionGrower.grow_by_depth
+  grow_region = QMRegionGrower.grow_region
   regions = []
 
   def capturing(self, seeds, adjacency, model, *args, **kwargs):
-    visited, caps = grow_by_depth(
+    visited, caps = grow_region(
       self, seeds, adjacency, model, *args, **kwargs)
     regions.append((visited, dict(caps), adjacency, model))
     return visited, caps
 
-  QMRegionGrower.grow_by_depth = capturing
+  QMRegionGrower.grow_region = capturing
   try:
     for pdb_str in (_1BQ8_FE_SPHERE_PDB, _2C2U_FE_SPHERE_PDB):
       for radius in (5.0, 7.0):
         _run_endo_exo_params(pdb_str, buffer__radius=radius)
   finally:
-    QMRegionGrower.grow_by_depth = grow_by_depth
+    QMRegionGrower.grow_region = grow_region
 
   assert len(regions) == 4, f"expected four regions, got {len(regions)}"
   checked, under_symmetry = 0, 0
@@ -4046,7 +4031,7 @@ def run():
   exercise_altloc_filter()
   exercise_element_filter()
   exercise_multi_model_refused()
-  exercise_depth_and_skip_search()
+  exercise_skip_search()
   exercise_write_files_roundtrip()
   exercise_builder_without_logger()
   exercise_scaffold_residue_keeps_no_functional_group()

@@ -62,10 +62,6 @@ seed atoms alone. Expansion along bonds still applies."
 # contact_cutoff = 3.0
 #   .type = float(value_min=0)
 #   .help = "Atoms within this distance (Angstrom) of any metal or selected atom are treated as bonded to it, even when the model has no such bond (e.g. metal-ligand coordination)."
-max_search_depth = 3
-  .type = int(value_min=0)
-  .help = "Maximum number of bonds traversed outwards from any atom already \
-in the QM region."
 capping {
   enable = True
     .type = bool
@@ -525,7 +521,7 @@ class QMRegionBuilder:
     """
     qm_atoms = self._seed_qm_region(seeds, model)
     visited_nodes, cap_nodes = self._region_grower.grow_region(
-      qm_atoms, adjacency, model, max_depth=self.params.max_search_depth)
+      qm_atoms, adjacency, model)
 
     visited_nodes = self._add_hull_waters(model, visited_nodes)
 
@@ -557,9 +553,8 @@ class QMRegionBuilder:
 
     When *buffer.skip_search* is False (default) all atoms within
     ``params.buffer.radius`` of every seed are included.  When
-    *buffer.skip_search* is True only the seed atoms themselves are added and
-    BFS expansion (controlled by ``params.max_search_depth``) is relied upon to
-    grow the region.
+    *buffer.skip_search* is True only the seed atoms themselves are added,
+    and the region grows from them along bonds.
 
     The radius search is symmetry-aware:
     :meth:`AtomGraphBuilder.seed_nodes_within_radius` returns the atoms in
