@@ -112,11 +112,11 @@ class QMRegionGrower:
 
     rounds = 0
     while True:
-      self._grow_until_exhausted(queue, visited, cap_candidates, seed_nodes,
-                                 adjacency, atoms)
+      self._grow_until_exhausted(queue, visited, cap_candidates, adjacency,
+                                 atoms)
       rounds += 1
-      if not self._reattach_stranded(visited, cap_candidates, seed_nodes,
-                                     adjacency, atoms, queue):
+      if not self._reattach_stranded(visited, cap_candidates, adjacency,
+                                     atoms, queue):
         break
       if rounds > self.max_repair_rounds:
         print(f'Giving up reattaching stranded atoms after {rounds} rounds.',
@@ -130,8 +130,8 @@ class QMRegionGrower:
     )
     return visited, cap_candidates
 
-  def _grow_until_exhausted(self, queue, visited, cap_candidates, seed_nodes,
-                            adjacency, atoms):
+  def _grow_until_exhausted(self, queue, visited, cap_candidates, adjacency,
+                            atoms):
     """Run BFS until *queue* empties, marking caps at cuttable bonds.
 
     Parameters
@@ -139,7 +139,6 @@ class QMRegionGrower:
     queue : collections.deque
     visited : set of (int, rt_mx)
     cap_candidates : dict
-    seed_nodes : set of (int, rt_mx)
     adjacency : collections.defaultdict of set
     atoms : flex array of iotbx.pdb.hierarchy.atom
     """
@@ -156,10 +155,7 @@ class QMRegionGrower:
           if (neighbour in cap_candidates and
               cap_candidates[neighbour] != current):
             self._demote_cap_candidate(
-              neighbour, cap_candidates, visited,
-              seed_nodes, adjacency, atoms, queue,
-              protected={current},
-            )
+              neighbour, cap_candidates, atoms, queue)
           continue
 
         visited.add(neighbour)
@@ -175,7 +171,7 @@ class QMRegionGrower:
             self._log_bond(reason, curr_iseq, nbr_iseq, atoms)
             self._try_mark_cap(
               neighbour, current, cap_candidates, visited,
-              seed_nodes, adjacency, atoms, queue,
+              adjacency, atoms, queue,
             )
             continue
           self._log_bond(f'{reason} (not taken, {refusal})',
@@ -183,8 +179,8 @@ class QMRegionGrower:
 
         queue.append(neighbour)
 
-  def _reattach_stranded(self, visited, cap_candidates, seed_nodes,
-                         adjacency, atoms, queue):
+  def _reattach_stranded(self, visited, cap_candidates, adjacency, atoms,
+                         queue):
     """Restore one bond for every heavy atom the cuts left unattached.
 
     An atom whose every heavy neighbour in the region is a cap comes out as
@@ -203,10 +199,8 @@ class QMRegionGrower:
     Parameters
     ----------
     visited : set of (int, rt_mx)
-        Modified in-place, via :meth:`_demote_cap_candidate`.
     cap_candidates : dict
         Modified in-place.
-    seed_nodes : set of (int, rt_mx)
     adjacency : collections.defaultdict of set
     atoms : flex array of iotbx.pdb.hierarchy.atom
     queue : collections.deque
@@ -247,8 +241,7 @@ class QMRegionGrower:
         return (_hops.get(name, _unranked), candidate[0])
 
       self._demote_cap_candidate(
-        min(caps_on_it, key=rank), cap_candidates, visited,
-        seed_nodes, adjacency, atoms, queue, protected={node})
+        min(caps_on_it, key=rank), cap_candidates, atoms, queue)
       reattached += 1
 
     return reattached
@@ -663,9 +656,7 @@ class QMRegionGrower:
     return (f'near atom {atoms[anchor_iseq].name.strip()} has no other '
             f'heavy neighbour to hold it in the region')
 
-  def _demote_cap_candidate(self, cap, cap_candidates, visited,
-                            seed_nodes, adjacency, atoms, queue,
-                            protected=set()):
+  def _demote_cap_candidate(self, cap, cap_candidates, atoms, queue):
     """Promote *cap* (a node) back to interior and re-open BFS through it.
 
     *cap* is removed from ``cap_candidates`` and re-enqueued, so BFS
@@ -678,15 +669,10 @@ class QMRegionGrower:
         Node of the cap candidate being demoted.
     cap_candidates : dict
         ``{cap_node: anchor_node}``; modified in-place.
-    visited : set of (int, rt_mx)
-    seed_nodes : set of (int, rt_mx)
-    adjacency : collections.defaultdict of set
-        Read-only; tagged ``{i_seq: {(j_seq, edge_op), ...}}``.
     atoms : cctbx.array_family.flex array
         Atom objects indexed by i_seq, used for log messages.
     queue : collections.deque
         BFS queue; *cap* is appended for further expansion.
-    protected : set of (int, rt_mx), optional
     """
     cap_iseq, _cap_op = cap
     if self.verbose:
@@ -697,7 +683,7 @@ class QMRegionGrower:
     queue.append(cap)
 
   def _try_mark_cap(self, candidate, anchor, cap_candidates, visited,
-                     seed_nodes, adjacency, atoms, queue):
+                     adjacency, atoms, queue):
     """Record *candidate* (a node) as a cap anchored at *anchor* (a node).
 
     Parameters
@@ -710,7 +696,6 @@ class QMRegionGrower:
     cap_candidates : dict
         ``{cap_node: anchor_node}``; modified in-place.
     visited : set of (int, rt_mx)
-    seed_nodes : set of (int, rt_mx)
     adjacency : collections.defaultdict of set
         Read-only.
     atoms : cctbx.array_family.flex array
