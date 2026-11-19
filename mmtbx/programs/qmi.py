@@ -94,12 +94,6 @@ qm_region
     .help = "Seed-inclusion radius (Angstrom): atoms within this distance of a \
 metal are pulled into the QM region. The final capped cluster can extend beyond \
 this radius."
-  max_search_depth = 3
-    .type = int(value_min=0)
-    .expert_level = 2
-    .short_caption = Max search depth
-    .help = "Maximum number of bonds to expand outward when growing the QM \
-region around each site."
 }
 protonation
   .short_caption = Protonation
@@ -430,7 +424,6 @@ Requires xtb.
       metal_element=element_filter or None,
       selection=selection or None,
       radius=self.params.qm_region.radius,
-      max_depth=self.params.qm_region.max_search_depth,
       solvent_model=self.params.qm.solvent,
       temperature=self.params.qm.temperature,
       metal_states=self.params.sites.metal_state,
@@ -492,7 +485,6 @@ Requires xtb.
     lines += provenance.settings_block(
       engine=self.params.qm.engine,
       radius=self.params.qm_region.radius,
-      max_depth=self.params.qm_region.max_search_depth,
       free_radius=qm.DEFAULT_FREE_RADIUS,
       freeze_waters=self.params.qm.freeze_waters,
       freeze_far_carboxylate_o=self.params.qm.freeze_far_carboxylate_o,

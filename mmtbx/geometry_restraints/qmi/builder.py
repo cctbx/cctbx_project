@@ -84,8 +84,6 @@ class QMRestraintsBuilder(object):
   radius : float
       Seed-inclusion radius (A) for the endo_exo region (its ``buffer.radius``);
       the final capped cluster can extend beyond it.
-  max_depth : int
-      endo_exo BFS depth.
   solvent_model : str
       ALPB named solvent for xTB (default ``'ether'``); empty disables.
   temperature : float
@@ -141,7 +139,7 @@ class QMRestraintsBuilder(object):
   """
 
   def __init__(self, metal_element=None, selection=None, radius=4.0,
-               max_depth=3, solvent_model=qm.DEFAULT_XTB_SOLVENT,
+               solvent_model=qm.DEFAULT_XTB_SOLVENT,
                temperature=sigma.DEFAULT_TEMPERATURE_K,
                metal_states=None, work_dir="qm_work_dir",
                predict_only=False, states="predicted", nproc=1,
@@ -155,7 +153,6 @@ class QMRestraintsBuilder(object):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
     self.radius = radius
-    self.max_depth = max_depth
     self.solvent_model = solvent_model
     self.temperature = temperature
     self.metal_states = list(metal_states) if metal_states else []

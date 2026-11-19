@@ -65,7 +65,7 @@ def global_block(method, solvent, temperature, model_name, protonation,
   ]
 
 
-def settings_block(engine, radius, max_depth, free_radius, freeze_waters,
+def settings_block(engine, radius, free_radius, freeze_waters,
                    freeze_far_carboxylate_o, optimise_all,
                    optimise_hydrogens=None, optimisation=None,
                    hessian=None, basis_set=None, nproc=1):
@@ -78,7 +78,7 @@ def settings_block(engine, radius, max_depth, free_radius, freeze_waters,
   the collapsed convergence knob ('looser' or an ORCA convergence tier)."""
   def onoff(flag):
     return "on" if flag else "off"
-  region = (f"region: radius={radius} depth={max_depth} "
+  region = (f"region: radius={radius} "
             f"free_radius={free_radius}; freeze_waters={freeze_waters} "
             f"freeze_far_carboxylate_o={onoff(freeze_far_carboxylate_o)} "
             f"optimise_all={onoff(optimise_all)}")

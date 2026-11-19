@@ -514,20 +514,21 @@ def exercise_provenance():
   assert not any("resolution" in ln for ln in g)          # omitted when None
 
   st = provenance.settings_block(
-    engine="orca", radius=4.0, max_depth=3, free_radius=5.0,
+    engine="orca", radius=4.0, free_radius=5.0,
     freeze_waters="peripheral", freeze_far_carboxylate_o=False, optimise_all=False,
     optimise_hydrogens="free_atoms", optimisation="looser",
     hessian="xtb", basis_set=None, nproc=6)
-  assert any(ln.startswith("region:") and "radius=4.0" in ln and "depth=3" in ln
+  assert any(ln.startswith("region:") and "radius=4.0" in ln
              and "free_radius=5.0" in ln and "freeze_waters=peripheral" in ln
              for ln in st), st
+  assert not any("depth" in ln for ln in st), st
   assert any(ln.startswith("engine: orca") and "H=free_atoms" in ln
              and "opt=looser" in ln and "hessian=xtb" in ln
              and "nproc=6" in ln for ln in st), st
   assert not any("convergence=" in ln for ln in st)       # collapsed into opt
   assert not any("basis=" in ln for ln in st)             # omitted when None
   stx = provenance.settings_block(                        # xTB: no ORCA knobs
-    engine="xtb", radius=4.0, max_depth=3, free_radius=5.0,
+    engine="xtb", radius=4.0, free_radius=5.0,
     freeze_waters="peripheral", freeze_far_carboxylate_o=False, optimise_all=False,
     nproc=1)
   assert any(ln.startswith("engine: xtb") and "all non-cap H free" in ln
@@ -837,6 +838,7 @@ def exercise_program():
   master = libtbx.phil.parse(master_phil_str)
   p = master.extract()
   assert p.qm_region.radius == 4.0 and p.qm.solvent == "ether"
+  assert not hasattr(p.qm_region, "max_search_depth")
   assert p.qm.temperature == 100 and p.qm.nproc == 1
   assert p.qm.perturb_attempts == 1
   assert p.qm.freeze_waters == "peripheral"
