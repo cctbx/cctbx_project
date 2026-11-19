@@ -10583,10 +10583,21 @@ def run_local_sharpening(si = None,
     si.smoothing_radius = float("%.0f" %(dist*2/3)) # 10A from nearest neighbor
     print("Using %s A for smoothing radius" %(si.smoothing_radius), file = out)
 
+  # Specified sharpening (the "Using specified sharpening" case in
+  #  run_auto_sharpen) is not optimized locally.  If it was already applied
+  #  to the whole map above, do not apply it again in the local maps.
+  skip_local_maps = si.overall_before_local and si.sharpening_is_defined()
+  if skip_local_maps:
+    print("\nSpecified sharpening was applied to the whole map. It is not "+\
+      "applied again\nin local maps...skipping local maps",
+      file = out)
+
   i = -1
   for ub, lb, centers_ncs_cart, center_cart in zip(
     upper_bounds_list, lower_bounds_list, centers_cart_ncs_list, centers_cart):
     i+= 1
+    if skip_local_maps:
+      break
     if si.select_sharpened_map is not None and i !=  si.select_sharpened_map:
       continue
     map_file_name = 'sharpened_map_%s.ccp4' %(i)
@@ -10608,6 +10619,10 @@ def run_local_sharpening(si = None,
       local_si.max_box_fraction = 999 # just bigger than 1
       local_si.density_select_max_box_fraction = 999
       local_si.nproc = 1
+      if local_si.sharpening_is_defined():
+        # auto_sharpen is turned off if sharpening is specified, but it is
+        #  required to get the box.  No search is done in this case
+        local_si.auto_sharpen = True
       print(80*"+", file = out)
       print("Getting local sharpening for box %s" %(i), file = out)
       print(80*"+", file = out)
@@ -11508,6 +11523,14 @@ def run_auto_sharpen(
     best_si.sharpen_and_score_map(map_data = map_data,
           out = out).show_score(out = out)
     best_si.show_summary(out = out)
+    if return_bsi and box_sharpening_info_obj:
+      # save the sharpened map, it is the result
+      final_b_iso = best_si.b_iso
+      if final_b_iso is None:
+        final_b_iso = original_b_iso - (best_si.b_sharpen or 0.)
+      best_map_and_b = map_and_b_object(map_data = best_si.map_data,
+        starting_b_iso = original_b_iso,
+        final_b_iso = final_b_iso)
 
   else:
     if best_si.is_model_sharpening():
