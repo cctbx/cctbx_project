@@ -30,8 +30,6 @@ model or a hierarchy, so the rules are testable without constructing a
 structure, and the module stays a leaf: it imports nothing from mmtbx.
 """
 
-from __future__ import absolute_import, division, print_function
-
 
 _HYDROGEN = frozenset(("H", "D"))
 

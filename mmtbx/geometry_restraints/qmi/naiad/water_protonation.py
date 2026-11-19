@@ -16,8 +16,6 @@ report; the command-line dispatcher is ``mmtbx.naiad``.
 Needs ``scipy`` (KDTree).
 """
 
-from __future__ import absolute_import, division, print_function
-
 import math
 import random
 

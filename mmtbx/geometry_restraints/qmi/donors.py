@@ -17,8 +17,6 @@ Two calls:
   axial partition, plus the donor-hardness motif counts for the oxidation call.
 """
 
-from __future__ import absolute_import, division, print_function
-
 from libtbx import group_args
 from iotbx.pdb import common_residue_names_get_class
 

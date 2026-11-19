@@ -19,8 +19,6 @@ input model at refinement time; donors on symmetry images (renamed chains in the
 endo_exo sub-model) cannot be expressed this way and are flagged, not emitted.
 """
 
-from __future__ import absolute_import, division, print_function
-
 from libtbx.utils import null_out
 from scitbx import matrix
 

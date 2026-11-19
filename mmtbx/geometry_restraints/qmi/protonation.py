@@ -31,8 +31,6 @@ marked ``protonate_waters`` call in ``prepare_model`` (and the ``qmi/naiad``
 copy). No other qmi code, and no caller, changes.
 """
 
-from __future__ import absolute_import, division, print_function
-
 import os
 import shutil
 import tempfile

@@ -28,8 +28,6 @@ Programmatic use::
     run_program(program_class=Program)
 """
 
-from __future__ import absolute_import, division, print_function
-
 import os
 
 try:

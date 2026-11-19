@@ -37,8 +37,6 @@ used by endo_exo and naiad). The N! permutation search is vectorised with a
 single batched numpy SVD rather than a per-permutation Python loop.
 """
 
-from __future__ import absolute_import, division, print_function
-
 from math import sqrt, cos, sin, pi
 from itertools import permutations
 from functools import lru_cache

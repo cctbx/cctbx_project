@@ -21,8 +21,6 @@ close and S-donor rows sparse, so BVS barely separates oxidation states at
 thiolate sites.
 """
 
-from __future__ import absolute_import, division, print_function
-
 import os
 from math import exp
 from functools import lru_cache

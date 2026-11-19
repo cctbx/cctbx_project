@@ -13,8 +13,6 @@ valences), so deprotonated/charged ligands are accounted for.  Sigmas are the
 modified-Seminario curvature sigmas (Sec 5F), with a conservative M-L fallback.
 """
 
-from __future__ import absolute_import, division, print_function
-
 import os
 
 from libtbx import group_args

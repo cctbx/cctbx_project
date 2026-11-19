@@ -7,8 +7,6 @@ assembly + .edits emission, the frozen/free partition, and the metals helpers.
 Run: mmtbx.python mmtbx/regression/tst_qmi.py
 """
 
-from __future__ import absolute_import, division, print_function
-
 import math
 import os
 import tempfile

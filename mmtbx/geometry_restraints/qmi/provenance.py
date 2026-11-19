@@ -11,8 +11,6 @@ restraint, and the settings that produced it, are auditable from the ``.edits``
 alone.
 """
 
-from __future__ import absolute_import, division, print_function
-
 import libtbx.version
 from libtbx import easy_run
 

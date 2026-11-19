@@ -22,8 +22,6 @@ error, so both windows are per (metal, donor element) with generous tolerance, a
 plausibility check, not a crystallographic-accuracy check.
 """
 
-from __future__ import absolute_import, division, print_function
-
 from math import log
 
 from libtbx import group_args

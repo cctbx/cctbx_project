@@ -41,8 +41,6 @@ References: HSAB and metal-induced thiolate/phenolate, Pearson 1963 [37] and
 Dudev & Lim 2003 [38]; ATCUN N-terminal deprotonation [71].
 """
 
-from __future__ import absolute_import, division, print_function
-
 from libtbx import group_args
 from scitbx import matrix
 

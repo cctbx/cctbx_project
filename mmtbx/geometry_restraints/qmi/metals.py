@@ -10,8 +10,6 @@ Element symbols are in Title case (``'Mg'``, ``'Fe'``, ``'ZN'`` ->
 convention used downstream.
 """
 
-from __future__ import absolute_import, division, print_function
-
 
 METALS = {
   'Li', 'Na', 'K', 'Rb', 'Cs', 'Fr',

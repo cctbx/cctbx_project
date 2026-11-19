@@ -30,8 +30,6 @@ metal oxidation state plus the ligand formal charges (via
 ``quantum_interface.electrons``).
 """
 
-from __future__ import absolute_import, division, print_function
-
 from libtbx import group_args
 
 from mmtbx.geometry_restraints.qmi import metals

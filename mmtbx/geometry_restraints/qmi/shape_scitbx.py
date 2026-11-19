@@ -40,8 +40,6 @@ comparison. The permutation search is a Python loop with one 3x3 scitbx SVD
 default.
 """
 
-from __future__ import absolute_import, division, print_function
-
 from math import sqrt, cos, sin, pi
 from itertools import permutations
 from functools import lru_cache

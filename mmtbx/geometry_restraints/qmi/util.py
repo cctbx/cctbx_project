@@ -7,8 +7,6 @@ context manager, and a stable residue-identity key. No heavy dependencies, so
 any qmi module can import it without pulling in NumPy/xtb.
 """
 
-from __future__ import absolute_import, division, print_function
-
 import os
 from contextlib import contextmanager
 

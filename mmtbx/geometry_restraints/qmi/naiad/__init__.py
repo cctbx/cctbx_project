@@ -7,5 +7,3 @@ the qmi metal-restraint pipeline to protonate coordinating waters that
 mmtbx.reduce2 leaves bare. Public entry point:
 ``water_protonation.place_water_hydrogens``.
 """
-
-from __future__ import absolute_import, division, print_function

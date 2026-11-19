@@ -13,5 +13,3 @@ extraction and the in-tree ``mmtbx.geometry_restraints.xtb_manager`` as the
 xTB runner, driven directly rather than through the QMR
 ``quantum_restraints_manager`` pipeline (plan Sec 5E.1).
 """
-
-from __future__ import absolute_import, division, print_function

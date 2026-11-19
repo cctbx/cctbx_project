@@ -23,8 +23,6 @@ the constrained optimisation, so their gradient is ~0 at convergence and those
 blocks are at a true local minimum, independent of the frozen scaffold.
 """
 
-from __future__ import absolute_import, division, print_function
-
 import math
 
 from libtbx import group_args
