@@ -1192,7 +1192,10 @@ class QMRegionBuilder:
     test is keyed per group on its heavy atoms, because an on-axis water
     shares its oxygen with the kept image but places its two disorder
     hydrogens apart; a group whose heavy atoms coincide with kept ones is
-    dropped whole.  The tolerance absorbs coordinate drift.
+    dropped whole.  Two copies of one heavy atom closer than any bond
+    between heavy atoms, about 1.1 A at the shortest, are one atom
+    disordered across the symmetry element, whatever its occupancy, so they
+    coincide within 1.0 A.
 
     Parameters
     ----------
@@ -1207,7 +1210,7 @@ class QMRegionBuilder:
     dict
         ``{(parent_iseq, sym_op): surviving atom}``.
     """
-    POS_TOL = 0.2
+    POS_TOL = 1.0
     # An image is compared only against other images of the same parent atom
     # group, so two altlocs of one residue, which share backbone positions,
     # never cancel each other.  A single coincidence drops the whole group,

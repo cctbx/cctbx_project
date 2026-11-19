@@ -2033,31 +2033,41 @@ def exercise_2c2u_sym_image_provenance():
 def exercise_special_position_water_dedup():
   """A water ON a special position must not keep the symmetry-flipped H as extra
   protons (an H4O): the redundant image is dropped whole, so the on-axis water
-  survives with exactly two H. An OFF-axis water is a genuine symmetry pair and
-  keeps both two-H copies."""
-  result = _run_endo_exo_on_string(_SPECIAL_POS_WATER_PDB)
-  waters = []
-  for ch in result.model.get_hierarchy().chains():
-    for rg in ch.residue_groups():
-      for ag in rg.atom_groups():
-        if ag.resname.strip().upper() != "HOH":
-          continue
-        n_h = sum(1 for a in ag.atoms() if a.element_is_hydrogen())
-        n_o = sum(1 for a in ag.atoms() if not a.element_is_hydrogen())
-        waters.append((rg.resseq.strip(), n_o, n_h))
+  survives with exactly two H. A water 0.4 A off the axis, whose copy is 0.8 A
+  away, is one water disordered across the axis and also survives once. An
+  OFF-axis water is a genuine symmetry pair and keeps both two-H copies."""
+  near_axis_pdb = _SPECIAL_POS_WATER_PDB
+  for old_xyz, new_xyz in (
+      (" 12.200   0.000   0.000", " 12.200   0.400   0.000"),
+      (" 12.780   0.620   0.420", " 12.780   1.020   0.420"),
+      (" 12.780   0.420   0.620", " 12.780   0.820   0.620")):
+    assert near_axis_pdb.count(old_xyz) == 1, old_xyz
+    near_axis_pdb = near_axis_pdb.replace(old_xyz, new_xyz)
+  for label, pdb_str in (("on-axis", _SPECIAL_POS_WATER_PDB),
+                         ("near-axis", near_axis_pdb)):
+    result = _run_endo_exo_on_string(pdb_str)
+    waters = []
+    for ch in result.model.get_hierarchy().chains():
+      for rg in ch.residue_groups():
+        for ag in rg.atom_groups():
+          if ag.resname.strip().upper() != "HOH":
+            continue
+          n_h = sum(1 for a in ag.atoms() if a.element_is_hydrogen())
+          n_o = sum(1 for a in ag.atoms() if not a.element_is_hydrogen())
+          waters.append((rg.resseq.strip(), n_o, n_h))
 
-  # every surviving water is a normal 2-H water: no orphan H (O deduped away) and
-  # no H4O (flipped H kept on a shared O).
-  for resseq, n_o, n_h in waters:
-    assert (n_o, n_h) == (1, 2), (
-      f"HOH {resseq}: {n_o} O, {n_h} H (expected 1 O, 2 H)")
-  counts = {}
-  for resseq, _o, _h in waters:
-    counts[resseq] = counts.get(resseq, 0) + 1
-  assert counts.get("300") == 1, (
-    f"on-axis water 300 should survive once; got {counts}")
-  assert counts.get("301") == 2, (
-    f"off-axis water 301 should keep both symmetry copies; got {counts}")
+    # every surviving water is a normal 2-H water: no orphan H (O deduped
+    # away) and no H4O (flipped H kept on a shared O).
+    for resseq, n_o, n_h in waters:
+      assert (n_o, n_h) == (1, 2), (
+        f"{label} HOH {resseq}: {n_o} O, {n_h} H (expected 1 O, 2 H)")
+    counts = {}
+    for resseq, _o, _h in waters:
+      counts[resseq] = counts.get(resseq, 0) + 1
+    assert counts.get("300") == 1, (
+      f"{label} water 300 should survive once; got {counts}")
+    assert counts.get("301") == 2, (
+      f"off-axis water 301 should keep both symmetry copies; got {counts}")
 
 
 _ALTLOC_PDB = """\
