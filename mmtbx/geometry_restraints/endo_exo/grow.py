@@ -364,8 +364,6 @@ class QMRegionGrower:
       for residue_atom in atom_group.atoms():
         if residue_atom.name.strip().upper() in amide_atom_names:
           amide_i_seqs.append(residue_atom.i_seq)
-    if not amide_i_seqs:
-      return False
     return any((i_seq, sym_op) in visited for i_seq in amide_i_seqs)
 
   def _any_amide_of_next_residue_in_visited(self, atom_idx, sym_op,
