@@ -3473,7 +3473,7 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
           identify_ncs_id = identify_ncs_id,
           ncs_in_cell_only = ncs_in_cell_only,
           sites_orth = sites_orth, crystal_symmetry = crystal_symmetry, out = out)
-        if cc_avg < min_ncs_cc:
+        if cc_avg is None or cc_avg < min_ncs_cc:
           score = 0. # Do not allow low CC values to be used
       else:
         ncs_obj = None
