@@ -1,5 +1,6 @@
 import iotbx.pdb
 import mmtbx.model
+from mmtbx.model.model import restraints_scale_manager
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
@@ -220,6 +221,59 @@ def exercise_moved_atoms():
   assert approx_equal(b, b0)
   assert approx_equal(a, a0)
 
+def exercise_origin():
+  """
+  Only restraints of covalent geometry are scaled.
+  """
+  from cctbx.geometry_restraints.linking_class import linking_class
+  other = linking_class().get_origin_id("hydrogen bonds")
+  assert other != restraints_scale_manager.origin_id
+  rank = flex.double(get_model().size(), 0.9)
+  # reference: everything is covalent geometry
+  model = get_model()
+  assert model.scale_restraints(factor = 10., density_rank = rank)
+  rsm = model.rsm
+  bond_keys  = sorted(rsm.bond_scales.keys())
+  angle_keys = sorted(rsm.angle_scales.keys())
+  assert len(bond_keys) > 1 and len(angle_keys) > 1
+  # same, with one bond and one angle of a different origin
+  model = get_model()
+  g = model.get_restraints_manager().geometry
+  simple, asu = g.get_all_bond_proxies(sites_cart = model.get_sites_cart())
+  n = 0
+  for p in simple:
+    if rsm.bond_key(p.i_seqs) == bond_keys[0]:
+      p.origin_id = other
+      g.bond_params_table.lookup(*p.i_seqs).origin_id = other
+      n += 1
+  for p in g.angle_proxies:
+    if rsm.angle_key(p.i_seqs) == angle_keys[0]:
+      p.origin_id = other
+      n += 1
+  assert n == 2
+  b0, a0 = get_weights(model)
+  assert model.scale_restraints(factor = 10., density_rank = rank)
+  assert sorted(model.rsm.bond_scales.keys())  == bond_keys[1:]
+  assert sorted(model.rsm.angle_scales.keys()) == angle_keys[1:]
+  # a restraint that is not of covalent geometry anymore is left alone
+  # even if it has a scale factor
+  model.rsm.bond_scales[bond_keys[0]]   = 5.
+  model.rsm.angle_scales[angle_keys[0]] = 5.
+  model.apply_restraints_scale()
+  b1, a1 = get_weights(model)
+  g = model.get_restraints_manager().geometry
+  simple, asu = g.get_all_bond_proxies(sites_cart = model.get_sites_cart())
+  for i, p in enumerate(simple):
+    if rsm.bond_key(p.i_seqs) == bond_keys[0]:
+      assert approx_equal(b1[i], b0[i])
+      assert approx_equal(
+        g.bond_params_table.lookup(*p.i_seqs).weight, b0[i])
+  for i, p in enumerate(g.angle_proxies):
+    if rsm.angle_key(p.i_seqs) == angle_keys[0]:
+      assert approx_equal(a1[i], a0[i])
+  assert not approx_equal(b1, b0, out=None)
+  assert not approx_equal(a1, a0, out=None)
+
 def exercise_not_available():
   # no restraints
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
@@ -234,5 +288,6 @@ if(__name__ == "__main__"):
   exercise_model()
   exercise_select()
   exercise_moved_atoms()
+  exercise_origin()
   exercise_not_available()
   print("OK")

@@ -367,8 +367,10 @@ class restraints_scale_manager(object):
   any way. Atoms are identified by their labels as well, so scale factors of
   atoms that are not at their place anymore are dropped.
 
-  Restraints involving H or D, symmetry (asu) bonds and atom pairs or triplets
-  with more than one restraint are not scaled.
+  Only restraints of covalent geometry are scaled (not hydrogen bond, metal
+  coordination, link and other restraints of different origin), and only
+  those that do not involve H or D, are not symmetry (asu) bonds, and are the
+  only restraint of their atom pair or triplet.
   """
 
   # Density rank separating weak (<) from strong (>=) density.
@@ -437,10 +439,13 @@ class restraints_scale_manager(object):
     if proxies is None: return []
     return proxies
 
-  @staticmethod
-  def _unique(proxies, key_function):
+  # Origin of restraints that can be scaled
+  origin_id = linking_class().get_origin_id("covalent geometry")
+
+  def _unique(self, proxies, key_function):
     """
-    {key: proxy} for keys that occur once.
+    {key: proxy} for proxies of covalent geometry with keys that occur once
+    among all proxies.
     """
     result = {}
     repeated = set()
@@ -449,6 +454,8 @@ class restraints_scale_manager(object):
       if key in result: repeated.add(key)
       result[key] = proxy
     for key in repeated: del result[key]
+    for key in list(result.keys()):
+      if result[key].origin_id != self.origin_id: del result[key]
     return result
 
   def _drop_moved_atoms(self):
@@ -566,7 +573,7 @@ class restraints_scale_manager(object):
     table = self._geometry().bond_params_table
     for key, scale in self.bond_scales.items():
       params = table.lookup(key[0], key[1])
-      if params is None: continue
+      if params is None or params.origin_id != self.origin_id: continue
       self._table_weights[key] = params.weight
       params.weight = params.weight * scale
     for scales, proxies, saved in [
