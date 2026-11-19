@@ -83,10 +83,10 @@ CUBIC = "cubic"
 def in_directory(path):
   """chdir into *path* for the block, restoring the prior cwd afterwards.
 
-  xTB (via ``xtb_manager``) and ``mmtbx.reduce2`` write their scratch/output
-  files into the current working directory, so a per-run scratch dir keeps
-  concurrent sites from colliding and keeps the source tree clean. ``path=None``
-  is a no-op (stay in the current directory).
+  xTB (via ``xtb_manager``) writes its scratch/output files into the current
+  working directory, so a per-run scratch dir keeps concurrent sites from
+  colliding and keeps the source tree clean. ``path=None`` is a no-op (stay in
+  the current directory).
   """
   if path is None:
     yield

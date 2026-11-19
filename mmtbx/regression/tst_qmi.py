@@ -16,7 +16,7 @@ import iotbx.pdb
 import libtbx.phil
 import mmtbx.model
 from iotbx.data_manager import DataManager
-from libtbx import group_args
+from libtbx import easy_run, group_args
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out, Sorry
 from scitbx import matrix
@@ -783,6 +783,42 @@ def exercise_symmetry_donor_skip():
     model, sites, 0, donors, original_chain_ids=["Q"],
     sym_image_provenance=prov, log=null_out())
   assert sym.bonds[0]["atom_selection_2"] == his94, sym.bonds[0]
+
+
+# ---------------------------------------------------------------------------
+# protonation: reduce2
+# ---------------------------------------------------------------------------
+# One complete residue without hydrogens.
+_ALA_PDB = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  N   ALA A   2      10.000  10.000  10.000  1.00 10.00           N
+ATOM      2  CA  ALA A   2      11.458  10.000  10.000  1.00 10.00           C
+ATOM      3  C   ALA A   2      12.009  11.420  10.000  1.00 10.00           C
+ATOM      4  O   ALA A   2      11.251  12.390  10.000  1.00 10.00           O
+ATOM      5  CB  ALA A   2      11.988   9.229  11.207  1.00 10.00           C
+"""
+
+
+def exercise_add_hydrogens():
+  """add_hydrogens runs reduce2 in process on the model in memory: it starts
+  no subprocess and leaves the input model as it was."""
+  model = _model(_ALA_PDB)
+
+  def no_subprocess(*args, **kwargs):
+    raise AssertionError(f"subprocess started: {args}")
+
+  fully_buffered = easy_run.fully_buffered
+  easy_run.fully_buffered = no_subprocess
+  try:
+    with_h = protonation.add_hydrogens(model)
+  finally:
+    easy_run.fully_buffered = fully_buffered
+  atoms = with_h.get_hierarchy().atoms()
+  n_h = sum(1 for a in atoms if a.element_is_hydrogen())
+  assert n_h > 0 and atoms.size() == 5 + n_h, (n_h, atoms.size())
+  assert model.get_number_of_atoms() == 5, model.get_number_of_atoms()
+  assert with_h.crystal_symmetry().is_similar_symmetry(
+    model.crystal_symmetry())
 
 
 # ---------------------------------------------------------------------------
@@ -2205,6 +2241,7 @@ def run():
   exercise_coordination_cutoff()
   exercise_metal_ligand_restraints()
   exercise_symmetry_donor_skip()
+  exercise_add_hydrogens()
   exercise_deprotonation()
   exercise_deprotonation_donor_families()
   exercise_deprotonation_metal_gating()

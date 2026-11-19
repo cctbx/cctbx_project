@@ -31,12 +31,7 @@ marked ``protonate_waters`` call in ``prepare_model`` (and the ``qmi/naiad``
 copy). No other qmi code, and no caller, changes.
 """
 
-import os
-import shutil
-import tempfile
-
-from libtbx import easy_run
-from libtbx.utils import null_out, Sorry
+from libtbx.utils import null_out
 from iotbx.pdb import common_residue_names_get_class
 
 from mmtbx.geometry_restraints.qmi import metal_protonation
@@ -55,42 +50,28 @@ from mmtbx.geometry_restraints.qmi import util
 
 
 def add_hydrogens(model, use_neutron_distances=True, log=None):
-  """Add hydrogens to *model* by running ``mmtbx.reduce2`` and return a fresh
-  ``mmtbx.model.manager`` for the H-completed structure.
+  """Add hydrogens to *model* with reduce2 and return the H-completed
+  ``mmtbx.model.manager``; *model* itself is left as it was.
 
   Neutron X-H distances by default (closer to the QM-optimal positions the
-  downstream optimisation relaxes to). Runs in a scratch directory (removed on
-  return) so reduce2's side output does not litter the cwd.
+  downstream optimisation relaxes to). reduce2 runs in process on the model in
+  memory and writes no files.
   """
-  import iotbx.pdb
-  import mmtbx.model
+  from iotbx.cli_parser import CCTBXParser
+  from mmtbx.programs import reduce2
   if log is None:
     log = null_out()
-  tmp = tempfile.mkdtemp(prefix="qmi_reduce_")
-  try:
-    in_path = os.path.join(tmp, "in.cif")
-    out_path = os.path.join(tmp, "in_H.cif")
-    with open(in_path, "w") as fh:
-      fh.write(model.get_hierarchy().as_mmcif_string(
-        crystal_symmetry=model.crystal_symmetry()))
-    cmd = (f"mmtbx.reduce2 {in_path} output.filename={out_path} "
-           f"use_neutron_distances={use_neutron_distances} --overwrite")
-    print(f"  adding hydrogens: {cmd}", file=log)
-    with util.in_directory(tmp):
-      result = easy_run.fully_buffered(cmd)
-    if result.return_code != 0 or not os.path.exists(out_path):
-      tail = "\n".join((result.stdout_lines + result.stderr_lines)[-15:])
-      raise Sorry(f"mmtbx.reduce2 failed to protonate the model "
-                  f"(rc={result.return_code}):\n{tail}")
-    # Carry the original cell forward explicitly (an explicit crystal_symmetry=
-    # wins over model_input): symmetry-aware endo_exo cannot silently degrade if
-    # reduce2's mmCIF ever drops CRYST1. iotbx.pdb.input reads the file fully, so
-    # the scratch dir is safe to remove in the finally.
-    return mmtbx.model.manager(
-      model_input=iotbx.pdb.input(file_name=out_path),
-      crystal_symmetry=model.crystal_symmetry())
-  finally:
-    shutil.rmtree(tmp, ignore_errors=True)
+  print(f"  adding hydrogens: reduce2 {reduce2.version}, "
+        f"use_neutron_distances={use_neutron_distances}", file=log)
+  parser = CCTBXParser(program_class=reduce2.Program, logger=null_out())
+  parser.parse_args([f"use_neutron_distances={use_neutron_distances}",
+                     "output.write_files=False"])
+  parser.data_manager.add_model("qmi", model)
+  program = reduce2.Program(
+    parser.data_manager, parser.working_phil.extract(), logger=null_out())
+  program.validate()
+  program.run()
+  return program.get_results().model
 
 
 # ---------------------------------------------------------------------------
