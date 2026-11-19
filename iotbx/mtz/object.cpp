@@ -84,7 +84,14 @@ namespace iotbx { namespace mtz {
       for(;j<MTZRECORDLENGTH;j++) {
         if (line[j] == '\0') break;
       }
-      result.push_back(std::string(line, j));
+      // History is plain text. Files written by some old programs have
+      // bytes outside of ASCII in it, which do not make a valid (UTF-8)
+      // Python string: show them as question marks.
+      std::string text(line, j);
+      for(std::size_t k=0;k<text.size();k++) {
+        if (static_cast<unsigned char>(text[k]) > 127) text[k] = '?';
+      }
+      result.push_back(text);
     }
     return result;
   }

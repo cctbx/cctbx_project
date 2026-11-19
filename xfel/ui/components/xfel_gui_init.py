@@ -15,6 +15,7 @@ import collections
 import numpy as np
 from threading import Thread
 from wx.lib.scrolledpanel import ScrolledPanel
+from wx.lib.agw.floatspin import EVT_FLOATSPIN
 from libtbx import easy_run
 
 try:
@@ -1276,6 +1277,7 @@ DriftResult = collections.namedtuple('DriftResult', ['version_id', 'settings', '
 DRIFT_ORIGINS = ['first', 'average', 'distribution', 'panel_com_first', 'panel_com_average', 'panel_com_distribution']
 DRIFT_COLOR_BY = ['run', 'rungroup', 'chunk', 'task', 'trial', 'merge']
 DRIFT_UNIT_CELLS = ['average', 'distribution']
+DRIFT_IQR_RATIO = 1.5  # the ratio the drift page starts with when rejecting outliers
 
 def drift_parameters(settings):
   ''' cctbx.xfel.drift parameters for a DriftSettings, with plotting set up for
@@ -1439,7 +1441,10 @@ class MergingStatsSentinel(Thread):
       pass
     params = drift_parameters(settings)
     table = DriftTable()
-    scraper = DriftScraperFactory.get_drift_scraper_class(ExplicitDriftScraper, params)(table, params, entries, cache)
+    def progress(done, total):
+      wx.CallAfter(tab.show_drift_progress, version_id, settings, done, total)
+    scraper = DriftScraperFactory.get_drift_scraper_class(ExplicitDriftScraper, params)(
+      table, params, entries, cache, progress=progress)
     scraper.scrap()
     try:
       if not os.path.isdir(cache_dir):
@@ -3436,19 +3441,24 @@ class UnitCellTab(BaseTab):
     self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
     # self.tab_panel.SetSizer(self.tab_sizer)
 
-    self.selection_columns_panel = ScrolledPanel(self)
+    # The column: the tag selection lists scroll when the window is shorter
+    # than they need; the plot controls under them stay in view.
+    self.selection_columns_panel = wx.Panel(self)
     self.selection_columns_box = wx.StaticBox(self.selection_columns_panel, label='Select tag sets')
     self.selection_columns_sizer = wx.StaticBoxSizer(self.selection_columns_box, wx.VERTICAL)
     self.selection_columns_panel.SetSizer(self.selection_columns_sizer)
+    self.selection_scroll = ScrolledPanel(self.selection_columns_box)
+    self.selection_scroll_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.selection_scroll.SetSizer(self.selection_scroll_sizer)
 
-    self.trial_number = gctr.ChoiceCtrl(self.selection_columns_panel,
+    self.trial_number = gctr.ChoiceCtrl(self.selection_scroll,
                                         label='Trial:',
                                         label_size=(90, -1),
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
 
-    self.tag_checklist = gctr.CheckListCtrl(self.selection_columns_panel,
+    self.tag_checklist = gctr.CheckListCtrl(self.selection_scroll,
                                             label='Available tags:',
                                             label_size=(200, -1),
                                             label_style='normal',
@@ -3456,7 +3466,7 @@ class UnitCellTab(BaseTab):
                                             direction='vertical',
                                             choices=[])
 
-    self.selection_type_radio = gctr.RadioCtrl(self.selection_columns_panel,
+    self.selection_type_radio = gctr.RadioCtrl(self.selection_scroll,
                                                name='uc_selection_type',
                                                label='',
                                                label_style='normal',
@@ -3465,9 +3475,9 @@ class UnitCellTab(BaseTab):
                                                items={'union':'union',
                                                       'inter':'intersection'})
 
-    self.add_sele_button = wx.Button(self.selection_columns_panel, label='Add selection')
+    self.add_sele_button = wx.Button(self.selection_scroll, label='Add selection')
 
-    self.tag_set_checklist = gctr.CheckListCtrl(self.selection_columns_panel,
+    self.tag_set_checklist = gctr.CheckListCtrl(self.selection_scroll,
                                                 label='Tag sets to display:',
                                                 label_size=(200, -1),
                                                 label_style='normal',
@@ -3475,19 +3485,19 @@ class UnitCellTab(BaseTab):
                                                 direction='vertical',
                                                 choices=[])
 
-    self.remove_sele_button = wx.Button(self.selection_columns_panel, label='Remove selection')
+    self.remove_sele_button = wx.Button(self.selection_scroll, label='Remove selection')
 
-    self.reset_sele_button = wx.Button(self.selection_columns_panel, label='Reset selections')
+    self.reset_sele_button = wx.Button(self.selection_scroll, label='Reset selections')
 
-    self.chk_reject_outliers = wx.CheckBox(self.selection_columns_panel, label='Reject outliers')
+    self.chk_reject_outliers = wx.CheckBox(self.selection_columns_box, label='Reject outliers')
     self.chk_reject_outliers.SetValue(True)
 
-    self.chk_plot_clusters = wx.CheckBox(self.selection_columns_panel, label='Plot clusters')
-    self.btn_cluster_options = gctr.Button(self.selection_columns_panel,
+    self.chk_plot_clusters = wx.CheckBox(self.selection_columns_box, label='Plot clusters')
+    self.btn_cluster_options = gctr.Button(self.selection_columns_box,
                                            name='uc_cluster_options',
                                            label='Options...')
 
-    self.chk_auto_update = wx.CheckBox(self.selection_columns_panel, label='Auto update')
+    self.chk_auto_update = wx.CheckBox(self.selection_columns_box, label='Auto update')
     self.chk_auto_update.SetValue(True)
 
     try:
@@ -3507,7 +3517,7 @@ class UnitCellTab(BaseTab):
                             flag=wx.ALL | wx.EXPAND)
     self.add_sele_sizer.AddGrowableCol(0)
     self.add_sele_sizer.AddGrowableRow(1)
-    self.selection_columns_sizer.Add(self.add_sele_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
+    self.selection_scroll_sizer.Add(self.add_sele_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.remove_sele_sizer = wx.GridBagSizer(3, 1)
     self.remove_sele_sizer.Add(self.tag_set_checklist, pos=(0, 0),
@@ -3518,7 +3528,8 @@ class UnitCellTab(BaseTab):
                                flag=wx.ALL | wx.EXPAND)
     self.remove_sele_sizer.AddGrowableCol(0)
     self.remove_sele_sizer.AddGrowableRow(0)
-    self.selection_columns_sizer.Add(self.remove_sele_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
+    self.selection_scroll_sizer.Add(self.remove_sele_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
+    self.selection_columns_sizer.Add(self.selection_scroll, 1, flag=wx.EXPAND)
     self.selection_columns_sizer.Add(self.chk_reject_outliers, flag=wx.ALL | wx.EXPAND, border=5)
     self.cluster_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.cluster_sizer.Add(self.chk_plot_clusters, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -3529,11 +3540,11 @@ class UnitCellTab(BaseTab):
 
     # The column is as wide as its contents need, which depends on the
     # platform's fonts and widget padding. The two lists share any extra
-    # height, and the column scrolls rather than clipping when the window is
-    # shorter than its contents.
-    self.selection_columns_panel.SetupScrolling(scroll_x=False, scrollToTop=False)
+    # height, and scroll rather than clip when the window is shorter than
+    # they need.
+    self.selection_scroll.SetupScrolling(scroll_x=False, scrollToTop=False)
     scrollbar_width = max(wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X), 0)
-    self.selection_columns_panel.SetMinSize((self.selection_columns_sizer.GetMinSize().width + scrollbar_width, -1))
+    self.selection_scroll.SetMinSize((self.selection_scroll_sizer.GetMinSize().width + scrollbar_width, -1))
     self.sync_cluster_settings()
 
     self.unit_cell_panel = wx.Panel(self, size=(200, 120))
@@ -3896,16 +3907,24 @@ class MergingStatsTab(BaseTab):
     setup_tooltip(self.chk_drift_uncertainties)
     self.chk_drift_reject_outliers = wx.CheckBox(self.drift_page, name='drift_reject_outliers', label='Reject outliers')
     setup_tooltip(self.chk_drift_reject_outliers)
+    self.drift_iqr_ratio = gctr.SpinCtrl(self.drift_page, name='drift_iqr_ratio', label='IQR ratio:',
+                                         label_size=(-1, -1), label_style='normal', ctrl_size=(150, -1),
+                                         ctrl_value=str(DRIFT_IQR_RATIO), ctrl_min=0, ctrl_max=100,
+                                         ctrl_step=0.5, ctrl_digits=1)
     for ctrl, value in ((self.drift_origin, self.drift_settings.origin),
                         (self.drift_color_by, self.drift_settings.color_by),
                         (self.drift_unit_cell, self.drift_settings.unit_cell)):
       ctrl.ctr.SetStringSelection(value)
     self.chk_drift_uncertainties.SetValue(self.drift_settings.uncertainties)
     self.chk_drift_reject_outliers.SetValue(self.drift_settings.iqr_ratio is not None)
+    if self.drift_settings.iqr_ratio is not None:
+      self.drift_iqr_ratio.ctr.SetValue(self.drift_settings.iqr_ratio)
+    self.drift_iqr_ratio.Enable(self.drift_settings.iqr_ratio is not None)
     for ctrl in (self.drift_origin, self.drift_color_by, self.drift_unit_cell):
       drift_controls.Add(ctrl, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT | wx.BOTTOM, border=5)
     drift_controls.Add(self.chk_drift_uncertainties, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT | wx.BOTTOM, border=15)
-    drift_controls.Add(self.chk_drift_reject_outliers, flag=wx.ALIGN_CENTER_VERTICAL | wx.BOTTOM, border=5)
+    drift_controls.Add(self.chk_drift_reject_outliers, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT | wx.BOTTOM, border=5)
+    drift_controls.Add(self.drift_iqr_ratio, flag=wx.ALIGN_CENTER_VERTICAL | wx.BOTTOM, border=5)
     self.drift_label = wx.StaticText(self.drift_page, label='')
     self.drift_figure = mpl.figure.Figure()
     self.drift_canvas = FigureCanvas(self.drift_page, -1, self.drift_figure)
@@ -3947,6 +3966,7 @@ class MergingStatsTab(BaseTab):
       self.Bind(wx.EVT_CHOICE, self.onDriftSettings, ctrl.ctr)
     self.Bind(wx.EVT_CHECKBOX, self.onDriftSettings, self.chk_drift_uncertainties)
     self.Bind(wx.EVT_CHECKBOX, self.onDriftSettings, self.chk_drift_reject_outliers)
+    self.Bind(EVT_FLOATSPIN, self.onDriftSettings, self.drift_iqr_ratio.ctr)
     self.Bind(wx.EVT_CHECKBOX, self.onChkAutoUpdate, self.chk_auto_update)
     self.plots_nb.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onPlotPageChanged)
 
@@ -3962,12 +3982,14 @@ class MergingStatsTab(BaseTab):
     e.Skip()
 
   def onDriftSettings(self, e):
+    reject_outliers = self.chk_drift_reject_outliers.GetValue()
+    self.drift_iqr_ratio.Enable(reject_outliers)
     # Rebind whole, never mutate: the sentinel reads this record
     self.drift_settings = DriftSettings(self.drift_origin.ctr.GetStringSelection(),
                                         self.drift_color_by.ctr.GetStringSelection(),
                                         self.drift_unit_cell.ctr.GetStringSelection(),
                                         self.chk_drift_uncertainties.GetValue(),
-                                        1.5 if self.chk_drift_reject_outliers.GetValue() else None)
+                                        self.drift_iqr_ratio.ctr.GetValue() if reject_outliers else None)
     self.drift_label.SetLabel('Reading...')
 
   def _plots_page_size(self):
@@ -4081,6 +4103,13 @@ class MergingStatsTab(BaseTab):
     self._draw_stats()
     self._draw_cosym()
     self._draw_drift()
+
+  def show_drift_progress(self, version_id, settings, done, total):
+    ''' Called from the sentinel, through CallAfter, before it reads a chunk:
+        show how far it is, unless the page has since moved on to another
+        version or other settings. '''
+    if version_id == self.drift_version_id and settings is self.drift_settings:
+      self.drift_label.SetLabel('Reading... (%d/%d chunks)' % (done, total))
 
   def _draw_drift(self):
     ''' Draw the sentinel's latest drift result, once per result. '''

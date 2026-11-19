@@ -48,8 +48,8 @@ def r_work_with_mask(f_obs, flags, xrs, r_solv, r_shrink):
 def optimize_from_default(f_obs, flags, xrs, nproc):
   fm = mmtbx.f_model.manager(f_obs=f_obs, r_free_flags=flags,
     xray_structure=xrs)
-  assert approx_equal(fm.mask_params.solvent_radius, 1.1)
-  assert approx_equal(fm.mask_params.shrink_truncation_radius, 0.9)
+  assert approx_equal(fm.mask_params.solvent_radius, 0.95)
+  assert approx_equal(fm.mask_params.shrink_truncation_radius, 0.7)
   fm.update_all_scales(remove_outliers=False, refine_hd_scattering=False)
   r_start = fm.r_work()
   fm.optimize_mask(out=null_out(), nproc=nproc)

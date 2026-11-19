@@ -1450,6 +1450,29 @@ def test_conformer_copy_occupancy_note():
     ("HB2", "occupancy differs from conformer",
      "occupancy 0.30, conformer 0.50")]
 
+def test_conformer_copy_record():
+  # a record of an H on a blank parent whose copies are in each conformer
+  # (reduce2 copies a supplied N-H of a dictionary NH3 into the split-CA
+  # conformers): each copy keeps its occupancy as placed, the record gives
+  # B; the parent's occupancy would count the site once per copy (1.0 + 1.0)
+  model = placed(pdb_pep_og_ab)
+  hb2 = [a for a in model.get_hierarchy().atoms() if
+         a.parent().resname == "SER" and a.name.strip() == "HB2"]
+  records = {hd_exchange.site_key(hb2[0], ""):
+    {"H": (0.3, 21.0, None), "D": (0.7, 31.0, None)}}
+  hb2_a = [a for a in hb2 if a.parent().altloc == "A"][0]
+  for occ_a in (0.5, 0.3):
+    hb2_a.set_occ(occ_a)
+    try:
+      h, r = run_option(model, "hd_and_h", records=records)
+    finally:
+      hb2_a.set_occ(0.5)
+    out = sorted((a.parent().altloc, a.occ, a.b) for a in h.atoms()
+      if a.parent().resname == "SER" and a.name.strip() == "HB2")
+    assert out == [("A", occ_a, 21.0), ("B", 0.5, 21.0)], out
+    assert r.n_restored == 2 and r.unused_records == [], (r.n_restored,
+      r.unused_records)
+
 # B16 repair fixtures, cut from deposited models (atoms with their H/D as
 # deposited; refused by reduce2 before the repairs)
 
@@ -2748,6 +2771,7 @@ if __name__ == "__main__":
   test_repeated_labels_restore()
   test_water_names_follow_content()
   test_conformer_copy_occupancy_note()
+  test_conformer_copy_record()
   test_rekey_records()
   test_repair_split()
   test_repair_split_refused()

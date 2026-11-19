@@ -180,8 +180,6 @@ class fmodels(object):
     ...
     """
     if log is None: log = self.log
-    fast=True
-    if(params.mode=="slow"): fast=False
     from mmtbx.refinement import print_statistics
     print_statistics.make_header("updating all scales", out = log)
     self.update_xray_structure(update_f_calc = True, update_f_mask = True,
@@ -196,7 +194,6 @@ class fmodels(object):
         update_f_part1       = update_f_part1,
         remove_outliers      = remove_outliers,
         params               = params,
-        fast                 = fast,
         log                  = log,
         show                 = True,
         optimize_mask        = optimize_mask,
@@ -211,7 +208,6 @@ class fmodels(object):
         update_f_part1       = update_f_part1,
         remove_outliers      = remove_outliers,
         params               = params,
-        fast                 = fast,
         log                  = log,
         show                 = True,
         optimize_mask        = optimize_mask,

@@ -3881,22 +3881,22 @@ filter.algorithm = unit_cell
 filter.unit_cell.value.relative_length_tolerance = 0.1
 select.algorithm = significance_filter
 select.significance_filter.sigma = 0.1
-scaling.model = %s
+scaling.model = None
 scaling.resolution_scalar = 0.96
 merging.d_min = 1.5
 merging.merge_anomalous = True
 statistics.n_bins = 20
 output.save_experiments_and_reflections = True
-""" % DATASET_SHARED_MODEL_DEFAULT
+"""
 
 DATASET_MERGING_DEFAULT_PHIL = """
 dispatch.step_list = input model_scaling statistics_unitcell statistics_beam model_statistics statistics_resolution group errors_merge statistics_intensity merge statistics_intensity_cxi
-scaling.model = %s
+scaling.model = None
 scaling.resolution_scalar = 0.96
 statistics.n_bins = 20
 merging.d_min = 1.5
 merging.merge_anomalous = True
-""" % DATASET_SHARED_MODEL_DEFAULT
+"""
 
 DATASET_PHENIX_TEMPLATE = """phenix.command <PREVIOUS_TASK_MTZ>
 # The first line above is the command to run (edit it). These keywords are
@@ -4508,11 +4508,14 @@ class DatasetStagePanel(wx.Panel):
       if mm24_needs_correlation:
         model_lines += "\nmerging.error.model = errors_from_sample_residuals"
     else:
-      model_lines = ("scaling.model = %s\n"
-                     "scaling.unit_cell = None\n"
+      # A blank shared model means each stage keeps its own scaling.model, set
+      # with Edit PHIL; stages may then use different references, say when one
+      # of them reindexes to abc.
+      model_lines = ("scaling.unit_cell = None\n"
                      "scaling.space_group = None\n"
-                     "scaling.algorithm = mark0"
-                     % (s['model'] or 'None'))
+                     "scaling.algorithm = mark0")
+      if s['model']:
+        model_lines = "scaling.model = %s\n" % s['model'] + model_lines
     if t == 'scaling':
       # Two mutually exclusive unit-cell filter modes. Emit both algorithm keys
       # either way so switching modes overwrites the other in the working scope.
@@ -4992,13 +4995,26 @@ class DatasetDialog(BaseDialog):
     model = p.scaling.model
     uc = p.scaling.unit_cell
     sg = p.scaling.space_group
+    # Stages that disagree on the model keep their own: show the shared field
+    # blank so that committing does not overwrite them with one of them.
+    models = set()
+    for s in self.stages:
+      if s.task_type in ('scaling', 'merging') and s.working_phil_scope is not None:
+        try:
+          models.add(s.working_phil_scope.extract().scaling.model or None)
+        except Exception:
+          pass
+    if len(models) > 1:
+      model = ''
+    elif not model and uc is None and src.task is None:
+      model = DATASET_SHARED_MODEL_DEFAULT  # stages seeded from the defaults carry no model
     self.shared_model.ctr.SetValue(model or "")
     if uc is not None:
       self.shared_unit_cell.ctr.SetValue(str(uc).strip('()'))
     if sg is not None:
       self.shared_space_group.ctr.SetValue(str(sg))
     # A stored model means "known"; a stored cell with no model means "unknown".
-    if model:
+    if model or len(models) > 1:
       self.model_mode_radio.known.SetValue(1)
     elif uc is not None:
       self.model_mode_radio.unknown.SetValue(1)
@@ -5215,17 +5231,13 @@ class DatasetDialog(BaseDialog):
 
     # Reference model / symmetry: cctbx.xfel.merge requires exactly one of a
     # reference model, or both a unit cell and a space group.
-    needs_model = any(s.is_enabled() and s.task_type in ('scaling', 'merging')
-                      for s in self.stages)
-    if needs_model:
-      sv = self.get_shared_values()
-      if sv['model_mode'] == 'known':
-        if not sv['model']:
-          return ('Select a reference model, or choose "No reference model" '
-                  'and provide a unit cell and space group.')
-      elif not sv['unit_cell'] or not sv['space_group']:
-        return ('No reference model selected: provide both a unit cell and a '
-                'space group (these can be pre-filled from the trial).')
+    sv = self.get_shared_values()
+    model_stages = [s for s in self.stages
+                    if s.is_enabled() and s.task_type in ('scaling', 'merging')]
+    if model_stages and sv['model_mode'] == 'unknown' and (
+        not sv['unit_cell'] or not sv['space_group']):
+      return ('No reference model selected: provide both a unit cell and a '
+              'space group (these can be pre-filled from the trial).')
 
     # Validate every enabled PHIL-backed stage before touching the database.
     for s in self.stages:
@@ -5233,6 +5245,21 @@ class DatasetDialog(BaseDialog):
         msg = s.push_scope()
         if msg is not None:
           return msg + '\nFix the parameters and press OK again'
+
+    # With the shared model left blank every scaling and merging stage must
+    # carry its own, set with Edit PHIL.
+    if sv['model_mode'] == 'known' and not sv['model']:
+      for s in model_stages:
+        try:
+          model = s.working_phil_scope.extract().scaling.model
+        except Exception:
+          model = None
+        if not model:
+          return ('Stage %d (%s) has no reference model.\nEnter a shared '
+                  'reference model, set scaling.model for the stage with Edit '
+                  'PHIL, or choose "No reference model" and provide a unit cell '
+                  'and space group.'
+                  % (self.stages.index(s) + 1, DATASET_STAGE_LABELS.get(s.task_type, s.task_type)))
 
     # Consecutive stages of one type with the same parameters (two identical
     # merging stages, say) would resolve to the same task, which a dataset can

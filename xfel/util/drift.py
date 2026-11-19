@@ -649,14 +649,18 @@ class ExplicitDriftScraper(BaseDriftScraper):
   these from its database. Results are cached per combining phil in `cache`,
   a dict the caller may persist, keyed by path and keeping the refined
   experiments' modification time, so a later scrap re-reads only chunks that
-  are new or have changed."""
+  are new or have changed. `progress`, if given, is called as progress(done,
+  total) before each chunk that has to be read, done being its position in
+  the entries; chunks served from the cache report nothing."""
   input_kind = None  # not selectable through scrap.input.kind
 
   def __init__(self, table: DriftTable, parameters,
-               entries: Sequence[Tuple[str, dict]], cache: dict = None) -> None:
+               entries: Sequence[Tuple[str, dict]], cache: dict = None,
+               progress: Callable[[int, int], None] = None) -> None:
     super().__init__(table=table, parameters=parameters)
     self.entries = list(entries)
     self.cache = cache if cache is not None else {}
+    self.progress = progress
     self.failures: List[Tuple[str, str]] = []  # (combine_phil_path, why it was skipped)
 
   @staticmethod
@@ -666,12 +670,14 @@ class ExplicitDriftScraper(BaseDriftScraper):
     return max(mtimes) if mtimes else -1.
 
   def scrap(self) -> None:
-    for combine_phil_path, metadata in self.entries:
+    for done, (combine_phil_path, metadata) in enumerate(self.entries):
       mtime = self.refined_mtime(combine_phil_path)
       cached = self.cache.get(combine_phil_path)
       if cached is not None and cached[0] == mtime:
         self.scrap_results.append(cached[1])
         continue
+      if self.progress is not None:
+        self.progress(done, len(self.entries))
       try:
         self.scrap_dict = dict(metadata)
         refined_expts, refined_refls = self.locate_refined_expts_refls(combine_phil_path)

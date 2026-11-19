@@ -3392,7 +3392,14 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
   else:
     print("Optimizing center position...type is %s" %(ncs_info), file = out)
 
-  if len(ncs_info.split())>1 and ncs_info.split()[1] == '(a)':
+  # The symmetry that was found is picked by name from the generated list
+  # below. two_fold_along_x only limits what is generated: (a) and (b) follow
+  # it for D, O and I, but not for T, so all T settings are generated.
+  is_point_group = symmetry.upper().startswith('D') or \
+    symmetry.upper() in ('T', 'O', 'I')
+  if symmetry.upper() == 'T':
+    two_fold_along_x = None
+  elif len(ncs_info.split())>1 and ncs_info.split()[1] == '(a)':
     two_fold_along_x = True
   elif len(ncs_info.split())>1 and ncs_info.split()[1] == '(b)':
     two_fold_along_x = False
@@ -3420,6 +3427,10 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
   else:
     n_range = 6
     k_range = range(0,1)
+    # Dihedral and polyhedral centers can affect operators along z.
+    # Cyclic and helical operators are invariant to axial center shifts.
+    if is_point_group:
+      k_range = range(-4,5)
     i_range = range(-4,5)
     j_range = range(-4,5)
     scale_x = 1
@@ -3445,7 +3456,19 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
        out = null_out(),
        )
       if ncs_list:
-        ncs_obj = ncs_list[0]
+        ncs_obj = None
+        for candidate in ncs_list:
+          name = candidate.get_ncs_name()
+          if name and name.strip() == ncs_info.strip():
+            ncs_obj = candidate
+            break
+        if ncs_obj is None and is_point_group:
+          # Never score another setting in place of the one that was found
+          print("Symmetry %s could not be regenerated; center not optimized"
+            %(ncs_info.strip()), file = out)
+          return best_center, best_cc_avg, best_score, best_ncs_obj
+        if ncs_obj is None:
+          ncs_obj = ncs_list[0]
         score, cc_avg = score_ncs_in_map(map_data = map_data, ncs_object = ncs_obj,
           identify_ncs_id = identify_ncs_id,
           ncs_in_cell_only = ncs_in_cell_only,
@@ -4894,7 +4917,8 @@ def get_bounds_for_au_box(params,
 
   # write out closest_sites to match original position
   coordinate_offset = -1*matrix.col(box.shift_cart)
-  write_atoms(file_name = 'one_au.pdb', # PDB OK just writing out atoms
+  if params.output_files.write_output_maps:
+    write_atoms(file_name = 'one_au.pdb', # PDB OK just writing out atoms
       crystal_symmetry = box_crystal_symmetry, sites = closest_sites+coordinate_offset)
 
   unique_closest_sites = closest_sites.deep_copy()
@@ -5489,6 +5513,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
           crystal_symmetry = crystal_symmetry,
           ncs_object = ncs_obj,
           wrapping = wrapping,
+          write_output_files = params.output_files.write_output_maps,
           upper_bounds = upper_bounds, log = out)
         box.map_box = box.map_box.as_double()  # Do we need double?
         shifted_unique_closest_sites = unique_closest_sites+box.shift_cart
@@ -8163,9 +8188,12 @@ def write_output_files(params,
         matrix.col(map_data.origin())-matrix.col((1, 1, 1)))
 
 
+  box_buffer = params.output_files.box_buffer
+  if box_buffer is None: # same as in adjust_bounds
+    box_buffer = 0
   print("\nMaking two types of maps for AU of NCS mask and map with "+\
       "buffer of %d grid units \nin each direction around AU" %(
-      params.output_files.box_buffer), file = out)
+      box_buffer), file = out)
   if params.output_files.write_output_maps:
    print("Both types of maps have the same origin and overlay on %s" %(
    os.path.join(tracking_data.params.output_files.output_directory,
@@ -8402,7 +8430,8 @@ def iterate_search(params,
   new_params.segmentation.density_threshold = None
   new_params.output_files.write_output_maps = False
   new_params.output_files.output_info_file = None
-  if params.output_files.write_intermediate_maps:
+  if params.output_files.write_intermediate_maps and \
+      params.output_files.au_output_file_stem:
     new_params.output_files.au_output_file_stem = \
       params.output_files.au_output_file_stem+"_cycle_2"
   else:
@@ -10294,8 +10323,8 @@ def split_boxes(lower = None, upper = None, target_size = None, target_n_overlap
     #                 ts*n_box-offset*(n_box-1) = n approx
     #             n_box (ts-offset) +offset = n
     #             n_box =  (n-offset)/(ts-offset)
-    assert ts>target_n_overlap
     if fix_target_size_and_overlap:
+      assert ts>target_n_overlap
       n_box = (n-target_n_overlap-1)/(ts-target_n_overlap)
       if n_box>int(n_box):
         n_box = int(n_box)+1

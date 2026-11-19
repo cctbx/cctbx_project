@@ -128,10 +128,11 @@ def crystal_symmetry_to_ncs(crystal_symmetry=None):
     trans_orth.append(t_orth_inv)
     ncs_center_orth.append(c_value)
 
-    chain_residue_id= [
-        len(r_orth)*[None],
-        len(r_orth)*[[]]
-        ]
+  # One entry for each operator (not for each element of a matrix)
+  chain_residue_id= [
+      len(ncs_rota_matr)*[None],
+      len(ncs_rota_matr)*[[]]
+      ]
 
   ncs_obj=ncs()
   ncs_obj.import_ncs_group(
@@ -3151,6 +3152,24 @@ class ncs_group:
     for i1,i2 in zip(sorted_indices,range(n)):
       self._rota_matrices[i2]=rota_matrices_sav[i1]
       self._translations_orth[i2]=translations_orth_sav[i1]
+    # Keep the center and the other information for each operator with it
+    #  (new lists are made as the existing ones may be shared)
+    def reorder(values):
+      if isinstance(values,list) and len(values)==n:
+        return [values[i1] for i1 in sorted_indices]
+      return values
+    self._centers=reorder(self._centers)
+    self._rmsd_list=reorder(self._rmsd_list)
+    self._residues_in_common_list=reorder(self._residues_in_common_list)
+    if isinstance(self._chain_residue_id,list) and \
+        len(self._chain_residue_id)==2:
+      self._chain_residue_id=[reorder(x) for x in self._chain_residue_id]
+    # Keep the saved one-step operators pointing at the same operators
+    for key in ['helix_oper_forwards','helix_oper_reverse',
+        'helix_oper_identity']:
+      i1=getattr(self,key,None)
+      if i1 is not None and i1 in sorted_indices:
+        setattr(self,key,sorted_indices.index(i1))
     self.delete_inv() # remove the inv matrices/rotations so they regenerate
     if len(self._rota_matrices)<2:
       self._helix_theta=None
@@ -3206,6 +3225,9 @@ class ncs_group:
     is_helical=True
     rota_matrices_sav=deepcopy(self._rota_matrices)
     translations_orth_sav=deepcopy(self._translations_orth)
+    # sorting replaces these lists and leaves the saved ones as they were
+    other_sav=[self._centers,self._rmsd_list,self._residues_in_common_list,
+      self._chain_residue_id]
     sorted_indices=self.sort_by_z_translation(tol_z=tol_z)
 
     offset_list=[]
@@ -3247,6 +3269,8 @@ class ncs_group:
     sys.stdout.flush()
     self._rota_matrices=rota_matrices_sav
     self._translations_orth=translations_orth_sav
+    [self._centers,self._rmsd_list,self._residues_in_common_list,
+      self._chain_residue_id]=other_sav
     self.delete_inv() # remove the inv matrices/rotations so they regenerate
     if is_helical:
       self._have_helical_symmetry=True
@@ -3417,9 +3441,9 @@ class ncs_group:
   def helix_rt_reverse(self):
     """Return r and t for moving one reverse in a helix"""
     assert self._have_helical_symmetry
-    if not hasattr(self,'helix_oper_reverse') or not self.helix_oper_reverse:
-      if not hasattr(self,'helix_oper_forwards') or \
-         not self.helix_oper_forwards: # no info, quit
+    # NOTE: an operator index of 0 is valid; only None means not available
+    if getattr(self,'helix_oper_reverse',None) is None:
+      if getattr(self,'helix_oper_forwards',None) is None: # no info, quit
         return None,None
       else: # generate from forwards:
         r_forwards,t_forwards=self.helix_rt_forwards()
@@ -3435,9 +3459,9 @@ class ncs_group:
   def helix_rt_forwards(self):
     """Return r and t for moving one forwards in a helix"""
     assert self._have_helical_symmetry
-    if not hasattr(self,'helix_oper_forwards') or not self.helix_oper_forwards:
-      if not hasattr(self,'helix_oper_reverse') or \
-         not self.helix_oper_reverse: # no info, quit
+    # NOTE: an operator index of 0 is valid; only None means not available
+    if getattr(self,'helix_oper_forwards',None) is None:
+      if getattr(self,'helix_oper_reverse',None) is None: # no info, quit
         return None,None
       else: # generate from reverse:
         r_reverse,t_reverse=self.helix_rt_reverse()

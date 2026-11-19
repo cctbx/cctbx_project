@@ -107,6 +107,8 @@ show_actions = {
    "tardy" : "SA",
    "sacart" : "SA",
    "xyzrec" : "xyz",
+   "xyzrec_wc" : "xyz",
+   "xyz_qrefine" : "xyz",
    "adp" : "adp",
    "occ" : "occ",
    "fp_fdp" : "anom",

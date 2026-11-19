@@ -354,141 +354,309 @@ class xh_connectivity_table2(object):
           self.table.setdefault(ih).append(p.i_seqs)
 
 class restraints_scale_manager(object):
+  """
+  Individual scaling of bond and angle restraint weights depending on how much
+  a restraint deviates from its ideal value and on the local map quality
+  (density_rank, see scale()).
+
+  Scale factors are kept here per restraint, by the i_seqs of its atoms, for
+  as long as the model lives (select() gives a manager for the selected
+  model). They are not a part of the restraints: apply() multiplies the
+  weights of matching restraints by them and remove() sets the weights
+  back. Between remove() and apply() restraints can be changed or re-made in
+  any way. Atoms are identified by their labels as well, so scale factors of
+  atoms that are not at their place anymore are dropped.
+
+  Only restraints of covalent geometry are scaled (not hydrogen bond, metal
+  coordination, link and other restraints of different origin), and only
+  those that do not involve H or D, are not symmetry (asu) bonds, and are the
+  only restraint of their atom pair or triplet.
+  """
+
+  # Density rank separating weak (<) from strong (>=) density.
+  density_rank_threshold = 0.5
+  # Deviations from ideal: (tighten if larger [weak, strong density],
+  #                         loosen if smaller [weak, strong density]).
+  bond_limits  = group_args(outlier = (0.03, 0.04), good = (0.010, 0.015))
+  angle_limits = group_args(outlier = (3.0,  5.0),  good = (1.5,   1.5))
+  # Weight multipliers.
+  repeat_outlier_factor = 2.     # outlier that was already scaled once
+  loosen_factor_weak    = 1./1.5 # good geometry, weak density
+  loosen_factor_strong  = 1./4   # good geometry, strong density
 
   def __init__(self, model):
-    self.model         = model
-    self.hd_selection  = model.get_xray_structure().hd_selection()
-    self.total_bonds   = 0
-    self.total_angles  = 0
-    self.uc            = model.crystal_symmetry().unit_cell()
-    g                  = self.model.get_restraints_manager().geometry
+    self.model = model
+    # Scale factors: {i_seqs: scale}, see bond_key() and angle_key()
+    self.bond_scales  = {}
+    self.angle_scales = {}
+    # Restraints that were scaled as outliers at least once
+    self.bond_outliers  = set()
+    self.angle_outliers = set()
+    # Labels of atoms at the time scale factors were last updated
+    self.atom_ids = None
+    self.n_dropped = 0
+    # Weights before apply(), None if scale factors are not applied
+    self._table_weights = None # {i_seqs: weight}, bond params table
+    self._bond_weights  = None # {i_seqs: weight}, bond proxies
+    self._angle_weights = None # {i_seqs: weight}, angle proxies
+
+  @staticmethod
+  def bond_key(i_seqs):
+    i, j = i_seqs
+    if i > j: return (j, i)
+    return (i, j)
+
+  @staticmethod
+  def angle_key(i_seqs):
+    i, j, k = i_seqs
+    if i > k: return (k, j, i)
+    return (i, j, k)
+
+  def applied(self):
+    return self._table_weights is not None
+
+  def is_empty(self):
+    return len(self.bond_scales) == 0 and len(self.angle_scales) == 0
+
+  def _geometry(self):
+    return self.model.get_restraints_manager().geometry
+
+  def _bond_proxies(self, update):
+    """
+    Simple bond proxies: up to date with current coordinates (update=True) or
+    whatever the restraints manager has now, if anything.
+    """
+    g = self._geometry()
+    if update:
+      return g.get_all_bond_proxies(
+        sites_cart = self.model.get_sites_cart())[0]
+    if g._pair_proxies is None or g._pair_proxies.bond_proxies is None:
+      return []
+    return g._pair_proxies.bond_proxies.simple
+
+  def _angle_proxies(self):
+    proxies = self._geometry().angle_proxies
+    if proxies is None: return []
+    return proxies
+
+  # Origin of restraints that can be scaled
+  origin_id = linking_class().get_origin_id("covalent geometry")
+
+  def _unique(self, proxies, key_function):
+    """
+    {key: proxy} for proxies of covalent geometry with keys that occur once
+    among all proxies.
+    """
+    result = {}
+    repeated = set()
+    for proxy in proxies:
+      key = key_function(proxy.i_seqs)
+      if key in result: repeated.add(key)
+      result[key] = proxy
+    for key in repeated: del result[key]
+    for key in list(result.keys()):
+      if result[key].origin_id != self.origin_id: del result[key]
+    return result
+
+  def _drop_moved_atoms(self):
+    """
+    Drop scale factors that involve atoms that are not where they were when
+    the scale factors were set (atoms were added, removed or re-ordered
+    without select() of this manager being used).
+    """
+    if self.atom_ids is None: return
+    atoms = self.model.get_hierarchy().atoms()
+    n = min(atoms.size(), len(self.atom_ids))
+    cache = {}
+    def same(i_seq):
+      if not i_seq in cache:
+        cache[i_seq] = i_seq < n and \
+          atoms[i_seq].id_str() == self.atom_ids[i_seq]
+      return cache[i_seq]
+    for scales, outliers in [(self.bond_scales,  self.bond_outliers),
+                             (self.angle_scales, self.angle_outliers)]:
+      for key in list(scales.keys()):
+        if not all([same(i_seq) for i_seq in key]):
+          del scales[key]
+          self.n_dropped += 1
+      for key in list(outliers):
+        if not all([same(i_seq) for i_seq in key]):
+          outliers.remove(key)
+    self.atom_ids = [a.id_str() for a in atoms]
+
+  def _scale_one(self, delta, rank, limits, factor, outliers, key):
+    """
+    Weight multiplier for one restraint. delta: absolute deviation from ideal,
+    rank: mean density rank of atoms involved (0: weakest, 1: strongest).
+    """
+    assert 0 <= rank <= 1, rank
+    strong = rank >= self.density_rank_threshold
+    result = 1
+    if delta > limits.outlier[strong]:
+      if key in outliers:
+        result = self.repeat_outlier_factor
+      else:
+        result = factor
+        outliers.add(key)
+    # Note: rank equal to the threshold counts as strong density for the
+    # outlier limit and as weak density here.
+    if rank > self.density_rank_threshold:
+      if delta < limits.good[1]: result = self.loosen_factor_strong
+    else:
+      if delta < limits.good[0]: result = self.loosen_factor_weak
+    return result
+
+  def scale(self, factor, density_rank):
+    """
+    Update scale factors using current coordinates.
+
+    factor: weight multiplier for restraints that deviate too much from ideal
+            (applied once per restraint, repeat_outlier_factor after that).
+    density_rank: per atom value between 0 (weakest density) and 1 (strongest
+            density), flex.double of the size of the model. Values for H and D
+            are not used.
+    """
+    assert density_rank.size() == self.model.size()
+    was_applied = self.applied()
+    if was_applied: self.remove()
+    self._drop_moved_atoms()
+    hd_selection = self.model.get_hd_selection()
     # BONDS
-    self.original_bond_weights = flex.double()
-    self.current_bond_weights  = flex.double()
-    bond_proxies_simple, asu = g.get_all_bond_proxies(
-      sites_cart = self.model.get_sites_cart())
-    for proxy in bond_proxies_simple:
-      self.total_bonds+=1
-      self.original_bond_weights.append(proxy.weight)
-      self.current_bond_weights.append(proxy.weight)
-    self.scale_counts_bonds = flex.int(self.original_bond_weights.size(), 0)
-    # ANGLES
-    self.original_angle_weights = flex.double()
-    self.current_angle_weights  = flex.double()
-    for proxy in g.angle_proxies:
-      self.total_angles+=1
-      self.original_angle_weights.append(proxy.weight)
-      self.current_angle_weights.append(proxy.weight)
-    self.scale_counts_angles = flex.int(self.original_angle_weights.size(), 0)
-
-  def scale_bonds(self, factor, cutoff, second_factor=2, one_time_scale=None):
-    g = self.model.get_restraints_manager().geometry
-    bond_proxies_simple, asu = g.get_all_bond_proxies(
-      sites_cart = self.model.get_sites_cart())
+    unit_cell = self.model.crystal_symmetry().unit_cell()
     sites_frac = self.model.get_sites_frac()
-    for k, proxy in enumerate(bond_proxies_simple):
-      i_seq, j_seq = proxy.i_seqs
-      if self.hd_selection[i_seq] or self.hd_selection[j_seq]: continue
-      dist_ideal = proxy.distance_ideal
-      dist_model = self.uc.distance(sites_frac[i_seq], sites_frac[j_seq])
-      delta = abs(dist_ideal-dist_model)
-
-      ots = 0
-      for it in [one_time_scale[i_seq],
-                 one_time_scale[j_seq]]:
-        ots += it
-        assert it >=0 and it <= 1, it
-      ots = ots/2
-
-      consensus_scale = 1
-
-      OTS_THRESHOLD = 0.5 # 929
-
-      #if ots < 0.6: cutoff = 0.02 # 925a2
-      #else:         cutoff = 0.03 # 925a2
-
-      if ots < OTS_THRESHOLD: cutoff = 0.03 # 926
-      else:                   cutoff = 0.04 # 926
-
-      if delta > cutoff:
-        if self.scale_counts_bonds[k]==0:
-          consensus_scale = factor
-          self.scale_counts_bonds[k] += 1
-        else:
-          consensus_scale = second_factor
-
-      #if delta < 0.01 and ots > 0.6:          # 926
-      #  consensus_scale = 1./second_factor**2 # 926
-      #if delta < 0.01 and ots <= 0.6:         # 926
-      #  consensus_scale = 1./1.5              # 926
-
-      #if delta < 0.015 and ots > 0.6:          # 927
-      #  consensus_scale = 1./second_factor**2  # 927
-      #if delta < 0.015 and ots <= 0.6:         # 927
-      #  consensus_scale = 1./1.5               # 927
-
-      if delta < 0.015 and ots > OTS_THRESHOLD:          # 928
-        consensus_scale = 1./second_factor**2  # 928
-      if delta < 0.010 and ots <= OTS_THRESHOLD:         # 928
-        consensus_scale = 1./1.5               # 928
-
-      proxy.weight = proxy.weight * consensus_scale
-      self.current_bond_weights[k] = proxy.weight
-
-  def scale_angles(self, factor, cutoff, second_factor=2, one_time_scale=None):
-    g = self.model.get_restraints_manager().geometry
+    proxies = self._unique(self._bond_proxies(update = True), self.bond_key)
+    for key, proxy in proxies.items():
+      i, j = proxy.i_seqs
+      if hd_selection[i] or hd_selection[j]: continue
+      delta = abs(proxy.distance_ideal -
+        unit_cell.distance(sites_frac[i], sites_frac[j]))
+      scale = self._scale_one(
+        delta    = delta,
+        rank     = (density_rank[i] + density_rank[j])/2,
+        limits   = self.bond_limits,
+        factor   = factor,
+        outliers = self.bond_outliers,
+        key      = key)
+      if scale != 1:
+        self.bond_scales[key] = self.bond_scales.get(key, 1) * scale
+    # ANGLES
     sites_cart = self.model.get_sites_cart()
-    for k, proxy in enumerate(g.angle_proxies):
-      i_seq,j_seq,k_seq = proxy.i_seqs
-      if self.hd_selection[i_seq] or self.hd_selection[j_seq] or self.hd_selection[k_seq]: continue
-      angle_ideal = proxy.angle_ideal
-      sites = (sites_cart[i_seq], sites_cart[j_seq], sites_cart[k_seq])
-      angle_model = geometry.angle(sites).angle_model
-      delta = abs(angle_ideal-angle_model)
+    proxies = self._unique(self._angle_proxies(), self.angle_key)
+    for key, proxy in proxies.items():
+      i, j, k = proxy.i_seqs
+      if hd_selection[i] or hd_selection[j] or hd_selection[k]: continue
+      angle_model = geometry.angle(
+        (sites_cart[i], sites_cart[j], sites_cart[k])).angle_model
+      delta = abs(proxy.angle_ideal - angle_model)
+      scale = self._scale_one(
+        delta    = delta,
+        rank     = (density_rank[i] + density_rank[j] + density_rank[k])/3,
+        limits   = self.angle_limits,
+        factor   = factor,
+        outliers = self.angle_outliers,
+        key      = key)
+      if scale != 1:
+        self.angle_scales[key] = self.angle_scales.get(key, 1) * scale
+    self.atom_ids = [a.id_str() for a in self.model.get_hierarchy().atoms()]
+    if was_applied: self.apply()
 
-      OTS_THRESHOLD = 0.5 # 929
+  def apply(self):
+    """
+    Multiply weights of restraints by their scale factors, until remove().
+    Bond weights are set both in the bond params table and in the existing
+    bond proxies, so they stay if the restraints manager re-generates the
+    proxies from the table.
+    """
+    if self.applied(): return
+    self._drop_moved_atoms()
+    self._table_weights, self._bond_weights, self._angle_weights = {}, {}, {}
+    table = self._geometry().bond_params_table
+    for key, scale in self.bond_scales.items():
+      params = table.lookup(key[0], key[1])
+      if params is None or params.origin_id != self.origin_id: continue
+      self._table_weights[key] = params.weight
+      params.weight = params.weight * scale
+    for scales, proxies, saved in [
+        (self.bond_scales,
+         self._unique(self._bond_proxies(update = False), self.bond_key),
+         self._bond_weights),
+        (self.angle_scales,
+         self._unique(self._angle_proxies(), self.angle_key),
+         self._angle_weights)]:
+      for key, proxy in proxies.items():
+        scale = scales.get(key)
+        if scale is None: continue
+        saved[key] = proxy.weight
+        proxy.weight = proxy.weight * scale
 
-      ots = 0
-      for it in [one_time_scale[i_seq],
-                 one_time_scale[j_seq],
-                 one_time_scale[k_seq]]:
-        ots += it
-        assert it >=0 and it <= 1, it
-      ots = ots/3
+  def remove(self):
+    """
+    Set the weights back to what they were before apply().
+    """
+    if not self.applied(): return
+    table = self._geometry().bond_params_table
+    for key, weight in self._table_weights.items():
+      params = table.lookup(key[0], key[1])
+      if params is not None: params.weight = weight
+    # Bond proxies re-generated since apply() have the weights of the table:
+    # the weight from the table (if saved) is the one to set back then.
+    bond_weights = dict(self._table_weights)
+    bond_weights.update(self._bond_weights)
+    for proxies, saved in [
+        (self._unique(self._bond_proxies(update = False), self.bond_key),
+         bond_weights),
+        (self._unique(self._angle_proxies(), self.angle_key),
+         self._angle_weights)]:
+      for key, proxy in proxies.items():
+        weight = saved.get(key)
+        if weight is not None: proxy.weight = weight
+    self._table_weights, self._bond_weights, self._angle_weights = [None]*3
 
-      consensus_scale = 1
-      if ots < OTS_THRESHOLD: cutoff = 3.0
-      else:                   cutoff = 5.0
-      if delta > cutoff:
-        if self.scale_counts_angles[k]==0:
-          consensus_scale = factor
-          self.scale_counts_angles[k] += 1
-        else:
-          consensus_scale = second_factor
-      if delta < 1.5 and ots > OTS_THRESHOLD:
-        consensus_scale = 1./second_factor**2
-      if delta < 1.5 and ots <= OTS_THRESHOLD:
-        consensus_scale = 1./1.5
-      proxy.weight = proxy.weight * consensus_scale
-      self.current_angle_weights[k] = proxy.weight
-
-  def unscale(self):
-    g = self.model.get_restraints_manager().geometry
-    bond_proxies_simple, asu = g.get_all_bond_proxies(
-      sites_cart = self.model.get_sites_cart())
-    for k, proxy in enumerate(bond_proxies_simple):
-      proxy.weight = self.original_bond_weights[k]
-    for k, proxy in enumerate(g.angle_proxies):
-      proxy.weight = self.original_angle_weights[k]
-
-  def rescale(self):
-    g = self.model.get_restraints_manager().geometry
-    bond_proxies_simple, asu = g.get_all_bond_proxies(
-      sites_cart = self.model.get_sites_cart())
-    for k, proxy in enumerate(bond_proxies_simple):
-      proxy.weight = self.current_bond_weights[k]
-    for k, proxy in enumerate(g.angle_proxies):
-      proxy.weight = self.current_angle_weights[k]
+  def select(self, selection, model):
+    """
+    Manager for the selected model (model = self.model.select(selection)).
+    If scale factors are applied now they are applied in the result too
+    (selected restraints have the weights of the restraints they are made
+    from).
+    """
+    assert selection.size() == self.model.size()
+    self._drop_moved_atoms()
+    new_i_seq = [-1]*selection.size()
+    n = 0
+    for i_seq, flag in enumerate(selection):
+      if flag:
+        new_i_seq[i_seq] = n
+        n += 1
+    def new_key(key):
+      result = tuple([new_i_seq[i_seq] for i_seq in key])
+      if -1 in result: return None
+      return result
+    def select_dict(d):
+      if d is None: return None
+      result = {}
+      for key, value in d.items():
+        k = new_key(key)
+        if k is not None: result[k] = value
+      return result
+    def select_set(s):
+      result = set()
+      for key in s:
+        k = new_key(key)
+        if k is not None: result.add(k)
+      return result
+    result = restraints_scale_manager(model = model)
+    result.bond_scales    = select_dict(self.bond_scales)
+    result.angle_scales   = select_dict(self.angle_scales)
+    result.bond_outliers  = select_set(self.bond_outliers)
+    result.angle_outliers = select_set(self.angle_outliers)
+    result.n_dropped      = self.n_dropped
+    if self.atom_ids is not None:
+      result.atom_ids = [id_str for id_str, flag
+        in zip(self.atom_ids, selection) if flag]
+    result._table_weights = select_dict(self._table_weights)
+    result._bond_weights  = select_dict(self._bond_weights)
+    result._angle_weights = select_dict(self._angle_weights)
+    return result
 
 class manager(object):
   """
@@ -2449,13 +2617,15 @@ class manager(object):
         "    - Provide custom monomer definitions for the affected residues.")
     #
     if(make_restraints):
+      # Scale factors of restraints (if any) are kept but not applied to the
+      # new restraints, see _get_rsm(). Parts of the old restraints can be
+      # re-used for the new ones, so the scale factors are taken off first.
+      self.remove_restraints_scale()
       self._setup_restraints_manager(
         pdb_interpretation_params = pdb_interpretation_params,
         grm_normalization         = grm_normalization,
         plain_pairs_radius        = plain_pairs_radius,
         run_clash_guard           = run_clash_guard)
-      if self.crystal_symmetry() is not None:
-        self.rsm = restraints_scale_manager(model = self)
     #
     if self._processed_pdb_file:
       self._clash_guard_msg = self._processed_pdb_file.clash_guard(
@@ -2615,25 +2785,61 @@ class manager(object):
     return len(self.missing_atoms_by_residue(
       include_hydrogens = include_hydrogens)) == 0
 
-  def scale_restraints(self, factor, bond_cutoff, angle_cutoff, one_time_scale):
-    if self.rsm is None: return
-    if abs(factor)<1.e-9: return
-    self.rsm.scale_bonds(
-      factor         = factor,
-      cutoff         = bond_cutoff,
-      one_time_scale = one_time_scale)
-    self.rsm.scale_angles(
-      factor         = factor,
-      cutoff         = angle_cutoff,
-      one_time_scale = one_time_scale)
+  def _get_rsm(self):
+    """
+    Restraints scale manager, created at first use. Available for a model with
+    restraints and crystal symmetry.
+    """
+    if self.restraints_manager is None or self.crystal_symmetry() is None:
+      return None
+    if self.rsm is None:
+      self.rsm = restraints_scale_manager(model = self)
+    return self.rsm
 
-  def unscale_restraints(self):
-    if self.rsm is None: return
-    self.rsm.unscale()
+  def scale_restraints(self, factor, density_rank):
+    """
+    Update scale factors of weights of individual bond and angle restraints,
+    see restraints_scale_manager.scale(). They are used only between
+    apply_restraints_scale() and remove_restraints_scale(). Return False if
+    nothing was done.
+    """
+    rsm = self._get_rsm()
+    if rsm is None: return False
+    if abs(factor)<1.e-9: return False
+    rsm.scale(factor = factor, density_rank = density_rank)
+    return True
 
-  def rescale_restraints(self):
-    if self.rsm is None: return
-    self.rsm.rescale()
+  def apply_restraints_scale(self):
+    """
+    Multiply weights of individual bond and angle restraints by their scale
+    factors (see scale_restraints) until remove_restraints_scale() is called.
+    Return False if nothing was done.
+    """
+    rsm = self._get_rsm()
+    if rsm is None or rsm.is_empty(): return False
+    rsm.apply()
+    return True
+
+  def remove_restraints_scale(self):
+    """
+    Undo apply_restraints_scale(). The scale factors are kept.
+    """
+    if self.rsm is None or self.restraints_manager is None: return False
+    self.rsm.remove()
+    return True
+
+  def show_restraints_scale(self, log, prefix=""):
+    """
+    One line about scale factors of individual restraints, if any.
+    """
+    rsm = self.rsm
+    if rsm is None or rsm.is_empty(): return
+    print("%sIndividually scaled restraints: bonds: %d angles: %d"%(
+      prefix, len(rsm.bond_scales), len(rsm.angle_scales)), end="", file=log)
+    if rsm.n_dropped > 0:
+      print(" (dropped because atoms changed: %d)"%rsm.n_dropped, end="",
+        file=log)
+    print(file=log)
 
   def has_atoms_in_special_positions(self, selection, log=None):
     pdb_hierarchy = self.get_hierarchy()
@@ -3974,7 +4180,8 @@ class manager(object):
     Remove bond length outliers and steric clashes with the smallest shift
     of the model, for example to make it fit for a QM calculation.
 
-    Bond outliers (|z| > bond_z_max) and clashes (nonbonded overlap more
+    Bond outliers (|z| > bond_z_max; a bond to a coordinated metal: more
+    than 0.5 A shorter than ideal) and clashes (nonbonded overlap more
     than clash_overlap_max A, with symmetry mates too) are found with the
     geometry restraints. Without any the model is not changed, unless
     force is set. Otherwise the residues within shell_radius (A) of a
@@ -4745,6 +4952,8 @@ class manager(object):
       log                        = self.log)
     new.restraints_manager = new_restraints_manager
     new._xray_structure    = xrs_new
+    if self.rsm is not None and new_restraints_manager is not None:
+      new.rsm = self.rsm.select(selection = selection, model = new)
     new.tls_groups = sel_tls
     new._model_number = self._model_number
     new._info = deepcopy(self._info)

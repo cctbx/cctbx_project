@@ -21,7 +21,7 @@ from datetime import datetime
 from libtbx.program_template import ProgramTemplate
 from libtbx import group_args, phil, Auto
 from libtbx.str_utils import make_sub_header
-from libtbx.utils import Sorry, null_out, peak_memory_usage, human_readable_size
+from libtbx.utils import Sorry, Abort, null_out, peak_memory_usage, human_readable_size
 import mmtbx
 from mmtbx.probe import Helpers
 from iotbx import pdb, cli_parser
@@ -29,7 +29,7 @@ from iotbx.pdb import altloc_completion
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.hydrogens import hd_exchange
 from mmtbx.hydrogens import capping
-from mmtbx.reduce import Optimizers
+from mmtbx.reduce import Optimizers, HisCharges
 from scitbx.array_family import flex
 from iotbx.pdb import common_residue_names_get_class, amino_acid_codes, nucleic_acid_codes
 from mmtbx.programs import probe2
@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.17.0"
+version = "3.23.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -93,35 +93,7 @@ water_hydrogens
             positions keep their site symmetry either way. Ignored without a \
             unit cell and space group, or with a placeholder cell such as \
             CRYST1 1 1 1.
-  refine
-    .short_caption = Refinement sweeps
-  {
-    max_sweeps = 5
-      .type = int(value_min=0)
-      .short_caption = Maximum refinement sweeps
-      .help = Maximum refinement sweeps, each placing every water again. \
-              0 turns refinement off.
-    tolerance = 1
-      .type = int(value_min=0)
-      .short_caption = Early-stop tolerance
-      .help = Stop once a sweep removes fewer than this many H-H contacts \
-              under 2.0 A. 0 runs all max_sweeps.
-  }
-  basin
-    .short_caption = Basin-hopping
-  {
-    rounds = 0
-      .type = int(value_min=0)
-      .short_caption = Basin-hopping rounds
-      .help = Basin-hopping rounds after refinement: each turns the waters \
-              that still clash to random orientations, refines them and \
-              keeps any improvement. 0 turns it off.
-  }
-  cluster_search = False
-    .type = bool
-    .short_caption = Joint search over water clusters
-    .help = Choose the orientations of each cluster of H-bonded waters \
-            jointly, after refinement and basin-hopping.
+  include scope mmtbx.hydrogens.water_protonation.placement_phil_str
 }
 use_neutron_distances = False
   .type = bool
@@ -175,6 +147,40 @@ non_flip_preference = 0.5
   .type = float
   .short_caption = Preference to not flip
   .help = For flip movers, only do the flip if the score in the flipped orientation is this much better.
+reconcile_his_charges = Auto
+  .type = bool
+  .short_caption = One charge for His across conformers (Auto: with qmready=True)
+  .help = Auto: True with qmready=True (a model for QM needs one total \
+          charge for all conformers), False otherwise. A His whose conformers end the optimization with different ring \
+          protonation (charge +1 with HD1 and HE2, 0 with one of them) is \
+          given one charge where the scores allow it (his_conformers=charge, \
+          as described here, or one state, see his_conformers): the \
+          conformers are set to the cheaper charge (at most 0.5 in total, neutral when the \
+          scores do not separate them), the passes are run again with that \
+          state fixed, and the change is kept only if the His and its \
+          neighbours lose at most 0.5 (otherwise the first result is \
+          written). A His bound to a metal, with an ion at the flipped ring \
+          or with a protonation set by the user keeps its charges. One whose \
+          conformers cannot all be scored or whose ring is partly split is \
+          left unchanged. Reruns are capped per model, each limited to the \
+          search time allowed to the first run. Listed in the description \
+          file (His charges across conformers). his_conformers chooses one \
+          charge or one state. Experimental.
+his_conformers = *Auto charge state
+  .type = choice(multi=False)
+  .short_caption = His conformers: one charge or one state (Auto: state with qmready=True)
+  .help = What reconcile_his_charges gives the conformers of a His. Auto: \
+          state with qmready=True, charge otherwise. charge: one charge (+1 \
+          or 0) where it costs at most 0.5, and the conformers may keep \
+          different tautomers (HD1 or HE2). state: one ring-H state (HD1, \
+          HE2, or both) for all conformers, also when they have the same \
+          charge, without a cost limit: a cost above 0.5 is a warning in the \
+          log and the description file. Without evidence, or when the costs \
+          tie, a neutral state is chosen, HE2 before HD1. Each conformer keeps \
+          its ring orientation from the first run (no flip is used to reach \
+          the state). The exceptions of reconcile_his_charges (metal, ion at \
+          the flipped ring, protonation set by the user, partly split or \
+          unscorable ring) apply to both.
 skip_bond_fix_up = False
   .type = bool
   .short_caption = Skip fixup step for Movers that are flips
@@ -207,10 +213,18 @@ ignore_missing_restraints = False
   .type = bool
   .short_caption = Don't stop if restraints for a residue are missing.
   .help = Don't stop if restraints for a residue are missing (otherwise every approach except remove stops). With approach=optimize such a residue is left exactly as in the input, also with a neutron_option (its H/D are not converted), and is listed in the log and the description file. With approach=add or place and keep_existing_H=True, its existing H/D are kept unchanged and it is listed in the log and the description file. With keep_existing_H=False it gets no H and is listed in the log.
-treat_cliques_as_singletons_after_seconds = 1.0e10
+treat_cliques_as_singletons_after_seconds = 1800
   .type = float
   .short_caption = Treat cliques as singletons after this many seconds
-  .help = Once the program has run for this many seconds, handle any ongoing or new cliques as singletons.  Note that for many runs most of the time is spent on PDB interpretation and Mover placement, which will not be cut short. Fine optimizations are completed after coarse optimizations cease.
+  .help = Once this many seconds have passed since the start of the optimization (all models together, Mover placement included), handle any ongoing or new cliques as singletons and skip the clique polish. A last resort: max_clique_search and clique_search_seconds stop a hard clique well before it. Note that for many runs most of the time is spent on PDB interpretation and Mover placement, which will not be cut short. Fine optimizations are completed after coarse optimizations cease. None: no limit.
+max_clique_search = 1e6
+  .type = float
+  .short_caption = Largest search of one clique
+  .help = A clique whose search would take more work than this (state combinations scored plus subsets tried to find cuts, counted from the clique's interaction graph before searching) is optimized as singletons, with a warning in the log and the description file. The count does not depend on the computer. A clique too large to count (its cut searches alone visit more than 5e6 Movers) is optimized as singletons too, whatever this limit, unless it is None. Cliques of normal models count at most about 1.5e4, so the default leaves them unchanged. None: no limit, the full search (it can take hours and tens of GB for some large cliques).
+clique_search_seconds = 120
+  .type = float
+  .short_caption = Search time of one clique
+  .help = A backstop for the search time of one clique: past it, the part of the clique still to search is optimized as singletons, with a warning. Some steps of the search are not checked, so a clique can run past it. The cliques of normal models take at most about 1 s, so the default leaves them unchanged. None: no limit. For the full search set this and max_clique_search to None (and raise treat_cliques_as_singletons_after_seconds).
 qmready = False
   .type = bool
   .short_caption = Run with custom preset options suitable for QM
@@ -1112,6 +1126,12 @@ def _NamesByConformer(atom_groups, keep=None):
 _ACID_H_DIHEDRAL = {'ASP': ('CB', 'CG', 'OD2', 'HD2'),
                     'GLU': ('CG', 'CD', 'OE2', 'HE2')}
 
+def _HisFixedKey(atom):
+  # (model id, chain, resseq, icode) of a His atom
+  rg = atom.parent().parent()
+  return (rg.parent().parent().id.strip(), rg.parent().id.strip(), rg.resseq.strip(),
+    rg.icode.strip())
+
 class Program(ProgramTemplate):
   description = '''
 reduce2 version {}
@@ -1140,6 +1160,9 @@ NOTES:
   for the final alternate tested.  This may leave other alternates in sub-optimal configurations.
   When a single alternate is selected using alt_id= on the command line, everything is
   optimized a single time and for that configuration.
+  A residue that carries a single altloc and no blank atoms (e.g. a ligand copy given
+  altloc B in its own chain) is left out of the other alternates' passes, also with
+  alt_id=, unless every atom of it has occupancy >= 0.99.
 
   By default (add_flip_movers=False) no heavy atom moves: each His chooses HD1, HE2 or
   both in its input orientation, and Asn/Gln amides keep theirs. The flips that would
@@ -1148,6 +1171,16 @@ NOTES:
   metal binds only the flipped ring is listed with the metal (and its symmetry operator
   for a metal in a symmetry copy), also in the log. add_flip_movers=True makes the
   flips, with the flipped residues optimized together.
+
+  A His whose conformers end with different ring protonation (charge +1 and 0) is given
+  one charge where the scores allow it with reconcile_his_charges=True: the passes run
+  again with the His states fixed, and the change is kept only if the His and its
+  neighbours lose little (His charges across conformers, in the description file).
+  Auto, the default, turns it on with qmready=True, where different conformer charges
+  stop the run, and off otherwise: it costs reruns and changes His protonation.
+  his_conformers=Auto then gives every conformer one ring-H state with qmready=True
+  (state: HD1, HE2 or both, also for tautomers of the same charge, with no cost limit;
+  a large cost is a warning) and one charge otherwise (charge: at most 0.5).
 
   neutron_option writes a model for neutron refinement. Every option other than none
   switches on use_neutron_distances (qmready=True does too). Exchangeable H are H on a
@@ -1513,36 +1546,61 @@ NOTES:
     cs = reduce_hydrogen.contact_symmetry(self._output_cs)
     # placement works in H; the output writes the water H as this isotope
     isotope = hd_exchange.water_isotope(self.params.neutron_option)
+    def written(label):
+      # a water or water H label as the written model has it: DOD and D with
+      # D, HOH for a DOD with H
+      words = label.split(' ')
+      if isotope == 'D':
+        words[0] = 'DOD'
+        if len(words) > 3 and words[3].startswith('H'):
+          words[3] = words[3].replace('H', 'D', 1)
+      elif words[0] == 'DOD':
+        words[0] = 'HOH'
+      return ' '.join(words)
     root = self.model.get_hierarchy()
     n_before = root.atom_selection_cache().selection(
       "water and element H").count(True)
     # the placer takes one model: each model on its own
     models = list(root.models())
     partial = []
+    stats_lines = []
     for i, m in enumerate(models):
       single = root
       if len(models) > 1:
         root.remove_model(m)
         single = pdb.hierarchy.root()
         single.append_model(m)
+      states = []
       result = water_protonation.place_water_hydrogens(single,
         oh_length=oh_length, element='H', existing_h=w.existing_h,
         geometry='neutron' if use_neutron else 'xray', crystal_symmetry=cs,
         n_refine=w.refine.max_sweeps, refine_tol=w.refine.tolerance,
         n_basin=w.basin.rounds, cluster_search=w.cluster_search,
-        symmetry_mates=w.symmetry)
-      # the report names the waters as written, by model: DOD with D, and
-      # HOH for a DOD with H
+        symmetry_mates=w.symmetry,
+        on_state=(lambda label, stats: states.append((label, stats)))
+          if w.stats else None)
+      # the report names the waters as written, by model
       for rid, metal, action in result.partial_waters:
-        name, rest = rid.split(' ', 1)
-        if isotope == 'D':
-          name = 'DOD'
-        elif name == 'DOD':
-          name = 'HOH'
-        rid = name + ' ' + rest
+        rid = written(rid)
         if len(models) > 1:
           rid = '%s (model %s)' % (rid, m.id.strip())
         partial.append((rid, metal, action))
+      if states:
+        contacts = water_protonation.worst_water_clashes(single,
+          crystal_symmetry=cs if w.symmetry else None)
+        contacts = [(d, written(a), written(b)) for d, a, b in contacts]
+        lines = water_protonation.clash_report_lines(states,
+          result.kept_label,
+          w.basin.rounds > 0 and result.basin_rounds_run == 0, contacts)
+        if lines:
+          title = 'H-H contacts between waters'
+          if self.params.qmready:
+            # the geometry regularization moves the water H afterwards
+            title += ', as placed'
+          if len(models) > 1:
+            title += ' (model %s)' % m.id.strip()
+          stats_lines.append(title + ':')
+        stats_lines.extend(lines)
       if len(models) > 1:
         single.remove_model(m)
         root.insert_model(i, m)
@@ -1573,6 +1631,8 @@ NOTES:
               'kept': 'left as is'}
     for line in water_protonation.partial_water_lines(partial, labels,
         hydrogen=isotope):
+      text += line + '\n'
+    for line in stats_lines:
       text += line + '\n'
     text += self._RenameDodWithH()
     text += 'Time to place water H = {:.3f} sec\n'.format(time.time() - start)
@@ -1762,8 +1822,189 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
-  def _SuggestedFlipsText(self, flips):
+  def _HisFixedKeys(self):
+    # His whose conformers were set to one charge (reconcile_his_charges)
+    models = self.model.get_hierarchy().models()
+    out = set()
+    for m in getattr(self, '_hisCharges', None) or []:
+      for c in m['cases']:
+        if c.get('fixed'):
+          out.add((models[m['model']].id.strip(),) + tuple(c['key'][1:]))
+    return out
+
+  def _HisChargesHeader(self):
+    # the first words of the His section of the description file
+    if self.params.his_conformers == 'state':
+      return 'His protonation across conformers (one state, his_conformers=state)'
+    return 'His charges across conformers (reconcile_his_charges=True)'
+
+  def _HisChargesText(self, his, flips):
+    # :param his: Optimizer.getHisCharges().
     # :param flips: Optimizer.getSuggestedFlips().
+    # :return: the His charges across conformers section of the description
+    # file; its first line is also logged.
+    models = self.model.get_hierarchy().models()
+    sug = {}
+    for f in flips:
+      if f.kind == 'HisFlip' and f.gain is not None:
+        ag = f.atom.parent()
+        sug.setdefault(_HisFixedKey(f.atom), []).append(
+          '%s %.2f' % (ag.altloc.strip() or 'blank', f.gain))
+    q = HisCharges.charge_text
+    def charges(d):
+      return ' '.join('%s %s' % (c or 'blank', q(d[c])) for c in sorted(d))
+    cases = [c for m in his for c in m['cases']]
+    what = 'states' if self.params.his_conformers == 'state' else 'charges'
+    lines = ['%s: %d His with different %s, %d set to one %s' % (self._HisChargesHeader(),
+      len([c for c in cases if c['first']['kind'] != 'changed']), what,
+      len([c for c in cases if c.get('fixed')]), what[:-1])]
+    unreported = len([m for m in his if m.get('reportError')])
+    if unreported and unreported == len(his):
+      lines = ['%s: counts not available (the report could not be written)' % self._HisChargesHeader()]
+    elif unreported:
+      lines[0] += '; incomplete: %d model(s) not reported' % unreported
+    failed = len([m for m in his if m['code'] == HisCharges.FIRST_RUN_ERROR])
+    if failed:
+      lines[0] += '; %d model(s) not checked (error in the first run)' % failed
+    for m in his:
+      mid = models[m['model']].id.strip()
+      where = 'model %s ' % mid if len(models) > 1 else ''
+      if m.get('reportError'):
+        lines.append('  %sHis charges not reported: %s' % (where or 'model: ', m['reportError']))
+        continue
+      for c in m['cases']:
+        text = '  %sHis %s: %s' % (where, ' '.join(str(x) for x in c['key'][1:]).strip(),
+          charges(c['free']))
+        if c['final'] != c['free']:
+          text += ' -> %s' % charges(c['final'])
+        d = c['first']
+        if c.get('fixed'):
+          v = list(c['final'].values())[0]
+          text += '; set to %s %s' % ('state' if isinstance(v, str) else 'charge', q(v))
+        else:
+          text += '; ' + c['decision']
+        if d.get('target') is not None and d.get('costs'):
+          cost = d['costs'][str(d['target'])]
+          text += '; screen cost %.2f (%s)' % (cost['total'], ', '.join(
+            '%s %.2f' % (x or 'blank', p['cost']) for x, p in sorted(cost['per'].items())))
+        r = c.get('rerun')
+        if r is not None:
+          text += '; rerun cost %.2f (His %.2f, neighbours %.2f)' % (r['total'], r['his'], r['neighbours'])
+        k = (mid,) + tuple(c['key'][1:])
+        if k in sug:
+          text += '; suggested flip %s' % ', '.join(sug[k])
+        lines.append(text)
+        if c.get('warning'):
+          lines.append('  %sWarning: %s' % (where, c['warning']))
+      # one line per model, also without a rerun
+      text = '  %s%s; first run %.2f s' % (where or 'model: ', m['reason'], m['freeSeconds'])
+      if m['code'] == HisCharges.FIRST_RUN_ERROR:
+        text += '; rerun without reconciliation in %.2f s' % m['rerunSeconds']
+      elif m['code'] != HisCharges.NO_RERUN:
+        rej = {}
+        for why in m['rejected'].values():
+          rej[why] = rej.get(why, 0) + 1
+        text += ('; %d rerun(s), cap %d (max_runs %d), %.2f s (backstop %.2f s); rejected: %s; '
+          'unmatched Movers: %d; skipped checks: %d' % (m['reruns'], m['cap'], m['maxRuns'],
+          m['rerunSeconds'], m['backstopSeconds'],
+          ', '.join('%d %s' % (n, w) for w, n in sorted(rej.items())) or 'none',
+          m['unmatched'], sum(len(c.get('skipped') or []) for c in m['cases'])))
+      lines.append(text)
+    return '\n'.join(lines)
+
+  def _WithHisChargesHint(self, f):
+    # the total charge's Sorry (conformers with different charges, marked in
+    # electrons.py) gets the His charges hint; one plain Sorry, no chaining
+    try:
+      return f()
+    except Sorry as e:
+      if not getattr(e, 'conformer_charge_mismatch', False):
+        raise
+      hint = self._HisChargesHint()
+      r = Sorry(str(e) + ('\n' + hint if hint else ''))
+      r.conformer_charge_mismatch = True
+      raise r from None
+
+  def _HisWithDifferentRingH(self):
+    # 'chain resseq' of each His whose conformers have different numbers of
+    # ring H (HD1, HE2 or D), in the model as it is
+    out = []
+    models = self.model.get_hierarchy().models()
+    for model in models:
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          n = {}
+          for ag in rg.atom_groups():
+            if ag.resname.strip().upper() != 'HIS':
+              continue
+            n[ag.altloc] = len([a for a in ag.atoms() if a.name.strip().upper() in ('HD1', 'HE2', 'DD1', 'DE2')])
+          if len(n) > 1:
+            blank = n.pop('', 0)
+            if len(set(blank + x for x in n.values())) > 1:
+              text = ' '.join(x for x in (chain.id.strip(), rg.resseq.strip() + rg.icode.strip()) if x)
+              if len(models) > 1:
+                text = 'model %s %s' % (model.id.strip(), text)
+              if text not in out:
+                out.append(text)
+    return out
+
+  def _HisChargesHint(self):
+    # qmready: why His conformers kept different charges (reconcile_his_charges),
+    # from each His's category and the model's outcome code, never from text
+    out = []
+    if self.params.qmready and not self.params.reconcile_his_charges:
+      his = self._HisWithDifferentRingH()
+      if his:
+        out.append('His %s: conformer charges differ; reconcile_his_charges=True (the '
+          'default with qmready=True) gives a His one charge where the scores allow it'
+          % ', '.join(his))
+    for m in getattr(self, '_hisCharges', None) or []:
+      if m['code'] == HisCharges.FIRST_RUN_ERROR:
+        out.append('His charges were not reconciled: optimized again without reconciliation '
+          'after an error in the first run (%s); please report this' % m['detail'])
+      for c in m['cases']:
+        if len(set(HisCharges.state_charge(v) for v in c['final'].values())) < 2:
+          continue
+        where = 'His %s' % ' '.join(str(x) for x in c['key'][1:]).strip()
+        dec = c['decision']
+        if c['category'] == 'metal':
+          out.append('%s: conformer charges differ (%s; expected)' % (where, dec[len('kept: '):]))
+        elif c['category'] == 'restored' and m['code'] == HisCharges.INTERNAL:
+          out.append('%s: conformer charges differ: the first result was kept after an '
+            'internal error (%s); please report this' % (where, m['detail']))
+        elif c['category'] in ('unchanged', 'changed'):
+          out.append('%s: conformer charges differ (%s)' % (where, dec))
+        else:
+          out.append('reduce2 kept %s with different charges (%s); set a common state '
+            'with protonation { selection = ... state = ... }; a broader alternative '
+            '(changes all flip decisions): add_flip_movers=True' % (where, dec))
+    return '\n'.join(out)
+
+  def _CliqueLimits(self):
+    """The Optimizer's limits of one Clique's search, from the parameters."""
+    return dict(maxCliqueWork=self.params.max_clique_search,
+      cliqueSeconds=self.params.clique_search_seconds)
+
+  def _PrintCliqueLimits(self, opt):
+    """The flipkin runs: the Cliques whose search was limited, in the log."""
+    lines = [l for l in opt.getWarnings().split('\n') if l.startswith(Optimizers._CLIQUE_WARNING)]
+    if lines:
+      print(self._CliqueLimitText(lines), file=self.logger)
+
+  def _CliqueLimitText(self, lines):
+    """The Optimizer's warnings about Cliques whose search was limited, for the
+    log and the description, capped at 20 unless verbosity > 2."""
+    shown = lines if self.params.verbosity > 2 else lines[:20]
+    text = ('Warning: the search of {} Clique(s) was limited (max_clique_search, '
+      'clique_search_seconds, treat_cliques_as_singletons_after_seconds):\n'.format(len(lines)))
+    text += ''.join(' ' + l[len(Optimizers._CLIQUE_WARNING):] + '\n' for l in shown)
+    if len(shown) < len(lines):
+      text += ' ... {} more\n'.format(len(lines) - len(shown))
+    return text
+
+  def _SuggestedFlipsText(self, flips, fixed=frozenset()):
+    # :param flips: Optimizer.getSuggestedFlips().
+    # :param fixed: _HisFixedKeys(): His set to one charge, whose flip is marked.
     # :return: (the Suggested flips section of the description file, one log
     # line per His whose metal binds only the flipped ring).
     def _h(pose):
@@ -1810,6 +2051,8 @@ NOTES:
           where, -f.gain)
       if f.kind == 'HisFlip' and f.flipped is not None:
         text += ' (%s as chosen, %s flipped)' % (_h(f.chosen), _h(f.flipped))
+      if _HisFixedKey(f.atom) in fixed:
+        text += ' (state fixed by charge reconciliation)'
       if f.ion is not None:
         text += '; %s binds only the flipped ring' % _ion(f.ion)
         d = ''
@@ -2152,7 +2395,26 @@ NOTES:
     if self.params.neutron_option == 'none':
       raise Sorry('input contains deuterium; set neutron_option, or rebuild '
         'H: ' + self._RebuildHint())
-    self._ReinterpretModel(make_restraints=True)
+    try:
+      self._ReinterpretModel(make_restraints=True)
+    except Sorry as e:
+      # pdb_interpretation's nonbonded-type conflict at the shared N of a
+      # terminus that is NH3 in some conformers only (terminal_nh3 names):
+      # explained, original text kept. Every other Sorry unchanged (a
+      # scattering-type conflict there is the element column's).
+      text = str(e).strip()
+      head, _, atom = text.partition('atom:')
+      if head.splitlines()[0] != 'Conflicting nonbonded energy type symbols:':
+        raise
+      split = [line for label, line in
+        reduce_hydrogen.split_terminal_nh3_names(self.model.get_hierarchy(),
+        self.model.get_mon_lib_srv()) if label in atom]
+      if not split: raise
+      raise Sorry('Supplied H/D make an N terminus NH3 in some conformers '
+        'only, which cannot be interpreted with a shared N:\n  %s\n'
+        'Supply the terminal N-H/D under the same names in every conformer, '
+        'or rebuild them: %s\nOriginal error:\n%s' % ('\n  '.join(split),
+        self._RebuildHint(), text))
     skip = self._unrestrained.keys
     def checked_part(full):
       # the model without the residues left unchanged, and the full model's
@@ -2977,7 +3239,7 @@ NOTES:
         ('symmetry', w.symmetry), ('refine.max_sweeps', w.refine.max_sweeps),
         ('refine.tolerance', w.refine.tolerance),
         ('basin.rounds', w.basin.rounds),
-        ('cluster_search', w.cluster_search)):
+        ('cluster_search', w.cluster_search), ('stats', w.stats)):
       if value is None:
         raise Sorry('water_hydrogens.%s needs a value.' % name)
     diff = self.get_program_phil(diff=True)
@@ -3024,6 +3286,22 @@ NOTES:
         p.capping_guess_for_unknowns = False
       elif p.capping_guess_for_unknowns:
         raise Sorry('capping_guess_for_unknowns=True requires capping=True.')
+
+    # reconcile_his_charges: Auto follows qmready, which stops on conformers with
+    # different total charges; resolved here, so the Optimizers get a bool
+    if p.reconcile_his_charges is Auto:
+      p.reconcile_his_charges = bool(p.qmready and p.approach != 'remove')
+      if p.reconcile_his_charges:
+        print('qmready=True: reconcile_his_charges set to True (His conformers are '
+          'given one charge or one state, see his_conformers)', file=self.logger)
+    # his_conformers: Auto is one state with qmready (no cost limit: a QM run needs
+    # one protonation), one charge otherwise
+    # the default extracts as the string 'Auto', a typed Auto as libtbx.Auto; None as Auto
+    if p.his_conformers in (None, Auto, 'Auto'):
+      p.his_conformers = 'state' if p.qmready else 'charge'
+      if p.qmready and p.reconcile_his_charges:
+        print('qmready=True: his_conformers set to state (His conformers are given one '
+          'ring-H state; a cost above %.1f is a warning)' % HisCharges.BUDGET, file=self.logger)
 
     # One distance flag for the whole run: qmready and neutron_option place H
     # at neutron distances, so every later step must use them
@@ -3409,8 +3687,8 @@ NOTES:
         # but the desired model ID structure from the model.
         make_sub_header('Optimizing', out=self.logger)
         startOpt = time.time()
-        stopTime = 0.0
-        stopTime = startOpt + self.params.treat_cliques_as_singletons_after_seconds
+        stopTime = startOpt + (1.0e10 if self.params.treat_cliques_as_singletons_after_seconds is None
+          else self.params.treat_cliques_as_singletons_after_seconds)
         opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
           self.model, altID=self.params.alt_id,
           preferenceMagnitude=self.params.preference_magnitude,
@@ -3425,7 +3703,10 @@ NOTES:
           stopOptimizingAt = stopTime,
           symmetryCopies = symmetryCopies,
           fixedHisProtonation = self._FixedHisKeys(),
-          chooseHisProtonation = True)
+          chooseHisProtonation = True,
+          reconcileHisCharges = self.params.reconcile_his_charges is True,
+          reconcileHisStates = self.params.reconcile_his_charges is True and self.params.his_conformers == 'state',
+          **self._CliqueLimits())
         doneOpt = time.time()
         if opt.getSymmetryCopiesSummary():
           print(opt.getSymmetryCopiesSummary(), file=self.logger)
@@ -3448,12 +3729,36 @@ NOTES:
           lines.append('Warning: %d atoms have no energy type (element radius used, '
             'not H-bond acceptors) - %d residues: %s' % (
             len(no_info), len(residues), shown))
+        # one line per Clique whose search was limited, also in the description
+        cliques = [l for l in lines if l.startswith(Optimizers._CLIQUE_WARNING)]
+        if cliques:
+          lines = [l for l in lines if l not in cliques]
+          text = self._CliqueLimitText(cliques)
+          lines.append(text.rstrip('\n'))
+          outString += text
         warnings = '\n'.join(lines)
         if len(warnings) > 0:
           print('\nWarnings during optimization:\n'+warnings, file=self.logger)
         outString += opt.getInfo()
+        self._hisCharges = opt.getHisCharges()
+        if self.params.reconcile_his_charges:
+          # the optimized model is final here: an error in the report only warns
+          try:
+            text = self._HisChargesText(self._hisCharges, opt.getSuggestedFlips())
+          except (MemoryError, Abort):
+            raise
+          except Exception as e:
+            if Optimizers.Optimizer.hisChargesStrict:
+              raise
+            text = ('%s: could not be written: %s: %s' % (self._HisChargesHeader(),
+              type(e).__name__, e))
+            print('\nWarning: His charges: the description section could not be written: '
+              '%s: %s' % (type(e).__name__, e), file=self.logger)
+          print('\n' + text.split('\n')[0], file=self.logger)
+          outString += text + '\n'
         if not self.params.add_flip_movers:
-          text, metal = self._SuggestedFlipsText(opt.getSuggestedFlips())
+          text, metal = self._SuggestedFlipsText(opt.getSuggestedFlips(),
+            self._HisFixedKeys())
           lines = text.split('\n')
           shown = lines[0]
           if len(lines) > 1:
@@ -3563,16 +3868,16 @@ NOTES:
       if self.params.capping:
         # capping.cap_model: the records, the charge of the capped model
         # (the caps as sigma bonds) and the caps, shared with qrefine
-        r = capping.cap_model(qm_model,
+        r = self._WithHisChargesHint(lambda: capping.cap_model(qm_model,
           guess_for_unknowns    = self.params.capping_guess_for_unknowns,
           use_neutron_distances = self.params.use_neutron_distances,
           calculate_charge      = self.params.approach == 'add',
-          log                   = self.logger)
+          log                   = self.logger))
         if self.params.approach == 'add':
           self._ApplyTotalCharge(r.total_charge)
         outString += self._CapDanglingAtoms(qm_model, r)
       elif self.params.approach == 'add':
-        self._CalculateTotalCharge(qm_model)
+        self._WithHisChargesHint(lambda: self._CalculateTotalCharge(qm_model))
 
     # The model that is written and returned; self.model stays H-only for
     # the comparison and the flipkins.
@@ -3844,9 +4149,13 @@ NOTES:
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
             verbosity=3,
-            fixedHisProtonation = self._FixedHisKeys())
+            fixedHisProtonation = self._FixedHisKeys(),
+            reconcileHisCharges = self.params.reconcile_his_charges is True,
+            reconcileHisStates = self.params.reconcile_his_charges is True and self.params.his_conformers == 'state',
+            **self._CliqueLimits())
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
+          self._PrintCliqueLimits(opt)
           self._ReinterpretModel()
 
           # Get the other characteristics we need to know about each atom to do our work.
@@ -3968,9 +4277,13 @@ NOTES:
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
             verbosity=3,
-            fixedHisProtonation = self._FixedHisKeys())
+            fixedHisProtonation = self._FixedHisKeys(),
+            reconcileHisCharges = self.params.reconcile_his_charges is True,
+            reconcileHisStates = self.params.reconcile_his_charges is True and self.params.his_conformers == 'state',
+            **self._CliqueLimits())
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
+          self._PrintCliqueLimits(opt)
           self._ReinterpretModel()
 
           # Get the other characteristics we need to know about each atom to do our work.

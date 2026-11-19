@@ -2038,12 +2038,14 @@ class manager(object):
   def _build_h(self):
     """
     Add H to water (also to water in alternative conformations) at
-    difference map peaks. Water on special position gets no H.
+    difference map peaks. Water on special position gets no H. H that water
+    has already and that are not in density are moved to the peaks.
     """
     ahp = self.params.add_hydrogens
     if ahp.d_min is None: return
     if self._d_min() > ahp.d_min: return
     if self.fmodel.r_work() > ahp.r_work: return
+    self._move_misplaced_h()
     mpl = maptbx.MapPeakLocator(
       map_data    = self._get_maps().difference_map,
       unit_cell   = self.model.crystal_symmetry().unit_cell(),
@@ -2107,6 +2109,118 @@ class manager(object):
       self.new_solvent_selection = None
       self._labelled_selection = None
       self._saved_occ, self._saved_u_iso = None, None
+
+  def _difference_map_without(self, i_seqs):
+    """
+    Difference map computed with atoms i_seqs left out of the model.
+    """
+    xrs = self.model.get_xray_structure()
+    xrs_omit = xrs.deep_copy_scatterers()
+    xrs_omit.set_occupancies(value=0, selection=flex.size_t(i_seqs))
+    self.fmodel.update_xray_structure(
+      xray_structure = xrs_omit,
+      update_f_calc  = True,
+      update_f_mask  = True)
+    p = self.params
+    result = maps(
+      fmodel               = self.fmodel,
+      model                = self.model,
+      mask_atoms_selection = p.mask_atoms_selection,
+      difference_map_type  = p.primary_map_type,
+      model_map_type       = p.secondary_map_and_map_cc_filter.cc_map_1_type,
+      data_map_type        = p.secondary_map_and_map_cc_filter.cc_map_2_type
+      ).difference_map
+    self.fmodel.update_xray_structure(
+      xray_structure = xrs,
+      update_f_calc  = True,
+      update_f_mask  = True)
+    return result
+
+  def _move_misplaced_h(self):
+    """
+    Move H of water that are not at difference map peaks to the peaks.
+
+    Water that comes with two H is not given new H. Its H are refined as
+    individual atoms: if they point the wrong way they stay there, and their
+    occupancy refines to zero. Here H peaks are searched for such water in the
+    same way as for water without H, in a difference map computed without H
+    of water. If two peaks are found and an H is further than
+    add_hydrogens.min_dist from its peak, both H are moved to the peaks and
+    get occupancy of their O. H are left as they are if no two peaks are
+    found, and in filter_only mode (final clean up: no refinement follows).
+    """
+    if(self.params.mode == "filter_only"): return
+    ahp = self.params.add_hydrogens
+    self.model.get_hierarchy().atoms().reset_i_seq()
+    fixed = self._fixed_selection()
+    sst = self.model.get_xray_structure().site_symmetry_table()
+    waters = [] # (O atom, [H atom, H atom])
+    for rg in self.model.get_hierarchy().residue_groups():
+      if(not is_water_residue_group(rg)): continue
+      for ag in rg.atom_groups():
+        o_atoms, h_atoms = [], []
+        for atom in ag.atoms():
+          if(atom.element_is_hydrogen()): h_atoms.append(atom)
+          elif(atom.element.strip().upper()=="O"): o_atoms.append(atom)
+        if(len(o_atoms) != 1 or len(h_atoms) != 2): continue
+        if(fixed[o_atoms[0].i_seq]): continue
+        if(sst.is_special_position(i_seq=o_atoms[0].i_seq)): continue
+        # H (not D) is a negative peak in nuclear map
+        if(self.is_neutron_scat_table and
+           [a.element.strip().upper() for a in h_atoms].count("H") > 0):
+          continue
+        waters.append((o_atoms[0], h_atoms))
+    if(len(waters) == 0): return
+    h_i_seqs = []
+    for o_atom, h_atoms in waters:
+      for h in h_atoms: h_i_seqs.append(h.i_seq)
+    mpl = maptbx.MapPeakLocator(
+      map_data    = self._difference_map_without(i_seqs = h_i_seqs),
+      unit_cell   = self.model.crystal_symmetry().unit_cell(),
+      is_periodic = True)
+    sites_cart = self.model.get_sites_cart()
+    occupancies = self.model.get_occ()
+    used = {} # residue group -> H peaks taken by its other conformers
+    n_moved = 0
+    for o_atom, h_atoms in waters:
+      peak_sites, peak_heights = mpl.get_peaks_within_radius(
+        target_cart = o_atom.xyz,
+        R           = ahp.max_dist,
+        threshold   = ahp.diff_map_peak_threshold)
+      rg_id = o_atom.parent().parent().memory_id()
+      if(rg_id not in used): used[rg_id] = []
+      used_rg = used[rg_id]
+      sites_, heights_ = [], []
+      for s, h in zip(peak_sites, peak_heights):
+        taken = False
+        for u in used_rg:
+          if(abs(matrix.col(s)-matrix.col(u)) < 1.e-3): taken = True
+        if(not taken):
+          sites_.append(s)
+          heights_.append(h)
+      wo = find_water_hydrogens(
+        o_site       = o_atom.xyz,
+        peak_heights = heights_,
+        peak_coords  = sites_,
+        min_od       = ahp.min_dist,
+        max_od       = ahp.max_dist,
+        min_angle    = ahp.min_angle,
+        max_angle    = ahp.max_angle)
+      if(wo is None): continue
+      used_rg.extend(wo.h_sites)
+      # each H has the peak that makes the two H move least
+      a, b = [matrix.col(s) for s in wo.h_sites]
+      h1, h2 = [matrix.col(h.xyz) for h in h_atoms]
+      if(abs(h1-a)+abs(h2-b) > abs(h1-b)+abs(h2-a)): a, b = b, a
+      if(max(abs(h1-a), abs(h2-b)) < ahp.min_dist): continue # H are at peaks
+      for h, site in zip(h_atoms, [a, b]):
+        sites_cart[h.i_seq] = site.elems
+        occupancies[h.i_seq] = o_atom.occ
+      n_moved += 1
+    if(n_moved == 0): return
+    self.model.set_sites_cart(sites_cart = sites_cart)
+    self.model.set_occupancies(values = occupancies)
+    self.ma.add_and_show("  water with H moved to peaks: %d"%n_moved)
 
   def _get_maps(self):
     """
