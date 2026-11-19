@@ -55,7 +55,8 @@ DEFAULT_ANGLE_SIGMA_MAX = 15.0    # deg
 # Mass-weighted Cartesian Hessian eigenvalue (omega^2, in Hartree/(Bohr^2 amu))
 # -> harmonic wavenumber (cm^-1): nu = sqrt(omega^2) / (2 pi c). Derived from
 # CODATA constants so the factor is transparent and unit-checked (evaluates to
-# 5140.487 cm^-1, the standard value). A negative eigenvalue is an imaginary mode.
+# 5140.487 cm^-1, the standard value). A negative eigenvalue is an imaginary
+# mode.
 _HARTREE_J = 4.3597447222071e-18   # J
 _BOHR_M = 0.529177210903e-10       # m
 _AMU_KG = 1.66053906660e-27        # kg
@@ -67,10 +68,10 @@ HESS_EIGVAL_TO_CM = (math.sqrt(_HARTREE_J / (_BOHR_M ** 2 * _AMU_KG))
 # the band between it and 0 is treated as numerical noise / a benign soft mode.
 DEFAULT_IMAGINARY_THRESHOLD_CM = -50.0
 
-# One perturb-and-reoptimise kick along the imaginary mode (plan Sec 5F) moves the
-# mode's dominant atom by this much (Angstrom): enough to leave the saddle, small
-# enough (a few percent of an M-L bond) that the re-optimisation stays in the
-# nearby basin.
+# One perturb-and-reoptimise kick along the imaginary mode (plan Sec 5F) moves
+# the mode's dominant atom by this much (Angstrom): enough to leave the saddle,
+# small enough (a few percent of an M-L bond) that the re-optimisation stays in
+# the nearby basin.
 DEFAULT_PERTURB_STEP_A = 0.1
 
 
@@ -308,7 +309,8 @@ def seminario_sigmas(hessian, metal_iseq, donor_iseqs, opt_sites_cart,
       ``bond_sigmas`` {donor_iseq: sigma_A}, ``angle_sigmas``
       {frozenset({i, j}): sigma_deg}, ``angle_origins`` {frozenset({i, j}):
       ``hessian`` | ``seminario_fallback``} parallel to *angle_sigmas*, plus the
-      raw force constants ``bond_ks`` / ``angle_ks`` (for provenance / reporting).
+      raw force constants ``bond_ks`` / ``angle_ks`` (for provenance /
+      reporting).
   """
   if log is None:
     log = null_out()
@@ -336,23 +338,25 @@ def seminario_sigmas(hessian, metal_iseq, donor_iseqs, opt_sites_cart,
 
 
 def _mass_weighted_inner_block(hessian, iseqs, masses):
-  """The mass-weighted metal+donor Hessian sub-block and its per-DOF 1/sqrt(mass).
+  """The mass-weighted metal+donor Hessian sub-block and its per-DOF
+  1/sqrt(mass).
 
-  Gathers the 3m x 3m Cartesian block for atoms *iseqs* (m = len(iseqs)) from the
-  full *hessian* by a row-major flex ``select``, symmetrises it, and mass-weights
-  (``D H D`` with ``D = diag(1/sqrt(m))``, an outer-product elementwise multiply).
-  Returns ``(hw [flex dim x dim], inv_sqrt_m [flex dim])``.
+  Gathers the 3m x 3m Cartesian block for atoms *iseqs* (m = len(iseqs)) from
+  the full *hessian* by a row-major flex ``select``, symmetrises it, and
+  mass-weights (``D H D`` with ``D = diag(1/sqrt(m))``, an outer-product
+  elementwise multiply). Returns
+  ``(hw [flex dim x dim], inv_sqrt_m [flex dim])``.
 
   Only the metal+donor block is used (plan Sec 5F): those atoms were free during
-  the constrained opt, so this block is the exact second-order condition for that
-  constrained minimum. The clamped scaffold's non-stationarity lives only in the
-  discarded cross/scaffold blocks and cannot enter here; and because the scaffold
-  is clamped, the inner cluster's rigid translation/rotation is resisted, so there
-  are no trivial zero modes to project out."""
+  the constrained opt, so this block is the exact second-order condition for
+  that constrained minimum. The clamped scaffold's non-stationarity lives only
+  in the discarded cross/scaffold blocks and cannot enter here; and because the
+  scaffold is clamped, the inner cluster's rigid translation/rotation is
+  resisted, so there are no trivial zero modes to project out."""
   n3 = hessian.all()[0]
   dim = 3 * len(iseqs)
   dof = [3 * int(ip) + a for ip in iseqs for a in range(3)]     # 3m DOF indices
-  flat = flex.size_t([r * n3 + c for r in dof for c in dof])    # row-major picks
+  flat = flex.size_t([r * n3 + c for r in dof for c in dof])  # row-major picks
   sub = hessian.as_1d().select(flat)
   sub.reshape(flex.grid(dim, dim))
   sub = (sub + sub.matrix_transpose()) * 0.5                    # symmetrise
@@ -369,8 +373,8 @@ def _inner_eigensystem(hessian, iseqs, masses):
   perturbation can share it (both need the same eigenpairs).
 
   Returns ``group_args(vals, vecs, inv_sqrt_m, dim)``: *vals* the eigenvalues
-  (omega^2), *vecs* the flat eigenvector matrix, *inv_sqrt_m* the 1/sqrt(mass) per
-  DOF, *dim* = 3m."""
+  (omega^2), *vecs* the flat eigenvector matrix, *inv_sqrt_m* the 1/sqrt(mass)
+  per DOF, *dim* = 3m."""
   hw, inv_sqrt_m = _mass_weighted_inner_block(hessian, iseqs, masses)
   es = eigensystem.real_symmetric(hw)
   return group_args(vals=es.values(), vecs=es.vectors(),
@@ -382,7 +386,7 @@ def _frequencies_cm(vals):
   value marks an imaginary mode (omega^2 < 0)."""
   cm = flex.sqrt(flex.abs(vals)) * HESS_EIGVAL_TO_CM            # |nu| in cm^-1
   neg = vals < 0.0
-  cm.set_selected(neg, -cm.select(neg))                        # imaginary -> < 0
+  cm.set_selected(neg, -cm.select(neg))  # imaginary -> < 0
   return sorted(cm)
 
 
@@ -400,13 +404,15 @@ def inner_sphere_frequencies(hessian, iseqs, masses):
 def imaginary_mode_perturbation(hessian, metal_iseq, donor_iseqs, masses,
                                 sites_cart, step=DEFAULT_PERTURB_STEP_A,
                                 eigen=None):
-  """Perturb *sites_cart* along the most-imaginary inner-sphere mode (plan Sec 5F).
+  """Perturb *sites_cart* along the most-imaginary inner-sphere mode (plan Sec
+  5F).
 
-  Returns a new ``flex.vec3_double`` where only the metal+donor atoms move, along
-  the imaginary mode's Cartesian displacement (its mass-weighted eigenvector, un-
-  weighted per DOF), scaled so the mode's DOMINANT atom moves *step* Angstrom.
-  Deterministic (the eigenvector is fixed by the Hessian), so runs stay
-  reproducible; the sign is arbitrary (either direction escapes the saddle).
+  Returns a new ``flex.vec3_double`` where only the metal+donor atoms move,
+  along the imaginary mode's Cartesian displacement (its mass-weighted
+  eigenvector, un-weighted per DOF), scaled so the mode's DOMINANT atom moves
+  *step* Angstrom. Deterministic (the eigenvector is fixed by the Hessian), so
+  runs stay reproducible; the sign is arbitrary (either direction escapes the
+  saddle).
 
   *eigen*, when supplied (the ``eigen`` field of an :func:`imaginary_mode_check`
   result), reuses that diagonalisation instead of repeating it."""
@@ -417,14 +423,14 @@ def imaginary_mode_perturbation(hessian, metal_iseq, donor_iseqs, masses,
                                  eigen.inv_sqrt_m, eigen.dim)
   i_min = min(range(dim), key=lambda i: vals[i])               # most-imaginary
   q = flex.double([vecs[i_min * dim + k] for k in range(dim)])
-  dx = q * inv_sqrt_m                                           # mass-weighted -> Cartesian
+  dx = q * inv_sqrt_m  # mass-weighted -> Cartesian
   disp = [matrix.col((dx[3 * p], dx[3 * p + 1], dx[3 * p + 2]))
           for p in range(len(iseqs))]
   d_max = max(v.length() for v in disp)
   out = sites_cart.deep_copy()
   if d_max < 1e-12:
     return out
-  scale = step / d_max                                         # dominant atom -> step A
+  scale = step / d_max  # dominant atom -> step A
   for ip, v in zip(iseqs, disp):
     out[ip] = tuple(matrix.col(out[ip]) + v * scale)
   return out

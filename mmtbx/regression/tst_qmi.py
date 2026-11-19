@@ -171,8 +171,9 @@ ATOM      5  NE2 HIS A  94       0.000   2.000   0.000  1.00 10.00           N
 ATOM      6  NE2 HIS A  96       0.000   0.000   2.000  1.00 10.00           N
 """
 
-# Zn + a C-terminal Asp chelating via its BACKBONE carboxylate (O/OXT, symmetric)
-# + two His N. The coordinating pair is the main-chain O/OXT, not the sidechain.
+# Zn + a C-terminal Asp chelating via its BACKBONE carboxylate (O/OXT,
+# symmetric) + two His N. The coordinating pair is the main-chain O/OXT, not the
+# sidechain.
 _CTERM_CARBOX_PDB = """\
 CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
 HETATM    1 ZN    ZN A 262       0.000   0.000   0.000  1.00 10.00          ZN
@@ -223,8 +224,9 @@ ATOM      4  CG  ASP A  50       3.000   0.000   0.000  1.00 10.00           C
 ATOM      5  NE2 HIS A  94       0.000   2.000   0.000  1.00 10.00           N
 """
 
-# Zn + a His N donor (2 A) + a non-donor water O (4 A), for the coordination-mode
-# check: the test moves the metal-relative geometry to make one leave, one enter.
+# Zn + a His N donor (2 A) + a non-donor water O (4 A), for the
+# coordination-mode check: the test moves the metal-relative geometry to make
+# one leave, one enter.
 _MODE_PDB = """\
 CRYST1   60.000   60.000   60.000  90.00  90.00  90.00 P 1
 HETATM    1 ZN    ZN A 262       0.000   0.000   0.000  1.00 10.00          ZN
@@ -346,11 +348,14 @@ def exercise_classify_angle_sigmas():
   T = sigma.DEFAULT_TEMPERATURE_K
   ka, kb, kc, kd = (frozenset((0, 1)), frozenset((0, 2)),
                     frozenset((1, 2)), frozenset((0, 3)))
-  # a stiff (small sigma), b soft-but-trusted (larger sigma), c None, d sub-floor
-  s, o = sigma._classify_angle_sigmas({ka: 100.0, kb: 10.0, kc: None, kd: 1.0}, T)
+  # a stiff (small sigma), b soft-but-trusted (larger sigma), c None, d
+  # sub-floor
+  s, o = sigma._classify_angle_sigmas(
+    {ka: 100.0, kb: 10.0, kc: None, kd: 1.0}, T)
   assert o[ka] == "hessian" and approx_equal(s[ka], sigma.angle_sigma(100.0, T))
   assert o[kb] == "hessian" and approx_equal(s[kb], sigma.angle_sigma(10.0, T))
-  # contaminated c/d widen to the site's loosest trusted angle (b), never tighten
+  # contaminated c/d widen to the site's loosest trusted angle (b), never
+  # tighten
   assert o[kc] == "seminario_fallback" and s[kc] == s[kb]
   assert o[kd] == "seminario_fallback" and s[kd] == s[kb]
   assert s[kb] == max(s[ka], s[kb])
@@ -361,8 +366,8 @@ def exercise_classify_angle_sigmas():
 
 def exercise_emit_angles():
   """Angle-restraint gate (builder._emit_angles): 'auto' emits when the emitted
-  M-L bonds fail to pin the metal in 3D -- <=2 bonds (metal on a circle/line), or
-  >=3 bonds whose directions are (near-)coplanar (a planar shell with a soft
+  M-L bonds fail to pin the metal in 3D -- <=2 bonds (metal on a circle/line),
+  or >=3 bonds whose directions are (near-)coplanar (a planar shell with a soft
   out-of-plane mode). A 3D-spanning shell needs no angle. 'always'/'never'
   override."""
   def dirs(*vs):
@@ -395,11 +400,14 @@ def exercise_coordination_number():
   anisobidentate far O stays out, already excluded from cn)."""
   b = QMRestraintsBuilder(logger=null_out())
   # 2 His + monodentate Asp: no chelate -> denticity == effective cn.
-  assert b._coordination_number(group_args(cn=3, n_bidentate_carboxylate=0)) == 3
+  assert b._coordination_number(
+    group_args(cn=3, n_bidentate_carboxylate=0)) == 3
   # 2 His + chelating Glu: cn=3 (2 N + bisector), one chelate -> denticity 4.
-  assert b._coordination_number(group_args(cn=3, n_bidentate_carboxylate=1)) == 4
+  assert b._coordination_number(
+    group_args(cn=3, n_bidentate_carboxylate=1)) == 4
   # two chelates -> add both back.
-  assert b._coordination_number(group_args(cn=4, n_bidentate_carboxylate=2)) == 6
+  assert b._coordination_number(
+    group_args(cn=4, n_bidentate_carboxylate=2)) == 6
 
 
 def exercise_imaginary_mode():
@@ -418,7 +426,8 @@ def exercise_imaginary_mode():
   assert not chk.stable and len(chk.imaginary) == 1
   # magnitude: -0.02 Hartree/Bohr^2 on 14.007 amu -> ~ -194 cm^-1
   expect = -sigma.HESS_EIGVAL_TO_CM * math.sqrt(0.02 / 14.007)
-  assert approx_equal(chk.imaginary[0], expect, eps=1.0), (chk.imaginary[0], expect)
+  assert approx_equal(chk.imaginary[0], expect, eps=1.0), (
+    chk.imaginary[0], expect)
   # scaffold's -10 (which would be ~ -4700 cm^-1) is excluded by the sub-block
   assert min(chk.frequencies) > -300.0, chk.frequencies
   # sign convention: mass-weighting preserves the count of imaginary modes
@@ -440,10 +449,10 @@ def exercise_imaginary_mode():
 
 
 def exercise_perturb_reopt():
-  """Perturb-and-reoptimise orchestration (plan Sec 5F) with the QM layer stubbed
-  (no xTB): stable -> hessian; imaginary-then-stable -> reopt then hessian;
-  imaginary past the attempt budget -> conservative_fallback. Multiple attempts
-  escalate the kick and use a distinct namespace each time."""
+  """Perturb-and-reoptimise orchestration (plan Sec 5F) with the QM layer
+  stubbed (no xTB): stable -> hessian; imaginary-then-stable -> reopt then
+  hessian; imaginary past the attempt budget -> conservative_fallback. Multiple
+  attempts escalate the kick and use a distinct namespace each time."""
   b1 = QMRestraintsBuilder(perturb_attempts=1, logger=null_out())
   b3 = QMRestraintsBuilder(perturb_attempts=3, logger=null_out())
   model = _model(_ZN_SITE_PDB)
@@ -478,19 +487,19 @@ def exercise_perturb_reopt():
     _s, bs, _as, _ao, origin, npert = run(b1)
     assert origin == "hessian" and bs == {1: 0.02}
     assert calls["reopt"] == 0 and npert == 0
-    stability = iter([False, True])                        # imaginary -> reopt -> ok
+    stability = iter([False, True])  # imaginary -> reopt -> ok
     _s, bs, _as, _ao, origin, npert = run(b1)
     assert origin == "hessian" and calls["reopt"] == 1 and npert == 1
     assert hpre == ["qmi_hess", "qmi_reopt1_hess"], hpre   # distinct namespaces
-    stability = iter([False, False])                       # past the 1-attempt budget
+    stability = iter([False, False])  # past the 1-attempt budget
     _s, bs, _as, _ao, origin, npert = run(b1)
     assert origin == "conservative_fallback" and bs is None and npert == 1
-    stability = iter([False, False, True])                 # 3 attempts: imag,imag,ok
+    stability = iter([False, False, True])  # 3 attempts: imag,imag,ok
     _s, bs, _as, _ao, origin, npert = run(b3)
     assert origin == "hessian" and calls["reopt"] == 2 and npert == 2
     assert steps == [sigma.DEFAULT_PERTURB_STEP_A,         # escalating kick
                      2 * sigma.DEFAULT_PERTURB_STEP_A], steps
-    assert opre == ["qmi_reopt1", "qmi_reopt2"], opre      # distinct opt namespaces
+    assert opre == ["qmi_reopt1", "qmi_reopt2"], opre  # distinct opt namespaces
     assert hpre == ["qmi_hess", "qmi_reopt1_hess", "qmi_reopt2_hess"], hpre
   finally:
     (qm.run_hessian, qm.run_constrained_opt, sigma.read_xtb_hessian,
@@ -513,7 +522,8 @@ def exercise_provenance():
 
   st = provenance.settings_block(
     engine="orca", radius=4.0, free_radius=5.0,
-    freeze_waters="peripheral", freeze_far_carboxylate_o=False, optimise_all=False,
+    freeze_waters="peripheral", freeze_far_carboxylate_o=False,
+    optimise_all=False,
     optimise_hydrogens="free_atoms", optimisation="looser",
     hessian="xtb", basis_set=None, nproc=6)
   assert any(ln.startswith("region:") and "radius=4.0" in ln
@@ -527,7 +537,8 @@ def exercise_provenance():
   assert not any("basis=" in ln for ln in st)             # omitted when None
   stx = provenance.settings_block(                        # xTB: no ORCA knobs
     engine="xtb", radius=4.0, free_radius=5.0,
-    freeze_waters="peripheral", freeze_far_carboxylate_o=False, optimise_all=False,
+    freeze_waters="peripheral", freeze_far_carboxylate_o=False,
+    optimise_all=False,
     nproc=1)
   assert any(ln.startswith("engine: xtb") and "all non-cap H free" in ln
              and "nproc=1" in ln for ln in stx), stx
@@ -566,7 +577,7 @@ def exercise_sanity_bounds():
   bw = sanity.bvs_window("Zn", "N")
   assert bw is not None and bw[0] < bw[1], bw
   assert sanity.target_window("Zn", "C") is None       # no C target
-  assert sanity.bvs_window("Ca", "O") is None          # Ca not a predictor prior
+  assert sanity.bvs_window("Ca", "O") is None  # Ca not a predictor prior
   assert sanity.check_bond("Ca", "O", 2.4) == []       # out-of-scope: no crash
 
   # a typical bond passes; a dissociated / collapsed one trips both windows.
@@ -576,7 +587,8 @@ def exercise_sanity_bounds():
   assert sanity.check_bond("Cu", "S", 2.5) == []       # real Cu-Met(S) distance
 
   r = sanity.check_site("Zn", [("N", 2.05), ("O", 3.5), ("S", 1.5)])
-  assert r.n_atypical == 2 and r.n_implausible == 2, (r.n_atypical, r.n_implausible)
+  assert r.n_atypical == 2 and r.n_implausible == 2, (
+    r.n_atypical, r.n_implausible)
   assert len(r.details) == 2
 
   # provenance emits the flags when present, and nothing when clean.
@@ -639,7 +651,8 @@ def exercise_determine_frozen_atoms():
   buf = StringIO()
   qm.determine_frozen_atoms(w, seed_iseq=0, cap_iseqs=(), free_radius=5.0,
                             freeze_waters="all", log=buf)
-  assert "water O frozen (freeze_waters=all): 2" in buf.getvalue(), buf.getvalue()
+  assert "water O frozen (freeze_waters=all): 2" in buf.getvalue(), (
+    buf.getvalue())
 
 
 # ---------------------------------------------------------------------------
@@ -676,7 +689,8 @@ def exercise_coordination_cutoff():
   assert approx_equal(cordero('Zn', 'S'), 1.3 * (1.22 + 1.05), eps=1e-6)
   assert util.covalent_radius('Fe') == 1.52       # high-spin override
   assert util.covalent_radius('Mn') == 1.61
-  assert approx_equal(util.covalent_radius(' o '), 0.66, eps=1e-2)  # eltbx, any case
+  # eltbx, any case
+  assert approx_equal(util.covalent_radius(' o '), 0.66, eps=1e-2)
 
 
 def exercise_metal_ligand_restraints():
@@ -691,7 +705,8 @@ def exercise_metal_ligand_restraints():
   assert rr.n_skipped_symmetry == 0
   b0 = rr.bonds[0]
   assert approx_equal(b0["distance_ideal"], 2.0, eps=1e-3), b0   # His94 at 2.0
-  # no Seminario sigmas -> conservative M-L fallback (looser than covalent 0.02/3)
+  # no Seminario sigmas -> conservative M-L fallback (looser than covalent
+  # 0.02/3)
   assert restraints.DEFAULT_BOND_SIGMA == 0.05
   assert restraints.DEFAULT_ANGLE_SIGMA == 5.0
   assert b0["sigma"] == restraints.DEFAULT_BOND_SIGMA
@@ -727,7 +742,8 @@ def exercise_metal_ligand_restraints():
   assert len(rr3.angles) == 6          # all six emitted, none omitted
   fallback = [a for a in rr3.angles
               if a["sigma"] == restraints.DEFAULT_ANGLE_SIGMA]
-  assert len(fallback) == 1 and fallback[0]["sigma_origin"] == "conservative_fallback"
+  assert (len(fallback) == 1
+          and fallback[0]["sigma_origin"] == "conservative_fallback")
 
   # emit_angles=False -> bonds only, no angle restraints
   rr4 = restraints.metal_ligand_restraints(
@@ -767,7 +783,7 @@ def exercise_symmetry_donor_skip():
   assert sym.n_skipped_symmetry == 0 and len(sym.bonds) == 4 and not sym.angles
   assert all(b["symmetry_operation"] == "-x,-y,-z" for b in sym.bonds)
   edits = restraints.as_edits_phil(sym)
-  libtbx.phil.parse(edits)              # symmetry_operation renders as valid PHIL
+  libtbx.phil.parse(edits)  # symmetry_operation renders as valid PHIL
   assert edits.count("symmetry_operation = -x,-y,-z") == 4
   # A selection names the residue by resid, which carries the insertion code,
   # for a plain donor and for a symmetry-image donor's parent alike.
@@ -926,7 +942,8 @@ def exercise_program():
   p4 = master.extract(); p4.predict_only = True; p4.states = 'all'
   prog4 = Program(dm, p4, master_phil=master, logger=null_out())
   try:
-    prog4.validate(); raise AssertionError("expected Sorry on predict_only+scan")
+    prog4.validate()
+    raise AssertionError("expected Sorry on predict_only+scan")
   except Sorry as e:
     assert "predict_only" in str(e), str(e)
 
@@ -946,8 +963,8 @@ def exercise_program():
     "HETATM    8  H1  HOH A 263      -2.100  -1.700   0.000  1.00 10.00           H")
   assert prog5._has_unprotonated_water(_model(oh)) is False   # hydroxo, one H
   prog5._require_hydrogens(_model(oh))                         # no raise
-  # predict_only is QM-free -> validate() skips the hydrogen/water guard entirely
-  # (dm holds the bare-water _ZN_SITE_PDB).
+  # predict_only is QM-free -> validate() skips the hydrogen/water guard
+  # entirely (dm holds the bare-water _ZN_SITE_PDB).
   p6 = master.extract(); p6.predict_only = True
   Program(dm, p6, master_phil=master, logger=null_out()).validate()   # no raise
 
@@ -967,13 +984,15 @@ def exercise_state_override():
   assert st.oxidation_state == 2 and st.multiplicity == 1 and not st.skipped
   assert st.state_source == "guessed" and st.confidence == "high", st.confidence
   assert b._resolve_state("Mg", None, "octahedral", 6, None).multiplicity == 1
-  # Cu narrows by geometry: linear -> Cu(I) singlet; octahedral -> Cu(II) doublet.
+  # Cu narrows by geometry: linear -> Cu(I) singlet; octahedral -> Cu(II)
+  # doublet.
   assert b._resolve_state("Cu", None, "linear", 2, None).multiplicity == 1
   cu2 = b._resolve_state("Cu", None, "octahedral", 6, None)
   assert cu2.oxidation_state == 2 and cu2.multiplicity == 2
   # Mn commits the dominant Mn(II) default at low confidence (no discriminator).
   mn = b._resolve_state("Mn", None, "octahedral", 6, None)
-  assert mn.oxidation_state == 2 and mn.multiplicity == 6 and mn.confidence == "low"
+  assert (mn.oxidation_state == 2 and mn.multiplicity == 6
+          and mn.confidence == "low")
   # Fe is now COMMITTED, never skipped: with no donor summary the ferrous lean
   # commits Fe(II) high-spin at low confidence.
   fe = b._resolve_state("Fe", None, "octahedral", 6, None)
@@ -1012,7 +1031,8 @@ def exercise_state_override():
                   ms(selection="chain A and resseq 262", oxidation_state=3,
                      multiplicity=4)], logger=null_out())
   try:
-    b5._lookup_override(m, 0); raise AssertionError("expected Sorry on conflict")
+    b5._lookup_override(m, 0)
+    raise AssertionError("expected Sorry on conflict")
   except Sorry:
     pass
 
@@ -1026,7 +1046,8 @@ def exercise_state_override():
   assert st.oxidation_state == 3 and st.multiplicity == 6      # Fe(III) HS d5
   assert st.state_source == "bvs"                             # distinct tag
   assert st.oxidation_reason == "BVS most-likely" and st.confidence == "medium"
-  # A user oxidation still wins over BVS; no BVS estimate falls back to predictor.
+  # A user oxidation still wins over BVS; no BVS estimate falls back to
+  # predictor.
   st = bb._resolve_state("Fe", ms(oxidation_state=2), "octahedral", 6, None,
                          bvs_est=bvs3)
   assert st.oxidation_state == 2 and st.state_source == "user-supplied"
@@ -1087,7 +1108,8 @@ def exercise_shape_carboxylate():
   metal = iseqs(atoms, "ZN")[0]
   od1, od2 = iseqs(atoms, "OD1")[0], iseqs(atoms, "OD2")[0]
   ne2 = iseqs(atoms, "NE2")           # the two His N
-  # Symmetric bidentate Asp (both OD) + 2 N -> raw 4, effective 3, one bidentate.
+  # Symmetric bidentate Asp (both OD) + 2 N -> raw 4, effective 3, one
+  # bidentate.
   res = shape.classify_geometry(atoms, metal, [od1, od2] + ne2)
   assert res.raw_cn == 4 and res.cn == 3, (res.raw_cn, res.cn)
   assert res.n_bidentate_carboxylate == 1
@@ -1108,8 +1130,9 @@ def exercise_shape_carboxylate():
   assert r3.n_bidentate_carboxylate == 0
   assert "carboxylate_asymmetric" in r3.flags
 
-  # C-terminal Asp chelating via its BACKBONE carboxylate (O/OXT) collapses like a
-  # sidechain one, though keying the pair on resname alone would force OD1/OD2.
+  # C-terminal Asp chelating via its BACKBONE carboxylate (O/OXT) collapses like
+  # a sidechain one, though keying the pair on resname alone would force
+  # OD1/OD2.
   ct = _model(_CTERM_CARBOX_PDB).get_hierarchy().atoms()
   cm = iseqs(ct, "ZN")[0]
   co, coxt = iseqs(ct, "O")[0], iseqs(ct, "OXT")[0]
@@ -1158,7 +1181,8 @@ def exercise_electronic():
   assert el.is_encoded("square_planar", 8) and el.is_encoded("square_planar", 9)
   assert not el.is_encoded("square_planar", 5)
   assert el.is_encoded("trigonal_bipyramidal", 10)     # field-independent d10
-  assert not el.is_encoded("trigonal_bipyramidal", 5)  # field-dependent -> fallback
+  # field-dependent -> fallback
+  assert not el.is_encoded("trigonal_bipyramidal", 5)
   # Convenience state ties it together and matches the former hardcoded states.
   st = el.spin_state("Mn", 2, "octahedral")   # high-spin default
   assert st.d_count == 5 and st.multiplicity == 6
@@ -1194,9 +1218,11 @@ def exercise_electronic():
     except (KeyError, ValueError):
       pass
 
-  # ---- committing predictor (plan Sec 6): always commits, robust features only.
+  # ---- committing predictor (plan Sec 6): always commits, robust features
+  # only.
   def summ(spec):
-    """Build a donors.summarize() result from (element, resname, name, res_id)."""
+    """Build a donors.summarize() result from (element, resname, name,
+    res_id)."""
     ds = []
     for elx, rn, nm, rid in spec:
       c = D.classify(elx, rn)
@@ -1216,18 +1242,19 @@ def exercise_electronic():
   # Fe donor-hardness commits (never bond lengths):
   tyr = summ([("O", "TYR", "OH", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)),
               ("O", "ASP", "OD1", ("A", 3))])
-  assert el.predict_oxidation("Fe", "octahedral", 6, tyr).oxidation == 3  # tyrosinate
+  # tyrosinate
+  assert el.predict_oxidation("Fe", "octahedral", 6, tyr).oxidation == 3
   triad = summ([("N", "HIS", "NE2", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)),
                 ("O", "ASP", "OD1", ("A", 3))])
   ft = el.predict_oxidation("Fe", "octahedral", 6, triad)
   assert ft.oxidation == 2 and ft.confidence == el.CONF_HIGH     # facial triad
-  # Rubredoxin-type Fe(S-Cys)4 is FERRIC as isolated [76, 77, 78]. This assertion
-  # previously read ox == 2, from a soft-S guard whose own citation [49] never
-  # supported the ferrous direction; see exercise_rubredoxin_ferric for the full
-  # rule and the donor sets it must NOT catch.
+  # Rubredoxin-type Fe(S-Cys)4 is FERRIC as isolated [76, 77, 78]. This
+  # assertion previously read ox == 2, from a soft-S guard whose own citation
+  # [49] never supported the ferrous direction; see exercise_rubredoxin_ferric
+  # for the full rule and the donor sets it must NOT catch.
   rubr = summ([("S", "CYS", "SG", ("A", i)) for i in (1, 2, 3, 4)])
   fr = el.predict_oxidation("Fe", "tetrahedral", 4, rubr)
-  assert fr.oxidation == 3 and fr.confidence == el.CONF_LOW      # rubredoxin-type
+  assert fr.oxidation == 3 and fr.confidence == el.CONF_LOW  # rubredoxin-type
   fb = el.predict_oxidation("Fe", "octahedral", 6, None)
   assert fb.oxidation == 2 and fb.confidence == el.CONF_LOW      # ferrous lean
 
@@ -1241,21 +1268,24 @@ def exercise_electronic():
   h_tyr = heme_ax(("O", "TYR", "OH", ("A", 1)))                 # catalase-type
   o_tyr = el.predict_oxidation("Fe", "octahedral", 5, h_tyr)
   assert o_tyr.oxidation == 3 and o_tyr.confidence == el.CONF_MEDIUM
-  h_cys = heme_ax(("S", "CYS", "SG", ("A", 1)))                 # P450-type thiolate
+  h_cys = heme_ax(("S", "CYS", "SG", ("A", 1)))  # P450-type thiolate
   o_cys = el.predict_oxidation("Fe", "octahedral", 5, h_cys)
   assert o_cys.oxidation == 3 and o_cys.confidence == el.CONF_MEDIUM
   h_aq = heme_ax(("N", "HIS", "NE2", ("A", 1)), ("O", "HOH", "O", ("W", 1)))
   o_aq = el.predict_oxidation("Fe", "octahedral", 6, h_aq)     # aquomet
   assert o_aq.oxidation == 3 and o_aq.confidence == el.CONF_MEDIUM
-  h_deoxy = heme_ax(("N", "HIS", "NE2", ("A", 1)))              # 5-coordinate His
+  h_deoxy = heme_ax(("N", "HIS", "NE2", ("A", 1)))  # 5-coordinate His
   o_dx = el.predict_oxidation("Fe", "octahedral", 5, h_deoxy)
-  assert o_dx.oxidation == 2 and o_dx.confidence == el.CONF_LOW    # indeterminate lean
+  # indeterminate lean
+  assert o_dx.oxidation == 2 and o_dx.confidence == el.CONF_LOW
   h_bis = heme_ax(("N", "HIS", "NE2", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)))
-  assert el.predict_oxidation("Fe", "octahedral", 6, h_bis).oxidation == 2  # carrier lean
+  # carrier lean
+  assert el.predict_oxidation("Fe", "octahedral", 6, h_bis).oxidation == 2
 
   # Mn oxidation (Sec 6.3): Mn(II) default; the SOD-fold 5-coordinate TBP
   # (3-His/carboxylate/solvent) -> Mn(III) MEDIUM; a coordinating tyrosinate ->
-  # Mn(III) LOW. A 6-coordinate cupin look-alike (3-His-1-carboxylate) stays Mn(II).
+  # Mn(III) LOW. A 6-coordinate cupin look-alike (3-His-1-carboxylate) stays
+  # Mn(II).
   sod = summ([("N", "HIS", "NE2", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)),
               ("N", "HIS", "NE2", ("A", 3)), ("O", "ASP", "OD1", ("A", 4)),
               ("O", "HOH", "O", ("W", 1))])
@@ -1264,7 +1294,8 @@ def exercise_electronic():
   cupin = summ([("N", "HIS", "NE2", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)),
                 ("N", "HIS", "NE2", ("A", 3)), ("O", "GLU", "OE1", ("A", 4)),
                 ("O", "HOH", "O", ("W", 1)), ("O", "HOH", "O", ("W", 2))])
-  assert el.predict_oxidation("Mn", "octahedral", 6, cupin).oxidation == 2  # cupin -> Mn(II)
+  # cupin -> Mn(II)
+  assert el.predict_oxidation("Mn", "octahedral", 6, cupin).oxidation == 2
   m_tyr = summ([("O", "TYR", "OH", ("A", 1)), ("N", "HIS", "NE2", ("A", 2)),
                 ("O", "ASP", "OD1", ("A", 3))])
   m_ty = el.predict_oxidation("Mn", "octahedral", 6, m_tyr)
@@ -1273,32 +1304,38 @@ def exercise_electronic():
   assert m_def.oxidation == 2 and m_def.confidence == el.CONF_LOW
   # Mn spin: always high-spin, Mn(II) d5 sextet(6), Mn(III) d4 quintet(5).
   assert el.predict_state("Mn", "octahedral", 6, cupin).multiplicity == 6
-  assert el.predict_state("Mn", el.TRIGONAL_BIPYRAMIDAL, 5, sod).multiplicity == 5
+  assert el.predict_state(
+    "Mn", el.TRIGONAL_BIPYRAMIDAL, 5, sod).multiplicity == 5
   assert el.predict_spin("Mn", 3, "octahedral", None).low_spin is False
 
-  # predict_spin: non-heme Fe high-spin; heme axial-gated (bis-His LS, aquomet HS).
+  # predict_spin: non-heme Fe high-spin; heme axial-gated (bis-His LS, aquomet
+  # HS).
   assert el.predict_spin("Fe", 2, "octahedral", triad).low_spin is False
   heme = summ([("N", "HEM", "NA", ("H", 1)), ("N", "HEM", "NB", ("H", 1)),
                ("N", "HEM", "NC", ("H", 1)), ("N", "HEM", "ND", ("H", 1)),
                ("N", "HIS", "NE2", ("A", 1)), ("N", "HIS", "NE2", ("A", 2))])
   assert heme.heme and heme.n_axial == 2 and heme.axial_all_strong
-  assert el.predict_spin("Fe", 3, "octahedral", heme).low_spin is True   # bis-His
+  # bis-His
+  assert el.predict_spin("Fe", 3, "octahedral", heme).low_spin is True
   heme_aq = summ([("N", "HEM", "NA", ("H", 1)), ("N", "HEM", "NB", ("H", 1)),
                   ("N", "HEM", "NC", ("H", 1)), ("N", "HEM", "ND", ("H", 1)),
                   ("N", "HIS", "NE2", ("A", 1)), ("O", "HOH", "O", ("W", 1))])
-  assert el.predict_spin("Fe", 3, "octahedral", heme_aq).low_spin is False  # aquomet
+  # aquomet
+  assert el.predict_spin("Fe", 3, "octahedral", heme_aq).low_spin is False
   # His/Met is the other strong axial pair -> low spin (thioether S is strong).
   heme_hm = summ([("N", "HEM", "NA", ("H", 1)), ("N", "HEM", "NB", ("H", 1)),
                   ("N", "HEM", "NC", ("H", 1)), ("N", "HEM", "ND", ("H", 1)),
                   ("N", "HIS", "NE2", ("A", 1)), ("S", "MET", "SD", ("A", 2))])
   assert heme_hm.n_axial == 2 and heme_hm.axial_all_strong
-  assert el.predict_spin("Fe", 3, "octahedral", heme_hm).low_spin is True   # His/Met
+  # His/Met
+  assert el.predict_spin("Fe", 3, "octahedral", heme_hm).low_spin is True
   # 5-coordinate heme (single axial) stays high spin.
   heme_5c = summ([("N", "HEM", "NA", ("H", 1)), ("N", "HEM", "NB", ("H", 1)),
                   ("N", "HEM", "NC", ("H", 1)), ("N", "HEM", "ND", ("H", 1)),
                   ("N", "HIS", "NE2", ("A", 1))])
   assert heme_5c.heme and heme_5c.n_axial == 1
-  assert el.predict_spin("Fe", 3, "octahedral", heme_5c).low_spin is False  # 5-coord
+  # 5-coord
+  assert el.predict_spin("Fe", 3, "octahedral", heme_5c).low_spin is False
 
   # predict_state ties it together and ALWAYS commits (None only off-scope).
   pz = el.predict_state("Zn", "tetrahedral", 4)
@@ -1309,22 +1346,25 @@ def exercise_electronic():
           and pm.confidence == el.CONF_LOW)          # Mn(II) default, low conf
   # Fe is committed now (no skip): non-heme facial triad -> Fe(II) high-spin.
   pf = el.predict_state("Fe", "octahedral", 6, triad)
-  assert pf.oxidation_state == 2 and pf.multiplicity == 5 and pf.low_spin is False
+  assert (pf.oxidation_state == 2 and pf.multiplicity == 5
+          and pf.low_spin is False)
   # heme bis-His -> low-spin ferrous-lean d6 singlet.
   ph = el.predict_state("Fe", "octahedral", 6, heme)
   assert ph.multiplicity == 1 and ph.low_spin is True
   assert el.predict_state("Ni", "octahedral", 6) is None       # off-scope
 
-  # enumerate_states scan enumerator. geometry=None (states=all): geometry-blind,
-  # both spin extremes per accessible oxidation.
+  # enumerate_states scan enumerator. geometry=None (states=all):
+  # geometry-blind, both spin extremes per accessible oxidation.
   assert el.enumerate_states("Zn") == [(2, 1)]                  # d10 singlet
   assert sorted(el.enumerate_states("Fe")) == [(2, 1), (2, 5), (3, 2), (3, 6)]
-  assert el.enumerate_states("Cu") == [(1, 1), (2, 2)]         # d10 singlet, d9 doublet
+  # d10 singlet, d9 doublet
+  assert el.enumerate_states("Cu") == [(1, 1), (2, 2)]
   assert el.enumerate_states("Ni") is None                     # no prior
   # geometry given (states=reasonable): only the ligand-field-allowed spin(s).
   # Tetrahedral Fe is always high-spin, so the low-spin extremes are pruned.
   assert el.enumerate_states("Fe", "tetrahedral") == [(2, 5), (3, 6)]
-  # Octahedral d5/d6 are genuinely field-ambiguous -> the same 4 states as blind.
+  # Octahedral d5/d6 are genuinely field-ambiguous -> the same 4 states as
+  # blind.
   assert sorted(el.enumerate_states("Fe", "octahedral")) == \
       [(2, 1), (2, 5), (3, 2), (3, 6)]
   # An unclassified geometry cannot prune -> degrades to the blind scan.
@@ -1333,9 +1373,10 @@ def exercise_electronic():
 
 def exercise_deprotonation_metal_gating():
   """Cys/Tyr deprotonation is gated to anion-inducing metals, carboxylate is
-  universal. Near a hard Mg the Cys stays protonated but the Asp deprotonates."""
+  universal. Near a hard Mg the Cys stays protonated but the Asp
+  deprotonates."""
   hier = _model(_MG_DONORS_PDB).get_hierarchy()
-  protonation.deprotonate_metal_donors(hier, metals=None)   # all metals in scope
+  protonation.deprotonate_metal_donors(hier, metals=None)  # all metals in scope
   names = [a.name.strip() for a in hier.atoms()]
   assert "HG" in names, "Cys near hard Mg must stay protonated"
   assert "HD2" not in names, "Asp carboxylate must deprotonate (metal-agnostic)"
@@ -1375,7 +1416,7 @@ def exercise_donors():
                    desc("O", "TYR", "OH", ("A", 6)),
                    desc("N", "HIS", "NE2", ("A", 7))])
   assert s.n_carboxylate == 1 and s.n_tyrosinate == 1 and s.n_his == 1
-  assert s.q_hard == -2                                  # carboxylate + tyrosinate
+  assert s.q_hard == -2  # carboxylate + tyrosinate
 
 
 def exercise_predict_only():
@@ -1393,10 +1434,12 @@ def exercise_predict_only():
 
 def exercise_bvs():
   """Bond-valence-sum oxidation estimate: CIF parse, valence sum, and the
-  deduce-most-self-consistent-state estimator with its missing-parameter guard."""
+  deduce-most-self-consistent-state estimator with its missing-parameter
+  guard."""
   # Parse: Zn(II)-O picks the Brown-Altermatt row; Fe(II)/Fe(III) R0 differ.
   assert bvs.valence_params("Zn", 2, "O") == (1.704, 0.37)
-  assert bvs.valence_params("Fe", 2, "O")[0] != bvs.valence_params("Fe", 3, "O")[0]
+  assert (bvs.valence_params("Fe", 2, "O")[0]
+          != bvs.valence_params("Fe", 3, "O")[0])
   # A tetrahedral Zn(II)-O4 at ~1.97 A sums to V ~ 2.
   V, n = bvs.valence_sum("Zn", 2, [("O", 1.97)] * 4)
   assert n == 4 and abs(V - 2.0) < 0.1, (V, n)
@@ -1423,8 +1466,10 @@ def exercise_bvs_hygiene():
   # bvparm2020.cif lists rows in decreasing reliability, but its header warns
   # that rows marked 'unchecked' are unreliable. Where a checked alternative
   # follows, it wins. Both of these are load-bearing for qmi.
-  assert bvs.valence_params("Fe", 2, "S") == (2.125, 0.37)   # not the 2.12 unchecked row
-  assert bvs.valence_params("Cu", 1, "O") == (1.601, 0.335)  # not (1.610, 0.37); B changes too
+  # not the 2.12 unchecked row
+  assert bvs.valence_params("Fe", 2, "S") == (2.125, 0.37)
+  # not (1.610, 0.37); B changes too
+  assert bvs.valence_params("Cu", 1, "O") == (1.601, 0.335)
 
   # Margin = the gap in |V - q| between the winner and the runner-up. A
   # well-separated site is not a close call; a marginal one is. The threshold
@@ -1444,7 +1489,8 @@ def exercise_bvs_hygiene():
   # Asymmetric parameter coverage: Mn(2+) has an S row, Mn(3+) does not, so a
   # mixed Mn thiolate site would sum the two candidates over different bond
   # counts and silently push the verdict to Mn(II). Refuse instead.
-  mn = bvs.estimate_oxidation("Mn", (2, 3), [("S", 2.40), ("N", 2.20), ("O", 2.10)])
+  mn = bvs.estimate_oxidation(
+    "Mn", (2, 3), [("S", 2.40), ("N", 2.20), ("O", 2.10)])
   assert mn.coverage_asymmetric and mn.best is None
   assert mn.n_by_state[2] != mn.n_by_state[3], mn.n_by_state
 
@@ -1475,7 +1521,8 @@ def exercise_unclassified_donors():
 
   # A ligand no whitelist covers (citrate here, but the rule is general: any
   # het_* kind) contributes to no motif count, so the summary carries nothing.
-  cit = D.summarize([desc("O", "FLC", "402")] * 3 + [desc("O", "FLC", "403")] * 3)
+  cit = D.summarize(
+    [desc("O", "FLC", "402")] * 3 + [desc("O", "FLC", "403")] * 3)
   assert cit.n_unclassified == 6 and not cit.motif_evidence
   assert cit.unclassified == ["FLC.O"], cit.unclassified
 
@@ -1515,7 +1562,8 @@ def exercise_unclassified_donors():
   assert cu.confidence == el.CONF_HIGH, cu.oxidation_reason
   # The helper the cap keys on must track predict_oxidation's branches.
   assert el.oxidation_uses_donors("Fe") and el.oxidation_uses_donors("Mn")
-  assert not el.oxidation_uses_donors("Zn") and not el.oxidation_uses_donors("Cu")
+  assert (not el.oxidation_uses_donors("Zn")
+          and not el.oxidation_uses_donors("Cu"))
 
   # And it reaches the .edits header, so an empty summary is never silent.
   lines = provenance.site_block("Fe", "Fe_A401", 2, 5, 0, "guessed", "low",
@@ -1543,15 +1591,18 @@ def exercise_rubredoxin_ferric():
   assert rd.oxidation == 3, rd.reason
   assert rd.confidence == el.CONF_LOW                  # never medium or high
   assert "rubredoxin-type" in rd.reason
-  assert "ferrous" in rd.reason and "photoreduced" in rd.reason  # names the ambiguity
+  # names the ambiguity
+  assert "ferrous" in rd.reason and "photoreduced" in rd.reason
   # High-spin d5 -> sextet, from the same donor set.
-  st = el.predict_state("Fe", "tetrahedral", 4,
-                        D.summarize([desc("S", "CYS", str(i)) for i in (5, 8, 38, 41)]))
+  st = el.predict_state(
+    "Fe", "tetrahedral", 4,
+    D.summarize([desc("S", "CYS", str(i)) for i in (5, 8, 38, 41)]))
   assert st.oxidation_state == 3 and st.multiplicity == 6
 
   # NOT caught: nitrile hydratase (3 Cys-derived S + backbone N, CN 5) is a
-  # LOW-SPIN Fe(III) [86]; committing it ferric here would be right for the wrong
-  # reason and would still carry the wrong spin, so the rule must not fire.
+  # LOW-SPIN Fe(III) [86]; committing it ferric here would be right for the
+  # wrong reason and would still carry the wrong spin, so the rule must not
+  # fire.
   nhase = ox(5, [desc("S", "CYS", str(i)) for i in (1, 2, 3)]
              + [desc("N", "ALA", "4"), desc("N", "ALA", "5")])
   assert "rubredoxin-type" not in nhase.reason, nhase.reason
@@ -1810,8 +1861,8 @@ def exercise_bond_graph_donor_charge():
 
 
 def exercise_atcun_deprotonation():
-  # ATCUN Cu N-terminus: the coordinating backbone amide (ALA N-H) is stripped to
-  # an amidate, AND the N-terminal amine (GLY -NH3+) loses the H nearest the
+  # ATCUN Cu N-terminus: the coordinating backbone amide (ALA N-H) is stripped
+  # to an amidate, AND the N-terminal amine (GLY -NH3+) loses the H nearest the
   # metal (-> -NH2). Both count as donors (returns 2, 0).
   h = _model(_ATCUN_PDB).get_hierarchy()
   assert protonation.deprotonate_metal_donors(h, log=null_out()) == (2, 0)
@@ -1828,8 +1879,8 @@ def exercise_atcun_deprotonation():
 
 
 def exercise_freeze_far_carboxylate():
-  # A monodentate Asp (OD1 in, OD2 beyond the cutoff): the far OD2 is frozen only
-  # with the flag; without it OD2 stays free.
+  # A monodentate Asp (OD1 in, OD2 beyond the cutoff): the far OD2 is frozen
+  # only with the flag; without it OD2 stays free.
   mono = _model(_CARBOX_MONO_PDB)
   name = {a.i_seq: a.name.strip() for a in mono.get_hierarchy().atoms()}
   fr, _ = qm.determine_frozen_atoms(
@@ -2007,18 +2058,22 @@ def exercise_run_constrained_opt_dispatch():
     def __init__(self, *a, **k): built.append((type(self).tag, k.get("nproc")))
     def set_ligand_atoms(self, m): self.mask = m
     def get_opt(self, **k):
-      built.append((type(self).tag + "_opt", k.get("optimise_h"))); return None, "C"
+      built.append((type(self).tag + "_opt", k.get("optimise_h")))
+      return None, "C"
   class FakeOrca(_Fake): tag = "orca"
   class FakeXtb(_Fake): tag = "xtb"
   try:
     orca_manager.orca_manager = FakeOrca
     xtb_manager.xtb_manager = FakeXtb
-    _c, m1 = qm.run_constrained_opt(model, [2, 3, 4], 2, 1, nproc=4,
-                                    work_dir=work, engine_opts=qm.engine_options())
-    assert isinstance(m1, FakeXtb) and m1.mask[0] is True and m1.mask[2] is False
+    _c, m1 = qm.run_constrained_opt(
+      model, [2, 3, 4], 2, 1, nproc=4, work_dir=work,
+      engine_opts=qm.engine_options())
+    assert (isinstance(m1, FakeXtb) and m1.mask[0] is True
+            and m1.mask[2] is False)
     _c2, m2 = qm.run_constrained_opt(
       model, [2, 3, 4], 2, 1, nproc=4, work_dir=work,
-      engine_opts=qm.engine_options(engine="orca", optimisation="Opt", exe="/x"))
+      engine_opts=qm.engine_options(
+        engine="orca", optimisation="Opt", exe="/x"))
     assert isinstance(m2, FakeOrca) and m2.optimisation == "Opt"
     assert ("xtb", 4) in built and ("orca", 4) in built
     assert ("xtb_opt", False) in built and ("orca_opt", False) in built

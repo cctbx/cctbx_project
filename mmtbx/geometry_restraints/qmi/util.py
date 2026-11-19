@@ -20,9 +20,10 @@ from cctbx.eltbx import covalent_radii
 # so the first-shell definition cannot silently diverge across the pipeline.
 DEFAULT_COORDINATION_CUTOFF_A = 3.0
 
-# Tolerance factor alpha for the Cordero covalent-radii cutoff d <= alpha*(r1+r2)
-# (metal + donor). ~1.3 admits a typical M-L bond with a margin; the alpha range
-# is per CheckMyMetal [10]. Used only when the cutoff mode is 'cordero'.
+# Tolerance factor alpha for the Cordero covalent-radii cutoff d <=
+# alpha*(r1+r2) (metal + donor). ~1.3 admits a typical M-L bond with a margin;
+# the alpha range is per CheckMyMetal [10]. Used only when the cutoff mode is
+# 'cordero'.
 DEFAULT_CUTOFF_ALPHA = 1.3
 
 # Cordero et al. (2008) high-spin covalent radii (Angstrom) [26] for the bimodal
@@ -55,9 +56,10 @@ def make_coordination_cutoff(mode='fixed', alpha=DEFAULT_CUTOFF_ALPHA):
   return lambda metal_element, donor_element: DEFAULT_COORDINATION_CUTOFF_A
 
 
-# common_residue_names_get_class outputs that count as a protein residue (standard
-# + modified, so e.g. MSE selenomethionine qualifies). Shared by qm (coordinating
-# backbone) and donors (backbone donor classification) so the two cannot diverge.
+# common_residue_names_get_class outputs that count as a protein residue
+# (standard + modified, so e.g. MSE selenomethionine qualifies). Shared by qm
+# (coordinating backbone) and donors (backbone donor classification) so the two
+# cannot diverge.
 AA_RESIDUE_CLASSES = frozenset(("common_amino_acid", "modified_amino_acid"))
 
 

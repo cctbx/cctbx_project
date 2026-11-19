@@ -385,7 +385,8 @@ def csm_against_shape(observed, shape_name, centroid_normalized=False,
   # angles are translation/scale invariant so the convention does not matter.
   P_best = ideal.select(flex.size_t(perm))
   grmsd = _angular_grmsd(observed, P_best)
-  return group_args(shape=shape_name, csm=csm, gRMSD_deg=grmsd, permutation=perm)
+  return group_args(shape=shape_name, csm=csm, gRMSD_deg=grmsd,
+                    permutation=perm)
 
 
 def find_best_shape(observed, candidate_shapes=None, centroid_normalized=False,

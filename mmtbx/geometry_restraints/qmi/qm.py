@@ -87,7 +87,8 @@ def engine_options(engine="xtb", method=None, basis_set="",
   if method is None:
     method = DEFAULT_XTB_METHOD if engine == "xtb" else DEFAULT_ORCA_METHOD
   if solvent_model is None:
-    solvent_model = DEFAULT_XTB_SOLVENT if engine == "xtb" else DEFAULT_ORCA_SOLVENT
+    solvent_model = (DEFAULT_XTB_SOLVENT if engine == "xtb"
+                     else DEFAULT_ORCA_SOLVENT)
   return group_args(
     engine=engine, method=method, basis_set=basis_set or "",
     solvent_model=solvent_model, optimisation=optimisation,
@@ -134,8 +135,9 @@ def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
     atoms[iseq].set_element(orig_el)
   try:
     interpretation_params = submodel.get_current_pdb_interpretation_params()
-    interpretation_params.pdb_interpretation.restraints_library.mcl = False
-    interpretation_params.pdb_interpretation.automatic_linking.link_metals = False
+    pdb_interpretation = interpretation_params.pdb_interpretation
+    pdb_interpretation.restraints_library.mcl = False
+    pdb_interpretation.automatic_linking.link_metals = False
     submodel.process(
       pdb_interpretation_params=interpretation_params,
       make_restraints=True,
@@ -148,8 +150,8 @@ def ensure_restraints(submodel, cap_iseqs=(), cap_original_elements=()):
 def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
                            free_radius=DEFAULT_FREE_RADIUS,
                            coord_cutoff=None,
-                           freeze_waters="peripheral", freeze_far_carboxylate_o=False,
-                           log=None):
+                           freeze_waters="peripheral",
+                           freeze_far_carboxylate_o=False, log=None):
   """Return ``(frozen_iseqs, free_iseqs)`` for the QM optimisation.
 
   The first shell must relax while the protein scaffold and the truncation
@@ -179,9 +181,9 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
   - *freeze_waters* (``'all'`` / ``'peripheral'`` / ``'none'``) freezes water O
     inside the relax zone: ``'all'`` every water; ``'peripheral'`` only
     non-coordinating waters (a coordinating water is held by the metal bond and
-    relaxes, so its M-L distance is an optimised restraint); ``'none'`` no water.
-    Waters beyond *free_radius* are already frozen by the scaffold rule; the 2 H
-    stay free under every mode.
+    relaxes, so its M-L distance is an optimised restraint); ``'none'`` no
+    water. Waters beyond *free_radius* are already frozen by the scaffold rule;
+    the 2 H stay free under every mode.
   - with *freeze_far_carboxylate_o*: the non-coordinating O of a MONODENTATE
     Asp/Glu carboxylate (one O inside the coordination cutoff, its sibling
     outside), so the optimiser cannot pull the sibling into a spurious
@@ -298,15 +300,16 @@ def determine_frozen_atoms(submodel, seed_iseq, cap_iseqs, cap_anchor_iseqs=(),
 
   # Non-coordinating waters inside the relax zone have no anchor (no metal bond,
   # and no H-bond network in the truncated cluster) and drift, so freeze them; a
-  # coordinating water is held by the metal bond and relaxes (its M-L distance is
-  # the restraint signal). Iterate the free set only: waters beyond free_radius
-  # are already frozen by the scaffold rule, so the two mechanisms never overlap.
+  # coordinating water is held by the metal bond and relaxes (its M-L distance
+  # is the restraint signal). Iterate the free set only: waters beyond
+  # free_radius are already frozen by the scaffold rule, so the two mechanisms
+  # never overlap.
   water_o_iseqs = set()
   if freeze_waters != "none":
     for i in list(free_iseqs):
       atom = atoms[i]
-      if not (common_residue_names_get_class(atom.parent().resname) == "common_water"
-              and not atom.element_is_hydrogen()):
+      if not (common_residue_names_get_class(atom.parent().resname)
+              == "common_water" and not atom.element_is_hydrogen()):
         continue
       if (freeze_waters == "peripheral"
           and (matrix.col(atom.xyz) - seed_xyz).length()
@@ -412,8 +415,9 @@ def optimise_mask_from_frozen(n_atoms, frozen_iseqs):
 
 
 def run_constrained_opt(submodel, frozen_iseqs, charge, multiplicity,
-                        engine_opts=None, nproc=1, preamble="qmi", work_dir=None,
-                        robust=False, cleanup=False, file_read=True, log=None):
+                        engine_opts=None, nproc=1, preamble="qmi",
+                        work_dir=None, robust=False, cleanup=False,
+                        file_read=True, log=None):
   """Run a constrained QM optimisation of *submodel* and return the optimised
   geometry.
 
@@ -538,7 +542,8 @@ def run_hessian(submodel, sites_cart, charge, multiplicity, engine_opts=None,
     engine_opts = engine_options()
   from mmtbx.geometry_restraints.qmi import sigma
   n_atoms = len(submodel.get_atoms())
-  if engine_opts.engine == 'orca' and engine_opts.hessian in ('partial', 'full'):
+  if (engine_opts.engine == 'orca'
+      and engine_opts.hessian in ('partial', 'full')):
     qmm = orca_manager.orca_manager(
       submodel.get_atoms(), engine_opts.method, engine_opts.basis_set,
       engine_opts.solvent_model, charge, multiplicity,
@@ -552,7 +557,8 @@ def run_hessian(submodel, sites_cart, charge, multiplicity, engine_opts=None,
   # xTB Hessian (default; also engine=orca with hessian='xtb'): always GFN2-xTB
   # in ether, even when ORCA drove the opt (the r2SCAN-3c label engine_opts
   # carries then is meaningless to xtb).
-  method = engine_opts.method if engine_opts.engine == 'xtb' else DEFAULT_XTB_METHOD
+  method = (engine_opts.method if engine_opts.engine == 'xtb'
+            else DEFAULT_XTB_METHOD)
   solvent_model = (engine_opts.solvent_model if engine_opts.engine == 'xtb'
                    else DEFAULT_XTB_SOLVENT)
   qmm = xtb_manager.xtb_manager(

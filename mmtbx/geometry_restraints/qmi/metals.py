@@ -61,4 +61,5 @@ def metal_atoms(atoms_or_model, metals=None):
 
 def count_metals(atoms_or_model, metals=None):
   """Return the number of metal atoms in ``atoms_or_model``."""
-  return sum(1 for a in _atoms_from(atoms_or_model) if is_metal(a.element, metals))
+  return sum(1 for a in _atoms_from(atoms_or_model)
+             if is_metal(a.element, metals))

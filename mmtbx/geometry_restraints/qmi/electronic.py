@@ -17,11 +17,10 @@ confidence label: it never defers to the user and never widens a sigma;
 uncertainty is reported as the confidence, a different object than a restraint
 sigma. Oxidation is narrowed by donor hardness + CN + geometry (plan Sec 6.3);
 the only bond-length input is the carboxylate binding mode that sets the CN, not
-a fit of the target distances. Spin is high-spin by default and flips to low spin
-only
-on a determinable strong-field signature; in biological macromolecules that is
-a heme with a strong axial-donor pair (bis-His / His-Met) [45, 46, 48], not a
-pi-acid diatomic (essentially exogenous here); non-heme biological Fe is
+a fit of the target distances. Spin is high-spin by default and flips to low
+spin only on a determinable strong-field signature; in biological macromolecules
+that is a heme with a strong axial-donor pair (bis-His / His-Met) [45, 46, 48],
+not a pi-acid diatomic (essentially exogenous here); non-heme biological Fe is
 high-spin at every geometry [41].
 
 Note: the ``oxidation_state`` here is the metal's *formal* charge. The QM
@@ -82,21 +81,21 @@ OXIDATION_PRIORS = {
 }
 # ``default`` is the fallback oxidation the predictor commits when no robust
 # donor/geometry signature resolves the state (plan Sec 6.6). Every metal here
-# gets one: qmi always commits (it never defers). Mn(II) [43] and Cu(II) [39, 40]
-# dominate their surveys; Fe defaults to +2 (ferrous), the lean of a photoreduced
-# crystal [42], but predict_oxidation() overrides it toward Fe(III) on a ferric
-# donor signature (tyrosinate [50], hard-anionic-O charge <= -2 [37, 44]) and
-# back toward Fe(II) on a ferrous one (2-His-1-carboxylate facial triad [41], an
-# rubredoxin-type Fe(S-Cys)4 set, now read as FERRIC [76, 77, 78]), with the
-# confidence set accordingly.
+# gets one: qmi always commits (it never defers). Mn(II) [43] and Cu(II) [39,
+# 40] dominate their surveys; Fe defaults to +2 (ferrous), the lean of a
+# photoreduced crystal [42], but predict_oxidation() overrides it toward Fe(III)
+# on a ferric donor signature (tyrosinate [50], hard-anionic-O charge <= -2 [37,
+# 44]) and back toward Fe(II) on a ferrous one (2-His-1-carboxylate facial triad
+# [41], an rubredoxin-type Fe(S-Cys)4 set, now read as FERRIC [76, 77, 78]),
+# with the confidence set accordingly.
 #
 # SPIN INVARIANT (load-bearing): the multiplicity commit is HIGH-SPIN by default
-# and flips to low spin ONLY in predict_spin's heme branch (octahedral d4-d7 with
-# a strong axial pair [45]). Non-heme biological Fe/Mn are high-spin at every
-# geometry (Fe [41]; Mn(II)/Mn(III) [47, 61, 62], weak-field O/N per LFT [12]).
-# Adding a metal with an accessible biological low-spin state
-# OUTSIDE heme (e.g. Co, Ni) requires extending predict_spin's strong-field
-# detection first, or the multiplicity will be silently wrong.
+# and flips to low spin ONLY in predict_spin's heme branch (octahedral d4-d7
+# with a strong axial pair [45]). Non-heme biological Fe/Mn are high-spin at
+# every geometry (Fe [41]; Mn(II)/Mn(III) [47, 61, 62], weak-field O/N per LFT
+# [12]). Adding a metal with an accessible biological low-spin state OUTSIDE
+# heme (e.g. Co, Ni) requires extending predict_spin's strong-field detection
+# first, or the multiplicity will be silently wrong.
 
 
 def accessible_oxidation_states(element):
@@ -114,8 +113,8 @@ def default_oxidation(element):
   return p.default if p is not None else None
 
 
-# Confidence labels for a committed prediction. Reported to the user (plan Sec 6,
-# 9.3), NEVER folded into a restraint sigma.
+# Confidence labels for a committed prediction. Reported to the user (plan Sec
+# 6, 9.3), NEVER folded into a restraint sigma.
 CONF_HIGH, CONF_MEDIUM, CONF_LOW = "high", "medium", "low"
 _CONF_RANK = {CONF_HIGH: 2, CONF_MEDIUM: 1, CONF_LOW: 0}
 
@@ -135,7 +134,7 @@ def _heme_oxidation(summary):
   lean. Ordering is first-match; a phenolate coexisting with a thiolate/water
   still yields ferric, so anionic O leads.
   """
-  if summary.q_hard <= -1:                                             # [52, 50, 44]
+  if summary.q_hard <= -1:  # [52, 50, 44]
     # Anionic axial O (Tyr phenolate; catalase-type ferric). The carboxylate
     # limb of q_hard is HSAB-extrapolated: no characterised axial-carboxylate
     # heme, but the direction (anionic O favours the harder Fe(III)) holds.
@@ -149,11 +148,13 @@ def _heme_oxidation(summary):
       why += f", {n_bg} anionic O group(s) read from the ligand bond graph"
     return group_args(oxidation=3, confidence=CONF_MEDIUM, reason=why)
   if summary.n_cys_s >= 1:                                             # [51]
-    # Coordinating Cys thiolate (charge < 0; neutral Met thioether is not counted
-    # in n_cys_s). Heme-c peripheral thioether Cys sit off the metal and are
-    # dropped by the first-shell cutoff, so cytochrome c is not misread here.
-    return group_args(oxidation=3, confidence=CONF_MEDIUM,
-                      reason="thiolate-ligated heme (P450/CPO/NOS ferric resting)")
+    # Coordinating Cys thiolate (charge < 0; neutral Met thioether is not
+    # counted in n_cys_s). Heme-c peripheral thioether Cys sit off the metal and
+    # are dropped by the first-shell cutoff, so cytochrome c is not misread
+    # here.
+    return group_args(
+      oxidation=3, confidence=CONF_MEDIUM,
+      reason="thiolate-ligated heme (P450/CPO/NOS ferric resting)")
   if summary.n_water_o >= 1:                                           # [48]
     # Bound axial water: aquo/hydroxo met (ferric). Deoxy ferrous is
     # 5-coordinate, so a sixth aqua ligand implies met. Keyed strictly on
@@ -162,13 +163,14 @@ def _heme_oxidation(summary):
     return group_args(oxidation=3, confidence=CONF_MEDIUM,
                       reason="aquo/hydroxo met-heme (bound axial water)")
   # Single-His deoxy, bis-His / His-Met carriers: topology cannot decide, and
-  # this branch systematically leans the wrong way for the 5-coordinate proximal-
-  # His peroxidases (HRP/CcP/APX, ferric resting [53]) and oxidised bis-His/His-
-  # Met carriers ([45]). Flagged LOW; the sole honest lean is photoreduction.
-  return group_args(oxidation=2, confidence=CONF_LOW,                  # [42, 46, 53, 45]
-                    reason="single-His / weak-field heme; oxidation indeterminate "
-                           "(globin-ferrous vs peroxidase-ferric), photoreduction "
-                           "ferrous lean")
+  # this branch systematically leans the wrong way for the 5-coordinate
+  # proximal-His peroxidases (HRP/CcP/APX, ferric resting [53]) and oxidised
+  # bis-His/His-Met carriers ([45]). Flagged LOW; the sole honest lean is
+  # photoreduction.
+  return group_args(oxidation=2, confidence=CONF_LOW,  # [42, 46, 53, 45]
+                    reason="single-His / weak-field heme; oxidation "
+                           "indeterminate (globin-ferrous vs "
+                           "peroxidase-ferric), photoreduction ferrous lean")
 
 
 def predict_oxidation(element, geometry, cn=None, summary=None):
@@ -178,12 +180,13 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
   and CShM geometry class. NEVER bond lengths, energy, or diffraction.
 
   Caveat for future rules: *geometry* is the CShM class of the EFFECTIVE-vertex
-  set (a symmetric bidentate carboxylate merged to one vertex), while *cn* is the
-  COORDINATIVE count (that chelate counted as its two O). So for a chelating site
-  the shape's vertex count is below *cn* by the number of symmetric chelates; a
-  rule that combines the two must not assume the shape's vertex count equals *cn*.
-  The current rules stay consistent (the Cu CN cutoffs are monotone; the Mn-SOD
-  gate requires TBP, which pins the chelate count to zero at cn==5).
+  set (a symmetric bidentate carboxylate merged to one vertex), while *cn* is
+  the COORDINATIVE count (that chelate counted as its two O). So for a chelating
+  site the shape's vertex count is below *cn* by the number of symmetric
+  chelates; a rule that combines the two must not assume the shape's vertex
+  count equals *cn*. The current rules stay consistent (the Cu CN cutoffs are
+  monotone; the Mn-SOD gate requires TBP, which pins the chelate count to zero
+  at cn==5).
 
   The rule per branch and its literature basis:
 
@@ -222,7 +225,7 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
     return group_args(oxidation=accessible[0], confidence=CONF_HIGH,
                       reason="only one accessible oxidation state")
 
-  if el == "Cu":                                                        # [39, 40]
+  if el == "Cu":  # [39, 40]
     if (cn is not None and cn <= 3) or geometry in (LINEAR, TRIGONAL):
       return group_args(oxidation=1, confidence=CONF_HIGH,
                         reason="low CN / linear-trigonal geometry")
@@ -259,8 +262,8 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
       # LOW-SPIN Fe(III) [86] that this must not touch, and a >=2-Cys form also
       # catches every [2Fe-2S] iron, which presents 2 Cys S + 2 inorganic S.
       #
-      # LOW confidence, and the reason says why: the site is ferrous in reservoir
-      # and carrier roles (e.g. the rubredoxin-like centre of
+      # LOW confidence, and the reason says why: the site is ferrous in
+      # reservoir and carrier roles (e.g. the rubredoxin-like centre of
       # 3-hydroxyanthranilate-3,4-dioxygenase [87], deposited ferrous many times
       # over), and a crystal at routine dose is partly photoreduced regardless
       # [84], so no single structure's Fe-S distances settle it.
@@ -269,7 +272,7 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
                           reason="rubredoxin-type Fe(S-Cys)4, ferric as "
                                  "isolated; ferrous in reservoir roles and "
                                  "photoreduced at routine dose")
-      if summary.q_hard <= -2:                                         # [37, 44]
+      if summary.q_hard <= -2:  # [37, 44]
         why = "hard anionic O charge <= -2"
         n_bg = getattr(summary, "n_anionic_unplaced", 0)
         if n_bg:
@@ -281,9 +284,9 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
   if el == "Mn":
     if summary is not None:
       # SOD-fold resting/oxidised Mn(III): a 5-coordinate trigonal-bipyramidal
-      # 3-His / 1-carboxylate / 1-solvent site, resting Mn(III)-hydroxo by QM and
-      # neutron structure [58, 59, 62, 64]. MEDIUM only, the reduced Mn(II)-SOD
-      # state is isostructural [57].
+      # 3-His / 1-carboxylate / 1-solvent site, resting Mn(III)-hydroxo by QM
+      # and neutron structure [58, 59, 62, 64]. MEDIUM only, the reduced
+      # Mn(II)-SOD state is isostructural [57].
       if (cn == 5 and geometry == TRIGONAL_BIPYRAMIDAL
           and summary.n_his == 3 and summary.n_carboxylate == 1
           and summary.n_water_o >= 1 and summary.n_tyrosinate == 0
@@ -296,7 +299,8 @@ def predict_oxidation(element, geometry, cn=None, summary=None):
       if summary.n_tyrosinate >= 1:
         return group_args(oxidation=3, confidence=CONF_LOW,
                           reason="coordinating tyrosinate")
-    # Dominant Mn(II) default; no robust II/III discriminator otherwise [56, 57].
+    # Dominant Mn(II) default; no robust II/III discriminator otherwise [56,
+    # 57].
     return group_args(oxidation=2, confidence=CONF_LOW,
                       reason="no ferric signature (Mn(II) default)")
 
@@ -311,11 +315,12 @@ def oxidation_uses_donors(element):
   """Whether :func:`predict_oxidation`'s branch for *element* reads the donor
   summary at all.
 
-  Only the Fe and Mn branches dereference ``summary``; Zn and Mg short-circuit on
-  a single accessible state, and Cu decides from CN and CShM class alone. Callers
-  use this to tell "the donor evidence was empty" (which should lower confidence)
-  from "the donor evidence was irrelevant" (which should not): capping a Zn whose
-  oxidation is definitional would contradict its own reason string.
+  Only the Fe and Mn branches dereference ``summary``; Zn and Mg short-circuit
+  on a single accessible state, and Cu decides from CN and CShM class alone.
+  Callers use this to tell "the donor evidence was empty" (which should lower
+  confidence) from "the donor evidence was irrelevant" (which should not):
+  capping a Zn whose oxidation is definitional would contradict its own reason
+  string.
 
   MUST track predict_oxidation: if a branch starts or stops reading *summary*,
   update this. Covered by tst_qmi.
@@ -423,14 +428,14 @@ def spin_state(element, oxidation, geometry, low_spin=False):
 
 def predict_spin(element, oxidation, geometry, summary=None):
   """Commit low_spin (+ confidence + reason) for (element, oxidation, geometry)
-  from robust features (plan Sec 6.2/6.6). High-spin by default; low spin only in
-  the heme branch. The rule per branch and its basis:
+  from robust features (plan Sec 6.2/6.6). High-spin by default; low spin only
+  in the heme branch. The rule per branch and its basis:
 
   - Not field-dependent (all but octahedral d4-d7): spin fixed by geometry +
     d-count, high confidence.
   - Heme Fe (FeN4 topology in *summary*), octahedral d4-d7:
-      6-coordinate with a strong axial pair (His/His or His/Met) -> low spin [45];
-      6-coordinate with a weak axial (aquo/hydroxo met) -> high spin [48];
+      6-coordinate with a strong axial pair (His/His or His/Met) -> low spin
+      [45]; 6-coordinate with a weak axial (aquo/hydroxo met) -> high spin [48];
       otherwise (single axial / 5-coordinate) -> high spin [46].
   - Non-heme biological field-dependent site: weak-field donor set -> high spin,
     Fe [41], Mn [47, 61, 62, 12].
@@ -452,7 +457,7 @@ def predict_spin(element, oxidation, geometry, summary=None):
                         reason="6-coordinate heme, weak axial (aquo/hydroxo)")
     return group_args(low_spin=False, confidence=CONF_HIGH,            # [46]
                       reason="5-coordinate heme (single axial)")
-  # Non-heme biological weak field -> high spin.               [41, 47, 61, 62, 12]
+  # Non-heme biological weak field -> high spin. [41, 47, 61, 62, 12]
   return group_args(low_spin=False, confidence=CONF_HIGH,
                     reason="non-heme biological weak-field donor set")
 
@@ -505,8 +510,8 @@ def enumerate_states(element, geometry=None):
     spin (e.g. tetrahedral). Brute-force everything, trust nothing.
   * a CShM class (the ``states=reasonable`` scan): only the spin(s) the ligand
     field permits at that geometry (tetrahedral -> high-spin only, square-planar
-    d8 -> diamagnetic, octahedral d4-d7 -> both). An unclassified geometry cannot
-    prune, so pass ``None`` and it degrades to the blind scan.
+    d8 -> diamagnetic, octahedral d4-d7 -> both). An unclassified geometry
+    cannot prune, so pass ``None`` and it degrades to the blind scan.
 
   This is a scan enumeration, NOT a committing prediction (predict_spin stays
   geometry-aware and commits a single state).
@@ -523,9 +528,9 @@ def enumerate_states(element, geometry=None):
     except (KeyError, ValueError):
       continue
     if geometry is None:                        # geometry-blind (states=all)
-      hs = _aufbau_unpaired(d, (5,)) + 1        # weak field (one 5-orbital level)
+      hs = _aufbau_unpaired(d, (5,)) + 1  # weak field (one 5-orbital level)
       ls = _aufbau_unpaired(d, (3, 2)) + 1      # strong field (t2g then eg)
-    else:                                       # ligand-field-allowed (reasonable)
+    else:  # ligand-field-allowed (reasonable)
       hs = unpaired_electrons(geometry, d, low_spin=False) + 1
       ls = unpaired_electrons(geometry, d, low_spin=True) + 1
     for mult in ([hs] if hs == ls else [hs, ls]):

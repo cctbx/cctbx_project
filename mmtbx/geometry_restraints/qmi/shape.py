@@ -315,7 +315,7 @@ def _best_csm_over_permutations(Q, P, perms):
   q_sq = float(np.sum(Q * Q))
   p_sq = float(np.sum(P * P))
   csm = 100.0 * (1.0 - (trace_max * trace_max) / (q_sq * p_sq))
-  np.clip(csm, 0.0, None, out=csm)         # tiny negative roundoff at perfect fit
+  np.clip(csm, 0.0, None, out=csm)  # tiny negative roundoff at perfect fit
   best = int(np.argmin(csm))
   return float(csm[best]), tuple(int(x) for x in perms[best])
 
@@ -366,9 +366,11 @@ def csm_against_shape(observed, shape_name, centroid_normalized=False,
   csm, perm = _best_csm_over_permutations(Q, P, perms)
   # gRMSD on the original (uncentered) observed vs the ideal; angles are
   # translation/scale invariant and the sorted pairwise-angle set is
-  # permutation-invariant, so neither centering nor the CShM permutation matters.
+  # permutation-invariant, so neither centering nor the CShM permutation
+  # matters.
   grmsd = _angular_grmsd(observed, ideal)
-  return group_args(shape=shape_name, csm=csm, gRMSD_deg=grmsd, permutation=perm)
+  return group_args(shape=shape_name, csm=csm, gRMSD_deg=grmsd,
+                    permutation=perm)
 
 
 def find_best_shape(observed, candidate_shapes=None, centroid_normalized=False,
@@ -488,7 +490,8 @@ def _effective_donors(atoms, metal_xyz, donor_iseqs):
     # Pick the O-pair actually collected: the sidechain carboxylate (OD1/OD2,
     # OE1/OE2) when both its O coordinate, else the main-chain C-terminal pair
     # (O/OXT). Keying on resname alone would force the sidechain pair for an
-    # ASP/GLU and skip a C-terminal Asp/Glu chelating via its backbone carboxylate.
+    # ASP/GLU and skip a C-terminal Asp/Glu chelating via its backbone
+    # carboxylate.
     sidechain = _CARBOXYLATE_O_PAIRS.get(resname)
     if sidechain is not None and set(sidechain) <= names.keys():
       pair = sidechain

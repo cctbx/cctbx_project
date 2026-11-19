@@ -19,8 +19,8 @@ are separate:
 - :func:`propose` walks a hierarchy and returns one change record per donor it
   would touch, naming the hydrogen, the rule and the reason.  It mutates
   nothing.
-- :func:`apply_changes` is the reference applier, for a caller that already has a
-  protonated structure and wants it corrected.
+- :func:`apply_changes` is the reference applier, for a caller that already has
+  a protonated structure and wants it corrected.
 
 WHAT THIS MODULE DELIBERATELY DOES NOT DECIDE.  Two policy questions belong to
 the caller, and are required arguments rather than defaults:
@@ -329,8 +329,9 @@ def propose(hierarchy, metal_atoms, coord_cutoff, policy=None,
                        new_name=outcome.new_name, new_xyz=new_xyz,
                        mark_acceptor=outcome.mark_acceptor))
 
-  soft_metals = [m for m in metal_atoms
-                 if normalize_element(m.element) in policy.anion_inducing_metals]
+  soft_metals = [
+    m for m in metal_atoms
+    if normalize_element(m.element) in policy.anion_inducing_metals]
 
   for atom in hierarchy.atoms():
     ag = atom.parent()
@@ -416,8 +417,9 @@ def apply_changes(hierarchy, changes):
       if change.new_name:
         raw = change.h_atom.name
         lead = len(raw) - len(raw.lstrip())
-        change.h_atom.name = (" " * lead + change.new_name
-                            + " " * max(0, len(raw) - lead - len(change.new_name)))
+        change.h_atom.name = (
+          " " * lead + change.new_name
+          + " " * max(0, len(raw) - lead - len(change.new_name)))
       if change.new_xyz is not None:
         change.h_atom.set_xyz(change.new_xyz)
       n_moved += 1

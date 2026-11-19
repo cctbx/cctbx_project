@@ -69,8 +69,8 @@ sites; a site matched by no block uses the built-in guess."
 'element Zn' covers every Zn). Required."
     oxidation_state = None
       .type = int
-      .help = "Metal oxidation state for the matched site(s). Falls back to the \
-built-in value when unset."
+      .help = "Metal oxidation state for the matched site(s). Falls back to \
+the built-in value when unset."
     multiplicity = None
       .type = int(value_min=1)
       .help = "Spin multiplicity (2S+1): number of unpaired electrons + 1 \
@@ -86,8 +86,8 @@ qm_region
     .type = float(value_min=0)
     .short_caption = Region radius (A)
     .help = "Seed-inclusion radius (Angstrom): atoms within this distance of a \
-metal are pulled into the QM region. The final capped cluster can extend beyond \
-this radius."
+metal are pulled into the QM region. The final capped cluster can extend \
+beyond this radius."
 }
 protonation
   .short_caption = Protonation
@@ -113,8 +113,8 @@ clears fewer than 'tolerance' close contacts."
       tolerance = 1
         .type = int(value_min=0)
         .help = "Stop refining once a pass removes fewer than this many close \
-(<2.0 A) H-H contacts (1 = stop at a plateau, 0 = run all max_sweeps). The best \
-pass is always kept."
+(<2.0 A) H-H contacts (1 = stop at a plateau, 0 = run all max_sweeps). The \
+best pass is always kept."
     }
     basin {
       rounds = 0
@@ -170,8 +170,9 @@ its own basis."
     optimisation = *looser LooseOpt Opt TightOpt VeryTightOpt
       .type = choice
       .short_caption = Optimisation convergence
-      .help = "ORCA geometry-optimisation convergence. 'looser' applies relaxed \
-metal-site tolerances; the remaining values are ORCA's built-in convergence tiers."
+      .help = "ORCA geometry-optimisation convergence. 'looser' applies \
+relaxed metal-site tolerances; the remaining values are ORCA's built-in \
+convergence tiers."
     optimise_hydrogens = *free_atoms all
       .type = choice
       .short_caption = Hydrogens to optimise
@@ -199,9 +200,9 @@ closest to the protein-interior dielectric). Empty string disables solvation."
   temperature = 100
     .type = float(value_min=0)
     .short_caption = Temperature (K)
-    .help = "Data-collection temperature (K) used to convert QM force constants \
-into restraint sigmas; the default is the ~100 K of a cryo-cooled crystal. \
-Sigma scales with sqrt(temperature)."
+    .help = "Data-collection temperature (K) used to convert QM force \
+constants into restraint sigmas; the default is the ~100 K of a cryo-cooled \
+crystal. Sigma scales with sqrt(temperature)."
   nproc = 1
     .type = int(value_min=1)
     .short_caption = Processes per QM job
@@ -216,8 +217,9 @@ imaginary mode (each attempt uses a larger kick)."
     .type = choice
     .short_caption = Freeze QM-region waters
     .help = "Which QM-region water oxygens to freeze during the optimisation \
-(hydrogens always stay free): 'all' every water in the relax zone, 'peripheral' \
-only non-coordinating waters (metal-coordinating waters relax), 'none' no water."
+(hydrogens always stay free): 'all' every water in the relax zone, \
+'peripheral' only non-coordinating waters (metal-coordinating waters relax), \
+'none' no water."
   freeze_far_carboxylate_o = False
     .type = bool
     .short_caption = Freeze a monodentate carboxylate's dangling oxygen
@@ -231,8 +233,8 @@ scaffold, cap, and water freezes."
   angle_restraints = *auto always never
     .type = choice
     .short_caption = Donor-metal-donor angle restraints
-    .help = "When to emit donor-metal-donor angle restraints. 'auto' emits them \
-where the M-L bonds leave the metal under-determined: <=2 donors, or >=3 \
+    .help = "When to emit donor-metal-donor angle restraints. 'auto' emits \
+them where the M-L bonds leave the metal under-determined: <=2 donors, or >=3 \
 coplanar donors (trigonal/square-planar); a 3D-spanning shell is held by its \
 bonds alone. 'always'/'never' are unconditional."
   coordination
@@ -279,12 +281,13 @@ confidence) for each site and stop; no restraints are computed or written."
 states = *predicted reasonable all
   .type = choice
   .short_caption = States to run
-  .help = "Which metal states to run per site. predicted: the predictor commits \
-one (oxidation, spin). reasonable: scan every accessible oxidation crossed with \
-the spin(s) the site's ligand-field geometry permits (tetrahedral stays high-\
-spin). all: scan every accessible oxidation crossed with both spin extremes, \
-ignoring geometry. reasonable and all run each state in its own qm.work_dir \
-subdirectory with its own restraints, and still report what the predictor thinks."
+  .help = "Which metal states to run per site. predicted: the predictor \
+commits one (oxidation, spin). reasonable: scan every accessible oxidation \
+crossed with the spin(s) the site's ligand-field geometry permits (tetrahedral \
+stays high-spin). all: scan every accessible oxidation crossed with both spin \
+extremes, ignoring geometry. reasonable and all run each state in its own \
+qm.work_dir subdirectory with its own restraints, and still report what the \
+predictor thinks."
 use_bvs = False
   .type = bool
   .short_caption = Oxidation from BVS
@@ -316,7 +319,8 @@ Requires xtb.
       raise Sorry('No model provided. Please supply a PDB or mmCIF file.')
     if self.params.predict_only and self.params.states != 'predicted':
       raise Sorry(f'predict_only cannot be combined with states='
-                  f'{self.params.states} (predict_only runs the predictor only).')
+                  f'{self.params.states} (predict_only runs the predictor '
+                  f'only).')
     model = self.data_manager.get_model()
     for sel_str in [s for s in (self.params.sites.selection or []) if s]:
       try:
@@ -368,9 +372,9 @@ Requires xtb.
                   "protonation.enable=True to add hydrogens during this run.")
     if self._has_unprotonated_water(model):
       raise Sorry("The model has a water with no hydrogens; qmi needs every "
-                  "water protonated (two H for water, one for a hydroxo ligand). "
-                  "Protonate the waters or set protonation.enable=True to place "
-                  "water hydrogens.")
+                  "water protonated (two H for water, one for a hydroxo "
+                  "ligand). Protonate the waters or set "
+                  "protonation.enable=True to place water hydrogens.")
 
   def _has_unprotonated_water(self, model):
     """True if any water residue carries no H/D (a bare O). has_hd() is global
@@ -529,7 +533,8 @@ Requires xtb.
     stem = (self.params.output.prefix
             or os.path.splitext(os.path.basename(self._model_name))[0])
     if self.params.output.combine:
-      # output.filename (standard field), if set, names the single combined file.
+      # output.filename (standard field), if set, names the single combined
+      # file.
       out = (self.params.output.filename or self.params.output.file_name
              or f'{stem}_qmi.edits')
       n_bonds = sum(len(r.restraints.bonds) for r in emitted)

@@ -30,23 +30,29 @@ from scitbx import matrix
 from mmtbx.geometry_restraints.qmi import bvs, electronic, metals, util
 
 
-# Consensus mean M-donor coordination distances (Angstrom) as (mean_lo, mean_hi),
-# per donor ELEMENT: the range spanned by the Harding (2006) Table 1 [54] PDB/CSD
-# means and the Bazayeva et al. (2024) Table S2 [55] short (coordinating) peaks,
-# over every donor kind of that element (water / carboxylate / carbonyl /
-# hydroxyl O; His N; Cys/Met S).  The 2024 long secondary peaks (far O of
-# monodentate carboxylate, second shell) are excluded.
+# Consensus mean M-donor coordination distances (Angstrom) as (mean_lo,
+# mean_hi), per donor ELEMENT: the range spanned by the Harding (2006) Table 1
+# [54] PDB/CSD means and the Bazayeva et al. (2024) Table S2 [55] short
+# (coordinating) peaks, over every donor kind of that element (water /
+# carboxylate / carbonyl / hydroxyl O; His N; Cys/Met S).  The 2024 long
+# secondary peaks (far O of monodentate carboxylate, second shell) are excluded.
 TARGET_MEAN_RANGE_A = {
   # Zn  O 1.99-2.09 [54]; N His 2.01-2.05 [54,55]; S Cys 2.28-2.34 [54,55]
-  ("Zn", "O"): (1.99, 2.09), ("Zn", "N"): (2.01, 2.05), ("Zn", "S"): (2.28, 2.34),
+  ("Zn", "O"): (1.99, 2.09), ("Zn", "N"): (2.01, 2.05),
+  ("Zn", "S"): (2.28, 2.34),
   # Mg  O 2.00-2.30 [54,55]; N His 2.10-2.20 [55] (absent in [54])
   ("Mg", "O"): (2.00, 2.30), ("Mg", "N"): (2.10, 2.20),
   # Mn  O 2.10-2.22 [54,55]; N His 2.16-2.25 [54,55]; S Cys 2.35 [54]
-  ("Mn", "O"): (2.10, 2.22), ("Mn", "N"): (2.16, 2.25), ("Mn", "S"): (2.35, 2.35),
-  # Fe  O 1.99-2.17 [54,55]; N His 2.00-2.20 [54,55]; S Cys/Met 2.28-2.32 [54,55]
-  ("Fe", "O"): (1.99, 2.17), ("Fe", "N"): (2.00, 2.20), ("Fe", "S"): (2.28, 2.32),
-  # Cu  O 1.96-2.13 [54]; N His 2.00-2.03 [54,55]; S Cys 2.15-2.2 / Met 2.5 [54,55]
-  ("Cu", "O"): (1.96, 2.13), ("Cu", "N"): (2.00, 2.03), ("Cu", "S"): (2.15, 2.50),
+  ("Mn", "O"): (2.10, 2.22), ("Mn", "N"): (2.16, 2.25),
+  ("Mn", "S"): (2.35, 2.35),
+  # Fe  O 1.99-2.17 [54,55]; N His 2.00-2.20 [54,55]; S Cys/Met 2.28-2.32
+  # [54,55]
+  ("Fe", "O"): (1.99, 2.17), ("Fe", "N"): (2.00, 2.20),
+  ("Fe", "S"): (2.28, 2.32),
+  # Cu  O 1.96-2.13 [54]; N His 2.00-2.03 [54,55]; S Cys 2.15-2.2 / Met 2.5
+  # [54,55]
+  ("Cu", "O"): (1.96, 2.13), ("Cu", "N"): (2.00, 2.03),
+  ("Cu", "S"): (2.15, 2.50),
 }
 
 # Widen the observed mean-range for the xTB M-L error plus the natural spread of
@@ -55,8 +61,8 @@ TARGET_PAD_A = 0.25
 
 # Bond-valence plausibility band: an individual coordination bond carries a
 # valence s = exp((R0 - R)/B) [27] between s_max (a collapsed, near-covalent
-# contact) and s_min (a dissociating one).  Inverting, R = R0 - B*ln(s).  Wide by
-# design, so only a gross error trips it.
+# contact) and s_min (a dissociating one).  Inverting, R = R0 - B*ln(s).  Wide
+# by design, so only a gross error trips it.
 BVS_VALENCE_BAND = (0.05, 1.5)   # (s_min, s_max)
 
 # Elements treated as candidate metal donors for the coordination-mode check.
@@ -162,7 +168,8 @@ def check_site(metal, bonds, mode_changes=()):
   is an iterable of coordination-mode-change detail strings (from
   :func:`coordination_mode_changes`).  Returns ``group_args(n_atypical,
   n_implausible, n_mode_changed, details)`` where *details* lists one short
-  string per flagged bond and per mode change, for the log and provenance header.
+  string per flagged bond and per mode change, for the log and provenance
+  header.
   """
   n_atypical = n_implausible = 0
   details = []

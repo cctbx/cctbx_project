@@ -13,8 +13,8 @@ Each restraint sigma is the modified-Seminario curvature (plan Sec 5F); when the
 curvature is unavailable (Hessian failure, or still an imaginary mode after the
 one perturb-and-reoptimise) it falls back to a conservative M-L default
 (:data:`DEFAULT_BOND_SIGMA` / :data:`DEFAULT_ANGLE_SIGMA`) flagged
-``conservative_fallback``.  Atom selections are built from atom identity (chain /
-resid / resname / name / altloc) so the ``.edits`` file applies to the full
+``conservative_fallback``.  Atom selections are built from atom identity (chain
+/ resid / resname / name / altloc) so the ``.edits`` file applies to the full
 input model at refinement time; donors on symmetry images (renamed chains in the
 endo_exo sub-model) cannot be expressed this way and are flagged, not emitted.
 """
@@ -36,13 +36,13 @@ DEFAULT_DONOR_ELEMENTS = frozenset({
 # the single value lives in qmi.util so the pipeline cannot silently diverge.
 DEFAULT_COORDINATION_CUTOFF_A = util.DEFAULT_COORDINATION_CUTOFF_A
 
-# Conservative M-L fallback sigmas, used when the modified-Seminario curvature is
-# unavailable (plan Sec 5F/9.2). Deliberately looser than the covalent-calibrated
-# Phenix defaults (0.02 A / 3 deg): metal-ligand bonds are softer (lower force
-# constants), so an M-L bond we could not characterise should not be restrained as
-# tightly as a covalent one. An engineering default, NOT a database value; it sits
-# inside the computed Seminario clamp range so a failed Hessian is never tighter
-# than a soft computed bond.
+# Conservative M-L fallback sigmas, used when the modified-Seminario curvature
+# is unavailable (plan Sec 5F/9.2). Deliberately looser than the
+# covalent-calibrated Phenix defaults (0.02 A / 3 deg): metal-ligand bonds are
+# softer (lower force constants), so an M-L bond we could not characterise
+# should not be restrained as tightly as a covalent one. An engineering default,
+# NOT a database value; it sits inside the computed Seminario clamp range so a
+# failed Hessian is never tighter than a soft computed bond.
 DEFAULT_BOND_SIGMA = 0.05      # A
 DEFAULT_ANGLE_SIGMA = 5.0      # deg
 
@@ -139,10 +139,10 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
   One bond per metal-donor contact (``distance_ideal`` = optimised M-donor
   distance) and one angle per donor-metal-donor pair (``angle_ideal`` =
   optimised donor-metal-donor angle).  A symmetry-image donor (on a renamed
-  chain) is emitted as a bond to its ASU parent via a ``symmetry_operation`` when
-  *sym_image_provenance* supplies it (angles cannot cross symmetry, so it gets no
-  angle); a symmetry-image donor without provenance is skipped and counted in the
-  returned ``n_skipped_symmetry``.
+  chain) is emitted as a bond to its ASU parent via a ``symmetry_operation``
+  when *sym_image_provenance* supplies it (angles cannot cross symmetry, so it
+  gets no angle); a symmetry-image donor without provenance is skipped and
+  counted in the returned ``n_skipped_symmetry``.
 
   Parameters
   ----------
@@ -158,9 +158,10 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
   angle_sigmas : dict {frozenset({i, j}): sigma_deg} or None
       Per-angle sigmas (plan Sec 5F): trusted Seminario curvatures plus the
       site's widen-only ``seminario_fallback`` for contaminated angles; a key
-      absent from the dict (contaminated, with no trusted site angle to widen to)
-      takes the conservative *angle_sigma* default, so ``emit_angles`` always
-      yields every angle.  ``None`` means the whole-Hessian conservative fallback.
+      absent from the dict (contaminated, with no trusted site angle to widen
+      to) takes the conservative *angle_sigma* default, so ``emit_angles``
+      always yields every angle.  ``None`` means the whole-Hessian conservative
+      fallback.
   angle_origins : dict {frozenset({i, j}): str} or None
       Per-angle ``sigma_origin`` (``hessian`` / ``seminario_fallback``) parallel
       to *angle_sigmas*; defaults to ``hessian`` for present keys.
@@ -174,11 +175,12 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
       Chain ids present in the original input model; used to identify
       symmetry-image donors.  ``None`` disables the check (all donors emitted as
       plain bonds).
-  sym_image_provenance : dict {donor_iseq: (asu_parent_labels, symmetry_op_xyz)} or None
-      Provenance for symmetry-image donors (from endo_exo); asu_parent_labels is
-      the ASU parent's ``atom.fetch_labels()``. A
-      symmetry-image donor present here is emitted as a bond to its ASU parent
-      with ``symmetry_operation`` set; one absent here is skipped.
+  sym_image_provenance : dict or None
+      ``{donor_iseq: (asu_parent_labels, symmetry_op_xyz)}``: provenance for
+      symmetry-image donors (from endo_exo); asu_parent_labels is the ASU
+      parent's ``atom.fetch_labels()``. A symmetry-image donor present here is
+      emitted as a bond to its ASU parent with ``symmetry_operation`` set; one
+      absent here is skipped.
   log : file-like or None
 
   Returns
@@ -200,7 +202,7 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
 
   prov = sym_image_provenance or {}
   usable = []          # non-symmetry donors: plain bonds + angles
-  sym_bonds = []       # (donor_iseq, asu_parent_labels, op_xyz): symmetry bonds only
+  sym_bonds = []  # (donor_iseq, asu_parent_labels, op_xyz): symmetry bonds only
   n_skipped = 0
   for d in donor_iseqs:
     if (original_chain_ids is not None
@@ -247,13 +249,15 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
     for a in range(len(usable)):
       for b in range(a + 1, len(usable)):
         key = frozenset((usable[a], usable[b]))
-        if angle_sigmas is None:            # whole-Hessian conservative fallback
+        if angle_sigmas is None:  # whole-Hessian conservative fallback
           s, origin = angle_sigma, "conservative_fallback"
-        elif key in angle_sigmas:           # trusted Seminario or seminario_fallback
+        elif key in angle_sigmas:  # trusted Seminario or seminario_fallback
           s = angle_sigmas[key]
-          origin = angle_origins.get(key, "hessian") if angle_origins else "hessian"
-        else:                               # contaminated, no site fallback:
-          s, origin = angle_sigma, "conservative_fallback"   # conservative default
+          origin = (angle_origins.get(key, "hessian") if angle_origins
+                    else "hessian")
+        else:  # contaminated, no site fallback:
+          # conservative default
+          s, origin = angle_sigma, "conservative_fallback"
         angles.append(dict(
           atom_selection_1=sels[a],
           atom_selection_2=metal_sel,

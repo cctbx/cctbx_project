@@ -48,15 +48,17 @@ def global_block(method, solvent, temperature, model_name, protonation,
   """The global provenance lines (once per file).
 
   *protonation* is a short description of the protonation source/opt-out state.
-  *resolution* is included only when not None (qmi does not require it). Versions
-  are queried lazily unless *xtb_ver* / *cctbx_ver* are supplied (for tests)."""
+  *resolution* is included only when not None (qmi does not require it).
+  Versions are queried lazily unless *xtb_ver* / *cctbx_ver* are supplied (for
+  tests)."""
   xtb_ver = xtb_version() if xtb_ver is None else xtb_ver
   cctbx_ver = cctbx_version() if cctbx_ver is None else cctbx_ver
   model_line = f"model: {model_name}"
   if resolution is not None:
     model_line += f"; resolution {resolution:.2f} A"
   return [
-    f"qmi metal restraints  ({method} / {solvent or 'gas'} / {temperature:.1f} K)",
+    f"qmi metal restraints  ({method} / {solvent or 'gas'} / "
+    f"{temperature:.1f} K)",
     f"versions: xtb {xtb_ver}; cctbx {cctbx_ver}",
     model_line,
     f"protonation: {protonation}",
@@ -71,9 +73,9 @@ def settings_block(engine, radius, free_radius, freeze_waters,
 
   Records the region/freeze partition and the per-engine optimisation knobs that
   produced the targets, so the ``.edits`` documents how it was generated, not
-  only the chemistry outcome. *optimise_hydrogens* / *optimisation* / *hessian* /
-  *basis_set* are ORCA-only (xTB frees every non-cap hydrogen). *optimisation* is
-  the collapsed convergence knob ('looser' or an ORCA convergence tier)."""
+  only the chemistry outcome. *optimise_hydrogens* / *optimisation* / *hessian*
+  / *basis_set* are ORCA-only (xTB frees every non-cap hydrogen). *optimisation*
+  is the collapsed convergence knob ('looser' or an ORCA convergence tier)."""
   def onoff(flag):
     return "on" if flag else "off"
   region = (f"region: radius={radius} "
@@ -81,7 +83,8 @@ def settings_block(engine, radius, free_radius, freeze_waters,
             f"freeze_far_carboxylate_o={onoff(freeze_far_carboxylate_o)} "
             f"optimise_all={onoff(optimise_all)}")
   if engine == "orca":
-    eng = f"engine: orca H={optimise_hydrogens} opt={optimisation} hessian={hessian}"
+    eng = (f"engine: orca H={optimise_hydrogens} opt={optimisation} "
+           f"hessian={hessian}")
     if basis_set:
       eng += f" basis={basis_set}"
     eng += f"; nproc={nproc}"

@@ -33,12 +33,12 @@ _WATER_OH_NEUTRON = 0.984     # canonical neutron O-H bond length (A)
 _WATER_HOH_DEG = 104.5        # canonical H-O-H angle (deg)
 _WATER_ACCEPTOR_RADIUS = 3.5  # max distance to search for H-bond acceptors (A)
 _WATER_ACCEPTOR_ELEMENTS = frozenset({"O", "N", "F", "S", "CL"})
-_WATER_NH_BOND = 1.3          # max N-H distance for the "N carries an H" test (A)
+_WATER_NH_BOND = 1.3  # max N-H distance for the "N carries an H" test (A)
 # Lone-pair-directed placement (opt-in). When on, H1 aims at an acceptor's
 # lone-pair lobe (derived from its bonded-neighbour geometry) rather than
 # its nucleus, giving better D-H...A angles. Helper distances/angles:
-_WATER_BOND_HEAVY = 1.9       # max heavy-heavy bond distance for lobe geometry (A)
-_WATER_HBOND_HA = 1.8         # nominal H...acceptor distance for the lobe target (A)
+_WATER_BOND_HEAVY = 1.9  # max heavy-heavy bond distance for lobe geometry (A)
+_WATER_HBOND_HA = 1.8  # nominal H...acceptor distance for the lobe target (A)
 _WATER_SP2_LOBE_DEG = 60.0    # half-angle of the two sp2 carbonyl/-late lobes
 _WATER_CONE_SAMPLES = 18      # angular samples around the O-H1 cone
 # Element-aware "clash-free" thresholds. A candidate H must clear every
@@ -372,7 +372,8 @@ def _acceptor_lobes(atoms, static_tree, donor_n):
         continue
       ej = atoms[j].element.strip().upper()
       d = (matrix.col(atoms[j].xyz) - A).length()
-      if (d <= _WATER_NH_BOND) if ej in ("H", "D") else (d <= _WATER_BOND_HEAVY):
+      if ((d <= _WATER_NH_BOND) if ej in ("H", "D")
+          else (d <= _WATER_BOND_HEAVY)):
         nbrs.append(j)
     bond_dirs = [(matrix.col(atoms[j].xyz) - A).normalize() for j in nbrs]
     if not bond_dirs:
@@ -384,8 +385,10 @@ def _acceptor_lobes(atoms, static_tree, donor_n):
         lobes[i] = [away]
       else:
         lobes[i] = [
-          away.rotate_around_origin(axis=n, angle=_WATER_SP2_LOBE_DEG, deg=True),
-          away.rotate_around_origin(axis=n, angle=-_WATER_SP2_LOBE_DEG, deg=True)]
+          away.rotate_around_origin(
+            axis=n, angle=_WATER_SP2_LOBE_DEG, deg=True),
+          away.rotate_around_origin(
+            axis=n, angle=-_WATER_SP2_LOBE_DEG, deg=True)]
     else:
       bsum = matrix.col((0.0, 0.0, 0.0))
       for b in bond_dirs:
@@ -478,12 +481,14 @@ class _WaterHydrogenPlacer(object):
         d = (matrix.col(self.static_coords[j]) - c).length()
         if d < best[ci]:
           best[ci] = d
-        thr = _WATER_MIN_H_CLEARANCE if self.static_is_h[j] else _WATER_MIN_CLEARANCE
+        thr = (_WATER_MIN_H_CLEARANCE if self.static_is_h[j]
+               else _WATER_MIN_CLEARANCE)
         if d < thr:
           ok[ci] = False
     # placed H live in two trees (prefix + pending); base maps a tree-local
     # index back to its global placed_coords slot. Placed atoms are all H.
-    for tree, base in ((self.placed_tree, 0), (self.pending_tree, self.n_built)):
+    for tree, base in ((self.placed_tree, 0),
+                       (self.pending_tree, self.n_built)):
       if tree is None:
         continue
       for ci, nbrs in enumerate(
@@ -626,7 +631,8 @@ class _WaterHydrogenPlacer(object):
                for b in range(len(acc_dirs)) if a != b]
       d1_dirs = acc_dirs + tilts
       d1_pts = acc_pts + [o_xyz + self.oh_length * dv for dv in tilts]
-      d1_res = acc_res + self._clearances(d1_pts[len(acc_pts):], own_idx, own_slots)
+      d1_res = acc_res + self._clearances(
+        d1_pts[len(acc_pts):], own_idx, own_slots)
 
       def _align(dh):
         return max((dh.dot(a) for a in acc_dirs), default=0.0)
@@ -638,8 +644,9 @@ class _WaterHydrogenPlacer(object):
         fp, fq = _ortho_frame(d1_dirs[m])
         for k in range(_WATER_CONE_SAMPLES):
           th = 2.0 * math.pi * k / _WATER_CONE_SAMPLES
-          cone.append((m, self.cos_hoh * d1_dirs[m]
-                       + self.sin_hoh * (math.cos(th) * fp + math.sin(th) * fq)))
+          cone.append((
+            m, self.cos_hoh * d1_dirs[m]
+            + self.sin_hoh * (math.cos(th) * fp + math.sin(th) * fq)))
       cone_pts = [o_xyz + self.oh_length * d2 for _, d2 in cone]
       cone_res = self._clearances(cone_pts, own_idx, own_slots) if cone else []
       a1 = {m: _align(d1_dirs[m]) for m in viable}
@@ -693,8 +700,9 @@ class _WaterHydrogenPlacer(object):
     cone_dirs = []
     for k in range(_WATER_CONE_SAMPLES):
       theta = 2.0 * math.pi * k / _WATER_CONE_SAMPLES
-      cone_dirs.append(self.cos_hoh * d1
-                       + self.sin_hoh * (math.cos(theta) * p + math.sin(theta) * q))
+      cone_dirs.append(
+        self.cos_hoh * d1
+        + self.sin_hoh * (math.cos(theta) * p + math.sin(theta) * q))
     cone_pts = [o_xyz + self.oh_length * d2 for d2 in cone_dirs]
     cone_res = self._clearances(cone_pts, own_idx, own_slots)
 
@@ -718,7 +726,8 @@ class _WaterHydrogenPlacer(object):
     others (its own H excluded), updating ``placed_coords`` and the atoms in
     place.
     """
-    self.placed_tree = KDTree(self.placed_coords) if self.placed_coords else None
+    self.placed_tree = (KDTree(self.placed_coords) if self.placed_coords
+                        else None)
     self.pending_tree = None
     self.n_built = len(self.placed_coords)
     for o_xyz, own_idx, slots in self.records:
@@ -751,7 +760,8 @@ class _WaterHydrogenPlacer(object):
         Indices into ``records`` of waters with a placed H that fails the
         clash gate.
     """
-    self.placed_tree = KDTree(self.placed_coords) if self.placed_coords else None
+    self.placed_tree = (KDTree(self.placed_coords) if self.placed_coords
+                        else None)
     self.pending_tree = None
     self.n_built = len(self.placed_coords)
     bad = []
@@ -830,7 +840,8 @@ class _WaterHydrogenPlacer(object):
       own_idx = {pos_by_id[a.memory_id()] for a in ag.atoms()
                  if a.memory_id() in pos_by_id}
       crowd = sum(
-        1 for j in self.static_tree.query_ball_point(o.xyz, _WATER_CLEARANCE_RADIUS)
+        1 for j in self.static_tree.query_ball_point(
+          o.xyz, _WATER_CLEARANCE_RADIUS)
         if j not in own_idx)
       waters.append((crowd, ag, o, own_idx))
     waters.sort(key=lambda w: w[0], reverse=True)
@@ -889,7 +900,8 @@ class _WaterHydrogenPlacer(object):
       self.on_state("initial", stats)
     prev_n20 = stats[1] if stats is not None else None
     best_n20 = prev_n20
-    best_coords = list(self.placed_coords) if (self.n_refine or self.n_basin) else None
+    best_coords = (list(self.placed_coords)
+                   if (self.n_refine or self.n_basin) else None)
     best_label = "initial"
     for i in range(self.n_refine):
       self._apply_sweep()
@@ -900,7 +912,8 @@ class _WaterHydrogenPlacer(object):
         best_n20 = stats[1]
         best_coords = list(self.placed_coords)
         best_label = f"sweep {i + 1}"
-      if self.refine_tol and prev_n20 is not None and prev_n20 - stats[1] < self.refine_tol:
+      if (self.refine_tol and prev_n20 is not None
+          and prev_n20 - stats[1] < self.refine_tol):
         break  # gain below tolerance -- converged
       prev_n20 = stats[1]
 

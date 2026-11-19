@@ -44,8 +44,8 @@ def _directions_span_3d(unit_dirs):
   """Whether the metal->donor unit vectors span 3D (so the M-L bonds triangulate
   the metal). The metal-position bond stiffness is ``sum_i u_i u_i^T``; its
   smallest eigenvalue is the softest-mode stiffness, ~0 for a coplanar/collinear
-  shell (a soft out-of-plane mode the bonds cannot hold). Normalised by the count
-  so the cutoff is coordination-number independent."""
+  shell (a soft out-of-plane mode the bonds cannot hold). Normalised by the
+  count so the cutoff is coordination-number independent."""
   acc = [0.0] * 9
   for u in unit_dirs:
     for i in range(3):
@@ -76,7 +76,8 @@ class QMRestraintsBuilder(object):
   metal_element : iterable of str or None
       Restrict the metal scan to these element(s); default (None) scans every
       metal endo_exo finds, and each is handled if the electronic engine can
-      guess its state (``electronic.OXIDATION_PRIORS``) or the user overrides it.
+      guess its state (``electronic.OXIDATION_PRIORS``) or the user overrides
+      it.
   selection : iterable of str or None
       Explicit endo_exo seed selection string(s); overrides ``metal_element``.
   radius : float
@@ -114,8 +115,8 @@ class QMRestraintsBuilder(object):
       the conservative fallback (plan Sec 5F); each attempt uses a larger kick.
   use_bvs : bool
       Commit the BVS most-likely oxidation instead of the predictor's (spin is
-      re-derived for it); a user metal_state oxidation still wins. Applies to the
-      committing (states='predicted') path only.
+      re-derived for it); a user metal_state oxidation still wins. Applies to
+      the committing (states='predicted') path only.
   freeze_waters : str
       Which relax-zone water O to freeze during the optimisation (the H stay
       free): ``'all'`` (every water), ``'peripheral'`` (only non-coordinating
@@ -126,9 +127,9 @@ class QMRestraintsBuilder(object):
       the optimisation, so it cannot swing in to a spurious bidentate.
   angle_restraints : str
       Donor-metal-donor angle-restraint policy (plan Sec 7): ``'auto'`` emits
-      them only for geometries the M-L distances cannot hold (angularly-ambiguous
-      isomer at the same distances: everything but a regular high-CN polyhedron);
-      ``'always'`` / ``'never'`` are unconditional.
+      them only for geometries the M-L distances cannot hold
+      (angularly-ambiguous isomer at the same distances: everything but a
+      regular high-CN polyhedron); ``'always'`` / ``'never'`` are unconditional.
   coord_cutoff : callable or None
       Shared metal-donor coordination cutoff (see
       :func:`util.make_coordination_cutoff`), threaded to donor detection and
@@ -147,7 +148,8 @@ class QMRestraintsBuilder(object):
                engine="xtb", orca_method=None, orca_basis_set=None,
                orca_solvent_model=None, orca_optimisation="looser",
                orca_hessian="xtb",
-               orca_optimise_hydrogens="free_atoms", orca_exe=None, logger=None):
+               orca_optimise_hydrogens="free_atoms", orca_exe=None,
+               logger=None):
     self.metal_element = list(metal_element) if metal_element else None
     self.selection = list(selection) if selection else None
     self.radius = radius
@@ -158,7 +160,8 @@ class QMRestraintsBuilder(object):
     self.predict_only = predict_only
     # predict_only runs no QM, so a state scan is meaningless: force the single
     # committing path (the program's validate() rejects the combo up front too).
-    self.states = "predicted" if predict_only else states   # 'predicted' | 'reasonable' | 'all'
+    # 'predicted' | 'reasonable' | 'all'
+    self.states = "predicted" if predict_only else states
     self.nproc = nproc
     self.perturb_attempts = perturb_attempts
     self.use_bvs = use_bvs
@@ -166,7 +169,8 @@ class QMRestraintsBuilder(object):
     self.freeze_far_carboxylate_o = freeze_far_carboxylate_o
     self.optimise_all = optimise_all   # True => no $fix, whole cluster relaxes
     self.angle_restraints = angle_restraints   # 'auto' | 'always' | 'never'
-    self.coord_cutoff = coord_cutoff   # shared metal-donor cutoff callable, or None
+    # shared metal-donor cutoff callable, or None
+    self.coord_cutoff = coord_cutoff
     self.engine = engine               # 'xtb' | 'orca'
     # One QM-backend bundle threaded to every run_constrained_opt / run_hessian
     # call. For xTB the orca_* arguments are ignored; for ORCA the unset ones
@@ -294,16 +298,17 @@ class QMRestraintsBuilder(object):
     :func:`donors.summarize`, or None).
 
     A user override is authoritative for whichever field it sets; the rest come
-    from ``electronic.predict_oxidation`` / ``predict_spin`` on refinement-robust
-    features only (donor summary + geometry + CN, never bond lengths). qmi ALWAYS
-    commits: the only skip is a metal outside the vetted priors with no override
-    (``predict_oxidation`` returns None), which then needs a metal_state block.
+    from ``electronic.predict_oxidation`` / ``predict_spin`` on
+    refinement-robust features only (donor summary + geometry + CN, never bond
+    lengths). qmi ALWAYS commits: the only skip is a metal outside the vetted
+    priors with no override (``predict_oxidation`` returns None), which then
+    needs a metal_state block.
 
     With ``use_bvs`` and a *bvs_est*, the BVS most-likely oxidation replaces the
     predictor's (a user oxidation still wins); the spin is re-derived for it.
 
-    Returns a group_args; ``skipped`` is a reason string when the state cannot be
-    committed (fields then None), else None with the committed state,
+    Returns a group_args; ``skipped`` is a reason string when the state cannot
+    be committed (fields then None), else None with the committed state,
     ``state_source``, ``low_spin``, ``confidence``, and the per-part reasons.
     """
     def skip(reason):
@@ -339,14 +344,14 @@ class QMRestraintsBuilder(object):
         unpaired = electronic.unpaired_electrons(geometry, d,
                                                  low_spin=sp.low_spin)
       except (KeyError, ValueError):
-        return skip(f"{metal_element}{ox:+d} gives an impossible d-count; check "
-                    f"the oxidation_state override")
+        return skip(f"{metal_element}{ox:+d} gives an impossible d-count; "
+                    f"check the oxidation_state override")
       mult, low_spin = unpaired + 1, sp.low_spin
       spin_conf, spin_reason = sp.confidence, sp.reason
 
     if (user_ox is None and self.use_bvs and bvs_est is not None
         and bvs_est.best is not None):
-      source = "bvs"           # BVS set the oxidation (matches the branch above)
+      source = "bvs"  # BVS set the oxidation (matches the branch above)
     elif user_ox is not None or user_mult is not None:
       source = "user-supplied"
     else:
@@ -365,11 +370,11 @@ class QMRestraintsBuilder(object):
     # evidence, so capping them would contradict their own reason strings.
     from_donors = (source == "guessed"
                    and electronic.oxidation_uses_donors(metal_element))
-    # Evidence can come from either pass: a motif the residue names placed, or an
-    # anionic group only the bond graph could see. A site with neither decided on
-    # nothing. The bond-graph term counts only where the element's rules actually
-    # read q_hard: Mn keys on motifs alone, so a recovered charge tells it
-    # nothing and must not lift its cap.
+    # Evidence can come from either pass: a motif the residue names placed, or
+    # an anionic group only the bond graph could see. A site with neither
+    # decided on nothing. The bond-graph term counts only where the element's
+    # rules actually read q_hard: Mn keys on motifs alone, so a recovered charge
+    # tells it nothing and must not lift its cap.
     informed = (getattr(summary, "motif_evidence", True)
                 or (getattr(summary, "n_anionic_unplaced", 0) > 0
                     and electronic.oxidation_uses_donor_charge(metal_element)))
@@ -389,8 +394,8 @@ class QMRestraintsBuilder(object):
 
     Built on a COPY of the sub-model, deliberately.  Interpreting a model to get
     its bond graph also normalises it (symmetric side chains are renamed), and
-    the real sub-model must reach ``region.pdb`` and the frozen partition exactly
-    as endo_exo produced it, so the perception is not allowed to perturb
+    the real sub-model must reach ``region.pdb`` and the frozen partition
+    exactly as endo_exo produced it, so the perception is not allowed to perturb
     anything the QM path sees.  The extra interpretation costs a few tenths of a
     second per site.
 
@@ -398,8 +403,8 @@ class QMRestraintsBuilder(object):
     absent from its default table), which would be circular here since the
     oxidation state is what we are trying to predict.  It is not: with
     ``link_metals`` off the metal is an isolated node in the graph, so no donor
-    charge depends on the value.  A placeholder is passed and only the donors are
-    read back.
+    charge depends on the value.  A placeholder is passed and only the donors
+    are read back.
 
     Never raises: a cluster the monomer library cannot interpret (an unknown
     ligand) leaves the predictor on the residue-name path it used before, rather
@@ -481,7 +486,8 @@ class QMRestraintsBuilder(object):
     n_metals = qmi_metals.count_metals(submodel)
     if n_metals != 1:
       return [self._skip_result(
-        index, seed, f"polynuclear_out_of_scope ({n_metals} metals in cluster)")]
+        index, seed,
+        f"polynuclear_out_of_scope ({n_metals} metals in cluster)")]
 
     metal_iseq = seed_iseqs[0]
     metal_atom = atoms[metal_iseq]
@@ -495,10 +501,10 @@ class QMRestraintsBuilder(object):
     donor_iseqs = restraints.detect_first_shell(
       submodel, metal_iseq, coord_cutoff=self.coord_cutoff)
     geom = shape.classify_geometry(atoms, metal_iseq, donor_iseqs)
-    # Angle-restraint gate (plan Sec 7): the metal->donor directions of the donors
-    # that will actually get a bond. A symmetry-image donor is bonded to its ASU
-    # parent (via symmetry_operation) when endo_exo supplied provenance; one
-    # without it is skipped and cannot triangulate. _emit_angles then tests
+    # Angle-restraint gate (plan Sec 7): the metal->donor directions of the
+    # donors that will actually get a bond. A symmetry-image donor is bonded to
+    # its ASU parent (via symmetry_operation) when endo_exo supplied provenance;
+    # one without it is skipped and cannot triangulate. _emit_angles then tests
     # whether those bonds pin the metal in 3D.
     metal_xyz = matrix.col(atoms[metal_iseq].xyz)
     bond_dirs = []
@@ -510,12 +516,12 @@ class QMRestraintsBuilder(object):
       if v.length() > 0:
         bond_dirs.append(v.normalize())
     emit_angles = self._emit_angles(bond_dirs)
-    # BVS cross-check (plan Sec 6.4, advisory): estimate the most self-consistent
-    # oxidation over the accessible states, from the OBSERVED first-shell
-    # distances. Reported before the skip so an ambiguous metal (e.g. Fe) shows
-    # its BVS estimate to guide an override; it drives the committed oxidation
-    # only under use_bvs, and is trustworthy only at high resolution / undamaged
-    # metal.
+    # BVS cross-check (plan Sec 6.4, advisory): estimate the most
+    # self-consistent oxidation over the accessible states, from the OBSERVED
+    # first-shell distances. Reported before the skip so an ambiguous metal
+    # (e.g. Fe) shows its BVS estimate to guide an override; it drives the
+    # committed oxidation only under use_bvs, and is trustworthy only at high
+    # resolution / undamaged metal.
     bvs_est = self._bvs_estimate(atoms, metal_iseq, metal_element, donor_iseqs)
     if bvs_est is not None:
       vstr = ", ".join(f"{q:+d}:{v:.2f}"
@@ -528,18 +534,18 @@ class QMRestraintsBuilder(object):
               f"(V {vstr}; observed geometry, high-resolution only)",
               file=self.logger)
 
-    # Donor perception: the residue-name classification, plus the resonance-group
-    # charge the bond graph already knows and the name whitelist cannot see (a
-    # citrate, a phosphate). Runs on every path including predict_only, since a
-    # prediction is exactly what it improves.
+    # Donor perception: the residue-name classification, plus the
+    # resonance-group charge the bond graph already knows and the name whitelist
+    # cannot see (a citrate, a phosphate). Runs on every path including
+    # predict_only, since a prediction is exactly what it improves.
     perception = self._donor_perception(submodel, metal_iseq, metal_element,
                                         cap_iseqs, cap_original_elements)
     summary = self._donor_summary(atoms, donor_iseqs, perception=perception)
 
     # The frozen/free partition is state-independent and, with endo_exo's cap
-    # anchors, needs no restraints manager, so compute it ONCE per site and share
-    # it between the predicted and scan QM paths.  predict_only runs no QM (and
-    # forces states='predicted', so the scan branch is never taken there).
+    # anchors, needs no restraints manager, so compute it ONCE per site and
+    # share it between the predicted and scan QM paths.  predict_only runs no QM
+    # (and forces states='predicted', so the scan branch is never taken there).
     frozen_iseqs = site_dir = None
     if not self.predict_only:
       frozen_iseqs, free_iseqs = qm.determine_frozen_atoms(
@@ -552,9 +558,9 @@ class QMRestraintsBuilder(object):
       elif (self.engine == 'orca'
             and self._engine_opts.optimise_hydrogens == 'free_atoms'):
         # 'all' leaves the base partition (every non-cap H free) as xTB runs it;
-        # 'free_atoms' freezes each H whose heavy atom is frozen, sparing the DFT
-        # the floppy scaffold-H modes. Recompute the free set so the constraints
-        # summary stays accurate.
+        # 'free_atoms' freezes each H whose heavy atom is frozen, sparing the
+        # DFT the floppy scaffold-H modes. Recompute the free set so the
+        # constraints summary stays accurate.
         frozen_iseqs = self._freeze_fixed_atom_hydrogens(
           submodel, frozen_iseqs, donor_iseqs, cap_iseqs)
         frozen_set = set(frozen_iseqs)
@@ -643,18 +649,20 @@ class QMRestraintsBuilder(object):
     emitted M-L bonds leave the metal's position under-determined: <= 2 bonds
     (linear/bent, metal free on a circle), or >= 3 bonds whose directions are
     (near-)coplanar (a trigonal-planar / square-planar shell, where the bonds
-    give zero out-of-plane stiffness and the metal can pucker freely). A bond set
-    that spans 3D triangulates the metal and needs no angle (a rubredoxin
+    give zero out-of-plane stiffness and the metal can pucker freely). A bond
+    set that spans 3D triangulates the metal and needs no angle (a rubredoxin
     Fe(SCys)4 tetrahedron is held by its four bonds alone). *bond_dirs* are the
-    metal->donor unit vectors of the donors that actually get a bond (a chelate's
-    second O and a symmetry-image donor with provenance both count)."""
+    metal->donor unit vectors of the donors that actually get a bond (a
+    chelate's second O and a symmetry-image donor with provenance both
+    count)."""
     if self.angle_restraints == "always":
       return True
     if self.angle_restraints == "never":
       return False
     if len(bond_dirs) <= 2:
       return True                      # metal on a circle/line: angle is free
-    return not _directions_span_3d(bond_dirs)   # coplanar shell: soft out-of-plane
+    # coplanar shell: soft out-of-plane
+    return not _directions_span_3d(bond_dirs)
 
   def _process_state_scan(self, index, seed, submodel, metal_iseq, donor_iseqs,
                           cap_iseqs, cap_original_elements, geom, metal_element,
@@ -678,12 +686,14 @@ class QMRestraintsBuilder(object):
       print(f"  predicted: oxidation ({pred.oxidation_reason}); "
             f"spin ({pred.spin_reason})", file=self.logger)
 
-    # 'reasonable' prunes to the geometry-allowed spins; 'all' is geometry-blind.
+    # 'reasonable' prunes to the geometry-allowed spins; 'all' is
+    # geometry-blind.
     geometry = geom.shape if self.states == "reasonable" else None
     states = electronic.enumerate_states(metal_element, geometry=geometry)
     if not states:
       return [self._skip_result(
-        index, seed, f"{metal_element} has no electronic prior; cannot enumerate "
+        index, seed,
+        f"{metal_element} has no electronic prior; cannot enumerate "
         f"accessible states", metal_element=metal_element, site_tag=site_tag)]
 
     print(f"Site {index}: {self.states}-states scan of {len(states)} state(s): "
@@ -707,17 +717,19 @@ class QMRestraintsBuilder(object):
       try:
         results.append(self._run_state(
           index, seed, submodel, metal_iseq, donor_iseqs, frozen_iseqs,
-          metal_element, site_tag, original_chain_ids, bvs_est, ox, mult, charge,
-          state_dir,
-          f"{self.states}-states (predicted)" if is_pred else f"{self.states}-states",
+          metal_element, site_tag, original_chain_ids, bvs_est, ox, mult,
+          charge, state_dir,
+          (f"{self.states}-states (predicted)" if is_pred
+           else f"{self.states}-states"),
           emit_angles=emit_angles, sym_image_provenance=sym_image_provenance,
           confidence=(pred.confidence if is_pred else None),
           oxidation_reason=(pred.oxidation_reason if is_pred else None),
           spin_reason=(pred.spin_reason if is_pred else None),
           donor_summary=summary))
       except Exception as exc:
-        # One state's QM failing must not abort the scan: states=all deliberately
-        # enumerates SCF-fragile states. Record the skip and run the rest.
+        # One state's QM failing must not abort the scan: states=all
+        # deliberately enumerates SCF-fragile states. Record the skip and run
+        # the rest.
         results.append(self._skip_result(
           index, seed, f"ox={ox:+d} mult={mult} QM failed: {exc}",
           metal_element=metal_element, site_tag=site_tag))
@@ -734,7 +746,8 @@ class QMRestraintsBuilder(object):
       submodel, specific_atom_charges=sac,
       specific_atom_multiplicities=sam, log=self.logger)
 
-  def _skip_result(self, index, seed, reason, metal_element=None, site_tag=None):
+  def _skip_result(self, index, seed, reason, metal_element=None,
+                   site_tag=None):
     """A per-site result marking the site skipped (no restraints)."""
     print(f"Site {index} skipped: {reason}", file=self.logger)
     return group_args(
@@ -764,15 +777,15 @@ class QMRestraintsBuilder(object):
 
   def _freeze_fixed_atom_hydrogens(self, submodel, frozen_iseqs, donor_iseqs,
                                    cap_iseqs):
-    """Return *frozen_iseqs* with the 'free_atoms' rule: a hydrogen is frozen iff
-    its heavy atom is frozen.
+    """Return *frozen_iseqs* with the 'free_atoms' rule: a hydrogen is frozen
+    iff its heavy atom is frozen.
 
     From the base partition (every non-cap hydrogen free) this freezes only the
     hydrogens riding a frozen heavy atom, so no free heavy atom drags a frozen H
-    behind it (which would distort its X-H bond). Capping hydrogens are left as the
-    base partition froze them (together with their anchors, in determine_frozen_atoms);
-    coordinating-water hydrogens are freed even though their O is frozen (the O-H
-    orientation shapes the M-O interaction)."""
+    behind it (which would distort its X-H bond). Capping hydrogens are left as
+    the base partition froze them (together with their anchors, in
+    determine_frozen_atoms); coordinating-water hydrogens are freed even though
+    their O is frozen (the O-H orientation shapes the M-O interaction)."""
     atoms = submodel.get_atoms()
     def res_key(atom):
       # A value key: atom.parent() hands back a fresh proxy each call, so object
@@ -800,7 +813,7 @@ class QMRestraintsBuilder(object):
       if not atom.element_is_hydrogen():
         continue
       if j in caps:
-        continue                    # capping H: keep the base partition's frozen state
+        continue  # capping H: keep the base partition's frozen state
       if res_key(atom) in water_donor_keys:
         frozen.discard(j)           # coordinating-water H: always free
         continue
@@ -889,8 +902,9 @@ class QMRestraintsBuilder(object):
         or site_sanity.n_mode_changed):
       print(f"Site {index}: sanity-bound flags: "
             + "; ".join(site_sanity.details), file=self.logger)
-    # Provenance (plan Sec 9.3): the global block (set by run()) plus this site's
-    # committed state / source / reasons / origin / sanity, as the .edits header.
+    # Provenance (plan Sec 9.3): the global block (set by run()) plus this
+    # site's committed state / source / reasons / origin / sanity, as the .edits
+    # header.
     site_lines = provenance.site_block(
       metal_element, site_tag, oxidation, multiplicity, charge, state_source,
       confidence, oxidation_reason, spin_reason, bvs_est, sigma_origin,
@@ -923,17 +937,17 @@ class QMRestraintsBuilder(object):
                          donor_iseqs, frozen_iseqs, charge, multiplicity,
                          work_dir):
     """Hessian -> modified-Seminario sigmas at *opt_sites*, with up to
-    perturb_attempts perturb-and-reoptimise cycles if the inner sphere carries an
-    imaginary mode (plan Sec 5F).
+    perturb_attempts perturb-and-reoptimise cycles if the inner sphere carries
+    an imaginary mode (plan Sec 5F).
 
     Returns ``(opt_sites, bond_sigmas, angle_sigmas, angle_origins,
     sigma_origin, n_perturb)``: *opt_sites* is the final (possibly re-optimised)
     geometry, *angle_origins* is the per-angle ``sigma_origin`` map parallel to
     *angle_sigmas*, *sigma_origin* is ``"hessian"`` at a true minimum, else
-    ``"conservative_fallback"`` (bond/angle sigmas None, so restraints applies the
-    conservative M-L defaults), and *n_perturb* is the number of perturbation
-    cycles run. A QM or Hessian failure also degrades to the conservative
-    fallback."""
+    ``"conservative_fallback"`` (bond/angle sigmas None, so restraints applies
+    the conservative M-L defaults), and *n_perturb* is the number of
+    perturbation cycles run. A QM or Hessian failure also degrades to the
+    conservative fallback."""
     masses = [tiny_pse.table(a.element.strip()).weight()
               for a in submodel.get_atoms()]
 
@@ -958,9 +972,9 @@ class QMRestraintsBuilder(object):
     try:
       hessian, sig, chk = hessian_sigmas(opt_sites, "qmi_hess")
       # Perturb along the imaginary mode and re-optimise, up to perturb_attempts
-      # times with a LARGER kick each time (a repeated identical kick is a fixed-
-      # point no-op). A distinct namespace per attempt keeps the opt/Hessian cache
-      # from replaying an earlier attempt.
+      # times with a LARGER kick each time (a repeated identical kick is a
+      # fixed-point no-op). A distinct namespace per attempt keeps the
+      # opt/Hessian cache from replaying an earlier attempt.
       for attempt in range(1, self.perturb_attempts + 1):
         if chk.stable:
           break
@@ -973,9 +987,11 @@ class QMRestraintsBuilder(object):
         perturbed = sigma.imaginary_mode_perturbation(
           hessian, metal_iseq, donor_iseqs, masses, opt_sites, step=step,
           eigen=chk.eigen)
-        opt_sites = self._reoptimise(submodel, perturbed, frozen_iseqs, charge,
-                                     multiplicity, work_dir, f"qmi_reopt{attempt}")
-        hessian, sig, chk = hessian_sigmas(opt_sites, f"qmi_reopt{attempt}_hess")
+        opt_sites = self._reoptimise(
+          submodel, perturbed, frozen_iseqs, charge, multiplicity, work_dir,
+          f"qmi_reopt{attempt}")
+        hessian, sig, chk = hessian_sigmas(
+          opt_sites, f"qmi_reopt{attempt}_hess")
       if not chk.stable:
         print(f"Site {index}: still imaginary after {self.perturb_attempts} "
               f"perturb-reoptimise attempt(s); conservative fallback sigmas",

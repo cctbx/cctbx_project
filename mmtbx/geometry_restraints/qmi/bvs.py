@@ -1,12 +1,12 @@
 """Bond-valence-sum oxidation-state estimate from the vendored bvparm2020.cif
 [35] (plan 6.4).
 
-For a metal with a set of candidate oxidation states and its observed first-shell
-donor distances, this computes the Brown-Altermatt bond-valence sum
+For a metal with a set of candidate oxidation states and its observed
+first-shell donor distances, this computes the Brown-Altermatt bond-valence sum
 V_q = sum_i exp((R0(q) - R_i) / B) [27] under each candidate q and returns the q
 whose V_q is closest to q itself: the most self-consistent oxidation state for
-the observed geometry, plus the per-state V map. This is the same estimate as the
-calibration BVS in ~/qmi/calibration/prepare_qm_calcs.py.
+the observed geometry, plus the per-state V map. This is the same estimate as
+the calibration BVS in ~/qmi/calibration/prepare_qm_calcs.py.
 
 It is a CROSS-CHECK, advisory only: BVS uses the observed crystal bond lengths,
 so it is reliable only at high resolution and for an undamaged metal, and the
@@ -63,7 +63,7 @@ def _table():
              blk["_valence_param_B"],
              details if details is not None
              else [""] * len(blk["_valence_param_atom_1"]))
-  ordered = {}                     # key -> [(params, unchecked), ...] in file order
+  ordered = {}  # key -> [(params, unchecked), ...] in file order
   for cation, valence, anion, ro, b, det in rows:
     try:
       key = (metals.normalize_element(cation), int(valence),
@@ -142,4 +142,5 @@ def estimate_oxidation(cation, ox_states, contacts):
   return group_args(best=best, valences=valences, n_used=n_used,
                     n_by_state=counts, margin=margin,
                     coverage_asymmetric=False,
-                    close_call=(margin is not None and margin < CLOSE_CALL_MARGIN))
+                    close_call=(margin is not None
+                                and margin < CLOSE_CALL_MARGIN))

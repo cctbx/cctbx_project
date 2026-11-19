@@ -25,7 +25,7 @@ from mmtbx.geometry_restraints.qmi import metals, util
 
 # Side-chain donor residues in biological metal sites [9, 38].
 _CARBOXYLATE = frozenset(("ASP", "GLU"))     # OD1/OD2, OE1/OE2: anionic hard O
-_TYROSINATE = frozenset(("TYR",))            # OH: anionic hard O, ferric diag [50]
+_TYROSINATE = frozenset(("TYR",))  # OH: anionic hard O, ferric diag [50]
 _THIOLATE = frozenset(("CYS",))              # SG: anionic soft S
 _THIOETHER = frozenset(("MET",))             # SD: neutral soft S
 _IMIDAZOLE = frozenset(("HIS",))             # ND1/NE2: neutral N
@@ -38,11 +38,11 @@ def classify(element, resname):
   """Classify one coordinating atom into a donor descriptor from residue/element
   identity alone (no bond lengths).
 
-  Returns ``group_args(element, kind, charge, strong_axial)`` where ``charge`` is
-  the formal charge the donor's RESIDUE contributes (a carboxylate, tyrosinate or
-  thiolate is -1 per residue; :func:`summarize` dedups by residue so a bidentate
-  carboxylate counts once), and ``strong_axial`` flags a donor able to complete a
-  low-spin heme axial pair (imidazole N, thioether S) [45].
+  Returns ``group_args(element, kind, charge, strong_axial)`` where ``charge``
+  is the formal charge the donor's RESIDUE contributes (a carboxylate,
+  tyrosinate or thiolate is -1 per residue; :func:`summarize` dedups by residue
+  so a bidentate carboxylate counts once), and ``strong_axial`` flags a donor
+  able to complete a low-spin heme axial pair (imidazole N, thioether S) [45].
   """
   el = metals.normalize_element(element)   # canonical Title-case symbol
   rn = resname.strip().upper()
@@ -88,21 +88,22 @@ def summarize(donors):
 
   Heme is detected by FeN4 topology: a SINGLE residue contributing four or more
   N donors (a porphyrin/chlorin/corrin macrocycle), which distinguishes a heme
-  (4 N from one residue) from a 4-histidine site (4 N from four residues) without
-  a residue-name whitelist. The non-porphyrin donors are the axial set. Motif
-  counts (per residue, so a bidentate carboxylate counts once) drive the Fe
-  oxidation call.
+  (4 N from one residue) from a 4-histidine site (4 N from four residues)
+  without a residue-name whitelist. The non-porphyrin donors are the axial set.
+  Motif counts (per residue, so a bidentate carboxylate counts once) drive the
+  Fe oxidation call.
 
   UNCLASSIFIED DONORS. :func:`classify` recognises donors by residue name, so a
-  donor on a cofactor, buffer or substrate ligand falls through to ``het_*`` with
-  charge 0 and contributes to no motif count. That is silent: the predictor then
-  reads zero carboxylates and ``q_hard = 0`` for a site that may be strongly
-  anionic. 6G7Q (an Fe chelated by two citrates) produced a summary bit-for-bit
-  identical to passing no donors at all, and committed the ferrous fallthrough.
-  So the count is reported: ``n_unclassified`` excludes the porphyrin N that the
-  FeN4 test above legitimately consumes, and ``motif_evidence`` is False when NO
-  donor contributed any motif count, i.e. the summary carries no information.
-  See docs/donor_classification_generalisation.md.
+  donor on a cofactor, buffer or substrate ligand falls through to ``het_*``
+  with charge 0 and contributes to no motif count. That is silent: the predictor
+  then reads zero carboxylates and ``q_hard = 0`` for a site that may be
+  strongly anionic. 6G7Q (an Fe chelated by two citrates) produced a summary
+  bit-for-bit identical to passing no donors at all, and committed the ferrous
+  fallthrough. So the count is reported: ``n_unclassified`` excludes the
+  porphyrin N that the FeN4 test above legitimately consumes, and
+  ``motif_evidence`` is False when NO donor contributed any motif count, i.e.
+  the summary carries no information. See
+  docs/donor_classification_generalisation.md.
 
   BOND-GRAPH CHARGE. A donor may additionally carry ``group_charge`` (the formal
   charge on its resonance group) and ``group_id`` (that group's identity), read
@@ -140,7 +141,8 @@ def summarize(donors):
   heme = heme_res is not None
   axial = [d for d in donors if d.res_id != heme_res] if heme else []
 
-  # Motif counts, deduped per residue (one carboxylate/tyrosinate/His per residue).
+  # Motif counts, deduped per residue (one carboxylate/tyrosinate/His per
+  # residue).
   kinds_by_res = {}
   for d in donors:
     kinds_by_res.setdefault(d.res_id, set()).add(d.kind)
@@ -194,14 +196,16 @@ def summarize(donors):
     # evidence survived. motif_evidence False means the predictor is deciding
     # with no donor information at all.
     n_unclassified=len(unplaced),
-    unclassified=sorted({f"{d.res_id[-1] if isinstance(d.res_id, tuple) else d.res_id}"
-                         f".{d.element}" for d in unplaced}),
+    unclassified=sorted({
+      f"{d.res_id[-1] if isinstance(d.res_id, tuple) else d.res_id}"
+      f".{d.element}" for d in unplaced}),
     motif_evidence=motif_evidence,
     # Anionic hard-O groups recovered from the bond graph for donors the
     # residue-name pass could not place (0 when no bond graph was available).
     n_anionic_unplaced=n_anionic_unplaced,
-    # Coordinating water O (aquo/hydroxo; both modelled as HOH). For a heme every
-    # non-porphyrin donor is axial, so this is the axial-water count there.
+    # Coordinating water O (aquo/hydroxo; both modelled as HOH). For a heme
+    # every non-porphyrin donor is axial, so this is the axial-water count
+    # there.
     n_water_o=n_water_o,
     # Hard anionic O charge, one -1 per group: the carboxylates and tyrosinates
     # the residue names identify, plus the anionic O groups only the bond graph
