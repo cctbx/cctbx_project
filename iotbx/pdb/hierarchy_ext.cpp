@@ -446,6 +446,8 @@ namespace {
         .def("fits_in_pdb_format", &w_t::fits_in_pdb_format, (
           arg("use_hybrid36")=true))
         .def("atoms_with_i_seq_mismatch", &w_t::atoms_with_i_seq_mismatch)
+        .def("atoms_with_labels", &w_t::atoms_with_labels,
+          "Array of atom_with_labels, in the order of atoms().")
         .def("atoms_reset_serial", &w_t::atoms_reset_serial, (
           arg("interleaved_conf")=0,
           arg("first_value")=1))

@@ -427,14 +427,28 @@ class comp_comp_id(slots_getstate_setstate):
     result = copy.copy(self)
     for mod_atom in mod.atom_list:
       if (mod_atom.function == "add"):
-        # an H the residue already has is replaced, not added twice: CCD-style
-        # entries have H2 on N and NH3 adds H2 again, with another H2-N-CA
-        # (3d5k SCY). Heavy atoms (OXT, mod_COO) are left as before.
-        i_old = result.i_atom_by_id(mod_atom.new_atom_id)
+        # an H the residue already has is replaced, not added twice, if it is
+        # on the atom the mod bonds it to: CCD-style entries have H2 on N and
+        # NH3 adds H2 again, with another H2-N-CA (3d5k SCY). On another atom
+        # (2KZ H2 on CB) it would move that H: an error. Heavy atoms (OXT,
+        # mod_COO) are left as before.
+        name = mod_atom.new_atom_id
+        i_old = result.i_atom_by_id(name)
         if (i_old is not None
             and str(result.atom_list[i_old].type_symbol).strip().upper()
               in ("H", "D")):
-          result.delete_atom_in_place(mod_atom.new_atom_id)
+          def partners(bonds, add_only):
+            return sorted(set([b.atom_id_2 if b.atom_id_1 == name
+              else b.atom_id_1 for b in bonds if name in (b.atom_id_1,
+              b.atom_id_2) and (not add_only or b.function == "add")]))
+          old = partners(result.bond_list, False)
+          new = partners(mod.bond_list, True)
+          if (not set(old) & set(new)):
+            raise RuntimeError(
+              "%s: modification %s adds %s bonded to %s, but the residue has"
+              " %s bonded to %s" % (self.chem_comp.id, mod.chem_mod.id, name,
+              ", ".join(new) or "no atom", name, ", ".join(old) or "no atom"))
+          result.delete_atom_in_place(name)
         result.atom_list.append(mod_atom.as_chem_comp())
       elif (mod_atom.function == "delete"):
         try:

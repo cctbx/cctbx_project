@@ -273,8 +273,6 @@ class manager(object):
        for item in selections:
            t_initial.append(flex.double(3,0))
     fmodel_copy = fmodel.deep_copy()
-    if(fmodel_copy.mask_params is not None):
-       fmodel_copy.mask_params.verbose = -1
     d_mins, target_names = split_resolution_range(
       d_spacings                    = fmodel_copy.f_obs_work().d_spacings().data(),
       n_bodies                      = len(selections),
@@ -324,12 +322,9 @@ class manager(object):
             if(bss is not None and params.bulk_solvent_and_scale):
                if(fmodel_copy.f_obs().d_min() > 3.0):
                   bss.anisotropic_scaling=False
-               fast=True
-               if(bss.mode=="slow"): fast=False
                fmodel_copy.update_all_scales(
                  update_f_part1       = False,
                  params               = bss,
-                 fast                 = fast,
                  log                  = log,
                  remove_outliers      = False,
                  optimize_mask        = False,
@@ -337,7 +332,6 @@ class manager(object):
                if(fmodel_copy.f_obs().d_min() > 3.0):
                   assert save_bss_anisotropic_scaling is not None
                   bss.anisotropic_scaling = save_bss_anisotropic_scaling
-                  bss.minimization_b_cart = save_bss_anisotropic_scaling
             minimized = rigid_body_minimizer(
               fmodel                 = fmodel_copy,
               selections             = selections,
@@ -376,12 +370,9 @@ class manager(object):
           update_f_calc  = True,
           update_f_mask  = True)
         if(bss is not None and params.bulk_solvent_and_scale):
-          fast=True
-          if(bss.mode=="slow"): fast=False
           fmodel_copy.update_all_scales(
             update_f_part1       = False,
             params               = bss,
-            fast                 = fast,
             log                  = log,
             remove_outliers      = False,
             optimize_mask        = False,
@@ -395,12 +386,9 @@ class manager(object):
           monitors_call_back_handler(
             monitor=None, model=None, fmodel=fmodel, method="rigid_body")
     if(bss is not None and params.bulk_solvent_and_scale):
-      fast=True
-      if(bss.mode=="slow"): fast=False
       fmodel_copy.update_all_scales(
         update_f_part1       = False,
         params               = bss,
-        fast                 = fast,
         log                  = log,
         remove_outliers      = False,
         optimize_mask        = False,

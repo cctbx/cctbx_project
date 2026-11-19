@@ -124,6 +124,77 @@ TER
 END
 """
 
+# The four Cys and the Zn of the second zinc site of 1nlt, as deposited:
+# Zn-S 1.42-1.45 A (ideal 2.33 A), in a P 1 box.
+pdb_str_zn = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM    378  N   CYS A 159      12.013  13.368  10.570  1.00110.29           N
+ATOM    379  CA  CYS A 159      12.488  13.897  11.844  1.00113.35           C
+ATOM    380  C   CYS A 159      11.702  15.147  12.219  1.00113.94           C
+ATOM    381  O   CYS A 159      11.781  16.169  11.540  1.00114.95           O
+ATOM    382  CB  CYS A 159      13.986  14.218  11.752  1.00116.26           C
+ATOM    383  SG  CYS A 159      14.814  14.596  13.336  1.00122.23           S
+ATOM    397  N   CYS A 162      13.752  18.065  13.267  1.00111.36           N
+ATOM    398  CA  CYS A 162      14.535  18.562  12.141  1.00110.27           C
+ATOM    399  C   CYS A 162      13.791  18.246  10.844  1.00106.35           C
+ATOM    400  O   CYS A 162      14.004  17.199  10.234  1.00106.26           O
+ATOM    401  CB  CYS A 162      15.922  17.902  12.137  1.00114.48           C
+ATOM    402  SG  CYS A 162      15.946  16.075  11.960  1.00121.48           S
+ATOM    581  N   CYS A 185      20.109  15.969  15.296  1.00126.58           N
+ATOM    582  CA  CYS A 185      18.769  16.437  15.605  1.00128.99           C
+ATOM    583  C   CYS A 185      18.093  15.342  16.425  1.00131.38           C
+ATOM    584  O   CYS A 185      17.803  14.266  15.912  1.00133.18           O
+ATOM    585  CB  CYS A 185      17.986  16.695  14.312  1.00128.16           C
+ATOM    586  SG  CYS A 185      16.235  16.142  14.294  1.00127.20           S
+ATOM    602  N   CYS A 188      17.870  12.001  15.168  1.00131.92           N
+ATOM    603  CA  CYS A 188      18.374  11.947  13.807  1.00130.02           C
+ATOM    604  C   CYS A 188      19.812  12.481  13.724  1.00129.02           C
+ATOM    605  O   CYS A 188      20.504  12.583  14.740  1.00128.75           O
+ATOM    606  CB  CYS A 188      17.436  12.725  12.855  1.00129.20           C
+ATOM    607  SG  CYS A 188      17.277  14.534  13.113  1.00126.91           S
+HETATM 1815 ZN    ZN A 352      16.052  15.301  13.150  1.00124.81          ZN
+END
+"""
+
+# The three His and the Zn of the zinc site of 3ks3 (0.9 A resolution):
+# Zn-N 2.02-2.04 A, 0.3 A shorter than the ideal length of the restraints
+# (2.30 A, sigma 0.03 A). In a P 1 box.
+pdb_str_zn_his = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  N   HIS A  94      12.392  17.495  12.012  1.00  5.61           N
+ATOM      2  CA  HIS A  94      13.287  16.516  11.401  1.00  5.74           C
+ATOM      3  C   HIS A  94      13.217  15.243  12.239  1.00  5.45           C
+ATOM      4  O   HIS A  94      12.590  15.222  13.310  1.00  6.10           O
+ATOM      5  CB  HIS A  94      14.730  17.044  11.328  1.00  6.22           C
+ATOM      6  CG  HIS A  94      15.289  17.320  12.686  1.00  5.64           C
+ATOM      7  ND1 HIS A  94      15.136  18.518  13.335  1.00  6.13           N
+ATOM      8  CD2 HIS A  94      15.924  16.500  13.561  1.00  5.94           C
+ATOM      9  CE1 HIS A  94      15.673  18.435  14.543  1.00  6.19           C
+ATOM     10  NE2 HIS A  94      16.143  17.211  14.716  1.00  5.87           N
+ATOM     11  N   HIS A  96      15.531  11.510  13.517  1.00  5.49           N
+ATOM     12  CA  HIS A  96      16.731  10.701  13.691  1.00  5.76           C
+ATOM     13  C   HIS A  96      16.292   9.250  13.555  1.00  5.56           C
+ATOM     14  O   HIS A  96      15.232   8.891  14.070  1.00  6.50           O
+ATOM     15  CB  HIS A  96      17.370  10.931  15.068  1.00  6.23           C
+ATOM     16  CG  HIS A  96      17.659  12.371  15.340  1.00  5.89           C
+ATOM     17  ND1 HIS A  96      18.871  12.957  15.104  1.00  6.98           N
+ATOM     18  CD2 HIS A  96      16.849  13.387  15.776  1.00  5.99           C
+ATOM     19  CE1 HIS A  96      18.817  14.249  15.389  1.00  6.85           C
+ATOM     20  NE2 HIS A  96      17.604  14.547  15.801  1.00  6.01           N
+ATOM     21  N   HIS A 119      11.609  15.320  15.963  1.00  5.23           N
+ATOM     22  CA  HIS A 119      11.846  16.545  16.716  1.00  5.23           C
+ATOM     23  C   HIS A 119      11.140  17.711  16.021  1.00  5.16           C
+ATOM     24  O   HIS A 119      11.509  18.074  14.902  1.00  6.11           O
+ATOM     25  CB  HIS A 119      13.339  16.874  16.813  1.00  5.46           C
+ATOM     26  CG  HIS A 119      14.055  15.904  17.686  1.00  5.50           C
+ATOM     27  ND1 HIS A 119      15.433  15.720  17.676  1.00  5.96           N
+ATOM     28  CD2 HIS A 119      13.546  15.055  18.628  1.00  5.67           C
+ATOM     29  CE1 HIS A 119      15.713  14.788  18.579  1.00  5.93           C
+ATOM     30  NE2 HIS A 119      14.598  14.368  19.167  1.00  6.15           N
+HETATM   31 ZN    ZN A 262      16.871  16.351  16.401  1.00  5.63          ZN
+END
+"""
+
 def get_model(pdb_str, make_restraints=True):
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
@@ -353,6 +424,53 @@ def exercise_no_restraints():
   v = violations(model)
   assert len(v.bonds) == 0 and len(v.clashes) == 0, (v.bonds, v.clashes)
 
+def zn_distances(model, names):
+  atoms = model.get_atoms()
+  zn = [a for a in atoms if a.element.strip().upper() == "ZN"]
+  assert len(zn) == 1
+  d = [(a.distance(zn[0]), a.name.strip()) for a in atoms]
+  return [x[0] for x in d if x[1] in names and x[0] < 3]
+
+def exercise_metal_coordination():
+  """A collapsed bond to a metal (more than 0.5 A shorter than ideal) is a
+  bond outlier: the Zn-S bonds of 1nlt are found and regularized to within
+  0.2 A of the ideal 2.33 A."""
+  model = get_model(pdb_str_zn)
+  d = zn_distances(model, ["SG"])
+  assert len(d) == 4 and max(d) < 1.5, d
+  v = violations(model)
+  assert len(v.bonds) == 4, v.bonds
+  r = model.regularize_geometry()
+  assert r.needed
+  assert r.n_violations_start >= 4
+  assert r.n_violations_end == 0
+  d = zn_distances(model, ["SG"])
+  assert min(d) > 2.13 and max(d) < 2.5, d
+  v = violations(model)
+  assert len(v.bonds) == 0 and len(v.clashes) == 0, (v.bonds, v.clashes)
+
+def exercise_metal_coordination_untouched():
+  """A bond to a metal many sigmas from the ideal length of the restraints
+  but not collapsed is not an outlier: the Zn-N bonds of 3ks3 are 9-10
+  sigma short of an ideal that is too long for them, and stay."""
+  from cctbx.geometry_restraints.linking_class import linking_class
+  model = get_model(pdb_str_zn_his)
+  sites_cart_start = model.get_sites_cart().deep_copy()
+  d = zn_distances(model, ["ND1", "NE2"])
+  assert len(d) == 3 and 1.95 < min(d) and max(d) < 2.05, d
+  metal = linking_class().get_origin_id('metal coordination')
+  grm = model.get_restraints_manager().geometry
+  bond_proxies = grm.pair_proxies(sites_cart=sites_cart_start).bond_proxies
+  z = flex.sqrt(bond_proxies.residuals(sites_cart=sites_cart_start))
+  z_metal = [z[k] for k, p in enumerate(bond_proxies.simple)
+             if p.origin_id == metal]
+  assert len(z_metal) == 3 and min(z_metal) > 6, z_metal
+  v = violations(model)
+  assert len(v.bonds) == 0 and len(v.clashes) == 0, (v.bonds, v.clashes)
+  r = model.regularize_geometry()
+  assert not r.needed
+  assert (model.get_sites_cart() - sites_cart_start).norms().all_eq(0)
+
 if (__name__ == "__main__"):
   exercise_clean()
   exercise_sparse()
@@ -363,4 +481,6 @@ if (__name__ == "__main__"):
   exercise_no_h()
   exercise_water()
   exercise_no_restraints()
+  exercise_metal_coordination()
+  exercise_metal_coordination_untouched()
   print("OK")

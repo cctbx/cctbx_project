@@ -284,8 +284,8 @@ def test_conformer_letters():
 
 def test_standard_and_terminus():
   # ALA at a chain start: NH3 as before, nothing listed; 0A0 peptide-bonded
-  # to a GLY: a terminus (its H1-H3 are still names its dictionary lacks:
-  # A57 step A-2a')
+  # to a GLY: a terminus with its dictionary's names (terminal_nh3: HN1,
+  # HN2 and the computed HN3), nothing removed
   o = ff.place(pdb_ala_gly, n_terminal_charge='first_in_chain')
   assert h_on_n(o, 'ALA') == ['H1', 'H2', 'H3'], h_on_n(o, 'ALA')
   assert kept(o) == [], kept(o)
@@ -297,8 +297,8 @@ def test_standard_and_terminus():
   o = ff.place(tnp.with_next_gly(tnp.pdb_0a0),
     n_terminal_charge='first_in_chain')
   assert kept(o) == [], kept(o)
-  assert [r[6] for r in tnp.records(o, 'not_parameterized')] == \
-    ['H1', 'H2', 'H3'], tnp.records(o)
+  assert h_on_n(o, '0A0') == ['HN1', 'HN2', 'HN3'], h_on_n(o, '0A0')
+  assert tnp.records(o) == [], tnp.records(o)
 
 if __name__ == '__main__':
   test_sam_sah_standalone()

@@ -717,12 +717,18 @@ phenix.autobuild:
       flag: "maps_only={value}"
       type: boolean
       hint: "Only generate density-modified maps, skip model building. Useful when density modification is the goal."
+    refinement_data:
+      flag: "refinement_data={value}"
+      type: string
+      hint: "Which observations internal refinement uses: sharpened (default) or original. Set original ONLY when the user asks to refine against the original data or intensities. If the input cannot be used that way the program falls back to sharpened and reports 'Refinement data used ...' in the log. R values from the two modes are not comparable."
 
   hints:
     - "REQUIRES phased MTZ (from phaser or refine output)"
     - "Will not work with raw F/SIGF data"
     - "If a refined model exists, include it for better results"
     - "If rebuild_in_place fails with sequence mismatch, retry with rebuild_in_place=False"
+    - "Default refinement_data=sharpened. Use refinement_data=original only on user request (refine against original data/intensities)"
+    - "overall_best_refine_data_orig.mtz is a companion of overall_best_refine_data.mtz, not an input for later steps"
 
   log_parsing:
     r_free:
@@ -903,6 +909,10 @@ phenix.autosol:
       flag: "autosol.input.xray_data.obs_labels={value}"
       type: string
       hint: "Observation column labels for multi-array MTZ"
+    refinement_data:
+      flag: "refinement_data={value}"
+      type: string
+      hint: "Which observations internal refinement uses: sharpened (default) or original. Set original ONLY when the user asks to refine against the original data or intensities. If the input cannot be used that way the program falls back to sharpened and reports 'Refinement data used ...' in the log. R values from the two modes are not comparable."
 
   # Keywords in user advice that indicate this program should be preferred
   user_advice_keywords:
@@ -925,6 +935,8 @@ phenix.autosol:
     - "Set atom_type to the anomalous scatterer"
     - "For MR-SAD: run phenix.phaser FIRST to place the model, then pass placed model via partpdb_file="
     - "MR-SAD improves phasing by combining MR phases with anomalous signal"
+    - "Default refinement_data=sharpened. Use refinement_data=original only on user request (refine against original data/intensities)"
+    - "With refinement_data=original, refinement_orig_*.mtz files are companions, not inputs for later steps"
 
   log_parsing:
     fom:

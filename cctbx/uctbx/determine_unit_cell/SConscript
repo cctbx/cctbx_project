@@ -16,7 +16,7 @@ if os.path.isdir(env_etc.ncdist_dist):
     )
     env_etc.ncdist_resource_common_includes = ncdist_resource_common_includes
     ncdist_resource_flags.append("HAVE_NCDIST")
-    source_list.append(os.path.join(libtbx.env.dist_path("cctbx"), "..", "..", "ncdist", "CS6Dist.c"))
+    source_list.append(os.path.join("..", "..", "..", "ncdist", "CS6Dist.c"))
 
 if (not env_etc.no_boost_python):
   Import("env_cctbx_boost_python_ext")

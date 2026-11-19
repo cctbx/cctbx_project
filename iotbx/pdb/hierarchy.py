@@ -17,7 +17,7 @@ from iotbx.pdb import hy36encode, hy36decode, common_residue_names_get_class
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 from iotbx.pdb.modified_aa_names import lookup as aa_3_as_1_mod
 from iotbx.pdb.modified_rna_dna_names import lookup as na_3_as_1_mod
-from iotbx.pdb.utils import all_label_asym_ids
+from iotbx.pdb.utils import label_asym_id_from_index
 import iotbx.cif.model
 from cctbx import crystal, adptbx, uctbx
 from cctbx.array_family import flex
@@ -1692,8 +1692,6 @@ class _():
       self._lai_lookup = {}
       # fill self._lai_lookup for the whole hierarchy
       number_label_asym_id = 0
-      label_asym_ids = all_label_asym_ids()
-
       for model in self.models():
         for chain in model.chains():
           previous = None
@@ -1706,7 +1704,8 @@ class _():
             elif previous != kind and previous is not None:
               # a polymer or water run starts
               number_label_asym_id += 1
-            self._lai_lookup[rg.memory_id()] = label_asym_ids[number_label_asym_id]
+            self._lai_lookup[rg.memory_id()] = label_asym_id_from_index(
+              number_label_asym_id)
             previous = kind
           number_label_asym_id += 1 # up for each chain
         number_label_asym_id += 1 # up for each model
@@ -1715,8 +1714,6 @@ class _():
     if result is None:
       print (residue_group.id_str())
     return result
-
-    # return self.number_label_asym_id, self.label_asym_ids[self.number_label_asym_id]
 
   def get_auth_seq_id_iseq(self, iseq):
     """Return auth_seq_id for atom with index iseq"""
@@ -2375,7 +2372,9 @@ class _():
     with open(file_name, "w") as f:
       print(cif_object, file=f)
 
-  def atoms_with_labels(self):
+  # The C++ root.atoms_with_labels() replaces this generator; kept as the
+  # reference for iotbx/regression/tst_hierarchy_atoms_with_labels.py.
+  def _atoms_with_labels_python(self):
     """
     Generator for atom_with_labels objects, presented in the same order as
     the array returned by the atoms() method.

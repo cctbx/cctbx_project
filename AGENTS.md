@@ -39,9 +39,10 @@ Where the two differ, this file governs.
   or a claim about behavior you did not observe. Run `git fetch` and
   compare with `origin/master` before reporting what has landed upstream.
   When reviewing, follow the reviewer rules in `CONTRIBUTING.md`,
-  "Commits and pull requests", rank findings on its severity scale,
-  verify each finding against the code before reporting it, and quote
-  error text and failing test output in full.
+  "Commits and pull requests": check the change against these working
+  rules as well as for bugs, rank findings on its severity scale, verify
+  each finding against the code before reporting it, and quote error
+  text and failing test output in full.
 - **Ask before installing anything**, system-wide or into the project.
   Say what you want to install and why, then wait for an okay.
 - **Commit only on an explicit request to commit, and never push.** Show

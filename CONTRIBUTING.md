@@ -217,6 +217,8 @@ The Computational Crystallography Toolbox (cctbx) is a large code base under act
 
       * low: cosmetic problems, dead code, stale comments, other weak tests.
 
+    * Besides looking for bugs, it checks the change against the rules for writing one and ranks what it finds on the same scale: the change solves the stated problem and nothing more, with no code, options, files, or tests the problem does not require; each piece sits in the module where it belongs; the code reads plainly; and the tests cover the new behavior without duplicating each other.
+
     * Fixing (after confirming) or answering the findings completes a round; the person directing the agent decides when to stop. Between the final round and opening the pull request or pushing to master, change the code only as its findings or CI failures call for (rebasing and tidying the history are fine); after that, handle CI failures and review comments as usual.
 
     * Report the rounds in the "Coding agent" section of the pull request template.

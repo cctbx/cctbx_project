@@ -60,7 +60,53 @@ def exercise_00():
   assert aa[0].vector == [7, 2, 3, 4, 5, flex.size_t([0, 8, 9])], aa[0].vector
 
 
+asp_altloc_h = """
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM    732  N   ASP A 159       9.168  28.378 -20.499  1.00 12.57           N
+ATOM    733  CA  ASP A 159       8.901  27.254 -21.405  1.00 11.91           C
+ATOM    734  C   ASP A 159       9.546  27.572 -22.751  1.00 11.04           C
+ATOM    735  O   ASP A 159       9.135  28.491 -23.466  1.00 12.99           O
+ATOM    736  CB  ASP A 159       7.373  27.114 -21.524  1.00 11.97           C
+ATOM    737  H   ASP A 159       8.676  29.059 -20.683  1.00 12.57           H
+ATOM    738  HA  ASP A 159       9.259  26.409 -21.092  1.00 11.91           H
+ATOM    739  HB2 ASP A 159       7.012  26.903 -20.649  1.00 11.97           H
+ATOM    740  HB3 ASP A 159       7.008  27.956 -21.840  1.00 11.97           H
+ATOM    741  CG AASP A 159       6.916  26.027 -22.483  0.80 14.95           C
+ATOM    742  OD1AASP A 159       7.698  25.447 -23.248  0.80 10.06           O
+ATOM    743  OD2AASP A 159       5.687  25.772 -22.489  0.80 20.74           O
+"""
+
+def exercise_01():
+  """
+  Residue with a single altloc conformer (side chain altloc A, occupancy
+  0.8, no B; as in PDB 2vfn ASP A 159) and H added: the conformer residue
+  lists the blank-altloc atoms (incl. HB2, HB3) before the altloc A atoms, so
+  the lowest-index atom of the chi1 rotating group is HB2, not CG. Such a
+  residue has one conformer and is selected for real-space side-chain fitting
+  in phenix.refine; with an all-H cluster selection score3 (exclude_hd=True)
+  divided by zero. The cluster evaluation atom must be the heavy atom CG.
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None, lines = asp_altloc_h)
+  h = pdb_inp.construct_hierarchy()
+  mon_lib_srv = mmtbx.monomer_library.server.server()
+  for conformer in h.only_chain().conformers():
+    residue = conformer.only_residue()
+    atoms = residue.atoms()
+    clusters = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
+      residue         = residue,
+      mon_lib_srv     = mon_lib_srv,
+      backbone_sample = False).clusters
+    assert len(clusters) == 2, len(clusters)
+    assert conformer.altloc == "A"
+    for cl in clusters:
+      names = [atoms[i].name.strip() for i in cl.selection]
+      assert len([i for i in cl.selection
+        if not atoms[i].element_is_hydrogen()]) > 0, names
+    names = [atoms[i].name.strip() for i in clusters[0].selection]
+    assert names == ["CG"], (conformer.altloc, names)
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_00()
+  exercise_01()
   print("Time: %6.2f" % (time.time()-t0))

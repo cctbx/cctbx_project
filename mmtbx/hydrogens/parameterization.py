@@ -628,6 +628,11 @@ class manager(object):
     rh_2 = matrix.col(self.sites_cart[i_h2])
     r0 = matrix.col(self.sites_cart[i_a0])
     r1 = matrix.col(self.sites_cart[i_a1])
+    # Superposed H (threshold of check_if_atoms_superposed) are a tie, kept as
+    # given: new H of a propeller still sit on their placement seed here, and
+    # the sign of the product would be rounding.
+    if ((rh - rh_2).length() < 0.001):
+      return i_h1, i_h2
     if (((rh-r0).cross(rh_2-r0)).dot(r1-r0) >= 0):
       return i_h1, i_h2
     else:

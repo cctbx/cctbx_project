@@ -20,6 +20,7 @@ Needs ``scipy`` (KDTree); the vectorised work is
 import math
 
 import iotbx.pdb
+import libtbx.phil
 from cctbx import crystal
 from cctbx.crystal import super_cell
 from iotbx.pdb.utils import check_for_missing_elements
@@ -76,7 +77,7 @@ _WATER_CATION_ELEMENTS = frozenset({
 _WATER_CATION_RADIUS = 3.0
 _WATER_METAL_COORD_RADIUS = 2.6  # max first-shell metal bond (A)
 _WATER_H1_ACC_ALIGN = 0.7        # min cos(O-H, O->acceptor) to donate to it
-# Cluster search (opt-in): a proton scores its distance to the nearest
+# Cluster search: a proton scores its distance to the nearest
 # acceptor, at most _WATER_CLUSTER_CAP (A); a cluster with up to
 # _WATER_CLUSTER_EXHAUSTIVE combinations of candidates is searched in full.
 _WATER_CLUSTER_CAP = 3.0
@@ -2041,8 +2042,54 @@ class _WaterHydrogenPlacer:
     return allowed
 
 
-def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
-                          refine_tol=1, n_basin=0, cluster_search=False,
+# The search and report settings of the water H placement, included by
+# mmtbx.development.virvel and mmtbx.reduce2; place_water_hydrogens takes its
+# defaults from the search settings.
+placement_phil_str = """
+refine
+  .short_caption = Refinement sweeps
+{
+  max_sweeps = 5
+    .type = int(value_min=0)
+    .short_caption = Maximum refinement sweeps
+    .help = Maximum refinement sweeps, each placing every water again. \
+            0 turns refinement off.
+  tolerance = 1
+    .type = int(value_min=0)
+    .short_caption = Early-stop tolerance
+    .help = Stop once a sweep removes fewer than this many H-H contacts \
+            under 2.0 A. 0 runs all max_sweeps. The best state is kept.
+}
+basin
+  .short_caption = Basin-hopping
+{
+  rounds = 0
+    .type = int(value_min=0)
+    .short_caption = Basin-hopping rounds
+    .help = Basin-hopping rounds after refinement: each turns the waters \
+            that still clash to random orientations, refines them and \
+            keeps any improvement. 0 turns it off.
+}
+cluster_search = True
+  .type = bool
+  .short_caption = Joint search over water clusters
+  .help = Choose the orientations of each cluster of H-bonded waters \
+          jointly, after refinement and basin-hopping.
+stats = True
+  .type = bool
+  .short_caption = Report water-H clashes
+  .help = Count the H-H contacts between waters at each state of the \
+          search, and list the state kept and the contacts left under \
+          2.0 A.
+"""
+_PLACEMENT = libtbx.phil.parse(placement_phil_str).extract()
+
+
+def place_water_hydrogens(hier, oh_length=None, element=None,
+                          n_refine=_PLACEMENT.refine.max_sweeps,
+                          refine_tol=_PLACEMENT.refine.tolerance,
+                          n_basin=_PLACEMENT.basin.rounds,
+                          cluster_search=_PLACEMENT.cluster_search,
                           existing_h="keep", on_state=None,
                           crystal_symmetry=None, geometry=None,
                           symmetry_mates=True):
@@ -2076,19 +2123,21 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
       has D atoms or DOD waters and ``"H"`` otherwise. Names follow it:
       ``H1``/``H2`` or ``D1``/``D2``.
   n_refine : int, optional
-      Maximum relaxation sweeps after the greedy pass, each re-placing every
+      Maximum refinement sweeps after the greedy pass, each re-placing every
       water against the final environment, best state kept; 0 disables it.
+      ``n_refine``, ``refine_tol``, ``n_basin`` and ``cluster_search``
+      default to the values of ``placement_phil_str``.
   refine_tol : int, optional
       Stop refining once a sweep removes fewer than this many close (<2.0 A)
       H-H contacts, making ``n_refine`` a cap; 0 runs all ``n_refine`` sweeps.
   n_basin : int, optional
-      Basin-hopping rounds after refinement (default 0 = off): each restarts
+      Basin-hopping rounds after refinement (0 = off): each restarts
       from the best state, randomly re-orients the still-clashing waters,
       relaxes, and keeps any improvement (deterministic, seeded).
   cluster_search : bool, optional
       After refinement and basin-hopping, re-choose the orientations of each
       cluster of waters whose O lie within H-bonding reach of each other
-      jointly (default False). Each water's candidates are its current
+      jointly. Each water's candidates are its current
       orientation, the even splits over two acceptors and H1 on each
       acceptor; the search keeps the combination whose protons lie closest to
       acceptors, without a new H-H clash or two waters donating to each
@@ -2125,8 +2174,9 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
   Returns
   -------
   libtbx.group_args
-      ``kept_label``: label of the kept state (``"initial"``, ``"sweep N"`` or
-      ``"basin N.M"``) when refinement or basin-hopping ran, else None.
+      ``kept_label``: label of the state refinement and basin-hopping keep
+      (``"initial"``, ``"sweep N"`` or ``"basin N.M"``) when either ran, else
+      None; the cluster search starts from it.
       ``partial_waters``: one ``(residue_id, metal, action)`` per water that
       carried one H on input, counted as for ``existing_h``, ``metal`` being
       ``(element, distance)`` for a coordinating cation or None and
@@ -2152,6 +2202,69 @@ def place_water_hydrogens(hier, oh_length=None, element=None, n_refine=5,
   return group_args(kept_label=kept_label,
                     partial_waters=placer.partial_waters,
                     basin_rounds_run=placer.basin_rounds_run)
+
+
+def clash_report_lines(states, kept_label, basin_skipped, contacts,
+                       max_listed=20):
+  """Report lines for the H-H contacts between waters.
+
+  Parameters
+  ----------
+  states : list of tuple
+      ``(label, stats)`` per state, as :func:`place_water_hydrogens` passes
+      them to ``on_state``.
+  kept_label : str or None
+      The ``kept_label`` of :func:`place_water_hydrogens`.
+  basin_skipped : bool
+      Whether basin-hopping was asked for but no round ran.
+  contacts : list of tuple
+      ``(distance, id_a, id_b)`` per contact under 2.0 A, closest first, as
+      :func:`worst_water_clashes` gives them.
+  max_listed : int, optional
+      Most contacts listed per band.
+
+  Returns
+  -------
+  list of str
+      The table of contacts under 2.0, 1.8 and 1.5 A and the closest, one
+      row per state; whether basin-hopping was skipped; the state kept, the
+      cluster search's when it ran, with the state it started from; and
+      the contacts per band (< 1.5, 1.5-1.8 and 1.8-2.0 A) with their count,
+      up to ``max_listed`` each. No lines when there are no water H.
+  """
+  if not states or states[0][1][0] == 0:
+    return []
+  lines = [f"  {'state':<15}{'< 2.0 A':>9}{'< 1.8 A':>9}{'< 1.5 A':>9}"
+           "  closest"]
+  for label, stats in states:
+    _, n20, n18, n15, worst = stats
+    w = f"{worst:.2f} A" if worst is not None else "-"
+    lines.append(f"  {label:<15}{n20:>9}{n18:>9}{n15:>9}  {w}")
+  if basin_skipped:
+    lines.append("Basin hopping: no clashing water can move, skipped")
+  searched = states[-1][0] == "cluster search"
+  if searched and kept_label is not None:
+    lines.append(f"Kept: cluster search, from {kept_label} "
+                 "(fewest contacts < 2.0 A)")
+  elif searched:
+    lines.append("Kept: cluster search")
+  elif kept_label is not None:
+    lines.append(f"Kept: {kept_label} (fewest contacts < 2.0 A)")
+  if not contacts:
+    lines.append("Residual contacts: none")
+    return lines
+  lines.append("Residual contacts:")
+  for label, lo, hi in (("< 1.5 A", 0.0, 1.5), ("1.5-1.8 A", 1.5, 1.8),
+                        ("1.8-2.0 A", 1.8, 2.0)):
+    band = [c for c in contacts if lo <= c[0] < hi]
+    if not band:
+      continue
+    lines.append(f"  {label} ({len(band)}):")
+    for d, id_a, id_b in band[:max_listed]:
+      lines.append(f"    {d:.2f} A  {id_a}  <->  {id_b}")
+    if len(band) > max_listed:
+      lines.append(f"    ... and {len(band) - max_listed} more")
+  return lines
 
 
 def partial_water_lines(partial, labels, hydrogen="H", max_listed=20):
@@ -2383,12 +2496,12 @@ def _water_clash_stats(hier, crystal_symmetry=None):
 
 
 def _atom_id(a):
-  """Compact atom identity, e.g. ``"HOH A 863 H2"`` or
-  ``"HOH A 863 H2 altloc B"``."""
+  """Compact atom identity, e.g. ``"HOH A 863 H2"``, ``"HOH A 863A H2"``
+  with an insertion code, or ``"HOH A 863 H2 altloc B"``."""
   L = a.fetch_labels()
   alt = L.altloc.strip()
   return (f"{L.resname.strip()} {L.chain_id.strip()} "
-          f"{L.resseq.strip()} {L.name.strip()}"
+          f"{L.resseq.strip()}{L.icode.strip()} {L.name.strip()}"
           + (f" altloc {alt}" if alt else ""))
 
 
@@ -2401,12 +2514,23 @@ def _water_id(ag):
           f"{rg.icode.strip()}" + (f" altloc {alt}" if alt else ""))
 
 
-def _worst_water_clashes(hier, crystal_symmetry=None):
+def worst_water_clashes(hier, crystal_symmetry=None):
   """Inter-water H-H contacts within 2.0 A, closest first.
 
-  One ``(distance, id_a, id_b)`` per contact, as counted by
-  :func:`_water_clash_stats`; ``id_b`` of a symmetry equivalent ends in its
-  operator, in brackets.
+  Parameters
+  ----------
+  hier : iotbx.pdb.hierarchy.root
+      The model, its waters with H.
+  crystal_symmetry : cctbx.crystal.symmetry or None, optional
+      With it, contacts with the symmetry-equivalent water H count too;
+      None takes the model alone.
+
+  Returns
+  -------
+  list of tuple
+      ``(distance, id_a, id_b)`` per contact, each once, as the per-state
+      clash counts count them; ``id_b`` of a symmetry equivalent ends in its
+      operator, in brackets.
   """
   atoms, contacts = _all_water_h_contacts(hier, crystal_symmetry)
   return [(d, _atom_id(atoms[i]),

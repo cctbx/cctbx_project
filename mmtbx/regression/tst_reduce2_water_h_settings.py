@@ -100,20 +100,11 @@ def placer_arguments(prefix, args):
 
 def exercise_defaults():
   """
-  reduce2's water_hydrogens defaults, from its master PHIL: the search
-  settings of mmtbx.development.virvel's program, existing_h=reorient and
+  reduce2's own water_hydrogens defaults: existing_h=reorient and
   symmetry=True.
   """
-  from mmtbx.programs import water_protonation as virvel
   r = iotbx.phil.parse(reduce2.Program.master_phil_str,
     process_includes=True).extract().water_hydrogens
-  v = iotbx.phil.parse(virvel.Program.master_phil_str).extract()
-  for name, got, want in (
-      ("refine.max_sweeps", r.refine.max_sweeps, v.refine.max_sweeps),
-      ("refine.tolerance", r.refine.tolerance, v.refine.tolerance),
-      ("basin.rounds", r.basin.rounds, v.basin.rounds),
-      ("cluster_search", r.cluster_search, v.cluster_search)):
-    assert got == want, (name, got, want)
   assert r.existing_h == "reorient", r.existing_h
   assert r.symmetry is True, r.symmetry
 
@@ -128,10 +119,10 @@ def exercise_settings_reach_placer():
     "water_hydrogens.existing_h=keep", "water_hydrogens.symmetry=False",
     "water_hydrogens.refine.max_sweeps=0",
     "water_hydrogens.refine.tolerance=0", "water_hydrogens.basin.rounds=2",
-    "water_hydrogens.cluster_search=True"])
+    "water_hydrogens.cluster_search=False"])
   assert len(calls) == 1, len(calls)
   expected = dict(existing_h="keep", symmetry_mates=False, n_refine=0,
-    refine_tol=0, n_basin=2, cluster_search=True)
+    refine_tol=0, n_basin=2, cluster_search=False)
   for key, value in expected.items():
     assert calls[0][key] == value, (key, calls[0][key], value)
   assert calls[0]["crystal_symmetry"] is not None, "crystal symmetry dropped"
@@ -237,6 +228,80 @@ def exercise_symmetry_off_site_symmetry():
     occ = sorted(a.occ for a in out.select(sel).atoms())
     assert approx_equal(occ, expected), (name, existing_h, occ)
 
+def exercise_stats():
+  """
+  water_hydrogens.stats, on by default, puts the clash table, the kept state
+  and the residual contacts into the description, the contacts named as in
+  the written model (DOD and D1 with neutron_option=all_d), one table per
+  model when there are several; stats=False leaves them out, and so does a
+  model without waters. Water 6's H1 is 0.81 A from water 4's. Water 7's H1
+  is 0.80 A from that of water 8's equivalent one cell along x, a contact
+  listed only with symmetry. With basin.rounds=2 on pdb_str, whose waters
+  do not clash, the description reports basin-hopping as skipped. With
+  qmready=True, which regularizes the geometry after the placement, the
+  title says the contacts are as placed.
+  """
+  water_6 = (
+    "HETATM   27  O   HOH A   6      12.729  -2.058  14.000  1.00 20.00"
+    "           O\n"
+    "HETATM   28  H1  HOH A   6      12.729  -2.058  13.150  1.00 20.00"
+    "           H\nEND")
+  model_str = pdb_str.replace("END", water_6)
+  args = ["add_h_to_water=True", "keep_existing_H=True",
+          "water_hydrogens.existing_h=complete"]
+  _, description = run_reduce2("tst_reduce2_water_h_settings_stats", args,
+    model_str=model_str)
+  for line in ("H-H contacts between waters:\n", "Kept: ",
+               "Residual contacts:\n", "HOH A 4 H1  <->  HOH A 6 H1"):
+    assert line in description, (line, description)
+  skipped = "Basin hopping: no clashing water can move, skipped"
+  assert skipped not in description, description
+  _, description = run_reduce2("tst_reduce2_water_h_settings_stats_basin",
+    ["add_h_to_water=True", "water_hydrogens.basin.rounds=2"])
+  assert skipped in description, description
+  _, description = run_reduce2("tst_reduce2_water_h_settings_stats_qm",
+    ["qmready=True", "water_hydrogens.existing_h=complete"],
+    model_str=model_str)
+  assert "H-H contacts between waters, as placed:\n" in description, \
+    description
+  _, description = run_reduce2("tst_reduce2_water_h_settings_stats_off",
+    args + ["water_hydrogens.stats=False"], model_str=model_str)
+  for line in ("H-H contacts between waters", "Kept: ", "Residual contacts"):
+    assert line not in description, (line, description)
+  waters_7_8 = (
+    "HETATM   29  O   HOH A   7      28.900   5.000  25.000  1.00 20.00"
+    "           O\n"
+    "HETATM   30  H1  HOH A   7      29.750   5.000  25.000  1.00 20.00"
+    "           H\n"
+    "HETATM   31  O   HOH A   8       1.400   5.000  25.000  1.00 20.00"
+    "           O\n"
+    "HETATM   32  H1  HOH A   8       0.550   5.000  25.000  1.00 20.00"
+    "           H\nEND")
+  for name, sym_args, listed in (("sym", [], True),
+      ("sym_off", ["water_hydrogens.symmetry=False"], False)):
+    _, description = run_reduce2(f"tst_reduce2_water_h_settings_stats_{name}",
+      args + sym_args, model_str=model_str.replace("END", waters_7_8))
+    contact = "HOH A 7 H1  <->  HOH A 8 H1 [x+1,y,z]" in description
+    assert contact == listed, (name, description)
+  no_water = "\n".join(l for l in pdb_str.split("\n") if "HOH" not in l)
+  _, description = run_reduce2("tst_reduce2_water_h_settings_stats_no_water",
+    ["add_h_to_water=True"], model_str=no_water)
+  assert "H-H contacts between waters" not in description, description
+  _, description = run_reduce2("tst_reduce2_water_h_settings_stats_d",
+    args + ["neutron_option=all_d"], model_str=model_str)
+  assert "DOD A 4 D1  <->  DOD A 6 D1" in description, description
+  inp = iotbx.pdb.input(source_info=None, lines=model_str.split("\n"))
+  h = inp.construct_hierarchy()
+  copy = h.only_model().detached_copy()
+  h.only_model().id = "1"
+  copy.id = "2"
+  h.append_model(copy)
+  _, description = run_reduce2("tst_reduce2_water_h_settings_stats_models",
+    args, model_str=h.as_pdb_string(crystal_symmetry=inp.crystal_symmetry()))
+  for line in ("H-H contacts between waters (model 1):\n",
+               "H-H contacts between waters (model 2):\n"):
+    assert line in description, (line, description)
+
 def exercise_settings_accepted():
   """
   validate() accepts the settings where they can take effect: qmready=True
@@ -280,7 +345,7 @@ def exercise_settings_without_water_h():
 def exercise_settings_need_values():
   """A water_hydrogens setting given as None is a Sorry naming it."""
   for path in ("existing_h", "symmetry", "refine.max_sweeps",
-               "refine.tolerance", "basin.rounds", "cluster_search"):
+               "refine.tolerance", "basin.rounds", "cluster_search", "stats"):
     try:
       run_reduce2("tst_reduce2_water_h_settings_none",
         ["add_h_to_water=True", f"water_hydrogens.{path}=None"])
@@ -296,6 +361,7 @@ if __name__ == "__main__":
   exercise_existing_h()
   exercise_report_names()
   exercise_symmetry_off_site_symmetry()
+  exercise_stats()
   exercise_settings_accepted()
   exercise_settings_without_water_h()
   exercise_settings_need_values()

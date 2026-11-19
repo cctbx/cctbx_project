@@ -4,6 +4,7 @@ import sys, time
 from libtbx.utils import Sorry
 import mmtbx.model
 import mmtbx.monomer_library.server
+from mmtbx.monomer_library import terminal_nh3
 import iotbx.pdb
 import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
@@ -19,6 +20,7 @@ from cctbx.maptbx.box import shift_and_box_model
 # residue part of hd_exchange.site_key(), for the log of renamed input H
 from mmtbx.hydrogens.hd_exchange import residue_part, residue_parts
 from mmtbx.hydrogens.hd_exchange import normalized_name, rename_entry
+from mmtbx.hydrogens.hd_exchange import _conformer_occupancy
 import math
 import itertools
 from cctbx import crystal
@@ -609,6 +611,41 @@ no atom named 'H2' (e.g. 9FZ uses H3/H4).
 
 # metals do not count as bonded to N (coordination, not a covalent bond)
 nonmetals = ('C', 'N', 'O', 'S', 'P', 'SE', 'B', 'SI', 'F', 'CL', 'BR', 'I')
+
+def split_terminal_nh3_names(hierarchy, mon_lib_srv):
+  '''
+  Termini at a blank N whose supplied H/D carry a computed terminal_nh3
+  name (0A0 HN3/DN3) in some conformers and not in others: pdb_interpretation
+  then gives the shared N the NH3 type in one conformer and the
+  dictionary's in another, and stops on conflicting types. Per residue the
+  blank N's PDB label columns and a line naming the conformers; [] if none.
+  '''
+  result = []
+  for rg in hierarchy.residue_groups():
+    ags = rg.atom_groups()
+    blank = [ag for ag in ags if ag.altloc == '']
+    alts = [ag for ag in ags if ag.altloc != '']
+    n = [b.get_atom('N') for b in blank if b.get_atom('N')]
+    if not alts or not n: continue
+    with_name, without = [], []
+    for ag in alts:
+      try:
+        mon = mon_lib_srv.get_comp_comp_id_direct(ag.resname.strip())
+      except Exception:
+        mon = None
+      if mon is None or not terminal_nh3.applies(mon): continue
+      extra = set(terminal_nh3.extra_h_names(mon) or [])
+      names = set(a.name.strip().upper() for g in blank + [ag]
+        for a in g.atoms())
+      names.update('H' + x[1:] for x in list(names) if x[:1] == 'D')
+      (with_name if names & extra else without).append(ag.altloc)
+    if with_name and without:
+      result.append((n[0].pdb_label_columns(), 'N %s %s %s: computed '
+        'terminal name supplied in conformer %s, not in %s' % (
+        alts[0].resname.strip(), rg.parent().id.strip(),
+        rg.resseq.strip() + rg.icode.strip(), ', '.join(with_name),
+        ', '.join(without))))
+  return result
 
 def _blank_amide_group(rg, prev_rg):
   '''
@@ -5343,8 +5380,10 @@ class place_hydrogens():
     acids: always, as before. Any other residue: only with an outgoing peptide
     bond in every complete conformer (outgoing_peptide_bond()), and never where
     the dictionary does not bond N to CA (beta-amino acids: the propeller is
-    CA-based). Otherwise the residue keeps its dictionary placement and is
-    listed. Used for both propeller paths (n_terminal_charge, metal-bound).
+    CA-based) or bonds them by a double bond (an imine N: HHI, 4VI;
+    terminal_nh3.n_ca_single()). Otherwise the residue keeps its dictionary
+    placement and is listed. Used for both propeller paths
+    (n_terminal_charge, metal-bound).
     '''
     n = None
     for ag in rg.atom_groups():
@@ -5352,19 +5391,44 @@ class place_hydrogens():
       if n: break
     if n is None: return True # the propeller lists it
     resname = n.parent().resname.strip()
-    if get_class(name=resname) == 'common_amino_acid': return True
+    # an imine N by each conformer's own residue (HHI beside ALA: only the
+    # HHI conformer keeps its dictionary placement, _dictionary_nh3())
+    imine = [ag for ag in rg.atom_groups() if self._imine(ag)]
+    all_imine = len(imine) == len(rg.atom_groups())
+    def list_imine(ags):
+      for ag in ags:
+        # by the conformer's own residue name (N may be blank or ALA's)
+        label = 'N %s %s %s' % (ag.resname.strip(), rg.parent().id.strip(),
+          rg.resseq.strip() + rg.icode.strip())
+        if ag.altloc: label += ' conformer %s' % ag.altloc
+        self.chain_start_kept.append('%s: N=CA not a single bond in the '
+          'dictionary (imine N): terminal conversion not supported; '
+          'dictionary placement retained' % label)
+    if get_class(name=resname) == 'common_amino_acid':
+      list_imine(imine)
+      return True
     bonds = heavy_neighbors_in_restraints(n, self.query_mon_lib_srv)
     if bonds is None: return True # the propeller lists it
-    self._supplied_terminal_names(rg, n)
+    has_ca = 'CA' in [b.strip() for b in bonds]
+    if not has_ca: imine, all_imine = [], False
+    bond = (outgoing_peptide_bond(rg, next_rg) if has_ca and not all_imine
+      else None)
+    self._supplied_terminal_names(rg, n, converted=(bond == 'bonded'))
     label = self._start_label(n, rg)
-    if 'CA' not in [b.strip() for b in bonds]:
+    if not has_ca:
       if any(ag.get_atom('CA') for ag in rg.atom_groups()):
         self.chain_start_kept.append('%s: N bonded to %s, not CA, in the '
           'dictionary: terminal conversion not supported; dictionary '
           'placement retained' % (
           label, ', '.join(b.strip() for b in bonds) or 'no heavy atom'))
       return False
-    bond = outgoing_peptide_bond(rg, next_rg)
+    if all_imine:
+      self.chain_start_kept.append('%s: N=CA not a single bond in the '
+        'dictionary (imine N): terminal conversion not supported; '
+        'dictionary placement retained' % label)
+    else:
+      list_imine(imine)
+    if all_imine: return False
     if bond == 'bonded': return True
     if bond == 'mixed':
       why = 'ambiguous, conformers disagree on a peptide bond to the next residue'
@@ -5383,10 +5447,17 @@ class place_hydrogens():
       'dictionary placement retained' % (label, why))
     return False
 
-  def _supplied_terminal_names(self, rg, n):
-    # supplied H1-H3 (D1-D3) on N whose name the dictionary gives another
-    # parent (SAM/SAH ring H2): listed, not renamed; riding H moves it to the
-    # dictionary parent's site (on master too): the collision is unresolved
+  def _supplied_terminal_names(self, rg, n, converted):
+    '''
+    Supplied H1-H3 (D1-D3) on N at a chain start (keep_existing_H), in one
+    pass that knows the dictionary and the computed terminal names. A name
+    the dictionary gives another parent (SAM/SAH ring H2) is listed, not
+    renamed; riding H moves it to that parent's site (on master too): the
+    collision is unresolved. At a converted terminus (converted) of a
+    terminal_nh3 dictionary, a name the dictionary lacks is listed as
+    unknown (0A0 H1-H3; never parented by name), except a computed name
+    (TSY, 07O H3), which is the terminus's own.
+    '''
     if not (self.keep_existing_H and self._existing_h): return
     mlq = mon_lib_query(residue=n.parent(), mon_lib_srv=self.query_mon_lib_srv,
       raise_sorry=False)[0]
@@ -5395,25 +5466,53 @@ class place_hydrogens():
     for b in mlq.bond_list:
       parent.setdefault(b.atom_id_1.strip(), b.atom_id_2.strip())
       parent.setdefault(b.atom_id_2.strip(), b.atom_id_1.strip())
+    terminus = {}
+    def terminal_names(resname):
+      # (dictionary N-H, computed names) of a terminal_nh3 dictionary, or None
+      if resname not in terminus:
+        try:
+          mon = self.query_mon_lib_srv.get_comp_comp_id_direct(resname)
+        except Exception:
+          mon = None
+        terminus[resname] = None
+        if mon is not None and terminal_nh3.applies(mon):
+          terminus[resname] = (terminal_nh3.n_h_names(mon),
+            terminal_nh3.extra_h_names(mon) or [])
+      return terminus[resname]
+    unknown = {}
     for a in rg.atoms():
       name = a.name.strip()
       key = 'H' + name[1:] if name[:1] == 'D' else name
-      if (key in ('H1', 'H2', 'H3') and a.element.strip().upper() in ('H', 'D')
-          and residue_part(a.parent()) + (a.parent().altloc, a.name)
-            in self._existing_h
-          and _compatible(a, n) and a.distance(n) < 1.3
-          and parent.get(key, 'N') != 'N'):
+      if not (key in ('H1', 'H2', 'H3') and
+          a.element.strip().upper() in ('H', 'D') and
+          residue_part(a.parent()) + (a.parent().altloc, a.name)
+            in self._existing_h and
+          _compatible(a, n) and a.distance(n) < 1.3):
+        continue
+      resname = a.parent().resname.strip()
+      if parent.get(key, 'N') != 'N':
         self.chain_start_kept.append('%s %s %s %s: within bond length of N, '
           'but the %s dictionary bonds %s to %s; not renamed; name collision '
-          'unresolved' % (name, a.parent().resname.strip(),
-          rg.parent().id.strip(), rg.resseq.strip() + rg.icode.strip(),
-          a.parent().resname.strip(), key, parent[key]))
+          'unresolved' % (name, resname, rg.parent().id.strip(),
+          rg.resseq.strip() + rg.icode.strip(), resname, key, parent[key]))
+      elif converted and key not in parent:
+        names = terminal_names(resname)
+        if names is not None and key not in names[1]:
+          unknown.setdefault(resname, []).append(name)
+    for resname, names in sorted(unknown.items()):
+      on_n = terminal_names(resname)
+      self.chain_start_kept.append('%s %s %s %s: on N, not in the %s '
+        'dictionary (its terminal N-H: %s); listed as unknown atoms, not '
+        'renamed; reduce2 without keep_existing_H rebuilds them' % (
+        ', '.join(sorted(set(names))), resname, rg.parent().id.strip(),
+        rg.resseq.strip() + rg.icode.strip(), resname,
+        ', '.join(on_n[0] + on_n[1])))
 
   def chain_start_kept_text(self):
     # A57 report; '' if there is nothing to report
     if not self.chain_start_kept: return ''
-    lines = ['Chain starts: terminal conversion not applied, and supplied '
-      'H1-H3 names the dictionary gives another parent']
+    lines = ['Chain starts not converted, and supplied H1-H3 whose name the '
+      'dictionary gives another parent or lacks']
     for t in self.chain_start_kept:
       if '  ' + t not in lines: lines.append('  ' + t)
     return '\n'.join(lines)
@@ -5562,6 +5661,171 @@ class place_hydrogens():
           self._chain_start_handled.add((rg_key, alt))
           add_n_terminal_hydrogens_to_atom_group(ag, n_ca_c=(n, ca, c))
 
+  def _imine(self, ag):
+    # the dictionary of ag's residue bonds N=CA (terminal_nh3.n_ca_single())
+    if get_class(name=ag.resname) == 'common_amino_acid': return False
+    try:
+      mon = self.query_mon_lib_srv.get_comp_comp_id_direct(ag.resname.strip())
+    except Exception:
+      return False
+    return mon is not None and not terminal_nh3.n_ca_single(mon)
+
+  def _dictionary_nh3(self, rgs, n, rg_key):
+    '''
+    A terminus whose dictionary does not fit mod_NH3 (terminal_nh3.applies():
+    no atom H, or H1-H3 on another atom): its dictionary N-H stay (the
+    free-form ones are restored, the conformer is not marked handled) and
+    the missing H are added under terminal_nh3.extra_h_names(), which
+    pdb_interpretation restrains as an NH3. Decided per atom group that
+    carries the N-H (each group with N; a blank N with split CA: each CA
+    group, as _split_ca_groups(); N and CA blank: the blank group, also the
+    dictionary's N-H, _nh3_into_blank()), by that group's own residue name; the
+    other conformers (ALA beside 0A0) get the standard propeller here.
+    False if no group applies: the standard path for the whole residue.
+    Standard amino acids never apply.
+    '''
+    ags = rgs.atom_groups()
+    def extra_for(ag):
+      if self._imine(ag): return 'imine'
+      if get_class(name=ag.resname) == 'common_amino_acid': return None
+      try:
+        mon = self.query_mon_lib_srv.get_comp_comp_id_direct(ag.resname.strip())
+      except Exception:
+        return None
+      if mon is None or not terminal_nh3.applies(mon): return None
+      extra = terminal_nh3.extra_h_names(mon)
+      if extra is None: return None
+      return mon, extra
+    blank = [ag for ag in ags if ag.altloc == '']
+    with_ca = [ag for ag in ags if ag.get_atom('CA') is not None]
+    split_ca = (n.parent().altloc == '' and len(with_ca) > 1 and
+      not [ag for ag in with_ca if ag.altloc == ''])
+    targets = with_ca if split_ca else [ag for ag in ags
+      if ag.get_atom('N') is not None]
+    plan = [(ag, extra_for(ag)) for ag in targets]
+    # N and CA blank, only the side chain split: the three N-H depend on no
+    # split atom and all go into the blank group, as ALA's H1-H3
+    blank_n_ca = (not split_ca and n.parent().altloc == '' and
+      len(ags) > 1 and [ag for ag in blank if ag.get_atom('CA') is not None])
+    if not [x for ag, x in plan if x is not None]: return False
+    pick = lambda ag, name: ag.get_atom(name) or ([x.get_atom(name)
+      for x in blank if x.get_atom(name)] or [None])[0]
+    moved = set()
+    for ag, x in plan:
+      n_ag = pick(ag, 'N')
+      # an imine conformer keeps its dictionary placement (not handled)
+      if x == 'imine': continue
+      if x is None:
+        # a standard conformer: the propeller for this group only
+        h = ag.get_atom('H')
+        if h and _dictionary_h_on_n(ag, self.query_mon_lib_srv):
+          ag.remove_atom(h)
+        ca, c = pick(ag, 'CA'), pick(ag, 'C')
+        if ca is None or c is None: continue
+        self._chain_start_handled.add((rg_key, ag.altloc))
+        add_n_terminal_hydrogens_to_atom_group(ag, n_ca_c=(n_ag, ca, c))
+        continue
+      mon, extra = x
+      names = list(extra)
+      into = [ag]
+      if blank_n_ca and ag.altloc == '':
+        moved_in = self._nh3_into_blank(rgs, ag, rg_key,
+          terminal_nh3.n_h_names(mon), extra)
+        if moved_in is None:
+          # an N-H supplied in a conformer: the three stay per conformer,
+          # each set built from that conformer's sites; supplied blank N-H
+          # are copied into each conformer
+          into = [o for o in ags if o.altloc != '' and
+            o.resname == ag.resname]
+          self._nh3_blank_into_conformers(ag, into,
+            terminal_nh3.n_h_names(mon) + list(extra))
+        else:
+          names = moved_in + names
+      if split_ca:
+        # the blank group's N-H (dictionary and computed names, also
+        # supplied ones) follow the split CA too
+        for name in terminal_nh3.n_h_names(mon) + list(extra):
+          if [b for b in blank if b.get_atom(name) is not None]:
+            if name not in names: names.append(name)
+            moved.add(name)
+      for dest in into:
+        xyz = dest.atoms().extract_xyz().mean()
+        for name in names:
+          if dest.get_atom(name) or dest.get_atom(_hd_swapped(name)):
+            continue
+          a = (iotbx.pdb.hierarchy.atom()
+            .set_name(new_name=(' ' + name).ljust(4) if len(name) < 4
+              else name)
+            .set_element(new_element='H')
+            .set_xyz(new_xyz=(xyz[0]+0.5, xyz[1]+0.5, xyz[2]+0.5))
+            .set_hetero(new_hetero=n_ag.hetero)
+            .set_segid(new_segid=n_ag.segid))
+          dest.append_atom(a)
+    for b in blank:
+      for name in moved:
+        if b.get_atom(name) is not None: b.remove_atom(b.get_atom(name))
+    return True
+
+  def _nh3_blank_into_conformers(self, blank, into, names):
+    '''
+    N and CA blank, one of the three N-H sites supplied in a conformer: the
+    N-H at those sites in the blank group (supplied blank HN2, as H or D)
+    go into each conformer of into that lacks the site, coordinates kept,
+    each copy at its conformer's occupancy (as hd_exchange's conformer
+    copies); a supplied one stays supplied in each copy. Nothing of the
+    three stays in the blank group, so each conformer's missing sites are
+    built from its own.
+    '''
+    def site(ag, name):
+      return [a for a in ag.atoms() if a.name.strip().upper() in
+        (name.upper(), _hd_swapped(name))]
+    for name in names:
+      for a in site(blank, name):
+        key = residue_part(blank) + (blank.altloc, a.name)
+        supplied = self.keep_existing_H and key in self._existing_h
+        for dest in into:
+          if site(dest, name): continue
+          c = a.detached_copy()
+          occ = _conformer_occupancy(dest)
+          if isinstance(occ, float): c.set_occ(occ)
+          dest.append_atom(c)
+          if supplied:
+            k = residue_part(dest) + (dest.altloc, c.name)
+            self._existing_h.add(k)
+            self._existing_h_xyz[k] = c.xyz
+        blank.remove_atom(a)
+
+  def _nh3_into_blank(self, rgs, blank, rg_key, names, extra=()):
+    '''
+    The dictionary N-H names that _dictionary_nh3() adds to the blank group
+    (N and CA blank): placement put them into each conformer (the free-form
+    ones kept aside), where their angles at N follow no split atom. Those
+    placed H are removed from the conformers and the kept-aside ones
+    dropped. None if one of the three sites (names, or the computed extra)
+    is supplied in a conformer (keep_existing_H), as H or D: then nothing
+    moves, and the three stay per conformer.
+    '''
+    existing = self._existing_h if self.keep_existing_H else set()
+    def supplied(a):
+      return residue_part(a.parent()) + (a.parent().altloc, a.name) in existing
+    def site(ag, name):
+      # the H or D of that site (HN1 or DN1)
+      return [a for a in ag.atoms() if a.name.strip().upper() in
+        (name.upper(), _hd_swapped(name))]
+    others = [ag for ag in rgs.atom_groups() if ag.altloc != '']
+    if [a for ag in others for name in list(names) + list(extra)
+        for a in site(ag, name) if supplied(a)]:
+      return None
+    result = []
+    for name in names:
+      if site(blank, name): continue
+      for a in [a for ag in others for a in site(ag, name)]:
+        a.parent().remove_atom(a)
+      result.append(name)
+    self._free_form_pending = [p for p in self._free_form_pending
+      if not (p.rg_key == rg_key and p.ag.altloc != '' and p.name in result)]
+    return result
+
   def place_n_terminal_propeller(self, pdb_hierarchy):
     '''
     Place NH3 at residue #1, at first residue in chain, or at all chain starts
@@ -5676,12 +5940,16 @@ class place_hydrogens():
           if rgs.memory_id() in forced:
             unchanged(n, rgs, 'a nonmetal of another residue within 1.75 A')
           continue
-        self._chain_start_handled.add(((m.id, rgs.parent().id, rgs.resseq,
-          rgs.icode), ''))
         if rgs.memory_id() in forced:
+          # also for a dictionary NH3 (_dictionary_nh3())
           key = (residue_key(rgs), n.parent().altloc)
           self._chain_start_sites[key] = 'NH3'
           self._chain_start_label[key] = self._start_label(n, rgs)
+        if self._dictionary_nh3(rgs, n, (m.id, rgs.parent().id, rgs.resseq,
+            rgs.icode)):
+          continue
+        self._chain_start_handled.add(((m.id, rgs.parent().id, rgs.resseq,
+          rgs.icode), ''))
         # remove the amide H also for peptide-like residues of class 'other'
         # (UNK, ACB): add_n_terminal_hydrogens keeps an existing H in place of
         # H1, and H, H2, H3 do not match mod_NH3

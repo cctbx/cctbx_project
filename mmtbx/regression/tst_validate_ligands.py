@@ -321,7 +321,7 @@ def run_test03():
   overlaps = lr.get_overlaps()
   rmsd_result = lr.get_rmsds()
 
-  assert approx_equal(ccs.rscc, 0.94, eps=0.03)
+  assert approx_equal(ccs.rscc, 0.97, eps=0.03)
   assert approx_equal(ccs.rscc_sites, 0.885, eps=0.03)
   assert isinstance(ccs.frag_ccs, dict)
   assert len(ccs.frag_ccs) == len(lr.ligand_rigid_components_isels)
@@ -522,19 +522,21 @@ def run_test08():
     assert map_values.percent_bad_blobs >= 0
     assert map_values.percent_bad_blobs <= 100
 
-  # --- BTN A 400: well-fitted, no bad density ---
+  # --- BTN A 400: well-fitted; one marginal difference-density blob nearby
+  # (none with the pre-2026-11 bulk-solvent mask radii; the model carries H,
+  # so the mask now uses mmtbx.masks.mask_radii_with_hydrogens) ---
   map_values = find_lr(vl_manager, 'chain A and resseq 400 and resname BTN').get_map_values()
   assert map_values.fofc_map_values.size() == 16
   assert map_values.percent_bad_at_atom_centers == 0.0
-  assert map_values.n_bad_blobs == 0
-  assert approx_equal(map_values.percent_bad_blobs, 0.0, eps=0.1)
+  assert map_values.n_bad_blobs == 1
+  assert approx_equal(map_values.percent_bad_blobs, 0.07, eps=0.1)
 
-  # --- BTN B 401: well-fitted; two small difference-density blobs nearby ---
+  # --- BTN B 401: well-fitted; one small difference-density blob nearby ---
   map_values = find_lr(vl_manager, 'chain B and resseq 401 and resname BTN').get_map_values()
   assert map_values.fofc_map_values.size() == 16
   assert map_values.percent_bad_at_atom_centers == 0.0
-  assert map_values.n_bad_blobs == 2
-  assert approx_equal(map_values.percent_bad_blobs, 0.546, eps=0.5)
+  assert map_values.n_bad_blobs == 1
+  assert approx_equal(map_values.percent_bad_blobs, 0.89, eps=0.5)
 
   # --- NAG A 600: moderately fitted, no atoms in bad density ---
   map_values = find_lr(vl_manager, 'chain A and resseq 600 and resname NAG').get_map_values()

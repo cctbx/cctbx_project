@@ -267,7 +267,7 @@ END
   #
   f = utils.f_000(mean_solvent_density=0.25, unit_cell_volume=125,
                   xray_structure = xrs)
-  assert approx_equal(f.f_000, 0.25*125*0.687355324074+6, 1.e-3)
+  assert approx_equal(f.f_000, 0.25*125*0.688233+6, 1.e-3)
 
 def exercise_detect_link_problems():
   with open("tmp_mmtbx_utils_asn_nag.pdb", "w") as f:

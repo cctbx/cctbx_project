@@ -145,6 +145,24 @@ HETATM   11  OXT 004 A   1      29.801   2.728  51.993  1.00 20.00           O
 END
 """
 
+pdb_amq = """\
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+HETATM    1  N   AMQ A   1      13.762  16.124  13.840  1.00 20.00           N
+HETATM    2  CA  AMQ A   1      15.039  15.451  13.570  1.00 20.00           C
+HETATM    3  C   AMQ A   1      15.085  15.022  12.126  1.00 20.00           C
+HETATM    4  OT1 AMQ A   1      14.064  14.741  11.546  1.00 20.00           O
+HETATM    5  OT2 AMQ A   1      16.262  14.954  11.484  1.00 20.00           O
+HETATM    6  CB  AMQ A   1      15.168  14.223  14.472  1.00 20.00           C
+HETATM    7  CG  AMQ A   1      15.121  14.652  15.915  1.00 20.00           C
+HETATM    8  CD1 AMQ A   1      13.983  14.784  16.751  1.00 20.00           C
+HETATM    9  CD2 AMQ A   1      16.156  14.993  16.717  1.00 20.00           C
+HETATM   10  CE2 AMQ A   1      17.614  15.026  16.340  1.00 20.00           C
+HETATM   11  OE1 AMQ A   1      12.690  14.550  16.410  1.00 20.00           O
+HETATM   12  NE1 AMQ A   1      14.427  15.180  17.914  1.00 20.00           N
+HETATM   13  OE2 AMQ A   1      15.629  15.301  17.911  1.00 20.00           O
+END
+"""
+
 def with_atoms(pdb_str, resname, resseq, atoms):
   """pdb_str with atoms (name, element, x, y, z) added after the last line
   of resname resseq."""
@@ -421,12 +439,13 @@ def test_accounting():
     (t16.pdb_str_009, {}), (t16.pdb_str_015, {}), (t16.pdb_str_019_control, {}),
     (pdb_nag_nag, {}), (nag_019(drop=('O6',)), {}), (t16.pdb_str_021, {}),
     (tnh.pdb_1xmk, {'metal_bound_amines_as_nh2': True}),
-    (with_next_gly(pdb_0a0), {}), (with_next_gly(pdb_004), {}),
     (gln_supplied('HE21', 'DE21'), {'keep_existing_H': True}),
     (gln_supplied('HXX'), {'keep_existing_H': True}),
     (with_next_gly(pdb_0a0_supplied_h1()), {'keep_existing_H': True}),
-    (split_ab(with_next_gly(pdb_0a0)), {}),
-    (split_ab(with_next_gly(pdb_0a0), lambda l: l[12:16] == ' N  '), {})]
+    # chain-start H removed: AMQ (not a peptide in its dictionary,
+    # terminal_nh3 not applied) at a terminus (in A and B riding H stops,
+    # also on master)
+    (with_next_gly(pdb_amq), {})]
   results = [placed(pdb_str, **kw) for pdb_str, kw in cases]
   # restraint objects are not a key of placed()
   results.append(place_counted(t19.cryst1 + t19.pdb_protein + t19.pdb_04,
@@ -441,6 +460,16 @@ def test_accounting():
     assert unaccounted(rs + rs[:1], added, final)
     assert [r for r in o.not_placed
             if r.cause == 'parent_missing' and not r.parent] == []
+  # 0A0 and 004 at a terminus (terminal_nh3): the chain-start H keep their
+  # dictionary
+  # names, nothing is removed or recorded
+  for pdb_str in (with_next_gly(pdb_0a0), with_next_gly(pdb_004),
+      split_ab(with_next_gly(pdb_0a0)),
+      split_ab(with_next_gly(pdb_0a0), lambda l: l[12:16] == ' N  ')):
+    o, added = placed(pdb_str)
+    final = h_keys(o.get_model().get_hierarchy())
+    assert added - final == set(), added - final
+    assert o.not_placed == [], records(o)
   # a gap end's HO3' is never added, so added minus final cannot see it: its
   # record is asserted explicitly
   o, added = placed(tna.residues(tna.dna, 1, 3), na_terminal_h='chain_ends')
@@ -477,14 +506,13 @@ def test_supplied_names():
   assert records(o, 'unknown_atoms') == [('', 'A', '2', '', 'GLN', '', 'HXX',
     '', 'unknown_atoms', '')], records(o)
   assert o.site_labels_unknown_atoms == [], o.site_labels_unknown_atoms
-  # a supplied H1 on the chain-start N of 0A0 (a terminus): not from
-  # chain-start placement, which adds H2 and H3
+  # a supplied H1 on the chain-start N of 0A0 (a terminus): a name the
+  # dictionary lacks, never parented by name; the terminus gets the
+  # dictionary's HN1, HN2, HN3
   o, _ = placed(with_next_gly(pdb_0a0_supplied_h1()), keep_existing_H=True)
-  detail = ('added by chain-start placement, name not in the 0A0 '
-    'dictionary; no bond restraint in the processed model')
   assert records(o) == [('', 'A', '1', '', '0A0', '', 'H1', '',
-    'unknown_atoms', '')] + [('', 'A', '1', '', '0A0', '', h, 'N',
-    'not_parameterized', detail) for h in ('H2', 'H3')], records(o)
+    'unknown_atoms', '')], records(o)
+  assert n_h(o, '0A0') == ['HN1', 'HN2', 'HN3'], n_h(o, '0A0')
 
 def test_unknown_atoms_supplied():
   # a lone supplied H with a name the dictionary does not know, in a residue
@@ -510,31 +538,21 @@ def test_unknown_atoms_supplied():
     'ASP A 11' in log.splitlines()), log
 
 def test_chain_start_unknown_names():
-  # 0A0 and 004 at residue 1, peptide-bonded to a GLY: chain-start placement
-  # adds H1, H2, H3 on N, names their dictionaries do not know; riding H has
-  # no bond for them and they are removed: not_parameterized on N, not
-  # parent_missing (alone, they keep their dictionary H: A57)
-  for pdb_str, resname in ((with_next_gly(pdb_0a0), '0A0'),
-                           (with_next_gly(pdb_004), '004')):
-    o, _ = placed(pdb_str)
-    detail = ('added by chain-start placement, name not in the %s '
-      'dictionary; no bond restraint in the processed model' % resname)
-    assert records(o, 'not_parameterized') == [('', 'A', '1', '', resname,
-      '', h, 'N', 'not_parameterized', detail) for h in ('H1', 'H2', 'H3')], \
-      records(o)
-    assert records(o, 'parent_missing') == [], records(o)
-    assert ('  %s A 1: H1 H2 H3 on N (%s)' % (resname, detail) in
-      o.not_placed_text().splitlines()), o.not_placed_text()
-  # 0A0 in A and B, and with a blank N and the rest in A and B: H1, H2, H3
-  # in each conformer, on N
-  detail = ('added by chain-start placement, name not in the 0A0 '
+  # AMQ at residue 1, peptide-bonded to a GLY (not a peptide in its
+  # dictionary: terminal_nh3 does not apply): chain-start placement adds
+  # H1, H2, H3 on N, names its dictionary does not know; riding H has no
+  # bond for them and they are removed: not_parameterized on N, not
+  # parent_missing (0A0 and 004 keep their dictionary names:
+  # tst_reduce2_terminal_nh3)
+  o, _ = placed(with_next_gly(pdb_amq))
+  detail = ('added by chain-start placement, name not in the AMQ '
     'dictionary; no bond restraint in the processed model')
-  for pdb_str in (split_ab(with_next_gly(pdb_0a0)),
-      split_ab(with_next_gly(pdb_0a0), lambda l: l[12:16] == ' N  ')):
-    o, _ = placed(pdb_str)
-    assert records(o) == [('', 'A', '1', '', '0A0', alt, h, 'N',
-      'not_parameterized', detail) for alt in 'AB'
-      for h in ('H1', 'H2', 'H3')], records(o)
+  assert records(o, 'not_parameterized') == [('', 'A', '1', '', 'AMQ',
+    '', h, 'N', 'not_parameterized', detail) for h in ('H1', 'H2', 'H3')], \
+    records(o)
+  assert records(o, 'parent_missing') == [], records(o)
+  assert ('  AMQ A 1: H1 H2 H3 on N (%s)' % detail in
+    o.not_placed_text().splitlines()), o.not_placed_text()
 
 def test_tertiary_amide():
   o = place(t11.pdb_str_004)
