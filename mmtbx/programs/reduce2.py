@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.23.0"
+version = "3.24.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -1160,9 +1160,16 @@ NOTES:
   for the final alternate tested.  This may leave other alternates in sub-optimal configurations.
   When a single alternate is selected using alt_id= on the command line, everything is
   optimized a single time and for that configuration.
-  A residue that carries a single altloc and no blank atoms (e.g. a ligand copy given
-  altloc B in its own chain) is left out of the other alternates' passes, also with
-  alt_id=, unless every atom of it has occupancy >= 0.99.
+  In the pass for an alternate X, a residue without X takes part with its blank atoms
+  and, with one other altloc, that conformer only if every atom of it has occupancy
+  >= 0.99 (a ligand copy given altloc B is left out); with several, its alphabetically
+  first conformer; none if another residue group at its site (same chain, residue number
+  and insertion code) has X, as in microheterogeneity (e.g. Pro A / Ser B,C). The same
+  in every chain, also with alt_id=. Such a residue is only the environment of that
+  pass: its own passes optimize it and decide its H, the last of them its blank atoms
+  (e.g. a residue with B and C in a model with A: pass B).
+  With alt_id= the single pass optimizes every atom it holds, those of the other
+  conformer it gives such a residue included.
 
   By default (add_flip_movers=False) no heavy atom moves: each His chooses HD1, HE2 or
   both in its input orientation, and Asn/Gln amides keep theirs. The flips that would

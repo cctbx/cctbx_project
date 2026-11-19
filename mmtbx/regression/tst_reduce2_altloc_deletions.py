@@ -11,12 +11,13 @@ Pass B: His 163 "HD1Placed HE2NotPlaced", His 306 "HD1NotPlaced"; pass A: His
 The reset also dropped the deletions of every model but the last of a
 multi-model file (one Optimizer runs all models).
 Shared (blank) H, both ways, each with its "Passes disagree" line: 1US0 His A
-187 (blank) with residues within 4 A of its ring and Ser A 282 (CB/OG in A, B,
-C). Pass C holds only blank atoms of the residues without a C conformer, so
-His 187 meets no split neighbour there and keeps both ring H; passes B and A
-delete HD1, which stays deleted. With the labels shifted (A to B, B to C, Ser
-282 C to A) the pass without those neighbours is the last one: HD1 deleted in
-passes C and B, kept.
+187 (blank, no altlocs, so every pass writes it and the last decides) with
+residues within 4 A of its ring, Ser A 282 (CB/OG in A, B, C) and a Zn at 2.1 A
+from NE2 in one conformer only (occupancy 0.70). The Zn's pass locks the ring:
+HE2 deleted, HD1 kept (no Mover); the other passes delete HD1 and keep HE2.
+Zn in A (the last pass): HE2 deleted, HD1 kept; Zn in C: HE2 kept, HD1 deleted.
+Pass C holds the split neighbours as their A conformer (A33; before, it held
+only their blank atoms and kept HD1 without the Zn too).
 """
 import os, re
 from libtbx.utils import null_out
@@ -345,22 +346,6 @@ ATOM   2648  CB CSER A 282      30.406  18.536  32.891  0.20  4.80           C
 ATOM   2649  OG CSER A 282      29.221  18.983  33.515  0.20  4.95           O
 """
 
-def shift_labels(model_text):
-  '''A to B, B to C; Ser 282: C to A, its A and B dropped'''
-  out = []
-  for l in model_text.split('\n'):
-    if l.startswith(('ATOM', 'HETATM')):
-      alt = l[16]
-      if l[22:26] == ' 282':
-        if alt in ('A', 'B'):
-          continue
-        if alt == 'C':
-          l = l[:16] + 'A' + l[17:]
-      else:
-        l = l[:16] + {'A': 'B', 'B': 'C'}.get(alt, alt) + l[17:]
-    out.append(l)
-  return '\n'.join(out)
-
 def two_models(model_text):
   lines = model_text.split('\n')
   atoms = '\n'.join(l for l in lines if l.startswith(('ATOM', 'HETATM')))
@@ -460,40 +445,43 @@ def test_two_models():
     model_text=two_models(m_1us0))
   check(desc, names, n_models=2)
 
-def check_his187(desc, names, passes, last):
-  '''passes: (pass altloc, 'HD1Placed' or 'HD1NotPlaced') in pass order'''
+def with_zn(alt):
+  return m_his187 + ("HETATM 2700 ZN  %s ZN A 999      25.604  -0.335  19.399"
+    "  0.70 10.00          ZN\n" % alt)
+
+def disagree(name, deleted, kept, last):
+  return ("Passes disagree about deleting chain A HIS 187 %s (deleted in %s; kept in %s);"
+    " the last pass decides: %s" % (name, " ".join("'%s'" % a for a in deleted),
+    " ".join("'%s'" % a for a in kept), last))
+
+def check_his187(desc, names, zn):
+  others = [a for a in 'CBA' if a != zn]
   p = his_poses(desc)
-  for alt, pose in passes:
-    assert p[(alt, 'chain A HIS 187')].startswith('Unflipped ' + pose), p
-  deleted = [alt for alt, pose in passes if pose == 'HD1NotPlaced']
-  kept = [alt for alt, pose in passes if pose == 'HD1Placed']
-  line = ("Passes disagree about deleting chain A HIS 187 HD1 (deleted in %s;"
-    " kept in %s); the last pass decides: %s" % (
-    " ".join("'%s'" % a for a in deleted), " ".join("'%s'" % a for a in kept),
-    last))
-  assert [l.strip() for l in desc.split('\n') if 'Passes disagree' in l] \
-    == [line], desc
-  assert 'HE2' in names[(187, '')], names
-  if last == 'kept':
-    assert 'HD1' in names[(187, '')], names
-    assert deleting(desc) == [], deleting(desc)
-  else:
-    assert 'HD1' not in names[(187, '')], names
-    assert deleting(desc) == ['Deleting chain A HIS 187 HD1'], deleting(desc)
+  assert sorted(p) == sorted((a, 'chain A HIS 187') for a in others), p
+  for a in others:
+    assert p[(a, 'chain A HIS 187')].startswith('Unflipped HD1NotPlaced HE2Placed'), p
+  assert 'Set MoverHisFlip on chain A HIS 187 to state 0' in desc, desc
+  last = 'A'
+  hd1 = 'kept' if zn == last else 'deleted'
+  he2 = 'deleted' if zn == last else 'kept'
+  assert [l.strip() for l in desc.split('\n') if 'Passes disagree' in l] == [
+    disagree('HD1', others, [zn], hd1), disagree('HE2', [zn], others, he2)], desc
+  assert ('HD1' in names[(187, '')]) == (hd1 == 'kept'), names
+  assert ('HE2' in names[(187, '')]) == (he2 == 'kept'), names
+  assert deleting(desc) == ['Deleting chain A HIS 187 %s' % ('HE2' if zn == last else 'HD1')], \
+    deleting(desc)
 
 def test_shared_h_deleted_by_last_pass():
-  '''blank HD1 kept in pass C, deleted in B and A: deleted'''
-  desc, names = run('tst_reduce2_altloc_deletions_187d', model_text=m_his187,
+  '''Zn in A: HE2 deleted in A, kept in C and B: deleted (HD1 the reverse: kept)'''
+  desc, names = run('tst_reduce2_altloc_deletions_187a', model_text=with_zn('A'),
     residues=(187,))
-  check_his187(desc, names, (('C', 'HD1Placed'), ('B', 'HD1NotPlaced'),
-    ('A', 'HD1NotPlaced')), 'deleted')
+  check_his187(desc, names, 'A')
 
 def test_shared_h_kept_by_last_pass():
-  '''blank HD1 deleted in passes C and B, kept in A: kept'''
-  desc, names = run('tst_reduce2_altloc_deletions_187k',
-    model_text=shift_labels(m_his187), residues=(187,))
-  check_his187(desc, names, (('C', 'HD1NotPlaced'), ('B', 'HD1NotPlaced'),
-    ('A', 'HD1Placed')), 'kept')
+  '''Zn in C: HE2 deleted in C, kept in B and A: kept (HD1 the reverse: deleted)'''
+  desc, names = run('tst_reduce2_altloc_deletions_187c', model_text=with_zn('C'),
+    residues=(187,))
+  check_his187(desc, names, 'C')
 
 if __name__ == "__main__":
   test_xray()

@@ -102,16 +102,47 @@ def AlternatesInModel(model):
       ret.add(alt.altloc)
   return ret
 
+def ResidueLetters(rg):
+  """The altloc letters of residue group rg, sorted; [] for a residue without altlocs."""
+  return sorted(set(ag.altloc.strip() for ag in rg.atom_groups()) - set(['']))
+
+def ResidueAtomsForConformer(rg, conf, sameSite=False):
+  """The atoms of residue group rg in the pass for the non-blank altloc conf: its
+  blank atoms, and
+  - its conf atoms if it has conf;
+  - otherwise none if sameSite (another residue group of its chain with the same
+    resseq and icode has conf: microheterogeneity, e.g. Pro A / Ser B,C; the
+    blank atoms stay, as a shared N may be stored in either group);
+  - otherwise, with one other letter, that letter's atoms only if every one of
+    them has occupancy >= 0.99 (treated as present in every pass, whatever its
+    label; a deposited "full" is often 0.99), else none (e.g. a glycan copy
+    modelled as altloc B, or a side chain modelled in B only);
+  - otherwise (several other letters) the alphabetically first letter's atoms.
+  A residue never gives atoms of two letters. The same in every chain, whether or
+  not the chain has conf, so a hetero residue gets the same atoms with or without
+  TER (PDB) or its own label_asym_id (mmCIF)."""
+  letters = ResidueLetters(rg)
+  if conf in letters or not letters:
+    keep = conf
+  elif sameSite:
+    keep = None
+  elif len(letters) == 1:
+    keep = letters[0]
+    for ag in rg.atom_groups():
+      if ag.altloc.strip() == keep and not all(a.occ >= 0.99 for a in ag.atoms()):
+        keep = None
+        break
+  else:
+    keep = letters[0]
+  return [a for a in rg.atoms() if a.parent().altloc.strip() in ('', keep)]
+
 def GetAtomsForConformer(model, conf):
-  """Returns a list of atoms in the named conformer.  It also includes atoms from
-  the first conformation in chains that do not have this conformation, to provide a
-  complete model.  For a model without altlocs, it will return all of the atoms.
-  In that fallback, a residue whose atom groups all carry one other altloc (no blank
-  atoms, e.g. a glycan copy modelled as altloc B in its own chain) is left out, as an
-  alternative to this conformer's atoms, unless every atom of it has occupancy
-  >= 0.99 (present in every state, whatever its label).  Residues with blank atoms
-  or several altlocs still contribute their first conformer.  This also holds for the
-  single pass run when the Optimizer is given an altID.
+  """Returns a list of atoms in the named conformer.  For a model without altlocs,
+  it will return all of the atoms.  For a non-blank conf, every residue gives
+  ResidueAtomsForConformer(): its blank atoms, its conf atoms, and for a residue
+  without conf at most one other conformer as environment (none if a residue
+  group at the same site has conf; see there). This also
+  holds for the single pass run when the Optimizer is given an altID.
   :param model: pdb.hierarchy.model to search for atoms.
   :param conf: String name of the conformation to find.  Can be "", which finds the
   default conformer; if there is no empty conformation, then it will
@@ -121,27 +152,33 @@ def GetAtomsForConformer(model, conf):
   ret = []
   for ch in model.chains():
     confs = ch.conformers()
-    which = 0
-    for i in range(1,len(confs)):
-      if confs[i].altloc == conf:
-        which = i
-        break
-    if conf.strip() == '' or confs[which].altloc in (conf, ''):
-      ret += confs[which].atoms()
+    if conf.strip() == '' or (len(confs) == 1 and confs[0].altloc == ''):
+      ret += confs[0].atoms()
       continue
-    # Fallback for a chain without conf: residues only in one other altloc are
-    # alternatives to conf's atoms, not their environment, unless fully occupied
-    # (deposited "full" is often 0.99).
-    onlyOther = {}
-    for a in confs[which].atoms():
-      rg = a.parent().parent()
-      key = rg.memory_id()
-      if key not in onlyOther:
-        alts = set(ag.altloc.strip() for ag in rg.atom_groups())
-        onlyOther[key] = (len(alts) == 1 and '' not in alts and
-          not all(x.occ >= 0.99 for x in rg.atoms()))
-      if not onlyOther[key]:
-        ret.append(a)
+    rgs = ch.residue_groups()
+    sites = set((rg.resseq, rg.icode) for rg in rgs if conf in ResidueLetters(rg))
+    for rg in rgs:
+      ret += ResidueAtomsForConformer(rg, conf, (rg.resseq, rg.icode) in sites)
+  return ret
+
+def EnvironmentResidues(model, conf, alts):
+  """The residue groups of model that are environment in the pass for conf: those
+  with altlocs but without conf, with at least one of their letters among the
+  passes alts. Their atoms in the pass (ResidueAtomsForConformer(), blank atoms
+  included) take part in scoring and get Movers, but the pass writes nothing for
+  them: their own passes do. Every other residue is owned by the pass."""
+  if conf.strip() == '':
+    return []
+  passes = set(x.strip() for x in alts)
+  ret = []
+  for ch in model.chains():
+    confs = ch.conformers()
+    if len(confs) == 1 and confs[0].altloc == '':
+      continue
+    for rg in ch.residue_groups():
+      letters = ResidueLetters(rg)
+      if letters and conf not in letters and passes.intersection(letters):
+        ret.append(rg)
   return ret
 
 def _HisAcceptorsInAnyState(mover):
@@ -541,7 +578,9 @@ class Optimizer(object):
     cause it to run on the first conformer found in each model.  If this is set to None,
     optimization will be run sequentially for every conformer in the model, starting with
     the last and ending with the first.  This will leave the initial conformer's values as the
-    final location for atoms that are not inside a conformer or are in the first conformer.
+    final location for atoms that are not inside a conformer or are in the first conformer;
+    the blank atoms of a residue with altlocs keep the values of the last pass that has one
+    of its altlocs (the other passes hold it as environment, EnvironmentResidues()).
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
     A depth of 3 will ignore my bonded neighbors and their bonded
     neighbors and their bonded neighbors.
@@ -660,6 +699,8 @@ class Optimizer(object):
     self._absentCopies = set()      # copies of deleted originals, not in the spatial query
     self._copySummary = ""
     self._hisNoMover = {}           # (alt, NE2 i_seq): why a His has no Mover
+    self._envISeqs = set()          # i_seq of this pass's environment residues (EnvironmentResidues())
+    self._envMovers = set()         # this pass's Movers on them
     self._hisCharges = []           # reconcileHisCharges: per model, getHisCharges()
 
     ################################################################################
@@ -817,6 +858,8 @@ class Optimizer(object):
     # finalizes and writes the model (4wsc: ~400 MB).
     self._optimizerOf = {}
     self._movers = []
+    self._envMovers = set()
+    self._envISeqs = set()
     self._moverInfo = {}
     self._initialScore = {}
     self._finalScore = {}
@@ -852,17 +895,34 @@ class Optimizer(object):
     passDeletions = {}
     firstAlt = True
     for alt in alts:
+      # Get the atoms from the specified conformer in the model (the empty string is the name
+      # of the first conformation in the model; if there is no empty conformation, then it will
+      # pick the first available conformation for each atom group.
+      passAtoms = GetAtomsForConformer(myModel, alt)
+
+      # Residues without this alternate (EnvironmentResidues()) are its environment:
+      # their state as their own passes left it is kept here and put back after the
+      # pass, which records nothing for them (deletions, flips, His records, suggested
+      # flips, report lines).
+      envResidues = EnvironmentResidues(myModel, alt, alts)
+      envSaved = [(a, a.xyz, probeExt.ExtraAtomInfo(self._extraAtomInfo.getMappingFor(a)))
+        for rg in envResidues for a in rg.atoms()]
+      self._envISeqs = set(a.i_seq for a, xyz, e in envSaved)
+
       # If we are doing the second or later alternate, place all atoms that are in a compatible alternate
       # back into their initial configuration so we start from the same state we would have if this were
       # the only alternate being tested.  This will ensure that we get compatible outputs when run either
-      # way.
+      # way.  The environment's atoms in this pass start from their initial state too.
       if firstAlt:
         firstAlt = False
       else:
+        envInPass = set(a.i_seq for a in passAtoms if a.i_seq in self._envISeqs)
         for a in myModel.atoms():
-          if a.parent().altloc in ['', ' ', alt]:
+          if a.parent().altloc in ['', ' ', alt] or a.i_seq in envInPass:
             a.xyz = initialAtomPositions[a.i_seq]
             self._extraAtomInfo.setMappingFor(a, initialExtraAtomInfos[a.i_seq])
+      numAmideFlips = len(self._amideFlipsPerformed)
+      numHisFlips = len(self._hisFlipsPerformed)
 
       self._cliqueAlt = alt     # named in the search-limit warnings
       # Tell about the run we are currently doing.
@@ -875,10 +935,6 @@ class Optimizer(object):
       self._infoString += _VerboseCheck(self._verbosity, 1,"  minOccupancy = "+str(self._minOccupancy)+"\n")
       self._infoString += _VerboseCheck(self._verbosity, 1,"  preferenceMagnitude = "+str(self._preferenceMagnitude)+"\n")
 
-      # Get the atoms from the specified conformer in the model (the empty string is the name
-      # of the first conformation in the model; if there is no empty conformation, then it will
-      # pick the first available conformation for each atom group.
-      passAtoms = GetAtomsForConformer(myModel, alt)
       self._atoms = list(passAtoms)
 
       # The bonded neighbors within this conformer, for everything in this pass (the
@@ -1050,6 +1106,11 @@ class Optimizer(object):
       self._infoString += _VerboseCheck(self._verbosity, 1,"Inserted "+str(len(self._movers))+" Movers\n")
       self._infoString += _VerboseCheck(self._verbosity, 1,'Marked '+str(len(deleteAtoms))+' atoms for deletion\n')
       self._infoString += _ReportTiming(self._verbosity, "place movers")
+      # The environment's Movers adapt it within the pass; their results are not reported.
+      self._envMovers = set(m for m in self._movers
+        if m.CoarsePositions().atoms[0].i_seq in self._envISeqs)
+      self._flipHandled = [a for a in self._flipHandled if a.i_seq not in self._envISeqs]
+      self._flipCandidates = [c for c in self._flipCandidates if c[1].i_seq not in self._envISeqs]
       if his is not None:
         self._HisStep(his, self._HisPin, mi, his)
 
@@ -1241,10 +1302,14 @@ class Optimizer(object):
           self._moverInfo[m], self._finalScore[m], description))
 
       self._infoString += _VerboseCheck(self._verbosity, 1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+alt+"':\n")
+      # The pass's own Movers only; a Clique's set and totals leave its environment Movers out.
       sortedGroups = sorted(groupCliques, key=len, reverse=True)
       for g in sortedGroups:
-        self._infoString += _VerboseCheck(self._verbosity, 1," Set of "+str(len(g))+" Movers:")
         movers = [self._interactionGraph.vertex_label(i) for i in g]
+        movers = [m for m in movers if m not in self._envMovers]
+        if len(movers) == 0:
+          continue
+        self._infoString += _VerboseCheck(self._verbosity, 1," Set of "+str(len(movers))+" Movers:")
         # Sum the initial and final scores across all Movers in the group and report this.
         initial = 0.0
         final = 0.0
@@ -1257,7 +1322,11 @@ class Optimizer(object):
       self._infoString += _VerboseCheck(self._verbosity, 1," Singleton Movers:\n")
       for s in singletonCliques:
         m = self._interactionGraph.vertex_label(s[0])
-        _printPose(self, m)
+        if m not in self._envMovers:
+          _printPose(self, m)
+      if len(self._envMovers) > 0:
+        self._infoString += _VerboseCheck(self._verbosity, 1," Environment Movers (residues without alternate '"+
+          alt+"'; written by their own passes): "+str(len(self._envMovers))+"\n")
       self._infoString += _VerboseCheck(self._verbosity, 1,"END REPORT\n")
 
       ################################################################################
@@ -1275,8 +1344,17 @@ class Optimizer(object):
         self._infoString += _ReportTiming(self._verbosity, "fix up Movers")
 
       ################################################################################
+      # The environment back to the state its own passes left (after everything in
+      # this pass that moves atoms: placement, the search, symmetry refreshes, FixUp).
+      for a, xyz, e in envSaved:
+        a.xyz = xyz
+        self._extraAtomInfo.setMappingFor(a, e)
+
+      ################################################################################
       # Record this pass's deletions. Only H are deleted (Movers and placement).
       for a in passAtoms:
+        if a.i_seq in self._envISeqs:
+          continue
         deleted = a in self._deleteMes
         if deleted or a.element_is_hydrogen():
           if a.i_seq not in passDeletions:
@@ -1305,9 +1383,18 @@ class Optimizer(object):
           nitrogen = m.CoarsePositions().atoms[0]
           self._hisFlipsPerformed.append(FlippedMoverInfo(alt, nitrogen))
 
+      # This pass's flips of environment residues (Movers, ion lock-down, set flip
+      # states) are their own passes' to record.
+      self._amideFlipsPerformed[numAmideFlips:] = [f for f in self._amideFlipsPerformed[numAmideFlips:]
+        if f.baseAtom.i_seq not in self._envISeqs]
+      self._hisFlipsPerformed[numHisFlips:] = [f for f in self._hisFlipsPerformed[numHisFlips:]
+        if f.baseAtom.i_seq not in self._envISeqs]
+
     #################################################################################
-    # Each atom's deletion is decided by the last pass that contained it: an
-    # altloc-specific H by its own pass, a blank H by the last pass.
+    # Each atom's deletion is decided by the last pass that contained it as its own
+    # (EnvironmentResidues()): an altloc-specific H by its own pass, a blank H by the
+    # last pass that has its residue's letter, or the last pass for a residue without
+    # altlocs.
     for i in sorted(passDeletions):
       a, decisions = passDeletions[i]
       if decisions[-1][1]:
@@ -1381,17 +1468,21 @@ class Optimizer(object):
   def _HisRecordPass(self, mi, alt, passNeighborLists, dotSphereCache, his, cliques):
     """This pass's fresh final score per Mover id, the Cliques holding a His, and per
     His NE2 the record decide() takes, with each state's scores, deletions and
-    positions (ring and ring H, coarse and fix-up)."""
-    his['passes'].append((alt, dict((_HisMid(m), round(self._finalScore[m], 3)) for m in self._movers)))
+    positions (ring and ring H, coarse and fix-up). The pass's own Movers and His
+    only: residues without its letter are recorded by their own passes. The
+    Cliques stay whole (environment Movers included), so an owned Mover's loss next
+    to a pinned environment His is attributed to that His's neighbourhood."""
+    own = [m for m in self._movers if m not in self._envMovers]
+    his['passes'].append((alt, dict((_HisMid(m), round(self._finalScore[m], 3)) for m in own)))
     his['cliques'] += [set(_HisMid(m) for m in c) for c in cliques
       if any(isinstance(m, Movers.MoverHisFlip) for m in c)]
-    hisMovers = dict((m.CoarsePositions().atoms[0].i_seq, m) for m in self._movers
+    hisMovers = dict((m.CoarsePositions().atoms[0].i_seq, m) for m in own
       if isinstance(m, Movers.MoverHisFlip))
     environment = set(self._environmentAtoms)
     for a in self._atoms:
       if not (a.name.strip().upper() == 'NE2' and a.parent().resname.strip().upper() == 'HIS'):
         continue
-      if a in environment:
+      if a in environment or a.i_seq in self._envISeqs:
         continue
       letter, partial, ring = _HisRing(a, passNeighborLists)
       hs = dict((n, ring.get(n)) for n in ('HE2', 'HD1'))
@@ -1450,6 +1541,8 @@ class Optimizer(object):
         for n in ('HD1', 'HE2')))
     else:
       final = lambda hs: sum(1 for h in hs.values() if h is not None and h not in deleted) - 1
+    # conformers in letter order, whichever pass recorded first
+    byRes = dict((key, dict(sorted(confs.items()))) for key, confs in byRes.items())
     return dict((key, (confs, dict((c, final(hs)) for c, (rec, hs) in confs.items())))
       for key, confs in byRes.items())
 
@@ -2400,7 +2493,8 @@ class Optimizer(object):
       Returns a list of the Hydrogens that were marked for deletion during the processing.
       The caller should delete these form the optimized structure to produce a model that
       has the best contacts and fewest clashes.
-      Each atom's deletion is decided by the last alternate pass that contained it.
+      Each atom's deletion is decided by the last alternate pass that contained it as its
+      own (not as environment, EnvironmentResidues()).
       :return: a list of the Hydrogens that were marked for deletion during the processing,
       in model order (i_seq), so that the deletions are reported in the same order on every run.
     """
