@@ -30,11 +30,7 @@ Programmatic use::
 
 import os
 
-try:
-  from phenix.program_template import ProgramTemplate
-except ImportError:
-  from libtbx.program_template import ProgramTemplate
-
+from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 
 from mmtbx.geometry_restraints.qmi import util
