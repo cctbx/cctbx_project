@@ -14,7 +14,7 @@ curvature is unavailable (Hessian failure, or still an imaginary mode after the
 one perturb-and-reoptimise) it falls back to a conservative M-L default
 (:data:`DEFAULT_BOND_SIGMA` / :data:`DEFAULT_ANGLE_SIGMA`) flagged
 ``conservative_fallback``.  Atom selections are built from atom identity (chain /
-resseq / resname / name / altloc) so the ``.edits`` file applies to the full
+resid / resname / name / altloc) so the ``.edits`` file applies to the full
 input model at refinement time; donors on symmetry images (renamed chains in the
 endo_exo sub-model) cannot be expressed this way and are flagged, not emitted.
 """
@@ -99,35 +99,27 @@ def detect_first_shell(submodel, metal_iseq, sites_cart=None,
   return donors
 
 
-def _selection_from_identity(chain_id, resseq, resname, name, altloc):
-  """A CCTBX atom-selection string from an atom's identity fields (chain /
-  resseq / resname / name, + altloc when present). The single formatter for
-  both a live atom (:func:`_selection_string`) and a symmetry-image donor's
-  stored ASU-parent identity, so the two paths cannot diverge."""
+def _selection_string(labels):
+  """A CCTBX atom-selection string identifying an atom in the full model, from
+  its *labels* (``atom.fetch_labels()``).
+
+  Built from chain / resid / resname / name (+ altloc when present): the
+  identity the endo_exo sub-model preserves for identity-image atoms, so the
+  selection resolves in the original input model.  resid carries the insertion
+  code, so residues 301 and 301A are told apart.  The single formatter for
+  both a live atom and a symmetry-image donor's stored ASU-parent labels, so
+  the two paths cannot diverge.
+  """
   terms = [
-    f"chain {chain_id}",
-    f"resseq {resseq}",
-    f"resname {resname}",
-    f"name {name}",
+    f"chain {labels.chain_id.strip()}",
+    f"resid {labels.resid().strip()}",
+    f"resname {labels.resname.strip()}",
+    f"name {labels.name.strip()}",
   ]
+  altloc = labels.altloc.strip()
   if altloc:
     terms.append(f'altloc "{altloc}"')
   return " and ".join(terms)
-
-
-def _selection_string(atom):
-  """A CCTBX atom-selection string identifying *atom* in the full model.
-
-  Built from chain / resseq / resname / name (+ altloc when present): the
-  identity the endo_exo sub-model preserves for identity-image atoms, so the
-  selection resolves in the original input model.
-  """
-  ag = atom.parent()
-  rg = ag.parent()
-  chain = rg.parent()
-  return _selection_from_identity(
-    chain.id.strip(), rg.resseq.strip(), ag.resname.strip(),
-    atom.name.strip(), ag.altloc.strip())
 
 
 def is_symmetry_image(atom, original_chain_ids):
@@ -184,9 +176,9 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
       Chain ids present in the original input model; used to identify
       symmetry-image donors.  ``None`` disables the check (all donors emitted as
       plain bonds).
-  sym_image_provenance : dict {donor_iseq: (asu_parent_identity, symmetry_op_xyz)} or None
-      Provenance for symmetry-image donors (from endo_exo); asu_parent_identity is
-      the ASU parent's ``(chain, resseq, resname, name, altloc)`` tuple. A
+  sym_image_provenance : dict {donor_iseq: (asu_parent_labels, symmetry_op_xyz)} or None
+      Provenance for symmetry-image donors (from endo_exo); asu_parent_labels is
+      the ASU parent's ``atom.fetch_labels()``. A
       symmetry-image donor present here is emitted as a bond to its ASU parent
       with ``symmetry_operation`` set; one absent here is skipped.
   log : file-like or None
@@ -203,14 +195,14 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
   atoms = submodel.get_hierarchy().atoms()
   metal_atom = atoms[metal_iseq]
   metal_xyz = matrix.col(opt_sites_cart[metal_iseq])
-  metal_sel = _selection_string(metal_atom)
+  metal_sel = _selection_string(metal_atom.fetch_labels())
 
   if original_chain_ids is not None:
     original_chain_ids = frozenset(c.strip() for c in original_chain_ids)
 
   prov = sym_image_provenance or {}
   usable = []          # non-symmetry donors: plain bonds + angles
-  sym_bonds = []       # (donor_iseq, asu_parent_identity, op_xyz): symmetry bonds only
+  sym_bonds = []       # (donor_iseq, asu_parent_labels, op_xyz): symmetry bonds only
   n_skipped = 0
   for d in donor_iseqs:
     if (original_chain_ids is not None
@@ -228,7 +220,7 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
 
   # Per-donor selection string and metal-relative vector, computed once; the
   # angle loop would otherwise rebuild each donor's selection string O(N) times.
-  sels = [_selection_string(atoms[d]) for d in usable]
+  sels = [_selection_string(atoms[d].fetch_labels()) for d in usable]
   vecs = [matrix.col(opt_sites_cart[d]) - metal_xyz for d in usable]
 
   def _bond_record(donor, selection, distance, sym_op):
@@ -247,10 +239,10 @@ def metal_ligand_restraints(submodel, opt_sites_cart, metal_iseq, donor_iseqs,
            for idx, d in enumerate(usable)]
   # Symmetry-image donors: restrain the metal to symmetry_operation * ASU-parent
   # (angles cannot cross symmetry, so these get bonds only).
-  for d, ident, op_xyz in sym_bonds:
+  for d, labels, op_xyz in sym_bonds:
     distance = (matrix.col(opt_sites_cart[d]) - metal_xyz).length()
     bonds.append(
-      _bond_record(d, _selection_from_identity(*ident), distance, op_xyz))
+      _bond_record(d, _selection_string(labels), distance, op_xyz))
 
   angles = []
   if emit_angles:

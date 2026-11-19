@@ -761,12 +761,8 @@ def exercise_symmetry_donor_skip():
   assert skip.n_skipped_symmetry == 4 and len(skip.bonds) == 0
   # With provenance it is emitted as a bond to its ASU parent via
   # symmetry_operation (no angle -- angles cannot cross symmetry). Provenance
-  # carries the ASU parent's identity tuple, not the atom object.
-  def _ident(a):
-    ag = a.parent(); rg = ag.parent()
-    return (rg.parent().id.strip(), rg.resseq.strip(), ag.resname.strip(),
-            a.name.strip(), ag.altloc.strip())
-  prov = {d: (_ident(atoms[d]), "-x,-y,-z") for d in donors}
+  # carries the ASU parent's labels (fetch_labels()), not the atom object.
+  prov = {d: (atoms[d].fetch_labels(), "-x,-y,-z") for d in donors}
   sym = restraints.metal_ligand_restraints(
     model, sites, 0, donors, original_chain_ids=["Q"],
     sym_image_provenance=prov, log=null_out())
@@ -775,6 +771,20 @@ def exercise_symmetry_donor_skip():
   edits = restraints.as_edits_phil(sym)
   libtbx.phil.parse(edits)              # symmetry_operation renders as valid PHIL
   assert edits.count("symmetry_operation = -x,-y,-z") == 4
+  # A selection names the residue by resid, which carries the insertion code,
+  # for a plain donor and for a symmetry-image donor's parent alike.
+  his94 = "chain A and resid 94A and resname HIS and name NE2"
+  atoms[donors[0]].parent().parent().icode = "A"
+  plain = restraints.metal_ligand_restraints(
+    model, sites, 0, donors, original_chain_ids=["A"], log=null_out())
+  assert plain.bonds[0]["atom_selection_2"] == his94, plain.bonds[0]
+  assert plain.bonds[0]["atom_selection_1"] == (
+    "chain A and resid 262 and resname ZN and name ZN"), plain.bonds[0]
+  prov = {d: (atoms[d].fetch_labels(), "-x,-y,-z") for d in donors}
+  sym = restraints.metal_ligand_restraints(
+    model, sites, 0, donors, original_chain_ids=["Q"],
+    sym_image_provenance=prov, log=null_out())
+  assert sym.bonds[0]["atom_selection_2"] == his94, sym.bonds[0]
 
 
 # ---------------------------------------------------------------------------
