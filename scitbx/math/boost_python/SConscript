@@ -16,6 +16,7 @@ env.SharedLibrary(
     "tensor_rank_2.cpp",
     "chebyshev.cpp",
     "icosahedron.cpp",
+    "golden_spiral.cpp",
     "slatec.cpp",
     "line_search.cpp",
     "r3_rotation.cpp",

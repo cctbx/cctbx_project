@@ -36,6 +36,11 @@ import types
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+# command_builder.py falls back to ``from utils.run_utils import ...`` when
+# ``libtbx.langchain`` is not a real package (it is stubbed below), so the
+# langchain directory must be importable as a top-level path.
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
 COMMAND_BUILDER_PATH = os.path.join(ROOT, "agent", "command_builder.py")
 

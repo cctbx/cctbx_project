@@ -52,6 +52,48 @@ def exercise_validation():
     2001, 2101, 2102, 2201, 2202, 2203, 2301, 2503, 2504]
   assert cd2.err.error_count == 12
   assert sorted(cd2.err.warnings.keys()) == [1001, 1002]
+  # A child value must equal one of the parent values. When the parent is a
+  # single (non-looped) item this used to be a Python substring test, so
+  # 'O' was accepted against parent 'O1'.
+  cm_single_parent = cif.reader(input_string=cif_single_parent).model()
+  cd2.err.reset()
+  cm_single_parent.validate(cd2, out=StringIO())
+  assert sorted(cd2.err.errors.keys()) == [2503], cd2.err.errors.keys()
+  assert cd2.err.error_count == 1
+  assert cd2.err.errors[2503][0].kwds['value'] == 'O'
+  # Parent value lookups are cached while a block is validated; make sure
+  # the cache never leaks between blocks of the same file.
+  cm_two_blocks = cif.reader(input_string=cif_two_blocks).model()
+  cd2.err.reset()
+  cm_two_blocks.validate(cd2, out=StringIO())
+  errors = cm_two_blocks.get_errors()
+  assert errors['a'].error_count == 0, errors['a'].errors
+  assert errors['b'].error_count == 1, errors['b'].errors
+  assert errors['b'].errors[2503][0].kwds['value'] == 'N1'
+  # Null child values ('?' unknown, '.' inapplicable) need no parent.
+  cm_null_child = cif.reader(input_string=cif_null_child).model()
+  cd2.err.reset()
+  cm_null_child.validate(cd2, out=StringIO())
+  assert cd2.err.error_count == 0, cd2.err.errors
+  # mmcif_pdbx_v50 >= 5.3xx gives _item_type_list.construct as semicolon
+  # text fields, which carry a trailing newline into the compiled regex.
+  cd3 = validation.dictionary(cif.reader(input_string=ddl2_text_constructs).model())
+  assert cd3.item_type_list['code'].pattern == '[A-Za-z0-9_]*', \
+    repr(cd3.item_type_list['code'].pattern)
+  assert cd3.item_type_list['int'].pattern == '[+-]?[0-9]+'
+  cm_typed = cif.reader(input_string=cif_typed).model()
+  cm_typed.validate(cd3, out=StringIO())
+  assert cd3.err.error_count == 0, cd3.err.errors
+  assert cd3.err.warning_count == 0, cd3.err.warnings
+  # DDL2 ranges: a single-row range comes as two plain strings, a looped
+  # one as two columns; both must be handled as rows, not characters.
+  cm_range = cif.reader(input_string=cif_out_of_range).model()
+  cd3.err.reset()
+  cm_range.validate(cd3, out=StringIO())
+  assert sorted(cd3.err.errors.keys()) == [2101], cd3.err.errors
+  assert cd3.err.error_count == 2
+  ranges = sorted(e.kwds['enum'] for e in cd3.err.errors[2101])
+  assert ranges == ['0:., 0:0', '1000:500000'], ranges
 
 def exercise_smart_load(show_timings=False, exercise_url=False):
   from libtbx.test_utils import open_tmp_directory
@@ -321,6 +363,94 @@ loop_                                      # error 2203
 _space_group_symop.operation_xyz
 x,y,z
 -x,-y,-z
+"""
+
+cif_single_parent = """data_3
+_atom_site.id O1
+loop_
+_atom_site_anisotrop.id
+O1
+O
+"""
+
+cif_two_blocks = """data_a
+loop_
+_atom_site.id
+N1
+N2
+loop_
+_atom_site_anisotrop.id
+N1
+N2
+data_b
+loop_
+_atom_site.id
+O1
+O2
+loop_
+_atom_site_anisotrop.id
+O1
+N1
+"""
+
+cif_null_child = """data_4
+loop_
+_atom_site.id
+O1
+loop_
+_atom_site_anisotrop.id
+O1
+?
+.
+"""
+
+ddl2_text_constructs = """data_test_dic
+_dictionary.title      test_dic
+_dictionary.version    1.0
+loop_
+_item_type_list.code
+_item_type_list.primitive_code
+_item_type_list.construct
+code  char
+;[A-Za-z0-9_]*
+;
+int   numb  '[+-]?[0-9]+'
+save__test.id
+  _item.name           '_test.id'
+  _item.category_id    test
+  _item.mandatory_code yes
+  _item_type.code      code
+save_
+save__test.number
+  _item.name           '_test.number'
+  _item.category_id    test
+  _item.mandatory_code no
+  _item_type.code      int
+  _item_range.minimum  1000
+  _item_range.maximum  500000
+save_
+save__test.positive
+  _item.name           '_test.positive'
+  _item.category_id    test
+  _item.mandatory_code no
+  _item_type.code      int
+  loop_
+  _item_range.minimum
+  _item_range.maximum
+  0 .
+  0 0
+save_
+"""
+
+cif_typed = """data_t
+_test.id       ABC
+_test.number   64000
+_test.positive 0
+"""
+
+cif_out_of_range = """data_u
+_test.number   5
+_test.positive -1
 """
 
 if __name__ == "__main__":

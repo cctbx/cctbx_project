@@ -4,6 +4,7 @@ from libtbx.queuing_system_utils import processing
 from libtbx.queuing_system_utils.processing import errors
 
 from libtbx.scheduling import SetupError
+from libtbx.utils import Sorry
 
 class Job(processing.Job):
   """
@@ -83,7 +84,7 @@ class JobFactory(object):
         display_stderr = False,
         )
 
-    except errors.BatchQueueError as e:
+    except (errors.BatchQueueError, Sorry) as e:
       raise SetupError("Queue error: %s" % e)
 
 

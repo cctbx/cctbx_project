@@ -382,6 +382,11 @@ class run(object):
   def setup_riding_h(self, prefix):
     if not self.params.minimization.riding_h: return
     broadcast(m=prefix, log = self.log)
+    if((self.selection & ~self.model.get_hd_selection()).count(True) == 0):
+      raise Sorry(
+        "Riding H model (riding_h=True) cannot be used with a selection that "
+        "contains no non-hydrogen atoms. Set riding_h=False to minimize "
+        "hydrogen atoms alone.")
     self.model.setup_riding_h_manager(idealize=True)
 
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc

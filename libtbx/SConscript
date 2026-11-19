@@ -987,7 +987,8 @@ int main() {
     # Boost issue with newer versions of clang
     # include/boost/mpl/aux_/integral_wrapper.hpp:73:31: error: integer value -1 is outside the valid range of values [0, 3] for this enumeration type
     # https://reviews.llvm.org/D150226
-    if env_etc.clang_version[0] >= 15:
+    # Fixed in Boost 1.86; flag removed in clang 20
+    if 15 <= env_etc.clang_version[0] < 20:
       base_macos_flags.append('-Wno-enum-constexpr-conversion')
 
     # Xcode 16.3 fails to build boost.geometry (Boost 1.86)
@@ -1487,6 +1488,16 @@ def enable_cuda_if_possible():
                         '--generate-code=arch=compute_72,code=sm_72',
                         '--generate-code=arch=compute_75,code=sm_75']
 
+    # CUDA 13 dropped Maxwell, Pascal and Volta; the oldest real target is sm_75
+    elif cuda_version >= 13:
+        arch_flags = ['--generate-code=arch=compute_75,code=sm_75',
+                      '--generate-code=arch=compute_80,code=sm_80',
+                      '--generate-code=arch=compute_86,code=sm_86',
+                      '--generate-code=arch=compute_89,code=sm_89',
+                      '--generate-code=arch=compute_90,code=sm_90',
+                      # PTX only, JIT-compiled by the driver on newer hardware
+                      '--generate-code=arch=compute_90,code=compute_90']
+
     elif cuda_version >= 11:  # NOTE: lower compute compat. are being phased out
         arch_flags = ['--generate-code=arch=compute_60,code=sm_60',
                       '--generate-code=arch=compute_61,code=sm_61',
@@ -1500,7 +1511,7 @@ def enable_cuda_if_possible():
         if cuda_version < 11.1:
             arch_flags.pop()
     else:
-        raise Sorry("cctbx only supports cuda versions 6-11")
+        raise Sorry("cctbx only supports cuda versions 6-13")
 
     env_base['NVCC'] = 'nvcc'
     linker_flags = env_base['SHLINKFLAGS']

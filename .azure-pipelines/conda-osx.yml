@@ -7,6 +7,7 @@
 #   vmImage: [10, 14]  # macOs version
 #   xcode_version: [11, 3, 1]  # xCode version
 #   modules: <modules artifact name>
+#   timeoutInMinutes: <job timeout, default 180>
 #   template: <build template file>
 #   prefix: <build artifact prefix>
 
@@ -14,15 +15,10 @@ jobs:
 - job: ${{ format('{0}_{1}', format('macOS_{0}', join('_', parameters.vmImage)), format('xcode_{0}', join('_', parameters.xcode_version)) ) }}
   pool:
     vmImage: ${{ format('macOS-{0}', join('.', parameters.vmImage)) }}
-  timeoutInMinutes: 180
+  timeoutInMinutes: ${{ coalesce(parameters.timeoutInMinutes, 180) }}
   strategy:
     maxParallel: 2
     matrix:
-      python3.10:
-        CONDA: MacOSX
-        OS: osx-64
-        PYTHON_VERSION: py310
-        MODULES: ${{ parameters.modules }}
       python3.11:
         CONDA: MacOSX
         OS: osx-64
@@ -38,11 +34,11 @@ jobs:
         OS: osx-64
         PYTHON_VERSION: py313
         MODULES: ${{ parameters.modules }}
-      # python3.14:
-      #   CONDA: MacOSX
-      #   OS: osx-64
-      #   PYTHON_VERSION: py314
-      #   MODULES: ${{ parameters.modules }}
+      python3.14:
+        CONDA: MacOSX
+        OS: osx-64
+        PYTHON_VERSION: py314
+        MODULES: ${{ parameters.modules }}
 
   variables:
     - name: artifact_name

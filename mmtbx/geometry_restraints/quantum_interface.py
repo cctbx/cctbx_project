@@ -112,16 +112,20 @@ qm_selection_specs = '''
     .type = choice
 '''
 
-def get_qm_package_scope(default_package=None, validate=True, verbose=False):
+def get_qm_package_scope(default_package=None, package_auto=False, validate=True, verbose=False):
   if default_package is None: default_package='mopac'
   programs = ''
-  for package, (func, var) in program_options.items():
-    if func(os.environ, var):
-      if package==default_package:
-        programs += ' *%s' % package
-      else:
-        programs += ' %s' % package
-  if verbose: print(programs)
+  if package_auto:
+    programs=' auto_set_from_action.optimise'
+  else:
+    for package, (func, var) in program_options.items():
+      if func(os.environ, var):
+        if package==default_package:
+          programs += ' *%s' % package
+        else:
+          programs += ' %s' % package
+  if verbose:
+    print(programs)
   if validate:
     assert programs, 'Need to set some parameters for QM programs %s' % program_options
   return qm_package_scope % programs
@@ -236,10 +240,13 @@ def electrons(model,
               specific_atom_multiplicities=None,
               return_atom_valences=False,
               log=None):
+  #
+  # needs to be updated to new electrons NWM
+  #
   from libtbx.utils import Sorry
   from mmtbx.ligands import electrons
   atom_valences = electrons.electron_distribution(
-    model.get_hierarchy(), # needs to be altloc free
+    model.get_hierarchy(),
     model.get_restraints_manager().geometry,
     specific_atom_charges=specific_atom_charges,
     specific_atom_multiplicities=specific_atom_multiplicities,

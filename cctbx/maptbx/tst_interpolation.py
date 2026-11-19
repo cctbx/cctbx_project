@@ -34,16 +34,16 @@ def get_interpolated(site_frac, O):
   return group_args(l = l, q = q, t = t)
 
 def set_map(f, n, box=10.):
-  n_real = (n,n,n)
   step = box/n
-  map_data  = flex.double(flex.grid([n,n,n]))
-  for i in range(n):
-    x  = i*step
-    for j in range(n):
-      y  = j*step
-      for k in range(n):
-        z = k*step
-        map_data[i,j,k] = func(f, x=x,y=y,z=z)
+  coords = [i*step for i in range(n)]
+  xs, ys, zs = flex.double(), flex.double(), flex.double()
+  for x in coords:
+    for y in coords:
+      xs.extend(flex.double(n, x))
+      ys.extend(flex.double(n, y))
+      zs.extend(flex.double(coords))
+  map_data = func(f, x=xs, y=ys, z=zs)
+  map_data.reshape(flex.grid([n,n,n]))
   return group_args(
     box=box, step=[step,]*3, map_data=map_data)
 

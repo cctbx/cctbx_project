@@ -17,7 +17,7 @@ from iotbx.pdb import hy36encode, hy36decode, common_residue_names_get_class
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 from iotbx.pdb.modified_aa_names import lookup as aa_3_as_1_mod
 from iotbx.pdb.modified_rna_dna_names import lookup as na_3_as_1_mod
-from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
+from iotbx.pdb.utils import all_label_asym_ids
 import iotbx.cif.model
 from cctbx import crystal, adptbx, uctbx
 from cctbx.array_family import flex
@@ -390,8 +390,9 @@ class _():
   created programatically.  Note that it does not contain any reference to
   crystal symmetry or source scattering information, meaning that in practice
   it must often be tracked alongside an equivalent cctbx.xray.structure object.
-  Pickling is supported, simply by writing out and reading back the PDB-format
-  representation of the hierarchy.
+  Pickling is supported: the PDB-format text (mmCIF if the model does not fit
+  the PDB format) carries the topology and labels, and the atom numeric values
+  travel alongside it exactly, since the text rounds them.
 
   Examples
   --------
@@ -400,16 +401,25 @@ class _():
 
   __getstate_manages_dict__ = True
 
-  def __getstate__(self):
+  def _assert_no_unknown_attributes(self):
     # check that the only possible attributes that are set are
     #   _lai_lookup
     #   _label_seq_id_dict
-    # these are not pickled and are not restored when unpickling
+    # these are not pickled or deep-copied and are not restored
     # if more attributes are added to the hierarchy class in Python,
     # the pickling code needs to be updated.
     attribute_check = set(self.__dict__.keys()) - set(['_lai_lookup', '_label_seq_id_dict'])
     assert len(attribute_check) == 0, attribute_check
-    version = 2
+
+  def __deepcopy__(self, memo):
+    # Without this, copy.deepcopy goes through __getstate__/__setstate__,
+    # i.e. a text round trip. deep_copy() is exact and much faster.
+    self._assert_no_unknown_attributes()
+    return self.deep_copy()
+
+  def __getstate__(self):
+    self._assert_no_unknown_attributes()
+    version = 3
     pdb_string = StringIO()
     if self.fits_in_pdb_format():
       py3out = self._as_pdb_string_cstringio(  # NOTE py3out will be None in py2
@@ -427,7 +437,19 @@ class _():
       cif_object = iotbx.cif.model.cif()
       cif_object['pickled'] = self.as_cif_block()
       cif_object.show(out=pdb_string)
-    return (version, pickle_import_trigger(), self.info, pdb_string.getvalue())
+    # The text carries the topology and labels only. Both formats round the
+    # numeric values (PDB: xyz to 1e-3, occupancy and B to 1e-2, U to 1e-4,
+    # no fp/fdp/resolution at all; mmCIF: 5 decimals for xyz, B and U, 3 for
+    # occupancy, 4 for fp/fdp, 2 for resolution), so these are stored exactly.
+    atoms = self.atoms()
+    atom_values = (
+      atoms.extract_xyz(), atoms.extract_sigxyz(),
+      atoms.extract_occ(), atoms.extract_sigocc(),
+      atoms.extract_b(), atoms.extract_sigb(),
+      atoms.extract_uij(),
+      atoms.extract_fp(), atoms.extract_fdp(), atoms.extract_resolution())
+    return (version, pickle_import_trigger(), self.info, pdb_string.getvalue(),
+            atom_values)
 
   def __setstate__(self, state):
     assert len(state) >= 3
@@ -437,16 +459,37 @@ class _():
     version = state[0]
     if   (version == 1): assert len(state) == 3
     elif (version == 2): assert len(state) == 4
+    elif (version == 3): assert len(state) == 5
     else: raise RuntimeError("Unknown version of pickled state.")
-    self.info = state[-2]
+    if (version == 3):
+      self.info, pdb_string, atom_values = state[2], state[3], state[4]
+    else:
+      self.info, pdb_string, atom_values = state[-2], state[-1], None
     import iotbx.pdb
     ph = iotbx.pdb.input(
       source_info="string",
-      lines=flex.split_lines(state[-1])).construct_hierarchy(sort_atoms=False)
+      lines=flex.split_lines(pdb_string)).construct_hierarchy(sort_atoms=False)
 
     self.pre_allocate_models(number_of_additional_models=len(ph.models()))
     for model in ph.models():
       self.append_model(model=model.detached_copy())
+    if (atom_values is not None):
+      atoms = self.atoms()
+      xyz, sigxyz, occ, sigocc, b, sigb, uij, fp, fdp, resolution = atom_values
+      assert xyz.size() == atoms.size()
+      # Text and arrays were written in the same atom order and the text is
+      # the rounded form of the arrays, so they must agree to text precision.
+      assert flex.max_default((atoms.extract_xyz() - xyz).norms(), 0) < 2e-3
+      atoms.set_xyz(xyz)
+      atoms.set_sigxyz(sigxyz)
+      atoms.set_occ(occ)
+      atoms.set_sigocc(sigocc)
+      atoms.set_b(b)
+      atoms.set_sigb(sigb)
+      atoms.set_uij(uij)
+      atoms.set_fp(fp)
+      atoms.set_fdp(fdp)
+      atoms.set_resolution(resolution)
 
   def get_unique_resnames(self):
     """Returns a list of all unique residue names in the hierarchy."""
@@ -1223,8 +1266,24 @@ class _():
 
   def apply_rotation_translation(self, rot_matrices, trans_vectors):
     """
-    Apply rotation-translation to coordinates in the hierarchy
-    LIMITATION: ANISOU records in resulting hierarchy will be invalid!!!
+    Copy the hierarchy once per rotation-translation pair.
+
+    Copies under a rotation have anisotropic U rotated and sigxyz and siguij
+    cleared; copies under a translation keep them.  Chain IDs must be one
+    character, and pairs times models at most 61.
+
+    Parameters
+    ----------
+    rot_matrices : list of scitbx.matrix.sqr
+        Cartesian rotations.
+    trans_vectors : list of scitbx.matrix.col
+        Cartesian translations, one per rotation.
+
+    Returns
+    -------
+    iotbx.pdb.hierarchy.root
+        One model holding the copies, with a suffix 1-9, A-Z, a-z appended
+        to the chain IDs, one suffix per pair and model.
     """
     roots=[]
     for r,t in zip(rot_matrices, trans_vectors):
@@ -1236,6 +1295,7 @@ class _():
           xyz = c.atoms().extract_xyz()
           new_xyz = r.elems*xyz+t
           c.atoms().set_xyz(new_xyz)
+          c.atoms().rotate_uij_and_clear_sigmas(r_cart=r.elems)
           m.append_chain(c)
         root.append_model(m)
         roots.append(root)
@@ -1300,7 +1360,26 @@ class _():
     self.atoms().set_xyz(uc.orthogonalize(sites_frac+shift_best))
 
   def expand_to_p1(self, crystal_symmetry, exclude_self=False):
-    """ Expand model to P1.  ANISOU will be invalid"""
+    """
+    Expand the model to P1.
+
+    Copies under a rotation have anisotropic U rotated and sigxyz and siguij
+    cleared; copies under a translation keep them.
+
+    Parameters
+    ----------
+    crystal_symmetry : cctbx.crystal.symmetry
+        Symmetry whose operators generate the copies.
+    exclude_self : bool, optional
+        Leave out the copies under operators without a rotation: the
+        identity and any centring translations.
+
+    Returns
+    -------
+    iotbx.pdb.hierarchy.root
+        One model, with one chain per operator and chain.  The identity's
+        copies keep their chain IDs; the others get new two-letter IDs.
+    """
     import string
     import scitbx.matrix
     r = root()
@@ -1316,6 +1395,7 @@ class _():
         if(exclude_self and m3.is_r3_identity_matrix()): continue
         t = smx.t().as_double()
         t = scitbx.matrix.col((t[0],t[1],t[2]))
+        r_cart = crystal_symmetry.unit_cell().matrix_cart(smx.r())
         for c_ in m_.chains():
           n_at = len(c_.atoms())
           if(not n_at in n_atoms): n_atoms.append(n_at)
@@ -1324,6 +1404,7 @@ class _():
           xyz = crystal_symmetry.unit_cell().fractionalize(xyz)
           new_xyz = crystal_symmetry.unit_cell().orthogonalize(m3.elems*xyz+t)
           c_.atoms().set_xyz(new_xyz)
+          c_.atoms().rotate_uij_and_clear_sigmas(r_cart=r_cart)
           #
           if(not (smx.r().is_unit_mx() and smx.t().is_zero())):
             found = False
@@ -1340,6 +1421,145 @@ class _():
           m.append_chain(c_)
     r.append_model(m)
     return r
+
+  def sym_equiv_residue_groups(self, crystal_symmetry, radius,
+        selection=None, min_distance_sym_equiv=None):
+    """Symmetry copies of the residue groups that come close to selected atoms.
+
+    Parameters
+    ----------
+    crystal_symmetry : cctbx.crystal.symmetry
+    radius : float
+        In Angstrom.  A residue group is copied under an operator that places
+        one of its atoms this close to a selected atom.
+    selection : flex.bool or flex.size_t, optional
+        The atoms to measure from; all of them by default.
+    min_distance_sym_equiv : float, optional
+        An atom closer than this to its own equivalent is considered on a
+        symmetry element.  A copied atom closer than this to an atom of the
+        same element, in this hierarchy or an earlier copy, is considered
+        that atom and left out.
+        Default: cctbx.crystal.super_cell.min_distance_sym_equiv_coincident.
+
+    Returns
+    -------
+    result : list of libtbx.group_args
+        One per operator, ordered by rt_mx.as_xyz(), each with ``rt_mx``, the
+        operator on denominators (1, 12); ``i_seqs``, a flex.size_t of the
+        atoms of this hierarchy copied; and ``hierarchy``, their copies in
+        i_seqs order, at the symmetry-equivalent positions and with the
+        original chain IDs.  The identity is not included.  Copies under a
+        rotation have anisotropic U rotated and sigxyz and siguij cleared;
+        copies under a lattice translation keep them.
+
+        ::
+
+          result[k]       one per operator
+          |-- .rt_mx      cctbx.sgtbx.rt_mx, on denominators (1, 12)
+          |-- .i_seqs     flex.size_t, indices into self.atoms()
+          `-- .hierarchy  iotbx.pdb.hierarchy.root, one model
+              `-- .chains()               original IDs
+                  `-- .residue_groups()
+                      `-- .atom_groups()
+                          `-- .atoms()    self.atoms().select(i_seqs),
+                                          moved by rt_mx
+
+    Raises
+    ------
+    Sorry
+        If the hierarchy has more than one model.
+    """
+    from cctbx.crystal import super_cell
+    if (self.models_size() > 1):
+      raise Sorry(
+        f"Symmetry copies need one model, not {self.models_size()}.")
+    if (min_distance_sym_equiv is None):
+      min_distance_sym_equiv = super_cell.min_distance_sym_equiv_coincident
+    atoms = self.atoms()
+    sites_cart = atoms.extract_xyz()
+    if (isinstance(selection, flex.bool)):
+      assert selection.size() == sites_cart.size(), (
+        f"selection covers {selection.size()} atoms, not {sites_cart.size()}")
+      selection = selection.iselection()
+    if (selection is None):
+      selected_sites = sites_cart
+    else:
+      selected_sites = sites_cart.select(selection)
+    if (selected_sites.size() == 0): return []
+    symmetry_tables = super_cell.get_sym_equiv_tables(
+      sites_cart             = sites_cart,
+      crystal_symmetry       = crystal_symmetry,
+      radius                 = radius,
+      min_distance_sym_equiv = min_distance_sym_equiv)
+    # siiu, "symmetry interacting indices unique": {j_seq: [rt_mx]}, the
+    # operators that place atom j_seq within radius of a selected atom.
+    siiu, _ = super_cell.get_siiu(
+      selection=selection, symmetry_tables=symmetry_tables,
+      keep_site_symmetry_ops=True)
+    # The atom range of each residue group, and the residue group of each
+    # atom, by position in atoms().
+    rg_ranges = []
+    rg_of_atom = flex.size_t()
+    for rg in self.residue_groups():
+      first = rg_of_atom.size()
+      rg_of_atom.extend(flex.size_t(rg.atoms_size(), len(rg_ranges)))
+      rg_ranges.append((first, rg_of_atom.size()))
+    site_symmetry_table = symmetry_tables.site_symmetry_table
+    # {rt_mx.as_xyz(): (rt_mx, residue groups it copies)}
+    rgs_by_op = {}
+    for j_seq, ops in siiu.items():
+      for op in ops:
+        key = op.as_xyz()
+        if (key not in rgs_by_op):
+          rgs_by_op[key] = (op, set())
+        rgs_by_op[key][1].add(rg_of_atom[j_seq])
+    # The atoms that may be copied onto another atom: those on a symmetry
+    # element, and those with an equivalent within twice the tolerance of
+    # another atom.
+    near_another_atom, _ = super_cell.get_siiu(
+      symmetry_tables=super_cell.get_sym_equiv_tables(
+        sites_cart             = sites_cart,
+        crystal_symmetry       = crystal_symmetry,
+        radius                 = 2 * min_distance_sym_equiv,
+        min_distance_sym_equiv = min_distance_sym_equiv,
+        site_symmetry_table    = site_symmetry_table))
+    may_coincide = flex.bool(sites_cart.size(), False)
+    may_coincide.set_selected(flex.size_t(list(near_another_atom)), True)
+    may_coincide.set_selected(
+      site_symmetry_table.special_position_indices(), True)
+    # Per element, the sites of the model and of the copies kept so far.
+    elements = atoms.extract_element(strip=True)
+    occupied = {}
+    def occupied_sites(element):
+      if (element not in occupied):
+        occupied[element] = sites_cart.select(elements == element)
+      return occupied[element]
+    unit_cell = crystal_symmetry.unit_cell()
+    result = []
+    for key in sorted(rgs_by_op):
+      op, i_rgs = rgs_by_op[key]
+      i_seqs = flex.size_t()
+      for i_rg in sorted(i_rgs):
+        first, last = rg_ranges[i_rg]
+        i_seqs.extend(flex.size_t_range(first, last))
+      equiv = super_cell.sym_equiv_sites_cart(
+        sites_cart=sites_cart, unit_cell=unit_cell, rt_mx=op,
+        selection=i_seqs)
+      keep = flex.bool(i_seqs.size(), True)
+      for i in may_coincide.select(i_seqs).iselection():
+        sites = occupied_sites(elements[i_seqs[i]])
+        if (flex.min((sites - equiv[i]).dot()) < min_distance_sym_equiv**2):
+          keep[i] = False
+        else:
+          sites.append(equiv[i])
+      if (not keep.count(True)): continue
+      i_seqs = i_seqs.select(keep)
+      hierarchy = self.select(i_seqs, copy_atoms=True)
+      hierarchy.atoms().set_xyz(equiv.select(keep))
+      hierarchy.atoms().rotate_uij_and_clear_sigmas(
+        r_cart=unit_cell.matrix_cart(op.r()))
+      result.append(group_args(rt_mx=op, i_seqs=i_seqs, hierarchy=hierarchy))
+    return result
 
   def write_pdb_file(self,
         file_name,
@@ -1419,6 +1639,53 @@ class _():
     assert self.atoms_size() > iseq
     return self.get_label_asym_id(self.atoms()[iseq].parent().parent())
 
+  def _residue_groups_are_backbone_linked(self, rg_prev, rg_next):
+    """True if rg_prev and rg_next are joined by a peptide (C-N) or a
+    phosphodiester (O3'-P) bond, judged by the inter-atomic distance."""
+    def get_atom(residue_group, name):
+      for ag in residue_group.atom_groups():
+        atom = ag.get_atom(name)
+        if atom is not None:
+          return atom
+      return None
+    # (atom in the preceding residue, atom in the following residue)
+    backbone_link_atom_names = (("C", "N"), ("O3'", "P"))
+    max_distance = 2.0 # Angstrom
+    for name_prev, name_next in backbone_link_atom_names:
+      a_prev = get_atom(rg_prev, name_prev)
+      if a_prev is None: continue
+      a_next = get_atom(rg_next, name_next)
+      if a_next is not None and a_prev.distance(a_next) < max_distance:
+        return True
+    return False
+
+  def _residue_group_kinds(self, chain):
+    """Classify every residue_group of the chain as 'poly', 'water' or
+    'ligand' for label_asym_id / label_seq_id assignment. A residue whose name
+    is not in the residue class tables (e.g. a ligand code given to a modified
+    amino acid, UNK, caps) is a polymer residue if it is backbone-linked to a
+    neighbouring residue group of the chain; otherwise it is a ligand."""
+    # residue classes that are polymer residues regardless of geometry
+    polymer_residue_classes = ('common_amino_acid', 'modified_amino_acid',
+      'd_amino_acid', 'common_rna_dna', 'modified_rna_dna')
+    rgs = chain.residue_groups()
+    result = []
+    for i, rg in enumerate(rgs):
+      residue_class = common_residue_names_get_class(
+        rg.atom_groups()[0].resname.strip())
+      if residue_class in polymer_residue_classes:
+        kind = 'poly'
+      elif residue_class == 'common_water':
+        kind = 'water'
+      elif ((i > 0 and self._residue_groups_are_backbone_linked(rgs[i-1], rg))
+            or (i+1 < len(rgs) and
+                self._residue_groups_are_backbone_linked(rg, rgs[i+1]))):
+        kind = 'poly'
+      else:
+        kind = 'ligand'
+      result.append(kind)
+    return result
+
   def get_label_asym_id(self, residue_group):
     """Return the label_asym_id for this residue group"""
     if not hasattr(self, '_lai_lookup'):
@@ -1430,28 +1697,18 @@ class _():
       for model in self.models():
         for chain in model.chains():
           previous = None
-          for rg in chain.residue_groups():
-            resname = rg.atom_groups()[0].resname.strip()
-            residue_class = common_residue_names_get_class(resname)
-            rg_mid = rg.memory_id()
-            if residue_class in ['common_amino_acid', 'modified_amino_acid',
-                'common_rna_dna', 'modified_rna_dna']:
-              if previous != 'poly' and previous is not None:
-                number_label_asym_id += 1
-              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
-              previous = 'poly'
-            elif residue_class in ['common_water']:
-              if previous != 'water' and previous is not None:
-                number_label_asym_id += 1
-              previous = 'water'
-              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
-            else: # ligand
+          for rg, kind in zip(chain.residue_groups(),
+                              self._residue_group_kinds(chain)):
+            if kind == 'ligand':
+              # every ligand gets its own label_asym_id
               if previous is not None:
                 number_label_asym_id += 1
-              previous = 'ligand'
-              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
+            elif previous != kind and previous is not None:
+              # a polymer or water run starts
+              number_label_asym_id += 1
+            self._lai_lookup[rg.memory_id()] = label_asym_ids[number_label_asym_id]
+            previous = kind
           number_label_asym_id += 1 # up for each chain
-          previous = None
         number_label_asym_id += 1 # up for each model
     rg_mid = residue_group.memory_id()
     result = self._lai_lookup.get(rg_mid, None)
@@ -1488,17 +1745,16 @@ class _():
       for model in self.models():
         for chain in model.chains():
           label_seq_id = 0
-          for rg in chain.residue_groups():
+          for rg, kind in zip(chain.residue_groups(),
+                              self._residue_group_kinds(chain)):
+            cur_ac_key = chain.id + rg.resseq + rg.icode
+            if cur_ac_key != prev_ac_key:
+              label_seq_id += 1
+              prev_ac_key = cur_ac_key
+            label_seq_id_str = '.'
+            if kind == 'poly':
+              label_seq_id_str = str(label_seq_id)
             for ag in rg.atom_groups():
-              cur_ac_key = chain.id + rg.resseq + rg.icode
-              if cur_ac_key != prev_ac_key:
-                label_seq_id += 1
-                prev_ac_key = cur_ac_key
-              label_seq_id_str='.'
-              comp_id = ag.resname.strip()
-              residue_class = common_residue_names_get_class(comp_id)
-              if residue_class in ['common_amino_acid', 'modified_amino_acid']:
-                label_seq_id_str = str(label_seq_id)
               self._label_seq_id_dict[ag.memory_id()] = label_seq_id_str
     return self._label_seq_id_dict[atom_group.memory_id()]
 
@@ -1510,7 +1766,7 @@ class _():
     if hasattr(self, '_label_seq_id_dict'):
       del self._label_seq_id_dict
 
-  def as_cif_block(self,
+  def _as_cif_block_python(self,
       crystal_symmetry=None,
       coordinate_precision=5,
       occupancy_precision=3,
@@ -1519,6 +1775,12 @@ class _():
       resolution_precision=2,
       segid_as_auth_segid=False,
       output_break_records=False):
+    """The Python body of as_cif_block, which writes the atom columns in C++
+    now; kept as the reference of iotbx/regression/tst_mmcif_writer_cpp.py,
+    which asserts that both give the same block. Retirement: remove it after
+    the first Phenix release that ships the C++ path if no parity failure
+    has been reported, with the blocks marked PARITY in that test; its
+    docstring lists the edits that go with them."""
 
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
@@ -1651,7 +1913,12 @@ class _():
     chem_comp_atom_ids = []
     struct_asym_ids = []
     #
-    chain_ids = all_chain_ids()
+    # _atom_site.id is the key of the loop. The serial restarts in every
+    # model (atoms_reset_serial, the PDB reader), so in a multi-model
+    # hierarchy the id is the row number instead; the anisotrop id is the
+    # same value, since the reader joins the two loops by id alone.
+    multi_model = self.models_size() > 1
+    i_row = 0
     for model in self.models():
       model_id = model.id
       is_first_in_chain = True
@@ -1693,8 +1960,13 @@ class _():
               else:
                 fp = "%.4f" %fp
                 fdp = "%.4f" %fdp
+              i_row += 1
+              if multi_model:
+                atom_id = str(i_row)
+              else:
+                atom_id = str(hy36decode(width=5, s=atom.serial))
               atom_site_group_PDB.append(group_pdb)
-              atom_site_id.append(str(hy36decode(width=5, s=atom.serial)))
+              atom_site_id.append(atom_id)
               atom_site_label_atom_id.append(atom.name.strip())
               atom_site_auth_atom_id.append(atom.name.strip())
               if atom.name.strip() not in chem_comp_atom_ids:
@@ -1730,8 +2002,7 @@ class _():
               if atom.uij_is_defined():
                 u11, u22, u33, u12, u13, u23 = [
                   u_aniso_fmt_str %i for i in atom.uij]
-                atom_site_anisotrop_id.append(
-                  str(hy36decode(width=5, s=atom.serial)))
+                atom_site_anisotrop_id.append(atom_id)
                 atom_site_anisotrop_pdbx_auth_atom_id.append(atom.name.strip())
                 atom_site_anisotrop_pdbx_label_alt_id.append(self.get_label_alt_id_atom(atom))
                 atom_site_anisotrop_pdbx_auth_comp_id.append(comp_id)
@@ -1766,6 +2037,210 @@ class _():
     for row in struct_asym_ids: struct_asym_loop.add_row([row])
     h_cif_block.add_loop(struct_asym_loop)
     #
+    return h_cif_block
+
+  def _atom_site_labels(self, segid_as_auth_segid=False):
+    """The values of as_cif_block that Python resolves: label_asym_id and
+    label_seq_id, which depend on a residue's neighbours and its chain,
+    auth_asym_id, and auth_seq_id. One value per chain, residue group or
+    atom group, over all models in hierarchy order. The lookups are rebuilt
+    first.
+
+    Parameters
+    ----------
+    segid_as_auth_segid : bool
+      As in as_cif_block: when False, a segid longer than the chain id is
+      the auth_asym_id.
+
+    Returns
+    -------
+    libtbx.group_args
+      chain_auth_asym_id (per chain), rg_label_asym_id and rg_auth_seq_id
+      (per residue group), ag_label_seq_id (per atom group), each a
+      flex.std_string.
+    """
+    self.clear_label_asym_id_lookups()
+    chain_auth_asym_id = []
+    rg_label_asym_id = []
+    rg_auth_seq_id = []
+    ag_label_seq_id = []
+    for model in self.models():
+      for chain in model.chains():
+        chain_auth_asym_id.append(self.get_auth_asym_id(chain,
+          segid_as_auth_segid=segid_as_auth_segid))
+        for residue_group in chain.residue_groups():
+          rg_label_asym_id.append(
+            self.get_label_asym_id(residue_group).strip())
+          rg_auth_seq_id.append(self.get_auth_seq_id(residue_group))
+          for atom_group in residue_group.atom_groups():
+            ag_label_seq_id.append(self.get_label_seq_id(atom_group))
+    return group_args(
+      chain_auth_asym_id=flex.std_string(chain_auth_asym_id),
+      rg_label_asym_id=flex.std_string(rg_label_asym_id),
+      rg_auth_seq_id=flex.std_string(rg_auth_seq_id),
+      ag_label_seq_id=flex.std_string(ag_label_seq_id))
+
+  def as_cif_block(self,
+      crystal_symmetry=None,
+      coordinate_precision=5,
+      occupancy_precision=3,
+      b_iso_precision=5,
+      u_aniso_precision=5,
+      resolution_precision=2,
+      segid_as_auth_segid=False,
+      output_break_records=False):
+    """Return the model as an mmCIF data block.
+
+    Parameters
+    ----------
+    crystal_symmetry : cctbx.crystal.symmetry, optional
+      Written as the cell and space group items; None writes neither.
+    coordinate_precision : int
+      Decimal places of _atom_site.Cartn_x, Cartn_y and Cartn_z.
+    occupancy_precision : int
+      Decimal places of _atom_site.occupancy.
+    b_iso_precision : int
+      Decimal places of _atom_site.B_iso_or_equiv.
+    u_aniso_precision : int
+      Decimal places of the _atom_site_anisotrop U values.
+    resolution_precision : int
+      Decimal places of _atom_site.phenix_resolution.
+    segid_as_auth_segid : bool
+      Write the segid as _atom_site.auth_segid. When False, a segid longer
+      than the chain id is written as auth_asym_id instead.
+    output_break_records : bool
+      Write _atom_site.auth_break when the hierarchy has chain breaks.
+
+    Returns
+    -------
+    iotbx.cif.model.block
+      The _atom_site loop, the _atom_site_anisotrop loop when an atom has
+      U values, the symmetry items, and the _chem_comp and _struct_asym
+      loops.
+
+    Raises
+    ------
+    ValueError
+      For an atom serial that is not a hybrid-36 number in a single-model
+      hierarchy, for a four-character residue number that is not a
+      hybrid-36 number, and for a negative precision when a value is
+      written with it.
+    IndexError
+      For a residue group without atom groups, for a chain without atoms
+      when segid_as_auth_segid is False, and for a chain with a blank id
+      and no residue groups when it is True.
+
+    Notes
+    -----
+    The per-chain and per-residue values come from _atom_site_labels; the
+    per-atom values are written in C++ by
+    iotbx.pdb.atom_site_columns_from_hierarchy. The block is the same as
+    that of _as_cif_block_python, the Python body this replaced, with two
+    exceptions. label_alt_id is the altloc of the atom group that holds the
+    atom; the Python body read the altloc of atom.parent(). The two differ
+    when parent() is another atom group or None: atoms added with
+    atom_group.append_atom_with_other_parent, the atoms of a select()
+    without copy_atoms (their parents are the original's atom groups), and
+    the atoms such a selection shares with its original after
+    remove_alt_confs() or remove_hd() on either; where the Python body
+    raised AttributeError for a parent of None, the block is written.
+    And the labels of all chains are resolved before any atom is written,
+    so an input with two defects can raise the exception of the later one
+    (an IndexError for an empty chain B before the ValueError for a bad
+    serial in chain A). On an x86 build with -ffast-math, which no CI job
+    that runs the iotbx tests, and no released build, uses, a NaN fp or fdp
+    counts as zero, so an atom whose other value is 0 or NaN gets "." in
+    both columns.
+    """
+    from iotbx.pdb import atom_site_labels, atom_site_columns_from_hierarchy
+    if crystal_symmetry is None:
+      crystal_symmetry = crystal.symmetry()
+    cs_cif_block = crystal_symmetry.as_cif_block(format="mmcif")
+    if output_break_records:
+      # Determine if there are any break records here to write out
+      if not self.contains_break_records():
+        output_break_records = False # no point
+    values = self._atom_site_labels(segid_as_auth_segid=segid_as_auth_segid)
+    labels = atom_site_labels()
+    labels.chain_auth_asym_id = values.chain_auth_asym_id
+    labels.rg_label_asym_id = values.rg_label_asym_id
+    labels.rg_auth_seq_id = values.rg_auth_seq_id
+    labels.ag_label_seq_id = values.ag_label_seq_id
+    out = atom_site_columns_from_hierarchy(self, labels,
+      coordinate_precision=coordinate_precision,
+      occupancy_precision=occupancy_precision,
+      b_iso_precision=b_iso_precision,
+      u_aniso_precision=u_aniso_precision,
+      resolution_precision=resolution_precision,
+      segid_as_auth_segid=segid_as_auth_segid,
+      output_break_records=output_break_records)
+
+    atom_site_columns = [
+      ('_atom_site.group_PDB', out.group_pdb),
+      ('_atom_site.id', out.id),
+      ('_atom_site.label_atom_id', out.label_atom_id),
+      ('_atom_site.label_alt_id', out.label_alt_id),
+      ('_atom_site.label_comp_id', out.label_comp_id),
+      ('_atom_site.auth_asym_id', out.auth_asym_id),
+      ('_atom_site.auth_seq_id', out.auth_seq_id),
+      ('_atom_site.pdbx_PDB_ins_code', out.ins_code),
+      ('_atom_site.Cartn_x', out.cartn_x),
+      ('_atom_site.Cartn_y', out.cartn_y),
+      ('_atom_site.Cartn_z', out.cartn_z),
+      ('_atom_site.occupancy', out.occupancy),
+      ('_atom_site.B_iso_or_equiv', out.b_iso),
+      ('_atom_site.type_symbol', out.type_symbol),
+      ('_atom_site.pdbx_formal_charge', out.formal_charge),
+      ('_atom_site.phenix_resolution', out.resolution),
+      ('_atom_site.phenix_scat_dispersion_real', out.fp),
+      ('_atom_site.phenix_scat_dispersion_imag', out.fdp),
+      ('_atom_site.label_asym_id', out.label_asym_id),
+      ('_atom_site.label_entity_id', out.label_entity_id),
+      ('_atom_site.label_seq_id', out.label_seq_id),
+      ('_atom_site.auth_atom_id', out.auth_atom_id),
+      ('_atom_site.pdbx_PDB_model_num', out.model_num),
+     ]
+    if segid_as_auth_segid:
+      atom_site_columns.append(('_atom_site.auth_segid', out.auth_segid))
+    if output_break_records:
+      atom_site_columns.append(('_atom_site.auth_break', out.auth_break))
+    atom_site_loop = iotbx.cif.model.loop()
+    for key, column in atom_site_columns:
+      atom_site_loop[key] = column
+    aniso_loop = iotbx.cif.model.loop()
+    for key, column in (
+        ('_atom_site_anisotrop.id', out.aniso_id),
+        ('_atom_site_anisotrop.pdbx_auth_atom_id', out.aniso_auth_atom_id),
+        ('_atom_site_anisotrop.pdbx_label_alt_id', out.aniso_label_alt_id),
+        ('_atom_site_anisotrop.pdbx_auth_comp_id', out.aniso_auth_comp_id),
+        ('_atom_site_anisotrop.pdbx_auth_asym_id', out.aniso_auth_asym_id),
+        ('_atom_site_anisotrop.pdbx_auth_seq_id', out.aniso_auth_seq_id),
+        ('_atom_site_anisotrop.pdbx_PDB_ins_code', out.aniso_ins_code),
+        ('_atom_site_anisotrop.U[1][1]', out.aniso_u11),
+        ('_atom_site_anisotrop.U[2][2]', out.aniso_u22),
+        ('_atom_site_anisotrop.U[3][3]', out.aniso_u33),
+        ('_atom_site_anisotrop.U[1][2]', out.aniso_u12),
+        ('_atom_site_anisotrop.U[1][3]', out.aniso_u13),
+        ('_atom_site_anisotrop.U[2][3]', out.aniso_u23)):
+      aniso_loop[key] = column
+
+    for key in ('_atom_site.phenix_scat_dispersion_real',
+                '_atom_site.phenix_scat_dispersion_imag'):
+      if atom_site_loop[key].all_eq('.'):
+        del atom_site_loop[key]
+    if atom_site_loop['_atom_site.phenix_resolution'].all_eq('0.00'):
+      del atom_site_loop['_atom_site.phenix_resolution']
+    h_cif_block = iotbx.cif.model.block()
+    h_cif_block.add_loop(atom_site_loop)
+    if aniso_loop.size() > 0:
+      h_cif_block.add_loop(aniso_loop)
+    h_cif_block.update(cs_cif_block)
+    chem_comp_loop = iotbx.cif.model.loop(header=('_chem_comp.id',))
+    for row in out.chem_comp_ids: chem_comp_loop.add_row([row])
+    h_cif_block.add_loop(chem_comp_loop)
+    struct_asym_loop = iotbx.cif.model.loop(header=('_struct_asym.id',))
+    for row in out.struct_asym_ids: struct_asym_loop.add_row([row])
+    h_cif_block.add_loop(struct_asym_loop)
     return h_cif_block
 
   def remove_segid(self):
@@ -2304,6 +2779,13 @@ class _():
     else:
       sentinel = self.atoms().reset_tmp(first_value=0, increment=1)
     result = []
+    # Groups come only from atom groups with an altloc and from atoms with
+    # 0 < occ < 1: without either the result is empty.
+    occ = self.atoms().extract_occ()
+    if (set(self.altloc_indices().keys()) <= {""} and
+        ((occ > 0) & (occ < 1)).count(True) == 0):
+      del sentinel
+      return result
     for chain in self.chains():
       if(common_residue_name_class_only is None):
         if(chain.is_protein()):
@@ -2390,12 +2872,71 @@ class _():
             ag.remove_atom(atom)
           rg = ag.parent()
           rg.remove_atom_group(ag)
-          chain = rg.parent()
-          chain.remove_residue_group(rg)
-          if chain.atoms_size() == 0:
-            model.remove_chain(chain)
+          # Only detach the residue group once it holds no more atom groups:
+          # it may still contain other atom groups (e.g. alt. confs.) that are
+          # visited later in this loop and need rg.parent() to be valid.
+          if rg.atom_groups_size() == 0:
+            chain = rg.parent()
+            chain.remove_residue_group(rg)
+            if chain.atoms_size() == 0:
+              model.remove_chain(chain)
         else:
           residues[key] = ag
+
+  def reconcile_altlocs(self, crystal_symmetry, distance_cutoff=4.5,
+        clash_tolerance=0.5, include_hydrogens=False, check_only=False,
+        log=None):
+    """
+    Relabel altlocs of interacting residues so that the same label means the
+    same state (e.g. altloc A of a residue does not clash with altloc A of
+    its neighbor). Only labels change. Residues that cannot be made
+    consistent are reported and left unchanged. Restraints built before
+    this call must be rebuilt if labels change.
+
+    :param crystal_symmetry: used to find contacts between symmetry copies;
+      None for an isolated molecule
+    :param distance_cutoff: altloc atoms of two residues closer than this
+      make the residues interacting
+    :param clash_tolerance: van der Waals overlap (A) tolerated before
+      counting a clash
+    :param include_hydrogens: use hydrogens when scoring contacts
+    :param check_only: report changes without applying them
+    :returns: group_args with n_sites (residues with altlocs), n_components
+      (groups of interacting residues), swaps (list of (id_str, mapping))
+      and unresolved (list of lists of id_str)
+    """
+    from iotbx.pdb import altloc_reconciliation
+    return altloc_reconciliation.run(
+      hierarchy         = self,
+      crystal_symmetry  = crystal_symmetry,
+      distance_cutoff   = distance_cutoff,
+      clash_tolerance   = clash_tolerance,
+      include_hydrogens = include_hydrogens,
+      check_only        = check_only,
+      log               = log)
+
+  def complete_altlocs(self, check_only=False, log=None):
+    """
+    Complete partial alternative conformations: every conformer label of a
+    residue gets the residue's atoms it lacks, borrowed from the residue's
+    other conformers when bonded to the conformer (an atom needed by every
+    other label becomes blank, otherwise it is copied and its occupancy
+    split). Total occupancy of every atom site is kept, so structure
+    factors do not change. Restraints built before this call must be
+    rebuilt if the hierarchy changes.
+
+    :param check_only: report changes without applying them
+    :param log: receives one line per shared, copied or truncated case
+    :returns: group_args with shared, copied, truncated, inconsistent,
+      changed and the details report_lines needs (see
+      iotbx.pdb.altloc_completion.run)
+    :raises Sorry: if an atom could come from more than one conformer
+    """
+    from iotbx.pdb import altloc_completion
+    return altloc_completion.run(
+      hierarchy  = self,
+      check_only = check_only,
+      log        = log)
 
   def is_hierarchy_altloc_consistent(self, verbose=False):
     """Return True if altlocs are consistent"""
@@ -2427,8 +2968,46 @@ class _():
             atom.name=' %-3s' % atom.name.strip()
             if verbose: print('corrected PDB format of %s' % atom.quote())
 
-  def flip_symmetric_amino_acids(self):
-    """Swap atom names in symmetric or chiral amino acids"""
+  def flip_symmetric_amino_acids(self, swapped_pairs=None):
+    """
+    Rename symmetric atoms of Arg, Asp, Glu, Phe, Tyr, Val and Leu to the IUPAC
+    convention by exchanging the sites of each pair.
+
+    The test and the pairs are taken per conformer: the blank atoms and all atom
+    groups of one altloc, as in residue_group.conformers(). A conformer flips
+    only if its test says so and its first pair scores better exchanged, so a
+    second call renames nothing. A pair swaps only if both atoms are in the
+    conformer, and a blank atom only if every conformer agrees; otherwise the
+    residue is not flipped and named in the result. So an acid with one H and
+    residues whose conformers disagree stay non-IUPAC. A residue where no
+    conformer has all test atoms is left silently.
+
+    Dihedral conformers whose two namings score within 30 deg of each other, so
+    with a naming that is close to arbitrary, correspond if, for all their
+    common heavy-atom pairs, each atom is nearer one atom of the pair in the
+    other conformer than its partner, by the same names or crossed; this joins
+    them transitively, whatever the current names. If their own decisions would
+    leave names that do not match, they take one of the two namings in which all
+    match, whichever gives the smaller occupancy-weighted score; a tie keeps the
+    naming that renames fewer atoms. The result says so. All other conformers,
+    and Val and Leu always, keep their own decisions.
+
+    All values of a site go with it: xyz, sigxyz, occ, sigocc, b, sigb, uij, fp,
+    fdp, resolution, and siguij where stored. What names the atom stays: name,
+    serial, element, charge, segid, hetero, i_seq, tmp.
+
+    Parameters
+    ----------
+    swapped_pairs : list, optional
+        Receives (atom1, atom2) of every swap, for values kept outside the
+        hierarchy, such as scatterers.
+
+    Returns
+    -------
+    str
+        The residues not flipped with the reason, and the number of residues
+        flipped with the time; empty if there is neither.
+    """
     import time
     from scitbx.math import dihedral_angle
     def chirality_delta(sites, volume_ideal, both_signs):
@@ -2452,11 +3031,17 @@ class _():
              },
       "ASP" : {"dihedral" : ["CA", "CB", "CG", "OD1"],
                "value"    : [0, 1],
-               "pairs"    : [["OD1", "OD2"]],
+               "pairs"    : [["OD1", "OD2"],
+                             ["HD1", "HD2"],
+                            ],
+               "acid_h"   : ["HD1", "DD1"],
              },
       "GLU" : {"dihedral" : ["CB", "CG", "CD", "OE1"],
                "value"    : [0, 1],
-               "pairs"    : [["OE1", "OE2"]],
+               "pairs"    : [["OE1", "OE2"],
+                             ["HE1", "HE2"],
+                            ],
+               "acid_h"   : ["HE1", "DE1"],
              },
       "PHE" : {"dihedral" : ["CA", "CB", "CG", "CD1"],
                "value"    : [0, 1],
@@ -2484,7 +3069,7 @@ class _():
                            ],
                },
     }
-    data["TYR"]=data["PHE"]
+    data["TYR"]=dict(data["PHE"], pairs=list(data["PHE"]["pairs"]))
 
     for code, item in data.items():
       current = item.get('pairs', [])
@@ -2494,62 +3079,271 @@ class _():
           adds.append(['D%s'%a1[1:], 'D%s'%a2[1:]])
       item['pairs']+=adds
 
-    sites_cart = self.atoms().extract_xyz()
+    def find_atom(groups, name):
+      # The atom and whether it is blank. Not atom.parent(): select() shares
+      # atoms, the parent can be gone.
+      for ag in groups:
+        atom = ag.get_atom(name)
+        if atom is not None:
+          return atom, ag.altloc.strip()==""
+      return None, False
+    def conformer_test(flip_data, groups):
+      # (flip?, the sites define no dihedral, score now, score with the first
+      # pair exchanged). flip? None: no decision, an atom of the test is missing
+      # or the sites are coincident or collinear. Flip only if the partner
+      # scores better: else a flip would turn the same test around, and a
+      # twisted ring or a volume near zero would be renamed on every call.
+      assert not ('dihedral' in flip_data and 'chiral' in flip_data)
+      names = flip_data.get("dihedral", flip_data.get("chiral"))
+      def score(names):
+        sites = []
+        for name in names:
+          sites.append(find_atom(groups, name)[0].xyz)
+        if 'dihedral' in flip_data:
+          dihedral = dihedral_angle(sites=sites, deg=True)
+          if dihedral is None: return None
+          return abs(dihedral)
+        return abs(chirality_delta(
+          sites=[flex.vec3_double([xyz]) for xyz in sites],
+          volume_ideal=flip_data["value"][0],
+          both_signs=flip_data['value'][1]))
+      for name in names:
+        if find_atom(groups, name)[0] is None:
+          return None, False, None, None
+      limit = 2.
+      if 'dihedral' in flip_data: limit = 360./flip_data["value"][1]/4
+      score_now = score(names)
+      if score_now is None: return None, True, None, None
+      name1, name2 = flip_data["pairs"][0]
+      if find_atom(groups, name2)[0] is None:
+        return score_now>limit, False, score_now, None
+      exchange = {name1: name2, name2: name1}
+      score_exchanged = score([exchange.get(name, name) for name in names])
+      if score_exchanged is None: return None, True, None, None
+      flip_it = score_now>limit and score_exchanged<score_now
+      return flip_it, False, score_now, score_exchanged
+    def check_conformer(flip_data, groups):
+      flip_it, no_dihedral, score, score_exchanged = conformer_test(
+        flip_data, groups)
+      pairs = []
+      heavy_pairs = []
+      incomplete = other_than_acid_h = has_blank = spans = False
+      for name1, name2 in flip_data["pairs"]:
+        atom1, blank1 = find_atom(groups, name1)
+        atom2, blank2 = find_atom(groups, name2)
+        if atom1 is None and atom2 is None: continue
+        if atom1 is None or atom2 is None:
+          incomplete = True
+          if name1 not in flip_data.get("acid_h", []): other_than_acid_h = True
+          continue
+        pairs.append((atom1, atom2))
+        if name1[0] not in "HD": heavy_pairs.append((atom1, atom2))
+        if blank1 or blank2: has_blank = True
+        if blank1 != blank2: spans = True
+      return group_args(altloc=groups[0].altloc, flip_it=flip_it,
+        is_dihedral='dihedral' in flip_data, no_dihedral=no_dihedral,
+        score=score, score_exchanged=score_exchanged,
+        pairs=pairs, heavy_pairs=heavy_pairs,
+        protonated=incomplete and not other_than_acid_h,
+        incomplete=incomplete, has_blank=has_blank, spans=spans)
+    def naming_is_close(row):
+      # Empirical naming tolerance. Over 333 files, without this limit, the two
+      # namings differ by <= 10.5 deg for near-identical Phe decided together
+      # and by >= 85 deg for the others, different rotamers that are crossed.
+      # Not Val, Leu: the chirality of a conformer is not a joint choice.
+      return (row.is_dihedral
+              and abs(row.score - row.score_exchanged) < 30.)
+    def nearer(atom, target, other):
+      return atom.distance(target) < atom.distance(other)
+    def assignment(row1, row2):
+      # How the heavy pairs of two conformers map, each pair atom nearer one
+      # atom of the other conformer's pair than the other one: False by the
+      # same names, True crossed, None neither. H follow their heavy atoms;
+      # during placement they sit on placeholder sites.
+      pairs2 = dict((pair[0].name, pair) for pair in row2.heavy_pairs)
+      n_pairs = 0
+      direct = crossed = True
+      for atom1, atom2 in row1.heavy_pairs:
+        other = pairs2.get(atom1.name)
+        if other is None: continue
+        n_pairs += 1
+        if not (nearer(atom1, other[0], other[1]) and
+                nearer(atom2, other[1], other[0]) and
+                nearer(other[0], atom1, atom2) and
+                nearer(other[1], atom2, atom1)):
+          direct = False
+        if not (nearer(atom1, other[1], other[0]) and
+                nearer(atom2, other[0], other[1]) and
+                nearer(other[1], atom1, atom2) and
+                nearer(other[0], atom2, atom1)):
+          crossed = False
+      if n_pairs == 0: return None
+      if direct: return False
+      if crossed: return True
+      return None
+    def corresponding_sets(rows):
+      # {index in rows: exchange relative to the first}, joined transitively
+      # with that parity. Depends on the geometry only, not on the current
+      # names: an exchange turns direct into crossed for every link it touches.
+      # A contradiction gives no set.
+      members = [i for i, row in enumerate(rows)
+                 if row.flip_it is not None and not row.incomplete
+                 and naming_is_close(row)]
+      sets = []
+      while members:
+        parity = {members[0]: False}
+        members.remove(members[0])
+        stack = list(parity.keys())
+        contradiction = False
+        while stack:
+          i = stack.pop()
+          for j in range(len(rows)):
+            if j == i or (j not in members and j not in parity): continue
+            crossed = assignment(rows[i], rows[j])
+            if crossed is None: continue
+            expected = parity[i] != crossed
+            if j not in parity:
+              parity[j] = expected
+              members.remove(j)
+              stack.append(j)
+            elif parity[j] != expected:
+              contradiction = True
+        if len(parity) > 1 and not contradiction: sets.append(parity)
+      return sets
+    def decide_together(rows):
+      # Corresponding conformers whose own decisions would leave names that do
+      # not match: one of the two namings in which all match, by the occupancy-
+      # weighted score; a tie keeps the naming that renames fewer atoms. Sets
+      # flip_it; returns [(altlocs, altlocs flipped)].
+      result = []
+      for parity in corresponding_sets(rows):
+        own = set([rows[i].flip_it != parity[i] for i in parity])
+        if len(own) == 1: continue
+        best = None
+        for exchange_first in (False, True):
+          score = 0.
+          n_atoms = 0
+          for i in parity:
+            atom1, atom2 = rows[i].pairs[0]
+            if exchange_first != parity[i]:
+              score += atom2.occ * rows[i].score_exchanged
+              n_atoms += 2 * len(rows[i].pairs)
+            else:
+              score += atom1.occ * rows[i].score
+          if best is None or (score, n_atoms) < best[:2]:
+            best = (score, n_atoms, exchange_first)
+        for i in parity:
+          rows[i].flip_it = best[2] != parity[i]
+        altlocs = sorted([rows[i].altloc for i in parity])
+        flipped = sorted([rows[i].altloc for i in parity if rows[i].flip_it])
+        result.append((altlocs, flipped))
+      return result
+    def incomplete_reason(row):
+      if row.protonated: return "protonated acid (one H on the O pair)"
+      return "not complete"
+    def no_dihedral_reason(row):
+      in_altloc = ""
+      if row.altloc.strip()!="": in_altloc = " in altloc %s" % row.altloc
+      return "test atoms coincident or collinear%s" % in_altloc
+    site_values = ['xyz', 'sigxyz', 'occ', 'sigocc', 'b', 'sigb', 'uij', 'fp',
+                   'fdp', 'resolution']
+    if ext.atom.has_siguij(): site_values.append('siguij')
     t0=time.time()
     info = ""
     flips=0
     for rg in self.residue_groups():
-      flip_it=False
-      for ag in rg.atom_groups():
-        flip_data = data.get(ag.resname, None)
+      atom_groups = rg.atom_groups()
+      resnames = []
+      for ag in atom_groups:
+        if ag.resname not in resnames: resnames.append(ag.resname)
+      for resname in resnames: # microheterogeneity: separate residues
+        flip_data = data.get(resname, None)
         if flip_data is None: continue
-        assert not ('dihedral' in flip_data and 'chiral' in flip_data)
-        if not flip_it:
-          if 'dihedral' in flip_data:
-            sites = []
-            for d in flip_data["dihedral"]:
-              atom = ag.get_atom(d)
-              if atom is None: break
-              sites.append(atom.xyz)
-            if len(sites)!=4: continue
-            dihedral = dihedral_angle(sites=sites, deg=True)
-            if abs(dihedral)>360./flip_data["value"][1]/4:
-              flip_it=True
-          elif 'chiral' in flip_data:
-            sites = []
-            for d in flip_data["chiral"]:
-              atom = ag.get_atom(d)
-              if atom is None: break
-              sites.append(atom.xyz)
-            if len(sites)!=4: continue
-            delta = chirality_delta(sites=[flex.vec3_double([xyz]) for xyz in sites],
-                                    volume_ideal=flip_data["value"][0],
-                                    both_signs=flip_data['value'][1],
-                                    )
-            if abs(delta)>2.:
-              flip_it=True
-        if flip_it:
-          flips_stored = []
-          atoms = ag.atoms()
-          for pair in flip_data["pairs"]:
-            atom1 = ag.get_atom(pair[0])
-            atom2 = ag.get_atom(pair[1])
-            if atom1 is None and atom2 is None: continue
-            if len(list(filter(None, [atom1, atom2]))) == 1:
-              flips_stored=[]
-              info += '    Residue "%s %s %s": not complete - not flipped' % (
-                rg.parent().id,
-                ag.resname,
-                rg.resseq,
-              )
-              break
-            flips_stored.append([atom1,atom2])
-          for atom1, atom2 in flips_stored:
-            for attr in ['xyz', 'b']:
+        blank = []
+        altlocs = collections.OrderedDict()
+        for ag in atom_groups:
+          if ag.resname != resname: continue
+          if ag.altloc.strip()=="": blank.append(ag)
+          else: altlocs.setdefault(ag.altloc, []).append(ag)
+        conformers = [groups+blank for groups in altlocs.values()]
+        if not conformers: conformers = [blank]
+        rows = [check_conformer(flip_data, groups) for groups in conformers]
+        together = []
+        if True not in [row.has_blank for row in rows]:
+          together = decide_together(rows)
+        decisions = [row.flip_it for row in rows]
+        no_dihedral = [row for row in rows if row.no_dihedral]
+        if True not in decisions and not no_dihedral and not together: continue
+        reasons = []
+        to_swap = []
+        if True in [row.has_blank for row in rows]:
+          # a blank atom belongs to every conformer: all flip or none
+          if True in [row.spans for row in rows]:
+            reasons.append("pair spans blank and altloc")
+          elif True in [row.flip_it and row.incomplete for row in rows]:
+            incomplete = [row for row in rows if row.flip_it and row.incomplete]
+            reasons.append(incomplete_reason(incomplete[0]))
+          elif no_dihedral:
+            reasons.append(no_dihedral_reason(no_dihedral[0]))
+          elif None in decisions:
+            untested = rows[decisions.index(None)]
+            reasons.append("test atom missing in altloc %s" % untested.altloc)
+          elif False in decisions:
+            reasons.append("conformers disagree")
+          else:
+            to_swap = rows
+        else:
+          for row in rows:
+            in_altloc = ""
+            if row.altloc.strip()!="": in_altloc = " in altloc %s" % row.altloc
+            if row.no_dihedral:
+              reasons.append(no_dihedral_reason(row))
+            elif row.flip_it is None:
+              if row.pairs:
+                reasons.append("test atom missing%s" % in_altloc)
+            elif row.flip_it:
+              if row.incomplete:
+                reasons.append("%s%s" % (incomplete_reason(row), in_altloc))
+              else:
+                to_swap.append(row)
+        model_id = ""
+        if self.models_size() > 1:
+          model_id = "MODEL %s " % rg.parent().parent().id.strip()
+        for reason in reasons:
+          info += '    Residue "%s%s %s %s%s": %s - not flipped\n' % (
+            model_id,
+            rg.parent().id,
+            resname,
+            rg.resseq,
+            rg.icode.strip(),
+            reason,
+          )
+        for altlocs, flipped in together:
+          if not flipped: outcome = "not flipped"
+          elif flipped == altlocs: outcome = "flipped"
+          else: outcome = "flipped in altlocs %s" % ", ".join(flipped)
+          info += '    Residue "%s%s %s %s%s": altlocs %s correspond, decided ' \
+            'together - %s\n' % (
+            model_id,
+            rg.parent().id,
+            resname,
+            rg.resseq,
+            rg.icode.strip(),
+            ", ".join(altlocs),
+            outcome,
+          )
+        done = []
+        for row in to_swap:
+          for atom1, atom2 in row.pairs:
+            if atom1.memory_id() in done: continue # blank: in each conformer
+            done.append(atom1.memory_id())
+            for attr in site_values:
               tmp = getattr(atom1, attr)
               setattr(atom1, attr, getattr(atom2, attr))
               setattr(atom2, attr, tmp)
-          flips+=1
+            if swapped_pairs is not None:
+              swapped_pairs.append((atom1, atom2))
+        if done: flips+=1
     if flips or info:
       info += '  Time to flip %d residue(s): %0.2fs\n' % (flips, time.time()-t0)
     return info
@@ -2750,29 +3544,47 @@ class _():
     return n_removed
 
   def exchangeable_hd_selections(self):
+    """
+    Pairs of H and D atoms, as [[i_seq_H_or_D], [i_seq_D_or_H]].
+
+    Two atom groups of the same residue group are compared when their
+    altlocs differ and at least one of them has only H/D atoms; a blank
+    element counts as non-H/D. Each pair of groups is compared once, in
+    atom_groups() order. An atom pair is one H and one D (element after
+    strip(), case-sensitive) with equal name.strip()[1:]. There is no
+    distance check, and one atom can be in several pairs. Order: pair of
+    groups, then atom order in the first group, then in the second.
+    """
     result = []
+    elements = set(e.strip() for e in self.atoms().extract_element())
+    if 'H' not in elements or 'D' not in elements:
+      return result
     for model in self.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-          for i_gr1, atom_group_1 in enumerate(residue_group.atom_groups()):
-            elements_group1 = [
-              e.strip() for e in atom_group_1.atoms().extract_element()]
-            non_H_atoms_group1 = list(set(elements_group1) - set(['H','D']))
-            for i_gr2, atom_group_2 in enumerate(residue_group.atom_groups()):
-              elements_group2 = [
-                e.strip() for e in atom_group_2.atoms().extract_element()]
-              non_H_atoms_group2 = list(set(elements_group2) - set(['H','D']))
-              if non_H_atoms_group1 and non_H_atoms_group2: continue
-              if(atom_group_1.altloc != atom_group_2.altloc and i_gr2 > i_gr1):
-                for atom1 in atom_group_1.atoms():
-                  e1 = atom1.element.strip()
-                  n1 = atom1.name.strip()[1:]
-                  for atom2 in atom_group_2.atoms():
-                    e2 = atom2.element.strip()
-                    n2 = atom2.name.strip()[1:]
-                    if(e1 in ["H","D"] and e2 in ["H","D"] and e1 != e2 and
-                       n1 == n2):
-                      result.append([[int(atom1.i_seq)], [int(atom2.i_seq)]])
+          if residue_group.atom_groups_size() < 2: continue
+          groups = []
+          for atom_group in residue_group.atom_groups():
+            hd_atoms = []
+            hd_by_name = {}
+            heavy = False
+            for atom in atom_group.atoms():
+              e = atom.element.strip()
+              if e not in ('H', 'D'):
+                heavy = True
+                continue
+              x = (e, atom.name.strip()[1:], int(atom.i_seq))
+              hd_atoms.append(x)
+              hd_by_name.setdefault(x[1], []).append(x)
+            groups.append((atom_group.altloc, heavy, hd_atoms, hd_by_name))
+          for i_gr1, (altloc_1, heavy_1, hd_atoms_1, _) in enumerate(groups):
+            for altloc_2, heavy_2, _, hd_by_name_2 in groups[i_gr1+1:]:
+              if heavy_1 and heavy_2: continue
+              if altloc_1 == altloc_2: continue
+              for e1, n1, i1 in hd_atoms_1:
+                for e2, n2, i2 in hd_by_name_2.get(n1, ()):
+                  if e1 != e2:
+                    result.append([[i1], [i2]])
     return result
 
   def de_deuterate(self):
@@ -3330,6 +4142,16 @@ class _():
     if (chain is not None):
       chain_id = chain.id
     return "%2s%4s%1s" % (chain_id, self.resseq, self.icode)
+
+  def relabel_altlocs(self, mapping):
+    """Relabel altlocs of atom_groups in place. mapping is a permutation of
+    non-blank altloc labels, e.g. {"A":"B", "B":"A"}; labels not in mapping
+    are unchanged. Atom order is not changed, so arrays aligned with the
+    hierarchy (e.g. xray_structure scatterers) stay valid."""
+    assert "" not in [k.strip() for k in mapping]
+    assert sorted(mapping.keys()) == sorted(mapping.values())
+    for ag in self.atom_groups():
+      ag.altloc = mapping.get(ag.altloc, ag.altloc)
 
 bp.inject(ext.atom_group, __hash_eq_mixin)
 @bp.inject_into(ext.atom_group)

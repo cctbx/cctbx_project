@@ -10,12 +10,12 @@ jobs:
   - template: ./conda-linux.yml
     parameters:
       distribution: cctbx/rockylinux
-      version: [8]
+      version: [9]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
-      vmImage: [14]
-      xcode_version: [15, 4]
+      vmImage: [15]
+      xcode_version: [16, 4]
       modules: modules
       template: ./unix-conda-build.yml

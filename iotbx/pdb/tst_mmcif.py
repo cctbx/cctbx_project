@@ -154,11 +154,54 @@ A CE  1
   assert list(cif_block.get("_atom_site.auth_atom_id")) == ["N", "CA", "C", "O", "CB", "CG", "SD", "CE"]
   assert list(cif_block.get("_atom_site.pdbx_PDB_model_num")) == ["1"]*8
 
+def exercise_crystal_symmetry_without_hierarchy():
+  # the symmetry comes from the block alone; the hierarchy is not built
+  cif_txt = """
+data_sym
+_cell.length_a 10.0
+_cell.length_b 20.0
+_cell.length_c 30.0
+_cell.angle_alpha 90.0
+_cell.angle_beta 90.0
+_cell.angle_gamma 90.0
+_symmetry.space_group_name_H-M "P 21 21 21"
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_seq_id
+_atom_site.auth_asym_id
+_atom_site.pdbx_PDB_model_num
+ATOM 1 N N  . MET A 1 1 ? 1.0 2.0 3.0 1.00 10.0 1 A 1
+ATOM 2 C CA . MET A 1 1 ? 2.0 3.0 4.0 1.00 10.0 1 A 1
+"""
+  cif_in = mmcif.cif_input(lines=cif_txt)
+  cs = cif_in.crystal_symmetry()
+  assert cif_in.hierarchy is None
+  assert approx_equal(cs.unit_cell().parameters(), (10, 20, 30, 90, 90, 90))
+  assert cs.space_group_info().type().number() == 19
+  cif_in.construct_hierarchy()
+  assert cif_in.hierarchy.atoms_size() == 2
+  assert cif_in.crystal_symmetry().is_similar_symmetry(cs)
+
 def run():
   exercise_extract_f_model_core_constants()
   exercise_get_r_rfree_sigma_r_work_fallback()
   exercise_extract_header_misc()
   exercise_rows_splitted_by_newline()
+  exercise_crystal_symmetry_without_hierarchy()
 
 if __name__ == '__main__':
   run()

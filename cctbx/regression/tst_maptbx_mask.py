@@ -3,6 +3,7 @@ from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from iotbx.map_model_manager import map_model_manager
 from libtbx import group_args
+import libtbx.load_env
 
 def get_random_structure_and_map(
    use_static_structure = False,
@@ -39,14 +40,17 @@ def get_random_structure_and_map(
     model_input = None, pdb_hierarchy = ph, crystal_symmetry = fc.crystal_symmetry())
   return group_args(model = model, mm = mm)
 
+def check_masked_map(new_map, orig_map, mask, outside_value):
+  """New map must blend orig_map and outside_value by the mask value"""
+  expected = mask * orig_map + (1 - mask) * outside_value
+  assert approx_equal(flex.max(flex.abs((new_map - expected).as_1d())), 0), \
+    "masked map is not mask*map + (1-mask)*outside"
+
 def exercise_mask():
   mam = get_random_structure_and_map(use_static_structure = True)
   mm_orig = mam.mm.deep_copy()
   map_data_orig   = mam.mm.map_data().deep_copy()
   assert map_data_orig.origin() == (0, 0, 0)
-  sites_frac_orig = mam.model.get_sites_frac().deep_copy()
-  sites_cart_orig = mam.model.get_sites_cart().deep_copy()
-  cs_orig         = mam.model.crystal_symmetry()
 
   # Create mask with gridding supplied
   from cctbx.maptbx.mask import create_mask_around_atoms
@@ -58,25 +62,29 @@ def exercise_mask():
   new_mask = cm.mask()
   assert (new_mask.count(0), new_mask.count(1), new_mask.size()) == (31852, 6548, 38400)
 
+  # Soft mask: smooth, positive everywhere, rescaled to a maximum of 1
   cm.soft_mask(soft_mask_radius = 5)
   new_mask = cm.mask()
-  assert (new_mask.count(0), new_mask.count(1), new_mask.size()) == (0, 0, 38400)
-  assert approx_equal( (new_mask[0], new_mask[100]), (0.0232240949563, 0.0216530808725))
+  assert flex.min(new_mask.as_1d()) > 0
+  assert approx_equal(flex.max(new_mask.as_1d()), 1), \
+    "soft mask is not rescaled to a maximum of 1"
 
   # Create mask starting with a map_manager object
   cm = create_mask_around_atoms(model = mam.model,
      mask_atoms_atom_radius = 3,
      map_manager = mam.mm)
   assert mm_orig.map_data().origin() == (0, 0, 0)
+  mask = cm.mask()
+  assert (mask.count(0), mask.count(1)) == (31852, 6548)
+  inside = (mask > 0.5).as_1d()
+  mean_inside = flex.mean(map_data_orig.as_1d().select(inside))
 
   new_mm = cm.apply_mask_to_other_map_manager(mm_orig)
-  new_map_data = new_mm.map_data()
-  assert approx_equal( (new_map_data[5215], new_map_data[8432]), (0.0, -0.0514926330954))
+  check_masked_map(new_mm.map_data(), map_data_orig, mask, 0)
 
   new_mm = cm.apply_mask_to_other_map_manager(mm_orig,
      set_outside_to_mean_inside = True)
-  new_map_data = new_mm.map_data()
-  assert approx_equal( (new_map_data[5215], new_map_data[8432]), (0.0646441178021, -0.0514926330954))
+  check_masked_map(new_mm.map_data(), map_data_orig, mask, mean_inside)
 
   # Create mask using n_real and check applying mask
   cm = create_mask_around_atoms(model = mam.model,
@@ -87,61 +95,52 @@ def exercise_mask():
 
   new_mm = cm.apply_mask_to_other_map_manager(mm_orig,
      set_outside_to_mean_inside = True)
-  new_map_data = new_mm.map_data()
-  assert approx_equal( (new_map_data[5215], new_map_data[8432]), (0.0646441178021, -0.0514926330954))
+  check_masked_map(new_mm.map_data(), map_data_orig, cm.mask(), mean_inside)
 
   # Create mask using map_manager object
   mm = mm_orig.deep_copy()
-  orig_map = mm.map_data().deep_copy()
   mm.create_mask_around_atoms(
     model = mam.model,
     mask_atoms_atom_radius = 3)
+  hard_mask = mm.get_mask_as_map_manager().map_data()
+  assert (hard_mask.count(0), hard_mask.count(1)) == (31852, 6548)
   mm.soft_mask(soft_mask_radius = 5)
+  soft_mask = mm.get_mask_as_map_manager().map_data().deep_copy()
   mm.apply_mask()
-  new_map = mm.map_data()
-  assert approx_equal(
-    ( orig_map[5215], orig_map[8432], new_map[5215], orig_map[8432]),
-    (-0.012385224860014447, -0.05149263309541403, -0.0004143453062615644,
-        -0.05149263309541403)
-    )
+  check_masked_map(mm.map_data(), map_data_orig, soft_mask, 0)
 
   # create mask around edges
   mm = mm_orig.deep_copy()
-  orig_map = mm.map_data().deep_copy()
-  mm.create_mask_around_edges(
-    soft_mask_radius = 5)
+  mm.create_mask_around_edges(boundary_radius = 5)
+  edge_mask = mm.get_mask_as_map_manager().map_data()
+  assert (edge_mask.count(0), edge_mask.count(1)) == (17184, 21216)
   mm.soft_mask(soft_mask_radius = 5)
+  soft_mask = mm.get_mask_as_map_manager().map_data().deep_copy()
   mm.apply_mask()
-  new_map = mm.map_data()
-  assert approx_equal( (orig_map[0], new_map[0]),
-     (-0.0071372973593,-0.00204624804668))
-  assert approx_equal(
-   ( orig_map[5215], orig_map[8432], new_map[5215], orig_map[8432]),
-  (-0.01238522486, -0.0514926330954, -0.00401527420775, -0.0514926330954))
+  check_masked_map(mm.map_data(), map_data_orig, soft_mask, 0)
 
+  # The rest uses create_mask_around_density with a sequence, which needs
+  # phenix.loop_lib to estimate the solvent content
+  if not libtbx.env.has_module("phenix"):
+    print("phenix is not available, skipping create_mask_around_density")
+    return
 
   # auto-generate mask
   mm = mm_orig.deep_copy()
-  orig_map = mm.map_data().deep_copy()
   mm.create_mask_around_density(
     resolution = 3,
     molecular_mass = 2000,
     sequence = 'AVAGS',
     solvent_content = None)
   mask_mm = mm.get_mask_as_map_manager()
-  mask_data = mask_mm.map_data()
+  mask_data = mask_mm.map_data().deep_copy()
   print ("Mask zero/one: ",
      mask_data.count(0), mask_data.count(1), mask_data.size())
-  assert approx_equal ((mask_data.count(0), mask_data.count(1), mask_data.size()),
-    (36705, 1695, 38400))
+  assert (mask_data.count(0), mask_data.count(1), mask_data.size()) == \
+    (36705, 1695, 38400)
 
   mm.apply_mask()
-  new_map = mm.map_data()
-  print( "Map values before/after mask:",
-       orig_map[4322], orig_map[9680], new_map[4322], new_map[9680]),
-  assert approx_equal(
-     (orig_map[4322], orig_map[9680], new_map[4322], new_map[9680]),
-    (-0.0214128152846, -0.0249896972752, 0.0, -0.0249896972752))
+  check_masked_map(mm.map_data(), map_data_orig, mask_data, 0)
 
 
   # create zero_boundary_mask
@@ -158,7 +157,9 @@ def exercise_mask():
   mean=map_data.as_1d().min_max_mean().mean
   sd=map_data.as_1d().standard_deviation_of_the_sample()
 
-  manager_mask_mm=mm.binary_filter(mean+sd)
+  manager_mask_mm=mm.deep_copy()
+  manager_mask_mm.binary_filter(mean+sd)  # filters in place
+  assert approx_equal(direct_mask_mm.map_data(), manager_mask_mm.map_data())
   mam=map_model_manager(map_manager_1=direct_mask_mm,map_manager_2=manager_mask_mm)
   assert approx_equal(mam.map_map_cc(map_id='map_manager_1',other_map_id='map_manager_2'),1)
 

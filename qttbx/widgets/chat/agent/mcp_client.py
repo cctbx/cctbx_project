@@ -21,7 +21,7 @@ from qttbx.widgets.chat.agent.conversation import ContentBlock
 def phenix_server_env(project_dir):
   """The PHENIX_* env a phenix-aware MCP server subprocess should receive.
 
-  Centralizes the project/chat-home env so the launcher's claude_code SDK
+  Centralizes the project/chat-home env so the launcher's claude_agent SDK
   loop and McpServerConnection inject identical values.
 
   Parameters
@@ -501,8 +501,10 @@ class McpServerConnection:
     return ToolSpec(
       name=name,
       description=getattr(raw, "description", "") or "",
-      input_schema=getattr(raw, "inputSchema", None)
-        or getattr(raw, "input_schema", {}) or {})
+      # mcp >= 2 names it input_schema (inputSchema is a deprecated alias
+      # that warns); mcp 1.x has only inputSchema.
+      input_schema=getattr(raw, "input_schema", None)
+        or getattr(raw, "inputSchema", None) or {})
 
   def risk_for(self, name):
     """Return the risk class for ``name`` (``"write"`` if unknown)."""

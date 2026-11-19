@@ -400,11 +400,14 @@ namespace cctbx { namespace xray {
         FloatType const& u_base=0.25,
         FloatType const& wing_cutoff=1.e-3,
         FloatType const& exp_table_one_over_step_size=-100,
-        FloatType const& tolerance_positive_definite=1.e-5)
+        FloatType const& tolerance_positive_definite=1.e-5,
+        bool use_u_base_as_u_extra=false,
+        FloatType const& rho_cutoff=0)
       :
         base_t(unit_cell, scatterers, scattering_type_registry,
                u_base, wing_cutoff,
-               exp_table_one_over_step_size, tolerance_positive_definite),
+               exp_table_one_over_step_size, tolerance_positive_definite,
+               use_u_base_as_u_extra, rho_cutoff),
         sampling_may_only_be_called_once(true)
       {}
 

@@ -91,7 +91,7 @@ def test_master_params_string_contains_param():
         print("    SKIP (ai_agent.py not found in this checkout)")
         return
 
-    with open(ai_agent_path, "r") as f:
+    with open(ai_agent_path, "r", encoding="utf-8") as f:
         contents = f.read()
 
     # The master_params region: between "master_params = \"\"\"" and the
@@ -138,7 +138,7 @@ def test_master_params_parses_with_new_attribute():
     if ai_agent_path is None:
         print("    SKIP (ai_agent.py not found in this checkout)")
         return
-    with open(ai_agent_path, "r") as f:
+    with open(ai_agent_path, "r", encoding="utf-8") as f:
         contents = f.read()
 
     start = contents.find('master_params = """') + len('master_params = """')
@@ -186,7 +186,7 @@ def test_assignment_does_not_raise():
     if ai_agent_path is None:
         print("    SKIP (ai_agent.py not found in this checkout)")
         return
-    with open(ai_agent_path, "r") as f:
+    with open(ai_agent_path, "r", encoding="utf-8") as f:
         contents = f.read()
     start = contents.find('master_params = """') + len('master_params = """')
     end = contents.find('"""', start)
@@ -246,7 +246,7 @@ def test_ai_analysis_phil_definition_still_present():
         # ship guarantees it for the PHENIX-layout deployment.
         print("    SKIP (ai_analysis.py not found in this checkout)")
         return
-    with open(ai_analysis_path, "r") as f:
+    with open(ai_analysis_path, "r", encoding="utf-8") as f:
         contents = f.read()
     assert "original_files_for_directives" in contents, (
         "programs/ai_analysis.py is missing the "
@@ -269,7 +269,7 @@ def test_assignment_line_still_in_ai_agent_py():
     if ai_agent_path is None:
         print("    SKIP (ai_agent.py not found in this checkout)")
         return
-    with open(ai_agent_path, "r") as f:
+    with open(ai_agent_path, "r", encoding="utf-8") as f:
         contents = f.read()
     needle = (
         "directive_params.ai_analysis.original_files_for_directives = (")
@@ -297,7 +297,7 @@ def test_cross_file_consistency():
         if full is None:
             print("    SKIP %s (not found in this checkout)" % relpath)
             continue
-        with open(full, "r") as f:
+        with open(full, "r", encoding="utf-8") as f:
             contents = f.read()
         assert needle in contents, (
             "%s missing reference to %r" % (relpath, needle))

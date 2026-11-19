@@ -56,7 +56,7 @@ def _build_session_stub():
     path = _find(_SESSION_CANDIDATES, "SESSION_PY")
     if path is None:
         return None
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     static_block = re.search(
         r'_STATIC_BAD_INJECT_PARAMS = \{.*?\}', src, re.DOTALL)
     get_method = re.search(
@@ -87,7 +87,7 @@ def test_static_blacklist_present_in_source():
     if path is None:
         print("  (skip) session.py not found")
         return
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     assert "_STATIC_BAD_INJECT_PARAMS" in src, \
         "session.py must define a static never-inject map"
     assert '"phenix.resolve_cryo_em"' in src and "ncs_file" in src, \
@@ -136,7 +136,7 @@ def test_required_file_injector_honors_blacklist():
     if path is None:
         print("  (skip) ai_agent.py not found")
         return
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     assert "get_bad_inject_params(program_name)" in src, \
         "required-file injector must fetch the blacklist"
     assert "_bad_inject" in src and "continue" in src, \
@@ -171,7 +171,7 @@ def test_client_sends_merged_blacklist_to_server():
     if path is None:
         print("  (skip) ai_agent.py not found")
         return
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     assert '"bad_inject_params": session.get_all_bad_inject_params()' in src, \
         "client must transmit get_all_bad_inject_params() (merged) to the server"
 
@@ -249,7 +249,7 @@ def test_build_node_extraction_hardened_in_source():
     if path is None:
         print("  (skip) graph_nodes.py not found")
         return
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     assert 'state.get("bad_inject_params") or {}' in src, \
         "build node must coerce a null bad_inject_params payload to {}"
     assert "isinstance(all_bad, dict)" in src, \

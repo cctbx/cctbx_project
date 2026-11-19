@@ -1251,7 +1251,7 @@ def get_bounds_of_valid_region(map_data,
     upper_allowed_bounds.append(last_valid)
     if f < o or l >=  a+o:
       inside_allowed_bounds = False
-    if last_valid <=  first_valid:
+    if last_valid <  first_valid:
       some_valid_points = False
 
   return group_args(
@@ -1292,6 +1292,8 @@ def copy_and_zero_map_outside_bounds(map_data, bounds_info):
   assert tuple(map_copy.origin()) == tuple(bounds_info.gridding_first)
 
   # We are going to shift the origin in this copy, so shift the bounds to match
+  # The upper allowed bounds are inclusive; set_box_copy_inside wants the
+  # end one past the last grid point to copy.
 
   lower_bounds_after_shift = []
   upper_bounds_after_shift = []
@@ -1299,7 +1301,7 @@ def copy_and_zero_map_outside_bounds(map_data, bounds_info):
       bounds_info.upper_allowed_bounds,
       bounds_info.gridding_first):
     lower_bounds_after_shift.append(l-f)
-    upper_bounds_after_shift.append(u-f)
+    upper_bounds_after_shift.append(u-f+1)
 
   acc = map_copy.accessor() # save where the origin is
 
@@ -1349,6 +1351,9 @@ def shift_and_box_model(model = None,
      restraint_objects = model.get_restraint_objects(),
      monomer_parameters = model.get_monomer_parameters(),
      log = null_out())
+  # same atoms, so the HELIX/SHEET annotation stays valid
+  if model.get_ss_annotation() is not None:
+    mm.set_ss_annotation(model.get_ss_annotation().deep_copy())
   return mm
 
 def get_boxes_to_tile_map(target_for_boxes = 24,

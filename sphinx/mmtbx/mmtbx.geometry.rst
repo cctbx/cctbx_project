@@ -52,14 +52,6 @@ mmtbx.geometry.shared_types module
     :undoc-members:
     :show-inheritance:
 
-mmtbx.geometry.sphere_surface_sampling module
----------------------------------------------
-
-.. automodule:: mmtbx.geometry.sphere_surface_sampling
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 mmtbx.geometry.topology module
 ------------------------------
 

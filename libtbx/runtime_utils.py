@@ -17,6 +17,7 @@ from libtbx import adopt_init_args, group_args
 import libtbx.load_env
 import libtbx.phil
 import traceback
+import shlex
 import signal
 import stat
 import time
@@ -341,22 +342,28 @@ class detached_process_client(detached_base):
     elif os.path.exists(self.abort_file):
       self.callback_abort()
     elif os.path.exists(self.result_file):
+      # the file may still be being written, so retry for a while; if it can
+      # never be loaded (e.g. unpickling raises), report that as a job error
+      # so the caller stops polling instead of retrying forever
       max_retries = 5
-      error_text = None
+      load_error = None
       for retry in range(max_retries):
         try:
           result = easy_pickle.load(self.result_file)
-        except Exception:
-          pass
+        except Exception as e:
+          load_error = e
+          load_traceback = "\n".join(traceback.format_tb(sys.exc_info()[2]))
+          time.sleep(retry+1)
         else:
+          load_error = None
           time.sleep(1)
           self.check_stdout()
           self.check_status()
           self.callback_final(result)
           break
-        time.sleep(retry+1)
-      if retry == max_retries-1:
+      if load_error is not None:
         print("There was an error with loading '%s'." % self.result_file)
+        self.callback_error(load_error, load_traceback)
     else :
       self.finished = False
       return
@@ -474,19 +481,57 @@ def write_params(params, file_name):
   param_phil.show(out=f)
   f.close()
 
+def get_environment_script():
+  """
+  Return the shell script a detached or queued job sources to set up its
+  environment.
+
+  The submitting build's own setpaths.sh comes first, so that jobs run the
+  build that submitted them.  A Phenix 2.x installation ships no
+  setpaths.sh; the phenix_env.sh of the installation this interpreter
+  belongs to is used, or $PHENIX/phenix_env.sh.  PHENIX_CUSTOM_ENV means the
+  user manages the environment, so phenix_env.sh is not considered.
+
+  Returns
+  -------
+  str
+    Path of an existing script, to be sourced with the POSIX ``.`` command.
+
+  Raises
+  ------
+  Sorry
+    If no candidate script exists, so that the problem is reported at
+    submission instead of the job dying on the cluster with a shell error.
+  """
+  candidates = [libtbx.env.under_build("setpaths.sh")]
+  if not "PHENIX_CUSTOM_ENV" in os.environ:
+    if libtbx.env.installed:
+      # the installation this interpreter belongs to; PHENIX may be unset
+      # (Claude Desktop, a bare phenix.mcp_server) or wrong (the Windows GUI)
+      from libtbx import env_config
+      candidates.append(os.path.join(env_config.get_conda_prefix(),
+                                     "phenix_env.sh"))
+    if "PHENIX" in os.environ:
+      candidates.append(os.path.join(os.environ["PHENIX"], "phenix_env.sh"))
+  for path in candidates:
+    if os.path.isfile(path):
+      return path
+  message = "No environment script found for the job (looked for %s)." % (
+    ", ".join(candidates))
+  if "PHENIX_CUSTOM_ENV" in os.environ:
+    message += " PHENIX_CUSTOM_ENV is set, so phenix_env.sh was not considered."
+  elif "PHENIX" in os.environ:
+    message += (" PHENIX should point at the Phenix installation that"
+      " contains phenix_env.sh.")
+  raise Sorry(message)
+
 def write_run_script(file_name, cmds):
+  environment_script = get_environment_script() # may raise; nothing written yet
   f = open(file_name, "w")
   os.fchmod(f.fileno(),
     stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IROTH)
   f.write("#!/bin/sh\n\n")
-  use_cctbx_setpaths = True
-  if "PHENIX" in os.environ and not "PHENIX_CUSTOM_ENV" in os.environ :
-    env_file = os.path.join(os.environ["PHENIX"], "phenix_env.sh")
-    if os.path.isfile(env_file):
-      f.write("source %s\n" % env_file)
-      use_cctbx_setpaths = False
-  if use_cctbx_setpaths :
-    f.write("source %s\n" % libtbx.env.under_build("setpaths.sh"))
+  f.write(". %s\n" % shlex.quote(environment_script))
   f.write("%s" % " ".join(cmds))
   f.close()
 

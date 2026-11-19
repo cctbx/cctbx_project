@@ -56,7 +56,7 @@ def _load_helper():
     os.path.join(_HERE, "..", "agent", "command_builder.py"))
   if not os.path.exists(cb_path):
     return None, None, (lambda: None)
-  src = open(cb_path).read()
+  src = open(cb_path, encoding="utf-8").read()
   if "_input_mtz_rfree_state" not in src:
     return None, None, (lambda: None)
   # Extract the method body and dedent to a module-level function.

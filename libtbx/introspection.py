@@ -197,10 +197,22 @@ class virtual_memory_info(proc_file_reader):
       stack=self.max_stack_size)
 
 def get_mac_os_x_memory_total():
+  from libtbx import easy_run
+  # sysctl answers at once; system_profiler can take ten seconds (it waits
+  # for an Activation Lock check on recent macOS).
+  cmd = "/usr/sbin/sysctl"
+  if os.path.isfile(cmd):
+    for line in easy_run.fully_buffered(command=cmd+" -n hw.memsize",
+        join_stdout_stderr=False).stdout_lines:
+      try:
+        num = int(line.strip())
+      except ValueError:
+        continue
+      if (num > 0):
+        return num
   cmd = "/usr/sbin/system_profiler"
   if not os.path.isfile(cmd):
     return None
-  from libtbx import easy_run
   for line in easy_run.fully_buffered(
                 command=cmd+" SPHardwareDataType").stdout_lines:
     line = line.strip()

@@ -319,8 +319,9 @@ def exercise_iotbx_show_with_loop():
   m.show(out=sio)
   cif_string = sio.getvalue()
 
-  # Parse with iotbx (reference) and xcif (test)
-  ref_model = iotbx.cif.reader(input_string=cif_string).model()
+  # Parse with iotbx (reference) and xcif (test). The reference must be
+  # the legacy ucif parser: iotbx.cif.reader defaults to xcif.
+  ref_model = iotbx.cif.reader(input_string=cif_string, engine="ucif").model()
   doc = xcif_ext.parse(cif_string)
 
   # Compare

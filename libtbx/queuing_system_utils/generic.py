@@ -14,8 +14,7 @@ import time
 import itertools
 import glob
 import re
-
-import libtbx.load_env
+import shlex
 
 
 class InstantTimeout(object):
@@ -162,14 +161,28 @@ class Job(object):
 
   SCRIPT = \
 """\
-source %s
+. %s
 libtbx.python << EOF
 from six.moves import cPickle as pickle
-( target, args, kwargs ) = pickle.load( open( "%s.target" ) )
+( target, args, kwargs ) = pickle.load( open( "%s.target", "rb" ) )
 target( *args, **kwargs )
 EOF
 """
-  SETPATHS = libtbx.env.under_build("setpaths.sh")
+  def script(self):
+    """
+    Return the shell script submitted to the queue, which sources the
+    environment script and runs the pickled target with libtbx.python.
+
+    Raises
+    ------
+    Sorry
+      If no environment script exists, see
+      libtbx.runtime_utils.get_environment_script.
+    """
+
+    from libtbx.runtime_utils import get_environment_script
+    return self.SCRIPT % (
+      shlex.quote( get_environment_script() ), self.name )
 
   def __init__(self, name, target, qinterface, args = (), kwargs = {}):
 
@@ -186,6 +199,7 @@ EOF
     if self.process is not None:
       raise RuntimeError("start called second time")
 
+    script = self.script() # may raise, so before anything is written
     self.write_input_data()
 
     cmd = self.qinterface(
@@ -199,7 +213,9 @@ EOF
           cmd,
           stdin = subprocess.PIPE,
           stdout = subprocess.PIPE,
-          stderr = subprocess.STDOUT
+          stderr = subprocess.STDOUT,
+          encoding = "utf-8",
+          errors = "replace",
           )
 
     except OSError as e:
@@ -208,7 +224,7 @@ EOF
             e,
             ))
 
-    self.process.stdin.write( self.SCRIPT % ( self.SETPATHS, self.name ) )
+    self.process.stdin.write( script )
     self.process.stdin.close()
     self.parse_process_stdout()
 
@@ -229,6 +245,12 @@ EOF
 
     while self.is_alive():
       time.sleep( 0.1 )
+
+    # qsub has exited (with -sync y, only once the job has), so the pipe can
+    # be drained and released without waiting
+    if self.process is not None and not self.process.stdout.closed:
+      self.process.stdout.read()
+      self.process.stdout.close()
 
     if os.path.exists( self.err_file() ):
       error = open( self.err_file() ).read()
@@ -279,21 +301,12 @@ class PBSJob(Job):
 
   REGEX = re.compile( r"job_state\s*=\s*(\w+)" )
 
-  def __init__(self, name, target, qinterface, args = (), kwargs = {}):
-
-    self.name = "%s_%d_%d" % ( name, os.getpid(), id( self ) )
-    self.target = target
-    self.args = args
-    self.kwargs = kwargs
-    self.qinterface = qinterface
-    self.jobid = None
-
-
   def start(self):
 
     if self.jobid is not None:
       raise RuntimeError("start called second time")
 
+    script = self.script() # may raise, so before anything is written
     self.write_input_data()
 
     cmd = self.qinterface(
@@ -307,7 +320,9 @@ class PBSJob(Job):
           cmd,
           stdin = subprocess.PIPE,
           stdout = subprocess.PIPE,
-          stderr = subprocess.PIPE
+          stderr = subprocess.PIPE,
+          encoding = "utf-8",
+          errors = "replace",
           )
 
     except OSError as e:
@@ -317,7 +332,7 @@ class PBSJob(Job):
             ))
 
     ( out, err ) = process.communicate(
-      input = self.SCRIPT % ( self.SETPATHS, self.name )
+      input = script
       )
 
     if err:
@@ -340,7 +355,9 @@ class PBSJob(Job):
     process = subprocess.Popen(
       ( "qstat", "-f", self.jobid ),
       stdout = subprocess.PIPE,
-      stderr = subprocess.PIPE
+      stderr = subprocess.PIPE,
+      encoding = "utf-8",
+      errors = "replace",
       )
     ( out, err ) = process.communicate()
 
@@ -357,8 +374,9 @@ class PBSJob(Job):
 
 class SGEJob(Job):
   def parse_process_stdout(self):
-    qsub_out = self.process.stdout.readlines()
-    for line in qsub_out :
+    # read only up to the acknowledgement: with -sync y the pipe stays open
+    # until the job ends, and join drains the rest
+    for line in self.process.stdout:
       if line.startswith("Your job"):
         self.jobid = int(line.split()[2])
         break

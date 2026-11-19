@@ -73,6 +73,43 @@ def get_atom_database():
   atom_database['D']=atom_database['H']
   return atom_database
 
+def report(ed_class, ignore_water=False, show_detailed=False):
+  answers = {
+    'Residue HOH has a problem with the charge : 2!=0' : \
+      'Hydrogen atoms not added to water',
+    'Element has strange number of electrons  N  : 1' : \
+      'N terminal (or break) missing hydrogen atoms',
+    'Element has strange number of electrons  O  : -1' : \
+      'C terminal (or break) missing oxygen atoms',
+  }
+  report = ed_class.validate(ignore_water=ignore_water,
+                             raise_if_error=False)
+  outl=''
+  for key, item in sorted(report.items()):
+    outl += '\n  %s\n' % key.strip()
+    for instance in item:
+      i=instance
+      if type(instance)==type([]):
+        i=instance[0]
+      outl += '    %s\n' % i
+    if show_detailed:
+      answer = answers.get(key.strip(), None)
+      if answer:
+        outl += '\n     HINT: %s\n' % answer
+      else:
+        if key.find('Unlikely charge for')>-1 and int(key.split()[-1])>1:
+          outl += '\n     HINT: %s\n' % 'Missing side chain atoms'
+        elif key.find('No electrons allocated to bond:')>-1:
+          outl += '\n     HINT: %s\n' % 'Too many hydrogen atoms'
+        else:
+          pass
+  if outl:
+    outl = 'Validation report\n%s' % outl
+    print(outl)
+  return report
+
+
+
 class atom_property(dict):
   def __init__(self):
     atom_database = get_atom_database()
@@ -101,7 +138,7 @@ class atom_property(dict):
   def get_charge(self):
     return self.get(element.strip(), {}).get('charge', None)
 
-class electron_distribution(dict):
+class validate_electron_distribution(dict):
   def __init__(self,
                hierarchy,
                grm,
@@ -112,7 +149,25 @@ class electron_distribution(dict):
                log=None,
                verbose=False,
                ):
-    alternative_location_id='A'
+    # alternative_location_id='A'
+    self.properties = atom_property()
+    self.hierarchy = hierarchy
+    self.atoms = self.hierarchy.atoms()
+    self.grm = grm
+    assert 0
+
+class electron_distribution(dict):
+  def __init__(self,
+               hierarchy,
+               grm,
+               specific_atom_charges=None, # a list of selections and charges
+               specific_atom_multiplicities=None,
+               alternative_location_id=None,
+               alternative_location_index=None,
+               log=None,
+               verbose=False,
+               extra_sigma_bonds=None, # {i_seq: n} bonds to atoms not present
+               ):
     self.properties = atom_property()
     self.hierarchy = hierarchy
     self.atoms = self.hierarchy.atoms()
@@ -135,14 +190,28 @@ class electron_distribution(dict):
     # `unresolved_cycles` so a consumer can decline to trust the charge.
     self._ring_rng = random.Random(0)
     self.unresolved_cycles = []
+    self.first_i_seqs=[]
+    self.frozen_bonds=[]
     if log is None:
       self.logger = sys.stdout
     else:
       self.logger = log
     self.verbose=verbose
-    if [_f for _f in hierarchy.get_conformer_indices().conformer_indices if _f]:
-      assert (alternative_location_id is not None or
-              alternative_location_index is not None)
+    # A model with alternate conformations is distributed one conformer
+    # (altloc blank + X) at a time: the restraints manager bonds a shared
+    # atom to its neighbour in every conformer (CA to CB A and CB B), and
+    # counted on the whole model those bonds charge the shared atoms.
+    self.conformers = {}
+    altlocs = sorted(a for a in self.hierarchy.altloc_indices().keys()
+                     if a.strip())
+    if alternative_location_id is not None:
+      if alternative_location_id not in altlocs:
+        raise Sorry('electrons: no altloc %s in the model (%s)' % (
+          alternative_location_id, ', '.join(altlocs) or 'no altlocs'))
+      altlocs = [alternative_location_id]
+    if altlocs:
+      self._distribute_conformers(altlocs, extra_sigma_bonds)
+      return
     for atom in self.atoms:
       e = self.properties.get_valence(atom.element)
       assert e is not None, ' element %s not found' % atom.element
@@ -159,10 +228,119 @@ class electron_distribution(dict):
           # assert 0, ' charge not found for %s' % atom.quote()
       else:
         self[atom.i_seq] = e
+    if extra_sigma_bonds:
+      # each extra bond consumes one electron of the atom; dict.__setitem__
+      # avoids the lone pair adjustment
+      for i_seq, n in extra_sigma_bonds.items():
+        if not dict.__contains__(self, i_seq):
+          raise Sorry('extra_sigma_bonds: no atom with i_seq %s in the '
+            'electron distribution (%d atoms)' % (i_seq, len(self.atoms)))
+        dict.__setitem__(self, i_seq, self[i_seq] - n)
     self.set_charges() # place for selections
     self.validate_metals()
     self.form_bonds()
     self.adjust_for_multiplicity()
+
+  def _distribute_conformers(self, altlocs, extra_sigma_bonds):
+    # One electron_distribution per conformer on the altloc-free hierarchy
+    # of altloc blank + X with the matching restraints, kept in
+    # self.conformers; the entries, mapped back to the i_seqs of the whole
+    # model, fill self (a shared atom and its bonds from the first conformer
+    # that has them).
+    from scitbx.array_family import flex
+    n = self.atoms.size()
+    if extra_sigma_bonds:
+      for i_seq in extra_sigma_bonds:
+        if not 0 <= i_seq < n:
+          raise Sorry('extra_sigma_bonds: no atom with i_seq %s in the '
+            'electron distribution (%d atoms)' % (i_seq, n))
+    altloc_indices = self.hierarchy.altloc_indices()
+    blank = altloc_indices.get('', flex.size_t())
+    # A residue without atoms of altloc X belongs to conformer X through
+    # its first own altloc (the conformer pdb_interpretation inherits along
+    # the chain). Without it the residue would enter conformer X with its
+    # blank atoms only, truncated, and its dangling bonds would be counted
+    # as charges. The residue groups of one residue are taken together: a
+    # residue with two residue names (1ejg PRO A / SER B, C 22) is read as
+    # two residue groups, and the blank N of the first bonds both. Own
+    # altlocs are those of atom groups with a heavy atom: an H-only group on
+    # a blank parent is that conformer's H, not a conformer of the residue.
+    # Such groups are the copies of one H split by the altlocs of a bonded
+    # partner (reduce2: the amide H of a blank residue after a residue in
+    # A and B; HG of 1pq7 CYS A 57, whose SG bonds SG A 41). A conformer the
+    # partner lacks takes the partner's first altloc and with it the first
+    # copy (conformer C: H A); a conformer the partner has lost its copy on
+    # purpose (exclude_H_on_links: HG A of CYS 57) and takes none.
+    residues = {}
+    for model in self.hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          key = (model.id, chain.id, residue_group.resseq,
+                 residue_group.icode)
+          residues.setdefault(key, []).extend(residue_group.atom_groups())
+    inherited = []
+    bonded = None
+    for atom_groups in residues.values():
+      own = sorted(set(ag.altloc for ag in atom_groups if ag.altloc.strip()
+        and any(not a.element_is_hydrogen() for a in ag.atoms())))
+      if own:
+        inherited.append((own, [ag for ag in atom_groups
+                                if ag.altloc == own[0]]))
+        continue
+      h_only = sorted(set(ag.altloc for ag in atom_groups
+                          if ag.altloc.strip()))
+      if not h_only: continue
+      if bonded is None:
+        bonded = {}
+        for proxy in self.simple:
+          i, j = proxy.i_seqs
+          bonded.setdefault(i, []).append(j)
+          bonded.setdefault(j, []).append(i)
+      first = [ag for ag in atom_groups if ag.altloc == h_only[0]]
+      # the altlocs of the atoms bonded to the parents of the first copies
+      partner = set()
+      for ag in first:
+        for h in ag.atoms():
+          for p in bonded.get(h.i_seq, ()):
+            for q in bonded.get(p, ()):
+              partner.add(self.atoms[q].parent().altloc.strip())
+      partner.discard('')
+      inherited.append((sorted(set(h_only) | partner), first))
+    for altloc in altlocs:
+      selection = flex.bool(n, False)
+      selection.set_selected(blank, True)
+      selection.set_selected(altloc_indices[altloc], True)
+      for own, atom_groups in inherited:
+        if altloc in own: continue
+        for atom_group in atom_groups:
+          selection.set_selected(atom_group.atoms().extract_i_seq(), True)
+      i_seqs = selection.iselection()
+      conformer = self.hierarchy.select(selection, copy_atoms=True)
+      for atom_group in conformer.atom_groups():
+        atom_group.altloc = ''
+      conformer.atoms().reset_i_seq()
+      extra = None
+      if extra_sigma_bonds:
+        extra = {}
+        for j, i_seq in enumerate(i_seqs):
+          if i_seq in extra_sigma_bonds:
+            extra[j] = extra_sigma_bonds[i_seq]
+      distribution = electron_distribution(
+        conformer,
+        self.grm.select(selection),
+        specific_atom_charges        = self.specific_atom_charges,
+        specific_atom_multiplicities = self.specific_atom_multiplicities,
+        log                          = self.logger,
+        verbose                      = self.verbose,
+        extra_sigma_bonds            = extra)
+      self.conformers[altloc] = distribution
+      for key, electrons in distribution.items():
+        if type(key)==type(tuple([])):
+          key = (i_seqs[key[0]], i_seqs[key[1]])
+        else:
+          key = i_seqs[key]
+        if not dict.__contains__(self, key):
+          dict.__setitem__(self, key, electrons)
 
   def __repr__(self):
     return self.show()
@@ -196,6 +374,13 @@ class electron_distribution(dict):
 
   def show(self):
     return self._repr_()
+
+  def show_atoms(self, i_seq=None):
+    atoms = self.hierarchy.atoms()
+    if i_seq is not None:
+      return str(atoms[i_seq].quote())
+    else:
+      assert 0
 
   def show_bonds(self):
     assert 0
@@ -231,7 +416,6 @@ class electron_distribution(dict):
       f.node(name, position)
     for e1, e2 in edges:
       f.edge(e1,e2)
-    print(f.source)
     f.render(view=True)
 
   def _generate_atoms(self):
@@ -259,9 +443,15 @@ class electron_distribution(dict):
     if i_seqs not in self:
       tmp = (i_seqs[1], i_seqs[0])
       i_seqs=tmp
+    if verbose: print(self)
     self[i_seqs]+=1
     self[i_seqs[0]]-=1
     self[i_seqs[1]]-=1
+    if verbose:
+      print(self)
+      print('i_seqs',i_seqs, self[i_seqs[0]], self[i_seqs[1]])
+    # assert self[i_seqs[0]]>=0, self.hierarchy.atoms()[i_seqs[0]].quote()
+    # assert self[i_seqs[1]]>=0, self.hierarchy.atoms()[i_seqs[1]].quote()
 
   def _subtract_electron_from_bond(self, i_seqs, verbose=False):
     if verbose:
@@ -298,6 +488,36 @@ class electron_distribution(dict):
           self[atom.i_seq]=sac.charge*-1
           self.atoms_with_charges_set.append(atom.i_seq)
           assert i<1
+
+  def set_charges_new(self):
+    # FIX 3: Build a safe dictionary mapping i_seq to atom objects
+    # This prevents IndexError if self.hierarchy is a truncated selection
+    atom_dict = {atom.i_seq: atom for atom in self.hierarchy.atoms()}
+
+    # 1. Apply default metal charges safely
+    for key, electrons in self.items():
+      # Skip bonds (tuples) and only process individual atoms (integers)
+      if isinstance(key, tuple):
+        continue
+
+      atom = atom_dict.get(key)
+      if not atom:
+        continue
+
+      element = atom.element.strip()
+      if element.capitalize() in default_metal_charges:
+        self[key] = default_metal_charges[element.capitalize()] * -1
+
+    # FIX 2: Move specific_atom_charges outside the N-loop to fix O(N^2) redundancy
+    if self.specific_atom_charges:
+      for sac_index, sac in enumerate(self.specific_atom_charges):
+        metal_asc = self.hierarchy.atom_selection_cache()
+        metal_sel = metal_asc.selection(sac.atom_selection)
+        metal_hierarchy = self.hierarchy.select(metal_sel)
+
+        # FIX 2: Rename 'i' and 'atom' to avoid shadowing outer variables
+        for inner_i, sac_atom in enumerate(metal_hierarchy.atoms()):
+          self[sac_atom.i_seq] = sac.charge * -1
 
   def adjust_for_multiplicity(self):
     if self.specific_atom_multiplicities:
@@ -355,6 +575,15 @@ class electron_distribution(dict):
       ): return True
     return False
 
+  def _is_bond_frozen(self, i_seq, j_seq):
+    i_seqs=(i_seq, j_seq)
+    if i_seqs in self.frozen_bonds:
+      return True
+    i_seqs=(j_seq, i_seq)
+    if i_seqs in self.frozen_bonds:
+      return True
+    return False
+
   def _can_denote_electron_to_covalent_bond(self,
                                             i_seq,
                                             j_seq,
@@ -367,6 +596,9 @@ class electron_distribution(dict):
         print('bonding %s %s' % (self.atoms[i_seq].quote(), self.atoms[j_seq].quote()))
       return True
     elif self[i_seq]==0 and self[j_seq]==0:
+      return False
+    # frozen
+    if self._is_bond_frozen(i_seq, j_seq):
       return False
     atom1 = self.atoms[i_seq]
     if atom1.element_is_hydrogen() and self[i_seq]==0: return False
@@ -600,6 +832,8 @@ class electron_distribution(dict):
       if self[i_seq]==1:
         bonds = self.get_bonds_containing_i_seq(i_seq)
         for b_i_seq, b_j_seq in bonds:
+          if self._is_bond_frozen(b_i_seq, b_j_seq):
+            break
           rc = self._can_denote_electron_to_covalent_bond(b_i_seq, b_j_seq)
           if rc:
             self._add_electron_to_bond((i_seq, j_seq))
@@ -607,6 +841,53 @@ class electron_distribution(dict):
             break
       if self.get_cycle_charge(cycle)==1:
         break
+
+  def _bond_electrons(self, i_seq, j_seq):
+    if (i_seq, j_seq) in self: return self[(i_seq, j_seq)]
+    return self[(j_seq, i_seq)]
+
+  def _ring_nitrogen_takes_double_bond(self, cycle, verbose=False):
+    # A ring left with one unpaired electron (imidazolium, pyridinium): a
+    # ring N with three sigma bonds, frozen above as pyrrole-like with its
+    # lone pair in the ring, takes a double bond instead and is N+. The
+    # path from the unpaired electron to that N along the ring alternates
+    # single, double, ..., single bonds; every bond on it changes order so
+    # that the double bonds move up to the N.
+    neighbours = {}
+    for i_seq, j_seq in cycle:
+      neighbours.setdefault(i_seq, []).append(j_seq)
+      neighbours.setdefault(j_seq, []).append(i_seq)
+    unpaired = [i_seq for i_seq in neighbours if self[i_seq]==1]
+    if len(unpaired)!=1: return False
+    def _find_path(path):
+      i_seq = path[-1]
+      single = len(path)%2==1
+      if single: order = 1
+      else:      order = 2
+      for j_seq in neighbours[i_seq]:
+        if j_seq in path: continue
+        if self._bond_electrons(i_seq, j_seq)!=order: continue
+        if single:
+          if (self.atoms[j_seq].element.strip()=='N' and self[j_seq]==0 and
+              self._is_bond_frozen(i_seq, j_seq) and
+              len(self.get_bonds_containing_i_seq(j_seq))==3):
+            return path+[j_seq]
+          if self[j_seq]!=0: continue
+        rc = _find_path(path+[j_seq])
+        if rc: return rc
+      return None
+    path = _find_path(unpaired)
+    if not path: return False
+    for k in range(len(path)-1):
+      i_seqs = (path[k], path[k+1])
+      if k%2==0:
+        self._add_electron_to_bond(i_seqs)
+      else:
+        self._subtract_electron_from_bond(i_seqs)
+      if verbose: print('ring N+ : %s-%s\n' % (self.atoms[i_seqs[0]].quote(),
+                                               self.atoms[i_seqs[1]].quote(),
+                                              ))
+    return True
 
   def form_bonds_using_networkx(self, verbose=False):
     import networkx as nx
@@ -621,7 +902,7 @@ class electron_distribution(dict):
     def generate_bond_edges(extend_based_on_proximity=False, verbose=False):
       for i_seqs in self.generate_bond_i_seqs():
         if i_seqs in self: continue
-        self[i_seqs]=0
+        self[i_seqs]=0 # adding bond with no electrons
         i_seq, j_seq = i_seqs
         if self._can_denote_electron_to_covalent_bond(i_seq, j_seq):
           self._add_electron_to_bond(i_seqs)
@@ -630,16 +911,61 @@ class electron_distribution(dict):
                                                    self))
         yield i_seqs
     #
+    def generate_atoms_and_data(g):
+      if self.first_i_seqs:
+        for i_seq, (node, attrs) in enumerate(g.nodes(data=True)):
+          if i_seq in self.first_i_seqs:
+            yield i_seq, node, attrs
+        # assert 0
+      for i_seq, (node, attrs) in enumerate(g.nodes(data=True)):
+        if i_seq in self.first_i_seqs: continue
+        yield i_seq, node, attrs
+    def atom_in_ring(cycle_bases, i_seq):
+      for cb in cycle_bases:
+        if i_seq in cb:
+          return True
+      return False
     t0=time.time()
     g.add_nodes_from(generate_atom_nodes())
     g.add_edges_from(generate_bond_edges(verbose=verbose))
     h = g.to_undirected()
+    cycle_bases = nx.cycle_basis(h)
     if verbose: print('  Created graphs of molecule : %0.1fs' % (time.time()-t0))
     self.process_dangling_heavy_atoms()
-    cycle_bases = nx.cycle_basis(h)
+
+    t0=time.time()
+    # for i_seq, (node, attrs) in enumerate(g.nodes(data=True)):
+    for i_seq, node, attrs in generate_atoms_and_data(g):
+      if attrs['element'] in ['H', 'D']: continue
+      assert i_seq==node, '%s %s' % (i_seq, node)
+
+      if not atom_in_ring(cycle_bases, i_seq):
+        continue
+      if attrs['element'] in ['N']:
+        bonds=self.get_bonds_containing_i_seq(i_seq)
+        if len(bonds)==3:
+          self.frozen_bonds+=bonds
+          for i1, i2 in bonds:
+            if i1==i_seq: self.first_i_seqs.append(i2)
+            elif i2==i_seq: self.first_i_seqs.append(i1)
+          #   self._add_electron_to_bond((i1, i2))
+          #   if verbose: print('frozen: %s-%s\n' % (self.atoms[i1].quote(),
+          #                                          self.atoms[i2].quote(),
+          #                                         ))
+          continue
+        # elif len(bonds)==1:
+        #   print(self)
+        #   print(self.atoms[i_seq].quote())
+        #   while self._can_denote_electron_to_covalent_bond(*bonds[0]):
+        #     self._add_electron_to_bond(bonds[0])
+        #   print(self)
+          # assert 0
+
+    # assert 0
     done_cycles = []
     t0=time.time()
-    for i_seq, (node, attrs) in enumerate(g.nodes(data=True)):
+    # for i_seq, (node, attrs) in enumerate(g.nodes(data=True)):
+    for i_seq, node, attrs in generate_atoms_and_data(g):
       if attrs['element'] in ['H', 'D']: continue
       assert i_seq==node, '%s %s' % (i_seq, node)
       # =O
@@ -650,6 +976,9 @@ class electron_distribution(dict):
           if verbose: print('double: %s-%s\n' % (self.atoms[i_seq].quote(),
                                                  self.atoms[j_seq].quote(),
                                                 ))
+
+      if i_seq not in self.first_i_seqs: break
+
       # rings
       cycle=[]
       for cb in cycle_bases:
@@ -658,6 +987,22 @@ class electron_distribution(dict):
             if e[0]in cb and e[1] in cb:
               cycle.append(e)
 
+      # for i_seqs in cycle:
+      #   if i_seq in i_seqs:
+      #     i1, i2 = i_seqs
+      #     if self._can_denote_electron_to_covalent_bond(i1, i2):
+      #       self._add_electron_to_bond((i1, i2))
+      #       if verbose: print('ring double: %s-%s\n' % (self.atoms[i1].quote(),
+      #                                              self.atoms[i2].quote(),
+      #                                             ))
+      #       print(self)
+      # assert i_seq!=7
+
+    # assert 0
+    # for i_seq, node, attrs in generate_atoms_and_data(g):
+    #   print('yield2',i_seq, node, attrs, self.show_atoms(i_seq), self.first_i_seqs)
+    #   if attrs['element'] in ['H', 'D']: continue
+    #   assert i_seq==node, '%s %s' % (i_seq, node)
       # try:
       #   cycle = nx.find_cycle(g, i_seq, orientation='ignore')
       # except Exception:
@@ -670,6 +1015,8 @@ class electron_distribution(dict):
       done_cycles.append(tmp)
       tries=10
       cycle_charge_count=self.get_cycle_charge_count(cycle)
+      # random.shuffle(cycle)
+
       subtract=[]
       while cycle_charge_count and tries:
         tries-=1
@@ -693,17 +1040,20 @@ class electron_distribution(dict):
                                                        self))
         cycle_charge_count=self.get_cycle_charge_count(cycle)
         self._ring_rng.shuffle(cycle)
+        # assert 0
       if cycle_charge_count:
-        # Retries exhausted with charge still on the ring: the assignment kept
-        # here is whichever partial one the last shuffle reached, not a solved
-        # one.  A porphyrin never resolves.
-        #
-        # Record BOTH endpoints of every ring bond.  `tmp` above holds only
-        # each bond's source atom, which for a 6-ring is 5 distinct atoms, and
-        # a consumer testing membership against it would treat the omitted ring
-        # atoms as trustworthy.
-        self.unresolved_cycles.append(
-          tuple(sorted({i_seq for bond in cycle for i_seq in bond[:2]})))
+        if not self._ring_nitrogen_takes_double_bond(cycle, verbose=verbose):
+          # Retries exhausted with charge still on the ring, and no ring
+          # nitrogen to take it: the assignment kept here is whichever
+          # partial one the last shuffle reached, not a solved one.  A
+          # porphyrin never resolves.
+          #
+          # Record BOTH endpoints of every ring bond.  `tmp` above holds only
+          # each bond's source atom, which for a 6-ring is 5 distinct atoms,
+          # and a consumer testing membership against it would treat the
+          # omitted ring atoms as trustworthy.
+          self.unresolved_cycles.append(
+            tuple(sorted({i_seq for bond in cycle for i_seq in bond[:2]})))
     if verbose: print('  Double & rings : %0.1fs' % (time.time()-t0))
     #
     # hyper and triple
@@ -843,7 +1193,81 @@ class electron_distribution(dict):
         print(i_seq, self.atoms[i_seq].quote())
     return rc
 
+  def get_conformer_charges(self):
+    """Total charge of each alternate conformation.
+
+    Returns
+    -------
+    dict
+      {altloc: total charge} of the conformers (altloc blank + altloc) the
+      distribution was built from; empty for a model without altlocs.
+    """
+    rc = {}
+    for altloc, distribution in self.conformers.items():
+      rc[altloc] = distribution.get_total_charge()
+    return rc
+
+  def get_residue_charges(self):
+    """Charge of each residue of this distribution.
+
+    Returns
+    -------
+    dict
+      {(model id, chain id, resseq, icode): charge} summed over the atoms of
+      the residue (the conformer's, for a distribution in self.conformers).
+    """
+    rc = {}
+    for key, electrons in self.items():
+      if type(key)==type(tuple([])): continue
+      atom = self.atoms[key]
+      rg = atom.parent().parent()
+      chain = rg.parent()
+      k = (chain.parent().id, chain.id, rg.resseq, rg.icode)
+      rc[k] = rc.get(k, 0) - electrons
+    return rc
+
+  def get_conformer_charge_differences(self):
+    """The residues whose charge differs between the conformers.
+
+    Returns
+    -------
+    list
+      [(label, {altloc: charge})] in residue order; charge None where the
+      conformer has no atoms of the residue. Empty without conformers.
+    """
+    per = dict((altloc, d.get_residue_charges())
+               for altloc, d in self.conformers.items())
+    keys = []
+    for charges in per.values():
+      for k in charges:
+        if k not in keys: keys.append(k)
+    rc = []
+    for k in sorted(keys):
+      charges = dict((altloc, per[altloc].get(k)) for altloc in per)
+      if len(set(charges.values())) > 1:
+        label = '%s %s%s' % (k[1].strip(), k[2].strip(), k[3].strip())
+        if k[0].strip(): label = 'model %s %s' % (k[0].strip(), label)
+        rc.append((label, charges))
+    return rc
+
   def get_total_charge(self):
+    if self.conformers:
+      charges = self.get_conformer_charges()
+      values = sorted(set(charges.values()))
+      if len(values) > 1:
+        differences = self.get_conformer_charge_differences()
+        shown = ['%s (%s)' % (label, ', '.join('%s: %s' % (a, c)
+          for a, c in sorted(residue.items()))) for label, residue in
+          differences[:10]]
+        if len(differences) > 10:
+          shown.append('%d more' % (len(differences) - 10))
+        raise Sorry('The alternate conformations have different total '
+          'charges (%s). The charge of the model is the charge of one '
+          'conformer; check the protonation of the residues with altlocs.'
+          '\nResidues whose charge differs between the conformers: %s'
+          % (', '.join('%s: %d' % (a, charges[a]) for a in sorted(charges)),
+             '; '.join(shown)))
+      return values[0]
     total=0
     for key, electrons in self.items():
       if type(key)==type(tuple([])): continue
@@ -928,41 +1352,6 @@ class electron_distribution(dict):
         rc[outl].append('"%s"' % ag.id_str())
     return rc
 
-  def report(self, ignore_water=False, show_detailed=False):
-    answers = {
-      'Residue HOH has a problem with the charge : 2!=0' : \
-        'Hydrogen atoms not added to water',
-      'Element has strange number of electrons  N  : 1' : \
-        'N terminal (or break) missing hydrogen atoms',
-      'Element has strange number of electrons  O  : -1' : \
-        'C terminal (or break) missing oxygen atoms',
-    }
-    report = self.validate(ignore_water=ignore_water,
-                           raise_if_error=False)
-    outl=''
-    for key, item in sorted(report.items()):
-      outl += '\n  %s\n' % key.strip()
-      for instance in item:
-        i=instance
-        if type(instance)==type([]):
-          i=instance[0]
-        outl += '    %s\n' % i
-      if show_detailed:
-        answer = answers.get(key.strip(), None)
-        if answer:
-          outl += '\n     HINT: %s\n' % answer
-        else:
-          if key.find('Unlikely charge for')>-1 and int(key.split()[-1])>1:
-            outl += '\n     HINT: %s\n' % 'Missing side chain atoms'
-          elif key.find('No electrons allocated to bond:')>-1:
-            outl += '\n     HINT: %s\n' % 'Too many hydrogen atoms'
-          else:
-            pass
-    if outl:
-      outl = 'Validation report\n%s' % outl
-      print(outl)
-    return report
-
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import null_out
 from libtbx import group_args
@@ -972,6 +1361,17 @@ input
 {
   selection = None
     .type = atom_selection
+}
+action
+{
+  show_formal_charges = False
+    .type = bool
+  show_non_zero_formal_charges = True
+    .type = bool
+  show_partial_charges = False
+    .type = bool
+  show_bond_types = False
+    .type = bool
   ignore_water = False
     .type = bool
 }
@@ -985,6 +1385,20 @@ output
     .input_size = 400
 }
 '''
+
+def _label_atoms(molecule, atoms, i_seqs=None):
+  '''
+  Stores the quoted model atom on the RDKit atoms: a molecule is one residue, so
+  its atom indices are not those of the model, and caps and added H have no model
+  atom. i_seqs is {molecule index: index in atoms}; by default they are in step.
+  '''
+  for i, atom in enumerate(molecule.GetAtoms()):
+    j = i if i_seqs is None else i_seqs.get(i)
+    if j is not None:
+      atom.SetProp('quote', atoms[j].quote())
+
+def _atom_label(atom):
+  return atom.GetProp('quote' if atom.HasProp('quote') else '_Name')
 
 class Program(ProgramTemplate):
   description = '''
@@ -1000,32 +1414,218 @@ Inputs:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
+  def get_charge_of_molecule(self, molecule, model, verbose=False):
+    return self.get_charge_of_molecule_rigid(molecule, model, verbose=verbose)
+
+  def get_charge_of_molecule_rigid(self, molecule, model, verbose=False):
+    from mmtbx.ligands import rdkit_utils
+    rc = rdkit_utils.residue_rigid_components(
+      model         = model,
+      residue_group = molecule,
+      # altloc        = molecule.altloc.strip(),
+      verbose = verbose,
+      )
+    if verbose: print(rc.molecule)
+    if rc.molecule.ok:
+      _label_atoms(rc.molecule.mol, model.get_hierarchy().atoms(),
+                   rc.molecule.rdkit_to_iseq)
+      return rc.molecule.total_charge, rc.molecule.mol
+    return None, None
+
+  def get_charge_of_molecule_simple(self, molecule, model, iterations=1000, verbose=False):
+    from rdkit import Chem
+    from rdkit.Chem import rdDetermineBonds
+    from mmtbx.ligands.rdkit_utils import convert_model_to_rdkit
+
+    def _generate_charges(largest):
+      for i in range(largest+1):
+        yield i
+        if i: yield i*-1
+
+    charges={}
+    if verbose:
+      for atom in model.get_atoms(): print(atom.quote())
+    t1=time.time()
+    for charge in _generate_charges(10):
+      t0=time.time()
+      dcm=convert_model_to_rdkit(model)
+      if verbose: print(f' trying {charge=}')
+      try:
+        Chem.rdDetermineBonds.DetermineBonds(dcm,
+                                             charge=charge,
+                                             maxIterations=iterations,
+                                             # useHueckel=True,
+                                             allowChargedFragments=True,
+                                             )
+      except RuntimeError: # max interations
+        continue
+      except ValueError: # charge not possible
+        continue
+      if verbose: print(f'found solution for {charge}')
+      n=0
+      for atom in dcm.GetAtoms():
+        if atom.GetFormalCharge():n+=1
+      if not n in charges:
+        charges[n]=charge
+      if not (charge or n): break
+      print(f'charge {charge} took {(time.time()-t0)*1000:0.2f}ms',
+            file=self.logger)
+    if verbose: print(charges)
+    if 0:
+      atoms=model.get_hierarchy().atoms()
+      for bond in molecule.GetBonds():
+        q1=atoms[bond.GetBeginAtomIdx()].quote()
+        q2=atoms[bond.GetEndAtomIdx()].quote()
+        print(f'{q1} - {q2} : {bond.GetBondType()}')
+      Chem.rdDetermineBonds.DetermineConnectivity(dcm, charge=0)
+      for bond in molecule.GetBonds():
+        q1=atoms[bond.GetBeginAtomIdx()].quote()
+        q2=atoms[bond.GetEndAtomIdx()].quote()
+        print(f'{q1} - {q2} : {bond.GetBondType()}')
+
+    if not charges: return None
+    assert charges, 'charge solution not found'
+    for n, charge in sorted(charges.items()):
+      Chem.rdDetermineBonds.DetermineBonds(molecule,
+                                           charge=charge,
+                                           maxIterations=iterations,
+                                           # useHueckel=True,
+                                           allowChargedFragments=True,
+                                           )
+      break
+    print(f'charges {charge} took {(time.time()-t1)*1000:0.2f}ms',
+          file=self.logger)
+    # Get the total formal charge of the molecule
+    return Chem.GetFormalCharge(molecule)
+
   def run(self):
+    from mmtbx.ligands.rdkit_utils import convert_model_to_rdkit_molecules
+    # from mmtbx.ligands.rdkit_utils import populate_molecule
+
     model = self.data_manager.get_model()
     model.set_log(null_out())
     model.process(make_restraints=True)
+
     if self.params.input.selection:
+      # not well tested
+      assert 0
       new_model = model.selection(self.params.input.selection)
       new_model = model.select(new_model)
       model = new_model
+    else:
+      model = self.data_manager.get_model()
+      if not model.has_hd():
+        raise Sorry('Model must have Hydrogen atoms')
+      model.set_log(null_out())
+      model.process(make_restraints=True)
+
     t0=time.time()
-    self.atom_valences = electron_distribution(
-      model.get_hierarchy(), # needs to be altloc free
-      model.get_restraints_manager().geometry,
-      verbose=False,
-    )
-    print('Distribution time : %01.fs' % (time.time()-t0))
-    print('='*80)
-    print(self.atom_valences)
-    self.report = self.atom_valences.report(
-      ignore_water=self.params.input.ignore_water,
-      show_detailed=True,
-      )
-    self.total_charge = self.atom_valences.get_total_charge()
+    if 0:
+      from mmtbx.ligands.rdkit_utils import convert_model_to_rdkit
+      models=[model]
+      molecules=[convert_model_to_rdkit(model)]
+    else:
+      molecules, models = convert_model_to_rdkit_molecules(model)
+    # molecule = populate_molecule(molecule,
+    #                              embed3d=True,
+    #                              addHs=False,
+    #                              removeHs=False,
+    #                              verbose=1)
+    charges=[]
+    total_charge=0
+    outl = ''
+    for i_mol, residue_group in enumerate(model.get_hierarchy().residue_groups()):
+      # for j, atom in enumerate(residue_group.atoms()): print(j,atom.quote())
+      total_charge_each, molecule_each = self.get_charge_of_molecule(residue_group,
+                                                                     model,
+                                                                     verbose=False)
+      if total_charge_each is None:
+        #
+        # try simple non-restraints rdkit
+        #
+        total_charge_each=self.get_charge_of_molecule_simple(molecules[i_mol],
+                                                             models[i_mol],
+                                                             verbose=False)
+        print(f"Total formal charge simple: {total_charge_each}\n", file=self.logger)
+        molecule_each=molecules[i_mol]
+        _label_atoms(molecule_each, models[i_mol].get_hierarchy().atoms())
+      else:
+        molecules[i_mol]=molecule_each
+
+      #
+      # could be the next level of checking
+      #
+      # if total_charge_each is None:
+      #   ed = electron_distribution(models[i_mol].get_hierarchy(),
+      #                              models[i_mol].get_restraints_manager().geometry,
+      #   )
+      #   total_charge_each=ed.get_total_charge()
+      #   molecule_each=molecules[i_mol]
+
+      charges.append(total_charge_each)
+      total_charge+=total_charge_each
+      # ta=models[i_mol].get_hierarchy().atoms()
+      # for i, atom in enumerate(molecule_each.GetAtoms()):
+      #   if atom.GetFormalCharge():
+      #     outl+=f'  {i+1:2d} {ta[i].quote()} : charge={atom.GetFormalCharge():2d}\n'
+    if outl:
+      print(f'\nNon-zero charged atoms\n{outl}')
+    print(f"Total formal charge: {total_charge} \n", file=self.logger)
+    print('Distribution time : %01.fms' % ((time.time()-t0)*1000), file=self.logger)
+
+    if self.params.action.show_formal_charges or self.params.action.show_non_zero_formal_charges:
+      outl=''
+      if self.params.action.show_formal_charges:
+        header='\nFormal charges'
+      elif self.params.action.show_non_zero_formal_charges:
+        header='\nFormal non-zero charges'
+      for i_mol, molecule in enumerate(molecules):
+        for i, atom in enumerate(molecule.GetAtoms()):
+          show=False
+          if self.params.action.show_formal_charges:
+            show=True
+          elif self.params.action.show_non_zero_formal_charges and atom.GetFormalCharge():
+            show=True
+          if show:
+            outl+=f'  {i+1:2d} {_atom_label(atom)} : charge={atom.GetFormalCharge():2d}\n'
+
+      if outl:
+        print(f'{header}\n{outl}', file=self.logger)
+
+    if self.params.action.show_partial_charges:
+      outl=''
+      for i_mol, molecule in enumerate(molecules):
+        try:
+          molecule.ComputeGasteigerCharges()
+        except RuntimeError:
+          outl = '  ComputeGasteigerCharges failed'
+          break
+        for i, atom in enumerate(molecule.GetAtoms()):
+          pc=float(atom.GetProp('_GasteigerCharge'))
+          print(f'{i+1:2d} {_atom_label(atom)} : charge={atom.GetFormalCharge():2d} partial={pc:5.2f}')
+      if outl:
+        print(f'\nPartial charges\n{outl}')
+
+    if self.params.action.show_bond_types:
+      outl=''
+      for i_mol, molecule in enumerate(molecules):
+        for bond in molecule.GetBonds():
+          q1=_atom_label(bond.GetBeginAtom())
+          q2=_atom_label(bond.GetEndAtom())
+          outl+=f'  {q1} - {q2} : {bond.GetBondType()}\n'
+      if outl:
+        print(f'\nBond types\n{outl}')
+
+    # self.report = self.atom_valences.report(
+    #   ignore_water=self.params.input.ignore_water,
+    #   show_detailed=True,
+    #   )
+
+    self.total_charge = total_charge
 
   def get_results(self):
-    return group_args(atom_valences = self.atom_valences,
-                      validation = self.report,
+    return group_args(#atom_valences = self.atom_valences,
+                      #validation = self.report,
                       total_charge = self.total_charge,
                       )
 
@@ -1036,7 +1636,13 @@ def run(pdb_filename=None,
         return_formal_charges=False,
         verbose=False,
         cif_objects=None,
+        model=None,
+        extra_sigma_bonds=None,
         ):
+  # model: an already processed model manager with restraints
+  if model is not None:
+    return _run_electrons(model, return_formal_charges, verbose,
+      extra_sigma_bonds)
   # legacy from Q|R...
   if pdb_filename:
     # Read file into pdb_input class
@@ -1067,13 +1673,17 @@ def run(pdb_filename=None,
   xrs = model.get_xray_structure()
   grm = model.get_restraints_manager()
   t0=time.time()
+  return _run_electrons(model, return_formal_charges, verbose,
+    extra_sigma_bonds)
+
+def _run_electrons(model, return_formal_charges, verbose, extra_sigma_bonds):
   atom_valences = electron_distribution(
-    model.get_hierarchy(), # needs to be altloc free
+    model.get_hierarchy(),
     model.get_restraints_manager().geometry,
     verbose=verbose,
+    extra_sigma_bonds=extra_sigma_bonds,
   )
   if verbose: print(atom_valences)
-  total_charge = atom_valences.get_total_charge()
   rc = atom_valences.validate_atomic_formal_charges()
   if return_formal_charges: return atom_valences
-  return total_charge
+  return atom_valences.get_total_charge()

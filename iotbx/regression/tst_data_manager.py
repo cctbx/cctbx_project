@@ -1316,6 +1316,52 @@ data_manager {
   assert answer == test
 
 # -----------------------------------------------------------------------------
+def test_duplicate_user_selected_labels():
+  '''
+  Two user_selected_labels matching the same array are rejected whichever
+  datatype they are given under. Both the order in which the datatypes are
+  loaded and the order of the class-level child list follow set iteration
+  order (PYTHONHASHSEED), so every combination is checked explicitly.
+  '''
+  from iotbx.data_manager.miller_array import MillerArrayDataManager
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_mtz = os.path.join(data_dir, 'data', 'phaser_1.mtz')
+  phil = iotbx.phil.parse('''
+data_manager {
+  miller_array {
+    file = %s
+    user_selected_labels = PHIF
+  }
+  map_coefficients {
+    file = %s
+    user_selected_labels = WT
+  }
+}
+''' % (data_mtz, data_mtz))
+
+  datatypes = ['miller_array', 'map_coefficients']
+  children = MillerArrayDataManager.miller_array_child_datatypes
+  original_children = list(children)
+  try:
+    for child_order in (datatypes, datatypes[::-1]):
+      for load_order in (datatypes, datatypes[::-1]):
+        dm = DataManager(datatypes + ['phil'])
+        children[:] = child_order
+        phil_extract = dm.master_phil.fetch(phil).extract()
+        try:
+          for datatype in load_order:
+            getattr(dm, 'load_%s_phil_extract' % datatype)(phil_extract)
+        except Sorry as s:
+          assert 'duplicate user_selected_labels' in str(s), \
+            (child_order, load_order, str(s))
+        else:
+          raise AssertionError('Sorry expected: child_order=%s load_order=%s'
+                               % (child_order, load_order))
+  finally:
+    children[:] = original_children
+
+# -----------------------------------------------------------------------------
 def test_scattering_table_mixins():
   for datatype in ['model', 'miller_array']:
     dm = DataManager([datatype])
@@ -1340,10 +1386,68 @@ def test_scattering_table_mixins():
   for scattering_table in ['wk1995', 'it1992', 'n_gaussian']:
     assert dm.map_scattering_table_type(scattering_table) == 'x_ray'
 
+def test_miller_array_single_build():
+  '''
+  A reflection file is built into miller arrays once per DataManager, whatever
+  the number of miller_array child datatypes and of DataManagers constructed
+  in the process. as_miller_arrays() runs the full builder (seconds on large
+  cifs); the parent filter and the map_coefficients filter used to run it
+  three times per file, and the class-level child list grew on every
+  DataManager() so the k-th one ran it 3k times.
+  '''
+  from cctbx import crystal, miller
+  from cctbx.array_family import flex
+  import iotbx.mtz
+  from iotbx.reflection_file_reader import any_reflection_file
+  from iotbx.data_manager.miller_array import MillerArrayDataManager
+
+  cs = crystal.symmetry(unit_cell=(10, 20, 30, 90, 90, 90),
+                        space_group_symbol='P 21 21 21')
+  ms = miller.build_set(cs, anomalous_flag=False, d_min=3.0)
+  f = ms.array(data=flex.double(ms.size(), 10.0), sigmas=flex.double(ms.size(), 1.0))
+  f.set_observation_type_xray_amplitude()
+  fwt = ms.array(data=flex.complex_double(ms.size(), complex(1.0, 2.0)))
+  mtz_dataset = f.as_mtz_dataset(column_root_label='FOBS')
+  mtz_dataset.add_miller_array(fwt, column_root_label='FWT',
+                               label_decorator=iotbx.mtz.ccp4_label_decorator())
+  data_mtz = 'tst_data_manager_single_build.mtz'
+  mtz_dataset.mtz_object().write(data_mtz)
+
+  n_builds = [0]
+  orig = any_reflection_file.as_miller_arrays
+  def counting(self, *args, **kwds):
+    n_builds[0] += 1
+    return orig(self, *args, **kwds)
+  any_reflection_file.as_miller_arrays = counting
+  try:
+    for datatypes, custom_options in (
+        (['miller_array', 'map_coefficients'], None),
+        (['miller_array', 'map_coefficients'], None),
+        (['miller_array'], None),
+        (['miller_array', 'map_coefficients'], ['miller_array_skip_merge'])):
+      n_builds[0] = 0
+      dm = DataManager(datatypes=datatypes, custom_options=custom_options)
+      dm.process_miller_array_file(data_mtz)
+      arrays = dm.get_miller_arrays()
+      assert n_builds[0] == 1, (datatypes, custom_options, n_builds[0])
+      labels = sorted(a.info().label_string() for a in arrays)
+      assert labels == ['FOBS,SIGFOBS', 'FWT,PHWT'], labels
+      if 'map_coefficients' in datatypes:
+        assert dm.get_map_coefficients_labels() == ['FWT,PHWT'], \
+          dm.get_map_coefficients_labels()
+        mc = dm.get_map_coefficients_arrays(labels=['FWT,PHWT'])
+        assert len(mc) == 1 and mc[0].is_complex_array()
+      children = MillerArrayDataManager.miller_array_child_datatypes
+      assert len(children) == len(set(children)), children
+  finally:
+    any_reflection_file.as_miller_arrays = orig
+  os.remove(data_mtz)
+
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
 
   test_data_manager()
+  test_miller_array_single_build()
   test_model_datatype()
   test_sequence_datatype()
   test_json_datatype()
@@ -1357,6 +1461,7 @@ if __name__ == '__main__':
   test_model_skip_ss_annotations()
   test_fmodel_params()
   test_user_selected_labels()
+  test_duplicate_user_selected_labels()
   test_scattering_table_mixins()
 
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:

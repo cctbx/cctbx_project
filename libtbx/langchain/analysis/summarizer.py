@@ -557,6 +557,20 @@ def _custom_log_chunker(
 # Main Summarization Function
 # =============================================================================
 
+def summary_coverage_note(parts_total, parts_skipped):
+  """Note for the end of a log summary when parts of the log were skipped.
+
+  Returns "" when every part was summarized.
+  """
+  if not parts_skipped:
+    return ""
+  return (
+    "**Note: partial coverage.** This summary is based on %d of %d parts "
+    "of the log; %d part(s) could not be summarized (the reply was cut off, "
+    "refused or blocked, or the request timed out), so information from "
+    "those parts may be missing." % (parts_total - parts_skipped, parts_total, parts_skipped))
+
+
 async def summarize_log_text(
   text: str,
   llm,
@@ -585,8 +599,13 @@ async def summarize_log_text(
     Returns:
         group_args with:
             - group_args_type: 'log_summary'
-            - log_summary: The final summary text (or None if failed)
+            - log_summary: The final summary text (or None if failed).
+              If some parts of the log were skipped (reply cut off,
+              refused or blocked, or batch timed out) the summary ends
+              with a coverage note.
             - error: Error message (or None if successful)
+            - parts_total, parts_skipped: number of log parts and how
+              many were not summarized (absent on the early returns)
     """
 
   if provider is None:
@@ -676,6 +695,7 @@ async def summarize_log_text(
   debug_print(f"\n--- MAP PHASE: Summarizing {len(docs)} chunks ---")
 
   all_intermediate_summaries = []
+  parts_skipped = 0
 
   num_batches = (len(docs) + batch_size - 1) // batch_size
   print(
@@ -700,7 +720,19 @@ async def summarize_log_text(
         timeout=timeout)
 
       for j, result in enumerate(map_results):
-        summary_text = result.content
+        try:
+          from libtbx.langchain.core.llm import response_text
+        except ImportError:
+          from core.llm import response_text
+        try:
+          summary_text = response_text(result)
+        except RuntimeError as e:
+          # A chunk whose reply was cut off, refused or blocked is skipped
+          # like a timed-out batch;
+          # the other chunks still make a summary.
+          print(f"Chunk {j + 1} of batch {i + 1} skipped: {e}")
+          parts_skipped += 1
+          continue
         all_intermediate_summaries.append(summary_text)
         debug_print(
           f"\n    Chunk {j+1} MAP OUTPUT"
@@ -721,6 +753,7 @@ async def summarize_log_text(
         f" {timeout} seconds. Proceeding"
         " with partial results.")
       debug_print(f"  BATCH {i+1} TIMEOUT!")
+      parts_skipped += len(batch)
       continue
 
     if use_throttling and (i < num_batches - 1):
@@ -769,10 +802,15 @@ async def summarize_log_text(
   from langchain_core.messages import HumanMessage
   prompt_text = combine_prompt.format(context=combined_text)
   response = llm.invoke([HumanMessage(content=prompt_text)])
-  final_output = (
-    response.content
-    if hasattr(response, 'content')
-    else str(response))
+  try:
+    from libtbx.langchain.core.llm import response_text
+  except ImportError:
+    from core.llm import response_text
+  final_output = response_text(response)
+  coverage_note = summary_coverage_note(len(docs), parts_skipped)
+  if coverage_note:
+    print(coverage_note)
+    final_output = final_output.rstrip() + "\n\n" + coverage_note
 
   debug_print(f"\n--- FINAL OUTPUT ({len(final_output)} chars) ---")
   debug_print("=" * 60)
@@ -782,5 +820,7 @@ async def summarize_log_text(
   return group_args(
     group_args_type='log_summary',
     log_summary=final_output,
-    error=None
+    error=None,
+    parts_total=len(docs),
+    parts_skipped=parts_skipped,
   )

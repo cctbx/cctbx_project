@@ -147,6 +147,9 @@ def exercise_get_emdb_id():
   # EM structure without an associated EMDB id: emdb_ids field is null
   emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id('1uon')
   assert emdb_ids == None, emdb_ids
+  # Integrative (IHM) structure: no exptl block at all, exptl field is null
+  emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id('9a1n')
+  assert emdb_ids == None, emdb_ids
 
 def exercise_sequence_search():
   lysozyme = """KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSR"""

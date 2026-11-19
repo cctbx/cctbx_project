@@ -153,7 +153,11 @@ Be concise. Format as a rule. (e.g. "Do not use 'hklin=', use bare filename.")
 
 
         try:
-            lesson = llm.invoke(extract_prompt).content.strip()
+            try:
+              from libtbx.langchain.core.llm import response_text
+            except ImportError:
+              from core.llm import response_text
+            lesson = response_text(llm.invoke(extract_prompt)).strip()
 
             # 2. Load Existing Memory
             memory = load_learned_memory(memory_file)
@@ -197,7 +201,11 @@ INSTRUCTIONS:
             )
 
             try:
-                response = llm.invoke(cleanup_prompt).content
+                try:
+                  from libtbx.langchain.core.llm import response_text
+                except ImportError:
+                  from core.llm import response_text
+                response = response_text(llm.invoke(cleanup_prompt))
 
                 # Parse JSON (handling potential Markdown wrappers)
                 if "```" in response:

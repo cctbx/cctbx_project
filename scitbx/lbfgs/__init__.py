@@ -16,7 +16,9 @@ class core_parameters(object):
                      gtol=0.9,
                      xtol=1.e-16,
                      stpmin=1.e-20,
-                     stpmax=1.e20):
+                     stpmax=1.e20,
+                     max_shift=0,
+                     first_step_max_shift=0):
     adopt_init_args(self, locals())
 
 class termination_parameters(object):
@@ -100,6 +102,9 @@ def run_c_plus_plus(target_evaluator,
     print("  xtol:", core_params.xtol, file=log)
     print("  stpmin:", core_params.stpmin, file=log)
     print("  stpmax:", core_params.stpmax, file=log)
+    print("  max_shift:", core_params.max_shift, file=log)
+    print("  first_step_max_shift:", core_params.first_step_max_shift,
+      file=log)
     print("lbfgs traditional_convergence_test:", \
       termination_params.traditional_convergence_test, file=log)
   minimizer = ext.minimizer(
@@ -109,7 +114,9 @@ def run_c_plus_plus(target_evaluator,
     core_params.gtol,
     core_params.xtol,
     core_params.stpmin,
-    core_params.stpmax)
+    core_params.stpmax,
+    core_params.max_shift,
+    core_params.first_step_max_shift)
   if (termination_params.traditional_convergence_test):
     is_converged = ext.traditional_convergence_test(
       x.size(),

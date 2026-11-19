@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 '''
 Author      : Lyubimov, A.Y.
@@ -40,9 +39,7 @@ class MainApp(wx.App):
     if (self.login.ShowModal() == wx.ID_OK):
       save_cached_settings(params)
       if self.frame.connect_to_db(drop_tables=self.login.drop_tables):
-        self.exp_tag = '| {}'.format(self.login.db_cred.ctr.GetValue())
-        self.exp = '| {}'.format(self.login.experiment.ctr.GetValue())
-        self.frame.SetTitle('CCTBX.XFEL {} {}'.format(self.exp, self.exp_tag))
+        self.frame.update_title()
         self.frame.Show(True)
         self.SetTopWindow(self.frame)
         self.frame.onTabChange(None)

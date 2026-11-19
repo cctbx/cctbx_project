@@ -383,6 +383,36 @@ def exercise_numbers_from_string():
   assert tuple(f.as_string("%+.3e")) in [
     ('+1.000e-001', '-2.340e-005'),
     ('+1.000e-01',  '-2.340e-05')]
+  # the default prints six significant digits, as a stream does; the format
+  # string picks the digits
+  f = flex.double([1/3., 2/3., 1e20, 1.5e-7, 1234567.0, 0.1 + 0.2, 100000.0,
+                   1000000.0, -0.0])
+  assert tuple(f.as_string()) == (
+    '0.333333', '0.666667', '1e+20', '1.5e-07', '1.23457e+06', '0.3', '100000',
+    '1e+06', '-0')
+  assert tuple(f.as_string("%.8g")) == (
+    '0.33333333', '0.66666667', '1e+20', '1.5e-07', '1234567', '0.3', '100000',
+    '1000000', '-0')
+  assert tuple(f.as_string("%.3f")[:2]) == ('0.333', '0.667')
+  assert tuple(f.as_string("%10.2e")[:2]) == ('  3.33e-01', '  6.67e-01')
+  assert tuple(f.as_string("%-8.1f|")[:2]) == ('0.3     |', '0.7     |')
+  f = flex.double([float("nan"), float("inf"), -float("inf")])
+  assert tuple(f.as_string()) == ('nan', 'inf', '-inf')
+  assert tuple(f.as_string("%.8g")) == ('nan', 'inf', '-inf')
+  # a result longer than any fixed buffer
+  s = flex.double([1e300]).as_string("%.0f")
+  assert len(s[0]) == 301 and s[0].startswith("1000000000000000")
+  # formats that are more than one printf directive
+  assert tuple(flex.double([1.5, -2]).as_string("(%g)")) == ('(1.5)', '(-2)')
+  assert tuple(flex.double([1.5]).as_string("%10d")) == ('       1.5',)
+  i = flex.int([255, -1, 7])
+  assert tuple(i.as_string("%5d")) == ('  255', '   -1', '    7')
+  assert tuple(i.as_string("%-4i|")) == ('255 |', '-1  |', '7   |')
+  assert tuple(i.as_string("%x")) == ('ff', 'ffffffff', '7')
+  assert tuple(flex.int64([2**62, -1, -2**63]).as_string()) == (
+    '4611686018427387904', '-1', '-9223372036854775808')
+  assert tuple(flex.int16([32767, -32768]).as_string()) == ('32767', '-32768')
+  assert tuple(flex.int8([65, -1, 7]).as_string()) == ('65', '-1', '7')
   f = flex.double(flex.std_string([".34+05", "+6-2", "-7+4(1)"]))
   assert approx_equal(f, [34000.0, 0.06, -70000.0])
   #
@@ -3788,6 +3818,54 @@ def exercise_numpy_conversions():
       for i in range(l):
         assert(approx_equal(n[i], f[i]))
 
+def exercise_numpy_byte_order():
+  try:
+    import numpy as np
+  except ImportError:
+    print("Skipping exercise_numpy_byte_order (numpy not available)")
+    return
+
+  # A numpy array can carry a non-native byte order, e.g. a map file written
+  # on a little-endian machine and memory-mapped on a big-endian one
+  # (cctbx_project issue #1216). The flex constructors must honor the byte
+  # order instead of copying the raw bytes.
+  values = [0, 1, 2, 3, 100, 127]
+  for flex_type_name, npy_code in [
+      ('int', 'i4'), ('long', 'i8'), ('size_t', 'u8'),
+      ('int16', 'i2'), ('uint16', 'u2'), ('uint32', 'u4'),
+      ('float', 'f4'), ('double', 'f8')]:
+    flex_type = getattr(flex, flex_type_name)
+    for byte_order in ['<', '>']:
+      n = np.array(values, dtype=np.dtype(byte_order + npy_code))
+      f = flex_type(n)
+      assert list(f) == values, (flex_type_name, byte_order, list(f))
+  cvalues = [1+2j, -3.5+0.25j, 0j]
+  for byte_order in ['<', '>']:
+    n = np.array(cvalues, dtype=np.dtype(byte_order + 'c16'))
+    f = flex.complex_double(n)
+    assert list(f) == cvalues, (byte_order, list(f))
+  # multi-dimensional, with a NaN that must survive as a NaN
+  n = np.arange(24, dtype=np.float32).reshape(2, 3, 4)
+  for byte_order in ['<', '>']:
+    for flex_type, npy_code in [(flex.float, 'f4'), (flex.double, 'f8')]:
+      f = flex_type(n.astype(np.dtype(byte_order + npy_code)))
+      assert f.all() == (2, 3, 4), (byte_order, npy_code, f.all())
+      assert list(f.as_1d()) == list(range(24)), (
+        byte_order, npy_code, list(f.as_1d()))
+  n = np.array([1.0, float("nan"), 3.0])
+  for byte_order in ['<', '>']:
+    f = flex.double(n.astype(np.dtype(byte_order + 'f8')))
+    assert f[0] == 1.0 and f[2] == 3.0 and f[1] != f[1], (byte_order, list(f))
+  # C-contiguous but unaligned, e.g. a buffer read at a 1-byte offset or a
+  # memory-mapped map whose extended header is not a multiple of 4 bytes.
+  # numpy's aligned flag is independent of contiguity.
+  for byte_order in ['<', '>']:
+    raw = bytearray(1) + np.array(values, dtype=byte_order + 'f4').tobytes()
+    n = np.frombuffer(raw, dtype=byte_order + 'f4', offset=1)
+    assert n.flags.c_contiguous and not n.flags.aligned, n.flags
+    f = flex.float(n)
+    assert list(f) == values, (byte_order, list(f))
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -3854,6 +3932,7 @@ def run(iterations):
     exercise_vec3_double_as_numpy_array()
     exercise_fixed_width_int_types()
     exercise_numpy_conversions()
+    exercise_numpy_byte_order()
     i += 1
 
 if (__name__ == "__main__"):

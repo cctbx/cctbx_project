@@ -45,7 +45,18 @@ class NCS_copy():
     self.rmsd = 999
 
 def iselection_select(isel, sel):
-  x = flex.bool(sel.size(), False)
+  """
+  Remap indices in isel to the new numbering defined by the atom selection
+  sel: the result holds, in ascending order, the new indices of the members
+  of isel that survive sel. sel may be flex.bool or a sorted flex.size_t;
+  the result depends only on which indices are selected and their ranks,
+  so the total number of atoms in the parent model is not needed.
+  """
+  if isinstance(sel, flex.bool):
+    x = flex.bool(sel.size(), False)
+  else:
+    n = max(flex.max_default(isel, -1), flex.max_default(sel, -1)) + 1
+    x = flex.bool(n, False)
   x.set_selected(isel, True)
   res = x.select(sel).iselection()
   return res
@@ -159,13 +170,14 @@ class NCS_restraint_group(object):
     current version)
 
     Args:
-      selection (flex.bool): atom selection
+      selection (flex.bool or sorted flex.size_t): atom selection
     """
     from mmtbx.ncs.ncs_utils import selected_positions, remove_items_from_selection
-    assert isinstance(selection, flex.bool)
-
-
-    iselection = selection.iselection(True)
+    assert isinstance(selection, (flex.bool, flex.size_t))
+    if isinstance(selection, flex.bool):
+      iselection = selection.iselection(True)
+    else:
+      iselection = selection
     sel_set = set(iselection)
     m = set(self.master_iselection)
     m_list = [(pos,indx) for pos,indx in enumerate(list(self.master_iselection))]
@@ -303,7 +315,7 @@ class class_ncs_restraints_group_list(list):
     return result
 
   def select(self, selection):
-    assert isinstance(selection, flex.bool)
+    assert isinstance(selection, (flex.bool, flex.size_t))
     result = self.deep_copy()
     for gr in result:
       gr.select(selection)

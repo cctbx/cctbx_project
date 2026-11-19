@@ -212,7 +212,7 @@ def label_score(corpus, result):
   if not (os.path.exists(labels_path) and os.path.isdir(gui)):
     result.check("75-label score (GUI-shape)", False, "labels or agent_gui absent")
     return
-  handle = open(labels_path)
+  handle = open(labels_path, encoding="utf-8")
   try:
     labels = json.load(handle)
   finally:
@@ -415,7 +415,7 @@ def main():
   # modified file in cctbx after every validation run.
   target = os.path.join(corpus, "VALIDATION_RECORD.txt")
   try:
-    handle = open(target, "w")
+    handle = open(target, "w", encoding="utf-8")
     try:
       handle.write("\n".join(record) + "\n")
     finally:

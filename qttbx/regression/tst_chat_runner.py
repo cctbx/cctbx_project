@@ -328,7 +328,7 @@ def exercise_submit_question_answer_falls_through_to_session():
       return object
 
   class _AgentOwning:
-    """A claude_code-style agent that owns the id."""
+    """A claude_agent-style agent that owns the id."""
     def submit_question_answer(self, request_id, answers):
       return request_id == "agent_owned"
 

@@ -193,8 +193,8 @@ class ramalyze(validation):
       hierarchy=pdb_hierarchy)
     analysis = ""
     output_list = []
-    count_keys = []
-    uniqueness_keys = []
+    count_keys = set()
+    uniqueness_keys = set()
     r = ramachandran_eval.RamachandranEval()
     ##if use_segids:
     ##      chain_id = utils.get_segid_as_chainid(chain=chain)
@@ -269,7 +269,7 @@ class ramalyze(validation):
           self.n_type[res_type] += 1
           self.n_total_by_model[model_id] += 1
           self.add_to_validation_counts(ramaType, model_id)
-          count_keys.append(result_key)
+          count_keys.add(result_key)
         if (not outliers_only or is_outlier):
           if (result.altloc != '' or
             result_key not in uniqueness_keys):
@@ -278,7 +278,7 @@ class ramalyze(validation):
             #  uniqueness_keys list prevents redundant results being added to
             #  the final list
             self.results.append(result)
-            uniqueness_keys.append(result_key)
+            uniqueness_keys.add(result_key)
         if is_outlier :
           i_seqs = main_residue.atoms().extract_i_seq()
           assert (not i_seqs.all_eq(0))

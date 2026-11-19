@@ -23,7 +23,7 @@ def exercise(prefix="tst_classifier_02"):
 
   cmdline = mmtbx.command_line.load_model_and_data(
     args = [pdb_file, mtz_file, "wavelength={}".format(wavelength),
-            "use_phaser=True", "use_svm=True"],
+            "use_phaser=True", "use_svm=True", "skip_twin_detection=True"],
     master_phil = master_phil(),
     out = null_out,
     process_pdb_file = True,
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     warnings.warn("chem_data not available, skipping this test")
   else :
     try :
-      import svm
+      from libsvm import svm
     except ImportError :
       warnings.warn("libsvm not available, skipping this test")
     else :

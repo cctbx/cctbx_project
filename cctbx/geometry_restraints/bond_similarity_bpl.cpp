@@ -10,6 +10,7 @@
 #include <scitbx/array_family/selections.h>
 #include <scitbx/stl/map_wrapper.h>
 #include <cctbx/geometry_restraints/bond_similarity.h>
+#include <cctbx/geometry_restraints/n_proxies_excluding.h>
 
 namespace cctbx { namespace geometry_restraints {
 namespace {
@@ -131,6 +132,12 @@ namespace {
       (arg("sites_cart"),
        arg("proxies"),
        arg("gradient_array")));
+    def("n_proxies_excluding",
+      (std::size_t(*)(
+        af::const_ref<bond_similarity_proxy> const&,
+        af::const_ref<bool> const&))
+      n_proxies_excluding,
+      (arg("proxies"), arg("exclude")));
     def("bond_similarity_deltas_rms",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,

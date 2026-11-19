@@ -114,9 +114,11 @@ class compute_polder_map():
       fft_map.apply_sigma_scaling()
       m = fft_map.real_map_unpadded()
       return m
-    # Not sure if this definition of sel strings can be prone to errors...
-    sel_A_string = self.selection_string + ' altloc %s' % list(altloc_indices)[0]
-    sel_B_string = self.selection_string + ' altloc %s' % list(altloc_indices)[1]
+    # Parentheses: an unbracketed 'or' would bind the altloc to its last term
+    sel_A_string = '(%s) and altloc %s' % (
+      self.selection_string, list(altloc_indices)[0])
+    sel_B_string = '(%s) and altloc %s' % (
+      self.selection_string, list(altloc_indices)[1])
     sel_AB_string = self.selection_string
     sel_A = self.model.selection(string=sel_A_string)
     sel_B = self.model.selection(string=sel_B_string)

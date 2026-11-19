@@ -366,6 +366,18 @@ TER
 END''',
 }
 
+def get_target(file_name, flip):
+  """Run pdb_interpretation and return its single reported target value"""
+  cmd = 'phenix.pdb_interpretation %s flip_symmetric=%s' % (file_name, flip)
+  print(cmd)
+  rc = easy_run.go(cmd)
+  assert rc.return_code==0, '%s failed: %s' % (cmd, rc.return_code)
+  target_lines = [line for line in rc.stdout_lines if line.find('target:')>-1]
+  assert len(target_lines)==1, '%s reported %d target lines' % (
+    cmd, len(target_lines))
+  print(target_lines[0])
+  return float(target_lines[0].split()[1])
+
 def main(only_i=None):
   try: only_i=int(only_i)
   except Exception: only_i=None
@@ -374,16 +386,16 @@ def main(only_i=None):
     f=open(file_name, 'w')
     f.write(lines)
     del f
-    for i in range(2):
-      cmd = 'phenix.pdb_interpretation %s flip_symmetric=%s' % (file_name, i)
-      print(cmd)
-      rc = easy_run.go(cmd)
-      for line in rc.stdout_lines:
-        if line.find('target:')>-1:
-          print(line)
-          tmp=line.split()
-          target=float(tmp[1])
-          assert target<2000
+    unflipped, flipped = [get_target(file_name, i) for i in range(2)]
+    assert unflipped<2000
+    assert flipped<2000
+    # the limit alone passes without flipping, so require an improvement
+    assert flipped<unflipped, '%s: flipping did not lower target: %s >= %s' % (
+      file_name, flipped, unflipped)
 
 if __name__ == '__main__':
-  main(*tuple(sys.argv[1:]))
+  import libtbx.load_env
+  if libtbx.env.find_in_repositories('chem_data') is not None:
+    main(*tuple(sys.argv[1:]))
+  else:
+    print('chem_data is missing, skipping test')

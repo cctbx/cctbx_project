@@ -119,6 +119,7 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
                                          verbose=False,
                                        ):
   coordination = []
+  on_symmetry = set()
   done_aa = []
   atoms = pdb_hierarchy.atoms()
   sites_cart = atoms.extract_xyz()
@@ -144,8 +145,16 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
           ag2.id_str()), file=log)
     elif len(intersection)==1:
       if rt_mx:
-        coordination = []
-        break
+        # b576e99c42: no restraints for a cluster on a symmetry element or with
+        # a ligand across a contact. Any other symmetry contact is skipped.
+        if ag1.id_str()==ag2.id_str():
+          on_symmetry.add(ag1.id_str())
+        elif dist<=2.6:
+          for fe, other in ((a1, a2), (a2, a1)):
+            if (fe.parent().resname in sf_clusters and fe.element.lower()=="fe"
+                and other.element.strip() in ['S', 'N']):
+              on_symmetry.add(fe.parent().id_str())
+        continue
       resname = intersection.pop()
       sf4=a2
       sf4g=ag2
@@ -153,7 +162,7 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
       aag=ag1
       if ag1.resname==resname:
         sf4=a1
-        sf4g=ag2
+        sf4g=ag1
         aa=a2
         aag=ag2
       if aa.element.strip() not in ['S', 'N']: continue
@@ -164,7 +173,7 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
           #coordination.append((i_seq, j_seq))
           coordination.append((sf4, aa))
           done_aa.append(aag.id_str())
-  return coordination
+  return [c for c in coordination if c[0].parent().id_str() not in on_symmetry]
 
 def get_bond_proxies(coordination, verbose=False):
   #

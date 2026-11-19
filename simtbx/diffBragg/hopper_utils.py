@@ -732,14 +732,15 @@ class DataModeler:
             roi_bg = self.all_background[roi_sel].reshape(roi_shape).astype(np.float32)
 
             sb = Shoebox((x1, x2, y1, y2, 0, 1))
-            sb.allocate()
+            sb.allocate_data() # new shoebox API
+            sb.allocate_background()
             sb.data = flex.float(np.ascontiguousarray(roi_img[None]))
             sb.background = flex.float(np.ascontiguousarray(roi_bg[None]))
 
             dials_mask = np.zeros(roi_img.shape).astype(np.int32)
             mask = self.all_trusted[roi_sel].reshape(roi_shape)
             dials_mask[mask] = dials_mask[mask] + MaskCode.Valid
-            sb.mask = flex.int(np.ascontiguousarray(dials_mask[None]))
+            sb.mask = flex.uint8(np.ascontiguousarray(dials_mask[None]))
 
             # quick sanity test
             if do_xyobs_sanity_check:

@@ -95,8 +95,8 @@ class builder_base(object):
                                   '_space_group.name_H-M_alt',
                                   '_symmetry.space_group_name_H-M'),
     '_space_group_IT_number': ('_symmetry_Int_Tables_number',
-                                 '_symmetry.Int_Tables_number'
-                                 '_space_group.IT_number'),
+                                 '_space_group.IT_number',
+                                 '_symmetry.Int_Tables_number'),
     '_cell_length_a': ('_cell.length_a',),
     '_cell_length_b': ('_cell.length_b',),
     '_cell_length_c': ('_cell.length_c',),
@@ -118,17 +118,36 @@ class builder_base(object):
     return default
 
 
+def _rt_mx(op):
+  """sgtbx.rt_mx for an operator string, forgiving one trailing comma."""
+  try:
+    return sgtbx.rt_mx(op)
+  except (RuntimeError, ValueError):
+    # PDB entry 1l6j ends every operator with a comma
+    op = op.rstrip()
+    if op.endswith(","):
+      try:
+        return sgtbx.rt_mx(op[:-1])
+      except (RuntimeError, ValueError):
+        pass
+    raise
+
+
 class crystal_symmetry_builder(builder_base):
 
   def __init__(self, cif_block, strict=False):
-    # The order of priority for determining space group is:
-    #   sym_ops, hall symbol, H-M symbol, space group number
+    # The space group comes from the H-M symbol, else the Hall symbol,
+    # else the operators, which must agree with a symbol. When none of
+    # those gives a group, the H-M symbol is looked up in the table of
+    # the PDB CRYST1 reader, else the space group number is used; such a
+    # weak group is dropped when it does not fit the unit cell.
     self.cif_block = cif_block
     sym_ops = self.get_cif_item('_space_group_symop_operation_xyz')
     sym_op_ids = self.get_cif_item('_space_group_symop_id')
     space_group = None
     space_group_from_ops = None
     space_group_from_other = None
+    space_group_weak = None
     # Symmetry from operators
     if sym_ops is not None:
       if isinstance(sym_ops, string_types):
@@ -139,11 +158,10 @@ class crystal_symmetry_builder(builder_base):
         assert len(sym_op_ids) == len(sym_ops)
       self.sym_ops = {}
       space_group_from_ops = sgtbx.space_group()
-      if isinstance(sym_ops, string_types): sym_ops = [sym_ops]
       for i, op in enumerate(sym_ops):
         try:
-          s = sgtbx.rt_mx(op)
-        except RuntimeError as e:
+          s = _rt_mx(op)
+        except (RuntimeError, ValueError) as e:
           str_e = str(e)
           if "Parse error: " in str_e:
             raise CifBuilderError("Error interpreting symmetry operator: %s" %(
@@ -165,14 +183,20 @@ class crystal_symmetry_builder(builder_base):
     hm_symbol = self.get_cif_item('_space_group_name_H-M_alt')
     sg_number = self.get_cif_item('_space_group_IT_number')
     if sg_number not in (None, '?'):
-      try: space_group_from_other = sgtbx.space_group_info(number=sg_number).group()
+      try: space_group_weak = sgtbx.space_group_info(number=sg_number).group()
       except Exception: pass
     if hall_symbol not in (None, '?'):
       try: space_group_from_other = sgtbx.space_group(hall_symbol)
       except Exception: pass
     if hm_symbol not in (None, '?'):
       try: space_group_from_other = sgtbx.space_group_info(symbol=hm_symbol).group()
-      except Exception: pass
+      except Exception:
+        # Symbols the wwPDB uses for alternative settings (C 1 21 1,
+        # P 21 21 2 A, ...)
+        from iotbx.pdb import cryst1_interpretation
+        symbol = cryst1_interpretation.categorize(hm_symbol)
+        if symbol.get_category() == "special":
+          space_group_weak = symbol.space_group_info().group()
     # Check consistency.
     # Use space group equivalence operation in cctbx.sgtbx.space_group
 
@@ -191,6 +215,9 @@ class crystal_symmetry_builder(builder_base):
       if(sg is not None):
         space_group = sg
         break
+    weak = space_group is None and space_group_weak is not None
+    if weak:
+      space_group = space_group_weak
     if (space_group is None and strict):
       raise CifBuilderError(
         "No symmetry instructions could be extracted from the cif block")
@@ -228,7 +255,7 @@ class crystal_symmetry_builder(builder_base):
           raise CifBuilderError(e)
         else:
           raise
-    elif (space_group is not None):
+    elif (space_group is not None and not weak):
       unit_cell = uctbx.infer_unit_cell_from_symmetry(
         [float_from_string(s) for s in items if s is not None], space_group)
     else:
@@ -240,10 +267,13 @@ class crystal_symmetry_builder(builder_base):
         space_group_input = space_group
         space_group = space_group.info().primitive_setting().group()
         if not space_group.is_compatible_unit_cell(unit_cell):
-          raise CifBuilderError(
-            "Space group is incompatible with unit cell parameters:\n" + \
-            "  Space group: %s\n" %space_group_input.info() + \
-            "  Unit cell: %s" %unit_cell)
+          if weak and not strict:
+            space_group = None
+          else:
+            raise CifBuilderError(
+              "Space group is incompatible with unit cell parameters:\n" + \
+              "  Space group: %s\n" %space_group_input.info() + \
+              "  Unit cell: %s" %unit_cell)
     self.crystal_symmetry = crystal.symmetry(unit_cell=unit_cell,
                                              space_group=space_group)
 
@@ -383,7 +413,6 @@ class miller_array_builder(crystal_symmetry_builder):
   def __init__(self, cif_block, base_array_info=None, wavelengths=None):
     crystal_symmetry_builder.__init__(self, cif_block)
     self._arrays = OrderedDict()
-    self._origarrays = OrderedDict() # used for presenting raw data tables in HKLviewer
     basearraylabels = []
     if base_array_info is not None:
       self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
@@ -396,7 +425,9 @@ class miller_array_builder(crystal_symmetry_builder):
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")
     refln_containing_loops = self.get_miller_indices_containing_loops()
+    self._anomalous_flags = {}
     for self.indices, refln_loop in refln_containing_loops:
+      self._anomalous_flags = {}  # one auto_anomalous() per distinct selection per loop
       self.wavelength_id_array = None
       self.crystal_id_array = None
       self.scale_group_array = None
@@ -416,8 +447,7 @@ class miller_array_builder(crystal_symmetry_builder):
           if key.endswith('wavelength_id'):
             wavelength_ids = list(counts.keys())
           if len(counts) == 1: continue
-          array = miller.array(
-            miller.set(self.crystal_symmetry, self.indices).auto_anomalous(), data)
+          array = miller.array(self.get_miller_set(), data)
           if key.endswith('wavelength_id'):
             self.wavelength_id_array = array
             wavelength_ids = list(counts.keys())
@@ -431,7 +461,6 @@ class miller_array_builder(crystal_symmetry_builder):
       wavelbl = []
       cryslbl = []
       scalegrplbl = []
-      self._origarrays["HKLs"] = self.indices
       alllabels = list(sorted(refln_loop.keys()))
       remaininglabls = alllabels[:] # deep copy the list
       # Parse labels matching cif column conventions
@@ -469,9 +498,7 @@ class miller_array_builder(crystal_symmetry_builder):
               B_array = B_array.select(selection)
               # form the miller array with map coefficients
               data = flex.complex_double( flex.double(A_array), flex.double(B_array) )
-              millarr = miller.array( miller.set(self.crystal_symmetry,
-                                             self.indices.select(selection)
-                                            ).auto_anomalous(), data)
+              millarr = miller.array(self.get_miller_set(selection), data)
               # millarr will be None for column data not matching w_id,crys_id,scale_group values
               if millarr is None: continue
               labl = basearraylabels + mapcoefflabl + labelsuffix
@@ -537,9 +564,8 @@ class miller_array_builder(crystal_symmetry_builder):
                               for hl, lab in zip(hl_values, hl_labels)]
                 # hl_values will be None for column data not matching w_id,crys_id,scale_group values
                 if hl_values == [None,None,None,None]: continue
-                millarr = miller.array(miller.set(
-                  self.crystal_symmetry, self.indices.select(selection)
-                  ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
+                millarr = miller.array(self.get_miller_set(selection),
+                                       flex.hendrickson_lattman(*hl_values))
                 hlabels = basearraylabels + hl_labels + labelsuffix
                 millarr.set_info(base_array_info.customized_copy(labels= hlabels,
                                                   wavelength=wavelengths.get(w_id, None)))
@@ -550,12 +576,6 @@ class miller_array_builder(crystal_symmetry_builder):
                 continue
               datastrarray = refln_loop[label]
               if label in remaininglabls:
-                labels = basearraylabels + [label]  + labelsuffix
-                lablsufx = jlablsufx
-                millarr = self.flex_std_string_as_miller_array(
-                  datastrarray, wavelength_id=w_id, crystal_id=crys_id,
-                  scale_group_code=scale_group)
-                # millarr will be None for column data not matching w_id,crys_id,scale_group values
                 if (label.endswith('wavelength_id') or
                  label.endswith('crystal_id') or # get full array if any of these labels, not just subsets
                  label.endswith('scale_group_code')):
@@ -564,6 +584,13 @@ class miller_array_builder(crystal_symmetry_builder):
                     scale_group_code=None)
                   lablsufx = ""
                   labels = basearraylabels + [label]
+                else:
+                  labels = basearraylabels + [label]  + labelsuffix
+                  lablsufx = jlablsufx
+                  millarr = self.flex_std_string_as_miller_array(
+                    datastrarray, wavelength_id=w_id, crystal_id=crys_id,
+                    scale_group_code=scale_group)
+                # millarr will be None for column data not matching w_id,crys_id,scale_group values
                 if millarr is None: continue
                 otype = self.guess_observationtype(label)
                 if otype is not None:
@@ -571,14 +598,6 @@ class miller_array_builder(crystal_symmetry_builder):
                 millarr.set_info(base_array_info.customized_copy(labels= labels,
                                                   wavelength=wavelengths.get(w_id, None)))
                 self._arrays[ label + lablsufx ] = millarr
-              origarr = self.flex_std_string_as_miller_array(
-                  datastrarray, wavelength_id=w_id, crystal_id=crys_id,
-                  scale_group_code=scale_group,
-                  allowNaNs=True)
-              newlabel = label.replace("_refln.", "")
-              newlabel2 = newlabel.replace("_refln_", "")
-              if origarr: # want only genuine miller arrays
-                self._origarrays[newlabel2 + jlablsufx ] = origarr.data()
     # Convert any groups of I+,I-,SigI+,SigI- (or amplitudes) arrays into anomalous arrays
     # i.e. both friedel mates in the same array
     for key, array in six.iteritems(self._arrays.copy()):
@@ -797,12 +816,8 @@ class miller_array_builder(crystal_symmetry_builder):
   def get_selection(self, value,
                     wavelength_id=None,
                     crystal_id=None,
-                    scale_group_code=None,
-                    allowNaNs = False):
-    if allowNaNs:
-      selection = flex.bool(value.size(), True)
-    else:
-      selection = ~((value == '.') | (value == '?'))
+                    scale_group_code=None):
+    selection = ~((value == '.') | (value == '?'))
     if self.wavelength_id_array is not None and wavelength_id is not None:
       selection &= (self.wavelength_id_array.data() == wavelength_id)
     if self.crystal_id_array is not None and crystal_id is not None:
@@ -812,44 +827,65 @@ class miller_array_builder(crystal_symmetry_builder):
     return selection
 
 
+  def get_miller_set(self, selection=None):
+    """
+    miller.set of the rows in selection (all rows of the current loop if
+    None) with the anomalous flag determined by auto_anomalous().
+
+    auto_anomalous() runs a full Bijvoet-mate matching of the indices; doing
+    that once per column dominated the build time of large files.  The
+    columns of a loop share a handful of distinct null patterns, so the flag
+    is memoised per distinct selection (reset for every loop).  The set is
+    still built afresh for every call, as before.
+    """
+    if selection is None:
+      indices = self.indices
+    else:
+      indices = self.indices.select(selection)
+    if indices.size() == self.indices.size():
+      key = None  # every row of the loop, whichever form the selection took
+    else:
+      key = indices.size()
+    if key not in self._anomalous_flags:
+      self._anomalous_flags[key] = []
+    cached = self._anomalous_flags[key]
+    anomalous_flag = None
+    for cached_selection, cached_flag in cached:
+      if key is None or cached_selection.all_eq(selection):
+        anomalous_flag = cached_flag
+        break
+    if anomalous_flag is None:
+      anomalous_flag = miller.set(
+        self.crystal_symmetry, indices).auto_anomalous().anomalous_flag()
+      cached.append((selection, anomalous_flag))
+    return miller.set(self.crystal_symmetry, indices, anomalous_flag=anomalous_flag)
+
+
   def flex_std_string_as_miller_array(self, value,
                                       wavelength_id=None,
                                       crystal_id=None,
-                                      scale_group_code=None,
-                                      allowNaNs = False):
+                                      scale_group_code=None):
     # Create a miller_array object of only the data and indices matching the
     # wavelength_id, crystal_id and scale_group_code submitted or full array if these are None
     selection = self.get_selection(
       value, wavelength_id=wavelength_id,
-      crystal_id=crystal_id, scale_group_code=scale_group_code,
-      allowNaNs=allowNaNs)
+      crystal_id=crystal_id, scale_group_code=scale_group_code)
     data = value.select(selection)
     try:
       data = flex.int(data)
-      indices = self.indices.select(selection)
     except ValueError:
       try:
         data = flex.double(data)
-        indices = self.indices.select(selection)
       except ValueError:
         # if flex.std_string return all values including '.' and '?'
         data = value
-        indices = self.indices
+        selection = None
     if data.size() == 0: return None
-    return miller.array(
-      miller.set(self.crystal_symmetry, indices).auto_anomalous(), data)
+    return miller.array(self.get_miller_set(selection), data)
 
 
   def arrays(self):
     return self._arrays
-
-
-  def origarrays(self):
-    """
-    return dictionary of raw data found in cif file cast into flex.double arrays
-    or just string arrays as a fall back.
-    """
-    return self._origarrays
 
 
 def as_flex_double(array, key):

@@ -1,6 +1,7 @@
 from __future__ import division
 import sys
 from iotbx.cli_parser import run_program
+from libtbx.test_utils import approx_equal
 from mmtbx.programs.arginine_geometry import Program
 
 pdb_str = '''CRYST1   38.853   46.881   71.758  90.00  90.00  90.00 P 21 21 21
@@ -84,14 +85,31 @@ ANISOU   46  OG  SER A 250     3816   2734   2306   -359    635   -175       O
 END
 '''
 
+expected_torsion = ('" CD AARG A 249 " - " NE AARG A 249 " - '
+                    '" CZ AARG A 249 " - " NH1AARG A 249 "')
+
 def main(pdb_file=None):
-  if pdb_file is None:
+  embedded_model = pdb_file is None
+  if embedded_model:
     pdb_file='tst_arginine_geometry.pdb'
     f=open(pdb_file, 'w')
     f.write(pdb_str)
     del f
   results = run_program(program_class=Program, args=[pdb_file])
   assert len(results)==1
+  if not embedded_model: return
+  # only altloc A of ARG 249 is out of plane, and it has no hydrogen atoms
+  torsion, (deviation, has_hydrogen) = list(results.items())[0]
+  assert torsion.strip()==expected_torsion, torsion
+  assert approx_equal(deviation, 7.827, eps=0.01)
+  assert not has_hydrogen
+  assert results.is_possible_reduce()==0
+  assert repr(results).find('NH1AARG A 249')>-1
+  # a limit above the deviation keeps the result but does not print it
+  results = run_program(program_class=Program,
+    args=[pdb_file, 'arginine.print_torsion_limit=8'])
+  assert len(results)==1
+  assert repr(results).find('NH1AARG A 249')==-1
 
 if __name__ == '__main__':
   main(*tuple(sys.argv[1:]))

@@ -968,6 +968,15 @@ class process_raw_data(object):
         params=None,
         log=fw_out)
     assert (obs is not None)
+    if (obs.is_xray_reconstructed_amplitude_array()):
+      # The MTZ reader fuses adjacent F/SIGF/DANO/SIGDANO(/ISYM) columns into
+      # Bijvoet pairs of observation type reconstructed_amplitude.  The MTZ
+      # writer would write such an array back as F/SIGF/DANO/SIGDANO/ISYM
+      # columns, and write_mtz_file would then fail adding the merged data
+      # under the same "F" root label.  Treat the pairs as ordinary F(+)/F(-)
+      # amplitudes from here on, which is what write_mtz_file and the
+      # automation steps reading its output expect.
+      obs = obs.set_observation_type_xray_amplitude()
     merged_obs = obs.average_bijvoet_mates()
     if (merged_obs.completeness() < 0.9):
       print("""

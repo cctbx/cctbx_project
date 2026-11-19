@@ -59,7 +59,7 @@ def _read_source(rel_path):
     here = os.path.dirname(os.path.abspath(__file__))
     parent = os.path.dirname(here)
     path = os.path.join(parent, rel_path)
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding="utf-8") as f:
         return f.read()
 
 

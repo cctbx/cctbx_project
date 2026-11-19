@@ -5,7 +5,7 @@ import re
 # Single source of truth for the per-minimizer iteration log line printed by the
 # reciprocal-space xyz / adp / occupancy minimizers in phenix.refine. The
 # companion regex (number_of_minimizer_iterations_regex) is used by
-# phenix_regression/refinement/tst_129 to verify the line is still emitted; keep
+# phenix_regression/refinement/tst_135 to verify the line is still emitted; keep
 # the two in sync (changing the wording here updates both the output and the test).
 number_of_minimizer_iterations_regex = re.compile(
   r"Number of minimizer iterations: (\d+) \((\d+) function evaluations\)")

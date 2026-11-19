@@ -1,11 +1,9 @@
 """Bond-cut heuristics (backbone / sidechain) for locating good
 hydrogen-capping sites."""
 
-from __future__ import absolute_import, division, print_function
-
 from collections import deque
 
-from mmtbx.geometry_restraints.endo_exo.util import _neighbour_iseqs
+from mmtbx.geometry_restraints.endo_exo.util import neighbour_iseqs
 
 
 PREFERRED_CUTS = {
@@ -43,13 +41,10 @@ class BondCutDetector:
   use_preferred_cuts : bool, optional
       When ``True`` (default) the ``PREFERRED_CUTS`` lookup table is
       consulted before falling back to geometric heuristics.
-  log : file-like or None, optional
-      Destination for diagnostic messages.
   """
 
-  def __init__(self, use_preferred_cuts=True, log=None):
+  def __init__(self, use_preferred_cuts=True):
     self.use_preferred_cuts = use_preferred_cuts
-    self.log = log
 
   # ------------------------------------------------------------------
   # Public interface
@@ -96,7 +91,7 @@ class BondCutDetector:
       return False
     if atom2.element.strip().upper() != 'C':
       return False
-    nbr1 = _neighbour_iseqs(adjacency, atom1.i_seq)
+    nbr1 = neighbour_iseqs(adjacency, atom1.i_seq)
     if atom2.i_seq not in nbr1:
       return False
 
@@ -104,7 +99,7 @@ class BondCutDetector:
     if not (1.42 <= cc_dist <= 1.68):
       return False
 
-    if len(nbr1) != 4 or len(_neighbour_iseqs(adjacency, atom2.i_seq)) != 4:
+    if len(nbr1) != 4 or len(neighbour_iseqs(adjacency, atom2.i_seq)) != 4:
       return False
 
     return True
@@ -125,7 +120,7 @@ class BondCutDetector:
     if not (atom1.name.strip().upper() == 'CA' and
             atom2.name.strip().upper() == 'C'):
       return False
-    return atom2.i_seq in _neighbour_iseqs(adjacency, atom1.i_seq)
+    return atom2.i_seq in neighbour_iseqs(adjacency, atom1.i_seq)
 
   def is_ca_n_bond(self, atom1, atom2, adjacency):
     """Return ``True`` if atom1->atom2 is a backbone CA-N bond.
@@ -143,14 +138,10 @@ class BondCutDetector:
     if not (atom1.name.strip().upper() == 'CA' and
             atom2.name.strip().upper() == 'N'):
       return False
-    return atom2.i_seq in _neighbour_iseqs(adjacency, atom1.i_seq)
-
-  # ------------------------------------------------------------------
-  # Private helpers
-  # ------------------------------------------------------------------
+    return atom2.i_seq in neighbour_iseqs(adjacency, atom1.i_seq)
 
   @staticmethod
-  def _hops_to_ca(atom, adjacency):
+  def hops_to_ca(atom, adjacency):
     """Return ``{atom name: bonds from CA}`` within *atom*'s residue group.
 
     Empty if the residue has no CA, or if *atom* carries no hierarchy to
@@ -183,12 +174,16 @@ class BondCutDetector:
     queue = deque([ca_iseq])
     while queue:
       current = queue.popleft()
-      for neighbour in _neighbour_iseqs(adjacency, current):
+      for neighbour in neighbour_iseqs(adjacency, current):
         if neighbour in hops or neighbour not in in_residue:
           continue
         hops[neighbour] = hops[current] + 1
         queue.append(neighbour)
     return {in_residue[i]: h for i, h in hops.items()}
+
+  # ------------------------------------------------------------------
+  # Private helpers
+  # ------------------------------------------------------------------
 
   @classmethod
   def _is_backbone_ward_of(cls, preferred, atom1, atom2, adjacency):
@@ -216,7 +211,7 @@ class BondCutDetector:
     """
     if not preferred:
       return False  # an empty entry means this sidechain is never cut
-    hops = cls._hops_to_ca(atom1, adjacency)
+    hops = cls.hops_to_ca(atom1, adjacency)
     if not hops:
       return True
     entry_depth = min((hops[name] for name in preferred if name in hops),

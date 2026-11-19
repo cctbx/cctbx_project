@@ -7,7 +7,6 @@ from mmtbx.validation.rna_validate import rna_bonds, rna_angles
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import null_out
 import json
-import pprint
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -70,7 +69,7 @@ Example:
     if self.params.json:
       results = {"rna_bonds": json.loads(bonds.as_JSON()),
        "rna_angles": json.loads(angles.as_JSON())}
-      pprint.pprint(results, compact=True)
+      print(json.dumps(results, indent=2), file=self.logger)
     elif self.params.verbose:
       bonds.show(out=self.logger, verbose=True)
       angles.show(out=self.logger, verbose=True)

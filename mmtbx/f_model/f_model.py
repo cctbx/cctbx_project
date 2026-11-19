@@ -928,67 +928,98 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
     print(file=out)
 
   def optimize_mask(self, params = None, thorough=False, out = None,
-      nproc=1):
+      nproc=1, fast=True, refine_hd_scattering=False):
+    """
+    Grid-search the bulk-solvent mask parameters that minimize r_work.
+
+    Every trial mask is scored after re-fitting all scales (bulk solvent and
+    overall scaling) for that mask, so trials are compared on equal footing.
+    The grid covers solvent_radius 0.6-1.4 A in 0.1 A steps with
+    shrink_truncation_radius 0.1-0.5 A below it, which is where physically
+    sensible masks lie (shrink_truncation_radius >= solvent_radius gives
+    masks that fit much worse). On return the manager holds the best
+    parameters and the scales fitted for them.
+
+    Parameters
+    ----------
+    params : libtbx.phil.scope_extract, optional
+      bulk_solvent_and_scale parameters, as in update_all_scales.
+    thorough : bool
+      Refine the grid optimum in 0.05 A steps.
+    out : file-like, optional
+      Log; one line per trial.
+    nproc : int or Auto
+      Trials are evaluated in parallel when > 1.
+    fast, refine_hd_scattering : bool
+      Scaling options, as in update_all_scales.
+
+    Returns
+    -------
+    bool
+      False if the manager has several mask shells (not optimized).
+    """
     if(len(self.f_masks()) != 1):
       return False
-    if (nproc is None) : nproc = 1
-    rw_ = self.r_work()
-    rf_ = self.r_free()
-    rwl_= self.r_work_low()
-    r_solv_   = self.mask_params.solvent_radius
-    r_shrink_ = self.mask_params.shrink_truncation_radius
+    scaling_kwds = dict(params=params, fast=fast,
+      refine_hd_scattering=refine_hd_scattering)
     self.show_mask_optimization_statistics(prefix="Mask optimization: start",
       out = out)
-    trial_range = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
-    r_shrinks = []
-    r_solvs = []
-    for tr1 in trial_range:
-      for tr2 in trial_range:
-        r_shrinks.append(tr1)
-        r_solvs.append(tr2)
-    r_solv = trial_range[:]
-    r_shrink = trial_range[:]
-    trial_params = list(zip(r_solvs, r_shrinks))
-    parallel = False
-    mask_results = []
-    if(nproc is Auto) or (nproc > 1):
-      parallel = True
-      from libtbx import easy_mp
-      stdout_and_results = easy_mp.pool_map(
-        processes=nproc,
-        fixed_func=self.try_mask_params,
-        args=trial_params,
-        func_wrapper="buffer_stdout_stderr") # XXX safer for phenix GUI
-      mask_results = [ r for so, r in stdout_and_results ]
-    else :
-      for r_solv, r_shrink in trial_params :
-        result = self.try_mask_params((r_solv, r_shrink))
-        result.show(out=out)
-        mask_results.append(result)
-    for result in mask_results :
-      if (parallel):
-        result.show(out=out)
-      if(result.r_work < rw_):
-        rw_       = result.r_work
-        rf_       = result.r_free
-        r_solv_   = result.r_solv
-        r_shrink_ = result.r_shrink
+    start = mask_result(
+      r_solv     = self.mask_params.solvent_radius,
+      r_shrink   = self.mask_params.shrink_truncation_radius,
+      r_work     = self.r_work(),
+      r_free     = self.r_free(),
+      r_work_low = self.r_work_low())
+    trial_params = []
+    for i_solv in range(6, 15):
+      r_solv = i_solv/10.
+      for i_delta in range(1, 6):
+        trial_params.append((r_solv, r_solv - i_delta/10.))
+    results = self._try_mask_params_list(trial_params, scaling_kwds, nproc, out)
+    best = min(results, key=lambda r: r.r_work)
+    if(thorough):
+      trial_params = []
+      for ds in (-0.05, 0, 0.05):
+        for dh in (-0.05, 0, 0.05):
+          if(ds == 0 and dh == 0): continue
+          r_solv, r_shrink = best.r_solv+ds, best.r_shrink+dh
+          if(r_shrink > 0 and r_shrink < r_solv):
+            trial_params.append((r_solv, r_shrink))
+      results = self._try_mask_params_list(trial_params, scaling_kwds, nproc,
+        out)
+      best = min(results+[best], key=lambda r: r.r_work)
+    if(best.r_work >= start.r_work): best = start
     if(out is not None): print(file=out)
-    self.mask_params.solvent_radius = r_solv_
-    self.mask_params.shrink_truncation_radius = r_shrink_
-    self.mask_manager.mask_params = self.mask_params
-    self.update_xray_structure(
-      xray_structure      = self.xray_structure,
-      update_f_calc       = False,
-      update_f_mask       = True,
-      force_update_f_mask = True)
+    self.try_mask_params((best.r_solv, best.r_shrink, scaling_kwds))
     self.show_mask_optimization_statistics(prefix="Mask optimization: final",
       out = out)
     return True
 
+  def _try_mask_params_list(self, trial_params, scaling_kwds, nproc, out):
+    if(nproc is Auto or (nproc is not None and nproc > 1)):
+      from libtbx import easy_mp
+      stdout_and_results = easy_mp.pool_map(
+        processes=nproc,
+        fixed_func=self.try_mask_params,
+        args=[(r_solv, r_shrink, scaling_kwds)
+          for r_solv, r_shrink in trial_params],
+        func_wrapper="buffer_stdout_stderr") # XXX safer for phenix GUI
+      results = [r for so, r in stdout_and_results]
+    else:
+      results = [self.try_mask_params((r_solv, r_shrink, scaling_kwds))
+        for r_solv, r_shrink in trial_params]
+    for result in results:
+      result.show(out=out)
+    return results
+
   # XXX parallel routine
   def try_mask_params(self, args):
-    r_solv, r_shrink = args
+    """Set mask parameters, recompute f_mask, re-fit all scales and report
+    r-factors. args: (r_solv, r_shrink) or (r_solv, r_shrink, scaling_kwds)
+    with scaling_kwds holding params, fast, refine_hd_scattering (see
+    update_all_scales)."""
+    r_solv, r_shrink = args[:2]
+    scaling_kwds = args[2] if len(args) > 2 else {}
     self.mask_params.solvent_radius = r_solv
     self.mask_params.shrink_truncation_radius = r_shrink
     self.mask_manager.mask_params = self.mask_params
@@ -997,6 +1028,15 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       update_f_calc       = False,
       update_f_mask       = True,
       force_update_f_mask = True)
+    from mmtbx.bulk_solvent import f_model_all_scales
+    f_model_all_scales.run(
+      fmodel               = self,
+      apply_back_trace     = False,
+      remove_outliers      = False,
+      fast                 = scaling_kwds.get("fast", True),
+      params               = scaling_kwds.get("params", None),
+      refine_hd_scattering = scaling_kwds.get("refine_hd_scattering", False),
+      log                  = None)
     return mask_result(
       r_solv=r_solv,
       r_shrink=r_shrink,
@@ -1499,7 +1539,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         update_f_part1 = True,
         apply_back_trace=False,
         params = None, # XXX DUMMY
-        nproc = None,  # XXX DUMMY
+        nproc = None,
         cycles = None,
         fast = True,
         optimize_mask = False,
@@ -1512,6 +1552,13 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
         verbose=None,
         log = None):
     self.alpha_beta_cache = None
+    # Auto-shutoff refine_hd_scattering if number of H is too small.
+    if refine_hd_scattering:
+      if self.xray_structure is not None:
+        hd_sel = self.xray_structure.hd_selection()
+        h_fraction = hd_sel.count(True)*100./hd_sel.size()
+        if h_fraction < 25.: refine_hd_scattering = False
+    #
     if(apply_scale_k1_to_f_obs):
       self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
@@ -1523,7 +1570,9 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       params               = params,
       log                  = log,
       refine_hd_scattering = refine_hd_scattering)
-    if(optimize_mask): self.optimize_mask(out=log)
+    if(optimize_mask):
+      self.optimize_mask(params=params, out=log, nproc=nproc, fast=fast,
+        refine_hd_scattering=refine_hd_scattering)
     if(remove_outliers and self.twin_law is None):
       for i in [1,2,3,4,5]:
         if(self.r_work_low()>0.7 and len(self.bin_selections)>1):

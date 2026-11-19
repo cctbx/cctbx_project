@@ -725,6 +725,10 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
                                      o_atom.name.strip()[-1],
                                      )
         key = data_link_key
+    elif get_distance2(atom1, atom2) <= linking_setup.other_bond_cutoff**2:
+      # not C-O: thioglycoside S-C, phosphodiester O-P. Covalent range only,
+      # the 3 A saccharide cutoff also admits H-bonded O..O.
+      key = long_tmp_key
     else:
       print(" %s" % ("!"*86))
       _write_warning_line("  Possible link ignored")

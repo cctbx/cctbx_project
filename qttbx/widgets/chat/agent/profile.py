@@ -24,12 +24,46 @@ _KNOWN_KEYS = {
   "skills", "mcp_servers", "tool_policy_default",
   "subagents", "max_turns",
   "server_tools",
+  "effort",
   "backend", "claude", "portkey",
 }
 
+# The one reasoning-depth vocabulary every backend maps onto its own control
+# (Anthropic output_config.effort, the `claude` CLI's --effort, OpenAI
+# reasoning.effort, Gemini thinking_level). Defined once here; the launcher
+# flag, the agents and the composer combo import it.
+EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
+DEFAULT_EFFORT = "high"
+
 # Backends supported by the agent factory. Validated at load time so
 # typos surface before the chat window opens.
-_KNOWN_BACKENDS = ("anthropic", "claude_code", "openai", "portkey", "google")
+_KNOWN_BACKENDS = ("anthropic", "claude_agent", "openai", "portkey", "google")
+
+# Renamed backend ids, mapped to the current id, so a profile, a saved
+# conversation, or a --backend flag written before the rename still works.
+# claude_code became claude_agent: Anthropic's Agent SDK branding terms do not
+# allow a third-party product to use the name "Claude Code".
+_RENAMED_BACKENDS = {"claude_code": "claude_agent"}
+
+
+def canonical_backend(backend):
+  """Return the current id for a backend id that may predate a rename.
+
+  Parameters
+  ----------
+  backend : object
+      A backend id as read from a profile, a stored message, or the command
+      line.
+
+  Returns
+  -------
+  object
+      The current id for a renamed one; any other value unchanged, so the
+      caller's own validation still reports a bad one.
+  """
+  if isinstance(backend, str):
+    return _RENAMED_BACKENDS.get(backend, backend)
+  return backend
 
 # There is deliberately NO `subagents.default_model`. A child that names no
 # model runs on the PARENT's pair (see `subagent_factory._resolve_pair`), which
@@ -45,7 +79,7 @@ _KNOWN_BACKENDS = ("anthropic", "claude_code", "openai", "portkey", "google")
 # input placeholder, question card). Portkey is a gateway whose underlying
 # model varies, so it -- and anything unmapped -- gets the generic "Assistant".
 _BACKEND_DISPLAY_NAMES = {
-  "claude_code": "Claude",
+  "claude_agent": "Claude",
   "anthropic": "Claude",
   "openai": "GPT",
   "google": "Gemini",
@@ -68,7 +102,8 @@ def backend_display_name(backend):
       The display name (``"Claude"``, ``"GPT"``, ``"Gemini"``, or
       ``"Assistant"``).
   """
-  return _BACKEND_DISPLAY_NAMES.get(backend or "", "Assistant")
+  return _BACKEND_DISPLAY_NAMES.get(canonical_backend(backend) or "",
+                                    "Assistant")
 
 # Environment keys a profile-supplied MCP-server ``env`` block must not be
 # able to set. A profile can be project-scoped (and therefore untrusted),
@@ -88,15 +123,21 @@ _BLOCKED_SERVER_ENV = frozenset([
   "NODE_OPTIONS", "NODE_PATH",                   # node --require / module hijack
   "PERL5LIB", "PERL5OPT",                        # perl module path / -M code
   "RUBYLIB", "RUBYOPT",                          # ruby load path / -r code
+  # switches off the dispatcher's environment guard, like
+  # PHENIX_TRUST_OTHER_ENV (covered by the PHENIX_ prefix below)
+  "CCTBX_CONDA_USE_ENVIRONMENT_VARIABLES",
+  # the dispatchers exec the interpreter under this wrapper command
+  "LIBTBX_VALGRIND",
 ])
 
 # Prefix families stripped wholesale -- no legitimate per-server env sets
 # these: every dynamic-loader control (LD_PRELOAD, LD_AUDIT, LD_LIBRARY_PATH,
 # DYLD_INSERT_LIBRARIES, DYLD_*_PATH, ...), exported shell functions
-# (BASH_FUNC_*), and Phenix's own namespace (PHENIX_*, which includes
+# (BASH_FUNC_*), Phenix's own namespace (PHENIX_*, which includes
 # PHENIX_PROJECT_DIR -- the project sandbox -- and PHENIX_TRUST_OTHER_ENV,
-# which would otherwise switch off the dispatcher's inherited-env scrub).
-_BLOCKED_SERVER_ENV_PREFIXES = ("LD_", "DYLD_", "BASH_FUNC_", "PHENIX_")
+# which would otherwise switch off the dispatcher's inherited-env scrub),
+# and the DivCon QB_* paths, which the dispatchers append after their guard.
+_BLOCKED_SERVER_ENV_PREFIXES = ("LD_", "DYLD_", "BASH_FUNC_", "PHENIX_", "QB_")
 
 
 def sanitize_server_env(env):
@@ -122,9 +163,11 @@ def sanitize_server_env(env):
     return {}
   out = {}
   for k, v in env.items():
-    if k in _BLOCKED_SERVER_ENV:
+    # Windows environment names are case-insensitive, so "path" is PATH
+    name = k.upper()
+    if name in _BLOCKED_SERVER_ENV:
       continue
-    if any(k.startswith(p) for p in _BLOCKED_SERVER_ENV_PREFIXES):
+    if name.startswith(_BLOCKED_SERVER_ENV_PREFIXES):
       continue
     out[k] = v
   return out
@@ -153,9 +196,9 @@ class McpServerConfig:
 
 @dataclass
 class ClaudeProfileOptions:
-  """Backend-specific knobs for the ``claude_code`` backend.
+  """Backend-specific knobs for the ``claude_agent`` backend.
 
-  Only consulted when ``Profile.backend == 'claude_code'``. Exposed with
+  Only consulted when ``Profile.backend == 'claude_agent'``. Exposed with
   safe defaults on every ``Profile`` so call sites can read attributes
   unconditionally without ``hasattr``/``getattr`` guards.
   """
@@ -202,7 +245,13 @@ class Profile:
   # here carries a filled-in dataclass default, so None is the only value that
   # can distinguish "the author wrote a cap" from "the author wrote nothing".
   max_turns: int = None
-  backend: str = "claude_code"  # anthropic|claude_code|openai|portkey|google
+  # Reasoning depth this profile asks for, one of EFFORT_LEVELS. None means
+  # "not declared" (the max_turns convention): the launcher then falls back to
+  # the user's saved default and finally DEFAULT_EFFORT, and a child built
+  # from this profile runs at its parent's level. A filled-in default here
+  # would outrank both.
+  effort: str = None
+  backend: str = "claude_agent"  # anthropic|claude_agent|openai|portkey|google
   claude: ClaudeProfileOptions = field(default_factory=ClaudeProfileOptions)
   # Backend-specific knobs for the "portkey" backend; only consulted when
   # backend == "portkey". Default None on every Profile so call sites can
@@ -365,7 +414,7 @@ class ProfileLoader:
 
     # Validate backend at load time so typos fail before the chat window
     # opens, not after the user has been waiting for a streaming response.
-    backend = data.get("backend", "claude_code")
+    backend = canonical_backend(data.get("backend", "claude_agent"))
     if backend not in _KNOWN_BACKENDS:
       raise Sorry(
         "Profile %s: unknown backend %r (expected one of: %s)"
@@ -484,7 +533,7 @@ def _build_profile(data, source_path):
   skills = data.get("skills", {}) or {}
   subagents = data.get("subagents", {}) or {}
   # The claude subtree is parsed on every load (cheap), but only the
-  # claude_code backend will consult it; for anthropic profiles it just
+  # claude_agent backend will consult it; for anthropic profiles it just
   # carries default values so attribute access is always safe.
   claude_data = data.get("claude", {}) or {}
   claude_opts = ClaudeProfileOptions(
@@ -495,6 +544,25 @@ def _build_profile(data, source_path):
   # portkey backend will consult it; for other backends it just yields
   # None defaults so attribute access on the Profile is always safe.
   portkey_data = data.get("portkey", {}) or {}
+
+  # Effort: absent or null is "not declared"; anything else must be a level.
+  effort = data.get("effort")
+  if effort is not None and effort not in EFFORT_LEVELS:
+    raise Sorry("Profile %s: effort must be one of %s; got %r"
+                % (source_path, ", ".join(EFFORT_LEVELS), effort))
+  # The claude CLI takes an effort by three more routes; a profile using any
+  # of them would silently outrank (or, for the env var, override) the one
+  # canonical key, so each is refused by name.
+  sdk_options = claude_opts.sdk_options
+  for path, present in (
+      ("claude.sdk_options.effort", "effort" in sdk_options),
+      ("claude.sdk_options.extra_args.effort",
+       "effort" in (sdk_options.get("extra_args") or {})),
+      ("claude.sdk_options.env.CLAUDE_CODE_EFFORT_LEVEL",
+       "CLAUDE_CODE_EFFORT_LEVEL" in (sdk_options.get("env") or {}))):
+    if present:
+      raise Sorry("Profile %s: %s is not accepted; set the top-level effort "
+                  "key instead" % (source_path, path))
 
   # System prompt: inline xor file (file content inlined here if present).
   system_prompt = data.get("system_prompt", "") or ""
@@ -567,7 +635,8 @@ def _build_profile(data, source_path):
     # authored cap and would outrank every spawning caller's number.
     max_turns=(None if data.get("max_turns") is None else
                _coerce_int(data.get("max_turns"), "max_turns", source_path)),
-    backend=data.get("backend", "claude_code"),
+    effort=effort,
+    backend=canonical_backend(data.get("backend", "claude_agent")),
     claude=claude_opts,
     portkey_virtual_key=portkey_data.get("virtual_key"),
     portkey_config=portkey_data.get("config"),
@@ -610,6 +679,7 @@ def _profile_to_dict(p):
       "default_profile": p.subagents_default_profile,
     },
     "max_turns": p.max_turns,
+    "effort": p.effort,
     "backend": p.backend,
     "claude": {
       "cli_path": p.claude.cli_path,

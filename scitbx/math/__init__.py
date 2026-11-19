@@ -38,6 +38,28 @@ Examples
 1.0 2.30258509299
 """
 
+golden_spiral.__doc__ = """
+Unit vectors spread over the sphere on a golden-angle spiral.
+
+The heights along y step evenly by 2 / count from next to the -y pole, half
+a step in from each pole, and the azimuth about y advances by the golden
+angle, pi * (3 - sqrt(5)).
+
+Parameters
+----------
+count : int
+  Number of points.
+
+Attributes
+----------
+count : int
+  Number of points.
+unit_area : float
+  The area of the unit sphere each point stands for, 4 pi / count.
+points : golden_spiral_points_range
+  The count unit vectors, from next to the -y pole; iterable.
+"""
+
 def median_statistics(data):
   return flex.median.dispersion(data)
 
@@ -368,6 +390,38 @@ def point_on_sphere(r, s_deg, t_deg, center):
   y = center[1] + r * sin(s) * sin(t)
   z = center[2] + r * cos(t)
   return x,y,z
+
+def saff_kuijlaars_spiral(n):
+  """Unit vectors spread over the sphere on the Saff-Kuijlaars spiral.
+
+  The heights h along y step evenly from -1 up to 1, both poles included,
+  and the azimuth about y advances by 3.6 / sqrt(n * (1 - h**2)). E. B.
+  Saff and A. B. J. Kuijlaars, "Distributing many points on a sphere",
+  Mathematical Intelligencer 19 (1997) 5-11.
+
+  Parameters
+  ----------
+  n : int
+    Number of points, at least 2.
+
+  Returns
+  -------
+  scitbx.array_family.flex.vec3_double
+    The n unit vectors, from the -y pole to the +y pole.
+  """
+  assert n >= 2, n
+  points = flex.vec3_double()
+  phi = 0
+  for k in range(n):
+    h = -1 + 2.0 * k / (n - 1)
+    theta = math.acos(h)
+    if k == 0 or k == n - 1:
+      phi = 0
+    else:
+      phi = (phi + 3.6 / math.sqrt(n * (1 - h * h))) % (2 * math.pi)
+    points.append((math.sin(phi) * math.sin(theta), math.cos(theta),
+                   math.cos(phi) * math.sin(theta)))
+  return points
 
 def equally_spaced_points_on_vector(start, end, n=None, step=None):
   assert [n, step].count(None) == 1

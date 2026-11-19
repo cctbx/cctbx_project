@@ -108,14 +108,24 @@ class manager(object):
         force_restraints_model=False,
         disable_asu_cache=False,
         hd_selection=None,
+        normalization_exclude=None,
         ):
     """
     Compute energies for coordinates.  Originally this just used the standard
     geometry restraints from the monomer library, but it has since been
     extended to optionally incorporate a variety of external energy functions.
 
+    normalization_exclude (flex.bool or None): atoms whose geometry
+    restraints are left out of the restraint count that normalizes the
+    target; used only when this manager normalizes.
+
     :returns: scitbx.restraints.energies object
     """
+    # The keyword is passed on only when needed: geometry managers outside
+    # cctbx (amber, QM gradients) may not know it.
+    kw = {}
+    if (self.normalization and normalization_exclude is not None):
+      kw["normalization_exclude"] = normalization_exclude
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
       gradients=gradients,
@@ -163,7 +173,8 @@ class manager(object):
           compute_gradients=compute_gradients,
           gradients=result.gradients,
           disable_asu_cache=disable_asu_cache,
-          normalization=False)
+          normalization=False,
+          **kw)
       result += result.geometry
     if (self.cartesian_ncs_manager is None):
       result.cartesian_ncs_manager = None

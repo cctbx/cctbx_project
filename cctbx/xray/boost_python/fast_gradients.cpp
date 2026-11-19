@@ -26,6 +26,8 @@ namespace {
                   optional<double const&,
                            double const&,
                            double const&,
+                           double const&,
+                           bool,
                            double const&> >(
           (arg("unit_cell"),
            arg("scatterers"),
@@ -33,7 +35,9 @@ namespace {
            arg("u_base"),
            arg("wing_cutoff"),
            arg("exp_table_one_over_step_size"),
-           arg("tolerance_positive_definite"))))
+           arg("tolerance_positive_definite"),
+           arg("use_u_base_as_u_extra"),
+           arg("rho_cutoff"))))
         .def("sampling",
           (void(w_t::*)(
             af::const_ref<scatterer<> > const&,

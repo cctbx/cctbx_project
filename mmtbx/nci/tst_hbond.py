@@ -1355,6 +1355,40 @@ def exercise_08():
   else:
     assert 'no Pre'
 
+def exercise_09():
+  """Skew-kurtosis plot: Grid2D interpolation and the full figure path.
+  Regression test: scipy.interpolate.interp2d was removed in SciPy 1.14 and
+  output_skew_kurtosis_plot=true crashed."""
+  import os
+  from mmtbx.utils.grid2d import Grid2D
+  import mmtbx.nci.skew_kurt_plot
+  # 3x2 grid, data[x][y]; the spline must pass through the grid nodes
+  data = [[1., 2.], [3., 4.], [5., 6.]]
+  g = Grid2D(data, xmin=0, xmax=3, ymin=0, ymax=2)
+  for kind in ['linear', 'cubic']:
+    g.set_interpolation_f(kind)
+    for i in range(3):
+      for j in range(2):
+        v = g.get_interpolated_score(g.xmin + (i+0.5)*g.x_step,
+                                     g.ymin + (j+0.5)*g.y_step)
+        assert approx_equal(v, data[i][j], 1e-6), (kind, i, j, v, data[i][j])
+  # midway between nodes along y, linear interpolation is the mean
+  g.set_interpolation_f('linear')
+  assert approx_equal(g.get_interpolated_score(0.5, 1.0), 1.5, 1e-6)
+  try:
+    g.set_interpolation_f('nearest')
+  except ValueError: pass
+  else: assert 0, 'unsupported interpolation type accepted'
+  # full figure path used by phenix.hbond output_skew_kurtosis_plot=true
+  fn = 'exercise_09_skew_kurtosis'
+  if os.path.isfile(fn + '.png'): os.remove(fn + '.png')
+  mmtbx.nci.skew_kurt_plot.make_figure(
+    file_name     = fn,
+    theta1_coords = [(-0.5, 3.0)],
+    Rha_coords    = [(0.7, 2.5)],
+    dot_size      = 30)
+  assert os.path.isfile(fn + '.png'), fn + '.png was not written'
+
 if __name__ == '__main__':
   t0 = time.time()
   exercise_00()
@@ -1366,4 +1400,5 @@ if __name__ == '__main__':
   exercise_06()
   exercise_07()
   exercise_08()
+  exercise_09()
   print("OK. Time: %6.3f"%(time.time()-t0))

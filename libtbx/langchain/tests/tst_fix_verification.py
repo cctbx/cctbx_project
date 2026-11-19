@@ -192,13 +192,14 @@ def run(verbose=False):
             check("unregistered explicit_program (not found)", False, "v115.05")
 
         # Test 11: preprocessing and needs-plan programs don't skip plan generation
+        # (the local _needs_plan_programs set became the module-level
+        # _NEEDS_PLAN_PROGRAMS frozenset; check phenix.polder in its definition)
+        idx_np = src_ai.find("_NEEDS_PLAN_PROGRAMS = ")
+        end_np = src_ai.find("})", idx_np) if idx_np >= 0 else -1
         check("preprocessing/needs-plan programs generate full plan",
               "_preprocessing_programs" in src_ai and
-              "_needs_plan_programs" in src_ai and
-              "phenix.polder" in src_ai[
-                  src_ai.find("_needs_plan_programs"):
-                  src_ai.find("_needs_plan_programs")+200
-              ],
+              end_np > idx_np >= 0 and
+              "phenix.polder" in src_ai[idx_np:end_np],
               "v115.05")
 
         # Test 12: failed programs don't track output files

@@ -1,6 +1,15 @@
 from __future__ import absolute_import, division, print_function
 from xfel.ui.db import db_proxy
 
+def runs_in_range(all_runs, first_run, last_run, use_ids = True):
+  """ The runs a run group covers: those from first_run up to last_run, or
+      every run from first_run on when last_run is None (an open group).
+      Compared by run id, or by run number when use_ids is False. """
+  key = (lambda r: r.id) if use_ids else (lambda r: int(r.run))
+  if last_run is None:
+    return [r for r in all_runs if key(r) >= first_run]
+  return [r for r in all_runs if first_run <= key(r) <= last_run]
+
 class Rungroup(db_proxy):
   def __init__(self, app, rungroup_id = None, **kwargs):
     db_proxy.__init__(self, app, "%s_rungroup" % app.params.experiment_tag, id = rungroup_id, **kwargs)
@@ -40,21 +49,10 @@ class Rungroup(db_proxy):
 
   def sync_runs(self, first_run, last_run, use_ids = True):
     all_runs = self.app.get_all_runs()
-    runs = self.runs
-    run_ids = [r.id for r in runs]
-    if self.open:
-      if use_ids:
-        tester = lambda x: x.id >= first_run
-      else:
-        tester = lambda x: int(x.run) >= first_run
-    else:
-      if use_ids:
-        tester = lambda x: x.id >= first_run and x.id <= last_run
-      else:
-        tester = lambda x: int(x.run) >= first_run and int(x.run) <= last_run
-
+    run_ids = [r.id for r in self.runs]
+    wanted = [r.id for r in runs_in_range(all_runs, first_run, None if self.open else last_run, use_ids)]
     for run in all_runs:
-      if tester(run):
+      if run.id in wanted:
         if not run.id in run_ids:
           self.add_run(run.id)
       else:

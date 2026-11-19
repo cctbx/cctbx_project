@@ -23,6 +23,8 @@ if env_etc.enable_kokkos:
     os.environ['KOKKOS_ARCH'] = "HSW"
   if use_cuda and os.getenv('KOKKOS_CUDA_OPTIONS') is None:
     os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda"
+  # Makefile.kokkos refuses to run without this from Kokkos 4.6 on
+  os.environ['KOKKOS_USE_DEPRECATED_MAKEFILES'] = '1'
   os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double'
 
   library_flags = "-Llib"

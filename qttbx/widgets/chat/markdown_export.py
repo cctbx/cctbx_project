@@ -7,7 +7,8 @@ Without storage, image cells fall back to a sha256-tagged placeholder."""
 
 import json
 
-from qttbx.widgets.chat.agent.conversation import is_ephemeral_block
+from qttbx.widgets.chat.agent.conversation import (
+  is_note_block, is_tool_result_answer)
 
 
 def conversation_to_markdown(conv, storage=None):
@@ -25,12 +26,25 @@ def conversation_to_markdown(conv, storage=None):
 
       ## <assistant>
       <text content, possibly multiple paragraphs>
+      <tool-use fence>
+      <tool-result fence>
+
+  A tool-result answer -- the ``role="user"`` message the session appends
+  after an assistant tool_use turn, holding nothing but tool_result blocks --
+  carries the user role only because that is the Messages API shape; the
+  user did not write it. So unless it is the first message, it opens no
+  section of its own: its fences append under whatever section precedes it
+  (in a well-formed conversation, the assistant section that issued the
+  tool_use), as the reloaded window folds that message into the preceding
+  bubble. Every other user-role message heads a ``## You`` section, whether
+  the user typed it or the session appended it (the turn-cap marker).
 
   Each role block stitches the message's content blocks in order:
 
   - text -> emitted verbatim (already markdown from the model)
   - image -> ``![caption](path)`` or placeholder when storage absent
-  - thinking -> skipped (extended-thinking is internal, not the chat)
+  - thinking -> blockquote headed ``**Thinking**`` (the narration of a
+    claude_agent run lives here; signature-only blocks are skipped)
   - tool_use -> fenced code block tagged 'tool-use' with JSON input
   - tool_result -> fenced code block tagged 'tool-result' with the text
     content; nested image blocks render as image links
@@ -62,17 +76,21 @@ def conversation_to_markdown(conv, storage=None):
   out.append("")
   out.append("---")
   out.append("")
+  first = True
   for msg in conv.messages or []:
-    role = _role_label(msg)
-    out.append("## %s" % role)
-    out.append("")
+    # A tool-result answer folds under the preceding section (see the
+    # docstring). With nothing to fold under -- an orphan answer heading the
+    # conversation -- it keeps a role header so the output is never bare.
+    if first or not is_tool_result_answer(msg):
+      out.append("## %s" % _role_label(msg))
+      out.append("")
+    first = False
     for block in msg.content or []:
-      # Ephemeral blocks (a transient context-pressure note) reach the model in
-      # the live conversation but are never persisted -- and this export is a
-      # SECOND serializer of that same in-memory conversation, so it must apply
-      # the same filter storage.save does, or 'Save chat' leaks the note in the
-      # window before the next send strips it from conv.messages.
-      if is_ephemeral_block(block):
+      # A context-pressure note block is part of what the model sees and is
+      # persisted with the conversation, but it is scaffolding, not the
+      # user's record: the export skips it, as the reloaded bubble does
+      # (message_bubble._add_block).
+      if is_note_block(block):
         continue
       try:
         rendered = _render_block(block, storage, conv.meta.id)
@@ -148,7 +166,7 @@ def _render_block(block, storage, conv_id):
   if t == "image":
     return _render_image(data, storage, conv_id)
   if t == "thinking":
-    return ""
+    return _render_thinking(data)
   if t == "tool_use":
     name = data.get("name", "?")
     try:
@@ -160,6 +178,24 @@ def _render_block(block, storage, conv_id):
   if t == "tool_result":
     return _render_tool_result(data, storage, conv_id)
   return "*[unknown block: %s]*" % (t or "")
+
+
+def _render_thinking(data):
+  """Render a thinking block as one labelled blockquote.
+
+  Every line is quoted (a blank line becomes a bare ``>``) so a
+  multi-paragraph summary stays a single quote instead of ending at its
+  first blank line; the closing blank line the caller adds then ends the
+  quote before the next block. An empty text (a signature-only block)
+  renders nothing.
+  """
+  text = (data.get("text", "") or "").strip()
+  if not text:
+    return ""
+  lines = ["> **Thinking**", ">"]
+  for line in text.splitlines():
+    lines.append("> " + line if line.strip() else ">")
+  return "\n".join(lines)
 
 
 def _render_image(data, storage, conv_id):

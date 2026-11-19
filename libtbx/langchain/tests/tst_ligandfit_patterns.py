@@ -301,7 +301,7 @@ def test_complete_real_logs():
 
     for name in logs:
         path = os.path.join(log_dir, name)
-        with open(path) as handle:
+        with open(path, encoding="utf-8") as handle:
             text = handle.read()
         got = _extract(text)
         assert set(got) == EXPECTED_KEYS, "%s: got %r" % (name, sorted(got))

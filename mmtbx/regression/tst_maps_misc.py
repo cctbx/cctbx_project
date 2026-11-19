@@ -65,6 +65,7 @@ def exercise_omit_atom_selection():
     "tst_mmtbx_maps_misc2.eff",
     "omit.selection=\"resname TRP\"",
     "prefix=tst_mmtbx_maps_misc2",
+    "skip_twin_detection=True",
   ], log=null_out())
 
 if (__name__ == "__main__"):

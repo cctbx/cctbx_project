@@ -151,8 +151,8 @@ def t_false_positive_rate_on_real_reports(mod):
     total_flags = flagged_reports = 0
     for log_path, rep_path in pairs:
         flags = mod.check_numbers(
-            open(rep_path, errors="replace").read(),
-            open(log_path, errors="replace").read())
+            open(rep_path, errors="replace", encoding="utf-8").read(),
+            open(log_path, errors="replace", encoding="utf-8").read())
         total_flags += len(flags)
         flagged_reports += 1 if flags else 0
     rate = flagged_reports / float(len(pairs))
@@ -170,8 +170,8 @@ def t_the_two_known_derived_figures_do_not_flag(mod):
         SKIPPED.append("xtriage capture absent")
         print("  SKIP: xtriage capture absent")
         return
-    flags = mod.check_numbers(open(rep_path, errors="replace").read(),
-                              open(log_path, errors="replace").read())
+    flags = mod.check_numbers(open(rep_path, errors="replace", encoding="utf-8").read(),
+                              open(log_path, errors="replace", encoding="utf-8").read())
     bad = [f for f in flags if "1.74" in str(f) or "0.03" in str(f)]
     ok("neither known derived figure is flagged", not bad, "%s" % bad)
 
@@ -225,8 +225,8 @@ def t_held_out_false_positive_rate(mod):
         print("  SKIP: no held-out reports")
         return
     flagged = sum(1 for lp, rp in pairs
-                  if mod.check_numbers(open(rp, errors="replace").read(),
-                                       open(lp, errors="replace").read()))
+                  if mod.check_numbers(open(rp, errors="replace", encoding="utf-8").read(),
+                                       open(lp, errors="replace", encoding="utf-8").read()))
     rate = flagged / float(len(pairs))
     print("      held-out: %d reports, %d flagged, rate %.0f%%"
           % (len(pairs), flagged, 100 * rate))

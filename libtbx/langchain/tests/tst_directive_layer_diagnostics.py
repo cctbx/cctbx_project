@@ -52,11 +52,44 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
-AI_AGENT_PATH = os.path.join(ROOT, "programs", "ai_agent.py")
+# programs/ai_agent.py lives in the phenix repository
+# (modules/phenix/phenix/programs/ai_agent.py), not in libtbx/langchain.
+_AI_AGENT_REL = os.path.join("phenix", "programs", "ai_agent.py")
+
+
+def _find_ai_agent():
+    """Return (path, how) for phenix's ai_agent.py, or (None, tried)."""
+    candidates = []
+    # 1. phenix checked out as a sibling of this cctbx_project checkout
+    #    (ROOT = <modules>/cctbx_project/libtbx/langchain).
+    checkout = os.path.dirname(os.path.dirname(ROOT))
+    candidates.append(("sibling of checkout", os.path.join(
+        os.path.dirname(checkout), "phenix", _AI_AGENT_REL)))
+    # 2. the phenix module registered in the libtbx environment.
+    try:
+        import libtbx.load_env
+        phenix_dist = libtbx.env.dist_path("phenix", default=None)
+    except Exception:
+        phenix_dist = None
+    if phenix_dist:
+        candidates.append(("libtbx.env.dist_path('phenix')",
+                           os.path.join(phenix_dist, _AI_AGENT_REL)))
+    # 3. $PHENIX/modules/phenix
+    phenix_env = os.environ.get("PHENIX", "")
+    if phenix_env:
+        candidates.append(("$PHENIX/modules/phenix", os.path.join(
+            phenix_env, "modules", "phenix", _AI_AGENT_REL)))
+    for how, path in candidates:
+        if os.path.isfile(path):
+            return path, how
+    return None, [path for _, path in candidates]
+
+
+AI_AGENT_PATH, _AI_AGENT_HOW = _find_ai_agent()
 
 
 def _read_ai_agent():
-    with open(AI_AGENT_PATH) as f:
+    with open(AI_AGENT_PATH, encoding="utf-8") as f:
         return f.read()
 
 
@@ -251,6 +284,14 @@ def test_k_c7_no_persistent_writeback_global():
 
 
 def run_all_tests():
+    if AI_AGENT_PATH is None:
+        # A failure, not a skip, so a cctbx-only checkout cannot report
+        # these checks as passed (as tst_step1f_single_emit also fails).
+        print("FAIL tst_directive_layer_diagnostics: phenix "
+              "programs/ai_agent.py not found (tried: %s)"
+              % ", ".join(_AI_AGENT_HOW))
+        return False
+    print("Using ai_agent.py via %s: %s" % (_AI_AGENT_HOW, AI_AGENT_PATH))
     tests = [
         ("K_C1_no_persistent_writeback", test_k_c1_no_persistent_writeback),
         ("K_C2_deepcopy_before_merge", test_k_c2_deepcopy_before_merge),

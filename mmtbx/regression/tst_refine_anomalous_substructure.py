@@ -7,7 +7,7 @@ def exercise():
   from mmtbx.regression.make_fake_anomalous_data import generate_cd_cl_inputs
   pdb_file, mtz_file = generate_cd_cl_inputs(file_base="tst_anom_ref")
   groups = refine_anomalous_substructure.run(
-    args=[pdb_file, mtz_file],
+    args=[pdb_file, mtz_file, "skip_twin_detection=True"],
     out=null_out())
   assert len(groups) == 2
 

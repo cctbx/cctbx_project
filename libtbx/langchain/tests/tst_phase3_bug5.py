@@ -17,6 +17,13 @@ import sys
 import tempfile
 import shutil
 
+# Tests import langchain modules as top-level packages (agent.*, utils.*);
+# put the langchain directory on sys.path (as tst_halfmap_sigmaa_inventory does).
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_HERE)
+if _ROOT not in sys.path:
+  sys.path.insert(0, _ROOT)
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -11,6 +11,7 @@
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <cctbx/geometry_restraints/chirality.h>
+#include <cctbx/geometry_restraints/n_proxies_excluding.h>
 #include <cctbx/geometry_restraints/proxy_select.h>
 
 SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(cctbx::geometry_restraints::chirality)
@@ -178,6 +179,12 @@ namespace {
         af::ref<scitbx::vec3<double> > const&))
         chirality_residual_sum,
       (arg("sites_cart"), arg("proxies"), arg("gradient_array")));
+    def("n_proxies_excluding",
+      (std::size_t(*)(
+        af::const_ref<chirality_proxy> const&,
+        af::const_ref<bool> const&))
+      n_proxies_excluding,
+      (arg("proxies"), arg("exclude")));
     def("chirality_deltas",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,

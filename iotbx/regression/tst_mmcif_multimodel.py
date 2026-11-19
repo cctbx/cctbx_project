@@ -88,11 +88,41 @@ def tst_1():
       '1', '1', '1', '1', '2', '2', '2', '2', '2', '2', '2', '2', '3', '3', '3', '3', '3', '3', '3', '3',
       '1', '1', '1', '1', '1', '1', '1', '1', '1', '2', '2', '2', '2', '2', '2', '2', '2', '2', '3', '3', '3', '3', '3', '3', '3', '3',
       '1', '1', '1', '1', '1', '1', '1', '1', '1', '1', '1', '1', '1']
-  # Make sure atom ids get reset
-  assert list(cb['_atom_site.id']) == [
-      '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
-      '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26',
-      '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']
+  # _atom_site.id is unique across models
+  assert list(cb['_atom_site.id']) == [str(i) for i in range(1, 60)]
+
+pdb_str_2 = """\
+MODEL        1
+ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 10.00           C
+ANISOU    1  CA  ALA A   1     1000   1000   1000      0      0      0       C
+ENDMDL
+MODEL        2
+ATOM      1  CA  ALA A   1       1.000   0.000   0.000  1.00 10.00           C
+ANISOU    1  CA  ALA A   1     4000   4000   4000      0      0      0       C
+ENDMDL
+END
+"""
+
+def tst_2():
+  """Anisotropic ADPs of every model survive the mmCIF round trip."""
+  import pickle
+  from cctbx.array_family import flex
+  h = iotbx.pdb.input(source_info=None, lines=pdb_str_2).construct_hierarchy()
+  u11 = [a.uij[0] for a in h.atoms()]
+  assert u11 == [0.1, 0.4], u11
+  cb = h.as_cif_block()
+  assert list(cb['_atom_site.id']) == ['1', '2']
+  assert list(cb['_atom_site_anisotrop.id']) == ['1', '2']
+  again = iotbx.pdb.input(source_info=None,
+    lines=flex.split_lines(h.as_mmcif_string())).construct_hierarchy()
+  assert [a.uij[0] for a in again.atoms()] == u11
+  # pickle writes mmCIF when the hierarchy does not fit PDB format
+  for chain in h.chains():
+    chain.id = "LONG"
+  assert not h.fits_in_pdb_format()
+  again = pickle.loads(pickle.dumps(h))
+  assert [a.uij[0] for a in again.atoms()] == u11
 
 if __name__ == '__main__':
   tst_1()
+  tst_2()

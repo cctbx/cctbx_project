@@ -868,6 +868,130 @@ def exercise_automation_wrappers():
   assert (str(f_obs_new.space_group_info()) == "P 1 21 1")
   assert (approx_equal(f_obs_new.info().wavelength, 0.9792))
 
+def exercise_reconstructed_amplitudes():
+  # Anomalous amplitudes stored as F/SIGF/DANO/SIGDANO/ISYM columns (the
+  # CCP4 convention, e.g. mtzMADmod output) are fused by the MTZ reader into
+  # one anomalous array of observation type reconstructed_amplitude.  The
+  # automation wrapper process_raw_data must accept such an array and
+  # write_mtz_file must write it as F(+)/F(-) pairs plus merged F,SIGF, as
+  # it does for native F(+)/F(-) input.
+  from iotbx.reflection_file_utils import process_raw_data, \
+    load_f_obs_and_r_free
+  from cctbx.xray import observation_types
+  from libtbx.test_utils import approx_equal
+  in_file = "tmp_rfu_recon_in.mtz"
+  out_file = "tmp_rfu_recon_out.mtz"
+  out_file_merged = "tmp_rfu_recon_merged.mtz"
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(13,14,15,90,95,90),
+    space_group_symbol="P 2")
+  miller_set = miller.build_set(
+    crystal_symmetry=crystal_symmetry,
+    anomalous_flag=True,
+    d_min=2)
+  n_obs = miller_set.indices().size()
+  f_anom = miller_set.array(
+    data=flex.random_double(size=n_obs)*10+1,
+    sigmas=flex.random_double(size=n_obs)*0.5+0.1
+      ).set_observation_type_xray_amplitude()
+  assert f_anom.anomalous_flag()
+  # write the F/SIGF/DANO/SIGDANO/ISYM layout under the root label "F"
+  f_recon = f_anom.deep_copy().set_observation_type(
+    observation_types.reconstructed_amplitude())
+  assert f_recon.is_xray_reconstructed_amplitude_array()
+  r_free_flags = f_anom.average_bijvoet_mates().generate_r_free_flags(
+    fraction=0.1, format="ccp4")
+  mtz_dataset = f_recon.as_mtz_dataset(column_root_label="F")
+  mtz_dataset.add_miller_array(
+    miller_array=r_free_flags, column_root_label="FreeR_flag")
+  mtz_dataset.mtz_object().write(in_file)
+  assert mtz.object(in_file).column_labels() == [
+    "H","K","L","F","SIGF","DANOF","SIGDANOF","ISYMF","FreeR_flag"]
+  # read back: the five columns come back as one anomalous array
+  mtz_in = reflection_file_reader.any_reflection_file(file_name=in_file)
+  fused = None
+  for array in mtz_in.as_miller_arrays():
+    if (array.info().labels[0] == "F"):
+      fused = array
+  assert fused is not None
+  assert fused.anomalous_flag()
+  assert fused.is_xray_reconstructed_amplitude_array()
+  assert fused.sigmas() is not None
+  assert fused.info().label_string() == "F,SIGF,DANOF,SIGDANOF,ISYMF"
+  # the F,SIGF columns as written (mean amplitudes) are the reference for
+  # the merged data written below
+  f_mean_ref = None
+  for array in mtz_in.as_miller_arrays(reconstruct_amplitudes=False):
+    if (array.info().label_string() == "F,SIGF"):
+      f_mean_ref = array
+  assert f_mean_ref is not None
+  assert not f_mean_ref.anomalous_flag()
+  # R-free flags as the automation code obtains them
+  reflection_file_srv = reflection_file_server(
+    crystal_symmetry=crystal_symmetry,
+    force_symmetry=True,
+    reflection_files=[mtz_in])
+  flags, test_flag_value = reflection_file_srv.get_r_free_flags(
+    file_name=None,
+    label="FreeR_flag",
+    test_flag_value=None,
+    disable_suitability_test=False,
+    parameter_scope="r_free_flags")
+  assert flags.info().label_string() == "FreeR_flag"
+  assert test_flag_value == 0
+  processed = process_raw_data(
+    obs=fused,
+    r_free_flags=flags,
+    test_flag_value=test_flag_value,
+    log=StringIO(),
+    merge_anomalous=False)
+  assert (not processed.flags_are_new())
+  # the caller's array is not mutated
+  assert fused.is_xray_reconstructed_amplitude_array()
+  # decisive check: the merged F,SIGF columns are written next to the
+  # Bijvoet pairs, which must not clash with the pair column labels
+  processed.write_mtz_file(out_file, single_dataset=False)
+  assert (processed.data_labels() == "F(+),SIGF(+),F(-),SIGF(-)")
+  assert mtz.object(out_file).column_labels() == [
+    "H","K","L","F(+)","SIGF(+)","F(-)","SIGF(-)","F","SIGF","FreeR_flag"]
+  # the automation reader finds both the merged and the anomalous data
+  f_obs, r_free = load_f_obs_and_r_free(out_file)
+  assert (not f_obs.anomalous_flag())
+  assert (f_obs.info().label_string() == "F,SIGF")
+  assert (f_obs.is_xray_amplitude_array())
+  f_obs_anom, r_free_anom = load_f_obs_and_r_free(out_file,
+    anomalous_flag=True)
+  assert (f_obs_anom.anomalous_flag())
+  assert (f_obs_anom.info().label_string() == "F(+),SIGF(+),F(-),SIGF(-)")
+  # the merged F column is the mean of the Bijvoet mates, i.e. the F column
+  # of the input (stored in single precision); the sigmas differ by design
+  # and are not compared
+  f_mean_out = None
+  for array in reflection_file_reader.any_reflection_file(
+      file_name=out_file).as_miller_arrays():
+    if (array.info().label_string() == "F,SIGF"):
+      f_mean_out = array
+  assert f_mean_out is not None
+  ref, out = f_mean_ref.common_sets(other=f_mean_out)
+  assert ref.indices().size() > 0
+  assert ref.indices().size() == f_mean_ref.indices().size()
+  assert ref.indices().size() == f_mean_out.indices().size()
+  assert approx_equal(ref.data(), out.data(), eps=1e-3)
+  # merging the anomalous data on input
+  processed_merged = process_raw_data(
+    obs=fused,
+    r_free_flags=flags,
+    test_flag_value=test_flag_value,
+    log=StringIO(),
+    merge_anomalous=True)
+  assert (processed_merged.data_labels() == "F,SIGF")
+  assert (not processed_merged.f_obs.anomalous_flag())
+  for single_dataset in [True, False]:
+    processed_merged.write_mtz_file(out_file_merged,
+      single_dataset=single_dataset)
+    assert mtz.object(out_file_merged).column_labels() == [
+      "H","K","L","F","SIGF","FreeR_flag"]
+
 def exercise():
   if (mtz is None):
     print("Skipping iotbx/tst_reflection_file_utils.py: ccp4io not available")
@@ -879,6 +1003,7 @@ def exercise():
   exercise_get_experimental_phases()
   exercise_extract_miller_array_from_file()
   exercise_automation_wrappers()
+  exercise_reconstructed_amplitudes()
 
 def run():
   exercise()

@@ -128,12 +128,17 @@ Optional output:
 
     solvent_exclusion_mask_selection="resname LIG"
   ''')
-    if (self.params.polder.sphere_radius < 3):
-      raise Sorry("Sphere radius out of range: must be larger than 3 A")
+    p = self.params.polder
+    # sphere_radius is unused in box mode; GUI disables (may blank) the field
+    if (not p.compute_box):
+      if (p.sphere_radius is None or p.sphere_radius < 3):
+        raise Sorry("Solvent exclusion radius must be at least 3 A.")
     if (self.params.polder.box_buffer is not None and
       (self.params.polder.box_buffer < 0 or self.params.polder.box_buffer > 5)):
       raise Sorry("Box buffer out of range: must be between 0 and 5")
 
+    if (p.resolution_factor is None):
+      raise Sorry("Resolution gridding factor is required.")
     if (self.params.polder.resolution_factor < 0.0):
       raise Sorry('Use a positive value for the resolution gridding factor.')
     if (self.params.polder.resolution_factor > 0.5):

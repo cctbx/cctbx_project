@@ -750,7 +750,7 @@ def test_docs_do_not_contradict_the_code_on_channel_count():
         path = os.path.join(docs, name)
         if not os.path.exists(path):
             continue
-        handle = open(path)
+        handle = open(path, encoding="utf-8")
         try:
             text = handle.read()
         finally:
@@ -1265,7 +1265,7 @@ def test_corpus_P7_wave1_ground_truth():
         print("      SKIP (no program_truth.json)")
         return
     import json
-    handle = open(truth_path)
+    handle = open(truth_path, encoding="utf-8")
     try:
         truth = json.load(handle)
     finally:
@@ -1983,7 +1983,7 @@ def test_D6_module_is_free_of_python3_only_syntax():
     whose header promises Python 2 compatibility."""
     path = os.path.join(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__))), "log_extraction", "log_structure_extractor.py")
-    handle = open(path)
+    handle = open(path, encoding="utf-8")
     try:
         source = handle.read()
     finally:
@@ -2018,7 +2018,7 @@ def test_D9_no_test_in_this_file_asserts_a_disjunction():
     Meta-tests are usually a bad idea; this one earns its place because the
     failure it guards against is invisible to a green suite by definition."""
     path = os.path.abspath(__file__)
-    handle = open(path)
+    handle = open(path, encoding="utf-8")
     try:
         body = handle.read()
     finally:
@@ -2083,7 +2083,7 @@ def test_D12_every_negative_control_still_patches_something():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sys.path.insert(0, root)
     from log_extraction import run_controls
-    handle = open(os.path.join(root, "log_extraction", "log_structure_extractor.py"))
+    handle = open(os.path.join(root, "log_extraction", "log_structure_extractor.py"), encoding="utf-8")
     try:
         source = handle.read()
     finally:

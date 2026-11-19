@@ -1,6 +1,7 @@
 """Multi-line chat input with attachments, drag-drop, paste, and buttons.
 
-The button row holds Save chat / Auto-approve / search / attach / Send.
+The button row holds Save chat / Effort / Auto-approve / thinking / search /
+attach / Send.
 
 The Send button's label flips to 'Stop' when ``set_busy(True)`` is
 called; ``click_send`` emits ``stop`` in that mode. Attachments are
@@ -8,12 +9,14 @@ added via ``attach_bytes`` (also fed by drag-drop, Ctrl/Cmd+V paste,
 or the ``@`` attach button) and travel with the next ``send`` signal
 as a ``list[dict]`` of ``{"bytes": bytes, "mime": str, "filename":
 str}``. ``auto_approve_changed`` carries the auto-approve toggle's
-checked state; ``save_chat`` is a parameterless signal the chat window
-listens to so it can prompt for a destination and write the
-markdown export.
+checked state; ``effort_changed`` carries the Effort combo's new level
+(a user change only; ``set_effort`` selects silently); ``save_chat`` is
+a parameterless signal the chat window listens to so it can prompt for
+a destination and write the markdown export.
 """
 
-from qttbx.qt import QtCore, QtGui, QtWidgets
+from qttbx.qt import QtCore, QtGui, QtWidgets, QAction
+from qttbx.widgets.chat.agent.profile import EFFORT_LEVELS, DEFAULT_EFFORT
 
 
 class _DropTextEdit(QtWidgets.QPlainTextEdit):
@@ -46,6 +49,26 @@ class _DropTextEdit(QtWidgets.QPlainTextEdit):
     super().insertFromMimeData(source)
 
 
+class _EffortComboBox(QtWidgets.QComboBox):
+  """A combo the mouse wheel cannot turn by accident.
+
+  Styles that scroll a combo on the wheel (Fusion, Windows) would change the
+  effort level as the pointer passed over it, and every change is a round
+  trip to the backend. Focus comes only by click or Tab (StrongFocus, not
+  the default WheelFocus), and a wheel event over an unfocused combo is
+  passed up untouched so the enclosing view scrolls instead.
+  """
+  def __init__(self, parent=None):
+    super(_EffortComboBox, self).__init__(parent)
+    self.setFocusPolicy(QtCore.Qt.StrongFocus)
+
+  def wheelEvent(self, event):
+    if not self.hasFocus():
+      event.ignore()
+      return
+    super(_EffortComboBox, self).wheelEvent(event)
+
+
 class MessageInput(QtWidgets.QWidget):
   """Multi-line chat input with attachments and a button row."""
 
@@ -54,6 +77,7 @@ class MessageInput(QtWidgets.QWidget):
   attachment_rejected = QtCore.Signal(str)
   save_chat = QtCore.Signal()                      # 'Save chat' button click
   auto_approve_changed = QtCore.Signal(bool)       # checked state
+  effort_changed = QtCore.Signal(str)              # user picked a level
   search_clicked = QtCore.Signal()                 # 🔍 button click
   goto_conversation_start = QtCore.Signal()        # Ctrl+Home in editor
   goto_conversation_end = QtCore.Signal()          # Ctrl+End in editor
@@ -125,8 +149,8 @@ class MessageInput(QtWidgets.QWidget):
     layout.addWidget(self._edit)
     # Button row below the edit. Save chat sits on the left; the
     # auto-approve toggle sits in the centre (flanked by stretches so
-    # it stays centred as the row grows); Attach + Send are on the
-    # right.
+    # it stays centred as the row grows); the thinking toggle, search,
+    # Attach and Send are on the right.
     button_row = QtWidgets.QHBoxLayout()
     button_row.setContentsMargins(0, 0, 0, 0)
     self._save_chat_btn = QtWidgets.QPushButton("Save chat", self)
@@ -139,6 +163,20 @@ class MessageInput(QtWidgets.QWidget):
     self._save_chat_btn.clicked.connect(self._on_save_chat_clicked)
     button_row.addWidget(self._save_chat_btn)
     button_row.addStretch(1)
+    # Effort level for the turns that follow. The window seeds it from the
+    # agent (set_effort, silent) and relays a user change through
+    # effort_changed; disabled while a turn is in flight (set_busy) so a
+    # change can never land mid-round.
+    self._effort_label = QtWidgets.QLabel("Effort", self)
+    self._effort_combo = _EffortComboBox(self)
+    self._effort_combo.addItems(list(EFFORT_LEVELS))
+    self._effort_combo.setCurrentText(DEFAULT_EFFORT)
+    self._effort_combo.setToolTip(
+      "How hard the assistant reasons on each turn (applies from the next "
+      "message)")
+    self._effort_combo.currentTextChanged.connect(self._on_effort_changed)
+    button_row.addWidget(self._effort_label)
+    button_row.addWidget(self._effort_combo)
     self._auto_approve_btn = QtWidgets.QPushButton("Auto-approve", self)
     self._auto_approve_btn.setCheckable(True)
     self._auto_approve_btn.setToolTip(
@@ -147,6 +185,22 @@ class MessageInput(QtWidgets.QWidget):
     self._auto_approve_btn.toggled.connect(self._on_auto_approve_toggled)
     button_row.addWidget(self._auto_approve_btn)
     button_row.addStretch(1)
+    # Expand-all / collapse-all switch for the thinking cells: ONE
+    # checkable action the 💭 button wraps and the window adds to its
+    # View menu as well, so Qt keeps every handle in step and the window
+    # only connects toggled(bool) to the conversation view. Checked by
+    # default, matching ConversationView's own default (two owners of
+    # the same value; keep them equal).
+    self.thinking_action = QAction("Show thinking", self)
+    self.thinking_action.setCheckable(True)
+    self.thinking_action.setChecked(True)
+    self.thinking_action.setIconText("💭")       # the button's text
+    self.thinking_action.setToolTip(
+      "Show thinking: expand every thinking cell (on) or collapse them "
+      "all (off)")
+    self._thinking_btn = QtWidgets.QToolButton(self)
+    self._thinking_btn.setDefaultAction(self.thinking_action)
+    button_row.addWidget(self._thinking_btn)
     self._search_btn = QtWidgets.QToolButton(self)
     self._search_btn.setText("🔍")
     self._search_btn.setToolTip("Search conversation (Ctrl+F / ⌘F)")
@@ -329,6 +383,7 @@ class MessageInput(QtWidgets.QWidget):
   def set_busy(self, busy):
     self._busy = bool(busy)
     self._button.setText("Stop" if self._busy else "Send")
+    self._effort_combo.setEnabled(not self._busy)
 
   # ---- attachments ---------------------------------------------------------
 
@@ -479,6 +534,30 @@ class MessageInput(QtWidgets.QWidget):
     on = bool(on)
     if self._auto_approve_btn.isChecked() != on:
       self._auto_approve_btn.setChecked(on)
+
+  # ---- effort -------------------------------------------------------------
+
+  def _on_effort_changed(self, level):
+    """Relay a user's combo change as ``effort_changed(level)``."""
+    self.effort_changed.emit(str(level))
+
+  def set_effort(self, level):
+    """Programmatically select ``level`` without emitting ``effort_changed``.
+
+    For the window seeding the combo from the agent. A no-op when already
+    selected, so a relay loop (toggle -> window -> set_effort) cannot form.
+    """
+    if self._effort_combo.currentText() == level:
+      return
+    self._effort_combo.blockSignals(True)
+    try:
+      self._effort_combo.setCurrentText(level)
+    finally:
+      self._effort_combo.blockSignals(False)
+
+  def effort(self):
+    """The level the combo shows."""
+    return self._effort_combo.currentText()
 
   # ---- send / stop ---------------------------------------------------------
 

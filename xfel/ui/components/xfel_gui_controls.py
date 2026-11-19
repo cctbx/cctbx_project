@@ -10,6 +10,7 @@ Description : XFEL UI Custom Widgets and Controls
 
 import os
 import wx
+import wx.grid
 import wx.lib.agw.floatspin as fs
 import wx.richtext as rt
 from wxtbx import metallicbutton as mb
@@ -325,6 +326,34 @@ class TextButtonCtrl(CtrlBase):
 
     output_box.AddGrowableCol(1, 1)
     self.SetSizer(output_box)
+    setup_tooltip(self)
+
+class ComboTextCtrl(CtrlBase):
+  ''' Generic panel that will place an editable combo box with a label: the
+      user picks one of the choices or types any other value '''
+
+  def __init__(self, parent,
+               label='', label_size=(100, -1),
+               label_style='normal',
+               ctrl_size=(200, -1),
+               choices=(),
+               value='', **kwargs):
+
+    CtrlBase.__init__(self, parent=parent, label_style=label_style, **kwargs)
+
+    output_box = wx.FlexGridSizer(1, 2, 0, 10)
+    self.txt = wx.StaticText(self, label=label, size=label_size)
+    self.txt.SetFont(self.font)
+    output_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
+
+    self.ctr = wx.ComboBox(self, name=self.Name + "_ctr", size=ctrl_size,
+                           choices=list(choices), style=wx.CB_DROPDOWN)
+    self.ctr.SetValue(value)
+    output_box.Add(self.ctr, flag=wx.EXPAND)
+
+    output_box.AddGrowableCol(1, 1)
+    self.SetSizer(output_box)
+    setup_tooltip(self)
 
 class TwoButtonCtrl(CtrlBase):
   ''' Generic panel that will place a text control, with a label and an
@@ -363,6 +392,7 @@ class TwoButtonCtrl(CtrlBase):
 
     output_box.AddGrowableCol(1, 1)
     self.SetSizer(output_box)
+    setup_tooltip(self)
 
 class OptionCtrl(CtrlBase):
   ''' Generic panel will place a text control w/ label '''
@@ -480,6 +510,7 @@ class SpinCtrl(CtrlBase):
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
     self.SetSizer(ctr_box)
+    setup_tooltip(self)
 
 class ChoiceCtrl(CtrlBase):
   ''' Generic panel will place a choice control w/ label '''
@@ -510,6 +541,7 @@ class ChoiceCtrl(CtrlBase):
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
     self.SetSizer(ctr_box)
+    setup_tooltip(self)
 
 class CheckListCtrl(CtrlBase):
   def __init__(self, parent,
@@ -531,12 +563,16 @@ class CheckListCtrl(CtrlBase):
     else:
       if direction == 'horizontal':
         ctr_box = wx.FlexGridSizer(1, 2, 0, 10)
+        ctr_box.AddGrowableRow(0)
+        ctr_box.AddGrowableCol(1)
       elif direction == 'vertical':
         ctr_box = wx.FlexGridSizer(2, 1, 10, 0)
+        ctr_box.AddGrowableRow(1)
+        ctr_box.AddGrowableCol(0)
       ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
 
-    ctr_box.Add(self.ctr, proportion=1,
-                flag=wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
+    # The list takes whatever room the parent gives the control
+    ctr_box.Add(self.ctr, proportion=1, flag=wx.EXPAND)
 
     self.SetSizer(ctr_box)
 
@@ -936,3 +972,65 @@ class IsoformInfoCtrl(CtrlBase):
       plotter = pltr.PopUpCharts()
       plotter.plot_uc_histogram(info_list=[self.uc_values], legend_list=[])
       plotter.plt.show()
+
+class CopyGrid(wx.grid.Grid):
+  ''' Read-only grid of strings. Ctrl+C copies the selected cells to the
+      clipboard as tab-separated text, one line per row; Ctrl+A selects all. '''
+
+  def __init__(self, parent, columns, **kwargs):
+    wx.grid.Grid.__init__(self, parent, **kwargs)
+    self.CreateGrid(0, len(columns))
+    for i, name in enumerate(columns):
+      self.SetColLabelValue(i, name)
+    self.EnableEditing(False)
+    self.SetRowLabelSize(0)
+    self.Bind(wx.EVT_KEY_DOWN, self.onKey)
+
+  def set_rows(self, rows):
+    ''' Replace the contents with rows, a list of lists of strings '''
+    self.BeginBatch()
+    if self.GetNumberRows():
+      self.DeleteRows(0, self.GetNumberRows())
+    self.AppendRows(len(rows))
+    for r, row in enumerate(rows):
+      for c, value in enumerate(row):
+        self.SetCellValue(r, c, value)
+    self.AutoSizeColumns()
+    self.EndBatch()
+
+  def onKey(self, e):
+    if e.ControlDown() and e.GetKeyCode() == ord('C'):
+      self.copy_selection()
+    elif e.ControlDown() and e.GetKeyCode() == ord('A'):
+      self.SelectAll()
+    else:
+      e.Skip()
+
+  def selected_cells(self):
+    ''' The selected (row, col) pairs, from blocks, whole rows and columns
+        and single cells; the cursor cell when nothing is selected '''
+    cells = set((c.GetRow(), c.GetCol()) for c in self.GetSelectedCells())
+    for tl, br in zip(self.GetSelectionBlockTopLeft(), self.GetSelectionBlockBottomRight()):
+      for r in range(tl.GetRow(), br.GetRow() + 1):
+        for c in range(tl.GetCol(), br.GetCol() + 1):
+          cells.add((r, c))
+    for r in self.GetSelectedRows():
+      for c in range(self.GetNumberCols()):
+        cells.add((r, c))
+    for c in self.GetSelectedCols():
+      for r in range(self.GetNumberRows()):
+        cells.add((r, c))
+    if not cells:
+      cells.add((self.GetGridCursorRow(), self.GetGridCursorCol()))
+    return cells
+
+  def selection_text(self):
+    cells = self.selected_cells()
+    rows = sorted(set(r for r, c in cells))
+    cols = sorted(set(c for r, c in cells))
+    return "\n".join("\t".join(self.GetCellValue(r, c) if (r, c) in cells else "" for c in cols) for r in rows)
+
+  def copy_selection(self):
+    if wx.TheClipboard.Open():
+      wx.TheClipboard.SetData(wx.TextDataObject(self.selection_text()))
+      wx.TheClipboard.Close()

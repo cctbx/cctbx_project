@@ -145,10 +145,12 @@ pdb_interpretation.geometry_restraints {
     selection_string="not protein", radius=3.3)
   #
   geo = model.restraints_as_geo()
-  geolines = [l.strip() for l in geo.splitlines()]
+  # a delta of -0.000 or 0.000 is the same zero
+  def tidy(l): return l.strip().replace("-0.000", " 0.000")
+  geolines = [tidy(l) for l in geo.splitlines()]
   for e in [expected1, expected2, expected3]:
     for l in e.splitlines():
-      l = l.strip()
+      l = tidy(l)
       found = False
       for gl in geolines:
         if l in gl:

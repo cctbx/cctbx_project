@@ -1,7 +1,5 @@
 """Seed-atom discovery for the endo_exo QM-region builder."""
 
-from __future__ import absolute_import, division, print_function
-
 from mmtbx.geometry_restraints.qmi import metals as qmi_metals
 
 
@@ -92,16 +90,3 @@ class SeedFinder:
       (None, [m])
       for m in self.find_by_element(model, element_filter=element_filter)
     ]
-
-  def count_metals(self, model):
-    """Return the number of metal atoms in *model*.
-
-    Parameters
-    ----------
-    model : mmtbx.model.manager
-
-    Returns
-    -------
-    int
-    """
-    return qmi_metals.count_metals(model)

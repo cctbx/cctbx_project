@@ -88,7 +88,7 @@ def t_log_appears_exactly_once_byte_for_byte(mod, ident):
     """Defects 1 and 2 in one assertion, on every corpus log."""
     bad = []
     for name in sorted(os.listdir(CORPUS)):
-        log = open(os.path.join(CORPUS, name), errors="replace").read()
+        log = open(os.path.join(CORPUS, name), errors="replace", encoding="utf-8").read()
         req = mod.build_analysis_request(
             log_text=log,
             identity=ident.resolve_program(log_text=log, log_path=name,
@@ -102,7 +102,7 @@ def t_log_appears_exactly_once_byte_for_byte(mod, ident):
 def t_hash_of_the_embedded_log_matches_the_source(mod, ident):
     """Count alone would miss mutation inside a single copy."""
     log = open(os.path.join(CORPUS, "refine_3_esterase.log"),
-               errors="replace").read()
+               errors="replace", encoding="utf-8").read()
     req = mod.build_analysis_request(
         log_text=log, identity=ident.resolve_program(
             log_text=log, log_path="refine_3_esterase.log",
@@ -124,7 +124,7 @@ def t_the_largest_log_is_not_truncated(mod, ident):
         SKIPPED.append("largest log absent")
         print("  SKIP: %s not present" % name)
         return
-    log = open(path, errors="replace").read()
+    log = open(path, errors="replace", encoding="utf-8").read()
     req = mod.build_analysis_request(
         log_text=log, identity=ident.resolve_program(
             log_text=log, log_path=name, registry_path=KNOWLEDGE))
@@ -137,10 +137,10 @@ def t_no_fabricated_program_name(mod, ident):
     """Defect 4. The shipped header named a nonexistent program on 20
     of 20; an unresolved identity must produce no header at all."""
     import yaml
-    registry = set(yaml.safe_load(open(KNOWLEDGE))) | {"phenix.find_reference"}
+    registry = set(yaml.safe_load(open(KNOWLEDGE, encoding="utf-8"))) | {"phenix.find_reference"}
     bad = []
     for name in sorted(os.listdir(CORPUS)):
-        log = open(os.path.join(CORPUS, name), errors="replace").read()
+        log = open(os.path.join(CORPUS, name), errors="replace", encoding="utf-8").read()
         idn = ident.resolve_program(log_text=log, log_path=name,
                                     registry_path=KNOWLEDGE)
         req = mod.build_analysis_request(log_text=log, identity=idn)
@@ -167,7 +167,7 @@ def t_payload_is_never_larger_than_the_log_plus_a_bound(mod, ident):
     grow the input, and this asserts it rather than assuming it."""
     worst = 0
     for name in sorted(os.listdir(CORPUS)):
-        log = open(os.path.join(CORPUS, name), errors="replace").read()
+        log = open(os.path.join(CORPUS, name), errors="replace", encoding="utf-8").read()
         req = mod.build_analysis_request(
             log_text=log, identity=ident.resolve_program(
                 log_text=log, log_path=name, registry_path=KNOWLEDGE))
@@ -208,7 +208,7 @@ def t_no_summariser_or_retriever_is_reachable(mod):
     the very thing it forbids."""
     import ast
     tree = ast.parse(open(mod.__file__.replace(".pyc", ".py"),
-                          errors="replace").read())
+                          errors="replace", encoding="utf-8").read())
     for node in ast.walk(tree):
         if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef)):
             if (node.body and isinstance(node.body[0], ast.Expr)

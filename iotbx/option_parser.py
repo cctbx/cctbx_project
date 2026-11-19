@@ -8,6 +8,14 @@ from cctbx import uctbx
 from libtbx.option_parser import libtbx_option_parser, OptionError, make_option
 
 class option_parser(libtbx_option_parser):
+  """optparse parser with crystal symmetry (--unit_cell, --space_group,
+  --symmetry) and resolution options.
+
+  Legacy: do not use in new code. New programs subclass
+  libtbx.program_template.ProgramTemplate and run through
+  iotbx.cli_parser.run_program; crystal symmetry comes from PHIL
+  parameters and the DataManager.
+  """
 
   def __init__(self, usage=None, description=None, more_help=None):
     libtbx_option_parser.__init__(self,

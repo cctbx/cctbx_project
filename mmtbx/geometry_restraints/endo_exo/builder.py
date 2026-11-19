@@ -1,55 +1,142 @@
 """QMRegionBuilder: the per-seed QM-region extraction pipeline.
 
-Orchestrates seed discovery, covalent-graph construction, BFS region growth,
-hydrogen capping, and (optionally) writing a PDB, mmCIF, and sidecar PHIL file
-per seed.  It is independent of the ProgramTemplate and the data manager, so it
-can be driven directly in memory: construct it with a params object, then call
+Orchestrates seed discovery, covalent-graph construction, BFS region growth
+and hydrogen capping, and formats the sidecar PHIL that describes each region.
+It is independent of the ProgramTemplate and the data manager, so it can be
+driven directly in memory: construct it with a params object, then call
 :meth:`run` with a model.
 """
 
-from __future__ import absolute_import, division, print_function
-
-import os
+import copy
 from collections import defaultdict
 
 import libtbx.phil
-from libtbx import Auto
-from libtbx.utils import Sorry
+from libtbx import Auto, group_args
+from libtbx.utils import Sorry, null_out
 from cctbx import sgtbx
 from cctbx.array_family import flex
+from cctbx.crystal import super_cell
 from iotbx.pdb import common_residue_names_get_class
 from scitbx import matrix
 
-from scipy.spatial import ConvexHull
-
-from mmtbx.geometry_restraints.endo_exo.util import (
-  _canon_op, _neighbour_iseqs)
+from mmtbx.geometry_restraints.endo_exo.util import neighbour_iseqs
 from mmtbx.geometry_restraints.endo_exo.seeds import SeedFinder
-from mmtbx.geometry_restraints.endo_exo.graph import AtomGraphBuilder
+from mmtbx.geometry_restraints.endo_exo.graph import (
+  AtomGraphBuilder, nodes_within_radius, sites_within_radius)
 from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
 from mmtbx.geometry_restraints.endo_exo.grow import QMRegionGrower
 from mmtbx.geometry_restraints.endo_exo.capping import HydrogenCapper
 
 
-# Sidecar PHIL emitted alongside each QM-region PDB/mmCIF.  Indices are
-# 0-based positional indices into the output PDB/mmCIF atom list.
+# The settings QMRegionBuilder reads; mmtbx.programs.endo_exo includes them.
+# Parse with iotbx.phil, which knows the atom_selection type.
+master_phil_str = """
+selection = None
+  .type = atom_selection
+  .multiple = True
+  .help = "Atoms that seed a QM region; each entry produces one region. If no \
+selection is given, every metal in the structure seeds its own region."
+element_filter = None
+  .type = str
+  .multiple = True
+  .help = "Restrict the seed search to atoms of these element(s). Element \
+symbols are case-insensitive and need not be metals. Consulted only when no \
+selection is given."
+altloc = auto
+  .type = str
+  .help = "Which altloc to retain per residue. 'auto' keeps the non-blank \
+altloc of highest mean occupancy, a letter keeps that altloc and falls back \
+to the highest-occupancy one where the letter is absent, and 'all' retains \
+every altloc."
+buffer {
+  radius = 5.0
+    .type = float(value_min=0)
+    .help = "Radius of the buffer region around the selected scatterer."
+  skip_search = False
+    .type = bool
+    .help = "Skip the initial radius search, so the region starts from the \
+seed atoms alone. Expansion along bonds still applies."
+}
+# contact_cutoff removed: its seed-contact edges let the BFS drift across the
+# lattice forever; the radius search covers what it did.
+# contact_cutoff = 3.0
+#   .type = float(value_min=0)
+#   .help = "Atoms within this distance (Angstrom) of any metal or selected atom are treated as bonded to it, even when the model has no such bond (e.g. metal-ligand coordination)."
+capping {
+  enable = True
+    .type = bool
+    .help = "Whether to cap boundary atoms with hydrogens. If False, the QM \
+region is written with dangling bonds."
+  preferred_cuts = True
+    .type = bool
+    .help = "Consult the per-residue table of preferred cut bonds before the \
+geometric cut heuristic."
+}
+include_hbond_partners = False
+  .type = bool
+  .help = "Whether to seed the QM region with atoms hydrogen bonded to it, so \
+that a hydrogen bond is not left with only one of its two partners. The added \
+seeds also shift where residues are cut, so the region can lose atoms as well \
+as gain them. Requires hydrogens."
+include_waters_in_convex_hull = True
+  .type = bool
+  .help = "Whether to add water molecules lying inside the convex hull of the \
+selected QM region."
+residues_to_include
+  .help = "Residues to include in the output whole, exempt from the sidechain \
+cut rules. Leave 'selection' unset to disable."
+{
+  selection = None
+    .type = atom_selection
+    .help = "Atoms whose residue groups are included whole in a region."
+  scope = *per_seed global
+    .type = choice
+    .help = "per_seed: add an included residue only to the region of a seed \
+it lies within 'proximity' of. global: add every included residue to every \
+seed region."
+  proximity = 5.0
+    .type = float(value_min=0)
+    .help = "Distance (Angstrom) within which an included residue is added to \
+a seed's region. Used only when scope=per_seed."
+}
+verbose = False
+  .type = bool
+  .help = "Whether to log each bond cut, cap and repair with its atoms."
+"""
+
+
+def default_params():
+  """Return the region builder's settings at their defaults.
+
+  Change the ones needed and pass the result to :class:`QMRegionBuilder`.
+
+  Returns
+  -------
+  libtbx.phil.scope_extract
+  """
+  import iotbx.phil
+  return iotbx.phil.parse(master_phil_str).extract()
+
+
+# Sidecar PHIL emitted alongside each QM-region model file.  Indices are
+# 0-based positional indices into the output model's atom list.
 master_sidecar_phil_str = """
 endo_exo_region {
-  cap_atoms = None
+  cap_iseqs = None
     .type = ints
     .help = "Indices of the boundary atoms in the QM-region output file; \
 None when the region has none."
   cap_original_elements = None
     .type = strings
     .help = "Element each boundary atom carried before capping, parallel to \
-cap_atoms."
-  completed_atoms = None
+cap_iseqs."
+  completed_iseqs = None
     .type = ints
     .help = "Indices of atoms this run ADDED to repair a valence the input \
 model left open at a chain break; they are not caps and carry no original \
 element.  Their positions are constructed, not measured, so a consumer may \
 wish to leave them free to relax."
-  seed_atoms = None
+  seed_iseqs = None
     .type = ints
     .help = "Indices of seed atoms in the QM-region output file (the metal \
 atom in metal-scan mode, or all atoms matched by the selection string)."
@@ -61,68 +148,137 @@ None for metal-scan regions."
 """
 
 
-class QMRegionBuilder(object):
+def format_sidecar(result):
+  """Return the sidecar PHIL text that describes one QM region.
+
+  The sidecar records which atoms are hydrogen caps, the element each carried
+  beforehand, which atoms were added to repair an open valence, which atoms
+  seeded the region, and the selection string.  Every index it holds is
+  positional into the region's model.
+
+  Parameters
+  ----------
+  result : libtbx.group_args
+      One region as returned by :meth:`QMRegionBuilder.run`.
+
+  Returns
+  -------
+  str
+  """
+  # An empty list formats as a bare ``key =``, which does not parse back, so
+  # empty lists are written as None (the declared default) instead.
+  def _or_none(values):
+    values = list(values)
+    return values or None
+
+  sidecar_phil = libtbx.phil.parse(master_sidecar_phil_str)
+  sidecar_phil_extract = sidecar_phil.extract()
+  region = sidecar_phil_extract.endo_exo_region
+  region.cap_iseqs = _or_none(result.cap_iseqs)
+  region.cap_original_elements = _or_none(result.cap_original_elements)
+  region.completed_iseqs = _or_none(result.completed_iseqs)
+  region.seed_iseqs = _or_none(result.seed_iseqs)
+  region.selection_string = result.selection_string
+  return sidecar_phil.format(sidecar_phil_extract).as_str()
+
+
+class QMRegionBuilder:
   """Build QM regions around seed sites for a single model.
 
   Parameters
   ----------
-  params : group_args-like
-      Resolved parameters (the ``master_phil_str`` scope extract from
-      :class:`mmtbx.programs.endo_exo.Program`, or any object exposing the
-      same attributes).
+  params : libtbx.phil.scope_extract, optional
+      Settings from :data:`master_phil_str`, as :func:`default_params`
+      returns them; the defaults when None.
   logger : file-like or None, optional
-      Destination for diagnostic messages.
+      Destination for diagnostic messages; None discards them.
   """
 
-  def __init__(self, params, logger=None):
+  def __init__(self, params=None, logger=None):
+    if params is None:
+      params = default_params()
     self.params = params
+    if logger is None:
+      logger = null_out()
     self.logger = logger
     self._results = []
     self._include_nodes = set()
+    self._hbond_cache = None
+    self._waters_cache = None
     self._graph_builder = AtomGraphBuilder()
-    self._capper = HydrogenCapper(log=self.logger)
+    trace_log = self.logger if self.params.verbose else null_out()
+    self._capper = HydrogenCapper(log=trace_log)
     self._bond_cut_detector = BondCutDetector(
-      use_preferred_cuts=self.params.capping.preferred_cuts,
-      log=self.logger,
-    )
+      use_preferred_cuts=self.params.capping.preferred_cuts)
     self._region_grower = QMRegionGrower(
       self._bond_cut_detector,
       log=self.logger,
+      verbose=self.params.verbose,
     )
 
-  def run(self, model, model_name, default_output_filename):
-    """Locate seeds, grow QM regions, and (optionally) write outputs.
+  def run(self, model):
+    """Locate seeds and grow a QM region around each.
 
     Parameters
     ----------
     model : mmtbx.model.manager
         The input model.  Restraints are processed in place.
-    model_name : str
-        Source model filename; used to derive output filename stems.
-    default_output_filename : callable
-        ``f(prefix=..., suffix=...) -> stem`` returning an output filename
-        stem (no extension); typically
-        ``ProgramTemplate.get_default_output_filename``.
 
     Returns
     -------
-    list of dict
-        One per-seed result dict (see :meth:`_process_seed`).
-    """
-    self.model_name = model_name
-    self.default_output_filename = default_output_filename
+    list of libtbx.group_args
+        One region per seed group, with
 
+        ``label`` (str)
+            The seed's identity, unique within the run: atom name, chain,
+            residue number and insertion code, and altloc when it has one,
+            as in ``FE1_chainB_res301`` or ``FE_chainA_res55A_altB``; or
+            ``sel001``, ``sel002``, ... for selection groups, in order.
+        ``model`` (mmtbx.model.manager)
+            The truncated, capped sub-model, without a restraints manager.
+        ``seed_iseqs`` (list of int)
+            Sorted positional indices of the seed atoms in ``model``.
+        ``cap_iseqs`` (list of int)
+            Sorted positional indices of the boundary atoms in ``model``,
+            whether or not capping is enabled; with ``capping.enable=False``
+            these atoms keep their original element and position.
+        ``cap_original_elements`` (list of str)
+            Element each cap atom carried before capping, parallel to
+            ``cap_iseqs``.
+        ``cap_anchor_iseqs`` (list of int)
+            Sorted, unique positional indices of the region's heavy atoms
+            the caps are bonded to.
+        ``completed_iseqs`` (list of int)
+            Sorted positional indices of the atoms added to repair a valence
+            the input model left open; they are not caps, and their
+            positions are constructed rather than measured.
+        ``sym_image_provenance`` (dict)
+            ``{i_seq: (parent_labels, symmetry_operation_xyz)}`` for each
+            symmetry-image atom, so a bond to one can be restrained against
+            its ASU parent; ``parent_labels`` is the parent's
+            ``iotbx.pdb.hierarchy.atom_with_labels`` (``fetch_labels()``).
+        ``selection_string`` (str or None)
+            The selection that seeded the group, or None for a metal.
+
+    Raises
+    ------
+    Sorry
+        When no seed atoms are found, a selection matches no atoms, or the
+        model has no hydrogens where hydrogen bonds are needed.
+    """
     # Only the bond graph is needed, so the CDL and symmetric-flip stages are
     # switched off: CDL ideals never reach the adjacency, and flipping would
     # move the input coordinates.  Metal auto-linking and the metal
     # coordination library are off as well, so the graph holds covalent bonds
     # only, with no metal-donor coordination bonds and no idealized Zn/Fe-S
     # proxies.
-    interpretation_params = model.get_current_pdb_interpretation_params()
-    interpretation_params.pdb_interpretation.restraints_library.cdl = False
-    interpretation_params.pdb_interpretation.restraints_library.mcl = False
-    interpretation_params.pdb_interpretation.flip_symmetric_amino_acids = False
-    interpretation_params.pdb_interpretation.automatic_linking.link_metals = False
+    interpretation_params = copy.deepcopy(
+      model.get_current_pdb_interpretation_params())
+    pdb_interpretation = interpretation_params.pdb_interpretation
+    pdb_interpretation.restraints_library.cdl = False
+    pdb_interpretation.restraints_library.mcl = False
+    pdb_interpretation.flip_symmetric_amino_acids = False
+    pdb_interpretation.automatic_linking.link_metals = False
     model.process(
       pdb_interpretation_params=interpretation_params,
       make_restraints=True,
@@ -131,9 +287,10 @@ class QMRegionBuilder(object):
     model = self._apply_altloc_filter(model)
 
     self._include_nodes = self._resolve_residues_to_include(model)
-    # Hydrogen bonds are found once per run and reused across seed groups.
-    # They index this model's atoms, so they cannot outlive it.
+    # Hydrogen bonds and waters are found once per run and reused across seed
+    # groups.  They index this model's atoms, so they cannot outlive it.
     self._hbond_cache = None
+    self._waters_cache = None
 
     seed_finder = SeedFinder()
     selection_strings = [s for s in (self.params.selection or []) if s]
@@ -167,7 +324,9 @@ class QMRegionBuilder(object):
         )
         self._print_seeds(seeds, label='selected atoms')
     else:
-      seeds_all = [s for _, grp in seed_groups for s in grp]
+      seeds_all = []
+      for _, grp in seed_groups:
+        seeds_all.extend(grp)
       self._print_seeds(seeds_all, label='seed atoms')
 
     # seeds_flat = [atom for _, grp in seed_groups for atom in grp]  # needed for contact_cutoff
@@ -191,7 +350,8 @@ class QMRegionBuilder(object):
     #   print(f'Added {added_edges} seed-contact edges '
     #         f'(cutoff={cutoff:.2f} A)', file=self.logger)
     print(
-      f'Always-included seed-centered radius: {self.params.buffer.radius:.2f} A',
+      f'Always-included seed-centered radius: '
+      f'{self.params.buffer.radius:.2f} A',
       file=self.logger,
     )
 
@@ -221,7 +381,9 @@ class QMRegionBuilder(object):
       requested letter, fall back to the highest-occupancy altloc and
       emit a warning.
 
-    Atoms with empty altloc (the shared backbone) are always kept.
+    Atoms with empty altloc (the shared backbone) are always kept.  The
+    conformer kept is the one :meth:`iotbx.pdb.hierarchy.root.remove_alt_confs`
+    keeps, here with its altloc label left in place.
 
     Parameters
     ----------
@@ -341,71 +503,44 @@ class QMRegionBuilder(object):
     Parameters
     ----------
     seed_index : int
-        1-based index used in output filenames and messages.
+        1-based index used in the labels of selection groups.
     seeds : list of iotbx.pdb.hierarchy.atom
         Seed atom(s).
     model : mmtbx.model.manager
     adjacency : collections.defaultdict of set
         Full covalent graph (not modified).
     selection_str : str or None, optional
-        Original selection string used to derive the output filename.
+        The selection that seeded the group.
 
     Returns
     -------
-    dict
-        Keys: ``file_name``, ``n_atoms``, ``model``, ``seed_iseqs``,
-        ``cap_iseqs``, ``cap_original_elements``, ``cap_anchor_iseqs``,
-        ``sym_image_provenance``, ``selection_string``.
+    libtbx.group_args
+        One region, as :meth:`run` describes it.
     """
     qm_atoms = self._seed_qm_region(seeds, model)
     visited_nodes, cap_nodes = self._region_grower.grow_region(
-      qm_atoms, adjacency, model, max_depth=self.params.max_search_depth)
+      qm_atoms, adjacency, model)
 
     visited_nodes = self._add_hull_waters(model, visited_nodes)
 
-    (model_sel, seed_indices, cap_indices, cap_original_elements,
-     cap_anchor_indices, sym_image_provenance,
-     completed_nodes, completed_indices) = self._materialize_qm_region(
+    region = self._materialize_qm_region(
       model, visited_nodes, cap_nodes, seeds, adjacency)
 
     # Reported after materialisation and told which valences were repaired,
     # so that the report names only the atoms that are still a bond short.
     self._report_open_valences(
-      model, visited_nodes, cap_nodes, adjacency, completed_nodes)
+      model, visited_nodes, cap_nodes, adjacency, region.completed_nodes)
 
-    file_name = self._make_output_filename(
-      seed_index, seeds, selection_str=selection_str
-    )
-    if self.params.write_files:
-      self._write_submodel(
-        model_sel, model.crystal_symmetry(), file_name)
-      self._write_sidecar(
-        file_name, cap_indices, cap_original_elements,
-        seed_indices, selection_str, completed_indices)
-
-    return {
-      'file_name': file_name,
-      'n_atoms': model_sel.get_number_of_atoms(),
-      # In-memory hand-off: the truncated sub-model (no restraints manager)
-      # and the positional indices of seed and cap atoms inside it, plus the
-      # heavy-atom anchor each cap is bonded to (kept in memory only, not the
-      # on-disk sidecar).
-      'model': model_sel,
-      'seed_iseqs': seed_indices,
-      'cap_iseqs': cap_indices,
-      'cap_original_elements': cap_original_elements,
-      'cap_anchor_iseqs': cap_anchor_indices,
-      # Atoms added to repair an open valence.  They are not caps, and their
-      # positions are constructed rather than measured, so a consumer that
-      # freezes caps may still want to leave these free to relax.
-      'completed_iseqs': completed_indices,
-      # {sub-model i_seq: ((chain, resseq, resname, name, altloc),
-      # symmetry_operation_xyz)} for symmetry-image atoms, so a metal-ligand bond
-      # to one can be restrained against its ASU parent (kept in memory only, not
-      # the on-disk sidecar).
-      'sym_image_provenance': sym_image_provenance,
-      'selection_string': selection_str,
-    }
+    return group_args(
+      label=self._region_label(seed_index, seeds, selection_str),
+      model=region.model,
+      seed_iseqs=region.seed_iseqs,
+      cap_iseqs=region.cap_iseqs,
+      cap_original_elements=region.cap_original_elements,
+      cap_anchor_iseqs=region.cap_anchor_iseqs,
+      completed_iseqs=region.completed_iseqs,
+      sym_image_provenance=region.sym_image_provenance,
+      selection_string=selection_str)
 
   # ------------------------------------------------------------------
   # Pipeline steps
@@ -416,14 +551,12 @@ class QMRegionBuilder(object):
 
     When *buffer.skip_search* is False (default) all atoms within
     ``params.buffer.radius`` of every seed are included.  When
-    *buffer.skip_search* is True only the seed atoms themselves are added and
-    BFS expansion (controlled by ``params.max_search_depth``) is relied upon to
-    grow the region.
+    *buffer.skip_search* is True only the seed atoms themselves are added,
+    and the region grows from them along bonds.
 
-    The radius search is symmetry-aware: the KD-tree supplies ASU
-    (identity-image) atoms within ``params.buffer.radius``, and
-    :meth:`AtomGraphBuilder.seed_sym_nodes_within_radius` adds the
-    symmetry-image atoms inside the same sphere.  Both halves are needed for
+    The radius search is symmetry-aware:
+    :meth:`AtomGraphBuilder.seed_nodes_within_radius` returns the atoms in
+    place and their symmetry copies inside the sphere.  Both are needed for
     a seed on a special position, so that symmetry copies of its
     surroundings are seeded, and therefore truncated, exactly like the ASU
     copy.
@@ -437,21 +570,14 @@ class QMRegionBuilder(object):
     -------
     set of (int, sgtbx.rt_mx)
     """
-    identity = _canon_op(sgtbx.rt_mx())
+    identity = sgtbx.rt_mx()
     qm_nodes = set()
     if self.params.buffer.skip_search:
       for seed in seeds:
         qm_nodes.add((seed.i_seq, identity))
     else:
-      for seed in seeds:
-        mask = self._graph_builder.atoms_within_radius(
-          seed, model, self.params.buffer.radius
-        )
-        for iseq in mask.iselection():
-          qm_nodes.add((iseq, identity))
-      qm_nodes |= self._graph_builder.seed_sym_nodes_within_radius(
-        seeds, model, self.params.buffer.radius
-      )
+      qm_nodes |= self._graph_builder.seed_nodes_within_radius(
+        seeds, model, self.params.buffer.radius)
     qm_nodes |= self._include_nodes_for(seeds, model)
     qm_nodes |= self._hbond_partner_nodes(model, qm_nodes)
     return qm_nodes
@@ -485,7 +611,8 @@ class QMRegionBuilder(object):
         continue
       atom = atoms[iseq]
       name = atom.name.strip().upper()
-      if name not in ('N', 'C') or atom.element.strip().upper() not in ('N', 'C'):
+      if (name not in ('N', 'C')
+          or atom.element.strip().upper() not in ('N', 'C')):
         continue
       # An atom whose valence materialisation completed is not short of
       # anything, so it is not reported.
@@ -496,35 +623,38 @@ class QMRegionBuilder(object):
       hydrogens = 0
       oxygens = 0
       on_backbone = False
-      for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
+      chain_continues = False
+      for neighbour_iseq in neighbour_iseqs(adjacency, iseq):
         other = atoms[neighbour_iseq]
         if other.element_is_hydrogen():
           hydrogens += 1
           continue
         if other.parent().parent() != residue_group:
           if other.name.strip().upper() == partner:
-            break                     # the chain continues, nothing missing
+            chain_continues = True    # nothing missing
+            break
           continue                    # some other link, not the backbone one
         other_name = other.name.strip().upper()
         if other_name == 'CA' and other.element.strip().upper() == 'C':
           on_backbone = True
         if other.element.strip().upper() == 'O':
           oxygens += 1
-      else:
-        # Only a peptide backbone has a neighbouring residue that can be
-        # missing.  A ligand that happens to name an atom N or C is bonded
-        # entirely within itself, and is short of nothing.
-        if not on_backbone:
-          continue
-        # A real terminus is not short of anything: an amine carries its
-        # own hydrogens, a carboxylate its second oxygen.
-        if name == 'C' and oxygens >= 2:
-          continue
-        if name == 'N' and hydrogens >= 2:
-          continue
-        open_valences.add(
-          f'{atom.parent().resname.strip()} '
-          f'{residue_group.resseq.strip()} {atom.name.strip()}')
+      if chain_continues:
+        continue
+      # Only a peptide backbone has a neighbouring residue that can be
+      # missing.  A ligand that happens to name an atom N or C is bonded
+      # entirely within itself, and is short of nothing.
+      if not on_backbone:
+        continue
+      # A real terminus is not short of anything: an amine carries its own
+      # hydrogens, a carboxylate its second oxygen.
+      if name == 'C' and oxygens >= 2:
+        continue
+      if name == 'N' and hydrogens >= 2:
+        continue
+      open_valences.add(
+        f'{atom.parent().resname.strip()} '
+        f'{residue_group.resseq.strip()} {atom.name.strip()}')
 
     if open_valences:
       print(
@@ -590,7 +720,7 @@ class QMRegionBuilder(object):
           continue
         step = record.symop if forward else record.symop.inverse()
         for op in ops_by_iseq[this]:
-          node = (other, _canon_op(op.multiply(step)))
+          node = (other, op.multiply(step).new_denominators(1, 12))
           if node not in qm_nodes:
             partners.add(node)
 
@@ -619,7 +749,7 @@ class QMRegionBuilder(object):
     """
     from mmtbx.nci import hbond
 
-    if getattr(self, '_hbond_cache', None) is None:
+    if self._hbond_cache is None:
       if not model.has_hd():
         raise Sorry('Model has no hydrogens. Add them and run again.')
       self._hbond_cache = hbond.find(model=model).result
@@ -644,7 +774,7 @@ class QMRegionBuilder(object):
     selection = self.params.residues_to_include.selection
     if not selection:
       return set()
-    identity = _canon_op(sgtbx.rt_mx())
+    identity = sgtbx.rt_mx()
     atoms = model.get_hierarchy().atoms()
     nodes = set()
     for iseq in model.selection(selection).iselection():
@@ -677,12 +807,11 @@ class QMRegionBuilder(object):
     if scope.scope == 'global':
       return self._include_nodes
 
-    # per_seed: union the proximity spheres of every seed in this group,
-    # reusing the graph builder's cached KD-tree.
+    # per_seed: union the proximity spheres of every seed in this group.
+    sites_cart = model.get_sites_cart()
     near = flex.bool(model.get_number_of_atoms(), False)
     for seed in seeds:
-      near = near | self._graph_builder.atoms_within_radius(
-        seed, model, scope.proximity)
+      near = near | sites_within_radius(sites_cart, seed.xyz, scope.proximity)
     near_iseqs = set(near.iselection())
 
     # Keep a residue whole if any of its atoms is inside a sphere.
@@ -706,12 +835,13 @@ class QMRegionBuilder(object):
     images that already participate in the QM region contribute to
     the bounding volume on equal footing with the parent atoms.
 
-    For every water residue group in the model and every space-group
-    operator, the operator is composed with the integer lattice shift
-    that brings the water's representative atom closest to the hull
-    centroid; if the resulting position lies inside the hull, nodes
-    for every atom in that residue group (under that combined op)
-    are added.  No-op when
+    Every point inside a convex hull is a weighted average of its
+    vertices, so none is farther from the centroid than the farthest
+    vertex.  The candidates are the water representative atoms within that
+    distance of the centroid, in place and as every symmetry copy
+    :func:`cctbx.crystal.super_cell.get_siiu` finds; for each candidate
+    inside the hull, nodes for every atom of its residue group (under that
+    copy's operation) are added.  No-op when
     ``params.include_waters_in_convex_hull`` is ``False``.
 
     Parameters
@@ -729,8 +859,8 @@ class QMRegionBuilder(object):
 
     cs = model.crystal_symmetry()
     uc = cs.unit_cell()
-    sg = cs.space_group()
-    sites_frac = uc.fractionalize(model.get_sites_cart())
+    sites_cart = model.get_sites_cart()
+    sites_frac = uc.fractionalize(sites_cart)
 
     # Hull built from materialized node positions
     hull_cart = flex.vec3_double()
@@ -742,21 +872,24 @@ class QMRegionBuilder(object):
 
     if hull_cart.size() < 4:
       return visited_nodes
+    from scipy.spatial import ConvexHull, QhullError
     try:
       hull = ConvexHull(hull_cart)
-    except Exception:
+    except QhullError:
+      print('No hull waters added: the QM region encloses no volume.',
+            file=self.logger)
       return visited_nodes
 
-    centroid_frac = uc.fractionalize(hull_cart.mean())
+    centroid = hull_cart.mean()
+    radius = flex.max((hull_cart - centroid).norms())
 
-    visited_iseqs_by_op = {}
+    visited_iseqs_by_op = defaultdict(set)
     for (iseq, op) in visited_nodes:
-      visited_iseqs_by_op.setdefault(op.as_xyz(), set()).add(iseq)
+      visited_iseqs_by_op[op].add(iseq)
 
-    # Collect water residues once per *parent model*: ``_add_hull_waters``
-    # is called per seed but the water set is the same every call.
-    if (getattr(self, '_waters_cache', None) is None
-        or self._waters_cache_model_id != id(model)):
+    # Collect water residues once per run: ``_add_hull_waters`` is called per
+    # seed but the water set is the same every call.
+    if self._waters_cache is None:
       cached = []
       for chain in model.get_hierarchy().chains():
         for rg in chain.residue_groups():
@@ -764,58 +897,48 @@ class QMRegionBuilder(object):
               rg.atom_groups()[0].resname) != 'common_water':
             continue
           rep_iseq = rg.atom_groups()[0].atoms()[0].i_seq
-          iseqs = [a.i_seq for ag in rg.atom_groups()
-                   for a in ag.atoms()]
+          iseqs = []
+          for ag in rg.atom_groups():
+            for a in ag.atoms():
+              iseqs.append(a.i_seq)
           cached.append((rep_iseq, iseqs))
       self._waters_cache = cached
-      self._waters_cache_model_id = id(model)
-      self._waters_cache_rep_frac = (
-        sites_frac.select(flex.size_t(w[0] for w in cached))
-        if cached else None)
     waters = self._waters_cache
     if not waters:
       return visited_nodes
 
-    n_waters = len(waters)
-    rep_frac_orig = self._waters_cache_rep_frac
-    cx, cy, cz = centroid_frac
+    # Candidates: (water index, operation) for each representative atom, in
+    # place or as a symmetry copy, within the radius of the centroid, which
+    # is searched around as one extra site.
+    rep_iseqs = flex.size_t([w[0] for w in waters])
+    search_sites = flex.vec3_double([centroid])
+    search_sites.extend(sites_cart.select(rep_iseqs))
+    candidates = []
+    for j_seq, op in nodes_within_radius(
+        sites_cart=search_sites, crystal_symmetry=cs, radius=radius,
+        selection=[0]):
+      if j_seq != 0:  # not the centroid itself
+        candidates.append((j_seq - 1, op))
 
-    centroid_tuple = (cx, cy, cz)
+    # Batched hull test: one flex dot product per hull plane over all
+    # candidates.
+    rep_frac = sites_frac.select(rep_iseqs)
+    candidate_cart = flex.vec3_double()
+    for k, op in candidates:
+      candidate_cart.append(uc.orthogonalize(op * rep_frac[k]))
+    inside = flex.bool(len(candidates), True)
+    for eq in hull.equations:
+      d = candidate_cart.dot((float(eq[0]), float(eq[1]), float(eq[2]))) \
+          + float(eq[3])
+      inside &= (d <= 1e-6)
+
     new_nodes = set()
-    for sg_op in sg.all_ops():
-      # Bulk apply r * f + t over all water rep positions.  ``v * R``
-      # in flex is row-vector * matrix; using ``R.transpose()`` makes
-      # the result equivalent to the column-vector form ``R * v``.
-      r_t = matrix.sqr(sg_op.r().as_double()).transpose()
-      t_tuple = sg_op.t().as_double()
-      rep_frac_sym = rep_frac_orig * r_t + t_tuple
-
-      # Nearest-image shift toward centroid, vectorized per axis.
-      diff = rep_frac_sym - centroid_tuple
-      xs_d, ys_d, zs_d = diff.parts()
-      shifts_x = xs_d.iround()
-      shifts_y = ys_d.iround()
-      shifts_z = zs_d.iround()
-      shifts_vec = flex.vec3_double(
-        shifts_x.as_double(), shifts_y.as_double(), shifts_z.as_double())
-      rep_cart = uc.orthogonalize(rep_frac_sym - shifts_vec)
-
-      # Batched hull test: one flex dot product per hull plane over all
-      # waters.
-      inside = flex.bool(n_waters, True)
-      for eq in hull.equations:
-        d = rep_cart.dot((float(eq[0]), float(eq[1]), float(eq[2]))) \
-            + float(eq[3])
-        inside &= (d <= 1e-6)
-
-      for k in inside.iselection():
-        sx, sy, sz = shifts_x[k], shifts_y[k], shifts_z[k]
-        shift_op = sgtbx.rt_mx(f"x{-sx:+d},y{-sy:+d},z{-sz:+d}")
-        final_op = _canon_op(shift_op.multiply(sg_op))
-        already = visited_iseqs_by_op.get(final_op.as_xyz(), set())
-        for iseq in waters[k][1]:
-          if iseq not in already:
-            new_nodes.add((iseq, final_op))
+    for c in inside.iselection():
+      k, op = candidates[c]
+      already = visited_iseqs_by_op.get(op, set())
+      for iseq in waters[k][1]:
+        if iseq not in already:
+          new_nodes.add((iseq, op))
 
     if new_nodes:
       print(
@@ -857,61 +980,131 @@ class QMRegionBuilder(object):
 
     Returns
     -------
-    model_sel : mmtbx.model.manager
-        Sub-model containing the materialized atoms.
-    seed_indices : list of int
-        Positional indices of seed atoms in *model_sel*.
-    cap_indices : list of int
-        Positional indices of cap atoms in *model_sel*.
-    cap_original_elements : list of str
-        Element each cap atom carried before capping (parallel to
-        *cap_indices*); unchanged from the emitted element when
-        ``capping.enable`` is False.
-    cap_anchor_indices : list of int
-        Sorted, unique positional indices of the QM-region heavy atoms the caps
-        are bonded to (their anchors).
-    sym_image_provenance : dict
-        ``{sub-model i_seq: ((chain, resseq, resname, name, altloc),
-        symmetry_operation_xyz)}`` for each materialized symmetry-image atom: the
-        ASU parent's selection identity (not the atom object, whose parent chain
-        dangles once this model is freed) plus the symmetry op.
+    libtbx.group_args
+        ``model`` (mmtbx.model.manager)
+            Sub-model containing the materialized atoms.
+        ``seed_iseqs`` (list of int)
+            Positional indices of seed atoms in ``model``.
+        ``cap_iseqs`` (list of int)
+            Positional indices of cap atoms in ``model``.
+        ``cap_original_elements`` (list of str)
+            Element each cap atom carried before capping (parallel to
+            ``cap_iseqs``); unchanged from the emitted element when
+            ``capping.enable`` is False.
+        ``cap_anchor_iseqs`` (list of int)
+            Sorted, unique positional indices of the QM-region heavy atoms
+            the caps are bonded to (their anchors).
+        ``completed_nodes`` (frozenset of (int, sgtbx.rt_mx))
+            Nodes whose open valence was repaired.
+        ``completed_iseqs`` (list of int)
+            Sorted positional indices of the atoms those repairs added.
+        ``sym_image_provenance`` (dict)
+            ``{sub-model i_seq: (parent_labels, symmetry_operation_xyz)}``
+            for each materialized symmetry-image atom: the ASU parent's
+            ``fetch_labels()`` (not the atom object, whose parent chain
+            dangles once this model is freed) plus the symmetry op.
     """
-    import iotbx.pdb
     import mmtbx.model as mmtbx_model
 
-    parent_hier = model.get_hierarchy()
-    parent_atoms = parent_hier.atoms()
-    cs = model.crystal_symmetry()
-    unit_cell = cs.unit_cell()
-    identity_xyz = sgtbx.rt_mx().as_xyz()
+    parent_atoms = model.get_hierarchy().atoms()
+    out_root, node_of_atom = self._copy_images(model, visited_nodes)
+    atom_for_node = self._drop_coincident_images(
+      out_root, node_of_atom, parent_atoms)
+    out_root.atoms().reset_serial()
+    orig_element_by_cap, anchor_atom_by_cap = self._cap_boundary(
+      cap_nodes, atom_for_node)
+    completed_nodes, completed_atoms = self._repair_open_valences(
+      visited_nodes, cap_nodes, adjacency, parent_atoms, atom_for_node,
+      set(orig_element_by_cap))
+    if completed_nodes:
+      # Sorted before anything is indexed.  The recorded indices are
+      # positional into the emitted file, and a consumer re-processing the
+      # region runs pdb_interpretation with sort_atoms on by default: an atom
+      # appended at the end of its group would be moved to the front of the
+      # hydrogen block, shifting every index recorded after it.  Sorting here
+      # leaves that later sort with nothing to do.
+      out_root.sort_atoms_in_place()
+      # Renumbered afterwards, so serials follow the final order rather than
+      # being blank on the appended atoms.
+      out_root.atoms().reset_serial()
+      print(
+        f'Repaired {len(completed_nodes)} open valence(s) left by a gap in '
+        f'the input model, adding {len(completed_atoms)} atom(s).',
+        file=self.logger,
+      )
 
-    # Group iseqs by sym_op (keyed by canonical xyz string)
+    # Assemble the final mmtbx.model.manager
+    model_sel = mmtbx_model.manager(
+      model_input=None,
+      pdb_hierarchy=out_root,
+      crystal_symmetry=model.crystal_symmetry())
+
+    # ``atom_for_node`` already holds the materialized atoms.  Every index
+    # below is read only after the wrapping above, which is what gives the
+    # copied atoms their final ``.i_seq``.
+    identity = sgtbx.rt_mx()
+    seed_indices = []
+    for s in seeds:
+      a = atom_for_node.get((s.i_seq, identity))
+      if a is not None:
+        seed_indices.append(a.i_seq)
+    seed_indices.sort()
+    cap_atoms_sorted = []
+    for (iseq, op) in cap_nodes:
+      a = atom_for_node.get((iseq, op))
+      if a is not None:
+        cap_atoms_sorted.append(a)
+    cap_atoms_sorted.sort(key=lambda a: a.i_seq)
+    # Indexed rather than fetched with ``.get``: both lists are built from
+    # ``cap_nodes`` under the same not-None filter, so a missing entry is a
+    # bug and should raise.
+    cap_original_elements = [orig_element_by_cap[a]
+                             for a in cap_atoms_sorted]
+    cap_anchor_indices = sorted(set(
+      anchor_atom_by_cap[a].i_seq for a in cap_atoms_sorted
+      if a in anchor_atom_by_cap))
+
+    return group_args(
+      model=model_sel,
+      seed_iseqs=seed_indices,
+      cap_iseqs=[a.i_seq for a in cap_atoms_sorted],
+      cap_original_elements=cap_original_elements,
+      cap_anchor_iseqs=cap_anchor_indices,
+      completed_nodes=frozenset(completed_nodes),
+      completed_iseqs=sorted(a.i_seq for a in completed_atoms),
+      sym_image_provenance=self._sym_image_provenance(
+        atom_for_node, parent_atoms))
+
+  def _copy_images(self, model, visited_nodes):
+    """Copy the atoms of *visited_nodes* into a new hierarchy, one block of
+    chains per symmetry operation, the identity first.
+
+    Each image's sites and anisotropic U are transformed by its operation and
+    its chains get the IDs :meth:`_image_chain_ids` assigns.
+
+    Parameters
+    ----------
+    model : mmtbx.model.manager
+    visited_nodes : set of (int, sgtbx.rt_mx)
+
+    Returns
+    -------
+    out_root : iotbx.pdb.hierarchy.root
+    node_of_atom : dict
+        ``{output atom: (parent_iseq, sym_op)}``.
+    """
+    import iotbx.pdb
+
+    unit_cell = model.crystal_symmetry().unit_cell()
+    parent_hier = model.get_hierarchy()
+    sites_cart = parent_hier.atoms().extract_xyz()
+
+    # Group iseqs by symmetry operation, the identity first.
     by_op = defaultdict(set)
     for (iseq, op) in visited_nodes:
-      by_op[op.as_xyz()].add(iseq)
-    op_keys = sorted(by_op.keys(),
-                     key=lambda k: (k != identity_xyz, k))
-
-    # Build chain ID map: (original_chain_id, sym_op_xyz) -> new_chain_id.
-    # Stick to single-character chain IDs because PDB's chain field is
-    # one character wide; multi-char IDs overflow into the residue-name
-    # field and break the bond graph that ``make_restraints`` builds.
-    orig_chain_ids = sorted({ch.id.strip() for ch in parent_hier.chains()})
-    available_chain_ids = iter(c for c in
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-      if c not in orig_chain_ids)
-    chain_id_for = {}
-    for op_xyz in op_keys:
-      for orig_id in orig_chain_ids:
-        if op_xyz == identity_xyz:
-          chain_id_for[(orig_id, op_xyz)] = orig_id
-        else:
-          try:
-            chain_id_for[(orig_id, op_xyz)] = next(available_chain_ids)
-          except StopIteration:
-            raise RuntimeError(
-              "exhausted single-character chain IDs while "
-              "materialising symmetry images")
+      by_op[op].add(iseq)
+    ops = sorted(by_op, key=lambda op: (not op.is_unit_mx(), op.as_xyz()))
+    chain_id_for = self._image_chain_ids(parent_hier, by_op, ops)
 
     # Build an empty target hierarchy and append per-sym_op sub-models
     out_root = iotbx.pdb.hierarchy.root()
@@ -919,35 +1112,26 @@ class QMRegionBuilder(object):
     out_root.append_model(out_hier_model)
 
     # As we copy each per-sym_op sub-hierarchy into the master,
-    # remember which parent node each fresh atom came from.
-    # ``model.select(mask)`` preserves atom order, so the k-th atom in
-    # the copied sub-hierarchy corresponds to the k-th parent i_seq in
-    # ascending order from ``by_op[op_xyz]``.
-    node_of_atom = {}  # output atom -> (parent_iseq, op_xyz)
-    n_parent_atoms = parent_atoms.size()
-    for op_xyz in op_keys:
-      op = sgtbx.rt_mx(op_xyz)
-      r_mat = matrix.sqr(op.r().as_double())
-      t_vec = matrix.col(op.t().as_double())
+    # remember which parent node each fresh atom came from.  The selection
+    # preserves atom order, so the k-th atom in the copied sub-hierarchy
+    # corresponds to the k-th parent i_seq in ascending order from
+    # ``by_op[op]``.
+    node_of_atom = {}  # output atom -> (parent_iseq, op)
+    for op in ops:
+      iseqs_in_order = flex.size_t(sorted(by_op[op]))
+      sub_hier = parent_hier.select(iseqs_in_order, copy_atoms=True)
 
-      iseqs_in_order = sorted(by_op[op_xyz])
-      mask = flex.bool(n_parent_atoms, False)
-      for i in iseqs_in_order:
-        mask[i] = True
-      sub_model = model.select(mask)
-      sub_hier = sub_model.get_hierarchy()
-
-      # Transform coordinates from ASU positions to the image.
-      if op_xyz != identity_xyz:
-        new_sites = flex.vec3_double()
-        for xyz in sub_model.get_sites_cart():
-          frac = matrix.col(unit_cell.fractionalize(xyz))
-          new_frac = r_mat * frac + t_vec
-          new_sites.append(unit_cell.orthogonalize(new_frac.elems))
-        sub_model.set_sites_cart(new_sites)
+      # Transform coordinates and anisotropic U from ASU positions to the
+      # image.
+      if not op.is_unit_mx():
+        sub_hier.atoms().set_xyz(super_cell.sym_equiv_sites_cart(
+          sites_cart=sites_cart, unit_cell=unit_cell, rt_mx=op,
+          selection=iseqs_in_order))
+        sub_hier.atoms().rotate_uij_and_clear_sigmas(
+          r_cart=unit_cell.matrix_cart(op.r()))
         # Rename chains so this image is distinguishable
         for ch in sub_hier.chains():
-          ch.id = chain_id_for[(ch.id.strip(), op_xyz)]
+          ch.id = chain_id_for[(ch.id.strip(), op)]
 
       # Detached-copy each chain into the master and record the parent
       # node for every fresh atom object.
@@ -956,38 +1140,102 @@ class QMRegionBuilder(object):
         new_ch = ch.detached_copy()
         out_hier_model.append_chain(new_ch)
         for new_atom in new_ch.atoms():
-          node_of_atom[new_atom] = (iseqs_in_order[k], op_xyz)
+          node_of_atom[new_atom] = (iseqs_in_order[k], op)
           k += 1
+    return out_root, node_of_atom
 
-    # Drop any symmetry image that positionally duplicates a kept atom group
-    # (the special-position case, where the fixing op maps the group onto
-    # itself), then drop emptied residue groups and chains and index the
-    # survivors by parent node.  The test is keyed per group on its heavy
-    # atoms, because an on-axis water shares its oxygen with the kept image
-    # but places its two disorder hydrogens apart; a group whose heavy atoms
-    # coincide with kept ones is dropped whole.  The tolerance absorbs
-    # coordinate drift.
-    POS_TOL = 0.2
+  @staticmethod
+  def _image_chain_ids(parent_hier, by_op, ops):
+    """Return the chain ID each chain of the region takes under each
+    symmetry operation.
+
+    The identity keeps the original IDs; every image takes a new ID per
+    chain it contains, from :func:`iotbx.pdb.utils.chain_id_generator`.
+
+    Parameters
+    ----------
+    parent_hier : iotbx.pdb.hierarchy.root
+    by_op : dict
+        ``{sym_op: set of parent i_seq}``.
+    ops : list of sgtbx.rt_mx
+        The keys of *by_op*, the identity first.
+
+    Returns
+    -------
+    dict
+        ``{(original_chain_id, sym_op): chain_id}``.
+    """
+    import iotbx.pdb.utils
+
+    parent_atoms = parent_hier.atoms()
+    new_chain_ids = iotbx.pdb.utils.chain_id_generator(
+      used_ids={ch.id.strip() for ch in parent_hier.chains()})
+    chain_id_for = {}
+    for op in ops:
+      region_chain_ids = sorted({
+        parent_atoms[i].parent().parent().parent().id.strip()
+        for i in by_op[op]})
+      for orig_id in region_chain_ids:
+        if op.is_unit_mx():
+          chain_id_for[(orig_id, op)] = orig_id
+        else:
+          chain_id_for[(orig_id, op)] = next(new_chain_ids)
+    return chain_id_for
+
+  @staticmethod
+  def _drop_coincident_images(out_root, node_of_atom, parent_atoms):
+    """Drop the symmetry images that duplicate a kept atom group, and index
+    the surviving atoms by node.
+
+    This is the special-position case, where the fixing op maps the group
+    onto itself.  Emptied residue groups and chains are dropped too.  The
+    test is keyed per group on its heavy atoms, because an on-axis water
+    shares its oxygen with the kept image but places its two disorder
+    hydrogens apart; a group whose heavy atoms coincide with kept ones is
+    dropped whole.  Two copies of one heavy atom closer than any bond
+    between heavy atoms, about 1.1 A at the shortest, are one atom
+    disordered across the symmetry element, whatever its occupancy, so they
+    coincide within 1.0 A.
+
+    Parameters
+    ----------
+    out_root : iotbx.pdb.hierarchy.root
+        Changed in place.
+    node_of_atom : dict
+        ``{output atom: (parent_iseq, sym_op)}``.
+    parent_atoms : iotbx.pdb.hierarchy.af_shared_atom
+
+    Returns
+    -------
+    dict
+        ``{(parent_iseq, sym_op): surviving atom}``.
+    """
+    POS_TOL = 1.0
     # An image is compared only against other images of the same parent atom
     # group, so two altlocs of one residue, which share backbone positions,
     # never cancel each other.  A single coincidence drops the whole group,
     # since a group straddling the axis has some atoms on it and some off,
     # and keeping it would put two nuclei in one place.
-    seen_images = defaultdict(list)  # parent group -> [(op_xyz, heavy atom), ]
-    atom_for_node = {}  # (parent_iseq, op_xyz) -> surviving atom
+    out_hier_model = out_root.models()[0]
+    seen_images = defaultdict(list)  # parent group -> [(op, heavy atom), ]
+    atom_for_node = {}  # (parent_iseq, op) -> surviving atom
     for ch in list(out_hier_model.chains()):
       for rg in list(ch.residue_groups()):
         for ag in list(rg.atom_groups()):
           heavy = [a for a in ag.atoms() if not a.element_is_hydrogen()]
           is_duplicate = False
           if heavy:
-            parent_iseq, op_xyz = node_of_atom[heavy[0]]
+            parent_iseq, image_op = node_of_atom[heavy[0]]
             group_key = parent_atoms[parent_iseq].parent().memory_id()
             other_images = [kept for (kept_op, kept) in seen_images[group_key]
-                            if kept_op != op_xyz]
-            is_duplicate = any(
-              a.distance(prev) < POS_TOL
-              for a in heavy for prev in other_images)
+                            if kept_op != image_op]
+            for a in heavy:
+              for prev in other_images:
+                if a.distance(prev) < POS_TOL:
+                  is_duplicate = True
+                  break
+              if is_duplicate:
+                break
           if is_duplicate:
             rg.remove_atom_group(ag)
             continue
@@ -1002,246 +1250,190 @@ class QMRegionBuilder(object):
           ch.remove_residue_group(rg)
       if len(list(ch.residue_groups())) == 0:
         out_hier_model.remove_chain(ch)
-    out_root.atoms().reset_serial()
+    return atom_for_node
 
-    def _lookup_node(iseq, op_xyz):
-      return atom_for_node.get((iseq, op_xyz))
+  def _cap_boundary(self, cap_nodes, atom_for_node):
+    """Record each boundary atom's element and anchor, then cap it.
 
-    # Record each boundary atom's element and anchor, then cap.  The record
-    # describes the region boundary, which exists whether or not a hydrogen
-    # is placed there, so only the placement is gated on capping.enable.
+    The record describes the region boundary, which exists whether or not a
+    hydrogen is placed there, so only the placement is gated on
+    ``capping.enable``.
+
+    Parameters
+    ----------
+    cap_nodes : dict
+        ``{(cap_iseq, cap_op): (anchor_iseq, anchor_op)}``.
+    atom_for_node : dict
+        ``{(parent_iseq, sym_op): materialized atom}``.
+
+    Returns
+    -------
+    orig_element_by_cap : dict
+        ``{cap atom: element before capping}``.
+    anchor_atom_by_cap : dict
+        ``{cap atom: anchor atom}``.
+    """
     orig_element_by_cap = {}
     anchor_atom_by_cap = {}
     for cap_node, anchor_node in cap_nodes.items():
-      cap_iseq_orig, cap_op = cap_node
-      anchor_iseq_orig, anchor_op = anchor_node
-      cap_atom = _lookup_node(cap_iseq_orig, cap_op.as_xyz())
-      anchor_atom = _lookup_node(anchor_iseq_orig, anchor_op.as_xyz())
+      cap_atom = atom_for_node.get(cap_node)
+      anchor_atom = atom_for_node.get(anchor_node)
       if cap_atom is None:
         continue
       orig_element_by_cap[cap_atom] = cap_atom.element.strip()
       if anchor_atom is not None:
-        # Hold the atom, not its i_seq: the copies made above do not carry a
-        # final i_seq until the hierarchy is wrapped in a model below, so
-        # reading it here yields the pre-copy value for every symmetry image.
+        # Hold the atom, not its i_seq: the copies do not carry a final
+        # i_seq until the hierarchy is wrapped in a model, so reading it here
+        # yields the pre-copy value for every symmetry image.
         anchor_atom_by_cap[cap_atom] = anchor_atom
       if self.params.capping.enable:
         self._capper.cap_atom(anchor_atom, cap_atom)
+    return orig_element_by_cap, anchor_atom_by_cap
+
+  def _repair_open_valences(self, visited_nodes, cap_nodes, adjacency,
+                            parent_atoms, atom_for_node, cap_atoms):
+    """Complete the backbone valences a gap in the input model leaves open.
+
+    Gated on ``capping.enable``, because capping and these repairs settle
+    the same question, what to do with a severed valence.
+
+    Parameters
+    ----------
+    visited_nodes : set of (int, sgtbx.rt_mx)
+    cap_nodes : dict
+    adjacency : collections.defaultdict of set
+    parent_atoms : iotbx.pdb.hierarchy.af_shared_atom
+    atom_for_node : dict
+        ``{(parent_iseq, sym_op): materialized atom}``.
+    cap_atoms : set of iotbx.pdb.hierarchy.atom
+        The materialized cap atoms, which are never repaired.
+
+    Returns
+    -------
+    completed_nodes : list of (int, sgtbx.rt_mx)
+        The nodes repaired.
+    completed_atoms : list of iotbx.pdb.hierarchy.atom
+        The atoms the repairs added.
+    """
+    completed_nodes = []
+    completed_atoms = []
+    if not self.params.capping.enable:
+      return completed_nodes, completed_atoms
 
     # Complete any two-coordinate backbone nitrogen the input left short.
     # The cut rules never reach these: a nitrogen inside the buffer sphere is
     # a seed, so its CA-N bond is never cut-tested and it would otherwise
-    # arrive as an aminyl centre.  This is gated on capping.enable because
-    # both settle the same question, what to do with a severed valence.
-    completed_amines = []
-    completed_atoms = []
-    if self.params.capping.enable:
-      cap_atoms = set(orig_element_by_cap)
-      for (iseq, op) in sorted(visited_nodes):
-        if (iseq, op) in cap_nodes:
-          continue
-        if not QMRegionGrower._is_chain_break_amine(
-            iseq, adjacency, parent_atoms):
-          continue
-        nitrogen = _lookup_node(iseq, op.as_xyz())
-        if nitrogen is None or nitrogen in cap_atoms:
-          continue
-        neighbours = [
-          neighbour for neighbour in (
-            _lookup_node(j, _canon_op(op.multiply(edge_op)).as_xyz())
-            for (j, edge_op) in adjacency[iseq])
-          if neighbour is not None]
-        added = self._capper.complete_amine(nitrogen, neighbours)
-        if added:
-          completed_amines.append((iseq, op))
-          completed_atoms.extend(added)
+    # arrive as an aminyl centre.
+    for node, nitrogen, neighbours in self._open_valence_sites(
+        QMRegionGrower._is_chain_break_amine, visited_nodes, cap_nodes,
+        adjacency, parent_atoms, atom_for_node, cap_atoms):
+      added = self._capper.complete_amine(nitrogen, neighbours)
+      if added:
+        completed_nodes.append(node)
+        completed_atoms.extend(added)
 
-      # The other half of the same severed peptide bond.  This repair guesses
-      # nothing: the carbon holds its CA and O, so the missing nitrogen is
-      # fixed by sp2 planarity.  Cutting the carbon away instead is not an
-      # option, because that would delete a carbonyl oxygen that may
-      # coordinate the metal.
-      for (iseq, op) in sorted(visited_nodes):
-        if (iseq, op) in cap_nodes:
-          continue
-        if not QMRegionGrower._is_chain_break_carbonyl(
-            iseq, adjacency, parent_atoms):
-          continue
-        carbon = _lookup_node(iseq, op.as_xyz())
-        if carbon is None or carbon in cap_atoms:
-          continue
-        neighbours = [
-          neighbour for neighbour in (
-            _lookup_node(j, _canon_op(op.multiply(edge_op)).as_xyz())
-            for (j, edge_op) in adjacency[iseq])
-          if neighbour is not None]
-        # Which repair depends on whether the chain continues past this
-        # residue.  Later polymer means an interior gap, so the missing
-        # partner is the next residue's nitrogen; nothing later means the
-        # chain ends here and what is missing is the second carboxylate
-        # oxygen, which depositors often leave unmodelled.
-        if QMRegionGrower._has_later_polymer_residue(parent_atoms[iseq]):
-          added = self._capper.complete_carbonyl(carbon, neighbours)
-        else:
-          added = self._capper.complete_carboxylate(carbon, neighbours)
-        if added:
-          completed_amines.append((iseq, op))
-          completed_atoms.extend(added)
-    if completed_amines:
-      # Sorted before anything is indexed.  The recorded indices are
-      # positional into the emitted file, and a consumer re-processing the
-      # region runs pdb_interpretation with sort_atoms on by default: an atom
-      # appended at the end of its group would be moved to the front of the
-      # hydrogen block, shifting every index recorded after it.  Sorting here
-      # leaves that later sort with nothing to do.
-      out_root.sort_atoms_in_place()
-      # Renumbered afterwards, so serials follow the final order rather than
-      # being blank on the appended atoms.
-      out_root.atoms().reset_serial()
-      print(
-        f'Repaired {len(completed_amines)} open valence(s) left by a gap in '
-        f'the input model, adding {len(completed_atoms)} atom(s).',
-        file=self.logger,
-      )
+    # The other half of the same severed peptide bond.  This repair guesses
+    # nothing: the carbon holds its CA and O, so the missing nitrogen is
+    # fixed by sp2 planarity.  Cutting the carbon away instead is not an
+    # option, because that would delete a carbonyl oxygen that may
+    # coordinate the metal.
+    for node, carbon, neighbours in self._open_valence_sites(
+        QMRegionGrower._is_chain_break_carbonyl, visited_nodes, cap_nodes,
+        adjacency, parent_atoms, atom_for_node, cap_atoms):
+      # Which repair depends on whether the chain continues past this
+      # residue.  Later polymer means an interior gap, so the missing
+      # partner is the next residue's nitrogen; nothing later means the
+      # chain ends here and what is missing is the second carboxylate
+      # oxygen, which depositors often leave unmodelled.
+      if QMRegionGrower._has_later_polymer_residue(parent_atoms[node[0]]):
+        added = self._capper.complete_carbonyl(carbon, neighbours)
+      else:
+        added = self._capper.complete_carboxylate(carbon, neighbours)
+      if added:
+        completed_nodes.append(node)
+        completed_atoms.extend(added)
+    return completed_nodes, completed_atoms
 
-    # Assemble the final mmtbx.model.manager
-    model_sel = mmtbx_model.manager(
-      model_input=None,
-      pdb_hierarchy=out_root,
-      crystal_symmetry=cs)
+  @staticmethod
+  def _open_valence_sites(is_open, visited_nodes, cap_nodes, adjacency,
+                          parent_atoms, atom_for_node, cap_atoms):
+    """Return the materialized atoms *is_open* finds a bond short, with
+    their materialized neighbours.
 
-    # ``atom_for_node`` already holds the materialized atoms.  Every index
-    # below is read only after the wrapping above, which is what gives the
-    # copied atoms their final ``.i_seq``.
-    seed_indices = sorted(
-      a.i_seq for a in (_lookup_node(s.i_seq, identity_xyz)
-                        for s in seeds) if a is not None)
-    cap_atoms_sorted = sorted(
-      (a for a in (_lookup_node(iseq, op.as_xyz())
-                   for (iseq, op) in cap_nodes) if a is not None),
-      key=lambda a: a.i_seq)
-    cap_indices = [a.i_seq for a in cap_atoms_sorted]
-    # Indexed rather than fetched with ``.get``: both lists are built from
-    # ``cap_nodes`` under the same not-None filter, so a missing entry is a
-    # bug and should raise.
-    cap_original_elements = [orig_element_by_cap[a]
-                             for a in cap_atoms_sorted]
-    completed_indices = sorted(a.i_seq for a in completed_atoms)
-    cap_anchor_indices = sorted(set(
-      anchor_atom_by_cap[a].i_seq for a in cap_atoms_sorted
-      if a in anchor_atom_by_cap))
+    Parameters
+    ----------
+    is_open : callable
+        ``is_open(iseq, adjacency, parent_atoms) -> bool``.
+    visited_nodes : set of (int, sgtbx.rt_mx)
+    cap_nodes : dict
+        Nodes that are caps, never repaired.
+    adjacency : collections.defaultdict of set
+    parent_atoms : iotbx.pdb.hierarchy.af_shared_atom
+    atom_for_node : dict
+        ``{(parent_iseq, sym_op): materialized atom}``.
+    cap_atoms : set of iotbx.pdb.hierarchy.atom
 
-    # Symmetry-image provenance (in-memory hand-off): map each materialized
-    # symmetry-image atom's sub-model i_seq to its ASU parent's selection
-    # identity (chain, resseq, resname, name, altloc) plus the symmetry
-    # operation that generated it.  The identity is recorded rather than the
-    # atom object, whose parent chain dangles once this filtered model is
-    # freed after the region is returned.  Angles cannot cross symmetry, so
-    # only bond restraints can use this.
-    sym_image_provenance = {}
-    for (parent_iseq, op_xyz), atom in atom_for_node.items():
-      if op_xyz == identity_xyz:
+    Returns
+    -------
+    list of tuple
+        ``(node, atom, neighbours)`` per site, in node order.
+    """
+    sites = []
+    for (iseq, op) in sorted(visited_nodes):
+      if (iseq, op) in cap_nodes:
         continue
-      pa = parent_atoms[parent_iseq]
-      ag = pa.parent()
-      rg = ag.parent()
-      ch = rg.parent()
-      ident = (ch.id.strip(), rg.resseq.strip(), ag.resname.strip(),
-               pa.name.strip(), ag.altloc.strip())
-      sym_image_provenance[atom.i_seq] = (ident, op_xyz)
+      if not is_open(iseq, adjacency, parent_atoms):
+        continue
+      atom = atom_for_node.get((iseq, op))
+      if atom is None or atom in cap_atoms:
+        continue
+      neighbours = []
+      for (j, edge_op) in adjacency[iseq]:
+        neighbour = atom_for_node.get(
+          (j, op.multiply(edge_op).new_denominators(1, 12)))
+        if neighbour is not None:
+          neighbours.append(neighbour)
+      sites.append(((iseq, op), atom, neighbours))
+    return sites
 
-    return (model_sel, seed_indices, cap_indices, cap_original_elements,
-            cap_anchor_indices, sym_image_provenance,
-            frozenset(completed_amines), completed_indices)
+  @staticmethod
+  def _sym_image_provenance(atom_for_node, parent_atoms):
+    """Return the ASU parent of each materialized symmetry-image atom.
 
-  def _write_submodel(self, model_sel, crystal_symmetry, file_name):
-    """Write *model_sel* as both a PDB and an mmCIF file.
-
-    mmCIF is emitted alongside the PDB because mmCIF stores the element in
-    ``_atom_site.type_symbol`` as a first-class field, so capped atoms keep
-    their hydrogen identity when re-parsed instead of being silently
-    re-classified from their atom names.
-
-    Parameters
-    ----------
-    model_sel : mmtbx.model.manager
-    crystal_symmetry : cctbx.crystal.symmetry
-    file_name : str
-        Filename stem (no extension); ``.pdb`` and ``.cif`` are appended here.
-    """
-    hierarchy = model_sel.get_hierarchy()
-    hierarchy.write_pdb_file(
-      crystal_symmetry=crystal_symmetry,
-      file_name=file_name + '.pdb',
-    )
-    hierarchy.write_mmcif_file(
-      crystal_symmetry=crystal_symmetry,
-      file_name=file_name + '.cif',
-      data_block_name='qm_region',
-    )
-    print(
-      f'Wrote QM region to {file_name}.pdb and {file_name}.cif '
-      f'({model_sel.get_number_of_atoms()} atoms)',
-      file=self.logger,
-    )
-
-  def _write_sidecar(self, file_name, cap_indices, cap_original_elements,
-                     seed_indices, selection_string, completed_indices=()):
-    """Write the per-region sidecar PHIL file as ``<file_name>.phil``.
-
-    The sidecar records which atoms are hydrogen caps, the element each
-    carried beforehand, which atoms seeded the region, and the original
-    selection string.  Every index it holds is positional into the emitted
-    file.
+    The parent's ``fetch_labels()`` is recorded rather than the atom object,
+    whose parent chain dangles once this filtered model is freed after the
+    region is returned.  It carries the parent's identity (chain, resseq,
+    icode, resname, altloc, name) and the parent's own coordinates, not the
+    image's.  Angles cannot cross symmetry, so only bond restraints can use
+    this.  Call once the atoms carry their final i_seq.
 
     Parameters
     ----------
-    file_name : str
-        Filename stem (no extension); ``.phil`` is appended here.
-    cap_indices : list of int
-        Sorted 0-based positional indices of cap atoms in the output file.
-    cap_original_elements : list of str
-        Element symbol each cap atom carried before being replaced by H
-        (parallel to *cap_indices*).
-    seed_indices : list of int
-        Sorted 0-based positional indices of seed atoms in the output file.
-    selection_string : str or None
-        The CCTBX selection string that seeded the region, or ``None`` for
-        metal-scan regions.
-    completed_indices : sequence of int, optional
-        Sorted 0-based positional indices of atoms added to repair a valence
-        the input model left open.
+    atom_for_node : dict
+        ``{(parent_iseq, sym_op): materialized atom}``.
+    parent_atoms : iotbx.pdb.hierarchy.af_shared_atom
+
+    Returns
+    -------
+    dict
+        ``{sub-model i_seq: (parent_labels, symmetry_operation_xyz)}``, with
+        ``parent_labels`` an ``iotbx.pdb.hierarchy.atom_with_labels``.
     """
-    # An empty list formats as a bare ``key =``, which does not parse back, so
-    # empty lists are written as None (the declared default) instead.
-    def _or_none(values):
-      values = list(values)
-      return values or None
+    sym_image_provenance = {}
+    for (parent_iseq, op), atom in atom_for_node.items():
+      if op.is_unit_mx():
+        continue
+      sym_image_provenance[atom.i_seq] = (
+        parent_atoms[parent_iseq].fetch_labels(), op.as_xyz())
+    return sym_image_provenance
 
-    sidecar_phil = libtbx.phil.parse(master_sidecar_phil_str)
-    sidecar_phil_extract = sidecar_phil.extract()
-    sidecar_phil_extract.endo_exo_region.cap_atoms = _or_none(cap_indices)
-    sidecar_phil_extract.endo_exo_region.cap_original_elements = _or_none(
-      cap_original_elements)
-    sidecar_phil_extract.endo_exo_region.completed_atoms = _or_none(
-      completed_indices)
-    sidecar_phil_extract.endo_exo_region.seed_atoms = _or_none(seed_indices)
-    sidecar_phil_extract.endo_exo_region.selection_string = selection_string
-    sidecar_phil_path = file_name + '.phil'
-    with open(sidecar_phil_path, 'w') as file:
-      sidecar_phil.format(sidecar_phil_extract).show(out=file)
-    print(f'Wrote sidecar to {sidecar_phil_path}', file=self.logger)
+  @staticmethod
+  def _region_label(seed_index, seeds, selection_str=None):
+    """Return the label of a region, from its seed.
 
-  def _make_output_filename(self, seed_index, seeds, selection_str=None):
-    """Build the output filename stem from the model name and seed identity.
-
-    When *selection_str* is given the stem is::
-
-        {model_stem}_sel{seed_index:03d}_within{radius}A_depth{depth}
-
-    When seeds are individual metal atoms the stem is::
-
-        {model_stem}_{element}_chain{chain}_res{resseq}_within{radius}A_depth{depth}
+    ``sel{seed_index:03d}`` for a selection group; for a metal seed
+    ``{name}_chain{chain}_res{resseq}{icode}``, with ``_alt{altloc}`` after
+    it when the seed has an altloc.
 
     Parameters
     ----------
@@ -1252,31 +1444,16 @@ class QMRegionBuilder(object):
     Returns
     -------
     str
-        Filename stem without extension.
     """
-    model_stem = os.path.splitext(os.path.basename(self.model_name))[0]
-
-    common_suffix = (
-      f'_within{self.params.buffer.radius:.2f}A'
-      f'_depth{self.params.max_search_depth}'
-    )
-
     if selection_str:
-      seed_suffix = f'_sel{seed_index:03d}' + common_suffix
-    else:
-      seed = seeds[0]
-      atom_group = seed.parent()
-      residue_group = atom_group.parent()
-      chain = residue_group.parent()
-      element = seed.element.strip().upper()
-      chain_id = chain.id.strip()
-      resseq = residue_group.resseq.strip()
-      seed_suffix = (
-        f'_{element}_chain{chain_id}_res{resseq}' + common_suffix
-      )
-
-    return self.default_output_filename(
-      prefix=model_stem,
-      suffix=seed_suffix,
-    )
-
+      return f'sel{seed_index:03d}'
+    seed = seeds[0]
+    atom_group = seed.parent()
+    residue_group = atom_group.parent()
+    chain = residue_group.parent()
+    label = (
+      f'{seed.name.strip()}_chain{chain.id.strip()}'
+      f'_res{residue_group.resseq.strip()}{residue_group.icode.strip()}')
+    if atom_group.altloc.strip():
+      label += f'_alt{atom_group.altloc.strip()}'
+    return label

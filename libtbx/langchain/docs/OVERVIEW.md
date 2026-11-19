@@ -2136,9 +2136,7 @@ improved_agent_v2/              # AI Agent system (libtbx/langchain/ + phenix/ph
         ├── PLAN_PROMPT.txt                     # Plan-stage prompt
         ├── REVIEW.txt                          # Review-stage prompt
         ├── CONTINUE_PROMPT.txt                 # Continuation prompt
-        ├── HANDOFF.json                        # Session handoff checkpoint
-        ├── CCTBX_LLM_PROGRAMMING_GUIDELINES.md     # (prompt copy)
-        └── AI_AGENT_LLM_PROGRAMMING_GUIDELINES.md  # (prompt copy)
+        └── HANDOFF.json                        # Session handoff checkpoint
 ```
 
 ---

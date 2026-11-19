@@ -301,7 +301,7 @@ class ramachandran_manager(object):
       if 'emsley8k' in fao or self.params.inject_emsley8k_into_oldfield_favored:
         self._emsley8k_tables = load_emsley8k_tables()
       if 'phi_psi_2' in fao:
-        self._phi_psi_2_tables = load_phi_psi_2_tables()
+        self._phi_psi_2_tables = load_phi_psi_2_tables(log=self.log)
       # get proxies
       self.extract_proxies(pdb_hierarchy)
     if 'oldfield' in fao:
@@ -447,7 +447,7 @@ class ramachandran_manager(object):
       self.get_n_emsley8k_proxies(),
       self.get_n_phi_psi_2_proxies()), file=self.log)
     if outl:
-      print('    Rama restraints by Phi/Psi/2')
+      print('    Rama restraints by Phi/Psi/2', file=self.log)
       for pp2, three in outl:
         print('      %s : %s' % (three[1].id_str(), pp2.split('|')[0]), file=self.log)
 
@@ -783,9 +783,9 @@ def load_emsley8k_tables():
     tables[rama_key] = t
   return tables
 
-def load_phi_psi_2_tables():
+def load_phi_psi_2_tables(log=None):
   from mmtbx.validation.phi_psi_2_data import load_phi_psi_2_rama_restraints_tables
-  return load_phi_psi_2_rama_restraints_tables()
+  return load_phi_psi_2_rama_restraints_tables(log=log)
 
 class ramachandran_plot_data(object):
   def __init__(self, plot_cutoff=0.027):

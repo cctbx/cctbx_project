@@ -47,7 +47,7 @@ def test_perceive_prefers_session_resolution():
     if path is None:
         print("  (skip) graph_nodes.py not found")
         return
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     # perceive() must resolve resolution through the shared resolver (which
     # prefers session_resolution), passing the metrics_history it has in scope.
     assert re.search(
@@ -84,7 +84,7 @@ def _load_resolver():
     path = _find("GRAPH_NODES_PY", _AGENT, "graph_nodes.py")
     if path is None:
         return None
-    src = open(path).read()
+    src = open(path, encoding="utf-8").read()
     m = re.search(r'def resolve_session_resolution\(.*?\n    return None, None\n',
                   src, re.DOTALL)
     if not m:
@@ -247,7 +247,7 @@ def _load_metrics_stack():
 
     if loader_path is None:
         # Faithful shim mirroring get_metric_threshold band logic.
-        data = yaml.safe_load(open(yaml_path))
+        data = yaml.safe_load(open(yaml_path, encoding="utf-8"))
 
         def get_metric_threshold(metric_name, level="acceptable", resolution=None):
             spec = data.get(metric_name, {})
@@ -394,7 +394,7 @@ def test_fixture_session_resolves_correctly():
     if fpath is None:
         print("  (skip) fixture not found")
         return
-    sess = json.load(open(fpath))
+    sess = json.load(open(fpath, encoding="utf-8"))
     mh = ma.derive_metrics_from_history(sess["cycles"])
     # the refine cycle's resolution is recovered (text-fallback) ...
     assert ma.get_latest_resolution(mh) == 1.57

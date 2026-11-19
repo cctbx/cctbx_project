@@ -234,7 +234,7 @@ def test_ai_agent_resets_flag_per_run():
     if path is None:
         print("  (skip) ai_agent.py not found in this checkout")
         return
-    with open(path, "r") as fh:
+    with open(path, "r", encoding="utf-8") as fh:
         src = fh.read()
     assert src.count('pop("llm_ever_unavailable"') >= 2, \
         "ai_agent must reset llm_ever_unavailable at run start on BOTH the " \
@@ -250,7 +250,7 @@ def test_graph_nodes_emits_structured_notice():
     if path is None:
         print("  (skip) graph_nodes.py not found in this checkout")
         return
-    with open(path, "r") as fh:
+    with open(path, "r", encoding="utf-8") as fh:
         src = fh.read()
     assert 'EventType.NOTICE' in src, \
         "graph_nodes must emit an EventType.NOTICE event"
@@ -276,7 +276,7 @@ def test_ai_agent_detects_and_banners():
     if path is None:
         print("  (skip) ai_agent.py not found in this checkout")
         return
-    with open(path, "r") as fh:
+    with open(path, "r", encoding="utf-8") as fh:
         src = fh.read()
     assert "_detect_llm_unavailable_from_events" in src, \
         "ai_agent must detect the NOTICE from cycle events"
@@ -304,7 +304,7 @@ def test_server_path_carries_events():
     if path is None:
         print("  (skip) run_ai_agent.py not found in this checkout")
         return
-    with open(path, "r") as fh:
+    with open(path, "r", encoding="utf-8") as fh:
         src = fh.read()
     assert 'final_state.get("events"' in src, \
         "server must read events from final_state"

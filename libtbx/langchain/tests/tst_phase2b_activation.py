@@ -399,7 +399,7 @@ def test_marker_format_includes_new_recall_keys():
         print("  SKIP: cannot locate phenix_ai/run_ai_analysis.py")
         return
 
-    with open(src_path) as f:
+    with open(src_path, encoding="utf-8") as f:
         src = f.read()
 
     # Both new field names must appear in the production marker
@@ -482,7 +482,7 @@ def test_production_decision_structure_present():
         print("  SKIP: cannot locate phenix_ai/run_ai_analysis.py")
         return
 
-    with open(src_path) as f:
+    with open(src_path, encoding="utf-8") as f:
         src = f.read()
 
     # Scanner-first call must be present (Q2-strict: None hint)
@@ -546,7 +546,7 @@ def test_telemetry_independence_from_extracted_files():
         print("  SKIP: cannot locate phenix_ai/run_ai_analysis.py")
         return
 
-    with open(src_path) as f:
+    with open(src_path, encoding="utf-8") as f:
         src = f.read()
 
     # The post-H7 code must call extract_files_from_processed_advice

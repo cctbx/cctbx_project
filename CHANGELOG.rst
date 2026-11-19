@@ -1,3 +1,47 @@
+2026.10
+=======
+
+* mmtbx.reduce2 gained neutron_option for writing H/D models for neutron
+  refinement, approach=place for adding hydrogens without optimization
+  (replacing mmtbx.hydrogenate), a qmready preset for QM-ready models,
+  and NH2 placement for metal-bound amines; it now runs on all models by
+  default
+* Faster mmCIF model reading with a C++ hierarchy builder, exact pickling
+  and deep copies of hierarchies, and reader fixes for null occupancies,
+  missing atom ids and model numbers, and anisotropic tensors; faster
+  reflection CIF writing and dictionary validation
+* Faster, leaner probe2 with all interaction dots generated in C++;
+  cbetadev reports Mahalanobis distances and applies phi/psi corrections
+  to modified residues
+* Fixed riding hydrogens in geometry minimization, real-space ADP
+  refinement falling back to group ADPs, disulfides lost in NCS copies,
+  and queue submission under Python 3; fetch_pdb downloads EMDB masks
+
+2026.9
+======
+
+* Added ligand interaction analysis (mmtbx.validation.ligand_interactions)
+  covering hydrogen bonds, clashes, vdW contacts, and salt bridges,
+  including symmetry partners and a cross-check against probe2
+* Faster reflection file reading (MTZ complex arrays, reflection CIFs,
+  compressed CIFs) and faster probe2 and clashscore2 on multi-model
+  files, with flat memory use
+* Fixed mmtbx.reduce2 hydrogen placement on linked residues and free
+  nucleotides, corrected CH2 and CH3 hydrogen naming, and gave
+  user-supplied restraint files priority, including multi-CIF input
+* Removed the deprecated top-level boost module; use boost_adaptbx instead
+
+2026.8
+======
+
+* Added NumPy 2 support for flex arrays and plotting code
+* Graded MolProbity geometry, peptide, and RNA outliers by severity,
+  and added per-model animated kinemages for multi-model files
+* Fixed mmCIF output splitting chains at residues with unrecognized
+  names, and let iotbx.file_io read CIFs with mixed content
+* Added building of water hydrogens from difference maps and fixed
+  mmtbx.reduce2 hydrogen placement for several ligand cases
+
 2026.7
 ======
 

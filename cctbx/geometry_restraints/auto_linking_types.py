@@ -167,6 +167,22 @@ for link_info in [
      [0,1],
     ],
 
+    ['capping',
+     'Capping H placed by mmtbx.reduce2 capping=True on atoms with a dangling '
+     'valence (truncated side chains, incomplete ligands); for QM use',
+     '',
+     ['Capping H', 'Capping H'],
+     [0, 1],
+    ],
+
+    ['water coordination',
+     'Distance between water and the atom that coordinates it, restrained '
+     'to its current value by ordered solvent update (phenix.refine)',
+     '',
+     ['Water coordination'],
+     [0],
+    ],
+
     ]:
   for oi in origin_ids:
     assert starting_id not in oi
@@ -210,6 +226,10 @@ not_covalent = [
   # necessary
   'hydrogen bonds',
   'reference hydrogen bonds',
+  # necessary: QM caps, excluded from geometry statistics
+  'capping',
+  # necessary: not covalent, excluded from geometry statistics
+  'water coordination',
   ]
 
 def iterate_covalent():

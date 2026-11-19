@@ -296,6 +296,29 @@ def get_cablam_scores_from_atoms(CA0, CA1, CA2, CA3, CA4, O1, O2, residue_type='
 #-------------------------------------------------------------------------------
 #}}}
 
+def selection_from_table_row(row):
+  """
+  Atom selection for a row of cablam_result.as_table_row_phenix().
+
+  GUI tables saved by older versions carry no selection, so restored
+  results rebuild it from the chain and residue cells; the residue cell
+  ends with the fixed-width "%4s%1s" resid.
+
+  Parameters
+  ----------
+  row : list
+      Table cells: chain ID, "resname resid", ...
+
+  Returns
+  -------
+  str or None
+      e.g. "chain A and resid 3"
+  """
+  from mmtbx.validation import residue_selection_string
+  resid = row[1][-5:]
+  return residue_selection_string(chain_id=row[0], resseq=resid[:4],
+    icode=resid[4:])
+
 #{{{ cablam_result class
 #-------------------------------------------------------------------------------
 class cablam_result(residue):

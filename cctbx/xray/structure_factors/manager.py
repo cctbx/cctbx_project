@@ -63,6 +63,7 @@ class manager(crystal.symmetry):
     self._rfft = None
     self._cfft = None
     self._u_base = None
+    self._u_extra_and_rho_cutoff = None
     self.estimate_time_direct = _estimate_time_direct(
       self.space_group().order_z())
     self.estimate_time_fft = _estimate_time_fft()
@@ -135,6 +136,47 @@ class manager(crystal.symmetry):
         self.grid_resolution_factor(),
         self.quality_factor())
     return self._u_base
+
+  def fix_sampling(self, xray_structure):
+    """
+    Make subsequent FFT calculations sample each scatterer exactly as in a
+    calculation for the given structure.
+
+    By default two parameters of sampling depend on all scatterers passed to
+    a calculation. With these fixed, structure factors of parts of a
+    structure add up to those of the whole, and gradients calculated for a
+    part are equal to those calculated for the whole.
+
+    Parameters
+    ----------
+    xray_structure : cctbx.xray.structure
+        The whole structure.
+    """
+    sampling = ext.fast_gradients(
+      unit_cell=xray_structure.unit_cell(),
+      scatterers=xray_structure.scatterers(),
+      scattering_type_registry=xray_structure.scattering_type_registry(),
+      u_base=self.u_base(),
+      wing_cutoff=self.wing_cutoff(),
+      exp_table_one_over_step_size=self.exp_table_one_over_step_size(),
+      tolerance_positive_definite=self.tolerance_positive_definite())
+    self._u_extra_and_rho_cutoff = (sampling.u_extra(), sampling.rho_cutoff())
+
+  def sampling_params(self):
+    """
+    Parameters of sampling of scatterers for FFT calculations.
+
+    Returns
+    -------
+    dict
+        Values of u_base, use_u_base_as_u_extra and rho_cutoff.
+    """
+    if (self._u_extra_and_rho_cutoff is None):
+      return dict(
+        u_base=self.u_base(), use_u_base_as_u_extra=False, rho_cutoff=0)
+    u_extra, rho_cutoff = self._u_extra_and_rho_cutoff
+    return dict(
+      u_base=u_extra, use_u_base_as_u_extra=True, rho_cutoff=rho_cutoff)
 
   def setup_fft(self):
     self.rfft()

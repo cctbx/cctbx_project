@@ -1,14 +1,13 @@
 """Breadth-first QM-region growth over the covalent graph, with cap-candidate
 detection."""
 
-from __future__ import absolute_import, division, print_function
-
 from collections import deque
 
 from cctbx import sgtbx
 from iotbx.pdb import common_residue_names_get_class
+from libtbx.utils import null_out
 
-from mmtbx.geometry_restraints.endo_exo.util import _canon_op, _neighbour_iseqs
+from mmtbx.geometry_restraints.endo_exo.util import neighbour_iseqs
 from mmtbx.geometry_restraints.endo_exo.cutting import BondCutDetector
 
 
@@ -25,7 +24,9 @@ class QMRegionGrower:
   bond_cut_detector : BondCutDetector
       Classifier for cuttable bonds.
   log : file-like or None, optional
-      Destination for diagnostic messages.
+      Destination for diagnostic messages; None discards them.
+  verbose : bool, optional
+      Whether to log each bond cut and cap demotion with its atoms.
   """
 
   #: Backstop on alternating grow/reattach rounds.  The loop ends well inside
@@ -35,15 +36,18 @@ class QMRegionGrower:
   #: of one of those properties into a slow run rather than a hang.
   max_repair_rounds = 20
 
-  def __init__(self, bond_cut_detector, log=None):
+  def __init__(self, bond_cut_detector, log=None, verbose=False):
     self.bond_cut_detector = bond_cut_detector
+    if log is None:
+      log = null_out()
     self.log = log
+    self.verbose = verbose
 
   # ------------------------------------------------------------------
   # Public interface
   # ------------------------------------------------------------------
 
-  def grow_by_depth(self, seed_atoms, adjacency, model, max_depth=3):
+  def grow_region(self, seed_atoms, adjacency, model):
     """Symmetry-aware BFS over ``(iseq, sym_op)`` nodes, recording cap
     candidates by pruning.
 
@@ -58,9 +62,8 @@ class QMRegionGrower:
 
     Whenever a cuttable bond ``current -> neighbour`` is encountered,
     *neighbour* is marked visited so BFS will not expand past it, and
-    ``(neighbour, current)`` is stored as a tentative cap via
-    :meth:`_try_mark_cap`.  Two situations promote a tentative cap back
-    to interior:
+    ``(neighbour, current)`` is stored in ``cap_candidates`` as a tentative
+    cap.  Two situations promote a tentative cap back to interior:
 
     * **Re-encounter**: *neighbour* is later reached from a different
       node.  The cap is then a regular interior node on at least two
@@ -85,8 +88,6 @@ class QMRegionGrower:
         :meth:`AtomGraphBuilder.build_adjacency`). Read-only;
         not mutated.
     model : mmtbx.model.manager
-    max_depth : int, optional
-        Accepted for signature compatibility and unused.  Default is 3.
 
     Returns
     -------
@@ -98,7 +99,7 @@ class QMRegionGrower:
         neighbour.
     """
     atoms = model.get_hierarchy().atoms()
-    identity = _canon_op(sgtbx.rt_mx())
+    identity = sgtbx.rt_mx()
     # Seeds may be bare iseqs (identity image) or pre-built (iseq, op)
     # nodes (symmetry images from the symmetry-aware radius search);
     # normalise both to nodes.
@@ -110,11 +111,11 @@ class QMRegionGrower:
 
     rounds = 0
     while True:
-      self._grow_until_exhausted(queue, visited, cap_candidates, seed_nodes,
-                                 adjacency, atoms)
+      self._grow_until_exhausted(queue, visited, cap_candidates, adjacency,
+                                 atoms)
       rounds += 1
-      if not self._reattach_stranded(visited, cap_candidates, seed_nodes,
-                                     adjacency, atoms, queue):
+      if not self._reattach_stranded(visited, cap_candidates, adjacency,
+                                     atoms, queue):
         break
       if rounds > self.max_repair_rounds:
         print(f'Giving up reattaching stranded atoms after {rounds} rounds.',
@@ -128,8 +129,8 @@ class QMRegionGrower:
     )
     return visited, cap_candidates
 
-  def _grow_until_exhausted(self, queue, visited, cap_candidates, seed_nodes,
-                            adjacency, atoms):
+  def _grow_until_exhausted(self, queue, visited, cap_candidates, adjacency,
+                            atoms):
     """Run BFS until *queue* empties, marking caps at cuttable bonds.
 
     Parameters
@@ -137,7 +138,6 @@ class QMRegionGrower:
     queue : collections.deque
     visited : set of (int, rt_mx)
     cap_candidates : dict
-    seed_nodes : set of (int, rt_mx)
     adjacency : collections.defaultdict of set
     atoms : flex array of iotbx.pdb.hierarchy.atom
     """
@@ -147,17 +147,14 @@ class QMRegionGrower:
       curr_resname = atoms[curr_iseq].parent().resname.strip().upper()
 
       for (nbr_iseq, edge_op) in list(adjacency[curr_iseq]):
-        nbr_op = _canon_op(curr_op.multiply(edge_op))
+        nbr_op = curr_op.multiply(edge_op).new_denominators(1, 12)
         neighbour = (nbr_iseq, nbr_op)
 
         if neighbour in visited:
           if (neighbour in cap_candidates and
               cap_candidates[neighbour] != current):
             self._demote_cap_candidate(
-              neighbour, cap_candidates, visited,
-              seed_nodes, adjacency, atoms, queue,
-              protected={current},
-            )
+              neighbour, cap_candidates, atoms, queue)
           continue
 
         visited.add(neighbour)
@@ -171,18 +168,15 @@ class QMRegionGrower:
             current, neighbour, visited, adjacency, atoms)
           if refusal is None:
             self._log_bond(reason, curr_iseq, nbr_iseq, atoms)
-            self._try_mark_cap(
-              neighbour, current, cap_candidates, visited,
-              seed_nodes, adjacency, atoms, queue,
-            )
+            cap_candidates[neighbour] = current
             continue
           self._log_bond(f'{reason} (not taken, {refusal})',
                          curr_iseq, nbr_iseq, atoms)
 
         queue.append(neighbour)
 
-  def _reattach_stranded(self, visited, cap_candidates, seed_nodes,
-                         adjacency, atoms, queue):
+  def _reattach_stranded(self, visited, cap_candidates, adjacency, atoms,
+                         queue):
     """Restore one bond for every heavy atom the cuts left unattached.
 
     An atom whose every heavy neighbour in the region is a cap comes out as
@@ -201,10 +195,8 @@ class QMRegionGrower:
     Parameters
     ----------
     visited : set of (int, rt_mx)
-        Modified in-place, via :meth:`_demote_cap_candidate`.
     cap_candidates : dict
         Modified in-place.
-    seed_nodes : set of (int, rt_mx)
     adjacency : collections.defaultdict of set
     atoms : flex array of iotbx.pdb.hierarchy.atom
     queue : collections.deque
@@ -226,7 +218,7 @@ class QMRegionGrower:
       for (nb_iseq, edge_op) in adjacency[iseq]:
         if atoms[nb_iseq].element_is_hydrogen():
           continue
-        neighbour = (nb_iseq, _canon_op(op.multiply(edge_op)))
+        neighbour = (nb_iseq, op.multiply(edge_op).new_denominators(1, 12))
         if neighbour not in visited:
           continue
         if neighbour in cap_candidates:
@@ -237,7 +229,7 @@ class QMRegionGrower:
       if held or not caps_on_it:
         continue
 
-      hops = BondCutDetector._hops_to_ca(atoms[iseq], adjacency)
+      hops = BondCutDetector.hops_to_ca(atoms[iseq], adjacency)
       unranked = len(hops) + 1
 
       def rank(candidate, _hops=hops, _unranked=unranked):
@@ -245,35 +237,15 @@ class QMRegionGrower:
         return (_hops.get(name, _unranked), candidate[0])
 
       self._demote_cap_candidate(
-        min(caps_on_it, key=rank), cap_candidates, visited,
-        seed_nodes, adjacency, atoms, queue, protected={node})
+        min(caps_on_it, key=rank), cap_candidates, atoms, queue)
       reattached += 1
 
     return reattached
 
-  def grow_region(self, seed_atoms, adjacency, model, max_depth=3):
-    """Grow the QM region around *seed_atoms*.
-
-    Single public entry point; delegates to :meth:`grow_by_depth`.
-
-    Parameters
-    ----------
-    seed_atoms : set of int or (int, rt_mx)
-    adjacency : collections.defaultdict of set
-    model : mmtbx.model.manager
-    max_depth : int, optional
-
-    Returns
-    -------
-    visited : set of (int, rt_mx)
-    cap_candidates : dict
-        Same contract as :meth:`grow_by_depth`.
-    """
-    return self.grow_by_depth(seed_atoms, adjacency, model,
-                              max_depth=max_depth)
-
   def _log_bond(self, message, iseq_a, iseq_b, atoms):
-    """Print *message* followed by the two atom records."""
+    """Print *message* followed by the two atom records, when verbose."""
+    if not self.verbose:
+      return
     print(f'{message} between:', file=self.log)
     print('  ' + atoms[iseq_a].format_atom_record().rstrip(), file=self.log)
     print('  ' + atoms[iseq_b].format_atom_record().rstrip(), file=self.log)
@@ -344,7 +316,7 @@ class QMRegionGrower:
     """
     residue_group = atoms[iseq].parent().parent()
     oxygens = 0
-    for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
+    for neighbour_iseq in neighbour_iseqs(adjacency, iseq):
       other = atoms[neighbour_iseq]
       element = other.element.strip().upper()
       if element == 'O':
@@ -376,14 +348,11 @@ class QMRegionGrower:
     bool
     """
     amide_atom_names = {'N', 'C', 'O'}
-    amide_i_seqs = [
-      residue_atom.i_seq
-      for atom_group in residue_group.atom_groups()
-      for residue_atom in atom_group.atoms()
-      if residue_atom.name.strip().upper() in amide_atom_names
-    ]
-    if not amide_i_seqs:
-      return False
+    amide_i_seqs = []
+    for atom_group in residue_group.atom_groups():
+      for residue_atom in atom_group.atoms():
+        if residue_atom.name.strip().upper() in amide_atom_names:
+          amide_i_seqs.append(residue_atom.i_seq)
     return any((i_seq, sym_op) in visited for i_seq in amide_i_seqs)
 
   def _any_amide_of_next_residue_in_visited(self, atom_idx, sym_op,
@@ -423,12 +392,11 @@ class QMRegionGrower:
     bool
     """
     residue_group = atoms[atom_idx].parent().parent()
-    carbonyl_iseqs = [
-      residue_atom.i_seq
-      for atom_group in residue_group.atom_groups()
-      for residue_atom in atom_group.atoms()
-      if residue_atom.name.strip().upper() == 'C'
-    ]
+    carbonyl_iseqs = []
+    for atom_group in residue_group.atom_groups():
+      for residue_atom in atom_group.atoms():
+        if residue_atom.name.strip().upper() == 'C':
+          carbonyl_iseqs.append(residue_atom.i_seq)
 
     for carbonyl_iseq in carbonyl_iseqs:
       for (neighbour_iseq, edge_op) in adjacency[carbonyl_iseq]:
@@ -442,10 +410,11 @@ class QMRegionGrower:
         # with no next residue, so the cut would be refused however far BFS
         # walks.
         if (other_group.memory_id() == residue_group.memory_id()
-            and _canon_op(edge_op).as_xyz() == 'x,y,z'):
+            and edge_op.is_unit_mx()):
           continue
         if self._any_amide_in_residue_group_in_visited(
-            other_group, _canon_op(sym_op.multiply(edge_op)), visited):
+            other_group, sym_op.multiply(edge_op).new_denominators(1, 12),
+            visited):
           return True
     return False
 
@@ -519,7 +488,7 @@ class QMRegionGrower:
     residue_group = atom.parent().parent()
     on_backbone = False
     oxygens = 0
-    for j in _neighbour_iseqs(adjacency, iseq):
+    for j in neighbour_iseqs(adjacency, iseq):
       other = atoms[j]
       element = other.element.strip().upper()
       name = other.name.strip().upper()
@@ -573,7 +542,7 @@ class QMRegionGrower:
     rg = atom.parent().parent()
     on_backbone = False
     hydrogens = 0
-    for j in _neighbour_iseqs(adjacency, iseq):
+    for j in neighbour_iseqs(adjacency, iseq):
       other = atoms[j]
       if other.element_is_hydrogen():
         hydrogens += 1
@@ -585,7 +554,7 @@ class QMRegionGrower:
         on_backbone = True
         continue
       if any(atoms[k].element.strip().upper() == 'O'
-             for k in _neighbour_iseqs(adjacency, j)):
+             for k in neighbour_iseqs(adjacency, j)):
         return False              # a carbonyl, so this nitrogen has its amide
     return on_backbone and hydrogens < 2
 
@@ -617,7 +586,7 @@ class QMRegionGrower:
     residue_group = atoms[iseq].parent().parent()
     on_backbone = False
     hydrogens = 0
-    for neighbour_iseq in _neighbour_iseqs(adjacency, iseq):
+    for neighbour_iseq in neighbour_iseqs(adjacency, iseq):
       other = atoms[neighbour_iseq]
       if other.element_is_hydrogen():
         hydrogens += 1
@@ -669,7 +638,7 @@ class QMRegionGrower:
     for (nb_iseq, edge_op) in adjacency[cap_iseq]:
       if atoms[nb_iseq].element_is_hydrogen():
         continue
-      nb_node = (nb_iseq, _canon_op(cap_op.multiply(edge_op)))
+      nb_node = (nb_iseq, cap_op.multiply(edge_op).new_denominators(1, 12))
       if nb_node != anchor and nb_node in visited:
         return (f'far atom is already bonded to '
                 f'{atoms[nb_iseq].name.strip()} in the region')
@@ -678,14 +647,12 @@ class QMRegionGrower:
     for (nb_iseq, edge_op) in adjacency[anchor_iseq]:
       if atoms[nb_iseq].element_is_hydrogen():
         continue
-      if (nb_iseq, _canon_op(anchor_op.multiply(edge_op))) != cap:
+      if (nb_iseq, anchor_op.multiply(edge_op).new_denominators(1, 12)) != cap:
         return None
     return (f'near atom {atoms[anchor_iseq].name.strip()} has no other '
             f'heavy neighbour to hold it in the region')
 
-  def _demote_cap_candidate(self, cap, cap_candidates, visited,
-                            seed_nodes, adjacency, atoms, queue,
-                            protected=set()):
+  def _demote_cap_candidate(self, cap, cap_candidates, atoms, queue):
     """Promote *cap* (a node) back to interior and re-open BFS through it.
 
     *cap* is removed from ``cap_candidates`` and re-enqueued, so BFS
@@ -698,41 +665,15 @@ class QMRegionGrower:
         Node of the cap candidate being demoted.
     cap_candidates : dict
         ``{cap_node: anchor_node}``; modified in-place.
-    visited : set of (int, rt_mx)
-    seed_nodes : set of (int, rt_mx)
-    adjacency : collections.defaultdict of set
-        Read-only; tagged ``{i_seq: {(j_seq, edge_op), ...}}``.
     atoms : cctbx.array_family.flex array
         Atom objects indexed by i_seq, used for log messages.
     queue : collections.deque
         BFS queue; *cap* is appended for further expansion.
-    protected : set of (int, rt_mx), optional
     """
     cap_iseq, _cap_op = cap
-    print('Demoting cap candidate:', file=self.log)
-    print('  ' + atoms[cap_iseq].format_atom_record().rstrip(), file=self.log)
+    if self.verbose:
+      print('Demoting cap candidate:', file=self.log)
+      print('  ' + atoms[cap_iseq].format_atom_record().rstrip(),
+            file=self.log)
     cap_candidates.pop(cap)
     queue.append(cap)
-
-  def _try_mark_cap(self, candidate, anchor, cap_candidates, visited,
-                     seed_nodes, adjacency, atoms, queue):
-    """Record *candidate* (a node) as a cap anchored at *anchor* (a node).
-
-    Parameters
-    ----------
-    candidate : (int, rt_mx)
-        Node of the cap: the atom on the far side of the cuttable bond.
-    anchor : (int, rt_mx)
-        Node of the anchor: the atom on the QM-region side of the cuttable
-        bond.
-    cap_candidates : dict
-        ``{cap_node: anchor_node}``; modified in-place.
-    visited : set of (int, rt_mx)
-    seed_nodes : set of (int, rt_mx)
-    adjacency : collections.defaultdict of set
-        Read-only.
-    atoms : cctbx.array_family.flex array
-        Atom objects indexed by i_seq.
-    queue : collections.deque
-    """
-    cap_candidates[candidate] = anchor

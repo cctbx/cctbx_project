@@ -91,6 +91,21 @@ def get_paths_from_timestamps(timestamps,
   paths = [os.path.join(prepend, name) for name in names]
   return paths
 
+def drop_hit_selection(two_theta_low, two_theta_high, ratio_cutoff=1):
+  """ Images whose radial average at the high two theta, relative to the low
+      one, reaches ratio_cutoff: solvent is present. Returns (ratios, hits).
+      -1 flags a value that was not stored; such images are not hits. """
+  invalid = (two_theta_low <= 0) | (two_theta_high < 0) # <= to prevent /0
+  numerator = two_theta_high.set_selected(invalid, 0)
+  denominator = two_theta_low.set_selected(two_theta_low == 0, 1) # prevent /0
+  drop_ratios = numerator/denominator
+  return drop_ratios, drop_ratios >= ratio_cutoff
+
+def high_quality_selection(resolutions, d_min):
+  """ Indexed images whose best resolution bin passing the I/sig(I) cutoff
+      reaches d_min. Unindexed images have resolution 0. """
+  return (resolutions > 0) & (resolutions <= d_min)
+
 def get_run_stats(timestamps,
                    two_theta_low,
                    two_theta_high,
@@ -114,18 +129,12 @@ def get_run_stats(timestamps,
   print("%d total lattices" % (flex.sum(n_lattices)))
   iterator = range(len(resolutions))
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
-  # since -1 is used as a flag for "did not store this value", and we want a quotient,
-  # set the numerator value to 0 whenever either the numerator or denominator is -1
-  invalid = (two_theta_low <= 0) | (two_theta_high < 0) # <= to prevent /0
-  numerator = two_theta_high.set_selected(invalid, 0)
-  denominator = two_theta_low.set_selected(two_theta_low == 0, 1) # prevent /0
-  drop_ratios = numerator/denominator
-  drop_hits = drop_ratios >= ratio_cutoff
+  drop_ratios, drop_hits = drop_hit_selection(two_theta_low, two_theta_high, ratio_cutoff)
   xtal_hits = n_strong >= n_strong_cutoff
   half_idx_rate_window = min(50, max(int(len(timestamps)//20), 1))
   half_hq_rate_window = 500
   indexed_sel = n_lattices > 0
-  hq_sel = (resolutions > 0) & (resolutions <= d_min)
+  hq_sel = high_quality_selection(resolutions, d_min)
   # indexing and droplet hit rate in a sliding window
   idx_rate = flex.double()
   multiples_rate = flex.double()
@@ -217,8 +226,6 @@ def plot_run_stats(stats,
   else:
     ax1, ax2, ax3, ax4 = f.subplots(4, sharex=True, sharey=False)
     axset = (ax1, ax2, ax3, ax4)
-  for a in axset:
-    a.tick_params(axis='x', which='both', bottom='off', top='off')
   ax1.scatter(t.select(~indexed_sel), n_strong.select(~indexed_sel), edgecolors="none", color ='#d9d9d9', s=spot_ratio)
   ax1.scatter(t.select(indexed_sel), n_strong.select(indexed_sel), edgecolors="none", color='blue', s=spot_ratio)
   ax1.set_ylim(ymin=0)
@@ -255,6 +262,17 @@ def plot_run_stats(stats,
     for l in xlab + ylab:
       l.set_fontsize(text_ratio)
   f.subplots_adjust(hspace=0)
+  if minimalist:
+    ax3.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
+    ax3.set_yticks([])
+  else:
+    sel = wavelengths > 0
+    energies = 12398.4/wavelengths.select(sel)
+    ax4.scatter(t.select(sel), energies, c='lightgray', s=spot_ratio, alpha=0.5)
+    ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
+    ax4.set_ylabel("energy (eV)", fontsize=text_ratio)
+  for item in axset:
+    item.tick_params(labelsize=text_ratio)
   # add lines and text summaries at the timestamp boundaries
   if not minimalist:
     for boundary in boundaries:
@@ -289,29 +307,23 @@ def plot_run_stats(stats,
       status_color = 'black'
     else:
       status_color = 'red'
-    if minimalist:
-      ax3.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
-      ax3.set_yticks([])
-    else:
-      sel = wavelengths > 0
-      energies = 12398.4/wavelengths.select(sel)
-      ax4.scatter(t.select(sel), energies, c='lightgray', s=spot_ratio, alpha=0.5)
-
+    if not minimalist:
       def clipit(ax, x, y, text, max_width, fontsize):
+        # Draw text at (x, y), shortened with "..." if it is wider than
+        # max_width data units.
         t = ax.text(x, y, text, fontsize=fontsize, transform=ax.get_xaxis_transform())
         width = t.get_window_extent().width
         ax_width = ax.get_window_extent().width
         xmin, xmax = ax.get_xlim()
         max_width_in_pixels = (max_width / (xmax-xmin)) * (ax_width)
-
-        if width > max_width_in_pixels:
-          for i in range(len(text), 0, -1):
-            t.remove()
-            truncated_text = text[:i] + "..."
-            t = ax.text(x, y, truncated_text, fontsize=fontsize, transform=ax.get_xaxis_transform())
-            if t.get_window_extent().width < max_width_in_pixels:
-              break
-          ax.text(x, y, truncated_text, fontsize=fontsize, transform=ax.get_xaxis_transform())
+        if width <= max_width_in_pixels:
+          return
+        # Start from the proportional estimate and shorten until it fits.
+        n = min(len(text) - 1, int(len(text) * max_width_in_pixels / width))
+        for i in range(max(n, 1), 0, -1):
+          t.set_text(text[:i] + "...")
+          if t.get_window_extent().width <= max_width_in_pixels:
+            break
 
       ax1.text(start_t, 1.05, " " + ", ".join(tags) + " [%s]" % status, fontsize=text_ratio, color=status_color, rotation=10, transform=ax1.get_xaxis_transform(), clip_on=False, zorder=10)
 
@@ -330,12 +342,6 @@ def plot_run_stats(stats,
         ax4.text(start_t, .25, "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), fontsize=text_ratio, transform=ax4.get_xaxis_transform())
         ax4.text(start_t, .05, "%-3.1f (%-3.1f)%% idx" % \
           (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), fontsize=text_ratio, transform=ax4.get_xaxis_transform())
-
-
-      ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
-      ax4.set_ylabel("energy (eV)", fontsize=text_ratio)
-    for item in axset:
-      item.tick_params(labelsize=text_ratio)
     start += lengths[idx]
   if title is not None:
     plt.title(title)
@@ -350,24 +356,78 @@ def plot_run_stats(stats,
     # print "plot_run_stats took %s" % duration(t1, t2)
     return "runstats_tmp.png"
 
-def plot_multirun_stats(runs,
-                        run_numbers,
-                        d_min,
-                        n_multiples=2,
-                        ratio_cutoff=1,
-                        n_strong_cutoff=40,
-                        i_sigi_cutoff=1,
-                        run_tags=[],
-                        run_statuses=[],
-                        minimalist=False,
-                        interactive=False,
-                        easy_run=False,
-                        compress_runs=True,
-                        xsize=30,
-                        ysize=10,
-                        high_vis=False,
-                        title=None,
-                        figure=None):
+# Per-run view colours: the series keep the identities of the per-shot plot
+# (indexed blue, solvent green, high quality orange); job statuses use
+# reserved status colours.
+SUMMARY_SERIES = (('hits', 'n_hits', '#eda100'),
+                  ('indexed', 'n_indexed', '#2a78d6'),
+                  ('high quality', 'n_high_quality', '#eb6834'),
+                  ('solvent', 'n_drop_hits', '#1baf7a'))
+SUMMARY_STATUS_COLORS = {'DONE': '#898781', 'RUN': '#fab219', 'PEND': '#fab219', 'SUBMITTED': '#fab219'}
+
+def plot_run_summaries(run_numbers, summaries, statuses, figure, high_vis=False):
+  """ The per-run view: rates as a percentage of frames over runs, and the
+      frames per run as bars coloured by job status. run_numbers, summaries
+      (RunSummary, or None for a run not queried yet) and statuses (job
+      status) are parallel lists in run order. """
+  fontsize = 12 if high_vis else 9
+  ax_rates, ax_frames = figure.subplots(2, sharex=True, gridspec_kw=dict(height_ratios=[3, 1], hspace=0.08))
+  n = len(run_numbers)
+  x = list(range(n))
+  def pct(a, b):
+    return 100. * a / b if b else 0.
+  for name, key, color in SUMMARY_SERIES:
+    # A run not queried yet leaves a gap in the line
+    ax_rates.plot(x, [pct(getattr(s, key), s.n_frames) if s is not None else float('nan') for s in summaries], '-',
+                  color=color, linewidth=2, marker='o', markersize=3.5, label=name)
+  pending = sum(1 for s in summaries if s is None)
+  if pending:
+    ax_rates.text(0.99, 0.97, '%d of %d runs still to query' % (pending, n), transform=ax_rates.transAxes,
+                  ha='right', va='top', fontsize=fontsize, color='#52514e')
+  ax_rates.set_ylabel('% of frames', fontsize=fontsize)
+  ax_rates.set_ylim(0, 100)
+  ax_rates.grid(True, color='#e1e0d9', linewidth=0.8)
+  ax_rates.set_axisbelow(True)
+  # Legend above the axes so it never covers a line
+  ax_rates.legend(loc='lower left', bbox_to_anchor=(0, 1), ncol=4, frameon=False, fontsize=fontsize)
+  for ax in (ax_rates, ax_frames):
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.tick_params(labelsize=fontsize)
+  colors = [SUMMARY_STATUS_COLORS.get(status, '#d03b3b') for status in statuses]
+  frames = [s.n_frames / 1000. if s is not None else 0. for s in summaries]
+  ax_frames.bar(x, frames, width=0.8, color=colors)
+  ax_frames.set_ylabel('frames (k)', fontsize=fontsize)
+  ax_frames.grid(True, axis='y', color='#e1e0d9', linewidth=0.8)
+  ax_frames.set_axisbelow(True)
+  # At least ten slots so a few runs do not become one wide bar
+  ax_frames.set_xlim(-0.5, max(n, 10) - 0.5)
+  step = max(1, n // 20)
+  ax_frames.set_xticks(x[::step])
+  ax_frames.set_xticklabels([run_numbers[i] for i in x[::step]], fontsize=fontsize,
+                            rotation=45 if n > 20 else 0, ha='right' if n > 20 else 'center')
+  ax_frames.set_xlabel('run', fontsize=fontsize)
+  # Name the status of runs not done, once per stretch of the same status
+  for i, status in enumerate(statuses):
+    if status != 'DONE' and (i == 0 or statuses[i - 1] != status):
+      ax_frames.annotate(status, (i, frames[i]), textcoords='offset points', xytext=(0, 3),
+                         ha='center', fontsize=fontsize - 2, color='#52514e')
+  figure.subplots_adjust(left=0.07, right=0.99, top=0.92, bottom=0.22)
+
+def get_multirun_stats(runs,
+                       run_numbers,
+                       d_min,
+                       n_multiples=2,
+                       ratio_cutoff=1,
+                       n_strong_cutoff=40,
+                       i_sigi_cutoff=1,
+                       run_tags=[],
+                       run_statuses=[],
+                       compress_runs=True):
+  """ Concatenate the per-run stats and compute the sliding-window rates.
+      Returns (stats_tuple, run_tags, run_statuses) for the runs that have
+      data, ready for plot_run_stats. Does no plotting, so it can run off
+      the GUI thread. """
   tset = flex.double()
   two_theta_low_set = flex.double()
   two_theta_high_set = flex.double()
@@ -389,7 +449,6 @@ def plot_multirun_stats(runs,
         offset += (r[0][-1] - r[0][0] + 1)
       else:
         tslice = r[0]
-      last_end = r[0][-1]
       tset.extend(tslice)
       two_theta_low_set.extend(r[1])
       two_theta_high_set.extend(r[2])
@@ -420,6 +479,30 @@ def plot_multirun_stats(runs,
                               n_strong_cutoff=n_strong_cutoff,
                               i_sigi_cutoff=i_sigi_cutoff,
                               d_min=d_min)
+  return stats_tuple, run_tags_with_data, run_statuses_with_data
+
+def plot_multirun_stats(runs,
+                        run_numbers,
+                        d_min,
+                        n_multiples=2,
+                        ratio_cutoff=1,
+                        n_strong_cutoff=40,
+                        i_sigi_cutoff=1,
+                        run_tags=[],
+                        run_statuses=[],
+                        minimalist=False,
+                        interactive=False,
+                        easy_run=False,
+                        compress_runs=True,
+                        xsize=30,
+                        ysize=10,
+                        high_vis=False,
+                        title=None,
+                        figure=None):
+  stats_tuple, run_tags_with_data, run_statuses_with_data = get_multirun_stats(
+    runs, run_numbers, d_min, n_multiples=n_multiples, ratio_cutoff=ratio_cutoff,
+    n_strong_cutoff=n_strong_cutoff, i_sigi_cutoff=i_sigi_cutoff,
+    run_tags=run_tags, run_statuses=run_statuses, compress_runs=compress_runs)
   if easy_run:
     from libtbx import easy_run, easy_pickle
     easy_pickle.dump("plot_run_stats_tmp.pickle", (stats_tuple, d_min, n_multiples, run_tags_with_data, run_statuses_with_data, minimalist, interactive, xsize, ysize, high_vis, title))

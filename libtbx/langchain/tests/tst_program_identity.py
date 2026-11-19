@@ -185,7 +185,7 @@ def t_never_emits_a_nonexistent_program(mod):
         if not os.path.isdir(d):
             continue
         for f in sorted(os.listdir(d)):
-            text = open(os.path.join(d, f), errors="replace").read()
+            text = open(os.path.join(d, f), errors="replace", encoding="utf-8").read()
             r = mod.resolve_program(caller=None, log_text=text, log_path=f,
                                     registry_path=KNOWLEDGE)
             if r.name is not None and r.name not in reg:
@@ -203,7 +203,7 @@ def t_corpus_invariant_twenty_of_twenty(mod):
             continue
         right = wrong = refused = 0
         for f in sorted(os.listdir(d)):
-            text = open(os.path.join(d, f), errors="replace").read()
+            text = open(os.path.join(d, f), errors="replace", encoding="utf-8").read()
             r = mod.resolve_program(caller=None, log_text=text, log_path=f,
                                     registry_path=KNOWLEDGE)
             exp = expected(os.path.splitext(f)[0])
@@ -229,7 +229,7 @@ def t_no_llm_value_can_reach_the_name(mod):
     # occurring inside the guard written to prevent a different defect.
     import ast
     path = mod.__file__.replace(".pyc", ".py")
-    tree = ast.parse(open(path, errors="replace").read())
+    tree = ast.parse(open(path, errors="replace", encoding="utf-8").read())
     for node in ast.walk(tree):
         if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef)):
             if (node.body and isinstance(node.body[0], ast.Expr)

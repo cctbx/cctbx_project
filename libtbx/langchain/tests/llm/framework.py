@@ -475,7 +475,7 @@ def write_scenario_detail(log_dir, verdict):
         return
     fname = "%s__%s.log" % (verdict.scenario_name, verdict.provider)
     path = os.path.join(log_dir, "details", fname)
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write("=== Scenario: %s ===\n" % verdict.scenario_name)
         f.write("Provider: %s\n" % verdict.provider)
         f.write("Test type: %s" % verdict.test_type)
@@ -520,7 +520,7 @@ def write_run_summary(log_dir, summary):
     if log_dir is None:
         return
     path = os.path.join(log_dir, "run_summary.json")
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, default=str)
 
 
@@ -595,7 +595,7 @@ def load_fixture(name):
     path = os.path.join(_FIXTURE_DIR, name)
     if not os.path.exists(path):
         raise IOError("fixture not found: %s" % path)
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
 
@@ -607,7 +607,7 @@ def load_state_fixture(path):
 
     Returns (state_inputs, expected, metadata) as dicts.
     """
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     return (
         data.get("state_inputs", {}),

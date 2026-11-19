@@ -375,11 +375,13 @@ def hsv2rgb(h, s, v):
   q = v * (1 - (s * f))
   t = v * (1 - (s * (1 - f)))
 
-  if   i == 0 : return (v, t, p)
-  elif i == 1 : return (q, v, p)
-  elif i == 2 : return (p, v, t)
-  elif i == 3 : return (p, q, v)
-  elif i == 4 : return (t, p, v)
-  else        : return (v, p, q)
+  if   i == 0 : rgb = (v, t, p)
+  elif i == 1 : rgb = (q, v, p)
+  elif i == 2 : rgb = (p, v, t)
+  elif i == 3 : rgb = (p, q, v)
+  elif i == 4 : rgb = (t, p, v)
+  else        : rgb = (v, p, q)
+  # wxPython 4 wx.Colour/wx.Pen/wx.Brush reject float components
+  return tuple(int(round(x)) for x in rgb)
 
 #---end

@@ -1020,9 +1020,9 @@ def evt_timestamp(t=None):
 
   return serialtbx.util.time.timestamp(t)
 
-def evt_wavelength(*kwargs):
+def evt_wavelength(*args, **kwargs):
   """ thin wrapper """
-  return serialtbx.detector.xtc.evt_wavelength(*kwargs)
+  return serialtbx.detector.xtc.evt_wavelength(*args, **kwargs)
 
 def getConfig(address, env):
   """ Given a detector address, find the config object in an env object

@@ -277,8 +277,8 @@ def calculate(
 
   indexer = indexer_selector( descriptions = descriptions )
 
-  from mmtbx.geometry import sphere_surface_sampling
-  sampling = sphere_surface_sampling.golden_spiral( count = precision )
+  from scitbx.math import golden_spiral
+  sampling = golden_spiral( count = precision )
 
   values = [
     calculation( indexer = indexer, sampling = sampling, description = d )

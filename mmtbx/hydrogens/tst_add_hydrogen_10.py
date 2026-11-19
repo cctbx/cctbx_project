@@ -5,7 +5,7 @@ import iotbx.pdb
 from libtbx.utils import null_out
 from mmtbx.hydrogens import reduce_hydrogen
 
-def run():
+def run_00():
   """
   Exercise adding H to water
   """
@@ -29,7 +29,48 @@ HETATM  846  O   HOH A 511       4.272   0.767 -10.242  1.00  7.02           O
       assert xyz in expected
   assert cntr==2
 
+def run_01():
+  """
+  Exercise adding H to water: make sure workaround does not remove them
+  """
+  pdb_str = """
+CRYST1   19.465   21.432   29.523  90.00  90.00  90.00 P 21 21 21    4
+HETATM  151  O   HOH A1006       9.937  14.244   1.856  0.50  8.38           O
+HETATM  165  O   HOH A1106       9.290  13.738   1.763  0.50 18.99           O
+HETATM  157  O   HOH A1012      -0.833  19.856   2.677  0.50 12.16           O
+HETATM  166  O   HOH A1112      -0.886  20.218   1.931  0.50  9.08           O
+END
+  """
+  pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  o = reduce_hydrogen.place_hydrogens(model = model, exclude_water = False)
+  o.run()
+  assert o.get_model().get_xray_structure().hd_selection().count(True)==8
+
+def run_02():
+  """
+  Water H are placed by workaround_002, not by riding, so they must not be
+  reported as unplaced: 1yjp listed all its waters as "not placed because a
+  neighbouring heavy atom is missing" while writing their H.
+  """
+  pdb_str = """
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1
+HETATM   60  O   HOH A   8      -6.471   5.227   7.124  1.00 22.62           O
+HETATM   61  O   HOH A   9      10.431   1.858   3.216  1.00 19.71           O
+END
+  """
+  pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  o = reduce_hydrogen.place_hydrogens(model = model, exclude_water = False)
+  o.run()
+  assert o.get_model().get_xray_structure().hd_selection().count(True)==4
+  assert o.site_labels_missing_neighbor == [], o.site_labels_missing_neighbor
+  assert o.residues_missing_neighbor == [], o.residues_missing_neighbor
+  assert o.site_labels_no_para == [], o.site_labels_no_para
+
 if (__name__ == "__main__"):
   t0 = time.time()
-  run()
+  run_00()
+  run_01()
+  run_02()
   print("OK. Time: %8.3f"%(time.time()-t0))

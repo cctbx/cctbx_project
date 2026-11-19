@@ -18,12 +18,12 @@ class Program(ProgramTemplate):
 
 Options:
 
-  output=          text : default output.  Prints machine-readable
+  output_type=          text : default output.  Prints machine-readable
                           columnated and colon-separated validation text to
                           screen.
                         json : prints results as JSON compatible dictionary
                         kin : prints kinemage markup for validation to screen
-                        full_kin : prints kinemage markup and struture kinamge
+                        full_kin : prints kinemage markup and structure kinamge
                           to screen
                         points_kin : prints point cloud of residues in cablam
                           space in kinemage format
@@ -85,15 +85,15 @@ Example:
       quiet=False)
 
     #output_type = *text kin full_kin points_kin records records_and_pdb oneline
+    pdb_file_str = os.path.basename(self.data_manager.get_model_names()[0])
     if self.params.json:
       print(self.get_results_as_JSON())
     elif self.params.output_type=='oneline':
-      pdb_file_str = os.path.basename(self.data_manager.get_model_names()[0])
       self.cablam.as_oneline(pdbid=pdb_file_str)
     elif self.params.output_type=='kin':
       self.cablam.as_kinemage()
     elif self.params.output_type=='full_kin':
-      self.cablam.as_full_kinemage(pdbid=pdbid)
+      self.cablam.as_full_kinemage(pdbid=pdb_file_str)
     elif self.params.output_type=='points_kin':
       self.cablam.as_pointcloud_kinemage()
     elif self.params.output_type=='records':

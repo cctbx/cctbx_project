@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.small_cell_index
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 import xfel.small_cell.small_cell
 from xfel.small_cell.small_cell import small_cell_index

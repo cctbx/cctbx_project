@@ -849,6 +849,16 @@ def pdb_inp_from_multiple_files(pdb_files, log):
   return pdb_inp
 
 class process_command_line_args(object):
+  """Sort arguments into PHIL parameters and model, reflection, map and
+  restraint files, and find their consensus crystal symmetry.
+
+  Legacy: do not use in new code. New programs subclass
+  libtbx.program_template.ProgramTemplate, run through
+  iotbx.cli_parser.run_program, and read files with
+  iotbx.data_manager.DataManager. Arguments that are neither a file
+  nor key=value, and parameters whose value contains "=", are ignored
+  without an error.
+  """
   def __init__(self,
                args,
                cmd_cs=None,

@@ -107,8 +107,23 @@ class adp_aniso_restraints(object):
     sites_cart = xray_structure.sites_cart()
     if(selection is not None):
       sites_cart = sites_cart.select(selection)
-    bond_proxies_simple = restraints_manager.pair_proxies(sites_cart =
-      sites_cart).bond_proxies.simple
+    pair_proxies = restraints_manager.pair_proxies(sites_cart = sites_cart)
+    bond_proxies_simple = pair_proxies.bond_proxies.simple
+    # Water and the atom that coordinates it are not bonded: their ADP are
+    # not expected to be similar. The list without such pairs is kept with
+    # the restraints manager for as long as its pair proxies do not change.
+    cached = getattr(restraints_manager,
+      "_bond_proxies_simple_for_adp_similarity", None)
+    if(cached is None or cached[0] is not pair_proxies):
+      from cctbx.geometry_restraints.linking_class import linking_class
+      origin_id = linking_class().get_origin_id('water coordination')
+      if(bond_proxies_simple.proxy_select(origin_id = origin_id).size() > 0):
+        bond_proxies_simple = \
+          bond_proxies_simple.get_proxies_without_origin_id(origin_id)
+      restraints_manager._bond_proxies_simple_for_adp_similarity = (
+        pair_proxies, bond_proxies_simple)
+    else:
+      bond_proxies_simple = cached[1]
     if(selection is None):
       selection = flex.bool(scatterers.size(), True)
     hd_selection = xray_structure.hd_selection()

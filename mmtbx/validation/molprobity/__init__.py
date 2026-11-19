@@ -613,19 +613,62 @@ class molprobity(slots_getstate_setstate):
   def as_mmcif_records(self) : # TODO
     raise NotImplementedError()
 
-  def as_multi_criterion_view(self):
+  def real_space_results_by_type(self):
+    """
+    Real-space results split the way the GUI residue-type menu does:
+    protein, other (nucleic acids, ligands, ions), water, everything.
+    """
+    protein = other = water = []
+    if self.real_space is not None:
+      protein = list(self.real_space.protein)
+      other = list(self.real_space.other)
+    if self.waters is not None:
+      water = list(self.waters.results)
+    return {
+      "protein" : protein,
+      "other" : other,
+      "water" : water,
+      "everything" : protein + other + water,
+    }
+
+  def _populate_multi_criterion(self, view, real_space_results,
+      log=sys.stderr):
+    view.process_outliers(real_space_results, log=log)
+    if self.waters is not None:
+      view.process_outliers(self.waters.results, log=log)
+    msr = self.model_statistics_geometry_result
+    view.process_outliers(msr.ramachandran.ramalyze.results, log=log)
+    view.process_outliers(msr.rotamer.rotalyze.results, log=log)
+    view.process_outliers(msr.c_beta.cbetadev.results, log=log)
+    view.process_outliers(msr.clash.clashes.results, log=log)
+
+  def as_multi_criterion_view(self, residue_type=None):
+    """
+    Residues and their outliers for the multi-criterion plot.  By default this
+    is the (cached) view over the protein and nucleic-acid chains.  With
+    residue_type ("protein", "other", "water" or "everything") a new view is
+    built from the real-space results of that type only, i.e. the residues
+    listed in the corresponding GUI table; it may be empty.
+    """
+    if residue_type is not None:
+      by_type = self.real_space_results_by_type()
+      if residue_type not in by_type:
+        raise ValueError("Unknown residue type '%s' (expected one of %s)" %
+          (residue_type, ", ".join(sorted(by_type.keys()))))
+      results = by_type[residue_type]
+      view = multi_criterion_view.from_results(results)
+      # outliers of other residue types are expected to be missing here
+      self._populate_multi_criterion(view, results, log=null_out())
+      return view
     if (self._multi_criterion is None):
       return None
     if (not self._multi_criterion.is_populated):
+      real_space_results = []
       if (self.real_space is not None):
-        self._multi_criterion.process_outliers(self.real_space.results)
-      if (self.waters is not None):
-        self._multi_criterion.process_outliers(self.waters.results)
-      msr = self.model_statistics_geometry_result
-      self._multi_criterion.process_outliers(msr.ramachandran.ramalyze.results)
-      self._multi_criterion.process_outliers(msr.rotamer.rotalyze.results)
-      self._multi_criterion.process_outliers(msr.c_beta.cbetadev.results)
-      self._multi_criterion.process_outliers(msr.clash.clashes.results)
+        # real_space.results only holds the protein residues (the GUI swaps
+        # it between residue types); the plot covers nucleic acids as well
+        real_space_results = self.real_space.protein + self.real_space.other
+      self._populate_multi_criterion(self._multi_criterion, real_space_results)
     return self._multi_criterion
 
   def display_wx_plots(self):
@@ -944,12 +987,12 @@ class residue_multi_criterion(residue):
 
   def get_real_space_plot_values(self, use_numpy_NaN=True):
     for outlier in self.outliers :
-      if (type(outlier).__name__ == 'residue_real_space'):
+      if type(outlier).__name__ in ('residue_real_space', 'water'):
         values = [ outlier.b_iso, outlier.cc, outlier.two_fofc, outlier.fmodel ]
         return values
     if (use_numpy_NaN):
       import numpy
-      return [ numpy.NaN ] * 4
+      return [ numpy.nan ] * 4
     else :
       return [ None ] * 4
 
@@ -975,7 +1018,7 @@ class residue_multi_criterion(residue):
       import numpy
       y_ = []
       for yval in y :
-        if (yval is None) : y_.append(numpy.NaN)
+        if (yval is None) : y_.append(numpy.nan)
         else :              y_.append(yval)
       return y_
     return y
@@ -986,6 +1029,34 @@ class multi_criterion_view(slots_getstate_setstate):
   of outliers.
   """
   __slots__ = ["residues", "is_populated"]
+
+  @classmethod
+  def from_results(cls, results):
+    """
+    Build the view from single-residue validation results (e.g. the
+    real-space results of one residue type, including waters) instead of a
+    hierarchy.  Residues keep the order of the results; duplicates (e.g.
+    alternate conformations) are collapsed onto the first one.
+    """
+    self = cls.__new__(cls)
+    self.is_populated = False
+    self.residues = {}
+    for result in results:
+      id_str = result.residue_group_id_str()
+      if id_str in self.residues:
+        continue
+      combined = residue_multi_criterion(
+        chain_id=result.chain_id,
+        resseq=result.resseq,
+        icode=result.icode,
+        resname=result.resname,
+        altloc="",
+        i_seq=len(self.residues),
+        n_confs=1)
+      combined.xyz = result.xyz
+      self.residues[id_str] = combined
+    return self
+
   def __init__(self, pdb_hierarchy, include_all=False):
     self.is_populated = False
     self.residues = {}
@@ -1016,21 +1087,20 @@ class multi_criterion_view(slots_getstate_setstate):
     self.is_populated = True
     for outlier in outliers :
       if outlier.is_single_residue_object():
-        if (outlier.resname == "HOH") : continue
         id_str = outlier.residue_group_id_str()
         if (id_str in self.residues):
           self.residues[id_str].add_outlier(outlier)
-        else :
+        elif outlier.resname != "HOH": # waters are usually not in the view
           print("missing residue group '%s'" % id_str, file=log)
       else :
         have_ids = set([])
         for atom in outlier.atoms_info :
           id_str = atom.residue_group_id_str()
-          if (atom.resname == "HOH") or (id_str in have_ids) : continue
+          if id_str in have_ids: continue
           if (id_str in self.residues):
             self.residues[id_str].add_outlier(outlier)
             have_ids.add(id_str)
-          else :
+          elif atom.resname != "HOH":
             print("missing residue group '%s'" % id_str, file=log)
 
   def get_residue_group_data(self, residue_group):
@@ -1053,21 +1123,33 @@ class multi_criterion_view(slots_getstate_setstate):
       values.append(outlier.get_real_space_plot_values(True))
     values = numpy.array(values).transpose()
     if (len(values) > 0):
+      def widen(y_min, y_max):
+        # a single residue gives (nearly) identical limits, which make the
+        # plot axis singular; enforce a minimum range around the values
+        min_range = abs(y_max) * 0.1 or 1.0
+        if (y_max - y_min) < min_range:
+          pad = (min_range - (y_max - y_min)) / 2
+          y_min, y_max = y_min - pad, y_max + pad
+        return (y_min, y_max)
       rho_min = min(min(values[2]), min(values[3]))
       rho_max = max(max(values[2]), max(values[3]))
       return {
-        "rho" : (rho_min, rho_max),
-        "b" : (min(values[0]), max(values[0])),
-        "cc" : (min(values[1]), max(values[1])),
+        "rho" : widen(rho_min, rho_max),
+        "b" : widen(min(values[0]), max(values[0])),
+        "cc" : widen(min(values[1]), max(values[1])),
       }
-    else:
-      raise Sorry('No residues (usually protein or nucleic acid) are available for generating plots.')
+    else: # no residues: the plot is drawn empty
+      return {
+        "rho" : (None, None),
+        "b" : (None, None),
+        "cc" : (None, None),
+      }
 
-  def display_wx_plots(self, parent=None):
+  def display_wx_plots(self, parent=None, title="MolProbity multi-criterion plot"):
     import wxtbx.plots.molprobity
     frame = wxtbx.plots.molprobity.multi_criterion_frame(
       parent=parent,
-      title="MolProbity multi-criterion plot",
+      title=title,
       validation=self)
     frame.Show()
 

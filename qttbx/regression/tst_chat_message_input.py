@@ -350,6 +350,77 @@ def exercise_set_assistant_name_updates_placeholder():
   assert "GPT" in w._edit.placeholderText(), w._edit.placeholderText()
 
 
+def _input():
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  return MessageInput()
+
+
+def exercise_effort_combo_lists_levels_and_emits_on_change():
+  """The Effort combo offers exactly the shared EFFORT_LEVELS, starts at
+  DEFAULT_EFFORT, and a user change emits effort_changed(level) once."""
+  from qttbx.widgets.chat.agent.profile import EFFORT_LEVELS, DEFAULT_EFFORT
+  w = _input()
+  items = [w._effort_combo.itemText(i) for i in range(w._effort_combo.count())]
+  assert items == list(EFFORT_LEVELS), items
+  assert w.effort() == DEFAULT_EFFORT, w.effort()
+  assert w._effort_label.text() == "Effort", w._effort_label.text()
+  seen = []
+  w.effort_changed.connect(seen.append)
+  w._effort_combo.setCurrentIndex(EFFORT_LEVELS.index("max"))
+  assert seen == ["max"], seen
+  assert w.effort() == "max", w.effort()
+
+
+def exercise_set_effort_selects_without_emitting_and_is_idempotent():
+  """Programmatic set_effort (the window seeding the combo from the agent)
+  selects the entry silently; repeating it is a no-op, so the window's
+  relay can never feed back into itself."""
+  w = _input()
+  seen = []
+  w.effort_changed.connect(seen.append)
+  w.set_effort("low")
+  assert w.effort() == "low" and seen == [], (w.effort(), seen)
+  w.set_effort("low")
+  assert seen == [], seen
+
+
+def exercise_effort_combo_disabled_while_busy():
+  """A change cannot land mid-turn: set_busy(True) disables the combo and
+  set_busy(False) re-enables it."""
+  w = _input()
+  assert w._effort_combo.isEnabled()
+  w.set_busy(True)
+  assert not w._effort_combo.isEnabled()
+  w.set_busy(False)
+  assert w._effort_combo.isEnabled()
+
+
+def exercise_effort_combo_ignores_the_wheel_without_focus():
+  """Under styles that scroll combos on the wheel (Fusion, Windows; the Mac
+  style does not), a wheel step over the unfocused combo would change the
+  level -- and each change is a round trip to the backend. The combo takes
+  focus only by click or Tab (StrongFocus) and drops wheel events while it
+  has no focus."""
+  from qttbx.qt import QtCore, QtGui
+  w = _input()
+  w._effort_combo.setStyle(QtWidgets.QStyleFactory.create("Fusion"))
+  w.set_effort("high")
+  seen = []
+  w.effort_changed.connect(seen.append)
+  assert w._effort_combo.focusPolicy() == QtCore.Qt.StrongFocus, \
+    w._effort_combo.focusPolicy()
+  assert not w._effort_combo.hasFocus()
+  ev = QtGui.QWheelEvent(
+    QtCore.QPointF(5, 5), QtCore.QPointF(5, 5), QtCore.QPoint(0, 0),
+    QtCore.QPoint(0, -120), QtCore.Qt.NoButton, QtCore.Qt.NoModifier,
+    QtCore.Qt.ScrollUpdate, False)
+  QtWidgets.QApplication.sendEvent(w._effort_combo, ev)
+  assert w.effort() == "high" and seen == [], (w.effort(), seen)
+
+
 def exercise_auto_approve_button_is_checkable_and_emits_signal():
   """The centred 'Auto-approve' button is a checkable QPushButton.
   Clicking it flips the checked state and emits
@@ -699,6 +770,42 @@ def exercise_ctrl_home_end_emit_goto_signals():
   assert (got["start"], got["end"]) == (2, 1), got
 
 
+def exercise_thinking_action_drives_the_button_and_any_menu():
+  """The 💭 button is a QToolButton over one checkable QAction the
+  composer owns (``thinking_action``); the window adds the SAME action to
+  its View menu, so Qt keeps every handle in step with no relay code. It
+  starts checked (showing thinking is the default) and sits immediately
+  left of 🔍."""
+  from qttbx.widgets.chat.message_input import MessageInput
+  app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+  from qttbx.widgets.font_init import init_default_app_font
+  init_default_app_font(app)
+  w = MessageInput()
+  act = w.thinking_action
+  assert act.isCheckable() and act.isChecked()
+  assert act.text() == "Show thinking", act.text()
+  assert w._thinking_btn.defaultAction() is act
+  assert w._thinking_btn.text() == "💭", w._thinking_btn.text()
+  assert "thinking" in act.toolTip().lower()
+  got = []
+  act.toggled.connect(lambda on: got.append(on))
+  w._thinking_btn.click()                      # button -> action
+  assert not act.isChecked() and got == [False], got
+  act.setChecked(True)                         # menu/programmatic -> button
+  assert w._thinking_btn.isChecked() and got == [False, True], got
+  act.trigger()
+  assert not w._thinking_btn.isChecked() and got == [False, True, False]
+  w.resize(600, 120)
+  w.show()
+  app.processEvents()
+  assert w._thinking_btn.x() < w._search_btn.x()
+  assert w._thinking_btn.y() == w._search_btn.y()
+  row = next(w.layout().itemAt(i).layout() for i in range(w.layout().count())
+             if w.layout().itemAt(i).layout() is not None)
+  i = row.indexOf(w._thinking_btn)
+  assert row.itemAt(i + 1).widget() is w._search_btn    # immediately left
+
+
 def exercise():
   exercise_ctrl_home_end_emit_goto_signals()
   exercise_send_signal_carries_text_and_empty_attachments()
@@ -713,6 +820,11 @@ def exercise():
   exercise_oversized_webp_is_reencoded_with_jpeg_mime()
   exercise_save_chat_button_emits_signal()
   exercise_search_button_next_to_attach_emits_signal()
+  exercise_thinking_action_drives_the_button_and_any_menu()
+  exercise_effort_combo_lists_levels_and_emits_on_change()
+  exercise_set_effort_selects_without_emitting_and_is_idempotent()
+  exercise_effort_combo_disabled_while_busy()
+  exercise_effort_combo_ignores_the_wheel_without_focus()
   exercise_auto_approve_button_is_checkable_and_emits_signal()
   exercise_placeholder_set_and_reset()
   exercise_placeholder_dim_flag_controls_palette_role()

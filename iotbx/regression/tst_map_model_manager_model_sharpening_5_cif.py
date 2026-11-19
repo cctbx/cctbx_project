@@ -52,16 +52,32 @@ def test_01(method = 'model_sharpen',
   # sharpen by method (can be model_sharpen, half_map_sharpen or
   #     external_sharpen)
 
+  def clear_sharpened_map():
+    # Remove the sharpened map left by any previous call, so that each
+    #   check below can see only the map written by the call before it
+    if 'map_manager_scaled' in mmm.map_id_list():
+      mmm.remove_map_manager_by_id('map_manager_scaled')
+
+  def sharpened_map_model_cc():
+    # Sharpening writes its result to 'map_manager_scaled' and leaves
+    #   'map_manager' unchanged, so check the sharpened map
+    assert 'map_manager_scaled' in mmm.map_id_list()
+    return mmm.map_model_cc(map_id = 'map_manager_scaled')
+
+  clear_sharpened_map()
   sharpen_method(anisotropic_sharpen = False, n_bins=10)
-  assert mmm.map_model_cc() > 0.9
+  assert sharpened_map_model_cc() > 0.9
+  clear_sharpened_map()
   sharpen_method(anisotropic_sharpen = False, n_bins=10,
      local_sharpen = True)
-  assert mmm.map_model_cc() > 0.9
+  assert sharpened_map_model_cc() > 0.9
+  clear_sharpened_map()
   sharpen_method(anisotropic_sharpen = True, n_bins=10)
-  assert mmm.map_model_cc() > 0.9
+  assert sharpened_map_model_cc() > 0.9
+  clear_sharpened_map()
   sharpen_method(anisotropic_sharpen = True, n_bins=10,
      local_sharpen = True, n_boxes = 1)
-  assert mmm.map_model_cc() > 0.9
+  assert sharpened_map_model_cc() > 0.9
 
 
 # ----------------------------------------------------------------------------

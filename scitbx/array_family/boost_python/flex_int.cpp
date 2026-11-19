@@ -13,6 +13,7 @@
 #include <boost/python/make_constructor.hpp>
 #include <boost/lexical_cast.hpp>
 #include <map>
+#include "flex_helpers.h"
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
@@ -97,7 +98,10 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
-  /* For allowed syntax for the optional format_string argument see:
+  /* format_string is one printf directive for an integer: optional flags,
+     width and precision, conversion d or i; the value is printed as a
+     long long.  Any other format_string goes through boost::format as
+     before:
        http://www.boost.org/libs/format/doc/format.html#syntax
    */
   template <typename intType>
@@ -108,8 +112,18 @@ namespace scitbx { namespace af { namespace boost_python {
   {
     std::size_t n = O.accessor().size_1d();
     af::shared<std::string> result((af::reserve(n)));
-    for(std::size_t i=0;i<n;i++) {
-      result.push_back((boost::format(format_string) % O[i]).str());
+    if (is_printf_directive(format_string, "di")) {
+      std::string directive
+        = format_string.substr(0, format_string.size() - 1) + "lld";
+      for(std::size_t i=0;i<n;i++) {
+        result.push_back(snprintf_string(
+          directive.c_str(), static_cast<long long>(O[i])));
+      }
+    }
+    else {
+      for(std::size_t i=0;i<n;i++) {
+        result.push_back((boost::format(format_string) % O[i]).str());
+      }
     }
     return result;
   }

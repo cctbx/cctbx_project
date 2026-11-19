@@ -879,7 +879,7 @@ def test_bug10_ligand_cif_slot_rejects_model_mmcif():
   tmpdir = tempfile.mkdtemp()
   files = ['refine_001_001_modified.pdb', '7qz0.mtz', 'refine_001_001.cif']
   for f in files:
-    open(os.path.join(tmpdir, f), 'w').close()
+    open(os.path.join(tmpdir, f), 'w', encoding="utf-8").close()
   available_files = [os.path.join(tmpdir, f) for f in files]
 
   categorized = {
@@ -922,7 +922,7 @@ def test_bug10_ligand_cif_slot_accepts_legitimate_cif():
   tmpdir = tempfile.mkdtemp()
   files = ['protein.pdb', 'data.mtz', 'ligand.ligands.cif']
   for f in files:
-    open(os.path.join(tmpdir, f), 'w').close()
+    open(os.path.join(tmpdir, f), 'w', encoding="utf-8").close()
   available_files = [os.path.join(tmpdir, f) for f in files]
 
   categorized = {
@@ -964,7 +964,7 @@ def test_bug10_exclude_patterns_applied_in_best_files_path():
   tmpdir = tempfile.mkdtemp()
   files = ['good_model.pdb', 'fake_ligand_fit.pdb', 'data.mtz']
   for f in files:
-    open(os.path.join(tmpdir, f), 'w').close()
+    open(os.path.join(tmpdir, f), 'w', encoding="utf-8").close()
   available_files = [os.path.join(tmpdir, f) for f in files]
 
   # Place the bad file as best_files['model'] — pre-H10 this would
@@ -1007,7 +1007,7 @@ def test_bug10_exclude_patterns_applied_in_category_path():
   files = ['protein.pdb', 'data.mtz',
            'refine_001_001.cif', 'good_ligand.ligands.cif']
   for f in files:
-    open(os.path.join(tmpdir, f), 'w').close()
+    open(os.path.join(tmpdir, f), 'w', encoding="utf-8").close()
   available_files = [os.path.join(tmpdir, f) for f in files]
 
   # Both CIFs in ligand_cif category — H10 should pick the
@@ -1053,7 +1053,7 @@ def test_bug10_unrelated_slots_unaffected():
   tmpdir = tempfile.mkdtemp()
   files = ['protein.pdb', 'data.mtz', '7qz0.fa']
   for f in files:
-    open(os.path.join(tmpdir, f), 'w').close()
+    open(os.path.join(tmpdir, f), 'w', encoding="utf-8").close()
   available_files = [os.path.join(tmpdir, f) for f in files]
 
   # phenix.refine doesn't take a sequence slot, but the data_mtz

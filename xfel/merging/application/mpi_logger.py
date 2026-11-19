@@ -20,6 +20,9 @@ class mpi_logger(object):
     self.log_buffer = self.main_log_buffer = '' # a buffer for handling a run-time case, when the file path isn't known yet, so we need to store the output somewhere
 
     self.timing_table = dict()
+    # initialize step information; in the context of merge.py each worker increments step; otherwise keep as None
+    self.worker_step = None
+
 
   def set_log_file_paths(self, params):
 
