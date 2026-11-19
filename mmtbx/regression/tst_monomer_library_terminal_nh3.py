@@ -121,6 +121,68 @@ ATOM     20  HA3 GLY A   2      -2.488   8.673 -12.072  1.00  5.73           H
 END
 """
 
+# NPH-VAL as ready_set (old reduce) writes it: H and H2 on N; NPH's H3
+# is on C3
+pdb_nph_old_reduce = """\
+CRYST1  100.000  100.000  100.000  90.00  90.00  90.00 P 1
+HETATM    1  N   NPH A   1      23.870  15.268 -50.490  1.00 25.06           N
+HETATM    2  CA  NPH A   1      23.515  14.664 -49.210  1.00 22.94           C
+HETATM    3  C   NPH A   1      22.061  14.206 -49.245  1.00 23.82           C
+HETATM    4  O   NPH A   1      21.158  15.023 -49.423  1.00 24.62           O
+HETATM    5  CB  NPH A   1      23.658  15.702 -48.113  1.00 21.44           C
+HETATM    6  SG  NPH A   1      25.281  16.410 -47.839  1.00 31.29           S
+HETATM    7  CD  NPH A   1      25.498  16.310 -46.059  0.50 33.70           C
+HETATM    8  CE  NPH A   1      26.971  16.492 -45.820  0.50 39.92           C
+HETATM    9  NZ  NPH A   1      27.411  17.709 -45.649  0.50 43.87           N
+HETATM   10  OZ  NPH A   1      27.815  15.348 -45.806  0.50 43.26           O
+HETATM   11  C10 NPH A   1      30.543  19.684 -45.064  0.50 54.23           C
+HETATM   12  C1A NPH A   1      31.522  18.669 -45.046  0.50 55.19           C
+HETATM   13  C2  NPH A   1      33.832  17.924 -44.852  0.50 55.79           C
+HETATM   14  C3  NPH A   1      33.439  16.599 -45.020  0.50 53.96           C
+HETATM   15  C4  NPH A   1      32.087  16.314 -45.202  0.50 53.40           C
+HETATM   16  C4A NPH A   1      31.137  17.332 -45.219  0.50 52.42           C
+HETATM   17  C5  NPH A   1      29.800  17.009 -45.411  0.50 51.26           C
+HETATM   18  C6  NPH A   1      28.830  18.015 -45.436  0.50 51.14           C
+HETATM   19  C6A NPH A   1      29.195  19.344 -45.262  0.50 52.54           C
+HETATM   20  C7  NPH A   1      28.201  20.331 -45.288  0.50 53.28           C
+HETATM   21  C8  NPH A   1      28.549  21.670 -45.111  0.50 54.83           C
+HETATM   22  C9  NPH A   1      29.889  22.011 -44.911  0.50 55.29           C
+HETATM   23  N1  NPH A   1      32.879  18.963 -44.861  0.50 57.78           N
+HETATM   24  N10 NPH A   1      30.892  21.027 -44.889  0.50 53.87           N
+HETATM   25  H   NPH A   1      24.112  16.093 -50.524  1.00 25.06           H
+HETATM   26  H2  NPH A   1      23.837  14.799 -51.210  1.00 25.06           H
+HETATM   27  H3  NPH A   1      34.108  15.897 -45.009  0.50 53.96           H
+HETATM   28  HA  NPH A   1      24.099  13.908 -49.042  1.00 22.94           H
+HETATM   29  HB2 NPH A   1      23.355  15.287 -47.290  1.00 21.44           H
+HETATM   30  HB3 NPH A   1      23.062  16.441 -48.312  1.00 21.44           H
+HETATM   31  HD2 NPH A   1      25.226  15.451 -45.699  0.50 33.70           H
+HETATM   32  HD3 NPH A   1      25.032  17.028 -45.603  0.50 33.70           H
+HETATM   33  HZ  NPH A   1      26.833  18.345 -45.684  0.50 43.87           H
+HETATM   34  H4  NPH A   1      31.747  15.412 -45.311  0.50 53.40           H
+HETATM   35  H5  NPH A   1      29.643  16.059 -45.528  0.50 51.26           H
+HETATM   36  H7  NPH A   1      27.261  20.125 -45.413  0.50 53.28           H
+HETATM   37  H8  NPH A   1      27.874  22.367 -45.116  0.50 54.83           H
+HETATM   38  H9  NPH A   1      30.089  22.949 -44.766  0.50 55.29           H
+HETATM   39  HC2 NPH A   1      34.778  18.099 -44.728  0.50 55.79           H
+ATOM     40  N   VAL A   2      21.831  12.913 -49.037  1.00 28.67           N
+ATOM     41  CA  VAL A   2      20.474  12.371 -49.062  1.00 33.96           C
+ATOM     42  C   VAL A   2      20.069  11.729 -47.737  1.00 36.17           C
+ATOM     43  O   VAL A   2      20.854  11.018 -47.109  1.00 40.12           O
+ATOM     44  CB  VAL A   2      20.297  11.336 -50.209  1.00 39.91           C
+ATOM     45  CG1 VAL A   2      18.831  10.915 -50.336  1.00 38.68           C
+ATOM     46  CG2 VAL A   2      20.791  11.918 -51.524  1.00 43.67           C
+ATOM     47  H   VAL A   2      22.442  12.328 -48.879  1.00 28.67           H
+ATOM     48  HA  VAL A   2      19.848  13.087 -49.232  1.00 33.96           H
+ATOM     49  HB  VAL A   2      20.823  10.546 -50.010  1.00 39.91           H
+ATOM     50 HG11 VAL A   2      18.723  10.392 -51.146  1.00 38.68           H
+ATOM     51 HG12 VAL A   2      18.585  10.381 -49.564  1.00 38.68           H
+ATOM     52 HG13 VAL A   2      18.277  11.710 -50.381  1.00 38.68           H
+ATOM     53 HG21 VAL A   2      20.576  11.302 -52.242  1.00 43.67           H
+ATOM     54 HG22 VAL A   2      20.352  12.770 -51.676  1.00 43.67           H
+ATOM     55 HG23 VAL A   2      21.751  12.045 -51.474  1.00 43.67           H
+END
+"""
+
 _srv = []
 def interpret(pdb_str):
   """residue names with their modifications; {atom name of residue 1:
@@ -185,15 +247,15 @@ def test_standard_terminus():
   assert len(n_ca) == 1 and abs(n_ca[0] - 1.491) < 1.e-6, n_ca
 
 def test_partial_and_sp3():
-  # NPH needs two computed names (HN3, HNT): one of them present is enough,
+  # NPH needs two computed names (H2, HN3): one of them present is enough,
   # as for mod_NH3's H1-H3; CA sp3 by neighbour count, also for
   # mon_lib-format entries whose bonds are all "coval" (MSE)
   from mmtbx.monomer_library import terminal_nh3
   interpret(pdb_ala)
   srv = _srv[0]
   nph = srv.get_comp_comp_id_direct('NPH')
-  assert terminal_nh3.extra_h_names(nph) == ['HN3', 'HNT']
-  for unexpected in (['HN3'], ['HNT'], ['HN3', 'HNT']):
+  assert terminal_nh3.extra_h_names(nph) == ['H2', 'HN3']
+  for unexpected in (['H2'], ['HN3'], ['H2', 'HN3']):
     assert terminal_nh3.terminal_mod(nph, unexpected) is not None, \
       unexpected
   assert terminal_nh3.terminal_mod(nph, ['HXX']) is None
@@ -325,6 +387,42 @@ def test_computed_rule_name():
   assert terminal_nh3.computed_names_mod(mon, ['HN2', 'H1'], nh3) is None
   assert terminal_nh3.computed_names_mod(mon, ['OXT'], nh3) is None
 
+def test_h_series():
+  # dictionary N-H named H: the missing H continue the series H, H2, H3
+  # (CCD, old reduce) where free, then the fallback names. NPH H3 is on
+  # C3: H, H2, HN3. Old reduce's H2 is restrained to N, never by mod_NH3
+  # (it would take C3's H3); as D (all_d), D and D2. 0G6 (H1 on another
+  # atom): H2, H3
+  interpret(pdb_ala)
+  srv = _srv[0]
+  assert terminal_nh3.extra_h_names(
+    srv.get_comp_comp_id_direct('NPH')) == ['H2', 'HN3']
+  assert terminal_nh3.extra_h_names(
+    srv.get_comp_comp_id_direct('0G6')) == ['H2', 'H3']
+  # 2KZ (H and H4 on N) is not a lone H: H5, as before
+  assert terminal_nh3.extra_h_names(
+    srv.get_comp_comp_id_direct('2KZ')) == ['H5']
+  d = pdb_nph_old_reduce.replace(' H   NPH', ' D   NPH').replace(
+    ' H2  NPH', ' D2  NPH')
+  d = '\n'.join(l[:76] + ' D' + l[78:] if l[12:16] in (' D  ', ' D2 ')
+    else l for l in d.split('\n'))
+  for pdb_str, h, h2 in ((pdb_nph_old_reduce, 'H', 'H2'), (d, 'D', 'D2')):
+    names, bonded, hs, _ = interpret(pdb_str)
+    # every atom typed (old reduce's H2 stopped model.process())
+    p = pdb_interpretation.process(mon_lib_srv=_srv[0], ener_lib=_srv[1],
+      pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str),
+      log=null_out(),
+      substitute_non_crystallographic_unit_cell_if_necessary=True)
+    assert p.all_chain_proxies.fatal_problems_message() is None, \
+      p.all_chain_proxies.fatal_problems_message()
+    assert 'NPH%NH3-NPH' in names, names
+    assert not [x for x in names if x.startswith('NPH%NH3') and
+      x != 'NPH%NH3-NPH'], names
+    for x in hs:
+      assert x in bonded, (x, bonded)
+    assert bonded[h] == ['N'] and bonded[h2] == ['N'], bonded
+    assert bonded['H3'] == ['C3'], bonded['H3']
+
 if __name__ == '__main__':
   test_0a0()
   test_2kz_carbon_h()
@@ -335,4 +433,5 @@ if __name__ == '__main__':
   test_n_h_values()
   test_imine_and_bond_order()
   test_computed_rule_name()
+  test_h_series()
   print('OK')

@@ -23,6 +23,7 @@ from mmtbx.programs import reduce2
 from mmtbx.monomer_library import pdb_interpretation, terminal_nh3
 from mmtbx.regression import tst_reduce2_not_placed as tnp
 from mmtbx.regression import tst_reduce2_chain_start_ligands as tcs
+from mmtbx.regression import tst_monomer_library_terminal_nh3 as tml
 
 pdb_2kz = """\
 CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
@@ -156,7 +157,7 @@ CONVERTED = [
   ('2KZ', tnp.with_next_gly(pdb_2kz), ['H', 'H4', 'H5'], ('H2', 'CB'), 1.402),
   ('5CA', tnp.with_next_gly(pdb_5ca), ['H', 'HN2', 'HN3'], ('H2', 'C2'),
     1.491),
-  ('NPH', pdb_nph, ['H', 'HN3', 'HNT'], ('H3', 'C3'), 1.491),
+  ('NPH', pdb_nph, ['H', 'H2', 'HN3'], ('H3', 'C3'), 1.491),
   ('0A0', tnp.with_next_gly(tnp.pdb_0a0), ['HN1', 'HN2', 'HN3'], None, 1.491),
   ('004', tnp.with_next_gly(tnp.pdb_004), ['HN', 'HNA', 'HNB'], None, 1.491),
   ('SAM', tnp.with_next_gly(pdb_sam), ['HN1', 'HN2', 'HN3'], None, 1.491)]
@@ -616,8 +617,9 @@ def test_blank_n_ca():
 
 def test_supplied_computed_name():
   # keep_existing_H: a supplied H on N under the computed name (07O, TSY:
-  # H3) is the terminus's own: no unknown-atom line, output as without it
-  for comp in ('07O', 'TSY'):
+  # H3; 0G6: H2, H3) is the terminus's own: no unknown-atom line, output as
+  # without it
+  for comp in ('07O', 'TSY', '0G6'):
     pdb_str = geostd_peptide(comp)
     if pdb_str is None:
       print('Skipping test_supplied_computed_name: chem_data not available')
@@ -793,6 +795,35 @@ def test_other_stop_unchanged():
   else:
     raise AssertionError('no stop')
 
+def test_old_reduce_input():
+  # NPH-VAL as ready_set (old reduce) writes it, H and H2 on N (NPH's H3 is
+  # on C3): add rebuilds the terminus as H, H2, HN3; optimize with
+  # keep_existing_H keeps the supplied H and H2 (old reduce's planar sites),
+  # the terminus's own names (no unknown-atom line); both read again with
+  # NH3-NPH and every H restrained
+  supplied = iotbx.pdb.input(source_info=None,
+    lines=tml.pdb_nph_old_reduce).construct_hierarchy()
+  sites = dict((a.name.strip(), a.xyz) for a in first_rg(supplied).atoms())
+  for label, args, names in (
+      ('add', (), ['H', 'H2', 'HN3']),
+      ('optimize', ('approach=optimize', 'keep_existing_H=True'),
+        ['H', 'H2'])):
+    h, description, out = run('NPH_old_reduce_' + label,
+      tml.pdb_nph_old_reduce, *args)
+    assert h_on_n(h) == names, (label, h_on_n(h))
+    assert 'listed as unknown atoms' not in description, description
+    assert 'name collision unresolved' not in description, description
+    ag = first_rg(h).atom_groups()[0]
+    assert ag.get_atom('H3').distance(ag.get_atom('C3')) < 1.2, label
+    if label == 'add':
+      check_reread('NPH_old_reduce_add', out, 'NPH')
+      continue
+    for x in names:
+      assert ag.get_atom(x).xyz == sites[x], (x, ag.get_atom(x).xyz)
+    m, residue_names = reread(out)
+    assert 'NPH%NH3-NPH' in residue_names, residue_names
+    assert unrestrained_h(m) == [], unrestrained_h(m)
+
 if __name__ == '__main__':
   test_converted_termini()
   test_standard_terminus()
@@ -811,4 +842,5 @@ if __name__ == '__main__':
   test_blank_n_ca_supplied_split()
   test_supplied_nh3_in_one_conformer()
   test_other_stop_unchanged()
+  test_old_reduce_input()
   print('OK')

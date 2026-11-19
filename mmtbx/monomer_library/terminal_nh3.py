@@ -90,8 +90,10 @@ def applies(monomer):
 
 def extra_h_names(monomer):
   """Names of the H that make the dictionary's N-H a terminal NH3: the
-  dictionary's own pattern for one missing H, else the first free fallback
-  names. [] if none is missing; None if no free name is left."""
+  dictionary's own pattern for one missing H; after a lone H the free ones
+  of H2, H3 (the series of the CCD and old reduce; NPH: H2, HN3); then the
+  first free fallback names. [] if none is missing; None if no free name
+  is left."""
   hs = n_h_names(monomer)
   need = 3 - len(hs)
   if need <= 0: return []
@@ -100,7 +102,11 @@ def extra_h_names(monomer):
     b = _bump(hs[-1])
     if b and len(b) <= 4 and b.startswith('H') and b not in taken:
       return [b]
-  got = [f for f in FALLBACK if f not in taken][:need]
+  got = []
+  if hs == ['H']:
+    # never H1: H with H1 fits no convention
+    got = [x for x in ('H2', 'H3') if x not in taken]
+  got += [f for f in FALLBACK if f not in taken][:need - len(got)]
   if len(got) < need: return None
   return got
 
