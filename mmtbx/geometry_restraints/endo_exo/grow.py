@@ -62,9 +62,8 @@ class QMRegionGrower:
 
     Whenever a cuttable bond ``current -> neighbour`` is encountered,
     *neighbour* is marked visited so BFS will not expand past it, and
-    ``(neighbour, current)`` is stored as a tentative cap via
-    :meth:`_try_mark_cap`.  Two situations promote a tentative cap back
-    to interior:
+    ``(neighbour, current)`` is stored in ``cap_candidates`` as a tentative
+    cap.  Two situations promote a tentative cap back to interior:
 
     * **Re-encounter**: *neighbour* is later reached from a different
       node.  The cap is then a regular interior node on at least two
@@ -169,10 +168,7 @@ class QMRegionGrower:
             current, neighbour, visited, adjacency, atoms)
           if refusal is None:
             self._log_bond(reason, curr_iseq, nbr_iseq, atoms)
-            self._try_mark_cap(
-              neighbour, current, cap_candidates, visited,
-              adjacency, atoms, queue,
-            )
+            cap_candidates[neighbour] = current
             continue
           self._log_bond(f'{reason} (not taken, {refusal})',
                          curr_iseq, nbr_iseq, atoms)
@@ -681,25 +677,3 @@ class QMRegionGrower:
             file=self.log)
     cap_candidates.pop(cap)
     queue.append(cap)
-
-  def _try_mark_cap(self, candidate, anchor, cap_candidates, visited,
-                     adjacency, atoms, queue):
-    """Record *candidate* (a node) as a cap anchored at *anchor* (a node).
-
-    Parameters
-    ----------
-    candidate : (int, rt_mx)
-        Node of the cap: the atom on the far side of the cuttable bond.
-    anchor : (int, rt_mx)
-        Node of the anchor: the atom on the QM-region side of the cuttable
-        bond.
-    cap_candidates : dict
-        ``{cap_node: anchor_node}``; modified in-place.
-    visited : set of (int, rt_mx)
-    adjacency : collections.defaultdict of set
-        Read-only.
-    atoms : cctbx.array_family.flex array
-        Atom objects indexed by i_seq.
-    queue : collections.deque
-    """
-    cap_candidates[candidate] = anchor
