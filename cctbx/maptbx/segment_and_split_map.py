@@ -8200,16 +8200,24 @@ def write_output_files(params,
      params.output_files.shifted_map_file)), file = out)
 
 
-   print("\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
-   os.path.join(tracking_data.params.output_files.output_directory, au_mask_output_file),
-   os.path.join(tracking_data.params.output_files.output_directory, au_map_output_file))+\
-   "\nThese maps show only the unique (NCS AU) part of the map.", file = out)
+   # Any of these files can be turned off (name is None): list those written
+   box_file_names = []
+   for file_name in (params.output_files.box_mask_file,
+       params.output_files.box_map_file):
+     if file_name:
+       box_file_names.append(os.path.join(
+         tracking_data.params.output_files.output_directory, file_name))
 
-   print("\nThe cut out box_maps (%s, %s) have \nsmaller cell dimensions." %(
-      os.path.join(tracking_data.params.output_files.output_directory, params.output_files.box_mask_file),
-      os.path.join(tracking_data.params.output_files.output_directory, params.output_files.box_map_file), ) +\
-   "\nThese maps also show only the unique part of the map and have this"+\
-   "\nunique part cut out.\n", file = out)
+   if au_mask_output_file and au_map_output_file:
+     print("\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
+     au_mask_output_file, au_map_output_file)+\
+     "\nThese maps show only the unique (NCS AU) part of the map.", file = out)
+
+   if box_file_names:
+     print("\nThe cut out box_maps (%s) have \nsmaller cell dimensions." %(
+      ", ".join(box_file_names)) +\
+     "\nThese maps also show only the unique part of the map and have this"+\
+     "\nunique part cut out.\n", file = out)
 
 
   # Write out NCS AU with shifted origin but initial crystal_symmetry
@@ -8350,11 +8358,15 @@ def write_output_files(params,
 
   # Write out all the selected regions
   if params.output_files.write_output_maps:
+    box_file_names = []
+    for file_name in (params.output_files.box_map_file,
+        params.output_files.box_mask_file):
+      if file_name:
+        box_file_names.append(os.path.join(
+          tracking_data.params.output_files.output_directory, file_name))
     print("\nWriting out region maps. "+\
       "These superimpose on the NCS AU map \nand "+\
-      "mask %s, %s\n" %(
-        os.path.join(tracking_data.params.output_files.output_directory, params.output_files.box_map_file),
-        os.path.join(tracking_data.params.output_files.output_directory, params.output_files.box_mask_file), ), file = out)
+      "mask %s\n" %(", ".join(box_file_names)), file = out)
 
     map_files_written, remainder_regions_written = write_region_maps(params,
       map_data = map_data,
