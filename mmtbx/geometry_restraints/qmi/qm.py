@@ -27,8 +27,6 @@ False = ``$fix``).  ``run_constrained_opt`` drives ``get_opt`` with
 hydrogen, which would release the cap H atoms that must stay frozen.
 """
 
-import os
-
 from libtbx import group_args
 from libtbx.utils import null_out
 from scitbx import matrix
