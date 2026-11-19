@@ -5,6 +5,7 @@ import mmtbx.model
 import libtbx.load_env
 from libtbx.utils import null_out
 from scitbx.array_family import flex
+from libtbx.test_utils import approx_equal
 
 pdb_str_1yjp = """
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
@@ -1193,6 +1194,50 @@ def exercise_02():
         dist = flex.sqrt((g1 - g4).dot())
         assert flex.max(dist) < 1.e-6, flex.max(dist)
 
+def exercise_03():
+  """
+  add_copies: more symmetry copies in the super cell, outside the super
+  sphere, moved by update() with the rest.
+  """
+  from cctbx import sgtbx
+  from cctbx.crystal.super_cell import sym_equiv_sites_cart
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_1yjp)
+  ph = pdb_inp.construct_hierarchy()
+  cs = pdb_inp.crystal_symmetry()
+  n = ph.atoms_size()
+  m = super_cell.manager(
+    pdb_hierarchy        = ph.deep_copy(),
+    crystal_symmetry     = cs,
+    select_within_radius = 5)
+  n_cell = m.super_cell_hierarchy.atoms_size()
+  n_ops = len(m.chain_op_dict)
+  sphere = m.super_sphere_hierarchy.atoms().extract_xyz()
+  present = list(m.chain_op_dict.keys())[0]
+  far = sgtbx.rt_mx("-x+3,y+1/2,-z")
+  assert far.new_denominators(1, 12) not in m.chain_op_dict
+  # the identity and a copy already there are not added again
+  m.add_copies(ops = [sgtbx.rt_mx(), present, far, far])
+  assert m.super_cell_hierarchy.atoms_size() == n_cell + n
+  assert len(m.chain_op_dict) == n_ops + 1
+  # under chain ids of its own
+  new_ids = m.chain_op_dict[far.new_denominators(1, 12)]
+  assert len(new_ids) == len(list(ph.chains()))
+  assert m.super_cell_hierarchy.chain_ids().count(new_ids[0]) == 1
+  # outside the sphere, which does not change
+  assert m.keep_selection.size() == n_cell + n
+  assert m.keep_selection[n_cell:].count(True) == 0
+  assert m.keep_selection.count(True) == sphere.size()
+  assert approx_equal(m.super_sphere_hierarchy.atoms().extract_xyz(), sphere)
+  # the copy is where the operator puts it, also after update()
+  sites_cart = ph.atoms().extract_xyz()
+  for shift in [(0, 0, 0), (0.3, -0.2, 0.1)]:
+    sites_cart = sites_cart + shift
+    m.update(sites_cart = sites_cart, debug = True)
+    assert approx_equal(
+      m.super_cell_hierarchy.atoms().extract_xyz()[n_cell:],
+      sym_equiv_sites_cart(sites_cart = sites_cart,
+        unit_cell = cs.unit_cell(), rt_mx = far))
+
 if(__name__ == "__main__"):
   exercise_00()
   exercise_01()
@@ -1200,3 +1245,4 @@ if(__name__ == "__main__"):
     print("Skipping exercise_02(): chem_data directory not available")
   else:
     exercise_02()
+  exercise_03()
