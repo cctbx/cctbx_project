@@ -1063,7 +1063,7 @@ def exercise_bond_cut_preferred():
   """With ``use_preferred_cuts=True`` the PREFERRED_CUTS table decides:
   LYS CD-CE is a cut site, LYS CA-CD is not."""
   by_name = _atoms_by_name(_LYS_PDB)
-  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+  det = BondCutDetector(use_preferred_cuts=True)
 
   adj = {}
   _edge(adj, by_name["CD"].i_seq, by_name["CE"].i_seq)
@@ -1082,7 +1082,7 @@ def exercise_bond_cut_heuristic():
   shifting the distance out of range disqualifies the bond."""
   by_name = _atoms_by_name(_CC_PDB)
   ca, cb = by_name["CA"], by_name["CB"]
-  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+  det = BondCutDetector(use_preferred_cuts=True)
 
   # Degree-4 carbons: the real C-C bond plus three dummy neighbours each.
   adj = {}
@@ -1112,7 +1112,7 @@ def exercise_proline_ring_is_never_cut():
   ways out of it at once and nothing is left to trigger a repair."""
   by_name = _atoms_by_name(_CC_PDB)
   ca, cb = by_name["CA"], by_name["CB"]
-  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+  det = BondCutDetector(use_preferred_cuts=True)
 
   adj = {}
   _edge(adj, ca.i_seq, cb.i_seq)
@@ -1128,7 +1128,7 @@ def exercise_proline_ring_is_never_cut():
 
   # The veto is the entry, not the knob: turning preferred cuts off puts
   # PRO back on the geometric path like any untabled residue.
-  off = BondCutDetector(use_preferred_cuts=False, log=io.StringIO())
+  off = BondCutDetector(use_preferred_cuts=False)
   assert off.is_cc_single_sp3_bond("PRO", ca, cb, adj) is True
 
   ring = {"N", "CA", "CB", "CG", "CD"}
@@ -1338,7 +1338,7 @@ def exercise_bond_cut_backbone():
   """``is_ca_c_bond`` / ``is_ca_n_bond`` fire only on a genuine, bonded
   CA->C and CA->N pair (direction and adjacency both matter)."""
   by_name = _atoms_by_name(_LYS_PDB)
-  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+  det = BondCutDetector(use_preferred_cuts=True)
 
   adj = {}
   _edge(adj, by_name["CA"].i_seq, by_name["C"].i_seq)
@@ -1409,7 +1409,7 @@ def exercise_consumed_preferred_cut():
   # CD and NZ are the atoms the radius search would seed.
   seeds = {iseq["CD"], iseq["NZ"]}
 
-  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+  det = BondCutDetector(use_preferred_cuts=True)
   grower = QMRegionGrower(det, log=io.StringIO())
 
   def _split(visited, caps):
@@ -1500,7 +1500,7 @@ def exercise_cut_depends_on_where_bfs_arrives():
   # ASP 63 is the radius-seeded ligand; LEU 62 carries no seed atom.
   seeds = set(asp.values())
 
-  det = BondCutDetector(use_preferred_cuts=True, log=io.StringIO())
+  det = BondCutDetector(use_preferred_cuts=True)
   grower = QMRegionGrower(det, log=io.StringIO())
 
   def _leu_atoms(visited, caps):
@@ -3395,7 +3395,7 @@ def exercise_polymer_bonded_to_its_own_image_terminates():
   bond("C", "N", forward, backward)
 
   grower = QMRegionGrower(
-    BondCutDetector(use_preferred_cuts=True, log=io.StringIO()),
+    BondCutDetector(use_preferred_cuts=True),
     log=io.StringIO())
   visited, caps = grower.grow_region(
     {(iseq["CA"], identity)}, adjacency, model)

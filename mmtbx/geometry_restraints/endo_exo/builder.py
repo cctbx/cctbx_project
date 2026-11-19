@@ -209,9 +209,7 @@ class QMRegionBuilder:
     trace_log = self.logger if self.params.verbose else null_out()
     self._capper = HydrogenCapper(log=trace_log)
     self._bond_cut_detector = BondCutDetector(
-      use_preferred_cuts=self.params.capping.preferred_cuts,
-      log=self.logger,
-    )
+      use_preferred_cuts=self.params.capping.preferred_cuts)
     self._region_grower = QMRegionGrower(
       self._bond_cut_detector,
       log=self.logger,

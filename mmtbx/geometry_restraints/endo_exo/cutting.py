@@ -41,13 +41,10 @@ class BondCutDetector:
   use_preferred_cuts : bool, optional
       When ``True`` (default) the ``PREFERRED_CUTS`` lookup table is
       consulted before falling back to geometric heuristics.
-  log : file-like or None, optional
-      Destination for diagnostic messages.
   """
 
-  def __init__(self, use_preferred_cuts=True, log=None):
+  def __init__(self, use_preferred_cuts=True):
     self.use_preferred_cuts = use_preferred_cuts
-    self.log = log
 
   # ------------------------------------------------------------------
   # Public interface
