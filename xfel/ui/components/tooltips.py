@@ -154,7 +154,9 @@ tooltips = {
                   'than 1 enable multi-lattice indexing.',
   # DatasetDialog — shared settings applied to all stages
   'shared_model': 'Path to the reference model (MTZ or PDB) used for scaling and '
-                  'merging. Click Browse to select a file.',
+                  'merging. Click Browse to select a file. Leave it blank to give '
+                  'each stage its own model with Edit PHIL (scaling.model), for '
+                  'instance when a stage reindexes to abc.',
   'shared_unit_cell': 'Unit cell parameters (a b c α β γ) applied to all stages '
                       'in this dataset.',
   'shared_space_group': 'Space group applied to all stages in this dataset '
