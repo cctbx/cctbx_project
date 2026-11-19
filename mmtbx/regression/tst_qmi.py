@@ -1342,6 +1342,7 @@ def exercise_predict_only():
   assert not r.skipped and r.restraints is None and r.edits is None
   assert r.oxidation_state == 2 and r.multiplicity == 1
   assert r.confidence == "high" and r.charge is None
+  assert r.site_id == "ZN_chainA_res262", r.site_id
 
 
 def exercise_bvs():

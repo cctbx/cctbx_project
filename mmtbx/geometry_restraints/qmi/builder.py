@@ -17,12 +17,11 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-import libtbx.phil
 from libtbx import group_args
 from libtbx.utils import null_out, Sorry
 
-from mmtbx.programs.endo_exo import master_phil_str as endo_exo_master_phil_str
-from mmtbx.geometry_restraints.endo_exo.builder import QMRegionBuilder
+from mmtbx.geometry_restraints.endo_exo.builder import (
+  QMRegionBuilder, default_params)
 from scitbx import matrix
 from scitbx.array_family import flex
 from scitbx.linalg import eigensystem
@@ -60,21 +59,10 @@ def _directions_span_3d(unit_dirs):
           >= _MIN_OUT_OF_PLANE_COVERAGE)
 
 
-def _default_output_filename(prefix=None, suffix=None):
-  """Bare-stem naming QMRegionBuilder requires. QMI keeps each region in memory
-  and writes it itself (region.pdb per site), so this name is never used on
-  disk (endo_exo runs with write_files=False)."""
-  return f"{prefix or ''}{suffix or ''}"
-
-
-def _endo_exo_params(metal_element=None, selection=None, radius=4.0,
-                     max_depth=3, write_files=False):
-  """Build an endo_exo parameter object. *write_files* lets endo_exo write each
-  QM region to disk (path from ``default_output_filename``)."""
-  params = libtbx.phil.parse(endo_exo_master_phil_str).extract()
-  params.write_files = write_files
+def _endo_exo_params(metal_element=None, selection=None, radius=4.0):
+  """Build an endo_exo parameter object."""
+  params = default_params()
   params.buffer.radius = radius
-  params.max_search_depth = max_depth
   if selection:
     params.selection = list(selection)
   if metal_element:
@@ -242,11 +230,9 @@ class QMRestraintsBuilder(object):
 
     params = _endo_exo_params(
       metal_element=self.metal_element, selection=self.selection,
-      radius=self.radius, max_depth=self.max_depth, write_files=False)
+      radius=self.radius)
     region_builder = QMRegionBuilder(params, logger=self.logger)
-    seed_results = region_builder.run(
-      model, model_name=model_name,
-      default_output_filename=_default_output_filename)
+    seed_results = region_builder.run(model)
 
     original_chain_ids = [c.id.strip()
                           for c in model.get_hierarchy().chains()]
@@ -485,12 +471,12 @@ class QMRestraintsBuilder(object):
   def _process_site(self, index, seed, original_chain_ids):
     """Run the QM-restraint pipeline for one endo_exo seed; return a LIST of
     per-site results (one normally, one per state in a reasonable/all scan)."""
-    submodel = seed["model"]
-    seed_iseqs = seed["seed_iseqs"]
-    cap_iseqs = seed["cap_iseqs"]
-    cap_original_elements = seed.get("cap_original_elements", ())
-    cap_anchor_iseqs = seed.get("cap_anchor_iseqs", ())
-    sym_image_provenance = seed.get("sym_image_provenance", {})
+    submodel = seed.model
+    seed_iseqs = seed.seed_iseqs
+    cap_iseqs = seed.cap_iseqs
+    cap_original_elements = seed.cap_original_elements
+    cap_anchor_iseqs = seed.cap_anchor_iseqs
+    sym_image_provenance = seed.sym_image_provenance
     atoms = submodel.get_hierarchy().atoms()
 
     if not seed_iseqs:
@@ -624,7 +610,7 @@ class QMRestraintsBuilder(object):
 
     if self.predict_only:   # stop before the QM optimisation; prediction only
       return [group_args(
-        site_id=seed.get("file_name", f"site_{index}"), site_tag=site_tag,
+        site_id=seed.label, site_tag=site_tag,
         metal_element=metal_element, oxidation_state=state.oxidation_state,
         multiplicity=state.multiplicity, low_spin=state.low_spin, charge=None,
         state_source=state.state_source, confidence=state.confidence,
@@ -757,7 +743,7 @@ class QMRestraintsBuilder(object):
     """A per-site result marking the site skipped (no restraints)."""
     print(f"Site {index} skipped: {reason}", file=self.logger)
     return group_args(
-      site_id=seed.get("file_name", f"site_{index}"), site_tag=site_tag,
+      site_id=seed.label, site_tag=site_tag,
       metal_element=metal_element, oxidation_state=None, multiplicity=None,
       charge=None, n_donors=None, restraints=None, edits=None,
       sigma_origin=None, skipped=reason)
@@ -929,7 +915,7 @@ class QMRestraintsBuilder(object):
           file=self.logger)
 
     return group_args(
-      site_id=seed.get("file_name", f"site_{index}"), site_tag=site_tag,
+      site_id=seed.label, site_tag=site_tag,
       metal_element=metal_element, oxidation_state=oxidation,
       multiplicity=multiplicity, charge=charge, low_spin=low_spin,
       state_source=state_source, confidence=confidence,
