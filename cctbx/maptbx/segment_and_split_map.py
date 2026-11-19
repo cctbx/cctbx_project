@@ -9871,6 +9871,8 @@ def select_box_map_data(si = None,
       assert si.density_select_in_auto_sharpen
       max_box_fraction = si.density_select_max_box_fraction
 
+    hierarchy = pdb_hierarchy # trimmed below if box_center is set
+
     #----------------------trimming model-------------------------------
     if si.box_center:  # Have model but center at box_center and trim hierarchy
       lower_bounds, upper_bounds = box_from_center(si = si,
@@ -9937,8 +9939,8 @@ def select_box_map_data(si = None,
       args.append('restrict_map_size = True')
     print("Getting map as box now", file = out)
     local_hierarchy = None
-    if pdb_hierarchy:
-       local_hierarchy = pdb_hierarchy.deep_copy()
+    if hierarchy:
+       local_hierarchy = hierarchy.deep_copy()
        # run_map_box modifies its argument
     assert isinstance(si.wrapping, bool) # wrapping must be defined
     box = run_map_box(args,
@@ -9959,8 +9961,8 @@ def select_box_map_data(si = None,
       box_pdb_hierarchy = None
     if first_half_map_data:
       print("Getting first map as box", file = out)
-      if pdb_hierarchy:
-        local_hierarchy = pdb_hierarchy.deep_copy() # required
+      if hierarchy:
+        local_hierarchy = hierarchy.deep_copy() # required
       box_first = run_map_box(args,
         map_data = first_half_map_data, pdb_hierarchy = local_hierarchy,
        write_output_files = False,
@@ -9975,8 +9977,8 @@ def select_box_map_data(si = None,
 
     if second_half_map_data:
       print("Getting second map as box", file = out)
-      if pdb_hierarchy:
-        local_hierarchy = pdb_hierarchy.deep_copy() # required
+      if hierarchy:
+        local_hierarchy = hierarchy.deep_copy() # required
       box_second = run_map_box(args,
         map_data = second_half_map_data, pdb_hierarchy = local_hierarchy,
        write_output_files = False,
@@ -10528,6 +10530,14 @@ def run_local_sharpening(si = None,
   centered at different places.  Identify the places as centers of regions.
   Run on au of NCS and apply NCS to get remaining positions
   """
+
+  if pdb_hierarchy:
+    # Boxes from map_box with a model come back without their position in
+    #  the full map, so the local maps cannot be put back in place.
+    raise Sorry("Local sharpening with a model is not available in this "+
+      "version because the local boxes are not placed correctly.\n"+
+      "Please use model-based sharpening without local_sharpening, or "+
+      "local sharpening without a model.")
 
   print(80*"-", file = out)
   print("Running local sharpening", file = out)
