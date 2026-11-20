@@ -640,7 +640,7 @@ def pointer(title):
   return "  Listed in full under '%s'." % title
 
 def test_metal_nh_and_amine():
-  # the pointers quote the titles of metal_nh_text() and metal_amine_text()
+  # the pointers quote the titles of metal_h_texts() and metal_amine_text()
   o, _ = placed(tnh.pdb_1xmk, metal_bound_amines_as_nh2=True)
   check(o, 'metal_nh',
     [('', 'A', '289', '', 'SER', '', 'H', 'N', 'metal_nh',
@@ -653,7 +653,7 @@ def test_metal_nh_and_amine():
       'N   GLY A 288 - NI    NI A 398 1.89 A (geometric)')],
     [pointer(reduce_hydrogen.METAL_AMINE_CONVERTED)])
   assert reduce_hydrogen.METAL_NH_NOT_PLACED in \
-    o.metal_nh_text().splitlines()
+    '\n'.join(o.metal_h_texts()).splitlines()
   assert reduce_hydrogen.METAL_AMINE_CONVERTED in \
     o.metal_amine_text().splitlines()
 
@@ -664,7 +664,7 @@ def test_metal_thiolate():
       'SG  CYS A  48 - ZN    ZN A 102 2.39 A (metal coordination proxy)')],
     [pointer(reduce_hydrogen.METAL_THIOL_NOT_PLACED)])
   assert reduce_hydrogen.METAL_THIOL_NOT_PLACED in \
-    o.metal_thiol_text().splitlines()
+    '\n'.join(o.metal_h_texts()).splitlines()
 
 def test_na_gap_end():
   o, _ = placed(tna.residues(tna.dna, 1, 3), na_terminal_h='chain_ends')
