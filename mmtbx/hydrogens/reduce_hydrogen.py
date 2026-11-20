@@ -1652,27 +1652,6 @@ class metal_h_sites(object):
       _atom_label(h), what, site.population, metal.name.strip(),
       site.coverage, h.name.strip(), self.state))
 
-class thiol_metal_sites(metal_h_sites):
-  '''
-  Thiols bound to metals (A4). Thiol: an S with exactly one non-metal heavy
-  neighbour (counted by residue and atom name, so altloc copies count once)
-  in the bond restraints of the H site's conformer, carrying that H. Covered:
-  thiolate.
-  '''
-  covered = 'thiolate'
-  state = 'thiol'
-
-  def _candidates(self, atoms, elements, heavy, h_on):
-    candidates = []
-    for i_s, hs in h_on.items():
-      if elements[i_s] != 'S': continue
-      for i_h in hs:
-        nb = set((atoms[j].parent().parent().memory_id(), atoms[j].name)
-                 for j in heavy.get(i_s, [])
-                 if _compatible(atoms[j], atoms[i_h]))
-        if len(nb) == 1: candidates.append((i_s, i_h, True))
-    return candidates
-
 def _residue_atom(atom):
   # one atom whatever its altloc copy: (residue_group, name)
   return (atom.parent().parent().memory_id(), atom.name)
@@ -1686,6 +1665,25 @@ def _one_heavy_neighbour(atoms, heavy, i_x, h):
   names = set(_residue_atom(atoms[j]) for j in nb)
   if len(names) != 1: return None
   return nb[0]
+
+class thiol_metal_sites(metal_h_sites):
+  '''
+  Thiols bound to metals (A4). Thiol: an S with exactly one non-metal heavy
+  neighbour (_one_heavy_neighbour(): counted by residue and atom name, so
+  altloc copies count once) in the bond restraints of the H site's
+  conformer, carrying that H. Covered: thiolate.
+  '''
+  covered = 'thiolate'
+  state = 'thiol'
+
+  def _candidates(self, atoms, elements, heavy, h_on):
+    candidates = []
+    for i_s, hs in h_on.items():
+      if elements[i_s] != 'S': continue
+      for i_h in hs:
+        if _one_heavy_neighbour(atoms, heavy, i_s, atoms[i_h]) is not None:
+          candidates.append((i_s, i_h, True))
+    return candidates
 
 def _oxoacid_centre(atoms, elements, heavy, h_on, i_x, i_o, h):
   '''
@@ -2220,8 +2218,7 @@ class metal_amine_sites(metal_h_sites):
   def amine_class(self, atoms, heavy, i_n, i_h):
     n, h = atoms[i_n], atoms[i_h]
     nb = sorted(set(j for j in heavy.get(i_n, []) if _compatible(atoms[j], h)))
-    names = set((atoms[j].parent().parent().memory_id(), atoms[j].name)
-                for j in nb)
+    names = set(_residue_atom(atoms[j]) for j in nb)
     if len(names) != 1:
       return group_args(branch='%d heavy neighbours' % len(names), i_c=None)
     if i_n in self._planar:
