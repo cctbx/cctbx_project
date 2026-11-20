@@ -59,14 +59,13 @@ metal_bound_amines_as_nh2 = True
   .type = bool
   .short_caption = Place metal-bound primary amines as NH2
   .help = A primary amine bound to a metal (Lys NZ, an N-terminal NH3, a \
-          ligand amine, not with alkali or alkaline-earth metals) is placed \
-          as NH2, with the metal as the third substituent. Metal-bound chain \
-          starts get NH2 whatever n_terminal_charge says. Sites that fail the \
-          geometry checks keep their H. A neutral NH2 bound to a metal \
-          (ethylenediamine on Cu) keeps both H, placed with the lone pair at \
-          the metal. Unresolved sites are turned away from the metal \
-          positions. False: these NH2 are placed as without a metal and \
-          listed.
+          ligand amine) is placed as NH2, with the metal in place of the \
+          third H. Alkali metals and Be, Ca, Sr, Ba and Ra do not count. \
+          This includes chain starts, whatever n_terminal_charge says. A \
+          neutral NH2 bound to a metal keeps both H, with the lone pair at \
+          the metal. Sites that fail the geometry checks keep their H. \
+          Unresolved sites stay NH3+, turned away from the metal. False: \
+          metal-bound amines are placed as without a metal.
 add_h_to_water = False
   .type = bool
   .short_caption = Add H to water
