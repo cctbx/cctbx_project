@@ -383,6 +383,7 @@ general_tests = [
   "$D/regression/tst_cif_as_mtz_wavelengths.py",
   "$D/building/tst_extend_sidechains.py",
   "$D/building/tst_extend_sidechains_2.py",
+  "$D/building/tst_split_into_conformers.py",
   # alt confs
   "$D/disorder/tst.py",
   "$D/disorder/tst_backbone.py",
