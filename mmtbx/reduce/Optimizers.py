@@ -3175,8 +3175,10 @@ class Optimizer(object):
           # O-H & N-H bond len == 1.0, S-H bond len == 1.3
           XHbondlen = Movers.NominalXHBondLength(neighbor)
           candidates = []
-          # Metals bound to the neighbor, by the window that placement uses for
-          # atoms on metals; symmetry copies included. The rotator does not turn
+          # Metals bound to the neighbor or close to it: in the window that
+          # placement uses for atoms on metals, or within
+          # reduce_hydrogen.NEUTRAL_NH2_NEAR; symmetry copies included, none below
+          # minOccupancy (the scoring leaves those out). The rotator does not turn
           # its Hydrogen towards them.
           boundMetals = []
           for n in nearby:
@@ -3188,8 +3190,9 @@ class Optimizer(object):
               if d <= XHbondlen + self._extraAtomInfo.getMappingFor(n).vdwRadius + polarHydrogenRadius:
                 candidates.append(n)
               nElement = n.element.strip().upper()
-              if (nElement in reduce_hydrogen.METAL_ELEMENTS and
-                  reduce_hydrogen.in_metal_window(neighbor.element.strip().upper(), nElement, d)):
+              if (nElement in reduce_hydrogen.METAL_ELEMENTS and n.occ >= self._minOccupancy and
+                  (d <= reduce_hydrogen.NEUTRAL_NH2_NEAR or
+                   reduce_hydrogen.in_metal_window(neighbor.element.strip().upper(), nElement, d))):
                 boundMetals.append(n)
 
           # See if each candidate atom is a potential acceptor or a flip partner from

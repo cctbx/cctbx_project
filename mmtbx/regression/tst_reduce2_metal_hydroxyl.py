@@ -1,8 +1,13 @@
 """reduce2 Optimizer: a rotatable H (OH, SH, SeH) whose parent is bound to a
-metal is not turned towards it (metal-X-H below 90 degrees).
-Model: 1MNZ, residues within 4 A of Mg 389 and Tris 392, whose O2 is on the
+metal, or has one within 2.6 A, is not turned towards it (metal-X-H below 90
+degrees); where no orientation is 90 degrees from every such metal, it is
+kept within 15 degrees of the orientation farthest from them. A metal at
+occupancy 0 does not count.
+Models: 1MNZ, residues within 4 A of Mg 389 and Tris 392, whose O2 is on the
 Mg (2.31 A). Without the rule, HO2 was placed 1.7 A from the Mg (Mg-O2-HO2
-about 40 degrees).
+about 40 degrees). 4DVO (neutron), sorbitol A 404 with Ni A 401 (occupancy
+0.50) and Ni A 403, all outside placement's Ni-O window (to 2.15 A): O1 2.41
+A from Ni 401, O2 between them (2.16 and 2.19 A).
 """
 from libtbx.utils import null_out
 from iotbx.cli_parser import run_program
@@ -122,6 +127,25 @@ HETATM 3271  O   HOH A1186      38.206  34.527  55.348  1.00 22.20           O
 END
 """
 
+pdb_4dvo = """\
+CRYST1   94.061   99.428  102.798  90.00  90.00  90.00 I 2 2 2
+HETATM 6429 NI    NI A 401      -9.151 -13.695 -44.805  0.50 21.69          NI
+HETATM 6431 NI    NI A 403     -12.349 -14.379 -43.220  1.00 32.29          NI
+HETATM 6432  C1  SOR A 404      -9.736 -16.043 -46.558  1.00 32.15           C
+HETATM 6433  C2  SOR A 404     -11.125 -15.713 -45.978  1.00 31.50           C
+HETATM 6434  C3  SOR A 404     -11.862 -16.988 -45.525  1.00 29.48           C
+HETATM 6435  C4  SOR A 404     -13.336 -16.717 -45.128  1.00 30.51           C
+HETATM 6436  C5  SOR A 404     -14.134 -18.009 -44.938  1.00 30.86           C
+HETATM 6437  C6  SOR A 404     -15.634 -17.686 -44.789  1.00 31.52           C
+HETATM 6452  O1  SOR A 404      -9.009 -14.877 -46.905  1.00 31.23           O
+HETATM 6453  O2  SOR A 404     -10.969 -14.851 -44.860  1.00 31.24           O
+HETATM 6454  O3  SOR A 404     -11.156 -17.553 -44.422  1.00 29.26           O
+HETATM 6455  O4  SOR A 404     -13.427 -15.977 -43.916  1.00 31.12           O
+HETATM 6456  O5  SOR A 404     -13.928 -18.883 -46.050  1.00 30.81           O
+HETATM 6457  O6  SOR A 404     -16.092 -17.943 -43.456  1.00 35.54           O
+END
+"""
+
 def run(prefix, pdb_str):
   '''reduce2 on a model string; returns the hierarchy of its model'''
   fn = f'{prefix}_in.pdb'
@@ -132,21 +156,34 @@ def run(prefix, pdb_str):
           f'output.description_file_name={prefix}.txt', '--overwrite'])
   return result.model.get_hierarchy()
 
-def mg_o2_ho2_angle(hierarchy, mg_xyz):
-  '''The angle (degrees) at Tris O2 between HO2 and a Mg at mg_xyz'''
+def metal_angle(hierarchy, resname, x_name, h_name, metal_xyz):
+  '''The angle (degrees) at atom x_name of residue resname between its H
+  h_name and a metal at metal_xyz'''
   sites = {}
   for a in hierarchy.atoms():
     sites[(a.parent().resname.strip(), a.name.strip())] = matrix.col(a.xyz)
-  o2 = sites[('TRS', 'O2')]
-  return (matrix.col(mg_xyz) - o2).angle(sites[('TRS', 'HO2')] - o2, deg=True)
+  x = sites[(resname, x_name)]
+  return (matrix.col(metal_xyz) - x).angle(sites[(resname, h_name)] - x,
+    deg=True)
+
+def h_xyz(hierarchy, resname, h_name):
+  '''The site of H h_name of residue resname'''
+  for a in hierarchy.atoms():
+    if a.parent().resname.strip() == resname and a.name.strip() == h_name:
+      return matrix.col(a.xyz)
+  raise AssertionError((resname, h_name))
 
 MG_XYZ = (34.719, 35.310, 59.621)
+NI_401 = (-9.151, -13.695, -44.805)
+NI_403 = (-12.349, -14.379, -43.220)
+MG_LINE = ('HETATM 3076 MG    MG A 389      34.719  35.310  59.621  1.00  8.72'
+  '          MG\n')
 
 def test_1mnz_tris_o2():
   '''A hydroxyl on a metal keeps its H off the metal: reduce2 on 1MNZ places
   HO2 with Mg-O2-HO2 of at least 90 degrees'''
   h = run('tst_reduce2_metal_hydroxyl_1mnz', pdb_1mnz)
-  angle = mg_o2_ho2_angle(h, MG_XYZ)
+  angle = metal_angle(h, 'TRS', 'O2', 'HO2', MG_XYZ)
   assert angle >= 90, angle
 
 def test_1mnz_mg_symmetry_mate():
@@ -157,10 +194,34 @@ def test_1mnz_mg_symmetry_mate():
                            'MG A 389     -34.719 -35.310  59.621')
   assert moved != pdb_1mnz
   h = run('tst_reduce2_metal_hydroxyl_1mnz_sym', moved)
-  angle = mg_o2_ho2_angle(h, MG_XYZ)
+  angle = metal_angle(h, 'TRS', 'O2', 'HO2', MG_XYZ)
   assert angle >= 90, angle
+
+def test_1mnz_mg_occupancy_0():
+  '''A metal at occupancy 0 does not count: with Mg 389 at occupancy 0,
+  HO2 is where it is without the Mg'''
+  assert MG_LINE in pdb_1mnz
+  h_occ_0 = run('tst_reduce2_metal_hydroxyl_1mnz_occ0', pdb_1mnz.replace(
+    MG_LINE, MG_LINE.replace(' 1.00  8.72 ', ' 0.00  8.72 ')))
+  h_none = run('tst_reduce2_metal_hydroxyl_1mnz_nomg',
+    pdb_1mnz.replace(MG_LINE, ''))
+  d = (h_xyz(h_occ_0, 'TRS', 'HO2') - h_xyz(h_none, 'TRS', 'HO2')).length()
+  assert d < 0.01, d
+
+def test_4dvo_sorbitol():
+  '''Metals outside placement's window but within 2.6 A count: HO1 is at
+  least 90 degrees from Ni 401 (it was 26). No orientation of HO2 is 90
+  degrees from both Ni, the farthest is 83 degrees from each; HO2 is kept
+  near it, at least 60 degrees from each (it was 29 degrees from Ni 403)'''
+  h = run('tst_reduce2_metal_hydroxyl_4dvo', pdb_4dvo)
+  angle = metal_angle(h, 'SOR', 'O1', 'HO1', NI_401)
+  assert angle >= 90, angle
+  angles = [metal_angle(h, 'SOR', 'O2', 'HO2', ni) for ni in (NI_401, NI_403)]
+  assert min(angles) >= 60, angles
 
 if __name__ == '__main__':
   test_1mnz_tris_o2()
   test_1mnz_mg_symmetry_mate()
+  test_1mnz_mg_occupancy_0()
+  test_4dvo_sorbitol()
   print('OK')
