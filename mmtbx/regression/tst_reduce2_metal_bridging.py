@@ -1,0 +1,184 @@
+"""reduce2 placement at O-H bridging two metals: an O-H whose O has one heavy
+neighbour, a C or N, and is bound to two metals that coexist (blank or the
+same altloc), neither alkali nor alkaline-earth, is taken as deprotonated, and
+reduce2 does not build its H. Ca does not count, nor do alternate positions
+of one metal. The bridge decides before the phenol and alcohol rules, and an
+H that more than one rule judges is listed once.
+Models: 8U7C, bis-tris D 207 with Tb D 202 (O4 2.21 A) and Er D 203 (O4
+2.45 A, also O3 and O6); the same with Ca in place of Tb, and with Er in
+altlocs A and B at the Er and Tb positions; 6LZB, hydroxamate EYF A 403 with
+Co A 401 and A 402 (O1 1.91 and 1.99 A), and the same with Fe.
+"""
+from libtbx.utils import null_out
+from iotbx.cli_parser import run_program
+from mmtbx.programs import reduce2
+
+pdb_8u7c = """\
+CRYST1   37.514   40.892   50.150  92.62 106.14  98.87 P 1
+HETATM 2307 TB    TB D 202       0.674  -0.668  -3.282  1.00 11.25          TB
+HETATM 2308 ER   ER3 D 203      -0.352   0.798  -0.090  1.00 13.75          ER
+HETATM 2330  N   BTB D 207      -0.304  -1.353   1.562  1.00  9.92           N
+HETATM 2331  C1  BTB D 207       1.484  -3.198   1.769  1.00 11.03           C
+HETATM 2332  C2  BTB D 207       1.055  -1.857   1.140  1.00  6.60           C
+HETATM 2333  C3  BTB D 207       2.171  -0.798   1.403  1.00 11.00           C
+HETATM 2334  C4  BTB D 207       1.063  -2.214  -0.328  1.00  8.09           C
+HETATM 2335  C5  BTB D 207      -0.373  -0.766   2.931  1.00 12.64           C
+HETATM 2336  C6  BTB D 207      -1.418   0.349   3.003  1.00 12.15           C
+HETATM 2337  C7  BTB D 207      -1.370  -2.312   1.265  1.00 11.46           C
+HETATM 2338  C8  BTB D 207      -2.353  -1.933   0.120  1.00 14.30           C
+HETATM 2339  O1  BTB D 207       1.475  -3.088   3.181  1.00 16.04           O
+HETATM 2340  O3  BTB D 207       1.824   0.527   1.045  1.00 11.81           O
+HETATM 2341  O4  BTB D 207       0.634  -1.185  -1.135  1.00  8.52           O
+HETATM 2342  O6  BTB D 207      -0.965   1.488   2.312  1.00 12.43           O
+HETATM 2343  O8  BTB D 207      -2.446  -0.555  -0.164  1.00 15.12           O
+END
+"""
+
+pdb_6lzb = """\
+CRYST1   47.573   77.251   48.623  90.00  91.54  90.00 P 1 21 1
+HETATM 2456 CO    CO A 401       0.630   0.402  12.184  1.00 16.09          CO
+HETATM 2457 CO    CO A 402      -0.179  -0.701  15.125  1.00 12.80          CO
+HETATM 2458  N   EYF A 403       0.789  -2.272  13.738  0.80 35.08           N
+HETATM 2459  C   EYF A 403       0.718  -2.919  12.676  0.80 29.10           C
+HETATM 2460  O   EYF A 403       0.804  -2.193  11.716  0.80 24.50           O
+HETATM 2461  C1  EYF A 403       0.593  -4.418  12.484  0.80 30.77           C
+HETATM 2462  C10 EYF A 403       4.195 -10.352  11.745  0.80 35.87           C
+HETATM 2463  C11 EYF A 403       2.924  -9.788  11.789  0.80 31.05           C
+HETATM 2464  C12 EYF A 403      -0.433  -8.758  12.698  0.80 28.23           C
+HETATM 2465  C13 EYF A 403      -0.838  -7.633  13.210  0.80 26.04           C
+HETATM 2466  C14 EYF A 403      -0.152  -6.663  12.779  0.80 25.90           C
+HETATM 2467  C15 EYF A 403      -0.124  -5.348  13.265  0.80 27.35           C
+HETATM 2468  C2  EYF A 403       1.262  -4.898  11.319  0.80 28.72           C
+HETATM 2469  C3  EYF A 403       0.601  -7.112  11.628  0.80 29.07           C
+HETATM 2470  C4  EYF A 403       0.770  -9.311  10.571  0.80 35.06           C
+HETATM 2471  C5  EYF A 403       2.124  -9.882  10.663  0.80 34.57           C
+HETATM 2472  C6  EYF A 403       2.556 -10.493   9.473  0.80 41.85           C
+HETATM 2473  C7  EYF A 403       3.843 -11.035   9.413  0.80 48.39           C
+HETATM 2474  C8  EYF A 403       3.648 -12.939   7.945  0.80 56.23           C
+HETATM 2475  C9  EYF A 403       4.651 -10.971  10.560  0.80 41.23           C
+HETATM 2476  N1  EYF A 403       1.307  -6.194  10.919  0.80 32.36           N
+HETATM 2477  N2  EYF A 403       0.314  -8.417  11.592  0.80 33.14           N
+HETATM 2478  O1  EYF A 403       0.989  -0.914  13.525  0.80 16.59           O
+HETATM 2479  O2  EYF A 403       4.234 -11.665   8.252  0.80 51.44           O
+END
+"""
+
+NOT_PLACED = ('Hydroxyl H not placed: the O bridges two metals, taken as '
+  'deprotonated')
+UNRESOLVED = ('Hydroxyl H placed at bridging metal sites with unresolved '
+  'protonation')
+
+def run(prefix, pdb_str, args=()):
+  '''reduce2 on a model string; returns the names of the H of its model and
+  the text of the description file'''
+  fn = f'{prefix}_in.pdb'
+  txt = f'{prefix}.txt'
+  with open(fn, 'w') as f:
+    f.write(pdb_str)
+  result = run_program(program_class=reduce2.Program, logger=null_out(),
+    args=[fn, f'output.filename={prefix}_out.pdb',
+          f'output.description_file_name={txt}', '--overwrite'] + list(args))
+  with open(txt) as f:
+    description = f.read()
+  names = set()
+  for a in result.model.get_hierarchy().atoms():
+    if a.element_is_hydrogen():
+      names.add(a.name.strip())
+  return names, description
+
+def test_8u7c_bis_tris():
+  '''O4 of bis-tris, between Tb and Er, loses HO4; O3 and O6, on Er alone,
+  keep HO3 and HO6'''
+  names, description = run('tst_reduce2_metal_bridging_btb', pdb_8u7c)
+  assert 'HO4' not in names and 'HO3' in names and 'HO6' in names, sorted(names)
+  lines = description.splitlines()
+  assert NOT_PLACED in lines, description
+  site = lines[lines.index(NOT_PLACED) + 1]
+  assert site.startswith('  HO4 BTB D 207  ('), site
+  assert 'TB    TB D 202 2.21 A' in site, site
+  assert 'ER   ER3 D 203 2.45 A' in site, site
+
+def test_8u7c_controls():
+  '''O4 keeps HO4 with Ca in place of Tb, and with Er in altlocs A and B at
+  the Er and Tb positions'''
+  pdb_ca = pdb_8u7c.replace('TB    TB D 202', 'CA    CA D 202').replace(
+    '          TB\n', '          CA\n')
+  assert ' TB' not in pdb_ca
+  names, description = run('tst_reduce2_metal_bridging_ca', pdb_ca)
+  assert 'HO4' in names, sorted(names)
+  assert 'Hydroxyl H' not in description, description
+  metals = ('HETATM 2307 TB    TB D 202       0.674  -0.668  -3.282  1.00 11.25'
+    '          TB\n'
+    'HETATM 2308 ER   ER3 D 203      -0.352   0.798  -0.090  1.00 13.75'
+    '          ER\n')
+  alternates = ('HETATM 2307 ER  AER3 D 203      -0.352   0.798  -0.090  0.50 '
+    '13.75          ER\n'
+    'HETATM 2308 ER  BER3 D 203       0.674  -0.668  -3.282  0.50 11.25'
+    '          ER\n')
+  assert metals in pdb_8u7c
+  names, description = run('tst_reduce2_metal_bridging_alt',
+    pdb_8u7c.replace(metals, alternates))
+  assert 'HO4' in names, sorted(names)
+  assert 'Hydroxyl H' not in description, description
+
+def test_6lzb_hydroxamate():
+  '''The N-O oxygen of the hydroxamate, between two Co, loses H9; the N keeps
+  H8. Between two Fe the same: the bridge decides, not the phenol rule'''
+  pdb_fe = pdb_6lzb.replace('CO    CO A 40', 'FE    FE A 40').replace(
+    '          CO\n', '          FE\n')
+  assert pdb_fe.count('FE') == 6
+  for metal, pdb_str in (('co', pdb_6lzb), ('fe', pdb_fe)):
+    names, description = run(f'tst_reduce2_metal_bridging_eyf_{metal}',
+      pdb_str)
+    assert 'H9' not in names and 'H8' in names, (metal, sorted(names))
+    assert NOT_PLACED in description, description
+    assert 'Phenol H' not in description, description
+
+def test_6lzb_listed_once():
+  '''H9, judged by the bridge and by the phenol rule, is listed once. Ga at
+  occupancy 0.50 at both Co sites: H9 stays, unresolved at the bridge. Co at
+  0.50 and Ga: Ga makes the phenolate, and the unresolved bridge is not
+  listed. Ga at both sites, H9 supplied: listed at the bridge, with
+  approach=optimize and with keep_existing_H=True'''
+  lines = pdb_6lzb.splitlines(True)
+  assert [l[17:26] for l in lines[1:3]] == [' CO A 401', ' CO A 402']
+  def metals(m401, occ401, m402, occ402):
+    # the model with element m and occupancy occ at Co A 401 and A 402
+    out = list(lines)
+    for k, m, occ in ((1, m401, occ401), (2, m402, occ402)):
+      l = out[k]
+      out[k] = f'{l[:12]}{m}{l[14:18]}{m}{l[20:54]}{occ:6.2f}{l[60:76]}{m}\n'
+    return ''.join(out)
+  h9 = '  H9  EYF A 403'
+  names, description = run('tst_reduce2_metal_bridging_once_ga',
+    metals('GA', 0.5, 'GA', 0.5))
+  assert 'H9' in names, sorted(names)
+  assert description.count(h9) == 1, description
+  assert UNRESOLVED + '\n' + h9 in description, description
+  names, description = run('tst_reduce2_metal_bridging_once_coga',
+    metals('CO', 0.5, 'GA', 1.))
+  assert 'H9' not in names, sorted(names)
+  assert description.count(h9) == 1, description
+  assert 'Phenol H not placed' in description, description
+  names, description = run('tst_reduce2_metal_bridging_once_ca',
+    metals('CA', 1., 'CA', 1.))
+  assert 'H9' in names, sorted(names)
+  with open('tst_reduce2_metal_bridging_once_ca_out.pdb') as f:
+    with_h = f.read()
+  assert with_h.count('CA    CA A 40') == 2
+  with_h = with_h.replace('CA    CA A 40', 'GA    GA A 40').replace(
+    '          CA\n', '          GA\n')
+  for args in (['approach=optimize'], ['keep_existing_H=True']):
+    names, description = run('tst_reduce2_metal_bridging_once_supplied',
+      with_h, args)
+    assert 'H9' in names, (args, sorted(names))
+    assert description.count(h9) == 1, (args, description)
+    assert 'Supplied hydroxyl H at bridging metal sites' in description, (
+      args, description)
+
+if __name__ == '__main__':
+  test_8u7c_bis_tris()
+  test_8u7c_controls()
+  test_6lzb_hydroxamate()
+  test_6lzb_listed_once()
+  print('OK')
