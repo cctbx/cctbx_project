@@ -1154,7 +1154,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
   /* spindle angle phi step, in deg */
   static double get_phistep_deg(nanoBragg const& nanoBragg) {
-      return nanoBragg.phi0*RTD;;
+      return nanoBragg.phistep*RTD;
   }
   static void   set_phistep_deg(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.phistep = value/RTD;
