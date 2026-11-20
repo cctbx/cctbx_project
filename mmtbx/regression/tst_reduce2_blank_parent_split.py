@@ -196,8 +196,8 @@ END
 """
 
 CONFORMER_SITES = 'Conformer sites written as one isotope'
-NOT_PLACED = ('N-H not placed: backbone amide N or thymine/uracil N3 bound to '
-  'a metal, taken as deprotonated')
+NOT_PLACED = ('N-H not placed: backbone amide N, thymine/uracil N3 or '
+  'sulfonamide N bound to a metal, taken as deprotonated')
 UNRESOLVED = 'N-H placed at metal sites with unresolved protonation'
 LETTERS = ("H placed once, not split: the residue's altloc letters differ "
   "from its covalent partner's")
