@@ -656,9 +656,105 @@ def exercise4():
     "DELFWT2,PHIDELFWT2"]), labels
 
 
+crystals_block = """\
+data_r1xyz%ssf
+_cell.length_a      %.4f
+_cell.length_b      %.4f
+_cell.length_c      %.4f
+_cell.angle_alpha   90.0000
+_cell.angle_beta    90.0000
+_cell.angle_gamma   90.0000
+_symmetry.space_group_name_H-M   "P 21 21 21"
+loop_
+_refln.crystal_id
+_refln.wavelength_id
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.F_meas_au
+_refln.F_meas_sigma_au
+1 1 0 0  8  21.2 1.0
+1 1 0 0 10 302.5 1.0
+2 1 0 0  8  22.2 1.0
+2 1 0 0 10 312.5 1.0
+3 1 0 0  8  23.2 1.0
+3 1 0 0 10 322.5 1.0
+#END
+"""
+
+def exercise5():
+  """
+  Two data blocks with different unit cells, each with crystal_id 1, 2 and 3.
+  Every crystal_id of every block must get its own MTZ crystal with a unique
+  name and the cell of its block. A loop counter shared with the column
+  renaming used to give two crystals the same name, which merges them on
+  reading, and to put the second block's data into the first block's
+  crystals.
+  """
+  file_name = "tst_cif_as_mtz_crystals.cif"
+  with open(file_name, "w") as f:
+    f.write(crystals_block % ("", 24.73, 39.24, 45.14))
+    f.write(crystals_block % ("A", 26.0, 41.0, 47.0))
+  cif_as_mtz.run(args=[file_name], out=StringIO())
+  m = mtz.object(file_name="tst_cif_as_mtz_crystals.mtz")
+  assert m.n_crystals() == 7, [c.name() for c in m.crystals()]
+  cells = []
+  for ma in m.as_miller_arrays():
+    cells.append(
+      (ma.info().label_string(), "%.2f" % ma.unit_cell().parameters()[0]))
+  assert sorted(cells) == sorted([
+    ("FOBS1,SIGFOBS1", "24.73"),
+    ("FOBS2,SIGFOBS2", "24.73"),
+    ("FOBS3,SIGFOBS3", "24.73"),
+    ("FOBS1-1,SIGFOBS1-1", "26.00"),
+    ("FOBS2-1,SIGFOBS2-1", "26.00"),
+    ("FOBS3-1,SIGFOBS3-1", "26.00")]), cells
+
+
+def exercise6():
+  """
+  Anomalous intensities and anomalous differences of one data block belong
+  to one MTZ crystal. Merging I(+) and I(-) into one array leaves the cell
+  of that array off by rounding noise (18.461299999999994 instead of
+  18.4613), which used to open an extra crystal for DANO.
+  """
+  cif_in = """\
+data_r4fs6sf
+_cell.length_a      18.4613
+_cell.length_b      18.4613
+_cell.length_c      71.4628
+_cell.angle_alpha   90.0000
+_cell.angle_beta    90.0000
+_cell.angle_gamma   120.0000
+_symmetry.space_group_name_H-M   'P 32 2 1'
+loop_
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.pdbx_I_plus
+_refln.pdbx_I_plus_sigma
+_refln.pdbx_I_minus
+_refln.pdbx_I_minus_sigma
+_refln.pdbx_anom_difference
+_refln.pdbx_anom_difference_sigma
+2 1 3  37.2 2.2  37.4 2.2  0.1 0.2
+3 1 5  20.1 1.2  19.9 1.2 -0.1 0.2
+4 1 7 125.4 7.5 131.0 5.3  1.1 0.4
+#END
+"""
+  file_name = "tst_cif_as_mtz_anomalous.cif"
+  with open(file_name, "w") as f:
+    f.write(cif_in)
+  cif_as_mtz.run(args=[file_name], out=StringIO())
+  m = mtz.object(file_name="tst_cif_as_mtz_anomalous.mtz")
+  assert m.n_crystals() == 2, [c.name() for c in m.crystals()]
+
+
 if (__name__ == "__main__"):
   exercise1()
   exercise2()
   exercise3()
   exercise4()
+  exercise5()
+  exercise6()
   print("OK")

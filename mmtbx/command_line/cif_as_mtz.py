@@ -303,9 +303,8 @@ def extract(file_name,
   complete_set = make_joined_set(all_arrays)
   if return_as_miller_arrays:
     miller_array_list=[]
-  current_i = -1
-  uc = None
-  for i, (data_name, miller_arrays) in enumerate(six.iteritems(all_miller_arrays)):
+  crystal_cells = {}
+  for (data_name, miller_arrays) in six.iteritems(all_miller_arrays):
     for ma in miller_arrays.values():
       #ma = ma.customized_copy(
       #  crystal_symmetry=crystal_symmetry).set_info(ma.info())
@@ -341,17 +340,20 @@ def extract(file_name,
         unit_cell = ma.unit_cell()
 
       if crys_id not in mtz_crystals or \
-        (i > current_i and unit_cell is not None and uc is not None and unit_cell.parameters() != uc.parameters()):
+        not unit_cell.is_similar_to(crystal_cells[crys_id],
+          absolute_length_tolerance=1.e-5, absolute_angle_tolerance=1.e-5):
         # Ensure new mtz crystals are created if miller_array objects have different unit cells
         # Can happen if there are more datasets in the same cif file, like MAD datasets
-        uc = unit_cell
-        current_i = i
+        # (merged I(+)/I(-) arrays differ from the others of a block only by rounding)
+        crystal_cells[crys_id] = unit_cell
         # Use unique project and crystal names so that MtzGet() in cmtzlib.c picks up individual unit cells
+        # (crystal 0 is HKL_base)
+        k = mtz_object.n_crystals() - 1
         mtz_crystals[crys_id] = (
           mtz_object.add_crystal(
-            name="crystal_%i" %i,
-            project_name="project_%i" %i,
-            unit_cell =uc), {})
+            name="crystal_%i" %k,
+            project_name="project_%i" %k,
+            unit_cell=unit_cell), {})
       crystal, datasets = mtz_crystals[crys_id]
       w_id = 0
       for l in labels:
