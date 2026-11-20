@@ -284,8 +284,82 @@ def exercise_not_available():
     factor = 10., density_rank = flex.double(m.size(), 0.5))
   assert m.rsm is None
 
+pdb_str_hd = """
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+ATOM      1  N   GLY A   1       6.011   8.357   7.697  1.00 10.00           N
+ATOM      2  CA  GLY A   1       7.303   7.697   7.846  1.00 10.00           C
+ATOM      3  C   GLY A   1       8.456   8.672   7.697  1.00 10.00           C
+ATOM      4  O   GLY A   1       8.272   9.884   7.580  1.00 10.00           O
+ATOM      5  OXT GLY A   1       9.600   8.200   7.700  1.00 10.00           O
+ATOM      6  HA2 GLY A   1       7.360   7.030   7.090  1.00 10.00           H
+ATOM      7  HA3 GLY A   1       7.340   7.200   8.720  1.00 10.00           H
+TER
+HETATM    8  O   HOH S   1      14.000  14.000  14.000  1.00 10.00           O
+HETATM    9  H1  HOH S   1      14.850  14.000  14.000  1.00 10.00           H
+HETATM   10  H2  HOH S   1      13.790  14.820  14.000  1.00 10.00           H
+END
+"""
+
+def exercise_hd():
+  """
+  One scale factor for all bond and angle restraints that involve H.
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_hd)
+  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  model.process(make_restraints=True)
+  def with_h(key):
+    for id_str in key:
+      if id_str[5:9].strip().startswith("H"): return True
+    return False
+  w0 = weights_by_atoms(model)
+  n_h = len([key for key in w0 if with_h(key)])
+  # water: 2 bonds, 1 angle; GLY: 2 bonds and angles with HA2, HA3
+  assert n_h > 3 and n_h < len(w0)
+  def check(scale):
+    w = weights_by_atoms(model)
+    assert sorted(w.keys()) == sorted(w0.keys())
+    for key in w0:
+      if with_h(key): assert approx_equal(w[key], w0[key]*scale)
+      else:           assert approx_equal(w[key], w0[key])
+  # nothing to apply by default
+  assert not model.apply_restraints_scale()
+  assert model.set_restraints_scale_hd(scale = 4.)
+  check(scale = 1)
+  assert model.apply_restraints_scale()
+  check(scale = 4)
+  # second call changes nothing
+  assert model.apply_restraints_scale()
+  check(scale = 4)
+  # bond proxies made again get scaled weights
+  model.get_restraints_manager().geometry.reset_internals()
+  check(scale = 4)
+  # new value while applied
+  assert model.set_restraints_scale_hd(scale = 8.)
+  check(scale = 8)
+  # selected model
+  selected = model.select(model.selection("water"))
+  assert selected.rsm.hd_scale == 8
+  assert model.remove_restraints_scale()
+  check(scale = 1)
+  model.get_restraints_manager().geometry.reset_internals()
+  check(scale = 1)
+  # scale 1: nothing to apply again
+  assert model.set_restraints_scale_hd(scale = 1.)
+  assert not model.apply_restraints_scale()
+  # together with individual scale factors (they are for non-H only)
+  assert model.scale_restraints(
+    factor = 10., density_rank = flex.double(model.size(), 0.9))
+  assert model.set_restraints_scale_hd(scale = 4.)
+  assert model.apply_restraints_scale()
+  w = weights_by_atoms(model)
+  for key in w0:
+    if with_h(key): assert approx_equal(w[key], w0[key]*4)
+  assert model.remove_restraints_scale()
+  check(scale = 1)
+
 if(__name__ == "__main__"):
   exercise_model()
+  exercise_hd()
   exercise_select()
   exercise_moved_atoms()
   exercise_origin()

@@ -371,6 +371,12 @@ class restraints_scale_manager(object):
   coordination, link and other restraints of different origin), and only
   those that do not involve H or D, are not symmetry (asu) bonds, and are the
   only restraint of their atom pair or triplet.
+
+  Restraints that involve H or D have one scale factor for all of them
+  instead (hd_scale, see set_hd_scale()). It is meant to undo a reduction of
+  the overall weight of restraints: that weight is chosen looking at non-H
+  atoms only, and H atoms refined individually (water H for example) have
+  too little signal in the data to keep their geometry without restraints.
   """
 
   # Density rank separating weak (<) from strong (>=) density.
@@ -395,6 +401,8 @@ class restraints_scale_manager(object):
     # Labels of atoms at the time scale factors were last updated
     self.atom_ids = None
     self.n_dropped = 0
+    # Scale factor of all bond and angle restraints that involve H or D
+    self.hd_scale = 1
     # Weights before apply(), None if scale factors are not applied
     self._table_weights = None # {i_seqs: weight}, bond params table
     self._bond_weights  = None # {i_seqs: weight}, bond proxies
@@ -416,7 +424,21 @@ class restraints_scale_manager(object):
     return self._table_weights is not None
 
   def is_empty(self):
-    return len(self.bond_scales) == 0 and len(self.angle_scales) == 0
+    return len(self.bond_scales) == 0 and len(self.angle_scales) == 0 and \
+      self.hd_scale == 1
+
+  def set_hd_scale(self, scale):
+    """
+    Set the scale factor of bond and angle restraints that involve H or D.
+    If scale factors are applied now they are applied again with the new
+    value.
+    """
+    assert scale > 0
+    if scale == self.hd_scale: return
+    was_applied = self.applied()
+    if was_applied: self.remove()
+    self.hd_scale = scale
+    if was_applied: self.apply()
 
   def _geometry(self):
     return self.model.get_restraints_manager().geometry
@@ -571,7 +593,15 @@ class restraints_scale_manager(object):
     self._drop_moved_atoms()
     self._table_weights, self._bond_weights, self._angle_weights = {}, {}, {}
     table = self._geometry().bond_params_table
-    for key, scale in self.bond_scales.items():
+    bond_scales = dict(self.bond_scales)
+    hd_selection = None
+    if self.hd_scale != 1:
+      hd_selection = self.model.get_hd_selection()
+      for i_seq, bonded in enumerate(table):
+        for j_seq in bonded.keys():
+          if hd_selection[i_seq] or hd_selection[j_seq]:
+            bond_scales[self.bond_key((i_seq, j_seq))] = self.hd_scale
+    for key, scale in bond_scales.items():
       params = table.lookup(key[0], key[1])
       if params is None or params.origin_id != self.origin_id: continue
       self._table_weights[key] = params.weight
@@ -585,6 +615,9 @@ class restraints_scale_manager(object):
          self._angle_weights)]:
       for key, proxy in proxies.items():
         scale = scales.get(key)
+        if hd_selection is not None:
+          for i_seq in key:
+            if hd_selection[i_seq]: scale = self.hd_scale
         if scale is None: continue
         saved[key] = proxy.weight
         proxy.weight = proxy.weight * scale
@@ -650,6 +683,7 @@ class restraints_scale_manager(object):
     result.bond_outliers  = select_set(self.bond_outliers)
     result.angle_outliers = select_set(self.angle_outliers)
     result.n_dropped      = self.n_dropped
+    result.hd_scale       = self.hd_scale
     if self.atom_ids is not None:
       result.atom_ids = [id_str for id_str, flag
         in zip(self.atom_ids, selection) if flag]
@@ -2809,11 +2843,23 @@ class manager(object):
     rsm.scale(factor = factor, density_rank = density_rank)
     return True
 
+  def set_restraints_scale_hd(self, scale):
+    """
+    Set one scale factor for weights of all bond and angle restraints that
+    involve H or D, see restraints_scale_manager. As other scale factors it
+    is used only between apply_restraints_scale() and
+    remove_restraints_scale(). Return False if nothing was done.
+    """
+    rsm = self._get_rsm()
+    if rsm is None: return False
+    rsm.set_hd_scale(scale = scale)
+    return True
+
   def apply_restraints_scale(self):
     """
     Multiply weights of individual bond and angle restraints by their scale
-    factors (see scale_restraints) until remove_restraints_scale() is called.
-    Return False if nothing was done.
+    factors (see scale_restraints and set_restraints_scale_hd) until
+    remove_restraints_scale() is called. Return False if nothing was done.
     """
     rsm = self._get_rsm()
     if rsm is None or rsm.is_empty(): return False
@@ -2834,12 +2880,17 @@ class manager(object):
     """
     rsm = self.rsm
     if rsm is None or rsm.is_empty(): return
-    print("%sIndividually scaled restraints: bonds: %d angles: %d"%(
-      prefix, len(rsm.bond_scales), len(rsm.angle_scales)), end="", file=log)
-    if rsm.n_dropped > 0:
-      print(" (dropped because atoms changed: %d)"%rsm.n_dropped, end="",
+    if len(rsm.bond_scales) > 0 or len(rsm.angle_scales) > 0:
+      print("%sIndividually scaled restraints: bonds: %d angles: %d"%(
+        prefix, len(rsm.bond_scales), len(rsm.angle_scales)), end="",
         file=log)
-    print(file=log)
+      if rsm.n_dropped > 0:
+        print(" (dropped because atoms changed: %d)"%rsm.n_dropped, end="",
+          file=log)
+      print(file=log)
+    if rsm.hd_scale != 1:
+      print("%sScale of weights of bond and angle restraints with H: %.4g"%(
+        prefix, rsm.hd_scale), file=log)
 
   def has_atoms_in_special_positions(self, selection, log=None):
     pdb_hierarchy = self.get_hierarchy()
