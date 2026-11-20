@@ -152,6 +152,13 @@ tooltips = {
                     'beyond this limit are ignored.',
   'max_lattices': 'Maximum number of lattices to find per image. Values greater '
                   'than 1 enable multi-lattice indexing.',
+  # MultiRunTagDialog, manage multiple runs
+  'multirun_range_from': 'First run of a range to tick in the list, by run number, or by '
+                         'database id where runs are not numbered.',
+  'multirun_range_to': 'Last run of the range. Leave blank to tick every run from the first on.',
+  'multirun_select_range': 'Tick the runs in the range, keeping any already ticked, so several '
+                           'ranges can be combined.',
+  'multirun_clear': 'Untick every run.',
   # DatasetDialog — shared settings applied to all stages
   'shared_model': 'Path to the reference model (MTZ or PDB) used for scaling and '
                   'merging. Click Browse to select a file. Leave it blank to give '

@@ -1102,6 +1102,10 @@ def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_ope
         if existing.status in finished_job_statuses and existing.status not in ('DONE', 'EXIT'):
           continue
         final_local_job_ids.add(existing.id)
+      elif existing.status in finished_job_statuses and existing.status not in ('DONE', 'UNKWN'):
+        # submit_all_jobs starts the next task of a run only after a DONE job,
+        # so a failed one ends the run's pipeline: nothing later is counted
+        break
   if not global_tasks:
     return counts
 
@@ -1147,6 +1151,16 @@ def predict_dataset_jobs(app, dataset = None, trial = None, tags = None, tag_ope
       sets = max(1, added + (1 if corrective and (final_local_job_ids & latest_local_ids) else 0))
     for task in global_tasks:
       counts[task.type] += sets
+  return counts
+
+def job_count_delta(after, before):
+  """ The jobs in `after` beyond those in `before`, by task type and never
+      below zero: what an action adds to the jobs the trial would submit
+      anyway, for two predictions made with and without it. """
+  import collections
+  counts = collections.OrderedDict()
+  for task_type in list(after) + [t for t in before if t not in after]:
+    counts[task_type] = max(0, after.get(task_type, 0) - before.get(task_type, 0))
   return counts
 
 def predict_trial_jobs(app, trial, rungroups = None):

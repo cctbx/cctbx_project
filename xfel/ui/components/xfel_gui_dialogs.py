@@ -2157,15 +2157,40 @@ class MultiRunTagDialog(BaseDialog):
     self.db_tags = self.db.get_all_tags()
     self.db_tag_names = [t.name for t in self.db_tags]
     self.db_tags_selected_sort = self.db_tag_names
+    # Ranges compare run numbers where the facility numbers its runs, and
+    # database ids otherwise, as run blocks do; the list is in the same order
+    from xfel.ui import runs_are_numbered
+    from xfel.ui.db.run import run_sort_key
+    self.use_ids = not runs_are_numbered(self.db.params)
     self.db_runs = self.db.get_all_runs()
+    if not self.use_ids:
+      self.db_runs = sorted(self.db_runs, key=lambda r: run_sort_key(r.run))
     self.db_run_numbers = [str(r.run) for r in self.db_runs]
-    self.runs_selected = []
-    self.buttons_for_runs_selected = []
 
     self.multiruntag_sizer = wx.BoxSizer(wx.VERTICAL)
 
+    # A range of runs to tick, on top of whatever is ticked already
+    unit = 'run id' if self.use_ids else 'run'
+    self.range_panel = wx.Panel(self)
+    self.range_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.range_from = gctr.TextButtonCtrl(self.range_panel, name='multirun_range_from',
+                                          label='From %s:' % unit, label_size=(-1, -1),
+                                          label_style='normal', ctrl_size=(80, -1),
+                                          ghost_button=False)
+    self.range_to = gctr.TextButtonCtrl(self.range_panel, name='multirun_range_to',
+                                        label='to:', label_size=(-1, -1),
+                                        label_style='normal', ctrl_size=(80, -1),
+                                        ghost_button=False)
+    self.btn_select_range = wx.Button(self.range_panel, name='multirun_select_range', label='Select range')
+    setup_tooltip(self.btn_select_range)
+    self.btn_clear = wx.Button(self.range_panel, name='multirun_clear', label='Clear selection')
+    setup_tooltip(self.btn_clear)
+    for ctrl in (self.range_from, self.range_to, self.btn_select_range, self.btn_clear):
+      self.range_sizer.Add(ctrl, flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT | wx.TOP, border=10)
+    self.range_panel.SetSizer(self.range_sizer)
+
     self.select_runs_panel = wx.Panel(self)
-    self.select_runs_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.select_runs_sizer = wx.BoxSizer(wx.VERTICAL)
     self.select_runs =  gctr.CheckListCtrl(self.select_runs_panel,
                                            label='Selected runs:',
                                            label_size=(200, -1),
@@ -2173,10 +2198,13 @@ class MultiRunTagDialog(BaseDialog):
                                            ctrl_size=(240, 300),
                                            direction='vertical',
                                            choices=self.db_run_numbers)
-    self.select_runs_sizer.Add(self.select_runs,
+    self.select_runs_sizer.Add(self.select_runs, proportion=1,
                                flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP,
                                border=10)
+    self.count_label = wx.StaticText(self.select_runs_panel, label='')
+    self.select_runs_sizer.Add(self.count_label, flag=wx.LEFT | wx.RIGHT | wx.TOP, border=10)
     self.select_runs_panel.SetSizer(self.select_runs_sizer)
+    self.update_count()
 
     self.sort_type_panel = wx.Panel(self)
     self.sort_type_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -2207,13 +2235,15 @@ class MultiRunTagDialog(BaseDialog):
     self.button_panel.SetSizer(self.button_sizer)
 
     # Add panels to main sizer
-    self.multiruntag_sizer.Add(self.select_runs_panel,
+    self.multiruntag_sizer.Add(self.range_panel,
+                               flag=wx.EXPAND | wx.LEFT | wx.RIGHT)
+    self.multiruntag_sizer.Add(self.select_runs_panel, proportion=1,
                                flag=wx.EXPAND | wx.LEFT | wx.RIGHT)
     self.multiruntag_sizer.Add(self.sort_type_panel,
                                flag=wx.EXPAND | wx.BOTTOM | wx.TOP)
     self.multiruntag_sizer.Add(self.button_panel,
                                flag=wx.EXPAND | wx.BOTTOM | wx.TOP)
-    self.main_sizer.Add(self.multiruntag_sizer,
+    self.main_sizer.Add(self.multiruntag_sizer, proportion=1,
                         flag=wx.EXPAND | wx.RIGHT | wx.LEFT)
 
     # Dialog control
@@ -2226,21 +2256,61 @@ class MultiRunTagDialog(BaseDialog):
     self.SetTitle('Manage multiple runs')
 
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.select_runs.ctr)
+    self.Bind(wx.EVT_BUTTON, self.onSelectRange, self.btn_select_range)
+    self.Bind(wx.EVT_BUTTON, self.onClear, self.btn_clear)
     self.Bind(wx.EVT_RADIOBUTTON, self.onSortDefault, self.radio_sort.id)
     self.Bind(wx.EVT_RADIOBUTTON, self.onSortAlphanum, self.radio_sort.alpha)
     self.Bind(wx.EVT_BUTTON, self.onAddTags, self.btn_add_tags)
     self.Bind(wx.EVT_BUTTON, self.onRemoveTags, self.btn_remove_tags)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
+  def run_key(self, run):
+    ''' What a range compares: the run's id, or its number; None for a run
+        without one. '''
+    if self.use_ids:
+      return run.id
+    try:
+      return int(run.run)
+    except ValueError:
+      return None
+
+  def selected_runs(self):
+    ''' (run, tag button on the Runs tab) for every ticked run, read from the
+        list when needed. '''
+    checked = set(self.select_runs.ctr.GetCheckedStrings())
+    buttons = {b.run.run: b for b in self.parent.all_tag_buttons}
+    return [(r, buttons.get(r.run)) for r in self.db_runs if r.run in checked]
+
+  def update_count(self):
+    self.count_label.SetLabel('%d runs selected' % len(self.select_runs.ctr.GetCheckedItems()))
+
   def onRunChoice(self, e):
-    run_numbers_selected = self.select_runs.ctr.GetCheckedStrings()
-    self.selected = {}
-    for r in self.db_runs:
-      if r.run in run_numbers_selected:
-        self.selected[r.run] = [r]
-    for b in self.parent.all_tag_buttons:
-      if b.run.run in self.selected:
-        self.selected[b.run.run].append(b)
+    self.update_count()
+
+  def onSelectRange(self, e):
+    ''' Tick every run from the first number to the last, or from the first on
+        when the last is blank, keeping what was ticked before. '''
+    try:
+      first = int(self.range_from.ctr.GetValue())
+      last_text = self.range_to.ctr.GetValue().strip()
+      last = int(last_text) if last_text else None
+    except ValueError:
+      wx.MessageBox('Enter whole numbers for the range.', 'Select range', wx.OK | wx.ICON_ERROR, self)
+      return
+    hits = 0
+    for i, run in enumerate(self.db_runs):
+      key = self.run_key(run)
+      if key is not None and first <= key and (last is None or key <= last):
+        self.select_runs.ctr.Check(i, True)
+        hits += 1
+    if hits == 0:
+      wx.MessageBox('No runs in that range.', 'Select range', wx.OK | wx.ICON_INFORMATION, self)
+    self.update_count()
+
+  def onClear(self, e):
+    for i in self.select_runs.ctr.GetCheckedItems():
+      self.select_runs.ctr.Check(i, False)
+    self.update_count()
 
   def onSortDefault(self, e):
     self.db_tags_selected_sort = self.db_tag_names
@@ -2259,17 +2329,15 @@ class MultiRunTagDialog(BaseDialog):
       tag_indices = tag_dlg.GetSelections()
       add_tags = [t for t in self.db_tags if self.db_tag_names.index(t.name) in tag_indices]
 
-      runs_with_tags_buttons = self.parent.all_tag_buttons
-
       for tag in add_tags:
-        for run_number in self.selected.keys():
-          run, button = self.selected[run_number]
+        for run, button in self.selected_runs():
           run_tags = run.app.get_run_tags(run.run_id)
           run_tag_ids = [t.tag_id for t in run_tags]
           if tag.tag_id not in run_tag_ids:
             run.add_tag(tag)
-            button.tags.append(tag)
-            button.update_label()
+            if button is not None:
+              button.tags.append(tag)
+              button.update_label()
 
 
   def onRemoveTags(self, e):
@@ -2284,15 +2352,15 @@ class MultiRunTagDialog(BaseDialog):
       remove_tags = [t for t in self.db_tags if self.db_tag_names.index(t.name) in tag_indices]
 
       for tag in remove_tags:
-        for run_number in self.selected.keys():
-          run, button = self.selected[run_number]
+        for run, button in self.selected_runs():
           run_tags = run.app.get_run_tags(run.run_id)
           run_tag_ids = [t.tag_id for t in run_tags]
           if tag.tag_id in run_tag_ids:
             run.remove_tag(tag)
-            tag_on_button = [t for t in button.tags if t.tag_id == tag.tag_id][0] # proxy tag =/= other proxy tag
-            button.tags.remove(tag_on_button)
-            button.update_label()
+            if button is not None:
+              # proxy tag =/= other proxy tag
+              button.tags = [t for t in button.tags if t.tag_id != tag.tag_id]
+              button.update_label()
 
   def onOK(self, e):
     e.Skip()
@@ -2959,16 +3027,20 @@ class RunBlockDialog(BaseDialog):
 
     # An active trial starts processing the run group's runs as soon as it is
     # saved, and so do the active datasets on the trial: ask first if that is
-    # a lot of jobs. A replaced run group reprocesses every run it covers.
+    # a lot of jobs. A replaced run group reprocesses every run it covers. The
+    # count is what this save adds, over the jobs the trial's current run
+    # groups would submit anyway, such as a tagged run still indexing.
     trial = self.parent.trial
     if action != 'none' and trial.active:
-      from xfel.ui.db.job import predict_trial_jobs
+      from xfel.ui.db.job import predict_trial_jobs, job_count_delta
       from xfel.ui.db.rungroup import runs_in_range
       new_runs = runs_in_range(self.db.get_all_runs(), self.first_run, self.last_run, self.use_ids)
-      rungroups = [(rg, rg.runs) for rg in trial.rungroups
-                   if self.block is None or rg.id != self.block.id]
-      rungroups.append((self.block if action == 'update' else None, new_runs))
-      counts = predict_trial_jobs(self.db, trial, rungroups=rungroups)
+      current = [(rg, rg.runs) for rg in trial.rungroups]
+      revised = [(rg, runs) for rg, runs in current
+                 if self.block is None or rg.id != self.block.id]
+      revised.append((self.block if action == 'update' else None, new_runs))
+      counts = job_count_delta(predict_trial_jobs(self.db, trial, rungroups=revised),
+                               predict_trial_jobs(self.db, trial, rungroups=current))
       if not confirm_job_count(self, self.db, counts, 'Saving this run block'):
         return
 
@@ -3176,12 +3248,15 @@ class SelectRunBlocksDialog(BaseDialog):
     trials = self.db.get_all_trials()
 
     # The selected run groups are processed as soon as they are on an active
-    # trial, so ask first if that is a lot of jobs.
+    # trial, so ask first if that is a lot of jobs: the ones this selection
+    # adds over what the trial's current run groups would submit anyway.
     if self.trial.active:
-      from xfel.ui.db.job import predict_trial_jobs
+      from xfel.ui.db.job import predict_trial_jobs, job_count_delta
       selected = [(rg, rg.runs) for i, rg in enumerate(self.all_rungroups)
                   if self.runblocks_list.ctr.IsChecked(i)]
-      counts = predict_trial_jobs(self.db, self.trial, rungroups=selected)
+      current = [(rg, rg.runs) for rg in self.trial.rungroups]
+      counts = job_count_delta(predict_trial_jobs(self.db, self.trial, rungroups=selected),
+                               predict_trial_jobs(self.db, self.trial, rungroups=current))
       if not confirm_job_count(self, self.db, counts, 'Selecting these run blocks'):
         return
 
