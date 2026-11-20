@@ -310,7 +310,12 @@ def run(args,
       else :
         user_phil.append(arg_phil)
 
-  params = master_phil.fetch(sources=user_phil).extract()
+  working_phil, unused = master_phil.fetch(sources=user_phil,
+    track_unused_definitions=True)
+  if len(unused) > 0:
+    raise Sorry("Unrecognized parameter(s)\n%s"
+      % "\n".join([str(p) for p in unused]))
+  params = working_phil.extract()
   if params.max_retries > 0 and not params.run_in_unique_dirs:
     print("Note: max_retries=%d enabled run_in_unique_dirs=True "
           "(retries require per-test directories for safe cleanup)."

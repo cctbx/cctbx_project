@@ -469,7 +469,8 @@ def exercise_run_checks_the_timings_path_where_it_starts():
 
 def exercise_run_lists_one_chunk():
   """n_chunks= and chunk= select complementary parts of the list, by the
-  timings file or, without one, by name; the chunk has to exist."""
+  timings file or, without one, by name; the chunk has to exist, and a
+  parameter that does not exist is an error."""
   tmpdir = tempfile.mkdtemp(prefix="tst_timings_")
   try:
     repo = _make_tests(tmpdir, {
@@ -494,6 +495,9 @@ def exercise_run_lists_one_chunk():
       assert "chunk" in _sorry_from(_list_tests, args + extra)
     message = _sorry_from(_list_tests, ["directory=%s" % repo, "chunk=2"])
     assert "chunk" in message, message
+    # a misspelled parameter would otherwise make every chunk run all tests
+    message = _sorry_from(_list_tests, args[:1] + ["nchunks=2", "chunk=1"])
+    assert "nchunks" in message, message
   finally:
     shutil.rmtree(tmpdir, ignore_errors=True)
 
