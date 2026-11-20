@@ -113,6 +113,8 @@ steps:
     export OMP_NUM_THREADS=2
     export OMPI_MCA_mca_base_component_show_load_errors=0 # see open-mpi/ompi#7752
     export OMP_PROC_BIND=spread; export OMP_PLACES=threads
+    #Temporarily disable LS49 tests 11/20/26
+    #libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=2
     libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=2
   failOnStderr: false
   displayName: Test
