@@ -20,26 +20,42 @@ import math
 import sys
 op = os.path
 
+# Experiment list endings and the reflection file ending each is paired with,
+# in order of preference. Results from older versions of dials.stills_process
+# have refined.expt next to integrated.expt; newer results have integrated.expt
+# and, only with dispatch.refine, refined.expt.
+ordered_endings_mapping = [
+  ("refined_experiments.json", "integrated.pickle"),
+  ("experiments.json", "integrated.pickle"),
+  ("refined.expt", "integrated.refl"),
+  ("integrated.expt", "integrated.refl"),
+  ("indexed.expt", "integrated.refl"),
+  ]
+
+def matching_ending (file_name):
+  """Return the rank and (experiments ending, reflections ending) pair that
+  matches the file name, or None"""
+  basename = os.path.basename(file_name)
+  for rank, pair in enumerate(ordered_endings_mapping):
+    if basename.endswith(pair[0]):
+      return rank, pair
+  return None
+
 def eval_ending (file_name):
-  ordered_endings_mapping = [
-    ("refined_experiments.json", "integrated.pickle"),
-    ("experiments.json", "integrated.pickle"),
-    ("refined.expt", "integrated.refl"),
-    ("indexed.expt", "integrated.refl"),
-    ]
+  match = matching_ending(file_name)
+  if match is None:
+    return None
+  rank, pair = match
   dir_name = os.path.dirname(file_name)
   basename = os.path.basename(file_name)
-  for pair in ordered_endings_mapping:
-    if basename.endswith(pair[0]):
-      refl_name = os.path.join(dir_name, basename.split(pair[0])[0] + pair[1])
-      fragment = basename.split(pair[0])[0]
-      digit = "0" # if fragment contains no digit
-      for i in range(len(fragment)):
-        if fragment[-i-1].isdigit():
-          digit = fragment[-i-1]
-          break
-      return (digit, file_name, refl_name)
-  return None
+  refl_name = os.path.join(dir_name, basename.split(pair[0])[0] + pair[1])
+  fragment = basename.split(pair[0])[0]
+  digit = "0" # if fragment contains no digit
+  for i in range(len(fragment)):
+    if fragment[-i-1].isdigit():
+      digit = fragment[-i-1]
+      break
+  return (digit, file_name, refl_name)
 
 def get_observations (data_dirs,data_subset):
   print("Step 1.  Get a list of all files")
@@ -47,12 +63,23 @@ def get_observations (data_dirs,data_subset):
   for dir_name in data_dirs :
     if not os.path.isdir(dir_name):
       continue
+    # One frame per reflection file: a directory may hold more than one
+    # experiment list for the same frame (refined.expt and integrated.expt),
+    # in which case the one ranked first in ordered_endings_mapping is used.
+    candidates = {}
     for file_name in os.listdir(dir_name):
-      if eval_ending(file_name) is not None: # only accept jsons
-        if data_subset == 0 or \
-          (data_subset == 1 and int(eval_ending(file_name)[0][-1]) % 2 == 1 or \
-          (data_subset == 2 and int(eval_ending(file_name)[0][-1]) % 2 == 0)):
-          file_names.append(os.path.join(dir_name, file_name))
+      result = eval_ending(file_name)
+      if result is None: # only accept jsons
+        continue
+      digit, _, refl_name = result
+      if data_subset == 1 and int(digit[-1]) % 2 != 1:
+        continue
+      if data_subset == 2 and int(digit[-1]) % 2 != 0:
+        continue
+      rank, _ = matching_ending(file_name)
+      if refl_name not in candidates or rank < candidates[refl_name][0]:
+        candidates[refl_name] = (rank, os.path.join(dir_name, file_name))
+    file_names.extend(path for rank, path in candidates.values())
   print("Number of frames found:", len(file_names))
   return file_names
 

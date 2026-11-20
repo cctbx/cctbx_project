@@ -54,6 +54,9 @@ class Processor(BaseProcessor):
 
     max_clique_len, experiments, indexed = small_cell_index_detail(experiments, reflections, params, write_output=False)
 
+    # Cache or save the indexed results, as dials.stills_process.Processor.index does
+    self.store_results("indexed", experiments, indexed)
+
     logger.info('')
     logger.info('Time Taken = %f seconds' % (time() - st))
     return experiments, indexed

@@ -12,7 +12,6 @@ from dials.util import show_mail_on_error
 from libtbx.phil import parse
 from libtbx.utils import Sorry
 from libtbx import easy_run
-from xfel.util.dials_file_matcher import match_dials_files
 from xfel.util.mp import mp_phil_str as multiprocessing_str
 from xfel.util.mp import get_submit_command_chooser
 import sys
@@ -249,6 +248,26 @@ usage: cctbx.xfel.time_varying_refinement time_varying_refinement.results_dir=/p
 for interactive unit cell clustering, use combine_experiments.clustering.dendrogram=True
 """
 
+def match_experiments_to_reflections(expts, refls, expt_endings, refl_ending):
+  """Pair each reflection file with the experiments file sharing its stem,
+  preferring the experiment endings in the order given"""
+  expts_by_stem = {}
+  for expt in expts:
+    for rank, ending in enumerate(expt_endings):
+      if expt.endswith(ending):
+        stem = expt[:-len(ending)]
+        if stem not in expts_by_stem or rank < expts_by_stem[stem][0]:
+          expts_by_stem[stem] = (rank, expt)
+        break
+  matched_expts = []
+  matched_refls = []
+  for refl in refls:
+    stem = refl[:-len(refl_ending)]
+    if stem in expts_by_stem:
+      matched_expts.append(expts_by_stem[stem][1])
+      matched_refls.append(refl)
+  return matched_expts, matched_refls
+
 def allocate_chunks(results_dir,
                     trial_no,
                     rgs_selected=None,
@@ -258,7 +277,10 @@ def allocate_chunks(results_dir,
                     max_size=1000,
                     integrated=False):
   refl_ending = "_integrated" if integrated else "_indexed"
-  expt_ending = "_refined.expt"
+  # dials.stills_process writes the experiments with the same suffix as the
+  # reflections. Results from older versions paired both with _refined.expt.
+  # Both are accepted, per image, so old and new results can be mixed.
+  expt_endings = [refl_ending + ".expt", "_refined.expt"]
   trial = "%03d" % trial_no
   print("processing trial %s" % trial)
   if rgs_selected:
@@ -305,8 +327,8 @@ def allocate_chunks(results_dir,
       abs_contents = [os.path.join(results_dir, run, trg, "out", c)
                       for c in contents]
       batch_contents[batch].extend(abs_contents)
-      expts = [c for c in contents if c.endswith(expt_ending)]
-      n_img += len(expts)
+      stems = set(c[:-len(e)] for c in contents for e in expt_endings if c.endswith(e))
+      n_img += len(stems)
       if extension is None:
         if any(c.endswith(".mpack") for c in contents):
           extension = ".mpack"
@@ -332,9 +354,9 @@ def allocate_chunks(results_dir,
     num, size = num_size_tuple
     batch_chunks[batch] = []
     contents = batch_contents[batch]
-    expts = [c for c in contents if c.endswith(expt_ending)]
+    expts = [c for c in contents if any(c.endswith(e) for e in expt_endings)]
     refls = [c for c in contents if c.endswith(refl_ending)]
-    expts, refls = match_dials_files(expts, refls, expt_ending, refl_ending)
+    expts, refls = match_experiments_to_reflections(expts, refls, expt_endings, refl_ending)
     if stripe:
       for i in range(num):
         expts_stripe = expts[i::num]
