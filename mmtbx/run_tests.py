@@ -579,6 +579,7 @@ molprobity_tests = [
   "$D/regression/tst_reduce2_optimizer_release.py",
   "$D/regression/tst_reduce2_report_renaming.py",
   "$D/regression/tst_reduce2_blank_parent_split.py",
+  "$D/regression/tst_reduce2_cross_letter_links.py",
   "$D/regression/tst_reduce2_nh2_names.py",
   "$D/regression/tst_reduce2_amide_h_sides.py",
   "$D/regression/tst_reduce2_water_h.py",

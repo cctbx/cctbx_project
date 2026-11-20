@@ -161,6 +161,76 @@ def GetAtomsForConformer(model, conf):
       ret += ResidueAtomsForConformer(rg, conf, (rg.resseq, rg.icode) in sites)
   return ret
 
+def _ReferencePeptideBond(prev, rg, bondTable):
+  """The first restrained C-N bond between residue groups prev and rg (any
+  letters), as (c, n, distanceIdeal); None if there is none."""
+  for c in prev.atoms():
+    if c.name.strip() != 'C':
+      continue
+    for n in rg.atoms():
+      if n.name.strip() != 'N':
+        continue
+      bp = bondTable.lookup(c.i_seq, n.i_seq)
+      if bp is not None:
+        return (c, n, bp.distance_ideal)
+  return None
+
+def CrossLetterPeptideBonds(model, conf, bondTable):
+  """The peptide bonds that the pass for the non-blank altloc conf holds between
+  two different letters: C of a residue and N of the next one as
+  GetAtomsForConformer() gives them (e.g. C of Ala A, its first letter, with N of
+  Ser C). Restraints are made per conformer, so no proxy bonds such a pair. It
+  counts only if C and N of the same residues are bonded in another letter
+  combination (the reference proxy), and is accepted as a bond within 1.25 times
+  the reference's ideal distance. Placement, the Optimizer's neighbor lists and
+  so its Movers all use this one decision.
+  :param model: pdb.hierarchy.model.
+  :param conf: String name of the conformation.
+  :param bondTable: bond_params_table of the model's geometry restraints.
+  :return: List of (c, n, cRef, nRef, distanceIdeal, accepted) in chain order.
+  """
+  ret = []
+  if conf.strip() == '':
+    return ret
+  for ch in model.chains():
+    if len(ch.conformers()) == 1:
+      continue
+    rgs = ch.residue_groups()
+    sites = set((rg.resseq, rg.icode) for rg in rgs if conf in ResidueLetters(rg))
+    def held(rg, name):
+      for a in ResidueAtomsForConformer(rg, conf, (rg.resseq, rg.icode) in sites):
+        if a.name.strip() == name:
+          return a
+      return None
+    # the residue groups at the previous site (several for microheterogeneity)
+    lastSite, prevs, here = None, [], []
+    for rg in rgs:
+      if (rg.resseq, rg.icode) != lastSite:
+        prevs, here, lastSite = here, [], (rg.resseq, rg.icode)
+      here.append(rg)
+      if not ResidueLetters(rg):
+        continue
+      n = held(rg, 'N')
+      if n is None or n.parent().altloc.strip() == '':
+        continue
+      for prev in prevs:
+        if not ResidueLetters(prev):
+          continue
+        c = held(prev, 'C')
+        if c is None:
+          continue
+        lc = c.parent().altloc.strip()
+        if lc in ('', n.parent().altloc.strip()):
+          continue
+        if bondTable.lookup(c.i_seq, n.i_seq) is not None:
+          continue
+        ref = _ReferencePeptideBond(prev, rg, bondTable)
+        if ref is None:
+          continue
+        ret.append((c, n, ref[0], ref[1], ref[2],
+          c.distance(n) <= 1.25 * ref[2]))
+  return ret
+
 def EnvironmentResidues(model, conf, alts):
   """The residue groups of model that are environment in the pass for conf: those
   with altlocs but without conf, with at least one of their letters among the
@@ -941,6 +1011,22 @@ class Optimizer(object):
       # shared lists above mix conformers). A new dictionary each pass, so the Phantom
       # Hydrogens added below stay in it.
       passNeighborLists = Helpers.getBondedNeighborLists(self._atoms, bondProxies, asuProxies)
+      # A peptide bond the pass holds across two letters has no proxy; bond it here,
+      # so that its N gets no single-hydrogen rotator.
+      crossBonds = CrossLetterPeptideBonds(myModel, alt,
+        model.get_restraints_manager().geometry.bond_params_table)
+      if crossBonds:
+        passByISeq = dict((a.i_seq, a) for a in self._atoms)
+      for c, n, cRef, nRef, ideal, accepted in crossBonds:
+        if accepted:
+          c, n = passByISeq[c.i_seq], passByISeq[n.i_seq]
+          passNeighborLists[c].append(n)
+          passNeighborLists[n].append(c)
+        self._infoString += _VerboseCheck(self._verbosity, 1,
+          "  Peptide bond across letters: %s - %s %.2f A, %s\n" % (
+          c.id_str().replace('pdb=', ''), n.id_str().replace('pdb=', ''),
+          c.distance(n), "bonded" if accepted else
+          "not bonded (over 1.25 x %.2f A)" % ideal))
 
       ################################################################################
       # Reset the timer

@@ -37,7 +37,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "3.24.1"
+version = "3.25.0"
 
 master_phil_str = '''
 approach = *add remove optimize place
@@ -3684,6 +3684,19 @@ NOTES:
           if text:
             print('\n' + text, file=self.logger)
             outString += '\n' + text + '\n'
+        # a supplied amide H on a peptide bond that a pass holds across two
+        # letters: as placement puts it (riding treats it as rotatable);
+        # after the metal amines, which keep a manager set up without them
+        moved = reduce_hydrogen.place_amide_h_across_letters(self.model,
+          use_neutron_distances = True if self.params.use_neutron_distances
+            else None)
+        moved = [(h, d) for h, d in moved if d > 0.005]
+        if moved:
+          text = 'Amide H set on peptide bonds across altloc letters:\n' + \
+            ''.join('  %s moved %.2f A\n' % (h.id_str().replace('pdb=', ''), d)
+              for h, d in moved)
+          print('\n' + text, file=self.logger)
+          outString += '\n' + text + '\n'
 
       # A model of waters (and ions) has no H before its water H are placed:
       # nothing for the Optimizer.

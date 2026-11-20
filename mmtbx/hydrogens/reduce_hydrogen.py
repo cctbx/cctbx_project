@@ -3202,6 +3202,124 @@ def _residue_label(atom):
   return '%s %s %s %s' % (atom.name.strip(), atom.parent().resname.strip(),
     rg.parent().id.strip(), rg.resseq.strip() + rg.icode.strip())
 
+def place_amide_h_across_letters(model, use_neutron_distances=None):
+  '''
+  Amide H on the N of a peptide bond that a pass of the Optimizer holds across
+  two letters (Optimizers.CrossLetterPeptideBonds(); e.g. N of Ser C after C of
+  Ala A). Restraints are made per conformer: this N has no proxy to that C, so
+  riding treats its H as rotatable. Its riding entry becomes a planar one on N,
+  the C held in the pass and CA: with the coefficients of the H in the first
+  bonded letter combination that has a planar one (as riding places a linked
+  amide H), or on the exterior bisector if none has. The H is put there at its
+  own riding distance. Only accepted bonds, only the H of the pass's own
+  letter, and only an ordinary amide: one H on N, and CA the only heavy atom
+  bonded to N in its residue, here and in the reference. Any other site (e.g.
+  the beta-amino acid HT7) is left as it is.
+
+  Parameters
+  ----------
+  model : mmtbx.model.manager
+    with restraints and H; its riding H manager is set up if it has none
+  use_neutron_distances : bool or None
+    as for setup_riding_h_manager()
+
+  Returns
+  -------
+  list of (atom, float)
+    the H set and how far from its site on input
+  '''
+  from mmtbx.reduce.Optimizers import CrossLetterPeptideBonds
+  from mmtbx_hydrogens_ext import riding_coefficients
+  from scitbx.matrix import col
+  hierarchy = model.get_hierarchy()
+  letters = sorted(set(hierarchy.altloc_indices()) - set(['', ' ']))
+  if not letters:
+    return []
+  bond_table = model.get_restraints_manager().geometry.bond_params_table
+  found = []
+  for m in hierarchy.models():
+    for x in letters:
+      for c, n, c_ref, n_ref, ideal, accepted in CrossLetterPeptideBonds(
+          m, x, bond_table):
+        if accepted and n.parent().altloc.strip() == x:
+          found.append((c, n, c_ref, n_ref))
+  if not found:
+    return []
+  # how far from where it was, also if setting up the manager idealizes it
+  sites_before = model.get_sites_cart().deep_copy()
+  model.setup_riding_h_manager(use_neutron_distances = use_neutron_distances)
+  rhm = model.get_riding_h_manager()
+  if rhm is None:
+    return []
+  h_para = rhm.h_parameterization
+  def held_with(x):
+    # x's residue as it is held with x: its letter and blank
+    alt = x.parent().altloc.strip()
+    return [a for a in x.parent().parent().atoms()
+      if a.parent().altloc.strip() in ('', alt)]
+  def amide_h(n):
+    # the one H riding on n, else None (a second H: not an ordinary amide)
+    hs = [a for a in held_with(n) if a.element_is_hydrogen() and
+      h_para[a.i_seq] is not None and h_para[a.i_seq].a0 == n.i_seq]
+    return hs[0] if len(hs) == 1 else None
+  def residue_ca(n):
+    # CA, if it is the one heavy atom bonded to n in its residue (restraints)
+    heavy = [a for a in held_with(n) if a.i_seq != n.i_seq and
+      not a.element_is_hydrogen() and
+      bond_table.lookup(n.i_seq, a.i_seq) is not None]
+    if len(heavy) == 1 and heavy[0].name.strip() == 'CA':
+      return heavy[0]
+    return None
+  def reference_entry(c_ref, n_ref):
+    # (a1 is C, a, b) of the first bonded letter combination whose amide H
+    # has a planar entry on its C and CA
+    for c_r in c_ref.parent().parent().atoms():
+      if c_r.name.strip() != 'C':
+        continue
+      for n_r in n_ref.parent().parent().atoms():
+        if n_r.name.strip() != 'N' or \
+            bond_table.lookup(c_r.i_seq, n_r.i_seq) is None:
+          continue
+        h_r, ca_r = amide_h(n_r), residue_ca(n_r)
+        if h_r is None or ca_r is None:
+          continue
+        p_r = h_para[h_r.i_seq]
+        if p_r.htype != 'flat_2neigbs':
+          continue
+        if (p_r.a1, p_r.a2) == (c_r.i_seq, ca_r.i_seq):
+          return True, p_r.a, p_r.b
+        if (p_r.a1, p_r.a2) == (ca_r.i_seq, c_r.i_seq):
+          return False, p_r.a, p_r.b
+    return None
+  moved = []
+  for c, n, c_ref, n_ref in found:
+    # an ordinary amide only: one H on N, and N bonded to CA as in the
+    # reference; any other site is left as it is
+    h, ca = amide_h(n), residue_ca(n)
+    if h is None or ca is None or residue_ca(n_ref) is None:
+      continue
+    p = h_para[h.i_seq]
+    a1, a2, a, b = c, ca, -1., -1.
+    ref = reference_entry(c_ref, n_ref)
+    if ref is not None:
+      a, b = ref[1], ref[2]
+      if not ref[0]:
+        a1, a2 = ca, c
+    h_para[h.i_seq] = riding_coefficients(htype = 'flat_2neigbs',
+      ih = h.i_seq, a0 = n.i_seq, a1 = a1.i_seq, a2 = a2.i_seq, a3 = -1,
+      a = a, b = b, h = 0, n = 0, disth = p.disth)
+    r0 = col(n.xyz)
+    u1 = (col(a1.xyz) - r0).normalize()
+    u2 = (col(a2.xyz) - r0).normalize()
+    new = r0 + p.disth * (a * u1 + b * u2).normalize()
+    moved.append((h, (col(sites_before[h.i_seq]) - new).length()))
+    h.set_xyz(tuple(new))
+  if moved:
+    rhm.parameterization_cpp = rhm.get_parameterization_cpp(
+      h_parameterization = h_para)
+    model.set_sites_cart_from_hierarchy()
+  return moved
+
 class place_hydrogens():
   '''
   Add H atoms to a model
@@ -3833,6 +3951,8 @@ class place_hydrogens():
     self.model.idealize_h_riding(
       use_neutron_distances = True if self.use_neutron_distances else None)
     self.keep_h_on_own_sites()
+    place_amide_h_across_letters(self.model,
+      use_neutron_distances = True if self.use_neutron_distances else None)
     self.time_idealize = round(time.time()-t0, 2)
 
     # Remove H atoms that are involved in links (bonds, metal coordination, etc)
