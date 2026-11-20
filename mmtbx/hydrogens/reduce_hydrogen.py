@@ -2555,7 +2555,8 @@ METAL_NH_NOT_PLACED = ('N-H not placed: backbone amide N, thymine/uracil N3, '
 # a neutral NH2 (orient_metal_bound_neutral_nh2()) with a metal of
 # AMINE_METAL_ELEMENTS this close to N but outside the coordination window
 # (metal_amine_sites) is turned with its lone pair at the metal too: an
-# orientation, both H kept (radical-SAM SAM/SAH N - Fe: 2.2-2.6 A)
+# orientation, both H kept (radical-SAM SAM/SAH N - Fe: 2.2-2.6 A). The
+# Optimizer's OH, SH and SeH rotators keep their H off a metal this close too.
 NEUTRAL_NH2_NEAR = 2.6
 METAL_NEUTRAL_NH2_ORIENTED = ('Metal-bound neutral NH2 placed with the lone '
   'pair at the metal (both H kept, at the dictionary angles)')

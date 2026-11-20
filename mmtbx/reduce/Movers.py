@@ -469,10 +469,13 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        :param fineStepDegrees: The fine step to take.
        :param preferredOrientationScale: How much to scale the preferred-orientation
        energy by before adding it to the total.
-       :param boundMetals: A list of metal atoms bound to the Hydrogen's neighbor.
-       Orientations that turn the Hydrogen towards one of them (a metal-neighbor-Hydrogen
-       angle below 90 degrees) are not tried as coarse orientations and are not chosen
-       as fine ones, unless no coarse orientation is left.
+       :param boundMetals: A list of metal atoms bound to the Hydrogen's neighbor or
+       close to it. Orientations that turn the Hydrogen towards one of them (a
+       metal-neighbor-Hydrogen angle below 90 degrees) are not tried as coarse
+       orientations and are not chosen as fine ones. Where every coarse orientation
+       turns it towards one (for example, metals on two sides), those within 15
+       degrees of the farthest from them are kept: a smallest metal angle no more
+       than 15 degrees below the largest that a coarse orientation reaches.
        Near a potential acceptor, coarse orientations 15 and 30 degrees to either side
        of it are added (after the others) and the fine search covers -10..+9 degrees,
        as in Reduce (RotDonor.cpp).
@@ -659,35 +662,45 @@ class MoverSingleHydrogenRotator(_MoverRotator):
         if all(abs((ang - m + 180) % 360 - 180) > 5 for m in sofar):
           sofar.append(ang)
 
-    # Drop the angles that turn the Hydrogen towards a bound metal (it is on the
-    # metal's side of the plane through the neighbor perpendicular to the metal
-    # bond) and fill the gaps with the other coarse angles, as above. If no
-    # coarse angle is away from the metals, keep them all.
-    def awayFromMetals(ang):
+    # The smallest metal-neighbor-Hydrogen angle at a rotation: below 90 degrees the
+    # Hydrogen is turned towards a bound metal (it is on the metal's side of the plane
+    # through the neighbor perpendicular to the metal bond).
+    def metalAngle(ang):
       h = rvec3(self._posesFor([ang])[0][0])
       x = rvec3(neighbor.xyz)
+      smallest = 180.0
       for m in boundMetals:
-        if (rvec3(m.xyz) - x).dot(h - x) > 0:
-          return False
-      return True
-    avoidMetals = False
-    if len(boundMetals) > 0:
+        a = (rvec3(m.xyz) - x).angle(h - x, deg=True)
+        if a < smallest:
+          smallest = a
+      return smallest
+
+    # Drop the angles that turn the Hydrogen towards a bound metal and fill the gaps
+    # with the other coarse angles, as above. Where every coarse angle turns it
+    # towards one, keep those within 15 degrees of the farthest from the metals.
+    avoidMetals = len(boundMetals) > 0
+    if avoidMetals:
+      farthest = max(metalAngle(ang) for ang in self._coarseAngles)
+      if farthest >= 90:
+        limit = 90.0
+      else:
+        limit = farthest - 15.0
+      def awayFromMetals(ang):
+        return metalAngle(ang) >= limit - 1e-6
       away = [ang for ang in self._coarseAngles if awayFromMetals(ang)]
-      if len(away) > 0:
-        avoidMetals = True
-        sofar = [ang for ang in sofar if awayFromMetals(ang)]
-        addSpacedAngles(sofar, away)
-        # A fine step can still cross the plane; this large negative preference,
-        # added to the one above, keeps the Optimizer from choosing it.
-        otherPreference = self._preferenceFunction
-        def metalSidePreference(degrees):
-          preference = 0.0
-          if otherPreference is not None:
-            preference = otherPreference(degrees)
-          if not awayFromMetals(degrees):
-            preference -= 1000.0
-          return preference
-        self._preferenceFunction = metalSidePreference
+      sofar = [ang for ang in sofar if awayFromMetals(ang)]
+      addSpacedAngles(sofar, away)
+      # A fine step can still go below the limit; this large negative preference,
+      # added to the one above, keeps the Optimizer from choosing it.
+      otherPreference = self._preferenceFunction
+      def metalSidePreference(degrees):
+        preference = 0.0
+        if otherPreference is not None:
+          preference = otherPreference(degrees)
+        if not awayFromMetals(degrees):
+          preference -= 1000.0
+        return preference
+      self._preferenceFunction = metalSidePreference
 
     # These are the primary coarse angles; the Optimizer may also refine the best of
     # them when one of the angles added below wins (NumPrimaryCoarsePositions()).
