@@ -5,6 +5,7 @@ from mmtbx.command_line import cif_as_mtz
 from iotbx import mtz
 from iotbx import file_reader
 from libtbx.test_utils import approx_equal
+from io import StringIO
 
 def exercise1():
   cif_in = """\
@@ -572,9 +573,92 @@ def exercise3():
   assert (('64.2990', '64.2990', '201.9300', '90.000', '90.000', '90.000') == fuc)
 
 
+map_coefficients_block = """\
+data_r1abc%ssf
+#
+_cell.length_a      24.7300
+_cell.length_b      39.2374
+_cell.length_c      45.1397
+_cell.angle_alpha   90.0000
+_cell.angle_beta    90.0000
+_cell.angle_gamma   90.0000
+#
+_symmetry.space_group_name_H-M   "P 21 21 21"
+#
+loop_
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.pdbx_FWT
+_refln.pdbx_PHWT
+_refln.pdbx_DELFWT
+_refln.pdbx_DELPHWT
+0 0  8  21.2 180.0 54.1   0.0
+0 0 10 302.5   0.0 63.2 180.0
+0 0 12  82.6 180.0 51.9   0.0
+1 2  3  44.0  35.0 12.0 215.0
+#END
+"""
+
+map_coefficients_block_with_crystal_id = """\
+data_r1abcCsf
+#
+_cell.length_a      24.7300
+_cell.length_b      39.2374
+_cell.length_c      45.1397
+_cell.angle_alpha   90.0000
+_cell.angle_beta    90.0000
+_cell.angle_gamma   90.0000
+#
+_symmetry.space_group_name_H-M   "P 21 21 21"
+#
+loop_
+_refln.crystal_id
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.pdbx_FWT
+_refln.pdbx_PHWT
+_refln.pdbx_DELFWT
+_refln.pdbx_DELPHWT
+1 0 0  8  21.2 180.0 54.1   0.0
+1 0 0 10 302.5   0.0 63.2 180.0
+2 0 0  8  22.2 180.0 55.1   0.0
+2 0 0 10 312.5   0.0 64.2 180.0
+#END
+"""
+
+def exercise4():
+  """
+  Data blocks with 2mFo-DFc and mFo-DFc map coefficients, as in PDB deposits
+  that add more maps in extra blocks. The renamed duplicates FWT-2,
+  DELFWT-2 and the crystal_id suffixed FWT1, DELFWT1 used to crash with an
+  AssertionError in the label decorator.
+  """
+  file_name = "tst_cif_as_mtz_map_coefficients.cif"
+  with open(file_name, "w") as f:
+    for block_id in ["", "A", "B"]:
+      f.write(map_coefficients_block % block_id)
+    f.write(map_coefficients_block_with_crystal_id)
+  cif_as_mtz.run(args=[file_name], out=StringIO())
+  m = mtz.object(file_name="tst_cif_as_mtz_map_coefficients.mtz")
+  labels = [ma.info().label_string() for ma in m.as_miller_arrays()]
+  assert sorted(labels) == sorted([
+    "FWT,PHWT",
+    "DELFWT,PHDELWT",
+    "FWT-1,PHIFWT-1",
+    "DELFWT-1,PHIDELFWT-1",
+    "FWT-2,PHIFWT-2",
+    "DELFWT-2,PHIDELFWT-2",
+    "FWT1,PHIFWT1",
+    "DELFWT1,PHIDELFWT1",
+    "FWT2,PHIFWT2",
+    "DELFWT2,PHIDELFWT2"]), labels
+
 
 if (__name__ == "__main__"):
   exercise1()
   exercise2()
   exercise3()
+  exercise4()
   print("OK")

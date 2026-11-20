@@ -474,9 +474,6 @@ def extract(file_name,
         miller_array_list.append(ma)
         continue  # don't make a dataset
 
-      dec = None
-      if ("FWT" in label):
-        dec = iotbx.mtz.ccp4_label_decorator()
       column_types = None
       if ("PHI" in label or "PHWT" in label) and (ma.is_real_array()):
         column_types = "P"
@@ -492,7 +489,11 @@ def extract(file_name,
         i += 1
       if(ma is not None):
         column_labels.add(label)
-        if("FWT-1" in label): dec=None
+        # The CCP4 decorator names phases only for plain FWT and DELFWT, not
+        # for crystal_id suffixed (FWT1) or renamed duplicate (FWT-1) labels
+        dec = None
+        if (label in ["FWT", "DELFWT"]):
+          dec = iotbx.mtz.ccp4_label_decorator()
         dataset.add_miller_array(ma,
           column_root_label=label,
           label_decorator=dec,
