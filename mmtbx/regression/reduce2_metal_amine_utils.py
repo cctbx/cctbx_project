@@ -185,6 +185,21 @@ HETATM   10 CD    CD A 396       0.000  20.000   0.000  1.00 10.07          CD
 END
 """
 
+# 1MNZ Tris 392 N and O2 on Mg 389 (2.26 and 2.31 A)
+pdb_trs_mg = """\
+CRYST1   93.880   99.680  102.900  90.00  90.00  90.00 I 2 2 2
+HETATM    1  C   TRS A 392      33.735  32.634  58.095  1.00 12.66           C
+HETATM    2  C1  TRS A 392      34.731  31.531  58.435  1.00 18.88           C
+HETATM    3  C2  TRS A 392      34.369  33.522  57.041  1.00 14.10           C
+HETATM    4  C3  TRS A 392      32.500  31.852  57.652  1.00 12.06           C
+HETATM    5  N   TRS A 392      33.373  33.550  59.189  1.00 10.61           N
+HETATM    6  O1  TRS A 392      36.136  31.939  58.199  1.00 33.72           O
+HETATM    7  O2  TRS A 392      35.424  34.387  57.627  1.00 12.13           O
+HETATM    8  O3  TRS A 392      32.743  31.018  56.515  1.00 11.60           O
+HETATM    9 MG    MG A 389      34.719  35.310  59.621  1.00  8.72          MG
+END
+"""
+
 CONVERTED = 'Coordinating NH3+ placed as NH2'
 UNRESOLVED = 'Coordinating NH3+ left as NH3+ (unresolved)'
 SUPPLIED = 'Supplied NH3+ at metal sites'

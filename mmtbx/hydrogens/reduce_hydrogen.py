@@ -1271,7 +1271,7 @@ def get_output_crystal_symmetry(model):
 
 # ==============================================================================
 # H on atoms bound to metals: thiols and selenols (A4), backbone amide N and
-# T/U N3 (A5)
+# T/U N3 (A5), primary amines
 
 # The metals, and As and Sb, which bind Cys thiolate as As(III) and Sb(III).
 # Membership makes an atom a coordination candidate only.
@@ -1281,6 +1281,12 @@ METAL_ELEMENTS = chemical_elements.metals_upper_set() | frozenset(('AS', 'SB'))
 # no evidence for deprotonation (A5); As and Sb do not count for N-H
 NH_METAL_ELEMENTS = METAL_ELEMENTS - frozenset(
   'LI NA K RB CS FR BE MG CA SR BA RA AS SB'.split())
+
+# primary amines next to these (NH3+ has no lone pair, so a bound amine is
+# NH2): NH_METAL_ELEMENTS and Mg. Alkali metals and Ca-Ra hardly ever bind
+# amine N, and their windows reach N-H...O hydrogen-bond distances; no amine
+# on Be is known (A5)
+AMINE_METAL_ELEMENTS = NH_METAL_ELEMENTS | frozenset(('MG',))
 
 # images of one metal atom closer than this are one metal site
 METAL_SITE_IMAGE_DISTANCE = 2.0
@@ -1938,9 +1944,9 @@ class metal_amine_sites(metal_h_sites):
   aromatic or delocalized bond (amide, amidine, guanidinium, aromatic amine,
   enamine). Each H on it is judged (covered: NH2). amine[i_h]: the branch
   that decided (PRIMARY_AMINE or the reason it is not one) and the heavy
-  neighbour i_c (None unless it is one atom). Metals: NH_METAL_ELEMENTS.
+  neighbour i_c (None unless it is one atom). Metals: AMINE_METAL_ELEMENTS.
   '''
-  metals = NH_METAL_ELEMENTS
+  metals = AMINE_METAL_ELEMENTS
   covered = 'NH2'
   state = 'NH3+'
 
@@ -2036,7 +2042,7 @@ def protect_supplied_metal_amines(model, crystal_symmetry=None,
   approach=optimize with metal_bound_amines_as_nh2 (placement is not run):
   a primary amine that its dictionary makes NH3+ but that carries two H, or
   a neutral NH2 in riding H's pyramidal scope (neutral_metal_nh2()), with
-  two H, with a metal of NH_METAL_ELEMENTS in the window (any occupancy,
+  two H, with a metal of AMINE_METAL_ELEMENTS in the window (any occupancy,
   alternates, symmetry), keeps both H where they are. They are taken out of
   the riding H manager before its first idealization; all other H keep
   their parameterization, as the Optimizer would build it. The H counts are
@@ -2050,7 +2056,7 @@ def protect_supplied_metal_amines(model, crystal_symmetry=None,
     those partly preserved)
   '''
   elements = model.get_hierarchy().atoms().extract_element()
-  if not any(e.strip().upper() in NH_METAL_ELEMENTS for e in elements):
+  if not any(e.strip().upper() in AMINE_METAL_ELEMENTS for e in elements):
     return [], []
   sites = metal_amine_sites(model, crystal_symmetry)
   in_window = {}
@@ -2282,7 +2288,7 @@ METAL_SELENOL_NOT_PLACED = ('Selenol H not placed: the Se is bound to a '
 METAL_NH_NOT_PLACED = ('N-H not placed: backbone amide N or thymine/uracil '
   'N3 bound to a metal, taken as deprotonated')
 # a neutral NH2 (orient_metal_bound_neutral_nh2()) with a metal of
-# NH_METAL_ELEMENTS this close to N but outside the coordination window
+# AMINE_METAL_ELEMENTS this close to N but outside the coordination window
 # (metal_amine_sites) is turned with its lone pair at the metal too: an
 # orientation, both H kept (radical-SAM SAM/SAH N - Fe: 2.2-2.6 A)
 NEUTRAL_NH2_NEAR = 2.6
@@ -4845,7 +4851,7 @@ class place_hydrogens():
     Which N: a primary amine by metal_amine_sites() (one heavy neighbour, a
     C without a multiple bond, N in no plane) that the dictionary makes NH3+
     (three H, energy type NT3 or formal charge +1). Neutral NH2 keep both H.
-    Metal: one position of NH_METAL_ELEMENTS covering the H sites (step B's
+    Metal: one position of AMINE_METAL_ELEMENTS covering the H sites (step B's
     window, coverage and altloc rules), also through symmetry (the
     contact's image). Each complete conformer (conformer_groups()) is
     judged with its own metals.
@@ -4870,7 +4876,7 @@ class place_hydrogens():
     one judged gets one line in metal_amine_chain_starts.
     """
     elements = self.model.get_hierarchy().atoms().extract_element()
-    if not any(e.strip().upper() in NH_METAL_ELEMENTS for e in elements):
+    if not any(e.strip().upper() in AMINE_METAL_ELEMENTS for e in elements):
       return
     sites = metal_amine_sites(self.model, self._contact_cs,
       mon_lib_srv = self.query_mon_lib_srv)
@@ -5043,7 +5049,7 @@ class place_hydrogens():
     """
     A neutral NH2 that its dictionary puts in riding H's pyramidal scope
     (neutral_metal_nh2(): an sp3 C, acyclic N or O as the one heavy
-    neighbour X) and whose N binds a metal of NH_METAL_ELEMENTS
+    neighbour X) and whose N binds a metal of AMINE_METAL_ELEMENTS
     (metal_amine_sites(): window, symmetry images, conformer and occupancy
     rules as for NH3+) keeps both H, oriented with the lone pair at the
     metal. Per complete conformer with both H:
@@ -5063,7 +5069,7 @@ class place_hydrogens():
         farther from it than any planar pair.
       - alternate positions of X, H split over blank and alternate groups:
         listed, left to riding H.
-    A metal of NH_METAL_ELEMENTS within NEUTRAL_NH2_NEAR of N but outside the
+    A metal of AMINE_METAL_ELEMENTS within NEUTRAL_NH2_NEAR of N but outside the
     window (or not counted there) orients the NH2 the same way, an
     orientation only: radical-SAM SAM/SAH N bind the unique Fe at 2.2-2.6
     A, where the dictionary torsion can put an H on the Fe. With a window
@@ -5078,7 +5084,7 @@ class place_hydrogens():
     sites are listed (metal_amine_neutral_off).
     """
     elements = self.model.get_hierarchy().atoms().extract_element()
-    if not any(e.strip().upper() in NH_METAL_ELEMENTS for e in elements):
+    if not any(e.strip().upper() in AMINE_METAL_ELEMENTS for e in elements):
       return
     sites = metal_amine_sites(self.model, self._contact_cs,
       mon_lib_srv = self.query_mon_lib_srv)
@@ -5228,14 +5234,14 @@ class place_hydrogens():
 
   def _near_metal_contacts(self, i_ns, atoms, cutoff=NEUTRAL_NH2_NEAR):
     '''
-    {i_n: [group_args(image, altloc, text)]}: metals of NH_METAL_ELEMENTS
+    {i_n: [group_args(image, altloc, text)]}: metals of AMINE_METAL_ELEMENTS
     within cutoff of the N i_ns, in the same MODEL, conformers compatible,
     also in symmetry mates of the input symmetry (image: Cartesian).
     '''
     sites = self.model.get_sites_cart()
     # as metal_amine_sites: a metal at occupancy 0 is not there
     metals = [i for i in range(atoms.size())
-              if _atom_element(atoms[i]) in NH_METAL_ELEMENTS and
+              if _atom_element(atoms[i]) in AMINE_METAL_ELEMENTS and
               atoms[i].occ > 0]
     if not metals or not i_ns: return {}
     pts = flex.vec3_double([sites[i] for i in i_ns])
@@ -5691,7 +5697,7 @@ class place_hydrogens():
   def chain_start_metal_conformers(self, m):
     """
     The chain starts of model m (chain_start_residue_groups()) with a metal
-    of NH_METAL_ELEMENTS in the window of an N atom, with the contacts of
+    of AMINE_METAL_ELEMENTS in the window of an N atom, with the contacts of
     metal_h_sites (metal_contact_pairs(), the same symmetry) and the metals
     it counts (an altloc compatible with that N, occupancy > 0).
     :return: [(rg, [(N altloc, N atom, set of the counted metals' altlocs)])],
@@ -5701,7 +5707,7 @@ class place_hydrogens():
     if not starts: return []
     atoms = m.atoms()
     elements = [_atom_element(a) for a in atoms]
-    metals = [i for i, e in enumerate(elements) if e in NH_METAL_ELEMENTS
+    metals = [i for i, e in enumerate(elements) if e in AMINE_METAL_ELEMENTS
               and _covalent_radius(e) is not None]
     if not metals: return []
     position = {}

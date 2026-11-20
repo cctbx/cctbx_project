@@ -1,10 +1,10 @@
 """reduce2 metal_bound_amines_as_nh2 (A5): placement and geometry. A primary
 amine that the dictionary makes NH3+ (Lys NZ, an N-terminal NH3) and that
-coordinates a metal of NH_METAL_ELEMENTS is placed as NH2, the two H
-oriented with the metal in place of the H not placed; the classifier,
-metal-bound chain starts, geometry checks, symmetry images, hd_and_h,
-the qmready charge and the option off. Supplied H and reruns:
-tst_reduce2_metal_amine_supplied.py.
+coordinates a metal of AMINE_METAL_ELEMENTS (Mg included: 1MNZ Tris) is
+placed as NH2, the two H oriented with the metal in place of the H not
+placed; the classifier, metal-bound chain starts, geometry checks, symmetry
+images, hd_and_h, the qmready charge and the option off. Supplied H and
+reruns: tst_reduce2_metal_amine_supplied.py.
 """
 from __future__ import absolute_import, division, print_function
 from mmtbx.regression.reduce2_metal_amine_utils import *
@@ -33,6 +33,15 @@ def test_option_off():
   assert CONVERTED not in description and CONVERTED not in log
   assert section(description, REPORTED)[-1].startswith(
     'NZ  LYS A 359 (HZ1, HZ2, HZ3)'), description
+
+def test_tris_mg():
+  '''Mg counts (NH3+ has no lone pair, and an N-Mg contact is too short for
+  an N-H...O bond): the 1MNZ Tris amine on Mg is placed as NH2, HN1 not
+  placed'''
+  h, description, log = run('tst_reduce2_metal_amine_trs', pdb_trs_mg, [ON])
+  check_nh2(h, 392, 'N', 'C', 389, 'MG', ['HN2', 'HN3'])
+  assert section(description, CONVERTED) == ['N   TRS A 392: HN1 not placed  '
+    '(N   TRS A 392 - MG    MG A 389 2.26 A (geometric))'], description
 
 def test_terminus_cu():
   # resseq 1: placement builds NH3 (n_terminal_charge=residue_one)
@@ -515,6 +524,7 @@ def test_qmready_charge():
 if __name__ == '__main__':
   test_lys_cd()
   test_option_off()
+  test_tris_mg()
   test_terminus_cu()
   test_neutral_nh2_kept()
   test_classifier()
